@@ -9,9 +9,9 @@
 #   ./scripts/sync-to-github.sh "commit message"   # 同步并推送
 #   ./scripts/sync-to-github.sh --dry-run          # 只看差异，不提交不推送
 #
-# 认证：推送需要凭据。任选其一：
-#   1) git remote 用 https 且已配置 osxkeychain/credential helper
-#   2) 环境变量 GH_TOKEN=<token> ./scripts/sync-to-github.sh ...
+# 认证（镜像仓库 origin 已配置为 SSH git@github.com:kakaCat/dsh-pmboard.git）：
+#   1) 默认走 SSH key（~/.ssh/id_ed25519，已验证可用），无需任何 token
+#   2) 备选：GH_TOKEN=<token> ./scripts/sync-to-github.sh ...（临时 https 推送，不落盘）
 set -euo pipefail
 
 SRC="$(cd "$(dirname "$0")/.." && pwd)/"          # monorepo 包目录（尾带 /）
