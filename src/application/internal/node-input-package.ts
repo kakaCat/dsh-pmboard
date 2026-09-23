@@ -19,6 +19,7 @@ import {
   type ResolvedPrompt,
 } from '../../domain/prompt/index.js'
 import { fmt } from '../../domain/text/fmt.js'
+import { renderAddressSection } from '../../domain/template/index.js'
 import type { RequirementRecord, StageArtifact } from '../../shared/protocol.js'
 
 /** 台账投影（INV-8 五字段的输入包侧承载）。 */
@@ -88,6 +89,10 @@ export interface NodeInputPackageInput {
   requirementDoc: string
   /** 需求文档路径（渲染与标注用）。 */
   requirementDocPath: string
+  /** 模板根绝对路径（T-5）；缺省 = 输入包不追加地址小节（与改造前逐字节一致）。 */
+  templateRoot?: string
+  /** 当前任务卡投影（实施节点的上游必读）。 */
+  currentTask?: { id?: string; title?: string; cardDoc?: string }
 }
 
 export interface NodeInputPackage {
@@ -110,7 +115,7 @@ export function buildNodeInputPackage(input: NodeInputPackageInput): NodeInputPa
   const docText = input.requirementDoc.length > 0
     ? input.requirementDoc
     : fmt(DOC_UNAVAILABLE, { path: input.requirementDocPath })
-  const text = fmt(
+  const baseText = fmt(
     [
       '# 节点输入包 · {reqId} · {stage}',
       '',
@@ -155,13 +160,46 @@ export function buildNodeInputPackage(input: NodeInputPackageInput): NodeInputPa
       docText,
     },
   )
+  // T-5（FR-8/FR-12）：地址小节与系统段/H3 共用同一纯函数；空集不追加（逐字节兼容）。
+  const addressSection = renderAddressFor(input)
+  const text = addressSection.length > 0 ? baseText + '\n\n' + addressSection : baseText
   return { text, resolved, projection }
 }
 
-/** 需求文档相对路径（显式 docLinks.requirement 优先）。 */
+/** 输入包侧的地址节渲染（渲染异常 → 不追加，不静默破坏输入包）。 */
+function renderAddressFor(input: NodeInputPackageInput): string {
+  if (input.templateRoot === undefined) return ''
+  try {
+    return renderAddressSection({
+      stage: input.stage,
+      category: input.category,
+      ...(input.requirement === undefined ? {} : { requirement: input.requirement }),
+      ...(input.currentTask === undefined ? {} : { currentTask: input.currentTask }),
+      templateRoot: input.templateRoot,
+    })
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * 需求文档相对路径（REQ-260922012924-2e29 FR-2）。
+ *
+ * 解析优先级：`docLinks.requirement`（显式链接，最高）→ `docBasePath` 拼接 → 缺省
+ * `docs/requirements/<REQ>/`。docBasePath 拼接契约（design/interfaces.md）：
+ *  ① `<REQ>` 占位符全部替换为需求 id；
+ *  ② docBasePath **无** `<REQ>` 时追加 `<id>/` 子目录（防多需求撞同一 requirement.md）；
+ *  ③ 尾部斜杠归一；④文件名恒 `requirement.md`。
+ * 兼容：无 docBasePath 的老记录走缺省分支，输出与改造前逐字节一致。
+ */
 export function requirementDocPath(requirement: RequirementRecord | undefined): string {
   if (requirement === undefined) return ''
-  return requirement.docLinks?.requirement ?? fmt('docs/requirements/{id}/requirement.md', { id: requirement.id })
+  if (requirement.docLinks?.requirement !== undefined) return requirement.docLinks.requirement
+  const raw = requirement.docBasePath ?? 'docs/requirements/<REQ>/'
+  const hasPlaceholder = raw.includes('<REQ>')
+  const base = raw.replaceAll('<REQ>', requirement.id)
+  const withId = hasPlaceholder ? base : base.replace(/\/?$/, '/') + requirement.id + '/'
+  return withId.replace(/\/?$/, '/') + 'requirement.md'
 }
 
 /** D-12 ②：给人可操作的等价路径（开新窗口 + 粘贴输入包）。 */

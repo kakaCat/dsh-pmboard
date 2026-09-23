@@ -43,9 +43,14 @@ export function createH4ResumeHandler(deps: H4ResumeDeps): GateHandler {
         const answerLine = describeAnswers(ctx)
         const prompt = scratch?.promptText
         const includePrompt = scratch?.compacted !== true && prompt !== undefined && prompt.length > 0
-        const promptBlock = includePrompt
-          ? fmt('\n\n按以下阶段纪律继续：\n\n{p}', { p: prompt })
-          : '\n\n阶段纪律已随节点输入包一并给出，按其继续。'
+        // T-4（FR-10）：非肯定答复**不附任何纪律块**（只发作答摘要 + 用户意见）；
+        // 肯定分支行为不变（防"修反"）。
+        const negative = ctx.verdict !== 'affirmative'
+        const promptBlock = negative
+          ? ''
+          : includePrompt
+            ? fmt('\n\n按以下阶段纪律继续：\n\n{p}', { p: prompt })
+            : '\n\n阶段纪律已随节点输入包一并给出，按其继续。'
         const text = fmt('{head}\n{answers}{block}', { head, answers: answerLine, block: promptBlock })
         const result = deps.delivery.deliver(ctx.windowKey, {
           text,

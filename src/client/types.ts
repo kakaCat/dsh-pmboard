@@ -232,30 +232,6 @@ export interface TaskRecord {
   updatedBy: ActorRef
 }
 
-// -- 待归类（triage）-------------------------------------------------------
-
-export type TriageStatus = 'pending' | 'confirmed' | 'rejected'
-
-export interface TriageRecord {
-  id: string
-  sessionId: string
-  firstMessageText: string
-  suggestedAction: 'create_req' | 'bind_req' | 'bind_task'
-  suggestedTargetId?: string
-  /** Agent/LLM 建议的需求标题（create_req；可编辑建议卡预填） */
-  suggestedTitle?: string
-  /** Agent/LLM 建议的需求分类（create_req；可编辑建议卡预填） */
-  suggestedCategory?: RequirementCategory
-  /** 匹配分数 0-100（agent 显式提议=100，启发式匹配=低值） */
-  score: number
-  status: TriageStatus
-  createdAt: number
-  resolvedAt?: number
-  resolvedBy?: ActorRef
-  resultRequirementId?: string
-  comments: CommentRecord[]
-}
-
 // -- 看板数据 -------------------------------------------------------------
 
 export interface BoardState {
@@ -266,11 +242,10 @@ export interface BoardState {
   ready: Record<string, string[]>
   /** REQ-a33899：需求 id → 累计 token（无快照的需求不出现该键；缺失 ≠ 0） */
   tokenTotals?: Record<string, number>
-}
-
-export interface TriageList {
-  pending: TriageRecord[]
-  resolved: TriageRecord[]
+  /** REQ-260922012924-2e29 FR-4：服务端工作区根（绝对路径；旧服务端无此字段 → 客户端降级相对解析） */
+  workspaceRoot?: string
+  /** FR-4：服务端 homeDir（~ 缩写显示用） */
+  homeDir?: string
 }
 
 /** 需求卡片在泳道列上的紧凑投影（视图层用，避免全量渲染） */

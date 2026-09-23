@@ -1270,7 +1270,7 @@ export function assertSubtaskInvariants(
 // ---------------------------------------------------------------------------
 // Triage（遗留：旧流程「会话捕获待归类建议卡，人工在看板确认」；新流程 2026-09 起
 // 改为创建即立项——reqboard_capture 三问弹框作答即确认并直接建 REQ，不再产生
-// pending triage。存量 triage 记录保留供回溯，路由仍兼容其 confirm/reject/rebind。）
+// pending triage。存量 triage 记录保留只读兼容（REQ-260922182505-0924：路由/面板已删，本类型与台账字段冻结不动）。）
 // ---------------------------------------------------------------------------
 
 export type TriageStatus = 'pending' | 'confirmed' | 'rejected'
@@ -1316,8 +1316,12 @@ export function newTriageId(rand: () => number = Math.random): string {
 // ArchiveDocRule 接口与 ARCHIVE_DOC_RULES 迁至 domain/artifact/ArtifactSpec.ts（t2），
 // 顶部再导出（assertArchiveMaterials 仍在本文件消费它）。
 
-/** 需求目录约定（校验用）：docs/requirements/REQ-xxxxxx 或 agent-dh/docs/requirements/REQ-xxxxxx。 */
-export const REQUIREMENT_DIR_PATTERN = /(?:^|\/)docs\/requirements\/REQ-[0-9a-f]{6}$/
+/**
+ * 需求目录约定（校验用）：docs/requirements/REQ-xxxxxx 或 agent-dh/docs/requirements/REQ-xxxxxx。
+ * REQ-260922133212-dd5b BUG-1：兼容两种 id 格式——旧版六位 hex（REQ-f6307c）与 2026-09 起的
+ * 时间戳格式（REQ-YYMMDDHHmmss-xxxx = 12 位数字 + 4 位 hex，见 CHANGELOG-req-id-timestamp.md）；其余形态仍拒。
+ */
+export const REQUIREMENT_DIR_PATTERN = /(?:^|\/)docs\/requirements\/REQ-(?:[0-9a-f]{6}|\d{12}-[0-9a-f]{4})$/
 
 /** 归档材料校验（缺项抛 code=invalid_input，消息指明缺什么）。 */
 export function assertArchiveMaterials(
