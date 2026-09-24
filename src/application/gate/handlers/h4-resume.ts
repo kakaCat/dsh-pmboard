@@ -37,9 +37,13 @@ export function createH4ResumeHandler(deps: H4ResumeDeps): GateHandler {
     name: 'h4-resume',
     async run({ ctx, scratch }: ChainInput): Promise<HandlerOutcome> {
       try {
+        // REQ-260924002956-f37c BUG-2：无 from 的门（G0 立项门）没有"当前节点"可言——
+        // 不能把 to 当现状印成"节点仍在 brainstorming"（那是目标态，不是现状）。
         const head = ctx.verdict === 'affirmative'
           ? fmt('【闸门确认】{gate} 已确认，节点推进到 {to}。', { gate: ctx.gate, to: ctx.to })
-          : fmt('【闸门待改进】{gate} 未通过，节点仍在 {from}。', { gate: ctx.gate, from: ctx.from ?? ctx.to })
+          : ctx.from === undefined
+            ? fmt('【闸门待改进】{gate} 未通过。', { gate: ctx.gate })
+            : fmt('【闸门待改进】{gate} 未通过，节点仍在 {from}。', { gate: ctx.gate, from: ctx.from })
         const answerLine = describeAnswers(ctx)
         const prompt = scratch?.promptText
         const includePrompt = scratch?.compacted !== true && prompt !== undefined && prompt.length > 0

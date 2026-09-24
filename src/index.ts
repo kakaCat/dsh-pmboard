@@ -388,6 +388,9 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     },
   );
 
+  // Client 资产：纯声明式（package.json dsh.client + exports["./client"] → lib/client.js），
+  // 宿主 dsh-client-modules 自动扫描已启用 Loader 条目组合启动图，无需逐插件接线。
+
   // 看板 REST/SSE API（经 webServer 惰性注入，注册即生效）
   ;(ctx as unknown as { inject?: (services: string[], cb: (webCtx: any) => void) => void }).inject?.(
     ['webServer'],
