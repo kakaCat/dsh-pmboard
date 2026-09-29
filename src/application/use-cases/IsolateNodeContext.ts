@@ -39,7 +39,7 @@
  *
  * @module dsh-pmboard/application/use-cases/IsolateNodeContext
  */
-import type { Clock, DocRepository, ReqboardRepository } from '../ports.js'
+import type { Clock, DocRepository, ReqboardRepository, TaskStore } from '../ports.js'
 import { openRequirementsFor } from '../internal/window.js'
 import { isInProgressTask } from '../../domain/status/Predicates.js'
 import {
@@ -47,6 +47,7 @@ import {
   newWindowInstruction,
   requirementDocPath,
 } from '../internal/node-input-package.js'
+import { assembleNodeInput } from '../../../../../tools/reqboard/src/dive/node-input.js'
 import type { Category, Difficulty, PromptStage } from '../../domain/prompt/index.js'
 import { fmt } from '../../domain/text/fmt.js'
 import type { RequirementRecord } from '../../shared/protocol.js'
@@ -161,12 +162,39 @@ export interface IsolateNodeContextDeps {
   repo: ReqboardRepository
   docs: DocRepository
   clock: Clock
+  /**
+   * 任务队列端口（REQ-260927202051-f6df t9）：台账 v9 起任务不在 `LedgerView`，
+   * 取"当前在制任务卡"必须经它。**必填**（D11 口径：可选 + 运行期兜底 = 把装配漏洞
+   * 从编译期挪到运行期）。
+   */
+  taskStore: TaskStore
   /** 触达能力端口；未注入 = 触达不到（走 D-12 ②）。 */
   isolation?: NodeIsolationPort
   /** 留痕端口；未注入 = 只在结果体里留痕。 */
   trace?: IsolationTracePort
   /** 模板根绝对路径（T-5）；缺省 = 输入包不追加地址小节（逐字节兼容）。 */
   templateRoot?: string
+}
+
+/**
+ * FR-8：读当前节点的 RTM 追溯快照，供输入包注入。
+ * 只有**拿到真实数据**才返回——文件缺失/全空/异常一律 undefined，
+ * 保证没有 RTM 的需求输入包逐字节保持旧形态（RTM 是增强层，缺失不降级成噪声）。
+ */
+function safeRtmSnapshot(
+  deps: IsolateNodeContextDeps,
+  stage: PromptStage,
+  reqId: string,
+): ReturnType<typeof assembleNodeInput> | undefined {
+  try {
+    const snap = assembleNodeInput(deps.docs.workspaceRoot(), stage, reqId, 'full')
+    const hasData =
+      snap.status !== undefined || snap.inputs !== undefined || snap.outputs !== undefined
+      || snap.traceability !== undefined || snap.coverage !== undefined
+    return hasData ? snap : undefined
+  } catch {
+    return undefined
+  }
 }
 
 function pickRequirement(
@@ -194,11 +222,14 @@ export async function isolateNodeContext(
   const stage = request.stage
   const requirement = pickRequirement(deps.repo, request.windowKey, request.requirementId)
   // T-5：实施节点把当前任务卡带进输入包（与系统段/H3 同一份上游必读）。
+  // 任务已迁出台账（v9）：经 TaskStore 取该需求任务，再就地筛"在制"。
   const currentTask = requirement === undefined
     ? undefined
-    : deps.repo.snapshot().tasks.find(t => t.requirementId === requirement.id && isInProgressTask(t))
+    : (await deps.taskStore.listByRequirement(requirement.id)).find(t => isInProgressTask(t))
   const docPath = requirementDocPath(requirement)
   const docText = docPath.length > 0 ? await safeReadDoc(deps.docs, docPath) : ''
+  // FR-8：RTM 追溯快照注入输入包（无数据 → 不注入，旧输出逐字节不变）。
+  const rtm = requirement === undefined ? undefined : safeRtmSnapshot(deps, stage, requirement.id)
   const pkg = buildNodeInputPackage({
     stage,
     ...(request.difficulty === undefined ? {} : { difficulty: request.difficulty }),
@@ -209,6 +240,7 @@ export async function isolateNodeContext(
     requirementDocPath: docPath,
     ...(deps.templateRoot === undefined ? {} : { templateRoot: deps.templateRoot }),
     ...(currentTask === undefined ? {} : { currentTask: { id: currentTask.id, title: currentTask.title, cardDoc: currentTask.cardDoc } }),
+    ...(rtm === undefined ? {} : { rtm }),
   })
 
   const base = {

@@ -18,6 +18,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
+// REQ-260927202051-f6df（v9）：任务改由 TaskStore 提供，工具壳在缺端口时按端口语义**显式失败**
+// （不再静默返回空任务集）。故本测试的 deps 必须装配真实 TaskStore，否则 verify_submit / ask_confirm
+// 的成功路径会因「任务队列端口未装配」而红——那不是被测工具的缺陷，是夹具欠装配。
+import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
+import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { SystemClock } from '../src/adapters/SystemClock.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
@@ -56,19 +61,56 @@ const depsWith = (extra: { userQuestions?: unknown } = {}) =>
     session: new SessionProbeAdapter({}),
     questions: new UserQuestionsAdapter(() => extra.userQuestions),
     doneThrottleMs: 0,
+    // v9：真实队列仓储 + 真实 TaskStore（不造 mock 端口），工作区根与 docs 同根。
+    taskStore: new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: root }) }),
   }) as never
 const run = (tool: any, args: unknown) => tool.execute(args, { agent: { id: W } })
 
+/** 工具声明的输出 schema（兼容两种挂载形状）。 */
+function outputSchema(tool: any): any {
+  return tool?.output?.schema ?? tool?.schema?.output?.schema ?? {}
+}
 /** 工具声明的输出字段集合。 */
 function declaredKeys(tool: any): Set<string> {
-  const props = tool?.output?.schema?.properties ?? tool?.schema?.output?.schema?.properties ?? {}
-  return new Set(Object.keys(props))
+  return new Set(Object.keys(outputSchema(tool)?.properties ?? {}))
 }
-/** 断言返回体的键都被声明（未声明 → DSH 绑定层会拒收）。 */
+/**
+ * 断言返回体 (a) 键都被声明（未声明 → DSH 绑定层会拒收），(b) 已声明键的**值符合声明类型**。
+ *
+ * (b) 是 2026-09-27 事故后补的闸门：`reqboard_run_status` 在无 active run 时
+ * `snapshot.runId` 发的是 `null`，而 schema 声明 `type:'string'` ⇒ **值级**校验失败，
+ * 把「当前没有链在跑」这个正常事实转译成硬错误 `value.snapshot.runId must be a string`。
+ * 原测试只断言键**是否声明**、**不校验值**，所以它从这道门底下溜了过去。
+ *
+ * 口径：本仓 DSL 只允许 type/properties/additionalProperties，表达不了 `string | null`，
+ * 故**降级路径必须整体省略该键，而不是发 null**（`runId` 已按此修）。
+ */
 function assertKeysDeclared(tool: any, value: Record<string, unknown>, label: string): void {
-  const declared = declaredKeys(tool)
-  for (const k of Object.keys(value)) {
-    expect(declared.has(k), label + ' 返回字段未在 output.schema 声明：' + k).toBe(true)
+  assertConformsToSchema(outputSchema(tool), value, label, label)
+}
+
+function assertConformsToSchema(schema: any, value: any, label: string, path: string): void {
+  const properties = (schema?.properties ?? {}) as Record<string, any>
+  const declared = new Set(Object.keys(properties))
+  const obj = (value ?? {}) as Record<string, unknown>
+  for (const k of Object.keys(obj)) {
+    expect(declared.has(k), `${label} 返回字段未在 output.schema 声明：${path}.${k}`).toBe(true)
+  }
+  for (const [k, spec] of Object.entries(properties)) {
+    // 键**整体省略**是合法形状（降级路径该有的样子）；值为 `undefined` 亦等价于省略——
+    // JSON 序列化会丢掉 undefined，绑定层根本看不到该键。**只有 `null` 会被保留并撞上类型校验**
+    // （本次事故正是 null：value.snapshot.runId must be a string）。
+    if (!(k in obj) || obj[k] === undefined) continue
+    const v = obj[k]
+    const t = spec?.type
+    if (t === 'string' || t === 'number' || t === 'boolean') {
+      // 不允许 null：DSH 绑定层按声明类型做值级校验，null 会被判 invalid output。
+      expect(typeof v, `${label} 字段类型不符：${path}.${k} 声明为 ${t}，实际 ${JSON.stringify(v)}`).toBe(t)
+    } else if (t === 'array') {
+      expect(Array.isArray(v), `${label} 字段类型不符：${path}.${k} 应声明为数组，实际 ${JSON.stringify(v)}`).toBe(true)
+    } else if (t === 'object') {
+      assertConformsToSchema(spec, v, label, `${path}.${k}`)
+    }
   }
 }
 
@@ -132,9 +174,12 @@ function topLevelKeys(body: string): string[] {
           while (j < body.length && /\s/.test(body[j]!)) j++
           if (body[j] === '(') {
             const close = matchPair(body, j, '(', ')')
-            const re = /\{([^{}]*)\}/g
-            let mm: RegExpExecArray | null
-            while ((mm = re.exec(body.slice(j + 1, close))) !== null) keys.push(...topLevelKeys(mm[1]!))
+            // 2026-09-27（REQ-260927144541-0481 FR-7）：原实现用 /\{([^{}]*)\}/ 只认**内部无花括号**
+            // 的对象组，于是 `...(cond ? { run: { ok } } : {})` 里的 run 被整块漏掉——门禁"看得见才拦得住"，
+            // 静默漏键就是下一次线上 invalid output。改为逐个**平衡**花括号取顶层键。
+            for (const [s, e] of balancedLiterals(body.slice(j + 1, close))) {
+              keys.push(...topLevelKeys(body.slice(j + 1 + s + 1, j + 1 + e)))
+            }
             i = close + 1
           } else {
             i += 3
@@ -233,6 +278,34 @@ function returnKeys(src: string): string[] {
   return keys
 }
 
+/**
+ * 片段里所有**平衡**的对象字面量区间（[开括号下标, 闭括号下标]）。
+ * 为什么不用正则：正则数不清嵌套层数——`{ run: { ok: true } }` 这种形状会被 [^{}]* 整块漏掉。
+ */
+function balancedLiterals(src: string): [number, number][] {
+  const out: [number, number][] = []
+  let i = 0
+  while (i < src.length) {
+    const c = src[i]!
+    if (c === '/' && src[i + 1] === '/') { while (i < src.length && src[i] !== '\n') i++; continue }
+    if (c === '/' && src[i + 1] === '*') { i += 2; while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++; i += 2; continue }
+    if (c === "'" || c === '"' || c === '`') {
+      const q = c; i++
+      while (i < src.length && src[i] !== q) { if (src[i] === '\\') i++; i++ }
+      i++
+      continue
+    }
+    if (c === '{') {
+      const end = matchBrace(src, i)
+      out.push([i, end])
+      i = end + 1
+      continue
+    }
+    i++
+  }
+  return out
+}
+
 describe('输出契约：返回字段 ⊆ output.schema 声明', () => {
   it('archive_submit（含 unlisted_files 警告路径）', async () => {
     await seed('archived')
@@ -305,6 +378,54 @@ describe('输出契约：返回字段 ⊆ output.schema 声明', () => {
   })
 })
 
+/**
+ * 故障注入（REQ-260927144541-0481 FR-7 / design test-cases TC-4）：**只测成功路径等于没测**——
+ * 这里直接给扫描器喂一段"新增未声明返回键"的源码，检验它真的能抓到（抓不到 = 门禁形同虚设）。
+ */
+describe('输出契约·故障注入：注入未声明返回键时门禁必红', () => {
+  it('临时给工具加一个未声明返回键 → 扫描器抓到、差集非空', () => {
+    const declared = declaredKeys({ output: { schema: { properties: { success: { type: 'boolean' } } } } })
+    const keys = returnKeys('async execute() { return { success: true, totally_undeclared: 1 } }')
+    const missing = [...new Set(keys)].filter(k => !declared.has(k))
+    expect(keys).toContain('success')
+    expect(missing).toEqual(['totally_undeclared'])
+  })
+
+  it('嵌套对象的条件展开也要被抓到（run/report/workflow 这类形状）', () => {
+    const keys = returnKeys('fn() { return { success: true, ...(r !== undefined ? { run: { ok: true } } : {}) } }')
+    expect(keys).toContain('run')
+  })
+
+  /**
+   * TC-4 的真实形态：给**某工具**临时加未声明返回键 → 该工具在 output-contract 里变红。
+   * 为什么必须用真实工具源：合成字符串只证明"扫描器认识花括号"，证明不了"这个工具真被门禁看着"。
+   * 这里取真实 TaskTree 用例源 + 真实 defineTaskTreeTool 的 output.schema，走与静态扫描同一条管线
+   * （returnKeys → declaredKeys → 差集）。注入落在**临时副本**上，跑完即删，绝不写真实工作区——
+   * 本仓是多窗口共享的脏工作树，测试里改真源文件=给别人埋雷。
+   */
+  it('给真实工具源临时加未声明返回键 → 真实声明集下差集非空（在临时副本上验证）', () => {
+    const ROOT = fileURLToPath(new URL('../src', import.meta.url))
+    const rel = 'application/use-cases/TaskTree.ts'
+    const original = readFileSync(join(ROOT, rel), 'utf8')
+    if (!original.includes('return {')) throw new Error('注入前提不成立：' + rel + ' 无可注入的响应字面量')
+    const dir = mkdtempSync(join(tmpdir(), 'pmboard-gate-fault-'))
+    try {
+      writeFileSync(
+        join(dir, 'TaskTree.ts'),
+        original.replace('return {', 'return {\n      gate_fault_injected_undeclared: 1,'),
+      )
+      // 反向自检：原件不含该键，说明后面观察到的差异确实来自这次注入
+      expect(returnKeys(original)).not.toContain('gate_fault_injected_undeclared')
+      const keys = returnKeys(readFileSync(join(dir, 'TaskTree.ts'), 'utf8'))
+      const declared = declaredKeys((toolModules as any).defineTaskTreeTool({} as never))
+      const missing = [...new Set(keys)].filter(k => !declared.has(k))
+      expect(missing, '注入未声明键后门禁竟然没抓到——门禁形同虚设').toContain('gate_fault_injected_undeclared')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+})
+
 /** 递归列出目录下全部 .ts（扫描器覆盖全部工具文件，而非只读一个文件）。 */
 function listTs(dir: string): string[] {
   if (!existsSync(dir)) return []
@@ -332,17 +453,31 @@ const RESPONSE_SOURCES: Record<string, string[]> = {
     'application/use-cases/SubmitArtifact.ts',
     'application/use-cases/SubmitVerification.ts',
     'application/use-cases/SubmitArchive.ts',
+    // REQ-260924213231-b1c4 T-3：kind=design 登记用例（返回体 design_docs / registered_count）
+    'application/use-cases/SubmitDesignArtifacts.ts',
   ],
   AskConfirm: ['application/use-cases/AskConfirm.ts', 'application/use-cases/ConfirmArtifact.ts'],
+  // REQ-260924213231-b1c4 T-6：挂起确认回执（返回体在回执用例里）
+  ConfirmReceipt: ['application/use-cases/ConfirmReceipt.ts'],
+  // REQ-260924213231-b1c4 T-9：断点补写（返回体在 NoteInterruption 用例里）
+  NoteInterruption: ['application/use-cases/NoteInterruption.ts'],
   AcceptSheet: ['application/use-cases/AcceptSheet.ts'],
   // REQ-e3b6a0 t8：立项三问 pm 专有弹框（响应体在抓化用例里）
   Capture: ['application/use-cases/CaptureRequirement.ts'],
   // REQ-4842fe t10：事件链对外入口（响应体在工具文件内组装，同 TaskExecute 口径）
   Advance: ['tools/AdvanceTool/AdvanceTool.ts'],
-  // REQ-f0579a t4：任务执行/状态两工具暂无独立用例层（响应体在工具文件内），映射指向自身——
+  // REQ-260927144541-0481 FR-1：task_execute 改为**真委托**（同一 factory），已无自有返回分支——
+  // 响应体与声明都在 AdvanceTool，映射随之指向那里（否则该源扫到 0 个键，门禁形同失效）。
+  TaskExecute: ['tools/AdvanceTool/AdvanceTool.ts'],
+  // REQ-f0579a t4：任务状态工具暂无独立用例层（响应体在工具文件内），映射指向自身——
   // 后续若抽出用例（t8 收敛方向），把此处改成 application/use-cases/* 路径即可。
-  TaskExecute: ['tools/TaskExecuteTool/TaskExecuteTool.ts'],
   TaskStatus: ['tools/TaskStatusTool/TaskStatusTool.ts'],
+  // REQ-260927144541-0481 FR-3：新增只读父子结构视图（响应体在 TaskTree 用例，含绑定/错误分支）
+  TaskTree: ['application/use-cases/TaskTree.ts'],
+  // REQ-260927144541-0481 FR-7（全工具覆盖）：既有两工具此前**缺映射**，扫描器根本看不到它们——
+  // 门禁"绿灯"只是因为它没看。补上映射即纳入全工具检查（返回键均在各自 schema 中）。
+  RunStatus: ['tools/RunStatusTool/RunStatusTool.ts'],
+  ClearPause: ['application/use-cases/ClearPause.ts'],
 }
 
 describe('输出契约·静态扫描：每个工具的全部 return 分支键都必须已声明', () => {

@@ -1,195 +1,200 @@
 /**
- * MoveTask 用例（REQ-47939a t6）——从 host/agent-tools.ts 的 defineTaskMoveTool / reqboard_task_move 工厂**逐字搬入**编排。
+ * MoveTask 用例（REQ-260927100007-b8ba FR-7/FR-8，REQ-4842fe t5/t6 契约）——
+ * agent 侧任务流转，语义与看板按钮**逐条对齐**，并补齐自动链需要的四件事：
  *
- * 零行为变更：拒绝条件、错误码与消息文案与搬迁前一致；规则仍单点于 domain/。
+ *   1. 状态迁移统一走 transitionTask（收敛点），不再直接赋值；
+ *   2. 开工返回任务卡全文（task_card.doc_path / implementation）——照卡执行，不凭记忆；
+ *   3. 父卡开工**同事务**懒展开子卡链，并受同需求父卡并发上限约束（REQBOARD_PARENT_LIMIT）；
+ *   4. 转 done 前过 done 凭证门（父卡收尾门 / 子卡三项证据）。
+ *
+ * REQ-260927202051-f6df t9/t12：任务已迁出台账（v9 无 `tasks` 键），本用例改为
+ * **两段写**并遵守顺序契约——
+ *   ① `taskStore.mutate(reqId, …)`（先）：任务状态/事件/执行记录/懒展开子卡；
+ *   ② `repo.mutate(…)`（后）：rollup 派生需求状态。
+ * 反序会产生"需求已验收但任务未完成"的悬空态（t12 以打点断言次序，不接受口头声明）。
+ *
+ * 错误码在用例边界映射：domain 的 human_gate → REQBOARD_HUMAN_GATE（agent 工具传输契约）。
  *
  * @module dsh-pmboard/application/use-cases/MoveTask
  */
-import { deliverWorktreeNotice } from '../internal/worktree-notice.js'
 import type { UseCaseDeps } from '../ports.js'
 import {
-  ALL_TASK_STATUSES,
-  assertTaskTransition,
+  asTaskStatus,
+  newExecutionId,
   normalizeText,
-  recordStatus,
-  taskRoleIn,
   type TaskRecord,
 } from '../../shared/protocol.js'
-import { fmt } from '../../domain/text/fmt.js'
+import { endsExecutionSegment, isRollbackOrCancel, startsExecutionSegment } from '../../domain/status/Predicates.js'
+import type { TaskRole } from '../../domain/task/TaskStatus.js'
 import { LIMITS } from '../../domain/limits.js'
-import { expandSubtasks } from '../internal/lazy-expand.js'
-import { appendRevision } from '../internal/failure-handling.js'
 import { openRequirementsFor } from '../internal/window.js'
+import { transitionTask } from '../internal/task-transition.js'
+import { expandSubtasks } from '../internal/lazy-expand.js'
 import { applyTaskRollup } from '../internal/rollup.js'
-import { beginExecutionToken, captureSnapshot, endExecutionToken } from '../internal/token-usage.js'
+import { syncRTMYaml } from '../internal/rtm-yaml.js'
+import {
+  closeExecutions,
+  openExecution,
+  snapshotForWindow,
+  snapshotProviderFor,
+} from '../internal/token-usage.js'
 import {
   reject,
   agentIdFromExec,
   requireLiveDriver,
   assertDoneEvidence,
-  rollupBlockersOf,
+  mapAgentError,
 } from '../internal/support.js'
+import { fmt } from '../../domain/text/fmt.js'
+import { taskStoreOf } from './queue-access.js'
 
-export async function executeMoveTask(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
-      const windowKey = agentIdFromExec(deps, exec)
-      requireLiveDriver(deps, exec)
-      const a = (args ?? {}) as { task_id?: unknown; to?: unknown; reason?: unknown }
-      const taskId = normalizeText(a.task_id, 'task_id', 64)
-      const to = normalizeText(a.to, 'to', 32)
-      const reason = normalizeText(a.reason, 'reason', 500)
-      if (!(ALL_TASK_STATUSES as readonly string[]).includes(to)) {
-        reject('reqboard_task_move 未执行：任务状态必须是 ' + ALL_TASK_STATUSES.join(', '), 'REQBOARD_INVALID_INPUT')
-      }
-      const snapshot = deps.repo.snapshot()
-      const task = snapshot.tasks.find(t => t.id === taskId)
-      if (task === undefined) reject('reqboard_task_move 未执行：任务 ' + taskId + ' 不存在', 'REQBOARD_TASK_NOT_FOUND')
-      const bound = openRequirementsFor(snapshot, windowKey)
-      if (!bound.some(r => r.id === task.requirementId)) {
-        reject('reqboard_task_move 未执行：任务 ' + taskId + ' 不属于本窗口绑定的需求', 'REQBOARD_NOT_BOUND_TO_WINDOW')
-      }
-      const from = task.status
-      // 角色决定转移表：子卡/父卡收紧三态；存量卡沿用五段（REQ-4842fe t6）。
-      const role = taskRoleIn(snapshot.tasks, task)
-      try {
-        assertTaskTransition(from, to as TaskRecord['status'], 'agent', role)
-      } catch (err) {
-        const code = (err as { code?: string }).code ?? 'invalid_transition'
-        if (code === 'human_gate') {
-          reject('reqboard_task_move 未执行：' + from + ' → ' + to + ' 是人工闸门（仅人可操作）', 'REQBOARD_HUMAN_GATE')
-        }
-        reject('reqboard_task_move 未执行：' + ((err as Error).message ?? String(err)), code)
-      }
-      const nowTs = deps.clock.now()
-      let createdSubtasks: TaskRecord[] = []
-      const result = await deps.repo.mutate('task-moved', (ledger) => {
-        const t = ledger.tasks.find(x => x.id === taskId)
-        if (t === undefined) return undefined
-        assertTaskTransition(t.status, to as TaskRecord['status'], 'agent', taskRoleIn(ledger.tasks, t))
-        // done 凭证门（REQ-2e9473 t06）：转移合法还不够，完工要有凭证
-        if (to === 'done') assertDoneEvidence(deps, windowKey, t, ledger)
-        t.status = to as TaskRecord['status']
-        t.version += 1
-        t.updatedAt = nowTs
-        t.updatedBy = { kind: 'agent', sessionId: windowKey }
-        // REQ-a33899：任务执行开工/完工各记一次会话快照，消耗 = 两次快照之差（同会话才相减）。
-        const snap = captureSnapshot(deps, windowKey)
-        if (to === 'in_progress') {
-          t.claimedBy = windowKey
-          t.claimedAt = nowTs
-          const execution = {
-            id: deps.ids.execution(),
-            sessionId: windowKey,
-            trigger: 'manual' as const,
-            startedAt: nowTs,
-            outcome: 'running' as const,
-          }
-          beginExecutionToken(execution, snap)
-          t.executions.push(execution)
-        } else {
-          for (const e of t.executions) {
-            if (e.outcome === 'running') {
-              e.endedAt = nowTs
-              e.outcome = to === 'canceled' || to === 'todo' ? 'cancelled' : 'succeeded'
-              endExecutionToken(e, snap)
-            }
-          }
-        }
-        // REQ-4842fe t6/FR-3：父卡开工**同事务**懒展开子卡链（幂等：已有子卡即跳过）。
-        // 只在需求开启自动链（autoRun=true）时展开——手动/存量流程保持既有五段状态机，
-        // 这正是 design/data-model §7「双模共存」的开关点（无子卡的卡 = legacy）。
-        if (to === 'in_progress' && t.parentId === undefined) {
-          const requirement = ledger.requirements.find(x => x.id === t.requirementId)
-          if (requirement?.autoRun === true) {
-            // REQ-4842fe t9/FR-9：同需求同时 in_progress 父卡 ≤ 上限（拒绝发生在开工动作）。
-            const active = ledger.tasks.filter(x => x.requirementId === t.requirementId && x.parentId === undefined && x.status === 'in_progress' && x.id !== t.id).length
-            if (active >= LIMITS.advanceMaxParallelParents) {
-              reject(
-                fmt('reqboard_task_move 未执行：同需求同时开工的父卡已达上限 {max}（已在跑：{ids}）。先完成已在跑的父卡', {
-                  max: LIMITS.advanceMaxParallelParents,
-                  ids: ledger.tasks.filter(x => x.requirementId === t.requirementId && x.parentId === undefined && x.status === 'in_progress' && x.id !== t.id).map(x => x.id).join('、'),
-                }),
-                'REQBOARD_PARENT_LIMIT',
-              )
-            }
-            createdSubtasks = expandSubtasks(ledger, t, requirement, nowTs, deps.ids)
-          }
-          if (createdSubtasks.length > 0) {
-            t.comments.push({
-              id: deps.ids.comment(),
-              body: fmt('[懒展开] 落子卡 {n} 张：{kinds}', {
-                n: createdSubtasks.length,
-                kinds: createdSubtasks.map(x => String(x.stageKind ?? '')).join(' → '),
-              }),
-              createdAt: nowTs,
-              createdBy: { kind: 'agent', sessionId: windowKey },
-            })
-          }
-        }
-        // REQ-4842fe t8/FR-15：done 卡被人工重开 → 写 revisions(reopen)（自动链不产生该转移）。
-        if (from === 'done' && to === 'in_progress') {
-          appendRevision(t, nowTs, 'reopen', reason.length > 0 ? reason : '人工重开受影响的完成卡', ['status: done→in_progress'])
-        }
-        if (to === 'todo' || to === 'done' || to === 'canceled') {
-          delete t.claimedBy
-          delete t.claimedAt
-        }
-        recordStatus(t, to, nowTs, { kind: 'agent', sessionId: windowKey }, reason || undefined, snap)
-        if (reason.length > 0) {
-          t.comments.push({
-            id: deps.ids.comment(),
-            body: '[状态] → ' + to + '：' + reason + '（窗口 ' + windowKey + '）',
-            createdAt: nowTs,
-            createdBy: { kind: 'agent', sessionId: windowKey },
-          })
-        }
-        const advanced = applyTaskRollup(
-          ledger,
-          { now: nowTs, commentId: () => deps.ids.comment(), snapshot: () => captureSnapshot(deps, windowKey) },
-          t.requirementId,
+/** 角色判定：子卡（有 parentId）/ 父卡（有子卡）/ 存量卡。 */
+function roleOf(task: TaskRecord, tasks: readonly TaskRecord[]): TaskRole {
+  if (typeof task.parentId === 'string' && task.parentId.length > 0) return 'subtask'
+  return tasks.some(t => t.parentId === task.id) ? 'parent' : 'legacy'
+}
+
+/** 同需求当前在跑的父卡（parentId 缺省 = 父卡/存量卡层）。 */
+function runningParents(tasks: readonly TaskRecord[], requirementId: string): TaskRecord[] {
+  return tasks.filter(t => t.requirementId === requirementId && t.parentId === undefined && t.status === 'in_progress')
+}
+
+/** 任务卡文档路径：落库时写死的 cardDoc 优先，缺省按同一口径拼（与 decompose/report 同源）。 */
+function taskCardPath(task: TaskRecord): string {
+  if (typeof task.cardDoc === 'string' && task.cardDoc.length > 0) return task.cardDoc
+  return 'docs/requirements/' + task.requirementId + '/tasks/' + task.id + '.md'
+}
+
+export async function executeMoveTask(deps: UseCaseDeps, args: unknown, exec: unknown): Promise<unknown> {
+  const windowKey = agentIdFromExec(deps, exec)
+  requireLiveDriver(deps, exec)
+  const a = (args ?? {}) as { task_id?: unknown; to?: unknown; reason?: unknown }
+  const taskId = normalizeText(a.task_id, 'task_id', 64)
+  if (taskId.length === 0) reject('reqboard_task_move 未执行：task_id 不能为空', 'REQBOARD_INVALID_INPUT')
+  const to = asTaskStatus(a.to)
+  const reason = normalizeText(a.reason, 'reason', 500)
+
+  const snap = deps.repo.snapshot()
+  const bound = openRequirementsFor(snap, windowKey)
+  if (bound.length === 0) reject('reqboard_task_move 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
+  const store = taskStoreOf(deps)
+  const task0 = await store.get(taskId)
+  if (task0 === undefined) reject(fmt('reqboard_task_move 未执行：任务 {id} 不存在', { id: taskId }), 'REQBOARD_TASK_NOT_FOUND')
+  if (!bound.some(r => r.id === task0.requirementId)) {
+    reject(fmt('reqboard_task_move 未执行：任务 {id} 不属于本窗口绑定的需求（只能动自己的卡）', { id: taskId }), 'REQBOARD_NOT_BOUND_TO_WINDOW')
+  }
+  const reqId = task0.requirementId
+  const from = task0.status
+  const actor = { kind: 'agent' as const, sessionId: windowKey }
+
+  // 闭包内的副产物（单次 mutate 写入，供返回体投影）
+  let createdIds: string[] = []
+  let card: { doc_path: string; implementation: string } | undefined
+
+  // ── ① 任务写（顺序契约：**先任务**，t12 用打点断言此处先于 repo.mutate）──────────────
+  const changedTasks = await store.mutate(reqId, (tasks) => {
+    const task = tasks.find(t => t.id === taskId)
+    if (task === undefined) return undefined
+    const at = deps.clock.now()
+    const req = deps.repo.snapshot().requirements.find(r => r.id === task.requirementId)
+    const role = roleOf(task, tasks)
+    const starting = startsExecutionSegment(to)
+
+    // 父卡并发上限（REQ-4842fe §6.1）：非子卡开工时同需求在跑父卡已达上限即拒。
+    if (starting && role !== 'subtask') {
+      const running = runningParents(tasks, task.requirementId)
+      if (running.length >= LIMITS.advanceMaxParallelParents) {
+        reject(
+          fmt('reqboard_task_move 未执行：同需求并行父卡已达上限 {n} 张（正在跑：{ids}）——先收尾再开新卡（REQBOARD_PARENT_LIMIT）',
+            { n: LIMITS.advanceMaxParallelParents, ids: running.map(t => t.id).join('、') }),
+          'REQBOARD_PARENT_LIMIT',
         )
-        return { tasks: [t, ...createdSubtasks], requirements: advanced }
-      })
-      const changed = (result.changed.tasks ?? [])[0]
-      if (changed === undefined) reject('reqboard_task_move 写入失败：台账状态异常', 'REQBOARD_STORE_INCONSISTENT')
-      // rollup 可能未推进需求（如 decomposing 停等人工确认门）——需求状态从台账现读，
-      // 不只依赖 changed.requirements（仅含被推进的需求）
-      const ledgerAfter = deps.repo.snapshot()
-      const reqAfter = ledgerAfter.requirements.find(r => r.id === changed.requirementId)
-      // rollup 阻塞显式化（REQ-2e9473 t02）：需求停在 implementing 且有未完成任务 → 显式列出
-      const blockers = reqAfter === undefined ? undefined : rollupBlockersOf(ledgerAfter, reqAfter.id, reqAfter.status)
-      // 开工说明书送达（REQ-2e9473 t04/W5）：开工即拿到完整任务卡，不凭记忆回读设计文档——
-      // REQ-6f39b5 事故 F：薄卡 + 不回读 = 8 处偏离设计。
-      const taskCard = to === 'in_progress'
-        ? {
-            title: changed.title,
-            description: changed.description,
-            acceptance: changed.acceptance,
-            implementation: changed.implementation ?? '',
-            context: changed.context,
-            depends_on: [...changed.dependsOn],
-            doc_path: 'docs/requirements/' + changed.requirementId + '/tasks/' + changed.id + '.md',
-          }
-        : undefined
-      // REQ-260923222557-d3b0 FR-2：子任务完成 → worktree 提交检查点提示（事件型注入；
-      // 投递失败只留痕，绝不阻断转移）。
-      if (changed.status === 'done') {
-        deliverWorktreeNotice(deps, windowKey, 'task_done', {
-          requirementId: changed.requirementId,
-          taskId: changed.id,
-          taskTitle: changed.title,
-        })
-      }
-      return {
-        success: true,
-        task_id: changed.id,
-        requirement_id: changed.requirementId,
-        from,
-        to: changed.status,
-        ...(taskCard !== undefined ? { task_card: taskCard } : {}),
-        requirement_status: reqAfter?.status ?? '',
-        ...(blockers !== undefined
-          ? { blockers, warning: '需求未进验收：' + blockers.length + ' 个任务未完成（' + blockers.map(b => b.id).join('、') + '）' }
-          : {}),
-        note: changed.status === to ? '已推进：' + from + ' → ' + to : '已推进：' + from + ' → ' + changed.status,
       }
     }
+
+    // done 凭证门：父卡收尾门（INV-5）/ 子卡三项证据 / 汇报前置 / 构建新鲜度。不过即抛错回滚。
+    // D4：assertDoneEvidence 新签名 (deps, windowKey, task, ledger, tasks)。
+    if (to === 'done') assertDoneEvidence(deps, windowKey, task, deps.repo.snapshot(), tasks)
+
+    // 收敛点：非法转移 / 人工门越权在此抛错（抛错 → mutate 回滚，状态不变）。
+    // REQ-260927144541-0481 FR-5：领域文案已含"当前角色 + 该角色全部合法边"，
+    // 工具边界再补一层"谁拒绝的"前缀——调用方一眼知道是哪个工具、为什么、正确边是什么。
+    try {
+      transitionTask(task, to, { at, actor, ...(reason.length > 0 ? { reason } : {}), role })
+    } catch (err) {
+      if ((err as { code?: unknown }).code === 'invalid_transition') {
+        // 只用同一错误码重抛带前缀的消息：码是领域契约（HTTP 路由与既有用例都按 invalid_transition 分流），
+        // 这里要修的是"报错说不清"，不是改分流。
+        throw Object.assign(
+          new Error(fmt('reqboard_task_move 未执行：{reason}', { reason: (err as Error).message ?? '' })),
+          { code: 'invalid_transition' },
+        )
+      }
+      throw err
+    }
+
+    if (starting) {
+      task.claimedBy = windowKey
+      task.claimedAt = at
+      // 执行快照唯一写入口（REQ-260927121324-abde FR-4/FR-5）：开工落记录 + 写 start 快照。
+      openExecution(
+        task,
+        { id: newExecutionId(), sessionId: windowKey, trigger: 'manual', at },
+        snapshotForWindow(deps, windowKey),
+      )
+      card = { doc_path: taskCardPath(task), implementation: task.implementation ?? '' }
+      // 懒展开（REQ-4842fe FR-3）：父卡开工**同事务**落子卡链；仅自动链需求（autoRun）走这条。
+      // reader-http 已裂变 expandSubtasks：只返回新建子卡、不落库 → 本回调 append 进 draft。
+      if (role !== 'subtask' && req?.autoRun === true) {
+        const created = expandSubtasks(tasks, task, req, at, deps.ids)
+        // TaskRecord → QueueTask：layer 只是派生占位，落盘前由 TaskStore.recompute 统一重算。
+        if (created.length > 0) tasks.push(...created.map(c => ({ ...c, layer: 0 })))
+        createdIds = created.map(c => c.id)
+      }
+    }
+    if (endsExecutionSegment(to)) {
+      delete task.claimedBy
+      delete task.claimedAt
+    }
+    if (!starting) {
+      // 收尾唯一入口（FR-5）：闭合全部 running，并写 end/delta（快照旁路，永不抛）。
+      closeExecutions(
+        task,
+        { at, outcome: isRollbackOrCancel(to) ? 'cancelled' : 'succeeded' },
+        snapshotForWindow(deps, windowKey),
+      )
+    }
+    if (reason.length > 0) {
+      task.comments.push({ id: deps.ids.comment(), body: fmt('[状态] → {to}：{reason}（reqboard_task_move）', { to, reason }), createdAt: at, createdBy: actor })
+    }
+    return tasks
+  }).catch(mapAgentError)
+
+  const moved = changedTasks.find(t => t.id === taskId)
+
+  // ── ② 需求写（顺序契约：**后需求**）——rollup 以任务状态为输入，故必须在任务写之后 ──────
+  const afterTasks = await store.listByRequirement(reqId)
+  await deps.repo.mutate('requirement-rolled-up', (ledger) => {
+    const advanced = applyTaskRollup(
+      ledger,
+      afterTasks,
+      { now: deps.clock.now(), commentId: () => deps.ids.comment(), snapshot: snapshotProviderFor(deps, windowKey) },
+      reqId,
+    )
+    return advanced.length > 0 ? { requirements: advanced } : undefined
+  }).catch(mapAgentError)
+
+  if (moved !== undefined) {
+    try { syncRTMYaml(deps, afterTasks, moved.requirementId, 'task:status', { taskId: moved.id }) } catch { /* RTM 是增强层，失败不阻断 */ }
+  }
+  return {
+    success: true,
+    task_id: taskId,
+    from,
+    to,
+    status: moved?.status ?? to,
+    version: moved?.version,
+    ...(createdIds.length > 0 ? { subtasks_created: createdIds } : {}),
+    ...(card !== undefined ? { task_card: card } : {}),
+  }
+}

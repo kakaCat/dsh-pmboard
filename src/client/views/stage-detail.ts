@@ -11,11 +11,15 @@ import { renderReqTimeline } from './timeline.ts'
 import { renderArchiveSection, renderDocSection, renderVerifySection } from './verification.ts'
 import { renderInjectionInfo } from '../injection-info.ts'
 import { renderSubtaskChain, subtaskChain } from '../render/subtask-view.ts'
+// 卡片层契约（2026-09-28）：列归属与「链未生成」判定与泳道共用同一事实源。
+import { laneOf, chainMissing } from '../dag/progress-bar.js'
+import { buildDagCanvas } from './dag-view.js'
 import { renderTokenPlaceholder } from '../token-info.ts'
 import { renderMarksPlaceholder } from '../marks-info.ts'
+import { renderTraceabilityView } from './traceability-view.js'
 
 // ---------------------------------------------------------------------------
-// 需求详情页：8 态进度点 + 4 Tab 分组（REQ-6f39b5）
+// 需求详情页：8 态进度点 + 6 Tab 分组（REQ-6f39b5）
 // ---------------------------------------------------------------------------
 
 /**
@@ -42,7 +46,7 @@ export function buildProgressDots(currentStatus: RequirementStatus): string {
 }
 
 /**
- * 渲染 4 个 Tab 按钮
+ * 渲染 6 个 Tab 按钮
  * @returns Tab 导航 HTML
  */
 export function buildTabs(): string {
@@ -52,12 +56,13 @@ export function buildTabs(): string {
       <button type="button" class="dsh-pm-tab" data-action="switch-tab" data-tab="execution">⚙️ 执行</button>
       <button type="button" class="dsh-pm-tab" data-action="switch-tab" data-tab="timeline">📅 时间线</button>
       <button type="button" class="dsh-pm-tab" data-action="switch-tab" data-tab="archive">📦 归档</button>
+      <button type="button" class="dsh-pm-tab" data-action="switch-tab" data-tab="traceability">🔗 追溯</button>
       <button type="button" class="dsh-pm-tab" data-action="switch-tab" data-tab="token">🪙 Token</button>
     </div>`
 }
 
 /**
- * 渲染 4 个 Tab 内容区（REQ-6f39b5）。
+ * 渲染 6 个 Tab 内容区（REQ-6f39b5）。
  * 内容映射（对照原型 prototype.html，原折叠区全部迁移，禁止功能丢失）：
  * - 概览：需求描述(markdown) + 文档记录 + 当前阶段详情(动态加载)
  * - 执行：进度条 + 任务看板(+任务按钮) + DAG + 甘特图 + 拆分计划
@@ -134,6 +139,12 @@ export function buildTabContents(
           <div id="dsh-pm-marks-container">${renderMarksPlaceholder('加载中…')}</div>
         </div>
       </div>
+    </div>
+
+    
+    <!-- 🔗 追溯 Tab（REQ-260926140539-457b FR-6）：双向绑定的追溯关系可视化 -->
+    <div class="dsh-pm-tab-content" data-tab-content="traceability">
+      <div id="dsh-pm-traceability-container">${renderTraceabilityView()}</div>
     </div>
 
     <!-- 🪙 Token Tab（REQ-a33899 t6）：按需求看 token 去向 + 固定/注入提示词成本 -->
@@ -295,34 +306,13 @@ export function renderActionBar(req: RequirementRecord): string {
     + '</div>'
 }
 
-/** 任务 DAG：v1 用分层列表（拓扑层级）表达，节点可点击 */
+/**
+ * 任务 DAG：Canvas 真图（REQ-260928001915-f978）—— renderNodePanel 的旧分层列表已被替换。
+ *
+ * ready 只用于挂载期的绿点/统计（见 dag-mount），面板 HTML 本身不消费它。
+ */
 export function buildDag(tasks: TaskRecord[]): string {
-  if (tasks.length === 0) return '<div class="dsh-pm-empty">暂无任务</div>'
-  // 计算深度（最长依赖链长度）
-  const depth = new Map<string, number>()
-  const taskById = new Map(tasks.map(t => [t.id, t]))
-  const calcDepth = (t: TaskRecord, seen: Set<string>): number => {
-    if (depth.has(t.id)) return depth.get(t.id)!
-    if (seen.has(t.id)) return 0
-    seen.add(t.id)
-    const deps = t.dependsOn.filter(d => taskById.has(d))
-    const d = deps.length === 0 ? 0 : 1 + Math.max(...deps.map(dep => calcDepth(taskById.get(dep)!, seen)))
-    depth.set(t.id, d)
-    return d
-  }
-  tasks.forEach(t => calcDepth(t, new Set()))
-  const maxDepth = Math.max(...depth.values())
-  const layers: TaskRecord[][] = Array.from({ length: maxDepth + 1 }, () => [])
-  tasks.forEach(t => layers[depth.get(t.id)!].push(t))
-
-  return `<div class="dsh-pm-dag"><div class="dsh-pm-dag-title">🔀 任务依赖关系</div><div class="dsh-pm-dag-layers">` + layers.map((layer, i) => `
-    <div class="dsh-pm-dag-layer">
-      <span class="dsh-pm-dag-layer-label">L${i}</span>
-      ${layer.map(t => `
-        <span class="dsh-pm-dag-node" data-status="${t.status}" data-action="open-task" data-task="${esc(t.id)}" title="${esc(t.title)}">
-          ${esc(t.id)} ${esc(t.title.slice(0, 20))}${t.title.length > 20 ? '…' : ''}
-        </span>`).join('')}
-    </div>`).join('') + `</div></div>`
+  return buildDagCanvas(tasks, 'dag-canvas-container')
 }
 
 /**
@@ -331,13 +321,17 @@ export function buildDag(tasks: TaskRecord[]): string {
  * REQ-4842fe t-3be71b：**只有顶层卡进列** —— 子卡挂在自己的父卡下（折叠展开，原生 <details>），
  * 不再单列（否则同一张子卡既在列里又挂在父卡下，列计数与进度口径都会被重复计）。
  * 存量卡（无 parentId 且无名下子卡）外观与改造前一致，仅多一枚 [手动] 标。
+ *
+ * 2026-09-28 卡片层契约：列从"卡自身 status"改为"卡所处**环节**"（laneOf）——父卡状态机的中段
+ * （integrating/testing/in_review）无出边，按 status 过滤时那三列永远为空；chain 卡缺链额外打
+ * 「链未生成」标（与 solo 卡区分）。
  */
 export function buildTaskColumns(tasks: TaskRecord[]): string {
   if (tasks.length === 0) return '<div class="dsh-pm-empty">暂无任务</div>'
   const cols: TaskStatus[] = ['todo', 'in_progress', 'integrating', 'testing', 'in_review', 'done']
   const top = tasks.filter(t => t.parentId === undefined)
   return `<div class="dsh-pm-taskcols">` + cols.map(status => {
-    const inCol = top.filter(t => t.status === status)
+    const inCol = top.filter(t => laneOf(t, subtaskChain(tasks, t.id)) === status)
     return `
       <div class="dsh-pm-taskcol" data-col="${status}">
         <div class="dsh-pm-taskcol-head">${TASK_STATUS_LABELS[status]} ${inCol.length}</div>
@@ -345,9 +339,14 @@ export function buildTaskColumns(tasks: TaskRecord[]): string {
           const chain = subtaskChain(tasks, t.id)
           const legacy = chain.length === 0
           const chainDone = chain.filter(x => x.status === 'done').length
+          // 缺链（意图=chain 且正在跑却没有子卡）优先于 [手动] 标：否则一张"该有链但没生成"的卡
+          // 会被读成不参与自动链，问题被外观掩盖。
+          const chip = chainMissing(t, chain)
+            ? '<span class="dsh-pm-chain-missing" title="该卡应落子卡链，链尚未生成——待再生成补链">链未生成</span>'
+            : (legacy ? '<span class="dsh-pm-manual-chip" title="存量卡/单卡：未开启自动链，外观与推进方式与改造前一致">手动</span>' : '')
           return `
           <div class="dsh-pm-task${legacy ? ' is-legacy' : ' is-parent'}" data-task="${esc(t.id)}" data-action="open-task">
-            <div class="dsh-pm-task-title">${esc(t.title)}${legacy ? '<span class="dsh-pm-manual-chip" title="存量卡：未开启自动链，外观与推进方式与改造前一致">手动</span>' : ''}</div>
+            <div class="dsh-pm-task-title">${esc(t.title)}${chip}</div>
             <div class="dsh-pm-task-meta">
               <span class="dsh-pm-phase">${PHASE_LABELS[t.phase] ?? t.phase}</span>
               ${legacy ? '' : `<span class="dsh-pm-subcount">子卡 ${chainDone}/${chain.length}</span>`}

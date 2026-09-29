@@ -10,33 +10,39 @@
 // 页面插件一律走 (ctx as any).inject(...) 惰性注入（genome/dashboard 同款模式）。
 
 import { Context } from '@deepseek-ai/cordis';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveAddressInjection } from './adapters/TemplateRoot.js';
 import { JsonLedgerRepository as ReqboardStore } from './adapters/JsonLedgerRepository.js';
+import { JsonQueueRepository } from './repositories/QueueRepository.js';
+import { QueueTaskStore } from './repositories/QueueTaskStore.js';
 import { createReqboardHandler } from './http/routes.js';
-import { draftRequirementsFor } from './application/internal/window.js';
-import { applyPickupAdvance, applyPickupReconcile, applyTaskRollup } from './application/internal/rollup.js';
+import { applyPickupReconcile, applyTaskRollup, type RollupContext } from './application/internal/rollup.js';
 import { advanceRequirement } from './application/use-cases/AdvanceChain.js';
-import { newCommentId, type RequirementRecord } from './shared/protocol.js';
-import { createSessionEventCaptureHook, type CaptureHookDeps } from './adapters/CaptureHook.js';
-import type { ToolTraceEntry } from './adapters/SessionProbeAdapter.js';
-
+import { newCommentId } from './shared/protocol.js';
+import { dshHomePath, nodeIsolationEnabled, type PluginConfig } from './plugin-config.js';
+import { createCaptureRuntime, assembleDiveSessionDriver } from './wiring/pm-capture-root.js';
 import {
   defineCreateTool,
   defineCaptureTool,
   defineStatusTool,
-  defineMoveTool,
-  defineDecomposeTool,
-  defineTaskMoveTool,
   defineTaskExecuteTool,
   defineAdvanceTool,
   defineTaskStatusTool,
   defineTaskReportTool,
+  defineDecomposeTool,
   defineSubmitTool,
   defineAskConfirmTool,
+  defineConfirmReceiptTool,
   defineAcceptSheetTool,
+  defineNoteInterruptionTool,
+  defineClearPauseTool,
+  defineMoveTool,
+  defineTaskMoveTool,
+  defineRunStatusTool,
+  defineTaskTreeTool,
+  defineTaskAdoptTool,
+  defineRegenerateTool,
 } from './tools/index.js';
 import { FileDocRepository } from './adapters/FileDocRepository.js'
 import { InjectionLogFile } from './adapters/InjectionLogFile.js'
@@ -46,19 +52,25 @@ import { INJECTION_LOG_REL } from './application/internal/injection-log.js';
 import { ISOLATION_TRACE_REL } from './application/internal/isolation-trace.js';
 import { CAPTURE_DIAG_REL, captureDiag, initCaptureDiag } from './application/internal/diag-log.js';
 import { CaptureRejectionFile } from './adapters/CaptureRejectionFile.js';
+import { PendingConfirmRegistry } from './adapters/PendingConfirmRegistry.js';
 import { CAPTURE_REJECTION_REL } from './application/internal/capture-rejections.js';
 import { createNodeSettlementDispatcher } from './application/internal/node-settlement.js';
 import { SystemClock } from './adapters/SystemClock.js';
 import { RandomIdFactory } from './adapters/RandomIdFactory.js';
 import { UserQuestionsAdapter } from './adapters/UserQuestionsAdapter.js';
-import { AgentDeliverer } from './adapters/AgentDeliverer.js';
 import { GateAwareQuestions } from './adapters/GateAwareQuestions.js';
 import { assembleGatePostChain, registerCaptureGuidance } from './gate-wiring.js';
 import { SessionProbeAdapter } from './adapters/SessionProbeAdapter.js';
 import { WorkflowEngineRunner } from './adapters/WorkflowEngineRunner.js';
+// FR-11 路线 A：子卡实施段改走 DSH 原生 Agent Teams（ctx.agentTeams = TeamService）。
+import { AgentTeamsAdapter } from './adapters/AgentTeamsAdapter.js';
+import { DshJobsAdapter } from './adapters/DshJobsAdapter.js';
 import { createFailureAlert } from './adapters/FailureAlert.js';
 import { scheduleStartupScan } from './application/internal/startup-scan.js';
 import type { UseCaseDeps } from './application/ports.js';
+import ReqboardDiveManager from './application/dive/ReqboardDiveManager.js';
+import { renderDiveRoundText } from './application/dive/round-state.js';
+import type { DiveRoundPorts } from './application/dive/round-driver.js';
 
 export const name = 'dsh-pmboard';
 
@@ -69,40 +81,9 @@ export const LEDGER_FILE = 'dsh-reqboard.json';
 export const CAPTURE_SECTION = 'reqboard:capture';
 export const CAPTURE_SECTION_ORDER = 60;
 
-interface PluginConfig {
-  /** DSH 主目录（默认 ~/.dsh） */
-  dshHome?: string;
-  /**
-   * 节点隔离开关（REQ-422af1 t10）。**默认关**：关闭时隔离代码路径执行 0 次，
-   * 行为完全等同改造前（design/migration.md §3）。显式配置优先于环境变量。
-   */
-  nodeIsolation?: boolean;
-  /** 模板根绝对路径（REQ-260922213356-4a45 T-3）；缺省按包根 templates 解析。 */
-  templateRoot?: string;
-  /** 地址段开关（T-3；默认 true；false = 完全回退到改造前注入行为）。 */
-  addressSectionEnabled?: boolean;
-}
-
-export function dshHomePath(config: PluginConfig | undefined, file: string): string {
-  const home = config?.dshHome || process.env.DSH_HOME || path.join(os.homedir(), '.dsh');
-  return path.join(home, file);
-}
-
-/**
- * 节点隔离开关（REQ-422af1 t10 / design/migration.md §3）：**默认关**。
- * 优先级：显式配置 nodeIsolation > 环境变量 NODE_ISOLATION(=1/true/on/yes) > 默认 false。
- * 关闭时 createNodeSettlementDispatcher 的 enabled=false 分支直接返回——
- * 不调度、不建端口、不触会话（stats 四项计数全 0 即其可执行证明）。
- */
-export function nodeIsolationEnabled(
-  config?: PluginConfig,
-  env: Record<string, string | undefined> = process.env,
-): boolean {
-  if (config?.nodeIsolation !== undefined) return config.nodeIsolation;
-  const raw = env.NODE_ISOLATION;
-  if (raw === undefined) return false;
-  return ['1', 'true', 'on', 'yes'].includes(raw.trim().toLowerCase());
-}
+// 兼容再导出（REQ-260924213231-b1c4 T-12）：既有 import { dshHomePath | nodeIsolationEnabled }
+// 仍从 './index.js' 可用（实现在 ./plugin-config.ts），行为不变。
+export { dshHomePath, nodeIsolationEnabled };
 
 /**
  * 轮次边界判定（隔离纪律③「只在轮次边界执行」）：用 sessionProjections 的 turnBoundary
@@ -112,16 +93,33 @@ export function nodeIsolationEnabled(
  * 宁可跳过也不猜（响亮失败优于静默猜测）。
  */
 function turnBoundaryIdle(projectionsSvc: unknown, session: unknown): boolean {
+  return turnBoundaryIdleState(projectionsSvc, session) === 'idle';
+}
+
+/**
+ * 轮次边界**三态**判定（2026-09-26）——给闸门链的"无 open turn"门用。
+ *
+ * 与 turnBoundaryIdle 同源，但把"判不出"和"明确忙"分开：
+ *   idle    = openTurnStartSeq === null（无 open turn，可安全做 surface 替换与唤醒）
+ *   busy    = 有 open turn（活动轮次：替换会被硬拒 D-15；唤醒会与 LLM 打架；H2 会 skip）
+ *   unknown = 投影/服务不可得（无 agent-loop、测试环境、看板通道无 session）或探测抛错
+ *
+ * 为什么必须分开：H2 的口径是"判不出就跳过"（保守），而**链**不能这样——
+ * 看板确认通道与测试环境都判不出，拿 false 当整链门会把它们全堵死。
+ * 所以链只在**明确 busy** 时延后（且不消费待处理闸门，留给下个边界重试）。
+ */
+function turnBoundaryIdleState(projectionsSvc: unknown, session: unknown): 'idle' | 'busy' | 'unknown' {
   const projections = projectionsSvc as {
     stateOf?: (s: unknown, kind: string) => { openTurnStartSeq?: unknown } | undefined
   } | undefined;
-  if (typeof projections?.stateOf !== 'function') return false;
+  if (typeof projections?.stateOf !== 'function') return 'unknown';
+  if (session === undefined || session === null) return 'unknown';
   try {
     const boundary = projections.stateOf(session, 'turnBoundary');
-    if (boundary === undefined) return false;
-    return boundary.openTurnStartSeq === null;
+    if (boundary === undefined) return 'unknown';
+    return boundary.openTurnStartSeq === null ? 'idle' : 'busy';
   } catch {
-    return false;
+    return 'unknown';
   }
 }
 
@@ -135,6 +133,38 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   // 急加载：fresh boot 时让首个 GET /state 见到台账而非空板（load 永不抛——损坏即隔离）
   void store.load();
   const now = () => Date.now()
+  // 工作区根（**唯一事实源**）：队列文件（docs/requirements/<REQ>/queue.json）与文档仓储必须同根，
+  // 否则会把队列写到 A 根、文档读到 B 根（看板空白的静默故障）。故此处显式定义一次并共用。
+  const workspaceRoot = process.cwd();
+  // 任务存储（队列，REQ-260927202051-f6df / design I-1）：**任务唯一存储**。
+  // schema v9 后台账已无 tasks —— 缺这个实例，看板任务页/甘特与全部任务工具都会失败。
+  const queueRepo = new JsonQueueRepository({ workspaceRoot });
+  const taskStore = new QueueTaskStore({ repo: queueRepo, now, onWarn: (message) => logger.warn(message) });
+  
+  // Dive 服务实例化已下移到 createCaptureRuntime 之后（T-5：round 半的投递端口 = deliverer）。
+  
+  // 桥接 store 订阅到 Cordis 事件系统（优化：支持 Dive 事件驱动续跑）
+  store.subscribe((change) => {
+    // 发出 Cordis 事件，供 Dive 管理器监听
+    if (change.kind === 'requirement-moved' && change.requirements.length > 0) {
+      // 为每个变更的需求发出事件
+      for (const req of change.requirements) {
+        // 从状态历史推断 from → to（如果有历史记录）
+        const history = req.statusHistory ?? []
+        const lastTwo = history.slice(-2)
+        const from = lastTwo.length >= 2 ? lastTwo[0].status : req.status
+        const to = req.status
+        
+        ctx.emit('reqboard/requirement-moved', {
+          requirementId: req.id,
+          from,
+          to,
+        })
+      }
+    }
+  })
+  logger.info('Store subscription bridge initialized (Cordis events enabled)')
+  
   // 注入留痕（REQ-422af1 t6，INV-6）：<dshHome>/state/prompt-injection-log.json（ring buffer 500 条，原子写）。
   const injectionLog = new InjectionLogFile(
     dshHomePath(config, INJECTION_LOG_REL),
@@ -145,13 +175,21 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   // 启动对账（R0 + R2）：让升级前积压的 draft 需求立刻进入评审，并结算已完成的需求。
   void store
     .load()
-    .then(() =>
-      store.mutate('requirement-moved', (ledger) => {
-        const ctx = { now: now(), commentId: () => newCommentId() };
-        const advanced = [...applyPickupReconcile(ledger, ctx), ...applyTaskRollup(ledger, ctx)];
+    .then(async () => {
+      // 队列任务必须在 mutate 回调**外**先取：repo.mutate 的回调是**同步契约**（回调内不能 await）。
+      // 必须取**全量**（listAll）而非单需求：`applyTaskRollup` 此处未传 onlyReqId ⇒ planRollup 会评估
+      // **每一个**需求（R2：该需求全部未取消任务 done → accepting）。若只喂一个需求的任务，其余需求
+      // 在视图里就成"零任务"，会被误判/漏判。旧代码的 `LedgerView.tasks` 正是全量，故以 listAll 对齐语义。
+      const allTasks = await taskStore.listAll();
+      return store.mutate('requirement-moved', (ledger) => {
+        // 启动对账（R0/R2）**无会话上下文**：ctx 明确**不传 snapshot**（REQ-260927121324-abde FR-6）——
+        // 无会话却写快照即编造 token 归属；缺失如实留空，读路径按 degraded 显示（缺失 ≠ 0）。
+        const ctx: RollupContext = { now: now(), commentId: () => newCommentId() };
+        // applyPickupReconcile 走 pickup 路径（不读 tasks）；applyTaskRollup 需全量队列任务（第 2 参）。
+        const advanced = [...applyPickupReconcile(ledger, ctx), ...applyTaskRollup(ledger, allTasks, ctx)];
         return advanced.length > 0 ? { requirements: advanced } : undefined;
-      }),
-    )
+      });
+    })
     .then((result) => {
       if (result.changed.requirements.length > 0) {
         logger.info(
@@ -197,6 +235,18 @@ export function apply(ctx: Context, config?: PluginConfig): void {
         : 'workflowEngine service ready (reqboard_task_run 子卡执行可用)');
     },
   );
+  // FR-11 路线 A（REQ-260926140539-457b）：DSH 原生 Agent Teams 服务（experimental）。
+  // 缺失时 adapter.available()=false → 用例层退回 workflow 兼容路径，绝不静默成功。
+  let agentTeamsSvc: unknown;
+  ;(ctx as unknown as { inject?: (services: string[], cb: (c: any) => void) => void }).inject?.(
+    ['agentTeams'],
+    (teamCtx: { agentTeams?: unknown }) => {
+      agentTeamsSvc = teamCtx?.agentTeams;
+      logger.debug(agentTeamsSvc === undefined
+        ? 'agentTeams service 不可用（子卡执行走 workflow 兼容路径）'
+        : 'agentTeams service ready（子卡实施段团队执行可用）');
+    },
+  );
   ;(ctx as unknown as { inject?: (services: string[], cb: (c: any) => void) => void }).inject?.(
     ['sessionProjections'],
     (spCtx: { sessionProjections?: unknown }) => {
@@ -213,8 +263,11 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   const nodeIsolation = nodeIsolationEnabled(config);
   // REQ-260922213356-4a45 T-3：模板地址注入——绝对模板根（配置优先，否则包根 ../templates）+ 开关。
   const address = resolveAddressInjection(config, path.dirname(fileURLToPath(import.meta.url)), (m) => logger.warn(m));
-  const docs = new FileDocRepository();
+  const docs = new FileDocRepository({ workspaceRoot });
   const clock = new SystemClock();
+  // REQ-260924213231-b1c4 T-6（FR-3）：挂起确认注册表（内存 ticket → 状态）——弹框超宽限时
+  // 登记 ticket，人作答后由后台落章并回填，agent 用 reqboard_confirm_receipt 取回执。
+  const pendingConfirms = new PendingConfirmRegistry();
   const isolationTrace = new IsolationTraceFile(
     dshHomePath(config, ISOLATION_TRACE_REL),
     (err) => logger.warn('reqboard 隔离留痕写入失败（只告警，不影响流水线）:', err),
@@ -226,6 +279,8 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   );
   const settlement = createNodeSettlementDispatcher({
     enabled: nodeIsolation,
+    // 任务队列端口（REQ-260927202051-f6df）：节点隔离取"当前在制任务卡"经它（v9 台账无 tasks）。
+    taskStore,
     isolationFor: (session, _settle) => new NodeIsolationAdapter(session, {
       idle: () => turnBoundaryIdle(projectionsSvc, session),
       plugin: name,
@@ -251,88 +306,80 @@ export function apply(ctx: Context, config?: PluginConfig): void {
 
   const disposers: Array<() => void> = [];
 
-  // ── 确定性消息捕获 hook（用户裁定 #2/#3）─────────────────────────────
-  // 订阅 session/event：用户消息到达（user/message，direct human）→ 若该窗口
-  // unbound 且无遗留 pending 建议卡（旧流程 triage 产物）→ 登记「待捕获消息」到
-  // pendingCapture；turn/end 清除（该回合 LLM 已消费本次立项评估）。capture section
-  // 组装时同引用读取并注入针对性立项提示——hook 只保证确定性触发，立项判定与内容
-  // 留给 LLM + 人工（reqboard_capture 三问弹框作答 = 确认，同一次调用内直接建 REQ）。
-  const pendingCapture = new Map<string, { windowKey: string; text: string; capturedAt: number }>();
-  // 工具痕迹表（REQ-2e9473 t05）：窗口 → tool/call 事件序列，done 凭证门（t06）读取。
-  const toolTrace = new Map<string, ToolTraceEntry[]>();
-  // 最近用户消息缓冲（REQ-2e9473 t10）：窗口 → 清洗后用户消息，confirm_artifact 文字确认核验读取。
-  const recentUserMsgs = new Map<string, import('./adapters/SessionProbeAdapter.js').RecentUserMsg[]>();
-  // 唯一投递实现（REQ-e3b6a0 t4）：状态转移注入、30 分钟催办、后续闸门链 H4 三者共用同一形状。
-  const deliverer = new AgentDeliverer(() => agentsSvc, { plugin: name });
+  // 捕获根运行时（REQ-260924213231-b1c4 T-12：三张共享表 + 唯一投递实现抽到
+  // ./wiring/pm-capture-root.js，组合根只留装配顺序；driver 装配见下方 assembleDiveSessionDriver）。
+  const { pendingCapture, toolTrace, recentUserMsgs, deliverer } = createCaptureRuntime({
+    plugin: name,
+    getAgents: () => agentsSvc,
+  });
+
+  // ── Dive 服务（REQ-260926215013-1568 T-5）：订阅持有者 + round 端口提供者 ──────────
+  // 必须在 createCaptureRuntime 之后（round 半的投递端口 = deliverer）；agentsSvc 经闭包惰性读取。
+  const diveRoundPorts: DiveRoundPorts = {
+    repo: store,
+    agents: {
+      get: (id: string) => (agentsSvc as { get?: (id: string) => unknown } | undefined)?.get?.(id),
+      withoutInitiator: <T,>(op: () => T): T => {
+        const a = agentsSvc as { withoutInitiator?: <U>(f: () => U) => U } | undefined
+        return typeof a?.withoutInitiator === 'function' ? a.withoutInitiator(op) : op()
+      },
+    },
+    // 插件 fiber 处于 ACTIVE(2) 才算可驱动；读不到（测试/降级）→ 放行，避免静默停摆。
+    fiberActive: () => {
+      const state = (ctx as unknown as { fiber?: { state?: number } }).fiber?.state
+      return state === undefined ? true : state === 2
+    },
+    cancel: (agent, cause) => (agent as { cancel?: (c: string) => void } | undefined)?.cancel?.(cause),
+    whenIdle: (agent) => {
+      const p = (agent as { whenIdle?: () => Promise<void> } | undefined)?.whenIdle?.()
+      return p === undefined ? Promise.resolve() : p
+    },
+    // FR-3 耐久检查点：兑现台账写队列排空（与 persistArtifacts 同口径）。
+    checkpoint: async () => { await store.read(() => undefined) },
+    renderRoundText: renderDiveRoundText,
+    now,
+    logger: { info: (m) => logger.info(m), debug: (m) => logger.debug(m), warn: (m, e) => logger.warn(m, e) },
+  }
+  const diveManager = new ReqboardDiveManager(ctx, diveRoundPorts)
+  logger.info('ReqboardDiveManager initialized (round 半已接线)')
+  disposers.push(() => { void diveManager.teardown() })
 
   // 闸门后置链装配（REQ-e3b6a0）：抽到 ./gate-wiring.js（REQ-f0579a t5 尺寸门禁）。
   const gateChain = assembleGatePostChain({
     store, docs, clock, now, isolationTrace, injectionLog, deliverer, logger, plugin: name,
+    // 任务队列端口（REQ-260927202051-f6df）：H2 压缩的节点隔离取"当前在制任务卡"经它。
+    taskStore,
     compactionEnabled: nodeIsolationEnabled(config),
     idle: (session: unknown) => turnBoundaryIdle(projectionsSvc, session),
+    // 三态门（2026-09-26）：明确 busy → 链延后且不消费待处理闸门（修"静默丢压缩"）
+    idleState: (session: unknown) => turnBoundaryIdleState(projectionsSvc, session),
     address,
   });
 
-  const captureHookDeps: CaptureHookDeps = {
-    snapshot: () => store.snapshot(),
-    pending: pendingCapture,
-    now,
-    address,
-    // R1 接手推进：已绑定窗口出现直接人类消息 = 该窗口仍在推进其需求 → 其 draft 需求
-    // 自动进评审（人工闸门仍在：方案确认/拆分确认/验收均为人工，代码级不可越过）。
-    onBoundWindowActivity: (windowKey) => {
-      const drafts = draftRequirementsFor(store.snapshot(), windowKey);
-      if (drafts.length === 0) return;
-      void store.mutate('requirement-moved', (ledger) => {
-        const advanced = drafts
-          .map((d) => applyPickupAdvance(ledger, d.id, { now: now(), commentId: () => newCommentId() }))
-          .filter((r): r is RequirementRecord => r !== undefined);
-        return advanced.length > 0 ? { requirements: advanced } : undefined;
-      }).catch((err) => logger.warn('reqboard rollup (pickup advance) failed:', err));
-    },
-    // REQ-31e11f t5 + REQ-e3b6a0 t4：状态转移纪律与产物催办文案向绑定会话投递。
-    // 投递形状统一走 AgentDeliverer（唯一实现）——此前 `agents.followup(id, msg)` 把
-    // AgentRegistry 当 Agent 用，typeof 守卫恒 false，于是"状态转移注入"与"30 分钟催办"
-    // 自诞生起从未投递过（同一根因的另两个受害者）。
-    onStagePrompt: (windowKey, prompt) => {
-      const result = deliverer.deliver(windowKey, { text: prompt });
-      if (result.delivered) {
-        logger.debug(`reqboard stage-prompt injected → ${windowKey.slice(0, 16)}`);
-      } else {
-        logger.warn(`reqboard stage-prompt 未投递（${windowKey.slice(0, 16)}）：${result.reason ?? '未知原因'}`);
-      }
-    },
-    toolTrace,
-    recentUserMsgs,
-    injectionLog,
-    // REQ-422af1 t10：节点结算信号 → 隔离分发（开关关时 dispatcher 一次都不执行）。
+  // Dive 会话驱动器装配（原 CaptureHook，2026-09-26 废弃并迁入 application/dive）：
+  // 抽到 ./wiring/pm-capture-root.js；**两路订阅都由 Dive 服务持有**：
+  //   · session/event（采集/簿记）→ attachSessionDriver
+  //   · agent/status === idle（驱动点，对齐 dsh-goal-round-driver）→ attachAgentStatus
+  // useCaseDeps 尚未构造 → 以惰性 getter 传入（driver 只在异步边界取用）。
+  const unsubscribeSessionEvents = assembleDiveSessionDriver({
+    store, runtime: { pendingCapture, toolTrace, recentUserMsgs, deliverer },
+    now, address, injectionLog, gateChain,
+    // 任务队列端口（REQ-260927202051-f6df）：驱动注入「当前任务」需从队列取（v9 台账无 tasks）。
+    taskStore,
     onNodeSettled: (settle, session) => settlement.onSettle(settle, session),
-    // REQ-e3b6a0 t7：**闸门后置链 Phase B 的唯一时机**。闸门作答不一定伴随用户消息，
-    // 故不能只靠 onNodeSettled；且监听器内不得做会话写操作（D-17）→ 放到异步边界。
-    // （链按 (windowKey, gate, decidedAt) 幂等，与结算路径重复触发也只跑一轮。）
-    onTurnEnd: (windowKey, session) => {
-      setImmediate(() => {
-        void gateChain.runPending(windowKey, session).catch((err) => {
-          logger.warn('reqboard gate-chain run failed:', err);
-        });
-      });
-    },
-    logger: { info: (m) => logger.info(m), debug: (m) => logger.debug(m) },
-  };
-  const captureHandler = createSessionEventCaptureHook(captureHookDeps);
-  const sessionEventCtx = ctx as unknown as {
-    on?: (event: string, listener: (session: unknown, event: unknown) => void) => (() => void) | void;
-  };
-  const unsubscribeSessionEvents = sessionEventCtx.on?.('session/event', captureHandler);
+    useCaseDeps: () => useCaseDeps,
+    logger, plugin: name,
+    round: diveManager.roundDriver(),
+    attachSessionDriver: (handler) => diveManager.attachSessionDriver(handler),
+    attachAgentStatus: (handler) => diveManager.attachAgentStatus(handler),
+  });
   if (unsubscribeSessionEvents) disposers.push(unsubscribeSessionEvents);
-  // 【诊断日志-节点1】Hook 订阅状态（文件双写，防 stdout 死管道）
-  captureDiag(`reqboard-capture [NODE-1]: Hook subscription ${unsubscribeSessionEvents ? 'SUCCESS' : 'FAILED'} (unsubscribe=${typeof unsubscribeSessionEvents})`);
-  logger.info(`reqboard-capture [NODE-1]: Hook subscription ${unsubscribeSessionEvents ? 'SUCCESS' : 'FAILED'} (unsubscribe=${typeof unsubscribeSessionEvents})`);
-  logger.info('reqboard capture hook registered: session/event user/message → 登记待立项评估（unbound 窗口）');
 
   // 捕获引导段装配（按窗口条件注入）：抽到 ./gate-wiring.js（REQ-f0579a t5 尺寸门禁）。
   registerCaptureGuidance(ctx, {
     disposers, store, pendingCapture, injectionLog, logger, plugin: name, address,
+    // 任务队列端口（REQ-260927202051-f6df D17）：引导段用它的**同步缓存**渲染「当前任务执行中」。
+    taskStore,
     sectionName: CAPTURE_SECTION, sectionOrder: CAPTURE_SECTION_ORDER,
     onSystemPrompt: (svc) => { systemPromptSvc = svc; },
   });
@@ -341,6 +388,8 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   // reqboard_status（自查）。用例依赖 = 组合根装配 adapters → application 用例。
   const useCaseDeps: UseCaseDeps = {
     repo: store,
+    // 任务存储（队列）——v9 后任务的唯一入口（REQ-260927202051-f6df）；用例侧缺它则读不到任务。
+    taskStore,
     docs,
     clock,
     ids: new RandomIdFactory(),
@@ -355,10 +404,36 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     questions: new GateAwareQuestions(new UserQuestionsAdapter(() => userQuestionsSvc), gateChain, { now }),
     rejections: captureRejections,
     workflow: new WorkflowEngineRunner(() => workflowEngineSvc as never),
+    // FR-11 路线 A：团队执行端口。与 workflow 并存——团队优先、workflow 兜底的选路由用例层决定。
+    teams: new AgentTeamsAdapter(() => agentTeamsSvc as never),
     // REQ-260923222557-d3b0 FR-2/FR-3：事件型 worktree 提示词复用同一投递实现。
-    delivery: deliverer,
-    alert: createFailureAlert({ log: (m) => logger.error(m), deliver: (wk, text) => { deliverer.deliver(wk, { text }); }, windowFor: (id) => store.snapshot().requirements.find((x) => x.id === id)?.sourceSessionId }),
+    // REQ-260924213231-b1c4 T-6（FR-3）：装配非阻塞弹框能力（缺省 = 保持旧阻塞语义）。
+    pendingConfirms,
+    alert: createFailureAlert({ log: (m) => logger.error(m), windowFor: (id) => store.snapshot().requirements.find((x) => x.id === id)?.sourceSessionId }),
+    // D14 修复：链的子卡派发需要 agent 句柄；看板「继续」/启动恢复按绑定窗口兜底解析（惰性读取）。
+    agents: () => agentsSvc as { get?: (id: string) => unknown } | undefined,
   };
+
+  // REQ-260927144541-0481 根因修复（D-1 的落地点）：**装配 JobsPort**。
+  // 此前 useCaseDeps.jobs 恒为 undefined（'JobsPort 未装配'被三处当既成事实写进注释）→
+  // advanceRequirement 永远走同步兼容路径，实测后果有三，且都表现为'反复出现'：
+  //   ① 工具调用被阻塞数分钟（一次 driveChain 跑完才返回）→ 调用方 turn 超时/被掐断；
+  //   ② 链挂在该 turn 的 abort signal 上——turn 一中断，正在跑的子卡 workflow 就地
+  //      cancelled: workflow signal aborted（t-c42bc0 反复失败即此）；
+  //   ③ 即使链推进成功，回执也因 dispatched=false 而报'投递失败'（谎报）。
+  // 惰性注入 ctx.jobs（@deepseek-ai/dsh-tool-jobs 提供，本 profile 已启用；owner 隔离由
+  // DshJobsAdapter.start 原样透传）后恢复'投递即返回、后台真跑'。
+  ;(ctx as unknown as { inject?: (services: string[], cb: (c: any) => void) => void }).inject?.(
+    ['jobs'],
+    (jobsCtx: any) => {
+      if (!DshJobsAdapter.isAvailable(jobsCtx)) {
+        logger.warn('reqboard: ctx.jobs 不可用 → 实施链退回同步兼容路径（调用会阻塞到链跑完）')
+        return
+      }
+      useCaseDeps.jobs = new DshJobsAdapter(jobsCtx)
+      logger.info('reqboard: JobsPort 已装配（ctx.jobs）→ 实施链走投递式后台执行')
+    },
+  )
 
   // REQ-4842fe t7：启动恢复扫描（崩溃不丢链）。
   scheduleStartupScan({ load: () => store.load(), deps: useCaseDeps, info: (m) => logger.info(m), warn: (m, err) => logger.warn(m, err) });
@@ -370,20 +445,33 @@ export function apply(ctx: Context, config?: PluginConfig): void {
         disposers.push(toolsCtx.tools.register(defineCreateTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineCaptureTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineStatusTool(useCaseDeps)));
-        disposers.push(toolsCtx.tools.register(defineMoveTool(useCaseDeps)));
-        disposers.push(toolsCtx.tools.register(defineDecomposeTool(useCaseDeps)));
-        disposers.push(toolsCtx.tools.register(defineTaskMoveTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineTaskReportTool(useCaseDeps)));
+        // 恢复：批准计划后的拆分落库入口（自动拆分路径缺 JobsPort，见 DecomposeTool 文件头）
+        disposers.push(toolsCtx.tools.register(defineDecomposeTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineSubmitTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineAskConfirmTool(useCaseDeps)));
+        disposers.push(toolsCtx.tools.register(defineConfirmReceiptTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineAcceptSheetTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineTaskExecuteTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineAdvanceTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineTaskStatusTool(useCaseDeps)));
+        // REQ-260924213231-b1c4 T-9（FR-6 / I-8）：断点显式兜底（B′ 入口）。
+        disposers.push(toolsCtx.tools.register(defineNoteInterruptionTool(useCaseDeps)));
+        disposers.push(toolsCtx.tools.register(defineClearPauseTool(useCaseDeps)));
+        // REQ-260927100007-b8ba FR-7：补回 agent 侧流转工具（此前仅在 HTTP 层，agent 调不动）
+        disposers.push(toolsCtx.tools.register(defineMoveTool(useCaseDeps)));
+        disposers.push(toolsCtx.tools.register(defineTaskMoveTool(useCaseDeps)));
+        disposers.push(toolsCtx.tools.register(defineRunStatusTool(useCaseDeps)));
+        // REQ-260927144541-0481 FR-3：只读父子结构视图（reqboard_task_tree）
+        disposers.push(toolsCtx.tools.register(defineTaskTreeTool(useCaseDeps)));
+        // 归属补救：把缺 parentId 的卡挂回父卡下（2026-09-28）
+        disposers.push(toolsCtx.tools.register(defineTaskAdoptTool(useCaseDeps)));
+        // 卡片层契约（2026-09-28）：子卡链再生成（补链）+ 只读诊断。
+        disposers.push(toolsCtx.tools.register(defineRegenerateTool(useCaseDeps)));
       }, name + ': tools');
       logger.info(
-        'agent tools registered (13): reqboard_create / reqboard_capture / reqboard_status / reqboard_move / reqboard_decompose / reqboard_task_move / reqboard_task_run / reqboard_task_execute / reqboard_task_status / '
-        + 'reqboard_task_report / reqboard_submit(kind) / reqboard_ask_confirm / reqboard_accept_sheet',
+        'agent tools registered (13): reqboard_create / reqboard_capture / reqboard_status / reqboard_task_run / reqboard_task_execute / reqboard_task_status / '
+        + 'reqboard_task_report / reqboard_submit(kind) / reqboard_ask_confirm / reqboard_confirm_receipt / reqboard_accept_sheet / reqboard_note_interruption / reqboard_clear_pause / reqboard_move / reqboard_task_move / reqboard_task_adopt',
       );
     },
   );
@@ -402,6 +490,8 @@ export function apply(ctx: Context, config?: PluginConfig): void {
           // injectionLog 只以**只读端口**身份进入路由（t11）：看板能读「本次注入了什么」，不能写。
           handler: createReqboardHandler({
             store,
+            // 任务存储（队列）：路由的**必填**依赖（v9 后台账无 tasks，缺它则任务页/甘特全空）。
+            taskStore,
             now,
             docs,
             injectionLog,
@@ -418,6 +508,8 @@ export function apply(ctx: Context, config?: PluginConfig): void {
                 return undefined;
               }
             }, advance: (reqId: string) => advanceRequirement(useCaseDeps, reqId).then(o => ({ steps: o.steps.length, stopped: o.stopped as string })),
+            // 看板「拆分」入口（2026-09-26）：批准计划后的落库恢复通道（自动拆分缺 JobsPort）。
+            applicationDeps: useCaseDeps,
           }),
         });
       }, name + ': api');

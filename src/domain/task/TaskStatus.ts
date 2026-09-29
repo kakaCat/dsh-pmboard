@@ -8,6 +8,7 @@
  */
 
 import type { ActorKind } from '../actor.js'
+import { fmt } from '../text/fmt.js'
 
 export type TaskStatus =
   | 'todo'        // 待开始（自足任务卡落库）
@@ -97,6 +98,27 @@ export function taskTransitionsFor(role: TaskRole): Readonly<Record<TaskStatus, 
   return TASK_TRANSITIONS
 }
 
+/** 角色中文名（REQ-260927144541-0481 FR-5）：报错时不让调用方对着 parent/subtask/legacy 猜"我是谁"。 */
+export const TASK_ROLE_LABELS: Readonly<Record<TaskRole, string>> = {
+  parent: '父卡',
+  subtask: '子卡',
+  legacy: '存量卡',
+}
+
+/**
+ * 该角色的**全部合法边**（REQ-260927144541-0481 FR-5）——报错时把"能怎么走"一次说清，
+ * 而不是只说"这么走不行"（人被拒之后还得去翻代码才知道正确边，等于没解释）。
+ * 顺序按 TASK_STATUS_ORDER、同一起点内按转移表顺序：同一角色文本稳定，便于日志与断言。
+ */
+export function legalEdgesFor(role: TaskRole): string {
+  const table = taskTransitionsFor(role)
+  const edges: string[] = []
+  for (const from of TASK_STATUS_ORDER) {
+    for (const to of table[from]) edges.push(from + '→' + to)
+  }
+  return edges.join('、')
+}
+
 /**
  * 任务人工闸门（代码级仅人）。
  * 2026-09-13 用户裁定（与需求闸门同一口径）：agent 必须能自己把任务跑完——
@@ -166,7 +188,15 @@ export function assertTaskTransition(
   role: TaskRole = 'legacy',
 ): void {
   if (!canTaskTransition(from, to, role)) {
-    throw Object.assign(new Error(`任务状态不允许从 ${from} 转移到 ${to}`), { code: 'invalid_transition' })
+    throw Object.assign(
+      new Error(fmt('{role}不允许 {from}→{to}；该角色合法边：{edges}', {
+        role: TASK_ROLE_LABELS[role],
+        from,
+        to,
+        edges: legalEdgesFor(role),
+      })),
+      { code: 'invalid_transition' },
+    )
   }
   const key = `${from}>${to}`
   if (HUMAN_ONLY_TASK_TRANSITIONS.has(key) && actor !== 'human') {
@@ -175,6 +205,11 @@ export function assertTaskTransition(
     throw Object.assign(new Error('该任务转移为人工闸门，仅人可操作'), { code: 'human_gate' })
   }
   if (actor === 'system' && !SYSTEM_TASK_TRANSITIONS.has(key)) {
-    throw Object.assign(new Error(`system 不可发起任务转移 ${from} → ${to}`), { code: 'system_gate' })
+    // 角色例外（REQ-4842fe FR-11）：父卡 / 子卡链由自动链汇总关闭——子卡执行成功转 done、
+    // 子卡链全完成后父卡收尾，都是 system 的合法收尾动作，不能用 legacy 白名单一刀切。
+    const roleAllowsClose = (role === 'parent' || role === 'subtask') && key === 'in_progress>done'
+    if (!roleAllowsClose) {
+      throw Object.assign(new Error(`system 不可发起任务转移 ${from} → ${to}`), { code: 'system_gate' })
+    }
   }
 }

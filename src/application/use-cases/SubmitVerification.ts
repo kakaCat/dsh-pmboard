@@ -6,6 +6,7 @@
  * @module dsh-pmboard/application/use-cases/SubmitVerification
  */
 import type { UseCaseDeps } from '../ports.js'
+import { coverageGateOf, syncRTMYaml } from '../internal/rtm-yaml.js'
 import { fmt } from '../../domain/text/fmt.js'
 import {
   normalizeText,
@@ -36,6 +37,8 @@ import {
   rollupBlockersOf,
   workspacePathCandidates,
 } from '../internal/support.js'
+import { generateAcceptanceTracking } from '../internal/submit-rtm-integration.js'
+import { taskStoreOf } from './queue-access.js'
 
 export async function submitVerification(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
       const windowKey = agentIdFromExec(deps, exec)
@@ -75,6 +78,11 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
         reject(fmt('reqboard_verify_submit 未执行：需求处于 {status}，只有执行/验收阶段的交付才能提交验收', { status: target.status }), 'REQBOARD_BAD_STATUS')
       }
 
+      const store = taskStoreOf(deps)
+      // 任务已迁出台账（v9）：本用例的任务集从队列取一次，全程复用（下方拼 sheet / 文档校验 /
+      // 渲染 / 阻塞判定共用同一份，避免多处各自读导致口径漂移）。
+      const targetTasks = await store.listByRequirement(target.id)
+
       // ── 9 类文档完整性检查（REQ-308b9a FR-7 / AC-7.4、7.5）─────────────────
       // 口径见 domain/workflow/DocCompleteness.ts（与本仓 feature 流水线产物对齐，不另造清单）。
       // 缺项 → **拒绝提交**（"缺文档也能过验收"会让文档永远补不上）。
@@ -89,8 +97,8 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
         ...collectDir('reviews'),
         ...collectDir('tests'),
       ])
-      const reqTaskIds = snapshot.tasks
-        .filter(t => t.requirementId === target.id && t.status !== 'canceled')
+      const reqTaskIds = targetTasks
+        .filter(t => t.status !== 'canceled')
         .map(t => t.id)
       // 存量/直种需求（artifacts 为空）→ 豁免，不追溯惩罚（同 isLegacyForHow 的口径）；
       // 走新流水线的需求在 requirement/plan/design 各节点已登记产物，故必然被检查。
@@ -126,8 +134,8 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
       const unverifiable: string[] = []
       const hardUnverifiable: string[] = []
       if (!isLegacyForHow) {
-        for (const t of snapshot.tasks) {
-          if (t.requirementId !== target.id || t.status === 'canceled') continue
+        for (const t of targetTasks) {
+          if (t.status === 'canceled') continue
           const acceptance = t.acceptance ?? ''
           const key = t.title.length > 0 ? t.title : t.id
           const how = checkHowToVerify(key, acceptance)
@@ -153,13 +161,26 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
         ? []
         : consistencyGaps(buildConsistencyRows(await collectNumberedItems(deps.docs, target), taskRefs))
 
+      // ── 门禁预检（FR-2 触发点 7 / FR-5）：测试覆盖度必须 ≥80% 才允许提交验收 ──
+      // 读 tests/*.md + design/test-cases.md + tasks/*.md 的 covers: 标注；无数据时不拦截（FR-9）。
+      // 存量/直种需求（无 requirement.md / artifacts 为空）豁免——同上口径。
+      const verifyGateProbe = isLegacyForDocs ? undefined : syncRTMYaml(deps, targetTasks, target.id, 'submit:verification')
+      const testGate = coverageGateOf('accepting', verifyGateProbe)
+      if (testGate !== undefined && !testGate.passed) {
+        reject(
+          'reqboard_verify_submit 被测试覆盖度门禁拒绝：' + (testGate.message ?? '测试覆盖度不足')
+            + '。请在测试文档里用 `covers: t-xxx` 标注补上缺失任务的测试后重新提交。',
+          'REQBOARD_TESTING_COVERAGE_GATE',
+        )
+      }
+
       const nowTs = deps.clock.now()
       const result = await deps.repo.mutate('requirement-updated', (ledger) => {
         const req = ledger.requirements.find(r => r.id === target.id)
         if (req === undefined) return undefined
         // ── 逐项验收单生成（REQ-2e9473 t13/W6；规则在 domain/workflow/AcceptanceSheetSpec.ts，t4）──
         // items = 每任务验收标准 + 需求级标准；返工时（上一版有未过项）只含未过项。
-        const allTasks = ledger.tasks.filter(t => t.requirementId === req.id && t.status !== 'canceled')
+        const allTasks = targetTasks.filter(t => t.status !== 'canceled')
         const prevSheet = req.verification?.sheet
         const built = buildSheet({
           sheetHistoryLength: req.verification?.sheetHistory?.length ?? 0,
@@ -198,8 +219,10 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
         req.updatedAt = nowTs
         req.updatedBy = { kind: 'agent', sessionId: windowKey }
         // 任务全完成时顺带推进到验收态（人来了就有东西可审）
+        // D6：applyTaskRollup 第 2 参 tasks（队列任务；回调是同步契约，用已取好的 targetTasks）。
         const advanced = applyTaskRollup(
           ledger,
+          targetTasks,
           { now: nowTs, commentId: () => deps.ids.comment(), snapshot: () => captureSnapshot(deps, windowKey) },
           req.id,
         )
@@ -212,8 +235,7 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
       // 四段：验收列表（含派生操作步骤/预期结果）· 测试报告 · 文档完整性检查 · 验收结果表。
       const verPath = reqDir + '/verification.md'
       const sheetNow = changed.verification?.sheet
-      const ledgerTasks = deps.repo.snapshot().tasks
-        .filter(t => t.requirementId === target.id && t.status !== 'canceled')
+      const ledgerTasks = targetTasks.filter(t => t.status !== 'canceled')
       const taskById = new Map(ledgerTasks.map(t => [t.id, t]))
       const docItems = (sheetNow?.items ?? []).map(it => {
         const src = it.source
@@ -253,10 +275,11 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
         return { requirements: [r] }
       })
       const ledgerNow = deps.repo.snapshot()
-      const tasks = ledgerNow.tasks.filter(t => t.requirementId === target.id && t.status !== 'canceled')
+      const tasks = (await store.listByRequirement(target.id)).filter(t => t.status !== 'canceled')
       const reqNow = ledgerNow.requirements.find(r => r.id === changed.id)
       // rollup 阻塞显式化（REQ-2e9473 t02）：有未完成任务时验收材料虽收，但需求进不了 accepting
-      const blockers = reqNow === undefined ? undefined : rollupBlockersOf(ledgerNow, reqNow.id, reqNow.status)
+      // D4：rollupBlockersOf 新签名 (ledger, tasks, reqId, reqStatus)。
+      const blockers = reqNow === undefined ? undefined : rollupBlockersOf(ledgerNow, tasks, reqNow.id, reqNow.status)
       // 说明文案与变量**在 return 之外**组装：输出契约门禁静态扫描 return 字面量的顶层键，
       // 把 fmt 的变量表误读成响应字段（实测被误判为 n/list 两个未声明字段）。不改门禁，改写法。
       const blockerBlock = blockers === undefined
@@ -271,6 +294,17 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
       const finishNote = blockers === undefined
         ? '验收材料已提交。下一步：调 reqboard_ask_confirm（target=artifact, kind=verification）弹框请人逐项审核（看板「验收通过/退回」同样是有效通道）'
         : fmt('验收材料已提交，但需求因 {n} 个未完成任务停在 implementing——见 warning/blockers', { n: blockers.length })
+      // RTM 集成：生成 acceptance_tracking（REQ-260925172227-2d61 FR-2）
+      let rtmData: ReturnType<typeof generateAcceptanceTracking> | undefined
+      try {
+        const prevTracking = reqNow?.verification?.sheet?.rtmTracking
+        rtmData = generateAcceptanceTracking(reqDir, prevTracking)
+      } catch (rtmErr) {
+        // RTM 生成失败不阻断提交，但记录警告
+        console.warn('[SubmitVerification] RTM 集成失败:', rtmErr)
+      }
+      // RTM 触发点 7：提交验收材料 → rtm-accepting.yml（测试覆盖度）
+      syncRTMYaml(deps, tasks, changed.id, 'submit:verification')
       return {
         success: true,
         requirement_id: changed.id,
@@ -280,6 +314,12 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
         sheet_version: reqNow?.verification?.sheet?.version ?? 0,
         sheet_items: reqNow?.verification?.sheet?.items.length ?? 0,
         ...(reqNow?.verification?.sheet?.reworkOnly === true ? { rework_only: true } : {}),
+        ...(rtmData !== undefined
+          ? {
+              acceptance_tracking_count: rtmData.acceptance_tracking_count,
+              ...(rtmData.is_rework ? { rework_only: true } : {}),
+            }
+          : {}),
         ...(reqNow !== undefined && (reqNow.docSyncPending ?? []).length > 0
           ? { doc_sync_pending: reqNow.docSyncPending, doc_sync_warning: docSyncSummary(reqNow) }
           : {}),

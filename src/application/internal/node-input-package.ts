@@ -21,6 +21,7 @@ import {
 import { fmt } from '../../domain/text/fmt.js'
 import { renderAddressSection } from '../../domain/template/index.js'
 import type { RequirementRecord, StageArtifact } from '../../shared/protocol.js'
+import type { NodeInput } from '../../../../../tools/reqboard/src/dive/node-input.js'
 
 /** 台账投影（INV-8 五字段的输入包侧承载）。 */
 export interface LedgerProjection {
@@ -34,6 +35,11 @@ export interface LedgerProjection {
   next: string
   /** 证据指针：产物路径 */
   evidence: string
+  /**
+   * 断点（T-1 / FR-6）：当前阶段 + 未完成动作 + 中断原因 + 时间；无断点 = 空串。
+   * 输入包据此**条件追加**「## 断点」节——老需求（无字段）输出逐字节不变。
+   */
+  breakpoint: string
 }
 
 const NONE_UPSTREAM = '（无已确认产物）'
@@ -46,7 +52,7 @@ function artifactLabel(a: StageArtifact): string {
 }
 
 /**
- * 台账投影：只从需求记录投影出五字段，**不含任何对话内容**（INV-9）。
+ * 台账投影：从需求记录投影出五字段 + 断点（FR-6），**不含任何对话内容**（INV-9）。
  * requirement 缺失（窗口还没有绑定需求）→ 如实标注"无归属需求"，不静默留空。
  */
 export function projectLedger(requirement: RequirementRecord | undefined, stage: PromptStage): LedgerProjection {
@@ -58,6 +64,7 @@ export function projectLedger(requirement: RequirementRecord | undefined, stage:
       openQuestions: NO_REQUIREMENT,
       next: chain.label,
       evidence: NONE_EVIDENCE,
+      breakpoint: '',
     }
   }
   const artifacts = requirement.artifacts ?? []
@@ -76,7 +83,27 @@ export function projectLedger(requirement: RequirementRecord | undefined, stage:
     openQuestions: [...unconfirmed.map(artifactLabel), ...blockers].join('；') || NONE_OPEN,
     next: chain.label,
     evidence: artifacts.length > 0 ? artifacts.map(a => a.path).join('；') : NONE_EVIDENCE,
+    breakpoint: breakpointText(requirement),
   }
+}
+
+/**
+ * 断点节文本（T-1 / FR-6）：含阶段 / 未完成动作 / 中断原因 / 时间四要素。无断点 → 空串
+ * （调用方据此不追加该节，保证存量需求输出与改造前逐字节一致）。
+ */
+function breakpointText(requirement: RequirementRecord | undefined): string {
+  const bp = requirement?.interruption
+  if (bp === undefined) return ''
+  return fmt(
+    [
+      '## 断点',
+      '- 当前阶段：{stage}',
+      '- 未完成动作：{action}',
+      '- 中断原因：{reason}',
+      '- 记录时间：{at}',
+    ].join('\n'),
+    { stage: bp.stage, action: bp.pendingAction, reason: bp.reason, at: new Date(bp.at).toISOString() },
+  )
 }
 
 export interface NodeInputPackageInput {
@@ -93,6 +120,8 @@ export interface NodeInputPackageInput {
   templateRoot?: string
   /** 当前任务卡投影（实施节点的上游必读）。 */
   currentTask?: { id?: string; title?: string; cardDoc?: string }
+  /** FR-8：RTM 追溯快照（由用例读盘后注入；缺省 = 不追加该节，逐字节保持旧输出）。 */
+  rtm?: NodeInput
 }
 
 export interface NodeInputPackage {
@@ -112,9 +141,16 @@ export function buildNodeInputPackage(input: NodeInputPackageInput): NodeInputPa
     ...(input.budget === undefined ? {} : { budget: input.budget }),
   })
   const projection = projectLedger(input.requirement, input.stage)
+  // FR-6：仅当需求带断点时追加该节；无断点 → 空数组（逐字节保持旧输出）。
+  const breakpointSection = projection.breakpoint.length > 0 ? [...projection.breakpoint.split('\n'), ''] : []
   const docText = input.requirementDoc.length > 0
     ? input.requirementDoc
     : fmt(DOC_UNAVAILABLE, { path: input.requirementDocPath })
+  // 进入本阶段的第一个动作（domain 单点 STAGE_CHAIN.entry）——与 H4 唤醒消息同源：
+  // H2 真压缩过时唤醒消息只说"纪律在输入包里"，这里就必须真的带上"第一步干什么"。
+  const entryLine = STAGE_CHAIN[input.stage].entry.length > 0
+    ? fmt('进入本阶段的第一步：{e}', { e: STAGE_CHAIN[input.stage].entry })
+    : ''
   const baseText = fmt(
     [
       '# 节点输入包 · {reqId} · {stage}',
@@ -131,8 +167,10 @@ export function buildNodeInputPackage(input: NodeInputPackageInput): NodeInputPa
       '## 未决问题',
       '{openQuestions}',
       '',
+      ...breakpointSection,
       '## 下一步',
       '{next}',
+      ...(entryLine.length > 0 ? [entryLine] : []),
       '',
       '## 证据指针',
       '{evidence}',
@@ -160,10 +198,34 @@ export function buildNodeInputPackage(input: NodeInputPackageInput): NodeInputPa
       docText,
     },
   )
+  // FR-8：注入 RTM 追溯快照（未注入/无 next_action → 不追加，旧输出逐字节不变）。
+  const rtmSection = renderRtmSection(input.rtm)
+  const withRtm = rtmSection.length > 0 ? baseText + '\n' + rtmSection : baseText
   // T-5（FR-8/FR-12）：地址小节与系统段/H3 共用同一纯函数；空集不追加（逐字节兼容）。
   const addressSection = renderAddressFor(input)
-  const text = addressSection.length > 0 ? baseText + '\n\n' + addressSection : baseText
+  const text = addressSection.length > 0 ? withRtm + '\n\n' + addressSection : withRtm
   return { text, resolved, projection }
+}
+
+/**
+ * FR-8：RTM 追溯快照小节。
+ * 只渲染"决策要看的东西"（下一步建议 + 覆盖度/状态/产出摘要），不塞整份 RTM——
+ * 输入包体积是 token 成本，完整数据按需读文件。
+ */
+function renderRtmSection(rtm: NodeInput | undefined): string {
+  if (rtm === undefined || rtm.next_action === undefined || rtm.next_action.length === 0) return ''
+  const snapshot: Record<string, unknown> = {}
+  if (rtm.coverage !== undefined) snapshot.coverage = rtm.coverage
+  if (rtm.status !== undefined) snapshot.status = rtm.status
+  if (rtm.outputs !== undefined) snapshot.outputs = rtm.outputs
+  const lines = [
+    '## RTM 追溯快照（FR-8 · ' + rtm.stage + ' · ' + rtm.mode + '）',
+    '',
+    '- 下一步建议：' + rtm.next_action,
+  ]
+  if (Object.keys(snapshot).length > 0) lines.push('', '```json', JSON.stringify(snapshot), '```')
+  lines.push('')
+  return lines.join('\n')
 }
 
 /** 输入包侧的地址节渲染（渲染异常 → 不追加，不静默破坏输入包）。 */

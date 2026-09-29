@@ -22,13 +22,15 @@ import { assertArtifactGates, artifactsToConfirm, type GateFailure } from '../..
 import { checkDesignCompletenessGate, checkDesignDecompositionGate } from '../../application/internal/content-gate-wiring.js'
 import { isDesignArtifactKind } from '../../domain/artifact/ArtifactSpec.js'
 import { transitionRequirement } from '../../application/internal/token-usage.js'
+import { executeDecompose } from '../../application/use-cases/Decompose.js'
 import { INITIAL_REQ_STATUS, canReqTransition } from '../../domain/requirement/RequirementStatus.js'
 import { gateForTransition, gateFromStage } from '../../domain/gate/GateCatalog.js'
 import { fmt } from '../../domain/text/fmt.js'
 import type { RouterCtx } from './shared.js'
+import { syncRTMYamlWithSnapshot } from '../../application/internal/rtm-yaml.js'
 
 export function createRequirementsRouter(ctx: RouterCtx) {
-  const { store, now, ids, mintId, ok, readBody, badInput, notFound } = ctx
+  const { store, taskStore, now, ids, mintId, ok, readBody, badInput, notFound } = ctx
 
   /** G2 文档集完整性闸门的看板侧调用（REQ-2d1c74 FR-2）。docs 未装配 → fail-closed（"端口没接"不是绕过口）。 */
   async function g2CompletenessFailure(req: RequirementRecord, gateKind: GateFailure['kind']): Promise<GateFailure | undefined> {
@@ -85,6 +87,8 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     const to = asReqStatus(body.to)
     const actor = asActor(body.actor ?? 'human')
     const reason = normalizeText(body.reason, 'reason', 500)
+    // REQ-260927121324-abde FR-1：请求体可选 sessionId（看板侧无会话 → 诚实不传快照）
+    const sessionId = normalizeText(body.sessionId, 'sessionId', 128) || undefined
     // mutate 前只读两级校验（REQ-2d1c74 FR-2：与 MoveRequirement 同次序——先产物闸门、后 G2 完整性门；
     // 预检让两条门的拒绝次序与会话侧一致，mutate 内的复查保留防并发漂移）。
     const current = store.snapshot().requirements.find(r => r.id === id)
@@ -106,11 +110,16 @@ export function createRequirementsRouter(ctx: RouterCtx) {
         throw Object.assign(new Error(gate.message), { code: gate.code })
       }
 
-      req.status = to
-      req.version += 1
-      req.updatedAt = now()
-      req.updatedBy = { kind: actor }
-      recordStatus(req, to, req.updatedAt, { kind: actor }, reason || undefined)
+      // REQ-260927121324-abde FR-1：五连写收敛到唯一迁移助手（结算离开节点 + 迁移 + 事件带快照）。
+      // 会话码优先级：请求体可选 sessionId → 需求的 sourceSessionId；都没有 → 诚实不传（不伪造）。
+      const sid = sessionId ?? req.sourceSessionId
+      const snap = sid !== undefined ? ctx.deps.tokenSnapshot?.(sid) : undefined
+      transitionRequirement(req, to, {
+        at: now(),
+        actor: { kind: actor, ...(sid !== undefined ? { sessionId: sid } : {}) },
+        reason,
+        ...(snap !== undefined ? { snap } : {}),
+      })
       if (reason) {
         req.comments.push({ id: ids.comment(), body: `[状态] ${req.status} ← 转移说明：${reason}`, createdAt: now(), createdBy: { kind: actor } })
       }
@@ -180,6 +189,15 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       r.updatedBy = { kind: 'human' }
       return { requirements: [r] }
     })
+    if (approve) {
+      // RTM 触发点 5（REQ-260926140539-457b FR-2）：看板批准计划 → rtm-decomposing.yml + rtm-implementing.yml
+      const rtmRoot = ctx.deps.docs?.workspaceRoot() ?? ctx.deps.cwd
+      if (rtmRoot !== undefined) {
+        // 任务来自队列（REQ-260927202051-f6df：RTM 的 tasksOf 读队列任务，v9 台账已无 tasks）
+        const rtmTasks = await taskStore.listByRequirement(id)
+        syncRTMYamlWithSnapshot(rtmRoot, store.snapshot(), rtmTasks, id, 'confirm:plan')
+      }
+    }
     ok(res, result.changed.requirements[0])
   }
 
@@ -228,6 +246,15 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       return { requirements: [r] }
     })
     const confirmed = result.changed.requirements[0] as RequirementRecord
+    // RTM 触发点 3（REQ-260926140539-457b FR-2）：看板一键确认产物 → 对应 RTM 落章
+    {
+      const rtmRoot = ctx.deps.docs?.workspaceRoot() ?? ctx.deps.cwd
+      if (rtmRoot !== undefined) {
+        // 任务来自队列（同 RTM 触发点 5）
+        const rtmTasks = await taskStore.listByRequirement(id)
+        syncRTMYamlWithSnapshot(rtmRoot, store.snapshot(), rtmTasks, id, 'confirm:artifact')
+      }
+    }
 
     // ── 确认即推进 + 链侧投递（REQ-e3b6a0 t9 / FR-9）────────────────────────
     // 两者都以「绑定窗口在线」为前提：窗口不在线就只落章，并如实说明——不伪造推进成功。
@@ -252,13 +279,16 @@ export function createRequirementsRouter(ctx: RouterCtx) {
         ok(res, { ...confirmed, advanced: false, delivered: false, gate_failure: g2Failure, note: '已落章，但 design → decomposing 未推进：' + g2Failure.message })
         return
       }
+      // REQ-260927121324-abde FR-2：确认即推进带写时快照，actor 带会话 id（窗口码 = sourceSessionId）
+      const confirmSnap = windowKey !== undefined && windowKey.length > 0 ? ctx.deps.tokenSnapshot?.(windowKey) : undefined
       await store.mutate('requirement-moved', (ledger) => {
         const r = ledger.requirements.find(x => x.id === id) ?? notFound(fmt('需求 {id}', { id }))
         if (r.status !== gate.from) return undefined // 并发下已推进过 → 幂等，不重复推进
         transitionRequirement(r, gate.to, {
           at: now(),
-          actor: { kind: 'human' },
+          actor: { kind: 'human', ...(windowKey !== undefined ? { sessionId: windowKey } : {}) },
           reason: fmt('看板确认即推进（{from} → {to}）', { from: gate.from, to: gate.to }),
+          ...(confirmSnap !== undefined ? { snap: confirmSnap } : {}),
         })
         r.comments.push({
           id: ids.comment(),
@@ -310,22 +340,28 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       createdBy: { kind: actor },
     }
     if (comment.body.length === 0) throw Object.assign(new Error('评论不能为空'), { code: 'invalid_input' })
+    // 任务评论写**队列**（REQ-260927202051-f6df：任务不在台账、LedgerChange.tasks 已移除）。
+    if (target === 'task') {
+      const existing = await taskStore.get(id)
+      if (existing === undefined) return notFound(`任务 ${id}`)
+      const changed = await taskStore.mutate(existing.requirementId, (tasks) => {
+        const t = tasks.find(x => x.id === id)
+        if (t === undefined) return undefined
+        t.comments.push(comment)
+        t.updatedAt = now()
+        return tasks
+      })
+      ok(res, { comment, target: changed[0]?.id ?? existing.id })
+      return
+    }
+    if (target !== 'req') throw Object.assign(new Error('target 必须是 req/task'), { code: 'invalid_input' })
     const result = await store.mutate('comment-added', (ledger) => {
-      if (target === 'req') {
-        const req = ledger.requirements.find(r => r.id === id) ?? notFound(`需求 ${id}`)
-        req.comments.push(comment)
-        req.updatedAt = now()
-        return { requirements: [req] }
-      }
-      if (target === 'task') {
-        const task = ledger.tasks.find(t => t.id === id) ?? notFound(`任务 ${id}`)
-        task.comments.push(comment)
-        task.updatedAt = now()
-        return { tasks: [task] }
-      }
-      throw Object.assign(new Error('target 必须是 req/task'), { code: 'invalid_input' })
+      const req = ledger.requirements.find(r => r.id === id) ?? notFound(`需求 ${id}`)
+      req.comments.push(comment)
+      req.updatedAt = now()
+      return { requirements: [req] }
     })
-    ok(res, { comment, target: result.changed.requirements[0]?.id ?? result.changed.tasks[0]?.id })
+    ok(res, { comment, target: result.changed.requirements[0]?.id })
   }
 
   /**
@@ -382,5 +418,47 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     ok(res, { ...final, ...(advanceNote === undefined ? {} : { advanceNote }) })
   }
 
-  return { handleReqCreate, handleReqMove, handleReqUpdate, handlePlanDecision, handleArtifactConfirm, handleComment, handleAutoRun }
+  /**
+   * POST /dashboard/api/reqboard/req/decompose
+   * 看板「拆分」入口（2026-09-26 恢复）：把**已批准**的拆分计划落库为任务卡 DAG。
+   * 背景：批准计划时的门合并自动拆分依赖 `deps.jobs`（JobsPort 未装配）→ 需求被推进到
+   * implementing 但 0 任务卡；工具面也不再暴露 reqboard_decompose。本入口是恢复通道。
+   * 前置：需求已绑定窗口且窗口在线（拆分 = 该窗口在继续推进其需求，走 live driver 认证）。
+   */
+  async function handleReqDecompose(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const body = await readBody(req)
+    const id = normalizeText(body.id, 'id', 64)
+    const target = store.snapshot().requirements.find(r => r.id === id) ?? notFound('需求 ' + id)
+    const app = ctx.deps.applicationDeps
+    if (app === undefined) {
+      throw Object.assign(new Error('拆分入口未装配：applicationDeps 缺失（组合根未传用例依赖）'), { code: 'invalid_input' })
+    }
+    const windowKey = target.sourceSessionId
+    const agent = onlineAgent(windowKey)
+    if (agent === undefined) {
+      throw Object.assign(
+        new Error('拆分被拒：绑定窗口 ' + (windowKey ?? '(无)') + ' 不在线——拆分需要 live driver，请回会话触发'),
+        { code: 'invalid_input' },
+      )
+    }
+    // 看板触发没有"当前发起回合"（currentInitiator 为空），故只保留窗口身份解析，
+    // 豁免 live-driver 的回合校验——"窗口在线"的判据已由上面的 onlineAgent 保证。
+    // 工具路径（窗口 agent 在回合内调用）仍走完整校验；本豁免只作用于看板恢复入口。
+    const probe = app.session as unknown as {
+      windowKey: (exec: unknown) => string
+      requireLiveDriver: (exec: unknown) => void
+    }
+    const boardDeps = {
+      ...app,
+      session: {
+        ...(app.session as object),
+        windowKey: (exec: unknown) => probe.windowKey(exec),
+        requireLiveDriver: () => undefined,
+      },
+    } as typeof app
+    const result = await executeDecompose(boardDeps, { requirement_id: id }, { agent }) as Record<string, unknown>
+    ok(res, result)
+  }
+
+  return { handleReqCreate, handleReqMove, handleReqUpdate, handlePlanDecision, handleArtifactConfirm, handleComment, handleAutoRun, handleReqDecompose }
 }

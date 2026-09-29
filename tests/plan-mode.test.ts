@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
-import { definePlanSubmitTool, defineDecomposeTool, defineTaskMoveTool, defineTaskReportTool, stubDocFile } from './helpers/tool-deps.js'
+import { definePlanSubmitTool, defineDecomposeTool, defineTaskMoveTool, defineTaskReportTool, stubDocFile, taskStoreOf, type ReqboardToolDeps } from './helpers/tool-deps.js'
 import type { RequirementRecord, RequirementStatus } from '../src/shared/protocol.js'
 
 const W = 'session-abc-123'
@@ -25,17 +25,21 @@ let taskMove: { execute: (a: unknown, e: unknown) => Promise<any> }
 let handler: ReturnType<typeof createReqboardHandler>
 let reportTool: { execute: (a: unknown, e: unknown) => Promise<any> }
 let trace: Map<string, import('../src/adapters/SessionProbeAdapter.js').ToolTraceEntry[]>
+/** 提到 describe 作用域：断言改读**队列**（v9 台账已无 tasks）。 */
+let deps: ReqboardToolDeps
+/** 队列任务读取（断言用；`taskStoreOf` 按 deps 身份记忆化 = 与工具同一个 store）。 */
+const queueTasksOf = (reqId: string) => taskStoreOf(deps).listByRequirement(reqId)
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-plan-'))
   store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
   trace = new Map()
-  const deps = { store, now: () => Date.now(), toolTrace: trace, doneThrottleMs: 0 } as never
+  deps = { store, now: () => Date.now(), toolTrace: trace, doneThrottleMs: 0 } as never
   planTool = definePlanSubmitTool(deps) as never
   decompose = defineDecomposeTool(deps) as never
   taskMove = defineTaskMoveTool(deps) as never
   reportTool = defineTaskReportTool(deps) as never
-  handler = createReqboardHandler({ store, now: () => Date.now() })
+  handler = createReqboardHandler({ store, taskStore: taskStoreOf(deps), now: () => Date.now() })
   // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘
   for (const p of ['p.md', 'docs/requirements/REQ-abc123/decomposition.md']) stubDocFile(p)
 })
@@ -93,7 +97,7 @@ describe('计划闸门（拆分前必须先有计划且获批）', () => {
   it('未提交计划 → 拆分被拒（REQBOARD_PLAN_NOT_APPROVED）', async () => {
     await seed('decomposing')
     await expect(run(decompose, {})).rejects.toThrow(/REQBOARD_PLAN_NOT_APPROVED/)
-    expect(store.snapshot().tasks).toHaveLength(0)
+    expect(await queueTasksOf('REQ-abc123')).toHaveLength(0)
   })
 
   it('已提交但未批准 → 仍被拒；落库内容为空', async () => {
@@ -102,7 +106,7 @@ describe('计划闸门（拆分前必须先有计划且获批）', () => {
     expect(out.plan_status).toBe('pending_approval')
     expect(out.task_count).toBe(2)
     await expect(run(decompose, {})).rejects.toThrow(/还没有已批准的拆分计划/)
-    expect(store.snapshot().tasks).toHaveLength(0)
+    expect(await queueTasksOf('REQ-abc123')).toHaveLength(0)
     // 计划已进台账（供人审批）
     const req = store.snapshot().requirements[0]
     expect(req.plan?.path).toBe('docs/requirements/REQ-abc123/decomposition.md')
@@ -123,8 +127,32 @@ describe('计划闸门（拆分前必须先有计划且获批）', () => {
     expect(out.created[1].depends_on).toEqual([out.created[0].id])
     expect(out.requirement_status).toBe('decomposing')
     const ledger = store.snapshot()
-    expect(ledger.tasks).toHaveLength(2)
+    expect(await queueTasksOf('REQ-abc123')).toHaveLength(2)
     expect(ledger.requirements[0].comments.some(c => c.body.includes('[拆分] 按已批准的拆分计划落库 2 个任务'))).toBe(true)
+  })
+
+  // REQ-260928185112-e20d：此前 stages 只到协议层（normalizePlanTasks 收下，但 draft 映射没往下传），
+  // skipIntegration 在计划表里根本没有入口——于是"这张卡只要 dev+review""这张卡无接口可联调"
+  // 在拆分节点表达不出来，全部落成同一套 4 段（实测 6 张联调卡 19.2 min 零文件产出）。
+  it('计划任务的 stages / skipIntegration 一路落到队列卡（REQ-260928185112-e20d）', async () => {
+    await seed('decomposing')
+    await submitPlan([
+      { key: 'doc', title: '写迁移清单', phase: 'doc', side: 'doc', acceptance: '跑 cat migration.md 看到 4 行表格', implementation: '写 docs/requirements/REQ-abc123/migration.md', stages: ['dev', 'review'] },
+      { key: 'impl', title: '新增 helper', phase: 'implement', side: 'frontend', depends_on: ['doc'], acceptance: '跑 npx vitest run tests/helper.test.ts 全绿', implementation: '加 packages/web/dsh-pmboard/src/helper.ts', skipIntegration: true },
+    ])
+
+    // ① 计划落库时字段还在（未被 normalizePlanTasks 丢）
+    const plan = store.snapshot().requirements[0]?.plan
+    expect(plan?.tasks.find(t => t.key === 'doc')?.stages).toEqual(['dev', 'review'])
+    expect(plan?.tasks.find(t => t.key === 'impl')?.skipIntegration).toBe(true)
+
+    // ② 拆分落库后仍在新队列卡上（拆分节点 → 实施节点这条链的信息不再丢）
+    await post('/req/plan/approve', { id: 'REQ-abc123' })
+    const out = await run(decompose, {})
+    expect(out.success).toBe(true)
+    const tasks = await queueTasksOf('REQ-abc123')
+    expect(tasks.find(t => t.title === '写迁移清单')?.stages).toEqual(['dev', 'review'])
+    expect(tasks.find(t => t.title === '新增 helper')?.skipIntegration).toBe(true)
   })
 
   it('传与批准计划不一致的 tasks → 拒绝（防「批了 A 落库 B」）', async () => {
@@ -134,7 +162,7 @@ describe('计划闸门（拆分前必须先有计划且获批）', () => {
     await expect(
       run(decompose, { tasks: [{ key: 'other', title: '计划外的活' }] }),
     ).rejects.toThrow(/REQBOARD_PLAN_MISMATCH/)
-    expect(store.snapshot().tasks).toHaveLength(0)
+    expect(await queueTasksOf('REQ-abc123')).toHaveLength(0)
   })
 
   it('人退回（附理由）→ 不能拆；重新提交会作废旧批准', async () => {
@@ -213,6 +241,6 @@ describe('批准后的执行链（计划 → 任务卡 → 自动验收）', () 
     await run(taskMove, { task_id: ui, to: 'done' })
     expect(store.snapshot().requirements[0].status).toBe('accepting')
     // 任务的验收标准来自计划，一路带进任务卡
-    expect(store.snapshot().tasks.map(t => t.acceptance)).toEqual(['protocol.ts 单测绿', '截图可见'])
+    expect((await queueTasksOf('REQ-abc123')).map(t => t.acceptance)).toEqual(['protocol.ts 单测绿', '截图可见'])
   })
 })

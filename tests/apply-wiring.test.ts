@@ -53,6 +53,10 @@ function stubCtx(): StubCtx & {
   const logger = () => ({ debug() {}, info() {}, warn(..._a: unknown[]) {}, error(..._a: unknown[]) {} })
   const ctx = {
     ...s,
+    // cordis Service 基类构造时调 ctx.reflect.provide(...)（application/dive/ReqboardDiveManager
+    // 在 apply() 里直接 new）。stub 必须有 reflect，否则装配阶段就抛
+    // TypeError: Cannot read properties of undefined (reading 'provide')。
+    reflect: { provide: () => {} },
     logger,
     inject: (services: string[], cb: (c: any) => void) => {
       for (const name of services) cb(svcs[name])
@@ -90,9 +94,17 @@ describe('dsh-pmboard apply() 宿主接线（乙流程装配冒烟）', () => {
       'reqboard_ask_confirm',
       // CAPTURE：立项三问 pm 专有弹框（REQ-e3b6a0 t8）
       'reqboard_capture',
+      // REQ-260924213231-b1c4 T-9 / FR-6：断点补写的配套解除挂起
+      'reqboard_clear_pause',
+      // RECEIPT：挂起确认回执（REQ-260924213231-b1c4 T-6 / FR-3）
+      'reqboard_confirm_receipt',
       'reqboard_create',
       'reqboard_decompose',
+      // REQ-260927100007-b8ba FR-7：agent 侧需求/任务流转工具（此前只在 HTTP 层，agent 调不动）
       'reqboard_move',
+      'reqboard_note_interruption',
+      // REQ-260925110957-552d：投递式实施链的运行态查询
+      'reqboard_run_status',
       'reqboard_status',
       // SUBMIT：requirement_submit / plan_submit / verify_submit / archive_submit 合并（kind 分派）
       'reqboard_submit',
@@ -102,8 +114,10 @@ describe('dsh-pmboard apply() 宿主接线（乙流程装配冒烟）', () => {
       // REQ-4842fe t10：事件链执行入口
       'reqboard_task_run',
       'reqboard_task_status',
+      // REQ-260927144541-0481 FR-3：只读父子结构视图
+      'reqboard_task_tree',
     ])
-    expect(names).toHaveLength(13)
+    expect(names).toHaveLength(18)
   })
 
   it('注册看板路由：/dashboard/api/reqboard 前缀', () => {

@@ -10,7 +10,8 @@
  */
 import type { UseCaseDeps } from '../ports.js'
 import { fmt } from '../../domain/text/fmt.js'
-import { assertReqTransition, recordStatus } from '../../shared/protocol.js'
+import { pmHeader } from '../../domain/text/pm-badge.js'
+import { snapshotForWindow, transitionRequirement } from '../internal/token-usage.js'
 import { advanceRequirement } from './AdvanceChain.js'
 
 export type FailureChoice = 'rerun' | 'upstream' | 'cancel'
@@ -38,7 +39,7 @@ export async function openFailurePopup(
   const answers = await deps.questions.ask(
     [{
       id: 'failure-decision',
-      header: '实施链已暂停',
+      header: pmHeader('实施链已暂停'),
       question: fmt('需求 {req} 的实施链因失败暂停，请选择处置方式（重跑 / 退回上游 / 取消）', { req: requirementId }),
       options: (Object.keys(FAILURE_CHOICE_LABELS) as FailureChoice[]).map((k) => ({ label: FAILURE_CHOICE_LABELS[k] })),
     }],
@@ -81,14 +82,17 @@ export async function handleFailureChoice(
     await deps.repo.mutate('failure-upstream', (ledger) => {
       const req = ledger.requirements.find((r) => r.id === requirementId)
       if (req === undefined) return undefined
-      assertReqTransition(req.status, 'design', 'human')
       const from = req.status
-      req.status = 'design'
+      // REQ-260927121324-abde FR-1：经唯一收敛点迁移（含状态机校验）；写时快照取需求绑定的
+      // sourceSessionId，取不到则诚实不传（不伪造）。
+      const snap = snapshotForWindow(deps, req.sourceSessionId)
+      transitionRequirement(req, 'design', {
+        at: now,
+        actor: { kind: 'human' },
+        reason: '返工回上游：重新描述需求',
+        ...(snap !== undefined ? { snap } : {}),
+      })
       req.autoRun = false
-      req.version += 1
-      req.updatedAt = now
-      req.updatedBy = { kind: 'human' }
-      recordStatus(req, 'design', now, { kind: 'human' }, '返工回上游：重新描述需求')
       req.comments.push({
         id: deps.ids.comment(),
         body: fmt('[人工处置] 退回上游：{from} → design，重新描述需求后重走设计/计划/拆分（既有父卡将就地更新）', { from }),
@@ -103,14 +107,16 @@ export async function handleFailureChoice(
   await deps.repo.mutate('failure-cancel', (ledger) => {
     const req = ledger.requirements.find((r) => r.id === requirementId)
     if (req === undefined) return undefined
-    assertReqTransition(req.status, 'canceled', 'human')
     const from = req.status
-    req.status = 'canceled'
+    // REQ-260927121324-abde FR-1：同上——经收敛点迁移并带 sourceSessionId 写时快照。
+    const snap = snapshotForWindow(deps, req.sourceSessionId)
+    transitionRequirement(req, 'canceled', {
+      at: now,
+      actor: { kind: 'human' },
+      reason: '失败处置：取消需求',
+      ...(snap !== undefined ? { snap } : {}),
+    })
     req.autoRun = false
-    req.version += 1
-    req.updatedAt = now
-    req.updatedBy = { kind: 'human' }
-    recordStatus(req, 'canceled', now, { kind: 'human' }, '失败处置：取消需求')
     req.comments.push({
       id: deps.ids.comment(),
       body: fmt('[人工处置] 取消需求：{from} → canceled', { from }),

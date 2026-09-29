@@ -30,6 +30,7 @@ import {
   type ParsedDoc,
 } from './content-gates.js'
 import { collectTaskRefs, taskRefsFromDecomposition } from './content-trace.js'
+import { envelope } from './gate-feedback.js'
 import { fmt } from '../../domain/text/fmt.js'
 
 // 分析 API 再导出（调用方继续从本模块 import，不必改）
@@ -97,10 +98,16 @@ export async function assertClauseCoverageGate(
     code: 'requirement_uncovered',
     kind: 'decomposition',
     gaps,
-    message: fmt(
-      'reqboard_decompose 未执行：以下需求条款既没有被任何任务卡接收、也没有标「本轮不做」——{gaps}。请给对应任务卡加 requirement_refs=[...]；确需本轮不做的，在该条款旁显式写明「本轮不做」并给出理由。',
-      { gaps: gaps.join(', ') },
-    ),
+    message: envelope({
+      lead: 'reqboard_decompose 未执行：',
+      what: fmt('需求条款 {list}', { list: gaps.join('、') }),
+      why: '既没有被任何任务卡接收、也没有标「本轮不做」',
+      how: '恢复路径二选一（都真的能用）：① 在计划文档 ' + decompositionPath + ' 的覆盖对照表补「FR-N ↔ 计划 key」行'
+        + '（表头含「需求条款」与「接收任务」两列即被门禁读取，形如 | FR-1 | … | t4 |）；'
+        + '② 显式调 reqboard_decompose(requirement_id="' + req.id + '", tasks=[{key:"t1",title:"…",implementation:"…",acceptance:"…",requirement_refs:["FR-1"]}, …])，'
+        + '其中 key 必须与已批准计划一致。确需本轮不做的条款，在需求文档该条旁显式写明「本轮不做」并给出理由。'
+        + '注意：不要给任务卡加 requirement_refs——落库前根本没有任务卡可加。',
+    }),
   }
 }
 
@@ -136,10 +143,12 @@ export async function checkDesignServesGate(docs: DocsReader, req: RequirementRe
     code: 'design_orphan',
     kind: 'plan',
     gaps: missing,
-    message: fmt(
-      '提交未执行：以下设计章节**没有标注服务哪条功能点**（缺 serves）——{list}。请给每个二级章节补 serves: FR-#（多值逗号分隔）；确实不服务任何条款的章节应删掉或合并。',
-      { list: missing.join('；') },
-    ),
+    message: envelope({
+      lead: '提交未执行：',
+      what: fmt('设计章节 {list}', { list: missing.join('；') }),
+      why: '该二级章节缺 serves 标注（没说明服务哪条功能点）',
+      how: '在标题行补 serves: FR-#（多值逗号分隔）后重调 reqboard_submit(kind=plan)；不服务任何条款的章节删掉或合并',
+    }),
   }
 }
 
@@ -172,10 +181,12 @@ export async function checkRequirementDocFormatGate(
     return {
       code: 'requirement_missing_clauses',
       kind: 'requirement',
-      message:
-        'reqboard_requirement_submit 未执行：需求文档缺少功能编号。' +
-        '请为每个功能点添加编号（格式：### FR-1: 功能名称 或 **FR-1: 功能名称**）。' +
-        '根据需求类型使用对应前缀：FR（功能）/ BUG（缺陷）/ RF（重构）/ SP（调研）/ DOC（文档）/ CH（维护）',
+      message: envelope({
+        lead: 'reqboard_requirement_submit 未执行：',
+        what: '需求文档的功能编号',
+        why: '文档里没有任何根编号定义（缺 FR-/BUG-/RF-/SP-/DOC-/CH-）',
+        how: '为每个功能点添加编号（格式：### FR-1: 功能名称 或 **FR-1: 功能名称**；前缀按类型：FR 功能 / BUG 缺陷 / RF 重构 / SP 调研 / DOC 文档 / CH 维护），再调 reqboard_submit(kind=requirement)',
+      }),
     }
   }
 
@@ -186,10 +197,12 @@ export async function checkRequirementDocFormatGate(
       code: 'requirement_clause_sequence_gap',
       kind: 'requirement',
       gaps: sequenceGaps,
-      message:
-        'reqboard_requirement_submit 未执行：需求编号不连续（跳号）——' +
-        sequenceGaps.join('、') +
-        '。请补上缺失的编号，或调整现有编号使其连续（如 FR-1, FR-2, FR-3...）',
+      message: envelope({
+        lead: 'reqboard_requirement_submit 未执行：',
+        what: fmt('需求编号 {list}', { list: sequenceGaps.join('、') }),
+        why: '编号不连续（跳号）',
+        how: '补上缺失编号、或调整现有编号使其连续（如 FR-1, FR-2, FR-3），再调 reqboard_submit(kind=requirement)',
+      }),
     }
   }
 
@@ -200,10 +213,12 @@ export async function checkRequirementDocFormatGate(
       code: 'requirement_clause_duplicates',
       kind: 'requirement',
       gaps: duplicates,
-      message:
-        'reqboard_requirement_submit 未执行：需求编号重复——' +
-        duplicates.join('、') +
-        '。每个编号只能出现一次，请检查并合并重复的条款',
+      message: envelope({
+        lead: 'reqboard_requirement_submit 未执行：',
+        what: fmt('需求编号 {list}', { list: duplicates.join('、') }),
+        why: '同一编号被定义多次（每个编号只能出现一次）',
+        how: '合并重复条款、每个编号只留一处，再调 reqboard_submit(kind=requirement)',
+      }),
     }
   }
 
@@ -370,10 +385,172 @@ export async function checkNumberChainGate(docs: DocsReader, req: RequirementRec
       code: 'dangling_reference',
       kind: 'plan',
       gaps: dangling,
-      message: fmt(
-        '提交未执行：以下编号引用**悬空**（serves 指向不存在的编号）——{list}。请改为引用真实存在的编号，或先在需求文档补上被引用的那一条。',
-        { list: dangling.join('；') },
-      ),
+      message: envelope({
+        lead: '提交未执行：',
+        what: fmt('编号引用 {list}', { list: dangling.join('；') }),
+        why: '悬空（serves 指向不存在的编号）',
+        how: '改为引用 requirement.md 里真实存在的 FR-#（或先在需求文档补上被引用的那一条），再调 reqboard_submit(kind=plan)',
+      }),
     },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 三级追溯覆盖度检查（需求追溯性改进 - 2026-09-26）
+// ---------------------------------------------------------------------------
+
+/**
+ * 三级追溯覆盖度统计
+ */
+export interface TraceabilityCoverage {
+  /** Level 1: 需求 ← 设计 */
+  designCoverage: {
+    total: number           // FR 总数
+    covered: number         // 有设计的 FR 数
+    gaps: string[]          // 未被设计覆盖的 FR
+  }
+  
+  /** Level 2: 设计 ← 任务 */
+  implementationCoverage: {
+    total: number           // 设计章节总数
+    covered: number         // 有任务实现的章节数
+    gaps: string[]          // 未被任务实现的设计章节
+  }
+  
+  /** Level 3: 任务 ← 测试 */
+  testCoverage: {
+    total: number           // 任务总数
+    tested: number          // 有测试的任务数
+    gaps: string[]          // 未被测试覆盖的任务
+  }
+}
+
+/**
+ * 导出设计章节相关函数（从 content-trace.ts）
+ */
+export {
+  extractDesignSections,
+  extractAllDesignSections,
+  findDesignSectionsForFRs,
+  checkDesignCoverage,
+  checkImplementationCoverage,
+} from './content-trace.js'
+export type { DesignSection } from './content-trace.js'
+
+/**
+ * 完整的三级追溯覆盖度检查
+ * 
+ * @param docs 文档读取器
+ * @param req 需求记录
+ * @param tasks 任务列表
+ * @returns 三级覆盖度统计
+ */
+export async function checkFullTraceability(
+  docs: DocsReader,
+  req: RequirementRecord,
+  tasks: readonly unknown[]
+): Promise<TraceabilityCoverage> {
+  const requirementPath = `docs/requirements/${req.id}/requirement.md`
+  const designDir = `docs/requirements/${req.id}/design`
+  
+  // 提取需求条款
+  const requirementDoc = await docs.read?.(requirementPath)
+  const frList = requirementDoc ? extractClauseDefinitions(parseDocument(requirementDoc)) : []
+  
+  // 提取设计章节
+  const { extractAllDesignSections, checkDesignCoverage, checkImplementationCoverage } = 
+    await import('./content-trace.js')
+  const designSections = extractAllDesignSections(docs, designDir)
+  
+  // Level 1: 需求 ← 设计
+  const designGaps = checkDesignCoverage(frList, designSections)
+  
+  // Level 2: 设计 ← 任务
+  const taskDesignRefs: string[] = []
+  for (const task of tasks) {
+    if (typeof task === 'object' && task !== null) {
+      const t = task as Record<string, unknown>
+      const designServes = t['design_serves'] ?? t['designServes']
+      if (typeof designServes === 'string') {
+        taskDesignRefs.push(...designServes.split(/[,，]\s*/).map(s => s.trim()))
+      } else if (Array.isArray(designServes)) {
+        taskDesignRefs.push(...designServes.filter((x): x is string => typeof x === 'string'))
+      }
+    }
+  }
+  const implGaps = checkImplementationCoverage(designSections, taskDesignRefs)
+  
+  // Level 3: 任务 ← 测试
+  // TODO: 需要从测试文档提取 covers 标注
+  const testGaps: string[] = []
+  
+  return {
+    designCoverage: {
+      total: frList.length,
+      covered: frList.length - designGaps.length,
+      gaps: designGaps
+    },
+    implementationCoverage: {
+      total: designSections.length,
+      covered: designSections.length - implGaps.length,
+      gaps: implGaps
+    },
+    testCoverage: {
+      total: tasks.length,
+      tested: 0,  // TODO: 实现测试覆盖度统计
+      gaps: testGaps
+    }
+  }
+}
+
+/**
+ * 三级覆盖度门禁（可选，用于验收阶段）
+ * 
+ * @param docs 文档读取器
+ * @param req 需求记录
+ * @param tasks 任务列表
+ * @returns 门禁失败信息（如果有缺口）
+ */
+export async function assertFullTraceabilityGate(
+  docs: DocsReader,
+  req: RequirementRecord,
+  tasks: readonly unknown[]
+): Promise<GateFailure | undefined> {
+  const coverage = await checkFullTraceability(docs, req, tasks)
+  
+  const errors: string[] = []
+  
+  // 检查设计覆盖度
+  if (coverage.designCoverage.gaps.length > 0) {
+    errors.push(
+      `设计缺失：需求条款 ${coverage.designCoverage.gaps.join('、')} 没有对应的设计章节`
+    )
+  }
+  
+  // 检查实施覆盖度
+  if (coverage.implementationCoverage.gaps.length > 0) {
+    errors.push(
+      `实施缺失：设计章节 ${coverage.implementationCoverage.gaps.slice(0, 5).join('、')} ` +
+      (coverage.implementationCoverage.gaps.length > 5 
+        ? `等 ${coverage.implementationCoverage.gaps.length} 个章节没有任务实现`
+        : '没有任务实现')
+    )
+  }
+  
+  // 检查测试覆盖度（可选，暂不强制）
+  // if (coverage.testCoverage.gaps.length > 0) {
+  //   errors.push(`测试缺失：${coverage.testCoverage.gaps.length} 个任务没有测试覆盖`)
+  // }
+  
+  if (errors.length === 0) return undefined
+  
+  return {
+    code: 'traceability_incomplete',
+    message: errors.join('；'),
+    gaps: [
+      ...coverage.designCoverage.gaps,
+      ...coverage.implementationCoverage.gaps,
+      ...coverage.testCoverage.gaps
+    ]
   }
 }

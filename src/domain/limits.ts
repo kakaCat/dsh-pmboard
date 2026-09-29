@@ -40,7 +40,8 @@ export const LIMITS = {
   /** 推进事件链（REQ-4842fe FR-11/FR-12）：单飞锁 stale、连续 noop 熔断、父卡并发上限、单次调用步数上限。 */
   advanceLockStaleMs: 15 * 60_000,
   advanceNoopBreaker: 5,
-  advanceMaxParallelParents: 3,
+  /** 同需求并行父卡上限（2026-09-28 用户裁定：3 → 10，原值偏紧致 t-29b629 类卡无法开工）。 */
+  advanceMaxParallelParents: 10,
   advanceMaxStepsPerCall: 20,
   /** 工具超时（毫秒）：读类 / 写入类 / 需人弹框类。 */
   timeoutReadMs: 15_000,
@@ -52,6 +53,10 @@ export const LIMITS = {
   timeoutInteractiveMs: 3_600_000,
   /** 验收单分批弹框超时（同上：用户裁定 1 小时），FR-5。 */
   timeoutSheetMs: 3_600_000,
+  /** 孤儿回收超时阈值（毫秒）：子卡 in_progress 且无心跳超此时长 → 判定为孤儿，可被重新选中执行。 */
+  orphanTimeoutMs: 3 * 60_000,
+  /** 后台执行器心跳间隔（毫秒）：实施链运行时每隔此时长更新一次心跳，防止被误判为孤儿。 */
+  heartbeatIntervalMs: 30_000,
 } as const
 
 /** 单文件行数上限（尺寸门禁用；与 tests/size-budget.test.ts 同源）。 */

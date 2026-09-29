@@ -23,7 +23,7 @@ import {
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createSessionEventCaptureHook, type CaptureHookDeps } from '../src/adapters/CaptureHook.js'
+import { createDiveSessionDriver, type DiveSessionDriver, type DiveSessionDriverDeps } from '../src/application/dive/session-driver.js'
 import { IsolationTraceFile } from '../src/adapters/IsolationTraceFile.js'
 import {
   ISOLATION_TRACE_FIELDS,
@@ -128,6 +128,7 @@ describe('T24 节点输入包内容（INV-9）', () => {
       expect(pkg.text, '缺字段 ' + field).toContain(field)
     }
     expect(pkg.text).toContain(STAGE_CHAIN.implementing.label)                 // 下一步（链声明）
+    expect(pkg.text).toContain(STAGE_CHAIN.implementing.entry)                 // 进入本阶段的第一步（kickoff，与 H4 同源）
     expect(pkg.text).toContain('docs/requirements/REQ-422af1/plan.md')         // 上游结论（已确认）
     expect(pkg.text).toContain('docs/requirements/REQ-422af1/tasks/t-1.md')    // 未决问题（未确认）
     expect(pkg.resolved.routeKey).toBe('implementing/light/feature')
@@ -137,7 +138,7 @@ describe('T24 节点输入包内容（INV-9）', () => {
     const h = baseHarness()
     const iso = new FakeIsolation()
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.packageText).not.toContain(OLD_MARKER)
@@ -159,7 +160,7 @@ describe('T25 边界不平衡拒执行', () => {
     const iso = new FakeIsolation()
     iso.after = false
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso, trace },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso, trace },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.replaced).toBe(false)
@@ -179,7 +180,7 @@ describe('T25 边界不平衡拒执行', () => {
     const iso = new FakeIsolation()
     iso.before = false
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.status).toBe('rejected')
@@ -199,7 +200,7 @@ describe('T26 活动轮次（agent 忙碌）拒执行', () => {
     const iso = new FakeIsolation()
     iso.idleFlag = false
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso, trace },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso, trace },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.replaced).toBe(false)
@@ -215,7 +216,7 @@ describe('T26 活动轮次（agent 忙碌）拒执行', () => {
     const iso = new FakeIsolation()
     iso.idleThrows = true
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.status).toBe('skipped')
@@ -228,7 +229,7 @@ describe('T26 活动轮次（agent 忙碌）拒执行', () => {
     const iso = new FakeIsolation()
     iso.surface = () => { throw new Error('corrupt surface') }
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.replaced).toBe(false)
@@ -249,7 +250,7 @@ describe('T27 先落盘后遗弃', () => {
     const next = () => { clock += 1; return clock }
     const iso = new FakeIsolation(() => { order.push('replace'); return next() })
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       {
         windowKey: WINDOW, stage: 'implementing', category: 'feature',
         persistArtifacts: () => { order.push('persist'); return next() },
@@ -268,7 +269,7 @@ describe('T27 先落盘后遗弃', () => {
     const h = baseHarness()
     const iso = new FakeIsolation()
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       {
         windowKey: WINDOW, stage: 'implementing', category: 'feature',
         persistArtifacts: () => { throw new Error('disk full') },
@@ -283,7 +284,7 @@ describe('T27 先落盘后遗弃', () => {
     const h = baseHarness()
     const iso = new FakeIsolation()
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => Number.NaN },
     )
     expect(result.status).toBe('skipped')
@@ -295,7 +296,7 @@ describe('T27 先落盘后遗弃', () => {
     const h = baseHarness()
     const iso = new FakeIsolation(() => 1)   // 替换 seq = 1
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 5 },
     )
     expect(result.status).toBe('replaced')
@@ -312,7 +313,7 @@ describe('T28 触达能力探测失败 → D-12 降级', () => {
     const h = baseHarness()
     const trace = new TraceRecorder()
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, trace },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, trace },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.replaced).toBe(false)
@@ -331,7 +332,7 @@ describe('T28 触达能力探测失败 → D-12 降级', () => {
     const iso = new FakeIsolation()
     iso.reachableFlag = false
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.status).toBe('fallback')
@@ -391,7 +392,7 @@ describe('路线 A 端到端（真实 @deepseek-ai/dsh-session）', () => {
     const { s, u1, tr } = realSession()
     const trace = new TraceRecorder()
     const iso = new NodeIsolationAdapter(s, { idle: () => true })
-    const deps: IsolateNodeContextDeps = { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso, trace }
+    const deps: IsolateNodeContextDeps = { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso, trace }
 
     // 边界检查：配对平衡（assistant tool-call 与 tool/result 都在被替换区间内）
     expect(iso.balancedBefore(u1.seq)).toBe(true)
@@ -427,7 +428,7 @@ describe('路线 A 端到端（真实 @deepseek-ai/dsh-session）', () => {
     expect(iso.balancedAfter(a.seq)).toBe(false)      // 有 tool-call 无 result
 
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.status).toBe('rejected')
@@ -441,7 +442,7 @@ describe('路线 A 端到端（真实 @deepseek-ai/dsh-session）', () => {
     s.append('system/message', { turn: 1, step: 1, message: sysMsg('SYS') } as any, { surfaceOp: 'append' })
     const iso = new NodeIsolationAdapter(s, { idle: () => true })
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, isolation: iso },
+      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'design', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.status).toBe('skipped')
@@ -472,16 +473,23 @@ function userEvent(text: string): unknown {
 function turnEndEvent(): unknown {
   return { type: 'turn/end', data: { turn: 1, reason: 'success' } }
 }
+/** 驱动点：整 agent 空闲（对齐 dsh-goal-round-driver）——判定/动作都在这一拍。 */
+function idleDrive(hook: DiveSessionDriver): void {
+  hook.onAgentStatus({ id: WINDOW, session: { id: WINDOW } }, 'idle')
+}
 
 interface T10Wiring {
-  hook: (session: unknown, event: unknown) => void
+  hook: DiveSessionDriver
   dispatcher: NodeSettlementDispatcher
   trace: TraceRecorder
   warns: string[]
+  /** FR-11：采集半零投递——该数组必须始终为空（onStagePrompt 不再被调用）。 */
   prompts: string[]
+  /** 注入留痕照旧（INV-6）：FR-11 只是不投递，不是不记录。 */
+  records: Array<{ fragmentIds: string[] }>
 }
 
-/** 组装与 index.ts 同形状的接线：CaptureHook → onNodeSettled → 隔离分发器。 */
+/** 组装与 index.ts 同形状的接线：DiveSessionDriver → onNodeSettled → 隔离分发器。 */
 function wireT10(over: {
   enabled: boolean
   isolationFor?: NodeSettlementDeps['isolationFor']
@@ -494,12 +502,13 @@ function wireT10(over: {
   const trace = new TraceRecorder()
   const warns: string[] = []
   const prompts: string[] = []
+  const records: Array<{ fragmentIds: string[] }> = []
   const ledger = boundLedger()
   const dispatcher = createNodeSettlementDispatcher({
     enabled: over.enabled,
     repo: h.repo,
     docs: h.docs,
-    clock: h.clock,
+    clock: h.clock, taskStore: h.taskStore,
     trace,
     warn: over.warn ?? ((m) => { warns.push(m) }),
     ...(over.isolationFor === undefined ? {} : { isolationFor: over.isolationFor }),
@@ -507,15 +516,18 @@ function wireT10(over: {
     ...(over.schedule === undefined ? {} : { schedule: over.schedule }),
     ...(over.run === undefined ? {} : { run: over.run }),
   })
-  const deps: CaptureHookDeps = {
+  const deps: DiveSessionDriverDeps = {
     snapshot: () => ledger,
+    // v9：driver 结算节点要读队列任务（DiveSessionDriverDeps.taskStore 为必填）
+    taskStore: h.taskStore,
     pending: new Map(),
     now: () => 1000,
     onStagePrompt: (_k, prompt) => { prompts.push(prompt) },
+    injectionLog: { record: (entry) => { records.push(entry) } },
     onNodeSettled: (settle, session) => { dispatcher.onSettle(settle, session) },
     logger: { info: () => {}, debug: () => {} },
   }
-  return { hook: createSessionEventCaptureHook(deps), dispatcher, trace, warns, prompts }
+  return { hook: createDiveSessionDriver(deps), dispatcher, trace, warns, prompts, records }
 }
 
 describe('t10 §1 开关 NODE_ISOLATION（默认关）', () => {
@@ -543,14 +555,16 @@ describe('t10 §2 关（默认）：隔离代码路径执行 0 次，既有行�
     })
     w.hook({ id: WINDOW }, userEvent('继续推进'))
     w.hook({ id: WINDOW }, turnEndEvent())
+    idleDrive(w.hook)
     await settleAsync()
     expect(w.dispatcher.stats()).toEqual({ scheduled: 0, executed: 0, replaced: 0, failed: 0 })
     expect(isolationForCalls).toBe(0)      // 隔离端口一次都没构造
     expect(fake.calls).toEqual([])         // 隔离端口一次都没被碰
     expect(w.trace.entries).toEqual([])    // 无留痕
     expect(w.warns).toEqual([])            // 无告警（不是"失败后才不报"）
-    expect(w.prompts).toHaveLength(1)      // 既有行为不变：状态转移阶段提示词注入照旧
-    expect(w.prompts[0]).toContain('下一步：accepting')
+    expect(w.prompts).toHaveLength(0)      // FR-11：采集半零投递（旧契约 1 次 → 新契约 0 次）
+    expect(w.records).toHaveLength(1)      // 但注入留痕照旧（INV-6）
+    expect(w.records[0].fragmentIds.length).toBeGreaterThan(0)
   })
 
   it('关：即使注入的隔离端口会抛（框架拒绝），也一次都不会被碰——流水线照常推进且无异常', async () => {
@@ -565,11 +579,13 @@ describe('t10 §2 关（默认）：隔离代码路径执行 0 次，既有行�
     expect(() => {
       w.hook({ id: WINDOW }, userEvent('继续推进'))
       w.hook({ id: WINDOW }, turnEndEvent())
+    idleDrive(w.hook)
     }).not.toThrow()
     await settleAsync()
     expect(calls).toBe(0)
     expect(w.dispatcher.stats().executed).toBe(0)
-    expect(w.prompts).toHaveLength(1)      // 流水线状态仍推进
+    expect(w.prompts).toHaveLength(0)      // FR-11：采集半零投递
+    expect(w.records).toHaveLength(1)      // 流水线状态仍推进（留痕照旧）
   })
 })
 
@@ -585,6 +601,7 @@ describe('t10 §3 开：一次节点结算 → 1 次执行 + 留痕完整（rout
     expect(w.dispatcher.stats().executed).toBe(0)   // 派发内未执行（D-17）
     expect(w.trace.entries).toHaveLength(0)
     w.hook({ id: WINDOW }, turnEndEvent())
+    idleDrive(w.hook)
     expect(w.dispatcher.stats().executed).toBe(0)   // turn/end 派发内仍未执行
     await settleAsync()
     expect(w.dispatcher.stats()).toEqual({ scheduled: 1, executed: 1, replaced: 1, failed: 0 })
@@ -599,7 +616,8 @@ describe('t10 §3 开：一次节点结算 → 1 次执行 + 留痕完整（rout
     const derived = JSON.stringify(s.deriveMessages())
     expect(derived).not.toContain(OLD_MARKER)        // 旧上下文真被遗弃
     expect(derived).toContain('routeKey=implementing/light/feature')
-    expect(w.prompts).toHaveLength(1)                // 既有注入行为未受影响
+    expect(w.prompts).toHaveLength(0)                // FR-11：采集半零投递
+    expect(w.records).toHaveLength(1)                // 既有注入留痕行为未受影响（INV-6）
   })
 
   it('异步边界：onSettle 返回前隔离动作不执行（只交给边界），边界运行后才执行', async () => {
@@ -613,6 +631,7 @@ describe('t10 §3 开：一次节点结算 → 1 次执行 + 留痕完整（rout
     })
     w.hook({ id: WINDOW }, userEvent('继续推进'))
     w.hook({ id: WINDOW }, turnEndEvent())
+    idleDrive(w.hook)
     expect(queued).toHaveLength(1)      // 交给边界，而非同步执行
     expect(w.dispatcher.stats()).toEqual({ scheduled: 1, executed: 0, replaced: 0, failed: 0 })
     expect(fake.calls).toEqual([])
@@ -630,6 +649,7 @@ describe('t10 §3 开：一次节点结算 → 1 次执行 + 留痕完整（rout
     for (let i = 0; i < 3; i += 1) {
       w.hook({ id: WINDOW }, userEvent('继续推进'))
       w.hook({ id: WINDOW }, turnEndEvent())
+    idleDrive(w.hook)
       await settleAsync()
     }
     expect(w.dispatcher.stats()).toEqual({ scheduled: 1, executed: 1, replaced: 1, failed: 0 })
@@ -645,6 +665,7 @@ describe('t10 §4 失败只告警不中断流水线（两种模式）', () => {
     expect(() => {
       w.hook({ id: WINDOW }, userEvent('继续推进'))
       w.hook({ id: WINDOW }, turnEndEvent())
+    idleDrive(w.hook)
     }).not.toThrow()
     await settleAsync()
     expect(w.dispatcher.stats()).toEqual({ scheduled: 1, executed: 1, replaced: 0, failed: 0 })
@@ -653,7 +674,8 @@ describe('t10 §4 失败只告警不中断流水线（两种模式）', () => {
     expect(w.trace.entries[0]!.code).toBe('framework_rejected')
     expect(w.warns).toHaveLength(1)
     expect(w.warns[0]).toContain('节点隔离未替换')
-    expect(w.prompts).toHaveLength(1)     // 流水线状态仍推进
+    expect(w.prompts).toHaveLength(0)     // FR-11：采集半零投递
+    expect(w.records).toHaveLength(1)     // 流水线状态仍推进（留痕照旧）
   })
 
   it('开：用例自身抛错 → failed 计数 + 告警，绝不冒泡到结算点', async () => {
@@ -666,12 +688,14 @@ describe('t10 §4 失败只告警不中断流水线（两种模式）', () => {
     expect(() => {
       w.hook({ id: WINDOW }, userEvent('继续推进'))
       w.hook({ id: WINDOW }, turnEndEvent())
+    idleDrive(w.hook)
     }).not.toThrow()
     await settleAsync()
     expect(w.dispatcher.stats()).toEqual({ scheduled: 1, executed: 1, replaced: 0, failed: 1 })
     expect(w.warns).toHaveLength(1)
     expect(w.warns[0]).toContain('节点隔离执行异常')
-    expect(w.prompts).toHaveLength(1)
+    expect(w.prompts).toHaveLength(0)     // FR-11：采集半零投递
+    expect(w.records).toHaveLength(1)     // 留痕照旧
   })
 
   it('开：告警通道自身抛错也不冒泡（无未捕获异常/未处理 rejection）', async () => {
@@ -684,9 +708,11 @@ describe('t10 §4 失败只告警不中断流水线（两种模式）', () => {
     })
     w.hook({ id: WINDOW }, userEvent('继续推进'))
     w.hook({ id: WINDOW }, turnEndEvent())
+    idleDrive(w.hook)
     await settleAsync()
     expect(w.dispatcher.stats().failed).toBe(1)
-    expect(w.prompts).toHaveLength(1)
+    expect(w.prompts).toHaveLength(0)     // FR-11：采集半零投递
+    expect(w.records).toHaveLength(1)     // 留痕照旧
   })
 })
 

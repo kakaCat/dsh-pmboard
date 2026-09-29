@@ -1,163 +1,76 @@
 /**
- * MoveRequirement 用例（REQ-47939a t6）——从 host/agent-tools.ts 的 defineMoveTool / reqboard_move 工厂**逐字搬入**编排。
+ * MoveRequirement 用例（REQ-260927100007-b8ba FR-7 + FR-3）——agent 侧需求阶段推进。
  *
- * 零行为变更：拒绝条件、错误码与消息文案与搬迁前一致；规则仍单点于 domain/。
+ * 语义与看板移动 HTTP 路由逐条对齐（先产物闸门、后状态机；预检 + mutate 内复查防并发），
+ * 额外加 FR-3 的任务完整性守卫。**五道人工门 agent 一律不可越过**——由 assertReqTransition
+ * 在收敛点（transitionRequirement）内抛 human_gate，本用例不做任何绕过。
  *
  * @module dsh-pmboard/application/use-cases/MoveRequirement
  */
 import type { UseCaseDeps } from '../ports.js'
-import {
-  ARTIFACT_CONFIRM_GATES,
-  canReqTransition,
-  asReqStatus,
-  assertReqTransition,
-  HUMAN_ONLY_REQ_TRANSITIONS,
-  normalizeText,
-} from '../../shared/protocol.js'
-import { captureSnapshot, transitionRequirement } from '../internal/token-usage.js'
-import { docSyncPendingOf, docSyncSummary } from '../../domain/workflow/DocSyncSpec.js'
-import { openRequirementsFor } from '../internal/window.js'
-import { applyTaskRollup } from '../internal/rollup.js'
+import { asReqStatus, normalizeText } from '../../shared/protocol.js'
 import { assertArtifactGates } from '../internal/artifact-gates.js'
-import { checkDesignCompletenessGate } from '../internal/content-gate-wiring.js'
-import { gateForTransition } from '../../domain/gate/GateCatalog.js'
-import {
-  reject,
-  agentIdFromExec,
-  requireLiveDriver,
-  gateQuestionCard,
-} from '../internal/support.js'
+import { openRequirementsFor } from '../internal/window.js'
+import { taskCompletenessGap } from '../internal/task-completeness.js'
+import { captureSnapshot, transitionRequirement } from '../internal/token-usage.js'
+import { reject, agentIdFromExec, requireLiveDriver, mapAgentError } from '../internal/support.js'
+import { fmt } from '../../domain/text/fmt.js'
+import { taskStoreOf } from './queue-access.js'
 
-export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
-      const windowKey = agentIdFromExec(deps, exec)
-      requireLiveDriver(deps, exec)
-      const a = (args ?? {}) as { to?: unknown; requirement_id?: unknown; reason?: unknown }
-      const to = asReqStatus(a.to)
-      const explicitId = normalizeText(a.requirement_id, 'requirement_id', 64)
-      const reason = normalizeText(a.reason, 'reason', 500)
+export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, exec: unknown): Promise<unknown> {
+  const windowKey = agentIdFromExec(deps, exec)
+  requireLiveDriver(deps, exec)
+  const a = (args ?? {}) as { requirement_id?: unknown; to?: unknown; reason?: unknown }
+  const explicitId = normalizeText(a.requirement_id, 'requirement_id', 64)
+  const to = asReqStatus(a.to)
+  const reason = normalizeText(a.reason, 'reason', 500)
 
-      const snapshot = deps.repo.snapshot()
-      const bound = openRequirementsFor(snapshot, windowKey)
-      if (bound.length === 0) {
-        reject('reqboard_move 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
-      }
-      const target = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : bound[0]
-      if (target === undefined) {
-        reject(
-          `reqboard_move 未执行：需求 ${explicitId} 不是本窗口绑定的进行中需求（只能推进自己的需求）`,
-          'REQBOARD_NOT_BOUND_TO_WINDOW',
-        )
-      }
+  const snap = deps.repo.snapshot()
+  const bound = openRequirementsFor(snap, windowKey)
+  if (bound.length === 0) reject('reqboard_move 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
+  const req0 = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : bound[0]
+  if (req0 === undefined) {
+    reject(fmt('reqboard_move 未执行：需求 {id} 不是本窗口绑定的进行中需求', { id: explicitId }), 'REQBOARD_NOT_BOUND_TO_WINDOW')
+  }
+  const from = req0.status
 
-      const from = target.status
-      // ── REQ-ff20ca t3：产物确认型人工门的判定，从"谁调用"改为"产物是否已确认" ──
-      // 语义内核不变（仍须人确认），但确认来源不限：看板一键确认 或 会话经
-      // ask_user_question 落章（reqboard_confirm_artifact）——后者此前无法让门开启。
-      const gateKind = ARTIFACT_CONFIRM_GATES[`${from}>${to}`]
-      const gateConfirmed = gateKind !== undefined
-        && (target.artifacts ?? []).some(x => x.kind === gateKind && x.confirmedAt !== undefined)
-      if (gateConfirmed && HUMAN_ONLY_REQ_TRANSITIONS.has(`${from}>${to}`)) {
-        // 门已开启（确认动作已由人完成）：只校验转移合法性，不再受 human_gate 限制
-        if (!canReqTransition(from, to)) {
-          reject(`reqboard_move 未执行：需求状态不允许从 ${from} 转移到 ${to}`, 'REQBOARD_INVALID_TRANSITION')
-        }
-      } else {
-        try {
-          assertReqTransition(from, to, 'agent')
-        } catch (err) {
-          const code = (err as { code?: string }).code ?? 'invalid_transition'
-          if (code === 'human_gate') {
-            const need = gateKind !== undefined ? `（kind=${gateKind}）` : ''
-            reject(
-              `reqboard_move 未执行：${from} → ${to} 需要人确认产物${need}。`
-              + '首选：调 reqboard_ask_confirm 弹框请人确认（肯定答复自动落章+推进）；'
-              + '兜底：用户在项目看板一键确认。'
-              + '（取消/验收通过/归档类决定仍只能由人操作）'
-              + gateQuestionCard(gateKind, from, to),
-              'REQBOARD_HUMAN_GATE',
-            )
-          }
-          reject(`reqboard_move 未执行：${(err as Error).message}`, code)
-        }
-      }
-      // ── 产物闸门（存在 + 已确认）：agent 侧此前缺失，本次补齐（与看板 API 同源）──
-      const gateFailure = assertArtifactGates(target, from, to)
-      if (gateFailure !== undefined) {
-        const hint = gateFailure.code === 'artifact_not_confirmed'
-          ? '；首选调 reqboard_ask_confirm 弹框请人确认（自动落章+推进），兜底用户看板一键确认'
-            + gateQuestionCard(gateFailure.kind, from, to)
-          : ''
-        reject(
-          `reqboard_move 未执行：${gateFailure.message}${hint}`,
-          gateFailure.code === 'artifact_not_confirmed' ? 'REQBOARD_ARTIFACT_NOT_CONFIRMED' : 'REQBOARD_MISSING_ARTIFACT',
-        )
-      }
+  // 任务已迁出台账（v9）：完整性判据的任务集从 TaskStore 取一次，预检与 mutate 内复查共用同一份
+  // 快照（mutate 回调是同步契约，不能在回调里 await；并发漂移由需求侧 from 复查兜底）。
+  const store = taskStoreOf(deps)
+  const reqTasks = await store.listByRequirement(req0.id)
 
-      // ── REQ-2d1c74 FR-2：G2 文档集完整性闸门（design→decomposing 四条转移路径之一）──
-      if (gateForTransition(from, to)?.id === 'G2') {
-        const completeness = await checkDesignCompletenessGate(deps.docs, target)
-        if (completeness !== undefined) {
-          reject('reqboard_move 未执行：' + completeness.message, completeness.code)
-        }
-      }
+  // 只读预检（拒绝次序与会话侧一致：先产物闸门，后任务完整性）
+  const preGate = assertArtifactGates(req0, from, to)
+  if (preGate !== undefined) reject(fmt('reqboard_move 未执行：{msg}', { msg: preGate.message }), preGate.code)
+  const preGap = taskCompletenessGap(req0, reqTasks, to)
+  if (preGap !== undefined) reject(fmt('reqboard_move 未执行：{msg}', { msg: preGap }), 'REQBOARD_TASK_INCOMPLETE')
 
-      const result = await deps.repo.mutate('requirement-moved', (ledger) => {
-        const req = ledger.requirements.find(r => r.id === target.id)
-        if (req === undefined) return undefined
-        // 与外部同款判定（并发下 req.status 可能与外部快照不同）
-        const innerKey = `${req.status}>${to}`
-        const innerKind = ARTIFACT_CONFIRM_GATES[innerKey]
-        const innerConfirmed = innerKind !== undefined
-          && (req.artifacts ?? []).some(x => x.kind === innerKind && x.confirmedAt !== undefined)
-        if (innerConfirmed && HUMAN_ONLY_REQ_TRANSITIONS.has(innerKey)) {
-          if (!canReqTransition(req.status, to)) {
-            throw Object.assign(new Error(`需求状态不允许从 ${req.status} 转移到 ${to}`), { code: 'invalid_transition' })
-          }
-        } else {
-          assertReqTransition(req.status, to, 'agent')
-        }
-        // REQ-b545fe t2：使用唯一迁移助手（结算离开节点+迁移状态+记录事件带快照）
-        transitionRequirement(req, to, {
-          at: deps.clock.now(),
-          actor: { kind: 'agent', sessionId: windowKey },
-          reason: reason || undefined,
-          snap: captureSnapshot(deps, windowKey),
-        })
-        req.comments.push({
-          id: deps.ids.comment(),
-          body: `[窗口推进] ${from} → ${to}${reason ? `：${reason}` : ''}（窗口 ${windowKey}）`,
-          createdAt: deps.clock.now(),
-          createdBy: { kind: 'agent', sessionId: windowKey },
-        })
-        // 推进到 implementing 时顺带重算（任务可能已全部完成）
-        const advanced = applyTaskRollup(
-          ledger,
-          { now: deps.clock.now(), commentId: () => deps.ids.comment(), snapshot: () => captureSnapshot(deps, windowKey) },
-          req.id,
-        )
-        return { requirements: [req, ...advanced] }
-      })
-      const changed = (result.changed.requirements ?? [])[0]
-      if (changed === undefined) {
-        reject('reqboard_move 写入失败：台账状态异常', 'REQBOARD_STORE_INCONSISTENT')
-      }
-      // 文档待同步警告（REQ-2e9473 t19/W8）：未销标时推进给出可见提示
-      const pendingReq = deps.repo.snapshot().requirements.find(r => r.id === changed.id)
-      const pendingSync = docSyncPendingOf(pendingReq ?? {})
-      return {
-        success: true,
-        requirement_id: changed.id,
-        from,
-        to: changed.status,
-        ...(pendingSync.length > 0
-          ? {
-              doc_sync_pending: pendingSync,
-              doc_sync_warning: docSyncSummary(pendingReq ?? {}) + '（重交下游文档后销标）',
-            }
-          : {}),
-        note:
-          changed.status === to
-            ? `已推进：${from} → ${to}`
-            : `已推进：${from} → ${changed.status}（派生规则顺带推进）`,
-      }
-    }
+  const actor = { kind: 'agent' as const, sessionId: windowKey }
+  // 用例边界：domain 状态机抛 human_gate，agent 工具的传输码是 REQBOARD_HUMAN_GATE（FR-7 契约）。
+  const result = await deps.repo.mutate('requirement-moved', (ledger) => {
+    const req = ledger.requirements.find(r => r.id === req0.id)
+    if (req === undefined || req.status !== from) return undefined
+    // mutate 内复查（防并发漂移）
+    const gate = assertArtifactGates(req, req.status, to)
+    if (gate !== undefined) throw Object.assign(new Error(gate.message), { code: gate.code })
+    const gap = taskCompletenessGap(req, reqTasks, to)
+    if (gap !== undefined) throw Object.assign(new Error(gap), { code: 'REQBOARD_TASK_INCOMPLETE' })
+    const at = deps.clock.now()
+    // 收敛点：human_gate / invalid_transition / system_gate 在此抛错 → mutate 回滚，状态不变
+    transitionRequirement(req, to, {
+      at,
+      actor,
+      ...(reason.length > 0 ? { reason } : {}),
+      snap: captureSnapshot(deps, windowKey),
+    })
+    req.comments.push({
+      id: deps.ids.comment(),
+      body: fmt('[状态] {from} → {to}（reqboard_move{why}）', { from, to, why: reason.length > 0 ? '：' + reason : '' }),
+      createdAt: at,
+      createdBy: actor,
+    })
+    return { requirements: [req] }
+  }).catch(mapAgentError)
+  const changed = (result.changed.requirements ?? [])[0]
+  return { success: true, requirement_id: req0.id, from, to, status: changed?.status ?? to }
+}

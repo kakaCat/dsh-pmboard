@@ -7,30 +7,20 @@
  */
 import type { UseCaseDeps } from '../ports.js'
 import {
-  asScope,
-  assertDagAcyclic,
   normalizePlanTasks,
   normalizeText,
   planApproved,
-  recordStatus,
   type PlanTask,
-  type TaskRecord,
 } from '../../shared/protocol.js'
 import { checkDecomposeIdempotency } from '../../domain/workflow/DecomposeSpec.js'
-import { clearDocSync } from '../../domain/workflow/DocSyncSpec.js'
 import { openRequirementsFor } from '../internal/window.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { describeConflicts, findWorkSurfaceConflicts } from '../internal/conflict-check.js'
-import { applyTaskRollup } from '../internal/rollup.js'
-import { captureSnapshot } from '../internal/token-usage.js'
-import { registerArtifact } from '../internal/artifact-gates.js'
-import { syncRequirementMarks } from './SyncRequirementMarks.js'
 import { assertClauseCoverageGate, requirementRefsOf } from '../internal/content-gate-wiring.js'
-import {
-  reject,
-  agentIdFromExec,
-  requireLiveDriver,
-} from '../internal/support.js'
+import { reject, agentIdFromExec, requireLiveDriver } from '../internal/support.js'
+import { landPlanTasks, type PlanTaskDraft } from '../internal/plan-landing.js'
+import { queueRelativePath } from '../../domain/queue/queuePath.js'
+import { taskStoreOf } from './queue-access.js'
 
 export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
       const windowKey = agentIdFromExec(deps, exec)
@@ -53,6 +43,16 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
           'REQBOARD_NOT_BOUND_TO_WINDOW',
         )
       }
+      
+      // ── REQ-260925212722-96e7 FR-8：Dive armed 检查 ──────────────────────
+      // Dive 模式 armed 时，禁止手动调用拆分工具（自动流程接管）
+      if (target.dive?.activation === 'armed') {
+        reject(
+          'reqboard_decompose 未执行：需求 ' + target.id + ' 的 Dive 自动流程已启用，不允许手动拆分。若需手动操作，请先调用 reqboard_clear_pause() 解除锁定。',
+          'REQBOARD_DIVE_ARMED'
+        )
+      }
+      
       if (target.status === 'draft') {
         reject('reqboard_decompose 未执行：需求还在立项态，先 reqboard_move 到 brainstorming（方案确认后）再拆', 'REQBOARD_BAD_STATUS')
       }
@@ -69,7 +69,8 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
       // 路径必然先到 decomposing 再调 decompose → 被自己的守卫拒死，审批流水线自锁。
       // 正解：幽灵任务的唯一判据是"已有任务"（防线②），状态只用于区分"是否已越过拆分"。
       // 两道防线的判定在 domain/workflow/DecomposeSpec.ts（REQ-47939a t3）。
-      const existingTasks = snapshot.tasks.filter(t => t.requirementId === target.id && t.status !== 'canceled')
+      // 任务已迁出台账（v9）：幂等守卫的"已有任务"判据改读队列。
+      const existingTasks = (await taskStoreOf(deps).listByRequirement(target.id)).filter(t => t.status !== 'canceled')
       const idempotency = checkDecomposeIdempotency(target.status, existingTasks)
       if (!idempotency.ok) {
         reject('reqboard_decompose 未执行：' + idempotency.reason, idempotency.code)
@@ -93,10 +94,7 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
       //   normalizePlanTasks 强制，人工把关在「拆分确认门」（decomposing→implementing）。
       //  路径 B（计划携带任务表，兼容旧流程）：落库以批准的计划为准；显式传 tasks 时
       //   key 集合必须一致（防「批了 A、落库 B」）。
-      let draft: Array<{
-        key: string; title: string; description: string; phase: string; side: string
-        acceptance: string; implementation: string; context: string; dependsOn: string[]
-      }>
+      let draft: PlanTaskDraft[]
       if (planTasks.length === 0) {
         if (a.tasks === undefined || !Array.isArray(a.tasks) || a.tasks.length === 0) {
           reject(
@@ -116,6 +114,10 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
           implementation: t.implementation ?? '',
           context: '',
           dependsOn: [...(t.dependsOn ?? [])],
+          // 子卡段控制（REQ-260928185112-e20d）：两条路径（创作型 tasks / 计划携带任务表）都要透传，
+          // 否则拆分节点写了 stages/skipIntegration，落库时照样丢。
+          ...(t.stages !== undefined ? { stages: [...t.stages] } : {}),
+          ...(t.skipIntegration === true ? { skipIntegration: true } : {}),
         }))
       } else {
         // 显式传 tasks 时，key 集合必须与批准的计划一致——防止「批了 A、落库 B」
@@ -147,6 +149,10 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
           implementation: t.implementation ?? '',
           context: '',
           dependsOn: [...(t.dependsOn ?? [])],
+          // 子卡段控制（REQ-260928185112-e20d）：两条路径（创作型 tasks / 计划携带任务表）都要透传，
+          // 否则拆分节点写了 stages/skipIntegration，落库时照样丢。
+          ...(t.stages !== undefined ? { stages: [...t.stages] } : {}),
+          ...(t.skipIntegration === true ? { skipIntegration: true } : {}),
         }))
       }
       // 薄卡检测（REQ-2e9473 t04）：新计划在 plan_submit 已被强制要求 implementation（t03），
@@ -186,204 +192,39 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
       }
 
       const nowTs = deps.clock.now()
-      const reqDir = 'docs/requirements/' + target.id
       try {
-        const result = await deps.repo.mutate('task-created', (ledger) => {
-          const req = ledger.requirements.find(r => r.id === target.id)
-          if (req === undefined) return undefined
-          const used = new Set(ledger.tasks.map(t => t.id))
-          const idByKey = new Map<string, string>()
-          const records: TaskRecord[] = []
-          const commentLines: string[] = []
-          for (const d of draft) {
-            let id = deps.ids.task()
-            for (let guard = 0; guard < 50 && used.has(id); guard++) id = deps.ids.task()
-            used.add(id)
-            idByKey.set(d.key, id)
-            const record: TaskRecord = {
-              id,
-              requirementId: req.id,
-              title: d.title,
-              // cardDoc 随落库写死（REQ-260923134706-e72f 实测断链修复：此前只生成文档+登记产物，
-              // 没写这个字段，面板「（无任务卡）」不可点）；读路径另有产物回填兼容存量（QueryStageDetail.withCardDoc）
-              cardDoc: reqDir + '/tasks/' + id + '.md',
-              description: d.description,
-              phase: d.phase as TaskRecord['phase'],
-              side: d.side as TaskRecord['side'],
-              dependsOn: d.dependsOn.map(dep => idByKey.get(dep) ?? dep),
-              scope: asScope({}),
-              acceptance: d.acceptance,
-              implementation: d.implementation,
-              context: d.context,
-              status: 'todo',
-              blocked: false,
-              executions: [],
-              statusHistory: [],
-              comments: [],
-              version: 1,
-              createdAt: nowTs,
-              updatedAt: nowTs,
-              createdBy: { kind: 'agent', sessionId: windowKey },
-              updatedBy: { kind: 'agent', sessionId: windowKey },
-            }
-            recordStatus(record, 'todo', nowTs, { kind: 'agent', sessionId: windowKey }, '拆分落库（reqboard_decompose）')
-            records.push(record)
-          }
-          assertDagAcyclic([...ledger.tasks, ...records], req.id)
-          ledger.tasks.push(...records)
-          // 销标（REQ-2e9473 t19/W8）：拆分重做即完成 decomposition 同步（规则在 DocSyncSpec.ts，t3）
-          clearDocSync(req, 'decomposition')
-          for (const r of records) {
-            const deps = r.dependsOn.length > 0 ? '（依赖 ' + r.dependsOn.join(', ') + '）' : ''
-            commentLines.push('- ' + r.id + ' ' + r.title + deps)
-          }
-          req.comments.push({
-            id: deps.ids.comment(),
-            body:
-              '[拆分] 按已批准的拆分计划落库 ' + records.length + ' 个任务'
-              + (req.plan !== undefined ? '（计划 ' + req.plan.path + '，批准于 ' + new Date(req.plan.approvedAt ?? 0).toISOString() + '）' : '')
-              + '：\n' + commentLines.join('\n')
-              + '\n（窗口 ' + windowKey + '）',
-            createdAt: nowTs,
-            createdBy: { kind: 'agent', sessionId: windowKey },
-          })
-          req.version += 1
-          req.updatedAt = nowTs
-          req.updatedBy = { kind: 'agent', sessionId: windowKey }
-          const advanced = applyTaskRollup(
-            ledger,
-            { now: nowTs, commentId: () => deps.ids.comment(), snapshot: () => captureSnapshot(deps, windowKey) },
-            req.id,
-          )
-          return { tasks: records, requirements: [req, ...advanced] }
-        })
-        const req = (result.changed.requirements ?? [])[0]
-        const created = (result.changed.tasks ?? []).map((t, i) => ({
-          key: draft[i]?.key ?? '',
-          id: t.id,
-          title: t.title,
-          depends_on: [...t.dependsOn],
-        }))
-        // 调用 DSH todo_write 工具，注册任务到 DSH 任务系统（REQ-327bdf t-f0e869）。
-        // 为什么放在 mutate **之后**：repo.mutate 的回调是同步契约（返回 LedgerChange），
-        // 在里面 await 会让整个模块无法被 esbuild/vite 解析（实测：31 个测试文件连模块都加载不了）。
-        // 可用性守卫：exec.tools 只在真实 DSH 会话里存在，测试夹具与直连调用没有它——
-        // 注册 todo 是附加动作，不该让"没这个工具"变成 decompose 失败。
         const tools = (exec as { tools?: { todo_write?: (a: unknown) => Promise<unknown> } } | undefined)?.tools
-        if (tools?.todo_write !== undefined && created.length > 0) {
-          await tools.todo_write({
-            todos: created.map(c => ({ content: c.id + ': ' + c.title, status: 'pending' })),
-          })
-        }
-        // ── 产物登记（REQ-31e11f t4）：decomposition + 每任务 task_detail ──
-        const decompPath = reqDir + '/decomposition.md'
-        // 生成 decomposition.md（计划任务表 ↔ 落库任务 id 对照）
-        const decompContent = [
-          '# ' + target.id + ' 拆分清单（decomposition）',
-          '',
-          '> 自动生成于 reqboard_decompose：计划任务表 ↔ 落库任务 id 对照',
-          '',
-          '## §1 RTM 覆盖对照表（根编号 ↔ 任务卡）',
-          '',
-          '| 根编号 | 计划 key | 任务 id | 标题 | 状态 |',
-          '|--------|---------|--------|------|------|',
-          ...created.flatMap(c => {
-            const t = (result.changed.tasks ?? []).find(x => x.id === c.id)!
-            const refs = refsByKey.get(c.key) ?? []
-            const cells = refs.length > 0 ? refs : ['—（未声明接收任何条款）']
-            return cells.map(r => '| ' + r + ' | ' + c.key + ' | ' + c.id + ' | ' + t.title + ' | ' + t.status + ' |')
-          }),
-          '',
-          '## §2 任务清单',
-          '',
-          '| 计划 key | 任务 id | 标题 | 阶段 | 端侧 | 依赖 | 验收标准 |',
-          '|---------|--------|------|------|------|------|---------|',
-          ...created.map(c => {
-            const t = (result.changed.tasks ?? []).find(x => x.id === c.id)!
-            return '| ' + c.key + ' | ' + c.id + ' | ' + t.title + ' | ' + t.phase + ' | ' + t.side + ' | ' + (c.depends_on.join(', ') || '-') + ' | ' + (t.acceptance || '-') + ' |'
-          }),
-          '',
-        ].join('\n')
-        const docs = deps.docs
-        if (!docs.exists(decompPath)) {
-          await docs.write(decompPath, decompContent)
-        }
-        // 生成每任务自足任务卡骨架
-        for (const c of created) {
-          const t = (result.changed.tasks ?? []).find(x => x.id === c.id)!
-          const taskPath = reqDir + '/tasks/' + c.id + '.md'
-          if (!docs.exists(taskPath)) {
-            const depTitles = c.depends_on.map(depId => {
-              const dep = (result.changed.tasks ?? []).find(x => x.id === depId)
-              return dep ? dep.title : depId
-            })
-            // 三要素节（在做什么 / 解决什么问题 / 得到什么结果）是**契约**，不是排版：
-            // REQ-640a55 的三要素门禁按标题行定位这三节，缺任一或正文为空都会被 task_card_incomplete 拦下。
-            // 改名请同步 AmendTaskAcceptance 的段定位正则（它按「## 得到什么结果」找段做整段替换）。
-            const taskContent = [
-              '# ' + c.id + ' ' + t.title,
-              '',
-              '> 任务卡骨架（reqboard_decompose 自动生成）；汇报经 reqboard_task_report 追加到本文件',
-              '',
-              '## 在做什么',
-              t.title,
-              '',
-              '## 解决什么问题',
-              t.context || '（未填写——开工前补充这张卡要解决的业务问题）',
-              '',
-              '## 范围',
-              '- 阶段：' + t.phase,
-              '- 端侧：' + t.side,
-              ...(t.scope && (t.scope.apis.length > 0 || t.scope.tables.length > 0 || t.scope.files.length > 0)
-                ? ['- APIs：' + t.scope.apis.join('、'), '- 表：' + t.scope.tables.join('、'), '- 文件：' + t.scope.files.join('、')]
-                : []),
-              '',
-              '## 得到什么结果',
-              t.acceptance || '（未填写）',
-              '',
-              '## 实施方案（implementation）',
-              t.implementation || '（薄卡：未填写——开工前必须先补实施方案）',
-              '',
-              '## 上游产出摘要（dependsSummary）',
-              ...(depTitles.length > 0 ? depTitles.map(d => '- ' + d) : ['- （无依赖）']),
-              '',
-              '## 执行方式提示（executorHint）',
-              '优先新窗口或 subagent 执行；按本卡自足执行，不读会话历史',
-              '',
-            ].join('\n')
-            await docs.write(taskPath, taskContent)
-          }
-        }
-        // 需求文档同步逐条接收状态（T-5 / FR-3）：拆分那次就把「谁接了哪条」落到文档上，
-        // 而不是等第一张卡动起来才出现。回写失败不阻断拆分（文档是留痕面）。
-        try {
-          const snap = deps.repo.snapshot()
-          const r0 = snap.requirements.find(x => x.id === target.id)
-          if (r0 !== undefined) await syncRequirementMarks(deps, r0, snap.tasks)
-        } catch {
-          /* 回写失败不阻断拆分 */
-        }
-        // 登记产物
-        await deps.repo.mutate('requirement-updated', (ledger) => {
-          const r = ledger.requirements.find(x => x.id === target.id)
-          if (r === undefined) return undefined
-          registerArtifact(r, {
-            stage: 'decomposing', kind: 'decomposition', path: decompPath,
-            registeredAt: nowTs, registeredBy: { kind: 'agent', sessionId: windowKey },
-          })
-          for (const c of created) {
-            registerArtifact(r, {
-              stage: 'implementing', kind: 'task_detail', path: reqDir + '/tasks/' + c.id + '.md',
-              registeredAt: nowTs, registeredBy: { kind: 'agent', sessionId: windowKey },
-            })
-          }
-          return { requirements: [r] }
+        const landed = await landPlanTasks(deps, {
+          requirementId: target.id,
+          windowKey,
+          nowTs,
+          draft,
+          refsByKey,
+          tools,
         })
+        const created = landed.created
+        const rtmData = landed.rtm
+        // t11（REQ-260927202051-f6df FR-1）：拆分后任务落在哪份队列文件——返回体必须给出**非空**
+        // `queue_file`，否则调用方无从得知"台账没长东西，那卡去哪了"。
+        // 路径口径的**单一事实源在 domain**（`domain/queue/queuePath.ts`，零 import，application 可直接用）；
+        // 基础设施层的 `QueueRepository.queueRelativePath` 只是它的再导出，两份实现复活即契约测试红。
+        const queueFile = queueRelativePath(target.id)
         return {
           success: true,
           requirement_id: target.id,
-          requirement_status: req?.status ?? target.status,
+          requirement_status: landed.requirement?.status ?? target.status,
+          queue_file: queueFile,
+          tasks_created: landed.createdIds.length,
           created,
+          ...(rtmData !== undefined
+            ? {
+                task_coverage: rtmData.task_coverage,
+                coverage_check: rtmData.coverage_check,
+                ...(rtmData.coverage_check.unreceived_clauses.length > 0
+                  ? { warning: '⚠️ 部分 FR 未被任务覆盖：' + rtmData.coverage_check.unreceived_clauses.join(', ') + '（覆盖率 ' + rtmData.coverage_check.coverage_rate + '%）' }
+                  : {}),
+              }
+            : {}),
           ...(thinCards.length > 0
             ? {
                 thin_cards: thinCards,

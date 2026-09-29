@@ -20,6 +20,8 @@ import type { MainStageKey, RequirementStatus, StageKey } from '../domain/requir
 import type { TaskStatus } from '../domain/task/TaskStatus.js'
 import type { RequirementCategory } from '../domain/requirement/Requirement.js'
 import type { ArtifactKind, ArchiveDoc, ArchiveDocRule } from '../domain/artifact/ArtifactSpec.js'
+// 依赖传递归约（零 import 纯函数）：计划任务表的 depends_on 同样只保留**直接前置**。
+import { transitiveReduce } from '../domain/queue/transitiveReduction.js'
 
 // ---------------------------------------------------------------------------
 // 提示词难度级别（用于注入不同复杂度的提示词）
@@ -237,6 +239,13 @@ export const ALL_TASK_PHASES: readonly TaskPhase[] = ['doc', 'ui', 'analysis', '
 export type TaskSide = 'frontend' | 'backend' | 'fullstack' | 'doc'
 export const ALL_TASK_SIDES: readonly TaskSide[] = ['frontend', 'backend', 'fullstack', 'doc']
 
+/**
+ * reqboard_submit 的提交类型（工具 kind 入参）。注意 'design' 与需求状态同名但**不是**状态，
+ * 不参与状态判定；定义放 shared 层是因为适配层（tools/http）禁止出现状态名字面量（layer-boundary 门禁）。
+ */
+export type SubmitKind = 'requirement' | 'plan' | 'verification' | 'archive' | 'design'
+export const SUBMIT_KINDS: readonly SubmitKind[] = ['requirement', 'plan', 'verification', 'archive', 'design']
+
 /** 该 side 默认是否需要联调（建卡未显式标 skipIntegration 时生效）。 */
 export function defaultNeedsIntegration(side: TaskSide): boolean {
   return side === 'frontend' || side === 'backend'
@@ -400,6 +409,12 @@ export interface StageTaskRef {
   stageKind?: StageKind
   /** 失败重跑次数（默认 0；失败回退时 +1） */
   attempt?: number
+  /**
+   * 该卡显式声明的子卡段（卡片层契约 2026-09-28）：
+   * `[]` = **本卡不落链（solo）**；缺省 = 未指定走映射（chain 默认）。
+   * 视图靠它区分「不需子卡」与「需要但未生成」——没有它就只剩"有没有子卡"这一结果判据。
+   */
+  stages?: StageKind[]
 }
 
 export interface StageTaskExecution extends StageTaskRef {
@@ -423,14 +438,109 @@ export interface DesignDocStatus {
   exempted?: string
 }
 
-export interface DesignStageBody { plan?: PlanRecord; category?: RequirementCategory; designDocs?: DesignDocStatus[] }
-export interface DecomposeStageBody { decompositionDoc?: string; tasks: StageTaskRef[]; planTasks: PlanTask[] }
+/**
+ * 设计文档逐份登记态（T-3，REQ-260924213231-b1c4 / I-1/I-2 / FR-1）。
+ *
+ * 与 `DesignDocStatus`（已交/未交，设计节点展示用）的区别：本投影把**磁盘 / 产物簿 / 确认章**
+ * 三源合成一行，供 `reqboard_submit(kind=design)` 返回体与 `reqboard_status` 逐份上报——
+ * 让 agent 不打开看板也能读出「未登记（磁盘有、产物簿无） / 待确认（已登记未落章） / 已落章」。
+ * 派生投影，**不落盘**：每次查询按目录扫描 + `RequirementRecord.artifacts` 现算。
+ */
+export interface DesignDocRegistration {
+  /** 文件名（如 architecture.md） */
+  name: string
+  /** 工作区相对路径（如 docs/requirements/REQ-x/design/architecture.md） */
+  path: string
+  /** 磁盘上是否真实存在（目录扫描结果） */
+  on_disk: boolean
+  /** 产物簿是否有该条（stage=design 且 kind=design 且 path 命中） */
+  registered: boolean
+  /** 是否已落章（`StageArtifact.confirmedAt !== undefined`） */
+  confirmed: boolean
+  /** 有效豁免理由（requirement.md front-matter design_exempt） */
+  exempted?: string
+  /** 条件必交标记（仅声明了对应端侧时必交） */
+  conditional?: 'frontend' | 'backend'
+}
+
+// ── 追溯与覆盖度投影（REQ-260926140539-457b FR-6） ─────────────────────────
+// 数据源是 canonical RTM YAML（tools/reqboard/src/rtm 产出），由 host 侧
+// stage-overview/assembler.assembleTraceability() 读盘后挂到节点 body 上，供看板
+// 「🔗 追溯」Tab 渲染。**全部可选**：RTM 缺失时字段不出现，前端按"无追溯数据"降级
+// （FR-9：RTM 是增强层，不得因其缺失而打断详情渲染）。
+
+/** 三级追溯链投影（fr→设计→任务→测试，含跨级推导）。 */
+export interface TraceabilityProjection {
+  /** FR → 设计章节 */
+  fr_to_design?: Record<string, string[]>
+  /** 设计章节 → 任务 */
+  design_to_tasks?: Record<string, string[]>
+  /** FR → 任务（跨级） */
+  fr_to_tasks?: Record<string, string[]>
+  /** 任务 → 测试用例 */
+  task_to_tests?: Record<string, string[]>
+  /** FR → 测试用例（跨级） */
+  fr_to_tests?: Record<string, string[]>
+}
+
+/** 设计覆盖度（有设计章节服务的 FR / FR 总数）。 */
+export interface DesignCoverageProjection {
+  total: number
+  covered: number
+  uncovered: string[]
+  /** 百分比（0-100），不是 0-1 小数。 */
+  rate: number
+  total_frs?: number
+  covered_frs?: number
+}
+
+/** 实施覆盖度（有任务实现的设计章节 / 设计章节总数）。 */
+export interface ImplementationCoverageProjection {
+  total: number
+  covered: number
+  uncovered: string[]
+  rate: number
+  total_designs?: number
+  covered_designs?: number
+}
+
+/** 测试覆盖度（有测试用例覆盖的任务 / 任务总数）。 */
+export interface TestingCoverageProjection {
+  rate: number
+  total?: number
+  covered?: number
+  uncovered?: string[]
+  total_tasks?: number
+  tested_tasks?: number
+  untested?: string[]
+}
+
+export interface DesignStageBody {
+  plan?: PlanRecord
+  category?: RequirementCategory
+  designDocs?: DesignDocStatus[]
+  traceability?: TraceabilityProjection
+  coverage?: DesignCoverageProjection
+}
+export interface DecomposeStageBody {
+  decompositionDoc?: string
+  tasks: StageTaskRef[]
+  planTasks: PlanTask[]
+  traceability?: TraceabilityProjection
+  coverage?: ImplementationCoverageProjection
+}
 export interface ImplementStageBody {
   tasks: StageTaskExecution[]
   /** 窗口码 → 任务 id 列表（上下文分担可见化） */
   byWindow: Record<string, string[]>
+  traceability?: TraceabilityProjection
+  coverage?: ImplementationCoverageProjection
 }
-export interface AcceptStageBody { verification?: VerificationRecord }
+export interface AcceptStageBody {
+  verification?: VerificationRecord
+  traceability?: TraceabilityProjection
+  coverage?: TestingCoverageProjection
+}
 export interface DoneStageBody { completedAt?: number; verificationDecision?: 'pass' | 'rework' }
 export interface ArchiveStageBody { archive?: ArchiveRecord }
 
@@ -505,9 +615,17 @@ export interface PlanTask {
   executorHint?: ExecutorHint
   /**
    * 显式子卡 stages（REQ-4842fe FR-1b 逃生舱口）：覆盖映射表，受控枚举、非空、去重。
-   * 用于映射表盖不住的新流程；不填 = 按卡类型走默认模板。
+   * 用于映射表盖不住的新流程；不填 = 按卡 phase / 需求分类走默认模板。
+   *
+   * 2026-09-28（REQ-260928185112-e20d）：本字段此前**只到协议层为止**——normalizePlanTasks 收它、
+   * 但 Decompose/plan-landing 的 draft 映射没往下传，于是拆分节点写了也到不了子卡展开。
    */
   stages?: StageKind[]
+  /**
+   * 本卡无接口可联调 → 不落联调子卡（REQ-260928185112-e20d）：与 TaskRecord.skipIntegration 同语义。
+   * 此前只有 HTTP 建卡路由能设（routers/tasks.ts），**拆分节点表达不出来**——计划表里没有这个入口。
+   */
+  skipIntegration?: boolean
 }
 
 /**
@@ -707,22 +825,34 @@ export function normalizePlanTasks(raw: unknown): PlanTask[] {
     const stagesVerdict = o.stages === undefined || o.stages === null ? undefined : validateExplicitStages(o.stages as unknown[])
     if (stagesVerdict !== undefined && !stagesVerdict.ok) bad(stagesVerdict.error)
     const stages = stagesVerdict !== undefined && stagesVerdict.ok ? stagesVerdict.value : undefined
+    // 无接口可联调（REQ-260928185112-e20d）：计划表可显式声明，避免"零调用方"的卡也挂联调段。
+    const skipIntegration = (o.skipIntegration ?? o.skip_integration) === true
     out.push({
       key,
       title: normalizeTitle(o.title),
       ...(description.length > 0 ? { description } : {}),
       phase: o.phase === undefined ? 'implement' : asTaskPhase(o.phase),
       side: o.side === undefined ? 'fullstack' : asTaskSide(o.side),
-      dependsOn: asDependsOn(o.dependsOn ?? o.depends_on),
+      dependsOn: asDependsOn(o.dependsOn ?? o.depends_on ?? o['依赖']),
       ...(acceptance.length > 0 ? { acceptance } : {}),
       ...(implementation.length > 0 ? { implementation } : {}),
       ...(executorHint !== undefined ? { executorHint } : {}),
       ...(stages !== undefined ? { stages } : {}),
+      ...(skipIntegration ? { skipIntegration } : {}),
     })
   })
   // 第二遍依赖引用校验（自依赖/悬空/前向引用）——规则在 domain/task/Acceptability.ts（t2）。
   const refCheck = checkPlanTaskReferences(out.map(t => ({ key: t.key, dependsOn: t.dependsOn ?? [] })))
   if (!refCheck.ok) bad(refCheck.reason)
+  // 第三遍：**传递归约**（2026-09-29 用户裁定 B「数据侧」）。计划里写「全部前置」是作者的
+  // 习惯性写法（如 t6 依赖 t2,t3,t4,t5），但 t2/t3 已由 t4 蕴含——落库前归约成「直接前置」，
+  // 使计划、队列、画布三处的依赖口径一致，不再各自折叠（唯一实现在 domain/queue/transitiveReduction）。
+  // 归约只删有替代路径的项、保序，因此"只引用前面已定义的 key"这条不变量不受影响。
+  const reducedDeps = transitiveReduce(new Map(out.map(t => [t.key, t.dependsOn ?? []])))
+  for (const t of out) {
+    const next = reducedDeps.get(t.key)
+    if (next !== undefined) t.dependsOn = next
+  }
   for (const t of out) {
     const acc = checkAcceptance(t.key, t.acceptance ?? '')
     if (!acc.ok) bad(acc.reason)
@@ -773,7 +903,7 @@ export function asReqCategory(raw: unknown): RequirementCategory {
 // ---------------------------------------------------------------------------
 
 /** 推进事件类型（一次事件 = 需求上的一小步）。 */
-export type AdvanceEvent = 'OPEN_PARENT' | 'RUN_SUBTASK' | 'FINALIZE_PARENT' | 'ROLLUP' | 'PAUSE'
+export type AdvanceEvent = 'OPEN_PARENT' | 'RUN_SUBTASK' | 'FINALIZE_PARENT' | 'ROLLUP' | 'RETRY' | 'PAUSE'
 
 /** 一次推进事件的留痕（台账 `advance.history[]`；看板与排障消费）。 */
 export interface AdvanceRecord {
@@ -793,6 +923,8 @@ export interface AdvanceRecord {
 export interface AdvanceState {
   /** 单飞锁持有时间；超过 stale 阈值视为持有者已死，可被接管 */
   lockAt?: number
+  /** 单飞锁持有者的 run id（REQ-260925110957-552d 投递模型的幂等键） */
+  runId?: string
   /** 事件历史（append-only） */
   history?: AdvanceRecord[]
   /** 连续 noop 计数（达阈值触发停滞熔断） */
@@ -801,6 +933,123 @@ export interface AdvanceState {
   failureStreak?: number
   /** 上次暂停原因（fail / stagnation / manual） */
   pausedReason?: string
+}
+
+/**
+ * 断点记录（T-1，REQ-260924213231-b1c4 / FR-6 / I-8）。
+ *
+ * 同一需求只保留**一个**对象（后写覆盖前写），避免「两份真相」。写入源三选一：
+ *   A 交棒用例尾部 `stampCheckpoint`（reason="checkpoint"；stage/pendingAction 两字段未变则**不写**）
+ *   B `Dive 会话驱动器`（原 CaptureHook）的 `turn/end`（reason="error:<code>:<message>" / "aborted:<cause>" / "interrupted"）
+ *   B′ `reqboard_note_interruption(reason)` 工具兜底
+ * 字段缺失（存量记录）= 无断点：续跑输入包不渲染「## 断点」节，逐字节保持旧输出。
+ */
+export interface InterruptionRecord {
+  /** 中断/检查点时间戳（ms） */
+  at: number
+  /** 中断原因原文；交棒检查点写 "checkpoint" */
+  reason: string
+  /** 断点时的流水线阶段（RequirementStatus 之一） */
+  stage: string
+  /** 未完成动作（下一步工具命令），如 `reqboard_ask_confirm(target=artifact, kind=design)` */
+  pendingAction: string
+  /** 最后成功调用的工具名（可缺省） */
+  tool?: string
+}
+
+/** 挂起确认的后台作答结果（T-4；`reqboard_confirm_receipt` 与后台落章回填用）。 */
+export interface PendingConfirmationOutcome {
+  confirmed: boolean
+  advanced: boolean
+  userChoice?: string
+  userFeedback?: string
+}
+
+/**
+ * 挂起确认（T-4，REQ-260924213231-b1c4 / FR-3 / I-3/I-4）——**内存**态，不落盘。
+ *
+ * 产生：`reqboard_ask_confirm` 超过宽限窗口仍未作答（返回 `pending:true` + `ticket`，**不判失败**）；
+ * 消费：人作答后由后台落章 + 推进，agent 凭 `ticket` 调 `reqboard_confirm_receipt` 取回执
+ * （缺 ticket 时回退读台账 `confirmedAt`，以台账为准）。
+ */
+export interface PendingConfirmation {
+  /** 前缀 `pc-` + 随机 id，全局唯一 */
+  ticket: string
+  /** 归属窗口（回执不可跨窗口取用） */
+  windowKey: string
+  requirementId: string
+  /** 与 ask_confirm 同语义 */
+  target: 'artifact' | 'plan'
+  /** target=artifact 时的产物种类 */
+  kind?: ArtifactKind
+  createdAt: number
+  /**
+   * 阻塞等待期间被中止（ASK_ABORTED / signal.aborted）的留痕时间（REQ-260927123256-196b FR-4）。
+   * 缺省 = 未被中止。写首次即定（幂等）；也是过期基准——中止记录再获一个完整 TTL。
+   */
+  interruptedAt?: number
+  /** 后台作答后回填（缺省 = 尚未作答） */
+  outcome?: PendingConfirmationOutcome
+}
+
+/** 挂起确认 ticket 前缀（T-4 契约）：实现生成 ticket 时必须以此为前缀。 */
+export const PENDING_CONFIRM_TICKET_PREFIX = 'pc-'
+
+/**
+ * Dive 模式状态（REQ-260925212722-96e7）：需求自动续跑与阶段控制。
+ *
+ * Dive 模式让需求在 implementing 阶段自动执行任务，无需人工输入"继续"。
+ * 借鉴 DSH Goal 的 phase + activation 模式，但独立实现以适配需求流水线的多阶段特性。
+ */
+export interface RequirementDive {
+  /** 执行相位：idle=空闲；active=可自动续跑；paused=终态暂停（如回合耗尽 round-limit）。 */
+  phase: 'idle' | 'active' | 'paused'
+  
+  /** 激活状态：armed=自动续跑启用，disarmed=手动模式 */
+  activation: 'armed' | 'disarmed'
+  
+  /** 当前阶段已执行的回合数（仅「真正进入 history 的回合」才 +1） */
+  roundsInStage: number
+  
+  /** 每阶段最大回合数限制（历史字段；上限权威来源是 stage-configs 的 maxRounds） */
+  maxRoundsPerStage?: number
+  
+  /** 当前子阶段（如 implementing 中的具体任务） */
+  currentStage?: string
+  
+  /** 暂停原因（阻塞时记录，clear_pause 清除） */
+  pausedReason?: string
+  
+  /** 最后活跃时间（Unix 时间戳 ms） */
+  lastActiveAt?: number
+}
+
+/**
+ * Dive 自动续跑回合消息的来源标识（REQ-260926215013-1568 FR-10）——机器可识别，是
+ * pre-step 不变量守卫的锚点：只有 `source` 逐字段相等**且**内容与登记逐字相等的回合消息
+ * 才被认领；任何不一致者被拒并留痕（防旧 revision 的回合混入）。
+ *
+ * 刻意只做**包内结构类型**（不扩展 @deepseek-ai/dsh-llm 的 MessageSourceMap）：
+ * 本包依赖树解析不到 dsh-llm，且 application 层禁 @deepseek-ai/* import（层边界门禁）。
+ */
+export interface DiveRoundSource {
+  kind: 'dive'
+  /** 归属需求 */
+  requirementId: string
+  /** 预留时的需求 revision（乐观锁栅栏） */
+  revision: number
+  /** 预留的回合号 = roundsInStage + 1（严格 > 0） */
+  round: number
+}
+
+/** 判定任意 source 是否为 Dive 回合来源（非对象 / kind 不符 / round 非正数 → false）。 */
+export function isDiveRoundSource(source: unknown): source is DiveRoundSource {
+  if (typeof source !== 'object' || source === null) return false
+  const s = source as { kind?: unknown; requirementId?: unknown; revision?: unknown; round?: unknown }
+  return s.kind === 'dive'
+    && typeof s.requirementId === 'string' && s.requirementId.length > 0
+    && typeof s.revision === 'number' && Number.isFinite(s.revision)
+    && typeof s.round === 'number' && Number.isFinite(s.round) && s.round > 0
 }
 
 export interface RequirementRecord {
@@ -827,6 +1076,8 @@ export interface RequirementRecord {
   autoRun?: boolean
   /** 推进事件运行状态（单飞锁 + 事件历史 + 停滞计数；缺省 = 未跑过自动链） */
   advance?: AdvanceState
+  /** Dive 模式状态（REQ-260925212722-96e7）：需求自动续跑与阶段控制。缺省 = 未启用 Dive 模式（手动模式） */
+  dive?: RequirementDive
   /** 评审共创会话 */
   reviewSessionId?: string
   /** 立项来源窗口（自动立项时写入；人工建卡不填）——窗口↔需求 n:n 的需求侧锚点 */
@@ -858,6 +1109,11 @@ export interface RequirementRecord {
    * 下游重交（plan_submit/decompose）后销标；未销标时推进/验收给出警告。
    */
   docSyncPending?: DocSyncPending[]
+  /**
+   * 断点（T-1，REQ-260924213231-b1c4 FR-6）：当前阶段 + 未完成动作 + 中断原因。
+   * 缺省 = 无断点（存量记录读出即旧行为，续跑输入包逐字节不变）。
+   */
+  interruption?: InterruptionRecord
   /** 验收材料（agent 提交）+ 人工审核结论 */
   verification?: VerificationRecord
   /** 覆盖式通过留痕（REQ-a8d582 FR-4）：缺省 = 无覆盖 */
@@ -958,10 +1214,18 @@ export interface TaskRecord {
    * 汇报即留痕——转 done 前必须存在且 filesChanged/completed 至少其一非空。
    */
   lastReport?: TaskReportSummary
+  // ── FR-11 路线 A（REQ-260926140539-457b）：团队执行映射（可缺省 = 走 workflow 兼容路径） ──
+  /**
+   * 该子卡在 DSH Agent Teams 共享任务板上的 team task id（team task id ↔ 子卡 id 的持久映射）。
+   * 有值 = 该卡已派给团队 Worker；链靠它把"任务板 completed"对回这张卡。
+   */
+  teamTaskId?: string
   /** 执行方式提示（decompose 从 PlanTask 透传） */
   executorHint?: ExecutorHint
   /** 自足任务卡文档（decompose 生成骨架，task_report 追加汇报；同 StageTaskRef.cardDoc） */
   cardDoc?: string
+  /** 需求条款引用（RTM 覆盖度追踪：该任务实现/测试了哪些需求编号，如 ["FR-1", "FR-2"]） */
+  requirementRefs?: string[]
   skipIntegration?: boolean
   status: TaskStatus
   blocked: boolean
@@ -987,13 +1251,21 @@ export interface TaskRecord {
 // 迁移后文件里写的就是 5，常量必须与之一致，否则 load 会把 5 报告成 4、并在下一次写盘时把
 // 版本回退（迁移成果被静默抹掉）。⚠️ 运行时**不自动迁移**（见 design/migration.md §5）：
 // v4 台账仍可载入（字段缺失处按可选处理），迁移由人工跑 scripts/migrate-ledger.ts 完成。
-export const REQBOARD_SCHEMA_VERSION = 7
+//
+// REQ-260927202051-f6df t6：8 → **9**，并把 `tasks` 从台账**移除**（任务迁往
+// `docs/requirements/<REQ>/queue.json`，读方端口 = TaskStore）。
+// ⚠️ 这一次不是"再升一个号"那么轻：**读兼容从"宽容"翻转为"拒绝"**——v8（含 tasks）台账
+// 会被运行时**拒绝加载**并抛 `LEDGER_REQUIRES_MIGRATION`。理由见 design/architecture.md：
+// 静默丢弃 600+ 条任务、看板直接空白是最坏结果；宁可启动失败并指向迁移脚本。
+// 因此 v9 与读方改造（t7~t10）必须**同批上线**，中间不得发版（v9 台账 + 旧读方 = 界面空白）。
+export const REQBOARD_SCHEMA_VERSION = 9
 
 export interface ReqboardLedger {
   schemaVersion: number
   revision: number
   requirements: RequirementRecord[]
-  tasks: TaskRecord[]
+  // REQ-260927202051-f6df t6：`tasks: TaskRecord[]` 已移除（schemaVersion 9）。
+  // 任务卡的唯一存储 = 各需求的 queue.json；台账只留 requirements / triages。
   triages: TriageRecord[]
   /**
    * 迁移留痕（C2，REQ-47939a t10）：这份台账何时被谁升到过哪个版本。
@@ -1003,22 +1275,23 @@ export interface ReqboardLedger {
 }
 
 export function emptyLedger(): ReqboardLedger {
-  return { schemaVersion: REQBOARD_SCHEMA_VERSION, revision: 0, requirements: [], tasks: [], triages: [] }
+  return { schemaVersion: REQBOARD_SCHEMA_VERSION, revision: 0, requirements: [], triages: [] }
 }
 
 // ---------------------------------------------------------------------------
 // ID 生成（需求ID含时间戳，其他ID保持随机hex格式）
 // ---------------------------------------------------------------------------
 
-/** 格式化时间戳为 YYMMDDHHmmss（精确到秒）。 */
+/** 格式化时间戳为 YYMMDDHHmmss（2位年份，精确到秒）。 */
 function formatTimestamp(date: Date = new Date()): string {
-  const yy = date.getFullYear().toString().slice(-2)
+  const YY = date.getFullYear().toString().slice(-2)
   const MM = (date.getMonth() + 1).toString().padStart(2, '0')
   const DD = date.getDate().toString().padStart(2, '0')
   const HH = date.getHours().toString().padStart(2, '0')
   const mm = date.getMinutes().toString().padStart(2, '0')
   const ss = date.getSeconds().toString().padStart(2, '0')
-  return `${yy}${MM}${DD}${HH}${mm}${ss}`
+
+  return `${YY}${MM}${DD}${HH}${mm}${ss}`
 }
 
 export function newRequirementId(rand: () => number = Math.random): string {

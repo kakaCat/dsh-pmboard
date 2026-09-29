@@ -38,6 +38,8 @@ import {
   requireDirectHuman,
   requireLiveDriver,
 } from '../internal/support.js'
+import { syncRTMYaml } from '../internal/rtm-yaml.js'
+import { taskStoreOf } from './queue-access.js'
 
 /** 未立项的统一回执（success=false；绝不伪造 requirement_id）。 */
 function notCreated(
@@ -201,6 +203,25 @@ export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec:
 
   // ⑤ 原子推进 brainstorming（G0 的 to）
   const advanced = await advanceDraftToBrainstorming(deps, req.id, windowKey)
+
+  // ⑥ RTM 触发点 1（REQ-260926140539-457b FR-2）：**窗口已绑定**（createRequirementDirect 已写
+  // sourceSessionId）+ 阶段已落定 → 生成 rtm-lifecycle.yml，并带上绑定窗口（source_session）。
+  // 为什么放在推进之后：current_stage 直接取自台账，先写会立刻过期（FR-3 一致性优先）；
+  // 失败不阻断立项（syncRTMYaml 内部吞异常并结构化返回，FR-9）。
+  const captureTasks = await taskStoreOf(deps).listByRequirement(req.id)
+  syncRTMYaml(deps, captureTasks, req.id, 'create')
+
+  // ⑥.5 RTM 触发点 bind（REQ-260927100007-b8ba FR-12）：reqboard_capture 是当前
+  // "triage 确认（suggestedAction=create_req）"的等价动作——createRequirementDirect 已把
+  // 窗口绑定写进台账（sourceSessionId）。这里再用 bind 触发点刷一次**窗口投影**，
+  // 让 rtm-lifecycle.yml 的 requirement.source_session 始终与台账一致（含绑定关系变更）。
+  // 失败不阻断立项（syncRTMYaml 内部吞异常并结构化返回；此处 try/catch 兜底，FR-9）。
+  try {
+    syncRTMYaml(deps, captureTasks, req.id, 'bind')
+  } catch {
+    // RTM 是增强层：失败绝不影响立项回执。
+  }
+
   return {
     success: true,
     requirement_id: req.id,
