@@ -2,8 +2,8 @@
  * AcceptSheet RTM 集成辅助函数（REQ-260925172227-2d61）
  * 为 AcceptSheet 用例提供验收门禁检查和自动归档判定
  */
-import { AcceptanceGate } from '../../../../../tools/reqboard/src/rtm/acceptance-gate.js'
-import type { AcceptanceTracking } from '../../../../../tools/reqboard/src/types/rtm.js'
+import { AcceptanceGate } from '../../../vendor/reqboard/src/rtm/acceptance-gate.js'
+import type { AcceptanceTracking } from '../../../vendor/reqboard/src/types/rtm.js'
 import type { VerificationSheet } from '../../shared/protocol.js'
 
 export interface AcceptSheetRTMResult {

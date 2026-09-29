@@ -21,7 +21,7 @@ import {
 import { fmt } from '../../domain/text/fmt.js'
 import { renderAddressSection } from '../../domain/template/index.js'
 import type { RequirementRecord, StageArtifact } from '../../shared/protocol.js'
-import type { NodeInput } from '../../../../../tools/reqboard/src/dive/node-input.js'
+import type { NodeInput } from '../../../vendor/reqboard/src/dive/node-input.js'
 
 /** 台账投影（INV-8 五字段的输入包侧承载）。 */
 export interface LedgerProjection {

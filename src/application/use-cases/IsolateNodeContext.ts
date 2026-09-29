@@ -47,7 +47,7 @@ import {
   newWindowInstruction,
   requirementDocPath,
 } from '../internal/node-input-package.js'
-import { assembleNodeInput } from '../../../../../tools/reqboard/src/dive/node-input.js'
+import { assembleNodeInput } from '../../../vendor/reqboard/src/dive/node-input.js'
 import type { Category, Difficulty, PromptStage } from '../../domain/prompt/index.js'
 import { fmt } from '../../domain/text/fmt.js'
 import type { RequirementRecord } from '../../shared/protocol.js'

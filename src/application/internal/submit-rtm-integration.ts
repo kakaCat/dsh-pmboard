@@ -2,9 +2,9 @@
  * Submit RTM 集成辅助函数（REQ-260925172227-2d61）
  * 为 SubmitVerification 用例提供从 FR 文件生成验收追踪
  */
-import { RTMManager } from '../../../../../tools/reqboard/src/rtm/rtm-manager.js'
-import { scanFRDirectory } from '../../../../../tools/reqboard/src/rtm/fr-parser.js'
-import type { AcceptanceTracking } from '../../../../../tools/reqboard/src/types/rtm.js'
+import { RTMManager } from '../../../vendor/reqboard/src/rtm/rtm-manager.js'
+import { scanFRDirectory } from '../../../vendor/reqboard/src/rtm/fr-parser.js'
+import type { AcceptanceTracking } from '../../../vendor/reqboard/src/types/rtm.js'
 
 export interface SubmitRTMResult {
   acceptance_tracking: AcceptanceTracking[]

@@ -2,9 +2,9 @@
  * Status RTM 集成辅助函数（REQ-260925172227-2d61）
  * 为 QueryState 用例提供 FR 覆盖度和验收进度统计
  */
-import { CoverageChecker } from '../../../../../tools/reqboard/src/rtm/coverage-checker.js'
-import { AcceptanceGate } from '../../../../../tools/reqboard/src/rtm/acceptance-gate.js'
-import { scanFRDirectory } from '../../../../../tools/reqboard/src/rtm/fr-parser.js'
+import { CoverageChecker } from '../../../vendor/reqboard/src/rtm/coverage-checker.js'
+import { AcceptanceGate } from '../../../vendor/reqboard/src/rtm/acceptance-gate.js'
+import { scanFRDirectory } from '../../../vendor/reqboard/src/rtm/fr-parser.js'
 import type { TaskRecord, VerificationSheet } from '../../shared/protocol.js'
 
 export interface StatusRTMResult {

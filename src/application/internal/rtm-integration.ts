@@ -2,9 +2,9 @@
  * RTM 集成辅助函数（REQ-260925172227-2d61）
  * 为 Decompose 用例提供 RTM 数据生成和覆盖度检查
  */
-import { RTMManager } from '../../../../../tools/reqboard/src/rtm/rtm-manager.js'
-import { CoverageChecker } from '../../../../../tools/reqboard/src/rtm/coverage-checker.js'
-import { scanFRDirectory } from '../../../../../tools/reqboard/src/rtm/fr-parser.js'
+import { RTMManager } from '../../../vendor/reqboard/src/rtm/rtm-manager.js'
+import { CoverageChecker } from '../../../vendor/reqboard/src/rtm/coverage-checker.js'
+import { scanFRDirectory } from '../../../vendor/reqboard/src/rtm/fr-parser.js'
 import type { TaskRecord } from '../../shared/protocol.js'
 
 export interface RTMIntegrationResult {

@@ -21,7 +21,7 @@ import {
   readRTM,
   requirementsDir,
   getRTMPath,
-} from '../../../../tools/reqboard/src/rtm/file-io.js'
+} from '../../vendor/reqboard/src/rtm/file-io.js'
 import type {
   TraceabilityProjection,
   DesignCoverageProjection,

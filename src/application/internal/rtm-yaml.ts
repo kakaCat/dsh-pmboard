@@ -18,12 +18,12 @@
 import type { UseCaseDeps } from '../ports.js'
 import { recordRTMFailure, clearRTMFailure } from './rtm-health.js'
 import { flowProfileFor, type RequirementCategory, type RequirementRecord, type TaskRecord } from '../../shared/protocol.js'
-import { stageOfStatus } from '../../../../../tools/reqboard/src/rtm/lifecycle-generator.js'
-import { RTMGenerator, runRTMTrigger, type RTMTrigger, type RTMTriggerResult } from '../../../../../tools/reqboard/src/rtm/generator.js'
-import type { LedgerReader } from '../../../../../tools/reqboard/src/rtm/context.js'
-import type { GateResult, RTMTaskLike, WorkflowPhase } from '../../../../../tools/reqboard/src/rtm/types.js'
-import { rtmValidator } from '../../../../../tools/reqboard/src/rtm/validator.js'
-import type { TaskDetailUpdate } from '../../../../../tools/reqboard/src/rtm/implementing-generator.js'
+import { stageOfStatus } from '../../../vendor/reqboard/src/rtm/lifecycle-generator.js'
+import { RTMGenerator, runRTMTrigger, type RTMTrigger, type RTMTriggerResult } from '../../../vendor/reqboard/src/rtm/generator.js'
+import type { LedgerReader } from '../../../vendor/reqboard/src/rtm/context.js'
+import type { GateResult, RTMTaskLike, WorkflowPhase } from '../../../vendor/reqboard/src/rtm/types.js'
+import { rtmValidator } from '../../../vendor/reqboard/src/rtm/validator.js'
+import type { TaskDetailUpdate } from '../../../vendor/reqboard/src/rtm/implementing-generator.js'
 
 /** 触发点附加载荷。 */
 export interface RtmYamlPayload {
