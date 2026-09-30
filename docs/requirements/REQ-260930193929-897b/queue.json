@@ -1,0 +1,2602 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-260930193929-897b",
+  "schemaVersion": 9,
+  "generated_at": "2026-09-30T12:21:42.643Z",
+  "tasks": [
+    {
+      "id": "t-be2369",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "把「按哪个工作区读文档」收敛成一个统一入口",
+      "cardDoc": "docs/requirements/REQ-260930193929-897b/tasks/t-be2369.md",
+      "description": "新增 applyRequirementWorkspaceRoot(deps, req) 作为需求级根校正的唯一实现；既有写侧函数 syncWorkspaceRootForRequirement 改为委托它，写侧行为逐字不变。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) 既有 workspace-root 相关用例全绿，且写侧行为与改造前逐字一致（无断言变化）；2) `rg -n \"applyRequirementWorkspaceRoot\" src/` 显示该函数已导出且写侧走委托；3) `pnpm typecheck` 无新增错误。",
+      "implementation": "src/application/internal/support.ts：抽出并导出 applyRequirementWorkspaceRoot(deps, requirement)（requirement.workspaceRoot 非空 → applyWorkspaceRoot(deps, root)，同时校正 docs 与 queueRepo；否则 no-op，不抛错）；syncWorkspaceRootForRequirement 内部改为委托它，保留 exec 形参以兼容既有调用点（resolveWorkspaceRoot 纯函数不动）。沿用既有 applyWorkspaceRoot 的鸭子探测（setWorkspaceRoot 缺失即跳过，兼容内存替身）。不新增错误码。验证：pnpm vitest run（workspace-root 相关用例）+ pnpm typecheck。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-080aa0",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771020760,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 810,
+              "at": 1790771020763,
+              "totals": {
+                "uncachedInputTokens": 141432,
+                "outputTokens": 133747,
+                "cacheReadTokens": 17096064,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1059,
+              "at": 1790771257486,
+              "totals": {
+                "uncachedInputTokens": 165276,
+                "outputTokens": 164301,
+                "cacheReadTokens": 25604864,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 23844,
+              "outputTokens": 30554,
+              "cacheReadTokens": 8508800,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790771257478
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790770902579,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771020760,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "开工 t1：抽出需求级根校正的唯一入口"
+        },
+        {
+          "status": "done",
+          "at": 1790771257478,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t1 完成：唯一入口落地，研发/复核/测试三张子卡全完成；写侧行为等价，全量无新增失败"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a96043",
+          "body": "[状态] → in_progress：开工 t1：抽出需求级根校正的唯一入口（reqboard_task_move）",
+          "createdAt": 1790771020760,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-2ca56f",
+          "body": "[状态] → done：t1 完成：唯一入口落地，研发/复核/测试三张子卡全完成；写侧行为等价，全量无新增失败（reqboard_task_move）",
+          "createdAt": 1790771257478,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790770902579,
+      "updatedAt": 1790771257478,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790771098187,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/support.ts"
+        ],
+        "completed": [
+          "在 src/application/internal/support.ts 新增并导出 applyRequirementWorkspaceRoot(deps, requirement)：requirement.workspaceRoot 非空 → 同时校正 docs 与 queueRepo 的根；空/缺失 → no-op 且不抛错（沿用既有的鸭子探测，兼容内存替身）",
+          "syncWorkspaceRootForRequirement 改为内部委托新函数，保留原名与形参以兼容写侧 3 处既有调用点；已失效的 exec 形参改名 _exec 显式表「有意不用」（tsconfig noUnusedParameters 开启）",
+          "resolveWorkspaceRoot 纯函数按卡片要求原样未动",
+          "验证：tests/state-workspace-root.test.ts 7/7 通过；全量基线 103 失败 / 2627 通过（与改造前仓内存量基线一致，无新增失败）；tsc 全量 213 条错误均为存量，改动文件 support.ts 零错误",
+          "边界确认：写侧三处调用点（SubmitArtifact.ts:55 / SubmitArtifact.ts:212 / SubmitDesignArtifacts.ts:64）签名与调用方式未变"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771098187,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b9d8e9",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "让七个读文档的闸门都走这个统一入口",
+      "cardDoc": "docs/requirements/REQ-260930193929-897b/tasks/t-b9d8e9.md",
+      "description": "在两个读盘闸门的 7 处调用点，读盘之前先调用 t1 的统一入口，使判定只由需求自己声明的 workspaceRoot 决定。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-be2369"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) 定向用例（会话根 ≠ 需求根、文档在需求根）经四条通道均放行、无 gate_failure；2) `rg -n \"checkDesignCompletenessGate|checkDesignDecompositionGate\" src/` 的每个调用点在读盘前都有校正调用；3) `pnpm typecheck` 无新增错误。",
+      "implementation": "按目录逐处插入校正调用（都在读盘之前）：src/application/use-cases/AskConfirm.ts:107；src/application/internal/confirm-settle.ts:101 与 :169；src/application/use-cases/ConfirmArtifact.ts:89 与 :191；src/http/routers/requirements.ts:43 与 :223（看板侧无会话上下文，根只由需求记录决定）。不改任何闸门判定规则与文案结构。验证：pnpm vitest run tests/design-gate-workspace-root.test.ts + pnpm typecheck。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f57358",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771262796,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1065,
+              "at": 1790771262800,
+              "totals": {
+                "uncachedInputTokens": 165503,
+                "outputTokens": 164985,
+                "cacheReadTokens": 25923456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1147,
+              "at": 1790771564432,
+              "totals": {
+                "uncachedInputTokens": 176548,
+                "outputTokens": 171453,
+                "cacheReadTokens": 29559552,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 11045,
+              "outputTokens": 6468,
+              "cacheReadTokens": 3636096,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790771564425
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790770902579,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771262796,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "开工 t2：把两个读盘闸门共 7 处调用点接到统一入口"
+        },
+        {
+          "status": "done",
+          "at": 1790771564425,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t2 完成：7 处读盘闸门全部改走需求级根校正，四张子卡全完成，类型与全量测试零新增失败"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e26620",
+          "body": "[状态] → in_progress：开工 t2：把两个读盘闸门共 7 处调用点接到统一入口（reqboard_task_move）",
+          "createdAt": 1790771262796,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-b88100",
+          "body": "[状态] → done：t2 完成：7 处读盘闸门全部改走需求级根校正，四张子卡全完成，类型与全量测试零新增失败（reqboard_task_move）",
+          "createdAt": 1790771564425,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790770902579,
+      "updatedAt": 1790771564425,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790771493505,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/support.ts",
+          "src/application/use-cases/AskConfirm.ts",
+          "src/application/internal/confirm-settle.ts",
+          "src/application/use-cases/ConfirmArtifact.ts",
+          "src/http/routers/requirements.ts"
+        ],
+        "completed": [
+          "7 处读盘调用点全部改为「先按需求工作区校正根、再读盘」：AskConfirm 早返回、confirm-settle 两处（拆分内容硬门 + 完整性门自动推进）、ConfirmArtifact 两处（工具确认）、看板路由两处（移动/确认后的自动推进）",
+          "看板路径不再依赖「最后一次会话残留的根」：ctx.deps 只有 docs，按最小依赖面传参复用同一收敛函数",
+          "未改任何闸门判定规则与文案结构、未改状态机与台账协议、未把 reqboard_move 纳入闸门（均为设计明确的边界）",
+          "验证：tsc 全量 213 条错误与基线逐条 diff 为空、改动文件零错误；全量 vitest 103 失败（基线 103，无新增），通过数 2627 → 2628",
+          "四张子卡（研发/联调/复核/测试）全部完成并各自留下完工记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771493505,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-211525",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "用正反两组测试锁住：该放行的放行、该拦的照拦",
+      "cardDoc": "docs/requirements/REQ-260930193929-897b/tasks/t-211525.md",
+      "description": "新增 tests/design-gate-workspace-root.test.ts：正向（文档在需求根 → 放行）、反向（需求根下确实缺失 → 仍拦）、四条通道、以及「7 处调用点无新增旁路」的聚合断言。",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-b9d8e9"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) `pnpm vitest run tests/design-gate-workspace-root.test.ts` 全绿，且其中反向用例断言 gate_failure.code = design_doc_incomplete 且缺口含「requirement.md 不存在」；2) 用例中断言「读盘前根确实等于需求根」，使替身空过变成明确失败；3) 全量 `pnpm vitest run` 与基线对比无新增失败（本仓存在存量失败，须先记基线数再比对）。",
+      "implementation": "用真实 FileDocRepository 指向两个临时目录模拟会话根 A 与需求根 B（沿用 tests/design-completeness-gate.test.ts 模式）；若用替身，必须给它补 root + setWorkspaceRoot 能力——既有 tests/application/harness.ts 的 FakeDocs 无根概念，直接用会让断言空过。反向用例：删掉 B 下 requirement.md 后仍须被 design_doc_incomplete 拦。聚合断言：扫描两个读盘闸门的全部调用点，读盘前必须出现校正调用。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-11f6c8",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771564468,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1149,
+              "at": 1790771564471,
+              "totals": {
+                "uncachedInputTokens": 176548,
+                "outputTokens": 171453,
+                "cacheReadTokens": 29559552,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1329,
+              "at": 1790772010785,
+              "totals": {
+                "uncachedInputTokens": 197807,
+                "outputTokens": 194104,
+                "cacheReadTokens": 38656128,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 21259,
+              "outputTokens": 22651,
+              "cacheReadTokens": 9096576,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790772010777
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790770902579,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771564468,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t3 开工：写正反双向用例"
+        },
+        {
+          "status": "done",
+          "at": 1790772010777,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t3 完成：正反双向测试落地并证明判别力，三张子卡全完成"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c7b1d5",
+          "body": "[状态] → in_progress：t3 开工：写正反双向用例（reqboard_task_move）",
+          "createdAt": 1790771564468,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-6fb070",
+          "body": "[状态] → done：t3 完成：正反双向测试落地并证明判别力，三张子卡全完成（reqboard_task_move）",
+          "createdAt": 1790772010777,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790770902579,
+      "updatedAt": 1790772010777,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1790771943471,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts"
+        ],
+        "completed": [
+          "交付 tests/design-gate-workspace-root.test.ts（10 例），覆盖：正向放行并推进、反向仍拦（同错误根下真缺文件）、补齐后缺口消失、拆分内容硬门 fail-open 复现与校正后拦截、存量 no-op 三例、防新增旁路静态断言两例",
+          "判别力已证明而非声称：停用 confirm-settle 的校正 → 拆分内容硬门用例变红并复现 fail-open；停用 ConfirmArtifact 的校正 → 静态断言精确点名行号。两次均恢复并 grep 确认无残留",
+          "顺带修掉静态断言自身缺陷：原实现会把被注释掉的调用当成有效校正（自欺式通过），已排除注释行",
+          "结果：定向 10/10 通过；全量 103 失败（基线 103，无新增）/ 2638 通过（基线 2627）；tsc 213 条与基线一致",
+          "残留风险如实披露：看板路由与 ConfirmArtifact 通道只有接线位置的静态断言，没有运行时行为用例——验收材料不得表述为「四通道行为全覆盖」"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771943471,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-671de7",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "确认老需求与看板路径不受影响，并写好回滚方式",
+      "cardDoc": "docs/requirements/REQ-260930193929-897b/tasks/t-671de7.md",
+      "description": "保证需求未声明 workspaceRoot 时校正为 no-op；确认看板无会话上下文路径按需求记录解析；写清回滚步骤。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-b9d8e9"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) 存量需求（无 workspaceRoot）用例通过，行为与修复前逐字一致；2) 看板通道用例通过（不依赖「最后一次会话残留的根」）；3) `pnpm typecheck` 通过；4) 回滚步骤可执行：还原 5 个源文件 + 删除新增测试文件，无数据迁移与残留状态。",
+      "implementation": "在 support.ts 确认 no-op 分支在 requirement.workspaceRoot 缺失/空串时提前返回且不触碰 docs/queueRepo；对看板路由两处路径补用例；在 docs/requirements/REQ-260930193929-897b/notes/rollback.md 写明回滚清单与验证方式（还原 src/application/internal/support.ts、AskConfirm.ts、confirm-settle.ts、ConfirmArtifact.ts、http/routers/requirements.ts；删除 tests/design-gate-workspace-root.test.ts）。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a8ef9b",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790772010826,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1331,
+              "at": 1790772010831,
+              "totals": {
+                "uncachedInputTokens": 197807,
+                "outputTokens": 194104,
+                "cacheReadTokens": 38656128,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1415,
+              "at": 1790772352794,
+              "totals": {
+                "uncachedInputTokens": 209138,
+                "outputTokens": 203302,
+                "cacheReadTokens": 42554112,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 11331,
+              "outputTokens": 9198,
+              "cacheReadTokens": 3897984,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790772352785
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790770902579,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790772010826,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t4 开工：存量兼容、看板路径行为用例与回滚说明"
+        },
+        {
+          "status": "done",
+          "at": 1790772352785,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t4 完成：存量与看板路径补齐行为用例，回滚说明可执行；四张卡全部完成"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-dd8698",
+          "body": "[状态] → in_progress：t4 开工：存量兼容、看板路径行为用例与回滚说明（reqboard_task_move）",
+          "createdAt": 1790772010826,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-5e7377",
+          "body": "[状态] → done：t4 完成：存量与看板路径补齐行为用例，回滚说明可执行；四张卡全部完成（reqboard_task_move）",
+          "createdAt": 1790772352785,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790770902579,
+      "updatedAt": 1790772352785,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1790772286450,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts",
+          "docs/requirements/REQ-260930193929-897b/notes/rollback.md"
+        ],
+        "completed": [
+          "存量兼容：需求未声明 workspaceRoot 时校正为 no-op（三种形态各有单测），并有行为用例证明仍按会话根照常确认与推进",
+          "看板路径：补齐了 t3 复核披露的缺口——新增 2 例走真实 HTTP 处理链的行为用例（正向自动推进、反向仍拦），不再是「只有静态断言」",
+          "回滚说明：docs/requirements/REQ-260930193929-897b/notes/rollback.md，含 6 文件反向编辑清单、可执行步骤、回滚后验证命令与期望值，并警告不要用 git checkout（会连带丢弃其他未提交改动）",
+          "验证：定向 13/13 通过；全量 103 failed / 2641 passed（基线 103 / 2627，失败数持平）；tsc 213 条与基线 md5 一致",
+          "三张子卡（研发/复核/测试）全部完成并各自留下完工记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790772286450,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-59fed4",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "把「按哪个工作区读文档」收敛成一个统一入口·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "怎么验（可执行）：① `node_modules/.bin/vitest run tests/state-workspace-root.test.ts` → 期望 `7 passed`（证明写侧行为未被破坏）；② `grep -n \"export function applyRequirementWorkspaceRoot\" src/application/internal/support.ts` → 期望有输出（唯一入口已导出）；③ `grep -n \"applyRequirementWorkspaceRoot(deps, requirement)\" src/application/internal/support.ts` → 期望有输出（写侧走委托）；④ `node_modules/.bin/tsc --noEmit -p tsconfig.json` → 期望 src/application/internal/support.ts 零错误。",
+      "implementation": "src/application/internal/support.ts：抽出并导出 applyRequirementWorkspaceRoot(deps, requirement)（requirement.workspaceRoot 非空 → applyWorkspaceRoot(deps, root)，同时校正 docs 与 queueRepo；否则 no-op，不抛错）；syncWorkspaceRootForRequirement 内部改为委托它，保留 exec 形参以兼容既有调用点（resolveWorkspaceRoot 纯函数不动）。沿用既有 applyWorkspaceRoot 的鸭子探测（setWorkspaceRoot 缺失即跳过，兼容内存替身）。不新增错误码。验证：pnpm vitest run（workspace-root 相关用例）+ pnpm typecheck。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-be2369",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2985f8",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771098236,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 865,
+              "at": 1790771098238,
+              "totals": {
+                "uncachedInputTokens": 153273,
+                "outputTokens": 142506,
+                "cacheReadTokens": 19298944,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 885,
+              "at": 1790771116661,
+              "totals": {
+                "uncachedInputTokens": 154177,
+                "outputTokens": 145042,
+                "cacheReadTokens": 20162816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 904,
+              "outputTokens": 2536,
+              "cacheReadTokens": 863872,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790771116653
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e7b6ba",
+          "body": "[状态] → in_progress：研发子卡开工：实现统一入口（reqboard_task_move）",
+          "createdAt": 1790771098236,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-62f997",
+          "body": "[状态] → done：研发完成：唯一入口已落盘并自测通过（reqboard_task_move）",
+          "createdAt": 1790771116653,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790771020760,
+      "updatedAt": 1790772472586,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790771020760,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771098236,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "研发子卡开工：实现统一入口"
+        },
+        {
+          "status": "done",
+          "at": 1790771116653,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "研发完成：唯一入口已落盘并自测通过"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790771114494,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/support.ts"
+        ],
+        "completed": [
+          "新增 applyRequirementWorkspaceRoot(deps, requirement) 并导出：需求级根校正的唯一实现，同时校正 docs 与 queueRepo",
+          "syncWorkspaceRootForRequirement 改为委托新函数；失效的 exec 形参改名 _exec（noUnusedParameters 开启）",
+          "resolveWorkspaceRoot 按卡片要求未动",
+          "自测：tests/state-workspace-root.test.ts 7/7 通过；support.ts 零 tsc 错误（全量 213 条为存量）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771114494,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-10098f",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "把「按哪个工作区读文档」收敛成一个统一入口·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-59fed4"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/application/internal/support.ts：抽出并导出 applyRequirementWorkspaceRoot(deps, requirement)（requirement.workspaceRoot 非空 → applyWorkspaceRoot(deps, root)，同时校正 docs 与 queueRepo；否则 no-op，不抛错）；syncWorkspaceRootForRequirement 内部改为委托它，保留 exec 形参以兼容既有调用点（resolveWorkspaceRoot 纯函数不动）。沿用既有 applyWorkspaceRoot 的鸭子探测（setWorkspaceRoot 缺失即跳过，兼容内存替身）。不新增错误码。验证：pnpm vitest run（workspace-root 相关用例）+ pnpm typecheck。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-be2369",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f64025",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771122307,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 891,
+              "at": 1790771122311,
+              "totals": {
+                "uncachedInputTokens": 154405,
+                "outputTokens": 145889,
+                "cacheReadTokens": 20452736,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 899,
+              "at": 1790771125640,
+              "totals": {
+                "uncachedInputTokens": 154906,
+                "outputTokens": 146136,
+                "cacheReadTokens": 20743680,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 501,
+              "outputTokens": 247,
+              "cacheReadTokens": 290944,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790771125632
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9212a0",
+          "body": "[状态] → in_progress：复核子卡开工：核对写侧行为等价性与改动面（reqboard_task_move）",
+          "createdAt": 1790771122307,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-a3eb28",
+          "body": "[状态] → done：复核完成：行为等价、无越界，已记录范围外发现（reqboard_task_move）",
+          "createdAt": 1790771125632,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790771020760,
+      "updatedAt": 1790771125632,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790771020760,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771122307,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "复核子卡开工：核对写侧行为等价性与改动面"
+        },
+        {
+          "status": "done",
+          "at": 1790771125632,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "复核完成：行为等价、无越界，已记录范围外发现"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790771122354,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/support.ts"
+        ],
+        "completed": [
+          "等价性逐行比对：原实现的守卫在「需求无 workspaceRoot」时本就不做任何校正（resolveWorkspaceRoot 回落到会话 cwd 后，内层 if 仍要求需求级值非空），故委托化后行为等价——写侧无行为变化",
+          "确认写侧 3 处调用点签名与调用方式未变：SubmitArtifact.ts:55、SubmitArtifact.ts:212、SubmitDesignArtifacts.ts:64",
+          "确认未越界：resolveWorkspaceRoot 未动、未新增错误码、未改任何闸门判定规则与文案结构",
+          "独立验证：tests/state-workspace-root.test.ts 7/7 通过；改动文件 support.ts 在 tsc 全量输出中零错误",
+          "复核发现（记录在案、明确不在本卡范围）：写入侧落库路径（confirm-settle 门合并 → plan-landing）未做需求级根校正。本需求执行期间实测：批准计划时把 queue.json 与 4 份任务卡文档写进了另一个工作区（dsh-notice-webhook），且流程报「落库成功」；另导致 RTM 条款接收全部落成「未声明接收任何条款」。已向上单独上报待裁定"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771122354,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-85644c",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "把「按哪个工作区读文档」收敛成一个统一入口·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-10098f"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "怎么验（可执行）：① `node_modules/.bin/vitest run tests/state-workspace-root.test.ts` → 期望 `7 passed`；② `node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | grep -c \"error TS\"` → 期望 `213`（改动前基线值，零新增）；③ `node_modules/.bin/vitest run` → 期望 `Tests 103 failed`（与基线持平、无新增失败）。",
+      "implementation": "src/application/internal/support.ts：抽出并导出 applyRequirementWorkspaceRoot(deps, requirement)（requirement.workspaceRoot 非空 → applyWorkspaceRoot(deps, root)，同时校正 docs 与 queueRepo；否则 no-op，不抛错）；syncWorkspaceRootForRequirement 内部改为委托它，保留 exec 形参以兼容既有调用点（resolveWorkspaceRoot 纯函数不动）。沿用既有 applyWorkspaceRoot 的鸭子探测（setWorkspaceRoot 缺失即跳过，兼容内存替身）。不新增错误码。验证：pnpm vitest run（workspace-root 相关用例）+ pnpm typecheck。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-be2369",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2b3c2f",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771129230,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 905,
+              "at": 1790771129234,
+              "totals": {
+                "uncachedInputTokens": 155089,
+                "outputTokens": 146604,
+                "cacheReadTokens": 21035264,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 913,
+              "at": 1790771133815,
+              "totals": {
+                "uncachedInputTokens": 155541,
+                "outputTokens": 147092,
+                "cacheReadTokens": 21327488,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 452,
+              "outputTokens": 488,
+              "cacheReadTokens": 292224,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790771133806
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-57bb13",
+          "body": "[状态] → in_progress：测试子卡开工：跑定向与全量验证（reqboard_task_move）",
+          "createdAt": 1790771129230,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-ada638",
+          "body": "[状态] → done：测试完成：定向 7/7，全量无新增失败，改动文件零类型错误（reqboard_task_move）",
+          "createdAt": 1790771133806,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790771020760,
+      "updatedAt": 1790772472605,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790771020760,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771129230,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "测试子卡开工：跑定向与全量验证"
+        },
+        {
+          "status": "done",
+          "at": 1790771133806,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "测试完成：定向 7/7，全量无新增失败，改动文件零类型错误"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790771129271,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/support.ts"
+        ],
+        "completed": [
+          "定向用例：node_modules/.bin/vitest run tests/state-workspace-root.test.ts → 1 file / 7 tests 全通过（15ms）",
+          "类型检查：node_modules/.bin/tsc --noEmit -p tsconfig.json → 全量 213 条错误，逐文件核对后确认全部为存量（改动文件 src/application/internal/support.ts 零错误，报错文件清单中不含本次改动文件）",
+          "全量基线：node_modules/.bin/vitest run → Test Files 49 failed | 212 passed | 3 skipped (264)；Tests 103 failed | 2627 passed | 20 skipped (2750)，与仓内存量基线一致，无新增失败"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771129271,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-79a599",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "让七个读文档的闸门都走这个统一入口·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-be2369"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "怎么验（可执行）：① `grep -rn \"applyRequirementWorkspaceRoot(\" src/ | wc -l` → 期望 `9`（= 7 处读侧接线 + 1 处函数定义 + 1 处写侧委托）；只要接线数用：`grep -rn \"applyRequirementWorkspaceRoot(\" src/ | grep -v \"export function\" | grep -v \"deps, requirement\" | wc -l` → 期望 `7`；② `node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | grep -c \"error TS\"` → 期望 `213`（基线值，零新增）；③ `node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | grep -E \"support.ts|AskConfirm.ts|confirm-settle.ts|ConfirmArtifact.ts\"` → 期望无输出（改动文件零错误）。",
+      "implementation": "按目录逐处插入校正调用（都在读盘之前）：src/application/use-cases/AskConfirm.ts:107；src/application/internal/confirm-settle.ts:101 与 :169；src/application/use-cases/ConfirmArtifact.ts:89 与 :191；src/http/routers/requirements.ts:43 与 :223（看板侧无会话上下文，根只由需求记录决定）。不改任何闸门判定规则与文案结构。验证：pnpm vitest run tests/design-gate-workspace-root.test.ts + pnpm typecheck。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-b9d8e9",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6d66d1",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771268809,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1072,
+              "at": 1790771268812,
+              "totals": {
+                "uncachedInputTokens": 169438,
+                "outputTokens": 166013,
+                "cacheReadTokens": 26242944,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1081,
+              "at": 1790771273526,
+              "totals": {
+                "uncachedInputTokens": 173848,
+                "outputTokens": 166539,
+                "cacheReadTokens": 26567296,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 4410,
+              "outputTokens": 526,
+              "cacheReadTokens": 324352,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790771273520
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-dba65f",
+          "body": "[状态] → in_progress：t2 研发子卡开工：7 处接线（reqboard_task_move）",
+          "createdAt": 1790771268809,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-f8f676",
+          "body": "[状态] → done：t2 研发完成：7 处接线落盘，类型与测试均无新增失败（reqboard_task_move）",
+          "createdAt": 1790771273520,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790771262796,
+      "updatedAt": 1790772485555,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790771262796,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771268809,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t2 研发子卡开工：7 处接线"
+        },
+        {
+          "status": "done",
+          "at": 1790771273520,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t2 研发完成：7 处接线落盘，类型与测试均无新增失败"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790771268844,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/support.ts",
+          "src/application/use-cases/AskConfirm.ts",
+          "src/application/internal/confirm-settle.ts",
+          "src/application/use-cases/ConfirmArtifact.ts",
+          "src/http/routers/requirements.ts"
+        ],
+        "completed": [
+          "在 7 处读盘调用点前插入需求级根校正（都在闸门读盘之前）：AskConfirm.ts:111、confirm-settle.ts:103 与 :175、ConfirmArtifact.ts:92 与 :197、http/routers/requirements.ts:48 与 :230",
+          "把根校正的依赖面收窄为结构化最小面 WorkspaceRootTargets（docs + taskStore?: unknown）：看板路由 ctx.deps 只有 docs，不能为一次鸭子探测去伪造整个 UseCaseDeps",
+          "踩坑并修正：初版把 taskStore 写成 { repo?: unknown }，这是全可选属性的弱类型，TS 对没有 repo 的 TaskStore 报 TS2559「no properties in common」，新增 9 条类型错误；改为 unknown + 内部断言后回到基线",
+          "未改任何闸门判定规则与文案结构；未改状态机、闸门目录与台账协议",
+          "验证：tsc 全量 213 条错误与改造前基线逐条一致（规范化行号后 diff 为空），改动文件零错误；全量 vitest 103 失败 / 2628 通过（基线 103 / 2627，无新增失败）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771268844,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-359e38",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "让七个读文档的闸门都走这个统一入口·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-79a599"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "怎么验（可执行）：① `grep -rc \"checkDesignCompletenessGate(\\|checkDesignDecompositionGate(\" src/application/use-cases/AskConfirm.ts src/application/internal/confirm-settle.ts src/application/use-cases/ConfirmArtifact.ts src/http/routers/requirements.ts` → 期望四文件合计 `7`；② `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t \"四个文件的闸门调用点\"` → 期望 `1 passed`（每条闸门调用前 12 行内必须有 applyRequirementWorkspaceRoot）。",
+      "implementation": "按目录逐处插入校正调用（都在读盘之前）：src/application/use-cases/AskConfirm.ts:107；src/application/internal/confirm-settle.ts:101 与 :169；src/application/use-cases/ConfirmArtifact.ts:89 与 :191；src/http/routers/requirements.ts:43 与 :223（看板侧无会话上下文，根只由需求记录决定）。不改任何闸门判定规则与文案结构。验证：pnpm vitest run tests/design-gate-workspace-root.test.ts + pnpm typecheck。\n\n[子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致",
+      "context": "",
+      "parentId": "t-b9d8e9",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-672e4c",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771279413,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1087,
+              "at": 1790771279417,
+              "totals": {
+                "uncachedInputTokens": 173995,
+                "outputTokens": 167379,
+                "cacheReadTokens": 26896512,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1101,
+              "at": 1790771350957,
+              "totals": {
+                "uncachedInputTokens": 174767,
+                "outputTokens": 168147,
+                "cacheReadTokens": 27557632,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 772,
+              "outputTokens": 768,
+              "cacheReadTokens": 661120,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790771350949
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-dc0767",
+          "body": "[状态] → in_progress：t2 联调子卡开工：核对 7 处接线口径一致（reqboard_task_move）",
+          "createdAt": 1790771279413,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-c15a5f",
+          "body": "[状态] → done：t2 联调完成：7 处接线一一对应、四通道口径一致、时序无倒置（reqboard_task_move）",
+          "createdAt": 1790771350949,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790771262796,
+      "updatedAt": 1790772472644,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790771262796,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771279413,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t2 联调子卡开工：核对 7 处接线口径一致"
+        },
+        {
+          "status": "done",
+          "at": 1790771350949,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t2 联调完成：7 处接线一一对应、四通道口径一致、时序无倒置"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790771279453,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/AskConfirm.ts",
+          "src/application/internal/confirm-settle.ts",
+          "src/application/use-cases/ConfirmArtifact.ts",
+          "src/http/routers/requirements.ts"
+        ],
+        "completed": [
+          "逐处对应核对：闸门读盘调用点总数 7（AskConfirm 1 + confirm-settle 2 + ConfirmArtifact 2 + 看板 requirements 2），校正调用也是 7，一一对应无遗漏、无多余",
+          "四条通道口径一致：会话弹框早返回（AskConfirm.ts:111）、弹框确认后自动推进（confirm-settle.ts:175）、工具确认（ConfirmArtifact.ts:197 与 :92）、看板路由（requirements.ts:48 与 :230）都传各自持有的需求记录，全部走同一个收敛函数 applyRequirementWorkspaceRoot",
+          "看板路径联调通过：ctx.deps 只有 docs（没有 taskStore.repo），已按最小依赖面传参，未为一次鸭子探测伪造整个 UseCaseDeps",
+          "写盘时序联调核对：校正调用都位于对应闸门调用之前（同函数内先校正后读盘），无「先读后校正」的次序倒置"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771279453,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-904889",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "让七个读文档的闸门都走这个统一入口·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-359e38"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "按目录逐处插入校正调用（都在读盘之前）：src/application/use-cases/AskConfirm.ts:107；src/application/internal/confirm-settle.ts:101 与 :169；src/application/use-cases/ConfirmArtifact.ts:89 与 :191；src/http/routers/requirements.ts:43 与 :223（看板侧无会话上下文，根只由需求记录决定）。不改任何闸门判定规则与文案结构。验证：pnpm vitest run tests/design-gate-workspace-root.test.ts + pnpm typecheck。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-b9d8e9",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1960e3",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771350995,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1103,
+              "at": 1790771350998,
+              "totals": {
+                "uncachedInputTokens": 174767,
+                "outputTokens": 168147,
+                "cacheReadTokens": 27557632,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1117,
+              "at": 1790771421869,
+              "totals": {
+                "uncachedInputTokens": 175328,
+                "outputTokens": 169374,
+                "cacheReadTokens": 28221824,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 561,
+              "outputTokens": 1227,
+              "cacheReadTokens": 664192,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790771421861
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-52e9c1",
+          "body": "[状态] → in_progress：t2 复核子卡开工：核对与设计的一致性（reqboard_task_move）",
+          "createdAt": 1790771350995,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-7d620c",
+          "body": "[状态] → done：t2 复核完成：偏离项已定性（均为实现细节，不改设计意图），无违规越界（reqboard_task_move）",
+          "createdAt": 1790771421861,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790771262796,
+      "updatedAt": 1790771421861,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790771262796,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771350995,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t2 复核子卡开工：核对与设计的一致性"
+        },
+        {
+          "status": "done",
+          "at": 1790771421861,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t2 复核完成：偏离项已定性（均为实现细节，不改设计意图），无违规越界"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790771357375,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/support.ts",
+          "src/application/use-cases/AskConfirm.ts",
+          "src/application/internal/confirm-settle.ts",
+          "src/application/use-cases/ConfirmArtifact.ts",
+          "src/http/routers/requirements.ts"
+        ],
+        "completed": [
+          "偏离项 1（实现细节，设计意图不变）：设计 interfaces.md 写的签名是 applyRequirementWorkspaceRoot(deps: UseCaseDeps, …)，实现把参数类型放宽为结构化最小面 WorkspaceRootTargets（docs + taskStore?: unknown）。原因：看板路由 ctx.deps 只有 docs（没有 taskStore.repo），不能为一次鸭子探测伪造整个 UseCaseDeps；且 { repo?: unknown } 是全可选属性的弱类型，会触发 TS2559。对外协议仍是零变更，符合设计",
+          "偏离项 2（签名兼容，调用点零改动）：syncWorkspaceRootForRequirement 的 exec 形参改名 _exec（tsconfig noUnusedParameters 开启，该形参在委托化后已不参与判定）。形参位置与个数不变，写侧 3 处调用点一字未改",
+          "偏离项 3（范围澄清，已按设计执行）：设计 architecture.md 把「拆分内容硬门 3 处」一并纳入本需求，实现已覆盖——该门在错误根下是静默放行，只修完整性门会留下已知漏洞",
+          "无偏离项：7 处调用点与设计一致；未改任何闸门判定规则与文案结构；未改状态机、闸门目录、台账协议、queue.json、前端；未把 reqboard_move 纳入闸门（设计明确不做）",
+          "复核发现（记录在案、明确不在本需求范围）：写入侧落库路径（confirm-settle 门合并 → plan-landing）仍未做需求级根校正。本需求执行期间实测：批准计划时 queue.json 与 4 份任务卡被写进另一个工作区（dsh-notice-webhook），流程报「落库成功」；且因覆盖门在错误根下空过，RTM 条款接收全部落成「未声明接收任何条款」。已向上单独上报待裁定"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771357375,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-58c789",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "让七个读文档的闸门都走这个统一入口·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-904889"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "怎么验（可执行）：① `node_modules/.bin/vitest run` → 期望 `Tests 103 failed | 2641 passed`（失败数与改动前基线 103 持平、无新增）；② `node_modules/.bin/tsc --noEmit -p tsconfig.json 2>&1 | grep -c \"error TS\"` → 期望 `213`（基线值）。",
+      "implementation": "按目录逐处插入校正调用（都在读盘之前）：src/application/use-cases/AskConfirm.ts:107；src/application/internal/confirm-settle.ts:101 与 :169；src/application/use-cases/ConfirmArtifact.ts:89 与 :191；src/http/routers/requirements.ts:43 与 :223（看板侧无会话上下文，根只由需求记录决定）。不改任何闸门判定规则与文案结构。验证：pnpm vitest run tests/design-gate-workspace-root.test.ts + pnpm typecheck。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-b9d8e9",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-622031",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771421907,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1119,
+              "at": 1790771421910,
+              "totals": {
+                "uncachedInputTokens": 175328,
+                "outputTokens": 169374,
+                "cacheReadTokens": 28221824,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1133,
+              "at": 1790771493472,
+              "totals": {
+                "uncachedInputTokens": 176035,
+                "outputTokens": 170724,
+                "cacheReadTokens": 28888960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 707,
+              "outputTokens": 1350,
+              "cacheReadTokens": 667136,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790771493467
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-2092d0",
+          "body": "[状态] → in_progress：t2 测试子卡开工：验证接线后的判定行为（reqboard_task_move）",
+          "createdAt": 1790771421907,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-2e9997",
+          "body": "[状态] → done：t2 测试完成：静态断言 7/7 对应，类型与全量测试零新增失败；行为用例移交依赖卡 t3（reqboard_task_move）",
+          "createdAt": 1790771493467,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790771262796,
+      "updatedAt": 1790772472664,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790771262796,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771421907,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t2 测试子卡开工：验证接线后的判定行为"
+        },
+        {
+          "status": "done",
+          "at": 1790771493467,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t2 测试完成：静态断言 7/7 对应，类型与全量测试零新增失败；行为用例移交依赖卡 t3"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790771426419,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/support.ts",
+          "src/application/use-cases/AskConfirm.ts",
+          "src/application/internal/confirm-settle.ts",
+          "src/application/use-cases/ConfirmArtifact.ts",
+          "src/http/routers/requirements.ts"
+        ],
+        "completed": [
+          "接线静态断言（验收标准 2）：rg 统计闸门读盘调用点 7 处（AskConfirm 1 / confirm-settle 2 / ConfirmArtifact 2 / requirements 2），校正调用同为 7 处且都在其之前，逐一对应",
+          "类型检查（验收标准 3）：node_modules/.bin/tsc --noEmit -p tsconfig.json → 全量 213 条错误，与改造前基线逐条 diff 为空（规范化行号后无差异），改动文件零错误",
+          "全量回归：node_modules/.bin/vitest run → Test Files 49 failed | 213 passed | 3 skipped (265)；Tests 103 failed | 2628 passed | 20 skipped (2751)。对比基线 103 failed | 2627 passed：失败数持平（无新增），通过数 +1",
+          "验收标准 1（定向用例：会话根 ≠ 需求根、文档在需求根，四通道放行）由依赖卡 t3 落地：本卡（t2）先接线，t3 才能写针对该场景的用例。故本卡标注为「待 t3 验证」，避免把未跑的用例报成已通过"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771426419,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d4ec69",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "用正反两组测试锁住：该放行的放行、该拦的照拦·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-b9d8e9"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "怎么验（可执行）：① `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts` → 期望 `Tests 13 passed (13)`；② `test -f tests/design-gate-workspace-root.test.ts && echo ok` → 期望输出 `ok`；③ 故障注入（判别力自证）：注释掉 `src/application/internal/confirm-settle.ts` 中 `applyRequirementWorkspaceRoot(deps, before)` 一行后重跑 ① → 期望「拆分内容硬门」用例变红，随后恢复。",
+      "implementation": "用真实 FileDocRepository 指向两个临时目录模拟会话根 A 与需求根 B（沿用 tests/design-completeness-gate.test.ts 模式）；若用替身，必须给它补 root + setWorkspaceRoot 能力——既有 tests/application/harness.ts 的 FakeDocs 无根概念，直接用会让断言空过。反向用例：删掉 B 下 requirement.md 后仍须被 design_doc_incomplete 拦。聚合断言：扫描两个读盘闸门的全部调用点，读盘前必须出现校正调用。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-211525",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-03fe6c",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771733682,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1281,
+              "at": 1790771733685,
+              "totals": {
+                "uncachedInputTokens": 195260,
+                "outputTokens": 189908,
+                "cacheReadTokens": 36788096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1291,
+              "at": 1790771801103,
+              "totals": {
+                "uncachedInputTokens": 195742,
+                "outputTokens": 190553,
+                "cacheReadTokens": 37159424,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 482,
+              "outputTokens": 645,
+              "cacheReadTokens": 371328,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790771801095
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e5406c",
+          "body": "[状态] → in_progress：t3 研发子卡开工：写正反双向用例（reqboard_task_move）",
+          "createdAt": 1790771733682,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-4c160a",
+          "body": "[状态] → done：t3 研发完成：10 例落地并通过，判别力已用两次停用实验证明（reqboard_task_move）",
+          "createdAt": 1790771801095,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790771564468,
+      "updatedAt": 1790772472686,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790771564468,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771733682,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t3 研发子卡开工：写正反双向用例"
+        },
+        {
+          "status": "done",
+          "at": 1790771801095,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t3 研发完成：10 例落地并通过，判别力已用两次停用实验证明"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790771733723,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts"
+        ],
+        "completed": [
+          "新增 tests/design-gate-workspace-root.test.ts 共 10 例：正向（会话根 A ≠ 需求根 B、文档在 B → 放行并推进到 decomposing）、反向（同一错误根下 B 确实缺 requirement.md → 仍 design_doc_incomplete 且缺口含「requirement.md 不存在」）、补齐文件后缺口消失的对照、拆分内容硬门的 fail-open 复现与校正后拦截、存量 no-op 三例、防新增旁路静态断言两例",
+          "全部用真实 FileDocRepository 指向两个临时目录模拟「外来根 A」与「需求根 B」；并在用例内断言读盘前根确实等于需求根（uc.docs.workspaceRoot() === dirB），把替身空过变成可证伪断言",
+          "判别力验证（关键，不是只看全绿）：① 临时注释掉 confirm-settle :103 的校正 → 拆分内容硬门用例失败并复现 fail-open；② 临时注释 ConfirmArtifact 的校正 → 静态断言精确点名「ConfirmArtifact.ts:93 读盘前缺少根校正」。两次改动均已恢复，grep 确认无 TEMP 残留",
+          "修掉静态断言自身的一个真缺陷：原正则会把**被注释掉的调用**当成有效校正（自欺式通过）——这正是第①次判别实验暴露的，已改为排除注释行",
+          "结果：定向 10/10 通过；全量 vitest 103 失败（基线 103，无新增）/ 2638 通过（基线 2627）；tsc 全量 213 条与基线逐条一致"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771733723,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-5da4f0",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "用正反两组测试锁住：该放行的放行、该拦的照拦·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-d4ec69"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "用真实 FileDocRepository 指向两个临时目录模拟会话根 A 与需求根 B（沿用 tests/design-completeness-gate.test.ts 模式）；若用替身，必须给它补 root + setWorkspaceRoot 能力——既有 tests/application/harness.ts 的 FakeDocs 无根概念，直接用会让断言空过。反向用例：删掉 B 下 requirement.md 后仍须被 design_doc_incomplete 拦。聚合断言：扫描两个读盘闸门的全部调用点，读盘前必须出现校正调用。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-211525",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-46470b",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771801141,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1293,
+              "at": 1790771801144,
+              "totals": {
+                "uncachedInputTokens": 195742,
+                "outputTokens": 190553,
+                "cacheReadTokens": 37159424,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1307,
+              "at": 1790771875171,
+              "totals": {
+                "uncachedInputTokens": 196983,
+                "outputTokens": 192479,
+                "cacheReadTokens": 37905024,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1241,
+              "outputTokens": 1926,
+              "cacheReadTokens": 745600,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790771875164
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-959772",
+          "body": "[状态] → in_progress：t3 复核子卡开工：核对用例与设计 test-cases.md 的偏离（reqboard_task_move）",
+          "createdAt": 1790771801141,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-de0537",
+          "body": "[状态] → done：t3 复核完成：偏离已定性披露，自欺缺陷已修（reqboard_task_move）",
+          "createdAt": 1790771875164,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790771564468,
+      "updatedAt": 1790771875164,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790771564468,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771801141,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t3 复核子卡开工：核对用例与设计 test-cases.md 的偏离"
+        },
+        {
+          "status": "done",
+          "at": 1790771875164,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t3 复核完成：偏离已定性披露，自欺缺陷已修"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790771807932,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts"
+        ],
+        "completed": [
+          "偏离项 1（已披露，残留风险已知）：设计 test-cases.md 的 TC-4/TC-5/TC-6 要求「看板通道、工具通道、早返回通道各一条**行为**用例」，实际改为由「防新增旁路」静态断言覆盖四个文件全部 7 处调用点。残留风险：看板路由与 ConfirmArtifact 的运行时行为未被行为用例直接跑过，只有接线位置被静态锁住。判定为可接受（接线位置是本缺陷的唯一变量），但必须在验收材料里如实披露，不得含糊成「四通道全覆盖」",
+          "偏离项 2（细化，非偏离）：用例数由计划的 9 例变为 10 例——多出的是「补齐 requirement.md 后缺口消失」的对照用例；存量 no-op 由 1 例拆为 3 例（缺字段/undefined/空串）",
+          "偏离项 3（新增证据，非产物）：补充了「判别力实验」记录——临时停用接线点，确认对应用例会变红，从而证明用例不是空过。这是复核时最难自证的一环，已写入完工记录",
+          "无偏离：正反双向齐备；反向用例同时断言 gate_failure.code = design_doc_incomplete 与缺口文案「requirement.md 不存在」；用例内断言读盘前根等于需求根（uc.docs.workspaceRoot() === dirB）；全部用真实 FileDocRepository，未使用无根替身",
+          "复核发现的自身缺陷已修：静态断言原先会把被注释掉的调用当成有效校正（自欺式通过），已排除注释行并在实验中验证能精确点名行号"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771807932,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f9a205",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "用正反两组测试锁住：该放行的放行、该拦的照拦·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-5da4f0"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "怎么验（可执行）：① `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts` → 期望 `Tests 13 passed (13)`；② `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t \"反向\"` → 期望全部通过（反向用例断言 gate_failure.code = design_doc_incomplete 且缺口含「requirement.md 不存在」）；③ `node_modules/.bin/vitest run` → 期望 `Tests 103 failed`（基线持平）。",
+      "implementation": "用真实 FileDocRepository 指向两个临时目录模拟会话根 A 与需求根 B（沿用 tests/design-completeness-gate.test.ts 模式）；若用替身，必须给它补 root + setWorkspaceRoot 能力——既有 tests/application/harness.ts 的 FakeDocs 无根概念，直接用会让断言空过。反向用例：删掉 B 下 requirement.md 后仍须被 design_doc_incomplete 拦。聚合断言：扫描两个读盘闸门的全部调用点，读盘前必须出现校正调用。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-211525",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b3b158",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790771875209,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1309,
+              "at": 1790771875211,
+              "totals": {
+                "uncachedInputTokens": 196983,
+                "outputTokens": 192479,
+                "cacheReadTokens": 37905024,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1319,
+              "at": 1790771943415,
+              "totals": {
+                "uncachedInputTokens": 197489,
+                "outputTokens": 193336,
+                "cacheReadTokens": 38279936,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 506,
+              "outputTokens": 857,
+              "cacheReadTokens": 374912,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790771943408
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b31bb2",
+          "body": "[状态] → in_progress：t3 测试子卡开工：跑定向与全量并核对基线（reqboard_task_move）",
+          "createdAt": 1790771875209,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-eb4d20",
+          "body": "[状态] → done：t3 测试完成：定向 10/10，全量失败数持平，类型零新增（reqboard_task_move）",
+          "createdAt": 1790771943408,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790771564468,
+      "updatedAt": 1790772472704,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790771564468,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790771875209,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t3 测试子卡开工：跑定向与全量并核对基线"
+        },
+        {
+          "status": "done",
+          "at": 1790771943408,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t3 测试完成：定向 10/10，全量失败数持平，类型零新增"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790771875245,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts"
+        ],
+        "completed": [
+          "定向命令与结果：node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts → Test Files 1 passed (1)；Tests 10 passed (10)，用时 101ms",
+          "全量对比基线：node_modules/.bin/vitest run → Test Files 49 failed | 214 passed | 3 skipped (266)；Tests 103 failed | 2638 passed | 20 skipped (2761)。对比基线（103 failed | 2627 passed）：失败数持平、无新增失败；通过数 +11（本文件 10 例 + 1）",
+          "类型检查：tsc --noEmit → 全量 213 条，与改造前基线逐条一致；测试文件与改动源文件均零错误",
+          "反向用例断言核对（客户验收标准 1）：gate_failure.code === 'design_doc_incomplete'，gaps 含「requirement.md 不存在」，且同时断言 uc.docs.workspaceRoot() === dirB（证明是「需求根下真缺」而非「读错目录」）",
+          "判别力核对：两次临时停用接线点的实验都使对应用例变红（拆分内容硬门用例、静态断言并精确点名行号），已恢复且 grep 确认无 TEMP 残留"
+        ]
+      },
+      "lastRun": {
+        "at": 1790771875245,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-18a70f",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "确认老需求与看板路径不受影响，并写好回滚方式·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-b9d8e9"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "怎么验（可执行）：① `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t \"看板路径\"` → 期望 `2 passed`（看板一键确认的正向推进与反向仍拦）；② `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t \"存量兼容\"` → 期望通过（无 workspaceRoot 时 no-op）；③ `test -f docs/requirements/REQ-260930193929-897b/notes/rollback.md && echo ok` → 期望输出 `ok`。",
+      "implementation": "在 support.ts 确认 no-op 分支在 requirement.workspaceRoot 缺失/空串时提前返回且不触碰 docs/queueRepo；对看板路由两处路径补用例；在 docs/requirements/REQ-260930193929-897b/notes/rollback.md 写明回滚清单与验证方式（还原 src/application/internal/support.ts、AskConfirm.ts、confirm-settle.ts、ConfirmArtifact.ts、http/routers/requirements.ts；删除 tests/design-gate-workspace-root.test.ts）。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-671de7",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1ee3e0",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790772081185,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1371,
+              "at": 1790772081189,
+              "totals": {
+                "uncachedInputTokens": 206878,
+                "outputTokens": 200845,
+                "cacheReadTokens": 40977408,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1381,
+              "at": 1790772150903,
+              "totals": {
+                "uncachedInputTokens": 207367,
+                "outputTokens": 201532,
+                "cacheReadTokens": 41369856,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 489,
+              "outputTokens": 687,
+              "cacheReadTokens": 392448,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790772150893
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5811c6",
+          "body": "[状态] → in_progress：t4 研发子卡开工：补看板行为用例 + 存量行为用例 + 回滚说明（reqboard_task_move）",
+          "createdAt": 1790772081185,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-69d804",
+          "body": "[状态] → done：t4 研发完成：新增 3 例行为用例 + 回滚说明（reqboard_task_move）",
+          "createdAt": 1790772150893,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790772010826,
+      "updatedAt": 1790772472725,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790772010826,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790772081185,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t4 研发子卡开工：补看板行为用例 + 存量行为用例 + 回滚说明"
+        },
+        {
+          "status": "done",
+          "at": 1790772150893,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t4 研发完成：新增 3 例行为用例 + 回滚说明"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790772081226,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts",
+          "docs/requirements/REQ-260930193929-897b/notes/rollback.md"
+        ],
+        "completed": [
+          "补齐 t3 复核时如实披露的缺口：新增看板通道**行为**用例 2 例，走真实 HTTP 处理链（createReqboardHandler）——① 外来根 A + 需求声明 B → 看板一键确认后自动推进（advanced=true，状态到 decomposing）；② 反向：B 下真缺 requirement.md → 仍 design_doc_incomplete 且缺口含「requirement.md 不存在」，状态留在 design",
+          "新增存量兼容**行为**用例 1 例：需求未声明 workspaceRoot → 校正为 no-op，按会话根照常确认并推进，且断言根保持不动（行为与修复前一致）",
+          "写 docs/requirements/REQ-260930193929-897b/notes/rollback.md：6 个文件的反向编辑清单、可执行回滚步骤、回滚后验证命令与期望值",
+          "回滚说明里写了一条重要警告：**不要用 git checkout 回滚**——这 5 个源文件在本需求之前就带着其他未提交改动，git checkout 会把它们一起丢掉",
+          "验证：定向 13/13 通过；全量 103 failed / 2641 passed（基线 103 / 2627，失败数持平、无新增）；tsc 213 条与改动前基线 md5 逐条一致（零新增、零消失）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790772081226,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-40797a",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "确认老需求与看板路径不受影响，并写好回滚方式·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-18a70f"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "在 support.ts 确认 no-op 分支在 requirement.workspaceRoot 缺失/空串时提前返回且不触碰 docs/queueRepo；对看板路由两处路径补用例；在 docs/requirements/REQ-260930193929-897b/notes/rollback.md 写明回滚清单与验证方式（还原 src/application/internal/support.ts、AskConfirm.ts、confirm-settle.ts、ConfirmArtifact.ts、http/routers/requirements.ts；删除 tests/design-gate-workspace-root.test.ts）。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-671de7",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-83bcd8",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790772150944,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1383,
+              "at": 1790772150948,
+              "totals": {
+                "uncachedInputTokens": 207367,
+                "outputTokens": 201532,
+                "cacheReadTokens": 41369856,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1393,
+              "at": 1790772217897,
+              "totals": {
+                "uncachedInputTokens": 208286,
+                "outputTokens": 202374,
+                "cacheReadTokens": 41763072,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 919,
+              "outputTokens": 842,
+              "cacheReadTokens": 393216,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790772217888
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-66ef7b",
+          "body": "[状态] → in_progress：t4 复核子卡开工：核对兼容与回滚口径（reqboard_task_move）",
+          "createdAt": 1790772150944,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-f907bf",
+          "body": "[状态] → done：t4 复核完成：no-op 与回滚口径逐条核对无偏离（reqboard_task_move）",
+          "createdAt": 1790772217888,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790772010826,
+      "updatedAt": 1790772217888,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790772010826,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790772150944,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t4 复核子卡开工：核对兼容与回滚口径"
+        },
+        {
+          "status": "done",
+          "at": 1790772217888,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t4 复核完成：no-op 与回滚口径逐条核对无偏离"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790772150997,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts",
+          "docs/requirements/REQ-260930193929-897b/notes/rollback.md"
+        ],
+        "completed": [
+          "回到 no-op 分支本身逐条核对：requirement 为 undefined / workspaceRoot 缺失 / 空串三种形态都在触碰 docs/queueRepo 之前提前返回（support.ts 的守卫），与三条单测一一对应",
+          "看板路径核对：看板 ctx.deps 只有 docs，实现按最小依赖面 { docs, taskStore: ctx.taskStore } 传参，未伪造 UseCaseDeps；两处调用（g2CompletenessFailure、确认前扫描）都有行为用例覆盖",
+          "回滚口径核对：清单覆盖全部 5 个源文件 + 1 个测试文件；回滚后验证命令与期望值取自本需求实测基线（tsc 213、vitest 103 failed / 2627 passed），非估计值",
+          "回滚说明的警告已核实为真：这 5 个源文件在本次改动前就已是 git 未提交修改状态，`git checkout --` 会连带丢弃其他在途改动，故必须反向编辑",
+          "无偏离：t4 卡的三项要求（no-op 保证 / 看板按需求记录解析 / 回滚说明）均有产物或用例支撑，未越界改判定规则或协议"
+        ]
+      },
+      "lastRun": {
+        "at": 1790772150997,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-eecd25",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "确认老需求与看板路径不受影响，并写好回滚方式·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-40797a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "怎么验（可执行）：① `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts` → 期望 `Tests 13 passed (13)`；② `node_modules/.bin/vitest run` → 期望 `Tests 103 failed`（与改动前基线持平、无新增）；③ `grep -c \"applyRequirementWorkspaceRoot\" src/application/internal/support.ts src/application/use-cases/AskConfirm.ts src/application/internal/confirm-settle.ts src/application/use-cases/ConfirmArtifact.ts src/http/routers/requirements.ts tests/design-gate-workspace-root.test.ts` → 期望 5 个源文件 + 1 个测试文件均有命中（与回滚清单逐条对应）。",
+      "implementation": "在 support.ts 确认 no-op 分支在 requirement.workspaceRoot 缺失/空串时提前返回且不触碰 docs/queueRepo；对看板路由两处路径补用例；在 docs/requirements/REQ-260930193929-897b/notes/rollback.md 写明回滚清单与验证方式（还原 src/application/internal/support.ts、AskConfirm.ts、confirm-settle.ts、ConfirmArtifact.ts、http/routers/requirements.ts；删除 tests/design-gate-workspace-root.test.ts）。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-671de7",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-7d4d31",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790772217947,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1395,
+              "at": 1790772217950,
+              "totals": {
+                "uncachedInputTokens": 208286,
+                "outputTokens": 202374,
+                "cacheReadTokens": 41763072,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1405,
+              "at": 1790772286410,
+              "totals": {
+                "uncachedInputTokens": 208876,
+                "outputTokens": 203089,
+                "cacheReadTokens": 42157952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 590,
+              "outputTokens": 715,
+              "cacheReadTokens": 394880,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790772286401
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7381a0",
+          "body": "[状态] → in_progress：t4 测试子卡开工：跑定向与全量并核对回滚清单（reqboard_task_move）",
+          "createdAt": 1790772217947,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-fd975f",
+          "body": "[状态] → done：t4 测试完成：定向 13/13，全量失败数持平，回滚清单可执行性已核对（reqboard_task_move）",
+          "createdAt": 1790772286401,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790772010826,
+      "updatedAt": 1790772472747,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790772010826,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790772217947,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t4 测试子卡开工：跑定向与全量并核对回滚清单"
+        },
+        {
+          "status": "done",
+          "at": 1790772286401,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "t4 测试完成：定向 13/13，全量失败数持平，回滚清单可执行性已核对"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790772217988,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts",
+          "docs/requirements/REQ-260930193929-897b/notes/rollback.md"
+        ],
+        "completed": [
+          "定向命令与结果：node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts → Test Files 1 passed (1)；Tests 13 passed (13)（含 t4 新增 3 例：看板正向推进、看板反向仍拦、存量无 workspaceRoot 时 no-op 行为）",
+          "全量对比基线：node_modules/.bin/vitest run → Tests 103 failed | 2641 passed | 20 skipped (2764)。对比基线（103 failed | 2627 passed）：失败数持平、无新增失败；通过数 +14",
+          "类型检查：tsc --noEmit → 213 条，与改动前基线按错误文本（规范化行号）比对 md5 完全一致——零新增、零消失",
+          "回滚清单可执行性核对：grep 统计 applyRequirementWorkspaceRoot 的出现位置 = 5 个源文件 + 1 个测试文件，与 notes/rollback.md 的清单逐条一致，无遗漏文件",
+          "回滚后验证值核对：rollback.md 里写的期望值（tsc 213、vitest 103 failed / 2627 passed）取自本次实测基线，不是估计值"
+        ]
+      },
+      "lastRun": {
+        "at": 1790772217988,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-be2369",
+      "to": "t-b9d8e9"
+    },
+    {
+      "from": "t-b9d8e9",
+      "to": "t-211525"
+    },
+    {
+      "from": "t-b9d8e9",
+      "to": "t-671de7"
+    },
+    {
+      "from": "t-59fed4",
+      "to": "t-10098f"
+    },
+    {
+      "from": "t-10098f",
+      "to": "t-85644c"
+    },
+    {
+      "from": "t-be2369",
+      "to": "t-79a599"
+    },
+    {
+      "from": "t-79a599",
+      "to": "t-359e38"
+    },
+    {
+      "from": "t-359e38",
+      "to": "t-904889"
+    },
+    {
+      "from": "t-904889",
+      "to": "t-58c789"
+    },
+    {
+      "from": "t-b9d8e9",
+      "to": "t-d4ec69"
+    },
+    {
+      "from": "t-d4ec69",
+      "to": "t-5da4f0"
+    },
+    {
+      "from": "t-5da4f0",
+      "to": "t-f9a205"
+    },
+    {
+      "from": "t-b9d8e9",
+      "to": "t-18a70f"
+    },
+    {
+      "from": "t-18a70f",
+      "to": "t-40797a"
+    },
+    {
+      "from": "t-40797a",
+      "to": "t-eecd25"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-be2369",
+        "t-59fed4"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-b9d8e9",
+        "t-79a599",
+        "t-10098f"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-211525",
+        "t-671de7",
+        "t-d4ec69",
+        "t-18a70f",
+        "t-359e38",
+        "t-85644c"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-5da4f0",
+        "t-40797a",
+        "t-904889"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-f9a205",
+        "t-eecd25",
+        "t-58c789"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-09-30T12:48:05.557Z"
+}

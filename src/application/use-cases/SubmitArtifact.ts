@@ -18,13 +18,17 @@ import { openRequirementsFor } from '../internal/window.js'
 import { registerArtifact } from '../internal/artifact-gates.js'
 import { stampCheckpoint } from '../internal/interruption.js'
 import { checkNumberChainGate, checkDesignServesGate, checkRequirementDocFormatGate, assertArtifactOpenable, assertClauseCoverageGate } from '../internal/content-gate-wiring.js'
+import { triggerAutoConfirm } from '../internal/auto-confirm.js'
 import { missingCategoryDocs } from '../internal/category-doc-sets.js'
+import { readabilityHints } from '../../domain/workflow/ReadabilityHints.js'
+import { fmt } from '../../domain/text/fmt.js'
 import { envelope } from '../internal/gate-feedback.js'
 import {
   reject,
   agentIdFromExec,
   requireLiveDriver,
   notifyArtifactRegistered,
+  syncWorkspaceRootForRequirement,
 } from '../internal/support.js'
 
 export async function submitRequirementArtifact(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
@@ -46,6 +50,10 @@ export async function submitRequirementArtifact(deps: UseCaseDeps, args: unknown
           'REQBOARD_NOT_BOUND_TO_WINDOW',
         )
       }
+      // FR-6 二次校正（t5）：需求级 workspaceRoot 优先于会话 cwd——立项时选了非会话工作区的
+      // 需求，docs/queue 根须切到需求级值（入口同步只到会话级）。
+      syncWorkspaceRootForRequirement(deps, exec, target)
+
       // 阶段纪律：需求文档属于「需求分析」（brainstorming）阶段产物。
       if (target.status !== 'brainstorming') {
         reject(
@@ -68,6 +76,9 @@ export async function submitRequirementArtifact(deps: UseCaseDeps, args: unknown
       if (formatFailure !== undefined) {
         reject(formatFailure.message, formatFailure.code)
       }
+
+      // 人读性软门禁（人读纪律机械兜底）：缺 TL;DR / ASCII 图 / 表格 → 提示进响应，不阻断提交。
+      const readability = readabilityHints(await deps.docs.read(path))
 
       const nowTs = deps.clock.now()
       const artifact: StageArtifact = {
@@ -144,14 +155,30 @@ export async function submitRequirementArtifact(deps: UseCaseDeps, args: unknown
       if (registered) notifyArtifactRegistered(deps, changed.id, artifact)
       // RTM 触发点 2：提交需求文档 → rtm-brainstorming.yml
       syncRTMYaml(deps, await taskStoreOf(deps).listByRequirement(changed.id), changed.id, 'submit:requirement')
+      // FR-1 自动唤醒（REQ-260929210741-30ae t4）：登记成功 → 后台触发确认弹框（非阻塞）。
+      const autoConfirm = registered
+        ? triggerAutoConfirm(deps, {
+            requirementId: changed.id,
+            target: 'artifact',
+            kind: 'requirement',
+            question: '需求文档已提交，请确认进入设计阶段',
+          }, exec)
+        : undefined
       return {
         success: true,
         requirement_id: changed.id,
         artifact: { stage: artifact.stage, kind: artifact.kind, path: artifact.path },
         registered,
-        note: registered
-          ? '需求文档产物已登记。下一步：调 reqboard_ask_confirm（target=artifact, kind=requirement）弹框请人确认——肯定答复自动落章并推进到 design（看板一键确认同样是有效通道）'
-          : '该需求文档此前已登记（幂等命中，未重复登记）',
+        ...(autoConfirm !== undefined ? { auto_confirm: autoConfirm } : {}),
+        ...(readability.length > 0 ? { readability_warnings: readability } : {}),
+        note: (registered
+          ? '需求文档产物已登记。' + (autoConfirm?.triggered === true
+              ? '已自动触发确认弹框（后台非阻塞）——肯定答复自动落章并推进到 design。'
+              : '下一步：调 reqboard_ask_confirm（target=artifact, kind=requirement）弹框请人确认——肯定答复自动落章并推进到 design（看板一键确认同样是有效通道）')
+          : '该需求文档此前已登记（幂等命中，未重复登记）')
+          + (readability.length > 0
+              ? fmt(' 人读性提示（不阻断）：{hints}', { hints: readability.join('；') })
+              : ''),
       }
     }
 
@@ -181,6 +208,9 @@ export async function submitPlanArtifact(deps: UseCaseDeps, args: unknown, exec:
           'REQBOARD_NOT_BOUND_TO_WINDOW',
         )
       }
+      // FR-6 二次校正（t5）：需求级 workspaceRoot 优先于会话 cwd（与 requirement 路径同口径）。
+      syncWorkspaceRootForRequirement(deps, exec, target)
+
       // 流程纪律（2026-09-21 用户裁定）：拆分计划属于「拆分」（decomposing）阶段——
       // 设计阶段只写设计文档（design/ 目录，G2 确认设计文档后才进拆分）。
       if (target.status !== 'decomposing') {
@@ -312,6 +342,13 @@ export async function submitPlanArtifact(deps: UseCaseDeps, args: unknown, exec:
         return { requirements: [r] }
       })
       notifyArtifactRegistered(deps, changed.id, planArtifact)
+      // FR-3 自动唤醒（REQ-260929210741-30ae t4）：计划提交成功 → 后台触发批准弹框（非阻塞）。
+      const planAutoConfirm = triggerAutoConfirm(deps, {
+        requirementId: changed.id,
+        target: 'plan',
+        kind: 'decomposition',
+        question: '拆分计划已提交，请批准（批准后自动拆分任务卡并进入实施）',
+      }, exec)
       return {
         success: true,
         requirement_id: changed.id,
@@ -319,7 +356,10 @@ export async function submitPlanArtifact(deps: UseCaseDeps, args: unknown, exec:
         orphan_clauses: chain.orphans,
         task_count: tasks.length,
         tasks: tasks.map(t => ({ key: t.key, title: t.title, depends_on: [...(t.dependsOn ?? [])] })),
+        auto_confirm: planAutoConfirm,
         note: '拆分计划已提交' + (tasks.length === 0 ? '（未含任务表——落库时由 reqboard_decompose 传 tasks 创作）' : '（含 ' + tasks.length + ' 张任务卡）')
-          + '。下一步：调 reqboard_ask_confirm（target=plan）弹框请人批准——批准后自动拆分落库并进入实施（看板「批准计划」同样是有效通道）',
+          + (planAutoConfirm.triggered
+            ? '。已自动触发批准弹框（后台非阻塞）——批准后自动拆分落库并进入实施。'
+            : '。下一步：调 reqboard_ask_confirm（target=plan）弹框请人批准——批准后自动拆分落库并进入实施（看板「批准计划」同样是有效通道）'),
       }
     }

@@ -32,7 +32,15 @@ export interface SheetItemLike {
   opinion?: string
   decidedAt?: number
   decidedBy?: ActorRef
+  /** 系统生成的缺口类验收项标记（REQ-260930094139-2d65 FR-3，对齐 protocol.VerificationItem.gapKind）。 */
+  gapKind?: 'e2e' | 'orphan' | 'consistency' | 'traceability'
 }
+
+/**
+ * 尚未分配编号的验收项草稿（REQ-260930183951-eb6c FR-3）：
+ * 编号在 `buildSheet` 末尾按**最终顺序**连续分配，避免 taskCount+N 预留位造成的跳号。
+ */
+type ItemDraft = Omit<SheetItemLike, 'id'>
 
 /** 验收单（结构对齐 shared/protocol.ts 的 VerificationSheet）。 */
 export interface SheetLike {
@@ -49,10 +57,50 @@ export interface SheetTaskLike {
   id: string
   title: string
   acceptance: string
+  /** 子卡归属（REQ-260930094139-2d65 FR-2）：有值 = 子卡——buildSheet 只收顶层父卡，子卡项由父卡覆盖。 */
+  parentId?: string
 }
 
 /** 需求级验收标准原文（唯一常量，避免前端/后端各写一份）。 */
 export const REQUIREMENT_LEVEL_CRITERION = '需求级：交付结论可复核（证据齐全、与设计一致、无范围蔓延）'
+
+/** 锚点失效项的 criterion 前缀（**契约**：标题单点靠它把锚点失效与三方一致性区分开）。 */
+export const ANCHOR_GAP_PREFIX = '验收锚点失效'
+
+/** 「不可照着验」项的 criterion 前缀（无 gapKind 的旧类系统项，靠前缀识别）。 */
+export const UNVERIFIABLE_PREFIX = '验收项不可照着验'
+
+/**
+ * 需求级来源的验收项**显示标题**（REQ-260930183951-eb6c FR-4，单点）。
+ *
+ * 为什么单点：此前三处各写一份字面量 `'需求级验收'`（verification.md 渲染 / 裁决后回填 /
+ * 弹框 header），于是系统项在验收结果表里**多行同名**——实测 2d65 的 `v1-30`（需求级）与
+ * `v1-33`（E2E 缺口）两行完全一样，人分不清哪行在说什么。
+ *
+ * 识别口径（不新增 protocol 枚举值）：
+ *   - 有 `gapKind` → 按 gapKind；`consistency` 再按 criterion 前缀分「锚点失效 / 三方一致性」；
+ *   - 无 `gapKind` → 「不可照着验」按前缀识别，其余为普通需求级项。
+ */
+export function requirementItemTitle(
+  criterion: string,
+  gapKind?: SheetItemLike['gapKind'],
+): string {
+  if (gapKind === undefined) {
+    return criterion.startsWith(UNVERIFIABLE_PREFIX)
+      ? fmt('需求级验收 · {label}', { label: '不可照着验' })
+      : '需求级验收'
+  }
+  const label = gapKind === 'e2e'
+    ? 'E2E 覆盖'
+    : gapKind === 'orphan'
+      ? '孤儿用例'
+      : gapKind === 'traceability'
+        ? '追溯断链'
+        : criterion.startsWith(ANCHOR_GAP_PREFIX)
+          ? '锚点失效'
+          : '三方一致性'
+  return fmt('需求级验收 · {label}', { label })
+}
 
 export interface SheetBuildInput {
   /** 历史验收单条数（version = history + 上一版 + 1）。 */
@@ -85,6 +133,18 @@ export interface SheetBuildInput {
    * 非空时追加一条需求级可见项——不一致必须**显式出现**，不允许沉默（R9 的形态就是沉默）。
    */
   consistencyGaps?: readonly string[]
+  /**
+   * FR 追溯断链（REQ-260930094139-2d65 FR-5）：fr_to_tests 为空的 FR 清单。
+   * 非空时追加一条需求级可见项——断链必须**显式出现**（与孤儿用例同构、不阻断提交），
+   * 提示补任务 serves: / 测试 covers: 标注。
+   */
+  traceabilityGaps?: readonly string[]
+  /**
+   * 验收锚点失效（REQ-260930183951-eb6c FR-2）：验收标准里写着的 `tests/*.{test,spec}.*`
+   * 在工作区**不存在**（改名/未落盘/设计漂移）。非空时追加一条需求级可见项——
+   * 不阻断提交，但"照抄执行必然失败"的锚点必须显式出现（本需求立项的直接成因之一）。
+   */
+  anchorGaps?: readonly string[]
   generatedAt: number
   generatedBy: ActorRef
 }
@@ -118,40 +178,99 @@ export function buildSheet(input: SheetBuildInput): SheetBuildResult {
     : []
   const orphanTestFiles = input.orphanTestFiles ?? []
   const unverifiable = input.unverifiableItems ?? []
-  const unverifiableItems: SheetItemLike[] = unverifiable.length === 0 ? [] : [{
-    id: 'v' + version + '-' + (input.tasks.length + 3),
+  // REQ-260930094139-2d65 FR-2：domain 侧二次过滤——只收顶层父卡（调用方 SubmitVerification
+  // 已过滤一次，这里是双保险：未来新调用方漏过滤也不会把子卡注进验收单）。
+  // REQ-260930183951-eb6c FR-3：编号不再用 taskCount+N 预留位（未触发的类别照样占号 → 跳号，
+  // 实测出现 v1-30 → v1-33），改为「先按最终顺序组装 drafts，再一次性连续分配 id」（见函数末尾）。
+  const topTasks = input.tasks.filter(t => t.parentId === undefined)
+  const unverifiableItems: ItemDraft[] = unverifiable.length === 0 ? [] : [{
     source: { kind: 'requirement' } as VerificationItemSource,
     criterion: fmt('验收项不可照着验（历史数据）：以下验收项没写「怎么验」——{list}。请补可执行操作（命令/可查数据/界面路径）；本条不阻断验收，但必须有人看过并决定。', { list: unverifiable.slice(0, 5).join('；') }),
     evidence: [...input.evidence],
     status: 'pending' as const,
   }]
   const consistency = input.consistencyGaps ?? []
-  const consistencyItems: SheetItemLike[] = consistency.length === 0 ? [] : [{
-    id: 'v' + version + '-' + (input.tasks.length + 5),
+  const consistencyItems: ItemDraft[] = consistency.length === 0 ? [] : [{
     source: { kind: 'requirement' } as VerificationItemSource,
     criterion: fmt('三方一致性（做什么 × 怎么做 × 实际做了什么）：以下对不上——{list}。请补设计、补实施、或显式登记为不做。', { list: consistency.slice(0, 6).join('；') }),
     evidence: [...input.evidence],
     status: 'pending' as const,
+    // REQ-260930094139-2d65 FR-3：缺口类系统项标记 + 通过时须填处置说明（enforcement 在 applyVerdicts FR-1）。
+    gapKind: 'consistency' as const,
   }]
-  const e2eItems: SheetItemLike[] = input.e2eCoverage === undefined ? [] : [{
-    id: 'v' + version + '-' + (input.tasks.length + 4),
+  // REQ-260930183951-eb6c FR-2：验收锚点失效项（与孤儿用例/断链同构：不阻断，但必须可见）。
+  // 与三方一致性共用 gapKind='consistency'（不新增枚举值），靠 criterion 前缀区分标题（FR-4）。
+  const anchorGaps = input.anchorGaps ?? []
+  const anchorItems: ItemDraft[] = anchorGaps.length === 0 ? [] : [{
+    source: { kind: 'requirement' } as VerificationItemSource,
+    criterion: fmt('验收锚点失效：以下验收标准引用的测试文件在仓库中不存在——{list}。请把锚点改为真实文件，或回写设计/任务卡；本条不阻断验收，但通过时意见须写明处置方式。', { list: anchorGaps.slice(0, 6).join('；') }),
+    evidence: [...input.evidence],
+    status: 'pending' as const,
+    gapKind: 'consistency' as const,
+  }]
+  const e2eItems: ItemDraft[] = input.e2eCoverage === undefined ? [] : [{
     source: { kind: 'requirement' } as VerificationItemSource,
     criterion: input.e2eCoverage
       ? 'E2E 覆盖：**有**（存在跨组件跑通完整业务链路的场景用例）'
-      : 'E2E 覆盖：**无（缺口）**——本需求交付涉及多组件串联，但只交了单元/集成测试。请补一条端到端场景用例（断言可观察终态）。',
+      : 'E2E 覆盖：**无（缺口）**——本需求交付涉及多组件串联，但只交了单元/集成测试。请补一条端到端场景用例（断言可观察终态）；若确认无需 E2E，通过时必须在意见中写明理由。',
     evidence: [...input.evidence],
     status: 'pending' as const,
+    // REQ-260930094139-2d65 FR-3：缺口类系统项标记。
+    ...(input.e2eCoverage ? {} : { gapKind: 'e2e' as const }),
   }]
-  const orphanItems: SheetItemLike[] = orphanTestFiles.length === 0 ? [] : [{
-    id: 'v' + version + '-' + (input.tasks.length + 2),
+  const orphanItems: ItemDraft[] = orphanTestFiles.length === 0 ? [] : [{
     source: { kind: 'requirement' } as VerificationItemSource,
     criterion: fmt(
-      '孤儿用例（缺映射）：以下测试文件未在文件头声明覆盖的条款/卡——{list}。请补 serves: 声明，或说明为何无需映射。',
+      '孤儿用例（缺映射）：以下测试文件未在文件头声明覆盖的条款/卡——{list}。请补 serves: 声明，或说明为何无需映射；通过时意见须写明处置方式。',
       { list: orphanTestFiles.join('、') },
     ),
     evidence: [...input.evidence],
     status: 'pending' as const,
+    // REQ-260930094139-2d65 FR-3：缺口类系统项标记。
+    gapKind: 'orphan' as const,
   }]
+  const traceability = input.traceabilityGaps ?? []
+  const traceabilityItems: ItemDraft[] = traceability.length === 0 ? [] : [{
+    source: { kind: 'requirement' } as VerificationItemSource,
+    criterion: fmt(
+      'FR 追溯断链：以下功能点的 fr_to_tests 为空（FR→设计→任务→测试链路断裂）——{list}。请补任务卡 serves: FR-x 标注与测试 covers: t-xxx 标注；通过时意见须写明处置方式。',
+      { list: traceability.slice(0, 6).join('；') },
+    ),
+    evidence: [...input.evidence],
+    status: 'pending' as const,
+    // REQ-260930094139-2d65 FR-5：追溯断链提示项（缺口类系统项同构）。
+    gapKind: 'traceability' as const,
+  }]
+  // 顺序锁定（编号按此分配，REQ-260930183951-eb6c FR-3）：
+  // 任务项 → 需求级 → 孤儿 → 不可照着验 → E2E → 三方一致性 → 锚点失效 → 追溯断链
+  const drafts: ItemDraft[] = [
+    ...topTasks.map(t => ({
+      source: { kind: 'task', taskId: t.id } as VerificationItemSource,
+      // T-11：验收项先说**业务结果**（标题即业务语言，T-10 保证），再说**怎么验**——
+      // 原来直接放 acceptance（一串命令），用户读不出"这项在确认什么"。
+      criterion: fmt('【{title}】验收：{detail}', {
+        title: t.title.length > 0 ? t.title : t.id,
+        detail: t.acceptance.length > 0 ? t.acceptance : '交付完成',
+      }),
+      evidence: [...input.evidence],
+      status: 'pending' as const,
+    })),
+    {
+      source: { kind: 'requirement' } as VerificationItemSource,
+      criterion: REQUIREMENT_LEVEL_CRITERION,
+      evidence: [...input.evidence],
+      status: 'pending' as const,
+    },
+    // 系统项（有则追加；都做成**需求级**项——本就是需求级关切，
+    // 且不动 protocol 的 source 联合，避免碰被占用的 protocol.ts）
+    ...orphanItems,
+    ...unverifiableItems,
+    ...e2eItems,
+    ...consistencyItems,
+    ...anchorItems,
+    ...traceabilityItems,
+  ]
+  // 编号一次性连续分配：v<version>-1 .. v<version>-N，**无空洞**（FR-3）。
   const items: SheetItemLike[] = reworkOnly
     ? carried.map((it, idx) => ({
         ...it,
@@ -161,33 +280,7 @@ export function buildSheet(input: SheetBuildInput): SheetBuildResult {
         decidedAt: undefined,
         decidedBy: undefined,
       }))
-    : [
-        ...input.tasks.map((t, idx) => ({
-          id: 'v' + version + '-' + (idx + 1),
-          source: { kind: 'task', taskId: t.id } as VerificationItemSource,
-          // T-11：验收项先说**业务结果**（标题即业务语言，T-10 保证），再说**怎么验**——
-          // 原来直接放 acceptance（一串命令），用户读不出"这项在确认什么"。
-          criterion: fmt('【{title}】验收：{detail}', {
-            title: t.title.length > 0 ? t.title : t.id,
-            detail: t.acceptance.length > 0 ? t.acceptance : '交付完成',
-          }),
-          evidence: [...input.evidence],
-          status: 'pending' as const,
-        })),
-        {
-          id: 'v' + version + '-' + (input.tasks.length + 1),
-          source: { kind: 'requirement' } as VerificationItemSource,
-          criterion: REQUIREMENT_LEVEL_CRITERION,
-          evidence: [...input.evidence],
-          status: 'pending' as const,
-        },
-        // 孤儿用例 / 不可照着验的项（有则追加；都做成**需求级**项——本就是需求级关切，
-        // 且不动 protocol 的 source 联合，避免碰被占用的 protocol.ts）
-        ...orphanItems,
-        ...unverifiableItems,
-        ...e2eItems,
-        ...consistencyItems,
-      ]
+    : drafts.map((draft, idx) => ({ ...draft, id: 'v' + version + '-' + (idx + 1) }))
   const sheet: SheetLike = {
     version,
     items,
@@ -299,6 +392,11 @@ export function applyVerdicts(
     if (verdict.status === 'not_verifiable' && (verdict.opinion ?? '').length === 0) {
       throw domainError(REQBOARD_ERROR_CODES.invalidInput, fmt('不可验收的验收项必须写原因（{itemId}）', { itemId: item.id }))
     }
+    // REQ-260930094139-2d65 FR-1：通过同样必须留实际结果——trim 后判空，空白串拒绝。
+    // "形式合规"不能冒充"实质合规"：空意见通过正是本需求立项的事故形态。
+    if (verdict.status === 'passed' && (verdict.opinion ?? '').trim().length === 0) {
+      throw domainError(REQBOARD_ERROR_CODES.invalidInput, fmt('通过的验收项必须填写实际结果（{itemId}）', { itemId: item.id }))
+    }
     item.status = verdict.status
     if ((verdict.opinion ?? '').length > 0) item.opinion = verdict.opinion
     item.decidedAt = at
@@ -319,6 +417,15 @@ export function applyVerdicts(
 /** 是否全部通过（任一 pending/failed/not_verifiable → false）。 */
 export function isAllPassed(sheet: SheetLike): boolean {
   return sheet.items.every(i => i.status === 'passed')
+}
+
+/**
+ * 该裁决状态是否必须附带意见（REQ-260930094139-2d65 FR-1：全部状态必填——
+ * passed 留实际结果 / failed 写意见 / not_verifiable 给原因）。
+ * 供适配层（http 路由）做早期 400 预校验：状态字面量只出现在 domain，适配层只调判定函数。
+ */
+export function verdictRequiresOpinion(status: string): boolean {
+  return status === 'passed' || status === 'failed' || status === 'not_verifiable'
 }
 
 /**

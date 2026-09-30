@@ -10,7 +10,7 @@
  *
  * @module dsh-pmboard/application/internal/content-gate-wiring
  */
-import type { RequirementRecord } from '../../shared/protocol.js'
+import type { RequirementRecord, TaskRecord } from '../../shared/protocol.js'
 import type { GateFailure } from './artifact-gates.js'
 import {
   parseDocument,
@@ -22,6 +22,7 @@ import {
   checkDesignSectionsHaveServes,
   checkE2ECoverage,
   extractServes,
+  extractServesFrom,
   collectIds,
   checkClauseSequence,
   checkClauseDuplicates,
@@ -32,6 +33,7 @@ import {
 import { collectTaskRefs, taskRefsFromDecomposition } from './content-trace.js'
 import { envelope } from './gate-feedback.js'
 import { fmt } from '../../domain/text/fmt.js'
+import { workspacePathCandidates } from './support.js'
 
 // 分析 API 再导出（调用方继续从本模块 import，不必改）
 export {
@@ -153,6 +155,91 @@ export async function checkDesignServesGate(docs: DocsReader, req: RequirementRe
 }
 
 /**
+ * 设计文档内容校验门禁（REQ-260929210741-30ae FR-2 / t3）——`submit(kind=design)` 登记前调用。
+ *
+ * 与 checkDesignServesGate（plan 提交时的 design_orphan 门禁）的区别：
+ *  - 本门禁在 **design 提交时**就拦截，不等到 plan 提交才发现（测评发现的流程断点：
+ *    空壳设计文档能登记，确认后推进拆分才爆，返工成本翻倍）；
+ *  - 校验项多一层**文档级 serves**（H1 或 front-matter 必须声明服务哪些 FR）+
+ *    **悬空引用**（serves 指向 requirement.md 里不存在的条款）；
+ *  - 聚合报错：一次报全所有文档的全部违规（不止第一条），避免修一个发现一个的重试风暴。
+ *
+ * 存量/直种需求（artifacts 为空）豁免——与本仓既有口径一致。
+ */
+export async function checkDesignContentGate(
+  docs: DocsReader,
+  req: RequirementRecord,
+): Promise<GateFailure | undefined> {
+  const isLegacy = req.artifacts === undefined || req.artifacts.length === 0
+  if (isLegacy) return undefined
+
+  const designDir = 'docs/requirements/' + req.id + '/design'
+  const names = (docs.list?.(designDir) ?? [])
+    .filter(e => e.isFile !== false && (e.name ?? '').endsWith('.md'))
+    .map(e => e.name ?? '')
+    .filter(n => n.length > 0)
+  if (names.length === 0) return undefined
+
+  // 需求文档里真实存在的条款 id（悬空引用判定的查找表）
+  const reqPath = 'docs/requirements/' + req.id + '/requirement.md'
+  const realClauses = new Set<string>()
+  if (docs.exists(reqPath)) {
+    const reqDoc = parseDocument(await docs.read(reqPath))
+    for (const id of extractClauseDefinitions(reqDoc)) realClauses.add(id)
+  }
+
+  const docLevelMissing: string[] = [] // 文档级 serves 缺失（H1/frontmatter 都没有）
+  const sectionMissing: string[] = [] // H2 缺 serves
+  const dangling: string[] = [] // serves 引用了不存在的条款
+  const seenDangling = new Set<string>()
+
+  for (const name of names) {
+    const p = designDir + '/' + name
+    if (!docs.exists(p)) continue
+    const doc = parseDocument(await docs.read(p))
+
+    // ① 文档级：H1 标题行或 front-matter 必须声明 serves
+    const h1 = doc.headings.find(h => h.level === 1)
+    const h1Serves = h1 !== undefined ? extractServes(h1.text) : []
+    const fmServes = extractServesFrom(doc, { frontmatterKeys: ['serves', 'requirement_refs'] })
+    const docLevel = [...new Set([...h1Serves, ...fmServes])]
+    if (docLevel.length === 0) docLevelMissing.push(name)
+
+    // ② 章节级：每个 H2 必须有 serves（复用既有判定）
+    for (const sec of checkDesignSectionsHaveServes(doc).missing) {
+      sectionMissing.push(name + ' → ' + sec)
+    }
+
+    // ③ 悬空引用：文档声明的全部 serves（含章节级）指向真实条款
+    for (const id of extractServesFrom(doc)) {
+      if (realClauses.size > 0 && !realClauses.has(id) && !seenDangling.has(name + ' → ' + id)) {
+        seenDangling.add(name + ' → ' + id)
+        dangling.push(name + ' → ' + id)
+      }
+    }
+  }
+
+  const all: string[] = [
+    ...docLevelMissing.map(n => n + '（文档级 serves 缺失：H1 或 front-matter 补 serves: FR-x）'),
+    ...sectionMissing.map(s => s + '（H2 缺 serves 标注）'),
+    ...dangling.map(d => d + '（引用了 requirement.md 中不存在的条款）'),
+  ]
+  if (all.length === 0) return undefined
+
+  return {
+    code: 'REQBOARD_DESIGN_CONTENT_GATE',
+    kind: 'design',
+    gaps: all,
+    message: envelope({
+      lead: 'reqboard_submit(kind=design) 被内容校验门禁拒绝：',
+      what: fmt('{list}', { list: all.join('；') }),
+      why: '设计文档必须声明服务哪些功能点（serves 标注），且引用的条款必须真实存在',
+      how: '补齐标注/修正引用后重调 reqboard_submit(kind=design)；本次一次报全全部违规',
+    }),
+  }
+}
+
+/**
  * 需求文档格式校验门禁（编号规范强制）——在 submit(requirement) 时立即校验，
  * 避免让用户确认不合格的文档。系统负责格式，人负责内容。
  *
@@ -242,6 +329,40 @@ export function testFilesFromDesign(doc: ParsedDoc): string[] {
     if (i < 0) continue
     for (const row of t.rows) {
       for (const m of (row[i] ?? '').matchAll(/[\w./-]+\.(?:ts|tsx|js|py)/g)) out.add(m[0])
+    }
+  }
+  return [...out].sort()
+}
+
+/**
+ * 测试文件锚点：验收标准里写的 `npx vitest run tests/x.test.ts` 那类路径。
+ * 只认 `tests/` 下的测试文件（`docs/*.md`、`src/*.ts` 不参与——evidence 存在性另有硬拦）。
+ */
+const TEST_ANCHOR_RE = /^tests\/[\w./@-]+\.(?:test|spec)\.(?:ts|tsx|js|mjs)$/
+
+/**
+ * 验收锚点失效清单（REQ-260930183951-eb6c FR-2）。
+ *
+ * 从每个未取消任务的 `acceptance` 提取测试文件锚点，凡工作区**不存在**者入清单
+ * （元素形如 `"<卡标题或 id> → tests/x.test.ts"`）——"照抄执行必然失败"的锚点必须可见。
+ *
+ * 与 `collectOrphanTestFiles` 同址同构：无锚点 / 探针读不到 → 空清单，**绝不阻断提交**。
+ *
+ * 护栏（同 e2e「读数未知不追加」口径）：工作区里**根本没有 `tests/` 目录**时整段跳过——
+ * 那一刻的"锚点"前提不成立（不是本仓布局 / 裸夹具工作区），全量报缺失只会是噪声。
+ */
+export function collectMissingAnchors(docs: DocsReader, tasks: readonly TaskRecord[]): string[] {
+  if (!docs.exists('tests')) return []
+  const out = new Set<string>()
+  for (const t of tasks) {
+    if (t.status === 'canceled') continue
+    const acceptance = t.acceptance ?? ''
+    if (acceptance.length === 0) continue
+    const label = t.title.length > 0 ? t.title : t.id
+    for (const p of workspacePathCandidates([acceptance])) {
+      if (!TEST_ANCHOR_RE.test(p)) continue
+      if (docs.exists(p)) continue
+      out.add(fmt('{label} → {path}', { label, path: p }))
     }
   }
   return [...out].sort()

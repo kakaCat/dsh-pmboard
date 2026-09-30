@@ -1,0 +1,38 @@
+task:
+  id: t-10098f
+  title: 把「按哪个工作区读文档」收敛成一个统一入口·复核
+  status: done
+  implements: |-
+    src/application/internal/support.ts：抽出并导出 applyRequirementWorkspaceRoot(deps, requirement)（requirement.workspaceRoot 非空 → applyWorkspaceRoot(deps, root)，同时校正 docs 与 queueRepo；否则 no-op，不抛错）；syncWorkspaceRootForRequirement 内部改为委托它，保留 exec 形参以兼容既有调用点（resolveWorkspaceRoot 纯函数不动）。沿用既有 applyWorkspaceRoot 的鸭子探测（setWorkspaceRoot 缺失即跳过，兼容内存替身）。不新增错误码。验证：pnpm vitest run（workspace-root 相关用例）+ pnpm typecheck。
+
+    [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-59fed4
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-260930193929-897b
+    TASK_ID: t-10098f
+    TASK_TITLE: 把「按哪个工作区读文档」收敛成一个统一入口·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-09-30T12:25:25.658Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-260930193929-897b
+  generated_at: 2026-09-30T12:25:22.329Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-09-30T12:25:25.658Z

@@ -12,7 +12,7 @@ import {
   normalizeText,
   type VerificationSheet,
 } from '../../shared/protocol.js'
-import { buildSheet } from '../../domain/workflow/AcceptanceSheetSpec.js'
+import { buildSheet, requirementItemTitle } from '../../domain/workflow/AcceptanceSheetSpec.js'
 import { checkDocCompleteness } from '../../domain/workflow/DocCompleteness.js'
 import { renderVerificationDoc } from '../../domain/workflow/VerificationDoc.js'
 import { docSyncSummary } from '../../domain/workflow/DocSyncSpec.js'
@@ -22,6 +22,7 @@ import { captureSnapshot } from '../internal/token-usage.js'
 import { registerArtifact } from '../internal/artifact-gates.js'
 import {
   collectOrphanTestFiles,
+  collectMissingAnchors,
   e2eCoverageOf,
   collectNumberedItems,
   collectTaskRefs,
@@ -29,6 +30,7 @@ import {
   consistencyGaps,
   assertArtifactOpenable,
 } from '../internal/content-gate-wiring.js'
+import { toSheetTasks } from '../internal/sheet-tasks.js'
 import { checkHowToVerify, checkAcceptance } from '../../domain/task/Acceptability.js'
 import {
   reject,
@@ -39,6 +41,9 @@ import {
 } from '../internal/support.js'
 import { generateAcceptanceTracking } from '../internal/submit-rtm-integration.js'
 import { taskStoreOf } from './queue-access.js'
+import { readRTM, requirementsDir, getRTMPath } from '../../../vendor/reqboard/src/rtm/file-io.js'
+import type { RTMAccepting } from '../../../vendor/reqboard/src/rtm/types.js'
+import { askConfirm } from './AskConfirm.js'
 
 export async function submitVerification(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
       const windowKey = agentIdFromExec(deps, exec)
@@ -152,6 +157,9 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
       }
 
       const orphanTestFiles = await collectOrphanTestFiles(deps.docs, target)
+      // 验收锚点失效（REQ-260930183951-eb6c FR-2）：验收标准引用的 tests/*.test.* 不存在 → 可见项。
+      // 同步探针（docs.exists），必须在 mutate 之前算好（mutate 回调是同步的）。
+      const anchorGaps = collectMissingAnchors(deps.docs, targetTasks)
       // E2E 覆盖读数（FR-11）：读需求文档的测试策略表。读数未知（undefined）时不追加可见项。
       const e2eCoverage = await e2eCoverageOf(deps.docs, target)
       // 三方一致性（FR-9）：做什么（需求编号）× 怎么做（设计章节 serves）× 实际做了什么（任务↔编号绑定）。
@@ -174,23 +182,34 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
         )
       }
 
+      // ── FR 追溯断链（REQ-260930094139-2d65 FR-5）：门禁探针通过后读回 rtm-accepting.yml，
+      // fr_to_tests 为空的 FR = 断链（FR→设计→任务→测试链路断裂）→ 生成提示验收项（不阻断提交）。
+      // 探针失败（undefined）→ 跳过（RTM 是增强层，不能因读不到而拦主流程）。
+      const traceabilityGaps = verifyGateProbe === undefined
+        ? []
+        : readTraceabilityGaps(deps, target.id)
+
       const nowTs = deps.clock.now()
       const result = await deps.repo.mutate('requirement-updated', (ledger) => {
         const req = ledger.requirements.find(r => r.id === target.id)
         if (req === undefined) return undefined
         // ── 逐项验收单生成（REQ-2e9473 t13/W6；规则在 domain/workflow/AcceptanceSheetSpec.ts，t4）──
         // items = 每任务验收标准 + 需求级标准；返工时（上一版有未过项）只含未过项。
-        const allTasks = targetTasks.filter(t => t.status !== 'canceled')
+        // REQ-260930183951-eb6c FR-1：投影单点为 toSheetTasks（**必须**透传 parentId，否则
+        // buildSheet 的 domain 侧二次过滤恒等通过、"双保险"只剩一层）。
+        const allTasks = toSheetTasks(targetTasks)
         const prevSheet = req.verification?.sheet
         const built = buildSheet({
           sheetHistoryLength: req.verification?.sheetHistory?.length ?? 0,
           ...(prevSheet !== undefined ? { prevSheet } : {}),
-          tasks: allTasks.map(t => ({ id: t.id, title: t.title, acceptance: t.acceptance })),
+          tasks: allTasks,
           evidence,
           ...(orphanTestFiles.length > 0 ? { orphanTestFiles } : {}),
           ...(unverifiable.length > 0 ? { unverifiableItems: unverifiable } : {}),
           ...(e2eCoverage !== undefined ? { e2eCoverage } : {}),
           ...(consistency.length > 0 ? { consistencyGaps: consistency } : {}),
+          ...(anchorGaps.length > 0 ? { anchorGaps } : {}),
+          ...(traceabilityGaps.length > 0 ? { traceabilityGaps } : {}),
           generatedAt: nowTs,
           generatedBy: { kind: 'agent', sessionId: windowKey },
         })
@@ -245,7 +264,8 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
           : [it.decidedBy.kind, it.decidedBy.sessionId].filter(v => v !== undefined && v !== '').join('/')
         return {
           id: it.id,
-          title: src.kind === 'task' ? (t?.title ?? src.taskId) : '需求级验收',
+          // REQ-260930183951-eb6c FR-4：需求级项标题走 domain 单点（三处调用方同源）。
+          title: src.kind === 'task' ? (t?.title ?? src.taskId) : requirementItemTitle(it.criterion, it.gapKind),
           criterion: it.criterion,
           howToVerify: src.kind === 'task' ? (t?.acceptance ?? it.criterion) : it.criterion,
           status: it.status,
@@ -305,6 +325,24 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
       }
       // RTM 触发点 7：提交验收材料 → rtm-accepting.yml（测试覆盖度）
       syncRTMYaml(deps, tasks, changed.id, 'submit:verification')
+      
+      // 🆕 自动触发验收确认（Dive 自动流程：提交后自动弹框请人确认）
+      let autoConfirmNote = ''
+      if (blockers === undefined) {
+        try {
+          await askConfirm(deps, {
+            requirement_id: changed.id,
+            target: 'artifact',
+            kind: 'verification',
+            question: '验收材料已提交，是否确认进入验收？',
+          }, exec)
+          autoConfirmNote = '；已自动触发验收确认'
+        } catch (err) {
+          // 触发失败不阻断提交，只留痕
+          autoConfirmNote = fmt('；自动触发验收确认失败（可手动 reqboard_ask_confirm）：{msg}', { msg: String((err as Error).message ?? err) })
+        }
+      }
+      
       return {
         success: true,
         requirement_id: changed.id,
@@ -324,6 +362,24 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
           ? { doc_sync_pending: reqNow.docSyncPending, doc_sync_warning: docSyncSummary(reqNow) }
           : {}),
         ...blockerBlock,
-        note: finishNote,
-      }
-    }
+        note: finishNote + autoConfirmNote,
+      }    }
+
+/**
+ * 读回 rtm-accepting.yml，返回 fr_to_tests 为空的 FR 编号清单（REQ-260930094139-2d65 FR-5）。
+ * 读不到/解析失败 → 空清单（RTM 是增强层，断链提示项宁缺毋滥，不阻断提交）。
+ */
+function readTraceabilityGaps(deps: UseCaseDeps, reqId: string): string[] {
+  try {
+    const reqDir = requirementsDir(deps.docs.workspaceRoot(), reqId)
+    const data = readRTM<RTMAccepting>(getRTMPath(reqDir, 'rtm-accepting.yml'))
+    if (data === null) return []
+    const frToTests = data.traceability?.fr_to_tests
+    if (frToTests === undefined || typeof frToTests !== 'object') return []
+    return Object.entries(frToTests)
+      .filter(([, tests]) => !Array.isArray(tests) || tests.length === 0)
+      .map(([fr]) => fr)
+  } catch {
+    return []
+  }
+}

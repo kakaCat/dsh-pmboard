@@ -462,7 +462,7 @@ function renderVerificationSheet(
         : '<div class="dsh-pm-vitem-actions">' +
             '<label><input type="radio" name="verdict-' + esc(it.id) + '" value="passed"> 通过</label>' +
             '<label><input type="radio" name="verdict-' + esc(it.id) + '" value="failed"> 不通过</label>' +
-            '<input type="text" class="dsh-pm-vitem-opinion" placeholder="不通过时填意见（必填）">' +
+            '<input type="text" class="dsh-pm-vitem-opinion" placeholder="通过填实际结果 / 不通过填意见（均必填）">' +
           '</div>') +
     '</div>'
   }).join('')

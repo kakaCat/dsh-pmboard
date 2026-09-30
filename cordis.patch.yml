@@ -1,0 +1,13 @@
+# dsh-pmboard 的装载层（bundle patch）。
+#
+# 为什么必须有这个文件：目标 profile 的 `dsh.profile.bundles` 里列了本包，而本包
+# package.json 声明了 `dsh.bundle.patch: ./cordis.patch.yml` —— DSH 加载器**读不到**该文件时
+# 会**整个跳过**这个 bundle（stderr：`skipping profile bundle "dsh-pmboard": … ENOENT`），
+# 于是 13 个 `reqboard_*` 工具与看板 HTTP 路由**全部不注册**（现象：重启宿主也无效）。
+#
+# 2026-09-30 本文件被一次并发「覆写式同步」删除（它当时未被 git 跟踪），
+# 此处按同 profile 内可正常加载的插件包（dsh-notice-webhook）的**同一约定**重建。
+# 用法：把本包装进目标 profile 后，下面这一行作为 Loader 条目插入，即成为可用插件。
+- insert:
+    - id: pmboard
+      name: "dsh-pmboard"

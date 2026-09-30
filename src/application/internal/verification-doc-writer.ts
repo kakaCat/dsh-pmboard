@@ -12,6 +12,7 @@ import type { DocRepository, LedgerView } from '../ports.js'
 import type { TaskRecord } from '../../shared/protocol.js'
 import { renderVerificationDoc } from '../../domain/workflow/VerificationDoc.js'
 import { checkDocCompleteness } from '../../domain/workflow/DocCompleteness.js'
+import { requirementItemTitle } from '../../domain/workflow/AcceptanceSheetSpec.js'
 
 export interface VerificationDocPorts {
   /** 台账仓储（只读快照；只用来取需求记录与验收单） */
@@ -55,7 +56,8 @@ export async function rewriteVerificationDoc(
       : [it.decidedBy.kind, it.decidedBy.sessionId].filter(v => v !== undefined && v !== '').join('/')
     return {
       id: it.id,
-      title: src.kind === 'task' ? (t?.title ?? src.taskId) : '需求级验收',
+      // REQ-260930183951-eb6c FR-4：与提交时同源（否则提交时与回填后标题会不一致）。
+      title: src.kind === 'task' ? (t?.title ?? src.taskId) : requirementItemTitle(it.criterion, it.gapKind),
       criterion: it.criterion,
       howToVerify: src.kind === 'task' ? (t?.acceptance ?? it.criterion) : it.criterion,
       status: it.status,

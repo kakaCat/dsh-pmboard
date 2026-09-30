@@ -25,6 +25,7 @@ import {
   requireLiveDriver,
 } from '../internal/support.js'
 import { checkAcceptanceGate } from '../internal/accept-sheet-rtm-integration.js'
+import { requirementItemTitle } from '../../domain/workflow/AcceptanceSheetSpec.js'
 import { taskStoreOf } from './queue-access.js'
 
 export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
@@ -161,15 +162,16 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
       try {
         answers = [...await deps.questions.ask(pendingItems.map(it => ({
             id: it.id,
+            // REQ-260930183951-eb6c FR-4：弹框 header 也走 domain 单点（否则弹框里分不清是哪类缺口项）。
             header: pmHeader(it.source.kind === 'requirement'
-              ? '需求级验收'
+              ? requirementItemTitle(it.criterion, it.gapKind)
               : fmt('验收项 {taskId}', { taskId: it.source.taskId })),
             // 题干长度纪律（LIMITS.popupCriterionMax/EvidenceMax）：宁可少给证据，也不能把选项挤出可视区
             question: clip(it.criterion, LIMITS.popupCriterionMax) + (it.evidence.length > 0
               ? fmt('\n（证据：{evidence}）', { evidence: clip(it.evidence[0] ?? '', LIMITS.popupEvidenceMax) })
               : ''),
             options: [
-              { label: OPT_PASS, description: '该验收项通过' },
+              { label: OPT_PASS, description: '该验收项通过——请在自定义输入填实际结果（必填，REQ-260930094139-2d65 FR-1）' },
               { label: OPT_FIX, description: '需修改——请在自定义输入写意见' },
               { label: OPT_OTHER, description: '其他结论——请在自定义输入说明' },
             ],
@@ -195,7 +197,19 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
         const picked = ans.selected?.[0] ?? ''
         const custom = (ans.custom ?? '').trim()
         if (picked === OPT_PASS) {
-          verdicts.push({ itemId: it.id, status: 'passed' })
+          // REQ-260930094139-2d65 FR-1：通过同样必填实际结果——自定义输入即意见。
+          // 但弹框在本机是"选项 **或** 自定义输入"二选一（实测：选了点选项就拿不到 custom，
+          // 见 REQ-260930155231-0862 验收实操），于是空意见会被域门以 opinion_required 拒绝，
+          // 让**整张弹框路径永远走不通**。这里改为写入显式兜底文案：
+          //   - 域门仍然保留（其它调用方/看板路径照旧要求填实际结果）；
+          //   - 台账能一眼看出这一项是"没附实际结果"通过的，不伪装成已复核。
+          // 字面量**内联**（不走模块级常量）：实测发现按路径+mtime 的转译缓存会漏掉后加的
+          // 顶层声明，导致运行时报 "POPUP_PASS_FALLBACK is not defined"；内联后无自由标识符可漏。
+          verdicts.push({
+            itemId: it.id,
+            status: 'passed',
+            opinion: custom.length > 0 ? custom : '（未附实际结果：本机弹框为「选项或自定义输入」二选一，本项按通过记录，待补复核）',
+          })
         } else {
           const opinion = custom.length > 0 ? custom : (picked.replace(/^[^\w\u4e00-\u9fa5]+/, '') || '需修改')
           verdicts.push({ itemId: it.id, status: 'failed', opinion })

@@ -1,0 +1,196 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-260930193929-897b
+  generated_at: 2026-09-30T12:21:42.609Z
+  version: 52
+  generated_by: dsh-pmboard
+  last_updated: 2026-09-30T12:45:52.851Z
+inputs:
+  requirements: []
+  design_sections: []
+outputs:
+  tasks:
+    - id: t-be2369
+      title: 把「按哪个工作区读文档」收敛成一个统一入口
+      implements: src/application/internal/support.ts：抽出并导出 applyRequirementWorkspaceRoot(deps, requirement)（requirement.workspaceRoot 非空 → applyWorkspaceRoot(deps, root)，同时校正 docs 与 queueRepo；否则 no-op，不抛错）；syncWorkspaceRootForRequirement 内部改为委托它，保留 exec 形参以兼容既有调用点（resolveWorkspaceRoot 纯函数不动）。沿用既有 applyWorkspaceRoot 的鸭子探测（setWorkspaceRoot 缺失即跳过，兼容内存替身）。不新增错误码。验证：pnpm vitest run（workspace-root 相关用例）+ pnpm typecheck。
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-b9d8e9
+      title: 让七个读文档的闸门都走这个统一入口
+      implements: 按目录逐处插入校正调用（都在读盘之前）：src/application/use-cases/AskConfirm.ts:107；src/application/internal/confirm-settle.ts:101 与 :169；src/application/use-cases/ConfirmArtifact.ts:89 与 :191；src/http/routers/requirements.ts:43 与 :223（看板侧无会话上下文，根只由需求记录决定）。不改任何闸门判定规则与文案结构。验证：pnpm vitest run tests/design-gate-workspace-root.test.ts + pnpm typecheck。
+      serves: []
+      depends_on:
+        - t-be2369
+      phase: implement
+      side: backend
+    - id: t-211525
+      title: 用正反两组测试锁住：该放行的放行、该拦的照拦
+      implements: 用真实 FileDocRepository 指向两个临时目录模拟会话根 A 与需求根 B（沿用 tests/design-completeness-gate.test.ts 模式）；若用替身，必须给它补 root + setWorkspaceRoot 能力——既有 tests/application/harness.ts 的 FakeDocs 无根概念，直接用会让断言空过。反向用例：删掉 B 下 requirement.md 后仍须被 design_doc_incomplete 拦。聚合断言：扫描两个读盘闸门的全部调用点，读盘前必须出现校正调用。
+      serves: []
+      depends_on:
+        - t-b9d8e9
+      phase: test
+      side: backend
+    - id: t-671de7
+      title: 确认老需求与看板路径不受影响，并写好回滚方式
+      implements: 在 support.ts 确认 no-op 分支在 requirement.workspaceRoot 缺失/空串时提前返回且不触碰 docs/queueRepo；对看板路由两处路径补用例；在 docs/requirements/REQ-260930193929-897b/notes/rollback.md 写明回滚清单与验证方式（还原 src/application/internal/support.ts、AskConfirm.ts、confirm-settle.ts、ConfirmArtifact.ts、http/routers/requirements.ts；删除 tests/design-gate-workspace-root.test.ts）。
+      serves: []
+      depends_on:
+        - t-b9d8e9
+      phase: implement
+      side: backend
+    - id: t-59fed4
+      title: 把「按哪个工作区读文档」收敛成一个统一入口·研发
+      implements: |-
+        src/application/internal/support.ts：抽出并导出 applyRequirementWorkspaceRoot(deps, requirement)（requirement.workspaceRoot 非空 → applyWorkspaceRoot(deps, root)，同时校正 docs 与 queueRepo；否则 no-op，不抛错）；syncWorkspaceRootForRequirement 内部改为委托它，保留 exec 形参以兼容既有调用点（resolveWorkspaceRoot 纯函数不动）。沿用既有 applyWorkspaceRoot 的鸭子探测（setWorkspaceRoot 缺失即跳过，兼容内存替身）。不新增错误码。验证：pnpm vitest run（workspace-root 相关用例）+ pnpm typecheck。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-10098f
+      title: 把「按哪个工作区读文档」收敛成一个统一入口·复核
+      implements: |-
+        src/application/internal/support.ts：抽出并导出 applyRequirementWorkspaceRoot(deps, requirement)（requirement.workspaceRoot 非空 → applyWorkspaceRoot(deps, root)，同时校正 docs 与 queueRepo；否则 no-op，不抛错）；syncWorkspaceRootForRequirement 内部改为委托它，保留 exec 形参以兼容既有调用点（resolveWorkspaceRoot 纯函数不动）。沿用既有 applyWorkspaceRoot 的鸭子探测（setWorkspaceRoot 缺失即跳过，兼容内存替身）。不新增错误码。验证：pnpm vitest run（workspace-root 相关用例）+ pnpm typecheck。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-59fed4
+      phase: implement
+      side: backend
+    - id: t-85644c
+      title: 把「按哪个工作区读文档」收敛成一个统一入口·测试
+      implements: |-
+        src/application/internal/support.ts：抽出并导出 applyRequirementWorkspaceRoot(deps, requirement)（requirement.workspaceRoot 非空 → applyWorkspaceRoot(deps, root)，同时校正 docs 与 queueRepo；否则 no-op，不抛错）；syncWorkspaceRootForRequirement 内部改为委托它，保留 exec 形参以兼容既有调用点（resolveWorkspaceRoot 纯函数不动）。沿用既有 applyWorkspaceRoot 的鸭子探测（setWorkspaceRoot 缺失即跳过，兼容内存替身）。不新增错误码。验证：pnpm vitest run（workspace-root 相关用例）+ pnpm typecheck。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-10098f
+      phase: implement
+      side: backend
+    - id: t-79a599
+      title: 让七个读文档的闸门都走这个统一入口·研发
+      implements: |-
+        按目录逐处插入校正调用（都在读盘之前）：src/application/use-cases/AskConfirm.ts:107；src/application/internal/confirm-settle.ts:101 与 :169；src/application/use-cases/ConfirmArtifact.ts:89 与 :191；src/http/routers/requirements.ts:43 与 :223（看板侧无会话上下文，根只由需求记录决定）。不改任何闸门判定规则与文案结构。验证：pnpm vitest run tests/design-gate-workspace-root.test.ts + pnpm typecheck。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-be2369
+      phase: implement
+      side: backend
+    - id: t-359e38
+      title: 让七个读文档的闸门都走这个统一入口·联调
+      implements: |-
+        按目录逐处插入校正调用（都在读盘之前）：src/application/use-cases/AskConfirm.ts:107；src/application/internal/confirm-settle.ts:101 与 :169；src/application/use-cases/ConfirmArtifact.ts:89 与 :191；src/http/routers/requirements.ts:43 与 :223（看板侧无会话上下文，根只由需求记录决定）。不改任何闸门判定规则与文案结构。验证：pnpm vitest run tests/design-gate-workspace-root.test.ts + pnpm typecheck。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-79a599
+      phase: implement
+      side: backend
+    - id: t-904889
+      title: 让七个读文档的闸门都走这个统一入口·复核
+      implements: |-
+        按目录逐处插入校正调用（都在读盘之前）：src/application/use-cases/AskConfirm.ts:107；src/application/internal/confirm-settle.ts:101 与 :169；src/application/use-cases/ConfirmArtifact.ts:89 与 :191；src/http/routers/requirements.ts:43 与 :223（看板侧无会话上下文，根只由需求记录决定）。不改任何闸门判定规则与文案结构。验证：pnpm vitest run tests/design-gate-workspace-root.test.ts + pnpm typecheck。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-359e38
+      phase: implement
+      side: backend
+    - id: t-58c789
+      title: 让七个读文档的闸门都走这个统一入口·测试
+      implements: |-
+        按目录逐处插入校正调用（都在读盘之前）：src/application/use-cases/AskConfirm.ts:107；src/application/internal/confirm-settle.ts:101 与 :169；src/application/use-cases/ConfirmArtifact.ts:89 与 :191；src/http/routers/requirements.ts:43 与 :223（看板侧无会话上下文，根只由需求记录决定）。不改任何闸门判定规则与文案结构。验证：pnpm vitest run tests/design-gate-workspace-root.test.ts + pnpm typecheck。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-904889
+      phase: implement
+      side: backend
+    - id: t-d4ec69
+      title: 用正反两组测试锁住：该放行的放行、该拦的照拦·研发
+      implements: |-
+        用真实 FileDocRepository 指向两个临时目录模拟会话根 A 与需求根 B（沿用 tests/design-completeness-gate.test.ts 模式）；若用替身，必须给它补 root + setWorkspaceRoot 能力——既有 tests/application/harness.ts 的 FakeDocs 无根概念，直接用会让断言空过。反向用例：删掉 B 下 requirement.md 后仍须被 design_doc_incomplete 拦。聚合断言：扫描两个读盘闸门的全部调用点，读盘前必须出现校正调用。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-b9d8e9
+      phase: test
+      side: backend
+    - id: t-5da4f0
+      title: 用正反两组测试锁住：该放行的放行、该拦的照拦·复核
+      implements: |-
+        用真实 FileDocRepository 指向两个临时目录模拟会话根 A 与需求根 B（沿用 tests/design-completeness-gate.test.ts 模式）；若用替身，必须给它补 root + setWorkspaceRoot 能力——既有 tests/application/harness.ts 的 FakeDocs 无根概念，直接用会让断言空过。反向用例：删掉 B 下 requirement.md 后仍须被 design_doc_incomplete 拦。聚合断言：扫描两个读盘闸门的全部调用点，读盘前必须出现校正调用。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-d4ec69
+      phase: test
+      side: backend
+    - id: t-f9a205
+      title: 用正反两组测试锁住：该放行的放行、该拦的照拦·测试
+      implements: |-
+        用真实 FileDocRepository 指向两个临时目录模拟会话根 A 与需求根 B（沿用 tests/design-completeness-gate.test.ts 模式）；若用替身，必须给它补 root + setWorkspaceRoot 能力——既有 tests/application/harness.ts 的 FakeDocs 无根概念，直接用会让断言空过。反向用例：删掉 B 下 requirement.md 后仍须被 design_doc_incomplete 拦。聚合断言：扫描两个读盘闸门的全部调用点，读盘前必须出现校正调用。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-5da4f0
+      phase: test
+      side: backend
+    - id: t-18a70f
+      title: 确认老需求与看板路径不受影响，并写好回滚方式·研发
+      implements: |-
+        在 support.ts 确认 no-op 分支在 requirement.workspaceRoot 缺失/空串时提前返回且不触碰 docs/queueRepo；对看板路由两处路径补用例；在 docs/requirements/REQ-260930193929-897b/notes/rollback.md 写明回滚清单与验证方式（还原 src/application/internal/support.ts、AskConfirm.ts、confirm-settle.ts、ConfirmArtifact.ts、http/routers/requirements.ts；删除 tests/design-gate-workspace-root.test.ts）。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-b9d8e9
+      phase: implement
+      side: backend
+    - id: t-40797a
+      title: 确认老需求与看板路径不受影响，并写好回滚方式·复核
+      implements: |-
+        在 support.ts 确认 no-op 分支在 requirement.workspaceRoot 缺失/空串时提前返回且不触碰 docs/queueRepo；对看板路由两处路径补用例；在 docs/requirements/REQ-260930193929-897b/notes/rollback.md 写明回滚清单与验证方式（还原 src/application/internal/support.ts、AskConfirm.ts、confirm-settle.ts、ConfirmArtifact.ts、http/routers/requirements.ts；删除 tests/design-gate-workspace-root.test.ts）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-18a70f
+      phase: implement
+      side: backend
+    - id: t-eecd25
+      title: 确认老需求与看板路径不受影响，并写好回滚方式·测试
+      implements: |-
+        在 support.ts 确认 no-op 分支在 requirement.workspaceRoot 缺失/空串时提前返回且不触碰 docs/queueRepo；对看板路由两处路径补用例；在 docs/requirements/REQ-260930193929-897b/notes/rollback.md 写明回滚清单与验证方式（还原 src/application/internal/support.ts、AskConfirm.ts、confirm-settle.ts、ConfirmArtifact.ts、http/routers/requirements.ts；删除 tests/design-gate-workspace-root.test.ts）。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-40797a
+      phase: implement
+      side: backend
+traceability:
+  design_to_tasks: {}
+  fr_to_tasks: {}
+coverage:
+  implementation:
+    total: 0
+    covered: 0
+    uncovered: []
+    rate: 100
+    total_designs: 0
+    covered_designs: 0

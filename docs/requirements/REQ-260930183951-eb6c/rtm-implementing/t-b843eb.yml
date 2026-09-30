@@ -1,0 +1,38 @@
+task:
+  id: t-b843eb
+  title: 前置修复：复原 4 个缺失模块 + 重建插件装载层 cordis.patch.yml·复核
+  status: done
+  implements: |-
+    ① 从 dist/index.mjs 的 //#region src/... 源码段逐字复原 4 个缺失模块：src/application/internal/auto-confirm.ts、src/domain/workflow/ReadabilityHints.ts、src/domain/stage/StageActions.ts、src/application/dive/boundary-guard.ts（补齐 import，不改调用方与语义，不改 dist）。② 重建被删除的插件装载层 cordis.patch.yml（package.json 已声明 dsh.bundle.patch=./cordis.patch.yml；文件缺失会让宿主整体跳过该 bundle）：按同 profile 内 dsh-notice-webhook 的同一约定写 insert 行 id=pmboard name=dsh-pmboard。③ 用 DSH 本地加载器 loadProfileDirectory + composeEntries 复验不再跳过。
+
+    [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-a36c24
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-260930183951-eb6c
+    TASK_ID: t-b843eb
+    TASK_TITLE: 前置修复：复原 4 个缺失模块 + 重建插件装载层 cordis.patch.yml·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-09-30T12:25:54.250Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-260930183951-eb6c
+  generated_at: 2026-09-30T12:25:44.598Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-09-30T12:25:54.251Z

@@ -285,8 +285,14 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
     try {
       const s = await api.fetchState()
       state = s
-      // FR-4：缓存服务端工作区根——open-doc 打开与显示文档统一走绝对路径（与查看会话工作区解耦）
-      setDocWorkspaceContext(s.workspaceRoot, s.homeDir)
+      // FR-4：缓存服务端工作区根——open-doc 打开与显示文档统一走绝对路径（与查看会话工作区解耦）；
+      // 同时缓存需求级 workspaceRoot 表（FR-6：产物相对需求工作区落盘，读路径必须同根，
+      // 否则需求写在他仓（如 dsh-notice-webhook）时按会话根拼出的路径必 404）。
+      const reqRoots: Record<string, string> = {}
+      for (const r of s.requirements) {
+        if (typeof r.workspaceRoot === 'string' && r.workspaceRoot.length > 0) reqRoots[r.id] = r.workspaceRoot
+      }
+      setDocWorkspaceContext(s.workspaceRoot, s.homeDir, reqRoots)
 
       // 🔧 修复：刷新时重置 activeStage 为需求当前状态
       // 如果当前在需求详情页，将 activeStage 重置为该需求的当前状态
@@ -468,6 +474,10 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         const sheetEl = el.closest<HTMLElement>('.dsh-pm-vsheet')
         if (!reqId || !Number.isFinite(version) || sheetEl === null) return
         const verdicts: { itemId: string; status: 'passed' | 'failed'; opinion?: string }[] = []
+        // REQ-260930183951-eb6c：前端与域门对齐——**通过也必须填实际结果**（2d65 FR-1）。
+        // 此前 placeholder 写「不通过时填意见」、留空就不发送，于是「勾通过 + 留空」必然被服务端
+        // 400（用户只看到一个原始错误）。这里先在本层拦下，点名缺哪几项、并要求填什么。
+        const missingOpinion: string[] = []
         sheetEl.querySelectorAll<HTMLElement>('.dsh-pm-vitem').forEach((itemEl) => {
           const itemId = itemEl.dataset.itemId
           if (itemId === undefined) return
@@ -475,6 +485,7 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
           if (checked === null) return
           const opinionEl = itemEl.querySelector<HTMLInputElement>('.dsh-pm-vitem-opinion')
           const opinion = opinionEl?.value.trim() ?? ''
+          if (opinion.length === 0) missingOpinion.push(itemId)
           verdicts.push({
             itemId,
             status: checked.value === 'passed' ? 'passed' : 'failed',
@@ -482,6 +493,11 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
           })
         })
         if (verdicts.length === 0) { window.alert('请先逐项选择 通过/不通过'); return }
+        if (missingOpinion.length > 0) {
+          window.alert('以下验收项还缺「实际结果 / 意见」：' + missingOpinion.join('、') +
+            '\n通过项请填实际结果（例：npx vitest run tests/x.test.ts → 4 passed）；不通过项请填意见。两者都必填。')
+          return
+        }
         void api.submitVerdicts({ id: reqId, version, verdicts })
           .then(() => fetchAll())
           .catch(e => window.alert(String(e)))
