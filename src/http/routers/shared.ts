@@ -156,6 +156,13 @@ export interface RouterCtx {
     /** `dshHome` 绝对路径：设置/记录文件路径与「打开配置文件」的可复制路径由它派生（单一来源）。 */
     dshHome?: string
     /**
+     * 会话探针（REQ-261004222448-292a t-497311）：对话流要读某窗口的会话事件。
+     *
+     * 为什么必须显式转发：本映射是**白名单**（漏一行 = 组合根传了、路由收不到）。
+     * 缺省 → dialogue 端点降级为 `port-unavailable`（**不返回空数组冒充「没有对话」**）。
+     */
+    sessionProbe?: import('../../application/ports.js').SessionProbe
+    /**
      * Token 端点的**扩展段**（REQ-261004222448-292a t-497311 FR-10）。
      *
      * 为什么用「回填钩子」而不是另起一条路由：`/requirements/:id/token` 的账本读、任务读、

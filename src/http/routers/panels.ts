@@ -68,7 +68,41 @@ export function panelDepsFrom(ctx: RouterCtx, over: Partial<PanelQueryDeps> = {}
     ...(ctx.deps.isolationLog !== undefined ? { isolations: ctx.deps.isolationLog } : {}),
     ...(ctx.deps.systemPrompt !== undefined ? { systemPrompt: ctx.deps.systemPrompt } : {}),
     ...(ctx.deps.docs !== undefined ? { docs: ctx.deps.docs } : {}),
+    ...(ctx.deps.sessionProbe !== undefined ? { sessions: ctx.deps.sessionProbe } : {}),
     ...over,
+  }
+}
+
+/** Token 响应（扩展段并入后）：基础段逐字保留，`byStage` 每行**就地加列**。 */
+export type TokenResponseWithPanel = Omit<RequirementTokenView, 'byStage'> &
+  Omit<TokenPanelExtension, 'byStage'> & {
+    byStage: (RequirementTokenStageRow & TokenStageRow)[]
+  }
+
+/**
+ * 把扩展段并进基础视图（**纯函数**，路由与用例共用一处口径）。
+ *
+ * 为什么按阶段就地加列而不换表：`byStage` 的老列（快照桶 / 执行下钻）仍有人在读——
+ * 换掉它等于把「老读法」判死刑；而页面要的 `perCallTokens`/`cacheHitPct` 只是**同一行的新列**。
+ * 加列是向后兼容的，换表不是。
+ */
+export function mergeTokenExtension(
+  base: RequirementTokenView,
+  ext: TokenPanelExtension,
+): TokenResponseWithPanel {
+  const byKey = new Map(ext.byStage.map((r) => [r.stage, r]))
+  const byStage = base.byStage.map((row) => {
+    const add = byKey.get(row.stage)
+    // 没有扩展行的阶段原样保留：**不凭空造 0 行**（「不可得」与「确实是 0」是两件事）
+    return (add === undefined ? row : { ...row, ...add }) as RequirementTokenStageRow & TokenStageRow
+  })
+  return {
+    ...base,
+    byStage,
+    optimizations: ext.optimizations,
+    availability: ext.availability,
+    ...(ext.missingStages !== undefined ? { missingStages: ext.missingStages } : {}),
+    ...(ext.boundsAreLowerBound !== undefined ? { boundsAreLowerBound: ext.boundsAreLowerBound } : {}),
   }
 }
 
@@ -200,19 +234,6 @@ export function createPanelsRouter(ctx: RouterCtx, deps: PanelsRouterDeps) {
     if (isDegrade(out)) {
       return ctx.ok(res, { ...base, optimizations: [], availability: out.reason === 'no-snapshot' ? 'none' : 'partial' })
     }
-    const ext = out as TokenPanelExtension
-    const byKey = new Map(ext.byStage.map((r) => [r.stage, r]))
-    const byStage = base.byStage.map((row) => {
-      const add = byKey.get(row.stage)
-      return add === undefined ? row : ({ ...row, ...add } as RequirementTokenStageRow & TokenStageRow)
-    })
-    return ctx.ok(res, {
-      ...base,
-      byStage,
-      optimizations: ext.optimizations,
-      availability: ext.availability,
-      ...(ext.missingStages !== undefined ? { missingStages: ext.missingStages } : {}),
-      ...(ext.boundsAreLowerBound !== undefined ? { boundsAreLowerBound: ext.boundsAreLowerBound } : {}),
-    })
+    return ctx.ok(res, mergeTokenExtension(base, out as TokenPanelExtension))
   }
 }

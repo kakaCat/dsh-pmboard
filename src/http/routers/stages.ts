@@ -433,6 +433,12 @@ export function createStagesRouter(ctx: RouterCtx) {
     const totals = totalTokens(view.totals)
     if (totals > 0) injections.sharePct = Math.round((injections.estTokens / totals) * 1000) / 10
     view.injections = injections
+    // REQ-261004222448-292a t-497311 · FR-10：Token 端点的扩展段（每次调用均 / 缓存命中 /
+    // 优化点 / 可得性三态）由 panels 路由在**同一响应**里合并——两处各算各的必然漂移
+    // （「占比合计 == 总计」这条断言就没处落脚）。缺省不挂 → 老响应逐字不变。
+    if (deps.panelTokenExtension !== undefined) {
+      return await deps.panelTokenExtension(res, id, view)
+    }
     ok(res, view)
   }
 

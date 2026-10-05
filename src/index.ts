@@ -15,6 +15,16 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolveAddressInjection } from './adapters/TemplateRoot.js';
+// REQ-261004222448-292a t-497311：详情页六查询（六个 Tab 各自取数，切到才请求）。
+import {
+  queryReport,
+  queryTrunk,
+  queryDocs,
+  queryDag,
+  queryDialogue,
+  queryPrompts,
+  queryTokenExtension,
+} from './application/query/index.js';
 // REQ-261004103330-005f t5：装配期按设置选存储实现 + 系统记录装配（整条链在 wiring 里）。
 import { assembleStorage } from './wiring/settings-assembly.js';
 // REQ-261003191948-e94a t1/t4：迁移门是**只读预检**（不抛错），装配方据此分叉出"未就绪"态；
@@ -882,6 +892,20 @@ export function apply(ctx: Context, config?: PluginConfig): void {
             now,
             docs,
             injectionLog,
+            // REQ-261004222448-292a t-497311：详情页六查询（六个 Tab 各自取数）。
+            // 为什么在组合根**显式列出全部七个**：缺哪条就降级成「不可用（端口未装配）」——
+            // 漏装配在这里是一行可见的代码，而不是页面上一块永远空着的区域（本仓老教训）。
+            panelQueries: {
+              report: queryReport,
+              trunk: queryTrunk,
+              docs: queryDocs,
+              dag: queryDag,
+              dialogue: queryDialogue,
+              prompts: queryPrompts,
+              token: queryTokenExtension,
+            },
+            // 对话流要读会话事件：活窗口走同步快照，冷会话回落持久化读（见 SessionProbeAdapter）。
+            sessionProbe,
             // REQ-260923134706-e72f t2：isolationTrace 只读进路由（看板「执行流程→上下文管理」数据源），不能写。
             isolationLog: isolationTrace,
             // REQ-e3b6a0 t9 / FR-9：看板「确认产物」纳入切面——确认即推进 + 链侧投递（H2 需要会话句柄）。

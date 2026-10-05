@@ -31,6 +31,7 @@ import { createInjectionRouter } from './routers/injection.js'
 import { createIsolationRouter } from './routers/isolation.js'
 import { createKnowledgeRouter } from './routers/knowledge.js'
 import { createSettingsRouter } from './routers/settings.js'
+import { createPanelsRouter } from './routers/panels.js'
 
 export interface ReqboardRouteDeps {
   /**
@@ -107,6 +108,19 @@ export interface ReqboardRouteDeps {
   pluginInfo?: { name: string; version: string }
   /** `dshHome` 绝对路径：派生设置/记录文件路径（GET 的 paths、错误消息里的可复制路径）。 */
   dshHome?: string
+  /**
+   * 会话探针（REQ-261004222448-292a t-497311）：`prompts` / `dialogue` 两个端点要读会话事件。
+   * 缺省 → dialogue 端点 `port-unavailable`（**不返回空数组冒充「没有对话」**）。
+   */
+  sessionProbe?: import('../application/ports.js').SessionProbe
+  /**
+   * 详情页六查询（REQ-261004222448-292a t-497311）。
+   *
+   * 为什么从组合根注入而不是让路由直接 import 实现：`Partial` 让「某条查询还没落地」成为
+   * **可表达的降级**（`port-unavailable`），而不是编译不过或运行期 500；路由用例也因此
+   * 只注入桩、不必拖上真实台账/会话/文档端口。
+   */
+  panelQueries?: Partial<import('../application/query/contracts.js').PanelQueries>
 }
 
 // REQ-261003191948-e94a t2：信封与错误映射的**唯一实现**搬到 ./envelope.js——
@@ -182,6 +196,8 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
       // REQ-261003215944-9e04 FR-11：会话工作区解析器**必须显式转发**——本映射是白名单，
       // 漏一行就等于"组合根传了、路由收不到"。测试里"需求目录外的文档仍判不存在"那条就是它的照妖镜。
       ...(deps.sessionWorkspace !== undefined ? { sessionWorkspace: deps.sessionWorkspace } : {}),
+      // REQ-261004222448-292a t-497311：对话流要读会话事件（白名单照旧：漏一行 = 组合根传了、路由收不到）
+      ...(deps.sessionProbe !== undefined ? { sessionProbe: deps.sessionProbe } : {}),
       ...(deps.advance !== undefined ? { advance: deps.advance } : {}),
       ...(deps.applicationDeps !== undefined ? { applicationDeps: deps.applicationDeps } : {}),
       // REQ-261001124111-5d36 t4：面板刷新策略进 SSE 的 build 帧（缺省 → 不下发，客户端用缺省值）
@@ -213,6 +229,11 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
   const knowledge = createKnowledgeRouter(ctx)
   const isolation = createIsolationRouter(ctx)
   const settings = createSettingsRouter(ctx)
+  // 详情页六条只读端点（REQ-261004222448-292a t-497311）。构造顺序有讲究：panels 需要 ctx，
+  // 而 token 端点的扩展段由 stages 在**请求时**回调——故此处把钩子写回 ctx.deps（stages 在
+  // 每次请求读它，构造期赋值即生效），避免让 stages 反向依赖 panels 模块。
+  const panels = createPanelsRouter(ctx, { queries: deps.panelQueries })
+  ctx.deps.panelTokenExtension = panels.handleTokenExtension
 
   // -- 分发 ----------------------------------------------------------------
 
@@ -235,6 +256,13 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
         return await artifacts.handleFileRead(res, p, url.searchParams.get('session') ?? undefined)
       }
       if (method === 'GET' && sub === 'requirements/summary') return await stages.handleRequirementsSummary(res)
+      // 详情页六条只读端点（REQ-261004222448-292a t-497311）：形状/分页校验与降级在 panels 里一处实现。
+      // 必须排在「详情按需」的 `/^requirements\/[^/]+$/` 之前判定——那条约不上带额外段的路径，
+      // 但顺序写清楚可以防将来有人把详情匹配放宽成前缀匹配。
+      if (method === 'GET' && /^requirements\/[^/]+\/(report|trunk|docs|dag|dialogue|prompts)$/.test(sub)) {
+        await panels.handlePanels(res, sub, url)
+        return
+      }
       // B12 阶段⑥-①：详情按需（放在 summary/token/marks/stages 之后，避免抢它们的匹配）
       if (method === 'GET' && /^requirements\/[^/]+$/.test(sub)) {
         return await stages.handleRequirementDetail(res, decodeURIComponent(sub.slice('requirements/'.length)))
