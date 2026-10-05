@@ -40,10 +40,9 @@ details.dsh-pm-prompt[open] > summary::before { transform: rotate(90deg); }
 details.dsh-pm-prompt > summary:hover { background: var(--dsw-hover, rgba(128,128,128,.08)); }
 .dsh-pm-prompt-name { font-weight: 600; color: var(--dsw-text-primary, #333); }
 .dsh-pm-prompt-meta { margin-left: auto; color: var(--dsw-text-secondary, #999); font-variant-numeric: tabular-nums; }
-.dsh-pm-prompt-text { margin: 0; padding: 10px 12px; border-top: 1px dashed var(--pm-line, #e5e7eb);
-  background: var(--dsw-bg-primary, #fff); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11.5px; line-height: 1.55; color: var(--dsw-text-primary, #3b4048);
-  white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; }
+/* 已删（REQ-261004222448-292a）：.dsh-pm-prompt-text 原是系统提示词正文块（限高 + 内层滚动）。
+   系统提示词已迁到「提示词」Tab（改用无高度上限的 .dsh-pm-prompt-pre），该类**不再产生**；
+   留着这条带内层滚动的死规则，会被「报告页无内层滚动」的探针误判，故整条删除。 */
 /* 会话顶部流程图：节点内**上下两行**（REQ-261004151652-d535 FR-1）——名字在上、该节点 token 在下。
    为什么要纵向：横排时 7 节点名 + 数字 + 连线要 358px（节点被压到 32px 最小宽时数字还会串成
    「827.8k10.9M922.0k12.7M」）；纵向实测只要 214px（省 40%），这才让「每节点数」在窄窗口留得住。
