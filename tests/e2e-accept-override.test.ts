@@ -13,12 +13,12 @@
  * 边界（诚实标注）：浏览器 leg 覆盖的是**文案装配与渲染函数**；DOM 事件绑定（window.confirm
  * 的点击链路）不在本用例范围，由 tests/board-info-fixes.test.ts 的文案用例与人手实测覆盖。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import { createReqboardHandler } from '../src/http/routes.js'
@@ -30,16 +30,17 @@ import type { RequirementRecord as ClientRequirementRecord } from '../src/client
 
 const W = 'session-abc-123'
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let taskStore: QueueTaskStore
 let handler: ReturnType<typeof createReqboardHandler>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-e2e-override-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   // 任务唯一存储 = 队列（REQ-260927202051-f6df：v9 台账已无 tasks 通道）
   taskStore = new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: dir }), now: () => Date.now() })
-  handler = createReqboardHandler({ store, taskStore, now: () => Date.now() })
+  handler = createReqboardHandler({ requirementStore: store,
+    applicationDeps: { store: store } as never, taskStore, now: () => Date.now() })
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -69,13 +70,13 @@ async function post(url: string, body: unknown) {
 async function seedDelivered(): Promise<void> {
   // mutate 回调是**同步契约**，`createMany` 是异步的 → 任务必须在回调外写队列（v9 无 tasks 通道）。
   let taskToSeed: TaskRecord | undefined
-  await store.mutate('seed', (l) => {
-    const r = {
+  const seededRec = {
       id: 'REQ-e2e001', title: '验收通过二次确认', description: '', status: 'implementing', category: 'feature',
       blocked: false, sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
       createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
     } as unknown as RequirementRecord
-    l.requirements.push(r)
+  {
+    const r = seededRec
     const task = {
       id: 't-e2e001', requirementId: r.id, title: '验收态按钮常显', description: '', phase: 'implement', side: 'frontend',
       dependsOn: [], scope: { apis: [], tables: [], files: [] }, acceptance: 'npx vitest run 全绿', context: '',
@@ -97,8 +98,9 @@ async function seedDelivered(): Promise<void> {
       summary: '按钮常显 + 二次确认已交付', evidence: ['npx vitest run → 全绿'], submittedAt: 1,
       submittedBy: { kind: 'agent', sessionId: W }, sheet: built.sheet as never,
     }
-    return { requirements: [r] }
-  })
+  }
+  // B12 阶段⑤：块内改写**完成之后**才落库（否则存的是改前副本）
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [seededRec], triages: [] })
   // ① 先写任务（队列）——回调外，`createMany` 幂等
   if (taskToSeed !== undefined) await taskStore.createMany(taskToSeed.requirementId, [taskToSeed])
 }
@@ -106,7 +108,7 @@ async function seedDelivered(): Promise<void> {
 describe('端到端：从验收单裁决到覆盖通过归档（TC-9）', () => {
   it('裁决不通过仍留在验收态 → 看板文案 → 覆盖通过 → 台账与渲染三处一致', async () => {
     await seedDelivered()
-    const sheet = store.snapshot().requirements[0]!.verification!.sheet!
+    const sheet = store.peekAll()[0]!.verification!.sheet!
     const item = sheet.items.find(i => i.source.kind === 'task')!
 
     // ① 鉴别人打"不通过"：REQ-308b9a（推翻 REQ-a8d582 FR-2）——自动回退实施 + 物化返工卡
@@ -115,20 +117,19 @@ describe('端到端：从验收单裁决到覆盖通过归档（TC-9）', () => 
       verdicts: [{ itemId: item.id, status: 'failed', opinion: '按钮在无材料时仍然不显示' }],
     })
     expect(v.statusCode).toBe(200)
-    expect(store.snapshot().requirements[0]!.status).toBe('implementing')
+    expect(store.peekAll()[0]!.status).toBe('implementing')
     // 返工卡从**队列**读（REQ-260927202051-f6df：v9 台账已无 tasks）
     const reworkTasks = (await taskStore.listByRequirement('REQ-e2e001')).filter(t => t.id !== 't-e2e001')
     expect(reworkTasks.length).toBe(1)
 
     // ①b 模拟执行窗口完成返工并重新提交验收：回到验收态（验收单裁决结果持久——不通过 1 / 未裁决 1）
-    await store.mutate('seed', (l) => {
-      const r = l.requirements[0]!
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.status = 'accepting'
-      return { requirements: [r] }
+      return { changed: true }
     })
 
     // ② 看板按钮自己的文案装配（FR-1）
-    const clientReq = store.snapshot().requirements[0] as unknown as ClientRequirementRecord
+    const clientReq = store.peekAll()[0] as unknown as ClientRequirementRecord
     const copy = verifyConfirmCopy(clientReq)
     expect(copy.message).toContain('不通过 1')
     expect(copy.overrideDetail).toBeDefined()
@@ -136,7 +137,7 @@ describe('端到端：从验收单裁决到覆盖通过归档（TC-9）', () => 
     // ③ 人确认后按覆盖通过（FR-4）
     const pass = await post('/req/verify/pass', { id: 'REQ-e2e001', confirm_override: copy.overrideDetail })
     expect(pass.statusCode).toBe(200)
-    const after = store.snapshot().requirements[0]!
+    const after = store.peekAll()[0]!
     expect(after.status).toBe('archived')
     expect(after.acceptanceOverride!.detail).toBe(copy.overrideDetail)
     expect(after.acceptanceOverride!.failed).toBe(1)

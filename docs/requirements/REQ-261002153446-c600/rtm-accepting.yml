@@ -1,0 +1,157 @@
+metadata:
+  stage: accepting
+  requirement_id: REQ-261002153446-c600
+  generated_at: 2026-10-02T07:43:09.761Z
+  version: 3
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-02T07:43:48.374Z
+inputs:
+  tasks:
+    - id: t-30f65b
+      title: 点已归档窗口能回到那个会话：先取消归档、再打开
+      status: done
+    - id: t-54bec3
+      title: 点之前就看得见会发生什么：chip 与失败提示的文案
+      status: done
+    - id: t-b7b87a
+      title: 兼容与回归：旧客户端语义、幂等、类型与客户端构建
+      status: done
+    - id: t-ccf428
+      title: 点已归档窗口能回到那个会话：先取消归档、再打开·研发
+      status: done
+    - id: t-e5fd69
+      title: 点已归档窗口能回到那个会话：先取消归档、再打开·测试
+      status: done
+    - id: t-2c76c3
+      title: 点之前就看得见会发生什么：chip 与失败提示的文案·研发
+      status: done
+    - id: t-8e6f26
+      title: 点之前就看得见会发生什么：chip 与失败提示的文案·测试
+      status: done
+    - id: t-3457a2
+      title: 兼容与回归：旧客户端语义、幂等、类型与客户端构建·校验
+      status: done
+outputs:
+  test_cases:
+    - id: TC-1
+      title: "TC-1: 已归档会话点击后先取消归档、再收面板开会话"
+      covers:
+        - t-30f65b
+        - t-ccf428
+      validates:
+        - FR-1
+        - FR-4
+      source: test-cases.md
+    - id: TC-2
+      title: "TC-2: 取消归档抛错时不打开会话（不假装跳过去了）"
+      covers:
+        - t-30f65b
+        - t-e5fd69
+      validates:
+        - FR-2
+      source: test-cases.md
+    - id: TC-3
+      title: "TC-3: 客户端无取消归档能力时保留旧语义"
+      covers:
+        - t-ccf428
+        - t-e5fd69
+      validates:
+        - FR-2
+      source: test-cases.md
+    - id: TC-4
+      title: "TC-4: 未归档会话零副作用（不误调恢复能力）"
+      covers:
+        - t-30f65b
+        - t-e5fd69
+      validates:
+        - FR-4
+      source: test-cases.md
+    - id: TC-5
+      title: "TC-5: 已归档 chip 的 title 写明点击会发生什么"
+      covers:
+        - t-54bec3
+        - t-2c76c3
+        - t-8e6f26
+      validates:
+        - FR-3
+      source: test-cases.md
+    - id: TC-6
+      title: "TC-6: 跳转结果文案齐备（恢复失败/能力缺失/服务不可用）"
+      covers:
+        - t-54bec3
+        - t-2c76c3
+        - t-8e6f26
+      validates:
+        - FR-2
+      source: test-cases.md
+    - id: TC-7
+      title: "TC-7: 兼容与回归（客户端面全绿 + 类型 + 客户端构建）"
+      covers:
+        - t-b7b87a
+        - t-3457a2
+      validates:
+        - FR-5
+      source: test-cases.md
+traceability:
+  task_to_tests:
+    t-30f65b:
+      - TC-1
+      - TC-2
+      - TC-4
+    t-54bec3:
+      - TC-5
+      - TC-6
+    t-b7b87a:
+      - TC-7
+    t-ccf428:
+      - TC-1
+      - TC-3
+    t-e5fd69:
+      - TC-2
+      - TC-3
+      - TC-4
+    t-2c76c3:
+      - TC-5
+      - TC-6
+    t-8e6f26:
+      - TC-5
+      - TC-6
+    t-3457a2:
+      - TC-7
+  fr_to_tests:
+    FR-1:
+      - TC-1
+      - TC-2
+      - TC-4
+      - TC-5
+      - TC-6
+      - TC-7
+    FR-2:
+      - TC-1
+      - TC-2
+      - TC-4
+      - TC-5
+      - TC-6
+      - TC-7
+    FR-3:
+      - TC-1
+      - TC-2
+      - TC-4
+      - TC-5
+      - TC-6
+    FR-4:
+      - TC-1
+      - TC-2
+      - TC-4
+      - TC-7
+      - TC-5
+      - TC-6
+coverage:
+  testing:
+    total: 8
+    covered: 8
+    uncovered: []
+    rate: 100
+    total_tasks: 8
+    tested_tasks: 8
+    untested: []

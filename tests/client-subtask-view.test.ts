@@ -26,26 +26,42 @@ const req = (over: Partial<Req> = {}): Req =>
   ({ id: 'REQ-1', title: 'T', description: '', status: 'implementing', autoRun: true, ...over } as Req)
 const task = (over: Record<string, unknown>): Task => ({ status: 'todo', title: 'T', phase: 'implement', ...over } as Task)
 
-describe('自动状态徽标：运行中 / 已暂停 / 熔断 / 手动', () => {
-  it('autoRun=true → 运行中', () => {
+describe('自动状态徽标：自动链 / 自动链·已暂停 / 自动链·熔断 / 手动', () => {
+  it('autoRun=true → 自动链（2026-10-04 用户裁定：原「运行中」与运行态圆圈撞词）', () => {
     expect(autoBadgeOf(req({ autoRun: true })).kind).toBe('running')
+    expect(autoBadgeOf(req({ autoRun: true })).label).toBe('自动链')
   })
 
-  it('autoRun=false + 人工暂停 → 已暂停', () => {
-    expect(autoBadgeOf(req({ autoRun: false, advance: { pausedReason: 'manual' } })).kind).toBe('paused')
+  it('autoRun=false + 人工暂停 → 自动链·已暂停', () => {
+    const b = autoBadgeOf(req({ autoRun: false, advance: { pausedReason: 'manual' } }))
+    expect(b.kind).toBe('paused')
+    expect(b.label).toBe('自动链·已暂停')
   })
 
-  it('autoRun=false + 停滞/失败原因 → 熔断', () => {
-    expect(autoBadgeOf(req({ autoRun: false, advance: { pausedReason: 'stagnation' } })).kind).toBe('breaker')
-    expect(autoBadgeOf(req({ autoRun: false, advance: { pausedReason: 'fail' } })).kind).toBe('breaker')
-    expect(autoBadgeOf(req({ autoRun: false, advance: { failureStreak: 3 } })).kind).toBe('breaker')
+  it('autoRun=false + 停滞/失败原因 → 自动链·熔断', () => {
+    for (const advance of [{ pausedReason: 'stagnation' }, { pausedReason: 'fail' }, { failureStreak: 3 }]) {
+      const b = autoBadgeOf(req({ autoRun: false, advance }))
+      expect(b.kind).toBe('breaker')
+      expect(b.label).toBe('自动链·熔断')
+    }
   })
 
-  it('autoRun 缺省（存量需求）→ 手动，且徽标渲染出 data-auto', () => {
+  it('autoRun 缺省（存量需求）→ 手动（不加前缀），且徽标渲染出 data-auto', () => {
     const r = { } as Req
     expect(autoBadgeOf(r).kind).toBe('manual')
+    expect(autoBadgeOf(r).label).toBe('手动')
     expect(renderAutoBadge(req({ autoRun: undefined }))).toContain('data-auto="manual"')
-    expect(renderAutoBadge(req({ autoRun: true }))).toContain('运行中')
+    expect(renderAutoBadge(req({ autoRun: true }))).toContain('自动链')
+  })
+
+  it('kind（data-auto 的值）不因文案改名而变化——四档仍是 running/paused/breaker/manual', () => {
+    const kinds = [
+      autoBadgeOf(req({ autoRun: true })).kind,
+      autoBadgeOf(req({ autoRun: false, advance: { pausedReason: 'manual' } })).kind,
+      autoBadgeOf(req({ autoRun: false, advance: { pausedReason: 'fail' } })).kind,
+      autoBadgeOf({ } as Req).kind,
+    ]
+    expect(kinds).toEqual(['running', 'paused', 'breaker', 'manual'])
   })
 })
 

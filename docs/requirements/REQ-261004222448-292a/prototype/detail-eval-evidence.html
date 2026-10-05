@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>需求详情页「测评证据面」原型 — REQ-261004222448-292a</title>
+<!--
+  静态原型（不连后端、不发请求、零依赖）· REQ-261004222448-292a
+  需求：需求详情页「测评证据面」信息设计与 UI 优化（feature / expert）
+
+  目的：评审「一条需求的详情页该展示哪些内容，才能支撑 agent 测评打分」。
+  被测对象 = 驾驶 reqboard 插件的 agent；评分口径见 eval-suite/scoring.md（六维度 + 红线一票否决）。
+
+  ⚠️ 本文件是**原型**，不是生产实现。三条必须知道的差异：
+    1. 新增块（带「新增」标）复用真实类名前缀 dsh-pm- 与真实调色板，但 CSS 在本文件内自带
+       （生产实现必须落 src/client/styles/*.ts，禁止把这里的样式表原样搬进产物）。
+    2. 全部数据为**虚构标本**；本原型故意包含一次「被拒后重试」（seq 3/4）用于演示红线渲染。
+    3. 现有块是按真实渲染结构**重画**的示意（非调用真实 render 函数），DAG 画布等异步块以占位呈现。
+
+  交互：?tab=overview|execution|timeline|archive|traceability|token & state=inflight|terminal
+        （截图与评审直达各态用；页面顶栏也有对应按钮）
+
+  设计出处：docs/requirements/REQ-261004222448-292a/prototype/README.md
+-->
+<style>
+:root {
+  --pm-radius: 10px; --pm-radius-sm: 7px; --pm-radius-pill: 999px;
+  --pm-line: rgba(128,128,128,.18); --pm-line-strong: rgba(128,128,128,.3);
+  --pm-bg: #fff; --pm-bg-soft: rgba(128,128,128,.05); --pm-bg-softer: rgba(128,128,128,.03);
+  --pm-text: #1d1d1f; --pm-text2: #666; --pm-text3: #999;
+  --pm-accent: #4a7dff; --pm-ok: #28a745; --pm-danger: #dc3545; --pm-warn: #b07800; --pm-info: #17a2b8;
+  --pm-c-draft: #9aa4b2; --pm-c-brainstorming: #f0a020; --pm-c-design: #c2255c;
+  --pm-c-decomposing: #8e44ad; --pm-c-implementing: #4a7dff; --pm-c-accepting: #17a2b8; --pm-c-archived: #28a745;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: #f5f6f8; color: var(--pm-text);
+  font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* ===================== 原型工具条（生产不存在） ===================== */
+.proto-bar {
+  position: sticky; top: 0; z-index: 20; background: #1d1d1f; color: #fff;
+  padding: 9px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px;
+}
+.proto-bar b { font-size: 12.5px; }
+.proto-bar .sep { opacity: .35; }
+.proto-bar .hint { opacity: .72; }
+.proto-btn {
+  border: 1px solid rgba(255,255,255,.3); background: transparent; color: #fff;
+  border-radius: var(--pm-radius-pill); padding: 3px 10px; font-size: 11.5px; cursor: pointer;
+}
+.proto-btn[data-on="1"] { background: #fff; color: #1d1d1f; border-color: #fff; font-weight: 600; }
+.proto-wrap { max-width: 1180px; margin: 16px auto 60px; padding: 0 16px; }
+.proto-foot {
+  max-width: 1180px; margin: 0 auto 60px; padding: 14px 16px; background: #fff;
+  border: 1px dashed var(--pm-line-strong); border-radius: var(--pm-radius);
+}
+.proto-foot h2 { margin: 0 0 6px; font-size: 14px; }
+
+/* ===================== 详情页骨架（对齐真实结构） ===================== */
+.dsh-pm-detail { background: var(--pm-bg); border: 1px solid var(--pm-line); border-radius: var(--pm-radius); padding: 16px 18px; }
+.dsh-pm-detail-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 10px; border-bottom: 1px solid var(--pm-line); }
+.dsh-pm-btn {
+  padding: 5px 12px; border-radius: 8px; border: 1px solid var(--pm-line-strong);
+  background: #fff; color: var(--pm-text); font-size: 12px; cursor: pointer;
+}
+.dsh-pm-btn.primary { background: var(--pm-accent); border-color: var(--pm-accent); color: #fff; }
+.dsh-pm-card-id { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--pm-text2); background: var(--pm-bg-soft); border-radius: 5px; padding: 2px 6px; }
+.dsh-pm-status { font-size: 11.5px; font-weight: 600; border-radius: var(--pm-radius-pill); padding: 2px 9px; background: rgba(74,125,255,.12); color: var(--pm-accent); }
+.dsh-pm-flag.blocked { font-size: 11px; font-weight: 600; color: #fff; background: var(--pm-danger); border-radius: var(--pm-radius-pill); padding: 2px 8px; }
+.dsh-pm-window-chip { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--pm-text2); border: 1px solid var(--pm-line); border-radius: var(--pm-radius-pill); padding: 1px 8px; }
+.dsh-pm-detail-updated { font-size: 11.5px; color: var(--pm-text3); margin-left: auto; }
+.dsh-pm-detail-title { flex-basis: 100%; margin: 8px 0 2px; font-size: 19px; font-weight: 650; }
+.dsh-pm-progress-dots { flex-basis: 100%; display: flex; gap: 18px; padding: 10px 2px 2px; flex-wrap: wrap; }
+.dsh-pm-dot-wrapper { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 11px; color: var(--pm-text3); }
+.dsh-pm-dot { width: 11px; height: 11px; border-radius: 50%; background: rgba(128,128,128,.25); }
+.dsh-pm-dot-wrapper.completed .dsh-pm-dot { background: var(--pm-ok); }
+.dsh-pm-dot-wrapper.current .dsh-pm-dot { background: var(--pm-c-implementing); box-shadow: 0 0 0 4px rgba(74,125,255,.18); }
+.dsh-pm-dot-wrapper.completed, .dsh-pm-dot-wrapper.current { color: var(--pm-text); font-weight: 600; }
+.dsh-pm-action-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding: 9px 11px; background: var(--pm-bg-softer); border: 1px solid var(--pm-line); border-radius: var(--pm-radius-sm); }
+.dsh-pm-action-bar-label { font-size: 11.5px; color: var(--pm-text3); }
+.dsh-pm-gate { margin-top: 8px; font-size: 12px; color: var(--pm-warn); background: rgba(240,160,32,.1); border-left: 3px solid var(--pm-c-brainstorming); border-radius: 4px; padding: 6px 10px; }
+.dsh-pm-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 14px 0 0; border-bottom: 1px solid var(--pm-line); padding-bottom: 0; }
+.dsh-pm-tab { border: 0; background: transparent; padding: 7px 12px; font-size: 12.5px; color: var(--pm-text2); cursor: pointer; border-bottom: 2px solid transparent; }
+.dsh-pm-tab.active { color: var(--pm-accent); border-bottom-color: var(--pm-accent); font-weight: 600; }
+.dsh-pm-tab-content { display: none; padding-top: 14px; }
+.dsh-pm-tab-content.active { display: block; }
+.dsh-pm-section { border: 1px solid var(--pm-line); border-radius: var(--pm-radius-sm); margin-bottom: 12px; overflow: hidden; }
+.dsh-pm-section-title { margin: 0; padding: 9px 12px; font-size: 12.5px; font-weight: 650; background: var(--pm-bg-softer); border-bottom: 1px solid var(--pm-line); display: flex; align-items: center; gap: 7px; }
+.dsh-pm-section-content { padding: 11px 12px; }
+.dsh-pm-empty { color: var(--pm-text3); font-size: 12px; }
+.dsh-pm-note { font-size: 11.5px; color: var(--pm-text2); }
+.dsh-pm-fold { border: 1px solid var(--pm-line); border-radius: var(--pm-radius-sm); margin-bottom: 12px; }
+.dsh-pm-fold > summary { padding: 9px 12px; font-size: 12.5px; font-weight: 650; cursor: pointer; list-style: none; background: var(--pm-bg-softer); }
+.dsh-pm-fold > summary::-webkit-details-marker { display: none; }
+.dsh-pm-fold > summary::before { content: "▸ "; color: var(--pm-text3); }
+.dsh-pm-fold[open] > summary::before { content: "▾ "; }
+.dsh-pm-fold-body { padding: 11px 12px; border-top: 1px solid var(--pm-line); }
+.dsh-pm-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
+.dsh-pm-stat { border: 1px solid var(--pm-line); border-radius: var(--pm-radius-sm); padding: 9px 11px; }
+.dsh-pm-stat-label { font-size: 11.5px; color: var(--pm-text2); }
+.dsh-pm-stat-value { font-size: 20px; font-weight: 650; }
+.dsh-pm-stat-success .dsh-pm-stat-value { color: var(--pm-ok); }
+.dsh-pm-task-table, .dsh-pm-eval-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.dsh-pm-task-table th, .dsh-pm-task-table td,
+.dsh-pm-eval-tbl th, .dsh-pm-eval-tbl td { border-bottom: 1px solid var(--pm-line); padding: 5px 8px; text-align: left; vertical-align: top; }
+.dsh-pm-task-table th, .dsh-pm-eval-tbl th { font-size: 11px; color: var(--pm-text2); font-weight: 600; background: var(--pm-bg-softer); white-space: nowrap; }
+.dsh-pm-task-status { font-size: 11.5px; }
+.dsh-pm-link { color: var(--pm-accent); font-size: 11.5px; }
+
+/* ===================== 新增块（本需求引入） ===================== */
+.new { font-size: 10px; font-weight: 700; color: #fff; background: #f0a020; border-radius: var(--pm-radius-pill); padding: 1px 6px; letter-spacing: .3px; }
+.eval-dim-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.eval-dim { border: 1px solid var(--pm-line); border-left: 3px solid var(--pm-c-draft); border-radius: var(--pm-radius-sm); padding: 8px 10px; background: #fff; }
+.eval-dim[data-v="pass"] { border-left-color: var(--pm-ok); }
+.eval-dim[data-v="fail"] { border-left-color: var(--pm-danger); }
+.eval-dim[data-v="gap"]  { border-left-color: var(--pm-c-draft); }
+.eval-dim[data-v="over"] { border-left-color: var(--pm-warn); }
+.eval-dim-head { display: flex; align-items: baseline; gap: 6px; }
+.eval-dim-name { font-size: 12px; font-weight: 650; }
+.eval-dim-w { font-size: 10.5px; color: var(--pm-text3); }
+.eval-dim-mark { margin-left: auto; font-size: 11px; font-weight: 700; }
+.eval-dim[data-v="pass"] .eval-dim-mark { color: var(--pm-ok); }
+.eval-dim[data-v="fail"] .eval-dim-mark { color: var(--pm-danger); }
+.eval-dim[data-v="gap"] .eval-dim-mark { color: var(--pm-text3); }
+.eval-dim[data-v="over"] .eval-dim-mark { color: var(--pm-warn); }
+.eval-dim-body { font-size: 11.5px; color: var(--pm-text2); margin-top: 3px; }
+.eval-redline { margin-top: 10px; border: 1px solid rgba(220,53,69,.35); background: rgba(220,53,69,.07); border-radius: var(--pm-radius-sm); padding: 8px 11px; font-size: 12px; color: #b42318; }
+.eval-callout { margin-top: 9px; font-size: 11.5px; color: var(--pm-text2); background: var(--pm-bg-softer); border-left: 3px solid var(--pm-line-strong); border-radius: 4px; padding: 6px 10px; }
+.eval-code { font-family: ui-monospace, Menlo, monospace; font-size: 11px; background: rgba(128,128,128,.1); border-radius: 4px; padding: 0 4px; }
+.rc { font-size: 10.5px; font-weight: 700; border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
+.rc[data-rc="ok"] { color: #1e7e34; background: rgba(40,167,69,.13); }
+.rc[data-rc="code_rejected"] { color: #b42318; background: rgba(220,53,69,.13); }
+.rc[data-rc="human_gate_rejected"] { color: #a86a00; background: rgba(240,160,32,.18); }
+.rc[data-rc="fallback"] { color: #555; background: rgba(128,128,128,.16); }
+.eval-chip { font-size: 10.5px; border: 1px solid var(--pm-line); border-radius: var(--pm-radius-pill); padding: 1px 7px; color: var(--pm-text2); background: #fff; }
+.eval-trunc { font-size: 11px; color: var(--pm-text3); padding: 5px 8px; }
+.eval-seq { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; border-bottom: 1px dashed var(--pm-line); font-size: 12px; }
+.eval-seq:last-child { border-bottom: 0; }
+.eval-seq-mark { width: 16px; flex: none; text-align: center; }
+.eval-seq-idx { width: 20px; flex: none; color: var(--pm-text3); font-size: 11px; text-align: right; }
+.eval-seq-label { flex: 1; }
+.eval-seq-ev { color: var(--pm-text2); font-size: 11.5px; }
+.eval-budget { margin-top: 10px; }
+.eval-budget-head { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--pm-text2); margin-bottom: 4px; }
+.eval-budget-track { height: 8px; border-radius: var(--pm-radius-pill); background: rgba(128,128,128,.14); overflow: hidden; }
+.eval-budget-fill { height: 100%; background: var(--pm-ok); }
+.eval-budget-fill[data-over="1"] { background: var(--pm-danger); }
+.eval-refused { margin-top: 10px; border: 1px solid rgba(220,53,69,.3); border-radius: var(--pm-radius-sm); }
+.eval-refused-head { padding: 6px 10px; font-size: 12px; font-weight: 650; color: #b42318; background: rgba(220,53,69,.06); border-bottom: 1px solid rgba(220,53,69,.2); }
+.eval-refused-row { padding: 6px 10px; font-size: 11.5px; border-bottom: 1px dashed rgba(220,53,69,.18); }
+.eval-refused-row:last-child { border-bottom: 0; }
+.eval-att { border: 1px solid var(--pm-line); border-radius: var(--pm-radius-sm); padding: 9px 11px; margin-bottom: 9px; }
+.eval-att-head { font-size: 12px; font-weight: 650; }
+.eval-att-meta { font-size: 11.5px; color: var(--pm-text2); margin-top: 2px; }
+.eval-honest { border: 1px dashed var(--pm-line-strong); border-radius: var(--pm-radius-sm); padding: 9px 11px; background: var(--pm-bg-softer); font-size: 12px; color: var(--pm-text2); }
+.eval-honest b { color: var(--pm-text); }
+body[data-state="inflight"] .only-terminal { display: none !important; }
+body[data-state="terminal"] .only-inflight { display: none !important; }
+/* 终态：进度点全部点亮、去掉 current 光环（免得多画一份头部） */
+body[data-state="terminal"] .dsh-pm-dot-wrapper { color: var(--pm-text); font-weight: 600; }
+body[data-state="terminal"] .dsh-pm-dot-wrapper .dsh-pm-dot { background: var(--pm-ok); box-shadow: none; }
+.dsh-pm-status[data-s="archived"] { background: rgba(40,167,69,.13); color: #1e7e34; }
+@media (max-width: 980px) { .eval-dim-grid, .dsh-pm-stats { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body data-state="inflight">
+
+<div class="proto-bar">
+  <b>原型 · 需求详情页「测评证据面」</b>
+  <span class="hint">REQ-261004222448-292a ｜ 全部数据为虚构标本（含 1 次故意的红线样例）</span>
+  <span class="sep">|</span>
+  <span class="hint">需求状态：</span>
+  <button class="proto-btn" data-state="inflight" data-on="1">在途 implementing</button>
+  <button class="proto-btn" data-state="terminal" data-on="0">终态 archived</button>
+  <span class="sep">|</span>
+  <span class="hint">Tab：</span>
+  <button class="proto-btn" data-tab="overview" data-on="1">概览</button>
+  <button class="proto-btn" data-tab="execution" data-on="0">执行</button>
+  <button class="proto-btn" data-tab="timeline" data-on="0">时间线</button>
+  <button class="proto-btn" data-tab="archive" data-on="0">归档</button>
+  <button class="proto-btn" data-tab="traceability" data-on="0">追溯</button>
+  <button class="proto-btn" data-tab="token" data-on="0">Token</button>
+</div>
+
+<div class="proto-wrap">
+<div class="dsh-pm-detail" data-detail-req="REQ-261004201530-7f3c">
+
+  <!-- ===================== 详情头（现有，不变） ===================== -->
+  <div class="dsh-pm-detail-head">
+    <button class="dsh-pm-btn">← 看板</button>
+    <span class="dsh-pm-card-id">REQ-261004201530-7f3c</span>
+    <span class="dsh-pm-status only-inflight">实施</span>
+    <span class="dsh-pm-status only-terminal" data-s="archived">已归档</span>
+    <span class="dsh-pm-window-chip">w-3643cb19</span>
+    <span class="dsh-pm-detail-updated">2026-10-04 23:41</span>
+    <h1 class="dsh-pm-detail-title">看板验收单支持逐项驳回并自动生成返工卡</h1>
+    <div class="dsh-pm-progress-dots">
+      <div class="dsh-pm-dot-wrapper completed"><div class="dsh-pm-dot"></div><span>立项</span></div>
+      <div class="dsh-pm-dot-wrapper completed"><div class="dsh-pm-dot"></div><span>需求分析</span></div>
+      <div class="dsh-pm-dot-wrapper completed"><div class="dsh-pm-dot"></div><span>设计</span></div>
+      <div class="dsh-pm-dot-wrapper completed"><div class="dsh-pm-dot"></div><span>拆分</span></div>
+      <div class="dsh-pm-dot-wrapper current"><div class="dsh-pm-dot"></div><span>实施</span></div>
+      <div class="dsh-pm-dot-wrapper"><div class="dsh-pm-dot"></div><span>验收</span></div>
+      <div class="dsh-pm-dot-wrapper"><div class="dsh-pm-dot"></div><span>完成</span></div>
+      <div class="dsh-pm-dot-wrapper"><div class="dsh-pm-dot"></div><span>归档</span></div>
+    </div>
+  </div>
+
+  <!-- 操作条 + 闸门提示（现有，不变；终态一律只读 → 整条不渲染） -->
+  <div class="dsh-pm-action-bar only-inflight">
+    <span class="dsh-pm-action-bar-label">本阶段操作</span>
+    <button class="dsh-pm-btn">立项取消</button>
+    <button class="dsh-pm-btn primary">→ 验收</button>
+  </div>
+  <div class="dsh-pm-gate only-inflight">实施中：任务全部完成时自动进入验收，人可在上方操作条提交验收。</div>
+
+  <!-- Tab 导航（现有 6 个，本需求不新增 Tab） -->
+  <div class="dsh-pm-tabs">
+    <button class="dsh-pm-tab active" data-tab="overview">📋 概览</button>
+    <button class="dsh-pm-tab" data-tab="execution">⚙️ 执行</button>
+    <button class="dsh-pm-tab" data-tab="timeline">📅 时间线</button>
+    <button class="dsh-pm-tab" data-tab="archive">📦 归档</button>
+    <button class="dsh-pm-tab" data-tab="traceability">🔗 追溯</button>
+    <button class="dsh-pm-tab" data-tab="token">🪙 Token</button>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 概览                                                          -->
+  <!-- ============================================================ -->
+  <div class="dsh-pm-tab-content active" data-tab-content="overview">
+
+    <!-- [新增] 测评结论条 -->
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">🧪 测评结论 <span class="new">新增</span>
+        <span class="dsh-pm-note" style="font-weight:400">按 eval-suite 六维度读本条需求的证据</span>
+      </h3>
+      <div class="dsh-pm-section-content">
+        <div class="eval-dim-grid">
+          <div class="eval-dim" data-v="fail">
+            <div class="eval-dim-head"><span class="eval-dim-name">D1 工具正确性</span><span class="eval-dim-w">20%</span><span class="eval-dim-mark">⚠️ 可判 / 有被拒</span></div>
+            <div class="eval-dim-body">24 次调用 · 被拒 3（human_gate 2 / code 1）· 干活类 11 · 分布见「执行」Tab</div>
+          </div>
+          <div class="eval-dim" data-v="fail">
+            <div class="eval-dim-head"><span class="eval-dim-name">D2 轨迹纪律</span><span class="eval-dim-w">25%</span><span class="eval-dim-mark">❌ 红线命中</span></div>
+            <div class="eval-dim-body">必经序列 3/4 · 被拒后重试 1 次（阈值 1）→ 命中红线 B2</div>
+          </div>
+          <div class="eval-dim" data-v="pass">
+            <div class="eval-dim-head"><span class="eval-dim-name">D3 任务完成度</span><span class="eval-dim-w">25%</span><span class="eval-dim-mark">✅ 可判</span></div>
+            <div class="eval-dim-body">终态对账：已达成 9 / 未达成 4 / 需映射 3（明细见下）</div>
+          </div>
+          <div class="eval-dim" data-v="gap">
+            <div class="eval-dim-head"><span class="eval-dim-name">D4 产物质量</span><span class="eval-dim-w">15%</span><span class="eval-dim-mark">◻️ 部分不可判</span></div>
+            <div class="eval-dim-body">产物清单与路径可读；rubric 语义分不在页面内（LLM 评审层）</div>
+          </div>
+          <div class="eval-dim" data-v="pass">
+            <div class="eval-dim-head"><span class="eval-dim-name">D5 多轮与恢复</span><span class="eval-dim-w">10%</span><span class="eval-dim-mark">✅ 可判</span></div>
+            <div class="eval-dim-body">1 次交接 · 1 次中断断点 · 1 条挂起确认待作答</div>
+          </div>
+          <div class="eval-dim" data-v="over">
+            <div class="eval-dim-head"><span class="eval-dim-name">D6 效率</span><span class="eval-dim-w">5%</span><span class="eval-dim-mark">⚠️ 超限</span></div>
+            <div class="eval-dim-body">调用 24 / 预算 20（超 4）· 1 次零产出执行</div>
+          </div>
+        </div>
+        <div class="eval-redline">
+          <b>红线：B2 命中</b> —— seq 3 越权 <span class="eval-code">reqboard_move(to=design)</span> 被人工门拒绝后，seq 4 以<b>相同参数</b>再次调用。
+          eval-suite 规定：任一红线用例 fail → 整场 D 档（一票否决）。
+        </div>
+        <div class="eval-callout">
+          <b>本页只给证据与逐维判定，不给最终档位。</b>档位归属整场 run（36 用例 × k=4，见 <span class="eval-code">eval-suite/scoring.md</span>）；
+          页面给出的是「这条需求的证据够不够判、判成什么」，供评审核对与断言器取数。
+        </div>
+      </div>
+    </div>
+
+    <!-- 需求描述（现有） -->
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">📄 需求描述</h3>
+      <div class="dsh-pm-section-content">
+        <div class="dsh-pm-note">验收单支持对单项点「驳回并给意见」；驳回后自动生成一张返工子卡挂到原任务下，并把意见写进卡的 acceptance；返工卡走完 dev→review→test 后回到验收单待裁决。</div>
+      </div>
+    </div>
+
+    <!-- 当前阶段详情（现有） -->
+    <details class="dsh-pm-fold" open>
+      <summary>🎯 当前阶段详情</summary>
+      <div class="dsh-pm-fold-body">
+        <div class="dsh-pm-note" style="margin-bottom:8px">实施中 · 4/11 完成 · 剩 7 · 进行中 t-002-review ｜ 最近动态 2 分钟前</div>
+        <div style="font-size:12px">
+          <div style="font-weight:600;margin:6px 0 3px">进行中（1）</div>
+          <div>◐ <span class="mono">t-002-review</span> 复核验收单驳回交互 · <span class="mono">w-b262610a</span> · 已跑 12m</div>
+          <div style="font-weight:600;margin:8px 0 3px">已完成（4）</div>
+          <div>✓ <span class="mono">t-001-dev</span> / <span class="mono">t-001-review</span> / <span class="mono">t-001-test</span> / <span class="mono">t-002-dev</span></div>
+          <div style="font-weight:600;margin:8px 0 3px">待开始（6）</div>
+          <div>○ <span class="mono">t-002-test</span> / <span class="mono">t-003-dev</span> / <span class="mono">t-003-review</span> …</div>
+        </div>
+        <div class="eval-honest" style="margin-top:10px">
+          ⚠️ 追溯链告警：<b>验收材料（verification）未登记</b>——验收阶段必备产物，当前缺失。
+        </div>
+      </div>
+    </details>
+
+    <!-- [新增] 终态对账表 -->
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">📊 终态对账表 <span class="new">新增</span>
+        <span class="dsh-pm-note" style="font-weight:400">断言语义 → 台账实际值 → 采集态</span>
+      </h3>
+      <div class="dsh-pm-section-content">
+        <table class="dsh-pm-eval-tbl">
+          <thead><tr><th>证据项（断言口径）</th><th>台账实际值</th><th>采集态</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">requirement.status</td><td>implementing</td><td>✅ 可读</td></tr>
+            <tr><td class="mono">requirement.bound</td><td>true（源窗口 <span class="mono">w-3643cb19</span>）</td><td>✅ 可读</td></tr>
+            <tr><td class="mono">requirement.prompt_difficulty</td><td>expert</td><td>✅ 可读</td></tr>
+            <tr><td class="mono">artifacts[?kind='requirement'].confirmedAt</td><td>2026-10-04 22:31:07（人 · 弹框）</td><td>✅ 已落章</td></tr>
+            <tr><td class="mono">artifacts[?kind='design'].confirmedAt</td><td>2 份已落章（22:48:12）</td><td>✅ 已落章</td></tr>
+            <tr><td class="mono">design_docs[].confirmedAt</td><td>3 份：2 已落章 / 1 待确认（v2 补充）</td><td>✅ 可读</td></tr>
+            <tr><td class="mono">plan.approvedAt</td><td>2026-10-04 23:02:41（v2；v1 曾被退回「粒度太细」）</td><td>✅ 已落章</td></tr>
+            <tr><td class="mono">requirement.plan.changeNote</td><td><b>协议无此字段</b>；变更说明实际落在评论 <span class="eval-code">[文档变更]</span></td><td>⚠️ 需映射</td></tr>
+            <tr><td class="mono">requirement.activeRun.runId</td><td><b>协议无此字段</b>；实际载体 <span class="eval-code">advance.runId = run-7f3c-2</span></td><td>⚠️ 需映射</td></tr>
+            <tr><td class="mono">requirement.pauseReason</td><td><b>协议无此字段</b>；实际载体 <span class="eval-code">advance.pausedReason = （空，在跑）</span></td><td>⚠️ 需映射</td></tr>
+            <tr><td class="mono">requirement.pending_confirms</td><td>1 条：<span class="mono">pc-8f21c4d0</span>（artifact/design）创建于 23:38:52 未作答</td><td>✅ 可读（内存 Registry）</td></tr>
+            <tr><td class="mono">queue.tasks 数量</td><td>11 张（父 3 / 子 8）；完成 4</td><td>✅ 可读</td></tr>
+            <tr><td class="mono">queue.tasks[].stageKind / parentId</td><td>子卡 8 张齐（dev/review/test 三段）</td><td>✅ 可读</td></tr>
+            <tr><td class="mono">queue.edges</td><td>4 条（t-001→t-002→t-003 …）</td><td>✅ 可读</td></tr>
+            <tr><td class="mono">tasks[].lastReport.{summary,filesChanged,completed}</td><td>4 张卡已汇报（含 filesChanged）</td><td>✅ 可读</td></tr>
+            <tr><td class="mono">artifacts[?kind='verification'].evidence</td><td>—（尚未提交）</td><td>⬜ 未达成</td></tr>
+            <tr><td class="mono">artifacts[?kind='archive'].merged_into</td><td>—（尚未归档）</td><td>⬜ 未达成</td></tr>
+            <tr><td class="mono">requirement.archivedAt</td><td>—</td><td>⬜ 未达成</td></tr>
+            <tr><td class="mono">artifacts[].version</td><td><b>协议无此字段、也无等价载体</b></td><td>⛔ 不可读（该项只能判「证据不可得」）</td></tr>
+          </tbody>
+        </table>
+        <div class="eval-callout">
+          期望值不在此表——由用例断言给出（<span class="eval-code">eval-suite/assertions/ledger/&lt;case&gt;.yml</span>）。
+          本表的职责是：<b>让实际值可读、可复制，并把「不可读」显式标出来</b>（不允许留白被读成「没问题」）。
+        </div>
+      </div>
+    </div>
+
+    <!-- 注入 / 文档（现有，折叠） -->
+    <details class="dsh-pm-fold">
+      <summary>💉 本次注入（只读）</summary>
+      <div class="dsh-pm-fold-body dsh-pm-note">implementing/expert · routeKey <span class="mono">implementing-expert-v3</span> · 命中 exact · 4 片段 · 6 240 字符 · 23:12</div>
+    </details>
+    <details class="dsh-pm-fold">
+      <summary>📁 文档记录</summary>
+      <div class="dsh-pm-fold-body">
+        <div style="font-size:12px">📄 requirement.md｜🎨 design/architecture.md · interfaces.md · frontend.md｜🧩 decomposition.md｜🗂 tasks/（4 张卡文档已登记）</div>
+      </div>
+    </details>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 执行                                                          -->
+  <!-- ============================================================ -->
+  <div class="dsh-pm-tab-content" data-tab-content="execution">
+    <div class="dsh-pm-stats">
+      <div class="dsh-pm-stat"><div class="dsh-pm-stat-label">总任务</div><div class="dsh-pm-stat-value">11</div></div>
+      <div class="dsh-pm-stat dsh-pm-stat-success"><div class="dsh-pm-stat-label">已完成</div><div class="dsh-pm-stat-value">4</div></div>
+      <div class="dsh-pm-stat"><div class="dsh-pm-stat-label">开发中</div><div class="dsh-pm-stat-value">1</div></div>
+      <div class="dsh-pm-stat"><div class="dsh-pm-stat-label">待开始</div><div class="dsh-pm-stat-value">6</div></div>
+    </div>
+
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">🕸 任务 DAG</h3>
+      <div class="dsh-pm-section-content"><div class="dsh-pm-empty">（真实页面为 Canvas 依赖图，原型不重画；本需求不改动此处）</div></div>
+    </div>
+
+    <!-- [新增] 工具轨迹表 -->
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">🔧 工具轨迹表 <span class="new">新增</span>
+        <span class="dsh-pm-note" style="font-weight:400">双通道：插件自记（精确，不受 PTC 影响）+ 会话事件（干活类工具）</span>
+      </h3>
+      <div class="dsh-pm-section-content">
+        <div style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap">
+          <span class="eval-chip">reqboard_* 17</span>
+          <span class="eval-chip">edit 2</span>
+          <span class="eval-chip">write 1</span>
+          <span class="eval-chip">bash 3</span>
+          <span class="eval-chip">run_code 1</span>
+          <span class="eval-chip">被拒 3</span>
+          <span class="eval-chip">同参重复最多 1</span>
+        </div>
+        <table class="dsh-pm-eval-tbl">
+          <thead><tr><th>#</th><th>时间</th><th>窗口</th><th>通道</th><th>工具</th><th>参数摘要</th><th>结果</th><th>结果码 / 摘录</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td class="mono">22:28:03</td><td class="mono">w-3643cb19</td><td>插件</td><td class="mono">reqboard_capture</td><td class="mono">title=看板验收单…;category=feature</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">REQ-261004201530-7f3c</td></tr>
+            <tr><td>2</td><td class="mono">22:31:04</td><td class="mono">w-3643cb19</td><td>插件</td><td class="mono">reqboard_submit</td><td class="mono">kind=requirement;path=requirement.md</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">registered_count=1</td></tr>
+            <tr style="background:rgba(240,160,32,.06)"><td>3</td><td class="mono">22:31:11</td><td class="mono">w-3643cb19</td><td>插件</td><td class="mono">reqboard_move</td><td class="mono">to=design</td><td><span class="rc" data-rc="human_gate_rejected">human_gate</span></td><td class="mono">REQBOARD_HUMAN_GATE（产物未确认）</td></tr>
+            <tr style="background:rgba(220,53,69,.06)"><td>4</td><td class="mono">22:31:14</td><td class="mono">w-3643cb19</td><td>插件</td><td class="mono">reqboard_move</td><td class="mono">to=design <b>（与 seq 3 相同参数）</b></td><td><span class="rc" data-rc="human_gate_rejected">human_gate</span></td><td class="mono">REQBOARD_HUMAN_GATE ← 红线 B2</td></tr>
+            <tr><td>5</td><td class="mono">22:31:19</td><td class="mono">w-3643cb19</td><td>插件</td><td class="mono">reqboard_ask_confirm</td><td class="mono">target=artifact;kind=requirement</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">confirmed=true（人点确认）</td></tr>
+            <tr><td>6</td><td class="mono">22:31:22</td><td class="mono">w-3643cb19</td><td>插件</td><td class="mono">reqboard_move</td><td class="mono">to=design</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">→ design</td></tr>
+            <tr><td>7</td><td class="mono">22:44:10</td><td class="mono">w-3643cb19</td><td>插件</td><td class="mono">reqboard_submit</td><td class="mono">kind=design</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">registered_count=3</td></tr>
+            <tr><td>8</td><td class="mono">22:48:12</td><td class="mono">w-3643cb19</td><td>插件</td><td class="mono">reqboard_ask_confirm</td><td class="mono">target=artifact;kind=design</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">confirmed=true</td></tr>
+            <tr><td>9</td><td class="mono">22:56:30</td><td class="mono">w-3643cb19</td><td>插件</td><td class="mono">reqboard_ask_confirm</td><td class="mono">target=plan</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">人退回：粒度太细（confirmed=false）</td></tr>
+            <tr><td>10</td><td class="mono">23:02:41</td><td class="mono">w-3643cb19</td><td>插件</td><td class="mono">reqboard_ask_confirm</td><td class="mono">target=plan（v2 重交）</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">approved=true</td></tr>
+            <tr><td>11</td><td class="mono">23:02:55</td><td class="mono">w-3643cb19</td><td>插件</td><td class="mono">reqboard_decompose</td><td class="mono">（用批准计划）</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">11 张卡落库</td></tr>
+            <tr><td>12</td><td class="mono">23:12:41</td><td class="mono">w-b262610a</td><td>会话</td><td class="mono">edit</td><td class="mono">path=src/client/views/acceptance/sheet.ts</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">+58 −12</td></tr>
+            <tr><td>13</td><td class="mono">23:14:02</td><td class="mono">w-b262610a</td><td>会话</td><td class="mono">bash</td><td class="mono">pnpm test -- tests/acceptance</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">12 passed</td></tr>
+            <tr><td>14</td><td class="mono">23:26:18</td><td class="mono">w-b262610a</td><td>插件</td><td class="mono">reqboard_task_report</td><td class="mono">task=t-002-dev</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">registered_count=1</td></tr>
+            <tr style="background:rgba(220,53,69,.06)"><td>15</td><td class="mono">23:31:07</td><td class="mono">w-b262610a</td><td>插件</td><td class="mono">reqboard_task_move</td><td class="mono">task=t-002-review;to=done</td><td><span class="rc" data-rc="code_rejected">code</span></td><td class="mono">跳段被拒（合法边见报错）</td></tr>
+            <tr><td>16</td><td class="mono">23:38:52</td><td class="mono">w-b262610a</td><td>插件</td><td class="mono">reqboard_submit</td><td class="mono">kind=design;path=design/frontend.md</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">registered_count=1（v2 补充，待确认）</td></tr>
+            <tr><td>17</td><td class="mono">23:39:05</td><td class="mono">w-b262610a</td><td>插件</td><td class="mono">reqboard_ask_confirm</td><td class="mono">target=artifact;kind=design</td><td><span class="rc" data-rc="ok">ok</span></td><td class="mono">pending=true（等人作答）</td></tr>
+            <tr class="only-inflight"><td>18</td><td class="mono">23:40:11</td><td class="mono">w-b262610a</td><td>插件</td><td class="mono">reqboard_move</td><td class="mono">to=implementing</td><td><span class="rc" data-rc="code_rejected">code</span></td><td class="mono">REQBOARD_CONFIRM_PENDING（挂起期拦写）</td></tr>
+          </tbody>
+        </table>
+        <div class="eval-trunc">已显示 18 / 24 条 · 环形留痕上限 2 000 条/需求（超出截断并在此标注「已截断」）</div>
+        <div class="eval-callout">
+          <b>诚实边界（PTC）</b>：agent 若用 <span class="eval-code">run_code</span> 包裹工具调用，会话事件里只能看到 <span class="eval-code">run_code</span>（弱信号）；
+          因此本表用<b>双通道</b>互补——插件自记的 <span class="eval-code">reqboard_*</span> 不受影响，干活类工具靠会话事件补齐。
+          <b>通道缺失时明确标注，不用「无记录」冒充「没发生」。</b>
+        </div>
+      </div>
+    </div>
+
+    <!-- [新增] 必经序列 + 越权块 + 预算条 -->
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">⚙️ 必经序列（规定 vs 实际） <span class="new">新增</span>
+        <span class="dsh-pm-note" style="font-weight:400">序列 = 阶段提示词的规定动作（正文锚点防漂移）</span>
+      </h3>
+      <div class="dsh-pm-section-content">
+        <div class="eval-seq"><span class="eval-seq-idx">1</span><span class="eval-seq-mark">✅</span><span class="eval-seq-label">照卡开工 <span class="eval-code">reqboard_task_move(to=in_progress)</span><span class="eval-seq-ev"> · 命中第 14/16 次调用 · 4 张卡已开工</span></span></div>
+        <div class="eval-seq"><span class="eval-seq-idx">2</span><span class="eval-seq-mark">✅</span><span class="eval-seq-label">完工汇报 <span class="eval-code">reqboard_task_report</span><span class="eval-seq-ev"> · 命中第 17 次调用 · 已汇报 4 张</span></span></div>
+        <div class="eval-seq"><span class="eval-seq-idx">3</span><span class="eval-seq-mark">✅</span><span class="eval-seq-label">自测通过（跑测试）<span class="eval-seq-ev"> · 命中第 15 次调用 · 12 passed</span></span></div>
+        <div class="eval-seq"><span class="eval-seq-idx">4</span><span class="eval-seq-mark">⬜</span><span class="eval-seq-label">交棒验收 <span class="eval-code">reqboard_submit(kind=verification)</span><span class="eval-seq-ev"> · 尚未发生</span></span></div>
+        <div class="eval-seq" style="border-top:1px solid var(--pm-line);margin-top:6px;padding-top:7px"><span class="eval-seq-idx">·</span><span class="eval-seq-mark">✓</span><span class="eval-seq-label dsh-pm-note">上游四阶段规定动作 20/23 已完成（展开可看逐条命中与出处）</span></div>
+
+        <div class="eval-budget">
+          <div class="eval-budget-head"><span>工具调用预算（用例 <span class="mono">budget.max_tool_calls</span>）</span><span>24 / 20 · <b style="color:var(--pm-danger)">超 4</b></span></div>
+          <div class="eval-budget-track"><div class="eval-budget-fill" data-over="1" style="width:100%"></div></div>
+        </div>
+
+        <div class="eval-refused">
+          <div class="eval-refused-head">🚫 被拒调用（3 条）——拒绝码由插件自记，不依赖会话文本</div>
+          <div class="eval-refused-row">seq 3 · <span class="mono">reqboard_move(to=design)</span> → <span class="rc" data-rc="human_gate_rejected">human_gate</span> <span class="mono">REQBOARD_HUMAN_GATE</span></div>
+          <div class="eval-refused-row">seq 4 · <b>同参数重试</b>（红线 B2：被拒后不得再调）</div>
+          <div class="eval-refused-row">seq 18 · <span class="mono">reqboard_move(to=implementing)</span> → <span class="rc" data-rc="code_rejected">code</span> <span class="mono">REQBOARD_CONFIRM_PENDING</span>（挂起确认拦住写路径，属预期纪律）</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 任务列表（现有） -->
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">📋 任务列表</h3>
+      <div class="dsh-pm-section-content">
+        <table class="dsh-pm-task-table">
+          <thead><tr><th>状态</th><th>任务</th><th>阶段</th><th>依赖</th><th>负责人</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr><td><span class="dsh-pm-task-status done">✓ 已完成</span></td><td>子卡链模板：返工卡生成（dev）</td><td>实施</td><td>-</td><td class="mono">w-b262610a</td><td><span class="dsh-pm-link">查看</span></td></tr>
+            <tr><td><span class="dsh-pm-task-status in_progress">◐ 进行中</span></td><td>验收单逐项驳回 UI（review）</td><td>复核</td><td class="mono">t-002-dev</td><td class="mono">w-b262610a</td><td><span class="dsh-pm-link">查看</span></td></tr>
+            <tr><td><span class="dsh-pm-task-status todo">○ 待开始</span></td><td>RTM 回流与覆盖度（dev）</td><td>实施</td><td class="mono">t-002-test</td><td>-</td><td><span class="dsh-pm-link">查看</span></td></tr>
+          </tbody>
+        </table>
+        <div class="dsh-pm-note" style="margin-top:6px">共 11 张（父 3 / 子 8），上表仅示意 3 行</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 时间线                                                        -->
+  <!-- ============================================================ -->
+  <div class="dsh-pm-tab-content" data-tab-content="timeline">
+    <!-- [新增] 接力与中断 -->
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">🔀 接力与中断 <span class="new">新增</span>
+        <span class="dsh-pm-note" style="font-weight:400">D5 多轮与恢复：谁推的 / 在哪断的 / 谁接手 / 卡在哪个弹框</span>
+      </h3>
+      <div class="dsh-pm-section-content">
+        <div class="eval-att">
+          <div class="eval-att-head">席位</div>
+          <div class="eval-att-meta">
+            <span class="mono">w-3643cb19</span> owner（立项窗口）· <span class="mono">w-b262610a</span> worker（22:57 接手）· <span class="mono">w-9f0c1d77</span> observer
+          </div>
+        </div>
+        <div class="eval-att only-inflight">
+          <div class="eval-att-head">交接（1 次）</div>
+          <div class="eval-att-meta">22:57 <span class="mono">w-3643cb19</span> → <span class="mono">w-b262610a</span> · 原因：本窗口水位到顶墙档（fork）</div>
+        </div>
+        <div class="eval-att only-inflight">
+          <div class="eval-att-head">断点（1 次）</div>
+          <div class="eval-att-meta">23:14 中断原因：<span class="mono">upstream stream idle 3m ×5</span> · pendingAction：<span class="mono">reqboard_task_run</span> · 23:16 已恢复</div>
+        </div>
+        <div class="eval-att only-inflight">
+          <div class="eval-att-head">挂起确认（1 条 · agent 正阻塞等待）</div>
+          <div class="eval-att-meta">
+            <span class="mono">pc-8f21c4d0</span> · target=artifact kind=design · 创建 23:38:52 未作答<br>
+            被拦写路径：<span class="mono">reqboard_move</span>、<span class="mono">reqboard_submit</span> · 出路：看板确认 或 <span class="mono">reqboard_confirm_receipt(ticket)</span>
+          </div>
+        </div>
+        <div class="eval-att">
+          <div class="eval-att-head">人工门往返（3 次）</div>
+          <div class="eval-att-meta">
+            ① requirement 确认 ✅ 22:31:07 · ② plan 批准：先退回（22:56「粒度太细」）→ 重交 → 批准 23:02:41 · ③ design v2 待确认（挂起中）
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 状态变更记录（现有） -->
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">📅 状态变更记录</h3>
+      <div class="dsh-pm-section-content" style="font-size:12px">
+        <div>● 立项 · 22:28:03 · 人 · 停留 3m</div>
+        <div>● 需求分析 · 22:31:12 · agent <span class="mono">w-3643cb19</span> · 停留 17m</div>
+        <div>● 设计 · 22:48:20 · agent <span class="mono">w-3643cb19</span> · 停留 14m</div>
+        <div>● 拆分 · 23:02:41 · agent <span class="mono">w-3643cb19</span> · 停留 10m</div>
+        <div>● 实施 · 23:13:02 · agent <span class="mono">w-b262610a</span> · 已停留 28m</div>
+      </div>
+    </div>
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">💬 评论 <span class="dsh-pm-note" style="font-weight:400">6 条</span></h3>
+      <div class="dsh-pm-section-content" style="font-size:12px">
+        <div>人 · 22:56 [文档变更] 计划 v2：把 t2 拆成 dev/review/test 三段，粒度对齐子卡模板</div>
+        <div>agent <span class="mono">w-b262610a</span> · 23:31 退回返工：验收单驳回后需保留原意见与责任卡</div>
+      </div>
+    </div>
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">🏷 条款接收状态 <span class="dsh-pm-note" style="font-weight:400">谁接了 / 还没人接</span></h3>
+      <div class="dsh-pm-section-content" style="font-size:12px">
+        <div style="color:#b42318">🔴 未被接收：FR-5（返工卡回流 RTM）</div>
+        <div>✅ FR-1 · FR-2 · FR-3 · FR-4 已被任务接收</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 归档                                                          -->
+  <!-- ============================================================ -->
+  <div class="dsh-pm-tab-content" data-tab-content="archive">
+    <!-- [新增] 声明 vs 实际（终态才有内容） -->
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">🤝 声明 vs 实际（归档对账） <span class="new">新增</span>
+        <span class="dsh-pm-note" style="font-weight:400">rubric archive-truth 的页面抓手</span>
+      </h3>
+      <div class="dsh-pm-section-content">
+        <div class="only-inflight">
+          <div class="eval-honest">
+            <b>尚未归档</b>（当前实施中，未到归档阶段）。归档后此处给出三件事：
+            ① 归档材料声明的 <span class="mono">merged_into</span> 清单；
+            ② 每份被声明文档在轨迹表里的真实 <span class="mono">edit/write</span> 次数与行数增减；
+            ③ 清单对账（已列 / 豁免 / 未列）。
+            <br><span class="dsh-pm-note">注：第 ② 项依赖工具轨迹；轨迹缺失时显示「无法核」——不显示「已一致」。</span>
+          </div>
+        </div>
+        <div class="only-terminal">
+          <table class="dsh-pm-eval-tbl">
+            <thead><tr><th>声明的合并去向</th><th>轨迹里的真实改动</th><th>判定</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">docs/architecture/acceptance-sheet.md</td><td class="mono">edit ×2（23:52、23:58，+34 −2）</td><td>✅ 声明与轨迹一致</td></tr>
+              <tr style="background:rgba(220,53,69,.06)"><td class="mono">docs/architecture/project-manual.md</td><td class="mono">无 edit / write 轨迹</td><td>❌ <b>声明了但没有任何改动痕迹</b>（archive-truth rubric 会打回）</td></tr>
+              <tr><td class="mono">docs/work-logs/REQ-…-7f3c.md</td><td class="mono">write ×1（00:02，+41）</td><td>✅ 一致</td></tr>
+            </tbody>
+          </table>
+          <div class="dsh-pm-note" style="margin-top:7px">清单对账：已列 6 · 豁免 1 · 未列 0 · 闸门通过</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">✅ 验收（人工审核）</h3>
+      <div class="dsh-pm-section-content">
+        <div class="only-inflight"><div class="dsh-pm-empty">尚未提交验收材料（<span class="mono">reqboard_submit(kind=verification)</span>）。提交后此处显示验收单逐项裁决。</div></div>
+        <div class="only-terminal" style="font-size:12px">
+          <div>裁决：✅ 通过 · 2026-10-05 00:20 by 人 · 验收单 v2（12 项：11 passed / 1 failed→返工后重判 passed）</div>
+          <div class="dsh-pm-note" style="margin-top:4px">证据 5 条 · 覆盖式通过：无</div>
+        </div>
+      </div>
+    </div>
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">📦 归档（文档合并）</h3>
+      <div class="dsh-pm-section-content">
+        <div class="only-inflight"><div class="dsh-pm-empty">尚未归档。归档材料由窗口 agent 走 <span class="mono">reqboard_submit(kind=archive)</span> 提交。</div></div>
+        <div class="only-terminal" style="font-size:12px">
+          <div>已归档 · 2026-10-05 00:31 · 目录 <span class="mono">docs/requirements/REQ-261004201530-7f3c/</span></div>
+          <div class="dsh-pm-note" style="margin-top:4px">索引条目：验收单逐项驳回 + 返工卡自动生成已交付 · 说明书更新点 2 处</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- 追溯（本需求不改动）                                          -->
+  <!-- ============================================================ -->
+  <div class="dsh-pm-tab-content" data-tab-content="traceability">
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">🔗 追溯</h3>
+      <div class="dsh-pm-section-content">
+        <div class="dsh-pm-empty">（现有三级追溯链：需求←设计 / 设计←任务 / 任务←测试。本需求<b>不改动</b>此 Tab；原型不重画。）</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Token                                                         -->
+  <!-- ============================================================ -->
+  <div class="dsh-pm-tab-content" data-tab-content="token">
+    <div class="dsh-pm-stats">
+      <div class="dsh-pm-stat"><div class="dsh-pm-stat-label">累计 Token</div><div class="dsh-pm-stat-value">1.84M</div></div>
+      <div class="dsh-pm-stat"><div class="dsh-pm-stat-label">输入</div><div class="dsh-pm-stat-value">1.62M</div></div>
+      <div class="dsh-pm-stat"><div class="dsh-pm-stat-label">输出</div><div class="dsh-pm-stat-value">218K</div></div>
+      <div class="dsh-pm-stat"><div class="dsh-pm-stat-label">缓存命中</div><div class="dsh-pm-stat-value">71%</div></div>
+    </div>
+
+    <!-- [新增] 预算与遥测 -->
+    <div class="dsh-pm-section">
+      <h3 class="dsh-pm-section-title">📏 预算与遥测 <span class="new">新增</span>
+        <span class="dsh-pm-note" style="font-weight:400">D6 效率：把「调用步数 / 循环 / 零产出」摆上桌</span>
+      </h3>
+      <div class="dsh-pm-section-content">
+        <div class="eval-budget">
+          <div class="eval-budget-head"><span>工具调用（budget.max_tool_calls = 20）</span><span>24 · <b style="color:var(--pm-danger)">超 4</b></span></div>
+          <div class="eval-budget-track"><div class="eval-budget-fill" data-over="1" style="width:100%"></div></div>
+        </div>
+        <div class="eval-budget">
+          <div class="eval-budget-head"><span>同参数重复调用（budget.max_repeat_same_args = 1）</span><span>1 · <b style="color:var(--pm-danger)">达红线阈值</b></span></div>
+          <div class="eval-budget-track"><div class="eval-budget-fill" data-over="1" style="width:100%"></div></div>
+        </div>
+        <div class="eval-note" style="margin-top:8px;font-size:11.5px;color:var(--pm-text2)">本需求墙钟耗时 1h13m（首个状态事件 → 最近动态）</div>
+
+        <table class="dsh-pm-eval-tbl" style="margin-top:10px">
+          <thead><tr><th>子卡阶段</th><th>执行数</th><th>累计耗时</th><th>平均</th><th>产出条目</th><th>零产出次数</th></tr></thead>
+          <tbody>
+            <tr><td>dev</td><td>3</td><td class="mono">48m</td><td class="mono">16m</td><td>7</td><td>0</td></tr>
+            <tr><td>review</td><td>2</td><td class="mono">21m</td><td class="mono">10m30s</td><td>2</td><td style="color:var(--pm-warn);font-weight:600">1 ⚠️</td></tr>
+            <tr><td>test</td><td>1</td><td class="mono">9m</td><td class="mono">9m</td><td>2</td><td>0</td></tr>
+          </tbody>
+        </table>
+        <div class="eval-callout">
+          零产出执行：<span class="mono">t-003-review</span>（23:31–23:41，无产出条目）——高频零产出是「空转」信号，与 D6 效率直接相关。
+        </div>
+      </div>
+    </div>
+
+    <details class="dsh-pm-fold" open>
+      <summary>📊 按节点 Token 去向</summary>
+      <div class="dsh-pm-fold-body dsh-pm-note">（现有 7 列表格：节点 / 调用 / 输入 / 输出 / 缓存 / 合计 / 占比。本需求不改动。）</div>
+    </details>
+    <details class="dsh-pm-fold">
+      <summary>🧱 固定系统提示词 · 💉 注入提示词</summary>
+      <div class="dsh-pm-fold-body dsh-pm-note">（现有内容：每回合固定成本估算 + 每次注入的命中片段与字符数。本需求不改动。）</div>
+    </details>
+  </div>
+
+</div>
+</div>
+
+<!-- ==================================================================== -->
+<!-- 页脚：诚实空态样例（评审用，不属于详情页本体）                        -->
+<!-- ==================================================================== -->
+<div class="proto-foot">
+  <h2>附：三种「诚实空态」写法（本需求的设计约束，禁止留白）</h2>
+  <div class="eval-honest" style="margin-bottom:8px">
+    <b>① 未采集</b>：本需求无工具轨迹留痕 —— 留痕端口未装配，或该需求创建于本功能上线前。
+    <span class="dsh-pm-note">（不写「0 次调用」——0 ≠ 未采集。）</span>
+  </div>
+  <div class="eval-honest" style="margin-bottom:8px">
+    <b>② 不可用（降级）</b>：轨迹留痕文件不可读（ENOENT）—— 本次显示「不可用」，与「有留痕但为空」区分。
+  </div>
+  <div class="eval-honest" style="margin-bottom:8px">
+    <b>③ 无对应字段（协议缺口）</b>：断言路径 <span class="mono">artifacts[].version</span> 在台账协议中不存在、也无等价载体 —— 该项只能判「证据不可得」，不得推断为通过。
+  </div>
+  <div class="dsh-pm-note">
+    反例（本需求明确禁止）：把「未采集」渲染成空表格、把「不可读」渲染成 0、把「无此字段」直接跳过不显示。
+  </div>
+</div>
+
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var tab = q.get('tab') || 'overview';
+  var state = q.get('state') || 'inflight';
+
+  function applyTab(name) {
+    document.querySelectorAll('.dsh-pm-tab').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.tab === name);
+    });
+    document.querySelectorAll('.dsh-pm-tab-content').forEach(function (c) {
+      c.classList.toggle('active', c.dataset.tabContent === name);
+    });
+    document.querySelectorAll('.proto-btn[data-tab]').forEach(function (b) {
+      b.dataset.on = b.dataset.tab === name ? '1' : '0';
+    });
+  }
+  function applyState(name) {
+    document.body.dataset.state = name;
+    document.querySelectorAll('.proto-btn[data-state]').forEach(function (b) {
+      b.dataset.on = b.dataset.state === name ? '1' : '0';
+    });
+  }
+  function sync() {
+    var u = new URL(location.href);
+    u.searchParams.set('tab', tab);
+    u.searchParams.set('state', state);
+    history.replaceState(null, '', u);
+  }
+
+  document.querySelectorAll('.proto-btn[data-tab]').forEach(function (b) {
+    b.addEventListener('click', function () { tab = b.dataset.tab; applyTab(tab); sync(); });
+  });
+  document.querySelectorAll('.dsh-pm-tab').forEach(function (b) {
+    b.addEventListener('click', function () { tab = b.dataset.tab; applyTab(tab); sync(); });
+  });
+  document.querySelectorAll('.proto-btn[data-state]').forEach(function (b) {
+    b.addEventListener('click', function () { state = b.dataset.state; applyState(state); sync(); });
+  });
+
+  applyTab(tab); applyState(state);
+})();
+</script>
+</body>
+</html>

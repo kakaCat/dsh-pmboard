@@ -1,0 +1,38 @@
+task:
+  id: t-991515
+  title: 退路先修好：v10 分片导回 legacy v9 单册·复核
+  status: done
+  implements: |-
+    新增 scripts/rollback-ledger-v10.ts：读 v10 数据根（热侧 + 冷侧 archive/）→ 用 t6 导出的 readV9Ledger 的反向写入器组装 v9 单册结构（comments/statusHistory/artifacts/plan/verification/archive 全部重新内联，schemaVersion 写 9，去掉 v10 才有的计数字段）→ persistAtomic 写 --out 目标；支持 --dry-run/--apply/--json/--force 与写前备份既有目标文件。配 tests/reqboard/rollback-v10.test.ts：迁移夹具 → 回滚导出 → 用 readV9Ledger 装载导出文件做等价断言。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-536007
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002161439-277d
+    TASK_ID: t-991515
+    TASK_TITLE: 退路先修好：v10 分片导回 legacy v9 单册·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T09:40:28.659Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002161439-277d
+  generated_at: 2026-10-02T09:40:24.308Z
+  version: 5
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-02T10:16:11.081Z

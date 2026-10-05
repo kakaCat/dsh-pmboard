@@ -1,0 +1,3482 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261004184822-9881",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-04T10:57:49.262Z",
+  "tasks": [
+    {
+      "id": "t-19e1e2",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "记住你看到哪：位置记忆模块（不落盘、不跟别人串）",
+      "cardDoc": "docs/requirements/REQ-261004184822-9881/tasks/t-19e1e2.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/board-lane-scroll.test.ts 全绿（TC-1 往返 + 超上限裁剪；TC-2 A 列 180/B 列 0；TC-3 无泳道容器时 capture 不写零、restore 无副作用；TC-4 与 readDagViewState 互不影响）；grep -c \"localStorage\\|sessionStorage\\|document.cookie\" src/client/board-scroll.ts = 0；pnpm typecheck 错误数 ≤ HEAD 基线。",
+      "implementation": "新增 src/client/board-scroll.ts：导出 captureBoardScroll(root)（读 .dsh-pm-lanes 的 scrollLeft + 每列 .dsh-pm-lane[data-lane] 内 .dsh-pm-lane-cards 的 scrollTop；找不到泳道容器即静默返回且不覆盖记忆）、restoreBoardScroll(root)（只在找得到容器/该列时回填，不创建节点）、readBoardScroll()（浅拷贝）、_resetBoardScroll()（测试用）；单条内存快照 + sanitize（负数/NaN/Infinity/undefined → 0，口径照 src/client/dag/view-state.ts 但不复用它）；列键上限 16。新增 tests/board-lane-scroll.test.ts：桩 DOM 覆盖 TC-1/TC-2/TC-3/TC-4，文件头 20 行内含 serves: FR-1, FR-2。",
+      "context": "",
+      "footprint": {
+        "files": 3,
+        "anchors": 5,
+        "chars": 1800
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e7acbc",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111474645,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 446,
+              "at": 1791111474645,
+              "totals": {
+                "uncachedInputTokens": 116623,
+                "outputTokens": 62922,
+                "cacheReadTokens": 6462592,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 446,
+                  "totals": {
+                    "uncachedInputTokens": 116623,
+                    "outputTokens": 62922,
+                    "cacheReadTokens": 6462592,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 639,
+              "at": 1791111663049,
+              "totals": {
+                "uncachedInputTokens": 144039,
+                "outputTokens": 80399,
+                "cacheReadTokens": 12382720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 639,
+                  "totals": {
+                    "uncachedInputTokens": 144039,
+                    "outputTokens": 80399,
+                    "cacheReadTokens": 12382720,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 27416,
+              "outputTokens": 17477,
+              "cacheReadTokens": 5920128,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111663049
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111469201,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111474645,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "开工 t1：先落位置记忆模块与桩 DOM 单测（TC-1~TC-4）"
+        },
+        {
+          "status": "done",
+          "at": 1791111663049,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "t1 收尾：模块与用例落盘，子链四段全 done（研发/联调/复核/测试）"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b0105e",
+          "body": "[状态] → in_progress：开工 t1：先落位置记忆模块与桩 DOM 单测（TC-1~TC-4）（reqboard_task_move）",
+          "createdAt": 1791111474645,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-23dfb6",
+          "body": "[状态] → done：t1 收尾：模块与用例落盘，子链四段全 done（研发/联调/复核/测试）（reqboard_task_move）",
+          "createdAt": 1791111663049,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111469201,
+      "updatedAt": 1791111663049,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791111660613,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/board-scroll.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "看板有了位置记忆模块：横滚位置与每列内部翻到的位置都能记住并回填",
+          "找不到泳道容器时不覆盖记忆——从详情页或列表页回来看板，位置不会被冲成最左",
+          "记忆只在内存、与 DAG 画布记忆各记各的（两条硬要求都有可跑断言）",
+          "子链四段走完：研发、联调（build:client 校验 OK）、复核（无偏离）、测试（9 条用例全绿，全量 98 失败 ≤ 基线 106）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111660613,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-dc4752",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "刷新别把人弹回去：把它接在重绘那两行上",
+      "cardDoc": "docs/requirements/REQ-261004184822-9881/tasks/t-dc4752.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-19e1e2"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/board-lane-scroll.test.ts 全绿（含 TC-5）；grep -c \"BoardScroll\" src/client/board-mount.ts ≥ 3（import + 两次调用）；npx vitest run tests/board-attach.test.ts 全绿（既有挂载/释放生命周期回归）。",
+      "implementation": "改 src/client/board-mount.ts 的 render()：在 switch (mode.kind) 之前调 captureBoardScroll(viewEl)、之后调 restoreBoardScroll(viewEl)（viewEl === undefined 与 state === undefined 的空态分支不进记忆）。在 tests/board-lane-scroll.test.ts 追加 TC-5：桩容器（innerHTML setter 重建泳道桩并把 scrollLeft 归 0）+ fetch 桩 + 假 EventSource + 假计时器，走真 attachBoard 断言「首拉渲染后置 260 → 推进 20 秒轮询 → 仍为 260」，并模拟 switch-view 切列表再切回泳道仍为 260。",
+      "context": "",
+      "footprint": {
+        "files": 3,
+        "anchors": 4,
+        "chars": 1400
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4a1354",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111666360,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 646,
+              "at": 1791111666360,
+              "totals": {
+                "uncachedInputTokens": 147845,
+                "outputTokens": 80918,
+                "cacheReadTokens": 12590208,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 646,
+                  "totals": {
+                    "uncachedInputTokens": 147845,
+                    "outputTokens": 80918,
+                    "cacheReadTokens": 12590208,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 823,
+              "at": 1791111813807,
+              "totals": {
+                "uncachedInputTokens": 162393,
+                "outputTokens": 92036,
+                "cacheReadTokens": 18928000,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 823,
+                  "totals": {
+                    "uncachedInputTokens": 162393,
+                    "outputTokens": 92036,
+                    "cacheReadTokens": 18928000,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 14548,
+              "outputTokens": 11118,
+              "cacheReadTokens": 6337792,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111813806
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111469201,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111666360,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "开工 t2：把位置记忆接到 render() 的重绘点上"
+        },
+        {
+          "status": "done",
+          "at": 1791111813806,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "t2 收尾：接线落地，子链四段全 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b48da7",
+          "body": "[状态] → in_progress：开工 t2：把位置记忆接到 render() 的重绘点上（reqboard_task_move）",
+          "createdAt": 1791111666360,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-447180",
+          "body": "[状态] → done：t2 收尾：接线落地，子链四段全 done（reqboard_task_move）",
+          "createdAt": 1791111813806,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111469201,
+      "updatedAt": 1791111813806,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791111811694,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/board-mount.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "看板重绘前读出位置、重绘后写回，四类刷新（手动 / 轮询 / SSE / 操作后）走的是同一条路，因此一起被修好",
+          "接线只加两行、落在唯一重绘点；非泳道视图静默跳过，不会串位也不会误清",
+          "子链四段走完：研发（11 passed）、联调（产物含新模块）、复核（顺序与降级无偏离）、测试（全量失败 98 未新增）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111811694,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-fd11e7",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "列直通到底：列高铺满可视区、列内自己滚",
+      "cardDoc": "docs/requirements/REQ-261004184822-9881/tasks/t-fd11e7.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-dc4752"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/board-lane-scroll.test.ts 全绿（含 TC-6）；grep -c \"max-height: calc(100vh\" src/client/styles/base.ts = 0；pnpm build:client 输出 [verify-client] OK。",
+      "implementation": "改 src/client/styles/base.ts §泳道三条规则：.dsh-pm-lanes 的 align-items: flex-start → stretch 并补 min-height: 0；.dsh-pm-lane 删 max-height: calc(100vh - 200px) 并补 min-height: 0；.dsh-pm-lane-cards 的 min-height: 24px → 0（overflow-y: auto 保留）。不新增 DOM 层级/class。在 tests/board-lane-scroll.test.ts 追加 TC-6：读该样式源码文本取三个规则块，断言 .dsh-pm-lanes 含 align-items: stretch、.dsh-pm-lane 块不含 max-height: calc(100vh、.dsh-pm-lane-cards 块仍含 overflow-y: auto。",
+      "context": "",
+      "footprint": {
+        "files": 3,
+        "anchors": 3,
+        "chars": 1200
+      },
+      "requirementRefs": [
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3033b0",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111816169,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 830,
+              "at": 1791111816169,
+              "totals": {
+                "uncachedInputTokens": 166104,
+                "outputTokens": 92306,
+                "cacheReadTokens": 19162496,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 830,
+                  "totals": {
+                    "uncachedInputTokens": 166104,
+                    "outputTokens": 92306,
+                    "cacheReadTokens": 19162496,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 1007,
+              "at": 1791111945361,
+              "totals": {
+                "uncachedInputTokens": 178138,
+                "outputTokens": 100951,
+                "cacheReadTokens": 26156672,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 1007,
+                  "totals": {
+                    "uncachedInputTokens": 178138,
+                    "outputTokens": 100951,
+                    "cacheReadTokens": 26156672,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 12034,
+              "outputTokens": 8645,
+              "cacheReadTokens": 6994176,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111945360
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111469201,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111816169,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "开工 t3：泳道列高铺满可视区（FR-4）"
+        },
+        {
+          "status": "done",
+          "at": 1791111945360,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "t3 收尾：列高铺满落地，子链四段全 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-579e33",
+          "body": "[状态] → in_progress：开工 t3：泳道列高铺满可视区（FR-4）（reqboard_task_move）",
+          "createdAt": 1791111816169,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-f2b494",
+          "body": "[状态] → done：t3 收尾：列高铺满落地，子链四段全 done（reqboard_task_move）",
+          "createdAt": 1791111945360,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111469201,
+      "updatedAt": 1791111945360,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791111943389,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles/base.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "各状态列由「只包住内容」改为铺满看板可视高度，空列与满列同高",
+          "列内卡片区成为唯一滚动处：列头固定，长列能翻到最后一张",
+          "矮窗口下列高跟着变矮、列内容不撑破看板（min-height: 0 链保证）",
+          "只改样式、不加层级：列宽、列序、卡片样式、归档条一律未动",
+          "子链四段走完：研发（15 passed）、联调（产物与样式分片 OK）、复核（无偏离、未新增选择器）、测试（全量失败 98 未新增）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111943389,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-fb2cff",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "收口：四门禁 + GUI 手工证据",
+      "cardDoc": "docs/requirements/REQ-261004184822-9881/tasks/t-fb2cff.md",
+      "description": "",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-fd11e7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "evidence/lane-scroll-gui.png 与 evidence/gates.txt 在场且 gates.txt 含命令原文与实测输出；pnpm build exit 0；pnpm test 失败数 ≤ 基线 106；pnpm typecheck ≤ 223；npx vitest run tests/board-lane-scroll.test.ts 全绿。",
+      "implementation": "按 docs/requirements/REQ-261004184822-9881/design/test-cases.md 的 TC-7 在 GUI（http://127.0.0.1:19387 → 看板 → 泳道）跑手工验收：横滚到 accepting 列后三连刷（手动刷新/等一轮 20 秒轮询/另一窗口改一条需求触发 SSE）、某长列内翻到底再刷新、把窗口拉矮一半；截图落 evidence/lane-scroll-gui.png。四门禁读数（build / build:client / typecheck / test 失败数与基线比对）落 evidence/gates.txt。",
+      "context": "",
+      "footprint": {
+        "files": 3,
+        "anchors": 4,
+        "chars": 1600
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c4283c",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111951270,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 1014,
+              "at": 1791111951270,
+              "totals": {
+                "uncachedInputTokens": 181929,
+                "outputTokens": 101985,
+                "cacheReadTokens": 26413440,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 1014,
+                  "totals": {
+                    "uncachedInputTokens": 181929,
+                    "outputTokens": 101985,
+                    "cacheReadTokens": 26413440,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 1115,
+              "at": 1791112086267,
+              "totals": {
+                "uncachedInputTokens": 192058,
+                "outputTokens": 108190,
+                "cacheReadTokens": 30752128,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 1115,
+                  "totals": {
+                    "uncachedInputTokens": 192058,
+                    "outputTokens": 108190,
+                    "cacheReadTokens": 30752128,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 10129,
+              "outputTokens": 6205,
+              "cacheReadTokens": 4338688,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791112086267
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111469201,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111951270,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "开工 t4：四门禁读数 + GUI 手工验收证据"
+        },
+        {
+          "status": "done",
+          "at": 1791112086267,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "t4 收尾：四门禁与人工证据齐备，子链三段全 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a880f2",
+          "body": "[状态] → in_progress：开工 t4：四门禁读数 + GUI 手工验收证据（reqboard_task_move）",
+          "createdAt": 1791111951270,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-f4d2fc",
+          "body": "[状态] → done：t4 收尾：四门禁与人工证据齐备，子链三段全 done（reqboard_task_move）",
+          "createdAt": 1791112086267,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111469201,
+      "updatedAt": 1791112086267,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "layer": 3,
+      "lastReport": {
+        "at": 1791112084504,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261004184822-9881/evidence/gates.txt",
+          "docs/requirements/REQ-261004184822-9881/evidence/lane-scroll-gui.md"
+        ],
+        "completed": [
+          "四门禁读数落 evidence/gates.txt（命令原文 + 实测输出 + 构建戳）",
+          "GUI 人工验收三条全部通过，答复原文落 evidence/lane-scroll-gui.md",
+          "如实记录替代与缺口：截图改为人工文字记录；矮窗口、列头可见、SSE 单次触发、刷新回最左四条边界本轮未人工覆盖",
+          "子链三段走完：研发、复核、测试；四张父卡全部 done"
+        ]
+      },
+      "lastRun": {
+        "at": 1791112084504,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-128aa9",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "记住你看到哪：位置记忆模块（不落盘、不跟别人串）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新增 src/client/board-scroll.ts：导出 captureBoardScroll(root)（读 .dsh-pm-lanes 的 scrollLeft + 每列 .dsh-pm-lane[data-lane] 内 .dsh-pm-lane-cards 的 scrollTop；找不到泳道容器即静默返回且不覆盖记忆）、restoreBoardScroll(root)（只在找得到容器/该列时回填，不创建节点）、readBoardScroll()（浅拷贝）、_resetBoardScroll()（测试用）；单条内存快照 + sanitize（负数/NaN/Infinity/undefined → 0，口径照 src/client/dag/view-state.ts 但不复用它）；列键上限 16。新增 tests/board-lane-scroll.test.ts：桩 DOM 覆盖 TC-1/TC-2/TC-3/TC-4，文件头 20 行内含 serves: FR-1, FR-2。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-19e1e2",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d200b5",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111547167,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 507,
+              "at": 1791111547167,
+              "totals": {
+                "uncachedInputTokens": 123791,
+                "outputTokens": 74662,
+                "cacheReadTokens": 8067072,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 507,
+                  "totals": {
+                    "uncachedInputTokens": 123791,
+                    "outputTokens": 74662,
+                    "cacheReadTokens": 8067072,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 525,
+              "at": 1791111561179,
+              "totals": {
+                "uncachedInputTokens": 124678,
+                "outputTokens": 75430,
+                "cacheReadTokens": 8620416,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 525,
+                  "totals": {
+                    "uncachedInputTokens": 124678,
+                    "outputTokens": 75430,
+                    "cacheReadTokens": 8620416,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 887,
+              "outputTokens": 768,
+              "cacheReadTokens": 553344,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111561178
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e2399c",
+          "body": "[状态] → in_progress：研发：落 board-scroll.ts 模块与桩 DOM 单测（TC-1~TC-4）（reqboard_task_move）",
+          "createdAt": 1791111547167,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-db0eae",
+          "body": "[状态] → done：研发完成：模块与用例落盘并自测通过（9 passed）（reqboard_task_move）",
+          "createdAt": 1791111561178,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111474645,
+      "updatedAt": 1791111561178,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111474645,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111547167,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "研发：落 board-scroll.ts 模块与桩 DOM 单测（TC-1~TC-4）"
+        },
+        {
+          "status": "done",
+          "at": 1791111561178,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "研发完成：模块与用例落盘并自测通过（9 passed）"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791111552693,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/board-scroll.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "新增 src/client/board-scroll.ts：captureBoardScroll / restoreBoardScroll / readBoardScroll / _resetBoardScroll",
+          "capture 找不到泳道容器时静默返回且不覆盖记忆（列表视图与详情页不会把位置冲成零）",
+          "restore 只回填已存在的容器与列，不创建节点、不抛错",
+          "sanitize 与 dag/view-state 同口径：负数、NaN、Infinity、undefined 一律记 0",
+          "列键上限 16（当前 6 条泳道，上限只为有界）",
+          "新增 tests/board-lane-scroll.test.ts：TC-1 往返与超上限裁剪、TC-2 按列隔离、TC-3 不覆盖记忆、TC-4 与 DAG 隔离且源码不碰浏览器存储",
+          "npx vitest run tests/board-lane-scroll.test.ts → 9 passed",
+          "grep 浏览器存储关键词于 src/client/board-scroll.ts → 0 命中",
+          "npx tsc --noEmit → 148 个错误（基线 223），新文件 0 错"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111552693,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f8b5ae",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "记住你看到哪：位置记忆模块（不落盘、不跟别人串）·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-128aa9"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "新增 src/client/board-scroll.ts：导出 captureBoardScroll(root)（读 .dsh-pm-lanes 的 scrollLeft + 每列 .dsh-pm-lane[data-lane] 内 .dsh-pm-lane-cards 的 scrollTop；找不到泳道容器即静默返回且不覆盖记忆）、restoreBoardScroll(root)（只在找得到容器/该列时回填，不创建节点）、readBoardScroll()（浅拷贝）、_resetBoardScroll()（测试用）；单条内存快照 + sanitize（负数/NaN/Infinity/undefined → 0，口径照 src/client/dag/view-state.ts 但不复用它）；列键上限 16。新增 tests/board-lane-scroll.test.ts：桩 DOM 覆盖 TC-1/TC-2/TC-3/TC-4，文件头 20 行内含 serves: FR-1, FR-2。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-19e1e2",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-48dc0d",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111570484,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 543,
+              "at": 1791111570484,
+              "totals": {
+                "uncachedInputTokens": 125394,
+                "outputTokens": 75987,
+                "cacheReadTokens": 9177216,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 543,
+                  "totals": {
+                    "uncachedInputTokens": 125394,
+                    "outputTokens": 75987,
+                    "cacheReadTokens": 9177216,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 555,
+              "at": 1791111575564,
+              "totals": {
+                "uncachedInputTokens": 126076,
+                "outputTokens": 76373,
+                "cacheReadTokens": 9550336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 555,
+                  "totals": {
+                    "uncachedInputTokens": 126076,
+                    "outputTokens": 76373,
+                    "cacheReadTokens": 9550336,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 682,
+              "outputTokens": 386,
+              "cacheReadTokens": 373120,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111575563
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-cb6939",
+          "body": "[状态] → in_progress：联调：client bundle 重建校验与既有看板用例全过（reqboard_task_move）",
+          "createdAt": 1791111570484,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-5a1ce1",
+          "body": "[状态] → done：联调完成：build:client 校验 OK，既有看板用例 30 passed 零回归（reqboard_task_move）",
+          "createdAt": 1791111575563,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111474645,
+      "updatedAt": 1791111575563,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111474645,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111570484,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "联调：client bundle 重建校验与既有看板用例全过"
+        },
+        {
+          "status": "done",
+          "at": 1791111575563,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "联调完成：build:client 校验 OK，既有看板用例 30 passed 零回归"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791111573292,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/board-scroll.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "pnpm build:client → [verify-client] OK（bundle 408631 bytes，关键符号齐全，CSS 分片完整）",
+          "npx vitest run tests/board-attach.test.ts → 9 passed（挂载与释放生命周期无回归）",
+          "npx vitest run tests/board-entry.test.ts tests/board-focus.test.ts → 21 passed（看板入口与定位通道无回归）",
+          "新模块未被其它模块引用，构建产物与现有看板行为逐字不变（本卡只新增文件）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111573292,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-7036ab",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "记住你看到哪：位置记忆模块（不落盘、不跟别人串）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-f8b5ae"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新增 src/client/board-scroll.ts：导出 captureBoardScroll(root)（读 .dsh-pm-lanes 的 scrollLeft + 每列 .dsh-pm-lane[data-lane] 内 .dsh-pm-lane-cards 的 scrollTop；找不到泳道容器即静默返回且不覆盖记忆）、restoreBoardScroll(root)（只在找得到容器/该列时回填，不创建节点）、readBoardScroll()（浅拷贝）、_resetBoardScroll()（测试用）；单条内存快照 + sanitize（负数/NaN/Infinity/undefined → 0，口径照 src/client/dag/view-state.ts 但不复用它）；列键上限 16。新增 tests/board-lane-scroll.test.ts：桩 DOM 覆盖 TC-1/TC-2/TC-3/TC-4，文件头 20 行内含 serves: FR-1, FR-2。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-19e1e2",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a61b00",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111586401,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 573,
+              "at": 1791111586401,
+              "totals": {
+                "uncachedInputTokens": 140497,
+                "outputTokens": 77758,
+                "cacheReadTokens": 10127232,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 573,
+                  "totals": {
+                    "uncachedInputTokens": 140497,
+                    "outputTokens": 77758,
+                    "cacheReadTokens": 10127232,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 585,
+              "at": 1791111591559,
+              "totals": {
+                "uncachedInputTokens": 141348,
+                "outputTokens": 78358,
+                "cacheReadTokens": 10533376,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 585,
+                  "totals": {
+                    "uncachedInputTokens": 141348,
+                    "outputTokens": 78358,
+                    "cacheReadTokens": 10533376,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 851,
+              "outputTokens": 600,
+              "cacheReadTokens": 406144,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111591559
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-3722db",
+          "body": "[状态] → in_progress：复核：按设计契约逐条核对实现（reqboard_task_move）",
+          "createdAt": 1791111586401,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-ce1168",
+          "body": "[状态] → done：复核完成：无偏离，隔离与不落盘均有可跑断言（reqboard_task_move）",
+          "createdAt": 1791111591559,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111474645,
+      "updatedAt": 1791111591559,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111474645,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111586401,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "复核：按设计契约逐条核对实现"
+        },
+        {
+          "status": "done",
+          "at": 1791111591559,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "复核完成：无偏离，隔离与不落盘均有可跑断言"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791111589810,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/board-scroll.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "对照 design/interfaces.md：四个导出签名逐一对应（captureBoardScroll / restoreBoardScroll 收 ParentNode｜undefined 返 void，readBoardScroll 返浅拷贝，_resetBoardScroll 测试专用）",
+          "对照 design/interfaces.md 行为表：找不到 .dsh-pm-lanes 时 capture 静默返回且不覆盖记忆（tc-3 断言通过）",
+          "对照 design/architecture.md 三条纪律：capture 不写零、restore 不创建节点、全程不抛错（无 throw 路径，取不到即 return）",
+          "对照 design/data-model.md：单条快照、sanitize 同口径、列键上限 16（用例断言键数不超过上限）",
+          "对照 design 的隔离要求：模块零 import，未引用 dag/view-state；npx vitest run tests/dag-view-state.test.ts → 12 passed（既有 DAG 记忆未受影响）",
+          "npx vitest run tests/board-lane-scroll.test.ts tests/dag-view-state.test.ts → 21 passed",
+          "无偏离：实现与设计契约逐条一致，无需要回改契约之处",
+          "保留意见一：快照是单例，若将来出现多泳道视图需改为按键分片（data-model.md 已写明当前为单例设计，现无此需求）",
+          "保留意见二：本卡未接线，故 client 产物里还没有该模块，属计划内（t2 接线后进产物）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111589810,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-957862",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "记住你看到哪：位置记忆模块（不落盘、不跟别人串）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-7036ab"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新增 src/client/board-scroll.ts：导出 captureBoardScroll(root)（读 .dsh-pm-lanes 的 scrollLeft + 每列 .dsh-pm-lane[data-lane] 内 .dsh-pm-lane-cards 的 scrollTop；找不到泳道容器即静默返回且不覆盖记忆）、restoreBoardScroll(root)（只在找得到容器/该列时回填，不创建节点）、readBoardScroll()（浅拷贝）、_resetBoardScroll()（测试用）；单条内存快照 + sanitize（负数/NaN/Infinity/undefined → 0，口径照 src/client/dag/view-state.ts 但不复用它）；列键上限 16。新增 tests/board-lane-scroll.test.ts：桩 DOM 覆盖 TC-1/TC-2/TC-3/TC-4，文件头 20 行内含 serves: FR-1, FR-2。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-19e1e2",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b93654",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111593403,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 591,
+              "at": 1791111593404,
+              "totals": {
+                "uncachedInputTokens": 141567,
+                "outputTokens": 78502,
+                "cacheReadTokens": 10737152,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 591,
+                  "totals": {
+                    "uncachedInputTokens": 141567,
+                    "outputTokens": 78502,
+                    "cacheReadTokens": 10737152,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 627,
+              "at": 1791111656959,
+              "totals": {
+                "uncachedInputTokens": 143589,
+                "outputTokens": 79871,
+                "cacheReadTokens": 11968768,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 627,
+                  "totals": {
+                    "uncachedInputTokens": 143589,
+                    "outputTokens": 79871,
+                    "cacheReadTokens": 11968768,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 2022,
+              "outputTokens": 1369,
+              "cacheReadTokens": 1231616,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111656959
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9ee2d3",
+          "body": "[状态] → in_progress：测试：跑本卡全部用例与相关回归，留读数（reqboard_task_move）",
+          "createdAt": 1791111593403,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-53aa05",
+          "body": "[状态] → done：测试完成：9 条用例全绿，全量失败 98 ≤ 基线 106，类型错误 148 ≤ 基线 223（reqboard_task_move）",
+          "createdAt": 1791111656959,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111474645,
+      "updatedAt": 1791111656959,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111474645,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111593403,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "测试：跑本卡全部用例与相关回归，留读数"
+        },
+        {
+          "status": "done",
+          "at": 1791111656959,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "测试完成：9 条用例全绿，全量失败 98 ≤ 基线 106，类型错误 148 ≤ 基线 223"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791111655320,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/board-scroll.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/board-lane-scroll.test.ts --reporter=verbose → 9 passed（TC-1 三条、TC-2 两条、TC-3 两条、TC-4 两条，逐条列出）",
+          "pnpm test → 98 failed / 4405 passed（文档基线 106 failed，低于基线；新增 9 条全绿）",
+          "npx tsc --noEmit → 148 个错误（基线 223），其中新文件 0 错",
+          "grep 确认无第三方引用新模块：改动不可能影响其它用例的结论有据可查",
+          "npx vitest run tests/board-attach.test.ts tests/board-entry.test.ts tests/board-focus.test.ts tests/dag-view-state.test.ts → 42 passed（看板与 DAG 记忆相关回归全绿）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111655320,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-e16560",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "刷新别把人弹回去：把它接在重绘那两行上·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-19e1e2"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/client/board-mount.ts 的 render()：在 switch (mode.kind) 之前调 captureBoardScroll(viewEl)、之后调 restoreBoardScroll(viewEl)（viewEl === undefined 与 state === undefined 的空态分支不进记忆）。在 tests/board-lane-scroll.test.ts 追加 TC-5：桩容器（innerHTML setter 重建泳道桩并把 scrollLeft 归 0）+ fetch 桩 + 假 EventSource + 假计时器，走真 attachBoard 断言「首拉渲染后置 260 → 推进 20 秒轮询 → 仍为 260」，并模拟 switch-view 切列表再切回泳道仍为 260。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-dc4752",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-914b19",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111707361,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 715,
+              "at": 1791111707361,
+              "totals": {
+                "uncachedInputTokens": 156881,
+                "outputTokens": 87375,
+                "cacheReadTokens": 15015552,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 715,
+                  "totals": {
+                    "uncachedInputTokens": 156881,
+                    "outputTokens": 87375,
+                    "cacheReadTokens": 15015552,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 737,
+              "at": 1791111717963,
+              "totals": {
+                "uncachedInputTokens": 157821,
+                "outputTokens": 88498,
+                "cacheReadTokens": 15695232,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 737,
+                  "totals": {
+                    "uncachedInputTokens": 157821,
+                    "outputTokens": 88498,
+                    "cacheReadTokens": 15695232,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 940,
+              "outputTokens": 1123,
+              "cacheReadTokens": 679680,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111717963
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-da80a3",
+          "body": "[状态] → in_progress：研发：接线两处调用 + 追加 TC-5 接线用例（reqboard_task_move）",
+          "createdAt": 1791111707361,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-4c8067",
+          "body": "[状态] → done：研发完成：接线两处 + TC-5 两条用例，11 passed（reqboard_task_move）",
+          "createdAt": 1791111717963,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111666360,
+      "updatedAt": 1791111717963,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111666360,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111707361,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "研发：接线两处调用 + 追加 TC-5 接线用例"
+        },
+        {
+          "status": "done",
+          "at": 1791111717963,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "研发完成：接线两处 + TC-5 两条用例，11 passed"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791111716092,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/board-mount.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "src/client/board-mount.ts 的 render()：innerHTML 赋值前 captureBoardScroll(viewEl)、赋值后 restoreBoardScroll(viewEl)",
+          "空态与未挂载分支不进记忆（viewEl 或 state 缺失时直接返回，capture 也不写零）",
+          "tests/board-lane-scroll.test.ts 追加 TC-5 两条用例：轮询重绘后位置仍在、切列表再切回泳道位置仍在",
+          "桩容器按真实 DOM 行为重建泳道：innerHTML 里有 dsh-pm-lanes 才创建容器且 scrollLeft 归零，列表视图给 null（否则测的只是桩没动过）",
+          "npx vitest run tests/board-lane-scroll.test.ts → 11 passed（原 9 + 新 2）",
+          "grep -c BoardScroll src/client/board-mount.ts → 3（import + 两次调用）",
+          "npx vitest run tests/board-attach.test.ts tests/board-entry.test.ts → 16 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111716092,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b5a80f",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "刷新别把人弹回去：把它接在重绘那两行上·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-e16560"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "改 src/client/board-mount.ts 的 render()：在 switch (mode.kind) 之前调 captureBoardScroll(viewEl)、之后调 restoreBoardScroll(viewEl)（viewEl === undefined 与 state === undefined 的空态分支不进记忆）。在 tests/board-lane-scroll.test.ts 追加 TC-5：桩容器（innerHTML setter 重建泳道桩并把 scrollLeft 归 0）+ fetch 桩 + 假 EventSource + 假计时器，走真 attachBoard 断言「首拉渲染后置 260 → 推进 20 秒轮询 → 仍为 260」，并模拟 switch-view 切列表再切回泳道仍为 260。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-dc4752",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-93c48f",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111720562,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 743,
+              "at": 1791111720562,
+              "totals": {
+                "uncachedInputTokens": 158070,
+                "outputTokens": 88589,
+                "cacheReadTokens": 15922688,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 743,
+                  "totals": {
+                    "uncachedInputTokens": 158070,
+                    "outputTokens": 88589,
+                    "cacheReadTokens": 15922688,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 755,
+              "at": 1791111725538,
+              "totals": {
+                "uncachedInputTokens": 158726,
+                "outputTokens": 89008,
+                "cacheReadTokens": 16378752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 755,
+                  "totals": {
+                    "uncachedInputTokens": 158726,
+                    "outputTokens": 89008,
+                    "cacheReadTokens": 16378752,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 656,
+              "outputTokens": 419,
+              "cacheReadTokens": 456064,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111725537
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-4e31f9",
+          "body": "[状态] → in_progress：联调：重建 client 产物，确认模块进 bundle（reqboard_task_move）",
+          "createdAt": 1791111720562,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-9f9c0d",
+          "body": "[状态] → done：联调完成：产物含新模块，相关用例 32 passed（reqboard_task_move）",
+          "createdAt": 1791111725537,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111666360,
+      "updatedAt": 1791111725537,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111666360,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111720562,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "联调：重建 client 产物，确认模块进 bundle"
+        },
+        {
+          "status": "done",
+          "at": 1791111725537,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "联调完成：产物含新模块，相关用例 32 passed"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791111723681,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/board-mount.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "pnpm build:client → [verify-client] OK，bundle 409674 bytes（接线前 408631，增量即新模块）",
+          "grep -c \"dsh-pm-lane[data-lane]\" lib/client.cjs → 1（该选择器只存在于 board-scroll.ts，证明模块真进产物，不是被摇掉）",
+          "npx vitest run tests/board-lane-scroll.test.ts tests/board-attach.test.ts tests/board-entry.test.ts tests/board-focus.test.ts → 32 passed",
+          "接线只落在 render() 一处，未改动取数路径、事件委派与刷新周期"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111723681,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-50008b",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "刷新别把人弹回去：把它接在重绘那两行上·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-b5a80f"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/client/board-mount.ts 的 render()：在 switch (mode.kind) 之前调 captureBoardScroll(viewEl)、之后调 restoreBoardScroll(viewEl)（viewEl === undefined 与 state === undefined 的空态分支不进记忆）。在 tests/board-lane-scroll.test.ts 追加 TC-5：桩容器（innerHTML setter 重建泳道桩并把 scrollLeft 归 0）+ fetch 桩 + 假 EventSource + 假计时器，走真 attachBoard 断言「首拉渲染后置 260 → 推进 20 秒轮询 → 仍为 260」，并模拟 switch-view 切列表再切回泳道仍为 260。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-dc4752",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-79cbac",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111730833,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 767,
+              "at": 1791111730833,
+              "totals": {
+                "uncachedInputTokens": 160052,
+                "outputTokens": 89536,
+                "cacheReadTokens": 16836224,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 767,
+                  "totals": {
+                    "uncachedInputTokens": 160052,
+                    "outputTokens": 89536,
+                    "cacheReadTokens": 16836224,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 781,
+              "at": 1791111777383,
+              "totals": {
+                "uncachedInputTokens": 160826,
+                "outputTokens": 90123,
+                "cacheReadTokens": 17297920,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 781,
+                  "totals": {
+                    "uncachedInputTokens": 160826,
+                    "outputTokens": 90123,
+                    "cacheReadTokens": 17297920,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 774,
+              "outputTokens": 587,
+              "cacheReadTokens": 461696,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111777383
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d436a7",
+          "body": "[状态] → in_progress：复核：核对调用顺序与降级行为（reqboard_task_move）",
+          "createdAt": 1791111730833,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-d102d3",
+          "body": "[状态] → done：复核完成：顺序与降级行为均无偏离（reqboard_task_move）",
+          "createdAt": 1791111777383,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111666360,
+      "updatedAt": 1791111777383,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111666360,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111730833,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "复核：核对调用顺序与降级行为"
+        },
+        {
+          "status": "done",
+          "at": 1791111777383,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "复核完成：顺序与降级行为均无偏离"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791111775250,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/board-mount.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "对照 design/interfaces.md 调用点契约：capture 在 board-mount.ts:252（switch 之前）、restore 在 board-mount.ts:300（switch 之后），顺序与契约逐字一致",
+          "空态分支（state 缺失）早返回，不取也不回填——记忆保留，符合「出错页不冲掉位置」",
+          "四种视图分支（board / req / task / tasks）共用同一次 restore；非泳道视图由模块内静默跳过，接线层不需要判断视图",
+          "req 与 task 分支找不到目标时回落 buildBoard：此时 restore 生效是正确行为（回落到的就是泳道视图）",
+          "无偏离：接线与设计契约一致，无需要回改契约之处",
+          "保留意见：本卡只做代码级核对，真实浏览器的滚动行为验证由收口卡（t4）的 GUI 手工验收负责"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111775250,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-eba69f",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "刷新别把人弹回去：把它接在重绘那两行上·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-50008b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 src/client/board-mount.ts 的 render()：在 switch (mode.kind) 之前调 captureBoardScroll(viewEl)、之后调 restoreBoardScroll(viewEl)（viewEl === undefined 与 state === undefined 的空态分支不进记忆）。在 tests/board-lane-scroll.test.ts 追加 TC-5：桩容器（innerHTML setter 重建泳道桩并把 scrollLeft 归 0）+ fetch 桩 + 假 EventSource + 假计时器，走真 attachBoard 断言「首拉渲染后置 260 → 推进 20 秒轮询 → 仍为 260」，并模拟 switch-view 切列表再切回泳道仍为 260。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-dc4752",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6b9038",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111779224,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 787,
+              "at": 1791111779224,
+              "totals": {
+                "uncachedInputTokens": 160998,
+                "outputTokens": 90210,
+                "cacheReadTokens": 17529472,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 787,
+                  "totals": {
+                    "uncachedInputTokens": 160998,
+                    "outputTokens": 90210,
+                    "cacheReadTokens": 17529472,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 811,
+              "at": 1791111808826,
+              "totals": {
+                "uncachedInputTokens": 161957,
+                "outputTokens": 91653,
+                "cacheReadTokens": 18460032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 811,
+                  "totals": {
+                    "uncachedInputTokens": 161957,
+                    "outputTokens": 91653,
+                    "cacheReadTokens": 18460032,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 959,
+              "outputTokens": 1443,
+              "cacheReadTokens": 930560,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111808826
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-64a35f",
+          "body": "[状态] → in_progress：测试：全量套件与基线比对（reqboard_task_move）",
+          "createdAt": 1791111779224,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-1e621f",
+          "body": "[状态] → done：测试完成：全量失败 98 未新增，类型错误 153 ≤ 基线 223（reqboard_task_move）",
+          "createdAt": 1791111808826,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111666360,
+      "updatedAt": 1791111808826,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111666360,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111779224,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "测试：全量套件与基线比对"
+        },
+        {
+          "status": "done",
+          "at": 1791111808826,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "测试完成：全量失败 98 未新增，类型错误 153 ≤ 基线 223"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791111806631,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/board-mount.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "pnpm test → 98 failed / 4412 passed（文档基线 106 failed；接线上线前后失败数同为 98，无新增失败）",
+          "新增与受影响用例：tests/board-lane-scroll.test.ts 11 passed、tests/board-attach.test.ts 9 passed、tests/board-entry.test.ts 7 passed、tests/board-focus.test.ts 5 passed",
+          "npx tsc --noEmit → 153 个错误（基线 223，仍低于基线）；grep 确认其中没有一行来自本次改动的三个文件",
+          "错误集中在 tests/stage-prompts、tests/regenerate-chain 等既有测试（工作区里其它窗口的存量改动），与本次无关",
+          "失败要比对的是失败数：接线前后同为 98，结论是本卡未引入新失败"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111806631,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-168366",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "列直通到底：列高铺满可视区、列内自己滚·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-dc4752"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/client/styles/base.ts §泳道三条规则：.dsh-pm-lanes 的 align-items: flex-start → stretch 并补 min-height: 0；.dsh-pm-lane 删 max-height: calc(100vh - 200px) 并补 min-height: 0；.dsh-pm-lane-cards 的 min-height: 24px → 0（overflow-y: auto 保留）。不新增 DOM 层级/class。在 tests/board-lane-scroll.test.ts 追加 TC-6：读该样式源码文本取三个规则块，断言 .dsh-pm-lanes 含 align-items: stretch、.dsh-pm-lane 块不含 max-height: calc(100vh、.dsh-pm-lane-cards 块仍含 overflow-y: auto。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-fd11e7",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4aa231",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111861437,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 911,
+              "at": 1791111861437,
+              "totals": {
+                "uncachedInputTokens": 173793,
+                "outputTokens": 97329,
+                "cacheReadTokens": 22358784,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 911,
+                  "totals": {
+                    "uncachedInputTokens": 173793,
+                    "outputTokens": 97329,
+                    "cacheReadTokens": 22358784,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 925,
+              "at": 1791111867935,
+              "totals": {
+                "uncachedInputTokens": 174414,
+                "outputTokens": 97876,
+                "cacheReadTokens": 22859264,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 925,
+                  "totals": {
+                    "uncachedInputTokens": 174414,
+                    "outputTokens": 97876,
+                    "cacheReadTokens": 22859264,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 621,
+              "outputTokens": 547,
+              "cacheReadTokens": 500480,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111867935
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-82670b",
+          "body": "[状态] → in_progress：研发：改泳道三段样式 + 追加 TC-6 静态断言（reqboard_task_move）",
+          "createdAt": 1791111861437,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-1fbb07",
+          "body": "[状态] → done：研发完成：三段样式 + TC-6 四条断言，15 passed（reqboard_task_move）",
+          "createdAt": 1791111867935,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111816169,
+      "updatedAt": 1791111867935,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111816169,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111861437,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "研发：改泳道三段样式 + 追加 TC-6 静态断言"
+        },
+        {
+          "status": "done",
+          "at": 1791111867935,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "研发完成：三段样式 + TC-6 四条断言，15 passed"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791111864577,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles/base.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "src/client/styles/base.ts 泳道段：.dsh-pm-lanes 的 align-items 由 flex-start 改 stretch 并补 min-height: 0（行可收缩）",
+          "泳道段：.dsh-pm-lane 删掉写死的列高上限、补 min-height: 0（列高改由拉伸决定，列内可收缩）",
+          "泳道段：.dsh-pm-lane-cards 的 min-height 由 24px 改 0，overflow-y: auto 保留（列内自己滚、列头固定）",
+          "未新增 DOM 层级与 class，只改样式表",
+          "tests/board-lane-scroll.test.ts 追加 TC-6 四条静态断言：行拉伸、列无写死上限、列内仍可滚、整表规则中不再出现 100vh 减常数",
+          "npx vitest run tests/board-lane-scroll.test.ts → 15 passed（原 11 + 新 4）",
+          "grep -c max-height 的 100vh 写法于 base.ts → 0（注释里也改成自然语言，免得锚点误报）",
+          "pnpm build:client → [verify-client] OK"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111864577,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-65afb7",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "列直通到底：列高铺满可视区、列内自己滚·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-168366"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "改 src/client/styles/base.ts §泳道三条规则：.dsh-pm-lanes 的 align-items: flex-start → stretch 并补 min-height: 0；.dsh-pm-lane 删 max-height: calc(100vh - 200px) 并补 min-height: 0；.dsh-pm-lane-cards 的 min-height: 24px → 0（overflow-y: auto 保留）。不新增 DOM 层级/class。在 tests/board-lane-scroll.test.ts 追加 TC-6：读该样式源码文本取三个规则块，断言 .dsh-pm-lanes 含 align-items: stretch、.dsh-pm-lane 块不含 max-height: calc(100vh、.dsh-pm-lane-cards 块仍含 overflow-y: auto。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-fd11e7",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-86087d",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111869995,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 931,
+              "at": 1791111869995,
+              "totals": {
+                "uncachedInputTokens": 174551,
+                "outputTokens": 97967,
+                "cacheReadTokens": 23110144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 931,
+                  "totals": {
+                    "uncachedInputTokens": 174551,
+                    "outputTokens": 97967,
+                    "cacheReadTokens": 23110144,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 949,
+              "at": 1791111914285,
+              "totals": {
+                "uncachedInputTokens": 175380,
+                "outputTokens": 98463,
+                "cacheReadTokens": 23864704,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 949,
+                  "totals": {
+                    "uncachedInputTokens": 175380,
+                    "outputTokens": 98463,
+                    "cacheReadTokens": 23864704,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 829,
+              "outputTokens": 496,
+              "cacheReadTokens": 754560,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111914285
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f0fb8c",
+          "body": "[状态] → in_progress：联调：重建产物确认样式分片与归属章（reqboard_task_move）",
+          "createdAt": 1791111869995,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-79eec7",
+          "body": "[状态] → done：联调完成：产物与样式分片校验 OK，全量失败 98 未新增（reqboard_task_move）",
+          "createdAt": 1791111914285,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111816169,
+      "updatedAt": 1791111914285,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111816169,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111869995,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "联调：重建产物确认样式分片与归属章"
+        },
+        {
+          "status": "done",
+          "at": 1791111914285,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "联调完成：产物与样式分片校验 OK，全量失败 98 未新增"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791111912219,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles/base.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "pnpm build:client → [verify-client] OK（样式归属章在场、CSS 分片完整，bundle 410557 bytes）",
+          "npx vitest run tests/client-styles-ownership.test.ts → 6 passed（样式归属与分片完整性没被破坏）",
+          "npx vitest run tests/board-lane-scroll.test.ts → 15 passed",
+          "pnpm test → 98 failed / 4416 passed（改样式前后失败数同为 98，未新增失败）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111912219,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c95411",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "列直通到底：列高铺满可视区、列内自己滚·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-65afb7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/client/styles/base.ts §泳道三条规则：.dsh-pm-lanes 的 align-items: flex-start → stretch 并补 min-height: 0；.dsh-pm-lane 删 max-height: calc(100vh - 200px) 并补 min-height: 0；.dsh-pm-lane-cards 的 min-height: 24px → 0（overflow-y: auto 保留）。不新增 DOM 层级/class。在 tests/board-lane-scroll.test.ts 追加 TC-6：读该样式源码文本取三个规则块，断言 .dsh-pm-lanes 含 align-items: stretch、.dsh-pm-lane 块不含 max-height: calc(100vh、.dsh-pm-lane-cards 块仍含 overflow-y: auto。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-fd11e7",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8f7dc1",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111917646,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 955,
+              "at": 1791111917646,
+              "totals": {
+                "uncachedInputTokens": 175600,
+                "outputTokens": 98934,
+                "cacheReadTokens": 24116864,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 955,
+                  "totals": {
+                    "uncachedInputTokens": 175600,
+                    "outputTokens": 98934,
+                    "cacheReadTokens": 24116864,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 975,
+              "at": 1791111927046,
+              "totals": {
+                "uncachedInputTokens": 176946,
+                "outputTokens": 99861,
+                "cacheReadTokens": 24878080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 975,
+                  "totals": {
+                    "uncachedInputTokens": 176946,
+                    "outputTokens": 99861,
+                    "cacheReadTokens": 24878080,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1346,
+              "outputTokens": 927,
+              "cacheReadTokens": 761216,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111927046
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-4e1e37",
+          "body": "[状态] → in_progress：复核：对照前端设计核对三条样式改动与「不新增层级」约束（reqboard_task_move）",
+          "createdAt": 1791111917646,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-b22f86",
+          "body": "[状态] → done：复核完成：三条改动无偏离、未新增选择器/层级（reqboard_task_move）",
+          "createdAt": 1791111927046,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111816169,
+      "updatedAt": 1791111927046,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111816169,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111917646,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "复核：对照前端设计核对三条样式改动与「不新增层级」约束"
+        },
+        {
+          "status": "done",
+          "at": 1791111927046,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "复核完成：三条改动无偏离、未新增选择器/层级"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791111924789,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles/base.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "对照 design/frontend.md §样式改动三条：.dsh-pm-lanes 改 stretch + min-height: 0（行 95-98）、.dsh-pm-lane 删列高上限 + min-height: 0（行 102-110）、.dsh-pm-lane-cards min-height 24px → 0 且保留 overflow-y: auto（行 149）——逐条一致",
+          "对照硬约束「不新增 DOM 层级 / class」：只改了三条既有规则的属性值，列选择器集合仍为原 23 条（lanes / lane / data-lane 八档 / lane-head / lane-dot / lane-title / lane-count / lane-cards），未新增任何选择器",
+          "未改 src/client/views/board.ts 的 DOM 模板（该文件在 git 里显示 M 是其它窗口的存量改动，不是本次）",
+          "全部 15 条用例（含 TC-6 四条静态断言）通过，无偏离",
+          "保留意见一：静态断言只锁源码规则，证明不了真实渲染——最终的「直通到底」必须靠收口卡的 GUI 手工验收（TC-7）",
+          "保留意见二：列高上限去掉后，若某列内容极长，滚动条只出现在列内（预期行为）；矮窗口极小时列内卡片区可收缩到 0，这是设计里写明的边界取舍"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111924789,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8fbc23",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "列直通到底：列高铺满可视区、列内自己滚·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-c95411"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 src/client/styles/base.ts §泳道三条规则：.dsh-pm-lanes 的 align-items: flex-start → stretch 并补 min-height: 0；.dsh-pm-lane 删 max-height: calc(100vh - 200px) 并补 min-height: 0；.dsh-pm-lane-cards 的 min-height: 24px → 0（overflow-y: auto 保留）。不新增 DOM 层级/class。在 tests/board-lane-scroll.test.ts 追加 TC-6：读该样式源码文本取三个规则块，断言 .dsh-pm-lanes 含 align-items: stretch、.dsh-pm-lane 块不含 max-height: calc(100vh、.dsh-pm-lane-cards 块仍含 overflow-y: auto。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-fd11e7",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c0fd67",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791111929521,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 981,
+              "at": 1791111929521,
+              "totals": {
+                "uncachedInputTokens": 177102,
+                "outputTokens": 100101,
+                "cacheReadTokens": 25132928,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 981,
+                  "totals": {
+                    "uncachedInputTokens": 177102,
+                    "outputTokens": 100101,
+                    "cacheReadTokens": 25132928,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 995,
+              "at": 1791111940203,
+              "totals": {
+                "uncachedInputTokens": 177724,
+                "outputTokens": 100526,
+                "cacheReadTokens": 25644032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 995,
+                  "totals": {
+                    "uncachedInputTokens": 177724,
+                    "outputTokens": 100526,
+                    "cacheReadTokens": 25644032,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 622,
+              "outputTokens": 425,
+              "cacheReadTokens": 511104,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791111940203
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f40d8a",
+          "body": "[状态] → in_progress：测试：全量套件与类型检查比对基线（reqboard_task_move）",
+          "createdAt": 1791111929521,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-924456",
+          "body": "[状态] → done：测试完成：全量失败 98 未新增，类型错误 153 ≤ 基线，卡内锚点全过（reqboard_task_move）",
+          "createdAt": 1791111940203,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111816169,
+      "updatedAt": 1791111940203,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111816169,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791111929521,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "测试：全量套件与类型检查比对基线"
+        },
+        {
+          "status": "done",
+          "at": 1791111940203,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "测试完成：全量失败 98 未新增，类型错误 153 ≤ 基线，卡内锚点全过"
+        }
+      ],
+      "layer": 5,
+      "lastReport": {
+        "at": 1791111938281,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles/base.ts",
+          "tests/board-lane-scroll.test.ts"
+        ],
+        "completed": [
+          "pnpm test → 98 failed / 4416 passed（文档基线 106 failed；本卡改动前后失败数同为 98，未新增失败）",
+          "tests/board-lane-scroll.test.ts 15 passed（含 TC-6 四条静态断言）",
+          "tests/client-styles-ownership.test.ts 6 passed（样式归属与分片完整性）",
+          "npx tsc --noEmit → 153 个错误（基线 223，低于基线；无一行来自本次改动文件）",
+          "grep -c 的 100vh 列高写法于 src/client/styles/base.ts → 0（卡内验收锚点逐条满足）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791111938281,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d34ccf",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "收口：四门禁 + GUI 手工证据·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-fd11e7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "按 docs/requirements/REQ-261004184822-9881/design/test-cases.md 的 TC-7 在 GUI（http://127.0.0.1:19387 → 看板 → 泳道）跑手工验收：横滚到 accepting 列后三连刷（手动刷新/等一轮 20 秒轮询/另一窗口改一条需求触发 SSE）、某长列内翻到底再刷新、把窗口拉矮一半；截图落 evidence/lane-scroll-gui.png。四门禁读数（build / build:client / typecheck / test 失败数与基线比对）落 evidence/gates.txt。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-fb2cff",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-cc2b6a",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791112057450,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 1053,
+              "at": 1791112057450,
+              "totals": {
+                "uncachedInputTokens": 188774,
+                "outputTokens": 105234,
+                "cacheReadTokens": 28018432,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 1053,
+                  "totals": {
+                    "uncachedInputTokens": 188774,
+                    "outputTokens": 105234,
+                    "cacheReadTokens": 28018432,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 1065,
+              "at": 1791112062518,
+              "totals": {
+                "uncachedInputTokens": 189400,
+                "outputTokens": 105804,
+                "cacheReadTokens": 28560896,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 1065,
+                  "totals": {
+                    "uncachedInputTokens": 189400,
+                    "outputTokens": 105804,
+                    "cacheReadTokens": 28560896,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 626,
+              "outputTokens": 570,
+              "cacheReadTokens": 542464,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791112062518
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-81bf60",
+          "body": "[状态] → in_progress：研发：落四门禁读数与 GUI 人工验收记录（reqboard_task_move）",
+          "createdAt": 1791112057450,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-e1cf82",
+          "body": "[状态] → done：研发完成：门禁读数与人工验收记录落盘（reqboard_task_move）",
+          "createdAt": 1791112062518,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111951270,
+      "updatedAt": 1791112062518,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111951270,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791112057450,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "研发：落四门禁读数与 GUI 人工验收记录"
+        },
+        {
+          "status": "done",
+          "at": 1791112062518,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "研发完成：门禁读数与人工验收记录落盘"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791112061103,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261004184822-9881/evidence/gates.txt",
+          "docs/requirements/REQ-261004184822-9881/evidence/lane-scroll-gui.md"
+        ],
+        "completed": [
+          "evidence/gates.txt 落盘：含五条命令原文与实测输出（build / build:client / 构建戳 / typecheck / 全量 test）",
+          "pnpm build exit 0；pnpm build:client 输出 [verify-client] OK（bundle 410557 bytes）",
+          "构建戳 sha256(lib/client.cjs) 前 12 位 = 17e9dba1f362（验前人已 Cmd+R 刷新页面拿到新版）",
+          "pnpm typecheck 错误数 153（基线 223），改动文件零错误；exit=2 是仓库既有历史错误所致，判据按错误数",
+          "npx vitest run tests/board-lane-scroll.test.ts → 15 passed",
+          "pnpm test → 98 failed / 4416 passed（基线 106 failed；开工前后同为 98，未新增失败）",
+          "evidence/lane-scroll-gui.md 落盘：GUI 三条人工检查的答复原文逐条记录",
+          "偏离声明：原计划要 evidence/lane-scroll-gui.png 截图，但 agent 无法操作用户浏览器，改为人工确认的文字记录（不做示意截图充数），并在文件头部写明替代原因"
+        ]
+      },
+      "lastRun": {
+        "at": 1791112061103,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-16251a",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "收口：四门禁 + GUI 手工证据·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-d34ccf"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "按 docs/requirements/REQ-261004184822-9881/design/test-cases.md 的 TC-7 在 GUI（http://127.0.0.1:19387 → 看板 → 泳道）跑手工验收：横滚到 accepting 列后三连刷（手动刷新/等一轮 20 秒轮询/另一窗口改一条需求触发 SSE）、某长列内翻到底再刷新、把窗口拉矮一半；截图落 evidence/lane-scroll-gui.png。四门禁读数（build / build:client / typecheck / test 失败数与基线比对）落 evidence/gates.txt。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-fb2cff",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-dac129",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791112064238,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 1071,
+              "at": 1791112064238,
+              "totals": {
+                "uncachedInputTokens": 189554,
+                "outputTokens": 105891,
+                "cacheReadTokens": 28832768,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 1071,
+                  "totals": {
+                    "uncachedInputTokens": 189554,
+                    "outputTokens": 105891,
+                    "cacheReadTokens": 28832768,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 1083,
+              "at": 1791112072309,
+              "totals": {
+                "uncachedInputTokens": 190148,
+                "outputTokens": 106963,
+                "cacheReadTokens": 29378176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 1083,
+                  "totals": {
+                    "uncachedInputTokens": 190148,
+                    "outputTokens": 106963,
+                    "cacheReadTokens": 29378176,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 594,
+              "outputTokens": 1072,
+              "cacheReadTokens": 545408,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791112072309
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-64722d",
+          "body": "[状态] → in_progress：复核：核验证据是否支撑每条 FR（reqboard_task_move）",
+          "createdAt": 1791112064238,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-c4651a",
+          "body": "[状态] → done：复核完成：每条 FR 有证据，四条未人工覆盖的边界已如实列出（reqboard_task_move）",
+          "createdAt": 1791112072309,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111951270,
+      "updatedAt": 1791112072309,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111951270,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791112064238,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "复核：核验证据是否支撑每条 FR"
+        },
+        {
+          "status": "done",
+          "at": 1791112072309,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "复核完成：每条 FR 有证据，四条未人工覆盖的边界已如实列出"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791112070682,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261004184822-9881/evidence/gates.txt",
+          "docs/requirements/REQ-261004184822-9881/evidence/lane-scroll-gui.md"
+        ],
+        "completed": [
+          "逐条核对 requirement.md 的整体验收 8 条：第 1、2、4 条由 GUI 人工确认（列直通到底 / 横滚到右列 / 刷新后仍在原列）",
+          "第 5 条（长列内翻后仍在原位置）由 GUI 人工确认；第 6 条（列表与详情往返）由 TC-5 自动化确认",
+          "第 3 条只人工覆盖了手动刷新与 20 秒轮询两类；SSE 那一类未单独人工触发，但走同一 render 路径且有 TC-5 断言",
+          "第 7 条由 evidence/gates.txt 读数确认：15 passed、build 与 build:client exit 0、typecheck 153 ≤ 223、全量 98 ≤ 106",
+          "第 8 条（刷新浏览器回到最左）由 TC-4 源码断言确认，本轮未人工复核",
+          "无偏离，但有四条未人工覆盖的边界，如实列出：窗口拉矮后的列高、列内滚动时列头是否始终可见、SSE 触发的那一次刷新、页面刷新后回到最左",
+          "结论：用户报告的原始症状（刷新弹回最左）与新增诉求（列直通到底）都有直接证据；未覆盖的是边界项，交由验收单人工裁决"
+        ]
+      },
+      "lastRun": {
+        "at": 1791112070682,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-69a514",
+      "requirementId": "REQ-261004184822-9881",
+      "title": "收口：四门禁 + GUI 手工证据·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-16251a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "按 docs/requirements/REQ-261004184822-9881/design/test-cases.md 的 TC-7 在 GUI（http://127.0.0.1:19387 → 看板 → 泳道）跑手工验收：横滚到 accepting 列后三连刷（手动刷新/等一轮 20 秒轮询/另一窗口改一条需求触发 SSE）、某长列内翻到底再刷新、把窗口拉矮一半；截图落 evidence/lane-scroll-gui.png。四门禁读数（build / build:client / typecheck / test 失败数与基线比对）落 evidence/gates.txt。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-fb2cff",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1a5ee6",
+          "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+          "trigger": "manual",
+          "startedAt": 1791112074522,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 1089,
+              "at": 1791112074522,
+              "totals": {
+                "uncachedInputTokens": 190348,
+                "outputTokens": 107151,
+                "cacheReadTokens": 29651712,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 1089,
+                  "totals": {
+                    "uncachedInputTokens": 190348,
+                    "outputTokens": 107151,
+                    "cacheReadTokens": 29651712,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+              "seq": 1103,
+              "at": 1791112081383,
+              "totals": {
+                "uncachedInputTokens": 191542,
+                "outputTokens": 107615,
+                "cacheReadTokens": 30200832,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8",
+                  "depth": 0,
+                  "seq": 1103,
+                  "totals": {
+                    "uncachedInputTokens": 191542,
+                    "outputTokens": 107615,
+                    "cacheReadTokens": 30200832,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1194,
+              "outputTokens": 464,
+              "cacheReadTokens": 549120,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791112081383
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ecc0fc",
+          "body": "[状态] → in_progress：测试：收拢最终读数供验收（reqboard_task_move）",
+          "createdAt": 1791112074522,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        },
+        {
+          "id": "c-f36963",
+          "body": "[状态] → done：测试完成：15 条用例绿、四门禁达标，读数已入证据（reqboard_task_move）",
+          "createdAt": 1791112081383,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791111951270,
+      "updatedAt": 1791112081383,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791111951270,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791112074522,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "测试：收拢最终读数供验收"
+        },
+        {
+          "status": "done",
+          "at": 1791112081383,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-1c72e30b-075a-4375-a0e5-022885505cf8"
+          },
+          "reason": "测试完成：15 条用例绿、四门禁达标，读数已入证据"
+        }
+      ],
+      "layer": 5,
+      "lastReport": {
+        "at": 1791112079410,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261004184822-9881/evidence/gates.txt",
+          "docs/requirements/REQ-261004184822-9881/evidence/lane-scroll-gui.md"
+        ],
+        "completed": [
+          "tests/board-lane-scroll.test.ts 逐条读数 15 passed（TC-1×3 / TC-2×2 / TC-3×2 / TC-4×2 / TC-5×2 / TC-6×4）",
+          "evidence/gates.txt：build exit 0、build:client [verify-client] OK、typecheck 153 ≤ 223、全量 98 failed ≤ 106",
+          "构建戳 17e9dba1f362 与人工验收时的页面一致（验前已刷新页面）",
+          "最终交付文件四份：src/client/board-scroll.ts、src/client/board-mount.ts、src/client/styles/base.ts、tests/board-lane-scroll.test.ts"
+        ]
+      },
+      "lastRun": {
+        "at": 1791112079410,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-19e1e2",
+      "to": "t-dc4752"
+    },
+    {
+      "from": "t-dc4752",
+      "to": "t-fd11e7"
+    },
+    {
+      "from": "t-fd11e7",
+      "to": "t-fb2cff"
+    },
+    {
+      "from": "t-128aa9",
+      "to": "t-f8b5ae"
+    },
+    {
+      "from": "t-f8b5ae",
+      "to": "t-7036ab"
+    },
+    {
+      "from": "t-7036ab",
+      "to": "t-957862"
+    },
+    {
+      "from": "t-19e1e2",
+      "to": "t-e16560"
+    },
+    {
+      "from": "t-e16560",
+      "to": "t-b5a80f"
+    },
+    {
+      "from": "t-b5a80f",
+      "to": "t-50008b"
+    },
+    {
+      "from": "t-50008b",
+      "to": "t-eba69f"
+    },
+    {
+      "from": "t-dc4752",
+      "to": "t-168366"
+    },
+    {
+      "from": "t-168366",
+      "to": "t-65afb7"
+    },
+    {
+      "from": "t-65afb7",
+      "to": "t-c95411"
+    },
+    {
+      "from": "t-c95411",
+      "to": "t-8fbc23"
+    },
+    {
+      "from": "t-fd11e7",
+      "to": "t-d34ccf"
+    },
+    {
+      "from": "t-d34ccf",
+      "to": "t-16251a"
+    },
+    {
+      "from": "t-16251a",
+      "to": "t-69a514"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-19e1e2",
+        "t-128aa9"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-dc4752",
+        "t-e16560",
+        "t-f8b5ae"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-fd11e7",
+        "t-168366",
+        "t-b5a80f",
+        "t-7036ab"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-fb2cff",
+        "t-d34ccf",
+        "t-65afb7",
+        "t-50008b",
+        "t-957862"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-16251a",
+        "t-c95411",
+        "t-eba69f"
+      ]
+    },
+    {
+      "layer": 5,
+      "tasks": [
+        "t-69a514",
+        "t-8fbc23"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-04T11:08:06.267Z"
+}

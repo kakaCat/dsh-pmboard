@@ -17,7 +17,9 @@ export function eventsOf(
   initial: string,
 ): StatusEvent[] {
   const hist = rec.statusHistory
-  if (hist !== undefined && hist.length > 0) return hist
+  // REQ-261004195831-0f52 FR-4：非数组（null / 对象 / 字符串）同口径退化为「创建单点」。
+  // 只判 `!== undefined` 会留下同类陷阱：`null.length` 一样把整页打没（实测过）。
+  if (Array.isArray(hist) && hist.length > 0) return hist
   // 升级前的老记录（host 侧尚未迁移）也要渲染得体面且诚实：只有一个「创建」点 + 由
   // updatedAt 推导的当前态，两者都标 inferred（UI 显示「回填」），中间态一律留空 ——
   // 绝不按时间戳线性插值编造出「评审 09-10 完成 09-11」这种看起来精确的假时间线。

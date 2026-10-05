@@ -1,0 +1,38 @@
+task:
+  id: t-55c6f2
+  title: 投递失败不把重试锁死：回收锁 + 可读留痕·复核
+  status: done
+  implements: |-
+    src/shared/protocol.ts:941 的 AdvanceEvent 增 'DISPATCH_FAILED'（唯一数据契约新增）；src/application/use-cases/AdvanceChain.ts 投递 catch 段新增 releaseClaim：同一个 mutate 内先判 adv.runId === 本次 runId（不误清他人锁）再清 lockAt/runId、追加 advance.history（event='DISPATCH_FAILED', outcome='failed', durationMs=0, detail='<kind>: <message>'）、追加 system comment（正文含 requirementId 与 kind）；AdvanceStop 增 'dispatch_failed' 并让失败分支返回它（不再用 not_found）；kind 判定：message 命中 'has no live agent' → owner_unresolvable，否则 dispatch_failed；dispatchOwnerOf 返回 undefined 时按 unowned 继续投递并在留痕标 owner_missing（设计对 FR-2 的修正，见 design/architecture.md『设计阶段对需求 FR-2 的一处修正』）；用例 tests/advance-dispatch-owner.test.ts 的 D-1/D-2/D-3/D-5/D-7。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-963c34
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002173819-69c7
+    TASK_ID: t-55c6f2
+    TASK_TITLE: 投递失败不把重试锁死：回收锁 + 可读留痕·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T10:07:00.938Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002173819-69c7
+  generated_at: 2026-10-02T10:06:54.948Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-02T10:07:00.938Z

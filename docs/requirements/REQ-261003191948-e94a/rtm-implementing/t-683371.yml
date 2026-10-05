@@ -1,0 +1,35 @@
+task:
+  id: t-683371
+  title: 新增未就绪 HTTP handler
+  status: done
+  implements: "新建 src/http/not-ready.ts：导出 createNotReadyHandler(failure: MigrationFailure): (req, res) => Promise<void>；对任意 method 与任意子路径一律回 503 + NotReadyBody（success:false、error=failure.message、code=failure.code、hint=failure.hint），头为 Content-Type: application/json; charset=utf-8 与 Cache-Control: no-store；不带 Retry-After；不得写 text/event-stream，必须先写头再 end（SSE 路径不得挂起）。复用 src/http/envelope.ts 的 json，不自己拼信封。在 tests/reqboard/degraded-startup.test.ts 追加 handler 段（真 IncomingMessage 形状的假 req：{method, url} + 假 res）。"
+  serves:
+    - FR-2
+    - FR-5
+  depends_on:
+    - t-f6e737
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261003191948-e94a
+    TASK_ID: t-683371
+    TASK_TITLE: 新增未就绪 HTTP handler
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-03T12:23:25.345Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261003191948-e94a
+  generated_at: 2026-10-03T12:23:25.343Z
+  version: 7
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-03T12:25:27.105Z

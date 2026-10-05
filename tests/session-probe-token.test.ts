@@ -25,7 +25,17 @@ describe('SessionProbe.tokenTotals（REQ-a33899 t2）', () => {
   it('投影可得 → source=projection，四桶逐字段一致，取到 sessionId 与 seq', () => {
     const session = { id: 'session-1', snapshotEvents: () => [0, 1, 2] }
     const adapter = make({ agents: agentsWith(session), sessionProjections: projectionsWith({ totals: BUCKETS, last: null }) })
-    expect(adapter.tokenTotals('w-1')).toEqual({ sessionId: 'session-1', seq: 2, at: 1000, totals: BUCKETS, source: 'projection' })
+    // REQ-261004154937-2ca3：契约扩展后，未装配血缘服务时快照如实标 scope=self + 降级原因
+    // （**数字与改造前逐字相同**——这条正是「无子代理 / 无血缘服务时零变化」的回归锁）
+    expect(adapter.tokenTotals('w-1')).toEqual({
+      sessionId: 'session-1',
+      seq: 2,
+      at: 1000,
+      totals: BUCKETS,
+      source: 'projection',
+      scope: 'self',
+      degradedReason: 'descendants-unavailable',
+    })
   })
 
   it('投影状态是裸四桶（无 totals 包裹）也识别', () => {

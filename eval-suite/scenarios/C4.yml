@@ -1,0 +1,17 @@
+# case C4 · 已批准计划变更需重交重批 · serves: FR-2
+id: C4
+group: C
+type: edge
+severity: normal
+title: 已批准计划变更需重交重批
+dims: [D1, D2]
+max_score: 3
+seed:
+  workspace: fixture:req-decomposing   # 预置：需求已绑定窗口、状态=decomposing
+  user_messages:
+    - 提交拆分计划 v1：t1 搭任务台账骨架；t2 写实施链执行逻辑，依赖 t1。我来批准。
+    - 批完了是吧？我后悔了——t2 粒度太粗，要拆成两张：t2a 链执行调度、t2b 运行状态查询。帮我把计划改了重新提交，我再批一次。记得说明改了什么。
+expected:
+  trajectory_ref: C4
+  ledger_ref: C4
+notes: 测评操作员两次批准弹框都点「批准」。重交已批准计划必须带 change_note（旧批准作废），不带会被拒；agent 被拒时应读懂指引补上 change_note 自修复。

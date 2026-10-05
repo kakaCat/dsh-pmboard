@@ -73,6 +73,11 @@ export interface SubtaskScriptInput {
   stageLabel: string
   /** 交给子代理的完整提示词（含父卡实施方案 + 本卡验收标准）。 */
   prompt: string
+  /**
+   * 阶段模型路由（REQ-261004110201-f253 FR-1）：命中即把 provider/model 写进 `agent()`
+   * 第二参对象；**未命中/缺省 → 不注入**（生成结果与改造前逐字节相同）。
+   */
+  route?: { provider?: string; model?: string }
 }
 
 /**
@@ -116,10 +121,22 @@ export function generateSubtaskScript(input: SubtaskScriptInput): string {
       }
   // phase(步名) 就是**进度事件**（引擎发 workflow/phase，observe-only）：宿主据此认「现在第几步」。
   // 此前恒为 phase("执行")，四段长得一模一样，宿主无法分步、泳道也无法显示步进。
+  //
+  // FR-1（REQ-261004110201-f253）：路由命中时把 provider/model 追加进 agent() 第二参对象；
+  // **未命中时这一行与改造前逐字节相同**（既有脚本快照用例守着这条不变量）。
+  const routeParts: string[] = []
+  if (typeof input.route?.provider === 'string' && input.route.provider.length > 0) {
+    routeParts.push('provider: ' + JSON.stringify(input.route.provider))
+  }
+  if (typeof input.route?.model === 'string' && input.route.model.length > 0) {
+    routeParts.push('model: ' + JSON.stringify(input.route.model))
+  }
+  const agentOptions = '{ schema: ' + JSON.stringify(schema)
+    + (routeParts.length > 0 ? ', ' + routeParts.join(', ') : '') + ' }'
   const script = [
     'phase(' + JSON.stringify(String(input.stageLabel || input.stageKind || '执行')) + ');',
     'log(' + JSON.stringify(fmt('子卡 {kind} 开工：{label}', { kind: input.stageKind, label: input.stageLabel })) + ');',
-    'const out = await agent(' + JSON.stringify(prompt) + ', { schema: ' + JSON.stringify(schema) + ' });',
+    'const out = await agent(' + JSON.stringify(prompt) + ', ' + agentOptions + ');',
     'return { ok: out !== null, output: out };',
   ].join('\n')
   assertScriptContract(script)

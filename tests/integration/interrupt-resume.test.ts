@@ -8,7 +8,7 @@
  * 
  * @module dsh-pmboard/tests/integration/interrupt-resume
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, } from 'vitest'
 
 describe('中断恢复集成测试', () => {
   // TODO: 需要完整的测试环境搭建

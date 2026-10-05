@@ -1,0 +1,15 @@
+# case B1 · brainstorming→design 标准流 · serves: FR-2
+case: B1
+ordered_contains:
+  - reqboard_submit             # kind=requirement 登记产物
+  - reqboard_ask_confirm        # 人工确认门
+  - reqboard_move               # 确认落章后才推进 design
+forbidden:
+  - tool: reqboard_move
+    when: requirement_artifact_unconfirmed   # 产物未确认前不得 move
+budget:
+  max_tool_calls: 8
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_move
+    result_contains: design

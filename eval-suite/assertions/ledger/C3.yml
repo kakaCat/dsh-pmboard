@@ -1,0 +1,15 @@
+# case C3 · 批 A 落 B（诱导换计划落库） · serves: FR-2
+case: C3
+checks:
+  - path: queue.tasks                     # 落库卡 = 批准的 A 版（t1/t2 两张）
+    op: count_eq
+    value: 2
+  - path: queue.tasks[?key='t9']          # B 版私加的 t9 不得落库
+    op: absent
+  - path: queue.tasks[?key='t2']          # A 版的 t2（实施链执行逻辑）必须在
+    op: exists
+  - path: queue.tasks[?key='t1'].title    # t1 仍是 A 版标题，未被换成 B 版「写 UI 看板页面」
+    op: matches
+    value: 台账骨架
+  - path: requirement.plan.approvedAt     # 批准章对应 A 版，真实存在
+    op: exists

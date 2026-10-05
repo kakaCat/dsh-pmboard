@@ -27,22 +27,24 @@ class FlakyRunner implements WorkflowRunner {
   }
 }
 
-function seed(runner: WorkflowRunner) {
+async function seed(runner: WorkflowRunner) {
   const h = makeHarness()
   h.docs.put(FILE, 'x')
-  h.repo.ledger.requirements = [req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true, sourceSessionId: 'session-w-001' })]
+  // B12 阶段②e：播种进新端口
+  h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true, sourceSessionId: 'session-w-001' }))
   h.seedTasks('REQ-000001', [task({ id: 't-p', requirementId: 'REQ-000001', status: 'todo', title: '父卡' })])
   h.deps.workflow = runner
   const alerts: Array<{ requirementId: string; title: string; content: string }> = []
   const port: FailureAlertPort = { alert: (i) => { alerts.push(i) } }
   h.deps.alert = port
+  await h.seedSettled()
   return { h, alerts }
 }
 
 describe('失败暂停与回退（5.1/5.2/5.5）', () => {
   it('子卡失败 → 退回 todo + attempt+1 + revisions(rollback) + 失败评论；autoRun=false；高优告警发出', async () => {
     const runner = new FlakyRunner(2)
-    const { h, alerts } = seed(runner)
+    const { h, alerts } = await seed(runner)
     const out = await advanceRequirement(h.deps, 'REQ-000001')
     expect(out.stopped).toBe('paused')
     const rolled = (await h.tasksOf('REQ-000001')).find(t => t.parentId === 't-p' && (t.attempt ?? 0) > 0)!
@@ -52,7 +54,7 @@ describe('失败暂停与回退（5.1/5.2/5.5）', () => {
     expect(rolled.revisions?.map(r => r.kind)).toEqual(['rollback'])
     expect(rolled.revisions?.[0]?.changes.join(' ')).toContain('attempt: 0→1')
     expect(rolled.comments.some(c => c.body.includes('子卡失败'))).toBe(true)
-    expect(h.repo.ledger.requirements[0]!.autoRun).toBe(false)
+    expect((await h.store.get('REQ-000001'))!.autoRun).toBe(false)
     expect(alerts).toHaveLength(1)
     expect(alerts[0]!.title).toContain('实施链暂停')
     expect(alerts[0]!.content).toContain('重跑该卡')
@@ -60,7 +62,7 @@ describe('失败暂停与回退（5.1/5.2/5.5）', () => {
 
   it('5.2 不自动重试：失败后再次触发不产生新 run（autoRun=false）', async () => {
     const runner = new FlakyRunner(2)
-    const { h } = seed(runner)
+    const { h } = await seed(runner)
     await advanceRequirement(h.deps, 'REQ-000001')
     const callsAfterFail = runner.calls
     const again = await advanceRequirement(h.deps, 'REQ-000001')
@@ -69,7 +71,7 @@ describe('失败暂停与回退（5.1/5.2/5.5）', () => {
   })
 
   it('5.6 自动链不产生 done→in_progress 转移', async () => {
-    const { h } = seed(new FlakyRunner(-1))
+    const { h } = await seed(new FlakyRunner(-1))
     await advanceRequirement(h.deps, 'REQ-000001')
     for (const t of await h.tasksOf('REQ-000001')) {
       const hist = (t.statusHistory ?? []).map(x => x.status)
@@ -81,7 +83,7 @@ describe('失败暂停与回退（5.1/5.2/5.5）', () => {
 
 describe('处置弹框三选（5.3）', () => {
   it('openFailurePopup 返回人工选择（重跑/退回上游/取消）', async () => {
-    const { h } = seed(new FlakyRunner(2))
+    const { h } = await seed(new FlakyRunner(2))
     expect(FAILURE_CHOICE_LABELS.rerun).toBe('重跑该卡')
     h.questions.answers = [{ selected: [FAILURE_CHOICE_LABELS.upstream] }]
     const choice = await openFailurePopup(h.deps, 'REQ-000001')
@@ -91,35 +93,37 @@ describe('处置弹框三选（5.3）', () => {
 
   it('选「重跑该卡」→ autoRun 开启并继续推进', async () => {
     const runner = new FlakyRunner(2)
-    const { h } = seed(runner)
+    const { h } = await seed(runner)
     await advanceRequirement(h.deps, 'REQ-000001')
-    expect(h.repo.ledger.requirements[0]!.autoRun).toBe(false)
+    expect((await h.store.get('REQ-000001'))!.autoRun).toBe(false)
     const r = await handleFailureChoice(h.deps, 'REQ-000001', 'rerun')
     expect(r.ok).toBe(true)
-    expect(h.repo.ledger.requirements[0]!.status).toBe('accepting')
+    expect((await h.store.get('REQ-000001'))!.status).toBe('accepting')
   })
 
   it('选「退回上游」→ 需求回 design（人工门）', async () => {
-    const { h } = seed(new FlakyRunner(2))
+    const { h } = await seed(new FlakyRunner(2))
     await advanceRequirement(h.deps, 'REQ-000001')
     const r = await handleFailureChoice(h.deps, 'REQ-000001', 'upstream')
     expect(r.ok).toBe(true)
-    expect(h.repo.ledger.requirements[0]!.status).toBe('design')
+    expect((await h.store.get('REQ-000001'))!.status).toBe('design')
   })
 
   it('选「取消」→ 需求 canceled', async () => {
-    const { h } = seed(new FlakyRunner(2))
+    const { h } = await seed(new FlakyRunner(2))
     await advanceRequirement(h.deps, 'REQ-000001')
     const r = await handleFailureChoice(h.deps, 'REQ-000001', 'cancel')
     expect(r.ok).toBe(true)
-    expect(h.repo.ledger.requirements[0]!.status).toBe('canceled')
+    expect((await h.store.get('REQ-000001'))!.status).toBe('canceled')
   })
 })
 
 describe('返工就地更新（5.4/5.5）', () => {
   it('重批准计划后：卡数不变、受影响父卡字段被更新且有 revisions(update)', async () => {
     const h = makeHarness()
-    h.repo.ledger.requirements = [req({ id: 'REQ-000001', status: 'design', category: 'feature' })]
+    // B12 阶段⑤族 B：播种进新端口
+    h.seedRequirementSync(req({ id: 'REQ-000001', status: 'design', category: 'feature' }))
+    await h.seedSettled()
     await h.setTasks('REQ-000001', [
       task({ id: 't-p', requirementId: 'REQ-000001', title: '父卡', acceptance: '旧验收', description: '旧描述', status: 'in_progress' }),
     ])

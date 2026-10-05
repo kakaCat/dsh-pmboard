@@ -65,7 +65,8 @@ describe('H2 压缩：真跑 replaced（AC-3.1 / AC-3.3）', () => {
   it('肯定项 + 文档已落盘 → replaced 且区间自首个非 system 节点起；artifactSeq < replacementSeq', async () => {
     const h = seeded()
     const { port, replaces } = fakePort()
-    const handler = createH2CompactHandler({ repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolationFor: () => port })
+    const handler = createH2CompactHandler({ store: h.store,
+    persistArtifacts: () => 0, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolationFor: () => port })
     const outcome = await handler.run({ ctx: ctx(), session: {} })
     expect(outcome).toEqual({ kind: 'continue' })
     expect(replaces).toHaveLength(1)
@@ -73,7 +74,7 @@ describe('H2 压缩：真跑 replaced（AC-3.1 / AC-3.3）', () => {
     expect(replaces[0]!.end).toBe(2)
     expect(replaces[0]!.shadowed).toEqual([1, 2])
     // 先落盘再遗弃：persistArtifacts 返回台账 revision(0) < 替换 seq(100)
-    expect(h.repo.snapshot().revision).toBe(0)
+    expect((await h.store.head()).revision).toBe(0)
   })
 })
 
@@ -81,8 +82,9 @@ describe('H2 压缩：条件不满足 → skip（AC-3.2）', () => {
   it('非肯定项 → negative_verdict，且**不调用**压缩用例', async () => {
     const h = seeded()
     let called = 0
-    const handler = createH2CompactHandler({
-      repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore,
+    const handler = createH2CompactHandler({ store: h.store,
+    persistArtifacts: () => 0,
+docs: h.docs, clock: h.clock, taskStore: h.taskStore,
       run: async () => { called += 1; throw new Error('不该被调用') },
     })
     const outcome = await handler.run({ ctx: ctx({ verdict: 'negative' }), session: {} })
@@ -92,21 +94,24 @@ describe('H2 压缩：条件不满足 → skip（AC-3.2）', () => {
 
   it('to 不是可注入阶段（draft）→ not_prompt_stage', async () => {
     const h = seeded()
-    const handler = createH2CompactHandler({ repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore })
+    const handler = createH2CompactHandler({ store: h.store,
+    persistArtifacts: () => 0, docs: h.docs, clock: h.clock, taskStore: h.taskStore })
     const outcome = await handler.run({ ctx: ctx({ to: 'draft' }), session: {} })
     expect(outcome).toMatchObject({ kind: 'skip', code: 'not_prompt_stage' })
   })
 
   it('需求文档未落盘 → doc_not_ready（输入包不自足的闸）', async () => {
     const h = seeded(false)
-    const handler = createH2CompactHandler({ repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolationFor: () => fakePort().port })
+    const handler = createH2CompactHandler({ store: h.store,
+    persistArtifacts: () => 0, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolationFor: () => fakePort().port })
     const outcome = await handler.run({ ctx: ctx(), session: {} })
     expect(outcome).toMatchObject({ kind: 'skip', code: 'doc_not_ready' })
   })
 
   it('本窗口无归属需求 → no_requirement', async () => {
     const h = makeHarness({ requirements: [] })
-    const handler = createH2CompactHandler({ repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore })
+    const handler = createH2CompactHandler({ store: h.store,
+    persistArtifacts: () => 0, docs: h.docs, clock: h.clock, taskStore: h.taskStore })
     const outcome = await handler.run({ ctx: ctx(), session: {} })
     expect(outcome).toMatchObject({ kind: 'skip', code: 'no_requirement' })
   })
@@ -114,7 +119,8 @@ describe('H2 压缩：条件不满足 → skip（AC-3.2）', () => {
   it('agent 忙（idle=false）→ skip: agent_busy', async () => {
     const h = seeded()
     const { port } = fakePort({ idle: () => false })
-    const handler = createH2CompactHandler({ repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolationFor: () => port })
+    const handler = createH2CompactHandler({ store: h.store,
+    persistArtifacts: () => 0, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolationFor: () => port })
     const outcome = await handler.run({ ctx: ctx(), session: {} })
     expect(outcome).toMatchObject({ kind: 'skip', code: 'agent_busy' })
   })
@@ -123,7 +129,8 @@ describe('H2 压缩：条件不满足 → skip（AC-3.2）', () => {
 describe('H2 压缩：失败态 → degraded（AC-3.2 / AC-3.4）', () => {
   it('触达不到会话 → fallback 降级为 degraded', async () => {
     const h = seeded()
-    const handler = createH2CompactHandler({ repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore })
+    const handler = createH2CompactHandler({ store: h.store,
+    persistArtifacts: () => 0, docs: h.docs, clock: h.clock, taskStore: h.taskStore })
     const outcome = await handler.run({ ctx: ctx(), session: {} })
     expect(outcome).toMatchObject({ kind: 'degraded', code: 'isolation_unreachable' })
   })
@@ -131,15 +138,17 @@ describe('H2 压缩：失败态 → degraded（AC-3.2 / AC-3.4）', () => {
   it('边界 tool 配对不平衡 → rejected 降级为 degraded', async () => {
     const h = seeded()
     const { port } = fakePort({ balancedAfter: () => false })
-    const handler = createH2CompactHandler({ repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolationFor: () => port })
+    const handler = createH2CompactHandler({ store: h.store,
+    persistArtifacts: () => 0, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolationFor: () => port })
     const outcome = await handler.run({ ctx: ctx(), session: {} })
     expect(outcome).toMatchObject({ kind: 'degraded', code: 'boundary_unbalanced' })
   })
 
   it('用例抛未预期异常 → degraded: h2_threw（不冒泡）', async () => {
     const h = seeded()
-    const handler = createH2CompactHandler({
-      repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore,
+    const handler = createH2CompactHandler({ store: h.store,
+    persistArtifacts: () => 0,
+docs: h.docs, clock: h.clock, taskStore: h.taskStore,
       run: async () => { throw new Error('unexpected') },
     })
     const outcome = await handler.run({ ctx: ctx(), session: {} })
@@ -150,7 +159,8 @@ describe('H2 压缩：失败态 → degraded（AC-3.2 / AC-3.4）', () => {
   it('docs.read 抛错按未落盘处理（skip，不冒泡）', async () => {
     const h = seeded()
     h.docs.read = async () => { throw new Error('fs down') }
-    const handler = createH2CompactHandler({ repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore })
+    const handler = createH2CompactHandler({ store: h.store,
+    persistArtifacts: () => 0, docs: h.docs, clock: h.clock, taskStore: h.taskStore })
     const outcome = await handler.run({ ctx: ctx(), session: {} })
     expect(outcome).toMatchObject({ kind: 'skip', code: 'doc_not_ready' })
   })
@@ -158,8 +168,9 @@ describe('H2 压缩：失败态 → degraded（AC-3.2 / AC-3.4）', () => {
   it('显式 run 替身可断言请求形状（windowKey/stage/category/requirementId）', async () => {
     const h = seeded()
     let seen: IsolateNodeContextRequest | undefined
-    const handler = createH2CompactHandler({
-      repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore,
+    const handler = createH2CompactHandler({ store: h.store,
+    persistArtifacts: () => 0,
+docs: h.docs, clock: h.clock, taskStore: h.taskStore,
       run: async (_d: IsolateNodeContextDeps, request: IsolateNodeContextRequest) => {
         seen = request
         return {

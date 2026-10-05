@@ -19,8 +19,10 @@ import {
   type ResolvedPrompt,
 } from '../../domain/prompt/index.js'
 import { fmt } from '../../domain/text/fmt.js'
+import { aggregateUnconfirmedLabels } from './artifact-gates.js'
 import { renderAddressSection } from '../../domain/template/index.js'
-import type { RequirementRecord, StageArtifact } from '../../shared/protocol.js'
+import type { RequirementRecord, StageArtifact, ContextPressureSnapshot } from '../../shared/protocol.js'
+import type { SessionProbe } from '../ports.js'
 import type { NodeInput } from '../../../vendor/reqboard/src/dive/node-input.js'
 
 /** 台账投影（INV-8 五字段的输入包侧承载）。 */
@@ -80,7 +82,9 @@ export function projectLedger(requirement: RequirementRecord | undefined, stage:
   return {
     currentStage: stage,
     upstream: confirmed.length > 0 ? confirmed.map(artifactLabel).join('；') : NONE_UPSTREAM,
-    openQuestions: [...unconfirmed.map(artifactLabel), ...blockers].join('；') || NONE_OPEN,
+    // FR-7（REQ-261003222428-3556 / N-3）：待确认按 kind 聚合——高频产物（task_detail/task_output）
+    // 不再逐条催（实测一次交付注入 39 条），成组 kind 合并为一条「kind×N（成组确认一次清）」。
+    openQuestions: [...aggregateUnconfirmedLabels(unconfirmed, artifactLabel), ...blockers].join('；') || NONE_OPEN,
     next: chain.label,
     evidence: artifacts.length > 0 ? artifacts.map(a => a.path).join('；') : NONE_EVIDENCE,
     breakpoint: breakpointText(requirement),
@@ -106,6 +110,93 @@ function breakpointText(requirement: RequirementRecord | undefined): string {
   )
 }
 
+/**
+ * 余量参考的**固定标注**（t7 / FR-8）：A6 的可判点就是这一串字。
+ * 与数值同一条展示（同节 / 同一返回体字段）内出现——判据永远是 `LIMITS` 里的容量常量，
+ * 这个运行时读数只作参考（token-meter 自述其字段非原子且 "not a gating input"）。
+ */
+export const CAPACITY_REFERENCE_NOTE = '参考值，非门禁判据'
+
+/**
+ * 读当轮上下文压力参考（t7 / FR-8）——**两处展示共用的唯一读取口**（输入包节 / 任务树顶层）。
+ *
+ * **不可得就是不可得**：没注入端口 / 端口上没有这个方法（插件热重载后可能拿到旧适配器实例）/
+ * 方法抛错 → 一律 `undefined`。余量只是只读展示，绝不能因为一个读数把调用方的主链搞失败
+ * （节点隔离 / 只读看树），也绝不留旧值、记忆值冒充（R-013，与 `safeReadDoc` 同一降级口径）。
+ *
+ * 放在本模块的另一个理由：口径（怎么读、怎么算、标注什么字）只有一处，
+ * 两处展示各写一遍必然漂移——本仓「两份真相」的老病。
+ */
+export function safeContextPressure(
+  session: SessionProbe | undefined,
+  windowKey: string,
+): ContextPressureSnapshot | undefined {
+  try {
+    const read = session?.contextPressure
+    return typeof read === 'function' ? read.call(session, windowKey) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * 取会话探测端口（t7 / FR-8）——**装配形状**：收「端口 or 取端口的 getter」，返回端口。
+ *
+ * 为什么要有 getter 这一形态：组合根**先**装配节点结算分发器与闸门后置链，**之后**才建
+ * `SessionProbeAdapter`（它依赖会话缓冲表 toolTrace / recentUserMsgs）⇒ 那两个装配点拿不到实例，
+ * 只能收一个惰性 getter，读实例的时机 = 执行期（那时赋值已完成）。
+ *
+ * 取不到（getter 返回 undefined = 还没装配）/ getter 自己抛错 → `undefined`：与
+ * {@link safeContextPressure} **同一降级口径**——余量只是只读展示，装配形状的任何问题都不许
+ * 冒泡成"节点隔离 / 压缩失败"（缺了就是没有该节，输入包逐字节不变）。
+ */
+export function resolveSessionProbe(
+  session: SessionProbe | (() => SessionProbe | undefined) | undefined,
+): SessionProbe | undefined {
+  try {
+    return typeof session === 'function' ? session() : session
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * 余量 = `contextWindow − projectedTokens`（t7 / FR-8）。
+ *
+ * 任一缺席 / 非有限数 / 整体不可得 → `undefined`：**宁可整条不显示，也不猜 0、不单边推算**。
+ * 「余量 0」与「算不出」在展示层必须可区分，否则人会拿一个假数字当拆分依据（同 R-013 口径）。
+ * 与任务树顶层的 `remainingTokens` **共用本函数**——两处各写一份减法必然漂移。
+ */
+export function remainingTokensOf(pressure: ContextPressureSnapshot | undefined): number | undefined {
+  if (pressure === undefined || pressure.source !== 'projection') return undefined
+  const { contextWindow, projectedTokens } = pressure
+  if (typeof contextWindow !== 'number' || !Number.isFinite(contextWindow)) return undefined
+  if (typeof projectedTokens !== 'number' || !Number.isFinite(projectedTokens)) return undefined
+  return contextWindow - projectedTokens
+}
+
+/**
+ * 「## 一轮余量（参考）」节文本（t7 / FR-8）：只读展示，**不是门禁判据**。
+ *
+ * 无数据 → 空串（调用方据此不追加该节 → 没有该能力时输入包逐字节不变）。
+ * 算不出余量（单边读数）→ 同样空串：整条参考不显示，而不是显示半条。
+ */
+export function roundCapacityText(pressure: ContextPressureSnapshot | undefined): string {
+  const remaining = remainingTokensOf(pressure)
+  if (pressure === undefined || remaining === undefined) return ''
+  const { contextWindow, projectedTokens } = pressure
+  // 类型收窄（能算出 remaining 就说明两者都在场；这里只是让 TS 看见同一件事）
+  if (typeof contextWindow !== 'number' || typeof projectedTokens !== 'number') return ''
+  return fmt(
+    [
+      '## 一轮余量（参考）',
+      '- remainingTokens：{remaining}（= contextWindow {contextWindow} − projectedTokens {projectedTokens}）',
+      '- {note}',
+    ].join('\n'),
+    { remaining, contextWindow, projectedTokens, note: CAPACITY_REFERENCE_NOTE },
+  )
+}
+
 export interface NodeInputPackageInput {
   stage: PromptStage
   difficulty?: Difficulty
@@ -122,6 +213,15 @@ export interface NodeInputPackageInput {
   currentTask?: { id?: string; title?: string; cardDoc?: string }
   /** FR-8：RTM 追溯快照（由用例读盘后注入；缺省 = 不追加该节，逐字节保持旧输出）。 */
   rtm?: NodeInput
+  /** t8：知识索引（由用例读盘后注入；缺省 = 不追加该节 → 老需求逐字节不变）。 */
+  knowledgeIndex?: KnowledgeIndexInput
+  /** t8：是否把需求文档节瘦身为「TL;DR + 指针」（缺省 false → 仍注入全文）。 */
+  trimRequirementDoc?: boolean
+  /**
+   * t7（FR-8）：当轮上下文压力参考（由用例从 `SessionProbe` 读后注入）。
+   * 缺省 / 不可得 → 不追加余量节 → 输出与"没有该能力"逐字节相同。
+   */
+  contextPressure?: ContextPressureSnapshot
 }
 
 export interface NodeInputPackage {
@@ -129,6 +229,9 @@ export interface NodeInputPackage {
   resolved: ResolvedPrompt
   projection: LedgerProjection
 }
+
+import { KB_LIMITS } from '../../domain/knowledge/budget.js'
+import { buildKnowledgeSection, digestRequirementDoc, type KnowledgeIndexInput } from './knowledge-inject.js'
 
 const DOC_UNAVAILABLE = '（需求文档不可用或为空：{path}）'
 
@@ -143,9 +246,16 @@ export function buildNodeInputPackage(input: NodeInputPackageInput): NodeInputPa
   const projection = projectLedger(input.requirement, input.stage)
   // FR-6：仅当需求带断点时追加该节；无断点 → 空数组（逐字节保持旧输出）。
   const breakpointSection = projection.breakpoint.length > 0 ? [...projection.breakpoint.split('\n'), ''] : []
-  const docText = input.requirementDoc.length > 0
+  // t7（FR-8）：余量参考——同一写法（空串 → 空数组，不追加）。
+  const capacityText = roundCapacityText(input.contextPressure)
+  const capacitySection = capacityText.length > 0 ? [...capacityText.split('\n'), ''] : []
+  const rawDoc = input.requirementDoc.length > 0
     ? input.requirementDoc
     : fmt(DOC_UNAVAILABLE, { path: input.requirementDocPath })
+  // t8：仅当显式开启且文档可用时瘦身（缺省注入全文 = 与改造前逐字节一致）
+  const docText = input.trimRequirementDoc === true && input.requirementDoc.length > 0
+    ? digestRequirementDoc(input.requirementDoc, input.requirementDocPath, KB_LIMITS.requirementDigestMax).text
+    : rawDoc
   // 进入本阶段的第一个动作（domain 单点 STAGE_CHAIN.entry）——与 H4 唤醒消息同源：
   // H2 真压缩过时唤醒消息只说"纪律在输入包里"，这里就必须真的带上"第一步干什么"。
   const entryLine = STAGE_CHAIN[input.stage].entry.length > 0
@@ -168,6 +278,7 @@ export function buildNodeInputPackage(input: NodeInputPackageInput): NodeInputPa
       '{openQuestions}',
       '',
       ...breakpointSection,
+      ...capacitySection,
       '## 下一步',
       '{next}',
       ...(entryLine.length > 0 ? [entryLine] : []),
@@ -203,7 +314,11 @@ export function buildNodeInputPackage(input: NodeInputPackageInput): NodeInputPa
   const withRtm = rtmSection.length > 0 ? baseText + '\n' + rtmSection : baseText
   // T-5（FR-8/FR-12）：地址小节与系统段/H3 共用同一纯函数；空集不追加（逐字节兼容）。
   const addressSection = renderAddressFor(input)
-  const text = addressSection.length > 0 ? withRtm + '\n\n' + addressSection : withRtm
+  const withAddress = addressSection.length > 0 ? withRtm + '\n\n' + addressSection : withRtm
+  // t8：知识索引节追加在**末尾**（位置固定 → 前缀缓存友好；缺省不追加 → 逐字节不变）
+  const text = input.knowledgeIndex === undefined
+    ? withAddress
+    : withAddress + '\n\n' + buildKnowledgeSection(input.knowledgeIndex).section
   return { text, resolved, projection }
 }
 

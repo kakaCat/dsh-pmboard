@@ -37,7 +37,7 @@ function realQueue() {
 describe('t9 · TC-8.10 用例层父子树改经 TaskStore', () => {
   it('TaskTree 的父子结构与队列内 parentId 一致', async () => {
     const store = realQueue()
-    const h = makeHarness({ requirements: [req({ status: 'implementing', sourceSessionId: WINDOW, createdAt: 1 })] })
+    const h = makeHarness({ requirements: [req({ status: 'design', sourceSessionId: WINDOW, createdAt: 1 })] })
     h.deps.taskStore = store
     await store.createMany(REQ_ID, [
       task({ id: 't-parent', status: 'in_progress', createdAt: 1 }),
@@ -104,10 +104,12 @@ describe('t9 · TC-8.8 rollup 推导与队列任务一致', () => {
 })
 
 describe('t9/t12 · TC-8.11 顺序契约（打点证据）', () => {
-  it('MoveTask：taskStore.mutate 先于 repo.mutate', async () => {
+  it('MoveTask：taskStore.mutate 先于 store.mutate（需求写）', async () => {
     const store = realQueue()
-    const h = makeHarness({ requirements: [req({ status: 'implementing', sourceSessionId: WINDOW, createdAt: 1 })] })
+    const h = makeHarness({ requirements: [req({ status: 'design', sourceSessionId: WINDOW, createdAt: 1 })] })
     h.deps.taskStore = store
+    // 夹具要**真的产生一次需求写**，顺序契约才被行使：需求停在 design 且有任务 ⇒ R3 规则自动进 decomposing，
+    // 于是任务写与需求写都会发生（旧实现无脑调一次整册 mutate，无变化也会被记到）。
     await store.createMany(REQ_ID, [task({ id: 't-1', status: 'todo', createdAt: 1 })])
 
     const log: string[] = []
@@ -116,25 +118,30 @@ describe('t9/t12 · TC-8.11 顺序契约（打点证据）', () => {
       log.push('taskStore.mutate')
       return originalStoreMutate(reqId, fn)
     }
-    const originalRepoMutate = h.repo.mutate.bind(h.repo)
-    h.repo.mutate = async (reason: string, fn: Parameters<typeof originalRepoMutate>[1]) => {
-      log.push('repo.mutate')
-      return originalRepoMutate(reason, fn)
+    // B12 阶段②c：MoveTask 的**需求写**已从整册 `repo.mutate` 迁到新端口 `store.mutate`
+    // （定点读 + 单条 mutate，见 applyTaskRollupVia）。打点跟着端口走——断言的**语义不变**：
+    // 仍是"任务写先于需求写"，只是记录的那一次调用换了入口。
+    const depsStore = h.deps.store
+    if (depsStore === undefined) throw new Error('夹具未装配 deps.store')
+    const originalReqMutate = depsStore.mutate.bind(depsStore)
+    ;(depsStore as unknown as { mutate: unknown }).mutate = async (id: string, fn: Parameters<typeof originalReqMutate>[1]) => {
+      log.push('store.mutate')
+      return originalReqMutate(id, fn)
     }
 
     await executeMoveTask(h.deps, { task_id: 't-1', to: 'in_progress' }, {})
 
     // 打点 = 运行期真实调用次序（不是静态 grep、不是口头声明）
-    expect(log).toEqual(['taskStore.mutate', 'repo.mutate'])
+    expect(log).toEqual(['taskStore.mutate', 'store.mutate'])
     expect((await store.get('t-1'))?.status).toBe('in_progress')
   })
 
   it('MoveTask：任务状态只落队列，台账无 tasks 键（v9）', async () => {
     const store = realQueue()
-    const h = makeHarness({ requirements: [req({ status: 'implementing', sourceSessionId: WINDOW, createdAt: 1 })] })
+    const h = makeHarness({ requirements: [req({ status: 'design', sourceSessionId: WINDOW, createdAt: 1 })] })
     h.deps.taskStore = store
     await store.createMany(REQ_ID, [task({ id: 't-1', status: 'todo', createdAt: 1 })])
     await executeMoveTask(h.deps, { task_id: 't-1', to: 'in_progress' }, {})
-    expect(Object.prototype.hasOwnProperty.call(h.repo.ledger, 'tasks')).toBe(false)
+    expect((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id))).not.toHaveProperty('tasks')
   })
 })

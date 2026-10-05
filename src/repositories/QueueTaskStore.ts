@@ -16,7 +16,7 @@
  *    所有返回"任务"的方法都返回去掉 `layer` 的副本，需要 DAG 视图就用 `readQueue`。
  *
  * 不做什么：不做文件原子写（那是 `QueueRepository`）、不做校验规则实现（那是 `validateQueue`）、
- * 不做需求记录读写（那是 `ReqboardRepository`）。
+ * 不做需求记录读写（那是 `旧单册端口（已删除）`）。
  *
  * @module dsh-pmboard/repositories/QueueTaskStore
  */

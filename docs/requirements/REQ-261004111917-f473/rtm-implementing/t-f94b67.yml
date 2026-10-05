@@ -1,0 +1,35 @@
+task:
+  id: t-f94b67
+  title: 客户端深链消费：清 hash → 定位 → 切面板·研发
+  status: done
+  implements: |-
+    新增 src/client/deep-link.ts：parsePmboardDeepLink（ignored/ok/malformed 三态；前缀必须恰好 #pmboard，其后只能串尾或 ?；req 取首、URLSearchParams 解码 + trim；形状 ^REQ-）+ consumePmboardDeepLink(hash, ports, {maxAttempts})（固定时序：clearHash → requestFocus → selectPanel 有界重试（defer 可注入，缺省 setTimeout 16ms）→ 重试耗尽 clearFocus + log；全程 try/catch，绝不向 apply 抛出）。改 src/client/index.ts：注册页面之后调一次消费，端口注入 getPageLayout()、requestBoardFocus/clearBoardFocus、clearHash（history.replaceState + try/catch 回落 location.hash=''）、console。新增 tests/deep-link.test.ts。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261004111917-f473
+    TASK_ID: t-f94b67
+    TASK_TITLE: 客户端深链消费：清 hash → 定位 → 切面板·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T03:36:32.714Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004111917-f473
+  generated_at: 2026-10-04T03:36:29.157Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-04T03:36:35.195Z

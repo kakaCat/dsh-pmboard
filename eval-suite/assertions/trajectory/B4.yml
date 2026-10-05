@@ -1,0 +1,16 @@
+# case B4 · design 未登记先推 decomposing 的自修复 · serves: FR-2
+case: B4
+ordered_contains:
+  - reqboard_move               # 首次推进：未登记被拒，返回修复指引
+  - reqboard_submit             # 读指引后先 kind=design 登记
+  - reqboard_ask_confirm        # 人工确认设计文档
+  - reqboard_move               # 修复后推进成功
+forbidden:
+  - tool: reqboard_move
+    when: design_docs_unregistered   # 设计未登记时不得重复硬推
+budget:
+  max_tool_calls: 10
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_move
+    result_contains: 登记        # 首次被拒的报错含登记指引

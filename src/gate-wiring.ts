@@ -4,6 +4,7 @@
  * 依赖方向与 index.ts 相同（adapters + application 均可引用）。
  */
 import type { Context } from '@deepseek-ai/cordis';
+import type { RequirementStore } from './application/ports.js'
 import { createGatePostChain } from './application/gate/GatePostChain.js';
 import { createPendingGateStore } from './application/gate/PendingGate.js';
 import { createH1AdvanceHandler } from './application/gate/handlers/h1-advance.js';
@@ -13,20 +14,21 @@ import { createH4ResumeHandler } from './application/gate/handlers/h4-resume.js'
 import { createH5AuditHandler } from './application/gate/handlers/h5-audit.js';
 import { NodeIsolationAdapter } from './adapters/NodeIsolationAdapter.js';
 import { RandomIdFactory } from './adapters/RandomIdFactory.js';
-import type { JsonLedgerRepository } from './adapters/JsonLedgerRepository.js';
 import type { FileDocRepository } from './adapters/FileDocRepository.js';
 import type { IsolationTraceFile } from './adapters/IsolationTraceFile.js';
 import type { InjectionLogFile } from './adapters/InjectionLogFile.js';
 import type { SystemClock } from './adapters/SystemClock.js';
 import type { AgentDeliverer } from './adapters/AgentDeliverer.js';
-import { captureSectionText, boundSectionText } from './application/internal/capture-section.js';
+import { captureSectionTextFrom, boundSectionTextFrom } from './application/internal/capture-section.js';
 import { windowKeyFromContext } from './application/internal/window.js';
 import { captureDiag } from './application/internal/diag-log.js';
-import type { TaskStore } from './application/ports.js';
-import type { TaskRecord } from './shared/protocol.js';
+import type { SessionProbe, TaskStore } from './application/ports.js';
+import type { RequirementFacts } from './domain/requirement/RequirementSummary.js';
+import { type TaskRecord } from './shared/protocol.js';
 
 export interface GateChainDeps {
-  store: JsonLedgerRepository;
+  /** 新需求端口（t8/B11）：供 h2-compact 的 store/persistArtifacts 使用。 */
+  requirementStore: RequirementStore;
   docs: FileDocRepository;
   clock: SystemClock;
   now: () => number;
@@ -52,6 +54,12 @@ export interface GateChainDeps {
    * 与 idle 同源：idle === (idleState(state) === 'idle')。
    */
   idleState: (session: unknown) => 'idle' | 'busy' | 'unknown';
+  /**
+   * 会话探测端口（t7 / FR-8）——**惰性取值**：组合根在本链**之后**才建 `SessionProbeAdapter`
+   * （它依赖会话缓冲表），故这里收 getter 并原样转交给 H2（取实例的时机 = 压缩执行期）。
+   * 缺省 / 取不到 → 压缩出来的输入包不追加「一轮余量（参考）」节（与本改动前逐字节相同）。
+   */
+  sessionProbe?: () => SessionProbe | undefined;
 }
 
 /** 装配闸门后置链（REQ-e3b6a0）：Phase A 由装饰器登记，Phase B 在 turn/end 的异步边界执行。 */
@@ -62,9 +70,10 @@ export function assembleGatePostChain(deps: GateChainDeps): ReturnType<typeof cr
     enabled: true,
     pending: createPendingGateStore(),
     handlers: [
-      createH1AdvanceHandler({ repo: deps.store }),
+      createH1AdvanceHandler({ store: deps.requirementStore }),
       createH2CompactHandler({
-        repo: deps.store,
+        store: deps.requirementStore,
+        persistArtifacts: async () => (await deps.requirementStore.head()).revision,
         docs: deps.docs,
         clock: deps.clock,
         taskStore: deps.taskStore,
@@ -74,16 +83,19 @@ export function assembleGatePostChain(deps: GateChainDeps): ReturnType<typeof cr
           plugin: deps.plugin,
         }),
         trace: deps.isolationTrace,
+        // t7（FR-8）：余量参考端口（惰性 getter，原样转交 H2；缺省 → 不传，输入包逐字节不变）。
+        ...(deps.sessionProbe === undefined ? {} : { sessionProbe: deps.sessionProbe }),
       }),
       createH3InjectHandler({
-        repo: deps.store,
+        // B12 阶段①-a：归属需求改权威异步定点读（H1/H3 都是门禁路径，不能用非权威投影）。
+        store: deps.requirementStore,
         // H3 的地址段要"当前在制任务卡"（v9 台账无 tasks）——run() 是 async，直接 await。
         taskStore: deps.taskStore,
         injectionLog: deps.injectionLog,
         ...(deps.address === undefined ? {} : { templateRoot: deps.address.templateRoot, addressSectionEnabled: deps.address.enabled }),
       }),
       createH4ResumeHandler({}),
-      createH5AuditHandler({ repo: deps.store, now: deps.now, newCommentId: () => gateIds.comment() }),
+      createH5AuditHandler({  store: deps.requirementStore, now: deps.now, newCommentId: () => gateIds.comment() }),
     ],
     warn: (message) => deps.logger.warn(message),
     idleState: (session) => deps.idleState(session),
@@ -97,7 +109,8 @@ export function assembleGatePostChain(deps: GateChainDeps): ReturnType<typeof cr
 
 export interface CaptureGuidanceDeps {
   disposers: Array<() => void>;
-  store: JsonLedgerRepository;
+  /** 新需求端口（t8/B11）：供 h2-compact 的 store/persistArtifacts 使用。 */
+  requirementStore: RequirementStore;
   pendingCapture: Map<string, { windowKey: string; text: string; capturedAt: number }>;
   injectionLog: InjectionLogFile;
   /**
@@ -119,7 +132,7 @@ export interface CaptureGuidanceDeps {
 /**
  * 捕获引导段（B：按窗口条件注入）：为每个 agent 窗口的 systemPrompt 组装求值，
  * 仅 unbound 的窗口返回引导文本，其余返回 ''（renderPrompt
- * 滤空段 → 零噪音）。text 为函数式：每次组装读取 store.snapshot()（同步）判定当前窗口状态。
+ * 滤空段 → 零噪音）。text 为函数式：每次组装读取 store.台账快照读（已删除）（同步）判定当前窗口状态。
  */
 export function registerCaptureGuidance(ctx: Context, deps: CaptureGuidanceDeps): void {
   ;(ctx as unknown as { inject?: (services: string[], cb: (c: any) => void) => void }).inject?.(
@@ -169,11 +182,28 @@ export function registerCaptureGuidance(ctx: Context, deps: CaptureGuidanceDeps)
             const pending = windowKey ? deps.pendingCapture.get(windowKey) : undefined;
             // 【诊断日志-节点4】systemPrompt 组装时的 windowKey 提取与 pending 查询（文件双写，防 stdout 死管道）
             captureDiag(`reqboard-capture [NODE-4]: systemPrompt assemble (windowKey=${windowKey ? windowKey.slice(0, 16) : 'undefined'}, pending=${pending !== undefined ? 'EXISTS' : 'NONE'}, pendingCapture.size=${deps.pendingCapture.size})`);
-            const sectionText = captureSectionText(deps.store.snapshot(), assembleContext, pending);
+            // t8 切换期：桥要 `await ready()` 才有同步快照，而本缝是**同步**回调、可能早于就绪被调用
+            // （实测：apply() 后立刻求值）。按 design/backend.md §同步口的处置——这一缝本就允许
+            // **非权威、可能略旧**的投影（它是"注入哪段引导文字"，不参与任何门禁与写判定），
+            // 故未就绪时退化为空册求值（= `peekSummaries()` 尚未建索引时的同口径），
+            // 并**留诊断日志不静默**。⚠️ 门禁/写判定**绝不**允许这种退化。
+            // t8/B12 阶段①-a：本缝改由**新端口的同步窄投影**（`peekFacts()`）供数，
+            // 不再经桥的同步整册快照（`snapshot`）供数。端口注释已划定许可区——本缝是 systemPrompt
+            // 的 `text` 回调（**同步**、每回合执行、过期不致命），不属于门禁/写判定。
+            // 与旧路径的差别：投影**可能略旧**（本地索引未建时为空数组 = 不注入引导），
+            // 故失败**不静默**——留诊断日志（旧路径的"未就绪退化为空册"同口径）。
+            let facts: readonly RequirementFacts[];
+            try {
+              facts = deps.requirementStore.peekFacts();
+            } catch (err) {
+              captureDiag(`reqboard-capture [NODE-4b]: 提示词窄投影不可用 → 引导段按空集求值（${(err as Error).message}）`);
+              facts = [];
+            }
+            const sectionText = captureSectionTextFrom(facts, assembleContext, pending);
             if (sectionText.length > 0) return sectionText;
             // 已绑定窗口：注入「推进纪律」（状态由窗口自己维护，不必等人点按钮）。
             // 任务快照以**同步缓存**传入（`undefined` = 尚未加载 → 段内整体略过任务块）。
-            return boundSectionText(deps.store.snapshot(), tasksSnapshot, assembleContext, deps.injectionLog);
+            return boundSectionTextFrom(facts, tasksSnapshot, assembleContext, deps.injectionLog);
           },
         }));
       }, deps.plugin + ': capture');

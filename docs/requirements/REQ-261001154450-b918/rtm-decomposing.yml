@@ -1,0 +1,795 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261001154450-b918
+  generated_at: 2026-10-01T07:47:58.731Z
+  version: 145
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-01T09:01:27.476Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 验收通过必须附实际结果，占位文案不得计入通过
+      source: requirement.md
+      line: 111
+    - id: FR-2
+      title: 需求级系统项通过必须带书面处置
+      source: requirement.md
+      line: 115
+    - id: FR-3
+      title: 计划批准后自动投递一次实施链
+      source: requirement.md
+      line: 119
+    - id: FR-4
+      title: 批量关闭节流的拒绝文案给出可执行指引
+      source: requirement.md
+      line: 123
+    - id: FR-5
+      title: 陈旧挂起确认自动失效并可显式作废
+      source: requirement.md
+      line: 127
+    - id: FR-6
+      title: 归档材料未提交时不得视为收尾闭环
+      source: requirement.md
+      line: 131
+    - id: FR-7
+      title: 计划覆盖表必须机器可解析并落库为 requirementRefs
+      source: requirement.md
+      line: 135
+    - id: FR-8
+      title: 规范条目的期望必须当前可达或显式声明基线
+      source: requirement.md
+      line: 139
+  design_sections:
+    - ref: design/architecture.md#目标与总体方案
+      title: 目标与总体方案 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/architecture.md
+      section: 目标与总体方案
+    - ref: design/architecture.md#分层落点与依赖方向
+      title: 分层落点与依赖方向 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/architecture.md
+      section: 分层落点与依赖方向
+    - ref: design/architecture.md#数据流-A验收裁决改后
+      title: 数据流 A：验收裁决（改后） `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 数据流-A验收裁决改后
+    - ref: design/architecture.md#数据流-B计划批准-落库-开链
+      title: 数据流 B：计划批准 → 落库 → 开链 `
+      serves:
+        - FR-3
+        - FR-7
+      file: design/architecture.md
+      section: 数据流-B计划批准-落库-开链
+    - ref: design/architecture.md#收尾闭环的判定
+      title: 收尾闭环的判定 `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: 收尾闭环的判定
+    - ref: design/architecture.md#兼容与回滚
+      title: 兼容与回滚 `
+      serves:
+        - FR-1
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/architecture.md
+      section: 兼容与回滚
+    - ref: design/architecture.md#风险与对策
+      title: 风险与对策 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-6
+      file: design/architecture.md
+      section: 风险与对策
+    - ref: design/data-model.md#验收单条目VerificationItem
+      title: 验收单条目（VerificationItem） `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/data-model.md
+      section: 验收单条目VerificationItem
+    - ref: design/data-model.md#挂起确认PendingConfirmation
+      title: 挂起确认（PendingConfirmation） `
+      serves:
+        - FR-5
+      file: design/data-model.md
+      section: 挂起确认PendingConfirmation
+    - ref: design/data-model.md#计划任务引用TaskRecordrequirementRefs
+      title: 计划任务引用（TaskRecord.requirementRefs） `
+      serves:
+        - FR-7
+      file: design/data-model.md
+      section: 计划任务引用TaskRecordrequirementRefs
+    - ref: design/data-model.md#收尾闭环字段
+      title: 收尾闭环字段 `
+      serves:
+        - FR-6
+      file: design/data-model.md
+      section: 收尾闭环字段
+    - ref: design/data-model.md#迁移与兼容
+      title: 迁移与兼容 `
+      serves:
+        - FR-1
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/data-model.md
+      section: 迁移与兼容
+    - ref: design/interfaces.md#工具回执与校验变更
+      title: 工具回执与校验变更 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-7
+      file: design/interfaces.md
+      section: 工具回执与校验变更
+    - ref: design/interfaces.md#错误码表
+      title: 错误码表 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+        - FR-5
+        - FR-7
+      file: design/interfaces.md
+      section: 错误码表
+    - ref: design/interfaces.md#配置项
+      title: 配置项 `
+      serves:
+        - FR-5
+        - FR-1
+      file: design/interfaces.md
+      section: 配置项
+    - ref: design/interfaces.md#只读可见性不新增写路径
+      title: 只读可见性（不新增写路径） `
+      serves:
+        - FR-6
+        - FR-1
+      file: design/interfaces.md
+      section: 只读可见性不新增写路径
+    - ref: design/use-cases.md#UC-1-验收通过但没填实际结果
+      title: UC-1 验收通过但没填实际结果 `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-1-验收通过但没填实际结果
+    - ref: design/use-cases.md#UC-2-系统项零处置点通过
+      title: UC-2 系统项零处置点通过 `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-2-系统项零处置点通过
+    - ref: design/use-cases.md#UC-3-批准计划后没人推第一张骨牌
+      title: UC-3 批准计划后没人推第一张骨牌 `
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-3-批准计划后没人推第一张骨牌
+    - ref: design/use-cases.md#UC-4-连关两张卡撞-60s-节流
+      title: UC-4 连关两张卡撞 60s 节流 `
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: UC-4-连关两张卡撞-60s-节流
+    - ref: design/use-cases.md#UC-5-陈旧挂起挡住收尾
+      title: UC-5 陈旧挂起挡住收尾 `
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-5-陈旧挂起挡住收尾
+    - ref: design/use-cases.md#UC-6-归档材料没交却已-archived
+      title: UC-6 归档材料没交却已 archived `
+      serves:
+        - FR-6
+      file: design/use-cases.md
+      section: UC-6-归档材料没交却已-archived
+    - ref: design/use-cases.md#UC-7-落库后-FR-引用全空
+      title: UC-7 落库后 FR 引用全空 `
+      serves:
+        - FR-7
+      file: design/use-cases.md
+      section: UC-7-落库后-FR-引用全空
+    - ref: design/use-cases.md#UC-8-新增规范条目的期望不可达
+      title: UC-8 新增规范条目的期望不可达 `
+      serves:
+        - FR-8
+      file: design/use-cases.md
+      section: UC-8-新增规范条目的期望不可达
+outputs:
+  tasks:
+    - id: t-55cb09
+      title: 定门规纯函数与状态契约
+      implements: domain 层新增/修改：status/Predicates.ts 加 closingGapOf(req)；workflow/AcceptanceSheetSpec.ts 导出 isSystemItem(item)；workflow/DoneEvidenceSpec.ts 节流判定返回剩余毫秒；limits.ts 加 pendingConfirmTtlMs；verification 条目状态联合加 unverified。纯函数、零 I/O。
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-bebc07
+      title: 验收裁决收口：两问一批 + 去占位 + 系统项必处置
+      implements: AcceptSheet.ts 每题拆两问（<id> 选项 + <id>#result 文本）；verdicts.ts 删占位兜底，通过且结果空 → unverified；系统项通过且处置空 → 整批拒绝 system_item_disposition_required；需求级全通过排除 unverified。
+      serves: []
+      depends_on:
+        - t-55cb09
+      phase: implement
+      side: backend
+    - id: t-dc9156
+      title: 挂起确认 TTL 与过期回执
+      implements: pending-confirm.ts 登记写 createdAt/ttlMs；pending-guard.ts 过期不拦；ConfirmReceipt 对过期返回 expired:true + 指引；pending_confirms 不列过期项；旧记录无 createdAt 视为不过期。
+      serves: []
+      depends_on:
+        - t-55cb09
+      phase: implement
+      side: backend
+    - id: t-e775c7
+      title: 计划引用通道与落库门禁
+      implements: SubmitArtifact(kind=plan) 的 tasks 接受 requirement_refs（工具 schema 同步放开，见 FR-7 实测：当前 additionalProperties:false 传不进）；缺省回退解析计划文档覆盖表；plan-landing 落库后逐卡校验非空，空 → REQBOARD_PLAN_REFS_MISSING。
+      serves: []
+      depends_on:
+        - t-55cb09
+      phase: implement
+      side: backend
+    - id: t-3e89d1
+      title: 批准计划后自动投递一次链
+      implements: confirm-settle.ts 在落库+推进 implementing 之后调用一次 advanceRequirement（开关 autoAdvanceOnApprove）；已有 active run 幂等跳过；失败 → dispatched:false + reason。
+      serves: []
+      depends_on:
+        - t-e775c7
+      phase: implement
+      side: backend
+    - id: t-bfd9bb
+      title: 节流拒绝文案可执行化
+      implements: support.ts 节流分支用剩余毫秒生成 message，含「剩余 N 秒」与合规路径（等待 / 由自动链关闭 / 单张推进）。
+      serves: []
+      depends_on:
+        - t-55cb09
+      phase: implement
+      side: backend
+    - id: t-2c1163
+      title: 收尾闭环可见：closingGap + 看板红标 + 下一步
+      implements: 只读投影加 closing_gap 与 unverified_items；client 徽标渲染红标与下一步指引；归档材料登记后红标消失。只读，不新增写路径。
+      serves: []
+      depends_on:
+        - t-55cb09
+      phase: implement
+      side: fullstack
+    - id: t-243098
+      title: kb-probe K11：规范期望可达性
+      implements: kb-probe.mts 新增 K11：解析 C 条目「期望：」行要求含可判定锚点；「退出码 0」类断言必须有「基线：」行；kb-conventions-sync 骨架带基线占位。
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-3566b3
+      title: 兼容与回归：旧台账 / 旧挂起 / 旧回执 + 基线对照
+      implements: HEAD worktree 对照跑旧路径；补存量兼容用例（无 unverified、无 createdAt、无 closingGap）；全量测试与类型检查与基线比对。
+      serves: []
+      depends_on:
+        - t-bebc07
+        - t-dc9156
+        - t-3e89d1
+        - t-bfd9bb
+        - t-2c1163
+        - t-243098
+      phase: test
+      side: backend
+    - id: t-fb9711
+      title: 端到端演练与验收证据
+      implements: 写 evidence/e2e-drill.py：①refs 非空 ②批准即投递 ③通过不填结果→unverified ④系统项无处置→拒 ⑤未交归档→closingGap ⑥交归档→闭环；六步退出码与输出留档。
+      serves: []
+      depends_on:
+        - t-3566b3
+      phase: test
+      side: backend
+    - id: t-ac0851
+      title: 定门规纯函数与状态契约·研发
+      implements: |-
+        domain 层新增/修改：status/Predicates.ts 加 closingGapOf(req)；workflow/AcceptanceSheetSpec.ts 导出 isSystemItem(item)；workflow/DoneEvidenceSpec.ts 节流判定返回剩余毫秒；limits.ts 加 pendingConfirmTtlMs；verification 条目状态联合加 unverified。纯函数、零 I/O。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-8d6b60
+      title: 定门规纯函数与状态契约·联调
+      implements: |-
+        domain 层新增/修改：status/Predicates.ts 加 closingGapOf(req)；workflow/AcceptanceSheetSpec.ts 导出 isSystemItem(item)；workflow/DoneEvidenceSpec.ts 节流判定返回剩余毫秒；limits.ts 加 pendingConfirmTtlMs；verification 条目状态联合加 unverified。纯函数、零 I/O。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-ac0851
+      phase: implement
+      side: backend
+    - id: t-0b6023
+      title: 定门规纯函数与状态契约·复核
+      implements: |-
+        domain 层新增/修改：status/Predicates.ts 加 closingGapOf(req)；workflow/AcceptanceSheetSpec.ts 导出 isSystemItem(item)；workflow/DoneEvidenceSpec.ts 节流判定返回剩余毫秒；limits.ts 加 pendingConfirmTtlMs；verification 条目状态联合加 unverified。纯函数、零 I/O。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-8d6b60
+      phase: implement
+      side: backend
+    - id: t-079ce6
+      title: 定门规纯函数与状态契约·测试
+      implements: |-
+        domain 层新增/修改：status/Predicates.ts 加 closingGapOf(req)；workflow/AcceptanceSheetSpec.ts 导出 isSystemItem(item)；workflow/DoneEvidenceSpec.ts 节流判定返回剩余毫秒；limits.ts 加 pendingConfirmTtlMs；verification 条目状态联合加 unverified。纯函数、零 I/O。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-0b6023
+      phase: implement
+      side: backend
+    - id: t-bcea2d
+      title: kb-probe K11：规范期望可达性·研发
+      implements: |-
+        kb-probe.mts 新增 K11：解析 C 条目「期望：」行要求含可判定锚点；「退出码 0」类断言必须有「基线：」行；kb-conventions-sync 骨架带基线占位。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-64e2b2
+      title: kb-probe K11：规范期望可达性·联调
+      implements: |-
+        kb-probe.mts 新增 K11：解析 C 条目「期望：」行要求含可判定锚点；「退出码 0」类断言必须有「基线：」行；kb-conventions-sync 骨架带基线占位。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-bcea2d
+      phase: implement
+      side: backend
+    - id: t-b88eda
+      title: kb-probe K11：规范期望可达性·复核
+      implements: |-
+        kb-probe.mts 新增 K11：解析 C 条目「期望：」行要求含可判定锚点；「退出码 0」类断言必须有「基线：」行；kb-conventions-sync 骨架带基线占位。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-64e2b2
+      phase: implement
+      side: backend
+    - id: t-0e8126
+      title: kb-probe K11：规范期望可达性·测试
+      implements: |-
+        kb-probe.mts 新增 K11：解析 C 条目「期望：」行要求含可判定锚点；「退出码 0」类断言必须有「基线：」行；kb-conventions-sync 骨架带基线占位。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-b88eda
+      phase: implement
+      side: backend
+    - id: t-8511d0
+      title: 验收裁决收口：两问一批 + 去占位 + 系统项必处置·研发
+      implements: |-
+        AcceptSheet.ts 每题拆两问（<id> 选项 + <id>#result 文本）；verdicts.ts 删占位兜底，通过且结果空 → unverified；系统项通过且处置空 → 整批拒绝 system_item_disposition_required；需求级全通过排除 unverified。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-55cb09
+      phase: implement
+      side: backend
+    - id: t-e4b1e9
+      title: 验收裁决收口：两问一批 + 去占位 + 系统项必处置·联调
+      implements: |-
+        AcceptSheet.ts 每题拆两问（<id> 选项 + <id>#result 文本）；verdicts.ts 删占位兜底，通过且结果空 → unverified；系统项通过且处置空 → 整批拒绝 system_item_disposition_required；需求级全通过排除 unverified。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-8511d0
+      phase: implement
+      side: backend
+    - id: t-ef2c27
+      title: 验收裁决收口：两问一批 + 去占位 + 系统项必处置·复核
+      implements: |-
+        AcceptSheet.ts 每题拆两问（<id> 选项 + <id>#result 文本）；verdicts.ts 删占位兜底，通过且结果空 → unverified；系统项通过且处置空 → 整批拒绝 system_item_disposition_required；需求级全通过排除 unverified。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-e4b1e9
+      phase: implement
+      side: backend
+    - id: t-2a8717
+      title: 验收裁决收口：两问一批 + 去占位 + 系统项必处置·测试
+      implements: |-
+        AcceptSheet.ts 每题拆两问（<id> 选项 + <id>#result 文本）；verdicts.ts 删占位兜底，通过且结果空 → unverified；系统项通过且处置空 → 整批拒绝 system_item_disposition_required；需求级全通过排除 unverified。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-ef2c27
+      phase: implement
+      side: backend
+    - id: t-fa5f52
+      title: 挂起确认 TTL 与过期回执·研发
+      implements: |-
+        pending-confirm.ts 登记写 createdAt/ttlMs；pending-guard.ts 过期不拦；ConfirmReceipt 对过期返回 expired:true + 指引；pending_confirms 不列过期项；旧记录无 createdAt 视为不过期。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-55cb09
+      phase: implement
+      side: backend
+    - id: t-a8d8e6
+      title: 挂起确认 TTL 与过期回执·联调
+      implements: |-
+        pending-confirm.ts 登记写 createdAt/ttlMs；pending-guard.ts 过期不拦；ConfirmReceipt 对过期返回 expired:true + 指引；pending_confirms 不列过期项；旧记录无 createdAt 视为不过期。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-fa5f52
+      phase: implement
+      side: backend
+    - id: t-715fd3
+      title: 挂起确认 TTL 与过期回执·复核
+      implements: |-
+        pending-confirm.ts 登记写 createdAt/ttlMs；pending-guard.ts 过期不拦；ConfirmReceipt 对过期返回 expired:true + 指引；pending_confirms 不列过期项；旧记录无 createdAt 视为不过期。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-a8d8e6
+      phase: implement
+      side: backend
+    - id: t-be3d40
+      title: 挂起确认 TTL 与过期回执·测试
+      implements: |-
+        pending-confirm.ts 登记写 createdAt/ttlMs；pending-guard.ts 过期不拦；ConfirmReceipt 对过期返回 expired:true + 指引；pending_confirms 不列过期项；旧记录无 createdAt 视为不过期。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-715fd3
+      phase: implement
+      side: backend
+    - id: t-f1a3ea
+      title: 计划引用通道与落库门禁·研发
+      implements: |-
+        SubmitArtifact(kind=plan) 的 tasks 接受 requirement_refs（工具 schema 同步放开，见 FR-7 实测：当前 additionalProperties:false 传不进）；缺省回退解析计划文档覆盖表；plan-landing 落库后逐卡校验非空，空 → REQBOARD_PLAN_REFS_MISSING。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-55cb09
+      phase: implement
+      side: backend
+    - id: t-d56787
+      title: 计划引用通道与落库门禁·联调
+      implements: |-
+        SubmitArtifact(kind=plan) 的 tasks 接受 requirement_refs（工具 schema 同步放开，见 FR-7 实测：当前 additionalProperties:false 传不进）；缺省回退解析计划文档覆盖表；plan-landing 落库后逐卡校验非空，空 → REQBOARD_PLAN_REFS_MISSING。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-f1a3ea
+      phase: implement
+      side: backend
+    - id: t-151af0
+      title: 计划引用通道与落库门禁·复核
+      implements: |-
+        SubmitArtifact(kind=plan) 的 tasks 接受 requirement_refs（工具 schema 同步放开，见 FR-7 实测：当前 additionalProperties:false 传不进）；缺省回退解析计划文档覆盖表；plan-landing 落库后逐卡校验非空，空 → REQBOARD_PLAN_REFS_MISSING。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-d56787
+      phase: implement
+      side: backend
+    - id: t-cd1a8b
+      title: 计划引用通道与落库门禁·测试
+      implements: |-
+        SubmitArtifact(kind=plan) 的 tasks 接受 requirement_refs（工具 schema 同步放开，见 FR-7 实测：当前 additionalProperties:false 传不进）；缺省回退解析计划文档覆盖表；plan-landing 落库后逐卡校验非空，空 → REQBOARD_PLAN_REFS_MISSING。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-151af0
+      phase: implement
+      side: backend
+    - id: t-5967fd
+      title: 批准计划后自动投递一次链·研发
+      implements: |-
+        confirm-settle.ts 在落库+推进 implementing 之后调用一次 advanceRequirement（开关 autoAdvanceOnApprove）；已有 active run 幂等跳过；失败 → dispatched:false + reason。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-e775c7
+      phase: implement
+      side: backend
+    - id: t-c7e355
+      title: 批准计划后自动投递一次链·联调
+      implements: |-
+        confirm-settle.ts 在落库+推进 implementing 之后调用一次 advanceRequirement（开关 autoAdvanceOnApprove）；已有 active run 幂等跳过；失败 → dispatched:false + reason。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-5967fd
+      phase: implement
+      side: backend
+    - id: t-79bd72
+      title: 批准计划后自动投递一次链·复核
+      implements: |-
+        confirm-settle.ts 在落库+推进 implementing 之后调用一次 advanceRequirement（开关 autoAdvanceOnApprove）；已有 active run 幂等跳过；失败 → dispatched:false + reason。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-c7e355
+      phase: implement
+      side: backend
+    - id: t-d92f6a
+      title: 批准计划后自动投递一次链·测试
+      implements: |-
+        confirm-settle.ts 在落库+推进 implementing 之后调用一次 advanceRequirement（开关 autoAdvanceOnApprove）；已有 active run 幂等跳过；失败 → dispatched:false + reason。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-79bd72
+      phase: implement
+      side: backend
+    - id: t-4ca7a3
+      title: 节流拒绝文案可执行化·研发
+      implements: |-
+        support.ts 节流分支用剩余毫秒生成 message，含「剩余 N 秒」与合规路径（等待 / 由自动链关闭 / 单张推进）。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-55cb09
+      phase: implement
+      side: backend
+    - id: t-99aeea
+      title: 节流拒绝文案可执行化·联调
+      implements: |-
+        support.ts 节流分支用剩余毫秒生成 message，含「剩余 N 秒」与合规路径（等待 / 由自动链关闭 / 单张推进）。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-4ca7a3
+      phase: implement
+      side: backend
+    - id: t-d09794
+      title: 节流拒绝文案可执行化·复核
+      implements: |-
+        support.ts 节流分支用剩余毫秒生成 message，含「剩余 N 秒」与合规路径（等待 / 由自动链关闭 / 单张推进）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-99aeea
+      phase: implement
+      side: backend
+    - id: t-4deef0
+      title: 节流拒绝文案可执行化·测试
+      implements: |-
+        support.ts 节流分支用剩余毫秒生成 message，含「剩余 N 秒」与合规路径（等待 / 由自动链关闭 / 单张推进）。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-d09794
+      phase: implement
+      side: backend
+    - id: t-74a312
+      title: 收尾闭环可见：closingGap + 看板红标 + 下一步·研发
+      implements: |-
+        只读投影加 closing_gap 与 unverified_items；client 徽标渲染红标与下一步指引；归档材料登记后红标消失。只读，不新增写路径。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-55cb09
+      phase: implement
+      side: fullstack
+    - id: t-17f847
+      title: 收尾闭环可见：closingGap + 看板红标 + 下一步·联调
+      implements: |-
+        只读投影加 closing_gap 与 unverified_items；client 徽标渲染红标与下一步指引；归档材料登记后红标消失。只读，不新增写路径。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-74a312
+      phase: implement
+      side: fullstack
+    - id: t-73bd6c
+      title: 收尾闭环可见：closingGap + 看板红标 + 下一步·复核
+      implements: |-
+        只读投影加 closing_gap 与 unverified_items；client 徽标渲染红标与下一步指引；归档材料登记后红标消失。只读，不新增写路径。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-17f847
+      phase: implement
+      side: fullstack
+    - id: t-be19ff
+      title: 收尾闭环可见：closingGap + 看板红标 + 下一步·测试
+      implements: |-
+        只读投影加 closing_gap 与 unverified_items；client 徽标渲染红标与下一步指引；归档材料登记后红标消失。只读，不新增写路径。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-73bd6c
+      phase: implement
+      side: fullstack
+    - id: t-75877b
+      title: 兼容与回归：旧台账 / 旧挂起 / 旧回执 + 基线对照·研发
+      implements: |-
+        HEAD worktree 对照跑旧路径；补存量兼容用例（无 unverified、无 createdAt、无 closingGap）；全量测试与类型检查与基线比对。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-bebc07
+        - t-dc9156
+        - t-3e89d1
+        - t-bfd9bb
+        - t-2c1163
+        - t-243098
+      phase: test
+      side: backend
+    - id: t-6727b8
+      title: 兼容与回归：旧台账 / 旧挂起 / 旧回执 + 基线对照·复核
+      implements: |-
+        HEAD worktree 对照跑旧路径；补存量兼容用例（无 unverified、无 createdAt、无 closingGap）；全量测试与类型检查与基线比对。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-75877b
+      phase: test
+      side: backend
+    - id: t-dfcaca
+      title: 兼容与回归：旧台账 / 旧挂起 / 旧回执 + 基线对照·测试
+      implements: |-
+        HEAD worktree 对照跑旧路径；补存量兼容用例（无 unverified、无 createdAt、无 closingGap）；全量测试与类型检查与基线比对。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-6727b8
+      phase: test
+      side: backend
+    - id: t-4d80e3
+      title: 端到端演练与验收证据·研发
+      implements: |-
+        写 evidence/e2e-drill.py：①refs 非空 ②批准即投递 ③通过不填结果→unverified ④系统项无处置→拒 ⑤未交归档→closingGap ⑥交归档→闭环；六步退出码与输出留档。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-3566b3
+      phase: test
+      side: backend
+    - id: t-171024
+      title: 端到端演练与验收证据·复核
+      implements: |-
+        写 evidence/e2e-drill.py：①refs 非空 ②批准即投递 ③通过不填结果→unverified ④系统项无处置→拒 ⑤未交归档→closingGap ⑥交归档→闭环；六步退出码与输出留档。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-4d80e3
+      phase: test
+      side: backend
+    - id: t-5b8576
+      title: 端到端演练与验收证据·测试
+      implements: |-
+        写 evidence/e2e-drill.py：①refs 非空 ②批准即投递 ③通过不填结果→unverified ④系统项无处置→拒 ⑤未交归档→closingGap ⑥交归档→闭环；六步退出码与输出留档。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-171024
+      phase: test
+      side: backend
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与总体方案: []
+    design/architecture.md#分层落点与依赖方向: []
+    design/architecture.md#数据流-A验收裁决改后: []
+    design/architecture.md#数据流-B计划批准-落库-开链: []
+    design/architecture.md#收尾闭环的判定: []
+    design/architecture.md#兼容与回滚: []
+    design/architecture.md#风险与对策: []
+    design/data-model.md#验收单条目VerificationItem: []
+    design/data-model.md#挂起确认PendingConfirmation: []
+    design/data-model.md#计划任务引用TaskRecordrequirementRefs: []
+    design/data-model.md#收尾闭环字段: []
+    design/data-model.md#迁移与兼容: []
+    design/interfaces.md#工具回执与校验变更: []
+    design/interfaces.md#错误码表: []
+    design/interfaces.md#配置项: []
+    design/interfaces.md#只读可见性不新增写路径: []
+    design/use-cases.md#UC-1-验收通过但没填实际结果: []
+    design/use-cases.md#UC-2-系统项零处置点通过: []
+    design/use-cases.md#UC-3-批准计划后没人推第一张骨牌: []
+    design/use-cases.md#UC-4-连关两张卡撞-60s-节流: []
+    design/use-cases.md#UC-5-陈旧挂起挡住收尾: []
+    design/use-cases.md#UC-6-归档材料没交却已-archived: []
+    design/use-cases.md#UC-7-落库后-FR-引用全空: []
+    design/use-cases.md#UC-8-新增规范条目的期望不可达: []
+  fr_to_tasks:
+    FR-1: []
+    FR-2: []
+    FR-3: []
+    FR-4: []
+    FR-5: []
+    FR-6: []
+    FR-7: []
+    FR-8: []
+coverage:
+  implementation:
+    total: 24
+    covered: 0
+    uncovered:
+      - design/architecture.md#目标与总体方案
+      - design/architecture.md#分层落点与依赖方向
+      - design/architecture.md#数据流-A验收裁决改后
+      - design/architecture.md#数据流-B计划批准-落库-开链
+      - design/architecture.md#收尾闭环的判定
+      - design/architecture.md#兼容与回滚
+      - design/architecture.md#风险与对策
+      - design/data-model.md#验收单条目VerificationItem
+      - design/data-model.md#挂起确认PendingConfirmation
+      - design/data-model.md#计划任务引用TaskRecordrequirementRefs
+      - design/data-model.md#收尾闭环字段
+      - design/data-model.md#迁移与兼容
+      - design/interfaces.md#工具回执与校验变更
+      - design/interfaces.md#错误码表
+      - design/interfaces.md#配置项
+      - design/interfaces.md#只读可见性不新增写路径
+      - design/use-cases.md#UC-1-验收通过但没填实际结果
+      - design/use-cases.md#UC-2-系统项零处置点通过
+      - design/use-cases.md#UC-3-批准计划后没人推第一张骨牌
+      - design/use-cases.md#UC-4-连关两张卡撞-60s-节流
+      - design/use-cases.md#UC-5-陈旧挂起挡住收尾
+      - design/use-cases.md#UC-6-归档材料没交却已-archived
+      - design/use-cases.md#UC-7-落库后-FR-引用全空
+      - design/use-cases.md#UC-8-新增规范条目的期望不可达
+    rate: 0
+    total_designs: 24
+    covered_designs: 0

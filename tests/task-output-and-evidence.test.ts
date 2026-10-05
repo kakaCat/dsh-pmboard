@@ -2,11 +2,11 @@
  * t12 单测（W4 后半）：任务文件上浮（kind=task_output）+ verify_submit evidence 存在性 +
  * archive_submit 漏登警告。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import {
   defineTaskReportTool, defineVerifySubmitTool, defineArchiveSubmitTool,
 } from './helpers/tool-deps.js'
@@ -16,7 +16,7 @@ import type { RequirementRecord, RequirementStatus } from '../src/shared/protoco
 
 const W = 'session-abc-123'
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let report: { execute: (a: unknown, e: unknown) => Promise<any> }
 let verify: { execute: (a: unknown, e: unknown) => Promise<any> }
 let archive: { execute: (a: unknown, e: unknown) => Promise<any> }
@@ -26,7 +26,7 @@ let deps: ReqboardToolDeps
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-t12-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   trace = new Map()
   deps = { store, now: () => Date.now(), toolTrace: trace, doneThrottleMs: 0, workspaceRoot: dir }
   report = defineTaskReportTool(deps) as never
@@ -41,7 +41,7 @@ async function seed(status: RequirementStatus = 'implementing', category = 'feat
     sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
   } as unknown as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 const run = (tool: { execute: (a: unknown, e: unknown) => Promise<any> }, args: unknown) =>
   tool.execute(args, { agent: { id: W } })
@@ -62,7 +62,7 @@ describe('任务文件上浮（t12）', () => {
       task_id: 't-abc123', summary: '改了文件', completed: ['x'],
       files_changed: ['packages/pages/dsh-pmboard/src/tools/StatusTool/StatusTool.ts', 'docs/a.md'],
     })
-    const arts = store.snapshot().requirements[0].artifacts ?? []
+    const arts = ((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!.artifacts ?? []
     const outs = arts.filter(a => a.kind === 'task_output')
     expect(outs.map(a => a.path).sort()).toEqual(['docs/a.md', 'packages/pages/dsh-pmboard/src/tools/StatusTool/StatusTool.ts'])
   })

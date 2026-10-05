@@ -3,6 +3,8 @@
  * T-6 对齐验收（REQ-260926215013-1568）：11 个 FR 的可证伪断言（TC-01…TC-11）。
  * 用 fake 端口驱动真实的 round 状态机 + 七路订阅接线；每条断言对应一个 FR。
  */
+import { legacyStoreProjection } from './support/legacy-store-projection.js'
+import { factsOf } from '../src/domain/requirement/RequirementSummary.js'
 import { describe, it, expect, vi } from 'vitest'
 import { emptyLedger, type RequirementRecord } from '../src/shared/protocol.js'
 import { createDiveRoundDriver, type DiveRoundPorts } from '../src/application/dive/round-driver.js'
@@ -41,11 +43,15 @@ function harness(opts: { req?: RequirementRecord; failCreate?: boolean } = {}) {
   let n = 0
   let checkpointImpl: () => Promise<void> = async () => {}
   const ports: DiveRoundPorts = {
-    repo: repo as never,
+    store: legacyStoreProjection(repo as never),
+    // B12 阶段②a：本模块的写改走新端口（与 peekFacts 同源）
+
+    // B12 阶段①-a：idle 拍的同步判定改用窄投影
+    peekFacts: () => ledger.requirements.map(factsOf),
     agents: { get: (id) => (id === 'agent-1' ? agent : undefined), withoutInitiator: (op) => op() },
     fiberActive: () => true,
     delivery: {
-      deliver: () => ({ delivered: true }),
+
       createRoundMessage: (input) => {
         if (opts.failCreate === true) throw new Error('boom')
         n += 1
@@ -66,7 +72,14 @@ function harness(opts: { req?: RequirementRecord; failCreate?: boolean } = {}) {
   const bus = { on: (e: string, l: (...a: unknown[]) => unknown) => { listeners.set(e, l); return () => { listeners.delete(e) } } }
   wireDiveRoundSubscriptions(bus, driver, { debug: (m) => debugs.push(m), warn: (m) => warns.push(m) })
   const idle = async (): Promise<void> => { agent.status = 'idle'; driver.onIdle(agent, () => {}); await driver.whenQuiet() }
-  return { driver, ledger, agent, inbox, delivered, warns, infos, debugs, cancelled, listeners, idle, setCheckpoint: (fn: () => Promise<void>) => { checkpointImpl = fn } }
+  // B12 阶段⑤族 B：手工 harness 补新端口投影（fake 必须是 **repo 形态**，见 §71.1）
+  const store = legacyStoreProjection({
+    snapshot: () => ledger,
+    read: async (fn: (v: unknown) => unknown) => fn(ledger),
+    mutate: async (_r: string, fn: (l: unknown) => unknown) => { const changed = (fn(ledger) ?? {}) as never; return { changed, revision: ledger.revision } },
+    replaceAll: async () => {},
+  } as never)
+  return { driver, ledger, store, agent, inbox, delivered, warns, infos, debugs, cancelled, listeners, idle, setCheckpoint: (fn: () => Promise<void>) => { checkpointImpl = fn } }
 }
 
 describe('T-6 对齐验收（11 FR）', () => {
@@ -75,7 +88,7 @@ describe('T-6 对齐验收（11 FR）', () => {
     h.driver.requestDrive(h.agent); await h.driver.whenQuiet()
     const round = h.delivered[0]
     h.driver.onInboxClaimed(h.agent, round)
-    h.ledger.requirements[0]!.version += 1
+    await h.store.mutate('REQ-t', (r: { version: number }) => { r.version += 1; return { changed: true } })
     const other = { id: 'other-1', content: [{ type: 'text', text: '人类的活' }], source: { kind: 'user' } }
     const d = await h.driver.onPreStep(h.agent, [round, other], { aborted: false }, async () => ({ kind: 'enter', messages: [round, other] }))
     expect(d).toEqual({ kind: 'reject' })
@@ -104,7 +117,10 @@ describe('T-6 对齐验收（11 FR）', () => {
     failed.setCheckpoint(async () => { throw new Error('flush down') })
     failed.driver.onRequirementMoved('REQ-t'); await failed.driver.whenQuiet()
     expect(failed.delivered.length).toBe(0)
-    expect(failed.ledger.requirements[0]!.dive!.activation).toBe('disarmed')
+    // FR-5：运行时故障只写健康位，人的意图（activation）保持不变
+    expect(failed.ledger.requirements[0]!.dive!.driverHealth!.state).toBe('paused')
+    expect(failed.ledger.requirements[0]!.dive!.driverHealth!.reason).toBe('checkpoint-failed')
+    expect(failed.ledger.requirements[0]!.dive!.activation).toBe('armed')
   })
 
   it('TC-04 FR-4：连发 3 次触发只起 1 轮；驱动体抛错无未处理 rejection', async () => {
@@ -148,39 +164,53 @@ describe('T-6 对齐验收（11 FR）', () => {
     h.driver.requestDrive(h.agent); await h.driver.whenQuiet()
     const round = h.delivered[0] as { id: string }
     h.driver.onInboxDiscarded(h.agent, round); await h.driver.whenQuiet()
-    expect(h.ledger.requirements[0]!.dive!.roundsInStage).toBe(0)
+    expect((await h.store.get('REQ-t'))!.dive!.roundsInStage).toBe(0)
     h.driver.onSessionEvent({ id: 'agent-1' }, { type: 'user/message', data: { id: round.id } }); await h.driver.whenQuiet()
-    expect(h.ledger.requirements[0]!.dive!.roundsInStage).toBe(1)
+    expect((await h.store.get('REQ-t'))!.dive!.roundsInStage).toBe(1)
     h.driver.onSessionEvent({ id: 'agent-1' }, { type: 'user/message', data: { id: round.id } }); await h.driver.whenQuiet()
-    expect(h.ledger.requirements[0]!.dive!.roundsInStage).toBe(1)
+    expect((await h.store.get('REQ-t'))!.dive!.roundsInStage).toBe(1)
   })
 
   it('TC-08 FR-8：回合耗尽 → 终态 paused/round-limit，且不再起轮', async () => {
-    const h = harness({ req: makeReq({ dive: { phase: 'active', activation: 'armed', roundsInStage: 100 } as never }) })
+    const h = harness({ req: makeReq({ dive: { phase: 'active', activation: 'armed', roundsInStage: 1000 } as never }) })
     h.driver.requestDrive(h.agent); await h.driver.whenQuiet()
     expect(h.delivered.length).toBe(0)
-    expect(h.ledger.requirements[0]!.dive!.phase).toBe('paused')
-    expect(h.ledger.requirements[0]!.dive!.pausedReason).toBe('round-limit')
-    expect(h.warns.join(' ')).toContain('回合上限达终态')
+    // FR-2：达上限 = 停下等人（健康位），不再是终态
+    expect((await h.store.get('REQ-t'))!.dive!.driverHealth!.state).toBe('paused')
+    expect((await h.store.get('REQ-t'))!.dive!.driverHealth!.reason).toBe('round-limit:implementing')
+    expect((await h.store.get('REQ-t'))!.dive!.activation).toBe('armed')
+    expect(h.warns.join(' ')).toContain('回合上限')
   })
 
-  it('TC-09 FR-9：max-tokens → 解除武装；aborted 已认领 → 空闲后终态暂停；error → 解除武装', async () => {
+  it('TC-09 FR-9：max-tokens → 停手；aborted 已认领 → 停手位落在 driverHealth；agent 级错误 → 退避（3 次才熔断）', async () => {
     const mt = harness()
     mt.driver.onSessionEvent({ id: 'agent-1' }, { type: 'turn/end', data: { reason: { kind: 'max-tokens' } } }); await mt.driver.whenQuiet()
-    expect(mt.ledger.requirements[0]!.dive!.activation).toBe('disarmed')
+    expect(mt.ledger.requirements[0]!.dive!.driverHealth!.state).toBe('paused')
+    expect(mt.ledger.requirements[0]!.dive!.driverHealth!.reason).toBe('max-tokens')
+    expect(mt.ledger.requirements[0]!.dive!.activation).toBe('armed')
 
+    // REQ-261004065652-5c1c t3：中止的**停手位改由 driverHealth 承载**（它是 isDrivableRequirement
+    // 唯一读的字段）；legacy 的 phase=paused 只在"台账尚未被写停"时才由 pauseAborted 补写，
+    // 故此处断言 driverHealth 而非 phase。
     const ab = harness()
     ab.driver.requestDrive(ab.agent); await ab.driver.whenQuiet()
     ab.driver.onInboxClaimed(ab.agent, ab.delivered[0])
     ab.driver.onSessionEvent({ id: 'agent-1' }, { type: 'turn/end', data: { reason: { kind: 'aborted' } } })
     await ab.driver.whenQuiet()
     await ab.idle()
-    expect(ab.ledger.requirements[0]!.dive!.phase).toBe('paused')
-    expect(ab.ledger.requirements[0]!.dive!.pausedReason).toBe('aborted')
+    expect(ab.ledger.requirements[0]!.dive!.driverHealth!.state).toBe('paused')
+    expect(ab.ledger.requirements[0]!.dive!.driverHealth!.reason).toBe('aborted:unknown')
+    expect(ab.ledger.requirements[0]!.dive!.activation).toBe('armed')
 
+    // 有意契约变更（FR-2）：agent 级错误先退避，不写健康位；连续 3 次才熔断停手。
     const er = harness()
     er.driver.onAgentError(er.agent); await er.driver.whenQuiet()
-    expect(er.ledger.requirements[0]!.dive!.activation).toBe('disarmed')
+    expect(er.ledger.requirements[0]!.dive!.driverHealth, '第 1 次不该写健康位').toBeUndefined()
+    er.driver.onAgentError(er.agent); await er.driver.whenQuiet()
+    er.driver.onAgentError(er.agent); await er.driver.whenQuiet()
+    expect(er.ledger.requirements[0]!.dive!.driverHealth!.state).toBe('paused')
+    expect(er.ledger.requirements[0]!.dive!.driverHealth!.reason).toBe('agent-error-loop')
+    expect(er.ledger.requirements[0]!.dive!.activation).toBe('armed')
   })
 
   it('TC-10 FR-10：伪造来源/内容 → pre-step 拒进且留痕含原因', async () => {
@@ -205,12 +235,12 @@ describe('T-6 对齐验收（11 FR）', () => {
     h.driver.onInboxInserted(h.agent, h.inbox.nextTurn[h.inbox.nextTurn.length - 1])  // 让位
     const ck = harness(); ck.setCheckpoint(async () => { throw new Error('down') })
     ck.driver.requestDrive(ck.agent); await ck.driver.whenQuiet()      // 检查点失败
-    const lim = harness({ req: makeReq({ dive: { phase: 'active', activation: 'armed', roundsInStage: 100 } as never }) })
+    const lim = harness({ req: makeReq({ dive: { phase: 'active', activation: 'armed', roundsInStage: 1000 } as never }) })
     lim.driver.requestDrive(lim.agent); await lim.driver.whenQuiet()   // 终态
     await h.driver.teardown()                                          // teardown
 
     const all = [h.infos, h.warns, h.debugs, ck.warns, lim.warns].flat().join(' | ')
-    for (const marker of ['起轮 queued', 'pre-step 拒绝', '竞争输入', '检查点失败', '回合上限达终态', 'teardown']) {
+    for (const marker of ['起轮 queued', 'pre-step 拒绝', '竞争输入', '检查点失败', '回合上限', 'teardown']) {
       expect(all, marker).toContain(marker)
     }
   })
@@ -224,10 +254,10 @@ describe('T-6 对齐验收（11 FR）', () => {
     expect(msg.source.kind).toBe('dive')
     // 起轮正文被催办原文替换（不再走 renderRoundText）。
     expect(msg.content[0].text).toContain('里程碑提醒')
-    expect(h.ledger.requirements[0]!.dive!.roundsInStage).toBe(0)
+    expect((await h.store.get('REQ-t'))!.dive!.roundsInStage).toBe(0)
     h.driver.onSessionEvent({ id: 'agent-1' }, { type: 'user/message', data: { id: msg.id } })
     await h.driver.whenQuiet()
-    expect(h.ledger.requirements[0]!.dive!.roundsInStage).toBe(1)
+    expect((await h.store.get('REQ-t'))!.dive!.roundsInStage).toBe(1)
   })
 
   it('TC-13 FR-11：非 armed+active 时 queueReminder 不投递（③：需求根本到不了 drive）', async () => {

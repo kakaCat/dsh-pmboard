@@ -3,18 +3,15 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import type { StageKind } from '../src/domain/task/SubtaskTemplate.js'
-import type { TaskRole, TaskStatus } from '../src/domain/task/TaskStatus.js'
+import type { } from '../src/domain/task/SubtaskTemplate.js'
+
 import {
   PHASE_COLOR_FAMILIES,
   STAGE_TO_PHASE_COLOR,
   PHASE_COLOR_MAP,
   SIDES,
-  SIDE_LABELS,
   SIDE_COLOR_MAP,
-  ROLE_LABELS,
   STATUS_COLOR_MAP,
-  STATUS_LABELS,
   getPhaseColor,
   getSideColor,
   getStatusColor,
@@ -25,8 +22,8 @@ describe('card-types 联调测试', () => {
     expect(PHASE_COLOR_FAMILIES).toHaveLength(7)
   })
 
-  it('Phase 系统：覆盖16种StageKind', () => {
-    expect(Object.keys(STAGE_TO_PHASE_COLOR)).toHaveLength(16)
+  it('Phase 系统：覆盖20种StageKind（REQ-261003203909-55f2：16 + e2e/manual/capture/release）', () => {
+    expect(Object.keys(STAGE_TO_PHASE_COLOR)).toHaveLength(20)
   })
 
   it('Phase 系统：颜色映射完整', () => {

@@ -39,6 +39,8 @@ export function defineDecomposeTool(deps: UseCaseDeps) {
         type: 'object',
         additionalProperties: true,
         properties: {
+          refs_warning: { type: 'string', description: '条款引用告警' },
+          unrefed_cards: { type: 'array', items: { type: 'string' }, description: '无条款引用的卡（提示）' },
           success: { type: 'boolean' },
           requirement_id: { type: 'string' },
           requirement_status: { type: 'string' },
@@ -62,7 +64,7 @@ export function defineDecomposeTool(deps: UseCaseDeps) {
     },
     timeoutMs: LIMITS.timeoutWriteMs,
     async execute(args: unknown, exec: unknown): Promise<Record<string, unknown>> {
-      assertNoPendingConfirm(deps, deps.session.windowKey(exec))
+      await assertNoPendingConfirm(deps, deps.session.windowKey(exec))
       return await executeDecompose(deps, args, exec) as Record<string, unknown>
     },
   } as any)

@@ -14,7 +14,7 @@
 import type { AgentTeamsPort, UseCaseDeps } from '../ports.js'
 import type { TaskRecord } from '../../shared/protocol.js'
 import { teamTaskSubject, ensureWorker, awaitTeamTask, parentMarker } from '../internal/team-dispatch.js'
-import { taskStoreOf } from './queue-access.js'
+import { taskStoreOf, mutateQueue } from './queue-access.js'
 
 /** 单张子卡的团队等待上限；超时按失败处理（绝不静默成功）。 */
 const TEAM_DEADLINE_MS = 30 * 60_000
@@ -112,7 +112,7 @@ export async function ensureParentTeamTasks(
       })
       tid = created.id
       links.set(s.id, tid)
-      await store.mutate(s.requirementId, (tasks) => {
+      await mutateQueue(deps, s.requirementId, (tasks) => {
         const t = tasks.find((x) => x.id === s.id)
         if (t === undefined) return undefined
         t.teamTaskId = tid

@@ -1,0 +1,12 @@
+# 推进事件日志
+- 2026-10-03T15:07:46.976Z [OPEN_PARENT] parent=t-71547a subtask=- ok：父卡 t-71547a 自动开工并落子卡 4 张
+- 2026-10-03T15:07:47.028Z [OPEN_PARENT] parent=t-def336 subtask=- ok：父卡 t-def336 自动开工并落子卡 4 张
+- 2026-10-03T15:07:47.096Z [OPEN_PARENT] parent=t-99bbf9 subtask=- ok：父卡 t-99bbf9 自动开工并落子卡 4 张
+- 2026-10-03T15:07:47.159Z [OPEN_PARENT] parent=t-a905bf subtask=- ok：父卡 t-a905bf 自动开工并落子卡 4 张
+- 2026-10-03T15:07:47.218Z [OPEN_PARENT] parent=t-679c13 subtask=- ok：父卡 t-679c13 自动开工并落子卡 3 张
+- 2026-10-03T15:07:47.280Z [OPEN_PARENT] parent=t-3d471d subtask=- ok：父卡 t-3d471d 自动开工并落子卡 4 张
+- 2026-10-03T15:07:47.337Z [OPEN_PARENT] parent=t-8437a4 subtask=- ok：父卡 t-8437a4 自动开工并落子卡 4 张
+- 2026-10-03T15:07:47.395Z [OPEN_PARENT] parent=t-37e2c7 subtask=- ok：父卡 t-37e2c7 自动开工并落子卡 4 张
+- 2026-10-03T15:07:47.477Z [OPEN_PARENT] parent=t-4176c9 subtask=- ok：父卡 t-4176c9 自动开工并落子卡 4 张
+- 2026-10-03T15:07:47.530Z [OPEN_PARENT] parent=t-2ce1d4 subtask=- ok：父卡 t-2ce1d4 自动开工并落子卡 4 张
+- 2026-10-03T15:07:47.641Z [RUN_SUBTASK] parent=t-71547a subtask=t-e5507b failed：子卡凭证不过：既没有成功的 workflow run，也没有合格的完工汇报——最近一次 run 失败于 stopReason=subtask_engine_unreachable：子卡执行引擎不可达（inject=function get=function byGet=false captured=false [tools=true agents=true webServer=true]）。子卡执行**不会静默成功**。两条出路：① 改由本窗口自证过凭证门——reqboard_task_report 写 filesChanged（写入族：至少一个文件真实存在且 mtime ≥ 链出身）或 completed（结论族），凭证门在没有成功 run 时即按此口径放行；② 让 workflowEngine 在本插件可见的作用域可达（当前 profile 下按设计不可达，**重试无解**）。（legacy code: engine_unavailable）（subtask_engine_unreachable：子卡执行引擎不可达（inject=function get=function byGet=false captured=false [tools=true agents=true webServer=true]）。子卡执行**不会静默成功**。两条出路：① 改由本窗口自证过凭证门——reqboard_task_report 写 filesChanged（写入族：至少一个文件真实存在且 mtime ≥ 链出身）或 completed（结论族），凭证门在没有成功 run 时即按此口径放行；② 让 workflowEngine 在本插件可见的作用域可达（当前 profile 下按设计不可达，**重试无解**）。（legacy code: engine_unavailable））。补齐（二选一）：① 调 reqboard_task_report 落一条汇报（写入族要 filesChanged：至少一个文件真实存在且 mtime ≥ 链出身 1790858230528；结论族要 completed）；② 修好执行引擎后重跑本卡（REQBOARD_SUBTASK_GATE）

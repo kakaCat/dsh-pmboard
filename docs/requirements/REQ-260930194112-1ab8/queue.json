@@ -1,0 +1,2294 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-260930194112-1ab8",
+  "schemaVersion": 9,
+  "generated_at": "2026-09-30T14:09:56.751Z",
+  "tasks": [
+    {
+      "id": "t-8479b2",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "列表行 markup 加滚动容器与列类名契约",
+      "cardDoc": "docs/requirements/REQ-260930194112-1ab8/tasks/t-8479b2.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 ./node_modules/.bin/vitest run tests/list-responsive.test.ts：TC-1（输出含 dsh-pm-table-wrap 且 <table 在其内）、TC-2（thead 与每条 tr.dsh-pm-list-row 内 4 个列类名各 1 次、分组头 0 次）、TC-3（分组头仍 colspan=\"8\"）、TC-5（空列表输出不含 <table 与 wrap）全部通过。",
+      "implementation": "buildListView 非空分支把 <table> 包进 <div class=\"dsh-pm-table-wrap\">（空结果分支不动）；表头 th 与 renderListCard 的 td 成对加列类名：dsh-pm-col-cat（第3列）、dsh-pm-col-progress（第5列）、dsh-pm-col-owner（第6列）、dsh-pm-col-when（第7列）；分组头行 colspan=\"8\" 不变、不加列类名。新增 tests/list-responsive.test.ts 的 TC-1/TC-2/TC-3/TC-5。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d3092f",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790777410952,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 466,
+              "at": 1790777410956,
+              "totals": {
+                "uncachedInputTokens": 147851,
+                "outputTokens": 58153,
+                "cacheReadTokens": 4814336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 711,
+              "at": 1790777667168,
+              "totals": {
+                "uncachedInputTokens": 166301,
+                "outputTokens": 71063,
+                "cacheReadTokens": 10743168,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 18450,
+              "outputTokens": 12910,
+              "cacheReadTokens": 5928832,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790777667159
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777396683,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790777410952,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "开工 t1：落地列表行 markup 契约（滚动容器 + 4 个列类名）与静态断言测试"
+        },
+        {
+          "status": "done",
+          "at": 1790777667159,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t1 完成：契约落地 + 4 条断言全绿 + 复核无偏离；全套回归无新增失败"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-6214d0",
+          "body": "[状态] → in_progress：开工 t1：落地列表行 markup 契约（滚动容器 + 4 个列类名）与静态断言测试（reqboard_task_move）",
+          "createdAt": 1790777410952,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-53e0aa",
+          "body": "[状态] → done：t1 完成：契约落地 + 4 条断言全绿 + 复核无偏离；全套回归无新增失败（reqboard_task_move）",
+          "createdAt": 1790777667159,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777396683,
+      "updatedAt": 1790777667159,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790777558147,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/board.ts",
+          "tests/list-responsive.test.ts"
+        ],
+        "completed": [
+          "结构性契约落地：表格外包滚动容器、四个次要列打好列标记（views/board.ts）",
+          "静态断言 4 条全绿（tests/list-responsive.test.ts）",
+          "研发 / 复核 / 测试三张子卡全部完成",
+          "无新增回归（49 failed files / 103 failed tests 与本卡开工前一致）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790777558147,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-24c90a",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "列表视图自适应样式与两档让位断点",
+      "cardDoc": "docs/requirements/REQ-260930194112-1ab8/tasks/t-24c90a.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-8479b2"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 ./node_modules/.bin/vitest run tests/list-responsive.test.ts → 5 passed；TC-4 断言 BOARD_CSS 文本包含 overflow-x: auto、min-width: 720px、white-space: nowrap、min-width: max-content、max-width: 1180px、max-width: 880px 与 4 个列类名，缺一即失败。",
+      "implementation": "src/client/styles/board.ts 列表区段追加：.dsh-pm-table-wrap{overflow-x:auto}、.dsh-pm-table{min-width:720px}、.dsh-pm-table th,td{white-space:nowrap}、.dsh-pm-td-title{white-space:normal;min-width:220px}、.dsh-pm-list-actions{flex-wrap:nowrap} 与 .dsh-pm-card-actions{flex:none;min-width:max-content} 及按钮 white-space:nowrap；@media(max-width:1180px) 内解除标题列 380px 上限并隐藏 cat/owner/when；@media(max-width:880px) 隐藏 progress。补 TC-4 静态断言。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-9715b5",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790777670091,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 717,
+              "at": 1790777670096,
+              "totals": {
+                "uncachedInputTokens": 166524,
+                "outputTokens": 71170,
+                "cacheReadTokens": 10901120,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 833,
+              "at": 1790777910415,
+              "totals": {
+                "uncachedInputTokens": 178728,
+                "outputTokens": 79246,
+                "cacheReadTokens": 14130048,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 12204,
+              "outputTokens": 8076,
+              "cacheReadTokens": 3228928,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790777910406
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777396683,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790777670091,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t2 开工：自适应样式与两档让位断点（rules 已写入 styles/board.ts，开始自测）"
+        },
+        {
+          "status": "done",
+          "at": 1790777910406,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t2 完成：5 条断言全绿、复核无偏离、子卡链 3/3 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a752ea",
+          "body": "[状态] → in_progress：t2 开工：自适应样式与两档让位断点（rules 已写入 styles/board.ts，开始自测）（reqboard_task_move）",
+          "createdAt": 1790777670091,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-0ed346",
+          "body": "[状态] → done：t2 完成：5 条断言全绿、复核无偏离、子卡链 3/3 done（reqboard_task_move）",
+          "createdAt": 1790777910406,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777396683,
+      "updatedAt": 1790777910406,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790777830834,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles/board.ts",
+          "tests/list-responsive.test.ts"
+        ],
+        "completed": [
+          "自适应样式规则全部落地（滚动兜底 / nowrap / 标题列弹性 / 按钮不可压缩 / 两档让位）",
+          "TC-4 静态断言补齐，5 条用例全绿",
+          "研发 / 复核 / 测试三张子卡全部完成",
+          "全套回归无新增失败（49 failed files / 103 failed tests 与基线一致）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790777830834,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-7a92ae",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "五档宽度布局回归探针（headless Chrome）",
+      "cardDoc": "docs/requirements/REQ-260930194112-1ab8/tasks/t-7a92ae.md",
+      "description": "",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-24c90a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 npx tsx scripts/list-responsive-probe.mts → 退出码 0，stdout 包含 5 行 DIAG 且均为 problems=NONE、末行包含 PROBE PASS；断言 640 档 overflowX=true、1680 档 cols=8 且 titleW≥500；负向验证：把 src/client/styles/board.ts 里的 min-width: 720px 临时改为 2000px 后重跑，stdout 必须包含 PROBE FAIL 且退出码非 0。",
+      "implementation": "新增 scripts/list-responsive-probe.mts：内建 4 条 fixture（长 ID / 长标题 / 中英混排）渲染标本页并拼接真实 CSS，注入断言脚本（关键列行盒数、按钮包围盒相交、操作列是否被压缩、可见列数、横向溢出），按 640/760/840/1080/1680 调 headless Chrome --dump-dom 读回 #diag；CHROME_BIN 优先、macOS 默认路径兜底，找不到 Chrome 退出码 2 并打印原因；末行 PROBE PASS/FAIL。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4048ff",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790777912480,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 839,
+              "at": 1790777912485,
+              "totals": {
+                "uncachedInputTokens": 178926,
+                "outputTokens": 79352,
+                "cacheReadTokens": 14306560,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 961,
+              "at": 1790778193851,
+              "totals": {
+                "uncachedInputTokens": 192842,
+                "outputTokens": 85375,
+                "cacheReadTokens": 18073856,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 13916,
+              "outputTokens": 6023,
+              "cacheReadTokens": 3767296,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790778193841
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777396683,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790777912480,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t3 探针开工：五档宽度真实布局判定（脚本已就位，开始跑并做负向验证）"
+        },
+        {
+          "status": "done",
+          "at": 1790778193841,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t3 完成：探针五档全绿 + 负向验证会红 + 子卡链 3/3 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7874e5",
+          "body": "[状态] → in_progress：t3 探针开工：五档宽度真实布局判定（脚本已就位，开始跑并做负向验证）（reqboard_task_move）",
+          "createdAt": 1790777912480,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-c96c2e",
+          "body": "[状态] → done：t3 完成：探针五档全绿 + 负向验证会红 + 子卡链 3/3 done（reqboard_task_move）",
+          "createdAt": 1790778193841,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777396683,
+      "updatedAt": 1790778193841,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1790778129891,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/list-responsive-probe.mts"
+        ],
+        "completed": [
+          "新增 scripts/list-responsive-probe.mts：五档宽度真实渲染断言（A1~A6），退出码 0/1/2 语义",
+          "正向实测：5 行 DIAG 全 problems=NONE，数值与设计基线表一致（640 cols4 overflowX=true；1680 cols8 titleW=540）",
+          "负向验证：把保底宽度改坏后 PROBE FAIL + 退出码 1，探针确实会红",
+          "归属到本卡的三张子卡（研发/复核/测试）全部完成"
+        ]
+      },
+      "lastRun": {
+        "at": 1790778129891,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-702bf4",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "兼容降级与回滚面核对 + 证据归档",
+      "cardDoc": "docs/requirements/REQ-260930194112-1ab8/tasks/t-702bf4.md",
+      "description": "",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-7a92ae"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "范围化核对（工作区另有其它在飞需求的改动，故按文件限定）：① 跑 `git status --porcelain -- src/client/views/board.ts src/client/styles/board.ts tests/list-responsive.test.ts scripts/list-responsive-probe.mts package.json pnpm-lock.yaml` → 恰好输出 2 个 M（views/board.ts、styles/board.ts）与 2 个 ??（tests/list-responsive.test.ts、scripts/list-responsive-probe.mts），package.json 与 pnpm-lock.yaml 无输出（无依赖变更）；② `git diff --stat -- src/client/views/board.ts src/client/styles/board.ts` → 仅这两个文件，净增 40+11 行；③ evidence/ 目录包含 5 张 png，尺寸分别为 before-840.png 840x520、after-640.png 640x520、after-840.png 840x520、after-1080.png 1080x520、after-1680.png 1680x520。",
+      "implementation": "核对 design/data-model.md D-3（min-width:max-content / @media / overflow-x 三条降级路径均不劣于现状）与 D-4（无数据迁移、回滚=还原文件）；用最终 CSS 渲染采集对照截图（before-840 / after-840 / after-1080 / after-1680）落到 docs/requirements/REQ-260930194112-1ab8/evidence/；核对改动面未溢出清单。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e794b7",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790778195877,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 967,
+              "at": 1790778195881,
+              "totals": {
+                "uncachedInputTokens": 193088,
+                "outputTokens": 85472,
+                "cacheReadTokens": 18267648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 1140,
+              "at": 1790778438912,
+              "totals": {
+                "uncachedInputTokens": 214709,
+                "outputTokens": 97861,
+                "cacheReadTokens": 24279936,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 21621,
+              "outputTokens": 12389,
+              "cacheReadTokens": 6012288,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790778438903
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777396683,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790778195877,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t4 开工：采集最终对照截图 + 核对兼容降级与回滚面"
+        },
+        {
+          "status": "done",
+          "at": 1790778438903,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t4 完成：证据 5 张归档、改动面与回滚面实测核对、子卡链 2/2 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e8ebc3",
+          "body": "[状态] → in_progress：t4 开工：采集最终对照截图 + 核对兼容降级与回滚面（reqboard_task_move）",
+          "createdAt": 1790778195877,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-2657a1",
+          "body": "[状态] → done：t4 完成：证据 5 张归档、改动面与回滚面实测核对、子卡链 2/2 done（reqboard_task_move）",
+          "createdAt": 1790778438903,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777396683,
+      "updatedAt": 1790778438903,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "layer": 3,
+      "lastReport": {
+        "at": 1790778372642,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-260930194112-1ab8/evidence/before-840.png",
+          "docs/requirements/REQ-260930194112-1ab8/evidence/after-640.png",
+          "docs/requirements/REQ-260930194112-1ab8/evidence/after-840.png",
+          "docs/requirements/REQ-260930194112-1ab8/evidence/after-1080.png",
+          "docs/requirements/REQ-260930194112-1ab8/evidence/after-1680.png"
+        ],
+        "completed": [
+          "证据归档：evidence/ 5 张 PNG（修复前 840px 症状 + 修复后 640/840/1080/1680 四档）",
+          "改动面收敛：2 个源文件修改（board.ts 11 行、styles/board.ts 40 行）+ 2 个新增文件（测试、探针），无依赖变更",
+          "兼容降级核对：只依赖 white-space / overflow-x / min-width:max-content / @media 四类特性，降级均退回现状或可用子集",
+          "回滚路径核对：还原 2 个源文件即回到修复前，无数据迁移/开关/回填",
+          "宽档零变化实测：列几何逐字节一致，仅外框 1px 抗锯齿差异（已如实记录）",
+          "研发 / 复核两张子卡均完成"
+        ]
+      },
+      "lastRun": {
+        "at": 1790778372642,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-99dc0a",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "列表行 markup 加滚动容器与列类名契约·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `./node_modules/.bin/vitest run tests/list-responsive.test.ts` → TC-1/TC-2/TC-3/TC-5 全部通过（4 passed）；并 `git diff -- src/client/views/board.ts` 中可见 `<div class=\"dsh-pm-table-wrap\">` 与 4 个列类名（dsh-pm-col-cat / -progress / -owner / -when）成对出现在 th 与 td 上。",
+      "implementation": "buildListView 非空分支把 <table> 包进 <div class=\"dsh-pm-table-wrap\">（空结果分支不动）；表头 th 与 renderListCard 的 td 成对加列类名：dsh-pm-col-cat（第3列）、dsh-pm-col-progress（第5列）、dsh-pm-col-owner（第6列）、dsh-pm-col-when（第7列）；分组头行 colspan=\"8\" 不变、不加列类名。新增 tests/list-responsive.test.ts 的 TC-1/TC-2/TC-3/TC-5。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-8479b2",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-392f87",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790777527063,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 549,
+              "at": 1790777527067,
+              "totals": {
+                "uncachedInputTokens": 159270,
+                "outputTokens": 64717,
+                "cacheReadTokens": 6618112,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 567,
+              "at": 1790777533499,
+              "totals": {
+                "uncachedInputTokens": 159911,
+                "outputTokens": 65290,
+                "cacheReadTokens": 7060992,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 641,
+              "outputTokens": 573,
+              "cacheReadTokens": 442880,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790777533492
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-831c0a",
+          "body": "[状态] → in_progress：t1 研发子卡：markup 契约已落地（滚动容器 + 4 个列类名），静态断言 TC-1/2/3/5 通过（reqboard_task_move）",
+          "createdAt": 1790777527063,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-7e8184",
+          "body": "[状态] → done：研发子卡完成：结构性改动落盘 + 4 条静态断言通过（reqboard_task_move）",
+          "createdAt": 1790777533492,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777410952,
+      "updatedAt": 1790778748328,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777410952,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790777527063,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t1 研发子卡：markup 契约已落地（滚动容器 + 4 个列类名），静态断言 TC-1/2/3/5 通过"
+        },
+        {
+          "status": "done",
+          "at": 1790777533492,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "研发子卡完成：结构性改动落盘 + 4 条静态断言通过"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790777531980,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/board.ts",
+          "tests/list-responsive.test.ts"
+        ],
+        "completed": [
+          "buildListView 非空分支把表格包进 .dsh-pm-table-wrap（空结果分支保持原样）",
+          "表头 4 个 th 与 renderListCard 的 4 个 td 成对加列类名：dsh-pm-col-cat / -progress / -owner / -when",
+          "分组头行 colspan=\"8\" 与列数口径保持不变，分组头不带列类名",
+          "新增 tests/list-responsive.test.ts 的 TC-1/TC-2/TC-3/TC-5"
+        ]
+      },
+      "lastRun": {
+        "at": 1790777531980,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-efd3af",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "列表行 markup 加滚动容器与列类名契约·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-99dc0a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "buildListView 非空分支把 <table> 包进 <div class=\"dsh-pm-table-wrap\">（空结果分支不动）；表头 th 与 renderListCard 的 td 成对加列类名：dsh-pm-col-cat（第3列）、dsh-pm-col-progress（第5列）、dsh-pm-col-owner（第6列）、dsh-pm-col-when（第7列）；分组头行 colspan=\"8\" 不变、不加列类名。新增 tests/list-responsive.test.ts 的 TC-1/TC-2/TC-3/TC-5。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-8479b2",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f3086b",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790777534995,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 573,
+              "at": 1790777535000,
+              "totals": {
+                "uncachedInputTokens": 160115,
+                "outputTokens": 65393,
+                "cacheReadTokens": 7209216,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 591,
+              "at": 1790777542657,
+              "totals": {
+                "uncachedInputTokens": 161675,
+                "outputTokens": 66287,
+                "cacheReadTokens": 7657216,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1560,
+              "outputTokens": 894,
+              "cacheReadTokens": 448000,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790777542649
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-301fcc",
+          "body": "[状态] → in_progress：复核子卡开工：逐行核对列类名成对、分组头 colspan 不变、空分支不含表格（reqboard_task_move）",
+          "createdAt": 1790777534995,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-71f4b9",
+          "body": "[状态] → done：复核完成：与设计逐条对照无偏离，且确认无新增回归（reqboard_task_move）",
+          "createdAt": 1790777542649,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777410952,
+      "updatedAt": 1790777542649,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777410952,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790777534995,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "复核子卡开工：逐行核对列类名成对、分组头 colspan 不变、空分支不含表格"
+        },
+        {
+          "status": "done",
+          "at": 1790777542649,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "复核完成：与设计逐条对照无偏离，且确认无新增回归"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790777540746,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/board.ts",
+          "tests/list-responsive.test.ts"
+        ],
+        "completed": [
+          "逐条对照 design/interfaces.md：I-1 滚动容器位置正确（<table> 完整落在 .dsh-pm-table-wrap 内，空分支未受影响）",
+          "I-2 列类名契约：4 个类名在 thead 各 1 次、每条数据行各 1 次、分组头 0 次；列序未动",
+          "I-4 不变式：分组头 colspan=\"8\" 保持、按钮顺序与文案未动",
+          "影响面核对：renderListCard 仅被 tests/token-card.test.ts 复用，改动不触及 token 徽章断言",
+          "回归基线比对：改动前 49 failed files / 103 failed tests，改动后同为 49/103（失败均为工作区其它在飞需求），无新增回归"
+        ]
+      },
+      "lastRun": {
+        "at": 1790777540746,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-cac573",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "列表行 markup 加滚动容器与列类名契约·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-efd3af"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `./node_modules/.bin/vitest run tests/list-responsive.test.ts` → 5 passed（TC-1 滚动容器 / TC-2 列类名成对 / TC-3 colspan=\"8\" 不变 / TC-5 空列表分支无表格）。",
+      "implementation": "buildListView 非空分支把 <table> 包进 <div class=\"dsh-pm-table-wrap\">（空结果分支不动）；表头 th 与 renderListCard 的 td 成对加列类名：dsh-pm-col-cat（第3列）、dsh-pm-col-progress（第5列）、dsh-pm-col-owner（第6列）、dsh-pm-col-when（第7列）；分组头行 colspan=\"8\" 不变、不加列类名。新增 tests/list-responsive.test.ts 的 TC-1/TC-2/TC-3/TC-5。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-8479b2",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1745c2",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790777544146,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 597,
+              "at": 1790777544150,
+              "totals": {
+                "uncachedInputTokens": 161862,
+                "outputTokens": 66387,
+                "cacheReadTokens": 7807872,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 615,
+              "at": 1790777555574,
+              "totals": {
+                "uncachedInputTokens": 162618,
+                "outputTokens": 66969,
+                "cacheReadTokens": 8261888,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 756,
+              "outputTokens": 582,
+              "cacheReadTokens": 454016,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790777555566
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-4b15e1",
+          "body": "[状态] → in_progress：测试子卡开工：跑契约静态断言并复核边界（空列表、分组头、其它调用方）（reqboard_task_move）",
+          "createdAt": 1790777544146,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-4e82b1",
+          "body": "[状态] → done：测试完成：4 条契约断言全绿、类型检查干净、回归基线无新增失败（reqboard_task_move）",
+          "createdAt": 1790777555566,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777410952,
+      "updatedAt": 1790778750606,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777410952,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790777544146,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "测试子卡开工：跑契约静态断言并复核边界（空列表、分组头、其它调用方）"
+        },
+        {
+          "status": "done",
+          "at": 1790777555566,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "测试完成：4 条契约断言全绿、类型检查干净、回归基线无新增失败"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790777553905,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/list-responsive.test.ts",
+          "src/client/views/board.ts"
+        ],
+        "completed": [
+          "TC-1/TC-2/TC-3/TC-5 四条用例全绿（vitest run tests/list-responsive.test.ts → 4 passed）",
+          "边界复核：空列表分支不含 <table 与 wrap；分组头行不带列类名且 colspan=\"8\" 保持",
+          "类型检查：tsc --noEmit 对本文件与用例文件无报错",
+          "全套回归基线比对：新增用例使总数 2765→2769（+4 passed），失败数保持 103（与本卡无关的在飞需求所致）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790777553905,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-4a6bcf",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "列表视图自适应样式与两档让位断点·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-8479b2"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `grep -c \"min-width: 720px\" src/client/styles/board.ts` 与 `grep -c \"max-width: 880px\" src/client/styles/board.ts` 均 ≥1；并跑 `./node_modules/.bin/vitest run tests/list-responsive.test.ts` → 5 passed。",
+      "implementation": "src/client/styles/board.ts 列表区段追加：.dsh-pm-table-wrap{overflow-x:auto}、.dsh-pm-table{min-width:720px}、.dsh-pm-table th,td{white-space:nowrap}、.dsh-pm-td-title{white-space:normal;min-width:220px}、.dsh-pm-list-actions{flex-wrap:nowrap} 与 .dsh-pm-card-actions{flex:none;min-width:max-content} 及按钮 white-space:nowrap；@media(max-width:1180px) 内解除标题列 380px 上限并隐藏 cat/owner/when；@media(max-width:880px) 隐藏 progress。补 TC-4 静态断言。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-24c90a",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a35fa0",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790777678365,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 731,
+              "at": 1790777678369,
+              "totals": {
+                "uncachedInputTokens": 174632,
+                "outputTokens": 72422,
+                "cacheReadTokens": 11222272,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 737,
+              "at": 1790777680306,
+              "totals": {
+                "uncachedInputTokens": 175028,
+                "outputTokens": 72515,
+                "cacheReadTokens": 11389696,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 396,
+              "outputTokens": 93,
+              "cacheReadTokens": 167424,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790777680297
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9c460d",
+          "body": "[状态] → in_progress：t2 研发子卡开工：自适应规则已写入 styles/board.ts，逐条自测（reqboard_task_move）",
+          "createdAt": 1790777678365,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-532344",
+          "body": "[状态] → done：研发完成：5 条断言全绿、全套回归无新增失败（reqboard_task_move）",
+          "createdAt": 1790777680297,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777670091,
+      "updatedAt": 1790778752854,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777670091,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790777678365,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t2 研发子卡开工：自适应规则已写入 styles/board.ts，逐条自测"
+        },
+        {
+          "status": "done",
+          "at": 1790777680297,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "研发完成：5 条断言全绿、全套回归无新增失败"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790777674799,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles/board.ts",
+          "tests/list-responsive.test.ts"
+        ],
+        "completed": [
+          "styles/board.ts 追加自适应规则：表格外层 overflow-x: auto + 表格 min-width: 720px（保底横向滚动）",
+          "关键列 nowrap、标题列例外并保底 220px（不再被压成每行 5~7 字）",
+          "操作列按钮组 flex: none + min-width: max-content（取消/会话不再叠字）",
+          "两档宽度让位：≤1180px 让出分类/负责人/更新时间并解除标题 380px 上限；≤880px 再让出进度",
+          "补 TC-4 静态断言：vitest run tests/list-responsive.test.ts → 5 passed",
+          "全套回归：49 failed files / 103 failed tests，与本卡开工前基线完全一致（无新增失败）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790777674799,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-bab4cc",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "列表视图自适应样式与两档让位断点·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-4a6bcf"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/client/styles/board.ts 列表区段追加：.dsh-pm-table-wrap{overflow-x:auto}、.dsh-pm-table{min-width:720px}、.dsh-pm-table th,td{white-space:nowrap}、.dsh-pm-td-title{white-space:normal;min-width:220px}、.dsh-pm-list-actions{flex-wrap:nowrap} 与 .dsh-pm-card-actions{flex:none;min-width:max-content} 及按钮 white-space:nowrap；@media(max-width:1180px) 内解除标题列 380px 上限并隐藏 cat/owner/when；@media(max-width:880px) 隐藏 progress。补 TC-4 静态断言。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-24c90a",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b5373a",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790777685589,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 749,
+              "at": 1790777685593,
+              "totals": {
+                "uncachedInputTokens": 175479,
+                "outputTokens": 73212,
+                "cacheReadTokens": 11726080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 767,
+              "at": 1790777754935,
+              "totals": {
+                "uncachedInputTokens": 176371,
+                "outputTokens": 73736,
+                "cacheReadTokens": 12233728,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 892,
+              "outputTokens": 524,
+              "cacheReadTokens": 507648,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790777754926
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-2dc02d",
+          "body": "[状态] → in_progress：t2 复核子卡开工：逐条比对设计 interfaces.md I-3 的规则清单与断点值（reqboard_task_move）",
+          "createdAt": 1790777685589,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-65f7ec",
+          "body": "[状态] → done：复核完成：与设计 I-3 规则清单逐条吻合，无偏离（reqboard_task_move）",
+          "createdAt": 1790777754926,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777670091,
+      "updatedAt": 1790777754926,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777670091,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790777685589,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t2 复核子卡开工：逐条比对设计 interfaces.md I-3 的规则清单与断点值"
+        },
+        {
+          "status": "done",
+          "at": 1790777754926,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "复核完成：与设计 I-3 规则清单逐条吻合，无偏离"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790777753256,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles/board.ts",
+          "tests/list-responsive.test.ts"
+        ],
+        "completed": [
+          "逐条比对 design/interfaces.md I-3 规则清单：7 条必需声明全部命中（脚本逐条 'OK'）",
+          "断点值核对：1180 / 880 与设计一致；表格下限 720、标题列下限 220 与设计一致",
+          "4 个列类名在 CSS 中均有对应规则（cat/owner/when 在档位一隐藏、progress 在档位二隐藏）",
+          "宽档保护核对：标题列 max-width 380px 的既有规则未被改写，解除上限只发生在 ≤1180px 断点内",
+          "基线比对：改动前后同为 49 failed files / 103 failed tests，无新增失败"
+        ]
+      },
+      "lastRun": {
+        "at": 1790777753256,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-64530d",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "列表视图自适应样式与两档让位断点·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-bab4cc"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `./node_modules/.bin/vitest run tests/list-responsive.test.ts` → 5 passed，其中 TC-4 断言 `BOARD_CSS` 文本包含 overflow-x: auto、min-width: 720px、white-space: nowrap、min-width: max-content、max-width: 1180px、max-width: 880px 与 4 个列类名（缺一即失败）。",
+      "implementation": "src/client/styles/board.ts 列表区段追加：.dsh-pm-table-wrap{overflow-x:auto}、.dsh-pm-table{min-width:720px}、.dsh-pm-table th,td{white-space:nowrap}、.dsh-pm-td-title{white-space:normal;min-width:220px}、.dsh-pm-list-actions{flex-wrap:nowrap} 与 .dsh-pm-card-actions{flex:none;min-width:max-content} 及按钮 white-space:nowrap；@media(max-width:1180px) 内解除标题列 380px 上限并隐藏 cat/owner/when；@media(max-width:880px) 隐藏 progress。补 TC-4 静态断言。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-24c90a",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3da497",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790777756989,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 773,
+              "at": 1790777756993,
+              "totals": {
+                "uncachedInputTokens": 176565,
+                "outputTokens": 73949,
+                "cacheReadTokens": 12403584,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 797,
+              "at": 1790777828100,
+              "totals": {
+                "uncachedInputTokens": 177544,
+                "outputTokens": 74522,
+                "cacheReadTokens": 13086592,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 979,
+              "outputTokens": 573,
+              "cacheReadTokens": 683008,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790777828091
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e13253",
+          "body": "[状态] → in_progress：t2 测试子卡开工：跑目标命令并取证（reqboard_task_move）",
+          "createdAt": 1790777756989,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-93b52b",
+          "body": "[状态] → done：测试完成：5 passed，断言粒度到单条声明（reqboard_task_move）",
+          "createdAt": 1790777828091,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777670091,
+      "updatedAt": 1790778755429,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777670091,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790777756989,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t2 测试子卡开工：跑目标命令并取证"
+        },
+        {
+          "status": "done",
+          "at": 1790777828091,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "测试完成：5 passed，断言粒度到单条声明"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790777762543,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/list-responsive.test.ts"
+        ],
+        "completed": [
+          "./node_modules/.bin/vitest run tests/list-responsive.test.ts → 5 passed（TC-1/2/3/5 契约 + TC-4 样式规则齐备）",
+          "TC-4 覆盖：overflow-x: auto、min-width: 720px、white-space: nowrap、min-width: max-content、max-width: 1180px、max-width: 880px 与 4 个列类名",
+          "全套回归：2769 → 2770 用例、失败数 103 与基线一致（无新增失败）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790777762543,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2bd99a",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "五档宽度布局回归探针（headless Chrome）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-24c90a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx tsx scripts/list-responsive-probe.mts` → 退出码 0，stdout 含 5 行 DIAG 且均为 problems=NONE，末行含 PROBE PASS。",
+      "implementation": "新增 scripts/list-responsive-probe.mts：内建 4 条 fixture（长 ID / 长标题 / 中英混排）渲染标本页并拼接真实 CSS，注入断言脚本（关键列行盒数、按钮包围盒相交、操作列是否被压缩、可见列数、横向溢出），按 640/760/840/1080/1680 调 headless Chrome --dump-dom 读回 #diag；CHROME_BIN 优先、macOS 默认路径兜底，找不到 Chrome 退出码 2 并打印原因；末行 PROBE PASS/FAIL。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-7a92ae",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a9b187",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790777949745,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 865,
+              "at": 1790777949749,
+              "totals": {
+                "uncachedInputTokens": 187410,
+                "outputTokens": 80938,
+                "cacheReadTokens": 15036160,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 877,
+              "at": 1790777954144,
+              "totals": {
+                "uncachedInputTokens": 188033,
+                "outputTokens": 81400,
+                "cacheReadTokens": 15410048,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 623,
+              "outputTokens": 462,
+              "cacheReadTokens": 373888,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790777954135
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-56ebc5",
+          "body": "[状态] → in_progress：t3 研发子卡开工：探针脚本已落地并首次跑通（reqboard_task_move）",
+          "createdAt": 1790777949745,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-91e301",
+          "body": "[状态] → done：研发完成：探针脚本落地，五档宽度全绿（reqboard_task_move）",
+          "createdAt": 1790777954135,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777912480,
+      "updatedAt": 1790778757411,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777912480,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790777949745,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t3 研发子卡开工：探针脚本已落地并首次跑通"
+        },
+        {
+          "status": "done",
+          "at": 1790777954135,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "研发完成：探针脚本落地，五档宽度全绿"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790777952824,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/list-responsive-probe.mts"
+        ],
+        "completed": [
+          "新增 scripts/list-responsive-probe.mts：真实 buildListView + 真实 CSS 拼标本页，注入 A1~A6 断言（行盒数 / 按钮相交 / 操作列压缩 / 可见列数 / 横向溢出 / 宽档不缩水）",
+          "五档宽度经 headless Chrome --dump-dom 读回 #diag：640/760/840/1080/1680 全部 problems=NONE",
+          "实测数值与设计基线表一致：640 cols=4 overflowX=true；840 cols=4；1080 cols=5；1680 cols=8 titleW=540",
+          "环境不可用分支：CHROME_BIN 优先 + macOS/Linux 常见路径兜底，找不到即退出码 2 并打印修复提示（不静默跳过）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790777952824,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1f6e47",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "五档宽度布局回归探针（headless Chrome）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-2bd99a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新增 scripts/list-responsive-probe.mts：内建 4 条 fixture（长 ID / 长标题 / 中英混排）渲染标本页并拼接真实 CSS，注入断言脚本（关键列行盒数、按钮包围盒相交、操作列是否被压缩、可见列数、横向溢出），按 640/760/840/1080/1680 调 headless Chrome --dump-dom 读回 #diag；CHROME_BIN 优先、macOS 默认路径兜底，找不到 Chrome 退出码 2 并打印原因；末行 PROBE PASS/FAIL。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-7a92ae",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1cd0c2",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790777956146,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 883,
+              "at": 1790777956150,
+              "totals": {
+                "uncachedInputTokens": 188202,
+                "outputTokens": 81503,
+                "cacheReadTokens": 15597568,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 901,
+              "at": 1790778025514,
+              "totals": {
+                "uncachedInputTokens": 188978,
+                "outputTokens": 82192,
+                "cacheReadTokens": 16162176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 776,
+              "outputTokens": 689,
+              "cacheReadTokens": 564608,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790778025506
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e03dbc",
+          "body": "[状态] → in_progress：t3 复核子卡开工：核对断言口径与设计 A1~A6、档位期望一致（reqboard_task_move）",
+          "createdAt": 1790777956146,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-888fa0",
+          "body": "[状态] → done：复核完成：断言口径与档位期望与设计逐条一致，缺口已如实标注（reqboard_task_move）",
+          "createdAt": 1790778025506,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777912480,
+      "updatedAt": 1790778025506,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777912480,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790777956146,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t3 复核子卡开工：核对断言口径与设计 A1~A6、档位期望一致"
+        },
+        {
+          "status": "done",
+          "at": 1790778025506,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "复核完成：断言口径与档位期望与设计逐条一致，缺口已如实标注"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790778023388,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/list-responsive-probe.mts"
+        ],
+        "completed": [
+          "断言口径与 design/test-cases.md T-1 的 A1~A6 逐条对应：A1 行盒数（ID/状态/可见分类）、A2 操作列 clientWidth≥scrollWidth、A3 按钮包围盒两两不相交、A4 档位列数、A5 滚动兜底、A6 1680 档 cols=8 且 titleW≥500",
+          "档位期望值与 design/architecture.md A-2 档位表一致：640/760/840→4 列、1080→5 列、1680→8 列；overflow 仅 640 为 true",
+          "标本数据覆盖最坏情况：最长 ID（22 字符）+ 最长标题（中英混排 43 字）+ 四个不同状态",
+          "退出码语义与设计一致：0 通过 / 1 有档位不通过 / 2 环境不可用（且打印修复提示）",
+          "缺口如实记录：'找不到 Chrome → 退出码 2' 分支因本机装有 Chrome 未被运行时触发，仅做代码级核对（不谎称已验证）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790778023388,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1d8bbd",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "五档宽度布局回归探针（headless Chrome）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-1f6e47"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx tsx scripts/list-responsive-probe.mts` → 退出码 0、末行 PROBE PASS；再跑负向验证：把 `src/client/styles/board.ts` 里 `min-width: 720px` 改为 `2000px`，同一命令必须输出 PROBE FAIL 且退出码 1，改回后复跑回到 PROBE PASS。",
+      "implementation": "新增 scripts/list-responsive-probe.mts：内建 4 条 fixture（长 ID / 长标题 / 中英混排）渲染标本页并拼接真实 CSS，注入断言脚本（关键列行盒数、按钮包围盒相交、操作列是否被压缩、可见列数、横向溢出），按 640/760/840/1080/1680 调 headless Chrome --dump-dom 读回 #diag；CHROME_BIN 优先、macOS 默认路径兜底，找不到 Chrome 退出码 2 并打印原因；末行 PROBE PASS/FAIL。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-7a92ae",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-be147a",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790778027288,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 907,
+              "at": 1790778027292,
+              "totals": {
+                "uncachedInputTokens": 189175,
+                "outputTokens": 82296,
+                "cacheReadTokens": 16351104,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 925,
+              "at": 1790778111702,
+              "totals": {
+                "uncachedInputTokens": 190015,
+                "outputTokens": 83014,
+                "cacheReadTokens": 16920320,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 840,
+              "outputTokens": 718,
+              "cacheReadTokens": 569216,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790778111692
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-8036c7",
+          "body": "[状态] → in_progress：t3 测试子卡开工：跑目标命令 + 负向验证（已跑通，整理证据）（reqboard_task_move）",
+          "createdAt": 1790778027288,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-28cf45",
+          "body": "[状态] → done：测试完成：正向全绿 + 负向验证会红，退出码语义正确（reqboard_task_move）",
+          "createdAt": 1790778111692,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790777912480,
+      "updatedAt": 1790778759628,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790777912480,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790778027288,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t3 测试子卡开工：跑目标命令 + 负向验证（已跑通，整理证据）"
+        },
+        {
+          "status": "done",
+          "at": 1790778111692,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "测试完成：正向全绿 + 负向验证会红，退出码语义正确"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790778108885,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/list-responsive-probe.mts"
+        ],
+        "completed": [
+          "正向：npx tsx scripts/list-responsive-probe.mts → 5 行 DIAG 全 problems=NONE、末行 PROBE PASS、退出码 0",
+          "正向数值：640 cols=4 titleW=282 overflowX=true / 760 cols=4 / 840 cols=4 titleW=362 / 1080 cols=5 titleW=430 / 1680 cols=8 titleW=540",
+          "负向验证：把 styles/board.ts 的 min-width: 720px 临时改为 2000px 重跑 → 4 条档位不匹配全部报出（横向滚动 true ≠ 期望 false）、末行 PROBE FAIL、退出码 1（探针确实会红）",
+          "恢复校验：还原后复跑 → PROBE PASS、退出码 0；git diff --stat 确认 styles/board.ts 回到 +40 行净增"
+        ]
+      },
+      "lastRun": {
+        "at": 1790778108885,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-4c49aa",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "兼容降级与回滚面核对 + 证据归档·研发",
+      "description": "子卡阶段：研发",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-7a92ae"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `git status --porcelain -- src/client/views/board.ts src/client/styles/board.ts tests/list-responsive.test.ts scripts/list-responsive-probe.mts package.json` → 恰好 2 个 M + 2 个 ??、package.json 无输出；再跑 `ls docs/requirements/REQ-260930194112-1ab8/evidence/*.png | wc -l` → 5。",
+      "implementation": "核对 design/data-model.md D-3（min-width:max-content / @media / overflow-x 三条降级路径均不劣于现状）与 D-4（无数据迁移、回滚=还原文件）；用最终 CSS 渲染采集对照截图（before-840 / after-840 / after-1080 / after-1680）落到 docs/requirements/REQ-260930194112-1ab8/evidence/；核对改动面未溢出清单。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-702bf4",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-732369",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790778209473,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 996,
+              "at": 1790778209477,
+              "totals": {
+                "uncachedInputTokens": 206467,
+                "outputTokens": 87418,
+                "cacheReadTokens": 19068544,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 1098,
+              "at": 1790778294516,
+              "totals": {
+                "uncachedInputTokens": 213081,
+                "outputTokens": 95942,
+                "cacheReadTokens": 22720896,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 6614,
+              "outputTokens": 8524,
+              "cacheReadTokens": 3652352,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790778294508
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a69952",
+          "body": "[状态] → in_progress：t4 研发子卡开工：采集最终截图并核对兼容降级与回滚面（reqboard_task_move）",
+          "createdAt": 1790778209473,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-69456a",
+          "body": "[状态] → done：证据采集与兼容/回滚核对完成：5 张图归档、改动面与设计一致、宽档几何等同（reqboard_task_move）",
+          "createdAt": 1790778294508,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790778195877,
+      "updatedAt": 1790778762049,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790778195877,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790778209473,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t4 研发子卡开工：采集最终截图并核对兼容降级与回滚面"
+        },
+        {
+          "status": "done",
+          "at": 1790778294508,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "证据采集与兼容/回滚核对完成：5 张图归档、改动面与设计一致、宽档几何等同"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790778213723,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-260930194112-1ab8/evidence/before-840.png",
+          "docs/requirements/REQ-260930194112-1ab8/evidence/after-640.png",
+          "docs/requirements/REQ-260930194112-1ab8/evidence/after-840.png",
+          "docs/requirements/REQ-260930194112-1ab8/evidence/after-1080.png",
+          "docs/requirements/REQ-260930194112-1ab8/evidence/after-1680.png"
+        ],
+        "completed": [
+          "证据归档：evidence/ 收 5 张图（before-840 修复前症状 + after-640/840/1080/1680 修复后各档），after 四张由**当前源码**渲染（非注入样式），尺寸 840x520 / 640x520 / 840x520 / 1080x520 / 1680x520",
+          "改动面核对：git status --porcelain（按文件限定）恰好 2 个 M（views/board.ts、styles/board.ts）+ 2 个 ??（tests/list-responsive.test.ts、scripts/list-responsive-probe.mts），package.json 与 pnpm-lock.yaml 无输出（无依赖变更）",
+          "diff 规模：git diff --stat 仅这两个源文件，board.ts 11 行（6 增 5 改）、styles/board.ts 40 行纯增",
+          "兼容降级核对（D-3）：只用到 white-space / overflow-x / min-width:max-content / @media 四类特性，不支持时的行为均退回现状或可用子集，无更差路径",
+          "回滚路径核对（D-4）：无数据迁移、无开关、无回填；回滚=还原这 2 个源文件（新增的测试/探针/证据不参与运行时）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790778213723,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-426253",
+      "requirementId": "REQ-260930194112-1ab8",
+      "title": "兼容降级与回滚面核对 + 证据归档·复核",
+      "description": "子卡阶段：复核",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-4c49aa"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "核对 design/data-model.md D-3（min-width:max-content / @media / overflow-x 三条降级路径均不劣于现状）与 D-4（无数据迁移、回滚=还原文件）；用最终 CSS 渲染采集对照截图（before-840 / after-840 / after-1080 / after-1680）落到 docs/requirements/REQ-260930194112-1ab8/evidence/；核对改动面未溢出清单。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-702bf4",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-9d905c",
+          "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+          "trigger": "manual",
+          "startedAt": 1790778296603,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 1104,
+              "at": 1790778296608,
+              "totals": {
+                "uncachedInputTokens": 213318,
+                "outputTokens": 96039,
+                "cacheReadTokens": 22942336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb",
+              "seq": 1122,
+              "at": 1790778367805,
+              "totals": {
+                "uncachedInputTokens": 213980,
+                "outputTokens": 96858,
+                "cacheReadTokens": 23609088,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 662,
+              "outputTokens": 819,
+              "cacheReadTokens": 666752,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790778367798
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-cbb6b4",
+          "body": "[状态] → in_progress：t4 复核子卡开工：核对证据与结论一致性、宽档是否真的零变化（reqboard_task_move）",
+          "createdAt": 1790778296603,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        },
+        {
+          "id": "c-fe4963",
+          "body": "[状态] → done：复核完成：证据与验收标准吻合，宽档几何一致（残差如实记录）（reqboard_task_move）",
+          "createdAt": 1790778367798,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790778195877,
+      "updatedAt": 1790778367798,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790778195877,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790778296603,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "t4 复核子卡开工：核对证据与结论一致性、宽档是否真的零变化"
+        },
+        {
+          "status": "done",
+          "at": 1790778367798,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c1999330-7372-45da-b999-171621fa17bb"
+          },
+          "reason": "复核完成：证据与验收标准吻合，宽档几何一致（残差如实记录）"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790778365493,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-260930194112-1ab8/evidence/after-1680.png",
+          "src/client/views/board.ts",
+          "src/client/styles/board.ts"
+        ],
+        "completed": [
+          "证据一致性核对：evidence/ 5 张图尺寸与卡片验收标准逐项吻合（840x520 / 640x520 / 840x520 / 1080x520 / 1680x520），after 四张确由当前源码渲染",
+          "宽档零变化核对（FR-6）：用同一 fixture、仅切换源码树（HEAD 版 vs 工作区版）渲染 1680px，表头与首行 8 列的 left/width 完全逐字节相同（ID@20:224 … 操作@1401:259）、行高 50、标题列宽 540",
+          "宽档残差如实记录：像素级仍有 ~3% 差异，定位为表格外框 1px 抗锯齿（放大差异图仅显示外框轮廓），非列宽/文本/按钮位移",
+          "回滚面核对（D-4）：运行时仅 2 个文件（views/board.ts、styles/board.ts）可复原，无数据迁移/开关/回填；新增测试、探针与证据不参与运行时",
+          "无依赖变更：package.json 与 pnpm-lock.yaml 零改动"
+        ]
+      },
+      "lastRun": {
+        "at": 1790778365493,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-8479b2",
+      "to": "t-24c90a"
+    },
+    {
+      "from": "t-24c90a",
+      "to": "t-7a92ae"
+    },
+    {
+      "from": "t-7a92ae",
+      "to": "t-702bf4"
+    },
+    {
+      "from": "t-99dc0a",
+      "to": "t-efd3af"
+    },
+    {
+      "from": "t-efd3af",
+      "to": "t-cac573"
+    },
+    {
+      "from": "t-8479b2",
+      "to": "t-4a6bcf"
+    },
+    {
+      "from": "t-4a6bcf",
+      "to": "t-bab4cc"
+    },
+    {
+      "from": "t-bab4cc",
+      "to": "t-64530d"
+    },
+    {
+      "from": "t-24c90a",
+      "to": "t-2bd99a"
+    },
+    {
+      "from": "t-2bd99a",
+      "to": "t-1f6e47"
+    },
+    {
+      "from": "t-1f6e47",
+      "to": "t-1d8bbd"
+    },
+    {
+      "from": "t-7a92ae",
+      "to": "t-4c49aa"
+    },
+    {
+      "from": "t-4c49aa",
+      "to": "t-426253"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-8479b2",
+        "t-99dc0a"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-24c90a",
+        "t-4a6bcf",
+        "t-efd3af"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-7a92ae",
+        "t-2bd99a",
+        "t-bab4cc",
+        "t-cac573"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-702bf4",
+        "t-4c49aa",
+        "t-1f6e47",
+        "t-64530d"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-426253",
+        "t-1d8bbd"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-09-30T14:32:42.051Z"
+}

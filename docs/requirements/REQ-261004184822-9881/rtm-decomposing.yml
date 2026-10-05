@@ -1,0 +1,488 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261004184822-9881
+  generated_at: 2026-10-04T10:57:49.230Z
+  version: 58
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T11:08:06.357Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 泳道滚动位置跨重绘保持（横向 + 列内纵向）
+      source: requirement.md
+      line: 86
+    - id: FR-2
+      title: 位置记忆的作用域与隔离
+      source: requirement.md
+      line: 117
+    - id: FR-3
+      title: 视图互切与详情往返后位置仍在
+      source: requirement.md
+      line: 144
+    - id: FR-4
+      title: 泳道列纵向铺满看板可视高度
+      source: requirement.md
+      line: 164
+  design_sections:
+    - ref: design/architecture.md#目标与不改动面
+      title: 目标与不改动面 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 目标与不改动面
+    - ref: design/architecture.md#模块落点
+      title: 模块落点 <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 模块落点
+    - ref: design/architecture.md#渲染时序
+      title: 渲染时序 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 渲染时序
+    - ref: design/architecture.md#与既有机制的边界
+      title: 与既有机制的边界 <!--
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: 与既有机制的边界
+    - ref: design/architecture.md#回滚路径
+      title: 回滚路径 <!--
+      serves:
+        - FR-1
+        - FR-4
+      file: design/architecture.md
+      section: 回滚路径
+    - ref: design/data-model.md#LaneScrollSnapshot
+      title: LaneScrollSnapshot <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/data-model.md
+      section: LaneScrollSnapshot
+    - ref: design/data-model.md#存储与生命周期
+      title: 存储与生命周期 <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/data-model.md
+      section: 存储与生命周期
+    - ref: design/data-model.md#取值收敛sanitize
+      title: 取值收敛（sanitize） <!--
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 取值收敛sanitize
+    - ref: design/frontend.md#DOM-契约只读不改结构
+      title: DOM 契约（只读，不改结构） <!--
+      serves:
+        - FR-1
+      file: design/frontend.md
+      section: DOM-契约只读不改结构
+    - ref: design/frontend.md#样式改动列高铺满
+      title: 样式改动（列高铺满） <!--
+      serves:
+        - FR-4
+      file: design/frontend.md
+      section: 样式改动列高铺满
+    - ref: design/frontend.md#交互路径
+      title: 交互路径 <!--
+      serves:
+        - FR-1
+      file: design/frontend.md
+      section: 交互路径
+    - ref: design/frontend.md#前端测试口径
+      title: 前端测试口径 <!--
+      serves:
+        - FR-1
+        - FR-4
+      file: design/frontend.md
+      section: 前端测试口径
+    - ref: design/interfaces.md#模块接口-board-scrollts
+      title: 模块接口 board-scroll.ts <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: 模块接口-board-scrollts
+    - ref: design/interfaces.md#参数与调用契约
+      title: 参数与调用契约 <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: 参数与调用契约
+    - ref: design/interfaces.md#异常情况
+      title: 异常情况 <!--
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: 异常情况
+    - ref: design/interfaces.md#调用点契约board-mountts
+      title: 调用点契约（board-mount.ts） <!--
+      serves:
+        - FR-1
+        - FR-3
+      file: design/interfaces.md
+      section: 调用点契约board-mountts
+    - ref: design/interfaces.md#与既有接口的关系
+      title: 与既有接口的关系 <!--
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: 与既有接口的关系
+    - ref: design/use-cases.md#场景总览
+      title: 场景总览 <!--
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+      file: design/use-cases.md
+      section: 场景总览
+    - ref: design/use-cases.md#UC-1-刷新不弹回
+      title: UC-1 刷新不弹回 <!--
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-1-刷新不弹回
+    - ref: design/use-cases.md#UC-2-出去再回原位
+      title: UC-2 出去再回原位 <!--
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-2-出去再回原位
+    - ref: design/use-cases.md#UC-3-长列直通到底
+      title: UC-3 长列直通到底 <!--
+      serves:
+        - FR-1
+        - FR-4
+      file: design/use-cases.md
+      section: UC-3-长列直通到底
+outputs:
+  tasks:
+    - id: t-19e1e2
+      title: 记住你看到哪：位置记忆模块（不落盘、不跟别人串）
+      implements: "新增 src/client/board-scroll.ts：导出 captureBoardScroll(root)（读 .dsh-pm-lanes 的 scrollLeft + 每列 .dsh-pm-lane[data-lane] 内 .dsh-pm-lane-cards 的 scrollTop；找不到泳道容器即静默返回且不覆盖记忆）、restoreBoardScroll(root)（只在找得到容器/该列时回填，不创建节点）、readBoardScroll()（浅拷贝）、_resetBoardScroll()（测试用）；单条内存快照 + sanitize（负数/NaN/Infinity/undefined → 0，口径照 src/client/dag/view-state.ts 但不复用它）；列键上限 16。新增 tests/board-lane-scroll.test.ts：桩 DOM 覆盖 TC-1/TC-2/TC-3/TC-4，文件头 20 行内含 serves: FR-1, FR-2。"
+      serves:
+        - FR-1
+        - FR-2
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-dc4752
+      title: 刷新别把人弹回去：把它接在重绘那两行上
+      implements: 改 src/client/board-mount.ts 的 render()：在 switch (mode.kind) 之前调 captureBoardScroll(viewEl)、之后调 restoreBoardScroll(viewEl)（viewEl === undefined 与 state === undefined 的空态分支不进记忆）。在 tests/board-lane-scroll.test.ts 追加 TC-5：桩容器（innerHTML setter 重建泳道桩并把 scrollLeft 归 0）+ fetch 桩 + 假 EventSource + 假计时器，走真 attachBoard 断言「首拉渲染后置 260 → 推进 20 秒轮询 → 仍为 260」，并模拟 switch-view 切列表再切回泳道仍为 260。
+      serves:
+        - FR-1
+        - FR-3
+      depends_on:
+        - t-19e1e2
+      phase: implement
+      side: frontend
+    - id: t-fd11e7
+      title: 列直通到底：列高铺满可视区、列内自己滚
+      implements: "改 src/client/styles/base.ts §泳道三条规则：.dsh-pm-lanes 的 align-items: flex-start → stretch 并补 min-height: 0；.dsh-pm-lane 删 max-height: calc(100vh - 200px) 并补 min-height: 0；.dsh-pm-lane-cards 的 min-height: 24px → 0（overflow-y: auto 保留）。不新增 DOM 层级/class。在 tests/board-lane-scroll.test.ts 追加 TC-6：读该样式源码文本取三个规则块，断言 .dsh-pm-lanes 含 align-items: stretch、.dsh-pm-lane 块不含 max-height: calc(100vh、.dsh-pm-lane-cards 块仍含 overflow-y: auto。"
+      serves:
+        - FR-4
+      depends_on:
+        - t-dc4752
+      phase: implement
+      side: frontend
+    - id: t-fb2cff
+      title: 收口：四门禁 + GUI 手工证据
+      implements: 按 docs/requirements/REQ-261004184822-9881/design/test-cases.md 的 TC-7 在 GUI（http://127.0.0.1:19387 → 看板 → 泳道）跑手工验收：横滚到 accepting 列后三连刷（手动刷新/等一轮 20 秒轮询/另一窗口改一条需求触发 SSE）、某长列内翻到底再刷新、把窗口拉矮一半；截图落 evidence/lane-scroll-gui.png。四门禁读数（build / build:client / typecheck / test 失败数与基线比对）落 evidence/gates.txt。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      depends_on:
+        - t-fd11e7
+      phase: test
+      side: frontend
+    - id: t-128aa9
+      title: 记住你看到哪：位置记忆模块（不落盘、不跟别人串）·研发
+      implements: |-
+        新增 src/client/board-scroll.ts：导出 captureBoardScroll(root)（读 .dsh-pm-lanes 的 scrollLeft + 每列 .dsh-pm-lane[data-lane] 内 .dsh-pm-lane-cards 的 scrollTop；找不到泳道容器即静默返回且不覆盖记忆）、restoreBoardScroll(root)（只在找得到容器/该列时回填，不创建节点）、readBoardScroll()（浅拷贝）、_resetBoardScroll()（测试用）；单条内存快照 + sanitize（负数/NaN/Infinity/undefined → 0，口径照 src/client/dag/view-state.ts 但不复用它）；列键上限 16。新增 tests/board-lane-scroll.test.ts：桩 DOM 覆盖 TC-1/TC-2/TC-3/TC-4，文件头 20 行内含 serves: FR-1, FR-2。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-f8b5ae
+      title: 记住你看到哪：位置记忆模块（不落盘、不跟别人串）·联调
+      implements: |-
+        新增 src/client/board-scroll.ts：导出 captureBoardScroll(root)（读 .dsh-pm-lanes 的 scrollLeft + 每列 .dsh-pm-lane[data-lane] 内 .dsh-pm-lane-cards 的 scrollTop；找不到泳道容器即静默返回且不覆盖记忆）、restoreBoardScroll(root)（只在找得到容器/该列时回填，不创建节点）、readBoardScroll()（浅拷贝）、_resetBoardScroll()（测试用）；单条内存快照 + sanitize（负数/NaN/Infinity/undefined → 0，口径照 src/client/dag/view-state.ts 但不复用它）；列键上限 16。新增 tests/board-lane-scroll.test.ts：桩 DOM 覆盖 TC-1/TC-2/TC-3/TC-4，文件头 20 行内含 serves: FR-1, FR-2。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-128aa9
+      phase: implement
+      side: frontend
+    - id: t-7036ab
+      title: 记住你看到哪：位置记忆模块（不落盘、不跟别人串）·复核
+      implements: |-
+        新增 src/client/board-scroll.ts：导出 captureBoardScroll(root)（读 .dsh-pm-lanes 的 scrollLeft + 每列 .dsh-pm-lane[data-lane] 内 .dsh-pm-lane-cards 的 scrollTop；找不到泳道容器即静默返回且不覆盖记忆）、restoreBoardScroll(root)（只在找得到容器/该列时回填，不创建节点）、readBoardScroll()（浅拷贝）、_resetBoardScroll()（测试用）；单条内存快照 + sanitize（负数/NaN/Infinity/undefined → 0，口径照 src/client/dag/view-state.ts 但不复用它）；列键上限 16。新增 tests/board-lane-scroll.test.ts：桩 DOM 覆盖 TC-1/TC-2/TC-3/TC-4，文件头 20 行内含 serves: FR-1, FR-2。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-f8b5ae
+      phase: implement
+      side: frontend
+    - id: t-957862
+      title: 记住你看到哪：位置记忆模块（不落盘、不跟别人串）·测试
+      implements: |-
+        新增 src/client/board-scroll.ts：导出 captureBoardScroll(root)（读 .dsh-pm-lanes 的 scrollLeft + 每列 .dsh-pm-lane[data-lane] 内 .dsh-pm-lane-cards 的 scrollTop；找不到泳道容器即静默返回且不覆盖记忆）、restoreBoardScroll(root)（只在找得到容器/该列时回填，不创建节点）、readBoardScroll()（浅拷贝）、_resetBoardScroll()（测试用）；单条内存快照 + sanitize（负数/NaN/Infinity/undefined → 0，口径照 src/client/dag/view-state.ts 但不复用它）；列键上限 16。新增 tests/board-lane-scroll.test.ts：桩 DOM 覆盖 TC-1/TC-2/TC-3/TC-4，文件头 20 行内含 serves: FR-1, FR-2。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-7036ab
+      phase: implement
+      side: frontend
+    - id: t-e16560
+      title: 刷新别把人弹回去：把它接在重绘那两行上·研发
+      implements: |-
+        改 src/client/board-mount.ts 的 render()：在 switch (mode.kind) 之前调 captureBoardScroll(viewEl)、之后调 restoreBoardScroll(viewEl)（viewEl === undefined 与 state === undefined 的空态分支不进记忆）。在 tests/board-lane-scroll.test.ts 追加 TC-5：桩容器（innerHTML setter 重建泳道桩并把 scrollLeft 归 0）+ fetch 桩 + 假 EventSource + 假计时器，走真 attachBoard 断言「首拉渲染后置 260 → 推进 20 秒轮询 → 仍为 260」，并模拟 switch-view 切列表再切回泳道仍为 260。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-19e1e2
+      phase: implement
+      side: frontend
+    - id: t-b5a80f
+      title: 刷新别把人弹回去：把它接在重绘那两行上·联调
+      implements: |-
+        改 src/client/board-mount.ts 的 render()：在 switch (mode.kind) 之前调 captureBoardScroll(viewEl)、之后调 restoreBoardScroll(viewEl)（viewEl === undefined 与 state === undefined 的空态分支不进记忆）。在 tests/board-lane-scroll.test.ts 追加 TC-5：桩容器（innerHTML setter 重建泳道桩并把 scrollLeft 归 0）+ fetch 桩 + 假 EventSource + 假计时器，走真 attachBoard 断言「首拉渲染后置 260 → 推进 20 秒轮询 → 仍为 260」，并模拟 switch-view 切列表再切回泳道仍为 260。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-e16560
+      phase: implement
+      side: frontend
+    - id: t-50008b
+      title: 刷新别把人弹回去：把它接在重绘那两行上·复核
+      implements: |-
+        改 src/client/board-mount.ts 的 render()：在 switch (mode.kind) 之前调 captureBoardScroll(viewEl)、之后调 restoreBoardScroll(viewEl)（viewEl === undefined 与 state === undefined 的空态分支不进记忆）。在 tests/board-lane-scroll.test.ts 追加 TC-5：桩容器（innerHTML setter 重建泳道桩并把 scrollLeft 归 0）+ fetch 桩 + 假 EventSource + 假计时器，走真 attachBoard 断言「首拉渲染后置 260 → 推进 20 秒轮询 → 仍为 260」，并模拟 switch-view 切列表再切回泳道仍为 260。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-b5a80f
+      phase: implement
+      side: frontend
+    - id: t-eba69f
+      title: 刷新别把人弹回去：把它接在重绘那两行上·测试
+      implements: |-
+        改 src/client/board-mount.ts 的 render()：在 switch (mode.kind) 之前调 captureBoardScroll(viewEl)、之后调 restoreBoardScroll(viewEl)（viewEl === undefined 与 state === undefined 的空态分支不进记忆）。在 tests/board-lane-scroll.test.ts 追加 TC-5：桩容器（innerHTML setter 重建泳道桩并把 scrollLeft 归 0）+ fetch 桩 + 假 EventSource + 假计时器，走真 attachBoard 断言「首拉渲染后置 260 → 推进 20 秒轮询 → 仍为 260」，并模拟 switch-view 切列表再切回泳道仍为 260。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-50008b
+      phase: implement
+      side: frontend
+    - id: t-168366
+      title: 列直通到底：列高铺满可视区、列内自己滚·研发
+      implements: |-
+        改 src/client/styles/base.ts §泳道三条规则：.dsh-pm-lanes 的 align-items: flex-start → stretch 并补 min-height: 0；.dsh-pm-lane 删 max-height: calc(100vh - 200px) 并补 min-height: 0；.dsh-pm-lane-cards 的 min-height: 24px → 0（overflow-y: auto 保留）。不新增 DOM 层级/class。在 tests/board-lane-scroll.test.ts 追加 TC-6：读该样式源码文本取三个规则块，断言 .dsh-pm-lanes 含 align-items: stretch、.dsh-pm-lane 块不含 max-height: calc(100vh、.dsh-pm-lane-cards 块仍含 overflow-y: auto。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-dc4752
+      phase: implement
+      side: frontend
+    - id: t-65afb7
+      title: 列直通到底：列高铺满可视区、列内自己滚·联调
+      implements: |-
+        改 src/client/styles/base.ts §泳道三条规则：.dsh-pm-lanes 的 align-items: flex-start → stretch 并补 min-height: 0；.dsh-pm-lane 删 max-height: calc(100vh - 200px) 并补 min-height: 0；.dsh-pm-lane-cards 的 min-height: 24px → 0（overflow-y: auto 保留）。不新增 DOM 层级/class。在 tests/board-lane-scroll.test.ts 追加 TC-6：读该样式源码文本取三个规则块，断言 .dsh-pm-lanes 含 align-items: stretch、.dsh-pm-lane 块不含 max-height: calc(100vh、.dsh-pm-lane-cards 块仍含 overflow-y: auto。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-168366
+      phase: implement
+      side: frontend
+    - id: t-c95411
+      title: 列直通到底：列高铺满可视区、列内自己滚·复核
+      implements: |-
+        改 src/client/styles/base.ts §泳道三条规则：.dsh-pm-lanes 的 align-items: flex-start → stretch 并补 min-height: 0；.dsh-pm-lane 删 max-height: calc(100vh - 200px) 并补 min-height: 0；.dsh-pm-lane-cards 的 min-height: 24px → 0（overflow-y: auto 保留）。不新增 DOM 层级/class。在 tests/board-lane-scroll.test.ts 追加 TC-6：读该样式源码文本取三个规则块，断言 .dsh-pm-lanes 含 align-items: stretch、.dsh-pm-lane 块不含 max-height: calc(100vh、.dsh-pm-lane-cards 块仍含 overflow-y: auto。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-65afb7
+      phase: implement
+      side: frontend
+    - id: t-8fbc23
+      title: 列直通到底：列高铺满可视区、列内自己滚·测试
+      implements: |-
+        改 src/client/styles/base.ts §泳道三条规则：.dsh-pm-lanes 的 align-items: flex-start → stretch 并补 min-height: 0；.dsh-pm-lane 删 max-height: calc(100vh - 200px) 并补 min-height: 0；.dsh-pm-lane-cards 的 min-height: 24px → 0（overflow-y: auto 保留）。不新增 DOM 层级/class。在 tests/board-lane-scroll.test.ts 追加 TC-6：读该样式源码文本取三个规则块，断言 .dsh-pm-lanes 含 align-items: stretch、.dsh-pm-lane 块不含 max-height: calc(100vh、.dsh-pm-lane-cards 块仍含 overflow-y: auto。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-c95411
+      phase: implement
+      side: frontend
+    - id: t-d34ccf
+      title: 收口：四门禁 + GUI 手工证据·研发
+      implements: |-
+        按 docs/requirements/REQ-261004184822-9881/design/test-cases.md 的 TC-7 在 GUI（http://127.0.0.1:19387 → 看板 → 泳道）跑手工验收：横滚到 accepting 列后三连刷（手动刷新/等一轮 20 秒轮询/另一窗口改一条需求触发 SSE）、某长列内翻到底再刷新、把窗口拉矮一半；截图落 evidence/lane-scroll-gui.png。四门禁读数（build / build:client / typecheck / test 失败数与基线比对）落 evidence/gates.txt。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-fd11e7
+      phase: test
+      side: frontend
+    - id: t-16251a
+      title: 收口：四门禁 + GUI 手工证据·复核
+      implements: |-
+        按 docs/requirements/REQ-261004184822-9881/design/test-cases.md 的 TC-7 在 GUI（http://127.0.0.1:19387 → 看板 → 泳道）跑手工验收：横滚到 accepting 列后三连刷（手动刷新/等一轮 20 秒轮询/另一窗口改一条需求触发 SSE）、某长列内翻到底再刷新、把窗口拉矮一半；截图落 evidence/lane-scroll-gui.png。四门禁读数（build / build:client / typecheck / test 失败数与基线比对）落 evidence/gates.txt。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-d34ccf
+      phase: test
+      side: frontend
+    - id: t-69a514
+      title: 收口：四门禁 + GUI 手工证据·测试
+      implements: |-
+        按 docs/requirements/REQ-261004184822-9881/design/test-cases.md 的 TC-7 在 GUI（http://127.0.0.1:19387 → 看板 → 泳道）跑手工验收：横滚到 accepting 列后三连刷（手动刷新/等一轮 20 秒轮询/另一窗口改一条需求触发 SSE）、某长列内翻到底再刷新、把窗口拉矮一半；截图落 evidence/lane-scroll-gui.png。四门禁读数（build / build:client / typecheck / test 失败数与基线比对）落 evidence/gates.txt。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-16251a
+      phase: test
+      side: frontend
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与不改动面:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/architecture.md#模块落点:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/architecture.md#渲染时序:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/architecture.md#与既有机制的边界:
+      - t-19e1e2
+      - t-fb2cff
+    design/architecture.md#回滚路径:
+      - t-19e1e2
+      - t-dc4752
+      - t-fd11e7
+      - t-fb2cff
+    design/data-model.md#LaneScrollSnapshot:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/data-model.md#存储与生命周期:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/data-model.md#取值收敛sanitize:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/frontend.md#DOM-契约只读不改结构:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/frontend.md#样式改动列高铺满:
+      - t-fd11e7
+      - t-fb2cff
+    design/frontend.md#交互路径:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/frontend.md#前端测试口径:
+      - t-19e1e2
+      - t-dc4752
+      - t-fd11e7
+      - t-fb2cff
+    design/interfaces.md#模块接口-board-scrollts:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/interfaces.md#参数与调用契约:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/interfaces.md#异常情况:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/interfaces.md#调用点契约board-mountts:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/interfaces.md#与既有接口的关系:
+      - t-19e1e2
+      - t-fb2cff
+    design/use-cases.md#场景总览:
+      - t-19e1e2
+      - t-dc4752
+      - t-fd11e7
+      - t-fb2cff
+    design/use-cases.md#UC-1-刷新不弹回:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    design/use-cases.md#UC-2-出去再回原位:
+      - t-dc4752
+      - t-fb2cff
+    design/use-cases.md#UC-3-长列直通到底:
+      - t-19e1e2
+      - t-dc4752
+      - t-fd11e7
+      - t-fb2cff
+  fr_to_tasks:
+    FR-1:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+      - t-fd11e7
+    FR-2:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+    FR-3:
+      - t-19e1e2
+      - t-dc4752
+      - t-fb2cff
+      - t-fd11e7
+    FR-4:
+      - t-19e1e2
+      - t-dc4752
+      - t-fd11e7
+      - t-fb2cff
+coverage:
+  implementation:
+    total: 21
+    covered: 21
+    uncovered: []
+    rate: 100
+    total_designs: 21
+    covered_designs: 21

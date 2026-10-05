@@ -1,0 +1,23 @@
+# kb:check 基线捕获（REQ-261004174324-4195 t1，2026-10-04）
+
+命令：npx tsx scripts/kb-build.mts --check
+退出码：1
+
+口径说明（不夸大）：本次捕获发生在 t1 新增 src/domain/knowledge/generate.ts **之后**，故 code-map 一路的漂移含本次新增文件的影响；但 design-tokens 两处漂移（类名 库内 568 / 期望 610）**不可能由非样式文件造成**——它证明「生成物在我动手前就已陈旧」。
+
+```
+[drift] docs/knowledge/code-map.md：首个差异在第 4 行（库内 45 行 / 期望 45 行）
+  期望: > 全量符号（2507 条）在 `docs/knowledge/code-map.symbols.tsv`——机器索引、不进上下文，用 `reqboard_kb(kind='map', query='
+  实际: > 全量符号（2223 条）在 `docs/knowledge/code-map.symbols.tsv`——机器索引、不进上下文，用 `reqboard_kb(kind='map', query='
+[drift] docs/knowledge/code-map.symbols.tsv：首个差异在第 19 行（库内 2225 行 / 期望 2509 行）
+  期望: src/adapters/FileSettingsStore.ts	FileSettingsStoreOptions	interface	export interface FileSettingsSt
+  实际: src/adapters/GateAwareQuestions.ts	GateAwareQuestionsOptions	interface	export interface GateAwareQue
+[drift] docs/knowledge/design-tokens.md：首个差异在第 4 行（库内 147 行 / 期望 148 行）
+  期望: > 全量类名（610 个）在 `docs/knowledge/design-tokens.classes.tsv`——机器索引、不进上下文，用 `reqboard_kb(kind='tokens', 
+  实际: > 全量类名（568 个）在 `docs/knowledge/design-tokens.classes.tsv`——机器索引、不进上下文，用 `reqboard_kb(kind='tokens', 
+[drift] docs/knowledge/design-tokens.classes.tsv：首个差异在第 130 行（库内 570 行 / 期望 612 行）
+  期望: dsh-pm-cprog-token-ico	src/client/styles/board.ts
+  实际: dsh-pm-cprog-trigger	src/client/styles/board.ts
+kb-build: 符号 2507 条 · 颜色 68 · 变量 35 · 断点 4 · 类名 610 · INDEX 96 行
+[verify] 检测到 4 处漂移
+```

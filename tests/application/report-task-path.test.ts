@@ -39,8 +39,9 @@ async function run(h: ReturnType<typeof setup>, files: string[]) {
   )
 }
 
-function taskOutputPaths(h: ReturnType<typeof setup>): string[] {
-  const req0 = h.repo.ledger.requirements[0] as any
+async function taskOutputPaths(h: ReturnType<typeof setup>): Promise<string[]> {
+  // B12 阶段⑤族 B：读点改定点读（摘要第一条 → 取全文）
+  const req0 = (await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)) as any
   return (req0.artifacts ?? []).filter((a: any) => a.kind === 'task_output').map((a: any) => a.path)
 }
 
@@ -48,7 +49,7 @@ describe('报告产物路径归一（REQ-b63a7d t2）', () => {
   it('仓库根相对（agent-dh/…）→ 剥掉重复工作区名前缀后登记', async () => {
     const h = setup()
     await run(h, ['agent-dh/docs/architecture/documentation-standard.md'])
-    const paths = taskOutputPaths(h)
+    const paths = await taskOutputPaths(h)
     expect(paths).toContain('docs/architecture/documentation-standard.md')
     expect(paths).not.toContain('agent-dh/docs/architecture/documentation-standard.md')
   })
@@ -56,13 +57,13 @@ describe('报告产物路径归一（REQ-b63a7d t2）', () => {
   it('工作区内绝对路径 → 工作区相对', async () => {
     const h = setup()
     await run(h, [ROOT + '/packages/pages/dsh-pmboard/src/index.ts'])
-    expect(taskOutputPaths(h)).toContain('packages/pages/dsh-pmboard/src/index.ts')
+    expect(await taskOutputPaths(h)).toContain('packages/pages/dsh-pmboard/src/index.ts')
   })
 
   it('伪路径（brace 汇总写法）→ 不入产物清单', async () => {
     const h = setup()
     await run(h, ['quantsys-v2/tests/{a.py,b.py}', 'docs/*.md'])
-    expect(taskOutputPaths(h)).toEqual([])
+    expect(await taskOutputPaths(h)).toEqual([])
   })
 
   it('合规路径原样不变、./ 被清洗、同路径去重', async () => {
@@ -72,19 +73,19 @@ describe('报告产物路径归一（REQ-b63a7d t2）', () => {
       './docs/a.md',
       'docs/requirements/REQ-000001/plan.md',
     ])
-    const paths = taskOutputPaths(h)
+    const paths = await taskOutputPaths(h)
     expect(paths).toEqual(['docs/requirements/REQ-000001/plan.md', 'docs/a.md'])
   })
 
   it('工作区之外的绝对路径（/etc/...）不入产物清单', async () => {
     const h = setup()
     await run(h, ['/etc/passwd', '/tmp/scratch.txt'])
-    expect(taskOutputPaths(h)).toEqual([])
+    expect(await taskOutputPaths(h)).toEqual([])
   })
 
   it('跨仓相对路径保持原样登记（是否可服务由文件接口用 fs 判定）', async () => {
     const h = setup()
     await run(h, ['quantsys-v2/application/services/watch_engine/engine.py'])
-    expect(taskOutputPaths(h)).toContain('quantsys-v2/application/services/watch_engine/engine.py')
+    expect(await taskOutputPaths(h)).toContain('quantsys-v2/application/services/watch_engine/engine.py')
   })
 })

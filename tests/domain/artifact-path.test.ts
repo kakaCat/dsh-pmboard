@@ -7,7 +7,7 @@
  * 是否 outside_workspace（见 tests/http/file-route.test.ts）。
  */
 import { describe, it, expect } from 'vitest'
-import { normalizeArtifactPath } from '../../src/domain/artifact/ArtifactPath.js'
+import { normalizeArtifactPath, extractRequirementIdFromPath } from '../../src/domain/artifact/ArtifactPath.js'
 
 const ROOT = '/Users/yunpeng/pi-investment/agent-dh'
 
@@ -93,5 +93,30 @@ describe('normalizeArtifactPath：逃逸判定', () => {
     const r = normalizeArtifactPath(ROOT, ROOT)
     expect(r.path).toBe('')
     expect(r.form).toBe('workspace')
+  })
+})
+
+describe('extractRequirementIdFromPath：需求级根回退的 id 反查', () => {
+  it('新时间戳 id（REQ-260930155231-0862）→ 提取', () => {
+    expect(extractRequirementIdFromPath('docs/requirements/REQ-260930155231-0862/requirement.md'))
+      .toBe('REQ-260930155231-0862')
+    expect(extractRequirementIdFromPath('docs/requirements/REQ-260930155231-0862/tasks/t-a4ac0a.md'))
+      .toBe('REQ-260930155231-0862')
+  })
+
+  it('存量短 id（REQ-47939a / REQ-000001）→ 提取', () => {
+    expect(extractRequirementIdFromPath('docs/requirements/REQ-47939a/requirement.md')).toBe('REQ-47939a')
+    expect(extractRequirementIdFromPath('docs/requirements/REQ-000001/plan.md')).toBe('REQ-000001')
+  })
+
+  it('无需求段的路径 → undefined', () => {
+    expect(extractRequirementIdFromPath('docs/architecture/project-manual.md')).toBeUndefined()
+    expect(extractRequirementIdFromPath('packages/pages/x.ts')).toBeUndefined()
+    expect(extractRequirementIdFromPath('')).toBeUndefined()
+  })
+
+  it('REQ 段必须是完整路径段（不把目录名片段误当 id）', () => {
+    expect(extractRequirementIdFromPath('docs/XREQ-47939a/a.md')).toBeUndefined()
+    expect(extractRequirementIdFromPath('docs/REQ-47939aX/a.md')).toBeUndefined()
   })
 })

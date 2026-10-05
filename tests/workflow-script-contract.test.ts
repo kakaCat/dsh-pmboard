@@ -13,7 +13,7 @@ import {
   generateSubtaskScript,
   usedHooks,
 } from '../src/application/internal/workflow-script.js'
-import { WorkflowEngineRunner, type WorkflowEngineLike, type WorkflowRunLike } from '../src/adapters/WorkflowEngineRunner.js'
+import { ENGINE_UNREACHABLE_CODE, WorkflowEngineRunner, type WorkflowEngineLike, type WorkflowRunLike } from '../src/adapters/WorkflowEngineRunner.js'
 
 const codeOf = (fn: () => void): string | undefined => {
   try { fn(); return undefined } catch (err) { return (err as { code?: string }).code }
@@ -81,9 +81,15 @@ describe('WorkflowEngineRunner 三态翻译（3.3 / 9.3）', () => {
   })
   const engineOf = (run: WorkflowRunLike): WorkflowEngineLike => ({ start: () => run })
 
-  it('引擎缺失 → ok:false / engine_unavailable（不静默成功）', async () => {
+  it('引擎缺失 → ok:false / subtask_engine_unreachable（不静默成功，且原因可行动）', async () => {
     const outcome = await new WorkflowEngineRunner(() => undefined).start({ script: 'return {};', meta: { name: 'x', description: 'x' } })
-    expect(outcome).toEqual({ ok: false, reason: 'engine_unavailable' })
+    // 2026-10-03：裸的 `engine_unavailable` 已换成结构化主码——后者把"按设计不可达"
+    // （DSH preset 用 isolate 把引擎圈在 agent 作用域）说成像是瞬时故障，诱使反复重试。
+    // 本用例的**原意**（不静默成功）不变；`engine_unavailable` 仍作为 legacy 子串保留，
+    // 因为 failure-handling 的失败分类器按 includes 归类。
+    expect(outcome.ok).toBe(false)
+    expect(outcome.reason).toContain(ENGINE_UNREACHABLE_CODE)
+    expect(outcome.reason).toContain('engine_unavailable')
   })
 
   it('start 同步抛错 → ok:false / start_failed', async () => {

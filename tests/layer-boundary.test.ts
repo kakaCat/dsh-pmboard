@@ -144,11 +144,11 @@ describe('t1 骨架产物存在且可用（本测试直接引用，防"文件在
     expect((err as { code?: string }).code).toBe('bulk_close')
   })
 
-  it('src/application/ports.ts：六个端口接口齐备', () => {
+  it('src/application/ports.ts：端口接口齐备（B12 阶段⑤：旧单册端口 ReqboardRepository 已删）', () => {
     const p = join(SRC, 'application/ports.ts')
     expect(existsSync(p)).toBe(true)
     const text = readFileSync(p, 'utf8')
-    for (const name of ['ReqboardRepository', 'DocRepository', 'Clock', 'IdFactory', 'SessionProbe', 'UserQuestionPort']) {
+    for (const name of ['RequirementStore', 'DocRepository', 'Clock', 'IdFactory', 'SessionProbe', 'UserQuestionPort']) {
       expect(text, '缺少端口 ' + name).toContain('export interface ' + name)
     }
   })

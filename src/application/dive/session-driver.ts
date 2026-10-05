@@ -36,12 +36,11 @@
  * @module dsh-pmboard/application/dive/session-driver
  */
 
-import type { ReqboardLedger, StageKey, TaskRecord } from '../../shared/protocol.js'
-import { stageEnabledFor } from '../../shared/protocol.js'
+import { stageEnabledFor, type StageKey, type TaskRecord } from '../../shared/protocol.js'
 import { isIgnoredSession, extractUserMessageText, cleanUserMessageText } from '../internal/session-message-filter.js'
 import {
-  openRequirementsFor,
-  shouldCaptureWindow,
+  openPromptFactsFor,
+  shouldCaptureWindowFromFacts,
 } from '../internal/window.js'
 import type { PendingCaptureMessage } from '../internal/capture-section.js'
 import type { NodeSettlement } from '../internal/node-settlement.js'
@@ -59,6 +58,8 @@ import {
   type ToolTraceEntry,
 } from '../internal/session-buffers.js'
 import { addressSectionFor, milestoneReminderFor } from './idle-capture-actions.js'
+import type { RequirementFacts } from '../../domain/requirement/RequirementSummary.js'
+import { guardToolCall } from './boundary-guard.js'
 import { createGatePromptLoop, type GatePromptExhausted } from './gate-prompt.js'
 import type { GatePromptPort, TaskStore } from '../ports.js'
 import type { DiveRoundDriver } from './round-driver.js'
@@ -70,8 +71,15 @@ export interface DiveSessionDriverLogger {
 }
 
 export interface DiveSessionDriverDeps {
-  /** 台账快照（同步读取；判定窗口 unbound / pending 状态）。 */
-  snapshot: () => ReqboardLedger
+  /**
+   * **同步**窄投影（B12 阶段①-a）：本驱动所有同步判定（绑定/待捕获/阶段提示词/越界守卫）的唯一取数口。
+   *
+   * 历史：这里原本是 `snapshot: () => ReqboardLedger`（同步整册读）。它一度是本需求
+   * 最后一个"非桥读点"，卡在 `driveIdle` 的阶段提示词组装要 `artifacts` 上——
+   * 直到 `addressSectionFor` 的形参从 `RequirementRecord` 收窄到 `AddressSource`（窄投影也满足），
+   * 且 `domain/template` 的桩类型与实现对齐（见 `types.ts` 头注），这一处才跟着落地。
+   */
+  facts: () => readonly RequirementFacts[]
   /**
    * 任务队列端口（REQ-260927202051-f6df）：v9 台账已无 `tasks`，注入「当前任务」需从队列取。
    *
@@ -133,6 +141,11 @@ export interface DiveSessionDriverDeps {
   /** 模板地址注入（REQ-260922213356-4a45 T-3）：绝对模板根 + 开关；缺省不注入。 */
   address?: { templateRoot?: string; enabled?: boolean }
   /**
+   * 越界拦截注入回调（REQ-260929210741-30ae FR-7 / t6）：boundary-guard 命中越界时调用，
+   * 组合根经 round 半 queueReminder 通道实现（不直投会话）。可选（未注入 = 关闭拦截）。
+   */
+  onBoundaryViolation?: (windowKey: string, text: string) => void
+  /**
    * 节点结算回调（REQ-422af1 t10）：绑定窗口**整 agent 空闲**（agent/status === 'idle'）且
    * 本回合登记过「可注入节点结算」时发信号，并携带会话句柄（隔离端口由组合根按会话构造）。
    * **本回调不得在事件派发内做会话写操作**（D-17：监听器内同步 append 会被框架拒绝
@@ -193,7 +206,7 @@ function agentRef(agent: unknown): { windowKey: string; session: unknown } | und
  * 纯同步、无异步 IO；幂等（重复触发同消息只保留最新登记）。
  */
 export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessionDriver {
-  const { snapshot, pending, now, logger } = deps
+  const { pending, now, logger } = deps
   const debug = (m: string) => logger?.debug?.(m)
 
   /**
@@ -241,10 +254,10 @@ export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessio
     // 上一拍登记的立项候选，已被本回合 systemPrompt 组装的取词点消费 → 清除。
     if (pending.has(windowKey)) pending.delete(windowKey)
 
-    const ledger = snapshot()
+    const facts = deps.facts()
 
     // ── unbound：立项候选登记（在 idle 登记 → 存活到下一回合 systemPrompt 组装时命中）
-    if (shouldCaptureWindow(ledger, windowKey)) {
+    if (shouldCaptureWindowFromFacts(facts, windowKey)) {
       if (human !== undefined) {
         pending.set(windowKey, human)
         captureDiag(`reqboard-capture [NODE-3]: pendingCapture SET at idle (windowKey=${windowKey.slice(0, 16)}, size=${pending.size}, text.length=${human.text.length})`)
@@ -255,7 +268,7 @@ export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessio
       return
     }
 
-    const open = openRequirementsFor(ledger, windowKey)
+    const open = openPromptFactsFor(facts, windowKey)
     const stageReq = [...open].sort((a, b) => b.updatedAt - a.updatedAt)[0]
 
     if (human !== undefined) {
@@ -295,7 +308,7 @@ export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessio
     }
 
     // 里程碑超时提醒（REQ-2e9473 t09）：时间型，不依赖本回合是否有消息——每产物只提醒一次。
-    const reminder = milestoneReminderFor(ledger, windowKey, now())
+    const reminder = milestoneReminderFor(facts, windowKey, now())
     if (reminder !== undefined && !remindedAt.has(reminder.artifactKey)) {
       remindedAt.set(reminder.artifactKey, now())
       // FR-11：采集半只**登记**、不投递会话——armed+active 由组合根转 round 半 queueReminder，
@@ -332,6 +345,20 @@ export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessio
       if (deps.toolTrace !== undefined && !isIgnoredSession(windowKey, session)) {
         const data = (typeof evt.data === 'object' && evt.data !== null ? evt.data : {}) as { name?: unknown }
         recordToolTrace(deps.toolTrace, windowKey, typeof data.name === 'string' ? data.name : '?', now())
+      }
+      // FR-7 越界拦截（t6）：reqboard_* 写工具按当前阶段判定，越界即注入纠偏提示（限流一次）。
+      // 只发信号不做会话写（D-17）——注入回调由组合根放到异步边界（round 半 queueReminder）。
+      if (deps.onBoundaryViolation !== undefined && !isIgnoredSession(windowKey, session)) {
+        const data = (typeof evt.data === 'object' && evt.data !== null ? evt.data : {}) as { name?: unknown; args?: unknown }
+        const toolName = typeof data.name === 'string' ? data.name : ''
+        if (toolName.startsWith('reqboard_')) {
+          const args = (typeof data.args === 'object' && data.args !== null ? data.args : {}) as Record<string, unknown>
+          guardToolCall({
+            facts: deps.facts,
+            inject: deps.onBoundaryViolation,
+            now,
+          }, windowKey, toolName, args)
+        }
       }
       return
     }

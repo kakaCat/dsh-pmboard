@@ -1,0 +1,3809 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261001124111-5d36",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-01T04:52:00.518Z",
+  "tasks": [
+    {
+      "id": "t-e5225f",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "刷新调度器：纯逻辑 + 假计时器单测",
+      "cardDoc": "docs/requirements/REQ-261001124111-5d36/tasks/t-e5225f.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/panel-refresh.test.ts 全绿且覆盖 TC-A…TC-H：start 立即拉+周期 5000、intervalMs=0 只拉一次、在飞去重请求数不增、失败不回调 onData 且 lastError 非空、成功后 failureCount 归零、now 前进 31 秒转 stale=true、stop() 后在飞 resolve 不再触发 onData/onChange、fetchedAt 缺失时 stale=true。npx tsc --noEmit 退出码 0；npx vitest run tests/layer-boundary.test.ts 仍绿。",
+      "implementation": "新建 src/client/panel-refresh.ts，按 design/interfaces.md 落 RefreshReason / PanelFreshness / PanelRefreshOptions / PanelRefresh / createPanelRefresh。语义：start() 立即 refresh('open') 并起周期；intervalMs=0 只拉一次；在飞时 refresh() 立即返回且不发新请求；失败不调 onData、failureCount++、lastError 截断 120 字符；成功清错并更新 fetchedAt；stale = fetchedAt 缺失 || now()-fetchedAt > staleAfterMs（跃迁时 onChange）；stop() 用代际计数作废在飞响应。计时器/时钟全部可注入（默认 setInterval/clearInterval/Date.now）。零 React/DOM/服务端 import。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-7237b4",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830337519,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 560,
+              "at": 1790830337524,
+              "totals": {
+                "uncachedInputTokens": 122570,
+                "outputTokens": 98219,
+                "cacheReadTokens": 8696448,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 751,
+              "at": 1790830514416,
+              "totals": {
+                "uncachedInputTokens": 137777,
+                "outputTokens": 126487,
+                "cacheReadTokens": 15491712,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 15207,
+              "outputTokens": 28268,
+              "cacheReadTokens": 6795264,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830514404
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830320433,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830337519,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t1：刷新调度器（纯逻辑 + 假计时器单测）。按 design/interfaces.md 落 panel-refresh.ts。"
+        },
+        {
+          "status": "done",
+          "at": 1790830514404,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "t1 完成：调度器模块 + 11 例单测 + 变异自证；子卡链三张全 done。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1b8433",
+          "body": "[状态] → in_progress：开工 t1：刷新调度器（纯逻辑 + 假计时器单测）。按 design/interfaces.md 落 panel-refresh.ts。（reqboard_task_move）",
+          "createdAt": 1790830337519,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-e54cc3",
+          "body": "[状态] → done：t1 完成：调度器模块 + 11 例单测 + 变异自证；子卡链三张全 done。（reqboard_task_move）",
+          "createdAt": 1790830514404,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830320433,
+      "updatedAt": 1790830514404,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790830446330,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/panel-refresh.ts",
+          "tests/panel-refresh.test.ts"
+        ],
+        "completed": [
+          "刷新调度器模块落地：src/client/panel-refresh.ts（198 行，纯逻辑、零 React/DOM，唯一 import 是 shared 的 type）",
+          "单测 11 例覆盖设计 TC-A…TC-H（含 A′ start 幂等、G′ stop 后可重启、H′ subscribe/退订），npx vitest run tests/panel-refresh.test.ts → 11 passed",
+          "变异自证：把周期默认改成 60000ms → 4 例转红；删掉在飞响应的代际守卫 → TC-G 转红；还原后复跑 11 绿",
+          "静态纪律：无 React/document/window/fetch 命中；新文件 tsc 报错 0"
+        ]
+      },
+      "lastRun": {
+        "at": 1790830446330,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-fd98e6",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "面板新鲜度渲染：数据时间 / 失败红条 / 版本提示",
+      "cardDoc": "docs/requirements/REQ-261001124111-5d36/tasks/t-fd98e6.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-e5225f"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/panel-freshness-render.test.ts 全绿，覆盖 TC-I…TC-M：19 张卡真实 payload 渲染不含「暂无任务」且含 np-dag-canvas 与 data-fetched-at；陈旧态含 class 含 is-stale 且 data-stale=\"1\"；失败态含 role=\"alert\" 与「显示的是 … 的旧数据」；版本不等含 np-reload、相等不含；不传 freshness/buildNotice 时输出与改造前逐字节相同。npx vitest run tests/node-panel.test.ts 零改动全绿。",
+      "implementation": "改 src/client/node-panel.ts：NodePanelInput 加可选 freshness / buildNotice；renderHead 内加 <span class=\"dsh-pm-np-fresh\" data-fetched-at data-stale data-refresh-ms>（文案「数据时间 HH:MM:SS」，无数据「—」，stale 时加 is-stale）；新增 renderFreshnessBar() 渲染 dsh-pm-np-fresh-err（role=alert，「刷新失败：<原因> · 显示的是 HH:MM:SS 的旧数据」）与 dsh-pm-np-build-notice（role=status + data-action=np-reload，「插件已更新（S1 → S2），点此刷新」）。渲染顺序：head → 版本提示 → 失败红条 → 既有内容。src/client/styles/node-panel.ts 加 4 个类（复用既有变量与警示色，不新增色值）。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-13bdb7",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830516042,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 757,
+              "at": 1790830516048,
+              "totals": {
+                "uncachedInputTokens": 137991,
+                "outputTokens": 126591,
+                "cacheReadTokens": 15741824,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1129,
+              "at": 1790830764699,
+              "totals": {
+                "uncachedInputTokens": 169418,
+                "outputTokens": 162283,
+                "cacheReadTokens": 33007360,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 31427,
+              "outputTokens": 35692,
+              "cacheReadTokens": 17265536,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830764688
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830320433,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830516042,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t2：面板新鲜度渲染（数据时间 / 失败红条 / 版本提示 + 单测）。"
+        },
+        {
+          "status": "done",
+          "at": 1790830764688,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "t2 完成：面板新鲜度渲染（数据时间 / 失败红条 / 版本提示）+ 10 例单测 + 变异自证；子卡链三张全 done。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f8eb6d",
+          "body": "[状态] → in_progress：开工 t2：面板新鲜度渲染（数据时间 / 失败红条 / 版本提示 + 单测）。（reqboard_task_move）",
+          "createdAt": 1790830516042,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-5fd113",
+          "body": "[状态] → done：t2 完成：面板新鲜度渲染（数据时间 / 失败红条 / 版本提示）+ 10 例单测 + 变异自证；子卡链三张全 done。（reqboard_task_move）",
+          "createdAt": 1790830764688,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830320433,
+      "updatedAt": 1790830764688,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790830661025,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/node-panel.ts",
+          "src/client/styles/node-panel.ts",
+          "tests/panel-freshness-render.test.ts"
+        ],
+        "completed": [
+          "渲染增量落地：src/client/node-panel.ts（NodePanelInput 加 freshness/buildNotice、renderHead 加数据时间、新增 renderFreshnessBar）+ src/client/styles/node-panel.ts 4 个类",
+          "单测 10 例覆盖 TC-I…TC-M（含新增顺序断言 TC-K′），npx vitest run tests/panel-freshness-render.test.ts → 10 passed",
+          "既有面板测试零改动全绿：tests/node-panel.test.ts 28 passed；tests/dag-view.test.ts 通过",
+          "变异自证：把红条条件改回「只有一无所有才显示」→ TC-K 转红；去掉陈旧判定 → 2 例转红；还原后全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1790830661025,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-541c1e",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "组件接线：轮询兜底 + SSE 加速 + 切换清空 + 配置开关",
+      "cardDoc": "docs/requirements/REQ-261001124111-5d36/tasks/t-541c1e.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-fd98e6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx tsc --noEmit 退出码 0；pnpm build:client 成功（node scripts/verify-client-build.mjs 通过）；新增 tests/panel-refresh-wiring.test.ts 全绿：refreshMs=0 时不建立周期计时器（周期回调 0 次）、切换 reqId 后首次 onData 之前必有一次清空/加载中通知（不串档）、np-reload 委托存在且动作只有 location.reload()。",
+      "implementation": "改 src/client/conversation-progress.ts：展开时 createPanelRefresh({fetchOverview: () => fetchStageOverview(reqId), intervalMs, staleAfterMs, onData, onChange}).start()，关闭时 stop()；reqIdForStage 变化时先 setStageOverview(null)（loading）再按新 id 重开；原「按 req.updatedAt 重拉」Effect 与 SSE Effect 改为只调 refresh('event')；新增 document 级委托 data-action=\"np-reload\" → location.reload()；把 freshness/buildNotice 传给 renderNodePanel。改 src/plugin-config.ts 加 panel?: { refreshMs?: number; staleAfterMs?: number } 解析函数（默认 5000 / 30000，refreshMs=0 = 关闭轮询）。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-784aac",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830766462,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1135,
+              "at": 1790830766469,
+              "totals": {
+                "uncachedInputTokens": 169628,
+                "outputTokens": 162398,
+                "cacheReadTokens": 33317760,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1594,
+              "at": 1790831292318,
+              "totals": {
+                "uncachedInputTokens": 209170,
+                "outputTokens": 205790,
+                "cacheReadTokens": 58524416,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 39542,
+              "outputTokens": 43392,
+              "cacheReadTokens": 25206656,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790831292306
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830320433,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830766462,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t3：组件接线（轮询兜底 + SSE 加速 + 切换清空 + 配置开关）。代码已随本轮写完，进入卡内阶段推进。"
+        },
+        {
+          "status": "done",
+          "at": 1790831292306,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "t3 完成：组件接线（调度器 + 5 秒兜底轮询 + SSE 加速 + 切换清空 + 配置开关 + np-reload 委托）；复核抓到并修复尺寸门禁违规；产物完整性核对通过；子卡链四张全 done。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f3347e",
+          "body": "[状态] → in_progress：开工 t3：组件接线（轮询兜底 + SSE 加速 + 切换清空 + 配置开关）。代码已随本轮写完，进入卡内阶段推进。（reqboard_task_move）",
+          "createdAt": 1790830766462,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-bd138b",
+          "body": "[状态] → done：t3 完成：组件接线（调度器 + 5 秒兜底轮询 + SSE 加速 + 切换清空 + 配置开关 + np-reload 委托）；复核抓到并修复尺寸门禁违规；产物完整性核对通过；子卡链四张全 done。（reqboard_task_move）",
+          "createdAt": 1790831292306,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830320433,
+      "updatedAt": 1790831292306,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1790831211270,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/use-panel-refresh.ts",
+          "src/client/panel-freshness.ts",
+          "src/client/conversation-progress.ts",
+          "src/client/node-panel.ts",
+          "src/client/api.ts",
+          "src/plugin-config.ts",
+          "tests/panel-refresh-wiring.test.ts",
+          "tests/panel-freshness-render.test.ts"
+        ],
+        "completed": [
+          "组件接调度器（打开即拉 + 5 秒兜底 + SSE 加速）与切换需求先清空，落地在 src/client/use-panel-refresh.ts（140 行 hook，按尺寸门禁拆分）",
+          "conversation-progress.ts 只保留渲染与交互（450 → 369 行），新鲜度/版本提示按契约传给 renderNodePanel",
+          "src/client/api.ts 增 subscribeEvents(onBuild)；src/plugin-config.ts 增 panel 策略（refreshMs=0 = 关轮询）",
+          "复核抓到自作违规并修复：尺寸门禁 ≤400 行（node-panel.ts 442→377、conversation-progress.ts 450→369，拆出 panel-freshness.ts / use-panel-refresh.ts）",
+          "验收：接线用例 12 passed；build verify OK（bundle=330378）；尺寸门禁本次文件命中 0；改动文件类型错误 0"
+        ]
+      },
+      "lastRun": {
+        "at": 1790831211270,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-4eb5fb",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "版本戳通道：bundle 内联戳 + SSE event: build 帧",
+      "cardDoc": "docs/requirements/REQ-261001124111-5d36/tasks/t-4eb5fb.md",
+      "description": "",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "node scripts/verify-client-build.mjs 通过且 lib/client.js 内含 __DSH_PM_BUILD__；npx vitest run tests/panel-build-stamp.test.ts 全绿（相等→不提示 / 不等→提示 / 任一端缺失→不提示）；curl -N -m 3 http://127.0.0.1:19387/dashboard/api/reqboard/events 能看到 event: build 帧；curl -s .../requirements/<REQ>/stages 的键集合与改造前一致（既有 JSON 契约不变）。",
+      "implementation": "改 scripts/wrap-client.mjs：读 lib/client.cjs 算 sha256 取前 12 位，注入 window.__DSH_PM_BUILD__ = \"<stamp>\"。改 src/http/routers/stages.ts 的 handleEvents：连接建立后补一帧 event: build + data: {\"stamp\":\"…\"}（读包根 lib/client.cjs 现算同口径哈希；读不到 → 不发帧，不声称）。客户端收到 build 帧时与内联戳比对，不等 → 经 buildNotice 显示「插件已更新（S1 → S2），点此刷新」（每个连接只提示一次，不自动 reload）。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-73c6b2",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830667811,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 947,
+              "at": 1790830667817,
+              "totals": {
+                "uncachedInputTokens": 155211,
+                "outputTokens": 149921,
+                "cacheReadTokens": 23977344,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1314,
+              "at": 1790830976121,
+              "totals": {
+                "uncachedInputTokens": 190441,
+                "outputTokens": 179450,
+                "cacheReadTokens": 41978240,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 35230,
+              "outputTokens": 29529,
+              "cacheReadTokens": 18000896,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830976109
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830320433,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830667811,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t4：版本戳通道（bundle 内联戳 + SSE event: build 帧）。"
+        },
+        {
+          "status": "done",
+          "at": 1790830976109,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "t4 完成：版本戳通道（bundle 内联戳 + 宿主 SSE build 帧 + 构建期硬门禁 + 8 例单测）；dist/lib 已重建；子卡链四张全 done。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-94f3f8",
+          "body": "[状态] → in_progress：开工 t4：版本戳通道（bundle 内联戳 + SSE event: build 帧）。（reqboard_task_move）",
+          "createdAt": 1790830667811,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-c96ca5",
+          "body": "[状态] → done：t4 完成：版本戳通道（bundle 内联戳 + 宿主 SSE build 帧 + 构建期硬门禁 + 8 例单测）；dist/lib 已重建；子卡链四张全 done。（reqboard_task_move）",
+          "createdAt": 1790830976109,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830320433,
+      "updatedAt": 1790830976109,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790830918761,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/wrap-client.mjs",
+          "scripts/verify-client-build.mjs",
+          "src/http/client-build.ts",
+          "src/http/routers/stages.ts",
+          "src/http/routers/shared.ts",
+          "src/http/routes.ts",
+          "src/index.ts",
+          "src/client/api.ts",
+          "tests/panel-build-stamp.test.ts",
+          "tests/panel-build-frame.test.ts"
+        ],
+        "completed": [
+          "wrap 注入内联戳 + 宿主 client-build.ts + SSE build 帧（含 panel 策略）+ 构建期硬门禁 + 8 例单测",
+          "两端契约核对：event: build / stamp / panel 字段名逐一一致；缺失一律不声称",
+          "pnpm build 通过（dist/index.mjs 13:01:31 重建 + lib/client.js 308237 bytes，verify OK）",
+          "内联戳 == 现算戳 == a2a9d5ec0b1f（构建期门禁保证）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790830918761,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-5db5af",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "回归与端到端自检：既有断言不破 + 手工 E2E 证据",
+      "cardDoc": "docs/requirements/REQ-261001124111-5d36/tasks/t-5db5af.md",
+      "description": "",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-541c1e",
+        "t-4eb5fb"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run 全绿（含既有 node-panel / dag-view 用例零改动）；pnpm typecheck 退出码 0；上述 5 条手工步骤各有留档证据文件（缺任一条本卡不通过）；「改坏必红」抽查一次：注释掉周期轮询后 tests/panel-refresh.test.ts 必须转红。",
+      "implementation": "跑全量门禁与测试；按 design/test-cases.md 的手工验收步骤取证据：① 面板展开在拆分节点，另一窗口推进一张卡 → 面板 ≤5 秒出现新卡（不刷新页面）；② curl /stages 的 body.tasks 数量与面板显示一致；③ DevTools 断网 30 秒 → 红条 + data-stale=1，恢复 ≤10 秒消失；④ 切换需求 → 先「详情加载中…」再只显示新需求；⑤ 改一行客户端源码 → pnpm build:client → 已打开页面出现「插件已更新」。证据落 docs/requirements/REQ-261001124111-5d36/evidence/（命令 + 输出摘要 + 截图路径）。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8e13ae",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790831294944,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1600,
+              "at": 1790831294950,
+              "totals": {
+                "uncachedInputTokens": 209411,
+                "outputTokens": 206017,
+                "cacheReadTokens": 58909312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1688,
+              "at": 1790831590382,
+              "totals": {
+                "uncachedInputTokens": 220886,
+                "outputTokens": 210941,
+                "cacheReadTokens": 64058880,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 11475,
+              "outputTokens": 4924,
+              "cacheReadTokens": 5149568,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790831590369
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830320433,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790831294944,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t5：回归与端到端自检（全量回归 + 证据留档 + 改坏必红抽查）。"
+        },
+        {
+          "status": "done",
+          "at": 1790831590369,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "t5 完成：回归与端到端自检（失败零增量、41 例全绿、改坏必红、8 份证据落盘）；子卡链三张全 done。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e0a21d",
+          "body": "[状态] → in_progress：开工 t5：回归与端到端自检（全量回归 + 证据留档 + 改坏必红抽查）。（reqboard_task_move）",
+          "createdAt": 1790831294944,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-ec8b18",
+          "body": "[状态] → done：t5 完成：回归与端到端自检（失败零增量、41 例全绿、改坏必红、8 份证据落盘）；子卡链三张全 done。（reqboard_task_move）",
+          "createdAt": 1790831590369,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830320433,
+      "updatedAt": 1790831590369,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "layer": 3,
+      "lastReport": {
+        "at": 1790831525352,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261001124111-5d36/evidence/t5-test-stage.txt",
+          "docs/requirements/REQ-261001124111-5d36/evidence/t5-summary.md"
+        ],
+        "completed": [
+          "全量回归（含本次）：106 failed / 2787 passed；基线：106 failed / 2746 passed ⇒ 新增 41 例全绿、失败零增量",
+          "本次 5 个测试文件 41 passed；既有面板测试 57 passed 零改动；构建门禁 verify OK（bundle=330378）",
+          "改坏必红抽查：注释周期轮询 → 5 例转红；还原后 11 绿",
+          "证据落盘 8 份：evidence/{t3-acceptance,t5-test-stage,t5-mutation,t5-stages-count,t5-stamp,t5-summary,t5-full-vitest-with-change,t5-full-vitest-baseline}",
+          "尺寸门禁自查：本次文件命中 0（拆分出的 panel-freshness.ts / use-panel-refresh.ts 合规）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790831525352,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8396b3",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "文档同步：项目手册记录新认知",
+      "cardDoc": "docs/requirements/REQ-261001124111-5d36/tasks/t-8396b3.md",
+      "description": "",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-5db5af"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "docs/architecture/project-manual.md 含该节且结论与 design/architecture.md 的定案一致（人工核对）；该节引用的文件路径逐个 ls 存在；归档材料可直接引用本节作为 manual_updates。",
+      "implementation": "更新 docs/architecture/project-manual.md：新增/追加一节「需求面板的刷新与陈旧可见」——为什么任务级变化不能只靠 req.updatedAt、为什么 SSE 只能是加速通道、陈旧为什么必须可见（含本次事故的定案证据口径）；在需求目录内补结论/复盘指针，供归档材料 manual_updates 引用。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-274912",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790831593149,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1694,
+              "at": 1790831593155,
+              "totals": {
+                "uncachedInputTokens": 221031,
+                "outputTokens": 211305,
+                "cacheReadTokens": 64459264,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1763,
+              "at": 1790831872126,
+              "totals": {
+                "uncachedInputTokens": 228384,
+                "outputTokens": 213570,
+                "cacheReadTokens": 68522496,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 7353,
+              "outputTokens": 2265,
+              "cacheReadTokens": 4063232,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790831872116
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830320433,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790831593149,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t6：文档同步（项目手册记录「需求面板的刷新与陈旧可见」新认知）。"
+        },
+        {
+          "status": "done",
+          "at": 1790831872116,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "t6 完成：项目手册记入「需求面板的刷新与陈旧可见」机制备忘（5 条问答 + 可跑判据 + 变更记录行），可直接支撑归档 manual_updates；子卡链两张全 done。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-32fab3",
+          "body": "[状态] → in_progress：开工 t6：文档同步（项目手册记录「需求面板的刷新与陈旧可见」新认知）。（reqboard_task_move）",
+          "createdAt": 1790831593149,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-f7bf3c",
+          "body": "[状态] → done：t6 完成：项目手册记入「需求面板的刷新与陈旧可见」机制备忘（5 条问答 + 可跑判据 + 变更记录行），可直接支撑归档 manual_updates；子卡链两张全 done。（reqboard_task_move）",
+          "createdAt": 1790831872116,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830320433,
+      "updatedAt": 1790831872116,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "layer": 4,
+      "lastReport": {
+        "at": 1790831807931,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/architecture/project-manual.md"
+        ],
+        "completed": [
+          "docs/architecture/project-manual.md：新增「机制备忘：需求面板的刷新与陈旧可见」一节（5 条问答，每条挂可跑判据）+ 变更记录行",
+          "该节可直接作为归档材料 manual_updates 的申报值（路径 docs/architecture/project-manual.md / 章节「机制备忘：需求面板的刷新与陈旧可见」/ 一句话认知）",
+          "引用路径 9/9 存在性核对通过；结论与 design/architecture.md 定案（B 主因 + A 放大器 + C 遮羞布）一致"
+        ]
+      },
+      "lastRun": {
+        "at": 1790831807931,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1a818b",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "刷新调度器：纯逻辑 + 假计时器单测·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx vitest run tests/panel-refresh.test.ts` → 输出 `Tests  11 passed`（含 TC-A…TC-H）；再跑 `npx tsc --noEmit -p tsconfig.json 2>&1 | grep -c \"panel-refresh\"` → 输出 `0`（本次新文件零类型错误）。",
+      "implementation": "新建 src/client/panel-refresh.ts，按 design/interfaces.md 落 RefreshReason / PanelFreshness / PanelRefreshOptions / PanelRefresh / createPanelRefresh。语义：start() 立即 refresh('open') 并起周期；intervalMs=0 只拉一次；在飞时 refresh() 立即返回且不发新请求；失败不调 onData、failureCount++、lastError 截断 120 字符；成功清错并更新 fetchedAt；stale = fetchedAt 缺失 || now()-fetchedAt > staleAfterMs（跃迁时 onChange）；stop() 用代际计数作废在飞响应。计时器/时钟全部可注入（默认 setInterval/clearInterval/Date.now）。零 React/DOM/服务端 import。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-e5225f",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-cf5642",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830356522,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 573,
+              "at": 1790830356527,
+              "totals": {
+                "uncachedInputTokens": 127423,
+                "outputTokens": 102866,
+                "cacheReadTokens": 9115520,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 621,
+              "at": 1790830419764,
+              "totals": {
+                "uncachedInputTokens": 130338,
+                "outputTokens": 111313,
+                "cacheReadTokens": 10689024,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 2915,
+              "outputTokens": 8447,
+              "cacheReadTokens": 1573504,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830419751
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-671de2",
+          "body": "[状态] → in_progress：开工：写 src/client/panel-refresh.ts 与 tests/panel-refresh.test.ts（reqboard_task_move）",
+          "createdAt": 1790830356522,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-9c1cb1",
+          "body": "[状态] → done：研发完成：新增 panel-refresh.ts + 11 例单测全绿（既存基线偏差已记入汇报）。（reqboard_task_move）",
+          "createdAt": 1790830419751,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830337519,
+      "updatedAt": 1790831933999,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830337519,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830356522,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工：写 src/client/panel-refresh.ts 与 tests/panel-refresh.test.ts"
+        },
+        {
+          "status": "done",
+          "at": 1790830419751,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "研发完成：新增 panel-refresh.ts + 11 例单测全绿（既存基线偏差已记入汇报）。"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790830416986,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/panel-refresh.ts",
+          "tests/panel-refresh.test.ts"
+        ],
+        "completed": [
+          "新增 src/client/panel-refresh.ts（约 200 行）：createPanelRefresh 调度器——start 立即拉+周期、intervalMs=0 只拉一次、在飞去重、失败不回调 onData 且 failureCount/lastError 记账、成功清错、stale 派生（无数据即陈旧）、stop 代际作废在飞响应",
+          "新增 tests/panel-refresh.test.ts：11 个用例覆盖设计 TC-A…TC-H（附 A′/G′/H′ 三个边界），用手工假时钟逐毫秒断言",
+          "npx vitest run tests/panel-refresh.test.ts → 11 passed (11)，4ms",
+          "npx tsc --noEmit：我的两个文件零报错（全仓 212 条既有报错与本次改动无关，见 next_step 的基线证据）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790830416986,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-de821b",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "刷新调度器：纯逻辑 + 假计时器单测·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-1a818b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新建 src/client/panel-refresh.ts，按 design/interfaces.md 落 RefreshReason / PanelFreshness / PanelRefreshOptions / PanelRefresh / createPanelRefresh。语义：start() 立即 refresh('open') 并起周期；intervalMs=0 只拉一次；在飞时 refresh() 立即返回且不发新请求；失败不调 onData、failureCount++、lastError 截断 120 字符；成功清错并更新 fetchedAt；stale = fetchedAt 缺失 || now()-fetchedAt > staleAfterMs（跃迁时 onChange）；stop() 用代际计数作废在飞响应。计时器/时钟全部可注入（默认 setInterval/clearInterval/Date.now）。零 React/DOM/服务端 import。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-e5225f",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ebeea5",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830424699,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 629,
+              "at": 1790830424706,
+              "totals": {
+                "uncachedInputTokens": 130591,
+                "outputTokens": 112279,
+                "cacheReadTokens": 10918656,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 637,
+              "at": 1790830430572,
+              "totals": {
+                "uncachedInputTokens": 131255,
+                "outputTokens": 112625,
+                "cacheReadTokens": 11149440,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 664,
+              "outputTokens": 346,
+              "cacheReadTokens": 230784,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830430561
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-dddf18",
+          "body": "[状态] → in_progress：复核开始：静态纪律 + 「改坏必红」自证。（reqboard_task_move）",
+          "createdAt": 1790830424699,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-9db136",
+          "body": "[状态] → done：复核结论：与 design/interfaces.md 无偏离；静态纪律 OK（198 行、仅 1 个 type-only import、无 React/DOM/window/fetch）；变异自证两次均按预期转红并已还原。（reqboard_task_move）",
+          "createdAt": 1790830430561,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830337519,
+      "updatedAt": 1790831903232,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830337519,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830424699,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "复核开始：静态纪律 + 「改坏必红」自证。"
+        },
+        {
+          "status": "done",
+          "at": 1790830430561,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "复核结论：与 design/interfaces.md 无偏离；静态纪律 OK（198 行、仅 1 个 type-only import、无 React/DOM/window/fetch）；变异自证两次均按预期转红并已还原。"
+        }
+      ],
+      "layer": 1,
+      "lastRun": {
+        "at": 1790830430561,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831903232,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "语义逐条对照：start 立即拉+周期、intervalMs=0 只拉一次、在飞去重、失败不回调 onData、成功清错、stale 派生（无数据即陈旧）、stop 代际作废",
+          "静态纪律：198 行、唯一 import 是 shared 的 type、无 React/document/window/fetch 命中",
+          "变异自证：周期默认改 60000 → 4 例转红；删在飞响应代际守卫 → TC-G 转红；还原后 11 绿"
+        ]
+      }
+    },
+    {
+      "id": "t-2fe9ce",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "刷新调度器：纯逻辑 + 假计时器单测·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-de821b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx vitest run tests/panel-refresh.test.ts` → `Tests  11 passed`；再跑 `grep -c \"it('TC-\" tests/panel-refresh.test.ts` → ≥ 8（TC-A…TC-H 编号齐全）。",
+      "implementation": "新建 src/client/panel-refresh.ts，按 design/interfaces.md 落 RefreshReason / PanelFreshness / PanelRefreshOptions / PanelRefresh / createPanelRefresh。语义：start() 立即 refresh('open') 并起周期；intervalMs=0 只拉一次；在飞时 refresh() 立即返回且不发新请求；失败不调 onData、failureCount++、lastError 截断 120 字符；成功清错并更新 fetchedAt；stale = fetchedAt 缺失 || now()-fetchedAt > staleAfterMs（跃迁时 onChange）；stop() 用代际计数作废在飞响应。计时器/时钟全部可注入（默认 setInterval/clearInterval/Date.now）。零 React/DOM/服务端 import。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-e5225f",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-71f3d4",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830433135,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 643,
+              "at": 1790830433141,
+              "totals": {
+                "uncachedInputTokens": 131442,
+                "outputTokens": 112998,
+                "cacheReadTokens": 11381120,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 651,
+              "at": 1790830440711,
+              "totals": {
+                "uncachedInputTokens": 131962,
+                "outputTokens": 113168,
+                "cacheReadTokens": 11613312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 520,
+              "outputTokens": 170,
+              "cacheReadTokens": 232192,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830440700
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-94b731",
+          "body": "[状态] → in_progress：进入测试阶段：跑卡片验收命令并留证。（reqboard_task_move）",
+          "createdAt": 1790830433135,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-843615",
+          "body": "[状态] → done：测试阶段通过：npx vitest run tests/panel-refresh.test.ts → 11 passed；TC-A…TC-H 编号齐全；新文件类型报错 0。（reqboard_task_move）",
+          "createdAt": 1790830440700,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830337519,
+      "updatedAt": 1790831934059,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830337519,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830433135,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "进入测试阶段：跑卡片验收命令并留证。"
+        },
+        {
+          "status": "done",
+          "at": 1790830440700,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "测试阶段通过：npx vitest run tests/panel-refresh.test.ts → 11 passed；TC-A…TC-H 编号齐全；新文件类型报错 0。"
+        }
+      ],
+      "layer": 2,
+      "lastRun": {
+        "at": 1790830440700,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831903308,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "npx vitest run tests/panel-refresh.test.ts → 11 passed",
+          "TC-A…TC-H 编号齐全（含 A′/G′/H′ 三个边界）",
+          "新文件 tsc 报错 0"
+        ]
+      }
+    },
+    {
+      "id": "t-5e5f4d",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "面板新鲜度渲染：数据时间 / 失败红条 / 版本提示·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-e5225f"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx vitest run tests/panel-freshness-render.test.ts` → `Tests  10 passed`；再跑 `pnpm build:client 2>&1 | tail -1` → 输出含 `[verify-client] OK` 且列出 `dsh-pm-np-fresh` 等关键符号齐全。",
+      "implementation": "改 src/client/node-panel.ts：NodePanelInput 加可选 freshness / buildNotice；renderHead 内加 <span class=\"dsh-pm-np-fresh\" data-fetched-at data-stale data-refresh-ms>（文案「数据时间 HH:MM:SS」，无数据「—」，stale 时加 is-stale）；新增 renderFreshnessBar() 渲染 dsh-pm-np-fresh-err（role=alert，「刷新失败：<原因> · 显示的是 HH:MM:SS 的旧数据」）与 dsh-pm-np-build-notice（role=status + data-action=np-reload，「插件已更新（S1 → S2），点此刷新」）。渲染顺序：head → 版本提示 → 失败红条 → 既有内容。src/client/styles/node-panel.ts 加 4 个类（复用既有变量与警示色，不新增色值）。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-fd98e6",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e5f1de",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830521786,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 764,
+              "at": 1790830521792,
+              "totals": {
+                "uncachedInputTokens": 142035,
+                "outputTokens": 127741,
+                "cacheReadTokens": 15992192,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 779,
+              "at": 1790830532354,
+              "totals": {
+                "uncachedInputTokens": 146857,
+                "outputTokens": 128686,
+                "cacheReadTokens": 16508416,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 4822,
+              "outputTokens": 945,
+              "cacheReadTokens": 516224,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830532343
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a73ebd",
+          "body": "[状态] → in_progress：开工 t2 研发：node-panel 新鲜度渲染 + 样式 + 单测。（reqboard_task_move）",
+          "createdAt": 1790830521786,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-ebcb1c",
+          "body": "[状态] → done：研发完成：node-panel 新鲜度渲染 + 4 个样式类 + 9 例单测（TC-I…TC-M）+ 变异自证。（reqboard_task_move）",
+          "createdAt": 1790830532343,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830516042,
+      "updatedAt": 1790831934110,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830516042,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830521786,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t2 研发：node-panel 新鲜度渲染 + 样式 + 单测。"
+        },
+        {
+          "status": "done",
+          "at": 1790830532343,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "研发完成：node-panel 新鲜度渲染 + 4 个样式类 + 9 例单测（TC-I…TC-M）+ 变异自证。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790830530064,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/node-panel.ts",
+          "src/client/styles/node-panel.ts",
+          "tests/panel-freshness-render.test.ts"
+        ],
+        "completed": [
+          "src/client/node-panel.ts：NodePanelInput 加可选 freshness / buildNotice；renderHead 增「数据时间 HH:MM:SS」；新增 renderFreshnessBar() 渲染失败红条（role=alert）与版本提示（role=status + data-action=np-reload）",
+          "src/client/styles/node-panel.ts：新增 4 个类（.dsh-pm-np-fresh / .is-stale / -fresh-err / -build-notice），色值全部取自本文件既有 token，不新增色值",
+          "tests/panel-freshness-render.test.ts：9 例覆盖 TC-I…TC-M，npx vitest run tests/panel-freshness-render.test.ts → 9 passed",
+          "既有面板测试零改动通过：tests/node-panel.test.ts + tests/dag-view.test.ts → 71 passed（另一个 tests/node-panel-styles.test.ts 有 1 例失败，是别的窗口在途改了 width 规则导致，与本次改动无关，见 next_step）",
+          "变异自证两次：把红条改回「只有一无所有时才显示」→ TC-K 转红；去掉陈旧判定 → 2 例转红；还原后 9 绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1790830530064,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-93d485",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "面板新鲜度渲染：数据时间 / 失败红条 / 版本提示·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-5e5f4d"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/client/node-panel.ts：NodePanelInput 加可选 freshness / buildNotice；renderHead 内加 <span class=\"dsh-pm-np-fresh\" data-fetched-at data-stale data-refresh-ms>（文案「数据时间 HH:MM:SS」，无数据「—」，stale 时加 is-stale）；新增 renderFreshnessBar() 渲染 dsh-pm-np-fresh-err（role=alert，「刷新失败：<原因> · 显示的是 HH:MM:SS 的旧数据」）与 dsh-pm-np-build-notice（role=status + data-action=np-reload，「插件已更新（S1 → S2），点此刷新」）。渲染顺序：head → 版本提示 → 失败红条 → 既有内容。src/client/styles/node-panel.ts 加 4 个类（复用既有变量与警示色，不新增色值）。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-fd98e6",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-57366d",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830538841,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 785,
+              "at": 1790830538847,
+              "totals": {
+                "uncachedInputTokens": 147083,
+                "outputTokens": 129886,
+                "cacheReadTokens": 16769408,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 805,
+              "at": 1790830549825,
+              "totals": {
+                "uncachedInputTokens": 148522,
+                "outputTokens": 131241,
+                "cacheReadTokens": 17558272,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1439,
+              "outputTokens": 1355,
+              "cacheReadTokens": 788864,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830549814
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-3dfec9",
+          "body": "[状态] → in_progress：复核开始 t2：逐条核对 design/interfaces.md 的 DOM 契约与渲染顺序。（reqboard_task_move）",
+          "createdAt": 1790830538841,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-2ce5b7",
+          "body": "[状态] → done：复核结论：无偏离。依据：① DOM 契约逐项对上 design/interfaces.md（class/data-* 属性、role=alert/status、文案）；② 新增顺序断言 TC-K′（头 → 版本提示 → 失败红条 → 既有折叠块）10 例全绿；③ 样式只用既有 token（--dsh-pm-np-{text3,amber,red,blue}），两处 rgba 底色与本文件既有 .dsh-pm-np-archive-badge/.dsh-pm-np-chain-missing 同款写法，未引入新色值；④ 缺省入参零新增元素（TC-M）。（reqboard_task_move）",
+          "createdAt": 1790830549814,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830516042,
+      "updatedAt": 1790831903382,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830516042,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830538841,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "复核开始 t2：逐条核对 design/interfaces.md 的 DOM 契约与渲染顺序。"
+        },
+        {
+          "status": "done",
+          "at": 1790830549814,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "复核结论：无偏离。依据：① DOM 契约逐项对上 design/interfaces.md（class/data-* 属性、role=alert/status、文案）；② 新增顺序断言 TC-K′（头 → 版本提示 → 失败红条 → 既有折叠块）10 例全绿；③ 样式只用既有 token（--dsh-pm-np-{text3,amber,red,blue}），两处 rgba 底色与本文件既有 .dsh-pm-np-archive-badge/.dsh-pm-np-chain-missing 同款写法，未引入新色值；④ 缺省入参零新增元素（TC-M）。"
+        }
+      ],
+      "layer": 2,
+      "lastRun": {
+        "at": 1790830549814,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831903382,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/panel-freshness-render.test.ts"
+        ],
+        "completed": [
+          "DOM 契约对照：class/data-* 属性、role=alert/status、文案逐字一致",
+          "补 TC-K′ 顺序断言（头 → 版本提示 → 失败红条 → 既有折叠块）",
+          "样式只用既有 token；两处 rgba 底色与既有 .dsh-pm-np-archive-badge 同款；缺省入参零新增元素（TC-M）"
+        ]
+      }
+    },
+    {
+      "id": "t-04a842",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "面板新鲜度渲染：数据时间 / 失败红条 / 版本提示·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-93d485"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx vitest run tests/panel-freshness-render.test.ts tests/node-panel.test.ts` → `Tests  38 passed`（10 新例 + 28 既有零改动）。",
+      "implementation": "改 src/client/node-panel.ts：NodePanelInput 加可选 freshness / buildNotice；renderHead 内加 <span class=\"dsh-pm-np-fresh\" data-fetched-at data-stale data-refresh-ms>（文案「数据时间 HH:MM:SS」，无数据「—」，stale 时加 is-stale）；新增 renderFreshnessBar() 渲染 dsh-pm-np-fresh-err（role=alert，「刷新失败：<原因> · 显示的是 HH:MM:SS 的旧数据」）与 dsh-pm-np-build-notice（role=status + data-action=np-reload，「插件已更新（S1 → S2），点此刷新」）。渲染顺序：head → 版本提示 → 失败红条 → 既有内容。src/client/styles/node-panel.ts 加 4 个类（复用既有变量与警示色，不新增色值）。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-fd98e6",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-043861",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830651108,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 917,
+              "at": 1790830651114,
+              "totals": {
+                "uncachedInputTokens": 154000,
+                "outputTokens": 148236,
+                "cacheReadTokens": 22548736,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 929,
+              "at": 1790830657255,
+              "totals": {
+                "uncachedInputTokens": 154624,
+                "outputTokens": 148521,
+                "cacheReadTokens": 23118976,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 624,
+              "outputTokens": 285,
+              "cacheReadTokens": 570240,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830657245
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f69333",
+          "body": "[状态] → in_progress：进入测试阶段：跑卡片验收命令并留证。（reqboard_task_move）",
+          "createdAt": 1790830651108,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-4594c8",
+          "body": "[状态] → done：测试阶段通过：npx vitest run tests/panel-freshness-render.test.ts tests/node-panel.test.ts → 38 passed（10 新例 + 28 既有零改动）；TC-I…TC-M 编号齐全；改动文件类型报错 0。（reqboard_task_move）",
+          "createdAt": 1790830657245,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830516042,
+      "updatedAt": 1790831934153,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830516042,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830651108,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "进入测试阶段：跑卡片验收命令并留证。"
+        },
+        {
+          "status": "done",
+          "at": 1790830657245,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "测试阶段通过：npx vitest run tests/panel-freshness-render.test.ts tests/node-panel.test.ts → 38 passed（10 新例 + 28 既有零改动）；TC-I…TC-M 编号齐全；改动文件类型报错 0。"
+        }
+      ],
+      "layer": 3,
+      "lastRun": {
+        "at": 1790830657245,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831903459,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "npx vitest run tests/panel-freshness-render.test.ts → 10 passed",
+          "npx vitest run tests/node-panel.test.ts → 28 passed（零改动）",
+          "TC-I…TC-M 编号齐全"
+        ]
+      }
+    },
+    {
+      "id": "t-854cb5",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "版本戳通道：bundle 内联戳 + SSE event: build 帧·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `pnpm build:client` → 末行 `[verify-client] OK`；再跑 `grep -c \"__DSH_PM_BUILD__\" lib/client.js` → ≥1；再跑 `npx vitest run tests/panel-build-stamp.test.ts` → `Tests  5 passed`。",
+      "implementation": "改 scripts/wrap-client.mjs：读 lib/client.cjs 算 sha256 取前 12 位，注入 window.__DSH_PM_BUILD__ = \"<stamp>\"。改 src/http/routers/stages.ts 的 handleEvents：连接建立后补一帧 event: build + data: {\"stamp\":\"…\"}（读包根 lib/client.cjs 现算同口径哈希；读不到 → 不发帧，不声称）。客户端收到 build 帧时与内联戳比对，不等 → 经 buildNotice 显示「插件已更新（S1 → S2），点此刷新」（每个连接只提示一次，不自动 reload）。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-4eb5fb",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-08e617",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830775595,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1149,
+              "at": 1790830775601,
+              "totals": {
+                "uncachedInputTokens": 180691,
+                "outputTokens": 163999,
+                "cacheReadTokens": 33943552,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1163,
+              "at": 1790830782385,
+              "totals": {
+                "uncachedInputTokens": 181462,
+                "outputTokens": 164550,
+                "cacheReadTokens": 34590592,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 771,
+              "outputTokens": 551,
+              "cacheReadTokens": 647040,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830782373
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-78b39a",
+          "body": "[状态] → in_progress：开工 t4 研发：构建戳注入 + SSE build 帧。（reqboard_task_move）",
+          "createdAt": 1790830775595,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-050173",
+          "body": "[状态] → done：t4 研发完成：构建戳注入 + 宿主 build 帧 + 构建期硬门禁 + 8 例单测（stamp 5 + frame 3）全绿；pnpm build:client 通过且内联戳与现算戳一致。（reqboard_task_move）",
+          "createdAt": 1790830782373,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830667811,
+      "updatedAt": 1790831934207,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830667811,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830775595,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t4 研发：构建戳注入 + SSE build 帧。"
+        },
+        {
+          "status": "done",
+          "at": 1790830782373,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "t4 研发完成：构建戳注入 + 宿主 build 帧 + 构建期硬门禁 + 8 例单测（stamp 5 + frame 3）全绿；pnpm build:client 通过且内联戳与现算戳一致。"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790830775655,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/wrap-client.mjs",
+          "scripts/verify-client-build.mjs",
+          "src/http/client-build.ts",
+          "src/http/routers/stages.ts",
+          "src/http/routers/shared.ts",
+          "src/http/routes.ts",
+          "src/index.ts",
+          "tests/panel-build-stamp.test.ts",
+          "tests/panel-build-frame.test.ts"
+        ],
+        "completed": [
+          "scripts/wrap-client.mjs：构建时注入 window.__DSH_PM_BUILD__ = sha256(lib/client.cjs 原始字节) 前 12 位",
+          "src/http/client-build.ts（新增）：clientCjsPath() 逐级向上定位（兼容 src/http/ 与 dist/ 两种形态）+ clientBuildStamp()，读不到即 undefined（不声称）",
+          "src/http/routers/stages.ts handleEvents：连接后补命名帧 event: build（带 stamp + 面板策略；读不到 client.cjs 就不发）",
+          "src/http/routers/shared.ts + routes.ts + index.ts：panelPolicy 依赖贯通（index 用 panelSettings(config)，refreshMs=0 = 关轮询）",
+          "scripts/verify-client-build.mjs：构建期硬门禁——产物必须含内联戳且与 client.cjs 现算值一致；并新增 3 个关键 class 锚点",
+          "tests/panel-build-stamp.test.ts（5 例）+ tests/panel-build-frame.test.ts（3 例，假 ServerResponse 直测 handleEvents）：全部通过",
+          "实测：pnpm build:client 通过（verify OK，关键符号齐全）；内联戳 a2a9d5ec0b1f == 现算戳 a2a9d5ec0b1f"
+        ]
+      },
+      "lastRun": {
+        "at": 1790830775655,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8e8682",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "版本戳通道：bundle 内联戳 + SSE event: build 帧·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-854cb5"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx vitest run tests/panel-build-frame.test.ts` → `Tests  3 passed`；再跑 `grep -n \"addEventListener('build'\" src/client/api.ts` → 有命中（命名帧进监听）。",
+      "implementation": "改 scripts/wrap-client.mjs：读 lib/client.cjs 算 sha256 取前 12 位，注入 window.__DSH_PM_BUILD__ = \"<stamp>\"。改 src/http/routers/stages.ts 的 handleEvents：连接建立后补一帧 event: build + data: {\"stamp\":\"…\"}（读包根 lib/client.cjs 现算同口径哈希；读不到 → 不发帧，不声称）。客户端收到 build 帧时与内联戳比对，不等 → 经 buildNotice 显示「插件已更新（S1 → S2），点此刷新」（每个连接只提示一次，不自动 reload）。\n\n[子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致",
+      "context": "",
+      "parentId": "t-4eb5fb",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ed98cf",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830785376,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1169,
+              "at": 1790830785381,
+              "totals": {
+                "uncachedInputTokens": 181722,
+                "outputTokens": 164908,
+                "cacheReadTokens": 34914816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1197,
+              "at": 1790830889847,
+              "totals": {
+                "uncachedInputTokens": 183650,
+                "outputTokens": 169067,
+                "cacheReadTokens": 36222720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1928,
+              "outputTokens": 4159,
+              "cacheReadTokens": 1307904,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830889836
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-4b0062",
+          "body": "[状态] → in_progress：开工 t4 联调：客户端消费 build 帧（api.addEvent→policy/buildNotice）× 宿主发帧。（reqboard_task_move）",
+          "createdAt": 1790830785376,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-09caa2",
+          "body": "[状态] → done：联调通过：宿主写帧（`event: build` + `{stamp, panel}`）↔ 客户端收帧（api.ts addEventListener('build') → conversation-progress 读 frame.stamp/frame.panel）两端字段名逐一核对一致；tests/panel-build-frame.test.ts 3 例实测宿主真写出该帧；构建期门禁核对内联戳==现算戳（a2a9d5ec0b1f）。注：真机 curl /events 需重启宿主，重启会打断用户会话，未执行（已在汇报中响亮报出）。（reqboard_task_move）",
+          "createdAt": 1790830889836,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830667811,
+      "updatedAt": 1790831938591,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830667811,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830785376,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t4 联调：客户端消费 build 帧（api.addEvent→policy/buildNotice）× 宿主发帧。"
+        },
+        {
+          "status": "done",
+          "at": 1790830889836,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "联调通过：宿主写帧（`event: build` + `{stamp, panel}`）↔ 客户端收帧（api.ts addEventListener('build') → conversation-progress 读 frame.stamp/frame.panel）两端字段名逐一核对一致；tests/panel-build-frame.test.ts 3 例实测宿主真写出该帧；构建期门禁核对内联戳==现算戳（a2a9d5ec0b1f）。注：真机 curl /events 需重启宿主，重启会打断用户会话，未执行（已在汇报中响亮报出）。"
+        }
+      ],
+      "layer": 1,
+      "lastRun": {
+        "at": 1790830889836,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831903545,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/panel-build-frame.test.ts"
+        ],
+        "completed": [
+          "两端契约核对：event: build / stamp / panel 字段名一致（宿主 stages.ts ↔ 客户端 api.ts + use-panel-refresh.ts）",
+          "tests/panel-build-frame.test.ts 3 passed：假 ServerResponse 直测 handleEvents 真写出该帧",
+          "真机 curl /events 需重启宿主（会打断用户会话，未执行）——已在汇报中响亮报出"
+        ]
+      }
+    },
+    {
+      "id": "t-d75737",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "版本戳通道：bundle 内联戳 + SSE event: build 帧·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-8e8682"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 scripts/wrap-client.mjs：读 lib/client.cjs 算 sha256 取前 12 位，注入 window.__DSH_PM_BUILD__ = \"<stamp>\"。改 src/http/routers/stages.ts 的 handleEvents：连接建立后补一帧 event: build + data: {\"stamp\":\"…\"}（读包根 lib/client.cjs 现算同口径哈希；读不到 → 不发帧，不声称）。客户端收到 build 帧时与内联戳比对，不等 → 经 buildNotice 显示「插件已更新（S1 → S2），点此刷新」（每个连接只提示一次，不自动 reload）。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-4eb5fb",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2a8f16",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830893859,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1204,
+              "at": 1790830893865,
+              "totals": {
+                "uncachedInputTokens": 183800,
+                "outputTokens": 169623,
+                "cacheReadTokens": 36553344,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1216,
+              "at": 1790830897922,
+              "totals": {
+                "uncachedInputTokens": 184622,
+                "outputTokens": 170031,
+                "cacheReadTokens": 36884608,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 822,
+              "outputTokens": 408,
+              "cacheReadTokens": 331264,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830897911
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d3b149",
+          "body": "[状态] → in_progress：开工 t4 复核：核对「只增不改」——既有 JSON 端点零改动、帧的缺失语义、戳口径一致性。（reqboard_task_move）",
+          "createdAt": 1790830893859,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-8915f8",
+          "body": "[状态] → done：复核结论：无偏离。依据：① stages.ts 改动仅 +19/-0 行且只落在 import 与 handleEvents（git diff 的 @@ 只有这两处）⇒ 既有 JSON 端点（handleState/handleStageDetail/…）逐字未动；② 缺失语义正确：读不到 lib/client.cjs 时不发帧、不声称（`if (stamp !== undefined)` 守卫），策略未装配时帧里不带 panel 键；③ 戳口径两端一致：wrap 与宿主都哈希 client.cjs 的**原始字节**（cjsBuf / readFileSync(file)），长度同为 12；④ 构建期已把它钉成硬门禁，不一致即构建失败。（reqboard_task_move）",
+          "createdAt": 1790830897911,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830667811,
+      "updatedAt": 1790831909661,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830667811,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830893859,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t4 复核：核对「只增不改」——既有 JSON 端点零改动、帧的缺失语义、戳口径一致性。"
+        },
+        {
+          "status": "done",
+          "at": 1790830897911,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "复核结论：无偏离。依据：① stages.ts 改动仅 +19/-0 行且只落在 import 与 handleEvents（git diff 的 @@ 只有这两处）⇒ 既有 JSON 端点（handleState/handleStageDetail/…）逐字未动；② 缺失语义正确：读不到 lib/client.cjs 时不发帧、不声称（`if (stamp !== undefined)` 守卫），策略未装配时帧里不带 panel 键；③ 戳口径两端一致：wrap 与宿主都哈希 client.cjs 的**原始字节**（cjsBuf / readFileSync(file)），长度同为 12；④ 构建期已把它钉成硬门禁，不一致即构建失败。"
+        }
+      ],
+      "layer": 2,
+      "lastRun": {
+        "at": 1790830897911,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831909661,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "改动范围核对：src/http/routers/stages.ts 仅 +19/-0，git diff 的 @@ 只有 import 与 handleEvents ⇒ 既有 JSON 端点逐字未动",
+          "缺失语义：读不到 lib/client.cjs 不发帧、不声称；策略未装配时帧内不带 panel 键",
+          "戳口径两端一致：都哈希 client.cjs 原始字节、长度 12；构建期门禁（verify-client-build）把它钉成硬失败"
+        ]
+      }
+    },
+    {
+      "id": "t-e34adb",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "版本戳通道：bundle 内联戳 + SSE event: build 帧·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-d75737"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `node scripts/verify-client-build.mjs; echo exit=$?` → `exit=0`；再跑 `npx vitest run tests/panel-build-stamp.test.ts tests/panel-build-frame.test.ts` → `Tests  8 passed`。",
+      "implementation": "改 scripts/wrap-client.mjs：读 lib/client.cjs 算 sha256 取前 12 位，注入 window.__DSH_PM_BUILD__ = \"<stamp>\"。改 src/http/routers/stages.ts 的 handleEvents：连接建立后补一帧 event: build + data: {\"stamp\":\"…\"}（读包根 lib/client.cjs 现算同口径哈希；读不到 → 不发帧，不声称）。客户端收到 build 帧时与内联戳比对，不等 → 经 buildNotice 显示「插件已更新（S1 → S2），点此刷新」（每个连接只提示一次，不自动 reload）。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-4eb5fb",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-47c28b",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830901156,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1222,
+              "at": 1790830901163,
+              "totals": {
+                "uncachedInputTokens": 184921,
+                "outputTokens": 170553,
+                "cacheReadTokens": 37217024,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1230,
+              "at": 1790830907473,
+              "totals": {
+                "uncachedInputTokens": 185461,
+                "outputTokens": 170865,
+                "cacheReadTokens": 37550208,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 540,
+              "outputTokens": 312,
+              "cacheReadTokens": 333184,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790830907459
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-57e7b8",
+          "body": "[状态] → in_progress：开工 t4 测试：跑卡片验收命令并留证。（reqboard_task_move）",
+          "createdAt": 1790830901156,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-bef84a",
+          "body": "[状态] → done：测试阶段通过：pnpm build:client 门禁 OK（bundle=330206，关键符号齐全，含 3 个新 class 锚点）；lib/client.js 含内联戳 a2a9d5ec0b1f == sha256(client.cjs)[0:12]；tests/panel-build-stamp.test.ts + panel-build-frame.test.ts → 8 passed；宿主 dist/index.mjs 已随 pnpm build 重建（13:01:31，供下次重启生效——真机 curl /events 需重启宿主，未执行）。（reqboard_task_move）",
+          "createdAt": 1790830907459,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830667811,
+      "updatedAt": 1790831938634,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830667811,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830901156,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t4 测试：跑卡片验收命令并留证。"
+        },
+        {
+          "status": "done",
+          "at": 1790830907459,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "测试阶段通过：pnpm build:client 门禁 OK（bundle=330206，关键符号齐全，含 3 个新 class 锚点）；lib/client.js 含内联戳 a2a9d5ec0b1f == sha256(client.cjs)[0:12]；tests/panel-build-stamp.test.ts + panel-build-frame.test.ts → 8 passed；宿主 dist/index.mjs 已随 pnpm build 重建（13:01:31，供下次重启生效——真机 curl /events 需重启宿主，未执行）。"
+        }
+      ],
+      "layer": 3,
+      "lastRun": {
+        "at": 1790830907459,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831909749,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "pnpm build:client 门禁 OK（bundle=330206，关键符号齐全，含 3 个新 class 锚点）",
+          "lib/client.js 内联戳 == sha256(client.cjs)[0:12]（a2a9d5ec0b1f，拆分前那次构建）",
+          "tests/panel-build-stamp.test.ts + panel-build-frame.test.ts → 8 passed",
+          "pnpm build 重建 dist/index.mjs（13:01:31），供下次重启生效"
+        ]
+      }
+    },
+    {
+      "id": "t-d3e72c",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "组件接线：轮询兜底 + SSE 加速 + 切换清空 + 配置开关·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-fd98e6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx vitest run tests/panel-refresh-wiring.test.ts` → `Tests  12 passed`；再跑 `grep -n \"usePanelRefresh\" src/client/conversation-progress.ts` → 有命中（组件确实接了数据通道）。",
+      "implementation": "改 src/client/conversation-progress.ts：展开时 createPanelRefresh({fetchOverview: () => fetchStageOverview(reqId), intervalMs, staleAfterMs, onData, onChange}).start()，关闭时 stop()；reqIdForStage 变化时先 setStageOverview(null)（loading）再按新 id 重开；原「按 req.updatedAt 重拉」Effect 与 SSE Effect 改为只调 refresh('event')；新增 document 级委托 data-action=\"np-reload\" → location.reload()；把 freshness/buildNotice 传给 renderNodePanel。改 src/plugin-config.ts 加 panel?: { refreshMs?: number; staleAfterMs?: number } 解析函数（默认 5000 / 30000，refreshMs=0 = 关闭轮询）。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-541c1e",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b9b309",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790830913814,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1236,
+              "at": 1790830913820,
+              "totals": {
+                "uncachedInputTokens": 185618,
+                "outputTokens": 172073,
+                "cacheReadTokens": 37884160,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1338,
+              "at": 1790831023465,
+              "totals": {
+                "uncachedInputTokens": 191442,
+                "outputTokens": 181211,
+                "cacheReadTokens": 43366912,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 5824,
+              "outputTokens": 9138,
+              "cacheReadTokens": 5482752,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790831023453
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a4ae0f",
+          "body": "[状态] → in_progress：开工 t3 研发：组件接线（调度器接入 + 切换清空 + SSE 加速 + 配置开关 + np-reload 委托）。（reqboard_task_move）",
+          "createdAt": 1790830913814,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-04a2ed",
+          "body": "[状态] → done：t3 研发完成：组件接调度器（打开即拉 + 5 秒兜底 + SSE 加速）、切换需求先清空、np-reload 委托、策略与版本戳消费、plugin-config 增加 panel 开关；12 例接线用例绿、构建通过、本次改动文件类型错误 0（src/index.ts 的 2 条报错在 161/321 行，属其它窗口在途改动，不在我的 hunk 内）。（reqboard_task_move）",
+          "createdAt": 1790831023453,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830766462,
+      "updatedAt": 1790831938662,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830766462,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790830913814,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t3 研发：组件接线（调度器接入 + 切换清空 + SSE 加速 + 配置开关 + np-reload 委托）。"
+        },
+        {
+          "status": "done",
+          "at": 1790831023453,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "t3 研发完成：组件接调度器（打开即拉 + 5 秒兜底 + SSE 加速）、切换需求先清空、np-reload 委托、策略与版本戳消费、plugin-config 增加 panel 开关；12 例接线用例绿、构建通过、本次改动文件类型错误 0（src/index.ts 的 2 条报错在 161/321 行，属其它窗口在途改动，不在我的 hunk 内）。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790830913877,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/conversation-progress.ts",
+          "src/client/api.ts",
+          "src/client/panel-refresh.ts",
+          "src/plugin-config.ts",
+          "tests/panel-refresh-wiring.test.ts"
+        ],
+        "completed": [
+          "src/client/conversation-progress.ts：展开时建 createPanelRefresh（intervalMs/staleAfterMs 取宿主策略）并 start()，关闭时 stop()；reqIdForStage 变化时先 setStageOverview(null) 再重开（不串档）",
+          "原「按 req.updatedAt 重拉」Effect 删除（任务级变化不改 updatedAt）；SSE 降级为加速通道——事件只调 panelRef.current?.refresh('event')",
+          "新增 build 命名帧消费：setPolicy(parsePanelPolicy(frame.panel)) + stampMismatch 判定后 setBuildNotice（每个连接只提示一次）",
+          "新增 document 级委托 data-action=\"np-reload\" → location.reload()（不自动刷新）",
+          "新鲜度按 NodePanelFreshness 契约显式挑字段传给 renderNodePanel，并传 buildNotice",
+          "src/client/api.ts：subscribeEvents 增可选 onBuild，用 addEventListener('build') 收命名帧",
+          "src/plugin-config.ts：新增 panel?: { refreshMs?; staleAfterMs? } 与 panelSettings()（缺省 5000/30000，refreshMs=0 = 关轮询）",
+          "tests/panel-refresh-wiring.test.ts 12 例全绿（策略解析/戳判定/接线不变量）",
+          "pnpm build:client 通过（verify OK）；pnpm build 通过（宿主 dist 重建）；改动文件 tsc 报错 0"
+        ]
+      },
+      "lastRun": {
+        "at": 1790830913877,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-37bcbb",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "组件接线：轮询兜底 + SSE 加速 + 切换清空 + 配置开关·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-d3e72c"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx vitest run tests/panel-build-frame.test.ts tests/panel-refresh-wiring.test.ts` → `Tests  15 passed`；再跑 `grep -n \"panel: deps.panelPolicy\" src/http/routers/stages.ts` → 有命中（宿主发帧带策略）。",
+      "implementation": "改 src/client/conversation-progress.ts：展开时 createPanelRefresh({fetchOverview: () => fetchStageOverview(reqId), intervalMs, staleAfterMs, onData, onChange}).start()，关闭时 stop()；reqIdForStage 变化时先 setStageOverview(null)（loading）再按新 id 重开；原「按 req.updatedAt 重拉」Effect 与 SSE Effect 改为只调 refresh('event')；新增 document 级委托 data-action=\"np-reload\" → location.reload()；把 freshness/buildNotice 传给 renderNodePanel。改 src/plugin-config.ts 加 panel?: { refreshMs?: number; staleAfterMs?: number } 解析函数（默认 5000 / 30000，refreshMs=0 = 关闭轮询）。\n\n[子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致",
+      "context": "",
+      "parentId": "t-541c1e",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-271e74",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790831027280,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1344,
+              "at": 1790831027287,
+              "totals": {
+                "uncachedInputTokens": 191644,
+                "outputTokens": 181634,
+                "cacheReadTokens": 43715456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1358,
+              "at": 1790831035364,
+              "totals": {
+                "uncachedInputTokens": 192635,
+                "outputTokens": 182593,
+                "cacheReadTokens": 44414720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 991,
+              "outputTokens": 959,
+              "cacheReadTokens": 699264,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790831035353
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-770eac",
+          "body": "[状态] → in_progress：开工 t3 联调：核对「组件策略 ← build 帧 ← 宿主配置」全链字段与语义。（reqboard_task_move）",
+          "createdAt": 1790831027280,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-02d94a",
+          "body": "[状态] → done：联调通过：链路逐段核对一致（宿主配置 panelSettings → routes 透传 → RouterCtx.panelPolicy → 帧内 panel → 客户端 parsePanelPolicy → 调度器 intervalMs/staleAfterMs）；请求样例：SSE 连接即收 `event: build` + `data: {\"stamp\":\"a2a9d5ec0b1f\",\"panel\":{\"refreshMs\":5000,\"staleAfterMs\":30000}}`（帧内容由 tests/panel-build-frame.test.ts 实测断言；真机需重启宿主，未执行）。（reqboard_task_move）",
+          "createdAt": 1790831035353,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830766462,
+      "updatedAt": 1790831938692,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830766462,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790831027280,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t3 联调：核对「组件策略 ← build 帧 ← 宿主配置」全链字段与语义。"
+        },
+        {
+          "status": "done",
+          "at": 1790831035353,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "联调通过：链路逐段核对一致（宿主配置 panelSettings → routes 透传 → RouterCtx.panelPolicy → 帧内 panel → 客户端 parsePanelPolicy → 调度器 intervalMs/staleAfterMs）；请求样例：SSE 连接即收 `event: build` + `data: {\"stamp\":\"a2a9d5ec0b1f\",\"panel\":{\"refreshMs\":5000,\"staleAfterMs\":30000}}`（帧内容由 tests/panel-build-frame.test.ts 实测断言；真机需重启宿主，未执行）。"
+        }
+      ],
+      "layer": 3,
+      "lastRun": {
+        "at": 1790831035353,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831909830,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "链路逐段核对一致：宿主配置 panelSettings → routes 透传 → RouterCtx.panelPolicy → 帧内 panel → 客户端 parsePanelPolicy → 调度器 intervalMs/staleAfterMs",
+          "请求样例与期望响应：SSE 连接即收 event: build + data {\"stamp\":\"…\",\"panel\":{\"refreshMs\":5000,\"staleAfterMs\":30000}}（由 panel-build-frame 用例实测）",
+          "refreshMs=0 全链语义有用例覆盖（策略解析 + 接线断言）"
+        ]
+      }
+    },
+    {
+      "id": "t-ceb311",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "组件接线：轮询兜底 + SSE 加速 + 切换清空 + 配置开关·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-37bcbb"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/client/conversation-progress.ts：展开时 createPanelRefresh({fetchOverview: () => fetchStageOverview(reqId), intervalMs, staleAfterMs, onData, onChange}).start()，关闭时 stop()；reqIdForStage 变化时先 setStageOverview(null)（loading）再按新 id 重开；原「按 req.updatedAt 重拉」Effect 与 SSE Effect 改为只调 refresh('event')；新增 document 级委托 data-action=\"np-reload\" → location.reload()；把 freshness/buildNotice 传给 renderNodePanel。改 src/plugin-config.ts 加 panel?: { refreshMs?: number; staleAfterMs?: number } 解析函数（默认 5000 / 30000，refreshMs=0 = 关闭轮询）。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-541c1e",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-27aee4",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790831038369,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1364,
+              "at": 1790831038375,
+              "totals": {
+                "uncachedInputTokens": 192874,
+                "outputTokens": 183010,
+                "cacheReadTokens": 44765440,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1544,
+              "at": 1790831193119,
+              "totals": {
+                "uncachedInputTokens": 207260,
+                "outputTokens": 203040,
+                "cacheReadTokens": 55460736,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 14386,
+              "outputTokens": 20030,
+              "cacheReadTokens": 10695296,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790831193107
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-795b34",
+          "body": "[状态] → in_progress：开工 t3 复核：确认「删掉旧 Effect 后没有任何无兜底路径」。（reqboard_task_move）",
+          "createdAt": 1790831038369,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-b431f6",
+          "body": "[状态] → done：复核结论：**发现并已修一条本需求自作的偏离**——尺寸门禁（单文件 ≤400 行）被我新增代码打破（node-panel.ts 442、conversation-progress.ts 450，改前 359/386），已按职责拆为 panel-freshness.ts（97 行）与 use-panel-refresh.ts（140 行），两文件降至 377/369 行，超标名单中本次文件命中数=0；拆分后全量回归 106 failed/2787 passed 与拆分前逐字相同、本次 5 个测试文件仍全绿。其余逐条无偏离：① 组件内取数入口只剩调度器一处（grep 仅 1 处 fetchStageOverview）；② 切换清空语句在建调度器之前（indexOf 比较）；③ SSE 断线仍有兜底（周期轮询由计时器驱动，不依赖 SSE，TC-A/B 覆盖）；④ reqUpdatedAt 已从取数链路移除（出现次数 0）。（reqboard_task_move）",
+          "createdAt": 1790831193107,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830766462,
+      "updatedAt": 1790831909902,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830766462,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790831038369,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t3 复核：确认「删掉旧 Effect 后没有任何无兜底路径」。"
+        },
+        {
+          "status": "done",
+          "at": 1790831193107,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "复核结论：**发现并已修一条本需求自作的偏离**——尺寸门禁（单文件 ≤400 行）被我新增代码打破（node-panel.ts 442、conversation-progress.ts 450，改前 359/386），已按职责拆为 panel-freshness.ts（97 行）与 use-panel-refresh.ts（140 行），两文件降至 377/369 行，超标名单中本次文件命中数=0；拆分后全量回归 106 failed/2787 passed 与拆分前逐字相同、本次 5 个测试文件仍全绿。其余逐条无偏离：① 组件内取数入口只剩调度器一处（grep 仅 1 处 fetchStageOverview）；② 切换清空语句在建调度器之前（indexOf 比较）；③ SSE 断线仍有兜底（周期轮询由计时器驱动，不依赖 SSE，TC-A/B 覆盖）；④ reqUpdatedAt 已从取数链路移除（出现次数 0）。"
+        }
+      ],
+      "layer": 4,
+      "lastRun": {
+        "at": 1790831193107,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831909902,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/panel-freshness.ts",
+          "src/client/use-panel-refresh.ts",
+          "src/client/node-panel.ts",
+          "src/client/conversation-progress.ts",
+          "tests/panel-refresh-wiring.test.ts"
+        ],
+        "completed": [
+          "发现并修复自作违规：尺寸门禁 ≤400 行被打破（node-panel.ts 442、conversation-progress.ts 450；改前 359/386）",
+          "拆法（按职责）：新鲜度 DOM → panel-freshness.ts（97 行）；数据通道 → use-panel-refresh.ts（140 行 hook）；两文件降至 377/369 行",
+          "复验：size-budget 超标名单本次文件命中 0；拆分后全量回归 106 failed/2787 passed 与拆分前逐字相同",
+          "其余无偏离：组件内取数入口仅 1 处、切换清空在建调度器之前、SSE 断线仍有周期兜底、reqUpdatedAt 出现 0 次"
+        ]
+      }
+    },
+    {
+      "id": "t-efbcda",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "组件接线：轮询兜底 + SSE 加速 + 切换清空 + 配置开关·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-ceb311"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx vitest run tests/panel-refresh-wiring.test.ts` → `Tests  12 passed`；再跑 `pnpm build:client 2>&1 | tail -1` → 含 `[verify-client] OK`。",
+      "implementation": "改 src/client/conversation-progress.ts：展开时 createPanelRefresh({fetchOverview: () => fetchStageOverview(reqId), intervalMs, staleAfterMs, onData, onChange}).start()，关闭时 stop()；reqIdForStage 变化时先 setStageOverview(null)（loading）再按新 id 重开；原「按 req.updatedAt 重拉」Effect 与 SSE Effect 改为只调 refresh('event')；新增 document 级委托 data-action=\"np-reload\" → location.reload()；把 freshness/buildNotice 传给 renderNodePanel。改 src/plugin-config.ts 加 panel?: { refreshMs?: number; staleAfterMs?: number } 解析函数（默认 5000 / 30000，refreshMs=0 = 关闭轮询）。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-541c1e",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-9f89a4",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790831196645,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1550,
+              "at": 1790831196651,
+              "totals": {
+                "uncachedInputTokens": 207420,
+                "outputTokens": 203505,
+                "cacheReadTokens": 55841792,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1558,
+              "at": 1790831207589,
+              "totals": {
+                "uncachedInputTokens": 207985,
+                "outputTokens": 203695,
+                "cacheReadTokens": 56223360,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 565,
+              "outputTokens": 190,
+              "cacheReadTokens": 381568,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790831207578
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7747a9",
+          "body": "[状态] → in_progress：开工 t3 测试：跑卡片验收命令（拆分后新结构）并留证。（reqboard_task_move）",
+          "createdAt": 1790831196645,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-d9d1f5",
+          "body": "[状态] → done：测试阶段通过（拆分后复跑）：接线用例 12 passed；pnpm build:client verify OK（bundle=330378，关键符号齐全）；尺寸门禁本次文件命中 0；本次改动文件类型错误 0。（reqboard_task_move）",
+          "createdAt": 1790831207578,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790830766462,
+      "updatedAt": 1790831938719,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790830766462,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790831196645,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t3 测试：跑卡片验收命令（拆分后新结构）并留证。"
+        },
+        {
+          "status": "done",
+          "at": 1790831207578,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "测试阶段通过（拆分后复跑）：接线用例 12 passed；pnpm build:client verify OK（bundle=330378，关键符号齐全）；尺寸门禁本次文件命中 0；本次改动文件类型错误 0。"
+        }
+      ],
+      "layer": 5,
+      "lastRun": {
+        "at": 1790831207578,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831909975,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "接线用例 12 passed（含 refreshMs=0 语义、切换清空顺序、np-reload 委托）",
+          "pnpm build:client verify OK（bundle=330378，关键符号齐全）",
+          "尺寸门禁本次文件命中 0；本次改动文件类型错误 0"
+        ]
+      }
+    },
+    {
+      "id": "t-34ac12",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "回归与端到端自检：既有断言不破 + 手工 E2E 证据·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-541c1e",
+        "t-4eb5fb"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx vitest run tests/panel-refresh.test.ts tests/panel-freshness-render.test.ts tests/panel-refresh-wiring.test.ts tests/panel-build-stamp.test.ts tests/panel-build-frame.test.ts` → `Tests  41 passed`；再跑 `npx vitest run > /tmp/full.txt 2>&1; grep -E \"^ *Tests \" /tmp/full.txt` → 与 `docs/requirements/REQ-261001124111-5d36/evidence/t5-full-vitest-baseline.txt` 的失败数相同（零增量）。",
+      "implementation": "跑全量门禁与测试；按 design/test-cases.md 的手工验收步骤取证据：① 面板展开在拆分节点，另一窗口推进一张卡 → 面板 ≤5 秒出现新卡（不刷新页面）；② curl /stages 的 body.tasks 数量与面板显示一致；③ DevTools 断网 30 秒 → 红条 + data-stale=1，恢复 ≤10 秒消失；④ 切换需求 → 先「详情加载中…」再只显示新需求；⑤ 改一行客户端源码 → pnpm build:client → 已打开页面出现「插件已更新」。证据落 docs/requirements/REQ-261001124111-5d36/evidence/（命令 + 输出摘要 + 截图路径）。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-5db5af",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2f636e",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790831298413,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1607,
+              "at": 1790831298419,
+              "totals": {
+                "uncachedInputTokens": 213442,
+                "outputTokens": 206436,
+                "cacheReadTokens": 59294592,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1634,
+              "at": 1790831375987,
+              "totals": {
+                "uncachedInputTokens": 218695,
+                "outputTokens": 208644,
+                "cacheReadTokens": 60872448,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 5253,
+              "outputTokens": 2208,
+              "cacheReadTokens": 1577856,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790831375976
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-868a63",
+          "body": "[状态] → in_progress：开工 t5 研发阶段：把全量回归证据与端到端自检材料落盘。（reqboard_task_move）",
+          "createdAt": 1790831298413,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-c03b63",
+          "body": "[状态] → done：t5 研发阶段完成：全量回归与 5 类证据落盘（含改坏必红抽查、尺寸门禁自查）。（reqboard_task_move）",
+          "createdAt": 1790831375976,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790831294944,
+      "updatedAt": 1790831941858,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790831294944,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790831298413,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t5 研发阶段：把全量回归证据与端到端自检材料落盘。"
+        },
+        {
+          "status": "done",
+          "at": 1790831375976,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "t5 研发阶段完成：全量回归与 5 类证据落盘（含改坏必红抽查、尺寸门禁自查）。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790831309427,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261001124111-5d36/evidence/t5-summary.md",
+          "docs/requirements/REQ-261001124111-5d36/evidence/t5-full-vitest-with-change.txt",
+          "docs/requirements/REQ-261001124111-5d36/evidence/t5-full-vitest-baseline.txt",
+          "docs/requirements/REQ-261001124111-5d36/evidence/t5-mutation.txt",
+          "docs/requirements/REQ-261001124111-5d36/evidence/t5-stages-count.txt",
+          "docs/requirements/REQ-261001124111-5d36/evidence/t5-stamp.txt",
+          "docs/requirements/REQ-261001124111-5d36/evidence/t3-acceptance.txt"
+        ],
+        "completed": [
+          "全量回归（含本次改动）：npx vitest run → 106 failed / 2787 passed；基线（移出本次 5 个测试）→ 106 failed / 2746 passed ⇒ 本次新增 41 例全绿、失败零增量（原始输出 evidence/t5-full-vitest-{with-change,baseline}.txt）",
+          "本次 5 个测试文件 41 例全绿；面板既有测试（node-panel 28 + dag-view 29）零改动全绿",
+          "「改坏必红」抽查：注释掉周期轮询 → panel-refresh.test.ts 5 例转红；还原后 11 绿（evidence/t5-mutation.txt）",
+          "证据落盘：evidence/ 下 7 份（含 t3-acceptance.txt、t5-summary.md、t5-stages-count.txt、t5-stamp.txt）",
+          "尺寸门禁自查：拆分后本次文件命中 0（node-panel 377 / conversation-progress 369 / panel-freshness 97 / use-panel-refresh 140）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790831309427,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b8656d",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "回归与端到端自检：既有断言不破 + 手工 E2E 证据·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-34ac12"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "跑全量门禁与测试；按 design/test-cases.md 的手工验收步骤取证据：① 面板展开在拆分节点，另一窗口推进一张卡 → 面板 ≤5 秒出现新卡（不刷新页面）；② curl /stages 的 body.tasks 数量与面板显示一致；③ DevTools 断网 30 秒 → 红条 + data-stale=1，恢复 ≤10 秒消失；④ 切换需求 → 先「详情加载中…」再只显示新需求；⑤ 改一行客户端源码 → pnpm build:client → 已打开页面出现「插件已更新」。证据落 docs/requirements/REQ-261001124111-5d36/evidence/（命令 + 输出摘要 + 截图路径）。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-5db5af",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-11fc9a",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790831379048,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1640,
+              "at": 1790831379054,
+              "totals": {
+                "uncachedInputTokens": 218831,
+                "outputTokens": 209002,
+                "cacheReadTokens": 61269120,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1654,
+              "at": 1790831447428,
+              "totals": {
+                "uncachedInputTokens": 219575,
+                "outputTokens": 209495,
+                "cacheReadTokens": 62063872,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 744,
+              "outputTokens": 493,
+              "cacheReadTokens": 794752,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790831447415
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9f5b40",
+          "body": "[状态] → in_progress：开工 t5 复核：核对证据是否足以支撑\"交付完成\"的声明（含红线：不冒充已验的真机步骤）。（reqboard_task_move）",
+          "createdAt": 1790831379048,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-5b4e59",
+          "body": "[状态] → done：复核结论：证据足且标注诚实。依据：① evidence/ 7 份文件均非空（全量回归含/不含改动的原始输出、改坏必红、t3 验收、/stages 计数、戳一致性、汇总）；② verification.md 的 FR→落点→证据表 5 条齐全（FR-1…FR-5）；③ 真机不可代跑的三步（落库后 ≤5 秒、断网红条、换版提示）**显式标注\"待人工复核/不代跑\"**，未冒充已验；④ 卡片验收里的「npx vitest run 全绿 / pnpm typecheck 退出码 0」在本仓当前基线下不成立（106 failed / 212 tsc），材料中以\"改动前后逐字相同 + 本次文件零报错\"的等价判据替代并写明原委——属**基线偏差**而非本次回退。（reqboard_task_move）",
+          "createdAt": 1790831447415,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790831294944,
+      "updatedAt": 1790831914112,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790831294944,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790831379048,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t5 复核：核对证据是否足以支撑\"交付完成\"的声明（含红线：不冒充已验的真机步骤）。"
+        },
+        {
+          "status": "done",
+          "at": 1790831447415,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "复核结论：证据足且标注诚实。依据：① evidence/ 7 份文件均非空（全量回归含/不含改动的原始输出、改坏必红、t3 验收、/stages 计数、戳一致性、汇总）；② verification.md 的 FR→落点→证据表 5 条齐全（FR-1…FR-5）；③ 真机不可代跑的三步（落库后 ≤5 秒、断网红条、换版提示）**显式标注\"待人工复核/不代跑\"**，未冒充已验；④ 卡片验收里的「npx vitest run 全绿 / pnpm typecheck 退出码 0」在本仓当前基线下不成立（106 failed / 212 tsc），材料中以\"改动前后逐字相同 + 本次文件零报错\"的等价判据替代并写明原委——属**基线偏差**而非本次回退。"
+        }
+      ],
+      "layer": 4,
+      "lastRun": {
+        "at": 1790831447415,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831914112,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261001124111-5d36/verification.md"
+        ],
+        "completed": [
+          "证据齐备性：evidence/ 9 份文件均非空（全量回归含/不含改动、改坏必红、t3/t5 验收、计数、戳、汇总）",
+          "verification.md 的 FR→落点→证据表 5 条齐全（FR-1…FR-5）",
+          "诚实性：真机三步显式标注「待人工复核 / 不代跑」，未冒充已验",
+          "基线偏差写明原委：cards 期望的「全量绿 + tsc 退出码 0」在本仓当前基线下不成立，以「改动前后逐字相同 + 本次文件零报错」替代"
+        ]
+      }
+    },
+    {
+      "id": "t-ba7ad2",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "回归与端到端自检：既有断言不破 + 手工 E2E 证据·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-b8656d"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx vitest run tests/node-panel.test.ts tests/dag-view.test.ts` → `Tests  57 passed`；再跑 `pnpm build:client 2>&1 | tail -1` → 含 `[verify-client] OK`。",
+      "implementation": "跑全量门禁与测试；按 design/test-cases.md 的手工验收步骤取证据：① 面板展开在拆分节点，另一窗口推进一张卡 → 面板 ≤5 秒出现新卡（不刷新页面）；② curl /stages 的 body.tasks 数量与面板显示一致；③ DevTools 断网 30 秒 → 红条 + data-stale=1，恢复 ≤10 秒消失；④ 切换需求 → 先「详情加载中…」再只显示新需求；⑤ 改一行客户端源码 → pnpm build:client → 已打开页面出现「插件已更新」。证据落 docs/requirements/REQ-261001124111-5d36/evidence/（命令 + 输出摘要 + 截图路径）。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-5db5af",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-bc4671",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790831450447,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1660,
+              "at": 1790831450453,
+              "totals": {
+                "uncachedInputTokens": 219715,
+                "outputTokens": 209873,
+                "cacheReadTokens": 62461952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1674,
+              "at": 1790831520820,
+              "totals": {
+                "uncachedInputTokens": 220478,
+                "outputTokens": 210103,
+                "cacheReadTokens": 63259520,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 763,
+              "outputTokens": 230,
+              "cacheReadTokens": 797568,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790831520810
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-76dcc6",
+          "body": "[状态] → in_progress：开工 t5 测试阶段：复跑目标命令（本次 5 个测试文件 + 既有面板测试 + 构建门禁）。（reqboard_task_move）",
+          "createdAt": 1790831450447,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-8f93ba",
+          "body": "[状态] → done：测试阶段通过：本次 5 个测试文件 41 passed；既有面板测试（node-panel + dag-view）57 passed 零改动；构建门禁 verify OK（bundle=330378，关键符号齐全）。证据：evidence/t5-test-stage.txt。（reqboard_task_move）",
+          "createdAt": 1790831520810,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790831294944,
+      "updatedAt": 1790831941895,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790831294944,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790831450447,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t5 测试阶段：复跑目标命令（本次 5 个测试文件 + 既有面板测试 + 构建门禁）。"
+        },
+        {
+          "status": "done",
+          "at": 1790831520810,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "测试阶段通过：本次 5 个测试文件 41 passed；既有面板测试（node-panel + dag-view）57 passed 零改动；构建门禁 verify OK（bundle=330378，关键符号齐全）。证据：evidence/t5-test-stage.txt。"
+        }
+      ],
+      "layer": 5,
+      "lastRun": {
+        "at": 1790831520810,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831914192,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261001124111-5d36/evidence/t5-test-stage.txt"
+        ],
+        "completed": [
+          "本次 5 个测试文件 41 passed",
+          "既有面板测试 57 passed（node-panel 28 + dag-view 29，零改动）",
+          "pnpm build:client verify OK（bundle=330378）",
+          "证据落盘：evidence/t5-test-stage.txt"
+        ]
+      }
+    },
+    {
+      "id": "t-196f53",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "文档同步：项目手册记录新认知·研发",
+      "description": "子卡阶段：研发",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-5db5af"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `grep -n \"机制备忘：需求面板的刷新与陈旧可见\" docs/architecture/project-manual.md` → 有命中（第 42 行节标题）；再逐个 `ls` 该节引用的 9 个路径（含 src/client/panel-refresh.ts、tests/panel-refresh.test.ts、src/application/use-cases/MoveTask.ts）→ 全部存在。",
+      "implementation": "更新 docs/architecture/project-manual.md：新增/追加一节「需求面板的刷新与陈旧可见」——为什么任务级变化不能只靠 req.updatedAt、为什么 SSE 只能是加速通道、陈旧为什么必须可见（含本次事故的定案证据口径）；在需求目录内补结论/复盘指针，供归档材料 manual_updates 引用。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-8396b3",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b972c2",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790831664354,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1717,
+              "at": 1790831664360,
+              "totals": {
+                "uncachedInputTokens": 226267,
+                "outputTokens": 212183,
+                "cacheReadTokens": 65671424,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1723,
+              "at": 1790831669376,
+              "totals": {
+                "uncachedInputTokens": 226547,
+                "outputTokens": 212296,
+                "cacheReadTokens": 66077696,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 280,
+              "outputTokens": 113,
+              "cacheReadTokens": 406272,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790831669364
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-2edc24",
+          "body": "[状态] → in_progress：开工 t6 研发：写手册机制备忘一节。（reqboard_task_move）",
+          "createdAt": 1790831664354,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-e4e8e2",
+          "body": "[状态] → done：t6 研发阶段完成：手册新增机制备忘一节 + 变更记录行；引用路径 9/9 存在；结论与 design/architecture.md 定案一致。（reqboard_task_move）",
+          "createdAt": 1790831669364,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790831593149,
+      "updatedAt": 1790831941923,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790831593149,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790831664354,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t6 研发：写手册机制备忘一节。"
+        },
+        {
+          "status": "done",
+          "at": 1790831669364,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "t6 研发阶段完成：手册新增机制备忘一节 + 变更记录行；引用路径 9/9 存在；结论与 design/architecture.md 定案一致。"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790831597771,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/architecture/project-manual.md"
+        ],
+        "completed": [
+          "docs/architecture/project-manual.md 新增「机制备忘：需求面板的刷新与陈旧可见」表（5 条问答：req.updatedAt 缺口 / SSE 只作加速通道 / 陈旧必须可见 / 构建戳换版提示 / 一键回退开关），并加变更记录行（来源 REQ-261001124111-5d36）",
+          "该节引用的 9 个路径逐个存在性核对通过（panel-refresh.ts / panel-freshness.ts / use-panel-refresh.ts / client-build.ts / 4 个测试 / MoveTask.ts）",
+          "结论与 design/architecture.md 的定案一致：根因 B（旧 bundle）+ A（任务级变化不改 updatedAt，SSE 是唯一通路）+ C（失败被吞）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790831597771,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-faf796",
+      "requirementId": "REQ-261001124111-5d36",
+      "title": "文档同步：项目手册记录新认知·复核",
+      "description": "子卡阶段：复核",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-196f53"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "更新 docs/architecture/project-manual.md：新增/追加一节「需求面板的刷新与陈旧可见」——为什么任务级变化不能只靠 req.updatedAt、为什么 SSE 只能是加速通道、陈旧为什么必须可见（含本次事故的定案证据口径）；在需求目录内补结论/复盘指针，供归档材料 manual_updates 引用。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-8396b3",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c6bcf2",
+          "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+          "trigger": "manual",
+          "startedAt": 1790831736768,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1735,
+              "at": 1790831736774,
+              "totals": {
+                "uncachedInputTokens": 226962,
+                "outputTokens": 212555,
+                "cacheReadTokens": 66890880,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70",
+              "seq": 1749,
+              "at": 1790831804358,
+              "totals": {
+                "uncachedInputTokens": 228025,
+                "outputTokens": 213021,
+                "cacheReadTokens": 67705600,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1063,
+              "outputTokens": 466,
+              "cacheReadTokens": 814720,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790831804346
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0056ee",
+          "body": "[状态] → in_progress：开工 t6 复核：核对手册该节能否直接支撑归档 manual_updates。（reqboard_task_move）",
+          "createdAt": 1790831736768,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        },
+        {
+          "id": "c-61bf09",
+          "body": "[状态] → done：复核结论：无偏离，且可直接支撑归档 manual_updates。依据：① 该节 5 行问答逐条对应设计定案（req.updatedAt 缺口 / SSE 仅加速 / 陈旧可见 / 构建戳换版 / 回退开关），与 design/architecture.md 的 A+B+C 定案一致；② 每行都挂**可跑判据**（grep 计数、两个 vitest 文件、构建门禁），不是散文；③ 位置在 L1 手册正文（第 42 行节 + 第 62 行变更记录行），路径与章节名可直接作为 manual_updates 的申报值；④ 引用路径 9/9 存在（逐个 ls 通过）。（reqboard_task_move）",
+          "createdAt": 1790831804346,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790831593149,
+      "updatedAt": 1790831914267,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790831593149,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790831736768,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "开工 t6 复核：核对手册该节能否直接支撑归档 manual_updates。"
+        },
+        {
+          "status": "done",
+          "at": 1790831804346,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ee20d093-b61b-486e-96c2-e2a256ecea70"
+          },
+          "reason": "复核结论：无偏离，且可直接支撑归档 manual_updates。依据：① 该节 5 行问答逐条对应设计定案（req.updatedAt 缺口 / SSE 仅加速 / 陈旧可见 / 构建戳换版 / 回退开关），与 design/architecture.md 的 A+B+C 定案一致；② 每行都挂**可跑判据**（grep 计数、两个 vitest 文件、构建门禁），不是散文；③ 位置在 L1 手册正文（第 42 行节 + 第 62 行变更记录行），路径与章节名可直接作为 manual_updates 的申报值；④ 引用路径 9/9 存在（逐个 ls 通过）。"
+        }
+      ],
+      "layer": 5,
+      "lastRun": {
+        "at": 1790831804346,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790831914267,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/architecture/project-manual.md"
+        ],
+        "completed": [
+          "手册该节 5 条问答逐条对应设计定案（req.updatedAt 缺口 / SSE 仅加速 / 陈旧可见 / 构建戳换版 / 回退开关）",
+          "每条挂可跑判据（grep 计数、两个 vitest 文件、构建门禁），非散文",
+          "引用路径 9/9 存在；路径+章节名可直接作为归档 manual_updates 申报值"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-e5225f",
+      "to": "t-fd98e6"
+    },
+    {
+      "from": "t-fd98e6",
+      "to": "t-541c1e"
+    },
+    {
+      "from": "t-541c1e",
+      "to": "t-5db5af"
+    },
+    {
+      "from": "t-4eb5fb",
+      "to": "t-5db5af"
+    },
+    {
+      "from": "t-5db5af",
+      "to": "t-8396b3"
+    },
+    {
+      "from": "t-1a818b",
+      "to": "t-de821b"
+    },
+    {
+      "from": "t-de821b",
+      "to": "t-2fe9ce"
+    },
+    {
+      "from": "t-e5225f",
+      "to": "t-5e5f4d"
+    },
+    {
+      "from": "t-5e5f4d",
+      "to": "t-93d485"
+    },
+    {
+      "from": "t-93d485",
+      "to": "t-04a842"
+    },
+    {
+      "from": "t-854cb5",
+      "to": "t-8e8682"
+    },
+    {
+      "from": "t-8e8682",
+      "to": "t-d75737"
+    },
+    {
+      "from": "t-d75737",
+      "to": "t-e34adb"
+    },
+    {
+      "from": "t-fd98e6",
+      "to": "t-d3e72c"
+    },
+    {
+      "from": "t-d3e72c",
+      "to": "t-37bcbb"
+    },
+    {
+      "from": "t-37bcbb",
+      "to": "t-ceb311"
+    },
+    {
+      "from": "t-ceb311",
+      "to": "t-efbcda"
+    },
+    {
+      "from": "t-541c1e",
+      "to": "t-34ac12"
+    },
+    {
+      "from": "t-4eb5fb",
+      "to": "t-34ac12"
+    },
+    {
+      "from": "t-34ac12",
+      "to": "t-b8656d"
+    },
+    {
+      "from": "t-b8656d",
+      "to": "t-ba7ad2"
+    },
+    {
+      "from": "t-5db5af",
+      "to": "t-196f53"
+    },
+    {
+      "from": "t-196f53",
+      "to": "t-faf796"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-e5225f",
+        "t-4eb5fb",
+        "t-1a818b",
+        "t-854cb5"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-fd98e6",
+        "t-5e5f4d",
+        "t-de821b",
+        "t-8e8682"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-541c1e",
+        "t-d3e72c",
+        "t-93d485",
+        "t-2fe9ce",
+        "t-d75737"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-5db5af",
+        "t-34ac12",
+        "t-37bcbb",
+        "t-04a842",
+        "t-e34adb"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-8396b3",
+        "t-196f53",
+        "t-b8656d",
+        "t-ceb311"
+      ]
+    },
+    {
+      "layer": 5,
+      "tasks": [
+        "t-faf796",
+        "t-ba7ad2",
+        "t-efbcda"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-01T05:19:01.925Z"
+}

@@ -1,0 +1,12 @@
+# case C5 · 任务表 acceptance 可证伪性（产物类） · serves: FR-2
+case: C5
+checks:
+  - path: requirement.plan.approvedAt     # 计划已批准
+    op: exists
+  - path: queue.tasks                     # 已落库且粒度不过碎（≤8 张）
+    op: count_lte
+    value: 8
+  - path: queue.tasks[0].acceptance       # 每张卡带验收标准字段（逐卡可证伪性由 rubric 评）
+    op: exists
+  - path: queue.tasks[0].implementation   # 每张卡带实施方案字段
+    op: exists

@@ -1,0 +1,38 @@
+task:
+  id: t-1b296e
+  title: 写得准：乐观锁、差异分派落盘、日志追加与截断·复核
+  status: done
+  implements: |-
+    实现 ShardedRequirementStore 写侧：① create（建目录 → record.json → 首条评论 → meta.json revision+1 → 广播）、mutate（临界区 RMW，进程内串行队列 + 写前重读）、mutateIf（version 比对，不匹配抛 REQBOARD_CONFLICT 带 currentVersion）、appendComment、sweep（仅启动对账）、replaceAll（仅迁移）、subscribe；② draft 惰性装配（外置对象只在变更器实际访问时读）；③ dirty-field dispatch：标量/dive/advance 锁字段/tokenUsage/interruption/docSyncPending 变化 → 原子写 record.json；comments 与 history 尾部增长 → 先 appendJournal 再写 record.json（提交点），计数 +1；artifacts/plan/verification/archive 变化 → 整份原子写对应文件；全无变化 → 不写盘；④ version 一律由适配器 +1（变更器不碰）；⑤ 冷侧写抛 REQBOARD_COLD_IMMUTABLE；⑥ 只追加纪律违反（前缀被改写）→ 整份重写 + onWarn；⑦ 写放大超阈值 onWarn。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-840121
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002161439-277d
+    TASK_ID: t-1b296e
+    TASK_TITLE: 写得准：乐观锁、差异分派落盘、日志追加与截断·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T09:34:13.803Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002161439-277d
+  generated_at: 2026-10-02T09:34:08.359Z
+  version: 5
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-02T10:16:10.973Z

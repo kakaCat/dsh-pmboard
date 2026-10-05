@@ -1,0 +1,40 @@
+task:
+  id: t-aa9635
+  title: 接上会话运行态读数，判定「哪条需求在跑」·测试
+  status: done
+  implements: |-
+    新建 src/client/session-running.ts：isSessionRunning（读 ctx.sessions.list 的 byId[sid].running === true，服务缺失/行缺失/形状异常一律 false）、runningSessionIds（不可得 → NO_RUNNING）、subscribeSessionRunning（缺 subscribe → no-op 退订）、requirementRunning（seats 权威 ∪ sourceSessionId 折算）。改 src/client/session-jump.ts 的 SessionsServiceFace.list 补可选 subscribe 类型。改 src/client/types.ts 补 ClientWindowSeat 与 seats? 声明。不抛错、不打 error 日志。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-f38dec
+  phase: implement
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261004210128-283d
+    TASK_ID: t-aa9635
+    TASK_TITLE: 接上会话运行态读数，判定「哪条需求在跑」·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-04T13:36:55.609Z
+      completed_at: 2026-10-04T13:37:00.846Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-04T13:36:58.373Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004210128-283d
+  generated_at: 2026-10-04T13:31:53.571Z
+  version: 5
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-04T13:37:00.846Z

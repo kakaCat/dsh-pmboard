@@ -20,7 +20,8 @@ describe('reqboard_task_status（FR-4：改读台账 lastRun/lastReport）', () 
       lastRun: { at: 7, ok: false, stopReason: 'error', valueNonEmpty: false, reason: 'engine_unavailable' },
       lastReport: { at: 7, reportIndex: 1, filesChanged: ['src/a.ts', 'src/b.ts'], completed: ['改完 a.ts'] },
     })] })
-    h.repo.ledger.requirements = [req({ status: 'implementing' })]
+    h.seedRequirementSync(req({ status: 'implementing' }))
+    await h.seedSettled()
     const out = await run(defineTaskStatusTool(h.deps), { task_id: 't-s1' })
     expect(out.success).toBe(true)
     expect(out.status).toBe('in_review')
@@ -36,7 +37,8 @@ describe('reqboard_task_status（FR-4：改读台账 lastRun/lastReport）', () 
 
   it('TC-9 无 lastRun 的卡 → run/workflow 缺省，不报错、不伪造', async () => {
     const h = makeHarness({ tasks: [task({ id: 't-a', requirementId: 'REQ-000001', status: 'todo' })] })
-    h.repo.ledger.requirements = [req({ status: 'implementing' })]
+    h.seedRequirementSync(req({ status: 'implementing' }))
+    await h.seedSettled()
     const out = await run(defineTaskStatusTool(h.deps), { task_id: 't-a' })
     expect(out.success).toBe(true)
     expect(out.run).toBeUndefined()

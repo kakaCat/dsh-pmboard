@@ -1,0 +1,271 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261001170807-06fd
+  generated_at: 2026-10-01T09:10:23.240Z
+  version: 55
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-01T10:22:27.275Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 父子链收尾不再被节流惩罚
+      source: requirement.md
+      line: 89
+    - id: FR-2
+      title: 子卡模板生成可执行的验收标准
+      source: requirement.md
+      line: 93
+  design_sections:
+    - ref: design/fix-design.md#复现最小重现
+      title: 复现（最小重现） `
+      serves:
+        - FR-1
+      file: design/fix-design.md
+      section: 复现最小重现
+    - ref: design/fix-design.md#根因定位
+      title: 根因定位 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/fix-design.md
+      section: 根因定位
+    - ref: design/fix-design.md#修复方案
+      title: 修复方案 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/fix-design.md
+      section: 修复方案
+    - ref: design/fix-design.md#接口与数据契约
+      title: 接口与数据契约 `
+      serves:
+        - FR-1
+      file: design/fix-design.md
+      section: 接口与数据契约
+    - ref: design/fix-design.md#回归测试落点
+      title: 回归测试落点 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/fix-design.md
+      section: 回归测试落点
+    - ref: design/fix-design.md#边界与不做什么
+      title: 边界与不做什么 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/fix-design.md
+      section: 边界与不做什么
+outputs:
+  tasks:
+    - id: t-7a4dae
+      title: 复现：把两个缺陷写成红的用例
+      implements: 新建 tests/e2e-close-chain.test.ts：用假时钟走"落库 1 父 + 4 子 → 关 4 子 → 关父"，断言父卡一次成功（修复前必红，返回 REQBOARD_BULK_CLOSE）；另在 tests/subtask-template-acceptance.test.ts 断言各阶段 acceptance 含 npx/pnpm 命令（修复前必红）。运行并把红输出留档 evidence/repro-red.txt。
+      serves: []
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-7886b6
+      title: 修复：节流判据排除本卡自己的子卡
+      implements: "DoneEvidenceSpec.ts 的 TaskWithHistory 增 parentId?: string；findRecentAgentDoneTask 与 doneThrottleRemainingMs 在命中候选时跳过 candidate.parentId === taskId 的任务（本卡自己的子卡）；support.ts 传入的 tasks 已含 parentId，无需改查询。兄弟卡（不同 parentId）与跨卡关闭照旧计入。"
+      serves: []
+      depends_on:
+        - t-7a4dae
+      phase: implement
+      side: backend
+    - id: t-5eac48
+      title: 修复：子卡模板产可执行验收标准
+      implements: SubtaskTemplate.ts 各阶段 acceptance 生成改为操作句：dev/integrate = npx vitest run <测试文件> → 全绿；review = 对照 docs/requirements/<REQ>/design/ 逐条核对 + 同一命令；test = pnpm test → 失败数 ≤ 基线、npx tsc --noEmit → 错误数 ≤ 基线。拿不到具体测试文件时给可跑占位，禁止退回断言词。存量卡不追溯。
+      serves: []
+      depends_on:
+        - t-7a4dae
+      phase: implement
+      side: backend
+    - id: t-ea0811
+      title: 回归：独立证明修好了
+      implements: 在 e2e-close-chain.test.ts 内固化 A1–A4 四组断言（收尾一次成功 / 兄弟卡仍拦 / 跨卡仍拦 / 模板含命令）；跑全仓基线与类型检查比对基线。回归卡不并入修复卡。
+      serves: []
+      depends_on:
+        - t-7886b6
+        - t-5eac48
+      phase: test
+      side: backend
+    - id: t-eb1e8b
+      title: 复现：把两个缺陷写成红的用例·研发
+      implements: |-
+        新建 tests/e2e-close-chain.test.ts：用假时钟走"落库 1 父 + 4 子 → 关 4 子 → 关父"，断言父卡一次成功（修复前必红，返回 REQBOARD_BULK_CLOSE）；另在 tests/subtask-template-acceptance.test.ts 断言各阶段 acceptance 含 npx/pnpm 命令（修复前必红）。运行并把红输出留档 evidence/repro-red.txt。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-44cb33
+      title: 复现：把两个缺陷写成红的用例·复核
+      implements: |-
+        新建 tests/e2e-close-chain.test.ts：用假时钟走"落库 1 父 + 4 子 → 关 4 子 → 关父"，断言父卡一次成功（修复前必红，返回 REQBOARD_BULK_CLOSE）；另在 tests/subtask-template-acceptance.test.ts 断言各阶段 acceptance 含 npx/pnpm 命令（修复前必红）。运行并把红输出留档 evidence/repro-red.txt。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-eb1e8b
+      phase: test
+      side: backend
+    - id: t-97203c
+      title: 复现：把两个缺陷写成红的用例·测试
+      implements: |-
+        新建 tests/e2e-close-chain.test.ts：用假时钟走"落库 1 父 + 4 子 → 关 4 子 → 关父"，断言父卡一次成功（修复前必红，返回 REQBOARD_BULK_CLOSE）；另在 tests/subtask-template-acceptance.test.ts 断言各阶段 acceptance 含 npx/pnpm 命令（修复前必红）。运行并把红输出留档 evidence/repro-red.txt。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-44cb33
+      phase: test
+      side: backend
+    - id: t-6ccb96
+      title: 修复：节流判据排除本卡自己的子卡·复现
+      implements: |-
+        DoneEvidenceSpec.ts 的 TaskWithHistory 增 parentId?: string；findRecentAgentDoneTask 与 doneThrottleRemainingMs 在命中候选时跳过 candidate.parentId === taskId 的任务（本卡自己的子卡）；support.ts 传入的 tasks 已含 parentId，无需改查询。兄弟卡（不同 parentId）与跨卡关闭照旧计入。
+
+        [子卡阶段·复现] 只做本阶段；验收：存在一条先失败、修复后转绿的回归用例（贴两次输出）
+      serves: []
+      depends_on:
+        - t-7a4dae
+      phase: implement
+      side: backend
+    - id: t-1ea4dc
+      title: 修复：节流判据排除本卡自己的子卡·修复
+      implements: |-
+        DoneEvidenceSpec.ts 的 TaskWithHistory 增 parentId?: string；findRecentAgentDoneTask 与 doneThrottleRemainingMs 在命中候选时跳过 candidate.parentId === taskId 的任务（本卡自己的子卡）；support.ts 传入的 tasks 已含 parentId，无需改查询。兄弟卡（不同 parentId）与跨卡关闭照旧计入。
+
+        [子卡阶段·修复] 只做本阶段；验收：回归用例转绿（贴命令与输出），且根因单独写明（症状与根因区分）
+      serves: []
+      depends_on:
+        - t-6ccb96
+      phase: implement
+      side: backend
+    - id: t-e046a3
+      title: 修复：节流判据排除本卡自己的子卡·复核
+      implements: |-
+        DoneEvidenceSpec.ts 的 TaskWithHistory 增 parentId?: string；findRecentAgentDoneTask 与 doneThrottleRemainingMs 在命中候选时跳过 candidate.parentId === taskId 的任务（本卡自己的子卡）；support.ts 传入的 tasks 已含 parentId，无需改查询。兄弟卡（不同 parentId）与跨卡关闭照旧计入。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-1ea4dc
+      phase: implement
+      side: backend
+    - id: t-38c3b4
+      title: 修复：节流判据排除本卡自己的子卡·回归测试
+      implements: |-
+        DoneEvidenceSpec.ts 的 TaskWithHistory 增 parentId?: string；findRecentAgentDoneTask 与 doneThrottleRemainingMs 在命中候选时跳过 candidate.parentId === taskId 的任务（本卡自己的子卡）；support.ts 传入的 tasks 已含 parentId，无需改查询。兄弟卡（不同 parentId）与跨卡关闭照旧计入。
+
+        [子卡阶段·回归测试] 只做本阶段；验收：相关测试全量跑通，无新增失败（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-e046a3
+      phase: implement
+      side: backend
+    - id: t-e6cb2d
+      title: 修复：子卡模板产可执行验收标准·复现
+      implements: |-
+        SubtaskTemplate.ts 各阶段 acceptance 生成改为操作句：dev/integrate = npx vitest run <测试文件> → 全绿；review = 对照 docs/requirements/<REQ>/design/ 逐条核对 + 同一命令；test = pnpm test → 失败数 ≤ 基线、npx tsc --noEmit → 错误数 ≤ 基线。拿不到具体测试文件时给可跑占位，禁止退回断言词。存量卡不追溯。
+
+        [子卡阶段·复现] 只做本阶段；验收：`npx vitest run <新增回归用例>` → 修复前失败、修复后通过（贴两次输出）
+      serves: []
+      depends_on:
+        - t-7a4dae
+      phase: implement
+      side: backend
+    - id: t-7b09b0
+      title: 修复：子卡模板产可执行验收标准·修复
+      implements: |-
+        SubtaskTemplate.ts 各阶段 acceptance 生成改为操作句：dev/integrate = npx vitest run <测试文件> → 全绿；review = 对照 docs/requirements/<REQ>/design/ 逐条核对 + 同一命令；test = pnpm test → 失败数 ≤ 基线、npx tsc --noEmit → 错误数 ≤ 基线。拿不到具体测试文件时给可跑占位，禁止退回断言词。存量卡不追溯。
+
+        [子卡阶段·修复] 只做本阶段；验收：`npx vitest run <回归用例>` → 转绿（贴命令与输出），且根因单独写明
+      serves: []
+      depends_on:
+        - t-e6cb2d
+      phase: implement
+      side: backend
+    - id: t-966cfb
+      title: 修复：子卡模板产可执行验收标准·复核
+      implements: |-
+        SubtaskTemplate.ts 各阶段 acceptance 生成改为操作句：dev/integrate = npx vitest run <测试文件> → 全绿；review = 对照 docs/requirements/<REQ>/design/ 逐条核对 + 同一命令；test = pnpm test → 失败数 ≤ 基线、npx tsc --noEmit → 错误数 ≤ 基线。拿不到具体测试文件时给可跑占位，禁止退回断言词。存量卡不追溯。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-7b09b0
+      phase: implement
+      side: backend
+    - id: t-c29602
+      title: 修复：子卡模板产可执行验收标准·回归测试
+      implements: |-
+        SubtaskTemplate.ts 各阶段 acceptance 生成改为操作句：dev/integrate = npx vitest run <测试文件> → 全绿；review = 对照 docs/requirements/<REQ>/design/ 逐条核对 + 同一命令；test = pnpm test → 失败数 ≤ 基线、npx tsc --noEmit → 错误数 ≤ 基线。拿不到具体测试文件时给可跑占位，禁止退回断言词。存量卡不追溯。
+
+        [子卡阶段·回归测试] 只做本阶段；验收：`pnpm test` → 无新增失败（与基线比对，贴汇总输出）
+      serves: []
+      depends_on:
+        - t-966cfb
+      phase: implement
+      side: backend
+    - id: t-834d89
+      title: 回归：独立证明修好了·研发
+      implements: |-
+        在 e2e-close-chain.test.ts 内固化 A1–A4 四组断言（收尾一次成功 / 兄弟卡仍拦 / 跨卡仍拦 / 模板含命令）；跑全仓基线与类型检查比对基线。回归卡不并入修复卡。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-7886b6
+        - t-5eac48
+      phase: test
+      side: backend
+    - id: t-9915f9
+      title: 回归：独立证明修好了·复核
+      implements: |-
+        在 e2e-close-chain.test.ts 内固化 A1–A4 四组断言（收尾一次成功 / 兄弟卡仍拦 / 跨卡仍拦 / 模板含命令）；跑全仓基线与类型检查比对基线。回归卡不并入修复卡。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-834d89
+      phase: test
+      side: backend
+    - id: t-429784
+      title: 回归：独立证明修好了·测试
+      implements: |-
+        在 e2e-close-chain.test.ts 内固化 A1–A4 四组断言（收尾一次成功 / 兄弟卡仍拦 / 跨卡仍拦 / 模板含命令）；跑全仓基线与类型检查比对基线。回归卡不并入修复卡。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-9915f9
+      phase: test
+      side: backend
+traceability:
+  design_to_tasks:
+    design/fix-design.md#复现最小重现: []
+    design/fix-design.md#根因定位: []
+    design/fix-design.md#修复方案: []
+    design/fix-design.md#接口与数据契约: []
+    design/fix-design.md#回归测试落点: []
+    design/fix-design.md#边界与不做什么: []
+  fr_to_tasks:
+    FR-1: []
+    FR-2: []
+coverage:
+  implementation:
+    total: 6
+    covered: 0
+    uncovered:
+      - design/fix-design.md#复现最小重现
+      - design/fix-design.md#根因定位
+      - design/fix-design.md#修复方案
+      - design/fix-design.md#接口与数据契约
+      - design/fix-design.md#回归测试落点
+      - design/fix-design.md#边界与不做什么
+    rate: 0
+    total_designs: 6
+    covered_designs: 0

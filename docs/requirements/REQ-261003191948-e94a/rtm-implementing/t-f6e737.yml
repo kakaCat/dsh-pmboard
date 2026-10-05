@@ -1,0 +1,34 @@
+task:
+  id: t-f6e737
+  title: 抽出唯一信封模块并新增迁移门 503 映射
+  status: done
+  implements: "新建 src/http/envelope.ts：把 src/http/routes.ts 里的 json / ok / fail 三个函数逐字节搬过去（不顺手改逻辑）；fail 增加两处改动——映射表新增 e.code === 'REQBOARD_REQUIRES_MIGRATION' ? 503（与既有 REQBOARD_BRIDGE_NOT_READY 分支并列），响应体在错误对象带 hint 时透出 hint: typeof (e as {hint?:unknown}).hint === 'string'。src/http/routes.ts 改为从 ./envelope.js import { json, ok, fail }，删除本地副本，createReqboardHandler 签名与全部 http/routers/* 调用点零改动。新建 tests/reqboard/degraded-startup.test.ts 并先落「信封与映射」段：用最小假 res（收集 statusCode 与 body）断言 503 与 hint。"
+  serves:
+    - FR-2
+  depends_on:
+    - t-bb9da6
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261003191948-e94a
+    TASK_ID: t-f6e737
+    TASK_TITLE: 抽出唯一信封模块并新增迁移门 503 映射
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-03T12:22:56.299Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261003191948-e94a
+  generated_at: 2026-10-03T12:22:56.298Z
+  version: 7
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-03T12:23:58.158Z

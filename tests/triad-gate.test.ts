@@ -8,11 +8,11 @@
  * 为什么要在工具层再测一遍：接线函数本身单测通过，不代表门真的挂上了——调用点漏挂或挂错时刻，
  * 单测照样全绿（本仓"实现了但零调用方"的教训）。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { defineMoveTool, defineTaskMoveTool, defineTaskReportTool, seedQueueTasks, type ReqboardToolDeps } from './helpers/tool-deps.js'
 import { recordToolTrace, type ToolTraceEntry } from '../src/adapters/SessionProbeAdapter.js'
 import {
@@ -93,7 +93,7 @@ describe('接线函数：判定与取数在 application 层（纯读，无副作
 describe('端到端：门真的挂上了（reqboard_move / reqboard_task_move）', () => {
   let dir: string
   let prevCwd: string
-  let store: ReqboardStore
+  let store: ReturnType<typeof makeTestStore>
   let trace: Map<string, ToolTraceEntry[]>
   let move: { execute: (a: unknown, e: unknown) => Promise<any> }
   let taskMove: { execute: (a: unknown, e: unknown) => Promise<any> }
@@ -105,7 +105,7 @@ describe('端到端：门真的挂上了（reqboard_move / reqboard_task_move）
     dir = mkdtempSync(join(tmpdir(), 'pmboard-triad-'))
     prevCwd = process.cwd()
     process.chdir(dir)
-    store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+    store = makeTestStore()
     trace = new Map()
     deps = { store, now: () => Date.now(), toolTrace: trace, doneThrottleMs: 0 }
     move = defineMoveTool(deps) as never
@@ -135,7 +135,7 @@ describe('端到端：门真的挂上了（reqboard_move / reqboard_task_move）
       createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
       statusHistory: [{ status: 'decomposing', at: 1, by: { kind: 'human' } }],
     } as unknown as RequirementRecord
-    await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+    await store.replaceAll('requirement-created', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
   }
 
   // 卡停在 in_review：结单门禁的合法前驱（in_progress 不能直接转 done——状态机如此）。

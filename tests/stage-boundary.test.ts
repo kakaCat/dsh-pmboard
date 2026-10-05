@@ -2,18 +2,18 @@
  * W7 阶段产物边界单测（REQ-2e9473 t17）：计划可不含任务表（设计一套文档）；
  * decompose 承担任务卡创作（薄卡拒落）；未批准计划不得落库（design 阶段落库被拒）。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { definePlanSubmitTool, defineDecomposeTool, queueTasksOf, stubDocFile, type ReqboardToolDeps } from './helpers/tool-deps.js'
 import type { RequirementRecord } from '../src/shared/protocol.js'
 
 const W = 'session-abc-123'
 const REQ_ID = 'REQ-w7test'
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 /** 同一个 deps 对象配两个工具（tool-deps 按 deps 记忆化 TaskStore）。 */
 let deps: ReqboardToolDeps
 let planTool: { execute: (a: unknown, e: unknown) => Promise<any> }
@@ -21,7 +21,7 @@ let decompose: { execute: (a: unknown, e: unknown) => Promise<any> }
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-boundary-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   deps = { store, now: () => Date.now() }
   planTool = definePlanSubmitTool(deps) as never
   decompose = defineDecomposeTool(deps) as never
@@ -36,7 +36,7 @@ async function seed(status = 'decomposing'): Promise<void> {
     sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
   } as unknown as RequirementRecord
-  await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 const run = (tool: { execute: (a: unknown, e: unknown) => Promise<any> }, args: unknown) =>
   tool.execute(args, { agent: { id: W } })
@@ -53,7 +53,7 @@ describe('W7 阶段产物边界（t17）', () => {
     expect(out.plan_status).toBe('pending_approval')
     expect(out.task_count).toBe(0)
     expect(out.note).toMatch(/落库时由 reqboard_decompose 传 tasks 创作/)
-    expect(store.snapshot().requirements[0].plan!.tasks).toHaveLength(0)
+    expect(((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!.plan!.tasks).toHaveLength(0)
   })
 
   it('传了任务表仍走严格校验（薄卡被拒）', async () => {
@@ -67,11 +67,11 @@ describe('W7 阶段产物边界（t17）', () => {
   it('空任务表计划 + 未传 tasks → decompose 拒绝（REQBOARD_TASKS_REQUIRED）', async () => {
     await seed()
     await run(planTool, { path: 'p.md', summary: '设计' })
-    await store.mutate('approve', (l) => {
-      const r = l.requirements[0]
+    const __seedId = (await store.listSummaries({ scope: 'all' })).items[0]!.id
+    await store.mutate(__seedId, (r) => {
       r.plan!.approvedAt = 1000
       r.plan!.approvedBy = { kind: 'human' }
-      return { requirements: [r] }
+      return { changed: true }
     })
     await expect(run(decompose, {})).rejects.toThrow(/REQBOARD_TASKS_REQUIRED/)
     expect(await queueTasksOf(deps, REQ_ID)).toHaveLength(0) // v9：任务唯一存储 = 队列
@@ -80,11 +80,11 @@ describe('W7 阶段产物边界（t17）', () => {
   it('空任务表计划 + 创作型 tasks → 落库成功（含实施卡，需求进拆分态）', async () => {
     await seed()
     await run(planTool, { path: 'p.md', summary: '设计' })
-    await store.mutate('approve', (l) => {
-      const r = l.requirements[0]
+    const __seedId = (await store.listSummaries({ scope: 'all' })).items[0]!.id
+    await store.mutate(__seedId, (r) => {
       r.plan!.approvedAt = 1000
       r.plan!.approvedBy = { kind: 'human' }
-      return { requirements: [r] }
+      return { changed: true }
     })
     const out = await run(decompose, { tasks: CREATIVE })
     expect(out.created).toHaveLength(2)
@@ -97,11 +97,11 @@ describe('W7 阶段产物边界（t17）', () => {
   it('创作型薄卡（缺 implementation）→ 拒绝落库', async () => {
     await seed()
     await run(planTool, { path: 'p.md', summary: '设计' })
-    await store.mutate('approve', (l) => {
-      const r = l.requirements[0]
+    const __seedId = (await store.listSummaries({ scope: 'all' })).items[0]!.id
+    await store.mutate(__seedId, (r) => {
       r.plan!.approvedAt = 1000
       r.plan!.approvedBy = { kind: 'human' }
-      return { requirements: [r] }
+      return { changed: true }
     })
     await expect(run(decompose, { tasks: [{ key: 'a', title: 'x', acceptance: '单测绿' }] })).rejects.toThrow(/缺实施方案/)
     expect(await queueTasksOf(deps, REQ_ID)).toHaveLength(0)

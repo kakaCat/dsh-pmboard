@@ -1,0 +1,13 @@
+# case C4 · 已批准计划变更需重交重批 · serves: FR-2
+case: C4
+checks:
+  - path: requirement.plan.approvedAt     # 最新一次批准的章存在（对应 v2：t1/t2a/t2b）
+    op: exists
+  - path: requirement.plan.changeNote     # 重交必带变更说明，旧批准作废留痕
+    op: exists
+  - path: queue.tasks                     # 未落库（本场只到重新批准为止）
+    op: count_eq
+    value: 0
+  - path: requirement.status
+    op: eq
+    value: decomposing

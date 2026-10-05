@@ -5,12 +5,15 @@
  *
  * @module dsh-pmboard/application/use-cases/QueryState
  */
+import { requirementStoreOf } from '../use-cases/queue-access.js'
+import { getBuildStamp } from '../../shared/build-stamp.js'
+import { stageTelemetryOf, type StageTelemetryRow } from '../../domain/workflow/StageTelemetry.js'
 import type { UseCaseDeps } from '../ports.js'
 import {
   agentNextActions,
   type TaskRecord,
 } from '../../shared/protocol.js'
-import { openRequirementsFor } from '../internal/window.js'
+import { openRequirementsForVia, seatOf, seatsOf } from '../internal/window.js'
 import {
   agentIdFromExec,
   projectRequirement,
@@ -29,8 +32,8 @@ import {
 
 export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): Promise<unknown> {
       const windowKey = agentIdFromExec(deps, exec)
-      const ledger = await deps.repo.read((l) => l)
-      const open = openRequirementsFor(ledger, windowKey)
+      // B12 阶段②c：整册 read ⇒ 新端口的绑定读（只取本窗口的开放需求，不装配整册）。
+      const open = await openRequirementsForVia(requirementStoreOf(deps), windowKey)
       /**
        * 队列任务读取（REQ-260927202051-f6df）：v9 台账已无 `tasks`，任务唯一来源 = TaskStore。
        * `taskStore` 缺省（未装配）→ 空数组（端口文档语义：调用方显式降级，不抛）。
@@ -39,7 +42,7 @@ export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): 
         deps.taskStore !== undefined ? deps.taskStore.listByRequirement(reqId) : []
       // 挂起确认投影（REQ-260927123256-196b FR-4 / I-2）：本窗口**仍然有意义**的未作答确认
       // （已 settle / 已过期 / 台账已落章的陈旧记录不列）——agent 不打开弹框也能看出「在等谁」。
-      const livePending = livePendingConfirm(deps, windowKey)
+      const livePending = await livePendingConfirm(deps, windowKey)
       const pending_confirms = livePending === undefined
         ? []
         : [{
@@ -56,6 +59,9 @@ export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): 
       // R9 的形态就是"未被接收"，必须在**每次 status 调用**里显眼可见，而不是靠人记得去查。
       let clause_receive_status: unknown[] = []
       let unreceived: string[] = []
+      // 阶段遥测（REQ-261004110201-f253 FR-2）：按**子卡阶段**聚合时长/产出/零产出。
+      // 只读投影（从 executions 派生，不落盘、不新增桶）；无已完成执行 → 整体省略键。
+      let stageTelemetry: StageTelemetryRow[] = []
       // 设计文档逐份登记态（FR-1 / I-2，T-4）：磁盘 / 产物簿 / 确认章三源合成——agent 不打开看板
       // 也能读出「未登记 / 待确认 / 已落章」。与 reqboard_submit(kind=design) 的 design_docs 同源同口径。
       let design_docs: unknown[] = []
@@ -85,6 +91,8 @@ export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): 
           const boundReq = open[0]
           const reqDir = 'docs/requirements/' + boundReq.id
           const reqTasks = (await tasksOf(boundReq.id)).filter(t => t.status !== 'canceled')
+          // FR-2：阶段遥测取自同一批任务（子卡执行记录）——投影而非新桶，零额外读盘
+          stageTelemetry = stageTelemetryOf(reqTasks)
           const verificationSheet = boundReq.verification?.sheet
           rtmData = generateStatusRTM(reqDir, reqTasks, verificationSheet)
         } catch (rtmErr) {
@@ -153,11 +161,25 @@ export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): 
         }
       }
       
+      // FR-2（REQ-261003215944-9e04 · t-845a64）：席位表与本窗口的席位。
+      // 口径：**读端折算后**的那一份（与 `seatsOf` / `seatOf` 同一处规则），且取自绑定需求本身
+      // ——不是在这里另算一套。无绑定需求时 `seats` 整体省略（无损 JSON 纪律：不发空数组）；
+      // 本窗口在这条上没席位时 `my_seat` 整体省略（不伪装 worker）。
+      const primary = open.length > 0 ? open[0] : undefined
+      const primarySeat = primary === undefined ? undefined : seatOf(primary, windowKey)
+
       return {
         window_key: windowKey,
         bound: open.length > 0,
         open_count: open.length,
+        // REQ-261003222428-3556 FR-3：构建指纹——「我在跑哪份构建」随时可查（陈旧构建可见化）。
+        // 未盖章（测试/直跑 src）→ 整体省略键（无损 JSON 纪律：不发 undefined/null）。
+        ...(getBuildStamp() !== undefined ? { plugin_build: getBuildStamp()! } : {}),
+        // FR-2（REQ-261004110201-f253）：阶段遥测——无已完成执行时**整体省略键**（不发空数组/null）
+        ...(stageTelemetry.length > 0 ? { stage_telemetry: stageTelemetry } : {}),
         open_requirements: open.map(projectRequirement),
+        ...(primary !== undefined ? { seats: seatsOf(primary) } : {}),
+        ...(primarySeat !== undefined ? { my_seat: primarySeat } : {}),
         next_actions: open.length > 0 ? agentNextActions(open[0].status) : [],
         clause_receive_status,
         unreceived_clauses: unreceived,

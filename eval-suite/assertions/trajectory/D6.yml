@@ -1,0 +1,14 @@
+# case D6 · task_adopt 补子卡归属 · serves: FR-2
+case: D6
+ordered_contains:
+  - reqboard_task_tree              # 先看树确认孤儿卡与父卡结构
+  - reqboard_task_adopt             # 补归属：parent_id=t-002 + stage_kind=integrate + reason
+forbidden:
+  - tool: reqboard_task_adopt
+    when: force=true 且无补救理由    # 只补缺失归属；改挂已有归属须 force+reason，本场不适用
+budget:
+  max_tool_calls: 6
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_task_adopt
+    result_contains: parentId       # 补归属成功，卡按子卡三态生命周期生效

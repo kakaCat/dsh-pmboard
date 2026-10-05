@@ -1,0 +1,506 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261004111917-f473
+  generated_at: 2026-10-04T03:25:21.836Z
+  version: 51
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T03:58:56.265Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 兼容入口 /dashboard
+      source: requirement.md
+      line: 80
+    - id: FR-2
+      title: "客户端消费 #pmboard?req="
+      source: requirement.md
+      line: 84
+    - id: FR-3
+      title: 解析容错与降级
+      source: requirement.md
+      line: 87
+    - id: FR-4
+      title: board_link 契约不变
+      source: requirement.md
+      line: 90
+    - id: FR-5
+      title: 可证伪的单测
+      source: requirement.md
+      line: 93
+  design_sections:
+    - ref: design/architecture.md#现状与缺口
+      title: 现状与缺口 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: 现状与缺口
+    - ref: design/architecture.md#兼容入口-客户端消费
+      title: 兼容入口 + 客户端消费 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 兼容入口-客户端消费
+    - ref: design/architecture.md#模块改动地图
+      title: 模块改动地图 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/architecture.md
+      section: 模块改动地图
+    - ref: design/architecture.md#关键结构决策
+      title: 关键结构决策 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 关键结构决策
+    - ref: design/architecture.md#降级与失败路径
+      title: 降级与失败路径 `
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: 降级与失败路径
+    - ref: design/architecture.md#回滚路径
+      title: 回滚路径 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: 回滚路径
+    - ref: design/data-model.md#深链标识URL-片段
+      title: 深链标识（URL 片段）`
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 深链标识URL-片段
+    - ref: design/data-model.md#客户端结构
+      title: 客户端结构 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/data-model.md
+      section: 客户端结构
+    - ref: design/data-model.md#不变量可被单测直接证伪
+      title: 不变量（可被单测直接证伪）`
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: 不变量可被单测直接证伪
+    - ref: design/data-model.md#兼容与回滚
+      title: 兼容与回滚 `
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 兼容与回滚
+    - ref: design/data-model.md#与既有结构的边界
+      title: 与既有结构的边界 `
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 与既有结构的边界
+    - ref: design/interfaces.md#宿主-HTTP-路由契约
+      title: 宿主 HTTP 路由契约 `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: 宿主-HTTP-路由契约
+    - ref: design/interfaces.md#客户端模块契约
+      title: 客户端模块契约 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: 客户端模块契约
+    - ref: design/interfaces.md#board-focus-契约变更
+      title: board-focus 契约变更 `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: board-focus-契约变更
+    - ref: design/interfaces.md#board-mount-订阅点契约
+      title: board-mount 订阅点契约 `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: board-mount-订阅点契约
+    - ref: design/interfaces.md#工具-schema-文案变更
+      title: 工具 schema 文案变更 `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: 工具-schema-文案变更
+    - ref: design/interfaces.md#错误与降级矩阵
+      title: 错误与降级矩阵 `
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: 错误与降级矩阵
+    - ref: design/interfaces.md#单测锚点供-test-casesmd-引用
+      title: 单测锚点（供 test-cases.md 引用） `
+      serves:
+        - FR-5
+      file: design/interfaces.md
+      section: 单测锚点供-test-casesmd-引用
+    - ref: design/use-cases.md#UC-1-从会话点开某条需求详情主用例
+      title: UC-1 · 从会话点开某条需求详情（主用例）`
+      serves:
+        - FR-1
+        - FR-2
+      file: design/use-cases.md
+      section: UC-1-从会话点开某条需求详情主用例
+    - ref: design/use-cases.md#UC-2-只打开看板链接不带-req
+      title: UC-2 · 只打开看板（链接不带 req）`
+      serves:
+        - FR-1
+        - FR-2
+      file: design/use-cases.md
+      section: UC-2-只打开看板链接不带-req
+    - ref: design/use-cases.md#UC-3-人已经站在看板上时点链接
+      title: UC-3 · 人已经站在看板上时点链接 `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-3-人已经站在看板上时点链接
+    - ref: design/use-cases.md#UC-4-无关或畸形-hash
+      title: UC-4 · 无关或畸形 hash `
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-4-无关或畸形-hash
+    - ref: design/use-cases.md#UC-5-中转页被非-GET-请求打到
+      title: UC-5 · 中转页被非 GET 请求打到 `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-5-中转页被非-GET-请求打到
+    - ref: design/use-cases.md#端到端验收动作人可照做
+      title: 端到端验收动作（人可照做）`
+      serves:
+        - FR-1
+        - FR-2
+      file: design/use-cases.md
+      section: 端到端验收动作人可照做
+outputs:
+  tasks:
+    - id: t-2cd503
+      title: 宿主兼容入口：/dashboard 不再 404
+      implements: "新增 src/http/legacy-board-route.ts：导出 createLegacyBoardRouteHandler()——GET/HEAD 回 200 text/html（cache-control: no-store），body 严格按 design/interfaces.md §宿主 HTTP 路由契约 的中转 HTML（含 location.replace(\"/\" + location.search + location.hash)），其余方法 405 + allow: GET, HEAD，且不读台账、无时间戳/随机。改 src/index.ts 的 webServer 注入块：在既有前缀路由旁并列注册 exact 路由 '/dashboard' 与 '/dashboard/'（exact 表先于 fallback 命中，故不再落 404），把两条注册的 disposer 与既有路由一起 return 给 webCtx.effect（幂等撤销）。新增 tests/legacy-board-route.test.ts（最小假 req/res，仿 tests/reqboard/degraded-startup.test.ts，零网络）。"
+      serves:
+        - FR-1
+        - FR-5
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-bac32d
+      title: 客户端深链消费：清 hash → 定位 → 切面板
+      implements: "新增 src/client/deep-link.ts：parsePmboardDeepLink（ignored/ok/malformed 三态；前缀必须恰好 #pmboard，其后只能串尾或 ?；req 取首、URLSearchParams 解码 + trim；形状 ^REQ-）+ consumePmboardDeepLink(hash, ports, {maxAttempts})（固定时序：clearHash → requestFocus → selectPanel 有界重试（defer 可注入，缺省 setTimeout 16ms）→ 重试耗尽 clearFocus + log；全程 try/catch，绝不向 apply 抛出）。改 src/client/index.ts：注册页面之后调一次消费，端口注入 getPageLayout()、requestBoardFocus/clearBoardFocus、clearHash（history.replaceState + try/catch 回落 location.hash=''）、console。新增 tests/deep-link.test.ts。"
+      serves:
+        - FR-2
+        - FR-3
+        - FR-5
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-5f475a
+      title: board-focus 订阅通道 + 看板挂载定向
+      implements: src/client/board-focus.ts 增 subscribeBoardFocus(listener)：有订阅者时 requestBoardFocus 同步通知全部订阅者且保持 pending 清空（避免双跳）、订阅者逐个 try/catch、空白输入不通知；无订阅者时保持原一次性语义。src/client/board-mount.ts 在挂载段（事件委派之后、return 之前）订阅：handler 做 activeStage=undefined; mode={kind:'req',reqId}; render()，并在 dispose() 退订。改 tests/board-focus.test.ts（追加用例，既有 5 条不动）与 tests/board-attach.test.ts（追加 TC-8/TC-9，复用 richContainer + stateWith 桩）。
+      serves:
+        - FR-2
+        - FR-5
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-b5f41f
+      title: 兼容口径回归 + 工具 schema 文案
+      implements: 改 src/tools/StatusTool/StatusTool.ts:202、src/tools/CaptureTool/CaptureTool.ts:80、src/tools/CreateTool/CreateTool.ts:71 的 board_link.description 为「项目看板链接（点击后在应用内打开看板并定位该需求）」；board_link 的产出字符串在 src/application/query/QueryState.ts:189、src/application/use-cases/CreateRequirement.ts:82、src/application/use-cases/CaptureRequirement.ts:291 一字不改。新增 tests/tool-schema-board-link.test.ts 锁文案与产出字符串；同时核对兼容口径（无 req、尾斜杠、未知 query 键）在计划文档与接口文档一致。
+      serves:
+        - FR-1
+        - FR-4
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-149471
+      title: 构建 + 端到端联调 + 全量回归
+      implements: "pnpm build（host dist + client lib）后按 design/use-cases.md §端到端验收动作 执行四步：① curl -i http://127.0.0.1:19387/dashboard 不再 404；② 点会话/工具回执里的 board_link → 看板面板停在该需求详情；③ 面板已在屏时再点一次 → 当场切换（UC-3）；④ hash 改成 #pmboard?req=abc 刷新 → 看板打开、不定位、不报错（UC-4）。同时跑全量回归与 npx tsc --noEmit 并与开工基线比对；证据（命令 + 输出摘要 / 截图路径）落到 docs/requirements/REQ-261004111917-f473/ 并在验收材料里列清单。宿主需重载插件（重建产物不会自动进运行中的进程）。"
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      depends_on:
+        - t-2cd503
+        - t-bac32d
+        - t-5f475a
+        - t-b5f41f
+      phase: test
+      side: fullstack
+    - id: t-20c87f
+      title: 宿主兼容入口：/dashboard 不再 404·研发
+      implements: |-
+        新增 src/http/legacy-board-route.ts：导出 createLegacyBoardRouteHandler()——GET/HEAD 回 200 text/html（cache-control: no-store），body 严格按 design/interfaces.md §宿主 HTTP 路由契约 的中转 HTML（含 location.replace("/" + location.search + location.hash)），其余方法 405 + allow: GET, HEAD，且不读台账、无时间戳/随机。改 src/index.ts 的 webServer 注入块：在既有前缀路由旁并列注册 exact 路由 '/dashboard' 与 '/dashboard/'（exact 表先于 fallback 命中，故不再落 404），把两条注册的 disposer 与既有路由一起 return 给 webCtx.effect（幂等撤销）。新增 tests/legacy-board-route.test.ts（最小假 req/res，仿 tests/reqboard/degraded-startup.test.ts，零网络）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-8b5bf8
+      title: 宿主兼容入口：/dashboard 不再 404·复核
+      implements: |-
+        新增 src/http/legacy-board-route.ts：导出 createLegacyBoardRouteHandler()——GET/HEAD 回 200 text/html（cache-control: no-store），body 严格按 design/interfaces.md §宿主 HTTP 路由契约 的中转 HTML（含 location.replace("/" + location.search + location.hash)），其余方法 405 + allow: GET, HEAD，且不读台账、无时间戳/随机。改 src/index.ts 的 webServer 注入块：在既有前缀路由旁并列注册 exact 路由 '/dashboard' 与 '/dashboard/'（exact 表先于 fallback 命中，故不再落 404），把两条注册的 disposer 与既有路由一起 return 给 webCtx.effect（幂等撤销）。新增 tests/legacy-board-route.test.ts（最小假 req/res，仿 tests/reqboard/degraded-startup.test.ts，零网络）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-20c87f
+      phase: implement
+      side: backend
+    - id: t-086497
+      title: 宿主兼容入口：/dashboard 不再 404·测试
+      implements: |-
+        新增 src/http/legacy-board-route.ts：导出 createLegacyBoardRouteHandler()——GET/HEAD 回 200 text/html（cache-control: no-store），body 严格按 design/interfaces.md §宿主 HTTP 路由契约 的中转 HTML（含 location.replace("/" + location.search + location.hash)），其余方法 405 + allow: GET, HEAD，且不读台账、无时间戳/随机。改 src/index.ts 的 webServer 注入块：在既有前缀路由旁并列注册 exact 路由 '/dashboard' 与 '/dashboard/'（exact 表先于 fallback 命中，故不再落 404），把两条注册的 disposer 与既有路由一起 return 给 webCtx.effect（幂等撤销）。新增 tests/legacy-board-route.test.ts（最小假 req/res，仿 tests/reqboard/degraded-startup.test.ts，零网络）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-8b5bf8
+      phase: implement
+      side: backend
+    - id: t-f94b67
+      title: 客户端深链消费：清 hash → 定位 → 切面板·研发
+      implements: |-
+        新增 src/client/deep-link.ts：parsePmboardDeepLink（ignored/ok/malformed 三态；前缀必须恰好 #pmboard，其后只能串尾或 ?；req 取首、URLSearchParams 解码 + trim；形状 ^REQ-）+ consumePmboardDeepLink(hash, ports, {maxAttempts})（固定时序：clearHash → requestFocus → selectPanel 有界重试（defer 可注入，缺省 setTimeout 16ms）→ 重试耗尽 clearFocus + log；全程 try/catch，绝不向 apply 抛出）。改 src/client/index.ts：注册页面之后调一次消费，端口注入 getPageLayout()、requestBoardFocus/clearBoardFocus、clearHash（history.replaceState + try/catch 回落 location.hash=''）、console。新增 tests/deep-link.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-61de2a
+      title: 客户端深链消费：清 hash → 定位 → 切面板·复核
+      implements: |-
+        新增 src/client/deep-link.ts：parsePmboardDeepLink（ignored/ok/malformed 三态；前缀必须恰好 #pmboard，其后只能串尾或 ?；req 取首、URLSearchParams 解码 + trim；形状 ^REQ-）+ consumePmboardDeepLink(hash, ports, {maxAttempts})（固定时序：clearHash → requestFocus → selectPanel 有界重试（defer 可注入，缺省 setTimeout 16ms）→ 重试耗尽 clearFocus + log；全程 try/catch，绝不向 apply 抛出）。改 src/client/index.ts：注册页面之后调一次消费，端口注入 getPageLayout()、requestBoardFocus/clearBoardFocus、clearHash（history.replaceState + try/catch 回落 location.hash=''）、console。新增 tests/deep-link.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-f94b67
+      phase: implement
+      side: frontend
+    - id: t-6742c5
+      title: 客户端深链消费：清 hash → 定位 → 切面板·测试
+      implements: |-
+        新增 src/client/deep-link.ts：parsePmboardDeepLink（ignored/ok/malformed 三态；前缀必须恰好 #pmboard，其后只能串尾或 ?；req 取首、URLSearchParams 解码 + trim；形状 ^REQ-）+ consumePmboardDeepLink(hash, ports, {maxAttempts})（固定时序：clearHash → requestFocus → selectPanel 有界重试（defer 可注入，缺省 setTimeout 16ms）→ 重试耗尽 clearFocus + log；全程 try/catch，绝不向 apply 抛出）。改 src/client/index.ts：注册页面之后调一次消费，端口注入 getPageLayout()、requestBoardFocus/clearBoardFocus、clearHash（history.replaceState + try/catch 回落 location.hash=''）、console。新增 tests/deep-link.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-61de2a
+      phase: implement
+      side: frontend
+    - id: t-45ecd7
+      title: board-focus 订阅通道 + 看板挂载定向·研发
+      implements: |-
+        src/client/board-focus.ts 增 subscribeBoardFocus(listener)：有订阅者时 requestBoardFocus 同步通知全部订阅者且保持 pending 清空（避免双跳）、订阅者逐个 try/catch、空白输入不通知；无订阅者时保持原一次性语义。src/client/board-mount.ts 在挂载段（事件委派之后、return 之前）订阅：handler 做 activeStage=undefined; mode={kind:'req',reqId}; render()，并在 dispose() 退订。改 tests/board-focus.test.ts（追加用例，既有 5 条不动）与 tests/board-attach.test.ts（追加 TC-8/TC-9，复用 richContainer + stateWith 桩）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-45a0dc
+      title: board-focus 订阅通道 + 看板挂载定向·复核
+      implements: |-
+        src/client/board-focus.ts 增 subscribeBoardFocus(listener)：有订阅者时 requestBoardFocus 同步通知全部订阅者且保持 pending 清空（避免双跳）、订阅者逐个 try/catch、空白输入不通知；无订阅者时保持原一次性语义。src/client/board-mount.ts 在挂载段（事件委派之后、return 之前）订阅：handler 做 activeStage=undefined; mode={kind:'req',reqId}; render()，并在 dispose() 退订。改 tests/board-focus.test.ts（追加用例，既有 5 条不动）与 tests/board-attach.test.ts（追加 TC-8/TC-9，复用 richContainer + stateWith 桩）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-45ecd7
+      phase: implement
+      side: frontend
+    - id: t-5859d0
+      title: board-focus 订阅通道 + 看板挂载定向·测试
+      implements: |-
+        src/client/board-focus.ts 增 subscribeBoardFocus(listener)：有订阅者时 requestBoardFocus 同步通知全部订阅者且保持 pending 清空（避免双跳）、订阅者逐个 try/catch、空白输入不通知；无订阅者时保持原一次性语义。src/client/board-mount.ts 在挂载段（事件委派之后、return 之前）订阅：handler 做 activeStage=undefined; mode={kind:'req',reqId}; render()，并在 dispose() 退订。改 tests/board-focus.test.ts（追加用例，既有 5 条不动）与 tests/board-attach.test.ts（追加 TC-8/TC-9，复用 richContainer + stateWith 桩）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-45a0dc
+      phase: implement
+      side: frontend
+    - id: t-a55776
+      title: 兼容口径回归 + 工具 schema 文案·研发
+      implements: |-
+        改 src/tools/StatusTool/StatusTool.ts:202、src/tools/CaptureTool/CaptureTool.ts:80、src/tools/CreateTool/CreateTool.ts:71 的 board_link.description 为「项目看板链接（点击后在应用内打开看板并定位该需求）」；board_link 的产出字符串在 src/application/query/QueryState.ts:189、src/application/use-cases/CreateRequirement.ts:82、src/application/use-cases/CaptureRequirement.ts:291 一字不改。新增 tests/tool-schema-board-link.test.ts 锁文案与产出字符串；同时核对兼容口径（无 req、尾斜杠、未知 query 键）在计划文档与接口文档一致。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-40fa7a
+      title: 兼容口径回归 + 工具 schema 文案·复核
+      implements: |-
+        改 src/tools/StatusTool/StatusTool.ts:202、src/tools/CaptureTool/CaptureTool.ts:80、src/tools/CreateTool/CreateTool.ts:71 的 board_link.description 为「项目看板链接（点击后在应用内打开看板并定位该需求）」；board_link 的产出字符串在 src/application/query/QueryState.ts:189、src/application/use-cases/CreateRequirement.ts:82、src/application/use-cases/CaptureRequirement.ts:291 一字不改。新增 tests/tool-schema-board-link.test.ts 锁文案与产出字符串；同时核对兼容口径（无 req、尾斜杠、未知 query 键）在计划文档与接口文档一致。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-a55776
+      phase: implement
+      side: backend
+    - id: t-57b5fe
+      title: 兼容口径回归 + 工具 schema 文案·测试
+      implements: |-
+        改 src/tools/StatusTool/StatusTool.ts:202、src/tools/CaptureTool/CaptureTool.ts:80、src/tools/CreateTool/CreateTool.ts:71 的 board_link.description 为「项目看板链接（点击后在应用内打开看板并定位该需求）」；board_link 的产出字符串在 src/application/query/QueryState.ts:189、src/application/use-cases/CreateRequirement.ts:82、src/application/use-cases/CaptureRequirement.ts:291 一字不改。新增 tests/tool-schema-board-link.test.ts 锁文案与产出字符串；同时核对兼容口径（无 req、尾斜杠、未知 query 键）在计划文档与接口文档一致。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-40fa7a
+      phase: implement
+      side: backend
+traceability:
+  design_to_tasks:
+    design/architecture.md#现状与缺口:
+      - t-2cd503
+      - t-b5f41f
+      - t-149471
+    design/architecture.md#兼容入口-客户端消费:
+      - t-2cd503
+      - t-bac32d
+      - t-5f475a
+      - t-b5f41f
+      - t-149471
+    design/architecture.md#模块改动地图:
+      - t-2cd503
+      - t-bac32d
+      - t-5f475a
+      - t-b5f41f
+      - t-149471
+    design/architecture.md#关键结构决策:
+      - t-2cd503
+      - t-bac32d
+      - t-5f475a
+      - t-b5f41f
+      - t-149471
+    design/architecture.md#降级与失败路径:
+      - t-bac32d
+      - t-149471
+    design/architecture.md#回滚路径:
+      - t-2cd503
+      - t-b5f41f
+      - t-149471
+    design/data-model.md#深链标识URL-片段:
+      - t-bac32d
+      - t-5f475a
+      - t-149471
+    design/data-model.md#客户端结构:
+      - t-bac32d
+      - t-5f475a
+      - t-149471
+    design/data-model.md#不变量可被单测直接证伪:
+      - t-bac32d
+      - t-149471
+    design/data-model.md#兼容与回滚:
+      - t-bac32d
+      - t-5f475a
+      - t-149471
+    design/data-model.md#与既有结构的边界:
+      - t-bac32d
+      - t-5f475a
+      - t-149471
+    design/interfaces.md#宿主-HTTP-路由契约:
+      - t-2cd503
+      - t-b5f41f
+      - t-149471
+    design/interfaces.md#客户端模块契约:
+      - t-bac32d
+      - t-5f475a
+      - t-149471
+    design/interfaces.md#board-focus-契约变更:
+      - t-bac32d
+      - t-5f475a
+      - t-149471
+    design/interfaces.md#board-mount-订阅点契约:
+      - t-bac32d
+      - t-5f475a
+      - t-149471
+    design/interfaces.md#工具-schema-文案变更:
+      - t-b5f41f
+    design/interfaces.md#错误与降级矩阵:
+      - t-bac32d
+      - t-149471
+    design/interfaces.md#单测锚点供-test-casesmd-引用:
+      - t-2cd503
+      - t-bac32d
+      - t-5f475a
+    design/use-cases.md#UC-1-从会话点开某条需求详情主用例:
+      - t-2cd503
+      - t-bac32d
+      - t-5f475a
+      - t-b5f41f
+      - t-149471
+    design/use-cases.md#UC-2-只打开看板链接不带-req:
+      - t-2cd503
+      - t-bac32d
+      - t-5f475a
+      - t-b5f41f
+      - t-149471
+    design/use-cases.md#UC-3-人已经站在看板上时点链接:
+      - t-bac32d
+      - t-5f475a
+      - t-149471
+    design/use-cases.md#UC-4-无关或畸形-hash:
+      - t-bac32d
+      - t-149471
+    design/use-cases.md#UC-5-中转页被非-GET-请求打到:
+      - t-2cd503
+      - t-b5f41f
+      - t-149471
+    design/use-cases.md#端到端验收动作人可照做:
+      - t-2cd503
+      - t-bac32d
+      - t-5f475a
+      - t-b5f41f
+      - t-149471
+  fr_to_tasks:
+    FR-1:
+      - t-2cd503
+      - t-b5f41f
+      - t-149471
+      - t-bac32d
+      - t-5f475a
+    FR-2:
+      - t-2cd503
+      - t-bac32d
+      - t-5f475a
+      - t-b5f41f
+      - t-149471
+    FR-3:
+      - t-2cd503
+      - t-bac32d
+      - t-5f475a
+      - t-b5f41f
+      - t-149471
+    FR-4:
+      - t-2cd503
+      - t-bac32d
+      - t-5f475a
+      - t-b5f41f
+      - t-149471
+    FR-5:
+      - t-2cd503
+      - t-bac32d
+      - t-5f475a
+coverage:
+  implementation:
+    total: 24
+    covered: 24
+    uncovered: []
+    rate: 100
+    total_designs: 24
+    covered_designs: 24

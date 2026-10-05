@@ -76,6 +76,9 @@ export function buildTabContents(
   comments: string,
   now: number
 ): string {
+  // REQ-261004195831-0f52 FR-4：本体字段可能缺失（摘要形状的记录 / 旧数据）——
+  // 计数按 0 走，绝不对 undefined 取 .length（那正是详情页整块崩掉的直接原因）。
+  const commentCount = Array.isArray(req.comments) ? req.comments.length : 0
   return `
     <!-- 📋 概览 Tab（默认显示；REQ-6f39b5 对齐 prototype：描述 → 当前阶段高亮卡 → 文档）-->
     <div class="dsh-pm-tab-content active" data-tab-content="overview">
@@ -124,7 +127,7 @@ export function buildTabContents(
         <div class="dsh-pm-section-content">${renderReqTimeline(req, now)}</div>
       </div>
       <div class="dsh-pm-section">
-        <h3 class="dsh-pm-section-title">💬 评论<span class="dsh-pm-fold-count">${req.comments.length} 条</span></h3>
+        <h3 class="dsh-pm-section-title">💬 评论<span class="dsh-pm-fold-count">${commentCount} 条</span></h3>
         <div class="dsh-pm-section-content">
           ${comments}
           <div class="dsh-pm-comment-form" data-actor="human">
@@ -166,6 +169,16 @@ export function buildTabContents(
 }
 
 
+/**
+ * 需求详情页整页渲染。
+ *
+ * REQ-261004195831-0f52（FR-1 / FR-4）两条入参纪律：
+ *  - **正常路径必须传全文**：`req` 应来自 `GET /requirements/:id`（`req-detail-store` 的 ready 条目）。
+ *    `/state` 的 `state.requirements` 是**摘要**（无 comments/artifacts/…），拿它渲染详情 = 静默失数据；
+ *  - **兜底不等于允许**：即便有人传了摘要（旧调用方 / 半残记录），本函数也必须不抛异常、
+ *    把缺的字段按空态渲染（`renderComments` 与 `buildTabContents` 各自兜底）。
+ *    2026-10-04 的 `TypeError: reading 'length'` 就发生在这条链上。
+ */
 export function buildReqDetail(req: RequirementRecord, tasks: TaskRecord[], now: number = Date.now(), archived: ReadonlySet<string> = NO_ARCHIVED): string {
   const reqTasks = tasks.filter(t => t.requirementId === req.id)
   const dag = buildDag(reqTasks)
@@ -219,13 +232,21 @@ export function gateHintFor(status: RequirementStatus): string {
  * 闸门按钮**正面铺开，折叠区只保留内容（不再是唯一入口）。
  *
  * 覆盖四类：① 阶段推进/退回 move-req；② 计划裁决 plan-approve/plan-reject；
- * ③ 验收裁决 verify-pass/verify-rework；④ 归档 archive-req。
+ * ③ 验收裁决 verify-pass/verify-rework；④ 归档（REQ-261002105242-a3fb 起不再渲染：
+ * 服务端端点已由 REQ-9f4a44 移除，材料由窗口 agent 走 reqboard_submit(kind=archive) 提交）。
  * 同一动作只给一次（如验收态已交材料 → 只给 verify-pass，不再给等价的 move→done）。
+ * **终态（archived / canceled / done）一律只读**：函数开头显式早退，不留空壳。
  * 无任何可用操作时整条不渲染（不留空壳）。
  */
 const BAR_LABEL = '<span class="dsh-pm-action-bar-label">本阶段操作</span>'
 
 export function renderActionBar(req: RequirementRecord): string {
+  // REQ-261002105242-a3fb FR-2：**终态一律只读**——显式早退，不再依赖"switch 恰好没有这个分支"的巧合。
+  // 改造前真能发生的两个反例：① canceled 且计划未批准 → 渲染「批准计划」（语义荒谬且必被拒）；
+  // ② legacy done + 材料已备 → 渲染「归档」，而 POST /req/archive 已由 REQ-9f4a44 移除（点了必失败）。
+  // 归档材料由窗口 agent 走 reqboard_submit(kind=archive) 提交；人在这里只回看，不操作。
+  // 早退放在 items/hints 构造之前：连空壳 div 与 BAR_LABEL 都不渲染（既有用例锁定这一点）。
+  if (req.status === 'archived' || req.status === 'canceled' || req.status === 'done') return ''
   const items: string[] = []
   /**
    * 「本阶段暂时没有可点的按钮」时的说明（REQ-9f4a44 后新增）。
@@ -246,9 +267,9 @@ export function renderActionBar(req: RequirementRecord): string {
 
   // 「立项取消」固定排操作条第一位（2026-09-20 用户裁定）：*→canceled 全在途态合法
   // 且仅人可点（REQ_TRANSITIONS）。此前只在 draft 渲染——在途需求找不到取消入口（实测）。
-  if (req.status !== 'done' && req.status !== 'canceled' && req.status !== 'archived') {
-    move('canceled', '立项取消', '取消该需求立项（仅人可操作）')
-  }
+  // 不再重复判终态：函数开头的早退（archived/canceled/done → 直接返回空条）已经保证走到这里的
+  // 都是在途态；那三处比较在收窄后的类型上是死比较（tsc TS2367），留着只会掩盖真实守卫。
+  move('canceled', '立项取消', '取消该需求立项（仅人可操作）')
 
   // REQ-6f39b5：推进按钮统一为「→ [下一阶段]」格式，阶段名对齐 workflow-stages.md
   switch (req.status) {
@@ -275,9 +296,8 @@ export function renderActionBar(req: RequirementRecord): string {
       // 用户 2026-09-20 明确订正："是验收阶段按钮就展示"。不合格/缺材料的风险改由
       // 点击后的确认弹框承担（board-mount 的 verify-pass 分支），不再靠隐藏按钮来回避。
       break
-    case 'done':
-      // done 为 legacy 死状态（REQ_TRANSITIONS: done: []），历史记录只读，不给转移按钮
-      break
+    // 说明：done 分支已删除——函数开头的终态早退（archived/canceled/done → 返回空条）先接管，
+    // 走到 switch 的必然是在途态；保留 `case 'done'` 只会是一条永不进入的死分支（tsc TS2678）。
     default:
       break
   }
@@ -291,9 +311,10 @@ export function renderActionBar(req: RequirementRecord): string {
     add('verify-pass', '验收通过', '人工审核通过（有不合格项或未交材料时会先弹确认框）', true)
     add('verify-rework', '退回返工', '退回返工（需填写意见）')
   }
-  if (req.status === 'done' && req.archive !== undefined && req.archive.archivedAt === undefined) {
-    add('archive-req', '归档', '归档：把产出并进项目文档', true)
-  }
+  // REQ-261002105242-a3fb FR-4：此前的「done + 材料已备 → 归档按钮」分支已删除。
+  // 它渲染的按钮指向 POST /req/archive，而该端点已由 REQ-9f4a44 移除（点了必 404）；
+  // 且上面的终态早退已经覆盖 done，这段是死代码。legacy done 需求的材料由窗口 agent 走
+  // reqboard_submit(kind=archive) 提交——不给"人点这里"的假出口。
 
   if (items.length === 0 && hints.length === 0) return ''
   const hintHtml = hints.length === 0

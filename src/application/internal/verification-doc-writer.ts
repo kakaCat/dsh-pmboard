@@ -8,15 +8,18 @@
  *
  * @module dsh-pmboard/application/internal/verification-doc-writer
  */
-import type { DocRepository, LedgerView } from '../ports.js'
+import type { DocRepository } from '../ports.js'
 import type { TaskRecord } from '../../shared/protocol.js'
 import { renderVerificationDoc } from '../../domain/workflow/VerificationDoc.js'
 import { checkDocCompleteness } from '../../domain/workflow/DocCompleteness.js'
 import { requirementItemTitle } from '../../domain/workflow/AcceptanceSheetSpec.js'
+import type { RequirementRecord } from '../../shared/protocol.js'
+// REQ-261001203710-0fbf t7：验收文档写入前核验写盘根（判定下沉到写入器本身）
+import { ensureWritableProjectRoot } from './support.js'
 
 export interface VerificationDocPorts {
   /** 台账仓储（只读快照；只用来取需求记录与验收单） */
-  repo: { snapshot(): LedgerView }
+  repo: { get(id: string): Promise<RequirementRecord | undefined> }
   /** 缺省 → 跳过（不阻断） */
   docs?: DocRepository
 }
@@ -34,10 +37,11 @@ export async function rewriteVerificationDoc(
 ): Promise<boolean> {
   const docs = ports.docs
   if (docs === undefined) return false
-  const snap = ports.repo.snapshot()
-  const req = snap.requirements.find(r => r.id === reqId)
+  const req = await ports.repo.get(reqId)
   const sheet = req?.verification?.sheet
   if (req === undefined || sheet === undefined) return false
+  // REQ-261001203710-0fbf t7 / FR-2：verification.md 是工作区相对落盘——写前核验根（错配即拒）
+  ensureWritableProjectRoot({ docs }, req)
 
   const reqDir = 'docs/requirements/' + reqId
   const collect = (sub: string): string[] => docs.list(sub.length > 0 ? reqDir + '/' + sub : reqDir)

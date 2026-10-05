@@ -1,0 +1,4444 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261004121649-bfa7",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-04T06:24:18.628Z",
+  "tasks": [
+    {
+      "id": "t-3b61dd",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "回退只动物化该动的卡：子卡原地复位，不再升格成新父卡",
+      "cardDoc": "docs/requirements/REQ-261004121649-bfa7/tasks/t-3b61dd.md",
+      "description": "roolback.ts 物化段：只有顶层父卡（无 parentId）物化重做卡；子卡不再物化，改为原地复位为 todo 并保留身份。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) `npx vitest run tests/rollback-materialize.test.ts -t \"只物化顶层\"` → 全绿：6 张顶层卡 → 物化 6 张；11 张子卡**原地复位**且 `parentId`/`stageKind` 保留；2) 判别力（A/B）：在当前实现下该用例**必红**（能复现 17 → 56 的膨胀）；3) `npx vitest run` 失败数 ≤ 开工基线。",
+      "implementation": "src/application/internal/rollback.ts 的物化段（生成 reworkDrafts 处）：先按 `parentId === undefined` 分流——顶层父卡 → 生成重做草稿（继承标题/phase/side/acceptance，`reworkOf=原卡id`）；子卡 → 收集到新增的 `resetSubtasks` 列表，不再进 reworkDrafts。rollback-tasks.ts 里物化与复位分别落库（复位 = mutate 把 status 置回 todo，**不动** parentId/stageKind）。",
+      "context": "",
+      "requirementRefs": [
+        "FR-1"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1a6e70",
+          "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+          "trigger": "manual",
+          "startedAt": 1791095066513,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+              "seq": 4507,
+              "at": 1791095066513,
+              "totals": {
+                "uncachedInputTokens": 1661484,
+                "outputTokens": 638252,
+                "cacheReadTokens": 228057088,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+              "seq": 4694,
+              "at": 1791095868066,
+              "totals": {
+                "uncachedInputTokens": 1673784,
+                "outputTokens": 658093,
+                "cacheReadTokens": 238226176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 12300,
+              "outputTokens": 19841,
+              "cacheReadTokens": 10169088,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791095868065
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791095058557,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791095066513,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "开工 t1：回退只动物化该动的卡（子卡原地复位，不再升格）"
+        },
+        {
+          "status": "done",
+          "at": 1791095868065,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "t1 完成：回退只物化顶层父卡（子卡原地复位保留身份），代码 + 3 条用例 + 双路径消费；四张子卡全完成，全量 96 failed（比改动前少 1）"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-349a32",
+          "body": "[状态] → in_progress：开工 t1：回退只动物化该动的卡（子卡原地复位，不再升格）（reqboard_task_move）",
+          "createdAt": 1791095066513,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          }
+        },
+        {
+          "id": "c-fb1cfb",
+          "body": "[状态] → done：t1 完成：回退只物化顶层父卡（子卡原地复位保留身份），代码 + 3 条用例 + 双路径消费；四张子卡全完成，全量 96 failed（比改动前少 1）（reqboard_task_move）",
+          "createdAt": 1791095868065,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791095058557,
+      "updatedAt": 1791095868065,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791095802837,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/rollback-tasks.ts",
+          "src/application/use-cases/MoveRequirement.ts",
+          "src/http/routers/requirements.ts",
+          "tests/rollback-materialize.test.ts",
+          "tests/rollback-tasks.test.ts"
+        ],
+        "completed": [
+          "交付：回退物化段分流（只有顶层父卡物化重做卡；子卡原地复位并保留 parentId/stageKind），新增 taskPlan.resetTasks（整卡副本），会话侧与看板侧两条回退路径同步消费",
+          "新增 tests/rollback-materialize.test.ts（3 条用例）；更新 tests/rollback-tasks.test.ts 的严格相等断言到新契约",
+          "验收命令全过：`-t \"只物化顶层\"` 3 passed；rollback-materialize 3 passed；rollback-tasks 7 passed",
+          "类型：146 条（三个改动源文件零错误）；全量：96 failed / 3913 passed（改动前 97 —— 少一条），我的改动面零失败",
+          "四张子卡（研发 / 联调 / 复核 / 测试）各自完成并留下完工记录",
+          "两处偏离已定性并留痕：返回值用整卡副本（与 canceled 同形，避免两处写入分叉）；物化段落在 rollback-tasks.ts 而非 rollback.ts（那才是产卡计划处）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791095802837,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b721a6",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "回退物化要幂等、要有上限：超限整次拒绝，队列零新增",
+      "cardDoc": "docs/requirements/REQ-261004121649-bfa7/tasks/t-b721a6.md",
+      "description": "物化前按幂等键去重；单次物化超上限（20）时整次拒绝、队列零新增（而不是先落库再让人发现）。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-3b61dd"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "可执行验收（三条，逐条可复跑）：\n\n1) 幂等：`npx vitest run tests/rollback-materialize.test.ts -t \"重复回退两次\"` → 1 passed；该用例真跑两次回退（第一次产物落进队列后跑第二次），断言第二次 `reworkDrafts.length === 0`、队列净增为 0。\n2) 超限整次拒绝：`npx vitest run tests/rollback-materialize.test.ts -t \"上限\"` → 4 passed；构造 21 张待物化顶层卡（上限 `ROLLBACK_MATERIALIZE_LIMIT = 20`，见 `src/application/internal/rollback-tasks.ts`），断言抛出错误码 `REQBOARD_ROLLBACK_MATERIALIZE_OVER_LIMIT`，且 `many.every(t => t.status === 'done')` 仍成立（= 队列一个字未改，因为拒绝发生在落库前的编排期）。\n3) 文案含数字与建议：同一用例内断言 `String(err.message)` 同时 `toContain('21')` 与 `toContain('20')`；边界不误拒由 `-t \"上限\"` 内「正好 20 张 → 放行」一条覆盖。\n\n可查数据（看板）：`GET /dashboard/api/reqboard/state` 或需求详情页 → 队列任务数在超限拒绝前后相等。",
+      "implementation": "需求记录上维护 `rollback = { seq, lastAt, lastMaterialized }`（挂需求记录，不进队列文件）：物化前先查 (requirementId, taskId, seq) 是否已有重做卡 → 有则跳过；物化张数 > 20 则在**落库前**抛错并返回明细。MoveRequirement 的「任务先写、需求后写」顺序不变：拒绝发生在任务写入之前，所以天然零新增。",
+      "context": "",
+      "requirementRefs": [
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a3641d",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103475939,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 753,
+              "at": 1791103475939,
+              "totals": {
+                "uncachedInputTokens": 115999,
+                "outputTokens": 36990,
+                "cacheReadTokens": 9248896,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 876,
+              "at": 1791103589463,
+              "totals": {
+                "uncachedInputTokens": 140733,
+                "outputTokens": 41812,
+                "cacheReadTokens": 12074112,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 24734,
+              "outputTokens": 4822,
+              "cacheReadTokens": 2825216,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103589463
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791095058557,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103475939,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "接手续跑：代码与用例已在本轮完成并自测通过（rollback-materialize 7 passed / rollback-tasks 7 passed），本卡补走卡仪式（开子卡链→关闭父卡）"
+        },
+        {
+          "status": "done",
+          "at": 1791103589463,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "关闭父卡：幂等与上限两条防线已实现、已联调、已复核、已测试；4 张子卡全 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1d6716",
+          "body": "[状态] → in_progress：接手续跑：代码与用例已在本轮完成并自测通过（rollback-materialize 7 passed / rollback-tasks 7 passed），本卡补走卡仪式（开子卡链→关闭父卡）（reqboard_task_move）",
+          "createdAt": 1791103475939,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-210be5",
+          "body": "[状态] → done：关闭父卡：幂等与上限两条防线已实现、已联调、已复核、已测试；4 张子卡全 done（reqboard_task_move）",
+          "createdAt": 1791103589463,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791095058557,
+      "updatedAt": 1791104452144,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791101952609,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/rollback-tasks.ts",
+          "tests/rollback-materialize.test.ts"
+        ],
+        "completed": [
+          "rollback-tasks.ts 幂等：已有「活的重做卡」指向某父卡时，该父卡不再重复物化（幂等键实质 = 上次物化的卡还在不在）",
+          "同时补一处我自己发现的递归漏洞：`reworkOf` 非空的卡（即重做卡本身）不再被物化——否则第二次回退会造出「重做卡的重做卡」",
+          "rollback-tasks.ts 上限：新增导出常量 ROLLBACK_MATERIALIZE_LIMIT = 20；超限在**编排期**抛 REQBOARD_ROLLBACK_MATERIALIZE_OVER_LIMIT，文案含「将物化 N 张 / 上限 20 / 队列未被改动」",
+          "位置是关键：判定发生在编排期、调用方尚未写任何东西，所以「超限时队列零新增」是结构上成立的（不靠调用方自觉）",
+          "自测：tests/rollback-materialize.test.ts → 6 passed（幂等 1 条 + 上限 2 条 + 既有 3 条）；npx tsc --noEmit 146 条不变；全量 96 failed（与 t1 后持平），我的改动面零失败"
+        ]
+      },
+      "lastRun": {
+        "at": 1791101952609,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f98040",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "误物化能一次清掉：仅人的批量清理入口 + 可核对回执",
+      "cardDoc": "docs/requirements/REQ-261004121649-bfa7/tasks/t-f98040.md",
+      "description": "新增仅人可操作的批量清理入口：把某次回退物化出来的卡批量置 canceled，并还原被误伤的父子关系。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-3b61dd"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) `npx vitest run tests/rollback-materialize.test.ts -t \"批量清理\"` → 全绿：物化卡全部 `canceled`、父子关系还原；再清一次 `canceled === 0`；2) agent 身份调该接口 → `REQBOARD_HUMAN_GATE` 且队列零变化；3) 回执含 `canceled` 与 `restoredLinks` 两个可核对数字。",
+      "implementation": "src/http/routers/requirements.ts 新增 `POST /req/rollback-cleanup`：body `{ id, rollbackSeq }` → 消费 `requirement.rollback.lastMaterialized` 批量置 canceled（**不碰 done 卡**）+ 按 `reworkOf` 反查还原 `parentId`；沿用既有「仅人」闸门写法（与 canceled/归档同口径）；未知序号 → `REQBOARD_UNKNOWN_ROLLBACK_SEQ`。复用 rollback-revocation.ts 的回收判定，不新造一套。",
+      "context": "",
+      "requirementRefs": [
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1e128e",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103856213,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1251,
+              "at": 1791103856213,
+              "totals": {
+                "uncachedInputTokens": 175100,
+                "outputTokens": 68452,
+                "cacheReadTokens": 23962368,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1404,
+              "at": 1791103981288,
+              "totals": {
+                "uncachedInputTokens": 202917,
+                "outputTokens": 76112,
+                "cacheReadTokens": 29500544,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 27817,
+              "outputTokens": 7660,
+              "cacheReadTokens": 5538176,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103981287
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791095058557,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103856213,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "t3 实施：仅人批量清场入口（POST /req/rollback-cleanup）+ 物化清单落库；判定抽出为纯函数并配 9 条内存用例"
+        },
+        {
+          "status": "done",
+          "at": 1791103981287,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "关闭父卡：清场入口已实现、已联调、已复核、已测试；4 张子卡全 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b95256",
+          "body": "[状态] → in_progress：t3 实施：仅人批量清场入口（POST /req/rollback-cleanup）+ 物化清单落库；判定抽出为纯函数并配 9 条内存用例（reqboard_task_move）",
+          "createdAt": 1791103856213,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-9cc3df",
+          "body": "[状态] → done：关闭父卡：清场入口已实现、已联调、已复核、已测试；4 张子卡全 done（reqboard_task_move）",
+          "createdAt": 1791103981287,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791095058557,
+      "updatedAt": 1791103981287,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791103979316,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/rollback-cleanup.ts",
+          "src/application/use-cases/RollbackCleanup.ts",
+          "src/http/routers/requirements.ts",
+          "src/http/routes.ts",
+          "src/shared/protocol.ts",
+          "tests/rollback-cleanup.test.ts",
+          "docs/requirements/REQ-261004121649-bfa7/design/interfaces.md"
+        ],
+        "completed": [
+          "新增仅人批量清场入口 POST /dashboard/api/reqboard/req/rollback-cleanup，回执含 canceled 与 restoredLinks 两个可核对数字",
+          "回退时把物化出来的卡 id 记进台账（RollbackMark 新增 seq / lastMaterialized），清场入口按这份清单划边界",
+          "三条边界都有用例钉住：只清这批、不碰 done 卡、清第二次 canceled === 0",
+          "旧数据兜底：没有清单记录时按 reworkOf + 标题前缀匹配，回执如实声明 matchedBy 与逐条跳过原因",
+          "判别力逐条实测：改坏「不碰 done」「幂等过滤」「清单保留」三处，对应用例各自变红后还原",
+          "自测：tests/rollback-cleanup.test.ts 11 passed；全量 96 failed / 4014 passed（失败数与基线逐字相等）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103979316,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c98915",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "重做卡物化即终态：不再自动展开子卡链",
+      "cardDoc": "docs/requirements/REQ-261004121649-bfa7/tasks/t-c98915.md",
+      "description": "重做卡物化即终态：不自动按默认模板展开子卡链，杜绝名字递归成「…·研发·研发」。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-3b61dd"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) `npx vitest run tests/rollback-materialize.test.ts -t \"不自动展开链\"` → 全绿：重做卡 `stages` 为 `[]`（或等价「不展开」标记），开工后**不新增子卡**；2) 判别力：把 `stages: []` 去掉后该用例必红。",
+      "implementation": "rollback-tasks.ts 生成重做草稿时显式带 `stages: []`（当前缺省会导致开工时懒展开子链）。测试：物化后模拟一次「开工」（调用既有开工路径）→ 断言该卡名下子卡数仍为 0。",
+      "context": "",
+      "requirementRefs": [
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-dd7ae9",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103596267,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 897,
+              "at": 1791103596268,
+              "totals": {
+                "uncachedInputTokens": 145571,
+                "outputTokens": 42549,
+                "cacheReadTokens": 12597376,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 987,
+              "at": 1791103666432,
+              "totals": {
+                "uncachedInputTokens": 157251,
+                "outputTokens": 46423,
+                "cacheReadTokens": 14994944,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 11680,
+              "outputTokens": 3874,
+              "cacheReadTokens": 2397568,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103666432
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791095058557,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103596267,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "补卡仪式：物化即终态（stages 为空链）已实现并复核，本轮补走卡仪式（开子卡链→关闭父卡）"
+        },
+        {
+          "status": "done",
+          "at": 1791103666432,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "关闭父卡：物化即终态已实现、已联调、已复核、已测试；4 张子卡全 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9d4724",
+          "body": "[状态] → in_progress：补卡仪式：物化即终态（stages 为空链）已实现并复核，本轮补走卡仪式（开子卡链→关闭父卡）（reqboard_task_move）",
+          "createdAt": 1791103596267,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-b120a2",
+          "body": "[状态] → done：关闭父卡：物化即终态已实现、已联调、已复核、已测试；4 张子卡全 done（reqboard_task_move）",
+          "createdAt": 1791103666432,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791095058557,
+      "updatedAt": 1791103666432,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791101952682,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/rollback-tasks.ts",
+          "tests/rollback-materialize.test.ts"
+        ],
+        "completed": [
+          "rollback-tasks.ts 物化草稿显式带 `stages: []`——物化即终态，不自动展开子卡链",
+          "为什么这是关键的一半：t1 堵「子卡被物化成父卡」，本卡堵「新卡一开工又按默认模板展开子链」；两者合起来才终结「…·研发·研发」的递归——缺任何一半，递归都还在",
+          "自测：`npx vitest run tests/rollback-materialize.test.ts -t \"不自动展开链\"` → 1 passed；该文件全文件 7 passed；npx tsc --noEmit 146 条不变（stages 是合法字段）；全量 96 failed（持平），我的改动面零失败"
+        ]
+      },
+      "lastRun": {
+        "at": 1791101952682,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d66a34",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "用「修复前必红」的用例钉死四条行为",
+      "cardDoc": "docs/requirements/REQ-261004121649-bfa7/tasks/t-d66a34.md",
+      "description": "用「修复前必红」的用例钉死四条行为：只物化顶层 / 不展开链 / 幂等与超限 / 批量清理（含仅人）。",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-b721a6",
+        "t-f98040",
+        "t-c98915"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) `npx vitest run tests/rollback-materialize.test.ts` → 7 条用例全绿；2) **判别力自证**：把物化规则临时退回现状（子卡也物化）→ 「只物化顶层」必红并打印膨胀后的张数；3) `npx vitest run` 失败数 ≤ 开工基线。",
+      "implementation": "新增 tests/rollback-materialize.test.ts（内存队列 + 台账替身，**不碰真实工作区**——今天刚有测试把文件写进真实仓库的教训）。夹具用「6 顶层 + 11 子卡」复现原事故形状（对应实测 17 张）。每条用例先证「当前实现下会红」（判别力），再接修复。",
+      "context": "",
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-dbf1f3",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791104165587,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1643,
+              "at": 1791104165587,
+              "totals": {
+                "uncachedInputTokens": 233697,
+                "outputTokens": 89616,
+                "cacheReadTokens": 39926144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1738,
+              "at": 1791104265414,
+              "totals": {
+                "uncachedInputTokens": 242561,
+                "outputTokens": 94425,
+                "cacheReadTokens": 44216960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 8864,
+              "outputTokens": 4809,
+              "cacheReadTokens": 4290816,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791104265414
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791095058557,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791104165587,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "t5 实施：补齐「修复前必红」用例——端到端开工展开、重复回退两次物化 0 张"
+        },
+        {
+          "status": "done",
+          "at": 1791104265414,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "关闭父卡：四条行为各有用例钉住、判别力逐条实测；3 张子卡全 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7fa8d3",
+          "body": "[状态] → in_progress：t5 实施：补齐「修复前必红」用例——端到端开工展开、重复回退两次物化 0 张（reqboard_task_move）",
+          "createdAt": 1791104165587,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-331123",
+          "body": "[状态] → done：关闭父卡：四条行为各有用例钉住、判别力逐条实测；3 张子卡全 done（reqboard_task_move）",
+          "createdAt": 1791104265414,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791095058557,
+      "updatedAt": 1791104265414,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791104263063,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/rollback-materialize.test.ts",
+          "tests/rollback-cleanup.test.ts"
+        ],
+        "completed": [
+          "用例总数 21 条（目标 7+）：rollback-materialize 9 + rollback-cleanup 12，全绿",
+          "四条行为逐条钉住：只物化顶层（3 条）、物化即终态（2 条）、幂等与上限（3 条）、批量清理（12 条 + 1 条别名）",
+          "每条都有「修复前必红」证据：3 条内建膨胀对照；另 5 处变异实验实测（去顶层分流→4 条红并打印 6→17、去幂等守卫→2 条红、去 done 跳过→1 条红、去清单保留→1 条红、序号校验改严→1 条红）",
+          "「重复回退两次 → 第二次物化 0 张」显式补齐，且真跑两次回退把产物落队列，不是手工塞卡",
+          "卡片要求「模拟一次开工」的端到端断言已补：走真实展开判据断言子卡数 0，并附去掉 stages: [] 后会展开的对照",
+          "全量回归：96 failed / 4017 passed，失败数与基线逐字相等；本批文件零类型错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1791104263063,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ff3d8a",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "老数据兜底与回执诚实性：没有回退序号的旧卡怎么匹配",
+      "cardDoc": "docs/requirements/REQ-261004121649-bfa7/tasks/t-ff3d8a.md",
+      "description": "老数据兜底与回执诚实性：没有回退序号的旧卡怎么匹配、能不能取消，都要在回执里说清，不许假装精确。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-3b61dd"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) 造一条无 `rollback` 元信息的旧卡（只有 `reworkOf`）→ 清理入口能匹配并取消，且回执里 `matchedBy: \"reworkOf+title-prefix\"`（**如实说明匹配方式**）；2) 造一条既无 `reworkOf` 也无前缀的卡 → 不取消、回执里列入 `skipped` 并说明原因；3) `npx tsc --noEmit` 错误数 ≤ 基线。",
+      "implementation": "清理入口对「无 `lastMaterialized` 记录」的需求走兜底路径：按 `reworkOf` + 标题前缀匹配候选，**逐条**在回执里给出 matchedBy/skipped 及原因；不做模糊删除。文档：把这条口径写进 design/data-model.md 对应的兼容节（已写，实施时核对一致）。",
+      "context": "",
+      "requirementRefs": [
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-5fff80",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103984379,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1411,
+              "at": 1791103984379,
+              "totals": {
+                "uncachedInputTokens": 206703,
+                "outputTokens": 76616,
+                "cacheReadTokens": 29758080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1588,
+              "at": 1791104133117,
+              "totals": {
+                "uncachedInputTokens": 226974,
+                "outputTokens": 86395,
+                "cacheReadTokens": 37270272,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 20271,
+              "outputTokens": 9779,
+              "cacheReadTokens": 7512192,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791104133117
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791095058557,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103984379,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "t6 实施：老数据兜底（无物化清单的旧卡按 reworkOf + 标题前缀匹配）与回执诚实性；本轮补齐无清单形状的用例"
+        },
+        {
+          "status": "done",
+          "at": 1791104133117,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "关闭父卡：老数据兜底与回执诚实性已实现、已联调、已复核、已测试；4 张子卡全 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-12c948",
+          "body": "[状态] → in_progress：t6 实施：老数据兜底（无物化清单的旧卡按 reworkOf + 标题前缀匹配）与回执诚实性；本轮补齐无清单形状的用例（reqboard_task_move）",
+          "createdAt": 1791103984379,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-e0fef3",
+          "body": "[状态] → done：关闭父卡：老数据兜底与回执诚实性已实现、已联调、已复核、已测试；4 张子卡全 done（reqboard_task_move）",
+          "createdAt": 1791104133117,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791095058557,
+      "updatedAt": 1791104133117,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791104130543,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/rollback-cleanup.ts",
+          "src/application/use-cases/RollbackCleanup.ts",
+          "tests/rollback-cleanup.test.ts",
+          "docs/requirements/REQ-261004121649-bfa7/design/data-model.md"
+        ],
+        "completed": [
+          "旧数据兜底可用：无物化清单时按「reworkOf 非空 + 标题带 [重做] 前缀」匹配，回执如实给 matchedBy 与逐条跳过原因",
+          "修掉一处会让兜底永远走不到的死结：存量记录的 rollback 没有 seq，原序号校验会一律拒绝；已改为「记过序号才校验」",
+          "回执诚实性可核对：matchedBy / skipped / note 三项都在响应体里，兜底时明说可能多算或少算",
+          "实测存量形状并入档：全仓 22 条需求 20 条无 rollback、2 条为旧形状；0fbf 56 张重做卡中仅 17 张两条件齐备，另 39 张无 reworkOf 且早已 canceled",
+          "设计文档同步：data-model §三 写清两个条件同时成立、序号校验边界与三条实测数字",
+          "自测：tests/rollback-cleanup.test.ts 12 passed；全量 96 failed / 4015 passed（失败数与基线逐字相等）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791104130543,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-449ac5",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "回退只动物化该动的卡：子卡原地复位，不再升格成新父卡·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/application/internal/rollback.ts 的物化段（生成 reworkDrafts 处）：先按 `parentId === undefined` 分流——顶层父卡 → 生成重做草稿（继承标题/phase/side/acceptance，`reworkOf=原卡id`）；子卡 → 收集到新增的 `resetSubtasks` 列表，不再进 reworkDrafts。rollback-tasks.ts 里物化与复位分别落库（复位 = mutate 把 status 置回 todo，**不动** parentId/stageKind）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-3b61dd",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-24b258",
+          "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+          "trigger": "manual",
+          "startedAt": 1791095486443,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+              "seq": 4628,
+              "at": 1791095486443,
+              "totals": {
+                "uncachedInputTokens": 1671075,
+                "outputTokens": 653026,
+                "cacheReadTokens": 235267328,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+              "seq": 4638,
+              "at": 1791095554180,
+              "totals": {
+                "uncachedInputTokens": 1671519,
+                "outputTokens": 653858,
+                "cacheReadTokens": 235757184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 444,
+              "outputTokens": 832,
+              "cacheReadTokens": 489856,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791095554179
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-71d913",
+          "body": "[状态] → in_progress：t1 研发子卡开工：物化段分流（只物化顶层父卡，子卡原地复位）（reqboard_task_move）",
+          "createdAt": 1791095486443,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          }
+        },
+        {
+          "id": "c-3b7ce5",
+          "body": "[状态] → done：t1 研发完成：物化段分流落地（只顶层父卡物化、子卡原地复位），3 条用例通过、类型与全量无回归（reqboard_task_move）",
+          "createdAt": 1791095554179,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791095066513,
+      "updatedAt": 1791095554179,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791095066513,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791095486443,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "t1 研发子卡开工：物化段分流（只物化顶层父卡，子卡原地复位）"
+        },
+        {
+          "status": "done",
+          "at": 1791095554179,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "t1 研发完成：物化段分流落地（只顶层父卡物化、子卡原地复位），3 条用例通过、类型与全量无回归"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791095486519,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/rollback-tasks.ts",
+          "src/application/use-cases/MoveRequirement.ts",
+          "src/http/routers/requirements.ts",
+          "tests/rollback-materialize.test.ts",
+          "tests/rollback-tasks.test.ts"
+        ],
+        "completed": [
+          "rollback-tasks.ts 物化段分流：新增 isTopLevel(t) = (t.parentId ?? '') === ''；只有顶层父卡进 reworkDrafts；子卡副本改为「原地复位」（status 回 todo、保留 parentId/stageKind），进新增字段 resetTasks（类型同步声明）",
+          "MoveRequirement.ts 落库块：把「取消父卡 + 复位子卡」两类整卡副本一次写入（取消顶层与复位子卡同一 mutate，顺序纪律不变：任务先写、需求后写）",
+          "requirements.ts（看板侧回退路径）同步消费 resetTasks——否则板侧回退会留下未复位的子卡（两处写入逻辑必须同款）",
+          "清理：删掉临时写的 void subsToReset 死代码，改为直接用 canceled 副本按 id 分流构造复位清单",
+          "新增 tests/rollback-materialize.test.ts（3 条用例）：只物化顶层（6 物化 / 11 复位 / 6 取消）、子卡不升格（保留 parentId+stageKind、status=todo、物化卡里不得出现原子卡 id）、判别力断言（物化数必须小于卡总数）",
+          "修掉我自己改坏的一条既有断言：tests/rollback-tasks.test.ts 的严格相等断言加上 resetTasks: []（契约变更的正常后果，同 syncAllReqArtifacts 那次的处理）",
+          "自测：t1 验收 `npx vitest run tests/rollback-materialize.test.ts -t \"只物化顶层\"` → 3 passed；该文件全绿；rollback-tasks.test.ts 7 passed；npx tsc --noEmit → 146 条（我的三个文件零错误）；全量 96 failed（比改动前少一条）、我的改动面零失败"
+        ]
+      },
+      "lastRun": {
+        "at": 1791095486519,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-968fe6",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "回退只动物化该动的卡：子卡原地复位，不再升格成新父卡·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-449ac5"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "src/application/internal/rollback.ts 的物化段（生成 reworkDrafts 处）：先按 `parentId === undefined` 分流——顶层父卡 → 生成重做草稿（继承标题/phase/side/acceptance，`reworkOf=原卡id`）；子卡 → 收集到新增的 `resetSubtasks` 列表，不再进 reworkDrafts。rollback-tasks.ts 里物化与复位分别落库（复位 = mutate 把 status 置回 todo，**不动** parentId/stageKind）。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-3b61dd",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-70a2fb",
+          "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+          "trigger": "manual",
+          "startedAt": 1791095554263,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+              "seq": 4640,
+              "at": 1791095554263,
+              "totals": {
+                "uncachedInputTokens": 1671519,
+                "outputTokens": 653858,
+                "cacheReadTokens": 235757184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+              "seq": 4660,
+              "at": 1791095666843,
+              "totals": {
+                "uncachedInputTokens": 1672378,
+                "outputTokens": 655906,
+                "cacheReadTokens": 236740736,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 859,
+              "outputTokens": 2048,
+              "cacheReadTokens": 983552,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791095666842
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-12c90d",
+          "body": "[状态] → in_progress：t1 联调子卡开工：核对两条回退路径（会话侧 / 看板侧）写入一致（reqboard_task_move）",
+          "createdAt": 1791095554263,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          }
+        },
+        {
+          "id": "c-9b5a16",
+          "body": "[状态] → done：t1 联调完成：两条回退路径写入一致，新字段消费点盘全（reqboard_task_move）",
+          "createdAt": 1791095666842,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791095066513,
+      "updatedAt": 1791095666842,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791095066513,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791095554263,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "t1 联调子卡开工：核对两条回退路径（会话侧 / 看板侧）写入一致"
+        },
+        {
+          "status": "done",
+          "at": 1791095666842,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "t1 联调完成：两条回退路径写入一致，新字段消费点盘全"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791095554330,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/MoveRequirement.ts",
+          "src/http/routers/requirements.ts"
+        ],
+        "completed": [
+          "两条回退路径写入一致：会话侧 MoveRequirement.ts 与看板侧 requirements.ts 都按「取消顶层父卡 + 复位子卡」一次写入；两边都从同一个 applyRequirementRollback 的 taskPlan 取数（单一编排口，不新造第二套）",
+          "契约一致性：taskPlan 新增 resetTasks 后，两处消费点都同步处理；既有严格相等断言（rollback-tasks.test.ts:105）已更新到新契约并全绿（7 passed）——契约变更的消费者盘点这一次没有漏（对照早先 syncAllReqArtifacts 那次漏了测试消费者的教训）",
+          "顺序纪律未变：仍然是「任务先写（队列）→ 需求后写（台账）」；复位与取消同在一个 mutate 内完成，不引入中间态",
+          "顺序无关性核对：isTopLevel 只看 parentId，不看卡在数组中的位置；子卡复位不依赖父卡是否已被取消（两者同一次写入）",
+          "返回值语义：resetTasks 是**整卡副本**（与 canceled 同形），调用方写法一致——降低两处写入逻辑再次分叉的风险"
+        ]
+      },
+      "lastRun": {
+        "at": 1791095554330,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d86de5",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "回退只动物化该动的卡：子卡原地复位，不再升格成新父卡·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-968fe6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/application/internal/rollback.ts 的物化段（生成 reworkDrafts 处）：先按 `parentId === undefined` 分流——顶层父卡 → 生成重做草稿（继承标题/phase/side/acceptance，`reworkOf=原卡id`）；子卡 → 收集到新增的 `resetSubtasks` 列表，不再进 reworkDrafts。rollback-tasks.ts 里物化与复位分别落库（复位 = mutate 把 status 置回 todo，**不动** parentId/stageKind）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-3b61dd",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-88f26c",
+          "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+          "trigger": "manual",
+          "startedAt": 1791095666921,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+              "seq": 4662,
+              "at": 1791095666921,
+              "totals": {
+                "uncachedInputTokens": 1672378,
+                "outputTokens": 655906,
+                "cacheReadTokens": 236740736,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+              "seq": 4672,
+              "at": 1791095734552,
+              "totals": {
+                "uncachedInputTokens": 1672927,
+                "outputTokens": 656794,
+                "cacheReadTokens": 237234432,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 549,
+              "outputTokens": 888,
+              "cacheReadTokens": 493696,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791095734552
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7a64f2",
+          "body": "[状态] → in_progress：t1 复核子卡开工：逐条核对偏离（reqboard_task_move）",
+          "createdAt": 1791095666921,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          }
+        },
+        {
+          "id": "c-68ae03",
+          "body": "[状态] → done：t1 复核完成：两条偏离已定性（返回值形状、物化段落点），消费点盘全（reqboard_task_move）",
+          "createdAt": 1791095734552,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791095066513,
+      "updatedAt": 1791095734552,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791095066513,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791095666921,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "t1 复核子卡开工：逐条核对偏离"
+        },
+        {
+          "status": "done",
+          "at": 1791095734552,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "t1 复核完成：两条偏离已定性（返回值形状、物化段落点），消费点盘全"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791095667010,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/rollback-tasks.ts",
+          "src/application/use-cases/MoveRequirement.ts",
+          "src/http/routers/requirements.ts"
+        ],
+        "completed": [
+          "偏离项 1（字段命名）：卡片 implementation 写的是 `resetSubtasks`（id 列表），实现为 `resetTasks`（**整卡副本**数组）。理由：调用方（会话侧与看板侧）本来就在按整卡副本写回（canceled 就是这个形状），用同一形状可让两处写入共用一段代码，降低再次分叉的风险。若坚持 id 列表，调用方要再查一次队列取卡——多一次读写且两处逻辑会分叉",
+          "偏离项 2（实现位置）：卡片写「rollback.ts 的物化段」，实际物化段在 `rollback-tasks.ts`（rollback.ts 负责编排、rollback-tasks.ts 负责卡计划）。落在 rollback-tasks.ts 是对的：它才是产任务计划的地方，且已有现成的 ID 工厂与副本构造",
+          "无偏离项：只有顶层父卡物化；子卡原地复位且保留 parentId/stageKind；复位与取消同一次写入；顺序纪律（任务先写、需求后写）未变",
+          "完整性核对：两条回退路径（MoveRequirement / requirements.ts）都消费了新字段——这一条是重点核对项，因为早先 syncAllReqArtifacts 那次我漏掉了测试消费者",
+          "已修的我方缺陷：既有严格相等断言（rollback-tasks.test.ts:105）已更新到新契约；全量失败数由 97 降到 96（我的改动面零失败）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791095667010,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-3b2a85",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "回退只动物化该动的卡：子卡原地复位，不再升格成新父卡·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-d86de5"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "src/application/internal/rollback.ts 的物化段（生成 reworkDrafts 处）：先按 `parentId === undefined` 分流——顶层父卡 → 生成重做草稿（继承标题/phase/side/acceptance，`reworkOf=原卡id`）；子卡 → 收集到新增的 `resetSubtasks` 列表，不再进 reworkDrafts。rollback-tasks.ts 里物化与复位分别落库（复位 = mutate 把 status 置回 todo，**不动** parentId/stageKind）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-3b61dd",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d17300",
+          "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+          "trigger": "manual",
+          "startedAt": 1791095734655,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+              "seq": 4674,
+              "at": 1791095734655,
+              "totals": {
+                "uncachedInputTokens": 1672927,
+                "outputTokens": 656794,
+                "cacheReadTokens": 237234432,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8",
+              "seq": 4684,
+              "at": 1791095802767,
+              "totals": {
+                "uncachedInputTokens": 1673498,
+                "outputTokens": 657802,
+                "cacheReadTokens": 237729536,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 571,
+              "outputTokens": 1008,
+              "cacheReadTokens": 495104,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791095802767
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f92b5a",
+          "body": "[状态] → in_progress：t1 测试子卡开工：跑验收命令与全量对比（reqboard_task_move）",
+          "createdAt": 1791095734655,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          }
+        },
+        {
+          "id": "c-6b9206",
+          "body": "[状态] → done：t1 测试完成：3 passed（含判别力断言），全量失败数 96（比改动前少 1），我的改动面零失败（reqboard_task_move）",
+          "createdAt": 1791095802767,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791095066513,
+      "updatedAt": 1791095802767,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791095066513,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791095734655,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "t1 测试子卡开工：跑验收命令与全量对比"
+        },
+        {
+          "status": "done",
+          "at": 1791095802767,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-97bd3bf9-d995-4f61-81fa-9d72c58d40f8"
+          },
+          "reason": "t1 测试完成：3 passed（含判别力断言），全量失败数 96（比改动前少 1），我的改动面零失败"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791095734721,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/rollback-materialize.test.ts",
+          "tests/rollback-tasks.test.ts"
+        ],
+        "completed": [
+          "验收 1（本卡）：npx vitest run tests/rollback-materialize.test.ts -t \"只物化顶层\" → 3 passed：6 张顶层卡 → 物化 6 张；11 张子卡原地复位且 parentId/stageKind 保留、status=todo；物化卡里不出现原子卡 id",
+          "判别力：用例内含「物化数必须小于卡总数」的断言（全量物化会 17 张全进 reworkDrafts），钉住它抓的是真行为",
+          "相关文件全绿：tests/rollback-materialize.test.ts 3 passed；tests/rollback-tasks.test.ts 7 passed（含我更新到新契约的那条严格相等断言）",
+          "类型：npx tsc --noEmit -p tsconfig.json → 146 条；本次改动的三个源文件零错误",
+          "全量回归：96 failed / 3913 passed（改动前 97 failed）——失败数**少了一条**，我的改动面零失败文件",
+          "过程中修掉自己引入的一处红：契约新增字段后既有严格相等断言必红，已同步到新契约（这是契约变更应有动作，不是绕过）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791095734721,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-e520c7",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "回退物化要幂等、要有上限：超限整次拒绝，队列零新增·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-3b61dd"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "需求记录上维护 `rollback = { seq, lastAt, lastMaterialized }`（挂需求记录，不进队列文件）：物化前先查 (requirementId, taskId, seq) 是否已有重做卡 → 有则跳过；物化张数 > 20 则在**落库前**抛错并返回明细。MoveRequirement 的「任务先写、需求后写」顺序不变：拒绝发生在任务写入之前，所以天然零新增。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-b721a6",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-43f179",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103481796,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 766,
+              "at": 1791103481796,
+              "totals": {
+                "uncachedInputTokens": 121293,
+                "outputTokens": 37465,
+                "cacheReadTokens": 9540736,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 798,
+              "at": 1791103495143,
+              "totals": {
+                "uncachedInputTokens": 130013,
+                "outputTokens": 38705,
+                "cacheReadTokens": 10294912,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 8720,
+              "outputTokens": 1240,
+              "cacheReadTokens": 754176,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103495143
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1e2239",
+          "body": "[状态] → in_progress：补卡仪式（研发段）：幂等与上限的实现与用例已在工作区完成，复核后确认零偏离（reqboard_task_move）",
+          "createdAt": 1791103481796,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-752ee4",
+          "body": "[状态] → done：研发段完成：幂等与上限两条防线工作区已落地并自测通过（-t 幂等 / -t 上限 各 3 passed）（reqboard_task_move）",
+          "createdAt": 1791103495143,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103475939,
+      "updatedAt": 1791103495143,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103475939,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103481796,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "补卡仪式（研发段）：幂等与上限的实现与用例已在工作区完成，复核后确认零偏离"
+        },
+        {
+          "status": "done",
+          "at": 1791103495143,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "研发段完成：幂等与上限两条防线工作区已落地并自测通过（-t 幂等 / -t 上限 各 3 passed）"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791103493290,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/rollback-tasks.ts",
+          "tests/rollback-materialize.test.ts"
+        ],
+        "completed": [
+          "幂等判据：已有「活的重做卡」指向该父卡即跳过；reworkOf 非空的重做卡自身也不再被物化（堵住「重做卡的重做卡」）",
+          "上限拦截：reworkDrafts 超过 20 张时在编排期抛 REQBOARD_ROLLBACK_MATERIALIZE_OVER_LIMIT",
+          "错误文案含将被物化张数、上限值、以及一条「先批量清理上一次物化」的建议",
+          "落库前判定：抛错发生在调用方写队列之前，故「队列零新增」是结构性的，不靠调用方自觉",
+          "自测：npx vitest run tests/rollback-materialize.test.ts -t 幂等 → 3 passed；-t 上限 → 3 passed（含上限之内正好 20 张不误拒）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103493290,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a30bc1",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "回退物化要幂等、要有上限：超限整次拒绝，队列零新增·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-e520c7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "需求记录上维护 `rollback = { seq, lastAt, lastMaterialized }`（挂需求记录，不进队列文件）：物化前先查 (requirementId, taskId, seq) 是否已有重做卡 → 有则跳过；物化张数 > 20 则在**落库前**抛错并返回明细。MoveRequirement 的「任务先写、需求后写」顺序不变：拒绝发生在任务写入之前，所以天然零新增。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-b721a6",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3eba64",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103495230,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 800,
+              "at": 1791103495230,
+              "totals": {
+                "uncachedInputTokens": 130013,
+                "outputTokens": 38705,
+                "cacheReadTokens": 10294912,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 824,
+              "at": 1791103504591,
+              "totals": {
+                "uncachedInputTokens": 131189,
+                "outputTokens": 39599,
+                "cacheReadTokens": 10933376,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1176,
+              "outputTokens": 894,
+              "cacheReadTokens": 638464,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103504591
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1117fc",
+          "body": "[状态] → in_progress：补卡仪式（联调段）：核对会话侧与看板侧两条回退路径是否共用同一份编排结果（reqboard_task_move）",
+          "createdAt": 1791103495230,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-936340",
+          "body": "[状态] → done：联调段完成：两条回退路径共用同一编排，新增字段消费点盘全，契约断言已同步（reqboard_task_move）",
+          "createdAt": 1791103504591,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103475939,
+      "updatedAt": 1791103504591,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103475939,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103495230,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "补卡仪式（联调段）：核对会话侧与看板侧两条回退路径是否共用同一份编排结果"
+        },
+        {
+          "status": "done",
+          "at": 1791103504591,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "联调段完成：两条回退路径共用同一编排，新增字段消费点盘全，契约断言已同步"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791103502736,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/MoveRequirement.ts",
+          "src/http/routers/requirements.ts",
+          "tests/rollback-tasks.test.ts"
+        ],
+        "completed": [
+          "两条回退路径消费同一份编排结果：会话侧 MoveRequirement.ts:87-90 与看板侧 requirements.ts:154-157 都按「取消顶层父卡 + 复位子卡」一次写入",
+          "两边都取自同一个 applyRequirementRollback 的 taskPlan，不新造第二套判定",
+          "新增字段 resetTasks 的消费点盘全（grep 确认仅这两处，无遗漏消费者）",
+          "契约面同步：tests/rollback-tasks.test.ts:106 的严格相等断言已含 resetTasks: []，7 passed",
+          "顺序纪律未变：任务先写（队列）→ 需求后写（台账），复位与取消同在一个 mutate 内"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103502736,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9c4db3",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "回退物化要幂等、要有上限：超限整次拒绝，队列零新增·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-a30bc1"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "需求记录上维护 `rollback = { seq, lastAt, lastMaterialized }`（挂需求记录，不进队列文件）：物化前先查 (requirementId, taskId, seq) 是否已有重做卡 → 有则跳过；物化张数 > 20 则在**落库前**抛错并返回明细。MoveRequirement 的「任务先写、需求后写」顺序不变：拒绝发生在任务写入之前，所以天然零新增。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-b721a6",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-76c1f8",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103504666,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 826,
+              "at": 1791103504666,
+              "totals": {
+                "uncachedInputTokens": 131189,
+                "outputTokens": 39599,
+                "cacheReadTokens": 10933376,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 838,
+              "at": 1791103511103,
+              "totals": {
+                "uncachedInputTokens": 131946,
+                "outputTokens": 40470,
+                "cacheReadTokens": 11255680,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 757,
+              "outputTokens": 871,
+              "cacheReadTokens": 322304,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103511102
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e3a2f0",
+          "body": "[状态] → in_progress：补卡仪式（复核段）：对照 design/interfaces.md 与 data-model.md 逐条核对偏离（reqboard_task_move）",
+          "createdAt": 1791103504666,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-f1950d",
+          "body": "[状态] → done：复核段完成：两条偏离已定性（字段命名与计数字段），无功能偏离；rollback.seq/lastMaterialized 交接给 t3（reqboard_task_move）",
+          "createdAt": 1791103511102,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103475939,
+      "updatedAt": 1791103511102,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103475939,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103504666,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "补卡仪式（复核段）：对照 design/interfaces.md 与 data-model.md 逐条核对偏离"
+        },
+        {
+          "status": "done",
+          "at": 1791103511102,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "复核段完成：两条偏离已定性（字段命名与计数字段），无功能偏离；rollback.seq/lastMaterialized 交接给 t3"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791103508816,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/rollback-tasks.ts"
+        ],
+        "completed": [
+          "无偏离：幂等键语义与 data-model.md §二 一致（实质键 = 该父卡是否已有活的重做卡，等价于「上次物化的卡还在不在」）",
+          "无偏离：上限 20 与错误码 REQBOARD_ROLLBACK_MATERIALIZE_OVER_LIMIT 逐字一致，抛错位置在编排期（落库前）",
+          "无偏离：错误文案三要素齐备（将被物化张数 + 上限值 + 「先批量清理上一次物化」建议）",
+          "定义差异（已定性）：interfaces.md §一 写 resetSubtasks / materializeCount 两个字段，实现为 resetTasks（整卡副本）且不单发 materializeCount（调用方取 reworkDrafts.length）——与 t1 复核同一裁定：整卡副本让两条写入路径共用一段代码，计数字段属冗余投影",
+          "待下游交接（不是本卡缺口）：data-model.md §二 的 rollback.seq / lastAt / lastMaterialized 三个字段当前尚未落库，由 t3（清理入口）承载；本卡的幂等不依赖它们，故不阻塞",
+          "自测：npx vitest run tests/rollback-tasks.test.ts → 7 passed；tests/rollback-materialize.test.ts → 7 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103508816,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-37dc35",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "回退物化要幂等、要有上限：超限整次拒绝，队列零新增·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-9c4db3"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "需求记录上维护 `rollback = { seq, lastAt, lastMaterialized }`（挂需求记录，不进队列文件）：物化前先查 (requirementId, taskId, seq) 是否已有重做卡 → 有则跳过；物化张数 > 20 则在**落库前**抛错并返回明细。MoveRequirement 的「任务先写、需求后写」顺序不变：拒绝发生在任务写入之前，所以天然零新增。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-b721a6",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ace4d3",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103511175,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 840,
+              "at": 1791103511175,
+              "totals": {
+                "uncachedInputTokens": 131946,
+                "outputTokens": 40470,
+                "cacheReadTokens": 11255680,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 874,
+              "at": 1791103589385,
+              "totals": {
+                "uncachedInputTokens": 140733,
+                "outputTokens": 41812,
+                "cacheReadTokens": 12074112,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 8787,
+              "outputTokens": 1342,
+              "cacheReadTokens": 818432,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103589385
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-3e2c65",
+          "body": "[状态] → in_progress：补卡仪式（测试段）：跑本卡目标用例并核对失败数不超过开工基线（reqboard_task_move）",
+          "createdAt": 1791103511175,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-93ce2c",
+          "body": "[状态] → done：测试段完成：目标用例全绿，全量回归 96 failed / 4003 passed 与开工基线逐字相等，本批改动文件零类型错误（reqboard_task_move）",
+          "createdAt": 1791103589385,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103475939,
+      "updatedAt": 1791103589385,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103475939,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103511175,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "补卡仪式（测试段）：跑本卡目标用例并核对失败数不超过开工基线"
+        },
+        {
+          "status": "done",
+          "at": 1791103589385,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "测试段完成：目标用例全绿，全量回归 96 failed / 4003 passed 与开工基线逐字相等，本批改动文件零类型错误"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791103587121,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "全量回归：npx vitest run → 46 failed files / 343 passed，96 failed / 4003 passed / 20 skipped（4119）——失败数与开工基线 96 逐字相等，本批改动零新增失败",
+          "本卡目标用例全绿：tests/rollback-materialize.test.ts 7 passed；tests/rollback-tasks.test.ts 7 passed",
+          "类型检查：npx tsc --noEmit -p tsconfig.json → 211 条；本批改动文件（rollback-tasks.ts / rollback-materialize.test.ts / rollback-tasks.test.ts）零错误",
+          "如实记录一处基线漂移：交接文档记的 tsc 基线是 146 条，本轮读数 211 条——多出的 65 条全部落在别的窗口在途文件（如 tests/worktree-injection.test.ts 的 delivery 属性），不是本批引入",
+          "判别力仍在：上限用例断言含「队列零新增」，幂等用例断言含「已物化过的父卡不重复物化」"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103587121,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-0e0b30",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "重做卡物化即终态：不再自动展开子卡链·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-3b61dd"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "rollback-tasks.ts 生成重做草稿时显式带 `stages: []`（当前缺省会导致开工时懒展开子链）。测试：物化后模拟一次「开工」（调用既有开工路径）→ 断言该卡名下子卡数仍为 0。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-c98915",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a4aa13",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103598477,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 904,
+              "at": 1791103598477,
+              "totals": {
+                "uncachedInputTokens": 149763,
+                "outputTokens": 42853,
+                "cacheReadTokens": 12774528,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 936,
+              "at": 1791103612452,
+              "totals": {
+                "uncachedInputTokens": 151778,
+                "outputTokens": 44288,
+                "cacheReadTokens": 13689472,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 2015,
+              "outputTokens": 1435,
+              "cacheReadTokens": 914944,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103612452
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-274dbd",
+          "body": "[状态] → in_progress：补卡仪式（研发段）：物化即终态（stages: []）已实现，复核零偏离（reqboard_task_move）",
+          "createdAt": 1791103598477,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-900b61",
+          "body": "[状态] → done：研发段完成：stages: [] 已落地，目标用例 1 passed（reqboard_task_move）",
+          "createdAt": 1791103612452,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103596267,
+      "updatedAt": 1791103612452,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103596267,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103598477,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "补卡仪式（研发段）：物化即终态（stages: []）已实现，复核零偏离"
+        },
+        {
+          "status": "done",
+          "at": 1791103612452,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "研发段完成：stages: [] 已落地，目标用例 1 passed"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791103603474,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/rollback-tasks.ts"
+        ],
+        "completed": [
+          "实现：rollback-tasks.ts 生成重做草稿处显式写 stages: []（第 129 行），物化即终态",
+          "为什么这一条是关键的一半：t1 堵住「子卡被物化成父卡」，本卡堵住「新卡一开工又按默认模板展开子链」，两者合起来才终结「…·研发·研发」的递归命名",
+          "自测：npx vitest run tests/rollback-materialize.test.ts -t 不自动展开链 → 1 passed（6 skipped）",
+          "验收锚点：断言重做卡 stages 严格等于 []，去掉这行即变红",
+          "同族用例全绿：tests/rollback-materialize.test.ts 7 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103603474,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2f9c59",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "重做卡物化即终态：不再自动展开子卡链·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-0e0b30"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "rollback-tasks.ts 生成重做草稿时显式带 `stages: []`（当前缺省会导致开工时懒展开子链）。测试：物化后模拟一次「开工」（调用既有开工路径）→ 断言该卡名下子卡数仍为 0。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-c98915",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a2e3d0",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103612529,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 938,
+              "at": 1791103612529,
+              "totals": {
+                "uncachedInputTokens": 151778,
+                "outputTokens": 44288,
+                "cacheReadTokens": 13689472,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 944,
+              "at": 1791103614244,
+              "totals": {
+                "uncachedInputTokens": 152201,
+                "outputTokens": 44465,
+                "cacheReadTokens": 13874176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 423,
+              "outputTokens": 177,
+              "cacheReadTokens": 184704,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103614244
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-015ab7",
+          "body": "[状态] → in_progress：联调段：核对物化卡不展开链在两条回退路径上一致（reqboard_task_move）",
+          "createdAt": 1791103612529,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-6eca4b",
+          "body": "[状态] → done：联调段完成：两条路径写同一份草稿对象，展开判据已核对（reqboard_task_move）",
+          "createdAt": 1791103614244,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103596267,
+      "updatedAt": 1791103614244,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103596267,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103612529,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "联调段：核对物化卡不展开链在两条回退路径上一致"
+        },
+        {
+          "status": "done",
+          "at": 1791103614244,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "联调段完成：两条路径写同一份草稿对象，展开判据已核对"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791103610228,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "两条回退路径落库的物化卡是同一份对象：MoveRequirement.ts:85 与 requirements.ts:152 都直接写 taskPlan.reworkDrafts，没有各自再构造",
+          "因此 stages: [] 这一属性在会话侧与看板侧自动一致——不需要两处各写一次",
+          "展开判据核对：lazy-expand.ts:47 的判据是 parent.stages !== undefined，[] = 显式声明无链（solo），返回空集、不落任何子卡",
+          "反向核对：若写成旧判据 .length > 0，[] 会被当成「没写」而回落默认 4 段——这正是递归命名的根因，当前实现已避开"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103610228,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-0a4d64",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "重做卡物化即终态：不再自动展开子卡链·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-2f9c59"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "rollback-tasks.ts 生成重做草稿时显式带 `stages: []`（当前缺省会导致开工时懒展开子链）。测试：物化后模拟一次「开工」（调用既有开工路径）→ 断言该卡名下子卡数仍为 0。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-c98915",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-33d74b",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103614320,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 946,
+              "at": 1791103614320,
+              "totals": {
+                "uncachedInputTokens": 152201,
+                "outputTokens": 44465,
+                "cacheReadTokens": 13874176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 958,
+              "at": 1791103620785,
+              "totals": {
+                "uncachedInputTokens": 152802,
+                "outputTokens": 45200,
+                "cacheReadTokens": 14245504,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 601,
+              "outputTokens": 735,
+              "cacheReadTokens": 371328,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103620785
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-29b79d",
+          "body": "[状态] → in_progress：复核段：对照设计核对本卡是否偏离（reqboard_task_move）",
+          "createdAt": 1791103614320,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-ea0f4a",
+          "body": "[状态] → done：复核段完成：实现面零偏离，端到端断言落差已明确归属 t5（reqboard_task_move）",
+          "createdAt": 1791103620785,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103596267,
+      "updatedAt": 1791103620785,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103596267,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103614320,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "复核段：对照设计核对本卡是否偏离"
+        },
+        {
+          "status": "done",
+          "at": 1791103620785,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "复核段完成：实现面零偏离，端到端断言落差已明确归属 t5"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791103618181,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "无偏离（实现面）：rollback-tasks.ts:129 显式 stages: []，与 interfaces.md §一 的「重做草稿」契约一致，也与 lazy-expand 的 [] = 无链语义配套",
+          "无偏离（设计依据）：data-model.md 未规定重做卡链形态；FR-2 表述为「不自动展开子卡链」，显式空链是该表述的直接落地",
+          "如实报一处落差（不是本卡实现缺口，归 t5）：卡片 implementation 写「物化后模拟一次开工 → 断言该卡名下子卡数仍为 0」，当前用例只断言了 stages === []，尚未真的走一遍开工路径数子卡",
+          "该落差的正确归属：t5（用例补齐）——本卡只做实现与本阶段验收，补这条端到端断言属 t5 的范围，不在本卡扩范围",
+          "自测：npx vitest run tests/rollback-materialize.test.ts -t 不自动展开链 → 1 passed；该文件 7 passed 全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103618181,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f44566",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "重做卡物化即终态：不再自动展开子卡链·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-0a4d64"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "rollback-tasks.ts 生成重做草稿时显式带 `stages: []`（当前缺省会导致开工时懒展开子链）。测试：物化后模拟一次「开工」（调用既有开工路径）→ 断言该卡名下子卡数仍为 0。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-c98915",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d54df5",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103620863,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 960,
+              "at": 1791103620863,
+              "totals": {
+                "uncachedInputTokens": 152802,
+                "outputTokens": 45200,
+                "cacheReadTokens": 14245504,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 972,
+              "at": 1791103626742,
+              "totals": {
+                "uncachedInputTokens": 153333,
+                "outputTokens": 45992,
+                "cacheReadTokens": 14619136,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 531,
+              "outputTokens": 792,
+              "cacheReadTokens": 373632,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103626741
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ee0cf7",
+          "body": "[状态] → in_progress：测试段：跑本卡目标用例并核对失败数不超过开工基线（reqboard_task_move）",
+          "createdAt": 1791103620863,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-4e9162",
+          "body": "[状态] → done：测试段完成：目标用例全绿，全量回归与开工基线逐字相等（reqboard_task_move）",
+          "createdAt": 1791103626741,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103596267,
+      "updatedAt": 1791103626741,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103596267,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103620863,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "测试段：跑本卡目标用例并核对失败数不超过开工基线"
+        },
+        {
+          "status": "done",
+          "at": 1791103626741,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "测试段完成：目标用例全绿，全量回归与开工基线逐字相等"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791103623620,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "本卡目标用例：npx vitest run tests/rollback-materialize.test.ts -t 不自动展开链 → 1 passed（6 skipped）",
+          "全量回归：npx vitest run → 96 failed / 4003 passed / 20 skipped，与开工基线 96 逐字相等，零新增失败",
+          "类型检查：npx tsc --noEmit → 211 条，本批改动文件零错误（基线漂移原因已在 t-37dc35 记录）",
+          "同族用例全绿：tests/rollback-materialize.test.ts 7 passed；tests/rollback-tasks.test.ts 7 passed",
+          "判别力：断言为严格相等 toEqual([])，实现里去掉 stages: [] 即变红"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103623620,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-70dc5f",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "误物化能一次清掉：仅人的批量清理入口 + 可核对回执·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-3b61dd"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/http/routers/requirements.ts 新增 `POST /req/rollback-cleanup`：body `{ id, rollbackSeq }` → 消费 `requirement.rollback.lastMaterialized` 批量置 canceled（**不碰 done 卡**）+ 按 `reworkOf` 反查还原 `parentId`；沿用既有「仅人」闸门写法（与 canceled/归档同口径）；未知序号 → `REQBOARD_UNKNOWN_ROLLBACK_SEQ`。复用 rollback-revocation.ts 的回收判定，不新造一套。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-f98040",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-74e15b",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103880720,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1301,
+              "at": 1791103880720,
+              "totals": {
+                "uncachedInputTokens": 185969,
+                "outputTokens": 71261,
+                "cacheReadTokens": 25804672,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1314,
+              "at": 1791103887925,
+              "totals": {
+                "uncachedInputTokens": 190398,
+                "outputTokens": 71998,
+                "cacheReadTokens": 26283520,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 4429,
+              "outputTokens": 737,
+              "cacheReadTokens": 478848,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103887925
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-352392",
+          "body": "[状态] → in_progress：t3 研发段：清场入口与物化清单落库已实现（reqboard_task_move）",
+          "createdAt": 1791103880720,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-54204e",
+          "body": "[状态] → done：研发段完成：清场判定 + 编排 + 路由 + 物化清单落库，11 条用例全绿（reqboard_task_move）",
+          "createdAt": 1791103887925,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103856213,
+      "updatedAt": 1791103887925,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103856213,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103880720,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "t3 研发段：清场入口与物化清单落库已实现"
+        },
+        {
+          "status": "done",
+          "at": 1791103887925,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "研发段完成：清场判定 + 编排 + 路由 + 物化清单落库，11 条用例全绿"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791103885155,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/rollback-cleanup.ts",
+          "src/application/use-cases/RollbackCleanup.ts",
+          "src/application/internal/rollback.ts",
+          "src/http/routers/requirements.ts",
+          "src/http/routes.ts",
+          "src/shared/protocol.ts",
+          "src/application/use-cases/MoveRequirement.ts",
+          "tests/rollback-cleanup.test.ts"
+        ],
+        "completed": [
+          "新增 src/application/internal/rollback-cleanup.ts：清场的纯判定（匹配、跳过、父子还原），不改入参只返回计划",
+          "新增 src/application/use-cases/RollbackCleanup.ts：落库编排（先任务后需求），判定与落库各归一处",
+          "新增 POST /dashboard/api/reqboard/req/rollback-cleanup（routes.ts 注册）",
+          "物化清单落库：RollbackMark 新增 seq / lastMaterialized，rollback.ts 新增 recordRollbackMaterialized，两条回退路径同款调用",
+          "自测：tests/rollback-cleanup.test.ts → 11 passed",
+          "类型检查：本批 7 个文件零错误（npx tsc --noEmit 全量 211 条均为他人在途文件）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103885155,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-cfb2d4",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "误物化能一次清掉：仅人的批量清理入口 + 可核对回执·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-70dc5f"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "src/http/routers/requirements.ts 新增 `POST /req/rollback-cleanup`：body `{ id, rollbackSeq }` → 消费 `requirement.rollback.lastMaterialized` 批量置 canceled（**不碰 done 卡**）+ 按 `reworkOf` 反查还原 `parentId`；沿用既有「仅人」闸门写法（与 canceled/归档同口径）；未知序号 → `REQBOARD_UNKNOWN_ROLLBACK_SEQ`。复用 rollback-revocation.ts 的回收判定，不新造一套。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-f98040",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c19fdb",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103888002,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1316,
+              "at": 1791103888002,
+              "totals": {
+                "uncachedInputTokens": 190398,
+                "outputTokens": 71998,
+                "cacheReadTokens": 26283520,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1334,
+              "at": 1791103895946,
+              "totals": {
+                "uncachedInputTokens": 191857,
+                "outputTokens": 72897,
+                "cacheReadTokens": 27012224,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1459,
+              "outputTokens": 899,
+              "cacheReadTokens": 728704,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103895946
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d72644",
+          "body": "[状态] → in_progress：联调段：核对入口消费的清单与两条回退路径写入的清单同源（reqboard_task_move）",
+          "createdAt": 1791103888002,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-cbad02",
+          "body": "[状态] → done：联调段完成：写入/读取清单同源，回执形状与设计对齐（reqboard_task_move）",
+          "createdAt": 1791103895946,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103856213,
+      "updatedAt": 1791103895946,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103856213,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103888002,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "联调段：核对入口消费的清单与两条回退路径写入的清单同源"
+        },
+        {
+          "status": "done",
+          "at": 1791103895946,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "联调段完成：写入/读取清单同源，回执形状与设计对齐"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791103893299,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "写入侧同源：会话侧 MoveRequirement.ts:120 与看板侧 requirements.ts:180 都从同一个 taskPlan.reworkDrafts 取 id 写清单",
+          "读取侧同源：清场入口读的正是 rollback.lastMaterialized（RollbackCleanup.ts:83），没有第二套「哪些算这次物化的」判定",
+          "回执形状对齐设计 §三：canceled 与 restoredLinks 两个可核对数字（RollbackCleanup.ts:127-128）",
+          "契约变更点一次盘全：RollbackMark 新增的两个字段只有 rollback.ts 写入、rollback-cleanup.ts 读取，无第三个消费点",
+          "自测：tests/rollback-cleanup.test.ts → 11 passed（含端到端：一次回退 → 记清单 → 清场只清这批）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103893299,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b6aa22",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "误物化能一次清掉：仅人的批量清理入口 + 可核对回执·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-cfb2d4"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/http/routers/requirements.ts 新增 `POST /req/rollback-cleanup`：body `{ id, rollbackSeq }` → 消费 `requirement.rollback.lastMaterialized` 批量置 canceled（**不碰 done 卡**）+ 按 `reworkOf` 反查还原 `parentId`；沿用既有「仅人」闸门写法（与 canceled/归档同口径）；未知序号 → `REQBOARD_UNKNOWN_ROLLBACK_SEQ`。复用 rollback-revocation.ts 的回收判定，不新造一套。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-f98040",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4bfc1a",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103896025,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1336,
+              "at": 1791103896025,
+              "totals": {
+                "uncachedInputTokens": 191857,
+                "outputTokens": 72897,
+                "cacheReadTokens": 27012224,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1360,
+              "at": 1791103907553,
+              "totals": {
+                "uncachedInputTokens": 192938,
+                "outputTokens": 74272,
+                "cacheReadTokens": 27993216,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1081,
+              "outputTokens": 1375,
+              "cacheReadTokens": 980992,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103907553
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d4d28c",
+          "body": "[状态] → in_progress：复核段：对照 interfaces.md §三 与 data-model.md §二 逐条核对（reqboard_task_move）",
+          "createdAt": 1791103896025,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-8db057",
+          "body": "[状态] → done：复核段完成：三条无偏离；「仅人」偏离已按人工裁定记账并同步设计文档（reqboard_task_move）",
+          "createdAt": 1791103907553,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103856213,
+      "updatedAt": 1791103907553,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103856213,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103896025,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "复核段：对照 interfaces.md §三 与 data-model.md §二 逐条核对"
+        },
+        {
+          "status": "done",
+          "at": 1791103907553,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "复核段完成：三条无偏离；「仅人」偏离已按人工裁定记账并同步设计文档"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791103899420,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "无偏离（data-model §二）：rollback = { seq, lastAt, lastMaterialized } 三个字段全部落地——seq 与 lastMaterialized 为本轮新增；lastAt 的语义由既有的 at 字段承担（同一时刻，不另加重复字段，避免两处时间戳漂移）",
+          "无偏离（interfaces §三 数字）：回执含 canceled 与 restoredLinks 两个可核对数字",
+          "无偏离（interfaces §三 幂等）：同一次回退清两次 → 第二次 canceled === 0（用例断言）",
+          "无偏离（interfaces §三 不碰 done）：done 卡跳过并在回执里给原因（用例断言）",
+          "**已知偏离（人工裁定 2026-10-04，须记账）**：interfaces §三 写「agent 调用返回 REQBOARD_HUMAN_GATE」，实现改为**不注册任何 agent 工具**——理由是 HTTP 调用方身份在服务端无法辨别，靠 body 自称等于把门锁在标签上；用户当面选定方案 A。设计文档该行停留在旧写法，属设计文档待同步项，不是实现缺陷",
+          "偏离（实现位置）：interfaces §一 的 materializeCount 字段未单发——调用方取 reworkDrafts.length（与 t1/t2 复核同一裁定）",
+          "自测：tests/rollback-cleanup.test.ts → 11 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103899420,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-637839",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "误物化能一次清掉：仅人的批量清理入口 + 可核对回执·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-b6aa22"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "src/http/routers/requirements.ts 新增 `POST /req/rollback-cleanup`：body `{ id, rollbackSeq }` → 消费 `requirement.rollback.lastMaterialized` 批量置 canceled（**不碰 done 卡**）+ 按 `reworkOf` 反查还原 `parentId`；沿用既有「仅人」闸门写法（与 canceled/归档同口径）；未知序号 → `REQBOARD_UNKNOWN_ROLLBACK_SEQ`。复用 rollback-revocation.ts 的回收判定，不新造一套。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-f98040",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2d6c4b",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791103907784,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1362,
+              "at": 1791103907784,
+              "totals": {
+                "uncachedInputTokens": 192938,
+                "outputTokens": 74272,
+                "cacheReadTokens": 27993216,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1390,
+              "at": 1791103975378,
+              "totals": {
+                "uncachedInputTokens": 202413,
+                "outputTokens": 75402,
+                "cacheReadTokens": 28986752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 9475,
+              "outputTokens": 1130,
+              "cacheReadTokens": 993536,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791103975378
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1e4aad",
+          "body": "[状态] → in_progress：测试段：跑清场目标用例与全量回归，核对失败数不超过基线（reqboard_task_move）",
+          "createdAt": 1791103907784,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-d24022",
+          "body": "[状态] → done：测试段完成：11 条用例全绿，三条判别力逐条实测（改坏即红），全量回归与基线逐字相等（reqboard_task_move）",
+          "createdAt": 1791103975378,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103856213,
+      "updatedAt": 1791103975378,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103856213,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791103907784,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "测试段：跑清场目标用例与全量回归，核对失败数不超过基线"
+        },
+        {
+          "status": "done",
+          "at": 1791103975378,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "测试段完成：11 条用例全绿，三条判别力逐条实测（改坏即红），全量回归与基线逐字相等"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791103973283,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "清场目标用例：npx vitest run tests/rollback-cleanup.test.ts → 11 passed",
+          "全量回归：npx vitest run → 46 failed files / 344 passed；96 failed / 4014 passed / 20 skipped（4130）——失败数与开工基线 96 逐字相等，零新增失败",
+          "通过数由基线 4003 升到 4014（+11），增量全部是本轮新增用例",
+          "类型检查：npx tsc --noEmit → 211 条，本批改动文件零错误（基线漂移归因见 t-37dc35）",
+          "判别力自证（实测，非声称）：① 去掉「不碰 done 卡」的跳过 → 1 failed；② liveOf 不过滤已取消的卡 → 幂等用例 failed；③ 物化 0 张也覆盖清单 → 清单保留用例 failed；每次改完全部还原并复跑 11 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1791103973283,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-17f385",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "老数据兜底与回执诚实性：没有回退序号的旧卡怎么匹配·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-3b61dd"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "清理入口对「无 `lastMaterialized` 记录」的需求走兜底路径：按 `reworkOf` + 标题前缀匹配候选，**逐条**在回执里给出 matchedBy/skipped 及原因；不做模糊删除。文档：把这条口径写进 design/data-model.md 对应的兼容节（已写，实施时核对一致）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-ff3d8a",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c6a361",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791104029876,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1487,
+              "at": 1791104029876,
+              "totals": {
+                "uncachedInputTokens": 219282,
+                "outputTokens": 81748,
+                "cacheReadTokens": 32991616,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1500,
+              "at": 1791104036024,
+              "totals": {
+                "uncachedInputTokens": 223778,
+                "outputTokens": 82523,
+                "cacheReadTokens": 33552128,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 4496,
+              "outputTokens": 775,
+              "cacheReadTokens": 560512,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791104036024
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c668e8",
+          "body": "[状态] → in_progress：t6 研发段：兜底匹配与回执诚实性已具备；本轮补无清单/无 reworkOf 两条形状用例（reqboard_task_move）",
+          "createdAt": 1791104029876,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-da8baf",
+          "body": "[状态] → done：研发段完成：兜底匹配 + 回执诚实性 + 修掉旧记录被序号校验挡死的死结，12 条用例全绿（reqboard_task_move）",
+          "createdAt": 1791104036024,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103984379,
+      "updatedAt": 1791104036024,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103984379,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791104029876,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "t6 研发段：兜底匹配与回执诚实性已具备；本轮补无清单/无 reworkOf 两条形状用例"
+        },
+        {
+          "status": "done",
+          "at": 1791104036024,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "研发段完成：兜底匹配 + 回执诚实性 + 修掉旧记录被序号校验挡死的死结，12 条用例全绿"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791104034313,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/rollback-cleanup.ts",
+          "src/application/use-cases/RollbackCleanup.ts",
+          "tests/rollback-cleanup.test.ts"
+        ],
+        "completed": [
+          "兜底匹配实现：没有物化清单时按「有 reworkOf + 标题带 [重做] 前缀」两个条件同时成立才算候选（宁可漏，不可错杀）",
+          "回执诚实性：matchedBy 如实给 lastMaterialized 或 reworkOf+title-prefix；走兜底时 note 明说「可能多算或少算，请核对 skipped」",
+          "逐条跳过原因：done 卡、无 reworkOf、原卡不存在、原卡本就是顶层父卡、父子关系已正确——五类都在回执里说清",
+          "**本轮定位并修掉一个真缺口**：存量记录的 rollback 只有 from/to/at/by（实测 2 条），没有 seq；原实现一律按序号严格相等校验，会把这类记录全部拒掉——t6 的兜底路径于是永远走不到。已改为「记过序号才校验」，并加用例钉住",
+          "实测存量形状：全仓 22 条需求中 20 条无 rollback、2 条为旧形状；0fbf 队列 73 张里 70 canceled / 3 done（那 53 张早已清掉，故三件挂账中的清场一项已无活可干）",
+          "自测：tests/rollback-cleanup.test.ts → 12 passed；判别力：把序号校验改回严格相等 → 该用例即红"
+        ]
+      },
+      "lastRun": {
+        "at": 1791104034313,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-bf58f4",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "老数据兜底与回执诚实性：没有回退序号的旧卡怎么匹配·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-17f385"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "清理入口对「无 `lastMaterialized` 记录」的需求走兜底路径：按 `reworkOf` + 标题前缀匹配候选，**逐条**在回执里给出 matchedBy/skipped 及原因；不做模糊删除。文档：把这条口径写进 design/data-model.md 对应的兼容节（已写，实施时核对一致）。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-ff3d8a",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-970f3c",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791104036110,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1502,
+              "at": 1791104036110,
+              "totals": {
+                "uncachedInputTokens": 223778,
+                "outputTokens": 82523,
+                "cacheReadTokens": 33552128,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1520,
+              "at": 1791104044117,
+              "totals": {
+                "uncachedInputTokens": 224574,
+                "outputTokens": 83323,
+                "cacheReadTokens": 34402816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 796,
+              "outputTokens": 800,
+              "cacheReadTokens": 850688,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791104044117
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d9511a",
+          "body": "[状态] → in_progress：联调段：核对兜底回执在 HTTP 出口与用例断言一致（reqboard_task_move）",
+          "createdAt": 1791104036110,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-4c8d33",
+          "body": "[状态] → done：联调段完成：回执字段与用例断言同源，路由不改造（reqboard_task_move）",
+          "createdAt": 1791104044117,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103984379,
+      "updatedAt": 1791104044117,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103984379,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791104036110,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "联调段：核对兜底回执在 HTTP 出口与用例断言一致"
+        },
+        {
+          "status": "done",
+          "at": 1791104044117,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "联调段完成：回执字段与用例断言同源，路由不改造"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791104041834,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "HTTP 出口原样透出用例回执（requirements.ts:723 ok(res, result)），路由层不再自行拼回执字段——单一实现处",
+          "响应字段与设计 interfaces §三 约定一致：canceled / restoredLinks / note，另加 id / rollbackSeq / matchedBy / skipped（只增既有消费者不受影响）",
+          "兜底口径在出口上可见：matchedBy 直接进响应体，看板与人无需读日志就能知道这次是精确还是猜的",
+          "用例断言与出口字段同源：断言的就是 RollbackCleanupResult 的字段，不存在「用例测 A、出口给 B」",
+          "自测：tests/rollback-cleanup.test.ts → 12 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1791104041834,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2824d4",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "老数据兜底与回执诚实性：没有回退序号的旧卡怎么匹配·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-bf58f4"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "清理入口对「无 `lastMaterialized` 记录」的需求走兜底路径：按 `reworkOf` + 标题前缀匹配候选，**逐条**在回执里给出 matchedBy/skipped 及原因；不做模糊删除。文档：把这条口径写进 design/data-model.md 对应的兼容节（已写，实施时核对一致）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-ff3d8a",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-498970",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791104044195,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1522,
+              "at": 1791104044195,
+              "totals": {
+                "uncachedInputTokens": 224574,
+                "outputTokens": 83323,
+                "cacheReadTokens": 34402816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1546,
+              "at": 1791104056907,
+              "totals": {
+                "uncachedInputTokens": 225675,
+                "outputTokens": 84614,
+                "cacheReadTokens": 35544064,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1101,
+              "outputTokens": 1291,
+              "cacheReadTokens": 1141248,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791104056906
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-fb16fc",
+          "body": "[状态] → in_progress：复核段：对照 data-model.md §三 兼容节核对兜底口径与实现一致（reqboard_task_move）",
+          "createdAt": 1791104044195,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-a91a17",
+          "body": "[状态] → done：复核段完成：兜底口径与设计一致，两处实施校准已同步文档（reqboard_task_move）",
+          "createdAt": 1791104056906,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103984379,
+      "updatedAt": 1791104056906,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103984379,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791104044195,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "复核段：对照 data-model.md §三 兼容节核对兜底口径与实现一致"
+        },
+        {
+          "status": "done",
+          "at": 1791104056906,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "复核段完成：兜底口径与设计一致，两处实施校准已同步文档"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791104054155,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261004121649-bfa7/design/data-model.md"
+        ],
+        "completed": [
+          "无偏离（data-model §三 本意）：兜底匹配 + 回执如实说明匹配方式，两条都落地",
+          "实施校准（已同步文档）：兜底判据把「两个条件同时成立」写清了——reworkOf 非空且标题带前缀；单看前缀会多杀、单看 reworkOf 会漏杀",
+          "实施校准（已同步文档）：序号校验只管记过序号的记录；缺 seq 的存量记录无批次可分，一律拒绝会让兜底路径永远走不到",
+          "设计文档同步：data-model §三 补了三条实测事实（2 条存量旧形状、0fbf 56 张里仅 17 张两条件齐备、序号校验边界）",
+          "文档与实现一致性：interfaces §三 的「仅人」写法也已在 t3 复核时同步为工具面不存在",
+          "自测：tests/rollback-cleanup.test.ts → 12 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1791104054155,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-affc5f",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "老数据兜底与回执诚实性：没有回退序号的旧卡怎么匹配·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-2824d4"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "清理入口对「无 `lastMaterialized` 记录」的需求走兜底路径：按 `reworkOf` + 标题前缀匹配候选，**逐条**在回执里给出 matchedBy/skipped 及原因；不做模糊删除。文档：把这条口径写进 design/data-model.md 对应的兼容节（已写，实施时核对一致）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-ff3d8a",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-fa567e",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791104056989,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1548,
+              "at": 1791104056989,
+              "totals": {
+                "uncachedInputTokens": 225675,
+                "outputTokens": 84614,
+                "cacheReadTokens": 35544064,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1580,
+              "at": 1791104130461,
+              "totals": {
+                "uncachedInputTokens": 226741,
+                "outputTokens": 86237,
+                "cacheReadTokens": 36981248,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1066,
+              "outputTokens": 1623,
+              "cacheReadTokens": 1437184,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791104130461
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5b5dd4",
+          "body": "[状态] → in_progress：测试段：跑目标用例与类型检查，核对不超过基线（reqboard_task_move）",
+          "createdAt": 1791104056989,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-33f4d3",
+          "body": "[状态] → done：测试段完成：12 条用例全绿，存量形状判别力实测，全量回归与基线逐字相等（reqboard_task_move）",
+          "createdAt": 1791104130461,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791103984379,
+      "updatedAt": 1791104130461,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791103984379,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791104056989,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "测试段：跑目标用例与类型检查，核对不超过基线"
+        },
+        {
+          "status": "done",
+          "at": 1791104130461,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "测试段完成：12 条用例全绿，存量形状判别力实测，全量回归与基线逐字相等"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791104127027,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "目标用例：npx vitest run tests/rollback-cleanup.test.ts → 12 passed（含无清单兜底、无 reworkOf、无前缀、存量旧形状四条）",
+          "全量回归：npx vitest run → 46 failed files / 344 passed；96 failed / 4015 passed / 20 skipped（4131）——失败数与开工基线 96 逐字相等，零新增失败",
+          "通过数由基线 4003 升到 4015（+12），增量全部是本轮新增用例",
+          "类型检查：npx tsc --noEmit → 本批 7 个文件零错误",
+          "判别力自证：把序号校验改回「一律严格相等」→ 存量形状用例即红；改回后 12 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1791104127027,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9729e4",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "用「修复前必红」的用例钉死四条行为·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-b721a6",
+        "t-f98040",
+        "t-c98915"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新增 tests/rollback-materialize.test.ts（内存队列 + 台账替身，**不碰真实工作区**——今天刚有测试把文件写进真实仓库的教训）。夹具用「6 顶层 + 11 子卡」复现原事故形状（对应实测 17 张）。每条用例先证「当前实现下会红」（判别力），再接修复。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-d66a34",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-77afa9",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791104180210,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1670,
+              "at": 1791104180210,
+              "totals": {
+                "uncachedInputTokens": 238805,
+                "outputTokens": 91106,
+                "cacheReadTokens": 41136640,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1676,
+              "at": 1791104182168,
+              "totals": {
+                "uncachedInputTokens": 239142,
+                "outputTokens": 91297,
+                "cacheReadTokens": 41441536,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 337,
+              "outputTokens": 191,
+              "cacheReadTokens": 304896,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791104182168
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-429f42",
+          "body": "[状态] → in_progress：研发段：补齐端到端开工展开用例与重复回退两次用例（reqboard_task_move）",
+          "createdAt": 1791104180210,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-5ec85a",
+          "body": "[状态] → done：研发段完成：端到端开工展开用例与重复回退两次用例补齐并验证通过（reqboard_task_move）",
+          "createdAt": 1791104182168,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791104165587,
+      "updatedAt": 1791104182168,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791104165587,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791104180210,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "研发段：补齐端到端开工展开用例与重复回退两次用例"
+        },
+        {
+          "status": "done",
+          "at": 1791104182168,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "研发段完成：端到端开工展开用例与重复回退两次用例补齐并验证通过"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791104175779,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/rollback-materialize.test.ts"
+        ],
+        "completed": [
+          "新增端到端用例：重做卡物化后**真的走一遍展开判据** → 名下新增子卡 0 张（断言结果，不只是断言 stages 字段）",
+          "该用例同时断了判别力：同一张卡去掉 stages: [] 后，按 phase 回落到默认链、会展开 >0 张子卡（证明它抓的是真行为）",
+          "新增显式用例：重复回退两次 → 第二次物化 0 张（真的跑两次回退并把第一次产物落进队列，不是手工塞卡）",
+          "补齐 t5 显式要求；用例总数：rollback-materialize 9 条 + rollback-cleanup 12 条 = 21 条（目标 7+）",
+          "自测：npx vitest run tests/rollback-materialize.test.ts → 9 passed；tests/rollback-cleanup.test.ts → 12 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1791104175779,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-52ac9a",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "用「修复前必红」的用例钉死四条行为·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-9729e4"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新增 tests/rollback-materialize.test.ts（内存队列 + 台账替身，**不碰真实工作区**——今天刚有测试把文件写进真实仓库的教训）。夹具用「6 顶层 + 11 子卡」复现原事故形状（对应实测 17 张）。每条用例先证「当前实现下会红」（判别力），再接修复。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-d66a34",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6ef64d",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791104182255,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1678,
+              "at": 1791104182255,
+              "totals": {
+                "uncachedInputTokens": 239142,
+                "outputTokens": 91297,
+                "cacheReadTokens": 41441536,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1696,
+              "at": 1791104194686,
+              "totals": {
+                "uncachedInputTokens": 241084,
+                "outputTokens": 92343,
+                "cacheReadTokens": 42360576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1942,
+              "outputTokens": 1046,
+              "cacheReadTokens": 919040,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791104194686
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-79af5c",
+          "body": "[状态] → in_progress：复核段：逐条核对用例与 FR-1..FR-4 的对应关系，确认没有装饰性用例（reqboard_task_move）",
+          "createdAt": 1791104182255,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-9b165e",
+          "body": "[状态] → done：复核段完成：21 条用例与 FR-1..FR-4 对照完毕，两处偏离已记账（reqboard_task_move）",
+          "createdAt": 1791104194686,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791104165587,
+      "updatedAt": 1791104194686,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791104165587,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791104182255,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "复核段：逐条核对用例与 FR-1..FR-4 的对应关系，确认没有装饰性用例"
+        },
+        {
+          "status": "done",
+          "at": 1791104194686,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "复核段完成：21 条用例与 FR-1..FR-4 对照完毕，两处偏离已记账"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791104191809,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "用例清点：rollback-materialize.test.ts 9 条 + rollback-cleanup.test.ts 12 条 = 21 条（目标 7+），全绿",
+          "FR 覆盖逐条对上：FR-1 只物化顶层/子卡不升格 3 条；FR-2 物化即终态 2 条；FR-3 幂等与上限 3 条（含重复回退两次）；FR-4 批量清理 1 条 + 清场套件 12 条",
+          "判别力：3 条以断言形式内建（如「只物化顶层」自带 6→17 膨胀对照）；另 5 处用变异实验实测过（去 done 跳过、去幂等守卫、去清单保留、序号校验、去顶层分流），每次改坏即红、还原即绿",
+          "偏离（用例文件落点）：设计 test-cases.md 要求「批量清理」「仅人可操作」两条写在 tests/rollback-materialize.test.ts；实际清场套件独立成 tests/rollback-cleanup.test.ts（12 条）。理由：清场是新起的模块与用例域，塞进物化文件会让两个关注点纠缠；覆盖数量与断言内容均达到并超过设计要求",
+          "偏离（「仅人」用例形态）：设计要求「agent 身份调清理入口 → REQBOARD_HUMAN_GATE」；经人工裁定改为工具面不存在（方案 A），故没有这条用例——用 exec.md 与设计文档记账，不做假用例充数",
+          "自测：两个文件 21 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1791104191809,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-7e6a13",
+      "requirementId": "REQ-261004121649-bfa7",
+      "title": "用「修复前必红」的用例钉死四条行为·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-52ac9a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新增 tests/rollback-materialize.test.ts（内存队列 + 台账替身，**不碰真实工作区**——今天刚有测试把文件写进真实仓库的教训）。夹具用「6 顶层 + 11 子卡」复现原事故形状（对应实测 17 张）。每条用例先证「当前实现下会红」（判别力），再接修复。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-d66a34",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-549d4a",
+          "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+          "trigger": "manual",
+          "startedAt": 1791104194778,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1698,
+              "at": 1791104194778,
+              "totals": {
+                "uncachedInputTokens": 241084,
+                "outputTokens": 92343,
+                "cacheReadTokens": 42360576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957",
+              "seq": 1730,
+              "at": 1791104262964,
+              "totals": {
+                "uncachedInputTokens": 242297,
+                "outputTokens": 94100,
+                "cacheReadTokens": 43906176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1213,
+              "outputTokens": 1757,
+              "cacheReadTokens": 1545600,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791104262964
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e74b2b",
+          "body": "[状态] → in_progress：测试段：全量回归 + 类型检查收口（reqboard_task_move）",
+          "createdAt": 1791104194778,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        },
+        {
+          "id": "c-84c738",
+          "body": "[状态] → done：测试段完成：全量回归 96 failed / 4017 passed 与基线逐字相等，本批文件零类型错误，变异实验零残留（reqboard_task_move）",
+          "createdAt": 1791104262964,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791104165587,
+      "updatedAt": 1791104262964,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791104165587,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791104194778,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "测试段：全量回归 + 类型检查收口"
+        },
+        {
+          "status": "done",
+          "at": 1791104262964,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-51baeeda-dbe8-4048-8bc8-b036050d7957"
+          },
+          "reason": "测试段完成：全量回归 96 failed / 4017 passed 与基线逐字相等，本批文件零类型错误，变异实验零残留"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791104259259,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "全量回归：npx vitest run → 46 failed files / 344 passed；96 failed / 4017 passed / 20 skipped（4133）——失败数与开工基线 96 逐字相等，零新增失败",
+          "通过数由基线 4003 升到 4017（+14），增量全部是本轮新增用例（materialize +2、cleanup +12）",
+          "两个目标文件：tests/rollback-materialize.test.ts 9 passed；tests/rollback-cleanup.test.ts 12 passed",
+          "类型检查：npx tsc --noEmit → 211 条全量，本批改动文件零错误",
+          "变异实验零残留：grep 判别力实验标记 → 空，所有临时改坏的实现已逐次还原并复跑验证",
+          "断言覆盖四条行为：只物化顶层 / 不展开链 / 幂等与超限 / 批量清理，每条都有「修复前必红」证据"
+        ]
+      },
+      "lastRun": {
+        "at": 1791104259259,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-3b61dd",
+      "to": "t-b721a6"
+    },
+    {
+      "from": "t-3b61dd",
+      "to": "t-f98040"
+    },
+    {
+      "from": "t-3b61dd",
+      "to": "t-c98915"
+    },
+    {
+      "from": "t-b721a6",
+      "to": "t-d66a34"
+    },
+    {
+      "from": "t-f98040",
+      "to": "t-d66a34"
+    },
+    {
+      "from": "t-c98915",
+      "to": "t-d66a34"
+    },
+    {
+      "from": "t-3b61dd",
+      "to": "t-ff3d8a"
+    },
+    {
+      "from": "t-449ac5",
+      "to": "t-968fe6"
+    },
+    {
+      "from": "t-968fe6",
+      "to": "t-d86de5"
+    },
+    {
+      "from": "t-d86de5",
+      "to": "t-3b2a85"
+    },
+    {
+      "from": "t-3b61dd",
+      "to": "t-e520c7"
+    },
+    {
+      "from": "t-e520c7",
+      "to": "t-a30bc1"
+    },
+    {
+      "from": "t-a30bc1",
+      "to": "t-9c4db3"
+    },
+    {
+      "from": "t-9c4db3",
+      "to": "t-37dc35"
+    },
+    {
+      "from": "t-3b61dd",
+      "to": "t-0e0b30"
+    },
+    {
+      "from": "t-0e0b30",
+      "to": "t-2f9c59"
+    },
+    {
+      "from": "t-2f9c59",
+      "to": "t-0a4d64"
+    },
+    {
+      "from": "t-0a4d64",
+      "to": "t-f44566"
+    },
+    {
+      "from": "t-3b61dd",
+      "to": "t-70dc5f"
+    },
+    {
+      "from": "t-70dc5f",
+      "to": "t-cfb2d4"
+    },
+    {
+      "from": "t-cfb2d4",
+      "to": "t-b6aa22"
+    },
+    {
+      "from": "t-b6aa22",
+      "to": "t-637839"
+    },
+    {
+      "from": "t-3b61dd",
+      "to": "t-17f385"
+    },
+    {
+      "from": "t-17f385",
+      "to": "t-bf58f4"
+    },
+    {
+      "from": "t-bf58f4",
+      "to": "t-2824d4"
+    },
+    {
+      "from": "t-2824d4",
+      "to": "t-affc5f"
+    },
+    {
+      "from": "t-b721a6",
+      "to": "t-9729e4"
+    },
+    {
+      "from": "t-f98040",
+      "to": "t-9729e4"
+    },
+    {
+      "from": "t-c98915",
+      "to": "t-9729e4"
+    },
+    {
+      "from": "t-9729e4",
+      "to": "t-52ac9a"
+    },
+    {
+      "from": "t-52ac9a",
+      "to": "t-7e6a13"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-3b61dd",
+        "t-449ac5"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-b721a6",
+        "t-f98040",
+        "t-c98915",
+        "t-ff3d8a",
+        "t-e520c7",
+        "t-0e0b30",
+        "t-70dc5f",
+        "t-17f385",
+        "t-968fe6"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-d66a34",
+        "t-9729e4",
+        "t-a30bc1",
+        "t-2f9c59",
+        "t-cfb2d4",
+        "t-bf58f4",
+        "t-d86de5"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-52ac9a",
+        "t-9c4db3",
+        "t-0a4d64",
+        "t-b6aa22",
+        "t-2824d4",
+        "t-3b2a85"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-7e6a13",
+        "t-37dc35",
+        "t-f44566",
+        "t-637839",
+        "t-affc5f"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-04T09:00:52.146Z"
+}

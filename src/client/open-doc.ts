@@ -9,6 +9,7 @@
  * @module dsh-pmboard/client/open-doc
  */
 import { sessionFileAddress } from './file-address.ts'
+import { extractRequirementIdFromPath } from '../domain/artifact/ArtifactPath.js'
 
 /** 官方右侧栏导航面对（只用 openResource 这一项）。 */
 interface SidebarRightLike {
@@ -48,21 +49,44 @@ export function resolveCurrentSessionId(): string | undefined {
 // ---------------------------------------------------------------------------
 
 let cachedWorkspaceRoot: string | undefined
+/** 会话工作区（/state 的 sessionWorkspaceRoot，FR-11）：无需求段路径的**首选**根。 */
+let cachedSessionWorkspaceRoot: string | undefined
 let cachedHomeDir: string | undefined
+/** 需求 id → 需求级工作区根（REQ-260929210741-30ae FR-6：产物相对需求工作区落盘）。 */
+let cachedReqRoots: Record<string, string> = {}
 
-/** 缓存服务端工作区根与 homeDir（board-mount 在 fetchState 成功后调用；旧服务端无字段 → 保持 undefined 降级为相对解析）。 */
-export function setDocWorkspaceContext(workspaceRoot: string | undefined, homeDir: string | undefined): void {
+/**
+ * 缓存服务端工作区根与 homeDir（board-mount 在 fetchState 成功后调用；旧服务端无字段 → 保持 undefined 降级为相对解析）。
+ * reqRoots：需求 id → 需求级 workspaceRoot——产物写路径以需求工作区为根，
+ * 打开/显示必须同根解析，否则服务跑在别的会话工作区时拼出的绝对路径必 404。
+ */
+export function setDocWorkspaceContext(
+  workspaceRoot: string | undefined,
+  homeDir: string | undefined,
+  reqRoots?: Record<string, string>,
+  sessionWorkspaceRoot?: string | undefined,
+): void {
   cachedWorkspaceRoot = typeof workspaceRoot === 'string' && workspaceRoot.length > 0 ? workspaceRoot : undefined
   cachedHomeDir = typeof homeDir === 'string' && homeDir.length > 0 ? homeDir : undefined
+  cachedReqRoots = reqRoots ?? {}
+  cachedSessionWorkspaceRoot = typeof sessionWorkspaceRoot === 'string' && sessionWorkspaceRoot.length > 0
+    ? sessionWorkspaceRoot
+    : undefined
 }
 
 /** 相对路径 → 绝对路径（已是绝对路径原样返回；无缓存根 → 原样返回，相对解析降级）。 */
 export function absolutizeDocPath(path: string): string {
   if (path.startsWith('/') || /^[A-Za-z]:/.test(path)) return path
-  if (cachedWorkspaceRoot === undefined) return path
-  const root = cachedWorkspaceRoot.split('\\').join('/').replace(/\/+$/, '')
   const rel = path.split('\\').join('/').replace(/^(?:\.\/)+/, '')
-  return root + '/' + rel
+  // 根的选择（FR-11）：需求级根优先（读与写同根）→ 会话工作区 → 服务端下发的 workspaceRoot。
+  // 三者都取不到 → 原样返回相对路径（由 DSH 按查看会话解析），**不拼一个必然不存在的绝对路径**。
+  const reqId = extractRequirementIdFromPath(rel)
+  const root = (reqId !== undefined ? cachedReqRoots[reqId] : undefined)
+    ?? cachedSessionWorkspaceRoot
+    ?? cachedWorkspaceRoot
+  if (root === undefined) return path
+  const r = root.split('\\').join('/').replace(/\/+$/, '')
+  return r + '/' + rel
 }
 
 /** 显示用路径：绝对化后把 homeDir 前缀缩写为 ~（无缓存 → 原样）。 */

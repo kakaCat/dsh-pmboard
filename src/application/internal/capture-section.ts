@@ -10,6 +10,8 @@
  *
  * @module dsh-pmboard/application/internal/capture-section
  */
+
+import { PM_BADGE_PREFIX } from '../../domain/text/pm-badge.js'
 import type { ReqboardLedger, TaskRecord } from '../../shared/protocol.js'
 import { captureDiag } from './diag-log.js'
 import { stageEnabledFor } from '../../shared/protocol.js'
@@ -21,10 +23,11 @@ import {
 } from './injection-log.js'
 import { isImplementing } from '../../domain/status/Predicates.js'
 import { isInProgressTask } from '../../domain/status/Predicates.js'
+import { factsOf, type RequirementFacts } from '../../domain/requirement/RequirementSummary.js'
 import {
   windowKeyFromContext,
-  isWindowBound,
-  openRequirementsFor,
+  isWindowBoundFromFacts,
+  openPromptFactsFor,
 } from './window.js'
 
 /**
@@ -54,13 +57,32 @@ export function captureSectionText(
   context: unknown,
   pending?: PendingCaptureMessage | undefined,
 ): string {
+  return captureSectionTextFrom(ledger.requirements.map(factsOf), context, pending)
+}
+
+/**
+ * 同一段的**窄投影实现**（B12 阶段①-a）：吃 `RequirementFacts[]` 而不是整册 `ReqboardLedger`。
+ *
+ * 为什么要这一步：这一段服务于 `systemPrompt.section` 的 `text` 回调——**同步**、
+ * 每回合执行、且过期不致命（端口注释已划定许可区）。旧路径要 `deps.store.snapshot`（同步整册镜像，
+ * 正是本需求要消灭的形态），而它实际只读 `status` 与 `sourceSessionId`。
+ * ⇒ 改由 `RequirementStore.peekFacts()` 供数，同步缝不再依赖桥。
+ *
+ * 与 `captureSectionText(ledger, …)` 的关系：后者是**投影壳**（把整册投影成窄投影再调本函数），
+ * 只为尚未搬迁的调用方（测试）保留，随 B12 删桥一并删除。
+ */
+export function captureSectionTextFrom(
+  facts: readonly RequirementFacts[],
+  context: unknown,
+  pending?: PendingCaptureMessage | undefined,
+): string {
   const windowKey = windowKeyFromContext(context as { agent?: { id?: unknown }; scope?: unknown })
   if (!windowKey) {
     // 【诊断日志-节点5】返回空串原因：windowKey undefined
     captureDiag(`reqboard-capture [NODE-5]: captureSectionText returns '' (reason: windowKey=undefined)`);
     return '';
   }
-  if (isWindowBound(ledger, windowKey)) {
+  if (isWindowBoundFromFacts(facts, windowKey)) {
     captureDiag(`reqboard-capture [NODE-5]: captureSectionText returns '' (reason: windowBound=true, windowKey=${windowKey.slice(0, 16)})`);
     return '';
   }
@@ -101,11 +123,28 @@ export function boundSectionText(
 ): string {
   const windowKey = windowKeyFromContext(context as { agent?: { id?: unknown }; scope?: unknown })
   if (windowKey === undefined) return ''
-  const open = openRequirementsFor(ledger, windowKey)
+  return boundSectionTextFrom(ledger.requirements.map(factsOf), tasks, context, injectionLog)
+}
+
+/**
+ * 同一段的**窄投影实现**（B12 阶段①-a）——见 `captureSectionTextFrom` 的说明。
+ *
+ * 本段比捕获段多要一个字段：`description`（`resolveStagePrompt` 用它推断提示词难度，FR-16）。
+ * 这也是"看板摘要（`RequirementSummary`）不能直接拿来用"的原因——见 `RequirementFacts` 的注释。
+ */
+export function boundSectionTextFrom(
+  facts: readonly RequirementFacts[],
+  tasks: readonly TaskRecord[] | undefined,
+  context: unknown,
+  injectionLog?: InjectionLogPort,
+): string {
+  const windowKey = windowKeyFromContext(context as { agent?: { id?: unknown }; scope?: unknown })
+  if (windowKey === undefined) return ''
+  const open = openPromptFactsFor(facts, windowKey)
   if (open.length === 0) return ''
   // 基础需求列表
   const lines: string[] = [
-    `## 项目看板（reqboard · 本窗口 ${windowKey.slice(0, 16)} 已绑定需求）`,
+    `${PM_BADGE_PREFIX}项目看板（reqboard · 本窗口 ${windowKey.slice(0, 16)} 已绑定需求）`,
     '',
     '本窗口名下有进行中的需求：',
     ...open.map(r => `- ${r.id}《${r.title}》当前状态：${r.status}`),
@@ -265,40 +304,54 @@ export function capturePromptForMessage(windowKey: string, text: string): string
   const trimmed = text.trim().replace(/\s+/g, ' ')
   const snippet = trimmed.slice(0, 300)
   return [
-    `## 项目捕获（reqboard · 本窗口 ${windowKey.slice(0, 16)} 检测到用户新输入）`,
+    `${PM_BADGE_PREFIX}项目捕获（reqboard · 本窗口 ${windowKey.slice(0, 16)} 检测到用户新输入）`,
     '',
     '用户刚发来一条消息。**本回合你必须先做一次显式裁定、再回答用户**——沉默跳过等于',
     '本回合未完成（会被留痕，走查时按失败计）。',
     '',
-    '**判据（只看本条消息里有没有"要动手做的事"，不看它是否夹在提问里）**：',
-    '- 出现「修复 / 改 / 新增 / 实现 / 重构 / 优化 / 补充 / 调研 / 做 / 支持」+ **具体对象**，',
-    '  或用户要求对某个模块 / 功能 / 文档做出改动 → 判为**值得立项**，走下面「值得立项时」；',
-    '- 纯提问、咨询完成度、追问进度、继续之前话题、闲聊 → 判为**不立项**，走「不立项时」。',
+    '**第一步：判断消息类型**',
     '',
-    '**值得立项时（必须执行）**：',
-    '1) **本回合的第一个工具调用必须是 reqboard_capture**（pm 专有立项弹框）——',
-    '   不要先回答问题、不要先做分析、不要先调别的工具；',
-    '   问题一「需求名称」：把由本条消息推导出的候选标题经 title_options 传入（最多 3 个），',
-    '   最贴切的一项放首位（弹框里标注「推荐」），允许用户改选或自定义输入；',
-    '   问题二「需求类型」：选项 feature / bug / doc / refactor / spike / chore；',
-    '   问题三「提示词难度」：选项 simple / standard / advanced / expert；',
-    '2) 用户作答后（= 立项确认），本工具在**同一次调用内**创建需求并绑定本窗口——',
-    '   不要再另调 reqboard_create，也不要用宿主通用弹框（两段式会在答案与创建之间断链）；',
-    '3) 弹框通道不可用时该工具返回 fallback=board：此时改为文字向用户取值，再调 reqboard_create',
-    '   （title = 需求名称，category = 需求类型，prompt_difficulty = 难度，',
-    '   summary = 本次工作摘要，reason = 立项依据（引用本条消息原文））。',
+    'A. **直接执行**——用户已给出精确修改值 + 执行指令，如：',
+    '   - "改成 500"、"设为 200"、"提高到 1000"',
+    '   - "修改"、"执行"、"apply"、"直接改"',
+    '   - 改动范围单一明确（一个文件/一个配置项）',
+    '   → **立即执行 edit/write，不弹框、不立项**',
     '',
-    '**不立项时（同样必须显式表态，不许沉默）**：',
-    '- 在回复的**第一行**写明「本条不立项：<一句话理由>」，然后才正常回答用户；',
-    '- **判不准时按"值得立项"处理**——弹框本身就是一次询问，用户可以在框里选"不需要"；',
-    '  宁可多问一次，也不要替用户决定"这件事不用立项"。',
+    'B. **值得立项**——用户提出新工作意图，但未给出精确值，如：',
+    '   - "帮我做个功能"、"修复这个 bug"、"重构某模块"',
+    '   - 需要拆解的复杂需求、需要追踪的改动',
+    '   → **本回合第一个工具调用必须是 reqboard_capture**',
+    '',
+    'C. **不立项**——纯提问、咨询、闲聊，如：',
+    '   - "dsh 支持吗"、"进度如何"、"谢谢"',
+    '   → **回复第一行写明「本条不立项：<理由>」**',
+    '',
+    '**第二步：执行对应动作**',
+    '',
+    'A. 直接执行时：',
+    '   - 立即调 edit/write 修改代码',
+    '   - 回复用户执行结果',
+    '   - 绝对禁止调 reqboard_capture（这不是立项，是干活）',
+    '',
+    'B. 值得立项时：',
+    '   - 本回合第一个工具调用必须是 reqboard_capture',
+    '   - 问题一「需求名称」：候选标题经 title_options 传入（最多 3 个），最贴切的置首',
+    '   - 问题二「需求类型」：feature / bug / doc / refactor / spike / chore',
+    '   - 问题三「提示词难度」：simple / standard / advanced / expert',
+    '   - 用户作答后同一次调用内创建并绑定本窗口',
+    '',
+    'C. 不立项时：',
+    '   - 回复第一行写明「本条不立项：<一句话理由>」',
+    '   - 然后正常回答用户',
+    '',
+    '**绝对禁止（违反 = 逻辑错误）**：',
+    '- 写了「本条不立项」后又调 reqboard_capture',
+    '- 调了 reqboard_capture 又写「本条不立项」',
+    '- 用户已给出精确值仍弹框立项',
     '',
     '本次待裁定的用户消息（节选，最多 300 字）：',
     '',
     `> ${snippet}${trimmed.length > 300 ? '…' : ''}`,
-    '',
-    '注意：reqboard_create 创建即立项（REQ 立即在看板 draft 泳道可见，无待归类/建议卡',
-    '中间态）；本窗口创建后即绑定该需求。未弹框或用户未作答时不要调用、不要宣称"已立项"。',
   ].join('\n')
 }
 
@@ -306,7 +359,7 @@ export function capturePromptForMessage(windowKey: string, text: string): string
 export function captureGuidanceText(windowKey: string): string {
   // 全部字面量，无 {{变量}}。短小精炼，避免挤占上下文预算。
   return [
-    `## 项目捕获（reqboard · 本窗口 ${windowKey.slice(0, 16)} 未绑定需求）`,
+    `${PM_BADGE_PREFIX}项目捕获（reqboard · 本窗口 ${windowKey.slice(0, 16)} 未绑定需求）`,
     '',
     '本窗口当前没有进行中的需求记录。若用户在本窗口提出了新的工作意图',
     '（新功能 / 缺陷修复 / 文档 / 重构 / 技术调研 / 维护事项），且该工作值得立项，',

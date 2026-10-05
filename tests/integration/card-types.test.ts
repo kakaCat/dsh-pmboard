@@ -18,7 +18,6 @@ import {
   getPhaseColor,
   getSideColor,
   getStatusColor,
-  type PhaseColorFamily,
   type Side,
   type TaskRole,
   type TaskStatus,
@@ -69,6 +68,12 @@ describe('卡片四轴类型系统 - 联调测试', () => {
       expect(STAGE_TO_PHASE_COLOR.change).toBe('ops-family')
       expect(STAGE_TO_PHASE_COLOR.dryrun).toBe('ops-family')
       expect(STAGE_TO_PHASE_COLOR.apply).toBe('ops-family')
+
+      // REQ-261003203909-55f2 新增四段：e2e/manual → 测试族、capture → 调研族、release → 运维族
+      expect(STAGE_TO_PHASE_COLOR.e2e).toBe('test-family')
+      expect(STAGE_TO_PHASE_COLOR.manual).toBe('test-family')
+      expect(STAGE_TO_PHASE_COLOR.capture).toBe('research-family')
+      expect(STAGE_TO_PHASE_COLOR.release).toBe('ops-family')
     })
 
     it('应为每个颜色族返回颜色值', () => {

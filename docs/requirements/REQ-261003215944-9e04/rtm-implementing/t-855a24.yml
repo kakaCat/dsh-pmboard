@@ -1,0 +1,37 @@
+task:
+  id: t-855a24
+  title: 文档读根与会话同源·研发
+  status: done
+  implements: |-
+    服务端：src/index.ts 惰性注入 sessions，把会话工作区解析器（ctx.sessions.get(sessionId)?.header.cwd，冷会话回落 sessionPersistence.stat；见 packages/api/session-controller/src/index.ts:202-220 的 workspaceFileScope 写法）经 src/http/routes.ts 交给路由；改 src/http/routers/artifacts.ts:54 的 workspaceRoot() 不再用 process.cwd()，classify() 的根取「会话根 → 需求根（保留 artifacts.ts:114-126 的既有回退）→ legacy cwd」，并在 /state 返回 sessionWorkspaceRoot 与 docsRootSource。客户端：改 src/client/open-doc.ts:68-77 的 absolutizeDocPath 在无需求段时回落会话根、两者都无则不拼绝对路径并给诊断；src/client/board-mount.ts:302-306 传参补 sessionWorkspaceRoot。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: fullstack
+  workflow_params:
+    REQ_ID: REQ-261003215944-9e04
+    TASK_ID: t-855a24
+    TASK_TITLE: 文档读根与会话同源·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: fullstack
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-03T14:37:23.841Z
+    - phase: doc
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261003215944-9e04
+  generated_at: 2026-10-03T14:37:15.434Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-03T14:37:23.841Z

@@ -1,0 +1,47 @@
+task:
+  id: t-aeab92
+  title: 详情页终态只读：archived / canceled / done 恒不渲染操作条·复核
+  status: done
+  implements: |-
+    src/client/views/stage-detail.ts：renderActionBar(req) 开头加 if (req.status === 'archived' || req.status === 'canceled' || req.status === 'done') return ''，位置在 items/hints 构造之前（保证不留空壳 div，也不渲染 BAR_LABEL）；同步更新函数头注释（归档按钮那条改为「终态一律只读，归档材料由窗口 agent 提交」）。tests/archived-entry.test.ts 追加 A3：对 archived、canceled + 未批准计划、done 带归档材料三种需求，断言 buildReqDetail 输出不含 move-req / plan-approve / plan-reject / verify-pass / verify-rework / archive-req，且不含 dsh-pm-action-bar。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-52fa03
+  phase: ui
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261002105242-a3fb
+    TASK_ID: t-aeab92
+    TASK_TITLE: 详情页终态只读：archived / canceled / done 恒不渲染操作条·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: ui
+  workflow_total: 5
+  workflow_done: 5
+  workflow:
+    - phase: ui
+      status: done
+      completed_at: 2026-10-02T03:02:13.742Z
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T03:02:13.742Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-02T03:02:13.742Z
+    - phase: commit
+      status: done
+      completed_at: 2026-10-02T03:02:13.742Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002105242-a3fb
+  generated_at: 2026-10-02T03:02:06.586Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 5
+  last_updated: 2026-10-02T03:02:13.742Z

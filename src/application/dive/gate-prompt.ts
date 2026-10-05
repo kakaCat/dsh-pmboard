@@ -14,7 +14,8 @@
  *
  * @module dsh-pmboard/application/dive/gate-prompt
  */
-import type { RequirementRecord } from '../../shared/protocol.js'
+import { requirementStoreOf } from '../use-cases/queue-access.js'
+import type { RequirementStatus } from '../../shared/protocol.js'
 import type { GateId } from '../../domain/gate/GateSpec.js'
 import { advanceTargetFor, gateById, gateFromStage } from '../../domain/gate/GateCatalog.js'
 import { DEFAULT_CONFIRM_OPTIONS } from '../../domain/text/labels.js'
@@ -23,6 +24,8 @@ import { pmHeader } from '../../domain/text/pm-badge.js'
 import { LIMITS } from '../../domain/limits.js'
 import type { GatePromptPort, UseCaseDeps } from '../ports.js'
 import { applyConfirmDecision } from '../internal/confirm-settle.js'
+// REQ-261002141430-a5ef FR-5：门框投递前先登记在途（同拍起轮也要被拦下）
+import { enterAwaitingConfirm, exitAwaitingConfirm } from '../internal/awaiting-confirm.js'
 
 /** 同 (需求, 门) 跨回合重弹冷却（design I-10：≥5 分钟）。 */
 export const GATE_PROMPT_COOLDOWN_MS = 5 * 60 * 1000
@@ -46,6 +49,23 @@ function fingerprintOf(arts: readonly { path: string; registeredAt: number; conf
 }
 
 /**
+ * 弹框判定所需的**最小台账投影**（B12 阶段①-a）：
+ * 整条 `RequirementRecord` 与同步窄投影 `RequirementFacts` 都满足它，
+ * 判定逻辑因此仍只有一份（`gatePromptFor`）。
+ */
+export interface GatePromptSource {
+  readonly id: string
+  readonly status: RequirementStatus
+  readonly artifacts?: readonly {
+    readonly kind?: string
+    readonly path: string
+    readonly stage?: string
+    readonly confirmedAt?: number
+    readonly registeredAt: number
+  }[]
+}
+
+/**
  * 计算绑定需求当前的**人工门状态**（纯函数，design I-10 的分支表）：
  *  · (a) 门 `requiredKind` 的产物**已登记未确认** → 弹「确认产物」（kind='artifact'）；
  *  · (b) 该产物**已确认**但状态未动（`advanceTargetFor` 可达）→ 弹「推进确认」（kind='plan'）。
@@ -54,7 +74,7 @@ function fingerprintOf(arts: readonly { path: string; registeredAt: number; conf
  * 「无自动推进目标」这条同时把 **G4 验收门**排除在外：its 归档要逐项裁决，不能被压成一个肯定项
  * （design 分支 (b) 的可达性判定同此口径）。
  */
-export function gatePromptFor(req: RequirementRecord): GatePromptDecision | undefined {
+export function gatePromptFor(req: GatePromptSource): GatePromptDecision | undefined {
   const gate = gateFromStage(req.status)
   if (gate === undefined || gate.requiredKind === undefined) return undefined
   const to = advanceTargetFor(req.status)
@@ -113,7 +133,7 @@ export interface GatePromptLoopDeps {
 
 export interface GatePromptLoop {
   /** idle 一拍：给定窗口与其绑定需求，判定并（受边界约束地）弹框。**同步返回**，副作用走异步边界。 */
-  tick(windowKey: string, req: RequirementRecord | undefined): void
+  tick(windowKey: string, req: GatePromptSource | undefined): void
 }
 
 interface PopState { pops: number; lastPopAt: number; lastFingerprint: string; notified: boolean }
@@ -195,11 +215,31 @@ export function createGatePromptPort(deps: GatePromptPortDeps): GatePromptPort {
     async prompt(input) {
       const uc = deps.useCaseDeps()
       const optionLabels = [...DEFAULT_CONFIRM_OPTIONS]
-      const fallback = '【人工门提醒】' + input.question + ' 请调 reqboard_ask_confirm 弹框请人确认，或提示用户到看板处理该门。'
+      // REQ-261002141430-a5ef：原 `fallback` 文案随 deliver 路径一起废弃（它已不再被读取，是死变量）——
+      // 顺手删掉，本文件正是本次改动面（FR-5），非计划外文件。
       if (!uc.questions.available()) {
         // deliver已删除：Dive模式下降级时只记录日志，不投递
+        // REQ-261002141430-a5ef INV-4：**降级不登记**——没人作答的弹框若登记在途 = 永久停手。
         return { answered: false, affirmative: false }
       }
+      // REQ-261002141430-a5ef FR-5：**先登记在途、再弹框**。
+      // 顺序不能反：本函数与 round 半的 requestDrive 在同一 idle 拍相邻（session-driver 的
+      // captureTick → requestDrive），先登记才能让同拍那一轮被拦下——免掉"框刚弹出、agent 就跑"。
+      const dialogRef = fmt('dlg-gate-{id}-{at}', { id: input.requirementId, at: uc.clock.now() })
+      const awaiting = {
+        // B12 阶段②c：写入走新端口；未装配时 requirementStoreOf **响亮抛错**（不静默回落）
+        store: requirementStoreOf(uc),
+        ...(uc.dialogs === undefined ? {} : { dialogs: uc.dialogs }),
+        now: () => uc.clock.now(),
+        ...(uc.alert === undefined ? {} : { alert: uc.alert }),
+      }
+      void enterAwaitingConfirm(awaiting, {
+        requirementId: input.requirementId,
+        windowKey: input.windowKey,
+        ref: dialogRef,
+        kind: 'gate',
+        question: input.question,
+      })
       try {
         const answers = await uc.questions.ask([{
           id: 'gate-prompt',
@@ -229,6 +269,13 @@ export function createGatePromptPort(deps: GatePromptPortDeps): GatePromptPort {
         deps.logger?.info('reqboard gate-prompt: 弹框通道失败，降级为消息提醒：' + String((err as Error)?.message ?? err))
         // deliver已删除：Dive模式下降级时只记录日志，不投递
         return { answered: false, affirmative: false }
+      } finally {
+        // 作答 / 抛错 / 降级三条路都在此处解除等待（幂等：肯定项的落章路径已解除过一次）
+        await exitAwaitingConfirm(awaiting, {
+          requirementId: input.requirementId,
+          ref: dialogRef,
+          reason: 'answered',
+        })
       }
     },
   }

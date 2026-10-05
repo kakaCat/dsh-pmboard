@@ -84,12 +84,21 @@ describe('需求回退上游（FR-14）', () => {
   it('implementing → design：human 放行，agent/system 返回 human_gate', () => {
     expect(canReqTransition('implementing', 'design')).toBe(true)
     expect(() => assertReqTransition('implementing', 'design', 'human')).not.toThrow()
-    expect(codeOf(() => assertReqTransition('implementing', 'design', 'agent'))).toBe('human_gate')
-    expect(codeOf(() => assertReqTransition('implementing', 'design', 'system'))).toBe('human_gate')
+    // REQ-261003204149-1e80 FR-1：回退方向不再需要人点——agent 可自行发起
+    // （**推翻 REQ-4842fe t2/FR-14 的「仅人可发起」**：agent 明知需求描述不对却退不回去，
+    //   只能硬着头皮做或请人点一下，正是本需求要解掉的摩擦）。
+    expect(() => assertReqTransition('implementing', 'design', 'agent')).not.toThrow()
+    // system 仍不可发起回退（回退不在 SYSTEM_REQ_TRANSITIONS 白名单），
+    // 但拒绝理由随人工门移除而从 human_gate 变为 system_gate。
+    expect(codeOf(() => assertReqTransition('implementing', 'design', 'system'))).toBe('system_gate')
   })
 
-  it('agentNextActions(implementing) 不变（回退是人工门，不在 agent 可自行推进项里）', () => {
-    expect(agentNextActions('implementing')).toEqual(['accepting'])
+  it('agentNextActions(implementing) 含全部回退目标（FR-1 起回退对 agent 开放）', () => {
+    // 顺序 = 前进边（accepting）→ 回退目标按流水线序升序（draft..decomposing）；
+    // canceled 被人工门剔除。这是**行为变更的如实反映**，不是断言放宽。
+    expect(agentNextActions('implementing')).toEqual([
+      'accepting', 'draft', 'brainstorming', 'design', 'decomposing',
+    ])
   })
 })
 

@@ -75,3 +75,23 @@ describe('REQ-a33899 t6 · Token tab 渲染', () => {
     expect(renderTokenPlaceholder('加载中…')).toContain('加载中…')
   })
 })
+
+/**
+ * REQ-261004154937-2ca3 FR-4：口径差异必须写在明处——展示含子代理、预算闸不含、历史分界。
+ * 三段各一条断言：文案少了任何一段，读者就会把两套口径当成一套。
+ */
+describe('REQ-261004154937-2ca3 · 口径说明三要素', () => {
+  it('Token tab 口径说明含「含子代理」「预算闸不含」「上线前历史不含」三段', async () => {
+    const { renderTokenTab } = await import('../src/client/token-info.ts')
+    const html = renderTokenTab({
+      requirementId: 'REQ-x', totals: { uncachedInputTokens: 1, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      degraded: false,
+      byStage: [
+        { stage: 'draft', executions: [] },
+      ],
+    } as never)
+    expect(html).toContain('含子代理')
+    expect(html).toContain('起链预算闸不含子代理')
+    expect(html).toContain('上线前的历史数字不含子代理')
+  })
+})

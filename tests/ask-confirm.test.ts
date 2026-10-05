@@ -3,19 +3,19 @@
  * 覆盖：肯定答复 → 落章+推进原子完成；非肯定 → 不落章不推进；弹框通道降级
  * （服务缺失 / DELEGATED_CALLER）→ fallback=board；target=plan 批准+推进。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { defineAskConfirmTool, defineMoveTool } from './helpers/tool-deps.js'
 import { LIMITS } from '../src/domain/limits.js'
 import type { RequirementRecord, RequirementStatus, StageArtifact } from '../src/shared/protocol.js'
 
 const W = 'session-abc-123'
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 function makeSvc(behavior: 'yes' | 'no' | 'delegated' | 'abort') {
   return {
@@ -35,6 +35,7 @@ function makeSvc(behavior: 'yes' | 'no' | 'delegated' | 'abort') {
 function makeTool(behavior?: 'yes' | 'no' | 'delegated' | 'abort') {
   const deps = {
     store,
+
     now: () => Date.now(),
     ...(behavior !== undefined ? { userQuestions: () => makeSvc(behavior) } : {}),
   } as never
@@ -43,7 +44,7 @@ function makeTool(behavior?: 'yes' | 'no' | 'delegated' | 'abort') {
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-askconfirm-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -57,7 +58,7 @@ async function seed(status: RequirementStatus, withArtifact = true): Promise<voi
       ? { artifacts: [{ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1 } as StageArtifact] }
       : {}),
   } as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 const run = (tool: { execute: (a: unknown, e: unknown) => Promise<any> }, args: unknown) =>
@@ -73,7 +74,7 @@ describe('reqboard_ask_confirm', () => {
     expect(out.advanced).toBe(true)
     expect(out.from).toBe('brainstorming')
     expect(out.to).toBe('design')
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     expect(req.status).toBe('design')
     const art = req.artifacts![0]
     expect(art.confirmedAt).toBeDefined()
@@ -86,7 +87,7 @@ describe('reqboard_ask_confirm', () => {
     const out = await run(makeTool('no'), ARGS)
     expect(out.confirmed).toBe(false)
     expect(out.advanced).toBe(false)
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     expect(req.status).toBe('brainstorming')
     expect(req.artifacts![0].confirmedAt).toBeUndefined()
     expect(req.comments.some(c => c.body.includes('未确认'))).toBe(true)
@@ -112,24 +113,23 @@ describe('reqboard_ask_confirm', () => {
     const out = await run(makeTool('abort'), ARGS)
     expect(out.confirmed).toBe(false)
     expect(out.fallback).toBeUndefined()
-    expect(store.snapshot().requirements[0].status).toBe('brainstorming')
+    expect(store.peekAll()[0].status).toBe('brainstorming')
   })
 
   it('target=plan：肯定答复 → 批准计划 + 推进 design → decomposing', async () => {
     await seed('design', false)
-    await store.mutate('seed-plan', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.plan = {
         path: 'p.md', summary: 's', submittedAt: 1, submittedBy: { kind: 'agent' },
         tasks: [{ key: 'a', title: 'x', acceptance: '单测绿', implementation: '改 x.ts' }],
       } as never
-      return { requirements: [r] }
+      return { changed: true }
     })
     const out = await run(makeTool('yes'), { target: 'plan', question: '计划已完成，是否批准进入拆分？' })
     expect(out.confirmed).toBe(true)
     expect(out.advanced).toBe(true)
     expect(out.to).toBe('decomposing')
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     expect(req.plan?.approvedAt).toBeDefined()
     expect(req.plan?.approvedVia).toBe('session')
   })

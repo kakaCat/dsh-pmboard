@@ -1,0 +1,13 @@
+# case D3 · 子卡三态推进不跳段 · serves: FR-2
+case: D3
+checks:
+  - path: queue.tasks[?id='t-002-dev'].status      # dev 子卡走完 todo→in_progress→done
+    op: eq
+    value: done
+  - path: queue.tasks[?id='t-002-review'].status   # review 子卡跳段被拒，仍在 todo
+    op: eq
+    value: todo
+  - path: queue.tasks[?id='t-002'].status          # 父卡状态不被子卡操作非法改动
+    op: ne
+    value: canceled
+# 注：非法转移本身不落台账（代码级拒绝），「无非法转移记录」以 trace 中非法 move 被拒且未重试为准。

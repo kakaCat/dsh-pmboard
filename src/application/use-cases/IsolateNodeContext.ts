@@ -39,20 +39,47 @@
  *
  * @module dsh-pmboard/application/use-cases/IsolateNodeContext
  */
-import type { Clock, DocRepository, ReqboardRepository, TaskStore } from '../ports.js'
-import { openRequirementsFor } from '../internal/window.js'
+import type {
+  Clock,
+  DocRepository,
+  KnowledgeInjectSettings,
+  KnowledgePort,
+  SessionProbe,
+  TaskStore,
+} from '../ports.js'
 import { isInProgressTask } from '../../domain/status/Predicates.js'
+import type { RequirementStore } from '../ports.js'
+import { openRequirementsForVia } from '../internal/window.js'
 import {
   buildNodeInputPackage,
   newWindowInstruction,
   requirementDocPath,
+  safeContextPressure,
 } from '../internal/node-input-package.js'
 import { assembleNodeInput } from '../../../vendor/reqboard/src/dive/node-input.js'
 import type { Category, Difficulty, PromptStage } from '../../domain/prompt/index.js'
 import { fmt } from '../../domain/text/fmt.js'
 import type { RequirementRecord } from '../../shared/protocol.js'
+import type { KnowledgeIndexInput } from '../internal/knowledge-inject.js'
 
 export * from '../internal/node-input-package.js'
+
+/**
+ * 读知识索引（t8）：任何异常 → undefined（知识层坏了不该把节点输入包搞坏——
+ * 与 `safeReadDoc` / `safeRtmSnapshot` 同一降级口径：**降级要留痕，但不阻断主链**）。
+ */
+async function safeKnowledgeIndex(
+  deps: { knowledge?: KnowledgePort },
+  budgetChars: number,
+): Promise<KnowledgeIndexInput | undefined> {
+  try {
+    const idx = await deps.knowledge!.readIndex()
+    if (idx.text.length === 0) return undefined
+    return { text: idx.text, overflows: idx.overflows, budgetChars }
+  } catch {
+    return undefined
+  }
+}
 
 // ---------------------------------------------------------------------------
 // 端口（实现：adapters/NodeIsolationAdapter.ts）
@@ -159,7 +186,8 @@ export interface IsolateNodeContextResult {
 // ---------------------------------------------------------------------------
 
 export interface IsolateNodeContextDeps {
-  repo: ReqboardRepository
+  /** 新需求端口（按 id 取一条 / 本窗口绑定判定），替代整册快照读。 */
+  store: RequirementStore
   docs: DocRepository
   clock: Clock
   /**
@@ -174,6 +202,16 @@ export interface IsolateNodeContextDeps {
   trace?: IsolationTracePort
   /** 模板根绝对路径（T-5）；缺省 = 输入包不追加地址小节（逐字节兼容）。 */
   templateRoot?: string
+  /** 知识层端口（t8）；未注入 = 不读索引（输入包逐字节不变）。 */
+  knowledge?: KnowledgePort
+  /** 注入侧灰度设置（t8）；未注入 = 不追加索引节、不瘦身文档。 */
+  knowledgeInject?: KnowledgeInjectSettings
+  /**
+   * 会话探测端口（t7 / FR-8）：取当轮余量参考，注入输入包的「一轮余量（参考）」节。
+   * **可选**：未注入 / 没这个方法 / 读的时候抛错 → 一律按不可得处理（不追加该节）——
+   * 余量只是展示层增强，绝不因为一个读数把节点隔离（主链）搞失败；也不用旧值冒充（R-013）。
+   */
+  session?: SessionProbe
 }
 
 /**
@@ -197,17 +235,16 @@ function safeRtmSnapshot(
   }
 }
 
-function pickRequirement(
-  repo: ReqboardRepository,
+async function pickRequirement(
+  store: RequirementStore,
   windowKey: string,
   explicitId: string | undefined,
-): RequirementRecord | undefined {
-  const ledger = repo.snapshot()
+): Promise<RequirementRecord | undefined> {
   if (explicitId !== undefined && explicitId.length > 0) {
-    const byId = ledger.requirements.find(r => r.id === explicitId)
+    const byId = await store.get(explicitId)
     if (byId !== undefined) return byId
   }
-  const open = openRequirementsFor(ledger, windowKey)
+  const open = await openRequirementsForVia(store, windowKey)
   return [...open].sort((a, b) => b.updatedAt - a.updatedAt)[0]
 }
 
@@ -220,7 +257,7 @@ export async function isolateNodeContext(
   request: IsolateNodeContextRequest,
 ): Promise<IsolateNodeContextResult> {
   const stage = request.stage
-  const requirement = pickRequirement(deps.repo, request.windowKey, request.requirementId)
+  const requirement = await pickRequirement(deps.store, request.windowKey, request.requirementId)
   // T-5：实施节点把当前任务卡带进输入包（与系统段/H3 同一份上游必读）。
   // 任务已迁出台账（v9）：经 TaskStore 取该需求任务，再就地筛"在制"。
   const currentTask = requirement === undefined
@@ -230,6 +267,14 @@ export async function isolateNodeContext(
   const docText = docPath.length > 0 ? await safeReadDoc(deps.docs, docPath) : ''
   // FR-8：RTM 追溯快照注入输入包（无数据 → 不注入，旧输出逐字节不变）。
   const rtm = requirement === undefined ? undefined : safeRtmSnapshot(deps, stage, requirement.id)
+  // t8（REQ-261001110934-3766）：知识索引节——仅当显式开启且索引存在时追加；缺省零改动。
+  const kbInject = deps.knowledgeInject
+  const knowledgeIndex = kbInject !== undefined && kbInject.injectIndex && deps.knowledge !== undefined
+    ? await safeKnowledgeIndex(deps, kbInject.injectBudgetChars)
+    : undefined
+  // t7（FR-8）：当轮余量参考（只读）——取不到就不追加该节，绝不阻断节点隔离。
+  // 读法与"缺了算什么"的唯一实现在 internal/node-input-package（任务树顶层用同一个口）。
+  const contextPressure = safeContextPressure(deps.session, request.windowKey)
   const pkg = buildNodeInputPackage({
     stage,
     ...(request.difficulty === undefined ? {} : { difficulty: request.difficulty }),
@@ -241,6 +286,9 @@ export async function isolateNodeContext(
     ...(deps.templateRoot === undefined ? {} : { templateRoot: deps.templateRoot }),
     ...(currentTask === undefined ? {} : { currentTask: { id: currentTask.id, title: currentTask.title, cardDoc: currentTask.cardDoc } }),
     ...(rtm === undefined ? {} : { rtm }),
+    ...(knowledgeIndex === undefined ? {} : { knowledgeIndex }),
+    ...(contextPressure === undefined ? {} : { contextPressure }),
+    ...(kbInject?.trimRequirementDoc === true ? { trimRequirementDoc: true } : {}),
   })
 
   const base = {

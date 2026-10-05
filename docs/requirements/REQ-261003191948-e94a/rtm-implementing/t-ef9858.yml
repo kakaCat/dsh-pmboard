@@ -1,0 +1,40 @@
+task:
+  id: t-ef9858
+  title: 迁移与兼容回归 + 纪律核验
+  status: done
+  implements: 不改产品代码，只跑命令并把结果落成证据（docs/requirements/REQ-261003191948-e94a/evidence/）。核验四件事：① 三条回归命令全绿（migration-gate、degraded-startup、api-client）；② 兼容性——已迁移用户（单册在且 meta.json 在）与全新安装（两者皆无）下 preflightLedger 均 ok:true，且 HTTP 响应体不含 hint 字段（与改动前逐字节一致）；③ 旧调用方——assertLedgerMigrated 的既有断言不看 hint，重跑既有用例确认零回退；④ 纪律命令 pnpm typecheck 与 npx vitest run 的失败数与 C-14/C-15 基线逐项比对，写入 evidence 文件。
+  serves:
+    - FR-1
+    - FR-2
+    - FR-3
+    - FR-4
+    - FR-5
+    - FR-6
+  depends_on:
+    - t-ba11c3
+    - t-cae674
+  phase: test
+  side: fullstack
+  workflow_params:
+    REQ_ID: REQ-261003191948-e94a
+    TASK_ID: t-ef9858
+    TASK_TITLE: 迁移与兼容回归 + 纪律核验
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: fullstack
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-03T12:23:44.002Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261003191948-e94a
+  generated_at: 2026-10-03T12:23:43.999Z
+  version: 6
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-03T12:29:59.192Z

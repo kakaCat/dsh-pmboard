@@ -8,13 +8,13 @@
  *  - 全交齐且全确认 → 四路径放行；isLegacy 存量需求 → 放行（FR-6）；
  *  - sides/design_exempt front-matter 策略参与①（UC-2）；assertArtifactGates 成组判定（UC-4）。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { defineMoveTool, defineAskConfirmTool } from './helpers/tool-deps.js'
@@ -28,11 +28,11 @@ const DESIGN4 = DESIGN5.slice(0, 4) // 缺 use-cases.md
 const DESIGN_DIR = 'docs/requirements/' + REQ + '/design'
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-g2-gate-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -64,7 +64,7 @@ async function seed(opts: SeedOpts): Promise<void> {
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
     ...(opts.noArtifacts === true ? {} : { artifacts }),
   } as unknown as RequirementRecord
-  await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 const run = (tool: { execute: (a: unknown, e: unknown) => Promise<any> }, args: unknown) =>
@@ -104,12 +104,13 @@ function fakeRes(): any {
 }
 
 function board() {
-  return createReqboardHandler({ taskStore: taskStoreAt(dir),
-    store,
+  return createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir),
+
+    applicationDeps: { store: store },
     now: () => 1000,
     docs: new FileDocRepository({ workspaceRoot: dir }),
     agents: () => ({ get: () => ({ id: W, session: {} }) }),
-  })
+  } as never)
 }
 
 async function post(handler: ReturnType<typeof board>, url: string, body: unknown): Promise<any> {
@@ -135,7 +136,7 @@ describe('缺文档（use-cases.md 未交）→ 四条转移路径全拒 design_
     expect(out.advanced).toBe(false)
     expect(out.gate_failure?.code).toBe('design_doc_incomplete')
     expect((out.gate_failure?.gaps ?? []).join(' ')).toContain('use-cases.md 未交')
-    expect(store.snapshot().requirements[0].status).toBe('design')
+    expect(store.peekAll()[0].status).toBe('design')
   })
 
   it('路径③ 看板移动端点 → 400 design_doc_incomplete', async () => {
@@ -151,7 +152,7 @@ describe('缺文档（use-cases.md 未交）→ 四条转移路径全拒 design_
     expect(res.payload.data.advanced).toBe(false)
     expect(res.payload.data.gate_failure?.code).toBe('design_doc_incomplete')
     expect((res.payload.data.gate_failure?.gaps ?? []).join(' ')).toContain('use-cases.md 未交')
-    expect(store.snapshot().requirements[0].status).toBe('design')
+    expect(store.peekAll()[0].status).toBe('design')
   })
 })
 
@@ -180,7 +181,7 @@ describe('磁盘有但未登记 → 拒（UC-4 / FR-2：未登记 ≠ 待确认�
   it('已登记但未确认 → assertArtifactGates 成组判定先拦（artifact_not_confirmed，gaps 列未确认路径）', async () => {
     writeDocset(DESIGN5)
     await seed({ registered: DESIGN5, unconfirmed: ['interfaces.md', 'use-cases.md'] })
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     const failure = assertArtifactGates(req, 'design', 'decomposing')
     expect(failure?.code).toBe('artifact_not_confirmed')
     expect(failure?.gaps?.join(' ')).toContain('interfaces.md')
@@ -214,7 +215,7 @@ describe('全交齐且全确认 → 放行', () => {
     expect(out.confirmed).toBe(true)
     expect(out.advanced).toBe(true)
     expect(out.gate_failure).toBeUndefined()
-    expect(store.snapshot().requirements[0].status).toBe('decomposing')
+    expect(store.peekAll()[0].status).toBe('decomposing')
   })
 
   it('看板确认补齐首份的章 → 自动推进放行', async () => {
@@ -223,7 +224,7 @@ describe('全交齐且全确认 → 放行', () => {
     const res = await post(board(), '/dashboard/api/reqboard/req/artifact/confirm', { id: REQ, kind: 'design' })
     expect(res.statusCode).toBe(200)
     expect(res.payload.data.advanced).toBe(true)
-    expect(store.snapshot().requirements[0].status).toBe('decomposing')
+    expect(store.peekAll()[0].status).toBe('decomposing')
   })
 })
 

@@ -25,3 +25,5 @@
 - [ ] 肯定答复自动落章并推进到 decomposing（看板一键确认同样有效）；
       用户提修改意见 → 就地改设计文档后重新确认。
 - [ ] 下一步：decomposing —— 用 reqboard_ask_confirm(target=artifact, kind=design) 交棒；未获批准不得进入。
+
+- [ ] 验收口径引用规范条目：先查 `reqboard_kb(kind='standard')`。

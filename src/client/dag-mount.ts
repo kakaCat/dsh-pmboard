@@ -2,7 +2,7 @@
  * DAG Canvas 挂载辅助
  * @module dsh-pmboard/client/dag-mount
  */
-import { mountDagCanvas, type DagTaskLike } from './views/dag-view.js'
+import { mountDagCanvas, type DagTaskLike, type MountDagOptions } from './views/dag-view.js'
 
 /**
  * 挂载 DAG Canvas（面板 HTML 进 DOM 之后调用）：按 canvasId 查找画布并初始化。
@@ -12,13 +12,15 @@ import { mountDagCanvas, type DagTaskLike } from './views/dag-view.js'
  * @param tasks 需求全量任务（含子卡；折叠为卡片层由 mountDagCanvas 负责）
  * @param ready 队列 ready[]（BoardState.ready[reqId]）；不传则统计条按「推导」标注
  * @param canvasId 画布 id；缺省 = 需求详情的 #dag-canvas，会话面板传 PANEL_DAG_CANVAS_ID
+ * @param opts 挂载选项（REQ-261001210304-0dfb · FR-1）：`stateKey` 传了就启用视图状态记忆
+ *             （挂载按记忆回填、dispose 写回）；不传 = 改造前行为
  */
-export function tryMountDagCanvas(tasks: DagTaskLike[], ready?: readonly string[], canvasId: string = 'dag-canvas'): void {
+export function tryMountDagCanvas(tasks: DagTaskLike[], ready?: readonly string[], canvasId: string = 'dag-canvas', opts?: MountDagOptions): void {
   // 延迟执行，确保 DOM 已渲染
   requestAnimationFrame(() => {
     if (document.getElementById(canvasId) === null) return
     try {
-      mountDagCanvas(tasks, ready, canvasId)
+      mountDagCanvas(tasks, ready, canvasId, opts)
     } catch (err) {
       console.error('[DAG] Failed to mount canvas:', err)
     }

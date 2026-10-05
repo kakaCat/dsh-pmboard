@@ -1,0 +1,386 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261004143941-b2ca
+  generated_at: 2026-10-04T06:53:35.833Z
+  version: 49
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T07:06:44.314Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 进度接口新增需求累计 tokenTotal
+      source: requirement.md
+      line: 86
+    - id: FR-2
+      title: 流程图计数旁常显累计 Token
+      source: requirement.md
+      line: 91
+    - id: FR-3
+      title: 档位与不变量不破
+      source: requirement.md
+      line: 97
+    - id: FR-4
+      title: 可证伪回归
+      source: requirement.md
+      line: 101
+  design_sections:
+    - ref: design/architecture.md#目标与不变量
+      title: 目标与不变量（
+      serves:
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 目标与不变量
+    - ref: design/architecture.md#现状链路与改动点
+      title: 现状链路与改动点（
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 现状链路与改动点
+    - ref: design/architecture.md#为什么新增常显总数而不是调档位阈值
+      title: 为什么新增「常显总数」而不是调档位阈值（
+      serves:
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 为什么新增常显总数而不是调档位阈值
+    - ref: design/architecture.md#回归锚点
+      title: 回归锚点（
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: 回归锚点
+    - ref: design/architecture.md#兼容与回滚
+      title: 兼容与回滚（
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 兼容与回滚
+    - ref: design/data-model.md#字段定义
+      title: 字段定义（
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 字段定义
+    - ref: design/data-model.md#取值口径必须与-nodes-同源
+      title: 取值口径：必须与 nodes 同源（
+      serves:
+        - FR-1
+        - FR-3
+      file: design/data-model.md
+      section: 取值口径必须与-nodes-同源
+    - ref: design/data-model.md#缺失语义缺失-0
+      title: 缺失语义：缺失 ≠ 0（
+      serves:
+        - FR-1
+        - FR-2
+      file: design/data-model.md
+      section: 缺失语义缺失-0
+    - ref: design/data-model.md#迁移与回滚
+      title: 迁移与回滚（
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 迁移与回滚
+    - ref: design/interfaces.md#GET-dashboardapireqboardsessionsessionIdprogress变更
+      title: GET /dashboard/api/reqboard/session/:sessionId/progress（变更）（
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: GET-dashboardapireqboardsessionsessionIdprogress变更
+    - ref: design/interfaces.md#客户端渲染契约DOM-与类名
+      title: 客户端渲染契约（DOM 与类名）（
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: 客户端渲染契约DOM-与类名
+    - ref: design/interfaces.md#模型层契约
+      title: 模型层契约（
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: 模型层契约
+    - ref: design/use-cases.md#UC-1-宽窗口看每节点明细现状保持
+      title: UC-1 宽窗口：看每节点明细（现状保持）（
+      serves:
+        - FR-2
+        - FR-3
+      file: design/use-cases.md
+      section: UC-1-宽窗口看每节点明细现状保持
+    - ref: design/use-cases.md#UC-2-窄窗口至少看到累计总数本需求新增
+      title: UC-2 窄窗口：至少看到累计总数（本需求新增）（
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-2-窄窗口至少看到累计总数本需求新增
+    - ref: design/use-cases.md#UC-3-无快照的需求不出现假-0
+      title: UC-3 无快照的需求：不出现假 0（
+      serves:
+        - FR-1
+        - FR-2
+      file: design/use-cases.md
+      section: UC-3-无快照的需求不出现假-0
+    - ref: design/use-cases.md#UC-4-详情面板-Token-tab口径不变
+      title: UC-4 详情面板 Token tab：口径不变（
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-4-详情面板-Token-tab口径不变
+outputs:
+  tasks:
+    - id: t-efa6dc
+      title: 进度接口补需求累计 token（与节点同源、缺失即不发）
+      implements: "在 src/http/routers/stages.ts 的 handleSessionProgress 里只装配一次 const tokenView = assembleRequirementToken(target, { tasks })；把 nodeTokensOf(req, tasks) 改成收视图的 nodeTokensOf(view)（同步纯投影，复用同一视图，避免两处各算一次）；const tokenTotal = totalTokens(tokenView.totals)，在 requirement 里按 ...(tokenTotal > 0 ? { tokenTotal } : {}) 写入（缺失≠0，0 不发键）。不改 assembleRequirementToken 的合计规则、不改 nodes 现有形状、不动任何存储。测试：tests/session-progress.test.ts 追加 TC-3a/3b/3c；tests/progress-nodes-fallback.test.ts 复用其兜底夹具断言 tokenTotal 含任务执行差值。"
+      serves:
+        - FR-1
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-fd24aa
+      title: 流程图计数旁恒显累计 Token（窄档兜底 + D 档最小化）
+      implements: "src/client/flow-chart-model.ts：FlowChartInput/FlowChartModel 增可选 tokenTotal，落模型规则 typeof === 'number' && Number.isFinite && > 0（否则不落该键）；src/client/conversation-progress.ts：ProgressPayload.requirement 增 tokenTotal?: number，在 .dsh-pm-cprog-inline 内、计数 span 之后、.dsh-pm-flow 之外渲染 span.dsh-pm-token-badge.dsh-pm-cprog-token-total（内含 span.dsh-pm-cprog-token-ico 的 🪙 与 fmtTokens 数字，title 写口径），缺席/0 不渲染；src/client/styles/token.ts 加徽章视觉（复用既有令牌，不造第二套色板）；src/client/styles/board.ts 在既有 @container (max-width: FLOW_TIERS.label) 块内隐藏 .dsh-pm-cprog-token-ico（D 档只留数字）。不动 FLOW_TIERS 数值、不动 .dsh-pm-flow-token 规则、不把徽章接进 Token tab。"
+      serves:
+        - FR-2
+        - FR-3
+      depends_on:
+        - t-efa6dc
+      phase: ui
+      side: frontend
+    - id: t-1aa47e
+      title: 渲染层回归锚点：探针各档可见 token ≥ 1
+      implements: "scripts/header-progress-probe.mts：标本模型加 tokenTotal: 24800000；页内量布脚本统计 .dsh-pm-cprog-token-total 并用 getClientRects().length > 0 判可见（不看 display，沿用仓库既有踩坑口径），把「节点级可见 tokens + 总数徽章可见数 < 1」写入 problems（新码 TOKENS_HIDDEN），DIAG 行输出 tokens=<n>+<m>。同时确认 D 档下 .dsh-pm-cprog-token-ico 不可见但徽章文本仍可见。"
+      serves:
+        - FR-3
+        - FR-4
+      depends_on:
+        - t-fd24aa
+      phase: test
+      side: frontend
+    - id: t-d59056
+      title: 兼容/回滚验证 + 构建与基线回归（收口）
+      implements: 跑 pnpm build（C-11）与 pnpm build:client（C-12）并核对 dist/index.mjs 与 lib/client.js 均有新产物；跑探针 6 档；跑既有基线测试 tests/token-tab.test.ts、tests/token-endpoint.test.ts、tests/header-progress-e2e.test.ts 与开工基线比对；核对兼容三态（无 tokenTotal 字段 / 老需求无快照 / 旧客户端）与回滚路径（删响应字段 + 删渲染块）；真机重载插件后在宽（视口 ≥1280）与窄（视口 ~1024）两档各截一张会话头部图。所有输出（构建日志、探针红/绿、基线对比、兼容与回滚说明、两张截图路径）写进 docs/requirements/REQ-261004143941-b2ca/evidence/。
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+      depends_on:
+        - t-1aa47e
+      phase: test
+      side: fullstack
+    - id: t-b01dfd
+      title: 进度接口补需求累计 token（与节点同源、缺失即不发）·研发
+      implements: |-
+        在 src/http/routers/stages.ts 的 handleSessionProgress 里只装配一次 const tokenView = assembleRequirementToken(target, { tasks })；把 nodeTokensOf(req, tasks) 改成收视图的 nodeTokensOf(view)（同步纯投影，复用同一视图，避免两处各算一次）；const tokenTotal = totalTokens(tokenView.totals)，在 requirement 里按 ...(tokenTotal > 0 ? { tokenTotal } : {}) 写入（缺失≠0，0 不发键）。不改 assembleRequirementToken 的合计规则、不改 nodes 现有形状、不动任何存储。测试：tests/session-progress.test.ts 追加 TC-3a/3b/3c；tests/progress-nodes-fallback.test.ts 复用其兜底夹具断言 tokenTotal 含任务执行差值。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-c4c264
+      title: 进度接口补需求累计 token（与节点同源、缺失即不发）·联调
+      implements: |-
+        在 src/http/routers/stages.ts 的 handleSessionProgress 里只装配一次 const tokenView = assembleRequirementToken(target, { tasks })；把 nodeTokensOf(req, tasks) 改成收视图的 nodeTokensOf(view)（同步纯投影，复用同一视图，避免两处各算一次）；const tokenTotal = totalTokens(tokenView.totals)，在 requirement 里按 ...(tokenTotal > 0 ? { tokenTotal } : {}) 写入（缺失≠0，0 不发键）。不改 assembleRequirementToken 的合计规则、不改 nodes 现有形状、不动任何存储。测试：tests/session-progress.test.ts 追加 TC-3a/3b/3c；tests/progress-nodes-fallback.test.ts 复用其兜底夹具断言 tokenTotal 含任务执行差值。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-b01dfd
+      phase: implement
+      side: backend
+    - id: t-ea39c8
+      title: 进度接口补需求累计 token（与节点同源、缺失即不发）·复核
+      implements: |-
+        在 src/http/routers/stages.ts 的 handleSessionProgress 里只装配一次 const tokenView = assembleRequirementToken(target, { tasks })；把 nodeTokensOf(req, tasks) 改成收视图的 nodeTokensOf(view)（同步纯投影，复用同一视图，避免两处各算一次）；const tokenTotal = totalTokens(tokenView.totals)，在 requirement 里按 ...(tokenTotal > 0 ? { tokenTotal } : {}) 写入（缺失≠0，0 不发键）。不改 assembleRequirementToken 的合计规则、不改 nodes 现有形状、不动任何存储。测试：tests/session-progress.test.ts 追加 TC-3a/3b/3c；tests/progress-nodes-fallback.test.ts 复用其兜底夹具断言 tokenTotal 含任务执行差值。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-c4c264
+      phase: implement
+      side: backend
+    - id: t-c44a6b
+      title: 进度接口补需求累计 token（与节点同源、缺失即不发）·测试
+      implements: |-
+        在 src/http/routers/stages.ts 的 handleSessionProgress 里只装配一次 const tokenView = assembleRequirementToken(target, { tasks })；把 nodeTokensOf(req, tasks) 改成收视图的 nodeTokensOf(view)（同步纯投影，复用同一视图，避免两处各算一次）；const tokenTotal = totalTokens(tokenView.totals)，在 requirement 里按 ...(tokenTotal > 0 ? { tokenTotal } : {}) 写入（缺失≠0，0 不发键）。不改 assembleRequirementToken 的合计规则、不改 nodes 现有形状、不动任何存储。测试：tests/session-progress.test.ts 追加 TC-3a/3b/3c；tests/progress-nodes-fallback.test.ts 复用其兜底夹具断言 tokenTotal 含任务执行差值。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-ea39c8
+      phase: implement
+      side: backend
+    - id: t-652af2
+      title: 流程图计数旁恒显累计 Token（窄档兜底 + D 档最小化）·研发
+      implements: |-
+        src/client/flow-chart-model.ts：FlowChartInput/FlowChartModel 增可选 tokenTotal，落模型规则 typeof === 'number' && Number.isFinite && > 0（否则不落该键）；src/client/conversation-progress.ts：ProgressPayload.requirement 增 tokenTotal?: number，在 .dsh-pm-cprog-inline 内、计数 span 之后、.dsh-pm-flow 之外渲染 span.dsh-pm-token-badge.dsh-pm-cprog-token-total（内含 span.dsh-pm-cprog-token-ico 的 🪙 与 fmtTokens 数字，title 写口径），缺席/0 不渲染；src/client/styles/token.ts 加徽章视觉（复用既有令牌，不造第二套色板）；src/client/styles/board.ts 在既有 @container (max-width: FLOW_TIERS.label) 块内隐藏 .dsh-pm-cprog-token-ico（D 档只留数字）。不动 FLOW_TIERS 数值、不动 .dsh-pm-flow-token 规则、不把徽章接进 Token tab。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-efa6dc
+      phase: ui
+      side: frontend
+    - id: t-f6f257
+      title: 流程图计数旁恒显累计 Token（窄档兜底 + D 档最小化）·联调
+      implements: |-
+        src/client/flow-chart-model.ts：FlowChartInput/FlowChartModel 增可选 tokenTotal，落模型规则 typeof === 'number' && Number.isFinite && > 0（否则不落该键）；src/client/conversation-progress.ts：ProgressPayload.requirement 增 tokenTotal?: number，在 .dsh-pm-cprog-inline 内、计数 span 之后、.dsh-pm-flow 之外渲染 span.dsh-pm-token-badge.dsh-pm-cprog-token-total（内含 span.dsh-pm-cprog-token-ico 的 🪙 与 fmtTokens 数字，title 写口径），缺席/0 不渲染；src/client/styles/token.ts 加徽章视觉（复用既有令牌，不造第二套色板）；src/client/styles/board.ts 在既有 @container (max-width: FLOW_TIERS.label) 块内隐藏 .dsh-pm-cprog-token-ico（D 档只留数字）。不动 FLOW_TIERS 数值、不动 .dsh-pm-flow-token 规则、不把徽章接进 Token tab。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-652af2
+      phase: ui
+      side: frontend
+    - id: t-84eecd
+      title: 流程图计数旁恒显累计 Token（窄档兜底 + D 档最小化）·复核
+      implements: |-
+        src/client/flow-chart-model.ts：FlowChartInput/FlowChartModel 增可选 tokenTotal，落模型规则 typeof === 'number' && Number.isFinite && > 0（否则不落该键）；src/client/conversation-progress.ts：ProgressPayload.requirement 增 tokenTotal?: number，在 .dsh-pm-cprog-inline 内、计数 span 之后、.dsh-pm-flow 之外渲染 span.dsh-pm-token-badge.dsh-pm-cprog-token-total（内含 span.dsh-pm-cprog-token-ico 的 🪙 与 fmtTokens 数字，title 写口径），缺席/0 不渲染；src/client/styles/token.ts 加徽章视觉（复用既有令牌，不造第二套色板）；src/client/styles/board.ts 在既有 @container (max-width: FLOW_TIERS.label) 块内隐藏 .dsh-pm-cprog-token-ico（D 档只留数字）。不动 FLOW_TIERS 数值、不动 .dsh-pm-flow-token 规则、不把徽章接进 Token tab。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-f6f257
+      phase: ui
+      side: frontend
+    - id: t-341231
+      title: 流程图计数旁恒显累计 Token（窄档兜底 + D 档最小化）·测试
+      implements: |-
+        src/client/flow-chart-model.ts：FlowChartInput/FlowChartModel 增可选 tokenTotal，落模型规则 typeof === 'number' && Number.isFinite && > 0（否则不落该键）；src/client/conversation-progress.ts：ProgressPayload.requirement 增 tokenTotal?: number，在 .dsh-pm-cprog-inline 内、计数 span 之后、.dsh-pm-flow 之外渲染 span.dsh-pm-token-badge.dsh-pm-cprog-token-total（内含 span.dsh-pm-cprog-token-ico 的 🪙 与 fmtTokens 数字，title 写口径），缺席/0 不渲染；src/client/styles/token.ts 加徽章视觉（复用既有令牌，不造第二套色板）；src/client/styles/board.ts 在既有 @container (max-width: FLOW_TIERS.label) 块内隐藏 .dsh-pm-cprog-token-ico（D 档只留数字）。不动 FLOW_TIERS 数值、不动 .dsh-pm-flow-token 规则、不把徽章接进 Token tab。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-84eecd
+      phase: ui
+      side: frontend
+    - id: t-4982e7
+      title: 渲染层回归锚点：探针各档可见 token ≥ 1·研发
+      implements: |-
+        scripts/header-progress-probe.mts：标本模型加 tokenTotal: 24800000；页内量布脚本统计 .dsh-pm-cprog-token-total 并用 getClientRects().length > 0 判可见（不看 display，沿用仓库既有踩坑口径），把「节点级可见 tokens + 总数徽章可见数 < 1」写入 problems（新码 TOKENS_HIDDEN），DIAG 行输出 tokens=<n>+<m>。同时确认 D 档下 .dsh-pm-cprog-token-ico 不可见但徽章文本仍可见。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-fd24aa
+      phase: test
+      side: frontend
+    - id: t-ef4402
+      title: 渲染层回归锚点：探针各档可见 token ≥ 1·复核
+      implements: |-
+        scripts/header-progress-probe.mts：标本模型加 tokenTotal: 24800000；页内量布脚本统计 .dsh-pm-cprog-token-total 并用 getClientRects().length > 0 判可见（不看 display，沿用仓库既有踩坑口径），把「节点级可见 tokens + 总数徽章可见数 < 1」写入 problems（新码 TOKENS_HIDDEN），DIAG 行输出 tokens=<n>+<m>。同时确认 D 档下 .dsh-pm-cprog-token-ico 不可见但徽章文本仍可见。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-4982e7
+      phase: test
+      side: frontend
+    - id: t-81a42c
+      title: 渲染层回归锚点：探针各档可见 token ≥ 1·测试
+      implements: |-
+        scripts/header-progress-probe.mts：标本模型加 tokenTotal: 24800000；页内量布脚本统计 .dsh-pm-cprog-token-total 并用 getClientRects().length > 0 判可见（不看 display，沿用仓库既有踩坑口径），把「节点级可见 tokens + 总数徽章可见数 < 1」写入 problems（新码 TOKENS_HIDDEN），DIAG 行输出 tokens=<n>+<m>。同时确认 D 档下 .dsh-pm-cprog-token-ico 不可见但徽章文本仍可见。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-ef4402
+      phase: test
+      side: frontend
+    - id: t-4895a1
+      title: 兼容/回滚验证 + 构建与基线回归（收口）·校验
+      implements: |-
+        跑 pnpm build（C-11）与 pnpm build:client（C-12）并核对 dist/index.mjs 与 lib/client.js 均有新产物；跑探针 6 档；跑既有基线测试 tests/token-tab.test.ts、tests/token-endpoint.test.ts、tests/header-progress-e2e.test.ts 与开工基线比对；核对兼容三态（无 tokenTotal 字段 / 老需求无快照 / 旧客户端）与回滚路径（删响应字段 + 删渲染块）；真机重载插件后在宽（视口 ≥1280）与窄（视口 ~1024）两档各截一张会话头部图。所有输出（构建日志、探针红/绿、基线对比、兼容与回滚说明、两张截图路径）写进 docs/requirements/REQ-261004143941-b2ca/evidence/。
+
+        [子卡阶段·校验] 只做本阶段；验收：校验项逐条给出结果：`npx vitest run <校验用例>` → 全绿；异常项已列出并标注影响面
+      serves: []
+      depends_on:
+        - t-1aa47e
+      phase: test
+      side: fullstack
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与不变量:
+      - t-fd24aa
+      - t-1aa47e
+      - t-d59056
+    design/architecture.md#现状链路与改动点:
+      - t-efa6dc
+      - t-fd24aa
+      - t-d59056
+    design/architecture.md#为什么新增常显总数而不是调档位阈值:
+      - t-fd24aa
+      - t-1aa47e
+      - t-d59056
+    design/architecture.md#回归锚点:
+      - t-1aa47e
+      - t-d59056
+    design/architecture.md#兼容与回滚:
+      - t-efa6dc
+      - t-fd24aa
+      - t-d59056
+    design/data-model.md#字段定义:
+      - t-efa6dc
+      - t-d59056
+    design/data-model.md#取值口径必须与-nodes-同源:
+      - t-efa6dc
+      - t-fd24aa
+      - t-1aa47e
+      - t-d59056
+    design/data-model.md#缺失语义缺失-0:
+      - t-efa6dc
+      - t-fd24aa
+      - t-d59056
+    design/data-model.md#迁移与回滚:
+      - t-efa6dc
+      - t-d59056
+    design/interfaces.md#GET-dashboardapireqboardsessionsessionIdprogress变更:
+      - t-efa6dc
+      - t-d59056
+    design/interfaces.md#客户端渲染契约DOM-与类名:
+      - t-fd24aa
+    design/interfaces.md#模型层契约:
+      - t-fd24aa
+    design/use-cases.md#UC-1-宽窗口看每节点明细现状保持:
+      - t-fd24aa
+      - t-1aa47e
+      - t-d59056
+    design/use-cases.md#UC-2-窄窗口至少看到累计总数本需求新增:
+      - t-fd24aa
+    design/use-cases.md#UC-3-无快照的需求不出现假-0:
+      - t-efa6dc
+      - t-fd24aa
+      - t-d59056
+    design/use-cases.md#UC-4-详情面板-Token-tab口径不变:
+      - t-fd24aa
+      - t-1aa47e
+      - t-d59056
+  fr_to_tasks:
+    FR-1:
+      - t-efa6dc
+      - t-fd24aa
+      - t-d59056
+      - t-1aa47e
+    FR-2:
+      - t-fd24aa
+      - t-1aa47e
+      - t-d59056
+      - t-efa6dc
+    FR-3:
+      - t-fd24aa
+      - t-1aa47e
+      - t-d59056
+      - t-efa6dc
+    FR-4:
+      - t-1aa47e
+      - t-d59056
+coverage:
+  implementation:
+    total: 16
+    covered: 16
+    uncovered: []
+    rate: 100
+    total_designs: 16
+    covered_designs: 16

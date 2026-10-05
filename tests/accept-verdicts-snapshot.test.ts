@@ -7,12 +7,12 @@
  *
  * 走真实 HTTP 路由（POST /req/verdicts），证明行为在服务端收敛点，不在测试内重算。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import { createReqboardHandler } from '../src/http/routes.js'
@@ -24,12 +24,12 @@ const B = (n: number): TokenBuckets => ({ uncachedInputTokens: n, outputTokens: 
 const snap = (n: number, sessionId: string = W): TokenSnapshot => ({ sessionId, at: 1000 + n, totals: B(n), source: 'projection' })
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let taskStore: QueueTaskStore
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-accept-verdicts-snap-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   // 任务唯一存储 = 队列（REQ-260927202051-f6df：v9 台账已无 tasks 通道）
   taskStore = new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: dir }), now: () => 100 })
 })
@@ -39,14 +39,15 @@ afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 async function seed(): Promise<void> {
   // 任务**不写台账**（v9 无 tasks 通道）；mutate 回调是同步契约，`createMany` 异步 → 回调外写队列。
   const seededTasks: TaskRecord[] = []
-  await store.mutate('seed', (l) => {
-    const r = {
+  const seededReq = {
       id: 'REQ-av1234', title: '验收快照', description: '', status: 'accepting', category: 'feature',
       blocked: false, sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
       createdBy: { kind: 'agent', sessionId: W }, updatedBy: { kind: 'agent', sessionId: W },
       statusHistory: [{ status: 'accepting', at: 1, by: { kind: 'agent', sessionId: W }, tokenSnapshot: snap(2) }],
     } as unknown as RequirementRecord
-    l.requirements.push(r)
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [seededReq], triages: [] })
+  {
+    const r = seededReq
     const mk = (id: string, title: string, acceptance: string) => ({
       id, requirementId: r.id, title, description: '', phase: 'implement', side: 'backend',
       dependsOn: [], scope: { apis: [], tables: [], files: [] }, acceptance, context: '',
@@ -55,12 +56,13 @@ async function seed(): Promise<void> {
       createdBy: { kind: 'agent', sessionId: W }, updatedBy: { kind: 'agent', sessionId: W },
     })
     seededTasks.push(mk('t-av0001', '任务一', '单测绿') as unknown as TaskRecord, mk('t-av0002', '任务二', '截图可见') as unknown as TaskRecord)
-    return { requirements: [r] }
-  })
+  }
   // ① 先写任务（队列）——回调外，`createMany` 幂等
   await taskStore.createMany('REQ-av1234', seededTasks)
-  await store.mutate('seed-sheet', (l) => {
-    const r = l.requirements[0]!
+  await store.replaceAll('seed-sheet', {
+      schemaVersion: 9, revision: 0, triages: [],
+      requirements: [((): never => {
+        const r = store.peekAll()[0]!
     const built = buildSheet({
       sheetHistoryLength: 0,
       tasks: seededTasks.filter(t => t.requirementId === r.id).map(t => ({ id: t.id, title: t.title, acceptance: t.acceptance })),
@@ -72,8 +74,9 @@ async function seed(): Promise<void> {
       summary: '交付完成', evidence: ['npx vitest run 全绿'], submittedAt: 1,
       submittedBy: { kind: 'agent', sessionId: W }, sheet: built.sheet as VerificationSheet,
     }
-    return { requirements: [r] }
-  })
+        return r as never
+      })()],
+    })
 }
 
 function fakeReq(body: unknown, url: string): any {
@@ -101,8 +104,9 @@ async function post(handler: any, url: string, body: unknown) {
 describe('REQ-260927121324-abde t4 · 逐项 failed 自动回退事件带快照', () => {
   it('有未过项 → 自动回退事件带写时快照，离开 accepting 的差值进 byStage', async () => {
     await seed()
-    const handler = createReqboardHandler({ store, taskStore, now: () => 100, tokenSnapshot: (k: string) => (k === W ? snap(5) : undefined) })
-    const sheet = store.snapshot().requirements[0]!.verification!.sheet!
+    const handler = createReqboardHandler({ requirementStore: store,
+    applicationDeps: { store } as never, taskStore, now: () => 100, tokenSnapshot: (k: string) => (k === W ? snap(5) : undefined) })
+    const sheet = store.peekAll()[0]!.verification!.sheet!
 
     const res = await post(handler, '/req/verdicts', {
       id: 'REQ-av1234', version: sheet.version,
@@ -111,7 +115,7 @@ describe('REQ-260927121324-abde t4 · 逐项 failed 自动回退事件带快照'
     expect(res.statusCode).toBe(200)
     expect(res.payload.data.failed).toBe(1)
 
-    const r = store.snapshot().requirements[0]!
+    const r = store.peekAll()[0]!
     expect(r.status).toBe('implementing')
     const last = r.statusHistory![r.statusHistory!.length - 1]!
     expect(last.status).toBe('implementing')

@@ -1,0 +1,38 @@
+task:
+  id: t-a30bc1
+  title: 回退物化要幂等、要有上限：超限整次拒绝，队列零新增·联调
+  status: done
+  implements: |-
+    需求记录上维护 `rollback = { seq, lastAt, lastMaterialized }`（挂需求记录，不进队列文件）：物化前先查 (requirementId, taskId, seq) 是否已有重做卡 → 有则跳过；物化张数 > 20 则在**落库前**抛错并返回明细。MoveRequirement 的「任务先写、需求后写」顺序不变：拒绝发生在任务写入之前，所以天然零新增。
+
+    [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+  serves: []
+  depends_on:
+    - t-e520c7
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004121649-bfa7
+    TASK_ID: t-a30bc1
+    TASK_TITLE: 回退物化要幂等、要有上限：超限整次拒绝，队列零新增·联调
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T08:45:04.648Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004121649-bfa7
+  generated_at: 2026-10-04T08:44:55.303Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-04T08:45:04.649Z

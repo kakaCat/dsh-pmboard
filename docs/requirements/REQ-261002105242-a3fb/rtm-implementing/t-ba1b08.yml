@@ -1,0 +1,45 @@
+task:
+  id: t-ba1b08
+  title: 清理僵尸归档入口 + 旧调用方收敛（兼容卡，无数据迁移）·研发
+  status: done
+  implements: |-
+    src/client/api.ts：删 export function archiveReq。src/client/board-mount.ts：删 case 'archive-req' 整块。src/client/views/stage-detail.ts：删 renderActionBar 里 req.status === 'done' && req.archive !== undefined && req.archive.archivedAt === undefined 的 add('archive-req', …) 分支（t3 的早退已覆盖，此处去掉死代码）。src/client/views/verification.ts：renderArchiveSection 的 done 分支文案删「请在详情头『本阶段操作』条点『归档』」，改为「历史遗留 done：归档材料由窗口 agent 用 reqboard_submit(kind=archive) 补齐；本端点已在 REQ-9f4a44 移除，无人工按钮」。tests/board-info-fixes.test.ts:169 用例翻转为「已完成且材料已备：无人工按钮」（断言不含 archive-req、不含 dsh-pm-action-bar）；tests/client-view.test.ts:579 的 toContain('data-action="archive-req"') 翻转为 not.toContain；tests/archived-entry.test.ts 追加 A5（import * as api 后断言 'archiveReq' in api === false；done 详情整页无 archive-req；renderArchiveSection(done) 文案不含「点「归档」」）。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-5074a4
+  phase: ui
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261002105242-a3fb
+    TASK_ID: t-ba1b08
+    TASK_TITLE: 清理僵尸归档入口 + 旧调用方收敛（兼容卡，无数据迁移）·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: ui
+  workflow_total: 4
+  workflow_done: 4
+  workflow:
+    - phase: ui
+      status: done
+      completed_at: 2026-10-02T03:03:53.262Z
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T03:03:50.940Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-02T03:03:53.262Z
+    - phase: commit
+      status: done
+      completed_at: 2026-10-02T03:03:53.262Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002105242-a3fb
+  generated_at: 2026-10-02T03:03:47.037Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 4
+  last_updated: 2026-10-02T03:03:53.262Z

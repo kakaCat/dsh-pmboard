@@ -1,0 +1,12 @@
+# case A2 · 已绑定需求时不重复立项 · serves: FR-2
+case: A2
+checks:
+  - path: queue.requirements
+    op: count_eq
+    value: 1                        # 仅 fixture 预置的一条，未新增 REQ
+  - path: requirement.status
+    op: eq
+    value: implementing             # 原进行中需求状态未被扰动
+  - path: requirement.bound
+    op: eq
+    value: true                     # 绑定关系仍指向原需求

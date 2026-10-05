@@ -1,0 +1,3007 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>现状基线 · 需求详情页（重构前）— REQ-261004222448-292a</title>
+<style>
+
+/* ================================================================== */
+/* pmboard 设计 token（REQ-31e11f Step2/3）—— 后续全部 pmboard 样式引用此处 */
+/* ================================================================== */
+:root {
+  /* 尺寸 */
+  --pm-btn-h: 28px;         /* 按钮/分段控件统一高度（对齐 .dsh-pm-btn） */
+  --pm-btn-h-sm: 24px;      /* 卡面紧凑按钮 */
+  --pm-radius: 10px;
+  --pm-radius-sm: 7px;
+  --pm-radius-pill: 999px;
+  --pm-gap: 8px;
+  --pm-gap-sm: 4px;
+  --pm-gap-lg: 12px;
+  /* 阴影 / 线条 / 底色 */
+  --pm-shadow-card: 0 1px 2px rgba(0,0,0,.06);
+  --pm-shadow-hover: 0 4px 14px rgba(0,0,0,.10);
+  --pm-line: var(--dsw-border, rgba(128,128,128,.18));
+  --pm-line-strong: rgba(128,128,128,.28);
+  --pm-bg-soft: var(--dsw-bg-secondary, rgba(128,128,128,.06));
+  /* 8 类节点状态色（与泳道点/甘特条/阶段面板同源，勿各自另立色值） */
+  --pm-c-draft: #9aa4b2;
+  --pm-c-brainstorming: #f0a020;
+  --pm-c-design: #c2255c;
+  --pm-c-decomposing: #8e44ad;
+  --pm-c-implementing: #4a7dff;
+  --pm-c-accepting: #17a2b8;
+  --pm-c-done: #28a745;
+  --pm-c-archived: #6c757d;
+  --pm-c-danger: #dc3545;
+  --pm-c-warn: #b07800;
+}
+
+/* ---- 主列页面容器（DSH 原生 main 插槽占用者；旧 DOM 覆盖层的隐藏规则已随旧机制拆除） ---- */
+.dsh-pm-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%; overflow: hidden;
+}
+
+/* ---- 通用 ---- */
+.dsh-pm-board { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.dsh-pm-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 20px; border-bottom: 1px solid var(--dsw-border, rgba(128,128,128,.15));
+  flex: none;
+}
+.dsh-pm-title { margin: 0; font-size: 18px; font-weight: 600; color: var(--dsw-text-primary, #222); }
+.dsh-pm-title-sm { font-size: 15px; font-weight: 600; }
+.dsh-pm-rev { font-size: 12px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-hint { font-size: 12px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-btn {
+  padding: 5px 12px; border-radius: 6px; border: 1px solid var(--dsw-border, rgba(128,128,128,.25));
+  background: transparent; color: var(--dsw-text-primary, #333);
+  font-size: 13px; cursor: pointer;
+}
+.dsh-pm-btn:hover { background: var(--dsw-hover, rgba(128,128,128,.1)); }
+.dsh-pm-btn.primary {
+  background: var(--dsw-accent, #4a7dff); color: #fff; border-color: transparent;
+}
+.dsh-pm-btn.primary:hover { opacity: .88; }
+/* 卡片内紧凑尺寸（同色系/同圆角，只缩尺寸） */
+.dsh-pm-btn.sm { padding: 3px 10px; font-size: 12px; border-radius: 6px; }
+.dsh-pm-input {
+  padding: 5px 10px; border-radius: 6px; border: 1px solid var(--dsw-border, rgba(128,128,128,.25));
+  font-size: 13px; background: var(--dsw-bg-primary, #fff); color: inherit;
+}
+.dsh-pm-empty { padding: 8px 0; color: var(--dsw-text-secondary, #999); font-size: 12px; }
+.dsh-pm-error { padding: 32px; text-align: center; color: #d33; font-size: 13px; }
+/* REQ-261003191948-e94a t6：失败原因下面挂的「可复制命令」块。
+   为什么必须显式写样式：父容器 .dsh-pm-error 是 text-align:center，命令居中会让
+   路径与参数对不齐、没法照抄；且 <pre> 默认不换行会横向溢出。故这里左对齐 + 等宽 + 可换行。
+   （设计文档说「复用既有容器不新增视觉资产」——实测该假设不成立，属有意偏离，已记入复核报告。） */
+.dsh-pm-error-hint-label { margin-top: 12px; font-size: 12px; color: var(--dsw-text-secondary, #666); }
+.dsh-pm-error-hint {
+  margin: 6px auto 0; max-width: 760px; padding: 8px 10px; text-align: left;
+  white-space: pre-wrap; word-break: break-all; user-select: text;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.08));
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.25)); border-radius: 6px;
+  color: var(--dsw-text-primary, #3b4048);
+}
+
+/* ---- 泳道 ---- */
+/* REQ-261004184822-9881 FR-4：列要「直通到底」——泳道行是头部与归档条之间的剩余高度（flex: 1），
+   align-items: stretch 让每列铺满行高；min-height: 0 让行在矮窗口下可收缩（否则内容把行撑破）。
+   原先列是 flex-start + 写死「100vh 减 200px」的 max-height 上限，于是列只包住自己的内容、
+   下方留一大片空白（用户实测截图）。 */
+.dsh-pm-lanes {
+  display: flex; gap: var(--pm-gap-lg); padding: 16px 20px 20px;
+  flex: 1; min-height: 0; overflow-x: auto; align-items: stretch;
+}
+/* REQ-6f39b5：泳道容器对齐 lanes-prototype —— 白底卡片式、定宽、无顶部色条 */
+/* REQ-261004184822-9881 FR-4：列高由 stretch 决定（不再写 max-height 魔术值）；min-height: 0
+   保证列内卡片区能收缩，从而 .dsh-pm-lane-cards 的 overflow-y 真正生效（列头固定、列内自己滚）。 */
+.dsh-pm-lane {
+  flex: none; min-width: 320px; max-width: 340px;
+  background: var(--dsw-bg-primary, #fff);
+  border: 1px solid var(--pm-line);
+  border-radius: 12px; padding: 0;
+  display: flex; flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  min-height: 0;
+}
+.dsh-pm-lane[data-lane="draft"] { --pm-stage: var(--pm-c-draft); }
+.dsh-pm-lane[data-lane="brainstorming"] { --pm-stage: var(--pm-c-brainstorming); }
+.dsh-pm-lane[data-lane="design"] { --pm-stage: var(--pm-c-design); }
+.dsh-pm-lane[data-lane="decomposing"] { --pm-stage: var(--pm-c-decomposing); }
+.dsh-pm-lane[data-lane="implementing"] { --pm-stage: var(--pm-c-implementing); }
+.dsh-pm-lane[data-lane="accepting"] { --pm-stage: var(--pm-c-accepting); }
+.dsh-pm-lane[data-lane="done"] { --pm-stage: var(--pm-c-done); }
+.dsh-pm-lane[data-lane="archived"] { --pm-stage: var(--pm-c-archived); }
+.dsh-pm-lane-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 20px; border-bottom: 2px solid var(--pm-line);
+  flex-shrink: 0;
+}
+.dsh-pm-lane-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex: none;
+  box-shadow: 0 0 0 3px rgba(128,128,128,.14);
+}
+.dsh-pm-lane-cards:empty::after {
+  content: '暂无需求'; display: block; text-align: center;
+  padding: 18px 0; font-size: 11px; color: var(--dsw-text-secondary, #999);
+  border: 1px dashed var(--pm-line); border-radius: var(--pm-radius-sm);
+}
+.dsh-pm-lane-dot[data-status="draft"] { background: #9aa4b2; }
+.dsh-pm-lane-dot[data-status="brainstorming"] { background: #f0a020; }
+.dsh-pm-lane-dot[data-status="design"] { background: #c2255c; }
+.dsh-pm-lane-dot[data-status="decomposing"] { background: #8e44ad; }
+.dsh-pm-lane-dot[data-status="implementing"] { background: #4a7dff; }
+.dsh-pm-lane-dot[data-status="accepting"] { background: #17a2b8; }
+.dsh-pm-lane-dot[data-status="done"] { background: #28a745; }
+.dsh-pm-lane-title { font-size: 13px; font-weight: 600; color: var(--dsw-text-primary, #333); letter-spacing: .2px; }
+.dsh-pm-lane-count {
+  font-size: 11px; color: var(--dsw-text-secondary, #888); margin-left: auto;
+  min-width: 20px; text-align: center; padding: 1px 7px;
+  background: rgba(128,128,128,.12); border-radius: var(--pm-radius-pill);
+  font-variant-numeric: tabular-nums;
+}
+/* REQ-261004184822-9881 FR-4：列内卡片区是列里唯一滚动的部分（列头固定）。
+   min-height 由 24px 改 0：矮窗口下允许收缩到 0，不把列撑破、不产生看板整页纵向滚动。 */
+.dsh-pm-lane-cards { display: flex; flex-direction: column; gap: 10px; min-height: 0; padding: 12px; flex: 1; overflow-y: auto; }
+
+/* ---- 需求卡片 ---- */
+/* REQ-6f39b5：卡片对齐 lanes-prototype —— 简洁白卡、无左色条、蓝框 hover */
+.dsh-pm-card {
+  background: var(--dsw-bg-primary, #fff);
+  border: 1px solid var(--pm-line);
+  border-radius: 8px; padding: 12px;
+  cursor: pointer; display: flex; flex-direction: column; gap: 8px;
+  transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+}
+.dsh-pm-card:hover {
+  border-color: var(--dsw-accent, #4a7dff);
+  box-shadow: 0 4px 12px rgba(74,125,255,.12); transform: translateY(-2px);
+}
+.dsh-pm-card.is-blocked {
+  border-color: var(--pm-c-danger);
+}
+.dsh-pm-card-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dsh-pm-card-id { font-size: 11px; font-family: ui-monospace, monospace; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-cat {
+  font-size: 10px; padding: 1px 6px; border-radius: 4px;
+  background: rgba(74,125,255,.12); color: #4a7dff;
+}
+.dsh-pm-cat[data-cat="bug"] { background: rgba(220,53,69,.12); color: #dc3545; }
+.dsh-pm-cat[data-cat="doc"] { background: rgba(23,162,184,.12); color: #17a2b8; }
+.dsh-pm-flag { font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+.dsh-pm-flag.blocked { background: rgba(220,53,69,.12); color: #dc3545; }
+.dsh-pm-flag.paused { background: rgba(240,160,32,.15); color: #b07800; }
+.dsh-pm-flag.ready { background: rgba(40,167,69,.12); color: #28a745; }
+.dsh-pm-card-title { font-size: 13px; font-weight: 600; color: var(--dsw-text-primary, #111827); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dsh-pm-card-progress { display: flex; align-items: center; gap: 8px; }
+.dsh-pm-card-bar { flex: 1; height: 4px; border-radius: 2px; background: rgba(128,128,128,.15); overflow: hidden; }
+.dsh-pm-card-bar-fill { height: 100%; background: linear-gradient(90deg, #4a7dff, #28a745); border-radius: 2px; transition: width .3s; }
+.dsh-pm-card-pct { font-size: 11px; color: var(--dsw-text-secondary, #999); flex: none; }
+/* 卡面操作行：按钮复用全站 .dsh-pm-btn 体系（与页头「刷新/+需求」、详情页闸门同款），
+   只加紧凑尺寸变体，避免看板内出现第二套按钮视觉。 */
+.dsh-pm-card-actions { display: flex; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--pm-line); }
+.dsh-pm-card-actions .dsh-pm-btn { flex: 1; text-align: center; }
+
+.dsh-pm-window {
+  display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 9px;
+  border: 1px solid rgba(74,125,255,.35); background: rgba(74,125,255,.08);
+  color: var(--dsw-accent, #4a7dff); font-size: 11px; cursor: pointer;
+  font-family: ui-monospace, monospace;
+}
+.dsh-pm-window:hover { background: rgba(74,125,255,.16); }
+
+.dsh-pm-session {
+  font-size: 11px; padding: 2px 8px; border-radius: 4px;
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.25));
+  background: transparent; color: var(--dsw-accent, #4a7dff);
+  cursor: pointer; align-self: flex-start;
+}
+.dsh-pm-session:hover { background: rgba(74,125,255,.08); }
+
+/* ---- 归档条（REQ-261002105242-a3fb：渲染端复活；条目为可点 chip） ---- */
+.dsh-pm-archived-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 20px; border-top: 1px solid var(--dsw-border, rgba(128,128,128,.15));
+  flex: none;
+}
+.dsh-pm-archived-fold { width: 100%; }
+.dsh-pm-archived-fold > summary { cursor: pointer; list-style: none; }
+.dsh-pm-archived-fold > summary::-webkit-details-marker { display: none; }
+.dsh-pm-archived-fold > summary::before { content: '▸ '; }
+.dsh-pm-archived-fold[open] > summary::before { content: '▾ '; }
+.dsh-pm-archived-chips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
+.dsh-pm-archived-label { font-size: 12px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-archived-chip {
+  font-size: 11px; padding: 2px 8px; border-radius: 4px;
+  background: rgba(128,128,128,.1); color: var(--dsw-text-secondary, #777);
+  border: 0; font-family: inherit; cursor: pointer;
+}
+.dsh-pm-archived-chip:hover { background: rgba(74,125,255,.12); color: var(--dsw-accent, #4a7dff); }
+.dsh-pm-archived-count { margin-left: 4px; opacity: .7; }
+.dsh-pm-archived-chip[data-status="canceled"] { text-decoration: line-through; }
+
+/* ---- 详情 ---- */
+.dsh-pm-detail { display: flex; flex-direction: column; height: 100%; overflow-y: auto; padding: 16px 24px; gap: 16px; }
+/* REQ-6f39b5：详情头垂直分行（对齐 prototype.html）——
+   第一行 meta（返回/ID/状态/窗口/时间），第二行大标题，第三行 8 态进度点 */
+.dsh-pm-detail-head { display: flex; align-items: center; gap: 10px; flex: none; flex-wrap: wrap; }
+.dsh-pm-detail-head .dsh-pm-detail-title { flex-basis: 100%; margin-top: 2px; }
+.dsh-pm-detail-head .dsh-pm-progress-dots { flex-basis: 100%; margin: 8px 0 0; padding: 4px 0 0; }
+.dsh-pm-status {
+  font-size: 11px; padding: 2px 10px; border-radius: 10px;
+  background: rgba(128,128,128,.12); color: var(--dsw-text-primary, #444);
+}
+.dsh-pm-status[data-status="implementing"] { background: rgba(74,125,255,.15); color: #4a7dff; }
+.dsh-pm-status[data-status="done"] { background: rgba(40,167,69,.15); color: #28a745; }
+.dsh-pm-status[data-status="accepting"] { background: rgba(23,162,184,.15); color: #17a2b8; }
+.dsh-pm-detail-updated { font-size: 12px; color: var(--dsw-text-secondary, #999); margin-left: auto; }
+.dsh-pm-detail-title { margin: 0; font-size: 24px; font-weight: 700; color: var(--dsw-text-primary, #111827); }
+.dsh-pm-detail-desc { font-size: 14px; color: var(--dsw-text-secondary, #555); white-space: pre-wrap; }
+.dsh-pm-detail-section { display: flex; flex-direction: column; gap: 8px; }
+.dsh-pm-detail-section h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--dsw-text-primary, #333); }
+.dsh-pm-gate {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 8px;
+  background: rgba(240,160,32,.1); border: 1px solid rgba(240,160,32,.3);
+  font-size: 13px; color: #8a5a00;
+}
+
+/* ---- DAG（REQ-6f39b5 对齐 prototype：白底卡片容器 + 标题）---- */
+.dsh-pm-dag {
+  background: var(--dsw-bg-primary, #fff); border: 1px solid var(--pm-line);
+  border-radius: 8px; padding: 20px; margin-bottom: 8px;
+}
+.dsh-pm-dag-title { font-size: 14px; font-weight: 600; color: var(--dsw-text-primary, #111827); margin-bottom: 16px; }
+.dsh-pm-dag-layers { display: flex; flex-direction: column; gap: 12px; }
+.dsh-pm-dag-layer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dsh-pm-dag-layer-label { font-size: 11px; color: var(--dsw-text-secondary, #999); width: 24px; flex: none; font-weight: 600; font-family: ui-monospace, monospace; }
+.dsh-pm-dag-node {
+  font-size: 12px; padding: 6px 10px; border-radius: 6px;
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.25));
+  background: var(--dsw-bg-primary, #fff);
+  cursor: pointer; color: var(--dsw-text-primary, #333);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.dsh-pm-dag-node-id { font-family: ui-monospace, monospace; font-size: 10px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-dag-node-title { font-size: 12px; font-weight: 500; }
+.dsh-pm-dag-node-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+.dsh-pm-dag-node:hover { border-color: var(--dsw-accent, #4a7dff); }
+.dsh-pm-dag-node[data-status="done"] { background: rgba(40,167,69,.1); border-color: rgba(40,167,69,.4); }
+.dsh-pm-dag-node[data-status="in_progress"] { background: rgba(74,125,255,.1); border-color: rgba(74,125,255,.4); }
+.dsh-pm-dag-node[data-status="canceled"] { opacity: .5; text-decoration: line-through; }
+
+/* ---- 任务列 ---- */
+.dsh-pm-taskcols { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; }
+.dsh-pm-taskcol {
+  flex: 1; min-width: 160px; max-width: 220px;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.06));
+  border-radius: 8px; padding: 8px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.dsh-pm-taskcol-head { font-size: 12px; font-weight: 600; color: var(--dsw-text-secondary, #666); padding: 2px 4px 4px; }
+/* ---- 任务表格（REQ-6f39b5 对齐 prototype dsh-pm-task-table）---- */
+.dsh-pm-task-table { width: 100%; border-collapse: collapse; background: var(--dsw-bg-primary, #fff); border-radius: 8px; overflow: hidden; }
+.dsh-pm-task-table th {
+  background: var(--dsw-bg-secondary, #f9fafb); padding: 12px; text-align: left;
+  font-size: 12px; font-weight: 600; color: var(--dsw-text-secondary, #6b7280);
+  text-transform: uppercase; border-bottom: 1px solid var(--pm-line);
+}
+.dsh-pm-task-table td { padding: 14px 12px; border-bottom: 1px solid var(--pm-line); font-size: 14px; }
+.dsh-pm-task-table tbody tr { cursor: pointer; transition: background .2s; }
+.dsh-pm-task-table tbody tr:hover { background: var(--dsw-bg-secondary, #f9fafb); }
+.dsh-pm-task-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.dsh-pm-task-status.todo { background: rgba(156,163,175,.12); color: #6b7280; }
+.dsh-pm-task-status.in_progress, .dsh-pm-task-status.integrating, .dsh-pm-task-status.testing, .dsh-pm-task-status.in_review { background: rgba(74,125,255,.12); color: #4a7dff; }
+.dsh-pm-task-status.done { background: rgba(40,167,69,.12); color: #28a745; }
+.dsh-pm-task-status.canceled { background: rgba(156,163,175,.12); color: #9ca3af; text-decoration: line-through; }
+.dsh-pm-link { color: var(--dsw-accent, #4a7dff); font-size: 13px; cursor: pointer; }
+
+.dsh-pm-task {
+  background: var(--dsw-bg-primary, #fff);
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.15));
+  border-radius: 6px; padding: 8px 10px;
+  cursor: pointer; display: flex; flex-direction: column; gap: 4px;
+}
+.dsh-pm-task:hover { border-color: var(--dsw-accent, #4a7dff); }
+.dsh-pm-task-title { font-size: 12px; color: var(--dsw-text-primary, #333); }
+.dsh-pm-task-meta { display: flex; align-items: center; gap: 6px; }
+.dsh-pm-phase { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(128,128,128,.1); color: var(--dsw-text-secondary, #777); }
+.dsh-pm-side { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(74,125,255,.1); color: rgba(74,125,255,1); font-weight: 500; }
+.dsh-pm-side[data-side="backend"] { background: rgba(139,92,246,.1); color: rgba(139,92,246,1); }
+.dsh-pm-side[data-side="frontend"] { background: rgba(236,72,153,.1); color: rgba(236,72,153,1); }
+.dsh-pm-side[data-side="fullstack"] { background: rgba(34,197,94,.1); color: rgba(34,197,94,1); }
+.dsh-pm-side[data-side="doc"] { background: rgba(251,146,60,.1); color: rgba(251,146,60,1); }
+
+/* ---- 任务详情 ---- */
+.dsh-pm-taskdetail { display: flex; flex-direction: column; height: 100%; overflow-y: auto; padding: 16px 24px; gap: 16px; }
+.dsh-pm-kv {
+  display: grid; grid-template-columns: 90px 1fr; gap: 6px 12px;
+  font-size: 13px;
+}
+.dsh-pm-kv > span:nth-child(odd) { color: var(--dsw-text-secondary, #888); }
+.dsh-pm-exec {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 12px; border-radius: 6px;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.06));
+  font-size: 12px;
+}
+.dsh-pm-exec-outcome { font-weight: 600; }
+.dsh-pm-exec[data-outcome="succeeded"] .dsh-pm-exec-outcome { color: #28a745; }
+.dsh-pm-exec[data-outcome="failed"] .dsh-pm-exec-outcome { color: #dc3545; }
+.dsh-pm-exec[data-outcome="running"] .dsh-pm-exec-outcome { color: #4a7dff; }
+.dsh-pm-exec-error { width: 100%; color: #dc3545; font-family: ui-monospace, monospace; font-size: 11px; }
+.dsh-pm-exec-evidence { width: 100%; display: flex; gap: 6px; flex-wrap: wrap; }
+.dsh-pm-exec-evidence code {
+  font-size: 11px; padding: 2px 6px; border-radius: 4px;
+  background: rgba(128,128,128,.1); color: var(--dsw-text-secondary, #666);
+}
+
+/* ---- 评论 ---- */
+.dsh-pm-comments { display: flex; flex-direction: column; gap: 8px; }
+.dsh-pm-comment { padding: 8px 12px; border-radius: 6px; background: var(--dsw-bg-secondary, rgba(128,128,128,.05)); }
+.dsh-pm-comment-meta { font-size: 11px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-comment-body { font-size: 13px; color: var(--dsw-text-primary, #333); margin-top: 4px; white-space: pre-wrap; }
+.dsh-pm-comment-form { display: flex; gap: 8px; margin-top: 8px; }
+.dsh-pm-comment-form .dsh-pm-input { flex: 1; }
+
+/* ---- 验收 / 归档区块 ---- */
+.dsh-pm-block {
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.15)); border-radius: 8px;
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+}
+.dsh-pm-block.is-empty {
+  font-size: 13px; line-height: 1.6; color: var(--dsw-text-secondary, #888);
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.05)); border-style: dashed;
+}
+.dsh-pm-block.is-empty code {
+  font-family: ui-monospace, monospace; font-size: 12px; padding: 1px 4px;
+  border-radius: 3px; background: rgba(128,128,128,.12);
+}
+.dsh-pm-block-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dsh-pm-block-path {
+  font-family: ui-monospace, monospace; font-size: 12px; color: var(--dsw-text-primary, #444);
+  background: rgba(128,128,128,.1); padding: 2px 6px; border-radius: 4px;
+}
+.dsh-pm-block-summary { font-size: 13px; color: var(--dsw-text-primary, #333); line-height: 1.6; }
+/* REQ-261004183621-de3f FR-5：归档清单对账行（列了多少 / 豁免多少 / 漏了什么 / 当时闸门） */
+.dsh-pm-archive-reconcile { font-size: 12px; color: var(--dsw-text-secondary, #6b7280); margin: 4px 0; }
+.dsh-pm-archive-unlisted { margin: 2px 0 6px; padding-left: 18px; font-size: 12px; color: var(--dsw-text-secondary, #6b7280); }
+.dsh-pm-archive-unlisted li { line-height: 1.7; }
+.dsh-pm-archive-noack { color: #b45309; margin-left: 6px; }
+.dsh-pm-archive-ack { color: #6b7280; margin-left: 6px; }
+.dsh-pm-block-note { font-size: 12px; color: #dc3545; }
+.dsh-pm-review {
+  font-size: 11px; padding: 2px 10px; border-radius: 10px;
+  background: rgba(128,128,128,.12); color: var(--dsw-text-primary, #444);
+}
+.dsh-pm-review[data-state="pending"] { background: rgba(240,160,32,.15); color: #b07800; }
+.dsh-pm-review[data-state="pass"] { background: rgba(40,167,69,.15); color: #28a745; }
+.dsh-pm-review[data-state="rework"] { background: rgba(220,53,69,.12); color: #dc3545; }
+.dsh-pm-evidence { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dsh-pm-evidence li {
+  font-family: ui-monospace, monospace; font-size: 11px; color: var(--dsw-text-primary, #444);
+  background: rgba(128,128,128,.08); padding: 4px 8px; border-radius: 4px; white-space: pre-wrap;
+}
+.dsh-pm-doc-group { display: flex; flex-direction: column; gap: 4px; }
+.dsh-pm-doc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dsh-pm-doc-list li { font-size: 12px; display: flex; align-items: center; gap: 8px; }
+.dsh-pm-doc-list code {
+  font-family: ui-monospace, monospace; font-size: 11px; padding: 2px 6px;
+  border-radius: 4px; background: rgba(128,128,128,.1); color: var(--dsw-text-secondary, #666);
+}
+.dsh-pm-doc-kind { font-size: 11px; color: var(--dsw-text-secondary, #888); min-width: 56px; }
+.dsh-pm-flag.verify-pending { background: rgba(23,162,184,.15); color: #17a2b8; }
+.dsh-pm-flag.archive-pending { background: rgba(108,117,125,.15); color: #6c757d; }
+/* ---- 拆分计划（plan mode） ---- */
+.dsh-pm-plan {
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.15)); border-radius: 8px;
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;
+}
+.dsh-pm-plan.is-empty {
+  font-size: 13px; color: var(--dsw-text-secondary, #888);
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.05));
+  border-style: dashed; line-height: 1.6;
+}
+.dsh-pm-plan.is-empty code {
+  font-family: ui-monospace, monospace; font-size: 12px; padding: 1px 4px;
+  border-radius: 3px; background: rgba(128,128,128,.12);
+}
+.dsh-pm-plan-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dsh-pm-plan-status {
+  font-size: 11px; padding: 2px 10px; border-radius: 10px;
+  background: rgba(128,128,128,.12); color: var(--dsw-text-primary, #444);
+}
+.dsh-pm-plan-status[data-state="pending"] { background: rgba(240,160,32,.15); color: #b07800; }
+.dsh-pm-plan-status[data-state="approved"] { background: rgba(40,167,69,.15); color: #28a745; }
+.dsh-pm-plan-status[data-state="rejected"] { background: rgba(220,53,69,.12); color: #dc3545; }
+.dsh-pm-plan-path {
+  font-family: ui-monospace, monospace; font-size: 12px; color: var(--dsw-text-primary, #444);
+  background: rgba(128,128,128,.1); padding: 2px 6px; border-radius: 4px;
+}
+.dsh-pm-plan-summary { font-size: 13px; color: var(--dsw-text-primary, #333); white-space: pre-wrap; line-height: 1.6; }
+.dsh-pm-plan-reason { font-size: 12px; color: #dc3545; }
+.dsh-pm-plan-tasks { display: flex; flex-direction: column; gap: 4px; }
+.dsh-pm-plan-task {
+  display: grid; grid-template-columns: 52px 1fr auto; gap: 8px; align-items: center;
+  padding: 4px 8px; border-radius: 6px;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.05)); font-size: 12px;
+}
+.dsh-pm-plan-key { font-family: ui-monospace, monospace; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-plan-title { color: var(--dsw-text-primary, #333); }
+.dsh-pm-plan-meta { font-size: 11px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-plan-accept { grid-column: 2 / 4; font-size: 11px; color: var(--dsw-text-secondary, #888); }
+.dsh-pm-plan-accept.missing { color: #b07800; }
+.dsh-pm-flag.plan-pending { background: rgba(240,160,32,.15); color: #b07800; }
+.dsh-pm-flag.plan-ok { background: rgba(40,167,69,.12); color: #28a745; }
+.dsh-pm-flag.plan-rejected { background: rgba(220,53,69,.12); color: #dc3545; }
+
+/* ---- 时间线（需求/任务状态事件） ---- */
+.dsh-pm-card-time { font-size: 11px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-timeline { display: flex; flex-direction: column; gap: 4px; }
+.dsh-pm-tl-row {
+  display: grid; grid-template-columns: 60px 92px 108px 96px auto; align-items: center; gap: 10px;
+  padding: 4px 10px; border-radius: 6px; font-size: 12px;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.05));
+  border-left: 3px solid transparent;
+}
+.dsh-pm-tl-row.pending { opacity: .45; }
+.dsh-pm-tl-row.current { background: rgba(74,125,255,.08); }
+.dsh-pm-tl-label { font-weight: 600; color: var(--dsw-text-primary, #333); }
+.dsh-pm-tl-time { font-family: ui-monospace, monospace; color: var(--dsw-text-primary, #444); }
+.dsh-pm-tl-dur { color: var(--dsw-text-secondary, #888); }
+.dsh-pm-tl-by { color: var(--dsw-text-secondary, #999); font-size: 11px; }
+.dsh-pm-tl-inferred {
+  font-size: 10px; padding: 1px 6px; border-radius: 4px;
+  background: rgba(240,160,32,.15); color: #b07800; justify-self: start;
+}
+.dsh-pm-tl-total { font-size: 11px; color: var(--dsw-text-secondary, #999); padding-left: 10px; }
+.dsh-pm-tl-row[data-status="draft"], .dsh-pm-tl-row[data-status="todo"] { border-left-color: #9aa4b2; }
+.dsh-pm-tl-row[data-status="brainstorming"], .dsh-pm-tl-row[data-status="testing"] { border-left-color: #f0a020; }
+.dsh-pm-tl-row[data-status="design"] { border-left-color: #c2255c; }
+.dsh-pm-tl-row[data-status="decomposing"], .dsh-pm-tl-row[data-status="integrating"] { border-left-color: #8e44ad; }
+.dsh-pm-tl-row[data-status="implementing"], .dsh-pm-tl-row[data-status="in_progress"] { border-left-color: #4a7dff; }
+.dsh-pm-tl-row[data-status="accepting"], .dsh-pm-tl-row[data-status="in_review"] { border-left-color: #17a2b8; }
+.dsh-pm-tl-row[data-status="done"] { border-left-color: #28a745; }
+.dsh-pm-tl-row[data-status="archived"] { border-left-color: #6c757d; }
+.dsh-pm-tl-row[data-status="canceled"] { border-left-color: #dc3545; }
+
+/* ---- 甘特图 ---- */
+.dsh-pm-gantt-wrap { width: 100%; overflow-x: auto; }
+.dsh-pm-gantt { display: block; min-width: 620px; }
+.dsh-pm-gantt-grid { stroke: var(--dsw-border, rgba(128,128,128,.15)); stroke-width: 1; }
+.dsh-pm-gantt-axis { font-size: 10px; fill: var(--dsw-text-secondary, #999); }
+.dsh-pm-gantt-mile { stroke: rgba(240,160,32,.55); stroke-width: 1; stroke-dasharray: 3 3; }
+.dsh-pm-gantt-mile[data-status="implementing"] { stroke: rgba(74,125,255,.55); }
+.dsh-pm-gantt-mile[data-status="done"] { stroke: rgba(40,167,69,.55); }
+.dsh-pm-gantt-now { stroke: #dc3545; stroke-width: 1.2; }
+.dsh-pm-gantt-rowlabel { font-size: 11px; fill: var(--dsw-text-primary, #444); }
+.dsh-pm-gantt-track { fill: rgba(128,128,128,.08); }
+.dsh-pm-gantt-bar { fill: #9aa4b2; }
+.dsh-pm-gantt-bar[data-status="todo"] { fill: #9aa4b2; }
+.dsh-pm-gantt-bar[data-status="in_progress"] { fill: #4a7dff; }
+.dsh-pm-gantt-bar[data-status="integrating"] { fill: #8e44ad; }
+.dsh-pm-gantt-bar[data-status="testing"] { fill: #f0a020; }
+.dsh-pm-gantt-bar[data-status="in_review"] { fill: #17a2b8; }
+.dsh-pm-gantt-bar[data-status="done"] { fill: #28a745; }
+.dsh-pm-gantt-bar[data-status="canceled"] { fill: #dc3545; }
+.dsh-pm-gantt-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--dsw-text-secondary, #999); padding-top: 4px; }
+.dsh-pm-gantt-legend-item { display: inline-flex; align-items: center; gap: 4px; }
+.dsh-pm-gantt-legend-item i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; background: #9aa4b2; }
+.dsh-pm-gantt-legend-item i[data-status="in_progress"] { background: #4a7dff; }
+.dsh-pm-gantt-legend-item i[data-status="integrating"] { background: #8e44ad; }
+.dsh-pm-gantt-legend-item i[data-status="testing"] { background: #f0a020; }
+.dsh-pm-gantt-legend-item i[data-status="in_review"] { background: #17a2b8; }
+.dsh-pm-gantt-legend-item i[data-status="done"] { background: #28a745; }
+.dsh-pm-gantt-legend-item i.mile { background: transparent; width: 12px; height: 0; border-top: 2px dashed #f0a020; border-radius: 0; }
+
+/* ---- 任务页 ---- */
+.dsh-pm-tasks-page { padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+.dsh-pm-tasks-group {
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.15)); border-radius: 10px;
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 10px;
+}
+.dsh-pm-tasks-group-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dsh-pm-tasks-group-title { font-size: 14px; font-weight: 600; color: var(--dsw-text-primary, #222); }
+.dsh-pm-section-head { display: flex; align-items: center; gap: 10px; }
+.dsh-pm-strip { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; color: var(--dsw-text-secondary, #888); }
+.dsh-pm-strip-item b { font-family: ui-monospace, monospace; color: var(--dsw-text-primary, #444); font-weight: 500; }
+.dsh-pm-strip-arrow { color: var(--dsw-text-secondary, #bbb); }
+.dsh-pm-ttable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.dsh-pm-ttable th {
+  text-align: left; font-weight: 600; color: var(--dsw-text-secondary, #888);
+  padding: 4px 8px; border-bottom: 1px solid var(--dsw-border, rgba(128,128,128,.15));
+}
+.dsh-pm-ttable td {
+  padding: 5px 8px; border-bottom: 1px solid var(--dsw-border, rgba(128,128,128,.08));
+  color: var(--dsw-text-primary, #333);
+}
+.dsh-pm-trow { cursor: pointer; }
+.dsh-pm-trow:hover { background: var(--dsw-hover, rgba(128,128,128,.08)); }
+.dsh-pm-tid { font-family: ui-monospace, monospace; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-tdeps { font-family: ui-monospace, monospace; font-size: 11px; color: var(--dsw-text-secondary, #999); }
+
+/* ---- 节点差异化展示 ---- */
+.dsh-pm-node-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 4px;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.1));
+  font-size: 12px; color: var(--dsw-text-secondary, #666);
+}
+
+/* 专属内容区域 */
+.dsh-pm-specialized { background: var(--dsw-bg-secondary, rgba(128,128,128,.04)); border-radius: 8px; }
+
+/* 通用信息折叠区 */
+.dsh-pm-common-details { margin-top: 20px; border-top: 1px solid var(--dsw-border, rgba(128,128,128,.15)); padding-top: 16px; }
+.dsh-pm-common-summary {
+  cursor: pointer; font-size: 13px; font-weight: 500;
+  color: var(--dsw-text-secondary, #666);
+  padding: 8px 12px; border-radius: 6px;
+  list-style: none; user-select: none;
+}
+.dsh-pm-common-summary::-webkit-details-marker { display: none; }
+.dsh-pm-common-summary:hover { background: var(--dsw-hover, rgba(128,128,128,.08)); }
+
+/* 统计卡片网格 */
+.dsh-pm-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px; padding: 12px;
+}
+.dsh-pm-stat {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px; border-radius: 6px;
+  background: var(--dsw-bg-primary, #fff);
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.1));
+}
+.dsh-pm-stat-label { font-size: 11px; color: var(--dsw-text-secondary, #999); text-transform: uppercase; }
+.dsh-pm-stat-value { font-size: 18px; font-weight: 600; color: var(--dsw-text-primary, #222); }
+.dsh-pm-stat-success { border-color: #28a745; }
+.dsh-pm-stat-success .dsh-pm-stat-value { color: #28a745; }
+.dsh-pm-stat-error { border-color: #dc3545; }
+.dsh-pm-stat-error .dsh-pm-stat-value { color: #dc3545; }
+
+/* 拆分节点 - 轨道列表 */
+.dsh-pm-track { margin-bottom: 12px; }
+.dsh-pm-track-head {
+  font-size: 13px; font-weight: 600; color: var(--dsw-text-primary, #333);
+  padding: 8px 12px; background: var(--dsw-bg-secondary, rgba(128,128,128,.08));
+  border-radius: 6px; margin-bottom: 6px;
+}
+.dsh-pm-track-list { list-style: none; padding: 0; margin: 0; }
+.dsh-pm-track-list li {
+  padding: 6px 12px; font-size: 13px; color: var(--dsw-text-primary, #333);
+  border-bottom: 1px solid var(--dsw-border, rgba(128,128,128,.08));
+}
+.dsh-pm-track-list li:last-child { border-bottom: none; }
+.dsh-pm-task-link {
+  background: none; border: none; color: var(--dsw-accent, #4a7dff);
+  font-family: ui-monospace, monospace; font-size: 12px;
+  cursor: pointer; padding: 0; text-decoration: underline;
+}
+.dsh-pm-task-link:hover { opacity: .8; }
+
+/* 实施节点 - 文件变更 */
+.dsh-pm-file-summary {
+  display: flex; gap: 12px; align-items: center;
+  padding: 8px 12px; margin-bottom: 8px;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.06));
+  border-radius: 6px; font-size: 12px;
+}
+.dsh-pm-file-change {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 12px; border-bottom: 1px solid var(--dsw-border, rgba(128,128,128,.08));
+}
+.dsh-pm-file-change:last-child { border-bottom: none; }
+.dsh-pm-file-path {
+  font-family: ui-monospace, monospace; font-size: 12px;
+  color: var(--dsw-text-primary, #333);
+}
+.dsh-pm-file-stats { display: flex; gap: 8px; font-size: 11px; font-weight: 600; }
+.dsh-pm-stat-add { color: #28a745; }
+.dsh-pm-stat-del { color: #dc3545; }
+
+/* 执行记录简报 */
+.dsh-pm-exec-brief {
+  padding: 6px 12px; font-size: 12px;
+  border-left: 3px solid var(--dsw-border, rgba(128,128,128,.2));
+  margin-bottom: 4px;
+}
+
+/* 测试节点 - 失败用例 */
+.dsh-pm-test-fail {
+  padding: 12px; margin-bottom: 8px;
+  border: 1px solid #dc3545; border-radius: 6px;
+  background: rgba(220, 53, 69, .05);
+}
+.dsh-pm-test-fail-name {
+  font-size: 13px; font-weight: 600; color: #dc3545;
+  margin-bottom: 6px;
+}
+.dsh-pm-test-fail-detail {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 12px; color: var(--dsw-text-primary, #333);
+}
+.dsh-pm-test-fail-detail code {
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.1));
+  padding: 2px 6px; border-radius: 3px;
+  font-family: ui-monospace, monospace; font-size: 11px;
+}
+
+/* 测试节点 - 覆盖率 */
+.dsh-pm-coverage { display: flex; flex-direction: column; gap: 12px; }
+.dsh-pm-coverage-bar { display: flex; flex-direction: column; gap: 4px; }
+.dsh-pm-coverage-label {
+  font-size: 12px; color: var(--dsw-text-secondary, #666);
+  display: inline-block; min-width: 100px;
+}
+.dsh-pm-coverage-value {
+  font-size: 14px; font-weight: 600; color: var(--dsw-text-primary, #333);
+  margin-left: auto;
+}
+.dsh-pm-coverage-track {
+  height: 8px; background: var(--dsw-bg-secondary, rgba(128,128,128,.15));
+  border-radius: 4px; overflow: hidden; position: relative;
+}
+.dsh-pm-coverage-fill {
+  height: 100%; background: linear-gradient(90deg, #28a745, #20c997);
+  transition: width .3s ease;
+}
+
+/* 评审节点 - 评审结果 */
+.dsh-pm-review-status { display: flex; gap: 12px; padding: 12px; }
+.dsh-pm-review-status[data-status="approved"] {
+  background: rgba(40, 167, 69, .1); border: 1px solid #28a745; border-radius: 6px;
+}
+.dsh-pm-review-status[data-status="pending"] {
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.06));
+}
+.dsh-pm-review-list {
+  list-style: none; padding: 0; margin: 0;
+}
+.dsh-pm-review-list li {
+  padding: 8px 12px; font-size: 13px;
+  border-bottom: 1px solid var(--dsw-border, rgba(128,128,128,.08));
+}
+.dsh-pm-review-list li:last-child { border-bottom: none; }
+.dsh-pm-review-pass {
+  color: #28a745; display: flex; align-items: center; gap: 6px;
+}
+.dsh-pm-review-pass::before { content: '✓'; font-weight: bold; }
+
+/* 评审节点 - 改进建议 */
+.dsh-pm-suggestions { display: flex; flex-direction: column; gap: 12px; }
+.dsh-pm-suggestion {
+  padding: 12px; border-radius: 6px;
+  border-left: 4px solid var(--dsw-border, rgba(128,128,128,.3));
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.04));
+}
+.dsh-pm-suggestion[data-severity="high"] { border-left-color: #dc3545; background: rgba(220, 53, 69, .05); }
+.dsh-pm-suggestion[data-severity="medium"] { border-left-color: #f0a020; background: rgba(240, 160, 32, .05); }
+.dsh-pm-suggestion[data-severity="low"] { border-left-color: #17a2b8; background: rgba(23, 162, 184, .05); }
+.dsh-pm-suggestion-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.dsh-pm-suggestion-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--dsw-accent, #4a7dff); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; flex: none;
+}
+.dsh-pm-severity-badge {
+  padding: 2px 8px; border-radius: 12px;
+  font-size: 11px; color: #fff; font-weight: 500;
+  margin-left: auto;
+}
+.dsh-pm-suggestion-body {
+  font-size: 13px; color: var(--dsw-text-primary, #333);
+  padding-left: 32px;
+}
+
+/* 合并节点 - 合并状态 */
+.dsh-pm-merge-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px; margin-bottom: 12px;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.06));
+  border-radius: 6px;
+}
+.dsh-pm-merge-branch {
+  display: flex; align-items: center; gap: 8px;
+  font-family: ui-monospace, monospace; font-size: 13px;
+}
+.dsh-pm-merge-branch code {
+  background: var(--dsw-bg-primary, #fff);
+  padding: 4px 8px; border-radius: 4px;
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.2));
+}
+.dsh-pm-merge-arrow { color: var(--dsw-text-secondary, #999); font-weight: bold; }
+.dsh-pm-merge-status {
+  font-size: 14px; font-weight: 600;
+  padding: 4px 12px; border-radius: 6px;
+  background: var(--dsw-bg-primary, #fff);
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.2));
+}
+
+/* 合并节点 - 冲突列表 */
+.dsh-pm-conflicts { display: flex; flex-direction: column; gap: 12px; }
+.dsh-pm-conflict {
+  display: flex; gap: 12px; padding: 12px;
+  border: 1px solid #f0a020; border-radius: 6px;
+  background: rgba(240, 160, 32, .05);
+}
+.dsh-pm-conflict-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #f0a020; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; flex: none;
+}
+.dsh-pm-conflict-body { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.dsh-pm-conflict-desc { font-size: 13px; color: var(--dsw-text-primary, #333); }
+.dsh-pm-conflict-resolution {
+  font-size: 12px; color: var(--dsw-text-secondary, #666);
+  font-style: italic;
+}
+
+/* 合并节点 - CI 检查 */
+.dsh-pm-ci-checks { display: flex; flex-direction: column; gap: 8px; }
+.dsh-pm-ci-check {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: 6px;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.04));
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.15));
+}
+.dsh-pm-ci-check[data-status="pass"] { border-color: #28a745; background: rgba(40, 167, 69, .05); }
+.dsh-pm-ci-check[data-status="fail"] { border-color: #dc3545; background: rgba(220, 53, 69, .05); }
+.dsh-pm-ci-icon { font-size: 16px; flex: none; }
+.dsh-pm-ci-name {
+  font-size: 13px; font-weight: 500; color: var(--dsw-text-primary, #333);
+  flex: none; min-width: 120px;
+}
+.dsh-pm-ci-details {
+  font-size: 12px; color: var(--dsw-text-secondary, #666);
+  font-family: ui-monospace, monospace;
+}
+
+/* 文档节点 - 文档列表 */
+.dsh-pm-doc-list {
+  list-style: none; padding: 0; margin: 0;
+}
+.dsh-pm-doc-list li {
+  padding: 8px 12px; border-bottom: 1px solid var(--dsw-border, rgba(128,128,128,.08));
+}
+.dsh-pm-doc-list li:last-child { border-bottom: none; }
+
+/* 文档节点 - API 列表 */
+.dsh-pm-api-list {
+  list-style: none; padding: 0; margin: 0;
+}
+.dsh-pm-api-list li {
+  padding: 8px 12px; display: flex; align-items: center; gap: 8px;
+  border-bottom: 1px solid var(--dsw-border, rgba(128,128,128,.08));
+}
+.dsh-pm-api-list li:last-child { border-bottom: none; }
+.dsh-pm-api-method {
+  padding: 2px 6px; border-radius: 4px;
+  font-size: 11px; font-weight: 600; color: #fff;
+  font-family: ui-monospace, monospace;
+}
+.dsh-pm-api-method[data-method="GET"] { background: #28a745; }
+.dsh-pm-api-method[data-method="POST"] { background: #4a7dff; }
+.dsh-pm-api-method[data-method="PUT"] { background: #f0a020; }
+.dsh-pm-api-method[data-method="DELETE"] { background: #dc3545; }
+.dsh-pm-api-method[data-method="PATCH"] { background: #8e44ad; }
+
+/* 文档节点 - 完成度 */
+.dsh-pm-completeness { display: flex; flex-direction: column; gap: 8px; }
+.dsh-pm-completeness-bar { display: flex; flex-direction: column; gap: 4px; }
+.dsh-pm-completeness-label {
+  font-size: 12px; color: var(--dsw-text-secondary, #666);
+}
+.dsh-pm-completeness-value {
+  font-size: 16px; font-weight: 600; color: var(--dsw-text-primary, #333);
+}
+.dsh-pm-completeness-track {
+  height: 10px; background: var(--dsw-bg-secondary, rgba(128,128,128,.15));
+  border-radius: 5px; overflow: hidden;
+}
+.dsh-pm-completeness-fill {
+  height: 100%; background: linear-gradient(90deg, #4a7dff, #17a2b8);
+  transition: width .3s ease;
+}
+.dsh-pm-completeness-detail {
+  font-size: 12px; color: var(--dsw-text-secondary, #666);
+  text-align: center;
+}
+
+/* UI 节点 - 设计列表 */
+.dsh-pm-design-list {
+  list-style: none; padding: 0; margin: 0;
+}
+.dsh-pm-design-list li {
+  padding: 8px 12px; border-bottom: 1px solid var(--dsw-border, rgba(128,128,128,.08));
+}
+.dsh-pm-design-list li:last-child { border-bottom: none; }
+
+/* UI 节点 - 组件列表 */
+.dsh-pm-component-list {
+  list-style: none; padding: 0; margin: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.dsh-pm-component-list li {
+  padding: 8px 12px; background: var(--dsw-bg-secondary, rgba(128,128,128,.06));
+  border-radius: 6px; font-size: 13px; text-align: center;
+}
+
+/* 分析节点 - 方案对比 */
+.dsh-pm-options { display: flex; flex-direction: column; gap: 8px; }
+.dsh-pm-option {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 12px; background: var(--dsw-bg-secondary, rgba(128,128,128,.06));
+  border-radius: 6px;
+}
+.dsh-pm-option-name {
+  font-size: 14px; font-weight: 500; color: var(--dsw-text-primary, #333);
+}
+.dsh-pm-option-score {
+  font-size: 16px; color: #f0a020;
+}
+
+/* 分析节点 - 推荐方案 */
+.dsh-pm-recommendation {
+  padding: 16px; background: rgba(40, 167, 69, .1);
+  border: 2px solid #28a745; border-radius: 8px;
+}
+.dsh-pm-recommendation-title {
+  font-size: 16px; font-weight: 600; color: #28a745;
+}
+
+/* 分析节点 - 风险列表 */
+.dsh-pm-risk-list {
+  list-style: none; padding: 0; margin: 0;
+}
+.dsh-pm-risk-list li {
+  padding: 10px 12px; border-left: 4px solid #f0a020;
+  background: rgba(240, 160, 32, .05); margin-bottom: 8px;
+  border-radius: 4px; font-size: 13px;
+}
+.dsh-pm-risk-list li::before {
+  content: '⚠️ '; margin-right: 4px;
+}
+
+/* 分析节点 - 参考资料 */
+.dsh-pm-reference-list {
+  list-style: none; padding: 0; margin: 0;
+}
+.dsh-pm-reference-list li {
+  padding: 8px 12px; border-bottom: 1px solid var(--dsw-border, rgba(128,128,128,.08));
+}
+.dsh-pm-reference-list li:last-child { border-bottom: none; }
+.dsh-pm-reference-list a {
+  color: var(--dsw-accent, #4a7dff); text-decoration: none;
+  font-family: ui-monospace, monospace; font-size: 12px;
+}
+.dsh-pm-reference-list a:hover {
+  text-decoration: underline;
+}
+
+/* ---- 需求详情：进度条 + 可折叠 section（监控优先） ---- */
+.dsh-pm-req-progress {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px; border-radius: 8px;
+  background: var(--dsw-bg-secondary, #f7f8fa);
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.12));
+}
+.dsh-pm-progress-bar {
+  flex: 1; height: 10px; border-radius: 5px; overflow: hidden;
+  background: rgba(128,128,128,.15);
+}
+.dsh-pm-progress-fill {
+  height: 100%; border-radius: 5px;
+  background: linear-gradient(90deg, #4a7dff 0%, #2563eb 100%);
+  transition: width .3s ease;
+}
+.dsh-pm-progress-fill.full { background: linear-gradient(90deg, #28a745 0%, #20c997 100%); }
+.dsh-pm-progress-text {
+  font-size: 13px; color: var(--dsw-text-secondary, #777); white-space: nowrap;
+  display: flex; align-items: baseline; gap: 6px;
+}
+.dsh-pm-progress-text b { font-size: 15px; font-weight: 600; color: var(--dsw-text-primary, #333); }
+.dsh-pm-progress-text .dsh-pm-progress-pct { font-weight: 600; color: #4a7dff; }
+
+/* details 折叠 section（勿给 <details> 设 display:flex，会破坏原生折叠机制） */
+.dsh-pm-detail details.dsh-pm-fold {
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.12));
+  border-radius: 8px;
+  background: var(--dsw-bg-primary, #fff);
+}
+.dsh-pm-detail details.dsh-pm-fold summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 14px; font-size: 14px; font-weight: 600;
+  color: var(--dsw-text-primary, #333);
+  background: var(--dsw-bg-secondary, #f7f8fa);
+  transition: background .15s ease;
+  border-radius: 8px;
+}
+.dsh-pm-detail details.dsh-pm-fold summary::-webkit-details-marker { display: none; }
+.dsh-pm-detail details.dsh-pm-fold summary::before {
+  content: '▸'; font-size: 12px; color: var(--dsw-text-secondary, #999);
+  transition: transform .15s ease;
+}
+.dsh-pm-detail details.dsh-pm-fold[open] summary::before { transform: rotate(90deg); }
+.dsh-pm-detail details.dsh-pm-fold[open] summary { border-radius: 8px 8px 0 0; }
+.dsh-pm-detail details.dsh-pm-fold summary:hover { background: var(--dsw-hover, #eef1f5); }
+.dsh-pm-detail details.dsh-pm-fold .dsh-pm-fold-body {
+  padding: 12px 14px;
+  border-top: 1px solid var(--dsw-border, rgba(128,128,128,.08));
+}
+
+.dsh-pm-detail details.dsh-pm-fold .dsh-pm-fold-count {
+  font-size: 12px; font-weight: 500; color: var(--dsw-text-secondary, #999);
+  margin-left: auto;
+}
+
+/* ---- Markdown 内容 ---- */
+
+/* ---- 需求详情：文档记录区块 ---- */
+.dsh-pm-doc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.dsh-pm-doc-list li { display: flex; align-items: center; gap: 8px; font-size: 13px; line-height: 1.5; }
+.dsh-pm-doc-icon { font-size: 14px; flex: none; }
+.dsh-pm-doc-label { font-size: 12px; color: var(--dsw-text-secondary, #777); min-width: 64px; flex: none; }
+.dsh-pm-doc-path {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+  padding: 2px 6px; border-radius: 4px; background: rgba(128,128,128,.1);
+  color: var(--dsw-accent, #4a7dff); text-decoration: none; word-break: break-all;
+  transition: background .15s ease;
+  border: none; cursor: pointer; text-align: left;
+}
+.dsh-pm-doc-path:hover { background: rgba(74,125,255,.12); text-decoration: underline; }
+
+/* ---- 文档缺失标注（未落盘/路径错误） ---- */
+.dsh-pm-doc-list li.is-missing .dsh-pm-doc-icon,
+.dsh-pm-doc-list li.is-missing .dsh-pm-doc-label { opacity: .5; }
+.dsh-pm-doc-list li.is-missing .dsh-pm-doc-path {
+  color: var(--dsw-text-secondary, #999);
+  text-decoration: line-through;
+  cursor: not-allowed;
+  background: rgba(128,128,128,.05);
+}
+.dsh-pm-doc-list li.is-missing .dsh-pm-doc-path:hover { background: rgba(128,128,128,.05); text-decoration: line-through; }
+
+/* ---- 视图切换（泳道 / 列表）---- */
+.dsh-pm-viewswitch {
+  display: inline-flex; margin-left: auto; border: 1px solid var(--dsw-border, rgba(128,128,128,.25));
+  border-radius: 8px; overflow: hidden;
+}
+.dsh-pm-viewbtn {
+  border: none; background: transparent; color: var(--dsw-text-secondary, #888);
+  font: inherit; font-size: 12px; padding: 5px 14px; cursor: pointer;
+}
+.dsh-pm-viewbtn + .dsh-pm-viewbtn { border-left: 1px solid var(--dsw-border, rgba(128,128,128,.2)); }
+.dsh-pm-viewbtn:hover { background: var(--dsw-hover, rgba(128,128,128,.1)); color: var(--dsw-text-primary, #333); }
+.dsh-pm-viewbtn.active { background: var(--dsw-text-primary, #333); color: var(--dsw-bg, #fff); }
+
+/* ---- 列表视图 ---- */
+.dsh-pm-list {
+  padding: 14px 20px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+}
+.dsh-pm-list-empty { padding: 48px 0; text-align: center; color: var(--dsw-text-secondary, #999); font-size: 13px; }
+.dsh-pm-list-card {
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.18)); border-radius: 10px;
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+  background: var(--dsw-bg, transparent); transition: border-color .15s, box-shadow .15s;
+}
+.dsh-pm-list-card:hover { border-color: rgba(74,125,255,.45); box-shadow: 0 2px 10px rgba(74,125,255,.10); }
+.dsh-pm-list-card.is-blocked { border-left: 3px solid #dc3545; }
+.dsh-pm-list-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dsh-pm-list-when { margin-left: auto; font-size: 11px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-status-badge {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600;
+  background: rgba(128,128,128,.15); color: var(--dsw-text-primary, #444);
+}
+.dsh-pm-status-badge[data-status="implementing"] { background: rgba(74,125,255,.18); color: #2f5fd0; }
+.dsh-pm-status-badge[data-status="accepting"] { background: rgba(23,162,184,.18); color: #0e7c8f; }
+.dsh-pm-status-badge[data-status="done"] { background: rgba(40,167,69,.18); color: #1e7e34; }
+.dsh-pm-status-badge[data-status="design"] { background: rgba(240,160,32,.20); color: #a86a00; }
+.dsh-pm-status-badge[data-status="brainstorming"] { background: rgba(142,68,173,.18); color: #6f2f8c; }
+.dsh-pm-list-title {
+  font-size: 14px; font-weight: 600; color: var(--dsw-text-primary, #222);
+  cursor: pointer; line-height: 1.4;
+}
+.dsh-pm-list-title:hover { text-decoration: underline; }
+.dsh-pm-list-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; color: var(--dsw-text-secondary, #888); }
+.dsh-pm-list-window-label { opacity: .75; }
+.dsh-pm-list-seps { opacity: .4; }
+.dsh-pm-list-nowindow { opacity: .7; }
+.dsh-pm-list-strip { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.dsh-pm-list-seg {
+  padding: 1px 6px; border-radius: 4px; background: rgba(128,128,128,.12); font-size: 10px;
+}
+.dsh-pm-list-seg[data-status="in_progress"] { background: rgba(74,125,255,.16); color: #2f5fd0; }
+.dsh-pm-list-seg[data-status="integrating"] { background: rgba(142,68,173,.16); color: #6f2f8c; }
+.dsh-pm-list-seg[data-status="testing"] { background: rgba(240,160,32,.18); color: #a86a00; }
+.dsh-pm-list-seg[data-status="in_review"] { background: rgba(23,162,184,.16); color: #0e7c8f; }
+.dsh-pm-list-seg[data-status="done"] { background: rgba(40,167,69,.16); color: #1e7e34; }
+.dsh-pm-list-strip-empty { opacity: .7; }
+.dsh-pm-list-progress { display: flex; align-items: center; gap: 10px; }
+.dsh-pm-list-progress .dsh-pm-card-bar { flex: 1; }
+.dsh-pm-list-pct { font-size: 11px; color: var(--dsw-text-secondary, #888); white-space: nowrap; }
+.dsh-pm-list-actions { display: flex; gap: 8px; }
+
+/* ---- 列表工具条（排序 / 每页 / 计数）---- */
+.dsh-pm-list-toolbar {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 2px 0 6px; border-bottom: 1px solid var(--dsw-border, rgba(128,128,128,.14));
+}
+.dsh-pm-list-toolbar-label { font-size: 11px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-list-toolbar-gap { flex: 1; }
+.dsh-pm-sortbtn {
+  border: 1px solid transparent; background: transparent;
+  color: var(--dsw-text-secondary, #888); font: inherit; font-size: 12px;
+  padding: 3px 9px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+}
+.dsh-pm-sortbtn:hover { background: var(--dsw-hover, rgba(128,128,128,.12)); color: var(--dsw-text-primary, #333); }
+.dsh-pm-sortbtn.active {
+  background: rgba(74,125,255,.14); color: #2f5fd0;
+  border-color: rgba(74,125,255,.35); font-weight: 600;
+}
+.dsh-pm-pagesize {
+  font: inherit; font-size: 12px; padding: 2px 6px; border-radius: 6px;
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.28));
+  background: var(--dsw-bg, transparent); color: var(--dsw-text-primary, #333); cursor: pointer;
+}
+.dsh-pm-list-count { font-size: 11px; color: var(--dsw-text-secondary, #999); font-variant-numeric: tabular-nums; }
+
+/* 分组标题：进行中 / 已完成（已完成恒在下方） */
+.dsh-pm-list-grouphead {
+  font-size: 11px; font-weight: 600; color: var(--dsw-text-secondary, #999);
+  padding: 6px 2px 0; letter-spacing: .3px;
+}
+.dsh-pm-list-grouphead[data-group="done"] {
+  margin-top: 8px; padding-top: 10px;
+  border-top: 1px dashed var(--dsw-border, rgba(128,128,128,.22));
+}
+
+/* ---- 分页（render/pagination 的 tpg-* 类）---- */
+.dsh-pm-pager {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 14px 2px 4px;
+}
+.dsh-pm-pager .tpg-arr, .dsh-pm-pager .tpg-num {
+  min-width: 30px; height: 28px; padding: 0 9px; border-radius: 6px;
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.28));
+  background: transparent; color: var(--dsw-text-primary, #444);
+  font: inherit; font-size: 12px; cursor: pointer;
+}
+.dsh-pm-pager .tpg-arr:hover:not(:disabled), .dsh-pm-pager .tpg-num:hover {
+  border-color: #4a7dff; color: #4a7dff;
+}
+.dsh-pm-pager .tpg-arr:disabled { opacity: .45; cursor: not-allowed; }
+.dsh-pm-pager .tpg-num.act { background: #4a7dff; border-color: #4a7dff; color: #fff; font-weight: 600; }
+.dsh-pm-pager .tpg-nums { display: inline-flex; gap: 4px; align-items: center; }
+.dsh-pm-pager .tpg-gap { color: var(--dsw-text-secondary, #aaa); padding: 0 2px; }
+.dsh-pm-pager .tpg-cnt {
+  margin-left: auto; font-size: 11px; color: var(--dsw-text-secondary, #999);
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+
+
+/* ========================================================================
+   REQ-6f39b5：8 态进度点 + 4 Tab 分组
+   ======================================================================== */
+
+/* 8 态进度点 */
+.dsh-pm-progress-dots {
+  display: flex; gap: 16px; align-items: flex-start;
+  margin: 20px 0; padding: 12px 0;
+}
+.dsh-pm-dot-wrapper {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 1;
+}
+.dsh-pm-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--dsw-border, #ddd); opacity: 0.4; transition: all 0.3s;
+}
+.dsh-pm-dot-wrapper.completed .dsh-pm-dot {
+  opacity: 1; background: #28a745;
+}
+.dsh-pm-dot-wrapper.current .dsh-pm-dot {
+  width: 14px; height: 14px; opacity: 1; background: #4a7dff;
+  box-shadow: 0 0 0 4px rgba(74,125,255,0.15);
+}
+.dsh-pm-dot-label {
+  font-size: 11px; color: var(--dsw-text-secondary, #999);
+  white-space: nowrap; text-align: center;
+}
+.dsh-pm-dot-wrapper.current .dsh-pm-dot-label {
+  color: #4a7dff; font-weight: 600;
+}
+.dsh-pm-dot-wrapper.completed .dsh-pm-dot-label {
+  color: #28a745; font-weight: 500;
+}
+
+/* Tab 导航 */
+.dsh-pm-tabs {
+  display: flex; gap: 4px;
+  border-bottom: 2px solid var(--dsw-border, #eee);
+  padding: 0 20px;
+}
+.dsh-pm-tab {
+  padding: 12px 24px; border: none; background: none;
+  color: var(--dsw-text-secondary, #666); font-size: 14px; font-weight: 500;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; transition: all 0.2s;
+}
+.dsh-pm-tab:hover {
+  background: rgba(74,125,255,0.05);
+  color: var(--dsw-text-primary, #333);
+}
+.dsh-pm-tab.active {
+  color: #4a7dff; border-bottom-color: #4a7dff; font-weight: 600;
+}
+
+/* Tab 内容区 */
+.dsh-pm-tab-content {
+  padding: 24px; display: none;
+}
+.dsh-pm-tab-content.active {
+  display: block;
+}
+/* REQ-6f39b5：当前阶段高亮卡（对齐 prototype .dsh-pm-stage-current）*/
+.dsh-pm-stage-current {
+  background: linear-gradient(135deg, rgba(74,125,255,.08) 0%, rgba(74,125,255,.02) 100%);
+  border: 1px solid rgba(74,125,255,.2); border-radius: 10px; padding: 20px;
+}
+.dsh-pm-stage-current-title { font-size: 14px; color: var(--dsw-accent, #4a7dff); font-weight: 600; margin-bottom: 12px; }
+
+/* REQ-6f39b5：任务统计卡片（对齐 prototype .dsh-pm-stats）*/
+.dsh-pm-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 8px; }
+.dsh-pm-stat {
+  background: var(--dsw-bg-primary, #fff); border: 1px solid var(--pm-line);
+  border-radius: 8px; padding: 16px;
+}
+.dsh-pm-stat-label { font-size: 12px; color: var(--dsw-text-secondary, #6b7280); margin-bottom: 8px; text-transform: uppercase; font-weight: 500; }
+.dsh-pm-stat-value { font-size: 28px; font-weight: 700; color: var(--dsw-text-primary, #111827); }
+.dsh-pm-stat-success .dsh-pm-stat-value { color: #28a745; }
+
+
+
+/* REQ-6f39b5：验收泳道中的 done（历史完成）需求置灰显示 */
+.dsh-pm-card.is-archived { opacity: 0.5; }
+.dsh-pm-card.is-archived:hover { opacity: 0.75; }
+/* ========================================================================
+   REQ-6f39b5：列表视图表格化（对齐 list-prototype.html）
+   ======================================================================== */
+.dsh-pm-table { width: 100%; border-collapse: collapse; background: var(--dsw-bg-primary, #fff); border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+.dsh-pm-table thead { background: var(--dsw-bg-secondary, #f9fafb); }
+.dsh-pm-table th {
+  padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600;
+  color: var(--dsw-text-secondary, #6b7280); text-transform: uppercase;
+  border-bottom: 2px solid var(--pm-line); white-space: nowrap;
+}
+.dsh-pm-table td {
+  padding: 12px 16px; font-size: 13px; color: var(--dsw-text-primary, #374151);
+  border-bottom: 1px solid var(--pm-line); vertical-align: middle;
+}
+.dsh-pm-table tbody tr.dsh-pm-list-row { cursor: pointer; transition: background .2s; }
+.dsh-pm-table tbody tr.dsh-pm-list-row:hover { background: var(--dsw-bg-secondary, #f9fafb); }
+.dsh-pm-table tbody tr.dsh-pm-list-row.is-archived { opacity: 0.5; }
+.dsh-pm-table tbody tr.dsh-pm-list-row.is-archived:hover { opacity: 0.7; }
+.dsh-pm-td-title { max-width: 380px; }
+.dsh-pm-td-title .dsh-pm-list-title { font-weight: 600; color: var(--dsw-text-primary, #111827); cursor: pointer; }
+.dsh-pm-td-title .dsh-pm-list-title:hover { color: var(--dsw-accent, #4a7dff); }
+.dsh-pm-td-progress { min-width: 140px; }
+.dsh-pm-td-progress .dsh-pm-list-progress { display: flex; align-items: center; gap: 8px; }
+tr.dsh-pm-list-grouphead td {
+  padding: 10px 16px; font-size: 12px; font-weight: 600;
+  color: var(--dsw-text-secondary, #6b7280);
+  background: var(--dsw-bg-secondary, #f9fafb);
+  border-bottom: 1px solid var(--pm-line);
+}
+.dsh-pm-table .dsh-pm-list-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
+.dsh-pm-table .dsh-pm-list-actions .dsh-pm-card-actions { margin-top: 0; padding-top: 0; border-top: none; }
+.dsh-pm-table .dsh-pm-list-actions .dsh-pm-btn { flex: none; }
+
+/* ========================================================================
+   REQ-260930194112-1ab8：列表视图自适应（窄面板不压列、不叠按钮）
+   ------------------------------------------------------------------------
+   现状问题：8 列表格无任何宽度约束，浏览器按 min-content 压列——中文逐字竖排、
+   ID 断在连字符、操作列被压到「取消/会话」叠字（840px 视口实测复现）。
+   修法四件套：
+     ① 表格外层滚动兜底（< 720px 时整表横向滚动，不压扁）
+     ② 关键列 nowrap，标题列例外（允许折行、吃掉剩余宽度）
+     ③ 操作列按钮组不可压缩（根治叠字）
+     ④ 讲宽度档位：≤1180px 让出分类/负责人/更新时间；≤880px 再让出进度
+   隐藏由 CSS 承担，markup 恒输出 8 列（设计 data-model.md D-2 的取舍）。
+   ======================================================================== */
+
+/* ① 保底横向滚动：表格低于 min-width 时整表滚，而不是把列压成单字宽 */
+.dsh-pm-table-wrap { overflow-x: auto; }
+.dsh-pm-table { min-width: 720px; }
+
+/* ② 关键列单行；标题列例外，并给下限（原本窄宽度下会被压到每行 5~7 字） */
+.dsh-pm-table th,
+.dsh-pm-table td { white-space: nowrap; }
+.dsh-pm-table .dsh-pm-td-title { white-space: normal; min-width: 220px; }
+
+/* ③ 操作列：按钮组整块不可压缩，取消/会话不会再叠在一起 */
+.dsh-pm-table .dsh-pm-list-actions { flex-wrap: nowrap; }
+.dsh-pm-table .dsh-pm-list-actions .dsh-pm-card-actions { flex: none; min-width: max-content; }
+.dsh-pm-table .dsh-pm-list-actions .dsh-pm-btn { white-space: nowrap; }
+
+/* ④ 宽度档位一：让出次要三列；同时解除标题列 380px 上限，让标题吸收剩余宽度 */
+@media (max-width: 1180px) {
+  .dsh-pm-table .dsh-pm-td-title { max-width: none; }
+  .dsh-pm-table .dsh-pm-col-cat,
+  .dsh-pm-table .dsh-pm-col-owner,
+  .dsh-pm-table .dsh-pm-col-when { display: none; }
+}
+
+/* ④ 宽度档位二：再让出进度列（ID / 标题 / 状态 / 操作 四列始终可见） */
+@media (max-width: 880px) {
+  .dsh-pm-table .dsh-pm-col-progress { display: none; }
+}
+
+
+.dsh-pm-section {
+  margin-bottom: 24px;
+}
+.dsh-pm-section-title {
+  font-size: 14px; font-weight: 600;
+  color: var(--dsw-text-primary, #333);
+  margin-bottom: 12px;
+}
+.dsh-pm-section-content {
+  background: var(--dsw-bg-secondary, #f9fafb);
+  border: 1px solid var(--dsw-border, #e5e7eb);
+  border-radius: 8px; padding: 16px;
+}
+
+/* REQ-260930230225-71be FR-2：容器可收缩——不再由内容把标题行撑开（min-width:0 让 flex 能压缩） */
+/* 注意：这里**故意不设 position** —— 详情面板要相对「会话框根」定位才能与会话框左边对齐
+   （最近的已定位祖先 = 官方 ConversationRoot 的 .root）。设成 relative 会把面板拉回芯片右下角。 */
+.dsh-pm-cprog { display: inline-flex; align-items: center; flex-direction: column; gap: 6px; min-width: 0; max-width: 100%; }
+/* 内联流程图（始终可见，位于模式选择器后） */
+.dsh-pm-cprog-inline {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-width: 0; max-width: min(64vw, calc(100vw - 320px)); /* 兜底上限：不支持容器查询时也不会撑破标题行
+     （64vw 单用不够——窄视口下它与固定宽度的官方工具并排仍会溢出；320px ≈ preset + utilities + corner 的固定占用） */
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.25)); border-radius: 12px;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.05));
+  padding: 2px 6px; cursor: pointer; transition: all .2s ease;
+}
+.dsh-pm-cprog-inline:hover {
+  background: var(--dsw-hover, rgba(128,128,128,.12));
+  border-color: rgba(74,125,255,.4);
+  box-shadow: 0 2px 8px rgba(74,125,255,.1);
+}
+.dsh-pm-cprog-inline-count {
+  /* 验收反馈「字体太大」后随节点数字一起收一档（10 → 9px），与芯片内其余文字同一尺度 */
+  font-size: 9px; color: var(--dsw-text-secondary, #666);
+  font-variant-numeric: tabular-nums; font-weight: 500;
+  padding-left: 4px; border-left: 1px solid var(--dsw-border, rgba(128,128,128,.2));
+}
+.dsh-pm-cprog-inline.is-closed { opacity: .75; }
+
+/* 详情面板（点击流程图展开） */
+.dsh-pm-cprog-detail-panel {
+  /* REQ-260930230225-71be FR-4（验收反馈第三轮定稿）：面板与会话框最左边对齐 ——
+     绝对定位锚在「会话框根」（见上面 .dsh-pm-cprog 不设 position 的说明），left: 0 = 会话框左缘；
+     top: 84px = 标题行 76px + 8px 间距。宽度按容器收敛，不越出会话框。 */
+  position: absolute; top: 84px; left: 0; right: auto; z-index: 60;
+  width: min(720px, calc(100% - 32px)); max-height: min(68vh, calc(100vh - 120px)); overflow-y: auto;
+  background: var(--dsw-bg, #fff); border: 1px solid var(--dsw-border, rgba(128,128,128,.25));
+  border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.18); padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px; text-align: left;
+}
+
+.dsh-pm-cprog-trigger {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 340px;
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.25)); border-radius: 999px;
+  background: transparent; color: var(--dsw-text-secondary, #666); font: inherit; font-size: 12px;
+  padding: 3px 10px; cursor: pointer; white-space: nowrap;
+}
+.dsh-pm-cprog-trigger:hover { background: var(--dsw-hover, rgba(128,128,128,.1)); color: var(--dsw-text-primary, #333); }
+.dsh-pm-cprog-ico { font-size: 11px; opacity: .85; }
+.dsh-pm-cprog-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.dsh-pm-cprog-mini {
+  width: 46px; height: 5px; border-radius: 3px; overflow: hidden;
+  background: rgba(128,128,128,.22); flex: none;
+}
+.dsh-pm-cprog-mini > i { display: block; height: 100%; background: linear-gradient(90deg,#4a7dff,#8e44ad); }
+.dsh-pm-cprog-count { font-size: 11px; opacity: .85; font-variant-numeric: tabular-nums; }
+/* 已归档会话的窗口按钮：置灰、不可点（.is-archived 不带 data-action） */
+.dsh-pm-window.is-archived,
+.dsh-pm-session.is-archived {
+  opacity: .5; cursor: default;
+  background: var(--dsw-hover, rgba(128,128,128,.10));
+  color: var(--dsw-text-secondary, #999);
+}
+.dsh-pm-window.is-archived:hover,
+.dsh-pm-session.is-archived:hover {
+  background: var(--dsw-hover, rgba(128,128,128,.10));
+}
+.dsh-pm-cprog-trigger.is-closed { opacity: .78; }
+.dsh-pm-cprog-trigger.is-closed .dsh-pm-cprog-name { font-weight: 400; }
+.dsh-pm-cprog-panel-note {
+  font-size: 11px; line-height: 1.5; color: var(--dsw-text-secondary, #888);
+  background: rgba(128,128,128,.10); border-radius: 6px; padding: 6px 8px;
+}
+
+.dsh-pm-cprog-panel {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 60;
+  width: 380px; max-height: 62vh; overflow-y: auto;
+  background: var(--dsw-bg, #fff); border: 1px solid var(--dsw-border, rgba(128,128,128,.25));
+  border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.18); padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px; text-align: left;
+}
+.dsh-pm-cprog-panel-head { display: flex; align-items: center; gap: 8px; }
+.dsh-pm-cprog-panel-title { font-size: 13px; font-weight: 600; color: var(--dsw-text-primary, #222); }
+.dsh-pm-cprog-panel-sub { font-size: 11px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-cprog-sec { display: flex; flex-direction: column; gap: 6px; }
+.dsh-pm-cprog-sec > b { font-size: 11px; color: var(--dsw-text-secondary, #888); font-weight: 600; }
+
+/* 流程图（横向时间线）：未到 / 当前 / 完成 / 跳过 四态配色统一，尺寸一致 */
+.dsh-pm-flow { display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding: 2px 0; }
+.dsh-pm-flow-node {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  /* REQ-261004151652-d535 FR-1：节点宽由内容决定（max(圆点, 名字, 数字)）。
+     「flex: none」 是关键——允许收缩时节点会被压到 min-width，而数字比它宽，
+     窄档就会串成 「827.8k10.9M922.0k12.7M」（实测）。min-width 只作圆点档的下限。 */
+  flex: none; min-width: 32px; cursor: pointer; transition: transform .2s ease;
+}
+.dsh-pm-flow-node:hover { transform: translateY(-2px); }
+.dsh-pm-flow-node[data-selected="true"] .dsh-pm-flow-dot {
+  box-shadow: 0 0 0 3px rgba(74,125,255,.3);
+  transform: scale(1.08);
+}
+.dsh-pm-flow-node[data-selected="true"] .dsh-pm-flow-label {
+  font-weight: 700;
+  color: #2f5fd0;
+}
+.dsh-pm-flow-dot {
+  width: 14px; height: 14px; border-radius: 50%; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 600; box-sizing: border-box;
+  background: var(--pm-bg-soft); color: var(--dsw-text-secondary, #888);
+  border: 1px solid var(--pm-line);
+  transition: background .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+/* 未到：空心灰 */
+.dsh-pm-flow-node[data-state="pending"] .dsh-pm-flow-dot {
+  background: transparent; border: 1px solid var(--pm-line-strong); color: var(--dsw-text-secondary, #999);
+}
+/* 完成：实心绿 + 对勾 */
+.dsh-pm-flow-node[data-state="done"] .dsh-pm-flow-dot {
+  background: var(--pm-c-done); border-color: var(--pm-c-done); color: #fff;
+}
+/* 当前：实心蓝 + 光环 */
+.dsh-pm-flow-node[data-state="current"] .dsh-pm-flow-dot {
+  background: var(--pm-c-implementing); border-color: var(--pm-c-implementing); color: #fff;
+  box-shadow: 0 0 0 3px rgba(74,125,255,.25);
+}
+/* 跳过（本分类不适用）：虚线灰 + 降透明，与"未到"再区分一层 */
+.dsh-pm-flow-node[data-state="skipped"] .dsh-pm-flow-dot {
+  background: transparent; border: 1px dashed var(--pm-c-archived); color: var(--pm-c-archived); opacity: .7;
+}
+.dsh-pm-flow-label {
+  font-size: 8px; color: var(--dsw-text-secondary, #999); white-space: nowrap;
+  transition: color .2s ease, opacity .2s ease;
+}
+.dsh-pm-flow-node[data-state="pending"] .dsh-pm-flow-label { opacity: .75; }
+.dsh-pm-flow-node[data-state="done"] .dsh-pm-flow-label { color: #1e7e34; }
+.dsh-pm-flow-node[data-state="current"] .dsh-pm-flow-label { color: #2f5fd0; font-weight: 600; }
+.dsh-pm-flow-node[data-state="skipped"] .dsh-pm-flow-label {
+  color: var(--pm-c-archived); opacity: .55; text-decoration: line-through;
+}
+.dsh-pm-flow-link {
+  width: 8px; height: 2px; border-radius: 1px; margin-top: 6px; flex: none;
+  background: rgba(128,128,128,.22);
+}
+.dsh-pm-flow-link[data-state="done"] { background: rgba(40,167,69,.6); }
+
+/* REQ-260930230225-71be FR-3：按标题行（官方 .titleRow，inline-size 容器）宽度分档降级。
+   阈值来自 FLOW_TIERS 单一源；匿名 @container 匹配最近的容器祖先，组件若被放到没有容器祖先的
+   位置则全部规则不命中 → 退化为全量渲染（与迁移前一致，不报错）。
+
+   REQ-261004151652-d535：只剩**两段**——
+     · link（780）：去连线与非当前节点名；
+     · label（600）：名字与节点 token 一起让位，交出「计数 + 需求累计 Token」。
+   为什么合并成两段：「FLOW_TIERS.token === FLOW_TIERS.label」（刻意的等式），
+   于是「有名字就有该节点的数」是结构性的；旧的三段里 token 单独一档 1000，
+   造成「有名字没数」——那正是本需求要修的病。 */
+@container (max-width: 780px) {
+  /* 去连线 + 非当前节点名（当前节点名恒可见 = 不丢「我在哪」；**它的数也留着**） */
+  .dsh-pm-flow-link { display: none; }
+  .dsh-pm-flow-node:not([data-state="current"]) .dsh-pm-flow-meta { display: none; }
+  .dsh-pm-flow-node { min-width: 20px; }
+}
+@container (max-width: 600px) {
+  /* 名字与节点 token 一起让位（等式：token 阈值 === label 阈值） */
+  .dsh-pm-flow-token { display: none; }
+  .dsh-pm-flow-node .dsh-pm-flow-meta { display: none; }
+  .dsh-pm-flow-node { min-width: 18px; }
+  /* 容器查询可用时把宽度上限交还给行布局（实测全档不溢出、7 个圆点全在视野内，内部滚动归零）。
+     视口上限只留给「不支持容器查询」的降级路径当安全网。 */
+  .dsh-pm-cprog-inline { max-width: none; }
+  /* REQ-261004151652-d535 FR-3：明细全隐 ⇒ 需求累计 Token**让位显示**（默认隐藏见 styles/token.ts）。
+     选择器**刻意带 .dsh-pm-cprog-inline 前缀**：样式分片的拼接顺序是 BASE → BOARD → TOKEN，
+     而 TOKEN_CSS 里的默认 display:none 与这里同特异性时「后被追加者胜」——**实测踩过**：
+     不带前缀时这条显示规则被默认值压住，窄档反而没有总数（探针报 TOTAL_MISSING）。
+     同为极窄档的最小化：只留数字、收掉 🪙 图标（省约 18px）。 */
+  .dsh-pm-cprog-inline .dsh-pm-cprog-token-total { display: inline-flex; }
+  .dsh-pm-cprog-token-ico { display: none; }
+}
+/* REQ-260930230225-71be FR-4（第三轮定稿）：不再需要「窄档切 fixed」的双模 ——
+   官方 .titleRow 的 container-type 带来 layout containment，面板的包含块**始终是会话框**
+   （哪怕 position: fixed 也一样），所以一条 absolute + left: 0 就够，宽窄档行为一致。 */
+
+.dsh-pm-cprog-task { display: flex; align-items: flex-start; gap: 7px; font-size: 12px; line-height: 1.45; }
+.dsh-pm-cprog-task-ico { flex: none; }
+.dsh-pm-cprog-task-body { min-width: 0; }
+.dsh-pm-cprog-task-title { color: var(--dsw-text-primary, #333); }
+.dsh-pm-cprog-task[data-status="done"] .dsh-pm-cprog-task-title { color: var(--dsw-text-secondary, #999); text-decoration: line-through; }
+.dsh-pm-cprog-task-meta { font-size: 10px; color: var(--dsw-text-secondary, #aaa); }
+.dsh-pm-cprog-tl { display: flex; flex-direction: column; gap: 5px; font-size: 11px; }
+.dsh-pm-cprog-tl-row { display: flex; gap: 8px; align-items: baseline; }
+.dsh-pm-cprog-tl-time { color: var(--dsw-text-secondary, #aaa); font-variant-numeric: tabular-nums; flex: none; }
+
+/* ------------------------------------------------------------------ 产物 chips + 确认按钮（REQ-31e11f t7） */
+
+.dsh-pm-artifact-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.dsh-pm-artifact-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: none;
+  cursor: default;
+  line-height: 1.4;
+}
+
+.dsh-pm-artifact-chip.confirmed {
+  background: rgba(40, 167, 69, .12);
+  color: #28a745;
+}
+
+.dsh-pm-artifact-chip.pending {
+  background: rgba(240, 160, 32, .15);
+  color: #b07800;
+  cursor: pointer;
+}
+
+.dsh-pm-artifact-chip.pending:hover {
+  background: rgba(240, 160, 32, .25);
+}
+
+.dsh-pm-artifact-chip.missing {
+  background: rgba(220, 53, 69, .12);
+  color: #dc3545;
+}
+
+.dsh-pm-artifact-derived {
+  font-size: 10px;
+  color: var(--dsw-text-secondary, #999);
+  margin-top: 4px;
+}
+
+.dsh-pm-confirm-artifact {
+  margin-top: 6px;
+  font-weight: 600;
+}
+.dsh-pm-cprog-tl-text { color: var(--dsw-text-primary, #444); }
+.dsh-pm-cprog-empty { font-size: 12px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-cprog-foot { display: flex; gap: 8px; }
+
+/* ==================================================================== */
+/* 阶段详情面板（stage-panel.ts，REQ-31e11f t6）                          */
+/* 8 类节点视觉差异化：每类节点一个 --pm-stage 状态色 + 专属图标 + 专属底色  */
+/* ==================================================================== */
+
+/* v4: no box */
+.dsh-pm-stage-panel { display: flex; flex-direction: column; gap: 4px; }
+.dsh-pm-stage-panel[data-stage="draft"] { --pm-stage: var(--pm-c-draft); }
+.dsh-pm-stage-panel[data-stage="brainstorming"] { --pm-stage: var(--pm-c-brainstorming); }
+.dsh-pm-stage-panel[data-stage="design"] { --pm-stage: var(--pm-c-design); }
+.dsh-pm-stage-panel[data-stage="decomposing"] { --pm-stage: var(--pm-c-decomposing); }
+.dsh-pm-stage-panel[data-stage="implementing"] { --pm-stage: var(--pm-c-implementing); }
+.dsh-pm-stage-panel[data-stage="accepting"] { --pm-stage: var(--pm-c-accepting); }
+.dsh-pm-stage-panel[data-stage="done"] { --pm-stage: var(--pm-c-done); }
+.dsh-pm-stage-panel[data-stage="archived"] { --pm-stage: var(--pm-c-archived); }
+.dsh-pm-stage-panel.is-skipped {
+  --pm-stage: var(--pm-c-archived);
+  border-style: dashed; background: var(--pm-bg-soft); box-shadow: none;
+}
+.dsh-pm-stage-panel-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dsh-pm-stage-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 600;
+  padding: 3px 11px; border-radius: var(--pm-radius-pill);
+  color: var(--pm-stage);
+  background: rgba(128,128,128,.10);
+  background: color-mix(in srgb, var(--pm-stage) 15%, transparent);
+}
+/* 8 类节点专属图标（不依赖文字也能分辨节点类型） */
+.dsh-pm-stage-panel[data-stage="draft"] .dsh-pm-stage-label::before { content: '📌'; }
+.dsh-pm-stage-panel[data-stage="brainstorming"] .dsh-pm-stage-label::before { content: '💡'; }
+.dsh-pm-stage-panel[data-stage="design"] .dsh-pm-stage-label::before { content: '📐'; }
+.dsh-pm-stage-panel[data-stage="decomposing"] .dsh-pm-stage-label::before { content: '🧩'; }
+.dsh-pm-stage-panel[data-stage="implementing"] .dsh-pm-stage-label::before { content: '⚙️'; }
+.dsh-pm-stage-panel[data-stage="accepting"] .dsh-pm-stage-label::before { content: '🧪'; }
+.dsh-pm-stage-panel[data-stage="done"] .dsh-pm-stage-label::before { content: '🎉'; }
+.dsh-pm-stage-panel[data-stage="archived"] .dsh-pm-stage-label::before { content: '📦'; }
+.dsh-pm-stage-skipped-badge {
+  font-size: 11px; padding: 1px 9px; border-radius: var(--pm-radius-pill);
+  color: var(--pm-c-archived); background: rgba(108,117,125,.14);
+  border: 1px dashed rgba(108,117,125,.45);
+}
+/* v4: plain text flow, no box */
+.dsh-pm-sn-body { display: flex; flex-direction: column; gap: 2px; }
+.dsh-pm-stage-body-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--dsw-text-primary, #222); }
+.dsh-pm-stage-desc { font-size: 13px; line-height: 1.7; color: var(--dsw-text-secondary, #555); white-space: pre-wrap; }
+.dsh-pm-stage-meta { font-size: 12px; color: var(--dsw-text-secondary, #888); }
+.dsh-pm-stage-category {
+  align-self: flex-start;
+  font-size: 11px; padding: 1px 8px; border-radius: var(--pm-radius-pill);
+  background: rgba(74,125,255,.12); color: #2f5fd0;
+}
+.dsh-pm-stage-field { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.dsh-pm-stage-tasks { display: flex; flex-direction: column; gap: 6px; }
+.dsh-pm-stage-comments { display: flex; flex-direction: column; gap: 6px; }
+.dsh-pm-confirm-banner {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: var(--pm-radius-sm);
+  background: rgba(240,160,32,.12); border: 1px solid rgba(240,160,32,.4);
+  color: var(--pm-c-warn); font-size: 12px; font-weight: 500;
+}
+
+/* 产物区（必备产物缺失 = 红；已登记 = 中性卡） */
+.dsh-pm-artifacts-section { display: flex; flex-direction: column; gap: 6px; }
+.dsh-pm-artifacts-head { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.dsh-pm-artifacts-summary { font-size: 12px; font-weight: 600; color: var(--dsw-text-secondary, #888); }
+.dsh-pm-artifacts-summary.is-warning { color: var(--pm-c-danger); }
+.dsh-pm-artifacts-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.dsh-pm-artifacts-empty {
+  padding: 10px 12px; text-align: center; font-size: 12px;
+  color: var(--dsw-text-secondary, #999); background: var(--pm-bg-soft);
+  border: 1px dashed var(--pm-line); border-radius: var(--pm-radius-sm);
+}
+.dsh-pm-artifact-item {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 6px 10px; border-radius: var(--pm-radius-sm);
+  background: var(--pm-bg-soft); border: 1px solid transparent;
+  font-size: 12px;
+}
+.dsh-pm-artifact-item.is-missing {
+  background: rgba(220,53,69,.07); border-color: rgba(220,53,69,.32);
+}
+.dsh-pm-artifact-kind { font-size: 11px; color: var(--dsw-text-secondary, #888); min-width: 64px; flex: none; }
+.dsh-pm-artifact-path {
+  flex: 1; min-width: 0; text-align: left;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+  color: var(--dsw-accent, #4a7dff); background: rgba(128,128,128,.10);
+  border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer;
+  word-break: break-all;
+}
+.dsh-pm-artifact-path:hover { background: rgba(74,125,255,.14); text-decoration: underline; }
+.dsh-pm-artifact-badge { font-size: 10px; padding: 1px 7px; border-radius: var(--pm-radius-pill); flex: none; }
+.dsh-pm-artifact-badge.confirmed { background: rgba(40,167,69,.14); color: #1e7e34; }
+.dsh-pm-artifact-badge.pending { background: rgba(240,160,32,.18); color: var(--pm-c-warn); }
+.dsh-pm-artifact-meta {
+  font-size: 11px; color: var(--dsw-text-secondary, #999);
+  margin-left: auto; font-variant-numeric: tabular-nums;
+}
+.dsh-pm-artifact-missing {
+  font-size: 11px; font-weight: 600; padding: 1px 7px;
+  border-radius: var(--pm-radius-pill);
+  background: rgba(220,53,69,.14); color: var(--pm-c-danger);
+}
+.dsh-pm-doc-link {
+  display: inline-flex; align-items: center; gap: 4px; align-self: flex-start;
+  height: var(--pm-btn-h-sm); padding: 0 10px;
+  border: 1px solid rgba(74,125,255,.35); border-radius: var(--pm-radius-sm);
+  background: rgba(74,125,255,.08); color: var(--dsw-accent, #4a7dff);
+  font: inherit; font-size: 12px; line-height: 1; cursor: pointer;
+}
+.dsh-pm-doc-link:hover { background: rgba(74,125,255,.16); }
+
+/* ---- 运行中指示（REQ-261004210128-283d FR-3/FR-4/FR-7）：泳道卡与列表行共用一个渲染单点 ---- */
+/* 语义与左侧会话列表的运行中圆点一致：淡轨 + 呼吸弧，1.5s 一圈；颜色走 currentColor，随主题。
+   位置（2026-10-04 用户裁定）：**泳道卡与列表行都紧跟项目 ID**——项目级信号挂在项目标识上。 */
+.dsh-pm-running {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 13px; height: 13px; flex: none; margin: 0 3px;
+  color: var(--dsw-accent, #4a7dff);
+  vertical-align: -2px;
+}
+.dsh-pm-running-svg { display: block; animation: dsh-pm-running-spin 1.5s linear infinite; transform-origin: center; }
+.dsh-pm-running-track,
+.dsh-pm-running-arc { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.dsh-pm-running-track { opacity: .25; }
+.dsh-pm-running-arc { stroke-dasharray: 12 40; animation: dsh-pm-running-dash 1.5s ease-in-out infinite; }
+@keyframes dsh-pm-running-spin { to { transform: rotate(360deg); } }
+@keyframes dsh-pm-running-dash {
+  0% { stroke-dasharray: 12 40; stroke-dashoffset: 0; }
+  50% { stroke-dasharray: 24 40; stroke-dashoffset: -6; }
+  100% { stroke-dasharray: 12 40; stroke-dashoffset: 0; }
+}
+/* 尊重「减少动态效果」：不旋转，保留静态半环（语义不丢） */
+@media (prefers-reduced-motion: reduce) {
+  .dsh-pm-running-svg, .dsh-pm-running-arc { animation: none; }
+  .dsh-pm-running-arc { stroke-dasharray: 18 40; stroke-dashoffset: -3; }
+}
+
+/* ---- 需求卡片高亮动画（跳转定位时使用；REQ-f0579a t5 从 base.ts 移入：base 超 400 行门禁） ---- */
+@keyframes highlight-flash {
+  0% { box-shadow: 0 0 0 0 rgba(74,125,255,.6); }
+  50% { box-shadow: 0 0 20px 4px rgba(74,125,255,.4); }
+  100% { box-shadow: 0 0 0 0 rgba(74,125,255,0); }
+}
+.dsh-pm-card.highlight-flash {
+  animation: highlight-flash 2s ease-out;
+}
+/* 文件不存在的文档按钮（board-mount 运行时加 .dsh-pm-doc-missing） */
+.dsh-pm-artifact-path.dsh-pm-doc-missing,
+.dsh-pm-trace-path.dsh-pm-doc-missing,
+.dsh-pm-doc-path.dsh-pm-doc-missing {
+  color: var(--dsw-text-secondary, #999);
+  text-decoration: line-through; cursor: not-allowed;
+  background: rgba(128,128,128,.06); border-color: var(--pm-line);
+}
+
+/* 产物追溯链：链式胶囊，箭头串联 */
+.dsh-pm-trace-chain {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 8px 10px; border-radius: var(--pm-radius-sm);
+  background: var(--pm-bg-soft); border: 1px dashed var(--pm-line);
+  font-size: 12px;
+}
+.dsh-pm-trace-title { font-size: 11px; font-weight: 600; color: var(--dsw-text-secondary, #888); }
+.dsh-pm-trace-node {
+  display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
+  padding: 3px 9px; border-radius: var(--pm-radius-pill);
+  background: var(--dsw-bg-primary, #fff); border: 1px solid var(--pm-line);
+}
+.dsh-pm-trace-label { font-size: 11px; color: var(--dsw-text-secondary, #888); flex: none; }
+.dsh-pm-trace-arrow { color: var(--dsw-text-secondary, #bbb); font-weight: 600; }
+.dsh-pm-trace-path {
+  border: none; background: transparent; padding: 0; cursor: pointer;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px;
+  color: var(--dsw-accent, #4a7dff); max-width: 220px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-align: left;
+}
+.dsh-pm-trace-path:hover { text-decoration: underline; }
+
+/* 任务 / 执行（拆分节点 vs 实施节点，共用行式卡片） */
+.dsh-pm-task-ref-list, .dsh-pm-task-exec-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.dsh-pm-task-ref, .dsh-pm-task-exec {
+  display: grid; grid-template-columns: 76px 1fr auto; align-items: center; gap: 8px;
+  padding: 6px 10px; border-radius: var(--pm-radius-sm);
+  background: var(--dsw-bg-primary, #fff); border: 1px solid var(--pm-line);
+  border-left: 3px solid var(--pm-c-draft);
+  font-size: 12px;
+}
+.dsh-pm-task-ref[data-status="in_progress"], .dsh-pm-task-exec[data-status="in_progress"] { border-left-color: var(--pm-c-implementing); }
+.dsh-pm-task-ref[data-status="integrating"], .dsh-pm-task-exec[data-status="integrating"] { border-left-color: var(--pm-c-decomposing); }
+.dsh-pm-task-ref[data-status="testing"], .dsh-pm-task-exec[data-status="testing"] { border-left-color: var(--pm-c-brainstorming); }
+.dsh-pm-task-ref[data-status="in_review"], .dsh-pm-task-exec[data-status="in_review"] { border-left-color: var(--pm-c-accepting); }
+.dsh-pm-task-ref[data-status="done"], .dsh-pm-task-exec[data-status="done"] { border-left-color: var(--pm-c-done); }
+.dsh-pm-task-ref[data-status="canceled"], .dsh-pm-task-exec[data-status="canceled"] { border-left-color: var(--pm-c-danger); opacity: .6; }
+.dsh-pm-task-ref-id { font-family: ui-monospace, monospace; font-size: 11px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-task-ref-title {
+  color: var(--dsw-text-primary, #333); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dsh-pm-task-ref-status {
+  justify-self: end; font-size: 11px; padding: 1px 8px;
+  border-radius: var(--pm-radius-pill);
+  background: rgba(128,128,128,.12); color: var(--dsw-text-secondary, #666);
+}
+.dsh-pm-task-claimed {
+  grid-column: 1 / -1; font-size: 10px; color: var(--dsw-text-secondary, #888);
+  font-family: ui-monospace, monospace;
+}
+.dsh-pm-by-window { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 2px 0; }
+.dsh-pm-window-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; padding: 2px 9px; border-radius: var(--pm-radius-pill);
+  background: rgba(74,125,255,.10); color: var(--dsw-accent, #4a7dff);
+  border: 1px solid rgba(74,125,255,.28);
+  font-family: ui-monospace, monospace;
+}
+
+/* 节点时间线（stage-panel 内，与需求级 dsh-pm-tl-row 系列区分） */
+.dsh-pm-timeline-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.dsh-pm-timeline-item {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  padding: 5px 10px; border-radius: var(--pm-radius-sm);
+  background: var(--pm-bg-soft); border-left: 3px solid var(--pm-line);
+  font-size: 12px;
+}
+.dsh-pm-timeline-item:first-child { border-left-color: var(--pm-c-implementing); }
+.dsh-pm-timeline-time {
+  font-family: ui-monospace, monospace; font-size: 11px; flex: none;
+  color: var(--dsw-text-secondary, #888); font-variant-numeric: tabular-nums;
+}
+.dsh-pm-timeline-actor {
+  flex: none; font-size: 11px; padding: 1px 7px;
+  border-radius: var(--pm-radius-pill);
+  background: rgba(128,128,128,.12); color: var(--dsw-text-secondary, #666);
+}
+.dsh-pm-timeline-reason { color: var(--dsw-text-primary, #444); }
+.dsh-pm-timeline-inferred { font-size: 10px; color: var(--pm-c-warn); }
+.dsh-pm-timeline-empty {
+  padding: 10px 12px; text-align: center; font-size: 12px;
+  color: var(--dsw-text-secondary, #999); background: var(--pm-bg-soft);
+  border: 1px dashed var(--pm-line); border-radius: var(--pm-radius-sm);
+}
+
+/* 验收节点 */
+.dsh-pm-verify-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dsh-pm-verify-summary { font-size: 13px; line-height: 1.65; color: var(--dsw-text-primary, #333); white-space: pre-wrap; }
+.dsh-pm-verify-evidence {
+  font-size: 12px; color: var(--dsw-text-secondary, #666);
+  background: var(--dsw-bg-primary, #fff); border: 1px dashed var(--pm-line);
+  border-radius: var(--pm-radius-sm); padding: 6px 10px;
+}
+.dsh-pm-verify-badge { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: var(--pm-radius-pill); }
+.dsh-pm-verify-badge.pass { background: rgba(40,167,69,.15); color: #1e7e34; }
+.dsh-pm-verify-badge.rework { background: rgba(220,53,69,.14); color: var(--pm-c-danger); }
+.dsh-pm-verify-badge.pending { background: rgba(240,160,32,.16); color: var(--pm-c-warn); }
+
+/* 归档节点 */
+.dsh-pm-archive-docs {
+  font-size: 12px; color: var(--dsw-text-secondary, #666);
+  padding: 4px 9px; background: var(--dsw-bg-primary, #fff);
+  border: 1px dashed var(--pm-line); border-radius: var(--pm-radius-sm);
+}
+.dsh-pm-archive-index {
+  font-size: 12px; line-height: 1.6; color: var(--dsw-text-primary, #444);
+  padding-left: 9px; border-left: 3px solid var(--pm-c-archived);
+}
+.dsh-pm-archive-merged {
+  font-size: 11px; color: var(--dsw-text-secondary, #888);
+  font-family: ui-monospace, monospace; word-break: break-all;
+}
+
+/* 设计节点：计划徽标 + 时间 */
+.dsh-pm-plan-badge { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: var(--pm-radius-pill); }
+.dsh-pm-plan-badge.approved { background: rgba(40,167,69,.15); color: #1e7e34; }
+.dsh-pm-plan-badge.rejected { background: rgba(220,53,69,.14); color: var(--pm-c-danger); }
+.dsh-pm-plan-badge.pending { background: rgba(240,160,32,.16); color: var(--pm-c-warn); }
+.dsh-pm-plan-time {
+  font-size: 11px; color: var(--dsw-text-secondary, #999);
+  font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums;
+}
+
+/* 需求分析节点：评论列表 */
+.dsh-pm-comment-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.dsh-pm-comment-list li {
+  font-size: 12px; line-height: 1.6; color: var(--dsw-text-primary, #444);
+  padding: 6px 10px; border-radius: var(--pm-radius-sm);
+  background: var(--dsw-bg-primary, #fff); border: 1px solid var(--pm-line);
+}
+
+/* 折叠块：stage-panel / 会话进度面板里没有 .dsh-pm-detail 祖先，需自带一套基础样式
+   （.dsh-pm-detail 内仍由上面的高特异性规则接管，看板详情页外观不变） */
+details.dsh-pm-fold {
+  border: 1px solid var(--pm-line); border-radius: var(--pm-radius);
+  background: var(--dsw-bg-primary, #fff); margin-top: 2px;
+}
+details.dsh-pm-fold > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px; font-size: 13px; font-weight: 600;
+  color: var(--dsw-text-primary, #333); background: var(--pm-bg-soft);
+  border-radius: var(--pm-radius);
+  transition: background .15s ease;
+}
+details.dsh-pm-fold > summary::-webkit-details-marker { display: none; }
+details.dsh-pm-fold > summary::before {
+  content: '▸'; font-size: 11px; color: var(--dsw-text-secondary, #999);
+  transition: transform .15s ease;
+}
+details.dsh-pm-fold[open] > summary { border-radius: var(--pm-radius) var(--pm-radius) 0 0; }
+details.dsh-pm-fold[open] > summary::before { transform: rotate(90deg); }
+details.dsh-pm-fold > summary:hover { background: var(--dsw-hover, rgba(128,128,128,.1)); }
+details.dsh-pm-fold > .dsh-pm-fold-body { padding: 10px 12px; border-top: 1px solid var(--pm-line); }
+
+/* ==================================================================== */
+/* 看板详情：阶段导航（分段控件）+ 阶段容器 + 任务表标题（view.ts）         */
+/* ==================================================================== */
+
+/* 立项/需求分析…导航：与 .dsh-pm-btn 同高/同圆角/同色板；做成分段控件 */
+.dsh-pm-stage-nav {
+  display: flex; flex-wrap: wrap; gap: 2px;
+  padding: 3px; border: 1px solid var(--pm-line);
+  border-radius: var(--pm-radius); background: var(--pm-bg-soft);
+}
+.dsh-pm-stage-nav-btn {
+  flex: 1 1 auto; min-width: 64px;
+  height: var(--pm-btn-h); padding: 0 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: calc(var(--pm-radius) - 3px);
+  background: transparent; color: var(--dsw-text-secondary, #777);
+  font: inherit; font-size: 12px; line-height: 1; cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.dsh-pm-stage-nav-btn:hover { background: var(--dsw-hover, rgba(128,128,128,.12)); color: var(--dsw-text-primary, #333); }
+.dsh-pm-stage-nav-btn:active { background: rgba(74,125,255,.14); color: var(--dsw-accent, #4a7dff); }
+.dsh-pm-stage-nav-btn.active,
+.dsh-pm-stage-nav-btn[data-active="true"] {
+  background: var(--dsw-accent, #4a7dff); color: #fff; font-weight: 600;
+  box-shadow: var(--pm-shadow-card);
+}
+.dsh-pm-stage-detail,
+.dsh-pm-stage-detail-container { display: block; min-height: 0; }
+.dsh-pm-stage-detail:empty { display: none; }
+/* 会话进度面板里的节点详情容器（renderStagePanel 复用） */
+.dsh-pm-cprog-stage-detail { max-height: 340px; overflow: auto; margin-top: 4px; }
+/* 任务总览表标题列 */
+.dsh-pm-ttitle { font-size: 12px; color: var(--dsw-text-primary, #333); }
+
+/* 属性锚（非 class，dom.ts：data-dsh-pm-view / data-dsh-pm-entry）——板容器基础约束
+ * （原覆盖层显隐属性锚随旧机制拆除，改锚在 main 插槽容器 data-dsh-pm-view 上） */
+[data-dsh-pm-view] .dsh-pm-board,
+[data-dsh-pm-entry] .dsh-pm-board { min-height: 0; }
+
+/* 卡面操作行：同高按钮，间距统一 */
+.dsh-pm-card-actions .dsh-pm-btn { margin: 0; }
+
+/* 详情「本阶段操作」固定条（Step6 审批入口外置）：恒正面、粘顶可见 */
+.dsh-pm-action-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 12px; border-radius: var(--pm-radius);
+  background: var(--dsw-bg-primary, #fff);
+  border: 1px solid rgba(74,125,255,.35);
+  box-shadow: var(--pm-shadow-card);
+  position: sticky; top: 0; z-index: 20;
+}
+.dsh-pm-action-bar-label { font-size: 11px; font-weight: 600; color: var(--dsw-text-secondary, #888); }
+/* 评论作者（人 / 窗口 / 系统）用色区分 —— 人机协同双方可辨 */
+.dsh-pm-comment-who { font-weight: 600; }
+.dsh-pm-comment-who[data-actor="human"] { color: #2f5fd0; }
+.dsh-pm-comment-who[data-actor="agent"] { color: #6f2f8c; }
+.dsh-pm-comment-who[data-actor="system"] { color: var(--dsw-text-secondary, #999); font-weight: 500; }
+/* 来源会话已归档：灰标不可跳 */
+.dsh-pm-list-archived-note { font-style: italic; opacity: .85; }
+
+/* ---- 单节点工作记录 v4（REQ-31e11f：纯文字监控面板） ---- */
+.dsh-pm-sn { font-size: 12px; line-height: 1.7; color: var(--dsw-text-primary, #333); padding: 2px 0; }
+
+/* 面板头 */
+.dsh-pm-sn-head { display: flex; align-items: baseline; gap: 6px; padding-bottom: 10px; margin-bottom: 4px; border-bottom: 1px solid var(--pm-line, rgba(128,128,128,.12)); }
+.dsh-pm-sn-glyph { flex: 0 0 14px; text-align: center; font-size: 12px; }
+.dsh-pm-sn-glyph[data-state="done"] { color: #28a745; }
+.dsh-pm-sn-glyph[data-state="current"] { color: #4a7dff; }
+.dsh-pm-sn-glyph[data-state="pending"] { color: #ccc; }
+.dsh-pm-sn-glyph[data-state="skipped"] { color: #ccc; }
+.dsh-pm-sn-title { font-weight: 600; font-size: 13px; }
+.dsh-pm-sn-time { margin-left: auto; font-size: 11px; color: var(--dsw-text-secondary, #aaa); font-variant-numeric: tabular-nums; }
+
+/* 区块标签 */
+.dsh-pm-sn-label { display: block; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dsw-text-secondary, #aaa); margin: 14px 0 4px; }
+
+/* 文本层级 */
+.dsh-pm-sn-req-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.dsh-pm-sn-text { color: var(--dsw-text-primary, #333); }
+.dsh-pm-sn-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.dsh-pm-sn-dim { color: var(--dsw-text-secondary, #999); font-size: 11px; }
+.dsh-pm-sn-empty { color: var(--dsw-text-secondary, #bbb); font-style: italic; }
+.dsh-pm-sn-warn { color: #dc3545; font-size: 11.5px; margin-top: 6px; }
+
+/* 行（评论/事件） */
+.dsh-pm-sn-line { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
+.dsh-pm-sn-who { flex: 0 0 auto; font-size: 11px; color: var(--dsw-text-secondary, #999); min-width: 30px; }
+.dsh-pm-sn-who[data-actor="human"] { color: #2f5fd0; }
+.dsh-pm-sn-who[data-actor="agent"] { color: #6f2f8c; }
+/* 评论：聊天式（谁在上，内容在下，全宽） */
+.dsh-pm-sn-comment { padding: 6px 0; border-bottom: 1px solid rgba(128,128,128,.06); }
+.dsh-pm-sn-comment:last-child { border-bottom: none; }
+.dsh-pm-sn-comment-who { font-size: 11px; font-weight: 600; margin-bottom: 2px; }
+.dsh-pm-sn-comment-who[data-actor="human"] { color: #2f5fd0; }
+.dsh-pm-sn-comment-who[data-actor="agent"] { color: #6f2f8c; }
+.dsh-pm-sn-comment-who[data-actor="system"] { color: var(--dsw-text-secondary, #999); font-weight: 500; }
+.dsh-pm-sn-comment-text { font-size: 12px; line-height: 1.7; color: var(--dsw-text-primary, #333); }
+/* DAG 层级（拆分节点） */
+.dsh-pm-sn-dag-layer { margin-bottom: 8px; }
+.dsh-pm-sn-dag-label { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: var(--dsw-text-secondary, #aaa); margin-bottom: 2px; }
+.dsh-pm-sn-dag-task { display: flex; align-items: baseline; gap: 8px; padding: 2px 0 2px 12px; }
+
+
+.dsh-pm-sn-time2 { flex: 0 0 auto; font-size: 11px; color: var(--dsw-text-secondary, #aaa); font-variant-numeric: tabular-nums; min-width: 48px; }
+
+/* 任务执行列表 */
+.dsh-pm-sn-task { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; }
+.dsh-pm-sn-task-glyph { flex: 0 0 14px; text-align: center; font-size: 11px; }
+.dsh-pm-sn-task[data-status="done"] .dsh-pm-sn-task-glyph { color: #28a745; }
+.dsh-pm-sn-task-id { flex: 0 0 auto; font-size: 11px; color: var(--dsw-text-secondary, #aaa); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.dsh-pm-sn-task-title { flex: 1; min-width: 0; }
+.dsh-pm-sn-task-meta { flex: 0 0 auto; font-size: 11px; color: var(--dsw-text-secondary, #999); font-variant-numeric: tabular-nums; text-align: right; }
+.dsh-pm-sn-task.is-current .dsh-pm-sn-task-title { color: #4a7dff; font-weight: 500; }
+.dsh-pm-sn-task.is-current .dsh-pm-sn-task-glyph { color: #4a7dff; }
+.dsh-pm-sn-task.is-failed .dsh-pm-sn-task-meta { color: #dc3545; }
+
+/* 任务状态分组（实施节点） */
+.dsh-pm-sn-group { margin-bottom: 10px; }
+.dsh-pm-sn-group-label { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: var(--dsw-text-secondary, #aaa); margin-bottom: 4px; }
+.dsh-pm-sn-group-label.is-active { color: var(--pm-c-implementing, #4a7dff); }
+
+/* 任务两行结构 */
+.dsh-pm-sn-task { padding: 4px 0; border-bottom: 1px solid rgba(128,128,128,.06); }
+.dsh-pm-sn-task:last-child { border-bottom: none; }
+.dsh-pm-sn-task-line1 { display: flex; align-items: baseline; gap: 6px; }
+.dsh-pm-sn-task-line1 .dsh-pm-sn-task-glyph { flex: 0 0 14px; text-align: center; font-size: 11px; }
+.dsh-pm-sn-task-line1 .dsh-pm-sn-task-title { flex: 1; min-width: 0; font-size: 12px; }
+.dsh-pm-sn-task-line2 { padding-left: 20px; font-size: 11px; color: var(--dsw-text-secondary, #999); font-variant-numeric: tabular-nums; }
+.dsh-pm-sn-task-line2 .dsh-pm-sn-doc { font-size: 11px; }
+
+
+/* 产物文档已并入追溯链 */
+.dsh-pm-sn-doc { background: none; border: none; padding: 0; font: inherit; font-size: 12px; color: #4a7dff; cursor: pointer; }
+.dsh-pm-sn-doc:hover { text-decoration: underline; }
+.dsh-pm-sn-doc.is-missing { color: #dc3545; cursor: default; }
+.dsh-pm-sn-doc.is-missing:hover { text-decoration: none; }
+
+/* 追溯链 */
+.dsh-pm-trace-chain { margin-top: 10px; font-size: 11px; }
+.dsh-pm-trace-chain .dsh-pm-sn-doc { font-size: 11px; }
+.dsh-pm-trace-arrow { color: #ccc; margin: 0 3px; }
+.dsh-pm-trace-node.is-missing { }
+
+
+/* （REQ-ff20ca t6）文档弹窗样式已整套删除：文档打开统一走官方右侧栏。
+   下面保留 .dsh-pm-md —— view.ts 仍用它渲染需求卡描述。 */
+/* markdown 渲染（marked 输出） */
+.dsh-pm-md h1, .dsh-pm-md h2, .dsh-pm-md h3, .dsh-pm-md h4 { margin: 14px 0 6px; font-weight: 600; line-height: 1.3; }
+.dsh-pm-md h1 { font-size: 16px; } .dsh-pm-md h2 { font-size: 14px; } .dsh-pm-md h3 { font-size: 13px; } .dsh-pm-md h4 { font-size: 12px; }
+.dsh-pm-md h1:first-child, .dsh-pm-md h2:first-child { margin-top: 0; }
+.dsh-pm-md p { margin: 4px 0; }
+.dsh-pm-md code { background: rgba(128,128,128,.12); padding: 1px 4px; border-radius: 3px; font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.dsh-pm-md pre { background: rgba(128,128,128,.08); padding: 10px 12px; border-radius: 6px; overflow-x: auto; margin: 8px 0; }
+.dsh-pm-md pre code { background: none; padding: 0; font-size: 11px; line-height: 1.5; }
+.dsh-pm-md ul, .dsh-pm-md ol { padding-left: 20px; margin: 4px 0; }
+.dsh-pm-md li { margin: 2px 0; }
+.dsh-pm-md li > ul, .dsh-pm-md li > ol { margin-top: 4px; margin-bottom: 0; }
+.dsh-pm-md li > p { margin: 2px 0; }
+.dsh-pm-md li > table { margin: 6px 0; }
+.dsh-pm-md li > pre { margin: 6px 0; }
+.dsh-pm-md table { border-collapse: collapse; margin: 8px 0; width: 100%; }
+.dsh-pm-md th, .dsh-pm-md td { border: 1px solid var(--pm-line, rgba(128,128,128,.2)); padding: 4px 8px; font-size: 11px; text-align: left; }
+.dsh-pm-md th { background: rgba(128,128,128,.08); font-weight: 600; }
+.dsh-pm-md blockquote { border-left: 3px solid var(--pm-c-implementing, #4a7dff); padding-left: 10px; margin: 8px 0; color: var(--dsw-text-secondary, #666); }
+.dsh-pm-md a { color: var(--pm-c-implementing, #4a7dff); }
+.dsh-pm-md hr { border: none; border-top: 1px solid var(--pm-line, rgba(128,128,128,.15)); margin: 12px 0; }
+.dsh-pm-md strong { font-weight: 600; }
+
+/*WRAP_SENTINEL_NEXT_LINE_MUST_START_AT_COLUMN0*/
+/*WRAP_SENTINEL_MARKER*/
+
+/* ── 🪙 Token tab（REQ-a33899） ───────────────────────────────────────── */
+.dsh-pm-tab-content[data-tab-content="token"] { display: flex; flex-direction: column; gap: 10px; }
+.dsh-pm-callout {
+  background: rgba(240, 195, 109, .16); border: 1px solid rgba(240, 195, 109, .5);
+  border-radius: 8px; padding: 8px 12px; font-size: 12px; color: var(--dsw-text-primary, #5c4a12);
+}
+.dsh-pm-note { font-size: 12px; color: var(--dsw-text-secondary, #888); margin-top: 6px; }
+.dsh-pm-sum { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--dsw-text-secondary, #888); margin-bottom: 8px; }
+.dsh-pm-sum b { color: var(--dsw-text-primary, #222); font-variant-numeric: tabular-nums; }
+.dsh-pm-tok-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dsh-pm-tok-table th { text-align: right; font-weight: 600; color: var(--dsw-text-secondary, #888); font-size: 12px;
+  padding: 6px 8px; border-bottom: 1px solid var(--pm-line, #e5e7eb); }
+.dsh-pm-tok-table th:first-child, .dsh-pm-tok-table td:first-child { text-align: left; }
+.dsh-pm-tok-table td { padding: 7px 8px; border-bottom: 1px solid var(--pm-line, #e5e7eb); text-align: right; font-variant-numeric: tabular-nums; }
+.dsh-pm-tok-node { cursor: pointer; }
+.dsh-pm-tok-node:hover { background: var(--dsw-hover, rgba(128,128,128,.08)); }
+.dsh-pm-tok-more { font-size: 11px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-tok-sub { background: color-mix(in srgb, var(--pm-bg-soft, #f3f4f6) 55%, transparent); }
+.dsh-pm-tok-sub td { font-size: 12px; color: var(--dsw-text-secondary, #888); padding: 5px 8px 5px 26px; text-align: left; }
+.dsh-pm-tok-sub-num { float: right; color: var(--dsw-text-primary, #333); font-variant-numeric: tabular-nums; }
+.dsh-pm-nosnap { color: var(--dsw-text-secondary, #b0b4bb); }
+.dsh-pm-bar { display: inline-block; width: 72px; height: 6px; border-radius: 3px; background: var(--pm-line, #e5e7eb); vertical-align: middle; }
+.dsh-pm-bar > i { display: block; height: 6px; border-radius: 3px; background: #4a7dff; }
+.dsh-pm-impact-row { display: flex; align-items: center; gap: 10px; font-size: 12px; margin: 5px 0; }
+.dsh-pm-impact-name { width: 150px; color: var(--dsw-text-secondary, #888); }
+.dsh-pm-impact-bar { flex: 1; height: 8px; border-radius: 4px; background: var(--pm-bg-soft, #f3f4f6); overflow: hidden; }
+.dsh-pm-impact-bar > i { display: block; height: 8px; background: rgba(194, 37, 92, .75); }
+.dsh-pm-impact-val { width: 90px; text-align: right; font-variant-numeric: tabular-nums; }
+details.dsh-pm-prompt { border: 1px solid var(--pm-line, #e5e7eb); border-radius: 6px; margin: 6px 0; background: var(--pm-bg-soft, #fbfbfc); }
+details.dsh-pm-prompt > summary { list-style: none; cursor: pointer; padding: 7px 10px; font-size: 12px;
+  display: flex; align-items: center; gap: 8px; }
+details.dsh-pm-prompt > summary::-webkit-details-marker { display: none; }
+details.dsh-pm-prompt > summary::before { content: '\25B8'; color: var(--dsw-text-secondary, #999); font-size: 10px; }
+details.dsh-pm-prompt[open] > summary::before { transform: rotate(90deg); }
+details.dsh-pm-prompt > summary:hover { background: var(--dsw-hover, rgba(128,128,128,.08)); }
+.dsh-pm-prompt-name { font-weight: 600; color: var(--dsw-text-primary, #333); }
+.dsh-pm-prompt-meta { margin-left: auto; color: var(--dsw-text-secondary, #999); font-variant-numeric: tabular-nums; }
+.dsh-pm-prompt-text { margin: 0; padding: 10px 12px; border-top: 1px dashed var(--pm-line, #e5e7eb);
+  background: var(--dsw-bg-primary, #fff); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px; line-height: 1.55; color: var(--dsw-text-primary, #3b4048);
+  white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; }
+/* 会话顶部流程图：节点内**上下两行**（REQ-261004151652-d535 FR-1）——名字在上、该节点 token 在下。
+   为什么要纵向：横排时 7 节点名 + 数字 + 连线要 358px（节点被压到 32px 最小宽时数字还会串成
+   「827.8k10.9M922.0k12.7M」）；纵向实测只要 214px（省 40%），这才让「每节点数」在窄窗口留得住。
+
+   字号与配色（验收反馈「字体太大、颜色不对」后定稿）：
+     · 数字**与名字同号（8px）**，不再比名字大——名字是主、数字是辅，两者才像一套；
+     · 数字用**次要灰**（--dsw-text-secondary），不用正文黑：它不该压过带状态色的节点名；
+     · 名字保留原有的状态色（已完成绿 / 当前蓝 / 未到灰），那是「我在哪」的语义色，不动。 */
+.dsh-pm-flow-meta { display: flex; flex-direction: column; align-items: center; gap: 0; white-space: nowrap; }
+.dsh-pm-flow-token { font-size: 8px; color: var(--dsw-text-secondary, #8a9099); font-variant-numeric: tabular-nums; line-height: 1.15; }
+/* 卡面 / 列表：累计 token 徽章 */
+.dsh-pm-token-badge { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-size: 9px;
+  padding: 1px 6px; border-radius: 9px; background: rgba(194, 37, 92, .10); color: #c2255c; font-variant-numeric: tabular-nums; }
+/* 会话顶部流程图：需求累计 Token 徽章（REQ-261004143941-b2ca 交付；REQ-261004151652-d535 FR-3 改显隐策略）。
+   **默认隐藏**：宽档里「各节点相加」就是总数，再挂一个是重复信息；只有明细全隐的窄档
+   （styles/board.ts 的 label 档块，容器 ≤600px）才把它显示出来让位。降级路径（无容器查询）下默认隐藏
+   同样正确——那时全部明细可见，总数冗余。 */
+.dsh-pm-cprog-token-total { display: none; margin-left: 0; flex: none; }
+.dsh-pm-cprog-token-ico { font-size: 9px; line-height: 1; }
+
+/* ── 🏷 条款接收状态（REQ-d3e61a T-5） ─────────────────────────────────── */
+.dsh-pm-mk-sum { font-size: 12px; color: var(--dsw-text-secondary, #888); margin-bottom: 8px; }
+.dsh-pm-mk-sum.dsh-pm-mk-alert {
+  color: #b42318; font-weight: 600; background: rgba(217, 45, 32, .08);
+  border-left: 3px solid #d92d20; border-radius: 4px; padding: 6px 10px;
+}
+.dsh-pm-mk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dsh-pm-mk-table th {
+  text-align: left; font-weight: 600; color: var(--dsw-text-secondary, #888);
+  font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--pm-line, #e5e7eb);
+}
+.dsh-pm-mk-table td { padding: 7px 8px; border-bottom: 1px solid var(--pm-line, #e5e7eb); }
+.dsh-pm-mk-row.is-unreceived { background: rgba(217, 45, 32, .06); box-shadow: inset 3px 0 0 #d92d20; }
+.dsh-pm-mk-id { font-variant-numeric: tabular-nums; font-weight: 600; }
+.dsh-pm-mk-unreceived { color: #b42318; font-weight: 700; }
+.dsh-pm-mk-done { color: #027a48; }
+.dsh-pm-mk-received { color: var(--dsw-text-primary, #222); }
+.dsh-pm-mk-skipped { color: var(--dsw-text-secondary, #999); }
+.dsh-pm-mk-by { font-size: 12px; color: var(--dsw-text-secondary, #888); font-variant-numeric: tabular-nums; }
+
+/* ---- 自动链徽标（自动链/已暂停/熔断/手动）---- */
+.dsh-pm-auto-badge { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.dsh-pm-auto-badge[data-auto="running"] { background: rgba(74,125,255,.14); color: #4a7dff; }
+.dsh-pm-auto-badge[data-auto="paused"] { background: rgba(156,163,175,.18); color: #6b7280; }
+.dsh-pm-auto-badge[data-auto="breaker"] { background: rgba(220,53,69,.14); color: #dc3545; }
+.dsh-pm-auto-badge[data-auto="manual"] { background: rgba(156,163,175,.10); color: #9ca3af; font-weight: 500; }
+.dsh-pm-auto-controls { display: flex; gap: 6px; margin-top: 6px; }
+.dsh-pm-card-substat { font-size: 11px; color: var(--dsw-text-secondary, #666); margin-top: 2px; }
+
+/* ---- 子卡链（父卡下，原生 details 折叠）---- */
+.dsh-pm-subtasks { margin-top: 6px; border-top: 1px dashed var(--pm-line); padding-top: 6px; }
+.dsh-pm-subtasks > summary { cursor: pointer; font-size: 11px; color: var(--dsw-text-secondary, #666); user-select: none; list-style: revert; }
+.dsh-pm-subtask { display: flex; align-items: center; gap: 6px; padding: 3px 0 3px 4px; font-size: 12px; }
+.dsh-pm-subtask:hover { background: var(--dsw-bg-secondary, #f9fafb); }
+.dsh-pm-subtask-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-text-primary, #333); }
+.dsh-pm-stage-badge { padding: 1px 6px; border-radius: 4px; font-size: 10px; background: rgba(74,125,255,.10); color: #4a7dff; white-space: nowrap; }
+.dsh-pm-subtask-attempt { font-size: 10px; color: #dc3545; }
+.dsh-pm-subtask-status { font-size: 10px; color: var(--dsw-text-secondary, #666); }
+.dsh-pm-subtask-status[data-status="done"] { color: #28a745; }
+.dsh-pm-subtask-status[data-status="in_progress"] { color: #4a7dff; }
+.dsh-pm-subcount { font-size: 10px; color: var(--dsw-text-secondary, #666); }
+.dsh-pm-manual-chip { margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 10px; background: rgba(156,163,175,.14); color: #9ca3af; }
+/* 链未生成（卡片层契约 2026-09-28）：意图=chain 且缺链时打标——与 [手动] 的灰不同色，必须一眼可分。 */
+.dsh-pm-chain-missing { margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 10px; background: rgba(240,160,32,.16); color: #a86a00; }
+.dsh-pm-task.is-parent { border-left: 2px solid rgba(74,125,255,.45); }
+
+/* ===== Apple 风设计令牌（本面板私有） ===== */
+:root {
+  --dsh-pm-np-text: #1d1d1f;
+  --dsh-pm-np-text2: #6e6e73;
+  --dsh-pm-np-text3: #86868b;
+  --dsh-pm-np-line: rgba(0,0,0,.12);
+  --dsh-pm-np-line-soft: rgba(0,0,0,.08);
+  --dsh-pm-np-bg: #f5f5f7;
+  --dsh-pm-np-bg-hover: #ebebf0;
+  --dsh-pm-np-blue: #0071e3;
+  --dsh-pm-np-green: #34c759;
+  --dsh-pm-np-red: #dc3545;
+  --dsh-pm-np-amber: #ff9500;
+}
+
+/* ===== 面板外壳：与会话框左边对齐的下拉（唯一使用方 = 会话流程面板） ===== */
+/* 宽度/高度按**会话框**收敛（不是视口）：面板与会话框最左边对齐，见 board.ts 的定位说明 */
+.dsh-pm-cprog-detail-panel {
+  box-sizing: border-box;
+  width: min(720px, calc(100% - 32px));
+  max-height: min(68vh, calc(100vh - 120px)); overflow-y: auto;
+  background: #fff; border: 1px solid var(--dsh-pm-np-line);
+  border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.18);
+  padding: 12px 14px; color: var(--dsh-pm-np-text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.dsh-pm-cprog-detail-panel .dsh-pm-np-close {
+  position: absolute; top: 10px; right: 12px; z-index: 2;
+  width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer;
+  background: var(--dsh-pm-np-bg); color: var(--dsh-pm-np-text2); font-size: 15px; line-height: 1;
+}
+.dsh-pm-cprog-detail-panel .dsh-pm-np-close:hover { background: var(--dsh-pm-np-bg-hover); color: var(--dsh-pm-np-text); }
+
+/* ===== 面板根 ===== */
+.dsh-pm-np { display: flex; flex-direction: column; gap: 10px; text-align: left; font-size: 13.5px; }
+.dsh-pm-np[data-state="skipped"] { opacity: .8; }
+
+/* REQ 胶囊 + 标题行 */
+.dsh-pm-np-req { display: flex; align-items: center; gap: 8px; padding-right: 30px; }
+.dsh-pm-np-req-pill {
+  flex: none; background: rgba(0,113,227,.1); color: var(--dsh-pm-np-blue);
+  border-radius: 980px; padding: 2px 9px; font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.dsh-pm-np-req-title {
+  font-size: 15px; font-weight: 600; letter-spacing: -.01em; color: var(--dsh-pm-np-text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* 状态胶囊 + 一句话 + 时间行 */
+.dsh-pm-np-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.dsh-pm-np-head-state {
+  flex: none; border-radius: 980px; padding: 2px 9px; font-size: 11.5px; font-weight: 600;
+  background: var(--dsh-pm-np-bg); color: var(--dsh-pm-np-text2);
+}
+.dsh-pm-np-head-state[data-state="current"] { background: rgba(0,113,227,.12); color: var(--dsh-pm-np-blue); }
+.dsh-pm-np-head-state[data-state="done"] { background: rgba(52,199,89,.14); color: #248a3d; }
+.dsh-pm-np-head-title { font-size: 13px; color: var(--dsh-pm-np-text2); }
+.dsh-pm-np-head-time { margin-left: auto; font-size: 12px; color: var(--dsh-pm-np-text3); }
+/* REQ-260928222643-4d34 FR-1：项目看板入口——不压缩、不裁切，保留可点面积（窄面板换行可接受） */
+.dsh-pm-np-board-entry {
+  flex: none; min-height: 20px; padding: 1px 8px; border-radius: 980px;
+  font-size: 11.5px; line-height: 18px; white-space: nowrap; cursor: pointer;
+  border: 1px solid var(--dsh-pm-np-blue); color: var(--dsh-pm-np-blue); background: transparent;
+}
+.dsh-pm-np-board-entry:hover { background: rgba(0,113,227,.08); }
+
+/* REQ-260928222643-4d34 FR-3：入口失败就地可见提示（不静默） */
+.dsh-pm-cprog-detail-panel .dsh-pm-np-entry-err {
+  color: #c0392b; font-size: 12px; line-height: 1.5; padding: 6px 2px;
+}
+
+/* ===== 折叠块（原生 <details>） ===== */
+.dsh-pm-np-fold { border-radius: 12px; }
+.dsh-pm-np-fold > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--dsh-pm-np-bg); border-radius: 12px; padding: 10px 12px;
+  transition: background .2s;
+}
+.dsh-pm-np-fold > summary::-webkit-details-marker { display: none; }
+.dsh-pm-np-fold > summary:hover { background: var(--dsh-pm-np-bg-hover); }
+.dsh-pm-np-fold-icon { color: var(--dsh-pm-np-text3); font-size: 12px; transition: transform .2s; }
+.dsh-pm-np-fold[open] > summary .dsh-pm-np-fold-icon { transform: rotate(90deg); }
+.dsh-pm-np-fold-text { font-size: 14px; font-weight: 600; letter-spacing: -.01em; color: var(--dsh-pm-np-text); }
+.dsh-pm-np-fold-body { padding: 12px 4px 2px; display: flex; flex-direction: column; gap: 10px; }
+
+/* ===== 基础信息 ===== */
+.dsh-pm-np-info { display: flex; align-items: baseline; gap: 10px; }
+.dsh-pm-np-info-label { flex: 0 0 auto; min-width: 96px; font-size: 12.5px; color: var(--dsh-pm-np-text2); white-space: nowrap; }
+.dsh-pm-np-info-value { flex: 1 1 auto; min-width: 0; font-size: 13.5px; color: var(--dsh-pm-np-text); }
+.dsh-pm-np-info-value.is-desc { white-space: pre-wrap; line-height: 1.5; }
+.dsh-pm-np-tag {
+  display: inline-block; background: rgba(0,113,227,.1); color: var(--dsh-pm-np-blue);
+  border-radius: 980px; padding: 2px 10px; font-size: 12px; font-weight: 500;
+}
+.dsh-pm-np-sec-label { font-size: 12.5px; font-weight: 600; color: var(--dsh-pm-np-text); }
+.dsh-pm-np-empty { font-size: 12.5px; color: var(--dsh-pm-np-text3); padding: 6px 0; }
+
+/* 文档列表（白底圆角 + 细分隔线） */
+.dsh-pm-np-doclist { display: block; background: #fff; border: 1px solid var(--dsh-pm-np-line-soft); border-radius: 12px; overflow: hidden; }
+.dsh-pm-np-docitem {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 10px 12px; border: none; border-bottom: 1px solid var(--dsh-pm-np-line-soft);
+  background: #fff; cursor: pointer; font: inherit;
+}
+.dsh-pm-np-docitem:last-child { border-bottom: none; }
+.dsh-pm-np-docitem:hover { background: #fafafa; }
+.dsh-pm-np-docitem-icon { flex: none; font-size: 13px; }
+.dsh-pm-np-docitem-name { flex: 1 1 auto; min-width: 0; font-size: 13px; color: var(--dsh-pm-np-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dsh-pm-np-docitem-arrow { flex: none; color: #c7c7cc; }
+
+/* 设计文档逐份 ✅/⬜ */
+.dsh-pm-np-designdoc { font-size: 12.5px; padding: 3px 0; color: var(--dsh-pm-np-text); }
+.dsh-pm-np-designdoc[data-submitted="no"] { color: var(--dsh-pm-np-text3); }
+
+/* ===== 实施双视图：tab + DAG + 泳道 ===== */
+.dsh-pm-np-tabs { display: flex; gap: 6px; margin-top: 4px; }
+.dsh-pm-np-tab {
+  border: 1px solid var(--dsh-pm-np-line-soft); border-radius: 980px; background: #fff;
+  padding: 5px 14px; font-size: 12.5px; font-weight: 500; color: var(--dsh-pm-np-text2); cursor: pointer;
+}
+.dsh-pm-np-tab.is-active { background: var(--dsh-pm-np-blue); border-color: var(--dsh-pm-np-blue); color: #fff; }
+.dsh-pm-np-pane { margin-top: 8px; }
+/* 2026-09-24 用户两轮裁定：泳道区横向滚动条 4px 太细不好抓 → 12px 又太粗 → 定 8px；
+   轨道淡底、滑块加深并留 hover 反馈（拖拽有目标，但存在感不抢戏）。 */
+.dsh-pm-np-pane[data-pane="list"] { overflow-x: auto; padding-bottom: 6px; }
+.dsh-pm-np-pane[data-pane="list"]::-webkit-scrollbar { height: 8px; }
+.dsh-pm-np-pane[data-pane="list"]::-webkit-scrollbar-track { background: rgba(0,0,0,.05); border-radius: 4px; }
+.dsh-pm-np-pane[data-pane="list"]::-webkit-scrollbar-thumb { background: rgba(0,0,0,.26); border-radius: 4px; }
+.dsh-pm-np-pane[data-pane="list"]::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.42); }
+.dsh-pm-np-pane-caption { font-size: 12px; color: var(--dsh-pm-np-text3); margin: 0 0 10px; }
+
+/* DAG 分层 */
+.dsh-pm-np-dag { display: flex; flex-direction: column; gap: 8px; }
+.dsh-pm-np-dag-layer { display: flex; align-items: flex-start; gap: 10px; }
+.dsh-pm-np-dag-label { flex: 0 0 auto; min-width: 120px; font-size: 11.5px; color: var(--dsh-pm-np-text3); padding-top: 5px; }
+.dsh-pm-np-dag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+/* DAG 节点 = 与泳道卡片同构（苹果风白底小圆角阴影，用户裁定 2026-09-23）。
+   2026-09-24 用户裁定（验收实测）：DAG 卡片与泳道卡片外观完全一致——几何对齐
+   （gap 2px / padding 6px 8px / min-height 44px；宽 208px = 220px 列 - 列体 12px 内边距，
+   与泳道卡片实渲染宽度一致）；状态色不再另设，直接共用下方泳道卡片的六状态规则。 */
+.dsh-pm-np-dag-node {
+  display: flex; flex-direction: column; gap: 2px; text-align: left; cursor: default; font: inherit;
+  background: #fff; border: none; border-radius: 9px; padding: 6px 8px;
+  flex: 0 0 208px; width: 208px; min-height: 44px; box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  overflow: hidden;
+}
+/* 内层编号/名称复用 .dsh-pm-np-card-id / .dsh-pm-np-card-title（与泳道卡片同一套样式，上下结构一致） */
+.dsh-pm-np-dag-node[data-action="open-doc"] { cursor: pointer; }
+.dsh-pm-np-dag-node[data-action="open-doc"]:hover { box-shadow: 0 3px 10px rgba(0,0,0,.13); }
+
+/* 泳道 = 竖向 6 列看板（FR-7 用户裁定 2026-09-23）：6 条状态列等宽排开，列头状态名+数量胶囊，列内卡片竖排、超出列内纵向滚动。
+   2026-09-24 用户裁定修订（实测反馈）：① 列灰底全高——去掉 align-items:start，grid 默认 stretch 让所有列（含空列）
+   灰底拉到同一高度，容器 min-height 200px 兜底保证稀疏时也有看板感；② 放弃「无横向滚动」——列设保底宽，
+   面板容不下时泳道区横向滚动（pane 已有 overflow-x:auto），不再把列压扁。
+   2026-09-24 用户裁定再修订（验收实测）：列保底宽 150px → 220px——卡片标题文字更宽、尽量一行放下
+   （内容宽 ≈ 220-28=192px，约 16 个汉字；超长标题仍走两行 clamp），横向滚动换取可读性。 */
+.dsh-pm-np-cols { display: grid; grid-template-columns: repeat(6, minmax(220px, 1fr)); gap: 8px; min-height: 200px; }
+.dsh-pm-np-col {
+  display: flex; flex-direction: column; min-height: 0; max-height: 340px; height: 100%;
+  background: var(--dsh-pm-np-bg); border-radius: 8px;
+  overflow: hidden;
+}
+.dsh-pm-np-col-head {
+  flex: none; padding: 8px 8px 6px;
+  font-size: 11px; font-weight: 600; color: var(--dsh-pm-np-text2); letter-spacing: .01em;
+  display: flex; align-items: center; gap: 5px; justify-content: flex-start; white-space: nowrap;
+}
+.dsh-pm-np-col-count {
+  min-width: 16px; height: 16px; line-height: 16px; text-align: center;
+  background: rgba(0,0,0,.06); color: var(--dsh-pm-np-text3); font-weight: 500;
+  border-radius: 8px; font-size: 10.5px; padding: 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+/* 列头状态色提示（2026-09-24 用户裁定）：状态色点 + 同色计数胶囊——数量为 0 时也能一眼看出这条泳道是什么状态。
+   色值取自泳道卡片的状态色（同一状态两处一色，不另起一套）。 */
+.dsh-pm-np-col-head::before {
+  content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%;
+}
+/* 六阶段色点/胶囊由 STAGE_COLORS 插值（REQ-260930182521-4fee FR-1） */
+.dsh-pm-np-col[data-col="todo"] .dsh-pm-np-col-head::before { background: #c7c7cc; box-shadow: 0 0 0 3px rgba(199,199,204,0.15); }
+.dsh-pm-np-col[data-col="todo"] .dsh-pm-np-col-count { background: rgba(199,199,204,0.12); color: rgb(155,155,159); }
+.dsh-pm-np-col[data-col="in_progress"] .dsh-pm-np-col-head::before { background: #0071e3; box-shadow: 0 0 0 3px rgba(0,113,227,0.15); }
+.dsh-pm-np-col[data-col="in_progress"] .dsh-pm-np-col-count { background: rgba(0,113,227,0.12); color: rgb(0,88,177); }
+.dsh-pm-np-col[data-col="integrating"] .dsh-pm-np-col-head::before { background: #8e44ad; box-shadow: 0 0 0 3px rgba(142,68,173,0.15); }
+.dsh-pm-np-col[data-col="integrating"] .dsh-pm-np-col-count { background: rgba(142,68,173,0.12); color: rgb(111,53,135); }
+.dsh-pm-np-col[data-col="testing"] .dsh-pm-np-col-head::before { background: #ff9500; box-shadow: 0 0 0 3px rgba(255,149,0,0.15); }
+.dsh-pm-np-col[data-col="testing"] .dsh-pm-np-col-count { background: rgba(255,149,0,0.12); color: rgb(199,116,0); }
+.dsh-pm-np-col[data-col="in_review"] .dsh-pm-np-col-head::before { background: #e91e63; box-shadow: 0 0 0 3px rgba(233,30,99,0.15); }
+.dsh-pm-np-col[data-col="in_review"] .dsh-pm-np-col-count { background: rgba(233,30,99,0.12); color: rgb(182,23,77); }
+.dsh-pm-np-col[data-col="done"] .dsh-pm-np-col-head::before { background: #34c759; box-shadow: 0 0 0 3px rgba(52,199,89,0.15); }
+.dsh-pm-np-col[data-col="done"] .dsh-pm-np-col-count { background: rgba(52,199,89,0.12); color: rgb(41,155,69); }
+.dsh-pm-np-col-body {
+  flex: 1 1 auto; min-height: 0;
+  /* 2026-09-24 实测修复：grid auto 行会把卡片压到 min-height、标题溢出到下一卡（视觉重叠）；
+     回到设计稿最早版的 flex 竖排——行高随内容，卡片平铺不重叠。 */
+  display: flex; flex-direction: column; gap: 5px;
+  overflow-y: auto; overflow-x: hidden; padding: 0 6px 8px;
+}
+.dsh-pm-np-col-body::-webkit-scrollbar { width: 4px; }
+.dsh-pm-np-col-body::-webkit-scrollbar-thumb { background: rgba(0,0,0,.14); border-radius: 2px; }
+.dsh-pm-np-col-body::-webkit-scrollbar-track { background: transparent; }
+/* 泳道卡片 = 苹果风白底小圆角阴影（设计稿定稿：border none + 9px radius + 轻阴影），列内占满宽度。
+   用户裁定 2026-09-23：文字全部展示（允许换行、去掉省略号）；2026-09-24 用户裁定（截图定稿）：卡片高度随内容（去掉 grid-auto-rows:1fr 的拉伸等高），列高随内容包裹，只保留 min-height 44px 兜底。
+   2026-09-24 用户裁定再修订：全文换行实测难看——标题改两行 clamp（与 DAG 节点一致），卡片高度两档（1 行/2 行）整齐平铺。 */
+.dsh-pm-np-card {
+  display: flex; flex-direction: column; gap: 2px; text-align: left; cursor: pointer;
+  background: #fff; border: none; border-radius: 9px; padding: 6px 8px; font: inherit;
+  width: 100%; min-height: 44px; box-sizing: border-box; flex: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  overflow: hidden;
+}
+.dsh-pm-np-card[data-action="open-doc"]:hover { box-shadow: 0 3px 10px rgba(0,0,0,.13); }
+.dsh-pm-np-card-id {
+  font-family: ui-monospace, monospace; font-size: 10px; line-height: 12px; color: #a3abb8;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; flex: none;
+}
+/* 无任务卡文档的编号旁标记（2026-09-24 用户裁定：替代旧标题「（无任务卡）」后缀）：灰色淡化文档图标 */
+.dsh-pm-np-nodoc { filter: grayscale(1); opacity: .45; font-size: 10px; margin-left: 3px; }
+.dsh-pm-np-card-title {
+  font-size: 11.5px; font-weight: 500; line-height: 15px; color: #1f2733; letter-spacing: -.005em;
+  flex: none; white-space: normal; word-break: break-word;
+  /* 两行 clamp（与 DAG 节点一致；全文不换行=卡片又高又乱，用户裁定 2026-09-24） */
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+/* 卡片带对应状态颜色：淡底（苹果风，无左边条；用户裁定 2026-09-23）。
+   2026-09-24 用户裁定：DAG 节点与泳道卡片共用同一套六状态色（原 DAG 只有 done 绿 / 其余一律蓝两档，与泳道不一致）。 */
+/* 六阶段卡片底色由 STAGE_COLORS 插值（REQ-260930182521-4fee FR-1，色值唯一源见 dag/card-types.ts） */
+.dsh-pm-np-card[data-status="todo"], .dsh-pm-np-dag-node[data-status="todo"] { background: #fafafa; }
+.dsh-pm-np-card[data-status="in_progress"], .dsh-pm-np-dag-node[data-status="in_progress"] { background: rgba(0,113,227,.06); }
+.dsh-pm-np-card[data-status="integrating"], .dsh-pm-np-dag-node[data-status="integrating"] { background: rgba(142,68,173,.07); }
+.dsh-pm-np-card[data-status="testing"], .dsh-pm-np-dag-node[data-status="testing"] { background: rgba(255,149,0,.08); }
+.dsh-pm-np-card[data-status="in_review"], .dsh-pm-np-dag-node[data-status="in_review"] { background: rgba(233,30,99,.06); }
+.dsh-pm-np-card[data-status="done"], .dsh-pm-np-dag-node[data-status="done"] { background: rgba(52,199,89,.08); }
+/* 链未生成（卡片层契约 2026-09-28）：chain 卡缺链必须与 solo 卡视觉可分，否则"没子卡"两种含义又混回去。 */
+.dsh-pm-np-chain-missing { display: inline-block; margin-top: 2px; padding: 0 5px; border-radius: 4px; font-size: 10px; background: rgba(240,160,32,.16); color: #a86a00; }
+
+/* ===== 执行流程三段 ===== */
+.dsh-pm-np-sec { display: flex; flex-direction: column; gap: 6px; }
+.dsh-pm-np-sec-title { font-size: 12.5px; font-weight: 600; color: var(--dsh-pm-np-text); letter-spacing: .01em; }
+.dsh-pm-np-policy {
+  background: var(--dsh-pm-np-bg); border-radius: 8px; padding: 7px 11px;
+  font-size: 12.5px; color: var(--dsh-pm-np-text2);
+}
+.dsh-pm-np-inj-tpl { font-size: 12px; color: var(--dsh-pm-np-text2); display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.dsh-pm-np-doc {
+  border: none; background: transparent; padding: 0; cursor: pointer; font: inherit;
+  color: var(--dsh-pm-np-blue); font-size: 12px; text-decoration: none;
+}
+.dsh-pm-np-doc:hover { text-decoration: underline; }
+.dsh-pm-np-shell { font-size: 12px; color: var(--dsh-pm-np-text3); }
+.dsh-pm-np-inj-entry { display: flex; flex-direction: column; gap: 5px; }
+.dsh-pm-np-inj-meta { font-size: 11.5px; color: var(--dsh-pm-np-text3); }
+.dsh-pm-np-inj-meta code { font-family: ui-monospace, monospace; background: var(--dsh-pm-np-bg); border-radius: 4px; padding: 1px 5px; }
+.dsh-pm-np-inj-frags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+
+/* 执行动作对照行 */
+.dsh-pm-np-act { display: flex; align-items: baseline; gap: 8px; }
+.dsh-pm-np-act-mark { flex: none; font-size: 12px; }
+.dsh-pm-np-act-label { flex: 1 1 auto; min-width: 0; font-size: 12.5px; color: var(--dsh-pm-np-text); }
+.dsh-pm-np-act-ev { flex: none; font-size: 11.5px; color: var(--dsh-pm-np-text3); }
+.dsh-pm-np-act[data-done="yes"] .dsh-pm-np-act-label { color: var(--dsh-pm-np-text2); }
+
+/* 隔离留痕 */
+.dsh-pm-np-iso {
+  display: flex; flex-direction: column; gap: 4px; background: var(--dsh-pm-np-bg);
+  border-radius: 8px; padding: 8px 11px;
+}
+.dsh-pm-np-iso-status { font-size: 11px; font-weight: 600; color: var(--dsh-pm-np-blue); text-transform: uppercase; letter-spacing: .03em; }
+.dsh-pm-np-iso[data-status="replaced"] .dsh-pm-np-iso-status { color: var(--dsh-pm-np-amber); }
+.dsh-pm-np-iso[data-status="rejected"] .dsh-pm-np-iso-status { color: var(--dsh-pm-np-red); }
+.dsh-pm-np-iso-meta { font-size: 11px; color: var(--dsh-pm-np-text3); }
+.dsh-pm-np-iso-reason { font-size: 12px; color: var(--dsh-pm-np-text2); }
+
+/* 验收单统计 */
+.dsh-pm-np-stats { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.dsh-pm-np-stat { font-size: 12.5px; color: var(--dsh-pm-np-text2); }
+.dsh-pm-np-stat.is-pass { color: #248a3d; }
+.dsh-pm-np-stat.is-fail { color: var(--dsh-pm-np-red); }
+.dsh-pm-np-stat.is-pending { color: var(--dsh-pm-np-amber); }
+
+/* 归档 */
+.dsh-pm-np-archive-badge {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  background: rgba(52,199,89,.14); color: #248a3d; border-radius: 980px;
+  padding: 4px 12px; font-size: 12.5px; font-weight: 600;
+}
+.dsh-pm-np-conclusion { font-size: 13px; color: var(--dsh-pm-np-text); line-height: 1.5; }
+
+/* 数据新鲜度（REQ-261001124111-5d36 FR-2 / FR-3 / FR-5）：陈旧必须看得见、失败必须响亮。
+   三块共用一套视觉（浅底 + 左侧 3px 色条），只换颜色不换形态——不引入第三种"提示样式"。
+   色值一律取自本文件既有 token（--dsh-pm-np-{text3,amber,red,blue}），不新增色值。 */
+.dsh-pm-np-fresh { flex: none; font-size: 11px; color: var(--dsh-pm-np-text3); white-space: nowrap; }
+.dsh-pm-np-fresh.is-stale { color: var(--dsh-pm-np-amber); font-weight: 600; }
+.dsh-pm-np-fresh-err, .dsh-pm-np-build-notice {
+  display: block; width: 100%; box-sizing: border-box; text-align: left;
+  font-size: 12px; line-height: 1.5; border-radius: 6px; padding: 6px 10px;
+  border-left: 3px solid var(--dsh-pm-np-red); background: rgba(220,53,69,.08); color: var(--dsh-pm-np-red);
+}
+.dsh-pm-np-build-notice {
+  border-left-color: var(--dsh-pm-np-blue); background: rgba(0,113,227,.08); color: var(--dsh-pm-np-blue);
+  font-family: inherit; cursor: pointer;
+}
+.dsh-pm-np-build-notice:hover { text-decoration: underline; }
+
+/**
+ * RTM 追溯关系可视化样式（REQ-260926140539-457b FR-6）
+ */
+
+/* 追溯容器 */
+.dsh-pm-traceability-container {
+  padding: 16px;
+}
+
+/* 空状态 */
+.dsh-pm-traceability-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--dsw-text-secondary, #6b7280);
+}
+
+.dsh-pm-empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.dsh-pm-empty-text {
+  font-size: 16px;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.dsh-pm-empty-hint {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+/* 覆盖度摘要 */
+.dsh-pm-coverage-summary {
+  margin-bottom: 24px;
+}
+
+.dsh-pm-coverage-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.dsh-pm-coverage-card {
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-border, #e5e7eb);
+  background: var(--dsw-bg-primary, #ffffff);
+}
+
+.dsh-pm-coverage-card.dsh-pm-coverage-success {
+  border-left: 4px solid #28a745;
+}
+
+.dsh-pm-coverage-card.dsh-pm-coverage-warning {
+  border-left: 4px solid #ff9800;
+}
+
+.dsh-pm-coverage-card.dsh-pm-coverage-danger {
+  border-left: 4px solid #dc3545;
+}
+
+.dsh-pm-coverage-title {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
+.dsh-pm-coverage-rate {
+  font-size: 32px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.dsh-pm-coverage-success .dsh-pm-coverage-rate {
+  color: #28a745;
+}
+
+.dsh-pm-coverage-warning .dsh-pm-coverage-rate {
+  color: #ff9800;
+}
+
+.dsh-pm-coverage-danger .dsh-pm-coverage-rate {
+  color: #dc3545;
+}
+
+.dsh-pm-coverage-detail {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.dsh-pm-coverage-uncovered {
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(220,53,69,.12);
+  border-radius: 4px;
+  font-size: 12px;
+  color: #dc3545;
+}
+
+/* 追溯关系图 */
+.dsh-pm-traceability-graph {
+  margin-bottom: 24px;
+}
+
+.dsh-pm-trace-columns {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.dsh-pm-trace-column {
+  border: 1px solid var(--dsw-border, #e5e7eb);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dsh-pm-trace-column-header {
+  padding: 12px;
+  background: var(--dsw-bg-primary, #ffffff);
+  border-bottom: 1px solid var(--dsw-border, #e5e7eb);
+  font-weight: 500;
+  font-size: 13px;
+  text-align: center;
+}
+
+.dsh-pm-trace-nodes {
+  padding: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.dsh-pm-trace-node {
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-radius: 4px;
+  border: 1px solid var(--dsw-border, #e5e7eb);
+  background: var(--dsw-bg-secondary, #f3f4f6);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.dsh-pm-trace-node:hover {
+  background: var(--dsw-hover, rgba(0,0,0,.04));
+  border-color: var(--dsw-accent, #0969da);
+}
+
+.dsh-pm-trace-node.dsh-pm-trace-selected {
+  background: var(--dsw-active, rgba(9,105,218,.10));
+  border-color: var(--dsw-accent, #0969da);
+  color: var(--dsw-text-primary, #1f2328);
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.dsh-pm-trace-node.dsh-pm-trace-related {
+  background: var(--dsw-bg-secondary, #f3f4f6);
+  border-color: var(--dsw-bg-secondary, #f3f4f6);
+  opacity: 0.9;
+}
+
+.dsh-pm-trace-node-id {
+  font-family: ui-monospace, monospace;
+}
+
+.dsh-pm-trace-hint {
+  text-align: center;
+  font-size: 13px;
+  color: var(--dsw-text-secondary, #6b7280);
+  padding: 12px;
+  background: var(--dsw-bg-secondary, #f3f4f6);
+  border-radius: 4px;
+}
+
+/* 追溯矩阵 */
+.dsh-pm-traceability-matrix {
+  margin-top: 24px;
+}
+
+.dsh-pm-fold {
+  border: 1px solid var(--dsw-border, #e5e7eb);
+  border-radius: 4px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.dsh-pm-fold summary {
+  padding: 12px 16px;
+  cursor: pointer;
+  background: var(--dsw-bg-primary, #ffffff);
+  user-select: none;
+}
+
+.dsh-pm-fold summary:hover {
+  background: var(--dsw-hover, rgba(0,0,0,.04));
+}
+
+.dsh-pm-fold[open] summary {
+  border-bottom: 1px solid var(--dsw-border, #e5e7eb);
+}
+
+.dsh-pm-trace-table {
+  padding: 12px;
+}
+
+.dsh-pm-trace-row {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  background: var(--dsw-bg-primary, #ffffff);
+  border: 1px solid var(--dsw-border, #e5e7eb);
+}
+
+.dsh-pm-trace-row:last-child {
+  margin-bottom: 0;
+}
+
+.dsh-pm-trace-cell {
+  padding: 0 8px;
+}
+
+.dsh-pm-trace-from {
+  flex: 0 0 200px;
+  font-weight: 500;
+  color: var(--dsw-accent, #0969da);
+}
+
+.dsh-pm-trace-arrow {
+  flex: 0 0 30px;
+  text-align: center;
+  opacity: 0.5;
+}
+
+.dsh-pm-trace-to {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dsh-pm-trace-tag {
+  display: inline-block;
+  padding: 4px 8px;
+  background: var(--dsw-bg-secondary, #f3f4f6);
+  color: var(--dsw-text-primary, #1f2328);
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+}
+
+/* 响应式布局 */
+@media (max-width: 1200px) {
+  .dsh-pm-trace-columns {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .dsh-pm-trace-columns {
+    grid-template-columns: 1fr;
+  }
+  
+  .dsh-pm-coverage-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- 真 DAG 面板（demo ⑤ 的看板版；皮肤 = 会话面板 np 苹果风） ---- */
+/* 底色 = 泳道图底色（--dsh-pm-np-bg / #f5f5f7，与 [泳道] 页签的列底一致）。 */
+.dsh-pm-dag-panel {
+  border: 1px solid var(--dsh-pm-np-line-soft);
+  border-radius: 12px; overflow: hidden;
+  background: var(--dsh-pm-np-bg);
+}
+.dsh-pm-dag-head {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 11px 13px 9px;
+  border-bottom: 1px solid var(--dsh-pm-np-line-soft);
+  background: var(--dsh-pm-np-bg);
+}
+.dsh-pm-dag-sub { font-size: 11.5px; color: var(--dsh-pm-np-text3); }
+.dsh-pm-dag-seg { display: flex; gap: 4px; margin-left: auto; }
+.dsh-pm-dag-seg + .dsh-pm-dag-seg { margin-left: 0; }
+.dsh-pm-dag-btn {
+  font: inherit; font-size: 11.5px; line-height: 1; padding: 4px 10px;
+  border-radius: 980px; cursor: pointer;
+  border: 1px solid var(--dsh-pm-np-line);
+  background: #fff;
+  color: var(--dsh-pm-np-text2);
+}
+.dsh-pm-dag-btn:hover { border-color: var(--dsh-pm-np-blue); color: var(--dsh-pm-np-blue); }
+.dsh-pm-dag-btn.is-on { background: var(--dsh-pm-np-blue); border-color: var(--dsh-pm-np-blue); color: #fff; }
+
+/* ---- 画布滚动区（高度上限内滚动；宽度自适应由 canvas 自己按容器重排） ---- */
+.dsh-pm-dag-canvas-wrap { padding: 0 13px 6px; overflow: auto; max-height: 640px; }
+.dsh-pm-dag-canvas-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+.dsh-pm-dag-canvas-wrap::-webkit-scrollbar-track { background: var(--dsh-pm-np-bg); border-radius: 4px; }
+.dsh-pm-dag-canvas-wrap::-webkit-scrollbar-thumb { background: var(--dsh-pm-np-line); border-radius: 4px; }
+.dsh-pm-dag-canvas-wrap::-webkit-scrollbar-thumb:hover { background: var(--dsh-pm-np-text3); }
+.dsh-pm-dag-canvas { display: block; }
+
+/* ---- 图例 ---- */
+.dsh-pm-dag-legend {
+  display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px;
+  color: var(--dsh-pm-np-text2); padding: 7px 13px 12px;
+}
+.dsh-pm-dag-legend i {
+  display: inline-block; width: 16px; height: 3px; border-radius: 2px;
+  vertical-align: middle; margin-right: 5px;
+}
+
+html, body { margin: 0; background: #f5f6f8; }
+body { font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; color: #1d1d1f; }
+.baseline-bar { position: sticky; top: 0; z-index: 20; background: #7a2f2f; color: #fff; padding: 9px 16px; font-size: 12px; }
+.baseline-wrap { max-width: 1180px; margin: 16px auto 60px; padding: 0 16px; }
+.baseline-note { margin: 0 0 12px; padding: 9px 12px; background: #fff; border: 1px dashed rgba(128,128,128,.4); border-radius: 8px; font-size: 12px; color: #444; }
+</style></head>
+<body>
+<div class="baseline-bar"><b>现状基线 · 重构前的需求详情页</b> ｜ 用真实 render 函数（buildReqDetail）+ 真实 CSS 渲染 ｜ 标本数据虚构（与重构稿同一套，保证可比）</div>
+<div class="baseline-wrap">
+  <div class="baseline-note">
+    ⚠️ 与真实页面的差异（已在生成器里显式处理，不静默）：① 五个异步取数区（当前阶段详情 / 注入 / 条款接收 / 追溯 / Token）在真实页面是点开或切 Tab 后才取，
+    本标本已内联为静态 mock，否则标本只剩骨架、无法评审信息架构；② 其余（详情头 / 进度点 / 操作条 / 闸门提示 / 描述 / 文档记录 / 统计 / DAG 画布 / 任务表 / 时间线 / 评论 / 验收 / 归档）均为真实渲染输出。
+  </div>
+  
+    <div class="dsh-pm-detail" data-detail-req="REQ-261004201530-7f3c">
+      <div class="dsh-pm-detail-head">
+        <button type="button" class="dsh-pm-btn" data-action="back" title="返回看板">← 看板</button>
+        <span class="dsh-pm-card-id">REQ-261004201530-7f3c</span>
+        <span class="dsh-pm-status" data-status="implementing">实施</span>
+        
+        <button type="button" class="dsh-pm-window" data-action="jump-session" data-sid="session-w-3643cb19" title="立项来源窗口（点击跳转到该会话）：session-w-3643cb19">窗口 w-w</button>
+        <span class="dsh-pm-detail-updated">10-04 23:41</span>
+        <h1 class="dsh-pm-detail-title">看板验收单支持逐项驳回并自动生成返工卡</h1>
+        <div class="dsh-pm-progress-dots">
+        <div class="dsh-pm-dot-wrapper completed">
+          <div class="dsh-pm-dot"></div>
+          <span class="dsh-pm-dot-label">立项</span>
+        </div>
+        <div class="dsh-pm-dot-wrapper completed">
+          <div class="dsh-pm-dot"></div>
+          <span class="dsh-pm-dot-label">需求分析</span>
+        </div>
+        <div class="dsh-pm-dot-wrapper completed">
+          <div class="dsh-pm-dot"></div>
+          <span class="dsh-pm-dot-label">设计</span>
+        </div>
+        <div class="dsh-pm-dot-wrapper completed">
+          <div class="dsh-pm-dot"></div>
+          <span class="dsh-pm-dot-label">拆分</span>
+        </div>
+        <div class="dsh-pm-dot-wrapper current">
+          <div class="dsh-pm-dot"></div>
+          <span class="dsh-pm-dot-label">实施</span>
+        </div>
+        <div class="dsh-pm-dot-wrapper ">
+          <div class="dsh-pm-dot"></div>
+          <span class="dsh-pm-dot-label">验收</span>
+        </div>
+        <div class="dsh-pm-dot-wrapper ">
+          <div class="dsh-pm-dot"></div>
+          <span class="dsh-pm-dot-label">完成</span>
+        </div>
+        <div class="dsh-pm-dot-wrapper ">
+          <div class="dsh-pm-dot"></div>
+          <span class="dsh-pm-dot-label">归档</span>
+        </div></div>
+      </div>
+      <div class="dsh-pm-action-bar" data-req="REQ-261004201530-7f3c"><span class="dsh-pm-action-bar-label">本阶段操作</span><button type="button" class="dsh-pm-btn" data-action="move-req" data-to="canceled" data-id="REQ-261004201530-7f3c" title="取消该需求立项（仅人可操作）">立项取消</button><button type="button" class="dsh-pm-btn primary" data-action="move-req" data-to="accepting" data-id="REQ-261004201530-7f3c" title="提交验收；任务全部完成时系统会自动推进">→ 验收</button></div>
+      <div class="dsh-pm-gate">实施中：任务全部完成时自动进入验收，人可在上方操作条提交验收。</div>
+      
+    <div class="dsh-pm-tabs">
+      <button type="button" class="dsh-pm-tab active" data-action="switch-tab" data-tab="overview">📋 概览</button>
+      <button type="button" class="dsh-pm-tab" data-action="switch-tab" data-tab="execution">⚙️ 执行</button>
+      <button type="button" class="dsh-pm-tab" data-action="switch-tab" data-tab="timeline">📅 时间线</button>
+      <button type="button" class="dsh-pm-tab" data-action="switch-tab" data-tab="archive">📦 归档</button>
+      <button type="button" class="dsh-pm-tab" data-action="switch-tab" data-tab="traceability">🔗 追溯</button>
+      <button type="button" class="dsh-pm-tab" data-action="switch-tab" data-tab="token">🪙 Token</button>
+    </div>
+      
+    <!-- 📋 概览 Tab（默认显示；REQ-6f39b5 对齐 prototype：描述 → 当前阶段高亮卡 → 文档）-->
+    <div class="dsh-pm-tab-content active" data-tab-content="overview">
+      <div class="dsh-pm-section">
+        <h3 class="dsh-pm-section-title">📄 需求描述</h3>
+        <div class="dsh-pm-section-content">
+          <div class="dsh-pm-md"><p>验收单支持对单项点「驳回并给意见」；驳回后自动生成一张返工子卡挂到原任务下，并把意见写进卡的 acceptance；返工卡走完 dev→review→test 后回到验收单待裁决。</p></div>
+        </div>
+      </div>
+      <details class="dsh-pm-fold" open>
+        <summary class="dsh-pm-section-title">🎯 当前阶段详情</summary>
+        <div class="dsh-pm-stage-current">
+          <div class="dsh-pm-stage-current-title">实施（implementing）</div>
+          <div class="dsh-pm-stage-detail" id="dsh-pm-stage-detail-container"><div class="dsh-pm-note">实施中 · 4/11 完成 · 剩 7 · 进行中 t-002-review ｜ 最近动态 2 分钟前</div><div style="font-size:12px;margin-top:8px"><b>进行中（1）</b><br>◐ t-002-review 复核验收单驳回交互 · w-b262610a · 已跑 12m<br><br><b>已完成（4）</b><br>✓ t-001-dev / t-001-review / t-001-test / t-002-dev<br><br><b>待开始（6）</b><br>○ t-002-test / t-003-dev / t-003-review …</div></div>
+        </div>
+      </details>
+      <details class="dsh-pm-fold">
+        <summary class="dsh-pm-section-title">💉 本次注入（只读）</summary>
+        <div class="dsh-pm-section-content" id="dsh-pm-injection-info-container"><div class="dsh-pm-note">implementing/expert · routeKey implementing-expert-v3 · 命中 exact · 4 片段 · 6 240 字符 · 23:12</div></div>
+      </details>
+      <details class="dsh-pm-fold">
+        <summary class="dsh-pm-section-title">📁 文档记录</summary>
+        <div class="dsh-pm-section-content"><ul class="dsh-pm-doc-list"><li data-doc-path="docs/requirements/REQ-261004201530-7f3c/requirement.md"><span class="dsh-pm-doc-icon">📄</span><span class="dsh-pm-doc-label">需求文档 · requirement.md</span><button type="button" class="dsh-pm-doc-path" data-action="open-doc" data-path="docs/requirements/REQ-261004201530-7f3c/requirement.md" title="docs/requirements/REQ-261004201530-7f3c/requirement.md">docs/requirements/REQ-261004201530-7f3c/requirement.md</button></li><li data-doc-path="docs/requirements/REQ-261004201530-7f3c/design/architecture.md"><span class="dsh-pm-doc-icon">📐</span><span class="dsh-pm-doc-label">设计文档 · architecture.md</span><button type="button" class="dsh-pm-doc-path" data-action="open-doc" data-path="docs/requirements/REQ-261004201530-7f3c/design/architecture.md" title="docs/requirements/REQ-261004201530-7f3c/design/architecture.md">docs/requirements/REQ-261004201530-7f3c/design/architecture.md</button></li><li data-doc-path="docs/requirements/REQ-261004201530-7f3c/design/interfaces.md"><span class="dsh-pm-doc-icon">📐</span><span class="dsh-pm-doc-label">设计文档 · interfaces.md</span><button type="button" class="dsh-pm-doc-path" data-action="open-doc" data-path="docs/requirements/REQ-261004201530-7f3c/design/interfaces.md" title="docs/requirements/REQ-261004201530-7f3c/design/interfaces.md">docs/requirements/REQ-261004201530-7f3c/design/interfaces.md</button></li><li data-doc-path="docs/requirements/REQ-261004201530-7f3c/design/frontend.md"><span class="dsh-pm-doc-icon">📐</span><span class="dsh-pm-doc-label">设计文档 · frontend.md</span><button type="button" class="dsh-pm-doc-path" data-action="open-doc" data-path="docs/requirements/REQ-261004201530-7f3c/design/frontend.md" title="docs/requirements/REQ-261004201530-7f3c/design/frontend.md">docs/requirements/REQ-261004201530-7f3c/design/frontend.md</button></li><li data-doc-path="docs/requirements/REQ-261004201530-7f3c/decomposition.md"><span class="dsh-pm-doc-icon">🧩</span><span class="dsh-pm-doc-label">拆分计划 · decomposition.md</span><button type="button" class="dsh-pm-doc-path" data-action="open-doc" data-path="docs/requirements/REQ-261004201530-7f3c/decomposition.md" title="docs/requirements/REQ-261004201530-7f3c/decomposition.md">docs/requirements/REQ-261004201530-7f3c/decomposition.md</button></li><li data-doc-path="docs/requirements/REQ-261004201530-7f3c/tasks/t-002-dev.md"><span class="dsh-pm-doc-icon">🗂️</span><span class="dsh-pm-doc-label">任务卡 · t-002-dev.md</span><button type="button" class="dsh-pm-doc-path" data-action="open-doc" data-path="docs/requirements/REQ-261004201530-7f3c/tasks/t-002-dev.md" title="docs/requirements/REQ-261004201530-7f3c/tasks/t-002-dev.md">docs/requirements/REQ-261004201530-7f3c/tasks/t-002-dev.md</button></li></ul></div>
+      </details>
+    </div>
+
+    <!-- ⚙️ 执行 Tab（REQ-6f39b5 严格对齐 prototype：统计卡片 + DAG + 任务表格）-->
+    <div class="dsh-pm-tab-content" data-tab-content="execution">
+      <div class="dsh-pm-stats">
+        <div class="dsh-pm-stat"><div class="dsh-pm-stat-label">总任务</div><div class="dsh-pm-stat-value">11</div></div>
+        <div class="dsh-pm-stat dsh-pm-stat-success"><div class="dsh-pm-stat-label">已完成</div><div class="dsh-pm-stat-value">5</div></div>
+        <div class="dsh-pm-stat"><div class="dsh-pm-stat-label">开发中</div><div class="dsh-pm-stat-value">2</div></div>
+        <div class="dsh-pm-stat"><div class="dsh-pm-stat-label">待开始</div><div class="dsh-pm-stat-value">4</div></div>
+      </div>
+      <div class="dsh-pm-dag-panel" id="dag-canvas-container"><div class="dsh-pm-dag-head"><span class="dsh-pm-dag-sub">节点 = 顶层卡 · 连线 = 依赖边 · 箭头只标每卡一条入边（所有依赖边照画） · 悬停看上下游 · 单击打开任务卡文档 · 双击打开任务详情</span><span class="dsh-pm-dag-seg"><button type="button" class="dsh-pm-dag-btn is-on" data-dag-dir="vertical">纵向</button><button type="button" class="dsh-pm-dag-btn" data-dag-dir="horizontal">横向</button></span><span class="dsh-pm-dag-seg"><button type="button" class="dsh-pm-dag-btn" data-dag-toggle="crit">关键路径</button><button type="button" class="dsh-pm-dag-btn" data-dag-toggle="focus">只看主线</button></span></div><div class="dsh-pm-dag-canvas-wrap" data-dag-wrap><canvas id="dag-canvas" class="dsh-pm-dag-canvas"></canvas></div><div class="dsh-pm-dag-legend"><span><i style="background:rgba(52,199,89,.5)"></i>已完成链路</span><span><i style="background:rgba(0,0,0,.17)"></i>入边箭头（每卡一条）</span><span><i style="background:rgba(0,0,0,.09)"></i>冗余前置（浅色无箭头）</span><span><i style="background:rgba(0,0,0,.09);height:1px"></i>跨层绕行（虚线）</span><span><i style="background:rgba(0,113,227,.75);height:2px"></i>关键路径</span><span>🟠 上游（它依赖谁）</span><span>🔵 下游（谁依赖它）</span><span>🟢 呼吸点 = 可开工</span></div></div>
+      <div class="dsh-pm-section">
+        <h3 class="dsh-pm-section-title">📋 任务列表</h3>
+        
+    <table class="dsh-pm-task-table">
+      <thead><tr><th>状态</th><th>任务</th><th>阶段</th><th>依赖</th><th>负责人</th><th>操作</th></tr></thead>
+      <tbody>
+      <tr data-action="open-task" data-task="t-001">
+        <td><span class="dsh-pm-task-status done">✓ 已完成</span></td>
+        <td>子卡链模板：返工卡生成</td>
+        <td>实施</td>
+        <td>-</td>
+        <td>-</td>
+        <td><span class="dsh-pm-link">查看</span></td>
+      </tr>
+      <tr data-action="open-task" data-task="t-001-dev">
+        <td><span class="dsh-pm-task-status done">✓ 已完成</span></td>
+        <td>子卡链模板：返工卡生成（dev）</td>
+        <td>实施</td>
+        <td>-</td>
+        <td>w-w</td>
+        <td><span class="dsh-pm-link">查看</span></td>
+      </tr>
+      <tr data-action="open-task" data-task="t-001-review">
+        <td><span class="dsh-pm-task-status done">✓ 已完成</span></td>
+        <td>子卡链模板：返工卡生成（review）</td>
+        <td>评审</td>
+        <td>-</td>
+        <td>-</td>
+        <td><span class="dsh-pm-link">查看</span></td>
+      </tr>
+      <tr data-action="open-task" data-task="t-001-test">
+        <td><span class="dsh-pm-task-status done">✓ 已完成</span></td>
+        <td>子卡链模板：返工卡生成（test）</td>
+        <td>测试</td>
+        <td>-</td>
+        <td>-</td>
+        <td><span class="dsh-pm-link">查看</span></td>
+      </tr>
+      <tr data-action="open-task" data-task="t-002">
+        <td><span class="dsh-pm-task-status in_progress">◐ 开发中</span></td>
+        <td>验收单逐项驳回 UI</td>
+        <td>实施</td>
+        <td>-</td>
+        <td>-</td>
+        <td><span class="dsh-pm-link">查看</span></td>
+      </tr>
+      <tr data-action="open-task" data-task="t-002-dev">
+        <td><span class="dsh-pm-task-status done">✓ 已完成</span></td>
+        <td>验收单逐项驳回 UI（dev）</td>
+        <td>实施</td>
+        <td>-</td>
+        <td>w-w</td>
+        <td><span class="dsh-pm-link">查看</span></td>
+      </tr>
+      <tr data-action="open-task" data-task="t-002-review">
+        <td><span class="dsh-pm-task-status in_progress">◐ 开发中</span></td>
+        <td>验收单逐项驳回 UI（review）</td>
+        <td>评审</td>
+        <td>-</td>
+        <td>w-w</td>
+        <td><span class="dsh-pm-link">查看</span></td>
+      </tr>
+      <tr data-action="open-task" data-task="t-002-test">
+        <td><span class="dsh-pm-task-status todo">○ 待开始</span></td>
+        <td>验收单逐项驳回 UI（test）</td>
+        <td>测试</td>
+        <td>-</td>
+        <td>-</td>
+        <td><span class="dsh-pm-link">查看</span></td>
+      </tr>
+      <tr data-action="open-task" data-task="t-003">
+        <td><span class="dsh-pm-task-status todo">○ 待开始</span></td>
+        <td>RTM 回流与覆盖度</td>
+        <td>实施</td>
+        <td>-</td>
+        <td>-</td>
+        <td><span class="dsh-pm-link">查看</span></td>
+      </tr>
+      <tr data-action="open-task" data-task="t-003-dev">
+        <td><span class="dsh-pm-task-status todo">○ 待开始</span></td>
+        <td>RTM 回流与覆盖度（dev）</td>
+        <td>实施</td>
+        <td>-</td>
+        <td>-</td>
+        <td><span class="dsh-pm-link">查看</span></td>
+      </tr>
+      <tr data-action="open-task" data-task="t-003-review">
+        <td><span class="dsh-pm-task-status todo">○ 待开始</span></td>
+        <td>RTM 回流与覆盖度（review）</td>
+        <td>评审</td>
+        <td>-</td>
+        <td>-</td>
+        <td><span class="dsh-pm-link">查看</span></td>
+      </tr></tbody>
+    </table>
+      </div>
+    </div>
+
+    <!-- 📅 时间线 Tab -->
+    <div class="dsh-pm-tab-content" data-tab-content="timeline">
+      <div class="dsh-pm-section">
+        <h3 class="dsh-pm-section-title">📅 状态变更记录</h3>
+        <div class="dsh-pm-section-content"><div class="dsh-pm-timeline"><div class="dsh-pm-tl-row" data-status="draft"><span class="dsh-pm-tl-label">立项</span><span class="dsh-pm-tl-time">10-04 22:28</span><span class="dsh-pm-tl-dur">停留 3 分</span><span class="dsh-pm-tl-by">human</span></div><div class="dsh-pm-tl-row" data-status="brainstorming"><span class="dsh-pm-tl-label">需求分析</span><span class="dsh-pm-tl-time">10-04 22:31</span><span class="dsh-pm-tl-dur">停留 17 分</span><span class="dsh-pm-tl-by">agent w-w</span></div><div class="dsh-pm-tl-row" data-status="design"><span class="dsh-pm-tl-label">设计</span><span class="dsh-pm-tl-time">10-04 22:48</span><span class="dsh-pm-tl-dur">停留 14 分</span><span class="dsh-pm-tl-by">agent w-w</span></div><div class="dsh-pm-tl-row" data-status="decomposing"><span class="dsh-pm-tl-label">拆分</span><span class="dsh-pm-tl-time">10-04 23:02</span><span class="dsh-pm-tl-dur">停留 10 分</span><span class="dsh-pm-tl-by">agent w-w</span></div><div class="dsh-pm-tl-row current" data-status="implementing"><span class="dsh-pm-tl-label">实施</span><span class="dsh-pm-tl-time">10-04 23:13</span><span class="dsh-pm-tl-dur">已停留 27 分</span><span class="dsh-pm-tl-by">agent w-w</span></div><div class="dsh-pm-tl-row pending" data-status="accepting"><span class="dsh-pm-tl-label">验收</span><span class="dsh-pm-tl-time">—</span><span class="dsh-pm-tl-dur"></span></div><div class="dsh-pm-tl-row pending" data-status="archived"><span class="dsh-pm-tl-label">归档</span><span class="dsh-pm-tl-time">—</span><span class="dsh-pm-tl-dur"></span></div><div class="dsh-pm-tl-total">创建 10-04 22:28 · 至今 1 小时 13 分</div></div></div>
+      </div>
+      <div class="dsh-pm-section">
+        <h3 class="dsh-pm-section-title">💬 评论<span class="dsh-pm-fold-count">2 条</span></h3>
+        <div class="dsh-pm-section-content">
+          <div class="dsh-pm-comments">
+    <div class="dsh-pm-comment" data-actor="human">
+      <span class="dsh-pm-comment-meta"><span class="dsh-pm-comment-who" data-actor="human">人</span> · 10-04 22:56</span>
+      <div class="dsh-pm-comment-body">[文档变更] 计划 v2：把 t2 拆成 dev/review/test 三段，粒度对齐子卡模板</div>
+    </div>
+    <div class="dsh-pm-comment" data-actor="agent">
+      <span class="dsh-pm-comment-meta"><span class="dsh-pm-comment-who" data-actor="agent">窗口 w-w</span> · 10-04 23:31</span>
+      <div class="dsh-pm-comment-body">退回返工：验收单驳回后需保留原意见与责任卡</div>
+    </div></div>
+          <div class="dsh-pm-comment-form" data-actor="human">
+            <input type="text" class="dsh-pm-input" data-role="comment-input" placeholder="写评论（以「人」身份记录）…" />
+            <button type="button" class="dsh-pm-btn" data-action="add-comment" data-target="req" data-id="REQ-261004201530-7f3c">发送</button>
+          </div>
+        </div>
+      </div>
+      <div class="dsh-pm-section">
+        <h3 class="dsh-pm-section-title">🏷 条款接收状态<span class="dsh-pm-fold-count">谁接了 / 还没人接</span></h3>
+        <div class="dsh-pm-section-content">
+          <div id="dsh-pm-marks-container"><div style="font-size:12px"><div style="color:#b42318">🔴 未被接收：FR-5（返工卡回流 RTM）</div><div>✅ FR-1 · FR-2 · FR-3 · FR-4 已被任务接收</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    
+    <!-- 🔗 追溯 Tab（REQ-260926140539-457b FR-6）：双向绑定的追溯关系可视化 -->
+    <div class="dsh-pm-tab-content" data-tab-content="traceability">
+      <div id="dsh-pm-traceability-container"><div class="dsh-pm-note">三级覆盖度：需求←设计 4/5（缺 FR-5）· 设计←任务 3/3 · 任务←测试 2/3<br>（真实页面为覆盖度卡 + 四列关系图 + 3 个矩阵表）</div></div>
+    </div>
+
+    <!-- 🪙 Token Tab（REQ-a33899 t6）：按需求看 token 去向 + 固定/注入提示词成本 -->
+    <div class="dsh-pm-tab-content" data-tab-content="token">
+      <div id="dsh-pm-token-container"><div class="dsh-pm-note">累计 1.84M（输入 1.62M / 输出 218K / 缓存命中 71%）· 按节点 7 列表格（真实页面）</div></div>
+    </div>
+
+    <!-- 📦 归档 Tab -->
+    <div class="dsh-pm-tab-content" data-tab-content="archive">
+      <div class="dsh-pm-section">
+        <h3 class="dsh-pm-section-title">✅ 验收（人工审核）</h3>
+        <div class="dsh-pm-section-content"><div class="dsh-pm-block is-empty">窗口尚未提交验收材料。人工审核前需要证据：窗口用 <code>reqboard_verify_submit</code> 提交「做了什么 + 怎么验的 + 看到什么结果」。</div></div>
+      </div>
+      <div class="dsh-pm-section">
+        <h3 class="dsh-pm-section-title">📦 归档（文档合并）</h3>
+        <div class="dsh-pm-section-content"><div class="dsh-pm-block is-empty">归档在需求完成（done）后进行；不同需求类型的必填文档与合并去向见 agent-dh/docs/architecture/requirement-archive.md。</div></div>
+      </div>
+    </div>
+    </div>
+</div>
+<script>
+/* 标本查看器：真实页面的 Tab 切换由 board-mount 处理，此处内联等价实现（只切显隐，不改 DOM 结构）。 */
+(function () {
+  var q = new URLSearchParams(location.search);
+  function show(name) {
+    document.querySelectorAll('.dsh-pm-tab').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.tab === name);
+    });
+    document.querySelectorAll('.dsh-pm-tab-content').forEach(function (c) {
+      c.classList.toggle('active', c.dataset.tabContent === name);
+    });
+  }
+  document.querySelectorAll('.dsh-pm-tab').forEach(function (b) {
+    b.addEventListener('click', function () { show(b.dataset.tab); });
+  });
+  show(q.get('tab') || 'overview');
+})();
+</script>
+</body></html>

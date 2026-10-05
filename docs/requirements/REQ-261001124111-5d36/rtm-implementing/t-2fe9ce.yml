@@ -1,0 +1,38 @@
+task:
+  id: t-2fe9ce
+  title: 刷新调度器：纯逻辑 + 假计时器单测·测试
+  status: done
+  implements: |-
+    新建 src/client/panel-refresh.ts，按 design/interfaces.md 落 RefreshReason / PanelFreshness / PanelRefreshOptions / PanelRefresh / createPanelRefresh。语义：start() 立即 refresh('open') 并起周期；intervalMs=0 只拉一次；在飞时 refresh() 立即返回且不发新请求；失败不调 onData、failureCount++、lastError 截断 120 字符；成功清错并更新 fetchedAt；stale = fetchedAt 缺失 || now()-fetchedAt > staleAfterMs（跃迁时 onChange）；stop() 用代际计数作废在飞响应。计时器/时钟全部可注入（默认 setInterval/clearInterval/Date.now）。零 React/DOM/服务端 import。
+
+    [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+  serves: []
+  depends_on:
+    - t-de821b
+  phase: implement
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261001124111-5d36
+    TASK_ID: t-2fe9ce
+    TASK_TITLE: 刷新调度器：纯逻辑 + 假计时器单测·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-01T04:54:00.732Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261001124111-5d36
+  generated_at: 2026-10-01T04:53:53.163Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-01T05:18:23.358Z

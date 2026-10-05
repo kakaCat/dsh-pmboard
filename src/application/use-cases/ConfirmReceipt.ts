@@ -28,6 +28,7 @@ import {
 } from '../internal/confirm-settle.js'
 import { targetConfirmedInLedger } from '../internal/pending-guard.js'
 import { reject, agentIdFromExec, requireLiveDriver } from '../internal/support.js'
+import { requirementStoreOf } from './queue-access.js'
 
 export async function confirmReceipt(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
   const windowKey = agentIdFromExec(deps, exec)
@@ -48,7 +49,8 @@ export async function confirmReceipt(deps: UseCaseDeps, args: unknown, exec: any
     )
   }
 
-  const req = deps.repo.snapshot().requirements.find(r => r.id === rec.requirementId)
+  // t8：读点已迁到新端口（`requirementStoreOf` 缺装配即抛，不静默走回整册读）。
+  const req = await requirementStoreOf(deps).get(rec.requirementId)
   if (req === undefined) {
     reject('reqboard_confirm_receipt 未执行：需求 ' + rec.requirementId + ' 不在台账中', 'REQBOARD_STORE_INCONSISTENT')
   }

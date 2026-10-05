@@ -6,6 +6,45 @@
  * （面板内容根）或是 .dsh-pm-cprog-detail-panel（本面板唯一外壳，无其他页面使用）——
  * 看板其他页面零影响。变量一律 --dsh-pm-np-* 前缀，不污染全局。
  */
+import { STAGE_COLORS, type TaskLaneKey } from '../dag/card-types'
+
+/** 六阶段 key（色值唯一源 = card-types.ts 的 STAGE_COLORS；此处只取 key 顺序）。 */
+const LANE_KEYS = Object.keys(STAGE_COLORS) as TaskLaneKey[]
+
+/** hex 主色 → 同色半透明（色点光晕 / 计数胶囊底色），避免在样式层另写第二套色值。 */
+function tint(hex: string, alpha: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex)
+  if (m === null) return hex
+  const n = parseInt(m[1], 16)
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + alpha + ')'
+}
+
+/** hex 主色 → 加深（计数胶囊文字用，保证浅底上的可读性）。 */
+function shade(hex: string, factor: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex)
+  if (m === null) return hex
+  const n = parseInt(m[1], 16)
+  const ch = (v: number) => Math.max(0, Math.min(255, Math.round(v * factor)))
+  return 'rgb(' + ch((n >> 16) & 255) + ',' + ch((n >> 8) & 255) + ',' + ch(n & 255) + ')'
+}
+
+/**
+ * 卡片底色规则（泳道卡片 .dsh-pm-np-card 与 DAG 节点 .dsh-pm-np-dag-node 同款 data-status）。
+ * REQ-260930182521-4fee FR-1：底色一律取自 STAGE_COLORS——两视图同阶段必然同色。
+ */
+const LANE_CARD_BG_CSS = LANE_KEYS
+  .map(k => '.dsh-pm-np-card[data-status="' + k + '"], .dsh-pm-np-dag-node[data-status="' + k + '"] { background: ' + STAGE_COLORS[k].bg + '; }')
+  .join('\n')
+
+/** 列头状态色点 + 计数胶囊（色值同源 STAGE_COLORS.fg，不在此另写色值）。 */
+const LANE_HEAD_CSS = LANE_KEYS
+  .map(k => {
+    const fg = STAGE_COLORS[k].fg
+    return '.dsh-pm-np-col[data-col="' + k + '"] .dsh-pm-np-col-head::before { background: ' + fg + '; box-shadow: 0 0 0 3px ' + tint(fg, 0.15) + '; }\n' +
+      '.dsh-pm-np-col[data-col="' + k + '"] .dsh-pm-np-col-count { background: ' + tint(fg, 0.12) + '; color: ' + shade(fg, 0.78) + '; }'
+  })
+  .join('\n')
+
 export const NODE_PANEL_CSS = `
 /* ===== Apple 风设计令牌（本面板私有） ===== */
 :root {
@@ -22,10 +61,12 @@ export const NODE_PANEL_CSS = `
   --dsh-pm-np-amber: #ff9500;
 }
 
-/* ===== 面板外壳：锚定下拉（唯一使用方 = 会话流程面板） ===== */
+/* ===== 面板外壳：与会话框左边对齐的下拉（唯一使用方 = 会话流程面板） ===== */
+/* 宽度/高度按**会话框**收敛（不是视口）：面板与会话框最左边对齐，见 board.ts 的定位说明 */
 .dsh-pm-cprog-detail-panel {
-  width: min(720px, calc(100vw - 130px));
-  max-height: 68vh; overflow-y: auto;
+  box-sizing: border-box;
+  width: min(720px, calc(100% - 32px));
+  max-height: min(68vh, calc(100vh - 120px)); overflow-y: auto;
   background: #fff; border: 1px solid var(--dsh-pm-np-line);
   border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.18);
   padding: 12px 14px; color: var(--dsh-pm-np-text);
@@ -185,18 +226,9 @@ export const NODE_PANEL_CSS = `
    色值取自泳道卡片的状态色（同一状态两处一色，不另起一套）。 */
 .dsh-pm-np-col-head::before {
   content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%;
-  background: #c7c7cc; box-shadow: 0 0 0 3px rgba(199,199,204,.18);
 }
-.dsh-pm-np-col[data-col="in_progress"] .dsh-pm-np-col-head::before { background: #0071e3; box-shadow: 0 0 0 3px rgba(0,113,227,.15); }
-.dsh-pm-np-col[data-col="in_progress"] .dsh-pm-np-col-count { background: rgba(0,113,227,.12); color: #0071e3; }
-.dsh-pm-np-col[data-col="integrating"] .dsh-pm-np-col-head::before { background: #8e44ad; box-shadow: 0 0 0 3px rgba(142,68,173,.15); }
-.dsh-pm-np-col[data-col="integrating"] .dsh-pm-np-col-count { background: rgba(142,68,173,.12); color: #8e44ad; }
-.dsh-pm-np-col[data-col="testing"] .dsh-pm-np-col-head::before { background: #ff9500; box-shadow: 0 0 0 3px rgba(255,149,0,.16); }
-.dsh-pm-np-col[data-col="testing"] .dsh-pm-np-col-count { background: rgba(255,149,0,.14); color: #b26a00; }
-.dsh-pm-np-col[data-col="in_review"] .dsh-pm-np-col-head::before { background: #e91e63; box-shadow: 0 0 0 3px rgba(233,30,99,.14); }
-.dsh-pm-np-col[data-col="in_review"] .dsh-pm-np-col-count { background: rgba(233,30,99,.12); color: #e91e63; }
-.dsh-pm-np-col[data-col="done"] .dsh-pm-np-col-head::before { background: #34c759; box-shadow: 0 0 0 3px rgba(52,199,89,.16); }
-.dsh-pm-np-col[data-col="done"] .dsh-pm-np-col-count { background: rgba(52,199,89,.14); color: #1d8a3c; }
+/* 六阶段色点/胶囊由 STAGE_COLORS 插值（REQ-260930182521-4fee FR-1） */
+${LANE_HEAD_CSS}
 .dsh-pm-np-col-body {
   flex: 1 1 auto; min-height: 0;
   /* 2026-09-24 实测修复：grid auto 行会把卡片压到 min-height、标题溢出到下一卡（视觉重叠）；
@@ -232,12 +264,8 @@ export const NODE_PANEL_CSS = `
 }
 /* 卡片带对应状态颜色：淡底（苹果风，无左边条；用户裁定 2026-09-23）。
    2026-09-24 用户裁定：DAG 节点与泳道卡片共用同一套六状态色（原 DAG 只有 done 绿 / 其余一律蓝两档，与泳道不一致）。 */
-.dsh-pm-np-card[data-status="todo"], .dsh-pm-np-dag-node[data-status="todo"] { background: #fafafa; }
-.dsh-pm-np-card[data-status="in_progress"], .dsh-pm-np-dag-node[data-status="in_progress"] { background: rgba(0,113,227,.06); }
-.dsh-pm-np-card[data-status="integrating"], .dsh-pm-np-dag-node[data-status="integrating"] { background: rgba(142,68,173,.07); }
-.dsh-pm-np-card[data-status="testing"], .dsh-pm-np-dag-node[data-status="testing"] { background: rgba(255,149,0,.08); }
-.dsh-pm-np-card[data-status="in_review"], .dsh-pm-np-dag-node[data-status="in_review"] { background: rgba(233,30,99,.06); }
-.dsh-pm-np-card[data-status="done"], .dsh-pm-np-dag-node[data-status="done"] { background: rgba(52,199,89,.08); }
+/* 六阶段卡片底色由 STAGE_COLORS 插值（REQ-260930182521-4fee FR-1，色值唯一源见 dag/card-types.ts） */
+${LANE_CARD_BG_CSS}
 /* 链未生成（卡片层契约 2026-09-28）：chain 卡缺链必须与 solo 卡视觉可分，否则"没子卡"两种含义又混回去。 */
 .dsh-pm-np-chain-missing { display: inline-block; margin-top: 2px; padding: 0 5px; border-radius: 4px; font-size: 10px; background: rgba(240,160,32,.16); color: #a86a00; }
 
@@ -292,4 +320,20 @@ export const NODE_PANEL_CSS = `
   padding: 4px 12px; font-size: 12.5px; font-weight: 600;
 }
 .dsh-pm-np-conclusion { font-size: 13px; color: var(--dsh-pm-np-text); line-height: 1.5; }
+
+/* 数据新鲜度（REQ-261001124111-5d36 FR-2 / FR-3 / FR-5）：陈旧必须看得见、失败必须响亮。
+   三块共用一套视觉（浅底 + 左侧 3px 色条），只换颜色不换形态——不引入第三种"提示样式"。
+   色值一律取自本文件既有 token（--dsh-pm-np-{text3,amber,red,blue}），不新增色值。 */
+.dsh-pm-np-fresh { flex: none; font-size: 11px; color: var(--dsh-pm-np-text3); white-space: nowrap; }
+.dsh-pm-np-fresh.is-stale { color: var(--dsh-pm-np-amber); font-weight: 600; }
+.dsh-pm-np-fresh-err, .dsh-pm-np-build-notice {
+  display: block; width: 100%; box-sizing: border-box; text-align: left;
+  font-size: 12px; line-height: 1.5; border-radius: 6px; padding: 6px 10px;
+  border-left: 3px solid var(--dsh-pm-np-red); background: rgba(220,53,69,.08); color: var(--dsh-pm-np-red);
+}
+.dsh-pm-np-build-notice {
+  border-left-color: var(--dsh-pm-np-blue); background: rgba(0,113,227,.08); color: var(--dsh-pm-np-blue);
+  font-family: inherit; cursor: pointer;
+}
+.dsh-pm-np-build-notice:hover { text-decoration: underline; }
 `;

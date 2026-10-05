@@ -1,127 +1,24 @@
 # REQ-260930193929-897b 验收文档
 
-> 自动生成于 reqboard_submit(kind=verification) · 验收单 v1
+> 自动生成于 reqboard_submit(kind=verification) · 验收单 v2
 
-**交付结论**：交付结论：读盘类闸门现在按需求自己声明的工作区读盘。新增唯一收敛入口 applyRequirementWorkspaceRoot，两个读盘闸门（G2 完整性门 4 处 + 拆分内容硬门 3 处）共 7 处调用点全部接线；13 例测试全绿（正反双向 + 看板通道行为 + 存量兼容 + 防新增旁路），并用两次故障注入证明用例在缺陷存在时会变红。全量测试失败数 103 与类型错误数 213 均与改动前基线逐条一致（零新增）。9 张子卡的验收标准已补上可执行命令并逐条实跑核对（其中一条我最初写错期望值 7，实测为 9，已修正）。测试证据含全部 17 张任务卡的 covers 标注。
+**交付结论**：交付结论（第二轮）：读盘类闸门按需求自己声明的工作区读盘——唯一收敛入口 + 两个闸门共 7 处接线；13 例测试全绿，其中**新增 2 例显式 E2E 场景**（真实 HTTP → 仓储 → 状态机，断言需求状态 / 状态迁移历史 / 推进留痕三项可观察终态，另含反向「真缺文件不推进」），直接兑现上轮验收意见 v1-8。
 
-三点必须如实披露，不得在验收时被含糊掉：
+本轮验证口径的变化（必须说明）：返工时发现**仓基线已移动**（期间两个新提交合入，全量从 103 失败/213 类型错误变为 97 失败/192 类型错误，测试文件 266 → 295），我早先的基线不可再用于逐条对比。故改用**同一棵树的前后对比 + A/B 归因**：本次返工零新增失败；对失败清单里落在我改动领域内的文件（design-completeness-gate 等）做了最小 A/B——把我的校正改成真 no-op 后失败数完全不变，证明与本需求无关。
 
-① 范围外缺口（写入侧，本需求未覆盖）：批准计划时的落库把 queue.json 与 4 份任务卡**写进了另一个工作区**（dsh-notice-webhook），流程却报「落库成功」；同一错误根还导致 FR 覆盖门空过、RTM 条款接收全落成「未声明接收任何条款」。定位在 confirm-settle.ts:291 的 landPlanTasks——计划批准路径会跳过本需求所接的两处校正。物证已留 notes/，**建议另立需求**。
+仍需你在验收时裁决/知悉的四点：
 
-② 主机级实测未做：宿主经 ~/.dsh/profiles/web 软链加载本仓 dist/index.mjs，dist 构建于 20:23、改动在 20:26–20:41，需重建 dist 并重载宿主才能生效，而重载会终止本会话。故验证到「真实 HTTP 处理链」为止。是否重建 dist + 重载宿主请人决定。
+① **E2E 项读数仍会显示「无（缺口）」**：该读数只认 requirement.md 的测试策略表，而该文档已确认、平台禁止在 implementing 阶段重交（实测 REQBOARD_BAD_STATUS，回退 brainstorming 会作废既有确认）。我**撤回**了加节改动以保持磁盘与确认版本逐字节一致（零漂移）。请按「通过 + 写明理由」处置，理由可直接引 tests/test-evidence.md 的「返工响应」节。
 
-③ 工具通道（reqboard_confirm_artifact）只有接线位置的静态断言，没有行为用例——已在测试证据「失败与未跑项」如实列出，请不要读成"四通道行为全覆盖"。
+② 写入侧缺口（本需求未覆盖，建议另立）：批准计划时 queue.json 与 4 张任务卡被写进另一个工作区（dsh-notice-webhook），流程却报「落库成功」；同一错误根还导致 FR 覆盖门空过、RTM 条款接收全丢。物证已留 notes/。
+
+③ 主机级实测未做：宿主经软链加载本仓 dist/index.mjs，需重建 dist + 重载宿主才生效，而重载会终止本会话——是否执行请人决定。
+
+④ 工具通道（reqboard_confirm_artifact）只有接线位置的静态断言、无行为用例，已在测试证据「失败与未跑项」如实列出。
 
 ## 1. 验收列表
 
-### v1-1 · 把「按哪个工作区读文档」收敛成一个统一入口
-
-**验收内容**：【把「按哪个工作区读文档」收敛成一个统一入口】验收
-
-**操作步骤**：
-1. 1) 既有 workspace-root 相关用例全绿，且写侧行为与改造前逐字一致（无断言变化）
-2. 2) `rg -n "applyRequirementWorkspaceRoot" src/` 显示该函数已导出且写侧走委托
-3. 3) `pnpm typecheck` 无新增错误。
-
-**预期结果**：上述步骤全部执行成功，输出与「验收内容」描述一致即通过
-
-**实际结果**：（待填写）
-
-**验收状态**：⬜ 待验收
-
----
-
-### v1-2 · 让七个读文档的闸门都走这个统一入口
-
-**验收内容**：【让七个读文档的闸门都走这个统一入口】验收
-
-**操作步骤**：
-1. 1) 定向用例（会话根 ≠ 需求根、文档在需求根）经四条通道均放行、无 gate_failure
-2. 2) `rg -n "checkDesignCompletenessGate|checkDesignDecompositionGate" src/` 的每个调用点在读盘前都有校正调用
-3. 3) `pnpm typecheck` 无新增错误。
-
-**预期结果**：上述步骤全部执行成功，输出与「验收内容」描述一致即通过
-
-**实际结果**：（待填写）
-
-**验收状态**：⬜ 待验收
-
----
-
-### v1-3 · 用正反两组测试锁住：该放行的放行、该拦的照拦
-
-**验收内容**：【用正反两组测试锁住：该放行的放行、该拦的照拦】验收
-
-**操作步骤**：
-1. 1) `pnpm vitest run tests/design-gate-workspace-root.test.ts` 全绿，且其中反向用例断言 gate_failure.code = design_doc_incomplete 且缺口含「requirement.md 不存在」
-2. 2) 用例中断言「读盘前根确实等于需求根」，使替身空过变成明确失败
-3. 3) 全量 `pnpm vitest run` 与基线对比无新增失败（本仓存在存量失败，须先记基线数再比对）。
-
-**预期结果**：上述步骤全部执行成功，输出与「验收内容」描述一致即通过
-
-**实际结果**：（待填写）
-
-**验收状态**：⬜ 待验收
-
----
-
-### v1-4 · 确认老需求与看板路径不受影响，并写好回滚方式
-
-**验收内容**：【确认老需求与看板路径不受影响，并写好回滚方式】验收
-
-**操作步骤**：
-1. 1) 存量需求（无 workspaceRoot）用例通过，行为与修复前逐字一致
-2. 2) 看板通道用例通过（不依赖「最后一次会话残留的根」）
-3. 3) `pnpm typecheck` 通过
-4. 4) 回滚步骤可执行：还原 5 个源文件 + 删除新增测试文件，无数据迁移与残留状态。
-
-**预期结果**：上述步骤全部执行成功，输出与「验收内容」描述一致即通过
-
-**实际结果**：（待填写）
-
-**验收状态**：⬜ 待验收
-
----
-
-### v1-5 · 需求级验收
-
-**验收内容**：需求级：交付结论可复核（证据齐全、与设计一致、无范围蔓延）
-
-**操作步骤**：
-1. 需求级：交付结论可复核（证据齐全、与设计一致、无范围蔓延）
-
-**预期结果**：上述步骤全部执行成功，输出与「验收内容」描述一致即通过
-
-**实际结果**：（待填写）
-
-**验收状态**：⬜ 待验收
-
----
-
-### v1-7 · 需求级验收
-
-**验收内容**：验收项不可照着验（历史数据）：以下验收项没写「怎么验」——验收项 把「按哪个工作区读文档」收敛成一个统一入口·复核 缺「怎么验」（"对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据"）——只写断言词不算，必须给**可执行操作**：命令（npx/vitest/curl/pytest…）、可查数据（SQL/字段名）、或可达界面路径（打开某页→看什么）。否则验收只能靠相信，等于没验。；验收项 让七个读文档的闸门都走这个统一入口·复核 缺「怎么验」（"对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据"）——只写断言词不算，必须给**可执行操作**：命令（npx/vitest/curl/pytest…）、可查数据（SQL/字段名）、或可达界面路径（打开某页→看什么）。否则验收只能靠相信，等于没验。；验收项 用正反两组测试锁住：该放行的放行、该拦的照拦·复核 缺「怎么验」（"对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据"）——只写断言词不算，必须给**可执行操作**：命令（npx/vitest/curl/pytest…）、可查数据（SQL/字段名）、或可达界面路径（打开某页→看什么）。否则验收只能靠相信，等于没验。；验收项 确认老需求与看板路径不受影响，并写好回滚方式·复核 缺「怎么验」（"对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据"）——只写断言词不算，必须给**可执行操作**：命令（npx/vitest/curl/pytest…）、可查数据（SQL/字段名）、或可达界面路径（打开某页→看什么）。否则验收只能靠相信，等于没验。。请补可执行操作（命令/可查数据/界面路径）；本条不阻断验收，但必须有人看过并决定。
-
-**操作步骤**：
-1. 验收项不可照着验（历史数据）：以下验收项没写「怎么验」——验收项 把「按哪个工作区读文档」收敛成一个统一入口·复核 缺「怎么验」（"对设计与实现的偏离逐条给出结论
-2. 无偏离时显式写明「无偏离」及依据"）——只写断言词不算，必须给**可执行操作**：命令（npx/vitest/curl/pytest…）、可查数据（SQL/字段名）、或可达界面路径（打开某页→看什么）。否则验收只能靠相信，等于没验。
-3. 验收项 让七个读文档的闸门都走这个统一入口·复核 缺「怎么验」（"对设计与实现的偏离逐条给出结论
-4. 无偏离时显式写明「无偏离」及依据"）——只写断言词不算，必须给**可执行操作**：命令（npx/vitest/curl/pytest…）、可查数据（SQL/字段名）、或可达界面路径（打开某页→看什么）。否则验收只能靠相信，等于没验。
-5. 验收项 用正反两组测试锁住：该放行的放行、该拦的照拦·复核 缺「怎么验」（"对设计与实现的偏离逐条给出结论
-6. 无偏离时显式写明「无偏离」及依据"）——只写断言词不算，必须给**可执行操作**：命令（npx/vitest/curl/pytest…）、可查数据（SQL/字段名）、或可达界面路径（打开某页→看什么）。否则验收只能靠相信，等于没验。
-7. 验收项 确认老需求与看板路径不受影响，并写好回滚方式·复核 缺「怎么验」（"对设计与实现的偏离逐条给出结论
-8. 无偏离时显式写明「无偏离」及依据"）——只写断言词不算，必须给**可执行操作**：命令（npx/vitest/curl/pytest…）、可查数据（SQL/字段名）、或可达界面路径（打开某页→看什么）。否则验收只能靠相信，等于没验。。请补可执行操作（命令/可查数据/界面路径）
-9. 本条不阻断验收，但必须有人看过并决定。
-
-**预期结果**：上述步骤全部执行成功，输出与「验收内容」描述一致即通过
-
-**实际结果**：（待填写）
-
-**验收状态**：⬜ 待验收
-
----
-
-### v1-8 · 需求级验收
+### v2-1 · 需求级验收 · E2E 覆盖
 
 **验收内容**：E2E 覆盖：**无（缺口）**——本需求交付涉及多组件串联，但只交了单元/集成测试。请补一条端到端场景用例（断言可观察终态）；若确认无需 E2E，通过时必须在意见中写明理由。
 
@@ -139,18 +36,18 @@
 
 ## 2. 测试报告
 
-- 定向测试：node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts → Test Files 1 passed (1)；Tests 13 passed (13)
-- 全量回归对比基线：node_modules/.bin/vitest run → Tests 103 failed | 2641 passed | 20 skipped (2764)；改动前基线 103 failed | 2627 passed → 失败数持平（零新增），通过数 +14
-- 类型检查对比基线：node_modules/.bin/tsc --noEmit -p tsconfig.json → 213 条；按错误文本（规范化行号）与改动前基线比对 md5 完全一致（零新增、零消失）
-- 故障注入证据（证明用例不是空过）：停用 confirm-settle:103 的校正 → 拆分内容硬门用例变红并复现 fail-open；停用 ConfirmArtifact 的校正 → 静态断言精确报「ConfirmArtifact.ts:93 读盘前缺少根校正」。两次均已恢复，grep 确认无残留
-- 实现（唯一收敛入口）：src/application/internal/support.ts 新增 applyRequirementWorkspaceRoot + WorkspaceRootTargets 最小依赖面；写侧 syncWorkspaceRootForRequirement 改为委托它
-- 接线 7 处：src/application/use-cases/AskConfirm.ts:111、src/application/internal/confirm-settle.ts:103 与 :175、src/application/use-cases/ConfirmArtifact.ts:92 与 :197、src/http/routers/requirements.ts:48 与 :230（过滤命令实测为 7）
-- 测试文件：tests/design-gate-workspace-root.test.ts（13 例；过滤器实测：看板路径 2 通过、存量兼容 4 通过、反向 3 通过、防旁路 1 通过）
-- 评审报告：docs/requirements/REQ-260930193929-897b/reviews/self-review.md（内部自评；问题清单 5 项，含 3 项自身缺陷与 1 项范围外缺口）
-- 测试证据（含 17 张任务卡的 covers 标注）：docs/requirements/REQ-260930193929-897b/tests/test-evidence.md（环境/命令/基线对比/TC 对照/失败与未跑项/故障注入/covers）
-- 回滚说明：docs/requirements/REQ-260930193929-897b/notes/rollback.md（6 文件反向编辑清单、回滚后期望值、以及「不要用 git checkout」的实地警告）
+- E2E（验收返工项 v1-8 的交付）：node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t "E2E" → 2 passed。正向断言 4 项可观察终态（HTTP 200 + advanced=true + 无 gate_failure；status=decomposing；statusHistory 非空；评论含「看板一键确认产物」）；反向断言 advanced=false、gate_failure.code=design_doc_incomplete、status 留在 design
+- 本文件全量：node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts → 13 passed
+- 全量回归（当前树）：node_modules/.bin/vitest run → 97 failed | 2880 passed | 295 文件；与返工前**同一棵树**的 97 failed 持平 → 本次返工零新增失败
+- A/B 归因实验（关键证据）：把我的根校正临时改成真 no-op 后重跑 tests/design-completeness-gate.test.ts → 仍 5 failed / 11 passed，与生效时**一字不差** → 该领域内的存量失败与本需求无关（失败形态是「reqboard_move 本该拒绝却成功」，而 MoveRequirement.ts 的 mtime 是 09-29、只调 assertArtifactGates、从未被我触碰）
+- 类型检查：node_modules/.bin/tsc --noEmit -p tsconfig.json → 192 条（当前树基线）；改动/新增文件零错误。唯一命中的 src/http/routers/requirements.ts(459,23) 是**改动前基线里就存在**的同一处 cast 错误（当时 451 行，见改动前基线文本）
+- 实现（唯一收敛入口）：src/application/internal/support.ts 的 applyRequirementWorkspaceRoot + WorkspaceRootTargets；7 处接线见 tests/design-gate-workspace-root.test.ts 的防旁路静态断言
+- 测试文件：tests/design-gate-workspace-root.test.ts（13 例，含 E2E 两条）
+- 评审报告：docs/requirements/REQ-260930193929-897b/reviews/self-review.md（问题清单 6 项，含本轮 E2E 返工与读数限制的处置）
+- 测试证据：docs/requirements/REQ-260930193929-897b/tests/test-evidence.md（含「返工响应」节：E2E 用例表、读数限制说明、A/B 归因、covers 含 t-8cc56a）
+- 回滚说明：docs/requirements/REQ-260930193929-897b/notes/rollback.md（6 文件反向编辑清单 + 期望值 + 「不要用 git checkout」警告）
 - 本需求缺陷现场复现（立据）：19:45 设计确认落章成功但自动推进被拦，报「requirement.md 不存在」；磁盘实测该文件在盘上 13283 bytes 且落在需求声明的 workspaceRoot 下
-- 写入侧缺口物证（本需求未覆盖）：docs/requirements/REQ-260930193929-897b/notes/evidence-misplaced-decomposition.md——批准计划时 queue.json 与 4 份任务卡被写进 /Users/mac/Documents/ai/dsh/dsh-notice-webhook/...，定位在 confirm-settle.ts:291 的 landPlanTasks（该路径跳过 :103 与 :175 两处校正）
+- 写入侧缺口物证（本需求未覆盖，建议另立）：docs/requirements/REQ-260930193929-897b/notes/evidence-misplaced-decomposition.md——批准计划时 queue.json 与 4 份任务卡被写进 /Users/mac/Documents/ai/dsh/dsh-notice-webhook/...；定位在 confirm-settle.ts 的 landPlanTasks（该路径跳过两处校正）
 
 ## 3. 文档完整性检查
 
@@ -160,10 +57,4 @@
 
 | 编号 | 验收项 | 状态 | 验收人 | 验收时间 |
 |---|---|---|---|---|
-| v1-1 | 把「按哪个工作区读文档」收敛成一个统一入口 | ⬜ 待验收 |  |  |
-| v1-2 | 让七个读文档的闸门都走这个统一入口 | ⬜ 待验收 |  |  |
-| v1-3 | 用正反两组测试锁住：该放行的放行、该拦的照拦 | ⬜ 待验收 |  |  |
-| v1-4 | 确认老需求与看板路径不受影响，并写好回滚方式 | ⬜ 待验收 |  |  |
-| v1-5 | 需求级验收 | ⬜ 待验收 |  |  |
-| v1-7 | 需求级验收 | ⬜ 待验收 |  |  |
-| v1-8 | 需求级验收 | ⬜ 待验收 |  |  |
+| v2-1 | 需求级验收 · E2E 覆盖 | ⬜ 待验收 |  |  |

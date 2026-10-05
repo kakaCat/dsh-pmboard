@@ -1,0 +1,38 @@
+task:
+  id: t-f7f36e
+  title: 把数据放哪、长什么样定成纯函数：路径、摘要、日志行·测试
+  status: done
+  implements: |-
+    新增 3 个零 I/O 纯函数模块：① src/domain/requirement/ReqboardPaths.ts —— 数据根 / 热分片目录 / 7 个文件名（record.json、comments.jsonl、history.jsonl、artifacts.json、plan.json、verification.json、archive.json）/ 冷存目录的单一事实源，导出常量与 root、requirementDir、recordPath 等拼接函数，禁止 import node:；② src/domain/requirement/RequirementSummary.ts —— RequirementSummary 类型 + summarize(record) 投影（字段集见 design/data-model.md 的摘要投影节：id/title/status/category/blocked/paused/autoRun/createdAt/updatedAt/sourceSessionId/promptDifficulty/workspaceRoot/docBasePath/version/commentCount/artifactCount/advanceAlert）；③ src/domain/requirement/Journal.ts —— 日志行 encode/decode（comments 与 history 两种行）与 truncateByCount(lines, count) 有效前缀计算。配单测 tests/reqboard/domain-paths.test.ts、domain-summary.test.ts、domain-journal.test.ts。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-bc0732
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002161439-277d
+    TASK_ID: t-f7f36e
+    TASK_TITLE: 把数据放哪、长什么样定成纯函数：路径、摘要、日志行·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T08:42:53.956Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002161439-277d
+  generated_at: 2026-10-02T08:42:00.740Z
+  version: 5
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-02T10:16:10.828Z

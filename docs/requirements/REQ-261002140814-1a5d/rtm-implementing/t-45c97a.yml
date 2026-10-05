@@ -1,0 +1,36 @@
+task:
+  id: t-45c97a
+  title: 迁移兼容与端到端验证（无回填 + 类型清零 + 基线 + 构建）·测试
+  status: done
+  implements: |-
+    复核无 schemaVersion 变更、无迁移脚本、无历史数据回填（旧的 text 键评论保持原样，登记为已知残留）；跑 pnpm typecheck（本文件清零）、pnpm test（与基线 106 failed 比对）、pnpm build（C-11）；git diff --stat 核对改动面仅 3 个文件；人工端到端：pnpm build 后重启宿主，在一个 armed 需求上真调 reqboard_clear_pause，核对回执无报错且看板阶段评论可见。若未重启宿主，如实标注‘端到端未验证’。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-e3878a
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002140814-1a5d
+    TASK_ID: t-45c97a
+    TASK_TITLE: 迁移兼容与端到端验证（无回填 + 类型清零 + 基线 + 构建）·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-02T06:19:45.052Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002140814-1a5d
+  generated_at: 2026-10-02T06:19:39.917Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-02T06:26:10.485Z

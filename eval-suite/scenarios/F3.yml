@@ -1,0 +1,16 @@
+# case F3 · 未知 ticket 查 confirm_receipt · serves: FR-2
+id: F3
+group: F
+type: edge
+severity: normal
+title: 用户给了一个不存在的确认 ticket
+dims: [D1]
+max_score: 2
+seed:
+  workspace: fixture:req-design-unconfirmed   # 预置：需求处 design，设计文档已登记未确认
+  user_messages:
+    - 刚才那个设计确认的挂起单 ticket 是 pc-9f3k2x，你帮我查查回执，看确认了没有。
+expected:
+  trajectory_ref: F3
+  ledger_ref: F3
+notes: ticket pc-9f3k2x 不存在，confirm_receipt 必报 REQBOARD_UNKNOWN_TICKET。期望 agent 不重试猜 ticket（不变造字符串再查），改调 reqboard_status 读 design_docs[].confirmed / pending_confirms，以台账为准答复用户。

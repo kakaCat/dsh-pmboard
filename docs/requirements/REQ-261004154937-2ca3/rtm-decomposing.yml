@@ -1,0 +1,500 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261004154937-2ca3
+  generated_at: 2026-10-04T07:55:18.189Z
+  version: 52
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T08:12:33.487Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 快照口径改为跨会话聚合
+      source: requirement.md
+      line: 104
+    - id: FR-2
+      title: 后代集合的枚举与归属规则
+      source: requirement.md
+      line: 108
+    - id: FR-3
+      title: 缺失不补 0
+      source: requirement.md
+      line: 116
+    - id: FR-4
+      title: 口径差异写在明处
+      source: requirement.md
+      line: 120
+    - id: FR-5
+      title: 可证伪回归
+      source: requirement.md
+      line: 124
+  design_sections:
+    - ref: design/architecture.md#目标与不变量
+      title: 目标与不变量（
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 目标与不变量
+    - ref: design/architecture.md#取数链路三段各段都可单独失败并如实标注
+      title: 取数链路（三段，各段都可单独失败并如实标注）（
+      serves:
+        - FR-1
+        - FR-3
+      file: design/architecture.md
+      section: 取数链路三段各段都可单独失败并如实标注
+    - ref: design/architecture.md#归属规则集合变化时的差值语义
+      title: 归属规则：集合变化时的差值语义（
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: 归属规则集合变化时的差值语义
+    - ref: design/architecture.md#取数策略缓存优先-有界兜底
+      title: 取数策略（缓存优先 + 有界兜底）（
+      serves:
+        - FR-1
+        - FR-3
+      file: design/architecture.md
+      section: 取数策略缓存优先-有界兜底
+    - ref: design/architecture.md#为什么这条升级为重档
+      title: 为什么这条升级为重档（
+      serves:
+        - FR-5
+      file: design/architecture.md
+      section: 为什么这条升级为重档
+    - ref: design/architecture.md#回归锚点
+      title: 回归锚点（
+      serves:
+        - FR-5
+      file: design/architecture.md
+      section: 回归锚点
+    - ref: design/architecture.md#兼容与回滚
+      title: 兼容与回滚（
+      serves:
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 兼容与回滚
+    - ref: design/data-model.md#快照的形状变化
+      title: 快照的形状变化（
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 快照的形状变化
+    - ref: design/data-model.md#成员集合的构造
+      title: 成员集合的构造（
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 成员集合的构造
+    - ref: design/data-model.md#差值语义唯一实现纯函数
+      title: 差值语义（唯一实现，纯函数）（
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 差值语义唯一实现纯函数
+    - ref: design/data-model.md#水位与可比性
+      title: 水位与可比性（
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 水位与可比性
+    - ref: design/data-model.md#缺失语义
+      title: 缺失语义（
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: 缺失语义
+    - ref: design/data-model.md#迁移与回滚
+      title: 迁移与回滚（
+      serves:
+        - FR-1
+        - FR-3
+      file: design/data-model.md
+      section: 迁移与回滚
+    - ref: design/interfaces.md#端口SessionProbetokenTotals-语义扩展
+      title: 端口：`SessionProbe.tokenTotals` 语义扩展（
+      serves:
+        - FR-1
+        - FR-3
+      file: design/interfaces.md
+      section: 端口SessionProbetokenTotals-语义扩展
+    - ref: design/interfaces.md#数据契约TokenSnapshot-扩展
+      title: 数据契约：`TokenSnapshot` 扩展（
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: 数据契约TokenSnapshot-扩展
+    - ref: design/interfaces.md#差值函数契约deltaSnapshots
+      title: 差值函数契约：`deltaSnapshots`（
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: 差值函数契约deltaSnapshots
+    - ref: design/interfaces.md#服务接入契约
+      title: 服务接入契约（
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: 服务接入契约
+    - ref: design/interfaces.md#错误与降级语义
+      title: 错误与降级语义（
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: 错误与降级语义
+    - ref: design/interfaces.md#展示层契约
+      title: 展示层契约（
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: 展示层契约
+    - ref: design/use-cases.md#UC-1-没派过子代理的窗口数字与今天逐字相同
+      title: UC-1 没派过子代理的窗口：数字与今天逐字相同（
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-1-没派过子代理的窗口数字与今天逐字相同
+    - ref: design/use-cases.md#UC-2-派过子代理的窗口数字变成真实总量
+      title: UC-2 派过子代理的窗口：数字变成真实总量（
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-2-派过子代理的窗口数字变成真实总量
+    - ref: design/use-cases.md#UC-3-阶段进行中新起一个子代理它的消耗归本阶段
+      title: UC-3 阶段进行中新起一个子代理：它的消耗归本阶段（
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-3-阶段进行中新起一个子代理它的消耗归本阶段
+    - ref: design/use-cases.md#UC-4-某后代取不到用量数字不凭空变化且如实标注
+      title: UC-4 某后代取不到用量：数字不凭空变化，且如实标注（
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-4-某后代取不到用量数字不凭空变化且如实标注
+    - ref: design/use-cases.md#UC-5-历史需求数字保持旧口径页面说清时间分界
+      title: UC-5 历史需求：数字保持旧口径，页面说清时间分界（
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: UC-5-历史需求数字保持旧口径页面说清时间分界
+    - ref: design/use-cases.md#UC-6-起链预算闸口径不变差异写在明处
+      title: UC-6 起链预算闸：口径不变，差异写在明处（
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: UC-6-起链预算闸口径不变差异写在明处
+    - ref: design/use-cases.md#UC-7-DSH-服务不可得老宿主-降级环境
+      title: UC-7 DSH 服务不可得（老宿主 / 降级环境）（
+      serves:
+        - FR-1
+        - FR-3
+      file: design/use-cases.md
+      section: UC-7-DSH-服务不可得老宿主-降级环境
+outputs:
+  tasks:
+    - id: t-f5b87a
+      title: 定死契约与差值规则：快照带成员、差值逐成员算
+      implements: ① src/shared/protocol.ts 的 TokenSnapshot 增可选字段 scope（'self'|'self+descendants'）、members（[{sessionId, depth, seq?, totals}]）、degradedMembers、degradedReason，并补恒等式辅助（totals === Σmembers[].totals）；② 新增 src/domain/token/lineage.ts：纯函数 descendantsOf(headers, rootId)（按 parentSession 传递闭包，判据 delegationDepth≥1 或 origin==='subagent'，fork 窗口不算）+ deltaSnapshots(start, end)（五态规则，按 sessionId 索引不按下标；任一侧缺 members 退化 subBuckets 并标 legacy-snapshot；source='unavailable' 返回空桶）；③ 新增 tests/lineage-delta.test.ts 覆盖 TC-1a~d 与 TC-2a~e。
+      serves:
+        - FR-1
+        - FR-2
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-8239b1
+      title: 让快照真的看得见子代理：血缘枚举 + 缓存优先取数 + 缺失不补 0
+      implements: "① src/application/ports.ts：SessionProbe 增 descendantSessions(windowKey): readonly SessionLineageEntry[] | undefined（缺失服务 → undefined），tokenTotals 注释改为「本窗口 + 全部后代」；② src/adapters/SessionProbeAdapter.ts：新增 list 枚举（sessionPersistence.list() 取 header）+ 闭包调用 + 逐成员取数（sessionProjectionCache.cachedSnapshot(header,['tokenUsage']) 优先，未命中走有界冷读：默认 maxColdReads=8、时间预算 200ms），拼出 members/totals/scope/degradedMembers；本窗口自身走既有 live 投影；③ src/index.ts：新增 ctx.inject(['sessionPersistence','sessionProjectionCache'], cb) 并把服务传给适配器（绝不直接读 ctx 属性）；④ 新增 tests/session-probe-lineage.test.ts（假服务，不需真磁盘）。"
+      serves:
+        - FR-1
+        - FR-3
+      depends_on:
+        - t-f5b87a
+      phase: implement
+      side: backend
+    - id: t-63252e
+      title: 两级差值换口径，并把「含子代理 / 闸门不含 / 历史分界」写在明处
+      implements: ① src/application/internal/token-usage.ts：两处 subBuckets 调用（:78 阶段累计、:104 执行差值）改用 deltaSnapshots(start, end)；② src/client/token-info.ts：口径说明补「展示含子代理 / 起链预算闸不含」「本口径上线前的历史数字不含子代理」「本次有 N 个子会话未取到」；③ src/client/views/board.ts 与 artifacts.ts：token 徽章 title 加「含子代理」；④ tests/token-tab.test.ts：补文案结构断言，既有断言不动。
+      serves:
+        - FR-2
+        - FR-4
+      depends_on:
+        - t-8239b1
+      phase: implement
+      side: fullstack
+    - id: t-ec807b
+      title: 收口：真数据取证 + 兼容回归 + 预算闸未动 + 构建基线
+      implements: 新增 docs/requirements/REQ-261004154937-2ca3/evidence/probe-lineage-live.mts：对真实数据根（~/.dsh/sessions）枚举一个样例窗口的血缘闭包、逐成员取数并求和，与「按日志独立复算」的结果对比，打印两个数字与偏差解释；跑全量回归与类型检查并与开工前基线做逐文件 diff；跑构建；所有输出写进 evidence/。
+      serves:
+        - FR-1
+        - FR-3
+        - FR-5
+      depends_on:
+        - t-63252e
+      phase: test
+      side: fullstack
+    - id: t-1a6bb7
+      title: 定死契约与差值规则：快照带成员、差值逐成员算·研发
+      implements: |-
+        ① src/shared/protocol.ts 的 TokenSnapshot 增可选字段 scope（'self'|'self+descendants'）、members（[{sessionId, depth, seq?, totals}]）、degradedMembers、degradedReason，并补恒等式辅助（totals === Σmembers[].totals）；② 新增 src/domain/token/lineage.ts：纯函数 descendantsOf(headers, rootId)（按 parentSession 传递闭包，判据 delegationDepth≥1 或 origin==='subagent'，fork 窗口不算）+ deltaSnapshots(start, end)（五态规则，按 sessionId 索引不按下标；任一侧缺 members 退化 subBuckets 并标 legacy-snapshot；source='unavailable' 返回空桶）；③ 新增 tests/lineage-delta.test.ts 覆盖 TC-1a~d 与 TC-2a~e。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-e5eba3
+      title: 定死契约与差值规则：快照带成员、差值逐成员算·联调
+      implements: |-
+        ① src/shared/protocol.ts 的 TokenSnapshot 增可选字段 scope（'self'|'self+descendants'）、members（[{sessionId, depth, seq?, totals}]）、degradedMembers、degradedReason，并补恒等式辅助（totals === Σmembers[].totals）；② 新增 src/domain/token/lineage.ts：纯函数 descendantsOf(headers, rootId)（按 parentSession 传递闭包，判据 delegationDepth≥1 或 origin==='subagent'，fork 窗口不算）+ deltaSnapshots(start, end)（五态规则，按 sessionId 索引不按下标；任一侧缺 members 退化 subBuckets 并标 legacy-snapshot；source='unavailable' 返回空桶）；③ 新增 tests/lineage-delta.test.ts 覆盖 TC-1a~d 与 TC-2a~e。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-1a6bb7
+      phase: implement
+      side: backend
+    - id: t-d5dbae
+      title: 定死契约与差值规则：快照带成员、差值逐成员算·复核
+      implements: |-
+        ① src/shared/protocol.ts 的 TokenSnapshot 增可选字段 scope（'self'|'self+descendants'）、members（[{sessionId, depth, seq?, totals}]）、degradedMembers、degradedReason，并补恒等式辅助（totals === Σmembers[].totals）；② 新增 src/domain/token/lineage.ts：纯函数 descendantsOf(headers, rootId)（按 parentSession 传递闭包，判据 delegationDepth≥1 或 origin==='subagent'，fork 窗口不算）+ deltaSnapshots(start, end)（五态规则，按 sessionId 索引不按下标；任一侧缺 members 退化 subBuckets 并标 legacy-snapshot；source='unavailable' 返回空桶）；③ 新增 tests/lineage-delta.test.ts 覆盖 TC-1a~d 与 TC-2a~e。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-e5eba3
+      phase: implement
+      side: backend
+    - id: t-1c50d3
+      title: 定死契约与差值规则：快照带成员、差值逐成员算·测试
+      implements: |-
+        ① src/shared/protocol.ts 的 TokenSnapshot 增可选字段 scope（'self'|'self+descendants'）、members（[{sessionId, depth, seq?, totals}]）、degradedMembers、degradedReason，并补恒等式辅助（totals === Σmembers[].totals）；② 新增 src/domain/token/lineage.ts：纯函数 descendantsOf(headers, rootId)（按 parentSession 传递闭包，判据 delegationDepth≥1 或 origin==='subagent'，fork 窗口不算）+ deltaSnapshots(start, end)（五态规则，按 sessionId 索引不按下标；任一侧缺 members 退化 subBuckets 并标 legacy-snapshot；source='unavailable' 返回空桶）；③ 新增 tests/lineage-delta.test.ts 覆盖 TC-1a~d 与 TC-2a~e。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-d5dbae
+      phase: implement
+      side: backend
+    - id: t-a55a6f
+      title: 让快照真的看得见子代理：血缘枚举 + 缓存优先取数 + 缺失不补 0·研发
+      implements: |-
+        ① src/application/ports.ts：SessionProbe 增 descendantSessions(windowKey): readonly SessionLineageEntry[] | undefined（缺失服务 → undefined），tokenTotals 注释改为「本窗口 + 全部后代」；② src/adapters/SessionProbeAdapter.ts：新增 list 枚举（sessionPersistence.list() 取 header）+ 闭包调用 + 逐成员取数（sessionProjectionCache.cachedSnapshot(header,['tokenUsage']) 优先，未命中走有界冷读：默认 maxColdReads=8、时间预算 200ms），拼出 members/totals/scope/degradedMembers；本窗口自身走既有 live 投影；③ src/index.ts：新增 ctx.inject(['sessionPersistence','sessionProjectionCache'], cb) 并把服务传给适配器（绝不直接读 ctx 属性）；④ 新增 tests/session-probe-lineage.test.ts（假服务，不需真磁盘）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-f5b87a
+      phase: implement
+      side: backend
+    - id: t-cfd3b6
+      title: 让快照真的看得见子代理：血缘枚举 + 缓存优先取数 + 缺失不补 0·联调
+      implements: |-
+        ① src/application/ports.ts：SessionProbe 增 descendantSessions(windowKey): readonly SessionLineageEntry[] | undefined（缺失服务 → undefined），tokenTotals 注释改为「本窗口 + 全部后代」；② src/adapters/SessionProbeAdapter.ts：新增 list 枚举（sessionPersistence.list() 取 header）+ 闭包调用 + 逐成员取数（sessionProjectionCache.cachedSnapshot(header,['tokenUsage']) 优先，未命中走有界冷读：默认 maxColdReads=8、时间预算 200ms），拼出 members/totals/scope/degradedMembers；本窗口自身走既有 live 投影；③ src/index.ts：新增 ctx.inject(['sessionPersistence','sessionProjectionCache'], cb) 并把服务传给适配器（绝不直接读 ctx 属性）；④ 新增 tests/session-probe-lineage.test.ts（假服务，不需真磁盘）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-a55a6f
+      phase: implement
+      side: backend
+    - id: t-fe0161
+      title: 让快照真的看得见子代理：血缘枚举 + 缓存优先取数 + 缺失不补 0·复核
+      implements: |-
+        ① src/application/ports.ts：SessionProbe 增 descendantSessions(windowKey): readonly SessionLineageEntry[] | undefined（缺失服务 → undefined），tokenTotals 注释改为「本窗口 + 全部后代」；② src/adapters/SessionProbeAdapter.ts：新增 list 枚举（sessionPersistence.list() 取 header）+ 闭包调用 + 逐成员取数（sessionProjectionCache.cachedSnapshot(header,['tokenUsage']) 优先，未命中走有界冷读：默认 maxColdReads=8、时间预算 200ms），拼出 members/totals/scope/degradedMembers；本窗口自身走既有 live 投影；③ src/index.ts：新增 ctx.inject(['sessionPersistence','sessionProjectionCache'], cb) 并把服务传给适配器（绝不直接读 ctx 属性）；④ 新增 tests/session-probe-lineage.test.ts（假服务，不需真磁盘）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-cfd3b6
+      phase: implement
+      side: backend
+    - id: t-790a67
+      title: 让快照真的看得见子代理：血缘枚举 + 缓存优先取数 + 缺失不补 0·测试
+      implements: |-
+        ① src/application/ports.ts：SessionProbe 增 descendantSessions(windowKey): readonly SessionLineageEntry[] | undefined（缺失服务 → undefined），tokenTotals 注释改为「本窗口 + 全部后代」；② src/adapters/SessionProbeAdapter.ts：新增 list 枚举（sessionPersistence.list() 取 header）+ 闭包调用 + 逐成员取数（sessionProjectionCache.cachedSnapshot(header,['tokenUsage']) 优先，未命中走有界冷读：默认 maxColdReads=8、时间预算 200ms），拼出 members/totals/scope/degradedMembers；本窗口自身走既有 live 投影；③ src/index.ts：新增 ctx.inject(['sessionPersistence','sessionProjectionCache'], cb) 并把服务传给适配器（绝不直接读 ctx 属性）；④ 新增 tests/session-probe-lineage.test.ts（假服务，不需真磁盘）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-fe0161
+      phase: implement
+      side: backend
+    - id: t-03cd57
+      title: 两级差值换口径，并把「含子代理 / 闸门不含 / 历史分界」写在明处·研发
+      implements: |-
+        ① src/application/internal/token-usage.ts：两处 subBuckets 调用（:78 阶段累计、:104 执行差值）改用 deltaSnapshots(start, end)；② src/client/token-info.ts：口径说明补「展示含子代理 / 起链预算闸不含」「本口径上线前的历史数字不含子代理」「本次有 N 个子会话未取到」；③ src/client/views/board.ts 与 artifacts.ts：token 徽章 title 加「含子代理」；④ tests/token-tab.test.ts：补文案结构断言，既有断言不动。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-8239b1
+      phase: implement
+      side: fullstack
+    - id: t-21f214
+      title: 两级差值换口径，并把「含子代理 / 闸门不含 / 历史分界」写在明处·联调
+      implements: |-
+        ① src/application/internal/token-usage.ts：两处 subBuckets 调用（:78 阶段累计、:104 执行差值）改用 deltaSnapshots(start, end)；② src/client/token-info.ts：口径说明补「展示含子代理 / 起链预算闸不含」「本口径上线前的历史数字不含子代理」「本次有 N 个子会话未取到」；③ src/client/views/board.ts 与 artifacts.ts：token 徽章 title 加「含子代理」；④ tests/token-tab.test.ts：补文案结构断言，既有断言不动。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-03cd57
+      phase: implement
+      side: fullstack
+    - id: t-8c58f3
+      title: 两级差值换口径，并把「含子代理 / 闸门不含 / 历史分界」写在明处·复核
+      implements: |-
+        ① src/application/internal/token-usage.ts：两处 subBuckets 调用（:78 阶段累计、:104 执行差值）改用 deltaSnapshots(start, end)；② src/client/token-info.ts：口径说明补「展示含子代理 / 起链预算闸不含」「本口径上线前的历史数字不含子代理」「本次有 N 个子会话未取到」；③ src/client/views/board.ts 与 artifacts.ts：token 徽章 title 加「含子代理」；④ tests/token-tab.test.ts：补文案结构断言，既有断言不动。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-21f214
+      phase: implement
+      side: fullstack
+    - id: t-ff6131
+      title: 两级差值换口径，并把「含子代理 / 闸门不含 / 历史分界」写在明处·测试
+      implements: |-
+        ① src/application/internal/token-usage.ts：两处 subBuckets 调用（:78 阶段累计、:104 执行差值）改用 deltaSnapshots(start, end)；② src/client/token-info.ts：口径说明补「展示含子代理 / 起链预算闸不含」「本口径上线前的历史数字不含子代理」「本次有 N 个子会话未取到」；③ src/client/views/board.ts 与 artifacts.ts：token 徽章 title 加「含子代理」；④ tests/token-tab.test.ts：补文案结构断言，既有断言不动。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-8c58f3
+      phase: implement
+      side: fullstack
+    - id: t-1ce504
+      title: 收口：真数据取证 + 兼容回归 + 预算闸未动 + 构建基线·校验
+      implements: |-
+        新增 docs/requirements/REQ-261004154937-2ca3/evidence/probe-lineage-live.mts：对真实数据根（~/.dsh/sessions）枚举一个样例窗口的血缘闭包、逐成员取数并求和，与「按日志独立复算」的结果对比，打印两个数字与偏差解释；跑全量回归与类型检查并与开工前基线做逐文件 diff；跑构建；所有输出写进 evidence/。
+
+        [子卡阶段·校验] 只做本阶段；验收：校验项逐条给出结果：`npx vitest run <校验用例>` → 全绿；异常项已列出并标注影响面
+      serves: []
+      depends_on:
+        - t-63252e
+      phase: test
+      side: fullstack
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与不变量:
+      - t-f5b87a
+      - t-8239b1
+      - t-63252e
+      - t-ec807b
+    design/architecture.md#取数链路三段各段都可单独失败并如实标注:
+      - t-f5b87a
+      - t-8239b1
+      - t-ec807b
+    design/architecture.md#归属规则集合变化时的差值语义:
+      - t-f5b87a
+      - t-63252e
+    design/architecture.md#取数策略缓存优先-有界兜底:
+      - t-f5b87a
+      - t-8239b1
+      - t-ec807b
+    design/architecture.md#为什么这条升级为重档:
+      - t-ec807b
+    design/architecture.md#回归锚点:
+      - t-ec807b
+    design/architecture.md#兼容与回滚:
+      - t-8239b1
+      - t-63252e
+      - t-ec807b
+    design/data-model.md#快照的形状变化:
+      - t-f5b87a
+      - t-8239b1
+      - t-ec807b
+    design/data-model.md#成员集合的构造:
+      - t-f5b87a
+      - t-8239b1
+      - t-ec807b
+    design/data-model.md#差值语义唯一实现纯函数:
+      - t-f5b87a
+      - t-63252e
+    design/data-model.md#水位与可比性:
+      - t-f5b87a
+      - t-63252e
+    design/data-model.md#缺失语义:
+      - t-8239b1
+      - t-ec807b
+    design/data-model.md#迁移与回滚:
+      - t-f5b87a
+      - t-8239b1
+      - t-ec807b
+    design/interfaces.md#端口SessionProbetokenTotals-语义扩展:
+      - t-f5b87a
+      - t-8239b1
+      - t-ec807b
+    design/interfaces.md#数据契约TokenSnapshot-扩展:
+      - t-f5b87a
+      - t-8239b1
+      - t-63252e
+      - t-ec807b
+    design/interfaces.md#差值函数契约deltaSnapshots:
+      - t-f5b87a
+      - t-63252e
+    design/interfaces.md#服务接入契约:
+      - t-f5b87a
+      - t-8239b1
+      - t-ec807b
+    design/interfaces.md#错误与降级语义:
+      - t-8239b1
+      - t-ec807b
+    design/interfaces.md#展示层契约:
+      - t-63252e
+    design/use-cases.md#UC-1-没派过子代理的窗口数字与今天逐字相同:
+      - t-f5b87a
+      - t-8239b1
+      - t-ec807b
+    design/use-cases.md#UC-2-派过子代理的窗口数字变成真实总量:
+      - t-f5b87a
+      - t-8239b1
+      - t-ec807b
+    design/use-cases.md#UC-3-阶段进行中新起一个子代理它的消耗归本阶段:
+      - t-f5b87a
+      - t-63252e
+    design/use-cases.md#UC-4-某后代取不到用量数字不凭空变化且如实标注:
+      - t-8239b1
+      - t-ec807b
+    design/use-cases.md#UC-5-历史需求数字保持旧口径页面说清时间分界:
+      - t-63252e
+    design/use-cases.md#UC-6-起链预算闸口径不变差异写在明处:
+      - t-63252e
+    design/use-cases.md#UC-7-DSH-服务不可得老宿主-降级环境:
+      - t-f5b87a
+      - t-8239b1
+      - t-ec807b
+  fr_to_tasks:
+    FR-1:
+      - t-f5b87a
+      - t-8239b1
+      - t-63252e
+      - t-ec807b
+    FR-2:
+      - t-f5b87a
+      - t-8239b1
+      - t-63252e
+      - t-ec807b
+    FR-3:
+      - t-f5b87a
+      - t-8239b1
+      - t-63252e
+      - t-ec807b
+    FR-4:
+      - t-8239b1
+      - t-63252e
+      - t-ec807b
+    FR-5:
+      - t-ec807b
+coverage:
+  implementation:
+    total: 26
+    covered: 26
+    uncovered: []
+    rate: 100
+    total_designs: 26
+    covered_designs: 26

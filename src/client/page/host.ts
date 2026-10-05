@@ -14,6 +14,8 @@
 import { createElement, useEffect, useRef, type ReactNode } from 'react'
 import { attachBoard } from '../board-mount.ts'
 import { PANEL_ID } from '../dom.ts'
+// 样式表注入（幂等）：看板页面在屏即确认样式在场（含被 shell 按归属移除后的自愈）。
+import { injectStyles } from '../styles.ts'
 
 /** 槽位运行时注入的面板信息（GlobalStandardProps.usePanelInfo 的选择器投影）。 */
 export interface PanelInfoLike {
@@ -54,6 +56,8 @@ export function BoardPanelHost(props: BoardPanelHostProps = {}): ReactNode {
   useEffect(() => {
     const el = hostRef.current
     if (el === null) return
+    // 样式自愈：页面在屏即确认样式表在场（见 styles.ts 的「样式归属」说明）。
+    injectStyles()
     return attachBoard(el, { isActive: () => activeRef.current })
   }, [])
 

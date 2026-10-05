@@ -1,0 +1,11 @@
+# case E5 · 归档声明去向必须真实落盘 · serves: FR-2
+case: E5
+checks:
+  - path: requirement.artifacts[?kind='archive']
+    op: exists                          # 归档产物已登记
+  - path: requirement.artifacts[?kind='archive'].merged_into
+    op: exists                          # 声明了合并去向
+  - path: requirement.artifacts[?kind='archive'].merged_into
+    op: matches
+    value: '^docs/(architecture|guides|adr|rfcs|work-logs|strategy-research)/'   # 去向合法前缀
+  # 核心断言在第二层：rubric archive-truth 抽检 merged_into 对应文档是否有真实更新，无更新即打回

@@ -17,7 +17,7 @@
  */
 import {
   asScope, newTaskId, recordStatus,
-  type ActorRef, type ReqboardLedger, type RequirementRecord, type TaskRecord, type TokenSnapshot,
+  type ActorRef, type RequirementRecord, type TaskRecord, type TokenSnapshot,
 } from '../../shared/protocol.js'
 import { hasErrorCode, REQBOARD_ERROR_CODES } from '../../domain/errors.js'
 import {
@@ -30,7 +30,7 @@ import { REWORK_REQ_STATUS } from '../../domain/requirement/RequirementStatus.js
 
 export interface VerdictInput {
   itemId: string
-  status: 'passed' | 'failed'
+  status: 'passed' | 'failed' | 'unverified'
   opinion?: string
 }
 
@@ -102,9 +102,8 @@ function materializeReworkTask(
  *          `repo.mutate` 写需求态 **后**——顺序契约见 design/interfaces.md I-11）
  */
 export function applyVerdicts(
-  ledger: ReqboardLedger,
+  record: RequirementRecord,
   tasks: readonly TaskRecord[],
-  reqId: string,
   version: number,
   verdicts: readonly VerdictInput[],
   actor: ActorRef,
@@ -113,14 +112,14 @@ export function applyVerdicts(
   /** token 快照（REQ-308b9a FR-8：自动回退要结算离开 accepting 节点的快照）。 */
   snap?: TokenSnapshot,
 ): ApplyVerdictsResult {
-  const r = ledger.requirements.find(x => x.id === reqId)
-  if (r === undefined) throw new VerdictError('需求 ' + reqId + ' 不存在', 'not_found')
+  // t8/B11：窄输入——只吃**目标需求单条**（存在性由调用方 get 后守卫保证）
+  const r = structuredClone(record)
   if (r.status !== 'accepting' && r.status !== 'implementing') {
-    throw new VerdictError('需求 ' + reqId + ' 当前处于 ' + r.status + '，不在验收/返工态（先提交验收单）', 'bad_status')
+    throw new VerdictError('需求 ' + r.id + ' 当前处于 ' + r.status + '，不在验收/返工态（先提交验收单）', 'bad_status')
   }
   const v = r.verification
   if (v === undefined || v.sheet === undefined) {
-    throw new VerdictError('需求 ' + reqId + ' 还没有验收单（先 reqboard_verify_submit）', 'no_sheet')
+    throw new VerdictError('需求 ' + r.id + ' 还没有验收单（先 reqboard_verify_submit）', 'no_sheet')
   }
   const sheet = v.sheet
   if (sheet.version !== version) {
@@ -147,7 +146,7 @@ export function applyVerdicts(
   // 出现 failed → **同笔 mutate 内**自动回退实施 + 物化返工卡；不再等人点「退回返工」。
   // 原子性（AC-8.3）：物化或状态迁移抛错 → 整笔 mutate 回滚，不出现"状态改了卡没建"。
   const reworkTasks: TaskRecord[] = applied.failed > 0
-    ? materializeReworkFromSheet(ledger, tasks, reqId, actor, nowTs)
+    ? materializeReworkFromSheet(r, tasks, actor, nowTs)
     : []
   if (applied.failed > 0 && r.status !== REWORK_REQ_STATUS) {
     transitionRequirement(r, REWORK_REQ_STATUS, {
@@ -186,14 +185,13 @@ export function applyVerdicts(
  * 否则会重新出现"人还没决定、系统已经建了一堆卡"。规格仍单点在 domain/workflow/AcceptanceSheetSpec。
  */
 export function materializeReworkFromSheet(
-  ledger: ReqboardLedger,
+  record: RequirementRecord,
   tasks: readonly TaskRecord[],
-  reqId: string,
   actor: ActorRef,
   nowTs: number,
 ): TaskRecord[] {
-  const r = ledger.requirements.find(x => x.id === reqId)
-  const sheet = r?.verification?.sheet
-  if (r === undefined || sheet === undefined) return []
+  const r = record
+  const sheet = r.verification?.sheet
+  if (sheet === undefined) return []
   return reworkSpecsFor(sheet, tasks).map(spec => materializeReworkTask(tasks, r.id, spec, actor, nowTs))
 }

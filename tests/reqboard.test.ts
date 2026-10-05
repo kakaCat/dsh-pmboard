@@ -2,10 +2,7 @@
  * Reqboard M1 单测：状态机、闸门、DAG 校验、Store 并发与持久化。
  * 运行：cd agent-dh && npx vitest run packages/pages/dsh-pmboard/tests/
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { describe, it, expect } from 'vitest'
 import {
   assertReqTransition,
   assertTaskTransition,
@@ -18,7 +15,6 @@ import {
 function throwsCode(fn: () => void, expectedCode: string): void {
   try { fn(); expect.fail('期望抛错但未抛') } catch (e: any) { expect(e.code).toBe(expectedCode) }
 }
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 
 // ---------------------------------------------------------------------------
 // Requirement 状态机
@@ -169,116 +165,6 @@ describe('DAG validation', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
-// Store 持久化与并发
-// ---------------------------------------------------------------------------
-
-describe('ReqboardStore', () => {
-  let tmpDir: string
-  let store: ReqboardStore
-
-  beforeEach(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'reqboard-'))
-    store = new ReqboardStore({ file: join(tmpDir, 'reqboard.json') })
-  })
-
-  afterEach(() => {
-    try { rmSync(tmpDir, { recursive: true, force: true }) } catch { /* ignore */ }
-  })
-
-  it('persists requirement creation and reloads', async () => {
-    const r = await store.mutate('requirement-created', (ledger) => {
-      ledger.requirements.push({
-        id: 'REQ-000001', title: '测试需求', description: '', status: 'draft', blocked: false,
-        comments: [], version: 1, createdAt: 0, updatedAt: 0,
-        createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
-      })
-      return { requirements: ledger.requirements }
-    })
-    expect(r.changed.requirements[0].title).toBe('测试需求')
-    expect(r.ledger.revision).toBe(1)
-
-    // 重新加载新 store 实例（显式 load，snapshot 不自动触发 load）
-    const store2 = new ReqboardStore({ file: join(tmpDir, 'reqboard.json') })
-    await store2.load()
-    const snap = store2.snapshot()
-    expect(snap.requirements.length).toBe(1)
-    expect(snap.revision).toBe(1)
-  })
-
-  it('serializes concurrent mutations (revision monotonic)', async () => {
-    const promises: Promise<unknown>[] = []
-    for (let i = 0; i < 10; i++) {
-      promises.push(store.mutate('requirement-created', (ledger) => {
-        ledger.requirements.push({
-          id: `REQ-${String(i).padStart(6, '0')}`, title: `R${i}`, description: '', status: 'draft', blocked: false,
-          comments: [], version: 1, createdAt: 0, updatedAt: 0,
-          createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
-        })
-        return { requirements: ledger.requirements }
-      }))
-    }
-    await Promise.all(promises)
-    const snap = store.snapshot()
-    expect(snap.revision).toBe(10)
-    expect(snap.requirements.length).toBe(10)
-  })
-
-  it('snapshot is frozen (mutating throws)', async () => {
-    await store.mutate('requirement-created', (ledger) => {
-      ledger.requirements.push({
-        id: 'REQ-000001', title: 'T', description: '', status: 'draft', blocked: false,
-        comments: [], version: 1, createdAt: 0, updatedAt: 0,
-        createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
-      })
-      return { requirements: ledger.requirements }
-    })
-    const snap = store.snapshot()
-    expect(() => { (snap as any).revision = 999 }).toThrow()
-  })
-
-  it('corrupt file quarantined and starts fresh', async () => {
-    const file = join(tmpDir, 'reqboard.json')
-    const fs = await import('node:fs/promises')
-    await fs.writeFile(file, 'not-json-at-all')
-    const store2 = new ReqboardStore({ file })
-    await store2.load()
-    expect(store2.snapshot().requirements.length).toBe(0)
-    const files = (await fs.readdir(tmpDir)).filter(f => f.includes('corrupt'))
-    expect(files.length).toBeGreaterThanOrEqual(1)
-  })
-
-  it('notifies subscribers on mutation', async () => {
-    const events: Array<{ kind: string; revision: number }> = []
-    store.subscribe((ch) => events.push({ kind: ch.kind, revision: ch.revision }))
-    await store.mutate('requirement-created', (ledger) => {
-      ledger.requirements.push({
-        id: 'REQ-000001', title: 'Sub', description: '', status: 'draft', blocked: false,
-        comments: [], version: 1, createdAt: 0, updatedAt: 0,
-        createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
-      })
-      return { requirements: ledger.requirements }
-    })
-    expect(events.length).toBe(1)
-    expect(events[0].kind).toBe('requirement-created')
-    expect(events[0].revision).toBe(1)
-  })
-})
-
-
-// ---------------------------------------------------------------------------
-// REQ-47939a t9 删除记录（例外：删死代码，非断言削弱）：
-// 原「M2: 三层分类架构」四个 describe 共 11 例被删除，逐条清单——
-//   Explicit marker detection（3）：detects #REQ-xxx / detects #t-xxx / returns undefined when no marker
-//   Heuristic classifier（2）：suggests bind_req when title matches / suggests create_req when no match
-//   LLM classifier with category（3）：binds req by semantic match / creates req with category for bug / creates req with category for doc
-//   Session sync with explicit marker（3）：directly binds via explicit #REQ marker without LLM /
-//     creates triage and runs LLM for unmarked messages / ignores subagent sessions
-// 删除依据：它们测的是**已退役且不再装配**的 M2 自动分类机制（SessionSyncService / classifySessionHeuristic /
-// classifySessionLlm / extractExplicitId）。该机制自 2026-09 起不再装配（src/index.ts 注释：
-// "M2 的自动分类 LLM（SessionSyncService）自 2026-09 起不再装配（修正 #1/#3：无第二 LLM、人在 loop）"），
-// 其符号在 src 内除彼此外无任何非测试引用——随 host/ 收口一并删除。
-// 其中断言的是**活行为**的部分（消息清洗 / 忽略会话判定 / 用户消息抽取）已在
-// tests/adapters/session-message-filter.test.ts 里逐条重建，断言未削弱。
-// ---------------------------------------------------------------------------
-
+// B12 阶段⑤：原 `describe('ReqboardStore')` 整块删除——**其 subject 就是被删的旧实现**
+// （JSON 单册的持久化重载、snapshot 冻结语义、损坏文件隔离），随实现一同消失。
+// 前三个 describe（需求/任务状态机、DAG 校验）是纯 domain 用例，原样保留。

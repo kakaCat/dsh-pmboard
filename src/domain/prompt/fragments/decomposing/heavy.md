@@ -24,19 +24,33 @@
 - [ ] **薄卡拒落**：缺 implementation、或 acceptance 是空话（"功能正常""优化体验"）
       会被代码级拒绝。
 
-## 4. 边界校验（不超范围、卡可独立验收）
+## 4. 容量纪律（一轮装多少：先算，再切）
+
+- [ ] **口径**：`detailUnits = files×1 + anchors×0.5 + chars/2000`，容量缺省 16 DU
+      （权重与容量只在 `src/domain/limits.ts` 定义一次，别在计划里另抄一套）。
+- [ ] **每卡必声明 footprint**：`files` / `anchors` / `chars` 三个正整数，随任务表提交；
+      `files` **不得小于** implementation 里点到的路径数——允许留余量，缩水会被
+      `REQBOARD_BAD_FOOTPRINT` 拒。
+- [ ] **超容量自己切**：某卡 `detailUnits > 容量` 时按目录 / 按接口切成更小的卡，
+      不要把超容量卡原样交上去。
+- [ ] **确需保留就标红**：在计划文档该卡行写 `⚠️超容量(建议N批)`，N = 算出的批数
+      （写错会被 `plan_overcapacity_marker_missing` 拒）。
+- [ ] **批准文本照抄清单**：超容量清单自带「超容量 N 张：…」标签
+      （`overCapacitySummary`），别再拼一遍标签。
+
+## 5. 边界校验（不超范围、卡可独立验收）
 
 - [ ] 每张卡都能被独立验收：一个新窗口**零会话历史**、只凭任务卡就能开工。
 - [ ] 本阶段不二次创作设计：与设计矛盾时**退回设计改计划**
       （重新 `reqboard_submit(kind=plan)` 并重新批准），不在拆分阶段私改设计。
 
-## 5. 提交与批准门（2026-09-21：拆分计划在拆分阶段写）
+## 6. 提交与批准门（2026-09-21：拆分计划在拆分阶段写）
 
 - [ ] `reqboard_submit(kind=plan)` 提交拆分计划（path=decomposition.md、summary、tasks=任务表）。
 - [ ] `reqboard_ask_confirm(target=plan)` 弹框请人批准——**批准后自动落库任务卡并进入实施**
       （中途不再打断）；未获批准 reqboard_decompose 被代码级拒绝。
 - [ ] 兜底：计划未含任务表时，`reqboard_decompose` **必须传 tasks**——本工具即任务卡创作口。
 
-## 6. 交棒
+## 7. 交棒
 
 - [ ] 下一步：implementing —— 用 reqboard_ask_confirm(target=plan) 交棒；未获批准不得进入。

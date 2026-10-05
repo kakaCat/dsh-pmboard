@@ -1,0 +1,16 @@
+# case D6 · task_adopt 补子卡归属 · serves: FR-2
+id: D6
+group: D
+type: edge
+severity: normal
+title: task_adopt 补子卡归属
+dims: [D1, D3]
+max_score: 3
+seed:
+  workspace: fixture:req-implementing-orphan   # 预置：孤儿卡 t-009（parentId 缺失，工作内容是「实施链联调」），父卡 t-002 为顶层卡
+  user_messages:
+    - 任务树里有张卡 t-009 没挂在任何父卡下面，它干的活是实施链的联调，应该归到 t-002 底下当子卡。帮我先看看树确认一下，再把归属补上——补完它就该按子卡三态走了。
+expected:
+  trajectory_ref: D6
+  ledger_ref: D6
+notes: task_adopt 只补缺失归属：需 parent_id（t-002）+ stage_kind（integrate）+ reason。补完后该卡按子卡三态（todo→in_progress→done）推进，不再被当成存量卡走五段。

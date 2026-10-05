@@ -8,6 +8,7 @@
  *
  * @module dsh-pmboard/application/use-cases/HandleFailure
  */
+import { mutateIfPresent, requirementStoreOf } from './queue-access.js'
 import type { UseCaseDeps } from '../ports.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { pmHeader } from '../../domain/text/pm-badge.js'
@@ -60,9 +61,7 @@ export async function handleFailureChoice(
 ): Promise<{ ok: boolean; note: string }> {
   const now = deps.clock.now()
   if (choice === 'rerun') {
-    await deps.repo.mutate('failure-rerun', (ledger) => {
-      const req = ledger.requirements.find((r) => r.id === requirementId)
-      if (req === undefined) return undefined
+    await mutateIfPresent(requirementStoreOf(deps), requirementId, (req) => {
       req.autoRun = true
       const adv = (req.advance ??= {})
       adv.pausedReason = undefined
@@ -73,15 +72,13 @@ export async function handleFailureChoice(
         createdAt: now,
         createdBy: { kind: 'human' },
       })
-      return { requirements: [req] }
+      return { changed: true }
     })
     const out = await advanceRequirement(deps, requirementId)
     return { ok: true, note: fmt('已重跑：{steps} 步，停止于 {stop}', { steps: out.steps.length, stop: out.stopped }) }
   }
   if (choice === 'upstream') {
-    await deps.repo.mutate('failure-upstream', (ledger) => {
-      const req = ledger.requirements.find((r) => r.id === requirementId)
-      if (req === undefined) return undefined
+    await mutateIfPresent(requirementStoreOf(deps), requirementId, (req) => {
       const from = req.status
       // REQ-260927121324-abde FR-1：经唯一收敛点迁移（含状态机校验）；写时快照取需求绑定的
       // sourceSessionId，取不到则诚实不传（不伪造）。
@@ -99,14 +96,12 @@ export async function handleFailureChoice(
         createdAt: now,
         createdBy: { kind: 'human' },
       })
-      return { requirements: [req] }
+      return { changed: true }
     })
     return { ok: true, note: '已退回设计态：重新描述需求并重新提交/批准计划' }
   }
   // cancel
-  await deps.repo.mutate('failure-cancel', (ledger) => {
-    const req = ledger.requirements.find((r) => r.id === requirementId)
-    if (req === undefined) return undefined
+  await mutateIfPresent(requirementStoreOf(deps), requirementId, (req) => {
     const from = req.status
     // REQ-260927121324-abde FR-1：同上——经收敛点迁移并带 sourceSessionId 写时快照。
     const snap = snapshotForWindow(deps, req.sourceSessionId)
@@ -123,7 +118,7 @@ export async function handleFailureChoice(
       createdAt: now,
       createdBy: { kind: 'human' },
     })
-    return { requirements: [req] }
+    return { changed: true }
   })
   return { ok: true, note: '需求已取消' }
 }

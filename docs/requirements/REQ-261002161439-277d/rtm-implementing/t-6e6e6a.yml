@@ -1,0 +1,38 @@
+task:
+  id: t-6e6e6a
+  title: 读得动：内存索引、摘要投影、归档冷读·测试
+  status: done
+  implements: |-
+    实现 src/repositories/ShardedRequirementStore.ts 读侧（implements RequirementStore）：① 懒建内存索引 Map<id, RequirementSummary>（首次 listSummaries/getSummary 未命中时扫 requirements/*/record.json；负结果不缓存；沿用 QueueTaskStore.buildIndexFromDisk 先例，不在构造期预读）；② get（装配全文，热侧未命中回落 archive/ 冷读）、getSummary、listSummaries（scope active|archived|all + ids/status/workspaceRoot/sourceSessionId/limit/cursor）、listComments(since/limit)、listHistory(limit)、head()；③ peekSummaries() 同步投影（非权威，注释写明只允许提示词与引导组装使用）；④ 损坏分片从索引剔除 + onWarn，不抛整页错。把该实现接入 store-contract.test.ts 作为第二个实现。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-9c67b1
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002161439-277d
+    TASK_ID: t-6e6e6a
+    TASK_TITLE: 读得动：内存索引、摘要投影、归档冷读·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T09:17:23.897Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002161439-277d
+  generated_at: 2026-10-02T09:08:17.197Z
+  version: 5
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-02T10:16:10.950Z

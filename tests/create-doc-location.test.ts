@@ -16,7 +16,7 @@ import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
+import { makeHarness } from './application/harness.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { SystemClock } from '../src/adapters/SystemClock.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
@@ -30,18 +30,22 @@ import type { RequirementRecord } from '../src/shared/protocol.js'
 const W = 'session-doc-location-1'
 
 let root: string
-let store: JsonLedgerRepository
+// B12 阶段③a：夹具不再自建旧 JSON 台账——用统一工厂 harness（同时提供 repo 桥与新端口 store），
+// 断言改读**新端口**（快照读已随桥删除而消失）。
+let h: ReturnType<typeof makeHarness>
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'pmboard-doc-loc-'))
-  store = new JsonLedgerRepository({ file: join(root, 'dsh-reqboard.json') })
+  // 传 seed（哪怕是空册）让桥**同步**建立初始镜像，免掉 ready() 之前的 snapshot 抛错
+  h = makeHarness({})
 })
 afterEach(() => { rmSync(root, { recursive: true, force: true }) })
 
 /** 真适配器构造 UseCaseDeps（工具壳吃 application 端口）；无 agents/sessionProjections → 认证降级放行。 */
 const deps = (): any => ({
-  repo: store,
-
+  // 过渡期：`UseCaseDeps.repo` 仍必填 ⇒ 由统一工厂提供（原先是自建 JsonLedgerRepository）；
+  // 同时补上新端口 `store`（断言与迁移后的读点走它）。其余适配器保持原状，避免夹具语义漂移。
+  store: h.store,
   taskStore: taskStoreAt(root),
   docs: new FileDocRepository({ workspaceRoot: root }),
   clock: new SystemClock(),
@@ -57,8 +61,7 @@ const ARGS = { title: '降级路径立项', category: 'feature' }
 const run = (args: Record<string, unknown>) =>
   (defineCreateTool(deps()) as any).execute(args, { agent: { id: W } })
 
-const ledgerReq = (id: string): RequirementRecord =>
-  store.snapshot().requirements.find(r => r.id === id)!
+const ledgerReq = async (id: string): Promise<RequirementRecord> => (await h.store.get(id))!
 
 describe('reqboard_create · 文档位置（FR-7 降级路径补第四问）', () => {
   it('TC-11 不传 doc_location → 显式回落默认值 + defaults_used 留痕，台账 docBasePath 同值', async () => {
@@ -68,7 +71,7 @@ describe('reqboard_create · 文档位置（FR-7 降级路径补第四问）', (
     expect(out.defaults_used).toEqual([CAPTURE_QUESTION_IDS.doc_location])
     expect(out.note).toContain('回落')
 
-    const req = ledgerReq(out.requirement_id)
+    const req = await ledgerReq(out.requirement_id)
     expect(req.docBasePath).toBe(CAPTURE_DEFAULTS.docLocation)
     // 产物路径与回落值同源（消费端 requirementDocPath 解析一致）。
     expect(requirementDocPath(req)).toBe('docs/requirements/' + req.id + '/requirement.md')
@@ -79,23 +82,23 @@ describe('reqboard_create · 文档位置（FR-7 降级路径补第四问）', (
     expect(out.doc_location).toBe('docs/rfcs/')
     expect(out.defaults_used).toEqual([])
 
-    const req = ledgerReq(out.requirement_id)
+    const req = await ledgerReq(out.requirement_id)
     expect(req.docBasePath).toBe('docs/rfcs/')
     expect(requirementDocPath(req)).toBe('docs/rfcs/' + req.id + '/requirement.md')
   })
 
   it('TC-13 返回 status 与台账一致（当前落点 draft，不谎报推进）', async () => {
     const out = await run({ ...ARGS })
-    const req = ledgerReq(out.requirement_id)
+    const req = await ledgerReq(out.requirement_id)
     expect(out.status).toBe(req.status)
-    expect(store.snapshot().requirements).toHaveLength(1)
+    expect((await h.store.listSummaries()).items).toHaveLength(1)
   })
 
   it('异常流：绝对路径 / 含 .. 的路径 → REQBOARD_INVALID_INPUT，且不写台账（不静默改路径）', async () => {
     for (const bad of ['/etc/passwd', '../escape', 'docs/../../escape', 'C:\\Windows']) {
       await expect(run({ ...ARGS, doc_location: bad })).rejects.toMatchObject({ code: 'REQBOARD_INVALID_INPUT' })
     }
-    expect(store.snapshot().requirements).toHaveLength(0)
+    expect((await h.store.listSummaries()).items).toHaveLength(0)
   })
 
   it('schema：doc_location 入参 + doc_location/defaults_used 返回键已声明（DSH 绑定层不拒收）', () => {

@@ -188,6 +188,11 @@ export interface LifecycleStageEntry {
   enabled?: boolean
   entered_at?: string
   completed_at?: string
+  /**
+   * 时间戳为推算值（REQ-260930094139-2d65 FR-4）：statusHistory 事件缺失，
+   * entered_at/completed_at 回落 createdAt/updatedAt 时标 true；真实事件时间不出现此键。
+   */
+  timestamps_inferred?: true
   artifacts?: LifecycleArtifact[]
 }
 

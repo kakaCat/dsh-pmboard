@@ -23,19 +23,20 @@
  *
  * @module dsh-pmboard/tests/read-sites-equivalence
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, mkdirSync, readFileSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { readyTasks, type RequirementRecord, type TaskRecord } from '../src/shared/protocol.js'
 import { transitiveReduce } from '../src/domain/queue/transitiveReduction.js'
 import { countDoneTasks, countUnfinishedTasks } from '../src/domain/status/Predicates.js'
+import { isActiveRequirement } from '../src/domain/status/Predicates.js'
 
 const FIXTURE = join(dirname(fileURLToPath(import.meta.url)), 'fixtures/read-sites-v8-ledger.json')
 
@@ -91,7 +92,7 @@ const before = {
 
 describe('读方等价性证据（REQ-260927202051-f6df / D8 a~e）', () => {
   let dir: string
-  let store: ReqboardStore
+  let store: ReturnType<typeof makeTestStore>
   let taskStore: QueueTaskStore
   let handler: ReturnType<typeof createReqboardHandler>
 
@@ -105,19 +106,15 @@ describe('读方等价性证据（REQ-260927202051-f6df / D8 a~e）', () => {
     dir = mkdtempSync(join(tmpdir(), 'pmboard-equiv-'))
     mkdirSync(join(dir, 'docs/requirements'), { recursive: true })
     // v9 台账：只有 requirements / triages（不再有 tasks 键）
-    writeFileSync(
-      join(dir, 'dsh-reqboard.json'),
-      JSON.stringify({ schemaVersion: 9, revision: REVISION, requirements: V9_REQUIREMENTS, triages: [] }),
-      'utf8',
-    )
-    store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
-    await store.load()
+    // B12 阶段⑤：夹具不再经"写 JSON 文件 + load()"落种子（分片存储不产出该文件）
+    store = makeTestStore()
+    await store.replaceAll('seed', { schemaVersion: 9, revision: REVISION, requirements: [...V9_REQUIREMENTS], triages: [] })
     taskStore = new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: dir }), now: () => 1_000 })
     // 「迁移」动作：同一批 TaskRecord 落成各需求 queue.json（与迁移脚本写入契约同形）
     for (const reqId of REQ_IDS) {
       await taskStore.createMany(reqId, V8_TASKS.filter(t => t.requirementId === reqId))
     }
-    handler = createReqboardHandler({ store, taskStore, now: () => 1_000, cwd: dir })
+    handler = createReqboardHandler({ requirementStore: store, taskStore, now: () => 1_000, cwd: dir })
   })
   afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -210,10 +207,37 @@ describe('读方等价性证据（REQ-260927202051-f6df / D8 a~e）', () => {
     //     并可能 bump 台账 revision —— 这是改造前就有的行为。故 requirements 的比较基线取
     //     「请求后的台账快照」而不是夹具原件；要断言的是**路由忠实返回台账**，与任务数据源无关。
     //  ② 响应里的 revision 就是**台账 revision**（不是队列 revision）。
-    expect(data.revision).toBe(store.snapshot().revision)
-    expect(JSON.stringify(data.requirements)).toBe(JSON.stringify(store.snapshot().requirements))
-    // 任务派生的 ready 映射必须与迁移前**逐字节一致**（这条才是本需求真正碰的字段）
-    expect(data.ready).toEqual(before.readyMap())
+    expect(data.revision).toBe(store.peekRevision())
+    // B12 阶段⑥-①（REQ-261002161439-277d / t-05a56b）：`/state` 的 requirements 由**全文**
+    // 改为**摘要投影**（验收原文：元素不含 comments / artifacts / verification / plan / archive）。
+    // ⇒ 此处不再逐字节比全文，改为：响应元素**逐字段等于该记录的摘要投影**（仍然验证"路由忠实返回台账"，
+    // 只是投影口径变了）；全文改由 `GET /requirements/:id` 提供，另有 state-payload 用例把守。
+    // 默认 `scope=active`：归档需求**不在**本页（这正是 A9"归档 33→200 字节不增长"的机制）。
+    const ledger = store.peekAll().filter(r => isActiveRequirement(r))
+    const rows = data.requirements as readonly Record<string, unknown>[]
+    expect(rows.length).toBe(ledger.length)
+    for (const row of rows) {
+      const full = ledger.find(r => r.id === row.id)!
+      const f = full as unknown as Record<string, unknown>
+      expect(row.title).toEqual(f.title)
+      expect(row.status).toEqual(f.status)
+      expect(row.blocked).toEqual(f.blocked)
+      expect(row.createdAt).toEqual(f.createdAt)
+      expect(row.updatedAt).toEqual(f.updatedAt)
+      expect(row.version).toEqual(f.version)
+      expect(row.commentCount).toBe(full.comments?.length ?? 0)
+      expect(row.artifactCount).toBe(full.artifacts?.length ?? 0)
+      // 全文键一律不得出现在载荷里（这正是本卡要收紧的放大源）
+      for (const k of ['comments', 'artifacts', 'verification', 'plan', 'archive']) {
+        expect(Object.prototype.hasOwnProperty.call(row, k), row.id + ' 仍带 ' + k).toBe(false)
+      }
+    }
+    // 任务派生的 ready 映射必须与迁移前**逐字节一致**（这条才是本需求真正碰的字段）。
+    // 同样只比**本页**（scope=active）出现过的需求：未在页内的需求不再随响应下发（A9 的机制）。
+    const readyMap = before.readyMap() as Record<string, readonly string[]>
+    const pageIds = rows.map(r => String(r.id))
+    const expectReady = Object.fromEntries(pageIds.map(id => [id, readyMap[id]]))
+    expect(data.ready).toEqual(expectReady)
   })
 
   it('d) /requirements/summary 的任务计数逐字段一致', async () => {

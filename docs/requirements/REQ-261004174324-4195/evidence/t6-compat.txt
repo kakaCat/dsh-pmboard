@@ -1,0 +1,26 @@
+# t6 迁移、兼容与回退证据（2026-10-04）
+
+## 测试：tests/kb-bootstrap-compat.test.ts（8 用例全绿）
+```
+三态开关：不写配置→自举开启 / autoBootstrap=false→目录零变化 / enabled=false 优先
+已有知识层：影子副本自举 = skipped(index-exists)，全部产物内容与 mtime 不变
+强制重算（= pnpm kb:build 路径）：手写页与 INDEX 手写行逐字保留
+两种读根：会话根写入会话根，宿主根一个字节不加；不传根→用仓储当前根
+回退路径：关掉自举后，直接调用用例仍能生成（手动命令不受影响）
+```
+
+## 本仓门禁
+```
+$ npx tsx scripts/kb-build.mts --write   # 改动源码后重算
+  exit=0，重写 4 份（本卡改动 src 后的正常重算）
+$ npx tsx scripts/kb-build.mts --check
+  exit=0
+[verify] 生成物与库内一致（零漂移）
+```
+
+## 本卡发现并修掉的一个真缺口（重要）
+- 症状：协调器接受「会话根」，但用例按 docs.workspaceRoot() 解析写路径 → 看板路径（通知点③）调 ensure(会话根)
+  时，共享仓储的根仍是插件宿主目录，知识层会被生成到 ~/.dsh/profiles/<profile>，而不是用户项目。
+- 修法：KnowledgeBootstrap 增加 docsFor(root) 工厂，目标根 ≠ 当前读根时用**根绑定仓储**跑用例；
+  取不到根绑定仓储时跳过并记日志（绝不退回共享仓储硬写）。组合根注入 (root)=>new FileDocRepository({workspaceRoot: root})。
+- 影响面：t4 的协调器接线，属修复而非范围扩张（原设计的「通知点③」若不修就是错的）。

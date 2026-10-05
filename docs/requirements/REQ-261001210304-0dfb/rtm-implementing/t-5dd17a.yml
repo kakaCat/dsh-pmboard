@@ -1,0 +1,38 @@
+task:
+  id: t-5dd17a
+  title: 会话面板与需求详情接线（key 作用域 + 清理）·复核
+  status: done
+  implements: |-
+    ① src/client/conversation-progress.ts：DAG 挂载 effect 内 const stateKey = PANEL_DAG_CANVAS_ID + '::' + reqIdForStage（reqId 缺省则不启用记忆、不调 hydrate）；调 tryMountDagCanvas(tasks, undefined, PANEL_DAG_CANVAS_ID, { stateKey })；同一 effect 内对本次渲染的容器根（承载 dangerouslySetInnerHTML 的节点 / wrapRef.current）调 hydrateNodePanel(root, { freshness: panelFreshness, tab: readDagViewState(stateKey)?.tab })（时序：React commit 之后执行，与现有 rAF 挂载协调，确保补丁作用在**本次** DOM 上）。② np-switch-view 点击委托：切换 class 之后 writeDagViewState(stateKey, { tab: view === 'list' ? 'list' : 'flow' })。③ 新增 effect：reqIdForStage 变化时 clearDagViewState(前一 reqId 的键)，避免记忆表跨需求残留。④ src/client/board-mount.ts：需求详情挂载改为 tryMountDagCanvas(reqTasks, reqReady, 'dag-canvas', { stateKey: 'dag-canvas::' + req.id })。验证：npx vitest run tests/panel-refresh-wiring.test.ts tests/client-view.test.ts tests/node-panel.test.ts 全绿 + 静态复核（grep）两处 stateKey 形态、hydrateNodePanel 调用点、页签写入与清理调用各一处。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-8e45ea
+  phase: implement
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261001210304-0dfb
+    TASK_ID: t-5dd17a
+    TASK_TITLE: 会话面板与需求详情接线（key 作用域 + 清理）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-01T13:50:23.479Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261001210304-0dfb
+  generated_at: 2026-10-01T13:50:16.088Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-01T13:50:23.479Z

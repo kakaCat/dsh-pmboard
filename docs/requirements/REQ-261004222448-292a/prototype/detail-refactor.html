@@ -1,0 +1,1223 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>需求详情页 · 整页重构原型 — REQ-261004222448-292a</title>
+<!--
+  静态原型（不连后端、不发请求、零依赖）· REQ-261004222448-292a
+  需求：需求详情页整页重构（信息架构 + 内容）
+
+  ⚠️ 2026-10-04 用户裁定（重塑范围）：
+     ① 结构 = 单页纵向流 + 粘性目录（拆掉 6 个 Tab，不再有「激活 Tab」概念）；
+     ② **测评是对外的一个接口能力，不要求页面展示** —— 故本页不含轨迹表 / 六维结论 / 终态对账。
+        那些内容的归属是「测评证据对外接口」（另立需求），见 prototype/README.md。
+
+  本原型要回答的三件事：
+     A. 「这条需求现在怎么样」能不能在一屏内答出来（结论头 + 缺口提醒）
+     B. 「下一步该谁动手」是不是不用翻折叠区就能看见（现在该谁动手 + 五道门禁表）
+     C. 同一个事实有没有被重复说四遍（进度点 / 状态胶囊 / 闸门提示 / 阶段详情标题）
+
+  交互：?state=inflight|terminal（默认 inflight）
+       左侧目录为锚点深链：#now / #gaps / #gates / #exec / #accept / #history / #cost
+       宽屏（≥1080px）目录粘性置左；窄屏折叠到顶部。
+-->
+<style>
+:root {
+  --pm-radius: 10px; --pm-radius-sm: 7px; --pm-radius-pill: 999px;
+  --pm-line: rgba(128,128,128,.18); --pm-line-strong: rgba(128,128,128,.3);
+  --pm-bg: #fff; --pm-bg-soft: rgba(128,128,128,.05); --pm-bg-softer: rgba(128,128,128,.03);
+  --pm-text: #1d1d1f; --pm-text2: #666; --pm-text3: #999;
+  --pm-accent: #4a7dff; --pm-ok: #28a745; --pm-danger: #dc3545; --pm-warn: #b07800; --pm-info: #17a2b8;
+  --pm-c-draft: #9aa4b2; --pm-c-brainstorming: #f0a020; --pm-c-design: #c2255c;
+  --pm-c-decomposing: #8e44ad; --pm-c-implementing: #4a7dff; --pm-c-accepting: #17a2b8; --pm-c-archived: #28a745;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: #f5f6f8; color: var(--pm-text);
+  font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* ===================== 原型工具条（生产不存在） ===================== */
+.proto-bar { position: sticky; top: 0; z-index: 30; background: #1d1d1f; color: #fff;
+  padding: 9px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; }
+.proto-bar .hint { opacity: .72; }
+.proto-btn { border: 1px solid rgba(255,255,255,.3); background: transparent; color: #fff;
+  border-radius: var(--pm-radius-pill); padding: 3px 10px; font-size: 11.5px; cursor: pointer; }
+.proto-btn[data-on="1"] { background: #fff; color: #1d1d1f; border-color: #fff; font-weight: 600; }
+
+/* ===================== 页面骨架：左目录 + 右内容流 ===================== */
+.wrap { max-width: 1180px; margin: 18px auto 70px; padding: 0 16px; }
+.doc { display: grid; grid-template-columns: 186px 1fr; gap: 20px; align-items: start; }
+.toc { position: sticky; top: 52px; }
+.toc-title { font-size: 11px; color: var(--pm-text3); letter-spacing: .4px; margin: 0 0 7px 10px; }
+.toc a { display: block; padding: 5px 10px; font-size: 12px; color: var(--pm-text2); text-decoration: none;
+  border-left: 2px solid transparent; border-radius: 0 6px 6px 0; }
+.toc a:hover { background: var(--pm-bg-soft); color: var(--pm-text); }
+.toc a.on { color: var(--pm-accent); border-left-color: var(--pm-accent); background: rgba(74,125,255,.07); font-weight: 600; }
+.toc a .n { display: inline-block; width: 15px; color: var(--pm-text3); font-size: 11px; }
+.toc-sep { height: 1px; background: var(--pm-line); margin: 8px 10px; }
+
+.card { background: var(--pm-bg); border: 1px solid var(--pm-line); border-radius: var(--pm-radius); margin-bottom: 14px; }
+.card-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--pm-line); }
+.card-head h2 { margin: 0; font-size: 13px; font-weight: 650; }
+.card-head .sub { font-size: 11.5px; color: var(--pm-text3); font-weight: 400; }
+.card-body { padding: 12px 14px; }
+.new { font-size: 10px; font-weight: 700; color: #fff; background: #f0a020; border-radius: var(--pm-radius-pill); padding: 1px 6px; }
+.keep { font-size: 10px; font-weight: 700; color: #555; background: rgba(128,128,128,.16); border-radius: var(--pm-radius-pill); padding: 1px 6px; }
+.gone { font-size: 10px; font-weight: 700; color: #b42318; background: rgba(220,53,69,.13); border-radius: var(--pm-radius-pill); padding: 1px 6px; }
+
+/* ===================== 结论头（常驻） ===================== */
+.head-card { padding: 15px 16px 13px; }
+.head-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 11.5px; color: var(--pm-text2); }
+.head-title { margin: 9px 0 3px; font-size: 20px; font-weight: 650; line-height: 1.3; }
+.head-meta { font-size: 11.5px; color: var(--pm-text3); display: flex; gap: 10px; flex-wrap: wrap; }
+.chip { font-size: 11px; border: 1px solid var(--pm-line); border-radius: var(--pm-radius-pill); padding: 1px 8px; color: var(--pm-text2); background: #fff; }
+.chip.solid { border: 0; background: rgba(74,125,255,.12); color: var(--pm-accent); font-weight: 600; }
+.chip.solid[data-s="archived"] { background: rgba(40,167,69,.13); color: #1e7e34; }
+.verdict { margin-top: 11px; padding: 9px 12px; border-radius: var(--pm-radius-sm); background: var(--pm-bg-softer);
+  border-left: 3px solid var(--pm-c-implementing); font-size: 12.5px; }
+.verdict b { font-weight: 650; }
+.stages { display: flex; gap: 4px; margin-top: 12px; }
+.stage { flex: 1; min-width: 0; }
+.stage-bar { height: 5px; border-radius: var(--pm-radius-pill); background: rgba(128,128,128,.16); }
+.stage.done .stage-bar { background: var(--pm-ok); }
+.stage.cur .stage-bar { background: var(--pm-c-implementing); }
+.stage-label { margin-top: 5px; font-size: 10.5px; color: var(--pm-text3); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stage.done .stage-label, .stage.cur .stage-label { color: var(--pm-text); font-weight: 600; }
+
+/* ===================== 缺口与提醒 ===================== */
+.gap { display: flex; gap: 9px; padding: 7px 0; border-bottom: 1px dashed var(--pm-line); font-size: 12.5px; }
+.gap:last-child { border-bottom: 0; }
+.gap-mark { flex: none; }
+.gap-what { flex: 1; }
+.gap-why { color: var(--pm-text2); font-size: 11.5px; }
+.ok-line { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #1e7e34; }
+
+/* ===================== 现在该谁动手 ===================== */
+.now-grid { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; }
+.who { font-size: 13px; }
+.who b { font-weight: 650; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.dsh-pm-btn { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--pm-line-strong); background: #fff; color: var(--pm-text); font-size: 12px; cursor: pointer; }
+.dsh-pm-btn.primary { background: var(--pm-accent); border-color: var(--pm-accent); color: #fff; }
+
+/* ===================== 门禁表 / 通用表 ===================== */
+table.t { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.t th, table.t td { border-bottom: 1px solid var(--pm-line); padding: 6px 8px; text-align: left; vertical-align: top; }
+table.t th { font-size: 11px; color: var(--pm-text2); font-weight: 600; background: var(--pm-bg-softer); white-space: nowrap; }
+.ok { color: #1e7e34; font-weight: 600; }
+.warn { color: var(--pm-warn); font-weight: 600; }
+.bad { color: #b42318; font-weight: 600; }
+.mut { color: var(--pm-text3); }
+.link { color: var(--pm-accent); }
+.doc-btn { font-size: 11.5px; color: var(--pm-accent); background: none; border: 0; padding: 0; cursor: pointer; }
+
+/* ===================== 执行段 ===================== */
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.stat { border: 1px solid var(--pm-line); border-radius: var(--pm-radius-sm); padding: 8px 11px; }
+.stat-l { font-size: 11.5px; color: var(--pm-text2); }
+.stat-v { font-size: 19px; font-weight: 650; }
+.stat-ok .stat-v { color: var(--pm-ok); }
+.chain { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; }
+.seg { border: 1px solid var(--pm-line); border-radius: var(--pm-radius-pill); padding: 1px 8px; color: var(--pm-text2); background: #fff; }
+.seg[data-s="done"] { border-color: rgba(40,167,69,.4); color: #1e7e34; background: rgba(40,167,69,.08); }
+.seg[data-s="active"] { border-color: rgba(74,125,255,.45); color: var(--pm-accent); background: rgba(74,125,255,.08); font-weight: 600; }
+.runline { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--pm-text2); }
+.runline b { color: var(--pm-text); font-weight: 650; }
+.dag-ph { border: 1px dashed var(--pm-line-strong); border-radius: var(--pm-radius-sm); padding: var(--s3); text-align: left; font-size: 12px; }
+.dag-note { font-size: var(--f-small); color: var(--pm-text3); margin-bottom: var(--s3); }
+/* DAG 用**确定性栅格**（3 节点 + 2 箭头 = 固定五列），不用 flex 换行：
+   flex 的换行取决于可用宽度，窄了会悄悄折行（本项目实测过一次折行——但那次是**截图漏传窗口宽**、
+   实际只有 ~800px，不是 flex 的锅；记录在此以免下次再误判）。
+   栅格的好处是"几列就是几列"，无论宽度怎么变都不会把 3 个节点折成 3 行。 */
+.dag { display: grid; grid-template-columns: 1fr 30px 1fr 30px 1fr; gap: var(--s2); align-items: stretch; }
+.dag-node { border: 1px solid var(--pm-line); border-left: 3px solid var(--pm-text3);
+  border-radius: var(--r1); padding: var(--s2) var(--s3); background: #fff; }
+.dag-node[data-s="done"] { border-left-color: var(--pm-ok); }
+.dag-node[data-s="active"] { border-left-color: var(--pm-accent); }
+.dag-id { font-size: var(--f-tiny); color: var(--pm-text3); }
+.dag-title { font-size: 12.5px; font-weight: 600; margin: 2px 0; }
+.dag-meta { font-size: var(--f-tiny); color: var(--pm-text2); }
+.dag-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--pm-text3); font-size: 15px; line-height: 1; }
+.dag-edge { font-size: 9.5px; letter-spacing: .3px; margin-top: 3px; }
+.dag-chain { margin-top: var(--s3); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: var(--f-small); }
+
+/* ③ 段内小节标题（条款接收 / 文档清单 / 追溯） */
+.subh { margin: var(--s5) 0 var(--s2); font-size: 12.5px; font-weight: 650; }
+.card-body > .subh:first-child { margin-top: 0; }
+/* 追溯：覆盖度卡 + 四列关系图 */
+.cov { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); }
+.rel4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s2); }
+.rel-col { border: 1px solid var(--pm-line-soft); border-radius: var(--r1); padding: var(--s2); }
+.rel-h { font-size: var(--f-tiny); color: var(--pm-text3); margin-bottom: var(--s2); }
+.rel-i { font-size: 11.5px; padding: 3px 6px; border-radius: 4px; background: var(--pm-bg-soft); margin-bottom: 3px; }
+.rel-i.bad { background: rgba(220,53,69,.1); color: #b42318; }
+/* 成本可得性三态：三种写法各自长什么样 */
+.tri { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); }
+.tri-i { border: 1px solid var(--pm-line-soft); border-left: 3px solid var(--pm-text3); border-radius: var(--r1); padding: var(--s2) var(--s3); }
+.tri-i[data-s="ok"] { border-left-color: var(--pm-ok); }
+.tri-i[data-s="warn"] { border-left-color: var(--pm-warn); }
+.tri-i[data-s="none"] { border-left-color: var(--pm-text3); }
+.tri-h { font-size: 12px; font-weight: 650; margin-bottom: 3px; }
+.tri-b { font-size: 11.5px; color: var(--pm-text2); }
+/* 重绘前后对照 */
+.vs { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+.vs-i { border: 1px solid var(--pm-line-soft); border-radius: var(--r1); padding: var(--s3); }
+.vs-i[data-s="bad"] { border-color: rgba(220,53,69,.28); background: rgba(220,53,69,.03); }
+.vs-i[data-s="good"] { border-color: rgba(40,167,69,.3); background: rgba(40,167,69,.03); }
+.vs-h { font-size: 12px; font-weight: 650; margin-bottom: var(--s2); }
+.vs-row { display: flex; justify-content: space-between; font-size: 11.5px; padding: 3px 0; border-bottom: 1px solid var(--pm-line-soft); }
+.vs-row:last-child { border-bottom: 0; }
+
+/* ===================== 时间线 ===================== */
+.tl { font-size: 12px; }
+.tl-row { display: grid; grid-template-columns: 96px 1fr auto; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--pm-line); }
+.tl-row:last-child { border-bottom: 0; }
+.tl-when { color: var(--pm-text3); font-size: 11.5px; }
+.tl-stay { color: var(--pm-text3); font-size: 11px; }
+details.fold { border: 1px solid var(--pm-line); border-radius: var(--pm-radius-sm); margin-bottom: 12px; background: #fff; }
+details.fold > summary { padding: 9px 13px; font-size: 12.5px; font-weight: 650; cursor: pointer; list-style: none; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::before { content: "▸ "; color: var(--pm-text3); }
+details.fold[open] > summary::before { content: "▾ "; }
+details.fold > .body { padding: 11px 13px; border-top: 1px solid var(--pm-line); }
+.note { font-size: 11.5px; color: var(--pm-text2); }
+.empty-honest { border: 1px dashed var(--pm-line-strong); border-radius: var(--pm-radius-sm); padding: 10px 12px; background: var(--pm-bg-softer); font-size: 12px; color: var(--pm-text2); }
+
+/* ===================== ⑥ 对话（独立段） ===================== */
+.dlg-row { display: grid; grid-template-columns: 78px 46px 1fr; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--pm-line); font-size: 12.5px; }
+.dlg-row:last-child { border-bottom: 0; }
+.dlg-who { font-size: 11px; font-weight: 600; border-radius: var(--pm-radius-pill); padding: 1px 7px; text-align: center; height: 19px; line-height: 17px; overflow: hidden; }
+.dlg-who[data-k="human"] { background: rgba(74,125,255,.13); color: var(--pm-accent); }
+.dlg-who[data-k="agent"] { background: rgba(142,68,173,.13); color: var(--pm-c-decomposing); }
+.dlg-when { color: var(--pm-text3); font-size: 11px; }
+
+/* ===================== 窗口跳转按钮（现有能力，重构不得回退） ===================== */
+.win-btn { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--pm-text);
+  background: #fff; border: 1px solid var(--pm-line-strong); border-radius: var(--pm-radius-pill);
+  padding: 1px 9px; cursor: pointer; }
+.win-btn:hover { border-color: var(--pm-accent); color: var(--pm-accent); background: rgba(74,125,255,.06); }
+.win-btn[data-archived="1"] { color: var(--pm-text3); border-style: dashed; }
+.win-btn .role { color: var(--pm-text3); }
+.win-btn:hover .role { color: var(--pm-accent); }
+
+/* ===================== 提示词正文（逐段可展开） ===================== */
+.part { border: 1px solid var(--pm-line); border-radius: var(--pm-radius-sm); margin-bottom: 7px; }
+.part > summary { padding: 6px 10px; font-size: 12px; cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+.part > summary::-webkit-details-marker { display: none; }
+.part > summary::before { content: "▸"; color: var(--pm-text3); }
+.part[open] > summary::before { content: "▾"; }
+.part .pname { font-weight: 600; }
+.part .pmeta { margin-left: auto; color: var(--pm-text3); font-size: 11px; }
+.part .pbody { padding: 8px 10px; border-top: 1px solid var(--pm-line); }
+pre.prompt-text { margin: 0; padding: 9px 10px; background: #fafafa; border: 1px solid var(--pm-line);
+  border-radius: 5px; font-size: 11.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #2b2b2b; max-height: 240px; overflow: auto; }
+.part .pfoot { margin-top: 6px; display: flex; gap: 10px; align-items: center; }
+/* 注入条目展开后的正文（逐片段）+ 被裁片段 */
+.inj-frag { margin-bottom: var(--s2); }
+.inj-id { font-weight: 600; margin-right: var(--s2); }
+.inj-trim { margin-top: var(--s2); padding: var(--s2) var(--s3); border-radius: var(--r1);
+  background: rgba(240,160,32,.08); border-left: 3px solid #f0a020; font-size: 11.5px; color: var(--pm-text2); }
+
+/* ===================== 三档展示面（同一份数据，三种编排） ===================== */
+.face { display: none !important; }
+body[data-surface="page"] .face-page { display: block !important; }
+/* ⚠️ 这里必须是 block：去目录后 .doc 只是纵向容器；曾写成 display:grid 且继承旧栏宽 186px，
+   结果 ① 段的栅格被压成窄柱（截图才看出来）。单列容器一律 block + grid-template-columns:none。 */
+body[data-surface="panel"] .face-panel { display: block !important; }
+body[data-surface="header"] .face-header { display: block !important; }
+
+/* 档一：会话头部（一行，与对话同宽，不挤压对话） */
+.chat-header { background: #fff; border: 1px solid var(--pm-line); border-radius: var(--pm-radius); padding: 9px 13px; display: flex; align-items: center; gap: 12px; }
+.chat-header .stages { margin: 0; flex: 0 0 300px; }
+.chat-header .hd-text { font-size: 12.5px; }
+.chat-header .hd-text b { font-weight: 650; }
+.chat-header .hd-more { margin-left: auto; font-size: 11.5px; color: var(--pm-accent); }
+.face-narrow-note { margin-top: 10px; }
+
+/* 档二：会话内展开面板（窄，摘要档） */
+.panel { width: 470px; max-width: 100%; background: var(--pm-bg); border: 1px solid var(--pm-line); border-radius: var(--pm-radius); }
+.panel-head { display: flex; align-items: center; gap: 8px; padding: 10px 13px; border-bottom: 1px solid var(--pm-line); }
+.panel-head .t { font-size: 13px; font-weight: 650; }
+.panel-sec { padding: 11px 13px; border-bottom: 1px solid var(--pm-line); }
+.panel-sec:last-child { border-bottom: 0; }
+.panel-sec h3 { margin: 0 0 6px; font-size: 12px; font-weight: 650; }
+.panel-foot { padding: 10px 13px; background: var(--pm-bg-softer); display: flex; align-items: center; gap: 8px; }
+.panel-foot .dsh-pm-btn { flex: 1; text-align: center; }
+body[data-state="inflight"] .only-terminal { display: none !important; }
+body[data-state="terminal"] .only-inflight { display: none !important; }
+
+/* =====================================================================
+   统一排版层（2026-10-04 用户裁定：V2 骨架 + V3 首屏并排 + 细节统一）
+   ---------------------------------------------------------------------
+   ① 令牌统一：颜色 / 线条 / 间距 / 圆角 / 字阶 —— 全页只从这里取值，
+      旧规则里的 --pm-* 在此被重定义，因此无需逐条改旧 CSS；
+   ② 骨架：每段 = 左窄栏（段号+段名+一句说明）+ 右栏（内容），表格通栏；
+      段与段之间只用一条 hairline 分隔，不再卡片套卡片；
+   ③ 首屏：结论头 与 缺口与提醒 并排（1.9 : 1），打开就同时看到"怎么样"和"缺什么"。
+   ===================================================================== */
+:root {
+  /* 颜色 */
+  --pm-text: #1d1d1f; --pm-text2: #5f6368; --pm-text3: #9aa0a6;
+  --pm-accent: #4a7dff; --pm-ok: #28a745; --pm-warn: #b07800; --pm-danger: #dc3545;
+  --pm-line: rgba(128,128,128,.20);          /* 分隔线（唯一线条色） */
+  --pm-line-soft: rgba(128,128,128,.11);     /* 行内 hairline */
+  --pm-bg: #fff; --pm-bg-soft: rgba(128,128,128,.045); --pm-bg-softer: rgba(128,128,128,.028);
+  /* 间距（4 的倍数） */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 28px; --s7: 36px;
+  /* 圆角 */
+  --r1: 6px; --r2: 10px;
+  /* 字阶 */
+  --f-h1: 22px; --f-h2: 13.5px; --f-body: 13px; --f-small: 11.5px; --f-tiny: 10.5px;
+  /* 布局 */
+  --rail: 168px; --gap-col: 24px; --page-max: 1120px;
+  --pm-radius-sm: var(--r1); --pm-radius: var(--r2); --pm-radius-pill: 999px;
+}
+body { font-size: var(--f-body); color: var(--pm-text); }
+.wrap { max-width: 1280px; }
+
+/* --- 骨架：左窄栏 + 右栏（无页面级目录，`.doc` 只是纵向容器） --- */
+.doc { display: block; }
+.card {
+  display: grid; grid-template-columns: var(--rail) 1fr; column-gap: var(--gap-col);
+  align-items: start;
+  border: 0; border-top: 1px solid var(--pm-line); border-radius: 0;
+  padding: var(--s5) 0 var(--s6); margin: 0;
+}
+.card-head { display: block; grid-column: 1; border: 0; padding: 0; }
+.card-head h2 { font-size: var(--f-h2); }
+.card-head .sub { display: block; margin-top: var(--s1); font-size: var(--f-small); color: var(--pm-text3); line-height: 1.5; }
+.card-head .new, .card-head .keep, .card-head .gone { margin-top: var(--s2); }
+.card-body { grid-column: 2; padding: 0; }
+/* 只有 body 的卡片（说明卡）横跨两栏 */
+.card > .card-body:only-child { grid-column: 1 / -1; }
+/* 结论头单独处理（它的子元素不是 head/body 结构） */
+.card.head-card { display: block; border-top: 0; padding: 0; }
+
+/* --- 首屏并排（V3） --- */
+.firstscreen { display: grid; grid-template-columns: 1.9fr 1fr; gap: var(--gap-col) var(--s6); align-items: start;
+  padding-bottom: var(--s2); border-bottom: 1px solid var(--pm-line); }
+.firstscreen .card { display: block; border-top: 0; padding: 0; }
+.firstscreen .card-head { display: block; margin-bottom: var(--s3); }
+/* 首屏三块的位置：结论头占左列两行；① 现在该谁动手 与 ② 缺口与提醒 叠在右列。
+   （① 夹在结论头与缺口之间是信息架构定的顺序，这里只定版面位置，不改顺序。） */
+.firstscreen > .head-card { grid-column: 1; grid-row: 1; }
+.firstscreen > #now { grid-column: 1; grid-row: 2; padding-top: var(--s5); border-top: 1px solid var(--pm-line-soft); }
+.firstscreen > #gaps { grid-column: 2; grid-row: 1 / span 2; padding: 0 0 0 var(--s6); border-left: 1px solid var(--pm-line-soft); }
+/* 榜单式列表在窄列里不要按钮抢横向空间 */
+.firstscreen #now .who { font-size: 12.5px; }
+.firstscreen #gaps .gap { font-size: 12.5px; }
+/* 门禁表首列不折行（"需求分析"曾折成两行） */
+table.t td:first-child, .dsh-pm-eval-tbl td:first-child { white-space: nowrap; }
+
+/* --- 目录：2026-10-04 裁定**去掉**常驻目录 ---
+   理由：V2 骨架里每段的左窄栏已写段名，目录是第三处重复标签；去掉后省下 192px 横向
+   （内容列 1120 → 1280，门禁表首屏就能整张放下）。深链仍用 URL 的 #段。
+   替代品：滚动一屏后淡入的浮动「↑ 顶部」按钮（不占版面）。 */
+body[data-toc="0"] .doc { display: block; }
+body[data-toc="0"] .toc { display: none; }
+
+/* 浮动「↑ 顶部」：默认隐藏，滚过一屏后淡入；点击回结论头 */
+#to-top {
+  position: fixed; right: 24px; bottom: 24px; z-index: 40;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--pm-line); background: rgba(255,255,255,.92);
+  backdrop-filter: blur(6px); color: var(--pm-text2); font-size: 15px; cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+  opacity: 0; visibility: hidden; transition: opacity .18s ease, visibility .18s ease;
+}
+#to-top[data-show="1"] { opacity: 1; visibility: visible; }
+#to-top:hover { color: var(--pm-accent); border-color: var(--pm-accent); }
+
+/* --- 折叠段：与内容列对齐（details 做 grid 在部分 Chrome 上不稳，故用左内边距对齐） --- */
+main > details.fold {
+  border: 0; border-top: 1px solid var(--pm-line); border-radius: 0; margin: 0;
+}
+main > details.fold > summary {
+  padding: var(--s5) 0 0 calc(var(--rail) + var(--gap-col));
+  font-size: var(--f-h2); font-weight: 650; background: none;
+}
+main > details.fold > .body { padding: var(--s3) 0 var(--s6) calc(var(--rail) + var(--gap-col)); border-top: 0; }
+.card-body details.fold { border: 1px solid var(--pm-line-soft); border-radius: var(--r1); margin-top: var(--s3); }
+.card-body details.fold > summary { padding: var(--s2) var(--s3); font-size: var(--f-small); font-weight: 600; }
+
+/* --- 表格：横线制，表头浅底，无竖线 --- */
+.dsh-pm-eval-tbl th, table.t th {
+  font-size: var(--f-tiny); letter-spacing: .3px; color: var(--pm-text2); font-weight: 600;
+  background: var(--pm-bg-soft); padding: var(--s2) var(--s3); border-bottom: 1px solid var(--pm-line);
+}
+.dsh-pm-eval-tbl td, table.t td { padding: var(--s2) var(--s3); border-bottom: 1px solid var(--pm-line-soft); }
+.dsh-pm-eval-tbl, table.t { font-size: 12.5px; }
+
+/* --- 缺口列表：hairline 分隔，无框 --- */
+.gap { padding: var(--s2) 0; border-bottom: 1px solid var(--pm-line-soft); }
+.gap:last-child { border-bottom: 0; }
+.gap-why { margin-top: 2px; }
+
+/* --- 统一小件 --- */
+.chip, .eval-chip, .seg, .win-btn, .dsh-pm-btn, .doc-btn { border-radius: var(--r1); }
+.dsh-pm-btn { border-color: var(--pm-line); padding: 5px 12px; }
+.dsh-pm-btn.primary { background: var(--pm-accent); border-color: var(--pm-accent); }
+.win-btn { border-color: var(--pm-line); padding: 2px 9px; }
+.stat, .eval-dim, .eval-att, .eval-honest, .part, .eval-refused, .empty-honest { border-radius: var(--r1); border-color: var(--pm-line-soft); }
+.note { font-size: var(--f-small); color: var(--pm-text2); }
+.card-head h2 + .sub + * { margin-top: var(--s2); }
+/* 首屏里两块的内部小节标题（缺口/结论） */
+.firstscreen h1.head-title { font-size: var(--f-h1); }
+body[data-state="terminal"] .stage .stage-bar { background: var(--pm-ok); }
+body[data-state="terminal"] .stage .stage-label { color: var(--pm-text); font-weight: 600; }
+@media (max-width: 1079px) {
+  .doc { grid-template-columns: 1fr; }
+  .toc { position: static; display: flex; flex-wrap: wrap; gap: 4px; background: #fff; border: 1px solid var(--pm-line); border-radius: var(--pm-radius); padding: 7px 9px; }
+  .toc-title, .toc-sep { display: none; }
+  .toc a { border-left: 0; border-radius: var(--pm-radius-pill); }
+  .toc a.on { border-left: 0; }
+}
+</style>
+</head>
+<body data-state="inflight" data-surface="page">
+
+<div class="proto-bar">
+  <b>原型 · 需求详情页整页重构</b>
+  <span class="hint">REQ-261004222448-292a ｜ 单页纵向流 + 粘性目录 ｜ 标本数据虚构</span>
+  <span class="hint">｜展示面：</span>
+  <button class="proto-btn" data-surface="header" data-on="0">会话头部（一行）</button>
+  <button class="proto-btn" data-surface="panel" data-on="0">会话面板（摘要档）</button>
+  <button class="proto-btn" data-surface="page" data-on="1">看板页（完整档）</button>
+  <span class="hint">｜状态：</span>
+  <button class="proto-btn" data-state="inflight" data-on="1">在途 implementing</button>
+  <button class="proto-btn" data-state="terminal" data-on="0">终态 archived</button>
+</div>
+
+<div class="wrap">
+
+  <!-- ================================================================ -->
+  <!-- 档一：会话头部（一行）—— 与对话同宽，不挤压对话                    -->
+  <!-- ================================================================ -->
+  <div class="face face-header">
+    <div class="chat-header">
+      <span class="mono" style="font-size:11px;color:var(--pm-text2)">REQ-…7f3c</span>
+      <div class="stages">
+        <div class="stage done"><div class="stage-bar"></div><div class="stage-label">立项</div></div>
+        <div class="stage done"><div class="stage-bar"></div><div class="stage-label">需求</div></div>
+        <div class="stage done"><div class="stage-bar"></div><div class="stage-label">设计</div></div>
+        <div class="stage done"><div class="stage-bar"></div><div class="stage-label">拆分</div></div>
+        <div class="stage cur"><div class="stage-bar"></div><div class="stage-label">实施</div></div>
+        <div class="stage"><div class="stage-bar"></div><div class="stage-label">验收</div></div>
+        <div class="stage"><div class="stage-bar"></div><div class="stage-label">归档</div></div>
+      </div>
+      <span class="hd-text only-inflight"><b>实施中</b> · 卡在 <span class="mono">w-b262610a</span> · <b>1 件事等人</b></span>
+      <span class="hd-text only-terminal"><b>已归档</b> · 00:31</span>
+      <span class="hd-more">展开详情 ▾</span>
+    </div>
+    <div class="note face-narrow-note">
+      档一 = <b>一行</b>：只有「到哪一步 + 卡在哪」。现有 <span class="mono">conversation-progress</span> 已经做对了，<b>本档不改</b>——
+      它的定位是"agent 跑很久，回头知道做到哪了"，多一个像素都是噪音。
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- 档二：会话内展开面板（窄 · 摘要档）                                -->
+  <!-- ================================================================ -->
+  <div class="face face-panel">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="t">看板验收单支持逐项驳回并自动生成返工卡</span>
+        <span class="chip solid only-inflight" style="margin-left:auto">实施中</span>
+        <span class="chip solid only-terminal" data-s="archived" style="margin-left:auto">已归档</span>
+      </div>
+
+      <div class="panel-sec">
+        <h3>现在该谁动手</h3>
+        <div class="who only-inflight">等 <b>agent</b> 继续跑链（<span class="mono">w-b262610a</span>）；<b>人有一件事</b>：确认设计 v2 <span class="mono">design/frontend.md</span>。</div>
+        <div class="who only-terminal">已归档，无可执行动作。</div>
+        <div class="acts only-inflight" style="margin-top:8px">
+          <button class="dsh-pm-btn primary">去确认设计</button>
+          <button class="dsh-pm-btn">→ 验收</button>
+        </div>
+      </div>
+
+      <div class="panel-sec">
+        <h3>缺口 3 <span class="sub" style="font-weight:400;color:var(--pm-text3)">（该有而没有的）</span></h3>
+        <div class="only-inflight">
+          <div class="gap"><span class="gap-mark">🟡</span><span class="gap-what">设计 v2 待人工确认</span></div>
+          <div class="gap"><span class="gap-mark">🔴</span><span class="gap-what">FR-5 未被任何任务接收</span></div>
+          <div class="gap"><span class="gap-mark">🟡</span><span class="gap-what">验收材料未登记</span></div>
+        </div>
+        <div class="ok-line only-terminal">✅ 无缺口</div>
+      </div>
+
+      <div class="panel-sec">
+        <h3>任务进度 <span class="mono">4/11</span></h3>
+        <div class="chain">
+          <span class="seg" data-s="done">t-001-dev ✓</span>
+          <span class="seg" data-s="done">t-001-review ✓</span>
+          <span class="seg" data-s="done">t-001-test ✓</span>
+          <span class="seg" data-s="done">t-002-dev ✓</span>
+          <span class="seg" data-s="active">t-002-review ◐</span>
+          <span class="seg">+6</span>
+        </div>
+      </div>
+
+      <div class="panel-sec">
+        <h3>最近对话 <span class="sub" style="font-weight:400;color:var(--pm-text3)">（保留人机往返）</span></h3>
+        <div class="dlg-row"><span class="dlg-who" data-k="human">人</span><span class="dlg-when">22:56</span><div>[文档变更] 计划 v2：t2 拆成 dev/review/test</div></div>
+        <div class="dlg-row"><span class="dlg-who" data-k="agent">agent</span><span class="dlg-when">23:31</span><div>退回返工：驳回后需保留原意见</div></div>
+      </div>
+
+      <div class="panel-sec">
+        <h3>窗口 <span class="sub" style="font-weight:400;color:var(--pm-text3)">（点击跳到该会话）</span></h3>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="win-btn" title="本会话（owner）">w-3643cb19 <span class="role">owner</span> ↗</button>
+          <button class="win-btn" title="干活窗口（worker）">w-b262610a <span class="role">worker</span> ↗</button>
+          <button class="win-btn" title="只读窗口（observer）">w-9f0c1d77 <span class="role">observer</span> ↗</button>
+        </div>
+      </div>
+
+      <div class="panel-foot">
+        <button class="dsh-pm-btn">打开完整详情（看板页）</button>
+      </div>
+    </div>
+    <div class="note face-narrow-note">
+      档二 = <b>摘要档</b>：只放「谁动手 / 缺口 / 进度 / 最近对话」，<b>不铺轨迹、不铺文档表、不放成本</b>——
+      窄面板铺全量正是"影响对话"的根源。本档目标是收敛现有的 <span class="mono">node-panel.ts</span>（与详情页并列的第二套渲染器）。
+    </div>
+  </div>
+
+<div class="doc face face-page">
+
+  <!-- 左侧常驻目录已去掉（2026-10-04 裁定）：段名在每段左窄栏里已有，
+       再来一列文字目录是第三处重复标签，且白吃 192px 横向。
+       替代：滚动一屏后淡入的浮动「↑ 顶部」按钮（见页面底部）+ URL 深链 #段。 -->
+
+  <!-- ================= 内容流 ================= -->
+  <main id="top">
+
+    <!-- ========== 首屏并排（V3）：结论头 + 缺口与提醒 ========== -->
+    <!-- 打开就同时看到"现在怎么样"和"缺什么"；两者都是常驻不折叠 -->
+    <div class="firstscreen">
+
+    <div class="card head-card">
+      <div class="head-top">
+        <button class="dsh-pm-btn">← 看板</button>
+        <span class="mono" style="font-size:11px;color:var(--pm-text2)">REQ-261004201530-7f3c</span>
+        <span class="chip solid only-inflight">实施中</span>
+        <span class="chip solid only-terminal" data-s="archived">已归档</span>
+        <span class="chip">feature</span>
+        <span class="chip">expert</span>
+        <span style="margin-left:auto">更新于 2026-10-04 23:41</span>
+      </div>
+      <h1 class="head-title">看板验收单支持逐项驳回并自动生成返工卡</h1>
+      <div class="head-meta">
+        <span>创建 22:28（人）</span>
+        <span>·</span>
+        <span>窗口（点击跳转到该会话）：
+          <button class="win-btn" title="跳到该会话（owner，源窗口）">w-3643cb19 <span class="role">owner</span> ↗</button>
+          <button class="win-btn" title="跳到该会话（worker，22:57 接手）">w-b262610a <span class="role">worker</span> ↗</button>
+          <button class="win-btn" title="跳到该会话（observer，只读）">w-9f0c1d77 <span class="role">observer</span> ↗</button>
+        </span>
+      </div>
+      <div class="note" style="margin-top:5px">
+        <span class="keep">现有能力</span> 窗口 chip 本来就是可点按钮（<span class="mono">sessionChipHtml</span> →
+        <span class="mono">button[data-action="jump-session"]</span>，跳转走
+        <span class="mono">uiWorkspace.openSession</span> 并收起看板面板）；已归档会话点它会先取消归档再打开。
+        <b>重构要求：这个入口不许丢，且席位窗口（worker / observer）都要可点</b>——现在详情头只给了来源窗口。
+      </div>
+
+      <!-- 一句话结论：把原来的四处重复压成一处 -->
+      <div class="verdict only-inflight">
+        <b>在实施段 · 4/11 卡完成</b>，正在跑 <span class="mono">t-002-review</span>（<span class="mono">w-b262610a</span> 认领，已 12m）；
+        <b>1 件事等人处理</b>：设计 v2 补充文档待确认（<span class="mono">pc-8f21c4d0</span>）。距上次更新 2 分钟。
+      </div>
+      <div class="verdict only-terminal" style="border-left-color:var(--pm-ok)">
+        <b>已归档 · 2026-10-05 00:31</b>，验收通过（验收单 v2，12 项，1 项返工后重判通过）；
+        全程 2h03m，3 次人工门往返，1 次窗口交接。
+      </div>
+
+      <!-- 阶段条：取代原「8 态进度点 + 状态胶囊 + 闸门提示」三处重复 -->
+      <div class="stages">
+        <div class="stage done"><div class="stage-bar"></div><div class="stage-label">立项</div></div>
+        <div class="stage done"><div class="stage-bar"></div><div class="stage-label">需求分析</div></div>
+        <div class="stage done"><div class="stage-bar"></div><div class="stage-label">设计</div></div>
+        <div class="stage done"><div class="stage-bar"></div><div class="stage-label">拆分</div></div>
+        <div class="stage cur"><div class="stage-bar"></div><div class="stage-label">实施</div></div>
+        <div class="stage"><div class="stage-bar"></div><div class="stage-label">验收</div></div>
+        <div class="stage"><div class="stage-bar"></div><div class="stage-label">归档</div></div>
+      </div>
+    </div>
+
+    <!-- ========== ① 现在该谁动手 ========== -->
+    <div class="card" id="now">
+      <div class="card-head"><h2>① 现在该谁动手</h2><span class="sub">闸门口径来自状态机，按钮就是合法动作</span><span class="new">新增</span></div>
+      <div class="card-body">
+        <div class="now-grid">
+          <div class="who only-inflight">
+            等 <b>窗口 agent</b> 继续跑链（<span class="mono">w-b262610a</span>）；<b>人这边有一件事</b>：确认设计 v2 补充文档
+            <span class="mono">design/frontend.md</span>——未确认前写路径（推进 / 提交）会被代码级拦住。
+            确认后无需人工干预，链会自动接着跑到验收。
+          </div>
+          <div class="who only-terminal">终态只读：本条需求已归档，无可执行动作。</div>
+          <div class="acts only-inflight">
+            <button class="dsh-pm-btn">去确认设计（看板）</button>
+            <button class="dsh-pm-btn primary">→ 验收</button>
+            <button class="dsh-pm-btn">立项取消</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== ② 缺口与提醒（常驻） ========== -->
+    <div class="card" id="gaps">
+      <div class="card-head"><h2>② 缺口与提醒</h2><span class="sub">当前状态下「该有而没有」的东西；无缺口时显示一行通过</span><span class="new">新增</span></div>
+      <div class="card-body">
+        <div class="only-inflight">
+          <div class="gap"><span class="gap-mark">🟡</span><span class="gap-what">设计 v2 补充文档待人工确认
+            <div class="gap-why"><span class="mono">design/frontend.md</span> 于 23:38 登记；挂起期间 <span class="mono">reqboard_move</span> / <span class="mono">reqboard_submit</span> 被拦（<span class="mono">REQBOARD_CONFIRM_PENDING</span>）</div></span></div>
+          <div class="gap"><span class="gap-mark">🔴</span><span class="gap-what">FR-5「返工卡回流 RTM」未被任何任务接收
+            <div class="gap-why">条款接收状态里的漏项——实施跑完也不会有人做它</div></span></div>
+          <div class="gap"><span class="gap-mark">🟡</span><span class="gap-what">验收材料（verification）未登记
+            <div class="gap-why">实施段完成前需补齐：验收段必备产物，缺它会被门禁拒绝</div></span></div>
+          <div class="gap"><span class="gap-mark">⚪</span><span class="gap-what">1 次零产出执行：<span class="mono">t-003-review</span>（23:31–23:41）
+            <div class="gap-why">无产出条目的执行——可能空转，值得看一眼</div></span></div>
+        </div>
+        <div class="only-terminal">
+          <div class="ok-line">✅ 无缺口：要件齐、门禁全过、无挂起确认、无未接收条款。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 首屏并排：结论头 + 缺口与提醒（V3）——打开就同时看到"怎么样"和"缺什么" -->
+    </div>
+
+    <!-- ========== ③ 产物与五道门禁 ========== -->
+    <div class="card" id="gates">
+      <div class="card-head"><h2>③ 产物与五道门禁</h2><span class="sub">登记 → 人工确认 → 才能推进；每格可点开文档</span><span class="new">新增</span></div>
+      <div class="card-body">
+        <table class="t">
+          <thead><tr><th>阶段</th><th>产物</th><th>登记</th><th>人工确认</th><th>闸门</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>需求分析</td>
+              <td><button class="doc-btn">requirement.md</button> <span class="mut">（human_gate 通过）</span></td>
+              <td class="ok">✅ 22:31:01</td>
+              <td class="ok">✅ 22:31:07 · 人</td>
+              <td class="ok">已放行</td>
+            </tr>
+            <tr>
+              <td>设计</td>
+              <td><button class="doc-btn">architecture.md</button> · <button class="doc-btn">interfaces.md</button> · <button class="doc-btn">frontend.md</button></td>
+              <td class="ok">✅ 3 份（22:44 / 23:38）</td>
+              <td><span class="warn">2 已落章 · 1 待确认</span> <span class="mut">（v2 补充待人工）</span></td>
+              <td class="warn">挂起中</td>
+            </tr>
+            <tr>
+              <td>拆分</td>
+              <td><button class="doc-btn">decomposition.md</button> <span class="mut">（计划 v2）</span></td>
+              <td class="ok">✅ 23:02:30</td>
+              <td class="ok">✅ 23:02:41 · 人批准</td>
+              <td class="ok">已放行 · 11 卡落库</td>
+            </tr>
+            <tr>
+              <td>实施</td>
+              <td><button class="doc-btn">tasks/&lt;卡&gt;.md</button> <span class="mut">4 份已登记</span></td>
+              <td class="warn">◐ 4/11 卡</td>
+              <td class="mut">—（无需人工）</td>
+              <td class="warn">进行中</td>
+            </tr>
+            <tr class="only-inflight">
+              <td>验收</td><td class="mut">verification 未提交</td><td class="mut">⬜</td><td class="mut">—</td><td class="mut">未到</td>
+            </tr>
+            <tr class="only-inflight">
+              <td>归档</td><td class="mut">archive 未提交</td><td class="mut">⬜</td><td class="mut">—</td><td class="mut">未到</td>
+            </tr>
+            <tr class="only-terminal">
+              <td>验收</td><td><button class="doc-btn">verification.md</button></td><td class="ok">✅ 00:12</td><td class="ok">✅ 00:20 · 人通过</td><td class="ok">已放行</td>
+            </tr>
+            <tr class="only-terminal">
+              <td>归档</td><td>清单 6 份 · <button class="doc-btn">归档索引</button></td><td class="ok">✅ 00:28</td><td class="ok">✅ 00:31 · 人归档</td><td class="ok">已放行</td>
+            </tr>
+          </tbody>
+        </table>
+        <!-- 条款接收状态：逐条四态（常驻，因为它就是"缺口"的来源之一） -->
+        <h4 class="subh">🏷 条款接收状态 <span class="mut" style="font-weight:400">谁接了 / 还没人接（原「时间线」Tab 的内容，搬到这里）</span></h4>
+        <table class="t">
+          <thead><tr><th>条款</th><th>状态</th><th>承载任务</th><th>证据</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">FR-1</td><td class="ok">done 已完成 + 证据</td><td class="mono">t-001 / t-002</td><td class="mut">卡文档 + 汇报</td></tr>
+            <tr><td class="mono">FR-2</td><td class="ok">done</td><td class="mono">t-002</td><td class="mut">卡文档 + 汇报</td></tr>
+            <tr><td class="mono">FR-3</td><td class="ok">received 已接收</td><td class="mono">t-002-test</td><td class="mut">—</td></tr>
+            <tr><td class="mono">FR-4</td><td class="ok">received</td><td class="mono">t-001-review</td><td class="mut">—</td></tr>
+            <tr><td class="mono">FR-5</td><td class="bad">🔴 unreceived 未被任何任务接收</td><td class="mut">—</td><td class="mut">—</td></tr>
+          </tbody>
+        </table>
+        <div class="note" style="margin-top:var(--s2)">四种状态取自 <span class="mono">reqboard_status.clause_receive_status</span>：done / received / skipped（本轮裁剪）/ <span class="bad">unreceived（红）</span>。红项同时出现在 ② 缺口与提醒里。</div>
+
+        <!-- 文档清单（原有「文档记录」，从一行文字补成清单） -->
+        <details class="fold">
+          <summary>📄 文档清单 <span class="keep">原「概览 · 文档记录」，补成清单</span></summary>
+          <div class="body">
+            <table class="t">
+              <thead><tr><th>类型</th><th>文件</th><th>登记</th><th>说明</th></tr></thead>
+              <tbody>
+                <tr><td>需求</td><td><button class="doc-btn">requirement.md</button></td><td class="ok">✅ 22:31</td><td class="mut">已确认</td></tr>
+                <tr><td>设计</td><td><button class="doc-btn">design/architecture.md</button></td><td class="ok">✅ 22:44</td><td class="mut">已确认</td></tr>
+                <tr><td>设计</td><td><button class="doc-btn">design/interfaces.md</button></td><td class="ok">✅ 22:44</td><td class="mut">已确认</td></tr>
+                <tr><td>设计</td><td><button class="doc-btn">design/frontend.md</button></td><td class="warn">◐ 23:38</td><td class="warn">v2 补充 · 待确认</td></tr>
+                <tr><td>拆分</td><td><button class="doc-btn">decomposition.md</button></td><td class="ok">✅ 23:02</td><td class="mut">已批准</td></tr>
+                <tr><td>任务卡</td><td><button class="doc-btn">tasks/t-001.md</button> · <button class="doc-btn">t-002.md</button> · <button class="doc-btn">t-002-dev.md</button> · <button class="doc-btn">t-003.md</button></td><td class="warn">◐ 4 份</td><td class="mut">随汇报追加</td></tr>
+                <tr><td>台账</td><td><button class="doc-btn">queue.json</button></td><td class="mut">—</td><td class="mut">任务 DAG 事实源</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+
+        <!-- 追溯（原「追溯」Tab 整块搬来，原样分三块） -->
+        <details class="fold">
+          <summary>🔗 追溯与覆盖度 <span class="keep">原「追溯」Tab，整块搬入</span></summary>
+          <div class="body">
+            <div class="cov">
+              <div class="stat"><div class="stat-l">需求 ← 设计</div><div class="stat-v" style="font-size:15px">4/5 <span class="warn" style="font-size:11px">缺 FR-5</span></div></div>
+              <div class="stat"><div class="stat-l">设计 ← 任务</div><div class="stat-v" style="font-size:15px">3/3</div></div>
+              <div class="stat"><div class="stat-l">任务 ← 测试</div><div class="stat-v" style="font-size:15px">2/3 <span class="warn" style="font-size:11px">缺 t-002-test</span></div></div>
+            </div>
+            <div class="note" style="margin:var(--s3) 0">四列关系图（原为交错连线图）：</div>
+            <div class="rel4">
+              <div class="rel-col"><div class="rel-h">需求条款</div><div class="rel-i">FR-1</div><div class="rel-i">FR-2</div><div class="rel-i">FR-3</div><div class="rel-i">FR-4</div><div class="rel-i bad">FR-5</div></div>
+              <div class="rel-col"><div class="rel-h">设计章节</div><div class="rel-i">§1 驳回交互</div><div class="rel-i">§2 返工卡生成</div><div class="rel-i">§3 RTM 回流</div></div>
+              <div class="rel-col"><div class="rel-h">任务卡</div><div class="rel-i">t-001</div><div class="rel-i">t-002</div><div class="rel-i">t-003</div></div>
+              <div class="rel-col"><div class="rel-h">测试</div><div class="rel-i">t-001-test ✓</div><div class="rel-i">t-002-test ○</div><div class="rel-i">t-003</div></div>
+            </div>
+            <div class="note" style="margin:var(--s3) 0 var(--s1)">三个矩阵表（原样保留，此处示意列头）：需求×设计 / 设计×任务 / 任务×测试——每格标 ✅ 覆盖 · ⬜ 未覆盖。</div>
+            <table class="t">
+              <thead><tr><th>需求 → 设计</th><th>§1</th><th>§2</th><th>§3</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">FR-1</td><td class="ok">✅</td><td class="mut">⬜</td><td class="mut">⬜</td></tr>
+                <tr><td class="mono">FR-5</td><td class="mut">⬜</td><td class="mut">⬜</td><td class="warn">⬜ 断链</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- ========== ④ 执行 ========== -->
+    <div class="card" id="exec">
+      <div class="card-head"><h2>④ 执行</h2><span class="sub">任务 DAG / 子卡链 / 运行态</span><span class="keep">原「执行」Tab，合入纵向流</span></div>
+      <div class="card-body">
+        <div class="stats" style="margin-bottom:12px">
+          <div class="stat"><div class="stat-l">总卡</div><div class="stat-v">11</div></div>
+          <div class="stat stat-ok"><div class="stat-l">已完成</div><div class="stat-v">4</div></div>
+          <div class="stat"><div class="stat-l">进行中</div><div class="stat-v">1</div></div>
+          <div class="stat"><div class="stat-l">待开始</div><div class="stat-v">6</div></div>
+        </div>
+
+        <div class="runline only-inflight" style="margin-bottom:12px">
+          <span>自动链 <b>运行中</b></span>
+          <span>run <b class="mono">run-7f3c-2</b></span>
+          <span>step <b>6</b></span>
+          <span>当前子卡 <b class="mono">t-002-review</b></span>
+          <span>心跳 <b>12 秒前</b></span>
+        </div>
+
+        <div class="chain" style="margin-bottom:12px">
+          <span class="seg" data-s="done">t-001-dev ✓</span>
+          <span class="seg" data-s="done">t-001-review ✓</span>
+          <span class="seg" data-s="done">t-001-test ✓</span>
+          <span class="seg" data-s="done">t-002-dev ✓</span>
+          <span class="seg" data-s="active">t-002-review ◐</span>
+          <span class="seg">t-002-test ○</span>
+          <span class="seg">t-003-dev ○</span>
+          <span class="seg">t-003-review ○</span>
+          <span class="mut" style="font-size:11px">子卡链模板：dev → review → test</span>
+        </div>
+
+        <div class="dag-ph">
+          <div class="dag-note">任务 DAG（真实页面由现有 <span class="mono">dag-view</span> 画 Canvas；下面是同口径的静态示意：层级 / 依赖 / 状态一致）</div>
+          <div class="dag">
+            <div class="dag-node" data-s="done">
+              <div class="dag-id mono">t-001</div>
+              <div class="dag-title">子卡链模板：返工卡生成</div>
+              <div class="dag-meta">layer 0 · 子卡 3/3</div>
+            </div>
+            <div class="dag-arrow">→<div class="dag-edge">依赖</div></div>
+            <div class="dag-node" data-s="active">
+              <div class="dag-id mono">t-002</div>
+              <div class="dag-title">验收单逐项驳回 UI</div>
+              <div class="dag-meta">layer 1 · 子卡 2/3</div>
+            </div>
+            <div class="dag-arrow">→<div class="dag-edge">依赖</div></div>
+            <div class="dag-node" data-s="todo">
+              <div class="dag-id mono">t-003</div>
+              <div class="dag-title">RTM 回流与覆盖度</div>
+              <div class="dag-meta">layer 2 · 子卡 0/2</div>
+            </div>
+          </div>
+          <div class="dag-chain">
+            <span class="mut" style="font-size:11px">子卡链（每张父卡内部按模板展开）：</span>
+            <span class="seg" data-s="done">t-001 dev ✓</span><span class="seg" data-s="done">review ✓</span><span class="seg" data-s="done">test ✓</span>
+            <span class="mut">｜</span>
+            <span class="seg" data-s="done">t-002 dev ✓</span><span class="seg" data-s="active">review ◐</span><span class="seg">test ○</span>
+            <span class="mut">｜</span>
+            <span class="seg">t-003 dev ○</span><span class="seg">review ○</span>
+          </div>
+        </div>
+
+        <table class="t" style="margin-top:var(--s4)">
+          <thead><tr><th>状态</th><th>卡片</th><th>阶段</th><th>依赖</th><th>负责人</th><th>最近汇报</th></tr></thead>
+          <tbody>
+            <tr><td class="ok">✓ 已完成</td><td><b>子卡链模板：返工卡生成</b> <span class="mut mono">t-001</span></td><td>实施</td><td class="mut">—</td><td class="mono">w-b262610a</td><td class="mut">子卡 3/3 完成</td></tr>
+            <tr><td class="ok">✓ 已完成</td><td class="mut">└ <span class="mono">t-001-dev</span> 返工卡生成（dev）</td><td>实施</td><td class="mut mono">—</td><td class="mono">w-b262610a</td><td>files_changed 3 · 23:20</td></tr>
+            <tr><td class="ok">✓ 已完成</td><td class="mut">└ <span class="mono">t-001-review</span>（review）</td><td>复核</td><td class="mono">t-001-dev</td><td class="mono">w-b262610a</td><td>files_changed 1 · 23:26</td></tr>
+            <tr><td class="warn">◐ 进行中</td><td><b>验收单逐项驳回 UI</b> <span class="mut mono">t-002</span></td><td>实施</td><td class="mono">t-001</td><td class="mono">w-b262610a</td><td class="mut">子卡 2/3</td></tr>
+            <tr><td class="warn">◐ 进行中</td><td class="mut">└ <span class="mono">t-002-review</span>（review）</td><td>复核</td><td class="mono">t-002-dev</td><td class="mono">w-b262610a</td><td class="mut">已跑 12m</td></tr>
+            <tr><td class="mut">○ 待开始</td><td class="mut">└ <span class="mono">t-002-test</span>（test）</td><td>测试</td><td class="mono">t-002-review</td><td class="mut">—</td><td class="mut">—</td></tr>
+            <tr><td class="mut">○ 待开始</td><td><b>RTM 回流与覆盖度</b> <span class="mut mono">t-003</span></td><td>实施</td><td class="mono">t-002</td><td class="mut">—</td><td class="mut">子卡 0/2</td></tr>
+          </tbody>
+        </table>
+        <div class="note" style="margin-top:var(--s2)">共 11 张（父 3 / 子 8），上表展开 7 行；「最近汇报」来自 <span class="mono">lastReport</span>（四要素：summary / completed / filesChanged / nextStep）。</div>
+      </div>
+    </div>
+
+    <!-- ========== ⑤ 验收与归档 ========== -->
+    <div class="card" id="accept">
+      <div class="card-head"><h2>⑤ 验收与归档</h2><span class="keep">原「归档」Tab，合入纵向流</span></div>
+      <div class="card-body">
+        <div class="only-inflight">
+          <div class="empty-honest">
+            <b>尚未到验收段</b>（当前实施中 4/11）。到验收段后此处出现验收单逐项裁决（含每项证据与意见）；
+            归档段出现归档清单、合并去向与说明书更新点。
+            <div class="note" style="margin-top:4px">未提交的产物不画空表格——空表格会被读成「已检查且没问题」。</div>
+          </div>
+        </div>
+        <div class="only-terminal">
+          <h4 class="subh">✅ 验收单 v2 · 12 项（11 通过 / 1 返工后重判通过）· 裁决 2026-10-05 00:20 by 人</h4>
+          <table class="t">
+            <thead><tr><th>#</th><th>验收标准</th><th>实际结果（含来源）</th><th>裁决</th><th>意见</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">1</td><td>单项驳回后可继续裁决其它项</td><td class="ok">通过 · 截图 <span class="mono">reject-then-decide.png</span> <span class="mut">（agent）</span></td><td class="ok">✅ 通过</td><td class="mut">—</td></tr>
+              <tr><td class="mono">2</td><td>驳回自动生成返工子卡并挂原任务下</td><td class="ok">通过 · 台账 t-004-dev（parentId=t-002） <span class="mut">（agent）</span></td><td class="ok">✅ 通过</td><td class="mut">—</td></tr>
+              <tr><td class="mono">3</td><td>原意见与责任卡在返工后保留</td><td class="bad">首轮未通过：意见未挂回原卡</td><td class="warn">↻ 返工后 ✅</td><td>保留原意见与责任卡后再报</td></tr>
+              <tr><td class="mono">4</td><td>驳回后 RTM 回流更新覆盖度</td><td class="ok">通过 · <span class="mono">rtm-accepting.yml</span> 已更新 <span class="mut">（agent）</span></td><td class="ok">✅ 通过</td><td class="mut">—</td></tr>
+              <tr><td class="mono">5</td><td>需人工确认项已显式标注</td><td class="warn">无独立证据 → 标注"需人工确认"（human）</td><td class="ok">✅ 通过</td><td class="mut">已按标注人工核对</td></tr>
+              <tr><td colspan="5" class="mut">…共 12 项；证据 5 条（命令输出 2 / 截图 2 / 台账指针 1）；覆盖式通过：无</td></tr>
+            </tbody>
+          </table>
+
+          <h4 class="subh">📦 归档 · 2026-10-05 00:31 by 人</h4>
+          <table class="t">
+            <thead><tr><th>项</th><th>内容</th></tr></thead>
+            <tbody>
+              <tr><td>需求目录</td><td class="mono">docs/requirements/REQ-261004201530-7f3c/</td></tr>
+              <tr><td>文档清单</td><td>需求 1 · 设计 3 · 拆分 1 · 任务卡 4 · 验收 1 · 复盘 1（共 11）</td></tr>
+              <tr><td>合并去向</td><td><button class="doc-btn">architecture/acceptance-sheet.md</button> · <button class="doc-btn">architecture/project-manual.md</button> · <button class="doc-btn">work-logs/REQ-…-7f3c.md</button></td></tr>
+              <tr><td>索引条目</td><td>验收单逐项驳回 + 返工卡自动生成已交付</td></tr>
+              <tr><td>说明书更新点</td><td>2 处：<span class="mono">acceptance-sheet.md §驳回与返工</span> · <span class="mono">project-manual.md §验收段</span></td></tr>
+              <tr><td>清单对账</td><td class="ok">闸门通过 · 已列 11 / 豁免 1 / 未列 0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== ⑥ 对话（独立段，归档后保留） ========== -->
+    <div class="card" id="dialog">
+      <div class="card-head">
+        <h2>⑥ 对话</h2>
+        <span class="sub">人 ↔ agent 往返：评论 / 人工门退回理由 / 文档变更说明</span>
+        <span class="new">新增（从时间线里拆出来）</span>
+      </div>
+      <div class="card-body">
+        <div class="dlg-row"><span class="dlg-who" data-k="human">人</span><span class="dlg-when">22:56</span><div>[文档变更] 计划 v2：把 t2 拆成 dev/review/test 三段，粒度对齐子卡模板</div></div>
+        <div class="dlg-row"><span class="dlg-who" data-k="human">人</span><span class="dlg-when">23:02</span><div>退回计划 v1：粒度太细，请按子卡链模板重拆</div></div>
+        <div class="dlg-row"><span class="dlg-who" data-k="agent">w-b262610a</span><span class="dlg-when">23:31</span><div>退回返工：验收单驳回后需保留原意见与责任卡（已按此改 <span class="mono">acceptance/sheet.ts</span>）</div></div>
+        <div class="dlg-row"><span class="dlg-who" data-k="human">人</span><span class="dlg-when">23:38</span><div>设计 v2 补充 <span class="mono">frontend.md</span> 已登记，等我确认</div></div>
+        <div class="note" style="margin-top:9px">
+          与「状态变更」拆开的理由：这里的每一句都是<b>人的判断与 agent 的解释</b>，是归档后最值得留的东西；
+          机器事件（进入/离开阶段、停留时长、断点）单独成段、默认折叠。
+          <b>本段在 <span class="mono">archived</span> 状态下仍然保留</b>（见终态切换）。
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== ⑦ 状态变更（机器事件，折叠） ========== -->
+    <details class="fold" id="history">
+      <summary>⑦ 状态变更 <span class="keep">原「时间线」Tab 的机器事件部分，默认折叠</span></summary>
+      <div class="body">
+        <div class="tl">
+          <div class="tl-row"><span class="tl-when">22:28:03</span><span>立项 · <span class="mut">人</span></span><span class="tl-stay">停留 3m</span></div>
+          <div class="tl-row"><span class="tl-when">22:31:12</span><span>需求分析 · <span class="mono" style="font-size:11px">w-3643cb19</span></span><span class="tl-stay">停留 17m</span></div>
+          <div class="tl-row"><span class="tl-when">22:48:20</span><span>设计 · <span class="mono" style="font-size:11px">w-3643cb19</span></span><span class="tl-stay">停留 14m</span></div>
+          <div class="tl-row"><span class="tl-when">23:02:41</span><span>拆分 · 计划 v2 批准 · <span class="mono" style="font-size:11px">w-3643cb19</span></span><span class="tl-stay">停留 10m</span></div>
+          <div class="tl-row"><span class="tl-when">22:57</span><span>窗口交接：<span class="mono" style="font-size:11px">w-3643cb19 → w-b262610a</span>（水位顶墙档 fork）</span><span class="tl-stay">—</span></div>
+          <div class="tl-row"><span class="tl-when">23:14</span><span>中断：<span class="mono" style="font-size:11px">upstream stream idle 3m ×5</span> · 23:16 恢复</span><span class="tl-stay">断点</span></div>
+          <div class="tl-row"><span class="tl-when">23:13:02</span><span>实施 · <span class="mono" style="font-size:11px">w-b262610a</span></span><span class="tl-stay">已 28m</span></div>
+        </div>
+      </div>
+    </details>
+
+    <!-- ========== ⑧ 成本（折叠 + 可得性三态） ========== -->
+    <details class="fold" id="cost">
+      <summary>⑧ 成本 <span class="keep">原「Token」Tab，收进折叠区；归档后默认不展开</span></summary>
+      <div class="body">
+        <div class="only-inflight">
+          <div class="stats" style="margin-bottom:var(--s3)">
+            <div class="stat"><div class="stat-l">累计 Token</div><div class="stat-v" style="font-size:17px">1.84M</div></div>
+            <div class="stat"><div class="stat-l">输入 / 输出</div><div class="stat-v" style="font-size:17px">1.62M / 218K</div></div>
+            <div class="stat"><div class="stat-l">缓存命中</div><div class="stat-v" style="font-size:17px">71%</div></div>
+            <div class="stat"><div class="stat-l">墙钟</div><div class="stat-v" style="font-size:17px">1h13m</div></div>
+          </div>
+          <h4 class="subh">按节点 Token 去向（原「Token」Tab 的 7 列表格）</h4>
+          <table class="t">
+            <thead><tr><th>节点</th><th>调用</th><th>输入</th><th>输出</th><th>缓存读</th><th>合计</th><th>占比</th></tr></thead>
+            <tbody>
+              <tr><td>需求分析</td><td>6</td><td class="mono">182K</td><td class="mono">31K</td><td class="mono">141K</td><td class="mono">213K</td><td>12%</td></tr>
+              <tr><td>设计</td><td>9</td><td class="mono">296K</td><td class="mono">48K</td><td class="mono">230K</td><td class="mono">344K</td><td>19%</td></tr>
+              <tr><td>拆分</td><td>5</td><td class="mono">141K</td><td class="mono">22K</td><td class="mono">110K</td><td class="mono">163K</td><td>9%</td></tr>
+              <tr><td>实施</td><td>14</td><td class="mono">884K</td><td class="mono">104K</td><td class="mono">640K</td><td class="mono">988K</td><td>54%</td></tr>
+              <tr><td>验收</td><td class="mut">未到</td><td class="mut">—</td><td class="mut">—</td><td class="mut">—</td><td class="mut">—</td><td class="mut">—</td></tr>
+              <tr><td>归档</td><td class="mut">未到</td><td class="mut">—</td><td class="mut">—</td><td class="mut">—</td><td class="mut">—</td><td class="mut">—</td></tr>
+            </tbody>
+          </table>
+          <div class="note" style="margin-top:var(--s2)">点节点行可下钻到该阶段的任务执行明细；「无快照」= 推进时未取到会话快照（如实标注，不补 0）。</div>
+        </div>
+        <div class="only-terminal">
+          <div class="empty-honest">
+            <b>部分数据</b>：节点快照仅存 3/5 段（设计、验收段的快照在归档前已被清理），
+            其余按任务执行差值兜底估算 —— 合计 <b>1.79M 为下界</b>，不是精确值。
+          </div>
+        </div>
+
+        <h4 class="subh">可得性三态：三种写法各自长什么样（本段的设计约束，禁止用 0 冒充"没花钱"）</h4>
+        <div class="tri">
+          <div class="tri-i" data-s="ok">
+            <div class="tri-h">① 快照齐 → 正常展示</div>
+            <div class="tri-b">累计 <b>1.84M</b>（输入 1.62M / 输出 218K / 缓存命中 71%）；按节点 7 列全有值。</div>
+          </div>
+          <div class="tri-i" data-s="warn">
+            <div class="tri-h">② 快照缺、可兜底 → 「部分数据」</div>
+            <div class="tri-b">累计 <b>1.79M（下界）</b>：设计、验收段无节点快照，按任务执行差值兜底估算；<b>标注缺哪段</b>。</div>
+          </div>
+          <div class="tri-i" data-s="none">
+            <div class="tri-h">③ 完全不可得 → 「无 token 快照」</div>
+            <div class="tri-b">该需求无 token 快照（记录早于快照功能 / 归档后未保留）。<b>不显示 0、不画空表格</b>。</div>
+          </div>
+        </div>
+        <div class="note" style="margin-top:var(--s2)">现状（有 Tab 时）这条路径表现为：成本面板因 CSS 特异性漏在所有 Tab 上，且不可得时只显示"无快照"三个字、不说为什么。</div>
+        <div class="note" style="margin-top:8px">
+          <b>归档后默认不展开本段</b>（成本对已交付需求价值低，且最易不可得）；数据在就仍可点开。
+          本段<b>不进会话面板</b>（窄面里没人要看 token）。
+        </div>
+        <div class="note" style="margin-top:8px">
+          <b>顺带修掉的缺陷</b>：真实页面的 Token 面板因 CSS 特异性（<span class="mono">token.ts:7</span> 的
+          <span class="mono">[data-tab-content="token"]</span> 覆盖了 <span class="mono">board.ts:10</span> 的 <span class="mono">display:none</span>）
+          在<b>所有 Tab 常驻可见</b>；拆掉 Tab 后该缺陷自然消失，内容回到本折叠段。
+        </div>
+      </div>
+    </details>
+
+    <!-- ========== ⑨ 提示词（固定 + 注入，含 Dive） ========== -->
+    <div class="card" id="prompt">
+      <div class="card-head">
+        <h2>⑨ 提示词</h2>
+        <span class="sub">固定系统提示词（每回合装配）+ 注入留痕（含 Dive 轮次）</span>
+        <span class="new">新增（原在 Token Tab 里，且看不全）</span>
+      </div>
+      <div class="card-body">
+
+        <h3 style="margin:0 0 6px;font-size:12px">A. 固定系统提示词 <span class="note" style="font-weight:400">读时装配，不是留痕</span></h3>
+        <div style="font-size:12px">
+          routeKey <span class="mono">capture-section/expert/feature</span> · 命中 <span class="mono">exact</span> ·
+          <b>4 段</b> · <b>6 240 字符</b>（每回合 ≈ 1.8k tokens，估算值非计量值）
+        </div>
+        <div class="note" style="margin-top:5px">
+          本次组段：<span class="mono">implementing/expert</span>（阶段纪律）· <span class="mono">common/iron-rules</span>（铁律）·
+          <span class="mono">address</span>（地址段）· <span class="mono">capture-section</span>（需求摘要）·
+          <span class="warn">被裁：common/glossary（超预算 1 200 字符）</span>
+        </div>
+        <div class="note" style="margin-top:4px">
+          <span class="keep">现有能力</span> 现在每段点开就能看<b>正文</b>（<span class="mono">token-info.ts renderPromptPart</span> →
+          <span class="mono">&lt;pre class="dsh-pm-prompt-text"&gt;</span>）；本重构<b>保留正文可读</b>，并补上"组了哪几段、裁了哪段"。
+        </div>
+
+        <div style="margin-top:8px">
+          <details class="part" open>
+            <summary><span class="pname">implementing/expert</span><span class="pmeta">阶段纪律 · 2 180 字符 · ≈ 545 tokens</span></summary>
+            <div class="pbody">
+              <pre class="prompt-text">## 实施阶段纪律
+- 照卡开工：reqboard_task_move(task_id, to=in_progress)
+- 完工汇报：reqboard_task_report(task_id, summary, completed, files_changed)
+- 自测通过后再交棒验收：reqboard_submit(kind=verification)
+- 任务全部 done 时系统自动推进到验收；不要自行判定验收通过</pre>
+              <div class="pfoot"><button class="doc-btn">打开源文件</button><span class="note">packages/web/dsh-pmboard/src/domain/prompt/fragments/implementing/expert.md</span></div>
+            </div>
+          </details>
+          <details class="part">
+            <summary><span class="pname">common/iron-rules</span><span class="pmeta">铁律 · 1 460 字符 · ≈ 365 tokens</span></summary>
+            <div class="pbody"><pre class="prompt-text">## 本仓铁律
+- 批准闸门永不伸缩：每一步推进前产物必须经人确认
+- 产物闸门由代码兜底：未确认产物时 reqboard_move 会被代码级拒绝</pre></div>
+          </details>
+          <details class="part">
+            <summary><span class="pname">address</span><span class="pmeta">地址段 · 520 字符 · ≈ 130 tokens</span></summary>
+            <div class="pbody"><pre class="prompt-text">## 本条需求地址
+REQ-261004201530-7f3c · 文档 docs/requirements/REQ-261004201530-7f3c/
+任务台账 docs/requirements/REQ-261004201530-7f3c/queue.json</pre></div>
+          </details>
+          <details class="part">
+            <summary><span class="pname">capture-section</span><span class="pmeta">需求摘要 · 2 080 字符 · ≈ 520 tokens</span></summary>
+            <div class="pbody"><pre class="prompt-text">## 本条需求
+标题：看板验收单支持逐项驳回并自动生成返工卡
+类型：feature · 难度：expert · 当前状态：implementing</pre></div>
+          </details>
+          <details class="part" style="border-style:dashed">
+            <summary><span class="pname warn">common/glossary（被裁，未进本次装配）</span><span class="pmeta warn">超预算 1 200 字符</span></summary>
+            <div class="pbody"><div class="note">被裁即"本次没给 agent"，但保留可展开——用来回答"它为什么不知道某个术语"。</div></div>
+          </details>
+        </div>
+
+        <h3 style="margin:14px 0 6px;font-size:12px">B. 注入留痕 <span class="note" style="font-weight:400">三个来源，两种后果</span></h3>
+        <table class="t">
+          <thead><tr><th>时间</th><th>来源</th><th>窗口</th><th>后果</th><th>routeKey</th><th>片段（逐段列名）</th><th>字符</th><th>被裁</th><th>内容</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="mono">23:12</td><td>闸门 H3 注入</td><td class="mono">w-b262610a</td>
+              <td class="ok">✅ 投递进会话</td>
+              <td class="mono">implementing/expert</td>
+              <td>阶段纪律 · 铁律 · 地址 · 需求摘要</td>
+              <td class="mono">6 240</td><td class="mut">—</td>
+              <td><button class="doc-btn">看正文</button></td>
+            </tr>
+            <tr>
+              <td class="mono">23:16</td><td>Dive 节点结算</td><td class="mono">w-b262610a</td>
+              <td class="warn">◐ 只留痕（不投递）</td>
+              <td class="mono">implementing/expert</td>
+              <td>阶段纪律 · 铁律 · 地址 · 需求摘要</td>
+              <td class="mono">6 240</td><td class="warn">glossary</td>
+              <td><button class="doc-btn">看正文</button></td>
+            </tr>
+            <tr style="background:rgba(220,53,69,.06)">
+              <td class="mono">23:41</td><td>Dive 轮次投递</td><td class="mono">w-b262610a</td>
+              <td class="bad">⛔ 未留痕（采集缺口）</td>
+              <td class="mut">—</td><td class="mut">—</td><td class="mut">—</td><td class="mut">—</td>
+              <td class="mut" title="补留痕后此处可读该轮投递正文">—（补留痕后可读）</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="note" style="margin-top:8px">
+          <b>「看正文」的内容从哪来</b>（这张表本身不存正文，别假装存了）：
+        </div>
+        <table class="t" style="margin-top:5px">
+          <thead><tr><th>来源</th><th>正文可得性</th></tr></thead>
+          <tbody>
+            <tr><td>固定系统提示词（A 块）</td><td class="ok">实时装配返回正文 → 直接可读（现状已支持）</td></tr>
+            <tr><td>闸门 H3 / Dive 节点留痕</td><td class="warn">留痕只存 <span class="mono">fragmentIds</span>（不存正文）→ 按 id 解析到片段文件后打开可读</td></tr>
+            <tr><td>Dive 轮次投递</td><td class="bad">今天无留痕 → 补留痕时<b>一并留存正文</b>（FR-9），否则"内容"依然看不到</td></tr>
+          </tbody>
+        </table>        <div class="note" style="margin-top:8px">
+          <b>为什么必须显示"片段名"和"被裁"</b>：现在的块只写「片段数量：4」——agent 少受了一条约束时，
+          页面完全看不出来。被裁片段（<span class="mono">trimmed</span>）恰恰是"为什么它没遵守某条纪律"的第一现场。
+        </div>
+        <div class="note" style="margin-top:6px">
+          <b>诚实标注缺口</b>：Dive 轮次真正投递进会话的那条（<span class="mono">createRoundMessage</span>，<span class="mono">AgentDeliverer.ts:67</span>）
+          <b>今天没有任何留痕</b>——所以上表第三行写「未留痕」而不是留空。修它需要在投递处补一条留痕（host 侧改动）。
+        </div>
+        <div class="note" style="margin-top:6px">
+          <b>后果必须可见</b>：同样是"注入"，一种进了会话、一种只留痕（<span class="mono">session-driver.ts:290</span> 注释明说采集半不再投递）；
+          不区分的话，人会以为"留痕里有，agent 就一定收到了"——那是错误归因。
+        </div>
+
+        <h4 class="subh">点「看正文」之后长什么样（以 23:12 那条闸门注入为例）</h4>
+        <details class="part" open>
+          <summary><span class="pname">闸门 H3 注入 · 23:12 · w-b262610a</span><span class="pmeta">✅ 已投递进会话 · 4 段 · 6 240 字符</span></summary>
+          <div class="pbody">
+            <div class="inj-frag"><span class="inj-id mono">implementing/expert</span><span class="mut">阶段纪律 · 2 180 字符</span>
+              <pre class="prompt-text">## 实施阶段纪律
+- 照卡开工：reqboard_task_move(task_id, to=in_progress)
+- 完工汇报：reqboard_task_report(...)
+- 自测通过后再交棒验收：reqboard_submit(kind=verification)</pre></div>
+            <div class="inj-frag"><span class="inj-id mono">common/iron-rules</span><span class="mut">铁律 · 1 460 字符</span>
+              <pre class="prompt-text">## 本仓铁律
+- 批准闸门永不伸缩：每一步推进前产物必须经人确认</pre></div>
+            <div class="inj-frag"><span class="inj-id mono">address</span><span class="mut">地址段 · 520 字符</span>
+              <pre class="prompt-text">## 本条需求地址
+REQ-261004201530-7f3c · docs/requirements/REQ-261004201530-7f3c/</pre></div>
+            <div class="inj-frag"><span class="inj-id mono">capture-section</span><span class="mut">需求摘要 · 2 080 字符</span>
+              <pre class="prompt-text">## 本条需求
+标题：看板验收单支持逐项驳回并自动生成返工卡 · 状态：implementing</pre></div>
+            <div class="inj-trim">
+              <b>被裁片段（<span class="mono">trimmed</span>）：</b>
+              <span class="mono">common/glossary</span>（超预算 1 200 字符，未进本次注入）——<b>这一行才是"它为什么没遵守某条术语约定"的答案</b>。
+            </div>
+            <div class="pfoot">
+              <button class="doc-btn">打开片段源文件</button>
+              <button class="doc-btn">复制整段注入文本</button>
+              <span class="note">正文来自片段文件解析（留痕只存 id，不存正文）；Dive 轮次投递补留痕后此处可直接读正文。</span>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <!-- ========== 跨段要求：刷新不重置 ========== -->
+    <div class="card" id="refresh">
+      <div class="card-head"><h2>⊞ 跨段要求：刷新不重置</h2><span class="sub">SSE 一变更就整页重绘，交互态被冲掉</span><span class="new">新增</span></div>
+      <div class="card-body">
+        <div class="note">
+          触发：台账 revision 一变就刷新（<span class="mono">board-mount.ts:498</span>），详情页走的是
+          <b>整页 <span class="mono">innerHTML</span> 重绘</b>（<span class="mono">board-mount.ts:414</span>）。
+        </div>
+
+        <h4 class="subh">一次 SSE 更新前后的对照（agent 跑动期间每几十秒就会发生一次）</h4>
+        <div class="vs">
+          <div class="vs-i" data-s="bad">
+            <div class="vs-h">今天：整页 innerHTML 替换</div>
+            <div class="vs-row"><span>读到第 6 段「对话」</span><span class="bad">跳回页首</span></div>
+            <div class="vs-row"><span>展开的「状态变更」「成本」</span><span class="bad">全部收起</span></div>
+            <div class="vs-row"><span>⑨ 提示词里正在读的正文</span><span class="bad">被收起、要重新点开</span></div>
+            <div class="vs-row"><span>视觉</span><span class="bad">整页闪一下再重排</span></div>
+            <div class="vs-row"><span>保留的</span><span class="ok">档位 / 评论草稿 / DAG 视图 / 泳道滚动</span></div>
+          </div>
+          <div class="vs-i" data-s="good">
+            <div class="vs-h">目标：分段局部更新（每段稳定 id）</div>
+            <div class="vs-row"><span>读到第 6 段「对话」</span><span class="ok">停在原地</span></div>
+            <div class="vs-row"><span>展开的「状态变更」「成本」</span><span class="ok">保持展开</span></div>
+            <div class="vs-row"><span>⑨ 提示词里正在读的正文</span><span class="ok">保持展开</span></div>
+            <div class="vs-row"><span>视觉</span><span class="ok">只有变化的那段在动</span></div>
+            <div class="vs-row"><span>实现</span><span class="ok">不再依赖 capture/restore 打补丁</span></div>
+          </div>
+        </div>
+
+        <h4 class="subh">逐项要求</h4>
+        <table class="t" style="margin-top:8px">
+          <thead><tr><th>交互态</th><th>今天</th><th>要求</th></tr></thead>
+          <tbody>
+            <tr><td>选中的 Tab / 档位</td><td class="ok">已保留</td><td class="ok">保留</td></tr>
+            <tr><td>评论草稿</td><td class="ok">已保留（captureDetailDraft）</td><td class="ok">保留</td></tr>
+            <tr><td>DAG 视图（方向/开关）</td><td class="ok">已保留（dag/view-state）</td><td class="ok">保留</td></tr>
+            <tr><td>泳道 / 列表滚动</td><td class="ok">已保留（board-scroll）</td><td class="ok">保留</td></tr>
+            <tr><td><b>详情页滚动位置</b></td><td class="bad">丢失（board-scroll 明确跳过非泳道视图）</td><td class="ok">保留</td></tr>
+            <tr><td><b>各段展开/折叠</b>（<span class="mono">&lt;details&gt;</span>）</td><td class="bad">丢失（无任何捕获）</td><td class="ok">保留</td></tr>
+            <tr><td><b>阅读位置（粘性目录当前段）</b></td><td class="bad">丢失</td><td class="ok">保留</td></tr>
+            <tr><td>视觉闪烁</td><td class="warn">agent 跑动期间台账高频变更 → 页面反复重置</td><td class="ok">局部更新，不整页替换</td></tr>
+          </tbody>
+        </table>
+        <div class="note" style="margin-top:8px">
+          方向：从「整页 <span class="mono">innerHTML</span> 替换」改为<b>分段局部更新</b>（每段稳定 id，SSE 只换变化段），
+          交互态由此天然保住；不再靠"重绘前 capture、重绘后 restore"打补丁。
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body note">
+        <b>本页不含测评证据</b>（轨迹表 / 六维结论 / 终态对账 / 必经序列）——按 2026-10-04 裁定：
+        测评是<b>对外的接口能力</b>，不要求页面展示。那些内容的归属见
+        <span class="mono">prototype/README.md</span> 第「另一条工作」节。
+      </div>
+    </div>
+
+  </main>
+</div>
+</div>
+
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var state = q.get('state') || 'inflight';
+  var surface = q.get('surface') || 'page';
+  var forceTop = q.get('top') === '1';
+
+  /* 评审辅助（仅原型）：?open=1 展开全部折叠段；?diag=1 输出布局诊断到 #diag（headless 读 DOM 取数）。
+     为什么需要：折叠内容无法在截图里验证；横向溢出这类缺陷肉眼在小图上会漏——用数字说话。 */
+  if (q.get('open') === '1') {
+    document.querySelectorAll('details').forEach(function (d) { d.open = true; });
+  }
+  /* ?only=exec,prompt → 只留这些段（逐段评审/截图用；支持逗号分隔） */
+  var only = (q.get('only') || '').split(',').filter(Boolean);
+  if (only.length > 0) {
+    document.querySelectorAll('main > *, .firstscreen > *').forEach(function (el) {
+      var keep = only.some(function (id) { return el.id === id || el.querySelector('#' + id) !== null; });
+      if (!keep) el.style.display = 'none';
+    });
+  }
+  if (q.get('diag') === '1') {
+    window.addEventListener('load', function () {
+      var vw = document.documentElement.clientWidth;
+      var over = [];
+      document.querySelectorAll('main *').forEach(function (el) {
+        var r = el.getBoundingClientRect();
+        if (r.width > 0 && r.right > vw + 1) {
+          over.push((el.className || el.tagName) + '@' + Math.round(r.right));
+        }
+      });
+      var d = document.createElement('div');
+      d.id = 'diag';
+      d.textContent = 'viewport=' + vw
+        + ' scrollW=' + document.documentElement.scrollWidth
+        + ' pageH=' + document.documentElement.scrollHeight
+        + ' overflowN=' + over.length
+        + ' overflow=' + (over.slice(0, 6).join(',') || 'NONE');
+      document.body.appendChild(d);
+    });
+  }
+
+  function applyState() {
+    document.body.dataset.state = state;
+    document.querySelectorAll('.proto-btn[data-state]').forEach(function (b) {
+      b.dataset.on = b.dataset.state === state ? '1' : '0';
+    });
+    document.querySelectorAll('.stage').forEach(function (s) {
+      if (state === 'terminal') { s.classList.remove('cur'); s.classList.add('done'); }
+    });
+  }
+  function applySurface() {
+    document.body.dataset.surface = surface;
+    document.querySelectorAll('.proto-btn[data-surface]').forEach(function (b) {
+      b.dataset.on = b.dataset.surface === surface ? '1' : '0';
+    });
+  }
+  function sync() {
+    var u = new URL(location.href);
+    u.searchParams.set('state', state);
+    u.searchParams.set('surface', surface);
+    history.replaceState(null, '', u);
+  }
+  document.querySelectorAll('.proto-btn[data-state]').forEach(function (b) {
+    b.addEventListener('click', function () { state = b.dataset.state; applyState(); sync(); });
+  });
+  document.querySelectorAll('.proto-btn[data-surface]').forEach(function (b) {
+    b.addEventListener('click', function () { surface = b.dataset.surface; applySurface(); sync(); });
+  });
+
+  /* 浮动「↑ 顶部」：滚过一屏（≈一屏高）后淡入；点击回到结论头。
+     为什么不做常驻目录：段名在每段左窄栏里已有（V2 骨架），常驻目录是第三处重复标签且白吃 192px 横向。
+     深链仍可用 URL 的 #段（可分享、可收藏），不依赖任何页面内导航。 */
+  var toTop = document.createElement('button');
+  toTop.id = 'to-top';
+  toTop.type = 'button';
+  toTop.title = '回到结论头';
+  toTop.textContent = '↑';
+  document.body.appendChild(toTop);
+  toTop.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+
+  function onScroll() {
+    /* ?top=1 = 评审用强制显示（headless 截图验证不了真实滚动，见 README 的坑记 #3） */
+    var show = forceTop || (surface === 'page' && window.scrollY > window.innerHeight * 0.9);
+    toTop.dataset.show = show ? '1' : '0';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+  /* 深链进入（URL 带 #段）时，浏览器的锚点滚动发生在脚本之后 —— 只靠 scroll 事件会漏掉首帧，
+     所以 load 之后再算一次（滚动动画期间再由 scroll 事件接管）。 */
+  window.addEventListener('load', onScroll);
+  window.setTimeout(onScroll, 350);
+
+  applyState(); applySurface(); onScroll();
+})();
+</script>
+</body>
+</html>

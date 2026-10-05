@@ -1,0 +1,313 @@
+metadata:
+  stage: design
+  requirement_id: REQ-261004174324-4195
+  generated_at: 2026-10-04T09:47:02.950Z
+  version: 7
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T10:05:20.423Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 删除「知识库」侧栏入口与知识库页
+      source: requirement.md
+      line: 80
+    - id: FR-2
+      title: 缺层即自举（启动检测，幂等一次）
+      source: requirement.md
+      line: 106
+    - id: FR-3
+      title: 自举产物深度（骨架 + 全部可生成物，手写页占位）
+      source: requirement.md
+      line: 135
+    - id: FR-4
+      title: 生成器通用化（宿主用例 + 根参数化）
+      source: requirement.md
+      line: 163
+    - id: FR-5
+      title: 安全与响亮（非生成区零改动）
+      source: requirement.md
+      line: 189
+    - id: FR-6
+      title: 回退开关 `knowledge.autoBootstrap`
+      source: requirement.md
+      line: 215
+    - id: FR-7
+      title: 门禁与测试同步
+      source: requirement.md
+      line: 234
+outputs:
+  design_sections:
+    - ref: design/architecture.md#现状与目标
+      title: 现状与目标 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 现状与目标
+    - ref: design/architecture.md#模块划分与依赖方向
+      title: 模块划分与依赖方向 `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: 模块划分与依赖方向
+    - ref: design/architecture.md#触发链根确定的三个通知点
+      title: 触发链：根确定的三个通知点 `
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: 触发链根确定的三个通知点
+    - ref: design/architecture.md#幂等与去重
+      title: 幂等与去重 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/architecture.md
+      section: 幂等与去重
+    - ref: design/architecture.md#失败语义
+      title: 失败语义 `
+      serves:
+        - FR-5
+      file: design/architecture.md
+      section: 失败语义
+    - ref: design/architecture.md#删除面与保留面
+      title: 删除面与保留面 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: 删除面与保留面
+    - ref: design/architecture.md#迁移灰度与回滚
+      title: 迁移、灰度与回滚 `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: 迁移灰度与回滚
+    - ref: design/architecture.md#门禁与回归口径
+      title: 门禁与回归口径 `
+      serves:
+        - FR-7
+      file: design/architecture.md
+      section: 门禁与回归口径
+    - ref: design/architecture.md#文档同步
+      title: 文档同步 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: 文档同步
+    - ref: design/data-model.md#实体总览
+      title: 实体总览 `
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: 实体总览
+    - ref: design/data-model.md#自举结果对象
+      title: 自举结果对象 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/data-model.md
+      section: 自举结果对象
+    - ref: design/data-model.md#生成物文件契约
+      title: 生成物文件契约 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/data-model.md
+      section: 生成物文件契约
+    - ref: design/data-model.md#INDEX-生成区与手写区
+      title: INDEX 生成区与手写区 `
+      serves:
+        - FR-3
+        - FR-5
+      file: design/data-model.md
+      section: INDEX-生成区与手写区
+    - ref: design/data-model.md#配置数据契约
+      title: 配置数据契约 `
+      serves:
+        - FR-6
+      file: design/data-model.md
+      section: 配置数据契约
+    - ref: design/data-model.md#去重表与并发
+      title: 去重表与并发 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/data-model.md
+      section: 去重表与并发
+    - ref: design/data-model.md#删除面数据影响
+      title: 删除面数据影响 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 删除面数据影响
+    - ref: design/interfaces.md#新增用例-ensureKnowledgeLayer
+      title: 新增用例 `ensureKnowledgeLayer` `
+      serves:
+        - FR-2
+        - FR-4
+      file: design/interfaces.md
+      section: 新增用例-ensureKnowledgeLayer
+    - ref: design/interfaces.md#新增窄端口-KbSourcePort
+      title: 新增窄端口 `KbSourcePort` `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: 新增窄端口-KbSourcePort
+    - ref: design/interfaces.md#领域纯函数-srcdomainknowledgegeneratets
+      title: 领域纯函数 `src/domain/knowledge/generate.ts` `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/interfaces.md
+      section: 领域纯函数-srcdomainknowledgegeneratets
+    - ref: design/interfaces.md#CLI-契约保持不变
+      title: CLI 契约（保持不变） `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: CLI-契约保持不变
+    - ref: design/interfaces.md#配置契约-knowledgeautoBootstrap
+      title: 配置契约 `knowledge.autoBootstrap` `
+      serves:
+        - FR-6
+      file: design/interfaces.md
+      section: 配置契约-knowledgeautoBootstrap
+    - ref: design/interfaces.md#数据契约生成物与写入规则
+      title: 数据契约：生成物与写入规则 `
+      serves:
+        - FR-3
+        - FR-5
+      file: design/interfaces.md
+      section: 数据契约生成物与写入规则
+    - ref: design/interfaces.md#客户端契约变更
+      title: 客户端契约变更 `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: 客户端契约变更
+    - ref: design/interfaces.md#Agent-侧契约零变化
+      title: Agent 侧契约（零变化） `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: Agent-侧契约零变化
+    - ref: design/interfaces.md#与需求的显式偏离
+      title: 与需求的显式偏离 `
+      serves:
+        - FR-6
+      file: design/interfaces.md
+      section: 与需求的显式偏离
+    - ref: design/use-cases.md#UC-1-空项目首次启动知识层自动长出
+      title: UC-1 空项目首次启动：知识层自动长出 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/use-cases.md
+      section: UC-1-空项目首次启动知识层自动长出
+    - ref: design/use-cases.md#UC-2-已有知识层的项目启动零写入
+      title: UC-2 已有知识层的项目启动：零写入 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/use-cases.md
+      section: UC-2-已有知识层的项目启动零写入
+    - ref: design/use-cases.md#UC-3-人写过的内容被保护
+      title: UC-3 人写过的内容被保护 `
+      serves:
+        - FR-3
+        - FR-5
+      file: design/use-cases.md
+      section: UC-3-人写过的内容被保护
+    - ref: design/use-cases.md#UC-4-只读或不可写根响亮失败但不挡启动
+      title: UC-4 只读或不可写根：响亮失败但不挡启动 `
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-4-只读或不可写根响亮失败但不挡启动
+    - ref: design/use-cases.md#UC-5-维护者关掉自举
+      title: UC-5 维护者关掉自举 `
+      serves:
+        - FR-6
+      file: design/use-cases.md
+      section: UC-5-维护者关掉自举
+    - ref: design/use-cases.md#UC-6-人想读知识层内容不再走-UI
+      title: UC-6 人想读知识层内容：不再走 UI `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-6-人想读知识层内容不再走-UI
+    - ref: design/use-cases.md#UC-7-Agent-建立项目认知
+      title: UC-7 Agent 建立项目认知 `
+      serves:
+        - FR-2
+        - FR-4
+      file: design/use-cases.md
+      section: UC-7-Agent-建立项目认知
+    - ref: design/use-cases.md#UC-8-CLI-与宿主同源
+      title: UC-8 CLI 与宿主同源 `
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: UC-8-CLI-与宿主同源
+traceability:
+  fr_to_design:
+    FR-1:
+      - design/architecture.md#现状与目标
+      - design/architecture.md#删除面与保留面
+      - design/architecture.md#文档同步
+      - design/data-model.md#删除面数据影响
+      - design/interfaces.md#客户端契约变更
+      - design/interfaces.md#Agent-侧契约零变化
+      - design/use-cases.md#UC-6-人想读知识层内容不再走-UI
+    FR-2:
+      - design/architecture.md#现状与目标
+      - design/architecture.md#触发链根确定的三个通知点
+      - design/architecture.md#幂等与去重
+      - design/data-model.md#自举结果对象
+      - design/data-model.md#去重表与并发
+      - design/interfaces.md#新增用例-ensureKnowledgeLayer
+      - design/use-cases.md#UC-1-空项目首次启动知识层自动长出
+      - design/use-cases.md#UC-2-已有知识层的项目启动零写入
+      - design/use-cases.md#UC-7-Agent-建立项目认知
+    FR-3:
+      - design/data-model.md#实体总览
+      - design/data-model.md#生成物文件契约
+      - design/data-model.md#INDEX-生成区与手写区
+      - design/interfaces.md#领域纯函数-srcdomainknowledgegeneratets
+      - design/interfaces.md#数据契约生成物与写入规则
+      - design/use-cases.md#UC-1-空项目首次启动知识层自动长出
+      - design/use-cases.md#UC-3-人写过的内容被保护
+    FR-4:
+      - design/architecture.md#模块划分与依赖方向
+      - design/data-model.md#生成物文件契约
+      - design/interfaces.md#新增用例-ensureKnowledgeLayer
+      - design/interfaces.md#新增窄端口-KbSourcePort
+      - design/interfaces.md#领域纯函数-srcdomainknowledgegeneratets
+      - design/interfaces.md#CLI-契约保持不变
+      - design/use-cases.md#UC-7-Agent-建立项目认知
+      - design/use-cases.md#UC-8-CLI-与宿主同源
+    FR-5:
+      - design/architecture.md#幂等与去重
+      - design/architecture.md#失败语义
+      - design/data-model.md#自举结果对象
+      - design/data-model.md#INDEX-生成区与手写区
+      - design/data-model.md#去重表与并发
+      - design/interfaces.md#数据契约生成物与写入规则
+      - design/use-cases.md#UC-2-已有知识层的项目启动零写入
+      - design/use-cases.md#UC-3-人写过的内容被保护
+      - design/use-cases.md#UC-4-只读或不可写根响亮失败但不挡启动
+    FR-6:
+      - design/architecture.md#迁移灰度与回滚
+      - design/data-model.md#配置数据契约
+      - design/interfaces.md#配置契约-knowledgeautoBootstrap
+      - design/interfaces.md#与需求的显式偏离
+      - design/use-cases.md#UC-5-维护者关掉自举
+    FR-7:
+      - design/architecture.md#门禁与回归口径
+coverage:
+  design:
+    total: 7
+    covered: 7
+    uncovered: []
+    rate: 100
+    total_frs: 7
+    covered_frs: 7

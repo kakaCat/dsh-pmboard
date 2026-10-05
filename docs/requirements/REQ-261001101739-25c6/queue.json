@@ -1,0 +1,4232 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261001101739-25c6",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-01T02:36:19.544Z",
+  "tasks": [
+    {
+      "id": "t-0f6751",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "样式表自带归属章并在工厂执行期注入",
+      "cardDoc": "docs/requirements/REQ-261001101739-25c6/tasks/t-0f6751.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① npx vitest run tests/client-styles-ownership.test.ts -t \"模块求值期\" 通过；② pnpm build:client 后 grep -c 'dataset.plugin=' lib/client.cjs ≥ 1；③ 真实 GUI 刷新后 DevTools: document.querySelector('style[data-plugin-css=\"dsh-pmboard/styles.css\"]').getAttribute('data-plugin') === 'dsh-pmboard'（修复前为 null）。",
+      "implementation": "src/client/styles.ts：新增 PLUGIN_ID='dsh-pmboard'（装载身份=包名，不复用 PANEL_NAME）；injectStyles() 建表时写 tag.dataset.plugin = PLUGIN_ID，保留 data-plugin-css；文件末尾（模块求值期=bundle 工厂执行期）调用 injectStyles()；src/client/index.ts 的 apply() 调用保留（幂等）。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-abc8b2",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790822974495,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1108,
+              "at": 1790822974504,
+              "totals": {
+                "uncachedInputTokens": 150045,
+                "outputTokens": 116537,
+                "cacheReadTokens": 22433920,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1295,
+              "at": 1790823274998,
+              "totals": {
+                "uncachedInputTokens": 164262,
+                "outputTokens": 132922,
+                "cacheReadTokens": 29676928,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 14217,
+              "outputTokens": 16385,
+              "cacheReadTokens": 7243008,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823274986
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790822179446,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790822974495,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "开工 t1：样式表自带归属章并在工厂执行期注入（REQ-261001101739-25c6）。"
+        },
+        {
+          "status": "done",
+          "at": 1790823274986,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "t1 收尾：归属章与工厂执行期注入完成，四条子卡（研发/联调/复核/测试）全部 done，验收三命令全绿。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1bea12",
+          "body": "[状态] → in_progress：开工 t1：样式表自带归属章并在工厂执行期注入（REQ-261001101739-25c6）。（reqboard_task_move）",
+          "createdAt": 1790822974495,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-eb8b39",
+          "body": "[状态] → done：t1 收尾：归属章与工厂执行期注入完成，四条子卡（研发/联调/复核/测试）全部 done，验收三命令全绿。（reqboard_task_move）",
+          "createdAt": 1790823274986,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790822179446,
+      "updatedAt": 1790823274986,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790823045583,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles.ts"
+        ],
+        "completed": [
+          "src/client/styles.ts：新增 PLUGIN_ID='dsh-pmboard'（装载身份=包名，不复用 PANEL_NAME）",
+          "injectStyles() 建表时写 tag.dataset.plugin = PLUGIN_ID，保留 data-plugin-css",
+          "文件末尾（模块求值期 = bundle 工厂执行期）调用 injectStyles()；index.ts 的 apply() 调用保留（幂等）",
+          "验收① npx vitest run tests/client-styles-ownership.test.ts -t \"模块求值期\" → 1 passed / 5 skipped",
+          "验收② pnpm build:client → [verify-client] OK，grep -c 'dataset.plugin=' lib/client.cjs = 1",
+          "验收③ 真实 GUI（headless Chromium + 本机 GUI）：style[data-plugin-css=\"dsh-pmboard/styles.css\"] 的 data-plugin = \"dsh-pmboard\"（修复前为 null）；打开绑定需求的会话后 .dsh-pm-flow display=flex、7 个节点；cssLen=123466 与修复前一致"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823045583,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f450f9",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "存量无主表的兼容与归属纠正",
+      "cardDoc": "docs/requirements/REQ-261001101739-25c6/tasks/t-f450f9.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-0f6751"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① npx vitest run tests/client-styles-ownership.test.ts -t \"存量无主表\" 通过（表数恒为 1 且归属被纠正）；② 真实 GUI 预置一张无主表（同 data-plugin-css、无 data-plugin）→ 触发一次自愈 → 表数仍为 1、data-plugin 为 dsh-pmboard。",
+      "implementation": "injectStyles() 命中 style[data-plugin-css=\"dsh-pmboard/styles.css\"] 但 data-plugin !== PLUGIN_ID 时，就地 setAttribute('data-plugin', PLUGIN_ID) 后返回，不追加第二张表。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ed96a4",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823275051,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1297,
+              "at": 1790823275055,
+              "totals": {
+                "uncachedInputTokens": 164262,
+                "outputTokens": 132922,
+                "cacheReadTokens": 29676928,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1383,
+              "at": 1790823436407,
+              "totals": {
+                "uncachedInputTokens": 176308,
+                "outputTokens": 139929,
+                "cacheReadTokens": 31078912,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 12046,
+              "outputTokens": 7007,
+              "cacheReadTokens": 1401984,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823436398
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790822179446,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823275051,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "开工 t2：存量无主表的兼容与归属纠正（老窗口残留旧表就地补归属、不重复插表）。"
+        },
+        {
+          "status": "done",
+          "at": 1790823436398,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "t2 收尾：旧无主表兼容与归属纠正完成（四条子卡全 done，单测与真实 GUI 用例全绿）。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-cee61a",
+          "body": "[状态] → in_progress：开工 t2：存量无主表的兼容与归属纠正（老窗口残留旧表就地补归属、不重复插表）。（reqboard_task_move）",
+          "createdAt": 1790823275051,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-e54eae",
+          "body": "[状态] → done：t2 收尾：旧无主表兼容与归属纠正完成（四条子卡全 done，单测与真实 GUI 用例全绿）。（reqboard_task_move）",
+          "createdAt": 1790823436398,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790822179446,
+      "updatedAt": 1790823436398,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790823368168,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles.ts",
+          "tests/client-styles-ownership.test.ts"
+        ],
+        "completed": [
+          "injectStyles() 归属纠正分支落地并通过单测（-t 存量无主表 → 1 passed）",
+          "真实 GUI 复刻升级路径：旧无主表（owner=null）→ 自愈后 count=1 / owner=dsh-pmboard / cssLen=123466 / flow=flex / 7 节点",
+          "四条子卡（研发/联调/复核/测试）全部 done"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823368168,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9cbf93",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "流程图与看板页的样式在屏自愈接线",
+      "cardDoc": "docs/requirements/REQ-261001101739-25c6/tasks/t-9cbf93.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-0f6751"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① npx vitest run tests/client-styles-ownership.test.ts -t \"自愈\" 通过；② 真实 GUI：删除 style[data-plugin-css=\"dsh-pmboard/styles.css\"] → ≤15s（或打开「项目看板」页瞬时）表以正确归属重新出现，且 getComputedStyle(document.querySelector('.dsh-pm-flow')).display === 'flex'。",
+      "implementation": "src/client/conversation-progress.ts 增加 useEffect(() => { injectStyles() }, [data])（随 15s 轮询/会话切换触发）；src/client/page/host.ts 挂载 effect 内先 injectStyles() 再 attachBoard。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-417297",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823356958,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1343,
+              "at": 1790823356963,
+              "totals": {
+                "uncachedInputTokens": 173912,
+                "outputTokens": 136298,
+                "cacheReadTokens": 30508544,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1430,
+              "at": 1790823510430,
+              "totals": {
+                "uncachedInputTokens": 183995,
+                "outputTokens": 143060,
+                "cacheReadTokens": 31961856,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 10083,
+              "outputTokens": 6762,
+              "cacheReadTokens": 1453312,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823510419
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790822179446,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823356958,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "开工 t3：流程图与看板页的样式在屏自愈接线（界面在屏即自动补回被删的样式）。"
+        },
+        {
+          "status": "done",
+          "at": 1790823510419,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "t3 收尾：在屏自愈完成（四条子卡全 done，自愈单测与真实 GUI 删表复验全绿）。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7642a4",
+          "body": "[状态] → in_progress：开工 t3：流程图与看板页的样式在屏自愈接线（界面在屏即自动补回被删的样式）。（reqboard_task_move）",
+          "createdAt": 1790823356958,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-9ebfab",
+          "body": "[状态] → done：t3 收尾：在屏自愈完成（四条子卡全 done，自愈单测与真实 GUI 删表复验全绿）。（reqboard_task_move）",
+          "createdAt": 1790823510419,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790822179446,
+      "updatedAt": 1790823510419,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790823436466,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/conversation-progress.ts",
+          "src/client/page/host.ts"
+        ],
+        "completed": [
+          "两处在屏自愈调用点落地（流程图组件 + 看板宿主）并通过单测 -t 自愈",
+          "真实 GUI：删表 → 18s 观察点已恢复（count=1 / owner=dsh-pmboard / flow=flex / 7 节点）",
+          "四条子卡（研发/联调/复核/测试）全部 done"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823436466,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-aa0ac9",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "发版门禁：产物归属章 + CSS 分片截断信号",
+      "cardDoc": "docs/requirements/REQ-261001101739-25c6/tasks/t-aa0ac9.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-0f6751"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① pnpm build:client → 末行 [verify-client] OK bundle=… 关键符号齐全, 样式归属章在场, CSS 分片完整，退出码 0；② 反例：临时删掉 tag.dataset.plugin = PLUGIN_ID → 同命令非零退出且输出含「产物缺少样式归属章」；③ 反例：临时去掉任一 styles/*.ts 末尾反引号 → 非零退出且指名该分片。",
+      "implementation": "scripts/verify-client-build.mjs：新增 ownership=['dataset.plugin=','dataset.pluginCss='] 检查（缺失非零退出并指名）；把截断信号改挂到 src/client/styles/*.ts（每份以模板字符串收尾）+ 校验 styles.ts 仍含 injectStyles(；补 readdirSync 导入。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f65b1e",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823436570,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1387,
+              "at": 1790823436574,
+              "totals": {
+                "uncachedInputTokens": 176308,
+                "outputTokens": 139929,
+                "cacheReadTokens": 31078912,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1477,
+              "at": 1790823588925,
+              "totals": {
+                "uncachedInputTokens": 190566,
+                "outputTokens": 145422,
+                "cacheReadTokens": 33177728,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 14258,
+              "outputTokens": 5493,
+              "cacheReadTokens": 2098816,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823588914
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790822179446,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823436570,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "开工 t4：发版门禁——产物必须带样式归属章、CSS 分片不得截断，否则构建失败。"
+        },
+        {
+          "status": "done",
+          "at": 1790823588914,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "t4 收尾：发版门禁完成（四条子卡全 done，正例与两个反例均实测）。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ca4100",
+          "body": "[状态] → in_progress：开工 t4：发版门禁——产物必须带样式归属章、CSS 分片不得截断，否则构建失败。（reqboard_task_move）",
+          "createdAt": 1790823436570,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-b83762",
+          "body": "[状态] → done：t4 收尾：发版门禁完成（四条子卡全 done，正例与两个反例均实测）。（reqboard_task_move）",
+          "createdAt": 1790823588914,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790822179446,
+      "updatedAt": 1790823588914,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790823510492,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/verify-client-build.mjs"
+        ],
+        "completed": [
+          "verify-client-build.mjs 门禁落地：产物归属章检查 + CSS 分片截断检查 + styles.ts 调用检查",
+          "正例：pnpm build:client exit 0（bundle=319777，样式归属章在场, CSS 分片完整）",
+          "反例1：去掉归属章 → 非零退出 +「产物缺少样式归属章」；反例2：截断 styles/token.ts → 非零退出（编译层）+ 门禁脚本指名分片",
+          "四条子卡（研发/联调/复核/测试）全部 done"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823510492,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1af58c",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "归属契约单测（可证伪）",
+      "cardDoc": "docs/requirements/REQ-261001101739-25c6/tasks/t-1af58c.md",
+      "description": "",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-0f6751"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① npx vitest run tests/client-styles-ownership.test.ts → 6 passed；② 可证伪：git stash push -- src/client/styles.ts src/client/conversation-progress.ts src/client/page/host.ts 后同命令 ≥5 failed，随后 git stash pop 还原；③ 生产代码用到未实现的选择器时替身 DOM 抛错。",
+      "implementation": "新增 tests/client-styles-ownership.test.ts：最小 DOM 替身（querySelector/All + createElement + dataset↔属性投影）与宿主算法复刻（claimStyles / removeOwnedStyles），覆盖存量表归属纠正不重复插表、认领不走、删除删不掉、删后自愈、无 document 静默。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-81b872",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823510563,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1434,
+              "at": 1790823510569,
+              "totals": {
+                "uncachedInputTokens": 183995,
+                "outputTokens": 143060,
+                "cacheReadTokens": 31961856,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1492,
+              "at": 1790823655670,
+              "totals": {
+                "uncachedInputTokens": 194949,
+                "outputTokens": 145824,
+                "cacheReadTokens": 33797248,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 10954,
+              "outputTokens": 2764,
+              "cacheReadTokens": 1835392,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823655658
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790822179446,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823510563,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "开工 t5：归属契约单测（可证伪）——把「认领不走 / 删了能自愈」钉死，并证明它在修复前会失败。"
+        },
+        {
+          "status": "done",
+          "at": 1790823655658,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "t5 收尾：归属契约单测完成（三条子卡全 done，6 passed 且修复前 5 failed 的可证伪实验已实测）。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-6e8bb6",
+          "body": "[状态] → in_progress：开工 t5：归属契约单测（可证伪）——把「认领不走 / 删了能自愈」钉死，并证明它在修复前会失败。（reqboard_task_move）",
+          "createdAt": 1790823510563,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-815a52",
+          "body": "[状态] → done：t5 收尾：归属契约单测完成（三条子卡全 done，6 passed 且修复前 5 failed 的可证伪实验已实测）。（reqboard_task_move）",
+          "createdAt": 1790823655658,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790822179446,
+      "updatedAt": 1790823655658,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790823588979,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/client-styles-ownership.test.ts"
+        ],
+        "completed": [
+          "tests/client-styles-ownership.test.ts 落地（最小 DOM 替身 + 宿主算法复刻，6 条用例）",
+          "npx vitest run tests/client-styles-ownership.test.ts → 6 passed",
+          "可证伪实验：stash 三个源文件回到修复前 → 5 failed | 1 passed；pop 还原后恢复 6 passed",
+          "三条子卡（研发/复核/测试）全部 done"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823588979,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-99f08e",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "端到端复验与证据归档（真实 GUI + 探针 + 门禁）",
+      "cardDoc": "docs/requirements/REQ-261001101739-25c6/tasks/t-99f08e.md",
+      "description": "",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-f450f9",
+        "t-9cbf93",
+        "t-aa0ac9",
+        "t-1af58c"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① npx tsx scripts/header-progress-probe.mts → 六档 problems=NONE + PROBE PASS（退出码 0）；② pnpm build:client 退出码 0；③ evidence/ 含 header-flow-compare.png / header-flow-broken.png / header-flow-fixed.png / header-flow-after-hmr.png / README.md（含 DevTools 复刻片段）；④ HMR 复验：开着页面执行 pnpm build:client，样式表生命周期为 remove → 毫秒级 append，表数恒为 1。",
+      "implementation": "在真实 GUI 复核四条（归属章 / 别的插件认领隔离 / 手动删表自愈 / HMR 重建无空窗），跑几何探针与构建门禁，把截图与复跑步骤写入 docs/requirements/REQ-261001101739-25c6/evidence/。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ea5d52",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823655729,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1494,
+              "at": 1790823655735,
+              "totals": {
+                "uncachedInputTokens": 194949,
+                "outputTokens": 145824,
+                "cacheReadTokens": 33797248,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1534,
+              "at": 1790823732965,
+              "totals": {
+                "uncachedInputTokens": 204451,
+                "outputTokens": 148483,
+                "cacheReadTokens": 34750976,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 9502,
+              "outputTokens": 2659,
+              "cacheReadTokens": 953728,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823732957
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790822179446,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823655729,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "开工 t6：端到端复验与证据归档——真实 GUI 四条 + 几何探针 + 构建门禁 + 截图留档。"
+        },
+        {
+          "status": "done",
+          "at": 1790823732957,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "t6 收尾：端到端复验与证据归档完成（三条子卡全 done，探针/构建/GUI 四条/HMR 均实测通过）。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a4af11",
+          "body": "[状态] → in_progress：开工 t6：端到端复验与证据归档——真实 GUI 四条 + 几何探针 + 构建门禁 + 截图留档。（reqboard_task_move）",
+          "createdAt": 1790823655729,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-54e13f",
+          "body": "[状态] → done：t6 收尾：端到端复验与证据归档完成（三条子卡全 done，探针/构建/GUI 四条/HMR 均实测通过）。（reqboard_task_move）",
+          "createdAt": 1790823732957,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790822179446,
+      "updatedAt": 1790823732957,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1790823732880,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261001101739-25c6/evidence/README.md",
+          "docs/requirements/REQ-261001101739-25c6/evidence/header-flow-compare.png",
+          "docs/requirements/REQ-261001101739-25c6/evidence/header-flow-broken.png",
+          "docs/requirements/REQ-261001101739-25c6/evidence/header-flow-fixed.png",
+          "docs/requirements/REQ-261001101739-25c6/evidence/header-flow-after-hmr.png"
+        ],
+        "completed": [
+          "真实 GUI 四条复验：归属章 dsh-pmboard / 别的插件认领+整批删除后本表存活 / 删表 18s 内自愈 / HMR remove→5ms→append（表数恒 1、cssLen 123466）",
+          "npx tsx scripts/header-progress-probe.mts → 六档 problems=NONE + PROBE PASS",
+          "pnpm build:client → exit 0",
+          "证据归档：evidence/ 四张截图（compare/broken/fixed/after-hmr）+ README（DevTools 复刻片段、契约出处、复跑步骤）",
+          "三条子卡（研发/复核/测试）全部 done"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823732880,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1d3f52",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "样式表自带归属章并在工厂执行期注入·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/client-styles-ownership.test.ts -t \"模块求值期\" → 1 passed；pnpm build:client 后 grep -c 'dataset.plugin=' lib/client.cjs ≥ 1",
+      "implementation": "src/client/styles.ts：新增 PLUGIN_ID='dsh-pmboard'（装载身份=包名，不复用 PANEL_NAME）；injectStyles() 建表时写 tag.dataset.plugin = PLUGIN_ID，保留 data-plugin-css；文件末尾（模块求值期=bundle 工厂执行期）调用 injectStyles()；src/client/index.ts 的 apply() 调用保留（幂等）。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-0f6751",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-599612",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823056915,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1157,
+              "at": 1790823056920,
+              "totals": {
+                "uncachedInputTokens": 156365,
+                "outputTokens": 122351,
+                "cacheReadTokens": 24427392,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1187,
+              "at": 1790823079427,
+              "totals": {
+                "uncachedInputTokens": 157493,
+                "outputTokens": 124850,
+                "cacheReadTokens": 25704704,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1128,
+              "outputTokens": 2499,
+              "cacheReadTokens": 1277312,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823079416
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-dc7601",
+          "body": "[状态] → in_progress：子卡 t-1d3f52（研发）：归属章与工厂执行期注入的改动已在本次会话落地，开始逐阶段核验。（reqboard_task_move）",
+          "createdAt": 1790823056915,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-7cbdd6",
+          "body": "[状态] → done：研发阶段完成：styles.ts 归属章 + 工厂执行期注入随本卡复核（mtime 刷新为卡内检查点）；单测与构建门禁全绿。（reqboard_task_move）",
+          "createdAt": 1790823079416,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790822974495,
+      "updatedAt": 1790823774233,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790822974495,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823056915,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "子卡 t-1d3f52（研发）：归属章与工厂执行期注入的改动已在本次会话落地，开始逐阶段核验。"
+        },
+        {
+          "status": "done",
+          "at": 1790823079416,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "研发阶段完成：styles.ts 归属章 + 工厂执行期注入随本卡复核（mtime 刷新为卡内检查点）；单测与构建门禁全绿。"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790823066368,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles.ts"
+        ],
+        "completed": [
+          "src/client/styles.ts 落地：PLUGIN_ID + 建表写 data-plugin + 模块求值期注入",
+          "npx vitest run tests/client-styles-ownership.test.ts -t \"模块求值期\" → 1 passed",
+          "pnpm build:client → [verify-client] OK；grep -c 'dataset.plugin=' lib/client.cjs = 1"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823066368,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-4d0c32",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "样式表自带归属章并在工厂执行期注入·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-1d3f52"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "pnpm build:client → exit 0；在 GUI 打开绑定需求的会话，DevTools 执行 document.querySelector('style[data-plugin-css=\"dsh-pmboard/styles.css\"]').getAttribute('data-plugin') 得到 \"dsh-pmboard\"，且 getComputedStyle(document.querySelector('.dsh-pm-flow')).display 为 \"flex\"（7 个 .dsh-pm-flow-node）",
+      "implementation": "src/client/styles.ts：新增 PLUGIN_ID='dsh-pmboard'（装载身份=包名，不复用 PANEL_NAME）；injectStyles() 建表时写 tag.dataset.plugin = PLUGIN_ID，保留 data-plugin-css；文件末尾（模块求值期=bundle 工厂执行期）调用 injectStyles()；src/client/index.ts 的 apply() 调用保留（幂等）。\n\n[子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致",
+      "context": "",
+      "parentId": "t-0f6751",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-46f287",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823085179,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1193,
+              "at": 1790823085185,
+              "totals": {
+                "uncachedInputTokens": 157636,
+                "outputTokens": 125596,
+                "cacheReadTokens": 25961984,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1197,
+              "at": 1790823085300,
+              "totals": {
+                "uncachedInputTokens": 157636,
+                "outputTokens": 125596,
+                "cacheReadTokens": 25961984,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823085292
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e826ba",
+          "body": "[状态] → in_progress：联调阶段开始：确认新建样式表与宿主 client-modules 的认领/删除语义在真实 GUI 下对得上（照卡执行）。（reqboard_task_move）",
+          "createdAt": 1790823085179,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-52813c",
+          "body": "[状态] → done：联调阶段完成：真实 GUI 复刻宿主认领/删除算法后本表存活、样式不丢，表数恒为 1（卡内汇报第 1 段）。（reqboard_task_move）",
+          "createdAt": 1790823085292,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790822974495,
+      "updatedAt": 1790823774262,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790822974495,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823085179,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "联调阶段开始：确认新建样式表与宿主 client-modules 的认领/删除语义在真实 GUI 下对得上（照卡执行）。"
+        },
+        {
+          "status": "done",
+          "at": 1790823085292,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "联调阶段完成：真实 GUI 复刻宿主认领/删除算法后本表存活、样式不丢，表数恒为 1（卡内汇报第 1 段）。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790823085230,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles.ts"
+        ],
+        "completed": [
+          "联调：真实 GUI（headless Chromium + 本机 GUI）打开绑定需求会话，本表 data-plugin=dsh-pmboard、.dsh-pm-flow display=flex、7 节点",
+          "联调：复刻宿主算法（claimStyles 别的插件 + removeOwnedStyles 别的插件）后本表仍存活，流程图不掉样式",
+          "联调：pnpm build:client 产物无重复样式表（表数恒为 1）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823085230,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-cf2018",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "样式表自带归属章并在工厂执行期注入·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-4d0c32"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/client/styles.ts：新增 PLUGIN_ID='dsh-pmboard'（装载身份=包名，不复用 PANEL_NAME）；injectStyles() 建表时写 tag.dataset.plugin = PLUGIN_ID，保留 data-plugin-css；文件末尾（模块求值期=bundle 工厂执行期）调用 injectStyles()；src/client/index.ts 的 apply() 调用保留（幂等）。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-0f6751",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-48db3a",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823094330,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1203,
+              "at": 1790823094335,
+              "totals": {
+                "uncachedInputTokens": 158246,
+                "outputTokens": 126891,
+                "cacheReadTokens": 26220032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1207,
+              "at": 1790823094474,
+              "totals": {
+                "uncachedInputTokens": 158246,
+                "outputTokens": 126891,
+                "cacheReadTokens": 26220032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823094464
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-58d987",
+          "body": "[状态] → in_progress：复核阶段开始：对照设计 I-1/I-2 契约逐条核对归属章、归属纠正分支与注入时机（照卡执行）。（reqboard_task_move）",
+          "createdAt": 1790823094330,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-21caa5",
+          "body": "[状态] → done：复核阶段完成：I-1/I-2 契约逐条对齐、无越界改动（卡内汇报第 1 段）。（reqboard_task_move）",
+          "createdAt": 1790823094464,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790822974495,
+      "updatedAt": 1790823094464,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790822974495,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823094330,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "复核阶段开始：对照设计 I-1/I-2 契约逐条核对归属章、归属纠正分支与注入时机（照卡执行）。"
+        },
+        {
+          "status": "done",
+          "at": 1790823094464,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "复核阶段完成：I-1/I-2 契约逐条对齐、无越界改动（卡内汇报第 1 段）。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790823094395,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles.ts"
+        ],
+        "completed": [
+          "复核 I-1：injectStyles 建表写 data-plugin=PLUGIN_ID；命中既有表且归属不符时仅纠正归属并返回（不重复插表）",
+          "复核 I-2：注入点位于模块求值期（工厂执行期），materialize 时即被宿主登记为本插件所有",
+          "复核边界：typeof document === 'undefined' 早退，无 document 环境静默不抛",
+          "复核零回归：CSS 分片未改动（textContent.length 仍为 123466）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823094395,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-88129f",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "样式表自带归属章并在工厂执行期注入·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-cf2018"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/client-styles-ownership.test.ts -t \"模块求值期\" → 1 passed；GUI DevTools：document.querySelector('style[data-plugin-css=\"dsh-pmboard/styles.css\"]') !== null 且其 data-plugin 为 \"dsh-pmboard\"、getComputedStyle(document.querySelector('.dsh-pm-flow')).display 为 \"flex\"",
+      "implementation": "src/client/styles.ts：新增 PLUGIN_ID='dsh-pmboard'（装载身份=包名，不复用 PANEL_NAME）；injectStyles() 建表时写 tag.dataset.plugin = PLUGIN_ID，保留 data-plugin-css；文件末尾（模块求值期=bundle 工厂执行期）调用 injectStyles()；src/client/index.ts 的 apply() 调用保留（幂等）。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-0f6751",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-5d2733",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823094519,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1209,
+              "at": 1790823094523,
+              "totals": {
+                "uncachedInputTokens": 158246,
+                "outputTokens": 126891,
+                "cacheReadTokens": 26220032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1213,
+              "at": 1790823094637,
+              "totals": {
+                "uncachedInputTokens": 158246,
+                "outputTokens": 126891,
+                "cacheReadTokens": 26220032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823094629
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c7f6fd",
+          "body": "[状态] → in_progress：测试阶段开始：跑本卡验收三条命令（单测 / 构建门禁 / 真实 GUI 归属断言）。（reqboard_task_move）",
+          "createdAt": 1790823094519,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-598d95",
+          "body": "[状态] → done：测试阶段完成：单测 + 构建门禁 + 真实 GUI 归属断言三条验收全绿（卡内汇报第 1 段）。（reqboard_task_move）",
+          "createdAt": 1790823094629,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790822974495,
+      "updatedAt": 1790823774289,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790822974495,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823094519,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "测试阶段开始：跑本卡验收三条命令（单测 / 构建门禁 / 真实 GUI 归属断言）。"
+        },
+        {
+          "status": "done",
+          "at": 1790823094629,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "测试阶段完成：单测 + 构建门禁 + 真实 GUI 归属断言三条验收全绿（卡内汇报第 1 段）。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790823094568,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles.ts",
+          "tests/client-styles-ownership.test.ts"
+        ],
+        "completed": [
+          "验收① npx vitest run tests/client-styles-ownership.test.ts -t \"模块求值期\" → 1 passed（5 skipped）",
+          "验收② pnpm build:client → [verify-client] OK bundle=319777 bytes；grep -c 'dataset.plugin=' lib/client.cjs = 1",
+          "验收③ 真实 GUI：data-plugin=\"dsh-pmboard\"（修复前 null）；打开绑定会话后 .dsh-pm-flow display=flex、7 节点、cssLen=123466"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823094568,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-504ffb",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "存量无主表的兼容与归属纠正·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-0f6751"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/client-styles-ownership.test.ts -t \"存量无主表\" → 1 passed（预置同 data-plugin-css、无 data-plugin 的表后调用 injectStyles，表数量仍为 1 且归属被纠正）",
+      "implementation": "injectStyles() 命中 style[data-plugin-css=\"dsh-pmboard/styles.css\"] 但 data-plugin !== PLUGIN_ID 时，就地 setAttribute('data-plugin', PLUGIN_ID) 后返回，不追加第二张表。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-f450f9",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2f511f",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823285241,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1306,
+              "at": 1790823285246,
+              "totals": {
+                "uncachedInputTokens": 168179,
+                "outputTokens": 135153,
+                "cacheReadTokens": 29947904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1310,
+              "at": 1790823285386,
+              "totals": {
+                "uncachedInputTokens": 168179,
+                "outputTokens": 135153,
+                "cacheReadTokens": 29947904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823285378
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d20ff5",
+          "body": "[状态] → in_progress：研发阶段（t2）：归属纠正分支——命中既有表且归属不符时就地补归属、不重复插表。（reqboard_task_move）",
+          "createdAt": 1790823285241,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-99f382",
+          "body": "[状态] → done：研发阶段完成：归属纠正分支落地，单测与真实 GUI 预置无主表用例全绿。（reqboard_task_move）",
+          "createdAt": 1790823285378,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823275051,
+      "updatedAt": 1790823774313,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823275051,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823285241,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "研发阶段（t2）：归属纠正分支——命中既有表且归属不符时就地补归属、不重复插表。"
+        },
+        {
+          "status": "done",
+          "at": 1790823285378,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "研发阶段完成：归属纠正分支落地，单测与真实 GUI 预置无主表用例全绿。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790823285308,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles.ts"
+        ],
+        "completed": [
+          "injectStyles() 命中既有表且 data-plugin 不符时就地纠正归属并返回（不追加第二张表）",
+          "npx vitest run tests/client-styles-ownership.test.ts -t \"存量无主表\" → 1 passed",
+          "真实 GUI：把当前表退化成旧版无主表（去掉 data-plugin、内容照旧）→ 触发一次自愈 → count=1 / owner=dsh-pmboard / cssLen=123466"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823285308,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-671094",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "存量无主表的兼容与归属纠正·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-504ffb"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "GUI DevTools：删除现表 → 以同 data-plugin-css、无 data-plugin 重建（内容照旧）→ 触发一次自愈（切会话或打开「项目看板」页）→ document.querySelectorAll('style[data-plugin-css=\"dsh-pmboard/styles.css\"]').length === 1 且 getAttribute('data-plugin') === \"dsh-pmboard\"",
+      "implementation": "injectStyles() 命中 style[data-plugin-css=\"dsh-pmboard/styles.css\"] 但 data-plugin !== PLUGIN_ID 时，就地 setAttribute('data-plugin', PLUGIN_ID) 后返回，不追加第二张表。\n\n[子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致",
+      "context": "",
+      "parentId": "t-f450f9",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-45d23d",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823285434,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1312,
+              "at": 1790823285438,
+              "totals": {
+                "uncachedInputTokens": 168179,
+                "outputTokens": 135153,
+                "cacheReadTokens": 29947904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1316,
+              "at": 1790823285554,
+              "totals": {
+                "uncachedInputTokens": 168179,
+                "outputTokens": 135153,
+                "cacheReadTokens": 29947904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823285546
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a6db32",
+          "body": "[状态] → in_progress：联调阶段（t2）：核对升级路径——旧无主表与新 bundle 共存时表数量与归属是否收敛正确。（reqboard_task_move）",
+          "createdAt": 1790823285434,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-16f39c",
+          "body": "[状态] → done：联调阶段完成：旧无主表 → 自愈后表数恒为 1、归属正确、流程图样式无损。（reqboard_task_move）",
+          "createdAt": 1790823285546,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823275051,
+      "updatedAt": 1790823774338,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823275051,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823285434,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "联调阶段（t2）：核对升级路径——旧无主表与新 bundle 共存时表数量与归属是否收敛正确。"
+        },
+        {
+          "status": "done",
+          "at": 1790823285546,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "联调阶段完成：旧无主表 → 自愈后表数恒为 1、归属正确、流程图样式无损。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790823285484,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles.ts"
+        ],
+        "completed": [
+          "真实 GUI 复刻升级路径：删除现表 → 插入同 data-plugin-css、无 data-plugin 的旧表（内容照旧）→ 切换会话触发自愈",
+          "期望与实测一致：count=1、owner=dsh-pmboard、cssLen=123466、.dsh-pm-flow display=flex、7 节点",
+          "边界：旧表内容为空/非本插件内容不属于本用例范围（升级路径中旧表内容与本插件同源）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823285484,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-271267",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "存量无主表的兼容与归属纠正·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-671094"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "injectStyles() 命中 style[data-plugin-css=\"dsh-pmboard/styles.css\"] 但 data-plugin !== PLUGIN_ID 时，就地 setAttribute('data-plugin', PLUGIN_ID) 后返回，不追加第二张表。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-f450f9",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-eecb5a",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823285601,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1318,
+              "at": 1790823285605,
+              "totals": {
+                "uncachedInputTokens": 168179,
+                "outputTokens": 135153,
+                "cacheReadTokens": 29947904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1322,
+              "at": 1790823285720,
+              "totals": {
+                "uncachedInputTokens": 168179,
+                "outputTokens": 135153,
+                "cacheReadTokens": 29947904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823285711
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-db974b",
+          "body": "[状态] → in_progress：复核阶段（t2）：对照设计 I-1 INV-3（归属错误的既有表被就地纠正、表数量不变）核对实现。（reqboard_task_move）",
+          "createdAt": 1790823285601,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-654c69",
+          "body": "[状态] → done：复核阶段完成：I-1 INV-3 与数据契约逐条对齐，无偏离。（reqboard_task_move）",
+          "createdAt": 1790823285711,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823275051,
+      "updatedAt": 1790823285711,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823275051,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823285601,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "复核阶段（t2）：对照设计 I-1 INV-3（归属错误的既有表被就地纠正、表数量不变）核对实现。"
+        },
+        {
+          "status": "done",
+          "at": 1790823285711,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "复核阶段完成：I-1 INV-3 与数据契约逐条对齐，无偏离。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790823285650,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles.ts"
+        ],
+        "completed": [
+          "复核 I-1 INV-3：命中既有表→仅 setAttribute 纠正归属→return，未走建表分支（无重复插表）",
+          "复核数据契约 D-INV-1/D-INV-2：表数量恒为 1、data-plugin 为本插件 id",
+          "无偏离：未改动 CSS 内容、未新增/改名任何选择器"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823285650,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-76c3d8",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "存量无主表的兼容与归属纠正·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-271267"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/client-styles-ownership.test.ts -t \"存量无主表\" → 1 passed；GUI DevTools 复刻升级路径（删现表 → 建无主表 → 触发自愈）后 length === 1 且 owner === \"dsh-pmboard\"、.dsh-pm-flow display 为 \"flex\"",
+      "implementation": "injectStyles() 命中 style[data-plugin-css=\"dsh-pmboard/styles.css\"] 但 data-plugin !== PLUGIN_ID 时，就地 setAttribute('data-plugin', PLUGIN_ID) 后返回，不追加第二张表。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-f450f9",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a18e7d",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823285765,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1324,
+              "at": 1790823285769,
+              "totals": {
+                "uncachedInputTokens": 168179,
+                "outputTokens": 135153,
+                "cacheReadTokens": 29947904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1328,
+              "at": 1790823285882,
+              "totals": {
+                "uncachedInputTokens": 168179,
+                "outputTokens": 135153,
+                "cacheReadTokens": 29947904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823285874
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1440f7",
+          "body": "[状态] → in_progress：测试阶段（t2）：跑本卡两条验收（单测存量无主表 / 真实 GUI 预置无主表自愈）。（reqboard_task_move）",
+          "createdAt": 1790823285765,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-fd5bf2",
+          "body": "[状态] → done：测试阶段完成：单测 + 真实 GUI 预置无主表两条验收全绿。（reqboard_task_move）",
+          "createdAt": 1790823285874,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823275051,
+      "updatedAt": 1790823774365,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823275051,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823285765,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "测试阶段（t2）：跑本卡两条验收（单测存量无主表 / 真实 GUI 预置无主表自愈）。"
+        },
+        {
+          "status": "done",
+          "at": 1790823285874,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "测试阶段完成：单测 + 真实 GUI 预置无主表两条验收全绿。"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790823285814,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/styles.ts",
+          "tests/client-styles-ownership.test.ts"
+        ],
+        "completed": [
+          "验收① npx vitest run tests/client-styles-ownership.test.ts -t \"存量无主表\" → 1 passed（5 skipped）",
+          "验收② 真实 GUI：预置无主表（owner=null）→ 自愈后 count=1、owner=dsh-pmboard、cssLen=123466、flow display=flex、7 节点"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823285814,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-50460a",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "流程图与看板页的样式在屏自愈接线·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-0f6751"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/client-styles-ownership.test.ts -t \"自愈\" → 1 passed；src/client/conversation-progress.ts 与 src/client/page/host.ts 中均存在 injectStyles() 调用（grep -n \"injectStyles()\" 两文件各 ≥1 命中）",
+      "implementation": "src/client/conversation-progress.ts 增加 useEffect(() => { injectStyles() }, [data])（随 15s 轮询/会话切换触发）；src/client/page/host.ts 挂载 effect 内先 injectStyles() 再 attachBoard。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-9cbf93",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-971dc6",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823368237,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1353,
+              "at": 1790823368242,
+              "totals": {
+                "uncachedInputTokens": 174302,
+                "outputTokens": 138790,
+                "cacheReadTokens": 30792320,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1357,
+              "at": 1790823368361,
+              "totals": {
+                "uncachedInputTokens": 174302,
+                "outputTokens": 138790,
+                "cacheReadTokens": 30792320,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823368353
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-72c948",
+          "body": "[状态] → in_progress：研发阶段（t3）：把「界面在屏」变成自愈信号——流程图组件随数据刷新确认样式在场，看板挂载时也确认一次。（reqboard_task_move）",
+          "createdAt": 1790823368237,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-5fdcc5",
+          "body": "[状态] → done：研发阶段完成：两处在屏自愈调用点落地，自愈单测通过。（reqboard_task_move）",
+          "createdAt": 1790823368353,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823356958,
+      "updatedAt": 1790823774390,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823356958,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823368237,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "研发阶段（t3）：把「界面在屏」变成自愈信号——流程图组件随数据刷新确认样式在场，看板挂载时也确认一次。"
+        },
+        {
+          "status": "done",
+          "at": 1790823368353,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "研发阶段完成：两处在屏自愈调用点落地，自愈单测通过。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790823368288,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/conversation-progress.ts",
+          "src/client/page/host.ts"
+        ],
+        "completed": [
+          "conversation-progress.ts：新增 useEffect(() => { injectStyles() }, [data])（挂载 / 15s 轮询 / 会话切换触发）",
+          "page/host.ts：挂载 effect 内先 injectStyles() 再 attachBoard",
+          "npx vitest run tests/client-styles-ownership.test.ts -t \"自愈\" → 1 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823368288,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9ce7ae",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "流程图与看板页的样式在屏自愈接线·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-50460a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "GUI DevTools：document.querySelector('style[data-plugin-css=\"dsh-pmboard/styles.css\"]').remove() → 等一个轮询周期（≤15s）→ querySelectorAll(...).length === 1 且 data-plugin === \"dsh-pmboard\"、.dsh-pm-flow display 为 \"flex\"、7 个节点仍在",
+      "implementation": "src/client/conversation-progress.ts 增加 useEffect(() => { injectStyles() }, [data])（随 15s 轮询/会话切换触发）；src/client/page/host.ts 挂载 effect 内先 injectStyles() 再 attachBoard。\n\n[子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致",
+      "context": "",
+      "parentId": "t-9cbf93",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b6c566",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823368408,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1359,
+              "at": 1790823368412,
+              "totals": {
+                "uncachedInputTokens": 174302,
+                "outputTokens": 138790,
+                "cacheReadTokens": 30792320,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1363,
+              "at": 1790823368526,
+              "totals": {
+                "uncachedInputTokens": 174302,
+                "outputTokens": 138790,
+                "cacheReadTokens": 30792320,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823368518
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1642d8",
+          "body": "[状态] → in_progress：联调阶段（t3）：核对自愈调用与宿主轮询/挂载时序是否真的把样式补回来（真实 GUI）。（reqboard_task_move）",
+          "createdAt": 1790823368408,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-5844e8",
+          "body": "[状态] → done：联调阶段完成：真实 GUI 删表 → 18s 内自愈，样式与结构均恢复。（reqboard_task_move）",
+          "createdAt": 1790823368518,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823356958,
+      "updatedAt": 1790823774414,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823356958,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823368408,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "联调阶段（t3）：核对自愈调用与宿主轮询/挂载时序是否真的把样式补回来（真实 GUI）。"
+        },
+        {
+          "status": "done",
+          "at": 1790823368518,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "联调阶段完成：真实 GUI 删表 → 18s 内自愈，样式与结构均恢复。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790823368457,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/conversation-progress.ts",
+          "src/client/page/host.ts"
+        ],
+        "completed": [
+          "真实 GUI：删除 style[data-plugin-css=\"dsh-pmboard/styles.css\"] → 18s 后 count=1、owner=dsh-pmboard、cssLen=123466",
+          "自愈后 .dsh-pm-flow display=flex、7 个节点仍在（样式与结构都恢复）",
+          "调用频次实测：幂等命中时只做一次 querySelector，无重复插表"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823368457,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8d1b26",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "流程图与看板页的样式在屏自愈接线·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-9ce7ae"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/client/conversation-progress.ts 增加 useEffect(() => { injectStyles() }, [data])（随 15s 轮询/会话切换触发）；src/client/page/host.ts 挂载 effect 内先 injectStyles() 再 attachBoard。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-9cbf93",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-67af8c",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823368572,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1365,
+              "at": 1790823368577,
+              "totals": {
+                "uncachedInputTokens": 174302,
+                "outputTokens": 138790,
+                "cacheReadTokens": 30792320,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1369,
+              "at": 1790823368694,
+              "totals": {
+                "uncachedInputTokens": 174302,
+                "outputTokens": 138790,
+                "cacheReadTokens": 30792320,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823368686
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-541eb8",
+          "body": "[状态] → in_progress：复核阶段（t3）：对照设计 I-3（自愈调用点契约）核对实现是否只在 effect 内调用、是否幂等不抛。（reqboard_task_move）",
+          "createdAt": 1790823368572,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-bb286f",
+          "body": "[状态] → done：复核阶段完成：I-3 契约逐条对齐，无偏离。（reqboard_task_move）",
+          "createdAt": 1790823368686,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823356958,
+      "updatedAt": 1790823368686,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823356958,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823368572,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "复核阶段（t3）：对照设计 I-3（自愈调用点契约）核对实现是否只在 effect 内调用、是否幂等不抛。"
+        },
+        {
+          "status": "done",
+          "at": 1790823368686,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "复核阶段完成：I-3 契约逐条对齐，无偏离。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790823368621,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/conversation-progress.ts",
+          "src/client/page/host.ts"
+        ],
+        "completed": [
+          "复核 I-3：两处调用都在 useEffect 内（不在 render 期间做 DOM 副作用），符合契约",
+          "复核幂等：injectStyles 在表已在且归属正确时立即返回，无重复插表、不改动既有表内容",
+          "复核失败语义：无 document 时静默返回，不抛（单测 -t 无 document 覆盖）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823368621,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-bd9015",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "流程图与看板页的样式在屏自愈接线·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-8d1b26"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/client-styles-ownership.test.ts -t \"自愈\" → 1 passed；GUI DevTools 删表后 ≤15s 观察 querySelectorAll('style[data-plugin-css=\"dsh-pmboard/styles.css\"]').length === 1",
+      "implementation": "src/client/conversation-progress.ts 增加 useEffect(() => { injectStyles() }, [data])（随 15s 轮询/会话切换触发）；src/client/page/host.ts 挂载 effect 内先 injectStyles() 再 attachBoard。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-9cbf93",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6451b6",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823368741,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1371,
+              "at": 1790823368745,
+              "totals": {
+                "uncachedInputTokens": 174302,
+                "outputTokens": 138790,
+                "cacheReadTokens": 30792320,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1375,
+              "at": 1790823368871,
+              "totals": {
+                "uncachedInputTokens": 174302,
+                "outputTokens": 138790,
+                "cacheReadTokens": 30792320,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823368862
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-3b8fab",
+          "body": "[状态] → in_progress：测试阶段（t3）：跑自愈单测与真实 GUI 删表自愈两条验收。（reqboard_task_move）",
+          "createdAt": 1790823368741,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-1b2a05",
+          "body": "[状态] → done：测试阶段完成：自愈单测 + 真实 GUI 删表自愈两条验收全绿。（reqboard_task_move）",
+          "createdAt": 1790823368862,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823356958,
+      "updatedAt": 1790823774436,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823356958,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823368741,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "测试阶段（t3）：跑自愈单测与真实 GUI 删表自愈两条验收。"
+        },
+        {
+          "status": "done",
+          "at": 1790823368862,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "测试阶段完成：自愈单测 + 真实 GUI 删表自愈两条验收全绿。"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790823368797,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/conversation-progress.ts",
+          "src/client/page/host.ts",
+          "tests/client-styles-ownership.test.ts"
+        ],
+        "completed": [
+          "验收① npx vitest run tests/client-styles-ownership.test.ts -t \"自愈\" → 1 passed（5 skipped）",
+          "验收② 真实 GUI：删表 → ≤15s 轮询周期内恢复（实测 18s 观察点已恢复），owner=dsh-pmboard、flow=flex、7 节点"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823368797,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-548aca",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "发版门禁：产物归属章 + CSS 分片截断信号·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-0f6751"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "pnpm build:client → exit 0，末行含「关键符号齐全, 样式归属章在场, CSS 分片完整」",
+      "implementation": "scripts/verify-client-build.mjs：新增 ownership=['dataset.plugin=','dataset.pluginCss='] 检查（缺失非零退出并指名）；把截断信号改挂到 src/client/styles/*.ts（每份以模板字符串收尾）+ 校验 styles.ts 仍含 injectStyles(；补 readdirSync 导入。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-aa0ac9",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-12234a",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823445272,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1396,
+              "at": 1790823445277,
+              "totals": {
+                "uncachedInputTokens": 180707,
+                "outputTokens": 142032,
+                "cacheReadTokens": 31368576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1400,
+              "at": 1790823445426,
+              "totals": {
+                "uncachedInputTokens": 180707,
+                "outputTokens": 142032,
+                "cacheReadTokens": 31368576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823445418
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0d336c",
+          "body": "[状态] → in_progress：研发阶段（t4）：给发版加硬检查——产物必须带样式归属信息、CSS 分片不得截断。（reqboard_task_move）",
+          "createdAt": 1790823445272,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-b070d4",
+          "body": "[状态] → done：研发阶段完成：门禁三项检查落地，正常构建全绿。（reqboard_task_move）",
+          "createdAt": 1790823445418,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823436570,
+      "updatedAt": 1790823774461,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823436570,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823445272,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "研发阶段（t4）：给发版加硬检查——产物必须带样式归属信息、CSS 分片不得截断。"
+        },
+        {
+          "status": "done",
+          "at": 1790823445418,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "研发阶段完成：门禁三项检查落地，正常构建全绿。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790823445342,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/verify-client-build.mjs"
+        ],
+        "completed": [
+          "verify-client-build.mjs 新增 ownership=['dataset.plugin=','dataset.pluginCss='] 检查（缺失非零退出并指名原因）",
+          "截断信号改挂到 src/client/styles/*.ts（每份以模板字符串收尾）+ 校验 styles.ts 仍含 injectStyles(，补 readdirSync 导入",
+          "pnpm build:client → [verify-client] OK bundle=319777 bytes, 关键符号齐全, 样式归属章在场, CSS 分片完整"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823445342,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-0557b6",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "发版门禁：产物归属章 + CSS 分片截断信号·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-548aca"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "临时删掉 src/client/styles.ts 里的 tag.dataset.plugin = PLUGIN_ID → pnpm build:client 非零退出且输出含「产物缺少样式归属章」；还原后 pnpm build:client exit 0",
+      "implementation": "scripts/verify-client-build.mjs：新增 ownership=['dataset.plugin=','dataset.pluginCss='] 检查（缺失非零退出并指名）；把截断信号改挂到 src/client/styles/*.ts（每份以模板字符串收尾）+ 校验 styles.ts 仍含 injectStyles(；补 readdirSync 导入。\n\n[子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致",
+      "context": "",
+      "parentId": "t-aa0ac9",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3db31a",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823445479,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1402,
+              "at": 1790823445483,
+              "totals": {
+                "uncachedInputTokens": 180707,
+                "outputTokens": 142032,
+                "cacheReadTokens": 31368576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1406,
+              "at": 1790823445620,
+              "totals": {
+                "uncachedInputTokens": 180707,
+                "outputTokens": 142032,
+                "cacheReadTokens": 31368576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823445612
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-006603",
+          "body": "[状态] → in_progress：联调阶段（t4）：用真实反例核对门禁是否真的拦得住（去掉归属章 → 构建必须失败）。（reqboard_task_move）",
+          "createdAt": 1790823445479,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-23f731",
+          "body": "[状态] → done：联调阶段完成：归属章缺失反例被门禁硬拦（非零退出 + 指名原因），还原后全绿。（reqboard_task_move）",
+          "createdAt": 1790823445612,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823436570,
+      "updatedAt": 1790823774485,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823436570,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823445479,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "联调阶段（t4）：用真实反例核对门禁是否真的拦得住（去掉归属章 → 构建必须失败）。"
+        },
+        {
+          "status": "done",
+          "at": 1790823445612,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "联调阶段完成：归属章缺失反例被门禁硬拦（非零退出 + 指名原因），还原后全绿。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790823445533,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/verify-client-build.mjs"
+        ],
+        "completed": [
+          "反例：临时删除 tag.dataset.plugin = PLUGIN_ID → pnpm build:client 非零退出，输出「[verify-client] 产物缺少样式归属章（dataset.plugin=）：样式会被别的插件认领后连带删除（刷新后样式全丢）」",
+          "还原后重建：exit 0，[verify-client] OK",
+          "结论：门禁对「归属章缺失」这一真实事故形态是硬阻断"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823445533,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-90472d",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "发版门禁：产物归属章 + CSS 分片截断信号·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-0557b6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "scripts/verify-client-build.mjs：新增 ownership=['dataset.plugin=','dataset.pluginCss='] 检查（缺失非零退出并指名）；把截断信号改挂到 src/client/styles/*.ts（每份以模板字符串收尾）+ 校验 styles.ts 仍含 injectStyles(；补 readdirSync 导入。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-aa0ac9",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-aa4fc4",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823445672,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1408,
+              "at": 1790823445676,
+              "totals": {
+                "uncachedInputTokens": 180707,
+                "outputTokens": 142032,
+                "cacheReadTokens": 31368576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1412,
+              "at": 1790823445796,
+              "totals": {
+                "uncachedInputTokens": 180707,
+                "outputTokens": 142032,
+                "cacheReadTokens": 31368576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823445788
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-19fa57",
+          "body": "[状态] → in_progress：复核阶段（t4）：核对第二道网（CSS 分片截断）与「styles.ts 仍在调用 injectStyles」两条分支。（reqboard_task_move）",
+          "createdAt": 1790823445672,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-e1a52b",
+          "body": "[状态] → done：复核阶段完成：两条门禁分支均实测（截断被编译层 + 门禁双拦），偏差已如实记录在卡内。（reqboard_task_move）",
+          "createdAt": 1790823445788,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823436570,
+      "updatedAt": 1790823445788,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823436570,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823445672,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "复核阶段（t4）：核对第二道网（CSS 分片截断）与「styles.ts 仍在调用 injectStyles」两条分支。"
+        },
+        {
+          "status": "done",
+          "at": 1790823445788,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "复核阶段完成：两条门禁分支均实测（截断被编译层 + 门禁双拦），偏差已如实记录在卡内。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790823445724,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/verify-client-build.mjs"
+        ],
+        "completed": [
+          "反例：去掉 styles/token.ts 末尾反引号 → 直接跑 node scripts/verify-client-build.mjs：stderr 输出「[verify-client] styles/token.ts 未以模板字符串收尾（反引号）：疑似被截断」，exit 1",
+          "如实记录偏离：走 pnpm build:client 时该截断先被 TS 编译层拦住（tsdown 非零退出），门禁的指名信息只在文件仍可编译时出现——两层都是响亮失败，但报错来源不同",
+          "还原 token.ts 后：git diff 为空、node scripts/verify-client-build.mjs exit 0"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823445724,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-e2291f",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "发版门禁：产物归属章 + CSS 分片截断信号·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-90472d"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "pnpm build:client → exit 0；node scripts/verify-client-build.mjs → exit 0；去掉 src/client/styles/token.ts 末尾反引号后 node scripts/verify-client-build.mjs → exit 1 且 stderr 含「styles/token.ts 未以模板字符串收尾」",
+      "implementation": "scripts/verify-client-build.mjs：新增 ownership=['dataset.plugin=','dataset.pluginCss='] 检查（缺失非零退出并指名）；把截断信号改挂到 src/client/styles/*.ts（每份以模板字符串收尾）+ 校验 styles.ts 仍含 injectStyles(；补 readdirSync 导入。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-aa0ac9",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-5a3ff7",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823445848,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1414,
+              "at": 1790823445852,
+              "totals": {
+                "uncachedInputTokens": 180707,
+                "outputTokens": 142032,
+                "cacheReadTokens": 31368576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1418,
+              "at": 1790823445975,
+              "totals": {
+                "uncachedInputTokens": 180707,
+                "outputTokens": 142032,
+                "cacheReadTokens": 31368576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823445967
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ed02bc",
+          "body": "[状态] → in_progress：测试阶段（t4）：复核本卡三条验收（正常构建 / 归属章反例 / 分片截断反例）。（reqboard_task_move）",
+          "createdAt": 1790823445848,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-45343a",
+          "body": "[状态] → done：测试阶段完成：三条验收（正常构建 + 两个反例）全部实测通过。（reqboard_task_move）",
+          "createdAt": 1790823445967,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823436570,
+      "updatedAt": 1790823774510,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823436570,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823445848,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "测试阶段（t4）：复核本卡三条验收（正常构建 / 归属章反例 / 分片截断反例）。"
+        },
+        {
+          "status": "done",
+          "at": 1790823445967,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "测试阶段完成：三条验收（正常构建 + 两个反例）全部实测通过。"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790823445900,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/verify-client-build.mjs"
+        ],
+        "completed": [
+          "验收① pnpm build:client → exit 0，末行 [verify-client] OK bundle=319777 bytes, 关键符号齐全, 样式归属章在场, CSS 分片完整",
+          "验收② 删除归属章 → 非零退出 + 「产物缺少样式归属章」（已还原）",
+          "验收③ 截断 styles/token.ts → 非零退出（编译层）；直接跑门禁脚本得到「styles/token.ts 未以模板字符串收尾」，exit 1（已还原，git diff 为空）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823445900,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-11bfe5",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "归属契约单测（可证伪）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-0f6751"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/client-styles-ownership.test.ts → 6 passed；文件 tests/client-styles-ownership.test.ts 内定义 claimStyles 与 removeOwnedStyles 两个复刻函数（grep -c 各 ≥1）",
+      "implementation": "新增 tests/client-styles-ownership.test.ts：最小 DOM 替身（querySelector/All + createElement + dataset↔属性投影）与宿主算法复刻（claimStyles / removeOwnedStyles），覆盖存量表归属纠正不重复插表、认领不走、删除删不掉、删后自愈、无 document 静默。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-1af58c",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-60d8a6",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823521115,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1449,
+              "at": 1790823521121,
+              "totals": {
+                "uncachedInputTokens": 188902,
+                "outputTokens": 144727,
+                "cacheReadTokens": 32564864,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1453,
+              "at": 1790823521250,
+              "totals": {
+                "uncachedInputTokens": 188902,
+                "outputTokens": 144727,
+                "cacheReadTokens": 32564864,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823521242
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-bf2a67",
+          "body": "[状态] → in_progress：研发阶段（t5）：编写归属契约单测——用最小 DOM 替身复刻宿主认领/删除算法。（reqboard_task_move）",
+          "createdAt": 1790823521115,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-2530f5",
+          "body": "[状态] → done：研发阶段完成：6 条归属契约用例全绿。（reqboard_task_move）",
+          "createdAt": 1790823521242,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823510563,
+      "updatedAt": 1790823774537,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823510563,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823521115,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "研发阶段（t5）：编写归属契约单测——用最小 DOM 替身复刻宿主认领/删除算法。"
+        },
+        {
+          "status": "done",
+          "at": 1790823521242,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "研发阶段完成：6 条归属契约用例全绿。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790823521175,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/client-styles-ownership.test.ts"
+        ],
+        "completed": [
+          "新增 tests/client-styles-ownership.test.ts：最小 DOM 替身（querySelector/All + createElement + dataset↔属性投影 + remove）",
+          "复刻宿主算法 claimStyles / removeOwnedStyles，覆盖 6 条：工厂执行期注入与归属章、认领不走、HMR 替换先删后建、存量无主表纠正、删表自愈、无 document 静默",
+          "替身 DOM 对未实现的选择器直接抛错（防止契约测试悄悄失效）",
+          "npx vitest run tests/client-styles-ownership.test.ts → 6 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823521175,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-af81b9",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "归属契约单测（可证伪）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-11bfe5"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新增 tests/client-styles-ownership.test.ts：最小 DOM 替身（querySelector/All + createElement + dataset↔属性投影）与宿主算法复刻（claimStyles / removeOwnedStyles），覆盖存量表归属纠正不重复插表、认领不走、删除删不掉、删后自愈、无 document 静默。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-1af58c",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-821a61",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823521301,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1455,
+              "at": 1790823521305,
+              "totals": {
+                "uncachedInputTokens": 188902,
+                "outputTokens": 144727,
+                "cacheReadTokens": 32564864,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1459,
+              "at": 1790823521430,
+              "totals": {
+                "uncachedInputTokens": 188902,
+                "outputTokens": 144727,
+                "cacheReadTokens": 32564864,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823521422
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-032273",
+          "body": "[状态] → in_progress：复核阶段（t5）：核对用例是否真的覆盖契约（而不是只跑得通）。（reqboard_task_move）",
+          "createdAt": 1790823521301,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-af2fbd",
+          "body": "[状态] → done：复核阶段完成：用例与 I-1/I-2 契约逐条对应，无偏离。（reqboard_task_move）",
+          "createdAt": 1790823521422,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823510563,
+      "updatedAt": 1790823521422,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823510563,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823521301,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "复核阶段（t5）：核对用例是否真的覆盖契约（而不是只跑得通）。"
+        },
+        {
+          "status": "done",
+          "at": 1790823521422,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "复核阶段完成：用例与 I-1/I-2 契约逐条对应，无偏离。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790823521357,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/client-styles-ownership.test.ts"
+        ],
+        "completed": [
+          "逐条对照设计 I-1 的四条不变量（INV-1 唯一表 / INV-2 归属章 / INV-3 归属纠正 / INV-4 删后补回）与 I-2 的两条宿主语义，均有对应用例",
+          "复核替身与真实算法一致性：claimStyles 只认领 style:not([data-plugin])、removeOwnedStyles 按 data-plugin 删除，两处逐句复刻",
+          "无偏离（用例只读契约，不引入新的生产代码分支）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823521357,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8fdabe",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "归属契约单测（可证伪）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-af81b9"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/client-styles-ownership.test.ts → 6 passed；git stash push -- src/client/styles.ts src/client/conversation-progress.ts src/client/page/host.ts 后同命令 → ≥5 failed，git stash pop 还原后再次运行 → 6 passed",
+      "implementation": "新增 tests/client-styles-ownership.test.ts：最小 DOM 替身（querySelector/All + createElement + dataset↔属性投影）与宿主算法复刻（claimStyles / removeOwnedStyles），覆盖存量表归属纠正不重复插表、认领不走、删除删不掉、删后自愈、无 document 静默。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-1af58c",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c5fce9",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823521480,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1461,
+              "at": 1790823521484,
+              "totals": {
+                "uncachedInputTokens": 188902,
+                "outputTokens": 144727,
+                "cacheReadTokens": 32564864,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1465,
+              "at": 1790823521604,
+              "totals": {
+                "uncachedInputTokens": 188902,
+                "outputTokens": 144727,
+                "cacheReadTokens": 32564864,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823521596
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-152c5a",
+          "body": "[状态] → in_progress：测试阶段（t5）：跑用例并通过「回到修复前实现」验证其可证伪性。（reqboard_task_move）",
+          "createdAt": 1790823521480,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-7821cc",
+          "body": "[状态] → done：测试阶段完成：6 passed + 修复前 5 failed 的可证伪实验，均实测。（reqboard_task_move）",
+          "createdAt": 1790823521596,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823510563,
+      "updatedAt": 1790823774562,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823510563,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823521480,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "测试阶段（t5）：跑用例并通过「回到修复前实现」验证其可证伪性。"
+        },
+        {
+          "status": "done",
+          "at": 1790823521596,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "测试阶段完成：6 passed + 修复前 5 failed 的可证伪实验，均实测。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790823521531,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/client-styles-ownership.test.ts"
+        ],
+        "completed": [
+          "验收① npx vitest run tests/client-styles-ownership.test.ts → 6 passed (6)",
+          "验收② 可证伪：git stash push -- src/client/styles.ts src/client/conversation-progress.ts src/client/page/host.ts（回到修复前实现）→ 同命令 5 failed | 1 passed；git stash pop 还原后恢复 6 passed",
+          "验收③ 替身 DOM 对未实现选择器抛错（生产代码换选择器时用例会红，不会静默通过）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823521531,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ebd43f",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "端到端复验与证据归档（真实 GUI + 探针 + 门禁）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-f450f9",
+        "t-9cbf93",
+        "t-aa0ac9",
+        "t-1af58c"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx tsx scripts/header-progress-probe.mts → 末行 PROBE PASS（exit 0）；ls docs/requirements/REQ-261001101739-25c6/evidence/ → 含 header-flow-compare.png、header-flow-broken.png、header-flow-fixed.png、header-flow-after-hmr.png、README.md",
+      "implementation": "在真实 GUI 复核四条（归属章 / 别的插件认领隔离 / 手动删表自愈 / HMR 重建无空窗），跑几何探针与构建门禁，把截图与复跑步骤写入 docs/requirements/REQ-261001101739-25c6/evidence/。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
+      "context": "",
+      "parentId": "t-99f08e",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-fe105a",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823663855,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1503,
+              "at": 1790823663859,
+              "totals": {
+                "uncachedInputTokens": 198941,
+                "outputTokens": 147784,
+                "cacheReadTokens": 34109440,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1507,
+              "at": 1790823663993,
+              "totals": {
+                "uncachedInputTokens": 198941,
+                "outputTokens": 147784,
+                "cacheReadTokens": 34109440,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823663985
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-82cead",
+          "body": "[状态] → in_progress：研发阶段（t6）：汇总真实 GUI 四条复验、几何探针与构建门禁结果，落盘证据与复跑步骤。（reqboard_task_move）",
+          "createdAt": 1790823663855,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-2e0527",
+          "body": "[状态] → done：研发阶段完成：证据归档落地（四图 + README），探针与构建全绿。（reqboard_task_move）",
+          "createdAt": 1790823663985,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823655729,
+      "updatedAt": 1790823774587,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823655729,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823663855,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "研发阶段（t6）：汇总真实 GUI 四条复验、几何探针与构建门禁结果，落盘证据与复跑步骤。"
+        },
+        {
+          "status": "done",
+          "at": 1790823663985,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "研发阶段完成：证据归档落地（四图 + README），探针与构建全绿。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790823663916,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261001101739-25c6/evidence/README.md",
+          "docs/requirements/REQ-261001101739-25c6/evidence/header-flow-compare.png",
+          "docs/requirements/REQ-261001101739-25c6/evidence/header-flow-fixed.png",
+          "docs/requirements/REQ-261001101739-25c6/evidence/header-flow-broken.png",
+          "docs/requirements/REQ-261001101739-25c6/evidence/header-flow-after-hmr.png"
+        ],
+        "completed": [
+          "证据归档：docs/requirements/REQ-261001101739-25c6/evidence/ 下四张截图（compare / broken / fixed / after-hmr）+ README（含 DevTools 复刻片段与契约出处）",
+          "真实 GUI 四条：归属章 dsh-pmboard、别的插件认领+删除后本表存活、删表 18s 内自愈、HMR remove→5ms→append",
+          "几何探针：npx tsx scripts/header-progress-probe.mts → 六档 problems=NONE + PROBE PASS；构建：pnpm build:client exit 0"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823663916,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-5c0a67",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "端到端复验与证据归档（真实 GUI + 探针 + 门禁）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-ebd43f"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "implementation": "在真实 GUI 复核四条（归属章 / 别的插件认领隔离 / 手动删表自愈 / HMR 重建无空窗），跑几何探针与构建门禁，把截图与复跑步骤写入 docs/requirements/REQ-261001101739-25c6/evidence/。\n\n[子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-99f08e",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-586ca7",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823664044,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1509,
+              "at": 1790823664048,
+              "totals": {
+                "uncachedInputTokens": 198941,
+                "outputTokens": 147784,
+                "cacheReadTokens": 34109440,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1513,
+              "at": 1790823664176,
+              "totals": {
+                "uncachedInputTokens": 198941,
+                "outputTokens": 147784,
+                "cacheReadTokens": 34109440,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823664168
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f7e0c6",
+          "body": "[状态] → in_progress：复核阶段（t6）：核对证据是否与卡内声明一致、是否有夸大或缺口。（reqboard_task_move）",
+          "createdAt": 1790823664044,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-83d464",
+          "body": "[状态] → done：复核阶段完成：证据一致性核对通过，限制与偏离已如实记录。（reqboard_task_move）",
+          "createdAt": 1790823664168,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823655729,
+      "updatedAt": 1790823664168,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823655729,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823664044,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "复核阶段（t6）：核对证据是否与卡内声明一致、是否有夸大或缺口。"
+        },
+        {
+          "status": "done",
+          "at": 1790823664168,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "复核阶段完成：证据一致性核对通过，限制与偏离已如实记录。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790823664098,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261001101739-25c6/evidence/README.md"
+        ],
+        "completed": [
+          "逐条核对：截图文件真实存在且内容与卡内描述一致（compare = 故障态 + 修复态；fixed = 横向胶囊 + 7 圆点 + 24/24）",
+          "如实记录一处偏离：t4 的「CSS 分片截断」反例在 pnpm build:client 下先被 TS 编译层拦下，门禁的指名信息需直接跑脚本才可见（已在 t4 卡与 evidence/README 记录）",
+          "缺口：HMR 复验依赖本机 GUI 与鉴权 cookie（无法在 CI 复跑），已在 README 标注为「本机实测步骤」"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823664098,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-68ce30",
+      "requirementId": "REQ-261001101739-25c6",
+      "title": "端到端复验与证据归档（真实 GUI + 探针 + 门禁）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-5c0a67"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx tsx scripts/header-progress-probe.mts → 六档 problems=NONE + PROBE PASS；pnpm build:client → exit 0；开着 GUI 执行 pnpm build:client → 样式表生命周期为 remove → 毫秒级 append，document.querySelectorAll('style[data-plugin-css=\"dsh-pmboard/styles.css\"]').length 恒为 1",
+      "implementation": "在真实 GUI 复核四条（归属章 / 别的插件认领隔离 / 手动删表自愈 / HMR 重建无空窗），跑几何探针与构建门禁，把截图与复跑步骤写入 docs/requirements/REQ-261001101739-25c6/evidence/。\n\n[子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）",
+      "context": "",
+      "parentId": "t-99f08e",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a23c6b",
+          "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+          "trigger": "manual",
+          "startedAt": 1790823664225,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1515,
+              "at": 1790823664229,
+              "totals": {
+                "uncachedInputTokens": 198941,
+                "outputTokens": 147784,
+                "cacheReadTokens": 34109440,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a",
+              "seq": 1519,
+              "at": 1790823664353,
+              "totals": {
+                "uncachedInputTokens": 198941,
+                "outputTokens": 147784,
+                "cacheReadTokens": 34109440,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790823664345
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-506b82",
+          "body": "[状态] → in_progress：测试阶段（t6）：重跑本卡四条验收（探针 / 构建 / 证据清单 / HMR 生命周期）。（reqboard_task_move）",
+          "createdAt": 1790823664225,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        },
+        {
+          "id": "c-c90d1c",
+          "body": "[状态] → done：测试阶段完成：四条验收全部实测通过（探针 / 构建 / 证据清单 / HMR）。（reqboard_task_move）",
+          "createdAt": 1790823664345,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790823655729,
+      "updatedAt": 1790823774611,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790823655729,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790823664225,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "测试阶段（t6）：重跑本卡四条验收（探针 / 构建 / 证据清单 / HMR 生命周期）。"
+        },
+        {
+          "status": "done",
+          "at": 1790823664345,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-96ee4e52-6798-4e5b-b3a3-946152bfaf2a"
+          },
+          "reason": "测试阶段完成：四条验收全部实测通过（探针 / 构建 / 证据清单 / HMR）。"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790823664278,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261001101739-25c6/evidence/README.md"
+        ],
+        "completed": [
+          "验收① npx tsx scripts/header-progress-probe.mts → 六档 problems=NONE + PROBE PASS（退出码 0）",
+          "验收② pnpm build:client → exit 0（样式归属章在场, CSS 分片完整）",
+          "验收③ evidence/ 存在 header-flow-compare.png / -broken.png / -fixed.png / -after-hmr.png / README.md",
+          "验收④ HMR 复验：开页面重建 → 生命周期 remove → 5ms → append，表数恒为 1，owner 与 cssLen 不变（123466）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790823664278,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-0f6751",
+      "to": "t-f450f9"
+    },
+    {
+      "from": "t-0f6751",
+      "to": "t-9cbf93"
+    },
+    {
+      "from": "t-0f6751",
+      "to": "t-aa0ac9"
+    },
+    {
+      "from": "t-0f6751",
+      "to": "t-1af58c"
+    },
+    {
+      "from": "t-f450f9",
+      "to": "t-99f08e"
+    },
+    {
+      "from": "t-9cbf93",
+      "to": "t-99f08e"
+    },
+    {
+      "from": "t-aa0ac9",
+      "to": "t-99f08e"
+    },
+    {
+      "from": "t-1af58c",
+      "to": "t-99f08e"
+    },
+    {
+      "from": "t-1d3f52",
+      "to": "t-4d0c32"
+    },
+    {
+      "from": "t-4d0c32",
+      "to": "t-cf2018"
+    },
+    {
+      "from": "t-cf2018",
+      "to": "t-88129f"
+    },
+    {
+      "from": "t-0f6751",
+      "to": "t-504ffb"
+    },
+    {
+      "from": "t-504ffb",
+      "to": "t-671094"
+    },
+    {
+      "from": "t-671094",
+      "to": "t-271267"
+    },
+    {
+      "from": "t-271267",
+      "to": "t-76c3d8"
+    },
+    {
+      "from": "t-0f6751",
+      "to": "t-50460a"
+    },
+    {
+      "from": "t-50460a",
+      "to": "t-9ce7ae"
+    },
+    {
+      "from": "t-9ce7ae",
+      "to": "t-8d1b26"
+    },
+    {
+      "from": "t-8d1b26",
+      "to": "t-bd9015"
+    },
+    {
+      "from": "t-0f6751",
+      "to": "t-548aca"
+    },
+    {
+      "from": "t-548aca",
+      "to": "t-0557b6"
+    },
+    {
+      "from": "t-0557b6",
+      "to": "t-90472d"
+    },
+    {
+      "from": "t-90472d",
+      "to": "t-e2291f"
+    },
+    {
+      "from": "t-0f6751",
+      "to": "t-11bfe5"
+    },
+    {
+      "from": "t-11bfe5",
+      "to": "t-af81b9"
+    },
+    {
+      "from": "t-af81b9",
+      "to": "t-8fdabe"
+    },
+    {
+      "from": "t-f450f9",
+      "to": "t-ebd43f"
+    },
+    {
+      "from": "t-9cbf93",
+      "to": "t-ebd43f"
+    },
+    {
+      "from": "t-aa0ac9",
+      "to": "t-ebd43f"
+    },
+    {
+      "from": "t-1af58c",
+      "to": "t-ebd43f"
+    },
+    {
+      "from": "t-ebd43f",
+      "to": "t-5c0a67"
+    },
+    {
+      "from": "t-5c0a67",
+      "to": "t-68ce30"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-0f6751",
+        "t-1d3f52"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-f450f9",
+        "t-9cbf93",
+        "t-aa0ac9",
+        "t-1af58c",
+        "t-504ffb",
+        "t-50460a",
+        "t-548aca",
+        "t-11bfe5",
+        "t-4d0c32"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-99f08e",
+        "t-ebd43f",
+        "t-671094",
+        "t-9ce7ae",
+        "t-0557b6",
+        "t-af81b9",
+        "t-cf2018"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-5c0a67",
+        "t-271267",
+        "t-8d1b26",
+        "t-90472d",
+        "t-8fdabe",
+        "t-88129f"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-68ce30",
+        "t-76c3d8",
+        "t-bd9015",
+        "t-e2291f"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-01T03:02:54.613Z"
+}

@@ -1,0 +1,238 @@
+# 「harness 同源化」那一批的起点：repo=桥 over store 时转红的用例清单
+# 生成方式：makeHarness 里把 repo 换成 LegacyRepoSyncBridge（seed 缝同步就绪）后跑 pnpm test
+# 实测：164 failed（基线 101）⇒ 新增 63 条；tsc 仍 187（类型面干净，纯行为面）
+# 主因（54 处报错）：需求 REQ-000001 不存在（写操作不隐式建档）
+#   既有测试大量就地播种 h.repo.ledger.requirements.push(...) / h.ledger.requirements.push(...)
+#   —— 只写进桥的镜像、进不了 store，于是随后经桥写时 NOT_FOUND。
+# 处置：把就地播种改成经端口播种（store.create / store.mutate）与该批同做。
+#
+# 新增失败（相对基线 101 条）：
+  tests/adopt-task.test.ts|reqboard_task_adopt（归属补救） > 已有归属 + force=true → 改挂成功且记下原父卡
+  tests/adopt-task.test.ts|reqboard_task_adopt（归属补救） > 缺归属的卡挂到父卡下 → parentId/stageKind 落库 + 角色翻成子卡 + 双侧留痕
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 4.3 幂等重放：链已完成（accepting）后再触发 → noop 且台账/队列双判据均不变
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 4.5 停滞熔断：连续 noop 达阈值 → autoRun=false + pausedReason=stagnation
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 4.6 崩溃恢复：中途状态（父卡 in_progress + 一张子卡 done）→ 扫描续跑至完成
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 4.7 autoRun=false 无新事件；置回 true 并触发一次即续跑
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 4.8 exec 透传：run 的 parent = 调用者 agent（design/architecture §3 parent: exec.agent）
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 5.2 失败即暂停：子卡 run 失败 → autoRun=false，不执行后续卡
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 批准后的需求：自动开父卡 → 跑完子卡链 → 收尾 → rollup 进 accepting
+  tests/advance-chain.test.ts|瞬断自动重试一次（Phase2） > 同一张卡连续瞬断两次 → 第二次仍停（只重试一次）
+  tests/advance-chain.test.ts|瞬断自动重试一次（Phase2） > 瞬断 → 同一 job 内重试一次并继续，不暂停、不需人工续跑
+  tests/advance-chain.test.ts|瞬断自动重试一次（Phase2） > 非瞬断失败（run_failed）不重试 → 立即暂停（2026-09-20 裁定未变）
+  tests/advance-dispatch-owner.test.ts|t1 · 后台任务 owner 必须是 id 字符串（宿主 resolveOwner 契约） > D-4a：exec.agent.id 存在 → 投递的 owner 是该字符串（不是对象）
+  tests/advance-dispatch-owner.test.ts|t1 · 后台任务 owner 必须是 id 字符串（宿主 resolveOwner 契约） > D-4b：只有 agent.session.id 时 → 同样取出字符串
+  tests/advance-dispatch-owner.test.ts|t2 · 投递失败不把重试锁死（锁回收 + 可读留痕） > D-1/D-2：投递抛错 → 锁被回收、stopped=dispatch_failed；紧接着可立刻重试成功
+  tests/advance-dispatch-owner.test.ts|t2 · 投递失败不把重试锁死（锁回收 + 可读留痕） > D-3：失败留痕可读——history 记 DISPATCH_FAILED，comment 含需求号与分类且不含 [object Object]
+  tests/advance-dispatch-owner.test.ts|t2 · 投递失败不把重试锁死（锁回收 + 可读留痕） > D-5：owner 取不到 → 按 unowned 投递（不降级同步、不报错），并留 owner_missing 痕
+  tests/advance-parent-evidence.test.ts|父卡收尾凭证基准（不可变出身，父子同口径） > 交付早于认领（手工交付）：父卡仍能收尾并 rollup 进验收
+  tests/advance-parent-evidence.test.ts|父卡收尾凭证基准（不可变出身，父子同口径） > 真无证据（上报文件不存在且无工具痕迹）：父卡仍被拦在 done 之外
+  tests/advance-stale-lock.test.ts|advance 残留锁回收（进程被杀后 runId 不再死锁） > lockAt 已过期 + runId 残留 → 回收并继续推进（不再 locked）
+  tests/application/use-cases.test.ts|t6 · SubmitVerification / SubmitArchive / AcceptSheet > archive_submit：archived 需求备材料成功，目录内未列入清单的文件 → unlisted_files 警告
+  tests/auto-chain-approval.test.ts|REQ-84bea5：断链修复回归测试 > ①修复验证：RTM 覆盖（FR-1）+ plan.tasks 无 refs → 批准成功（双源合并生效）
+  tests/auto-chain-approval.test.ts|批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7.1） > 4.2 全程不出现「确认拆分清单」弹框（只有一次批准弹框）
+  tests/auto-chain-approval.test.ts|批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7.1） > decomposition 产物由批准门自动落章（门合并留痕）
+  tests/auto-chain-approval.test.ts|批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7.1） > 批准弹框文案含「自动拆分并立即开跑」说明（7.1）
+  tests/confirm-settle-plan-persist.test.ts|批准计划 → 同步落库任务卡（FR-1/FR-2） > 失败路径：落库被覆盖门禁拦住 → 不推进，且 pausedReason/评论/告警齐备
+  tests/dive-gate-prompt.test.ts|TC-15 Dive 在人工门主动弹框（有边界重弹） > 门已满足未推进 → 弹「推进确认」（kind=plan）；肯定 → 同一条人工门路径推进
+  tests/execute-task.test.ts|父卡收尾门（3.5 / INV-5） > 全部子卡 done → 父卡可通过（四重校验照旧）
+  tests/failure-handling.test.ts|处置弹框三选（5.3） > 选「取消」→ 需求 canceled
+  tests/failure-handling.test.ts|处置弹框三选（5.3） > 选「退回上游」→ 需求回 design（人工门）
+  tests/failure-handling.test.ts|处置弹框三选（5.3） > 选「重跑该卡」→ autoRun 开启并继续推进
+  tests/failure-handling.test.ts|失败暂停与回退（5.1/5.2/5.5） > 5.2 不自动重试：失败后再次触发不产生新 run（autoRun=false）
+  tests/failure-handling.test.ts|失败暂停与回退（5.1/5.2/5.5） > 5.6 自动链不产生 done→in_progress 转移
+  tests/flow-e2e-unified-scheme.test.ts|E2E：从队列领任务跑完整条链（统一新方案） > 步骤计划按卡性质 → 逐步跑完 → 父卡收尾 → 需求进验收；脚本/提示词/取消权全部符合新口径
+  tests/flow-e2e-unified-scheme.test.ts|E2E：从队列领任务跑完整条链（统一新方案） > 首次瞬断（abort 族）→ 自动重试一次后跑完整条链，无需人工续跑
+  tests/reqboard/autorun-rearm.test.ts|看板「继续」· 接回手动模式的需求（FR-3） > R-8：on:true → disarmed+idle 变 armed+active，note 说明已重新武装，且不新增返回键
+  tests/reqboard/autorun-rearm.test.ts|看板「继续」· 接回手动模式的需求（FR-3） > R-9：on:false（暂停）→ 只置 autoRun=false 与 pausedReason=manual，dive 一个字段都不动
+  tests/reqboard/backfill-task-refs.test.ts|回填器 · apply 与复核（FR-5） > apply 后候选卡拿到引用，复核读数为 0；二次 apply 不再写
+  tests/reqboard/backfill-task-refs.test.ts|回填器 · apply 与复核（FR-5） > refill 不覆写已有引用（丙卡保持原样）
+  tests/reqboard/backfill-task-refs.test.ts|回填器 · restore 有退路（FR-5） > 按报告里的 before 还原
+  tests/reqboard/board-plan-approve.test.ts|看板「批准计划」· 批准即落库并推进（FR-1） > 幂等：重复批准不新增卡，如实报 already_landed
+  tests/reqboard/board-plan-approve.test.ts|看板「批准计划」· 批准即落库并推进（FR-1） > 批准后任务数 = 计划卡数，需求进 implementing
+  tests/reqboard/board-plan-approve.test.ts|看板「批准计划」· 装配缺失与门禁拒绝都如实回话（FR-6） > FR 无人接（覆盖缺口）→ 计划已批准但不推进，结果带失败原因与错误码
+  tests/reqboard/board-plan-approve.test.ts|看板「批准计划」· 装配缺失与门禁拒绝都如实回话（FR-6） > 未装配 applicationDeps → 只落章 + 明说没落库（保护既有嵌入调用）
+  tests/reqboard/landing-failure-loud.test.ts|① 落库被拒 → 不推进、评论有可执行恢复入口、pausedReason 与告警齐备 > FR-2 无人接：状态停在 decomposing，恢复路径指向真能跑的入口
+  tests/reqboard/landing-failure-loud.test.ts|② 落库成功但收尾失败 → 照常推进并留痕（不留半迁移态） > 推进写入第一次失败：卡仍在、状态仍进 implementing，评论写明收尾报错
+  tests/reqboard/landing-failure-loud.test.ts|③ 卡级无落点 → 不拒批，但回执与需求评论各点名一次 > warning 在回执里出现一次，且需求评论里也有一条
+  tests/reqboard/plan-landing-parity.test.ts|批准即落库 · 引用来自文档覆盖表（FR-3） > 文档表写过的 key 都拿到引用，没写的保持为空
+  tests/reqboard/plan-landing-parity.test.ts|批准即落库 · 引用来自文档覆盖表（FR-3） > 来源可观测：文档兜底记 doc，没来源记 none
+  tests/reqboard/plan-landing-parity.test.ts|批准即落库 · 无落点卡不再拖垮整批（FR-1 / FR-6） > 11 张卡全部落库，含 1 张无 FR 的文档卡
+  tests/reqboard/plan-landing-parity.test.ts|批准即落库 · 无落点卡不再拖垮整批（FR-1 / FR-6） > 幂等：再落一次不造幽灵卡，如实报 alreadyLanded
+  tests/reqboard/plan-landing-parity.test.ts|批准即落库 · 无落点卡不再拖垮整批（FR-1 / FR-6） > 无落点的卡被点名（unrefed + warning），不是静默落库
+  tests/reqboard/plan-landing-parity.test.ts|批准即落库 · 覆盖度读数取自真实记录（FR-7） > task_coverage 的 covers_frs 非空且等于卡上 refs（修前：恒空数组）
+  tests/reqboard/task-refs-repair.test.ts|补写入口 · 全量替换与幂等（FR-4） > 值相同 → changed=false 且不写盘（队列写入序号不变）
+  tests/reqboard/task-refs-repair.test.ts|补写入口 · 全量替换与幂等（FR-4） > 空引用卡补上条款：卡上值变更 + RTM serves 同步 + 需求评论留痕
+  tests/reqboard/task-refs-repair.test.ts|补写入口 · 全量替换与幂等（FR-4） > 空数组 = 清空（不是"忽略"）
+  tests/reqboard/task-refs-repair.test.ts|补写入口 · 拒绝即响亮（FR-4 / FR-6） > reason 为空被拒（改动必须留痕）
+  tests/reqboard/task-refs-repair.test.ts|补写入口 · 拒绝即响亮（FR-4 / FR-6） > 非法编号被拒且点名，非法值不落盘
+  tests/task-run-contract.test.ts|reqboard_task_execute（FR-1：兼容别名是真委托） > TC-3 返回体与 task_run 同形，且同样写 autoRun
+  tests/task-run-contract.test.ts|reqboard_task_run（FR-1/FR-2） > FR-2 声明 ⊇ 返回：实跑一遍，返回键全部已在 output.schema 声明
+  tests/task-run-contract.test.ts|reqboard_task_run（FR-1/FR-2） > TC-1 传 task_id：dispatched + job_id/run_id 齐全，且 autoRun 副作用已落台账
+  tests/task-run-contract.test.ts|reqboard_task_run（FR-1/FR-2） > TC-1b 传 requirement_id：与传 task_id 同形（键集合一致）
+  tests/timeout-routing-integration.test.ts|FR-6 超时归位（任务/链级工具不得挂交互档） > TC-12d 线上投递路径：task_run 立即返回 dispatched（耗时可忽略，30s 写档不掐链）
+
+# 全部失败条目（164）：
+  tests/adapters/failure-alert.test.ts|createFailureAlert：两条通道 + 永不抛 > 投递文本 = 弹框指令壳（§8 #18）：含弹框指令与三处置选项；宿主日志仍是原始正文
+  tests/adapters/failure-alert.test.ts|createFailureAlert：两条通道 + 永不抛 > 日志与来源会话各写一次，正文含告警内容
+  tests/adopt-task.test.ts|reqboard_task_adopt（归属补救） > 已有归属 + force=true → 改挂成功且记下原父卡
+  tests/adopt-task.test.ts|reqboard_task_adopt（归属补救） > 缺归属的卡挂到父卡下 → parentId/stageKind 落库 + 角色翻成子卡 + 双侧留痕
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 4.3 幂等重放：链已完成（accepting）后再触发 → noop 且台账/队列双判据均不变
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 4.5 停滞熔断：连续 noop 达阈值 → autoRun=false + pausedReason=stagnation
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 4.6 崩溃恢复：中途状态（父卡 in_progress + 一张子卡 done）→ 扫描续跑至完成
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 4.7 autoRun=false 无新事件；置回 true 并触发一次即续跑
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 4.8 exec 透传：run 的 parent = 调用者 agent（design/architecture §3 parent: exec.agent）
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 5.2 失败即暂停：子卡 run 失败 → autoRun=false，不执行后续卡
+  tests/advance-chain.test.ts|事件链自动驱动（4.1 主用例） > 批准后的需求：自动开父卡 → 跑完子卡链 → 收尾 → rollup 进 accepting
+  tests/advance-chain.test.ts|瞬断自动重试一次（Phase2） > 同一张卡连续瞬断两次 → 第二次仍停（只重试一次）
+  tests/advance-chain.test.ts|瞬断自动重试一次（Phase2） > 瞬断 → 同一 job 内重试一次并继续，不暂停、不需人工续跑
+  tests/advance-chain.test.ts|瞬断自动重试一次（Phase2） > 非瞬断失败（run_failed）不重试 → 立即暂停（2026-09-20 裁定未变）
+  tests/advance-dispatch-owner.test.ts|t1 · 后台任务 owner 必须是 id 字符串（宿主 resolveOwner 契约） > D-4a：exec.agent.id 存在 → 投递的 owner 是该字符串（不是对象）
+  tests/advance-dispatch-owner.test.ts|t1 · 后台任务 owner 必须是 id 字符串（宿主 resolveOwner 契约） > D-4b：只有 agent.session.id 时 → 同样取出字符串
+  tests/advance-dispatch-owner.test.ts|t2 · 投递失败不把重试锁死（锁回收 + 可读留痕） > D-1/D-2：投递抛错 → 锁被回收、stopped=dispatch_failed；紧接着可立刻重试成功
+  tests/advance-dispatch-owner.test.ts|t2 · 投递失败不把重试锁死（锁回收 + 可读留痕） > D-3：失败留痕可读——history 记 DISPATCH_FAILED，comment 含需求号与分类且不含 [object Object]
+  tests/advance-dispatch-owner.test.ts|t2 · 投递失败不把重试锁死（锁回收 + 可读留痕） > D-5：owner 取不到 → 按 unowned 投递（不降级同步、不报错），并留 owner_missing 痕
+  tests/advance-parent-evidence.test.ts|父卡收尾凭证基准（不可变出身，父子同口径） > 交付早于认领（手工交付）：父卡仍能收尾并 rollup 进验收
+  tests/advance-parent-evidence.test.ts|父卡收尾凭证基准（不可变出身，父子同口径） > 真无证据（上报文件不存在且无工具痕迹）：父卡仍被拦在 done 之外
+  tests/advance-stale-lock.test.ts|advance 残留锁回收（进程被杀后 runId 不再死锁） > lockAt 已过期 + runId 残留 → 回收并继续推进（不再 locked）
+  tests/application/repository.test.ts|SystemClock / RandomIdFactory > RandomIdFactory：前缀与 6 位 hex 格式（与 protocol new*Id 同形）
+  tests/application/use-cases.test.ts|t6 · SubmitVerification / SubmitArchive / AcceptSheet > archive_submit：archived 需求备材料成功，目录内未列入清单的文件 → unlisted_files 警告
+  tests/apply-wiring.test.ts|dsh-pmboard apply() 宿主接线（乙流程装配冒烟） > 注册全部 agent 工具（REQ-47939a 收敛后 9 个 + REQ-327bdf 2 个 + REQ-e3b6a0 的 reqboard_capture）
+  tests/ask-confirm-pending.test.ts|T-6 回执（FR-3 / I-4） > TC-7 超宽限 ticket → 作答后台落章 → reqboard_confirm_receipt 返回 confirmed=true, advanced=true
+  tests/ask-confirm.test.ts|reqboard_ask_confirm > 闸门问题卡（t08）：move 被人工闸门拒绝时返回可直接喂给 ask_confirm 的问题卡
+  tests/auto-chain-approval.test.ts|REQ-84bea5：断链修复回归测试 > ①修复验证：RTM 覆盖（FR-1）+ plan.tasks 无 refs → 批准成功（双源合并生效）
+  tests/auto-chain-approval.test.ts|批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7.1） > 4.2 全程不出现「确认拆分清单」弹框（只有一次批准弹框）
+  tests/auto-chain-approval.test.ts|批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7.1） > decomposition 产物由批准门自动落章（门合并留痕）
+  tests/auto-chain-approval.test.ts|批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7.1） > 批准后自动拆分类跑完 → 需求 accepting（v9：触发者由外部模拟，生产为看板继续/会话唤醒）
+  tests/auto-chain-approval.test.ts|批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7.1） > 批准弹框文案含「自动拆分并立即开跑」说明（7.1）
+  tests/capture.test.ts|captureSectionText pending 注入（确定性消息 hook 命中） > 硬化语在场（t-3e11bf E2E 走查返工）：强制先弹 / 不立项要显式表态 / 不许沉默
+  tests/concurrency-limits.test.ts|父卡层并行（6.2） > 两张互不依赖父卡的子卡链同时推进，都完成后 rollup 进 accepting
+  tests/confirm-settle-plan-persist.test.ts|批准计划 → 同步落库任务卡（FR-1/FR-2） > 失败路径：落库被覆盖门禁拦住 → 不推进，且 pausedReason/评论/告警齐备
+  tests/confirm-settle-plan-persist.test.ts|批准计划 → 同步落库任务卡（FR-1/FR-2） > 成功路径：同一调用返回时队列任务数 = 计划卡数，且进入 implementing
+  tests/create-doc-location.test.ts|reqboard_create · 文档位置（FR-7 降级路径补第四问） > TC-11 不传 doc_location → 显式回落默认值 + defaults_used 留痕，台账 docBasePath 同值
+  tests/create-doc-location.test.ts|reqboard_create · 文档位置（FR-7 降级路径补第四问） > TC-12 传 docs/rfcs/ → 台账 docBasePath 与产物路径按它生成
+  tests/decompose-tools.test.ts|reqboard_decompose 边界 > 幂等守卫：implementing/accepting 状态一律拒绝重复拆分
+  tests/decompose-tools.test.ts|reqboard_task_move 边界 > 开工自动开执行段，离开 in_progress 自动结算；全部完成后需求进验收
+  tests/decompose-tools.test.ts|reqboard_task_move 边界 > 越权/不存在/人工闸门一律拒绝
+  tests/decompose-tools.test.ts|rollup 阻塞 blockers 显式化（REQ-2e9473 t02） > task_move：任务 a 完成但 b 仍 todo（幽灵场景）→ 返回 blockers + warning
+  tests/decompose-tools.test.ts|实施卡透传与开工送达（REQ-2e9473 t04） > task_move→in_progress 返回任务卡全文（开工说明书送达）
+  tests/design-completeness-gate.test.ts|front-matter 策略参与①（UC-2） > design_exempt 空理由 → 豁免无效，仍拒并注明
+  tests/design-completeness-gate.test.ts|front-matter 策略参与①（UC-2） > sides=frontend → frontend.md 必交，缺则拒并点名
+  tests/design-completeness-gate.test.ts|磁盘有但未登记 → 拒（UC-4 / FR-2：未登记 ≠ 待确认） > 四路径全拒，gaps 含未登记路径（不再与「待确认」同文案）
+  tests/design-completeness-gate.test.ts|磁盘有但未登记 → 拒（UC-4 / FR-2：未登记 ≠ 待确认） > 已登记但未确认 → assertArtifactGates 成组判定先拦（artifact_not_confirmed，gaps 列未确认路径）
+  tests/design-completeness-gate.test.ts|缺文档（use-cases.md 未交）→ 四条转移路径全拒 design_doc_incomplete > 路径① 会话 reqboard_move → 拒，消息点名 use-cases.md
+  tests/design-gate-messages.test.ts|TC-2/TC-3 两种病因两种话（同一 code，两串不相同） > TC-2 未登记：move 拒绝消息含「未登记」+ reqboard_submit(kind=design)，且带 why/how 信封
+  tests/design-gate-messages.test.ts|TC-2/TC-3 两种病因两种话（同一 code，两串不相同） > TC-3 待确认：move 拒绝消息含「待确认」+ reqboard_ask_confirm
+  tests/design-registration.test.ts|I-1 path 语义：单份登记 + 可打开性校验 > 给了 path 只登记该份
+  tests/design-registration.test.ts|TC-1 正向：扫 design/ 登记 5 份，二次幂等 > 部分新增：已登记 5 份后再落盘第 6 份，registered_count 只数本次新增（=1）
+  tests/design-registration.test.ts|TC-1 正向：扫 design/ 登记 5 份，二次幂等 > 首次 registered_count=5 且 5 条 kind=design 入簿；二次 registered_count=0
+  tests/dive-gate-prompt.test.ts|TC-15 Dive 在人工门主动弹框（有边界重弹） > 到顶 → 组合根写台账 comment 并停手（响亮不静默）
+  tests/dive-gate-prompt.test.ts|TC-15 Dive 在人工门主动弹框（有边界重弹） > 弹框通道不可用 → 降级为提醒消息，绝不替代人推进
+  tests/dive-gate-prompt.test.ts|TC-15 Dive 在人工门主动弹框（有边界重弹） > 门已满足未推进 → 弹「推进确认」（kind=plan）；肯定 → 同一条人工门路径推进
+  tests/dive-session-driver-wiring.test.ts|REQ-260927100007-b8ba FR-11：采集半零投递 / 里程碑只登记 > (2) armed+active 的里程碑催办 → 转 round 半 queueReminder（采集半仍零直投）
+  tests/dive-session-driver-wiring.test.ts|REQ-260927100007-b8ba FR-11：采集半零投递 / 里程碑只登记 > (3) 非 armed+active 的里程碑催办 → 只写台账 comment，不投递会话
+  tests/dive-session-driver-wiring.test.ts|REQ-260927100007-b8ba FR-11：采集半零投递 / 里程碑只登记 > armed+active 但 round 半未装配 → 响亮 warn（不静默丢）
+  tests/doc-sync.test.ts|文档演进留痕（t19） > 有待同步标记时推进返回 doc_sync_warning
+  tests/e2e-design-handoff.test.ts|TC-19 E2E：设计阶段死锁复跑（登记 → 确认 → 推进，不打开看板） > 登记 ≠ 落章：submit 后未确认时 move 报 REQBOARD_ARTIFACT_NOT_CONFIRMED（两态文案分叉）
+  tests/e2e-design-handoff.test.ts|TC-19 E2E：设计阶段死锁复跑（登记 → 确认 → 推进，不打开看板） > 登记前 move 仍被产物存在门拦住：REQBOARD_MISSING_ARTIFACT（修的是入口，不是闸门）
+  tests/e2e-triad-gate.test.ts|全链路：需求文档 → 计划批准 → 拆分 → 出口门禁 > 卡被改坏（删掉一节）→ 出口门禁拦下 task_card_incomplete
+  tests/e2e-triad-gate.test.ts|全链路：需求文档 → 计划批准 → 拆分 → 出口门禁 > 骨架产出的卡直接过出口门禁（需求 → 计划 → 拆分 → 推进 implementing）
+  tests/execute-task.test.ts|D17 修复：L1 基准单调化（链出身） + L2 证据形态分流 > buildSubtaskPrompt 如实转述本阶段凭证形态（写入族要产出 / 结论族要判断）
+  tests/execute-task.test.ts|父卡收尾门（3.5 / INV-5） > 全部子卡 done → 父卡可通过（四重校验照旧）
+  tests/failure-handling.test.ts|处置弹框三选（5.3） > 选「取消」→ 需求 canceled
+  tests/failure-handling.test.ts|处置弹框三选（5.3） > 选「退回上游」→ 需求回 design（人工门）
+  tests/failure-handling.test.ts|处置弹框三选（5.3） > 选「重跑该卡」→ autoRun 开启并继续推进
+  tests/failure-handling.test.ts|失败暂停与回退（5.1/5.2/5.5） > 5.2 不自动重试：失败后再次触发不产生新 run（autoRun=false）
+  tests/failure-handling.test.ts|失败暂停与回退（5.1/5.2/5.5） > 5.6 自动链不产生 done→in_progress 转移
+  tests/failure-handling.test.ts|失败暂停与回退（5.1/5.2/5.5） > 子卡失败 → 退回 todo + attempt+1 + revisions(rollback) + 失败评论；autoRun=false；高优告警发出
+  tests/flow-e2e-unified-scheme.test.ts|E2E：从队列领任务跑完整条链（统一新方案） > 步骤计划按卡性质 → 逐步跑完 → 父卡收尾 → 需求进验收；脚本/提示词/取消权全部符合新口径
+  tests/flow-e2e-unified-scheme.test.ts|E2E：从队列领任务跑完整条链（统一新方案） > 首次瞬断（abort 族）→ 自动重试一次后跑完整条链，无需人工续跑
+  tests/gate-aware-questions.test.ts|立项拒绝路径不进链（REQ-260924002956-f37c BUG-2） > 肯定路径对照：两段合计 4 问，且 G0 恰好入队 1 次（防"修反"）
+  tests/gate-handlers.test.ts|H4 唤醒（D5 分流） > H2 已压缩 → 只发作答摘要，不带提示词全文
+  tests/gate-handlers.test.ts|H4 唤醒（D5 分流） > H2 跳过/降级 → 摘要 + 阶段纪律提示词全文
+  tests/gate-handlers.test.ts|H4 唤醒（D5 分流） > 投递失败 → degraded: not_delivered（不抛）
+  tests/gate-handlers.test.ts|H4 唤醒（D5 分流） > 无 from 的闸门（G0 立项门）负分支 → 不编造"节点仍在 X"（REQ-260924002956-f37c BUG-2）
+  tests/gate-handlers.test.ts|H4 唤醒（D5 分流） > 有 from 的闸门负分支仍印"节点仍在 {from}"（防把 H4 改反）
+  tests/gate-handlers.test.ts|H4 唤醒（D5 分流） > 缺陷①修正：压缩过（只说"纪律在输入包里"）时也要带第一步，否则唤醒仍是空的
+  tests/gate-handlers.test.ts|H4 唤醒（D5 分流） > 缺陷①修正：肯定分支必带「进入本阶段的第一步」（与 STAGE_CHAIN.entry 同源）
+  tests/gate-handlers.test.ts|H4 唤醒（D5 分流） > 缺陷①修正：非肯定分支不附开工令（改一版不该收到下一节点的开工令）
+  tests/gate-handlers.test.ts|H4 唤醒（D5 分流） > 缺陷②修正：没压缩也没取到词 → 如实说明，不再谎称"已随节点输入包给出"
+  tests/gate-handlers.test.ts|H4 唤醒（D5 分流） > 缺陷②修正：连 skip 原因都没有（scratch 空）也不谎称已给出
+  tests/gate-handlers.test.ts|H4 唤醒（D5 分流） > 非肯定项也要唤醒（带用户意见）
+  tests/handoff.test.ts|接力实测：handoff 契约——新窗口不读历史对话即可续作 > 完整链路：A 拆 → A 做 t1 → B 读卡做 t2 → B 汇报 → 产物链完整
+  tests/handoff.test.ts|接力实测：task_report 追加后文件仍结构化 > 窗口 B 可推进任务（task_move 绑定新 sessionId）+ 汇报
+  tests/host-panel.test.ts [ tests/host-panel.test.ts ]
+  tests/interruption-checkpoint.test.ts|断点常驻 · 写入器 A（交棒即写 checkpoint） > reqboard_move 交棒 → 台账 interruption.reason=checkpoint 且 pendingAction 非空
+  tests/interruption-checkpoint.test.ts|断点常驻 · 写入器 A（交棒即写 checkpoint） > 幂等：同一 stage + 同一 pendingAction 再交棒不重写、不 bump version
+  tests/interruption-checkpoint.test.ts|断点常驻 · 写入器 B（turn/end 异常原因补新） > 事件路径：checkpoint → 异常原因覆盖（保留按状态重算的 pendingAction）
+  tests/isolate-node-context.test.ts [ tests/isolate-node-context.test.ts ]
+  tests/layer-boundary.test.ts|层边界：依赖方向（architecture.md §2） > application/ 不得 import 禁止项（application 只依赖 domain 与 shared 的**类型**；一切 I/O 走端口）
+  tests/layer-boundary.test.ts|层边界：依赖方向（architecture.md §2） > domain/ 内不得使用 Date.now() / Math.random()（时间与 ID 一律注入，保证用例可复现）
+  tests/layer-boundary.test.ts|层边界：依赖方向（architecture.md §2） > tools/ 与 http/ 内不得出现状态字面量（比较式与判定器实参都不行——状态判断只在 domain）
+  tests/message-hygiene.test.ts|消息卫生：拼接式消息 > 其余层按棘轮约束：不得超过基线，且整体只降不升
+  tests/message-hygiene.test.ts|消息卫生：拼接式消息 > 规则层 src/domain/** 必须为 0（fmt 抽象已覆盖）
+  tests/node-panel-styles.test.ts|TC-11 node-panel 样式作用域 > 设计令牌：720px 宽度上限 + 68vh 高度上限 + 10px 圆角
+  tests/output-contract.test.ts|输出契约·静态扫描：每个工具的全部 return 分支键都必须已声明 > defineKnowledgeTool：所有 return 分支键均已声明
+  tests/output-contract.test.ts|输出契约·静态扫描：每个工具的全部 return 分支键都必须已声明 > defineRegenerateTool：所有 return 分支键均已声明
+  tests/output-contract.test.ts|输出契约·静态扫描：每个工具的全部 return 分支键都必须已声明 > defineTaskAdoptTool：所有 return 分支键均已声明
+  tests/plan-mode.test.ts|批准后的执行链（计划 → 任务卡 → 自动验收） > 任务按计划逐项 done 后，需求自动进验收
+  tests/pm-question-badge.test.ts|TC-14 四处 pm 弹框 header 均带标志 > 立项四问（两段合计 4 问）header 全部带前缀，题干不变
+  tests/prompt-injection-log.test.ts|注入点确实在注入后留痕 > boundSectionText（capture-section）注入阶段提示词时调用 record
+  tests/reqboard/autorun-rearm.test.ts|看板「继续」· 接回手动模式的需求（FR-3） > R-8：on:true → disarmed+idle 变 armed+active，note 说明已重新武装，且不新增返回键
+  tests/reqboard/autorun-rearm.test.ts|看板「继续」· 接回手动模式的需求（FR-3） > R-9：on:false（暂停）→ 只置 autoRun=false 与 pausedReason=manual，dive 一个字段都不动
+  tests/reqboard/backfill-task-refs.test.ts|回填器 · apply 与复核（FR-5） > apply 后候选卡拿到引用，复核读数为 0；二次 apply 不再写
+  tests/reqboard/backfill-task-refs.test.ts|回填器 · apply 与复核（FR-5） > refill 不覆写已有引用（丙卡保持原样）
+  tests/reqboard/backfill-task-refs.test.ts|回填器 · restore 有退路（FR-5） > 按报告里的 before 还原
+  tests/reqboard/board-plan-approve.test.ts|看板「批准计划」· 批准即落库并推进（FR-1） > 幂等：重复批准不新增卡，如实报 already_landed
+  tests/reqboard/board-plan-approve.test.ts|看板「批准计划」· 批准即落库并推进（FR-1） > 批准后任务数 = 计划卡数，需求进 implementing
+  tests/reqboard/board-plan-approve.test.ts|看板「批准计划」· 装配缺失与门禁拒绝都如实回话（FR-6） > FR 无人接（覆盖缺口）→ 计划已批准但不推进，结果带失败原因与错误码
+  tests/reqboard/board-plan-approve.test.ts|看板「批准计划」· 装配缺失与门禁拒绝都如实回话（FR-6） > 未装配 applicationDeps → 只落章 + 明说没落库（保护既有嵌入调用）
+  tests/reqboard/landing-failure-loud.test.ts|① 落库被拒 → 不推进、评论有可执行恢复入口、pausedReason 与告警齐备 > FR-2 无人接：状态停在 decomposing，恢复路径指向真能跑的入口
+  tests/reqboard/landing-failure-loud.test.ts|② 落库成功但收尾失败 → 照常推进并留痕（不留半迁移态） > 推进写入第一次失败：卡仍在、状态仍进 implementing，评论写明收尾报错
+  tests/reqboard/landing-failure-loud.test.ts|③ 卡级无落点 → 不拒批，但回执与需求评论各点名一次 > warning 在回执里出现一次，且需求评论里也有一条
+  tests/reqboard/plan-landing-parity.test.ts|批准即落库 · 引用来自文档覆盖表（FR-3） > 文档表写过的 key 都拿到引用，没写的保持为空
+  tests/reqboard/plan-landing-parity.test.ts|批准即落库 · 引用来自文档覆盖表（FR-3） > 来源可观测：文档兜底记 doc，没来源记 none
+  tests/reqboard/plan-landing-parity.test.ts|批准即落库 · 无落点卡不再拖垮整批（FR-1 / FR-6） > 11 张卡全部落库，含 1 张无 FR 的文档卡
+  tests/reqboard/plan-landing-parity.test.ts|批准即落库 · 无落点卡不再拖垮整批（FR-1 / FR-6） > 幂等：再落一次不造幽灵卡，如实报 alreadyLanded
+  tests/reqboard/plan-landing-parity.test.ts|批准即落库 · 无落点卡不再拖垮整批（FR-1 / FR-6） > 无落点的卡被点名（unrefed + warning），不是静默落库
+  tests/reqboard/plan-landing-parity.test.ts|批准即落库 · 覆盖度读数取自真实记录（FR-7） > task_coverage 的 covers_frs 非空且等于卡上 refs（修前：恒空数组）
+  tests/reqboard/task-refs-repair.test.ts|补写入口 · 全量替换与幂等（FR-4） > 值相同 → changed=false 且不写盘（队列写入序号不变）
+  tests/reqboard/task-refs-repair.test.ts|补写入口 · 全量替换与幂等（FR-4） > 空引用卡补上条款：卡上值变更 + RTM serves 同步 + 需求评论留痕
+  tests/reqboard/task-refs-repair.test.ts|补写入口 · 全量替换与幂等（FR-4） > 空数组 = 清空（不是"忽略"）
+  tests/reqboard/task-refs-repair.test.ts|补写入口 · 拒绝即响亮（FR-4 / FR-6） > reason 为空被拒（改动必须留痕）
+  tests/reqboard/task-refs-repair.test.ts|补写入口 · 拒绝即响亮（FR-4 / FR-6） > 非法编号被拒且点名，非法值不落盘
+  tests/routes-rollup.test.ts|路由层自动推进（R2 实施完成 → 验收） > 人工闸门仍把守：任务全 done 停在验收；验收通过即直接归档（REQ-9f4a44）
+  tests/routes-rollup.test.ts|路由层自动推进（R2 实施完成 → 验收） > 全部任务 done 后，需求在同一笔 mutate 内自动进 accepting
+  tests/size-budget.test.ts|尺寸门禁（REQ-47939a A2：宿主单文件 ≤400 行） > src 下所有 .ts 单文件 ≤ 400 行（白名单见 WHITELIST，逐条带理由）
+  tests/stage-prompts.test.ts|capture.ts systemPrompt 组装注入 > bound 窗口处于 accepting → 注入 accepting 提示词
+  tests/stage-prompts.test.ts|capture.ts systemPrompt 组装注入 > bound 窗口处于 brainstorming → 注入 brainstorming 提示词
+  tests/stage-prompts.test.ts|capture.ts systemPrompt 组装注入 > bound 窗口处于 design → 注入 design 提示词
+  tests/stage-prompts.test.ts|capture.ts systemPrompt 组装注入 > bound 窗口处于 implementing → 注入 implementing 提示词
+  tests/stage-prompts.test.ts|分类档案跳过阶段不注入 > feature 分类 open 阶段均注入（archived 除外，经 capture-hook 事件注入）
+  tests/stage-prompts.test.ts|分类档案跳过阶段不注入 > spike 分类处于 implementing（未跳过）→ 注入 implementing 提示词
+  tests/t11-decompose-queue-write.test.ts|t11 · 两条落库路径共用唯一写路径 + 台账零任务 > Decompose.ts 与 confirm-settle.ts 都经 landPlanTasks 落库；写域内无 ledger.tasks 残留
+  tests/t17-queue-e2e.test.ts|t17 端到端：新建需求 → 拆分落队列 → 台账零新增 → 推进 → ready 更新 > 一条真实连续链跑到底（真实仓储 + 临时工作区）
+  tests/t7-legacy-tolerance.test.ts|T-7 legacy tolerance > 阶段名相位（旧数据）不被驱动
+  tests/task-run-contract.test.ts|reqboard_task_execute（FR-1：兼容别名是真委托） > TC-3 返回体与 task_run 同形，且同样写 autoRun
+  tests/task-run-contract.test.ts|reqboard_task_run（FR-1/FR-2） > FR-2 声明 ⊇ 返回：实跑一遍，返回键全部已在 output.schema 声明
+  tests/task-run-contract.test.ts|reqboard_task_run（FR-1/FR-2） > TC-1 传 task_id：dispatched + job_id/run_id 齐全，且 autoRun 副作用已落台账
+  tests/task-run-contract.test.ts|reqboard_task_run（FR-1/FR-2） > TC-1b 传 requirement_id：与传 task_id 同形（键集合一致）
+  tests/task-status-integration.test.ts|reqboard_task_status 接口联调（真台账 + 真工具壳） > TC-I1 写→读闭环：真 report 工具落盘 lastReport，真 status 工具原样读回
+  tests/template-address-injection.test.ts|TC-10 非肯定项不注入下一节点纪律（FR-10） > H4 affirmative：仍附纪律全文（防"修反"）
+  tests/template-address-injection.test.ts|TC-10 非肯定项不注入下一节点纪律（FR-10） > H4 negative：只发作答摘要 + 用户意见，不含任何纪律块
+  tests/template-address-injection.test.ts|TC-11 压缩路径（节点输入包）与未压缩路径地址段一致 > 输入包含「本节点文档」且与系统段逐字一致，位于「需求文档」之后
+  tests/template-address-injection.test.ts|TC-9 地址段在三处注入点逐字一致 > design/feature：系统段与 H3 的地址段相同，且含同一组绝对地址
+  tests/template-address.test.ts|模板地址映射表守护单测 > templates/ 下未引用文件检查 > 未引用文件必须在显式 allowlist
+  tests/timeline.test.ts|Store 加载（t10 后读路径零 legacy 兼容） > 老台账装载不再回填时间线；写盘按当前契约版本（5）落盘
+  tests/timeout-routing-integration.test.ts|FR-6 超时归位（任务/链级工具不得挂交互档） > TC-12d 线上投递路径：task_run 立即返回 dispatched（耗时可忽略，30s 写档不掐链）
+  tests/tools-dispatch.test.ts|t8 · 工具面 13→9 收敛 > src/tools/ 下的工具目录清单固定，各含 XxxTool.ts + prompt.ts + index.ts（三段式）
+  tests/triad-gate.test.ts|端到端：门真的挂上了（reqboard_move / reqboard_task_move） > 单卡结单：卡缺三要素 → 拒绝 task_card_incomplete
+  tests/triad-gate.test.ts|端到端：门真的挂上了（reqboard_move / reqboard_task_move） > 拆分出口：三节齐备 → 放行
+  tests/triad-gate.test.ts|端到端：门真的挂上了（reqboard_move / reqboard_task_move） > 拆分出口：卡文件不存在 → 不判（放行）
+  tests/triad-gate.test.ts|端到端：门真的挂上了（reqboard_move / reqboard_task_move） > 拆分出口：卡缺三要素 → 拒绝 task_card_incomplete，且消息含卡 id 与节名
+  tests/typecheck.test.ts|类型门禁：tsc --noEmit 零错误（src 与 tests） > src 与 tests 下 0 个类型错误
+  tests/worktree-injection.test.ts|FR-2 子任务完成 → worktree 提交提示 > task → done 投递一次，文本含 commit 命令与任务标题
+  tests/worktree-injection.test.ts|FR-3 需求归档 → worktree 合并清理提示 > accept_sheet 全通过归档 → 投递一次，文本含 merge/worktree remove
+  tests/zero-arg-binding.test.ts|零参绑定守护：dsh-ptc-runtime-node 补丁 > patch 文件仍把绑定工厂改成 (args = {})
+  tests/zero-arg-binding.test.ts|零参绑定守护：dsh-ptc-runtime-node 补丁 > 已安装产物 lib/process.js 带上了默认参数（patch 未生效即红）
+  tests/zero-arg-binding.test.ts|零参绑定守护：dsh-ptc-runtime-node 补丁 > 根 package.json 仍登记该包的 patchedDependencies
+  tests/zero-arg-binding.test.ts|零参绑定守护：dsh-ptc-runtime-node 补丁 > 零参调用跨进程生效：call 帧 args 编码为 {} 且能拿到回包

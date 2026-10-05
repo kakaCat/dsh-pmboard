@@ -39,7 +39,8 @@ function jobsPort() {
 function seeded() {
   // 任务落**队列**（REQ-260927202051-f6df：v9 台账已无 tasks 通道）
   const h = makeHarness({ tasks: [task({ id: 't-p', status: 'todo', title: '父卡' })] })
-  h.repo.ledger.requirements = [req({ status: 'implementing', autoRun: false })]
+  // t8/B11：改用**同步播种入口**（镜像 + 存储都要写；存储写入排队，由需要确定性的调用点 seedSettled 等待）
+  h.seedRequirementSync(req({ status: 'implementing', autoRun: false }))
   return h
 }
 
@@ -79,6 +80,8 @@ describe('FR-6 超时归位（任务/链级工具不得挂交互档）', () => {
 
   it('TC-12d 线上投递路径：task_run 立即返回 dispatched（耗时可忽略，30s 写档不掐链）', async () => {
     const h = seeded()
+    // t8/B11：等同步播种落进存储后再走工具路径（未 settle 的排队写入会与工具的写竞争）
+    await h.seedSettled()
     h.deps.jobs = jobsPort() as never
     const started = Date.now()
     const out = await shell(defineAdvanceTool(h.deps)).execute({ task_id: 't-p' }, { agent: { id: W } })
@@ -88,6 +91,6 @@ describe('FR-6 超时归位（任务/链级工具不得挂交互档）', () => {
     expect(out.job_id).toBe('job-integration-1')
     expect(typeof out.run_id).toBe('string')
     expect(elapsed).toBeLessThan(LIMITS.timeoutWriteMs)
-    expect(h.repo.ledger.requirements[0]!.autoRun).toBe(true)
+    expect((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id))!.autoRun).toBe(true)
   })
 })

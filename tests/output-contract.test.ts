@@ -12,12 +12,12 @@
  *      断言全部已声明——穷尽所有分支，不依赖测试是否跑到那条路径。
  * 第 ② 道是根治手段：① 只能覆盖测到的路径，漏掉的分支就是下次的事故。
  */
+import { makeHarness } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, readdirSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
 // REQ-260927202051-f6df（v9）：任务改由 TaskStore 提供，工具壳在缺端口时按端口语义**显式失败**
 // （不再静默返回空任务集）。故本测试的 deps 必须装配真实 TaskStore，否则 verify_submit / ask_confirm
 // 的成功路径会因「任务队列端口未装配」而红——那不是被测工具的缺陷，是夹具欠装配。
@@ -29,15 +29,17 @@ import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
 import { SessionProbeAdapter } from '../src/adapters/SessionProbeAdapter.js'
 import { UserQuestionsAdapter } from '../src/adapters/UserQuestionsAdapter.js'
 import * as toolModules from '../src/tools/index.js'
-import { defineSubmitTool, defineAskConfirmTool } from '../src/tools/index.js'
+import { defineSubmitTool, defineAskConfirmTool, defineCaptureTool, defineMoveTool } from '../src/tools/index.js'
+import { CAPTURE_QUESTION_IDS, WORKSPACE_SENTINELS } from '../src/application/internal/capture-mapping.js'
 import type { RequirementRecord } from '../src/shared/protocol.js'
 
 const W = 'session-oc-001'
 let root: string
-let store: JsonLedgerRepository
+// B12 阶段③a：存储改**新端口**（由统一工厂提供，断言/工具同源）；旧 JSON 台账不再自建
+let h: ReturnType<typeof makeHarness>
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'pmboard-outcontract-'))
-  store = new JsonLedgerRepository({ file: join(root, 'dsh-reqboard.json') })
+  h = makeHarness({})
 })
 afterEach(() => { rmSync(root, { recursive: true, force: true }) })
 
@@ -49,12 +51,14 @@ async function seed(status: string, extra: Record<string, unknown> = {}): Promis
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
     ...extra,
   } as unknown as RequirementRecord
-  await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  h.seedRequirementSync(r)
+  await h.seedSettled()
 }
 /** 真适配器构造 UseCaseDeps（t8 起工具壳吃 application 端口，不再吃旧的 ReqboardToolDeps）。 */
 const depsWith = (extra: { userQuestions?: unknown } = {}) =>
   ({
-    repo: store,
+
+    store: h.store,
     docs: new FileDocRepository({ workspaceRoot: root }),
     clock: new SystemClock(),
     ids: new RandomIdFactory(),
@@ -85,6 +89,19 @@ function declaredKeys(tool: any): Set<string> {
  * 口径：本仓 DSL 只允许 type/properties/additionalProperties，表达不了 `string | null`，
  * 故**降级路径必须整体省略该键，而不是发 null**（`runId` 已按此修）。
  */
+/**
+ * 已知留债登记表（REQ-261002140814-1a5d FR-3 的发现，**不许静默放过**）：
+ *
+ * 删掉「undefined 值当省略」的豁免后，门禁立刻抓到第二处**同类活缺陷**——
+ * `reqboard_ask_confirm` 走"非肯定项且用户未填意见"时返回 `user_feedback: undefined`
+ * （`src/application/use-cases/AskConfirm.ts:312`）。真实调用同样会被绑定层判
+ * `value is not lossless JSON`，把人的"需要修改"答复变成一条无信息的硬错误。
+ *
+ * 本需求边界**只修 clear_pause**，故此处显式登记为留债：登记项**必须仍然存在问题**
+ * （修好后本断言会变红，强制摘牌）；到期日 2026-10-16，另立需求治理。
+ */
+const UNDEFINED_VALUE_DEBT = new Set<string>(['ask_confirm(declined).user_feedback'])
+
 function assertKeysDeclared(tool: any, value: Record<string, unknown>, label: string): void {
   assertConformsToSchema(outputSchema(tool), value, label, label)
 }
@@ -97,10 +114,27 @@ function assertConformsToSchema(schema: any, value: any, label: string, path: st
     expect(declared.has(k), `${label} 返回字段未在 output.schema 声明：${path}.${k}`).toBe(true)
   }
   for (const [k, spec] of Object.entries(properties)) {
-    // 键**整体省略**是合法形状（降级路径该有的样子）；值为 `undefined` 亦等价于省略——
-    // JSON 序列化会丢掉 undefined，绑定层根本看不到该键。**只有 `null` 会被保留并撞上类型校验**
-    // （本次事故正是 null：value.snapshot.runId must be a string）。
-    if (!(k in obj) || obj[k] === undefined) continue
+    // 键**整体省略**是合法形状（降级路径该有的样子）。
+    // ⚠️ 但「值为 `undefined`」**不是**省略：绑定层的无损 JSON 校验（`walkJsonValue`）在
+    // `JSON.stringify` **之前**就看内存值——`undefined` 不属于任何 JSON 值类型 ⇒ 整个回执被
+    // 转成无信息的 `value is not lossless JSON` 硬错误。
+    // 此前这里写着 `|| obj[k] === undefined` 的豁免（理由"序列化会丢掉它"），正是
+    // reqboard_clear_pause 的 `previous_activation: undefined` 能全绿溜过门禁的原因
+    // （REQ-261002140814-1a5d FR-3 已删该豁免）。`null` 同样不合法（会被保留并撞上类型校验）。
+    if (!(k in obj)) continue
+    const fullPath = `${path}.${k}`
+    if (UNDEFINED_VALUE_DEBT.has(fullPath)) {
+      // 留债项：必须**仍然**是 undefined —— 修好后这里变红，逼着力刻摘牌（同 LEGACY_PARAM_SHAPE 口径）
+      expect(
+        obj[k] === undefined,
+        `${fullPath} 的留债已修复——请从 UNDEFINED_VALUE_DEBT 移除该项（到期日 2026-10-16）`,
+      ).toBe(true)
+      continue
+    }
+    expect(
+      obj[k] === undefined,
+      `${label} 字段值为 undefined（不是「省略」）：${fullPath}——undefined 不是无损 JSON，缺值必须整体省略该键`,
+    ).toBe(false)
     const v = obj[k]
     const t = spec?.type
     if (t === 'string' || t === 'number' || t === 'boolean') {
@@ -224,12 +258,16 @@ function matchPair(src: string, start: number, open: string, close: string): num
 
 /**
  * 回调实参区（`.map(...)` / `.filter(...)` / `.forEach(...)` / `.catch(...)` /
- * `.then(...)` / `store.mutate(...)`）——其内部的 `return {...}` 不是工具响应
- * （如 archive_submit 里 `.map(u => { return { path, section, summary } })`）。
+ * `.then(...)` / `store.mutate(...)` / `mutateIfPresent(...)`）——其内部的 `return {...}`
+ * 不是工具响应（如 archive_submit 里 `.map(u => { return { path, section, summary } })`）。
+ *
+ * `mutateIfPresent` 是 B12 阶段②a 起 `store.mutate` 的**统一收口入口**
+ * （找不到需求 = 无变更，见 use-cases/queue-access.ts）；它的回调同样 return 变更结果
+ * （`{ changed: true }`），与被排除的 `store.mutate` 回调是同一类，故一并排除。
  */
 function callbackSpans(src: string): [number, number][] {
   const spans: [number, number][] = []
-  const re = /(?:\.map|\.filter|\.forEach|\.catch|\.then|\.mutate)\s*\(/g
+  const re = /(?:\.map|\.filter|\.forEach|\.catch|\.then|\.mutate)\s*\(|mutateIfPresent\s*\(/g
   let m: RegExpExecArray | null
   while ((m = re.exec(src)) !== null) {
     const open = m.index + m[0].length - 1
@@ -330,6 +368,8 @@ describe('输出契约：返回字段 ⊆ output.schema 声明', () => {
         merged_into: ['docs/architecture/workflow-stages.md'],
         index_entry: '输出契约测试',
         manual_updates: [{ path: 'docs/architecture/workflow-stages.md', section: 'x', summary: 'y' }],
+        // REQ-261004183621-de3f FR-2：未列文件默认拒绝 → 显式声明不收（这条用例考的是输出契约，不是闸门）
+        unlisted_ack: [{ path: 'docs/requirements/' + REQ + '/prototype.html', reason: '输出契约测试夹具：有意不收' }],
       })
     } catch (err) {
       rmSync(reqDir, { recursive: true, force: true })
@@ -376,6 +416,93 @@ describe('输出契约：返回字段 ⊆ output.schema 声明', () => {
     assertKeysDeclared(tool, out, 'ask_confirm(fallback)')
     expect((out as any).fallback).toBe('board')
   })
+
+  /**
+   * requirement_submit 成功路径（2026-10-03 事故后的补线）。
+   *
+   * 同一天第二次踩同一个坑：`auto_confirm` 声明的类型（`boolean`）与真实形状
+   * （`AutoConfirmResult = { triggered, reason? }`）不符 ⇒ 产物登记了、确认门也挂上了，
+   * agent 只拿到 `value.auto_confirm must be a boolean`。静态扫描抓不到这类漂移：
+   * 它只比**键集**、不比**值的类型**；而动态防线此前没覆盖 submit 的 requirement 路径。
+   */
+  it('requirement_submit 成功路径（登记 + auto_confirm 回执形状）', async () => {
+    await seed('brainstorming')
+    const reqDir = join(root, 'docs/requirements', REQ)
+    mkdirSync(reqDir, { recursive: true })
+    writeFileSync(
+      join(reqDir, 'requirement.md'),
+      '# 需求\n\n## 边界\n\n## 产品定义\n\n## 用户与角色\n\n## 功能点\n',
+    )
+    const tool = defineSubmitTool(depsWith())
+    const out = await run(tool, { kind: 'requirement', summary: '一句话摘要' })
+    expect((out as any).success, 'requirement_submit 未成功：' + JSON.stringify(out)).toBe(true)
+    assertKeysDeclared(tool, out, 'requirement_submit')
+  })
+
+  /**
+   * capture 成功路径（2026-10-03 事故后的补线）。
+   *
+   * 为什么必须补：`answers` 是**嵌套对象**——静态扫描只取 return 的顶层键，
+   * `answers.workspace` 在内层，静态防线结构上看不见；而动态防线此前只覆盖
+   * archive/verify/ask_confirm 三条路径，capture 从未进来过。于是
+   * `mapCaptureAnswers` 的 answers 多了 `workspace`（capture-mapping.ts）而
+   * CaptureTool 的 output.schema 没声明，两边静默漂移 —— 实测后果是**每次四问立项都报
+   * `value.answers.workspace is not a declared property`**：需求建出来了、窗口也绑上了，
+   * agent 却只拿到一条 invalid output（值算出来了、副作用发生了，调用方只看到错误）。
+   *
+   * 本用例让递归校验真正走进 answers 内层：再漂移一次即红。
+   */
+  it('capture 成功路径（四问作答 → 立项；answers 内层键也在校验范围内）', async () => {
+    const uq = {
+      ask: async () => ({
+        answers: [
+          { id: CAPTURE_QUESTION_IDS.name, selected: ['输出契约立项'] },
+          { id: CAPTURE_QUESTION_IDS.category, selected: ['feature'] },
+          { id: CAPTURE_QUESTION_IDS.difficulty, selected: ['standard'] },
+          { id: CAPTURE_QUESTION_IDS.doc_location, selected: ['docs/requirements/<REQ>/'] },
+          { id: CAPTURE_QUESTION_IDS.workspace, selected: [WORKSPACE_SENTINELS.session] },
+        ],
+      }),
+    }
+    const tool = defineCaptureTool(depsWith({ userQuestions: uq }))
+    const out = await run(tool, {})
+    // 先确认走的是**成功路径**（失败回执同样是合法形状，但那样这条用例就测不到立项回执）
+    expect((out as any).success, 'capture 未成功立项：' + JSON.stringify(out)).toBe(true)
+    assertKeysDeclared(tool, out, 'capture(success)')
+    expect((out as any).answers.workspace).toBe(WORKSPACE_SENTINELS.session)
+  })
+
+  /**
+   * move 回退成功路径（REQ-261003204149-1e80 t12）。
+   *
+   * 为什么单独立一条：`rollback` 是**嵌套对象**——静态扫描只看 return 的顶层键，
+   * 四个子键在里层，静态防线结构上看不见；而本仓当天已因同类漂移（capture 的
+   * answers.workspace、submit 的 auto_confirm）把两次成功调用变成 invalid output。
+   * 递归校验 `assertConformsToSchema` 具备走进内层的能力，缺的只是"有人真跑过这条路径"。
+   */
+  it('move 回退成功路径（rollback 与四个子键逐字声明）', async () => {
+    await seed('implementing', {
+      artifacts: [
+        {
+          stage: 'decomposing', kind: 'decomposition',
+          path: 'docs/requirements/' + REQ + '/decomposition.md',
+          registeredAt: 1, registeredBy: { kind: 'human' },
+          confirmedAt: 30, confirmedBy: { kind: 'human' },
+        },
+      ],
+      plan: {
+        path: 'docs/requirements/' + REQ + '/decomposition.md',
+        submittedAt: 25, approvedAt: 30, approvedBy: { kind: 'human' }, tasks: [],
+      },
+    })
+    const tool = defineMoveTool(depsWith())
+    const out = await run(tool, { to: 'design', reason: '需求描述不对' })
+    expect((out as any).status, '应走回退路径：' + JSON.stringify(out)).toBe('design')
+    expect(Object.keys((out as any).rollback ?? {}).sort(), '回退回执四键应齐备').toEqual([
+      'artifacts_revoked', 'plan_approval_revoked', 'tasks_canceled', 'tasks_reworked',
+    ])
+    assertKeysDeclared(tool, out, 'move(rollback)')
+  })
 })
 
 /**
@@ -394,6 +521,25 @@ describe('输出契约·故障注入：注入未声明返回键时门禁必红',
   it('嵌套对象的条件展开也要被抓到（run/report/workflow 这类形状）', () => {
     const keys = returnKeys('fn() { return { success: true, ...(r !== undefined ? { run: { ok: true } } : {}) } }')
     expect(keys).toContain('run')
+  })
+
+  /**
+   * REQ-261002140814-1a5d FR-3：**值为 `undefined` 的属性必须判红**（不再当"省略"放过）。
+   * 这一条是本次缺陷（clear_pause 成功却报 value is not lossless JSON）能全绿溜过门禁的补洞，
+   * 也是门禁自身的反向自检：喂旧形状必须报错，喂"真正省略"必须通过。
+   */
+  it('值为 undefined 的属性被判红，键整体省略才合法（clear_pause 同款形状）', () => {
+    const schema = {
+      type: 'object',
+      additionalProperties: false,
+      properties: { success: { type: 'boolean' }, previous_activation: { type: 'string' } },
+    }
+    expect(() =>
+      assertConformsToSchema(schema, { success: true, previous_activation: undefined }, 'clear_pause(旧形状)', 'out'),
+    ).toThrow(/undefined/)
+    expect(() =>
+      assertConformsToSchema(schema, { success: true }, 'clear_pause(缺值省略键)', 'out'),
+    ).not.toThrow()
   })
 
   /**
@@ -449,6 +595,8 @@ const RESPONSE_SOURCES: Record<string, string[]> = {
   Decompose: ['application/use-cases/Decompose.ts'],
   TaskMove: ['application/use-cases/MoveTask.ts'],
   TaskReport: ['application/use-cases/ReportTask.ts'],
+  // REQ-261004183621-de3f t3：归档清单受控补录（返回体 appended/skipped 来自该用例）
+  ArchiveAmend: ['application/use-cases/AmendArchiveManifest.ts'],
   Submit: [
     'application/use-cases/SubmitArtifact.ts',
     'application/use-cases/SubmitVerification.ts',
@@ -462,6 +610,8 @@ const RESPONSE_SOURCES: Record<string, string[]> = {
   // REQ-260924213231-b1c4 T-9：断点补写（返回体在 NoteInterruption 用例里）
   NoteInterruption: ['application/use-cases/NoteInterruption.ts'],
   AcceptSheet: ['application/use-cases/AcceptSheet.ts'],
+  // REQ-261002164800-d8f2 t5：条款引用补写（返回体在用例里，与看板路由共用）
+  TaskRefs: ['application/use-cases/AmendTaskRefs.ts'],
   // REQ-e3b6a0 t8：立项三问 pm 专有弹框（响应体在抓化用例里）
   Capture: ['application/use-cases/CaptureRequirement.ts'],
   // REQ-4842fe t10：事件链对外入口（响应体在工具文件内组装，同 TaskExecute 口径）
@@ -478,6 +628,8 @@ const RESPONSE_SOURCES: Record<string, string[]> = {
   // 门禁"绿灯"只是因为它没看。补上映射即纳入全工具检查（返回键均在各自 schema 中）。
   RunStatus: ['tools/RunStatusTool/RunStatusTool.ts'],
   ClearPause: ['application/use-cases/ClearPause.ts'],
+  // REQ-261003215944-9e04 t4：开一个新窗口（DSH 会话分支）——响应体字面量在用例层。
+  OpenWindow: ['application/use-cases/OpenWindow.ts'],
 }
 
 describe('输出契约·静态扫描：每个工具的全部 return 分支键都必须已声明', () => {

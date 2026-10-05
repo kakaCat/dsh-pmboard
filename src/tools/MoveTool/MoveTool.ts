@@ -33,13 +33,34 @@ export function defineMoveTool(deps: UseCaseDeps) {
           from: { type: 'string' },
           to: { type: 'string' },
           status: { type: 'string' },
+          // 回退专用回执（REQ-261003204149-1e80 FR-1 / design/interfaces.md）。
+          // **四个子键必须逐字声明**：`rollback` 是嵌套对象，而静态扫描只看 return 的顶层键
+          // ——本仓 2026-10-03 当天已因两处同类漂移（capture 的 answers.workspace、
+          // submit 的 auto_confirm）把「值算出来了、副作用也发生了」的成功调用变成一条
+          // invalid output。嵌套对象是这类事故的高发形状，故此处显式声明到叶子。
+          // 前进方向**整体省略**该键（不是发 null / undefined）。
+          rollback: {
+            type: 'object',
+            additionalProperties: false,
+            description: '回退专用回执：作废了什么、旧卡怎么处置（仅回退方向出现）',
+            properties: {
+              artifacts_revoked: {
+                type: 'array',
+                items: { type: 'string' },
+                description: '被撤章的产物 path（空数组 = 无下游产物）',
+              },
+              plan_approval_revoked: { type: 'boolean', description: '是否清掉了 plan.approvedAt' },
+              tasks_canceled: { type: 'number', description: '被标 canceled 的旧卡数' },
+              tasks_reworked: { type: 'number', description: '物化的重做卡数' },
+            },
+          },
         },
       },
       render: renderSmart(summarize),
     },
     timeoutMs: LIMITS.timeoutWriteMs,
     async execute(args: unknown, exec: unknown): Promise<Record<string, unknown>> {
-      assertNoPendingConfirm(deps, deps.session.windowKey(exec))
+      await assertNoPendingConfirm(deps, deps.session.windowKey(exec))
       return await executeMoveRequirement(deps, args, exec) as Record<string, unknown>
     },
   } as any)

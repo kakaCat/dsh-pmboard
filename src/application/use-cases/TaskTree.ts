@@ -13,12 +13,22 @@
  * @module dsh-pmboard/application/use-cases/TaskTree
  */
 import type { UseCaseDeps } from '../ports.js'
+import { firstWritableBound } from '../../application/internal/window.js'
+import { boundSummariesOf } from '../internal/binding-read.js'
+import type { CardFootprint } from '../../domain/task/Footprint.js'
 import type { TaskRecord } from '../../shared/protocol.js'
 import { normalizeText, taskRoleIn } from '../../shared/protocol.js'
-import { openRequirementsFor } from '../internal/window.js'
 import { countDoneTasks } from '../../domain/status/Predicates.js'
 import { fmt } from '../../domain/text/fmt.js'
-import { taskStoreOf } from './queue-access.js'
+import { requirementStoreOf, taskStoreOf } from './queue-access.js'
+// t7（FR-8）：余量的**读取口、唯一算法与固定标注**都在输入包模块（两处展示共用一份口径），
+// 这里只做「树顶层字段」的形状投影——本文件不重写一遍 try/catch，也不重写一遍减法。
+import { CAPACITY_REFERENCE_NOTE, remainingTokensOf, safeContextPressure } from '../internal/node-input-package.js'
+// REQ-261003191948-e94a：任务**读取**入口必须与写入入口走同一个工作区根收敛点。
+// 此前本用例直连 deps.session.windowKey(exec)，绕过了 agentIdFromExec 里的根校正——
+// 插件重载后 process.cwd() 不再是会话工作区，本入口便按错误的根读队列，
+// 盘上明明有 queue.json 却报「任务不存在」（2026-10-03 实测）。
+import { agentIdFromExec } from '../internal/support.js'
 
 /** 树节点投影（design/data-model §新增视图模型）。 */
 export interface TaskTreeNodeView {
@@ -32,6 +42,14 @@ export interface TaskTreeNodeView {
   lastRunOk?: boolean
   reportSummary?: string
   cardDoc: string
+  /** t7（FR-8）：卡片体量声明；**未声明 = 缺键**（不硬造、不冒充 0）。 */
+  footprint?: CardFootprint
+  /**
+   * t7（FR-8）：声明状态——**恒在场**的派生字段（`footprint` 有没有）。
+   * 存在的理由：只给 `footprint?` 时，"未声明"与"字段名写错/被白名单丢了"在返回体上同形；
+   * 一个恒在场的 `undeclared` 让两者可区分（FR-9 的「未声明 ≠ 0」在展示层的落点）。
+   */
+  footprintState: 'declared' | 'undeclared'
 }
 
 export interface TaskTreeView {
@@ -40,10 +58,28 @@ export interface TaskTreeView {
   note: string
 }
 
+/**
+ * 顶层余量参考视图（t7 / FR-8）；**不可得 → undefined**（调用方据此让键整体缺席，不发 null）。
+ * `note` 恒在场：数值与「参考值，非门禁判据」必须在同一条展示内。
+ */
+export interface TreeContextPressureView {
+  source: 'projection' | 'unavailable'
+  contextWindow?: number
+  projectedTokens?: number
+  /** 余量 = contextWindow − projectedTokens；两者任一缺席 → 本字段缺席（不猜 0） */
+  remainingTokens?: number
+  note: string
+}
+
 export interface TaskTreeResult {
   success: boolean
   requirement_id: string
   parents: TaskTreeView[]
+  /**
+   * 当轮上下文余量参考（FR-8）：只读展示，**不可得 = 缺键**（不猜 0、不报错）。
+   * 放在**顶层**而不是每卡：余量是「窗口/当轮」的量，不是卡的属性（design/interfaces.md §偏差）。
+   */
+  contextPressure?: TreeContextPressureView
   error?: string
 }
 
@@ -68,10 +104,15 @@ function nodeOf(task: TaskRecord, tasks: readonly TaskRecord[]): TaskTreeNodeVie
     cardDoc: typeof task.cardDoc === 'string' && task.cardDoc.length > 0
       ? task.cardDoc
       : 'docs/requirements/' + task.requirementId + '/tasks/' + task.id + '.md',
+    // 派生字段：**声明状态恒在场**（未声明也要说"未声明"，不能靠字段缺席表达）
+    footprintState: task.footprint === undefined ? 'undeclared' : 'declared',
   }
   if (task.stageKind !== undefined) node.stageKind = task.stageKind
   if (task.attempt !== undefined) node.attempt = task.attempt
   if (task.lastRun !== undefined) node.lastRunOk = task.lastRun.ok
+  // t7（FR-8）：显式白名单赋值——未声明 = **键不存在**（`footprint: undefined` 会被 JSON 化丢掉，
+  // 也会让 `hasOwnProperty` 断言失真；本仓 legacy-refs 的兼容用例正是这样钉的）。
+  if (task.footprint !== undefined) node.footprint = task.footprint
   if (task.lastReport !== undefined) {
     // 台账的 TaskReportSummary 只有 {at, reportIndex, filesChanged, completed}——**没有** summary
     // 文本字段，而本需求不新增台账字段（design/data-model §1）。摘要因此由既有事实派生，不另造字段。
@@ -108,21 +149,53 @@ function fail(code: string, requirementId: string, detail: string): TaskTreeResu
   return { success: false, requirement_id: requirementId, parents: [], error: fmt('{code}：{detail}', { code, detail }) }
 }
 
+/** 有限数才算读数（NaN / Infinity 视为缺席——与适配器同一口径，不猜 0）。 */
+function finiteOf(raw: number | undefined): number | undefined {
+  return typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined
+}
+
+/**
+ * t7（FR-8）：把当轮余量参考投影成顶层字段。**不可得 → undefined（键整体缺席）**：
+ * 读取按 `safeContextPressure` 的口径（无端口 / 无方法 / 抛错都算不可得），
+ * 快照 `source='unavailable'` 同样不算数——不猜 0、不发 null、更不报错。
+ */
+function contextPressureView(deps: UseCaseDeps, windowKey: string): TreeContextPressureView | undefined {
+  const snap = safeContextPressure(deps.session, windowKey)
+  if (snap === undefined || snap.source !== 'projection') return undefined
+  const contextWindow = finiteOf(snap.contextWindow)
+  const projectedTokens = finiteOf(snap.projectedTokens)
+  // 三个读数一个都没有 → "投影可得"名不副实，按不可得处理（不返回一个只有 note 的空壳）
+  if (contextWindow === undefined && projectedTokens === undefined) return undefined
+  const remainingTokens = remainingTokensOf(snap)
+  const view: TreeContextPressureView = {
+    source: 'projection',
+    ...(contextWindow === undefined ? {} : { contextWindow }),
+    ...(projectedTokens === undefined ? {} : { projectedTokens }),
+    ...(remainingTokens === undefined ? {} : { remainingTokens }),
+    note: CAPACITY_REFERENCE_NOTE,
+  }
+  // 为什么先建变量再 `return view`（而不是 `return {…}`）：本文件是 TaskTreeTool 的**响应源**，
+  // `tests/output-contract.test.ts` 的静态扫描把这里每个 `return {` 字面量的顶层键当作工具响应键
+  // ——`source`/`note` 是嵌套在 `contextPressure` 里的，写成字面量会被误判成"响应顶层键缺声明"。
+  // 这不是绕门禁：真正的响应顶层键由下面那个 `return {…}` 继续守着（`contextPressure` 已被声明）。
+  return view
+}
+
 /** 执行 reqboard_task_tree：只读、经端口、按窗口绑定（跨窗口不返回空当成功）。 */
 export async function executeTaskTree(
   deps: UseCaseDeps,
   args: unknown,
   exec: unknown,
 ): Promise<TaskTreeResult> {
-  const windowKey = deps.session.windowKey(exec)
+  const windowKey = agentIdFromExec(deps, exec)
   const a = (args ?? {}) as Record<string, unknown>
-  const snap = deps.repo.snapshot()
-  const bound = openRequirementsFor(snap, windowKey)
+  // t8/B11：绑定读走新端口（只读摘要）
+  const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
 
   // 1. 目标需求：显式 requirement_id 优先（须绑定校验）；否则取本窗口绑定需求。
   let requirementId = normalizeText(a.requirement_id, 'requirement_id', 64)
   if (requirementId.length === 0) {
-    const first = bound[0]
+    const first = firstWritableBound(bound, windowKey)
     if (first === undefined) {
       return fail('REQBOARD_NO_BOUND_REQ', '', '本窗口未绑定需求，请传 requirement_id')
     }
@@ -161,5 +234,13 @@ export async function executeTaskTree(
     return { parent: nodeOf(parent, inReq), subtasks: subs.map((s) => nodeOf(s, inReq)), note }
   })
 
-  return { success: true, requirement_id: requirementId, parents }
+  // t7（FR-8）：顶层余量参考（只读；不可得 = 键缺席）。
+  const contextPressure = contextPressureView(deps, windowKey)
+
+  return {
+    success: true,
+    requirement_id: requirementId,
+    parents,
+    ...(contextPressure === undefined ? {} : { contextPressure }),
+  }
 }

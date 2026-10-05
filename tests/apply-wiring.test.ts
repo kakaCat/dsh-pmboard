@@ -84,14 +84,18 @@ describe('dsh-pmboard apply() 宿主接线（乙流程装配冒烟）', () => {
     expect(text).toContain('reqboard_create')
   })
 
-  it('注册全部 agent 工具（REQ-47939a 收敛后 9 个 + REQ-327bdf 2 个 + REQ-e3b6a0 的 reqboard_capture）', () => {
+  it('注册全部 agent 工具（REQ-47939a 收敛后 9 个 + REQ-327bdf 2 个 + REQ-e3b6a0 的 reqboard_capture + REQ-de3f 的 reqboard_archive_amend）', () => {
     const ctx = stubCtx()
     apply(ctx as never, { dshHome: dir })
     const names = ctx.tools.map(t => t.name).sort()
     expect(names).toEqual([
       'reqboard_accept_sheet',
+      // REQ-261004183621-de3f t3：归档清单受控补录（发现漏列时追加条目 + 留痕）
+      'reqboard_archive_amend',
       // CONFIRM：ask_confirm + confirm_artifact 合并（evidence 路径自动分派）
       'reqboard_ask_confirm',
+      // REQ-261003215944-9e04 FR-2：席位派发（把另一个窗口派成 worker/observer）
+      'reqboard_bind',
       // CAPTURE：立项三问 pm 专有弹框（REQ-e3b6a0 t8）
       'reqboard_capture',
       // REQ-260924213231-b1c4 T-9 / FR-6：断点补写的配套解除挂起
@@ -100,16 +104,28 @@ describe('dsh-pmboard apply() 宿主接线（乙流程装配冒烟）', () => {
       'reqboard_confirm_receipt',
       'reqboard_create',
       'reqboard_decompose',
+      // REQ-261004150249-731e FR-5：上下文将满时的续作交接（开窗 + owner 交接 + 接续投递）
+      'reqboard_handoff',
+      // 知识层检索（REQ-261003204149-1e80 起）
+      'reqboard_kb',
       // REQ-260927100007-b8ba FR-7：agent 侧需求/任务流转工具（此前只在 HTTP 层，agent 调不动）
       'reqboard_move',
       'reqboard_note_interruption',
+      // REQ-261003215944-9e04 FR-1：用 DSH 现成的会话分支开一个新窗口
+      'reqboard_open_window',
       // REQ-260925110957-552d：投递式实施链的运行态查询
       'reqboard_run_status',
       'reqboard_status',
       // SUBMIT：requirement_submit / plan_submit / verify_submit / archive_submit 合并（kind 分派）
       'reqboard_submit',
+      // 归属补救：把缺父卡归属的任务卡挂回父卡下（2026-09-28）
+      'reqboard_task_adopt',
       'reqboard_task_execute',
       'reqboard_task_move',
+      // 卡片层契约（2026-09-28）：条款引用的补写
+      'reqboard_task_refs',
+      // 卡片层契约（2026-09-28）：子卡链再生成（补链）
+      'reqboard_task_regenerate',
       'reqboard_task_report',
       // REQ-4842fe t10：事件链执行入口
       'reqboard_task_run',
@@ -117,7 +133,7 @@ describe('dsh-pmboard apply() 宿主接线（乙流程装配冒烟）', () => {
       // REQ-260927144541-0481 FR-3：只读父子结构视图
       'reqboard_task_tree',
     ])
-    expect(names).toHaveLength(18)
+    expect(names).toHaveLength(26)
   })
 
   it('注册看板路由：/dashboard/api/reqboard 前缀', () => {
@@ -126,6 +142,15 @@ describe('dsh-pmboard apply() 宿主接线（乙流程装配冒烟）', () => {
     const route = ctx.routes.find(r => r.path === '/dashboard/api/reqboard')
     expect(route).toBeDefined()
     expect(route!.kind).toBe('prefix')
+  })
+
+  // REQ-261004111917-f473 FR-1：旧深链兼容入口必须真的被注册（handler 单测证明不了接线）
+  it('注册旧深链兼容入口：/dashboard 与 /dashboard/ 两条 exact 路由', () => {
+    const ctx = stubCtx()
+    apply(ctx as never, { dshHome: dir })
+    const exact = ctx.routes.filter(r => r.kind === 'exact').map(r => r.path)
+    expect(exact).toContain('/dashboard')
+    expect(exact).toContain('/dashboard/')
   })
 
   it('dispose 清理全部注册（幂等不抛错）', () => {

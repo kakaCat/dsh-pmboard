@@ -1,0 +1,12 @@
+# case A2 · 已绑定需求时不重复立项 · serves: FR-2
+case: A2
+ordered_contains:
+  - reqboard_status             # 先自查，发现已绑定进行中需求
+forbidden:
+  - tool: reqboard_capture
+    when: already_bound         # 已绑定进行中需求时不得弹立项框
+  - tool: reqboard_create
+    when: already_bound         # 已绑定进行中需求时不得手工创建
+budget:
+  max_tool_calls: 4
+  max_repeat_same_args: 1

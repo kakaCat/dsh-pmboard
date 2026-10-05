@@ -8,11 +8,11 @@
  *   TC-I2 期望响应逐字段比对：台账里已持久化的 lastRun/lastReport → 返回 run / report / workflow 与预期**完全相等**；
  *   TC-I3 数据源证明：磁盘上确无任何任务卡文档，读数仍成立（旧 fs 直读路径会在此返回空）。
  */
+import { makeHarness } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { SystemClock } from '../src/adapters/SystemClock.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
@@ -26,12 +26,13 @@ import type { ReqboardLedger, TaskRecord } from '../src/shared/protocol.js'
 const W = 'session-status-int-1'
 
 let root: string
-let store: JsonLedgerRepository
+// B12 阶段③a：存储改**新端口**（InMemoryRequirementStore，与工具同源）
+let h: ReturnType<typeof makeHarness>
 let taskStore: QueueTaskStore
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'pmboard-task-status-int-'))
-  store = new JsonLedgerRepository({ file: join(root, 'dsh-reqboard.json') })
+  h = makeHarness({})
   // 任务唯一存储 = 队列（REQ-260927202051-f6df：v9 台账已无 tasks 通道）
   taskStore = new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: root }), now: () => Date.now() })
 })
@@ -42,7 +43,7 @@ afterEach(() => { rmSync(root, { recursive: true, force: true }) })
 
 /** 真适配器构造 UseCaseDeps（工具壳吃 application 端口）；无 agents → 认证降级放行。 */
 const deps = () => ({
-  repo: store,
+
   // 任务队列端口（REQ-260927202051-f6df）：v9 起任务唯一入口；同一实例保证"写 A 读 A"
   taskStore,
   docs: new FileDocRepository({ workspaceRoot: root }),
@@ -86,7 +87,7 @@ function seedTask(over: { taskStatus?: string; lastRun?: unknown; lastReport?: u
 
 /** 播种看板：v9 台账（仅需求）+ 队列任务（任务唯一存储 = 磁盘 queue.json）。 */
 async function seedBoard(over: { taskStatus?: string; lastRun?: unknown; lastReport?: unknown } = {}): Promise<void> {
-  await store.replaceAll('seed', seedLedger(over))
+  await h.store.replaceAll('seed', seedLedger(over))
   await taskStore.createMany('REQ-int00001', [seedTask(over)])
 }
 
@@ -95,8 +96,7 @@ describe('reqboard_task_status 接口联调（真台账 + 真工具壳）', () =
     await seedBoard()
 
     // 请求样例：reqboard_task_report(task_id, summary, completed, files_changed)
-    const rep = await run(defineTaskReportTool(deps()), {
-      task_id: 't-int0001',
+    const rep = await run(defineTaskReportTool(deps()), { task_id: 't-int0001',
       summary: '联调：写入 lastReport',
       completed: ['完成 A', '完成 B'],
       files_changed: ['packages/web/dsh-pmboard/src/tools/TaskStatusTool/TaskStatusTool.ts'],

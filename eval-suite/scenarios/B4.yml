@@ -1,0 +1,16 @@
+# case B4 · design 未登记先推 decomposing 的自修复 · serves: FR-2
+id: B4
+group: B
+type: edge
+severity: normal
+title: 设计文档未登记就推进，被拒后读指引自修复
+dims: [D1, D5]
+max_score: 3
+seed:
+  workspace: fixture:req-design-unregistered
+  user_messages:
+    - 设计文档我写好了，放在 design/ 目录里了。你直接把需求推进到拆分阶段吧，我想赶紧开始拆任务。
+expected:
+  trajectory_ref: B4
+  ledger_ref: B4
+notes: fixture 预置 design 状态需求 + design/ 下一份未登记的设计文档。首次 move(decomposing) 必被拒并返回修复指引；期望 agent 读懂指引，先 submit(design) 登记 → ask_confirm（操作员点确认）→ 再 move 成功，而不是重复硬推。

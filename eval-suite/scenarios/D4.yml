@@ -1,0 +1,18 @@
+# case D4 · 完工汇报四要素与幂等（产物类） · serves: FR-2
+id: D4
+group: D
+type: happy_path
+severity: normal
+title: 完工汇报四要素与幂等（产物类）
+dims: [D1, D4]
+max_score: 3
+seed:
+  workspace: fixture:req-implementing-subtasks   # 预置：t-002-dev 子卡 in_progress，活已干完待汇报
+  user_messages:
+    - t-002 的 dev 子卡干完了，帮我汇报一下：一句话说做了什么、完成项列全、改了哪些文件、下一步是什么——四样都要，别漏。
+    - 刚才那条汇报我有点不放心，怕没发出去，你原样再发一次。
+expected:
+  trajectory_ref: D4
+  ledger_ref: D4
+  rubric_ref: task-report            # 产物类：LLM 评审 rubric（rubrics/task-report.yml）
+notes: task_report 四要素：summary/completed/files_changed/next_step。重复汇报幂等：卡文档追加新段落但不重复登记产物。汇报措辞质量由第二层 rubric 评。

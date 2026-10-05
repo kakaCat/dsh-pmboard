@@ -26,6 +26,8 @@ import {
 } from './dag-layout';
 import { findCriticalPath, detectCycle, branchCounts } from './critical-path';
 import { renderCard, cardHtml } from './card-renderer';
+// REQ-260930182521-4fee FR-2：着色阶段与泳道列归属同源（同一 laneOf 推导）
+import { laneOf } from './progress-bar';
 import { renderEdges, edgeSvg, type Edge } from './edge-renderer';
 import {
   setupInteraction,
@@ -116,6 +118,9 @@ export function resolveTasks(tasks: CardData[], pool?: CardData[]): CardData[] {
     const copy: CardData = Object.assign({}, t);
     copy.role = d.role;
     if (d.kids && d.kids.length) copy.kids = d.kids;
+    // REQ-260930182521-4fee FR-2：着色阶段与泳道列归属同源——都走 laneOf（有链的父卡看链上
+    // 第一个未完成子卡的阶段），否则画布会按原始 status 着色，与泳道站错列同款错位。
+    copy.stageKey = laneOf(copy, copy.kids ?? []);
     return copy;
   });
 }

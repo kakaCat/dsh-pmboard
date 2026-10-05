@@ -12,12 +12,13 @@
  * @module dsh-pmboard/application/gate/handlers/h1-advance
  */
 import { fmt } from '../../../domain/text/fmt.js'
-import type { ReqboardRepository } from '../../ports.js'
+import type { RequirementStore } from '../../ports.js'
 import type { ChainInput, GateHandler, HandlerOutcome } from '../GatePostChain.js'
 import { pickGateRequirement, reasonOf } from './shared.js'
 
 export interface H1AdvanceDeps {
-  repo: ReqboardRepository
+  /** B12 阶段①-a：归属需求改**权威异步定点读**（见 shared.ts）。 */
+  store: RequirementStore
 }
 
 export function createH1AdvanceHandler(deps: H1AdvanceDeps): GateHandler {
@@ -25,7 +26,7 @@ export function createH1AdvanceHandler(deps: H1AdvanceDeps): GateHandler {
     name: 'h1-advance',
     async run({ ctx }: ChainInput): Promise<HandlerOutcome> {
       try {
-        const requirement = pickGateRequirement(deps.repo, ctx)
+        const requirement = await pickGateRequirement(deps.store, ctx)
         if (requirement === undefined) {
           ctx.verdict = 'negative'
           return { kind: 'skip', code: 'no_requirement', reason: '本窗口无可归属需求，无法校验推进结果' }

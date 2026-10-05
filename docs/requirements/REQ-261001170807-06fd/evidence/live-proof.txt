@@ -1,0 +1,17 @@
+# 真实台账实证（REQ-261001170807-06fd FR-1 · t4）
+
+数据源：docs/requirements/REQ-261001154450-b918/queue.json（48 条真实记录，38 张已完成子卡）
+命令：npx vitest run tests/tmp-live-proof.test.ts（临时用例，跑完即删）
+
+```
+stdout | tests/tmp-live-proof.test.ts > 真实台账数据实证（FR-1） > 真实记录：本卡自己的子卡 5 秒前刚关 → 父卡节流为 0，可立即收尾
+  parent=t-55cb09 子卡=t-ac0851 子卡关闭于 2026-10-01T07:49:21.931Z
+  findRecentAgentDoneTask → null
+  doneThrottleRemainingMs → 0 ms
+stdout | tests/tmp-live-proof.test.ts > 真实台账数据实证（FR-1） > 红线：同一条真实子卡，换作别的父卡收尾 → 仍被节流拦住
+  跨卡 other=t-bebc07 → remaining 55000 ms（应 > 0）
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+```
+
+结论：真实记录携带 parentId，节流判据在真实数据上"本卡子卡不上弦、跨卡仍上弦"。

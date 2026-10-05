@@ -1,0 +1,602 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261004210128-283d
+  generated_at: 2026-10-04T13:30:03.640Z
+  version: 57
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T13:43:48.279Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 会话运行态读数单点（纯客户端）
+      source: requirement.md
+      line: 105
+    - id: FR-2
+      title: 需求 → 会话映射（席位权威）
+      source: requirement.md
+      line: 124
+    - id: FR-3
+      title: 泳道卡片显示运行中指示
+      source: requirement.md
+      line: 142
+    - id: FR-4
+      title: 列表视图行显示同一指示
+      source: requirement.md
+      line: 157
+    - id: FR-5
+      title: 实时性（订阅 + 相关集合变化才重绘）
+      source: requirement.md
+      line: 171
+    - id: FR-6
+      title: 诚实降级（不显示 ≠ 撒谎）
+      source: requirement.md
+      line: 186
+    - id: FR-7
+      title: 动效与无障碍
+      source: requirement.md
+      line: 199
+    - id: FR-8
+      title: 生命周期与零回归
+      source: requirement.md
+      line: 212
+  design_sections:
+    - ref: design/architecture.md#目标与不变量
+      title: 目标与不变量 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 目标与不变量
+    - ref: design/architecture.md#模块与依赖方向
+      title: 模块与依赖方向 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 模块与依赖方向
+    - ref: design/architecture.md#运行态数据通路
+      title: 运行态数据通路 `
+      serves:
+        - FR-1
+        - FR-5
+      file: design/architecture.md
+      section: 运行态数据通路
+    - ref: design/architecture.md#渲染链与单点纪律
+      title: 渲染链与单点纪律 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 渲染链与单点纪律
+    - ref: design/architecture.md#重绘判据与性能
+      title: 重绘判据与性能 `
+      serves:
+        - FR-5
+        - FR-8
+      file: design/architecture.md
+      section: 重绘判据与性能
+    - ref: design/architecture.md#降级矩阵与不伪造
+      title: 降级矩阵与不伪造 `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: 降级矩阵与不伪造
+    - ref: design/architecture.md#生命周期挂载-HMR-退订
+      title: 生命周期（挂载 / HMR / 退订） `
+      serves:
+        - FR-8
+      file: design/architecture.md
+      section: 生命周期挂载-HMR-退订
+    - ref: design/architecture.md#样式主题与动效偏好
+      title: 样式、主题与动效偏好 `
+      serves:
+        - FR-7
+      file: design/architecture.md
+      section: 样式主题与动效偏好
+    - ref: design/architecture.md#不做什么架构边界
+      title: 不做什么（架构边界） `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: 不做什么架构边界
+    - ref: design/data-model.md#只读契约-A会话运行态
+      title: 只读契约 A：会话运行态 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 只读契约-A会话运行态
+    - ref: design/data-model.md#只读契约-B需求席位与来源窗口
+      title: 只读契约 B：需求席位与来源窗口 `
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 只读契约-B需求席位与来源窗口
+    - ref: design/data-model.md#判定函数输入输出表
+      title: 判定函数输入输出表 `
+      serves:
+        - FR-2
+        - FR-6
+      file: design/data-model.md
+      section: 判定函数输入输出表
+    - ref: design/data-model.md#缺失语义
+      title: 缺失语义 `
+      serves:
+        - FR-6
+      file: design/data-model.md
+      section: 缺失语义
+    - ref: design/data-model.md#是否改表-迁移-回滚
+      title: 是否改表 / 迁移 / 回滚 `
+      serves:
+        - FR-8
+      file: design/data-model.md
+      section: 是否改表-迁移-回滚
+    - ref: design/data-model.md#持久化红线
+      title: 持久化红线 `
+      serves:
+        - FR-6
+        - FR-8
+      file: design/data-model.md
+      section: 持久化红线
+    - ref: design/interfaces.md#新增模块srcclientsession-runningts
+      title: 新增模块：`src/client/session-running.ts` `
+      serves:
+        - FR-1
+        - FR-6
+      file: design/interfaces.md
+      section: 新增模块srcclientsession-runningts
+    - ref: design/interfaces.md#新增渲染单点renderRunningDot
+      title: 新增渲染单点：`renderRunningDot` `
+      serves:
+        - FR-3
+        - FR-7
+      file: design/interfaces.md
+      section: 新增渲染单点renderRunningDot
+    - ref: design/interfaces.md#需求-会话映射requirementRunning
+      title: 需求 → 会话映射：`requirementRunning` `
+      serves:
+        - FR-2
+        - FR-6
+      file: design/interfaces.md
+      section: 需求-会话映射requirementRunning
+    - ref: design/interfaces.md#修改buildBoard-renderReqCard-renderListCard
+      title: 修改：`buildBoard` / `renderReqCard` / `renderListCard` `
+      serves:
+        - FR-3
+        - FR-4
+        - FR-8
+      file: design/interfaces.md
+      section: 修改buildBoard-renderReqCard-renderListCard
+    - ref: design/interfaces.md#修改createBoardAttachment-的订阅接线
+      title: 修改：`createBoardAttachment` 的订阅接线 `
+      serves:
+        - FR-5
+        - FR-8
+      file: design/interfaces.md
+      section: 修改createBoardAttachment-的订阅接线
+    - ref: design/interfaces.md#修改客户端类型补-seats-声明
+      title: 修改：客户端类型补 `seats` 声明 `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: 修改客户端类型补-seats-声明
+    - ref: design/interfaces.md#不新增的接口红线
+      title: 不新增的接口（红线） `
+      serves:
+        - FR-6
+      file: design/interfaces.md
+      section: 不新增的接口红线
+    - ref: design/interfaces.md#错误语义总表
+      title: 错误语义总表 `
+      serves:
+        - FR-6
+        - FR-8
+      file: design/interfaces.md
+      section: 错误语义总表
+    - ref: design/use-cases.md#UC-1-盯盘一眼看出哪条需求在跑
+      title: UC-1 盯盘：一眼看出哪条需求在跑 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/use-cases.md
+      section: UC-1-盯盘一眼看出哪条需求在跑
+    - ref: design/use-cases.md#UC-2-回合结束指示即熄不刷新页面
+      title: UC-2 回合结束：指示即熄（不刷新页面） `
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-2-回合结束指示即熄不刷新页面
+    - ref: design/use-cases.md#UC-3-多席位需求任一在跑即算在跑
+      title: UC-3 多席位需求：任一在跑即算在跑 `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-3-多席位需求任一在跑即算在跑
+    - ref: design/use-cases.md#UC-4-读数不可得不显示也不撒谎
+      title: UC-4 读数不可得：不显示，也不撒谎 `
+      serves:
+        - FR-6
+      file: design/use-cases.md
+      section: UC-4-读数不可得不显示也不撒谎
+    - ref: design/use-cases.md#UC-5-人工建卡无窗口即无指示
+      title: UC-5 人工建卡：无窗口即无指示 `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-5-人工建卡无窗口即无指示
+    - ref: design/use-cases.md#UC-6-动效偏好与读屏
+      title: UC-6 动效偏好与读屏 `
+      serves:
+        - FR-7
+      file: design/use-cases.md
+      section: UC-6-动效偏好与读屏
+    - ref: design/use-cases.md#用例-条款对照
+      title: 用例 ↔ 条款对照 `
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/use-cases.md
+      section: 用例-条款对照
+outputs:
+  tasks:
+    - id: t-ba99ec
+      title: 接上会话运行态读数，判定「哪条需求在跑」
+      implements: 新建 src/client/session-running.ts：isSessionRunning（读 ctx.sessions.list 的 byId[sid].running === true，服务缺失/行缺失/形状异常一律 false）、runningSessionIds（不可得 → NO_RUNNING）、subscribeSessionRunning（缺 subscribe → no-op 退订）、requirementRunning（seats 权威 ∪ sourceSessionId 折算）。改 src/client/session-jump.ts 的 SessionsServiceFace.list 补可选 subscribe 类型。改 src/client/types.ts 补 ClientWindowSeat 与 seats? 声明。不抛错、不打 error 日志。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-6
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-64c0f8
+      title: 泳道卡与列表行显示运行中转圈
+      implements: 改 src/client/render/dom-utils.ts 新增 renderRunningDot(running)（false → 空串；true → span.dsh-pm-running[data-running=true][role=img][aria-label] + 内联 SVG 转圈环）。改 src/client/views/artifacts.ts 的 renderReqCard 在窗口 chip 行渲染指示。改 src/client/views/board.ts 的 buildBoard / renderListCard 在标题列渲染指示，运行判定统一走 requirementRunning。改 src/client/styles/board.ts 加样式（currentColor + 25% track + 呼吸 arc，1.5s）与 prefers-reduced-motion 静态环分支。三处新参数一律 = NO_RUNNING 缺省。
+      serves:
+        - FR-3
+        - FR-4
+        - FR-7
+      depends_on:
+        - t-ba99ec
+      phase: ui
+      side: frontend
+    - id: t-5e7436
+      title: 让转圈随会话实时亮灭，且不误触发重绘
+      implements: 改 src/client/board-mount.ts：挂载时 unsubRunning = subscribeSessionRunning(...)；回调内计算「当前 state 中需求的相关会话集合 ∩ runningSessionIds()」并与 lastRunning 做集合相等比较，变化才 scheduleRender()；每次 render() 后更新 lastRunning；dispose() 退订并清句柄。
+      serves:
+        - FR-5
+        - FR-8
+      depends_on:
+        - t-64c0f8
+      phase: ui
+      side: frontend
+    - id: t-1a836c
+      title: 为运行中指示补齐自动化用例
+      implements: 新建 tests/client-session-running.test.ts；扩 tests/client-view.test.ts 与 tests/board-attach.test.ts。覆盖 TC-01～TC-14：真值表（席位权威 / 折算单 owner / 人工建卡）、降级（服务缺失 / 列表缺失 / 无 subscribe / 行缺失）、订阅与退订幂等、渲染幂等与省略参数零回归、重绘门控。假投影范式沿用既有会话跳转用例的注入写法（只读参考，不修改该文件）。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-8
+      depends_on:
+        - t-5e7436
+      phase: test
+      side: frontend
+    - id: t-f06b62
+      title: 跑通构建 / 类型 / 全量回归并留下人工证据
+      implements: 跑 pnpm typecheck（C-15）、pnpm build:client（C-12，产物 lib/client.js）、pnpm test（C-14）并与基线比对；人工浏览器验证 TC-11a～TC-11e（泳道出圈 / 列表出圈 / 回合结束自动消失 / 减少动效下静态环 / 暗色可辨），截图归档到 docs/requirements/REQ-261004210128-283d/evidence/。
+      serves:
+        - FR-7
+        - FR-8
+      depends_on:
+        - t-1a836c
+      phase: review
+      side: frontend
+    - id: t-5a3ed9
+      title: 接上会话运行态读数，判定「哪条需求在跑」·研发
+      implements: |-
+        新建 src/client/session-running.ts：isSessionRunning（读 ctx.sessions.list 的 byId[sid].running === true，服务缺失/行缺失/形状异常一律 false）、runningSessionIds（不可得 → NO_RUNNING）、subscribeSessionRunning（缺 subscribe → no-op 退订）、requirementRunning（seats 权威 ∪ sourceSessionId 折算）。改 src/client/session-jump.ts 的 SessionsServiceFace.list 补可选 subscribe 类型。改 src/client/types.ts 补 ClientWindowSeat 与 seats? 声明。不抛错、不打 error 日志。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-f38dec
+      title: 接上会话运行态读数，判定「哪条需求在跑」·复核
+      implements: |-
+        新建 src/client/session-running.ts：isSessionRunning（读 ctx.sessions.list 的 byId[sid].running === true，服务缺失/行缺失/形状异常一律 false）、runningSessionIds（不可得 → NO_RUNNING）、subscribeSessionRunning（缺 subscribe → no-op 退订）、requirementRunning（seats 权威 ∪ sourceSessionId 折算）。改 src/client/session-jump.ts 的 SessionsServiceFace.list 补可选 subscribe 类型。改 src/client/types.ts 补 ClientWindowSeat 与 seats? 声明。不抛错、不打 error 日志。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-5a3ed9
+      phase: implement
+      side: frontend
+    - id: t-aa9635
+      title: 接上会话运行态读数，判定「哪条需求在跑」·测试
+      implements: |-
+        新建 src/client/session-running.ts：isSessionRunning（读 ctx.sessions.list 的 byId[sid].running === true，服务缺失/行缺失/形状异常一律 false）、runningSessionIds（不可得 → NO_RUNNING）、subscribeSessionRunning（缺 subscribe → no-op 退订）、requirementRunning（seats 权威 ∪ sourceSessionId 折算）。改 src/client/session-jump.ts 的 SessionsServiceFace.list 补可选 subscribe 类型。改 src/client/types.ts 补 ClientWindowSeat 与 seats? 声明。不抛错、不打 error 日志。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-f38dec
+      phase: implement
+      side: frontend
+    - id: t-9d8d32
+      title: 泳道卡与列表行显示运行中转圈·研发
+      implements: |-
+        改 src/client/render/dom-utils.ts 新增 renderRunningDot(running)（false → 空串；true → span.dsh-pm-running[data-running=true][role=img][aria-label] + 内联 SVG 转圈环）。改 src/client/views/artifacts.ts 的 renderReqCard 在窗口 chip 行渲染指示。改 src/client/views/board.ts 的 buildBoard / renderListCard 在标题列渲染指示，运行判定统一走 requirementRunning。改 src/client/styles/board.ts 加样式（currentColor + 25% track + 呼吸 arc，1.5s）与 prefers-reduced-motion 静态环分支。三处新参数一律 = NO_RUNNING 缺省。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-ba99ec
+      phase: ui
+      side: frontend
+    - id: t-ee91b9
+      title: 泳道卡与列表行显示运行中转圈·复核
+      implements: |-
+        改 src/client/render/dom-utils.ts 新增 renderRunningDot(running)（false → 空串；true → span.dsh-pm-running[data-running=true][role=img][aria-label] + 内联 SVG 转圈环）。改 src/client/views/artifacts.ts 的 renderReqCard 在窗口 chip 行渲染指示。改 src/client/views/board.ts 的 buildBoard / renderListCard 在标题列渲染指示，运行判定统一走 requirementRunning。改 src/client/styles/board.ts 加样式（currentColor + 25% track + 呼吸 arc，1.5s）与 prefers-reduced-motion 静态环分支。三处新参数一律 = NO_RUNNING 缺省。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-9d8d32
+      phase: ui
+      side: frontend
+    - id: t-345aae
+      title: 泳道卡与列表行显示运行中转圈·测试
+      implements: |-
+        改 src/client/render/dom-utils.ts 新增 renderRunningDot(running)（false → 空串；true → span.dsh-pm-running[data-running=true][role=img][aria-label] + 内联 SVG 转圈环）。改 src/client/views/artifacts.ts 的 renderReqCard 在窗口 chip 行渲染指示。改 src/client/views/board.ts 的 buildBoard / renderListCard 在标题列渲染指示，运行判定统一走 requirementRunning。改 src/client/styles/board.ts 加样式（currentColor + 25% track + 呼吸 arc，1.5s）与 prefers-reduced-motion 静态环分支。三处新参数一律 = NO_RUNNING 缺省。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-ee91b9
+      phase: ui
+      side: frontend
+    - id: t-451182
+      title: 让转圈随会话实时亮灭，且不误触发重绘·研发
+      implements: |-
+        改 src/client/board-mount.ts：挂载时 unsubRunning = subscribeSessionRunning(...)；回调内计算「当前 state 中需求的相关会话集合 ∩ runningSessionIds()」并与 lastRunning 做集合相等比较，变化才 scheduleRender()；每次 render() 后更新 lastRunning；dispose() 退订并清句柄。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-64c0f8
+      phase: ui
+      side: frontend
+    - id: t-4bf79e
+      title: 让转圈随会话实时亮灭，且不误触发重绘·复核
+      implements: |-
+        改 src/client/board-mount.ts：挂载时 unsubRunning = subscribeSessionRunning(...)；回调内计算「当前 state 中需求的相关会话集合 ∩ runningSessionIds()」并与 lastRunning 做集合相等比较，变化才 scheduleRender()；每次 render() 后更新 lastRunning；dispose() 退订并清句柄。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-451182
+      phase: ui
+      side: frontend
+    - id: t-7f815f
+      title: 让转圈随会话实时亮灭，且不误触发重绘·测试
+      implements: |-
+        改 src/client/board-mount.ts：挂载时 unsubRunning = subscribeSessionRunning(...)；回调内计算「当前 state 中需求的相关会话集合 ∩ runningSessionIds()」并与 lastRunning 做集合相等比较，变化才 scheduleRender()；每次 render() 后更新 lastRunning；dispose() 退订并清句柄。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-4bf79e
+      phase: ui
+      side: frontend
+    - id: t-97559a
+      title: 为运行中指示补齐自动化用例·研发
+      implements: |-
+        新建 tests/client-session-running.test.ts；扩 tests/client-view.test.ts 与 tests/board-attach.test.ts。覆盖 TC-01～TC-14：真值表（席位权威 / 折算单 owner / 人工建卡）、降级（服务缺失 / 列表缺失 / 无 subscribe / 行缺失）、订阅与退订幂等、渲染幂等与省略参数零回归、重绘门控。假投影范式沿用既有会话跳转用例的注入写法（只读参考，不修改该文件）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-5e7436
+      phase: test
+      side: frontend
+    - id: t-05fa1e
+      title: 为运行中指示补齐自动化用例·复核
+      implements: |-
+        新建 tests/client-session-running.test.ts；扩 tests/client-view.test.ts 与 tests/board-attach.test.ts。覆盖 TC-01～TC-14：真值表（席位权威 / 折算单 owner / 人工建卡）、降级（服务缺失 / 列表缺失 / 无 subscribe / 行缺失）、订阅与退订幂等、渲染幂等与省略参数零回归、重绘门控。假投影范式沿用既有会话跳转用例的注入写法（只读参考，不修改该文件）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-97559a
+      phase: test
+      side: frontend
+    - id: t-2821b4
+      title: 为运行中指示补齐自动化用例·测试
+      implements: |-
+        新建 tests/client-session-running.test.ts；扩 tests/client-view.test.ts 与 tests/board-attach.test.ts。覆盖 TC-01～TC-14：真值表（席位权威 / 折算单 owner / 人工建卡）、降级（服务缺失 / 列表缺失 / 无 subscribe / 行缺失）、订阅与退订幂等、渲染幂等与省略参数零回归、重绘门控。假投影范式沿用既有会话跳转用例的注入写法（只读参考，不修改该文件）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-05fa1e
+      phase: test
+      side: frontend
+    - id: t-f44a33
+      title: 跑通构建 / 类型 / 全量回归并留下人工证据·复核
+      implements: |-
+        跑 pnpm typecheck（C-15）、pnpm build:client（C-12，产物 lib/client.js）、pnpm test（C-14）并与基线比对；人工浏览器验证 TC-11a～TC-11e（泳道出圈 / 列表出圈 / 回合结束自动消失 / 减少动效下静态环 / 暗色可辨），截图归档到 docs/requirements/REQ-261004210128-283d/evidence/。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-1a836c
+      phase: review
+      side: frontend
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与不变量:
+      - t-64c0f8
+      - t-1a836c
+    design/architecture.md#模块与依赖方向:
+      - t-ba99ec
+      - t-1a836c
+    design/architecture.md#运行态数据通路:
+      - t-ba99ec
+      - t-5e7436
+      - t-1a836c
+    design/architecture.md#渲染链与单点纪律:
+      - t-64c0f8
+      - t-1a836c
+    design/architecture.md#重绘判据与性能:
+      - t-5e7436
+      - t-1a836c
+      - t-f06b62
+    design/architecture.md#降级矩阵与不伪造:
+      - t-ba99ec
+      - t-1a836c
+    design/architecture.md#生命周期挂载-HMR-退订:
+      - t-5e7436
+      - t-1a836c
+      - t-f06b62
+    design/architecture.md#样式主题与动效偏好:
+      - t-64c0f8
+      - t-f06b62
+    design/architecture.md#不做什么架构边界:
+      - t-ba99ec
+      - t-1a836c
+    design/data-model.md#只读契约-A会话运行态:
+      - t-ba99ec
+      - t-1a836c
+    design/data-model.md#只读契约-B需求席位与来源窗口:
+      - t-ba99ec
+      - t-1a836c
+    design/data-model.md#判定函数输入输出表:
+      - t-ba99ec
+      - t-1a836c
+    design/data-model.md#缺失语义:
+      - t-ba99ec
+      - t-1a836c
+    design/data-model.md#是否改表-迁移-回滚:
+      - t-5e7436
+      - t-1a836c
+      - t-f06b62
+    design/data-model.md#持久化红线:
+      - t-ba99ec
+      - t-5e7436
+      - t-1a836c
+      - t-f06b62
+    design/interfaces.md#新增模块srcclientsession-runningts:
+      - t-ba99ec
+      - t-1a836c
+    design/interfaces.md#新增渲染单点renderRunningDot:
+      - t-64c0f8
+      - t-f06b62
+    design/interfaces.md#需求-会话映射requirementRunning:
+      - t-ba99ec
+      - t-1a836c
+    design/interfaces.md#修改buildBoard-renderReqCard-renderListCard:
+      - t-64c0f8
+      - t-5e7436
+      - t-1a836c
+      - t-f06b62
+    design/interfaces.md#修改createBoardAttachment-的订阅接线:
+      - t-5e7436
+      - t-1a836c
+      - t-f06b62
+    design/interfaces.md#修改客户端类型补-seats-声明:
+      - t-ba99ec
+      - t-1a836c
+    design/interfaces.md#不新增的接口红线:
+      - t-ba99ec
+      - t-1a836c
+    design/interfaces.md#错误语义总表:
+      - t-ba99ec
+      - t-5e7436
+      - t-1a836c
+      - t-f06b62
+    design/use-cases.md#UC-1-盯盘一眼看出哪条需求在跑:
+      - t-64c0f8
+      - t-1a836c
+    design/use-cases.md#UC-2-回合结束指示即熄不刷新页面:
+      - t-5e7436
+      - t-1a836c
+    design/use-cases.md#UC-3-多席位需求任一在跑即算在跑:
+      - t-ba99ec
+      - t-1a836c
+    design/use-cases.md#UC-4-读数不可得不显示也不撒谎:
+      - t-ba99ec
+      - t-1a836c
+    design/use-cases.md#UC-5-人工建卡无窗口即无指示:
+      - t-ba99ec
+      - t-1a836c
+    design/use-cases.md#UC-6-动效偏好与读屏:
+      - t-64c0f8
+      - t-f06b62
+    design/use-cases.md#用例-条款对照:
+      - t-ba99ec
+      - t-64c0f8
+      - t-5e7436
+      - t-1a836c
+      - t-f06b62
+  fr_to_tasks:
+    FR-1:
+      - t-ba99ec
+      - t-1a836c
+      - t-5e7436
+    FR-2:
+      - t-ba99ec
+      - t-1a836c
+      - t-64c0f8
+      - t-5e7436
+      - t-f06b62
+    FR-3:
+      - t-64c0f8
+      - t-1a836c
+      - t-f06b62
+      - t-5e7436
+      - t-ba99ec
+    FR-4:
+      - t-64c0f8
+      - t-1a836c
+      - t-5e7436
+      - t-f06b62
+      - t-ba99ec
+    FR-5:
+      - t-ba99ec
+      - t-5e7436
+      - t-1a836c
+      - t-f06b62
+      - t-64c0f8
+    FR-6:
+      - t-ba99ec
+      - t-1a836c
+      - t-5e7436
+      - t-f06b62
+      - t-64c0f8
+    FR-7:
+      - t-64c0f8
+      - t-f06b62
+      - t-ba99ec
+      - t-5e7436
+      - t-1a836c
+    FR-8:
+      - t-5e7436
+      - t-1a836c
+      - t-f06b62
+      - t-ba99ec
+      - t-64c0f8
+coverage:
+  implementation:
+    total: 30
+    covered: 30
+    uncovered: []
+    rate: 100
+    total_designs: 30
+    covered_designs: 30

@@ -10,13 +10,13 @@
  *   - 分类过滤（bug 免 requirement 门）；
  *   - human-only confirm 路由。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import {
@@ -27,11 +27,16 @@ import {
   stubDocFile,
 } from './helpers/tool-deps.js'
 import type { RequirementRecord, RequirementStatus } from '../src/shared/protocol.js'
+import { assertArtifactGates } from '../src/application/internal/artifact-gates.js'
 
 const W = 'session-abc-123'
 let dir: string
 let prevCwd: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
+/** B12 阶段⑤：旧口 `snapshot()` 的等价册形视图（同步；来自测试替身的同步读口）。 */
+const snapOf = () => ({
+  schemaVersion: 9, revision: store.peekRevision(), requirements: [...store.peekAll()], triages: [] as never[],
+})
 let planTool: { execute: (a: unknown, e: unknown) => Promise<any> }
 let decompose: { execute: (a: unknown, e: unknown) => Promise<any> }
 let verifyTool: { execute: (a: unknown, e: unknown) => Promise<any> }
@@ -42,14 +47,14 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-gates-'))
   prevCwd = process.cwd()
   process.chdir(dir)
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   const deps = { store, now: () => Date.now() } as never
   planTool = definePlanSubmitTool(deps) as never
   decompose = defineDecomposeTool(deps) as never
   verifyTool = defineVerifySubmitTool(deps) as never
   archiveTool = defineArchiveSubmitTool(deps) as never
   // REQ-2d1c74 FR-2：G2 完整性闸门要求 docs 端口（缺省 = fail-closed 拦截），看板侧必须接
-  handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now(), docs: new FileDocRepository({ workspaceRoot: dir }) })
+  handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now(), docs: new FileDocRepository({ workspaceRoot: dir }) })
   // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘（chdir 后 stub 落进本测试临时目录）。
   // decomposition.md 不在此落桩——decompose 用例要验证它由拆分动作**生成**。
   stubDocFile('docs/requirements/REQ-abc123/plan.md')
@@ -72,7 +77,7 @@ async function seed(
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
     statusHistory: [{ status: 'draft', at: 1, by: { kind: 'human' } }],
   } as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('requirement-created', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
   return r
 }
 
@@ -86,10 +91,9 @@ const TWO_TASKS = [
 
 async function planAndApprove(tasks: unknown = TWO_TASKS): Promise<void> {
   await run(planTool, { path: 'docs/requirements/REQ-abc123/plan.md', summary: '摘要', tasks })
-  await store.mutate('requirement-updated', (l) => {
-    const r = l.requirements[0]
+  await store.mutate(store.peekAll()[0]!.id, (r) => {
     if (r.plan !== undefined) { r.plan.approvedAt = 1000; r.plan.approvedBy = { kind: 'human' } }
-    return { requirements: [r] }
+    return { changed: true }
   })
 }
 
@@ -124,7 +128,7 @@ describe('产物登记钩子', () => {
     await seed('decomposing')
     stubDocFile('docs/requirements/REQ-abc123/decomposition.md') // FR-5：提交路径须落盘
     await run(planTool, { path: 'docs/requirements/REQ-abc123/decomposition.md', summary: 's', tasks: TWO_TASKS })
-    const req = store.snapshot().requirements[0]
+    const req = snapOf().requirements[0]
     expect(req.artifacts).toHaveLength(1)
     expect(req.artifacts![0]).toMatchObject({
       stage: 'decomposing', kind: 'decomposition', path: 'docs/requirements/REQ-abc123/decomposition.md',
@@ -137,7 +141,7 @@ describe('产物登记钩子', () => {
     stubDocFile('docs/requirements/REQ-abc123/decomposition.md') // FR-5：提交路径须落盘
     await run(planTool, { path: 'docs/requirements/REQ-abc123/decomposition.md', summary: 's', tasks: TWO_TASKS })
     await run(planTool, { path: 'docs/requirements/REQ-abc123/decomposition.md', summary: 's2', tasks: TWO_TASKS })
-    const req = store.snapshot().requirements[0]
+    const req = snapOf().requirements[0]
     expect(req.artifacts).toHaveLength(1)
   })
 
@@ -164,7 +168,7 @@ describe('产物登记钩子', () => {
     expect(taskText).toContain('单测绿')
 
     // 台账登记
-    const req = store.snapshot().requirements[0]
+    const req = snapOf().requirements[0]
     expect(req.artifacts!.some(a => a.kind === 'decomposition')).toBe(true)
     expect(req.artifacts!.some(a => a.kind === 'task_detail' && a.path.includes(taskId))).toBe(true)
   })
@@ -177,7 +181,7 @@ describe('产物登记钩子', () => {
     const verText = readFileSync(verPath, 'utf8')
     expect(verText).toContain('交付完成')
     expect(verText).toContain('tests pass')
-    const req = store.snapshot().requirements[0]
+    const req = snapOf().requirements[0]
     expect(req.artifacts!.some(a => a.kind === 'verification')).toBe(true)
   })
 
@@ -196,7 +200,7 @@ describe('产物登记钩子', () => {
       index_entry: '测试归档',
       manual_updates: [{ path: 'docs/architecture/project-manual.md', section: '测试', summary: '新增测试章节' }],
     })
-    const req = store.snapshot().requirements[0]
+    const req = snapOf().requirements[0]
     expect(req.artifacts!.some(a => a.kind === 'archive' && a.path === 'docs/requirements/REQ-abc123')).toBe(true)
   })
 })
@@ -208,10 +212,9 @@ describe('五门两级校验', () => {
     // feature 分类：brainstorming → design 需要 requirement 产物
     await seed('brainstorming', 'feature')
     // 手动登记一个 requirement 产物但不确认
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     // 未确认 → 拒
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'design', actor: 'human' })
@@ -222,10 +225,9 @@ describe('五门两级校验', () => {
 
   it('artifact_not_confirmed：产物存在但未确认时转移被拒', async () => {
     await seed('brainstorming', 'feature')
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'design', actor: 'human' })
     expect(res.statusCode).toBe(400)
@@ -234,10 +236,9 @@ describe('五门两级校验', () => {
 
   it('确认后放行：artifact/confirm 后转移成功', async () => {
     await seed('brainstorming', 'feature')
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     // 确认
     const confirmRes = await post('/req/artifact/confirm', { id: 'REQ-abc123', kind: 'requirement' })
@@ -259,10 +260,9 @@ describe('五门两级校验', () => {
 
   it('存量需求（artifacts 为空数组）不硬拦', async () => {
     await seed('brainstorming', 'feature')
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = []
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'design', actor: 'human' })
     expect(res.statusCode).toBe(200)
@@ -284,10 +284,9 @@ describe('五门两级校验', () => {
     const DESIGN5 = ['architecture.md', 'data-model.md', 'interfaces.md', 'test-cases.md', 'use-cases.md']
     for (const n of DESIGN5) writeFileSync(join(dir, 'docs/requirements/REQ-abc123/design', n), '# ' + n + '\n')
     // 登记 5 份 design 产物但不确认 → 转移被拒（成组判定：任一未确认即拒）
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = DESIGN5.map(n => ({ stage: 'design', kind: 'design', path: 'docs/requirements/REQ-abc123/design/' + n, registeredAt: 1, registeredBy: { kind: 'agent' } }))
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'decomposing', actor: 'human' })
     expect(res.statusCode).toBe(400)
@@ -296,7 +295,7 @@ describe('五门两级校验', () => {
     // 人确认设计文档（REQ-2d1c74 FR-2：kind=design 看板一键 = 成组落章全部 5 份）→ 放行
     const ok = await post('/req/artifact/confirm', { id: 'REQ-abc123', kind: 'design', actor: 'human' })
     expect(ok.statusCode).toBe(200)
-    const stamped = store.snapshot().requirements[0]
+    const stamped = snapOf().requirements[0]
     expect((stamped.artifacts ?? []).filter(a => a.kind === 'design').every(a => a.confirmedAt !== undefined)).toBe(true)
     const moved = await post('/req/move', { id: 'REQ-abc123', to: 'decomposing', actor: 'human' })
     expect(moved.statusCode).toBe(200)
@@ -308,10 +307,9 @@ describe('五门两级校验', () => {
 describe('human-only confirm 路由', () => {
   it('agent actor 不能确认产物', async () => {
     await seed('brainstorming', 'feature')
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     // 路由层 actor 默认 human；显式传 agent 应该被拒
     const res = await post('/req/artifact/confirm', { id: 'REQ-abc123', kind: 'requirement', actor: 'agent' })
@@ -334,10 +332,9 @@ describe('human-only confirm 路由', () => {
 describe('分类过滤', () => {
   it('feature 全流水线 5 门：brainstorming>design 需要 requirement 产物确认', async () => {
     await seed('brainstorming', 'feature')
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'design', actor: 'human' })
     expect(res.statusCode).toBe(400)
@@ -365,10 +362,9 @@ describe('分类过滤', () => {
 describe('t8 补充：五门两级校验（全量）', () => {
   // 辅助：先登记一个无关产物让需求非 legacy（触发硬拦），再测具体门
   async function makeNonLegacy(_reqId: string = 'REQ-abc123') {
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'draft', kind: 'requirement', path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
   }
 
@@ -376,10 +372,9 @@ describe('t8 补充：五门两级校验（全量）', () => {
     await seed('decomposing', 'feature')
     await makeNonLegacy()
     // 移除 decomposition 产物（只留无关产物）
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = r.artifacts!.filter(a => a.kind !== 'decomposition')
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'implementing', actor: 'human' })
     expect(res.statusCode).toBe(400)
@@ -388,10 +383,9 @@ describe('t8 补充：五门两级校验（全量）', () => {
 
   it('decomposing>implementing：产物存在但未确认 → artifact_not_confirmed', async () => {
     await seed('decomposing', 'feature')
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'decomposing', kind: 'decomposition', path: 'docs/requirements/REQ-abc123/decomposition.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'implementing', actor: 'human' })
     expect(res.statusCode).toBe(400)
@@ -400,10 +394,9 @@ describe('t8 补充：五门两级校验（全量）', () => {
 
   it('decomposing>implementing：产物确认后 → 放行', async () => {
     await seed('decomposing', 'feature')
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'decomposing', kind: 'decomposition', path: 'docs/requirements/REQ-abc123/decomposition.md', registeredAt: 1, registeredBy: { kind: 'agent' }, confirmedAt: 2, confirmedBy: { kind: 'human' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'implementing', actor: 'human' })
     expect(res.statusCode).toBe(200)
@@ -412,10 +405,9 @@ describe('t8 补充：五门两级校验（全量）', () => {
   it('accepting>archived：非 legacy 缺 verification 产物 → missing_artifact', async () => {
     await seed('accepting', 'feature')
     await makeNonLegacy()
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = r.artifacts!.filter(a => a.kind !== 'verification')
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'archived', actor: 'human' })
     expect(res.statusCode).toBe(400)
@@ -424,10 +416,9 @@ describe('t8 补充：五门两级校验（全量）', () => {
 
   it('accepting>archived：产物存在但未确认 → artifact_not_confirmed', async () => {
     await seed('accepting', 'feature')
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'accepting', kind: 'verification', path: 'docs/requirements/REQ-abc123/verification.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'archived', actor: 'human' })
     expect(res.statusCode).toBe(400)
@@ -440,10 +431,9 @@ describe('t8 补充：五门两级校验（全量）', () => {
   it('bug 分类：decomposing>implementing 门仍生效（4 门之一）', async () => {
     await seed('decomposing', 'bug')
     // bug 分类：decomposing>implementing 是 4 门之一；非 legacy 时缺产物应被拦
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'draft', kind: 'requirement', path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'implementing', actor: 'human' })
     expect(res.statusCode).toBe(400)
@@ -464,10 +454,9 @@ describe('t8 补充：五门两级校验（全量）', () => {
 describe('取消需求豁免产物闸门（*>canceled 是放弃路径，不进闸）', () => {
   it('decomposing 缺 decomposition 产物：→ canceled 放行；同现场 → implementing 仍硬拦', async () => {
     await seed('decomposing', 'bug')
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'design', kind: 'plan', path: 'docs/requirements/REQ-abc123/plan.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     // 对照组：推进路径闸门不放松
     const blocked = await post('/req/move', { id: 'REQ-abc123', to: 'implementing', actor: 'human' })
@@ -481,10 +470,9 @@ describe('取消需求豁免产物闸门（*>canceled 是放弃路径，不进�
 
   it('brainstorming 有未确认 requirement 产物：→ canceled 同样放行（确认门一并豁免）', async () => {
     await seed('brainstorming', 'feature')
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'canceled', actor: 'human' })
     expect(res.statusCode).toBe(200)
@@ -495,7 +483,50 @@ describe('取消需求豁免产物闸门（*>canceled 是放弃路径，不进�
     await seed('decomposing', 'bug')
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'canceled', actor: 'agent' })
     expect(res.statusCode).toBe(403) // 人工闸门：agent 一律 403
-    const req = store.snapshot().requirements[0]
+    const req = snapOf().requirements[0]
     expect(req.status).toBe('decomposing')
+  })
+})
+
+/**
+ * 回退方向的方向性豁免（REQ-261003204149-1e80 t5 / FR-2）。
+ *
+ * 闸门的两级语义是「离开一个**已完成**的节点」，而回退的动机恰恰是 from 没完成
+ * ——豁免让「最需要退的时候退得动」，同时**不得**把前进方向的门一起放宽。
+ */
+describe('产物闸门 · 回退方向豁免（FR-2）', () => {
+  /** 造一条非 legacy 的 feature 需求（artifacts 非空 ⇒ 走真实闸门判定）。 */
+  const gateReq = (artifacts: RequirementRecord['artifacts']): RequirementRecord =>
+    ({ id: 'REQ-gate01', category: 'feature', artifacts } as unknown as RequirementRecord)
+
+  const art = (stage: string, kind: string, confirmed: boolean) =>
+    ({ stage, kind, path: 'docs/requirements/REQ-gate01/' + kind + '.md', registeredAt: 1, registeredBy: { kind: 'human' as const }, ...(confirmed ? { confirmedAt: 2, confirmedBy: { kind: 'human' as const } } : {}) })
+
+  it('① 半途回退：decomposing 无 decomposition 产物也能退回 design', () => {
+    // 只有 brainstorming 的需求文档（非空 ⇒ 非 legacy），decomposing 阶段什么都没交
+    const req = gateReq([art('brainstorming', 'requirement', true)] as never)
+    expect(assertArtifactGates(req, 'decomposing', 'design')).toBeUndefined()
+  })
+
+  it('② 前进方向一字未松：decomposing→implementing 未确认拆分计划仍被拒', () => {
+    const req = gateReq([art('decomposing', 'decomposition', false)] as never)
+    const failure = assertArtifactGates(req, 'decomposing', 'implementing')
+    expect(failure?.code).toBe('artifact_not_confirmed')
+    expect(failure?.kind).toBe('decomposition')
+  })
+
+  it('② 对照组：拆分计划已确认时前进放行（豁免没有把门改成常开）', () => {
+    const req = gateReq([art('decomposing', 'decomposition', true)] as never)
+    expect(assertArtifactGates(req, 'decomposing', 'implementing')).toBeUndefined()
+  })
+
+  it('③ →canceled 的既有豁免不变（放弃路径不受回退改动影响）', () => {
+    const req = gateReq([art('brainstorming', 'requirement', false)] as never)
+    expect(assertArtifactGates(req, 'decomposing', 'canceled')).toBeUndefined()
+  })
+
+  it('跨级回退（implementing→draft）同样豁免', () => {
+    const req = gateReq([art('brainstorming', 'requirement', true)] as never)
+    expect(assertArtifactGates(req, 'implementing', 'draft')).toBeUndefined()
   })
 })

@@ -9,7 +9,7 @@
  * 
  * @module dsh-pmboard/tests/integration/background-execution
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, } from 'vitest'
 
 describe('后台执行集成测试', () => {
   // TODO: 需要完整的测试环境搭建

@@ -1,0 +1,17 @@
+# case C1 · 提交计划→批准→落库标准流 · serves: FR-2
+case: C1
+checks:
+  - path: requirement.plan.approvedAt     # 批准章真实存在
+    op: exists
+  - path: queue.tasks                     # 落库任务卡数 = 批准计划任务数（t1/t2/t3）
+    op: count_eq
+    value: 3
+  - path: queue.tasks[?key='t2'].depends_on   # depends_on 引用合法：t2 依赖 t1
+    op: contains
+    value: t1
+  - path: queue.tasks[?key='t3'].depends_on   # t3 依赖 t1
+    op: contains
+    value: t1
+  - path: queue.edges                     # DAG 边：t2→t1、t3→t1 共 2 条
+    op: count_eq
+    value: 2

@@ -21,7 +21,7 @@ export function defineNoteInterruptionTool(deps: UseCaseDeps) {
     parameters: {
       reason: {
         type: 'string',
-        description: '中断原因原文（如 upstream stream idle 3m）；必填',
+        description: '中断原因原文（如 upstream stream idle 3m）；必填；写法：每条短句（建议 ≤60 字）；需引号用「」避免半角双引号；文本过大拆成多次调用',
         required: true,
       },
       requirement_id: {

@@ -22,12 +22,13 @@ import {
 import { LIMITS } from '../../domain/limits.js'
 import { pmHeader } from '../../domain/text/pm-badge.js'
 
-/** 四问的稳定 id（答案按 id 回收，不靠顺序）。 */
+/** 五问的稳定 id（答案按 id 回收，不靠顺序）。 */
 export const CAPTURE_QUESTION_IDS = {
   name: 'name',
   category: 'category',
   difficulty: 'difficulty',
   doc_location: 'doc_location',
+  workspace: 'workspace',
 } as const
 
 /** 预定义的文档位置选项 */
@@ -57,8 +58,30 @@ export const CAPTURE_DEFAULTS = {
   docLocation: 'docs/requirements/<REQ>/',
 }
 
+/**
+ * 工作区选项的哨兵值（第 5 问，REQ-260929210741-30ae FR-6）。
+ * 选项 label 用哨兵而非真实路径——真实路径随会话变化，写死在选项里会过期；
+ * 映射时把哨兵解析成当时的路径。自定义输入 = 用户直接填绝对路径。
+ */
+export const WORKSPACE_SENTINELS = {
+  session: 'session-workspace',
+  host: 'host-default',
+} as const
+
 /** 拒绝立项的标记前缀 */
 export const REJECT_PREFIX = '✖️'
+
+/**
+ * answers 回执键清单（**单一事实源**，REQ-261003204143-3219 FR-3）。
+ *
+ * 为什么需要它：第五问「工作区」上线时，CaptureMapping.answers（5 键）与单测都同步了，
+ * 唯独 CaptureTool 的 output.schema.answers（手写 4 键 + additionalProperties:false）漏改——
+ * 于是每份回执被绑定层拒收（`answers.workspace is not a declared property`，2026-10-03 实测）。
+ * 现在三处同源：本常量 → CaptureMapping.answers 类型（tsc 守）→ CaptureTool schema（生成式，
+ * 描述表 Record<CaptureAnswerKey> 缺键即 tsc 错）→ tests/capture-output-contract.test.ts 键集断言守运行时。
+ */
+export const CAPTURE_ANSWER_KEYS = ['title', 'category', 'difficulty', 'docLocation', 'workspace'] as const
+export type CaptureAnswerKey = (typeof CAPTURE_ANSWER_KEYS)[number]
 
 /** 类型中文名（弹框选项 description 展示）。
  *  label 必须保持枚举原值——mapCaptureAnswers 按严格相等校验 selected[0]，
@@ -105,8 +128,11 @@ export function buildCaptureIntentQuestions(titleOptions: readonly string[]): As
   ]
 }
 
-/** 第 2 段：立项明细（类型 / 难度 / 文档位置）。只在第一段未拒绝时下发。 */
-export function buildCaptureDetailQuestions(): AskQuestion[] {
+/** 第 2 段：立项明细（类型 / 难度 / 文档位置 / 工作区）。只在第一段未拒绝时下发。 */
+export function buildCaptureDetailQuestions(workspaceOptions: {
+  sessionCwd: string
+  hostCwd: string
+}): AskQuestion[] {
   return [
     {
       id: CAPTURE_QUESTION_IDS.category,
@@ -135,30 +161,50 @@ export function buildCaptureDetailQuestions(): AskQuestion[] {
         ...(i === 0 ? {} : {}), // 首个已有"推荐"标记
       })),
     },
+    {
+      id: CAPTURE_QUESTION_IDS.workspace,
+      header: pmHeader('工作区'),
+      question: '需求的工作区（该需求所有文件操作以此根拼接相对路径；自定义输入须为已存在的绝对路径）',
+      options: [
+        {
+          label: WORKSPACE_SENTINELS.session,
+          description: '当前会话空间（Recommended）—— ' + workspaceOptions.sessionCwd,
+        },
+        {
+          label: WORKSPACE_SENTINELS.host,
+          description: '宿主默认工作区 —— ' + workspaceOptions.hostCwd,
+        },
+        {
+          label: '自定义路径',
+          description: '自定义输入（绝对路径，须已存在）',
+        },
+      ],
+    },
   ]
 }
 
 /**
- * 兼容导出：一次四问（= 两段拼接，内容与顺序逐字一致）。
- * 保留它让既有调用点/测试继续用"四问"口径，不必感知分段实现。
+ * 兼容导出：一次五问（= 两段拼接，内容与顺序逐字一致）。
+ * 保留它让既有调用点/测试继续用"五问"口径，不必感知分段实现。
  */
-export function buildCaptureQuestions(titleOptions: readonly string[]): AskQuestion[] {
-  return [...buildCaptureIntentQuestions(titleOptions), ...buildCaptureDetailQuestions()]
+export function buildCaptureQuestions(titleOptions: readonly string[], workspaceOptions: {
+  sessionCwd: string
+  hostCwd: string
+}): AskQuestion[] {
+  return [...buildCaptureIntentQuestions(titleOptions), ...buildCaptureDetailQuestions(workspaceOptions)]
 }
 
-/** 四问作答 → 创建参数的映射结果（defaultsUsed = 走了默认值的问项 id，回执里如实说明）。 */
+/** 五问作答 → 创建参数的映射结果（defaultsUsed = 走了默认值的问项 id，回执里如实说明）。 */
 export interface CaptureMapping {
   title: string
   category: RequirementCategory
   difficulty: PromptDifficulty
   docLocation: string
+  /** 工作区原始作答（哨兵值或自定义路径；解析成绝对路径由用例负责，那里才有 fs 访问）。 */
+  workspace: string
   rejected: boolean
-  answers: { 
-    title: string
-    category: string
-    difficulty: string
-    docLocation: string
-  }
+  /** 回执 answers：键集由 CAPTURE_ANSWER_KEYS 派生（FR-3）——加问项先加常量，类型当场报错。 */
+  answers: Record<CaptureAnswerKey, string>
   defaultsUsed: string[]
 }
 
@@ -190,23 +236,30 @@ export function mapCaptureAnswers(answers: readonly AskAnswer[]): CaptureMapping
   // 文档位置：自定义输入或选项，缺失时回落默认
   const rawDocLocation = pickAnswer(answers, CAPTURE_QUESTION_IDS.doc_location)
   const docLocation = rawDocLocation.length > 0 ? rawDocLocation : CAPTURE_DEFAULTS.docLocation
-  
+
+  // 工作区：自定义输入优先（真实绝对路径），否则取哨兵值；缺失回落会话哨兵（用例侧解析）
+  const rawWorkspace = pickAnswer(answers, CAPTURE_QUESTION_IDS.workspace)
+  const workspace = rawWorkspace.length > 0 ? rawWorkspace : WORKSPACE_SENTINELS.session
+
   const defaultsUsed: string[] = []
   if (!categoryOk) defaultsUsed.push(CAPTURE_QUESTION_IDS.category)
   if (!difficultyOk) defaultsUsed.push(CAPTURE_QUESTION_IDS.difficulty)
   if (rawDocLocation.length === 0) defaultsUsed.push(CAPTURE_QUESTION_IDS.doc_location)
-  
+  if (rawWorkspace.length === 0) defaultsUsed.push(CAPTURE_QUESTION_IDS.workspace)
+
   return {
     title,
     category: categoryOk ? (rawCategory as RequirementCategory) : CAPTURE_DEFAULTS.category,
     difficulty: difficultyOk ? (rawDifficulty as PromptDifficulty) : CAPTURE_DEFAULTS.difficulty,
     docLocation,
+    workspace,
     rejected,
     answers: {
       title,
       category: categoryOk ? rawCategory : rawCategory.length > 0 ? rawCategory : CAPTURE_DEFAULTS.category,
       difficulty: difficultyOk ? rawDifficulty : rawDifficulty.length > 0 ? rawDifficulty : CAPTURE_DEFAULTS.difficulty,
       docLocation,
+      workspace,
     },
     defaultsUsed,
   }

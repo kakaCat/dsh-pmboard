@@ -1,0 +1,1247 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261002153446-c600",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-02T07:37:58.578Z",
+  "tasks": [
+    {
+      "id": "t-30f65b",
+      "requirementId": "REQ-261002153446-c600",
+      "title": "点已归档窗口能回到那个会话：先取消归档、再打开",
+      "cardDoc": "docs/requirements/REQ-261002153446-c600/tasks/t-30f65b.md",
+      "description": "src/client/session-jump.ts：WorkspacesServiceFace 增可选 unarchiveSession；SessionJumpResult 增 restore-failed；jumpToSession 命中 archivedSessionIds 时先 await unarchiveSession，成功继续 selectPanel(null)+openSession，抛错返回 restore-failed 且不 openSession；handleSessionJump 去掉提前 alert 的预检查",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/session-jump.test.ts 通过（TC-1/TC-2/TC-3 绿）：已归档 sid 的时间线等于 [unarchive:sid, selectPanel:null, openSession:sid] 且返回 opened；unarchive 抛错时返回 restore-failed 且时间线不含 openSession；投影无 unarchiveSession 时返回 archived 且时间线为空",
+      "implementation": "改 src/client/session-jump.ts：① WorkspacesServiceFace 增 unarchiveSession?(sessionId: string): Promise<void>；② SessionJumpResult 增 'restore-failed'；③ jumpToSession 内新增 restoreIfArchived(sid) 辅助：未归档→undefined；无能力→'archived'；调用抛错→'restore-failed'（console.error 留痕）；成功→undefined；在两个 inList 分支用其替换原 if(isArchived) return 'archived'；④ handleSessionJump 删除 archivedSessionIds().has(sid) 的提前 window.alert 拦截，switch 增 'restore-failed' 与改写 'archived' 文案。验证：npx vitest run tests/session-jump.test.ts",
+      "context": "",
+      "stages": [
+        "dev",
+        "test"
+      ],
+      "skipIntegration": true,
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ae1830",
+          "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+          "trigger": "manual",
+          "startedAt": 1790926699252,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 511,
+              "at": 1790926699262,
+              "totals": {
+                "uncachedInputTokens": 201905,
+                "outputTokens": 41543,
+                "cacheReadTokens": 6181632,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 722,
+              "at": 1790926838119,
+              "totals": {
+                "uncachedInputTokens": 235625,
+                "outputTokens": 54900,
+                "cacheReadTokens": 11634688,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 33720,
+              "outputTokens": 13357,
+              "cacheReadTokens": 5453056,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790926838097
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790926678400,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790926699252,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "开工：改 session-jump 的归档分支为「先取消归档再打开」，并补契约类型"
+        },
+        {
+          "status": "done",
+          "at": 1790926838097,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "父卡收尾：行为与契约落地，子卡全绿"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-94d804",
+          "body": "[状态] → in_progress：开工：改 session-jump 的归档分支为「先取消归档再打开」，并补契约类型（reqboard_task_move）",
+          "createdAt": 1790926699252,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        },
+        {
+          "id": "c-a506d5",
+          "body": "[状态] → done：父卡收尾：行为与契约落地，子卡全绿（reqboard_task_move）",
+          "createdAt": 1790926838097,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790926678400,
+      "updatedAt": 1790926838097,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790926837986,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/session-jump.ts",
+          "tests/session-jump.test.ts"
+        ],
+        "completed": [
+          "session-jump.ts：命中已归档集合时先调 workspaces.unarchiveSession 恢复，成功再收面板并打开",
+          "新增结果态 restore-failed：恢复抛错时不打开会话，不制造「以为跳过去了」的错觉",
+          "能力缺失（旧客户端无 unarchiveSession）保留 archived 旧语义",
+          "恢复位置在可用性检查之后：打不开就不改动宿主的归档状态",
+          "子卡链（研发 + 测试）完成，单测 3 条新用例绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1790926837986,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-54bec3",
+      "requirementId": "REQ-261002153446-c600",
+      "title": "点之前就看得见会发生什么：chip 与失败提示的文案",
+      "cardDoc": "docs/requirements/REQ-261002153446-c600/tasks/t-54bec3.md",
+      "description": "src/client/render/dom-utils.ts 的 sessionChipHtml：已归档 title 改为「点击取消归档并打开」；src/client/board-mount.ts 的 jumpResultMessage：增 restore-failed 文案、改写 archived、unavailable 补「暂不可用」",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-30f65b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/board-info-fixes.test.ts 通过：已归档 chip 的 HTML 含 data-archived=\"true\" 且 title 含「点击取消归档并打开」；jumpResultMessage('restore-failed', sid) 包含「取消归档失败」；jumpResultMessage('unavailable', sid) 包含「暂不可用」",
+      "implementation": "改 src/client/render/dom-utils.ts：sessionChipHtml 的 archived 分支 title 改为 `${kind}已归档（${sid}）：点击取消归档并打开`（类名/属性不变，仍是可点 jump-session 按钮）。改 src/client/board-mount.ts：jumpResultMessage 增 case 'restore-failed' 返回「取消归档失败（sid）：会话未恢复，未跳转（可到会话列表手动恢复后重试）」；case 'archived' 补「客户端不支持取消归档」；case 'unavailable' 文案含「暂不可用」。验证：npx vitest run tests/board-info-fixes.test.ts",
+      "context": "",
+      "stages": [
+        "dev",
+        "test"
+      ],
+      "skipIntegration": true,
+      "requirementRefs": [
+        "FR-2",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-9abcba",
+          "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+          "trigger": "manual",
+          "startedAt": 1790926842977,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 731,
+              "at": 1790926842988,
+              "totals": {
+                "uncachedInputTokens": 257720,
+                "outputTokens": 55649,
+                "cacheReadTokens": 11920128,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 774,
+              "at": 1790926905260,
+              "totals": {
+                "uncachedInputTokens": 281244,
+                "outputTokens": 57521,
+                "cacheReadTokens": 12892288,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 23524,
+              "outputTokens": 1872,
+              "cacheReadTokens": 972160,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790926905237
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790926678400,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790926842977,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "开工：改 chip title 与结果文案（dom-utils + board-mount）"
+        },
+        {
+          "status": "done",
+          "at": 1790926905237,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "文案与反馈完成，子卡全绿"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5109cc",
+          "body": "[状态] → in_progress：开工：改 chip title 与结果文案（dom-utils + board-mount）（reqboard_task_move）",
+          "createdAt": 1790926842977,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        },
+        {
+          "id": "c-89771c",
+          "body": "[状态] → done：文案与反馈完成，子卡全绿（reqboard_task_move）",
+          "createdAt": 1790926905237,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790926678400,
+      "updatedAt": 1790926905237,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790926852049,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/render/dom-utils.ts",
+          "src/client/board-mount.ts",
+          "tests/board-info-fixes.test.ts"
+        ],
+        "completed": [
+          "chip title 改为「点击取消归档并打开」，仍是可点的 jump-session 按钮",
+          "jumpResultMessage 增 restore-failed 文案，archived/unavailable 措辞改写",
+          "子卡链（研发 + 测试）完成，board-info-fixes 18 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1790926852049,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b7b87a",
+      "requirementId": "REQ-261002153446-c600",
+      "title": "兼容与回归：旧客户端语义、幂等、类型与客户端构建",
+      "cardDoc": "docs/requirements/REQ-261002153446-c600/tasks/t-b7b87a.md",
+      "description": "补 TC-4 零副作用用例；跑两文件单测 + typecheck + build:client；核对既有用例零回归；把命令与输出摘要落到 tests/ 证据",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-54bec3"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/session-jump.test.ts tests/board-info-fixes.test.ts 全绿（0 failed）；npm run typecheck 无新增错误；pnpm build:client 输出含 [verify-client] OK；docs/requirements/REQ-261002153446-c600/tests/test-evidence.md 存在且含命令与输出摘要",
+      "implementation": "① tests/session-jump.test.ts 补 TC-4（未归档 sid 的时间线不含 unarchive，顺序与既有断言一致）；② 跑 npx vitest run tests/session-jump.test.ts tests/board-info-fixes.test.ts 全绿；③ npm run typecheck 与 HEAD 基线比对（不得新增错误）；④ pnpm build:client 必须输出 [verify-client] OK（规范 C-12）；⑤ 证据写进 docs/requirements/REQ-261002153446-c600/tests/test-evidence.md",
+      "context": "",
+      "stages": [
+        "verify"
+      ],
+      "skipIntegration": true,
+      "requirementRefs": [
+        "FR-4",
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-10ef77",
+          "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+          "trigger": "manual",
+          "startedAt": 1790926908341,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 782,
+              "at": 1790926908352,
+              "totals": {
+                "uncachedInputTokens": 281499,
+                "outputTokens": 57852,
+                "cacheReadTokens": 13225472,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 811,
+              "at": 1790926972880,
+              "totals": {
+                "uncachedInputTokens": 304107,
+                "outputTokens": 59215,
+                "cacheReadTokens": 13915776,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 22608,
+              "outputTokens": 1363,
+              "cacheReadTokens": 690304,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790926972858
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790926678400,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790926908341,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "开工：兼容与回归验证（单测 + 类型 + 客户端构建 + 证据）"
+        },
+        {
+          "status": "done",
+          "at": 1790926972858,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "兼容与回归完成：四道验证全过，证据落盘"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1fa465",
+          "body": "[状态] → in_progress：开工：兼容与回归验证（单测 + 类型 + 客户端构建 + 证据）（reqboard_task_move）",
+          "createdAt": 1790926908341,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        },
+        {
+          "id": "c-c19543",
+          "body": "[状态] → done：兼容与回归完成：四道验证全过，证据落盘（reqboard_task_move）",
+          "createdAt": 1790926972858,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790926678400,
+      "updatedAt": 1790926972858,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1790926917691,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261002153446-c600/tests/test-evidence.md",
+          "tests/session-jump.test.ts"
+        ],
+        "completed": [
+          "目标用例 29 passed / 0 failed（含 TC-4 未归档零副作用）",
+          "客户端面 4 文件 95 passed（无回归）",
+          "全量 97 failed / 3030 passed，低于基线 106，且失败零命中本次改动文件",
+          "typecheck 187 错误（低于基线 223），改动文件零错误",
+          "build:client [verify-client] OK",
+          "证据 docs/requirements/REQ-261002153446-c600/tests/test-evidence.md"
+        ]
+      },
+      "lastRun": {
+        "at": 1790926917691,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ccf428",
+      "requirementId": "REQ-261002153446-c600",
+      "title": "点已归档窗口能回到那个会话：先取消归档、再打开·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/client/session-jump.ts：① WorkspacesServiceFace 增 unarchiveSession?(sessionId: string): Promise<void>；② SessionJumpResult 增 'restore-failed'；③ jumpToSession 内新增 restoreIfArchived(sid) 辅助：未归档→undefined；无能力→'archived'；调用抛错→'restore-failed'（console.error 留痕）；成功→undefined；在两个 inList 分支用其替换原 if(isArchived) return 'archived'；④ handleSessionJump 删除 archivedSessionIds().has(sid) 的提前 window.alert 拦截，switch 增 'restore-failed' 与改写 'archived' 文案。验证：npx vitest run tests/session-jump.test.ts\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-30f65b",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3cab71",
+          "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+          "trigger": "manual",
+          "startedAt": 1790926828914,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 694,
+              "at": 1790926828925,
+              "totals": {
+                "uncachedInputTokens": 234901,
+                "outputTokens": 53641,
+                "cacheReadTokens": 11066240,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 706,
+              "at": 1790926833850,
+              "totals": {
+                "uncachedInputTokens": 235487,
+                "outputTokens": 54492,
+                "cacheReadTokens": 11349760,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 586,
+              "outputTokens": 851,
+              "cacheReadTokens": 283520,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790926833827
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f9700b",
+          "body": "[状态] → in_progress：开工：按实施方案改 session-jump.ts（恢复前置 + 新结果态）（reqboard_task_move）",
+          "createdAt": 1790926828914,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        },
+        {
+          "id": "c-0ae02a",
+          "body": "[状态] → done：研发完成并自测：3 条新用例绿（reqboard_task_move）",
+          "createdAt": 1790926833827,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790926699252,
+      "updatedAt": 1790926833827,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790926699252,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790926828914,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "开工：按实施方案改 session-jump.ts（恢复前置 + 新结果态）"
+        },
+        {
+          "status": "done",
+          "at": 1790926833827,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "研发完成并自测：3 条新用例绿"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790926833712,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/session-jump.ts",
+          "tests/session-jump.test.ts"
+        ],
+        "completed": [
+          "session-jump.ts 新增 restoreIfArchived：命中归档集合先调 workspaces.unarchiveSession",
+          "恢复成功才继续 selectPanel(null)+openSession，顺序与既有实现一致",
+          "新增结果态 restore-failed（恢复抛错不打开）；能力缺失保留 archived",
+          "handleSessionJump 去掉提前 alert 拦截，判定收敛到一处"
+        ]
+      },
+      "lastRun": {
+        "at": 1790926833712,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-e5fd69",
+      "requirementId": "REQ-261002153446-c600",
+      "title": "点已归档窗口能回到那个会话：先取消归档、再打开·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-ccf428"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 src/client/session-jump.ts：① WorkspacesServiceFace 增 unarchiveSession?(sessionId: string): Promise<void>；② SessionJumpResult 增 'restore-failed'；③ jumpToSession 内新增 restoreIfArchived(sid) 辅助：未归档→undefined；无能力→'archived'；调用抛错→'restore-failed'（console.error 留痕）；成功→undefined；在两个 inList 分支用其替换原 if(isArchived) return 'archived'；④ handleSessionJump 删除 archivedSessionIds().has(sid) 的提前 window.alert 拦截，switch 增 'restore-failed' 与改写 'archived' 文案。验证：npx vitest run tests/session-jump.test.ts\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-30f65b",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-90ae7e",
+          "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+          "trigger": "manual",
+          "startedAt": 1790926833939,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 708,
+              "at": 1790926833950,
+              "totals": {
+                "uncachedInputTokens": 235487,
+                "outputTokens": 54492,
+                "cacheReadTokens": 11349760,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 712,
+              "at": 1790926834193,
+              "totals": {
+                "uncachedInputTokens": 235487,
+                "outputTokens": 54492,
+                "cacheReadTokens": 11349760,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790926834160
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c90d68",
+          "body": "[状态] → in_progress：开工：跑 session-jump 单测核对（reqboard_task_move）",
+          "createdAt": 1790926833939,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        },
+        {
+          "id": "c-f5f41a",
+          "body": "[状态] → done：测试完成：11 passed（reqboard_task_move）",
+          "createdAt": 1790926834160,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790926699252,
+      "updatedAt": 1790926834160,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790926699252,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790926833939,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "开工：跑 session-jump 单测核对"
+        },
+        {
+          "status": "done",
+          "at": 1790926834160,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "测试完成：11 passed"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790926834019,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/session-jump.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/session-jump.test.ts → 11 passed",
+          "断言时间线 ['unarchive:s-arch','selectPanel:null','openSession:s-arch'] 且返回 opened",
+          "断言恢复抛错 → restore-failed 且时间线不含 openSession",
+          "断言无 unarchiveSession 能力 → archived 且时间线为空"
+        ]
+      },
+      "lastRun": {
+        "at": 1790926834019,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2c76c3",
+      "requirementId": "REQ-261002153446-c600",
+      "title": "点之前就看得见会发生什么：chip 与失败提示的文案·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-30f65b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/client/render/dom-utils.ts：sessionChipHtml 的 archived 分支 title 改为 `${kind}已归档（${sid}）：点击取消归档并打开`（类名/属性不变，仍是可点 jump-session 按钮）。改 src/client/board-mount.ts：jumpResultMessage 增 case 'restore-failed' 返回「取消归档失败（sid）：会话未恢复，未跳转（可到会话列表手动恢复后重试）」；case 'archived' 补「客户端不支持取消归档」；case 'unavailable' 文案含「暂不可用」。验证：npx vitest run tests/board-info-fixes.test.ts\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-54bec3",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-bc05d8",
+          "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+          "trigger": "manual",
+          "startedAt": 1790926851404,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 750,
+              "at": 1790926851415,
+              "totals": {
+                "uncachedInputTokens": 280888,
+                "outputTokens": 57140,
+                "cacheReadTokens": 12559616,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 754,
+              "at": 1790926851652,
+              "totals": {
+                "uncachedInputTokens": 280888,
+                "outputTokens": 57140,
+                "cacheReadTokens": 12559616,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790926851614
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-94437d",
+          "body": "[状态] → in_progress：开工：chip title 与结果文案（reqboard_task_move）",
+          "createdAt": 1790926851404,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        },
+        {
+          "id": "c-b524fc",
+          "body": "[状态] → done：研发完成：文案落地（reqboard_task_move）",
+          "createdAt": 1790926851614,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790926842977,
+      "updatedAt": 1790926851614,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790926842977,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790926851404,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "开工：chip title 与结果文案"
+        },
+        {
+          "status": "done",
+          "at": 1790926851614,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "研发完成：文案落地"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790926851479,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/render/dom-utils.ts",
+          "src/client/board-mount.ts",
+          "tests/board-info-fixes.test.ts"
+        ],
+        "completed": [
+          "dom-utils.ts：已归档 chip 的 title 改为「点击取消归档并打开」",
+          "board-mount.ts：新增 restore-failed 文案（取消归档失败 + 未跳转 + 手动恢复路径）",
+          "archived 文案改写为「当前客户端不支持取消归档」",
+          "unavailable 文案补「暂不可用」，修掉既有基线红"
+        ]
+      },
+      "lastRun": {
+        "at": 1790926851479,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8e6f26",
+      "requirementId": "REQ-261002153446-c600",
+      "title": "点之前就看得见会发生什么：chip 与失败提示的文案·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-2c76c3"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 src/client/render/dom-utils.ts：sessionChipHtml 的 archived 分支 title 改为 `${kind}已归档（${sid}）：点击取消归档并打开`（类名/属性不变，仍是可点 jump-session 按钮）。改 src/client/board-mount.ts：jumpResultMessage 增 case 'restore-failed' 返回「取消归档失败（sid）：会话未恢复，未跳转（可到会话列表手动恢复后重试）」；case 'archived' 补「客户端不支持取消归档」；case 'unavailable' 文案含「暂不可用」。验证：npx vitest run tests/board-info-fixes.test.ts\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-54bec3",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-911b46",
+          "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+          "trigger": "manual",
+          "startedAt": 1790926851752,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 756,
+              "at": 1790926851763,
+              "totals": {
+                "uncachedInputTokens": 280888,
+                "outputTokens": 57140,
+                "cacheReadTokens": 12559616,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 760,
+              "at": 1790926851990,
+              "totals": {
+                "uncachedInputTokens": 280888,
+                "outputTokens": 57140,
+                "cacheReadTokens": 12559616,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790926851968
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-746d8b",
+          "body": "[状态] → in_progress：开工：跑 board-info-fixes 核对文案断言（reqboard_task_move）",
+          "createdAt": 1790926851752,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        },
+        {
+          "id": "c-67a449",
+          "body": "[状态] → done：测试完成：18 passed（reqboard_task_move）",
+          "createdAt": 1790926851968,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790926842977,
+      "updatedAt": 1790926851968,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790926842977,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790926851752,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "开工：跑 board-info-fixes 核对文案断言"
+        },
+        {
+          "status": "done",
+          "at": 1790926851968,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "测试完成：18 passed"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790926851834,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/board-info-fixes.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/board-info-fixes.test.ts → 18 passed",
+          "断言已归档 chip HTML 含 data-archived=\"true\" 且 title 含「点击取消归档并打开」",
+          "断言 restore-failed 提示含「取消归档失败」与「未跳转」",
+          "断言 unavailable 含「暂不可用」（既有基线红一并转绿）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790926851834,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-3457a2",
+      "requirementId": "REQ-261002153446-c600",
+      "title": "兼容与回归：旧客户端语义、幂等、类型与客户端构建·校验",
+      "description": "子卡阶段：校验",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-54bec3"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "校验项逐条给出结果：`npx vitest run <校验用例>` → 全绿；异常项已列出并标注影响面",
+      "implementation": "① tests/session-jump.test.ts 补 TC-4（未归档 sid 的时间线不含 unarchive，顺序与既有断言一致）；② 跑 npx vitest run tests/session-jump.test.ts tests/board-info-fixes.test.ts 全绿；③ npm run typecheck 与 HEAD 基线比对（不得新增错误）；④ pnpm build:client 必须输出 [verify-client] OK（规范 C-12）；⑤ 证据写进 docs/requirements/REQ-261002153446-c600/tests/test-evidence.md\n\n[子卡阶段·校验] 只做本阶段；验收：校验项逐条给出结果：`npx vitest run <校验用例>` → 全绿；异常项已列出并标注影响面",
+      "context": "",
+      "parentId": "t-b7b87a",
+      "stageKind": "verify",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ac3cbb",
+          "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+          "trigger": "manual",
+          "startedAt": 1790926912930,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 793,
+              "at": 1790926912940,
+              "totals": {
+                "uncachedInputTokens": 303918,
+                "outputTokens": 58473,
+                "cacheReadTokens": 13559168,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255",
+              "seq": 797,
+              "at": 1790926913160,
+              "totals": {
+                "uncachedInputTokens": 303918,
+                "outputTokens": 58473,
+                "cacheReadTokens": 13559168,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790926913139
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5ed159",
+          "body": "[状态] → in_progress：开工：跑回归验证（两文件单测 + 客户端面 4 文件 + 类型 + 构建）（reqboard_task_move）",
+          "createdAt": 1790926912930,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        },
+        {
+          "id": "c-145e43",
+          "body": "[状态] → done：验证完成：目标用例与客户端面全绿，证据落盘（reqboard_task_move）",
+          "createdAt": 1790926913139,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790926908341,
+      "updatedAt": 1790926913139,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790926908341,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790926912930,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "开工：跑回归验证（两文件单测 + 客户端面 4 文件 + 类型 + 构建）"
+        },
+        {
+          "status": "done",
+          "at": 1790926913139,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-4c565f55-a7af-4e7f-8b37-5033c0c2a255"
+          },
+          "reason": "验证完成：目标用例与客户端面全绿，证据落盘"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790926913005,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261002153446-c600/tests/test-evidence.md"
+        ],
+        "completed": [
+          "npx vitest run tests/session-jump.test.ts tests/board-info-fixes.test.ts → 29 passed / 0 failed",
+          "客户端面 4 文件（含 client-view / archived-entry）→ 95 passed / 0 failed",
+          "npx vitest run 全量 → 97 failed / 3030 passed，低于规范记录的基线 106 failed，且失败行零命中本次改动文件",
+          "npx tsc --noEmit 错误总数 187（基线 223），改动文件 0 错误",
+          "npm run build:client → [verify-client] OK（bundle 335946 bytes）",
+          "证据落盘 docs/requirements/REQ-261002153446-c600/tests/test-evidence.md"
+        ]
+      },
+      "lastRun": {
+        "at": 1790926913005,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-30f65b",
+      "to": "t-54bec3"
+    },
+    {
+      "from": "t-54bec3",
+      "to": "t-b7b87a"
+    },
+    {
+      "from": "t-ccf428",
+      "to": "t-e5fd69"
+    },
+    {
+      "from": "t-30f65b",
+      "to": "t-2c76c3"
+    },
+    {
+      "from": "t-2c76c3",
+      "to": "t-8e6f26"
+    },
+    {
+      "from": "t-54bec3",
+      "to": "t-3457a2"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-30f65b",
+        "t-ccf428"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-54bec3",
+        "t-2c76c3",
+        "t-e5fd69"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-b7b87a",
+        "t-3457a2",
+        "t-8e6f26"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-02T07:42:52.880Z"
+}

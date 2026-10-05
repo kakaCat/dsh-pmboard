@@ -10,7 +10,7 @@
  *
  * @module dsh-pmboard/application/internal/content-gate-wiring
  */
-import type { RequirementRecord, TaskRecord } from '../../shared/protocol.js'
+import type { OverCapacityItem, PlanTask, RequirementRecord, TaskRecord } from '../../shared/protocol.js'
 import type { GateFailure } from './artifact-gates.js'
 import {
   parseDocument,
@@ -30,7 +30,8 @@ import {
   type NumberedItem,
   type ParsedDoc,
 } from './content-gates.js'
-import { collectTaskRefs, taskRefsFromDecomposition } from './content-trace.js'
+import { collectTaskRefs, planKeysIn, taskRefsFromDecomposition } from './content-trace.js'
+import { judgeFootprint } from '../../domain/task/Footprint.js'
 import { envelope } from './gate-feedback.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { workspacePathCandidates } from './support.js'
@@ -55,6 +56,37 @@ export type {
   ReceiveTaskLike,
 } from './content-trace.js'
 export type { DocsEntry, DocsReader } from './content-gates.js'
+
+/**
+ * FR-7 第二通道：从计划文档（decomposition.md）的覆盖对照表读「计划 key → FR 引用」。
+ * 与 requirementRefsOf（任务对象通道）互为补充：显式优先、文档兜底，两处都没有才算缺。
+ */
+export async function planRefsFromDoc(docs: DocsReader, req: { id: string }): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>()
+  const path = 'docs/requirements/' + req.id + '/decomposition.md'
+  if (!docs.exists(path)) return map
+  const rows = taskRefsFromDecomposition(parseDocument(await docs.read(path)))
+  for (const t of rows) {
+    // 注意字段名：taskRefsFromDecomposition 返回的是 ConsistencyTaskLike——**id** 承载计划键
+    // （不是 key），引用在 requirement_refs / requirementRefs 两个拼法下都可能出现（本项目两种都认）。
+    const key = t.id
+    const refs = [...(t.requirement_refs ?? []), ...(t.requirementRefs ?? [])]
+      .filter((x): x is string => typeof x === 'string')
+    if (typeof key === 'string' && key.length > 0 && refs.length > 0) map.set(key, refs)
+  }
+  return map
+}
+
+/**
+ * FR-7 判定单点：两条通道（任务对象 / 计划文档）合并后，**哪些计划卡仍然没有 FR 引用**。
+ * 返回空数组 = 引用齐备，可落库；非空 = 调用方据此拒绝并点名这些卡。
+ */
+export function planRefsMissing(
+  keys: readonly string[],
+  refsByKey: ReadonlyMap<string, string[]>,
+): string[] {
+  return keys.filter(k => (refsByKey.get(k) ?? []).length === 0)
+}
 
 /** 读任务对象上的 requirement_refs（同时认 snake_case 与 camelCase，避免写法不一致导致静默漏判）。 */
 export function requirementRefsOf(raw: unknown): string[] {
@@ -673,5 +705,119 @@ export async function assertFullTraceabilityGate(
       ...coverage.implementationCoverage.gaps,
       ...coverage.testCoverage.gaps
     ]
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 超容量软门禁（REQ-261002175818-80a8 t5 / FR-4、FR-5）：算出来、标出来，但**不拒绝落库**
+// ---------------------------------------------------------------------------
+
+/**
+ * 超容量卡清单（FR-4）：纯计算、零 IO。
+ *
+ * 两条边界都在判定单点（`domain/task/Footprint`）里，本函数**不重算**：
+ *   · 未声明的卡**不判定**（FR-9：未声明 ≠ 0，绝不冒充）；
+ *   · 恰好等于容量的卡**不算超**（严格大于才超）。
+ */
+export function overCapacityItemsOf(tasks: readonly PlanTask[], capacity: number): OverCapacityItem[] {
+  const out: OverCapacityItem[] = []
+  for (const t of tasks) {
+    if (t.footprint === undefined) continue
+    const j = judgeFootprint(t.footprint, capacity)
+    if (!j.over) continue
+    const batches = j.suggestedBatches ?? 2
+    out.push({
+      key: t.key,
+      title: t.title,
+      detailUnits: j.detailUnits,
+      capacity: j.capacity,
+      suggestedBatches: batches,
+      hint: splitHintOf(batches, j.capacity),
+    })
+  }
+  return out
+}
+
+/**
+ * 一句话切分建议：只谈切法，不复述体量的来历（数字在同类字段里，重复就是两处真相）。
+ *
+ * 刻意**不**去解析 implementation 里点到的目录名：那需要第二份路径词法
+ * （`Footprint` 的 countedPaths 没导出，正是为了全仓只有一份），两份词法必然漂移。
+ * 少一句目录名，好过再养一份会跟判定走散的真相。
+ */
+function splitHintOf(batches: number, capacity: number): string {
+  return '按目录或按接口切：拆成 ' + String(batches) + ' 批以内的子卡（同一目录 / 同一接口聚成一批），每批 ≤ '
+    + String(capacity) + ' DU'
+}
+
+/** FR-5 门禁回执：`failure` 只在 enforce 且确有缺口时给出；`gaps` 无论哪种门禁强度都照原样回报。 */
+export interface OverCapacityMarkerReport {
+  /** enforce 且有缺口时给出；warn 时**恒** undefined（降级的是拒绝，不是披露） */
+  failure?: GateFailure
+  /** 逐卡缺口（缺标记 / 批数不符），点名 key 与**期望批数**；warn 时也交给调用方进返回体 */
+  gaps: string[]
+}
+
+/**
+ * FR-5 标记在场门禁：计划文档里每张超容量卡都必须有「⚠️超容量(建议N批)」，且 **N == 判定批数**。
+ *
+ * 为什么要求 N 相等、而不只要求"有标记"：只要求在场，就会留下「标了但数字是旧算的」——
+ * 披露与判定悄悄漂移，而人只看标记。相等是可机械证伪的。
+ *
+ * 两条早退（都照 `assertClauseCoverageGate` 的惯例）：没有超容量卡 → 不读文档（旧计划与轻量计划
+ * 永不触发）；`decomposition.md` 不存在 → 放行（没有文档就没有可查的依据，不凭"文件不存在"判违规）。
+ *
+ * key 的认法**复用** `planKeysIn`（计划键的唯一词法）：先把括号归一成空格，于是
+ * `| t5 | … | ⚠️超容量(建议8批) |` 与 `t5 ⚠️超容量(建议8批)` 都认得出，不必再写一份"key 怎么算出现"。
+ * 代价（刻意接受并写在用例里）：一行里若挤进**多张**超容量卡，只取该行第一个「建议N批」——
+ * FR-5 要求的是"卡片行前带标记"，一行一卡是这条规则的前提。
+ */
+export async function checkOverCapacityMarkerGate(
+  docs: DocsReader,
+  req: { id: string },
+  items: readonly { key: string; suggestedBatches: number }[],
+  gate: 'enforce' | 'warn',
+  planPath?: string,
+): Promise<OverCapacityMarkerReport> {
+  if (items.length === 0) return { gaps: [] }
+  // 读**实际提交的那份计划**：`reqboard_submit(kind=plan)` 的 path 是 agent 可传的，
+  // 而硬编码 `decomposition.md` 会把"提交到别处"变成一条**静默放行**面——
+  // 计划照落库、标记无人查、也不报警（2026-10-04 复核指出；本仓最忌"静默"）。
+  const path = planPath !== undefined && planPath.length > 0
+    ? planPath
+    : 'docs/requirements/' + req.id + '/decomposition.md'
+  if (!docs.exists(path)) return { gaps: [] }
+
+  const lines = (await docs.read(path)).split(/\r?\n/)
+  const gaps: string[] = []
+  for (const item of items) {
+    const expected = String(item.suggestedBatches)
+    const line = lines.find(l => l.includes('超容量') && planKeysIn(l.replace(/[（(]/g, ' ')).includes(item.key))
+    const written = line === undefined ? undefined : /建议\s*(\d+)\s*批/.exec(line)?.[1]
+    if (written === undefined) {
+      gaps.push(item.key + ' 缺标记「⚠️超容量(建议' + expected + '批)」')
+      continue
+    }
+    if (Number(written) !== item.suggestedBatches) {
+      gaps.push(item.key + ' 标记批数不符：文档写「建议' + written + '批」，判定为 ' + expected + ' 批')
+    }
+  }
+  if (gaps.length === 0 || gate === 'warn') return { gaps }
+
+  return {
+    gaps,
+    failure: {
+      code: 'plan_overcapacity_marker_missing',
+      kind: 'plan',
+      gaps,
+      message: envelope({
+        lead: 'reqboard_plan_submit 未执行：',
+        what: fmt('超容量卡 {list}', { list: gaps.join('；') }),
+        why: '超容量必须在计划文档里标出建议批数，且标记的批数要与判定一致'
+          + '（只要求"有标记"会让披露与判定悄悄漂移，而人只看标记）',
+        how: '在 ' + path + ' 的任务表里给这些卡补上「⚠️超容量(建议N批)」（N 取上面点名的期望值），'
+          + '或把卡切小到不超容量后重交；确需先放行、不校验标记时，插件配置 capacity.markerGate="warn"（只披露不拒绝）',
+      }),
+    },
   }
 }

@@ -3,12 +3,15 @@
  * T-5 接线单测（REQ-260926215013-1568）：七路回合订阅接线 + requirement-moved 不再直接续跑 + teardown 关闸。
  * 用假事件总线驱动真实的 wireDiveRoundSubscriptions 与 round 状态机。
  */
+import { legacyStoreProjection } from './support/legacy-store-projection.js'
+import { legacyStoreProjection } from './support/legacy-store-projection.js'
+import { factsOf } from '../src/domain/requirement/RequirementSummary.js'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { emptyLedger, type RequirementRecord } from '../src/shared/protocol.js'
 import { createDiveRoundDriver, type DiveRoundPorts } from '../src/application/dive/round-driver.js'
-import { wireDiveRoundSubscriptions, DIVE_ROUND_EVENTS } from '../src/application/dive/round-subscriptions.js'
+import { wireDiveRoundSubscriptions, wireAgentSubscriptions, DIVE_ROUND_EVENTS, DIVE_ROOT_EVENTS } from '../src/application/dive/round-subscriptions.js'
 
 function makeReq(): RequirementRecord {
   return {
@@ -23,7 +26,7 @@ function harness() {
   const ledger = { ...emptyLedger(), requirements: [makeReq()], tasks: [], triages: [] } as never as {
     schemaVersion: number; revision: number; requirements: RequirementRecord[]; tasks: unknown[]; triages: unknown[]
   }
-  const repo = {
+    const repo = {
     snapshot: () => ledger,
     read: async (fn: (v: unknown) => unknown) => fn(ledger),
     mutate: async (_r: string, fn: (l: unknown) => unknown) => {
@@ -39,12 +42,14 @@ function harness() {
   const delivered: unknown[] = []
   let n = 0
   const warns: string[] = []
-  const ports: DiveRoundPorts = {
-    repo: repo as never,
+  const ports: DiveRoundPorts = { store: legacyStoreProjection(repo as never),
+    // B12 阶段②a：本模块的写改走新端口（与 peekFacts 同源）
+
+    // B12 阶段①-a：idle 拍的同步判定改用窄投影
+    peekFacts: () => ledger.requirements.map(factsOf),
     agents: { get: (id) => (id === 'agent-1' ? agent : undefined), withoutInitiator: (op) => op() },
     fiberActive: () => true,
     delivery: {
-      deliver: () => ({ delivered: true }),
       createRoundMessage: (input) => { n += 1; const message = { id: 'm' + n, role: 'user', content: [{ type: 'text', text: input.text }], source: { kind: 'dive', requirementId: input.requirementId, revision: input.revision, round: input.round } }; return { message, messageId: 'm' + n } },
       deliverMessage: (_w, m) => { delivered.push(m); inbox.nextTurn.push(m); agent.status = 'running'; return { delivered: true } },
     },
@@ -58,7 +63,14 @@ function harness() {
   const driver = createDiveRoundDriver(ports)
   const listeners = new Map<string, (...a: unknown[]) => unknown>()
   const bus = { on: (event: string, listener: (...a: unknown[]) => unknown) => { listeners.set(event, listener); return () => { listeners.delete(event) } } }
-  const off = wireDiveRoundSubscriptions(bus, driver, { debug: () => {}, warn: (m) => warns.push(m) })
+  const wl = { debug: () => {}, warn: (m: string) => warns.push(m) }
+  const off = wireDiveRoundSubscriptions(bus, driver, wl, (a) => {
+    // REQ-261001213924-1441 FR-3：per-agent 组注册到 **agent.ctx**。这里把 agent.ctx 也指向同一个假总线，
+    // 于是本文件既有的事件驱动用例（fire 某个事件名）继续有效，而"注册在哪"由 wake-wiring 那份测试单独钉住。
+    wireAgentSubscriptions(bus, a, driver, { onStatus: () => {} }, wl)
+  })
+  // 走真实入口：宿主派发 agent/created → 组合根/管理器为这个 agent 注册 per-agent 组
+  listeners.get('agent/created')?.({ agent })
   return { driver, agent, delivered, warns, listeners, off, bus }
 }
 
@@ -68,11 +80,12 @@ describe('T-5 · 七路回合订阅', () => {
     expect([...h.listeners.keys()].sort()).toEqual([...DIVE_ROUND_EVENTS].sort())
     expect(h.warns).toEqual([])
   })
-  it('宿主不提供事件总线 → 七条响亮告警，不静默降级（FR-11）', () => {
+  it('宿主不提供事件总线 → root 组逐条响亮告警，不静默降级（FR-11）', () => {
     const h = harness()
     const warns: string[] = []
     wireDiveRoundSubscriptions({}, h.driver, { debug: () => {}, warn: (m) => warns.push(m) })
-    expect(warns.length).toBe(DIVE_ROUND_EVENTS.length)
+    // per-agent 组要等 agent/created 才会注册，其失败面由 dive-wake-wiring 的"负例三者齐备"覆盖
+    expect(warns.length).toBe(DIVE_ROOT_EVENTS.length)
     expect(warns.join(' ')).toContain('未成立')
   })
   it('requirement-moved 只置检查标志：忙时不投递，空闲后才起 1 轮（FR-6）', async () => {

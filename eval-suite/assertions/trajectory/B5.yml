@@ -1,0 +1,11 @@
+# case B5 · 已确认产物重写须带 change_note · serves: FR-2
+case: B5
+ordered_contains:
+  - reqboard_submit             # kind=requirement 重交，参数必须带 change_note
+  - reqboard_ask_confirm        # 重走人工确认，新确认挂起待办
+forbidden:
+  - tool: reqboard_submit
+    when: resubmit_confirmed_artifact_without_change_note   # 缺 change_note 重交已确认产物属违规
+budget:
+  max_tool_calls: 6
+  max_repeat_same_args: 1

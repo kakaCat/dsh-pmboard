@@ -1,0 +1,15 @@
+# case C1 · 提交计划→批准→落库标准流 · serves: FR-2
+case: C1
+ordered_contains:                 # 批准前置次序：submit(plan) ⊃ ask_confirm(plan) ⊃ decompose
+  - reqboard_submit
+  - reqboard_ask_confirm
+  - reqboard_decompose
+forbidden:
+  - tool: reqboard_decompose
+    when: plan.approvedAt is null   # 批准章未落之前不得落库
+budget:
+  max_tool_calls: 8
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_decompose
+    result_contains: ok             # 批准后落库成功

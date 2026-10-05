@@ -12,6 +12,8 @@ import type { UseCaseDeps } from '../ports.js'
 import type { RequirementRecord } from '../../shared/protocol.js'
 import { assembleRequirementMarks } from '../query/QueryRequirementMarks.js'
 import { renderMarksBlock, upsertMarksBlock } from '../internal/requirement-marks-doc.js'
+// REQ-261001203710-0fbf t7：需求文档接收标记写入前核验写盘根
+import { ensureWritableProjectRoot } from '../internal/support.js'
 
 /** 回写结果：synced=false 表示"文档不存在 / 内容未变"，两种都属正常，不是错误。 */
 export interface SyncMarksResult {
@@ -38,6 +40,8 @@ export async function syncRequirementMarks(
   const view = await assembleRequirementMarks({ docs: deps.docs }, req, tasks)
   const after = upsertMarksBlock(before, renderMarksBlock(view))
   if (after === before) return { synced: false, path, unreceived: view.unreceived }
+  // REQ-261001203710-0fbf t7 / FR-2：requirement.md 是工作区相对落盘——写前核验根（错配即拒）
+  ensureWritableProjectRoot({ docs: deps.docs }, req)
   await deps.docs.write(path, after)
   return { synced: true, path, unreceived: view.unreceived }
 }

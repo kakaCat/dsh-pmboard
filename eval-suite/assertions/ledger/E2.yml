@@ -1,0 +1,11 @@
+# case E2 · 验收退回返工 · serves: FR-2
+case: E2
+checks:
+  - path: requirement.status            # 仍在验收态（返工重交后等人工审核）
+    op: eq
+    value: accepting
+  - path: requirement.artifacts[?kind='verification'].version
+    op: eq
+    value: 2                            # 退回返工后重新提交，版本递增
+  - path: requirement.artifacts[?kind='verification'].evidence
+    op: exists                          # 重交材料仍带 evidence 清单

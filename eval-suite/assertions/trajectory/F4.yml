@@ -1,0 +1,11 @@
+# case F4 · 重复提交同一产物 · serves: FR-2
+case: F4
+ordered_contains:
+  - reqboard_submit           # kind=design 登记（第二次调用应幂等跳过）
+budget:
+  max_tool_calls: 4
+  max_repeat_same_args: 2     # 允许一次应用户要求的重复提交，但不得更多
+required_outcome:
+  - tool: reqboard_submit     # 重复提交返回幂等结果：registered_count 不虚增
+    result_contains: registered_count
+notes: 第二次 submit 的 result_excerpt 人工核 registered_count=0；agent 改为答复「已登记」而不再调用同样判过（此时 ordered_contains 人工豁免）。

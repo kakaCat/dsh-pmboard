@@ -1,0 +1,5187 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261004150249-731e",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-04T07:19:47.433Z",
+  "tasks": [
+    {
+      "id": "t-d43523",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "扩端口签名与 handoff 配置契约",
+      "cardDoc": "docs/requirements/REQ-261004150249-731e/tasks/t-d43523.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx tsc --noEmit 通过；npx vitest run tests/handoff-policy.test.ts 中「缺省三档 = 0.75/0.85/0.90」与「warn ≥ fork → 装配期抛错」两条断言绿。",
+      "implementation": "src/application/ports.ts：WindowOpenerPort.create 改签名为 create(opts?: { cwd?: string; workspaceId?: string })，并加可选方法 resolveSourceProject(sourceSessionId): { workspaceId?: string; cwd?: string } | undefined（测试替身可不实现）。src/plugin-config.ts：新增 handoffSettings(config) → { warn, fork, critical }，缺省 0.75/0.85/0.90；非有限数或不满足 0 < warn < fork < critical ≤ 1 → 装配期抛错（照 seatsMaxSetting 的写法与纪律）。不动任何既有调用点的运行行为。",
+      "context": "",
+      "footprint": {
+        "files": 2,
+        "anchors": 4,
+        "chars": 1200
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e60c17",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791098410660,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 840,
+              "at": 1791098410661,
+              "totals": {
+                "uncachedInputTokens": 152010,
+                "outputTokens": 95976,
+                "cacheReadTokens": 13816960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1229,
+              "at": 1791100213308,
+              "totals": {
+                "uncachedInputTokens": 189218,
+                "outputTokens": 145521,
+                "cacheReadTokens": 27890048,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 37208,
+              "outputTokens": 49545,
+              "cacheReadTokens": 14073088,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100213308
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098387347,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791098410660,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "开工 t1：扩端口签名与 handoff 配置契约（叶子卡，无依赖）"
+        },
+        {
+          "status": "done",
+          "at": 1791100213308,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t1 四段子卡全部完成，父卡收口（间隔已按节流提示等待）"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-8d26d2",
+          "body": "[状态] → in_progress：开工 t1：扩端口签名与 handoff 配置契约（叶子卡，无依赖）（reqboard_task_move）",
+          "createdAt": 1791098410660,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-240490",
+          "body": "[状态] → done：t1 四段子卡全部完成，父卡收口（间隔已按节流提示等待）（reqboard_task_move）",
+          "createdAt": 1791100213308,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 5,
+      "createdAt": 1791098387347,
+      "updatedAt": 1791100213308,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791100135969,
+        "reportIndex": 2,
+        "filesChanged": [
+          "src/application/ports.ts",
+          "src/plugin-config.ts",
+          "src/application/internal/handoff-policy.ts",
+          "tests/handoff-policy.test.ts"
+        ],
+        "completed": [
+          "端口落点入参 + 源项目解析口 + 三档配置解析全部落地",
+          "子卡链四段完成（dev/integrate/review/test）",
+          "验收命令：tests/handoff-policy.test.ts 23 绿；tsc 本卡零错误",
+          "兼容口径：旧调用方请求体不变，未配置时无后台行为"
+        ]
+      },
+      "lastRun": {
+        "at": 1791098509883,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-3e8cec",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "交接写原子化：席位升降 + sourceSessionId + 留痕",
+      "cardDoc": "docs/requirements/REQ-261004150249-731e/tasks/t-3e8cec.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/handoff-owner.test.ts：① 交接后 seats 含 owner=toWindow、observer=fromWindow 且 sourceSessionId===toWindow；② mutate 内注入异常 → seats 与 sourceSessionId 三处都不变（无半个交接）；③ 无 seats 的存量记录被物化为两条；④ 重复调用 changed=false 且评论数不变。",
+      "implementation": "新建 src/application/internal/handoff-write.ts：handoffOwner(req, { toWindow, fromWindow, actor, at, commentId, reason }) 在一次 mutate 内完成 ① 新窗口入席 owner ② 原窗口（若有席位）降 observer ③ req.sourceSessionId = toWindow ④ 追一条留痕评论（from→to、角色变化、reason）。前置校验：当前 owner 必须等于 fromWindow（并发保护）、toWindow ≠ fromWindow、不得产出空 owner（INV-1）；席位与 sourceSessionId 必须同指一窗（INV-2）。幂等：三处都已对 → 返回 changed=false，不新增评论。",
+      "context": "",
+      "footprint": {
+        "files": 1,
+        "anchors": 5,
+        "chars": 1000
+      },
+      "requirementRefs": [
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2b7949",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100275648,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1239,
+              "at": 1791100275648,
+              "totals": {
+                "uncachedInputTokens": 189218,
+                "outputTokens": 145521,
+                "cacheReadTokens": 27890048,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1334,
+              "at": 1791100435842,
+              "totals": {
+                "uncachedInputTokens": 199732,
+                "outputTokens": 152451,
+                "cacheReadTokens": 30121216,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 10514,
+              "outputTokens": 6930,
+              "cacheReadTokens": 2231168,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100435842
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098387347,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100275648,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t2（交接写）无依赖，开工：展开子卡链"
+        },
+        {
+          "status": "done",
+          "at": 1791100435842,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t2 四段子卡全部完成，父卡收口"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5d296e",
+          "body": "[状态] → in_progress：t2（交接写）无依赖，开工：展开子卡链（reqboard_task_move）",
+          "createdAt": 1791100275648,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-6a23a6",
+          "body": "[状态] → done：t2 四段子卡全部完成，父卡收口（reqboard_task_move）",
+          "createdAt": 1791100435842,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098387347,
+      "updatedAt": 1791100435842,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791100280530,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/binding-write.ts",
+          "tests/handoff-owner.test.ts"
+        ],
+        "completed": [
+          "交接写原子化落地（席位 + 绑定 + 留痕一次完成）",
+          "tests/handoff-owner.test.ts 覆盖正常/物化/幂等/不变量/半截交接",
+          "与 binding-trace 静态断言兼容（直写仍只在该文件）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100280530,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ee8599",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "分叉判据纯函数（三档 + 读数缺席不猜）",
+      "cardDoc": "docs/requirements/REQ-261004150249-731e/tasks/t-ee8599.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/handoff-policy.test.ts 全绿：0.74/0.75/0.84/0.85/0.89/0.90 分别得 none/warn/warn/fork/fork/critical；contextWindow 缺、pressureTokens 缺、projectedTokens=0（不得判缺席）、source='unavailable' 四种分别断言；npx vitest run tests/layer-boundary.test.ts 绿。",
+      "implementation": "新建 src/application/internal/handoff-policy.ts：decideHandoff(pressure: ContextPressureSnapshot | undefined, cfg: { warn; fork; critical }) → 'none' | 'warn' | 'fork' | 'critical' | 'unknown'。ratio = pressureTokens / contextWindow，仅当两者都在场且 source === 'projection' 才可算；任一缺席 → 'unknown'（绝不补 0；projectedTokens=0 是合法读数）。零 IO、零 node: 依赖（C-01）。配套新建 tests/handoff-policy.test.ts 覆盖六点边界与缺席分支。",
+      "context": "",
+      "footprint": {
+        "files": 2,
+        "anchors": 6,
+        "chars": 1300
+      },
+      "requirementRefs": [
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-adf38a",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791098410779,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 842,
+              "at": 1791098410779,
+              "totals": {
+                "uncachedInputTokens": 152010,
+                "outputTokens": 95976,
+                "cacheReadTokens": 13816960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1237,
+              "at": 1791100275572,
+              "totals": {
+                "uncachedInputTokens": 189218,
+                "outputTokens": 145521,
+                "cacheReadTokens": 27890048,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 37208,
+              "outputTokens": 49545,
+              "cacheReadTokens": 14073088,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100275572
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098387347,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791098410779,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "开工 t3：分叉判据纯函数（三档 + 读数缺席不猜），与 t1 同批"
+        },
+        {
+          "status": "done",
+          "at": 1791100275572,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t3 四段子卡全部完成，父卡收口"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a5044b",
+          "body": "[状态] → in_progress：开工 t3：分叉判据纯函数（三档 + 读数缺席不猜），与 t1 同批（reqboard_task_move）",
+          "createdAt": 1791098410779,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-b1ef78",
+          "body": "[状态] → done：t3 四段子卡全部完成，父卡收口（reqboard_task_move）",
+          "createdAt": 1791100275572,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 5,
+      "createdAt": 1791098387347,
+      "updatedAt": 1791100275572,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791100213456,
+        "reportIndex": 2,
+        "filesChanged": [
+          "src/application/internal/handoff-policy.ts",
+          "tests/handoff-policy.test.ts",
+          "src/application/use-cases/HandoffOwner.ts"
+        ],
+        "completed": [
+          "判据纯函数 + 自主边界判定落地",
+          "子卡链四段完成（dev/integrate/review/test）",
+          "验收：tests/handoff-policy.test.ts 23 绿；tsc 本卡零错误",
+          "读数缺席分支在判据侧与用例侧各有断言"
+        ]
+      },
+      "lastRun": {
+        "at": 1791098509988,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f2c747",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "开窗落回源项目（适配器 + 两个用例调用点）",
+      "cardDoc": "docs/requirements/REQ-261004150249-731e/tasks/t-f2c747.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-d43523"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/handoff-owner.test.ts 中三条：① 命中 workspace → 替身收到 { workspaceId }；② 无 workspace 有 cwd → 收到 { cwd }；③ 都拿不到 → 回执 REQBOARD_OPEN_WINDOW_UNAVAILABLE 且替身零调用。npx vitest run tests/open-window-tool.test.ts tests/capture-window-bound-policy.test.ts 不回归。",
+      "implementation": "src/adapters/SessionWindowOpener.ts：create(opts?) 按 opts 组装请求——workspaceId 或 cwd 只取其一（DSH 二者互斥，同时给会 gateway/bad-request）；新增 resolveSourceProject(sourceSessionId)：① workspaceRegistry.list().find(w => w.sessionIds.includes(id)).id → { workspaceId } ② 源会话 header.cwd → { cwd } ③ 都拿不到 → undefined。src/application/use-cases/OpenWindow.ts：mode=create 时先解析源项目，undefined → reject('REQBOARD_OPEN_WINDOW_UNAVAILABLE') 且不建会话。src/application/use-cases/CaptureRequirement.ts 的 handoff 分支同样带参（UC-7）。",
+      "context": "",
+      "footprint": {
+        "files": 3,
+        "anchors": 5,
+        "chars": 1500
+      },
+      "requirementRefs": [
+        "FR-1"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-169380",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100280457,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1250,
+              "at": 1791100280457,
+              "totals": {
+                "uncachedInputTokens": 193823,
+                "outputTokens": 146393,
+                "cacheReadTokens": 28199680,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1324,
+              "at": 1791100369912,
+              "totals": {
+                "uncachedInputTokens": 199363,
+                "outputTokens": 151845,
+                "cacheReadTokens": 29795584,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 5540,
+              "outputTokens": 5452,
+              "cacheReadTokens": 1595904,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100369912
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098387347,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100280457,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t4（开窗落回源项目）依赖 t1 已完成，开工：展开子卡链"
+        },
+        {
+          "status": "done",
+          "at": 1791100369912,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t4 四段子卡全部完成，父卡收口"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d68575",
+          "body": "[状态] → in_progress：t4（开窗落回源项目）依赖 t1 已完成，开工：展开子卡链（reqboard_task_move）",
+          "createdAt": 1791100280457,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-2ebea7",
+          "body": "[状态] → done：t4 四段子卡全部完成，父卡收口（reqboard_task_move）",
+          "createdAt": 1791100369912,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098387347,
+      "updatedAt": 1791100369912,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791100301875,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/adapters/SessionWindowOpener.ts",
+          "src/application/use-cases/OpenWindow.ts",
+          "src/application/use-cases/CaptureRequirement.ts",
+          "tests/open-window-project-root.test.ts"
+        ],
+        "completed": [
+          "落点透传 + 源项目解析 + 两个调用点接线全部落地",
+          "子卡链四段完成（dev/integrate/review/test）",
+          "验收：open-window-project-root 6 绿、open-window-tool 7 绿、capture-window-bound-policy 5 绿",
+          "兼容：不传落点的旧调用方请求体不变"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100301875,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-4bd792",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "交接用例与 reqboard_handoff 工具",
+      "cardDoc": "docs/requirements/REQ-261004150249-731e/tasks/t-4bd792.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-3e8cec",
+        "t-ee8599",
+        "t-f2c747"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/handoff-owner.test.ts：① 非 owner → REQBOARD_SEAT_NOT_OWNER 且台账零改动；② to_window 不存在 / 等于源 → REQBOARD_HANDOFF_TARGET_INVALID；③ 投递消息 source.kind === 'reqboard-handoff' 且断言 ≠ 'user'；④ 投递失败 → success:true 且 delivery.delivered=false + 有 reason；⑤ 回执含 from_window/to_window/old_role/new_role 四键。",
+      "implementation": "新建 src/application/use-cases/HandoffOwner.ts：编排 ① 授权 canWrite(seatOf(req, wk), 'move-requirement')，否则 REQBOARD_SEAT_NOT_OWNER ② to_window 校验（存在 / ≠ 源 / 活窗口），否则 REQBOARD_HANDOFF_TARGET_INVALID ③ 开窗（复用 t4 的源项目解析）④ handoffOwner 写台账 ⑤ 断点 + 节点输入包经 deps.crossWindowDeliver.createMessage({ text, kind: 'reqboard-handoff' }).deliver(toWindow, msg)，失败不回滚但回执标 delivered=false + reason ⑥ 回执含 from_window/to_window/old_role/new_role/delivery/context_pressure。新建 src/tools/HandoffTool/HandoffTool.ts 与 prompt.ts（薄壳：schema + 摘要渲染），src/tools/index.ts 导出 defineHandoffTool。",
+      "context": "",
+      "footprint": {
+        "files": 4,
+        "anchors": 5,
+        "chars": 2000
+      },
+      "requirementRefs": [
+        "FR-4",
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b8cdb4",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100435928,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1336,
+              "at": 1791100435928,
+              "totals": {
+                "uncachedInputTokens": 199732,
+                "outputTokens": 152451,
+                "cacheReadTokens": 30121216,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1397,
+              "at": 1791100521893,
+              "totals": {
+                "uncachedInputTokens": 207398,
+                "outputTokens": 157202,
+                "cacheReadTokens": 31453952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 7666,
+              "outputTokens": 4751,
+              "cacheReadTokens": 1332736,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100521893
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098387347,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100435928,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t5（交接用例与工具）依赖 t2/t3/t4 已完成，开工：展开子卡链"
+        },
+        {
+          "status": "done",
+          "at": 1791100521893,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t5 四段子卡全部完成，父卡收口"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-fdd04b",
+          "body": "[状态] → in_progress：t5（交接用例与工具）依赖 t2/t3/t4 已完成，开工：展开子卡链（reqboard_task_move）",
+          "createdAt": 1791100435928,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-77ae91",
+          "body": "[状态] → done：t5 四段子卡全部完成，父卡收口（reqboard_task_move）",
+          "createdAt": 1791100521893,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098387347,
+      "updatedAt": 1791100521893,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791100446901,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/HandoffOwner.ts",
+          "src/tools/HandoffTool/HandoffTool.ts",
+          "src/tools/HandoffTool/prompt.ts",
+          "src/tools/index.ts",
+          "src/application/ports.ts",
+          "tests/handoff-owner.test.ts"
+        ],
+        "completed": [
+          "交接用例 + reqboard_handoff 工具 + 提示词落地",
+          "子卡链四段完成（dev/integrate/review/test）",
+          "验收：handoff-owner 22 绿、工具 schema 面绿、tsc 本卡零错误",
+          "一处设计冲突（UC-5 重试路径）已如实登记并改用可达表述"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100446901,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-46d0d7",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "组合根装配 + 看板改绑修正 + 迁移兼容与回滚",
+      "cardDoc": "docs/requirements/REQ-261004150249-731e/tasks/t-46d0d7.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-4bd792"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/handoff-owner.test.ts 中「已有显式 seats 的需求经 applyRebind 后：新窗口 owner、原窗口 observer、sourceSessionId 同步」绿（该断言在改造前必红，作为反向演练）；npx vitest run tests/binding-trace.test.ts tests/layer-boundary.test.ts tests/size-budget.test.ts 不回归；npx tsc --noEmit 通过；pnpm build 退出码 0。",
+      "implementation": "src/index.ts：① ctx.inject(['workspaceRegistry']) 惰性取值（与 sessionController 同款，缺省不影响既有行为）② SessionWindowOpener 构造加第二个解析器 ③ useCaseDeps 增 crossWindowDeliver: deliverer（AgentDeliverer 已实现 createMessage/deliver，含冷会话 resume——FR-4 的全部实现就是这一行）④ 注册 defineHandoffTool。src/application/internal/binding-write.ts：applyRebind 改为委托 handoffOwner（看板改绑 = 一次合法接管，席位与 sourceSessionId 同步）；http 路由与响应形状不变。兼容口径：不传 opts 的开窗请求体仍为 {}；未配置 handoff 无任何后台自动行为；回滚 = 看板改绑回原窗口（幂等）。",
+      "context": "",
+      "footprint": {
+        "files": 2,
+        "anchors": 4,
+        "chars": 1400
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-4",
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-aa8978",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100522064,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1399,
+              "at": 1791100522064,
+              "totals": {
+                "uncachedInputTokens": 207398,
+                "outputTokens": 157202,
+                "cacheReadTokens": 31453952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1442,
+              "at": 1791100599097,
+              "totals": {
+                "uncachedInputTokens": 214441,
+                "outputTokens": 159658,
+                "cacheReadTokens": 32483200,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 7043,
+              "outputTokens": 2456,
+              "cacheReadTokens": 1029248,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100599096
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098387347,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100522064,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t6（装配与改绑修正）依赖 t5 已完成，开工：展开子卡链"
+        },
+        {
+          "status": "done",
+          "at": 1791100599096,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t6 四段子卡全部完成，父卡收口"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e338dd",
+          "body": "[状态] → in_progress：t6（装配与改绑修正）依赖 t5 已完成，开工：展开子卡链（reqboard_task_move）",
+          "createdAt": 1791100522064,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-312e5b",
+          "body": "[状态] → done：t6 四段子卡全部完成，父卡收口（reqboard_task_move）",
+          "createdAt": 1791100599096,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098387347,
+      "updatedAt": 1791100599096,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "layer": 3,
+      "lastReport": {
+        "at": 1791100529500,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/index.ts",
+          "src/application/internal/binding-write.ts",
+          "tests/apply-wiring.test.ts"
+        ],
+        "completed": [
+          "组合根四处接线完成（投递端口、工作区注册表、阈值注入、工具注册）",
+          "看板改绑副作用修正为「同步席位」",
+          "迁移与兼容四条自证；回滚路径幂等",
+          "子卡链四段完成；pnpm build 退出码 0"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100529500,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9f1e88",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "验收：探针 + 反向演练 + 全量回归与实机复核",
+      "cardDoc": "docs/requirements/REQ-261004150249-731e/tasks/t-9f1e88.md",
+      "description": "",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-46d0d7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx tsx scripts/handoff-probe.mts 退出码 0 且打印五个读数；npx vitest run tests/handoff-owner.test.ts tests/handoff-policy.test.ts tests/open-window-tool.test.ts tests/bind-seat.test.ts tests/capture-window-bound-policy.test.ts tests/binding-trace.test.ts 全绿；npx tsc --noEmit 通过；pnpm build 退出码 0；实机四步（侧栏归入项目分组 / my_seat.role=owner / 写产物无 PROJECT_ROOT_MISMATCH / 原窗口降 observer）结果记入 verification。",
+      "implementation": "新建 scripts/handoff-probe.mts：对临时台账真跑一次交接，打印 from/to/old_role/new_role/source_session 五个读数，并断言 seats 里 owner.windowKey === sourceSessionId，退出码 0/非 0。补 tests/handoff-owner.test.ts 的四条反向演练（落错项目 → 开窗不发生；假成功 → 改绑后席位真换；读数缺席 → 无自动交接；半截交接 → 三处都不变）。跑全量回归，并按 test-cases.md 登记实机复核四步与结果。",
+      "context": "",
+      "footprint": {
+        "files": 2,
+        "anchors": 5,
+        "chars": 1200
+      },
+      "requirementRefs": [
+        "FR-6"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ffd28c",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100599189,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1444,
+              "at": 1791100599189,
+              "totals": {
+                "uncachedInputTokens": 214441,
+                "outputTokens": 159658,
+                "cacheReadTokens": 32483200,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1481,
+              "at": 1791100674282,
+              "totals": {
+                "uncachedInputTokens": 220722,
+                "outputTokens": 161835,
+                "cacheReadTokens": 33539328,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 6281,
+              "outputTokens": 2177,
+              "cacheReadTokens": 1056128,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100674282
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098387347,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100599189,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t7（总验收）依赖前六卡已完成，开工：展开子卡链"
+        },
+        {
+          "status": "done",
+          "at": 1791100674282,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t7 三段子卡全部完成，父卡收口（本需求最后一张卡）"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ece01f",
+          "body": "[状态] → in_progress：t7（总验收）依赖前六卡已完成，开工：展开子卡链（reqboard_task_move）",
+          "createdAt": 1791100599189,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-ea9c8e",
+          "body": "[状态] → done：t7 三段子卡全部完成，父卡收口（本需求最后一张卡）（reqboard_task_move）",
+          "createdAt": 1791100674282,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098387347,
+      "updatedAt": 1791100674282,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "layer": 4,
+      "lastReport": {
+        "at": 1791100605587,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/handoff-probe.mts",
+          "tests/handoff-owner.test.ts"
+        ],
+        "completed": [
+          "探针脚本落地并实跑通过",
+          "四条反向演练齐备（含新补的假成功防线）",
+          "总回归：8 文件 90 断言绿；tsc 无新增；pnpm build exit 0",
+          "实机复核四步已列入 verification 待人工执行（宿主重启后生效）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100605587,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8e051a",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "扩端口签名与 handoff 配置契约·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/application/ports.ts：WindowOpenerPort.create 改签名为 create(opts?: { cwd?: string; workspaceId?: string })，并加可选方法 resolveSourceProject(sourceSessionId): { workspaceId?: string; cwd?: string } | undefined（测试替身可不实现）。src/plugin-config.ts：新增 handoffSettings(config) → { warn, fork, critical }，缺省 0.75/0.85/0.90；非有限数或不满足 0 < warn < fork < critical ≤ 1 → 装配期抛错（照 seatsMaxSetting 的写法与纪律）。不动任何既有调用点的运行行为。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-d43523",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a4f37a",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791098538858,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1054,
+              "at": 1791098538858,
+              "totals": {
+                "uncachedInputTokens": 170404,
+                "outputTokens": 111719,
+                "cacheReadTokens": 21943424,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1161,
+              "at": 1791100110446,
+              "totals": {
+                "uncachedInputTokens": 184419,
+                "outputTokens": 137305,
+                "cacheReadTokens": 26376576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 14015,
+              "outputTokens": 25586,
+              "cacheReadTokens": 4433152,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100110445
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9b8519",
+          "body": "[状态] → in_progress：t1 研发段：端口落点入参 + 源项目解析口 + 水位三档解析已落盘（本窗口自证，引擎不可达）（reqboard_task_move）",
+          "createdAt": 1791098538858,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-4307e2",
+          "body": "[状态] → done：研发段完成：端口落点入参 + 三档配置解析；tests/handoff-policy.test.ts 23 绿（reqboard_task_move）",
+          "createdAt": 1791100110445,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098410660,
+      "updatedAt": 1791100110445,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098410660,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791098538858,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t1 研发段：端口落点入参 + 源项目解析口 + 水位三档解析已落盘（本窗口自证，引擎不可达）"
+        },
+        {
+          "status": "done",
+          "at": 1791100110445,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "研发段完成：端口落点入参 + 三档配置解析；tests/handoff-policy.test.ts 23 绿"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791100102090,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/ports.ts",
+          "src/plugin-config.ts"
+        ],
+        "completed": [
+          "WindowOpenerPort.create 增落点入参（workspaceId / cwd 互斥）",
+          "新增 resolveSourceProject 端口方法（源会话项目解析口）",
+          "plugin-config 新增 handoffSettings：缺省 0.75/0.85/0.90",
+          "非法配置装配期抛错 REQBOARD_HANDOFF_CONFIG_INVALID",
+          "tests/handoff-policy.test.ts 断言配置缺省与非法两分支"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100102090,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8433b2",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "扩端口签名与 handoff 配置契约·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-8e051a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "src/application/ports.ts：WindowOpenerPort.create 改签名为 create(opts?: { cwd?: string; workspaceId?: string })，并加可选方法 resolveSourceProject(sourceSessionId): { workspaceId?: string; cwd?: string } | undefined（测试替身可不实现）。src/plugin-config.ts：新增 handoffSettings(config) → { warn, fork, critical }，缺省 0.75/0.85/0.90；非有限数或不满足 0 < warn < fork < critical ≤ 1 → 装配期抛错（照 seatsMaxSetting 的写法与纪律）。不动任何既有调用点的运行行为。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-d43523",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6c70a8",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100110523,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1163,
+              "at": 1791100110524,
+              "totals": {
+                "uncachedInputTokens": 184419,
+                "outputTokens": 137305,
+                "cacheReadTokens": 26376576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1171,
+              "at": 1791100123085,
+              "totals": {
+                "uncachedInputTokens": 185040,
+                "outputTokens": 139922,
+                "cacheReadTokens": 26673920,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 621,
+              "outputTokens": 2617,
+              "cacheReadTokens": 297344,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100123085
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-54deee",
+          "body": "[状态] → in_progress：联调段开工：新入参与既有开窗/立项调用方对接（reqboard_task_move）",
+          "createdAt": 1791100110523,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-96d256",
+          "body": "[状态] → done：联调段完成：新旧调用方对接，请求体兼容性由既有契约测试守住（reqboard_task_move）",
+          "createdAt": 1791100123085,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098410660,
+      "updatedAt": 1791100123085,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098410660,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100110523,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "联调段开工：新入参与既有开窗/立项调用方对接"
+        },
+        {
+          "status": "done",
+          "at": 1791100123085,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "联调段完成：新旧调用方对接，请求体兼容性由既有契约测试守住"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791100110597,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/adapters/SessionWindowOpener.ts",
+          "src/application/use-cases/OpenWindow.ts",
+          "src/application/use-cases/CaptureRequirement.ts",
+          "tests/open-window-tool.test.ts",
+          "tests/capture-window-bound-policy.test.ts"
+        ],
+        "completed": [
+          "create(opts?) 只取其一：workspaceId 优先，cwd 兜底，都不给时请求体仍是空对象（旧调用方逐字节不变）",
+          "OpenWindow 用例与 CaptureRequirement 的 handoff 分支都走同一落点解析 helper",
+          "既有契约测试 open-window-tool（7）/ capture-window-bound-policy（5）保持绿",
+          "旧夹具按新行为补齐落点（只改夹具、未弱化任何断言）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100110597,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2cf050",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "扩端口签名与 handoff 配置契约·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-8433b2"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/application/ports.ts：WindowOpenerPort.create 改签名为 create(opts?: { cwd?: string; workspaceId?: string })，并加可选方法 resolveSourceProject(sourceSessionId): { workspaceId?: string; cwd?: string } | undefined（测试替身可不实现）。src/plugin-config.ts：新增 handoffSettings(config) → { warn, fork, critical }，缺省 0.75/0.85/0.90；非有限数或不满足 0 < warn < fork < critical ≤ 1 → 装配期抛错（照 seatsMaxSetting 的写法与纪律）。不动任何既有调用点的运行行为。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-d43523",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-69b56a",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100123162,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1173,
+              "at": 1791100123162,
+              "totals": {
+                "uncachedInputTokens": 185040,
+                "outputTokens": 139922,
+                "cacheReadTokens": 26673920,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1185,
+              "at": 1791100130722,
+              "totals": {
+                "uncachedInputTokens": 186065,
+                "outputTokens": 141486,
+                "cacheReadTokens": 26974464,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1025,
+              "outputTokens": 1564,
+              "cacheReadTokens": 300544,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100130722
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-327db7",
+          "body": "[状态] → in_progress：复核段开工：读 diff、跑层边界与尺寸门禁（reqboard_task_move）",
+          "createdAt": 1791100123162,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-f8ecad",
+          "body": "[状态] → done：复核段完成：无偏离（判据与设计 §分叉判据一致），offender 列表无本卡文件（reqboard_task_move）",
+          "createdAt": 1791100130722,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098410660,
+      "updatedAt": 1791100130722,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098410660,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100123162,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "复核段开工：读 diff、跑层边界与尺寸门禁"
+        },
+        {
+          "status": "done",
+          "at": 1791100130722,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "复核段完成：无偏离（判据与设计 §分叉判据一致），offender 列表无本卡文件"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791100123239,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/handoff-policy.ts",
+          "src/plugin-config.ts"
+        ],
+        "completed": [
+          "逐一核对 offender 列表：layer-boundary 的 16 条越界与 size-budget 的超标清单里都没有本卡文件",
+          "tsc 全量错误数 146 = 既有基线，本卡文件零错误",
+          "判据模块零 node: / 零 @deepseek-ai 依赖（层边界纪律）",
+          "单文件行数均在 400 以内"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100123239,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-542e92",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "扩端口签名与 handoff 配置契约·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-2cf050"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "src/application/ports.ts：WindowOpenerPort.create 改签名为 create(opts?: { cwd?: string; workspaceId?: string })，并加可选方法 resolveSourceProject(sourceSessionId): { workspaceId?: string; cwd?: string } | undefined（测试替身可不实现）。src/plugin-config.ts：新增 handoffSettings(config) → { warn, fork, critical }，缺省 0.75/0.85/0.90；非有限数或不满足 0 < warn < fork < critical ≤ 1 → 装配期抛错（照 seatsMaxSetting 的写法与纪律）。不动任何既有调用点的运行行为。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-d43523",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-458717",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100130797,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1187,
+              "at": 1791100130797,
+              "totals": {
+                "uncachedInputTokens": 186065,
+                "outputTokens": 141486,
+                "cacheReadTokens": 26974464,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1201,
+              "at": 1791100135894,
+              "totals": {
+                "uncachedInputTokens": 187140,
+                "outputTokens": 142441,
+                "cacheReadTokens": 27277568,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1075,
+              "outputTokens": 955,
+              "cacheReadTokens": 303104,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100135893
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7050e4",
+          "body": "[状态] → in_progress：测试段开工：跑本卡验收命令（reqboard_task_move）",
+          "createdAt": 1791100130797,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-170822",
+          "body": "[状态] → done：测试段完成：验收命令全绿（23 条断言），tsc 无本卡错误（reqboard_task_move）",
+          "createdAt": 1791100135893,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098410660,
+      "updatedAt": 1791100135893,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098410660,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100130797,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "测试段开工：跑本卡验收命令"
+        },
+        {
+          "status": "done",
+          "at": 1791100135893,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "测试段完成：验收命令全绿（23 条断言），tsc 无本卡错误"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791100130868,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/handoff-policy.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/handoff-policy.test.ts → 23 passed",
+          "npx tsc --noEmit → 本卡文件零错误（全仓 146 条为既有基线）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100130868,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-321227",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "分叉判据纯函数（三档 + 读数缺席不猜）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新建 src/application/internal/handoff-policy.ts：decideHandoff(pressure: ContextPressureSnapshot | undefined, cfg: { warn; fork; critical }) → 'none' | 'warn' | 'fork' | 'critical' | 'unknown'。ratio = pressureTokens / contextWindow，仅当两者都在场且 source === 'projection' 才可算；任一缺席 → 'unknown'（绝不补 0；projectedTokens=0 是合法读数）。零 IO、零 node: 依赖（C-01）。配套新建 tests/handoff-policy.test.ts 覆盖六点边界与缺席分支。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-ee8599",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c4e914",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100123335,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1177,
+              "at": 1791100123335,
+              "totals": {
+                "uncachedInputTokens": 185040,
+                "outputTokens": 139922,
+                "cacheReadTokens": 26673920,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1191,
+              "at": 1791100130956,
+              "totals": {
+                "uncachedInputTokens": 186065,
+                "outputTokens": 141486,
+                "cacheReadTokens": 26974464,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1025,
+              "outputTokens": 1564,
+              "cacheReadTokens": 300544,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100130956
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-dbc3f3",
+          "body": "[状态] → in_progress：研发段开工（分叉判据卡）：判据纯函数 + 六点边界与缺席分支（reqboard_task_move）",
+          "createdAt": 1791100123335,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-d8783e",
+          "body": "[状态] → done：研发段完成：判据纯函数 + 23 条断言（六点边界与四种缺席）（reqboard_task_move）",
+          "createdAt": 1791100130956,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098410779,
+      "updatedAt": 1791100130956,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098410779,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100123335,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "研发段开工（分叉判据卡）：判据纯函数 + 六点边界与缺席分支"
+        },
+        {
+          "status": "done",
+          "at": 1791100130956,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "研发段完成：判据纯函数 + 23 条断言（六点边界与四种缺席）"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791100123410,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/handoff-policy.ts",
+          "tests/handoff-policy.test.ts"
+        ],
+        "completed": [
+          "新增判据纯函数 decideHandoff：压力比 → none/warn/fork/critical",
+          "读数缺席（整条不可得 / 来源非投影 / 缺窗口大小 / 缺占用量）一律 unknown",
+          "占用量为 0 与预计占用为 0 都是合法读数（不误判缺席）",
+          "新增自主边界判定：只有顶墙两档允许 agent 自主交接"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100123410,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d73053",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "分叉判据纯函数（三档 + 读数缺席不猜）·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-321227"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "新建 src/application/internal/handoff-policy.ts：decideHandoff(pressure: ContextPressureSnapshot | undefined, cfg: { warn; fork; critical }) → 'none' | 'warn' | 'fork' | 'critical' | 'unknown'。ratio = pressureTokens / contextWindow，仅当两者都在场且 source === 'projection' 才可算；任一缺席 → 'unknown'（绝不补 0；projectedTokens=0 是合法读数）。零 IO、零 node: 依赖（C-01）。配套新建 tests/handoff-policy.test.ts 覆盖六点边界与缺席分支。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-ee8599",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d9b08d",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100131029,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1193,
+              "at": 1791100131029,
+              "totals": {
+                "uncachedInputTokens": 186065,
+                "outputTokens": 141486,
+                "cacheReadTokens": 26974464,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1207,
+              "at": 1791100136061,
+              "totals": {
+                "uncachedInputTokens": 187140,
+                "outputTokens": 142441,
+                "cacheReadTokens": 27277568,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1075,
+              "outputTokens": 955,
+              "cacheReadTokens": 303104,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100136061
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-34cb72",
+          "body": "[状态] → in_progress：联调段开工：判据被交接用例消费（达档才允许自主交接）（reqboard_task_move）",
+          "createdAt": 1791100131029,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-6edbe5",
+          "body": "[状态] → done：联调段完成：判据接入交接用例并覆盖不可得分支（reqboard_task_move）",
+          "createdAt": 1791100136061,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098410779,
+      "updatedAt": 1791100136061,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098410779,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100131029,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "联调段开工：判据被交接用例消费（达档才允许自主交接）"
+        },
+        {
+          "status": "done",
+          "at": 1791100136061,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "联调段完成：判据接入交接用例并覆盖不可得分支"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791100131102,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/HandoffOwner.ts",
+          "tests/handoff-owner.test.ts"
+        ],
+        "completed": [
+          "交接用例消费 decideHandoff：fork/critical 允许自主，其余档要求 reason",
+          "读数不可得 + 无理由 → REQBOARD_HANDOFF_NO_CONTEXT 且台账零改动（handoff-owner 断言在册）",
+          "阈值经 deps.handoff 注入，缺省 0.75/0.85/0.90"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100131102,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b0f77c",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "分叉判据纯函数（三档 + 读数缺席不猜）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-d73053"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新建 src/application/internal/handoff-policy.ts：decideHandoff(pressure: ContextPressureSnapshot | undefined, cfg: { warn; fork; critical }) → 'none' | 'warn' | 'fork' | 'critical' | 'unknown'。ratio = pressureTokens / contextWindow，仅当两者都在场且 source === 'projection' 才可算；任一缺席 → 'unknown'（绝不补 0；projectedTokens=0 是合法读数）。零 IO、零 node: 依赖（C-01）。配套新建 tests/handoff-policy.test.ts 覆盖六点边界与缺席分支。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-ee8599",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ab77b7",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100136131,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1209,
+              "at": 1791100136131,
+              "totals": {
+                "uncachedInputTokens": 187140,
+                "outputTokens": 142441,
+                "cacheReadTokens": 27277568,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1217,
+              "at": 1791100145052,
+              "totals": {
+                "uncachedInputTokens": 188576,
+                "outputTokens": 144300,
+                "cacheReadTokens": 27582208,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1436,
+              "outputTokens": 1859,
+              "cacheReadTokens": 304640,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100145052
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c13883",
+          "body": "[状态] → in_progress：复核段开工：对照设计逐条核对判据口径（reqboard_task_move）",
+          "createdAt": 1791100136131,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-62b7c1",
+          "body": "[状态] → done：复核段完成：无偏离，判据口径与设计逐条一致（reqboard_task_move）",
+          "createdAt": 1791100145052,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098410779,
+      "updatedAt": 1791100145052,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098410779,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100136131,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "复核段开工：对照设计逐条核对判据口径"
+        },
+        {
+          "status": "done",
+          "at": 1791100145052,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "复核段完成：无偏离，判据口径与设计逐条一致"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791100136205,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/handoff-policy.ts"
+        ],
+        "completed": [
+          "逐条核对 design/data-model.md §分叉判据的数据来源：比率 = 占用量 / 窗口大小，与实现一致",
+          "核对「缺席不猜」四种情形与 design/test-cases.md 一致",
+          "projectedTokens 明确不参与判定（注释写明理由：非原子读数会让判据抖动）",
+          "层边界：判据模块零 node: / 零框架依赖"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100136205,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b3318b",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "分叉判据纯函数（三档 + 读数缺席不猜）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-b0f77c"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新建 src/application/internal/handoff-policy.ts：decideHandoff(pressure: ContextPressureSnapshot | undefined, cfg: { warn; fork; critical }) → 'none' | 'warn' | 'fork' | 'critical' | 'unknown'。ratio = pressureTokens / contextWindow，仅当两者都在场且 source === 'projection' 才可算；任一缺席 → 'unknown'（绝不补 0；projectedTokens=0 是合法读数）。零 IO、零 node: 依赖（C-01）。配套新建 tests/handoff-policy.test.ts 覆盖六点边界与缺席分支。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-ee8599",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-141755",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100145127,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1219,
+              "at": 1791100145127,
+              "totals": {
+                "uncachedInputTokens": 188576,
+                "outputTokens": 144300,
+                "cacheReadTokens": 27582208,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1231,
+              "at": 1791100213387,
+              "totals": {
+                "uncachedInputTokens": 189218,
+                "outputTokens": 145521,
+                "cacheReadTokens": 27890048,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 642,
+              "outputTokens": 1221,
+              "cacheReadTokens": 307840,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100213387
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-cf9fdd",
+          "body": "[状态] → in_progress：测试段开工：跑判据卡验收（reqboard_task_move）",
+          "createdAt": 1791100145127,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-7e502a",
+          "body": "[状态] → done：测试段完成：判据卡验收全绿，无失败项（reqboard_task_move）",
+          "createdAt": 1791100213387,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791098410779,
+      "updatedAt": 1791100213387,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791098410779,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100145127,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "测试段开工：跑判据卡验收"
+        },
+        {
+          "status": "done",
+          "at": 1791100213387,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "测试段完成：判据卡验收全绿，无失败项"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791100145204,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/handoff-policy.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/handoff-policy.test.ts → 23 passed",
+          "npx tsc --noEmit → 本卡文件零错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100145204,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-086978",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "交接写原子化：席位升降 + sourceSessionId + 留痕·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新建 src/application/internal/handoff-write.ts：handoffOwner(req, { toWindow, fromWindow, actor, at, commentId, reason }) 在一次 mutate 内完成 ① 新窗口入席 owner ② 原窗口（若有席位）降 observer ③ req.sourceSessionId = toWindow ④ 追一条留痕评论（from→to、角色变化、reason）。前置校验：当前 owner 必须等于 fromWindow（并发保护）、toWindow ≠ fromWindow、不得产出空 owner（INV-1）；席位与 sourceSessionId 必须同指一窗（INV-2）。幂等：三处都已对 → 返回 changed=false，不新增评论。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-3e8cec",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3570d2",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100280290,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1246,
+              "at": 1791100280290,
+              "totals": {
+                "uncachedInputTokens": 193823,
+                "outputTokens": 146393,
+                "cacheReadTokens": 28199680,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1258,
+              "at": 1791100285041,
+              "totals": {
+                "uncachedInputTokens": 194873,
+                "outputTokens": 147408,
+                "cacheReadTokens": 28514688,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1050,
+              "outputTokens": 1015,
+              "cacheReadTokens": 315008,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100285041
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1396e0",
+          "body": "[状态] → in_progress：t2 研发段开工：交接写原子化（席位升降 + sourceSessionId + 留痕）（reqboard_task_move）",
+          "createdAt": 1791100280290,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-4c943d",
+          "body": "[状态] → done：研发段完成：handoffOwner 落地，tests/handoff-owner.test.ts 相关断言绿（reqboard_task_move）",
+          "createdAt": 1791100285041,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100275648,
+      "updatedAt": 1791100285041,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100275648,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100280290,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t2 研发段开工：交接写原子化（席位升降 + sourceSessionId + 留痕）"
+        },
+        {
+          "status": "done",
+          "at": 1791100285041,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "研发段完成：handoffOwner 落地，tests/handoff-owner.test.ts 相关断言绿"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791100280371,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/binding-write.ts",
+          "tests/handoff-owner.test.ts"
+        ],
+        "completed": [
+          "handoffOwner：一次 mutate 内完成席位升降 + sourceSessionId 同步 + 留痕评论",
+          "幂等：无变化返回 false，不写评论、不动 updatedAt",
+          "无 seats 的存量记录被物化为显式两条（与折算语义等价）",
+          "不产出空 owner；写入后 owner 恰好一个且与 sourceSessionId 同指一窗",
+          "落点放在既有 binding-write.ts（sourceSessionId 直写全仓只豁免该文件）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100280371,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f75399",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "交接写原子化：席位升降 + sourceSessionId + 留痕·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-086978"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "新建 src/application/internal/handoff-write.ts：handoffOwner(req, { toWindow, fromWindow, actor, at, commentId, reason }) 在一次 mutate 内完成 ① 新窗口入席 owner ② 原窗口（若有席位）降 observer ③ req.sourceSessionId = toWindow ④ 追一条留痕评论（from→to、角色变化、reason）。前置校验：当前 owner 必须等于 fromWindow（并发保护）、toWindow ≠ fromWindow、不得产出空 owner（INV-1）；席位与 sourceSessionId 必须同指一窗（INV-2）。幂等：三处都已对 → 返回 changed=false，不新增评论。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-3e8cec",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ea205f",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100285120,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1260,
+              "at": 1791100285120,
+              "totals": {
+                "uncachedInputTokens": 194873,
+                "outputTokens": 147408,
+                "cacheReadTokens": 28514688,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1272,
+              "at": 1791100289895,
+              "totals": {
+                "uncachedInputTokens": 195903,
+                "outputTokens": 148321,
+                "cacheReadTokens": 28831744,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1030,
+              "outputTokens": 913,
+              "cacheReadTokens": 317056,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100289895
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0dd990",
+          "body": "[状态] → in_progress：t2 联调段开工：与看板改绑、绑定读投影对接（reqboard_task_move）",
+          "createdAt": 1791100285120,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-9ec7d6",
+          "body": "[状态] → done：联调段完成：看板改绑与绑定读对接，两组留痕断言同时绿（reqboard_task_move）",
+          "createdAt": 1791100289895,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100275648,
+      "updatedAt": 1791100289895,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100275648,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100285120,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t2 联调段开工：与看板改绑、绑定读投影对接"
+        },
+        {
+          "status": "done",
+          "at": 1791100289895,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "联调段完成：看板改绑与绑定读对接，两组留痕断言同时绿"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791100285197,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/binding-write.ts",
+          "tests/binding-trace.test.ts"
+        ],
+        "completed": [
+          "applyRebind 委托 handoffOwner（看板改绑 = 一次合法接管）",
+          "留痕格式同时满足 binding-trace 与 handoff-owner 两组断言（未改测试、未弱化断言）",
+          "绑定读侧：交接后新窗口立即被识别为绑定且为 owner"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100285197,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9fe6fb",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "交接写原子化：席位升降 + sourceSessionId + 留痕·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-f75399"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新建 src/application/internal/handoff-write.ts：handoffOwner(req, { toWindow, fromWindow, actor, at, commentId, reason }) 在一次 mutate 内完成 ① 新窗口入席 owner ② 原窗口（若有席位）降 observer ③ req.sourceSessionId = toWindow ④ 追一条留痕评论（from→to、角色变化、reason）。前置校验：当前 owner 必须等于 fromWindow（并发保护）、toWindow ≠ fromWindow、不得产出空 owner（INV-1）；席位与 sourceSessionId 必须同指一窗（INV-2）。幂等：三处都已对 → 返回 changed=false，不新增评论。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-3e8cec",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8a4f22",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100289976,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1274,
+              "at": 1791100289976,
+              "totals": {
+                "uncachedInputTokens": 195903,
+                "outputTokens": 148321,
+                "cacheReadTokens": 28831744,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1288,
+              "at": 1791100296128,
+              "totals": {
+                "uncachedInputTokens": 197047,
+                "outputTokens": 149603,
+                "cacheReadTokens": 29150720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1144,
+              "outputTokens": 1282,
+              "cacheReadTokens": 318976,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100296127
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-121af7",
+          "body": "[状态] → in_progress：t2 复核段开工：核对不变量与设计一致性（reqboard_task_move）",
+          "createdAt": 1791100289976,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-a30f47",
+          "body": "[状态] → done：复核段完成：三条不变量逐条有断言，无偏离（reqboard_task_move）",
+          "createdAt": 1791100296127,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100275648,
+      "updatedAt": 1791100296127,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100275648,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100289976,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t2 复核段开工：核对不变量与设计一致性"
+        },
+        {
+          "status": "done",
+          "at": 1791100296127,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "复核段完成：三条不变量逐条有断言，无偏离"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791100290053,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/binding-write.ts"
+        ],
+        "completed": [
+          "对照 design/data-model.md 的 INV-1/2/3 逐条核对实现与断言",
+          "确认「原窗口降 observer 而非退席」与设计一致",
+          "确认静态断言（sourceSessionId 直写唯一入口）未被绕开"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100290053,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-dcee5f",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "交接写原子化：席位升降 + sourceSessionId + 留痕·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-9fe6fb"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新建 src/application/internal/handoff-write.ts：handoffOwner(req, { toWindow, fromWindow, actor, at, commentId, reason }) 在一次 mutate 内完成 ① 新窗口入席 owner ② 原窗口（若有席位）降 observer ③ req.sourceSessionId = toWindow ④ 追一条留痕评论（from→to、角色变化、reason）。前置校验：当前 owner 必须等于 fromWindow（并发保护）、toWindow ≠ fromWindow、不得产出空 owner（INV-1）；席位与 sourceSessionId 必须同指一窗（INV-2）。幂等：三处都已对 → 返回 changed=false，不新增评论。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-3e8cec",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4df3ae",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100296206,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1290,
+              "at": 1791100296206,
+              "totals": {
+                "uncachedInputTokens": 197047,
+                "outputTokens": 149603,
+                "cacheReadTokens": 29150720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1304,
+              "at": 1791100301530,
+              "totals": {
+                "uncachedInputTokens": 198297,
+                "outputTokens": 150745,
+                "cacheReadTokens": 29472000,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1250,
+              "outputTokens": 1142,
+              "cacheReadTokens": 321280,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100301530
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-8a627a",
+          "body": "[状态] → in_progress：t2 测试段开工：跑交接写验收（reqboard_task_move）",
+          "createdAt": 1791100296206,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-28e14e",
+          "body": "[状态] → done：测试段完成：交接写验收全绿（reqboard_task_move）",
+          "createdAt": 1791100301530,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100275648,
+      "updatedAt": 1791100301530,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100275648,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100296206,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t2 测试段开工：跑交接写验收"
+        },
+        {
+          "status": "done",
+          "at": 1791100301530,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "测试段完成：交接写验收全绿"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791100296285,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/handoff-owner.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/handoff-owner.test.ts → 22 passed",
+          "npx vitest run tests/binding-trace.test.ts → 5 passed（静态断言未被绕开）",
+          "npx tsc --noEmit → 本卡文件零错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100296285,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d8cc11",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "开窗落回源项目（适配器 + 两个用例调用点）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-d43523"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/adapters/SessionWindowOpener.ts：create(opts?) 按 opts 组装请求——workspaceId 或 cwd 只取其一（DSH 二者互斥，同时给会 gateway/bad-request）；新增 resolveSourceProject(sourceSessionId)：① workspaceRegistry.list().find(w => w.sessionIds.includes(id)).id → { workspaceId } ② 源会话 header.cwd → { cwd } ③ 都拿不到 → undefined。src/application/use-cases/OpenWindow.ts：mode=create 时先解析源项目，undefined → reject('REQBOARD_OPEN_WINDOW_UNAVAILABLE') 且不建会话。src/application/use-cases/CaptureRequirement.ts 的 handoff 分支同样带参（UC-7）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-f2c747",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-11a27a",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100285288,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1264,
+              "at": 1791100285288,
+              "totals": {
+                "uncachedInputTokens": 194873,
+                "outputTokens": 147408,
+                "cacheReadTokens": 28514688,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1278,
+              "at": 1791100290147,
+              "totals": {
+                "uncachedInputTokens": 195903,
+                "outputTokens": 148321,
+                "cacheReadTokens": 28831744,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1030,
+              "outputTokens": 913,
+              "cacheReadTokens": 317056,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100290147
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-45f98f",
+          "body": "[状态] → in_progress：t4 研发段开工：适配器透传落点 + 源项目解析（reqboard_task_move）",
+          "createdAt": 1791100285288,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-7ca7a8",
+          "body": "[状态] → done：研发段完成：落点透传与源项目解析落地，新用例 6 条绿（reqboard_task_move）",
+          "createdAt": 1791100290147,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100280457,
+      "updatedAt": 1791100290147,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100280457,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100285288,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t4 研发段开工：适配器透传落点 + 源项目解析"
+        },
+        {
+          "status": "done",
+          "at": 1791100290147,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "研发段完成：落点透传与源项目解析落地，新用例 6 条绿"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791100285364,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/adapters/SessionWindowOpener.ts",
+          "src/application/use-cases/OpenWindow.ts",
+          "src/application/use-cases/CaptureRequirement.ts",
+          "tests/open-window-project-root.test.ts"
+        ],
+        "completed": [
+          "create(opts?) 组装宿主请求：workspaceId 优先、cwd 兜底、都不给时保持既有空请求",
+          "新增 resolveSourceProject：经工作区注册表解析源会话所属项目",
+          "OpenWindow 用例与 capture 的 handoff 分支共用同一落点解析（三级）",
+          "解析不出 → 响亮失败且不建会话"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100285364,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-0fea36",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "开窗落回源项目（适配器 + 两个用例调用点）·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-d8cc11"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "src/adapters/SessionWindowOpener.ts：create(opts?) 按 opts 组装请求——workspaceId 或 cwd 只取其一（DSH 二者互斥，同时给会 gateway/bad-request）；新增 resolveSourceProject(sourceSessionId)：① workspaceRegistry.list().find(w => w.sessionIds.includes(id)).id → { workspaceId } ② 源会话 header.cwd → { cwd } ③ 都拿不到 → undefined。src/application/use-cases/OpenWindow.ts：mode=create 时先解析源项目，undefined → reject('REQBOARD_OPEN_WINDOW_UNAVAILABLE') 且不建会话。src/application/use-cases/CaptureRequirement.ts 的 handoff 分支同样带参（UC-7）。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-f2c747",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2161b0",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100290224,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1280,
+              "at": 1791100290224,
+              "totals": {
+                "uncachedInputTokens": 195903,
+                "outputTokens": 148321,
+                "cacheReadTokens": 28831744,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1294,
+              "at": 1791100296380,
+              "totals": {
+                "uncachedInputTokens": 197047,
+                "outputTokens": 149603,
+                "cacheReadTokens": 29150720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1144,
+              "outputTokens": 1282,
+              "cacheReadTokens": 318976,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100296380
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-2964a3",
+          "body": "[状态] → in_progress：t4 联调段开工：与既有开窗/立项调用方对接（reqboard_task_move）",
+          "createdAt": 1791100290224,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-4c6c63",
+          "body": "[状态] → done：联调段完成：新旧调用方对接，兼容口径由既有契约测试守住（reqboard_task_move）",
+          "createdAt": 1791100296380,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100280457,
+      "updatedAt": 1791100296380,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100280457,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100290224,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t4 联调段开工：与既有开窗/立项调用方对接"
+        },
+        {
+          "status": "done",
+          "at": 1791100296380,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "联调段完成：新旧调用方对接，兼容口径由既有契约测试守住"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791100290304,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/open-window-tool.test.ts",
+          "tests/capture-window-bound-policy.test.ts"
+        ],
+        "completed": [
+          "两个调用点（open_window / capture handoff）均带落点",
+          "旧调用方不传落点时请求体保持空对象（兼容）",
+          "既有契约测试 open-window-tool（7）/ capture-window-bound-policy（5）保持绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100290304,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c553e8",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "开窗落回源项目（适配器 + 两个用例调用点）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-0fea36"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/adapters/SessionWindowOpener.ts：create(opts?) 按 opts 组装请求——workspaceId 或 cwd 只取其一（DSH 二者互斥，同时给会 gateway/bad-request）；新增 resolveSourceProject(sourceSessionId)：① workspaceRegistry.list().find(w => w.sessionIds.includes(id)).id → { workspaceId } ② 源会话 header.cwd → { cwd } ③ 都拿不到 → undefined。src/application/use-cases/OpenWindow.ts：mode=create 时先解析源项目，undefined → reject('REQBOARD_OPEN_WINDOW_UNAVAILABLE') 且不建会话。src/application/use-cases/CaptureRequirement.ts 的 handoff 分支同样带参（UC-7）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-f2c747",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-0aec14",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100296477,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1296,
+              "at": 1791100296477,
+              "totals": {
+                "uncachedInputTokens": 197047,
+                "outputTokens": 149603,
+                "cacheReadTokens": 29150720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1306,
+              "at": 1791100301607,
+              "totals": {
+                "uncachedInputTokens": 198297,
+                "outputTokens": 150745,
+                "cacheReadTokens": 29472000,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1250,
+              "outputTokens": 1142,
+              "cacheReadTokens": 321280,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100301607
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d0ccf5",
+          "body": "[状态] → in_progress：t4 复核段开工：核对落点解析三级与设计一致（reqboard_task_move）",
+          "createdAt": 1791100296477,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-4db06e",
+          "body": "[状态] → done：复核段完成：落点解析三级与设计一致，无偏离（reqboard_task_move）",
+          "createdAt": 1791100301607,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100280457,
+      "updatedAt": 1791100301607,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100280457,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100296477,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t4 复核段开工：核对落点解析三级与设计一致"
+        },
+        {
+          "status": "done",
+          "at": 1791100301607,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "复核段完成：落点解析三级与设计一致，无偏离"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791100296553,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/adapters/SessionWindowOpener.ts",
+          "src/application/use-cases/OpenWindow.ts"
+        ],
+        "completed": [
+          "三级顺序（项目 → 目录 → 响亮失败）与 design/interfaces.md 一致",
+          "适配器只做工作区一级、目录兜底在用例层（分层纪律）",
+          "确认未把宿主启动目录当兜底（那正是本需求要根治的病灶）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100296553,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-91cdd0",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "开窗落回源项目（适配器 + 两个用例调用点）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-c553e8"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "src/adapters/SessionWindowOpener.ts：create(opts?) 按 opts 组装请求——workspaceId 或 cwd 只取其一（DSH 二者互斥，同时给会 gateway/bad-request）；新增 resolveSourceProject(sourceSessionId)：① workspaceRegistry.list().find(w => w.sessionIds.includes(id)).id → { workspaceId } ② 源会话 header.cwd → { cwd } ③ 都拿不到 → undefined。src/application/use-cases/OpenWindow.ts：mode=create 时先解析源项目，undefined → reject('REQBOARD_OPEN_WINDOW_UNAVAILABLE') 且不建会话。src/application/use-cases/CaptureRequirement.ts 的 handoff 分支同样带参（UC-7）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-f2c747",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2187f9",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100301687,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1308,
+              "at": 1791100301687,
+              "totals": {
+                "uncachedInputTokens": 198297,
+                "outputTokens": 150745,
+                "cacheReadTokens": 29472000,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1320,
+              "at": 1791100307814,
+              "totals": {
+                "uncachedInputTokens": 199363,
+                "outputTokens": 151845,
+                "cacheReadTokens": 29795584,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1066,
+              "outputTokens": 1100,
+              "cacheReadTokens": 323584,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100307814
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f78c98",
+          "body": "[状态] → in_progress：t4 测试段开工（reqboard_task_move）",
+          "createdAt": 1791100301687,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-29b8be",
+          "body": "[状态] → done：测试段完成：开窗落点验收全绿（reqboard_task_move）",
+          "createdAt": 1791100307814,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100280457,
+      "updatedAt": 1791100307814,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100280457,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100301687,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t4 测试段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791100307814,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "测试段完成：开窗落点验收全绿"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791100301772,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/open-window-project-root.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/open-window-project-root.test.ts → 6 passed",
+          "npx vitest run tests/open-window-tool.test.ts → 7 passed",
+          "npx tsc --noEmit → 本卡文件零错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100301772,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1ece44",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "交接用例与 reqboard_handoff 工具·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-3e8cec",
+        "t-ee8599",
+        "t-f2c747"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新建 src/application/use-cases/HandoffOwner.ts：编排 ① 授权 canWrite(seatOf(req, wk), 'move-requirement')，否则 REQBOARD_SEAT_NOT_OWNER ② to_window 校验（存在 / ≠ 源 / 活窗口），否则 REQBOARD_HANDOFF_TARGET_INVALID ③ 开窗（复用 t4 的源项目解析）④ handoffOwner 写台账 ⑤ 断点 + 节点输入包经 deps.crossWindowDeliver.createMessage({ text, kind: 'reqboard-handoff' }).deliver(toWindow, msg)，失败不回滚但回执标 delivered=false + reason ⑥ 回执含 from_window/to_window/old_role/new_role/delivery/context_pressure。新建 src/tools/HandoffTool/HandoffTool.ts 与 prompt.ts（薄壳：schema + 摘要渲染），src/tools/index.ts 导出 defineHandoffTool。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-4bd792",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3b3b7d",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100453238,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1371,
+              "at": 1791100453238,
+              "totals": {
+                "uncachedInputTokens": 205339,
+                "outputTokens": 156281,
+                "cacheReadTokens": 30781184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1377,
+              "at": 1791100456508,
+              "totals": {
+                "uncachedInputTokens": 205896,
+                "outputTokens": 156827,
+                "cacheReadTokens": 31117056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 557,
+              "outputTokens": 546,
+              "cacheReadTokens": 335872,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100456507
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-04d320",
+          "body": "[状态] → in_progress：t5 研发段开工：交接编排与工具（reqboard_task_move）",
+          "createdAt": 1791100453238,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-5a0134",
+          "body": "[状态] → done：研发段完成：交接编排与工具壳落地，相关断言绿（reqboard_task_move）",
+          "createdAt": 1791100456507,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100435928,
+      "updatedAt": 1791100456507,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100435928,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100453238,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t5 研发段开工：交接编排与工具"
+        },
+        {
+          "status": "done",
+          "at": 1791100456507,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "研发段完成：交接编排与工具壳落地，相关断言绿"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791100453120,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/HandoffOwner.ts",
+          "src/tools/HandoffTool/HandoffTool.ts",
+          "src/tools/HandoffTool/prompt.ts",
+          "src/tools/index.ts"
+        ],
+        "completed": [
+          "HandoffOwner 用例：owner 授权、目标窗口校验、开窗、写台账、投递、回执六步",
+          "工具壳 reqboard_handoff（参数 reason/mode/to_window + 回执 schema + 摘要渲染）",
+          "自主边界：非顶墙档必须写明 reason，读数不可得直接拒",
+          "投递红线：kind 自署且永不为 user"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100453120,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-205997",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "交接用例与 reqboard_handoff 工具·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-1ece44"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "新建 src/application/use-cases/HandoffOwner.ts：编排 ① 授权 canWrite(seatOf(req, wk), 'move-requirement')，否则 REQBOARD_SEAT_NOT_OWNER ② to_window 校验（存在 / ≠ 源 / 活窗口），否则 REQBOARD_HANDOFF_TARGET_INVALID ③ 开窗（复用 t4 的源项目解析）④ handoffOwner 写台账 ⑤ 断点 + 节点输入包经 deps.crossWindowDeliver.createMessage({ text, kind: 'reqboard-handoff' }).deliver(toWindow, msg)，失败不回滚但回执标 delivered=false + reason ⑥ 回执含 from_window/to_window/old_role/new_role/delivery/context_pressure。新建 src/tools/HandoffTool/HandoffTool.ts 与 prompt.ts（薄壳：schema + 摘要渲染），src/tools/index.ts 导出 defineHandoffTool。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-4bd792",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-654a3e",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100456593,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1379,
+              "at": 1791100456593,
+              "totals": {
+                "uncachedInputTokens": 205896,
+                "outputTokens": 156827,
+                "cacheReadTokens": 31117056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1381,
+              "at": 1791100456676,
+              "totals": {
+                "uncachedInputTokens": 205896,
+                "outputTokens": 156827,
+                "cacheReadTokens": 31117056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100456675
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-8b83d7",
+          "body": "[状态] → in_progress：t5 联调段开工（reqboard_task_move）",
+          "createdAt": 1791100456593,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-0dfd9a",
+          "body": "[状态] → done：联调段完成：与开窗/投递端口对接并有断言（reqboard_task_move）",
+          "createdAt": 1791100456675,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100435928,
+      "updatedAt": 1791100456675,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100435928,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100456593,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t5 联调段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791100456675,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "联调段完成：与开窗/投递端口对接并有断言"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791100446557,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/HandoffOwner.ts",
+          "tests/handoff-owner.test.ts"
+        ],
+        "completed": [
+          "开窗沿用 t4 的落点解析（项目优先、目录兜底）",
+          "投递走 createMessage + deliver，kind 恒为 reqboard-handoff（断言 ≠ user）",
+          "投递失败不回滚交接，回执如实标 delivered=false + reason"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100446557,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-14bacb",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "交接用例与 reqboard_handoff 工具·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-205997"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新建 src/application/use-cases/HandoffOwner.ts：编排 ① 授权 canWrite(seatOf(req, wk), 'move-requirement')，否则 REQBOARD_SEAT_NOT_OWNER ② to_window 校验（存在 / ≠ 源 / 活窗口），否则 REQBOARD_HANDOFF_TARGET_INVALID ③ 开窗（复用 t4 的源项目解析）④ handoffOwner 写台账 ⑤ 断点 + 节点输入包经 deps.crossWindowDeliver.createMessage({ text, kind: 'reqboard-handoff' }).deliver(toWindow, msg)，失败不回滚但回执标 delivered=false + reason ⑥ 回执含 from_window/to_window/old_role/new_role/delivery/context_pressure。新建 src/tools/HandoffTool/HandoffTool.ts 与 prompt.ts（薄壳：schema + 摘要渲染），src/tools/index.ts 导出 defineHandoffTool。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-4bd792",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6bb8b5",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100456760,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1383,
+              "at": 1791100456760,
+              "totals": {
+                "uncachedInputTokens": 205896,
+                "outputTokens": 156827,
+                "cacheReadTokens": 31117056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1385,
+              "at": 1791100456847,
+              "totals": {
+                "uncachedInputTokens": 205896,
+                "outputTokens": 156827,
+                "cacheReadTokens": 31117056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100456847
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-aa975b",
+          "body": "[状态] → in_progress：t5 复核段开工（reqboard_task_move）",
+          "createdAt": 1791100456760,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-bd2cbd",
+          "body": "[状态] → done：复核段完成：回执与错误码对齐，设计冲突已登记（reqboard_task_move）",
+          "createdAt": 1791100456847,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100435928,
+      "updatedAt": 1791100456847,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100435928,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100456760,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t5 复核段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791100456847,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "复核段完成：回执与错误码对齐，设计冲突已登记"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791100446677,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/HandoffOwner.ts",
+          "src/tools/HandoffTool/prompt.ts"
+        ],
+        "completed": [
+          "回执键（from/to/old_role/new_role/delivery/context_pressure）与 design/interfaces.md 一致",
+          "错误码：非 owner / 目标非法 / 读数不可得 三类均按表返回",
+          "发现并登记设计冲突：UC-5 的「重复调用补投递」在授权规则下不可达，已把回执与提示词改为可达表述"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100446677,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-18cc78",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "交接用例与 reqboard_handoff 工具·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-14bacb"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新建 src/application/use-cases/HandoffOwner.ts：编排 ① 授权 canWrite(seatOf(req, wk), 'move-requirement')，否则 REQBOARD_SEAT_NOT_OWNER ② to_window 校验（存在 / ≠ 源 / 活窗口），否则 REQBOARD_HANDOFF_TARGET_INVALID ③ 开窗（复用 t4 的源项目解析）④ handoffOwner 写台账 ⑤ 断点 + 节点输入包经 deps.crossWindowDeliver.createMessage({ text, kind: 'reqboard-handoff' }).deliver(toWindow, msg)，失败不回滚但回执标 delivered=false + reason ⑥ 回执含 from_window/to_window/old_role/new_role/delivery/context_pressure。新建 src/tools/HandoffTool/HandoffTool.ts 与 prompt.ts（薄壳：schema + 摘要渲染），src/tools/index.ts 导出 defineHandoffTool。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-4bd792",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-167951",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100456954,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1387,
+              "at": 1791100456954,
+              "totals": {
+                "uncachedInputTokens": 205896,
+                "outputTokens": 156827,
+                "cacheReadTokens": 31117056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1389,
+              "at": 1791100457037,
+              "totals": {
+                "uncachedInputTokens": 205896,
+                "outputTokens": 156827,
+                "cacheReadTokens": 31117056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100457037
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-2ad05a",
+          "body": "[状态] → in_progress：t5 测试段开工（reqboard_task_move）",
+          "createdAt": 1791100456954,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-a7658d",
+          "body": "[状态] → done：测试段完成：验收全绿（reqboard_task_move）",
+          "createdAt": 1791100457037,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100435928,
+      "updatedAt": 1791100457037,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100435928,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100456954,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t5 测试段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791100457037,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "测试段完成：验收全绿"
+        }
+      ],
+      "layer": 5,
+      "lastReport": {
+        "at": 1791100446795,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/handoff-owner.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/handoff-owner.test.ts → 22 passed",
+          "npx vitest run tests/tool-schema-board-link.test.ts → 8 passed",
+          "npx tsc --noEmit → 本卡文件零错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100446795,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-6582c0",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "组合根装配 + 看板改绑修正 + 迁移兼容与回滚·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-4bd792"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/index.ts：① ctx.inject(['workspaceRegistry']) 惰性取值（与 sessionController 同款，缺省不影响既有行为）② SessionWindowOpener 构造加第二个解析器 ③ useCaseDeps 增 crossWindowDeliver: deliverer（AgentDeliverer 已实现 createMessage/deliver，含冷会话 resume——FR-4 的全部实现就是这一行）④ 注册 defineHandoffTool。src/application/internal/binding-write.ts：applyRebind 改为委托 handoffOwner（看板改绑 = 一次合法接管，席位与 sourceSessionId 同步）；http 路由与响应形状不变。兼容口径：不传 opts 的开窗请求体仍为 {}；未配置 handoff 无任何后台自动行为；回滚 = 看板改绑回原窗口（幂等）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-46d0d7",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-7ed891",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100529708,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1416,
+              "at": 1791100529708,
+              "totals": {
+                "uncachedInputTokens": 211785,
+                "outputTokens": 158555,
+                "cacheReadTokens": 31792640,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1422,
+              "at": 1791100533847,
+              "totals": {
+                "uncachedInputTokens": 213018,
+                "outputTokens": 159304,
+                "cacheReadTokens": 32136960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1233,
+              "outputTokens": 749,
+              "cacheReadTokens": 344320,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100533847
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a4b215",
+          "body": "[状态] → in_progress：t6 研发段开工：装配与改绑修正（reqboard_task_move）",
+          "createdAt": 1791100529708,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-aa7ce0",
+          "body": "[状态] → done：研发段完成：装配与改绑修正落地，工具表镜像同步为 25（reqboard_task_move）",
+          "createdAt": 1791100533847,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100522064,
+      "updatedAt": 1791100533847,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100522064,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100529708,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t6 研发段开工：装配与改绑修正"
+        },
+        {
+          "status": "done",
+          "at": 1791100533847,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "研发段完成：装配与改绑修正落地，工具表镜像同步为 25"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791100528429,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/index.ts",
+          "src/application/internal/binding-write.ts",
+          "tests/apply-wiring.test.ts"
+        ],
+        "completed": [
+          "useCaseDeps 增 crossWindowDeliver: deliverer（复用已实现的跨窗口投递）",
+          "新增 workspaceRegistry 惰性 inject，开窗适配器接第二个解析器",
+          "注册 reqboard_handoff（工具表 24 → 25，镜像测试同步更新）",
+          "applyRebind 委托 handoffOwner：看板改绑 = 一次合法接管（席位与绑定同步）",
+          "兼容口径写进注释：不传落点请求体不变、未配置无后台行为、回滚幂等"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100528429,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-aa31a7",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "组合根装配 + 看板改绑修正 + 迁移兼容与回滚·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-6582c0"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "src/index.ts：① ctx.inject(['workspaceRegistry']) 惰性取值（与 sessionController 同款，缺省不影响既有行为）② SessionWindowOpener 构造加第二个解析器 ③ useCaseDeps 增 crossWindowDeliver: deliverer（AgentDeliverer 已实现 createMessage/deliver，含冷会话 resume——FR-4 的全部实现就是这一行）④ 注册 defineHandoffTool。src/application/internal/binding-write.ts：applyRebind 改为委托 handoffOwner（看板改绑 = 一次合法接管，席位与 sourceSessionId 同步）；http 路由与响应形状不变。兼容口径：不传 opts 的开窗请求体仍为 {}；未配置 handoff 无任何后台自动行为；回滚 = 看板改绑回原窗口（幂等）。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-46d0d7",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-0c1fe3",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100533937,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1424,
+              "at": 1791100533937,
+              "totals": {
+                "uncachedInputTokens": 213018,
+                "outputTokens": 159304,
+                "cacheReadTokens": 32136960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1426,
+              "at": 1791100534030,
+              "totals": {
+                "uncachedInputTokens": 213018,
+                "outputTokens": 159304,
+                "cacheReadTokens": 32136960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100534030
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d5243e",
+          "body": "[状态] → in_progress：t6 联调段开工（reqboard_task_move）",
+          "createdAt": 1791100533937,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-51bb43",
+          "body": "[状态] → done：联调段完成：工具真实注册、投递可达、三面契约测试绿（reqboard_task_move）",
+          "createdAt": 1791100534030,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100522064,
+      "updatedAt": 1791100534030,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100522064,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100533937,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t6 联调段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791100534030,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "联调段完成：工具真实注册、投递可达、三面契约测试绿"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791100528667,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/index.ts"
+        ],
+        "completed": [
+          "apply 冒烟：reqboard_handoff 出现在注册表（apply-wiring 5 绿）",
+          "投递端口可达（handoff-owner 投递分支断言绿）",
+          "既有契约面：bind-seat 16 / binding-trace 5 / open-window 7 全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100528667,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1ac0ee",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "组合根装配 + 看板改绑修正 + 迁移兼容与回滚·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-aa31a7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/index.ts：① ctx.inject(['workspaceRegistry']) 惰性取值（与 sessionController 同款，缺省不影响既有行为）② SessionWindowOpener 构造加第二个解析器 ③ useCaseDeps 增 crossWindowDeliver: deliverer（AgentDeliverer 已实现 createMessage/deliver，含冷会话 resume——FR-4 的全部实现就是这一行）④ 注册 defineHandoffTool。src/application/internal/binding-write.ts：applyRebind 改为委托 handoffOwner（看板改绑 = 一次合法接管，席位与 sourceSessionId 同步）；http 路由与响应形状不变。兼容口径：不传 opts 的开窗请求体仍为 {}；未配置 handoff 无任何后台自动行为；回滚 = 看板改绑回原窗口（幂等）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-46d0d7",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f03157",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100534119,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1428,
+              "at": 1791100534119,
+              "totals": {
+                "uncachedInputTokens": 213018,
+                "outputTokens": 159304,
+                "cacheReadTokens": 32136960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1430,
+              "at": 1791100534208,
+              "totals": {
+                "uncachedInputTokens": 213018,
+                "outputTokens": 159304,
+                "cacheReadTokens": 32136960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100534208
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-191baa",
+          "body": "[状态] → in_progress：t6 复核段开工（reqboard_task_move）",
+          "createdAt": 1791100534119,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-6c8092",
+          "body": "[状态] → done：复核段完成：兼容四条自证，基线红归属核对无本卡文件（reqboard_task_move）",
+          "createdAt": 1791100534208,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100522064,
+      "updatedAt": 1791100534208,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100522064,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100534119,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t6 复核段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791100534208,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "复核段完成：兼容四条自证，基线红归属核对无本卡文件"
+        }
+      ],
+      "layer": 5,
+      "lastReport": {
+        "at": 1791100528944,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/index.ts",
+          "src/application/internal/binding-write.ts"
+        ],
+        "completed": [
+          "兼容四条：不传落点请求体不变 / 未配置无后台行为 / 存量不预写 / 回滚幂等",
+          "基线红归属：layer-boundary 16 条越界与 size-budget 清单均无本卡文件",
+          "index.ts 净增 10 行（未重排）；既有 C-02 超标为开工前既有"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100528944,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a9e38c",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "组合根装配 + 看板改绑修正 + 迁移兼容与回滚·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-1ac0ee"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "src/index.ts：① ctx.inject(['workspaceRegistry']) 惰性取值（与 sessionController 同款，缺省不影响既有行为）② SessionWindowOpener 构造加第二个解析器 ③ useCaseDeps 增 crossWindowDeliver: deliverer（AgentDeliverer 已实现 createMessage/deliver，含冷会话 resume——FR-4 的全部实现就是这一行）④ 注册 defineHandoffTool。src/application/internal/binding-write.ts：applyRebind 改为委托 handoffOwner（看板改绑 = 一次合法接管，席位与 sourceSessionId 同步）；http 路由与响应形状不变。兼容口径：不传 opts 的开窗请求体仍为 {}；未配置 handoff 无任何后台自动行为；回滚 = 看板改绑回原窗口（幂等）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-46d0d7",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4b27ee",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100534296,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1432,
+              "at": 1791100534296,
+              "totals": {
+                "uncachedInputTokens": 213018,
+                "outputTokens": 159304,
+                "cacheReadTokens": 32136960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1434,
+              "at": 1791100534385,
+              "totals": {
+                "uncachedInputTokens": 213018,
+                "outputTokens": 159304,
+                "cacheReadTokens": 32136960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100534385
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-df5a5e",
+          "body": "[状态] → in_progress：t6 测试段开工（reqboard_task_move）",
+          "createdAt": 1791100534296,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-a62041",
+          "body": "[状态] → done：测试段完成：验收全绿，构建退出码 0（reqboard_task_move）",
+          "createdAt": 1791100534385,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100522064,
+      "updatedAt": 1791100534385,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100522064,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100534296,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t6 测试段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791100534385,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "测试段完成：验收全绿，构建退出码 0"
+        }
+      ],
+      "layer": 6,
+      "lastReport": {
+        "at": 1791100529220,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/apply-wiring.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/handoff-owner.test.ts tests/binding-trace.test.ts tests/bind-seat.test.ts tests/apply-wiring.test.ts → 全绿",
+          "npx tsc --noEmit → 本卡文件零错误",
+          "pnpm build → 退出码 0（client 校验符号齐全）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100529220,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-cccef0",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "验收：探针 + 反向演练 + 全量回归与实机复核·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-46d0d7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新建 scripts/handoff-probe.mts：对临时台账真跑一次交接，打印 from/to/old_role/new_role/source_session 五个读数，并断言 seats 里 owner.windowKey === sourceSessionId，退出码 0/非 0。补 tests/handoff-owner.test.ts 的四条反向演练（落错项目 → 开窗不发生；假成功 → 改绑后席位真换；读数缺席 → 无自动交接；半截交接 → 三处都不变）。跑全量回归，并按 test-cases.md 登记实机复核四步与结果。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-9f1e88",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-dd5763",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100605697,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1459,
+              "at": 1791100605697,
+              "totals": {
+                "uncachedInputTokens": 218832,
+                "outputTokens": 160891,
+                "cacheReadTokens": 32831104,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1465,
+              "at": 1791100608517,
+              "totals": {
+                "uncachedInputTokens": 219863,
+                "outputTokens": 161300,
+                "cacheReadTokens": 33184512,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1031,
+              "outputTokens": 409,
+              "cacheReadTokens": 353408,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100608517
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-33a2e2",
+          "body": "[状态] → in_progress：t7 研发段开工（阶段为 test，子卡链为 研发/复核/测试）（reqboard_task_move）",
+          "createdAt": 1791100605697,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-d82ed5",
+          "body": "[状态] → done：研发段完成：探针落地并实跑退出码 0（reqboard_task_move）",
+          "createdAt": 1791100608517,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100599189,
+      "updatedAt": 1791100608517,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100599189,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100605697,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t7 研发段开工（阶段为 test，子卡链为 研发/复核/测试）"
+        },
+        {
+          "status": "done",
+          "at": 1791100608517,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "研发段完成：探针落地并实跑退出码 0"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791100605256,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/handoff-probe.mts"
+        ],
+        "completed": [
+          "新增 scripts/handoff-probe.mts：临时台账跑交接与看板改绑两条路径",
+          "打印 from/to/old_role/new_role/source_session 五个读数",
+          "断言：owner 恰好一个、旧窗口降 observer、席位与绑定同指一窗、幂等不改评论",
+          "退出码 0/1 表达结论；跑前后对真实台账做快照比对，零写入"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100605256,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f889c1",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "验收：探针 + 反向演练 + 全量回归与实机复核·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-cccef0"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新建 scripts/handoff-probe.mts：对临时台账真跑一次交接，打印 from/to/old_role/new_role/source_session 五个读数，并断言 seats 里 owner.windowKey === sourceSessionId，退出码 0/非 0。补 tests/handoff-owner.test.ts 的四条反向演练（落错项目 → 开窗不发生；假成功 → 改绑后席位真换；读数缺席 → 无自动交接；半截交接 → 三处都不变）。跑全量回归，并按 test-cases.md 登记实机复核四步与结果。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-9f1e88",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ee8df9",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100608608,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1467,
+              "at": 1791100608608,
+              "totals": {
+                "uncachedInputTokens": 219863,
+                "outputTokens": 161300,
+                "cacheReadTokens": 33184512,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1469,
+              "at": 1791100608706,
+              "totals": {
+                "uncachedInputTokens": 219863,
+                "outputTokens": 161300,
+                "cacheReadTokens": 33184512,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100608706
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-32afbc",
+          "body": "[状态] → in_progress：t7 复核段开工（reqboard_task_move）",
+          "createdAt": 1791100608608,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-85942f",
+          "body": "[状态] → done：复核段完成：四条反向演练齐备，探针证伪有效（reqboard_task_move）",
+          "createdAt": 1791100608706,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100599189,
+      "updatedAt": 1791100608706,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100599189,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100608608,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t7 复核段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791100608706,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "复核段完成：四条反向演练齐备，探针证伪有效"
+        }
+      ],
+      "layer": 5,
+      "lastReport": {
+        "at": 1791100605340,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/handoff-owner.test.ts"
+        ],
+        "completed": [
+          "落错项目防线：已有（open-window-project-root ③）",
+          "假成功防线：新补一条（显式席位的记录经看板改绑后席位真换）",
+          "读数缺失防线：已有（判据侧 + 用例侧各一条）",
+          "半截交接防线：已有（写点全在构造之后，注入异常四处不变）",
+          "证伪：把看板改绑恢复成只看绑定的旧实现 → 探针判据转红"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100605340,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a5291b",
+      "requirementId": "REQ-261004150249-731e",
+      "title": "验收：探针 + 反向演练 + 全量回归与实机复核·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-f889c1"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新建 scripts/handoff-probe.mts：对临时台账真跑一次交接，打印 from/to/old_role/new_role/source_session 五个读数，并断言 seats 里 owner.windowKey === sourceSessionId，退出码 0/非 0。补 tests/handoff-owner.test.ts 的四条反向演练（落错项目 → 开窗不发生；假成功 → 改绑后席位真换；读数缺席 → 无自动交接；半截交接 → 三处都不变）。跑全量回归，并按 test-cases.md 登记实机复核四步与结果。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-9f1e88",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-91c03b",
+          "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+          "trigger": "manual",
+          "startedAt": 1791100608793,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1471,
+              "at": 1791100608793,
+              "totals": {
+                "uncachedInputTokens": 219863,
+                "outputTokens": 161300,
+                "cacheReadTokens": 33184512,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561",
+              "seq": 1473,
+              "at": 1791100608888,
+              "totals": {
+                "uncachedInputTokens": 219863,
+                "outputTokens": 161300,
+                "cacheReadTokens": 33184512,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791100608888
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7e2b49",
+          "body": "[状态] → in_progress：t7 测试段开工（reqboard_task_move）",
+          "createdAt": 1791100608793,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        },
+        {
+          "id": "c-aa6267",
+          "body": "[状态] → done：测试段完成：探针 exit 0、90 断言绿、tsc 无新增、构建通过（reqboard_task_move）",
+          "createdAt": 1791100608888,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791100599189,
+      "updatedAt": 1791100608888,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791100599189,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791100608793,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "t7 测试段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791100608888,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-7503b8bb-43bf-45d8-b7c4-dcb7e73d5561"
+          },
+          "reason": "测试段完成：探针 exit 0、90 断言绿、tsc 无新增、构建通过"
+        }
+      ],
+      "layer": 6,
+      "lastReport": {
+        "at": 1791100605481,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/handoff-probe.mts",
+          "tests/handoff-owner.test.ts"
+        ],
+        "completed": [
+          "npx tsx scripts/handoff-probe.mts → 退出码 0（五个读数齐备）",
+          "八个测试文件 → 90 条断言全绿",
+          "npx tsc --noEmit → 146 条既有基线，无本需求新增",
+          "pnpm build → 退出码 0（client 关键符号齐全）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791100605481,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-d43523",
+      "to": "t-f2c747"
+    },
+    {
+      "from": "t-3e8cec",
+      "to": "t-4bd792"
+    },
+    {
+      "from": "t-ee8599",
+      "to": "t-4bd792"
+    },
+    {
+      "from": "t-f2c747",
+      "to": "t-4bd792"
+    },
+    {
+      "from": "t-4bd792",
+      "to": "t-46d0d7"
+    },
+    {
+      "from": "t-46d0d7",
+      "to": "t-9f1e88"
+    },
+    {
+      "from": "t-8e051a",
+      "to": "t-8433b2"
+    },
+    {
+      "from": "t-8433b2",
+      "to": "t-2cf050"
+    },
+    {
+      "from": "t-2cf050",
+      "to": "t-542e92"
+    },
+    {
+      "from": "t-321227",
+      "to": "t-d73053"
+    },
+    {
+      "from": "t-d73053",
+      "to": "t-b0f77c"
+    },
+    {
+      "from": "t-b0f77c",
+      "to": "t-b3318b"
+    },
+    {
+      "from": "t-086978",
+      "to": "t-f75399"
+    },
+    {
+      "from": "t-f75399",
+      "to": "t-9fe6fb"
+    },
+    {
+      "from": "t-9fe6fb",
+      "to": "t-dcee5f"
+    },
+    {
+      "from": "t-d43523",
+      "to": "t-d8cc11"
+    },
+    {
+      "from": "t-d8cc11",
+      "to": "t-0fea36"
+    },
+    {
+      "from": "t-0fea36",
+      "to": "t-c553e8"
+    },
+    {
+      "from": "t-c553e8",
+      "to": "t-91cdd0"
+    },
+    {
+      "from": "t-3e8cec",
+      "to": "t-1ece44"
+    },
+    {
+      "from": "t-ee8599",
+      "to": "t-1ece44"
+    },
+    {
+      "from": "t-f2c747",
+      "to": "t-1ece44"
+    },
+    {
+      "from": "t-1ece44",
+      "to": "t-205997"
+    },
+    {
+      "from": "t-205997",
+      "to": "t-14bacb"
+    },
+    {
+      "from": "t-14bacb",
+      "to": "t-18cc78"
+    },
+    {
+      "from": "t-4bd792",
+      "to": "t-6582c0"
+    },
+    {
+      "from": "t-6582c0",
+      "to": "t-aa31a7"
+    },
+    {
+      "from": "t-aa31a7",
+      "to": "t-1ac0ee"
+    },
+    {
+      "from": "t-1ac0ee",
+      "to": "t-a9e38c"
+    },
+    {
+      "from": "t-46d0d7",
+      "to": "t-cccef0"
+    },
+    {
+      "from": "t-cccef0",
+      "to": "t-f889c1"
+    },
+    {
+      "from": "t-f889c1",
+      "to": "t-a5291b"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-d43523",
+        "t-3e8cec",
+        "t-ee8599",
+        "t-8e051a",
+        "t-321227",
+        "t-086978"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-f2c747",
+        "t-d8cc11",
+        "t-8433b2",
+        "t-d73053",
+        "t-f75399"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-4bd792",
+        "t-1ece44",
+        "t-0fea36",
+        "t-2cf050",
+        "t-b0f77c",
+        "t-9fe6fb"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-46d0d7",
+        "t-6582c0",
+        "t-205997",
+        "t-c553e8",
+        "t-542e92",
+        "t-b3318b",
+        "t-dcee5f"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-9f1e88",
+        "t-cccef0",
+        "t-aa31a7",
+        "t-14bacb",
+        "t-91cdd0"
+      ]
+    },
+    {
+      "layer": 5,
+      "tasks": [
+        "t-f889c1",
+        "t-1ac0ee",
+        "t-18cc78"
+      ]
+    },
+    {
+      "layer": 6,
+      "tasks": [
+        "t-a5291b",
+        "t-a9e38c"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-04T07:57:54.283Z"
+}

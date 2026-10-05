@@ -4,9 +4,10 @@
  * 查询实施链运行状态：读取 checkpoint + job 状态，返回快照投影。
  */
 
-import type { RequirementRecord, TaskRecord } from '../../client/types.js'
-import type { Checkpoint } from '../../domain/checkpoint.js'
 import { CheckpointManager } from '../internal/checkpoint-manager.js'
+import type { RequirementRecord, TaskRecord } from '../../client/types.js'
+import type { } from '../../domain/checkpoint.js'
+import { } from '../internal/checkpoint-manager.js'
 import { DshJobsAdapter } from '../../adapters/DshJobsAdapter.js'
 
 /**

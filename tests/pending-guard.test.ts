@@ -7,6 +7,7 @@
  *   - `markInterrupted` 幂等（只写首次），未知 ticket 返回 undefined 且不抛；
  *   - 过期基准 = `interruptedAt ?? createdAt`：中止记录再获一个完整 TTL，不因登记早而提前失效。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect } from 'vitest'
 import { PendingConfirmRegistry } from '../src/adapters/PendingConfirmRegistry.js'
 import {
@@ -27,8 +28,8 @@ function reqOf(id: string, patch: Partial<RequirementRecord> = {}): RequirementR
 }
 
 function depsOf(registry: PendingConfirmRegistry, requirements: RequirementRecord[]): UseCaseDeps {
-  const ledger = { schemaVersion: 1, revision: 0, requirements, tasks: [], triages: [] }
-  return { pendingConfirms: registry, repo: { snapshot: () => ledger } } as unknown as UseCaseDeps
+  // B12 阶段⑤：读点走新端口 ⇒ 用给定的记录现搭一个 store（原先经旧单册的 snapshot 读）
+  return { pendingConfirms: registry, store: makeTestStore({ requirements }) } as unknown as UseCaseDeps
 }
 
 function rec(overrides: Partial<PendingConfirmation> = {}): PendingConfirmation {
@@ -93,23 +94,23 @@ describe('markInterrupted / 过期基准（FR-4）', () => {
 })
 
 describe('livePendingConfirm：过滤已 settle / 已过期 / 台账已落章（FR-2 / FR-4）', () => {
-  it('台账已落章 → 放行（返回 undefined）；未落章 → 仍拦', () => {
+  it('台账已落章 → 放行（返回 undefined）；未落章 → 仍拦', async () => {
     const registry = new PendingConfirmRegistry({ now: () => 0, ttlMs: 1000 })
     const p = registry.register({ windowKey: W, requirementId: 'REQ-x', target: 'artifact', kind: 'requirement' })
-    expect(livePendingConfirm(depsOf(registry, [reqOf('REQ-x', { artifacts: [{ kind: 'requirement' }] as never })]), W)?.ticket).toBe(p.ticket)
-    expect(livePendingConfirm(depsOf(registry, [reqOf('REQ-x', { artifacts: [{ kind: 'requirement', confirmedAt: 1 }] as never })]), W)).toBeUndefined()
+    expect((await livePendingConfirm(depsOf(registry, [reqOf('REQ-x', { artifacts: [{ kind: 'requirement' }] as never })]), W))?.ticket).toBe(p.ticket)
+    expect(await livePendingConfirm(depsOf(registry, [reqOf('REQ-x', { artifacts: [{ kind: 'requirement', confirmedAt: 1 }] as never })]), W)).toBeUndefined()
   })
 
-  it('已 settle → undefined；台账查不到需求 → 保守仍拦', () => {
+  it('已 settle → undefined；台账查不到需求 → 保守仍拦', async () => {
     const registry = new PendingConfirmRegistry({ now: () => 0, ttlMs: 1000 })
     const p = registry.register({ windowKey: W, requirementId: 'REQ-x', target: 'plan' })
-    expect(livePendingConfirm(depsOf(registry, []), W)?.ticket).toBe(p.ticket)
+    expect((await livePendingConfirm(depsOf(registry), W))?.ticket).toBe(p.ticket)
     registry.settle(p.ticket, { confirmed: false, advanced: false })
-    expect(livePendingConfirm(depsOf(registry, []), W)).toBeUndefined()
+    expect(await livePendingConfirm(depsOf(registry), W)).toBeUndefined()
   })
 
-  it('未装配端口（deps.pendingConfirms 缺省）→ undefined', () => {
-    expect(livePendingConfirm({} as UseCaseDeps, W)).toBeUndefined()
+  it('未装配端口（deps.pendingConfirms 缺省）→ undefined', async () => {
+    expect(await livePendingConfirm({} as UseCaseDeps, W)).toBeUndefined()
   })
 
   it('文案常量：blocked_tools 四条写路径；recovery 含取回执与看板两条路径', () => {

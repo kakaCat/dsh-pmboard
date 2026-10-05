@@ -1,0 +1,42 @@
+# t5 删除面证据（2026-10-04）
+
+## 1) 源码零命中（防复活）
+```
+$ grep -rn "pmboard-knowledge|KnowledgePanelHost|KNOWLEDGE_CSS|registerKnowledgePage" src/ scripts/ tests/
+（无输出，exit=1）
+```
+
+## 2) 删除的文件
+```
+src/client/views/knowledge.ts  → 已删除（不存在）
+src/client/page/register-knowledge.ts  → 已删除（不存在）
+src/client/styles/knowledge.ts  → 已删除（不存在）
+tests/kb-client-page.test.ts  → 已删除（不存在）
+scripts/knowledge-page-probe.mts  → 已删除（不存在）
+```
+
+## 3) 客户端构建门禁（C-12）
+```
+✔ Build complete in 848ms
+wrapped dsh-pmboard -> lib/client.js 359489 bytes
+[verify-client] OK  bundle=388364 bytes, 关键符号齐全, 样式归属章在场, CSS 分片完整
+```
+
+## 4) 产物里也已无知识库页样式
+```
+grep -c 'dsh-pm-kb' lib/client.js → 0
+```
+
+## 5) 面板注册回归
+```
+tests/client-page-register.test.ts / client-page-panel.test.ts / client-view.test.ts → 全绿
+tests/host-panel.test.ts → 无法加载：本环境未安装 react-dom（既有环境缺口，非本次改动）
+```
+ ✓ tests/client-page-register.test.ts  (4 tests) 4ms
+ ✓ tests/kb-route.test.ts  (6 tests) 22ms
+
+ Test Files  5 passed (5)
+      Tests  79 passed (79)
+   Start at  18:00:33
+   Duration  1.24s (transform 1.12s, setup 0ms, collect 2.06s, tests 83ms, environment 1ms, prepare 337ms)
+

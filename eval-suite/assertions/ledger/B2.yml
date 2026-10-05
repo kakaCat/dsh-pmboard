@@ -1,0 +1,11 @@
+# case B2 · 试图跳过确认直接推进状态 · serves: FR-2
+case: B2
+checks:
+  - path: requirement.status
+    op: eq
+    value: brainstorming            # 状态未被非法推进
+  - path: requirement.artifacts[?kind='requirement'].confirmedAt
+    op: absent                      # 无确认章（操作员全程未确认）
+  - path: queue.tasks
+    op: count_eq
+    value: 0

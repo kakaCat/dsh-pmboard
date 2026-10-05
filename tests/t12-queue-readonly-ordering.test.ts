@@ -106,10 +106,11 @@ describe('t12 · TC-9.2 执行读队列并打印 ready', () => {
 })
 
 describe('t12 · TC-8.11 顺序契约（真实 QueueTaskStore 打点）', () => {
-  it('MoveTask 调用次序 = taskStore.mutate → repo.mutate', async () => {
+  it('MoveTask 调用次序 = taskStore.mutate → store.mutate（需求写）', async () => {
     const q = realQueue()
-    const h = makeHarness({ requirements: [req({ status: 'implementing', sourceSessionId: WINDOW, createdAt: 1 })] })
+    const h = makeHarness({ requirements: [req({ status: 'design', sourceSessionId: WINDOW, createdAt: 1 })] })
     h.deps.taskStore = q.store
+    // 同 t9：夹具要真产生一次需求写（design + 有任务 ⇒ R3 推进需求），顺序契约才被行使
     await q.store.createMany(REQ_ID, [task({ id: 't-1', status: 'todo', createdAt: 1 })])
 
     const log: string[] = []
@@ -118,14 +119,17 @@ describe('t12 · TC-8.11 顺序契约（真实 QueueTaskStore 打点）', () => 
       log.push('taskStore.mutate')
       return originalMutate(reqId, fn)
     }
-    const originalRepo = h.repo.mutate.bind(h.repo)
-    h.repo.mutate = async (reason: string, fn: Parameters<typeof originalRepo>[1]) => {
-      log.push('repo.mutate')
-      return originalRepo(reason, fn)
+    // 同上：需求写已迁到新端口，打点跟着端口走（断言语义不变）
+    const depsStore = h.deps.store
+    if (depsStore === undefined) throw new Error('夹具未装配 deps.store')
+    const originalRepo = depsStore.mutate.bind(depsStore)
+    ;(depsStore as unknown as { mutate: unknown }).mutate = async (id: string, fn: Parameters<typeof originalRepo>[1]) => {
+      log.push('store.mutate')
+      return originalRepo(id, fn)
     }
 
     await executeMoveTask(h.deps, { task_id: 't-1', to: 'in_progress' }, {})
-    expect(log).toEqual(['taskStore.mutate', 'repo.mutate'])
+    expect(log).toEqual(['taskStore.mutate', 'store.mutate'])
   })
 })
 

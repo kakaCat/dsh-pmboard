@@ -10,13 +10,13 @@
  *   - implementing：tasks 带 executions/claimedBy，byWindow 按窗口码分组；
  *   - 路由：GET /requirements/:id/stage/:stage 200/400/404。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { assembleStageDetail } from '../src/application/query/index.js'
 import type {
@@ -388,11 +388,11 @@ describe('assembleStageDetail：pendingConfirmation（四道人工确认门）',
 
 describe('路由 GET /requirements/:id/stage/:stage', () => {
   let dir: string
-  let store: ReqboardStore
+  let store: ReturnType<typeof makeTestStore>
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'pmboard-stage-'))
-    store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+    store = makeTestStore()
   })
   afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -418,7 +418,7 @@ describe('路由 GET /requirements/:id/stage/:stage', () => {
   }
 
   it('7 节点 GET 均返回 200 + 契约块', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     // 建需求（默认 feature 分类，全流水线）
     const created = await (async () => {
       const req = new EventEmitter() as any
@@ -444,14 +444,14 @@ describe('路由 GET /requirements/:id/stage/:stage', () => {
   })
 
   it('需求不存在 → 404 not_found', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     const res = await get(handler, '/requirements/REQ-ffffff/stage/draft')
     expect(res.statusCode).toBe(404)
     expect(res.payload.code).toBe('not_found')
   })
 
   it('stage 非法 → 400 invalid_input', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     // 先建一个需求
     const req = new EventEmitter() as any
     req.url = '/dashboard/api/reqboard/req/create'
@@ -467,14 +467,11 @@ describe('路由 GET /requirements/:id/stage/:stage', () => {
   })
 
   it('design 节点路由：读 requirement.md front-matter 注入策略（conditional/exempted 进投影）', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now(), cwd: dir })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now(), cwd: dir })
     mkdirSync(join(dir, 'docs/requirements/REQ-a1b2c3'), { recursive: true })
     writeFileSync(join(dir, 'docs/requirements/REQ-a1b2c3/requirement.md'),
       '---\nsides: frontend\ndesign_exempt: use-cases.md=纯内部工具无用户场景\n---\n\n# 需求\n')
-    await store.mutate('requirement-created', (l) => {
-      l.requirements.push(makeReq({ status: 'design' }))
-      return { requirements: [l.requirements[l.requirements.length - 1]!] }
-    })
+    await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [makeReq({ status: 'design' })], triages: [] })
     const res = await get(handler, '/requirements/REQ-a1b2c3/stage/design')
     expect(res.statusCode).toBe(200)
     const docs = res.payload.data.body.designDocs as Array<{ name: string; conditional?: string; exempted?: string }>
@@ -483,12 +480,9 @@ describe('路由 GET /requirements/:id/stage/:stage', () => {
   })
 
   it('分类跳过态经路由返回 enabled:false（bug 类 brainstorming）', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     // 建 bug 类需求（直接写库，绕过默认创建）
-    await store.mutate('requirement-created', (l) => {
-      l.requirements.push(makeReq({ id: 'REQ-bug001', category: 'bug', status: 'design' }))
-      return { requirements: [l.requirements[l.requirements.length - 1]!] }
-    })
+    await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [makeReq({ id: 'REQ-bug001', category: 'bug', status: 'design' })], triages: [] })
     const res = await get(handler, '/requirements/REQ-bug001/stage/brainstorming')
     expect(res.statusCode).toBe(200)
     expect(res.payload.data.enabled).toBe(false)

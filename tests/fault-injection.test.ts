@@ -9,11 +9,11 @@
  * F 拆分卡是薄卡（无实施卡）  → plan_submit/decompose 拒绝
  * G 计划任务表前向引用        → plan_submit 提交时打回
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import {
   definePlanSubmitTool, defineDecomposeTool, defineTaskMoveTool, defineTaskReportTool,
   defineAskConfirmTool, queueTasksOf, seedQueueTasks, stubDocFile, type ReqboardToolDeps,
@@ -24,7 +24,7 @@ import type { RequirementRecord } from '../src/shared/protocol.js'
 
 const W = 'session-fi-001'
 let root: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let planTool: any, decompose: any, taskMove: any, report: any
 let trace: Map<string, ToolTraceEntry[]>
 /** 同一个 deps 对象配全部工具 + 播种 + 断言（tool-deps 按 deps 记忆化 TaskStore）。 */
@@ -32,7 +32,7 @@ let deps: ReqboardToolDeps
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'pmboard-faultinj-'))
-  store = new ReqboardStore({ file: join(root, 'dsh-reqboard.json') })
+  store = makeTestStore()
   trace = new Map()
   deps = { store, now: () => Date.now(), toolTrace: trace, doneThrottleMs: 60_000, workspaceRoot: root }
   planTool = definePlanSubmitTool(deps)
@@ -57,26 +57,24 @@ async function seed(status = 'design'): Promise<void> {
     sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
   } as unknown as RequirementRecord
-  await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 async function approvePlan(): Promise<void> {
-  await store.mutate('approve', (l) => {
-    const r = l.requirements[0]
-    r.plan!.approvedAt = 1
+  await store.mutate(REQ, (r) => {    r.plan!.approvedAt = 1
     r.plan!.approvedBy = { kind: 'human' }
-    return { requirements: [r] }
+    return { changed: true }
   })
 }
 
 describe('A 弹框确认后节点不推进 → ask_confirm 原子完成', () => {
   it('肯定答复 → 落章 + 推进一次调用完成', async () => {
     await seed('brainstorming')
-    await store.mutate('artifact', (l) => {
-      l.requirements[0].artifacts = [{
+    await store.mutate(REQ, (r) => {
+      r.artifacts = [{
         stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/' + REQ + '/requirement.md',
         registeredAt: 1, registeredBy: { kind: 'agent' },
       } as never]
-      return { requirements: [l.requirements[0]] }
+      return { changed: true }
     })
     const deps = {
       store, now: () => Date.now(),
@@ -89,8 +87,8 @@ describe('A 弹框确认后节点不推进 → ask_confirm 原子完成', () => 
     )
     expect(out.confirmed).toBe(true)
     expect(out.advanced).toBe(true)
-    expect(store.snapshot().requirements[0].status).toBe('design')
-    expect(store.snapshot().requirements[0].artifacts![0].confirmedAt).toBeDefined()
+    expect(((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!.status).toBe('design')
+    expect(((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!.artifacts![0].confirmedAt).toBeDefined()
   })
 })
 
@@ -149,7 +147,7 @@ describe('E 过程文件不进文档 → 目录落盘即产物', () => {
     writeFileSync(abs, '<html></html>')
     const added = await syncReqArtifacts(store, REQ, root)
     expect(added).toBeGreaterThanOrEqual(1)
-    const arts = store.snapshot().requirements[0].artifacts!
+    const arts = ((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!.artifacts!
     const html = arts.find(a => a.path.includes('prototype.html'))!
     expect(html).toBeDefined()
     expect(html.autoDiscovered).toBe(true)

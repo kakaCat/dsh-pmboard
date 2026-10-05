@@ -55,6 +55,7 @@ export function defineCreateTool(deps: UseCaseDeps) {
         type: 'object',
         additionalProperties: false,
         properties: {
+          workspace_root: { type: 'string', description: '工作区根' },
           success: { type: 'boolean', description: '是否成功' },
           requirement_id: { type: 'string', description: '新需求 id（REQ-xxxxxx）' },
           title: { type: 'string', description: '需求名称' },
@@ -67,7 +68,7 @@ export function defineCreateTool(deps: UseCaseDeps) {
             items: { type: 'string' },
           },
           note: { type: 'string', description: '后续流程说明' },
-          board_link: { type: 'string', description: '项目看板链接（可在会话中点击跳转）' },
+          board_link: { type: 'string', description: '项目看板链接（点击后在应用内打开看板并定位该需求）' },
         },
       },
       render: renderSmart(createSummary),

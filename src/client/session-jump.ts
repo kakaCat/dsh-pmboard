@@ -24,7 +24,7 @@
 
 import { getPageLayout } from './page/page-runtime.ts'
 
-export type SessionJumpResult = 'opened' | 'archived' | 'missing' | 'unavailable'
+export type SessionJumpResult = 'opened' | 'archived' | 'restore-failed' | 'missing' | 'unavailable'
 
 export interface UiWorkspaceFace {
   /** 选中会话并显示其对话（DSH 官方导航动作）。 */
@@ -33,11 +33,25 @@ export interface UiWorkspaceFace {
 
 export interface SessionsServiceFace {
   refresh(): Promise<void>
-  list: { getSnapshot(): { byId: Record<string, unknown> } }
+  list: {
+    getSnapshot(): { byId: Record<string, unknown> }
+    /**
+     * 运行态订阅（REQ-261004210128-283d FR-1）：`byId[sid].running` 变化时回调。
+     * 可选——旧客户端 / 未注入时缺省，调用方（session-running）退化成 no-op 退订，
+     * 只失去实时性，读数本身照旧可用。
+     */
+    subscribe?(fn: () => void): () => void
+  }
 }
 
 export interface WorkspacesServiceFace {
   list: { getSnapshot(): { archivedSessionIds: readonly string[] } }
+  /**
+   * 取消归档（REQ-261002153446-c600 FR-1）：归档会话「日志保留、侧栏不可见」，
+   * 想从看板回到它就必须先把它移出归档集合。幂等——对未归档 id 调用是空操作。
+   * 可选：旧版本客户端 / 未注入时缺省 → 调用方退回 'archived' 旧语义。
+   */
+  unarchiveSession?(sessionId: string): Promise<void>
 }
 
 export interface SessionServiceAccess {
@@ -86,9 +100,9 @@ export function windowServiceAccess(): SessionServiceAccess {
 /**
  * 已归档会话 id 集合（工作区服务不可用 / 字段缺失 → 空集）。
  *
- * 用途：归档会话「日志保留、侧栏不可见」——跳过去也打不开，所以 UI 把对应的
- * **窗口按钮置灰不可点**，而不是让人点了再弹「该会话已归档」。渲染层与下拉菜单
- * 共用本函数，保证判定口径一致。
+ * 用途（REQ-261002153446-c600 起）：渲染层据此把窗口/会话 chip 标成灰态与
+ * 「点击取消归档并打开」的 title；跳转层据此决定是否先调 unarchiveSession。
+ * 渲染层与跳转层共用本函数，保证判定口径一致。
  */
 export function archivedSessionIds(access: SessionServiceAccess = windowServiceAccess()): ReadonlySet<string> {
   try {
@@ -106,6 +120,8 @@ export function archivedSessionIds(access: SessionServiceAccess = windowServiceA
  * sessions 列表仅用于跳转前判定 archived/missing；列表镜像可能滞后
  * （重连补拉/晚挂载），未命中时先 refresh() 重拉一次再判。
  * layout 不可用（未注入/已 clear）→ 返回 'unavailable'，不静默跳过收口。
+ * 已归档（REQ-261002153446-c600 FR-1）→ 先 workspaces.unarchiveSession(sid) 恢复，
+ * 成功再照常打开；恢复抛错 → 'restore-failed'，能力缺失 → 'archived'（都不打开）。
  */
 export async function jumpToSession(access: SessionServiceAccess, sessionId: string): Promise<SessionJumpResult> {
   console.log('[session-jump] jumpToSession called:', { sessionId })
@@ -133,6 +149,30 @@ export async function jumpToSession(access: SessionServiceAccess, sessionId: str
   const archived = (): readonly string[] => {
     try { return access.getWorkspaces()?.list.getSnapshot().archivedSessionIds ?? [] } catch { return [] }
   }
+
+  /**
+   * 已归档会话的第一段动作：取消归档（REQ-261002153446-c600 FR-1）。
+   *
+   * 返回 undefined = 可以继续原有跳转；返回结果态 = 到此为止（**不改动任何界面/会话状态**）：
+   * - 能力缺失（旧客户端无 unarchiveSession）→ 'archived'（保留旧语义，文案说清是能力问题）；
+   * - 调用抛错 → 'restore-failed'（**不** openSession：不制造「以为跳过去了」的错觉）。
+   *
+   * 位置刻意放在「可用性检查之后、打开动作之前」：打不开就不该先改动宿主的归档状态。
+   */
+  const restoreIfArchived = async (sid: string): Promise<SessionJumpResult | undefined> => {
+    if (!archived().includes(sid)) return undefined
+    const ws = access.getWorkspaces()
+    const unarchive = ws?.unarchiveSession
+    if (typeof unarchive !== 'function') return 'archived'
+    try {
+      await unarchive.call(ws, sid)
+      console.log('[session-jump] unarchiveSession ok, continue to open:', sid)
+      return undefined
+    } catch (e) {
+      console.error('[session-jump] unarchiveSession failed:', e)
+      return 'restore-failed'
+    }
+  }
   const inList = (sid: string): boolean => {
     if (sessions === undefined) return true // 列表不可得时不拦截，交给 openSession
     try { return sessions.list.getSnapshot().byId[sid] !== undefined } catch { return true }
@@ -159,9 +199,9 @@ export async function jumpToSession(access: SessionServiceAccess, sessionId: str
 
   console.log('[session-jump] check inList:', { inList: inList(sessionId), hasSessions: sessions !== undefined })
   if (inList(sessionId)) {
-    const isArchived = archived().includes(sessionId)
-    console.log('[session-jump] session in list, archived:', isArchived)
-    if (isArchived) return 'archived'
+    // 已归档 → 先取消归档（REQ-261002153446-c600 FR-1）；失败/能力缺失返回结果态，不改界面
+    const stopped = await restoreIfArchived(sessionId)
+    if (stopped !== undefined) return stopped
 
     // 目标会话即当前会话：只需收面板，会话本身不用切
     backToConversation()
@@ -181,9 +221,8 @@ export async function jumpToSession(access: SessionServiceAccess, sessionId: str
   }
   console.log('[session-jump] after refresh, check inList again:', inList(sessionId))
   if (inList(sessionId)) {
-    const isArchived = archived().includes(sessionId)
-    console.log('[session-jump] session in list after refresh, archived:', isArchived)
-    if (isArchived) return 'archived'
+    const stopped = await restoreIfArchived(sessionId)
+    if (stopped !== undefined) return stopped
     console.log('[session-jump] calling uiWorkspace.openSession...')
     backToConversation()
     uiWorkspace.openSession(sessionId)
@@ -198,7 +237,8 @@ export async function jumpToSession(access: SessionServiceAccess, sessionId: str
  * 统一的会话跳转公共方法（供所有页面使用）。
  *
  * 自动处理跳转结果并给出用户友好的提示信息。
- * 在跳转前会先检查会话是否已归档，归档的会话不会尝试跳转。
+ * 已归档会话不再被提前拒绝（REQ-261002153446-c600 FR-1）：跳转内部会先取消归档再打开，
+ * 只有恢复失败或客户端缺该能力时才给出明确原因。
  *
  * @param sessionId - 要跳转的会话 ID
  * @param onUnavailable - 可选的回调，当会话服务不可用时调用（如打开看板）
@@ -225,13 +265,9 @@ export async function handleSessionJump(
     return false
   }
 
-  // 检查会话是否已归档（跳转前校验，避免无效的跳转尝试）
-  const archived = archivedSessionIds()
-  if (archived.has(sessionId)) {
-    window.alert('该会话已归档（日志保留、侧栏不可见），无法跳转')
-    onUnavailable?.()
-    return false
-  }
+  // 已归档不再在这里拦下（REQ-261002153446-c600 FR-1）：点击意图就是「回到那个会话」，
+  // 所以「先取消归档、再打开」与「失败怎么说话」统一归 jumpToSession 一处判定，
+  // 本函数只负责把结果翻成人话——两处各写一套判定必然漂移。
 
   // 执行跳转
   const result = await jumpToSession(windowServiceAccess(), sessionId)
@@ -241,8 +277,13 @@ export async function handleSessionJump(
     case 'opened':
       return true
     case 'archived':
-      // 理论上不应该走到这里（已在前面检查过），但仍处理以防万一
-      window.alert('该会话已归档（日志保留，侧栏不可见）')
+      // 已归档 + 客户端不具备取消归档能力（旧版本 / 未注入）——保留旧语义，但说清是能力问题
+      window.alert('该会话已归档，且当前客户端不支持取消归档（workspaces.unarchiveSession 不可用），无法跳转')
+      onUnavailable?.()
+      return false
+    case 'restore-failed':
+      // 取消归档动作本身失败：把「没跳」说清楚，并给一条真的能走的路
+      window.alert('取消归档失败：会话未恢复，未跳转。可到会话列表手动恢复后重试')
       onUnavailable?.()
       return false
     case 'missing':

@@ -1,0 +1,39 @@
+task:
+  id: t-dd3067
+  title: 把授权判定从窗口绑定改为席位授权
+  status: done
+  implements: 在 src/application/internal/window.ts 把 isWindowBound / openRequirementsForVia / openRequirementsFor 升级为 seatsOf + canWrite(seat, action)，action 取值见 design/data-model.md（move-requirement / confirm-gate / submit-artifact / claim-task / report-task / read）。改造 src/application/internal/binding-read.ts 的 boundSummariesOf，并按 design/architecture.md 改动清单逐处替换全仓 16 处 bound[0]（语义改为按席位取，owner 优先）。复用 src/application/use-cases/ReportTask.ts 的 ownsTeamTask 范式做卡归属判定。同步改 15 个用例的校验点。
+  serves:
+    - FR-3
+  depends_on:
+    - t-6491f8
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261003215944-9e04
+    TASK_ID: t-dd3067
+    TASK_TITLE: 把授权判定从窗口绑定改为席位授权
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 3
+  workflow_done: 3
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T04:49:00.756Z
+    - phase: review
+      status: done
+      completed_at: 2026-10-04T05:14:58.544Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261003215944-9e04
+  generated_at: 2026-10-04T04:46:11.493Z
+  version: 12
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 3
+  last_updated: 2026-10-04T05:15:00.450Z

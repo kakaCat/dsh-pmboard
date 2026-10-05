@@ -5,7 +5,7 @@
  *
  * 1. **台账没有 `tasks` 键**：任务唯一存储 = 各需求 `docs/requirements/<REQ>/queue.json`
  *    （写方 = `QueueTaskStore`）。`InMemoryRepo` 因此只持 `requirements` / `triages`，
- *    `mutate` 的 change 通道**恒为两键**（与 `JsonLedgerRepository` 同口径）。
+ *    `mutate` 的 change 通道**恒为两键**（两键恒为数组：`undefined` 补空数组）。
  * 2. **任务存取走真实 `QueueTaskStore`**（生产实现），底座是 `InMemoryQueueRepository`
  *    （内存 Map，**不落盘、不碰 fs**，保住 harness 原有的"用例测试不落盘"性质）。
  *
@@ -37,15 +37,33 @@ import type {
   AskQuestion,
   DocEntry,
   DocRepository,
-  LedgerChange,
-  LedgerView,
-  MutableLedger,
+  ImportedLedger,
   MutateResult,
-  ReqboardRepository,
+  MutationOutcome,
+  NewComment,
+  NewRequirement,
+  RequirementChange,
+  RequirementDraft,
+  RequirementFilter,
+  RequirementHistoryEntry,
+  RequirementStore,
+  RequirementSummaryPage,
+  SweepResult,
   SessionProbe,
   UseCaseDeps,
   UserQuestionPort,
 } from '../../src/application/ports.js'
+// 值导入单独写：上面的导入块是 types-only，错误码表是运行时常量，混进去会让"仅类型"这条性质失真。
+import { REQUIREMENT_STORE_ERROR } from '../../src/application/ports.js'
+// t8 / 同源化：夹具的 `repo` 用**桥**架在 `store` 上，两个视图同一份真相。
+// 用桥的 `seed` 缝**同步**就绪，故 `makeHarness` 仍是同步函数（145 处调用点不动）。
+import { isColdStatus, isRequirementId } from '../../src/domain/requirement/ReqboardPaths.js'
+// 冷侧写豁免（与生产实现**同源**，不写第二份判据）：domain/requirement/ColdWrite。
+import { isColdWriteExempt } from '../../src/domain/requirement/ColdWrite.js'
+import { factsOf, summarize, type RequirementFacts, type RequirementSummary } from '../../src/domain/requirement/RequirementSummary.js'
+// 分页/排序助手与分片实现**同源**（REQ-261002161439-277d t4）：排序键是端口契约，
+// 两处各写一份必然漂移，而漂移的症状是"分页偶尔跳页"，最难查。
+import { compareSummaryOrder, decodeSummaryCursor, encodeSummaryCursor } from '../../src/repositories/shardPaging.js'
 import { QUEUE_VERSION, type QueueFile, type QueueTask } from '../../src/domain/queue/QueueTypes.js'
 import { computeEdges, computeLayers, computeReady } from '../../src/domain/queue/topology.js'
 import { validateQueueFile } from '../../src/domain/queue/validateQueue.js'
@@ -54,10 +72,14 @@ import { QueueTaskStore } from '../../src/repositories/QueueTaskStore.js'
 import {
   REQBOARD_SCHEMA_VERSION,
   emptyBuckets,
+  type ActorRef,
+  type CommentRecord,
   type ReqboardLedger,
   type RequirementRecord,
   type TaskRecord,
   type TokenSnapshot,
+  type ContextPressureSnapshot,
+  type SessionLineageEntry,
 } from '../../src/shared/protocol.js'
 
 /** 队列文件的 schemaVersion（v9：台账已无 tasks）。 */
@@ -215,43 +237,313 @@ export interface LedgerSeed {
 }
 
 /** v9 口径的内存台账仓储（结构上**没有** `tasks` 键）。 */
-export class InMemoryRepo implements ReqboardRepository {
-  ledger: ReqboardLedger
-  constructor(seed?: LedgerSeed) {
-    this.ledger = {
-      schemaVersion: REQBOARD_SCHEMA_VERSION,
-      revision: seed?.revision ?? 0,
-      requirements: [...(seed?.requirements ?? [])],
-      // REQ-260927202051-f6df t6/t9：台账 v9 起**没有 tasks**（任务唯一存储 = queue.json）。
-      triages: (seed?.triages ?? []) as ReqboardLedger['triages'],
+// B12 阶段⑤：`InMemoryRepo`（测试侧的旧单册端口实现）与 `HarnessRepo` 已无任何消费者，
+// 随 src 的旧端口一起删除（harness 现在只有 `store` 一个真相源）。
+// ---------------------------------------------------------------------------
+// 需求存储内存替身（REQ-261002161439-277d · t2 / FR-1、FR-5）
+//
+// 与上面的 `InMemoryRepo`（单册台账）**并存**：t2 只立契约，t8 才做端口切换。
+// 它是 `RequirementStore` 的**第一个**实现，也是「端口真的可替换」的第一份证据：
+// 同一份契约测试（`tests/reqboard/store-contract.test.ts`）同时跑它和分片实现（t4 接入）。
+//
+// 口径刻意与生产实现对齐的地方：
+//   * **version 由存储自增**（不靠调用点手工维护）——这是 FR-5 成立的前提；
+//   * 冷侧（archived/done）**只读**：读写分离于此，`get` 能取回、写操作抛 COLD_IMMUTABLE；
+//   * `undefined` 与 `{changed:false}` 都不落盘（幂等判据）；
+//   * `listSummaries` 缺省 `scope='active'`（不含归档）——首屏载荷降量的关键。
+//
+// 只在替身里存在、**不属于端口契约**的东西：故障注入 `injectFault`。
+// 它让契约测试能断言"损坏分片/IO 失败必须抛带该 code 的错误"这条**错误形状**契约
+// （真实实现由真实故障触发，见 t4/t5）。
+// ---------------------------------------------------------------------------
+
+/** 构造带 code 的错误（与生产实现同构：`Object.assign(new Error(msg), { code })`）。 */
+function codedError(code: string, message: string, extra: Record<string, unknown> = {}): Error {
+  return Object.assign(new Error(message), { code, ...extra })
+}
+
+export class InMemoryRequirementStore implements RequirementStore {
+  /** 分诊记录：内存替身不建 triage 状态（现状 0 条，与分片存储一致）。 */
+  async listTriages(): Promise<readonly never[]> { return [] }
+
+  private readonly records = new Map<string, RequirementRecord>()
+
+  /**
+   * **同步读口（仅测试替身）**：给"契约上必须同步"的调用方用——
+   * 生产实现的端口调用都是 async，但测试夹具里有几处（如 `facts: () => …`）是同步端口，
+   * 不能 await（见设计 §78 第 ⑱ 条）。B12 阶段⑤ 起 harness 不再经桥镜像，改由这里直读。
+   */
+  peek(id: string): RequirementRecord | undefined { return this.records.get(id) }
+  peekAll(): readonly RequirementRecord[] { return [...this.records.values()] }
+  peekRevision(): number { return this.revision }
+  /** 故障注入（仅测试替身）：id → 错误码。 */
+  private readonly faults = new Map<string, string>()
+  private readonly subscribers = new Set<(change: RequirementChange) => void>()
+  private revision: number
+  private readonly onWarn: (message: string) => void
+  /** 时钟：与生产实现同口径**注入**（端口不提供时钟，时间由适配器构造时注入）。 */
+  private readonly now: () => number
+
+  constructor(
+    seed?: { revision?: number; requirements?: readonly RequirementRecord[] },
+    opts?: { onWarn?: (message: string) => void; now?: () => number },
+  ) {
+    this.revision = seed?.revision ?? 0
+    this.onWarn = opts?.onWarn ?? (() => { /* 默认静默：测试要断言告警时自己注入收集器 */ })
+    this.now = opts?.now ?? (() => Date.now())
+    for (const r of seed?.requirements ?? []) this.records.set(r.id, structuredClone(r))
+  }
+
+  // ── 仅替身：故障注入（不属于端口契约）────────────────────────────────
+
+  /** 让后续对该 id 的读写以指定错误码失败（默认 `REQBOARD_IO_FAILED`）。 */
+  injectFault(id: string, code: string = REQUIREMENT_STORE_ERROR.IO_FAILED): void {
+    this.faults.set(id, code)
+  }
+
+  clearFaults(): void {
+    this.faults.clear()
+  }
+
+  /** 当前全部记录（测试断言用；生产端口**没有**这个入口）。 */
+  all(): readonly RequirementRecord[] {
+    return [...this.records.values()].map((r) => structuredClone(r))
+  }
+
+  // ── 读 ───────────────────────────────────────────────────────────────
+
+  async get(id: string): Promise<RequirementRecord | undefined> {
+    this.throwIfFaulted(id)
+    const rec = this.records.get(id)
+    return rec === undefined ? undefined : structuredClone(rec)
+  }
+
+  async getSummary(id: string): Promise<RequirementSummary | undefined> {
+    this.throwIfFaulted(id)
+    const rec = this.records.get(id)
+    return rec === undefined ? undefined : summarize(rec)
+  }
+
+  async listSummaries(filter?: RequirementFilter): Promise<RequirementSummaryPage> {
+    const offset = decodeSummaryCursor(filter?.cursor)
+    if (offset === null) return { items: [] } // 越界/伪造游标 → 空页（不抛错，避免看板整页报错）
+    const scope = filter?.scope ?? 'active'
+    const matched = [...this.records.values()]
+      .filter((r) => {
+        if (scope === 'active' && isColdStatus(r.status)) return false
+        if (scope === 'archived' && !isColdStatus(r.status)) return false
+        if (filter?.ids !== undefined && !filter.ids.includes(r.id)) return false
+        if (filter?.status !== undefined && !filter.status.includes(r.status)) return false
+        if (filter?.workspaceRoot !== undefined && r.workspaceRoot !== filter.workspaceRoot) return false
+        if (filter?.sourceSessionId !== undefined && r.sourceSessionId !== filter.sourceSessionId) return false
+        // 席位预筛（FR-3）：与分片实现同口径——只看落盘 seats、不折算（折算唯一处在读端 seatOfSummary）。
+        if (filter?.seatWindowKey !== undefined
+          && !(r.seats ?? []).some((seat) => seat.windowKey === filter.seatWindowKey)) return false
+        return true
+      })
+      .sort(compareSummaryOrder)
+    const limit = Math.min(Math.max(filter?.limit ?? 200, 1), 1000)
+    const items = matched.slice(offset, offset + limit).map(summarize)
+    const nextOffset = offset + items.length
+    return nextOffset < matched.length ? { items, nextCursor: encodeSummaryCursor(nextOffset) } : { items }
+  }
+
+  /** 同步投影：本地缓存视图，**可能略旧**——只许用于提示词/引导组装。 */
+  peekSummaries(): readonly RequirementSummary[] {
+    return [...this.records.values()].filter((r) => !isColdStatus(r.status)).map(summarize)
+  }
+
+  /** 同步提示词窄投影（B12 阶段①-a）：同 `peekSummaries()` 的许可区，多带 `description`。 */
+  peekFacts(): readonly RequirementFacts[] {
+    return [...this.records.values()].filter((r) => !isColdStatus(r.status)).map(factsOf)
+  }
+
+  async listComments(id: string, opts?: { since?: number; limit?: number }): Promise<readonly CommentRecord[]> {
+    this.throwIfFaulted(id)
+    const rec = this.records.get(id)
+    if (rec === undefined) return [] // 读不存在 → 空数组（不是错误）
+    const since = opts?.since ?? 0
+    const limit = opts?.limit ?? 200
+    return rec.comments.filter((_, i) => i >= since).slice(0, limit).map((c) => structuredClone(c))
+  }
+
+  async listHistory(id: string, opts?: { limit?: number }): Promise<readonly RequirementHistoryEntry[]> {
+    this.throwIfFaulted(id)
+    const rec = this.records.get(id)
+    if (rec === undefined) return []
+    const out: RequirementHistoryEntry[] = []
+    for (const e of rec.statusHistory ?? []) out.push({ kind: 'status', event: structuredClone(e) })
+    for (const a of rec.advance?.history ?? []) out.push({ kind: 'advance', record: structuredClone(a) })
+    return opts?.limit === undefined ? out : out.slice(0, opts.limit)
+  }
+
+  /** 内存替身没有写队列 ⇒ 排空是恒等（语义等价于 head()）。 */
+  async headAfterDrain(): Promise<{ revision: number; schemaVersion: number }> {
+    return this.head()
+  }
+
+  async head(): Promise<{ revision: number; schemaVersion: number }> {
+    return { revision: this.revision, schemaVersion: REQBOARD_SCHEMA_VERSION }
+  }
+
+  // ── 写 ───────────────────────────────────────────────────────────────
+
+  async create(input: NewRequirement, actor: ActorRef): Promise<RequirementRecord> {
+    if (!isRequirementId(input.id)) {
+      throw codedError(REQUIREMENT_STORE_ERROR.VALIDATION_FAILED, `需求 id 形态非法：${JSON.stringify(input.id)}`)
     }
-  }
-  async read<T>(fn: (view: LedgerView) => T): Promise<T> {
-    return fn(structuredClone(this.ledger) as LedgerView)
-  }
-  snapshot(): LedgerView {
-    return structuredClone(this.ledger) as LedgerView
-  }
-  async mutate(_reason: string, fn: (ledger: MutableLedger) => LedgerChange | undefined): Promise<MutateResult> {
-    const draft = structuredClone(this.ledger)
-    const changed = fn(draft)
-    if (changed === undefined) {
-      return { changed: { requirements: [], triages: [] }, revision: this.ledger.revision }
+    if (input.title.trim().length === 0) {
+      throw codedError(REQUIREMENT_STORE_ERROR.VALIDATION_FAILED, '需求标题不能为空')
     }
-    draft.revision += 1
-    this.ledger = draft
-    // 与 JsonLedgerRepository 同口径：两键恒为数组（`undefined` 补空数组），
-    // 用例侧沿用搬迁前"changed.requirements.length"的写法不做防御。
-    return {
-      changed: {
-        requirements: changed.requirements ?? [],
-        triages: changed.triages ?? [],
+    if (this.records.has(input.id)) {
+      throw codedError(REQUIREMENT_STORE_ERROR.ALREADY_EXISTS, `需求 ${input.id} 已存在（create 不覆盖）`, { requirementId: input.id })
+    }
+    const now = this.now()
+    const record: RequirementRecord = {
+      id: input.id,
+      title: input.title,
+      description: input.description ?? '',
+      status: input.status ?? 'draft',
+      blocked: false,
+      comments: [],
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: actor,
+      updatedBy: actor,
+      ...(input.category !== undefined ? { category: input.category } : {}),
+      ...(input.promptDifficulty !== undefined ? { promptDifficulty: input.promptDifficulty } : {}),
+      ...(input.docBasePath !== undefined ? { docBasePath: input.docBasePath } : {}),
+      ...(input.workspaceRoot !== undefined ? { workspaceRoot: input.workspaceRoot } : {}),
+      ...(input.sourceSessionId !== undefined ? { sourceSessionId: input.sourceSessionId } : {}),
+    }
+    this.records.set(record.id, record)
+    this.revision += 1
+    this.emit('requirement-created', record.id)
+    return structuredClone(record)
+  }
+
+  async mutate(id: string, fn: (draft: RequirementDraft) => MutationOutcome | undefined): Promise<MutateResult> {
+    return this.applyMutation(id, undefined, fn)
+  }
+
+  async mutateIf(id: string, expectedVersion: number, fn: (draft: RequirementDraft) => MutationOutcome | undefined): Promise<MutateResult> {
+    return this.applyMutation(id, expectedVersion, fn)
+  }
+
+  async appendComment(id: string, comment: NewComment): Promise<{ version: number; commentCount: number }> {
+    // 一次写 = **一条**变更通知，kind 说明这次是什么（不能既发 updated 又发 comment-added：
+    // 订阅者会按两次刷新处理同一次落盘）。故这里把 kind 交给 applyMutation 代发。
+    const result = await this.applyMutation(
+      id,
+      undefined,
+      (draft) => {
+        draft.comments.push(structuredClone(comment) as CommentRecord)
+        return { changed: true }
       },
-      revision: draft.revision,
-    }
+      'comment-added',
+    )
+    return { version: result.version, commentCount: result.requirement.comments.length }
   }
-  async replaceAll(_reason: string, next: MutableLedger): Promise<void> {
-    this.ledger = structuredClone(next) as ReqboardLedger
+
+  /**
+   * 启动对账专用：只扫**热侧**（非冷侧）需求——冷侧只读，对账不该碰它。
+   *
+   * 回调返回的 id 若不在扫描集里（冷侧/不存在），**忽略并告警**而不是抛错：
+   * 对账是幂等的批处理，一个越界 id 不该让整轮失败（但也不能静默，故留告警）。
+   */
+  async sweep(reason: string, fn: (drafts: readonly RequirementDraft[]) => readonly string[]): Promise<SweepResult> {
+    void reason
+    const hot = [...this.records.values()].filter((r) => !isColdStatus(r.status)).sort(compareSummaryOrder)
+    const drafts = hot.map((r) => structuredClone(r) as RequirementDraft)
+    const byId = new Map(drafts.map((d) => [d.id, d]))
+    const touched: string[] = []
+    for (const id of fn(drafts)) {
+      const draft = byId.get(id)
+      if (draft === undefined) {
+        this.onWarn(`sweep 返回了不在扫描集里的需求 id（已忽略）：${id}`)
+        continue
+      }
+      const next = { ...draft, version: (this.records.get(id)?.version ?? 0) + 1 } as RequirementRecord
+      this.records.set(id, next)
+      touched.push(id)
+    }
+    if (touched.length === 0) return { touched: [], revision: this.revision }
+    this.revision += 1
+    for (const id of touched) this.emit('requirement-updated', id)
+    return { touched, revision: this.revision }
+  }
+
+  async replaceAll(_reason: string, next: ImportedLedger): Promise<void> {
+    this.records.clear()
+    for (const r of next.requirements) this.records.set(r.id, structuredClone(r))
+    this.revision = next.revision
+    for (const r of next.requirements) this.emit('ledger-replaced', r.id)
+  }
+
+  subscribe(fn: (change: RequirementChange) => void): () => void {
+    this.subscribers.add(fn)
+    return () => this.subscribers.delete(fn)
+  }
+
+  // ── 内部 ─────────────────────────────────────────────────────────────
+
+  private throwIfFaulted(id: string): void {
+    const code = this.faults.get(id)
+    if (code === undefined) return
+    throw codedError(code, `注入故障：需求 ${id} 的存储操作失败（${code}）`, { requirementId: id })
+  }
+
+  private async applyMutation(
+    id: string,
+    expectedVersion: number | undefined,
+    fn: (draft: RequirementDraft) => MutationOutcome | undefined,
+    /** 广播的 kind；缺省按"状态有没有变"自动判（updated / moved）。 */
+    kindOverride?: RequirementChange['kind'],
+  ): Promise<MutateResult> {
+    this.throwIfFaulted(id)
+    const current = this.records.get(id)
+    if (current === undefined) {
+      throw codedError(REQUIREMENT_STORE_ERROR.NOT_FOUND, `需求 ${id} 不存在（写操作不隐式建档）`, { requirementId: id })
+    }
+    if (expectedVersion !== undefined && current.version !== expectedVersion) {
+      throw codedError(
+        REQUIREMENT_STORE_ERROR.CONFLICT,
+        `需求 ${id} 版本不匹配：期望 ${expectedVersion}，当前 ${current.version}`,
+        { requirementId: id, currentVersion: current.version },
+      )
+    }
+    const draft = structuredClone(current) as RequirementDraft
+    const outcome = fn(draft)
+    // 冷侧只读的**唯一豁免**：归档材料（人工裁定 2026-10-02，见 notes/t8-progress.md §14.2）。
+    // 与生产实现**同源**（共用 `domain/requirement/ColdWrite`），检查同样放在 `fn` 之后。
+    if (isColdStatus(current.status)
+      && !isColdWriteExempt(current as unknown as Record<string, unknown>, draft as unknown as Record<string, unknown>)) {
+      throw codedError(REQUIREMENT_STORE_ERROR.COLD_IMMUTABLE, `需求 ${id} 已归档（${current.status}），冷侧只读`, { requirementId: id })
+    }
+    if (outcome === undefined || outcome.changed === false) {
+      // 无变更：不落盘、不 bump、不广播（"幂等"的可观测形式 = 版本与全局序都不动）
+      return { requirement: structuredClone(current), version: current.version, revision: this.revision, changed: false }
+    }
+    // version 由**存储**自增（不靠调用点手工维护）；updatedAt 归变更器所有，存储不代改。
+    const next = { ...draft, version: current.version + 1 } as RequirementRecord
+    this.records.set(id, next)
+    this.revision += 1
+    this.emit(kindOverride ?? (current.status === next.status ? 'requirement-updated' : 'requirement-moved'), id)
+    return { requirement: structuredClone(next), version: next.version, revision: this.revision, changed: true }
+  }
+
+  private emit(kind: RequirementChange['kind'], id: string): void {
+    const rec = this.records.get(id)
+    if (rec === undefined) return
+    const change: RequirementChange = { kind, requirementId: id, revision: this.revision, summary: summarize(rec) }
+    for (const fn of this.subscribers) {
+      try {
+        fn(change)
+      } catch (err) {
+        this.onWarn(`需求存储订阅者抛错（已忽略，不阻断写）：${(err as Error).message}`)
+      }
+    }
   }
 }
 
@@ -320,6 +612,14 @@ export class FakeSession implements SessionProbe {
   /** 默认不可得（测试按需覆盖）；用例可注入具体快照。 */
   tokenSnapshot: TokenSnapshot = { at: 0, totals: emptyBuckets(), source: 'unavailable' }
   tokenTotals(_windowKey: string): TokenSnapshot { return this.tokenSnapshot }
+  /** REQ-261004154937-2ca3：默认「血缘不可得」（等价于只算自身的旧行为）；用例按需覆盖。 */
+  lineage: readonly SessionLineageEntry[] | undefined = undefined
+  async descendantSessions(_windowKey: string): Promise<readonly SessionLineageEntry[] | undefined> {
+    return this.lineage
+  }
+  /** 默认不可得（缺省即"取不到"）；用例按需注入具体读数。 */
+  contextPressureSnapshot: ContextPressureSnapshot = { at: 0, source: 'unavailable' }
+  contextPressure(_windowKey: string): ContextPressureSnapshot { return this.contextPressureSnapshot }
   matchesRecentUserMessage(): { ok: boolean; matchedText?: string; reason?: string } | undefined {
     return this.recentMatch
   }
@@ -353,7 +653,11 @@ export interface HarnessSeed extends LedgerSeed {
 }
 
 export interface Harness {
-  repo: InMemoryRepo
+  /**
+   * 新存储端口（t8/B0b）：与 `repo` **同一份真相**（`repo` 就是它的桥）。
+   * 供 `deps.store` 与迁移后的读点使用。
+   */
+  store: InMemoryRequirementStore
   /** 内存队列仓储（任务落点；`seedSync` / `rawOf` 是测试专用同步口）。 */
   queueRepo: InMemoryQueueRepository
   /** **真实** `QueueTaskStore`（生产实现，底座 = `queueRepo`）。`deps.taskStore` 就是它。 */
@@ -364,13 +668,30 @@ export interface Harness {
   session: FakeSession
   questions: FakeQuestions
   deps: UseCaseDeps
-  /** 当前内存台账（= `repo.ledger`；任务不在其中——v9 台账无 tasks）。 */
+  /** 当前台账视图（按需从 store 现搭；任务不在其中——v9 台账无 tasks）。 */
   readonly ledger: ReqboardLedger
   /**
    * 同步播种任务（**须在该需求首次被读取之前**调用）。
    * 按 `task.requirementId` 分组；不合法（V-1~V-6）**立刻抛错**，不留半份脏夹具。
    */
   seedTasks(requirementId: string, tasks: readonly TaskRecord[]): readonly TaskRecord[]
+  /**
+   * 播种一条需求（t8/B11）：**同时**写存储与镜像。
+   *
+   * 为什么必须有它：读点搬到新端口后，`h.seedRequirementSync(rec)` 这类**就地播种**
+   * 只改镜像、存储里没有 ⇒ `store.get(id)` 取不到（旧行为是从整册镜像里读得到）。
+   * 实现上不能只 `create`——新端口的 `create` 只认**标量**字段，`artifacts` / `plan` /
+   * `statusHistory` 等大字段要靠随后的一次差异写补齐（否则会被**静默丢字段**）。
+   */
+  seedRequirement(rec: RequirementRecord): Promise<void>
+  /**
+   * **同步**播种入口（镜像立刻落，存储写入排队）。给"播种写在同步 helper 里"的既有夹具用：
+   * 它们不能 `await`，换成 async 版本会直接让该文件收集失败（第 12 回合实测）。
+   * ⚠️ 用它的测试若随后要**经新端口读**，必须在读之前 `await h.seedSettled()`。
+   */
+  seedRequirementSync(rec: RequirementRecord): void
+  /** 等所有排队中的播种写完（配 `seedRequirementSync` 用）。 */
+  seedSettled(): Promise<void>
   /** 异步整份替换某需求的任务（走真实写路径：`createMany` 建档 / `mutate` 覆盖；缓存一致）。 */
   setTasks(requirementId: string, tasks: readonly TaskRecord[]): Promise<readonly TaskRecord[]>
   /** 异步追加任务（幂等：已存在 id 跳过）。 */
@@ -389,6 +710,8 @@ export interface Harness {
   mutateTask(taskId: string, fn: (task: QueueTask) => QueueTask | void): Promise<readonly TaskRecord[]>
   /** `mutateTask` 的补丁式糖：`await h.setTaskFields('t-s', { status: 'done' })`（async，同口径）。 */
   setTaskFields(taskId: string, patch: Partial<TaskRecord>): Promise<readonly TaskRecord[]>
+  /** 需求字段的补丁式糖（与 setTaskFields 同口径）；t8/B11：就地改镜像不再影响新端口读。 */
+  setRequirementFields(id: string, patch: Partial<RequirementRecord>): Promise<void>
   /**
    * 队列**写入序号**（幂等重放判据，替代恒真的台账 revision）：
    * 每次真正写盘 +1；幂等 noop 不写盘 → 数值不变。从没写过 → 0。
@@ -442,19 +765,81 @@ function seedGrouped(queueRepo: InMemoryQueueRepository, requirementId: string, 
   return tasks
 }
 
+/**
+ * 统一测试工厂：新存储替身（t8/B0b）。
+ *
+ * 这是 B11 的收口点——原先 40 余处自持单册夹具都已改用它，
+ * 于是"测试里到底有几个存储实现"只剩一个答案。
+ */
+export function makeTestStore(seed?: LedgerSeed): InMemoryRequirementStore {
+  return new InMemoryRequirementStore(seed)
+}
+
+/**
+ * **同源化（t8）**：`repo` 与 `store` 现在是**同一份真相**——`repo` 就是桥，架在 `store` 上。
+ *
+ * 三次实测的收敛过程（写给后人，省三轮试错）：
+ *  - 直接翻桥：**63 条转红**。主因 54 处 = 测试**就地播种**（旧写法 `h.repo.ledger.requirements.push(...)`，已迁走）
+ *    只改镜像、进不了 store，随后经桥写便 `REQBOARD_NOT_FOUND`。
+ *    → 修：桥补「镜像里有、存储没有 → **补建档**」的旧端口语义（`applyDiffOrRecreate`）。
+ *  - 再翻：**25 条**。主因 17 处 = 测试用了不合规 id，被新存储 `create` 的 id 形态校验正当拒绝
+ *    → 修：改那 7 个常量（行为中性）。
+ *  - 再翻：**2 条**。① 冷侧只读 vs 归档材料写入（**真实设计冲突**，已裁定「冷侧豁免归档材料」并落地
+ *    `domain/requirement/ColdWrite`）；② 镜像落后于存储（直写 `store` 后桥读到旧值）
+ *    → 修：**本函数下面挂 `attachSubscription()`**。
+ */
 export function makeHarness(seed?: HarnessSeed): Harness {
   const clock = new FixedClock()
   const docs = new FakeDocs(() => clock.t)
-  const repo = new InMemoryRepo(seed)
+  const store = makeTestStore(seed)
   const session = new FakeSession()
   const questions = new FakeQuestions()
   const ids = new SeqIds()
   const queueRepo = new InMemoryQueueRepository()
   const taskStore = new QueueTaskStore({ repo: queueRepo, now: () => clock.t, onWarn: (m) => queueRepo.warnings.push(m) })
-  const deps: UseCaseDeps = { repo, docs, clock, ids, session, questions, taskStore, doneThrottleMs: 0 }
+  const deps: UseCaseDeps = { store, docs, clock, ids, session, questions, taskStore, doneThrottleMs: 0 }
 
-  const harness: Harness = {
-    repo,
+  // ── 播种（t8/B11）：镜像与存储**都要写**；提供同步入口 + 显式 flush ──────────────
+  // 为什么要有同步入口：既有夹具的播种写在**同步 helper**（`makeUc` / `seed`）里，直接换成 async
+  // 会连带改一片调用点，且 `await` 落进非 async 函数会直接让该文件**收集失败**（第 12 回合实测）。
+  // 纪律：同步入口只把写**排队**；需要确定性的测试显式 `await h.seedSettled()`——
+  // **不靠**"fire-and-forget 迟早会好"（那是本仓禁止的静默不确定性）。
+  let seedQueue: Promise<unknown> = Promise.resolve()
+  const writeSeedToStore = async (rec: RequirementRecord): Promise<void> => {
+    // 冷侧（archived/done）**只读** ⇒ 差异写会被冷写守卫拒（豁免键不含 plan/statusHistory 等）。
+    // 播种本就是“整份造数据”，故冷侧改走 replaceAll（宽口）；`ImportedLedger` 就是 ReqboardLedger，
+    // 而夹具手里正好有这份 ledger（镜像），不必另造结构。
+    if (isColdStatus(rec.status)) {
+      // B12 阶段⑤：不再有桥镜像 ⇒ 册形视图从 store 的同步读口现搭（同一份真相）
+      const rest = store.peekAll().filter((r) => r.id !== rec.id)
+      await store.replaceAll('seed-cold', {
+        revision: store.peekRevision(), requirements: [...rest, structuredClone(rec)], triages: [], tasks: [],
+      } as unknown as ReqboardLedger)
+      return
+    }
+    if ((await store.get(rec.id)) === undefined) {
+      await store.create({
+        id: rec.id,
+        title: rec.title,
+        ...(rec.description !== undefined ? { description: rec.description } : {}),
+        ...(rec.category !== undefined ? { category: rec.category } : {}),
+        ...(rec.status !== undefined ? { status: rec.status } : {}),
+        ...(rec.sourceSessionId !== undefined ? { sourceSessionId: rec.sourceSessionId } : {}),
+        ...(rec.workspaceRoot !== undefined ? { workspaceRoot: rec.workspaceRoot } : {}),
+        ...(rec.docBasePath !== undefined ? { docBasePath: rec.docBasePath } : {}),
+        ...(rec.promptDifficulty !== undefined ? { promptDifficulty: rec.promptDifficulty } : {}),
+      }, { kind: 'agent' })
+    }
+    const fields = { ...(rec as unknown as Record<string, unknown>) }
+    delete fields.version
+    await store.mutate(rec.id, (draft) => {
+      Object.assign(draft, structuredClone(fields))
+      return { changed: true }
+    })
+  }
+
+  const harness: Harness = { store: store,
+
     queueRepo,
     taskStore,
     docs,
@@ -463,8 +848,18 @@ export function makeHarness(seed?: HarnessSeed): Harness {
     session,
     questions,
     deps,
-    get ledger(): ReqboardLedger { return repo.ledger },
+    // B12 阶段⑤：`ledger` 不再是桥镜像，而是**按需从 store 现搭**的册形视图（同一份真相）。
+    // 仍有 4 处 sync 端口回调读它（见设计 §78 第 ⑱ 条）；它们要的是"此刻的值"，故现搭即可。
+    get ledger(): ReqboardLedger {
+      return {
+        revision: store.peekRevision(), schemaVersion: 9,
+        requirements: [...store.peekAll()], triages: [],
+      } as unknown as ReqboardLedger
+    },
     seedTasks(requirementId, tasks) { return seedGrouped(queueRepo, requirementId, tasks) },
+    async seedRequirement(rec) { await writeSeedToStore(rec) },
+    seedRequirementSync(rec) { seedQueue = seedQueue.then(() => writeSeedToStore(rec)) },
+    async seedSettled() { await seedQueue },
     async setTasks(requirementId, tasks) {
       if (queueRepo.rawOf(requirementId) === undefined) return taskStore.createMany(requirementId, tasks)
       return taskStore.mutate(requirementId, () => tasks.map((t) => ({ ...structuredClone(t), layer: 0 })))
@@ -485,6 +880,11 @@ export function makeHarness(seed?: HarnessSeed): Harness {
           return out === undefined ? draft : out
         }),
       )
+    },
+    async setRequirementFields(id, patch) {
+      const fields = { ...(patch as Record<string, unknown>) }
+      delete fields.version
+      await store.mutate(id, (draft) => { Object.assign(draft, structuredClone(fields)); return { changed: true } })
     },
     setTaskFields(taskId, patch) {
       return harness.mutateTask(taskId, (t) => { Object.assign(t, patch) })

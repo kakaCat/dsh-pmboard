@@ -47,7 +47,7 @@ function deliverySpy(): { port: AgentDeliveryPort; sent: Array<{ windowKey: stri
 describe('H1 推进校验与回填', () => {
   it('台账 status === to → verdict=affirmative 且回填 requirementId', async () => {
     const h = makeHarness({ requirements: [req({ id: REQ_ID, status: 'design', sourceSessionId: W })] })
-    const handler = createH1AdvanceHandler({ repo: h.repo })
+    const handler = createH1AdvanceHandler({ store: h.store })
     const c = ctx()
     const outcome = await handler.run({ ctx: c })
     expect(outcome).toEqual({ kind: 'continue' })
@@ -57,7 +57,7 @@ describe('H1 推进校验与回填', () => {
 
   it('未推进到 to（非肯定项）→ verdict=negative 且 skip: not_advanced', async () => {
     const h = makeHarness({ requirements: [req({ id: REQ_ID, status: 'brainstorming', sourceSessionId: W })] })
-    const handler = createH1AdvanceHandler({ repo: h.repo })
+    const handler = createH1AdvanceHandler({ store: h.store })
     const c = ctx()
     const outcome = await handler.run({ ctx: c })
     expect(outcome).toMatchObject({ kind: 'skip', code: 'not_advanced' })
@@ -66,7 +66,7 @@ describe('H1 推进校验与回填', () => {
 
   it('无归属需求 → verdict=negative 且 skip: no_requirement', async () => {
     const h = makeHarness({ requirements: [] })
-    const handler = createH1AdvanceHandler({ repo: h.repo })
+    const handler = createH1AdvanceHandler({ store: h.store })
     const c = ctx({ requirementId: undefined })
     const outcome = await handler.run({ ctx: c })
     expect(outcome).toMatchObject({ kind: 'skip', code: 'no_requirement' })
@@ -182,7 +182,7 @@ describe('H4 唤醒（D5 分流）', () => {
 describe('H5 链级审计', () => {
   it('把各步结果写成需求时间线评论', async () => {
     const h = makeHarness({ requirements: [req({ id: REQ_ID, sourceSessionId: W })] })
-    const handler = createH5AuditHandler({ repo: h.repo, now: () => 123, newCommentId: () => 'c-audit' })
+    const handler = createH5AuditHandler({  store: h.store, now: () => 123, newCommentId: () => 'c-audit' })
     const scratch: ChainScratch = {
       steps: [
         { name: 'h1-advance', outcome: { kind: 'continue' } },
@@ -192,7 +192,7 @@ describe('H5 链级审计', () => {
     }
     const outcome = await handler.run({ ctx: ctx({ verdict: 'affirmative' }), scratch })
     expect(outcome).toEqual({ kind: 'continue' })
-    const body = h.repo.snapshot().requirements[0]!.comments.at(-1)!.body
+    const body = (await h.store.get(REQ_ID))!.comments.at(-1)!.body
     expect(body).toContain('[闸门后置链] G1')
     expect(body).toContain('h1-advance=ok')
     expect(body).toContain('h2-compact=skip（doc_not_ready）')
@@ -201,7 +201,7 @@ describe('H5 链级审计', () => {
 
   it('无 requirementId → skip: no_requirement（不写台账）', async () => {
     const h = makeHarness({})
-    const handler = createH5AuditHandler({ repo: h.repo, now: () => 1, newCommentId: () => 'c' })
+    const handler = createH5AuditHandler({  store: h.store, now: () => 1, newCommentId: () => 'c' })
     const outcome = await handler.run({ ctx: ctx({ requirementId: undefined }), scratch: {} })
     expect(outcome).toMatchObject({ kind: 'skip', code: 'no_requirement' })
   })

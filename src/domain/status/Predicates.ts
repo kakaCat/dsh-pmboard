@@ -37,6 +37,40 @@ export function isArchived(req: HasStatus): boolean {
   return req.status === 'archived'
 }
 
+/**
+ * 收尾闭环判定所需的最小投影（domain 不 import 台账类型，层门禁要求）。
+ *
+ * 两个"材料已交"的信号都认：`archive` 记录（submitArchive 写入的材料本体）与
+ * `artifacts` 里的 `kind==='archive'` 产物（产物簿登记）。二者任一在场即算闭环——
+ * 只认产物簿会在"材料已写但产物未登记"时误报，只认记录则与 projectRequirement 口径不一致。
+ */
+type ClosingShape = {
+  status: string
+  artifacts?: readonly { kind?: string }[]
+  archive?: unknown
+}
+
+/** 收尾缺口的取值（REQ-261001154450-b918 FR-6）。 */
+export type ClosingGap = 'archive_missing'
+
+/**
+ * 收尾闭环缺口（FR-6）：已归档但**没有归档材料产物** → 'archive_missing'；否则 undefined。
+ *
+ * 为什么由 domain 推导而不是落盘一个冗余字段：闭环与否完全由 (status, artifacts) 决定，
+ * 多存一份就多一处会与真相漂移的地方。
+ */
+export function closingGapOf(req: ClosingShape): ClosingGap | undefined {
+  if (req.status !== 'archived') return undefined
+  const hasArchiveRecord = req.archive !== undefined && req.archive !== null
+  const hasArchiveArtifact = (req.artifacts ?? []).some(a => a.kind === 'archive')
+  return hasArchiveRecord || hasArchiveArtifact ? undefined : 'archive_missing'
+}
+
+/** 是否已闭环（归档 + 归档材料齐）。 */
+export function isClosed(req: ClosingShape): boolean {
+  return isArchived(req) && closingGapOf(req) === undefined
+}
+
 /** 是否已取消。 */
 export function isCanceled(req: HasStatus): boolean {
   return req.status === 'canceled'
@@ -110,6 +144,17 @@ export function isFailedItem(i: HasStatus | string): boolean {
 /** 单项是否待裁决。 */
 export function isPendingItem(i: HasStatus): boolean {
   return i.status === 'pending'
+}
+
+/**
+ * 单项是否"通过了但没留下实际结果"（REQ-261001154450-b918 FR-1）。
+ *
+ * 为什么要有第三态：弹框在本机是「选项 **或** 自定义输入」二选一，选"通过"时拿不到文本。
+ * 旧实现写一句占位文案仍记 passed——台账上分不清"复核过"与"没复核"。
+ * unverified = 人点过通过、但证据留白：**不计入通过**，需求不得据此归档。
+ */
+export function isUnverifiedItem(i: HasStatus): boolean {
+  return i.status === 'unverified'
 }
 
 /** 单项是否不可验收（无法按要求验，须带原因）。REQ-308b9a FR-9。 */

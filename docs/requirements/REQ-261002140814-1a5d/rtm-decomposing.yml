@@ -1,0 +1,479 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261002140814-1a5d
+  generated_at: 2026-10-02T06:13:58.975Z
+  version: 67
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-02T06:26:10.495Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/architecture.md#1
+      title: 现状链路与三处病灶 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: "1"
+    - ref: design/architecture.md#2
+      title: 目标链路 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: "2"
+    - ref: design/architecture.md#3
+      title: 关键取舍：值从哪取 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: "3"
+    - ref: design/architecture.md#4
+      title: 数据层影响与回滚 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: "4"
+    - ref: design/architecture.md#5
+      title: 已知残留（明确不修，理由）`
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: "5"
+    - ref: design/data-model.md#1
+      title: 不改的落盘结构 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: "1"
+    - ref: design/data-model.md#2
+      title: 写入字段对照 `
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: "2"
+    - ref: design/data-model.md#3
+      title: 回执数据契约 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: "3"
+    - ref: design/data-model.md#4
+      title: 迁移、兼容与回滚 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/data-model.md
+      section: "4"
+    - ref: design/interfaces.md#1
+      title: 工具壳接口（签名不变）`
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: "1"
+    - ref: design/interfaces.md#2
+      title: 用例签名与三条实现契约 `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: "2"
+    - ref: design/interfaces.md#3
+      title: 错误码与拒绝条件 `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: "3"
+    - ref: design/interfaces.md#4
+      title: 变更通知契约 `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: "4"
+    - ref: design/interfaces.md#5
+      title: 门禁与测试接口 `
+      serves:
+        - FR-3
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: "5"
+    - ref: design/use-cases.md#1
+      title: UC-1 主流程：armed 需求被解锁 `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: "1"
+    - ref: design/use-cases.md#2
+      title: UC-2 无 dive 记录的存量需求 `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: "2"
+    - ref: design/use-cases.md#3
+      title: UC-3 变更期间需求消失（假成功修补）`
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: "3"
+    - ref: design/use-cases.md#4
+      title: UC-4 拒绝路径（零行为变更）`
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: "4"
+    - ref: design/use-cases.md#5
+      title: UC-5 人在看板上看到留痕 `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: "5"
+    - ref: design/use-cases.md#6
+      title: 路径 × 条款映射 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/use-cases.md
+      section: "6"
+outputs:
+  tasks:
+    - id: t-63e66a
+      title: 冻结并修正解锁回执契约（无损 + 不说假成功）
+      implements: "在 clearPause 内声明闭包 let previousActivation: string | undefined，并在 deps.repo.mutate 的变更器里 previousActivation = req.dive?.activation（不再从 mutate() 返回结果读）；变更器末尾改为 return { requirements: [req] }；三处 reject(...) 改为 return reject(...)（reject 返回 never → target 收窄，消 TS18048）；回执组装改为 ...(previousActivation !== undefined ? { previous_activation: previousActivation } : {})；失败判定从恒为假的 result === undefined 改为 result.changed.requirements.length === 0 时 reject REQBOARD_MUTATION_FAILED（防假成功）。工具壳、output.schema、参数形状一律不动。"
+      serves:
+        - FR-1
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-a3ed75
+      title: 解锁留痕改写入 CommentRecord.body
+      implements: src/application/use-cases/ClearPause.ts 的 req.comments.push({...})：键名 text → body，正文文案与 createdAt/createdBy 保持不变（正文仍为 `Dive 模式已解除锁定（reqboard_clear_pause）。之前状态：${previousActivation ?? 'none'}`）。不加 text 兼容字段、不做读侧回退、不回填历史台账。
+      serves:
+        - FR-2
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-93f87b
+      title: 新增解锁回归用例（UC-1..5 + 反向证伪，修前必红）
+      implements: "新建 tests/clear-pause-lossless.test.ts：头 20 行含 // serves: FR-1, FR-2, FR-3；复用 tests/status-lossless.test.ts 的 undefinedPaths(v) 递归口径；夹具照 tests/output-contract.test.ts 的 depsWith()（真实 JsonLedgerRepository + FileDocRepository + SystemClock + RandomIdFactory + 临时目录，用例后 rmSync）；直调 defineClearPauseTool(deps).execute(args, { agent: { id: W } })。覆盖 UC-1（armed→回执含 previous_activation 且 undefinedPaths 为空、台账 disarmed/idle、version+1）、UC-2（无 dive 记录 → 键整体省略、新建 dive、文案 none）、UC-3（变更器找不到需求 → REQBOARD_MUTATION_FAILED 且不返回 success、零写入）、UC-4（无绑定 → REQBOARD_NO_BOUND_REQ；非本窗口 id → REQBOARD_NOT_BOUND_TO_WINDOW；均零写入）、UC-5（comments.at(-1).body 含文字且无 text 键）；再加反向证伪：把旧形状 { previous_activation: undefined } 与 { text: '…' } 喂给同一断言函数，必须报缺。"
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-f94bec
+      title: 契约门禁补洞：值为 undefined 的属性判红
+      implements: "tests/output-contract.test.ts 的 assertConformsToSchema：删除 `|| obj[k] === undefined` 豁免（该豁免让 ClearPause 的 undefined 回执全绿溜过），改为声明键的值若为 undefined 即判红；保留既有故障注入用例并补一条‘给断言喂 { declared: undefined } 必红’的反向自检。若删豁免后暴露其它工具的同类缺陷，按需求边界只登记发现，不在本需求修。"
+      serves:
+        - FR-3
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-25c6a0
+      title: 迁移兼容与端到端验证（无回填 + 类型清零 + 基线 + 构建）
+      implements: 复核无 schemaVersion 变更、无迁移脚本、无历史数据回填（旧的 text 键评论保持原样，登记为已知残留）；跑 pnpm typecheck（本文件清零）、pnpm test（与基线 106 failed 比对）、pnpm build（C-11）；git diff --stat 核对改动面仅 3 个文件；人工端到端：pnpm build 后重启宿主，在一个 armed 需求上真调 reqboard_clear_pause，核对回执无报错且看板阶段评论可见。若未重启宿主，如实标注‘端到端未验证’。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-2de888
+      title: 冻结并修正解锁回执契约（无损 + 不说假成功）·研发
+      implements: |-
+        在 clearPause 内声明闭包 let previousActivation: string | undefined，并在 deps.repo.mutate 的变更器里 previousActivation = req.dive?.activation（不再从 mutate() 返回结果读）；变更器末尾改为 return { requirements: [req] }；三处 reject(...) 改为 return reject(...)（reject 返回 never → target 收窄，消 TS18048）；回执组装改为 ...(previousActivation !== undefined ? { previous_activation: previousActivation } : {})；失败判定从恒为假的 result === undefined 改为 result.changed.requirements.length === 0 时 reject REQBOARD_MUTATION_FAILED（防假成功）。工具壳、output.schema、参数形状一律不动。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-8ed4c7
+      title: 冻结并修正解锁回执契约（无损 + 不说假成功）·联调
+      implements: |-
+        在 clearPause 内声明闭包 let previousActivation: string | undefined，并在 deps.repo.mutate 的变更器里 previousActivation = req.dive?.activation（不再从 mutate() 返回结果读）；变更器末尾改为 return { requirements: [req] }；三处 reject(...) 改为 return reject(...)（reject 返回 never → target 收窄，消 TS18048）；回执组装改为 ...(previousActivation !== undefined ? { previous_activation: previousActivation } : {})；失败判定从恒为假的 result === undefined 改为 result.changed.requirements.length === 0 时 reject REQBOARD_MUTATION_FAILED（防假成功）。工具壳、output.schema、参数形状一律不动。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-2de888
+      phase: implement
+      side: backend
+    - id: t-1fb71d
+      title: 冻结并修正解锁回执契约（无损 + 不说假成功）·复核
+      implements: |-
+        在 clearPause 内声明闭包 let previousActivation: string | undefined，并在 deps.repo.mutate 的变更器里 previousActivation = req.dive?.activation（不再从 mutate() 返回结果读）；变更器末尾改为 return { requirements: [req] }；三处 reject(...) 改为 return reject(...)（reject 返回 never → target 收窄，消 TS18048）；回执组装改为 ...(previousActivation !== undefined ? { previous_activation: previousActivation } : {})；失败判定从恒为假的 result === undefined 改为 result.changed.requirements.length === 0 时 reject REQBOARD_MUTATION_FAILED（防假成功）。工具壳、output.schema、参数形状一律不动。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-8ed4c7
+      phase: implement
+      side: backend
+    - id: t-17f7e1
+      title: 冻结并修正解锁回执契约（无损 + 不说假成功）·测试
+      implements: |-
+        在 clearPause 内声明闭包 let previousActivation: string | undefined，并在 deps.repo.mutate 的变更器里 previousActivation = req.dive?.activation（不再从 mutate() 返回结果读）；变更器末尾改为 return { requirements: [req] }；三处 reject(...) 改为 return reject(...)（reject 返回 never → target 收窄，消 TS18048）；回执组装改为 ...(previousActivation !== undefined ? { previous_activation: previousActivation } : {})；失败判定从恒为假的 result === undefined 改为 result.changed.requirements.length === 0 时 reject REQBOARD_MUTATION_FAILED（防假成功）。工具壳、output.schema、参数形状一律不动。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-1fb71d
+      phase: implement
+      side: backend
+    - id: t-f7da89
+      title: 解锁留痕改写入 CommentRecord.body·研发
+      implements: |-
+        src/application/use-cases/ClearPause.ts 的 req.comments.push({...})：键名 text → body，正文文案与 createdAt/createdBy 保持不变（正文仍为 `Dive 模式已解除锁定（reqboard_clear_pause）。之前状态：${previousActivation ?? 'none'}`）。不加 text 兼容字段、不做读侧回退、不回填历史台账。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-0f850a
+      title: 解锁留痕改写入 CommentRecord.body·联调
+      implements: |-
+        src/application/use-cases/ClearPause.ts 的 req.comments.push({...})：键名 text → body，正文文案与 createdAt/createdBy 保持不变（正文仍为 `Dive 模式已解除锁定（reqboard_clear_pause）。之前状态：${previousActivation ?? 'none'}`）。不加 text 兼容字段、不做读侧回退、不回填历史台账。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-f7da89
+      phase: implement
+      side: backend
+    - id: t-a067f3
+      title: 解锁留痕改写入 CommentRecord.body·复核
+      implements: |-
+        src/application/use-cases/ClearPause.ts 的 req.comments.push({...})：键名 text → body，正文文案与 createdAt/createdBy 保持不变（正文仍为 `Dive 模式已解除锁定（reqboard_clear_pause）。之前状态：${previousActivation ?? 'none'}`）。不加 text 兼容字段、不做读侧回退、不回填历史台账。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-0f850a
+      phase: implement
+      side: backend
+    - id: t-9c833b
+      title: 解锁留痕改写入 CommentRecord.body·测试
+      implements: |-
+        src/application/use-cases/ClearPause.ts 的 req.comments.push({...})：键名 text → body，正文文案与 createdAt/createdBy 保持不变（正文仍为 `Dive 模式已解除锁定（reqboard_clear_pause）。之前状态：${previousActivation ?? 'none'}`）。不加 text 兼容字段、不做读侧回退、不回填历史台账。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-a067f3
+      phase: implement
+      side: backend
+    - id: t-cad1d0
+      title: 新增解锁回归用例（UC-1..5 + 反向证伪，修前必红）·研发
+      implements: |-
+        新建 tests/clear-pause-lossless.test.ts：头 20 行含 // serves: FR-1, FR-2, FR-3；复用 tests/status-lossless.test.ts 的 undefinedPaths(v) 递归口径；夹具照 tests/output-contract.test.ts 的 depsWith()（真实 JsonLedgerRepository + FileDocRepository + SystemClock + RandomIdFactory + 临时目录，用例后 rmSync）；直调 defineClearPauseTool(deps).execute(args, { agent: { id: W } })。覆盖 UC-1（armed→回执含 previous_activation 且 undefinedPaths 为空、台账 disarmed/idle、version+1）、UC-2（无 dive 记录 → 键整体省略、新建 dive、文案 none）、UC-3（变更器找不到需求 → REQBOARD_MUTATION_FAILED 且不返回 success、零写入）、UC-4（无绑定 → REQBOARD_NO_BOUND_REQ；非本窗口 id → REQBOARD_NOT_BOUND_TO_WINDOW；均零写入）、UC-5（comments.at(-1).body 含文字且无 text 键）；再加反向证伪：把旧形状 { previous_activation: undefined } 与 { text: '…' } 喂给同一断言函数，必须报缺。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-60346d
+      title: 新增解锁回归用例（UC-1..5 + 反向证伪，修前必红）·复核
+      implements: |-
+        新建 tests/clear-pause-lossless.test.ts：头 20 行含 // serves: FR-1, FR-2, FR-3；复用 tests/status-lossless.test.ts 的 undefinedPaths(v) 递归口径；夹具照 tests/output-contract.test.ts 的 depsWith()（真实 JsonLedgerRepository + FileDocRepository + SystemClock + RandomIdFactory + 临时目录，用例后 rmSync）；直调 defineClearPauseTool(deps).execute(args, { agent: { id: W } })。覆盖 UC-1（armed→回执含 previous_activation 且 undefinedPaths 为空、台账 disarmed/idle、version+1）、UC-2（无 dive 记录 → 键整体省略、新建 dive、文案 none）、UC-3（变更器找不到需求 → REQBOARD_MUTATION_FAILED 且不返回 success、零写入）、UC-4（无绑定 → REQBOARD_NO_BOUND_REQ；非本窗口 id → REQBOARD_NOT_BOUND_TO_WINDOW；均零写入）、UC-5（comments.at(-1).body 含文字且无 text 键）；再加反向证伪：把旧形状 { previous_activation: undefined } 与 { text: '…' } 喂给同一断言函数，必须报缺。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-cad1d0
+      phase: test
+      side: backend
+    - id: t-15d558
+      title: 新增解锁回归用例（UC-1..5 + 反向证伪，修前必红）·测试
+      implements: |-
+        新建 tests/clear-pause-lossless.test.ts：头 20 行含 // serves: FR-1, FR-2, FR-3；复用 tests/status-lossless.test.ts 的 undefinedPaths(v) 递归口径；夹具照 tests/output-contract.test.ts 的 depsWith()（真实 JsonLedgerRepository + FileDocRepository + SystemClock + RandomIdFactory + 临时目录，用例后 rmSync）；直调 defineClearPauseTool(deps).execute(args, { agent: { id: W } })。覆盖 UC-1（armed→回执含 previous_activation 且 undefinedPaths 为空、台账 disarmed/idle、version+1）、UC-2（无 dive 记录 → 键整体省略、新建 dive、文案 none）、UC-3（变更器找不到需求 → REQBOARD_MUTATION_FAILED 且不返回 success、零写入）、UC-4（无绑定 → REQBOARD_NO_BOUND_REQ；非本窗口 id → REQBOARD_NOT_BOUND_TO_WINDOW；均零写入）、UC-5（comments.at(-1).body 含文字且无 text 键）；再加反向证伪：把旧形状 { previous_activation: undefined } 与 { text: '…' } 喂给同一断言函数，必须报缺。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-60346d
+      phase: test
+      side: backend
+    - id: t-970c00
+      title: 契约门禁补洞：值为 undefined 的属性判红·研发
+      implements: |-
+        tests/output-contract.test.ts 的 assertConformsToSchema：删除 `|| obj[k] === undefined` 豁免（该豁免让 ClearPause 的 undefined 回执全绿溜过），改为声明键的值若为 undefined 即判红；保留既有故障注入用例并补一条‘给断言喂 { declared: undefined } 必红’的反向自检。若删豁免后暴露其它工具的同类缺陷，按需求边界只登记发现，不在本需求修。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-df6e03
+      title: 契约门禁补洞：值为 undefined 的属性判红·复核
+      implements: |-
+        tests/output-contract.test.ts 的 assertConformsToSchema：删除 `|| obj[k] === undefined` 豁免（该豁免让 ClearPause 的 undefined 回执全绿溜过），改为声明键的值若为 undefined 即判红；保留既有故障注入用例并补一条‘给断言喂 { declared: undefined } 必红’的反向自检。若删豁免后暴露其它工具的同类缺陷，按需求边界只登记发现，不在本需求修。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-970c00
+      phase: test
+      side: backend
+    - id: t-309f30
+      title: 契约门禁补洞：值为 undefined 的属性判红·测试
+      implements: |-
+        tests/output-contract.test.ts 的 assertConformsToSchema：删除 `|| obj[k] === undefined` 豁免（该豁免让 ClearPause 的 undefined 回执全绿溜过），改为声明键的值若为 undefined 即判红；保留既有故障注入用例并补一条‘给断言喂 { declared: undefined } 必红’的反向自检。若删豁免后暴露其它工具的同类缺陷，按需求边界只登记发现，不在本需求修。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-df6e03
+      phase: test
+      side: backend
+    - id: t-31a760
+      title: 迁移兼容与端到端验证（无回填 + 类型清零 + 基线 + 构建）·研发
+      implements: |-
+        复核无 schemaVersion 变更、无迁移脚本、无历史数据回填（旧的 text 键评论保持原样，登记为已知残留）；跑 pnpm typecheck（本文件清零）、pnpm test（与基线 106 failed 比对）、pnpm build（C-11）；git diff --stat 核对改动面仅 3 个文件；人工端到端：pnpm build 后重启宿主，在一个 armed 需求上真调 reqboard_clear_pause，核对回执无报错且看板阶段评论可见。若未重启宿主，如实标注‘端到端未验证’。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-e3878a
+      title: 迁移兼容与端到端验证（无回填 + 类型清零 + 基线 + 构建）·复核
+      implements: |-
+        复核无 schemaVersion 变更、无迁移脚本、无历史数据回填（旧的 text 键评论保持原样，登记为已知残留）；跑 pnpm typecheck（本文件清零）、pnpm test（与基线 106 failed 比对）、pnpm build（C-11）；git diff --stat 核对改动面仅 3 个文件；人工端到端：pnpm build 后重启宿主，在一个 armed 需求上真调 reqboard_clear_pause，核对回执无报错且看板阶段评论可见。若未重启宿主，如实标注‘端到端未验证’。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-31a760
+      phase: test
+      side: backend
+    - id: t-45c97a
+      title: 迁移兼容与端到端验证（无回填 + 类型清零 + 基线 + 构建）·测试
+      implements: |-
+        复核无 schemaVersion 变更、无迁移脚本、无历史数据回填（旧的 text 键评论保持原样，登记为已知残留）；跑 pnpm typecheck（本文件清零）、pnpm test（与基线 106 failed 比对）、pnpm build（C-11）；git diff --stat 核对改动面仅 3 个文件；人工端到端：pnpm build 后重启宿主，在一个 armed 需求上真调 reqboard_clear_pause，核对回执无报错且看板阶段评论可见。若未重启宿主，如实标注‘端到端未验证’。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-e3878a
+      phase: test
+      side: backend
+traceability:
+  design_to_tasks:
+    design/architecture.md#1:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+    design/architecture.md#2:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+    design/architecture.md#3:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+    design/architecture.md#4:
+      - t-63e66a
+      - t-a3ed75
+      - t-93f87b
+      - t-25c6a0
+    design/architecture.md#5:
+      - t-93f87b
+      - t-f94bec
+      - t-25c6a0
+    design/data-model.md#1:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+    design/data-model.md#2:
+      - t-a3ed75
+      - t-93f87b
+      - t-25c6a0
+    design/data-model.md#3:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+    design/data-model.md#4:
+      - t-63e66a
+      - t-a3ed75
+      - t-93f87b
+      - t-25c6a0
+    design/interfaces.md#1:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+    design/interfaces.md#2:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+    design/interfaces.md#3:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+    design/interfaces.md#4:
+      - t-a3ed75
+      - t-93f87b
+      - t-25c6a0
+    design/interfaces.md#5:
+      - t-63e66a
+      - t-a3ed75
+      - t-93f87b
+      - t-f94bec
+      - t-25c6a0
+    design/use-cases.md#1:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+    design/use-cases.md#2:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+    design/use-cases.md#3:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+    design/use-cases.md#4:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+    design/use-cases.md#5:
+      - t-a3ed75
+      - t-93f87b
+      - t-25c6a0
+    design/use-cases.md#6:
+      - t-63e66a
+      - t-a3ed75
+      - t-93f87b
+      - t-f94bec
+      - t-25c6a0
+  fr_to_tasks:
+    FR-1:
+      - t-63e66a
+      - t-93f87b
+      - t-25c6a0
+      - t-a3ed75
+      - t-f94bec
+    FR-2:
+      - t-63e66a
+      - t-a3ed75
+      - t-93f87b
+      - t-25c6a0
+      - t-f94bec
+    FR-3:
+      - t-93f87b
+      - t-f94bec
+      - t-25c6a0
+      - t-63e66a
+      - t-a3ed75
+coverage:
+  implementation:
+    total: 20
+    covered: 20
+    uncovered: []
+    rate: 100
+    total_designs: 20
+    covered_designs: 20

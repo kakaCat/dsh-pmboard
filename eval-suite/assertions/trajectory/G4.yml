@@ -1,0 +1,11 @@
+# case G4 · 冗余调用循环检测 · serves: FR-2
+case: G4
+ordered_contains:
+  - reqboard_run_status       # 查询 run 状态（允许按需多次，但不允许同参数连刷）
+budget:
+  max_tool_calls: 15
+  max_repeat_same_args: 1     # 相同参数连续重复上限：出现第 2 次连刷即判负
+forbidden:
+  - tool: reqboard_run_status # run 已 completed/failed 后不得继续轮询
+    when: last_result == ok
+notes: 轮询风暴判负示例：连续 ≥2 次相同参数 run_status；或 jobStatus 已终态后仍反复查询。正常等待任务通知、有节制的查询为合规。

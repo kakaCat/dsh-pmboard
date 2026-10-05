@@ -1,0 +1,35 @@
+task:
+  id: t-ccf428
+  title: 点已归档窗口能回到那个会话：先取消归档、再打开·研发
+  status: done
+  implements: |-
+    改 src/client/session-jump.ts：① WorkspacesServiceFace 增 unarchiveSession?(sessionId: string): Promise<void>；② SessionJumpResult 增 'restore-failed'；③ jumpToSession 内新增 restoreIfArchived(sid) 辅助：未归档→undefined；无能力→'archived'；调用抛错→'restore-failed'（console.error 留痕）；成功→undefined；在两个 inList 分支用其替换原 if(isArchived) return 'archived'；④ handleSessionJump 删除 archivedSessionIds().has(sid) 的提前 window.alert 拦截，switch 增 'restore-failed' 与改写 'archived' 文案。验证：npx vitest run tests/session-jump.test.ts
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261002153446-c600
+    TASK_ID: t-ccf428
+    TASK_TITLE: 点已归档窗口能回到那个会话：先取消归档、再打开·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T07:40:33.800Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002153446-c600
+  generated_at: 2026-10-02T07:40:28.964Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-02T07:40:33.896Z

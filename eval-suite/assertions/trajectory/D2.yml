@@ -1,0 +1,17 @@
+# case D2 · 链失败暂停后人工处置再续跑 · serves: FR-2
+case: D2
+ordered_contains:
+  - reqboard_task_run               # 第一轮：投递起链
+  - reqboard_run_status             # 发现失败暂停，读 pauseReason
+  - reqboard_task_run               # 第二轮：用户处置完后再次投递续跑
+forbidden:
+  - tool: reqboard_task_run
+    when: pauseReason != null 且用户未确认处置   # 失败暂停不自动重试，须人工处置后续跑
+budget:
+  max_tool_calls: 8
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_run_status
+    result_contains: pauseReason    # 暂停后回执须含 pauseReason，agent 据此前向用户说明失败原因
+  - tool: reqboard_task_run
+    result_contains: dispatched     # 续跑投递成功，stepIndex 前进

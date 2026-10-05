@@ -6,6 +6,7 @@
  *
  * @module dsh-pmboard/tests/isolate-node-context
  */
+import { factsOf } from '../src/domain/requirement/RequirementSummary.js'
 import { describe, it, expect } from 'vitest'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import { makeHarness, req } from './application/harness.js'
@@ -138,7 +139,7 @@ describe('T24 节点输入包内容（INV-9）', () => {
     const h = baseHarness()
     const iso = new FakeIsolation()
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.packageText).not.toContain(OLD_MARKER)
@@ -160,7 +161,7 @@ describe('T25 边界不平衡拒执行', () => {
     const iso = new FakeIsolation()
     iso.after = false
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso, trace },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso, trace },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.replaced).toBe(false)
@@ -180,7 +181,7 @@ describe('T25 边界不平衡拒执行', () => {
     const iso = new FakeIsolation()
     iso.before = false
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.status).toBe('rejected')
@@ -200,7 +201,7 @@ describe('T26 活动轮次（agent 忙碌）拒执行', () => {
     const iso = new FakeIsolation()
     iso.idleFlag = false
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso, trace },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso, trace },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.replaced).toBe(false)
@@ -216,7 +217,7 @@ describe('T26 活动轮次（agent 忙碌）拒执行', () => {
     const iso = new FakeIsolation()
     iso.idleThrows = true
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.status).toBe('skipped')
@@ -229,7 +230,7 @@ describe('T26 活动轮次（agent 忙碌）拒执行', () => {
     const iso = new FakeIsolation()
     iso.surface = () => { throw new Error('corrupt surface') }
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.replaced).toBe(false)
@@ -250,7 +251,7 @@ describe('T27 先落盘后遗弃', () => {
     const next = () => { clock += 1; return clock }
     const iso = new FakeIsolation(() => { order.push('replace'); return next() })
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       {
         windowKey: WINDOW, stage: 'implementing', category: 'feature',
         persistArtifacts: () => { order.push('persist'); return next() },
@@ -269,7 +270,7 @@ describe('T27 先落盘后遗弃', () => {
     const h = baseHarness()
     const iso = new FakeIsolation()
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       {
         windowKey: WINDOW, stage: 'implementing', category: 'feature',
         persistArtifacts: () => { throw new Error('disk full') },
@@ -284,7 +285,7 @@ describe('T27 先落盘后遗弃', () => {
     const h = baseHarness()
     const iso = new FakeIsolation()
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => Number.NaN },
     )
     expect(result.status).toBe('skipped')
@@ -296,7 +297,7 @@ describe('T27 先落盘后遗弃', () => {
     const h = baseHarness()
     const iso = new FakeIsolation(() => 1)   // 替换 seq = 1
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 5 },
     )
     expect(result.status).toBe('replaced')
@@ -313,7 +314,7 @@ describe('T28 触达能力探测失败 → D-12 降级', () => {
     const h = baseHarness()
     const trace = new TraceRecorder()
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, trace },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, trace },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.replaced).toBe(false)
@@ -332,7 +333,7 @@ describe('T28 触达能力探测失败 → D-12 降级', () => {
     const iso = new FakeIsolation()
     iso.reachableFlag = false
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.status).toBe('fallback')
@@ -392,7 +393,7 @@ describe('路线 A 端到端（真实 @deepseek-ai/dsh-session）', () => {
     const { s, u1, tr } = realSession()
     const trace = new TraceRecorder()
     const iso = new NodeIsolationAdapter(s, { idle: () => true })
-    const deps: IsolateNodeContextDeps = { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso, trace }
+    const deps: IsolateNodeContextDeps = { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso, trace }
 
     // 边界检查：配对平衡（assistant tool-call 与 tool/result 都在被替换区间内）
     expect(iso.balancedBefore(u1.seq)).toBe(true)
@@ -415,7 +416,7 @@ describe('路线 A 端到端（真实 @deepseek-ai/dsh-session）', () => {
     expect(JSON.stringify(derived)).toContain('routeKey=implementing/light/feature')
     expect(trace.entries[0]!.status).toBe('replaced')
     // 事件日志仍保留旧事件（可回放/可审计）
-    expect(s.snapshotEvents().some(e => e.type === 'user/message')).toBe(true)
+    expect(s.snapshotEvents().some((e: { type: string }) => e.type === 'user/message')).toBe(true)
   })
 
   it('真实未配对 tool 调用 → 边界检查判定不平衡，用例拒绝替换', async () => {
@@ -428,7 +429,7 @@ describe('路线 A 端到端（真实 @deepseek-ai/dsh-session）', () => {
     expect(iso.balancedAfter(a.seq)).toBe(false)      // 有 tool-call 无 result
 
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'implementing', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.status).toBe('rejected')
@@ -442,7 +443,7 @@ describe('路线 A 端到端（真实 @deepseek-ai/dsh-session）', () => {
     s.append('system/message', { turn: 1, step: 1, message: sysMsg('SYS') } as any, { surfaceOp: 'append' })
     const iso = new NodeIsolationAdapter(s, { idle: () => true })
     const result = await isolateNodeContext(
-      { repo: h.repo, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
+      { store: h.store, docs: h.docs, clock: h.clock, taskStore: h.taskStore, isolation: iso },
       { windowKey: WINDOW, stage: 'design', category: 'feature', persistArtifacts: () => 1 },
     )
     expect(result.status).toBe('skipped')
@@ -506,7 +507,7 @@ function wireT10(over: {
   const ledger = boundLedger()
   const dispatcher = createNodeSettlementDispatcher({
     enabled: over.enabled,
-    repo: h.repo,
+
     docs: h.docs,
     clock: h.clock, taskStore: h.taskStore,
     trace,
@@ -517,7 +518,8 @@ function wireT10(over: {
     ...(over.run === undefined ? {} : { run: over.run }),
   })
   const deps: DiveSessionDriverDeps = {
-    snapshot: () => ledger,
+    // B12 阶段①-a：驱动器所有同步判定都走窄投影（整册快照在这条链上已无用户）
+    facts: () => ledger.requirements.map(factsOf),
     // v9：driver 结算节点要读队列任务（DiveSessionDriverDeps.taskStore 为必填）
     taskStore: h.taskStore,
     pending: new Map(),

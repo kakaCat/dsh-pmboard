@@ -168,7 +168,7 @@ describe('boundSectionText（绑定窗口推进纪律）', () => {
       ...emptyLedger(),
       requirements: [req({ id: 'REQ-abc123', title: '修卡片', status: 'brainstorming', sourceSessionId: W })],
     }
-    const text = boundSectionText(l, { agent: { id: W } })
+    const text = boundSectionText(l, undefined, { agent: { id: W } })
     expect(text).toContain('REQ-abc123')
     expect(text).toContain('brainstorming')
     expect(text).toContain('reqboard_move')
@@ -176,8 +176,8 @@ describe('boundSectionText（绑定窗口推进纪律）', () => {
   })
 
   it('未绑定窗口 / 无 windowKey → 空段（零噪音）', () => {
-    expect(boundSectionText(emptyLedger(), { agent: { id: W } })).toBe('')
-    expect(boundSectionText(emptyLedger(), {})).toBe('')
+    expect(boundSectionText(emptyLedger(), undefined, { agent: { id: W } })).toBe('')
+    expect(boundSectionText(emptyLedger(), undefined, {})).toBe('')
   })
 
   it('已结束需求（done/archived）不算绑定 → 空段', () => {

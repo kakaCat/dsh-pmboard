@@ -14,7 +14,7 @@
  * 
  * @module dsh-pmboard/tests/e2e/task-chain
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, } from 'vitest'
 
 describe('完整链 E2E 测试', () => {
   // TODO: 需要完整 E2E 测试环境

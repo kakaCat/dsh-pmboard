@@ -17,9 +17,14 @@
 
 ## 模块改动地图 `serves: FR-1`
 
-**图示**：
+**图示**（一律 ASCII 字符画，svgbob 风格 `+ - | > < ^ v`；**禁用 mermaid**——纯文本何处都能渲染）：
 ```
-（文本 ASCII 图或 mermaid 图：哪些模块被改 / 新增 / 删除 / 重连）
+（哪些模块被改 / 新增 / 删除 / 重连。示范：）
+
+  reqboard_submit ──▶ SubmitArtifact ──▶ auto-confirm.ts（新增）
+       │                                    │
+       │                                    └──▶ pending-confirm（复用）
+       └──▶ [删] process.cwd() 取值 ──▶ 解析链：需求记录 → header.cwd → cwd
 ```
 
 **改动清单**：
@@ -95,11 +100,15 @@ project/
 
 ### 流程图
 
-```mermaid
-graph TD
-  A[开始] --> B[步骤]
-  B --> C{判断}
-  C -->|是| D[结果]
+（ASCII 字符画，禁用 mermaid。示范：）
+
+```
+开始 ──▶ 步骤 ──▶ <判断>
+                    │
+              是 ───┴─── 否
+              │         │
+              ▼         ▼
+           结果A     结果B
 ```
 
 ### 关键决策点

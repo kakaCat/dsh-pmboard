@@ -1,0 +1,39 @@
+task:
+  id: t-c4be54
+  title: 落地 answers 键共享常量并核对 schema 声明（修复卡）·复现
+  status: done
+  implements: |-
+    ① capture-mapping.ts 新增 export const CAPTURE_ANSWER_KEYS = ['title','category','difficulty','docLocation','workspace'] as const，CaptureMapping.answers 类型改为 Record<(typeof CAPTURE_ANSWER_KEYS)[number], string>；② CaptureTool.ts 的 answers.properties 改由 Object.fromEntries(CAPTURE_ANSWER_KEYS.map(k=>[k,{type:'string',description:...}])) 生成，保留 workspace 注释锚点；③ tests/capture-output-contract.test.ts 增键集断言：mapCaptureAnswers(全量作答).answers 键集 === CAPTURE_ANSWER_KEYS === schema answers.properties 键集
+
+    [子卡阶段·复现] 只做本阶段；验收：`npx vitest run <新增回归用例>` → 修复前失败、修复后通过（贴两次输出）
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261003204143-3219
+    TASK_ID: t-c4be54
+    TASK_TITLE: 落地 answers 键共享常量并核对 schema 声明（修复卡）·复现
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 3
+  workflow_done: 3
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-03T14:00:16.321Z
+    - phase: test
+      status: done
+    - phase: doc
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261003204143-3219
+  generated_at: 2026-10-03T13:59:44.967Z
+  version: 5
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 3
+  last_updated: 2026-10-03T14:00:16.322Z

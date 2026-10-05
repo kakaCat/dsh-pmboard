@@ -71,3 +71,40 @@ describe('T-U5/T-U6: verification.md 渲染（AC-7.2/7.3/7.8）', () => {
     expect(md).toContain('本机无该环境')
   })
 })
+
+describe('验收文档去重（人读纪律：同一句话不得复制三遍）', () => {
+  it('criterion 内嵌 howToVerify 原文时，验收内容只留业务结果、不再重复操作细节', () => {
+    const how = 'npx vitest run tests/x 全绿；弹框可见'
+    const doc = renderVerificationDoc({
+      reqId: 'REQ-x', title: 't', summary: 's', sheetVersion: 1,
+      items: [{ id: 'v1-1', title: '任务三', criterion: `【任务三】验收：${how}`, howToVerify: how, status: 'pending' as const }],
+      testReport: [], docCheck: { passed: true, missing: [] },
+    })
+    expect(doc).toContain('**验收内容**：【任务三】验收')
+    expect(doc).not.toContain(`**验收内容**：【任务三】验收：${how}`)
+    // 操作细节只在「操作步骤」出现一次（分号拆成两条步骤）
+    const occurrences = doc.split('npx vitest run tests/x 全绿').length - 1
+    expect(occurrences).toBe(1)
+  })
+
+  it('预期结果不再复读 howToVerify 原文', () => {
+    const how = '打开页面截图确认布局'
+    const doc = renderVerificationDoc({
+      reqId: 'REQ-x', title: 't', summary: 's', sheetVersion: 1,
+      items: [{ id: 'v1-1', title: '任务四', criterion: `【任务四】验收：${how}`, howToVerify: how, status: 'pending' as const }],
+      testReport: [], docCheck: { passed: true, missing: [] },
+    })
+    expect(doc).toContain('**预期结果**：上述步骤全部执行成功')
+    expect(doc).not.toContain(`满足验收标准：${how}`)
+  })
+
+  it('系统项（criterion == howToVerify）保留原文不误剥', () => {
+    const criterion = '三方一致性（做什么 × 怎么做 × 实际做了什么）：以下对不上——FR-1。请补设计。'
+    const doc = renderVerificationDoc({
+      reqId: 'REQ-x', title: 't', summary: 's', sheetVersion: 1,
+      items: [{ id: 'v1-9', title: '需求级验收', criterion, howToVerify: criterion, status: 'pending' as const }],
+      testReport: [], docCheck: { passed: true, missing: [] },
+    })
+    expect(doc).toContain(`**验收内容**：${criterion}`)
+  })
+})

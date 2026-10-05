@@ -3,14 +3,21 @@
  * 折叠行：记忆 · <命名空间> · <内容首 40 字>；展开：全文、重要度、标签。
  * @module dsh-pmboard/client/toolviews/rows
  */
-import { strOf, numOf, firstLine, resultText, isSettled, type CardSummarize } from '../shared.ts'
+import { strOf, numOf, firstLine, resultText, isSettled, ERROR_CATEGORY, PM_TOOL_BADGE, type CardSummarize } from '../shared.ts'
 import type { BizCard } from '../biz-row.ts'
 
 export const memoryWriteSummarize: CardSummarize = (args, result, block) => {
   const content = strOf(args, 'content')
   if (content === undefined) return null
   const err = isSettled(block) && block.isError === true
-  if (err) return { icon: '❌', line: `写记忆失败：${firstLine(resultText(block)).slice(0, 60)}`, isError: true }
+  if (err) {
+    const why = firstLine(resultText(block)).slice(0, 60)
+    const code = isSettled(block) ? block.error?.code : undefined
+    const errorHint = code !== undefined && ERROR_CATEGORY[code] !== undefined
+      ? `错误类别：${ERROR_CATEGORY[code]}。请检查参数后重试。`
+      : '请检查参数后重试'
+    return { icon: '❌', line: `写记忆失败：${why}`, isError: true, badge: PM_TOOL_BADGE, errorDetail: why, errorHint }
+  }
   const ns = strOf(args, 'namespace') ?? 'default'
   const tags = Array.isArray(args?.tags) ? (args!.tags as unknown[]).map(String) : []
   const head = content.replace(/\s+/g, ' ').slice(0, 40)
@@ -21,7 +28,7 @@ export const memoryWriteSummarize: CardSummarize = (args, result, block) => {
   if (tags.length > 0) details.push(['标签', tags.map(t => '#' + t).join(' ')])
   const memId = strOf(result, 'memory_id')
   if (memId !== undefined) details.push(['记忆 ID', memId])
-  return { icon: '🧠', line, details }
+  return { icon: '🧠', line, badge: PM_TOOL_BADGE, details }
 }
 
-export const memoryWriteCard: BizCard = { key: 'memory_write', title: '写记忆', icon: '🧠', summarize: memoryWriteSummarize }
+export const memoryWriteCard: BizCard = { key: 'memory_write', title: '写记忆', icon: '🧠', badge: PM_TOOL_BADGE, summarize: memoryWriteSummarize }

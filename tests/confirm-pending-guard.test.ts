@@ -4,6 +4,7 @@
  * 弹框走非阻塞投递：超宽限返回 {pending:true, ticket}，**不拦 agent loop**。若不停手，窗口会在
  * 等作答期间继续产出下游产物（实测事故）。本文件锁：写路径被拒且不写盘；status/receipt 保持可用。
  */
+import { legacyStoreProjection } from './support/legacy-store-projection.js'
 import { describe, it, expect } from 'vitest'
 import { PendingConfirmRegistry } from '../src/adapters/PendingConfirmRegistry.js'
 import { assertNoPendingConfirm } from '../src/application/internal/support.js'
@@ -15,7 +16,13 @@ const W = 'session-w-001'
 
 function makeDeps() {
   const ledger = { ...emptyLedger(), requirements: [] as unknown[], tasks: [] as unknown[] }
-  const store = { read: async (fn: (l: unknown) => unknown) => fn(ledger), snapshot: () => ledger } as never
+  // B12 阶段⑤：桩从"旧口形状"改成"新端口视图"（投影架在同一份 ledger 上）
+  const store = legacyStoreProjection({
+    snapshot: () => ledger,
+    read: async (fn: (v: unknown) => unknown) => fn(ledger),
+    mutate: async () => ({ changed: {} }),
+    replaceAll: async () => {},
+  } as never)
   const registry = new PendingConfirmRegistry({ now: () => 100 })
   return { ledger, store, registry }
 }
@@ -24,7 +31,7 @@ async function codeOf(p: Promise<unknown>): Promise<string | undefined> {
   try { await p; return undefined } catch (err) { return (err as { code?: string }).code }
 }
 
-describe('确认门挂起期间的停手守卫（FR-9）', () => {
+describe('确认门挂起期间的停手守卫（FR-9）', async () => {
   it('pending 未作答：本窗口 reqboard_submit 被拒 REQBOARD_CONFIRM_PENDING，且不写盘', async () => {
     const { ledger, store, registry } = makeDeps()
     registry.register({ windowKey: W, requirementId: 'REQ-x', target: 'plan' })
@@ -57,17 +64,17 @@ describe('确认门挂起期间的停手守卫（FR-9）', () => {
     expect(out.window_key).toBe(W)
   })
 
-  it('assertNoPendingConfirm 直测：无挂起/跨窗口/已作答放行；本窗口未作答抛错且信息含三条恢复路径', () => {
+  it('assertNoPendingConfirm 直测：无挂起/跨窗口/已作答放行；本窗口未作答抛错且信息含三条恢复路径', async () => {
     const { store } = makeDeps()
     const registry = new PendingConfirmRegistry({ now: () => 100 })
     // 判定单点 livePendingConfirm 需读台账（有无落章）——测试同样给 repo，口径与运行态一致。
-    const deps = { pendingConfirms: registry, repo: store } as unknown as UseCaseDeps
-    assertNoPendingConfirm(deps, W)
+    const deps = { pendingConfirms: registry, store: store} as unknown as UseCaseDeps
+    await assertNoPendingConfirm(deps, W)
     const rec = registry.register({ windowKey: W, requirementId: 'REQ-x', target: 'plan' })
-    assertNoPendingConfirm(deps, 'session-other')
+    await assertNoPendingConfirm(deps, 'session-other')
     try {
-      assertNoPendingConfirm(deps, W)
-      throw new Error('应当抛错')
+    await assertNoPendingConfirm(deps, W)
+    throw new Error('应当抛错')
     } catch (err) {
       const e = err as { code?: string; message?: string }
       expect(e.code).toBe('REQBOARD_CONFIRM_PENDING')
@@ -77,14 +84,14 @@ describe('确认门挂起期间的停手守卫（FR-9）', () => {
       expect(e.message).toContain('reqboard_ask_confirm')
     }
     registry.settle(rec.ticket, { confirmed: true, advanced: true })
-    assertNoPendingConfirm(deps, W)
-  })
+    await assertNoPendingConfirm(deps, W)
+    })
 
-  it('TC-9 台账已落章（人走看板/证据通道作答）→ 守卫放行，不死锁', () => {
+  it('TC-9 台账已落章（人走看板/证据通道作答）→ 守卫放行，不死锁', async () => {
     const { ledger, store, registry } = makeDeps()
     ledger.requirements.push({ id: 'REQ-x', plan: { approvedAt: 1 } })
     registry.register({ windowKey: W, requirementId: 'REQ-x', target: 'plan' })
-    const deps = { pendingConfirms: registry, repo: store } as unknown as UseCaseDeps
-    expect(() => assertNoPendingConfirm(deps, W)).not.toThrow()
+    const deps = { pendingConfirms: registry, store: store} as unknown as UseCaseDeps
+    await expect(assertNoPendingConfirm(deps, W)).resolves.toBeUndefined()
   })
 })

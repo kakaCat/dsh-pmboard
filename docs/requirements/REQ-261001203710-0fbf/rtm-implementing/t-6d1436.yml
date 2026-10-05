@@ -1,0 +1,38 @@
+task:
+  id: t-6d1436
+  title: 立项与计划落库只写自己项目，写错地方要当场报错·联调
+  status: canceled
+  implements: |-
+    src/application/internal/plan-landing.ts 的 landPlanTasks：落盘前 projectRootOf(req, deps.docs.workspaceRoot())；若 root !== req.workspaceRoot → 抛 REQBOARD_PROJECT_ROOT_MISMATCH（两个绝对路径 + 修复建议）；评论追加 [项目根] 本次写入根=<abs>。src/application/use-cases/CaptureRequirement.ts 与 CreateRequirement.ts：建档写盘同上，返回体新增 usedProjectRoot。不改变既有成功路径的产物形状。测试：两项目夹具 + 人为错配两用例。
+
+    [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+  serves: []
+  depends_on:
+    - t-194835
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261001203710-0fbf
+    TASK_ID: t-6d1436
+    TASK_TITLE: 立项与计划落库只写自己项目，写错地方要当场报错·联调
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T11:40:20.009Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261001203710-0fbf
+  generated_at: 2026-10-02T11:39:11.293Z
+  version: 5
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-03T15:07:46.854Z

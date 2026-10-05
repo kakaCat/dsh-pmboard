@@ -28,6 +28,7 @@
  * @module dsh-pmboard/client/views/dag-view
  */
 import { esc } from '../html.js'
+import { readDagViewState, writeDagViewState } from '../dag/view-state.js'
 import { Role, type CardData } from '../dag/card-types.js'
 import { collapseToCardLevel } from '../dag/progress-bar.js'
 import type { Edge } from '../dag/edge-renderer.js'
@@ -318,17 +319,58 @@ function openCardDoc(docPath: string, canvasId: string): void {
 }
 
 /**
+ * 挂载参数（REQ-261001210304-0dfb · FR-1 / FR-2 / FR-4）。
+ *
+ * 全部可选——**不传 = 改造前行为**（用 `DEFAULT_DAG_STATE` 起画，不读写记忆表），
+ * 因此既有调用方（需求详情页等）不改也能跑（interfaces.md §1 的兼容承诺）。
+ */
+export interface MountDagOptions {
+  /**
+   * 视图状态记忆键。传了就启用记忆：挂载前按键回填 initial、dispose 时按键写回快照。
+   * 约定形态 `<canvasId>::<requirementId>`——**键必须含需求 id**，否则同一块画布承载
+   * 不同需求时会把上一个需求的方向/开关带过来（FR-4 的 A5 判据）。
+   */
+  stateKey?: string
+}
+
+/** 缺省视图状态（与改造前逐字节相同）：没有记忆时 panel 就从这里起画。 */
+export const DEFAULT_DAG_STATE: DagState = { dir: 'vertical', crit: false, focus: false, pinned: null }
+
+/**
+ * 工具条按钮与**真实状态**对齐（FR-1 的回填收尾）。
+ *
+ * 为什么必须单独同步：按钮的 `is-on` 原先只在**点击时** toggle（见下方 onClick），
+ * 而注入 HTML 的模板恒把「纵向」写成 is-on——回填成横向后若不同步，就会出现
+ * 「图是横向、工具条显示纵向」的错位。
+ */
+function syncToolbar(panel: HTMLElement, state: DagState): void {
+  panel.querySelectorAll<HTMLButtonElement>('[data-dag-dir]').forEach(b => {
+    b.classList.toggle('is-on', b.dataset.dagDir === state.dir)
+  })
+  panel.querySelectorAll<HTMLButtonElement>('[data-dag-toggle]').forEach(b => {
+    const on = b.dataset.dagToggle === 'crit' ? state.crit : b.dataset.dagToggle === 'focus' ? state.focus : false
+    b.classList.toggle('is-on', on)
+  })
+}
+
+/**
  * 挂载 Canvas DAG（在面板 HTML 进 DOM 之后调用）。
  *
  * @param tasks 需求全量任务（含子卡）
  * @param ready 队列 `ready[]`（只用于画布上的可开工绿点；不传 = 前端按「依赖全完成」推导）
+ * @param canvasId 画布 id（缺省 = 需求详情的 #dag-canvas）
+ * @param opts 挂载选项；`opts.stateKey` 见 {@link MountDagOptions}（不传 = 不启用记忆）
  * @returns viewer（无画布或无顶层卡时 undefined）
  */
-export function mountDagCanvas(tasks: DagTaskLike[], ready?: readonly string[], canvasId: string = DAG_CANVAS_ID): DagViewer | undefined {
+export function mountDagCanvas(tasks: DagTaskLike[], ready?: readonly string[], canvasId: string = DAG_CANVAS_ID, opts?: MountDagOptions): DagViewer | undefined {
   // 先释放同名旧条目（design/data-model.md 不变量：每个 canvasId 至多一条、「重复挂载先释放旧条目」）。
   // 必须放在**提前返回之前**：画布被 SSE 重绘摘掉、或顶层卡为空（如只剩子卡）时也要回收旧实例，
   // 否则它的 ResizeObserver 与 dblclick 监听会一直挂在一个已脱管的 canvas 上（即文件头说的 observer 泄漏）。
+  // 顺序也是 FR-1 的硬要求：dispose **先写回记忆**，本次挂载随后读到的才是用户最后一次的选择。
   disposeDagCanvas(canvasId)
+
+  const stateKey = opts?.stateKey
+  const snap = stateKey !== undefined ? readDagViewState(stateKey) : undefined
 
   const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null
   if (canvas === null) return undefined
@@ -336,6 +378,7 @@ export function mountDagCanvas(tasks: DagTaskLike[], ready?: readonly string[], 
   if (data.cards.length === 0) return undefined
 
   const panel = canvas.closest<HTMLElement>('.dsh-pm-dag-panel')
+  const wrap = panel === null ? null : panel.querySelector<HTMLElement>('[data-dag-wrap]')
   const dagData: DagData = {
     tasks: data.cards,
     edges: data.edges,
@@ -345,12 +388,25 @@ export function mountDagCanvas(tasks: DagTaskLike[], ready?: readonly string[], 
     // 用户 2026-09-29 裁定 D：父卡左侧蓝条也已删除（卡片外观与泳道卡片一致）。
     showKidChains: false,
   }
-  const initial: DagState = { dir: 'vertical', crit: false, focus: false, pinned: null }
+  // 有记忆 → 逐字段回填（缺省字段各自回落 DEFAULT_DAG_STATE）；无记忆 → 与改造前完全一致。
+  const initial: DagState = snap === undefined ? { ...DEFAULT_DAG_STATE } : {
+    dir: snap.dir ?? DEFAULT_DAG_STATE.dir,
+    crit: snap.crit === true,
+    focus: snap.focus === true,
+    pinned: snap.pinned ?? DEFAULT_DAG_STATE.pinned,
+  }
   const viewer = createDagViewer(canvas, dagData, initial)
 
   // 2026-09-29 用户裁定 B：面板不再有标题行与统计条（一切从简），挂载侧不再回填统计位。
   const paint = (patch: Partial<DagState>): DagRenderResult => viewer.patch(patch)
   paint({})
+
+  // 回填收尾：工具条与真实状态对齐、滚动位置还原（paint 已同步设好 canvas 宽高，此处恢复即生效）。
+  if (panel !== null) syncToolbar(panel, viewer.state())
+  if (wrap !== null && snap !== undefined) {
+    if (snap.scrollTop !== undefined) wrap.scrollTop = snap.scrollTop
+    if (snap.scrollLeft !== undefined) wrap.scrollLeft = snap.scrollLeft
+  }
 
   // 工具条：纵向/横向 + 关键路径 + 只看主线（与 demo 的 seg 同语义）
   const onClick = (ev: Event): void => {
@@ -411,7 +467,7 @@ export function mountDagCanvas(tasks: DagTaskLike[], ready?: readonly string[], 
 
   // 画布自适应：面板从 display:none 切到可见（执行 Tab）、或容器宽度变化时按新宽度重排。
   // 只在**宽度真的变了**时重画，避免 canvas 尺寸变化反过来触发 observer 形成回路。
-  const wrap = panel === null ? null : panel.querySelector<HTMLElement>('[data-dag-wrap]')
+  // （wrap 已在上面取出——记忆回填与滚动恢复都要用它。）
   let observer: ResizeObserver | undefined
   if (typeof ResizeObserver !== 'undefined' && wrap !== null) {
     let lastW = -1
@@ -426,6 +482,16 @@ export function mountDagCanvas(tasks: DagTaskLike[], ready?: readonly string[], 
   }
 
   disposers.set(canvasId, (): void => {
+    // FR-1：**先写回记忆再释放**——顺序反了就会丢掉用户最后一次改动（回填用的 initial 来自这里）。
+    // wrap 可能已被 SSE 重绘摘出 DOM：脱管元素上的 scrollTop 仍是最后一次的值，读它是对的。
+    if (stateKey !== undefined) {
+      const st = viewer.state()
+      writeDagViewState(stateKey, {
+        dir: st.dir, crit: st.crit, focus: st.focus, pinned: st.pinned,
+        scrollTop: wrap?.scrollTop ?? 0,
+        scrollLeft: wrap?.scrollLeft ?? 0,
+      })
+    }
     panel?.removeEventListener('click', onClick)
     if (clickTimer !== undefined) { clearTimeout(clickTimer); clickTimer = undefined }
     canvas.removeEventListener('click', onCardClick)

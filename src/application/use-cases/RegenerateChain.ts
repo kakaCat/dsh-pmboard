@@ -14,12 +14,13 @@
  * @module dsh-pmboard/application/use-cases/RegenerateChain
  */
 import type { UseCaseDeps } from '../ports.js'
+import { firstWritableBound } from '../../application/internal/window.js'
+import { boundSummariesOf } from '../internal/binding-read.js'
 import { normalizeText } from '../../shared/protocol.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { chainDiagnosis, regenerateChain } from '../internal/lazy-expand.js'
-import { openRequirementsFor } from '../internal/window.js'
 import { reject, agentIdFromExec, requireLiveDriver, mapAgentError } from '../internal/support.js'
-import { taskStoreOf } from './queue-access.js'
+import { requirementStoreOf, taskStoreOf, mutateQueue } from './queue-access.js'
 
 /** 单张卡的链体检结果（回执形状，与工具 schema 对齐）。 */
 interface ChainCandidate {
@@ -49,8 +50,8 @@ export async function executeRegenerateChain(deps: UseCaseDeps, args: unknown, e
   if (!dryRun && taskId.length === 0) {
     reject('reqboard_task_regenerate 未执行：真补链必须指定 task_id（不提供批量写路径）', 'REQBOARD_INVALID_INPUT')
   }
-  const snap = deps.repo.snapshot()
-  const bound = openRequirementsFor(snap, windowKey)
+  // t8/B11：绑定读走新端口（只读摘要）
+  const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
   if (bound.length === 0) reject('reqboard_task_regenerate 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
   const store = taskStoreOf(deps)
 
@@ -61,11 +62,19 @@ export async function executeRegenerateChain(deps: UseCaseDeps, args: unknown, e
     if (t === undefined) reject(fmt('reqboard_task_regenerate 未执行：任务 {id} 不存在', { id: taskId }), 'REQBOARD_TASK_NOT_FOUND')
     reqId = t.requirementId
   }
-  if (reqId.length === 0) reqId = bound[0].id
+  if (reqId.length === 0) {
+    // FR-3：按席位取第一条**可写**的绑定需求；一条都没有 → 与"没有绑定需求"同义地拒绝
+    const first = firstWritableBound(bound, windowKey)
+    if (first === undefined) {
+      reject('reqboard_task_regenerate 未执行：本窗口没有可写的绑定需求', 'REQBOARD_NOT_BOUND_TO_WINDOW')
+    }
+    reqId = first.id
+  }
   if (!bound.some((r) => r.id === reqId)) {
     reject(fmt('reqboard_task_regenerate 未执行：需求 {id} 不属于本窗口绑定的需求（只能动自己的卡）', { id: reqId }), 'REQBOARD_NOT_BOUND_TO_WINDOW')
   }
-  const req = snap.requirements.find((r) => r.id === reqId)
+  // t8/B11：单条查找 → 新端口 get（原为整册 find）
+  const req = await requirementStoreOf(deps).get(reqId)
   const tasks0 = await store.listByRequirement(reqId)
   const tops = tasks0
     .filter((t) => t.parentId === undefined)
@@ -98,7 +107,7 @@ export async function executeRegenerateChain(deps: UseCaseDeps, args: unknown, e
   let applied = false
   if (!dryRun) {
     const createdIds: string[] = []
-    await store.mutate(reqId, (tasks) => {
+    await mutateQueue(deps, reqId, (tasks) => {
       const parent = tasks.find((t) => t.id === taskId)
       if (parent === undefined) return undefined
       const at = deps.clock.now()

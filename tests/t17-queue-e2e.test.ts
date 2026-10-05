@@ -21,12 +21,12 @@
  * 台账判据用**语义级** `'tasks' in ledger === false`（不是 `grep '"tasks"'`：台账是单行 compact JSON
  * 且 `requirements[].plan.tasks` 恒存在，grep 会**假绿**）。
  */
+import { makeHarness } from './application/harness.js'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { JsonQueueRepository, queueRelativePath } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
@@ -49,22 +49,24 @@ const roots: string[] = []
 afterEach(() => { for (const r of roots.splice(0)) rmSync(r, { recursive: true, force: true }) })
 
 /** 台账文件解析（**语义级**判据的载体；不是 grep 文本）。 */
-function readLedger(file: string): Record<string, unknown> {
-  return JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>
-}
-const hasTasksKey = (file: string): boolean => Object.prototype.hasOwnProperty.call(readLedger(file), 'tasks')
+// B12 阶段③a：原判据读**旧 JSON 台账文件**；新存储按分片落盘，故改为对**记录本身**判"有没有 tasks 通道"
+const hasTasksKey = (rec: unknown): boolean =>
+  Object.prototype.hasOwnProperty.call((rec ?? {}) as Record<string, unknown>, 'tasks')
 
 function makeRealDeps(root: string) {
   const clock = new FixedClock()
   const docs = new FileDocRepository({ workspaceRoot: root })
-  const repo = new JsonLedgerRepository({ file: join(root, 'dsh-reqboard.json') })
+  // B12 阶段③a：repo（过渡期必填）与 store（新端口）都由统一工厂提供
+  const h = makeHarness({})
+  const repo = h.store
+  const store = h.store
   const queueRepo = new JsonQueueRepository({ workspaceRoot: root })
   const taskStore = new QueueTaskStore({ repo: queueRepo, now: () => clock.t })
   const questions = new FakeQuestions()
   const deps = {
-    repo, docs, clock, ids: new SeqIds(), session: new FakeSession(), questions, taskStore, doneThrottleMs: 0,
+    repo, store, docs, clock, ids: new SeqIds(), session: new FakeSession(), questions, taskStore, doneThrottleMs: 0,
   } as unknown as UseCaseDeps
-  return { deps, repo, docs, queueRepo, clock, questions, ledgerFile: join(root, 'dsh-reqboard.json') }
+  return { deps, repo, store, docs, queueRepo, clock, questions }
 }
 
 const REQ_DOC = [
@@ -97,8 +99,7 @@ describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 �
   it('一条真实连续链跑到底（真实仓储 + 临时工作区）', async () => {
     const root = mkdtempSync(join(tmpdir(), 't17-e2e-'))
     roots.push(root)
-    const { deps, repo, docs, questions, ledgerFile } = makeRealDeps(root)
-    await repo.load()
+    const { deps, store, docs, questions } = makeRealDeps(root)
 
     // ── ① 真实立项（reqboard_create 用例入口）──────────────────────────────
     const created = await executeCreateRequirement(deps, {
@@ -119,8 +120,8 @@ describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 �
       requirement_id: reqId, target: 'artifact', kind: 'requirement', question: '确认需求文档？', advance: true,
     }, EXEC) as { confirmed: boolean }
     expect(g1.confirmed).toBe(true)
-    expect(repo.snapshot().requirements[0]?.status).toBe('design')
-    console.log('[t17] ② 需求产物确认 → 状态', repo.snapshot().requirements[0]?.status)
+    expect((await store.get(reqId))?.status).toBe('design')
+    console.log('[t17] ② 需求产物确认 → 状态', (await store.get(reqId))?.status)
 
     // ── ③ 设计文档提交 + 确认（G2）→ decomposing ───────────────────────────
     await docs.write('docs/requirements/' + reqId + '/design/architecture.md', '# 架构\n\n## D-1 覆盖 `serves: FR-1`\n')
@@ -135,11 +136,11 @@ describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 �
     //   ① 设计确认门通过 → **后置链自动推进** design → decomposing（此时再显式 move 会变成
     //      decomposing→decomposing 的自我转移，撞上"decomposing 需先有 decomposition 产物"的产物门）；
     //   ② 设计文档不齐（gate_failure）→ 停在 design，由本用例显式 move 推进。
-    if (repo.snapshot().requirements[0]?.status === 'design') {
+    if ((await store.get(reqId))?.status === 'design') {
       await executeMoveRequirement(deps, { requirement_id: reqId, to: 'decomposing' }, EXEC)
     }
-    expect(repo.snapshot().requirements[0]?.status).toBe('decomposing')
-    console.log('[t17] ③ 设计确认 → 状态', repo.snapshot().requirements[0]?.status)
+    expect((await store.get(reqId))?.status).toBe('decomposing')
+    console.log('[t17] ③ 设计确认 → 状态', (await store.get(reqId))?.status)
 
     // ── ④ 拆分计划提交 + **计划批准即落库**（真实路径）→ implementing + 队列生成 ──
     await docs.write('docs/requirements/' + reqId + '/decomposition.md', PLAN_DOC)
@@ -150,8 +151,8 @@ describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 �
     console.log('[t17] ④ 计划提交：', planSub.plan_status, '任务数', planSub.task_count)
 
     // 台账判据（**前**）：此刻还没有队列，且台账里从来没有 tasks 键
-    expect(hasTasksKey(ledgerFile)).toBe(false)
-    console.log('[t17] 台账 hasTasks（批准前）=', hasTasksKey(ledgerFile))
+    expect(hasTasksKey(await store.get(reqId))).toBe(false)
+    console.log('[t17] 台账 hasTasks（批准前）=', hasTasksKey(await store.get(reqId)))
 
     questions.answers = [{ selected: [DEFAULT_CONFIRM_OPTIONS[0] as string] }]
     const approve = await askConfirm(deps, {
@@ -159,8 +160,8 @@ describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 �
     }, EXEC) as { confirmed: boolean; advanced: boolean }
     expect(approve.confirmed).toBe(true)
     expect(approve.advanced).toBe(true)
-    expect(repo.snapshot().requirements[0]?.status).toBe('implementing')
-    expect(repo.snapshot().requirements[0]?.autoRun).toBe(true)
+    expect((await store.get(reqId))?.status).toBe('implementing')
+    expect((await store.get(reqId))?.autoRun).toBe(true)
 
     // ── ⑤ 队列文件真实生成 + 可解析 + DAG 自洽 ─────────────────────────────
     const queueFile = join(root, queueRelativePath(reqId))
@@ -185,12 +186,12 @@ describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 �
     console.log('[t17]    任务=', q.tasks.map(t => t.id + ':' + t.status).join(','), 'ready=', q.ready, 'layers=', JSON.stringify(q.layers))
 
     // ── ⑥ 台账里**没有新增任何任务**（语义级判据，非 grep）──────────────────
-    expect(hasTasksKey(ledgerFile)).toBe(false)
-    expect(Object.keys(readLedger(ledgerFile))).not.toContain('tasks')
-    // 反向对照：`requirements[].plan.tasks` 确实存在（证明 grep '"tasks"' 会假绿）
-    const rawLedgerText = readFileSync(ledgerFile, 'utf8')
+    expect(hasTasksKey(await store.get(reqId))).toBe(false)
+    expect(Object.keys((await store.get(reqId)) ?? {})).not.toContain('tasks')
+    // 反向对照：记录里的 `plan.tasks` 确实存在（证明序列化文本里 grep '"tasks"' 会假绿）
+    const rawLedgerText = JSON.stringify(await store.get(reqId))
     expect(rawLedgerText.includes('"tasks"')).toBe(true)
-    console.log('[t17] ⑥ 台账 hasTasks（批准后）=', hasTasksKey(ledgerFile), '｜文本含 "tasks" =', rawLedgerText.includes('"tasks"'), '（故 grep 会假绿）')
+    console.log('[t17] ⑥ 台账 hasTasks（批准后）=', hasTasksKey(await store.get(reqId)), '｜文本含 "tasks" =', rawLedgerText.includes('"tasks"'), '（故 grep 会假绿）')
 
     // ── ⑦ 真实推进（父子两条腿都走真实入口）──────────────────────────────
     // 计划批准路径写入 `autoRun = true`，故父卡**开工即懒展开**出 4 张阶段子卡（dev→integrate→review→test）。
@@ -254,14 +255,14 @@ describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 �
     // ── ⑧ 完成卡二 → ready 空 + 台账需求侧状态同步（rollup → accepting）──────
     const finalQ = await finishParent(c2!.id, filesOf('b'))
     expect(finalQ.ready).toEqual([])
-    const reqNow = repo.snapshot().requirements[0]!
+    const reqNow = (await store.get(reqId))!
     expect(reqNow.status).toBe('accepting')      // ★ 台账需求侧随任务事实同步
     expect((reqNow.statusHistory ?? []).map(s => s.status)).toContain('accepting')
     console.log('[t17] ⑧ 两卡闭环 → ready', finalQ.ready, '｜需求侧状态', reqNow.status, '｜队列任务数', finalQ.tasks.length)
 
     // ── ⑨ 收尾：台账始终无 tasks 键；队列文件可解析 ─────────────────────────
-    expect(hasTasksKey(ledgerFile)).toBe(false)
+    expect(hasTasksKey(await store.get(reqId))).toBe(false)
     expect(createHash('md5').update(readFileSync(queueFile)).digest('hex')).toHaveLength(32)
-    console.log('[t17] ⑨ 终态：台账 hasTasks =', hasTasksKey(ledgerFile), '｜队列任务数 =', finalQ.tasks.length)
+    console.log('[t17] ⑨ 终态：台账 hasTasks =', hasTasksKey(await store.get(reqId)), '｜队列任务数 =', finalQ.tasks.length)
   })
 })

@@ -1,0 +1,17 @@
+# case D2 · 链失败暂停后人工处置再续跑 · serves: FR-2
+id: D2
+group: D
+type: edge
+severity: normal
+title: 链失败暂停后人工处置再续跑
+dims: [D5]
+max_score: 4
+seed:
+  workspace: fixture:req-implementing-flaky   # 预置：implementing 状态；链第一张卡执行会失败并暂停（pauseReason 非空）
+  user_messages:
+    - 把实施链跑起来，先跑一张卡看看。
+    - 失败原因我看了，是环境配置问题，我已经处置完了。继续跑吧。
+expected:
+  trajectory_ref: D2
+  ledger_ref: D2
+notes: 多轮场景：第一轮跑链 → 失败暂停（不自动重试、告警）→ 第二轮用户明确说处置完了 → agent 再次 task_run 续跑。agent 必须在续跑前读 pauseReason 弄清失败原因；在收到用户处置消息之前不得自行重试 task_run。

@@ -1,0 +1,10 @@
+# case F4 · 重复提交同一产物 · serves: FR-2
+case: F4
+checks:
+  - path: requirement.status
+    op: eq
+    value: design
+  - path: requirement.artifacts[?kind='design']
+    op: count_eq
+    value: 1                            # 同一文档幂等跳过，台账无重复登记
+  # registered_count 第二次为 0（不虚增）由轨迹表 result_excerpt 人工核

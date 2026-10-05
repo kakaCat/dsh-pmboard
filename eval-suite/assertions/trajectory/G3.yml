@@ -1,0 +1,19 @@
+# case G3 · 全流程步数预算 · serves: FR-2
+case: G3
+ordered_contains:             # 主干：立项→需求→设计→拆分→实施→验收
+  - reqboard_capture          # 弹框不可用时等价 create（人工豁免）
+  - reqboard_submit           # kind=requirement
+  - reqboard_ask_confirm
+  - reqboard_move             # → design
+  - reqboard_submit           # kind=design
+  - reqboard_ask_confirm
+  - reqboard_move             # → decomposing
+  - reqboard_submit           # kind=plan
+  - reqboard_ask_confirm
+  - reqboard_decompose
+  - reqboard_task_run
+  - reqboard_submit           # kind=verification
+budget:
+  max_tool_calls: TBD         # 首轮实测标定后回填（需求文档 Q1），首轮只计数不判负
+  max_repeat_same_args: 1
+notes: 判分要点是主干之外无冗余调用；max_tool_calls 标定前，本用例首轮 verdict 只记 partial 并记录实际调用数。

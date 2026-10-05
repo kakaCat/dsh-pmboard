@@ -1,14 +1,14 @@
 /**
  * 注入留痕文件适配器（REQ-422af1 t6）—— state 目录下的 ring buffer JSON。
  *
- * I/O 只在本文件（application 层保持纯逻辑）：原子写沿用 JsonLedgerRepository 的
+ * I/O 只在本文件（application 层保持纯逻辑）：原子写沿用 旧单册适配器（已删除） 的
  * persistAtomic（temp + fsync + rename，断电不留半截 JSON）；写入串行队列避免并发覆盖；
  * 缺文件视为空（删除该文件不影响功能）；文件损坏则**响亮抛错**（不静默降级成空）。
  *
  * @module dsh-pmboard/adapters/InjectionLogFile
  */
 import { readFile } from 'node:fs/promises'
-import { persistAtomic } from './JsonLedgerRepository.js'
+import { persistAtomic } from '../repositories/atomicWrite.js'
 import { fmt } from '../domain/text/fmt.js'
 import {
   appendToInjectionLog,

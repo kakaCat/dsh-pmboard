@@ -10,6 +10,7 @@
  * 为什么不经 reqboard_verify_submit 造数据：本文件测的是**路由行为**，直接播种台账即可；
  * 验收单用 domain 的 buildSheet 生成，口径与提交路径同源，少一层无关依赖。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { applyVerdicts } from '../src/application/internal/verdicts.js'
 import { FakeDocs } from './application/harness.js'
@@ -17,7 +18,6 @@ import { EventEmitter } from 'node:events'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import { createReqboardHandler } from '../src/http/routes.js'
@@ -26,9 +26,13 @@ import type { RequirementRecord, TaskRecord, VerificationSheet } from '../src/sh
 
 const W = 'session-abc-123'
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let taskStore: QueueTaskStore
 let handler: ReturnType<typeof createReqboardHandler>
+/** B12 阶段⑤：旧口 `snapshot()` 的等价册形视图（同步；数据来自测试替身的同步读口）。 */
+const snapOf = () => ({
+  schemaVersion: 9, revision: store.peekRevision(), requirements: [...store.peekAll()], triages: [] as never[],
+})
 /** 验收相关需求的 id（夹具固定用它；队列读取都要带它）。 */
 const REQ = 'REQ-vd1234'
 /** 读队列任务（v9：任务唯一存储 = 队列）。 */
@@ -36,10 +40,10 @@ const queueTasks = () => taskStore.listByRequirement(REQ)
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-verdicts-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   // 任务唯一存储 = 队列（REQ-260927202051-f6df：v9 台账已无 tasks 通道）
   taskStore = new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: dir }), now: () => Date.now() })
-  handler = createReqboardHandler({ store, taskStore, now: () => Date.now() })
+  handler = createReqboardHandler({ requirementStore: store, taskStore, now: () => Date.now(), applicationDeps: { store: store } as never })
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -47,13 +51,13 @@ afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 async function seedAcceptingWithSheet(): Promise<void> {
   // mutate 回调是同步契约，`createMany` 异步 → 任务必须在回调外写队列
   const seededTasks: TaskRecord[] = []
-  await store.mutate('seed', (l) => {
-    const r = {
+  const seedRec = {
       id: 'REQ-vd1234', title: '看板需求', description: '', status: 'implementing', category: 'feature',
       blocked: false, sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
       createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
     } as unknown as RequirementRecord
-    l.requirements.push(r)
+  {
+    const r = seedRec
     const mk = (id: string, title: string, acceptance: string) => ({
       id, requirementId: r.id, title, description: '', phase: 'implement', side: 'backend',
       dependsOn: [], scope: { apis: [], tables: [], files: [] }, acceptance, context: '',
@@ -62,11 +66,10 @@ async function seedAcceptingWithSheet(): Promise<void> {
       createdBy: { kind: 'agent', sessionId: W }, updatedBy: { kind: 'agent', sessionId: W },
     })
     seededTasks.push(mk('t-vd0001', '任务一', '单测绿') as unknown as TaskRecord, mk('t-vd0002', '任务二', '截图可见') as unknown as TaskRecord)
-    return { requirements: [r] }
-  })
+  }
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [seedRec], triages: [] })
   await taskStore.createMany(REQ, seededTasks)
-  await store.mutate('seed-sheet', (l) => {
-    const r = l.requirements[0]
+  await store.mutate(store.peekAll()[0]!.id, (r) => {
     const built = buildSheet({
       sheetHistoryLength: 0,
       tasks: seededTasks.filter(t => t.requirementId === r.id).map(t => ({ id: t.id, title: t.title, acceptance: t.acceptance })),
@@ -79,7 +82,7 @@ async function seedAcceptingWithSheet(): Promise<void> {
       summary: '交付完成', evidence: ['npx vitest run 全绿'], submittedAt: 1,
       submittedBy: { kind: 'agent', sessionId: W }, sheet: built.sheet as VerificationSheet,
     }
-    return { requirements: [r] }
+    return { changed: true }
   })
 }
 
@@ -108,33 +111,33 @@ async function post(url: string, body: unknown) {
 describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
   it('全部通过 → 留在 accepting，note 提示可点「验收通过」归档', async () => {
     await seedAcceptingWithSheet()
-    const sheet = store.snapshot().requirements[0].verification!.sheet!
-    const verdicts = sheet.items.map(i => ({ itemId: i.id, status: 'passed' }))
+    const sheet = snapOf().requirements[0].verification!.sheet!
+    const verdicts = sheet.items.map(i => ({ itemId: i.id, status: 'passed', opinion: '实际结果：全部符合' }))
     const res = await post('/req/verdicts', { id: 'REQ-vd1234', version: sheet.version, verdicts })
     expect(res.statusCode).toBe(200)
     expect(res.payload.data.passed).toBe(3)
     expect(res.payload.data.failed).toBe(0)
     expect(res.payload.data.note).toMatch(/验收通过/)
-    expect(store.snapshot().requirements[0].status).toBe('accepting')
+    expect(snapOf().requirements[0].status).toBe('accepting')
   })
 
   it('T-I1: 有未过项 → 自动回退 implementing + 按未过项建返工卡（REQ-308b9a FR-8，AC-8.1/8.2）', async () => {
     await seedAcceptingWithSheet()
-    const before = store.snapshot()
+    const before = snapOf()
     const beforeTaskCount = (await queueTasks()).length   // 返工卡「+1」的基线
     const sheet = before.requirements[0].verification!.sheet!
     const target = sheet.items.find(i => i.source.kind === 'task' && i.source.taskId === 't-vd0002')!
     const res = await post('/req/verdicts', {
       id: 'REQ-vd1234', version: sheet.version,
       verdicts: [
-        { itemId: sheet.items[0].id, status: 'passed' },
+        { itemId: sheet.items[0].id, status: 'passed', opinion: '实际结果：符合预期' },
         { itemId: target.id, status: 'failed', opinion: '截图不清晰，请补高清图' },
       ],
     })
     expect(res.statusCode).toBe(200)
     expect(res.payload.data.failed).toBe(1)
     expect(res.payload.data.rework_tasks).toHaveLength(1)
-    const snap = store.snapshot()
+    const snap = snapOf()
     expect(snap.requirements[0].status).toBe('implementing')
     expect(await queueTasks()).toHaveLength(beforeTaskCount + 1)
     const allTasks = await queueTasks()
@@ -147,12 +150,12 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
 
   it('T-I3: 自动回退留痕——statusHistory 新增一条 + 评论存在（AC-8.4）', async () => {
     await seedAcceptingWithSheet()
-    const sheet = store.snapshot().requirements[0].verification!.sheet!
+    const sheet = snapOf().requirements[0].verification!.sheet!
     await post('/req/verdicts', {
       id: 'REQ-vd1234', version: sheet.version,
       verdicts: [{ itemId: sheet.items[0].id, status: 'failed', opinion: '有问题' }],
     })
-    const r = store.snapshot().requirements[0]
+    const r = snapOf().requirements[0]
     expect(r.status).toBe('implementing')
     const hist = r.statusHistory ?? []
     const last = hist[hist.length - 1]!
@@ -163,14 +166,14 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
 
   it('T-I4: not_verifiable 裁决 → 只记录、不回退、不建卡（AC-8.5）', async () => {
     await seedAcceptingWithSheet()
-    const before = store.snapshot()
+    const before = snapOf()
     const sheet = before.requirements[0].verification!.sheet!
     const res = await post('/req/verdicts', {
       id: 'REQ-vd1234', version: sheet.version,
       verdicts: [{ itemId: sheet.items[0].id, status: 'not_verifiable', opinion: '本机无该运行环境' }],
     })
     expect(res.statusCode).toBe(200)
-    const snap = store.snapshot()
+    const snap = snapOf()
     expect(snap.requirements[0].status).toBe('accepting')
     expect(await queueTasks()).toHaveLength(2)
     expect(snap.requirements[0].verification!.sheet!.items.find(i => i.id === sheet.items[0].id)!.status).toBe('not_verifiable')
@@ -178,30 +181,30 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
 
   it('T-I2: 回退原子性——mutate 内抛错则整笔不落（AC-8.3，故障注入）', async () => {
     await seedAcceptingWithSheet()
-    const before = store.snapshot()
+    const before = snapOf()
     const sheet = before.requirements[0].verification!.sheet!
     const vdTasks = await queueTasks()   // 回调外先取（mutate 回调是同步契约）
-    await expect(store.mutate('fault-inject', (l) => {
-      applyVerdicts(l, vdTasks, l.requirements[0].id, sheet.version,
+    await expect(store.mutate(store.peekAll()[0]!.id, (r) => {
+      applyVerdicts(r, vdTasks, sheet.version,
         [{ itemId: sheet.items[0].id, status: 'failed', opinion: '注入失败' }],
         { kind: 'human' }, Date.now(), () => 'c-fault')
       throw new Error('fault injection')
     })).rejects.toThrow('fault injection')
-    const after = store.snapshot()
+    const after = snapOf()
     expect(after.requirements[0].status).toBe('accepting')
     expect(await queueTasks()).toHaveLength(2)
   })
 
   it('退回返工端点：需求已因自动回退离开验收态 → 幂等拒绝、不重复建卡', async () => {
     await seedAcceptingWithSheet()
-    const sheet = store.snapshot().requirements[0].verification!.sheet!
+    const sheet = snapOf().requirements[0].verification!.sheet!
     const target = sheet.items.find(i => i.source.kind === 'task' && i.source.taskId === 't-vd0002')!
     // 裁决即自动回退（FR-8），此时需求已 implementing
     await post('/req/verdicts', {
       id: 'REQ-vd1234', version: sheet.version,
       verdicts: [{ itemId: target.id, status: 'failed', opinion: '截图不清晰，请补高清图' }],
     })
-    const afterAuto = store.snapshot()
+    const afterAuto = snapOf()
     expect(afterAuto.requirements[0].status).toBe('implementing')
     const cards = (await queueTasks()).length
     // 再走「退回返工」端点 → 已不在验收态，被拒绝，不二次建卡
@@ -212,24 +215,24 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
 
   it('部分裁决（仍有待验项）→ 挂起，状态不变', async () => {
     await seedAcceptingWithSheet()
-    const sheet = store.snapshot().requirements[0].verification!.sheet!
+    const sheet = snapOf().requirements[0].verification!.sheet!
     const res = await post('/req/verdicts', {
       id: 'REQ-vd1234', version: sheet.version,
-      verdicts: [{ itemId: sheet.items[0].id, status: 'passed' }],
+      verdicts: [{ itemId: sheet.items[0].id, status: 'passed', opinion: '实际结果：符合预期' }],
     })
     expect(res.payload.data.pending).toBe(2)
     expect(res.payload.data.note).toMatch(/挂起|断点/)
-    expect(store.snapshot().requirements[0].status).toBe('accepting')
+    expect(snapOf().requirements[0].status).toBe('accepting')
   })
 
   it('T-I9: 裁决后回填 verification.md 的验收结果表（AC-7.7/7.8）', async () => {
     await seedAcceptingWithSheet()
     const docs = new FakeDocs(() => Date.now())
-    const handler2 = createReqboardHandler({ store, taskStore, now: () => Date.now(), docs: docs as never })
-    const sheet = store.snapshot().requirements[0].verification!.sheet!
+    const handler2 = createReqboardHandler({ requirementStore: store, taskStore, now: () => Date.now(), docs: docs as never, applicationDeps: { store: store } as never })
+    const sheet = snapOf().requirements[0].verification!.sheet!
     const res = fakeRes()
     await handler2(
-      fakeReq({ id: 'REQ-vd1234', version: sheet.version, verdicts: [{ itemId: sheet.items[0].id, status: 'passed' }] }, '/dashboard/api/reqboard/req/verdicts'),
+      fakeReq({ id: 'REQ-vd1234', version: sheet.version, verdicts: [{ itemId: sheet.items[0].id, status: 'passed', opinion: '实际结果：符合预期' }] }, '/dashboard/api/reqboard/req/verdicts'),
       res,
     )
     expect(res.statusCode).toBe(200)
@@ -243,7 +246,7 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
     await seedAcceptingWithSheet()
     const res = await post('/req/verdicts', {
       id: 'REQ-vd1234', version: 99,
-      verdicts: [{ itemId: 'v99-1', status: 'passed' }],
+      verdicts: [{ itemId: 'v99-1', status: 'passed', opinion: '实际结果：符合预期' }],
     })
     expect(res.payload.success).toBe(false)
     expect(res.payload.error).toMatch(/版本不匹配/)
@@ -251,7 +254,7 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
 
   it('不通过项缺意见 → 拒绝', async () => {
     await seedAcceptingWithSheet()
-    const sheet = store.snapshot().requirements[0].verification!.sheet!
+    const sheet = snapOf().requirements[0].verification!.sheet!
     const res = await post('/req/verdicts', {
       id: 'REQ-vd1234', version: sheet.version,
       verdicts: [{ itemId: sheet.items[0].id, status: 'failed' }],

@@ -29,13 +29,14 @@ function seedChain(): Harness {
     task({ id: 't-s3', requirementId: 'REQ-000001', parentId: 't-p', stageKind: 'review' as never, status: 'todo', dependsOn: ['t-s2'] }),
     task({ id: 't-s4', requirementId: 'REQ-000001', parentId: 't-p', stageKind: 'test' as never, status: 'todo', dependsOn: ['t-s3'] }),
   ] })
-  h.repo.ledger.requirements = [req({ status: 'implementing' })]
+  h.seedRequirementSync(req({ status: 'implementing' }))
   return h
 }
 
 describe('reqboard_task_tree（FR-3）', () => {
   it('TC-5 含 4 张子卡的父卡 → 全部子卡且按链序；节点含 stageKind/status/lastRunOk/摘要', async () => {
     const h = seedChain()
+    await h.seedSettled()
     const out = await run(tool(h), { parent_id: 't-p' })
     expect(out.success).toBe(true)
     expect(out.requirement_id).toBe('REQ-000001')
@@ -55,7 +56,7 @@ describe('reqboard_task_tree（FR-3）', () => {
 
   it('TC-6 未开工（无子卡）的父卡 → subtasks=[] + note 说明尚未展开', async () => {
     const h = makeHarness()
-    h.repo.ledger.requirements = [req({ status: 'implementing' })]
+    h.seedRequirementSync(req({ status: 'implementing' }))
     await h.addTasks('REQ-000001', [task({ id: 't-p', requirementId: 'REQ-000001', status: 'todo' })])
     const out = await run(tool(h), { parent_id: 't-p' })
     expect(out.success).toBe(true)
@@ -65,6 +66,7 @@ describe('reqboard_task_tree（FR-3）', () => {
 
   it('不传 parent_id → 列出该需求下全部父卡及各自子卡链', async () => {
     const h = seedChain()
+    await h.seedSettled()
     await h.addTasks('REQ-000001', [task({ id: 't-p2', requirementId: 'REQ-000001', status: 'todo', title: '父卡2' })])
     const out = await run(tool(h), {})
     expect(out.parents.map((p: any) => p.parent.id).sort()).toEqual(['t-p', 't-p2'])
@@ -72,7 +74,9 @@ describe('reqboard_task_tree（FR-3）', () => {
 
   it('TC-7 跨窗口的任务 → REQBOARD_NOT_BOUND_TO_WINDOW（不返回空当成功）', async () => {
     const h = seedChain()
-    h.repo.ledger.requirements.push(req({ id: 'REQ-000002', sourceSessionId: 'session-other' }))
+    await h.seedSettled()
+    // B12 阶段⑤族 B：追加播种进新端口
+    h.seedRequirementSync(req({ id: 'REQ-000002', sourceSessionId: 'session-other' }))
     await h.addTasks('REQ-000002', [task({ id: 't-x', requirementId: 'REQ-000002' })])
     const out = await run(tool(h), { parent_id: 't-x' })
     expect(out.success).toBe(false)
@@ -88,6 +92,7 @@ describe('reqboard_task_tree（FR-3）', () => {
 
   it('不存在的任务 → REQBOARD_TASK_NOT_FOUND', async () => {
     const h = seedChain()
+    await h.seedSettled()
     const out = await run(tool(h), { parent_id: 't-nope' })
     expect(out.success).toBe(false)
     expect(String(out.error)).toContain('REQBOARD_TASK_NOT_FOUND')

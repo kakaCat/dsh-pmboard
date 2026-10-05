@@ -1,7 +1,7 @@
 /**
  * 隔离留痕文件适配器（REQ-422af1 t10）—— <dshHome>/state/node-isolation-log.json（ring buffer）。
  *
- * I/O 只在本文件（application 层保持纯逻辑）：原子写沿用 JsonLedgerRepository 的
+ * I/O 只在本文件（application 层保持纯逻辑）：原子写沿用 旧单册适配器（已删除） 的
  * persistAtomic（temp + fsync + rename，断电不留半截 JSON）；写入串行队列避免并发覆盖；
  * 缺文件视为空（删除该文件不影响功能）；文件损坏/写入失败走 onError——
  * **只告警，绝不冒泡到节点结算点**（留痕是旁路，不是流水线的一部分）。
@@ -9,7 +9,7 @@
  * @module dsh-pmboard/adapters/IsolationTraceFile
  */
 import { readFile } from 'node:fs/promises'
-import { persistAtomic } from './JsonLedgerRepository.js'
+import { persistAtomic } from '../repositories/atomicWrite.js'
 import { fmt } from '../domain/text/fmt.js'
 import { appendToIsolationTrace, isIsolationTraceEntry } from '../application/internal/isolation-trace.js'
 import type {

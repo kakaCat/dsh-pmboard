@@ -73,13 +73,32 @@ export const BASE_CSS = `
 }
 .dsh-pm-empty { padding: 8px 0; color: var(--dsw-text-secondary, #999); font-size: 12px; }
 .dsh-pm-error { padding: 32px; text-align: center; color: #d33; font-size: 13px; }
+/* REQ-261003191948-e94a t6：失败原因下面挂的「可复制命令」块。
+   为什么必须显式写样式：父容器 .dsh-pm-error 是 text-align:center，命令居中会让
+   路径与参数对不齐、没法照抄；且 <pre> 默认不换行会横向溢出。故这里左对齐 + 等宽 + 可换行。
+   （设计文档说「复用既有容器不新增视觉资产」——实测该假设不成立，属有意偏离，已记入复核报告。） */
+.dsh-pm-error-hint-label { margin-top: 12px; font-size: 12px; color: var(--dsw-text-secondary, #666); }
+.dsh-pm-error-hint {
+  margin: 6px auto 0; max-width: 760px; padding: 8px 10px; text-align: left;
+  white-space: pre-wrap; word-break: break-all; user-select: text;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.5;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.08));
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.25)); border-radius: 6px;
+  color: var(--dsw-text-primary, #3b4048);
+}
 
 /* ---- 泳道 ---- */
+/* REQ-261004184822-9881 FR-4：列要「直通到底」——泳道行是头部与归档条之间的剩余高度（flex: 1），
+   align-items: stretch 让每列铺满行高；min-height: 0 让行在矮窗口下可收缩（否则内容把行撑破）。
+   原先列是 flex-start + 写死「100vh 减 200px」的 max-height 上限，于是列只包住自己的内容、
+   下方留一大片空白（用户实测截图）。 */
 .dsh-pm-lanes {
   display: flex; gap: var(--pm-gap-lg); padding: 16px 20px 20px;
-  flex: 1; overflow-x: auto; align-items: flex-start;
+  flex: 1; min-height: 0; overflow-x: auto; align-items: stretch;
 }
 /* REQ-6f39b5：泳道容器对齐 lanes-prototype —— 白底卡片式、定宽、无顶部色条 */
+/* REQ-261004184822-9881 FR-4：列高由 stretch 决定（不再写 max-height 魔术值）；min-height: 0
+   保证列内卡片区能收缩，从而 .dsh-pm-lane-cards 的 overflow-y 真正生效（列头固定、列内自己滚）。 */
 .dsh-pm-lane {
   flex: none; min-width: 320px; max-width: 340px;
   background: var(--dsw-bg-primary, #fff);
@@ -87,7 +106,7 @@ export const BASE_CSS = `
   border-radius: 12px; padding: 0;
   display: flex; flex-direction: column;
   box-shadow: 0 2px 8px rgba(0,0,0,.08);
-  max-height: calc(100vh - 200px);
+  min-height: 0;
 }
 .dsh-pm-lane[data-lane="draft"] { --pm-stage: var(--pm-c-draft); }
 .dsh-pm-lane[data-lane="brainstorming"] { --pm-stage: var(--pm-c-brainstorming); }
@@ -125,7 +144,9 @@ export const BASE_CSS = `
   background: rgba(128,128,128,.12); border-radius: var(--pm-radius-pill);
   font-variant-numeric: tabular-nums;
 }
-.dsh-pm-lane-cards { display: flex; flex-direction: column; gap: 10px; min-height: 24px; padding: 12px; flex: 1; overflow-y: auto; }
+/* REQ-261004184822-9881 FR-4：列内卡片区是列里唯一滚动的部分（列头固定）。
+   min-height 由 24px 改 0：矮窗口下允许收缩到 0，不把列撑破、不产生看板整页纵向滚动。 */
+.dsh-pm-lane-cards { display: flex; flex-direction: column; gap: 10px; min-height: 0; padding: 12px; flex: 1; overflow-y: auto; }
 
 /* ---- 需求卡片 ---- */
 /* REQ-6f39b5：卡片对齐 lanes-prototype —— 简洁白卡、无左色条、蓝框 hover */
@@ -181,17 +202,26 @@ export const BASE_CSS = `
 }
 .dsh-pm-session:hover { background: rgba(74,125,255,.08); }
 
-/* ---- 归档条 ---- */
+/* ---- 归档条（REQ-261002105242-a3fb：渲染端复活；条目为可点 chip） ---- */
 .dsh-pm-archived-bar {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   padding: 8px 20px; border-top: 1px solid var(--dsw-border, rgba(128,128,128,.15));
   flex: none;
 }
+.dsh-pm-archived-fold { width: 100%; }
+.dsh-pm-archived-fold > summary { cursor: pointer; list-style: none; }
+.dsh-pm-archived-fold > summary::-webkit-details-marker { display: none; }
+.dsh-pm-archived-fold > summary::before { content: '▸ '; }
+.dsh-pm-archived-fold[open] > summary::before { content: '▾ '; }
+.dsh-pm-archived-chips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
 .dsh-pm-archived-label { font-size: 12px; color: var(--dsw-text-secondary, #999); }
 .dsh-pm-archived-chip {
   font-size: 11px; padding: 2px 8px; border-radius: 4px;
   background: rgba(128,128,128,.1); color: var(--dsw-text-secondary, #777);
+  border: 0; font-family: inherit; cursor: pointer;
 }
+.dsh-pm-archived-chip:hover { background: rgba(74,125,255,.12); color: var(--dsw-accent, #4a7dff); }
+.dsh-pm-archived-count { margin-left: 4px; opacity: .7; }
 .dsh-pm-archived-chip[data-status="canceled"] { text-decoration: line-through; }
 
 /* ---- 详情 ---- */
@@ -337,6 +367,12 @@ export const BASE_CSS = `
   background: rgba(128,128,128,.1); padding: 2px 6px; border-radius: 4px;
 }
 .dsh-pm-block-summary { font-size: 13px; color: var(--dsw-text-primary, #333); line-height: 1.6; }
+/* REQ-261004183621-de3f FR-5：归档清单对账行（列了多少 / 豁免多少 / 漏了什么 / 当时闸门） */
+.dsh-pm-archive-reconcile { font-size: 12px; color: var(--dsw-text-secondary, #6b7280); margin: 4px 0; }
+.dsh-pm-archive-unlisted { margin: 2px 0 6px; padding-left: 18px; font-size: 12px; color: var(--dsw-text-secondary, #6b7280); }
+.dsh-pm-archive-unlisted li { line-height: 1.7; }
+.dsh-pm-archive-noack { color: #b45309; margin-left: 6px; }
+.dsh-pm-archive-ack { color: #6b7280; margin-left: 6px; }
 .dsh-pm-block-note { font-size: 12px; color: #dc3545; }
 .dsh-pm-review {
   font-size: 11px; padding: 2px 10px; border-radius: 10px;

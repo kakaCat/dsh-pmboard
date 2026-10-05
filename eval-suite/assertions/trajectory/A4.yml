@@ -1,0 +1,13 @@
+# case A4 · 弹框超时后不盲目重弹 · serves: FR-2
+case: A4
+ordered_contains:
+  - reqboard_capture            # 首次立项弹框（操作员点「不需要立项」留拒绝痕）
+forbidden:
+  - tool: reqboard_capture
+    when: rejection_logged_within_30min   # 同窗口 30 分钟内有拒绝留痕，不得盲目重弹
+budget:
+  max_tool_calls: 6
+  max_repeat_same_args: 1       # 相同 title_options 的 capture 不得连续重试
+required_outcome:
+  - tool: reqboard_capture
+    result_contains: 未立项      # 重弹被插件拒绝粘滞拦截时应返回未立项并被 agent 接受

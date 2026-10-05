@@ -1,0 +1,473 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261001184609-cecb
+  generated_at: 2026-10-01T10:49:56.246Z
+  version: 91
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-01T11:00:55.676Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/architecture.md#改动面
+      title: 改动面（
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 改动面
+    - ref: design/architecture.md#不变量
+      title: 不变量（
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: 不变量
+    - ref: design/data-model.md#VerificationItem-增量字段
+      title: VerificationItem 增量字段（
+      serves:
+        - FR-1
+        - FR-3
+      file: design/data-model.md
+      section: VerificationItem-增量字段
+    - ref: design/data-model.md#兼容与迁移
+      title: 兼容与迁移（
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 兼容与迁移
+    - ref: design/interfaces.md#提交验收材料evidence-支持逐项绑定
+      title: 提交验收材料：evidence 支持逐项绑定（
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: 提交验收材料evidence-支持逐项绑定
+    - ref: design/interfaces.md#验收单弹框只问裁决
+      title: 验收单弹框：只问裁决（
+      serves:
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: 验收单弹框只问裁决
+    - ref: design/interfaces.md#裁决落库
+      title: 裁决落库（
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: 裁决落库
+    - ref: design/use-cases.md#UC-1-agent-落结果人只点通过
+      title: UC-1 agent 落结果，人只点通过（
+      serves:
+        - FR-1
+        - FR-2
+      file: design/use-cases.md
+      section: UC-1-agent-落结果人只点通过
+    - ref: design/use-cases.md#UC-2-无法自动验证的项
+      title: UC-2 无法自动验证的项（
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-2-无法自动验证的项
+    - ref: design/use-cases.md#UC-3-反例agent-没跑就想通过
+      title: UC-3 反例：agent 没跑就想通过（
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-3-反例agent-没跑就想通过
+outputs:
+  tasks:
+    - id: t-910506
+      title: 定契约：验收项带 result 与人工确认标记
+      implements: "AcceptanceSheetSpec 的 SheetItemLike 增 result?: string / resultSource?: agent|human / needsHuman?: boolean / humanReason?: string；protocol.VerificationItem 同步；全部可选，旧数据读为 undefined。"
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-1bc202
+      title: 材料即结果：提交验收材料时逐项绑定
+      implements: "VerifySubmit 解析 evidence 里的 <itemId> :: <结果>，命中则写该项 result 且 resultSource=agent；未命中或无 :: 的按整单证据处理（行为不变）。"
+      serves:
+        - FR-1
+      depends_on:
+        - t-910506
+      phase: implement
+      side: backend
+    - id: t-ad88fb
+      title: 弹框只问裁决：有结果就不逼人填
+      implements: AcceptSheet：项有 result 时只抛一问（裁决），题干带 result 与来源；needsHuman 项题干写「需人工确认：<理由>」并保留两问。
+      serves:
+        - FR-2
+        - FR-3
+      depends_on:
+        - t-910506
+      phase: implement
+      side: backend
+    - id: t-404edc
+      title: 兼容与迁移：旧单、旧调用方、回滚
+      implements: "旧验收单无 result → 行为与今天一致（人填）；旧 evidence 无 :: → 不绑定；提供关闭解析的开关即回到旧行为。"
+      serves:
+        - FR-1
+      depends_on:
+        - t-910506
+      phase: implement
+      side: backend
+    - id: t-e35027
+      title: 看板接线：展示结果与需人工确认
+      implements: client/views 验收面板：展示该项 result 与来源；needsHuman 项显示「需人工确认」标记与理由。
+      serves:
+        - FR-3
+      depends_on:
+        - t-1bc202
+        - t-ad88fb
+      phase: ui
+      side: frontend
+    - id: t-3cf3f0
+      title: 回归：五项断言与基线不劣化
+      implements: 固化 A1–A5：result 落库、只问一问、无结果仍 unverified、needsHuman 文案、老写法不绑定；跑全量基线与类型检查。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      depends_on:
+        - t-404edc
+        - t-e35027
+      phase: test
+      side: backend
+    - id: t-2f73d0
+      title: 定契约：验收项带 result 与人工确认标记·研发
+      implements: |-
+        AcceptanceSheetSpec 的 SheetItemLike 增 result?: string / resultSource?: agent|human / needsHuman?: boolean / humanReason?: string；protocol.VerificationItem 同步；全部可选，旧数据读为 undefined。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-c4e637
+      title: 定契约：验收项带 result 与人工确认标记·联调
+      implements: |-
+        AcceptanceSheetSpec 的 SheetItemLike 增 result?: string / resultSource?: agent|human / needsHuman?: boolean / humanReason?: string；protocol.VerificationItem 同步；全部可选，旧数据读为 undefined。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-2f73d0
+      phase: implement
+      side: backend
+    - id: t-0fcc6c
+      title: 定契约：验收项带 result 与人工确认标记·复核
+      implements: |-
+        AcceptanceSheetSpec 的 SheetItemLike 增 result?: string / resultSource?: agent|human / needsHuman?: boolean / humanReason?: string；protocol.VerificationItem 同步；全部可选，旧数据读为 undefined。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-c4e637
+      phase: implement
+      side: backend
+    - id: t-97a3a3
+      title: 定契约：验收项带 result 与人工确认标记·测试
+      implements: |-
+        AcceptanceSheetSpec 的 SheetItemLike 增 result?: string / resultSource?: agent|human / needsHuman?: boolean / humanReason?: string；protocol.VerificationItem 同步；全部可选，旧数据读为 undefined。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-0fcc6c
+      phase: implement
+      side: backend
+    - id: t-24a52b
+      title: 材料即结果：提交验收材料时逐项绑定·研发
+      implements: |-
+        VerifySubmit 解析 evidence 里的 <itemId> :: <结果>，命中则写该项 result 且 resultSource=agent；未命中或无 :: 的按整单证据处理（行为不变）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-910506
+      phase: implement
+      side: backend
+    - id: t-576a13
+      title: 材料即结果：提交验收材料时逐项绑定·联调
+      implements: |-
+        VerifySubmit 解析 evidence 里的 <itemId> :: <结果>，命中则写该项 result 且 resultSource=agent；未命中或无 :: 的按整单证据处理（行为不变）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-24a52b
+      phase: implement
+      side: backend
+    - id: t-0f2afe
+      title: 材料即结果：提交验收材料时逐项绑定·复核
+      implements: |-
+        VerifySubmit 解析 evidence 里的 <itemId> :: <结果>，命中则写该项 result 且 resultSource=agent；未命中或无 :: 的按整单证据处理（行为不变）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-576a13
+      phase: implement
+      side: backend
+    - id: t-f6f56f
+      title: 材料即结果：提交验收材料时逐项绑定·测试
+      implements: |-
+        VerifySubmit 解析 evidence 里的 <itemId> :: <结果>，命中则写该项 result 且 resultSource=agent；未命中或无 :: 的按整单证据处理（行为不变）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-0f2afe
+      phase: implement
+      side: backend
+    - id: t-cddee2
+      title: 弹框只问裁决：有结果就不逼人填·研发
+      implements: |-
+        AcceptSheet：项有 result 时只抛一问（裁决），题干带 result 与来源；needsHuman 项题干写「需人工确认：<理由>」并保留两问。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-910506
+      phase: implement
+      side: backend
+    - id: t-16a110
+      title: 弹框只问裁决：有结果就不逼人填·联调
+      implements: |-
+        AcceptSheet：项有 result 时只抛一问（裁决），题干带 result 与来源；needsHuman 项题干写「需人工确认：<理由>」并保留两问。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-cddee2
+      phase: implement
+      side: backend
+    - id: t-379581
+      title: 弹框只问裁决：有结果就不逼人填·复核
+      implements: |-
+        AcceptSheet：项有 result 时只抛一问（裁决），题干带 result 与来源；needsHuman 项题干写「需人工确认：<理由>」并保留两问。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-16a110
+      phase: implement
+      side: backend
+    - id: t-5d57e4
+      title: 弹框只问裁决：有结果就不逼人填·测试
+      implements: |-
+        AcceptSheet：项有 result 时只抛一问（裁决），题干带 result 与来源；needsHuman 项题干写「需人工确认：<理由>」并保留两问。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-379581
+      phase: implement
+      side: backend
+    - id: t-90e8c6
+      title: 兼容与迁移：旧单、旧调用方、回滚·研发
+      implements: |-
+        旧验收单无 result → 行为与今天一致（人填）；旧 evidence 无 :: → 不绑定；提供关闭解析的开关即回到旧行为。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-910506
+      phase: implement
+      side: backend
+    - id: t-c51e19
+      title: 兼容与迁移：旧单、旧调用方、回滚·联调
+      implements: |-
+        旧验收单无 result → 行为与今天一致（人填）；旧 evidence 无 :: → 不绑定；提供关闭解析的开关即回到旧行为。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-90e8c6
+      phase: implement
+      side: backend
+    - id: t-495a7d
+      title: 兼容与迁移：旧单、旧调用方、回滚·复核
+      implements: |-
+        旧验收单无 result → 行为与今天一致（人填）；旧 evidence 无 :: → 不绑定；提供关闭解析的开关即回到旧行为。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-c51e19
+      phase: implement
+      side: backend
+    - id: t-56fa32
+      title: 兼容与迁移：旧单、旧调用方、回滚·测试
+      implements: |-
+        旧验收单无 result → 行为与今天一致（人填）；旧 evidence 无 :: → 不绑定；提供关闭解析的开关即回到旧行为。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-495a7d
+      phase: implement
+      side: backend
+    - id: t-5aeea3
+      title: 看板接线：展示结果与需人工确认·研发
+      implements: |-
+        client/views 验收面板：展示该项 result 与来源；needsHuman 项显示「需人工确认」标记与理由。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-1bc202
+        - t-ad88fb
+      phase: ui
+      side: frontend
+    - id: t-832b6b
+      title: 看板接线：展示结果与需人工确认·联调
+      implements: |-
+        client/views 验收面板：展示该项 result 与来源；needsHuman 项显示「需人工确认」标记与理由。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-5aeea3
+      phase: ui
+      side: frontend
+    - id: t-8a445f
+      title: 看板接线：展示结果与需人工确认·复核
+      implements: |-
+        client/views 验收面板：展示该项 result 与来源；needsHuman 项显示「需人工确认」标记与理由。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-832b6b
+      phase: ui
+      side: frontend
+    - id: t-6c661c
+      title: 看板接线：展示结果与需人工确认·测试
+      implements: |-
+        client/views 验收面板：展示该项 result 与来源；needsHuman 项显示「需人工确认」标记与理由。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-8a445f
+      phase: ui
+      side: frontend
+    - id: t-ceaba2
+      title: 回归：五项断言与基线不劣化·研发
+      implements: |-
+        固化 A1–A5：result 落库、只问一问、无结果仍 unverified、needsHuman 文案、老写法不绑定；跑全量基线与类型检查。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-404edc
+        - t-e35027
+      phase: test
+      side: backend
+    - id: t-bd1d47
+      title: 回归：五项断言与基线不劣化·复核
+      implements: |-
+        固化 A1–A5：result 落库、只问一问、无结果仍 unverified、needsHuman 文案、老写法不绑定；跑全量基线与类型检查。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-ceaba2
+      phase: test
+      side: backend
+    - id: t-3a9d41
+      title: 回归：五项断言与基线不劣化·测试
+      implements: |-
+        固化 A1–A5：result 落库、只问一问、无结果仍 unverified、needsHuman 文案、老写法不绑定；跑全量基线与类型检查。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-bd1d47
+      phase: test
+      side: backend
+traceability:
+  design_to_tasks:
+    design/architecture.md#改动面:
+      - t-910506
+      - t-1bc202
+      - t-ad88fb
+      - t-404edc
+      - t-3cf3f0
+    design/architecture.md#不变量:
+      - t-910506
+      - t-ad88fb
+      - t-3cf3f0
+    design/data-model.md#VerificationItem-增量字段:
+      - t-910506
+      - t-1bc202
+      - t-ad88fb
+      - t-404edc
+      - t-e35027
+      - t-3cf3f0
+    design/data-model.md#兼容与迁移:
+      - t-910506
+      - t-1bc202
+      - t-404edc
+      - t-3cf3f0
+    design/interfaces.md#提交验收材料evidence-支持逐项绑定:
+      - t-910506
+      - t-1bc202
+      - t-404edc
+      - t-3cf3f0
+    design/interfaces.md#验收单弹框只问裁决:
+      - t-910506
+      - t-ad88fb
+      - t-e35027
+      - t-3cf3f0
+    design/interfaces.md#裁决落库:
+      - t-910506
+      - t-ad88fb
+      - t-3cf3f0
+    design/use-cases.md#UC-1-agent-落结果人只点通过:
+      - t-910506
+      - t-1bc202
+      - t-ad88fb
+      - t-404edc
+      - t-3cf3f0
+    design/use-cases.md#UC-2-无法自动验证的项:
+      - t-910506
+      - t-ad88fb
+      - t-e35027
+      - t-3cf3f0
+    design/use-cases.md#UC-3-反例agent-没跑就想通过:
+      - t-910506
+      - t-ad88fb
+      - t-3cf3f0
+  fr_to_tasks:
+    FR-1:
+      - t-910506
+      - t-1bc202
+      - t-ad88fb
+      - t-404edc
+      - t-3cf3f0
+      - t-e35027
+    FR-2:
+      - t-910506
+      - t-1bc202
+      - t-ad88fb
+      - t-404edc
+      - t-3cf3f0
+      - t-e35027
+    FR-3:
+      - t-910506
+      - t-1bc202
+      - t-ad88fb
+      - t-404edc
+      - t-e35027
+      - t-3cf3f0
+coverage:
+  implementation:
+    total: 10
+    covered: 10
+    uncovered: []
+    rate: 100
+    total_designs: 10
+    covered_designs: 10

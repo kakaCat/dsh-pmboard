@@ -1,0 +1,36 @@
+task:
+  id: t-60346d
+  title: 新增解锁回归用例（UC-1..5 + 反向证伪，修前必红）·复核
+  status: done
+  implements: |-
+    新建 tests/clear-pause-lossless.test.ts：头 20 行含 // serves: FR-1, FR-2, FR-3；复用 tests/status-lossless.test.ts 的 undefinedPaths(v) 递归口径；夹具照 tests/output-contract.test.ts 的 depsWith()（真实 JsonLedgerRepository + FileDocRepository + SystemClock + RandomIdFactory + 临时目录，用例后 rmSync）；直调 defineClearPauseTool(deps).execute(args, { agent: { id: W } })。覆盖 UC-1（armed→回执含 previous_activation 且 undefinedPaths 为空、台账 disarmed/idle、version+1）、UC-2（无 dive 记录 → 键整体省略、新建 dive、文案 none）、UC-3（变更器找不到需求 → REQBOARD_MUTATION_FAILED 且不返回 success、零写入）、UC-4（无绑定 → REQBOARD_NO_BOUND_REQ；非本窗口 id → REQBOARD_NOT_BOUND_TO_WINDOW；均零写入）、UC-5（comments.at(-1).body 含文字且无 text 键）；再加反向证伪：把旧形状 { previous_activation: undefined } 与 { text: '…' } 喂给同一断言函数，必须报缺。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-cad1d0
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002140814-1a5d
+    TASK_ID: t-60346d
+    TASK_TITLE: 新增解锁回归用例（UC-1..5 + 反向证伪，修前必红）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-02T06:19:35.246Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002140814-1a5d
+  generated_at: 2026-10-02T06:19:24.619Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-02T06:26:03.130Z

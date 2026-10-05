@@ -8,12 +8,12 @@
  *   - task_move：跨窗口越权、任务不存在、取消任务（人工闸门）一律拒绝；
  *   - 开工自动开执行段、离开 in_progress 自动结算。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
-import { definePlanSubmitTool, defineDecomposeTool, defineTaskMoveTool, defineVerifySubmitTool, defineTaskReportTool, queueTasksOf, stubDocFile, type ReqboardToolDeps } from './helpers/tool-deps.js'
+import { definePlanSubmitTool, defineDecomposeTool, defineTaskMoveTool, defineVerifySubmitTool, defineTaskReportTool, queueTasksOf, taskStoreOf, stubDocFile, type ReqboardToolDeps } from './helpers/tool-deps.js'
 import { recordToolTrace, type ToolTraceEntry } from '../src/adapters/SessionProbeAdapter.js'
 import type { RequirementRecord, RequirementStatus } from '../src/shared/protocol.js'
 
@@ -21,7 +21,7 @@ const W = 'session-abc-123'
 /** 本文件通篇只操作这一个需求；任务断言一律从**队列**取（v9：台账无 tasks 通道）。 */
 const REQ_ID = 'REQ-abc123'
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let planTool: { execute: (a: unknown, e: unknown) => Promise<any> }
 let decompose: { execute: (a: unknown, e: unknown) => Promise<any> }
 let taskMove: { execute: (a: unknown, e: unknown) => Promise<any> }
@@ -33,7 +33,7 @@ let deps: ReqboardToolDeps
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-decompose-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   trace = new Map()
   deps = { store, now: () => Date.now(), toolTrace: trace, doneThrottleMs: 60_000 }
   depsRef = deps
@@ -64,7 +64,7 @@ async function seed(status: RequirementStatus = 'decomposing', sourceSessionId: 
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
     statusHistory: [{ status: 'draft', at: 1, by: { kind: 'human' } }],
   } as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('requirement-created', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
   return r
 }
 
@@ -80,10 +80,9 @@ const TWO_TASKS = [
 async function planAndApprove(tasks: unknown = TWO_TASKS): Promise<void> {
   const out = await run(planTool, { path: 'docs/requirements/REQ-abc123/plan.md', summary: '摘要', tasks })
   expect(out.plan_status).toBe('pending_approval')
-  await store.mutate('requirement-updated', (l) => {
-    const r = l.requirements[0]
+  await store.mutate(REQ_ID, (r) => {
     if (r.plan !== undefined) { r.plan.approvedAt = 1000; r.plan.approvedBy = { kind: 'human' } }
-    return { requirements: [r] }
+    return { changed: true }
   })
 }
 
@@ -121,15 +120,82 @@ describe('reqboard_decompose 边界', () => {
     expect(await queueTasksOf(deps, REQ_ID)).toHaveLength(2)
   })
 
+  /**
+   * 回退态可重建（REQ-261003204149-1e80 t6 / FR-4）——解开「回得去、拆不了」的死结。
+   *
+   * 现场：需求被回退到拆分阶段后（旧卡已 canceled、上一轮物化的重做卡是活卡），
+   * 若守卫仍以「已有未取消任务」一刀切，重拆就被拒死；而 `taskCompletenessGap` 又因
+   * live>0 放行 ⇒ 二次实施跑的是与新计划不符的旧卡。
+   */
+  it('回退态可重建：上一轮的重做卡被新计划取代，且不产双份活卡', async () => {
+    await seed('decomposing')
+    await planAndApprove()
+    await run(decompose, {}) // 第一轮：2 张卡
+    const firstGen = await queueTasksOf(deps, REQ_ID)
+    expect(firstGen).toHaveLength(2)
+
+    // 造出「一次需求级回退之后」的队列现场（生产路径由 rollback-tasks + rollback-revocation 写入）：
+    // 旧卡全部 canceled，并按旧卡物化 2 张重做卡。
+    await taskStoreOf(deps).mutate(REQ_ID, (tasks) => {
+      for (const t of tasks) {
+        t.status = 'canceled'
+        t.revisions = [
+          ...(t.revisions ?? []),
+          { at: 1, by: { kind: 'agent', sessionId: W }, kind: 'rollback', reason: '需求回退', changes: ['status: →canceled'] },
+        ]
+      }
+      return tasks
+    })
+    // 物化重做卡：走 createMany（它的契约就是「新建一批卡」，且避开 QueueTask 的额外字段）
+    await taskStoreOf(deps).createMany(REQ_ID, firstGen.map(t => ({
+      ...structuredClone(t),
+      id: 't-rework-' + t.id,
+      title: '[重做] ' + t.title,
+      reworkOf: t.id,
+      status: 'todo' as const,
+      dependsOn: [],
+      revisions: [],
+      statusHistory: [],
+    })))
+    // rollback 留痕：to = 当前阶段 ⇒ 处于回退态
+    await store.mutate(REQ_ID, (r) => {
+      r.status = 'decomposing'
+      r.rollback = { from: 'implementing', to: 'decomposing', at: 2, by: { kind: 'agent', sessionId: W }, reason: '重新拆分' }
+      return { changed: true }
+    })
+    expect((await queueTasksOf(deps, REQ_ID)).filter(t => t.status !== 'canceled')).toHaveLength(2) // 重做卡是活卡
+
+    const again = await run(decompose, {})
+    expect(again.success).toBe(true)
+    expect(again.created).toHaveLength(2) // 新计划落库
+
+    const live = (await queueTasksOf(deps, REQ_ID)).filter(t => t.status !== 'canceled')
+    expect(live, '未取消卡数 = 新计划卡数（重做卡已被收敛）').toHaveLength(2)
+    expect(live.filter(t => t.reworkOf !== undefined), '不残留重做卡').toHaveLength(0)
+  })
+
+  it('判据窄：有回退留痕但目标不是当前阶段 → 仍拒（历史留痕不放水）', async () => {
+    await seed('decomposing')
+    await planAndApprove()
+    await run(decompose, {})
+    await store.mutate(REQ_ID, (r) => {
+      r.status = 'decomposing'
+      // to=design ≠ 当前阶段：这是「退到 design 之后又走回 decomposing」的既成历史，不该再放行重建
+      r.rollback = { from: 'implementing', to: 'design', at: 1, by: { kind: 'agent', sessionId: W } }
+      return { changed: true }
+    })
+    await expect(run(decompose, {})).rejects.toThrow(/REQBOARD_ALREADY_DECOMPOSED/)
+    expect(await queueTasksOf(deps, REQ_ID)).toHaveLength(2)
+  })
+
   it('幂等守卫：状态停在 design 但已有未取消任务时，拒绝并返回已有清单', async () => {
     await seed('decomposing')
     await planAndApprove()
     await run(decompose, {})
     // 模拟状态异常：任务已落库但需求状态被外部改回 design（绕过状态守卫，考验任务清单防线）
-    await store.mutate('manual-rollback', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(REQ_ID, (r) => {
       r.status = 'design'
-      return { requirements: [r] }
+      return { changed: true }
     })
     await expect(run(decompose, {})).rejects.toThrow(/REQBOARD_ALREADY_DECOMPOSED/)
     await expect(run(decompose, {})).rejects.toThrow(/禁止重复拆分/)
@@ -141,10 +207,9 @@ describe('reqboard_decompose 边界', () => {
     // 紧接着调 decompose 被"状态=decomposing 即视为已拆过"的守卫拒死（REQBOARD_ALREADY_DECOMPOSED），
     // 而台账里一个任务都没有 —— 审批流水线自锁。
     await seed('decomposing')
-    await store.mutate('seed-plan', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(REQ_ID, (r) => {
       r.plan = { path: 'p.md', summary: 's', tasks: [], submittedAt: 1, approvedAt: 1000, approvedBy: { kind: 'human' } } as never
-      return { requirements: [r] }
+      return { changed: true }
     })
     const out = await run(decompose, {
       tasks: [
@@ -162,14 +227,14 @@ describe('reqboard_decompose 边界', () => {
   it('幂等守卫：implementing/accepting 状态一律拒绝重复拆分', async () => {
     for (const st of ['implementing', 'accepting'] as const) {
       await seed(st)
-      await store.mutate('seed-plan', (l) => {
-        const r = l.requirements[l.requirements.length - 1]
+      const __last = (await store.listSummaries({ scope: 'all' })).items.at(-1)!.id
+      await store.mutate(__last, (r) => {
         r.plan = { path: 'p.md', summary: 's', tasks: [], submittedAt: 1, approvedAt: 1000, approvedBy: { kind: 'human' } } as never
-        return { requirements: [r] }
+        return { changed: true }
       })
       await expect(run(decompose, {})).rejects.toThrow(/REQBOARD_ALREADY_DECOMPOSED/)
       // 清理本条 seed，避免互相影响
-      await store.mutate('cleanup', (l) => { l.requirements.length = 0; return { requirements: [] } })
+      await store.replaceAll('cleanup', { schemaVersion: 9, revision: 0, requirements: [], triages: [] })
     }
     expect(await queueTasksOf(deps, REQ_ID)).toHaveLength(0)
   })
@@ -182,8 +247,7 @@ describe('reqboard_decompose 边界', () => {
     expect(out.created[0].id).toMatch(/^t-[0-9a-f]{6}$/)
     expect(out.created[1].depends_on).toEqual([out.created[0].id])
     expect(out.requirement_status).toBe('decomposing')
-    const ledger = store.snapshot()
-    const queueTasks = await queueTasksOf(deps, REQ_ID)
+        const queueTasks = await queueTasksOf(deps, REQ_ID)
     // 迁移（REQ-d3e61a T-9）：占位验收标准换成**可照着验**的真实标准——本断言验的是
     // "计划任务表正确落库"（语义不变），只是值随门禁要求一起升级。
     expect(queueTasks.map(t => t.acceptance)).toEqual(['npx vitest run tests/reqboard.test.ts 全绿', 'npx vitest run tests/client-view.test.ts 全绿'])
@@ -193,8 +257,8 @@ describe('reqboard_decompose 边界', () => {
       expect(t.cardDoc).toBe('docs/requirements/' + t.requirementId + '/tasks/' + t.id + '.md')
     }
     // 2026-09-21：拆分计划在拆分阶段提交，decompose 不再承担 design>decomposing 推进
-    expect(ledger.requirements[0].status).toBe('decomposing')
-    expect(ledger.requirements[0].statusHistory?.map(e => e.status)).toEqual(['draft'])
+    expect((await store.get(REQ_ID))!.status).toBe('decomposing')
+    expect((await store.get(REQ_ID))!.statusHistory?.map(e => e.status)).toEqual(['draft'])
   })
 })
 
@@ -251,7 +315,7 @@ describe('plan_submit 三重校验（REQ-2e9473 t03）', () => {
     await seed('decomposing')
     const out = await run(planTool, { path: 'p.md', summary: 's', tasks: GOOD })
     expect(out.plan_status).toBe('pending_approval')
-    const plan = store.snapshot().requirements[0].plan!
+    const plan = (await store.get(REQ_ID))!.plan!
     expect(plan.tasks.map(t => t.implementation)).toEqual(['protocol.ts 加字段', 'view.ts 加渲染'])
   })
 })
@@ -270,14 +334,13 @@ describe('实施卡透传与开工送达（REQ-2e9473 t04）', () => {
   it('历史批准的薄卡计划：decompose 不硬拦（人批过）但返回 thin_cards 警告', async () => {
     await seed('decomposing')
     // 模拟规则生效前批准的存量计划：无 implementation
-    await store.mutate('legacy-plan', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(REQ_ID, (r) => {
       r.plan = {
         path: 'p.md', summary: 's', submittedAt: 1, submittedBy: { kind: 'agent' },
         approvedAt: 2, approvedBy: { kind: 'human' },
         tasks: [{ key: 'a', title: '旧任务', acceptance: '单测绿' }],
       } as never
-      return { requirements: [r] }
+      return { changed: true }
     })
     const out = await run(decompose, {})
     expect(out.success).toBe(true)
@@ -289,10 +352,9 @@ describe('实施卡透传与开工送达（REQ-2e9473 t04）', () => {
     await seed('decomposing')
     await planAndApprove()
     const out = await run(decompose, {})
-    await store.mutate('human-confirm', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(REQ_ID, (r) => {
       r.status = 'implementing'
-      return { requirements: [r] }
+      return { changed: true }
     })
     const start = await run(taskMove, { task_id: out.created[0].id, to: 'in_progress' })
     expect(start.task_card).toBeDefined()
@@ -311,10 +373,9 @@ describe('rollup 阻塞 blockers 显式化（REQ-2e9473 t02）', () => {
     await seed('decomposing')
     await planAndApprove()
     const out = await run(decompose, {})
-    await store.mutate('human-confirm', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(REQ_ID, (r) => {
       r.status = 'implementing'
-      return { requirements: [r] }
+      return { changed: true }
     })
     return out.created.map((c: { id: string }) => c.id)
   }
@@ -362,10 +423,9 @@ describe('done 凭证门（REQ-2e9473 t06/W2，事故 C/D 故障注入）', () =
     await seed('decomposing')
     await planAndApprove()
     const out = await run(decompose, {})
-    await store.mutate('human-confirm', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(REQ_ID, (r) => {
       r.status = 'implementing'
-      return { requirements: [r] }
+      return { changed: true }
     })
     const id = out.created[0].id as string
     for (const to of ['in_progress', 'testing', 'in_review']) await run(taskMove, { task_id: id, to })
@@ -394,10 +454,9 @@ describe('done 凭证门（REQ-2e9473 t06/W2，事故 C/D 故障注入）', () =
     await seed('decomposing')
     await planAndApprove()
     const out = await run(decompose, {})
-    await store.mutate('human-confirm', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(REQ_ID, (r) => {
       r.status = 'implementing'
-      return { requirements: [r] }
+      return { changed: true }
     })
     const [a, b] = out.created.map((c: { id: string }) => c.id)
     for (const to of ['in_progress', 'testing', 'in_review']) await run(taskMove, { task_id: a, to })
@@ -459,17 +518,15 @@ describe('reqboard_task_move 边界', () => {
     expect(t.executions[0].endedAt).toBeDefined()
     expect(t.executions[0].outcome).toBe('succeeded')
     expect(t.statusHistory?.map(e => e.status)).toEqual(['todo', 'in_progress', 'testing', 'in_review', 'done'])
-    expect(store.snapshot().requirements[0].status).toBe('decomposing')
+    expect((await store.get(REQ_ID))!.status).toBe('decomposing')
 
     // 模拟人确认拆分清单（human gate 通过），需求进入实施态
-    await store.mutate('human-confirm', (l) => {
-      const r = l.requirements.find(x => x.id === 'REQ-abc123')!
-      r.status = 'implementing'
-      return { requirements: [r] }
+    await store.mutate('REQ-abc123', (r) => {      r.status = 'implementing'
+      return { changed: true }
     })
 
     for (const to of ['in_progress', 'testing', 'in_review']) await run(taskMove, { task_id: b, to })
     await honestClose(b)
-    expect(store.snapshot().requirements[0].status).toBe('accepting')
+    expect((await store.get(REQ_ID))!.status).toBe('accepting')
   })
 })

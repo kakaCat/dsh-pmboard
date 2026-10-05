@@ -1,0 +1,38 @@
+task:
+  id: t-d86de5
+  title: 回退只动物化该动的卡：子卡原地复位，不再升格成新父卡·复核
+  status: done
+  implements: |-
+    src/application/internal/rollback.ts 的物化段（生成 reworkDrafts 处）：先按 `parentId === undefined` 分流——顶层父卡 → 生成重做草稿（继承标题/phase/side/acceptance，`reworkOf=原卡id`）；子卡 → 收集到新增的 `resetSubtasks` 列表，不再进 reworkDrafts。rollback-tasks.ts 里物化与复位分别落库（复位 = mutate 把 status 置回 todo，**不动** parentId/stageKind）。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-968fe6
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004121649-bfa7
+    TASK_ID: t-d86de5
+    TASK_TITLE: 回退只动物化该动的卡：子卡原地复位，不再升格成新父卡·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T06:35:34.620Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004121649-bfa7
+  generated_at: 2026-10-04T06:34:26.983Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-04T06:35:34.620Z

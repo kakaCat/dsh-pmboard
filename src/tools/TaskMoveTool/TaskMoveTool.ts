@@ -42,7 +42,7 @@ export function defineTaskMoveTool(deps: UseCaseDeps) {
     parameters: {
       task_id: { type: 'string', description: '任务 id（t-xxxxxx）' },
       to: { type: 'string', description: '目标状态（todo/in_progress/integrating/testing/in_review/done/canceled）；与 acceptance 至少给一个' },
-      reason: { type: 'string', description: '理由（进台账留痕）' },
+      reason: { type: 'string', description: '理由（进台账留痕）；写法：每条短句（建议 ≤60 字）；需引号用「」避免半角双引号；文本过大拆成多次调用' },
       acceptance: { type: 'string', description: '修订验收标准（≤2000 字符，须含命令/断言锚点）；只传它 = 仅修订不改状态' },
     },
     output: {
@@ -67,7 +67,7 @@ export function defineTaskMoveTool(deps: UseCaseDeps) {
     },
     timeoutMs: LIMITS.timeoutWriteMs,
     async execute(args: unknown, exec: unknown): Promise<Record<string, unknown>> {
-      assertNoPendingConfirm(deps, deps.session.windowKey(exec))
+      await assertNoPendingConfirm(deps, deps.session.windowKey(exec))
       const a = (args ?? {}) as Record<string, unknown>
       const taskId = typeof a.task_id === 'string' ? a.task_id : ''
 

@@ -1,0 +1,33 @@
+
+ RUN  v2.0.0 /Users/mac/Documents/ai/dsh/dsh-pmboard
+
+ ❯ tests/lineage-delta.test.ts  (13 tests | 1 failed) 9ms
+   × TC-2 差值归属规则（FR-2） > TC-2d 水位（seq）缺失 → 该成员不参与且标降级
+     → expected 65 to be 26 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/lineage-delta.test.ts > TC-2 差值归属规则（FR-2） > TC-2d 水位（seq）缺失 → 该成员不参与且标降级
+AssertionError: expected 65 to be 26 // Object.is equality
+
+- Expected
++ Received
+
+- 26
++ 65
+
+ ❯ tests/lineage-delta.test.ts:132:28
+    130|     const end = S([M('root', 0, 3, 4), M('child', 1, 5)])
+    131|     const r = deltaSnapshots(start, end)
+    132|     expect(total(r.delta)).toBe(13 * 2) // 只算 root
+       |                            ^
+    133|     expect(r.degraded).toBe(true)
+    134|     expect(r.degradedReason).toBe('member-unavailable')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 12 passed (13)
+   Start at  15:58:18
+   Duration  628ms (transform 155ms, setup 0ms, collect 228ms, tests 9ms, environment 0ms, prepare 60ms)
+

@@ -1,0 +1,17 @@
+# case F4 · 重复提交同一产物 · serves: FR-2
+id: F4
+group: F
+type: edge
+severity: normal
+title: 重复登记同一份设计文档
+dims: [D3]
+max_score: 2
+seed:
+  workspace: fixture:req-design-registered   # 预置：需求处 design，design/ 下一份文档已登记
+  user_messages:
+    - 帮我把设计文档登记一下。
+    - 我刚才让你登记设计文档，你登记了没有？再登记一遍确认下。
+expected:
+  trajectory_ref: F4
+  ledger_ref: F4
+notes: 幂等语义：同一份文档重复 submit(design) 应幂等跳过，registered_count 只数本次新登记（第二次应为 0），台账不得出现重复条目。agent 第二次直接答复「已登记、registered_count=0」而不再调用，同样判过。

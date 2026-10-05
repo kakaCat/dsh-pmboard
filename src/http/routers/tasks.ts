@@ -26,16 +26,18 @@ import {
   recordStatus,
   type TaskRecord,
 } from '../../shared/protocol.js'
-import { applyTaskRollup, type RollupContext } from '../../application/internal/rollup.js'
+import { applyTaskRollupVia, type RollupContext } from '../../application/internal/rollup.js'
 import { closeExecutions, openExecution } from '../../application/internal/token-usage.js'
 import { transitionTask } from '../../application/internal/task-transition.js'
 import { endsExecutionSegment, isRollbackOrCancel, startsExecutionSegment } from '../../domain/status/Predicates.js'
 import { INITIAL_TASK_STATUS } from '../../domain/task/TaskStatus.js'
 import type { RouterCtx } from './shared.js'
 import { syncRTMYamlWithSnapshot } from '../../application/internal/rtm-yaml.js'
+import { amendTaskRefs } from '../../application/use-cases/AmendTaskRefs.js'
 
 export function createTasksRouter(ctx: RouterCtx) {
-  const { store, taskStore, now, ids, mintId, ok, readBody, notFound } = ctx
+  // B12 阶段④-2-③：本文件的 rollup 写已迁到 `ctx.requirementStore` ⇒ 旧口不再需要
+  const { taskStore, now, ids, mintId, ok, readBody, notFound } = ctx
 
   /**
    * 请求体可选会话码（REQ-260927121324-abde t4）：看板操作带上真实 agent 会话才有写时快照。
@@ -97,7 +99,7 @@ export function createTasksRouter(ctx: RouterCtx) {
 
     // 前置校验（**不落盘**）：需求存在 + DAG 无环。
     // 必须先校验再写队列——否则会给不存在的需求建出 queue.json（createMany 允许建档）。
-    if (!store.snapshot().requirements.some(r => r.id === requirementId)) notFound(`需求 ${requirementId}`)
+    if ((await ctx.requirementStore?.get(requirementId)) === undefined) notFound(`需求 ${requirementId}`)
     assertDagAcyclic([...(await taskStore.listByRequirement(requirementId)), record], requirementId)
 
     // ① 任务写（**先**）：建卡入队列（createMany 允许建档——建卡/拆分是队列的诞生时刻）
@@ -105,9 +107,7 @@ export function createTasksRouter(ctx: RouterCtx) {
 
     // ② 需求写（**后**）：任务集变化 → 重算所属需求完成度（派生推进；有会话才带写时快照）
     const after = await taskStore.listAll()
-    await store.mutate('task-created', (ledger) => ({
-      requirements: applyTaskRollup(ledger, after, rollupCtx(sessionId), record.requirementId),
-    }))
+    await applyTaskRollupVia(ctx.requirementStore, after, rollupCtx(sessionId), record.requirementId)
     ok(res, record)
   }
 
@@ -165,15 +165,13 @@ export function createTasksRouter(ctx: RouterCtx) {
 
     // ② 需求写（**后**）：派生推进（system）——任务状态落定后重算所属需求（全部实施任务 done → 验收）
     const after = await taskStore.listAll()
-    await store.mutate('task-moved', (ledger) => ({
-      requirements: applyTaskRollup(ledger, after, rollupCtx(sessionId), requirementId),
-    }))
+    await applyTaskRollupVia(ctx.requirementStore, after, rollupCtx(sessionId), requirementId)
 
     if (movedTask !== undefined) {
       // RTM 触发点 6（REQ-260926140539-457b FR-2）：任务状态变更 → rtm-implementing 同步
       const rtmRoot = ctx.deps.docs?.workspaceRoot() ?? ctx.deps.cwd
       if (rtmRoot !== undefined) {
-        syncRTMYamlWithSnapshot(rtmRoot, store.snapshot(), after, movedTask.requirementId, 'task:status', { taskId: movedTask.id })
+        syncRTMYamlWithSnapshot(rtmRoot, ({ requirements: (await ctx.requirementStore?.listSummaries({ scope: 'all' }))?.items as never }), after, movedTask.requirementId, 'task:status', { taskId: movedTask.id })
       }
     }
     ok(res, movedTask)
@@ -187,6 +185,23 @@ export function createTasksRouter(ctx: RouterCtx) {
     const existing = await taskStore.get(id)
     if (existing === undefined) return notFound(`任务 ${id}`)
     const requirementId = existing.requirementId
+
+    // ①-a 条款引用补写（REQ-261002164800-d8f2 t5 / FR-4）：与工具 `reqboard_task_refs` 共用同一用例
+    //（唯一写入口）。看板操作由"人"授权，故不做窗口校验；未装配用例依赖 → 明确拒绝，不静默忽略。
+    let refsRepair: Record<string, unknown> | undefined
+    if (body.requirementRefs !== undefined) {
+      const app = ctx.deps.applicationDeps
+      if (app === undefined) {
+        throw Object.assign(new Error('改卡条款引用需要用例依赖（applicationDeps 未装配）'), { code: 'invalid_input' })
+      }
+      const out = await amendTaskRefs(app, {
+        taskId: id,
+        requirementRefs: body.requirementRefs,
+        reason: normalizeText(body.reason, 'reason', 500),
+        actor: { kind: 'human', ...(sessionId !== undefined ? { sessionId } : {}) },
+      })
+      refsRepair = { before: out.before, after: out.after, changed: out.changed, rtm_synced: out.rtm_synced }
+    }
 
     // ① 任务写（**先**）：改卡字段（DAG 校验在本需求任务集上做）
     const changed = await taskStore.mutate(requirementId, (tasks) => {
@@ -213,14 +228,13 @@ export function createTasksRouter(ctx: RouterCtx) {
       task.updatedBy = { kind: 'human' }
       return tasks
     })
-    const updatedTask = changed[0]
+    // 只改引用（没带其它字段）时，上面的字段写会因"无变更"不返回任务——补读一次，别把空壳回给看板
+    const updatedTask = changed[0] ?? (refsRepair !== undefined ? await taskStore.get(id) : undefined)
 
     // ② 需求写（**后**）：取消/依赖变更都可能改变完成度 → 重算所属需求（有会话才带写时快照）
     const after = await taskStore.listAll()
-    await store.mutate('task-updated', (ledger) => ({
-      requirements: applyTaskRollup(ledger, after, rollupCtx(sessionId), requirementId),
-    }))
-    ok(res, updatedTask)
+    await applyTaskRollupVia(ctx.requirementStore, after, rollupCtx(sessionId), requirementId)
+    ok(res, refsRepair === undefined ? updatedTask : { ...(updatedTask ?? existing), refs_repair: refsRepair })
   }
 
   return { handleTaskCreate, handleTaskMove, handleTaskUpdate }

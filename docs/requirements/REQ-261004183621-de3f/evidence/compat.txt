@@ -1,0 +1,35 @@
+# t6 迁移与兼容证据（REQ-261004183621-de3f）
+
+## 测试：tests/archive-compat.test.ts（5 用例全绿）
+```
+存量记录（无 reconcile）：看板渲染不崩、显示「未对账」而非 0
+存量记录补录：追加成功且**不伪造**对账结果（reconcile 仍缺省）
+缺省闸门 = enforce（行为变更，经人工闸门批准）
+warn 回退：不拒；老字段 unlisted_files / warning 语义不变
+warn 下声明豁免同样被记录（信息只多不少）
+```
+
+## 既有归档回归
+```
+npx vitest run tests/acceptance-archive.test.ts tests/artifact-gates.test.ts → 44 passed
+```
+
+## 全量测试对照（本次改动是否引入新失败）
+```
+改动前基线（上一需求收尾同窗口）：97 failed / 4320 passed
+本次最终：Tests  99 failed | 4394 passed | 20 skipped (4513)
+```
+逐文件比对后，相对基线**新增失败仅 3 个文件，且均非本次改动**：
+- tests/host-panel.test.ts —— 本机未安装 react-dom（既有环境缺口）
+- tests/isolate-node-context.test.ts —— 缺 @deepseek-ai/dsh-session（既有环境缺口）
+- tests/reqboard/settings-init.test.ts —— 未跟踪的设置工作流文件（?? 状态，非本需求）
+
+本次为让新闸门与老用例共存而按新契约修正的用例（属行为变更的应有代价，已在卡上留痕）：
+- tests/application/use-cases.test.ts：原「未列 → 只警告」用例改写为「默认拒 + 声明豁免后通过」
+- tests/apply-wiring.test.ts：工具名单 +1（reqboard_archive_amend），sorted 位置按字母序
+- tests/output-contract.test.ts：archive_submit 夹具补 unlisted_ack；RESPONSE_SOURCES 增 ArchiveAmend 映射
+- tests/kb-archive-deposit.test.ts：夹具补 retro.md 的显式声明
+- tests/helpers/tool-deps.ts：夹具收口点转发新字段 archiveUnlistedGate
+
+仍失败的既有 1 条（与本需求起因同源，非本次引入）：tests/kb-archive-deposit 的「同源重复提交幂等」
+报错为「需求已归档（archived），冷侧只读」——正是本需求要解决的场景（补录通道已提供，但那条老用例走的是再次提交归档材料的老路径）。

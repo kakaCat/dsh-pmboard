@@ -1,0 +1,15 @@
+# case D6 · task_adopt 补子卡归属 · serves: FR-2
+case: D6
+checks:
+  - path: queue.tasks[?id='t-009'].parentId    # parentId 补到 t-002
+    op: eq
+    value: t-002
+  - path: queue.tasks[?id='t-009'].stageKind   # stageKind 补上 integrate
+    op: eq
+    value: integrate
+  - path: queue.tasks[?id='t-009'].status      # 补归属后按子卡三态起点走（todo）
+    op: eq
+    value: todo
+  - path: queue.tasks[?parentId='t-002']       # t-002 名下子卡包含新补的 t-009
+    op: contains
+    value: t-009

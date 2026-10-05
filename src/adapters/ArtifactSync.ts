@@ -20,13 +20,19 @@ import { newCommentId } from '../shared/protocol.js'
 import type { RequirementRecord, StageArtifact } from '../shared/protocol.js'
 import { fmt } from '../domain/text/fmt.js'
 import { FileDocRepository } from '../adapters/FileDocRepository.js'
+// REQ-261001203710-0fbf t2：本文件是**适配器**层，可以碰 node:（application 层不行），
+// 故 realpath 归一在这里注入给纯函数 sameProjectRoot。
+import { realpathSync } from 'node:fs'
+import type { DocRepository } from '../application/ports.js'
+import { partitionByProject, projectRootOf } from '../application/internal/support.js'
 import {
   discoverArtifactsFrom,
   reqDirRel,
   stageForKind,
   staleAutoKind,
 } from '../application/internal/artifact-discovery.js'
-import type { JsonLedgerRepository } from './JsonLedgerRepository.js'
+import type { RequirementStore } from '../application/ports.js'
+import { mutateIfPresent } from '../application/use-cases/queue-access.js'
 
 // 需求目录相对前缀与分类规则的真身已迁至 application/internal/artifact-discovery.ts 与
 // domain/artifact/ArtifactSpec.ts——这里只再导出，保持既有 import 点不变。
@@ -62,25 +68,36 @@ export function discoverArtifacts(
 }
 
 /**
+ * 可注入接缝（REQ-261001203710-0fbf t2）：默认构造真实 `FileDocRepository`；
+ * 测试注入「计数版」仓储，即可**直接断言**「另一个项目的目录零访问」，而不是靠状态间接推断。
+ */
+export interface ArtifactSyncSeams {
+  makeDocs?: (root: string) => DocRepository
+}
+
+function docsFor(root: string, seams?: ArtifactSyncSeams): DocRepository {
+  return seams?.makeDocs !== undefined ? seams.makeDocs(root) : new FileDocRepository({ workspaceRoot: root })
+}
+
+/**
  * 同步单个需求的目录产物（写入台账）。幂等：已在登记表的 path 不再补登。
  * @returns 本次新登记的产物条数
  */
 export async function syncReqArtifacts(
-  store: JsonLedgerRepository,
+  store: RequirementStore,
   reqId: string,
   cwd: string = process.cwd(),
+  seams?: ArtifactSyncSeams,
 ): Promise<number> {
-  const docs = new FileDocRepository({ workspaceRoot: cwd })
+  const docs = docsFor(cwd, seams)
   const reqRel = reqDirRel(reqId)
-  const snapshot = store.snapshot()
-  const req = snapshot.requirements.find(r => r.id === reqId)
+  // B12 阶段④-2-③：读点改**定点读**（原先借旧端口整册快照）
+  const req = await store.get(reqId)
   if (req === undefined) return 0
   const discovered = discoverArtifactsFrom(docs, req)
   const stale = (req.artifacts ?? []).some(a => staleAutoKind(a, reqRel) !== undefined)
   if (discovered.length === 0 && !stale) return 0
-  const result = await store.mutate('requirement-updated', (ledger) => {
-    const r = ledger.requirements.find(x => x.id === reqId)
-    if (r === undefined) return undefined
+  const result = await mutateIfPresent(store, reqId, (r) => {
     r.artifacts ??= []
     let reclassified = 0
     for (const a of r.artifacts) {
@@ -111,22 +128,40 @@ export async function syncReqArtifacts(
       createdAt: Date.now(),
       createdBy: { kind: 'system' },
     })
-    r.version += 1
     r.updatedAt = Date.now()
-    return { requirements: [r] }
+    return { changed: true }
   })
-  return result.changed.requirements.length > 0 ? discovered.length : 0
+  return result !== undefined && result.changed ? discovered.length : 0
 }
 
-/** 同步全部需求的目录产物（board 状态端点调用；每个需求目录不存在则跳过）。 */
+/** `syncAllReqArtifacts` 的返回体（REQ-261001203710-0fbf t2：由裸 number 扩展）。 */
+export interface SyncAllArtifactsResult {
+  /** 本次新登记的产物条数合计（= 旧返回值的语义，唯一调用点未使用它）。 */
+  scanned: number
+  /** 属于**别的项目**、按设计跳过的记录数（旧实现会把它们也拿本项目根扫一遍）。 */
+  skipped: number
+}
+
+/**
+ * 同步全部需求的目录产物（board 状态端点调用；每个需求目录不存在则跳过）。
+ *
+ * REQ-261001203710-0fbf t2 的行为变更：**不再「取全部 id 用同一个 cwd 扫」**——
+ * 逐记录按 `projectRootOf` 解析它**自己的**项目根：本项目的按本根扫，未归属的按 cwd 扫并计数，
+ * **别的项目的跳过并计数回报**（旧实现会把别人家的目录也扫一遍，是同名需求互相污染的路）。
+ */
 export async function syncAllReqArtifacts(
-  store: JsonLedgerRepository,
+  store: RequirementStore,
   cwd: string = process.cwd(),
-): Promise<number> {
-  const ids = store.snapshot().requirements.map(r => r.id)
-  let total = 0
-  for (const id of ids) {
-    total += await syncReqArtifacts(store, id, cwd)
+  seams?: ArtifactSyncSeams,
+): Promise<SyncAllArtifactsResult> {
+  // B12：整册快照 ⇒ 摘要查询（partition 只用 id/workspaceRoot/docBasePath ⇒ 摘要足够）
+  const requirements = (await store.listSummaries({ scope: 'all' })).items
+  // realpath 归一：macOS 上 /var 与 /private/var 是同一目录的两种写法，不归一会被判成「别的项目」
+  const part = partitionByProject(requirements, cwd, cwd, realpathSync)
+  let scanned = 0
+  for (const r of [...part.mine, ...part.unattributed]) {
+    const { root } = projectRootOf(r, cwd)
+    scanned += await syncReqArtifacts(store, r.id, root, seams)
   }
-  return total
+  return { scanned, skipped: part.others.length }
 }

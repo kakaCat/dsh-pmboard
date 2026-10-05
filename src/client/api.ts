@@ -4,7 +4,7 @@
  *
  * @module dsh-pmboard/client/api
  */
-import type { BoardState } from './types.ts'
+import type { BoardState, RequirementRecord } from './types.ts'
 import type { RequirementMarksView, RequirementTokenView, StageDetail, StageOverview } from '../shared/protocol.ts'
 import type { InjectionInfoResponse } from './injection-info.ts'
 import type { IsolationLogEntry } from './node-panel-process.ts'
@@ -13,12 +13,52 @@ const BASE = '/dashboard/api/reqboard'
 const TIMEOUT_MS = 8000
 
 export class ApiError extends Error {
-  constructor(message: string, readonly code?: string) { super(message) }
+  constructor(
+    message: string,
+    readonly code?: string,
+    /**
+     * 服务端给的修复命令（REQ-261003191948-e94a FR-4）。
+     * 服务端没给 → undefined；调用方据此决定要不要渲染「在终端执行」块。
+     */
+    readonly hint?: string,
+    /**
+     * HTTP 状态码（REQ-261004195831-0f52 FR-2）。
+     *
+     * 为什么必须带出来：`code` 是**可选**的（interfaces.md 的 404 契约里 code 可缺），
+     * 只认 `code` 时「需求不存在」会退化成普通失败 → 界面给「重试」这条走不通的路。
+     * 有状态码就能按 `404` 判「未找到」，不再靠解析 `message` 文案（那太脆）。
+     */
+    readonly status?: number,
+  ) { super(message) }
+}
+
+/**
+ * 非 2xx 时**把服务端说的话原样带上来**（REQ-261003191948-e94a FR-4）。
+ *
+ * 修复前这里只有一行 `throw new ApiError('HTTP ' + res.status)`——响应体被直接丢弃。
+ * 后果：2026-10-03 事故里服务端明明回了「台账未迁移 + 迁移命令」，
+ * 看板页面却只能显示「加载失败：Error: HTTP 404」，用户完全无从下手。
+ *
+ * 不编原因：服务端没给 `error` 时仍然退回状态码，绝不替它猜一个理由。
+ */
+async function errorOf(res: Response): Promise<ApiError> {
+  const body = (await res.json().catch(() => undefined)) as
+    | { error?: unknown; code?: unknown; hint?: unknown }
+    | undefined
+  const message = typeof body?.error === 'string' && body.error.length > 0
+    ? body.error
+    : 'HTTP ' + res.status
+  return new ApiError(
+    message,
+    typeof body?.code === 'string' ? body.code : undefined,
+    typeof body?.hint === 'string' && body.hint.length > 0 ? body.hint : undefined,
+    res.status,
+  )
 }
 
 async function unwrap<T>(p: Promise<Response>): Promise<T> {
   const res = await p
-  if (!res.ok) throw new ApiError('HTTP ' + res.status)
+  if (!res.ok) throw await errorOf(res)
   const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: T; error?: string; code?: string }
   if (json.success !== true) throw new ApiError(json.error ?? 'API 返回失败', json.code)
   return json.data as T
@@ -26,6 +66,50 @@ async function unwrap<T>(p: Promise<Response>): Promise<T> {
 
 const get = <T>(path: string): Promise<T> =>
   unwrap<T>(fetch(path, { signal: AbortSignal.timeout(TIMEOUT_MS) }))
+
+// ── 知识层（REQ-261001110934-3766 t6）：与 Agent 工具同源（同一用例、同一预算口径） ──
+export interface KnowledgeHit {
+  readonly id: string
+  readonly kind: string
+  readonly title: string
+  readonly oneLiner: string
+  readonly pointer: string
+  readonly updatedAt: string
+  readonly body?: string
+}
+export interface KnowledgePageLine {
+  readonly path: string
+  readonly lines: number
+}
+export interface KnowledgeResponse {
+  readonly items: readonly KnowledgeHit[]
+  readonly total: number
+  readonly truncated: boolean
+  readonly budgetChars: number
+  readonly hint?: string
+  readonly pages?: readonly KnowledgePageLine[]
+}
+
+/** 读知识层（只读）：`list=true` = 列索引全部；`budgetChars` 不足时后端只回指针。 */
+export function fetchKnowledge(input: { list?: boolean; kind?: string; query?: string; id?: string; limit?: number; budgetChars?: number }): Promise<KnowledgeResponse> {
+  const q = new URLSearchParams()
+  if (input.list === true) q.set('list', '1')
+  if (input.kind !== undefined) q.set('kind', input.kind)
+  if (input.query !== undefined) q.set('query', input.query)
+  if (input.id !== undefined) q.set('id', input.id)
+  if (input.limit !== undefined) q.set('limit', String(input.limit))
+  if (input.budgetChars !== undefined) q.set('budget_chars', String(input.budgetChars))
+  return get<KnowledgeResponse>(BASE + '/kb?' + q.toString())
+}
+
+/** PATCH 辅助（与 `post` 同款：同一份信封解析与超时保护，不另造一套）。 */
+const patch = <T>(path: string, body: unknown): Promise<T> =>
+  unwrap<T>(fetch(path, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  }))
 
 const post = <T>(path: string, body: unknown): Promise<T> =>
   unwrap<T>(fetch(path, {
@@ -35,9 +119,93 @@ const post = <T>(path: string, body: unknown): Promise<T> =>
     signal: AbortSignal.timeout(TIMEOUT_MS),
   }))
 
+// -- 运行设置（REQ-261004103330-005f t11）------------------------------------
+/**
+ * 五个设置类请求（`interfaces.md` 已定名）。
+ *
+ * 为什么集中在 `api.ts` 而不是 settings 模块内各自 fetch：全仓只有**一套**信封解析与
+ * `ApiError`（含服务端原话与可复制命令），新开一处必然漂移出第二套错误语义。
+ */
+export function fetchRunSettings(): Promise<import('./settings/types.ts').RunSettingsView> {
+  return get(BASE + '/settings')
+}
+
+export function patchRunSettings(
+  body: { stageMaxRounds?: Record<string, number>; storage?: { sqlitePath?: string } },
+): Promise<{ stageMaxRounds?: Record<string, unknown>; restartRequired?: boolean }> {
+  return patch(BASE + '/settings', body)
+}
+
+/** 取确认票据（FR-11：这只是"问"，人作答落章后才可能被消费）。 */
+export function requestStorageAction(
+  action: 'switch-to-sqlite' | 'switch-to-json' | 'migrate',
+): Promise<import('./settings/types.ts').StorageActionTicket> {
+  return post(BASE + '/settings/storage/request', { action })
+}
+
+/** 带票据切后端（缺票/过期/已消费 → 403 `confirmation_required`）。 */
+/**
+ * 用**系统默认程序**打开配置文件（宿主侧执行；`path` 必须与宿主白名单里那两份之一**完全相等**）。
+ *
+ * 为什么不用右侧栏：那条通道只吃**工作区内**的文档，而配置在 `~/.dsh/` 下（2026-10-04 实测打不开）。
+ */
+export function openConfigFile(path: string): Promise<{ readonly ok: boolean; readonly reason?: string }> {
+  return post(BASE + '/settings/open-file', { path })
+}
+
+export function switchStorageBackend(
+  input: { backend: 'json' | 'sqlite'; ticket: string; reason?: string },
+): Promise<import('./settings/types.ts').StorageSwitchResult> {
+  return post(BASE + '/settings/storage/switch', input)
+}
+
+/** 发起迁移（宿主开 Agent 窗口并投递任务；返回窗口键）。 */
+export function startLedgerMigration(
+  ticket: string,
+): Promise<import('./settings/types.ts').MigrationStartResult> {
+  return post(BASE + '/settings/storage/migrate', { ticket })
+}
+
+/** 读系统记录（损坏时服务端给 200 + invalid 标记，不 500——t2 口径）。 */
+export function fetchSystemRecord(
+  limit?: number,
+): Promise<import('./settings/types.ts').SystemRecordView | import('./settings/types.ts').SystemRecordInvalidView> {
+  const q = limit === undefined ? '' : '?limit=' + String(limit)
+  return get(BASE + '/settings/system' + q)
+}
+
+/**
+ * 弹**宿主操作系统**的选择窗口取一个文件路径（REQ-261004103330-005f）。
+ *
+ * 为什么不是浏览器自己开：网页拿不到真实绝对路径（安全边界），真正的选择发生在 Node 侧。
+ * 三态：`{ok:true,path}` 选中 / `{ok:false,cancelled:true}` **人取消（不是错误）** /
+ * 501 `path_picker_unavailable` 这台机器弹不出窗口（调用方给"可手动输入路径"的人话）。
+ */
+export function pickStoragePath(): Promise<{ ok: boolean; path?: string; cancelled?: boolean }> {
+  return post(BASE + '/settings/storage/pick-path', {})
+}
+
 // -- 查询 -----------------------------------------------------------------
 
-export const fetchState = (): Promise<BoardState> => get<BoardState>(BASE + '/')
+/**
+ * 看板首屏状态。
+ *
+ * REQ-261003215944-9e04 FR-11：带上**当前会话 id**——服务端据此把读根解析成该会话的工作区，
+ * 否则（不带）服务端只知道插件宿主的工作目录，除需求目录外的文档一律被判不存在。
+ */
+export const fetchState = (sessionId?: string): Promise<BoardState> =>
+  get<BoardState>(BASE + '/' + (sessionId !== undefined && sessionId.length > 0
+    ? '?session=' + encodeURIComponent(sessionId)
+    : ''))
+
+/**
+ * 详情按需（B12 阶段⑥-① / REQ-261002161439-277d t-05a56b）。
+ *
+ * 首屏只拿摘要（计数），全文（comments/artifacts/verification/plan/archive）由本函数在**进入详情时**取，
+ * 未命中服务端回 404 `REQBOARD_NOT_FOUND`（客户端据此显示「未找到」而不是空面板）。
+ */
+export const fetchRequirement = (id: string): Promise<{ revision: number; requirement: RequirementRecord }> =>
+  get<{ revision: number; requirement: RequirementRecord }>(BASE + '/requirements/' + encodeURIComponent(id))
 
 /**
  * 自动链控制面（REQ-4842fe FR-12 / t-3be71b）：人从看板暂停/继续。
@@ -119,9 +287,8 @@ export function submitVerdicts(input: {
   return post(BASE + '/req/verdicts', input)
 }
 
-export function archiveReq(input: { id: string }): Promise<unknown> {
-  return post(BASE + '/req/archive', input)
-}
+// REQ-261002105242-a3fb FR-4：客户端归档请求封装已删除——归档由验收通过自动完成（REQ-9f4a44），
+// 服务端对应端点（POST /req/archive）早已移除；留着这层封装只会支撑出一个"点了必失败"的按钮。
 
 // -- 节点详情（REQ-31e11f：会话框进度条/看板同源的消费端）-------------------
 
@@ -152,7 +319,8 @@ export function fetchRequirementMarks(reqId: string): Promise<RequirementMarksVi
 /** 读取产物/文档全文（工作区相对路径），供节点详情超链接点击展开。 */
 export async function fetchReqFile(path: string): Promise<string> {
   const res = await fetch(BASE + '/file?path=' + encodeURIComponent(path), { signal: AbortSignal.timeout(TIMEOUT_MS) })
-  if (!res.ok) throw new ApiError('HTTP ' + res.status)
+  // 同 unwrap 口径（FR-4）：非 2xx 也要把服务端的原因带上来，不能只报状态码
+  if (!res.ok) throw await errorOf(res)
   const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: { content?: string }; error?: string }
   if (json.success !== true) throw new ApiError(json.error ?? '读取文档失败')
   return json.data?.content ?? ''
@@ -173,8 +341,17 @@ export interface DocPathVerdictView {
   reason?: string
 }
 
-export function resolveReqDocs(paths: string[]): Promise<{ results: DocPathVerdictView[] }> {
-  return post<{ results: DocPathVerdictView[] }>(BASE + '/docs/resolve', { paths })
+/**
+ * 批量预检文档可打开性。
+ *
+ * FR-11：判定必须与"打开"同一个根——故这里也带会话 id（服务端按同一处 resolveDocRoot 判定），
+ * 杜绝"预检说能开、点开却打不开"。
+ */
+export function resolveReqDocs(paths: string[], sessionId?: string): Promise<{ results: DocPathVerdictView[] }> {
+  return post<{ results: DocPathVerdictView[] }>(BASE + '/docs/resolve', {
+    paths,
+    ...(sessionId !== undefined && sessionId.length > 0 ? { sessionId } : {}),
+  })
 }
 
 /** 产物人工确认（五道人工确认门）：人在看板一键确认某 kind 的产物。 */
@@ -207,14 +384,29 @@ export function addComment(input: { target: 'req' | 'task'; id: string; body: st
 /**
  * 订阅台账变更（revision + kind）。SSE 断开由调用方决定重连策略；
  * 返回退订函数。EventSource 自带重连，这里只包一层生命周期管理。
+ *
+ * REQ-261001124111-5d36 t3：新增可选的 `onBuild`——消费**命名帧** `event: build`
+ * （宿主在连接建立后补发，携带插件构建戳与面板刷新策略）。
+ * 为什么必须单独注册：SSE 规范规定命名事件**不触发 onmessage**，用 `es.onmessage`
+ * 永远收不到它（仓库里已有同类事故注释：只看 onmessage 会让推送静默失灵）。
  */
-export function subscribeEvents(onChange: (revision: number, kind: string) => void): () => void {
+export function subscribeEvents(
+  onChange: (revision: number, kind: string) => void,
+  onBuild?: (payload: unknown) => void,
+): () => void {
   const es = new EventSource(BASE + '/events')
   es.onmessage = (ev) => {
     try {
       const data = JSON.parse((ev as MessageEvent).data as string) as { revision: number; kind: string }
       onChange(data.revision, data.kind)
     } catch { /* 忽略坏帧 */ }
+  }
+  if (onBuild !== undefined) {
+    es.addEventListener('build', (ev) => {
+      try {
+        onBuild(JSON.parse((ev as MessageEvent).data as string))
+      } catch { /* 忽略坏帧：缺这一帧最多是"没提示"，不能影响面板本身 */ }
+    })
   }
   return () => es.close()
 }

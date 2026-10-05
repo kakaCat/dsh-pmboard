@@ -1,0 +1,16 @@
+# case C4 · 已批准计划变更需重交重批 · serves: FR-2
+case: C4
+ordered_contains:
+  - reqboard_submit                 # v1 提交
+  - reqboard_ask_confirm            # v1 批准
+  - reqboard_submit                 # v2 重交（须带 change_note）
+  - reqboard_ask_confirm            # v2 重新批准
+forbidden:
+  - tool: reqboard_decompose
+    when: last_approval != latest_plan   # 旧批准已作废，不得拿 v1 的批准去落库 v2
+budget:
+  max_tool_calls: 10
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_submit
+    result_contains: 旧批准作废        # 重交已批准计划：旧批准作废、待人重批

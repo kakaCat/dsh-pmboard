@@ -1,0 +1,61 @@
+
+ RUN  v2.0.0 /Users/mac/Documents/ai/dsh/dsh-pmboard
+
+ ❯ tests/lineage-delta.test.ts  (12 tests | 2 failed) 10ms
+   × TC-1 聚合与恒等式（FR-1） > TC-1a 主 + 2 子 → totals == 主 + 子1 + 子2，且 totals === Σ members
+     → expected { uncachedInputTokens: 1, …(3) } to deeply equal { uncachedInputTokens: 7, …(3) }
+   × TC-1 聚合与恒等式（FR-1） > TC-1c 三层血缘：子与孙都在，depth 为 0 / 1 / 2
+     → expected 13 to be 78 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/lineage-delta.test.ts > TC-1 聚合与恒等式（FR-1） > TC-1a 主 + 2 子 → totals == 主 + 子1 + 子2，且 totals === Σ members
+AssertionError: expected { uncachedInputTokens: 1, …(3) } to deeply equal { uncachedInputTokens: 7, …(3) }
+
+- Expected
++ Received
+
+  Object {
+-   "cacheReadTokens": 70,
++   "cacheReadTokens": 10,
+    "cacheWriteTokens": 0,
+-   "outputTokens": 14,
+-   "uncachedInputTokens": 7,
++   "outputTokens": 2,
++   "uncachedInputTokens": 1,
+  }
+
+ ❯ tests/lineage-delta.test.ts:58:25
+     56|     const snap = S(members)
+     57|     const expect3 = addBuckets(addBuckets(B(1), B(2)), B(4))
+     58|     expect(snap.totals).toEqual(expect3)
+       |                         ^
+     59|     expect(snap.totals).toEqual(sumMembers(members))
+     60|     expect(total(snap.totals)).toBe(total(expect3))
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/lineage-delta.test.ts > TC-1 聚合与恒等式（FR-1） > TC-1c 三层血缘：子与孙都在，depth 为 0 / 1 / 2
+AssertionError: expected 13 to be 78 // Object.is equality
+
+- Expected
++ Received
+
+- 78
++ 13
+
+ ❯ tests/lineage-delta.test.ts:81:32
+     79|     expect(kids.map(k => [k.sessionId, k.depth])).toEqual([['child', 1…
+     80|     const snap = S([M('root', 0, 1, 1), M('child', 1, 2, 2), M('grand'…
+     81|     expect(total(snap.totals)).toBe(13 * 6)
+       |                                ^
+     82|   })
+     83| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 10 passed (12)
+   Start at  15:56:07
+   Duration  432ms (transform 98ms, setup 0ms, collect 118ms, tests 10ms, environment 0ms, prepare 81ms)
+

@@ -12,6 +12,9 @@
  */
 
 import type { ActorKind } from '../actor.js'
+// 回退边由流水线序生成（REQ-261003204149-1e80 FR-1）——本文件只消费它的纯函数，
+// 运行时方向是 RequirementStatus → RollbackSpec，无值环（那边只 `import type` 本文件）。
+import { rollbackTargetsOf } from './RollbackSpec.js'
 
 /**
  * 需求流水线 = superpowers 的三段式落成状态（2026-09-13 用户要求「需求从创建开始就有流程」）：
@@ -52,21 +55,54 @@ export const REWORK_REQ_STATUS: RequirementStatus = 'implementing'
 export const ACCEPTED_REQ_STATUS: RequirementStatus = 'archived'
 export const CANCELED_REQ_STATUS: RequirementStatus = 'canceled'
 
-/** 需求状态合法转移表。 */
-export const REQ_TRANSITIONS: Readonly<Record<RequirementStatus, readonly RequirementStatus[]>> = {
+/**
+ * 前进边（显式声明；语义与既有表逐条一致）+ 放弃路径（`*>canceled`）。
+ *
+ * **回退边不在这里手写**：由 `rollbackTargetsOf` 按流水线序生成（见下方合成）。
+ * 理由：回退目标一旦手抄，就会出现"漏写一条 = 少一条回退路径"的静默缺口，
+ * 而这条规则在撤销语义（FR-3）里还要再用一次（`stagesAfter`）——两处必然漂移。
+ */
+const FORWARD_EDGES: Readonly<Record<RequirementStatus, readonly RequirementStatus[]>> = {
   draft: ['brainstorming', 'canceled'],
-  brainstorming: ['design', 'draft', 'canceled'],
-  design: ['decomposing', 'brainstorming', 'canceled'],
-  decomposing: ['implementing', 'design', 'canceled'],
+  brainstorming: ['design', 'canceled'],
+  design: ['decomposing', 'canceled'],
+  decomposing: ['implementing', 'canceled'],
   // REQ-4842fe t2/FR-14：实施中发现"需求描述不对"时，必须能退回上游重新描述——
-  // 现状缺口是 implementing 没有回退路径（只能硬着头皮验收或取消）。implementing→design
-  // 是**人工闸门**（破坏性：会触发卡片修订），退回后重走 design→批准计划→拆分→实施。
-  implementing: ['accepting', 'design', 'canceled'],
+  // 原缺口是 implementing 没有回退路径（只能硬着头皮验收或取消）。REQ-261003204149-1e80
+  // FR-1 把这条从"只退 design + 仅人可发起"放宽为"可退任意更早节点、agent 自行判断"。
+  implementing: ['accepting', 'canceled'],
   // REQ-9f4a44：验收通过 → 直接归档（无 done 中转）
-  accepting: ['archived', 'implementing', 'canceled'],
+  accepting: ['archived', 'canceled'],
   done: [], // 【legacy】不再进入，也不允许从它转出（历史记录保持原样）
   canceled: ['draft', 'archived'],
   archived: [],
+}
+
+/**
+ * 需求状态合法转移表 = 前进边 + 回退边（生成式合成）。
+ *
+ * 形状与消费点**零改动**：仍是 `Record<RequirementStatus, readonly RequirementStatus[]>`，
+ * 路由、工具、客户端渲染照旧读它；"哪些转移算回退/能退到哪"只有一处实现
+ * （`RollbackSpec`，INV-1）。
+ *
+ * 为什么逐键写而不是 `Object.fromEntries`：后者返回索引签名类型，转成
+ * `Record<RequirementStatus, …>` 需要 `as unknown as` 双重断言（把类型安全丢掉）；
+ * 逐键写则由编译器保证**每个状态都有出边定义**——漏一个键即编译失败。
+ */
+function edgesOf(s: RequirementStatus): RequirementStatus[] {
+  return [...FORWARD_EDGES[s], ...rollbackTargetsOf(s)]
+}
+
+export const REQ_TRANSITIONS: Readonly<Record<RequirementStatus, readonly RequirementStatus[]>> = {
+  draft: edgesOf('draft'),
+  brainstorming: edgesOf('brainstorming'),
+  design: edgesOf('design'),
+  decomposing: edgesOf('decomposing'),
+  implementing: edgesOf('implementing'),
+  accepting: edgesOf('accepting'),
+  done: edgesOf('done'),
+  canceled: edgesOf('canceled'),
+  archived: edgesOf('archived'),
 }
 
 /**
@@ -87,8 +123,12 @@ export const HUMAN_ONLY_REQ_TRANSITIONS: ReadonlySet<string> = new Set([
   'decomposing>canceled',
   'implementing>canceled',
   'accepting>canceled', // 取消需求（破坏性）
-  // REQ-4842fe t2/FR-14：返工回上游（实施→设计，重新描述需求）——仅人可发起。
-  'implementing>design',
+  // REQ-261003204149-1e80 FR-1（**推翻 REQ-4842fe t2/FR-14 的"仅人可发起"**）：
+  // 回退是"发现方向错了"的常规动作，由 agent 自行判断发起——原先把 implementing→design
+  // 设成人工门的结果是：agent 明知需求描述不对也只能硬着头皮做下去或请求人点一下。
+  // 纪律：**回退方向一律不入人工门**；但回程上的门
+  // （brainstorming>design / decomposing>implementing / accepting>archived）**一道不动**
+  // ——退过不等于免检，退回去再往上走必须重新获批（FR-3 的不变量）。
   // REQ-9f4a44：验收通过（人工审核）——agent 可提交验收材料，但"过"必须是人点的；
   // 通过即直接归档（原先拆成 accepting>done + done>archived 两道，现合并为一道）。
   'accepting>archived',

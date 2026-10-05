@@ -63,12 +63,35 @@ export function generateLifecycleRTM(ctx: RTMContext, reqId: string): RTMLifecyc
     byStage.set(st, list)
   }
 
+  // REQ-260930094139-2d65 FR-4：阶段时间戳改读 statusHistory 真实转移事件——
+  // entered_at = 该阶段状态在 history 的首次出现；completed_at = 下一阶段首次出现。
+  // 事件缺失时回落 createdAt/updatedAt 并标 timestamps_inferred（读的人知道是推算值）。
+  const history = req?.statusHistory ?? []
+  const firstEventAt = new Map<string, number>()
+  for (const ev of history) {
+    const st = stageOfStatus(ev.status)
+    if (!firstEventAt.has(st)) firstEventAt.set(st, ev.at)
+  }
+  const fallbackAt = (ms: number | undefined): number => ms ?? ctx.now()
   const stages: LifecycleStageEntry[] = RTM_STAGE_ORDER.map((stage, idx) => {
     const status = idx < currentIdx ? 'completed' : idx === currentIdx ? 'in_progress' : 'pending'
     const entry: LifecycleStageEntry = { stage, status, enabled: enabledSet.has(stage) }
-    if (status !== 'pending') entry.entered_at = ctx.iso(req?.createdAt ?? ctx.now())
-    else delete entry.entered_at
-    if (status === 'completed') entry.completed_at = ctx.iso(req?.updatedAt ?? ctx.now())
+    let inferred = false
+    if (status !== 'pending') {
+      const entered = firstEventAt.get(stage)
+      entry.entered_at = ctx.iso(entered ?? fallbackAt(req?.createdAt))
+      if (entered === undefined) inferred = true
+    } else {
+      delete entry.entered_at
+    }
+    if (status === 'completed') {
+      const nextStage = RTM_STAGE_ORDER[idx + 1]
+      const nextEvent = nextStage !== undefined ? firstEventAt.get(nextStage) : undefined
+      entry.completed_at = ctx.iso(nextEvent ?? fallbackAt(req?.updatedAt))
+      if (nextEvent === undefined) inferred = true
+    }
+    // 只有回落路径才标——真实事件时间不出现此键（data-model D-3）。
+    if (inferred) entry.timestamps_inferred = true
     const artifacts = byStage.get(stage)
     if (artifacts !== undefined && artifacts.length > 0) entry.artifacts = artifacts
     return entry

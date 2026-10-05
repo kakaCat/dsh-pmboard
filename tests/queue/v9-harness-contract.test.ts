@@ -174,21 +174,21 @@ describe('v9 夹具 · 写路径（全 async，走真实 QueueTaskStore）', () 
   })
 })
 
-describe('v9 夹具 · 台账（v9 两键语义）', () => {
-  it('repo.mutate 的 change 恒为 requirements/triages 两键（undefined 补空数组）', async () => {
+describe('v9 夹具 · 台账（B12 后：新端口语义）', () => {
+  // 本节原先测的是**旧单册端口**的 change/revision 语义（B12 阶段⑤：桥要删、该语义随之消失）。
+  // 改测新端口的等价口径：**按 id 定点写**；真实变更 → changed=true；id 不存在 → undefined（不是抛错）。
+  it('store.mutate 定点写：真实变更 changed=true；id 不存在返回 undefined', async () => {
     const h = makeHarness({ requirements: [req()] })
 
-    const noop = await h.repo.mutate('x', () => undefined)
-    expect(Object.keys(noop.changed).sort()).toEqual(['requirements', 'triages'])
-    expect(noop.changed.requirements).toEqual([])
-
-    const changed = await h.repo.mutate('x', (ledger) => {
-      ledger.requirements[0]!.title = '改过'
-      return { requirements: [ledger.requirements[0]!] }
+    const changed = await h.store.mutate(REQ_ID, (r) => {
+      r.title = '改过'
+      return { changed: true }
     })
-    expect(changed.changed.requirements).toHaveLength(1)
-    expect('tasks' in changed.changed).toBe(false)
-    // 无变更不 bump（noop 返回 revision 0）→ 只有那次真实变更 +1
-    expect(changed.revision).toBe(1)
+    expect(changed?.changed).toBe(true)
+    expect((await h.store.get(REQ_ID))!.title).toBe('改过')
+
+    // 边界口径（本轮实测校正）：`mutate` 对不存在的 id **抛**（写操作不隐式建档）；
+    // "不存在 ⇒ undefined" 是 `mutateIfPresent(store, id, fn)` 这层的映射（另有其测试覆盖）。
+    await expect(h.store.mutate('REQ-none', () => ({ changed: true }))).rejects.toThrow()
   })
 })

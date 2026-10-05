@@ -1,0 +1,34 @@
+task:
+  id: t-f98040
+  title: 误物化能一次清掉：仅人的批量清理入口 + 可核对回执
+  status: done
+  implements: src/http/routers/requirements.ts 新增 `POST /req/rollback-cleanup`：body `{ id, rollbackSeq }` → 消费 `requirement.rollback.lastMaterialized` 批量置 canceled（**不碰 done 卡**）+ 按 `reworkOf` 反查还原 `parentId`；沿用既有「仅人」闸门写法（与 canceled/归档同口径）；未知序号 → `REQBOARD_UNKNOWN_ROLLBACK_SEQ`。复用 rollback-revocation.ts 的回收判定，不新造一套。
+  serves:
+    - FR-4
+  depends_on:
+    - t-3b61dd
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004121649-bfa7
+    TASK_ID: t-f98040
+    TASK_TITLE: 误物化能一次清掉：仅人的批量清理入口 + 可核对回执
+    DESIGN_FILES: design/interfaces.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T08:52:59.397Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004121649-bfa7
+  generated_at: 2026-10-04T08:50:56.383Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-04T08:53:01.347Z

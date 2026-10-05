@@ -10,12 +10,12 @@
  *   · TC-8 取消（ASK_CANCELLED）→ 中性返回、无 pending/ticket、守卫放行、台账无落章；
  *   · TC-10 重新发起覆盖旧记录（旧记录 settle 为未确认）。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { SessionProbeAdapter } from '../src/adapters/SessionProbeAdapter.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
@@ -31,11 +31,11 @@ const AFFIRM = '确认，推进到下一阶段 (Recommended)'
 const ARGS = { target: 'artifact', kind: 'requirement', question: '需求文档已完成，是否确认进入设计？' }
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-blocking-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -44,8 +44,7 @@ type AskFn = () => Promise<{ answers?: AskAnswer[] }>
 function makeDeps(ask: AskFn): UseCaseDeps & { pendingConfirms: PendingConfirmRegistry } {
   const now = (): number => Date.now()
   const deps = {
-    repo: store,
-
+    store: store,
     taskStore: taskStoreAt(dir),
     docs: new FileDocRepository({ workspaceRoot: dir }),
     clock: { now },
@@ -75,11 +74,11 @@ async function seed(): Promise<void> {
       path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1,
     } as StageArtifact],
   } as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 const exec = { agent: { id: W } }
-const first = (): RequirementRecord => store.snapshot().requirements[0]
+const first = (): RequirementRecord => store.peekAll()[0]
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 describe('缺省阻塞（FR-1）', () => {
@@ -118,13 +117,13 @@ describe('缺省阻塞（FR-1）', () => {
     await sleep(50)
     const live = deps.pendingConfirms.pendingForWindow(W)
     expect(live?.ticket.startsWith('pc-')).toBe(true)
-    expect(() => assertNoPendingConfirm(deps, W)).toThrow(/REQBOARD_CONFIRM_PENDING/)
+    await expect(assertNoPendingConfirm(deps, W)).rejects.toThrow(/REQBOARD_CONFIRM_PENDING/)
 
     resolveAsk({ answers: [{ id: 'confirm', selected: [AFFIRM] }] })
     const out = await pending
     expect(out.confirmed).toBe(true)
     expect(deps.pendingConfirms.pendingForWindow(W)).toBeUndefined()
-    expect(() => assertNoPendingConfirm(deps, W)).not.toThrow()
+    await expect(assertNoPendingConfirm(deps, W)).resolves.toBeUndefined()
   })
 
   it('TC-10 重新发起覆盖旧记录：旧记录 settle 为未确认，新确认正常落章', async () => {
@@ -183,7 +182,7 @@ describe('中止 / 取消（FR-4）', () => {
     expect('pending' in out).toBe(false)
     expect('ticket' in out).toBe(false)
     expect(deps.pendingConfirms.pendingForWindow(W)).toBeUndefined()
-    expect(() => assertNoPendingConfirm(deps, W)).not.toThrow()
+    await expect(assertNoPendingConfirm(deps, W)).resolves.toBeUndefined()
     expect(first().artifacts?.[0]?.confirmedAt).toBeUndefined()
     expect(first().status).toBe('brainstorming')
   })

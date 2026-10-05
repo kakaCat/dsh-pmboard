@@ -1,0 +1,13 @@
+# case G3 · 全流程步数预算 · serves: FR-2
+case: G3
+checks:
+  - path: requirement.id
+    op: matches
+    value: '^REQ-'                      # 需求真实创建，id 形态合法
+  - path: requirement.status            # 走完 A1→E1：终态在验收态
+    op: eq
+    value: accepting
+  - path: requirement.artifacts[?kind='verification']
+    op: exists                          # 验收材料已提交
+  - path: queue.tasks
+    op: exists                          # 拆分落库的任务 DAG 非空

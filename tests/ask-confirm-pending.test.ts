@@ -11,12 +11,12 @@
  * 且 ticket 非空、不抛错；作答后 reqboard_confirm_receipt(ticket) 返回 confirmed=true,
  * advanced=true 且台账 confirmedAt 已写。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { SessionProbeAdapter } from '../src/adapters/SessionProbeAdapter.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
@@ -31,11 +31,11 @@ const AFFIRM = '确认，推进到下一阶段 (Recommended)'
 const ARGS = { target: 'artifact', kind: 'requirement', question: '需求文档已完成，是否确认进入设计？' }
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-pending-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -45,8 +45,7 @@ type AskFn = () => Promise<{ answers?: AskAnswer[] }>
 function makeDeps(ask: AskFn, opts: { pending?: boolean; delivery?: AgentDeliveryPort } = {}): UseCaseDeps {
   const now = (): number => Date.now()
   const deps = {
-    repo: store,
-
+    store: store,
     taskStore: taskStoreAt(dir),
     docs: new FileDocRepository({ workspaceRoot: dir }),
     clock: { now },
@@ -75,11 +74,11 @@ async function seed(): Promise<void> {
       path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1,
     } as StageArtifact],
   } as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 const exec = { agent: { id: W } }
-const first = (): RequirementRecord => store.snapshot().requirements[0]
+const first = (): RequirementRecord => store.peekAll()[0]
 
 /** 轮询等待条件成立（后台续跑含异步落盘，固定 sleep 会 flaky）。 */
 async function waitFor(fn: () => boolean, ms = 3000): Promise<void> {

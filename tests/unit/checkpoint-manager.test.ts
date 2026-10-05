@@ -29,7 +29,7 @@ describe('CheckpointManager', () => {
   describe('writeCheckpoint', () => {
     it('写入新 checkpoint', () => {
       const req = createRequirement('REQ-1')
-      const checkpoint: Checkpoint = {
+      const checkpoint: Checkpoint = { createdAt: Date.now(),
         runId: 'run-123',
         currentSubtaskId: 't-abc',
         stepIndex: 5,
@@ -52,7 +52,7 @@ describe('CheckpointManager', () => {
         stepIndex: 1
       })
       
-      const checkpoint: Checkpoint = {
+      const checkpoint: Checkpoint = { createdAt: Date.now(),
         runId: 'run-new',
         currentSubtaskId: 't-new',
         stepIndex: 10,
@@ -267,7 +267,7 @@ describe('CheckpointManager', () => {
 
     it('写入-读取-清理 完整流程', () => {
       const req = createRequirement('REQ-1')
-      const checkpoint: Checkpoint = {
+      const checkpoint: Checkpoint = { createdAt: Date.now(),
         runId: 'run-123',
         currentSubtaskId: 't-abc',
         stepIndex: 5,

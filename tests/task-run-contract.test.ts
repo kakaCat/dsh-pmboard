@@ -26,34 +26,38 @@ function jobsPort() {
 function seed() {
   // 任务落**队列**（REQ-260927202051-f6df：v9 台账已无 tasks 通道）
   const h = makeHarness({ tasks: [task({ id: 't-p', status: 'todo', title: '父卡' })] })
-  h.repo.ledger.requirements = [req({ status: 'implementing', autoRun: false })]
+  // t8/B11：改用**同步播种入口**（镜像 + 存储都要写；存储写入排队，由调用点的 seedSettled 等待）
+  h.seedRequirementSync(req({ status: 'implementing', autoRun: false }))
   return h
 }
 
 describe('reqboard_task_run（FR-1/FR-2）', () => {
   it('TC-1 传 task_id：dispatched + job_id/run_id 齐全，且 autoRun 副作用已落台账', async () => {
     const h = seed()
+    await h.seedSettled()
     h.deps.jobs = jobsPort() as never
     const out = await run(defineAdvanceTool(h.deps), { task_id: 't-p' })
     expect(out.success).toBe(true)
     expect(out.status).toBe('dispatched')
     expect(typeof out.job_id).toBe('string')
     expect(typeof out.run_id).toBe('string')
-    expect(h.repo.ledger.requirements[0]!.autoRun).toBe(true)
+    expect((await h.store.get('REQ-000001'))!.autoRun).toBe(true)
   })
 
   it('TC-1b 传 requirement_id：与传 task_id 同形（键集合一致）', async () => {
     const a = seed()
+    await a.seedSettled()
     a.deps.jobs = jobsPort() as never
     const outA = await run(defineAdvanceTool(a.deps), { task_id: 't-p' })
 
     const b = seed()
+    await b.seedSettled()
     b.deps.jobs = jobsPort() as never
     const outB = await run(defineAdvanceTool(b.deps), { requirement_id: 'REQ-000001' })
 
     expect(Object.keys(outB).sort()).toEqual(Object.keys(outA).sort())
     expect(outB.requirement_id).toBe('REQ-000001')
-    expect(b.repo.ledger.requirements[0]!.autoRun).toBe(true)
+    expect((await b.store.get('REQ-000001'))!.autoRun).toBe(true)
   })
 
   it('TC-2 不传任何 id 且未绑定 → REQBOARD_NO_BOUND_REQ（不静默当成功）', async () => {
@@ -65,7 +69,8 @@ describe('reqboard_task_run（FR-1/FR-2）', () => {
 
   it('TC-2b 跨窗口需求 → REQBOARD_NOT_BOUND_TO_WINDOW', async () => {
     const h = makeHarness()
-    h.repo.ledger.requirements = [req({ status: 'implementing', sourceSessionId: 'session-other' })]
+    h.seedRequirementSync(req({ status: 'implementing', sourceSessionId: 'session-other' }))
+    await h.seedSettled()
     const out = await run(defineAdvanceTool(h.deps), { requirement_id: 'REQ-000001' })
     expect(out.success).toBe(false)
     expect(out.code).toBe('REQBOARD_NOT_BOUND_TO_WINDOW')
@@ -73,6 +78,7 @@ describe('reqboard_task_run（FR-1/FR-2）', () => {
 
   it('FR-2 声明 ⊇ 返回：实跑一遍，返回键全部已在 output.schema 声明', async () => {
     const h = seed()
+    await h.seedSettled()
     h.deps.jobs = jobsPort() as never
     const tool = defineAdvanceTool(h.deps) as unknown as { output?: { schema?: { properties?: Record<string, unknown> } } }
     const declared = new Set(Object.keys(tool.output?.schema?.properties ?? {}))
@@ -86,13 +92,18 @@ describe('reqboard_task_run（FR-1/FR-2）', () => {
 
   it('FR-2b 已有 run 在跑（locked）→ 结构化错误 + 回执是 lossless JSON（不吐 undefined）', async () => {
     const h = seed()
+    await h.seedSettled()
     h.deps.jobs = jobsPort() as never
     // 锁新鲜 = 该需求已有 run。旧实现走成功回执并带 job_id/run_id=undefined，
     // 绑定层（dsh-tools snapshotJsonValue）把它转成无信息的
     // "tool \"reqboard_task_run\" returned invalid output: value is not lossless JSON"。
     const locked = req({ status: 'implementing', autoRun: true })
     locked.advance = { lockAt: h.clock.t, runId: 'run-inflight' }
-    h.repo.ledger.requirements = [locked]
+    // B12 阶段②a：写/读都已走新端口（store），夹具**只改桥镜像**会让两源分叉
+    // （工具从 store 读到的仍是不带锁的旧记录 → 锁检测失效、错误地返回成功）。
+    // 故改用 harness 的同源播种口（镜像 + 存储都写），并等它落定。
+    h.seedRequirementSync(locked)
+    await h.seedSettled()
 
     const out = await run(defineAdvanceTool(h.deps), { task_id: 't-p' })
     expect(out.success).toBe(false)
@@ -108,12 +119,13 @@ describe('reqboard_task_run（FR-1/FR-2）', () => {
 describe('reqboard_task_execute（FR-1：兼容别名是真委托）', () => {
   it('TC-3 返回体与 task_run 同形，且同样写 autoRun', async () => {
     const h = seed()
+    await h.seedSettled()
     h.deps.jobs = jobsPort() as never
     const out = await run(defineTaskExecuteTool(h.deps), { task_id: 't-p' })
     expect(out.success).toBe(true)
     expect(out.status).toBe('dispatched')
     expect(out.job_id).toBe('job-1')
     expect(typeof out.run_id).toBe('string')
-    expect(h.repo.ledger.requirements[0]!.autoRun).toBe(true)
+    expect((await h.store.get('REQ-000001'))!.autoRun).toBe(true)
   })
 })

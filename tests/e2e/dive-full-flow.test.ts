@@ -11,7 +11,7 @@
  * @module dsh-pmboard/tests/e2e/dive-full-flow
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, } from 'vitest'
 
 describe('Dive 模式完整流程 E2E 测试', () => {
   // 注意：这些测试需要完整的运行环境（数据库、服务等）

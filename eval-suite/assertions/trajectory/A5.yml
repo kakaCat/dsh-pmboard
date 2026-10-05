@@ -1,0 +1,13 @@
+# case A5 · 弹框不可用时降级文字取值 · serves: FR-2
+case: A5
+ordered_contains:
+  - reqboard_capture            # 首选弹框，预期返回 fallback=board
+  - reqboard_create             # 降级为文字取值（三值齐全）后手工创建
+required_outcome:
+  - tool: reqboard_capture
+    result_contains: fallback   # 弹框通道不可用，触发降级路径
+  - tool: reqboard_create
+    result_contains: REQ-       # 降级创建成功
+budget:
+  max_tool_calls: 6
+  max_repeat_same_args: 1

@@ -18,6 +18,7 @@
  * @module dsh-pmboard/application/use-cases/AdoptTask
  */
 import type { UseCaseDeps } from '../ports.js'
+import { boundSummariesOf } from '../internal/binding-read.js'
 import {
   checkSubtaskInvariants,
   isSubtask,
@@ -28,9 +29,8 @@ import { SUBTASK_TRANSITIONS } from '../../domain/task/TaskStatus.js'
 import { STAGE_KINDS } from '../../domain/task/SubtaskTemplate.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { reject, agentIdFromExec, requireLiveDriver, mapAgentError } from '../internal/support.js'
-import { openRequirementsFor } from '../internal/window.js'
 import { syncRTMYaml } from '../internal/rtm-yaml.js'
-import { taskStoreOf } from './queue-access.js'
+import { requirementStoreOf, taskStoreOf, mutateIfPresent, mutateQueue } from './queue-access.js'
 
 /** 违规指纹（问题清单去重比较用）：inv + 文案即唯一。 */
 const fingerprint = (v: { inv: string; message: string }): string => v.inv + '|' + v.message
@@ -49,8 +49,8 @@ export async function executeAdoptTask(deps: UseCaseDeps, args: unknown, exec: u
   if (parentId.length === 0) reject('reqboard_task_adopt 未执行：parent_id 不能为空', 'REQBOARD_INVALID_INPUT')
   if (taskId === parentId) reject('reqboard_task_adopt 未执行：task_id 与 parent_id 不能是同一张卡', 'REQBOARD_INVALID_INPUT')
 
-  const snapshot = deps.repo.snapshot()
-  const bound = openRequirementsFor(snapshot, windowKey)
+  // t8/B11：绑定读走新端口（只读摘要）
+  const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
   if (bound.length === 0) reject('reqboard_task_adopt 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
 
   const store = taskStoreOf(deps)
@@ -120,7 +120,7 @@ export async function executeAdoptTask(deps: UseCaseDeps, args: unknown, exec: u
   const at = deps.clock.now()
 
   // ── ① 任务写（队列是任务的唯一事实源）────────────────────────────────────
-  const changed = await store.mutate(reqId, (draft) => {
+  const changed = await mutateQueue(deps, reqId, (draft) => {
     const t = draft.find(x => x.id === taskId)
     const p = draft.find(x => x.id === parentId)
     if (t === undefined || p === undefined) return undefined
@@ -156,9 +156,7 @@ export async function executeAdoptTask(deps: UseCaseDeps, args: unknown, exec: u
   if (moved === undefined) reject('reqboard_task_adopt 写入失败：队列状态异常', 'REQBOARD_STORE_INCONSISTENT')
 
   // ── ② 需求写（留痕：需求评论区可见"谁什么时候补的归属"）──────────────────
-  await deps.repo.mutate('requirement-updated', (ledger) => {
-    const r = ledger.requirements.find(x => x.id === reqId)
-    if (r === undefined) return undefined
+  await mutateIfPresent(requirementStoreOf(deps), reqId, (r) => {
     r.comments.push({
       id: deps.ids.comment(),
       body: fmt('[归属补救] {id} {verb}父卡 {p}（stageKind={k}）{prev}{reason}（窗口 {w}）', {
@@ -173,10 +171,9 @@ export async function executeAdoptTask(deps: UseCaseDeps, args: unknown, exec: u
       createdAt: at,
       createdBy: actor,
     })
-    r.version += 1
     r.updatedAt = at
     r.updatedBy = actor
-    return { requirements: [r] }
+    return { changed: true }
   }).catch(mapAgentError)
 
   // RTM 是增强层，失败不阻断（与 task_move 同口径）

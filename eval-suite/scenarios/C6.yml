@@ -1,0 +1,16 @@
+# case C6 · 父卡缺子卡链：先诊断再补链 · serves: FR-2
+id: C6
+group: C
+type: edge
+severity: normal
+title: 父卡缺子卡链：先诊断再补链
+dims: [D1, D5]
+max_score: 3
+seed:
+  workspace: fixture:req-implementing-missing-chain   # 预置：implementing 状态；父卡 t-002 意图=chain 但 0 张子卡（预期段 dev/review/test）
+  user_messages:
+    - 实施链跑着跑着，我看 t-002 这张父卡底下一张子卡都没有，链像是断的。你先别急着动台账，诊断一下这条链缺了哪些段、现有子卡什么情况，拿诊断结果跟我说一声，确认后再把缺的补上——已经有的卡一张都不许动。
+expected:
+  trajectory_ref: C6
+  ledger_ref: C6
+notes: 正确姿势是 reqboard_task_regenerate 先 dry_run 只读诊断（回执含 chain_status=missing/partial），再 dry_run=false 真补链（须带 task_id 与 reason）；跳过诊断直接补链、或补链时改动已有子卡，都算轨迹违规。

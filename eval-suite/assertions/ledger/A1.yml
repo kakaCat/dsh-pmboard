@@ -1,0 +1,15 @@
+# case A1 · 明确新需求走 capture 立项 · serves: FR-2
+case: A1
+checks:
+  - path: queue.requirements
+    op: count_eq
+    value: 1                        # 恰好新增一条 REQ
+  - path: requirement.id
+    op: matches
+    value: '^REQ-[0-9]{12}-[0-9a-f]{4}$'
+  - path: requirement.status
+    op: eq
+    value: draft                    # 新 REQ 落 draft 泳道
+  - path: requirement.bound
+    op: eq
+    value: true                     # 本窗口已绑定该需求

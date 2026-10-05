@@ -1,0 +1,33 @@
+# 实施链投递缺陷（本窗口 2026-10-01 实测，与 REQ-261001110934-3766 的实现无关，单独立项）
+
+## 现象
+
+批准拆分计划后（autoRun 开启、advance 锁过期回收后）调用：
+
+    reqboard_task_run({ requirement_id: "REQ-261001110934-3766" })
+
+返回：
+
+    ❌ 需求推进被拒：见明细
+    {
+      "success": false,
+      "status": "error",
+      "code": "REQBOARD_REQ_NOT_FOUND",
+      "error": "投递失败：session \"[object Object]\" has no live agent (background job owner must be live)"
+    }
+
+## 判读
+
+- 报错文本把 **session 对象**（而非 session id）插进了消息 → 投递路径上有一处
+  「装配点 = 类签名」不匹配：传给后台任务端口（`DshJobsAdapter.start`）的 owner 参数
+  期望的是可解析的 session 标识，实际拿到的是对象。
+- 与既有事故同类（本仓 `REQ-260930231831-a8fa`：「装配接缝修正 + disarm 可见化」修的就是
+  「组合根构造投递器参数错位」这一类）。
+- 影响：**自动实施链在本 profile 不可用**，需求只能手工按卡推进
+  （手工推进另外还受 60s/次的 done 批量关闭闸限制，见 evidence 其他文件）。
+
+## 现场信息
+
+- 首次调用（残留锁未过期）返回 `REQBOARD_ADVANCE_LOCKED`（runId=run-1790827560282-z1gw2a2，
+  锁 TTL 15 分钟）；锁过期后重投即出现上面的 REQBOARD_REQ_NOT_FOUND。
+- 未处理：本窗口未改插件代码（不属于本需求范围），留待人工决定是否单独立项修复。

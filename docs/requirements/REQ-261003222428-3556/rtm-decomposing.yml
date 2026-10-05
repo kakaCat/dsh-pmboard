@@ -1,0 +1,686 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261003222428-3556
+  generated_at: 2026-10-03T15:24:22.005Z
+  version: 107
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-03T17:00:41.520Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/architecture.md#目标
+      title: 目标 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/architecture.md
+      section: 目标
+    - ref: design/architecture.md#总体方案
+      title: 总体方案 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/architecture.md
+      section: 总体方案
+    - ref: design/architecture.md#依赖与调用方清单refactor-必填
+      title: 依赖与调用方清单（refactor 必填） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/architecture.md
+      section: 依赖与调用方清单refactor-必填
+    - ref: design/architecture.md#FR-1-推进锁续租
+      title: FR-1 · 推进锁续租 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: FR-1-推进锁续租
+    - ref: design/architecture.md#FR-2-批内真并行
+      title: FR-2 · 批内真并行 `
+      serves:
+        - FR-2
+        - FR-4
+      file: design/architecture.md
+      section: FR-2-批内真并行
+    - ref: design/architecture.md#FR-3-dependson-端到端复现-构建新鲜度
+      title: FR-3 · depends_on 端到端复现 + 构建新鲜度 `
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: FR-3-dependson-端到端复现-构建新鲜度
+    - ref: design/architecture.md#FR-4-死代码清偿
+      title: FR-4 · 死代码清偿 `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: FR-4-死代码清偿
+    - ref: design/architecture.md#FR-5-N-1-死窗口不再静默停摆
+      title: FR-5 · N-1 死窗口不再静默停摆 `
+      serves:
+        - FR-5
+      file: design/architecture.md
+      section: FR-5-N-1-死窗口不再静默停摆
+    - ref: design/architecture.md#FR-6-N-2-绑定改写必须留痕
+      title: FR-6 · N-2 绑定改写必须留痕 `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: FR-6-N-2-绑定改写必须留痕
+    - ref: design/architecture.md#FR-7-N-3-催办聚合-成组确认
+      title: FR-7 · N-3 催办聚合 + 成组确认 `
+      serves:
+        - FR-7
+      file: design/architecture.md
+      section: FR-7-N-3-催办聚合-成组确认
+    - ref: design/architecture.md#分批一次只改一类
+      title: 分批（一次只改一类） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/architecture.md
+      section: 分批一次只改一类
+    - ref: design/architecture.md#风险与根因候选
+      title: 风险与根因候选 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 风险与根因候选
+    - ref: design/migration.md#迁移路径
+      title: 迁移路径 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-5
+      file: design/migration.md
+      section: 迁移路径
+    - ref: design/migration.md#兼容性
+      title: 兼容性 `
+      serves:
+        - FR-3
+        - FR-6
+        - FR-7
+      file: design/migration.md
+      section: 兼容性
+    - ref: design/migration.md#回退
+      title: 回退 `
+      serves:
+        - FR-2
+        - FR-4
+      file: design/migration.md
+      section: 回退
+    - ref: design/migration.md#验证总口径
+      title: 验证总口径 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/migration.md
+      section: 验证总口径
+outputs:
+  tasks:
+    - id: t-b0a546
+      title: 推进锁续租心跳
+      implements: ① AdvanceChain.ts：advanceRequirement 投递分支内起 setInterval（LIMITS.heartbeatIntervalMs），每次 requirementStore.mutate 守卫 runId 后刷 lockAt；② driveChain finally 先 clearInterval 再清锁；③ 新增 tests/advance-lock-heartbeat.test.ts 假时钟三用例
+      serves:
+        - FR-1
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-9084a6
+      title: 批内写集分组真并行
+      implements: ① 新增 src/application/internal/advance-parallel.ts：移植 detectConflict+贪心分组（自 batch-scheduler），输入批次事件、输出分组；② AdvanceChain.ts driveChain 批内执行改为：快事件串行→RUN_SUBTASK 分组 Promise.all；③ history 记录可选 batchId；④ 新增并行语义用例（假时钟/桩 deferred）
+      serves:
+        - FR-2
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-ee86f6
+      title: depends_on 端到端复现+构建指纹
+      implements: ① 新增 tests/plan-depends-e2e.test.ts 走真实端口（内存 store+landApprovedPlan），断言三张父卡 dependsOn 成链；② 装配处计算 sha256(dist/index.mjs)[0:12] 写 diag 日志；③ StatusTool output.schema 先加 plugin_build 声明再改回执
+      serves:
+        - FR-3
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-bdc766
+      title: 死代码清偿（删四文件三测试）
+      implements: ① grep 确认四符号生产零引用；② 删除四源文件+tests/unit/{start-subtask-chain,background-runner,batch-scheduler}.test.ts；③ 删 tests/auto-chain-approval.test.ts 里的死代码登记注释（已清偿）；④ 全量回归
+      serves:
+        - FR-4
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-ee6da8
+      title: wake 活性校验（N-1）
+      implements: ① wake 端口返回值改为含受理与否+原因；② ReqboardDiveManager/wake-heartbeat 受理前经注入端口查 agents 注册表；③ 不受理路径写 driverHealth=paused+需求评论诊断；④ 新增死/活窗口用例
+      serves:
+        - FR-5
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-d47938
+      title: 绑定改写留痕+人工改绑入口（N-2）
+      implements: ① 新增绑定留痕助手并收编既有写入点（grep sourceSessionId 赋值全仓盘点）；② 静态断言用例（扫 src/ 直接赋值仅限助手文件）；③ 改绑入口（人发起，agent 调用代码级拒绝）
+      serves:
+        - FR-6
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-188b05
+      title: 产物催办按 kind 聚合+成组确认（N-3）
+      implements: ① 催办侧聚合：同需求同 kind 待确认合并为一条弹框文案；② artifact-gates 成组确认机制扩到 task_detail/task_output；③ 新增聚合+成组用例
+      serves:
+        - FR-7
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-ca7708
+      title: 全量回归+契约文档摘缺口
+      implements: ① 跑 pnpm test 全量比对基线；② 更新 docs/architecture/automation-chain-contract.md §5；③ project-manual.md 变更记录补行
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-307661
+      title: 推进锁续租心跳·研发
+      implements: |-
+        ① AdvanceChain.ts：advanceRequirement 投递分支内起 setInterval（LIMITS.heartbeatIntervalMs），每次 requirementStore.mutate 守卫 runId 后刷 lockAt；② driveChain finally 先 clearInterval 再清锁；③ 新增 tests/advance-lock-heartbeat.test.ts 假时钟三用例
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-45b50b
+      title: 推进锁续租心跳·联调
+      implements: |-
+        ① AdvanceChain.ts：advanceRequirement 投递分支内起 setInterval（LIMITS.heartbeatIntervalMs），每次 requirementStore.mutate 守卫 runId 后刷 lockAt；② driveChain finally 先 clearInterval 再清锁；③ 新增 tests/advance-lock-heartbeat.test.ts 假时钟三用例
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-307661
+      phase: implement
+      side: backend
+    - id: t-26d8eb
+      title: 推进锁续租心跳·复核
+      implements: |-
+        ① AdvanceChain.ts：advanceRequirement 投递分支内起 setInterval（LIMITS.heartbeatIntervalMs），每次 requirementStore.mutate 守卫 runId 后刷 lockAt；② driveChain finally 先 clearInterval 再清锁；③ 新增 tests/advance-lock-heartbeat.test.ts 假时钟三用例
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-45b50b
+      phase: implement
+      side: backend
+    - id: t-aab87d
+      title: 推进锁续租心跳·测试
+      implements: |-
+        ① AdvanceChain.ts：advanceRequirement 投递分支内起 setInterval（LIMITS.heartbeatIntervalMs），每次 requirementStore.mutate 守卫 runId 后刷 lockAt；② driveChain finally 先 clearInterval 再清锁；③ 新增 tests/advance-lock-heartbeat.test.ts 假时钟三用例
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-26d8eb
+      phase: implement
+      side: backend
+    - id: t-fb1ed6
+      title: 批内写集分组真并行·研发
+      implements: |-
+        ① 新增 src/application/internal/advance-parallel.ts：移植 detectConflict+贪心分组（自 batch-scheduler），输入批次事件、输出分组；② AdvanceChain.ts driveChain 批内执行改为：快事件串行→RUN_SUBTASK 分组 Promise.all；③ history 记录可选 batchId；④ 新增并行语义用例（假时钟/桩 deferred）
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-1c86df
+      title: 批内写集分组真并行·联调
+      implements: |-
+        ① 新增 src/application/internal/advance-parallel.ts：移植 detectConflict+贪心分组（自 batch-scheduler），输入批次事件、输出分组；② AdvanceChain.ts driveChain 批内执行改为：快事件串行→RUN_SUBTASK 分组 Promise.all；③ history 记录可选 batchId；④ 新增并行语义用例（假时钟/桩 deferred）
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-fb1ed6
+      phase: implement
+      side: backend
+    - id: t-ed2cec
+      title: 批内写集分组真并行·复核
+      implements: |-
+        ① 新增 src/application/internal/advance-parallel.ts：移植 detectConflict+贪心分组（自 batch-scheduler），输入批次事件、输出分组；② AdvanceChain.ts driveChain 批内执行改为：快事件串行→RUN_SUBTASK 分组 Promise.all；③ history 记录可选 batchId；④ 新增并行语义用例（假时钟/桩 deferred）
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-1c86df
+      phase: implement
+      side: backend
+    - id: t-58eede
+      title: 批内写集分组真并行·测试
+      implements: |-
+        ① 新增 src/application/internal/advance-parallel.ts：移植 detectConflict+贪心分组（自 batch-scheduler），输入批次事件、输出分组；② AdvanceChain.ts driveChain 批内执行改为：快事件串行→RUN_SUBTASK 分组 Promise.all；③ history 记录可选 batchId；④ 新增并行语义用例（假时钟/桩 deferred）
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-ed2cec
+      phase: implement
+      side: backend
+    - id: t-b875fa
+      title: depends_on 端到端复现+构建指纹·研发
+      implements: |-
+        ① 新增 tests/plan-depends-e2e.test.ts 走真实端口（内存 store+landApprovedPlan），断言三张父卡 dependsOn 成链；② 装配处计算 sha256(dist/index.mjs)[0:12] 写 diag 日志；③ StatusTool output.schema 先加 plugin_build 声明再改回执
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-dff3c4
+      title: depends_on 端到端复现+构建指纹·复核
+      implements: |-
+        ① 新增 tests/plan-depends-e2e.test.ts 走真实端口（内存 store+landApprovedPlan），断言三张父卡 dependsOn 成链；② 装配处计算 sha256(dist/index.mjs)[0:12] 写 diag 日志；③ StatusTool output.schema 先加 plugin_build 声明再改回执
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-b875fa
+      phase: test
+      side: backend
+    - id: t-76faba
+      title: depends_on 端到端复现+构建指纹·测试
+      implements: |-
+        ① 新增 tests/plan-depends-e2e.test.ts 走真实端口（内存 store+landApprovedPlan），断言三张父卡 dependsOn 成链；② 装配处计算 sha256(dist/index.mjs)[0:12] 写 diag 日志；③ StatusTool output.schema 先加 plugin_build 声明再改回执
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-dff3c4
+      phase: test
+      side: backend
+    - id: t-3c090e
+      title: 死代码清偿（删四文件三测试）·研发
+      implements: |-
+        ① grep 确认四符号生产零引用；② 删除四源文件+tests/unit/{start-subtask-chain,background-runner,batch-scheduler}.test.ts；③ 删 tests/auto-chain-approval.test.ts 里的死代码登记注释（已清偿）；④ 全量回归
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-0d1d00
+      title: 死代码清偿（删四文件三测试）·联调
+      implements: |-
+        ① grep 确认四符号生产零引用；② 删除四源文件+tests/unit/{start-subtask-chain,background-runner,batch-scheduler}.test.ts；③ 删 tests/auto-chain-approval.test.ts 里的死代码登记注释（已清偿）；④ 全量回归
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-3c090e
+      phase: implement
+      side: backend
+    - id: t-931e8f
+      title: 死代码清偿（删四文件三测试）·复核
+      implements: |-
+        ① grep 确认四符号生产零引用；② 删除四源文件+tests/unit/{start-subtask-chain,background-runner,batch-scheduler}.test.ts；③ 删 tests/auto-chain-approval.test.ts 里的死代码登记注释（已清偿）；④ 全量回归
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-0d1d00
+      phase: implement
+      side: backend
+    - id: t-f94bde
+      title: 死代码清偿（删四文件三测试）·测试
+      implements: |-
+        ① grep 确认四符号生产零引用；② 删除四源文件+tests/unit/{start-subtask-chain,background-runner,batch-scheduler}.test.ts；③ 删 tests/auto-chain-approval.test.ts 里的死代码登记注释（已清偿）；④ 全量回归
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-931e8f
+      phase: implement
+      side: backend
+    - id: t-d52139
+      title: wake 活性校验（N-1）·研发
+      implements: |-
+        ① wake 端口返回值改为含受理与否+原因；② ReqboardDiveManager/wake-heartbeat 受理前经注入端口查 agents 注册表；③ 不受理路径写 driverHealth=paused+需求评论诊断；④ 新增死/活窗口用例
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-e32a83
+      title: wake 活性校验（N-1）·联调
+      implements: |-
+        ① wake 端口返回值改为含受理与否+原因；② ReqboardDiveManager/wake-heartbeat 受理前经注入端口查 agents 注册表；③ 不受理路径写 driverHealth=paused+需求评论诊断；④ 新增死/活窗口用例
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-d52139
+      phase: implement
+      side: backend
+    - id: t-177514
+      title: wake 活性校验（N-1）·复核
+      implements: |-
+        ① wake 端口返回值改为含受理与否+原因；② ReqboardDiveManager/wake-heartbeat 受理前经注入端口查 agents 注册表；③ 不受理路径写 driverHealth=paused+需求评论诊断；④ 新增死/活窗口用例
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-e32a83
+      phase: implement
+      side: backend
+    - id: t-498033
+      title: wake 活性校验（N-1）·测试
+      implements: |-
+        ① wake 端口返回值改为含受理与否+原因；② ReqboardDiveManager/wake-heartbeat 受理前经注入端口查 agents 注册表；③ 不受理路径写 driverHealth=paused+需求评论诊断；④ 新增死/活窗口用例
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-177514
+      phase: implement
+      side: backend
+    - id: t-9db35a
+      title: 绑定改写留痕+人工改绑入口（N-2）·研发
+      implements: |-
+        ① 新增绑定留痕助手并收编既有写入点（grep sourceSessionId 赋值全仓盘点）；② 静态断言用例（扫 src/ 直接赋值仅限助手文件）；③ 改绑入口（人发起，agent 调用代码级拒绝）
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-d4a122
+      title: 绑定改写留痕+人工改绑入口（N-2）·联调
+      implements: |-
+        ① 新增绑定留痕助手并收编既有写入点（grep sourceSessionId 赋值全仓盘点）；② 静态断言用例（扫 src/ 直接赋值仅限助手文件）；③ 改绑入口（人发起，agent 调用代码级拒绝）
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-9db35a
+      phase: implement
+      side: backend
+    - id: t-765eab
+      title: 绑定改写留痕+人工改绑入口（N-2）·复核
+      implements: |-
+        ① 新增绑定留痕助手并收编既有写入点（grep sourceSessionId 赋值全仓盘点）；② 静态断言用例（扫 src/ 直接赋值仅限助手文件）；③ 改绑入口（人发起，agent 调用代码级拒绝）
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-d4a122
+      phase: implement
+      side: backend
+    - id: t-0d7d5d
+      title: 绑定改写留痕+人工改绑入口（N-2）·测试
+      implements: |-
+        ① 新增绑定留痕助手并收编既有写入点（grep sourceSessionId 赋值全仓盘点）；② 静态断言用例（扫 src/ 直接赋值仅限助手文件）；③ 改绑入口（人发起，agent 调用代码级拒绝）
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-765eab
+      phase: implement
+      side: backend
+    - id: t-0ee5d2
+      title: 产物催办按 kind 聚合+成组确认（N-3）·研发
+      implements: |-
+        ① 催办侧聚合：同需求同 kind 待确认合并为一条弹框文案；② artifact-gates 成组确认机制扩到 task_detail/task_output；③ 新增聚合+成组用例
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-94661d
+      title: 产物催办按 kind 聚合+成组确认（N-3）·联调
+      implements: |-
+        ① 催办侧聚合：同需求同 kind 待确认合并为一条弹框文案；② artifact-gates 成组确认机制扩到 task_detail/task_output；③ 新增聚合+成组用例
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-0ee5d2
+      phase: implement
+      side: backend
+    - id: t-903b73
+      title: 产物催办按 kind 聚合+成组确认（N-3）·复核
+      implements: |-
+        ① 催办侧聚合：同需求同 kind 待确认合并为一条弹框文案；② artifact-gates 成组确认机制扩到 task_detail/task_output；③ 新增聚合+成组用例
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-94661d
+      phase: implement
+      side: backend
+    - id: t-d3b93c
+      title: 产物催办按 kind 聚合+成组确认（N-3）·测试
+      implements: |-
+        ① 催办侧聚合：同需求同 kind 待确认合并为一条弹框文案；② artifact-gates 成组确认机制扩到 task_detail/task_output；③ 新增聚合+成组用例
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-903b73
+      phase: implement
+      side: backend
+    - id: t-544e5f
+      title: 全量回归+契约文档摘缺口·研发
+      implements: |-
+        ① 跑 pnpm test 全量比对基线；② 更新 docs/architecture/automation-chain-contract.md §5；③ project-manual.md 变更记录补行
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-3f376f
+      title: 全量回归+契约文档摘缺口·复核
+      implements: |-
+        ① 跑 pnpm test 全量比对基线；② 更新 docs/architecture/automation-chain-contract.md §5；③ project-manual.md 变更记录补行
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-544e5f
+      phase: test
+      side: backend
+    - id: t-926ad1
+      title: 全量回归+契约文档摘缺口·测试
+      implements: |-
+        ① 跑 pnpm test 全量比对基线；② 更新 docs/architecture/automation-chain-contract.md §5；③ project-manual.md 变更记录补行
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-3f376f
+      phase: test
+      side: backend
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标:
+      - t-b0a546
+      - t-9084a6
+      - t-ee86f6
+      - t-bdc766
+      - t-ee6da8
+      - t-d47938
+      - t-188b05
+      - t-ca7708
+    design/architecture.md#总体方案:
+      - t-b0a546
+      - t-9084a6
+      - t-bdc766
+      - t-ca7708
+    design/architecture.md#依赖与调用方清单refactor-必填:
+      - t-b0a546
+      - t-9084a6
+      - t-bdc766
+      - t-ee6da8
+      - t-d47938
+      - t-188b05
+      - t-ca7708
+    design/architecture.md#FR-1-推进锁续租:
+      - t-b0a546
+      - t-ca7708
+    design/architecture.md#FR-2-批内真并行:
+      - t-9084a6
+      - t-bdc766
+      - t-ca7708
+    design/architecture.md#FR-3-dependson-端到端复现-构建新鲜度:
+      - t-ee86f6
+      - t-ca7708
+    design/architecture.md#FR-4-死代码清偿:
+      - t-bdc766
+      - t-ca7708
+    design/architecture.md#FR-5-N-1-死窗口不再静默停摆:
+      - t-ee6da8
+      - t-ca7708
+    design/architecture.md#FR-6-N-2-绑定改写必须留痕:
+      - t-d47938
+      - t-ca7708
+    design/architecture.md#FR-7-N-3-催办聚合-成组确认:
+      - t-188b05
+      - t-ca7708
+    design/architecture.md#分批一次只改一类:
+      - t-b0a546
+      - t-9084a6
+      - t-ee86f6
+      - t-bdc766
+      - t-ee6da8
+      - t-d47938
+      - t-188b05
+      - t-ca7708
+    design/architecture.md#风险与根因候选:
+      - t-9084a6
+      - t-ee86f6
+      - t-ca7708
+    design/migration.md#迁移路径:
+      - t-b0a546
+      - t-9084a6
+      - t-ee6da8
+      - t-ca7708
+    design/migration.md#兼容性:
+      - t-ee86f6
+      - t-d47938
+      - t-188b05
+      - t-ca7708
+    design/migration.md#回退:
+      - t-9084a6
+      - t-bdc766
+      - t-ca7708
+    design/migration.md#验证总口径:
+      - t-b0a546
+      - t-9084a6
+      - t-ee86f6
+      - t-bdc766
+      - t-ee6da8
+      - t-d47938
+      - t-188b05
+      - t-ca7708
+  fr_to_tasks:
+    FR-1:
+      - t-b0a546
+      - t-9084a6
+      - t-ee86f6
+      - t-bdc766
+      - t-ee6da8
+      - t-d47938
+      - t-188b05
+      - t-ca7708
+    FR-2:
+      - t-b0a546
+      - t-9084a6
+      - t-ee86f6
+      - t-bdc766
+      - t-ee6da8
+      - t-d47938
+      - t-188b05
+      - t-ca7708
+    FR-3:
+      - t-b0a546
+      - t-9084a6
+      - t-ee86f6
+      - t-bdc766
+      - t-ee6da8
+      - t-d47938
+      - t-188b05
+      - t-ca7708
+    FR-4:
+      - t-b0a546
+      - t-9084a6
+      - t-ee86f6
+      - t-bdc766
+      - t-ee6da8
+      - t-d47938
+      - t-188b05
+      - t-ca7708
+    FR-5:
+      - t-b0a546
+      - t-9084a6
+      - t-ee86f6
+      - t-bdc766
+      - t-ee6da8
+      - t-d47938
+      - t-188b05
+      - t-ca7708
+    FR-6:
+      - t-b0a546
+      - t-9084a6
+      - t-ee86f6
+      - t-bdc766
+      - t-ee6da8
+      - t-d47938
+      - t-188b05
+      - t-ca7708
+    FR-7:
+      - t-b0a546
+      - t-9084a6
+      - t-ee86f6
+      - t-bdc766
+      - t-ee6da8
+      - t-d47938
+      - t-188b05
+      - t-ca7708
+coverage:
+  implementation:
+    total: 16
+    covered: 16
+    uncovered: []
+    rate: 100
+    total_designs: 16
+    covered_designs: 16

@@ -28,7 +28,7 @@ export function defineAskConfirmTool(deps: UseCaseDeps) {
       requirement_id: { type: 'string', description: '需求 id（REQ-xxxxxx）；不传默认本窗口绑定的需求' },
       target: { type: 'string', description: 'artifact（确认产物）| plan（批准拆分计划）', required: true },
       kind: { type: 'string', description: '产物类型（target=artifact 时必填）：requirement/design/plan/decomposition/verification/archive' },
-      question: { type: 'string', description: '弹框问题（写清确认什么、确认后会发生什么；弹框路径必填）' },
+      question: { type: 'string', description: '弹框问题（写清确认什么、确认后会发生什么；弹框路径必填）；写法：每条短句（建议 ≤60 字）；需引号用「」避免半角双引号；文本过大拆成多次调用' },
       options: {
         type: 'array',
         description: '选项标签列表（第一个 = 肯定项，确认后落章+推进；缺省：确认推进/需要修改/暂停）',
@@ -53,6 +53,9 @@ export function defineAskConfirmTool(deps: UseCaseDeps) {
           target: { type: 'string', description: '文字证据路径：artifact | plan' },
           kind: { type: 'string', description: '文字证据路径：产物类型' },
           via: { type: 'string', description: '文字证据路径：确认来源（session）' },
+          // REQ-261003222428-3556 FR-7 / N-3：成组确认的落章清单——一次确认盖了哪些产物，
+          // 如实列出（task_detail/task_output/design 成组时尤其需要，否则"确认了一次"说不清盖了几份）。
+          stamped: { type: 'array', items: { type: 'string' }, description: '文字证据路径：本次落章的产物路径清单（成组确认时 >1 份）' },
           evidence_verified: { type: 'boolean', description: '文字确认是否通过 capture-hook 核验（命中真实用户消息）' },
           user_choice: { type: 'string', description: '弹框路径（非肯定项）：用户选择的选项文本' },
           user_feedback: { type: 'string', description: '弹框路径（非肯定项）：用户输入的修改意见或反馈' },

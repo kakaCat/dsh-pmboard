@@ -3,19 +3,26 @@
  * 折叠行：立项 · <需求名>（或弹框待答）；展开：分类/难度、立项依据。
  * @module dsh-pmboard/client/toolviews/rows
  */
-import { strOf, firstLine, resultText, isSettled, type CardSummarize } from '../shared.ts'
+import { strOf, firstLine, resultText, isSettled, ERROR_CATEGORY, PM_TOOL_BADGE, type CardSummarize } from '../shared.ts'
 import type { BizCard } from '../biz-row.ts'
 
 export const captureSummarize: CardSummarize = (args, result, block) => {
   const err = isSettled(block) && block.isError === true
-  if (err) return { icon: '❌', line: `立项失败：${firstLine(resultText(block)).slice(0, 60)}`, isError: true }
+  if (err) {
+    const why = firstLine(resultText(block)).slice(0, 60)
+    const code = block.error?.code
+    const errorHint = code !== undefined && ERROR_CATEGORY[code] !== undefined
+      ? `错误类别：${ERROR_CATEGORY[code]}。请检查参数后重试。`
+      : '请检查参数后重试'
+    return { icon: '❌', line: `立项失败：${why}`, isError: true, badge: PM_TOOL_BADGE, errorDetail: why, errorHint }
+  }
   const answers = result?.answers as Record<string, unknown> | undefined
   const title = strOf(answers ?? undefined, 'title')
     ?? strOf(result, 'title')
     ?? (Array.isArray(args?.title_options) ? String((args!.title_options as unknown[])[0] ?? '') : undefined)
   const reqId = strOf(result, 'requirement_id')
   if (title === undefined && reqId === undefined) {
-    if (!isSettled(block)) return { icon: '🌱', line: '立项弹框 · 等待作答' }
+    if (!isSettled(block)) return { icon: '🌱', line: '立项弹框 · 等待作答', badge: PM_TOOL_BADGE }
     return null
   }
   const line = reqId !== undefined && reqId !== ''
@@ -29,7 +36,9 @@ export const captureSummarize: CardSummarize = (args, result, block) => {
   }
   const reason = strOf(args, 'reason')
   if (reason !== undefined) details.push(['立项依据', reason.slice(0, 400)])
-  return { icon: '🌱', line, details }
+  const nextStep = reqId !== undefined && reqId !== '' ? '下一步：进入需求分析阶段，探边界/方案' : undefined
+  const flowCurrent = reqId !== undefined && reqId !== '' ? 'brainstorming' : undefined
+  return { icon: '🌱', line, badge: PM_TOOL_BADGE, details, nextStep, flowCurrent }
 }
 
-export const captureCard: BizCard = { key: 'reqboard_capture', title: '立项', icon: '🌱', summarize: captureSummarize }
+export const captureCard: BizCard = { key: 'reqboard_capture', title: '立项', icon: '🌱', badge: PM_TOOL_BADGE, summarize: captureSummarize }

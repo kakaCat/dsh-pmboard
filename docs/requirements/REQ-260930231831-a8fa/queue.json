@@ -1,0 +1,837 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-260930231831-a8fa",
+  "schemaVersion": 9,
+  "generated_at": "2026-09-30T15:33:45.609Z",
+  "tasks": [
+    {
+      "id": "t-dfaada",
+      "requirementId": "REQ-260930231831-a8fa",
+      "title": "对齐投递器装配契约（组合根三参 + 可注入 id 工厂）",
+      "cardDoc": "docs/requirements/REQ-260930231831-a8fa/tasks/t-dfaada.md",
+      "description": "主修点：src/wiring/pm-capture-root.ts 的 createCaptureRuntime 改为 new AgentDeliverer(deps.getAgents, deps.newMessageId ?? newCommentId, deps.plugin)；CaptureRuntimeDeps 增可选 newMessageId?: () => string；src/adapters/AgentDeliverer.ts 构造期对 idFactory 做兜底（不可调用时回落 randomUUID，签名不变）；新增 tests/dive-wake-wiring.test.ts（头部带 serves: FR-1, FR-2）承载 T1：用真实 createCaptureRuntime 产出的投递器，createRoundMessage 不抛、messageId === message.id、source.kind='dive'。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/dive-wake-wiring.test.ts` 通过（至少 T1 1 passed）；`tsc --noEmit -p tsconfig.json 2>&1 | grep pm-capture-root` 无输出（退出码 1 = 未命中，即本次根因的 TS2554 已消失）",
+      "implementation": "改 src/wiring/pm-capture-root.ts:56 附近的构造调用为三参并引入 id 工厂注入（缺省 newCommentId，来自 src/shared/protocol.ts）；CaptureRuntimeDeps 接口增 newMessageId?: () => string 并在 createCaptureRuntime 内解析缺省；src/adapters/AgentDeliverer.ts 构造函数内 this.idFactory = typeof 参数 === 'function' ? 参数 : () => randomUUID()（保持三态返回与永不抛契约不变）；新增 tests/dive-wake-wiring.test.ts：前 20 行带 serves 标注，用例 T1 断言不抛、id 同值、source.kind='dive'。验证：npx vitest run tests/dive-wake-wiring.test.ts；tsc --noEmit -p tsconfig.json 2>&1 | grep pm-capture-root 应无输出。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [],
+      "status": "todo",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-93b609",
+          "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082",
+          "trigger": "manual",
+          "startedAt": 1790927252866,
+          "outcome": "cancelled",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082",
+              "seq": 734,
+              "at": 1790927252877,
+              "totals": {
+                "uncachedInputTokens": 429029,
+                "outputTokens": 93554,
+                "cacheReadTokens": 15835136,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082",
+              "seq": 762,
+              "at": 1790927290841,
+              "totals": {
+                "uncachedInputTokens": 438655,
+                "outputTokens": 100930,
+                "cacheReadTokens": 16672640,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 9626,
+              "outputTokens": 7376,
+              "cacheReadTokens": 837504,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790927290830
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790782425507,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790927252866,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          },
+          "reason": "重复交付复核：开始复核该卡交付物"
+        },
+        {
+          "status": "todo",
+          "at": 1790927290830,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          },
+          "reason": "重复交付：本卡不实施（交付物已由 REQ-261001201200-8f8b 交付），退回 todo 待人处置，避免台账谎报在制"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-565ea1",
+          "body": "[状态] → in_progress：重复交付复核：开始复核该卡交付物（reqboard_task_move）",
+          "createdAt": 1790927252866,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          }
+        },
+        {
+          "id": "c-7ab4d4",
+          "body": "[状态] → todo：重复交付：本卡不实施（交付物已由 REQ-261001201200-8f8b 交付），退回 todo 待人处置，避免台账谎报在制（reqboard_task_move）",
+          "createdAt": 1790927290830,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790782425507,
+      "updatedAt": 1790927290830,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790927244469,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "createCaptureRuntime 现为三参构造（pm-capture-root.ts:69）",
+          "idFactory 可注入，缺省回落 newCommentId",
+          "AgentDeliverer 构造期拒绝非函数 idFactory（响亮抛错）",
+          "复核：tsc 对该两文件零错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1790927244469,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-220e7a",
+      "requirementId": "REQ-260930231831-a8fa",
+      "title": "投递契约与「一次驱动即起轮」回归测试",
+      "cardDoc": "docs/requirements/REQ-260930231831-a8fa/tasks/t-220e7a.md",
+      "description": "把 tests/agent-deliverer.test.ts 从已删除的 deliver() 旧 API 迁到 createRoundMessage / deliverMessage 四态（在线 / 离线 / 无 followup / get 抛错，均永不抛）；在 tests/dive-wake-wiring.test.ts 增 T2：真实投递器 + 真实 createDiveRoundDriver + fake repo（armed 需求 + idle agent + inbox），requestDrive 后断言 inbox 恰 1 条 source.kind='dive' 消息、台账未出现 dive-disarm 写、activation 仍为 armed。",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-dfaada"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/agent-deliverer.test.ts tests/dive-wake-wiring.test.ts` 全绿（0 failed）；T2 断言 inbox 消息数 === 1 且 source.kind === 'dive'、mutate 记录中不含 'dive-disarm'、台账 dive.activation === 'armed'；`tsc --noEmit -p tsconfig.json 2>&1 | grep agent-deliverer` 无输出",
+      "implementation": "改 tests/agent-deliverer.test.ts：构造改三参（registryOf(agent), () => 'msg-fixed-1', 'dsh-pmboard'），删掉 deliver() 用例，改为 createRoundMessage（消息形状 + id 同值）与 deliverMessage（四种失败态 delivered=false 且不抛、成功态 delivered=true 且 followup 收到消息）；在 tests/dive-wake-wiring.test.ts 增 T2 用例，复用 tests/dive-round-driver.test.ts 的 fake 端口形状但 delivery 用真实 runtime.deliverer。验证：npx vitest run tests/agent-deliverer.test.ts tests/dive-wake-wiring.test.ts；tsc --noEmit -p tsconfig.json 2>&1 | grep agent-deliverer 应无输出。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "todo",
+      "blocked": false,
+      "executions": [],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790782425507,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        }
+      ],
+      "comments": [],
+      "version": 2,
+      "createdAt": 1790782425507,
+      "updatedAt": 1790927244603,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790927244603,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "tests/agent-deliverer.test.ts 已迁到 createRoundMessage / deliverMessage",
+          "tests/dive-wake-wiring.test.ts 十项全绿（真实投递器 + 真实驱动起轮）",
+          "四个相关测试文件共 51 项全绿、0 失败"
+        ]
+      },
+      "lastRun": {
+        "at": 1790927244603,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-38e435",
+      "requirementId": "REQ-260930231831-a8fa",
+      "title": "disarm 写台账留痕（停摆可见）",
+      "cardDoc": "docs/requirements/REQ-260930231831-a8fa/tasks/t-38e435.md",
+      "description": "src/application/dive/round-driver.ts 的 disarm(state, reason)：在既有 repo.mutate('dive-disarm', ...) 回调内，于把 activation 置为 'disarmed' 的同时追加一条 system comment，body 固定前缀 '[Dive] 已解除武装（手动模式）：' + reason；保持幂等（已是 disarmed → 整体返回 undefined，不追加）与非抛（写失败只 logger.warn）。tests/dive-round-driver.test.ts 增 T5：构造投递失败（deliverMessage 返回 delivered:false）→ 需求上出现含 reason 的 system comment；再次触发同一路径不追加第二条。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/dive-round-driver.test.ts` 全绿；新增用例断言台账 comments 中出现前缀 '[Dive] 已解除武装（手动模式）：' 且 body 含传入 reason，并断言重复触发后该前缀 comment 数仍为 1",
+      "implementation": "改 src/application/dive/round-driver.ts 的 disarm 函数：在 mutate 回调内 r.comments.push({ id: 'c-dive-disarm-' + ports.now(), body: '[Dive] 已解除武装（手动模式）：' + reason, createdAt: ports.now(), createdBy: { kind: 'system' } })，与既有 r.dive.activation='disarmed' / lastActiveAt 同一次写入；不动 drive()/pre-step/准入逻辑。测试：tests/dive-round-driver.test.ts 的 harness 已支持 delivery.deliverMessage 返回失败，据此断言 comment 存在与 reason 命中，以及第二次调用不新增。验证：npx vitest run tests/dive-round-driver.test.ts。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [],
+      "status": "todo",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-44d35c",
+          "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082",
+          "trigger": "manual",
+          "startedAt": 1790927252990,
+          "outcome": "cancelled",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082",
+              "seq": 738,
+              "at": 1790927253003,
+              "totals": {
+                "uncachedInputTokens": 429029,
+                "outputTokens": 93554,
+                "cacheReadTokens": 15835136,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082",
+              "seq": 764,
+              "at": 1790927290938,
+              "totals": {
+                "uncachedInputTokens": 438655,
+                "outputTokens": 100930,
+                "cacheReadTokens": 16672640,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 9626,
+              "outputTokens": 7376,
+              "cacheReadTokens": 837504,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790927290927
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790782425507,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790927252990,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          },
+          "reason": "重复交付复核：开始复核 disarm 留痕现状"
+        },
+        {
+          "status": "todo",
+          "at": 1790927290927,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          },
+          "reason": "重复交付：本卡不实施（交付物已由 REQ-261001201200-8f8b 交付），退回 todo 待人处置，避免台账谎报在制"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0cf806",
+          "body": "[状态] → in_progress：重复交付复核：开始复核 disarm 留痕现状（reqboard_task_move）",
+          "createdAt": 1790927252990,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          }
+        },
+        {
+          "id": "c-83e474",
+          "body": "[状态] → todo：重复交付：本卡不实施（交付物已由 REQ-261001201200-8f8b 交付），退回 todo 待人处置，避免台账谎报在制（reqboard_task_move）",
+          "createdAt": 1790927290927,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790782425507,
+      "updatedAt": 1790927290927,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790927244756,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "disarm 写 dive-disarm 时追加 system comment",
+          "teardown 不写噪声，插件重启不再刷屏",
+          "运行时 driverHealth 与 activation 意图分离"
+        ]
+      },
+      "lastRun": {
+        "at": 1790927244756,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1cb840",
+      "requirementId": "REQ-260930231831-a8fa",
+      "title": "迁移说明与端到端验证",
+      "cardDoc": "docs/requirements/REQ-260930231831-a8fa/tasks/t-1cb840.md",
+      "description": "跑齐 A1–A6 证据：三条 vitest 合并执行、tsc grep 两条、台账只读判据（activation/roundsInStage）；按 design/test-cases.md 的 T7 做一次真实会话 E2E（对 armed 需求确认一个人工门后 30s 内不敲字，观察会话自动起轮），若当前不便复现则如实标注「未跑 + 原因」，不得静默判过；核对无 schema/客户端改动与回滚路径；把证据写成 docs/requirements/REQ-260930231831-a8fa/verification-draft.md。",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-220e7a",
+        "t-38e435"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/dive-wake-wiring.test.ts tests/agent-deliverer.test.ts tests/dive-round-driver.test.ts` 全绿；`git diff --stat` 仅含 src/wiring/pm-capture-root.ts、src/adapters/AgentDeliverer.ts、src/application/dive/round-driver.ts 与两个测试文件（无 schema/客户端/工具面改动）；verification-draft.md 存在且逐条记录 A1–A6 的证据或「未跑 + 原因」",
+      "implementation": "依次执行：npx vitest run tests/dive-wake-wiring.test.ts tests/agent-deliverer.test.ts tests/dive-round-driver.test.ts；tsc --noEmit -p tsconfig.json 2>&1 | grep -E 'pm-capture-root|agent-deliverer'；git diff --stat 核对改动面；读 ~/.dsh/dsh-reqboard.json 里本需求与任一 armed 需求的 dive 字段做只读判据；把命令、输出摘要、E2E 观察结论（含未跑时的原因）写入 verification-draft.md。",
+      "context": "",
+      "requirementRefs": [],
+      "status": "todo",
+      "blocked": false,
+      "executions": [],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790782425507,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        }
+      ],
+      "comments": [],
+      "version": 2,
+      "createdAt": 1790782425507,
+      "updatedAt": 1790927244874,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1790927244874,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-260930231831-a8fa/reviews/duplicate-review.md"
+        ],
+        "completed": [
+          "tests/dive-wake-e2e.test.ts 在场且全绿",
+          "交付需求验收单 7/7 通过并归档（10-02）",
+          "复核记录落盘：reviews/duplicate-review.md"
+        ]
+      },
+      "lastRun": {
+        "at": 1790927244874,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-812b1b",
+      "requirementId": "REQ-260930231831-a8fa",
+      "title": "对齐投递器装配契约（组合根三参 + 可注入 id 工厂）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/wiring/pm-capture-root.ts:56 附近的构造调用为三参并引入 id 工厂注入（缺省 newCommentId，来自 src/shared/protocol.ts）；CaptureRuntimeDeps 接口增 newMessageId?: () => string 并在 createCaptureRuntime 内解析缺省；src/adapters/AgentDeliverer.ts 构造函数内 this.idFactory = typeof 参数 === 'function' ? 参数 : () => randomUUID()（保持三态返回与永不抛契约不变）；新增 tests/dive-wake-wiring.test.ts：前 20 行带 serves 标注，用例 T1 断言不抛、id 同值、source.kind='dive'。验证：npx vitest run tests/dive-wake-wiring.test.ts；tsc --noEmit -p tsconfig.json 2>&1 | grep pm-capture-root 应无输出。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-dfaada",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "todo",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3d5163",
+          "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082",
+          "trigger": "manual",
+          "startedAt": 1790927314392,
+          "outcome": "cancelled",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082",
+              "seq": 794,
+              "at": 1790927314404,
+              "totals": {
+                "uncachedInputTokens": 441213,
+                "outputTokens": 104523,
+                "cacheReadTokens": 17839616,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082",
+              "seq": 838,
+              "at": 1790927340384,
+              "totals": {
+                "uncachedInputTokens": 444540,
+                "outputTokens": 109368,
+                "cacheReadTokens": 19323392,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 3327,
+              "outputTokens": 4845,
+              "cacheReadTokens": 1483776,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790927340373
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5185ff",
+          "body": "[状态] → in_progress：重复交付复核链：开工走一遍以生成卡文档（不实施代码改动）（reqboard_task_move）",
+          "createdAt": 1790927314392,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          }
+        },
+        {
+          "id": "c-f80513",
+          "body": "[状态] → todo：重复交付：子卡不实施（交付物已由交付需求覆盖），退回 todo 待人处置，避免台账谎报在制（reqboard_task_move）",
+          "createdAt": 1790927340373,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          }
+        }
+      ],
+      "version": 3,
+      "createdAt": 1790927252866,
+      "updatedAt": 1790927340373,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790927252866,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790927314392,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          },
+          "reason": "重复交付复核链：开工走一遍以生成卡文档（不实施代码改动）"
+        },
+        {
+          "status": "todo",
+          "at": 1790927340373,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-efdc21df-1dea-4d14-8dbd-ef80756f9082"
+          },
+          "reason": "重复交付：子卡不实施（交付物已由交付需求覆盖），退回 todo 待人处置，避免台账谎报在制"
+        }
+      ],
+      "layer": 0
+    },
+    {
+      "id": "t-f11373",
+      "requirementId": "REQ-260930231831-a8fa",
+      "title": "对齐投递器装配契约（组合根三参 + 可注入 id 工厂）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-812b1b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/wiring/pm-capture-root.ts:56 附近的构造调用为三参并引入 id 工厂注入（缺省 newCommentId，来自 src/shared/protocol.ts）；CaptureRuntimeDeps 接口增 newMessageId?: () => string 并在 createCaptureRuntime 内解析缺省；src/adapters/AgentDeliverer.ts 构造函数内 this.idFactory = typeof 参数 === 'function' ? 参数 : () => randomUUID()（保持三态返回与永不抛契约不变）；新增 tests/dive-wake-wiring.test.ts：前 20 行带 serves 标注，用例 T1 断言不抛、id 同值、source.kind='dive'。验证：npx vitest run tests/dive-wake-wiring.test.ts；tsc --noEmit -p tsconfig.json 2>&1 | grep pm-capture-root 应无输出。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-dfaada",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "todo",
+      "blocked": false,
+      "executions": [],
+      "comments": [],
+      "version": 1,
+      "createdAt": 1790927252866,
+      "updatedAt": 1790927252866,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "system"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790927252866,
+          "by": {
+            "kind": "system"
+          }
+        }
+      ],
+      "layer": 1
+    },
+    {
+      "id": "t-fde20c",
+      "requirementId": "REQ-260930231831-a8fa",
+      "title": "对齐投递器装配契约（组合根三参 + 可注入 id 工厂）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-f11373"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 src/wiring/pm-capture-root.ts:56 附近的构造调用为三参并引入 id 工厂注入（缺省 newCommentId，来自 src/shared/protocol.ts）；CaptureRuntimeDeps 接口增 newMessageId?: () => string 并在 createCaptureRuntime 内解析缺省；src/adapters/AgentDeliverer.ts 构造函数内 this.idFactory = typeof 参数 === 'function' ? 参数 : () => randomUUID()（保持三态返回与永不抛契约不变）；新增 tests/dive-wake-wiring.test.ts：前 20 行带 serves 标注，用例 T1 断言不抛、id 同值、source.kind='dive'。验证：npx vitest run tests/dive-wake-wiring.test.ts；tsc --noEmit -p tsconfig.json 2>&1 | grep pm-capture-root 应无输出。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-dfaada",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "todo",
+      "blocked": false,
+      "executions": [],
+      "comments": [],
+      "version": 1,
+      "createdAt": 1790927252866,
+      "updatedAt": 1790927252866,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "system"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790927252866,
+          "by": {
+            "kind": "system"
+          }
+        }
+      ],
+      "layer": 2
+    },
+    {
+      "id": "t-439654",
+      "requirementId": "REQ-260930231831-a8fa",
+      "title": "disarm 写台账留痕（停摆可见）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/application/dive/round-driver.ts 的 disarm 函数：在 mutate 回调内 r.comments.push({ id: 'c-dive-disarm-' + ports.now(), body: '[Dive] 已解除武装（手动模式）：' + reason, createdAt: ports.now(), createdBy: { kind: 'system' } })，与既有 r.dive.activation='disarmed' / lastActiveAt 同一次写入；不动 drive()/pre-step/准入逻辑。测试：tests/dive-round-driver.test.ts 的 harness 已支持 delivery.deliverMessage 返回失败，据此断言 comment 存在与 reason 命中，以及第二次调用不新增。验证：npx vitest run tests/dive-round-driver.test.ts。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-38e435",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "todo",
+      "blocked": false,
+      "executions": [],
+      "comments": [],
+      "version": 1,
+      "createdAt": 1790927252990,
+      "updatedAt": 1790927252990,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "system"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790927252990,
+          "by": {
+            "kind": "system"
+          }
+        }
+      ],
+      "layer": 0
+    },
+    {
+      "id": "t-6a1727",
+      "requirementId": "REQ-260930231831-a8fa",
+      "title": "disarm 写台账留痕（停摆可见）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-439654"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/application/dive/round-driver.ts 的 disarm 函数：在 mutate 回调内 r.comments.push({ id: 'c-dive-disarm-' + ports.now(), body: '[Dive] 已解除武装（手动模式）：' + reason, createdAt: ports.now(), createdBy: { kind: 'system' } })，与既有 r.dive.activation='disarmed' / lastActiveAt 同一次写入；不动 drive()/pre-step/准入逻辑。测试：tests/dive-round-driver.test.ts 的 harness 已支持 delivery.deliverMessage 返回失败，据此断言 comment 存在与 reason 命中，以及第二次调用不新增。验证：npx vitest run tests/dive-round-driver.test.ts。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-38e435",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "todo",
+      "blocked": false,
+      "executions": [],
+      "comments": [],
+      "version": 1,
+      "createdAt": 1790927252990,
+      "updatedAt": 1790927252990,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "system"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790927252990,
+          "by": {
+            "kind": "system"
+          }
+        }
+      ],
+      "layer": 1
+    },
+    {
+      "id": "t-2ace1c",
+      "requirementId": "REQ-260930231831-a8fa",
+      "title": "disarm 写台账留痕（停摆可见）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-6a1727"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 src/application/dive/round-driver.ts 的 disarm 函数：在 mutate 回调内 r.comments.push({ id: 'c-dive-disarm-' + ports.now(), body: '[Dive] 已解除武装（手动模式）：' + reason, createdAt: ports.now(), createdBy: { kind: 'system' } })，与既有 r.dive.activation='disarmed' / lastActiveAt 同一次写入；不动 drive()/pre-step/准入逻辑。测试：tests/dive-round-driver.test.ts 的 harness 已支持 delivery.deliverMessage 返回失败，据此断言 comment 存在与 reason 命中，以及第二次调用不新增。验证：npx vitest run tests/dive-round-driver.test.ts。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-38e435",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "todo",
+      "blocked": false,
+      "executions": [],
+      "comments": [],
+      "version": 1,
+      "createdAt": 1790927252990,
+      "updatedAt": 1790927252990,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "system"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790927252990,
+          "by": {
+            "kind": "system"
+          }
+        }
+      ],
+      "layer": 2
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-dfaada",
+      "to": "t-220e7a"
+    },
+    {
+      "from": "t-220e7a",
+      "to": "t-1cb840"
+    },
+    {
+      "from": "t-38e435",
+      "to": "t-1cb840"
+    },
+    {
+      "from": "t-812b1b",
+      "to": "t-f11373"
+    },
+    {
+      "from": "t-f11373",
+      "to": "t-fde20c"
+    },
+    {
+      "from": "t-439654",
+      "to": "t-6a1727"
+    },
+    {
+      "from": "t-6a1727",
+      "to": "t-2ace1c"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-dfaada",
+        "t-38e435",
+        "t-812b1b",
+        "t-439654"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-220e7a",
+        "t-f11373",
+        "t-6a1727"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-1cb840",
+        "t-fde20c",
+        "t-2ace1c"
+      ]
+    }
+  ],
+  "ready": [
+    "t-dfaada",
+    "t-38e435",
+    "t-812b1b",
+    "t-439654"
+  ],
+  "updated_at": "2026-10-02T07:49:00.385Z"
+}

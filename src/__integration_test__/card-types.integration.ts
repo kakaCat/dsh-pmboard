@@ -12,8 +12,6 @@ import {
   getPhaseColor,
   getSideColor,
   getStatusColor,
-  type PhaseColorFamily,
-  type Side,
   type TaskRole,
   type TaskStatus
 } from '../domain/card-types.js';

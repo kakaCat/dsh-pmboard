@@ -1,0 +1,13 @@
+# case D2 · 链失败暂停后人工处置再续跑 · serves: FR-2
+case: D2
+checks:
+  - path: requirement.autoRun             # 链保持开启
+    op: eq
+    value: true
+  - path: requirement.pauseReason         # 人工处置续跑后，暂停原因已清除
+    op: absent
+  - path: requirement.activeRun.jobStatus # 续跑后恢复 running/completed
+    op: matches
+    value: ^(running|completed)$
+# 注：「续跑后 stepIndex 前进」需比对第一轮暂停快照与终态快照的 stepIndex，人工核对（静态断言无法表达跨快照比较）。
+# 注：「不自动重试」由轨迹断言 budget/forbidden 保证（收到用户处置消息前不得第二次 task_run）。

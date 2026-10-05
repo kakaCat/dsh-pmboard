@@ -1,0 +1,296 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261002153446-c600
+  generated_at: 2026-10-02T07:37:58.497Z
+  version: 25
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-02T07:42:52.984Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/architecture.md#目标与总体方案
+      title: 目标与总体方案 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 目标与总体方案
+    - ref: design/architecture.md#模块改动地图
+      title: 模块改动地图 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 模块改动地图
+    - ref: design/architecture.md#依赖与分层
+      title: 依赖与分层 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 依赖与分层
+    - ref: design/architecture.md#关键流程
+      title: 关键流程 `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/architecture.md
+      section: 关键流程
+    - ref: design/architecture.md#失败模式与错误处理
+      title: 失败模式与错误处理 `
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: 失败模式与错误处理
+    - ref: design/architecture.md#安全与回滚
+      title: 安全与回滚 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 安全与回滚
+    - ref: design/data-model.md#类型变更
+      title: 类型变更 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/data-model.md
+      section: 类型变更
+    - ref: design/data-model.md#宿主侧数据只读
+      title: 宿主侧数据（只读） `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 宿主侧数据只读
+    - ref: design/data-model.md#兼容性与迁移
+      title: 兼容性与迁移 `
+      serves:
+        - FR-2
+        - FR-4
+      file: design/data-model.md
+      section: 兼容性与迁移
+    - ref: design/interfaces.md#I-1-jumpToSession-行为契约
+      title: I-1 · jumpToSession 行为契约 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/interfaces.md
+      section: I-1-jumpToSession-行为契约
+    - ref: design/interfaces.md#I-2-workspaces-服务调用契约
+      title: I-2 · workspaces 服务调用契约 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: I-2-workspaces-服务调用契约
+    - ref: design/interfaces.md#I-3-chip-渲染契约
+      title: I-3 · chip 渲染契约 `
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: I-3-chip-渲染契约
+    - ref: design/interfaces.md#I-4-结果文案契约
+      title: I-4 · 结果文案契约 `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: I-4-结果文案契约
+    - ref: design/interfaces.md#I-5-错误语义
+      title: I-5 · 错误语义 `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: I-5-错误语义
+    - ref: design/use-cases.md#UC-1-从看板回到已归档窗口
+      title: UC-1 · 从看板回到已归档窗口 `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/use-cases.md
+      section: UC-1-从看板回到已归档窗口
+    - ref: design/use-cases.md#UC-2-恢复失败动作抛错
+      title: UC-2 · 恢复失败（动作抛错） `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-2-恢复失败动作抛错
+    - ref: design/use-cases.md#UC-3-客户端不支持取消归档
+      title: UC-3 · 客户端不支持取消归档 `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-3-客户端不支持取消归档
+    - ref: design/use-cases.md#非目标本需求不做
+      title: 非目标（本需求不做） `
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: 非目标本需求不做
+outputs:
+  tasks:
+    - id: t-30f65b
+      title: 点已归档窗口能回到那个会话：先取消归档、再打开
+      implements: "改 src/client/session-jump.ts：① WorkspacesServiceFace 增 unarchiveSession?(sessionId: string): Promise<void>；② SessionJumpResult 增 'restore-failed'；③ jumpToSession 内新增 restoreIfArchived(sid) 辅助：未归档→undefined；无能力→'archived'；调用抛错→'restore-failed'（console.error 留痕）；成功→undefined；在两个 inList 分支用其替换原 if(isArchived) return 'archived'；④ handleSessionJump 删除 archivedSessionIds().has(sid) 的提前 window.alert 拦截，switch 增 'restore-failed' 与改写 'archived' 文案。验证：npx vitest run tests/session-jump.test.ts"
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-54bec3
+      title: 点之前就看得见会发生什么：chip 与失败提示的文案
+      implements: 改 src/client/render/dom-utils.ts：sessionChipHtml 的 archived 分支 title 改为 `${kind}已归档（${sid}）：点击取消归档并打开`（类名/属性不变，仍是可点 jump-session 按钮）。改 src/client/board-mount.ts：jumpResultMessage 增 case 'restore-failed' 返回「取消归档失败（sid）：会话未恢复，未跳转（可到会话列表手动恢复后重试）」；case 'archived' 补「客户端不支持取消归档」；case 'unavailable' 文案含「暂不可用」。验证：npx vitest run tests/board-info-fixes.test.ts
+      serves:
+        - FR-2
+        - FR-3
+      depends_on:
+        - t-30f65b
+      phase: implement
+      side: frontend
+    - id: t-b7b87a
+      title: 兼容与回归：旧客户端语义、幂等、类型与客户端构建
+      implements: ① tests/session-jump.test.ts 补 TC-4（未归档 sid 的时间线不含 unarchive，顺序与既有断言一致）；② 跑 npx vitest run tests/session-jump.test.ts tests/board-info-fixes.test.ts 全绿；③ npm run typecheck 与 HEAD 基线比对（不得新增错误）；④ pnpm build:client 必须输出 [verify-client] OK（规范 C-12）；⑤ 证据写进 docs/requirements/REQ-261002153446-c600/tests/test-evidence.md
+      serves:
+        - FR-4
+        - FR-5
+      depends_on:
+        - t-54bec3
+      phase: test
+      side: frontend
+    - id: t-ccf428
+      title: 点已归档窗口能回到那个会话：先取消归档、再打开·研发
+      implements: |-
+        改 src/client/session-jump.ts：① WorkspacesServiceFace 增 unarchiveSession?(sessionId: string): Promise<void>；② SessionJumpResult 增 'restore-failed'；③ jumpToSession 内新增 restoreIfArchived(sid) 辅助：未归档→undefined；无能力→'archived'；调用抛错→'restore-failed'（console.error 留痕）；成功→undefined；在两个 inList 分支用其替换原 if(isArchived) return 'archived'；④ handleSessionJump 删除 archivedSessionIds().has(sid) 的提前 window.alert 拦截，switch 增 'restore-failed' 与改写 'archived' 文案。验证：npx vitest run tests/session-jump.test.ts
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-e5fd69
+      title: 点已归档窗口能回到那个会话：先取消归档、再打开·测试
+      implements: |-
+        改 src/client/session-jump.ts：① WorkspacesServiceFace 增 unarchiveSession?(sessionId: string): Promise<void>；② SessionJumpResult 增 'restore-failed'；③ jumpToSession 内新增 restoreIfArchived(sid) 辅助：未归档→undefined；无能力→'archived'；调用抛错→'restore-failed'（console.error 留痕）；成功→undefined；在两个 inList 分支用其替换原 if(isArchived) return 'archived'；④ handleSessionJump 删除 archivedSessionIds().has(sid) 的提前 window.alert 拦截，switch 增 'restore-failed' 与改写 'archived' 文案。验证：npx vitest run tests/session-jump.test.ts
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-ccf428
+      phase: implement
+      side: frontend
+    - id: t-2c76c3
+      title: 点之前就看得见会发生什么：chip 与失败提示的文案·研发
+      implements: |-
+        改 src/client/render/dom-utils.ts：sessionChipHtml 的 archived 分支 title 改为 `${kind}已归档（${sid}）：点击取消归档并打开`（类名/属性不变，仍是可点 jump-session 按钮）。改 src/client/board-mount.ts：jumpResultMessage 增 case 'restore-failed' 返回「取消归档失败（sid）：会话未恢复，未跳转（可到会话列表手动恢复后重试）」；case 'archived' 补「客户端不支持取消归档」；case 'unavailable' 文案含「暂不可用」。验证：npx vitest run tests/board-info-fixes.test.ts
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-30f65b
+      phase: implement
+      side: frontend
+    - id: t-8e6f26
+      title: 点之前就看得见会发生什么：chip 与失败提示的文案·测试
+      implements: |-
+        改 src/client/render/dom-utils.ts：sessionChipHtml 的 archived 分支 title 改为 `${kind}已归档（${sid}）：点击取消归档并打开`（类名/属性不变，仍是可点 jump-session 按钮）。改 src/client/board-mount.ts：jumpResultMessage 增 case 'restore-failed' 返回「取消归档失败（sid）：会话未恢复，未跳转（可到会话列表手动恢复后重试）」；case 'archived' 补「客户端不支持取消归档」；case 'unavailable' 文案含「暂不可用」。验证：npx vitest run tests/board-info-fixes.test.ts
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-2c76c3
+      phase: implement
+      side: frontend
+    - id: t-3457a2
+      title: 兼容与回归：旧客户端语义、幂等、类型与客户端构建·校验
+      implements: |-
+        ① tests/session-jump.test.ts 补 TC-4（未归档 sid 的时间线不含 unarchive，顺序与既有断言一致）；② 跑 npx vitest run tests/session-jump.test.ts tests/board-info-fixes.test.ts 全绿；③ npm run typecheck 与 HEAD 基线比对（不得新增错误）；④ pnpm build:client 必须输出 [verify-client] OK（规范 C-12）；⑤ 证据写进 docs/requirements/REQ-261002153446-c600/tests/test-evidence.md
+
+        [子卡阶段·校验] 只做本阶段；验收：校验项逐条给出结果：`npx vitest run <校验用例>` → 全绿；异常项已列出并标注影响面
+      serves: []
+      depends_on:
+        - t-54bec3
+      phase: test
+      side: frontend
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与总体方案:
+      - t-30f65b
+      - t-54bec3
+    design/architecture.md#模块改动地图:
+      - t-30f65b
+      - t-54bec3
+    design/architecture.md#依赖与分层:
+      - t-30f65b
+      - t-54bec3
+    design/architecture.md#关键流程:
+      - t-30f65b
+      - t-b7b87a
+    design/architecture.md#失败模式与错误处理:
+      - t-30f65b
+      - t-54bec3
+    design/architecture.md#安全与回滚:
+      - t-30f65b
+      - t-54bec3
+    design/data-model.md#类型变更:
+      - t-30f65b
+      - t-54bec3
+    design/data-model.md#宿主侧数据只读:
+      - t-30f65b
+    design/data-model.md#兼容性与迁移:
+      - t-30f65b
+      - t-54bec3
+      - t-b7b87a
+    design/interfaces.md#I-1-jumpToSession-行为契约:
+      - t-30f65b
+      - t-54bec3
+      - t-b7b87a
+    design/interfaces.md#I-2-workspaces-服务调用契约:
+      - t-30f65b
+      - t-54bec3
+    design/interfaces.md#I-3-chip-渲染契约:
+      - t-54bec3
+    design/interfaces.md#I-4-结果文案契约:
+      - t-30f65b
+      - t-54bec3
+    design/interfaces.md#I-5-错误语义:
+      - t-30f65b
+      - t-54bec3
+    design/use-cases.md#UC-1-从看板回到已归档窗口:
+      - t-30f65b
+      - t-54bec3
+    design/use-cases.md#UC-2-恢复失败动作抛错:
+      - t-30f65b
+      - t-54bec3
+    design/use-cases.md#UC-3-客户端不支持取消归档:
+      - t-30f65b
+      - t-54bec3
+    design/use-cases.md#非目标本需求不做:
+      - t-30f65b
+      - t-b7b87a
+  fr_to_tasks:
+    FR-1:
+      - t-30f65b
+      - t-54bec3
+      - t-b7b87a
+    FR-2:
+      - t-30f65b
+      - t-54bec3
+      - t-b7b87a
+    FR-3:
+      - t-30f65b
+      - t-54bec3
+    FR-4:
+      - t-30f65b
+      - t-b7b87a
+      - t-54bec3
+coverage:
+  implementation:
+    total: 18
+    covered: 18
+    uncovered: []
+    rate: 100
+    total_designs: 18
+    covered_designs: 18

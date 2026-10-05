@@ -9,12 +9,12 @@
  *
  * 走真实 HTTP 路由（不起真服务器），证明行为在**看板写路径**（不是用例内部）。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import { createReqboardHandler } from '../src/http/routes.js'
@@ -31,12 +31,12 @@ const B = (n: number): TokenBuckets => ({ uncachedInputTokens: n, outputTokens: 
 const snap = (n: number, sessionId: string = W): TokenSnapshot => ({ sessionId, at: 1000 + n, totals: B(n), source: 'projection' })
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let taskStore: QueueTaskStore
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-task-move-snap-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   // 任务唯一存储 = 队列（REQ-260927202051-f6df：v9 台账已无 tasks 通道）
   taskStore = new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: dir }), now: () => 100 })
 })
@@ -117,7 +117,7 @@ describe('REQ-260927121324-abde t4 · 看板 task/move 的写时快照', () => {
   it('带 sessionId：开工写 start、完工写 end/delta，读路径无缺口', async () => {
     await seedBoard(true)
     let current = snap(2)
-    const handler = createReqboardHandler({ store, taskStore, now: () => 100, tokenSnapshot: (k: string) => (k === W ? current : undefined) })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore, now: () => 100, tokenSnapshot: (k: string) => (k === W ? current : undefined) })
 
     const open = await post(handler, '/task/move', { id: 't-tm0001', to: 'in_progress', sessionId: W })
     expect(open.statusCode).toBe(200)
@@ -144,7 +144,7 @@ describe('REQ-260927121324-abde t4 · 看板 task/move 的写时快照', () => {
   it('无 sessionId：不写任何 token 字段，读路径如实 degraded（缺失不用 0 冒充）', async () => {
     await seedBoard(false)
     // 快照源其实可得——但只要请求没带会话，就不该去猜属于谁
-    const handler = createReqboardHandler({ store, taskStore, now: () => 100, tokenSnapshot: () => snap(9) })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore, now: () => 100, tokenSnapshot: () => snap(9) })
 
     await post(handler, '/task/move', { id: 't-tm0001', to: 'in_progress' })
     await post(handler, '/task/move', { id: 't-tm0001', to: 'testing' })

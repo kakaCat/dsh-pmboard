@@ -10,18 +10,18 @@
  * 写盘位置：测试在临时 cwd 下进行（process.chdir），docs/requirements/<REQ>/tasks/
  * 落盘到临时目录，afterEach 递归清理。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { defineTaskReportTool, defineDecomposeTool, definePlanSubmitTool, stubDocFile } from './helpers/tool-deps.js'
 import type { RequirementRecord, RequirementStatus } from '../src/shared/protocol.js'
 
 const W = 'session-abc-123'
 let dir: string
 let prevCwd: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let report: { execute: (a: unknown, e: unknown) => Promise<any> }
 let decompose: { execute: (a: unknown, e: unknown) => Promise<any> }
 let planTool: { execute: (a: unknown, e: unknown) => Promise<any> }
@@ -30,7 +30,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-report-'))
   prevCwd = process.cwd()
   process.chdir(dir)
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   const deps = { store, now: () => Date.now() } as never
   report = defineTaskReportTool(deps) as never
   decompose = defineDecomposeTool(deps) as never
@@ -51,7 +51,7 @@ async function seed(status: RequirementStatus = 'decomposing', sourceSessionId: 
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
     statusHistory: [{ status: 'draft', at: 1, by: { kind: 'human' } }],
   } as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
   return r
 }
 
@@ -65,10 +65,9 @@ const TWO_TASKS = [
 
 async function planAndApprove(tasks: unknown = TWO_TASKS): Promise<void> {
   await run(planTool, { path: 'docs/requirements/REQ-abc123/plan.md', summary: '摘要', tasks })
-  await store.mutate('requirement-updated', (l) => {
-    const r = l.requirements[0]
+  await store.mutate('REQ-abc123', (r) => {
     if (r.plan !== undefined) { r.plan.approvedAt = 1000; r.plan.approvedBy = { kind: 'human' } }
-    return { requirements: [r] }
+    return { changed: true }
   })
 }
 
@@ -110,7 +109,7 @@ describe('reqboard_task_report 汇报落盘 + 登记', () => {
     expect(text).toContain('客户端渲染')
 
     // 台账校验：artifact 登记 + 评论（decompose 会登记 plan/decomposition/task_detail，这里只查 task_detail）
-    const req = store.snapshot().requirements.find(r => r.id === 'REQ-abc123')!
+    const req = store.peek('REQ-abc123')!
     const taskDetail = req.artifacts!.find(a => a.kind === 'task_detail' && a.path === out.doc_path)
     expect(taskDetail).toBeDefined()
     expect(taskDetail!.stage).toBe('implementing')
@@ -181,7 +180,7 @@ describe('reqboard_task_report 幂等', () => {
     expect(text).toContain('第二次汇报')
 
     // 同 path 的 artifact 只有一条（幂等）；TWO_TASKS 有 2 个任务所以共 2 条 task_detail
-    const req = store.snapshot().requirements.find(r => r.id === 'REQ-abc123')!
+    const req = store.peek('REQ-abc123')!
     const taskArtifacts = req.artifacts!.filter(a => a.kind === 'task_detail' && a.path === first.doc_path)
     expect(taskArtifacts).toHaveLength(1)
   })

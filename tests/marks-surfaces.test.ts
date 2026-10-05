@@ -62,7 +62,9 @@ const DECOMP_MD = [
 function fakeDocs(files: Record<string, string>) {
   const store: Record<string, string> = { ...files }
   return {
+
     store,
+
     docs: {
       exists: (p: string): boolean => Object.prototype.hasOwnProperty.call(store, p),
       read: async (p: string): Promise<string> => {

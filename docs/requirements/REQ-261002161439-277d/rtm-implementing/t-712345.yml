@@ -1,0 +1,38 @@
+task:
+  id: t-712345
+  title: 一处原子写、一处分片 IO：仓储与原子写搬迁
+  status: done
+  implements: ① 新增 src/repositories/atomicWrite.ts，把 persistAtomic（temp → fsync → rename）从 src/adapters/JsonLedgerRepository.ts 原样迁出（保留临时文件名与同文件系统语义），JsonLedgerRepository 与 QueueRepository 改从此处 import——全仓只留一处实现；② 新增 src/repositories/RequirementShardRepository.ts：分片目录 IO 唯一入口，方法 readRecord/readJournal/readObject、writeRecordAtomic/writeObjectAtomic/appendJournal（追加前按计数截断未提交尾行）、moveToCold/moveFromCold、listHotIds/listColdIds、坏文件改名隔离（<file>.corrupt-<ts> + onWarn）；fs 能力经构造参数注入（供写/读探针接入），结构校验先于任何写。配 tests/reqboard/shard-repository.test.ts。
+  serves:
+    - FR-1
+    - FR-2
+  depends_on:
+    - t-061b26
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002161439-277d
+    TASK_ID: t-712345
+    TASK_TITLE: 一处原子写、一处分片 IO：仓储与原子写搬迁
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-02T08:57:23.907Z
+      completed_at: 2026-10-02T09:03:19.345Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002161439-277d
+  generated_at: 2026-10-02T08:35:34.631Z
+  version: 5
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-02T10:16:10.718Z

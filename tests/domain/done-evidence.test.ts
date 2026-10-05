@@ -45,9 +45,17 @@ describe('checkDoneEvidence：四重校验', () => {
   })
 
   it('③ 60s 内刚关闭同需求任务 → REQBOARD_BULK_CLOSE', () => {
-    const v = checkDoneEvidence(input({ recentDoneTask: { id: 't-abc123', title: '别的任务' } }))
+    // REQ-261001154450-b918 FR-4：文案从"稍后再试"改为给出**确定等待时间**与合规路径
+    // （原来只有模糊措辞，8475 实测 agent 据此硬等了 32 次 sleep 62）。
+    const v = checkDoneEvidence(input({
+      recentDoneTask: { id: 't-abc123', title: '别的任务' },
+      throttleRemainingMs: 42_000,
+    }))
     expect(v).toMatchObject({ ok: false, code: 'REQBOARD_BULK_CLOSE' })
-    if (!v.ok) expect(v.reason).toContain('60 秒内刚关闭了任务 t-abc123')
+    if (!v.ok) {
+      expect(v.reason).toContain('t-abc123')
+      expect(v.reason).toContain('还需等待约 42 秒')
+    }
   })
 
   it('④ 页面插件任务：未构建 → STALE_BUILD；构建陈旧 → STALE_BUILD；新于 src → 通过', () => {

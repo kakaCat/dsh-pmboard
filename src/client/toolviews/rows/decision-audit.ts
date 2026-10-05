@@ -3,14 +3,21 @@
  * 折叠行：决策留痕 · <类型> · <标的>；展开：推理、参数。
  * @module dsh-pmboard/client/toolviews/rows
  */
-import { strOf, firstLine, resultText, isSettled, cnLabel, AUDIT_ACTION, type CardSummarize } from '../shared.ts'
+import { strOf, firstLine, resultText, isSettled, cnLabel, AUDIT_ACTION, ERROR_CATEGORY, PM_TOOL_BADGE, type CardSummarize } from '../shared.ts'
 import type { BizCard } from '../biz-row.ts'
 
 export const decisionAuditSummarize: CardSummarize = (args, result, block) => {
   const action = strOf(args, 'action')
   if (action === undefined) return null
   const err = isSettled(block) && block.isError === true
-  if (err) return { icon: '❌', line: `决策审计失败：${firstLine(resultText(block)).slice(0, 60)}`, isError: true }
+  if (err) {
+    const why = firstLine(resultText(block)).slice(0, 60)
+    const code = isSettled(block) ? block.error?.code : undefined
+    const errorHint = code !== undefined && ERROR_CATEGORY[code] !== undefined
+      ? `错误类别：${ERROR_CATEGORY[code]}。请检查参数后重试。`
+      : '请检查参数后重试'
+    return { icon: '❌', line: `决策审计失败：${why}`, isError: true, badge: PM_TOOL_BADGE, errorDetail: why, errorHint }
+  }
   const actionCn = cnLabel(AUDIT_ACTION, action) ?? action
   const dtype = strOf(args, 'decision_type') ?? strOf(args, 'decision_subtype')
   const params = args?.parameters as Record<string, unknown> | undefined
@@ -24,7 +31,7 @@ export const decisionAuditSummarize: CardSummarize = (args, result, block) => {
   }
   const decisionId = strOf(result, 'decision_id')
   if (decisionId !== undefined) details.push(['决策 ID', decisionId])
-  return { icon: '📝', line, details }
+  return { icon: '📝', line, badge: PM_TOOL_BADGE, details }
 }
 
-export const decisionAuditCard: BizCard = { key: 'decision_audit', title: '决策审计', icon: '📝', summarize: decisionAuditSummarize }
+export const decisionAuditCard: BizCard = { key: 'decision_audit', title: '决策审计', icon: '📝', badge: PM_TOOL_BADGE, summarize: decisionAuditSummarize }

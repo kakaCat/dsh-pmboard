@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>需求详情页排版方案对照 — REQ-261004222448-292a</title>
+<!--
+  排版方案对照稿 · REQ-261004222448-292a
+  用途：内容完全相同（结论头 / 缺口与提醒 / 产物与五道门禁 三种形态），只换**排版系统**，供挑选。
+
+  ?v=1  长文档式：无卡片边框，靠字阶 + 分隔线 + 留白；阅读宽度 ~760px 居中
+  ?v=2  两栏式：左窄栏放段名与说明（小字灰），右宽栏放内容；表格通栏
+  ?v=3  卡片精简式：保留卡片但去嵌套、去整块底色，段头用左侧色条；首屏两栏压缩
+
+  三种都不改内容与信息架构（那部分已定稿），只解决"排版"这一层。
+-->
+<style>
+:root {
+  --pm-line: rgba(128,128,128,.2); --pm-line-soft: rgba(128,128,128,.12);
+  --pm-text: #1d1d1f; --pm-text2: #5f6368; --pm-text3: #9aa0a6;
+  --pm-accent: #4a7dff; --pm-ok: #28a745; --pm-danger: #dc3545; --pm-warn: #b07800;
+  --pm-implementing: #4a7dff;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: #fff; color: var(--pm-text);
+  font: 13px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.variant { display: none; }
+body[data-v="1"] .v1 { display: block; }
+body[data-v="2"] .v2 { display: block; }
+body[data-v="3"] .v3 { display: block; }
+
+/* 原型工具条 */
+.bar { position: sticky; top: 0; z-index: 30; background: #1d1d1f; color: #fff; padding: 9px 16px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; }
+.bar .hint { opacity: .7; }
+.btn { border: 1px solid rgba(255,255,255,.3); background: transparent; color: #fff;
+  border-radius: 999px; padding: 3px 11px; font-size: 11.5px; cursor: pointer; }
+.btn[data-on="1"] { background: #fff; color: #1d1d1f; border-color: #fff; font-weight: 600; }
+
+/* 共用原子 */
+.badge { font-size: 11px; font-weight: 600; border-radius: 999px; padding: 1px 9px;
+  background: rgba(74,125,255,.12); color: var(--pm-accent); }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; vertical-align: middle; }
+.dot.red { background: var(--pm-danger); } .dot.yellow { background: #f0a020; } .dot.gray { background: #c4c8ce; }
+.ok { color: #1e7e34; } .warn { color: var(--pm-warn); } .bad { color: #b42318; }
+.mut { color: var(--pm-text3); }
+.stages { display: flex; gap: 4px; max-width: 420px; }
+.stage { flex: 1; }
+.stage i { display: block; height: 4px; border-radius: 999px; background: rgba(128,128,128,.18); }
+.stage.done i { background: var(--pm-ok); } .stage.cur i { background: var(--pm-implementing); }
+.stage span { display: block; margin-top: 4px; font-size: 10px; color: var(--pm-text3); text-align: center; }
+.stage.done span, .stage.cur span { color: var(--pm-text); font-weight: 600; }
+
+/* ===================== V1 长文档式 ===================== */
+.v1 .page { max-width: 760px; margin: 0 auto; padding: 28px 24px 60px; }
+.v1 h1 { font-size: 24px; line-height: 1.35; margin: 0 0 8px; font-weight: 650; letter-spacing: -.2px; }
+.v1 .meta { font-size: 12px; color: var(--pm-text3); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.v1 .verdict { margin: 16px 0 0; padding: 0 0 0 14px; border-left: 3px solid var(--pm-implementing); font-size: 13.5px; }
+.v1 section { margin-top: 34px; }
+.v1 h2 { font-size: 15px; font-weight: 650; margin: 0 0 4px; }
+.v1 h2 .n { color: var(--pm-text3); font-weight: 500; margin-right: 8px; }
+.v1 .sub { font-size: 11.5px; color: var(--pm-text3); margin: 0 0 12px; }
+.v1 table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.v1 th { text-align: left; font-size: 10.5px; letter-spacing: .4px; color: var(--pm-text3);
+  font-weight: 600; text-transform: uppercase; padding: 0 10px 6px 0; border-bottom: 1px solid var(--pm-line); }
+.v1 td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--pm-line-soft); vertical-align: top; }
+.v1 .gap { padding: 9px 0; border-bottom: 1px solid var(--pm-line-soft); }
+.v1 .gap:last-child { border-bottom: 0; }
+.v1 .gap .why { color: var(--pm-text2); font-size: 12px; }
+
+/* ===================== V2 两栏式 ===================== */
+.v2 .page { max-width: 1080px; margin: 0 auto; padding: 26px 24px 60px; }
+.v2 .sec { display: grid; grid-template-columns: 168px 1fr; gap: 24px; padding: 20px 0; border-top: 1px solid var(--pm-line); }
+.v2 .sec:first-child { border-top: 0; padding-top: 0; }
+.v2 .rail .n { font-size: 10.5px; color: var(--pm-text3); letter-spacing: .6px; }
+.v2 .rail h2 { font-size: 13.5px; margin: 2px 0 4px; font-weight: 650; }
+.v2 .rail .sub { font-size: 11.5px; color: var(--pm-text3); line-height: 1.5; }
+.v2 .body-col h1 { font-size: 22px; margin: 0 0 8px; font-weight: 650; letter-spacing: -.2px; }
+.v2 .meta { font-size: 12px; color: var(--pm-text3); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.v2 .verdict { margin: 14px 0 0; font-size: 13.5px; }
+.v2 table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.v2 th { text-align: left; font-size: 11px; color: var(--pm-text2); font-weight: 600;
+  padding: 6px 10px; background: rgba(128,128,128,.045); border-bottom: 1px solid var(--pm-line); white-space: nowrap; }
+.v2 td { padding: 7px 10px; border-bottom: 1px solid var(--pm-line-soft); vertical-align: top; }
+.v2 .gap { display: grid; grid-template-columns: 16px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--pm-line-soft); }
+.v2 .gap:last-child { border-bottom: 0; }
+.v2 .gap .why { color: var(--pm-text2); font-size: 11.5px; }
+
+/* ===================== V3 卡片精简式 ===================== */
+.v3 .page { max-width: 1120px; margin: 0 auto; padding: 20px 20px 60px; }
+.v3 .card { border: 1px solid var(--pm-line); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background: #fff; }
+.v3 .card.accent { border-left: 3px solid var(--pm-implementing); }
+.v3 .row2 { display: grid; grid-template-columns: 1.9fr 1fr; gap: 12px; align-items: start; }
+.v3 h1 { font-size: 19px; margin: 6px 0 6px; font-weight: 650; }
+.v3 h2 { font-size: 13px; margin: 0 0 8px; font-weight: 650; display: flex; align-items: center; gap: 7px; }
+.v3 .meta { font-size: 11.5px; color: var(--pm-text3); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.v3 .verdict { font-size: 12.5px; margin-top: 10px; }
+.v3 table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.v3 th { text-align: left; font-size: 10.5px; color: var(--pm-text2); font-weight: 600; padding: 5px 8px;
+  background: rgba(128,128,128,.05); border-bottom: 1px solid var(--pm-line); }
+.v3 td { padding: 6px 8px; border-bottom: 1px solid var(--pm-line-soft); vertical-align: top; }
+.v3 tbody tr:nth-child(even) td { background: rgba(128,128,128,.02); }
+.v3 .gap { padding: 6px 0; border-bottom: 1px dashed var(--pm-line-soft); font-size: 12.5px; }
+.v3 .gap:last-child { border-bottom: 0; }
+.v3 .gap .why { color: var(--pm-text2); font-size: 11px; }
+.legend { max-width: 1120px; margin: 0 auto 40px; padding: 12px 16px; border: 1px dashed var(--pm-line);
+  border-radius: 10px; font-size: 12px; color: var(--pm-text2); }
+</style>
+</head>
+<body data-v="1">
+
+<div class="bar">
+  <b>排版方案对照</b><span class="hint">REQ-261004222448-292a ｜ 内容完全相同，只换排版系统</span>
+  <span class="hint">｜方案：</span>
+  <button class="btn" data-v="1" data-on="1">V1 长文档式</button>
+  <button class="btn" data-v="2" data-on="0">V2 两栏式</button>
+  <button class="btn" data-v="3" data-on="0">V3 卡片精简式</button>
+</div>
+
+<!-- ============================ V1 长文档式 ============================ -->
+<div class="variant v1"><div class="page">
+  <div class="meta">
+    <span class="mono">REQ-261004201530-7f3c</span>
+    <span class="badge">实施中</span>
+    <span>feature · expert</span>
+    <span style="margin-left:auto">更新于 23:41</span>
+  </div>
+  <h1>看板验收单支持逐项驳回并自动生成返工卡</h1>
+  <div class="meta">
+    <span>创建 22:28（人）</span><span>·</span>
+    <span>窗口 <span class="mono">w-3643cb19</span> owner ↗ · <span class="mono">w-b262610a</span> worker ↗ · <span class="mono">w-9f0c1d77</span> observer ↗</span>
+  </div>
+  <div class="verdict">
+    <b>在实施段 · 4/11 卡完成</b>，正在跑 <span class="mono">t-002-review</span>（<span class="mono">w-b262610a</span> 认领，已 12m）；
+    <b>1 件事等人处理</b>：设计 v2 补充文档待确认。距上次更新 2 分钟。
+  </div>
+  <div style="margin-top:14px"><div class="stages">
+    <div class="stage done"><i></i><span>立项</span></div><div class="stage done"><i></i><span>需求</span></div>
+    <div class="stage done"><i></i><span>设计</span></div><div class="stage done"><i></i><span>拆分</span></div>
+    <div class="stage cur"><i></i><span>实施</span></div><div class="stage"><i></i><span>验收</span></div>
+    <div class="stage"><i></i><span>归档</span></div>
+  </div></div>
+
+  <section>
+    <h2><span class="n">02</span>缺口与提醒</h2>
+    <p class="sub">当前状态下「该有而没有」的东西</p>
+    <div class="gap"><span class="dot yellow"></span> <b>设计 v2 补充文档待人工确认</b>
+      <div class="why"><span class="mono">design/frontend.md</span> 于 23:38 登记；挂起期间写路径被拦（REQBOARD_CONFIRM_PENDING）</div></div>
+    <div class="gap"><span class="dot red"></span> <b>FR-5「返工卡回流 RTM」未被任何任务接收</b>
+      <div class="why">条款接收状态里的漏项——实施跑完也不会有人做它</div></div>
+    <div class="gap"><span class="dot yellow"></span> <b>验收材料（verification）未登记</b>
+      <div class="why">实施段完成前需补齐：验收段必备产物</div></div>
+    <div class="gap"><span class="dot gray"></span> 1 次零产出执行：<span class="mono">t-003-review</span>（23:31–23:41）
+      <div class="why">无产出条目的执行——可能空转</div></div>
+  </section>
+
+  <section>
+    <h2><span class="n">03</span>产物与五道门禁</h2>
+    <p class="sub">登记 → 人工确认 → 才能推进；产物名可点开</p>
+    <table>
+      <thead><tr><th>阶段</th><th>产物</th><th>登记</th><th>人工确认</th><th>闸门</th></tr></thead>
+      <tbody>
+        <tr><td>需求分析</td><td><span class="mono">requirement.md</span></td><td class="ok">✅ 22:31:01</td><td class="ok">✅ 22:31:07 · 人</td><td class="ok">已放行</td></tr>
+        <tr><td>设计</td><td><span class="mono">architecture · interfaces · frontend</span></td><td class="ok">✅ 3 份</td><td class="warn">2 已落章 · 1 待确认</td><td class="warn">挂起中</td></tr>
+        <tr><td>拆分</td><td><span class="mono">decomposition.md</span>（计划 v2）</td><td class="ok">✅ 23:02:30</td><td class="ok">✅ 23:02:41 · 人批准</td><td class="ok">已放行 · 11 卡落库</td></tr>
+        <tr><td>实施</td><td><span class="mono">tasks/&lt;卡&gt;.md</span> 4 份</td><td class="warn">◐ 4/11 卡</td><td class="mut">—（无需人工）</td><td class="warn">进行中</td></tr>
+        <tr><td>验收</td><td class="mut">verification 未提交</td><td class="mut">⬜</td><td class="mut">—</td><td class="mut">未到</td></tr>
+        <tr><td>归档</td><td class="mut">archive 未提交</td><td class="mut">⬜</td><td class="mut">—</td><td class="mut">未到</td></tr>
+      </tbody>
+    </table>
+  </section>
+</div></div>
+
+<!-- ============================ V2 两栏式 ============================ -->
+<div class="variant v2"><div class="page">
+  <div class="sec"><div class="rail"><div class="n">HEAD</div><h2>结论头</h2>
+    <div class="sub">现在怎么样、卡在谁手上</div></div>
+    <div class="body-col">
+      <div class="meta"><span class="mono">REQ-261004201530-7f3c</span><span class="badge">实施中</span>
+        <span>feature · expert</span><span style="margin-left:auto">更新于 23:41</span></div>
+      <h1>看板验收单支持逐项驳回并自动生成返工卡</h1>
+      <div class="meta"><span>创建 22:28（人）</span><span>·</span>
+        <span>窗口 <span class="mono">w-3643cb19</span> owner ↗ · <span class="mono">w-b262610a</span> worker ↗ · <span class="mono">w-9f0c1d77</span> observer ↗</span></div>
+      <div class="verdict"><b>在实施段 · 4/11 卡完成</b>，正在跑 <span class="mono">t-002-review</span>；
+        <b>1 件事等人处理</b>：设计 v2 待确认。</div>
+      <div style="margin-top:12px"><div class="stages">
+        <div class="stage done"><i></i><span>立项</span></div><div class="stage done"><i></i><span>需求</span></div>
+        <div class="stage done"><i></i><span>设计</span></div><div class="stage done"><i></i><span>拆分</span></div>
+        <div class="stage cur"><i></i><span>实施</span></div><div class="stage"><i></i><span>验收</span></div>
+        <div class="stage"><i></i><span>归档</span></div></div></div>
+    </div></div>
+
+  <div class="sec"><div class="rail"><div class="n">02</div><h2>缺口与提醒</h2>
+    <div class="sub">该有而没有的；无缺口时显示一行通过</div></div>
+    <div class="body-col">
+      <div class="gap"><span class="dot yellow" style="margin-top:6px"></span><div><b>设计 v2 补充文档待人工确认</b>
+        <div class="why"><span class="mono">design/frontend.md</span> 于 23:38 登记；挂起期间写路径被拦（REQBOARD_CONFIRM_PENDING）</div></div></div>
+      <div class="gap"><span class="dot red" style="margin-top:6px"></span><div><b>FR-5「返工卡回流 RTM」未被任何任务接收</b>
+        <div class="why">条款接收状态里的漏项——实施跑完也不会有人做它</div></div></div>
+      <div class="gap"><span class="dot yellow" style="margin-top:6px"></span><div><b>验收材料（verification）未登记</b>
+        <div class="why">实施段完成前需补齐：验收段必备产物</div></div></div>
+      <div class="gap"><span class="dot gray" style="margin-top:6px"></span><div>1 次零产出执行：<span class="mono">t-003-review</span>（23:31–23:41）
+        <div class="why">无产出条目的执行——可能空转</div></div></div>
+    </div></div>
+
+  <div class="sec"><div class="rail"><div class="n">03</div><h2>产物与五道门禁</h2>
+    <div class="sub">登记 → 人工确认 → 放行；产物名可点开</div></div>
+    <div class="body-col">
+      <table>
+        <thead><tr><th>阶段</th><th>产物</th><th>登记</th><th>人工确认</th><th>闸门</th></tr></thead>
+        <tbody>
+          <tr><td>需求分析</td><td><span class="mono">requirement.md</span></td><td class="ok">✅ 22:31:01</td><td class="ok">✅ 22:31:07 · 人</td><td class="ok">已放行</td></tr>
+          <tr><td>设计</td><td><span class="mono">architecture · interfaces · frontend</span></td><td class="ok">✅ 3 份</td><td class="warn">2 已落章 · 1 待确认</td><td class="warn">挂起中</td></tr>
+          <tr><td>拆分</td><td><span class="mono">decomposition.md</span>（计划 v2）</td><td class="ok">✅ 23:02:30</td><td class="ok">✅ 23:02:41 · 人批准</td><td class="ok">已放行 · 11 卡落库</td></tr>
+          <tr><td>实施</td><td><span class="mono">tasks/&lt;卡&gt;.md</span> 4 份</td><td class="warn">◐ 4/11 卡</td><td class="mut">—（无需人工）</td><td class="warn">进行中</td></tr>
+          <tr><td>验收</td><td class="mut">verification 未提交</td><td class="mut">⬜</td><td class="mut">—</td><td class="mut">未到</td></tr>
+          <tr><td>归档</td><td class="mut">archive 未提交</td><td class="mut">⬜</td><td class="mut">—</td><td class="mut">未到</td></tr>
+        </tbody>
+      </table>
+    </div></div>
+</div></div>
+
+<!-- ============================ V3 卡片精简式 ============================ -->
+<div class="variant v3"><div class="page">
+  <div class="row2">
+    <div class="card accent">
+      <div class="meta"><span class="mono">REQ-261004201530-7f3c</span><span class="badge">实施中</span>
+        <span>feature · expert</span><span style="margin-left:auto">更新于 23:41</span></div>
+      <h1>看板验收单支持逐项驳回并自动生成返工卡</h1>
+      <div class="meta"><span>创建 22:28（人）</span><span>·</span>
+        <span>窗口 <span class="mono">w-3643cb19</span> owner ↗ · <span class="mono">w-b262610a</span> worker ↗ · <span class="mono">w-9f0c1d77</span> observer ↗</span></div>
+      <div style="margin-top:10px"><div class="stages">
+        <div class="stage done"><i></i><span>立项</span></div><div class="stage done"><i></i><span>需求</span></div>
+        <div class="stage done"><i></i><span>设计</span></div><div class="stage done"><i></i><span>拆分</span></div>
+        <div class="stage cur"><i></i><span>实施</span></div><div class="stage"><i></i><span>验收</span></div>
+        <div class="stage"><i></i><span>归档</span></div></div></div>
+      <div class="verdict"><b>在实施段 · 4/11 卡完成</b>，正在跑 <span class="mono">t-002-review</span>；
+        <b>1 件事等人处理</b>：设计 v2 待确认。</div>
+    </div>
+    <div class="card">
+      <h2>② 缺口与提醒 <span class="mut" style="font-weight:400;font-size:11px">4 条</span></h2>
+      <div class="gap"><span class="dot yellow"></span> <b>设计 v2 待人工确认</b>
+        <div class="why">23:38 登记；挂起期间写路径被拦</div></div>
+      <div class="gap"><span class="dot red"></span> <b>FR-5 未被任何任务接收</b>
+        <div class="why">实施跑完也不会有人做它</div></div>
+      <div class="gap"><span class="dot yellow"></span> <b>验收材料未登记</b>
+        <div class="why">验收段必备产物</div></div>
+      <div class="gap"><span class="dot gray"></span> 1 次零产出执行 <span class="mono">t-003-review</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>③ 产物与五道门禁 <span class="mut" style="font-weight:400;font-size:11px">登记 → 人工确认 → 放行</span></h2>
+    <table>
+      <thead><tr><th>阶段</th><th>产物</th><th>登记</th><th>人工确认</th><th>闸门</th></tr></thead>
+      <tbody>
+        <tr><td>需求分析</td><td><span class="mono">requirement.md</span></td><td class="ok">✅ 22:31:01</td><td class="ok">✅ 22:31:07 · 人</td><td class="ok">已放行</td></tr>
+        <tr><td>设计</td><td><span class="mono">architecture · interfaces · frontend</span></td><td class="ok">✅ 3 份</td><td class="warn">2 已落章 · 1 待确认</td><td class="warn">挂起中</td></tr>
+        <tr><td>拆分</td><td><span class="mono">decomposition.md</span>（计划 v2）</td><td class="ok">✅ 23:02:30</td><td class="ok">✅ 23:02:41 · 人批准</td><td class="ok">已放行 · 11 卡落库</td></tr>
+        <tr><td>实施</td><td><span class="mono">tasks/&lt;卡&gt;.md</span> 4 份</td><td class="warn">◐ 4/11 卡</td><td class="mut">—（无需人工）</td><td class="warn">进行中</td></tr>
+        <tr><td>验收</td><td class="mut">verification 未提交</td><td class="mut">⬜</td><td class="mut">—</td><td class="mut">未到</td></tr>
+        <tr><td>归档</td><td class="mut">archive 未提交</td><td class="mut">⬜</td><td class="mut">—</td><td class="mut">未到</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div></div>
+
+<div class="legend">
+  <b>三者的差别只在排版层</b>：<br>
+  <b>V1 长文档式</b>——无边框、字阶驱动、阅读宽度 760px 居中。适合"从头读到尾"，页面长但安静。<br>
+  <b>V2 两栏式</b>——左窄栏是"段名 + 一句说明"，右栏是内容；表格通栏。扫读最快，宽屏利用率最高。<br>
+  <b>V3 卡片精简式</b>——保留卡片但去掉嵌套与整块底色，段头只留左侧色条；结论头与缺口并排，首屏更短。<br>
+  信息架构（9 段、常驻/折叠、三档展示面）三种完全一致，选定后直接套到 <span class="mono">detail-refactor.html</span>。
+</div>
+
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var v = q.get('v') || '1';
+  function apply() {
+    document.body.dataset.v = v;
+    document.querySelectorAll('.btn[data-v]').forEach(function (b) { b.dataset.on = b.dataset.v === v ? '1' : '0'; });
+    var u = new URL(location.href); u.searchParams.set('v', v); history.replaceState(null, '', u);
+  }
+  document.querySelectorAll('.btn[data-v]').forEach(function (b) {
+    b.addEventListener('click', function () { v = b.dataset.v; apply(); });
+  });
+  apply();
+})();
+</script>
+</body>
+</html>

@@ -4,7 +4,7 @@
  * 队列文件 = 某需求的**任务唯一存储**：`<workspaceRoot>/docs/requirements/<REQ>/queue.json`。
  * 本文件是队列文件 I/O 的**唯一入口**（读/写/路径），实现三件事：
  *
- * 1. **原子写**：复用 `adapters/JsonLedgerRepository.ts` 导出的 `persistAtomic`
+ * 1. **原子写**：复用 `adapters/旧单册适配器（已删除）.ts` 导出的 `persistAtomic`
  *    （临时文件 → fsync → rename）。**不另造第二套原子写**——两套实现必然在
  *    "谁先 fsync、谁负责 mkdir、失败时 temp 残留" 上漂移，而原子性是**断电才暴露**的性质，
  *    漂移不会在测试里露头。
@@ -22,7 +22,7 @@
  */
 import { readFile, readdir, rename } from 'node:fs/promises'
 import { isAbsolute, join } from 'node:path'
-import { persistAtomic } from '../adapters/JsonLedgerRepository.js'
+import { persistAtomic } from './atomicWrite.js'
 import { REQUIREMENTS_DIR, QUEUE_FILENAME, queueRelativePath } from '../domain/queue/queuePath.js'
 import type { QueueFile } from '../domain/queue/QueueTypes.js'
 import { validateQueueFile } from '../domain/queue/validateQueue.js'
@@ -98,7 +98,7 @@ export interface QueueRepository {
 }
 
 export class JsonQueueRepository implements QueueRepository {
-  private readonly root: string
+  private root: string
   private readonly requirementDirOf: (requirementId: string) => string
   private readonly onWarn: (message: string) => void
 
@@ -110,6 +110,17 @@ export class JsonQueueRepository implements QueueRepository {
 
   workspaceRoot(): string {
     return this.root
+  }
+
+  /**
+   * 动态校正工作区根（REQ-260929210741-30ae FR-5）：与 FileDocRepository.setWorkspaceRoot
+   * 同口径——queue.json 与 docs 产物必须同根，两处走同一解析链（support.ts 的
+   * syncWorkspaceRootFromExec 同时校正两者）。无会话上下文时保持构造值不变。
+   */
+  setWorkspaceRoot(root: string): void {
+    if (typeof root === 'string' && root.length > 0 && root !== this.root) {
+      this.root = root
+    }
   }
 
   relativePathOf(requirementId: string): string {

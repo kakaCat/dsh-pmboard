@@ -19,8 +19,10 @@
  *
  * @module dsh-pmboard/application/internal/node-settlement
  */
-import type { Clock, DocRepository, ReqboardRepository, TaskStore } from '../ports.js'
+import type { Clock, DocRepository, RequirementStore, SessionProbe, TaskStore } from '../ports.js'
 import { fmt } from '../../domain/text/fmt.js'
+import { requirementStoreOf } from '../use-cases/queue-access.js'
+import { resolveSessionProbe } from './node-input-package.js'
 import type { Category, Difficulty, PromptStage } from '../../domain/prompt/index.js'
 import {
   isolateNodeContext,
@@ -82,7 +84,8 @@ export interface NodeSettlementDeps {
   trace?: IsolationTracePort
   /** 纪律①先落盘再遗弃：返回"结算点前置状态已落盘"的序号；未注入 = 取台账 revision。 */
   persistArtifacts?: (settle: NodeSettlement) => number | Promise<number>
-  repo: ReqboardRepository
+  /** 需求存储新端口（t8/B11）：`persistArtifacts` 缺省值用它取 `head().revision`（不再整册读）。 */
+  store?: RequirementStore
   docs: DocRepository
   clock: Clock
   /**
@@ -96,6 +99,13 @@ export interface NodeSettlementDeps {
   warn?: (message: string) => void
   /** 用例执行器（默认 isolateNodeContext）；测试可换替身做异常路径。 */
   run?: (deps: IsolateNodeContextDeps, request: IsolateNodeContextRequest) => Promise<IsolateNodeContextResult>
+  /**
+   * 会话探测端口（t7 / FR-8）——**惰性取值**：组合根在本分发器**之后**才建
+   * `SessionProbeAdapter`（它依赖会话缓冲表），故这里收 getter 而非实例；
+   * 读实例的时机 = 异步边界内的执行期。缺省 / 取不到 → 输入包不追加「一轮余量（参考）」节
+   * （与本改动前逐字节相同）。
+   */
+  sessionProbe?: () => SessionProbe | undefined
   /** 模板地址注入（T-5）：绝对模板根 + 开关；缺省 = 输入包不追加地址小节。 */
   address?: { templateRoot?: string; enabled?: boolean }
 }
@@ -120,10 +130,12 @@ export function createNodeSettlementDispatcher(deps: NodeSettlementDeps): NodeSe
   const schedule = deps.schedule ?? defaultSchedule
   const warn = deps.warn ?? ((): void => {})
   const run = deps.run ?? isolateNodeContext
-  const persist = deps.persistArtifacts ?? ((): Promise<number> => {
+  const persist = deps.persistArtifacts ?? (async (): Promise<number> => {
     // 结算点的前置状态（节点推进/产物登记）已由台账写入落盘；revision 是持久化的单调序号
-    // （JsonLedgerRepository 在 persistAtomic 成功后才 bump），故作为"先落盘"的证据指针。
-    return Promise.resolve(deps.repo.snapshot().revision)
+    // （存储落盘成功后才 bump），故作为"先落盘"的证据指针。
+    // t8：改走 `head()`——只读序号，不再为取一个数字装配整册。缺装配由
+    // `requirementStoreOf` 响亮抛错（不静默回落整册读）。
+    return (await requirementStoreOf(deps).head()).revision
   })
 
   /** 链是否生效：注入了 chain 且其开关未显式关闭。 */
@@ -158,12 +170,16 @@ export function createNodeSettlementDispatcher(deps: NodeSettlementDeps): NodeSe
     if (!deps.enabled) return
     try {
       const isolation = deps.isolationFor?.(session, settle)
+      // t7（FR-8）：余量参考端口（惰性取，见 deps.sessionProbe 注释）。取不到 → 不传该 dep，
+      // 输入包与本改动前逐字节相同；取值/取不到都不抛（不成为节点隔离的新失败点）。
+      const sessionProbe = resolveSessionProbe(deps.sessionProbe)
       const useCaseDeps: IsolateNodeContextDeps = {
-        repo: deps.repo,
+        store: deps.store as RequirementStore,
         docs: deps.docs,
         clock: deps.clock,
         taskStore: deps.taskStore,
         ...(isolation === undefined ? {} : { isolation }),
+        ...(sessionProbe === undefined ? {} : { session: sessionProbe }),
         ...(deps.trace === undefined ? {} : { trace: deps.trace }),
         ...(deps.address?.enabled === false || deps.address?.templateRoot === undefined ? {} : { templateRoot: deps.address.templateRoot }),
       }

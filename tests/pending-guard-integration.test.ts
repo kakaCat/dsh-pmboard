@@ -16,11 +16,11 @@
  *
  * 每个用例上方写出「请求样例」与「期望响应」，断言用 `toEqual` 全键对账（多键/少键都算不通过）。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { SessionProbeAdapter } from '../src/adapters/SessionProbeAdapter.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
@@ -43,18 +43,18 @@ const INTERRUPTED_NOTE =
 const PLAIN_PENDING_NOTE = '回执：挂起确认尚未作答——人作答后后台自动落章/推进；也可请用户走看板确认'
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-guard-int-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
 /** 真适配器 + 可控注册表；`now` 由用例注入以驱动 TTL。 */
 function makeDeps(registry: PendingConfirmRegistry): UseCaseDeps {
   return {
-    repo: store,
+    store: store,
     docs: new FileDocRepository({ workspaceRoot: dir }),
     clock: { now: () => Date.now() },
     ids: new RandomIdFactory(),
@@ -80,7 +80,7 @@ async function seed(): Promise<void> {
       path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1,
     } as StageArtifact],
   } as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 const receiptTool = (deps: UseCaseDeps) =>
@@ -135,16 +135,16 @@ describe('联调 ② 共享谓词 ↔ 真实台账（I-3/I-4 判定口径只留�
     registry.markInterrupted(ticket)
 
     // 未落章 → 记录仍在（守卫拦）
-    expect(livePendingConfirm(deps, W)?.ticket).toBe(ticket)
+    expect((await livePendingConfirm(deps, W))?.ticket).toBe(ticket)
 
     // 人在看板/证据通道作答 → 台账该 kind 成组落章
-    await store.mutate('artifact-confirmed', (l) => {
-      l.requirements[0]!.artifacts![0]!.confirmedAt = 5_000
-      return { requirements: [l.requirements[0]!] }
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
+      r.artifacts![0]!.confirmedAt = 5_000
+      return { changed: true }
     })
-    const req = store.snapshot().requirements[0]!
+    const req = store.peekAll()[0]!
     expect(targetConfirmedInLedger(req, registry.get(ticket, W)!)).toBe(true)
-    expect(livePendingConfirm(deps, W)).toBeUndefined()
+    expect(await livePendingConfirm(deps, W)).toBeUndefined()
 
     // 同一事实驱动回执：confirmed=true、未推进（无 statusHistory 推进事件）
     const out = await receiptTool(deps).execute({ ticket }, exec)
@@ -162,7 +162,7 @@ describe('联调 ② 共享谓词 ↔ 真实台账（I-3/I-4 判定口径只留�
     const registry = new PendingConfirmRegistry({ now: () => 1_000, newTicket: () => 'pc-int004' })
     const deps = makeDeps(registry)
     const ticket = registry.register({ windowKey: 'session-other', requirementId: REQUIREMENT_ID, target: 'artifact', kind: 'requirement' }).ticket
-    expect(livePendingConfirm(deps, W)).toBeUndefined()
+    expect(await livePendingConfirm(deps, W)).toBeUndefined()
     await expect(receiptTool(deps).execute({ ticket }, exec)).rejects.toMatchObject({ code: 'REQBOARD_UNKNOWN_TICKET' })
   })
 })
@@ -185,7 +185,7 @@ describe('联调 ③ 过期基准 (interruptedAt ?? createdAt)+ttl 经真实工�
     now = 2_901 // interruptedAt + ttl 越界
     expect(registry.get(ticket, W)).toBeUndefined()
     expect(registry.pendingForWindow(W)).toBeUndefined()
-    expect(livePendingConfirm(deps, W)).toBeUndefined()
+    expect(await livePendingConfirm(deps, W)).toBeUndefined()
     await expect(receiptTool(deps).execute({ ticket }, exec)).rejects.toMatchObject({ code: 'REQBOARD_UNKNOWN_TICKET' })
   })
 

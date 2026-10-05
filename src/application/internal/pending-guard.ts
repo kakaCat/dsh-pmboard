@@ -15,6 +15,7 @@
  * @module dsh-pmboard/application/internal/pending-guard
  */
 import type { UseCaseDeps } from '../ports.js'
+import { requirementStoreOf } from '../use-cases/queue-access.js'
 import type { PendingConfirmation, RequirementRecord } from '../../shared/protocol.js'
 
 /**
@@ -55,10 +56,11 @@ export function targetConfirmedInLedger(req: RequirementRecord, rec: PendingConf
  *
  * 台账查不到目标需求 → 无法证明已落章，保守返回该记录（守卫继续拦，不静默释放）。
  */
-export function livePendingConfirm(deps: UseCaseDeps, windowKey: string): PendingConfirmation | undefined {
+export async function livePendingConfirm(deps: UseCaseDeps, windowKey: string): Promise<PendingConfirmation | undefined> {
   const pending = deps.pendingConfirms?.pendingForWindow(windowKey)
   if (pending === undefined) return undefined
-  const req = deps.repo.snapshot().requirements.find(r => r.id === pending.requirementId)
+  // t8/B11：单条查找 → 新端口 get（原为整册 find）
+  const req = await requirementStoreOf(deps).get(pending.requirementId)
   if (req === undefined) return pending
   if (targetConfirmedInLedger(req, pending)) return undefined
   return pending

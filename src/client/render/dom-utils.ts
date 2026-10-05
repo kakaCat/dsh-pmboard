@@ -71,8 +71,9 @@ export function progress(done: number, total: number): string {
  */
 /**
  * 已归档会话 id 集合的默认值（工作区服务不可用时使用）。
- * 归档会话「日志保留、侧栏不可见」——跳过去也打不开，所以窗口按钮**置灰**但仍可点：
- * 点击给出「已归档，无法跳转」的明确原因，而不是静默无反应。
+ * 归档会话「日志保留、侧栏不可见」——所以窗口/会话按钮**置灰**但仍可点：
+ * 点击先取消归档把它恢复出来，再跳过去（REQ-261002153446-c600 FR-1）；
+ * title 提前把「点击会发生什么」写清楚，不做静默、也不给人死路。
  */
 export const NO_ARCHIVED: ReadonlySet<string> = new Set<string>()
 
@@ -85,10 +86,11 @@ export function isArchived(sid: string, archived: ReadonlySet<string>): boolean 
  * 窗口/会话跳转按钮的统一渲染（REQ-31e11f #5）。
  *
  * 可跳转 → button[data-action=jump-session]；
- * 已归档 → **仍是可点按钮**（灰色 + data-archived="true"）。
+ * 已归档 → **仍是可点按钮**（灰色 + data-archived="true"），title 写明
+ * 「点击取消归档并打开」（REQ-261002153446-c600 FR-3）——点击后由
+ * session-jump 先恢复会话再跳；恢复失败/能力缺失才给出明确原因，不做静默。
  * 旧实现把已归档渲染成无 data-action 的灰 span → 点了完全没反应，
- * 正是「列表的窗口点击不跳转」的真因；现在点击由 board-mount 直接给出
- * 明确原因（该会话已归档、侧栏不可见），不做静默。
+ * 正是「列表的窗口点击不跳转」的真因。
  */
 export function sessionChipHtml(opts: {
   sid: string
@@ -102,7 +104,7 @@ export function sessionChipHtml(opts: {
   const { sid, label, cls, kind, archived } = opts
   const classes = archived ? `${cls} is-archived` : cls
   const title = archived
-    ? `${kind}已归档（${esc(sid)}）：日志保留、侧栏不可见，点击查看说明`
+    ? `${kind}已归档（${esc(sid)}）：点击取消归档并打开`
     : `${kind}（点击跳转到该会话）：${esc(sid)}`
   return `<button type="button" class="${classes}" data-action="jump-session" data-sid="${esc(sid)}" `
     + (archived ? 'data-archived="true" ' : '')
@@ -119,6 +121,25 @@ export function renderWindowChip(req: RequirementRecord, archived: ReadonlySet<s
     kind: '立项来源窗口',
     archived: isArchived(sid, archived),
   })
+}
+
+/**
+ * 运行中指示（REQ-261004210128-283d FR-3、FR-4、FR-7）——**唯一**渲染单点：泳道卡与列表行共用它。
+ *
+ * `false` → 返回空串（**不渲染空壳**：这是「省略 running 参数时输出与改动前逐字节一致」的前提）。
+ * `true` → 内联 SVG 转圈环，语义与左侧会话列表的运行中圆点一致（1.5s 一圈 + 呼吸弧），
+ * 并在 `prefers-reduced-motion` 下降级为静态半环（样式在 styles/board.ts）。
+ *
+ * 为什么带 `role="img"` + `aria-label`：读屏用户看不到转圈，必须能听到「会话进行中」。
+ */
+export function renderRunningDot(running: boolean): string {
+  if (!running) return ''
+  return '<span class="dsh-pm-running" data-running="true" role="img" aria-label="会话进行中"'
+    + ' title="会话进行中（该需求绑定窗口正在执行回合）">'
+    + '<svg class="dsh-pm-running-svg" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false">'
+    + '<circle class="dsh-pm-running-track" cx="8" cy="8" r="6" />'
+    + '<circle class="dsh-pm-running-arc" cx="8" cy="8" r="6" />'
+    + '</svg></span>'
 }
 
 export function renderSessionChip(tasks: TaskRecord[], archived: ReadonlySet<string> = NO_ARCHIVED): string {
@@ -243,9 +264,15 @@ export function commentActorLabel(c: CommentRecord): { actor: 'human' | 'agent' 
 /**
  * 评论列表：人工评论（GUI 评论框 POST /comment，actor=human）与窗口 agent 评论
  * 一视同仁地渲染，用 data-actor 区分来源。空库给明确空态而不是白板。
+ *
+ * REQ-261004195831-0f52 FR-4：入参放宽为「数组 | 缺失」。为什么必须兜住——
+ * `/state` 改发摘要后本体字段（comments 等）不再随首屏下发，一旦有人把摘要记录
+ * 喂到这里，旧实现的 `comments.length` 会抛 TypeError 把整个详情页打没
+ * （2026-10-04 线上实测）。**兜底 ≠ 掩盖**：正常路径仍必须喂全文（由详情取数模块保证）。
+ * 非数组（null / 对象 / 字符串）同口径按空处理：只防 undefined 会留下同类陷阱。
  */
-export function renderComments(comments: CommentRecord[]): string {
-  if (comments.length === 0) return '<div class="dsh-pm-empty">暂无评论</div>'
+export function renderComments(comments: CommentRecord[] | undefined): string {
+  if (!Array.isArray(comments) || comments.length === 0) return '<div class="dsh-pm-empty">暂无评论</div>'
   return `<div class="dsh-pm-comments">` + comments.map(c => {
     const who = commentActorLabel(c)
     return `
@@ -262,8 +289,22 @@ export function buildEmpty(): string {
   return `<div class="dsh-pm-board"><div class="dsh-pm-empty">暂无数据 — 点击「+ 需求」创建第一个需求</div></div>`
 }
 
-export function buildError(message: string): string {
-  return `<div class="dsh-pm-board"><div class="dsh-pm-error">加载失败：${esc(message)}</div></div>`
+/**
+ * 加载失败呈现（REQ-261003191948-e94a FR-4）。
+ *
+ * `hint` 是服务端给的可复制修复命令（如迁移命令）。为什么用 `<pre>` 而不是 `<code>`：
+ * 命令含换行与路径分隔符，`<pre>` 保住空白、可直接框选复制；本需求边界明确不做"复制"按钮。
+ *
+ * message 与 hint 都继续走既有 `esc()`：hint 里含用户主目录等文本，不转义会破 HTML。
+ * `hint` 缺省时输出与改造前**逐字节相同**（既有调用点零影响）。
+ */
+export function buildError(message: string, hint?: string): string {
+  const head = `<div class="dsh-pm-board"><div class="dsh-pm-error">加载失败：${esc(message)}`
+  if (hint === undefined || hint.trim().length === 0) return head + '</div></div>'
+  return head
+    + '<div class="dsh-pm-error-hint-label">在终端执行：</div>'
+    + `<pre class="dsh-pm-error-hint">${esc(hint)}</pre>`
+    + '</div></div>'
 }
 /* ------------------------------------------------------------------ 时间线 */
 

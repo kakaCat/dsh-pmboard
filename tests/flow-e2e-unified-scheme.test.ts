@@ -60,10 +60,11 @@ class SyncJobs implements JobsPort {
   available(): boolean { return true }
 }
 
-function seedFlow() {
+async function seedFlow() {
   const h = makeHarness()
   h.docs.put(FILE, 'x')
-  h.repo.ledger.requirements = [req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true })]
+  // B12 阶段②e：播种进新端口
+  h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true }))
   h.seedTasks('REQ-000001', [
     // 父卡一：代码实现卡（frontend，未声明接口面 → 保守保留联调段，需计划显式声明才删）
     task({ id: 't-impl', requirementId: 'REQ-000001', status: 'todo', title: '实现卡', phase: 'implement' as never, side: 'frontend' as never }),
@@ -74,17 +75,18 @@ function seedFlow() {
   const jobs = new SyncJobs()
   h.deps.workflow = engine
   h.deps.jobs = jobs
+  await h.seedSettled()
   return { h, engine, jobs }
 }
 
-const tasksRaw = (h: ReturnType<typeof seedFlow>['h']): readonly TaskRecord[] => {
+const tasksRaw = (h: Awaited<ReturnType<typeof seedFlow>>['h']): readonly TaskRecord[] => {
   const raw = h.queueRepo.rawOf('REQ-000001')
   return raw === undefined ? [] : (JSON.parse(raw) as { tasks: TaskRecord[] }).tasks
 }
 
 describe('E2E：从队列领任务跑完整条链（统一新方案）', () => {
   it('步骤计划按卡性质 → 逐步跑完 → 父卡收尾 → 需求进验收；脚本/提示词/取消权全部符合新口径', async () => {
-    const { h, engine, jobs } = seedFlow()
+    const { h, engine, jobs } = await seedFlow()
     const execAgent = { id: 'session-w-001' }
     const turnSignal = AbortSignal.abort('turn 已结束') // 故意先掐：不应影响 chain 内的子卡 run
 
@@ -104,8 +106,8 @@ describe('E2E：从队列领任务跑完整条链（统一新方案）', () => {
     expect(tasks.find(t => t.id === 't-doc')!.status).toBe('done')
     // 投递路径的返回体只给回执（steps/stopped 恒空），链的真实结局看状态与 advance.history
     expect(out.dispatched).toBe(true)
-    expect(h.repo.ledger.requirements[0]!.status).toBe('accepting')
-    const hist = h.repo.ledger.requirements[0]!.advance?.history ?? []
+    expect(((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!.status).toBe('accepting')
+    const hist = ((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!.advance?.history ?? []
     expect(hist.some(r => r.event === 'RETRY')).toBe(false)
     expect(hist.filter(r => r.event === 'RUN_SUBTASK' && r.outcome === 'ok').length).toBe(6)
 
@@ -135,7 +137,9 @@ describe('E2E：从队列领任务跑完整条链（统一新方案）', () => {
   it('首次瞬断（abort 族）→ 自动重试一次后跑完整条链，无需人工续跑', async () => {
     const h = makeHarness()
     h.docs.put(FILE, 'x')
-    h.repo.ledger.requirements = [req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true })]
+    // B12 阶段②e：播种进新端口（inline 站点）
+    h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true }))
+    await h.seedSettled()
     h.seedTasks('REQ-000001', [task({ id: 't-impl', requirementId: 'REQ-000001', status: 'todo', title: '实现卡' })])
     const engine = new MockEngine(true) // 首次瞬断
     const jobs = new SyncJobs()
@@ -145,10 +149,10 @@ describe('E2E：从队列领任务跑完整条链（统一新方案）', () => {
     const out = await advanceRequirement(h.deps, 'REQ-000001', { agent: { id: 'session-w-001' } })
 
     expect(out.dispatched).toBe(true)
-    const hist = h.repo.ledger.requirements[0]!.advance?.history ?? []
+    const hist = ((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!.advance?.history ?? []
     expect(hist.some(r => r.event === 'RETRY')).toBe(true)
-    expect(h.repo.ledger.requirements[0]!.status).toBe('accepting')
-    expect(h.repo.ledger.requirements[0]!.autoRun).toBe(true)
+    expect(((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!.status).toBe('accepting')
+    expect(((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!.autoRun).toBe(true)
     expect(tasksRaw(h).filter(t => t.parentId === 't-impl').every(s => s.status === 'done')).toBe(true)
   })
 })

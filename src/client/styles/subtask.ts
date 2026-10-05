@@ -1,9 +1,9 @@
 /**
  * 子卡链与自动链控制面样式（REQ-4842fe t-3be71b）——纯新增区段，不改既有选择器。
- * 四态徽标色与节点状态色同源（运行中=进行中蓝 / 已暂停=灰 / 熔断=红 / 手动=浅灰）。
+ * 四态徽标色与节点状态色同源（自动链=进行中蓝 / 已暂停=灰 / 熔断=红 / 手动=浅灰）。
  */
 export const SUBTASK_CSS = `
-/* ---- 自动链徽标（运行中/已暂停/熔断/手动）---- */
+/* ---- 自动链徽标（自动链/已暂停/熔断/手动）---- */
 .dsh-pm-auto-badge { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap; }
 .dsh-pm-auto-badge[data-auto="running"] { background: rgba(74,125,255,.14); color: #4a7dff; }
 .dsh-pm-auto-badge[data-auto="paused"] { background: rgba(156,163,175,.18); color: #6b7280; }

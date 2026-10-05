@@ -7,7 +7,7 @@
  *     即便会话投影可得也**不写快照、不结算**——不伪造。
  */
 import { describe, it, expect } from 'vitest'
-import { applyPickupReconcile, applyTaskRollup } from '../src/application/internal/rollup.js'
+import { applyPickupReconcile, applyTaskRollupVia } from '../src/application/internal/rollup.js'
 import { snapshotProviderFor } from '../src/application/internal/token-usage.js'
 import { makeHarness, req, task } from './application/harness.js'
 import type { TokenBuckets, TokenSnapshot } from '../src/shared/protocol.js'
@@ -29,14 +29,15 @@ describe('REQ-260927121324-abde t4 · rollup 的写时快照', () => {
 
     // 新签名 `applyTaskRollup(ledger, tasks, ctx, onlyReqId?)`：任务取自 harness 的**真实**
     // QueueTaskStore（`await h.tasksOf(reqId)`），不是 `[]`/`undefined`。
-    const advanced = applyTaskRollup(h.repo.ledger, await h.tasksOf('REQ-000001'), {
+    // B12 阶段⑤：改走新端口的 `applyTaskRollupVia`（定点读 → 纯计划 → 单次 mutate）
+    const advanced = await applyTaskRollupVia(h.store, await h.tasksOf('REQ-000001'), {
       now: 10,
       commentId: () => 'c-1',
       snapshot: snapshotProviderFor(h.deps, W),
-    })
+    }, 'REQ-000001')
 
-    expect(advanced).toHaveLength(1)
-    const r = h.repo.ledger.requirements[0]!
+    expect(advanced).toBeDefined()
+    const r = (await h.store.get('REQ-000001'))!
     expect(r.status).toBe('accepting')
     expect(r.tokenUsage!.byStage.implementing).toEqual(B(3))
     expect(r.tokenUsage!.totals).toEqual(B(3))
@@ -46,15 +47,22 @@ describe('REQ-260927121324-abde t4 · rollup 的写时快照', () => {
     expect(last.tokenSnapshot!.totals).toEqual(B(5))
   })
 
-  it('启动对账无会话：不写快照、不结算（不伪造）', () => {
+  it('启动对账无会话：不写快照、不结算（不伪造）', async () => {
     const h = makeHarness({ requirements: [req({ status: 'draft' })] })
     // 会话投影其实可得——但启动对账没有会话上下文，就不传 provider、绝不猜测
     h.session.tokenSnapshot = snap(9)
 
-    const advanced = applyPickupReconcile(h.repo.ledger, { now: 10, commentId: () => 'c-2' })
+    // B12 阶段⑤：启动对账走新端口的 `sweep`；`applyPickupReconcile` 仍吃册形视图，
+    // 故在**调用点**用 drafts 现搭一个（与 src/index.ts 的启动对账同款改法）。
+    let advanced: unknown[] = []
+    await h.store.sweep('pickup-reconcile', (drafts) => {
+      const view = { revision: 0, requirements: drafts, triages: [] } as never
+      advanced = applyPickupReconcile(view as never, { now: 10, commentId: () => 'c-2' })
+      return advanced.map((x) => (x as { id: string }).id)
+    })
 
     expect(advanced).toHaveLength(1)
-    const r = h.repo.ledger.requirements[0]!
+    const r = (await h.store.get('REQ-000001'))!
     expect(r.status).toBe('brainstorming')
     expect(r.tokenUsage).toBeUndefined()
     const last = r.statusHistory![r.statusHistory!.length - 1]!

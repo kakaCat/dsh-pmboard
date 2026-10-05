@@ -10,7 +10,7 @@ import { defineTool, type ToolRunContext } from '@deepseek-ai/dsh-tools'
 import { LIMITS } from '../../domain/limits.js'
 import type { UseCaseDeps } from '../../application/ports.js'
 import { queryState } from '../../application/query/QueryState.js'
-import { STATUS_PROMPT } from './prompt.js'
+import { } from './prompt.js'
 import { renderSmart } from '../shared.js'
 import { statusSummary } from '../render-summaries.js'
 
@@ -27,7 +27,57 @@ export function defineStatusTool(deps: UseCaseDeps) {
         properties: {
           window_key: { type: 'string', description: '本窗口标识' },
           open_count: { type: 'number', description: '本窗口进行中需求数' },
+          // REQ-261003222428-3556 FR-3：构建指纹（sha256(产物)[0:12]）——陈旧构建可见化；
+          // 未盖章（测试/直跑 src）时该键整体省略（先声明后回执，三方同源纪律）。
+          plugin_build: { type: 'string', description: '插件构建指纹（sha256(dist)[0:12]）；陈旧构建排查锚点' },
+          // REQ-261004110201-f253 FR-2：阶段遥测——按**子卡阶段**（dev/review/test…）聚合的
+          // 时长/产出/零产出读数；无已完成执行时该键整体省略（不发空数组）。
+          stage_telemetry: {
+            type: 'array',
+            description: '绑定需求各子卡阶段的执行遥测：时长与产出计数、零产出次数',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                stageKind: { type: 'string', description: '子卡阶段（dev / integrate / review / test / …）' },
+                runs: { type: 'number', description: '已完成执行数' },
+                totalDurationMs: { type: 'number', description: '累计耗时（毫秒）' },
+                avgDurationMs: { type: 'number', description: '平均耗时（毫秒）' },
+                outputCount: { type: 'number', description: '已知产出条目合计（未知的不计）' },
+                zeroOutputRuns: { type: 'number', description: '零产出执行次数（未知的不计）' },
+                lastAt: { type: 'number', description: '最近一次完成时刻（毫秒时间戳）' },
+              },
+            },
+          },
           bound: { type: 'boolean', description: '本窗口是否已绑定进行中需求（bound 时不再立项）' },
+          // REQ-261003215944-9e04 FR-2（t-845a64）：席位表与本窗口的席位。
+          // 键名随本工具既有风格用 snake_case（设计文档表里的 `mySeat` 是 TS 形状，JSON 层即 my_seat）；
+          // 无绑定需求 / 无席位时**整体省略键**（不发空数组、不发 null）。
+          seats: {
+            type: 'array',
+            description: '绑定需求的完整席位表（读端折算后，与台账逐字一致）：owner / worker / observer',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                windowKey: { type: 'string', description: '席位窗口（= 会话 id）' },
+                role: { type: 'string', description: 'owner / worker / observer' },
+                joinedAt: { type: 'number', description: '入席时刻（ms）' },
+                lastSeenAt: { type: 'number', description: '最近活跃时刻（ms，可选；不参与授权）' },
+              },
+            },
+          },
+          my_seat: {
+            type: 'object',
+            description: '本窗口在这条需求上的席位（无席位时该键整体省略——不伪装 worker）',
+            additionalProperties: false,
+            properties: {
+              windowKey: { type: 'string', description: '席位窗口' },
+              role: { type: 'string', description: 'owner / worker / observer' },
+              joinedAt: { type: 'number', description: '入席时刻（ms）' },
+              lastSeenAt: { type: 'number', description: '最近活跃时刻（ms，可选）' },
+            },
+          },
           open_requirements: {
             type: 'array',
             description: '本窗口进行中需求简要列表',
@@ -196,7 +246,7 @@ export function defineStatusTool(deps: UseCaseDeps) {
             },
           },
           note: { type: 'string', description: '下一步指引' },
-          board_link: { type: 'string', description: '项目看板链接（可在会话中点击跳转）' },
+          board_link: { type: 'string', description: '项目看板链接（点击后在应用内打开看板并定位该需求）' },
         },
       },
       render: renderSmart(statusSummary),

@@ -3,7 +3,7 @@
  * 折叠行：请求确认<kind> · 已确认并推进 X→Y / 未确认（用户选择）；展开：问题、选择与意见。
  * @module dsh-pmboard/client/toolviews/rows
  */
-import { strOf, firstLine, resultText, isSettled, type CardSummarize } from '../shared.ts'
+import { strOf, firstLine, resultText, isSettled, ERROR_CATEGORY, PM_TOOL_BADGE, type CardSummarize } from '../shared.ts'
 import type { BizCard } from '../biz-row.ts'
 import { artifactKindLabel } from '../../../shared/artifact-labels.ts'
 
@@ -13,7 +13,12 @@ export const askConfirmSummarize: CardSummarize = (args, result, block) => {
   const kindCn = kind !== undefined ? artifactKindLabel(kind) : '产物'
   const err = isSettled(block) && block.isError === true
   if (err) {
-    return { icon: '❌', line: `请求确认${kindCn} 失败：${firstLine(resultText(block)).slice(0, 60)}`, isError: true, details: [['种类', kindCn]] }
+    const why = firstLine(resultText(block)).slice(0, 60)
+    const code = isSettled(block) ? block.error?.code : undefined
+    const errorHint = code !== undefined && ERROR_CATEGORY[code] !== undefined
+      ? `错误类别：${ERROR_CATEGORY[code]}。请检查参数后重试。`
+      : '请检查参数后重试'
+    return { icon: '❌', line: `请求确认${kindCn} 失败：${why}`, isError: true, badge: PM_TOOL_BADGE, details: [['种类', kindCn]], errorDetail: why, errorHint }
   }
   const confirmed = result?.confirmed
   const advanced = result?.advanced === true
@@ -33,7 +38,7 @@ export const askConfirmSummarize: CardSummarize = (args, result, block) => {
   if (q !== undefined) details.push(['问题', q.slice(0, 400)])
   const fb = strOf(result, 'user_feedback')
   if (fb !== undefined) details.push(['用户意见', fb])
-  return { icon: '🔔', line, details }
+  return { icon: '🔔', line, badge: PM_TOOL_BADGE, details }
 }
 
-export const askConfirmCard: BizCard = { key: 'reqboard_ask_confirm', title: '确认弹框', icon: '🔔', summarize: askConfirmSummarize }
+export const askConfirmCard: BizCard = { key: 'reqboard_ask_confirm', title: '确认弹框', icon: '🔔', badge: PM_TOOL_BADGE, summarize: askConfirmSummarize }

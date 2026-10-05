@@ -63,7 +63,11 @@ function renderCallout(view: RequirementTokenView): string {
   const degraded = view.degraded
     ? ' 部分节点/执行无快照（人从看板点按钮推进或投影不可得），缺失段不计入合计。'
     : ''
-  return `<div class="dsh-pm-callout">口径：按执行该节点/任务的会话累计值差值统计，可能含同会话其他工作的消耗；费用与字符折算 token 均为**估算**；缺失显示「无快照」，不补 0。${degraded}</div>`
+  return `<div class="dsh-pm-callout">口径（REQ-261004154937-2ca3 起）：按执行该节点/任务的会话累计值差值统计，`
+    + `**含子代理**（该窗口派出去的子代理会话一并计入），也可能含同会话其他工作的消耗；`
+    + `**起链预算闸不含子代理**（闸门口径另议，两者不一致是已知的）；`
+    + `**本口径上线前的历史数字不含子代理**；费用与字符折算 token 均为**估算**；`
+    + `缺失显示「无快照」，不补 0。${degraded}</div>`
 }
 
 /** 按流程节点表（含任务执行下钻）。 */

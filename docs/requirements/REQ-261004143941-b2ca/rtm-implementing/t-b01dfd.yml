@@ -1,0 +1,35 @@
+task:
+  id: t-b01dfd
+  title: 进度接口补需求累计 token（与节点同源、缺失即不发）·研发
+  status: done
+  implements: |-
+    在 src/http/routers/stages.ts 的 handleSessionProgress 里只装配一次 const tokenView = assembleRequirementToken(target, { tasks })；把 nodeTokensOf(req, tasks) 改成收视图的 nodeTokensOf(view)（同步纯投影，复用同一视图，避免两处各算一次）；const tokenTotal = totalTokens(tokenView.totals)，在 requirement 里按 ...(tokenTotal > 0 ? { tokenTotal } : {}) 写入（缺失≠0，0 不发键）。不改 assembleRequirementToken 的合计规则、不改 nodes 现有形状、不动任何存储。测试：tests/session-progress.test.ts 追加 TC-3a/3b/3c；tests/progress-nodes-fallback.test.ts 复用其兜底夹具断言 tokenTotal 含任务执行差值。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004143941-b2ca
+    TASK_ID: t-b01dfd
+    TASK_TITLE: 进度接口补需求累计 token（与节点同源、缺失即不发）·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T06:56:07.328Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004143941-b2ca
+  generated_at: 2026-10-04T06:55:58.266Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-04T06:56:09.241Z

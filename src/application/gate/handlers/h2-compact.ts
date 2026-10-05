@@ -16,10 +16,11 @@
  * @module dsh-pmboard/application/gate/handlers/h2-compact
  */
 import { fmt } from '../../../domain/text/fmt.js'
+import type { RequirementStore } from '../../../application/ports.js'
 import { isPromptStage } from '../../../domain/prompt/index.js'
 import type { ConfirmContext } from '../../../domain/gate/GateSpec.js'
-import type { Clock, DocRepository, ReqboardRepository, TaskStore } from '../../ports.js'
-import { requirementDocPath } from '../../internal/node-input-package.js'
+import type { Clock, DocRepository, SessionProbe, TaskStore } from '../../ports.js'
+import { requirementDocPath, resolveSessionProbe } from '../../internal/node-input-package.js'
 import { pickGateRequirement, reasonOf, safeReadDoc } from './shared.js'
 import {
   isolateNodeContext,
@@ -32,7 +33,8 @@ import {
 import type { ChainInput, GateHandler, HandlerOutcome } from '../GatePostChain.js'
 
 export interface H2CompactDeps {
-  repo: ReqboardRepository
+  /** 新需求端口（透传给 IsolateNodeContextDeps.store）。 */
+  store: RequirementStore
   docs: DocRepository
   clock: Clock
   /**
@@ -48,17 +50,23 @@ export interface H2CompactDeps {
   /** 会话句柄 → 隔离端口（组合根构造）；返回 undefined = 触达不到（走 fallback）。 */
   isolationFor?: (session: unknown, ctx: ConfirmContext) => NodeIsolationPort | undefined
   trace?: IsolationTracePort
+  /**
+   * 会话探测端口（t7 / FR-8）——**惰性取值**：组合根在本 handler **之后**才建
+   * `SessionProbeAdapter`（它依赖会话缓冲表），故这里收 getter 而非实例。
+   * 缺省 / 取不到 → 输入包不追加「一轮余量（参考）」节（与本改动前逐字节相同）。
+   */
+  sessionProbe?: () => SessionProbe | undefined
   /** 用例执行器（默认 isolateNodeContext）；测试可换替身做异常/边界路径。 */
   run?: (deps: IsolateNodeContextDeps, request: IsolateNodeContextRequest) => Promise<IsolateNodeContextResult>
   /** 纪律①的落盘证据指针（默认取台账 revision：persistAtomic 成功后才 bump）。 */
-  persistArtifacts?: (ctx: ConfirmContext) => number | Promise<number>
+  persistArtifacts: (ctx: ConfirmContext) => number | Promise<number>
 }
 
 
 /** 组装 H2 handler。**永不抛**：任何意外都被就地降级为 degraded。 */
 export function createH2CompactHandler(deps: H2CompactDeps): GateHandler {
   const run = deps.run ?? isolateNodeContext
-  const persist = deps.persistArtifacts ?? ((): number => deps.repo.snapshot().revision)
+  const persist = deps.persistArtifacts
 
   return {
     name: 'h2-compact',
@@ -73,7 +81,7 @@ export function createH2CompactHandler(deps: H2CompactDeps): GateHandler {
         if (!isPromptStage(ctx.to)) {
           return { kind: 'skip', code: 'not_prompt_stage', reason: fmt('阶段 {to} 不可注入，不压缩', { to: ctx.to }) }
         }
-        const requirement = pickGateRequirement(deps.repo, ctx)
+        const requirement = await pickGateRequirement(deps.store, ctx)
         const docPath = requirementDocPath(requirement)
         if (requirement === undefined || docPath.length === 0) {
           return { kind: 'skip', code: 'no_requirement', reason: '本窗口无可归属需求，输入包不可构造' }
@@ -83,12 +91,15 @@ export function createH2CompactHandler(deps: H2CompactDeps): GateHandler {
           return { kind: 'skip', code: 'doc_not_ready', reason: fmt('需求文档未落盘（{path}），输入包不自足', { path: docPath }) }
         }
         const isolation = deps.isolationFor?.(session, ctx)
+        // t7（FR-8）：余量参考端口（惰性取，见 deps.sessionProbe 注释）；取不到 → 不传该 dep。
+        const sessionProbe = resolveSessionProbe(deps.sessionProbe)
         const useCaseDeps: IsolateNodeContextDeps = {
-          repo: deps.repo,
+          store: deps.store,
           docs: deps.docs,
           clock: deps.clock,
           taskStore: deps.taskStore,
           ...(isolation === undefined ? {} : { isolation }),
+          ...(sessionProbe === undefined ? {} : { session: sessionProbe }),
           ...(deps.trace === undefined ? {} : { trace: deps.trace }),
         }
         const result = await run(useCaseDeps, {

@@ -25,6 +25,7 @@ import {
   type TokenSnapshot,
 } from '../../shared/protocol.js'
 import { transitionRequirement } from './token-usage.js'
+import type { RequirementStore } from '../ports.js'
 import {
   planPickupAdvance,
   planPickupReconcile,
@@ -146,4 +147,40 @@ export function applyTaskRollup(
   onlyReqId?: string,
 ): RequirementRecord[] {
   return applyMoves(ledger, planRollup(viewOf(ledger, tasks), onlyReqId), ctx)
+}
+
+/**
+ * **定点版**任务驱动推进（B12 阶段②c 前置；与 `applyTaskRollup` 并存，后者随删桥消失）。
+ *
+ * 旧 `applyTaskRollup` 要一整册 `ledger`：在册里找需求、就地改、返回改过的记录，
+ * 由调用方包在一次整册 mutate 里落盘。新端口是**按 id** 的、没有整册入口
+ * ⇒ 拆成三步：**① 定点权威读 → ② 纯函数算计划 → ③ 单条 mutate 落库**。
+ *
+ * 等价性依据：`planRollup` 只读 `req.id` / `req.status` 与 `view.tasks`
+ * （见 `domain/workflow/RollupSpec.ts:125-162`，**不读 triages**）⇒ 对同一 `reqId`，
+ * "单条视图"与"整册视图"给出的 move 集相同；而调用方本来就只传 `onlyReqId`。
+ *
+ * 与旧路径的**语义差别（须知）**：旧的是"整册 mutate 一次"（单事务原子）；
+ * 这里是"定点读 + 定点写"。覆盖面一致，原子范围变小（单条需求）。
+ */
+export async function applyTaskRollupVia(
+  store: RequirementStore,
+  tasks: readonly TaskRecord[],
+  ctx: RollupContext,
+  reqId: string,
+): Promise<RequirementRecord | undefined> {
+  const req = await store.get(reqId)
+  if (req === undefined) return undefined
+  const moves = planRollup({ requirements: [req], tasks, triages: [] }, reqId)
+  if (moves.length === 0) return undefined
+  const result = await store.mutate(reqId, (draft) => {
+    let changed = false
+    for (const move of moves) {
+      if (draft.status !== move.from) continue
+      advance(draft, move.to, move.reason, ctx)
+      changed = true
+    }
+    return changed ? { changed: true } : undefined
+  })
+  return result.changed ? result.requirement : undefined
 }

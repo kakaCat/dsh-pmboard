@@ -1,0 +1,39 @@
+task:
+  id: t-3b4d8e
+  title: 给迁移门补只读预检与可复制迁移命令·测试
+  status: done
+  implements: |-
+    改 src/repositories/migrationGate.ts：新增 MigrationFailure（code 用字面量类型 'REQBOARD_REQUIRES_MIGRATION'、message、hint、ledgerFile、dataRoot）与 PreflightResult 判别联合；新增纯读 preflightLedger(options): PreflightResult（只 existsSync 两次，不建目录不写文件）；把 hint 构造收成模块内唯一一处（node --import tsx/esm scripts/migrate-ledger-v10.ts --file <真实 ledgerFile> --out <真实 dataRoot> --apply，不做 shell 转义、不加引号）；assertLedgerMigrated 改为调用 preflightLedger 并 rethrow 同一 failure（message 文本逐字节不变，只多 hint 字段）。测试改 tests/reqboard/migration-gate.test.ts：补 preflightLedger 三态（有单册无 meta / 有单册有 meta / 两者皆无）、hint 含真实路径且不含 <单册> 与 <数据根>、以及「抛错 ⟺ ok:false 且 message 逐字相等」的同源断言。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-5479a5
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261003191948-e94a
+    TASK_ID: t-3b4d8e
+    TASK_TITLE: 给迁移门补只读预检与可复制迁移命令·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-03T12:22:30.924Z
+      completed_at: 2026-10-03T12:22:33.780Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261003191948-e94a
+  generated_at: 2026-10-03T12:22:20.297Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-03T12:22:33.780Z

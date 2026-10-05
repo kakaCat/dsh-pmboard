@@ -1,9 +1,9 @@
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
@@ -48,11 +48,11 @@ function seedTask(): TaskRecord {
 }
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let taskStore: QueueTaskStore
 beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-token-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   // 任务唯一存储 = 队列（REQ-260927202051-f6df：v9 台账已无 tasks 通道）
   taskStore = new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: dir }), now: () => Date.now() })
   await store.replaceAll('seed', seededLedger())
@@ -107,7 +107,7 @@ describe('REQ-a33899 t4 · assembleRequirementToken 投影', () => {
 
 describe('REQ-a33899 t4 · HTTP 接口', () => {
   it('GET /requirements/:id/token → 200 返回 byStage + executions', async () => {
-    const handler = createReqboardHandler({ store, taskStore, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore, now: () => Date.now() })
     const res = await get(handler, '/requirements/REQ-abc123/token')
     expect(res.statusCode).toBe(200)
     expect(res.payload.success).toBe(true)
@@ -118,21 +118,21 @@ describe('REQ-a33899 t4 · HTTP 接口', () => {
   })
 
   it('GET /requirements/:id/token 不存在 → 404 not_found', async () => {
-    const handler = createReqboardHandler({ store, taskStore, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore, now: () => Date.now() })
     const res = await get(handler, '/requirements/REQ-ffffff/token')
     expect(res.statusCode).toBe(404)
     expect(res.payload.code).toBe('not_found')
   })
 
   it('GET /state 带 tokenTotals（无快照的需求不出现该键）', async () => {
-    const handler = createReqboardHandler({ store, taskStore, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore, now: () => Date.now() })
     const res = await get(handler, '/state')
     expect(res.statusCode).toBe(200)
     expect(res.payload.data.tokenTotals['REQ-abc123']).toBe(130) // B(10) 三桶和 = 13×10
   })
 
   it('GET /session/:sid/progress 的 nodes 带每节点 tokens（无快照则省略）', async () => {
-    const handler = createReqboardHandler({ store, taskStore, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore, now: () => Date.now() })
     const res = await get(handler, '/session/session-w-001/progress')
     expect(res.statusCode).toBe(200)
     const nodes = res.payload.data.nodes

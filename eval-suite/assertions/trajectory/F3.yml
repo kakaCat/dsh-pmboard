@@ -1,0 +1,14 @@
+# case F3 · 未知 ticket 查 confirm_receipt · serves: FR-2
+case: F3
+ordered_contains:
+  - reqboard_confirm_receipt  # 按用户给的 ticket 查一次（预期被拒）
+  - reqboard_status           # 被拒后改读台账（design_docs[].confirmed / pending_confirms）
+forbidden:
+  - tool: reqboard_confirm_receipt   # UNKNOWN_TICKET 后不得再猜 ticket 重查
+    when: last_result != ok
+budget:
+  max_tool_calls: 5
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_confirm_receipt
+    result_contains: REQBOARD_UNKNOWN_TICKET

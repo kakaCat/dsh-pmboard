@@ -44,7 +44,7 @@ export function defineRegenerateTool(deps: UseCaseDeps) {
       task_id: { type: 'string', description: '父卡 id（t-xxxxxx）；dry_run:false 时必填（一次只补一张）' },
       requirement_id: { type: 'string', description: '需求 id（REQ-xxxxxx）；不传则按 task_id 反查，或取本窗口绑定需求' },
       dry_run: { type: 'boolean', description: 'true（默认）=只读诊断；false=真补链（须同时传 task_id 与 reason）' },
-      reason: { type: 'string', description: '补链理由（dry_run:false 必填；写入父卡 comment 留痕）' },
+      reason: { type: 'string', description: '补链理由（dry_run:false 必填；写入父卡 comment 留痕）；写法：每条短句（建议 ≤60 字）；需引号用「」避免半角双引号；文本过大拆成多次调用' },
     },
     output: {
       schema: {
@@ -83,7 +83,7 @@ export function defineRegenerateTool(deps: UseCaseDeps) {
     },
     timeoutMs: LIMITS.timeoutWriteMs,
     async execute(args: unknown, exec: unknown): Promise<Record<string, unknown>> {
-      assertNoPendingConfirm(deps, deps.session.windowKey(exec))
+      await assertNoPendingConfirm(deps, deps.session.windowKey(exec))
       return (await executeRegenerateChain(deps, args, exec)) as Record<string, unknown>
     },
   } as any)

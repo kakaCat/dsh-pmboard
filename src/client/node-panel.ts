@@ -29,11 +29,24 @@ import { stageHeadSummary, stageRowState, type StageRowState } from './stage-pan
 import { STAGE_STATE_WORD } from './node-panel-process.ts'
 // REQ-260929010300-dbf9 FR-1/FR-2：DAG 展示与需求详情共用同一 Canvas 真图构建函数（常量单一源见 dag-view.ts）
 import { buildDagCanvas, PANEL_DAG_CONTAINER_ID, PANEL_DAG_CANVAS_ID } from './views/dag-view.js'
+// REQ-261001124111-5d36 t2：新鲜度渲染已按尺寸门禁拆到 panel-freshness.ts（模块头有"为什么拆"）
+import { freshnessSpan, renderFreshnessBar, type BuildNotice, type NodePanelFreshness } from './panel-freshness.js'
+
+/**
+ * 面板数据新鲜度（REQ-261001124111-5d36 t2）：由刷新调度器（`panel-refresh.ts`）给出，
+ * 决定面板头的「数据时间」与「刷新失败」红条。**实现已按尺寸门禁拆到 `panel-freshness.ts`**，
+ * 这里再导出以保持既有 import 路径（`node-panel.js` 的 `NodePanelFreshness`）不变。
+ */
+export type { NodePanelFreshness, BuildNotice } from './panel-freshness.js'
 
 export interface NodePanelInput {
   overview: StageOverview
   stage: StageKey
   requirement: { id: string; title: string; promptDifficulty?: string | null; category?: string }
+  /** 数据新鲜度（可选）：缺省不渲染「数据时间 / 刷新失败」两块 */
+  freshness?: NodePanelFreshness
+  /** 客户端版本落后于服务端最新构建时的提示（可选；两戳相等或缺一即不渲染） */
+  buildNotice?: BuildNotice
 }
 
 // ---------------------------------------------------------------------------
@@ -48,6 +61,32 @@ function rel(ms: number, now: number = Date.now()): string {
   const d = new Date(ms)
   const pad = (n: number) => String(n).padStart(2, '0')
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+}
+
+/**
+ * 相对时间的**稳定占位**（REQ-261001210304-0dfb · FR-3）。
+ *
+ * 为什么不能直接把 `rel(at)` 写进注入字符串：它的输出随**自然时间**变化
+ * （「刚刚」→「1 分钟前」…），于是同一份数据在不同时刻渲染出不同字符串，
+ * React 就会重设整段 innerHTML，把 DAG 的画布/滚动/页签一起重建。
+ * 现在字符串里只放**稳定的原始时间戳**，人话由 {@link hydrateRelTimes} 在渲染后算。
+ */
+export function relSlot(at: number): string {
+  return '<span data-dsh-pm-rel="' + String(at) + '"></span>'
+}
+
+/**
+ * 把所有 `[data-dsh-pm-rel]` 占位填成「刚刚 / N 分钟前 / N 小时前 / YYYY-MM-DD」（渲染后调用）。
+ * 幂等；找不到占位即无操作；`now` 可注入（测试固定时钟）。
+ */
+export function hydrateRelTimes(root: ParentNode, now: number = Date.now()): void {
+  for (const el of Array.from(root.querySelectorAll<HTMLElement>('[data-dsh-pm-rel]'))) {
+    const raw = el.getAttribute('data-dsh-pm-rel')
+    if (raw === null || raw.length === 0) continue
+    const at = Number(raw)
+    if (!Number.isFinite(at)) continue
+    el.textContent = rel(at, now)
+  }
 }
 
 /** 拓扑分层（DAG 层级）：按依赖深度分组。 */
@@ -99,7 +138,7 @@ function renderDraftInfo(p: Extract<StageDetail, { stage: 'draft' }>, reqId: str
   if (b.category) parts.push(infoItem('🏷️ 分类', '<span class="dsh-pm-np-tag">' + esc(b.category) + '</span>'))
   parts.push(infoItem('📂 文档位置', esc('docs/requirements/' + reqId + '/')))
   if (b.sourceWindow) parts.push(infoItem('👤 来源窗口', esc(b.sourceWindow)))
-  if (b.createdAt) parts.push(infoItem('📅 创建时间', esc(rel(b.createdAt))))
+  if (b.createdAt) parts.push(infoItem('📅 创建时间', relSlot(b.createdAt)))
   return parts.join('')
 }
 
@@ -154,7 +193,7 @@ export function renderDag(tasks: StageTaskRef[]): string {
     const chips = ts.map(t => {
       const open = t.cardDoc ? ' data-action="open-doc" data-path="' + esc(t.cardDoc) + '"' : ''
       // 内层复用泳道卡片的 -card-id/-card-title 类，保证编号/名称的上下结构与泳道图逐字一致（用户裁定 t8）
-      return '<button type="button" class="dsh-pm-np-dag-node" data-status="' + esc(t.status) + '"' + open + ' title="' + esc(t.title) + '">' +
+      return '<button type="button" class="dsh-pm-np-dag-node" data-status="' + esc(laneOf(t, tasks.filter(k => k.parentId === t.id))) + '"' + open + ' title="' + esc(t.title) + '">' +
         '<span class="dsh-pm-np-card-id">' + esc(t.id) + nodocIcon(t) + '</span>' +
         '<span class="dsh-pm-np-card-title">' + esc(t.title) + '</span>' +
       '</button>'
@@ -212,7 +251,9 @@ function renderSwimlane(tasks: StageTaskRef[]): string {
       const missing = chainMissing(t, kids)
         ? '<span class="dsh-pm-np-chain-missing" title="该卡应落子卡链，链尚未生成——待再生成补链">链未生成</span>'
         : ''
-      return '<button type="button" class="dsh-pm-np-card" data-status="' + esc(t.status) + '"' + open + ' title="' + esc(t.title) + '">' +
+      // REQ-260930182521-4fee FR-2：着色阶段 = 该卡所在列（同一次 laneOf 推导），
+      // 否则卡会「站在测试中列、显示开发中的蓝」。
+      return '<button type="button" class="dsh-pm-np-card" data-status="' + esc(laneOf(t, kids)) + '"' + open + ' title="' + esc(t.title) + '">' +
         '<span class="dsh-pm-np-card-id">' + esc(t.id) + nodocIcon(t) + '</span>' +
         '<span class="dsh-pm-np-card-title">' + esc(t.title) + '</span>' +
         missing +
@@ -264,7 +305,7 @@ function renderArchivedInfo(p: Extract<StageDetail, { stage: 'archived' }>): str
   if (!a) return empty('暂无归档材料')
   const parts: string[] = []
   const at = a.archivedAt ?? a.submittedAt
-  parts.push(`<div class="dsh-pm-np-archive-badge">✅ 已归档 · ${esc(rel(at))}</div>`)
+  parts.push(`<div class="dsh-pm-np-archive-badge">✅ 已归档 · ${relSlot(at)}</div>`)
   if (a.docs.length > 0) {
     parts.push(`<div class="dsh-pm-np-sec-label">📚 归档文档</div><div class="dsh-pm-np-doclist">` +
       a.docs.map(d => docItem(d.path, docFileLabel(d.path, d.kind), KIND_ICONS[d.kind] ?? (d.path.endsWith('/') ? '📁' : '📄'))).join('') + `</div>`)
@@ -303,7 +344,7 @@ function renderInfoFold(payload: StageDetail, reqId: string): string {
 // 面板头
 // ---------------------------------------------------------------------------
 
-function renderHead(payload: StageDetail, req: NodePanelInput['requirement'], state: StageRowState): string {
+function renderHead(payload: StageDetail, req: NodePanelInput['requirement'], state: StageRowState, freshness?: NodePanelFreshness): string {
   const stage = payload.stage as MainStageKey
   // 未到达的节点统一说「未开始」，不再借用该节点的完成态词（FR-10）
   const word = state === 'pending' ? '未开始' : (STAGE_STATE_WORD[stage] ?? stage)
@@ -317,7 +358,9 @@ function renderHead(payload: StageDetail, req: NodePanelInput['requirement'], st
     '<div class="dsh-pm-np-head">' +
       '<span class="dsh-pm-np-head-state" data-state="' + esc(state) + '">' + esc(word) + '</span>' +
       (title ? '<span class="dsh-pm-np-head-title">' + esc(title) + '</span>' : '') +
-      (latestAt !== undefined ? '<span class="dsh-pm-np-head-time">' + esc(rel(latestAt)) + '</span>' : '') +
+      (latestAt !== undefined ? '<span class="dsh-pm-np-head-time">' + relSlot(latestAt) + '</span>' : '') +
+      // REQ-261001124111-5d36 FR-2：数据时间紧挨「最近动态」，一眼分清「节点的动态」与「面板的数据」
+      (freshness !== undefined ? freshnessSpan() : '') +
       boardEntryBtn +
     '</div>'
 }
@@ -341,7 +384,8 @@ export function renderNodePanel(input: NodePanelInput): string {
 
   if (!payload.enabled) {
     return '<div class="dsh-pm-np" data-stage="' + esc(stage) + '" data-state="skipped">' +
-      renderHead(payload, input.requirement, 'skipped') +
+      renderHead(payload, input.requirement, 'skipped', input.freshness) +
+      renderFreshnessBar(input) +
       empty('本分类跳过该节点') +
     '</div>'
   }
@@ -350,7 +394,9 @@ export function renderNodePanel(input: NodePanelInput): string {
   const infoFold = stage === 'implementing' ? '' : renderInfoFold(payload, input.requirement.id)
 
   return '<div class="dsh-pm-np" data-stage="' + esc(stage) + '" data-state="' + esc(state) + '">' +
-    renderHead(payload, input.requirement, state) +
+    renderHead(payload, input.requirement, state, input.freshness) +
+    // FR-3 / FR-5：提示条插在"头"与"内容"之间——不遮挡内容，也不藏在折叠块里
+    renderFreshnessBar(input) +
     infoFold +
     implViews +
   '</div>'

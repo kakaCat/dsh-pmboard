@@ -94,7 +94,7 @@ describe('2.1 旧台账兼容（无新字段可读、行为不变）', () => {
     // v9：任务唯一存储 = 队列（台账视图不再有任务通道）——存量卡照旧完整读回，字段零丢失
     const tasks = await h.tasksOf('REQ-000001')
     expect(tasks[0]!.id).toBe('t-legacy')
-    const view = await h.repo.read(v => v)
-    expect(view.requirements[0]!.autoRun).toBeUndefined()
+    // B12 阶段⑤族 B：整册读 → 定点读
+    expect((await h.store.get('REQ-000001'))!.autoRun).toBeUndefined()
   })
 })

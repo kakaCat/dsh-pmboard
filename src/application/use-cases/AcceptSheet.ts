@@ -6,6 +6,7 @@
  * @module dsh-pmboard/application/use-cases/AcceptSheet
  */
 import { deliverWorktreeNotice } from '../internal/worktree-notice.js'
+import { firstWritableBound } from '../../application/internal/window.js'
 import type { UseCaseDeps } from '../ports.js'
 import {
   normalizeText,
@@ -14,7 +15,7 @@ import { ACCEPT_ITEM_OPTIONS, FINAL_DECLINE_LABEL, FINAL_PASS_LABEL } from '../.
 import { clip, fmt } from '../../domain/text/fmt.js'
 import { pmHeader } from '../../domain/text/pm-badge.js'
 import { LIMITS } from '../../domain/limits.js'
-import { openRequirementsFor } from '../internal/window.js'
+import { boundSummariesOf } from '../internal/binding-read.js'
 import { applyVerdicts } from '../internal/verdicts.js'
 import { captureSnapshot, transitionRequirement } from '../internal/token-usage.js'
 import { rewriteVerificationDoc } from '../internal/verification-doc-writer.js'
@@ -25,8 +26,8 @@ import {
   requireLiveDriver,
 } from '../internal/support.js'
 import { checkAcceptanceGate } from '../internal/accept-sheet-rtm-integration.js'
-import { requirementItemTitle } from '../../domain/workflow/AcceptanceSheetSpec.js'
-import { taskStoreOf } from './queue-access.js'
+import { requirementItemTitle , needsResultInput, humanNotice } from '../../domain/workflow/AcceptanceSheetSpec.js'
+import { requirementStoreOf, taskStoreOf, mutateIfPresent, createManyQueue } from './queue-access.js'
 
 export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
       const windowKey = agentIdFromExec(deps, exec)
@@ -35,12 +36,17 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
       const explicitId = normalizeText(a.requirement_id, 'requirement_id', 64)
       const batchSize = Math.min(Math.max(Number(a.batch_size ?? LIMITS.sheetBatchDefault) || LIMITS.sheetBatchDefault, 1), LIMITS.sheetBatchMax)
 
-      const snapshot = deps.repo.snapshot()
-      const bound = openRequirementsFor(snapshot, windowKey)
+      // t8/B11：绑定读走新端口（只读摘要）
+      const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
       if (bound.length === 0) reject('reqboard_accept_sheet 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
-      const targetReq = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : bound[0]
-      if (targetReq === undefined) {
+      const picked = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : firstWritableBound(bound, windowKey)
+      if (picked === undefined) {
         reject('reqboard_accept_sheet 未执行：需求 ' + explicitId + ' 不是本窗口绑定的进行中需求', 'REQBOARD_NOT_BOUND_TO_WINDOW')
+      }
+      // 判据过 → 取整条（下游要 verification?.sheet）
+      const targetReq = await requirementStoreOf(deps).get(picked.id)
+      if (targetReq === undefined) {
+        reject('reqboard_accept_sheet 未执行：需求 ' + picked.id + ' 不在台账中', 'REQBOARD_REQUIREMENT_NOT_FOUND')
       }
       const sheet = targetReq.verification?.sheet
       if (sheet === undefined) reject('reqboard_accept_sheet 未执行：该需求还没有验收单（先 reqboard_verify_submit）', 'REQBOARD_NO_SHEET')
@@ -54,7 +60,7 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
        */
       const finalizeIfAllPassed = async (passed: number, failed: number): Promise<Record<string, unknown> | undefined> => {
         if (failed > 0) return undefined
-        const cur = deps.repo.snapshot().requirements.find(r => r.id === targetReq.id)
+        const cur = await requirementStoreOf(deps).get(targetReq.id)
         if (cur === undefined || cur.status !== 'accepting') return undefined
         const curSheet = cur.verification?.sheet
         // REQ-308b9a FR-9 / AC-9.3：放行判据 = 无 pending（not_verifiable 算已裁决）。
@@ -90,9 +96,7 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
           return { success: true, recorded: 0, pending: 0, passed, failed: 0, note: '用户选择暂不归档：需求保持验收态' }
         }
         const nowTs2 = deps.clock.now()
-        const moved = await deps.repo.mutate('requirement-moved', (ledger) => {
-          const r = ledger.requirements.find(x => x.id === targetReq.id)
-          if (r === undefined) return undefined
+        const moved = await mutateIfPresent(requirementStoreOf(deps), targetReq.id, (r) => {
           if (r.status !== 'accepting') {
             throw Object.assign(new Error('需求当前处于 ' + r.status + '，不在验收态'), { code: 'bad_status' })
           }
@@ -117,11 +121,11 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
           })
           // FR-6 写入器 A（T-9）：交棒即写 checkpoint（终态 → pendingAction=reqboard_status）
           stampCheckpoint(r, nowTs2, 'reqboard_accept_sheet')
-          return { requirements: [r] }
+          return { changed: true }
         }).catch((err: unknown) => {
           reject('reqboard_accept_sheet 归档失败：' + ((err as Error).message ?? String(err)), (err as { code?: string }).code ?? 'REQBOARD_STORE_INCONSISTENT')
         })
-        const movedReq = (moved.changed.requirements ?? [])[0]
+        const movedReq = moved?.requirement
         // REQ-260923222557-d3b0 FR-3：归档 → worktree 合并清理提示（事件型注入，失败不阻断）
         if (movedReq !== undefined) {
           deliverWorktreeNotice(deps, windowKey, 'archived', { requirementId: movedReq.id })
@@ -160,7 +164,7 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
       const OPT_OTHER = ACCEPT_ITEM_OPTIONS.other
       let answers: { id?: string; selected?: string[]; custom?: string }[] = []
       try {
-        answers = [...await deps.questions.ask(pendingItems.map(it => ({
+        answers = [...await deps.questions.ask(pendingItems.flatMap(it => ([{
             id: it.id,
             // REQ-260930183951-eb6c FR-4：弹框 header 也走 domain 单点（否则弹框里分不清是哪类缺口项）。
             header: pmHeader(it.source.kind === 'requirement'
@@ -171,11 +175,30 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
               ? fmt('\n（证据：{evidence}）', { evidence: clip(it.evidence[0] ?? '', LIMITS.popupEvidenceMax) })
               : ''),
             options: [
-              { label: OPT_PASS, description: '该验收项通过——请在自定义输入填实际结果（必填，REQ-260930094139-2d65 FR-1）' },
+              // REQ-261001184609-cecb FR-2：有 agent 结果时不再要求人填——人只裁决
+              { label: OPT_PASS, description: needsResultInput(it)
+                ? '该验收项通过——请在自定义输入填实际结果（必填，REQ-260930094139-2d65 FR-1）'
+                : '该验收项通过（实际结果已由 agent 记录，无需填写）' },
               { label: OPT_FIX, description: '需修改——请在自定义输入写意见' },
               { label: OPT_OTHER, description: '其他结论——请在自定义输入说明' },
             ],
-          })), {
+          },
+          {
+            // REQ-261001154450-b918 FR-1：第二问专门收「实际结果」。旧实现只给一问
+            // （选项 **或** 自定义输入二选一），选"通过"时拿不到文本，于是写了占位文案冒充通过。
+            id: it.id + '#result',
+            // PM 弹框 header 一律带标志（REQ-6f39b5 契约；漏了会被 pm-question-badge 用例抓出来）
+            header: pmHeader('实际结果'),
+            // REQ-261001170807-06fd FR-3：把**已有证据**随问一起递到眼前——人只做裁决，不再重抄一遍
+            // （此前证据只在第一问、且被截到 40 字符，面对长命令/路径等于没有）。
+            question: fmt('【{id}】{criterion}', { id: it.id, criterion: clip(it.criterion, LIMITS.popupEvidenceMax) })
+              + (it.evidence.length > 0 ? fmt('\n已有证据：{ev}', { ev: clip(it.evidence[0] ?? '', LIMITS.popupEvidenceMax) }) : '')
+              + (humanNotice(it) !== '' ? '\n' + humanNotice(it) : '')
+              + '\n请贴实际结果（命令输出摘要 / 看到的界面 / 数据）；通过必填，留空则记「未复核」，不计入通过',
+          },
+        // REQ-261001184609-cecb FR-2：**验证是执行方的活，裁决是人的活**——
+        // 该项已带结果时不抛第二问，人只点通过/退回（零输入即可完成裁决）。
+        ].slice(0, needsResultInput(it) ? 2 : 1))), {
           ...(exec.agent !== undefined ? { agent: exec.agent } : {}),
           signal: (exec as { signal?: unknown }).signal,
           // 闸门声明（REQ-e3b6a0 t7）：验收逐项裁决属 G4
@@ -186,30 +209,50 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
         if (code === 'DELEGATED_CALLER' || code === 'CALLER_NOT_LIVE') {
           return { success: false, fallback: 'board', note: '当前调用方无弹框权限：请用户到项目看板验收面板逐项勾选' } as never
         }
-        return { success: false, note: '用户未作答（取消/暂离）：未记录任何裁决，稍后可重新调用' } as never
+        // REQ-261001170807-06fd FR-4：**失败要响亮**——原来这里把任何异常都写成
+        // "用户未作答（取消/暂离）"，把超时/中断/渲染故障一律栽给用户，真因被吞（用户实测中招）。
+        const detail = clip(((err as Error).message ?? String(err)), 160)
+        const aborted = code === 'ABORT_ERR' || /abort|cancel/i.test(detail)
+        return {
+          success: false,
+          note: aborted
+            ? fmt('弹框被中断（{detail}）：未记录任何裁决——重试或走看板验收面板', { detail })
+            : fmt('验收弹框未完成（工具故障，**不是**你的操作）：{detail}；未记录任何裁决，重试或走看板验收面板', { detail }),
+        } as never
       }
 
       const byId = new Map(answers.map(ans => [ans.id ?? '', ans]))
-      const verdicts: { itemId: string; status: 'passed' | 'failed'; opinion?: string }[] = []
+      const verdicts: { itemId: string; status: 'passed' | 'failed' | 'unverified'; opinion?: string }[] = []
+      /**
+       * 实际结果的取值单点（FR-1）：优先第二问（<id>#result）；该问缺席/为空时回退到
+       * 裁决问自身的自定义输入——本机弹框实测是"选项 **或** 自定义输入"二选一，
+       * 单问回执仍可能出现。两处都空 = 未复核（unverified），不再写占位文案。
+       */
+      const resultOf = (it: { id: string; evidence: readonly string[] }): string => {
+        const fromSecond = (byId.get(it.id + '#result')?.custom ?? '').trim()
+        if (fromSecond.length > 0) return fromSecond
+        const fromFirst = (byId.get(it.id)?.custom ?? '').trim()
+        if (fromFirst.length > 0) return fromFirst
+        // REQ-261001170807-06fd FR-5（用户裁定）：**验证是 agent 的活，人只做裁决**。
+        // 验收项若已带 agent 记录的实际结果（提交验收材料时给的证据），选"通过"即视为已复核——
+        // 不再逼用户把证据重抄一遍，也不再因留空而误记「未复核」。
+        return (it.evidence[0] ?? '').trim()
+      }
       for (const it of pendingItems) {
         const ans = byId.get(it.id)
         if (ans === undefined) continue // 未作答 → 保持 pending（挂起点）
         const picked = ans.selected?.[0] ?? ''
         const custom = (ans.custom ?? '').trim()
         if (picked === OPT_PASS) {
-          // REQ-260930094139-2d65 FR-1：通过同样必填实际结果——自定义输入即意见。
-          // 但弹框在本机是"选项 **或** 自定义输入"二选一（实测：选了点选项就拿不到 custom，
-          // 见 REQ-260930155231-0862 验收实操），于是空意见会被域门以 opinion_required 拒绝，
-          // 让**整张弹框路径永远走不通**。这里改为写入显式兜底文案：
-          //   - 域门仍然保留（其它调用方/看板路径照旧要求填实际结果）；
-          //   - 台账能一眼看出这一项是"没附实际结果"通过的，不伪装成已复核。
-          // 字面量**内联**（不走模块级常量）：实测发现按路径+mtime 的转译缓存会漏掉后加的
-          // 顶层声明，导致运行时报 "POPUP_PASS_FALLBACK is not defined"；内联后无自由标识符可漏。
-          verdicts.push({
-            itemId: it.id,
-            status: 'passed',
-            opinion: custom.length > 0 ? custom : '（未附实际结果：本机弹框为「选项或自定义输入」二选一，本项按通过记录，待补复核）',
-          })
+          // REQ-261001154450-b918 FR-1（推翻 REQ-260930155231-0862 的兜底）：实际结果来自
+          // **独立的第二问**（<id>#result），不再依赖"选项或自定义二选一"的巧合。
+          // 拿不到结果 → 记 unverified（未复核）：不冒充通过、不写占位文案。
+          const result = resultOf(it)
+          if (result.length === 0) {
+            verdicts.push({ itemId: it.id, status: 'unverified' })
+          } else {
+            verdicts.push({ itemId: it.id, status: 'passed', opinion: result })
+          }
         } else {
           const opinion = custom.length > 0 ? custom : (picked.replace(/^[^\w\u4e00-\u9fa5]+/, '') || '需修改')
           verdicts.push({ itemId: it.id, status: 'failed', opinion })
@@ -227,17 +270,13 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
       // 于是分三步：① 在**台账草稿**上算裁决（纯计算，不落盘）；② **先**把返工卡写进队列
       // （taskStore.createMany）；③ **后**把算好的需求记录整条替换进台账（repo.mutate）。
       // 反序会出现"返工卡已建、需求态未落"的悬空——故顺序是硬纪律，不是风格。
-      const draftLedger = {
-        schemaVersion: snapshot.schemaVersion,
-        revision: snapshot.revision,
-        requirements: snapshot.requirements.map(r => structuredClone(r)),
-        triages: snapshot.triages.map(t => structuredClone(t)),
-      }
+      // t8/B11：裁决改吃**单条**（clone 后交纯计算），不再为它拼 draftLedger
+      const recForVerdicts = structuredClone(targetReq)
       const fromStatusBefore = targetReq.status
       let applied: ReturnType<typeof applyVerdicts>
       try {
         applied = applyVerdicts(
-          draftLedger, verdictTasks, targetReq.id, sheet.version, verdicts,
+          recForVerdicts, verdictTasks, sheet.version, verdicts,
           { kind: 'human', sessionId: windowKey }, nowTs, () => deps.ids.comment(),
           captureSnapshot(deps, windowKey), // REQ-b545fe t5: 传快照供打回路径结算
         )
@@ -248,24 +287,24 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
       stampCheckpoint(applied.requirement, nowTs, 'reqboard_accept_sheet')
       // ① 任务写（先）：返工卡物化到队列；幂等键 = 任务 id。
       if (applied.reworkTasks.length > 0) {
-        await store.createMany(targetReq.id, applied.reworkTasks)
+        await createManyQueue(deps, targetReq.id, applied.reworkTasks)
       }
       // ② 需求写（后）：把算好的需求记录整条替换（防并发漂移：状态与验收单版本须仍是计算时的）。
-      const result = await deps.repo.mutate('requirement-updated', (ledger) => {
-        const idx = ledger.requirements.findIndex(r => r.id === targetReq.id)
-        if (idx < 0) return undefined
-        const cur = ledger.requirements[idx]
-        if (cur === undefined || cur.status !== fromStatusBefore || cur.verification?.sheet?.version !== sheet.version) {
+      const result = await mutateIfPresent(requirementStoreOf(deps), targetReq.id, (draft) => {
+        // 乐观锁：状态与验收单版本必须仍是计算时的那份（否则说明计算期间被并发改过）
+        if (draft.status !== fromStatusBefore || draft.verification?.sheet?.version !== sheet.version) {
           reject('reqboard_accept_sheet 记录失败：需求状态/验收单版本在计算期间发生变化，请重试', 'REQBOARD_STORE_INCONSISTENT')
         }
-        ledger.requirements[idx] = applied.requirement
-        return { requirements: [applied.requirement] }
+        // 整条替换（与旧写法 `ledger.requirements[idx] = applied.requirement` 同义）：
+        // `version` 由适配器自增，故 applied.requirement 里的旧 version 会被覆盖，无需特殊处理。
+        Object.assign(draft, applied.requirement)
+        return { changed: true }
       })
-      const changed = (result.changed.requirements ?? [])[0]
+      const changed = result?.requirement
       if (changed === undefined) reject('reqboard_accept_sheet 写入失败：台账状态异常', 'REQBOARD_STORE_INCONSISTENT')
       // REQ-308b9a FR-7 / AC-7.7：裁决落库后回填 verification.md 的验收结果表。
-      await rewriteVerificationDoc({ repo: deps.repo, docs: deps.docs }, targetReq.id, await store.listByRequirement(targetReq.id))
-      const after = deps.repo.snapshot().requirements.find(r => r.id === targetReq.id)
+      await rewriteVerificationDoc({ repo: { get: (id) => requirementStoreOf(deps).get(id) }, docs: deps.docs }, targetReq.id, await store.listByRequirement(targetReq.id))
+      const after = await requirementStoreOf(deps).get(targetReq.id)
       const s = after?.verification?.sheet
       const pending = s?.items.filter(i => i.status === 'pending').length ?? 0
       const failed = s?.items.filter(i => i.status === 'failed').length ?? 0

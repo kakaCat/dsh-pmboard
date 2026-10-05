@@ -6,6 +6,7 @@
  * @module dsh-pmboard/application/use-cases/SubmitVerification
  */
 import type { UseCaseDeps } from '../ports.js'
+import { firstWritableBound } from '../../application/internal/window.js'
 import { coverageGateOf, syncRTMYaml } from '../internal/rtm-yaml.js'
 import { fmt } from '../../domain/text/fmt.js'
 import {
@@ -13,11 +14,12 @@ import {
   type VerificationSheet,
 } from '../../shared/protocol.js'
 import { buildSheet, requirementItemTitle } from '../../domain/workflow/AcceptanceSheetSpec.js'
+import { bindItemResults, itemResultBindingEnabled } from '../../domain/workflow/AcceptanceSheetSpec.js'
 import { checkDocCompleteness } from '../../domain/workflow/DocCompleteness.js'
 import { renderVerificationDoc } from '../../domain/workflow/VerificationDoc.js'
 import { docSyncSummary } from '../../domain/workflow/DocSyncSpec.js'
-import { openRequirementsFor } from '../internal/window.js'
-import { applyTaskRollup } from '../internal/rollup.js'
+import { boundSummariesOf } from '../internal/binding-read.js'
+import { applyTaskRollupVia } from '../internal/rollup.js'
 import { captureSnapshot } from '../internal/token-usage.js'
 import { registerArtifact } from '../internal/artifact-gates.js'
 import {
@@ -38,9 +40,10 @@ import {
   requireLiveDriver,
   rollupBlockersOf,
   workspacePathCandidates,
+  assertWritableRequirementProject,
 } from '../internal/support.js'
 import { generateAcceptanceTracking } from '../internal/submit-rtm-integration.js'
-import { taskStoreOf } from './queue-access.js'
+import { requirementStoreOf, taskStoreOf, mutateIfPresent } from './queue-access.js'
 import { readRTM, requirementsDir, getRTMPath } from '../../../vendor/reqboard/src/rtm/file-io.js'
 import type { RTMAccepting } from '../../../vendor/reqboard/src/rtm/types.js'
 import { askConfirm } from './AskConfirm.js'
@@ -72,15 +75,20 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
         )
       }
 
-      const snapshot = deps.repo.snapshot()
-      const bound = openRequirementsFor(snapshot, windowKey)
+      // t8/B11：绑定读改走新端口（只读摘要，不装配整册）；status 门也吃摘要 ⇒ 该门零文件读。
+      const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
       if (bound.length === 0) reject('reqboard_verify_submit 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
-      const target = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : bound[0]
-      if (target === undefined) {
+      const picked = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : firstWritableBound(bound, windowKey)
+      if (picked === undefined) {
         reject(fmt('reqboard_verify_submit 未执行：需求 {id} 不是本窗口绑定的进行中需求', { id: explicitId }), 'REQBOARD_NOT_BOUND_TO_WINDOW')
       }
-      if (target.status !== 'implementing' && target.status !== 'accepting') {
-        reject(fmt('reqboard_verify_submit 未执行：需求处于 {status}，只有执行/验收阶段的交付才能提交验收', { status: target.status }), 'REQBOARD_BAD_STATUS')
+      if (picked.status !== 'implementing' && picked.status !== 'accepting') {
+        reject(fmt('reqboard_verify_submit 未执行：需求处于 {status}，只有执行/验收阶段的交付才能提交验收', { status: picked.status }), 'REQBOARD_BAD_STATUS')
+      }
+      // 判据过了才取**整条**（下游要目标需求的字段）；`get()` 返回可空 ⇒ 显式守卫，不用 `!` 断言。
+      const target = await requirementStoreOf(deps).get(picked.id)
+      if (target === undefined) {
+        reject(fmt('reqboard_verify_submit 未执行：需求 {id} 不在台账中', { id: picked.id }), 'REQBOARD_REQUIREMENT_NOT_FOUND')
       }
 
       const store = taskStoreOf(deps)
@@ -172,7 +180,7 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
       // ── 门禁预检（FR-2 触发点 7 / FR-5）：测试覆盖度必须 ≥80% 才允许提交验收 ──
       // 读 tests/*.md + design/test-cases.md + tasks/*.md 的 covers: 标注；无数据时不拦截（FR-9）。
       // 存量/直种需求（无 requirement.md / artifacts 为空）豁免——同上口径。
-      const verifyGateProbe = isLegacyForDocs ? undefined : syncRTMYaml(deps, targetTasks, target.id, 'submit:verification')
+      const verifyGateProbe = isLegacyForDocs ? undefined : await syncRTMYaml(deps, targetTasks, target.id, 'submit:verification')
       const testGate = coverageGateOf('accepting', verifyGateProbe)
       if (testGate !== undefined && !testGate.passed) {
         reject(
@@ -190,9 +198,7 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
         : readTraceabilityGaps(deps, target.id)
 
       const nowTs = deps.clock.now()
-      const result = await deps.repo.mutate('requirement-updated', (ledger) => {
-        const req = ledger.requirements.find(r => r.id === target.id)
-        if (req === undefined) return undefined
+      const result = await mutateIfPresent(requirementStoreOf(deps), target.id, (req) => {
         // ── 逐项验收单生成（REQ-2e9473 t13/W6；规则在 domain/workflow/AcceptanceSheetSpec.ts，t4）──
         // items = 每任务验收标准 + 需求级标准；返工时（上一版有未过项）只含未过项。
         // REQ-260930183951-eb6c FR-1：投影单点为 toSheetTasks（**必须**透传 parentId，否则
@@ -213,6 +219,9 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
           generatedAt: nowTs,
           generatedBy: { kind: 'agent', sessionId: windowKey },
         })
+        // REQ-261001184609-cecb FR-1：材料即结果——agent 跑过的验证逐项落库，
+        // 弹框随后只问裁决（人不需要重抄命令输出）。
+        if (itemResultBindingEnabled(process.env)) bindItemResults(built.sheet.items, evidence)
         const sheet: VerificationSheet = built.sheet as VerificationSheet
         req.verification = {
           summary,
@@ -234,20 +243,19 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
           createdAt: nowTs,
           createdBy: { kind: 'agent', sessionId: windowKey },
         })
-        req.version += 1
         req.updatedAt = nowTs
         req.updatedBy = { kind: 'agent', sessionId: windowKey }
-        // 任务全完成时顺带推进到验收态（人来了就有东西可审）
-        // D6：applyTaskRollup 第 2 参 tasks（队列任务；回调是同步契约，用已取好的 targetTasks）。
-        const advanced = applyTaskRollup(
-          ledger,
-          targetTasks,
-          { now: nowTs, commentId: () => deps.ids.comment(), snapshot: () => captureSnapshot(deps, windowKey) },
-          req.id,
-        )
-        return { requirements: [req, ...advanced] }
+        return { changed: true }
       })
-      const changed = (result.changed.requirements ?? [])[0]
+      // 任务全完成时顺带推进到验收态（人来了就有东西可审）。
+      // B12 阶段②c：从"同一次整册 mutate"拆成**紧随其后的定点调用**（顺序与旧路径一致）。
+      await applyTaskRollupVia(
+        requirementStoreOf(deps),
+        targetTasks,
+        { now: nowTs, commentId: () => deps.ids.comment(), snapshot: () => captureSnapshot(deps, windowKey) },
+        target.id,
+      )
+      const changed = result?.requirement
       if (changed === undefined) reject('reqboard_verify_submit 写入失败：台账状态异常', 'REQBOARD_STORE_INCONSISTENT')
       // ── 产物登记（REQ-31e11f t4）：verification 产物 ─────────────────────
       // ── verification.md 结构化生成（FR-7 / AC-7.1~7.3）────────────────────
@@ -274,6 +282,8 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
           ...(it.decidedAt !== undefined ? { decidedAt: it.decidedAt } : {}),
         }
       })
+      // REQ-261001203710-0fbf t7 / FR-2：验收文档是工作区相对落盘——写前按需求 id 核验根
+      await assertWritableRequirementProject(deps, target.id)
       await docs.write(verPath, renderVerificationDoc({
         reqId: target.id,
         title: target.title,
@@ -285,21 +295,19 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
       }))
       // REQ-2d1c74 FR-5：写盘后核验可打开性——写盘静默失败时当场响亮，而不是登记一个不存在的产物
       assertArtifactOpenable(deps.docs, verPath)
-      await deps.repo.mutate('requirement-updated', (ledger) => {
-        const r = ledger.requirements.find(x => x.id === changed.id)
-        if (r === undefined) return undefined
+      await mutateIfPresent(requirementStoreOf(deps), changed.id, (r) => {
         registerArtifact(r, {
           stage: 'accepting', kind: 'verification', path: verPath,
           registeredAt: nowTs, registeredBy: { kind: 'agent', sessionId: windowKey },
         })
-        return { requirements: [r] }
+        return { changed: true }
       })
-      const ledgerNow = deps.repo.snapshot()
       const tasks = (await store.listByRequirement(target.id)).filter(t => t.status !== 'canceled')
-      const reqNow = ledgerNow.requirements.find(r => r.id === changed.id)
+      // t8/B11：只需该需求单条（此前为凑一个 rollupBlockersOf 的未用实参而整册读）
+      const reqNow = await requirementStoreOf(deps).get(changed.id)
       // rollup 阻塞显式化（REQ-2e9473 t02）：有未完成任务时验收材料虽收，但需求进不了 accepting
       // D4：rollupBlockersOf 新签名 (ledger, tasks, reqId, reqStatus)。
-      const blockers = reqNow === undefined ? undefined : rollupBlockersOf(ledgerNow, tasks, reqNow.id, reqNow.status)
+      const blockers = reqNow === undefined ? undefined : rollupBlockersOf(tasks, reqNow.id, reqNow.status)
       // 说明文案与变量**在 return 之外**组装：输出契约门禁静态扫描 return 字面量的顶层键，
       // 把 fmt 的变量表误读成响应字段（实测被误判为 n/list 两个未声明字段）。不改门禁，改写法。
       const blockerBlock = blockers === undefined
@@ -324,7 +332,7 @@ export async function submitVerification(deps: UseCaseDeps, args: unknown, exec:
         console.warn('[SubmitVerification] RTM 集成失败:', rtmErr)
       }
       // RTM 触发点 7：提交验收材料 → rtm-accepting.yml（测试覆盖度）
-      syncRTMYaml(deps, tasks, changed.id, 'submit:verification')
+      await syncRTMYaml(deps, tasks, changed.id, 'submit:verification')
       
       // 🆕 自动触发验收确认（Dive 自动流程：提交后自动弹框请人确认）
       let autoConfirmNote = ''

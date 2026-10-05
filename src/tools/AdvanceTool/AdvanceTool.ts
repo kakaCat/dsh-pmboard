@@ -15,12 +15,16 @@
  *
  * @module dsh-pmboard/tools/AdvanceTool/AdvanceTool
  */
+import { requirementStoreOf, mutateIfPresent } from '../../application/use-cases/queue-access.js'
+import { firstWritableBound } from '../../application/internal/window.js'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { LIMITS } from '../../domain/limits.js'
 import type { UseCaseDeps } from '../../application/ports.js'
 import { advanceRequirement, progressOf } from '../../application/use-cases/AdvanceChain.js'
 import { runningSubtaskIds, selectAdvanceEvent } from '../../application/internal/advance-select.js'
-import { openRequirementsFor } from '../../application/internal/window.js'
+import { boundSummariesOf } from '../../application/internal/binding-read.js'
+// REQ-261003191948-e94a：工作区根校正的**唯一收敛点**（application 层），任务读取入口必须经过。
+import { agentIdFromExec } from '../../application/internal/support.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { ADVANCE_PROMPT } from './prompt.js'
 import { renderSmart } from '../shared.js'
@@ -71,9 +75,11 @@ export function defineAdvanceTool(deps: UseCaseDeps) {
     // 修复（DshJobsAdapter 接上 JobsPort）：同步路径只剩内存测试 / 嵌入调用，不代表线上路径。
     timeoutMs: LIMITS.timeoutWriteMs,
     async execute(args: AdvanceParams, exec: unknown): Promise<Record<string, unknown>> {
-      const windowKey = deps.session.windowKey(exec)
-      const snap = deps.repo.snapshot()
-      const bound = openRequirementsFor(snap, windowKey)
+      // REQ-261003191948-e94a：本入口要按 task_id 反查任务（taskStore.get），必须先经
+      // agentIdFromExec 校正工作区根——否则插件重载后按错误的根读队列，恒报「任务不存在」。
+      const windowKey = agentIdFromExec(deps, exec)
+      // t8：绑定读改走新端口（只读摘要，不装配整册）；开放态判定在助手内复用领域判定器。
+      const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
       const taskId = typeof args.task_id === 'string' ? args.task_id : ''
       let requirementId = typeof args.requirement_id === 'string' ? args.requirement_id : ''
 
@@ -94,7 +100,7 @@ export function defineAdvanceTool(deps: UseCaseDeps) {
         }
         requirementId = task.requirementId
       } else {
-        const first = bound[0]
+        const first = firstWritableBound(bound, windowKey)
         if (first === undefined) {
           return errorOut('', '', 'REQBOARD_NO_BOUND_REQ', '本窗口未绑定需求，请传 task_id 或 requirement_id')
         }
@@ -102,12 +108,10 @@ export function defineAdvanceTool(deps: UseCaseDeps) {
       }
 
       // 显式触发 = 开启自动链（等价于"推倒第一张骨牌"）；已开启则保持不变。该副作用已写进工具描述。
-      if (snap.requirements.find((r) => r.id === requirementId)?.autoRun !== true) {
-        await deps.repo.mutate('task-run-autorun', (ledger) => {
-          const req = ledger.requirements.find((r) => r.id === requirementId)
-          if (req === undefined) return undefined
+      if ((await requirementStoreOf(deps).getSummary(requirementId))?.autoRun !== true) {
+        await mutateIfPresent(requirementStoreOf(deps), requirementId, (req) => {
           req.autoRun = true
-          return { requirements: [req] }
+          return { changed: true }
         })
       }
 
@@ -131,8 +135,15 @@ export function defineAdvanceTool(deps: UseCaseDeps) {
                 ? 'REQBOARD_NOT_AUTORUN'
                 : out.stopped === 'terminal'
                   ? 'REQBOARD_REQ_TERMINAL'
-                  : 'REQBOARD_DISPATCH_FAILED'
-        return errorOut(taskId, requirementId, code, out.reason ?? fmt('推进未投递（stopped={s}）', { s: out.stopped }))
+                  // REQ-261003203909-55f2 FR-2：manual 段停链等人**不是失败**——独立码 +
+                  // 如实指引（混入 REQBOARD_DISPATCH_FAILED 会让人以为要重试投递）。
+                  : out.stopped === 'awaiting-manual'
+                    ? 'REQBOARD_AWAITING_MANUAL'
+                    : 'REQBOARD_DISPATCH_FAILED'
+        const fallback = out.stopped === 'awaiting-manual'
+          ? '链停在人工核对卡：核对清单已落盘 docs/requirements/<REQ>/manual/，请人工核对后调 reqboard_task_report 补核对记录，链即续跑（autoRun 未变，这不是失败）'
+          : fmt('推进未投递（stopped={s}）', { s: out.stopped })
+        return errorOut(taskId, requirementId, code, out.reason ?? fallback)
       }
 
       // 投递成功：立即返回（不等执行完成）。

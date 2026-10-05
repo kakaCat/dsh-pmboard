@@ -52,51 +52,84 @@ export function subtasksOf(view: AdvanceView, parentId: string): TaskRecord[] {
 /**
  * 选择下一个推进事件（优先级：收尾 → 跑子卡 → 开父卡 → rollup）。
  * 返回 undefined = 当前没有可推进的状态（可能已终态，也可能死锁；由调用方区分）。
+ *
+ * @deprecated 用 selectAdvanceBatch 替代（REQ-260929195829-6e02 t2：支持并行调度）
  */
 export function selectAdvanceEvent(view: AdvanceView, requirementId: string, maxParallelParents: number): AdvanceSelection | undefined {
+  const batch = selectAdvanceBatch(view, requirementId, maxParallelParents)
+  return batch.length > 0 ? batch[0] : undefined
+}
+
+/**
+ * 批量选择推进事件（REQ-260929195829-6e02 t2）：返回所有可并行执行的 ready 任务。
+ *
+ * 与 selectAdvanceEvent 的区别：
+ * - selectAdvanceEvent 只返回第一个事件（串行）
+ * - selectAdvanceBatch 返回所有同层 ready 事件（并行），受 maxParallelParents 限制
+ *
+ * 并行策略：
+ * - 不同父卡的子卡天然并行（无依赖关系）
+ * - 同一父卡的子卡按链序串行（dev → integrate → review → test）
+ * - 父卡之间按 DAG 依赖并行（deps done 的父卡可同时开工）
+ */
+export function selectAdvanceBatch(view: AdvanceView, requirementId: string, maxParallelParents: number): AdvanceSelection[] {
   const parents = topLevelTasks(view, requirementId)
-  // 1) 收尾：某个 in_progress 父卡的子卡全 done
+  const batch: AdvanceSelection[] = []
+
+  // 1) 收尾：所有 in_progress 父卡中子卡全 done 的
   for (const parent of parents) {
     if (parent.status !== 'in_progress') continue
     const subs = subtasksOf(view, parent.id)
     if (subs.length > 0 && subs.every((s) => s.status === 'done' || s.status === 'canceled')) {
-      return { event: 'FINALIZE_PARENT', parentId: parent.id }
+      batch.push({ event: 'FINALIZE_PARENT', parentId: parent.id })
     }
   }
-  // 2) 跑子卡：某个 in_progress 父卡链上有 ready 子卡
+  if (batch.length > 0) return batch
+
+  // 2) 跑子卡：每个 in_progress 父卡的第一个 ready 子卡（不同父卡并行）
+  // REQ-260929195829-6e02 t2：受 maxParallelParents 限制，最多返回 maxParallelParents 个子卡
   for (const parent of parents) {
+    if (batch.length >= maxParallelParents) break
     if (parent.status !== 'in_progress') continue
     const ready = subtasksOf(view, parent.id).find((s) => s.status === 'todo' && depsDone(view, s))
-    if (ready !== undefined) return { event: 'RUN_SUBTASK', parentId: parent.id, subtaskId: ready.id }
+    if (ready !== undefined) {
+      batch.push({ event: 'RUN_SUBTASK', parentId: parent.id, subtaskId: ready.id })
+    }
   }
-  // 2.5) REQ-260925110957-552d: resume 分支 - 孤儿回收
-  // 识别 in_progress 但无活跃执行的子卡（孤儿），将其重新加入候选
+  if (batch.length > 0) return batch
+
+  // 2.5) 孤儿回收：in_progress 但无活跃执行的子卡
   for (const parent of parents) {
     if (parent.status !== 'in_progress') continue
     const subs = subtasksOf(view, parent.id)
-    // 调用 identifyOrphans 识别孤儿（传入空 activeJobIds，因为选择器是纯函数）
     const orphanResult = identifyOrphans(subs, new Set<string>())
     if (orphanResult.orphanIds.length > 0) {
-      // 找到第一个孤儿卡，返回 RUN_SUBTASK 事件（会触发 attempt+1）
       const orphan = subs.find((s) => orphanResult.orphanIds.includes(s.id))
       if (orphan !== undefined) {
-        return { event: 'RUN_SUBTASK', parentId: parent.id, subtaskId: orphan.id }
+        batch.push({ event: 'RUN_SUBTASK', parentId: parent.id, subtaskId: orphan.id })
       }
     }
   }
+  if (batch.length > 0) return batch
+
   // 3) 开父卡：ready 且并发未超限
   const active = parents.filter((p) => p.status === 'in_progress').length
-  if (active < maxParallelParents) {
-    const readyParent = parents.find((p) => p.status === 'todo' && depsDone(view, p))
-    if (readyParent !== undefined) return { event: 'OPEN_PARENT', parentId: readyParent.id }
+  const slots = maxParallelParents - active
+  if (slots > 0) {
+    const readyParents = parents.filter((p) => p.status === 'todo' && depsDone(view, p))
+    for (const parent of readyParents.slice(0, slots)) {
+      batch.push({ event: 'OPEN_PARENT', parentId: parent.id })
+    }
   }
-  // 4) rollup：全部父卡收口（无在跑卡、无待办卡、无未完成子卡）
+  if (batch.length > 0) return batch
+
+  // 4) rollup：全部父卡收口
   const outstanding = parents.some((p) => p.status !== 'done')
   if (!outstanding && openSubtasks(view, requirementId).some((s) => s.status !== 'done')) {
-    return undefined // 有子卡没收口（数据异常）→ 交给停滞判定
+    return [] // 有子卡没收口（数据异常）→ 交给停滞判定
   }
-  if (!outstanding) return { event: 'ROLLUP' }
-  return undefined
+  if (!outstanding) return [{ event: 'ROLLUP' }]
+  return []
 }
 
 /** 是否仍有"开放工作"（未 done 且未取消的卡）——用于区分"已终态"与"死锁停滞"。 */

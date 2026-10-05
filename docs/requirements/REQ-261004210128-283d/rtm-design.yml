@@ -1,0 +1,311 @@
+metadata:
+  stage: design
+  requirement_id: REQ-261004210128-283d
+  generated_at: 2026-10-04T13:25:46.451Z
+  version: 4
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T13:44:52.361Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 会话运行态读数单点（纯客户端）
+      source: requirement.md
+      line: 105
+    - id: FR-2
+      title: 需求 → 会话映射（席位权威）
+      source: requirement.md
+      line: 124
+    - id: FR-3
+      title: 泳道卡片显示运行中指示
+      source: requirement.md
+      line: 142
+    - id: FR-4
+      title: 列表视图行显示同一指示
+      source: requirement.md
+      line: 157
+    - id: FR-5
+      title: 实时性（订阅 + 相关集合变化才重绘）
+      source: requirement.md
+      line: 171
+    - id: FR-6
+      title: 诚实降级（不显示 ≠ 撒谎）
+      source: requirement.md
+      line: 186
+    - id: FR-7
+      title: 动效与无障碍
+      source: requirement.md
+      line: 199
+    - id: FR-8
+      title: 生命周期与零回归
+      source: requirement.md
+      line: 212
+outputs:
+  design_sections:
+    - ref: design/architecture.md#目标与不变量
+      title: 目标与不变量 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 目标与不变量
+    - ref: design/architecture.md#模块与依赖方向
+      title: 模块与依赖方向 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 模块与依赖方向
+    - ref: design/architecture.md#运行态数据通路
+      title: 运行态数据通路 `
+      serves:
+        - FR-1
+        - FR-5
+      file: design/architecture.md
+      section: 运行态数据通路
+    - ref: design/architecture.md#渲染链与单点纪律
+      title: 渲染链与单点纪律 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 渲染链与单点纪律
+    - ref: design/architecture.md#重绘判据与性能
+      title: 重绘判据与性能 `
+      serves:
+        - FR-5
+        - FR-8
+      file: design/architecture.md
+      section: 重绘判据与性能
+    - ref: design/architecture.md#降级矩阵与不伪造
+      title: 降级矩阵与不伪造 `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: 降级矩阵与不伪造
+    - ref: design/architecture.md#生命周期挂载-HMR-退订
+      title: 生命周期（挂载 / HMR / 退订） `
+      serves:
+        - FR-8
+      file: design/architecture.md
+      section: 生命周期挂载-HMR-退订
+    - ref: design/architecture.md#样式主题与动效偏好
+      title: 样式、主题与动效偏好 `
+      serves:
+        - FR-7
+      file: design/architecture.md
+      section: 样式主题与动效偏好
+    - ref: design/architecture.md#不做什么架构边界
+      title: 不做什么（架构边界） `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: 不做什么架构边界
+    - ref: design/data-model.md#只读契约-A会话运行态
+      title: 只读契约 A：会话运行态 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 只读契约-A会话运行态
+    - ref: design/data-model.md#只读契约-B需求席位与来源窗口
+      title: 只读契约 B：需求席位与来源窗口 `
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 只读契约-B需求席位与来源窗口
+    - ref: design/data-model.md#判定函数输入输出表
+      title: 判定函数输入输出表 `
+      serves:
+        - FR-2
+        - FR-6
+      file: design/data-model.md
+      section: 判定函数输入输出表
+    - ref: design/data-model.md#缺失语义
+      title: 缺失语义 `
+      serves:
+        - FR-6
+      file: design/data-model.md
+      section: 缺失语义
+    - ref: design/data-model.md#是否改表-迁移-回滚
+      title: 是否改表 / 迁移 / 回滚 `
+      serves:
+        - FR-8
+      file: design/data-model.md
+      section: 是否改表-迁移-回滚
+    - ref: design/data-model.md#持久化红线
+      title: 持久化红线 `
+      serves:
+        - FR-6
+        - FR-8
+      file: design/data-model.md
+      section: 持久化红线
+    - ref: design/interfaces.md#新增模块srcclientsession-runningts
+      title: 新增模块：`src/client/session-running.ts` `
+      serves:
+        - FR-1
+        - FR-6
+      file: design/interfaces.md
+      section: 新增模块srcclientsession-runningts
+    - ref: design/interfaces.md#新增渲染单点renderRunningDot
+      title: 新增渲染单点：`renderRunningDot` `
+      serves:
+        - FR-3
+        - FR-7
+      file: design/interfaces.md
+      section: 新增渲染单点renderRunningDot
+    - ref: design/interfaces.md#需求-会话映射requirementRunning
+      title: 需求 → 会话映射：`requirementRunning` `
+      serves:
+        - FR-2
+        - FR-6
+      file: design/interfaces.md
+      section: 需求-会话映射requirementRunning
+    - ref: design/interfaces.md#修改buildBoard-renderReqCard-renderListCard
+      title: 修改：`buildBoard` / `renderReqCard` / `renderListCard` `
+      serves:
+        - FR-3
+        - FR-4
+        - FR-8
+      file: design/interfaces.md
+      section: 修改buildBoard-renderReqCard-renderListCard
+    - ref: design/interfaces.md#修改createBoardAttachment-的订阅接线
+      title: 修改：`createBoardAttachment` 的订阅接线 `
+      serves:
+        - FR-5
+        - FR-8
+      file: design/interfaces.md
+      section: 修改createBoardAttachment-的订阅接线
+    - ref: design/interfaces.md#修改客户端类型补-seats-声明
+      title: 修改：客户端类型补 `seats` 声明 `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: 修改客户端类型补-seats-声明
+    - ref: design/interfaces.md#不新增的接口红线
+      title: 不新增的接口（红线） `
+      serves:
+        - FR-6
+      file: design/interfaces.md
+      section: 不新增的接口红线
+    - ref: design/interfaces.md#错误语义总表
+      title: 错误语义总表 `
+      serves:
+        - FR-6
+        - FR-8
+      file: design/interfaces.md
+      section: 错误语义总表
+    - ref: design/use-cases.md#UC-1-盯盘一眼看出哪条需求在跑
+      title: UC-1 盯盘：一眼看出哪条需求在跑 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/use-cases.md
+      section: UC-1-盯盘一眼看出哪条需求在跑
+    - ref: design/use-cases.md#UC-2-回合结束指示即熄不刷新页面
+      title: UC-2 回合结束：指示即熄（不刷新页面） `
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-2-回合结束指示即熄不刷新页面
+    - ref: design/use-cases.md#UC-3-多席位需求任一在跑即算在跑
+      title: UC-3 多席位需求：任一在跑即算在跑 `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-3-多席位需求任一在跑即算在跑
+    - ref: design/use-cases.md#UC-4-读数不可得不显示也不撒谎
+      title: UC-4 读数不可得：不显示，也不撒谎 `
+      serves:
+        - FR-6
+      file: design/use-cases.md
+      section: UC-4-读数不可得不显示也不撒谎
+    - ref: design/use-cases.md#UC-5-人工建卡无窗口即无指示
+      title: UC-5 人工建卡：无窗口即无指示 `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-5-人工建卡无窗口即无指示
+    - ref: design/use-cases.md#UC-6-动效偏好与读屏
+      title: UC-6 动效偏好与读屏 `
+      serves:
+        - FR-7
+      file: design/use-cases.md
+      section: UC-6-动效偏好与读屏
+    - ref: design/use-cases.md#用例-条款对照
+      title: 用例 ↔ 条款对照 `
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/use-cases.md
+      section: 用例-条款对照
+traceability:
+  fr_to_design:
+    FR-1:
+      - design/architecture.md#模块与依赖方向
+      - design/architecture.md#运行态数据通路
+      - design/data-model.md#只读契约-A会话运行态
+      - design/interfaces.md#新增模块srcclientsession-runningts
+    FR-2:
+      - design/architecture.md#模块与依赖方向
+      - design/data-model.md#只读契约-B需求席位与来源窗口
+      - design/data-model.md#判定函数输入输出表
+      - design/interfaces.md#需求-会话映射requirementRunning
+      - design/interfaces.md#修改客户端类型补-seats-声明
+      - design/use-cases.md#UC-3-多席位需求任一在跑即算在跑
+      - design/use-cases.md#UC-5-人工建卡无窗口即无指示
+      - design/use-cases.md#用例-条款对照
+    FR-3:
+      - design/architecture.md#目标与不变量
+      - design/architecture.md#渲染链与单点纪律
+      - design/interfaces.md#新增渲染单点renderRunningDot
+      - design/interfaces.md#修改buildBoard-renderReqCard-renderListCard
+      - design/use-cases.md#UC-1-盯盘一眼看出哪条需求在跑
+      - design/use-cases.md#用例-条款对照
+    FR-4:
+      - design/architecture.md#目标与不变量
+      - design/architecture.md#渲染链与单点纪律
+      - design/interfaces.md#修改buildBoard-renderReqCard-renderListCard
+      - design/use-cases.md#UC-1-盯盘一眼看出哪条需求在跑
+      - design/use-cases.md#用例-条款对照
+    FR-5:
+      - design/architecture.md#运行态数据通路
+      - design/architecture.md#重绘判据与性能
+      - design/interfaces.md#修改createBoardAttachment-的订阅接线
+      - design/use-cases.md#UC-2-回合结束指示即熄不刷新页面
+      - design/use-cases.md#用例-条款对照
+    FR-6:
+      - design/architecture.md#降级矩阵与不伪造
+      - design/architecture.md#不做什么架构边界
+      - design/data-model.md#判定函数输入输出表
+      - design/data-model.md#缺失语义
+      - design/data-model.md#持久化红线
+      - design/interfaces.md#新增模块srcclientsession-runningts
+      - design/interfaces.md#需求-会话映射requirementRunning
+      - design/interfaces.md#不新增的接口红线
+      - design/interfaces.md#错误语义总表
+      - design/use-cases.md#UC-4-读数不可得不显示也不撒谎
+      - design/use-cases.md#用例-条款对照
+    FR-7:
+      - design/architecture.md#样式主题与动效偏好
+      - design/interfaces.md#新增渲染单点renderRunningDot
+      - design/use-cases.md#UC-6-动效偏好与读屏
+      - design/use-cases.md#用例-条款对照
+    FR-8:
+      - design/architecture.md#重绘判据与性能
+      - design/architecture.md#生命周期挂载-HMR-退订
+      - design/data-model.md#是否改表-迁移-回滚
+      - design/data-model.md#持久化红线
+      - design/interfaces.md#修改buildBoard-renderReqCard-renderListCard
+      - design/interfaces.md#修改createBoardAttachment-的订阅接线
+      - design/interfaces.md#错误语义总表
+coverage:
+  design:
+    total: 8
+    covered: 8
+    uncovered: []
+    rate: 100
+    total_frs: 8
+    covered_frs: 8

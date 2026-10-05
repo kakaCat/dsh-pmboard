@@ -1,0 +1,15 @@
+# case C5 · 任务表 acceptance 可证伪性（产物类） · serves: FR-2
+case: C5
+ordered_contains:
+  - reqboard_submit                 # 提交计划（tasks 带 implementation + 可证伪 acceptance）
+  - reqboard_ask_confirm            # 批准
+  - reqboard_decompose              # 落库
+forbidden:
+  - tool: reqboard_decompose
+    when: plan.approvedAt is null   # 批准前置同样适用于产物类用例
+budget:
+  max_tool_calls: 8
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_submit
+    result_contains: ok             # 任务表 schema 合法被接收；acceptance 语义质量走 rubric 第二层

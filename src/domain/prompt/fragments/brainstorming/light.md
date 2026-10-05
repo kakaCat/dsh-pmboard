@@ -14,3 +14,5 @@
       （docs/requirements/REQ-xxxxxx/requirement.md，头部带 REQ id），
       用 `reqboard_submit(kind=requirement)` 登记产物，再用 `reqboard_ask_confirm` 请人确认。
       "轻"只体现为文档短——**产物不得省**。
+
+- [ ] 判定标准挂可跑命令：先查 `reqboard_kb(kind='standard')`。

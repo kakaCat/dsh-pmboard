@@ -26,9 +26,12 @@ class FakeRunner implements WorkflowRunner {
 
 const okRun = (payload: unknown): WorkflowRunOutcome => ({ ok: true, value: { ok: true, output: payload } })
 
-function seed() {
+function seed(birthOffsetMs?: number) {
   const h = makeHarness()
-  h.repo.ledger.requirements = [req({ id: 'REQ-000001', status: 'implementing' })]
+  // t8/B11：链出身要钉住时**在播种时定值**（FixedClock ⇒ h.clock.t 确定且不前进），
+  // 不再事后改镜像字段——读点搬到新端口后，就地改镜像已不影响读。
+  h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing',
+    ...(birthOffsetMs === undefined ? {} : { createdAt: h.clock.t - birthOffsetMs }) }))
   h.seedTasks('REQ-000001', [
     task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', claimedAt: h.clock.t, title: '父卡' }),
     task({ id: 't-s', requirementId: 'REQ-000001', status: 'todo', parentId: 't-p', stageKind: 'dev' as never, title: '研发', acceptance: '改动落盘并跑通测试' }),
@@ -41,6 +44,7 @@ const exec = { agent: { id: 'session-w-001' } }
 describe('子卡闭环（3.4 凭证三项）', () => {
   it('全通过：run completed + 产出含 filesChanged + 文件 mtime≥开工 → 子卡 done', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put(SRC, 'x')
     h.docs.put(CLIENT, 'x')
     h.deps.workflow = new FakeRunner(okRun(JSON.stringify({ filesChanged: [SRC], completed: ['改完状态机'], evidence: ['vitest 绿'] })))
@@ -56,6 +60,7 @@ describe('子卡闭环（3.4 凭证三项）', () => {
 
   it('③ run 未完成（stopReason=error）→ 子卡不 done', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put(SRC, 'x')
     h.deps.workflow = new FakeRunner({ ok: false, reason: 'error: child failed' })
     const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
@@ -65,11 +70,12 @@ describe('子卡闭环（3.4 凭证三项）', () => {
   })
 
   it('② 文件证据不过（mtime 早于链出身）→ 子卡不 done', async () => {
-    const h = seed()
+    const h = seed(5_000)
+    await h.seedSettled()
     // L1 基准单调化后「开工」= 链出身（createdAt 最小值）。harness 默认 createdAt=1 会让
     // 任何文件都"新鲜"，故此例显式钉住链出身，保持原断言（早于基准的交付仍被拒）非空转。
     const birth = h.clock.t - 5_000
-    h.repo.ledger.requirements[0]!.createdAt = birth
+    // t8/B11：链出身已由 seed(offset) 在播种时钉住，不再就地改镜像
     await h.setTaskFields('t-p', { createdAt: birth })
     await h.setTaskFields('t-s', { createdAt: birth })
     h.docs.put(SRC, 'x', birth - 5_000)
@@ -83,6 +89,7 @@ describe('子卡闭环（3.4 凭证三项）', () => {
 
   it('D17 回归：交付落在父卡窗口内、却早于子卡本次 run 起点 → 子卡仍可 done', async () => {
     const h = seed()
+    await h.seedSettled()
     // 父卡（链）窗口起点 = clock.t - 5000；交付文件落在窗口内（clock.t - 1000），
     // 但早于子卡本次 run 起点（startedAt = clock.t）。
     // 旧口径 since=子卡 claimedAt(=clock.t) → 判「mtime 早于开工」恒不过门（D17 实测）。
@@ -98,6 +105,7 @@ describe('子卡闭环（3.4 凭证三项）', () => {
 
   it('① 汇报无改动文件（子代理只回文本）→ 子卡不 done（不猜文件）', async () => {
     const h = seed()
+    await h.seedSettled()
     h.deps.workflow = new FakeRunner(okRun('我做完了，功能正常'))
     const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
     expect(r.ok).toBe(false)
@@ -107,6 +115,7 @@ describe('子卡闭环（3.4 凭证三项）', () => {
 
   it('3.6 页面插件构建新鲜度：改了 src 但 client.js 陈旧 → 凭证不过', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put(SRC, 'x', h.clock.t)
     h.docs.put(CLIENT, 'x', h.clock.t - 10_000)
     h.deps.workflow = new FakeRunner(okRun(JSON.stringify({ filesChanged: [SRC], completed: ['改完'] })))
@@ -117,6 +126,7 @@ describe('子卡闭环（3.4 凭证三项）', () => {
 
   it('3.3 引擎缺失 → 子卡显式失败（不静默成功）', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put(SRC, 'x')
     const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
     expect(r.ok).toBe(false)
@@ -125,6 +135,7 @@ describe('子卡闭环（3.4 凭证三项）', () => {
 
   it('幂等：已 done 的子卡重入直接返回 ok（不重复执行）', async () => {
     const h = seed()
+    await h.seedSettled()
     await h.setTaskFields('t-s', { status: 'done' })
     const runner = new FakeRunner(okRun('{}'))
     h.deps.workflow = runner
@@ -137,6 +148,7 @@ describe('子卡闭环（3.4 凭证三项）', () => {
 describe('父卡收尾门（3.5 / INV-5）', () => {
   it('存在未 done 子卡 → 父卡 done 被拒（REQBOARD_SUBTASK_GATE）', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put('src/x.ts', 'x')
     await h.setTaskFields('t-p', { lastReport: { at: h.clock.t, reportIndex: 1, filesChanged: ['src/x.ts'], completed: ['父卡完成'] } })
     let code: string | undefined
@@ -149,6 +161,7 @@ describe('父卡收尾门（3.5 / INV-5）', () => {
 
   it('全部子卡 done → 父卡可通过（四重校验照旧）', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put('src/x.ts', 'x')
     const p = (await h.tasksOf('REQ-000001')).find(x => x.id === 't-p')!
     expect(p.status).toBe('in_progress') // 前置锚：确实读到了父卡（否则下面的写是空转）
@@ -186,7 +199,7 @@ describe('产出解析与空值判定（防"看起来在工作"）', () => {
 describe('D17 修复：L1 基准单调化（链出身） + L2 证据形态分流', () => {
   /** 把「链出身」拉早到 birth，并把会漂移的 claimedAt 全部推到 run 起点（模拟重跑）。 */
   async function pinChainBirth(h: ReturnType<typeof seed>, birth: number): Promise<void> {
-    h.repo.ledger.requirements[0]!.createdAt = birth
+    // t8/B11：链出身已由 seed(offset) 在播种时钉住，不再就地改镜像
     // 任务字段改动一律走真实写路径（v9：任务在队列，台账无 tasks）
     // claimedAt = 漂移源：重跑把它推到本次 run 起点
     await h.setTaskFields('t-p', { createdAt: birth, claimedAt: h.clock.t })
@@ -194,7 +207,8 @@ describe('D17 修复：L1 基准单调化（链出身） + L2 证据形态分流
   }
 
   it('L1：文件早于子卡本次 run 起点、但 ≥ 链出身 → 子卡 done', async () => {
-    const h = seed()
+    const h = seed(8_000)
+    await h.seedSettled()
     const birth = h.clock.t - 8_000
     await pinChainBirth(h, birth)
     // 交付落在链窗口内（birth + 1000），但早于子卡本次 run 起点（clock.t）。
@@ -208,7 +222,8 @@ describe('D17 修复：L1 基准单调化（链出身） + L2 证据形态分流
   })
 
   it('L1 反例：文件早于链出身 → 仍拒（窗口有界，不是无脑放行）', async () => {
-    const h = seed()
+    const h = seed(8_000)
+    await h.seedSettled()
     const birth = h.clock.t - 8_000
     await pinChainBirth(h, birth)
     h.docs.put(SRC, 'x', birth - 1_000)
@@ -222,6 +237,7 @@ describe('D17 修复：L1 基准单调化（链出身） + L2 证据形态分流
 
   it('L2 结论族：review filesChanged=[] 且 completed 非空 → 子卡 done（天然无 diff）', async () => {
     const h = seed()
+    await h.seedSettled()
     await h.setTaskFields('t-s', { stageKind: 'review' })
     h.deps.workflow = new FakeRunner(okRun(JSON.stringify({
       completed: ['逐条复核完毕：设计与实现无偏离'],
@@ -283,17 +299,107 @@ describe('D17 修复：L1 基准单调化（链出身） + L2 证据形态分流
     }
   })
 
+  // REQ-260929195829-6e02 t1：人工推进的子卡没有 workflow run，但 Worker 通过
+  // reqboard_task_report 写了 lastReport——lastReport 就是有效执行证据。
+  it('REQ-260929195829-6e02：run===undefined + hasReport=true → ok:true（人工推进路径）', () => {
+    const verdict = checkSubtaskEvidence({
+      hasReport: true,
+      reportFilesChanged: ['src/x.ts'],
+      reportCompleted: ['改完了'],
+      run: undefined,
+      since: 1,
+      stageKind: 'dev',
+      fileMtimes: { 'src/x.ts': 2 },
+      pagesSrcFiles: [],
+      clientBuildExists: false,
+      clientBuildMtime: 0,
+      newestPagesSrcMtime: 0,
+    })
+    expect(verdict.ok).toBe(true)
+  })
+
+  it('REQ-260929195829-6e02：run===undefined + hasReport=true 但文件不新鲜 → 仍拒', () => {
+    const verdict = checkSubtaskEvidence({
+      hasReport: true,
+      reportFilesChanged: ['src/x.ts'],
+      reportCompleted: ['改完了'],
+      run: undefined,
+      since: 100,
+      stageKind: 'dev',
+      fileMtimes: { 'src/x.ts': 2 },
+      pagesSrcFiles: [],
+      clientBuildExists: false,
+      clientBuildMtime: 0,
+      newestPagesSrcMtime: 0,
+    })
+    expect(verdict.ok).toBe(false)
+    if (!verdict.ok) expect(verdict.code).toBe('REQBOARD_SUBTASK_GATE')
+  })
+
+  it('REQ-260929195829-6e02：run===undefined + hasReport=false → 拒（无证据）', () => {
+    const verdict = checkSubtaskEvidence({
+      hasReport: false,
+      reportFilesChanged: [],
+      reportCompleted: [],
+      run: undefined,
+      since: 1,
+      stageKind: 'dev',
+      fileMtimes: {},
+      pagesSrcFiles: [],
+      clientBuildExists: false,
+      clientBuildMtime: 0,
+      newestPagesSrcMtime: 0,
+    })
+    expect(verdict.ok).toBe(false)
+    if (!verdict.ok) expect(verdict.code).toBe('REQBOARD_SUBTASK_GATE')
+  })
+
   // REQ-260927144541-0481 根因修复：凭证门的证据形态必须**提前写进工作要求**——
-  // 否则 integrate（写入族）Worker 只交联调结论、被门退回，同一张卡重跑仍复现。
+  // 否则 Worker 不知道该交文件还是交结论，被门退回，同一张卡重跑仍复现。
+  // （2026-10-03 REQ-261003203909-55f2 t4 修正：旧断言拿 integrate 当写入族样本，与
+  // STAGE_EVIDENCE_KIND（integrate=verdict）直接矛盾、基线长红；写入族样本改用 dev。）
   it('buildSubtaskPrompt 如实转述本阶段凭证形态（写入族要产出 / 结论族要判断）', () => {
     const parent = task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', title: '父卡' })
-    const writeStage = task({ id: 't-s1', requirementId: 'REQ-000001', status: 'todo', parentId: 't-p', stageKind: 'integrate' as never, title: '联调', acceptance: '联调通过' })
+    const writeStage = task({ id: 't-s1', requirementId: 'REQ-000001', status: 'todo', parentId: 't-p', stageKind: 'dev' as never, title: '研发', acceptance: '改动落盘' })
     const verdictStage = task({ id: 't-s2', requirementId: 'REQ-000001', status: 'todo', parentId: 't-p', stageKind: 'review' as never, title: '复核', acceptance: '逐条结论' })
-    const writePrompt = buildSubtaskPrompt(parent, writeStage, '联调')
+    const writePrompt = buildSubtaskPrompt(parent, writeStage, '研发')
     const verdictPrompt = buildSubtaskPrompt(parent, verdictStage, '复核')
     expect(writePrompt).toContain('写入族')
     expect(writePrompt).toContain('REQBOARD_SUBTASK_GATE')
     expect(verdictPrompt).toContain('结论族')
     expect(verdictPrompt).not.toContain('写入族')
+  })
+
+  // REQ-261003203909-55f2 TC-7（FR-1/FR-2/FR-3/FR-6/FR-7）：新四段的边界规则进 prompt、
+  // schema 族与 STAGE_EVIDENCE_KIND 同源；STAGE_SCOPE_RULE 与 STAGE_KINDS key 集合相等
+  // （六表登记的最后一块——t1 的 TC-3 覆盖前五表，本断言随 Record 类型强制落地）。
+  it('TC-7 新四段：边界规则进 prompt 且证据族正确', () => {
+    const parent = task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', title: '父卡' })
+    const cases = [
+      { kind: 'e2e', label: '端到端', rule: '不要**改实现代码', family: '结论族' },
+      { kind: 'manual', label: '人工核对', rule: '禁止**伪造核对结果', family: '写入族' },
+      { kind: 'release', label: '发布', rule: '回滚方式声明', family: '写入族' },
+      { kind: 'capture', label: '采集', rule: '证据落盘 evidence/', family: '写入族' },
+    ] as const
+    for (const c of cases) {
+      const sub = task({ id: 't-' + c.kind, requirementId: 'REQ-000001', status: 'todo', parentId: 't-p', stageKind: c.kind as never, title: c.label, acceptance: 'x' })
+      const prompt = buildSubtaskPrompt(parent, sub, c.label)
+      expect(prompt, c.kind + ' 的 prompt 应含本段边界规则').toContain('【本步边界】')
+      expect(prompt, c.kind + ' 的 prompt 应含凭证形态').toContain(c.family)
+    }
+    // manual 的防伪造禁令必须原样进 prompt（这条是本段存在理由的核心）
+    const manualSub = task({ id: 't-m', requirementId: 'REQ-000001', status: 'todo', parentId: 't-p', stageKind: 'manual' as never, title: '人工核对', acceptance: 'x' })
+    expect(buildSubtaskPrompt(parent, manualSub, '人工核对')).toContain('伪造核对结果')
+  })
+
+  it('TC-3 第六表：STAGE_SCOPE_RULE 与 STAGE_KINDS key 集合相等（Record 类型强制 + 运行时遍历双保险）', async () => {
+    const { STAGE_KINDS } = await import('../src/domain/task/SubtaskTemplate.js')
+    const { STAGE_SCOPE_RULE } = await import('../src/application/use-cases/ExecuteTask.js')
+    expect(Object.keys(STAGE_SCOPE_RULE).sort()).toEqual([...STAGE_KINDS].sort())
+    // 每条规则都带「只做/禁止」边界锚点（防空话登记）
+    for (const [k, v] of Object.entries(STAGE_SCOPE_RULE)) {
+      expect(v, k).toMatch(/【本步边界】/)
+      expect(v, k).toMatch(/不要|禁止|只做/)
+    }
   })
 })

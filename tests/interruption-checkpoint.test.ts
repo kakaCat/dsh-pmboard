@@ -12,6 +12,7 @@
  *
  * @module dsh-pmboard/tests/interruption-checkpoint
  */
+import { factsOf } from '../src/domain/requirement/RequirementSummary.js'
 import { describe, it, expect } from 'vitest'
 import { makeHarness, req } from './application/harness.js'
 import { executeMoveRequirement } from '../src/application/use-cases/MoveRequirement.js'
@@ -40,7 +41,7 @@ describe('断点常驻 · 写入器 A（交棒即写 checkpoint）', () => {
   it('reqboard_move 交棒 → 台账 interruption.reason=checkpoint 且 pendingAction 非空', async () => {
     const h = makeHarness({ requirements: [req({ status: 'draft' })] })
     await executeMoveRequirement(h.deps, { to: 'brainstorming' }, exec)
-    const r = h.repo.snapshot().requirements[0]!
+    const r = ((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!
     expect(r.status).toBe('brainstorming')
     expect(r.interruption).toBeDefined()
     expect(r.interruption!.reason).toBe('checkpoint')
@@ -64,14 +65,14 @@ describe('断点常驻 · 写入器 A（交棒即写 checkpoint）', () => {
   it('幂等：同一 stage + 同一 pendingAction 再交棒不重写、不 bump version', async () => {
     const h = makeHarness({ requirements: [req({ status: 'draft' })] })
     await executeMoveRequirement(h.deps, { to: 'brainstorming' }, exec)
-    const first = h.repo.snapshot().requirements[0]!
+    const first = ((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!
     const at1 = first.interruption!.at
     const v1 = first.version
     h.clock.t += 5000
     // 再交棒一次（brainstorming → draft → brainstorming：回到同一 stage/pendingAction）
     await executeMoveRequirement(h.deps, { to: 'draft' }, exec)
     await executeMoveRequirement(h.deps, { to: 'brainstorming' }, exec)
-    const again = h.repo.snapshot().requirements[0]!
+    const again = ((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!
     expect(again.interruption!.pendingAction).toBe(first.interruption!.pendingAction)
     // 断点重新落笔（stage 曾在中间变过），但内容语义一致
     expect(again.interruption!.reason).toBe('checkpoint')
@@ -103,11 +104,11 @@ describe('断点常驻 · 写入器 B（turn/end 异常原因补新）', () => {
   it('事件路径：checkpoint → 异常原因覆盖（保留按状态重算的 pendingAction）', async () => {
     const h = makeHarness({ requirements: [req({ status: 'draft' })] })
     await executeMoveRequirement(h.deps, { to: 'brainstorming' }, exec)
-    expect(h.repo.snapshot().requirements[0]!.interruption!.reason).toBe('checkpoint')
+    expect(((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!.interruption!.reason).toBe('checkpoint')
 
     const outcome = turnEndOutcome({ reason: { kind: 'error', error: { code: 'UPSTREAM_STREAM_IDLE', message: 'stream idle 3m' } } })!
     await noteInterruptionForWindow(h.deps, W, outcome.reason, 'turn/end')
-    const r = h.repo.snapshot().requirements[0]!
+    const r = ((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!
     expect(r.interruption!.reason).toBe('error:UPSTREAM_STREAM_IDLE:stream idle 3m')
     expect(r.interruption!.stage).toBe('brainstorming')
     expect(r.interruption!.pendingAction).toBe('reqboard_submit(kind=requirement)')
@@ -119,7 +120,8 @@ describe('断点常驻 · 写入器 B（turn/end 异常原因补新）', () => {
     const signals: { wk: string; reason: string; abnormal: boolean }[] = []
     const hookDeps: DiveSessionDriverDeps = {
       // 内存仓库的 snapshot() 是只读视图；hook 只读，形状等价（类型上补一层显式转换）
-      snapshot: () => h.repo.snapshot() as unknown as ReqboardLedger,
+      // B12 阶段⑤族 B：`facts` 是**同步端口** ⇒ 改读 harness 自己的镜像（见 §78 第 ⑱ 条）
+      facts: () => (h.ledger as unknown as ReqboardLedger).requirements.map(factsOf),
       // v9：driver 结算节点要读队列任务（DiveSessionDriverDeps.taskStore 为必填）——
       // 用**同一个** harness 的 store，否则"driver 读 A、断言读 B"。
       taskStore: h.taskStore,
@@ -171,7 +173,7 @@ describe('断点常驻 · 写入器 B′（reqboard_note_interruption 显式兜�
     expect(bp.reason).toBe('upstream stream idle 3m ×5')
     expect(bp.pendingAction).toBe('reqboard_task_run')
     expect(bp.tool).toBe('reqboard_note_interruption')
-    const r = h.repo.snapshot().requirements[0]!
+    const r = ((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!
     expect(r.comments.some(c => c.body.includes('[断点]'))).toBe(true)
   })
 
@@ -188,7 +190,7 @@ describe('断点常驻 · 写入器 B′（reqboard_note_interruption 显式兜�
     h.clock.t += 1000
     const second = await noteInterruption(h.deps, { reason: 'second' }, exec) as Record<string, unknown>
     expect((second.interruption as Record<string, unknown>).reason).toBe('second')
-    expect((h.repo.snapshot().requirements[0]!.interruption as unknown as Record<string, unknown>).reason).toBe('second')
+    expect((((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!.interruption as unknown as Record<string, unknown>).reason).toBe('second')
   })
 })
 
@@ -198,7 +200,7 @@ describe('续跑输入包（## 断点 节）', () => {
     await executeMoveRequirement(h.deps, { to: 'brainstorming' }, exec)
     const outcome = turnEndOutcome({ reason: { kind: 'error', error: { code: 'UPSTREAM_STREAM_IDLE', message: 'stream idle 3m' } } })!
     await noteInterruptionForWindow(h.deps, W, outcome.reason, 'turn/end')
-    const r = h.repo.snapshot().requirements[0]!
+    const r = ((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!
     const text = build(r)
     expect(text).toContain('## 断点')
     expect(text).toContain('- 当前阶段：brainstorming')

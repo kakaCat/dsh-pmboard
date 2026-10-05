@@ -1,0 +1,224 @@
+metadata:
+  stage: design
+  requirement_id: REQ-261004183621-de3f
+  generated_at: 2026-10-04T10:37:11.916Z
+  version: 4
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T11:43:05.555Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 归档提交时对账并把三类清单如实给出
+      source: requirement.md
+      line: 87
+    - id: FR-2
+      title: 未列未豁免必须显式处置，否则拒绝提交
+      source: requirement.md
+      line: 112
+    - id: FR-3
+      title: 豁免规则常量单点
+      source: requirement.md
+      line: 138
+    - id: FR-4
+      title: 已归档需求的一次受控补录
+      source: requirement.md
+      line: 163
+    - id: FR-5
+      title: 漏登与豁免持久可见
+      source: requirement.md
+      line: 188
+    - id: FR-6
+      title: 门禁、测试与行为变更的回退
+      source: requirement.md
+      line: 206
+outputs:
+  design_sections:
+    - ref: design/architecture.md#现状与改动面
+      title: 现状与改动面 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 现状与改动面
+    - ref: design/architecture.md#对账三分类的实现落点
+      title: 对账三分类的实现落点 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 对账三分类的实现落点
+    - ref: design/architecture.md#豁免规则常量domain-纯数据
+      title: 豁免规则常量（domain 纯数据） `
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: 豁免规则常量domain-纯数据
+    - ref: design/architecture.md#补录通道的架构位置单一写入口
+      title: 补录通道的架构位置（单一写入口） `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: 补录通道的架构位置单一写入口
+    - ref: design/architecture.md#可见性台账字段-评论-看板
+      title: 可见性：台账字段 + 评论 + 看板 `
+      serves:
+        - FR-5
+      file: design/architecture.md
+      section: 可见性台账字段-评论-看板
+    - ref: design/architecture.md#行为变更灰度与回滚
+      title: 行为变更、灰度与回滚 `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: 行为变更灰度与回滚
+    - ref: design/data-model.md#ArchiveRecord-增量字段
+      title: ArchiveRecord 增量字段 `
+      serves:
+        - FR-1
+        - FR-5
+      file: design/data-model.md
+      section: ArchiveRecord-增量字段
+    - ref: design/data-model.md#三种清单的形状与不变量
+      title: 三种清单的形状与不变量 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 三种清单的形状与不变量
+    - ref: design/data-model.md#补录的数据语义
+      title: 补录的数据语义 `
+      serves:
+        - FR-4
+      file: design/data-model.md
+      section: 补录的数据语义
+    - ref: design/data-model.md#留痕与可见性
+      title: 留痕与可见性 `
+      serves:
+        - FR-5
+      file: design/data-model.md
+      section: 留痕与可见性
+    - ref: design/data-model.md#兼容与迁移
+      title: 兼容与迁移 `
+      serves:
+        - FR-6
+      file: design/data-model.md
+      section: 兼容与迁移
+    - ref: design/interfaces.md#提交入参新增-unlistedack
+      title: 提交入参新增 `unlisted_ack` `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: 提交入参新增-unlistedack
+    - ref: design/interfaces.md#提交返回体三份清单
+      title: 提交返回体三份清单 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: 提交返回体三份清单
+    - ref: design/interfaces.md#补录入口工具-看板共用用例
+      title: 补录入口（工具 + 看板共用用例） `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: 补录入口工具-看板共用用例
+    - ref: design/interfaces.md#错误码与文案
+      title: 错误码与文案 `
+      serves:
+        - FR-2
+        - FR-4
+      file: design/interfaces.md
+      section: 错误码与文案
+    - ref: design/interfaces.md#配置-archiveunlistedGate
+      title: 配置 `archive.unlistedGate` `
+      serves:
+        - FR-6
+      file: design/interfaces.md
+      section: 配置-archiveunlistedGate
+    - ref: design/interfaces.md#豁免常量接口
+      title: 豁免常量接口 `
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: 豁免常量接口
+    - ref: design/use-cases.md#UC-1-提交归档材料时漏列-当场被拦
+      title: UC-1 提交归档材料时漏列 → 当场被拦 `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-1-提交归档材料时漏列-当场被拦
+    - ref: design/use-cases.md#UC-2-有意只收关键文档-显式声明豁免
+      title: UC-2 有意只收关键文档 → 显式声明豁免 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/use-cases.md
+      section: UC-2-有意只收关键文档-显式声明豁免
+    - ref: design/use-cases.md#UC-3-机器生成物自动豁免
+      title: UC-3 机器生成物自动豁免 `
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-3-机器生成物自动豁免
+    - ref: design/use-cases.md#UC-4-归档后发现清单不全-受控补录
+      title: UC-4 归档后发现清单不全 → 受控补录 `
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: UC-4-归档后发现清单不全-受控补录
+    - ref: design/use-cases.md#UC-5-复核者在看板看对账结果
+      title: UC-5 复核者在看板看对账结果 `
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-5-复核者在看板看对账结果
+    - ref: design/use-cases.md#UC-6-维护者回退到只警告
+      title: UC-6 维护者回退到"只警告" `
+      serves:
+        - FR-6
+      file: design/use-cases.md
+      section: UC-6-维护者回退到只警告
+traceability:
+  fr_to_design:
+    FR-1:
+      - design/architecture.md#现状与改动面
+      - design/architecture.md#对账三分类的实现落点
+      - design/data-model.md#ArchiveRecord-增量字段
+      - design/data-model.md#三种清单的形状与不变量
+      - design/interfaces.md#提交返回体三份清单
+    FR-2:
+      - design/architecture.md#现状与改动面
+      - design/architecture.md#对账三分类的实现落点
+      - design/interfaces.md#提交入参新增-unlistedack
+      - design/interfaces.md#提交返回体三份清单
+      - design/interfaces.md#错误码与文案
+      - design/use-cases.md#UC-1-提交归档材料时漏列-当场被拦
+      - design/use-cases.md#UC-2-有意只收关键文档-显式声明豁免
+    FR-3:
+      - design/architecture.md#豁免规则常量domain-纯数据
+      - design/interfaces.md#豁免常量接口
+      - design/use-cases.md#UC-3-机器生成物自动豁免
+    FR-4:
+      - design/architecture.md#补录通道的架构位置单一写入口
+      - design/data-model.md#补录的数据语义
+      - design/interfaces.md#补录入口工具-看板共用用例
+      - design/interfaces.md#错误码与文案
+      - design/use-cases.md#UC-4-归档后发现清单不全-受控补录
+    FR-5:
+      - design/architecture.md#可见性台账字段-评论-看板
+      - design/data-model.md#ArchiveRecord-增量字段
+      - design/data-model.md#留痕与可见性
+      - design/use-cases.md#UC-2-有意只收关键文档-显式声明豁免
+      - design/use-cases.md#UC-5-复核者在看板看对账结果
+    FR-6:
+      - design/architecture.md#行为变更灰度与回滚
+      - design/data-model.md#兼容与迁移
+      - design/interfaces.md#配置-archiveunlistedGate
+      - design/use-cases.md#UC-6-维护者回退到只警告
+coverage:
+  design:
+    total: 6
+    covered: 6
+    uncovered: []
+    rate: 100
+    total_frs: 6
+    covered_frs: 6

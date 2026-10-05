@@ -8,23 +8,23 @@
  *
  * 覆盖：绑定需求的会话返回进度口径；无关会话返回 hasRequirement=false；已完成需求不再被选中。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import type { RequirementRecord } from '../src/shared/protocol.js'
 
 const SID = 'session-progress-test'
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-progress-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -58,13 +58,13 @@ async function seed(status: string, sessionId: string | undefined): Promise<stri
     statusHistory: [{ status, at: 1, by: { kind: 'human' } }],
     ...(sessionId !== undefined ? { sourceSessionId: sessionId } : {}),
   } as unknown as RequirementRecord
-  await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
   return id
 }
 
 describe('会话框流程节点 /session/:id/progress', () => {
   it('绑定进行中需求的会话 → 200 且返回需求与进度口径（回归：曾因符号未定义 500）', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     const id = await seed('implementing', SID)
     const res = await get(handler, '/session/' + SID + '/progress')
     expect(res.statusCode, JSON.stringify(res.payload)).toBe(200)
@@ -75,18 +75,21 @@ describe('会话框流程节点 /session/:id/progress', () => {
 
   // TC-10（REQ-260923134706-e72f / FR-2）：progress 透出立项四问之一的 promptDifficulty
   it('有 promptDifficulty 的记录透出值，老记录透出 null', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     // 有难度的记录
     const withDiff = 'REQ-withdiff-01'
-    await store.mutate('seed', (l) => {
-      l.requirements.push({
+    // B12 阶段⑤：播种走新端口（整份替换，保留既有那条）
+    const rest = store.peekAll()
+    await store.replaceAll('seed', {
+      schemaVersion: 9, revision: 0,
+      requirements: [...rest, {
         id: withDiff, title: '带难度', description: '', category: 'feature', status: 'implementing',
         promptDifficulty: 'advanced', blocked: false, comments: [], version: 1, createdAt: 1, updatedAt: 1,
         createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
         statusHistory: [{ status: 'implementing', at: 1, by: { kind: 'human' } }],
         sourceSessionId: 'SID-withdiff',
-      } as unknown as RequirementRecord)
-      return { requirements: [] }
+      } as unknown as RequirementRecord],
+      triages: [],
     })
     let res = await get(handler, '/session/SID-withdiff/progress')
     expect(res.statusCode).toBe(200)
@@ -101,18 +104,77 @@ describe('会话框流程节点 /session/:id/progress', () => {
   })
 
   it('无关联需求的会话 → 200 且 hasRequirement=false（不报错、不 500）', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     const res = await get(handler, '/session/no-such-session/progress')
     expect(res.statusCode, JSON.stringify(res.payload)).toBe(200)
     expect(res.payload.data.hasRequirement).toBe(false)
   })
 
   it('已完成/已归档需求不会被选为"进行中"节点（isOpenRequirement 判据）', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     await seed('done', SID)
     const res = await get(handler, '/session/' + SID + '/progress')
     expect(res.statusCode).toBe(200)
     // done 属终态：不应当成进行中需求（可能返回 false 或回退到最近一条，但不得因此报错）
     expect(res.payload.success).toBe(true)
+  })
+})
+
+/**
+ * REQ-261004143941-b2ca FR-1：进度接口透出需求累计 token（窄档流程图的常显读数）。
+ * 两条口径：① 与 nodes **同源**（tokenTotal === Σ nodes）；② **缺失 ≠ 0**（无快照 → 键缺席）。
+ */
+describe('REQ-261004143941-b2ca · /session/:id/progress 的需求累计 tokenTotal', () => {
+  interface Buckets { uncachedInputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number }
+  // 四桶和 = 13n（便于手算断言）
+  const B = (n: number): Buckets => ({ uncachedInputTokens: n, outputTokens: n * 2, cacheReadTokens: n * 10, cacheWriteTokens: 0 })
+
+  it('TC-3a 节点快照 + 任务执行差值 → tokenTotal 与 Σnodes 自洽且 > 0', async () => {
+    const id = 'REQ-tokentotal-01'
+    await store.replaceAll('seed', {
+      schemaVersion: 9, revision: 0,
+      requirements: [{
+        id, title: '带快照的需求', description: '', category: 'feature', status: 'implementing',
+        blocked: false, comments: [], version: 1, createdAt: 1, updatedAt: 1,
+        createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
+        statusHistory: [{ status: 'design', at: 1, by: { kind: 'human' } }],
+        sourceSessionId: SID,
+        // 节点快照：design 一段（B(5) → 13×5 = 65）
+        tokenUsage: { byStage: { design: B(5) }, totals: B(5), updatedAt: 1 },
+      } as unknown as RequirementRecord],
+      triages: [],
+    })
+    // 任务执行差值：implementing 走兜底（B(3) → 13×3 = 39）
+    await taskStoreAt(dir).createMany(id, [{
+      id: 't-tok01', requirementId: id, title: '任务', description: 'd', phase: 'implement', side: 'backend',
+      dependsOn: [], scope: { apis: [], tables: [], files: [] }, acceptance: 'a', context: '', status: 'done',
+      blocked: false, comments: [], version: 1, createdAt: 1, updatedAt: 1,
+      createdBy: { kind: 'agent', sessionId: SID }, updatedBy: { kind: 'agent', sessionId: SID }, statusHistory: [],
+      executions: [{
+        id: 'e-tok01', sessionId: SID, trigger: 'manual', startedAt: 1, endedAt: 2, outcome: 'succeeded',
+        tokenUsage: {
+          start: { sessionId: SID, at: 1, totals: B(2), source: 'projection' },
+          end: { sessionId: SID, at: 2, totals: B(5), source: 'projection' },
+          delta: B(3),
+        },
+      }],
+    } as never])
+
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
+    const res = await get(handler, '/session/' + SID + '/progress')
+    expect(res.statusCode, JSON.stringify(res.payload)).toBe(200)
+    const data = res.payload.data
+    const sumNodes = (data.nodes as Array<{ tokens?: { total?: number } }>)
+      .reduce((n, x) => n + (x.tokens?.total ?? 0), 0)
+    expect(data.requirement.tokenTotal).toBe(65 + 39)
+    expect(data.requirement.tokenTotal).toBe(sumNodes) // 同源：总数 === 各节点之和
+  })
+
+  it('TC-3b 无任何快照 → tokenTotal 键缺席（不是 0，不出现「🪙 0」）', async () => {
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
+    await seed('implementing', SID)
+    const res = await get(handler, '/session/' + SID + '/progress')
+    expect(res.statusCode, JSON.stringify(res.payload)).toBe(200)
+    expect('tokenTotal' in res.payload.data.requirement).toBe(false)
   })
 })

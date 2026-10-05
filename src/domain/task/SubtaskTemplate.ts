@@ -19,15 +19,23 @@ export const STAGE_KINDS = [
   'repro',
   'fix',
   'regress',
+  // REQ-261003203909-55f2 FR-1/FR-2：测试族补两段——e2e（场景断言，区别于 test 的「失败数≤基线」）
+  // 与 manual（这步归人：真机/浏览器核对，链停下等人，见 AdvanceChain awaiting-manual 分支）。
+  'e2e',
+  'manual',
   'probe',
   'collect',
   'analyze',
+  // REQ-261003203909-55f2 FR-6：采集段（探针/截图/基线），写入族——产物落 evidence/ 即凭证。
+  'capture',
   'prepare',
   'run',
   'verify',
   'change',
   'dryrun',
   'apply',
+  // REQ-261003203909-55f2 FR-3：发布段（打包/构建/发版门禁 + 回滚方式声明）。
+  'release',
 ] as const
 
 import { fmt } from '../text/fmt.js'
@@ -58,6 +66,11 @@ export const SUBTASK_TEMPLATES: Readonly<Record<string, readonly StageKind[]>> =
   data: ['prepare', 'run', 'verify', 'review'],
   ops: ['change', 'dryrun', 'apply', 'verify', 'review'],
   'review-only': ['review'],
+  // REQ-261003203909-55f2 FR-5：固化高频逃生舱组合（40 需求 627 子卡实测）——
+  // change-only：文案/契约/纯函数类卡（手写 stages 19 次）；acceptance：链尾总验收卡（跨 3 需求手写 3 次）。
+  // acceptance 是「每条链必含 review」不变量的显式豁免：它是全链收口后的总校验，复核已分散在各卡链尾。
+  'change-only': ['dev', 'review'],
+  acceptance: ['verify'],
 }
 
 /** 阶段中文名（看板徽标与子卡标题用；单点避免前后端各写一份）。 */
@@ -78,26 +91,35 @@ export const STAGE_LABELS: Readonly<Record<StageKind, string>> = {
   change: '变更',
   dryrun: '试运行',
   apply: '实施',
+  e2e: '端到端',
+  manual: '人工核对',
+  capture: '采集',
+  release: '发布',
 }
 
 /** 各阶段默认验收模板：必须可证伪（含命令/断言锚点），不得是「功能正常」式空话。 */
 export const STAGE_ACCEPTANCE: Readonly<Record<StageKind, string>> = {
-  dev: '改动已落盘，相关测试或命令跑通并附输出摘要',
-  integrate: '接口联调通过：给出请求样例与期望响应，实际返回与预期一致',
-  review: '对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据',
-  test: '目标命令输出全绿（贴命令与结果摘要）',
-  repro: '存在一条先失败、修复后转绿的回归用例（贴两次输出）',
-  fix: '回归用例转绿（贴命令与输出），且根因单独写明（症状与根因区分）',
-  regress: '相关测试全量跑通，无新增失败（贴汇总输出）',
-  probe: '给出一个可证伪问题的答案与证据（明确未验证边界）',
-  collect: '数据样本量与来源已标注（对齐 R-013 来源与时点口径）',
-  analyze: '结论含置信度与适用边界，并列出被证伪的假设',
-  prepare: '方案或脚本改动可复现：命令加输出摘要',
-  run: '执行完成且结果落库：记录条数或输出路径可复核',
-  verify: '校验项逐条给出结果，异常项已列出并标注影响面',
-  change: '变更内容与回滚方式已写明，并给出可执行的验证命令与输出',
-  dryrun: '试运行输出与预期一致（贴命令与输出）',
-  apply: '变更已生效：给出可复核的验证命令与输出',
+  dev: '`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要',
+  integrate: '`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）',
+  review: '对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据',
+  test: '`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）',
+  repro: '`npx vitest run <新增回归用例>` → 修复前失败、修复后通过（贴两次输出）',
+  fix: '`npx vitest run <回归用例>` → 转绿（贴命令与输出），且根因单独写明',
+  regress: '`pnpm test` → 无新增失败（与基线比对，贴汇总输出）',
+  probe: '给出可证伪问题的答案与证据（`npx vitest run <探针用例>` 或等价命令的输出）',
+  collect: '数据样本量与来源已标注：给出取数命令（如 `npx tsx scripts/<脚本>.mts`）或输出文件路径，对齐 R-013 来源与时点口径',
+  analyze: '结论含置信度与适用边界，并列出被证伪的假设（附支撑数据的命令或 `docs/requirements/<REQ>/` 下证据路径）',
+  prepare: '方案或脚本改动可复现：`npx vitest run <自检用例>` 或脚本命令 + 输出摘要',
+  run: '执行完成且结果落库：`npx tsx scripts/<执行脚本>.mts` 的记录条数或输出路径可复核',
+  verify: '校验项逐条给出结果：`npx vitest run <校验用例>` → 全绿；异常项已列出并标注影响面',
+  change: '变更内容与回滚方式已写明，并给出可执行验证命令（`npx vitest run <校验用例>`）与输出',
+  dryrun: '试运行输出与预期一致（`npx tsx scripts/<脚本>.mts --dry-run` + 输出）',
+  apply: '变更已生效：给出可复核的验证命令（`npx vitest run <校验用例>`）与输出',
+  // REQ-261003203909-55f2：四段验收模板（可证伪、含命令锚点；语义边界与 STAGE_SCOPE_RULE 同源）。
+  e2e: '端到端场景逐条给出：场景名 + 命令 + 退出码 + 输出摘要（如 `npx vitest run <e2e用例>` → 全绿）；场景清单覆盖本卡承接的 FR；失败如实贴输出，不改实现（改实现属研发段）',
+  manual: '人工核对清单落盘 `docs/requirements/<REQ>/manual/<taskId>.md`：核对项逐条勾验（通过/不通过+现象）+ 截图或证据路径；机器不自动判过，核对结果更新必须晚于清单骨架生成时间',
+  release: '构建/发版命令 + 完整输出（含构建戳或版本号断言，如 `pnpm build:client` 的 verify 门禁输出）；回滚方式显式写明（revert 范围/开关/数据回滚路径）',
+  capture: '采集产物路径列表（`docs/requirements/<REQ>/evidence/` 下）+ 每项一句话内容摘要 + 一条可复核命令（`ls -la` / `head` / `sha256sum`）',
 }
 
 /**
@@ -121,6 +143,9 @@ export const STAGE_EVIDENCE_KIND: Readonly<Record<StageKind, 'file' | 'verdict'>
   run: 'file',
   change: 'file',
   apply: 'file',
+  manual: 'file', // 人工核对：核对清单+结果落盘（mtime > 骨架生成时间，防伪造）
+  release: 'file', // 发布：版本/变更文件改动 + 回滚声明
+  capture: 'file', // 采集：产物落 evidence/（截图/探针输出/基线）
   // 结论族：产出是判断/输出，天然无 diff
   integrate: 'verdict',
   review: 'verdict',
@@ -131,6 +156,7 @@ export const STAGE_EVIDENCE_KIND: Readonly<Record<StageKind, 'file' | 'verdict'>
   analyze: 'verdict',
   verify: 'verdict',
   dryrun: 'verdict',
+  e2e: 'verdict', // 端到端：场景断言输出（与 test 同族，语义区分写在验收模板）
 }
 
 /** 阶段中文名（未知 stageKind 回退为原值，避免渲染崩）。 */
@@ -247,4 +273,68 @@ export function buildSubtaskSpecs(stages: readonly StageKind[]): SubtaskSpec[] {
     acceptance: STAGE_ACCEPTANCE[stageKind],
     dependsOnIndex: i === 0 ? null : i - 1,
   }))
+}
+
+// ── template 一等字段（REQ-261003203909-55f2 FR-4/FR-5）────────────────────
+// 计划任务表可引用模板键（如 change-only/acceptance/ops）替代手写 stages 数组；
+// 落库时一次解析为具体 stages（批准所见 = 落库所得），引用键冗余记录进 TaskRecord.template 供统计。
+
+export type TemplateRefVerdict =
+  | { ok: true; value: readonly StageKind[] }
+  | { ok: false; error: string }
+
+/** template 校验错误码（跨层可读：错误消息末尾也附一份，纯文本通道能识别；同 RequirementRefError 口径）。 */
+export const TEMPLATE_REF_ERROR = 'REQBOARD_TEMPLATE_INVALID'
+export const TEMPLATE_CONFLICT_ERROR = 'REQBOARD_TEMPLATE_CONFLICT'
+
+/**
+ * template 引用键校验：命中 SUBTASK_TEMPLATES → 该键的链；未命中/非字符串 → 结构化原因
+ * （调用方拼 REQBOARD_TEMPLATE_INVALID；合法键清单写进原因，响亮失败不让人猜）。
+ */
+export function validateTemplateRef(template: unknown): TemplateRefVerdict {
+  if (typeof template !== 'string' || template.trim().length === 0) {
+    return { ok: false, error: 'template 必须是非空字符串（引用 SUBTASK_TEMPLATES 的键）' }
+  }
+  const key = template.trim().toLowerCase()
+  const hit = SUBTASK_TEMPLATES[key]
+  if (hit === undefined) {
+    return {
+      ok: false,
+      error: fmt('非法 template：{key}（合法键：{keys}）', { key, keys: Object.keys(SUBTASK_TEMPLATES).join(', ') }),
+    }
+  }
+  return { ok: true, value: hit }
+}
+
+export type PlanStagesVerdict =
+  | { ok: true; value: readonly StageKind[] | undefined }
+  /** code 仅在 template 相关失败时带（INVALID/CONFLICT）；stages 校验失败不带码（沿用 invalid_input 既有口径）。 */
+  | { ok: false; error: string; code?: typeof TEMPLATE_REF_ERROR | typeof TEMPLATE_CONFLICT_ERROR }
+
+/**
+ * 计划卡 → 落库 stages 的统一解析（**优先级唯一实现点**；协议层计划解析调它一次，
+ * 解析结果随计划落库、plan-landing 原样透传进 TaskRecord.stages，lazy-expand 收到的已是解析好的值）：
+ *   stages（显式枚举，最高优先）> template（引用键）> undefined（交回 phase/side/分类兜底）。
+ * 冲突规则：stages 与 template **同时给出 → 拒绝**（二选一，禁止两套口径并存埋歧义，
+ * code=REQBOARD_TEMPLATE_CONFLICT）；template 非法 → code=REQBOARD_TEMPLATE_INVALID；
+ * template + skipIntegration 合法（正交裁剪，不在此处处理）。
+ */
+export function resolvePlanStages(draft: {
+  stages?: readonly unknown[]
+  template?: string
+}): PlanStagesVerdict {
+  const hasStages = draft.stages !== undefined && draft.stages !== null
+  const hasTemplate = draft.template !== undefined && draft.template !== null
+  if (hasStages && hasTemplate) {
+    return { ok: false, error: 'stages 与 template 二选一，不得同时给出', code: TEMPLATE_CONFLICT_ERROR }
+  }
+  if (hasStages) {
+    const verdict = validateExplicitStages(draft.stages as readonly unknown[])
+    return verdict.ok ? { ok: true, value: verdict.value } : { ok: false, error: verdict.error }
+  }
+  if (hasTemplate) {
+    const verdict = validateTemplateRef(draft.template)
+    return verdict.ok ? { ok: true, value: verdict.value } : { ok: false, error: verdict.error, code: TEMPLATE_REF_ERROR }
+  }
+  return { ok: true, value: undefined }
 }

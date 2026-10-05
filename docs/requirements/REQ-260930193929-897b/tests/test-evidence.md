@@ -153,7 +153,7 @@ covers: t-f9a205
 
 covers: t-18a70f
 
-证据：`-t "看板路径"` → 2 passed；`-t "存量兼容"` → 4 passed；rollback.md 存在。
+证据：`-t "E2E"` → 2 passed（原命令 `-t "看板路径"` 已随用例升格为 E2E 场景而失效）；`-t "存量兼容"` → 4 passed；rollback.md 存在。
 
 ### TC-16 覆盖 t-40797a（t4·复核）
 
@@ -166,4 +166,71 @@ covers: t-40797a
 covers: t-eecd25
 
 证据：`vitest run tests/design-gate-workspace-root.test.ts` → 13 passed；全量 103 failed（基线持平）。
+
+## 返工响应（验收单 v1-8：E2E 覆盖缺口 → 已补 E2E 场景用例）
+
+**验收意见**（改进 / 需修改）：
+
+> E2E 覆盖：**无（缺口）**——本需求交付涉及多组件串联，但只交了单元/集成测试。
+> 请补一条端到端场景用例（断言可观察终态）；若确认无需 E2E，通过时必须在意见中写明理由。
+
+**已做的修复**：把原「看板路径」两条用例升格为**显式 E2E 场景**，并补齐**可观察终态**断言
+（原先只断言 `advanced` 与状态；现在连状态迁移历史与推进留痕一并断言）：
+
+| 用例 | 覆盖条款 | 链路 | 断言的可观察终态 |
+|---|---|---|---|
+| E2E 正向 | FR-1 | 真实 `FileDocRepository`（错根 A）→ `JsonLedgerRepository` → `createReqboardHandler` HTTP 确认端点 → 状态机 | ① HTTP 200 且 `advanced=true` 且无 `gate_failure`；② 需求 `status='decomposing'`；③ `statusHistory` 非空；④ 评论含「看板一键确认产物」（人能看到的留痕） |
+| E2E 反向 | FR-2 | 同上，但需求根 B 下真缺 `requirement.md` | ① HTTP 200 且 `advanced=false` 且 `gate_failure.code='design_doc_incomplete'`；② 需求 `status='design'`（**没有被错误推进**） |
+
+前置断言同时钉死场景成立性：同一时刻、同一文件，错根 A 下 `exists=false`、需求根 B 下 `exists=true`。
+
+命令与结果：`node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t "E2E"` → **2 passed**。
+
+### ⚠️ 一处读数限制（如实说明，不粉饰）
+
+**这项验收项的读数仍会显示「无（缺口）」**——原因不在测试，而在读数机制：
+
+- 该项由 `e2eCoverageOf()` 生成，它**只读 `requirement.md` 的「测试策略表」**（找「层级」列含 E2E 的行）；
+- 本需求的 `requirement.md` 是 brainstorming 产物且**已确认**，平台禁止在 implementing 阶段重交它
+  （实测被拒：`REQBOARD_BAD_STATUS`「需求文档只能在 brainstorming 阶段提交」，且回退 brainstorming 会**作废既有确认**）；
+- 因此我**撤回**了给 `requirement.md` 加「测试策略」节的改动，保持磁盘与已确认版本**逐字节一致、零漂移**
+  （撤回后 13283 字节，与确认版本相同）。
+
+**建议处置**：该项按「通过 + 写明理由」处理。理由可直接用：
+
+> E2E 场景用例已补（`tests/design-gate-workspace-root.test.ts` › 「E2E：错根下的完整链路」两条，断言可观察终态）；
+> 读数仍显示缺口是因为 `requirement.md` 不可在 implementing 阶段重交，属读数机制限制，非交付缺失。
+
+这正是该验收项文本自身给出的出口（「若确认无需 E2E，通过时必须在意见中写明理由」）——此处不是"无需"，
+而是"已补但读数机制够不到"。
+
+### 返工期间重测（基线已移动，附 A/B 归因）
+
+返工时重跑发现**仓基线已经变了**：全量从「103 失败 / 213 类型错误 / 266 文件」变为
+「97 失败 / 192 类型错误 / 295 文件」；`git log` 显示期间有两个新提交合入（含另一需求的修复），
+未提交改动 219 个文件。我早先测的「改动前基线」因此**不可再用于逐条对比**。
+
+当前 97 条失败里出现了我改动领域内的文件（`design-completeness-gate` / `design-gate-messages` /
+`design-registration` 等），故做了一次**最小 A/B 归因**：
+
+| 状态 | `tests/design-completeness-gate.test.ts` |
+|---|---|
+| 我的校正**生效** | 5 failed / 11 passed |
+| 我的校正**临时改成真 no-op** | **5 failed / 11 passed（完全相同）** |
+
+结论：这 5 条失败与我无关（失败形态是「`reqboard_move` 本该拒绝却成功」，
+而 `MoveRequirement.ts` 的 mtime 是 09-29、只调 `assertArtifactGates`、从未被我触碰；
+另有失败是报错文案不再带工具码，属消息格式变更）。**归因证据：no-op 前后结果一字不差。**
+
+我的改动自身在当前树上的核验：本文件 13/13 通过；改动/新增的 6 个文件零类型错误
+（唯一命中 `src/http/routers/requirements.ts(459,23)` 是**改动前基线里就存在**的同一处 cast 错误，
+当时在 451 行——见改动前基线文本，非本次引入）。
+
+### covers（返工卡）
+
+covers: t-8cc56a
+
+证据：`node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t "E2E"` → 2 passed。
+
+
 

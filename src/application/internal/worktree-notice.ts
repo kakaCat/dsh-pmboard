@@ -11,7 +11,6 @@
  */
 import type { UseCaseDeps } from '../ports.js'
 import {
-  renderWorktreePrompt,
   type WorktreeEvent,
   type WorktreeEventContext,
 } from '../../domain/prompt/worktree-events.js'

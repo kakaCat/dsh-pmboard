@@ -13,6 +13,7 @@ const ROOT = '/work/agent-dh'
 /** 只实现 workspaceRoot/stat 的极简 docs 假件：只认 `packages/x.ts`。 */
 function depsWith(files: Record<string, number>): UseCaseDeps {
   return {
+    // 本用例只喂 docs 假件（store 非本用例关切）
     docs: {
       workspaceRoot: () => ROOT,
       stat: (p: string) => (p in files ? { mtimeMs: files[p]!, size: 1 } : undefined),

@@ -95,6 +95,12 @@ export interface VerificationItem {
   status: 'pending' | 'passed' | 'failed'
   opinion?: string
   decidedAt?: number
+
+  /** REQ-261001184609-cecb FR-1/FR-3：实际结果与「需人工确认」标记（看板展示用） */
+  result?: string
+  resultSource?: 'agent' | 'human'
+  needsHuman?: boolean
+  humanReason?: string
 }
 
 /** 验收单（版本化，可挂起/续验）。 */
@@ -130,6 +136,34 @@ export interface ArchiveRecord {
   submittedBy: ActorRef
   archivedAt?: number
   archivedBy?: ActorRef
+  /**
+   * 清单对账结果（REQ-261004183621-de3f FR-5）；缺省 = 本功能上线前归档的存量记录
+   * （看板显示「未对账」而不是 0——**0 ≠ 未对账**）。
+   */
+  reconcile?: {
+    gate: string
+    listed: string[]
+    exempted: Array<{ path: string; rule: string }>
+    unlisted: string[]
+    acknowledged: Array<{ path: string; reason: string }>
+    at: number
+  }
+  /** 清单补录留痕（只追加；缺省 = 从未补录）。 */
+  amendments?: Array<{ docs: ArchiveDoc[]; reason: string; at: number; by: ActorRef }>
+}
+
+/**
+ * 需求席位（REQ-261004210128-283d FR-2）：客户端本地最小声明。
+ *
+ * 为什么本地再写一份而不是 import host 的 `WindowSeat`：client 半**不 import host 模块**
+ * （否则打包会把 host 代码带进浏览器包，见 render/dom-utils.ts 的同款说明）。
+ * 服务端 `/state` 下发的摘要里本就带 `seats`（`summarize()` 有则带），这里只是把读端类型补齐。
+ */
+export interface ClientWindowSeat {
+  /** 席位窗口（= root agent id = session id） */
+  windowKey: string
+  role: 'owner' | 'worker' | 'observer'
+  joinedAt: number
 }
 
 export interface RequirementRecord {
@@ -137,6 +171,8 @@ export interface RequirementRecord {
   title: string
   description: string
   category?: RequirementCategory
+  /** 需求级工作区根（REQ-260929210741-30ae FR-6，与 shared/protocol.ts 同形）：产物相对此根落盘 */
+  workspaceRoot?: string
   docLinks?: { requirement?: string; ui?: string; proposal?: string; extras?: Array<{ label: string; path: string }> }
   status: RequirementStatus
   blocked: boolean
@@ -166,6 +202,11 @@ export interface RequirementRecord {
   reviewSessionId?: string
   /** 立项来源窗口（agent 会话 id，如 session-<uuid>；人工建卡不填）——窗口↔需求关联锚点 */
   sourceSessionId?: string
+  /**
+   * 需求席位（REQ-261004210128-283d FR-2）：**有值即权威**（与 host `seatsOf` 同口径）；
+   * 缺省 = 存量需求 → 读端折算为单 owner（`sourceSessionId`）。运行中指示据此判定「这条需求在不在跑」。
+   */
+  seats?: ClientWindowSeat[]
   archivePath?: string
   /** 已登记产物（五道人工确认门的判定输入；缺省=未登记，见 shared/protocol.ts） */
   artifacts?: StageArtifact[]
@@ -248,8 +289,39 @@ export interface TaskRecord {
 
 // -- 看板数据 -------------------------------------------------------------
 
+/**
+ * 需求**摘要**（B12 阶段⑥-① / REQ-261002161439-277d t-05a56b）——`GET /state` 首屏只下发它。
+ *
+ * 与 `RequirementRecord`（全文）分开：本体（comments/artifacts/verification/plan/archive）不再随首屏下发，
+ * 进入详情时用 `GET /requirements/:id` 取全文。计数用 commentCount/artifactCount（计数，不是本体）。
+ */
+export interface RequirementSummary {
+  id: string
+  title: string
+  status: RequirementStatus
+  blocked: boolean
+  createdAt: number
+  updatedAt: number
+  version: number
+  commentCount: number
+  artifactCount: number
+  category?: RequirementCategory
+  paused?: boolean
+  autoRun?: boolean
+  sourceSessionId?: string
+  /** 需求席位（REQ-261004210128-283d FR-2）：与 `RequirementRecord.seats` 同义；缺省 = 折算单 owner。 */
+  seats?: ClientWindowSeat[]
+  workspaceRoot?: string
+  docBasePath?: string
+}
+
 export interface BoardState {
   revision: number
+  /**
+   * ⚠️ B12 阶段⑥-①（t-05a56b）**收尾项**：服务端已只下发摘要，本字段应为 `RequirementSummary[]`；
+   * 放宽即级联 200+ 处（见 `ReqCard.req` 注释）⇒ 单列一张卡做类型分层重构。
+   * **运行时已核实安全**：`state.requirements` 仅 8 处引用、无一读 comments/artifacts/verification/plan/archive。
+   */
   requirements: RequirementRecord[]
   tasks: TaskRecord[]
   /** 需求 id → ready 任务 id 列表（host 派生） */
@@ -260,10 +332,25 @@ export interface BoardState {
   workspaceRoot?: string
   /** FR-4：服务端 homeDir（~ 缩写显示用） */
   homeDir?: string
+  /**
+   * 会话工作区（REQ-261003215944-9e04 FR-11）：无需求段的相对路径用它绝对化。
+   * 缺省 = 旧服务端（不含该字段）→ 回落 workspaceRoot，行为与改动前一致。
+   */
+  sessionWorkspaceRoot?: string
+  /**
+   * 本次读根来源（FR-11）：session=按会话解析成功；legacy-cwd=回落插件宿主目录。
+   * 前端不判分支，只用于诊断与"为什么打不开"的解释。
+   */
+  docsRootSource?: 'session' | 'legacy-cwd'
 }
 
 /** 需求卡片在泳道列上的紧凑投影（视图层用，避免全量渲染） */
 export interface ReqCard {
+  /**
+   * ⚠️ B12 阶段⑥-①（t-05a56b）**收尾项**：本字段应为 `RequirementSummary`（卡面只需摘要）。
+   * 实测放宽后会**级联**到 artifacts 等视图（73 处 ⇒ 234 处），说明这是"列表/详情类型分层"重构，
+   * 不是签名批量替换 ⇒ 单列一张卡做。运行时已核实安全（首屏只读摘要字段）。
+   */
   req: RequirementRecord
   tasks: TaskRecord[]
   doneCount: number

@@ -7,11 +7,14 @@
  * @module dsh-pmboard/tools/RunStatusTool
  */
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import { firstWritableBound, openRequirementsForVia } from '../../application/internal/window.js'
 import { LIMITS } from '../../domain/limits.js'
 import type { UseCaseDeps } from '../../application/ports.js'
 import type { RequirementRecord, TaskRecord } from '../../client/types.js'
 import { queryRunStatus } from '../../application/use-cases/QueryRunStatus.js'
-import { openRequirementsFor } from '../../application/internal/window.js'
+import { requirementStoreOf } from '../../application/use-cases/queue-access.js'
+// REQ-261003191948-e94a：工作区根校正的唯一收敛点（与 AdvanceTool / TaskTree 同源）。
+import { agentIdFromExec } from '../../application/internal/support.js'
 import { RUN_STATUS_PROMPT } from './prompt.js'
 import { renderSmart } from '../shared.js'
 
@@ -66,24 +69,38 @@ export function defineRunStatusTool(deps: UseCaseDeps) {
     // REQ-260927144541-0481 FR-6：查询式工具不得挂 1 小时交互超时——那种超时只服务需要人作答的弹框类。
     timeoutMs: LIMITS.timeoutReadMs,
     async execute(args: { requirement_id?: string; run_id?: string }, exec: unknown): Promise<Record<string, unknown>> {
-      const windowKey = deps.session.windowKey(exec)
-      const snap = deps.repo.snapshot()
+      // REQ-261003191948-e94a：查询式入口同样要读任务（按 requirement_id 算 ready 集合），
+      // 故必须经工作区根收敛点；否则插件重载后按错误的根读队列，恒报「任务不存在」。
+      const windowKey = agentIdFromExec(deps, exec)
       
       // 1. 确定目标需求
       let requirementId: string | undefined = args.requirement_id
       
       if (!requirementId && !args.run_id) {
         // 默认本窗口绑定的需求
-        const bound = openRequirementsFor(snap, windowKey)
+        const bound = await openRequirementsForVia(requirementStoreOf(deps), windowKey)
         if (bound.length === 0) {
           return { success: false, error: '本窗口未绑定需求，请传入 requirement_id 或 run_id' }
         }
-        requirementId = bound[0].id
+        // FR-3：按席位取第一条可写的；取不到 → 与"未绑定"同一条错误文案
+        const first = firstWritableBound(bound, windowKey)
+        if (first === undefined) {
+          return { success: false, error: '本窗口未绑定需求，请传入 requirement_id 或 run_id' }
+        }
+        requirementId = first.id
       }
       
       if (!requirementId && args.run_id) {
         // 通过 run_id 反查 requirement_id（从台账查找）
-        const req = snap.requirements.find(r => r.advance?.runId === args.run_id)
+        // run_id → requirement_id：台账没有 run 索引（advance.runId 只在记录上）⇒
+        // 按需逐条 get（只在「只给 run_id」这条罕见路径上发生，符合裁决 (iii) A：按需 N 次 get）。
+        const st = requirementStoreOf(deps)
+        const page = await st.listSummaries({ scope: 'all' })
+        let req: { id: string } | undefined
+        for (const sm of page.items) {
+          const r = await st.get(sm.id)
+          if (r?.advance?.runId === args.run_id) { req = r; break }
+        }
         if (req) {
           requirementId = req.id
         } else {
@@ -94,6 +111,8 @@ export function defineRunStatusTool(deps: UseCaseDeps) {
       if (!requirementId) {
         return { success: false, error: '无法确定目标需求' }
       }
+      // t8：`let` 在外层被守卫收窄，但闭包内 TS 会放宽回 `string | undefined` ⇒ 取 const 固定
+      const targetId: string = requirementId
       
       // 2. 查询运行状态（QueryRunStatus 用例契约为单个 QueryParams 对象；此前误传
       //    (deps, requirementId, exec)，运行期 getRequirement 为 undefined →
@@ -106,9 +125,9 @@ export function defineRunStatusTool(deps: UseCaseDeps) {
       const status = await queryRunStatus({
         requirementId,
         getRequirement: async () => {
-          const rec = deps.repo.snapshot().requirements.find(r => r.id === requirementId)
+          const rec = await requirementStoreOf(deps).get(targetId)
           if (rec === undefined) {
-            throw Object.assign(new Error('需求不存在：' + requirementId), { code: 'REQBOARD_REQUIREMENT_NOT_FOUND' })
+            throw Object.assign(new Error('需求不存在：' + targetId), { code: 'REQBOARD_REQUIREMENT_NOT_FOUND' })
           }
           return rec as unknown as RequirementRecord
         },
@@ -119,7 +138,7 @@ export function defineRunStatusTool(deps: UseCaseDeps) {
             // 未装配 = 组合根配置错误：**显式失败**，不谎报"没有任务"（端口缺省语义）。
             throw new Error('reqboard_run_status：任务存储（TaskStore）未装配，无法读取任务')
           }
-          return (await store.listByRequirement(requirementId)) as unknown as TaskRecord[]
+          return (await store.listByRequirement(targetId)) as unknown as TaskRecord[]
         },
         ...(dshJobsAdapter !== undefined ? { dshJobsAdapter } : {}),
       })

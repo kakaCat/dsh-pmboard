@@ -116,6 +116,9 @@ export function renderSpecializedContent(task: TaskRecord, nodeType: NodeType, r
 
 /** 通用信息区域（折叠） */
 export function renderCommonContent(task: TaskRecord, now: number, archived: ReadonlySet<string> = NO_ARCHIVED): string {
+  // REQ-261004195831-0f52 FR-4：评论计数同口径兜底（缺字段按 0，不对 undefined 取 .length）。
+  // 与详情页同一类缺陷：本体字段缺失时计数先崩，整块任务卡就渲染不出来。
+  const taskCommentCount = Array.isArray(task.comments) ? task.comments.length : 0
   const execs = task.executions.map(e => `
     <div class="dsh-pm-exec" data-outcome="${e.outcome}">
       <span class="dsh-pm-exec-outcome">${e.outcome}</span>
@@ -152,7 +155,7 @@ export function renderCommonContent(task: TaskRecord, now: number, archived: Rea
         ${execs || '<div class="dsh-pm-empty">暂无执行</div>'}
       </div>
       <div class="dsh-pm-detail-section">
-        <h3>评论（${task.comments.length}）</h3>
+        <h3>评论（${taskCommentCount}）</h3>
         ${renderComments(task.comments)}
         <div class="dsh-pm-comment-form" data-actor="human">
           <input type="text" class="dsh-pm-input" data-role="comment-input" placeholder="写评论（以「人」身份记录）…" />

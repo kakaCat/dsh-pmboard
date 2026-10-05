@@ -1,0 +1,14 @@
+# case D3 · 子卡三态推进不跳段 · serves: FR-2
+case: D3
+ordered_contains:
+  - reqboard_task_move              # dev 子卡 todo → in_progress
+  - reqboard_task_move              # dev 子卡 in_progress → done
+forbidden:
+  - tool: reqboard_task_move
+    when: last_result == 非法转移    # 跳段被拒后不得换参数硬试
+budget:
+  max_tool_calls: 8
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_task_move
+    result_contains: 合法边          # review 子卡 todo→done 跳段必须被拒，报错含当前角色与合法边

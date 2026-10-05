@@ -24,7 +24,7 @@ class OkRunner implements WorkflowRunner {
 function seed() {
   const h = makeHarness()
   h.docs.put(FILE, 'x')
-  h.repo.ledger.requirements = [req({
+  h.seedRequirementSync(req({
     id: 'REQ-000001',
     // 2026-09-21 阶段门裁定（w-2105d331 代录）：拆分计划归 decomposing，批准门在 decomposing→implementing
     status: 'decomposing',
@@ -46,7 +46,7 @@ function seed() {
       submittedAt: h.clock.t,
       submittedBy: { kind: 'agent', sessionId: 'session-w-001' },
     },
-  })]
+  }))
   // 任务不 seed（v9 / B-5）："此刻没有任务"= 没有队列文件，由各用例显式断言（不静默省略）。
   h.deps.workflow = new OkRunner()
   h.questions.answers = [{ selected: [DEFAULT_CONFIRM_OPTIONS[0] as string] }]
@@ -57,8 +57,10 @@ describe('批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7
   /**
    * ⚠️ 已知缺口（**非本需求引入**，本用例把它显式暴露而非掩盖）：
    * 「批准计划」这一跳**在 src 侧没有任何链启动者** —— `confirm-settle.ts` 只设
-   * `req.autoRun = true`；`deps.jobs.start` 没有生产调用点；唯一会启动作业的
-   * `StartSubtaskChain.ts` 全仓无调用者（死代码）；`advanceRequirement(` 的调用点里
+   * `req.autoRun = true`；`deps.jobs.start` 没有生产调用点；
+   * （2026-10-04 REQ-261003222428-3556 t4：死代码 `StartSubtaskChain.ts` 已删除清偿，
+   *  其后台执行器 background-runner / batch-scheduler 一并移除，写集分组逻辑已移植
+   *  进现役 advance-parallel.ts）；`advanceRequirement(` 的调用点里
    * 没有 `AskConfirm`/`confirm-settle`。⇒ 批准后状态只能停在 `implementing`。
    *
    * 仓库早已把它写在注释里（既有事实，非本次改造造成）：
@@ -73,19 +75,20 @@ describe('批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7
    */
   it('批准后自动拆分类跑完 → 需求 accepting（v9：触发者由外部模拟，生产为看板继续/会话唤醒）', async () => {
     const h = seed()
+    await h.seedSettled()
     const out = await askConfirm(h.deps, {
       requirement_id: 'REQ-000001', target: 'plan', question: '批准拆分计划进入拆分？',
     }, exec) as { confirmed?: boolean; note?: string }
 
     expect(out.confirmed).toBe(true)
-    const afterApprove = h.repo.ledger.requirements[0]!
+    const afterApprove = (await h.store.get('REQ-000001'))!
     expect(afterApprove.status).toBe('implementing')   // 批准本身的终态（落库 + 进实施 + autoRun）
     expect(afterApprove.autoRun).toBe(true)
 
     // 显式模拟系统触发者（见上方"已知缺口"）：此后**不再调用任何人工工具**，链应自己跑到 accepting。
     await advanceRequirement(h.deps, 'REQ-000001')
 
-    const requirement = h.repo.ledger.requirements[0]!
+    const requirement = (await h.store.get('REQ-000001'))!
     expect(requirement.status).toBe('accepting')
 
     // 拆分落库：父卡 + 子卡（feature = dev→integrate→review→test）
@@ -100,6 +103,7 @@ describe('批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7
 
   it('批准弹框文案含「自动拆分并立即开跑」说明（7.1）', async () => {
     const h = seed()
+    await h.seedSettled()
     await askConfirm(h.deps, { requirement_id: 'REQ-000001', target: 'plan', question: '批准拆分计划进入拆分？' }, exec)
     const asked = h.questions.asked[0]!
     expect(asked.question).toContain('自动拆分')
@@ -108,6 +112,7 @@ describe('批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7
 
   it('4.2 全程不出现「确认拆分清单」弹框（只有一次批准弹框）', async () => {
     const h = seed()
+    await h.seedSettled()
     await askConfirm(h.deps, { requirement_id: 'REQ-000001', target: 'plan', question: '批准拆分计划进入拆分？' }, exec)
     expect(h.questions.asked).toHaveLength(1)
     expect(h.questions.asked[0]!.header).toBe(pmHeader('确认'))
@@ -115,10 +120,11 @@ describe('批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7
 
   it('decomposition 产物由批准门自动落章（门合并留痕）', async () => {
     const h = seed()
+    await h.seedSettled()
     await askConfirm(h.deps, { requirement_id: 'REQ-000001', target: 'plan', question: '批准？' }, exec)
-    const art = (h.repo.ledger.requirements[0]!.artifacts ?? []).find(a => a.kind === 'decomposition')
+    const art = ((await h.store.get('REQ-000001'))!.artifacts ?? []).find(a => a.kind === 'decomposition')
     expect(art?.confirmedAt).toBeDefined()
-    expect(h.repo.ledger.requirements[0]!.comments.some(c => c.body.includes('门合并'))).toBe(true)
+    expect((await h.store.get('REQ-000001'))!.comments.some(c => c.body.includes('门合并'))).toBe(true)
   })
 })
 
@@ -140,7 +146,7 @@ describe('REQ-84bea5：断链修复回归测试', () => {
 | t1      | 实现    | FR-1  |
 `)
     
-    h.repo.ledger.requirements = [req({
+    h.seedRequirementSync(req({
       id: 'REQ-000002',
       status: 'decomposing',
       artifacts: [
@@ -167,7 +173,8 @@ describe('REQ-84bea5：断链修复回归测试', () => {
         submittedAt: h.clock.t,
         submittedBy: { kind: 'agent', sessionId: 'session-w-001' },
       },
-    })]
+    }))
+    await h.seedSettled()
     // 任务不 seed（v9 / B-5）：本用例要证明的是"从无任务开始批准也能落库"，由下方断言保证。
     expect(h.queueExists('REQ-000002')).toBe(false)
     h.deps.workflow = new OkRunner()

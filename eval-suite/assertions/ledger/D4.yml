@@ -1,0 +1,14 @@
+# case D4 · 完工汇报四要素与幂等（产物类） · serves: FR-2
+case: D4
+checks:
+  - path: queue.tasks[?id='t-002-dev'].lastReport        # 汇报已落台账
+    op: exists
+  - path: queue.tasks[?id='t-002-dev'].lastReport.summary    # 四要素：summary
+    op: exists
+  - path: queue.tasks[?id='t-002-dev'].lastReport.completed  # 四要素：completed
+    op: exists
+  - path: queue.tasks[?id='t-002-dev'].lastReport.filesChanged # 四要素：files_changed
+    op: exists
+  - path: requirement.artifacts[?kind='task_detail']     # 重复汇报幂等：产物登记不重复（仅 1 条）
+    op: count_eq
+    value: 1

@@ -1,0 +1,895 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261004065652-5c1c
+  generated_at: 2026-10-03T23:07:26.775Z
+  version: 88
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T00:36:08.553Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 上游致命错误停手（AUTH/额度类不可重试）
+      source: requirement.md
+      line: 115
+    - id: FR-2
+      title: 瞬时错误退避熔断
+      source: requirement.md
+      line: 135
+    - id: FR-3
+      title: 驱动侧内存闭锁（fail-closed）
+      source: requirement.md
+      line: 154
+    - id: FR-4
+      title: 投影读己所写（根因修复）
+      source: requirement.md
+      line: 173
+    - id: FR-5
+      title: 人工门即停手
+      source: requirement.md
+      line: 192
+    - id: FR-6
+      title: 中止当拍生效
+      source: requirement.md
+      line: 210
+    - id: FR-7
+      title: 弹框默认有界宽限
+      source: requirement.md
+      line: 227
+    - id: FR-8
+      title: 断点留痕去重限流
+      source: requirement.md
+      line: 246
+    - id: FR-9
+      title: 终态收手与启动对账
+      source: requirement.md
+      line: 263
+    - id: FR-10
+      title: 子卡引擎开工预检
+      source: requirement.md
+      line: 280
+    - id: FR-11
+      title: 全局 WIP 与额度预算闸
+      source: requirement.md
+      line: 297
+  design_sections:
+    - ref: design/architecture.md#目标与总体方案
+      title: 目标与总体方案 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-9
+        - FR-11
+      file: design/architecture.md
+      section: 目标与总体方案
+    - ref: design/architecture.md#模块改动地图
+      title: 模块改动地图 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+        - FR-9
+        - FR-10
+        - FR-11
+      file: design/architecture.md
+      section: 模块改动地图
+    - ref: design/architecture.md#FR-1-致命错误分类与全局额度闩
+      title: FR-1 · 致命错误分类与全局额度闩 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: FR-1-致命错误分类与全局额度闩
+    - ref: design/architecture.md#FR-2-退避与熔断
+      title: FR-2 · 退避与熔断 `
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: FR-2-退避与熔断
+    - ref: design/architecture.md#FR-3-驱动侧内存闭锁fail-closed
+      title: FR-3 · 驱动侧内存闭锁（fail-closed） `
+      serves:
+        - FR-3
+        - FR-6
+      file: design/architecture.md
+      section: FR-3-驱动侧内存闭锁fail-closed
+    - ref: design/architecture.md#FR-4-投影读己所写根因修复
+      title: FR-4 · 投影读己所写（根因修复） `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: FR-4-投影读己所写根因修复
+    - ref: design/architecture.md#FR-5-人工门即停手
+      title: FR-5 · 人工门即停手 `
+      serves:
+        - FR-5
+      file: design/architecture.md
+      section: FR-5-人工门即停手
+    - ref: design/architecture.md#FR-6-中止当拍生效
+      title: FR-6 · 中止当拍生效 `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: FR-6-中止当拍生效
+    - ref: design/architecture.md#FR-7-弹框缺省有界宽限
+      title: FR-7 · 弹框缺省有界宽限 `
+      serves:
+        - FR-7
+      file: design/architecture.md
+      section: FR-7-弹框缺省有界宽限
+    - ref: design/architecture.md#FR-8-断点留痕去重限流
+      title: FR-8 · 断点留痕去重限流 `
+      serves:
+        - FR-8
+      file: design/architecture.md
+      section: FR-8-断点留痕去重限流
+    - ref: design/architecture.md#FR-9-终态收手与启动对账
+      title: FR-9 · 终态收手与启动对账 `
+      serves:
+        - FR-9
+      file: design/architecture.md
+      section: FR-9-终态收手与启动对账
+    - ref: design/architecture.md#FR-10-子卡引擎开工预检
+      title: FR-10 · 子卡引擎开工预检 `
+      serves:
+        - FR-10
+      file: design/architecture.md
+      section: FR-10-子卡引擎开工预检
+    - ref: design/architecture.md#FR-11-全局-WIP-与额度预算闸
+      title: FR-11 · 全局 WIP 与额度预算闸 `
+      serves:
+        - FR-11
+      file: design/architecture.md
+      section: FR-11-全局-WIP-与额度预算闸
+    - ref: design/architecture.md#分批与回滚
+      title: 分批与回滚 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+        - FR-9
+        - FR-10
+        - FR-11
+      file: design/architecture.md
+      section: 分批与回滚
+    - ref: design/architecture.md#决策裁定需求阶段留的-D-1D-4
+      title: 决策裁定（需求阶段留的 D-1~D-4） `
+      serves:
+        - FR-1
+        - FR-4
+        - FR-11
+      file: design/architecture.md
+      section: 决策裁定需求阶段留的-D-1D-4
+    - ref: design/data-model.md#新增修改的数据结构
+      title: 新增/修改的数据结构 `
+      serves:
+        - FR-3
+        - FR-4
+        - FR-11
+      file: design/data-model.md
+      section: 新增修改的数据结构
+    - ref: design/data-model.md#DriverState-扩展内存态不落盘
+      title: DriverState 扩展（内存态，不落盘） `
+      serves:
+        - FR-2
+        - FR-3
+        - FR-6
+      file: design/data-model.md
+      section: DriverState-扩展内存态不落盘
+    - ref: design/data-model.md#RequirementFacts-增-tokenUsage-投影
+      title: RequirementFacts 增 `tokenUsage` 投影 `
+      serves:
+        - FR-4
+        - FR-11
+      file: design/data-model.md
+      section: RequirementFacts-增-tokenUsage-投影
+    - ref: design/data-model.md#divepausedReason-值域扩充字段不变
+      title: "`dive.pausedReason` 值域扩充（字段不变） `"
+      serves:
+        - FR-1
+        - FR-2
+        - FR-9
+        - FR-11
+      file: design/data-model.md
+      section: divepausedReason-值域扩充字段不变
+    - ref: design/data-model.md#新增修改的持久化结构
+      title: 新增/修改的持久化结构 `
+      serves:
+        - FR-9
+      file: design/data-model.md
+      section: 新增修改的持久化结构
+    - ref: design/data-model.md#迁移与兼容
+      title: 迁移与兼容 `
+      serves:
+        - FR-4
+        - FR-9
+        - FR-11
+      file: design/data-model.md
+      section: 迁移与兼容
+    - ref: design/interfaces.md#新增的内部接口
+      title: 新增的内部接口 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-5
+        - FR-11
+      file: design/interfaces.md
+      section: 新增的内部接口
+    - ref: design/interfaces.md#classifyTurnEnd
+      title: classifyTurnEnd `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: classifyTurnEnd
+    - ref: design/interfaces.md#createProviderLatch
+      title: createProviderLatch `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: createProviderLatch
+    - ref: design/interfaces.md#humanGateOf
+      title: humanGateOf `
+      serves:
+        - FR-5
+      file: design/interfaces.md
+      section: humanGateOf
+    - ref: design/interfaces.md#checkChainBudget
+      title: checkChainBudget `
+      serves:
+        - FR-11
+      file: design/interfaces.md
+      section: checkChainBudget
+    - ref: design/interfaces.md#DiveRoundPorts-扩四个注入端口
+      title: DiveRoundPorts 扩四个注入端口 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-5
+        - FR-11
+      file: design/interfaces.md
+      section: DiveRoundPorts-扩四个注入端口
+    - ref: design/interfaces.md#既有对外接口的行为变更schema-不变
+      title: 既有对外接口的行为变更（schema 不变） `
+      serves:
+        - FR-7
+        - FR-8
+        - FR-10
+      file: design/interfaces.md
+      section: 既有对外接口的行为变更schema-不变
+    - ref: design/interfaces.md#reqboardaskconfirm缺省阻塞-缺省有界宽限
+      title: reqboard_ask_confirm：缺省阻塞 → 缺省有界宽限 `
+      serves:
+        - FR-7
+      file: design/interfaces.md
+      section: reqboardaskconfirm缺省阻塞-缺省有界宽限
+    - ref: design/interfaces.md#实施链回执引擎不可达的文本强化
+      title: 实施链回执：引擎不可达的文本强化 `
+      serves:
+        - FR-10
+      file: design/interfaces.md
+      section: 实施链回执引擎不可达的文本强化
+    - ref: design/interfaces.md#断点留痕去重与限流
+      title: 断点留痕：去重与限流 `
+      serves:
+        - FR-8
+      file: design/interfaces.md
+      section: 断点留痕去重与限流
+    - ref: design/interfaces.md#错误码与不变量
+      title: 错误码与不变量 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-10
+      file: design/interfaces.md
+      section: 错误码与不变量
+    - ref: design/use-cases.md#用例总览
+      title: 用例总览 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-9
+        - FR-10
+        - FR-11
+      file: design/use-cases.md
+      section: 用例总览
+    - ref: design/use-cases.md#UC-1-夜间挂机撞上额度上限
+      title: "UC-1: 夜间挂机撞上额度上限 `"
+      serves:
+        - FR-1
+        - FR-3
+        - FR-11
+      file: design/use-cases.md
+      section: UC-1-夜间挂机撞上额度上限
+    - ref: design/use-cases.md#UC-2-需求卡在人工门
+      title: "UC-2: 需求卡在人工门 `"
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-2-需求卡在人工门
+    - ref: design/use-cases.md#UC-3-网络抖动
+      title: "UC-3: 网络抖动 `"
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-3-网络抖动
+    - ref: design/use-cases.md#UC-4-用户按停止
+      title: "UC-4: 用户按「停止」`"
+      serves:
+        - FR-6
+      file: design/use-cases.md
+      section: UC-4-用户按停止
+    - ref: design/use-cases.md#UC-5-弹框等人人不在
+      title: "UC-5: 弹框等人，人不在 `"
+      serves:
+        - FR-7
+      file: design/use-cases.md
+      section: UC-5-弹框等人人不在
+    - ref: design/use-cases.md#UC-6-多窗口并行起链
+      title: "UC-6: 多窗口并行起链 `"
+      serves:
+        - FR-11
+      file: design/use-cases.md
+      section: UC-6-多窗口并行起链
+    - ref: design/use-cases.md#UC-7-子卡引擎不可达
+      title: "UC-7: 子卡引擎不可达 `"
+      serves:
+        - FR-10
+      file: design/use-cases.md
+      section: UC-7-子卡引擎不可达
+    - ref: design/use-cases.md#UC-8-终态需求被归一
+      title: "UC-8: 终态需求被归一 `"
+      serves:
+        - FR-9
+      file: design/use-cases.md
+      section: UC-8-终态需求被归一
+outputs:
+  tasks:
+    - id: t-58c271
+      title: 定契约：失败分类器 + 三个判定纯函数 + 类型扩展
+      implements: 按 design/interfaces.md 落四个纯函数/工厂与类型：classifyTurnEnd（判定顺序 5 条，永不抛）、createProviderLatch（TTL 默认 5h、trip 幂等、isOpen 纯读）、humanGateOf（acceptance-pending/artifact-unconfirmed/plan-unapproved）、checkChainBudget（wip-limit/token-budget）。新增 tests/upstream-failure.test.ts、tests/provider-latch.test.ts、tests/human-gate.test.ts、tests/chain-budget.test.ts（含 unknown 不猜、缺省即旧行为边界）。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-5
+        - FR-11
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-230a8b
+      title: 修投影：写路径同源刷新窄投影快照
+      implements: 改 src/repositories/ShardedRequirementWriter.ts（notify 签名 + create/applyMutation/replaceAll 三处传 factsOf）与 ShardedRequirementStore.ts（notify 回调 index+factsCache 同刷；peekFacts 形状不变；缺 entry 不伪造 healthy 的口径写进测试）。新增 tests/store-projection-ryow.test.ts（TC-1/TC-2：mutate→同拍 peekFacts 读到 paused；roundsInStage=1→round 为 2）。
+      serves:
+        - FR-4
+        - FR-11
+      depends_on:
+        - t-58c271
+      phase: implement
+      side: backend
+    - id: t-7b3f98
+      title: 接线驱动：内存闭锁 + 退避熔断 + 额度闩 + 心跳不复活
+      implements: 在 src/application/dive/round-driver.ts 的 drive()/readyToDrive()/onAgentError/onSessionEvent 落 latch+退避+fatal 分支；wake-heartbeat.ts 的 tick 前查 providerLatch.isOpen() 并短路；index.ts 注入 providerLatch 单例与 releaseLatch（人恢复入口）。新增 tests/dive-loop-breaker.test.ts（TC-3/TC-4/TC-5/TC-13/TC-14 含 -t 'loop replay'）与 tests/dive-abort-latch.test.ts（TC-6）。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-6
+      depends_on:
+        - t-230a8b
+      phase: implement
+      side: backend
+    - id: t-64c231
+      title: 人工门即停手 + 终态收手与启动对账
+      implements: round-driver.drive() 在构造 attempt 前插人工门检查（命中→不起轮、不写健康位、幂等停手位）；src/domain/dive/transition.ts 增 'disarm-terminal'（非终态 changed:false）；新增 src/application/internal/reconcile-terminal-dive.ts 并在 index.ts 启动时调用（幂等 + terminal-reconciled 留痕）。新增 tests/dive-human-gate-stop.test.ts（TC-7 三形态）与 tests/dive-terminal-reconcile.test.ts（TC-10 含幂等）。
+      serves:
+        - FR-5
+        - FR-9
+      depends_on:
+        - t-7b3f98
+      phase: implement
+      side: backend
+    - id: t-ab7224
+      title: 弹框缺省有界宽限（配置项，缺省 10 分钟）
+      implements: 改 src/application/use-cases/AskConfirm.ts（graceRaw 缺省取 config.confirmDefaultGraceMs，缺省 600000；0 = 旧全阻塞；未装配端口时不变）与 src/plugin-config.ts（新增配置项与校验）。新增 tests/ask-confirm-default-grace.test.ts（TC-8：假时钟超宽限→pending+ticket 且不抛超时；未装配→全阻塞）。
+      serves:
+        - FR-7
+      depends_on:
+        - t-58c271
+      phase: implement
+      side: backend
+    - id: t-62c1c8
+      title: 断点留痕去重限流（病因类别 + 10 分钟 + 截断）
+      implements: 改 src/application/internal/interruption.ts（复用 classifyTurnEnd 的 reasonClass；限流窗口常量可注入；状态变化不受限流）。新增 tests/interruption-dedupe.test.ts（TC-9：交替 error:AUTH/aborted:user 各 10 次 → 写入 ≤ 2；阶段变化立即写；正文 ≤ 200 字符）。
+      serves:
+        - FR-8
+      depends_on:
+        - t-58c271
+      phase: implement
+      side: backend
+    - id: t-17ab48
+      title: 引擎开工预检 + 全局预算闸接线
+      implements: 改 src/application/use-cases/AdvanceChain.ts（OPEN_PARENT 前预检；不可达→stopped=engine_unreachable + '本次未落任何子卡' + 两条出路；以 advance.history 最近一条 ENGINE_UNREACHABLE 为幂等键短路）、src/adapters/WorkflowEngineRunner.ts（暴露探针）、round-driver（起轮前 checkChainBudget，拒绝→留痕含阈值名与当前值）。新增 tests/advance-engine-precheck.test.ts、tests/chain-budget.test.ts。
+      serves:
+        - FR-10
+        - FR-11
+      depends_on:
+        - t-7b3f98
+      phase: implement
+      side: backend
+    - id: t-2bc495
+      title: 迁移与兼容：对账反向脚本 + 台账副本演练
+      implements: 写反向脚本：读 terminal-reconciled 留痕（from→to）重写 activation；在台账副本上演练（3 条 archived+armed：对账改写→反向还原→与原件 sha256 比对），输出三段快照进 docs/requirements/REQ-261004065652-5c1c/evidence/reconcile-drill.md。不触碰真实台账。
+      serves:
+        - FR-4
+        - FR-9
+      depends_on:
+        - t-64c231
+      phase: implement
+      side: backend
+    - id: t-22f84b
+      title: 回归收口：反向演练矩阵 + 全量回归 + 类型闸门
+      implements: 按 decomposition.md「开工基线」表执行：npx vitest run（全量）、npx tsc --noEmit | grep -c 'error TS'、5 条反向演练（投影刷新拿掉/熔断阈值拿掉/AUTH 归类改 transient/人工门判据拿掉/预算闸拿掉）各自的红→绿记录。输出 docs/requirements/REQ-261004065652-5c1c/evidence/regression.md（命令 + 关键输出 + 与基线逐项对齐）。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+        - FR-9
+        - FR-10
+        - FR-11
+      depends_on:
+        - t-ab7224
+        - t-62c1c8
+        - t-17ab48
+        - t-2bc495
+      phase: test
+      side: backend
+    - id: t-a6831f
+      title: 知识层与文档同步（停机判据进契约文档）
+      implements: 在 docs/architecture/automation-chain-contract.md 新增一节：latch/闩/人工门/预算四道前置的判据、恢复路径与不变量；docs/architecture/project-manual.md 记本次认知增量为一条；docs/knowledge/conventions.md 若新增规范条目则同步并重生成知识层。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+        - FR-9
+        - FR-10
+        - FR-11
+      depends_on:
+        - t-22f84b
+      phase: doc
+      side: doc
+    - id: t-a31dbf
+      title: 定契约：失败分类器 + 三个判定纯函数 + 类型扩展·研发
+      implements: |-
+        按 design/interfaces.md 落四个纯函数/工厂与类型：classifyTurnEnd（判定顺序 5 条，永不抛）、createProviderLatch（TTL 默认 5h、trip 幂等、isOpen 纯读）、humanGateOf（acceptance-pending/artifact-unconfirmed/plan-unapproved）、checkChainBudget（wip-limit/token-budget）。新增 tests/upstream-failure.test.ts、tests/provider-latch.test.ts、tests/human-gate.test.ts、tests/chain-budget.test.ts（含 unknown 不猜、缺省即旧行为边界）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-fd132a
+      title: 定契约：失败分类器 + 三个判定纯函数 + 类型扩展·复核
+      implements: |-
+        按 design/interfaces.md 落四个纯函数/工厂与类型：classifyTurnEnd（判定顺序 5 条，永不抛）、createProviderLatch（TTL 默认 5h、trip 幂等、isOpen 纯读）、humanGateOf（acceptance-pending/artifact-unconfirmed/plan-unapproved）、checkChainBudget（wip-limit/token-budget）。新增 tests/upstream-failure.test.ts、tests/provider-latch.test.ts、tests/human-gate.test.ts、tests/chain-budget.test.ts（含 unknown 不猜、缺省即旧行为边界）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-a31dbf
+      phase: implement
+      side: backend
+    - id: t-cbaf3a
+      title: 定契约：失败分类器 + 三个判定纯函数 + 类型扩展·测试
+      implements: |-
+        按 design/interfaces.md 落四个纯函数/工厂与类型：classifyTurnEnd（判定顺序 5 条，永不抛）、createProviderLatch（TTL 默认 5h、trip 幂等、isOpen 纯读）、humanGateOf（acceptance-pending/artifact-unconfirmed/plan-unapproved）、checkChainBudget（wip-limit/token-budget）。新增 tests/upstream-failure.test.ts、tests/provider-latch.test.ts、tests/human-gate.test.ts、tests/chain-budget.test.ts（含 unknown 不猜、缺省即旧行为边界）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-fd132a
+      phase: implement
+      side: backend
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与总体方案:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#模块改动地图:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-ab7224
+      - t-62c1c8
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#FR-1-致命错误分类与全局额度闩:
+      - t-58c271
+      - t-7b3f98
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#FR-2-退避与熔断:
+      - t-58c271
+      - t-7b3f98
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#FR-3-驱动侧内存闭锁fail-closed:
+      - t-58c271
+      - t-7b3f98
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#FR-4-投影读己所写根因修复:
+      - t-230a8b
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#FR-5-人工门即停手:
+      - t-58c271
+      - t-64c231
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#FR-6-中止当拍生效:
+      - t-7b3f98
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#FR-7-弹框缺省有界宽限:
+      - t-ab7224
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#FR-8-断点留痕去重限流:
+      - t-62c1c8
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#FR-9-终态收手与启动对账:
+      - t-64c231
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#FR-10-子卡引擎开工预检:
+      - t-17ab48
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#FR-11-全局-WIP-与额度预算闸:
+      - t-58c271
+      - t-230a8b
+      - t-17ab48
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#分批与回滚:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-ab7224
+      - t-62c1c8
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    design/architecture.md#决策裁定需求阶段留的-D-1D-4:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    design/data-model.md#新增修改的数据结构:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    design/data-model.md#DriverState-扩展内存态不落盘:
+      - t-58c271
+      - t-7b3f98
+      - t-22f84b
+      - t-a6831f
+    design/data-model.md#RequirementFacts-增-tokenUsage-投影:
+      - t-58c271
+      - t-230a8b
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    design/data-model.md#divepausedReason-值域扩充字段不变:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    design/data-model.md#新增修改的持久化结构:
+      - t-64c231
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    design/data-model.md#迁移与兼容:
+      - t-58c271
+      - t-230a8b
+      - t-64c231
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    design/interfaces.md#新增的内部接口:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-17ab48
+      - t-22f84b
+      - t-a6831f
+    design/interfaces.md#classifyTurnEnd:
+      - t-58c271
+      - t-7b3f98
+      - t-22f84b
+      - t-a6831f
+    design/interfaces.md#createProviderLatch:
+      - t-58c271
+      - t-7b3f98
+      - t-22f84b
+      - t-a6831f
+    design/interfaces.md#humanGateOf:
+      - t-58c271
+      - t-64c231
+      - t-22f84b
+      - t-a6831f
+    design/interfaces.md#checkChainBudget:
+      - t-58c271
+      - t-230a8b
+      - t-17ab48
+      - t-22f84b
+      - t-a6831f
+    design/interfaces.md#DiveRoundPorts-扩四个注入端口:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-17ab48
+      - t-22f84b
+      - t-a6831f
+    design/interfaces.md#既有对外接口的行为变更schema-不变:
+      - t-ab7224
+      - t-62c1c8
+      - t-17ab48
+      - t-22f84b
+      - t-a6831f
+    design/interfaces.md#reqboardaskconfirm缺省阻塞-缺省有界宽限:
+      - t-ab7224
+      - t-22f84b
+      - t-a6831f
+    design/interfaces.md#实施链回执引擎不可达的文本强化:
+      - t-17ab48
+      - t-22f84b
+      - t-a6831f
+    design/interfaces.md#断点留痕去重与限流:
+      - t-62c1c8
+      - t-22f84b
+      - t-a6831f
+    design/interfaces.md#错误码与不变量:
+      - t-58c271
+      - t-7b3f98
+      - t-17ab48
+      - t-22f84b
+      - t-a6831f
+    design/use-cases.md#用例总览:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-ab7224
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    design/use-cases.md#UC-1-夜间挂机撞上额度上限:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-17ab48
+      - t-22f84b
+      - t-a6831f
+    design/use-cases.md#UC-2-需求卡在人工门:
+      - t-58c271
+      - t-64c231
+      - t-22f84b
+      - t-a6831f
+    design/use-cases.md#UC-3-网络抖动:
+      - t-58c271
+      - t-7b3f98
+      - t-22f84b
+      - t-a6831f
+    design/use-cases.md#UC-4-用户按停止:
+      - t-7b3f98
+      - t-22f84b
+      - t-a6831f
+    design/use-cases.md#UC-5-弹框等人人不在:
+      - t-ab7224
+      - t-22f84b
+      - t-a6831f
+    design/use-cases.md#UC-6-多窗口并行起链:
+      - t-58c271
+      - t-230a8b
+      - t-17ab48
+      - t-22f84b
+      - t-a6831f
+    design/use-cases.md#UC-7-子卡引擎不可达:
+      - t-17ab48
+      - t-22f84b
+      - t-a6831f
+    design/use-cases.md#UC-8-终态需求被归一:
+      - t-64c231
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+  fr_to_tasks:
+    FR-1:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+      - t-ab7224
+      - t-62c1c8
+    FR-2:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+      - t-ab7224
+      - t-62c1c8
+    FR-3:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+      - t-ab7224
+      - t-62c1c8
+    FR-4:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+      - t-ab7224
+      - t-62c1c8
+    FR-5:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+      - t-ab7224
+      - t-62c1c8
+    FR-6:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+      - t-ab7224
+      - t-62c1c8
+    FR-7:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-ab7224
+      - t-62c1c8
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    FR-8:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-ab7224
+      - t-62c1c8
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    FR-9:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+      - t-ab7224
+      - t-62c1c8
+    FR-10:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-ab7224
+      - t-62c1c8
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+    FR-11:
+      - t-58c271
+      - t-230a8b
+      - t-7b3f98
+      - t-64c231
+      - t-17ab48
+      - t-2bc495
+      - t-22f84b
+      - t-a6831f
+      - t-ab7224
+      - t-62c1c8
+coverage:
+  implementation:
+    total: 41
+    covered: 41
+    uncovered: []
+    rate: 100
+    total_designs: 41
+    covered_designs: 41

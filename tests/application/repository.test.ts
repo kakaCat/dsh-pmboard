@@ -6,109 +6,24 @@
  * 深冻快照、replaceAll 备份；文档仓储读写/列目录/路径解析。
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs'
+import { mkdtempSync, rmSync, readFileSync, readdirSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository, persistAtomic } from '../../src/adapters/JsonLedgerRepository.js'
+// 原子写已迁到新家（REQ-261002161439-277d t3）：本测试跟着改 import，不再从单册适配器取它。
+import { persistAtomic } from '../../src/repositories/atomicWrite.js'
 import { FileDocRepository } from '../../src/adapters/FileDocRepository.js'
 import { SystemClock } from '../../src/adapters/SystemClock.js'
 import { RandomIdFactory } from '../../src/adapters/RandomIdFactory.js'
-import type { RequirementRecord } from '../../src/shared/protocol.js'
 
 let dir: string
-let file: string
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-repo-'))
-  file = join(dir, 'ledger.json')
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
-function req(id: string): RequirementRecord {
-  return {
-    id, title: '需求', description: '', status: 'draft', blocked: false,
-    comments: [], version: 1, createdAt: 1, updatedAt: 1,
-    createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
-    statusHistory: [],
-  } as RequirementRecord
-}
 
-describe('JsonLedgerRepository：加载 / 写 / 订阅', () => {
-  it('缺文件 → 空台账（schemaVersion=9, revision=0），不抛', async () => {
-    const repo = new JsonLedgerRepository({ file })
-    await repo.load()
-    const snap = repo.snapshot()
-    expect(snap.requirements).toEqual([])
-    expect(snap.revision).toBe(0)
-    // C1：契约版本常量 4 → 5 → 6 → 7 → 8 → **9**（REQ-260927202051-f6df t6：台账去 tasks）。
-    // 常量必须与迁移后文件一致，否则写盘会把版本回退。
-    expect(snap.schemaVersion).toBe(9)
-  })
-
-  it('mutate：写盘 + bump revision + 通知订阅者；返回的 changed 含触动的记录', async () => {
-    const repo = new JsonLedgerRepository({ file })
-    const seen: number[] = []
-    repo.subscribe((c) => seen.push(c.revision))
-    const out = await repo.mutate('requirement-created', (l) => { l.requirements.push(req('REQ-abc123')); return { requirements: [l.requirements[0]] } })
-    expect(out.revision).toBe(1)
-    expect(out.changed.requirements).toHaveLength(1)
-    expect(seen).toEqual([1])
-    const re = new JsonLedgerRepository({ file })
-    await re.load()
-    expect(re.snapshot().requirements.map(r => r.id)).toEqual(['REQ-abc123'])
-    expect(re.snapshot().revision).toBe(1)
-  })
-
-  it('mutate 回调返回 undefined → 不写盘、不 bump revision', async () => {
-    const repo = new JsonLedgerRepository({ file })
-    await repo.mutate('requirement-created', (l) => { l.requirements.push(req('REQ-abc123')); return { requirements: [l.requirements[0]] } })
-    const out = await repo.mutate('noop', () => undefined)
-    expect(out.changed.requirements).toEqual([])
-    expect(repo.snapshot().revision).toBe(1)
-  })
-
-  it('快照深冻（改它抛错，不能绕过持久化路径）', async () => {
-    const repo = new JsonLedgerRepository({ file })
-    await repo.mutate('requirement-created', (l) => { l.requirements.push(req('REQ-abc123')); return { requirements: [l.requirements[0]] } })
-    expect(Object.isFrozen(repo.snapshot())).toBe(true)
-    expect(() => { (repo.snapshot().requirements as RequirementRecord[]).push(req('REQ-ffffff')) }).toThrow()
-  })
-
-  it('损坏台账被隔离（改名挪走）且 load 不抛', async () => {
-    writeFileSync(file, '{ this is not json', 'utf8')
-    const repo = new JsonLedgerRepository({ file })
-    await expect(repo.load()).resolves.toBeUndefined()
-    expect(repo.snapshot().requirements).toEqual([])
-    expect(existsSync(file)).toBe(false)
-    const quarantined = readdirSync(dir).filter(n => n.startsWith('ledger.json.corrupt-'))
-    expect(quarantined).toHaveLength(1)
-  })
-
-  it('replaceAll：备份 + 整体替换 + 通知；重开可读到新台账', async () => {
-    const repo = new JsonLedgerRepository({ file })
-    await repo.mutate('requirement-created', (l) => { l.requirements.push(req('REQ-abc123')); return { requirements: [l.requirements[0]] } })
-    const seen: string[] = []
-    repo.subscribe((c) => seen.push(c.kind))
-    // v9：台账**无 tasks 键**；且 replaceAll 会先 load —— 目标台账必须是 v9，
-    // 否则会撞迁移门（LEDGER_REQUIRES_MIGRATION，t6 起的既定契约）。
-    const next = { schemaVersion: 9, revision: 870, requirements: [req('REQ-aaaaaa')], triages: [] }
-    await repo.replaceAll('migration', next as never)
-    expect(seen).toEqual(['ledger-replaced'])
-    expect(repo.snapshot().schemaVersion).toBe(9)
-    expect(repo.snapshot().requirements.map(r => r.id)).toEqual(['REQ-aaaaaa'])
-    expect(readdirSync(dir).some(n => n.startsWith('ledger.json.backup-'))).toBe(true)
-    const re = new JsonLedgerRepository({ file })
-    await re.load()
-    expect(re.snapshot().revision).toBe(870)
-  })
-
-  it('read：串行队列内读（先入队的读先执行；mutate 之后的读读到新状态）', async () => {
-    const repo = new JsonLedgerRepository({ file })
-    const before = repo.read(l => l.requirements.length)
-    await repo.mutate('requirement-created', (l) => { l.requirements.push(req('REQ-abc123')); return { requirements: [l.requirements[0]] } })
-    expect(await before).toBe(0) // FIFO：读在 mutate 之前入队
-    expect(await repo.read(l => l.requirements.length)).toBe(1)
-  })
-})
+// B12 阶段②c：原「JsonLedgerRepository：加载/写/订阅」整段随旧实现删除（覆盖由 tests/reqboard/* 承接）；
+// 本文件保留仍存在的适配器：persistAtomic（atomicWrite.ts）/ FileDocRepository / SystemClock / RandomIdFactory。
 
 describe('原子写（temp + rename）', () => {
   it('persistAtomic：写临时文件后 rename，目标内容完整且无 .tmp 残留', async () => {
@@ -124,13 +39,16 @@ describe('原子写（temp + rename）', () => {
     expect(readFileSync(target, 'utf8')).toBe('x')
   })
 
-  it('故障注入：rename 失败时目标不被污染，且能观察到临时文件（证明先写临时再 rename）', async () => {
+  it('故障注入：rename 失败时目标不被污染，且临时文件被清理（t3 起行为变更，见下）', async () => {
     const target = join(dir, 'occupied')
     mkdirSync(target) // 目标已是目录 → rename(file, dir) 失败
     await expect(persistAtomic(target, 'x')).rejects.toThrow()
     expect(readdirSync(target)).toEqual([]) // 目标目录未被写入
-    const temps = readdirSync(dir).filter(n => n.endsWith('.tmp'))
-    expect(temps.length).toBe(1) // 临时文件已生成（未 rename 成功 → 残留）
+    // ⚠️ 行为变更（REQ-261002161439-277d t3 / FR-2）：原实现在此处**残留一个 .tmp**，
+    // 旧断言正是 `expect(temps.length).toBe(1)`。分片布局让写点变多（每需求一个分片），
+    // 失败即泄漏一个临时文件，故 t3 起失败路径 best-effort 清理临时文件，
+    // "先写临时再 rename" 的顺序证据改由「目标未被污染」承担（更强的性质）。
+    expect(readdirSync(dir).filter(n => n.endsWith('.tmp'))).toEqual([])
   })
 })
 

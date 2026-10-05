@@ -1,0 +1,487 @@
+metadata:
+  stage: design
+  requirement_id: REQ-261004065652-5c1c
+  generated_at: 2026-10-03T23:02:30.805Z
+  version: 3
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-03T23:05:45.504Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 上游致命错误停手（AUTH/额度类不可重试）
+      source: requirement.md
+      line: 115
+    - id: FR-2
+      title: 瞬时错误退避熔断
+      source: requirement.md
+      line: 135
+    - id: FR-3
+      title: 驱动侧内存闭锁（fail-closed）
+      source: requirement.md
+      line: 154
+    - id: FR-4
+      title: 投影读己所写（根因修复）
+      source: requirement.md
+      line: 173
+    - id: FR-5
+      title: 人工门即停手
+      source: requirement.md
+      line: 192
+    - id: FR-6
+      title: 中止当拍生效
+      source: requirement.md
+      line: 210
+    - id: FR-7
+      title: 弹框默认有界宽限
+      source: requirement.md
+      line: 227
+    - id: FR-8
+      title: 断点留痕去重限流
+      source: requirement.md
+      line: 246
+    - id: FR-9
+      title: 终态收手与启动对账
+      source: requirement.md
+      line: 263
+    - id: FR-10
+      title: 子卡引擎开工预检
+      source: requirement.md
+      line: 280
+    - id: FR-11
+      title: 全局 WIP 与额度预算闸
+      source: requirement.md
+      line: 297
+outputs:
+  design_sections:
+    - ref: design/architecture.md#目标与总体方案
+      title: 目标与总体方案 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-9
+        - FR-11
+      file: design/architecture.md
+      section: 目标与总体方案
+    - ref: design/architecture.md#模块改动地图
+      title: 模块改动地图 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+        - FR-9
+        - FR-10
+        - FR-11
+      file: design/architecture.md
+      section: 模块改动地图
+    - ref: design/architecture.md#FR-1-致命错误分类与全局额度闩
+      title: FR-1 · 致命错误分类与全局额度闩 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: FR-1-致命错误分类与全局额度闩
+    - ref: design/architecture.md#FR-2-退避与熔断
+      title: FR-2 · 退避与熔断 `
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: FR-2-退避与熔断
+    - ref: design/architecture.md#FR-3-驱动侧内存闭锁fail-closed
+      title: FR-3 · 驱动侧内存闭锁（fail-closed） `
+      serves:
+        - FR-3
+        - FR-6
+      file: design/architecture.md
+      section: FR-3-驱动侧内存闭锁fail-closed
+    - ref: design/architecture.md#FR-4-投影读己所写根因修复
+      title: FR-4 · 投影读己所写（根因修复） `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: FR-4-投影读己所写根因修复
+    - ref: design/architecture.md#FR-5-人工门即停手
+      title: FR-5 · 人工门即停手 `
+      serves:
+        - FR-5
+      file: design/architecture.md
+      section: FR-5-人工门即停手
+    - ref: design/architecture.md#FR-6-中止当拍生效
+      title: FR-6 · 中止当拍生效 `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: FR-6-中止当拍生效
+    - ref: design/architecture.md#FR-7-弹框缺省有界宽限
+      title: FR-7 · 弹框缺省有界宽限 `
+      serves:
+        - FR-7
+      file: design/architecture.md
+      section: FR-7-弹框缺省有界宽限
+    - ref: design/architecture.md#FR-8-断点留痕去重限流
+      title: FR-8 · 断点留痕去重限流 `
+      serves:
+        - FR-8
+      file: design/architecture.md
+      section: FR-8-断点留痕去重限流
+    - ref: design/architecture.md#FR-9-终态收手与启动对账
+      title: FR-9 · 终态收手与启动对账 `
+      serves:
+        - FR-9
+      file: design/architecture.md
+      section: FR-9-终态收手与启动对账
+    - ref: design/architecture.md#FR-10-子卡引擎开工预检
+      title: FR-10 · 子卡引擎开工预检 `
+      serves:
+        - FR-10
+      file: design/architecture.md
+      section: FR-10-子卡引擎开工预检
+    - ref: design/architecture.md#FR-11-全局-WIP-与额度预算闸
+      title: FR-11 · 全局 WIP 与额度预算闸 `
+      serves:
+        - FR-11
+      file: design/architecture.md
+      section: FR-11-全局-WIP-与额度预算闸
+    - ref: design/architecture.md#分批与回滚
+      title: 分批与回滚 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+        - FR-9
+        - FR-10
+        - FR-11
+      file: design/architecture.md
+      section: 分批与回滚
+    - ref: design/architecture.md#决策裁定需求阶段留的-D-1D-4
+      title: 决策裁定（需求阶段留的 D-1~D-4） `
+      serves:
+        - FR-1
+        - FR-4
+        - FR-11
+      file: design/architecture.md
+      section: 决策裁定需求阶段留的-D-1D-4
+    - ref: design/data-model.md#新增修改的数据结构
+      title: 新增/修改的数据结构 `
+      serves:
+        - FR-3
+        - FR-4
+        - FR-11
+      file: design/data-model.md
+      section: 新增修改的数据结构
+    - ref: design/data-model.md#DriverState-扩展内存态不落盘
+      title: DriverState 扩展（内存态，不落盘） `
+      serves:
+        - FR-2
+        - FR-3
+        - FR-6
+      file: design/data-model.md
+      section: DriverState-扩展内存态不落盘
+    - ref: design/data-model.md#RequirementFacts-增-tokenUsage-投影
+      title: RequirementFacts 增 `tokenUsage` 投影 `
+      serves:
+        - FR-4
+        - FR-11
+      file: design/data-model.md
+      section: RequirementFacts-增-tokenUsage-投影
+    - ref: design/data-model.md#divepausedReason-值域扩充字段不变
+      title: "`dive.pausedReason` 值域扩充（字段不变） `"
+      serves:
+        - FR-1
+        - FR-2
+        - FR-9
+        - FR-11
+      file: design/data-model.md
+      section: divepausedReason-值域扩充字段不变
+    - ref: design/data-model.md#新增修改的持久化结构
+      title: 新增/修改的持久化结构 `
+      serves:
+        - FR-9
+      file: design/data-model.md
+      section: 新增修改的持久化结构
+    - ref: design/data-model.md#迁移与兼容
+      title: 迁移与兼容 `
+      serves:
+        - FR-4
+        - FR-9
+        - FR-11
+      file: design/data-model.md
+      section: 迁移与兼容
+    - ref: design/interfaces.md#新增的内部接口
+      title: 新增的内部接口 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-5
+        - FR-11
+      file: design/interfaces.md
+      section: 新增的内部接口
+    - ref: design/interfaces.md#classifyTurnEnd
+      title: classifyTurnEnd `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: classifyTurnEnd
+    - ref: design/interfaces.md#createProviderLatch
+      title: createProviderLatch `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: createProviderLatch
+    - ref: design/interfaces.md#humanGateOf
+      title: humanGateOf `
+      serves:
+        - FR-5
+      file: design/interfaces.md
+      section: humanGateOf
+    - ref: design/interfaces.md#checkChainBudget
+      title: checkChainBudget `
+      serves:
+        - FR-11
+      file: design/interfaces.md
+      section: checkChainBudget
+    - ref: design/interfaces.md#DiveRoundPorts-扩四个注入端口
+      title: DiveRoundPorts 扩四个注入端口 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-5
+        - FR-11
+      file: design/interfaces.md
+      section: DiveRoundPorts-扩四个注入端口
+    - ref: design/interfaces.md#既有对外接口的行为变更schema-不变
+      title: 既有对外接口的行为变更（schema 不变） `
+      serves:
+        - FR-7
+        - FR-8
+        - FR-10
+      file: design/interfaces.md
+      section: 既有对外接口的行为变更schema-不变
+    - ref: design/interfaces.md#reqboardaskconfirm缺省阻塞-缺省有界宽限
+      title: reqboard_ask_confirm：缺省阻塞 → 缺省有界宽限 `
+      serves:
+        - FR-7
+      file: design/interfaces.md
+      section: reqboardaskconfirm缺省阻塞-缺省有界宽限
+    - ref: design/interfaces.md#实施链回执引擎不可达的文本强化
+      title: 实施链回执：引擎不可达的文本强化 `
+      serves:
+        - FR-10
+      file: design/interfaces.md
+      section: 实施链回执引擎不可达的文本强化
+    - ref: design/interfaces.md#断点留痕去重与限流
+      title: 断点留痕：去重与限流 `
+      serves:
+        - FR-8
+      file: design/interfaces.md
+      section: 断点留痕去重与限流
+    - ref: design/interfaces.md#错误码与不变量
+      title: 错误码与不变量 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-10
+      file: design/interfaces.md
+      section: 错误码与不变量
+    - ref: design/use-cases.md#用例总览
+      title: 用例总览 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-9
+        - FR-10
+        - FR-11
+      file: design/use-cases.md
+      section: 用例总览
+    - ref: design/use-cases.md#UC-1-夜间挂机撞上额度上限
+      title: "UC-1: 夜间挂机撞上额度上限 `"
+      serves:
+        - FR-1
+        - FR-3
+        - FR-11
+      file: design/use-cases.md
+      section: UC-1-夜间挂机撞上额度上限
+    - ref: design/use-cases.md#UC-2-需求卡在人工门
+      title: "UC-2: 需求卡在人工门 `"
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-2-需求卡在人工门
+    - ref: design/use-cases.md#UC-3-网络抖动
+      title: "UC-3: 网络抖动 `"
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-3-网络抖动
+    - ref: design/use-cases.md#UC-4-用户按停止
+      title: "UC-4: 用户按「停止」`"
+      serves:
+        - FR-6
+      file: design/use-cases.md
+      section: UC-4-用户按停止
+    - ref: design/use-cases.md#UC-5-弹框等人人不在
+      title: "UC-5: 弹框等人，人不在 `"
+      serves:
+        - FR-7
+      file: design/use-cases.md
+      section: UC-5-弹框等人人不在
+    - ref: design/use-cases.md#UC-6-多窗口并行起链
+      title: "UC-6: 多窗口并行起链 `"
+      serves:
+        - FR-11
+      file: design/use-cases.md
+      section: UC-6-多窗口并行起链
+    - ref: design/use-cases.md#UC-7-子卡引擎不可达
+      title: "UC-7: 子卡引擎不可达 `"
+      serves:
+        - FR-10
+      file: design/use-cases.md
+      section: UC-7-子卡引擎不可达
+    - ref: design/use-cases.md#UC-8-终态需求被归一
+      title: "UC-8: 终态需求被归一 `"
+      serves:
+        - FR-9
+      file: design/use-cases.md
+      section: UC-8-终态需求被归一
+traceability:
+  fr_to_design:
+    FR-1:
+      - design/architecture.md#目标与总体方案
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#FR-1-致命错误分类与全局额度闩
+      - design/architecture.md#分批与回滚
+      - design/architecture.md#决策裁定需求阶段留的-D-1D-4
+      - design/data-model.md#divepausedReason-值域扩充字段不变
+      - design/interfaces.md#新增的内部接口
+      - design/interfaces.md#classifyTurnEnd
+      - design/interfaces.md#createProviderLatch
+      - design/interfaces.md#DiveRoundPorts-扩四个注入端口
+      - design/interfaces.md#错误码与不变量
+      - design/use-cases.md#用例总览
+      - design/use-cases.md#UC-1-夜间挂机撞上额度上限
+    FR-2:
+      - design/architecture.md#目标与总体方案
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#FR-2-退避与熔断
+      - design/architecture.md#分批与回滚
+      - design/data-model.md#DriverState-扩展内存态不落盘
+      - design/data-model.md#divepausedReason-值域扩充字段不变
+      - design/interfaces.md#新增的内部接口
+      - design/interfaces.md#classifyTurnEnd
+      - design/use-cases.md#用例总览
+      - design/use-cases.md#UC-3-网络抖动
+    FR-3:
+      - design/architecture.md#目标与总体方案
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#FR-3-驱动侧内存闭锁fail-closed
+      - design/architecture.md#分批与回滚
+      - design/data-model.md#新增修改的数据结构
+      - design/data-model.md#DriverState-扩展内存态不落盘
+      - design/interfaces.md#新增的内部接口
+      - design/interfaces.md#DiveRoundPorts-扩四个注入端口
+      - design/interfaces.md#错误码与不变量
+      - design/use-cases.md#用例总览
+      - design/use-cases.md#UC-1-夜间挂机撞上额度上限
+    FR-4:
+      - design/architecture.md#目标与总体方案
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#FR-4-投影读己所写根因修复
+      - design/architecture.md#分批与回滚
+      - design/architecture.md#决策裁定需求阶段留的-D-1D-4
+      - design/data-model.md#新增修改的数据结构
+      - design/data-model.md#RequirementFacts-增-tokenUsage-投影
+      - design/data-model.md#迁移与兼容
+    FR-5:
+      - design/architecture.md#目标与总体方案
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#FR-5-人工门即停手
+      - design/architecture.md#分批与回滚
+      - design/interfaces.md#新增的内部接口
+      - design/interfaces.md#humanGateOf
+      - design/interfaces.md#DiveRoundPorts-扩四个注入端口
+      - design/use-cases.md#用例总览
+      - design/use-cases.md#UC-2-需求卡在人工门
+    FR-6:
+      - design/architecture.md#目标与总体方案
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#FR-3-驱动侧内存闭锁fail-closed
+      - design/architecture.md#FR-6-中止当拍生效
+      - design/architecture.md#分批与回滚
+      - design/data-model.md#DriverState-扩展内存态不落盘
+      - design/use-cases.md#用例总览
+      - design/use-cases.md#UC-4-用户按停止
+    FR-7:
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#FR-7-弹框缺省有界宽限
+      - design/architecture.md#分批与回滚
+      - design/interfaces.md#既有对外接口的行为变更schema-不变
+      - design/interfaces.md#reqboardaskconfirm缺省阻塞-缺省有界宽限
+      - design/use-cases.md#用例总览
+      - design/use-cases.md#UC-5-弹框等人人不在
+    FR-8:
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#FR-8-断点留痕去重限流
+      - design/architecture.md#分批与回滚
+      - design/interfaces.md#既有对外接口的行为变更schema-不变
+      - design/interfaces.md#断点留痕去重与限流
+    FR-9:
+      - design/architecture.md#目标与总体方案
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#FR-9-终态收手与启动对账
+      - design/architecture.md#分批与回滚
+      - design/data-model.md#divepausedReason-值域扩充字段不变
+      - design/data-model.md#新增修改的持久化结构
+      - design/data-model.md#迁移与兼容
+      - design/use-cases.md#用例总览
+      - design/use-cases.md#UC-8-终态需求被归一
+    FR-10:
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#FR-10-子卡引擎开工预检
+      - design/architecture.md#分批与回滚
+      - design/interfaces.md#既有对外接口的行为变更schema-不变
+      - design/interfaces.md#实施链回执引擎不可达的文本强化
+      - design/interfaces.md#错误码与不变量
+      - design/use-cases.md#用例总览
+      - design/use-cases.md#UC-7-子卡引擎不可达
+    FR-11:
+      - design/architecture.md#目标与总体方案
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#FR-11-全局-WIP-与额度预算闸
+      - design/architecture.md#分批与回滚
+      - design/architecture.md#决策裁定需求阶段留的-D-1D-4
+      - design/data-model.md#新增修改的数据结构
+      - design/data-model.md#RequirementFacts-增-tokenUsage-投影
+      - design/data-model.md#divepausedReason-值域扩充字段不变
+      - design/data-model.md#迁移与兼容
+      - design/interfaces.md#新增的内部接口
+      - design/interfaces.md#checkChainBudget
+      - design/interfaces.md#DiveRoundPorts-扩四个注入端口
+      - design/use-cases.md#用例总览
+      - design/use-cases.md#UC-1-夜间挂机撞上额度上限
+      - design/use-cases.md#UC-6-多窗口并行起链
+coverage:
+  design:
+    total: 11
+    covered: 11
+    uncovered: []
+    rate: 100
+    total_frs: 11
+    covered_frs: 11

@@ -13,13 +13,13 @@
  *
  * 口径不变：byStage / executions / totals 装配逻辑与对外形状（degraded 仍是 boolean）均未改。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import type {
   ExecutionRecord,
@@ -141,15 +141,15 @@ function seedQueueTasks(root: string): Promise<unknown> {
 }
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let handler: ReturnType<typeof createReqboardHandler>
 
 beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-token-degraded-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   await store.replaceAll('seed-degraded', buildLedger())
   await seedQueueTasks(dir)
-  handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+  handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 

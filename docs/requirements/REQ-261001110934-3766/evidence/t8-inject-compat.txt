@@ -1,0 +1,18 @@
+# t8 证据 · 注入侧三档灰度与逐字节兼容（2026-10-01T04:33:39Z）
+
+## 1) 单元测试 npx vitest run tests/kb-inject-compat.test.ts
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  12:33:40
+   Duration  460ms (transform 115ms, setup 0ms, collect 143ms, tests 5ms, environment 0ms, prepare 62ms)
+
+
+## 2) 逐字节兼容：HEAD 代码 vs 本代码（**同一份片段**，只在 HEAD worktree 中替换本次改动的 4 个文件）
+   旧代码输出:     6124 字符 / 新代码输出:     6124 字符
+   结果: ✅ 逐字节相同（缺省路径零改动成立）
+
+## 3) 开启灰度后的差异（injectIndex + trimRequirementDoc）
+   - 含索引节: true；文档节已瘦身为 TL;DR: true；带原文指针: true；全文未注入: true；总字符 3250（原 6124）
+
+## 4) 复跑命令（可重复验证）
+   git worktree add -d /tmp/kb-head HEAD && ln -sfn "$PWD/node_modules" /tmp/kb-head/node_modules

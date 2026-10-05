@@ -8,13 +8,13 @@
  *
  * @module dsh-pmboard/tests/state-workspace-root
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { EventEmitter } from 'node:events'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import {
   setDocWorkspaceContext,
@@ -40,17 +40,17 @@ function fakeRes(): any {
 }
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-wsroot-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
 describe('state 端点暴露 workspaceRoot/homeDir（FR-4）', () => {
   it('显式 cwd → workspaceRoot 等于它；homeDir 为绝对路径', async () => {
     const ws = join(dir, 'fake-workspace')
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now(), cwd: ws })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now(), cwd: ws })
     const res = fakeRes()
     await handler(fakeReq('/dashboard/api/reqboard/state'), res)
     expect(res.statusCode).toBe(200)
@@ -60,7 +60,7 @@ describe('state 端点暴露 workspaceRoot/homeDir（FR-4）', () => {
   })
 
   it('未传 cwd → workspaceRoot 回落 process.cwd()', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     const res = fakeRes()
     await handler(fakeReq('/dashboard/api/reqboard/state'), res)
     expect(res.payload.data.workspaceRoot).toBe(process.cwd())

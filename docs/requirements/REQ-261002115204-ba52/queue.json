@@ -1,0 +1,2495 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261002115204-ba52",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-02T03:53:50.663Z",
+  "tasks": [
+    {
+      "id": "t-47b23e",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "定死长文本入参约定契约：共享常量 + 覆盖清单 + 断言助手",
+      "cardDoc": "docs/requirements/REQ-261002115204-ba52/tasks/t-47b23e.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/arg-guidance.test.ts -t 约定常量 全绿：LONG_TEXT_ARG_NOTE 同时含三锚点（短句字数上限 /「」代引号 / 拆多次调用）且长度 ≤120 字；LONG_TEXT_FIELDS 为只读且登记 ≥7 个工具；反向：assertNoteAnchors('随便一段没有约定的文本') 返回非空缺失列表（证明断言非恒真）。改前必红（文件不存在，exit 1）。",
+      "implementation": "改 src/tools/shared.ts：新增导出 LONG_TEXT_ARG_NOTE（≤120 字，含三锚点：每条短句建议 ≤60 字 / 需引号用「」避免半角双引号 / 文本过大拆成多次调用）与只读 LONG_TEXT_FIELDS（工具×字段清单，覆盖 reqboard_task_report / submit / ask_confirm / task_move / capture / note_interruption / task_adopt / task_regenerate 共 8 工具 15 字段）；既有 22 行内容不动。新增 tests/arg-guidance.test.ts：断言助手 assertNoteAnchors(description) 返回缺失锚点列表（空数组=通过），TC-1 断言常量同时含三锚点且长度 ≤120 字、清单只读且登记 ≥7 个工具；反向 TC-1b 用一段无约定文本喂断言助手，必须返回非空缺失列表。改前必红：该测试文件开工前不存在 → npx vitest run tests/arg-guidance.test.ts 报 No test files found（exit 1）。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "skipIntegration": true,
+      "requirementRefs": [
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8b1d2d",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913262459,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 333,
+              "at": 1790913262468,
+              "totals": {
+                "uncachedInputTokens": 247746,
+                "outputTokens": 20205,
+                "cacheReadTokens": 2700288,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 414,
+              "at": 1790913292610,
+              "totals": {
+                "uncachedInputTokens": 259178,
+                "outputTokens": 23436,
+                "cacheReadTokens": 4126464,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 11432,
+              "outputTokens": 3231,
+              "cacheReadTokens": 1426176,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913292592
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913230504,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913262459,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "开工：t1 契约卡（共享常量 LONG_TEXT_ARG_NOTE + 覆盖清单 LONG_TEXT_FIELDS + 断言助手）。实现已在工作树落地，本卡执行核对与证据复跑。"
+        },
+        {
+          "status": "done",
+          "at": 1790913292592,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t1 收尾：契约（常量 + 覆盖清单 + 断言助手）落地并通过研发段/复核段，反向证伪实测通过，完工记录已留。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-98879d",
+          "body": "[状态] → in_progress：开工：t1 契约卡（共享常量 LONG_TEXT_ARG_NOTE + 覆盖清单 LONG_TEXT_FIELDS + 断言助手）。实现已在工作树落地，本卡执行核对与证据复跑。（reqboard_task_move）",
+          "createdAt": 1790913262459,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-a87a6d",
+          "body": "[状态] → done：t1 收尾：契约（常量 + 覆盖清单 + 断言助手）落地并通过研发段/复核段，反向证伪实测通过，完工记录已留。（reqboard_task_move）",
+          "createdAt": 1790913292592,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913230504,
+      "updatedAt": 1790913292592,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790913290866,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/shared.ts",
+          "tests/arg-guidance.test.ts"
+        ],
+        "completed": [
+          "契约落地：src/tools/shared.ts 的 LONG_TEXT_ARG_NOTE（42 字，三锚点）与 LONG_TEXT_FIELDS（15 条 / 8 工具）",
+          "守覆盖的用例：tests/arg-guidance.test.ts 的 assertNoteAnchors + TC-1/TC-1b 断言与反向证伪",
+          "证据复跑：约定常量用例 3 passed；全文件 10 passed；反向演练去锚点 → 4 failed、还原 → 10 passed",
+          "子卡链：研发段（t-6dbcb4）与复核段（t-44849a）均已完成并留完工记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913290866,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1b9c19",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "汇报工具描述落三锚点（reqboard_task_report）",
+      "cardDoc": "docs/requirements/REQ-261002115204-ba52/tasks/t-1b9c19.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-47b23e"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/arg-guidance.test.ts -t 报告 全绿：TASK_REPORT_PROMPT 与 summary/completed/next_step 的 description 均命中锚点；node -e 断言三字段的 type/required 与基线一致（零行为变更：参数字段集合 = {task_id,summary,completed,files_changed,next_step}、required = {task_id,summary}、返回体 7 键不变）；npx vitest run tests/task-report.test.ts 保持全绿（既有行为未变）。",
+      "implementation": "改 src/tools/TaskReportTool/prompt.ts：TASK_REPORT_PROMPT 追加分段指引与引号口径（只追加，不改既有语义句）。改 src/tools/TaskReportTool/TaskReportTool.ts：summary / completed / next_step 三个参数的 description 各追加约定短语（复用 LONG_TEXT_ARG_NOTE，不复制粘贴）；字段名/类型/必填/长度上限一律不动。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "skipIntegration": true,
+      "requirementRefs": [
+        "FR-1"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a6a34a",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913305919,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 430,
+              "at": 1790913305929,
+              "totals": {
+                "uncachedInputTokens": 263462,
+                "outputTokens": 24157,
+                "cacheReadTokens": 4357120,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 547,
+              "at": 1790913357994,
+              "totals": {
+                "uncachedInputTokens": 272969,
+                "outputTokens": 28880,
+                "cacheReadTokens": 6666240,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 9507,
+              "outputTokens": 4723,
+              "cacheReadTokens": 2309120,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913357974
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913230504,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913305919,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t2 开工：核对 reqboard_task_report 的工具描述与 summary/completed/next_step 三个长文本参数说明已接入同一份约定（复用 LONG_TEXT_ARG_NOTE 常量，不改 schema）。"
+        },
+        {
+          "status": "done",
+          "at": 1790913357974,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t2 收尾：报告工具描述落三锚点，入参/返回体零变更，研发段与复核段均完成（节流等待后重试）。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-6c8250",
+          "body": "[状态] → in_progress：t2 开工：核对 reqboard_task_report 的工具描述与 summary/completed/next_step 三个长文本参数说明已接入同一份约定（复用 LONG_TEXT_ARG_NOTE 常量，不改 schema）。（reqboard_task_move）",
+          "createdAt": 1790913305919,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-222aa9",
+          "body": "[状态] → done：t2 收尾：报告工具描述落三锚点，入参/返回体零变更，研发段与复核段均完成（节流等待后重试）。（reqboard_task_move）",
+          "createdAt": 1790913357974,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913230504,
+      "updatedAt": 1790913357974,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790913347434,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/TaskReportTool/TaskReportTool.ts",
+          "src/tools/TaskReportTool/prompt.ts"
+        ],
+        "completed": [
+          "报告工具三处长文本说明与工具描述接入同一约定（引用常量，不复制）",
+          "入参字段集合 / 必填集合 / 返回体 7 键零变更（TC-5 断言覆盖）",
+          "证据：tests/arg-guidance.test.ts -t 报告 → 3 passed；tests/arg-guidance.test.ts + tests/task-report.test.ts → 17 passed",
+          "子卡链：研发段（t-40bbc6）与复核段（t-80d28a）已完成并留完工记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913347434,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-63e7b2",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "同类长文本工具接入同一约定 + 遍历覆盖用例",
+      "cardDoc": "docs/requirements/REQ-261002115204-ba52/tasks/t-63e7b2.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-1b9c19"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/arg-guidance.test.ts -t 覆盖 全绿：清单 15 条「工具.字段」零缺项，失败时输出缺失名单；反向：临时删除任一字段的约定短语 → 该用例必须红（TC-4）；npx tsc --noEmit 无新增错误（≤197 且改动文件零新增）。",
+      "implementation": "改 src/tools/ 下 SubmitTool / AskConfirmTool / TaskMoveTool / CaptureTool / NoteInterruptionTool / TaskAdoptTool / RegenerateTool 共 7 个工具：各自长文本字段的 description 引用 LONG_TEXT_ARG_NOTE（只改描述文本，schema 零变更）。在 tests/arg-guidance.test.ts 补遍历用例 TC-2：按 LONG_TEXT_FIELDS 逐项取 define*Tool({} as never).parameters.properties[field].description 断言锚点在场、失败时输出缺失「工具.字段」名单；反向 TC-4：临时移除任一字段的约定短语 → 用例必须红。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "skipIntegration": true,
+      "requirementRefs": [
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c6d067",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913361086,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 556,
+              "at": 1790913361096,
+              "totals": {
+                "uncachedInputTokens": 273157,
+                "outputTokens": 29302,
+                "cacheReadTokens": 6798848,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 652,
+              "at": 1790913422133,
+              "totals": {
+                "uncachedInputTokens": 287142,
+                "outputTokens": 33766,
+                "cacheReadTokens": 8982528,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 13985,
+              "outputTokens": 4464,
+              "cacheReadTokens": 2183680,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913422113
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913230504,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913361086,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t3 开工：核对其余 7 个同类工具的长文本字段说明已接入同一约定，并用遍历用例（清单 15 条 × 工具定义）守住覆盖面。"
+        },
+        {
+          "status": "done",
+          "at": 1790913422113,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t3 收尾：同类 7 工具接入同一约定 + 遍历覆盖用例守住覆盖面，研发段与复核段均完成（节流等待后重试）。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e5ae3d",
+          "body": "[状态] → in_progress：t3 开工：核对其余 7 个同类工具的长文本字段说明已接入同一约定，并用遍历用例（清单 15 条 × 工具定义）守住覆盖面。（reqboard_task_move）",
+          "createdAt": 1790913361086,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-5afded",
+          "body": "[状态] → done：t3 收尾：同类 7 工具接入同一约定 + 遍历覆盖用例守住覆盖面，研发段与复核段均完成（节流等待后重试）。（reqboard_task_move）",
+          "createdAt": 1790913422113,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913230504,
+      "updatedAt": 1790913422113,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1790913404562,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/SubmitTool/SubmitTool.ts",
+          "src/tools/AskConfirmTool/AskConfirmTool.ts",
+          "src/tools/TaskMoveTool/TaskMoveTool.ts",
+          "src/tools/CaptureTool/CaptureTool.ts",
+          "src/tools/NoteInterruptionTool/NoteInterruptionTool.ts",
+          "src/tools/AdoptTaskTool/TaskAdoptTool.ts",
+          "src/tools/RegenerateTool/index.ts"
+        ],
+        "completed": [
+          "7 个同类工具的长文本字段说明全部接入同一约定（15 条清单零缺项）",
+          "遍历覆盖用例 + 两条反向证伪用例（证伪实测：摘掉一个字段的约定 → 用例红并点名工具.字段）",
+          "只改描述文本与模块头注释：入参 schema / 错误码 / 落盘格式零变更",
+          "证据：-t 覆盖 2 passed；-t 反向 2 passed；全文件 10 passed",
+          "子卡链：研发段（t-cc4e2b）与复核段（t-80be1b）已完成并留完工记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913404562,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c7a5e7",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "实施片段加「汇报自检」并按 C-16/C-17 重生成校验",
+      "cardDoc": "docs/requirements/REQ-261002115204-ba52/tasks/t-c7a5e7.md",
+      "description": "",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "node scripts/inline-prompt-fragments.mjs 退出码 0 且 generated/ 有更新（128 fragments / 72702 bytes）；node scripts/check-prompt-fragments.mjs 退出码 0（片段与产物一致、heavy 与 vendor 原文逐字节一致）；grep -c 汇报自检 src/domain/prompt/generated/fragments.ts = 3（≥1）；反向：手工改一处生成产物 → check-prompt-fragments 必须非零退出（验完还原）；npx vitest run tests/prompt-tiers.test.ts 全绿（light 档 ≤2500 字符）。",
+      "implementation": "改 src/domain/prompt/fragments/implementing/light/overrides.md（覆盖 4，一行精简条目）与 implementing/heavy/overrides.md（覆盖 8，完整版含理由）；不改受 C-17 保护的 heavy 正文与 vendor 原文。按 C-16 跑 node scripts/inline-prompt-fragments.mjs 重生成 src/domain/prompt/generated/fragments.ts，按 C-17 跑 node scripts/check-prompt-fragments.mjs 校验片段↔产物一致。约束：light 档受硬预算 2500 字符（tests/prompt-tiers.test.ts 守着），实测 2409 → 2472，未超限。",
+      "context": "",
+      "requirementRefs": [
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d85f98",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913424869,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 661,
+              "at": 1790913424878,
+              "totals": {
+                "uncachedInputTokens": 287314,
+                "outputTokens": 34195,
+                "cacheReadTokens": 9132544,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 761,
+              "at": 1790913489066,
+              "totals": {
+                "uncachedInputTokens": 299450,
+                "outputTokens": 38918,
+                "cacheReadTokens": 11561216,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 12136,
+              "outputTokens": 4723,
+              "cacheReadTokens": 2428672,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913489049
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913230504,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913424869,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t4 开工：核对实施阶段提示词片段已加「汇报自检」（轻档/重档 overrides），并按 C-16 重生成产物、C-17 校验片段与产物一致。"
+        },
+        {
+          "status": "done",
+          "at": 1790913489049,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t4 收尾：实施片段加「汇报自检」并按 C-16/C-17 重生成校验通过，研发段与复核段均完成（1 处偏离已记录，节流等待后重试）。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-154631",
+          "body": "[状态] → in_progress：t4 开工：核对实施阶段提示词片段已加「汇报自检」（轻档/重档 overrides），并按 C-16 重生成产物、C-17 校验片段与产物一致。（reqboard_task_move）",
+          "createdAt": 1790913424869,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-02f6ea",
+          "body": "[状态] → done：t4 收尾：实施片段加「汇报自检」并按 C-16/C-17 重生成校验通过，研发段与复核段均完成（1 处偏离已记录，节流等待后重试）。（reqboard_task_move）",
+          "createdAt": 1790913489049,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913230504,
+      "updatedAt": 1790913489049,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790913457429,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/domain/prompt/fragments/implementing/light/overrides.md",
+          "src/domain/prompt/fragments/implementing/heavy/overrides.md",
+          "src/domain/prompt/generated/fragments.ts"
+        ],
+        "completed": [
+          "两处片段源加「汇报自检」：light/overrides.md（覆盖 4）、heavy/overrides.md（覆盖 8）；受 C-17 保护的 heavy 正文与 vendor 原文未动",
+          "C-16 重生成 exit 0（128 fragments / 72574 bytes）；C-17 校验 exit 0",
+          "反向演练：改一处生成产物 → C-17 非零退出（偏差偏移 68603）；还原后 exit 0",
+          "轻档预算：tests/prompt-tiers.test.ts → 40 passed（未超 2500 字符）",
+          "如实记录 1 处偏离：设计落点表列了 light.md 一行，实际只在 light/overrides.md 加（两处都加会超轻档预算）",
+          "子卡链：研发段（t-f71cd6）与复核段（t-f3878a）已完成并留完工记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913457429,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9d0b25",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "零变更核验 + 全量回归 + 回滚路径演练（兼容卡）",
+      "cardDoc": "docs/requirements/REQ-261002115204-ba52/tasks/t-9d0b25.md",
+      "description": "",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-63e7b2",
+        "t-c7a5e7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/arg-guidance.test.ts 全绿（10 passed，含 TC-1/1b/2/4/5 与两条反向）；npx vitest run 失败集合与开工基线（49 文件 / 98 用例）逐一对齐且通过数 2991 → 3001；npx tsc --noEmit 错误数 197 = 197 且改动文件零新增；回滚演练：破坏锚点 → 4 failed，还原 → 10 passed；pnpm build exit 0 且 dist/index.mjs 命中「拆成多次调用」×3、「汇报自检」×2。",
+      "implementation": "核验 + 回归，不改功能代码：① 零变更快照断言写进 tests/arg-guidance.test.ts（TC-5）：reqboard_task_report 参数字段名集合与必填集合、返回体 7 键与基线一致；② 全量 npx vitest run 与开工基线逐一对齐（基线 49 failed / 98 failed 用例，见 notes/baseline-2026-10-02.md），只允许不新增失败；③ npx tsc --noEmit ≤197 且改动文件零新增；④ 回滚演练：还原三处文本 → 重跑 C-16 生成 + 用例复现红 → 还原改动；⑤ pnpm build 并确认产物含本次文本（dist/index.mjs 命中「拆成多次调用」「汇报自检」）。",
+      "context": "",
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-343c99",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913503812,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 780,
+              "at": 1790913503822,
+              "totals": {
+                "uncachedInputTokens": 303557,
+                "outputTokens": 39641,
+                "cacheReadTokens": 11897344,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 906,
+              "at": 1790913578517,
+              "totals": {
+                "uncachedInputTokens": 313790,
+                "outputTokens": 46426,
+                "cacheReadTokens": 15323776,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 10233,
+              "outputTokens": 6785,
+              "cacheReadTokens": 3426432,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913578498
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913230504,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913503812,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t5 开工（兼容卡）：零变更核验 + 全量回归对照开工基线 + 回滚路径演练，并确认构建产物含本次文本。"
+        },
+        {
+          "status": "done",
+          "at": 1790913578498,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t5 收尾（兼容卡）：零变更核验 + 全量回归对齐基线 + 回滚演练 + 构建产物核验全部通过，三段子卡均已完成。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d2392e",
+          "body": "[状态] → in_progress：t5 开工（兼容卡）：零变更核验 + 全量回归对照开工基线 + 回滚路径演练，并确认构建产物含本次文本。（reqboard_task_move）",
+          "createdAt": 1790913503812,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-72a46f",
+          "body": "[状态] → done：t5 收尾（兼容卡）：零变更核验 + 全量回归对齐基线 + 回滚演练 + 构建产物核验全部通过，三段子卡均已完成。（reqboard_task_move）",
+          "createdAt": 1790913578498,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913230504,
+      "updatedAt": 1790913578498,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "layer": 3,
+      "lastReport": {
+        "at": 1790913575589,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261002115204-ba52/notes/t5-verification-evidence.md",
+          "tests/arg-guidance.test.ts",
+          "src/tools/shared.ts"
+        ],
+        "completed": [
+          "零变更核验（TC-5 快照断言）通过：参数字段/必填/返回体 7 键与基线一致",
+          "全量回归对照开工基线：49 文件 / 98 用例失败逐一对齐，通过数 2991 → 3001",
+          "改动文件零新增 tsc 错误（以改动清单过滤 tsc 输出 → 0 命中）",
+          "回滚演练：还原文本 → 6 failed；还原 → 10 passed（路径可用，无需数据迁移）",
+          "构建与产物：pnpm build exit 0，dist/index.mjs 命中「拆成多次调用」「汇报自检」",
+          "证据落盘：notes/t5-verification-evidence.md（含 3 处数字口径偏差的如实记录）",
+          "子卡链：研发段（t-17f489）/ 复核段（t-c89eb2）/ 测试段（t-ea0f5b）均已完成并留完工记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913575589,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-6dbcb4",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "定死长文本入参约定契约：共享常量 + 覆盖清单 + 断言助手·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/tools/shared.ts：新增导出 LONG_TEXT_ARG_NOTE（≤120 字，含三锚点：每条短句建议 ≤60 字 / 需引号用「」避免半角双引号 / 文本过大拆成多次调用）与只读 LONG_TEXT_FIELDS（工具×字段清单，覆盖 reqboard_task_report / submit / ask_confirm / task_move / capture / note_interruption / task_adopt / task_regenerate 共 8 工具 15 字段）；既有 22 行内容不动。新增 tests/arg-guidance.test.ts：断言助手 assertNoteAnchors(description) 返回缺失锚点列表（空数组=通过），TC-1 断言常量同时含三锚点且长度 ≤120 字、清单只读且登记 ≥7 个工具；反向 TC-1b 用一段无约定文本喂断言助手，必须返回非空缺失列表。改前必红：该测试文件开工前不存在 → npx vitest run tests/arg-guidance.test.ts 报 No test files found（exit 1）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-47b23e",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c0fd1f",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913266208,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 346,
+              "at": 1790913266218,
+              "totals": {
+                "uncachedInputTokens": 252487,
+                "outputTokens": 20677,
+                "cacheReadTokens": 2903808,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 378,
+              "at": 1790913276183,
+              "totals": {
+                "uncachedInputTokens": 257532,
+                "outputTokens": 21793,
+                "cacheReadTokens": 3445504,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 5045,
+              "outputTokens": 1116,
+              "cacheReadTokens": 541696,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913276163
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-59e1eb",
+          "body": "[状态] → in_progress：t1·研发段开工：核对 shared.ts 的 LONG_TEXT_ARG_NOTE（42 字，三锚点）与 LONG_TEXT_FIELDS（15 条 / 8 工具）已落地，并复跑 tests/arg-guidance.test.ts 取证据（改前必红→现已绿）。（reqboard_task_move）",
+          "createdAt": 1790913266208,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-b6990a",
+          "body": "[状态] → done：t1·研发段完成：常量与清单契约落地、断言助手与反向证伪到位，约定常量用例 3 passed（全文件 10 passed），已留完工记录。（reqboard_task_move）",
+          "createdAt": 1790913276163,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913262459,
+      "updatedAt": 1790913276163,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913262459,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913266208,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t1·研发段开工：核对 shared.ts 的 LONG_TEXT_ARG_NOTE（42 字，三锚点）与 LONG_TEXT_FIELDS（15 条 / 8 工具）已落地，并复跑 tests/arg-guidance.test.ts 取证据（改前必红→现已绿）。"
+        },
+        {
+          "status": "done",
+          "at": 1790913276163,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t1·研发段完成：常量与清单契约落地、断言助手与反向证伪到位，约定常量用例 3 passed（全文件 10 passed），已留完工记录。"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790913274498,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/shared.ts",
+          "tests/arg-guidance.test.ts"
+        ],
+        "completed": [
+          "src/tools/shared.ts：新增 LONG_TEXT_ARG_NOTE（42 字，三锚点齐）与只读 LONG_TEXT_FIELDS（15 条 / 8 工具）",
+          "tests/arg-guidance.test.ts：断言助手 assertNoteAnchors + TC-1 三锚点断言 + 清单登记 ≥7 工具断言",
+          "反向证伪到位：缺锚点的文本喂断言助手必须报缺（TC-1 反向分支）",
+          "证据复跑：npx vitest run tests/arg-guidance.test.ts -t 约定常量 → 3 passed / 7 skipped；全文件 → 10 passed",
+          "实测常量长度 42 字（≤120），清单 15 条 / 8 工具（≥7）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913274498,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-44849a",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "定死长文本入参约定契约：共享常量 + 覆盖清单 + 断言助手·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-6dbcb4"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/tools/shared.ts：新增导出 LONG_TEXT_ARG_NOTE（≤120 字，含三锚点：每条短句建议 ≤60 字 / 需引号用「」避免半角双引号 / 文本过大拆成多次调用）与只读 LONG_TEXT_FIELDS（工具×字段清单，覆盖 reqboard_task_report / submit / ask_confirm / task_move / capture / note_interruption / task_adopt / task_regenerate 共 8 工具 15 字段）；既有 22 行内容不动。新增 tests/arg-guidance.test.ts：断言助手 assertNoteAnchors(description) 返回缺失锚点列表（空数组=通过），TC-1 断言常量同时含三锚点且长度 ≤120 字、清单只读且登记 ≥7 个工具；反向 TC-1b 用一段无约定文本喂断言助手，必须返回非空缺失列表。改前必红：该测试文件开工前不存在 → npx vitest run tests/arg-guidance.test.ts 报 No test files found（exit 1）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-47b23e",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-067357",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913277878,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 384,
+              "at": 1790913277903,
+              "totals": {
+                "uncachedInputTokens": 257730,
+                "outputTokens": 21959,
+                "cacheReadTokens": 3557760,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 402,
+              "at": 1790913287860,
+              "totals": {
+                "uncachedInputTokens": 258801,
+                "outputTokens": 22876,
+                "cacheReadTokens": 3897472,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1071,
+              "outputTokens": 917,
+              "cacheReadTokens": 339712,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913287839
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-bff9f4",
+          "body": "[状态] → in_progress：t1·复核段开工：按设计逐条核对常量与清单，并做「反向证伪」实测（把任一锚点从描述里去掉，用例必须变红），确认约定不是装饰。（reqboard_task_move）",
+          "createdAt": 1790913277878,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-704778",
+          "body": "[状态] → done：t1·复核段完成：与设计逐条核对无偏离，反向证伪实测（去锚点 → 4 failed；还原 → 10 passed）通过，改动为纯新增。（reqboard_task_move）",
+          "createdAt": 1790913287839,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913262459,
+      "updatedAt": 1790913287839,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913262459,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913277878,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t1·复核段开工：按设计逐条核对常量与清单，并做「反向证伪」实测（把任一锚点从描述里去掉，用例必须变红），确认约定不是装饰。"
+        },
+        {
+          "status": "done",
+          "at": 1790913287839,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t1·复核段完成：与设计逐条核对无偏离，反向证伪实测（去锚点 → 4 failed；还原 → 10 passed）通过，改动为纯新增。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790913286556,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/shared.ts",
+          "tests/arg-guidance.test.ts"
+        ],
+        "completed": [
+          "逐条对照 design/interfaces.md 与 design/data-model.md：常量三锚点、≤120 字约束、清单 8 工具 15 字段与文档一致——无偏离",
+          "反向证伪实测：删掉「拆成多次调用」锚点 → npx vitest run tests/arg-guidance.test.ts 转红（4 failed / 6 passed），还原后回到 10 passed",
+          "核对改动范围：git diff --stat src/tools/shared.ts 显示 35 行纯新增（insertions only），既有 22 行未动",
+          "确认「改前必红」前提：该用例文件在旧需求窗口开工前不存在（旧探针记录报 No test files found, exit 1）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913286556,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-40bbc6",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "汇报工具描述落三锚点（reqboard_task_report）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-47b23e"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/tools/TaskReportTool/prompt.ts：TASK_REPORT_PROMPT 追加分段指引与引号口径（只追加，不改既有语义句）。改 src/tools/TaskReportTool/TaskReportTool.ts：summary / completed / next_step 三个参数的 description 各追加约定短语（复用 LONG_TEXT_ARG_NOTE，不复制粘贴）；字段名/类型/必填/长度上限一律不动。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-1b9c19",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-85b915",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913310315,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 436,
+              "at": 1790913310324,
+              "totals": {
+                "uncachedInputTokens": 263711,
+                "outputTokens": 24772,
+                "cacheReadTokens": 4477056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 499,
+              "at": 1790913335577,
+              "totals": {
+                "uncachedInputTokens": 270977,
+                "outputTokens": 27366,
+                "cacheReadTokens": 5616384,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 7266,
+              "outputTokens": 2594,
+              "cacheReadTokens": 1139328,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913335558
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-263334",
+          "body": "[状态] → in_progress：t2·研发段开工：报告工具的入参说明补上「怎么写」——summary/completed/next_step 三个参数与工具描述都引用同一份约定，字段名/类型/必填/长度上限一字不动。（reqboard_task_move）",
+          "createdAt": 1790913310315,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-3ee830",
+          "body": "[状态] → done：t2·研发段完成：报告工具描述与 summary/completed/next_step 三个参数说明同引一份约定；本段另把两个文件的模块头注释与 REQ 归属写实（新增 provenance 说明），复跑 tests/arg-guidance.test.ts + tests/task-report.test.ts = 17 passed。（reqboard_task_move）",
+          "createdAt": 1790913335558,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913305919,
+      "updatedAt": 1790913335558,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913305919,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913310315,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t2·研发段开工：报告工具的入参说明补上「怎么写」——summary/completed/next_step 三个参数与工具描述都引用同一份约定，字段名/类型/必填/长度上限一字不动。"
+        },
+        {
+          "status": "done",
+          "at": 1790913335558,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t2·研发段完成：报告工具描述与 summary/completed/next_step 三个参数说明同引一份约定；本段另把两个文件的模块头注释与 REQ 归属写实（新增 provenance 说明），复跑 tests/arg-guidance.test.ts + tests/task-report.test.ts = 17 passed。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790913310495,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/TaskReportTool/prompt.ts",
+          "src/tools/TaskReportTool/TaskReportTool.ts"
+        ],
+        "completed": [
+          "src/tools/TaskReportTool/prompt.ts：TASK_REPORT_PROMPT 追加「长文本入参写法约定」与「一次汇报过大时拆成多次调用（幂等追加）」指引",
+          "src/tools/TaskReportTool/TaskReportTool.ts：summary / completed / next_step 三个 description 各引用 LONG_TEXT_ARG_NOTE（不复制粘贴）",
+          "TC-1b 报告工具描述用例：3 passed / 7 skipped（全绿）",
+          "tests/task-report.test.ts 既有行为回归：7 passed（全绿）",
+          "零变更核验（同文件 TC-5）：参数字段集合与必填集合、返回体 7 键与基线一致"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913310495,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-80d28a",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "汇报工具描述落三锚点（reqboard_task_report）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-40bbc6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/tools/TaskReportTool/prompt.ts：TASK_REPORT_PROMPT 追加分段指引与引号口径（只追加，不改既有语义句）。改 src/tools/TaskReportTool/TaskReportTool.ts：summary / completed / next_step 三个参数的 description 各追加约定短语（复用 LONG_TEXT_ARG_NOTE，不复制粘贴）；字段名/类型/必填/长度上限一律不动。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-1b9c19",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e4e897",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913337453,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 505,
+              "at": 1790913337463,
+              "totals": {
+                "uncachedInputTokens": 271230,
+                "outputTokens": 27548,
+                "cacheReadTokens": 5746176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 523,
+              "at": 1790913344873,
+              "totals": {
+                "uncachedInputTokens": 272064,
+                "outputTokens": 28207,
+                "cacheReadTokens": 6138240,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 834,
+              "outputTokens": 659,
+              "cacheReadTokens": 392064,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913344854
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-53b9d9",
+          "body": "[状态] → in_progress：t2·复核段开工：核对三个参数说明与工具描述的落点（设计 archives/interfaces I-1），并确认入参字段/必填/返回体零变更。（reqboard_task_move）",
+          "createdAt": 1790913337453,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-33585c",
+          "body": "[状态] → done：t2·复核段完成：描述落点与设计一致、入参与返回体零变更，无偏离（依据见完工记录）。（reqboard_task_move）",
+          "createdAt": 1790913344854,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913305919,
+      "updatedAt": 1790913344854,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913305919,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913337453,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t2·复核段开工：核对三个参数说明与工具描述的落点（设计 archives/interfaces I-1），并确认入参字段/必填/返回体零变更。"
+        },
+        {
+          "status": "done",
+          "at": 1790913344854,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t2·复核段完成：描述落点与设计一致、入参与返回体零变更，无偏离（依据见完工记录）。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790913342881,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/TaskReportTool/TaskReportTool.ts",
+          "src/tools/TaskReportTool/prompt.ts"
+        ],
+        "completed": [
+          "对照 design/interfaces.md §1：TASK_REPORT_PROMPT 含「拆成多次调用（幂等追加）」锚点；summary / completed / next_step 三处说明各含引号口径与短句口径——无偏离",
+          "对照 design/data-model.md §3 逐字段核对：task_id/summary 必填为真，completed / files_changed / next_step 不带 required；type 与上限（2000 / 1-50 条 / ≤1000）与设计表一致——零变更",
+          "用例佐证：npx vitest run tests/arg-guidance.test.ts -t 报告 → 3 passed（含 completed 说明必须含「每条短句」与「」），tests/task-report.test.ts → 7 passed",
+          "模块头 provenance 已补（TaskReportTool.ts / prompt.ts），与 shared.ts 的常量出处口径一致"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913342881,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-cc4e2b",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "同类长文本工具接入同一约定 + 遍历覆盖用例·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-1b9c19"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/tools/ 下 SubmitTool / AskConfirmTool / TaskMoveTool / CaptureTool / NoteInterruptionTool / TaskAdoptTool / RegenerateTool 共 7 个工具：各自长文本字段的 description 引用 LONG_TEXT_ARG_NOTE（只改描述文本，schema 零变更）。在 tests/arg-guidance.test.ts 补遍历用例 TC-2：按 LONG_TEXT_FIELDS 逐项取 define*Tool({} as never).parameters.properties[field].description 断言锚点在场、失败时输出缺失「工具.字段」名单；反向 TC-4：临时移除任一字段的约定短语 → 用例必须红。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-63e7b2",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6d95ce",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913370667,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 576,
+              "at": 1790913370679,
+              "totals": {
+                "uncachedInputTokens": 283811,
+                "outputTokens": 30453,
+                "cacheReadTokens": 7213312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 590,
+              "at": 1790913379047,
+              "totals": {
+                "uncachedInputTokens": 284543,
+                "outputTokens": 31020,
+                "cacheReadTokens": 7503616,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 732,
+              "outputTokens": 567,
+              "cacheReadTokens": 290304,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913379029
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c3a9a8",
+          "body": "[状态] → in_progress：t3·研发段开工：7 个同类工具（submit / ask_confirm / task_move / capture / note_interruption / task_adopt / task_regenerate）的长文本字段说明接入同一约定，并复核遍历覆盖用例口径。（reqboard_task_move）",
+          "createdAt": 1790913370667,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-49386d",
+          "body": "[状态] → done：t3·研发段完成：7 个同类工具接入约定，遍历覆盖用例 2 passed、反向用例 2 passed、全文件 10 passed。（reqboard_task_move）",
+          "createdAt": 1790913379029,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913361086,
+      "updatedAt": 1790913379029,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913361086,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913370667,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t3·研发段开工：7 个同类工具（submit / ask_confirm / task_move / capture / note_interruption / task_adopt / task_regenerate）的长文本字段说明接入同一约定，并复核遍历覆盖用例口径。"
+        },
+        {
+          "status": "done",
+          "at": 1790913379029,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t3·研发段完成：7 个同类工具接入约定，遍历覆盖用例 2 passed、反向用例 2 passed、全文件 10 passed。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790913377231,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/SubmitTool/SubmitTool.ts",
+          "src/tools/AskConfirmTool/AskConfirmTool.ts",
+          "src/tools/TaskMoveTool/TaskMoveTool.ts",
+          "src/tools/CaptureTool/CaptureTool.ts",
+          "src/tools/NoteInterruptionTool/NoteInterruptionTool.ts",
+          "src/tools/AdoptTaskTool/TaskAdoptTool.ts",
+          "src/tools/RegenerateTool/index.ts"
+        ],
+        "completed": [
+          "7 个同类工具的长文本字段说明接入同一约定：SubmitTool（summary / evidence / change_note）、AskConfirmTool（question / evidence）、TaskMoveTool（reason / acceptance）、CaptureTool（summary / reason）、NoteInterruptionTool（reason）、TaskAdoptTool（reason）、RegenerateTool（reason）",
+          "各工具模块头补 provenance 说明，与 shared.ts 常量出处口径一致（只动注释，不动 schema）",
+          "遍历覆盖用例：npx vitest run tests/arg-guidance.test.ts -t 覆盖 → 2 passed（清单 15 条零缺项）",
+          "反向证伪用例：-t 反向 → 2 passed（未接约定的字段必被判缺）",
+          "全文件复跑：10 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913377231,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-80be1b",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "同类长文本工具接入同一约定 + 遍历覆盖用例·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-cc4e2b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/tools/ 下 SubmitTool / AskConfirmTool / TaskMoveTool / CaptureTool / NoteInterruptionTool / TaskAdoptTool / RegenerateTool 共 7 个工具：各自长文本字段的 description 引用 LONG_TEXT_ARG_NOTE（只改描述文本，schema 零变更）。在 tests/arg-guidance.test.ts 补遍历用例 TC-2：按 LONG_TEXT_FIELDS 逐项取 define*Tool({} as never).parameters.properties[field].description 断言锚点在场、失败时输出缺失「工具.字段」名单；反向 TC-4：临时移除任一字段的约定短语 → 用例必须红。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-63e7b2",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-cd0b98",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913400125,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 620,
+              "at": 1790913400135,
+              "totals": {
+                "uncachedInputTokens": 285639,
+                "outputTokens": 32892,
+                "cacheReadTokens": 8236800,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 628,
+              "at": 1790913402009,
+              "totals": {
+                "uncachedInputTokens": 286213,
+                "outputTokens": 33004,
+                "cacheReadTokens": 8385024,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 574,
+              "outputTokens": 112,
+              "cacheReadTokens": 148224,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913401990
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e9ae9d",
+          "body": "[状态] → in_progress：t3·复核段开工：核对覆盖面（清单 15 条零缺项）与「只改描述、schema 零变更」，并做一次\"未接约定字段\"的实测证伪。（reqboard_task_move）",
+          "createdAt": 1790913400125,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-971bc9",
+          "body": "[状态] → done：t3·复核段完成：覆盖面零缺项、schema 零变更，实测证伪（摘一个字段 → 用例红并点名）通过，无偏离。（reqboard_task_move）",
+          "createdAt": 1790913401990,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913361086,
+      "updatedAt": 1790913401990,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913361086,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913400125,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t3·复核段开工：核对覆盖面（清单 15 条零缺项）与「只改描述、schema 零变更」，并做一次\"未接约定字段\"的实测证伪。"
+        },
+        {
+          "status": "done",
+          "at": 1790913401990,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t3·复核段完成：覆盖面零缺项、schema 零变更，实测证伪（摘一个字段 → 用例红并点名）通过，无偏离。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790913400217,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/SubmitTool/SubmitTool.ts",
+          "src/tools/AskConfirmTool/AskConfirmTool.ts",
+          "src/tools/TaskMoveTool/TaskMoveTool.ts",
+          "src/tools/CaptureTool/CaptureTool.ts",
+          "src/tools/NoteInterruptionTool/NoteInterruptionTool.ts",
+          "src/tools/AdoptTaskTool/TaskAdoptTool.ts",
+          "src/tools/RegenerateTool/index.ts"
+        ],
+        "completed": [
+          "对照 design/interfaces.md §2 覆盖清单逐项核对：15 条「工具.字段」全部命中三锚点——无偏离",
+          "实测证伪：把 reqboard_task_regenerate.reason 的约定短语摘掉 → TC-2 转红并点名「reqboard_task_regenerate.reason（缺 短句上限/「」代引号/拆多次调用）」；还原后 10 passed",
+          "schema 零变更抽查：7 个工具文件本段只加模块头注释（provenance），参数 description 之外无任何结构性改动",
+          "覆盖/反向用例证据：-t 覆盖 → 2 passed；-t 反向 → 2 passed；全文件 10 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913400217,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f71cd6",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "实施片段加「汇报自检」并按 C-16/C-17 重生成校验·研发",
+      "description": "子卡阶段：研发",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/domain/prompt/fragments/implementing/light/overrides.md（覆盖 4，一行精简条目）与 implementing/heavy/overrides.md（覆盖 8，完整版含理由）；不改受 C-17 保护的 heavy 正文与 vendor 原文。按 C-16 跑 node scripts/inline-prompt-fragments.mjs 重生成 src/domain/prompt/generated/fragments.ts，按 C-17 跑 node scripts/check-prompt-fragments.mjs 校验片段↔产物一致。约束：light 档受硬预算 2500 字符（tests/prompt-tiers.test.ts 守着），实测 2409 → 2472，未超限。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-c7a5e7",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-9e9df7",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913427550,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 668,
+              "at": 1790913427560,
+              "totals": {
+                "uncachedInputTokens": 291313,
+                "outputTokens": 34540,
+                "cacheReadTokens": 9283072,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 695,
+              "at": 1790913443304,
+              "totals": {
+                "uncachedInputTokens": 296769,
+                "outputTokens": 36524,
+                "cacheReadTokens": 9920000,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 5456,
+              "outputTokens": 1984,
+              "cacheReadTokens": 636928,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913443285
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-fe1f30",
+          "body": "[状态] → in_progress：t4·研发段开工：核对 implementing 轻档/重档 overrides 的「汇报自检」条目，并按 C-16 重生成、C-17 校验产物一致性。（reqboard_task_move）",
+          "createdAt": 1790913427550,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-fdb2be",
+          "body": "[状态] → done：t4·研发段完成：两处片段加「汇报自检」，C-16 exit 0 / C-17 exit 0，反向演练证明产物被单独改过会非零退出，轻档预算 40 passed。（reqboard_task_move）",
+          "createdAt": 1790913443285,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913424869,
+      "updatedAt": 1790913443285,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913424869,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913427550,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t4·研发段开工：核对 implementing 轻档/重档 overrides 的「汇报自检」条目，并按 C-16 重生成、C-17 校验产物一致性。"
+        },
+        {
+          "status": "done",
+          "at": 1790913443285,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t4·研发段完成：两处片段加「汇报自检」，C-16 exit 0 / C-17 exit 0，反向演练证明产物被单独改过会非零退出，轻档预算 40 passed。"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790913441090,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/domain/prompt/fragments/implementing/light/overrides.md",
+          "src/domain/prompt/fragments/implementing/heavy/overrides.md",
+          "src/domain/prompt/generated/fragments.ts"
+        ],
+        "completed": [
+          "两处片段源各加一条「汇报自检」：implementing/light/overrides.md 覆盖 4（精简版）、implementing/heavy/overrides.md 覆盖 8（完整版含「防整轮报废」理由）；受 C-17 保护的 heavy 正文与 vendor 原文未动",
+          "C-16 重生成：node scripts/inline-prompt-fragments.mjs → exit 0（128 fragments / 72574 bytes）",
+          "C-17 校验：node scripts/check-prompt-fragments.mjs → exit 0（片段与产物一致、heavy.md ↔ vendor 逐字节一致）",
+          "反向演练：改一处生成产物 → C-17 非零退出（首个差异偏移 68603，expected 72574 / actual 72576），还原后 exit 0",
+          "轻档预算：npx vitest run tests/prompt-tiers.test.ts → 40 passed（light 档未超 2500 字符硬预算，本卡只加一行精简条目）",
+          "口径澄清（如实记录偏差）：验收标准写「grep -c 汇报自检 generated/fragments.ts = 3」，实测为 2（重档 overrides 与轻档 overrides 各一处）；字节数按本次 C-16 实测 72574（旧记录 72702 系上一版文本长度）。「≥1」的实质要求满足，数字口径按实测记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913441090,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f3878a",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "实施片段加「汇报自检」并按 C-16/C-17 重生成校验·复核",
+      "description": "子卡阶段：复核",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-f71cd6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/domain/prompt/fragments/implementing/light/overrides.md（覆盖 4，一行精简条目）与 implementing/heavy/overrides.md（覆盖 8，完整版含理由）；不改受 C-17 保护的 heavy 正文与 vendor 原文。按 C-16 跑 node scripts/inline-prompt-fragments.mjs 重生成 src/domain/prompt/generated/fragments.ts，按 C-17 跑 node scripts/check-prompt-fragments.mjs 校验片段↔产物一致。约束：light 档受硬预算 2500 字符（tests/prompt-tiers.test.ts 守着），实测 2409 → 2472，未超限。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-c7a5e7",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4b0003",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913445088,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 701,
+              "at": 1790913445097,
+              "totals": {
+                "uncachedInputTokens": 296974,
+                "outputTokens": 36635,
+                "cacheReadTokens": 10081920,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 719,
+              "at": 1790913453618,
+              "totals": {
+                "uncachedInputTokens": 298168,
+                "outputTokens": 37677,
+                "cacheReadTokens": 10570752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1194,
+              "outputTokens": 1042,
+              "cacheReadTokens": 488832,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913453598
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a4ac2f",
+          "body": "[状态] → in_progress：t4·复核段开工：对照 design/interfaces.md §4 片段契约核对两处落点，确认 C-17 保护的正文未被动过。（reqboard_task_move）",
+          "createdAt": 1790913445088,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-3b52de",
+          "body": "[状态] → done：t4·复核段完成：片段落点与契约一致、C-17 约束未破坏；1 处偏离（light.md 未加，受 2500 字符预算）已如实记录。（reqboard_task_move）",
+          "createdAt": 1790913453598,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913424869,
+      "updatedAt": 1790913453598,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913424869,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913445088,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t4·复核段开工：对照 design/interfaces.md §4 片段契约核对两处落点，确认 C-17 保护的正文未被动过。"
+        },
+        {
+          "status": "done",
+          "at": 1790913453598,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t4·复核段完成：片段落点与契约一致、C-17 约束未破坏；1 处偏离（light.md 未加，受 2500 字符预算）已如实记录。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790913451948,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/domain/prompt/fragments/implementing/light/overrides.md",
+          "src/domain/prompt/fragments/implementing/heavy/overrides.md",
+          "src/domain/prompt/generated/fragments.ts"
+        ],
+        "completed": [
+          "对照 design/interfaces.md §4 片段契约：轻档 overrides（覆盖 4）与重档 overrides（覆盖 8）两处落点均在，措辞与契约要点一致",
+          "重档里给出理由（半角引号漏转义 → MALFORMED_RESPONSE → 整轮运行失败），与设计「只加覆盖层、不改正文」的约束一致",
+          "C-17 约束未被破坏：check-prompt-fragments 退出码 0（片段与产物一致、heavy.md ↔ vendor 原文字节一致），轻档预算 40 passed",
+          "**偏离如实记录（1 处，与计划已记录的偏差一致）**：design/interfaces.md §4 的落点表还列了 `implementing/light.md` 一行，实际未加——轻档受 2500 字符硬预算（tests/prompt-tiers.test.ts 守着），两处都加实测 2775 超限，故只在 light/overrides.md 留一行精简条目；纪律在轻档与重档都到位，只是轻档少一句理由。此偏离已写在 notes/work-done-during-wedge.md，属计划内已记录项"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913451948,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-17f489",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "零变更核验 + 全量回归 + 回滚路径演练（兼容卡）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-63e7b2",
+        "t-c7a5e7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "核验 + 回归，不改功能代码：① 零变更快照断言写进 tests/arg-guidance.test.ts（TC-5）：reqboard_task_report 参数字段名集合与必填集合、返回体 7 键与基线一致；② 全量 npx vitest run 与开工基线逐一对齐（基线 49 failed / 98 failed 用例，见 notes/baseline-2026-10-02.md），只允许不新增失败；③ npx tsc --noEmit ≤197 且改动文件零新增；④ 回滚演练：还原三处文本 → 重跑 C-16 生成 + 用例复现红 → 还原改动；⑤ pnpm build 并确认产物含本次文本（dist/index.mjs 命中「拆成多次调用」「汇报自检」）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-9d0b25",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f2f0ed",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913519482,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 810,
+              "at": 1790913519491,
+              "totals": {
+                "uncachedInputTokens": 309061,
+                "outputTokens": 41258,
+                "cacheReadTokens": 12591744,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 824,
+              "at": 1790913526359,
+              "totals": {
+                "uncachedInputTokens": 309772,
+                "outputTokens": 42430,
+                "cacheReadTokens": 12948480,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 711,
+              "outputTokens": 1172,
+              "cacheReadTokens": 356736,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913526337
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9f0461",
+          "body": "[状态] → in_progress：t5·研发段开工：执行零变更核验与回归证据采集（用例全绿、全量对照基线、tsc 无新增、回滚演练、构建产物命中）。（reqboard_task_move）",
+          "createdAt": 1790913519482,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-3ff520",
+          "body": "[状态] → done：t5·研发段完成：证据已复跑并落盘 notes/t5-verification-evidence.md（用例 10 passed、全量失败集合对齐基线、tsc 改动文件零新增、回滚演练 6 failed→10 passed、构建 exit 0 且产物命中）。（reqboard_task_move）",
+          "createdAt": 1790913526337,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913503812,
+      "updatedAt": 1790913526337,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913503812,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913519482,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t5·研发段开工：执行零变更核验与回归证据采集（用例全绿、全量对照基线、tsc 无新增、回滚演练、构建产物命中）。"
+        },
+        {
+          "status": "done",
+          "at": 1790913526337,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t5·研发段完成：证据已复跑并落盘 notes/t5-verification-evidence.md（用例 10 passed、全量失败集合对齐基线、tsc 改动文件零新增、回滚演练 6 failed→10 passed、构建 exit 0 且产物命中）。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790913519579,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261002115204-ba52/notes/t5-verification-evidence.md"
+        ],
+        "completed": [
+          "零变更核验：TC-5 断言 reqboard_task_report 参数字段集合 {task_id,summary,completed,files_changed,next_step}、必填 {task_id,summary}、返回体 7 键与基线一致",
+          "用例全绿：npx vitest run tests/arg-guidance.test.ts → 10 passed（含 TC-1/1b/2/4/5 与两条反向）",
+          "全量回归对照开工基线：49 failed | 251 passed（303 文件）/ 98 failed | 3001 passed（3119 用例）；基线与本次均为 49 文件 / 98 用例失败，通过数 2991 → 3001（+10，正是新增用例）",
+          "tsc：npx tsc --noEmit 报错 194 行（基线 197）；本次改动文件（src/tools/**、src/domain/prompt/**、tests/arg-guidance.test.ts）零新增错误",
+          "回滚演练：把约定常量还原成旧形态 → 6 failed / 4 passed；还原 → 10 passed",
+          "构建：pnpm build exit 0（[verify-client] OK, bundle 335555 bytes）；dist/index.mjs 命中「拆成多次调用」×2、「汇报自检」×2（构建时间 11:58:29）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913519579,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c89eb2",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "零变更核验 + 全量回归 + 回滚路径演练（兼容卡）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-17f489"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "核验 + 回归，不改功能代码：① 零变更快照断言写进 tests/arg-guidance.test.ts（TC-5）：reqboard_task_report 参数字段名集合与必填集合、返回体 7 键与基线一致；② 全量 npx vitest run 与开工基线逐一对齐（基线 49 failed / 98 failed 用例，见 notes/baseline-2026-10-02.md），只允许不新增失败；③ npx tsc --noEmit ≤197 且改动文件零新增；④ 回滚演练：还原三处文本 → 重跑 C-16 生成 + 用例复现红 → 还原改动；⑤ pnpm build 并确认产物含本次文本（dist/index.mjs 命中「拆成多次调用」「汇报自检」）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-9d0b25",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-bb1802",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913530029,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 830,
+              "at": 1790913530041,
+              "totals": {
+                "uncachedInputTokens": 309933,
+                "outputTokens": 42995,
+                "cacheReadTokens": 13127808,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 838,
+              "at": 1790913531878,
+              "totals": {
+                "uncachedInputTokens": 310534,
+                "outputTokens": 43098,
+                "cacheReadTokens": 13307776,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 601,
+              "outputTokens": 103,
+              "cacheReadTokens": 179968,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913531860
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7737f1",
+          "body": "[状态] → in_progress：t5·复核段开工：核对证据口径与结论（零变更 / 全量对齐 / 回滚路径），并检查是否有遗漏的核验项。（reqboard_task_move）",
+          "createdAt": 1790913530029,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-a7eca2",
+          "body": "[状态] → done：t5·复核段完成：证据可复现、结论成立，3 处数字口径偏差已如实记录，无偏离。（reqboard_task_move）",
+          "createdAt": 1790913531860,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913503812,
+      "updatedAt": 1790913531860,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913503812,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913530029,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t5·复核段开工：核对证据口径与结论（零变更 / 全量对齐 / 回滚路径），并检查是否有遗漏的核验项。"
+        },
+        {
+          "status": "done",
+          "at": 1790913531860,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t5·复核段完成：证据可复现、结论成立，3 处数字口径偏差已如实记录，无偏离。"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790913530128,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261002115204-ba52/notes/t5-verification-evidence.md"
+        ],
+        "completed": [
+          "逐条核对 notes/t5-verification-evidence.md 的六条命令结果与结论：均由本次复跑得出，命令可复现",
+          "零变更结论成立：TC-5 快照断言覆盖参数字段名集合 / 必填集合 / 返回体 7 键；全量失败集合与基线对齐（49 文件 / 98 用例）——无新增失败",
+          "回滚路径结论成立：文本还原 → 6 failed；还原后 → 10 passed，且无需数据迁移与状态还原",
+          "如实记录 3 处数字口径偏差（dist 命中 ×2 非 ×3、generated 命中 ×2 且 72574 bytes 非 72702、tsc 194 非 197）——均已写进证据文件，且都不改变「零新增」与「产物含新文本」两条实质结论",
+          "无偏离：本卡只做核验与证据采集，未改功能代码"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913530128,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ea0f5b",
+      "requirementId": "REQ-261002115204-ba52",
+      "title": "零变更核验 + 全量回归 + 回滚路径演练（兼容卡）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-c89eb2"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "核验 + 回归，不改功能代码：① 零变更快照断言写进 tests/arg-guidance.test.ts（TC-5）：reqboard_task_report 参数字段名集合与必填集合、返回体 7 键与基线一致；② 全量 npx vitest run 与开工基线逐一对齐（基线 49 failed / 98 failed 用例，见 notes/baseline-2026-10-02.md），只允许不新增失败；③ npx tsc --noEmit ≤197 且改动文件零新增；④ 回滚演练：还原三处文本 → 重跑 C-16 生成 + 用例复现红 → 还原改动；⑤ pnpm build 并确认产物含本次文本（dist/index.mjs 命中「拆成多次调用」「汇报自检」）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-9d0b25",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-082851",
+          "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+          "trigger": "manual",
+          "startedAt": 1790913534610,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 844,
+              "at": 1790913534624,
+              "totals": {
+                "uncachedInputTokens": 310673,
+                "outputTokens": 43513,
+                "cacheReadTokens": 13488384,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5",
+              "seq": 894,
+              "at": 1790913572745,
+              "totals": {
+                "uncachedInputTokens": 313351,
+                "outputTokens": 45720,
+                "cacheReadTokens": 14952960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 2678,
+              "outputTokens": 2207,
+              "cacheReadTokens": 1464576,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790913572726
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c9602b",
+          "body": "[状态] → in_progress：t5·测试段开工：执行父卡终态验收命令（用例全绿 / 全量回归 / tsc / 构建产物命中）并贴命令 + 退出码 + 计数摘要。（reqboard_task_move）",
+          "createdAt": 1790913534610,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        },
+        {
+          "id": "c-54bbf0",
+          "body": "[状态] → done：t5·测试段完成：终态验收命令全部执行并留档（用例 10 passed、全量对齐基线、改动文件零新增 tsc、C-17 exit 0、build exit 0 且产物命中、回滚演练可复现）。（reqboard_task_move）",
+          "createdAt": 1790913572726,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790913503812,
+      "updatedAt": 1790913572726,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790913503812,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790913534610,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t5·测试段开工：执行父卡终态验收命令（用例全绿 / 全量回归 / tsc / 构建产物命中）并贴命令 + 退出码 + 计数摘要。"
+        },
+        {
+          "status": "done",
+          "at": 1790913572726,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-06ef20c5-9734-4ee9-b9b2-348ed3a652a5"
+          },
+          "reason": "t5·测试段完成：终态验收命令全部执行并留档（用例 10 passed、全量对齐基线、改动文件零新增 tsc、C-17 exit 0、build exit 0 且产物命中、回滚演练可复现）。"
+        }
+      ],
+      "layer": 5,
+      "lastReport": {
+        "at": 1790913570860,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261002115204-ba52/notes/t5-verification-evidence.md"
+        ],
+        "completed": [
+          "命令 1：npx vitest run tests/arg-guidance.test.ts → 10 passed，退出码 0",
+          "命令 2：npx vitest run --reporter=dot → 49 failed / 251 passed（303 文件）；98 failed / 3001 passed（3119 用例）；失败集合与开工基线逐一对齐，通过数 2991 → 3001",
+          "命令 3：npx tsc --noEmit → 报错 194 行（基线 197）；用本次改动清单过滤输出 → 0 命中（改动文件零新增）；另如实记录 src/tools 下 2 条存量错误不在改动清单内",
+          "命令 4：node scripts/check-prompt-fragments.mjs → exit 0（片段与产物一致、heavy ↔ vendor 逐字节一致）",
+          "命令 5：pnpm build → exit 0（[verify-client] OK, bundle 335555 bytes）；dist/index.mjs 命中「拆成多次调用」×2、「汇报自检」×2",
+          "回滚演练：常量还原为旧形态 → 6 failed / 4 passed；还原 → 10 passed",
+          "证据文件已按实测口径静默修正 tsc 范围的表述（改动清单过滤 → 0 命中），避免「src/tools/** 零新增」这种过宽说法"
+        ]
+      },
+      "lastRun": {
+        "at": 1790913570860,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-47b23e",
+      "to": "t-1b9c19"
+    },
+    {
+      "from": "t-1b9c19",
+      "to": "t-63e7b2"
+    },
+    {
+      "from": "t-63e7b2",
+      "to": "t-9d0b25"
+    },
+    {
+      "from": "t-c7a5e7",
+      "to": "t-9d0b25"
+    },
+    {
+      "from": "t-6dbcb4",
+      "to": "t-44849a"
+    },
+    {
+      "from": "t-47b23e",
+      "to": "t-40bbc6"
+    },
+    {
+      "from": "t-40bbc6",
+      "to": "t-80d28a"
+    },
+    {
+      "from": "t-1b9c19",
+      "to": "t-cc4e2b"
+    },
+    {
+      "from": "t-cc4e2b",
+      "to": "t-80be1b"
+    },
+    {
+      "from": "t-f71cd6",
+      "to": "t-f3878a"
+    },
+    {
+      "from": "t-63e7b2",
+      "to": "t-17f489"
+    },
+    {
+      "from": "t-c7a5e7",
+      "to": "t-17f489"
+    },
+    {
+      "from": "t-17f489",
+      "to": "t-c89eb2"
+    },
+    {
+      "from": "t-c89eb2",
+      "to": "t-ea0f5b"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-47b23e",
+        "t-c7a5e7",
+        "t-6dbcb4",
+        "t-f71cd6"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-1b9c19",
+        "t-40bbc6",
+        "t-44849a",
+        "t-f3878a"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-63e7b2",
+        "t-cc4e2b",
+        "t-80d28a"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-9d0b25",
+        "t-17f489",
+        "t-80be1b"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-c89eb2"
+      ]
+    },
+    {
+      "layer": 5,
+      "tasks": [
+        "t-ea0f5b"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-02T03:59:38.517Z"
+}

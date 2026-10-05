@@ -3,24 +3,25 @@
  * 覆盖：evidence 命中真实用户消息原文 → 落章；编造/找不到原文 → REQBOARD_EVIDENCE_FAKE；
  * 超窗（>60min）→ 拒；缓冲未注入 → 降级放行但注明；短消息（<4 字符）不作证。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { defineConfirmArtifactTool } from './helpers/tool-deps.js'
 import { recordRecentUserMsg, CONFIRM_EVIDENCE_WINDOW_MS, type RecentUserMsg } from '../src/adapters/SessionProbeAdapter.js'
 import type { RequirementRecord } from '../src/shared/protocol.js'
 
 const W = 'session-abc-123'
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let buf: Map<string, RecentUserMsg[]>
 let nowTs = 1_000_000_000_000
 
 function makeTool(withBuf = true) {
   const deps = {
     store,
+
     now: () => nowTs,
     ...(withBuf ? { recentUserMsgs: buf } : {}),
   } as never
@@ -29,7 +30,7 @@ function makeTool(withBuf = true) {
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-evidence-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   buf = new Map()
   nowTs = 1_000_000_000_000
 })
@@ -43,7 +44,7 @@ async function seed(): Promise<void> {
     statusHistory: [],
     artifacts: [{ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1 }],
   } as unknown as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 const run = (tool: { execute: (a: unknown, e: unknown) => Promise<any> }, args: unknown) =>
@@ -58,14 +59,14 @@ describe('confirm_artifact 文字确认核验', () => {
     const out = await run(makeTool(), ARGS('用户在对话中回复"确认，进入设计吧"'))
     expect(out.success).toBe(true)
     expect(out.evidence_verified).toBe(true)
-    expect(store.snapshot().requirements[0].artifacts![0].confirmedAt).toBeDefined()
+    expect(store.peekAll()[0].artifacts![0].confirmedAt).toBeDefined()
   })
 
   it('编造 evidence（无对应消息）→ REQBOARD_EVIDENCE_FAKE', async () => {
     await seed()
     recordRecentUserMsg(buf, W, '今天天气怎么样', nowTs - 60_000)
     await expect(run(makeTool(), ARGS('用户说"我完全同意这个方案并批准一切"'))).rejects.toThrow(/REQBOARD_EVIDENCE_FAKE/)
-    expect(store.snapshot().requirements[0].artifacts![0].confirmedAt).toBeUndefined()
+    expect(store.peekAll()[0].artifacts![0].confirmedAt).toBeUndefined()
   })
 
   it('缓冲为空（时间窗内无消息）→ REQBOARD_EVIDENCE_FAKE', async () => {
@@ -101,24 +102,24 @@ describe('confirm_artifact 文字确认核验', () => {
     const out = await run(makeTool(), ARGS('开始推进到设计吧'))
     expect(out.success).toBe(true)
     expect(out.advanced).toBe(true)
-    expect(store.snapshot().requirements[0].status).toBe('design')
+    expect(store.peekAll()[0].status).toBe('design')
   })
 
   it('FR-13：门已满足但未被确认的 kind 与门不符 → 如实说明不推进（不静默）', async () => {
     await seed()
     // 追加一个非门禁 kind（notes）产物：确认它时 G1（要求 requirement）与之不匹配 → 不推进
-    await store.mutate('req-updated', (l) => {
-      l.requirements[0].artifacts = [
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
+      r.artifacts = [
         { stage: 'brainstorming', kind: 'requirement', path: 'r.md', registeredAt: 1 },
         { stage: 'brainstorming', kind: 'notes', path: 'n.md', registeredAt: 1 },
       ] as never
-      return { requirements: [l.requirements[0]] }
+      return { changed: true }
     })
     recordRecentUserMsg(buf, W, '开始推进到设计吧', nowTs - 60_000)
     const out = await run(makeTool(), { target: 'artifact', kind: 'notes', evidence: '开始推进到设计吧' })
     expect(out.success).toBe(true)
     expect(out.advanced).toBe(false)
     expect(String(out.note)).toMatch(/未推进/)
-    expect(store.snapshot().requirements[0].status).toBe('brainstorming')
+    expect(store.peekAll()[0].status).toBe('brainstorming')
   })
 })

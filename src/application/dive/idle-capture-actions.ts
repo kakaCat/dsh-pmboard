@@ -6,12 +6,14 @@
  *
  * @module dsh-pmboard/application/dive/idle-capture-actions
  */
-import type { ReqboardLedger, RequirementRecord, TaskRecord } from '../../shared/protocol.js'
+import type { TaskRecord } from '../../shared/protocol.js'
+import type { AddressSource } from '../../domain/template/types.js'
 import { resolveStagePrompt } from '../../domain/prompt/index.js'
 import { augmentResolvedPrompt } from '../internal/injection-address.js'
 import { isInProgressTask } from '../../domain/status/Predicates.js'
 import { findStaleUnconfirmedArtifact } from '../../domain/workflow/MilestoneSpec.js'
-import { openRequirementsFor } from '../internal/window.js'
+import { openPromptFactsFor } from '../internal/window.js'
+import type { RequirementFacts } from '../../domain/requirement/RequirementSummary.js'
 
 /** 里程碑提醒阈值（REQ-2e9473 t09/W1.5）：产物登记超过此时长未确认 → 主动提醒弹框。 */
 export const MILESTONE_REMINDER_MS = 30 * 60 * 1000
@@ -26,7 +28,7 @@ export function addressSectionFor(
   resolved: ReturnType<typeof resolveStagePrompt>,
   address: { templateRoot?: string; enabled?: boolean } | undefined,
   tasks: readonly TaskRecord[] | undefined,
-  requirement: RequirementRecord,
+  requirement: AddressSource,
   stage: string,
 ): ReturnType<typeof resolveStagePrompt> {
   if (address === undefined || address.enabled === false || address.templateRoot === undefined) return resolved
@@ -53,11 +55,11 @@ export function addressSectionFor(
  * 每产物只提醒一次由调用方（driver 闭包里的 remindedAt Map）保证。
  */
 export function milestoneReminderFor(
-  ledger: ReqboardLedger,
+  facts: readonly RequirementFacts[],
   windowKey: string,
   now: number,
 ): { text: string; artifactKey: string; requirementId: string } | undefined {
-  const open = openRequirementsFor(ledger, windowKey)
+  const open = openPromptFactsFor(facts, windowKey)
   const req = [...open].sort((a, b) => b.updatedAt - a.updatedAt)[0]
   if (req === undefined) return undefined
   // 判定（当前阶段已登记但超时未确认）在 domain/workflow/MilestoneSpec.ts（REQ-47939a t3）。

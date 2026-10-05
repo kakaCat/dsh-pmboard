@@ -6,6 +6,7 @@
  *
  * @module dsh-pmboard/http/routers/Requirements
  */
+import { mutateIfPresent } from '../../application/use-cases/queue-access.js'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   assertReqTransition,
@@ -20,17 +21,32 @@ import {
 } from '../../shared/protocol.js'
 import { assertArtifactGates, artifactsToConfirm, type GateFailure } from '../../application/internal/artifact-gates.js'
 import { checkDesignCompletenessGate, checkDesignDecompositionGate } from '../../application/internal/content-gate-wiring.js'
+// REQ-260930193929-897b FR-1：看板侧无会话上下文，读盘根必须由**需求记录**决定。
+import { applyRequirementWorkspaceRoot } from '../../application/internal/support.js'
 import { isDesignArtifactKind } from '../../domain/artifact/ArtifactSpec.js'
+// REQ-261002175818-80a8 t6 / FR-6：看板批准路径的披露取**同一份**超容量摘要（不另写措辞）
+import { overCapacitySummary } from '../../domain/task/Footprint.js'
+import { resolveRoundCapacity } from '../../plugin-config.js'
 import { transitionRequirement } from '../../application/internal/token-usage.js'
+import { disarmDiveOnTerminal } from '../../application/internal/terminal-disarm.js'
 import { executeDecompose } from '../../application/use-cases/Decompose.js'
+// REQ-261004183621-de3f t3：归档清单补录（工具与看板共用同一用例）
+import { amendArchiveManifest } from '../../application/use-cases/AmendArchiveManifest.js'
+import { armExplicit } from '../../application/internal/rearm.js'
+import { applyRebind } from '../../application/internal/binding-write.js'
 import { INITIAL_REQ_STATUS, canReqTransition } from '../../domain/requirement/RequirementStatus.js'
+import { isRollback } from '../../domain/requirement/RollbackSpec.js'
+import { applyRequirementRollback, recordRollbackMaterialized, resetInjectionAfterRollback } from '../../application/internal/rollback.js'
+import { executeRollbackCleanup } from '../../application/use-cases/RollbackCleanup.js'
 import { gateForTransition, gateFromStage } from '../../domain/gate/GateCatalog.js'
 import { fmt } from '../../domain/text/fmt.js'
 import type { RouterCtx } from './shared.js'
 import { syncRTMYamlWithSnapshot } from '../../application/internal/rtm-yaml.js'
+import { landApprovedPlan } from '../../application/internal/approved-plan-landing.js'
 
 export function createRequirementsRouter(ctx: RouterCtx) {
-  const { store, taskStore, now, ids, mintId, ok, readBody, badInput, notFound } = ctx
+  // B12 阶段④-2-③：本文件的读/写已全部迁到 `ctx.requirementStore` ⇒ 旧口不再需要
+  const { taskStore, now, ids, mintId, ok, readBody, badInput, notFound } = ctx
 
   /** G2 文档集完整性闸门的看板侧调用（REQ-2d1c74 FR-2）。docs 未装配 → fail-closed（"端口没接"不是绕过口）。 */
   async function g2CompletenessFailure(req: RequirementRecord, gateKind: GateFailure['kind']): Promise<GateFailure | undefined> {
@@ -40,6 +56,10 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     if (docs === undefined) {
       return { code: 'design_doc_incomplete', kind: gateKind, message: 'design → decomposing 被拦：文档读取端口未装配，无法核验文档集完整性' }
     }
+    // REQ-260930193929-897b FR-1：看板侧无会话上下文，根只由需求记录决定——
+    // 不校正就会沿用「最后一次会话残留的根」，判定随别的窗口漂移。
+    // 看板 ctx.deps 只有 docs（没有 taskStore.repo），故按最小依赖面传参。
+    applyRequirementWorkspaceRoot({ docs, taskStore: ctx.taskStore }, req)
     return checkDesignCompletenessGate(docs, req)
   }
 
@@ -74,9 +94,20 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       updatedBy: actor,
     }
     recordStatus(record, INITIAL_REQ_STATUS, nowTs, actor, '创建（看板人工建卡）')
-    await store.mutate('requirement-created', (ledger) => {
-      ledger.requirements.push(record)
-      return { requirements: [record] }
+    // B12 阶段④-2-③：创建型改走新端口的 `create`（入参只表达标量），随后把其余字段补写进去。
+    // ★ 语义差异（须知）：旧路径是"整册一次原子写"，这里是"create + 一条定点补写"两次写；
+    //   两者都在同一请求内完成，失败则抛错（不静默）。
+    await ctx.requirementStore.create({
+      id: record.id,
+      title: record.title,
+      description: record.description,
+      category: record.category as never,
+      status: record.status,
+      createdAtFallback: undefined,
+    } as never, record.createdBy as never)
+    await mutateIfPresent(ctx.requirementStore, record.id, (r) => {
+      Object.assign(r, record)
+      return { changed: true }
     })
     ok(res, record)
   }
@@ -91,7 +122,7 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     const sessionId = normalizeText(body.sessionId, 'sessionId', 128) || undefined
     // mutate 前只读两级校验（REQ-2d1c74 FR-2：与 MoveRequirement 同次序——先产物闸门、后 G2 完整性门；
     // 预检让两条门的拒绝次序与会话侧一致，mutate 内的复查保留防并发漂移）。
-    const current = store.snapshot().requirements.find(r => r.id === id)
+    const current = (await ctx.requirementStore.get(id))
     if (current !== undefined) {
       const preGate = assertArtifactGates(current, current.status, to)
       if (preGate !== undefined) throw Object.assign(new Error(preGate.message), { code: preGate.code })
@@ -101,9 +132,55 @@ export function createRequirementsRouter(ctx: RouterCtx) {
         if (failure !== undefined) throw Object.assign(new Error(failure.message), { code: failure.code })
       }
     }
-    const result = await store.mutate('requirement-moved', (ledger) => {
-      const req = ledger.requirements.find(r => r.id === id) ?? notFound(`需求 ${id}`)
+    // ── 回退分支（REQ-261003204149-1e80 FR-5 单点）：与 reqboard_move **共用同一编排** ──
+    // 与工具侧同款顺序：先在副本上算（抛错时零副作用），再「任务先写、需求后写」。
+    const at = now()
+    const rbActor = { kind: actor, ...(sessionId !== undefined ? { sessionId } : {}) }
+    const rollbackReason = reason.length > 0 ? reason : '（未填理由）'
+    let rollbackPre: ReturnType<typeof applyRequirementRollback> | undefined
+    let rollbackTasks: Awaited<ReturnType<typeof taskStore.listByRequirement>> = []
+    let rbMinted: string[] = []
+    let rbCursor = 0
+    const rbIds = { task: () => rbMinted[rbCursor++] ?? 't-unminted', comment: () => ids.comment() }
+    if (current !== undefined && isRollback(current.status, to)) {
+      rollbackTasks = await taskStore.listByRequirement(id)
+      // 看板侧的 id 铸造是**异步**的（要避让台账），故先铸好一批再交给同步的编排口。
+      const liveCount = rollbackTasks.filter(t => t.status !== 'canceled').length
+      rbMinted = []
+      for (let i = 0; i < liveCount; i++) rbMinted.push(await mintId('task'))
+      rollbackPre = applyRequirementRollback(
+        structuredClone(current), rollbackTasks, current.status, to, at, rbActor, rbIds, rollbackReason,
+      )
+      if (rollbackPre.taskPlan.reworkDrafts.length > 0) {
+        await taskStore.createMany(id, rollbackPre.taskPlan.reworkDrafts)
+      }
+      if (rollbackPre.taskPlan.canceled.length > 0 || rollbackPre.taskPlan.resetTasks.length > 0) {
+        // REQ-261004121649-bfa7 FR-1：父卡取消 + 子卡原地复位，一次写入（两类都是整卡副本）
+        const canceledById = new Map(
+          [...rollbackPre.taskPlan.canceled, ...rollbackPre.taskPlan.resetTasks].map(t => [t.id, t]),
+        )
+        await taskStore.mutate(id, (queueTasks) => {
+          let touched = false
+          for (const qt of queueTasks) {
+            const c = canceledById.get(qt.id)
+            if (c === undefined) continue
+            qt.status = c.status
+            qt.revisions = c.revisions
+            qt.updatedAt = c.updatedAt
+            touched = true
+          }
+          return touched ? queueTasks : undefined
+        })
+      }
+    }
+    const result = await mutateIfPresent(ctx.requirementStore, id, (req) => {
       assertReqTransition(req.status, to, actor)
+      // 回退：对**真 req** 重放编排的撤销半边（卡计划已在上面落库；此处重算幂等、结果丢弃）
+      if (rollbackPre !== undefined && current !== undefined) {
+        applyRequirementRollback(req, rollbackTasks, current.status, to, at, rbActor, rbIds, rollbackReason)
+        // 记本次物化的卡 id（FR-4）：与工具侧同款口径，批量清理入口靠它划边界。
+        recordRollbackMaterialized(req, at, rollbackPre.taskPlan.reworkDrafts.map((t) => t.id))
+      }
       // ── 分类感知产物闸门（REQ-31e11f t4）：assertReqTransition 之后、写盘之前 ──
       const gate = assertArtifactGates(req, req.status, to)
       if (gate !== undefined) {
@@ -120,19 +197,36 @@ export function createRequirementsRouter(ctx: RouterCtx) {
         reason,
         ...(snap !== undefined ? { snap } : {}),
       })
+      // ③ 注入与断点重算（FR-6）：与工具侧同款单点函数，同样在状态转移之后
+      // FR-9：看板路径的回退归因 = human（人按的，不许记成 system）
+      if (rollbackPre !== undefined) resetInjectionAfterRollback(req, at, { kind: actor, ...(sid !== undefined ? { sessionId: sid } : {}) })
       if (reason) {
+        // REQ-261004065652-5c1c FR-9（预防半边）：看板把需求推进到终态时同样收回自动意图。
+        // 与工具路径共用同一实现（`application/internal/terminal-disarm`），不许各写一份。
+        disarmDiveOnTerminal(req, { to, at, commentId: () => ids.comment() })
         req.comments.push({ id: ids.comment(), body: `[状态] ${req.status} ← 转移说明：${reason}`, createdAt: now(), createdBy: { kind: actor } })
       }
-      return { requirements: [req] }
+      return { changed: true }
     })
-    ok(res, result.changed.requirements[0])
+    ok(res, {
+      ...(result?.requirement ?? {}),
+      ...(rollbackPre !== undefined
+        ? {
+            rollback: {
+              artifacts_revoked: rollbackPre.revocation.artifactsRevoked,
+              plan_approval_revoked: rollbackPre.revocation.planApprovalRevoked,
+              tasks_canceled: rollbackPre.taskPlan.canceled.length,
+              tasks_reworked: rollbackPre.taskPlan.reworkDrafts.length,
+            },
+          }
+        : {}),
+    })
   }
 
   async function handleReqUpdate(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const body = await readBody(req)
     const id = normalizeText(body.id, 'id', 64)
-    const result = await store.mutate('requirement-updated', (ledger) => {
-      const req = ledger.requirements.find(r => r.id === id) ?? notFound(`需求 ${id}`)
+    const result = await mutateIfPresent(ctx.requirementStore, id, (req) => {
       if (body.title !== undefined) req.title = normalizeTitle(body.title)
       if (body.description !== undefined) req.description = normalizeText(body.description, 'description')
       if (body.docLinks !== undefined) req.docLinks = body.docLinks as RequirementRecord['docLinks']
@@ -141,12 +235,11 @@ export function createRequirementsRouter(ctx: RouterCtx) {
         req.blockedReason = req.blocked ? normalizeText(body.blockedReason, 'blockedReason', 300) : undefined
       }
       if (body.paused !== undefined) req.paused = Boolean(body.paused)
-      req.version += 1
       req.updatedAt = now()
       req.updatedBy = { kind: 'human' }
-      return { requirements: [req] }
+      return { changed: true }
     })
-    ok(res, result.changed.requirements[0])
+    ok(res, result?.requirement)
   }
 
   /**
@@ -161,8 +254,9 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     if (!approve && reason.length === 0) {
       throw Object.assign(new Error('退回计划必须写清理由（reason）'), { code: 'invalid_input' })
     }
-    const result = await store.mutate('requirement-updated', (ledger) => {
-      const r = ledger.requirements.find(x => x.id === id) ?? notFound("需求 " + id)
+    /** 落库结果（FR-1/FR-6）：无论落没落、成没成，都如实回给看板，不静默。 */
+    let landing: Record<string, unknown> | undefined
+    const result = await mutateIfPresent(ctx.requirementStore, id, (r) => {
       const plan = r.plan ?? notFound("需求 " + id + " 的拆分计划")
       if (approve) {
         plan.approvedAt = now()
@@ -176,29 +270,93 @@ export function createRequirementsRouter(ctx: RouterCtx) {
         delete plan.approvedAt
         delete plan.approvedBy
       }
+      // 仅当确有超容量卡时追加一句（空串 ⇒ 既有评论逐字节不变）。看板批准路径**唯一能被人看见的载体
+      // 是这条评论**（响应体形状刻意不加字段），故措辞与弹框共用同一份摘要、容量走同一单点解析（FR-6）。
+      const ocap = approve ? overCapacitySummary(plan.tasks, resolveRoundCapacity({ capacity: ctx.deps.applicationDeps?.capacity }).value) : ''
       r.comments.push({
         id: ids.comment(),
         body: approve
-          ? '[计划] 已批准（人）：' + plan.tasks.length + ' 个任务，窗口可拆分落库'
+          ? '[计划] 已批准（人）：' + plan.tasks.length + ' 个任务（看板批准与弹框批准共用同一落库层）'
+            + (ocap === '' ? '' : '；' + ocap + '——详见计划文档标记')
           : '[计划] 已退回（人）：' + reason,
         createdAt: now(),
         createdBy: { kind: 'human' },
       })
-      r.version += 1
       r.updatedAt = now()
       r.updatedBy = { kind: 'human' }
-      return { requirements: [r] }
+      return { changed: true }
     })
+    if (approve) {
+      // 「批准即落库」（REQ-261002164800-d8f2 t4 / FR-1）：看板批准与弹框批准必须落出**同样的结果**。
+      // 此前这里只盖 approvedAt、注释写「窗口可拆分落库」，而弹框路径同一时刻已自动落库——两条通道
+      // 行为不一致，文案却声称等价。现在两条通道共用同一个落库层（取数单点 + FR 覆盖硬门 + 幂等 + 读数）。
+      //
+      // applicationDeps 缺省（测试/嵌入调用未装配用例依赖）→ 保持既有行为（只落章），并**如实说明**没落库。
+      const app = ctx.deps.applicationDeps
+      if (app !== undefined) {
+        try {
+          const landed = await landApprovedPlan(app, {
+            requirementId: id,
+            windowKey: 'board',
+            nowTs: now(),
+            source: 'board',
+          })
+          // 落库成功（或幂等跳过）→ 同一调用内推进到实施（与弹框路径同语义：autoRun 一并置真）
+          await mutateIfPresent(ctx.requirementStore, id, (r) => {
+            if (r.status !== 'decomposing') return undefined
+            transitionRequirement(r, 'implementing', {
+              at: now(),
+              actor: { kind: 'human' },
+              reason: '看板批准计划后自动进入实施（与弹框路径共用同一落库层）',
+            })
+            r.autoRun = true
+            r.comments.push({
+              id: ids.comment(),
+              body: fmt('[自动开跑] 看板批准拆分计划 → 落库 {n} 张卡并自动进入实施（autoRun=true）', { n: landed.createdCount }),
+              createdAt: now(),
+              createdBy: { kind: 'human' },
+            })
+            r.updatedAt = now()
+            return { changed: true }
+          })
+          landing = {
+            performed: landed.alreadyLanded === 0,
+            landed: landed.createdCount,
+            already_landed: landed.alreadyLanded,
+            unrefed_cards: landed.unrefed,
+            ...(landed.warning === undefined ? {} : { warning: landed.warning }),
+          }
+        } catch (err) {
+          // 门禁拒（如某条 FR 没人接）：计划已批准，但**不推进**、不静默——结果如实回给看板
+          const e = err as { message?: string; code?: string }
+          landing = {
+            performed: false,
+            failed: true,
+            reason: e.message ?? String(err),
+            ...(e.code === undefined ? {} : { code: e.code }),
+          }
+        }
+      } else {
+        landing = {
+          performed: false,
+          reason: 'applicationDeps 缺失（组合根未装配用例依赖）——本次仅落章，请调 reqboard_decompose 落库',
+        }
+      }
+    }
     if (approve) {
       // RTM 触发点 5（REQ-260926140539-457b FR-2）：看板批准计划 → rtm-decomposing.yml + rtm-implementing.yml
       const rtmRoot = ctx.deps.docs?.workspaceRoot() ?? ctx.deps.cwd
       if (rtmRoot !== undefined) {
-        // 任务来自队列（REQ-260927202051-f6df：RTM 的 tasksOf 读队列任务，v9 台账已无 tasks）
+        // 任务来自队列（REQ-260927202051-f6df：RTM 的 tasksOf 读队列任务，v9 台账已无 tasks）；
+        // 本同步放在**落库之后**，serves 才能反映刚落库的卡（此前同步时队列还是空的）。
         const rtmTasks = await taskStore.listByRequirement(id)
-        syncRTMYamlWithSnapshot(rtmRoot, store.snapshot(), rtmTasks, id, 'confirm:plan')
+        syncRTMYamlWithSnapshot(rtmRoot, ({ requirements: (await ctx.requirementStore.listSummaries({ scope: 'all' }))?.items as never }), rtmTasks, id, 'confirm:plan')
       }
     }
-    ok(res, result.changed.requirements[0])
+    // 回给看板的必须是**落库/推进之后**的台账态（落库可能改了状态与 autoRun）——
+    // 若直接回 mutate 时的旧快照，看板会显示"批准了但状态没动"，那是另一次自我欺骗。
+    const after = (await ctx.requirementStore.get(id)) ?? result?.requirement
+    ok(res, { ...after, ...(landing === undefined ? {} : { landing }) })
   }
 
   /**
@@ -215,17 +373,18 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     // REQ-2d1c74 FR-3：确认 kind=design 落章前扫描拆分内容（三通道之一：看板一键）。
     // 存量无可扫对象放行；非存量且 docs 未装配 → fail-closed（与完整性门同口径）。
     if (isDesignArtifactKind(kind)) {
-      const target = store.snapshot().requirements.find(x => x.id === id)
+      const target = (await ctx.requirementStore.get(id))
       if (target !== undefined && target.artifacts !== undefined && target.artifacts.length > 0) {
         if (ctx.deps.docs === undefined) {
           throw Object.assign(new Error('确认被拦：文档读取端口未装配，无法扫描设计文档拆分内容'), { code: 'design_contains_decomposition' })
         }
+        // REQ-260930193929-897b FR-1：读盘前按需求记录校正根（看板 ctx.deps 只给 docs）
+        applyRequirementWorkspaceRoot({ docs: ctx.deps.docs, taskStore: ctx.taskStore }, target)
         const scan = await checkDesignDecompositionGate(ctx.deps.docs, target)
         if (scan !== undefined) throw Object.assign(new Error(scan.message), { code: scan.code })
       }
     }
-    const result = await store.mutate('requirement-updated', (ledger) => {
-      const r = ledger.requirements.find(x => x.id === id) ?? notFound("需求 " + id)
+    const result = await mutateIfPresent(ctx.requirementStore, id, (r) => {
       // REQ-2d1c74 FR-2：kind=design 成组落章（全部 design 产物一次确认）
       const arts = artifactsToConfirm(r, kind as never)
       if (arts.length === 0) badInput("需求 " + id + " 没有 kind=" + kind + " 的产物（须先由工具登记）")
@@ -240,19 +399,18 @@ export function createRequirementsRouter(ctx: RouterCtx) {
         createdAt: now(),
         createdBy: { kind: 'human' },
       })
-      r.version += 1
       r.updatedAt = now()
       r.updatedBy = { kind: 'human' }
-      return { requirements: [r] }
+      return { changed: true }
     })
-    const confirmed = result.changed.requirements[0] as RequirementRecord
+    const confirmed = result?.requirement as RequirementRecord
     // RTM 触发点 3（REQ-260926140539-457b FR-2）：看板一键确认产物 → 对应 RTM 落章
     {
       const rtmRoot = ctx.deps.docs?.workspaceRoot() ?? ctx.deps.cwd
       if (rtmRoot !== undefined) {
         // 任务来自队列（同 RTM 触发点 5）
         const rtmTasks = await taskStore.listByRequirement(id)
-        syncRTMYamlWithSnapshot(rtmRoot, store.snapshot(), rtmTasks, id, 'confirm:artifact')
+        syncRTMYamlWithSnapshot(rtmRoot, ({ requirements: (await ctx.requirementStore.listSummaries({ scope: 'all' }))?.items as never }), rtmTasks, id, 'confirm:artifact')
       }
     }
 
@@ -273,7 +431,7 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     if (gateMatches && gate.autoAdvance && gate.from !== undefined && canReqTransition(gate.from, gate.to)) {
       // REQ-2d1c74 FR-2：看板确认后自动推进同样先过 G2 完整性闸门（四路径之一；落章保留，推进可拦）。
       const g2Failure = gate.id === 'G2' && gate.requiredKind !== undefined
-        ? await g2CompletenessFailure(store.snapshot().requirements.find(r => r.id === id) ?? confirmed, gate.requiredKind)
+        ? await g2CompletenessFailure((await ctx.requirementStore.get(id)) ?? confirmed, gate.requiredKind)
         : undefined
       if (g2Failure !== undefined) {
         ok(res, { ...confirmed, advanced: false, delivered: false, gate_failure: g2Failure, note: '已落章，但 design → decomposing 未推进：' + g2Failure.message })
@@ -281,8 +439,7 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       }
       // REQ-260927121324-abde FR-2：确认即推进带写时快照，actor 带会话 id（窗口码 = sourceSessionId）
       const confirmSnap = windowKey !== undefined && windowKey.length > 0 ? ctx.deps.tokenSnapshot?.(windowKey) : undefined
-      await store.mutate('requirement-moved', (ledger) => {
-        const r = ledger.requirements.find(x => x.id === id) ?? notFound(fmt('需求 {id}', { id }))
+      await mutateIfPresent(ctx.requirementStore, id, (r) => {
         if (r.status !== gate.from) return undefined // 并发下已推进过 → 幂等，不重复推进
         transitionRequirement(r, gate.to, {
           at: now(),
@@ -296,7 +453,7 @@ export function createRequirementsRouter(ctx: RouterCtx) {
           createdAt: now(),
           createdBy: { kind: 'human' },
         })
-        return { requirements: [r] }
+        return { changed: true }
       })
       advanced = true
     }
@@ -324,7 +481,7 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       note = delivered ? undefined : '链路未执行（无待处理闸门或幂等命中）'
     }
 
-    const final = store.snapshot().requirements.find(r => r.id === id) ?? confirmed
+    const final = (await ctx.requirementStore.get(id)) ?? confirmed
     ok(res, { ...final, advanced, delivered, ...(note === undefined ? {} : { note }) })
   }
 
@@ -355,13 +512,12 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       return
     }
     if (target !== 'req') throw Object.assign(new Error('target 必须是 req/task'), { code: 'invalid_input' })
-    const result = await store.mutate('comment-added', (ledger) => {
-      const req = ledger.requirements.find(r => r.id === id) ?? notFound(`需求 ${id}`)
+    const result = await mutateIfPresent(ctx.requirementStore, id, (req) => {
       req.comments.push(comment)
       req.updatedAt = now()
-      return { requirements: [req] }
+      return { changed: true }
     })
-    ok(res, { comment, target: result.changed.requirements[0]?.id })
+    ok(res, { comment, target: result?.requirement?.id })
   }
 
   /**
@@ -375,8 +531,7 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     const id = normalizeText(body.id, 'id', 64)
     const on = body.on === true
     const reason = normalizeText(body.reason, 'reason', 300)
-    const result = await store.mutate('requirement-updated', (ledger) => {
-      const r = ledger.requirements.find(x => x.id === id) ?? notFound(`需求 ${id}`)
+    const result = await mutateIfPresent(ctx.requirementStore, id, (r) => {
       r.autoRun = on
       const adv = (r.advance ??= {})
       if (on) {
@@ -394,16 +549,38 @@ export function createRequirementsRouter(ctx: RouterCtx) {
         createdAt: now(),
         createdBy: { kind: 'human' },
       })
-      r.version += 1
       r.updatedAt = now()
       r.updatedBy = { kind: 'human' }
-      return { requirements: [r] }
+      return { changed: true }
     })
-    const updated = result.changed.requirements[0] as RequirementRecord
+    const updated = result?.requirement as RequirementRecord
 
     let advanceNote: string | undefined
+    let rearmed = false
     if (on) {
-      if (ctx.deps.advance === undefined) {
+      // REQ-261001201200-8f8b FR-4：看板「继续」也是恢复入口——人显式表达「我要它继续」时，顺手把
+      // 误停摆（disarmed+active）的需求重新武装；否则仅置 autoRun 对 disarmed 需求毫无作用
+      // （drive() 首行 isDrivableRequirement 不成立就直接 return）。恢复失败不阻断既有「继续」语义。
+      // REQ-261002173819-69c7 FR-3：改用 **armExplicit**——看板「继续」是人显式动作，必须也能救
+      // `disarmed+idle`（人自己按过 clear_pause 的形态，自动路径按纪律永不改写它）。这是唯一入口。
+      // REQ-261002141430-a5ef FR-4①：弹框仍在途时**不越权**清停手位（否则"框还在屏幕上、链已跑"）。
+      // 看板侧的在途表在 applicationDeps.dialogs 上（与 ticket 表同实例）；未装配则退回既有行为。
+      const boardDialogs = ctx.deps.applicationDeps?.dialogs
+      const boardDialogInFlight = boardDialogs === undefined
+        ? {}
+        : { dialogInFlight: (reqId: string): boolean => boardDialogs.inFlightFor(reqId) }
+      // B12 阶段②c：`RearmDeps.store` 必填（写已迁新端口）。未装配时**不解除等待**并如实
+      // 报 false——绝不假装"已解除"（失败要响亮）；生产侧 routes.ts 已传必填的新端口。
+      const rearmStore = ctx.requirementStore
+      try {
+        rearmed = rearmStore === undefined
+          ? false
+          : await armExplicit({  store: rearmStore, now, ...boardDialogInFlight }, id, 'board-resume')
+      } catch { rearmed = false }
+      if (boardDialogs?.inFlightFor(id) === true) {
+        // 如实说明为什么点了「继续」链没动——不说就等于让人以为是 bug（失败要响亮）
+        advanceNote = '该需求仍在等待人工确认（弹框在途）：请先在弹框作答或取消，本次未解除等待'
+      } else if (ctx.deps.advance === undefined) {
         advanceNote = '推进器未装配：已置 autoRun=true，请回会话触发一次推进事件'
       } else {
         try {
@@ -414,7 +591,11 @@ export function createRequirementsRouter(ctx: RouterCtx) {
         }
       }
     }
-    const final = store.snapshot().requirements.find(r => r.id === id) ?? updated
+    // 恢复留痕并进既有 note 通道（**不新增返回键**，保持响应形状不变）。
+    // REQ-261002173819-69c7 FR-3：文案取"人显式要继续"——看板这条通道救回的可能是"人按过 clear_pause"
+    // 的手动模式需求，写"检测到误停摆"会误导复盘。
+    if (rearmed) advanceNote = '已重新武装（人显式要继续，Dive 将在一分钟内接上）；' + (advanceNote ?? '已置 autoRun=true')
+    const final = (await ctx.requirementStore.get(id)) ?? updated
     ok(res, { ...final, ...(advanceNote === undefined ? {} : { advanceNote }) })
   }
 
@@ -428,7 +609,7 @@ export function createRequirementsRouter(ctx: RouterCtx) {
   async function handleReqDecompose(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const body = await readBody(req)
     const id = normalizeText(body.id, 'id', 64)
-    const target = store.snapshot().requirements.find(r => r.id === id) ?? notFound('需求 ' + id)
+    const target = (await ctx.requirementStore.get(id)) ?? notFound('需求 ' + id)
     const app = ctx.deps.applicationDeps
     if (app === undefined) {
       throw Object.assign(new Error('拆分入口未装配：applicationDeps 缺失（组合根未传用例依赖）'), { code: 'invalid_input' })
@@ -455,10 +636,126 @@ export function createRequirementsRouter(ctx: RouterCtx) {
         windowKey: (exec: unknown) => probe.windowKey(exec),
         requireLiveDriver: () => undefined,
       },
-    } as typeof app
+    } as unknown as typeof app
     const result = await executeDecompose(boardDeps, { requirement_id: id }, { agent }) as Record<string, unknown>
     ok(res, result)
   }
 
-  return { handleReqCreate, handleReqMove, handleReqUpdate, handlePlanDecision, handleArtifactConfirm, handleComment, handleAutoRun, handleReqDecompose }
+  /**
+   * POST /dashboard/api/reqboard/req/archive-amend
+   * 看板「补录归档清单」入口（REQ-261004183621-de3f FR-4）：与工具 `reqboard_archive_amend`
+   * **共用同一用例**（`amendArchiveManifest`），只追加清单条目 + 留痕，不改产物与状态。
+   *
+   * 与拆分入口同纪律：窗口身份取自需求绑定，但豁免 live-driver 的回合校验
+   * （人在看板上点按钮时没有"当前发起回合"）；"窗口不在线"不阻断补录——
+   * 补录是**事后整理**，不该要求原窗口还开着（与拆分不同：拆分是继续推进）。
+   */
+  async function handleArchiveAmend(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const body = await readBody(req)
+    const id = normalizeText(body.id, 'id', 64)
+    const target = (await ctx.requirementStore.get(id)) ?? notFound('需求 ' + id)
+    const app = ctx.deps.applicationDeps
+    if (app === undefined) {
+      throw Object.assign(new Error('补录入口未装配：applicationDeps 缺失（组合根未传用例依赖）'), { code: 'invalid_input' })
+    }
+    const boardDeps = {
+      ...app,
+      session: {
+        ...(app.session as object),
+        requireLiveDriver: () => undefined,
+      },
+    } as unknown as typeof app
+    const result = await amendArchiveManifest(
+      boardDeps,
+      { requirement_id: id, docs: body.docs, reason: body.reason },
+      { agent: { id: target.sourceSessionId } },
+    ) as unknown as Record<string, unknown>
+    ok(res, result)
+  }
+
+  /**
+   * POST /dashboard/api/reqboard/req/rebind
+   * 看板「改绑到本窗口」入口（REQ-261003222428-3556 FR-6 / N-2，**仅人发起**）。
+   *
+   * 背景：N-2 实测需求的窗口绑定曾被仓外脚本静默改写、台账零留痕。自本入口起，
+   * 仓内改写一律经 applyRebind 留痕（actor/at/from/to 进评论）。本入口刻意**不注册任何
+   * agent 工具**——agent 面没有可调用的改绑工具（代码级拒绝 = 工具面不存在）；
+   * 与 armExplicit 同纪律：能力只开在看板 HTTP 通道（人点按钮）。
+   */
+  async function handleReqRebind(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const body = await readBody(req)
+    const id = normalizeText(body.id, 'id', 64)
+    const toWindow = normalizeText(body.windowKey, 'windowKey', 128)
+    if (toWindow.length === 0) {
+      throw Object.assign(new Error('改绑被拒：windowKey 必填（改绑到哪个窗口）'), { code: 'invalid_input' })
+    }
+    const target = (await ctx.requirementStore.get(id)) ?? notFound('需求 ' + id)
+    // 目标窗口必须在线（改绑到死窗口 = 制造下一个 N-1）
+    const agent = onlineAgent(toWindow)
+    if (agent === undefined) {
+      throw Object.assign(
+        new Error('改绑被拒：目标窗口 ' + toWindow + ' 不在线（无活 agent）——请先打开该会话再改绑'),
+        { code: 'invalid_input' },
+      )
+    }
+    const reason = normalizeText(body.reason, 'reason', 300)
+    const result = await mutateIfPresent(ctx.requirementStore, id, (r) => {
+      const changed = applyRebind(r, {
+        toWindow,
+        actor: { kind: 'human' },
+        at: now(),
+        commentId: () => ids.comment(),
+        ...(reason.length > 0 ? { reason } : {}),
+      })
+      return changed ? { changed: true } : undefined
+    })
+    const final = (await ctx.requirementStore.get(id)) ?? target
+    const rebound = result?.changed === true
+    ok(res, {
+      id,
+      rebound,
+      from: target.sourceSessionId ?? null,
+      to: final.sourceSessionId ?? null,
+      ...(rebound ? {} : { note: '目标窗口与当前绑定相同，未做变更（幂等）' }),
+    })
+  }
+
+  /**
+   * POST /dashboard/api/reqboard/req/rollback-cleanup
+   * 误物化批量清场入口（REQ-261004121649-bfa7 t3/t6 · FR-4）——**仅人**。
+   *
+   * 背景：一次回退会为每张顶层父卡物化一张重做卡。范围选错、或上次没清就再退一次时，
+   * 现状只能逐张去队列点取消（实测一次要清 53 张）。本入口按**该次回退物化的卡清单**一次清掉。
+   *
+   * 「仅人」怎么落地（人工裁定 2026-10-04，与 `handleReqRebind` 同款）：
+   * 本入口**刻意不注册任何 agent 工具**——agent 面没有可调用的清场工具，**代码级拒绝 = 工具面不存在**。
+   * 设计文档 §三 曾写「agent 调用返回 REQBOARD_HUMAN_GATE」，但那做不到也测不出：HTTP 调用方
+   * 的身份（人点的按钮 vs agent 发的 fetch）在服务端无法辨别，靠 body 自称等于把门锁在标签上。
+   * 故本入口不新增 agent 可调用面，与改绑入口共用同一条既证有效的纪律。
+   *
+   * 落库顺序：**先任务后需求**（与回退同款 I-11）——任务写失败时需求未动（干净）。
+   */
+  async function handleRollbackCleanup(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const body = await readBody(req)
+    const id = normalizeText(body.id, 'id', 64)
+    const seqRaw = body.rollbackSeq
+    // 序号必填且必须是正整数：缺省就"猜一个"会把清理打到别人的批次上（宁可拒绝）。
+    if (!(typeof seqRaw === 'number' && Number.isInteger(seqRaw) && seqRaw > 0)) {
+      throw Object.assign(new Error('清场被拒：rollbackSeq 必填且必须是正整数（第几次回退）'), { code: 'invalid_input' })
+    }
+    const reason = normalizeText(body.reason, 'reason', 300)
+    // 编排与落库在用例里（唯一实现处）；本处只做协议转换。
+    const result = await executeRollbackCleanup(
+      {
+        requirementStore: ctx.requirementStore,
+        taskStore,
+        now,
+        newCommentId: () => ids.comment(),
+      },
+      { id, rollbackSeq: seqRaw, ...(reason.length > 0 ? { reason } : {}) },
+    )
+    ok(res, result)
+  }
+
+  return { handleReqCreate, handleReqMove, handleReqUpdate, handlePlanDecision, handleArtifactConfirm, handleComment, handleAutoRun, handleReqDecompose, handleArchiveAmend, handleReqRebind, handleRollbackCleanup }
 }

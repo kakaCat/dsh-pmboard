@@ -1,0 +1,39 @@
+task:
+  id: t-87c6e2
+  title: 一次性把运行时切过去：删单册实现、改 95 处读点与三处同步缝·测试
+  status: done
+  implements: |-
+    ① 删 src/adapters/JsonLedgerRepository.ts 与 ports.ts 的 ReqboardRepository/LedgerView/MutableLedger/旧 MutateResult（不做兼容壳）；② 按 design/interfaces.md 的读点改造分类逐类改：.requirements.find → getSummary/get；整册作为实参传给纯函数（openRequirementsFor / shouldCaptureWindow / draftRequirementsFor 等）→ 纯函数入参改 readonly RequirementSummary[] 且调用方 await listSummaries；.revision → (await head()).revision；结构化端口类型 { snapshot(): LedgerView }（window.ts / rtm-yaml.ts / boundary-guard.ts / verification-doc-writer.ts）→ 换窄接口 RequirementReader；③ 三处同步缝按 design/backend.md 的同步口处置：gate-wiring 提示词段用 peekSummaries()；dive/session-driver 与 boundary-guard 的纯函数收摘要（guardToolCall 改 await 权威读）；pm-capture-root 的 onBoundWindowActivity 内部异步化（签名不变、错误走告警不吞）；h2-compact 删除同步默认值、改组合根显式注入 persistArtifacts: async () => (await store.head()).revision；④ src/index.ts 装配 ShardedRequirementStore + 迁移门（单册在场而 reqboard/meta.json 缺席 → 抛 REQBOARD_REQUIRES_MIGRATION，绝不起空台账），LEDGER_FILE 降级为 legacy 导出常量；⑤ tests/application/harness.ts 的 InMemoryRepo 改 implements RequirementStore，41 处测试构造点改用统一工厂 makeTestStore()。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-600159
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002161439-277d
+    TASK_ID: t-87c6e2
+    TASK_TITLE: 一次性把运行时切过去：删单册实现、改 95 处读点与三处同步缝·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-03T09:48:26.218Z
+      completed_at: 2026-10-03T09:48:32.222Z
+    - phase: doc
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002161439-277d
+  generated_at: 2026-10-02T10:16:11.105Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-03T09:48:32.222Z

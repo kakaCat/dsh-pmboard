@@ -1,0 +1,31 @@
+# t11 证据 · 历史回填与老需求回归（2026-10-01T04:39:03Z）
+
+## 1) 真实回填（台账 ~/.dsh/dsh-reqboard.json，5 条已归档需求）
+```
+[backfill] REQ-260929184406-2084 → kb-0001
+[backfill] REQ-260929195829-6e02 → kb-0002
+[backfill] REQ-260929210741-30ae → kb-0003（stale：有复盘，待人复核）
+[backfill] REQ-260930155231-0862 → kb-0004（stale：有复盘，待人复核）
+[backfill] REQ-260930183951-eb6c → kb-0005
+[backfill] 完成：入库 3 条（active）、待复核 2 条（stale）；台账 /Users/mac/.dsh/dsh-reqboard.json
+```
+
+## 2) 幂等：二次回填
+   条目数仍为 5（kb-0001.md kb-0002.md kb-0003.md kb-0004.md kb-0005.md ）——同源（req+kind）复用 id，无新增
+
+## 3) 口径：指针必须在本工作区可解析
+   - mergedInto 指向别的工作区（docs/architecture/pm-toolview-visualization.md 等）→ 自检 K4 首次报红
+   - 修法：回填时校验指针可解析，不可解析则降级为空指针 + 正文记下原目标；修复后 K4 转绿
+
+## 4) 有复盘 → kind=pitfall 且 status=stale（不进索引，只留文件；K5 不再误报孤儿）
+   - 3 条 active 进索引；2 条 stale 只留文件（待人复核）
+
+## 5) 自检与门禁
+✅ K9 符号表 1750 行 = 源码口径 1750 条  [docs/knowledge/code-map.symbols.tsv]
+kb-probe: 九项全过（9 项检查）
+
+## 6) 老需求回归（kb 全套 + 归档 + 路由）
+      Tests  80 passed (80)
+   Start at  12:39:06
+   Duration  1.39s (transform 1.24s, setup 1ms, collect 2.99s, tests 490ms, environment 1ms, prepare 654ms)
+

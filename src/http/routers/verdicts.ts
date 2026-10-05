@@ -14,6 +14,7 @@
  *
  * @module dsh-pmboard/http/routers/Verdicts
  */
+import { mutateIfPresent } from '../../application/use-cases/queue-access.js'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   assertReqTransition,
@@ -28,12 +29,16 @@ import {
 } from '../../domain/status/Predicates.js'
 import { ACCEPTED_REQ_STATUS, REWORK_REQ_STATUS } from '../../domain/requirement/RequirementStatus.js'
 import { applyVerdicts, materializeReworkFromSheet } from '../../application/internal/verdicts.js'
+import { verdictRequiresOpinion } from '../../domain/workflow/AcceptanceSheetSpec.js'
 import { transitionRequirement } from '../../application/internal/token-usage.js'
 import { rewriteVerificationDoc } from '../../application/internal/verification-doc-writer.js'
 import type { RouterCtx } from './shared.js'
 
 export function createVerdictsRouter(ctx: RouterCtx) {
-  const { store, taskStore, now, ids, ok, readBody, badInput, notFound } = ctx
+  const { taskStore, now, ids, ok, readBody, badInput, notFound } = ctx
+  // B12 阶段④-2：写点已迁新端口；未装配时**响亮拒绝**（不静默写不进去）
+  // B12 阶段④-2：新端口在 RouterCtx 上已转**必填**（装配漏了编译期就红），此处不再兜底
+  const requireStore = (): RouterCtx['requirementStore'] => ctx.requirementStore
 
   /**
    * 验收人工审核（仅人）：pass → archived（验收通过即归档），rework → implementing（必须写意见）。
@@ -51,12 +56,16 @@ export function createVerdictsRouter(ctx: RouterCtx) {
     // ── 两存储顺序契约（REQ-260927202051-f6df / design/interfaces I-11）：**任务先、需求后** ──
     // 先在台账**草稿**上把整段逻辑算完（纯计算、不落盘）→ 拿到返工卡 → createMany（任务）
     // → 再整条替换需求记录（需求）。反序会出现"返工卡已建、需求态未落"的悬空态。
-    const snapshot = store.snapshot()
+    const [draftRec, draftHead, draftTriages] = await Promise.all([
+      ctx.requirementStore.get(id),
+      ctx.requirementStore.head(),
+      ctx.requirementStore.listTriages(),
+    ])
     const draft: ReqboardLedger = {
-      schemaVersion: snapshot.schemaVersion,
-      revision: snapshot.revision,
-      requirements: snapshot.requirements.map(x => structuredClone(x)),
-      triages: snapshot.triages.map(x => structuredClone(x)),
+      schemaVersion: draftHead?.schemaVersion ?? 0,
+      revision: draftHead?.revision ?? 0,
+      requirements: draftRec === undefined ? [] : [structuredClone(draftRec)],
+      triages: draftTriages.map(x => structuredClone(x)) as never,
     }
     const statusBefore = (draft.requirements.find(x => x.id === id) ?? notFound("需求 " + id)).status
     // 队列任务先取（返工卡 id 冲突检测与"未过项"判定需要它）。
@@ -103,7 +112,7 @@ export function createVerdictsRouter(ctx: RouterCtx) {
         }
       }
       // REQ-a8d582 FR-2：返工任务跟着"退回返工"这个**人的动作**走（原先在裁决时就自动生成）。
-      const reworkTasks = pass ? [] : materializeReworkFromSheet(ledger, queueTasks, r.id, { kind: 'human' }, now())
+      const reworkTasks = pass ? [] : materializeReworkFromSheet(r, queueTasks, { kind: 'human' }, now())
       if (v !== undefined) {
         v.reviewedAt = now()
         v.reviewedBy = { kind: 'human' }
@@ -150,14 +159,13 @@ export function createVerdictsRouter(ctx: RouterCtx) {
     // ① 任务写（**先**）：返工卡物化到队列（幂等键 = 任务 id；重复调用不覆盖）
     if (reworkTasks.length > 0) await taskStore.createMany(id, reworkTasks)
     // ② 需求写（**后**）：整条替换（防并发漂移：状态须仍是计算时的）
-    await store.mutate('requirement-moved', (ledger) => {
-      const idx = ledger.requirements.findIndex(x => x.id === id)
-      if (idx < 0) return undefined
-      if (ledger.requirements[idx]?.status !== statusBefore) {
+    // B12 阶段④-2：写点迁新端口（乐观并发的前置校验搬进回调内——校验与写在同一读-改-写里）
+    await mutateIfPresent(requireStore(), id, (cur) => {
+      if (cur.status !== statusBefore) {
         throw Object.assign(new Error('需求 ' + id + ' 状态在计算期间发生变化，请重试'), { code: 'store_inconsistent' })
       }
-      ledger.requirements[idx] = updated
-      return { requirements: [updated] }
+      Object.assign(cur, updated)
+      return { changed: true }
     })
     ok(res, updated)
   }
@@ -186,17 +194,24 @@ export function createVerdictsRouter(ctx: RouterCtx) {
       if (isFailedItem(status) && opinion.length === 0) badInput('不通过的验收项必须写意见（opinion）')
       // REQ-308b9a FR-9 / AC-9.2：不可验收同样必须写原因——不允许静默消失。
       if (status === 'not_verifiable' && opinion.length === 0) badInput('不可验收的验收项必须写原因（opinion）')
+      // REQ-260930094139-2d65 FR-1：通过同样必须填实际结果（看板通道与弹框通道同口径）。
+      // 状态字面量只在 domain（verdictRequiresOpinion），适配层只调判定函数（层边界纪律）。
+      if (verdictRequiresOpinion(status) && opinion.length === 0) badInput('通过的验收项必须填写实际结果（opinion）')
       return { itemId, status, opinion }
     })
     const nowTs = now()
     // ── 两存储顺序契约（REQ-260927202051-f6df / design/interfaces I-11）：**任务先、需求后** ──
     // 同 handleVerifyDecision：先在台账草稿上算完 → 返工卡写队列 → 需求记录写台账。
-    const snapshot = store.snapshot()
+    const [draftRec, draftHead, draftTriages] = await Promise.all([
+      ctx.requirementStore.get(id),
+      ctx.requirementStore.head(),
+      ctx.requirementStore.listTriages(),
+    ])
     const draft: ReqboardLedger = {
-      schemaVersion: snapshot.schemaVersion,
-      revision: snapshot.revision,
-      requirements: snapshot.requirements.map(x => structuredClone(x)),
-      triages: snapshot.triages.map(x => structuredClone(x)),
+      schemaVersion: draftHead?.schemaVersion ?? 0,
+      revision: draftHead?.revision ?? 0,
+      requirements: draftRec === undefined ? [] : [structuredClone(draftRec)],
+      triages: draftTriages.map(x => structuredClone(x)) as never,
     }
     const statusBefore = (draft.requirements.find(x => x.id === id) ?? notFound('需求 ' + id)).status
     // 队列任务先取（applyVerdicts 需要它做 id 冲突检测与"未过项"判定）。
@@ -219,7 +234,7 @@ export function createVerdictsRouter(ctx: RouterCtx) {
       const verdictSid = r.sourceSessionId
       const verdictSnap = verdictSid !== undefined && verdictSid.length > 0 ? ctx.deps.tokenSnapshot?.(verdictSid) : undefined
       const applied = applyVerdicts(
-        ledger, queueTasks, r.id, version, verdicts as never, { kind: 'human' }, nowTs, () => ids.comment(), verdictSnap,
+        r, queueTasks, version, verdicts as never, { kind: 'human' }, nowTs, () => ids.comment(), verdictSnap,
       )
       return { updated: applied.requirement, reworkTasks: applied.reworkTasks }
     }
@@ -227,18 +242,17 @@ export function createVerdictsRouter(ctx: RouterCtx) {
     // ① 任务写（**先**）：返工卡物化到队列（幂等键 = 任务 id；重复调用不覆盖）
     if (reworkTasks.length > 0) await taskStore.createMany(id, reworkTasks)
     // ② 需求写（**后**）：整条替换（防并发漂移：状态须仍是计算时的）
-    await store.mutate('requirement-updated', (ledger) => {
-      const idx = ledger.requirements.findIndex(x => x.id === id)
-      if (idx < 0) return undefined
-      if (ledger.requirements[idx]?.status !== statusBefore) {
+    // B12 阶段④-2：写点迁新端口（乐观并发的前置校验搬进回调内——校验与写在同一读-改-写里）
+    await mutateIfPresent(requireStore(), id, (cur) => {
+      if (cur.status !== statusBefore) {
         throw Object.assign(new Error('需求 ' + id + ' 状态在计算期间发生变化，请重试'), { code: 'store_inconsistent' })
       }
-      ledger.requirements[idx] = r
-      return { requirements: [r] }
+      Object.assign(cur, r)
+      return { changed: true }
     })
     // REQ-308b9a FR-7 / AC-7.7：看板裁决后回填 verification.md 的验收结果表（有 docs 端口才写；任务从队列取）。
     await rewriteVerificationDoc(
-      { repo: store, ...(ctx.deps.docs !== undefined ? { docs: ctx.deps.docs } : {}) },
+      { repo: { get: (id) => ctx.requirementStore?.get(id) ?? Promise.resolve(undefined) }, ...(ctx.deps.docs !== undefined ? { docs: ctx.deps.docs } : {}) },
       r.id,
       await taskStore.listByRequirement(r.id),
     )

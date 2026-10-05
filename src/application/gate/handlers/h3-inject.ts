@@ -16,7 +16,7 @@ import { isPromptStage, resolveStagePrompt, type ResolvedPrompt, type StagePromp
 import { difficultyFromDeclaredPrompt } from '../../../domain/prompt/difficulty-mapping.js'
 import { stageEnabledFor } from '../../../shared/protocol.js'
 import type { RequirementRecord, TaskRecord } from '../../../shared/protocol.js'
-import type { ReqboardRepository, TaskStore } from '../../ports.js'
+import type { RequirementStore, TaskStore } from '../../ports.js'
 import { injectionLogInputFromResolved, type InjectionLogPort } from '../../internal/injection-log.js'
 import { augmentResolvedPrompt } from '../../internal/injection-address.js'
 import { isInProgressTask } from '../../../domain/status/Predicates.js'
@@ -24,7 +24,8 @@ import type { ChainInput, GateHandler, HandlerOutcome } from '../GatePostChain.j
 import { pickGateRequirement, reasonOf } from './shared.js'
 
 export interface H3InjectDeps {
-  repo: ReqboardRepository
+  /** B12 阶段①-a：归属需求改**权威异步定点读**（见 shared.ts）。 */
+  store: RequirementStore
   /**
    * 任务队列端口（REQ-260927202051-f6df）：地址段需要"当前在制任务卡"，v9 台账已无 `tasks`。
    * `run()` 是 async，故此处直接 await（无需同步缓存——与 capture-section 的 section provider 不同）。
@@ -84,7 +85,7 @@ export function createH3InjectHandler(deps: H3InjectDeps): GateHandler {
         if (!isPromptStage(ctx.to)) {
           return miss({ kind: 'skip', code: 'not_prompt_stage', reason: fmt('阶段 {to} 无纪律提示词可注入', { to: ctx.to }) })
         }
-        const requirement = pickGateRequirement(deps.repo, ctx)
+        const requirement = await pickGateRequirement(deps.store, ctx)
         if (requirement === undefined) {
           return miss({ kind: 'skip', code: 'no_requirement', reason: '本窗口无可归属需求，取词缺少需求实质' })
         }

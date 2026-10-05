@@ -1,0 +1,36 @@
+task:
+  id: t-a55a6f
+  title: 让快照真的看得见子代理：血缘枚举 + 缓存优先取数 + 缺失不补 0·研发
+  status: done
+  implements: |-
+    ① src/application/ports.ts：SessionProbe 增 descendantSessions(windowKey): readonly SessionLineageEntry[] | undefined（缺失服务 → undefined），tokenTotals 注释改为「本窗口 + 全部后代」；② src/adapters/SessionProbeAdapter.ts：新增 list 枚举（sessionPersistence.list() 取 header）+ 闭包调用 + 逐成员取数（sessionProjectionCache.cachedSnapshot(header,['tokenUsage']) 优先，未命中走有界冷读：默认 maxColdReads=8、时间预算 200ms），拼出 members/totals/scope/degradedMembers；本窗口自身走既有 live 投影；③ src/index.ts：新增 ctx.inject(['sessionPersistence','sessionProjectionCache'], cb) 并把服务传给适配器（绝不直接读 ctx 属性）；④ 新增 tests/session-probe-lineage.test.ts（假服务，不需真磁盘）。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-f5b87a
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004154937-2ca3
+    TASK_ID: t-a55a6f
+    TASK_TITLE: 让快照真的看得见子代理：血缘枚举 + 缓存优先取数 + 缺失不补 0·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T08:07:02.972Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004154937-2ca3
+  generated_at: 2026-10-04T08:06:56.207Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-04T08:07:06.601Z

@@ -1,0 +1,38 @@
+task:
+  id: t-ceb311
+  title: 组件接线：轮询兜底 + SSE 加速 + 切换清空 + 配置开关·复核
+  status: done
+  implements: |-
+    改 src/client/conversation-progress.ts：展开时 createPanelRefresh({fetchOverview: () => fetchStageOverview(reqId), intervalMs, staleAfterMs, onData, onChange}).start()，关闭时 stop()；reqIdForStage 变化时先 setStageOverview(null)（loading）再按新 id 重开；原「按 req.updatedAt 重拉」Effect 与 SSE Effect 改为只调 refresh('event')；新增 document 级委托 data-action="np-reload" → location.reload()；把 freshness/buildNotice 传给 renderNodePanel。改 src/plugin-config.ts 加 panel?: { refreshMs?: number; staleAfterMs?: number } 解析函数（默认 5000 / 30000，refreshMs=0 = 关闭轮询）。
+
+    [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-37bcbb
+  phase: implement
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261001124111-5d36
+    TASK_ID: t-ceb311
+    TASK_TITLE: 组件接线：轮询兜底 + SSE 加速 + 切换清空 + 配置开关·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-01T05:06:33.144Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261001124111-5d36
+  generated_at: 2026-10-01T05:03:58.402Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-01T05:18:29.949Z

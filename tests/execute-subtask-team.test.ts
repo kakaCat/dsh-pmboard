@@ -74,7 +74,7 @@ class CountingRunner implements WorkflowRunner {
 
 function seed(): Harness {
   const h = makeHarness()
-  h.repo.ledger.requirements = [req({ id: 'REQ-000001', status: 'implementing' })]
+  h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing' }))
   h.seedTasks('REQ-000001', [
     task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', title: '父卡' }),
     task({ id: 't-s', requirementId: 'REQ-000001', status: 'todo', parentId: 't-p', stageKind: 'dev' as never, title: '研发', acceptance: '改动落盘并跑通测试' }),
@@ -94,6 +94,7 @@ async function workerWritesReport(h: Harness): Promise<void> {
 describe('团队分支：executeSubtask 走 Agent Teams', () => {
   it('团队可用 + live agent → 派 Worker → 读回台账产出 → 子卡 done，且 workflow 一次未被调', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put(SRC, 'x', h.clock.t)
     h.docs.put(CLIENT, 'x', h.clock.t)
     const runner = new CountingRunner()
@@ -118,7 +119,7 @@ describe('团队分支：executeSubtask 走 Agent Teams', () => {
 
   it('父卡 = 一个团队：派第 N 张卡时一次性建全队任务并串 blockedBy（原生 DAG，DSH 自动算 ready）', async () => {
     const h = makeHarness()
-    h.repo.ledger.requirements = [req({ id: 'REQ-000001', status: 'implementing' })]
+    h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing' }))
     h.seedTasks('REQ-000001', [
       task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', title: '父卡' }),
       task({ id: 't-1', requirementId: 'REQ-000001', status: 'done', parentId: 't-p', stageKind: 'dev' as never, title: '研发' }),
@@ -147,6 +148,7 @@ describe('团队分支：executeSubtask 走 Agent Teams', () => {
 
   it('团队服务 available()=false → 不抢活，走 workflow 兼容路径', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put(SRC, 'x', h.clock.t)
     const runner = new CountingRunner()
     h.deps.workflow = runner
@@ -163,6 +165,7 @@ describe('团队分支：executeSubtask 走 Agent Teams', () => {
 
   it('无 caller（system 驱动）→ 不抢活，走 workflow 兼容路径', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put(SRC, 'x', h.clock.t)
     const runner = new CountingRunner()
     h.deps.workflow = runner
@@ -175,6 +178,7 @@ describe('团队分支：executeSubtask 走 Agent Teams', () => {
 
   it('Worker 没写台账 → team_report_missing（不得合成"格式合法的空产出"，否则结论族假通过）', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put(SRC, 'x', h.clock.t)
     h.docs.put(CLIENT, 'x', h.clock.t)
     // Worker 把任务 complete 了，但**没有**调 reqboard_task_report（无 work 回调）
@@ -190,6 +194,7 @@ describe('团队分支：executeSubtask 走 Agent Teams', () => {
 
   it('台账报告早于本次派发（历史报告）→ team_report_stale（不让早前交付侥幸通过）', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put(SRC, 'x', h.clock.t)
     h.docs.put(CLIENT, 'x', h.clock.t)
     // 预置一份"早前直接执行"留下的历史报告（t-c42bc0 真实事故的同款）
@@ -208,6 +213,7 @@ describe('团队分支：executeSubtask 走 Agent Teams', () => {
 
   it('凭证门拒绝 → 团队任务被 reopen（堵住"completed 空转"死循环）', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put(SRC, 'x', h.clock.t)
     h.docs.put(CLIENT, 'x', h.clock.t)
     // Worker 对 dev（写入族）报了空 filesChanged → L2 判"没落盘" → 门拒
@@ -225,6 +231,7 @@ describe('团队分支：executeSubtask 走 Agent Teams', () => {
 
   it('团队建任务抛错 → 子卡不 done（失败要响亮，不静默成功）', async () => {
     const h = seed()
+    await h.seedSettled()
     h.docs.put(SRC, 'x', h.clock.t)
     const teams = new FakeTeams(h, workerWritesReport)
     teams.failCreate = true

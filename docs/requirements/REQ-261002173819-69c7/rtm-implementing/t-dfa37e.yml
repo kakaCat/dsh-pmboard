@@ -1,0 +1,36 @@
+task:
+  id: t-dfa37e
+  title: 解锁工具的回执修好：补 output.render·测试
+  status: done
+  implements: |-
+    src/tools/render-summaries.ts 新增 clearPauseSummary(v)：首行为单行中文摘要（形如 'Dive 已解锁（REQ-…）：armed → disarmed，现在可手动操作'），第二段为 JSON.stringify(value, null, 2)；src/tools/ClearPauseTool/ClearPauseTool.ts 的 output 增 render: renderSmart(clearPauseSummary)（与其余 20+ 工具同源；返回体四键与无损 JSON 纪律不变）；新建 tests/tools-render-coverage.test.ts：扫 src/tools/*/*Tool.ts，凡出现 defineTool( 的文件必须出现 render:，白名单仅 TaskExecuteTool.ts（委托别名 Object.assign 继承 AdvanceTool 的 render）并注释原因；同文件加 T-2 自测——用内存里的『缺 render』样例源码断言扫描函数会报出该文件；tests/clear-pause-lossless.test.ts 扩写 T-3（渲染首行与 JSON 段）与 T-4（回执与台账一致）。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-b066b1
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002173819-69c7
+    TASK_ID: t-dfa37e
+    TASK_TITLE: 解锁工具的回执修好：补 output.render·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T10:15:41.575Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002173819-69c7
+  generated_at: 2026-10-02T10:14:43.908Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-02T10:15:43.948Z

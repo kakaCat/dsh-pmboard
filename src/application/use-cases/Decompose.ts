@@ -6,6 +6,8 @@
  * @module dsh-pmboard/application/use-cases/Decompose
  */
 import type { UseCaseDeps } from '../ports.js'
+import { firstWritableBound } from '../../application/internal/window.js'
+import { boundSummariesOf } from '../internal/binding-read.js'
 import {
   normalizePlanTasks,
   normalizeText,
@@ -13,14 +15,14 @@ import {
   type PlanTask,
 } from '../../shared/protocol.js'
 import { checkDecomposeIdempotency } from '../../domain/workflow/DecomposeSpec.js'
-import { openRequirementsFor } from '../internal/window.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { describeConflicts, findWorkSurfaceConflicts } from '../internal/conflict-check.js'
-import { assertClauseCoverageGate, requirementRefsOf } from '../internal/content-gate-wiring.js'
+import { assertClauseCoverageGate } from '../internal/content-gate-wiring.js'
+import { refsForLanding, unrefedKeys } from '../internal/plan-refs.js'
 import { reject, agentIdFromExec, requireLiveDriver } from '../internal/support.js'
 import { landPlanTasks, type PlanTaskDraft } from '../internal/plan-landing.js'
 import { queueRelativePath } from '../../domain/queue/queuePath.js'
-import { taskStoreOf } from './queue-access.js'
+import { requirementStoreOf, taskStoreOf, mutateQueue } from './queue-access.js'
 
 export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
       const windowKey = agentIdFromExec(deps, exec)
@@ -31,17 +33,22 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
       }
       const explicitId = normalizeText(a.requirement_id, 'requirement_id', 64)
 
-      const snapshot = deps.repo.snapshot()
-      const bound = openRequirementsFor(snapshot, windowKey)
+      // t8/B11：绑定读走新端口（只读摘要）
+      const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
       if (bound.length === 0) {
         reject('reqboard_decompose 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
       }
-      const target = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : bound[0]
-      if (target === undefined) {
+      const picked = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : firstWritableBound(bound, windowKey)
+      if (picked === undefined) {
         reject(
           'reqboard_decompose 未执行：需求 ' + explicitId + ' 不是本窗口绑定的进行中需求（只能拆自己的需求）',
           'REQBOARD_NOT_BOUND_TO_WINDOW',
         )
+      }
+      // 判据过了才取**整条**（下游要整条字段）；get() 可空 ⇒ 显式守卫
+      const target = await requirementStoreOf(deps).get(picked.id)
+      if (target === undefined) {
+        reject(fmt('需求 {id} 不在台账中', { id: picked.id }), 'REQBOARD_REQUIREMENT_NOT_FOUND')
       }
       
       // ── REQ-260925212722-96e7 FR-8：Dive armed 检查 ──────────────────────
@@ -71,7 +78,10 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
       // 两道防线的判定在 domain/workflow/DecomposeSpec.ts（REQ-47939a t3）。
       // 任务已迁出台账（v9）：幂等守卫的"已有任务"判据改读队列。
       const existingTasks = (await taskStoreOf(deps).listByRequirement(target.id)).filter(t => t.status !== 'canceled')
-      const idempotency = checkDecomposeIdempotency(target.status, existingTasks)
+      // 回退态（REQ-261003204149-1e80 FR-4）：`rollback.to === 当前阶段` = 上次回退就退到这里、还没重走上来。
+      // 只认这个窄判据——非回退态的重复拆分仍被拒（事故 B 的幽灵任务防线不动）。
+      const rollbackTo = target.rollback?.to === target.status ? target.rollback.to : undefined
+      const idempotency = checkDecomposeIdempotency(target.status, existingTasks, { rollbackTo })
       if (!idempotency.ok) {
         reject('reqboard_decompose 未执行：' + idempotency.reason, idempotency.code)
       }
@@ -118,6 +128,11 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
           // 否则拆分节点写了 stages/skipIntegration，落库时照样丢。
           ...(t.stages !== undefined ? { stages: [...t.stages] } : {}),
           ...(t.skipIntegration === true ? { skipIntegration: true } : {}),
+          // 模板引用键透传（REQ-261003203909-55f2 FR-4）：链已在 normalizePlanTasks 解析进 stages。
+          ...(t.template !== undefined ? { template: t.template } : {}),
+          // 体量声明透传（REQ-261002175818-80a8 t2 / FR-7）：创作型 tasks 这条路径同样要带上，
+          // 否则「计划层有、落库卡上没有」，与 stages 踩过的是同一个坑。
+          ...(t.footprint !== undefined ? { footprint: t.footprint } : {}),
         }))
       } else {
         // 显式传 tasks 时，key 集合必须与批准的计划一致——防止「批了 A、落库 B」
@@ -153,6 +168,10 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
           // 否则拆分节点写了 stages/skipIntegration，落库时照样丢。
           ...(t.stages !== undefined ? { stages: [...t.stages] } : {}),
           ...(t.skipIntegration === true ? { skipIntegration: true } : {}),
+          // 模板引用键透传（REQ-261003203909-55f2 FR-4）：链已在 normalizePlanTasks 解析进 stages。
+          ...(t.template !== undefined ? { template: t.template } : {}),
+          // 体量声明透传（REQ-261002175818-80a8 t2 / FR-7）：计划携带任务表这条路径也要带上。
+          ...(t.footprint !== undefined ? { footprint: t.footprint } : {}),
         }))
       }
       // 薄卡检测（REQ-2e9473 t04）：新计划在 plan_submit 已被强制要求 implementation（t03），
@@ -177,21 +196,48 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
         ...((a.tasks as unknown[] | undefined) ?? []),
         ...(planTasks as readonly unknown[]),
       ]
-      // 取**并集**：同一 key 可能同时出现在显式 tasks 与已批准计划里，后写不能覆盖前写的 refs
-      // （否则"计划携带任务表"这条常见路径上，RTM 表会恒显示"未声明接收任何条款"——E2E 实测踩过）。
-      const refsByKey = new Map<string, string[]>()
-      for (const raw of rawTaskInputs) {
-        const o = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>
-        if (typeof o.key !== 'string' || o.key.length === 0) continue
-        const merged = new Set([...(refsByKey.get(o.key) ?? []), ...requirementRefsOf(raw)])
-        refsByKey.set(o.key, [...merged])
-      }
+      // 覆盖门禁（硬）：每个 FR 必须有落点。两道门的分工在 REQ-261002164800-d8f2 FR-1 定死——
+      // 这里只查"条款有没有人接"，不再查"每张卡有没有条款"（后者会把纯文档卡整批拒掉）。
       const coverageFailure = await assertClauseCoverageGate(deps.docs, target, rawTaskInputs)
       if (coverageFailure !== undefined) {
         reject(coverageFailure.message, coverageFailure.code)
       }
+      // refs 取数**单点**（FR-3）：显式优先 → 文档覆盖表兜底 → 两处皆无则点名。
+      // 此前本路径自己拼 refs 且不读文档表，与批准路径落出的卡引用不一致（实测 277d 全空）。
+      const { refsByKey } = await refsForLanding({
+        req: target,
+        plan: target.plan,
+        explicitTasks: a.tasks as readonly unknown[] | undefined,
+        docs: deps.docs,
+      })
+      const unrefed = unrefedKeys(draft.map(d => d.key), refsByKey)
 
       const nowTs = deps.clock.now()
+      // REQ-261003204149-1e80 FR-4：回退态下、新计划落库**之前**，先收掉上一轮物化的重做卡。
+      // 它们已被新计划取代；留着就是「重做卡 + 新计划卡」双份活卡（幽灵卡的另一种形态）。
+      // 只收敛 `reworkOf` 非空的卡——常规旧卡的取消由回退时的 rollback-tasks 负责，不在本处越权处理。
+      if (rollbackTo !== undefined) {
+        await mutateQueue(deps, target.id, (queueTasks) => {
+          const stale = queueTasks.filter(t => t.reworkOf !== undefined && t.status !== 'canceled')
+          if (stale.length === 0) return undefined // 无变更不写盘
+          for (const t of stale) {
+            const before = t.status
+            t.status = 'canceled'
+            t.revisions = [
+              ...(t.revisions ?? []),
+              {
+                at: nowTs,
+                by: { kind: 'agent', sessionId: windowKey },
+                kind: 'rollback',
+                reason: '重新拆分：该重做卡已被新计划取代',
+                changes: ['status: ' + before + '→canceled'],
+              },
+            ]
+            t.updatedAt = nowTs
+          }
+          return queueTasks
+        })
+      }
       try {
         const tools = (exec as { tools?: { todo_write?: (a: unknown) => Promise<unknown> } } | undefined)?.tools
         const landed = await landPlanTasks(deps, {
@@ -230,6 +276,14 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
                 thin_cards: thinCards,
                 warning: '⚠️ ' + thinCards.length + ' 张薄卡缺实施方案（历史批准计划）：' + thinCards.join('；')
                   + '。开工前请先在任务卡补齐「实施方案」段（新计划在 plan_submit 已强制要求）',
+              }
+            : {}),
+          // FR-3 / FR-6：卡级无落点**不拒绝**，但必须可见（人看返回体与需求评论就知道哪张卡缺引用）
+          ...(unrefed.length > 0
+            ? {
+                unrefed_cards: unrefed,
+                refs_warning: '⚠️ ' + unrefed.length + ' 张卡没有需求条款落点（' + unrefed.join('、') + '）——卡已落库，'
+                  + '但 RTM 的 serves 会缺这几条；补法：在计划文档覆盖对照表补「FR-N ↔ 计划 key」，或用补写入口给卡补 requirement_refs',
               }
             : {}),
           note: '已落库 ' + created.length + ' 个任务。拆分计划已获批准（decomposition 产物已落章）——需求可推进到 implementing（reqboard_move；经批准弹框路径会自动推进）；任务开工/完成用 reqboard_task_move（任务全部完成后需求自动进入验收）',

@@ -4,12 +4,12 @@
  * 验收口径：depends_on 表头命中、代码块示例不命中、中文散文不命中；
  * 三条确认通道（弹框/文字证据/看板一键）均抛 design_contains_decomposition 且不落章不推进。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { defineAskConfirmTool } from './helpers/tool-deps.js'
@@ -23,11 +23,11 @@ const DESIGN5 = ['architecture.md', 'data-model.md', 'interfaces.md', 'test-case
 const DESIGN_DIR = 'docs/requirements/' + REQ + '/design'
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-fr3-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -120,7 +120,7 @@ async function seed(): Promise<void> {
     blocked: false, sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [], artifacts,
   } as unknown as RequirementRecord
-  await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 function askTool() {
@@ -154,7 +154,7 @@ function fakeRes(): any {
 }
 
 function noConfirmed(): boolean {
-  return (store.snapshot().requirements[0].artifacts ?? []).every(a => a.confirmedAt === undefined)
+  return (store.peekAll()[0].artifacts ?? []).every(a => a.confirmedAt === undefined)
 }
 
 describe('三通道：落章前检出拆分内容 → 拒，不落章不推进', () => {
@@ -167,28 +167,28 @@ describe('三通道：落章前检出拆分内容 → 拒，不落章不推进',
     await expect(run(askTool(), { target: 'artifact', kind: 'design', question: 'q', options: ['确认，进入拆分', '改'] }))
       .rejects.toThrow(/design_contains_decomposition/)
     expect(noConfirmed()).toBe(true)
-    expect(store.snapshot().requirements[0].status).toBe('design')
+    expect(store.peekAll()[0].status).toBe('design')
   })
 
   it('通道② 会话文字证据（reqboard_confirm_artifact + evidence）', async () => {
     await expect(run(askTool(), { target: 'artifact', kind: 'design', evidence: '用户在 ask_user_question 中选择确认' }))
       .rejects.toThrow(/design_contains_decomposition/)
     expect(noConfirmed()).toBe(true)
-    expect(store.snapshot().requirements[0].status).toBe('design')
+    expect(store.peekAll()[0].status).toBe('design')
   })
 
   it('通道③ 看板一键（POST req/artifact/confirm）', async () => {
-    const handler = createReqboardHandler({
-      store, now: () => 1000,
+    const handler = createReqboardHandler({ requirementStore: store, now: () => 1000,
+      applicationDeps: { store: store },
       docs: new FileDocRepository({ workspaceRoot: dir }),
       agents: () => ({ get: () => ({ id: W, session: {} }) }),
-    })
+    } as never)
     const res = fakeRes()
     await handler(fakeReq('POST', '/dashboard/api/reqboard/req/artifact/confirm', { id: REQ, kind: 'design' }), res)
     expect(res.statusCode).toBe(400)
     expect(res.payload.code).toBe('design_contains_decomposition')
     expect(res.payload.error).toContain('interfaces.md')
     expect(noConfirmed()).toBe(true)
-    expect(store.snapshot().requirements[0].status).toBe('design')
+    expect(store.peekAll()[0].status).toBe('design')
   })
 })

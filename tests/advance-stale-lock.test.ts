@@ -22,14 +22,16 @@ const runner: WorkflowRunner = {
   },
 }
 
-function harnessWith(advance: { lockAt?: number; runId?: string }) {
+async function harnessWith(advance: { lockAt?: number; runId?: string }) {
   const h = makeHarness()
   h.docs.put(FILE, 'x')
   const r = req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true })
   r.advance = { ...advance } as never
-  h.repo.ledger.requirements = [r]
+  // B12 阶段②e：播种进新端口
+  h.seedRequirementSync(r)
   h.seedTasks('REQ-000001', [task({ id: 't-p', requirementId: 'REQ-000001', status: 'todo', title: '父卡' })])
   h.deps.workflow = runner
+  await h.seedSettled()
   return h
 }
 
@@ -37,21 +39,21 @@ describe('advance 残留锁回收（进程被杀后 runId 不再死锁）', () =
   it('lockAt 已过期 + runId 残留 → 回收并继续推进（不再 locked）', async () => {
     const h = makeHarness()
     const staleAt = h.clock.t - LIMITS.advanceLockStaleMs - 1
-    const hh = harnessWith({ lockAt: staleAt, runId: 'run-dead-1' })
+    const hh = await harnessWith({ lockAt: staleAt, runId: 'run-dead-1' })
     const out = await advanceRequirement(hh.deps, 'REQ-000001')
     expect(out.stopped).toBe('rollup')
     expect(out.steps.length).toBeGreaterThan(0)
-    const after = hh.repo.ledger.requirements.find((r) => r.id === 'REQ-000001')!
+    const after = (await hh.store.get('REQ-000001'))!
     expect(after.advance?.runId).toBeUndefined()
     expect(after.status).toBe('accepting')
   })
 
   it('lockAt 新鲜 → 仍按「有 run 在跑」挡下（不放行并发）', async () => {
-    const hh = harnessWith({ lockAt: 1_000_000, runId: 'run-live-1' })
+    const hh = await harnessWith({ lockAt: 1_000_000, runId: 'run-live-1' })
     const out = await advanceRequirement(hh.deps, 'REQ-000001')
     expect(out.stopped).toBe('locked')
     expect(out.dispatched).toBe(false)
-    expect(hh.repo.ledger.requirements[0]!.advance?.runId).toBe('run-live-1')
-    expect(hh.repo.ledger.requirements[0]!.status).toBe('implementing')
+    expect((await hh.store.get('REQ-000001'))!.advance?.runId).toBe('run-live-1')
+    expect((await hh.store.get('REQ-000001'))!.status).toBe('implementing')
   })
 })

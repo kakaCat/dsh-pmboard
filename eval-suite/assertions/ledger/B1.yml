@@ -1,0 +1,11 @@
+# case B1 · brainstorming→design 标准流 · serves: FR-2
+case: B1
+checks:
+  - path: requirement.status
+    op: eq
+    value: design                   # 终态到达 design
+  - path: requirement.artifacts[?kind='requirement'].confirmedAt
+    op: exists                      # 产物确认章真实存在（且先于状态推进，时序由轨迹断言保证）
+  - path: queue.tasks
+    op: count_eq
+    value: 0                        # 未到拆分阶段，不得有任务卡

@@ -1,0 +1,27 @@
+# t1 复核证据：层边界与确定性（2026-10-04）
+
+## 命令：npx vitest run tests/layer-boundary.test.ts
+结果：3 failed | 6 passed —— 3 处失败**均不在本次改动文件**：
+- application/use-cases/CreateRequirement.ts -> node:fs
+- domain/job-spec.ts -> Date.now()
+- http/routers/stages.ts -> 状态字面量
+
+新文件 src/domain/knowledge/generate.ts **未出现在任何违规清单**（即：domain 无 IO、无 Date.now/Math.random）。
+
+```
+FAIL 层边界：依赖方向（architecture.md §2） > application/ 不得 import 禁止项
+  → application/use-cases/CreateRequirement.ts -> node:fs
+FAIL 层边界：依赖方向（architecture.md §2） > domain/ 内不得使用 Date.now() / Math.random()
+  → domain/job-spec.ts -> Date.now()
+FAIL 层边界：依赖方向（architecture.md §2） > tools/ 与 http/ 内不得出现状态字面量
+  → http/routers/stages.ts
+ Test Files  1 failed (1) | Tests  3 failed | 6 passed (9)
+```
+
+## 定向断言
+```
+$ grep -c 'node:fs' src/domain/knowledge/generate.ts
+0
+$ grep -cE 'Date\.now|Math\.random' src/domain/knowledge/generate.ts
+0
+```

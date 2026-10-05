@@ -110,6 +110,78 @@ export function archiveChip(req: RequirementRecord): string {
 }
 
 /**
+ * 归档清单**对账行**（REQ-261004183621-de3f FR-5）：列了多少 / 豁免多少 / 漏了什么 / 当时闸门。
+ *
+ * 三条口径：
+ *   ① 无 `reconcile`（本功能上线前归档的存量记录）→ 显示「未对账（本功能上线前归档）」，
+ *      **不显示 0**——0 与"没对过账"是两回事；
+ *   ② 未列非空时把明细摊开（这批正是"人该看一眼"的东西），并带上已声明的理由；
+ *   ③ 补录过就注明补了几次（清单是追加出来的，读者要知道）。
+ */
+export function archiveReconcileLine(req: RequirementRecord): string {
+  const a = req.archive
+  if (a === undefined) return ''
+  const r = a.reconcile
+  if (r === undefined) {
+    return '<div class="dsh-pm-archive-reconcile" data-reconcile="none">未对账（本功能上线前归档）</div>'
+  }
+  const parts = [
+    '已列 ' + String(r.listed.length),
+    '豁免 ' + String(r.exempted.length),
+    '未列 ' + String(r.unlisted.length),
+    '闸门=' + r.gate,
+  ]
+  const amended = (a.amendments ?? []).length
+  if (amended > 0) parts.push('补录 ' + String(amended) + ' 次')
+  const detail = r.unlisted.length === 0
+    ? ''
+    : '<ul class="dsh-pm-archive-unlisted">' + r.unlisted.slice(0, 20).map(p => {
+      const ack = r.acknowledged.find(x => x.path === p)
+      return '<li data-doc-path="' + esc(p) + '"><code>' + esc(p) + '</code>'
+        + (ack === undefined
+          ? '<span class="dsh-pm-archive-noack">（未声明）</span>'
+          : '<span class="dsh-pm-archive-ack">已声明不收：' + esc(ack.reason) + '</span>')
+        + '</li>'
+    }).join('') + (r.unlisted.length > 20 ? '<li>…等 ' + String(r.unlisted.length) + ' 条</li>' : '') + '</ul>'
+  return '<div class="dsh-pm-archive-reconcile" data-reconcile="' + esc(r.gate) + '">'
+    + '清单对账：' + esc(parts.join(' · ')) + '</div>' + detail
+}
+
+/**
+ * 验收单逐项（REQ-261001184609-cecb t5）：把 agent 记录的实际结果与「需人工确认」摆到人眼前——
+ * 人只做裁决，不必去别处找证据，也不用重抄命令输出。
+ */
+function renderSheetItems(sheet: {
+  items?: readonly {
+    id: string
+    criterion: string
+    result?: string
+    resultSource?: 'agent' | 'human'
+    needsHuman?: boolean
+    humanReason?: string
+  }[]
+} | undefined): string {
+  const items = sheet?.items ?? []
+  if (items.length === 0) return ''
+  const rows = items.map((it) => {
+    const result = (it.result ?? '').trim()
+    const src = it.resultSource === 'human' ? '人工填写' : it.resultSource === 'agent' ? 'agent 实测' : ''
+    const human = it.needsHuman === true
+      ? '<span class="dsh-pm-flag verify-pending">需人工确认'
+        + (it.humanReason !== undefined && it.humanReason !== '' ? '：' + esc(it.humanReason) : '')
+        + '</span>'
+      : ''
+    return '<li><span class="dsh-pm-hint">' + esc(it.id) + '</span> ' + esc(it.criterion)
+      + (result !== ''
+        ? '<div class="dsh-pm-block-note">实际结果' + (src !== '' ? '（' + src + '）' : '') + '：' + esc(result) + '</div>'
+        : '')
+      + human + '</li>'
+  }).join('')
+  return '<div class="dsh-pm-block-head"><span class="dsh-pm-hint">验收单逐项</span></div>'
+    + '<ul class="dsh-pm-evidence">' + rows + '</ul>'
+}
+
+/**
  * 验收区：agent 提交的证据 + 人工审核入口。
  * 人在这里做的事只有一件——**看着证据**点通过或退回（返工必须写意见）。
  */
@@ -139,6 +211,7 @@ export function renderVerifySection(req: RequirementRecord): string {
     + actions + '</div>'
     + '<div class="dsh-pm-block-summary">' + esc(v.summary) + '</div>'
     + '<ul class="dsh-pm-evidence">' + evidence + '</ul>'
+    + renderSheetItems(v.sheet)
     + (v.reviewNote !== undefined ? '<div class="dsh-pm-block-note">审核意见：' + esc(v.reviewNote) + '</div>' : '')
     + '</div>'
 }
@@ -163,9 +236,11 @@ export function renderArchiveSection(req: RequirementRecord): string {
   const state = a.archivedAt !== undefined
     ? '<span class="dsh-pm-review" data-state="pass">已归档 ' + esc(fmtTime(a.archivedAt)) + '</span>'
     : '<span class="dsh-pm-review" data-state="pending">待归档（材料已备）</span>'
-  // 归档按钮已外置到详情头常驻操作条（renderActionBar）
+  // REQ-261002105242-a3fb FR-4：这里**不再**指向任何人工按钮。
+  // 原文案「请在详情头『本阶段操作』条点『归档』」指向的按钮已于 REQ-9f4a44 随端点一起消失——
+  // 留着就是把历史遗留 done 需求的人往一个不存在的地方引。现在只陈述事实与真正的材料入口。
   const actions = req.status === 'done' && a.archivedAt === undefined
-    ? '<span class="dsh-pm-hint">请在详情头「本阶段操作」条点「归档」</span>'
+    ? '<span class="dsh-pm-hint">历史遗留 done：归档材料由窗口 agent 用 reqboard_submit(kind=archive) 补齐；该端点已在 REQ-9f4a44 移除，无人工按钮</span>'
     : ''
   const docs = a.docs.map(d => '<li><span class="dsh-pm-doc-kind">' + esc(artifactKindLabel(d.kind)) + '</span> <code>' + esc(d.path) + '</code></li>').join('')
   const merged = a.mergedInto.map(m => '<li><code>' + esc(m) + '</code></li>').join('')
@@ -175,6 +250,8 @@ export function renderArchiveSection(req: RequirementRecord): string {
     + '<span class="dsh-pm-hint">材料提交 ' + esc(fmtTime(a.submittedAt)) + '</span>'
     + actions + '</div>'
     + '<div class="dsh-pm-block-summary">索引条目：' + esc(a.indexEntry) + '</div>'
+    // REQ-261004183621-de3f FR-5：对账行（列了多少 / 豁免多少 / 漏了什么 / 当时闸门）
+    + archiveReconcileLine(req)
     + '<div class="dsh-pm-doc-group"><span class="dsh-pm-hint">需求目录内的文档</span><ul class="dsh-pm-doc-list">' + docs + '</ul></div>'
     + '<div class="dsh-pm-doc-group"><span class="dsh-pm-hint">合并进的项目文档</span><ul class="dsh-pm-doc-list">' + merged + '</ul></div>'
     + renderManualUpdates(a)

@@ -144,8 +144,9 @@ export function renderCard(
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
 
-  // ⑤ 状态底色（整卡背景）
-  ctx.fillStyle = getStatusBackgroundColor(task.status);
+  // ⑤ 状态底色（整卡背景）——阶段 key 与泳道列归属同源（REQ-260930182521-4fee FR-2），
+  // stageKey 缺省（未走 resolveTasks 的调用方）回落原始 status。
+  ctx.fillStyle = getStatusBackgroundColor(task.stageKey ?? task.status);
   roundRectPath(ctx, x, y, CARD_W, CARD_H, 8);
   ctx.fill();
 
@@ -227,7 +228,7 @@ export function renderCard(
 export function cardHtml(task: CardData, opts?: RenderCardOptions): string {
   const o = opts || {};
   const cls = 'card' + (o.vc ? ' vc' : '');
-  let attrs = ' data-status="' + esc(task.status) + '"';
+  let attrs = ' data-status="' + esc(task.stageKey ?? task.status) + '"';
   if (task.role) attrs += ' data-role="' + esc(task.role) + '"';
 
   let s = '<div class="' + cls + '"' + attrs + '>';

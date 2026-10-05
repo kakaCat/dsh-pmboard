@@ -1,0 +1,9 @@
+# case G4 · 冗余调用循环检测 · serves: FR-2
+case: G4
+checks:
+  - path: requirement.status            # 盯梢过程不得写脏台账：状态仍在合法实施区间
+    op: matches
+    value: '^(implementing|accepting)$'
+  - path: queue.tasks
+    op: exists                          # 任务 DAG 未被破坏
+  # 循环检测本体在轨迹断言 budget.max_repeat_same_args

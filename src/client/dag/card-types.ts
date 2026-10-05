@@ -8,6 +8,8 @@
  * - Status（状态，6 类）：决定卡片背景色
  */
 
+import { STAGE_KINDS } from '../../domain/task/SubtaskTemplate.js'
+
 // ============ 枚举定义 ============
 
 /**
@@ -104,27 +106,33 @@ export const SIDE_COLORS: Record<Side, string> = {
 };
 
 /**
- * Status 状态底色映射（6 种浅色背景）
+ * 卡片所处阶段 key（与泳道列 key 同词汇）——着色与列归属共用同一套词表。
  */
-export const STATUS_BACKGROUND_COLORS: Record<Status, string> = {
-  [Status.TODO]: '#f2f2f7',            // 浅灰 - 待开始
-  [Status.IN_PROGRESS]: '#e5f1ff',     // 浅蓝 - 开发中
-  [Status.INTEGRATING]: '#fff4e5',     // 浅橙 - 联调中
-  [Status.TESTING]: '#e8f9ed',         // 浅绿 - 测试中
-  [Status.IN_REVIEW]: '#f3e5ff',       // 浅紫 - 待复核
-  [Status.DONE]: '#e8f5e9'             // 浅绿（偏深）- 已完成
-};
+export type TaskLaneKey = 'todo' | 'in_progress' | 'integrating' | 'testing' | 'in_review' | 'done';
 
 /**
- * Status 状态文本颜色映射（深色文字）
+ * 单一阶段色：bg = 卡片底色（Canvas fillStyle 与 CSS background 通用），
+ * fg = 阶段主色（列头色点 / 计数胶囊 / 状态文本共用）。
  */
-export const STATUS_TEXT_COLORS: Record<Status, string> = {
-  [Status.TODO]: '#8e8e93',
-  [Status.IN_PROGRESS]: '#0071e3',
-  [Status.INTEGRATING]: '#ff9500',
-  [Status.TESTING]: '#34c759',
-  [Status.IN_REVIEW]: '#af52de',
-  [Status.DONE]: '#2e7d32'
+export interface StageColor {
+  bg: string;
+  fg: string;
+}
+
+/**
+ * 六阶段色板 —— **唯一事实源**（REQ-260930182521-4fee FR-1）。
+ *
+ * 取值 = 2026-09-24 用户裁定的泳道色（原 styles/node-panel.ts 卡片底色与列头色点硬编码值）。
+ * Canvas（card-renderer.ts）与泳道 CSS（styles/node-panel.ts 模板插值）都必须从这里取色：
+ * 任何一处另立色值，同一阶段就会在两个视图里显示成两种颜色（本需求的成因）。
+ */
+export const STAGE_COLORS: Record<TaskLaneKey, StageColor> = {
+  todo: { bg: '#fafafa', fg: '#c7c7cc' },
+  in_progress: { bg: 'rgba(0,113,227,.06)', fg: '#0071e3' },
+  integrating: { bg: 'rgba(142,68,173,.07)', fg: '#8e44ad' },
+  testing: { bg: 'rgba(255,149,0,.08)', fg: '#ff9500' },
+  in_review: { bg: 'rgba(233,30,99,.06)', fg: '#e91e63' },
+  done: { bg: 'rgba(52,199,89,.08)', fg: '#34c759' }
 };
 
 // ============ 类型定义 ============
@@ -155,6 +163,11 @@ export interface CardData {
   stageKind?: StageKind | string;
   /** 自足任务卡文档路径（有值 = 单击卡片可打开；2026-09-29 裁定 F 恢复旧分层列表的点击开文档） */
   cardDoc?: string;
+  /**
+   * 着色用阶段 key（= laneOf 推导的「卡片所处环节」，与泳道列 key 同词汇）。
+   * 内存派生字段，不落队列/台账；缺省时消费方回落 {@link status}。
+   */
+  stageKey?: string;
   /** 父卡的子卡链（父卡专属，由 parentId 反查得到） */
   kids?: Array<{
     id?: string;
@@ -196,17 +209,17 @@ export function getSideColor(side: Side): string {
 }
 
 /**
- * 获取状态背景色
+ * 获取状态背景色（阶段 key → 唯一色板；未知状态回落 todo 色）
  */
-export function getStatusBackgroundColor(status: Status): string {
-  return STATUS_BACKGROUND_COLORS[status] || '#f2f2f7';
+export function getStatusBackgroundColor(status: Status | string): string {
+  return STAGE_COLORS[status as TaskLaneKey]?.bg ?? STAGE_COLORS.todo.bg;
 }
 
 /**
- * 获取状态文本颜色
+ * 获取状态文本颜色（阶段主色 fg；未知状态回落 todo 色）
  */
-export function getStatusTextColor(status: Status): string {
-  return STATUS_TEXT_COLORS[status] || '#8e8e93';
+export function getStatusTextColor(status: Status | string): string {
+  return STAGE_COLORS[status as TaskLaneKey]?.fg ?? STAGE_COLORS.todo.fg;
 }
 
 /**
@@ -227,10 +240,13 @@ export function isChildCard(card: CardData): boolean {
 // ============ 阶段（子卡链）============
 
 /**
- * StageKind - 子卡所属阶段
- * 父卡的固定子卡链顺序：dev（研发）→ integrate（联调）→ review（复核）→ test（测试）
+ * StageKind - 子卡所属阶段。
+ *
+ * REQ-261003203909-55f2：改从 domain 的 STAGE_KINDS 派生（单一事实源）——此前本地硬编码
+ * 4 段，2026-09 起 domain 已 16 段（本次 20 段），本地类型与排序表（下方 deriveTaskFields）
+ * 都停留在四段时代，新段子卡全部落排序兜底位、链序显示错乱。
  */
-export type StageKind = 'dev' | 'integrate' | 'review' | 'test';
+export type StageKind = (typeof STAGE_KINDS)[number];
 
 // ============ 四轴标签表 ============
 
@@ -284,7 +300,7 @@ export interface DerivedTaskFields {
 export function deriveTaskFields(task: CardData, allTasks: CardData[]): DerivedTaskFields {
   if (task.parentId) return { role: Role.CHILD };
 
-  const order = ['dev', 'integrate', 'review', 'test'];
+  const order: readonly string[] = STAGE_KINDS // 链序 = domain 枚举序（单点，新段自动跟随）
   const kids = allTasks
     .filter(function (t) { return t.parentId === task.id; })
     .sort(function (a, b) {

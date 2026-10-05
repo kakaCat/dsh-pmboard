@@ -11,18 +11,52 @@
  */
 
 import type {
+  ActorRef,
+  AdvanceRecord,
   ArtifactKind,
+  CommentRecord,
   PendingConfirmation,
   PendingConfirmationOutcome,
+  PromptDifficulty,
   ReqboardLedger,
+  RequirementCategory,
   RequirementRecord,
+  RequirementStatus,
+  StatusEvent,
   TaskRecord,
   TriageRecord,
   TokenSnapshot,
+  SessionLineageEntry,
+  ContextPressureSnapshot,
 } from '../shared/protocol.js'
 import type { ConfirmContext, GateId } from '../domain/gate/GateSpec.js'
+import type {
+  KbArtifact,
+  KbIndexRow,
+  KbIssue,
+  KbKind,
+  KbOverflow,
+} from '../domain/knowledge/types.js'
 import type { QueueFile, QueueTask } from '../domain/queue/QueueTypes.js'
+// REQ-261004103330-005f FR-1/FR-6/FR-14：运行设置与系统记录的**类型**从本层定义处 import
+// （类型只做编译期擦除，不把 I/O 拉进 application——两个 settings 模块都是纯函数）。
+import type {
+  RunSettingsFileV1,
+  RunSettingsPatch,
+  ResolvedRunSettings,
+} from './settings/resolve-settings.js'
+import type {
+  CompatResult,
+  PluginStamp,
+  StorePaths,
+  StoresSnapshot,
+  SystemEvent,
+  SystemRecordV1,
+} from './settings/events.js'
+import type { RequirementFacts, RequirementSummary } from '../domain/requirement/RequirementSummary.js'
 import type { ChainRunSummary } from './gate/GatePostChain.js'
+// 交接水位三档的类型单一源在判据模块（本文件只**引用类型**，不在运行时把它拉进用例）。
+import type { HandoffThresholds } from './internal/handoff-policy.js'
 
 /**
  * 只读台账视图（用例读路径的输入）。
@@ -39,7 +73,7 @@ export interface LedgerView {
   readonly triages: readonly TriageRecord[]
 }
 
-/** 可写台账（仅在 mutate 回调内可见；写操作必须经 ReqboardRepository.mutate 单点）。 */
+/** 可写台账（仅在 mutate 回调内可见；写操作必须经 旧单册端口（已删除）.mutate 单点）。 */
 export type MutableLedger = ReqboardLedger
 
 /**
@@ -52,25 +86,399 @@ export interface LedgerChange {
   triages?: readonly TriageRecord[]
 }
 
-/** 一次 mutate 的结果。 */
-export interface MutateResult {
+/**
+ * 一次**单册台账** mutate 的结果。
+ *
+ * REQ-261002161439-277d t2：原名为 `MutateResult`，为把该名字让给分片存储端口
+ * （`RequirementStore.mutate`，形状完全不同：返回单条需求而非变更集）而改名。
+ * 本类型随 `旧单册端口（已删除）` 一起在 t8（端口切换）删除。
+ */
+export interface LedgerMutateResult {
   changed: LedgerChange
   revision: number
 }
 
+// B12 阶段⑤：旧单册端口 `旧单册端口（已删除）`（含 `台账快照读（已删除）`）已随实现文件删除。
+// ---------------------------------------------------------------------------
+// 需求存储端口（REQ-261002161439-277d · t2 / FR-1、FR-5、FR-6）：**聚合根 = 需求**
+//
+// 与上面 旧单册端口（已删除） 的关系：**并存，不是替代**。t2 只立契约（本段），
+// t4/t5 落分片实现，t8 才做一次性端口切换（届时删掉 旧单册端口（已删除） 与 旧单册适配器（已删除））。
+// 之所以并存：端口形状一改，`台账快照读（已删除）` 的 95 处调用点会在同一刻全部编译失败——
+// 那是 t8 这张卡要一次性完成的事，不能拆进 t2。
+//
+// 三条纪律（写在这里，实现方与调用方都按它写代码）：
+//   1. **全异步**：所有方法返回 Promise。现状那个**同步**整册 `台账快照读（已删除）` 在远端库上不可能实现，
+//      它是本次改造必须消灭的形态（FR-1）。
+//   2. **无整册语义**：没有任何"读全部需求"的通用入口。跨需求只剩 `sweep`（仅启动对账可用）
+//      与 `replaceAll`（仅迁移脚本可用）两个显式口子。
+//   3. **不泄漏存储细节**：签名里不出现文件名、JSON、SQL、路径、游标内涵
+//      ——DB 适配器才能"再实现一次端口"而不是"再改一轮调用方"（FR-6）。
+// ---------------------------------------------------------------------------
+
+/** 全局版本（SSE 帧与"已落盘"指针用）。 */
+export interface LedgerHead {
+  readonly revision: number
+  readonly schemaVersion: number
+}
+
 /**
- * 台账仓储端口——**写操作的唯一入口**。
- * 实现者（t5 JsonLedgerRepository）负责原子写、损坏隔离与并发串行化。
+ * 摘要查询条件。
+ *
+ * `scope` 缺省 `'active'`（不含归档）——这是看板首屏载荷降量的关键：现状把 33 条归档需求
+ * 全文一起下发，而它们在首屏用不到（`design/architecture.md` §热冷分层）。
+ *
+ * `cursor` 是**不透明**串：调用方（含客户端）不得解析其内容，只负责原样回传。
  */
-export interface ReqboardRepository {
-  /** 只读查询（不持有引用，回调内不得改）。 */
-  read<T>(fn: (view: LedgerView) => T): Promise<T>
-  /** 同步快照（渲染前取视图用）。 */
-  snapshot(): LedgerView
-  /** 单点写：reason 必填（审计与调试）；返回 undefined 表示无变化（不 bump revision）。 */
-  mutate(reason: string, fn: (ledger: MutableLedger) => LedgerChange | undefined): Promise<MutateResult>
-  /** 迁移专用：整体重写台账（备份 + 原子替换由实现者负责）。 */
-  replaceAll(reason: string, next: MutableLedger): Promise<void>
+export interface RequirementFilter {
+  readonly scope?: 'active' | 'archived' | 'all'
+  readonly ids?: readonly string[]
+  readonly status?: readonly RequirementStatus[]
+  readonly workspaceRoot?: string
+  readonly sourceSessionId?: string
+  /**
+   * 按**席位**筛（REQ-261003215944-9e04 FR-3）：摘要的 `seats` 里有这个窗口键即命中。
+   *
+   * ⚠️ 这是**机械预筛**，不是授权判定：它只看落盘的 `seats` 数组，**不做**存量折算
+   * （`seats` 缺省但有 `sourceSessionId` 的记录**不**由此命中——那条由 `sourceSessionId` 筛覆盖）。
+   * 「谁在这条上是什么角色」永远由读端的唯一折算处 `seatOfSummary` 裁，故本筛多带回来的条目
+   * 也不会被误当权限。把折算塞进存储 = 第二套口径，故不这么做。
+   */
+  readonly seatWindowKey?: string
+  /** 缺省 200，实现方须有上限。 */
+  readonly limit?: number
+  readonly cursor?: string
+}
+
+/**
+ * v10 热记录里的**计数字段**（提交点的一部分，`design/data-model.md` §热记录）。
+ *
+ * 它们不进 `RequirementRecord`（那是"装配后的需求"，大字段以数组形态出现），
+ * 只出现在分片热记录与变更器拿到的 draft 上——故做成可选交叉类型。
+ */
+export interface RequirementCounts {
+  readonly commentCount: number
+  readonly historyCount: number
+  readonly artifactCount: number
+}
+
+/**
+ * 变更器看到的**可写草稿**：装配后的完整需求（含 `comments` / `artifacts` / `verification` …），
+ * 变更器照旧就地改（`draft.comments.push(...)`）。
+ *
+ * 为什么不做成"只有标量字段 + 一组窄方法"：现状 90 处 `mutate` 回调就是这么写的
+ * （`req.comments.push(...)`），收窄 draft 等于把这 90 处全部重写。接口稳定性比少装配几个字段值钱。
+ *
+ * 代价（实现方要担着）：适配器得先把该需求装配出来（最坏约 190KB：comments 65KB +
+ * verification 71KB + artifacts 51KB），这是 **O(单需求)**、与库容无关。
+ *
+ * 纪律：`comments` / `statusHistory` / `advance.history` 三个数组**只允许追加**，不得删改已有元素。
+ */
+export type RequirementDraft = RequirementRecord & Partial<RequirementCounts>
+
+/**
+ * 变更器的返回值。
+ *
+ * `undefined` 与 `{ changed: false }` **等价**（都表示"本次没有改动"）：适配器两条都不得写盘
+ * ——"无变更不写盘"是幂等判据的可观测形式（文件 mtime 不变）。
+ */
+export interface MutationOutcome {
+  readonly changed: boolean
+}
+
+/** 一次需求写操作的结果（提交后的装配结果 + 版本 + 全局序）。 */
+export interface MutateResult {
+  /** 提交后重新装配的需求（调用方直接可用，不需要再读一次）。 */
+  readonly requirement: RequirementRecord
+  /** 单条需求的 CAS 令牌（每次成功写入 +1）。 */
+  readonly version: number
+  /** 全局序号（每次落盘成功 +1）。 */
+  readonly revision: number
+  readonly changed: boolean
+}
+
+/** `sweep` 的结果：真正被改动的需求 id 清单。 */
+export interface SweepResult {
+  readonly touched: readonly string[]
+  readonly revision: number
+}
+
+/** 订阅通知（SSE 与缓存失效用）。 */
+export interface RequirementChange {
+  readonly kind:
+    | 'requirement-created'
+    | 'requirement-updated'
+    | 'requirement-moved'
+    | 'comment-added'
+    | 'ledger-replaced'
+  readonly requirementId: string
+  readonly revision: number
+  /** 变更后的摘要（订阅者据此增量刷新，不必重读整册）。 */
+  readonly summary: RequirementSummary
+}
+
+/** 新建需求的入参（`id` 由调用方经 `IdFactory` 生成——端口不生成 id，可复现性靠注入）。 */
+export interface NewRequirement {
+  readonly id: string
+  readonly title: string
+  readonly description?: string
+  readonly category?: RequirementCategory
+  readonly promptDifficulty?: PromptDifficulty
+  readonly docBasePath?: string
+  readonly workspaceRoot?: string
+  readonly sourceSessionId?: string
+  /** 缺省 `draft`。 */
+  readonly status?: RequirementStatus
+}
+
+/** 追加评论的入参（`seq` 由存储分配，调用方不给）。 */
+export interface NewComment {
+  readonly id: string
+  readonly body: string
+  readonly createdAt: number
+  readonly createdBy?: ActorRef
+}
+
+/** 需求历史的一条（状态流转与推进事件同处一条时间线，读侧按 kind 分支）。 */
+export type RequirementHistoryEntry =
+  | { readonly kind: 'status'; readonly event: StatusEvent }
+  | { readonly kind: 'advance'; readonly record: AdvanceRecord }
+
+/**
+ * 整体导入结构 = 旧单册形状（`ReqboardLedger`）。
+ *
+ * 刻意复用同一个形状而不是另立一份：它同时是**导出格式**（`design/interfaces.md` §兼容与弃用
+ * ——legacy v9 单册可被旧版读路径装载）与迁移/回滚脚本的交换格式，两处各写一份必然漂移。
+ */
+export type ImportedLedger = ReqboardLedger
+
+/**
+ * 需求存储端口——**写操作的唯一入口**（读方也一律经它，不得绕过它直接读分片文件；
+ * 与既有"任务不得绕过 TaskStore"同款纪律）。
+ *
+ * 错误码见 `REQUIREMENT_STORE_ERROR`：实现方抛 `Object.assign(new Error(msg), { code })`，
+ * 模块内部的更细码（如队列层的 `QUEUE_ERROR`、日志层的 `JOURNAL_ERROR`）由上抛处映射到这套传输码。
+ */
+export interface RequirementStore extends RequirementReader {
+  /** 单条需求（含大字段装配）；热侧未命中回落冷侧；都不存在 → `undefined`。 */
+  get(id: string): Promise<RequirementRecord | undefined>
+  /** 评论（按 `seq` 升序）；`since` 含起点，`limit` 缺省由实现定（须有上限）。 */
+  listComments(id: string, opts?: { since?: number; limit?: number }): Promise<readonly CommentRecord[]>
+  /** 状态流转 + 推进事件历史（按 `seq` 升序）。 */
+  listHistory(id: string, opts?: { limit?: number }): Promise<readonly RequirementHistoryEntry[]>
+  /** 全局版本（SSE 帧与"已落盘"指针用）。 */
+  head(): Promise<LedgerHead>
+  /** 新建；id 已存在 → `REQBOARD_ALREADY_EXISTS`（**不覆盖**）。 */
+  create(input: NewRequirement, actor: ActorRef): Promise<RequirementRecord>
+  /**
+   * 临界区内读-改-写（RMW）。**原子性由适配器保证**：
+   * JSON 实现 = 写前重读 + 进程内串行队列；DB 实现 = 事务 / `SELECT … FOR UPDATE`。
+   *
+   * `fn` 返回 `undefined` 或 `{changed:false}` = 无变更（不写盘、不 bump、不广播）。
+   */
+  mutate(id: string, fn: (draft: RequirementDraft) => MutationOutcome | undefined): Promise<MutateResult>
+  /** CAS 变体：`draft.version !== expectedVersion` → `REQBOARD_CONFLICT`（带当前版本），**不静默覆盖**。 */
+  mutateIf(id: string, expectedVersion: number, fn: (draft: RequirementDraft) => MutationOutcome | undefined): Promise<MutateResult>
+  /** 追加评论（与热记录里的 `commentCount` 同一次提交）。 */
+  appendComment(id: string, comment: NewComment): Promise<{ version: number; commentCount: number }>
+  /**
+   * **仅启动对账可用**（交互路径禁止调用）：一次覆盖多条需求的批量变更。
+   *
+   * 现状全仓只有 2 处需要它（`src/index.ts` 的启动对账、`migrate-dive-state.ts` 的一次性迁移），
+   * 二者都是启动期全表扫描。DB 实现以单个事务承载。
+   */
+  sweep(reason: string, fn: (drafts: readonly RequirementDraft[]) => readonly string[]): Promise<SweepResult>
+  /** **仅迁移/回滚脚本可用**：以导入结构整体重建（备份 + 原子替换由实现负责）。 */
+  replaceAll(reason: string, next: ImportedLedger): Promise<void>
+  /** 订阅需求变更（供 SSE / 缓存失效）；返回退订函数。 */
+  subscribe(fn: (change: RequirementChange) => void): () => void
+}
+
+/**
+ * 窄**只读**接口：给那些只需要"按 id / 按条件看需求"的调用方用（现状 4 处结构化声明
+ * `{ 台账快照读（已删除）: LedgerView }` 换成它，见 `design/interfaces.md` §95 处读点改造分类）。
+ *
+ * 拆出窄口而不是到处传 `RequirementStore`：只读依赖注入不了写能力，
+ * 用例测试里也就不会顺手写不该写的东西。
+ */
+export interface RequirementReader {
+  /** 摘要投影（零文件读；实现方走内存索引）。 */
+  getSummary(id: string): Promise<RequirementSummary | undefined>
+  /**
+   * 按条件列出摘要；缺省 `scope='active'`（不含归档）。
+   *
+   * 返回**一页**（`items` + `nextCursor`）：`nextCursor === undefined` = 到底。
+   *
+   * ⚠️ 本签名与 `design/interfaces.md` 代码块里那行 `Promise<readonly RequirementSummary[]>`
+   * 不一致——**以本签名为准**，因为同一份设计的映射表写的是"摘要投影数组 + 下一页游标"。
+   * 游标只能由存储自己产生（只有它知道自己的排序与分页方式），若只回数组，
+   * 分页游标就得由上层的 HTTP 路由拼——那是把存储细节泄漏到入口层，与 FR-6 相悖。
+   *
+   * **排序契约（稳定，属端口承诺）**：`updatedAt` 降序，同一时刻按 `id` 升序。
+   * 分页游标只在**同一 `scope` + 同一过滤条件**下有效。改排序键 = 改契约（会让在飞游标错页）。
+   */
+  listSummaries(filter?: RequirementFilter): Promise<RequirementSummaryPage>
+  /**
+   * 分诊记录（`triages`）。
+   *
+   * 来源：分片存储把它放在 `meta.json`（RequirementShardRepository.ShardMeta.triages）——
+   * 一次读、不是整册扫，因此不构成读放大。
+   * 旧端口的同步整册读（其 triages 字段）由本方法替代（B8 迁移用）。
+   */
+  listTriages(filter?: { sessionId?: string }): Promise<readonly TriageRecord[]>
+  /**
+   * **同步**摘要投影（本地缓存视图，**可能略旧**）。
+   *
+   * 只允许用于"过期不致命"的场景：系统提示词段组装（`systemPrompt.section` 的 `text` 回调是
+   * **同步**的，每回合执行）与引导注入。**任何门禁、写判定、人工确认、验收都必须用 await 的权威读。**
+   * DB 实现返回本地缓存投影（可为空数组 = 退化为不注入引导，不影响正确性）。
+   */
+  peekSummaries(): readonly RequirementSummary[]
+  /**
+   * **同步**提示词缝窄投影（本地缓存视图，**可能略旧**）。
+   *
+   * 与 `peekSummaries()` 的关系：**同一条缝的两种粒度**，不是替代。
+   * `peekSummaries()` 给"只要状态"的判定（绑定/未绑定），本方法多带 `description`——
+   * 提示词段的 `resolveStagePrompt` 用它推断难度（FR-16），而看板摘要刻意不含正文
+   * （理由见 `RequirementFacts` 的注释）。
+   *
+   * 纪律与 `peekSummaries()` 同源，许可区（2026-10-03 明文化，B12 阶段①-a）**恰好三项**：
+   *   1. 系统提示词段组装（`systemPrompt.section` 的 `text` 回调是**同步**的）；
+   *   2. 引导注入（含越界纠偏提示——它**只注入文本**、返回值被丢弃，不是门禁）；
+   *   3. **失败告警的寻址**（`FailureAlert.windowFor`：只用来决定"这条告警该投给哪个窗口"，
+   *      属寻址而非判定；读到略旧最坏是该窗口这次没收到提醒，不会放过或挡下任何操作）。
+   * **任何门禁、写判定、人工确认、验收都必须用 await 的权威读**
+   * （反例：`H1/H2/H3` 的归属需求判定 `pickGateRequirement` —— 它是门禁，走权威 `get`）。
+   * DB 实现返回本地缓存投影（可为空数组 = 退化为不注入引导，不影响正确性）。
+   */
+  peekFacts(): readonly RequirementFacts[]
+  /**
+   * **排空后**读全局版本（B12 阶段①-a 裁决 I1）。
+   *
+   * 语义：等到本适配器**此前受理的写**都已落盘，再返回那时的 head。
+   * 为什么不能直接用 `head()`：`head()` 直读 `meta.json`，与服务端的串行写队列无关 ⇒
+   * 可能返回一个**尚未落盘**的 revision。而调用方（节点结算的 `persistArtifacts`）
+   * 要的正是"已落盘"的证据指针（纪律①「先落盘再遗弃」），错了就失去意义。
+   *
+   * 各实现：分片存储等写入器的串行队列；内存替身无队列（等价于 `head()`）。
+   */
+  headAfterDrain(): Promise<LedgerHead>
+}
+
+/** 分页投影（带游标；`nextCursor === undefined` 表示到底）。 */
+export interface RequirementSummaryPage {
+  readonly items: readonly RequirementSummary[]
+  readonly nextCursor?: string
+}
+
+/**
+ * 需求存储的**传输错误码**（工具与 HTTP 层可见的那一套）。
+ *
+ * 与 `domain/errors.ts` 的 `REQBOARD_ERROR_CODES` 刻意分开：那张表是**状态机/闸门**的码，
+ * 这张是**存储**的码。模块内部的更细码（`QUEUE_ERROR` / `JOURNAL_ERROR`）由实现方映射到这里。
+ */
+export const REQUIREMENT_STORE_ERROR = {
+  /** CAS 版本不匹配（并发写同一需求）。 */
+  CONFLICT: 'REQBOARD_CONFLICT',
+  /** 目标需求不存在（**写不隐式建档**）。 */
+  NOT_FOUND: 'REQBOARD_NOT_FOUND',
+  /** `create` 撞 id。 */
+  ALREADY_EXISTS: 'REQBOARD_ALREADY_EXISTS',
+  /** 写冷侧（归档/done）需求——冷侧只读。 */
+  COLD_IMMUTABLE: 'REQBOARD_COLD_IMMUTABLE',
+  /** 结构校验不通过（**不落盘、不隔离**）。 */
+  VALIDATION_FAILED: 'REQBOARD_VALIDATION_FAILED',
+  /** 分片解析失败（已改名隔离；其余需求不受影响）。 */
+  CORRUPT_SHARD: 'REQBOARD_CORRUPT_SHARD',
+  /** 读写失败（权限/磁盘）——不降级、不静默。 */
+  IO_FAILED: 'REQBOARD_IO_FAILED',
+} as const
+
+export type RequirementStoreErrorCode = (typeof REQUIREMENT_STORE_ERROR)[keyof typeof REQUIREMENT_STORE_ERROR]
+
+// ---------------------------------------------------------------------------
+// 运行设置端口（REQ-261004103330-005f FR-1 / FR-3 / FR-4）
+// ---------------------------------------------------------------------------
+
+/** 设置读写的传输错误码（HTTP 层按 `envelope.fail` 映射到状态码）。 */
+export const SETTINGS_STORE_ERROR = {
+  /** 字段非法（越界/非整数/未知键）——**逐项**作废，不是整份失效。 */
+  INVALID: 'REQBOARD_SETTINGS_INVALID',
+  /** 落盘失败（权限/磁盘）。 */
+  IO_FAILED: 'REQBOARD_IO_FAILED',
+} as const
+
+/**
+ * 运行设置端口（FR-1）：设置文件的读、写、订阅。
+ *
+ * **读写分离的理由**：`snapshot()` 是同步的，因为 `roundLimitFor` 在 Dive 回合判定的热路径上
+ * （`round-driver` 同步调用），绝不能在热路径上 await 一次文件读。故端口内维护内存快照，
+ * 盘上内容变化经 `refresh()` / 外部文件变更订阅进来。
+ *
+ * `update` **刻意不接受 `storage.backend`**（见 `RunSettingsPatch`）：后端切换必须过人工确认门
+ * （FR-11），用一个 PATCH 就能换库是本次明确要堵掉的口子。
+ */
+export interface SettingsStore {
+  /** 生效设置（已合并四级来源、逐项带 `source`）；纯内存，不读盘。 */
+  snapshot(): ResolvedRunSettings
+  /** 读盘刷新快照。读失败 → **保留旧快照**并走 `onWarn`（不静默退回默认值，否则上限会莫名从 300 变 1000）。 */
+  refresh(): Promise<ResolvedRunSettings>
+  /** 校验 + 原子写（临时文件 + rename），成功后刷新快照并广播；非法/落盘失败抛带码错误。 */
+  update(patch: RunSettingsPatch): Promise<ResolvedRunSettings>
+  /** 设置文件当前内容（未合并默认）；不存在 → `undefined`（FR-17 惰性创建下的正常态）。 */
+  readFile(): Promise<RunSettingsFileV1 | undefined>
+  /** 订阅快照变更（PATCH 成功 / 文件被外部改动）；返回退订函数。 */
+  subscribe(fn: (next: ResolvedRunSettings) => void): () => void
+}
+
+// ---------------------------------------------------------------------------
+// 系统记录端口（REQ-261004103330-005f FR-14 / FR-15 / FR-16 / FR-17）
+// ---------------------------------------------------------------------------
+
+/**
+ * 系统记录端口：只追加的"这台机器上发生过什么"。
+ *
+ * 失败纪律：`append` / `updateStores` 的写失败**不抛给调用方主流程**（档案设施坏掉不该让看板整体
+ * 不可用），但必须响亮——累加 `droppedEvents` 并由看板红字显示。
+ */
+/**
+ * 「选择…」的结果（REQ-261004103330-005f，2026-10-04）。
+ *
+ * 为什么必须走宿主：浏览器拿不到真实绝对路径（安全边界），所以真正的选择发生在 Node 进程里。
+ * **只有三态**——多一态就意味着界面要写第四种话，而人只需要知道"选了 / 没选 / 这台机器弹不出窗口"。
+ */
+export type StoragePathPickOutcome =
+  | { readonly kind: 'picked'; readonly path: string }
+  | { readonly kind: 'cancelled' }
+  | { readonly kind: 'unavailable'; readonly reason: string }
+
+/** 文件路径选择端口（缺省 = 宿主没接 → 界面提示手输，不假装选了）。 */
+export interface StoragePathPickerPort {
+  pick(): Promise<StoragePathPickOutcome>
+}
+
+export interface SystemRecordStore {
+  /** 读全量；文件不存在 → 触发一次初始化（FR-17：启动自动创建）后再读。 */
+  read(): Promise<SystemRecordV1>
+  /** 追加一个事件（含派生字段随动）；重复写同一事件由实现按幂等键忽略。 */
+  append(e: SystemEvent): Promise<void>
+  /** 刷新两个载体的体检快照（启动期 / 迁移后）。 */
+  updateStores(patch: StoresSnapshot): Promise<void>
+  /**
+   * 刷新**路径档案**（FR-14：`paths` 记的是"**实际解析到的**路径"）。
+   *
+   * 为什么必须有它：`read()` 对已存在的记录原样返回，若装配期只在**首次建档**时写 `paths`，
+   * 之后数据根 / 库文件 / 备份目录一旦搬家，档案里就一直是旧路径——看板「系统记录」屏会显示错的路径，
+   * 排查时把人引到错地方（比不显示更坏）。
+   *
+   * 契约：**装配期每次启动都调一次**；只改 `paths`，`history` / `counters` / `active` / `stores` 一律不动；
+   * **幂等**——路径未变时不写盘（不 bump `updatedAt`）；写失败按本端口既有口径**降级**（不抛、记 `droppedEvents`）。
+   */
+  updatePaths(paths: StorePaths): Promise<void>
+  /** 版本一致性核对（FR-16）：版本变更即写 `upgrade` 事件，返回结论。 */
+  reconcileVersion(current: PluginStamp, sqliteSchemaVersion: number): Promise<CompatResult>
+  /** 写失败被丢弃的事件数（> 0 时看板红字告警）。 */
+  droppedEvents(): number
 }
 
 // ---------------------------------------------------------------------------
@@ -161,6 +569,20 @@ export interface DocEntry {
   readonly mtimeMs: number
   readonly size: number
 }
+/**
+ * 知识层生成器的源码读取端口（REQ-261004174324-4195 t2 / design/interfaces.md）。
+ *
+ * 为什么单独成端口而不是直接吃 `DocRepository`：生成器只需要「列目录 + 读文本」两件事，
+ * 声明窄面之后测试可以用内存假实现跑（也能精确断言「没读源码」这种不变量）。
+ * `FileDocRepository` 已**结构化满足**本端口，故不需要新适配器。
+ */
+export interface KbSourcePort {
+  /** 列目录（不存在 → 空数组，不抛）。 */
+  list(relDir: string): readonly DocEntry[]
+  /** 读文本（工作区相对路径）。 */
+  read(relPath: string): Promise<string>
+}
+
 export interface DocRepository {
   /** 相对工作区路径是否存在（evidence 存在性、构建新鲜度都靠它）。 */
   exists(relPath: string): boolean
@@ -180,8 +602,68 @@ export interface DocRepository {
   workspaceRoot(): string
 }
 
-/** 时钟端口：domain 禁止 Date.now()，时间一律由外部注入，保证用例可复现。 */
-export interface Clock {
+/**
+ * 知识层读写端口（REQ-261001110934-3766 t2 / design/interfaces.md）。
+ *
+ * 为什么单独成端口而不是直接用 DocRepository：知识层要的是**语义操作**
+ * （「按 id 取正文（条目整文件 / 页面小节）」/「追加一条并同步索引行」），
+ * 而 DocRepository 只认「相对路径」。把语义留在 application 边界，adapter 只做文件搬运。
+ */
+export interface KbEntryDraft {
+  readonly kind: KbKind
+  /**
+   * 条目状态（缺省 active）。`stale` / `superseded` **不进索引**（设计 I-7：索引只列 active），
+   * 文件保留供追溯，由自检 K6 报告待复核。
+   */
+  readonly status?: 'active' | 'stale' | 'superseded'
+  readonly title: string
+  readonly oneLiner: string
+  readonly appliesWhen: string
+  /** L2 原文指针（可为空串 = 无原文）。 */
+  readonly pointer: string
+  readonly updated: string
+  readonly req?: string
+  readonly supersedes?: string
+  readonly body: string
+}
+
+/** 索引读取结果：原文 + 体量 + 结构化溢出（超限不抛错，由调用方决定响亮程度）。 */
+export interface KbIndexReadResult {
+  readonly text: string
+  readonly chars: number
+  readonly lines: number
+  readonly overflows: readonly KbOverflow[]
+}
+
+export interface KnowledgePort {
+  /** 索引是否存在（注入侧据此决定是否加节：不存在 → 老行为逐字节不变）。 */
+  indexExists(): Promise<boolean>
+  /** 读索引原文 + 体量 + 预算溢出。 */
+  readIndex(): Promise<KbIndexReadResult>
+  /** 解析后的索引行 + 全部问题（解析失败行不静默丢弃）。 */
+  readEntries(): Promise<{ rows: readonly KbIndexRow[]; issues: readonly KbIssue[] }>
+  /** 取单条正文：`kb-NNNN` → 整文件；`kb-<页面>-<锚点>` → 该小节；未知/缺失 → undefined。 */
+  readEntry(id: string): Promise<string | undefined>
+  /**
+   * 追加一条知识并同步索引行（幂等）：
+   * 幂等键 = （`req` + `kind`）同源条目 → 复用既有 id（条目覆盖、索引行原位替换）。
+   */
+  appendEntry(draft: KbEntryDraft): Promise<{ id: string; indexPath: string }>
+  /** 产物导航（索引 / 页面 / 条目 / 机器索引）。 */
+  listArtifacts(): Promise<readonly KbArtifact[]>
+}
+
+/** 注入侧灰度设置（REQ-261001110934-3766 t8）：缺省 = 老行为逐字节不变。 */
+export interface KnowledgeInjectSettings {
+  /** 是否在节点输入包追加「项目知识索引」节。 */
+  readonly injectIndex: boolean
+  /** 是否把需求文档节从全文改为「TL;DR + 指针」（**灰度二阶段再开**）。 */
+  readonly trimRequirementDoc: boolean
+  /** 索引节字符预算。 */
+  readonly injectBudgetChars: number
+}
+
+/** 时钟端口：domain 禁止 Date.now()，时间一律由外部注入，保证用例可复现。 */export interface Clock {
   now(): number
 }
 
@@ -203,11 +685,39 @@ export interface SessionProbe {
   /** 某窗口"自 since 以来最后一次真实工具动作"的时间戳；无则 0（done 凭证门用）。 */
   toolActivitySince(windowKey: string, since: number): number
   /**
-   * 某窗口执行会话的**累计** token 快照（写时快照的唯一读取口，REQ-a33899 t2）。
+   * 某窗口执行会话**及其全部后代子代理会话**的累计 token 快照（写时快照的唯一读取口，
+   * REQ-a33899 t2；跨会话聚合口径 REQ-261004154937-2ca3）。
+   *
+   * 口径：`totals` = 自身 + 后代闭包（按 `parentSession` 传递）可用量的合计；快照带 `members`
+   * 逐成员留痕，驱动**逐成员差值**（见 `deltaSnapshots`）。取不到用量的后代**不进合计**，
+   * 只进 `degradedMembers`（缺失 ≠ 0）。
+   *
    * 服务/会话不可得时返回 source='unavailable' 的空桶快照——**不抛错、不阻断主流程**；
+   * 血缘服务不可得则退回只算自身并标 `descendants-unavailable`。
    * 调用方据此按「无快照」展示，禁止用旧值/记忆值冒充（R-013）。
    */
   tokenTotals(windowKey: string): TokenSnapshot
+  /**
+   * 该窗口会话的后代子代理会话（按 `parentSession` 传递闭包，不含自身）——REQ-261004154937-2ca3。
+   *
+   * **异步**（枚举走 `sessionPersistence.list()`，DSH 侧是 Promise）且**不抛错**：
+   * 血缘服务不可得 → `undefined`（调用方按「未聚合」呈现，不得假装聚合过）。
+   * 快照链是同步的，故 `tokenTotals` **不调用本方法**——它读适配器内异步刷新的成员缓存；
+   * 本方法公开出来是给「预热 + 可测」用的。
+   */
+  descendantSessions(windowKey: string): Promise<readonly SessionLineageEntry[] | undefined>
+  /**
+   * 某窗口当轮上下文压力**参考**（REQ-261002175818-80a8 t4 / FR-8）。
+   *
+   * **只读展示、非门禁判据**：DSH token-meter 自述这三个字段刻意非原子（last-wins 覆写），
+   * 且 "not a billing or gating input"；判据永远是本仓自己的 LIMITS 常量。
+   *
+   * 口径与 `tokenTotals` 完全一致（同一条纪律）：取自
+   * `sessionProjections.stateOf(session, 'contextPressure')`；不可得（服务未装配 / 无会话 /
+   * 投影抛错 / 形状不符）→ `source='unavailable'` 且字段**缺席**——**不抛错、不阻断主流程**。
+   * 禁止用旧值/记忆值冒充（R-013）。
+   */
+  contextPressure(windowKey: string): ContextPressureSnapshot
   /**
    * evidence 原文是否命中该窗口近期的真实用户消息（文字确认核验用）。
    * 返回 undefined = 核验通道未注入（搬迁前 deps.recentUserMsgs === undefined 的语义，
@@ -219,6 +729,90 @@ export interface SessionProbe {
     withinMs: number,
   ): { ok: boolean; matchedText?: string; reason?: string } | undefined
 }
+
+/**
+ * 会话开窗端口（REQ-261003215944-9e04 FR-1）——用 **DSH 现成的会话 fork/create** 造一个新窗口，
+ * 而不是自己造会话协议。
+ *
+ * 为什么够用：pmboard 的「窗口码」就是 root agent 的 id、也就是会话 id
+ * （见 `adapters/SessionProbeAdapter.ts` 的 `windowKey`），所以 DSH 建出来的新会话
+ * 天然是一条**未绑定需求的新窗口**。
+ *
+ * 缺省 = 未装配 → 调用方必须**响亮失败**（`REQBOARD_OPEN_WINDOW_UNAVAILABLE`），
+ * 绝不伪造一个窗口码——伪造的话下游会往一个不存在的窗口投递（R-013 诚实降级）。
+ */
+export interface WindowOpenerPort {
+  /** 开窗通道是否可用（`sessionController` 服务是否在位）。 */
+  available(): boolean
+  /**
+   * 从源会话 fork 一个新会话（切点缺省 = 最近一个完整回合）。
+   * 无已完成回合时返回 `code='unavailable_no_completed_turn'`，调用方据此提示改用 create。
+   */
+  fork(sourceSessionId: string, atSeq?: number): Promise<OpenWindowOutcome>
+  /**
+   * 建一个全新空会话（不继承任何对话前缀）。
+   *
+   * REQ-261004150249-731e FR-1：可指定落点——`workspaceId` **优先**（DSH 会按 `workspace.path`
+   * 建会话并 `attachSession`，新会话直接归入该项目分组），其次 `cwd`；两者互斥（同时给宿主会
+   * 拒绝）。**都不给时是既有行为**（宿主 `defaultCwd`）——调用方要么给，要么自己响亮失败，
+   * 不得让"要在原项目里续作"的新窗口悄悄落到宿主目录（实测病灶：落进
+   * `/Users/mac/.dsh/profiles/desktop`，随后写盘被 `PROJECT_ROOT_MISMATCH` 拒）。
+   */
+  create(opts?: WindowCreateOptions): Promise<OpenWindowOutcome>
+  /**
+   * 源会话的项目落点（REQ-261004150249-731e FR-1）——`create` 的入参来源。
+   *
+   * 三级：① 源会话所属 workspace → `{ workspaceId }`；② 源会话 `header.cwd` → `{ cwd }`；
+   * ③ 都拿不到 → `undefined`（调用方**响亮失败**，不回落宿主目录）。
+   * 可选：测试替身可不实现（调用方按缺省处理）。
+   */
+  resolveSourceProject?(sourceSessionId: string): WindowCreateOptions | undefined
+}
+
+/** 开新会话的落点（REQ-261004150249-731e FR-1）。**互斥**：只取其一。 */
+export interface WindowCreateOptions {
+  /** 目标 workspace（优先；DSH 会连带把新会话挂进该 workspace）。 */
+  workspaceId?: string
+  /** 目标工作目录（无 workspace 归属时的兜底）。 */
+  cwd?: string
+}
+
+/**
+ * 跨窗口投递端口（REQ-261003215944-9e04 FR-7）——把一条消息投给**任意窗口**（含已冷却的会话）。
+ *
+ * 与 Dive 的回合投递不同：后者是同步的（`agents.get` 拿活体句柄），而冷会话要先 resume，
+ * 故这里**必须是异步的**。
+ *
+ * 红线：消息必须**自署 `source.kind`**（如 `reqboard-open-window`）。
+ * 绝不许用会话控制器的 prompt 入口（那个会把来源无条件标成 `{kind:'user'}`），
+ * 那等于让插件冒充人类，会绕过 goal 与 pmboard 自己的全部人工门。
+ */
+export interface CrossWindowDeliveryPort {
+  /** 投给某窗口；冷会话走 resume。永不抛，返回结构化结果。 */
+  deliver(windowKey: string, message: unknown): Promise<{ delivered: boolean; reason?: string }>
+  /** 造一条自署来源的消息（与 Dive 的 createRoundMessage 同款形状，只有 kind 不同）。 */
+  createMessage(params: { text: string; kind: string }): { message: unknown; messageId: string }
+}
+
+/** 开窗结果（端口层）：成功给窗口码；失败给**结构化**原因，调用方不许把它当成功。 */
+export type OpenWindowOutcome =
+  | {
+    ok: true
+    /** 新窗口码（= 新会话 id = 新 root agent id）。 */
+    windowKey: string
+    /** fork 时的源会话 id；create 时缺省。 */
+    parentSessionId?: string
+  }
+  | {
+    ok: false
+    /**
+     * unavailable_no_completed_turn = 源会话没有可切的完整回合（可改用 create）
+     * open_failed = 建会话本身失败（带原始原因）
+     * opener_unavailable = 服务未装配
+     */
+    code: 'unavailable_no_completed_turn' | 'open_failed' | 'opener_unavailable'
+    reason: string
+  }
 
 /**
  * 弹框端口（reqboard_ask_confirm / accept_sheet / 立项弹框 的 UI 通道）。
@@ -358,6 +952,14 @@ export interface WorkflowStartInput {
  */
 export interface WorkflowRunner {
   start(input: WorkflowStartInput): Promise<WorkflowRunOutcome>
+  /**
+   * 可达性探针（REQ-261004065652-5c1c FR-10）。缺省 undefined = 未知（按可达处理，行为不变）。
+   *
+   * 为什么要它：本 profile 的 agent preset 用 `isolate: { workflowEngine: true }` 把引擎圈在
+   * agent 作用域，**profile 级插件永远取不到**（2026-10-03 实测子卡链连挂 4 次）。此前是
+   * "开工 → 派卡 → 失败 → 报错"，人看到的是"卡坏了"；预检把它变成"开工前就说清楚"。
+   */
+  reachable?(): boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -501,6 +1103,43 @@ export interface PendingConfirmPort {
 }
 
 
+/** 一条在途弹框登记（REQ-261002141430-a5ef / design/data-model §1）。 */
+export interface DialogInFlightRecord {
+  /** 在途引用：挂起路径 = ticket（`pc-…`），其余 = 本地引用（`dlg-…`）。 */
+  ref: string
+  windowKey: string
+  requirementId: string
+  /** 来源：确认门（ask_confirm）/ Dive 人工门框。 */
+  kind: 'confirm' | 'gate'
+  /** true = 超宽限已挂起（可凭 ticket 取回执）。 */
+  suspend: boolean
+  /** 登记时刻（诊断用）。 */
+  since: number
+}
+
+/**
+ * 在途弹框登记端口（REQ-261002141430-a5ef FR-1 / FR-3）——**停手判据的唯一可读来源**。
+ *
+ * 为什么与 `PendingConfirmPort` 分开而不是扩它：前者答"我能取回执吗"（凭据视图，滤过期与落章），
+ * 本端口答"自动链该不该停"（等待视图，管拦截）。两个谓词口径不同，混在一起必然漂移
+ * （design/data-model §1）。唯一实现 = `adapters/PendingConfirmRegistry`（与 ticket 表同实例）。
+ *
+ * **`inFlightFor` 必须是纯内存同步读**：Dive 的人工门框与起轮在同一 idle 拍相邻
+ * （session-driver 的 `captureTick` → `requestDrive`），只要它引入 await/IO，同拍那一轮就拦不住。
+ *
+ * 各方法都**不抛**：未知 ref / 重复 exit 一律零动作。
+ */
+export interface DialogInFlightPort {
+  /** 登记在途（幂等：同 ref 重复登记不叠加；`since` 由实现盖章）。 */
+  enter(input: { ref: string; windowKey: string; requirementId: string; kind: 'confirm' | 'gate'; suspend: boolean }): void
+  /** 解除（幂等；未知 ref 零动作）。 */
+  exit(ref: string): void
+  /** 该需求是否有未解除的在途弹框（**同步**）。 */
+  inFlightFor(requirementId: string): boolean
+  /** 诊断/对账用快照。 */
+  list(): readonly DialogInFlightRecord[]
+}
+
 // ---------------------------------------------------------------------------
 // 后台任务端口（REQ-260925110957-552d / FR-1）：实施链异步化
 // ---------------------------------------------------------------------------
@@ -511,8 +1150,16 @@ export interface JobStartSpec {
   kind: string
   /** Job 标签（用于日志） */
   label: string
-  /** Job 归属（调用方 agent） */
-  owner?: unknown
+  /**
+   * Job 归属：**agent/session 的 id 字符串**（不是 agent 对象）。
+   *
+   * 宿主契约（`@deepseek-ai/dsh-jobs-local` 的 `resolveOwner`）：`agents.get(session)` 只认 id，
+   * 传对象会被判「无 live agent」——实测错误文本 `session "[object Object]" has no live agent`。
+   * 缺省 = unowned job（宿主允许，但失去 owner 作用域的取消与并发上限）。
+   *
+   * 取 id 的单一口径见 `application/internal/support.ts` 的 `dispatchOwnerOf`。
+   */
+  owner?: string
   /** Job 执行函数 */
   run: (signal: AbortSignal) => Promise<void>
 }
@@ -542,8 +1189,62 @@ export interface JobsPort {
 }
 
 export interface UseCaseDeps {
-  repo: ReqboardRepository
+  /**
+   * 新需求存储端口（REQ-261002161439-277d t8 / B0）。
+   *
+   * **为什么先做可选**：端口形状一改，41 处测试构造点会一次性全红，破坏"每批结束树必须绿"的
+   * 分批门（那正是卡上"一次性原子切换"走不通的原因）。故先并存，随批次逐个调用点搬过来；
+   * 搬完（B12）由可选转为必填并删掉 `repo`。
+   *
+   * 纪律：**新写的读点一律用它**；不要新增 `repo.台账快照读（已删除）` 调用点。
+   *
+   * B12 阶段④-1（2026-10-03）：已由可选转**必填**——`repo` 同时转可选 ⇒ 之后的端口迁移
+   * 不会再被"41 处测试构造点一次性全红"卡住（那正是分批门要避免的）。
+   */
+  store: RequirementStore
   docs: DocRepository
+  /**
+   * 知识层端口（REQ-261001110934-3766 t4）。**可选**：未装配时 reqboard_kb 响亮报错，
+   * 其余链路（注入/归档）各自按需判断——保证既有测试夹具与老行为不受影响。
+   */
+  knowledge?: KnowledgePort
+  /** 注入侧灰度设置（t8）；缺省 = 不追加索引节、不瘦身文档。 */
+  knowledgeInject?: KnowledgeInjectSettings
+  /**
+   * 知识层自举通知口（REQ-261004174324-4195 t4）：工作区根被校正后通知一次（即发即忘）。
+   * 缺省 = 不自举（老行为）；装配点在组合根（`application/internal/knowledge-bootstrap`）。
+   */
+  knowledgeBootstrap?: { ensure(root?: string): void }
+  /**
+   * 阶段模型路由表（REQ-261004110201-f253 FR-1）。由组合根用 `stageRoutingSetting(config)` 注入
+   * ——**校验发生在装配期**（非法配置在那里就抛，不在执行期才发现）。
+   * 缺省/空表 = 不注入 provider/model（生成脚本与改造前逐字节相同）。
+   */
+  stageRouting?: Record<string, { provider?: string; model?: string }>
+  /**
+   * 零产出告警阈值（REQ-261004110201-f253 FR-3）。由组合根用 `zeroOutputAlertThresholdSetting(config)`
+   * 注入（非法配置装配期抛错）。缺省 2；同一需求同一阶段**连续**零产出达到该次数写一条告警评论。
+   */
+  zeroOutputAlertThreshold?: number
+  /**
+   * 全局在制需求上限（REQ-261004110201-f253 FR-4）。由组合根用 `maxInFlightRequirementsSetting(config)`
+   * 注入；缺省 0 = 不限。在制判据 = 有新鲜推进锁（真有 run 在跑）。
+   */
+  maxInFlightRequirements?: number
+  /**
+   * 归档清单未列闸门（REQ-261004183621-de3f FR-6）：`enforce`（缺省）= 未列未豁免且未声明 → 拒绝；
+   * `warn` = 旧语义（只记对账结果与留痕，不拦）。由组合根用 `archiveGateSetting(config)` 注入。
+   */
+  archiveUnlistedGate?: 'enforce' | 'warn'
+  /**
+   * 一轮容量与标记门禁（REQ-261002175818-80a8 t5 / FR-3、FR-5）。组合根把 `config.capacity`
+   * 原样注入，**解析仍由 `plugin-config` 单点做**（`resolveRoundCapacity` / `markerGateOf`）——
+   * 用例侧不重复缺省逻辑，缺省 = 常量 16 DU + enforce，与没配过逐字一致。
+   */
+  capacity?: {
+    roundDetailUnits?: number
+    markerGate?: 'enforce' | 'warn'
+  }
   clock: Clock
   ids: IdFactory
   session: SessionProbe
@@ -556,6 +1257,15 @@ export interface UseCaseDeps {
   taskStore?: TaskStore
   /** done 批量关闭节流窗口（毫秒，默认 60000；测试可注入 0 关闭）。 */
   doneThrottleMs?: number
+  /**
+   * 弹框缺省宽限（毫秒，REQ-261004065652-5c1c FR-7）。
+   *
+   * `reqboard_ask_confirm` **不传** `inline_grace_ms` 时的等待上限：
+   *   · 缺省 600000（10 分钟）——修前缺省是**全阻塞**，实测吞掉宿主的 3600000ms 工具超时后才 abort；
+   *   · `0` = 显式回到旧的全阻塞（一键回退）；
+   *   · 未装配 `pendingConfirms` 时本项**无效**（没有挂起能力，只能阻塞——不制造"假非阻塞"）。
+   */
+  confirmDefaultGraceMs?: number
   /** 立项拒绝留痕（FR-5；缺省 = 无粘滞，行为与 FR-5 前一致）。 */
   rejections?: CaptureRejectionPort
   /**
@@ -577,6 +1287,11 @@ export interface UseCaseDeps {
    */
   pendingConfirms?: PendingConfirmPort
   /**
+   * 在途弹框登记（REQ-261002141430-a5ef FR-1/FR-3）：自动链据此停手等人。
+   * 缺省 = 未装配 → 停手判据恒为假，行为与改动前逐字一致（向后兼容）。
+   */
+  dialogs?: DialogInFlightPort
+  /**
    * 后台任务端口（REQ-260925110957-552d FR-1）。缺省 = 后台任务系统不可用 →
    * advanceRequirement 显式返回 {dispatched:false, reason:'jobs_unavailable'}。
    */
@@ -587,4 +1302,26 @@ export interface UseCaseDeps {
    * 需求的绑定窗口兜底解析；解不到则**响亮失败**（不再抛引擎 TypeError）。缺省 = 视为不在线。
    */
   agents?: () => { get?: (id: string) => unknown } | undefined
+  /**
+   * 会话开窗端口（REQ-261003215944-9e04 FR-1）。缺省 = 未装配 → `reqboard_open_window`
+   * 响亮失败（`REQBOARD_OPEN_WINDOW_UNAVAILABLE`），不伪造窗口码。
+   */
+  /**
+   * 文件路径选择端口（REQ-261004103330-005f，2026-10-04）：「选择…」由宿主弹原生窗口。
+   * 缺省 = 宿主没接 → 路由 501 `path_picker_unavailable`，界面提示手输。
+   */
+  pickStoragePath?: StoragePathPickerPort
+  windowOpener?: WindowOpenerPort
+  /**
+   * 跨窗口投递端口（FR-7）。缺省 = 未装配 → 开窗后不投递（如实说明），不伪造"已送达"。
+   */
+  crossWindowDeliver?: CrossWindowDeliveryPort
+  /**
+   * 交接水位三档（REQ-261004150249-731e FR-3）。缺省 = 内置 `0.75 / 0.85 / 0.90`
+   * （与 `plugin-config.handoffSettings` 的缺省同值）——**未装配不等于不判据**：
+   * 用例按内置缺省走，逐档行为与「配置了同值」一致。
+   *
+   * 组合根把 `handoffSettings(config)` 注进来是另一张卡（本卡只加这一个字段）。
+   */
+  handoff?: HandoffThresholds
 }

@@ -1,0 +1,35 @@
+task:
+  id: t-f5a28b
+  title: 给人一个开关：看板继续能接回手动模式的需求·研发
+  status: done
+  implements: |-
+    src/application/internal/rearm.ts 新增并导出 armExplicit(deps, requirementId, trigger)：条件全部写在 mutate 内保证幂等（已 armed 且 driverHealth 非 paused → 返回 undefined 零写入）；覆盖 disarmed+idle → armed + phase='active'（本次新增能力）、disarmed+active → armed、driverHealth=paused → healthy 且 attempts=0（reason 以 round-limit 开头时额外 roundsInStage=0）；保留 dialogInFlight(id)===true 时直接返回 false 的越权守卫；生效时写 comment '[Dive 重新武装] 人显式要继续（trigger=board-resume）' 且 createdBy.kind='human'；recoverHealth 与 rearmIfRecoverable 一行不改。src/http/routers/requirements.ts:491 的 on:true 分支把 rearmIfRecoverable(...) 换成 armExplicit(...)，不新增返回键。用例：tests/dive-rearm.test.ts 新增 R-1..R-7；新建 tests/reqboard/autorun-rearm.test.ts 的 R-8/R-9（按 tests/reqboard/board-plan-approve.test.ts 的假 req/res 写法打 POST /req/autorun）。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002173819-69c7
+    TASK_ID: t-f5a28b
+    TASK_TITLE: 给人一个开关：看板继续能接回手动模式的需求·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T10:11:27.643Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002173819-69c7
+  generated_at: 2026-10-02T10:11:24.180Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-02T10:11:30.866Z

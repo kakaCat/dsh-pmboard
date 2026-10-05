@@ -12,11 +12,11 @@
  * 替代说明：原计划用 2d65 的现成样本自证，但它的需求目录已被并发覆写删除（见 tests/incident-2026-09-30-docs-wipe.md），
  * 故改用「可复现的临时工作区样本」——证据不依赖宿主状态，反而更强。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { defineVerifySubmitTool, seedQueueTasks, type ReqboardToolDeps } from './helpers/tool-deps.js'
 import { ANCHOR_GAP_PREFIX, requirementItemTitle } from '../src/domain/workflow/AcceptanceSheetSpec.js'
 import type { RequirementRecord, TaskRecord } from '../src/shared/protocol.js'
@@ -25,7 +25,7 @@ const W = 'session-selfproof'
 const REQ_ID = 'REQ-selfproof'
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let verify: { execute: (a: unknown, e: unknown) => Promise<any> }
 let deps: ReqboardToolDeps
 
@@ -55,7 +55,7 @@ beforeEach(() => {
   // 造出「像本仓」的工作区：tests/ 目录存在 + 一个真实锚点；另一个锚点故意缺失。
   mkdirSync(join(dir, 'tests'), { recursive: true })
   writeFileSync(join(dir, 'tests', 'real.test.ts'), '// 真实存在的锚点\n')
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   deps = { store, now: () => Date.now(), workspaceRoot: dir }
   verify = defineVerifySubmitTool(deps) as never
 })
@@ -68,7 +68,7 @@ describe('REQ-260930183951-eb6c t5：验收单生成整链自证', () => {
       blocked: false, sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
       createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
     } as unknown as RequirementRecord
-    await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+    await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
     await seedQueueTasks(deps, REQ_ID, [
       mk({ id: 't-parent', title: '父卡', acceptance: 'npx vitest run tests/real.test.ts 全绿' }),
       mk({ id: 't-sub1', title: '父卡·研发', parentId: 't-parent', acceptance: 'npx vitest run tests/real.test.ts 全绿' }),
@@ -79,7 +79,7 @@ describe('REQ-260930183951-eb6c t5：验收单生成整链自证', () => {
 
     const out = await verify.execute({ summary: '交付', evidence: ['npx vitest run 全绿'] }, { agent: { id: W } })
     expect(out.success).toBe(true)
-    const sheet = store.snapshot().requirements[0].verification!.sheet!
+    const sheet = ((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!.verification!.sheet!
     expect(out.sheet_items).toBe(sheet.items.length)
 
     // FR-1：只有顶层卡进验收单（旧口径会出 5 项：父卡 + 3 子卡 + 失效锚点卡）

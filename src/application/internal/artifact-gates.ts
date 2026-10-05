@@ -27,6 +27,9 @@ import {
   type StageArtifact,
   type StageKey,
 } from '../../shared/protocol.js'
+// 回退方向判定（REQ-261003204149-1e80 FR-2）：回退不适用「离开一个已完成节点」的闸门语义。
+import { isRollback } from '../../domain/requirement/RollbackSpec.js'
+import { fmt } from '../../domain/text/fmt.js'
 
 // ---------------------------------------------------------------------------
 // 产物登记（幂等）
@@ -50,18 +53,58 @@ export function registerArtifact(
 }
 
 // ---------------------------------------------------------------------------
-// 成组落章（REQ-2d1c74 FR-2/FR-3）
+// 成组落章（REQ-2d1c74 FR-2/FR-3；REQ-261003222428-3556 FR-7/N-3 扩 task_detail/task_output）
 // ---------------------------------------------------------------------------
 
 /**
- * 按确认语义收集待落章产物：kind=design **成组**（该需求全部 design 产物一次落章），
- * 其余 kind 维持首份（历史语义）。三条确认通道（弹框/文字证据/看板一键）共用，
- * 保证"一次确认设计 = 全部设计文档都有章"的口径全仓只有这一处。
+ * 按确认语义收集待落章产物：**成组 kind** 一次全落章，其余 kind 维持首份（历史语义）。
+ * 三条确认通道（弹框/文字证据/看板一键）共用，保证"一次确认 = 全部有章"的口径全仓只有这一处。
  * 空数组 = 没有该 kind 产物（调用方按 missing_artifact 处理）。
+ *
+ * 成组 kind 清单（单一事实源，改它要同步 artifact-group-confirm 用例）：
+ *  · design（REQ-2d1c74 FR-2/FR-3）——"一次确认设计 = 全部设计文档都有章"；
+ *  · task_detail / task_output（REQ-261003222428-3556 FR-7 / N-3）——高频产物逐份落章
+ *    实测一次交付积累 39 份待确认；成组后人点 1 次清一组（确认门语义不变，只是组织方式变）。
  */
+export const GROUP_CONFIRM_KINDS: ReadonlySet<string> = new Set(['design', 'task_detail', 'task_output'])
+
 export function artifactsToConfirm(req: RequirementRecord, kind: ArtifactKind): StageArtifact[] {
   const all = (req.artifacts ?? []).filter(a => a.kind === kind)
-  return kind === 'design' ? all : all.slice(0, 1)
+  return GROUP_CONFIRM_KINDS.has(kind as string) ? all : all.slice(0, 1)
+}
+
+/**
+ * 待确认产物的聚合标签（REQ-261003222428-3556 FR-7 / N-3）——**催办按 kind 聚合**：
+ * 成组 kind 合并为一条「kind×N（成组确认一次清）」，其余 kind 逐条（label 由调用方给）。
+ * 与 GROUP_CONFIRM_KINDS 同源：聚合成什么样、确认就清什么——两件事用同一份清单。
+ * 单份不成组（N=1 时退回逐条标签，不制造噪音）。
+ */
+export function aggregateUnconfirmedLabels(
+  unconfirmed: readonly StageArtifact[],
+  labelOf: (a: StageArtifact) => string,
+): string[] {
+  const grouped = new Map<string, StageArtifact[]>()
+  const singles: StageArtifact[] = []
+  for (const a of unconfirmed) {
+    if (GROUP_CONFIRM_KINDS.has(a.kind as string)) {
+      const list = grouped.get(a.kind as string) ?? []
+      list.push(a)
+      grouped.set(a.kind as string, list)
+    } else {
+      singles.push(a)
+    }
+  }
+  const out = singles.map(labelOf)
+  for (const [kind, arts] of grouped) {
+    if (arts.length === 1) {
+      out.push(labelOf(arts[0]!))
+    } else {
+      out.push(fmt('{kind}×{n}（成组确认一次清：{paths}）', {
+        kind, n: arts.length, paths: arts.map((a) => a.path).join('、'),
+      }))
+    }
+  }
+  return out
 }
 
 // ---------------------------------------------------------------------------
@@ -89,6 +132,8 @@ export interface GateFailure {
     // ── 设计阶段规范化（REQ-2d1c74）：G2 完整性门 + 拆分内容硬门 ──
     | 'design_doc_incomplete'
     | 'design_contains_decomposition'
+    // ── 超容量标记在场（REQ-261002175818-80a8 t5 / FR-5）──
+    | 'plan_overcapacity_marker_missing'
   /** 缺/待确认的产物 kind */
   kind: ArtifactKind
   /** 提示消息（含产物 path 或缺失说明） */
@@ -134,6 +179,15 @@ export function assertArtifactGates(
   // （2026-09-20 实测：REQ-6cbbf7 人工点取消被 missing_artifact 拒绝，看板无法解锁）。
   // gate-post-chain 早已声明「取消需求不进链」，这里把产物存在门/确认门一并豁免。
   if (to === 'canceled') return undefined
+
+  // 回退方向同理（REQ-261003204149-1e80 FR-2）：下面两级的语义是「离开一个**已完成**的节点」
+  // （产物就位 + 人已确认），而回退的动机**恰恰是 from 没完成**——最需要退的时候退不动。
+  // 实测缺口：decomposing 未提交 decomposition.md 就退不回 design，被 missing_artifact 拒死；
+  // `DecomposeSpec` 的注释里也记录过这个死锁的另一半。
+  //
+  // 安全责任随之**转移**：退回去之后由同一笔 mutate 内的 `applyRollbackRevocation` 如实作废
+  // 下游的确认章与计划批准（FR-3）。两者必须同批生效——只上豁免就成了闸门缺口（退了但不作废）。
+  if (isRollback(from, to)) return undefined
 
   // 存量需求（无 artifacts 字段或空数组）→ 不硬拦（向后兼容）
   const artifacts = req.artifacts

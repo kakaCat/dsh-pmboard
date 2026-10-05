@@ -1,0 +1,35 @@
+task:
+  id: t-086978
+  title: 交接写原子化：席位升降 + sourceSessionId + 留痕·研发
+  status: done
+  implements: |-
+    新建 src/application/internal/handoff-write.ts：handoffOwner(req, { toWindow, fromWindow, actor, at, commentId, reason }) 在一次 mutate 内完成 ① 新窗口入席 owner ② 原窗口（若有席位）降 observer ③ req.sourceSessionId = toWindow ④ 追一条留痕评论（from→to、角色变化、reason）。前置校验：当前 owner 必须等于 fromWindow（并发保护）、toWindow ≠ fromWindow、不得产出空 owner（INV-1）；席位与 sourceSessionId 必须同指一窗（INV-2）。幂等：三处都已对 → 返回 changed=false，不新增评论。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004150249-731e
+    TASK_ID: t-086978
+    TASK_TITLE: 交接写原子化：席位升降 + sourceSessionId + 留痕·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T07:51:20.437Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004150249-731e
+  generated_at: 2026-10-04T07:51:20.347Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-04T07:51:25.092Z

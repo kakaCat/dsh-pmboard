@@ -1,0 +1,3257 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261002140814-1a5d",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-02T06:13:59.048Z",
+  "tasks": [
+    {
+      "id": "t-63e66a",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "冻结并修正解锁回执契约（无损 + 不说假成功）",
+      "cardDoc": "docs/requirements/REQ-261002140814-1a5d/tasks/t-63e66a.md",
+      "description": "改 src/application/use-cases/ClearPause.ts 的回执契约四件套：值捕获位置、缺值条件展开、mutator 返回 LedgerChange、失败判定。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① pnpm typecheck 2>&1 | grep ClearPause 无输出（改前 6 条 → 0 条）；② npx vitest run tests/output-contract.test.ts 全绿（return 键 ⊆ schema 声明）；③ grep -n \"previous_activation\" src/application/use-cases/ClearPause.ts 只命中条件展开那一行，README 无残留的 result.previousActivation",
+      "implementation": "在 clearPause 内声明闭包 let previousActivation: string | undefined，并在 deps.repo.mutate 的变更器里 previousActivation = req.dive?.activation（不再从 mutate() 返回结果读）；变更器末尾改为 return { requirements: [req] }；三处 reject(...) 改为 return reject(...)（reject 返回 never → target 收窄，消 TS18048）；回执组装改为 ...(previousActivation !== undefined ? { previous_activation: previousActivation } : {})；失败判定从恒为假的 result === undefined 改为 result.changed.requirements.length === 0 时 reject REQBOARD_MUTATION_FAILED（防假成功）。工具壳、output.schema、参数形状一律不动。",
+      "context": "",
+      "requirementRefs": [
+        "FR-1"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1b857c",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921652199,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 523,
+              "at": 1790921652210,
+              "totals": {
+                "uncachedInputTokens": 311844,
+                "outputTokens": 57145,
+                "cacheReadTokens": 5940992,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 965,
+              "at": 1790922065924,
+              "totals": {
+                "uncachedInputTokens": 349157,
+                "outputTokens": 106440,
+                "cacheReadTokens": 18073984,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 37313,
+              "outputTokens": 49295,
+              "cacheReadTokens": 12132992,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790922065902
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921638904,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921652199,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "开工 t1：冻结并修正解锁回执契约（值在变更器内捕获 + 缺值条件展开 + mutator 返回 LedgerChange + 失败判定改按 changed.requirements）"
+        },
+        {
+          "status": "done",
+          "at": 1790922065902,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t1 收尾：回执契约四件套落地 + 卡链四段（研发/联调/复核/测试）全绿；typecheck 本文件 0 条；全量测试 98 failed 不高于存档基线 106"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-75ae1a",
+          "body": "[状态] → in_progress：开工 t1：冻结并修正解锁回执契约（值在变更器内捕获 + 缺值条件展开 + mutator 返回 LedgerChange + 失败判定改按 changed.requirements）（reqboard_task_move）",
+          "createdAt": 1790921652199,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-9f1c02",
+          "body": "[状态] → done：t1 收尾：回执契约四件套落地 + 卡链四段（研发/联调/复核/测试）全绿；typecheck 本文件 0 条；全量测试 98 failed 不高于存档基线 106（reqboard_task_move）",
+          "createdAt": 1790922065902,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921638904,
+      "updatedAt": 1790922065902,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790921822143,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/ClearPause.ts"
+        ],
+        "completed": [
+          "前值改在变更器内捕获（写入那一刻的真实状态），不再从变更结果里读一个根本不存在的键",
+          "缺值改为整体省略该键（条件展开），不再产出值为 undefined 的属性",
+          "变更器按端口契约返回变更集（原来返回自定义对象，导致变更通知里需求列表恒为空）",
+          "失败判定改按变更集里有没有需求：需求已消失时抛 REQBOARD_MUTATION_FAILED，不再返回成功",
+          "三处拒绝调用改为 return（控制流可判不可达），消除本文件 5 条类型错误（TS2339/TS2345/TS18048×3）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790921822143,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a3ed75",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "解锁留痕改写入 CommentRecord.body",
+      "cardDoc": "docs/requirements/REQ-261002140814-1a5d/tasks/t-a3ed75.md",
+      "description": "把解锁评论的键从 text 改为 CommentRecord 声明的 body，使看板渲染读得到。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① pnpm typecheck 2>&1 | grep ClearPause 无输出（TS2353『text does not exist in type CommentRecord』消失）；② grep -n \"text:\" src/application/use-cases/ClearPause.ts 无输出；③ 该 comments.push 的键集合 ⊆ {id, body, createdAt, createdBy}",
+      "implementation": "src/application/use-cases/ClearPause.ts 的 req.comments.push({...})：键名 text → body，正文文案与 createdAt/createdBy 保持不变（正文仍为 `Dive 模式已解除锁定（reqboard_clear_pause）。之前状态：${previousActivation ?? 'none'}`）。不加 text 兼容字段、不做读侧回退、不回填历史台账。",
+      "context": "",
+      "requirementRefs": [
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1a76f7",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921930752,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 795,
+              "at": 1790921930762,
+              "totals": {
+                "uncachedInputTokens": 334457,
+                "outputTokens": 93906,
+                "cacheReadTokens": 14141184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 986,
+              "at": 1790922132998,
+              "totals": {
+                "uncachedInputTokens": 353865,
+                "outputTokens": 107166,
+                "cacheReadTokens": 18804608,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 19408,
+              "outputTokens": 13260,
+              "cacheReadTokens": 4663424,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790922132979
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921638904,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921930752,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t2 开工：留痕字段名归位（text → body），代码已落地，走卡链收尾"
+        },
+        {
+          "status": "done",
+          "at": 1790922132979,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t2 收尾：留痕字段 text → body 落地 + 卡链四段全绿；grep 无 text: 残留；本文件类型错误清零"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9afe95",
+          "body": "[状态] → in_progress：t2 开工：留痕字段名归位（text → body），代码已落地，走卡链收尾（reqboard_task_move）",
+          "createdAt": 1790921930752,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-22f8ed",
+          "body": "[状态] → done：t2 收尾：留痕字段 text → body 落地 + 卡链四段全绿；grep 无 text: 残留；本文件类型错误清零（reqboard_task_move）",
+          "createdAt": 1790922132979,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921638904,
+      "updatedAt": 1790922132979,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790921822423,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/ClearPause.ts"
+        ],
+        "completed": [
+          "留痕字段 text → body（CommentRecord 只声明 body，看板渲染读的也是 body）",
+          "评论正文与 createdBy 作者信息保持不变（缺值时正文显示 none）",
+          "未加兼容字段、未做读侧回退、未回填历史台账（避免第二个真相源）",
+          "本文件类型错误清零：TS2353 消失，6 条 → 0 条"
+        ]
+      },
+      "lastRun": {
+        "at": 1790921822423,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-93f87b",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "新增解锁回归用例（UC-1..5 + 反向证伪，修前必红）",
+      "cardDoc": "docs/requirements/REQ-261002140814-1a5d/tasks/t-93f87b.md",
+      "description": "新增 tests/clear-pause-lossless.test.ts，覆盖五条路径并含‘把修复退回去必红’的反向断言。",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/clear-pause-lossless.test.ts 全绿且反向断言通过；把 t1/t2 的修复临时还原（git stash 或就地注释条件展开）后同一命令必红——证明断言不是恒真",
+      "implementation": "新建 tests/clear-pause-lossless.test.ts：头 20 行含 // serves: FR-1, FR-2, FR-3；复用 tests/status-lossless.test.ts 的 undefinedPaths(v) 递归口径；夹具照 tests/output-contract.test.ts 的 depsWith()（真实 JsonLedgerRepository + FileDocRepository + SystemClock + RandomIdFactory + 临时目录，用例后 rmSync）；直调 defineClearPauseTool(deps).execute(args, { agent: { id: W } })。覆盖 UC-1（armed→回执含 previous_activation 且 undefinedPaths 为空、台账 disarmed/idle、version+1）、UC-2（无 dive 记录 → 键整体省略、新建 dive、文案 none）、UC-3（变更器找不到需求 → REQBOARD_MUTATION_FAILED 且不返回 success、零写入）、UC-4（无绑定 → REQBOARD_NO_BOUND_REQ；非本窗口 id → REQBOARD_NOT_BOUND_TO_WINDOW；均零写入）、UC-5（comments.at(-1).body 含文字且无 text 键）；再加反向证伪：把旧形状 { previous_activation: undefined } 与 { text: '…' } 喂给同一断言函数，必须报缺。",
+      "context": "",
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b701a7",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921930840,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 797,
+              "at": 1790921930850,
+              "totals": {
+                "uncachedInputTokens": 334457,
+                "outputTokens": 93906,
+                "cacheReadTokens": 14141184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 1007,
+              "at": 1790922197777,
+              "totals": {
+                "uncachedInputTokens": 360526,
+                "outputTokens": 107898,
+                "cacheReadTokens": 19556352,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 26069,
+              "outputTokens": 13992,
+              "cacheReadTokens": 5415168,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790922197758
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921638904,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921930840,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t3 开工：新增回归用例文件已落盘并通过（7 passed），走卡链收尾"
+        },
+        {
+          "status": "done",
+          "at": 1790922197758,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t3 收尾：回归用例 7 passed、退修必红已实证；卡链三段（研发/复核/测试）全绿"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f1fdb6",
+          "body": "[状态] → in_progress：t3 开工：新增回归用例文件已落盘并通过（7 passed），走卡链收尾（reqboard_task_move）",
+          "createdAt": 1790921930840,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-d2a257",
+          "body": "[状态] → done：t3 收尾：回归用例 7 passed、退修必红已实证；卡链三段（研发/复核/测试）全绿（reqboard_task_move）",
+          "createdAt": 1790922197758,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921638904,
+      "updatedAt": 1790922197758,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790921827494,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/clear-pause-lossless.test.ts"
+        ],
+        "completed": [
+          "新增 tests/clear-pause-lossless.test.ts：UC-1..5 + 2 条反向证伪，共 7 条用例（头 20 行带 serves 声明）",
+          "主流程：回执无 undefined 属性、含解锁前状态；台账 disarmed / idle、轮次计数保留、版本 +1",
+          "无 dive 记录：previous_activation 键整体省略（不是 undefined、不是 null）",
+          "变更期间需求消失：抛 REQBOARD_MUTATION_FAILED、零写入、不报假成功",
+          "拒绝路径零行为变更：无绑定需求 / 显式 id 不属本窗口两个错误码不变且零写入",
+          "留痕可见：body 有文字且含解锁前状态、不存在 text 键、作者为本窗口",
+          "退修实证：把修复还原成旧实现后同一文件 4 red / 3 passed；恢复后 7 passed（证明断言不是恒真）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790921827494,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f94bec",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "契约门禁补洞：值为 undefined 的属性判红",
+      "cardDoc": "docs/requirements/REQ-261002140814-1a5d/tasks/t-f94bec.md",
+      "description": "删掉 tests/output-contract.test.ts 里对 undefined 值属性的豁免，并证明门禁不是恒真。",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① npx vitest run tests/output-contract.test.ts 全绿；② grep -n \"obj\\[k\\] === undefined\" tests/output-contract.test.ts 无输出；③ 反向自检用例存在且断言判红（注入 undefined 值属性时门禁必须报错）",
+      "implementation": "tests/output-contract.test.ts 的 assertConformsToSchema：删除 `|| obj[k] === undefined` 豁免（该豁免让 ClearPause 的 undefined 回执全绿溜过），改为声明键的值若为 undefined 即判红；保留既有故障注入用例并补一条‘给断言喂 { declared: undefined } 必红’的反向自检。若删豁免后暴露其它工具的同类缺陷，按需求边界只登记发现，不在本需求修。",
+      "context": "",
+      "requirementRefs": [
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8425b5",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921930944,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 799,
+              "at": 1790921930956,
+              "totals": {
+                "uncachedInputTokens": 334457,
+                "outputTokens": 93906,
+                "cacheReadTokens": 14141184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 1022,
+              "at": 1790922261736,
+              "totals": {
+                "uncachedInputTokens": 364656,
+                "outputTokens": 108249,
+                "cacheReadTokens": 20068480,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 30199,
+              "outputTokens": 14343,
+              "cacheReadTokens": 5927296,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790922261712
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921638904,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921930944,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t4 开工：契约门禁补洞已落地（undefined 判红 + 留债登记），走卡链收尾"
+        },
+        {
+          "status": "done",
+          "at": 1790922261712,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t4 收尾：undefined 值属性判红 + 反向自检落地；findings（ask_confirm 留债、三处映射缺失）已登记在证据文档；卡链三段全绿"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-39ed68",
+          "body": "[状态] → in_progress：t4 开工：契约门禁补洞已落地（undefined 判红 + 留债登记），走卡链收尾（reqboard_task_move）",
+          "createdAt": 1790921930944,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-c98d9d",
+          "body": "[状态] → done：t4 收尾：undefined 值属性判红 + 反向自检落地；findings（ask_confirm 留债、三处映射缺失）已登记在证据文档；卡链三段全绿（reqboard_task_move）",
+          "createdAt": 1790922261712,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921638904,
+      "updatedAt": 1790922261712,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790921827686,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/output-contract.test.ts"
+        ],
+        "completed": [
+          "删掉「值为 undefined 当省略」的豁免：值为 undefined 的属性一律判红（与 status-lossless 同口径）",
+          "新增反向自检：喂旧形状（previous_activation: undefined）必红、真正省略该键必过",
+          "门禁立刻抓到第二处同类活缺陷：ask_confirm 非肯定项且未填意见时 user_feedback 为 undefined（AskConfirm.ts:312）",
+          "按已批边界只登记不修：做成显式留债（修好即强制摘牌，到期 2026-10-16）",
+          "另 3 条既有失败与本改动无关：TaskAdopt / Knowledge / Regenerate 三个工具缺响应源映射，门禁读不到它们的返回键"
+        ]
+      },
+      "lastRun": {
+        "at": 1790921827686,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-25c6a0",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "迁移兼容与端到端验证（无回填 + 类型清零 + 基线 + 构建）",
+      "cardDoc": "docs/requirements/REQ-261002140814-1a5d/tasks/t-25c6a0.md",
+      "description": "集中产出验收证据：确认零迁移/零 schema 变更、跑类型与全量测试基线、构建、并做一次人工端到端。",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① pnpm test 失败数 ≤ 106 且新增用例全绿；② pnpm typecheck 2>&1 | grep ClearPause 无输出；③ pnpm build 退出码 0 且 dist/index.mjs 更新；④ git diff --stat 仅含 src/application/use-cases/ClearPause.ts、tests/clear-pause-lossless.test.ts、tests/output-contract.test.ts；⑤ 人工端到端记录（回执含 previous_activation:\"armed\"、无 value is not lossless JSON、看板可见留痕评论）",
+      "implementation": "复核无 schemaVersion 变更、无迁移脚本、无历史数据回填（旧的 text 键评论保持原样，登记为已知残留）；跑 pnpm typecheck（本文件清零）、pnpm test（与基线 106 failed 比对）、pnpm build（C-11）；git diff --stat 核对改动面仅 3 个文件；人工端到端：pnpm build 后重启宿主，在一个 armed 需求上真调 reqboard_clear_pause，核对回执无报错且看板阶段评论可见。若未重启宿主，如实标注‘端到端未验证’。",
+      "context": "",
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b1a46b",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921931041,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 801,
+              "at": 1790921931051,
+              "totals": {
+                "uncachedInputTokens": 334457,
+                "outputTokens": 93906,
+                "cacheReadTokens": 14141184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 1049,
+              "at": 1790922331290,
+              "totals": {
+                "uncachedInputTokens": 369490,
+                "outputTokens": 109644,
+                "cacheReadTokens": 21116288,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 35033,
+              "outputTokens": 15738,
+              "cacheReadTokens": 6975104,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790922331268
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921638904,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921931041,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t5 开工：全量测试 98 failed / 3009 passed（基线 106）、构建通过，准备出证据，走卡链收尾"
+        },
+        {
+          "status": "done",
+          "at": 1790922331268,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t5 收尾：证据文档落盘（全量 98 failed ≤ 存档基线 106、本文件类型 0 条、构建退出码 0、产物含条件展开、改动面 2 改 1 新）；第⑤项人工端到端**未验证**——需重启宿主载入新构建，已在 tests/test-evidence.md 第 3 节写明复核路径，交验收单裁决"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7500ac",
+          "body": "[状态] → in_progress：t5 开工：全量测试 98 failed / 3009 passed（基线 106）、构建通过，准备出证据，走卡链收尾（reqboard_task_move）",
+          "createdAt": 1790921931041,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-7dfc8f",
+          "body": "[状态] → done：t5 收尾：证据文档落盘（全量 98 failed ≤ 存档基线 106、本文件类型 0 条、构建退出码 0、产物含条件展开、改动面 2 改 1 新）；第⑤项人工端到端**未验证**——需重启宿主载入新构建，已在 tests/test-evidence.md 第 3 节写明复核路径，交验收单裁决（reqboard_task_move）",
+          "createdAt": 1790922331268,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921638904,
+      "updatedAt": 1790922331268,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790922329321,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261002140814-1a5d/tests/test-evidence.md"
+        ],
+        "completed": [
+          "证据文档落盘：docs/requirements/REQ-261002140814-1a5d/tests/test-evidence.md",
+          "全量测试 98 failed / 3009 passed（存档基线 106 / 2807，不高于）；失败清单不含本需求新增用例文件",
+          "类型检查本文件 0 条（全仓 194 → 188）；构建退出码 0，产物含条件展开、旧读法消失",
+          "改动面核对：1 源文件 + 2 测试文件（2 改 1 新），无 schema、无客户端改动、无数据迁移",
+          "登记三项边界外发现（ask_confirm 留债 / 三处映射缺失 / 历史 text 评论）与一处执行偏差（落库 DAG 依赖为空）",
+          "第⑤项人工端到端未验证：需重启宿主载入新构建，已写明复核路径，交验收单裁决"
+        ]
+      },
+      "lastRun": {
+        "at": 1790922329321,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2de888",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "冻结并修正解锁回执契约（无损 + 不说假成功）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "在 clearPause 内声明闭包 let previousActivation: string | undefined，并在 deps.repo.mutate 的变更器里 previousActivation = req.dive?.activation（不再从 mutate() 返回结果读）；变更器末尾改为 return { requirements: [req] }；三处 reject(...) 改为 return reject(...)（reject 返回 never → target 收窄，消 TS18048）；回执组装改为 ...(previousActivation !== undefined ? { previous_activation: previousActivation } : {})；失败判定从恒为假的 result === undefined 改为 result.changed.requirements.length === 0 时 reject REQBOARD_MUTATION_FAILED（防假成功）。工具壳、output.schema、参数形状一律不动。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-63e66a",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ddf3c6",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921949258,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 825,
+              "at": 1790921949267,
+              "totals": {
+                "uncachedInputTokens": 339386,
+                "outputTokens": 97609,
+                "cacheReadTokens": 15019136,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 853,
+              "at": 1790921959635,
+              "totals": {
+                "uncachedInputTokens": 341994,
+                "outputTokens": 99575,
+                "cacheReadTokens": 15470720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 2608,
+              "outputTokens": 1966,
+              "cacheReadTokens": 451584,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921959616
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-54fcab",
+          "body": "[状态] → in_progress：t1 研发段开工：回执契约四件套已落地（前值变更器内捕获/条件展开/返回 LedgerChange/失败按变更集判定）（reqboard_task_move）",
+          "createdAt": 1790921949258,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-eb04eb",
+          "body": "[状态] → done：t1 研发段完成：ClearPause.ts 契约四件套落地；typecheck 本文件 0 条；契约静态扫描通过（reqboard_task_move）",
+          "createdAt": 1790921959616,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921652199,
+      "updatedAt": 1790921959616,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921652199,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921949258,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t1 研发段开工：回执契约四件套已落地（前值变更器内捕获/条件展开/返回 LedgerChange/失败按变更集判定）"
+        },
+        {
+          "status": "done",
+          "at": 1790921959616,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t1 研发段完成：ClearPause.ts 契约四件套落地；typecheck 本文件 0 条；契约静态扫描通过"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790921956228,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/ClearPause.ts"
+        ],
+        "completed": [
+          "前值改在变更器内捕获（写入那一刻的真实状态）",
+          "缺值条件展开：键整体省略，不产出 undefined 属性",
+          "变更器返回 LedgerChange（{ requirements: [req] }）",
+          "失败判定改按变更集：需求消失时抛 REQBOARD_MUTATION_FAILED，不报假成功",
+          "本文件 5 条契约相关类型错误清零（TS2339/TS2345/TS18048×3）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790921956228,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8ed4c7",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "冻结并修正解锁回执契约（无损 + 不说假成功）·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-2de888"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "在 clearPause 内声明闭包 let previousActivation: string | undefined，并在 deps.repo.mutate 的变更器里 previousActivation = req.dive?.activation（不再从 mutate() 返回结果读）；变更器末尾改为 return { requirements: [req] }；三处 reject(...) 改为 return reject(...)（reject 返回 never → target 收窄，消 TS18048）；回执组装改为 ...(previousActivation !== undefined ? { previous_activation: previousActivation } : {})；失败判定从恒为假的 result === undefined 改为 result.changed.requirements.length === 0 时 reject REQBOARD_MUTATION_FAILED（防假成功）。工具壳、output.schema、参数形状一律不动。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-63e66a",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8d2795",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921964386,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 867,
+              "at": 1790921964397,
+              "totals": {
+                "uncachedInputTokens": 342467,
+                "outputTokens": 100529,
+                "cacheReadTokens": 15699328,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 881,
+              "at": 1790921974996,
+              "totals": {
+                "uncachedInputTokens": 344143,
+                "outputTokens": 102653,
+                "cacheReadTokens": 15929344,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1676,
+              "outputTokens": 2124,
+              "cacheReadTokens": 230016,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921974976
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5b2c6e",
+          "body": "[状态] → in_progress：t1 联调段开工：工具壳与 output.schema 未改动，核对调用链一致（deps.session.windowKey → clearPause）（reqboard_task_move）",
+          "createdAt": 1790921964386,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-dd05e9",
+          "body": "[状态] → done：t1 联调段完成：工具壳参数/输出声明未改动（tools-schema 构造通过）；调用链 deps.session.windowKey → clearPause 与其它工具同源；工具描述仍是原语义（reqboard_task_move）",
+          "createdAt": 1790921974976,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921652199,
+      "updatedAt": 1790922362464,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921652199,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921964386,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t1 联调段开工：工具壳与 output.schema 未改动，核对调用链一致（deps.session.windowKey → clearPause）"
+        },
+        {
+          "status": "done",
+          "at": 1790921974976,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t1 联调段完成：工具壳参数/输出声明未改动（tools-schema 构造通过）；调用链 deps.session.windowKey → clearPause 与其它工具同源；工具描述仍是原语义"
+        }
+      ],
+      "layer": 1,
+      "lastRun": {
+        "at": 1790921974976,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790922362464,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "工具壳参数与输出声明未改动：tools-schema 构造通过、契约扫描通过",
+          "窗口身份仍与其它工具同源（deps.session.windowKey），未引入第二处取值口径",
+          "调用链核对：工具壳 → clearPause → 台账写入，无新增分支"
+        ]
+      }
+    },
+    {
+      "id": "t-1fb71d",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "冻结并修正解锁回执契约（无损 + 不说假成功）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-8ed4c7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "在 clearPause 内声明闭包 let previousActivation: string | undefined，并在 deps.repo.mutate 的变更器里 previousActivation = req.dive?.activation（不再从 mutate() 返回结果读）；变更器末尾改为 return { requirements: [req] }；三处 reject(...) 改为 return reject(...)（reject 返回 never → target 收窄，消 TS18048）；回执组装改为 ...(previousActivation !== undefined ? { previous_activation: previousActivation } : {})；失败判定从恒为假的 result === undefined 改为 result.changed.requirements.length === 0 时 reject REQBOARD_MUTATION_FAILED（防假成功）。工具壳、output.schema、参数形状一律不动。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-63e66a",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-57167e",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921979447,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 895,
+              "at": 1790921979457,
+              "totals": {
+                "uncachedInputTokens": 344598,
+                "outputTokens": 103464,
+                "cacheReadTokens": 16163072,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 909,
+              "at": 1790921984553,
+              "totals": {
+                "uncachedInputTokens": 346371,
+                "outputTokens": 104360,
+                "cacheReadTokens": 16397952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1773,
+              "outputTokens": 896,
+              "cacheReadTokens": 234880,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921984526
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a573df",
+          "body": "[状态] → in_progress：t1 复核段开工：对照 design/interfaces.md 逐条核对实现契约（C1 捕获位置 / C2 条件展开 / C3 返回 LedgerChange / 失败判定）（reqboard_task_move）",
+          "createdAt": 1790921979447,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-8d393d",
+          "body": "[状态] → done：t1 复核段完成：无偏离——实现与 interfaces.md 的 C1/C2/C3 与失败判定逐条一致（捕获在变更器内、条件展开、返回 LedgerChange、按 changed 判失败）；命令 npx vitest run tests/output-contract.test.ts → ClearPause 相关断言全绿（reqboard_task_move）",
+          "createdAt": 1790921984526,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921652199,
+      "updatedAt": 1790922362796,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921652199,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921979447,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t1 复核段开工：对照 design/interfaces.md 逐条核对实现契约（C1 捕获位置 / C2 条件展开 / C3 返回 LedgerChange / 失败判定）"
+        },
+        {
+          "status": "done",
+          "at": 1790921984526,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t1 复核段完成：无偏离——实现与 interfaces.md 的 C1/C2/C3 与失败判定逐条一致（捕获在变更器内、条件展开、返回 LedgerChange、按 changed 判失败）；命令 npx vitest run tests/output-contract.test.ts → ClearPause 相关断言全绿"
+        }
+      ],
+      "layer": 2,
+      "lastRun": {
+        "at": 1790921984526,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790922362796,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "无偏离：实现与 design/interfaces.md 的 C1（变更器内捕获）、C2（条件展开）、C3（返回 LedgerChange）逐条一致",
+          "失败判定改按 changed.requirements，与设计第 3 节一致",
+          "错误码与文案未变；output.schema 字段集合未变"
+        ]
+      }
+    },
+    {
+      "id": "t-17f7e1",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "冻结并修正解锁回执契约（无损 + 不说假成功）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-1fb71d"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "在 clearPause 内声明闭包 let previousActivation: string | undefined，并在 deps.repo.mutate 的变更器里 previousActivation = req.dive?.activation（不再从 mutate() 返回结果读）；变更器末尾改为 return { requirements: [req] }；三处 reject(...) 改为 return reject(...)（reject 返回 never → target 收窄，消 TS18048）；回执组装改为 ...(previousActivation !== undefined ? { previous_activation: previousActivation } : {})；失败判定从恒为假的 result === undefined 改为 result.changed.requirements.length === 0 时 reject REQBOARD_MUTATION_FAILED（防假成功）。工具壳、output.schema、参数形状一律不动。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-63e66a",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-0fa4dd",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921987269,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 923,
+              "at": 1790921987279,
+              "totals": {
+                "uncachedInputTokens": 346843,
+                "outputTokens": 104628,
+                "cacheReadTokens": 16635392,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 937,
+              "at": 1790921994459,
+              "totals": {
+                "uncachedInputTokens": 347824,
+                "outputTokens": 105114,
+                "cacheReadTokens": 17112448,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 981,
+              "outputTokens": 486,
+              "cacheReadTokens": 477056,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921994410
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-8ca318",
+          "body": "[状态] → in_progress：t1 测试段开工：重跑 output-contract 与 clear-pause 用例，核对全量测试不高于基线（reqboard_task_move）",
+          "createdAt": 1790921987269,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-f595d8",
+          "body": "[状态] → done：t1 测试段完成：clear-pause-lossless 7 passed / tools-schema 42 passed / status-lossless 2 passed；output-contract 仅 3 条既有映射失败；全量 98 failed（≤ 存档基线 106）（reqboard_task_move）",
+          "createdAt": 1790921994410,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921652199,
+      "updatedAt": 1790922369760,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921652199,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921987269,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t1 测试段开工：重跑 output-contract 与 clear-pause 用例，核对全量测试不高于基线"
+        },
+        {
+          "status": "done",
+          "at": 1790921994410,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t1 测试段完成：clear-pause-lossless 7 passed / tools-schema 42 passed / status-lossless 2 passed；output-contract 仅 3 条既有映射失败；全量 98 failed（≤ 存档基线 106）"
+        }
+      ],
+      "layer": 3,
+      "lastRun": {
+        "at": 1790921994410,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790922369760,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "npx vitest run tests/clear-pause-lossless.test.ts → 7 passed",
+          "同命令在还原旧实现后 → 4 failed / 3 passed（退修必红成立）",
+          "全量 pnpm test → 98 failed / 3009 passed（存档基线 106 / 2807，不高于）"
+        ]
+      }
+    },
+    {
+      "id": "t-f7da89",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "解锁留痕改写入 CommentRecord.body·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/application/use-cases/ClearPause.ts 的 req.comments.push({...})：键名 text → body，正文文案与 createdAt/createdBy 保持不变（正文仍为 `Dive 模式已解除锁定（reqboard_clear_pause）。之前状态：${previousActivation ?? 'none'}`）。不加 text 兼容字段、不做读侧回退、不回填历史台账。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-a3ed75",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a249fc",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921949360,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 827,
+              "at": 1790921949375,
+              "totals": {
+                "uncachedInputTokens": 339386,
+                "outputTokens": 97609,
+                "cacheReadTokens": 15019136,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 855,
+              "at": 1790921959736,
+              "totals": {
+                "uncachedInputTokens": 341994,
+                "outputTokens": 99575,
+                "cacheReadTokens": 15470720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 2608,
+              "outputTokens": 1966,
+              "cacheReadTokens": 451584,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921959717
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-17b23b",
+          "body": "[状态] → in_progress：t2 研发段开工：留痕字段 text → body 已落地（reqboard_task_move）",
+          "createdAt": 1790921949360,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-9eceff",
+          "body": "[状态] → done：t2 研发段完成：留痕写入 body；grep 无 text: 残留；本文件类型错误清零（reqboard_task_move）",
+          "createdAt": 1790921959717,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921930752,
+      "updatedAt": 1790921959717,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921930752,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921949360,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t2 研发段开工：留痕字段 text → body 已落地"
+        },
+        {
+          "status": "done",
+          "at": 1790921959717,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t2 研发段完成：留痕写入 body；grep 无 text: 残留；本文件类型错误清零"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790921956348,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/ClearPause.ts"
+        ],
+        "completed": [
+          "留痕字段 text → body（CommentRecord 只声明 body）",
+          "正文文案与作者信息不变；缺值时正文显示 none",
+          "本文件最后一条类型错误清零（TS2353 消失）",
+          "grep 实证：文件内已无 text: 写入"
+        ]
+      },
+      "lastRun": {
+        "at": 1790921956348,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-0f850a",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "解锁留痕改写入 CommentRecord.body·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-f7da89"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "src/application/use-cases/ClearPause.ts 的 req.comments.push({...})：键名 text → body，正文文案与 createdAt/createdBy 保持不变（正文仍为 `Dive 模式已解除锁定（reqboard_clear_pause）。之前状态：${previousActivation ?? 'none'}`）。不加 text 兼容字段、不做读侧回退、不回填历史台账。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-a3ed75",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-fe2b62",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921964477,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 869,
+              "at": 1790921964486,
+              "totals": {
+                "uncachedInputTokens": 342467,
+                "outputTokens": 100529,
+                "cacheReadTokens": 15699328,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 883,
+              "at": 1790921975096,
+              "totals": {
+                "uncachedInputTokens": 344143,
+                "outputTokens": 102653,
+                "cacheReadTokens": 15929344,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1676,
+              "outputTokens": 2124,
+              "cacheReadTokens": 230016,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921975077
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b23791",
+          "body": "[状态] → in_progress：t2 联调段开工：核对看板渲染路径（dom-utils/stage-panel 读 c.body）与写入字段一致（reqboard_task_move）",
+          "createdAt": 1790921964477,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-e7718d",
+          "body": "[状态] → done：t2 联调段完成：写入字段与看板渲染路径一致（dom-utils.ts:254 / stage-panel.ts:242 读 c.body）；无读侧回退、无双写（reqboard_task_move）",
+          "createdAt": 1790921975077,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921930752,
+      "updatedAt": 1790922362631,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921930752,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921964477,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t2 联调段开工：核对看板渲染路径（dom-utils/stage-panel 读 c.body）与写入字段一致"
+        },
+        {
+          "status": "done",
+          "at": 1790921975077,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t2 联调段完成：写入字段与看板渲染路径一致（dom-utils.ts:254 / stage-panel.ts:242 读 c.body）；无读侧回退、无双写"
+        }
+      ],
+      "layer": 1,
+      "lastRun": {
+        "at": 1790921975077,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790922362631,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "写入字段与看板渲染路径一致（dom-utils.ts:254 / stage-panel.ts:242 读 c.body）",
+          "无双写、无读侧回退、无历史回填（避免第二个真相源）",
+          "评论作者与正文文案保持不变"
+        ]
+      }
+    },
+    {
+      "id": "t-a067f3",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "解锁留痕改写入 CommentRecord.body·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-0f850a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/application/use-cases/ClearPause.ts 的 req.comments.push({...})：键名 text → body，正文文案与 createdAt/createdBy 保持不变（正文仍为 `Dive 模式已解除锁定（reqboard_clear_pause）。之前状态：${previousActivation ?? 'none'}`）。不加 text 兼容字段、不做读侧回退、不回填历史台账。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-a3ed75",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8d0fc2",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921979541,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 897,
+              "at": 1790921979551,
+              "totals": {
+                "uncachedInputTokens": 344598,
+                "outputTokens": 103464,
+                "cacheReadTokens": 16163072,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 911,
+              "at": 1790921984678,
+              "totals": {
+                "uncachedInputTokens": 346371,
+                "outputTokens": 104360,
+                "cacheReadTokens": 16397952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1773,
+              "outputTokens": 896,
+              "cacheReadTokens": 234880,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921984659
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-2f962d",
+          "body": "[状态] → in_progress：t2 复核段开工：对照 design/data-model.md 第 2 节核对写入字段与约束（reqboard_task_move）",
+          "createdAt": 1790921979541,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-0ab2de",
+          "body": "[状态] → done：t2 复核段完成：无偏离——写入键集合 ⊆ {id, body, createdAt, createdBy}，与 data-model.md 第 2 节一致；grep 无 text: 写入（reqboard_task_move）",
+          "createdAt": 1790921984659,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921930752,
+      "updatedAt": 1790922362923,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921930752,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921979541,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t2 复核段开工：对照 design/data-model.md 第 2 节核对写入字段与约束"
+        },
+        {
+          "status": "done",
+          "at": 1790921984659,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t2 复核段完成：无偏离——写入键集合 ⊆ {id, body, createdAt, createdBy}，与 data-model.md 第 2 节一致；grep 无 text: 写入"
+        }
+      ],
+      "layer": 2,
+      "lastRun": {
+        "at": 1790921984659,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790922362923,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "无偏离：写入键集合 ⊆ {id, body, createdAt, createdBy}，与 design/data-model.md 第 2 节一致",
+          "无 schema 变更、无迁移脚本、无回填",
+          "grep 实证：源文件内已无 text: 写入"
+        ]
+      }
+    },
+    {
+      "id": "t-9c833b",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "解锁留痕改写入 CommentRecord.body·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-a067f3"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "src/application/use-cases/ClearPause.ts 的 req.comments.push({...})：键名 text → body，正文文案与 createdAt/createdBy 保持不变（正文仍为 `Dive 模式已解除锁定（reqboard_clear_pause）。之前状态：${previousActivation ?? 'none'}`）。不加 text 兼容字段、不做读侧回退、不回填历史台账。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-a3ed75",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a84d50",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921987359,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 925,
+              "at": 1790921987368,
+              "totals": {
+                "uncachedInputTokens": 346843,
+                "outputTokens": 104628,
+                "cacheReadTokens": 16635392,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 939,
+              "at": 1790921994572,
+              "totals": {
+                "uncachedInputTokens": 347824,
+                "outputTokens": 105114,
+                "cacheReadTokens": 17112448,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 981,
+              "outputTokens": 486,
+              "cacheReadTokens": 477056,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921994553
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f9ca95",
+          "body": "[状态] → in_progress：t2 测试段开工：确认留痕字段改名未影响既有用例（工具 schema / 契约 / 全量）（reqboard_task_move）",
+          "createdAt": 1790921987359,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-0c08b5",
+          "body": "[状态] → done：t2 测试段完成：留痕改名未影响既有用例（tools-schema 42 passed、status-lossless 2 passed、clear-pause-lossless 7 passed；契约门禁 28 passed / 3 既有失败）（reqboard_task_move）",
+          "createdAt": 1790921994553,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921930752,
+      "updatedAt": 1790922369884,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921930752,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921987359,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t2 测试段开工：确认留痕字段改名未影响既有用例（工具 schema / 契约 / 全量）"
+        },
+        {
+          "status": "done",
+          "at": 1790921994553,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t2 测试段完成：留痕改名未影响既有用例（tools-schema 42 passed、status-lossless 2 passed、clear-pause-lossless 7 passed；契约门禁 28 passed / 3 既有失败）"
+        }
+      ],
+      "layer": 3,
+      "lastRun": {
+        "at": 1790921994553,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790922369884,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "npx vitest run tests/tools-schema.test.ts → 42 passed（工具构造与参数形状未受影响）",
+          "npx vitest run tests/status-lossless.test.ts → 2 passed（同口径无人被误伤）",
+          "npx vitest run tests/clear-pause-lossless.test.ts → 7 passed"
+        ]
+      }
+    },
+    {
+      "id": "t-cad1d0",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "新增解锁回归用例（UC-1..5 + 反向证伪，修前必红）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新建 tests/clear-pause-lossless.test.ts：头 20 行含 // serves: FR-1, FR-2, FR-3；复用 tests/status-lossless.test.ts 的 undefinedPaths(v) 递归口径；夹具照 tests/output-contract.test.ts 的 depsWith()（真实 JsonLedgerRepository + FileDocRepository + SystemClock + RandomIdFactory + 临时目录，用例后 rmSync）；直调 defineClearPauseTool(deps).execute(args, { agent: { id: W } })。覆盖 UC-1（armed→回执含 previous_activation 且 undefinedPaths 为空、台账 disarmed/idle、version+1）、UC-2（无 dive 记录 → 键整体省略、新建 dive、文案 none）、UC-3（变更器找不到需求 → REQBOARD_MUTATION_FAILED 且不返回 success、零写入）、UC-4（无绑定 → REQBOARD_NO_BOUND_REQ；非本窗口 id → REQBOARD_NOT_BOUND_TO_WINDOW；均零写入）、UC-5（comments.at(-1).body 含文字且无 text 键）；再加反向证伪：把旧形状 { previous_activation: undefined } 与 { text: '…' } 喂给同一断言函数，必须报缺。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-93f87b",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-08ad15",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921949462,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 829,
+              "at": 1790921949472,
+              "totals": {
+                "uncachedInputTokens": 339386,
+                "outputTokens": 97609,
+                "cacheReadTokens": 15019136,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 857,
+              "at": 1790921959835,
+              "totals": {
+                "uncachedInputTokens": 341994,
+                "outputTokens": 99575,
+                "cacheReadTokens": 15470720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 2608,
+              "outputTokens": 1966,
+              "cacheReadTokens": 451584,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921959816
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0abc05",
+          "body": "[状态] → in_progress：t3 研发段开工：回归用例文件 tests/clear-pause-lossless.test.ts 已落盘（7 passed）（reqboard_task_move）",
+          "createdAt": 1790921949462,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-8376c3",
+          "body": "[状态] → done：t3 研发段完成：tests/clear-pause-lossless.test.ts 7 passed；还原旧实现 4 failed（证伪成立）（reqboard_task_move）",
+          "createdAt": 1790921959816,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921930840,
+      "updatedAt": 1790921959816,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921930840,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921949462,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t3 研发段开工：回归用例文件 tests/clear-pause-lossless.test.ts 已落盘（7 passed）"
+        },
+        {
+          "status": "done",
+          "at": 1790921959816,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t3 研发段完成：tests/clear-pause-lossless.test.ts 7 passed；还原旧实现 4 failed（证伪成立）"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790921956459,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/clear-pause-lossless.test.ts"
+        ],
+        "completed": [
+          "新增 tests/clear-pause-lossless.test.ts（7 条：UC-1..5 + 2 条反向证伪）",
+          "覆盖回执无损、缺值省略键、并发消失不说假成功、两个拒绝码零写入、留痕可见",
+          "退修实证：还原旧实现后 4 failed / 3 passed，恢复后 7 passed",
+          "文件头 20 行内含 serves: FR-1, FR-2, FR-3 声明"
+        ]
+      },
+      "lastRun": {
+        "at": 1790921956459,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-60346d",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "新增解锁回归用例（UC-1..5 + 反向证伪，修前必红）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-cad1d0"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新建 tests/clear-pause-lossless.test.ts：头 20 行含 // serves: FR-1, FR-2, FR-3；复用 tests/status-lossless.test.ts 的 undefinedPaths(v) 递归口径；夹具照 tests/output-contract.test.ts 的 depsWith()（真实 JsonLedgerRepository + FileDocRepository + SystemClock + RandomIdFactory + 临时目录，用例后 rmSync）；直调 defineClearPauseTool(deps).execute(args, { agent: { id: W } })。覆盖 UC-1（armed→回执含 previous_activation 且 undefinedPaths 为空、台账 disarmed/idle、version+1）、UC-2（无 dive 记录 → 键整体省略、新建 dive、文案 none）、UC-3（变更器找不到需求 → REQBOARD_MUTATION_FAILED 且不返回 success、零写入）、UC-4（无绑定 → REQBOARD_NO_BOUND_REQ；非本窗口 id → REQBOARD_NOT_BOUND_TO_WINDOW；均零写入）、UC-5（comments.at(-1).body 含文字且无 text 键）；再加反向证伪：把旧形状 { previous_activation: undefined } 与 { text: '…' } 喂给同一断言函数，必须报缺。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-93f87b",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-bdf489",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921964569,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 871,
+              "at": 1790921964579,
+              "totals": {
+                "uncachedInputTokens": 342467,
+                "outputTokens": 100529,
+                "cacheReadTokens": 15699328,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 885,
+              "at": 1790921975198,
+              "totals": {
+                "uncachedInputTokens": 344143,
+                "outputTokens": 102653,
+                "cacheReadTokens": 15929344,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1676,
+              "outputTokens": 2124,
+              "cacheReadTokens": 230016,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921975177
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-782d27",
+          "body": "[状态] → in_progress：t3 复核段开工：核对断言口径与设计 test-cases.md 一致（TC-1..10 映射）（reqboard_task_move）",
+          "createdAt": 1790921964569,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-4fcbc8",
+          "body": "[状态] → done：t3 复核段完成：无偏离——用例与 design/test-cases.md 的 TC-1..10 逐条对应（UC-1..5 覆盖 FR-1/FR-2，反向项覆盖 FR-3）；命令 npx vitest run tests/clear-pause-lossless.test.ts → 7 passed（reqboard_task_move）",
+          "createdAt": 1790921975177,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921930840,
+      "updatedAt": 1790922363041,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921930840,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921964569,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t3 复核段开工：核对断言口径与设计 test-cases.md 一致（TC-1..10 映射）"
+        },
+        {
+          "status": "done",
+          "at": 1790921975177,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t3 复核段完成：无偏离——用例与 design/test-cases.md 的 TC-1..10 逐条对应（UC-1..5 覆盖 FR-1/FR-2，反向项覆盖 FR-3）；命令 npx vitest run tests/clear-pause-lossless.test.ts → 7 passed"
+        }
+      ],
+      "layer": 1,
+      "lastRun": {
+        "at": 1790921975177,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790922363041,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "无偏离：用例与 design/test-cases.md 的 TC-1..10 逐条对应（UC-1..5 覆盖 FR-1/FR-2，反向项覆盖 FR-3）",
+          "断言口径与 status-lossless 同款（undefinedPaths 递归扫 undefined 属性）",
+          "夹具走真实 JsonLedgerRepository + 临时工作区，不读内部变量自证"
+        ]
+      }
+    },
+    {
+      "id": "t-15d558",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "新增解锁回归用例（UC-1..5 + 反向证伪，修前必红）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-60346d"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新建 tests/clear-pause-lossless.test.ts：头 20 行含 // serves: FR-1, FR-2, FR-3；复用 tests/status-lossless.test.ts 的 undefinedPaths(v) 递归口径；夹具照 tests/output-contract.test.ts 的 depsWith()（真实 JsonLedgerRepository + FileDocRepository + SystemClock + RandomIdFactory + 临时目录，用例后 rmSync）；直调 defineClearPauseTool(deps).execute(args, { agent: { id: W } })。覆盖 UC-1（armed→回执含 previous_activation 且 undefinedPaths 为空、台账 disarmed/idle、version+1）、UC-2（无 dive 记录 → 键整体省略、新建 dive、文案 none）、UC-3（变更器找不到需求 → REQBOARD_MUTATION_FAILED 且不返回 success、零写入）、UC-4（无绑定 → REQBOARD_NO_BOUND_REQ；非本窗口 id → REQBOARD_NOT_BOUND_TO_WINDOW；均零写入）、UC-5（comments.at(-1).body 含文字且无 text 键）；再加反向证伪：把旧形状 { previous_activation: undefined } 与 { text: '…' } 喂给同一断言函数，必须报缺。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-93f87b",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f4a1a4",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921979640,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 899,
+              "at": 1790921979649,
+              "totals": {
+                "uncachedInputTokens": 344598,
+                "outputTokens": 103464,
+                "cacheReadTokens": 16163072,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 913,
+              "at": 1790921984784,
+              "totals": {
+                "uncachedInputTokens": 346371,
+                "outputTokens": 104360,
+                "cacheReadTokens": 16397952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1773,
+              "outputTokens": 896,
+              "cacheReadTokens": 234880,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921984762
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-323ca9",
+          "body": "[状态] → in_progress：t3 测试段开工：重跑 tests/clear-pause-lossless.test.ts 并复核退修实证（reqboard_task_move）",
+          "createdAt": 1790921979640,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-28120f",
+          "body": "[状态] → done：t3 测试段完成：npx vitest run tests/clear-pause-lossless.test.ts → 7 passed；退修实证（还原旧实现）→ 4 failed / 3 passed（reqboard_task_move）",
+          "createdAt": 1790921984762,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921930840,
+      "updatedAt": 1790922370004,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921930840,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921979640,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t3 测试段开工：重跑 tests/clear-pause-lossless.test.ts 并复核退修实证"
+        },
+        {
+          "status": "done",
+          "at": 1790921984762,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t3 测试段完成：npx vitest run tests/clear-pause-lossless.test.ts → 7 passed；退修实证（还原旧实现）→ 4 failed / 3 passed"
+        }
+      ],
+      "layer": 2,
+      "lastRun": {
+        "at": 1790921984762,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790922370004,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "npx vitest run tests/clear-pause-lossless.test.ts → 7 passed",
+          "退修实证复跑一致（旧实现 4 failed）",
+          "用例文件头含 serves 声明（门禁口径）"
+        ]
+      }
+    },
+    {
+      "id": "t-970c00",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "契约门禁补洞：值为 undefined 的属性判红·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "tests/output-contract.test.ts 的 assertConformsToSchema：删除 `|| obj[k] === undefined` 豁免（该豁免让 ClearPause 的 undefined 回执全绿溜过），改为声明键的值若为 undefined 即判红；保留既有故障注入用例并补一条‘给断言喂 { declared: undefined } 必红’的反向自检。若删豁免后暴露其它工具的同类缺陷，按需求边界只登记发现，不在本需求修。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-f94bec",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2ac1c8",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921949555,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 831,
+              "at": 1790921949564,
+              "totals": {
+                "uncachedInputTokens": 339386,
+                "outputTokens": 97609,
+                "cacheReadTokens": 15019136,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 859,
+              "at": 1790921959937,
+              "totals": {
+                "uncachedInputTokens": 341994,
+                "outputTokens": 99575,
+                "cacheReadTokens": 15470720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 2608,
+              "outputTokens": 1966,
+              "cacheReadTokens": 451584,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921959918
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d78f7d",
+          "body": "[状态] → in_progress：t4 研发段开工：契约门禁补洞已落地（undefined 判红 + 留债登记）（reqboard_task_move）",
+          "createdAt": 1790921949555,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-31329f",
+          "body": "[状态] → done：t4 研发段完成：undefined 判红 + 反向自检；28 passed（3 条既有失败与本改动无关）（reqboard_task_move）",
+          "createdAt": 1790921959918,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921930944,
+      "updatedAt": 1790921959918,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921930944,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921949555,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t4 研发段开工：契约门禁补洞已落地（undefined 判红 + 留债登记）"
+        },
+        {
+          "status": "done",
+          "at": 1790921959918,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t4 研发段完成：undefined 判红 + 反向自检；28 passed（3 条既有失败与本改动无关）"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790921956571,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/output-contract.test.ts"
+        ],
+        "completed": [
+          "契约断言删除 undefined 值当省略的豁免（与 status-lossless 同口径）",
+          "新增反向自检：旧形状必红、真省略必过",
+          "补洞当场抓到第二处同类活缺陷（ask_confirm 的答复字段），按边界登记为显式留债",
+          "契约门禁本文件 28 passed / 3 failed（3 条为既有映射缺失，与本改动无关）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790921956571,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-df6e03",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "契约门禁补洞：值为 undefined 的属性判红·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-970c00"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "tests/output-contract.test.ts 的 assertConformsToSchema：删除 `|| obj[k] === undefined` 豁免（该豁免让 ClearPause 的 undefined 回执全绿溜过），改为声明键的值若为 undefined 即判红；保留既有故障注入用例并补一条‘给断言喂 { declared: undefined } 必红’的反向自检。若删豁免后暴露其它工具的同类缺陷，按需求边界只登记发现，不在本需求修。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-f94bec",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-033f06",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921964663,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 873,
+              "at": 1790921964673,
+              "totals": {
+                "uncachedInputTokens": 342467,
+                "outputTokens": 100529,
+                "cacheReadTokens": 15699328,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 887,
+              "at": 1790921975321,
+              "totals": {
+                "uncachedInputTokens": 344143,
+                "outputTokens": 102653,
+                "cacheReadTokens": 15929344,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1676,
+              "outputTokens": 2124,
+              "cacheReadTokens": 230016,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921975301
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-82987d",
+          "body": "[状态] → in_progress：t4 复核段开工：核对留债登记会随修复强制摘牌、且不放过其它未登记 undefined（reqboard_task_move）",
+          "createdAt": 1790921964663,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-a83a17",
+          "body": "[状态] → done：t4 复核段完成：无偏离——豁免已删（grep 无 obj[k] === undefined 分支）；留债项必须仍为 undefined，修好即强制摘牌；反向自检喂旧形状必红（reqboard_task_move）",
+          "createdAt": 1790921975301,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921930944,
+      "updatedAt": 1790922363162,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921930944,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921964663,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t4 复核段开工：核对留债登记会随修复强制摘牌、且不放过其它未登记 undefined"
+        },
+        {
+          "status": "done",
+          "at": 1790921975301,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t4 复核段完成：无偏离——豁免已删（grep 无 obj[k] === undefined 分支）；留债项必须仍为 undefined，修好即强制摘牌；反向自检喂旧形状必红"
+        }
+      ],
+      "layer": 1,
+      "lastRun": {
+        "at": 1790921975301,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790922363162,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "无偏离：豁免分支已删（grep obj[k] === undefined 仅剩注释与留债判定两处，语义已反转）",
+          "留债登记会随修复强制摘牌（同 LEGACY_PARAM_SHAPE 口径）",
+          "反向自检：喂旧形状必红、真省略必过"
+        ]
+      }
+    },
+    {
+      "id": "t-309f30",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "契约门禁补洞：值为 undefined 的属性判红·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-df6e03"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "tests/output-contract.test.ts 的 assertConformsToSchema：删除 `|| obj[k] === undefined` 豁免（该豁免让 ClearPause 的 undefined 回执全绿溜过），改为声明键的值若为 undefined 即判红；保留既有故障注入用例并补一条‘给断言喂 { declared: undefined } 必红’的反向自检。若删豁免后暴露其它工具的同类缺陷，按需求边界只登记发现，不在本需求修。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-f94bec",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ae6816",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921979745,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 901,
+              "at": 1790921979754,
+              "totals": {
+                "uncachedInputTokens": 344598,
+                "outputTokens": 103464,
+                "cacheReadTokens": 16163072,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 915,
+              "at": 1790921984886,
+              "totals": {
+                "uncachedInputTokens": 346371,
+                "outputTokens": 104360,
+                "cacheReadTokens": 16397952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1773,
+              "outputTokens": 896,
+              "cacheReadTokens": 234880,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921984867
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-110265",
+          "body": "[状态] → in_progress：t4 测试段开工：重跑 tests/output-contract.test.ts，确认留债项与反向自检行为（reqboard_task_move）",
+          "createdAt": 1790921979745,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-330bc7",
+          "body": "[状态] → done：t4 测试段完成：npx vitest run tests/output-contract.test.ts → 28 passed / 3 failed（3 条为既有 RESPONSE_SOURCES 映射缺失，与本改动无关）；留债项断言与反向自检均按预期（reqboard_task_move）",
+          "createdAt": 1790921984867,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921930944,
+      "updatedAt": 1790922370167,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921930944,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921979745,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t4 测试段开工：重跑 tests/output-contract.test.ts，确认留债项与反向自检行为"
+        },
+        {
+          "status": "done",
+          "at": 1790921984867,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t4 测试段完成：npx vitest run tests/output-contract.test.ts → 28 passed / 3 failed（3 条为既有 RESPONSE_SOURCES 映射缺失，与本改动无关）；留债项断言与反向自检均按预期"
+        }
+      ],
+      "layer": 2,
+      "lastRun": {
+        "at": 1790921984867,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790922370167,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "npx vitest run tests/output-contract.test.ts → 28 passed / 3 failed",
+          "3 条失败为既有映射缺失（TaskAdopt/Knowledge/Regenerate），改前即红，与本改动无关",
+          "留债项与反向自检行为符合设计（修好即摘牌）"
+        ]
+      }
+    },
+    {
+      "id": "t-31a760",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "迁移兼容与端到端验证（无回填 + 类型清零 + 基线 + 构建）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "复核无 schemaVersion 变更、无迁移脚本、无历史数据回填（旧的 text 键评论保持原样，登记为已知残留）；跑 pnpm typecheck（本文件清零）、pnpm test（与基线 106 failed 比对）、pnpm build（C-11）；git diff --stat 核对改动面仅 3 个文件；人工端到端：pnpm build 后重启宿主，在一个 armed 需求上真调 reqboard_clear_pause，核对回执无报错且看板阶段评论可见。若未重启宿主，如实标注‘端到端未验证’。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-25c6a0",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-47d40d",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921949646,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 833,
+              "at": 1790921949656,
+              "totals": {
+                "uncachedInputTokens": 339386,
+                "outputTokens": 97609,
+                "cacheReadTokens": 15019136,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 861,
+              "at": 1790921960043,
+              "totals": {
+                "uncachedInputTokens": 341994,
+                "outputTokens": 99575,
+                "cacheReadTokens": 15470720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 2608,
+              "outputTokens": 1966,
+              "cacheReadTokens": 451584,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921960023
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-6946ee",
+          "body": "[状态] → in_progress：t5 研发段开工：证据文档 docs/requirements/REQ-261002140814-1a5d/tests/test-evidence.md 已落盘（reqboard_task_move）",
+          "createdAt": 1790921949646,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-fb6627",
+          "body": "[状态] → done：t5 研发段完成：证据文档落盘（命令+输出摘要+未验证项声明）（reqboard_task_move）",
+          "createdAt": 1790921960023,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921931041,
+      "updatedAt": 1790921960023,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921931041,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921949646,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t5 研发段开工：证据文档 docs/requirements/REQ-261002140814-1a5d/tests/test-evidence.md 已落盘"
+        },
+        {
+          "status": "done",
+          "at": 1790921960023,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t5 研发段完成：证据文档落盘（命令+输出摘要+未验证项声明）"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790921956686,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261002140814-1a5d/tests/test-evidence.md"
+        ],
+        "completed": [
+          "证据文档落盘：命令 + 输出摘要 + 未验证项如实标注",
+          "全量测试 98 failed / 3009 passed（存档基线 106 / 2807，不高于）",
+          "构建退出码 0，产物含条件展开、旧读法消失",
+          "改动面核对：1 源文件 + 2 测试文件，无 schema/客户端改动",
+          "登记三项边界外发现与一处执行方式偏差（落库 DAG 依赖为空）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790921956686,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-e3878a",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "迁移兼容与端到端验证（无回填 + 类型清零 + 基线 + 构建）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-31a760"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "复核无 schemaVersion 变更、无迁移脚本、无历史数据回填（旧的 text 键评论保持原样，登记为已知残留）；跑 pnpm typecheck（本文件清零）、pnpm test（与基线 106 failed 比对）、pnpm build（C-11）；git diff --stat 核对改动面仅 3 个文件；人工端到端：pnpm build 后重启宿主，在一个 armed 需求上真调 reqboard_clear_pause，核对回执无报错且看板阶段评论可见。若未重启宿主，如实标注‘端到端未验证’。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-25c6a0",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6e26a0",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921964759,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 875,
+              "at": 1790921964768,
+              "totals": {
+                "uncachedInputTokens": 342467,
+                "outputTokens": 100529,
+                "cacheReadTokens": 15699328,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 889,
+              "at": 1790921975424,
+              "totals": {
+                "uncachedInputTokens": 344143,
+                "outputTokens": 102653,
+                "cacheReadTokens": 15929344,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1676,
+              "outputTokens": 2124,
+              "cacheReadTokens": 230016,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921975403
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-768a9a",
+          "body": "[状态] → in_progress：t5 复核段开工：核对证据链与 FR-1/2/3 逐条对应、未验证项已如实声明（reqboard_task_move）",
+          "createdAt": 1790921964759,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-aeeb97",
+          "body": "[状态] → done：t5 复核段完成：证据链逐条对得上 FR-1/FR-2/FR-3；端到端未验证已如实声明；三项边界外发现与一处执行偏差（落库 DAG 依赖为空）已登记在 tests/test-evidence.md（reqboard_task_move）",
+          "createdAt": 1790921975403,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921931041,
+      "updatedAt": 1790922369627,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921931041,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921964759,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t5 复核段开工：核对证据链与 FR-1/2/3 逐条对应、未验证项已如实声明"
+        },
+        {
+          "status": "done",
+          "at": 1790921975403,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t5 复核段完成：证据链逐条对得上 FR-1/FR-2/FR-3；端到端未验证已如实声明；三项边界外发现与一处执行偏差（落库 DAG 依赖为空）已登记在 tests/test-evidence.md"
+        }
+      ],
+      "layer": 1,
+      "lastRun": {
+        "at": 1790921975403,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790922369627,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "无偏离：证据链与 FR-1/FR-2/FR-3 逐条对得上（见 tests/test-evidence.md 第 1-2 节）",
+          "未验证项已如实声明（端到端需重启宿主），未以『应该没问题』收尾",
+          "三项边界外发现与一处执行偏差（落库 DAG 依赖为空）已登记"
+        ]
+      }
+    },
+    {
+      "id": "t-45c97a",
+      "requirementId": "REQ-261002140814-1a5d",
+      "title": "迁移兼容与端到端验证（无回填 + 类型清零 + 基线 + 构建）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-e3878a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "复核无 schemaVersion 变更、无迁移脚本、无历史数据回填（旧的 text 键评论保持原样，登记为已知残留）；跑 pnpm typecheck（本文件清零）、pnpm test（与基线 106 failed 比对）、pnpm build（C-11）；git diff --stat 核对改动面仅 3 个文件；人工端到端：pnpm build 后重启宿主，在一个 armed 需求上真调 reqboard_clear_pause，核对回执无报错且看板阶段评论可见。若未重启宿主，如实标注‘端到端未验证’。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-25c6a0",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-9e7735",
+          "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+          "trigger": "manual",
+          "startedAt": 1790921979868,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 903,
+              "at": 1790921979878,
+              "totals": {
+                "uncachedInputTokens": 344598,
+                "outputTokens": 103464,
+                "cacheReadTokens": 16163072,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676",
+              "seq": 917,
+              "at": 1790921985011,
+              "totals": {
+                "uncachedInputTokens": 346371,
+                "outputTokens": 104360,
+                "cacheReadTokens": 16397952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1773,
+              "outputTokens": 896,
+              "cacheReadTokens": 234880,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790921984992
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-96d7df",
+          "body": "[状态] → in_progress：t5 测试段开工：核对全量测试与基线、构建产物形状（reqboard_task_move）",
+          "createdAt": 1790921979868,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        },
+        {
+          "id": "c-362b3d",
+          "body": "[状态] → done：t5 测试段完成：pnpm test → 98 failed / 3009 passed（存档基线 106 / 2807，不高于）；pnpm typecheck → 本文件 0 条（总错误 194→188）；pnpm build → 退出码 0（reqboard_task_move）",
+          "createdAt": 1790921984992,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790921931041,
+      "updatedAt": 1790922370376,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790921931041,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790921979868,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t5 测试段开工：核对全量测试与基线、构建产物形状"
+        },
+        {
+          "status": "done",
+          "at": 1790921984992,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-496379d5-446c-4a51-9710-2fe1ce0eb676"
+          },
+          "reason": "t5 测试段完成：pnpm test → 98 failed / 3009 passed（存档基线 106 / 2807，不高于）；pnpm typecheck → 本文件 0 条（总错误 194→188）；pnpm build → 退出码 0"
+        }
+      ],
+      "layer": 2,
+      "lastRun": {
+        "at": 1790921984992,
+        "ok": true,
+        "stopReason": "completed",
+        "valueNonEmpty": true,
+        "reason": "manual-move-by-reqboard_task_move"
+      },
+      "lastReport": {
+        "at": 1790922370376,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "pnpm test → 98 failed / 3009 passed（存档基线 106 / 2807）",
+          "pnpm typecheck → 本文件 0 条（全仓 194 → 188）",
+          "pnpm build → 退出码 0；dist/index.mjs 含条件展开、旧读法消失",
+          "改动面核对：1 源文件 + 2 测试文件；无 schema、无客户端改动"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-2de888",
+      "to": "t-8ed4c7"
+    },
+    {
+      "from": "t-8ed4c7",
+      "to": "t-1fb71d"
+    },
+    {
+      "from": "t-1fb71d",
+      "to": "t-17f7e1"
+    },
+    {
+      "from": "t-f7da89",
+      "to": "t-0f850a"
+    },
+    {
+      "from": "t-0f850a",
+      "to": "t-a067f3"
+    },
+    {
+      "from": "t-a067f3",
+      "to": "t-9c833b"
+    },
+    {
+      "from": "t-cad1d0",
+      "to": "t-60346d"
+    },
+    {
+      "from": "t-60346d",
+      "to": "t-15d558"
+    },
+    {
+      "from": "t-970c00",
+      "to": "t-df6e03"
+    },
+    {
+      "from": "t-df6e03",
+      "to": "t-309f30"
+    },
+    {
+      "from": "t-31a760",
+      "to": "t-e3878a"
+    },
+    {
+      "from": "t-e3878a",
+      "to": "t-45c97a"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-63e66a",
+        "t-a3ed75",
+        "t-93f87b",
+        "t-f94bec",
+        "t-25c6a0",
+        "t-2de888",
+        "t-f7da89",
+        "t-cad1d0",
+        "t-970c00",
+        "t-31a760"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-8ed4c7",
+        "t-0f850a",
+        "t-60346d",
+        "t-df6e03",
+        "t-e3878a"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-1fb71d",
+        "t-a067f3",
+        "t-15d558",
+        "t-309f30",
+        "t-45c97a"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-17f7e1",
+        "t-9c833b"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-02T06:26:10.387Z"
+}

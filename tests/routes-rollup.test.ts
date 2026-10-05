@@ -3,21 +3,21 @@
  * （不止纯函数正确）：任务状态落定后，所属需求被同一笔 mutate 推进到验收。
  * 用假 req/res 直连 createReqboardHandler（不起真服务器）。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { stubDocFile } from './helpers/tool-deps.js'
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-routes-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -50,7 +50,7 @@ async function post(handler: any, url: string, body: unknown) {
 
 describe('路由层自动推进（R2 实施完成 → 验收）', () => {
   it('全部任务 done 后，需求在同一笔 mutate 内自动进 accepting', async () => {
-    const handler = createReqboardHandler({ store, now: () => Date.now() })
+    const handler = createReqboardHandler({ store: store, requirementStore: store, now: () => Date.now() })
     // 建需求 → 手工推进到 implementing（人工闸门由 actor=human 满足）
     const created = await post(handler, '/req/create', { title: '自动推进验证' })
     const reqId = created.payload.data.id
@@ -69,7 +69,7 @@ describe('路由层自动推进（R2 实施完成 → 验收）', () => {
     await post(handler, '/task/move', { id: task1, to: 'testing' })
     await post(handler, '/task/move', { id: task1, to: 'in_review' })
     await post(handler, '/task/move', { id: task1, to: 'done', actor: 'human' })
-    let req = await store.read(l => l.requirements.find(r => r.id === reqId)!)
+    let req = (await store.get(reqId))!
     expect(req.status).toBe('implementing')
 
     // 完成最后一个任务 → 派生推进自动发生（无需任何额外调用）
@@ -79,22 +79,20 @@ describe('路由层自动推进（R2 实施完成 → 验收）', () => {
     const res = await post(handler, '/task/move', { id: task2, to: 'done', actor: 'human' })
     expect(res.statusCode).toBe(200)
 
-    req = await store.read(l => l.requirements.find(r => r.id === reqId)!)
+    req = (await store.get(reqId))!
     expect(req.status).toBe('accepting')
     expect(req.updatedBy.kind).toBe('system')
     expect(req.comments.some(c => c.body.includes('[自动推进] implementing → accepting'))).toBe(true)
   })
 
   it('decompose 后需求停在 decomposing（五门裁定：拆分清单须人确认）', async () => {
-    const handler = createReqboardHandler({ store, now: () => Date.now() })
+    const handler = createReqboardHandler({ store: store, requirementStore: store, now: () => Date.now() })
     const created = await post(handler, '/req/create', { title: '五门验证' })
     const reqId = created.payload.data.id
     // 给需求挂上 sourceSessionId（模拟窗口绑定）
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements.find(x => x.id === reqId)!
-      r.sourceSessionId = 'session-test'
-      return { requirements: [r] }
-    })
+    await store.mutate(reqId, (r) => {      r.sourceSessionId = 'session-test'
+    return { changed: true }
+  })
     await post(handler, '/req/move', { id: reqId, to: 'brainstorming', actor: 'human' })
     await post(handler, '/req/move', { id: reqId, to: 'design', actor: 'human' })
     // 2026-09-21：拆分计划在拆分阶段提交（legacy 无产物 → 门不硬拦，可直接推进）
@@ -113,12 +111,12 @@ describe('路由层自动推进（R2 实施完成 → 验收）', () => {
     const out = (await decomposeTool.execute({}, { agent: { id: 'session-test' } } as never)) as { requirement_status: string }
     expect(out.requirement_status).toBe('decomposing')
     // 五门裁定：decomposing>implementing 须人确认拆分清单
-    const req = await store.read(l => l.requirements.find(r => r.id === reqId)!)
+    const req = (await store.get(reqId))!
     expect(req.status).toBe('decomposing')
   })
 
   it('人工闸门仍把守：任务全 done 停在验收；验收通过即直接归档（REQ-9f4a44）', async () => {
-    const handler = createReqboardHandler({ store, now: () => Date.now() })
+    const handler = createReqboardHandler({ store: store, requirementStore: store, now: () => Date.now() })
     const created = await post(handler, '/req/create', { title: '闸门验证' })
     const reqId = created.payload.data.id
     for (const to of ['brainstorming', 'design', 'decomposing', 'implementing']) {
@@ -131,7 +129,7 @@ describe('路由层自动推进（R2 实施完成 → 验收）', () => {
     }
     await post(handler, '/task/move', { id: taskId, to: 'done', actor: 'human' })
 
-    const req = await store.read(l => l.requirements.find(r => r.id === reqId)!)
+    const req = (await store.get(reqId))!
     expect(req.status).toBe('accepting') // 派生链停在验收
     // 人工闸门（取消/归档）仍代码级拒绝
     const cancel = await post(handler, '/req/move', { id: reqId, to: 'canceled', actor: 'system' })
@@ -143,6 +141,6 @@ describe('路由层自动推进（R2 实施完成 → 验收）', () => {
     expect(agentArchive.payload.code).toBe('human_gate')
     const archived = await post(handler, '/req/move', { id: reqId, to: 'archived', actor: 'human' })
     expect(archived.statusCode).toBe(200)
-    expect((await store.read(l => l.requirements.find(r => r.id === reqId)!)).status).toBe('archived')
+    expect(((await store.get(reqId))!).status).toBe('archived')
   })
 })

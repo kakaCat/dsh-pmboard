@@ -1,0 +1,2597 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261004103330-005f
+  generated_at: 2026-10-04T09:00:05.960Z
+  version: 221
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T10:11:51.962Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 运行设置落进 settings.json
+      source: requirement.md
+      line: 110
+    - id: FR-2
+      title: 阶段回合上限可配置
+      source: requirement.md
+      line: 117
+    - id: FR-3
+      title: GET /settings
+      source: requirement.md
+      line: 124
+    - id: FR-4
+      title: PATCH /settings
+      source: requirement.md
+      line: 130
+    - id: FR-5
+      title: 看板「设置」弹窗
+      source: requirement.md
+      line: 137
+    - id: FR-6
+      title: 存储后端开关
+      source: requirement.md
+      line: 147
+    - id: FR-7
+      title: SQLite 适配器
+      source: requirement.md
+      line: 153
+    - id: FR-8
+      title: 契约测试同跑
+      source: requirement.md
+      line: 160
+    - id: FR-9
+      title: 数据形态等价
+      source: requirement.md
+      line: 166
+    - id: FR-10
+      title: 一次性迁移（由 Agent 执行）
+      source: requirement.md
+      line: 172
+    - id: FR-11
+      title: 人工确认门
+      source: requirement.md
+      line: 178
+    - id: FR-12
+      title: 迁移门（拒绝服务）
+      source: requirement.md
+      line: 184
+    - id: FR-13
+      title: 陈旧库核对
+      source: requirement.md
+      line: 190
+    - id: FR-14
+      title: 系统记录文件
+      source: requirement.md
+      line: 196
+    - id: FR-15
+      title: PM 插件版本号落档
+      source: requirement.md
+      line: 203
+    - id: FR-16
+      title: 升级检测与版本一致性核对
+      source: requirement.md
+      line: 209
+    - id: FR-17
+      title: 初始化语义（谁建、何时建）
+      source: requirement.md
+      line: 215
+  design_sections:
+    - ref: design/architecture.md#目标与总体方案
+      title: 目标与总体方案 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-6
+      file: design/architecture.md
+      section: 目标与总体方案
+    - ref: design/architecture.md#模块改动地图
+      title: 模块改动地图 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/architecture.md
+      section: 模块改动地图
+    - ref: design/architecture.md#存储后端选择与装配
+      title: 存储后端选择与装配 <!--
+      serves:
+        - FR-6
+        - FR-12
+        - FR-17
+      file: design/architecture.md
+      section: 存储后端选择与装配
+    - ref: design/architecture.md#设置解析链与内存快照
+      title: 设置解析链与内存快照 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-6
+      file: design/architecture.md
+      section: 设置解析链与内存快照
+    - ref: design/architecture.md#系统记录写入点
+      title: 系统记录写入点 <!--
+      serves:
+        - FR-14
+        - FR-15
+        - FR-16
+      file: design/architecture.md
+      section: 系统记录写入点
+    - ref: design/architecture.md#初始化与失败处理
+      title: 初始化与失败处理 <!--
+      serves:
+        - FR-17
+        - FR-12
+      file: design/architecture.md
+      section: 初始化与失败处理
+    - ref: design/architecture.md#迁移链路
+      title: 迁移链路 <!--
+      serves:
+        - FR-10
+        - FR-11
+        - FR-13
+      file: design/architecture.md
+      section: 迁移链路
+    - ref: design/architecture.md#兼容与回滚
+      title: 兼容与回滚 <!--
+      serves:
+        - FR-6
+        - FR-9
+        - FR-12
+      file: design/architecture.md
+      section: 兼容与回滚
+    - ref: design/architecture.md#依赖与风险
+      title: 依赖与风险 <!--
+      serves:
+        - FR-7
+        - FR-8
+        - FR-10
+      file: design/architecture.md
+      section: 依赖与风险
+    - ref: design/architecture.md#验收口径
+      title: 验收口径 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-7
+        - FR-8
+        - FR-10
+        - FR-12
+        - FR-17
+      file: design/architecture.md
+      section: 验收口径
+    - ref: design/backend.md#服务与接口实现
+      title: 服务与接口实现 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-6
+        - FR-7
+        - FR-10
+        - FR-14
+        - FR-17
+      file: design/backend.md
+      section: 服务与接口实现
+    - ref: design/backend.md#组合根装配顺序伪代码
+      title: 组合根装配顺序（伪代码） <!--
+      serves:
+        - FR-6
+        - FR-12
+        - FR-17
+      file: design/backend.md
+      section: 组合根装配顺序伪代码
+    - ref: design/backend.md#关键逻辑
+      title: 关键逻辑 <!--
+      serves:
+        - FR-2
+        - FR-7
+        - FR-10
+        - FR-16
+      file: design/backend.md
+      section: 关键逻辑
+    - ref: design/backend.md#S-1-resolveRunSettings四级优先级与校验
+      title: S-1 resolveRunSettings：四级优先级与校验 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-6
+      file: design/backend.md
+      section: S-1-resolveRunSettings四级优先级与校验
+    - ref: design/backend.md#S-8-roundLimitFor-的同步快照改造
+      title: S-8 roundLimitFor 的同步快照改造 <!--
+      serves:
+        - FR-2
+      file: design/backend.md
+      section: S-8-roundLimitFor-的同步快照改造
+    - ref: design/backend.md#S-5-SqliteRequirementStore事务边界与-CAS
+      title: S-5 SqliteRequirementStore：事务边界与 CAS <!--
+      serves:
+        - FR-7
+        - FR-9
+      file: design/backend.md
+      section: S-5-SqliteRequirementStore事务边界与-CAS
+    - ref: design/backend.md#S-7-迁移脚本八步与退出码
+      title: S-7 迁移脚本八步与退出码 <!--
+      serves:
+        - FR-10
+        - FR-13
+      file: design/backend.md
+      section: S-7-迁移脚本八步与退出码
+    - ref: design/backend.md#S-10-preflightLedger两种未就绪必须各自独立
+      title: S-10 preflightLedger：两种"未就绪"必须各自独立 <!--
+      serves:
+        - FR-12
+        - FR-13
+      file: design/backend.md
+      section: S-10-preflightLedger两种未就绪必须各自独立
+    - ref: design/backend.md#S-4-reconcileVersion版本比对
+      title: S-4 reconcileVersion：版本比对 <!--
+      serves:
+        - FR-15
+        - FR-16
+      file: design/backend.md
+      section: S-4-reconcileVersion版本比对
+    - ref: design/backend.md#S-3-系统记录初始化语义
+      title: S-3 系统记录初始化语义 <!--
+      serves:
+        - FR-14
+        - FR-17
+      file: design/backend.md
+      section: S-3-系统记录初始化语义
+    - ref: design/backend.md#数据流
+      title: 数据流 <!--
+      serves:
+        - FR-4
+        - FR-10
+      file: design/backend.md
+      section: 数据流
+    - ref: design/backend.md#流-APATCH-settings-内存快照-Dive-生效
+      title: 流 A：PATCH /settings → 内存快照 → Dive 生效 <!--
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/backend.md
+      section: 流-APATCH-settings-内存快照-Dive-生效
+    - ref: design/backend.md#流-B确认-迁移-重启
+      title: 流 B：确认 → 迁移 → 重启 <!--
+      serves:
+        - FR-6
+        - FR-10
+        - FR-11
+        - FR-12
+        - FR-13
+      file: design/backend.md
+      section: 流-B确认-迁移-重启
+    - ref: design/backend.md#错误处理
+      title: 错误处理 <!--
+      serves:
+        - FR-3
+        - FR-4
+        - FR-10
+        - FR-12
+        - FR-16
+      file: design/backend.md
+      section: 错误处理
+    - ref: design/backend.md#错误码落地层级与-HTTP-映射
+      title: 错误码落地层级与 HTTP 映射 <!--
+      serves:
+        - FR-3
+        - FR-4
+        - FR-6
+        - FR-10
+        - FR-12
+        - FR-16
+      file: design/backend.md
+      section: 错误码落地层级与-HTTP-映射
+    - ref: design/backend.md#失败降级纪律
+      title: 失败降级纪律 <!--
+      serves:
+        - FR-10
+        - FR-17
+      file: design/backend.md
+      section: 失败降级纪律
+    - ref: design/backend.md#数据库设计
+      title: 数据库设计 <!--
+      serves:
+        - FR-7
+        - FR-9
+        - FR-13
+      file: design/backend.md
+      section: 数据库设计
+    - ref: design/backend.md#表结构DDL
+      title: 表结构（DDL） <!--
+      serves:
+        - FR-7
+        - FR-9
+      file: design/backend.md
+      section: 表结构DDL
+    - ref: design/backend.md#索引与查询
+      title: 索引与查询 <!--
+      serves:
+        - FR-7
+        - FR-9
+      file: design/backend.md
+      section: 索引与查询
+    - ref: design/backend.md#锁与-nodesqlite-用法
+      title: 锁与 node:sqlite 用法 <!--
+      serves:
+        - FR-7
+        - FR-9
+      file: design/backend.md
+      section: 锁与-nodesqlite-用法
+    - ref: design/backend.md#性能考量
+      title: 性能考量 <!--
+      serves:
+        - FR-7
+        - FR-12
+        - FR-17
+      file: design/backend.md
+      section: 性能考量
+    - ref: design/backend.md#安全设计
+      title: 安全设计 <!--
+      serves:
+        - FR-6
+        - FR-10
+        - FR-11
+      file: design/backend.md
+      section: 安全设计
+    - ref: design/backend.md#路径校验防越界写
+      title: 路径校验（防越界写） <!--
+      serves:
+        - FR-6
+        - FR-10
+        - FR-13
+      file: design/backend.md
+      section: 路径校验防越界写
+    - ref: design/backend.md#确认票据先落章后执行
+      title: 确认票据：先落章、后执行 <!--
+      serves:
+        - FR-11
+      file: design/backend.md
+      section: 确认票据先落章后执行
+    - ref: design/backend.md#确认门的代码级实现
+      title: 确认门的代码级实现 <!--
+      serves:
+        - FR-11
+      file: design/backend.md
+      section: 确认门的代码级实现
+    - ref: design/backend.md#敏感信息与暴露面
+      title: 敏感信息与暴露面 <!--
+      serves:
+        - FR-11
+        - FR-14
+      file: design/backend.md
+      section: 敏感信息与暴露面
+    - ref: design/backend.md#兼容性
+      title: 兼容性 <!--
+      serves:
+        - FR-6
+        - FR-9
+        - FR-12
+      file: design/backend.md
+      section: 兼容性
+    - ref: design/backend.md#与-REQBOARDSCHEMAVERSION-9-的关系
+      title: 与 REQBOARD_SCHEMA_VERSION = 9 的关系 <!--
+      serves:
+        - FR-9
+      file: design/backend.md
+      section: 与-REQBOARDSCHEMAVERSION-9-的关系
+    - ref: design/backend.md#分叉检出与重建
+      title: 分叉检出与重建 <!--
+      serves:
+        - FR-13
+      file: design/backend.md
+      section: 分叉检出与重建
+    - ref: design/backend.md#双库并存与回滚
+      title: 双库并存与回滚 <!--
+      serves:
+        - FR-6
+        - FR-9
+        - FR-12
+      file: design/backend.md
+      section: 双库并存与回滚
+    - ref: design/backend.md#实施顺序与验收锚点
+      title: 实施顺序与验收锚点 <!--
+      serves:
+        - FR-7
+        - FR-8
+        - FR-10
+        - FR-17
+      file: design/backend.md
+      section: 实施顺序与验收锚点
+    - ref: design/data-model.md#设置文件-schema
+      title: 设置文件 schema <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-6
+      file: design/data-model.md
+      section: 设置文件-schema
+    - ref: design/data-model.md#系统记录-schema
+      title: 系统记录 schema <!--
+      serves:
+        - FR-14
+        - FR-15
+        - FR-16
+        - FR-17
+      file: design/data-model.md
+      section: 系统记录-schema
+    - ref: design/data-model.md#SQLite-表结构
+      title: SQLite 表结构 <!--
+      serves:
+        - FR-7
+        - FR-9
+      file: design/data-model.md
+      section: SQLite-表结构
+    - ref: design/data-model.md#两种后端的等价性对照
+      title: 两种后端的等价性对照 <!--
+      serves:
+        - FR-9
+      file: design/data-model.md
+      section: 两种后端的等价性对照
+    - ref: design/data-model.md#版本与兼容
+      title: 版本与兼容 <!--
+      serves:
+        - FR-9
+        - FR-15
+        - FR-16
+      file: design/data-model.md
+      section: 版本与兼容
+    - ref: design/data-model.md#迁移与回填算法
+      title: 迁移与回填算法 <!--
+      serves:
+        - FR-10
+        - FR-12
+        - FR-13
+      file: design/data-model.md
+      section: 迁移与回填算法
+    - ref: design/frontend.md#原型页面
+      title: 原型页面 <!--
+      serves:
+        - FR-5
+      file: design/frontend.md
+      section: 原型页面
+    - ref: design/frontend.md#目录与包结构
+      title: 目录与包结构 <!--
+      serves:
+        - FR-5
+      file: design/frontend.md
+      section: 目录与包结构
+    - ref: design/frontend.md#组件结构
+      title: 组件结构 <!--
+      serves:
+        - FR-5
+      file: design/frontend.md
+      section: 组件结构
+    - ref: design/frontend.md#页面与组件编号表
+      title: 页面与组件（编号表） <!--
+      serves:
+        - FR-5
+      file: design/frontend.md
+      section: 页面与组件编号表
+    - ref: design/frontend.md#入口与挂载
+      title: 入口与挂载 <!--
+      serves:
+        - FR-5
+      file: design/frontend.md
+      section: 入口与挂载
+    - ref: design/frontend.md#四屏职责
+      title: 四屏职责 <!--
+      serves:
+        - FR-2
+        - FR-5
+        - FR-6
+        - FR-14
+      file: design/frontend.md
+      section: 四屏职责
+    - ref: design/frontend.md#屏-1-运行上限
+      title: 屏 1 运行上限 <!--
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/frontend.md
+      section: 屏-1-运行上限
+    - ref: design/frontend.md#屏-2-存储与数据库
+      title: 屏 2 存储与数据库 <!--
+      serves:
+        - FR-6
+        - FR-13
+        - FR-17
+      file: design/frontend.md
+      section: 屏-2-存储与数据库
+    - ref: design/frontend.md#屏-3-系统记录
+      title: 屏 3 系统记录 <!--
+      serves:
+        - FR-14
+        - FR-15
+        - FR-16
+      file: design/frontend.md
+      section: 屏-3-系统记录
+    - ref: design/frontend.md#屏-4-通用
+      title: 屏 4 通用 <!--
+      serves:
+        - FR-15
+        - FR-16
+      file: design/frontend.md
+      section: 屏-4-通用
+    - ref: design/frontend.md#状态管理
+      title: 状态管理 <!--
+      serves:
+        - FR-4
+        - FR-6
+        - FR-10
+      file: design/frontend.md
+      section: 状态管理
+    - ref: design/frontend.md#本地草稿态与校验态
+      title: 本地草稿态与校验态 <!--
+      serves:
+        - FR-4
+      file: design/frontend.md
+      section: 本地草稿态与校验态
+    - ref: design/frontend.md#请求态与失败回退
+      title: 请求态与失败回退 <!--
+      serves:
+        - FR-4
+        - FR-6
+      file: design/frontend.md
+      section: 请求态与失败回退
+    - ref: design/frontend.md#迁移四态机
+      title: 迁移四态机 <!--
+      serves:
+        - FR-10
+      file: design/frontend.md
+      section: 迁移四态机
+    - ref: design/frontend.md#数据流
+      title: 数据流 <!--
+      serves:
+        - FR-3
+        - FR-4
+        - FR-10
+      file: design/frontend.md
+      section: 数据流
+    - ref: design/frontend.md#确认门FR-11
+      title: 确认门（FR-11） <!--
+      serves:
+        - FR-11
+      file: design/frontend.md
+      section: 确认门FR-11
+    - ref: design/frontend.md#迁移进度与窗口跳转
+      title: 迁移进度与窗口跳转 <!--
+      serves:
+        - FR-10
+        - FR-11
+      file: design/frontend.md
+      section: 迁移进度与窗口跳转
+    - ref: design/frontend.md#拒绝服务与错误呈现
+      title: 拒绝服务与错误呈现 <!--
+      serves:
+        - FR-4
+        - FR-12
+      file: design/frontend.md
+      section: 拒绝服务与错误呈现
+    - ref: design/frontend.md#样式与主题
+      title: 样式与主题 <!--
+      serves:
+        - FR-5
+      file: design/frontend.md
+      section: 样式与主题
+    - ref: design/frontend.md#响应式与可访问性
+      title: 响应式与可访问性 <!--
+      serves:
+        - FR-5
+      file: design/frontend.md
+      section: 响应式与可访问性
+    - ref: design/frontend.md#依赖与第三方库
+      title: 依赖与第三方库 <!--
+      serves:
+        - FR-5
+      file: design/frontend.md
+      section: 依赖与第三方库
+    - ref: design/frontend.md#测试与可测性钩子
+      title: 测试与可测性钩子 <!--
+      serves:
+        - FR-4
+        - FR-5
+        - FR-10
+      file: design/frontend.md
+      section: 测试与可测性钩子
+    - ref: design/frontend.md#与既有前端的接入差异与风险
+      title: 与既有前端的接入差异与风险 <!--
+      serves:
+        - FR-5
+      file: design/frontend.md
+      section: 与既有前端的接入差异与风险
+    - ref: design/interfaces.md#新增端口SettingsStore
+      title: 新增端口：SettingsStore <!--
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+      file: design/interfaces.md
+      section: 新增端口SettingsStore
+    - ref: design/interfaces.md#新增端口SystemRecordStore
+      title: 新增端口：SystemRecordStore <!--
+      serves:
+        - FR-14
+        - FR-15
+        - FR-16
+      file: design/interfaces.md
+      section: 新增端口SystemRecordStore
+    - ref: design/interfaces.md#新增实现SqliteRequirementStore
+      title: 新增实现：SqliteRequirementStore <!--
+      serves:
+        - FR-7
+        - FR-8
+      file: design/interfaces.md
+      section: 新增实现SqliteRequirementStore
+    - ref: design/interfaces.md#配置与解析函数
+      title: 配置与解析函数 <!--
+      serves:
+        - FR-2
+        - FR-6
+      file: design/interfaces.md
+      section: 配置与解析函数
+    - ref: design/interfaces.md#HTTP-路由
+      title: HTTP 路由 <!--
+      serves:
+        - FR-3
+        - FR-4
+        - FR-6
+        - FR-10
+        - FR-11
+        - FR-14
+      file: design/interfaces.md
+      section: HTTP-路由
+    - ref: design/interfaces.md#GET-dashboardapireqboardsettings
+      title: GET /dashboard/api/reqboard/settings <!--
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: GET-dashboardapireqboardsettings
+    - ref: design/interfaces.md#PATCH-dashboardapireqboardsettings
+      title: PATCH /dashboard/api/reqboard/settings <!--
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: PATCH-dashboardapireqboardsettings
+    - ref: design/interfaces.md#人工确认留痕契约FR-11-的代码级落点
+      title: 人工确认留痕契约（FR-11 的代码级落点） <!--
+      serves:
+        - FR-11
+      file: design/interfaces.md
+      section: 人工确认留痕契约FR-11-的代码级落点
+    - ref: design/interfaces.md#POST-dashboardapireqboardsettingsstorageswitch
+      title: POST /dashboard/api/reqboard/settings/storage/switch <!--
+      serves:
+        - FR-6
+        - FR-11
+      file: design/interfaces.md
+      section: POST-dashboardapireqboardsettingsstorageswitch
+    - ref: design/interfaces.md#POST-dashboardapireqboardsettingsstoragemigrate
+      title: POST /dashboard/api/reqboard/settings/storage/migrate <!--
+      serves:
+        - FR-10
+        - FR-11
+      file: design/interfaces.md
+      section: POST-dashboardapireqboardsettingsstoragemigrate
+    - ref: design/interfaces.md#GET-dashboardapireqboardsettingssystem
+      title: GET /dashboard/api/reqboard/settings/system <!--
+      serves:
+        - FR-14
+        - FR-15
+        - FR-16
+      file: design/interfaces.md
+      section: GET-dashboardapireqboardsettingssystem
+    - ref: design/interfaces.md#前端-API-客户端
+      title: 前端 API 客户端 <!--
+      serves:
+        - FR-5
+      file: design/interfaces.md
+      section: 前端-API-客户端
+    - ref: design/interfaces.md#迁移脚本-CLI
+      title: 迁移脚本 CLI <!--
+      serves:
+        - FR-10
+        - FR-13
+      file: design/interfaces.md
+      section: 迁移脚本-CLI
+    - ref: design/interfaces.md#错误码与失败语义
+      title: 错误码与失败语义 <!--
+      serves:
+        - FR-4
+        - FR-10
+        - FR-11
+        - FR-12
+      file: design/interfaces.md
+      section: 错误码与失败语义
+    - ref: design/use-cases.md#场景总览
+      title: 场景总览 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+        - FR-9
+        - FR-10
+        - FR-11
+        - FR-12
+        - FR-13
+        - FR-14
+        - FR-15
+        - FR-16
+        - FR-17
+      file: design/use-cases.md
+      section: 场景总览
+    - ref: design/use-cases.md#UC-1-需求在实施阶段空转把上限收小当场停手
+      title: UC-1 需求在实施阶段空转：把上限收小，当场停手 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/use-cases.md
+      section: UC-1-需求在实施阶段空转把上限收小当场停手
+    - ref: design/use-cases.md#UC-2-需求跑飞收紧上限但不打断正在跑的那一回合
+      title: UC-2 需求跑飞：收紧上限，但不打断正在跑的那一回合 <!--
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/use-cases.md
+      section: UC-2-需求跑飞收紧上限但不打断正在跑的那一回合
+    - ref: design/use-cases.md#UC-3-第一次把台账切到-SQLite确认-Agent-五步-重启生效
+      title: UC-3 第一次把台账切到 SQLite：确认 → Agent 五步 → 重启生效 <!--
+      serves:
+        - FR-1
+        - FR-6
+        - FR-7
+        - FR-10
+        - FR-11
+        - FR-14
+      file: design/use-cases.md
+      section: UC-3-第一次把台账切到-SQLite确认-Agent-五步-重启生效
+    - ref: design/use-cases.md#UC-4-在确认框上点取消零副作用
+      title: UC-4 在确认框上点「取消」：零副作用 <!--
+      serves:
+        - FR-11
+      file: design/use-cases.md
+      section: UC-4-在确认框上点取消零副作用
+    - ref: design/use-cases.md#UC-5-试点不理想切回原来的分片存储
+      title: UC-5 试点不理想：切回原来的分片存储 <!--
+      serves:
+        - FR-6
+        - FR-11
+        - FR-14
+      file: design/use-cases.md
+      section: UC-5-试点不理想切回原来的分片存储
+    - ref: design/use-cases.md#UC-6-迁移跑到一半失败自动回滚重试仍要重新确认
+      title: UC-6 迁移跑到一半失败：自动回滚，重试仍要重新确认 <!--
+      serves:
+        - FR-10
+        - FR-11
+        - FR-14
+      file: design/use-cases.md
+      section: UC-6-迁移跑到一半失败自动回滚重试仍要重新确认
+    - ref: design/use-cases.md#UC-7-迁移没做完就重启拒绝服务并给指引
+      title: UC-7 迁移没做完就重启：拒绝服务并给指引 <!--
+      serves:
+        - FR-6
+        - FR-12
+      file: design/use-cases.md
+      section: UC-7-迁移没做完就重启拒绝服务并给指引
+    - ref: design/use-cases.md#UC-8-检出旧库先备份旧库再重建
+      title: UC-8 检出旧库：先备份旧库再重建 <!--
+      serves:
+        - FR-13
+        - FR-14
+      file: design/use-cases.md
+      section: UC-8-检出旧库先备份旧库再重建
+    - ref: design/use-cases.md#UC-9-排查以前用过-SQLite-吗上次是谁改的后端
+      title: UC-9 排查"以前用过 SQLite 吗、上次是谁改的后端" <!--
+      serves:
+        - FR-3
+        - FR-14
+        - FR-15
+      file: design/use-cases.md
+      section: UC-9-排查以前用过-SQLite-吗上次是谁改的后端
+    - ref: design/use-cases.md#UC-10-插件刚升级旧库还能不能直接用
+      title: UC-10 插件刚升级：旧库还能不能直接用 <!--
+      serves:
+        - FR-15
+        - FR-16
+      file: design/use-cases.md
+      section: UC-10-插件刚升级旧库还能不能直接用
+    - ref: design/use-cases.md#UC-11-全新安装第一次打开设置页记录已有设置文件还没有
+      title: UC-11 全新安装：第一次打开设置页（记录已有，设置文件还没有） <!--
+      serves:
+        - FR-1
+        - FR-3
+        - FR-5
+        - FR-14
+        - FR-15
+        - FR-17
+      file: design/use-cases.md
+      section: UC-11-全新安装第一次打开设置页记录已有设置文件还没有
+    - ref: design/use-cases.md#UC-12-换库前后人在看板上看到的东西必须逐字一样
+      title: UC-12 换库前后，人在看板上看到的东西必须逐字一样 <!--
+      serves:
+        - FR-7
+        - FR-8
+        - FR-9
+      file: design/use-cases.md
+      section: UC-12-换库前后人在看板上看到的东西必须逐字一样
+    - ref: design/use-cases.md#FR-覆盖对照
+      title: FR 覆盖对照 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+        - FR-9
+        - FR-10
+        - FR-11
+        - FR-12
+        - FR-13
+        - FR-14
+        - FR-15
+        - FR-16
+        - FR-17
+      file: design/use-cases.md
+      section: FR-覆盖对照
+outputs:
+  tasks:
+    - id: t-47ad9b
+      title: 定契约：端口 + 设置解析纯函数 + SQLite DDL 常量 + 错误码映射
+      implements: 新增 src/application/settings/resolve-settings.ts（四级来源合并 + 1–10000 校验 + 逐项 source 标注）、src/application/settings/events.ts（5 类系统事件载荷构造）、src/repositories/sqliteSchema.ts（DDL + sqlite_schema_version=1）；在 src/application/ports.ts 加 SettingsStore/SystemRecordStore 两端口（RequirementStore 签名不动）；改 src/http/envelope.ts 的 fail() 补登 confirmation_required→403、REQBOARD_REQUIRES_SQLITE_MIGRATION→503、window_opener_unavailable→503、dispatch_failed→502、migration_in_progress/sqlite_not_migrated→409。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-6
+        - FR-14
+        - FR-15
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-f36a66
+      title: 设置文件与系统记录两个适配器（含自动初始化与失败降级）
+      implements: 新增 src/adapters/FileSettingsStore.ts（临时文件 + rename 原子写、mtime 轮询刷新、解析失败回落默认并记 settings-invalid）、src/adapters/SystemRecordFile.ts（不存在即自动初始化并写首条 startup、只追加、history 上限 500、写失败只累加 droppedEvents 不阻断启动）；改 src/plugin-config.ts 加 stageMaxRounds? / storage?。
+      serves:
+        - FR-1
+        - FR-14
+        - FR-17
+      depends_on:
+        - t-47ad9b
+      phase: implement
+      side: backend
+    - id: t-3294af
+      title: SQLite 适配器实现 RequirementStore 全端口
+      implements: 新增 src/repositories/SqliteRequirementStore.ts：用 node:sqlite 的 DatabaseSync 实现 get/listComments/listHistory/head/create/mutate/mutateIf/appendComment/sweep/replaceAll/subscribe 与 getSummary/listSummaries/listTriages/peekSummaries/peekFacts/headAfterDrain；写方法 BEGIN IMMEDIATE 单事务；mutateIf 版本不符抛 REQBOARD_CONFLICT；冷侧写抛 REQBOARD_COLD_IMMUTABLE；schema 不符抛 REQBOARD_SQLITE_SCHEMA_MISMATCH；DDL 复用 src/repositories/sqliteSchema.ts。
+      serves:
+        - FR-7
+        - FR-9
+      depends_on:
+        - t-47ad9b
+      phase: implement
+      side: backend
+    - id: t-e9154c
+      title: 把 SQLite 实现接入端口契约测试注册表
+      implements: "改 tests/reqboard/store-contract.test.ts 的 IMPLEMENTATIONS 注册 SqliteRequirementStore（suites: ['read','write']，注册表自检行不再标未覆盖）；新增 tests/reqboard/sqlite-harness.ts 提供临时库夹具（结束即删、用例互不污染）。"
+      serves:
+        - FR-8
+        - FR-9
+      depends_on:
+        - t-3294af
+      phase: test
+      side: backend
+    - id: t-f32478
+      title: 装配期选后端 + 系统记录初始化 + 迁移门拆两种未就绪
+      implements: 改 src/index.ts 装配期四步（解析 backend 优先级 → preflightLedger 扩展 → 按 backend new 出实现 → 初始化系统记录）；改 src/repositories/migrationGate.ts 把相 2 拆成 2a（REQBOARD_REQUIRES_SQLITE_MIGRATION，指引 migrate-ledger-to-sqlite）与 2b（既有 REQUIRES_MIGRATION，指引 migrate-ledger-v10），两套 message/hint 各自唯一构造点；扩展 tests/reqboard/migration-gate.test.ts；新增 tests/reqboard/settings-init.test.ts。
+      serves:
+        - FR-6
+        - FR-12
+        - FR-17
+      depends_on:
+        - t-f36a66
+        - t-3294af
+      phase: implement
+      side: backend
+    - id: t-fc0caa
+      title: 上限生效：同步快照 + 默认表降级 + 判定点停手
+      implements: 改 src/application/dive/round-state.ts 让 roundLimitFor 读模块级内存快照（保持同步签名、不插 await）；改 src/application/dive/stage-configs.ts 语义降级为默认值表；在 src/index.ts 装三路刷新（启动加载 / PATCH 广播 / 文件 mtime 轮询）；扩展 tests/dive-round-state.test.ts。
+      serves:
+        - FR-2
+      depends_on:
+        - t-f36a66
+      phase: implement
+      side: backend
+    - id: t-cc816f
+      title: 挂起确认机制扩写：storage-action + 一次性 consume
+      implements: 改 src/adapters/PendingConfirmRegistry.ts：register() 接受 target:'storage-action' 且 requirementId 可空（存储开关是宿主级动作），新增 consume(ticket) 原子校验『已落章 + 未过期 + 未消费』并置为已消费（并发两次只成功一次，落章沿用 settle 既有形状含 channel/sessionId/pluginVersion）；新增 tests/reqboard/pending-confirm-consume.test.ts。
+      serves:
+        - FR-11
+      depends_on:
+        - t-47ad9b
+      phase: implement
+      side: backend
+    - id: t-425fa6
+      title: settings 路由五条（含票据 request 与消费）
+      implements: 新增 src/http/routers/settings.ts 实现 GET /settings（含 system.paths）、PATCH /settings（拒收 storage.backend 并指向确认门）、POST /settings/storage/request（发一次性票据 sc-… 并推确认框）、POST /settings/storage/switch（带 ticket 消费后写设置文件）、GET /settings/system；改 src/http/routes.ts 挂载并注入 SettingsStore/SystemRecordStore；新增 tests/reqboard/settings-router.test.ts。
+      serves:
+        - FR-3
+        - FR-4
+        - FR-12
+        - FR-14
+      depends_on:
+        - t-f36a66
+        - t-cc816f
+      phase: implement
+      side: backend
+    - id: t-19092c
+      title: 迁移脚本八步 + 兼容与回滚
+      implements: 新增 scripts/migrate-ledger-to-sqlite.ts 八步（预检含分叉检测 → 备份分片 → 旧库先备份再重建 → 建表 → 单事务迁移 → 条数与抽样 5 条校验 → 校验通过才写设置 → 退出码 0/2/3/4，支持 --dry-run / --write-settings）；新增 tests/reqboard/sqlite-migrate.test.ts（含反向演练：移除回滚分支 → 用例必红）。
+      serves:
+        - FR-10
+        - FR-13
+        - FR-16
+      depends_on:
+        - t-f32478
+      phase: implement
+      side: backend
+    - id: t-6293b1
+      title: 迁移开窗链路：windowOpener + crossWindowDeliver + 系统事件
+      implements: 在 src/http/routers/settings.ts 的 migrate 分支用 applicationDeps.windowOpener.create({cwd|workspaceId}) 开窗、再 crossWindowDeliver.createMessage/deliver 投递迁移底稿（不用要求 live driver 的 openWindow 用例；落点解析不出即响亮失败）；失败三态 window_opener_unavailable / window_open_failed / dispatch_failed 如实回报且不写 migration 事件；新增 tests/reqboard/settings-migrate-dispatch.test.ts。
+      serves:
+        - FR-10
+        - FR-11
+      depends_on:
+        - t-425fa6
+        - t-19092c
+      phase: implement
+      side: backend
+    - id: t-124008
+      title: 设置弹窗骨架与入口（挂 body、左菜单、关闭语义、API 客户端）
+      implements: 新增 src/client/settings-dialog.ts（挂 document.body 而非视图容器、左菜单四屏切换、ESC/遮罩/✕ 关闭、键盘可达）、src/client/styles/settings.ts（复用 --pm-* 令牌与 dsh-pm- 前缀，不新增第二套视觉体系）；改 src/client/api.ts 加 5 个函数（fetchRunSettings/patchRunSettings/switchStorageBackend/startLedgerMigration/fetchSystemRecord）、改 src/client/board-mount.ts 接线页头『⚙ 设置』按钮并通过 deps 注入 jumpToWindow（避免 board-mount 成环）。
+      serves:
+        - FR-5
+      depends_on:
+        - t-425fa6
+      phase: ui
+      side: frontend
+    - id: t-506e9f
+      title: 运行上限屏（表格 / 草稿态 / 校验 / 来源徽章 / 泳道上限）
+      implements: 新增 src/client/views/settings-limits.ts（九行阶段表格、草稿态 dirty map、1–10000 即时校验与保存键禁用、来源徽章 设置文件/插件配置/内置默认/待保存、恢复默认、保存往返后刷新徽章与泳道头上限）；追加 src/client/styles/settings.ts；新增 tests/client/settings-limits.test.ts。
+      serves:
+        - FR-2
+        - FR-5
+      depends_on:
+        - t-124008
+      phase: ui
+      side: frontend
+    - id: t-7cd77f
+      title: 存储与数据库屏 + 确认门（四态机 / 票据 / 独立错误文案）
+      implements: 新增 src/client/views/settings-storage.ts（后端开关、迁移五步清单、idle→requesting→confirm→落章→running→done/failed 四态机、consent 只存内存不落 localStorage、403/502/503/409/500 各独立文案、失败态重试必须重新走确认、跳转复用注入的 jumpToWindow）；追加 src/client/styles/settings.ts；新增 tests/client/settings-storage.test.ts。
+      serves:
+        - FR-6
+        - FR-10
+        - FR-11
+        - FR-13
+      depends_on:
+        - t-124008
+      phase: ui
+      side: frontend
+    - id: t-611d89
+      title: 系统记录屏 + 通用屏（时间线 / 路径档案 / 版本核对 / 分叉红字）
+      implements: 新增 src/client/views/settings-records.ts（后端使用史时间线含 upgrade/migration/backend-switched、数据路径档案、版本一致性核对、分叉 stale 红字且不提供合并按钮）、src/client/views/settings-general.ts（PM 插件版本/构建指纹/schema/运行时；『打开配置文件』在文件不存在时禁用并提示尚未创建）；新增 tests/client/settings-records.test.ts。
+      serves:
+        - FR-14
+        - FR-15
+        - FR-16
+        - FR-17
+      depends_on:
+        - t-124008
+      phase: ui
+      side: frontend
+    - id: t-33ad1b
+      title: 端到端与反向演练 + 开工基线落盘
+      implements: 新增 tests/reqboard/settings-e2e.test.ts 串三条端到端（上限改 5 → 假投递驱动到 5 即停手；确认门 → 票据 → 迁移 → 设置写入 → 重启后 SQLite 生效；未迁移重启 → 503 指引）+ 三条反向演练（移除回滚分支 / 写反优先级 / 删留痕校验，各自必红）；把开工基线写进 docs/requirements/REQ-261004103330-005f/notes/baseline.md。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-7
+        - FR-10
+        - FR-11
+        - FR-12
+        - FR-17
+      depends_on:
+        - t-fc0caa
+        - t-6293b1
+        - t-506e9f
+        - t-7cd77f
+        - t-611d89
+      phase: test
+      side: fullstack
+    - id: t-f57a19
+      title: 定契约：端口 + 设置解析纯函数 + SQLite DDL 常量 + 错误码映射·研发
+      implements: |-
+        新增 src/application/settings/resolve-settings.ts（四级来源合并 + 1–10000 校验 + 逐项 source 标注）、src/application/settings/events.ts（5 类系统事件载荷构造）、src/repositories/sqliteSchema.ts（DDL + sqlite_schema_version=1）；在 src/application/ports.ts 加 SettingsStore/SystemRecordStore 两端口（RequirementStore 签名不动）；改 src/http/envelope.ts 的 fail() 补登 confirmation_required→403、REQBOARD_REQUIRES_SQLITE_MIGRATION→503、window_opener_unavailable→503、dispatch_failed→502、migration_in_progress/sqlite_not_migrated→409。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-6582fa
+      title: 定契约：端口 + 设置解析纯函数 + SQLite DDL 常量 + 错误码映射·联调
+      implements: |-
+        新增 src/application/settings/resolve-settings.ts（四级来源合并 + 1–10000 校验 + 逐项 source 标注）、src/application/settings/events.ts（5 类系统事件载荷构造）、src/repositories/sqliteSchema.ts（DDL + sqlite_schema_version=1）；在 src/application/ports.ts 加 SettingsStore/SystemRecordStore 两端口（RequirementStore 签名不动）；改 src/http/envelope.ts 的 fail() 补登 confirmation_required→403、REQBOARD_REQUIRES_SQLITE_MIGRATION→503、window_opener_unavailable→503、dispatch_failed→502、migration_in_progress/sqlite_not_migrated→409。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-f57a19
+      phase: implement
+      side: backend
+    - id: t-17227e
+      title: 定契约：端口 + 设置解析纯函数 + SQLite DDL 常量 + 错误码映射·复核
+      implements: |-
+        新增 src/application/settings/resolve-settings.ts（四级来源合并 + 1–10000 校验 + 逐项 source 标注）、src/application/settings/events.ts（5 类系统事件载荷构造）、src/repositories/sqliteSchema.ts（DDL + sqlite_schema_version=1）；在 src/application/ports.ts 加 SettingsStore/SystemRecordStore 两端口（RequirementStore 签名不动）；改 src/http/envelope.ts 的 fail() 补登 confirmation_required→403、REQBOARD_REQUIRES_SQLITE_MIGRATION→503、window_opener_unavailable→503、dispatch_failed→502、migration_in_progress/sqlite_not_migrated→409。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-6582fa
+      phase: implement
+      side: backend
+    - id: t-844625
+      title: 定契约：端口 + 设置解析纯函数 + SQLite DDL 常量 + 错误码映射·测试
+      implements: |-
+        新增 src/application/settings/resolve-settings.ts（四级来源合并 + 1–10000 校验 + 逐项 source 标注）、src/application/settings/events.ts（5 类系统事件载荷构造）、src/repositories/sqliteSchema.ts（DDL + sqlite_schema_version=1）；在 src/application/ports.ts 加 SettingsStore/SystemRecordStore 两端口（RequirementStore 签名不动）；改 src/http/envelope.ts 的 fail() 补登 confirmation_required→403、REQBOARD_REQUIRES_SQLITE_MIGRATION→503、window_opener_unavailable→503、dispatch_failed→502、migration_in_progress/sqlite_not_migrated→409。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-17227e
+      phase: implement
+      side: backend
+    - id: t-ef5139
+      title: 设置文件与系统记录两个适配器（含自动初始化与失败降级）·研发
+      implements: |-
+        新增 src/adapters/FileSettingsStore.ts（临时文件 + rename 原子写、mtime 轮询刷新、解析失败回落默认并记 settings-invalid）、src/adapters/SystemRecordFile.ts（不存在即自动初始化并写首条 startup、只追加、history 上限 500、写失败只累加 droppedEvents 不阻断启动）；改 src/plugin-config.ts 加 stageMaxRounds? / storage?。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-47ad9b
+      phase: implement
+      side: backend
+    - id: t-9c1d5c
+      title: 设置文件与系统记录两个适配器（含自动初始化与失败降级）·联调
+      implements: |-
+        新增 src/adapters/FileSettingsStore.ts（临时文件 + rename 原子写、mtime 轮询刷新、解析失败回落默认并记 settings-invalid）、src/adapters/SystemRecordFile.ts（不存在即自动初始化并写首条 startup、只追加、history 上限 500、写失败只累加 droppedEvents 不阻断启动）；改 src/plugin-config.ts 加 stageMaxRounds? / storage?。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-ef5139
+      phase: implement
+      side: backend
+    - id: t-a50122
+      title: 设置文件与系统记录两个适配器（含自动初始化与失败降级）·复核
+      implements: |-
+        新增 src/adapters/FileSettingsStore.ts（临时文件 + rename 原子写、mtime 轮询刷新、解析失败回落默认并记 settings-invalid）、src/adapters/SystemRecordFile.ts（不存在即自动初始化并写首条 startup、只追加、history 上限 500、写失败只累加 droppedEvents 不阻断启动）；改 src/plugin-config.ts 加 stageMaxRounds? / storage?。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-9c1d5c
+      phase: implement
+      side: backend
+    - id: t-185b29
+      title: 设置文件与系统记录两个适配器（含自动初始化与失败降级）·测试
+      implements: |-
+        新增 src/adapters/FileSettingsStore.ts（临时文件 + rename 原子写、mtime 轮询刷新、解析失败回落默认并记 settings-invalid）、src/adapters/SystemRecordFile.ts（不存在即自动初始化并写首条 startup、只追加、history 上限 500、写失败只累加 droppedEvents 不阻断启动）；改 src/plugin-config.ts 加 stageMaxRounds? / storage?。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-a50122
+      phase: implement
+      side: backend
+    - id: t-b97403
+      title: SQLite 适配器实现 RequirementStore 全端口·研发
+      implements: |-
+        新增 src/repositories/SqliteRequirementStore.ts：用 node:sqlite 的 DatabaseSync 实现 get/listComments/listHistory/head/create/mutate/mutateIf/appendComment/sweep/replaceAll/subscribe 与 getSummary/listSummaries/listTriages/peekSummaries/peekFacts/headAfterDrain；写方法 BEGIN IMMEDIATE 单事务；mutateIf 版本不符抛 REQBOARD_CONFLICT；冷侧写抛 REQBOARD_COLD_IMMUTABLE；schema 不符抛 REQBOARD_SQLITE_SCHEMA_MISMATCH；DDL 复用 src/repositories/sqliteSchema.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-47ad9b
+      phase: implement
+      side: backend
+    - id: t-890db3
+      title: SQLite 适配器实现 RequirementStore 全端口·联调
+      implements: |-
+        新增 src/repositories/SqliteRequirementStore.ts：用 node:sqlite 的 DatabaseSync 实现 get/listComments/listHistory/head/create/mutate/mutateIf/appendComment/sweep/replaceAll/subscribe 与 getSummary/listSummaries/listTriages/peekSummaries/peekFacts/headAfterDrain；写方法 BEGIN IMMEDIATE 单事务；mutateIf 版本不符抛 REQBOARD_CONFLICT；冷侧写抛 REQBOARD_COLD_IMMUTABLE；schema 不符抛 REQBOARD_SQLITE_SCHEMA_MISMATCH；DDL 复用 src/repositories/sqliteSchema.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-b97403
+      phase: implement
+      side: backend
+    - id: t-aa415d
+      title: SQLite 适配器实现 RequirementStore 全端口·复核
+      implements: |-
+        新增 src/repositories/SqliteRequirementStore.ts：用 node:sqlite 的 DatabaseSync 实现 get/listComments/listHistory/head/create/mutate/mutateIf/appendComment/sweep/replaceAll/subscribe 与 getSummary/listSummaries/listTriages/peekSummaries/peekFacts/headAfterDrain；写方法 BEGIN IMMEDIATE 单事务；mutateIf 版本不符抛 REQBOARD_CONFLICT；冷侧写抛 REQBOARD_COLD_IMMUTABLE；schema 不符抛 REQBOARD_SQLITE_SCHEMA_MISMATCH；DDL 复用 src/repositories/sqliteSchema.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-890db3
+      phase: implement
+      side: backend
+    - id: t-ff9b2e
+      title: SQLite 适配器实现 RequirementStore 全端口·测试
+      implements: |-
+        新增 src/repositories/SqliteRequirementStore.ts：用 node:sqlite 的 DatabaseSync 实现 get/listComments/listHistory/head/create/mutate/mutateIf/appendComment/sweep/replaceAll/subscribe 与 getSummary/listSummaries/listTriages/peekSummaries/peekFacts/headAfterDrain；写方法 BEGIN IMMEDIATE 单事务；mutateIf 版本不符抛 REQBOARD_CONFLICT；冷侧写抛 REQBOARD_COLD_IMMUTABLE；schema 不符抛 REQBOARD_SQLITE_SCHEMA_MISMATCH；DDL 复用 src/repositories/sqliteSchema.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-aa415d
+      phase: implement
+      side: backend
+    - id: t-1d9c8a
+      title: 挂起确认机制扩写：storage-action + 一次性 consume·研发
+      implements: |-
+        改 src/adapters/PendingConfirmRegistry.ts：register() 接受 target:'storage-action' 且 requirementId 可空（存储开关是宿主级动作），新增 consume(ticket) 原子校验『已落章 + 未过期 + 未消费』并置为已消费（并发两次只成功一次，落章沿用 settle 既有形状含 channel/sessionId/pluginVersion）；新增 tests/reqboard/pending-confirm-consume.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-47ad9b
+      phase: implement
+      side: backend
+    - id: t-8742f1
+      title: 挂起确认机制扩写：storage-action + 一次性 consume·联调
+      implements: |-
+        改 src/adapters/PendingConfirmRegistry.ts：register() 接受 target:'storage-action' 且 requirementId 可空（存储开关是宿主级动作），新增 consume(ticket) 原子校验『已落章 + 未过期 + 未消费』并置为已消费（并发两次只成功一次，落章沿用 settle 既有形状含 channel/sessionId/pluginVersion）；新增 tests/reqboard/pending-confirm-consume.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-1d9c8a
+      phase: implement
+      side: backend
+    - id: t-750590
+      title: 挂起确认机制扩写：storage-action + 一次性 consume·复核
+      implements: |-
+        改 src/adapters/PendingConfirmRegistry.ts：register() 接受 target:'storage-action' 且 requirementId 可空（存储开关是宿主级动作），新增 consume(ticket) 原子校验『已落章 + 未过期 + 未消费』并置为已消费（并发两次只成功一次，落章沿用 settle 既有形状含 channel/sessionId/pluginVersion）；新增 tests/reqboard/pending-confirm-consume.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-8742f1
+      phase: implement
+      side: backend
+    - id: t-cb7bb6
+      title: 挂起确认机制扩写：storage-action + 一次性 consume·测试
+      implements: |-
+        改 src/adapters/PendingConfirmRegistry.ts：register() 接受 target:'storage-action' 且 requirementId 可空（存储开关是宿主级动作），新增 consume(ticket) 原子校验『已落章 + 未过期 + 未消费』并置为已消费（并发两次只成功一次，落章沿用 settle 既有形状含 channel/sessionId/pluginVersion）；新增 tests/reqboard/pending-confirm-consume.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-750590
+      phase: implement
+      side: backend
+    - id: t-65f67b
+      title: 上限生效：同步快照 + 默认表降级 + 判定点停手·研发
+      implements: |-
+        改 src/application/dive/round-state.ts 让 roundLimitFor 读模块级内存快照（保持同步签名、不插 await）；改 src/application/dive/stage-configs.ts 语义降级为默认值表；在 src/index.ts 装三路刷新（启动加载 / PATCH 广播 / 文件 mtime 轮询）；扩展 tests/dive-round-state.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-f36a66
+      phase: implement
+      side: backend
+    - id: t-7d3116
+      title: 上限生效：同步快照 + 默认表降级 + 判定点停手·联调
+      implements: |-
+        改 src/application/dive/round-state.ts 让 roundLimitFor 读模块级内存快照（保持同步签名、不插 await）；改 src/application/dive/stage-configs.ts 语义降级为默认值表；在 src/index.ts 装三路刷新（启动加载 / PATCH 广播 / 文件 mtime 轮询）；扩展 tests/dive-round-state.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-65f67b
+      phase: implement
+      side: backend
+    - id: t-2048e5
+      title: 上限生效：同步快照 + 默认表降级 + 判定点停手·复核
+      implements: |-
+        改 src/application/dive/round-state.ts 让 roundLimitFor 读模块级内存快照（保持同步签名、不插 await）；改 src/application/dive/stage-configs.ts 语义降级为默认值表；在 src/index.ts 装三路刷新（启动加载 / PATCH 广播 / 文件 mtime 轮询）；扩展 tests/dive-round-state.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-7d3116
+      phase: implement
+      side: backend
+    - id: t-53c4ad
+      title: 上限生效：同步快照 + 默认表降级 + 判定点停手·测试
+      implements: |-
+        改 src/application/dive/round-state.ts 让 roundLimitFor 读模块级内存快照（保持同步签名、不插 await）；改 src/application/dive/stage-configs.ts 语义降级为默认值表；在 src/index.ts 装三路刷新（启动加载 / PATCH 广播 / 文件 mtime 轮询）；扩展 tests/dive-round-state.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-2048e5
+      phase: implement
+      side: backend
+    - id: t-f1b43f
+      title: settings 路由五条（含票据 request 与消费）·研发
+      implements: |-
+        新增 src/http/routers/settings.ts 实现 GET /settings（含 system.paths）、PATCH /settings（拒收 storage.backend 并指向确认门）、POST /settings/storage/request（发一次性票据 sc-… 并推确认框）、POST /settings/storage/switch（带 ticket 消费后写设置文件）、GET /settings/system；改 src/http/routes.ts 挂载并注入 SettingsStore/SystemRecordStore；新增 tests/reqboard/settings-router.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-f36a66
+        - t-cc816f
+      phase: implement
+      side: backend
+    - id: t-a35c4c
+      title: settings 路由五条（含票据 request 与消费）·联调
+      implements: |-
+        新增 src/http/routers/settings.ts 实现 GET /settings（含 system.paths）、PATCH /settings（拒收 storage.backend 并指向确认门）、POST /settings/storage/request（发一次性票据 sc-… 并推确认框）、POST /settings/storage/switch（带 ticket 消费后写设置文件）、GET /settings/system；改 src/http/routes.ts 挂载并注入 SettingsStore/SystemRecordStore；新增 tests/reqboard/settings-router.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-f1b43f
+      phase: implement
+      side: backend
+    - id: t-05c494
+      title: settings 路由五条（含票据 request 与消费）·复核
+      implements: |-
+        新增 src/http/routers/settings.ts 实现 GET /settings（含 system.paths）、PATCH /settings（拒收 storage.backend 并指向确认门）、POST /settings/storage/request（发一次性票据 sc-… 并推确认框）、POST /settings/storage/switch（带 ticket 消费后写设置文件）、GET /settings/system；改 src/http/routes.ts 挂载并注入 SettingsStore/SystemRecordStore；新增 tests/reqboard/settings-router.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-a35c4c
+      phase: implement
+      side: backend
+    - id: t-c33354
+      title: settings 路由五条（含票据 request 与消费）·测试
+      implements: |-
+        新增 src/http/routers/settings.ts 实现 GET /settings（含 system.paths）、PATCH /settings（拒收 storage.backend 并指向确认门）、POST /settings/storage/request（发一次性票据 sc-… 并推确认框）、POST /settings/storage/switch（带 ticket 消费后写设置文件）、GET /settings/system；改 src/http/routes.ts 挂载并注入 SettingsStore/SystemRecordStore；新增 tests/reqboard/settings-router.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-05c494
+      phase: implement
+      side: backend
+    - id: t-9ddd8d
+      title: 把 SQLite 实现接入端口契约测试注册表·研发
+      implements: |-
+        改 tests/reqboard/store-contract.test.ts 的 IMPLEMENTATIONS 注册 SqliteRequirementStore（suites: ['read','write']，注册表自检行不再标未覆盖）；新增 tests/reqboard/sqlite-harness.ts 提供临时库夹具（结束即删、用例互不污染）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-3294af
+      phase: test
+      side: backend
+    - id: t-8132cb
+      title: 把 SQLite 实现接入端口契约测试注册表·复核
+      implements: |-
+        改 tests/reqboard/store-contract.test.ts 的 IMPLEMENTATIONS 注册 SqliteRequirementStore（suites: ['read','write']，注册表自检行不再标未覆盖）；新增 tests/reqboard/sqlite-harness.ts 提供临时库夹具（结束即删、用例互不污染）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-9ddd8d
+      phase: test
+      side: backend
+    - id: t-41d4e8
+      title: 把 SQLite 实现接入端口契约测试注册表·测试
+      implements: |-
+        改 tests/reqboard/store-contract.test.ts 的 IMPLEMENTATIONS 注册 SqliteRequirementStore（suites: ['read','write']，注册表自检行不再标未覆盖）；新增 tests/reqboard/sqlite-harness.ts 提供临时库夹具（结束即删、用例互不污染）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-8132cb
+      phase: test
+      side: backend
+    - id: t-e35b53
+      title: 装配期选后端 + 系统记录初始化 + 迁移门拆两种未就绪·研发
+      implements: |-
+        改 src/index.ts 装配期四步（解析 backend 优先级 → preflightLedger 扩展 → 按 backend new 出实现 → 初始化系统记录）；改 src/repositories/migrationGate.ts 把相 2 拆成 2a（REQBOARD_REQUIRES_SQLITE_MIGRATION，指引 migrate-ledger-to-sqlite）与 2b（既有 REQUIRES_MIGRATION，指引 migrate-ledger-v10），两套 message/hint 各自唯一构造点；扩展 tests/reqboard/migration-gate.test.ts；新增 tests/reqboard/settings-init.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-f36a66
+        - t-3294af
+      phase: implement
+      side: backend
+    - id: t-68f239
+      title: 装配期选后端 + 系统记录初始化 + 迁移门拆两种未就绪·联调
+      implements: |-
+        改 src/index.ts 装配期四步（解析 backend 优先级 → preflightLedger 扩展 → 按 backend new 出实现 → 初始化系统记录）；改 src/repositories/migrationGate.ts 把相 2 拆成 2a（REQBOARD_REQUIRES_SQLITE_MIGRATION，指引 migrate-ledger-to-sqlite）与 2b（既有 REQUIRES_MIGRATION，指引 migrate-ledger-v10），两套 message/hint 各自唯一构造点；扩展 tests/reqboard/migration-gate.test.ts；新增 tests/reqboard/settings-init.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-e35b53
+      phase: implement
+      side: backend
+    - id: t-9ca32c
+      title: 装配期选后端 + 系统记录初始化 + 迁移门拆两种未就绪·复核
+      implements: |-
+        改 src/index.ts 装配期四步（解析 backend 优先级 → preflightLedger 扩展 → 按 backend new 出实现 → 初始化系统记录）；改 src/repositories/migrationGate.ts 把相 2 拆成 2a（REQBOARD_REQUIRES_SQLITE_MIGRATION，指引 migrate-ledger-to-sqlite）与 2b（既有 REQUIRES_MIGRATION，指引 migrate-ledger-v10），两套 message/hint 各自唯一构造点；扩展 tests/reqboard/migration-gate.test.ts；新增 tests/reqboard/settings-init.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-68f239
+      phase: implement
+      side: backend
+    - id: t-b5dda9
+      title: 装配期选后端 + 系统记录初始化 + 迁移门拆两种未就绪·测试
+      implements: |-
+        改 src/index.ts 装配期四步（解析 backend 优先级 → preflightLedger 扩展 → 按 backend new 出实现 → 初始化系统记录）；改 src/repositories/migrationGate.ts 把相 2 拆成 2a（REQBOARD_REQUIRES_SQLITE_MIGRATION，指引 migrate-ledger-to-sqlite）与 2b（既有 REQUIRES_MIGRATION，指引 migrate-ledger-v10），两套 message/hint 各自唯一构造点；扩展 tests/reqboard/migration-gate.test.ts；新增 tests/reqboard/settings-init.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-9ca32c
+      phase: implement
+      side: backend
+    - id: t-88be65
+      title: 设置弹窗骨架与入口（挂 body、左菜单、关闭语义、API 客户端）·研发
+      implements: |-
+        新增 src/client/settings-dialog.ts（挂 document.body 而非视图容器、左菜单四屏切换、ESC/遮罩/✕ 关闭、键盘可达）、src/client/styles/settings.ts（复用 --pm-* 令牌与 dsh-pm- 前缀，不新增第二套视觉体系）；改 src/client/api.ts 加 5 个函数（fetchRunSettings/patchRunSettings/switchStorageBackend/startLedgerMigration/fetchSystemRecord）、改 src/client/board-mount.ts 接线页头『⚙ 设置』按钮并通过 deps 注入 jumpToWindow（避免 board-mount 成环）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-425fa6
+      phase: ui
+      side: frontend
+    - id: t-0a0bcd
+      title: 设置弹窗骨架与入口（挂 body、左菜单、关闭语义、API 客户端）·联调
+      implements: |-
+        新增 src/client/settings-dialog.ts（挂 document.body 而非视图容器、左菜单四屏切换、ESC/遮罩/✕ 关闭、键盘可达）、src/client/styles/settings.ts（复用 --pm-* 令牌与 dsh-pm- 前缀，不新增第二套视觉体系）；改 src/client/api.ts 加 5 个函数（fetchRunSettings/patchRunSettings/switchStorageBackend/startLedgerMigration/fetchSystemRecord）、改 src/client/board-mount.ts 接线页头『⚙ 设置』按钮并通过 deps 注入 jumpToWindow（避免 board-mount 成环）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-88be65
+      phase: ui
+      side: frontend
+    - id: t-8351c7
+      title: 设置弹窗骨架与入口（挂 body、左菜单、关闭语义、API 客户端）·复核
+      implements: |-
+        新增 src/client/settings-dialog.ts（挂 document.body 而非视图容器、左菜单四屏切换、ESC/遮罩/✕ 关闭、键盘可达）、src/client/styles/settings.ts（复用 --pm-* 令牌与 dsh-pm- 前缀，不新增第二套视觉体系）；改 src/client/api.ts 加 5 个函数（fetchRunSettings/patchRunSettings/switchStorageBackend/startLedgerMigration/fetchSystemRecord）、改 src/client/board-mount.ts 接线页头『⚙ 设置』按钮并通过 deps 注入 jumpToWindow（避免 board-mount 成环）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-0a0bcd
+      phase: ui
+      side: frontend
+    - id: t-88da51
+      title: 设置弹窗骨架与入口（挂 body、左菜单、关闭语义、API 客户端）·测试
+      implements: |-
+        新增 src/client/settings-dialog.ts（挂 document.body 而非视图容器、左菜单四屏切换、ESC/遮罩/✕ 关闭、键盘可达）、src/client/styles/settings.ts（复用 --pm-* 令牌与 dsh-pm- 前缀，不新增第二套视觉体系）；改 src/client/api.ts 加 5 个函数（fetchRunSettings/patchRunSettings/switchStorageBackend/startLedgerMigration/fetchSystemRecord）、改 src/client/board-mount.ts 接线页头『⚙ 设置』按钮并通过 deps 注入 jumpToWindow（避免 board-mount 成环）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-8351c7
+      phase: ui
+      side: frontend
+    - id: t-1b52c9
+      title: 迁移脚本八步 + 兼容与回滚·研发
+      implements: |-
+        新增 scripts/migrate-ledger-to-sqlite.ts 八步（预检含分叉检测 → 备份分片 → 旧库先备份再重建 → 建表 → 单事务迁移 → 条数与抽样 5 条校验 → 校验通过才写设置 → 退出码 0/2/3/4，支持 --dry-run / --write-settings）；新增 tests/reqboard/sqlite-migrate.test.ts（含反向演练：移除回滚分支 → 用例必红）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-f32478
+      phase: implement
+      side: backend
+    - id: t-5c4df7
+      title: 迁移脚本八步 + 兼容与回滚·联调
+      implements: |-
+        新增 scripts/migrate-ledger-to-sqlite.ts 八步（预检含分叉检测 → 备份分片 → 旧库先备份再重建 → 建表 → 单事务迁移 → 条数与抽样 5 条校验 → 校验通过才写设置 → 退出码 0/2/3/4，支持 --dry-run / --write-settings）；新增 tests/reqboard/sqlite-migrate.test.ts（含反向演练：移除回滚分支 → 用例必红）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-1b52c9
+      phase: implement
+      side: backend
+    - id: t-f919b6
+      title: 迁移脚本八步 + 兼容与回滚·复核
+      implements: |-
+        新增 scripts/migrate-ledger-to-sqlite.ts 八步（预检含分叉检测 → 备份分片 → 旧库先备份再重建 → 建表 → 单事务迁移 → 条数与抽样 5 条校验 → 校验通过才写设置 → 退出码 0/2/3/4，支持 --dry-run / --write-settings）；新增 tests/reqboard/sqlite-migrate.test.ts（含反向演练：移除回滚分支 → 用例必红）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-5c4df7
+      phase: implement
+      side: backend
+    - id: t-4c3aaa
+      title: 迁移脚本八步 + 兼容与回滚·测试
+      implements: |-
+        新增 scripts/migrate-ledger-to-sqlite.ts 八步（预检含分叉检测 → 备份分片 → 旧库先备份再重建 → 建表 → 单事务迁移 → 条数与抽样 5 条校验 → 校验通过才写设置 → 退出码 0/2/3/4，支持 --dry-run / --write-settings）；新增 tests/reqboard/sqlite-migrate.test.ts（含反向演练：移除回滚分支 → 用例必红）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-f919b6
+      phase: implement
+      side: backend
+    - id: t-c2ed8b
+      title: 迁移开窗链路：windowOpener + crossWindowDeliver + 系统事件·研发
+      implements: |-
+        在 src/http/routers/settings.ts 的 migrate 分支用 applicationDeps.windowOpener.create({cwd|workspaceId}) 开窗、再 crossWindowDeliver.createMessage/deliver 投递迁移底稿（不用要求 live driver 的 openWindow 用例；落点解析不出即响亮失败）；失败三态 window_opener_unavailable / window_open_failed / dispatch_failed 如实回报且不写 migration 事件；新增 tests/reqboard/settings-migrate-dispatch.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-425fa6
+        - t-19092c
+      phase: implement
+      side: backend
+    - id: t-c912d7
+      title: 迁移开窗链路：windowOpener + crossWindowDeliver + 系统事件·联调
+      implements: |-
+        在 src/http/routers/settings.ts 的 migrate 分支用 applicationDeps.windowOpener.create({cwd|workspaceId}) 开窗、再 crossWindowDeliver.createMessage/deliver 投递迁移底稿（不用要求 live driver 的 openWindow 用例；落点解析不出即响亮失败）；失败三态 window_opener_unavailable / window_open_failed / dispatch_failed 如实回报且不写 migration 事件；新增 tests/reqboard/settings-migrate-dispatch.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-c2ed8b
+      phase: implement
+      side: backend
+    - id: t-7ed7b0
+      title: 迁移开窗链路：windowOpener + crossWindowDeliver + 系统事件·复核
+      implements: |-
+        在 src/http/routers/settings.ts 的 migrate 分支用 applicationDeps.windowOpener.create({cwd|workspaceId}) 开窗、再 crossWindowDeliver.createMessage/deliver 投递迁移底稿（不用要求 live driver 的 openWindow 用例；落点解析不出即响亮失败）；失败三态 window_opener_unavailable / window_open_failed / dispatch_failed 如实回报且不写 migration 事件；新增 tests/reqboard/settings-migrate-dispatch.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-c912d7
+      phase: implement
+      side: backend
+    - id: t-c14e21
+      title: 迁移开窗链路：windowOpener + crossWindowDeliver + 系统事件·测试
+      implements: |-
+        在 src/http/routers/settings.ts 的 migrate 分支用 applicationDeps.windowOpener.create({cwd|workspaceId}) 开窗、再 crossWindowDeliver.createMessage/deliver 投递迁移底稿（不用要求 live driver 的 openWindow 用例；落点解析不出即响亮失败）；失败三态 window_opener_unavailable / window_open_failed / dispatch_failed 如实回报且不写 migration 事件；新增 tests/reqboard/settings-migrate-dispatch.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-7ed7b0
+      phase: implement
+      side: backend
+    - id: t-0053be
+      title: 运行上限屏（表格 / 草稿态 / 校验 / 来源徽章 / 泳道上限）·研发
+      implements: |-
+        新增 src/client/views/settings-limits.ts（九行阶段表格、草稿态 dirty map、1–10000 即时校验与保存键禁用、来源徽章 设置文件/插件配置/内置默认/待保存、恢复默认、保存往返后刷新徽章与泳道头上限）；追加 src/client/styles/settings.ts；新增 tests/client/settings-limits.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-124008
+      phase: ui
+      side: frontend
+    - id: t-f0ba03
+      title: 运行上限屏（表格 / 草稿态 / 校验 / 来源徽章 / 泳道上限）·联调
+      implements: |-
+        新增 src/client/views/settings-limits.ts（九行阶段表格、草稿态 dirty map、1–10000 即时校验与保存键禁用、来源徽章 设置文件/插件配置/内置默认/待保存、恢复默认、保存往返后刷新徽章与泳道头上限）；追加 src/client/styles/settings.ts；新增 tests/client/settings-limits.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-0053be
+      phase: ui
+      side: frontend
+    - id: t-2ab82d
+      title: 运行上限屏（表格 / 草稿态 / 校验 / 来源徽章 / 泳道上限）·复核
+      implements: |-
+        新增 src/client/views/settings-limits.ts（九行阶段表格、草稿态 dirty map、1–10000 即时校验与保存键禁用、来源徽章 设置文件/插件配置/内置默认/待保存、恢复默认、保存往返后刷新徽章与泳道头上限）；追加 src/client/styles/settings.ts；新增 tests/client/settings-limits.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-f0ba03
+      phase: ui
+      side: frontend
+    - id: t-c653b3
+      title: 运行上限屏（表格 / 草稿态 / 校验 / 来源徽章 / 泳道上限）·测试
+      implements: |-
+        新增 src/client/views/settings-limits.ts（九行阶段表格、草稿态 dirty map、1–10000 即时校验与保存键禁用、来源徽章 设置文件/插件配置/内置默认/待保存、恢复默认、保存往返后刷新徽章与泳道头上限）；追加 src/client/styles/settings.ts；新增 tests/client/settings-limits.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-2ab82d
+      phase: ui
+      side: frontend
+    - id: t-323418
+      title: 存储与数据库屏 + 确认门（四态机 / 票据 / 独立错误文案）·研发
+      implements: |-
+        新增 src/client/views/settings-storage.ts（后端开关、迁移五步清单、idle→requesting→confirm→落章→running→done/failed 四态机、consent 只存内存不落 localStorage、403/502/503/409/500 各独立文案、失败态重试必须重新走确认、跳转复用注入的 jumpToWindow）；追加 src/client/styles/settings.ts；新增 tests/client/settings-storage.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-124008
+      phase: ui
+      side: frontend
+    - id: t-3fcbb6
+      title: 存储与数据库屏 + 确认门（四态机 / 票据 / 独立错误文案）·联调
+      implements: |-
+        新增 src/client/views/settings-storage.ts（后端开关、迁移五步清单、idle→requesting→confirm→落章→running→done/failed 四态机、consent 只存内存不落 localStorage、403/502/503/409/500 各独立文案、失败态重试必须重新走确认、跳转复用注入的 jumpToWindow）；追加 src/client/styles/settings.ts；新增 tests/client/settings-storage.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-323418
+      phase: ui
+      side: frontend
+    - id: t-b7044a
+      title: 存储与数据库屏 + 确认门（四态机 / 票据 / 独立错误文案）·复核
+      implements: |-
+        新增 src/client/views/settings-storage.ts（后端开关、迁移五步清单、idle→requesting→confirm→落章→running→done/failed 四态机、consent 只存内存不落 localStorage、403/502/503/409/500 各独立文案、失败态重试必须重新走确认、跳转复用注入的 jumpToWindow）；追加 src/client/styles/settings.ts；新增 tests/client/settings-storage.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-3fcbb6
+      phase: ui
+      side: frontend
+    - id: t-4e066a
+      title: 存储与数据库屏 + 确认门（四态机 / 票据 / 独立错误文案）·测试
+      implements: |-
+        新增 src/client/views/settings-storage.ts（后端开关、迁移五步清单、idle→requesting→confirm→落章→running→done/failed 四态机、consent 只存内存不落 localStorage、403/502/503/409/500 各独立文案、失败态重试必须重新走确认、跳转复用注入的 jumpToWindow）；追加 src/client/styles/settings.ts；新增 tests/client/settings-storage.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-b7044a
+      phase: ui
+      side: frontend
+    - id: t-9283c8
+      title: 系统记录屏 + 通用屏（时间线 / 路径档案 / 版本核对 / 分叉红字）·研发
+      implements: |-
+        新增 src/client/views/settings-records.ts（后端使用史时间线含 upgrade/migration/backend-switched、数据路径档案、版本一致性核对、分叉 stale 红字且不提供合并按钮）、src/client/views/settings-general.ts（PM 插件版本/构建指纹/schema/运行时；『打开配置文件』在文件不存在时禁用并提示尚未创建）；新增 tests/client/settings-records.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-124008
+      phase: ui
+      side: frontend
+    - id: t-662f15
+      title: 系统记录屏 + 通用屏（时间线 / 路径档案 / 版本核对 / 分叉红字）·联调
+      implements: |-
+        新增 src/client/views/settings-records.ts（后端使用史时间线含 upgrade/migration/backend-switched、数据路径档案、版本一致性核对、分叉 stale 红字且不提供合并按钮）、src/client/views/settings-general.ts（PM 插件版本/构建指纹/schema/运行时；『打开配置文件』在文件不存在时禁用并提示尚未创建）；新增 tests/client/settings-records.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-9283c8
+      phase: ui
+      side: frontend
+    - id: t-a3ff77
+      title: 系统记录屏 + 通用屏（时间线 / 路径档案 / 版本核对 / 分叉红字）·复核
+      implements: |-
+        新增 src/client/views/settings-records.ts（后端使用史时间线含 upgrade/migration/backend-switched、数据路径档案、版本一致性核对、分叉 stale 红字且不提供合并按钮）、src/client/views/settings-general.ts（PM 插件版本/构建指纹/schema/运行时；『打开配置文件』在文件不存在时禁用并提示尚未创建）；新增 tests/client/settings-records.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-662f15
+      phase: ui
+      side: frontend
+    - id: t-7988ae
+      title: 系统记录屏 + 通用屏（时间线 / 路径档案 / 版本核对 / 分叉红字）·测试
+      implements: |-
+        新增 src/client/views/settings-records.ts（后端使用史时间线含 upgrade/migration/backend-switched、数据路径档案、版本一致性核对、分叉 stale 红字且不提供合并按钮）、src/client/views/settings-general.ts（PM 插件版本/构建指纹/schema/运行时；『打开配置文件』在文件不存在时禁用并提示尚未创建）；新增 tests/client/settings-records.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-a3ff77
+      phase: ui
+      side: frontend
+    - id: t-49b5af
+      title: 端到端与反向演练 + 开工基线落盘·研发
+      implements: |-
+        新增 tests/reqboard/settings-e2e.test.ts 串三条端到端（上限改 5 → 假投递驱动到 5 即停手；确认门 → 票据 → 迁移 → 设置写入 → 重启后 SQLite 生效；未迁移重启 → 503 指引）+ 三条反向演练（移除回滚分支 / 写反优先级 / 删留痕校验，各自必红）；把开工基线写进 docs/requirements/REQ-261004103330-005f/notes/baseline.md。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-fc0caa
+        - t-6293b1
+        - t-506e9f
+        - t-7cd77f
+        - t-611d89
+      phase: test
+      side: fullstack
+    - id: t-888277
+      title: 端到端与反向演练 + 开工基线落盘·复核
+      implements: |-
+        新增 tests/reqboard/settings-e2e.test.ts 串三条端到端（上限改 5 → 假投递驱动到 5 即停手；确认门 → 票据 → 迁移 → 设置写入 → 重启后 SQLite 生效；未迁移重启 → 503 指引）+ 三条反向演练（移除回滚分支 / 写反优先级 / 删留痕校验，各自必红）；把开工基线写进 docs/requirements/REQ-261004103330-005f/notes/baseline.md。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-49b5af
+      phase: test
+      side: fullstack
+    - id: t-6a81b2
+      title: 端到端与反向演练 + 开工基线落盘·测试
+      implements: |-
+        新增 tests/reqboard/settings-e2e.test.ts 串三条端到端（上限改 5 → 假投递驱动到 5 即停手；确认门 → 票据 → 迁移 → 设置写入 → 重启后 SQLite 生效；未迁移重启 → 503 指引）+ 三条反向演练（移除回滚分支 / 写反优先级 / 删留痕校验，各自必红）；把开工基线写进 docs/requirements/REQ-261004103330-005f/notes/baseline.md。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-888277
+      phase: test
+      side: fullstack
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与总体方案:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-fc0caa
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+    design/architecture.md#模块改动地图:
+      - t-47ad9b
+      - t-f36a66
+      - t-3294af
+      - t-f32478
+      - t-fc0caa
+      - t-425fa6
+      - t-124008
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+    design/architecture.md#存储后端选择与装配:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-425fa6
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/architecture.md#设置解析链与内存快照:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-fc0caa
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+    design/architecture.md#系统记录写入点:
+      - t-47ad9b
+      - t-f36a66
+      - t-425fa6
+      - t-19092c
+      - t-611d89
+    design/architecture.md#初始化与失败处理:
+      - t-f36a66
+      - t-f32478
+      - t-425fa6
+      - t-611d89
+      - t-33ad1b
+    design/architecture.md#迁移链路:
+      - t-cc816f
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/architecture.md#兼容与回滚:
+      - t-47ad9b
+      - t-3294af
+      - t-e9154c
+      - t-f32478
+      - t-425fa6
+      - t-7cd77f
+      - t-33ad1b
+    design/architecture.md#依赖与风险:
+      - t-3294af
+      - t-e9154c
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/architecture.md#验收口径:
+      - t-47ad9b
+      - t-f36a66
+      - t-3294af
+      - t-e9154c
+      - t-f32478
+      - t-fc0caa
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-506e9f
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/backend.md#服务与接口实现:
+      - t-47ad9b
+      - t-f36a66
+      - t-3294af
+      - t-f32478
+      - t-fc0caa
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-506e9f
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/backend.md#组合根装配顺序伪代码:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-425fa6
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/backend.md#关键逻辑:
+      - t-47ad9b
+      - t-3294af
+      - t-fc0caa
+      - t-19092c
+      - t-6293b1
+      - t-506e9f
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/backend.md#S-1-resolveRunSettings四级优先级与校验:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-fc0caa
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+    design/backend.md#S-8-roundLimitFor-的同步快照改造:
+      - t-47ad9b
+      - t-fc0caa
+      - t-506e9f
+      - t-33ad1b
+    design/backend.md#S-5-SqliteRequirementStore事务边界与-CAS:
+      - t-3294af
+      - t-e9154c
+      - t-33ad1b
+    design/backend.md#S-7-迁移脚本八步与退出码:
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/backend.md#S-10-preflightLedger两种未就绪必须各自独立:
+      - t-f32478
+      - t-425fa6
+      - t-19092c
+      - t-7cd77f
+      - t-33ad1b
+    design/backend.md#S-4-reconcileVersion版本比对:
+      - t-47ad9b
+      - t-19092c
+      - t-611d89
+    design/backend.md#S-3-系统记录初始化语义:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-425fa6
+      - t-611d89
+      - t-33ad1b
+    design/backend.md#数据流:
+      - t-47ad9b
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/backend.md#流-APATCH-settings-内存快照-Dive-生效:
+      - t-47ad9b
+      - t-fc0caa
+      - t-425fa6
+      - t-506e9f
+      - t-33ad1b
+    design/backend.md#流-B确认-迁移-重启:
+      - t-47ad9b
+      - t-f32478
+      - t-cc816f
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/backend.md#错误处理:
+      - t-47ad9b
+      - t-f32478
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/backend.md#错误码落地层级与-HTTP-映射:
+      - t-47ad9b
+      - t-f32478
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/backend.md#失败降级纪律:
+      - t-f36a66
+      - t-f32478
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/backend.md#数据库设计:
+      - t-3294af
+      - t-e9154c
+      - t-19092c
+      - t-7cd77f
+      - t-33ad1b
+    design/backend.md#表结构DDL:
+      - t-3294af
+      - t-e9154c
+      - t-33ad1b
+    design/backend.md#索引与查询:
+      - t-3294af
+      - t-e9154c
+      - t-33ad1b
+    design/backend.md#锁与-nodesqlite-用法:
+      - t-3294af
+      - t-e9154c
+      - t-33ad1b
+    design/backend.md#性能考量:
+      - t-f36a66
+      - t-3294af
+      - t-f32478
+      - t-425fa6
+      - t-611d89
+      - t-33ad1b
+    design/backend.md#安全设计:
+      - t-47ad9b
+      - t-f32478
+      - t-cc816f
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/backend.md#路径校验防越界写:
+      - t-47ad9b
+      - t-f32478
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/backend.md#确认票据先落章后执行:
+      - t-cc816f
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/backend.md#确认门的代码级实现:
+      - t-cc816f
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/backend.md#敏感信息与暴露面:
+      - t-47ad9b
+      - t-f36a66
+      - t-cc816f
+      - t-425fa6
+      - t-6293b1
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/backend.md#兼容性:
+      - t-47ad9b
+      - t-3294af
+      - t-e9154c
+      - t-f32478
+      - t-425fa6
+      - t-7cd77f
+      - t-33ad1b
+    design/backend.md#与-REQBOARDSCHEMAVERSION-9-的关系:
+      - t-3294af
+      - t-e9154c
+    design/backend.md#分叉检出与重建:
+      - t-19092c
+      - t-7cd77f
+    design/backend.md#双库并存与回滚:
+      - t-47ad9b
+      - t-3294af
+      - t-e9154c
+      - t-f32478
+      - t-425fa6
+      - t-7cd77f
+      - t-33ad1b
+    design/backend.md#实施顺序与验收锚点:
+      - t-f36a66
+      - t-3294af
+      - t-e9154c
+      - t-f32478
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/data-model.md#设置文件-schema:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-fc0caa
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+    design/data-model.md#系统记录-schema:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-425fa6
+      - t-19092c
+      - t-611d89
+      - t-33ad1b
+    design/data-model.md#SQLite-表结构:
+      - t-3294af
+      - t-e9154c
+      - t-33ad1b
+    design/data-model.md#两种后端的等价性对照:
+      - t-3294af
+      - t-e9154c
+    design/data-model.md#版本与兼容:
+      - t-47ad9b
+      - t-3294af
+      - t-e9154c
+      - t-19092c
+      - t-611d89
+    design/data-model.md#迁移与回填算法:
+      - t-f32478
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/frontend.md#原型页面:
+      - t-124008
+      - t-506e9f
+    design/frontend.md#目录与包结构:
+      - t-124008
+      - t-506e9f
+    design/frontend.md#组件结构:
+      - t-124008
+      - t-506e9f
+    design/frontend.md#页面与组件编号表:
+      - t-124008
+      - t-506e9f
+    design/frontend.md#入口与挂载:
+      - t-124008
+      - t-506e9f
+    design/frontend.md#四屏职责:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-fc0caa
+      - t-425fa6
+      - t-124008
+      - t-506e9f
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/frontend.md#屏-1-运行上限:
+      - t-47ad9b
+      - t-fc0caa
+      - t-425fa6
+      - t-506e9f
+      - t-33ad1b
+    design/frontend.md#屏-2-存储与数据库:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-19092c
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/frontend.md#屏-3-系统记录:
+      - t-47ad9b
+      - t-f36a66
+      - t-425fa6
+      - t-19092c
+      - t-611d89
+    design/frontend.md#屏-4-通用:
+      - t-47ad9b
+      - t-19092c
+      - t-611d89
+    design/frontend.md#状态管理:
+      - t-47ad9b
+      - t-f32478
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/frontend.md#本地草稿态与校验态:
+      - t-47ad9b
+      - t-425fa6
+    design/frontend.md#请求态与失败回退:
+      - t-47ad9b
+      - t-f32478
+      - t-425fa6
+      - t-7cd77f
+    design/frontend.md#迁移四态机:
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/frontend.md#数据流:
+      - t-47ad9b
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/frontend.md#确认门FR-11:
+      - t-cc816f
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/frontend.md#迁移进度与窗口跳转:
+      - t-cc816f
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/frontend.md#拒绝服务与错误呈现:
+      - t-47ad9b
+      - t-f32478
+      - t-425fa6
+      - t-33ad1b
+    design/frontend.md#样式与主题:
+      - t-124008
+      - t-506e9f
+    design/frontend.md#响应式与可访问性:
+      - t-124008
+      - t-506e9f
+    design/frontend.md#依赖与第三方库:
+      - t-124008
+      - t-506e9f
+    design/frontend.md#测试与可测性钩子:
+      - t-47ad9b
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-124008
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+    design/frontend.md#与既有前端的接入差异与风险:
+      - t-124008
+      - t-506e9f
+    design/interfaces.md#新增端口SettingsStore:
+      - t-47ad9b
+      - t-f36a66
+      - t-425fa6
+      - t-33ad1b
+    design/interfaces.md#新增端口SystemRecordStore:
+      - t-47ad9b
+      - t-f36a66
+      - t-425fa6
+      - t-19092c
+      - t-611d89
+    design/interfaces.md#新增实现SqliteRequirementStore:
+      - t-3294af
+      - t-e9154c
+      - t-33ad1b
+    design/interfaces.md#配置与解析函数:
+      - t-47ad9b
+      - t-f32478
+      - t-fc0caa
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+    design/interfaces.md#HTTP-路由:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-cc816f
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/interfaces.md#GET-dashboardapireqboardsettings:
+      - t-47ad9b
+      - t-425fa6
+    design/interfaces.md#PATCH-dashboardapireqboardsettings:
+      - t-47ad9b
+      - t-425fa6
+    design/interfaces.md#人工确认留痕契约FR-11-的代码级落点:
+      - t-cc816f
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/interfaces.md#POST-dashboardapireqboardsettingsstorageswitch:
+      - t-47ad9b
+      - t-f32478
+      - t-cc816f
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/interfaces.md#POST-dashboardapireqboardsettingsstoragemigrate:
+      - t-cc816f
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/interfaces.md#GET-dashboardapireqboardsettingssystem:
+      - t-47ad9b
+      - t-f36a66
+      - t-425fa6
+      - t-19092c
+      - t-611d89
+    design/interfaces.md#前端-API-客户端:
+      - t-124008
+      - t-506e9f
+    design/interfaces.md#迁移脚本-CLI:
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/interfaces.md#错误码与失败语义:
+      - t-47ad9b
+      - t-f32478
+      - t-cc816f
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/use-cases.md#场景总览:
+      - t-47ad9b
+      - t-f36a66
+      - t-3294af
+      - t-e9154c
+      - t-f32478
+      - t-fc0caa
+      - t-cc816f
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-124008
+      - t-506e9f
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/use-cases.md#UC-1-需求在实施阶段空转把上限收小当场停手:
+      - t-47ad9b
+      - t-f36a66
+      - t-fc0caa
+      - t-425fa6
+      - t-124008
+      - t-506e9f
+      - t-33ad1b
+    design/use-cases.md#UC-2-需求跑飞收紧上限但不打断正在跑的那一回合:
+      - t-47ad9b
+      - t-fc0caa
+      - t-425fa6
+      - t-124008
+      - t-506e9f
+      - t-33ad1b
+    design/use-cases.md#UC-3-第一次把台账切到-SQLite确认-Agent-五步-重启生效:
+      - t-47ad9b
+      - t-f36a66
+      - t-3294af
+      - t-f32478
+      - t-cc816f
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/use-cases.md#UC-4-在确认框上点取消零副作用:
+      - t-cc816f
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+    design/use-cases.md#UC-5-试点不理想切回原来的分片存储:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-cc816f
+      - t-425fa6
+      - t-6293b1
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/use-cases.md#UC-6-迁移跑到一半失败自动回滚重试仍要重新确认:
+      - t-47ad9b
+      - t-f36a66
+      - t-cc816f
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+    design/use-cases.md#UC-7-迁移没做完就重启拒绝服务并给指引:
+      - t-47ad9b
+      - t-f32478
+      - t-425fa6
+      - t-7cd77f
+      - t-33ad1b
+    design/use-cases.md#UC-8-检出旧库先备份旧库再重建:
+      - t-47ad9b
+      - t-f36a66
+      - t-425fa6
+      - t-19092c
+      - t-7cd77f
+      - t-611d89
+    design/use-cases.md#UC-9-排查以前用过-SQLite-吗上次是谁改的后端:
+      - t-47ad9b
+      - t-f36a66
+      - t-425fa6
+      - t-611d89
+    design/use-cases.md#UC-10-插件刚升级旧库还能不能直接用:
+      - t-47ad9b
+      - t-19092c
+      - t-611d89
+    design/use-cases.md#UC-11-全新安装第一次打开设置页记录已有设置文件还没有:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-425fa6
+      - t-124008
+      - t-506e9f
+      - t-611d89
+      - t-33ad1b
+    design/use-cases.md#UC-12-换库前后人在看板上看到的东西必须逐字一样:
+      - t-3294af
+      - t-e9154c
+      - t-33ad1b
+    design/use-cases.md#FR-覆盖对照:
+      - t-47ad9b
+      - t-f36a66
+      - t-3294af
+      - t-e9154c
+      - t-f32478
+      - t-fc0caa
+      - t-cc816f
+      - t-425fa6
+      - t-19092c
+      - t-6293b1
+      - t-124008
+      - t-506e9f
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+  fr_to_tasks:
+    FR-1:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-fc0caa
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+      - t-3294af
+      - t-425fa6
+      - t-124008
+      - t-e9154c
+      - t-19092c
+      - t-6293b1
+      - t-611d89
+      - t-cc816f
+    FR-2:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-fc0caa
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+      - t-3294af
+      - t-425fa6
+      - t-124008
+      - t-e9154c
+      - t-19092c
+      - t-6293b1
+      - t-611d89
+      - t-cc816f
+    FR-3:
+      - t-47ad9b
+      - t-f36a66
+      - t-3294af
+      - t-f32478
+      - t-fc0caa
+      - t-425fa6
+      - t-124008
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+      - t-19092c
+      - t-6293b1
+      - t-611d89
+      - t-cc816f
+      - t-e9154c
+    FR-4:
+      - t-47ad9b
+      - t-f36a66
+      - t-3294af
+      - t-f32478
+      - t-fc0caa
+      - t-425fa6
+      - t-124008
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+      - t-19092c
+      - t-6293b1
+      - t-611d89
+      - t-cc816f
+      - t-e9154c
+    FR-5:
+      - t-47ad9b
+      - t-f36a66
+      - t-3294af
+      - t-f32478
+      - t-fc0caa
+      - t-425fa6
+      - t-124008
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+      - t-611d89
+      - t-19092c
+      - t-6293b1
+      - t-e9154c
+      - t-cc816f
+    FR-6:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-fc0caa
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+      - t-3294af
+      - t-425fa6
+      - t-124008
+      - t-611d89
+      - t-e9154c
+      - t-19092c
+      - t-6293b1
+      - t-cc816f
+    FR-7:
+      - t-47ad9b
+      - t-f36a66
+      - t-3294af
+      - t-f32478
+      - t-fc0caa
+      - t-425fa6
+      - t-124008
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+      - t-e9154c
+      - t-19092c
+      - t-6293b1
+      - t-611d89
+      - t-cc816f
+    FR-8:
+      - t-3294af
+      - t-e9154c
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-fc0caa
+      - t-425fa6
+      - t-506e9f
+      - t-611d89
+      - t-cc816f
+      - t-124008
+    FR-9:
+      - t-47ad9b
+      - t-3294af
+      - t-e9154c
+      - t-f32478
+      - t-425fa6
+      - t-7cd77f
+      - t-33ad1b
+      - t-19092c
+      - t-611d89
+      - t-f36a66
+      - t-fc0caa
+      - t-cc816f
+      - t-6293b1
+      - t-124008
+      - t-506e9f
+    FR-10:
+      - t-cc816f
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+      - t-3294af
+      - t-e9154c
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-fc0caa
+      - t-425fa6
+      - t-506e9f
+      - t-611d89
+      - t-124008
+    FR-11:
+      - t-cc816f
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+      - t-47ad9b
+      - t-f32478
+      - t-425fa6
+      - t-f36a66
+      - t-611d89
+      - t-3294af
+      - t-e9154c
+      - t-fc0caa
+      - t-124008
+      - t-506e9f
+    FR-12:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-425fa6
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+      - t-3294af
+      - t-e9154c
+      - t-fc0caa
+      - t-19092c
+      - t-6293b1
+      - t-506e9f
+      - t-cc816f
+      - t-124008
+    FR-13:
+      - t-cc816f
+      - t-19092c
+      - t-6293b1
+      - t-7cd77f
+      - t-33ad1b
+      - t-f32478
+      - t-425fa6
+      - t-47ad9b
+      - t-3294af
+      - t-e9154c
+      - t-f36a66
+      - t-611d89
+      - t-fc0caa
+      - t-124008
+      - t-506e9f
+    FR-14:
+      - t-47ad9b
+      - t-f36a66
+      - t-425fa6
+      - t-19092c
+      - t-611d89
+      - t-3294af
+      - t-f32478
+      - t-fc0caa
+      - t-6293b1
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+      - t-cc816f
+      - t-124008
+      - t-e9154c
+    FR-15:
+      - t-47ad9b
+      - t-f36a66
+      - t-425fa6
+      - t-19092c
+      - t-611d89
+      - t-f32478
+      - t-33ad1b
+      - t-3294af
+      - t-e9154c
+      - t-fc0caa
+      - t-cc816f
+      - t-6293b1
+      - t-124008
+      - t-506e9f
+      - t-7cd77f
+    FR-16:
+      - t-47ad9b
+      - t-f36a66
+      - t-425fa6
+      - t-19092c
+      - t-611d89
+      - t-3294af
+      - t-fc0caa
+      - t-6293b1
+      - t-506e9f
+      - t-7cd77f
+      - t-33ad1b
+      - t-f32478
+      - t-e9154c
+      - t-cc816f
+      - t-124008
+    FR-17:
+      - t-47ad9b
+      - t-f36a66
+      - t-f32478
+      - t-425fa6
+      - t-7cd77f
+      - t-611d89
+      - t-33ad1b
+      - t-3294af
+      - t-e9154c
+      - t-fc0caa
+      - t-19092c
+      - t-6293b1
+      - t-506e9f
+      - t-cc816f
+      - t-124008
+coverage:
+  implementation:
+    total: 98
+    covered: 98
+    uncovered: []
+    rate: 100
+    total_designs: 98
+    covered_designs: 98

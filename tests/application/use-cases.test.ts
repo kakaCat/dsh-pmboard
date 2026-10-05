@@ -28,9 +28,9 @@ describe('t6 · CreateRequirement / QueryState', () => {
     const h = makeHarness()
     const out: any = await executeCreateRequirement(h.deps, { title: '新需求', category: 'feature', summary: '摘要' }, EXEC)
     expect(out.success).toBe(true)
-    expect(h.repo.ledger.requirements).toHaveLength(1)
-    expect(h.repo.ledger.requirements[0]!.status).toBe('draft')
-    expect(h.repo.ledger.requirements[0]!.sourceSessionId).toBe('session-w-001')
+    expect(((await h.store.listSummaries({ scope: 'all' })).items)).toHaveLength(1)
+    expect((await h.store.get('REQ-000001'))!.status).toBe('draft')
+    expect((await h.store.get('REQ-000001'))!.sourceSessionId).toBe('session-w-001')
     await expect(executeCreateRequirement(h.deps, { title: '再来', category: 'bug' }, EXEC))
       .rejects.toMatchObject({ code: 'REQBOARD_WINDOW_BOUND' })
   })
@@ -50,7 +50,7 @@ describe('t6 · MoveRequirement', () => {
     const h = makeHarness({ requirements: [req({ status: 'draft' })] })
     const out: any = await executeMoveRequirement(h.deps, { to: 'brainstorming', reason: '方案' }, EXEC)
     expect(out.success).toBe(true)
-    expect(h.repo.ledger.requirements[0]!.status).toBe('brainstorming')
+    expect((await h.store.get('REQ-000001'))!.status).toBe('brainstorming')
 
     await expect(executeMoveRequirement(h.deps, { to: 'design' }, EXEC))
       .rejects.toMatchObject({ code: 'REQBOARD_HUMAN_GATE' })
@@ -67,7 +67,7 @@ describe('t6 · SubmitArtifact（requirement / plan）', () => {
     expect(out.success).toBe(true)
     expect(out.artifact).toEqual({ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/REQ-000001/requirement.md' })
     expect(out.registered).toBe(true)
-    expect(h.repo.ledger.requirements[0]!.artifacts).toHaveLength(1)
+    expect((await h.store.get('REQ-000001'))!.artifacts).toHaveLength(1)
   })
 
   it('requirement_submit：文档不存在 → REQBOARD_FILE_MISSING', async () => {
@@ -85,7 +85,7 @@ describe('t6 · SubmitArtifact（requirement / plan）', () => {
     }, EXEC)
     expect(out.success).toBe(true)
     expect(out.plan_status).toBe('pending_approval')
-    expect(h.repo.ledger.requirements[0]!.plan?.path).toBe('docs/requirements/REQ-000001/decomposition.md')
+    expect((await h.store.get('REQ-000001'))!.plan?.path).toBe('docs/requirements/REQ-000001/decomposition.md')
     // 拆分计划归拆分阶段：design 阶段提交被拒
     const h2 = makeHarness({ requirements: [req({ status: 'design' })] })
     await expect(submitPlanArtifact(h2.deps, { path: 'p.md', summary: 's' }, EXEC))
@@ -102,7 +102,7 @@ describe('t6 · ConfirmArtifact / AskConfirm', () => {
     const out: any = await confirmArtifact(h.deps, { target: 'artifact', kind: 'requirement', evidence: '用户说可以' }, EXEC)
     expect(out.success).toBe(true)
     expect(out.via).toBe('session')
-    expect(h.repo.ledger.requirements[0]!.artifacts![0]!.confirmedAt).toBe(h.clock.t)
+    expect((await h.store.get('REQ-000001'))!.artifacts![0]!.confirmedAt).toBe(h.clock.t)
   })
 
   it('confirm_artifact：核验通道可用但未命中 → REQBOARD_EVIDENCE_FAKE', async () => {
@@ -125,7 +125,7 @@ describe('t6 · ConfirmArtifact / AskConfirm', () => {
     const out: any = await askConfirm(h.deps, { target: 'artifact', kind: 'requirement', question: '确认？', options: ['好', '不'] }, EXEC)
     expect(out.confirmed).toBe(true)
     expect(out.advanced).toBe(true)
-    expect(h.repo.ledger.requirements[0]!.status).toBe('design')
+    expect((await h.store.get('REQ-000001'))!.status).toBe('design')
   })
 })
 
@@ -184,7 +184,7 @@ describe('t6 · MoveTask / ReportTask', () => {
     }, EXEC)
     expect(out.success).toBe(true)
     expect(h.docs.exists('docs/requirements/REQ-000001/tasks/t-000001.md')).toBe(true)
-    expect((h.repo.ledger.requirements[0]!.artifacts ?? []).some(a => a.kind === 'task_detail')).toBe(true)
+    expect(((await h.store.get('REQ-000001'))!.artifacts ?? []).some(a => a.kind === 'task_detail')).toBe(true)
   })
 })
 
@@ -201,7 +201,7 @@ describe('t6 · SubmitVerification / SubmitArchive / AcceptSheet', () => {
     }, EXEC)).rejects.toMatchObject({ code: 'REQBOARD_EVIDENCE_MISSING' })
   })
 
-  it('archive_submit：archived 需求备材料成功，目录内未列入清单的文件 → unlisted_files 警告', async () => {
+  it('archive_submit：未列入清单的文件 → 默认拒绝；声明豁免后通过并保留 unlisted_files 警告（REQ-261004183621-de3f）', async () => {
     const h = makeHarness({ requirements: [req({ status: 'archived' })], tasks: [task({ status: 'done' })] })
     h.docs.put('docs/requirements/REQ-000001/notes.md')
     // REQ-2d1c74 FR-5：archive 目录与清单内文档登记前可打开性校验——假 docs 落桩
@@ -209,7 +209,7 @@ describe('t6 · SubmitVerification / SubmitArchive / AcceptSheet', () => {
     h.docs.put('docs/requirements/REQ-000001/requirement.md')
     h.docs.put('docs/requirements/REQ-000001/plan.md')
     h.docs.put('docs/requirements/REQ-000001/verification.md')
-    const out: any = await submitArchive(h.deps, {
+    const args = {
       dir: 'docs/requirements/REQ-000001',
       docs: [
         { kind: 'requirement', path: 'docs/requirements/REQ-000001/requirement.md' },
@@ -219,10 +219,20 @@ describe('t6 · SubmitVerification / SubmitArchive / AcceptSheet', () => {
       merged_into: ['docs/architecture/workflow-stages.md'],
       index_entry: '结论',
       manual_updates: [{ path: 'docs/architecture/workflow-stages.md', section: 'x', summary: 'y' }],
+    }
+    // 行为变更（本需求 FR-2）：未列未豁免且未声明 → 拒绝（旧行为是"只警告"）
+    await expect(submitArchive(h.deps, args, EXEC))
+      .rejects.toMatchObject({ code: 'REQBOARD_UNLISTED_ACK_REQUIRED' })
+    // 显式声明不收 → 通过；老字段（unlisted_files）与新字段（reconcile）同时在场
+    const out: any = await submitArchive(h.deps, {
+      ...args,
+      unlisted_ack: [{ path: 'docs/requirements/REQ-000001/notes.md', reason: '测试夹具：有意不收' }],
     }, EXEC)
     expect(out.success).toBe(true)
     expect(out.status).toBe('archived')
     expect(out.unlisted_files).toContain('docs/requirements/REQ-000001/notes.md')
+    expect(out.reconcile.unlisted).toContain('docs/requirements/REQ-000001/notes.md')
+    expect(out.reconcile.acknowledged[0].reason).toBe('测试夹具：有意不收')
     void h
   })
 

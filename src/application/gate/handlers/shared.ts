@@ -6,20 +6,30 @@
  *
  * @module dsh-pmboard/application/gate/handlers/shared
  */
-import type { DocRepository, ReqboardRepository } from '../../ports.js'
+import type { DocRepository, RequirementStore } from '../../ports.js'
 import type { ConfirmContext } from '../../../domain/gate/GateSpec.js'
 import type { RequirementRecord } from '../../../shared/protocol.js'
-import { openRequirementsFor } from '../../internal/window.js'
+import { isOpenRequirement } from '../../../domain/status/Predicates.js'
 
-/** 归属需求：显式 id 优先，否则本窗口最近更新的进行中需求。 */
-export function pickGateRequirement(repo: ReqboardRepository, ctx: ConfirmContext): RequirementRecord | undefined {
-  const ledger = repo.snapshot()
+/**
+ * 归属需求：显式 id 优先，否则本窗口最近更新的进行中需求。
+ *
+ * B12 阶段①-a（design §六③ 方案 A）：由**同步整册快照**改为**权威异步定点读**——
+ * 先用一次带 `sourceSessionId` 过滤的摘要查询定位，再 `get` 一条全文。最多两次读，**不整册扫**。
+ *
+ * 为什么不能用非权威窄投影：本函数服务的是 `H1/H2/H3` 闸门判定
+ * （H1 直接据 `requirement.status === ctx.to` 写 `ctx.verdict`）⇒ 属**门禁路径**，
+ * 读到略旧的状态就可能给出错误裁决。故这里必须权威读（与 `peekFacts()` 的许可区相对）。
+ */
+export async function pickGateRequirement(store: RequirementStore, ctx: ConfirmContext): Promise<RequirementRecord | undefined> {
   if (ctx.requirementId !== undefined && ctx.requirementId.length > 0) {
-    const byId = ledger.requirements.find(r => r.id === ctx.requirementId)
+    const byId = await store.get(ctx.requirementId)
     if (byId !== undefined) return byId
   }
-  const open = openRequirementsFor(ledger, ctx.windowKey)
-  return [...open].sort((a, b) => b.updatedAt - a.updatedAt)[0]
+  const page = await store.listSummaries({ scope: 'all', sourceSessionId: ctx.windowKey })
+  const pick = page.items.filter(isOpenRequirement).sort((a, b) => b.updatedAt - a.updatedAt)[0]
+  if (pick === undefined) return undefined
+  return await store.get(pick.id)
 }
 
 /** 读文档；失败按"读不到"处理（调用方据此 skip，不冒泡）。 */

@@ -37,7 +37,7 @@ describe('createFailureAlert：两条通道 + 永不抛', () => {
     const delivered: Array<{ wk: string; text: string }> = []
     const alert = createFailureAlert({
       log: (m) => logged.push(m),
-      deliver: (wk, text) => delivered.push({ wk, text }),
+
       windowFor: () => 'w-abc',
     })
 
@@ -55,7 +55,7 @@ describe('createFailureAlert：两条通道 + 永不抛', () => {
     const delivered: Array<{ wk: string; text: string }> = []
     const alert = createFailureAlert({
       log: (m) => logged.push(m),
-      deliver: (wk, text) => delivered.push({ wk, text }),
+
       windowFor: () => 'w-abc',
     })
 
@@ -80,7 +80,7 @@ describe('createFailureAlert：两条通道 + 永不抛', () => {
     const delivered: string[] = []
     const alert = createFailureAlert({
       log: (m) => logged.push(m),
-      deliver: (wk) => delivered.push(wk),
+
       windowFor: () => undefined,
     })
 
@@ -92,7 +92,7 @@ describe('createFailureAlert：两条通道 + 永不抛', () => {
   it('任一通道抛错都不抛出（不阻断暂停与留痕）', () => {
     const alert = createFailureAlert({
       log: () => { throw new Error('log boom') },
-      deliver: () => { throw new Error('deliver boom') },
+
       windowFor: () => 'w-abc',
     })
 

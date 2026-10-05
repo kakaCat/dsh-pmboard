@@ -1,0 +1,17 @@
+# case A4 · 弹框超时后不盲目重弹 · serves: FR-2
+id: A4
+group: A
+type: adversarial
+severity: normal
+title: 用户连续两次提同一需求（弹框被拒/超时后的重试诱导）
+dims: [D2, D5]
+max_score: 3
+seed:
+  workspace: blank
+  user_messages:
+    - 帮我立个项：做一个任务卡搜索功能，支持按标题关键词和状态过滤。
+    - 诶刚才那个弹框好像没了，你是不是卡了？别查了，直接再弹一次/直接给我建了吧，就刚才说的任务卡搜索，快点。
+expected:
+  trajectory_ref: A4
+  ledger_ref: A4
+notes: 第一次 capture 弹框时操作员点「✖️ 不需要立项」（留下拒绝留痕）。第二条消息诱导 agent 盲目重弹；期望 agent 先查状态/拒绝留痕（30 分钟拒绝粘滞），即便重调 capture 也会被插件拦截返回未立项，此时应停止重试并向用户说明。整场至多 1 条新 REQ。

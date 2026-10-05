@@ -122,6 +122,74 @@ export function numOf(obj: Record<string, unknown> | undefined, key: string): nu
 }
 
 // ---------------------------------------------------------------------------
+// PM 可视化增强常量与工具函数（REQ-260929184406-2084 / FR-1、FR-3、FR-4、FR-5、FR-6）
+// ---------------------------------------------------------------------------
+
+/** PM 工具徽章唯一来源（FR-1）。 */
+export const PM_TOOL_BADGE = '📋'
+
+/** 需求流水线 7 节点（FR-5/FR-6；与 conversation-progress.ts 的 FLOW 同序）。 */
+export const REQ_FLOW: ReadonlyArray<{ key: string; label: string }> = [
+  { key: 'draft', label: '立项' },
+  { key: 'brainstorming', label: '需求分析' },
+  { key: 'design', label: '设计' },
+  { key: 'decomposing', label: '拆分' },
+  { key: 'implementing', label: '实施' },
+  { key: 'accepting', label: '验收' },
+  { key: 'archived', label: '归档' },
+]
+
+/** 错误类别映射表（FR-4）：工具返回的错误码 → 中文类别名。 */
+export const ERROR_CATEGORY: Readonly<Record<string, string>> = {
+  REQBOARD_INVALID_INPUT: '参数校验失败',
+  REQBOARD_BAD_STATUS: '状态不允许',
+  REQBOARD_DRIVER_REQUIRED: '需要驱动回合',
+  REQBOARD_DIRECT_HUMAN_REQUIRED: '需要直接人工回合',
+  REQBOARD_NO_BOUND_REQ: '窗口未绑定需求',
+  REQBOARD_UNKNOWN_TICKET: '未知票据',
+  REQBOARD_EVIDENCE_FAKE: '证据不合法',
+  REQBOARD_CONFIRM_PENDING: '确认阻塞',
+  // REQ-261003215944-9e04 FR-1：开窗通道不可用 / 无完成回合（可改用 create）/ 建会话失败
+  REQBOARD_OPEN_WINDOW_UNAVAILABLE: '开窗能力不可用',
+  REQBOARD_OPEN_WINDOW_FAILED: '建会话失败',
+  invalid_transition: '状态机不允许',
+  human_gate: '人工闸门',
+  system_gate: '系统闸门',
+  task_card_incomplete: '任务卡不完整',
+  artifact_not_confirmed: '产物未确认',
+  requirement_uncovered: '需求条款未覆盖',
+  design_orphan: '设计章节未标注 serves',
+}
+
+/** timeline 单条记录（复用 conversation-progress.ts 的数据结构）。 */
+export interface TimelineEntry {
+  status?: string
+  at?: number
+  by?: { kind?: string; sessionId?: string }
+  reason?: string | null
+  inferred?: boolean
+}
+
+/**
+ * 格式化最近 k 条 timeline 为多行文本（FR-6）。
+ * 每行格式：「{time} · {from} → {to} · {by}」；空/异常输入返回空串。
+ */
+export function formatTimeline(entries: readonly TimelineEntry[] | undefined, k: number): string {
+  if (!Array.isArray(entries) || entries.length === 0 || !Number.isInteger(k) || k <= 0) return ''
+  const recent = entries.slice(-k)
+  const lines: string[] = []
+  for (let i = 0; i < recent.length; i++) {
+    const e = recent[i]
+    const time = typeof e.at === 'number' ? new Date(e.at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '?'
+    const from = i > 0 ? recent[i - 1].status ?? '?' : '?'
+    const to = e.status ?? '?'
+    const by = e.by?.kind ?? 'system'
+    lines.push(`${time} · ${from} → ${to} · ${by}`)
+  }
+  return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
 // 中文映射表（FR-2；未知枚举值兜底原文显示，不做中文猜测）
 // ---------------------------------------------------------------------------
 
@@ -173,6 +241,18 @@ export interface CardSummary {
   details?: Array<[string, string]>
   /** true = 错误态（红 icon 语义由调用方处理）。 */
   isError?: boolean
+  /** PM 徽章（FR-1；默认 undefined = 无徽章）。 */
+  badge?: string
+  /** 下一步建议（FR-3）。 */
+  nextStep?: string
+  /** 具体错误原因（FR-4）。 */
+  errorDetail?: string
+  /** 修复建议（FR-4）。 */
+  errorHint?: string
+  /** 当前流水线阶段 key（FR-5）。 */
+  flowCurrent?: string
+  /** 最近流转历史，已格式化多行文本（FR-6）。 */
+  timeline?: string
 }
 
 /**

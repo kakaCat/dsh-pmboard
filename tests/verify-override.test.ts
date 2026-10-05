@@ -6,12 +6,12 @@
  *
  * 覆盖 = 例外：全过且材料齐全的通过**不该**带覆盖记录（否则台账全是噪声，复盘读不出例外）。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import { createReqboardHandler } from '../src/http/routes.js'
@@ -20,16 +20,17 @@ import type { RequirementRecord, TaskRecord, VerificationSheet } from '../src/sh
 
 const W = 'session-abc-123'
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let taskStore: QueueTaskStore
 let handler: ReturnType<typeof createReqboardHandler>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-override-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   // 任务唯一存储 = 队列（REQ-260927202051-f6df：v9 台账已无 tasks 通道）
   taskStore = new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: dir }), now: () => Date.now() })
-  handler = createReqboardHandler({ store, taskStore, now: () => Date.now() })
+  handler = createReqboardHandler({ requirementStore: store,
+    applicationDeps: { store: store } as never, taskStore, now: () => Date.now() })
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -45,10 +46,10 @@ function baseReq(id: string): RequirementRecord {
 async function seed(id: string, opts: { sheet: boolean; failFirst?: boolean }): Promise<void> {
   // mutate 回调是**同步契约**，`createMany` 是异步的 → 任务必须在回调外写队列。
   let taskToSeed: TaskRecord | undefined
-  await store.mutate('seed', (l) => {
-    const r = baseReq(id)
-    l.requirements.push(r)
-    if (opts.sheet === false) return { requirements: [r] }
+  const seededRec = baseReq(id)
+  {
+    const r = seededRec
+    if (opts.sheet !== false) {
     const task = {
       id: 't-ov0001', requirementId: r.id, title: '任务一', description: '', phase: 'implement', side: 'backend',
       dependsOn: [], scope: { apis: [], tables: [], files: [] }, acceptance: '单测绿', context: '',
@@ -82,8 +83,10 @@ async function seed(id: string, opts: { sheet: boolean; failFirst?: boolean }): 
     if (opts.failFirst !== true) {
       r.artifacts = [{ stage: 'accepting', kind: 'verification', path: 'docs/requirements/' + id + '/verification.md', registeredAt: 1, registeredBy: { kind: 'agent', sessionId: W } }]
     }
-    return { requirements: [r] }
-  })
+    }
+  }
+  // B12 阶段⑤：块内改写完成之后才落库
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [seededRec], triages: [] })
   // ① 先写任务（队列）——回调外，`createMany` 幂等
   if (taskToSeed !== undefined) await taskStore.createMany(id, [taskToSeed])
 }
@@ -117,7 +120,7 @@ describe('验收通过的覆盖语义（REQ-a8d582 FR-4）', () => {
     expect(res.statusCode).toBe(400)
     expect(res.payload.code).toBe('verify_override_required')
     expect(res.payload.error).toMatch(/不通过 1 项/)
-    const r = store.snapshot().requirements[0]!
+    const r = store.peekAll()[0]!
     expect(r.status).toBe('accepting')
     expect(r.acceptanceOverride).toBeUndefined()
   })
@@ -128,7 +131,7 @@ describe('验收通过的覆盖语义（REQ-a8d582 FR-4）', () => {
     const detail = '看板覆盖通过：验收单 v1，不通过 1 项 / 未裁决 1 项'
     const res = await post('/req/verify/pass', { id: 'REQ-ov0002', confirm_override: detail })
     expect(res.statusCode).toBe(200)
-    const r = store.snapshot().requirements[0]!
+    const r = store.peekAll()[0]!
     expect(r.status).toBe('archived')
     expect(r.acceptanceOverride).toMatchObject({ detail, failed: 1, pending: 1, noMaterials: false })
     expect(r.acceptanceOverride!.by.kind).toBe('human')
@@ -144,7 +147,7 @@ describe('验收通过的覆盖语义（REQ-a8d582 FR-4）', () => {
       confirm_override: '看板覆盖通过：尚无验收材料（无验收证据）',
     })
     expect(res.statusCode).toBe(200)
-    const r = store.snapshot().requirements[0]!
+    const r = store.peekAll()[0]!
     expect(r.status).toBe('archived')
     expect(r.acceptanceOverride).toMatchObject({ failed: 0, pending: 0, noMaterials: true })
   })
@@ -155,14 +158,14 @@ describe('验收通过的覆盖语义（REQ-a8d582 FR-4）', () => {
     expect(res.statusCode).toBe(400)
     expect(res.payload.code).toBe('verify_override_required')
     expect(res.payload.error).toMatch(/尚无验收材料/)
-    expect(store.snapshot().requirements[0]!.status).toBe('accepting')
+    expect(store.peekAll()[0]!.status).toBe('accepting')
   })
 
   it('全过且材料齐全 → 不带覆盖照常通过，且**不写**覆盖记录（不回归）', async () => {
     await seed('REQ-ov0005', { sheet: true, failFirst: false })
     const res = await post('/req/verify/pass', { id: 'REQ-ov0005' })
     expect(res.statusCode).toBe(200)
-    const r = store.snapshot().requirements[0]!
+    const r = store.peekAll()[0]!
     expect(r.status).toBe('archived')
     expect(r.acceptanceOverride).toBeUndefined()
   })

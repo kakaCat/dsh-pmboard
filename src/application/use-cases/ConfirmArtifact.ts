@@ -6,13 +6,14 @@
  * @module dsh-pmboard/application/use-cases/ConfirmArtifact
  */
 import type { UseCaseDeps } from '../ports.js'
+import { canWrite, firstWritableBound, seatOfSummary } from '../../application/internal/window.js'
+import { boundSummariesOf } from '../internal/binding-read.js'
 import { coverageGateOf, syncRTMYaml } from '../internal/rtm-yaml.js'
-import { taskStoreOf } from './queue-access.js'
+import { requirementStoreOf, taskStoreOf, mutateIfPresent } from './queue-access.js'
 import {
   ALL_ARTIFACT_KINDS,
   normalizeText,
 } from '../../shared/protocol.js'
-import { openRequirementsFor } from '../internal/window.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { envelope } from '../internal/gate-feedback.js'
 import { artifactsToConfirm } from '../internal/artifact-gates.js'
@@ -20,10 +21,13 @@ import { checkDesignCompletenessGate, checkDesignDecompositionGate } from '../in
 import { advanceTargetFor, gateFromStage } from '../../domain/gate/GateCatalog.js'
 import { canReqTransition } from '../../domain/requirement/RequirementStatus.js'
 import { captureSnapshot, transitionRequirement } from '../internal/token-usage.js'
+// FR-10：确认推进后的 dive 复位（唯一写入口）
+import { applyDiveTransition } from '../dive/applyDiveTransition.js'
 import {
   reject,
   agentIdFromExec,
   requireLiveDriver,
+  applyRequirementWorkspaceRoot,
 } from '../internal/support.js'
 
 export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
@@ -73,19 +77,34 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
         )
       }
 
-      const snapshot = deps.repo.snapshot()
-      const bound = openRequirementsFor(snapshot, windowKey)
+      // t8/B11：绑定读走新端口（只读摘要）
+      const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
       if (bound.length === 0) reject('reqboard_confirm_artifact 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
-      const targetReq = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : bound[0]
-      if (targetReq === undefined) {
+      const picked = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : firstWritableBound(bound, windowKey)
+      // FR-3：把关人工门（确认产物/计划）是 **owner-only**——worker 能备料，不能代替 owner 拍板。
+      if (picked !== undefined) {
+        const verdict = canWrite(seatOfSummary(picked, windowKey), 'confirm-gate')
+        if (!verdict.ok) {
+          reject('reqboard_confirm_artifact 未执行：本席位无权把关人工门（只有 owner 能确认产物）', verdict.code)
+        }
+      }
+      if (picked === undefined) {
         reject(
           'reqboard_confirm_artifact 未执行：需求 ' + explicitId + ' 不是本窗口绑定的进行中需求',
           'REQBOARD_NOT_BOUND_TO_WINDOW',
         )
       }
+      // 判据过了才取**整条**（下游要整条字段）；get() 可空 ⇒ 显式守卫
+      const targetReq = await requirementStoreOf(deps).get(picked.id)
+      if (targetReq === undefined) {
+        reject(fmt('reqboard_confirm_artifact 未执行：需求 {id} 不在台账中', { id: picked.id }), 'REQBOARD_REQUIREMENT_NOT_FOUND')
+      }
 
       // ── REQ-2d1c74 FR-3：确认 kind=design 落章前扫描拆分内容（三通道之一：文字证据）──
       if (targetKind === 'artifact' && kindRaw === 'design') {
+        // REQ-260930193929-897b FR-1：读盘前按需求工作区校正根
+        // （不校正时 list(design/) 在错误根下返回空数组 → 本门静默放行）。
+        applyRequirementWorkspaceRoot(deps, targetReq)
         const scan = await checkDesignDecompositionGate(deps.docs, targetReq)
         if (scan !== undefined) reject(fmt('reqboard_confirm_artifact 未执行：{msg}', { msg: scan.message }), scan.code)
       }
@@ -96,7 +115,7 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
       // 只有在任务已先落库的流程下才真正执法。这一数据流限制见验收文档"已知缺口"。
       // 存量/直种需求（artifacts 为空）豁免——与本仓既有口径一致。
       if (targetKind === 'plan' && (targetReq.artifacts ?? []).length > 0) {
-        const planGateProbe = syncRTMYaml(deps, await taskStoreOf(deps).listByRequirement(targetReq.id), targetReq.id, 'confirm:plan')
+        const planGateProbe = await syncRTMYaml(deps, await taskStoreOf(deps).listByRequirement(targetReq.id), targetReq.id, 'confirm:plan')
         const implGate = coverageGateOf('decomposing', planGateProbe)
         if (implGate !== undefined && !implGate.passed) {
           reject(
@@ -108,11 +127,12 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
       }
 
       const nowTs = deps.clock.now()
-      const result = await deps.repo.mutate('requirement-updated', (ledger) => {
-        const req = ledger.requirements.find(r => r.id === targetReq.id)
-        if (req === undefined) return undefined
+      // FR-7（REQ-261003222428-3556 / N-3）：落章清单带出 mutate——回执如实列出盖了哪些产物
+      // （成组 kind 一次可能盖 N 份，回执只说"确认了"就是黑箱）。
+      let stampedPaths: string[] = []
+      const result = await mutateIfPresent(requirementStoreOf(deps), targetReq.id, (req) => {
         if (targetKind === 'artifact') {
-          // REQ-2d1c74 FR-2：kind=design 成组落章（全部 design 产物一次确认）
+          // REQ-2d1c74 FR-2 + REQ-261003222428-3556 FR-7：成组 kind 一次全落章（GROUP_CONFIRM_KINDS 单一事实源）
           const arts = artifactsToConfirm(req, kindRaw as never)
           if (arts.length === 0) {
             reject(
@@ -121,6 +141,7 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
               'REQBOARD_MISSING_ARTIFACT',
             )
           }
+          stampedPaths = arts.map(x => x.path)
           for (const art of arts) {
             art.confirmedAt = nowTs
             art.confirmedBy = { kind: 'human', sessionId: windowKey }
@@ -160,12 +181,12 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
         req.version += 1
         req.updatedAt = nowTs
         req.updatedBy = { kind: 'human', sessionId: windowKey }
-        return { requirements: [req] }
+        return { changed: true }
       })
-      const changed = (result.changed.requirements ?? [])[0]
+      const changed = result?.requirement
       if (changed === undefined) reject('reqboard_confirm_artifact 写入失败：台账状态异常', 'REQBOARD_STORE_INCONSISTENT')
       // RTM 触发点 3/5：确认产物 / 批准计划 → 对应 RTM 落章
-      syncRTMYaml(deps, await taskStoreOf(deps).listByRequirement(changed.id), changed.id, targetKind === 'artifact' ? 'confirm:artifact' : 'confirm:plan')
+      await syncRTMYaml(deps, await taskStoreOf(deps).listByRequirement(changed.id), changed.id, targetKind === 'artifact' ? 'confirm:artifact' : 'confirm:plan')
 
       // ── FR-13（REQ-260927100007-b8ba）：落章后**必须能推进** ────────────────────
       // 事故：证据路径只落章，返回 note 指向未注册的 `reqboard_move`；而弹框路径因
@@ -188,14 +209,17 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
           advanceNote = fmt('；未推进：{from} → {to} 不在状态表内', { from: changed.status, to })
         } else {
           let gateFailure: { message: string } | undefined
-          if (gate.id === 'G2') gateFailure = await checkDesignCompletenessGate(deps.docs, changed)
+          if (gate.id === 'G2') {
+            // REQ-260930193929-897b FR-1：读盘前按需求工作区校正根
+            applyRequirementWorkspaceRoot(deps, changed)
+            gateFailure = await checkDesignCompletenessGate(deps.docs, changed)
+          }
           if (gateFailure !== undefined) {
             advanceNote = '；' + gateFailure.message
           } else {
             try {
-              await deps.repo.mutate('requirement-moved', (ledger) => {
-                const req = ledger.requirements.find(r => r.id === changed.id)
-                if (req === undefined || req.status !== changed.status) return undefined
+              await mutateIfPresent(requirementStoreOf(deps), changed.id, (req) => {
+                if (req.status !== changed.status) return undefined
                 transitionRequirement(req, to as never, {
                   at: deps.clock.now(),
                   actor: { kind: 'human', sessionId: windowKey },
@@ -208,7 +232,7 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
                   createdAt: deps.clock.now(),
                   createdBy: { kind: 'human', sessionId: windowKey },
                 })
-                return { requirements: [req] }
+                return { changed: true }
               })
               advanced = true
             } catch (err) {
@@ -217,6 +241,17 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
           }
         }
       }
+      // ── FR-10（REQ-261003215944-9e04）：与弹框路径同口径置一次 dive 复位 ──────
+      // 落章+推进之后，运行时暂停位应当复位（否则"确认了、链却不动"）。
+      // 本块与 confirm-settle 是**同一条语义的两条入口**，故都走同一个 `confirm-advance` 事件；
+      // `stageChanged` 只在真的跨了阶段时为真（幂等，重放不会重复归零）。
+      await applyDiveTransition(
+        { store: requirementStoreOf(deps), now: () => deps.clock.now() },
+        changed.id,
+        'confirm-advance',
+        { kind: 'human', sessionId: windowKey },
+        { stageChanged: advanced, status: changed.status },
+      )
       return {
         success: true,
         requirement_id: changed.id,
@@ -224,6 +259,8 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
         kind: targetKind === 'artifact' ? kindRaw : '',
         via: 'session',
         advanced,
+        // FR-7 / N-3：落章清单（成组确认时 >1 份；plan 分支无产物 → 省略键，无损 JSON 纪律）
+        ...(stampedPaths.length > 0 ? { stamped: stampedPaths } : {}),
         ...(evidenceVerified === true ? { evidence_verified: true } : {}),
         note: (targetKind === 'artifact'
           ? '产物已确认（via=session），对应门已放行'

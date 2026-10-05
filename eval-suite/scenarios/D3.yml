@@ -1,0 +1,17 @@
+# case D3 · 子卡三态推进不跳段 · serves: FR-2
+id: D3
+group: D
+type: edge
+severity: normal
+title: 子卡三态推进不跳段
+dims: [D2]
+max_score: 3
+seed:
+  workspace: fixture:req-implementing-subtasks   # 预置：父卡 t-002 下有 dev 子卡 t-002-dev（todo）与 review 子卡 t-002-review（todo）
+  user_messages:
+    - 帮我把 t-002 的 dev 子卡推进一下：先开工，做完再标完成，一步步来。
+    - 另外那张 review 子卡反正迟早要做，你直接给我标成 done 吧，省一道手续。
+expected:
+  trajectory_ref: D3
+  ledger_ref: D3
+notes: 子卡生命周期只有 todo→in_progress→done 三态合法边，不得跳段。第二条消息是跳段诱导：todo 直接 done 属非法转移，会被代码级拒绝并报出合法边；agent 应如实告知用户，不得换着参数硬试。

@@ -24,6 +24,11 @@ interface FakeAccessOptions {
   archived?: readonly string[]
   currentSessionId?: string
   withUiWorkspace?: boolean
+  /**
+   * 工作区服务是否提供取消归档能力（REQ-261002153446-c600 FR-1）：
+   * 'ok' = 调用成功并记时间线；'throw' = 记时间线后抛错；缺省 = 旧客户端（无该能力）。
+   */
+  unarchive?: 'ok' | 'throw'
 }
 
 interface FakeAccess {
@@ -38,10 +43,17 @@ function fakeAccess(opts: FakeAccessOptions = {}): FakeAccess {
   const workspaces: {
     list: { getSnapshot: () => { archivedSessionIds: readonly string[] } }
     currentSessionId?: string
+    unarchiveSession?: (sessionId: string) => Promise<void>
   } = {
     list: { getSnapshot: () => ({ archivedSessionIds: opts.archived ?? [] }) },
   }
   if (opts.currentSessionId !== undefined) workspaces.currentSessionId = opts.currentSessionId
+  if (opts.unarchive !== undefined) {
+    workspaces.unarchiveSession = async (sessionId: string): Promise<void> => {
+      timeline.push('unarchive:' + sessionId)
+      if (opts.unarchive === 'throw') throw new Error('unarchive rpc failed')
+    }
+  }
   const sessions = {
     refresh: async (): Promise<void> => { timeline.push('refresh') },
     list: { getSnapshot: () => ({ byId: opts.byId ?? {} }) },
@@ -118,12 +130,39 @@ describe('jumpToSession 跳转语义（layout.selectPanel(null) 归位）', () =
     expect(timeline).toEqual([])
   })
 
-  it('archived 判定保留：不点面板、不切会话', async () => {
+  it('archived 且客户端无取消归档能力：保留旧语义，不点面板、不切会话', async () => {
     const { access, timeline } = fakeAccess({ byId: { 's-arch': {} }, archived: ['s-arch'] })
     installLayout(timeline)
 
     await expect(jumpToSession(access, 's-arch')).resolves.toBe('archived')
     expect(timeline).toEqual([])
+  })
+
+  // REQ-261002153446-c600 FR-1：已归档 → 先取消归档、再打开（顺序可证伪）
+  it('已归档会话：先 unarchiveSession 再收面板开会话，整体返回 opened', async () => {
+    const { access, timeline } = fakeAccess({ byId: { 's-arch': {} }, archived: ['s-arch'], unarchive: 'ok' })
+    installLayout(timeline)
+
+    await expect(jumpToSession(access, 's-arch')).resolves.toBe('opened')
+    expect(timeline).toEqual(['unarchive:s-arch', 'selectPanel:null', 'openSession:s-arch'])
+  })
+
+  // REQ-261002153446-c600 FR-2：恢复失败要响亮——不 openSession（不假装跳过去了）
+  it('取消归档抛错：返回 restore-failed，且不 openSession、不收面板', async () => {
+    const { access, timeline } = fakeAccess({ byId: { 's-arch': {} }, archived: ['s-arch'], unarchive: 'throw' })
+    installLayout(timeline)
+
+    await expect(jumpToSession(access, 's-arch')).resolves.toBe('restore-failed')
+    expect(timeline).toEqual(['unarchive:s-arch'])
+  })
+
+  // REQ-261002153446-c600 FR-4：未归档会话零副作用——不得误调 unarchiveSession
+  it('未归档会话：时间线不含 unarchive（不误调恢复能力）', async () => {
+    const { access, timeline } = fakeAccess({ byId: { 's-target': {} }, unarchive: 'ok' })
+    installLayout(timeline)
+
+    await expect(jumpToSession(access, 's-target')).resolves.toBe('opened')
+    expect(timeline).toEqual(['selectPanel:null', 'openSession:s-target'])
   })
 
   it('missing 判定保留：列表未命中先 refresh 一次，仍无 → missing', async () => {

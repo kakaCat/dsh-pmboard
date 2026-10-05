@@ -8,6 +8,7 @@
  * 驱动侧跑批（unbound 登记 / 下一拍消费 / bound 窗口的接手推进·阶段注入·里程碑催办 /
  * 非 idle 不驱动 / 忽略会话不驱动）。
  */
+import { factsOf } from '../src/domain/requirement/RequirementSummary.js'
 import { describe, it, expect } from 'vitest'
 import { emptyLedger, type ReqboardLedger } from '../src/shared/protocol.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
@@ -41,7 +42,7 @@ function deps(): {
       // 任务队列端口（REQ-260927202051-f6df）：DiveSessionDriverDeps.taskStore 为**必填**（D11 口径）。
       // 本用例不涉任务，给一个落在仓库根下的真实 store 即可（不落盘则不创建文件）。
       taskStore: new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: process.cwd() }), now: () => 1000 }),
-      snapshot: () => ledger,
+      facts: () => ledger.requirements.map(factsOf),
       pending,
       now: () => 1000,
       logger: {

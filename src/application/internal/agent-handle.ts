@@ -12,6 +12,7 @@
  *
  * @module dsh-pmboard/application/internal/agent-handle
  */
+import { requirementStoreOf } from '../use-cases/queue-access.js'
 import type { UseCaseDeps } from '../ports.js'
 import type { TaskRecord } from '../../shared/protocol.js'
 import { fmt } from '../../domain/text/fmt.js'
@@ -22,20 +23,19 @@ export type AgentHandleResult = { ok: true; exec: unknown } | { ok: false; reaso
  * 解析一张子卡可用的 agent 句柄。优先调用方传入的 `exec.agent`；缺省按父卡所属需求的绑定窗口
  * 查在线 agent（`deps.agents()`）。三条入口（工具/看板/启动恢复）由此统一。
  */
-export function ensureAgentHandle(
+export async function ensureAgentHandle(
   deps: UseCaseDeps,
   parentId: string,
   subtaskId: string,
   exec: unknown,
   tasks: readonly TaskRecord[],
-): AgentHandleResult {
+): Promise<AgentHandleResult> {
   const existing = (exec as { agent?: unknown } | undefined)?.agent
   if (existing !== undefined) return { ok: true, exec }
   if (deps.agents === undefined) return { ok: true, exec }
-  const snap = deps.repo.snapshot()
   // 队列任务（REQ-260927202051-f6df D4：`LedgerView.tasks` 随 v9 移除）
   const parent = tasks.find((t) => t.id === parentId)
-  const req = parent === undefined ? undefined : snap.requirements.find((r) => r.id === parent.requirementId)
+  const req = parent === undefined ? undefined : await requirementStoreOf(deps).getSummary(parent.requirementId)
   const windowKey = req?.sourceSessionId
   const agent = typeof windowKey === 'string' && windowKey.length > 0 ? deps.agents?.()?.get?.(windowKey) : undefined
   if (agent !== undefined) return { ok: true, exec: { agent } }

@@ -22,3 +22,5 @@
       由代码级拦截（artifact_not_confirmed）拒绝，不由模型自裁。
 - [ ] **覆盖 7 · 节点归属**：上文 "Cover: architecture, components, data flow, error handling,
       testing" 在本仓属 **design** 节点的设计覆盖面；brainstorming 阶段不得越界写设计。
+
+- [ ] 判定标准挂可跑命令：先查 `reqboard_kb(kind='standard')`。

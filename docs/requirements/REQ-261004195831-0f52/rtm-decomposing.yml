@@ -1,0 +1,567 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261004195831-0f52
+  generated_at: 2026-10-04T12:04:05.126Z
+  version: 62
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T12:36:14.732Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 进入需求详情按需取全文
+      source: requirement.md
+      line: 97
+    - id: FR-2
+      title: 取数三态显式呈现（加载 / 未找到 / 失败）
+      source: requirement.md
+      line: 125
+    - id: FR-3
+      title: 详情随台账刷新、交互态不丢、请求去重
+      source: requirement.md
+      line: 150
+    - id: FR-4
+      title: 摘要 / 半残记录的防御性降级
+      source: requirement.md
+      line: 175
+    - id: FR-5
+      title: 回归用例与构建纪律
+      source: requirement.md
+      line: 198
+  design_sections:
+    - ref: design/architecture.md#目标与总体方案
+      title: 目标与总体方案
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 目标与总体方案
+    - ref: design/architecture.md#模块改动地图
+      title: 模块改动地图
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 模块改动地图
+    - ref: design/architecture.md#数据结构变更
+      title: 数据结构变更
+      serves:
+        - FR-1
+        - FR-3
+      file: design/architecture.md
+      section: 数据结构变更
+    - ref: design/architecture.md#质量与回归锚点
+      title: 质量与回归锚点
+      serves:
+        - FR-5
+      file: design/architecture.md
+      section: 质量与回归锚点
+    - ref: design/architecture.md#兼容与回滚
+      title: 兼容与回滚
+      serves:
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 兼容与回滚
+    - ref: design/data-model.md#无变更声明
+      title: 无变更声明
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 无变更声明
+    - ref: design/data-model.md#ReqDetailEntry新增详情取数状态
+      title: ReqDetailEntry（新增：详情取数状态）
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/data-model.md
+      section: ReqDetailEntry新增详情取数状态
+    - ref: design/data-model.md#失效与去重判据
+      title: 失效与去重判据
+      serves:
+        - FR-1
+        - FR-3
+      file: design/data-model.md
+      section: 失效与去重判据
+    - ref: design/data-model.md#迁移与回滚
+      title: 迁移与回滚
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 迁移与回滚
+    - ref: design/frontend.md#目录与包结构
+      title: 目录与包结构 <!--
+      serves:
+        - FR-1
+        - FR-3
+      file: design/frontend.md
+      section: 目录与包结构
+    - ref: design/frontend.md#数据流
+      title: 数据流 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/frontend.md
+      section: 数据流
+    - ref: design/frontend.md#交互态保持
+      title: 交互态保持 <!--
+      serves:
+        - FR-3
+      file: design/frontend.md
+      section: 交互态保持
+    - ref: design/frontend.md#样式改动
+      title: 样式改动 <!--
+      serves:
+        - FR-2
+      file: design/frontend.md
+      section: 样式改动
+    - ref: design/frontend.md#兼容与降级
+      title: 兼容与降级 <!--
+      serves:
+        - FR-2
+        - FR-4
+      file: design/frontend.md
+      section: 兼容与降级
+    - ref: design/interfaces.md#服务端契约既有不改
+      title: 服务端契约（既有，不改） `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: 服务端契约既有不改
+    - ref: design/interfaces.md#GET-dashboardapireqboardrequirementsid
+      title: GET /dashboard/api/reqboard/requirements/:id `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: GET-dashboardapireqboardrequirementsid
+    - ref: design/interfaces.md#客户端模块契约新增
+      title: 客户端模块契约（新增） `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/interfaces.md
+      section: 客户端模块契约新增
+    - ref: design/interfaces.md#req-detail-store
+      title: req-detail-store `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/interfaces.md
+      section: req-detail-store
+    - ref: design/interfaces.md#占位渲染契约新增
+      title: 占位渲染契约（新增） `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: 占位渲染契约新增
+    - ref: design/interfaces.md#viewsdetail-statests
+      title: views/detail-states.ts `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: viewsdetail-statests
+    - ref: design/interfaces.md#既有渲染入口签名不变入参约束收紧
+      title: 既有渲染入口（签名不变，入参约束收紧） `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/interfaces.md
+      section: 既有渲染入口签名不变入参约束收紧
+    - ref: design/interfaces.md#buildReqDetail
+      title: buildReqDetail `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/interfaces.md
+      section: buildReqDetail
+    - ref: design/interfaces.md#renderComments
+      title: renderComments `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: renderComments
+    - ref: design/use-cases.md#场景总览
+      title: 场景总览 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/use-cases.md
+      section: 场景总览
+    - ref: design/use-cases.md#UC-1-打开需求详情
+      title: UC-1 打开需求详情 <!--
+      serves:
+        - FR-1
+        - FR-4
+      file: design/use-cases.md
+      section: UC-1-打开需求详情
+    - ref: design/use-cases.md#UC-2-详情在屏时的台账变化
+      title: UC-2 详情在屏时的台账变化 <!--
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-2-详情在屏时的台账变化
+    - ref: design/use-cases.md#UC-3-需求不存在或已删除
+      title: UC-3 需求不存在或已删除 <!--
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-3-需求不存在或已删除
+    - ref: design/use-cases.md#UC-4-取数失败服务端异常-离线
+      title: UC-4 取数失败（服务端异常 / 离线） <!--
+      serves:
+        - FR-2
+        - FR-4
+      file: design/use-cases.md
+      section: UC-4-取数失败服务端异常-离线
+outputs:
+  tasks:
+    - id: t-41d3fe
+      title: 实现详情取数模块 req-detail-store 并落地 store 单测
+      implements: 新建 src/client/req-detail-store.ts：ReqDetailEntry 四态（loading/ready/missing/error）+ createReqDetailStore(deps) 暴露 ensure/get/retry/reset，实现同 reqId 在途 Promise 复用、按 summaryVersion/ledgerRevision 失效、响应 reqId 不匹配即丢弃、条目 Map 容量 16；新建 tests/req-detail-ondemand.test.ts 并写入 TC-2/TC-3/TC-4（注入 fetchRequirement 桩，不用 jsdom）。
+      serves:
+        - FR-1
+        - FR-3
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-35fe33
+      title: 实现详情三态占位渲染（加载 / 未找到 / 失败）
+      implements: 新建 src/client/views/detail-states.ts：buildDetailLoading/buildDetailMissing/buildDetailError，统一 .dsh-pm-detail[data-detail-req] 外壳与 data-detail-state 标记、复用既有 .dsh-pm-empty/.dsh-pm-error 类、重试按钮 data-action="retry-detail"；在 tests/req-detail-ondemand.test.ts 追加 TC-5/TC-6 文案断言。
+      serves:
+        - FR-2
+      depends_on:
+        - t-41d3fe
+      phase: ui
+      side: frontend
+    - id: t-48dfcb
+      title: 为详情与任务卡渲染补缺字段防御性降级
+      implements: 改 src/client/views/stage-detail.ts（buildReqDetail/buildTabContents 对 comments/artifacts/plan/verification/archive/statusHistory/docLinks 按缺失兜底；评论计数统一全文 comments.length）；改 src/client/render/dom-utils.ts（renderComments 接受 undefined/非数组，输出与空数组逐字节一致的空态）；改 src/client/views/stage-panel.ts（任务卡评论同口径）；在 tests/req-detail-ondemand.test.ts 追加 TC-1/TC-8。
+      serves:
+        - FR-4
+      depends_on:
+        - t-41d3fe
+      phase: implement
+      side: frontend
+    - id: t-f075e2
+      title: 把详情视图接到 req-detail-store（四态分支 + 去重 + 草稿/Tab 回填）
+      implements: 改 src/client/board-mount.ts：case req 摘要只喂骨架，改为 reqDetailStore.ensure(reqId, summary.version, state.revision) 驱动四态渲染（ready → buildReqDetail 传全文；loading/missing/error → detail-states 三个占位），删除找不到就 mode=board 的静默回退，新增 retry-detail 的 [data-action] 委派，重绘前后回填评论草稿 input[data-role=comment-input] 与当前 Tab。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      depends_on:
+        - t-35fe33
+        - t-48dfcb
+      phase: implement
+      side: frontend
+    - id: t-0f476e
+      title: 跑回归收口（新用例 + 类型检查 + 重建 bundle + 基线比对）
+      implements: 在 tests/req-detail-ondemand.test.ts 补 TC-7（失败后 retry 强制取数、连点仍只 1 次在途）；把 pnpm typecheck、pnpm build:client、npx vitest run 的输出摘要与手工验收 M-1…M-5 记录落到 docs/requirements/REQ-261004195831-0f52/evidence/verification.md。
+      serves:
+        - FR-5
+      depends_on:
+        - t-f075e2
+      phase: test
+      side: frontend
+    - id: t-3fde63
+      title: 实现详情取数模块 req-detail-store 并落地 store 单测·研发
+      implements: |-
+        新建 src/client/req-detail-store.ts：ReqDetailEntry 四态（loading/ready/missing/error）+ createReqDetailStore(deps) 暴露 ensure/get/retry/reset，实现同 reqId 在途 Promise 复用、按 summaryVersion/ledgerRevision 失效、响应 reqId 不匹配即丢弃、条目 Map 容量 16；新建 tests/req-detail-ondemand.test.ts 并写入 TC-2/TC-3/TC-4（注入 fetchRequirement 桩，不用 jsdom）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-79aecb
+      title: 实现详情取数模块 req-detail-store 并落地 store 单测·复核
+      implements: |-
+        新建 src/client/req-detail-store.ts：ReqDetailEntry 四态（loading/ready/missing/error）+ createReqDetailStore(deps) 暴露 ensure/get/retry/reset，实现同 reqId 在途 Promise 复用、按 summaryVersion/ledgerRevision 失效、响应 reqId 不匹配即丢弃、条目 Map 容量 16；新建 tests/req-detail-ondemand.test.ts 并写入 TC-2/TC-3/TC-4（注入 fetchRequirement 桩，不用 jsdom）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-3fde63
+      phase: implement
+      side: frontend
+    - id: t-efcbe6
+      title: 实现详情取数模块 req-detail-store 并落地 store 单测·测试
+      implements: |-
+        新建 src/client/req-detail-store.ts：ReqDetailEntry 四态（loading/ready/missing/error）+ createReqDetailStore(deps) 暴露 ensure/get/retry/reset，实现同 reqId 在途 Promise 复用、按 summaryVersion/ledgerRevision 失效、响应 reqId 不匹配即丢弃、条目 Map 容量 16；新建 tests/req-detail-ondemand.test.ts 并写入 TC-2/TC-3/TC-4（注入 fetchRequirement 桩，不用 jsdom）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-79aecb
+      phase: implement
+      side: frontend
+    - id: t-d65f18
+      title: 实现详情三态占位渲染（加载 / 未找到 / 失败）·研发
+      implements: |-
+        新建 src/client/views/detail-states.ts：buildDetailLoading/buildDetailMissing/buildDetailError，统一 .dsh-pm-detail[data-detail-req] 外壳与 data-detail-state 标记、复用既有 .dsh-pm-empty/.dsh-pm-error 类、重试按钮 data-action="retry-detail"；在 tests/req-detail-ondemand.test.ts 追加 TC-5/TC-6 文案断言。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-41d3fe
+      phase: ui
+      side: frontend
+    - id: t-5d1ccc
+      title: 实现详情三态占位渲染（加载 / 未找到 / 失败）·复核
+      implements: |-
+        新建 src/client/views/detail-states.ts：buildDetailLoading/buildDetailMissing/buildDetailError，统一 .dsh-pm-detail[data-detail-req] 外壳与 data-detail-state 标记、复用既有 .dsh-pm-empty/.dsh-pm-error 类、重试按钮 data-action="retry-detail"；在 tests/req-detail-ondemand.test.ts 追加 TC-5/TC-6 文案断言。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-d65f18
+      phase: ui
+      side: frontend
+    - id: t-ef3e09
+      title: 实现详情三态占位渲染（加载 / 未找到 / 失败）·测试
+      implements: |-
+        新建 src/client/views/detail-states.ts：buildDetailLoading/buildDetailMissing/buildDetailError，统一 .dsh-pm-detail[data-detail-req] 外壳与 data-detail-state 标记、复用既有 .dsh-pm-empty/.dsh-pm-error 类、重试按钮 data-action="retry-detail"；在 tests/req-detail-ondemand.test.ts 追加 TC-5/TC-6 文案断言。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-5d1ccc
+      phase: ui
+      side: frontend
+    - id: t-c86e99
+      title: 为详情与任务卡渲染补缺字段防御性降级·研发
+      implements: |-
+        改 src/client/views/stage-detail.ts（buildReqDetail/buildTabContents 对 comments/artifacts/plan/verification/archive/statusHistory/docLinks 按缺失兜底；评论计数统一全文 comments.length）；改 src/client/render/dom-utils.ts（renderComments 接受 undefined/非数组，输出与空数组逐字节一致的空态）；改 src/client/views/stage-panel.ts（任务卡评论同口径）；在 tests/req-detail-ondemand.test.ts 追加 TC-1/TC-8。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-41d3fe
+      phase: implement
+      side: frontend
+    - id: t-3a2c18
+      title: 为详情与任务卡渲染补缺字段防御性降级·复核
+      implements: |-
+        改 src/client/views/stage-detail.ts（buildReqDetail/buildTabContents 对 comments/artifacts/plan/verification/archive/statusHistory/docLinks 按缺失兜底；评论计数统一全文 comments.length）；改 src/client/render/dom-utils.ts（renderComments 接受 undefined/非数组，输出与空数组逐字节一致的空态）；改 src/client/views/stage-panel.ts（任务卡评论同口径）；在 tests/req-detail-ondemand.test.ts 追加 TC-1/TC-8。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-c86e99
+      phase: implement
+      side: frontend
+    - id: t-63ab91
+      title: 为详情与任务卡渲染补缺字段防御性降级·测试
+      implements: |-
+        改 src/client/views/stage-detail.ts（buildReqDetail/buildTabContents 对 comments/artifacts/plan/verification/archive/statusHistory/docLinks 按缺失兜底；评论计数统一全文 comments.length）；改 src/client/render/dom-utils.ts（renderComments 接受 undefined/非数组，输出与空数组逐字节一致的空态）；改 src/client/views/stage-panel.ts（任务卡评论同口径）；在 tests/req-detail-ondemand.test.ts 追加 TC-1/TC-8。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-3a2c18
+      phase: implement
+      side: frontend
+    - id: t-26fdc8
+      title: 把详情视图接到 req-detail-store（四态分支 + 去重 + 草稿/Tab 回填）·研发
+      implements: |-
+        改 src/client/board-mount.ts：case req 摘要只喂骨架，改为 reqDetailStore.ensure(reqId, summary.version, state.revision) 驱动四态渲染（ready → buildReqDetail 传全文；loading/missing/error → detail-states 三个占位），删除找不到就 mode=board 的静默回退，新增 retry-detail 的 [data-action] 委派，重绘前后回填评论草稿 input[data-role=comment-input] 与当前 Tab。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-35fe33
+        - t-48dfcb
+      phase: implement
+      side: frontend
+    - id: t-969e89
+      title: 把详情视图接到 req-detail-store（四态分支 + 去重 + 草稿/Tab 回填）·复核
+      implements: |-
+        改 src/client/board-mount.ts：case req 摘要只喂骨架，改为 reqDetailStore.ensure(reqId, summary.version, state.revision) 驱动四态渲染（ready → buildReqDetail 传全文；loading/missing/error → detail-states 三个占位），删除找不到就 mode=board 的静默回退，新增 retry-detail 的 [data-action] 委派，重绘前后回填评论草稿 input[data-role=comment-input] 与当前 Tab。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-26fdc8
+      phase: implement
+      side: frontend
+    - id: t-08ac32
+      title: 把详情视图接到 req-detail-store（四态分支 + 去重 + 草稿/Tab 回填）·测试
+      implements: |-
+        改 src/client/board-mount.ts：case req 摘要只喂骨架，改为 reqDetailStore.ensure(reqId, summary.version, state.revision) 驱动四态渲染（ready → buildReqDetail 传全文；loading/missing/error → detail-states 三个占位），删除找不到就 mode=board 的静默回退，新增 retry-detail 的 [data-action] 委派，重绘前后回填评论草稿 input[data-role=comment-input] 与当前 Tab。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-969e89
+      phase: implement
+      side: frontend
+    - id: t-cd9ea3
+      title: 跑回归收口（新用例 + 类型检查 + 重建 bundle + 基线比对）·研发
+      implements: |-
+        在 tests/req-detail-ondemand.test.ts 补 TC-7（失败后 retry 强制取数、连点仍只 1 次在途）；把 pnpm typecheck、pnpm build:client、npx vitest run 的输出摘要与手工验收 M-1…M-5 记录落到 docs/requirements/REQ-261004195831-0f52/evidence/verification.md。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-f075e2
+      phase: test
+      side: frontend
+    - id: t-d0920b
+      title: 跑回归收口（新用例 + 类型检查 + 重建 bundle + 基线比对）·复核
+      implements: |-
+        在 tests/req-detail-ondemand.test.ts 补 TC-7（失败后 retry 强制取数、连点仍只 1 次在途）；把 pnpm typecheck、pnpm build:client、npx vitest run 的输出摘要与手工验收 M-1…M-5 记录落到 docs/requirements/REQ-261004195831-0f52/evidence/verification.md。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-cd9ea3
+      phase: test
+      side: frontend
+    - id: t-d7d219
+      title: 跑回归收口（新用例 + 类型检查 + 重建 bundle + 基线比对）·测试
+      implements: |-
+        在 tests/req-detail-ondemand.test.ts 补 TC-7（失败后 retry 强制取数、连点仍只 1 次在途）；把 pnpm typecheck、pnpm build:client、npx vitest run 的输出摘要与手工验收 M-1…M-5 记录落到 docs/requirements/REQ-261004195831-0f52/evidence/verification.md。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-d0920b
+      phase: test
+      side: frontend
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与总体方案:
+      - t-41d3fe
+      - t-35fe33
+      - t-f075e2
+    design/architecture.md#模块改动地图:
+      - t-41d3fe
+      - t-35fe33
+      - t-48dfcb
+      - t-f075e2
+    design/architecture.md#数据结构变更:
+      - t-41d3fe
+      - t-f075e2
+    design/architecture.md#质量与回归锚点:
+      - t-0f476e
+    design/architecture.md#兼容与回滚:
+      - t-41d3fe
+      - t-35fe33
+      - t-f075e2
+    design/data-model.md#无变更声明:
+      - t-41d3fe
+      - t-f075e2
+    design/data-model.md#ReqDetailEntry新增详情取数状态:
+      - t-41d3fe
+      - t-35fe33
+      - t-f075e2
+    design/data-model.md#失效与去重判据:
+      - t-41d3fe
+      - t-f075e2
+    design/data-model.md#迁移与回滚:
+      - t-35fe33
+      - t-f075e2
+    design/frontend.md#目录与包结构:
+      - t-41d3fe
+      - t-f075e2
+    design/frontend.md#数据流:
+      - t-41d3fe
+      - t-35fe33
+      - t-f075e2
+    design/frontend.md#交互态保持:
+      - t-41d3fe
+      - t-f075e2
+    design/frontend.md#样式改动:
+      - t-35fe33
+      - t-f075e2
+    design/frontend.md#兼容与降级:
+      - t-35fe33
+      - t-48dfcb
+      - t-f075e2
+    design/interfaces.md#服务端契约既有不改:
+      - t-41d3fe
+      - t-35fe33
+      - t-f075e2
+    design/interfaces.md#GET-dashboardapireqboardrequirementsid:
+      - t-41d3fe
+      - t-35fe33
+      - t-f075e2
+    design/interfaces.md#客户端模块契约新增:
+      - t-41d3fe
+      - t-f075e2
+    design/interfaces.md#req-detail-store:
+      - t-41d3fe
+      - t-f075e2
+    design/interfaces.md#占位渲染契约新增:
+      - t-35fe33
+      - t-f075e2
+    design/interfaces.md#viewsdetail-statests:
+      - t-35fe33
+      - t-f075e2
+    design/interfaces.md#既有渲染入口签名不变入参约束收紧:
+      - t-41d3fe
+      - t-48dfcb
+      - t-f075e2
+    design/interfaces.md#buildReqDetail:
+      - t-41d3fe
+      - t-48dfcb
+      - t-f075e2
+    design/interfaces.md#renderComments:
+      - t-48dfcb
+    design/use-cases.md#场景总览:
+      - t-41d3fe
+      - t-35fe33
+      - t-48dfcb
+      - t-f075e2
+    design/use-cases.md#UC-1-打开需求详情:
+      - t-41d3fe
+      - t-48dfcb
+      - t-f075e2
+    design/use-cases.md#UC-2-详情在屏时的台账变化:
+      - t-41d3fe
+      - t-f075e2
+    design/use-cases.md#UC-3-需求不存在或已删除:
+      - t-35fe33
+      - t-f075e2
+    design/use-cases.md#UC-4-取数失败服务端异常-离线:
+      - t-35fe33
+      - t-48dfcb
+      - t-f075e2
+  fr_to_tasks:
+    FR-1:
+      - t-41d3fe
+      - t-35fe33
+      - t-f075e2
+      - t-48dfcb
+    FR-2:
+      - t-41d3fe
+      - t-35fe33
+      - t-f075e2
+      - t-48dfcb
+    FR-3:
+      - t-41d3fe
+      - t-35fe33
+      - t-48dfcb
+      - t-f075e2
+    FR-4:
+      - t-41d3fe
+      - t-35fe33
+      - t-48dfcb
+      - t-f075e2
+    FR-5:
+      - t-0f476e
+coverage:
+  implementation:
+    total: 28
+    covered: 28
+    uncovered: []
+    rate: 100
+    total_designs: 28
+    covered_designs: 28

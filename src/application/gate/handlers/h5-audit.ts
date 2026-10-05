@@ -7,13 +7,15 @@
  *
  * @module dsh-pmboard/application/gate/handlers/h5-audit
  */
+import { mutateIfPresent } from '../../use-cases/queue-access.js'
 import { fmt } from '../../../domain/text/fmt.js'
-import type { ReqboardRepository } from '../../ports.js'
+import type { RequirementStore } from '../../ports.js'
 import type { ChainInput, ChainStepResult, GateHandler, HandlerOutcome } from '../GatePostChain.js'
 import { reasonOf } from './shared.js'
 
 export interface H5AuditDeps {
-  repo: ReqboardRepository
+  /** B12 阶段②c：审计留痕的**写**走新端口（与 repo 并存，删桥时 repo 消失）。 */
+  store: RequirementStore
   now: () => number
   newCommentId: () => string
 }
@@ -36,19 +38,16 @@ export function createH5AuditHandler(deps: H5AuditDeps): GateHandler {
         const stepsText = steps.length === 0 ? '（无步骤记录）' : steps.map(describeStep).join('；')
         const body = fmt('[闸门后置链] {gate}：{steps}', { gate: ctx.gate, steps: stepsText })
         const at = deps.now()
-        await deps.repo.mutate('requirement-updated', (ledger) => {
-          const req = ledger.requirements.find(r => r.id === ctx.requirementId)
-          if (req === undefined) return undefined
+        await mutateIfPresent(deps.store, ctx.requirementId, (req) => {
           req.comments.push({
             id: deps.newCommentId(),
             body,
             createdAt: at,
             createdBy: { kind: 'agent', sessionId: ctx.windowKey },
           })
-          req.version += 1
           req.updatedAt = at
           req.updatedBy = { kind: 'agent', sessionId: ctx.windowKey }
-          return { requirements: [req] }
+          return { changed: true }
         })
         return { kind: 'continue' }
       } catch (error) {

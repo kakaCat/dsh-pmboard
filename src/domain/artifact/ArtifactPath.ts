@@ -33,6 +33,23 @@ export interface NormalizedArtifactPath {
 /** 伪路径特征：brace-glob 汇总写法与通配符（都不是真实文件）。 */
 const PSEUDO_RE = /[{}*]/
 
+/**
+ * 需求 id 段（REQ-…；兼容存量短 id `REQ-47939a`/`REQ-000001` 与新时间戳 id `REQ-260930155231-0862`）。
+ * 只匹配完整路径段，避免把目录名的一部分误当 id。
+ */
+const REQ_ID_SEGMENT_RE = /(?:^|\/)(REQ-[0-9a-z]+(?:-[0-9a-z]+)*)(?=\/|$)/
+
+/**
+ * 从工作区相对路径里提取需求 id（没有则 undefined）。
+ * 需求级 workspaceRoot（REQ-260929210741-30ae FR-6）读侧回退用：产物/任务卡路径形如
+ * `docs/requirements/<REQ>/…`，凭此段反查台账里该需求的 workspaceRoot，
+ * 让「写路径根（需求工作区）」与「读路径根（会话工作区）」不一致时仍能同根解析。
+ */
+export function extractRequirementIdFromPath(p: string): string | undefined {
+  const m = REQ_ID_SEGMENT_RE.exec(p)
+  return m === null ? undefined : m[1]
+}
+
 function stripDotPrefix(p: string): string {
   let out = p
   while (out.startsWith('./')) out = out.slice(2)

@@ -1,0 +1,38 @@
+task:
+  id: t-5859d0
+  title: board-focus 订阅通道 + 看板挂载定向·测试
+  status: done
+  implements: |-
+    src/client/board-focus.ts 增 subscribeBoardFocus(listener)：有订阅者时 requestBoardFocus 同步通知全部订阅者且保持 pending 清空（避免双跳）、订阅者逐个 try/catch、空白输入不通知；无订阅者时保持原一次性语义。src/client/board-mount.ts 在挂载段（事件委派之后、return 之前）订阅：handler 做 activeStage=undefined; mode={kind:'req',reqId}; render()，并在 dispose() 退订。改 tests/board-focus.test.ts（追加用例，既有 5 条不动）与 tests/board-attach.test.ts（追加 TC-8/TC-9，复用 richContainer + stateWith 桩）。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-45a0dc
+  phase: implement
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261004111917-f473
+    TASK_ID: t-5859d0
+    TASK_TITLE: board-focus 订阅通道 + 看板挂载定向·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T03:50:32.564Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004111917-f473
+  generated_at: 2026-10-04T03:49:30.723Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-04T03:50:32.564Z

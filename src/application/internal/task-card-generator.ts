@@ -10,13 +10,12 @@
  * @module dsh-pmboard/application/internal/task-card-generator
  */
 import type { DocsReader } from './content-gates.js'
-import type { RequirementRecord, TaskRecord } from '../../shared/protocol.js'
+import type { RequirementRecord, } from '../../shared/protocol.js'
 import {
   extractAllDesignSections,
   findDesignSectionsForFRs,
-  type DesignSection,
-} from './content-trace.js'
-import { parseDocument, extractClauseDefinitions } from './content-gates.js'
+  } from './content-trace.js'
+
 
 /**
  * 计划任务（来自拆分计划）

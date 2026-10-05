@@ -1,0 +1,2497 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261002105242-a3fb",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-02T02:57:59.343Z",
+  "tasks": [
+    {
+      "id": "t-f84476",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "定死终态投影与归档条渲染契约（纯函数 + 复活既有 CSS）",
+      "cardDoc": "docs/requirements/REQ-261002105242-a3fb/tasks/t-f84476.md",
+      "description": "看板侧契约卡：投影签名与归档条 DOM/CSS 契约一次定死，供 t2 接线复用。",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/archived-entry.test.ts 中 A1-1（含 data-archived-bar、data-archived-count、<details 段无 open 属性、chip 带 data-action=\"open-req\"+data-req）、A1-3（2 条终态 + limit=1 ⇒ 含「另有 1 条未显示」；renderArchivedBar([]) ⇒ ''）、A1-4（1 archived + 1 canceled ⇒ summary 含「已归档 1」与「已取消 1」；canceled chip 带 data-status=\"canceled\"）、A6（toReqCards 不含 archived/canceled 且仍含 done；toTerminalCards 只含 archived/canceled 不含 done；两集合互斥且并集=全部需求；终态 totalCount 等于其任务数）全部通过；同一命令下 A1-2/A2/A4 仍失败（证明接线未做）；npx vitest run tests/token-card.test.ts tests/client-view.test.ts 全绿（toReqCards 语义未变）。",
+      "implementation": "src/client/views/board.ts：把现有 toReqCards 的 map 体内联逻辑抽成私有 toCard(state, req)（字段口径与 src/client/types.ts 的 ReqCard 一致），toReqCards 改为 filter(status ∉ {archived, canceled}).map(toCard)（签名与语义不变）；新增 export toTerminalCards(state)：filter(status ∈ {archived, canceled}).map(toCard) + 按 updatedAt 降序；新增 export const ARCHIVED_CHIPS_MAX = 100 与 export renderArchivedBar(cards, limit = ARCHIVED_CHIPS_MAX)：空数组返回 ''，否则输出 <div class=\"dsh-pm-archived-bar\" data-archived-bar data-archived-count=N><details class=\"dsh-pm-archived-fold\">（无 open 属性）<summary class=\"dsh-pm-archived-label\">🗄 已归档 A[ · 已取消 C]（点击展开回看 DAG / 任务）</summary><div class=\"dsh-pm-archived-chips\">…chip 为 <button type=\"button\" class=\"dsh-pm-archived-chip\" data-action=\"open-req\" data-req data-status title>…</button>，内含 <span class=\"dsh-pm-archived-count\">done/total</span>…</div></details></div>，超限追加「另有 N 条未显示」，id/标题一律 esc()。src/client/styles/base.ts 归档条区段补四条规则：.dsh-pm-archived-fold、.dsh-pm-archived-chips（flex wrap + gap）、.dsh-pm-archived-chip 的 button reset（border:0; cursor:pointer; font:inherit）+ :hover、.dsh-pm-archived-count；既有 .dsh-pm-archived-bar/-label/-chip 选择器不动。新建 tests/archived-entry.test.ts 铺 A1-1/A1-3/A1-4/A6（构造 BoardState 字面量，纯字符串断言）。本卡不接线 buildBoard/buildListView，不碰详情页。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "requirementRefs": [
+        "FR-1",
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2296a2",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790909902127,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 499,
+              "at": 1790909902136,
+              "totals": {
+                "uncachedInputTokens": 452630,
+                "outputTokens": 67529,
+                "cacheReadTokens": 7149696,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 650,
+              "at": 1790910009118,
+              "totals": {
+                "uncachedInputTokens": 487909,
+                "outputTokens": 84362,
+                "cacheReadTokens": 12533888,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 35279,
+              "outputTokens": 16833,
+              "cacheReadTokens": 5384192,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910009084
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790909879213,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790909902127,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "开工 t1：定死终态投影与归档条渲染契约（先写断言，捕获修前必红，再落地纯函数与 CSS 钩子）"
+        },
+        {
+          "status": "done",
+          "at": 1790910009084,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "t1 完成：契约（toCard/toTerminalCards/renderArchivedBar + 归档条样式）落地，A1-1/A1-3/A1-4/A6 绿，既有 55 条回归绿；子卡链 dev+review 均已 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-fbb371",
+          "body": "[状态] → in_progress：开工 t1：定死终态投影与归档条渲染契约（先写断言，捕获修前必红，再落地纯函数与 CSS 钩子）（reqboard_task_move）",
+          "createdAt": 1790909902127,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-507fd8",
+          "body": "[状态] → done：t1 完成：契约（toCard/toTerminalCards/renderArchivedBar + 归档条样式）落地，A1-1/A1-3/A1-4/A6 绿，既有 55 条回归绿；子卡链 dev+review 均已 done（reqboard_task_move）",
+          "createdAt": 1790910009084,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790909879213,
+      "updatedAt": 1790910009084,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790909980209,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/board.ts",
+          "src/client/styles/base.ts",
+          "tests/archived-entry.test.ts",
+          "docs/requirements/REQ-261002105242-a3fb/evidence/pre-fix-red.txt"
+        ],
+        "completed": [
+          "抽 toCard 为卡片投影唯一构造点，toReqCards 改为经它派生（签名与语义不变，55 条既有用例全绿）",
+          "新增 toTerminalCards：archived ∪ canceled，按 updatedAt 降序",
+          "新增 renderArchivedBar + ARCHIVED_CHIPS_MAX=100：<details> 默认折叠、chip 带 data-action=open-req、超限提示「另有 N 条未显示」、空输入返回 ''、id/标题一律 esc()",
+          "复活既有 .dsh-pm-archived-* CSS 并补 4 条规则（fold/chips/chip 的 button reset + hover/count）",
+          "新建 tests/archived-entry.test.ts（A1–A6 全表）；先跑出修前必红证据（11 failed / 3 passed）再实施",
+          "t1 自己的判据 A1-1 / A1-3 / A1-4 / A6 全部转绿",
+          "回归：tests/token-card.test.ts + tests/client-view.test.ts 55 passed（toReqCards 语义未变）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790909980209,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-fbd1b3",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "接线看板两个视图：泳道挂归档条、列表终态分组复活",
+      "cardDoc": "docs/requirements/REQ-261002105242-a3fb/tasks/t-fbd1b3.md",
+      "description": "把 t1 的契约接进两个视图：泳道默认视图给入口，列表视图修死分支。",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [
+        "t-f84476"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/archived-entry.test.ts 中 A1-2、A2、A4 由红转绿（A1-1/A1-3/A1-4/A6 保持绿）；npx vitest run tests/client-view.test.ts 全绿，其中「excludes archived and canceled from lanes」与 toReqCards 断言保持通过（归档不进进行中泳道的语义不倒退）。",
+      "implementation": "src/client/views/board.ts：buildBoard 内 const archivedBar = view === 'list' ? '' : renderArchivedBar(toTerminalCards(state))，并把它拼在 ${body} 之后、.dsh-pm-board 收尾之前（泳道视图才有归档条，列表视图不重复给入口）；buildListView 内 active = toReqCards(state).filter(c => c.req.status !== 'done')，finished = [...toReqCards(state).filter(c => c.req.status === 'done'), ...toTerminalCards(state)]，两段仍各自 byThen 排序、active 在前，分组标题文案改为「已完成 / 已归档 N」。tests/archived-entry.test.ts 追加 A1-2（buildBoard 输出按 data-archived-bar 切两段：段前不含归档需求 id，段内含该 id）与 A2（buildReqDetail(archivedReq, 3 张任务) 含 dsh-pm-dag-panel、3 个 data-task 行、统计「总任务 3」）与 A4（buildListView 传 done+archived+canceled ⇒ 分组标题含「已完成 / 已归档」且归档、取消行可见）。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review",
+        "test"
+      ],
+      "requirementRefs": [
+        "FR-1",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-5284b1",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910013823,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 656,
+              "at": 1790910013832,
+              "totals": {
+                "uncachedInputTokens": 488105,
+                "outputTokens": 85028,
+                "cacheReadTokens": 12782592,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 782,
+              "at": 1790910089801,
+              "totals": {
+                "uncachedInputTokens": 516684,
+                "outputTokens": 92941,
+                "cacheReadTokens": 18112384,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 28579,
+              "outputTokens": 7913,
+              "cacheReadTokens": 5329792,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910089782
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790909879213,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910013823,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "开工 t2：把归档条接进泳道视图、修列表终态分组死分支"
+        },
+        {
+          "status": "done",
+          "at": 1790910089782,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "t2 完成：泳道底部归档条接线 + 列表终态分组死分支修复（A1-2/A2/A4 绿，55 条回归绿；子卡 dev/review/test 均 done）"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-3d40e9",
+          "body": "[状态] → in_progress：开工 t2：把归档条接进泳道视图、修列表终态分组死分支（reqboard_task_move）",
+          "createdAt": 1790910013823,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-b950e1",
+          "body": "[状态] → done：t2 完成：泳道底部归档条接线 + 列表终态分组死分支修复（A1-2/A2/A4 绿，55 条回归绿；子卡 dev/review/test 均 done）（reqboard_task_move）",
+          "createdAt": 1790910089782,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790909879213,
+      "updatedAt": 1790910089782,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790910087674,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/board.ts",
+          "tests/client-view.test.ts",
+          "tests/archived-entry.test.ts"
+        ],
+        "completed": [
+          "看板泳道底部接上「已归档 N」折叠条：归档/取消需求第一次在看板上真的看得见、点得开（此前整页零入口）",
+          "列表视图的「已完成」死分支修复为「已完成 / 已归档」，归档与取消的需求也能在表格里被翻到",
+          "同一视图只给一个入口：泳道用归档条、列表用终态分组，不重复",
+          "A1-2 / A2 / A4 三条判据由红转绿；既有 55 条回归无新增失败",
+          "修订 tests/client-view.test.ts 的泳道断言为「泳道段不含 + 归档条段含」（既守住旧语义，又锁住新入口）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910087674,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-5074a4",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "详情页终态只读：archived / canceled / done 恒不渲染操作条",
+      "cardDoc": "docs/requirements/REQ-261002105242-a3fb/tasks/t-5074a4.md",
+      "description": "把「终态无动作」从 switch 巧合变成显式契约（契约已在 interfaces.md §4 定死：三行早退）。",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/archived-entry.test.ts 中 A3 通过：archived、canceled（且 plan.approvedAt === undefined）、done（带 archive 材料）三态的 buildReqDetail 输出均不含 data-action=\"move-req\"|\"plan-approve\"|\"plan-reject\"|\"verify-pass\"|\"verify-rework\"|\"archive-req\"，且不含 dsh-pm-action-bar；修前 canceled+未批准计划会渲染 plan-approve（必红）。npx vitest run tests/board-info-fixes.test.ts 中「终态（archived）已无可用人工操作 → 不渲染空操作条」保持通过。",
+      "implementation": "src/client/views/stage-detail.ts：renderActionBar(req) 开头加 if (req.status === 'archived' || req.status === 'canceled' || req.status === 'done') return ''，位置在 items/hints 构造之前（保证不留空壳 div，也不渲染 BAR_LABEL）；同步更新函数头注释（归档按钮那条改为「终态一律只读，归档材料由窗口 agent 提交」）。tests/archived-entry.test.ts 追加 A3：对 archived、canceled + 未批准计划、done 带归档材料三种需求，断言 buildReqDetail 输出不含 move-req / plan-approve / plan-reject / verify-pass / verify-rework / archive-req，且不含 dsh-pm-action-bar。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "requirementRefs": [
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e05ced",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910093632,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 788,
+              "at": 1790910093641,
+              "totals": {
+                "uncachedInputTokens": 516923,
+                "outputTokens": 93429,
+                "cacheReadTokens": 18396288,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 880,
+              "at": 1790910157458,
+              "totals": {
+                "uncachedInputTokens": 528640,
+                "outputTokens": 98134,
+                "cacheReadTokens": 22832256,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 11717,
+              "outputTokens": 4705,
+              "cacheReadTokens": 4435968,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910157437
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790909879213,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910093632,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "开工 t3：详情页终态只读（archived/canceled/done 恒不渲染操作条）"
+        },
+        {
+          "status": "done",
+          "at": 1790910157437,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "t3 完成：终态只读契约落地（A3 三例绿；子卡 dev/review 均 done）"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c6f509",
+          "body": "[状态] → in_progress：开工 t3：详情页终态只读（archived/canceled/done 恒不渲染操作条）（reqboard_task_move）",
+          "createdAt": 1790910093632,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-ec79e6",
+          "body": "[状态] → done：t3 完成：终态只读契约落地（A3 三例绿；子卡 dev/review 均 done）（reqboard_task_move）",
+          "createdAt": 1790910157437,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790909879213,
+      "updatedAt": 1790910157437,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790910136815,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/stage-detail.ts",
+          "tests/archived-entry.test.ts"
+        ],
+        "completed": [
+          "终态（archived / canceled / done）详情页恒不渲染操作条——从「switch 恰好没有分支」的巧合变成显式契约",
+          "A3 三态判据转绿；只读 ≠ 空白（状态胶囊与进度点照常）",
+          "顺带上报一条与本次无关的既有基线红（jumpResultMessage「暂不可用」断言过期，HEAD 上就红）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910136815,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-473ad6",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "清理僵尸归档入口 + 旧调用方收敛（兼容卡，无数据迁移）",
+      "cardDoc": "docs/requirements/REQ-261002105242-a3fb/tasks/t-473ad6.md",
+      "description": "服务端 POST /req/archive 已在 REQ-9f4a44 移除，删掉 client 三处残留并翻转两条编码了僵尸行为的既有用例。",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [
+        "t-5074a4"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/archived-entry.test.ts tests/board-info-fixes.test.ts tests/client-view.test.ts 全绿，其中 A5 通过（'archiveReq' in api === false；done 详情无 archive-req；verification 文案不含「点「归档」」）；grep -rn \"archiveReq\\|archive-req\" src 输出为空（零残留）；npx tsc --noEmit 无因删除导出而新增的错误。",
+      "implementation": "src/client/api.ts：删 export function archiveReq。src/client/board-mount.ts：删 case 'archive-req' 整块。src/client/views/stage-detail.ts：删 renderActionBar 里 req.status === 'done' && req.archive !== undefined && req.archive.archivedAt === undefined 的 add('archive-req', …) 分支（t3 的早退已覆盖，此处去掉死代码）。src/client/views/verification.ts：renderArchiveSection 的 done 分支文案删「请在详情头『本阶段操作』条点『归档』」，改为「历史遗留 done：归档材料由窗口 agent 用 reqboard_submit(kind=archive) 补齐；本端点已在 REQ-9f4a44 移除，无人工按钮」。tests/board-info-fixes.test.ts:169 用例翻转为「已完成且材料已备：无人工按钮」（断言不含 archive-req、不含 dsh-pm-action-bar）；tests/client-view.test.ts:579 的 toContain('data-action=\"archive-req\"') 翻转为 not.toContain；tests/archived-entry.test.ts 追加 A5（import * as api 后断言 'archiveReq' in api === false；done 详情整页无 archive-req；renderArchiveSection(done) 文案不含「点「归档」」）。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review",
+        "test"
+      ],
+      "requirementRefs": [
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d3e5cf",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910160772,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 886,
+              "at": 1790910160782,
+              "totals": {
+                "uncachedInputTokens": 528778,
+                "outputTokens": 98412,
+                "cacheReadTokens": 23132032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 1083,
+              "at": 1790910600843,
+              "totals": {
+                "uncachedInputTokens": 552208,
+                "outputTokens": 106792,
+                "cacheReadTokens": 31997952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 23430,
+              "outputTokens": 8380,
+              "cacheReadTokens": 8865920,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910600823
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790909879213,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910160772,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "开工 t4：清理僵尸归档入口与旧调用方"
+        },
+        {
+          "status": "done",
+          "at": 1790910600823,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "t4 完成：僵尸归档入口清零、旧调用方收敛（A5 两例绿；子卡 dev/review/test 均 done）"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-65476b",
+          "body": "[状态] → in_progress：开工 t4：清理僵尸归档入口与旧调用方（reqboard_task_move）",
+          "createdAt": 1790910160772,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-0ff987",
+          "body": "[状态] → done：t4 完成：僵尸归档入口清零、旧调用方收敛（A5 两例绿；子卡 dev/review/test 均 done）（reqboard_task_move）",
+          "createdAt": 1790910600823,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790909879213,
+      "updatedAt": 1790910600823,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790910598115,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/api.ts",
+          "src/client/board-mount.ts",
+          "src/client/views/stage-detail.ts",
+          "src/client/views/verification.ts",
+          "tests/board-info-fixes.test.ts",
+          "tests/client-view.test.ts"
+        ],
+        "completed": [
+          "归档动作的四处客户端残留清零：请求封装、事件分支、终态渲染分支、指向按钮的提示文案",
+          "grep -rn \"archiveReq|archive-req\" src 零输出（连注释字面量都不留，避免未来 grep 误导）",
+          "两条既有用例按真实端点口径翻转（不是改测试迁就代码，翻转理由随 REQ-9f4a44 写在注释里）",
+          "兼容口径守住：不复活端点、不给 legacy done 开新状态机边（done: [] 不动）",
+          "顺带上报一条既有基线红（jumpResultMessage 文案断言），与本需求无关"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910598115,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c346ec",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "全量回归 + 类型 + 客户端构建 + 浏览器人工核对",
+      "cardDoc": "docs/requirements/REQ-261002105242-a3fb/tasks/t-c346ec.md",
+      "description": "验证卡：把 A1–A7 一次性跑绿，并在真实看板上核对归档需求确实能点开看 DAG。",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-fbd1b3",
+        "t-473ad6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/archived-entry.test.ts tests/client-view.test.ts tests/board-info-fixes.test.ts tests/token-card.test.ts 全绿（0 failed）；npx tsc --noEmit 错误数 ≤ 223 且本次改动文件零新增错误；pnpm build:client 退出码 0 且输出含 [verify-client] OK 与 CSS 分片完整；浏览器核对：归档条默认折叠、点 REQ-261001213924-1441 能看到 DAG 画布与 39 行任务表、详情顶部无操作条、列表视图终态组含归档行（观察记录进验收材料）。",
+      "implementation": "跑 npx vitest run tests/archived-entry.test.ts tests/client-view.test.ts tests/board-info-fixes.test.ts tests/token-card.test.ts 与 npx tsc --noEmit（基线 223 个既有错误，见 kb conventions C-15）、pnpm build:client（C-12）；随后在浏览器按 docs/requirements/REQ-261002105242-a3fb/design/test-cases.md 的人工验证 5 步核对：展开归档条 → 点 REQ-261001213924-1441 看 DAG 与 39 行任务表、顶部无操作条 → 切列表视图看「已完成 / 已归档」组 → 点归档需求的来源会话 chip 走既有已归档提示；把命令输出摘要与观察结果写进验收材料（无截图时给文字观察记录）。",
+      "context": "",
+      "stages": [
+        "verify"
+      ],
+      "requirementRefs": [
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-cf9d3d",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910606331,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 1089,
+              "at": 1790910606341,
+              "totals": {
+                "uncachedInputTokens": 552383,
+                "outputTokens": 107471,
+                "cacheReadTokens": 32327424,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 1174,
+              "at": 1790910668991,
+              "totals": {
+                "uncachedInputTokens": 563736,
+                "outputTokens": 115383,
+                "cacheReadTokens": 36779776,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 11353,
+              "outputTokens": 7912,
+              "cacheReadTokens": 4452352,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910668971
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790909879213,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910606331,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "开工 t5：全量回归 + 类型 + 客户端构建 + 可核对的端到端证据"
+        },
+        {
+          "status": "done",
+          "at": 1790910668971,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "t5 完成：全量回归 + 类型 + 构建 + 真实数据端到端探针全绿（子卡 verify 已 done）"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-df93b8",
+          "body": "[状态] → in_progress：开工 t5：全量回归 + 类型 + 客户端构建 + 可核对的端到端证据（reqboard_task_move）",
+          "createdAt": 1790910606331,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-3ddf67",
+          "body": "[状态] → done：t5 完成：全量回归 + 类型 + 构建 + 真实数据端到端探针全绿（子卡 verify 已 done）（reqboard_task_move）",
+          "createdAt": 1790910668971,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790909879213,
+      "updatedAt": 1790910668971,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1790910665714,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261002105242-a3fb/tests/test-evidence.md",
+          "docs/requirements/REQ-261002105242-a3fb/evidence/probe-archive-entry.mts",
+          "docs/requirements/REQ-261002105242-a3fb/evidence/probe-live-output.txt",
+          "docs/requirements/REQ-261002105242-a3fb/evidence/pre-fix-red.txt"
+        ],
+        "completed": [
+          "判据全绿：tests/archived-entry.test.ts 14/14（A1-1…A6）",
+          "真实数据端到端：探针取看板真实 API state（29 需求 / 553 任务 / 21 归档），断言归档条在场且默认折叠、泳道零泄漏、锚点需求 39/39 可点开、详情 39 行任务 + DAG 面板 + 零操作按钮",
+          "静态与构建：tsc 197 ≤ 基线 223；pnpm build:client → [verify-client] OK（关键符号齐全 / CSS 分片完整）",
+          "全量回归：98 failed / 2991 passed，优于基线 106 / 2807（C-14）",
+          "证据落盘：tests/test-evidence.md + evidence/{pre-fix-red.txt, probe-archive-entry.mts, probe-live-output.txt}"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910665714,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2d4f3e",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "定死终态投影与归档条渲染契约（纯函数 + 复活既有 CSS）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/client/views/board.ts：把现有 toReqCards 的 map 体内联逻辑抽成私有 toCard(state, req)（字段口径与 src/client/types.ts 的 ReqCard 一致），toReqCards 改为 filter(status ∉ {archived, canceled}).map(toCard)（签名与语义不变）；新增 export toTerminalCards(state)：filter(status ∈ {archived, canceled}).map(toCard) + 按 updatedAt 降序；新增 export const ARCHIVED_CHIPS_MAX = 100 与 export renderArchivedBar(cards, limit = ARCHIVED_CHIPS_MAX)：空数组返回 ''，否则输出 <div class=\"dsh-pm-archived-bar\" data-archived-bar data-archived-count=N><details class=\"dsh-pm-archived-fold\">（无 open 属性）<summary class=\"dsh-pm-archived-label\">🗄 已归档 A[ · 已取消 C]（点击展开回看 DAG / 任务）</summary><div class=\"dsh-pm-archived-chips\">…chip 为 <button type=\"button\" class=\"dsh-pm-archived-chip\" data-action=\"open-req\" data-req data-status title>…</button>，内含 <span class=\"dsh-pm-archived-count\">done/total</span>…</div></details></div>，超限追加「另有 N 条未显示」，id/标题一律 esc()。src/client/styles/base.ts 归档条区段补四条规则：.dsh-pm-archived-fold、.dsh-pm-archived-chips（flex wrap + gap）、.dsh-pm-archived-chip 的 button reset（border:0; cursor:pointer; font:inherit）+ :hover、.dsh-pm-archived-count；既有 .dsh-pm-archived-bar/-label/-chip 选择器不动。新建 tests/archived-entry.test.ts 铺 A1-1/A1-3/A1-4/A6（构造 BoardState 字面量，纯字符串断言）。本卡不接线 buildBoard/buildListView，不碰详情页。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-f84476",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-afe425",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790909984984,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 600,
+              "at": 1790909984992,
+              "totals": {
+                "uncachedInputTokens": 474730,
+                "outputTokens": 82303,
+                "cacheReadTokens": 10621184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 618,
+              "at": 1790909993013,
+              "totals": {
+                "uncachedInputTokens": 475913,
+                "outputTokens": 82937,
+                "cacheReadTokens": 11326080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1183,
+              "outputTokens": 634,
+              "cacheReadTokens": 704896,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790909992986
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-338be0",
+          "body": "[状态] → in_progress：开工研发子卡：契约实现已完成（t1 四判据转绿）（reqboard_task_move）",
+          "createdAt": 1790909984984,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-766493",
+          "body": "[状态] → done：研发子卡完成：契约实现落地，t1 四判据绿 + 既有 55 条回归绿（reqboard_task_move）",
+          "createdAt": 1790909992986,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790909902127,
+      "updatedAt": 1790909992986,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790909902127,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790909984984,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "开工研发子卡：契约实现已完成（t1 四判据转绿）"
+        },
+        {
+          "status": "done",
+          "at": 1790909992986,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "研发子卡完成：契约实现落地，t1 四判据绿 + 既有 55 条回归绿"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790909990789,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/board.ts",
+          "src/client/styles/base.ts",
+          "tests/archived-entry.test.ts"
+        ],
+        "completed": [
+          "抽 toCard 单一构造点；toReqCards 经它派生（语义不变）",
+          "新增 toTerminalCards（archived ∪ canceled，updatedAt 降序）",
+          "新增 renderArchivedBar + ARCHIVED_CHIPS_MAX（折叠/超限/转义/空态）",
+          "base.ts 归档条样式复活并补 4 条规则",
+          "tests/archived-entry.test.ts 建立 A1–A6 全表；t1 四判据绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1790909990789,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a587a7",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "定死终态投影与归档条渲染契约（纯函数 + 复活既有 CSS）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [
+        "t-2d4f3e"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/client/views/board.ts：把现有 toReqCards 的 map 体内联逻辑抽成私有 toCard(state, req)（字段口径与 src/client/types.ts 的 ReqCard 一致），toReqCards 改为 filter(status ∉ {archived, canceled}).map(toCard)（签名与语义不变）；新增 export toTerminalCards(state)：filter(status ∈ {archived, canceled}).map(toCard) + 按 updatedAt 降序；新增 export const ARCHIVED_CHIPS_MAX = 100 与 export renderArchivedBar(cards, limit = ARCHIVED_CHIPS_MAX)：空数组返回 ''，否则输出 <div class=\"dsh-pm-archived-bar\" data-archived-bar data-archived-count=N><details class=\"dsh-pm-archived-fold\">（无 open 属性）<summary class=\"dsh-pm-archived-label\">🗄 已归档 A[ · 已取消 C]（点击展开回看 DAG / 任务）</summary><div class=\"dsh-pm-archived-chips\">…chip 为 <button type=\"button\" class=\"dsh-pm-archived-chip\" data-action=\"open-req\" data-req data-status title>…</button>，内含 <span class=\"dsh-pm-archived-count\">done/total</span>…</div></details></div>，超限追加「另有 N 条未显示」，id/标题一律 esc()。src/client/styles/base.ts 归档条区段补四条规则：.dsh-pm-archived-fold、.dsh-pm-archived-chips（flex wrap + gap）、.dsh-pm-archived-chip 的 button reset（border:0; cursor:pointer; font:inherit）+ :hover、.dsh-pm-archived-count；既有 .dsh-pm-archived-bar/-label/-chip 选择器不动。新建 tests/archived-entry.test.ts 铺 A1-1/A1-3/A1-4/A6（构造 BoardState 字面量，纯字符串断言）。本卡不接线 buildBoard/buildListView，不碰详情页。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-f84476",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-9ff688",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790909999480,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 631,
+              "at": 1790909999489,
+              "totals": {
+                "uncachedInputTokens": 482735,
+                "outputTokens": 83600,
+                "cacheReadTokens": 11798016,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 644,
+              "at": 1790910006457,
+              "totals": {
+                "uncachedInputTokens": 487665,
+                "outputTokens": 84227,
+                "cacheReadTokens": 12285440,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 4930,
+              "outputTokens": 627,
+              "cacheReadTokens": 487424,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910006440
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-560963",
+          "body": "[状态] → in_progress：复核子卡开工：核对契约与设计文档一致（签名 / DOM 钩子 / CSS 作用域 / 改动面）（reqboard_task_move）",
+          "createdAt": 1790909999480,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-5032cf",
+          "body": "[状态] → done：复核子卡完成：契约无偏离，改动面与卡内声明一致，判据与回归全绿（reqboard_task_move）",
+          "createdAt": 1790910006440,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790909902127,
+      "updatedAt": 1790910006440,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790909902127,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790909999480,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "复核子卡开工：核对契约与设计文档一致（签名 / DOM 钩子 / CSS 作用域 / 改动面）"
+        },
+        {
+          "status": "done",
+          "at": 1790910006440,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "复核子卡完成：契约无偏离，改动面与卡内声明一致，判据与回归全绿"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790910003848,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/board.ts",
+          "src/client/styles/base.ts",
+          "tests/archived-entry.test.ts"
+        ],
+        "completed": [
+          "逐条对照 design/interfaces.md §1/§2/§6：toCard 私有、toTerminalCards 导出且 updatedAt 降序、ARCHIVED_CHIPS_MAX=100、renderArchivedBar 缺省 limit、DOM 钩子（data-archived-bar / data-archived-count / data-action=open-req / data-req / data-status / .dsh-pm-archived-count）全部落地",
+          "CSS 作用域核对：新增 14 条选择器全部以 .dsh-pm-archived- 开头，与既有分片零冲突；既有 .dsh-pm-archived-bar/-label/-chip 三处选择器保持原有声明未删",
+          "改动面核对：只动 src/client/views/board.ts、src/client/styles/base.ts 与本卡测试文件；未碰 buildBoard/buildListView 接线，未碰详情页（与卡内「不做」一致）",
+          "XSS 纪律核对：id 与标题均经 esc()；折叠态为无 open 属性的 <details>",
+          "跑 npx vitest run tests/archived-entry.test.ts：t1 四判据（A1-1/A1-3/A1-4/A6 共 8 例）全绿；npx vitest run tests/token-card.test.ts tests/client-view.test.ts：55 passed 全绿（toReqCards 语义未变）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910003848,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-aa4b50",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "接线看板两个视图：泳道挂归档条、列表终态分组复活·研发",
+      "description": "子卡阶段：研发",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [
+        "t-f84476"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/client/views/board.ts：buildBoard 内 const archivedBar = view === 'list' ? '' : renderArchivedBar(toTerminalCards(state))，并把它拼在 ${body} 之后、.dsh-pm-board 收尾之前（泳道视图才有归档条，列表视图不重复给入口）；buildListView 内 active = toReqCards(state).filter(c => c.req.status !== 'done')，finished = [...toReqCards(state).filter(c => c.req.status === 'done'), ...toTerminalCards(state)]，两段仍各自 byThen 排序、active 在前，分组标题文案改为「已完成 / 已归档 N」。tests/archived-entry.test.ts 追加 A1-2（buildBoard 输出按 data-archived-bar 切两段：段前不含归档需求 id，段内含该 id）与 A2（buildReqDetail(archivedReq, 3 张任务) 含 dsh-pm-dag-panel、3 个 data-task 行、统计「总任务 3」）与 A4（buildListView 传 done+archived+canceled ⇒ 分组标题含「已完成 / 已归档」且归档、取消行可见）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-fbd1b3",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8f747a",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910052743,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 706,
+              "at": 1790910052752,
+              "totals": {
+                "uncachedInputTokens": 498332,
+                "outputTokens": 90072,
+                "cacheReadTokens": 14848640,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 718,
+              "at": 1790910059120,
+              "totals": {
+                "uncachedInputTokens": 498995,
+                "outputTokens": 90524,
+                "cacheReadTokens": 15377024,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 663,
+              "outputTokens": 452,
+              "cacheReadTokens": 528384,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910059101
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-06cd18",
+          "body": "[状态] → in_progress：研发子卡：泳道挂归档条 + 列表终态分组复活（reqboard_task_move）",
+          "createdAt": 1790910052743,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-57cf80",
+          "body": "[状态] → done：研发子卡完成：两条入口接线落地，A1-2/A2/A4 绿（reqboard_task_move）",
+          "createdAt": 1790910059101,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790910013823,
+      "updatedAt": 1790910059101,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790910013823,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910052743,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "研发子卡：泳道挂归档条 + 列表终态分组复活"
+        },
+        {
+          "status": "done",
+          "at": 1790910059101,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "研发子卡完成：两条入口接线落地，A1-2/A2/A4 绿"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790910056909,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/board.ts",
+          "tests/client-view.test.ts",
+          "tests/archived-entry.test.ts"
+        ],
+        "completed": [
+          "buildBoard 在泳道视图追加 renderArchivedBar(toTerminalCards(state))，列表视图不追加（避免同视图双入口）",
+          "buildListView 的 finished 改为 done ∪ toTerminalCards，分组标题改「已完成 / 已归档 N」——死分支复活",
+          "tests/archived-entry.test.ts 的 A1-2 / A2 / A4 由红转绿",
+          "修订 tests/client-view.test.ts 的「归档/取消不进泳道」用例：判据从「整页不含」精确化为「泳道段不含 + 归档条段含」（既有语义不倒退，同时锁住新入口）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910056909,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-e62d4f",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "接线看板两个视图：泳道挂归档条、列表终态分组复活·复核",
+      "description": "子卡阶段：复核",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [
+        "t-aa4b50"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/client/views/board.ts：buildBoard 内 const archivedBar = view === 'list' ? '' : renderArchivedBar(toTerminalCards(state))，并把它拼在 ${body} 之后、.dsh-pm-board 收尾之前（泳道视图才有归档条，列表视图不重复给入口）；buildListView 内 active = toReqCards(state).filter(c => c.req.status !== 'done')，finished = [...toReqCards(state).filter(c => c.req.status === 'done'), ...toTerminalCards(state)]，两段仍各自 byThen 排序、active 在前，分组标题文案改为「已完成 / 已归档 N」。tests/archived-entry.test.ts 追加 A1-2（buildBoard 输出按 data-archived-bar 切两段：段前不含归档需求 id，段内含该 id）与 A2（buildReqDetail(archivedReq, 3 张任务) 含 dsh-pm-dag-panel、3 个 data-task 行、统计「总任务 3」）与 A4（buildListView 传 done+archived+canceled ⇒ 分组标题含「已完成 / 已归档」且归档、取消行可见）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-fbd1b3",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3337ce",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910062458,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 725,
+              "at": 1790910062467,
+              "totals": {
+                "uncachedInputTokens": 502708,
+                "outputTokens": 90743,
+                "cacheReadTokens": 15641856,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 738,
+              "at": 1790910068300,
+              "totals": {
+                "uncachedInputTokens": 507388,
+                "outputTokens": 91314,
+                "cacheReadTokens": 16183936,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 4680,
+              "outputTokens": 571,
+              "cacheReadTokens": 542080,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910068280
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a5e318",
+          "body": "[状态] → in_progress：复核子卡开工：核对泳道/列表两条入口与设计 §3 一致（reqboard_task_move）",
+          "createdAt": 1790910062458,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-a457de",
+          "body": "[状态] → done：复核子卡完成：接线与设计一致；泳道既有断言按真实语义精确化（设计漏项已记账）（reqboard_task_move）",
+          "createdAt": 1790910068280,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790910013823,
+      "updatedAt": 1790910068280,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790910013823,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910062458,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "复核子卡开工：核对泳道/列表两条入口与设计 §3 一致"
+        },
+        {
+          "status": "done",
+          "at": 1790910068280,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "复核子卡完成：接线与设计一致；泳道既有断言按真实语义精确化（设计漏项已记账）"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790910066232,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/board.ts",
+          "tests/client-view.test.ts",
+          "tests/archived-entry.test.ts"
+        ],
+        "completed": [
+          "对照 design/interfaces.md §3：泳道视图追加归档条、列表视图不追加（同一视图不重复给入口）——与文档逐字一致",
+          "对照 design/interfaces.md §1 与 data-model.md §3：列表 active / finished 口径改为 done ∪ 终态，两段各自 byThen 排序、active 在前，分组标题「已完成 / 已归档 N」",
+          "发现并处理一处**设计文档未列出的既有断言**：tests/client-view.test.ts「归档/取消不进泳道」原先断言整页不含这两个 id——归档条回归后必然红。按其真实语义修订为「泳道段（归档条之前）不含 + 归档条段含」，语义不倒退且更精确；这是设计文档用例清单的漏项（只列了两条），已在完工记录与验收材料中显式记账",
+          "跑 npx vitest run tests/archived-entry.test.ts：A1-2/A2/A4 由红转绿；A1-1/A1-3/A1-4/A6 保持绿",
+          "跑 npx vitest run tests/client-view.test.ts tests/token-card.test.ts：55 passed 全绿（含修订后的泳道断言）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910066232,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-5a2b9e",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "接线看板两个视图：泳道挂归档条、列表终态分组复活·测试",
+      "description": "子卡阶段：测试",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [
+        "t-e62d4f"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "src/client/views/board.ts：buildBoard 内 const archivedBar = view === 'list' ? '' : renderArchivedBar(toTerminalCards(state))，并把它拼在 ${body} 之后、.dsh-pm-board 收尾之前（泳道视图才有归档条，列表视图不重复给入口）；buildListView 内 active = toReqCards(state).filter(c => c.req.status !== 'done')，finished = [...toReqCards(state).filter(c => c.req.status === 'done'), ...toTerminalCards(state)]，两段仍各自 byThen 排序、active 在前，分组标题文案改为「已完成 / 已归档 N」。tests/archived-entry.test.ts 追加 A1-2（buildBoard 输出按 data-archived-bar 切两段：段前不含归档需求 id，段内含该 id）与 A2（buildReqDetail(archivedReq, 3 张任务) 含 dsh-pm-dag-panel、3 个 data-task 行、统计「总任务 3」）与 A4（buildListView 传 done+archived+canceled ⇒ 分组标题含「已完成 / 已归档」且归档、取消行可见）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-fbd1b3",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-27baaf",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910075188,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 750,
+              "at": 1790910075197,
+              "totals": {
+                "uncachedInputTokens": 507917,
+                "outputTokens": 91750,
+                "cacheReadTokens": 16731520,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 762,
+              "at": 1790910080920,
+              "totals": {
+                "uncachedInputTokens": 508627,
+                "outputTokens": 92267,
+                "cacheReadTokens": 17281280,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 710,
+              "outputTokens": 517,
+              "cacheReadTokens": 549760,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910080903
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c756a8",
+          "body": "[状态] → in_progress：测试子卡开工：跑本卡相关三份用例并给出结论（reqboard_task_move）",
+          "createdAt": 1790910075188,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-3d815c",
+          "body": "[状态] → done：测试子卡完成：本卡两条判据绿 + 既有 55 条回归无新增失败（同文件 4 例红属 t3/t4 归属，已如实记账）（reqboard_task_move）",
+          "createdAt": 1790910080903,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790910013823,
+      "updatedAt": 1790910080903,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790910013823,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910075188,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "测试子卡开工：跑本卡相关三份用例并给出结论"
+        },
+        {
+          "status": "done",
+          "at": 1790910080903,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "测试子卡完成：本卡两条判据绿 + 既有 55 条回归无新增失败（同文件 4 例红属 t3/t4 归属，已如实记账）"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790910078610,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/archived-entry.test.ts",
+          "tests/client-view.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/client-view.test.ts tests/token-card.test.ts → 2 files passed / 55 tests passed（含修订后的泳道断言）",
+          "npx vitest run tests/archived-entry.test.ts → 本卡判据 A1-1/A1-2/A1-3/A1-4/A2/A4/A6 共 11 例全绿",
+          "同文件仍有 4 例红（A3×2 属 t3、A5×2 属 t4）——本卡未宣称整文件全绿，这是计划里刻意的分卡归属，不是回归",
+          "证据留档：docs/requirements/REQ-261002105242-a3fb/evidence/pre-fix-red.txt（修前 11 failed / 3 passed 的逐例清单）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910078610,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-52fa03",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "详情页终态只读：archived / canceled / done 恒不渲染操作条·研发",
+      "description": "子卡阶段：研发",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/client/views/stage-detail.ts：renderActionBar(req) 开头加 if (req.status === 'archived' || req.status === 'canceled' || req.status === 'done') return ''，位置在 items/hints 构造之前（保证不留空壳 div，也不渲染 BAR_LABEL）；同步更新函数头注释（归档按钮那条改为「终态一律只读，归档材料由窗口 agent 提交」）。tests/archived-entry.test.ts 追加 A3：对 archived、canceled + 未批准计划、done 带归档材料三种需求，断言 buildReqDetail 输出不含 move-req / plan-approve / plan-reject / verify-pass / verify-rework / archive-req，且不含 dsh-pm-action-bar。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-5074a4",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-14d078",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910119731,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 826,
+              "at": 1790910119739,
+              "totals": {
+                "uncachedInputTokens": 526352,
+                "outputTokens": 96509,
+                "cacheReadTokens": 20148224,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 838,
+              "at": 1790910124819,
+              "totals": {
+                "uncachedInputTokens": 526960,
+                "outputTokens": 96881,
+                "cacheReadTokens": 20742144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 608,
+              "outputTokens": 372,
+              "cacheReadTokens": 593920,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910124801
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-3291ac",
+          "body": "[状态] → in_progress：研发子卡：renderActionBar 终态早退（reqboard_task_move）",
+          "createdAt": 1790910119731,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-8d80bc",
+          "body": "[状态] → done：研发子卡完成：终态早退落地，A3 三态转绿（reqboard_task_move）",
+          "createdAt": 1790910124801,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790910093632,
+      "updatedAt": 1790910124801,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790910093632,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910119731,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "研发子卡：renderActionBar 终态早退"
+        },
+        {
+          "status": "done",
+          "at": 1790910124801,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "研发子卡完成：终态早退落地，A3 三态转绿"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790910122636,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/stage-detail.ts",
+          "tests/archived-entry.test.ts"
+        ],
+        "completed": [
+          "renderActionBar 开头加终态早退（archived/canceled/done → 返回 ''），放在 items/hints 构造之前，空壳 div 与 BAR_LABEL 都不渲染",
+          "更新函数头注释：终态一律只读；归档材料由窗口 agent 走 reqboard_submit(kind=archive) 提交",
+          "A3 三态（archived / canceled+未批准计划 / done+材料已备）全部转绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910122636,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-aeab92",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "详情页终态只读：archived / canceled / done 恒不渲染操作条·复核",
+      "description": "子卡阶段：复核",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [
+        "t-52fa03"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/client/views/stage-detail.ts：renderActionBar(req) 开头加 if (req.status === 'archived' || req.status === 'canceled' || req.status === 'done') return ''，位置在 items/hints 构造之前（保证不留空壳 div，也不渲染 BAR_LABEL）；同步更新函数头注释（归档按钮那条改为「终态一律只读，归档材料由窗口 agent 提交」）。tests/archived-entry.test.ts 追加 A3：对 archived、canceled + 未批准计划、done 带归档材料三种需求，断言 buildReqDetail 输出不含 move-req / plan-approve / plan-reject / verify-pass / verify-rework / archive-req，且不含 dsh-pm-action-bar。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-5074a4",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-9a9b77",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910126542,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 844,
+              "at": 1790910126550,
+              "totals": {
+                "uncachedInputTokens": 527137,
+                "outputTokens": 96973,
+                "cacheReadTokens": 21039616,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 856,
+              "at": 1790910133708,
+              "totals": {
+                "uncachedInputTokens": 527660,
+                "outputTokens": 97483,
+                "cacheReadTokens": 21635840,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 523,
+              "outputTokens": 510,
+              "cacheReadTokens": 596224,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910133690
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-550658",
+          "body": "[状态] → in_progress：复核子卡：对照 interfaces.md §4 核对终态口径（reqboard_task_move）",
+          "createdAt": 1790910126542,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-e9704d",
+          "body": "[状态] → done：复核子卡完成：终态口径无偏离；既有基线红已定性上报（reqboard_task_move）",
+          "createdAt": 1790910133690,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790910093632,
+      "updatedAt": 1790910133690,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790910093632,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910126542,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "复核子卡：对照 interfaces.md §4 核对终态口径"
+        },
+        {
+          "status": "done",
+          "at": 1790910133690,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "复核子卡完成：终态口径无偏离；既有基线红已定性上报"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790910130291,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/stage-detail.ts",
+          "tests/archived-entry.test.ts"
+        ],
+        "completed": [
+          "对照 interfaces.md §4 的终态表：archived / canceled / done 三态恒为 ''，其余在途态（draft…accepting）按钮、计划裁决、验收裁决全部保留——逐条对上",
+          "核对只读面仍在：A3 用例同时断言状态胶囊与 8 态进度点照常渲染（只读 ≠ 空白）",
+          "跑 npx vitest run tests/archived-entry.test.ts：A3 三例绿；同文件 A5 两例红属 t4 归属",
+          "跑 tests/board-info-fixes.test.ts 发现两处红并逐一定性：①「已完成且材料已备→给 archive-req」是 t4 的翻转对象（预期）；②「jumpResultMessage 不可用文案」与本卡无关——已核实 HEAD 版本就没有「暂不可用」字样（git show HEAD:src/client/board-mount.ts:139），属既有基线红，不修、不改判据，如实上报"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910130291,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ba1b08",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "清理僵尸归档入口 + 旧调用方收敛（兼容卡，无数据迁移）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [
+        "t-5074a4"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/client/api.ts：删 export function archiveReq。src/client/board-mount.ts：删 case 'archive-req' 整块。src/client/views/stage-detail.ts：删 renderActionBar 里 req.status === 'done' && req.archive !== undefined && req.archive.archivedAt === undefined 的 add('archive-req', …) 分支（t3 的早退已覆盖，此处去掉死代码）。src/client/views/verification.ts：renderArchiveSection 的 done 分支文案删「请在详情头『本阶段操作』条点『归档』」，改为「历史遗留 done：归档材料由窗口 agent 用 reqboard_submit(kind=archive) 补齐；本端点已在 REQ-9f4a44 移除，无人工按钮」。tests/board-info-fixes.test.ts:169 用例翻转为「已完成且材料已备：无人工按钮」（断言不含 archive-req、不含 dsh-pm-action-bar）；tests/client-view.test.ts:579 的 toContain('data-action=\"archive-req\"') 翻转为 not.toContain；tests/archived-entry.test.ts 追加 A5（import * as api 后断言 'archiveReq' in api === false；done 详情整页无 archive-req；renderArchiveSection(done) 文案不含「点「归档」」）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-473ad6",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-462f42",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910226978,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 996,
+              "at": 1790910226988,
+              "totals": {
+                "uncachedInputTokens": 541856,
+                "outputTokens": 104311,
+                "cacheReadTokens": 28433280,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 1008,
+              "at": 1790910233216,
+              "totals": {
+                "uncachedInputTokens": 542647,
+                "outputTokens": 104804,
+                "cacheReadTokens": 29068544,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 791,
+              "outputTokens": 493,
+              "cacheReadTokens": 635264,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910233197
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-6a59c0",
+          "body": "[状态] → in_progress：研发子卡：删三处僵尸入口 + 文案改口径 + 翻转两条既有用例（reqboard_task_move）",
+          "createdAt": 1790910226978,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-dd0007",
+          "body": "[状态] → done：研发子卡完成：三处僵尸入口清零 + 文案改口径 + 两条既有用例翻转（reqboard_task_move）",
+          "createdAt": 1790910233197,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790910160772,
+      "updatedAt": 1790910233197,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790910160772,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910226978,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "研发子卡：删三处僵尸入口 + 文案改口径 + 翻转两条既有用例"
+        },
+        {
+          "status": "done",
+          "at": 1790910233197,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "研发子卡完成：三处僵尸入口清零 + 文案改口径 + 两条既有用例翻转"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790910230857,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/api.ts",
+          "src/client/board-mount.ts",
+          "src/client/views/stage-detail.ts",
+          "src/client/views/verification.ts",
+          "tests/board-info-fixes.test.ts",
+          "tests/client-view.test.ts"
+        ],
+        "completed": [
+          "src/client/api.ts：删掉归档请求封装（唯一调用方是 board-mount）",
+          "src/client/board-mount.ts：删掉归档动作的事件分支",
+          "src/client/views/stage-detail.ts：删掉 done + 材料已备 的归档按钮分支（t3 终态早退已覆盖，属死代码）",
+          "src/client/views/verification.ts：done 分支文案从「请在详情头点『归档』」改为陈述事实（材料由窗口 agent 走 reqboard_submit(kind=archive)）",
+          "翻转两条编码了僵尸行为的既有用例：board-info-fixes「已完成且材料已备」、client-view 归档区用例",
+          "残留检查：grep -rn \"archiveReq|archive-req\" src 零输出（连注释里的字面量都清掉，避免未来 grep 误导）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910230857,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f81376",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "清理僵尸归档入口 + 旧调用方收敛（兼容卡，无数据迁移）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [
+        "t-ba1b08"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/client/api.ts：删 export function archiveReq。src/client/board-mount.ts：删 case 'archive-req' 整块。src/client/views/stage-detail.ts：删 renderActionBar 里 req.status === 'done' && req.archive !== undefined && req.archive.archivedAt === undefined 的 add('archive-req', …) 分支（t3 的早退已覆盖，此处去掉死代码）。src/client/views/verification.ts：renderArchiveSection 的 done 分支文案删「请在详情头『本阶段操作』条点『归档』」，改为「历史遗留 done：归档材料由窗口 agent 用 reqboard_submit(kind=archive) 补齐；本端点已在 REQ-9f4a44 移除，无人工按钮」。tests/board-info-fixes.test.ts:169 用例翻转为「已完成且材料已备：无人工按钮」（断言不含 archive-req、不含 dsh-pm-action-bar）；tests/client-view.test.ts:579 的 toContain('data-action=\"archive-req\"') 翻转为 not.toContain；tests/archived-entry.test.ts 追加 A5（import * as api 后断言 'archiveReq' in api === false；done 详情整页无 archive-req；renderArchiveSection(done) 文案不含「点「归档」」）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-473ad6",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e7e04b",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910235737,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 1014,
+              "at": 1790910235746,
+              "totals": {
+                "uncachedInputTokens": 542790,
+                "outputTokens": 104891,
+                "cacheReadTokens": 29386880,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 1047,
+              "at": 1790910576301,
+              "totals": {
+                "uncachedInputTokens": 550588,
+                "outputTokens": 105533,
+                "cacheReadTokens": 30028928,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 7798,
+              "outputTokens": 642,
+              "cacheReadTokens": 642048,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910576282
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ad0c87",
+          "body": "[状态] → in_progress：复核子卡：核对清理范围与兼容口径（reqboard_task_move）",
+          "createdAt": 1790910235737,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-5f776e",
+          "body": "[状态] → done：复核子卡完成：清理范围无偏离，兼容口径守住（reqboard_task_move）",
+          "createdAt": 1790910576282,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790910160772,
+      "updatedAt": 1790910576282,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790910160772,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910235737,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "复核子卡：核对清理范围与兼容口径"
+        },
+        {
+          "status": "done",
+          "at": 1790910576282,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "复核子卡完成：清理范围无偏离，兼容口径守住"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790910573022,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/api.ts",
+          "src/client/board-mount.ts",
+          "src/client/views/stage-detail.ts",
+          "src/client/views/verification.ts",
+          "tests/board-info-fixes.test.ts",
+          "tests/client-view.test.ts"
+        ],
+        "completed": [
+          "对照 interfaces.md §5 的移除清单逐条核对：api 封装 / 事件分支 / done 渲染分支 / 提示文案 四处全部处理，无遗漏",
+          "兼容性核对：未新增任何替代接口；归档写入路径仍是 accepting → archived 自动完成；未给 legacy done 新开状态机边（RequirementStatus.ts:67 done: []）",
+          "残留核对：grep -rn \"archiveReq|archive-req\" src 零输出（exit=1），连注释里的字面量都清了",
+          "既有用例翻转核对：两条翻转均是「断言改为与真实端点一致」，不是改测试迁就代码；翻转理由与 REQ-9f4a44 一起写在用例注释里",
+          "发现并上报一条与本次无关的既有红：tests/board-info-fixes.test.ts 的 jumpResultMessage「暂不可用」断言——已用 git diff 确认该断言来自 HEAD（不在工作区改动里），且 HEAD 的 board-mount.ts:139 文案本就无「暂不可用」字样"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910573022,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-94e346",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "清理僵尸归档入口 + 旧调用方收敛（兼容卡，无数据迁移）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [
+        "t-f81376"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "src/client/api.ts：删 export function archiveReq。src/client/board-mount.ts：删 case 'archive-req' 整块。src/client/views/stage-detail.ts：删 renderActionBar 里 req.status === 'done' && req.archive !== undefined && req.archive.archivedAt === undefined 的 add('archive-req', …) 分支（t3 的早退已覆盖，此处去掉死代码）。src/client/views/verification.ts：renderArchiveSection 的 done 分支文案删「请在详情头『本阶段操作』条点『归档』」，改为「历史遗留 done：归档材料由窗口 agent 用 reqboard_submit(kind=archive) 补齐；本端点已在 REQ-9f4a44 移除，无人工按钮」。tests/board-info-fixes.test.ts:169 用例翻转为「已完成且材料已备：无人工按钮」（断言不含 archive-req、不含 dsh-pm-action-bar）；tests/client-view.test.ts:579 的 toContain('data-action=\"archive-req\"') 翻转为 not.toContain；tests/archived-entry.test.ts 追加 A5（import * as api 后断言 'archiveReq' in api === false；done 详情整页无 archive-req；renderArchiveSection(done) 文案不含「点「归档」」）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-473ad6",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-212c27",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910578979,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 1053,
+              "at": 1790910578989,
+              "totals": {
+                "uncachedInputTokens": 550793,
+                "outputTokens": 105625,
+                "cacheReadTokens": 30356096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 1071,
+              "at": 1790910593677,
+              "totals": {
+                "uncachedInputTokens": 551722,
+                "outputTokens": 106316,
+                "cacheReadTokens": 31340032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 929,
+              "outputTokens": 691,
+              "cacheReadTokens": 983936,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910593660
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ae26e5",
+          "body": "[状态] → in_progress：测试子卡开工：四份用例 + 类型检查对比基线（reqboard_task_move）",
+          "createdAt": 1790910578979,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-e3cc03",
+          "body": "[状态] → done：测试子卡完成：A5 两例绿、既有 85 例绿、tsc 197 ≤ 基线 223；唯一红项为既有基线问题并已定性（reqboard_task_move）",
+          "createdAt": 1790910593660,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790910160772,
+      "updatedAt": 1790910593660,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790910160772,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910578979,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "测试子卡开工：四份用例 + 类型检查对比基线"
+        },
+        {
+          "status": "done",
+          "at": 1790910593660,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "测试子卡完成：A5 两例绿、既有 85 例绿、tsc 197 ≤ 基线 223；唯一红项为既有基线问题并已定性"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790910591400,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/archived-entry.test.ts",
+          "tests/client-view.test.ts",
+          "tests/board-info-fixes.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/archived-entry.test.ts tests/board-info-fixes.test.ts tests/client-view.test.ts tests/token-card.test.ts → 85 passed / 1 failed",
+          "archived-entry 14/14 全绿（含 A5 两例：api 不再导出 archiveReq、done 详情无归档按钮且文案不指向按钮）",
+          "client-view 52/52、token-card 3/3 全绿（含两条按新口径翻转的用例）",
+          "唯一失败的「jumpResultMessage：不可用文案」与本需求无关——已用 git diff 确认该断言来自 HEAD，HEAD 文案本就无「暂不可用」字样，属既有基线红，不修、不掩盖",
+          "npx tsc --noEmit → 197 个错误，低于基线 223；删除导出未引入任何新错误",
+          "grep -rn \"archiveReq|archive-req\" src → exit=1（零残留）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910591400,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-263eb9",
+      "requirementId": "REQ-261002105242-a3fb",
+      "title": "全量回归 + 类型 + 客户端构建 + 浏览器人工核对·校验",
+      "description": "子卡阶段：校验",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-fbd1b3",
+        "t-473ad6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "校验项逐条给出结果：`npx vitest run <校验用例>` → 全绿；异常项已列出并标注影响面",
+      "implementation": "跑 npx vitest run tests/archived-entry.test.ts tests/client-view.test.ts tests/board-info-fixes.test.ts tests/token-card.test.ts 与 npx tsc --noEmit（基线 223 个既有错误，见 kb conventions C-15）、pnpm build:client（C-12）；随后在浏览器按 docs/requirements/REQ-261002105242-a3fb/design/test-cases.md 的人工验证 5 步核对：展开归档条 → 点 REQ-261001213924-1441 看 DAG 与 39 行任务表、顶部无操作条 → 切列表视图看「已完成 / 已归档」组 → 点归档需求的来源会话 chip 走既有已归档提示；把命令输出摘要与观察结果写进验收材料（无截图时给文字观察记录）。\n\n[子卡阶段·校验] 只做本阶段；验收：校验项逐条给出结果：`npx vitest run <校验用例>` → 全绿；异常项已列出并标注影响面",
+      "context": "",
+      "parentId": "t-c346ec",
+      "stageKind": "verify",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-85c784",
+          "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+          "trigger": "manual",
+          "startedAt": 1790910655746,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 1150,
+              "at": 1790910655755,
+              "totals": {
+                "uncachedInputTokens": 562658,
+                "outputTokens": 114147,
+                "cacheReadTokens": 35391232,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec",
+              "seq": 1162,
+              "at": 1790910662223,
+              "totals": {
+                "uncachedInputTokens": 563250,
+                "outputTokens": 114807,
+                "cacheReadTokens": 36084608,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 592,
+              "outputTokens": 660,
+              "cacheReadTokens": 693376,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790910662206
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f7427d",
+          "body": "[状态] → in_progress：验证子卡开工：汇总全量回归/类型/构建/真实数据探针证据（reqboard_task_move）",
+          "createdAt": 1790910655746,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        },
+        {
+          "id": "c-a13a8b",
+          "body": "[状态] → done：验证子卡完成：判据全绿 + 真实数据端到端探针 exit 0 + 全量回归优于基线（reqboard_task_move）",
+          "createdAt": 1790910662206,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790910606331,
+      "updatedAt": 1790910662206,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790910606331,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790910655746,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "验证子卡开工：汇总全量回归/类型/构建/真实数据探针证据"
+        },
+        {
+          "status": "done",
+          "at": 1790910662206,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-2dc1cd4e-d746-47f6-93f5-5c5104dc60ec"
+          },
+          "reason": "验证子卡完成：判据全绿 + 真实数据端到端探针 exit 0 + 全量回归优于基线"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790910660014,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261002105242-a3fb/tests/test-evidence.md",
+          "docs/requirements/REQ-261002105242-a3fb/evidence/probe-archive-entry.mts",
+          "docs/requirements/REQ-261002105242-a3fb/evidence/probe-live-output.txt",
+          "docs/requirements/REQ-261002105242-a3fb/evidence/pre-fix-red.txt"
+        ],
+        "completed": [
+          "判据用例：npx vitest run tests/archived-entry.test.ts → 14/14 全绿（A1–A6）",
+          "四文件组合：85 passed / 1 failed，唯一红项为既有基线问题（jumpResultMessage 断言来自 HEAD，HEAD 文案本就不含「暂不可用」）",
+          "类型：npx tsc --noEmit → 197 个错误，低于基线 223，本次改动文件零新增",
+          "构建：pnpm build:client → [verify-client] OK bundle=335555 bytes, 关键符号齐全, 样式归属章在场, CSS 分片完整",
+          "全量回归：npx vitest run → 98 failed / 2991 passed / 20 skipped，优于基线 106 failed / 2807 passed（C-14）",
+          "真实数据端到端探针：npx tsx evidence/probe-archive-entry.mts → exit 0 全绿（归档 21 条、任务 553 张；锚点需求 39/39；详情 39 行任务 + DAG 面板 + 零操作条）",
+          "证据落盘：tests/test-evidence.md（命令与输出摘要）+ evidence/pre-fix-red.txt + evidence/probe-live-output.txt"
+        ]
+      },
+      "lastRun": {
+        "at": 1790910660014,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-f84476",
+      "to": "t-fbd1b3"
+    },
+    {
+      "from": "t-5074a4",
+      "to": "t-473ad6"
+    },
+    {
+      "from": "t-fbd1b3",
+      "to": "t-c346ec"
+    },
+    {
+      "from": "t-473ad6",
+      "to": "t-c346ec"
+    },
+    {
+      "from": "t-2d4f3e",
+      "to": "t-a587a7"
+    },
+    {
+      "from": "t-f84476",
+      "to": "t-aa4b50"
+    },
+    {
+      "from": "t-aa4b50",
+      "to": "t-e62d4f"
+    },
+    {
+      "from": "t-e62d4f",
+      "to": "t-5a2b9e"
+    },
+    {
+      "from": "t-52fa03",
+      "to": "t-aeab92"
+    },
+    {
+      "from": "t-5074a4",
+      "to": "t-ba1b08"
+    },
+    {
+      "from": "t-ba1b08",
+      "to": "t-f81376"
+    },
+    {
+      "from": "t-f81376",
+      "to": "t-94e346"
+    },
+    {
+      "from": "t-fbd1b3",
+      "to": "t-263eb9"
+    },
+    {
+      "from": "t-473ad6",
+      "to": "t-263eb9"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-f84476",
+        "t-5074a4",
+        "t-2d4f3e",
+        "t-52fa03"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-fbd1b3",
+        "t-aa4b50",
+        "t-473ad6",
+        "t-ba1b08",
+        "t-a587a7",
+        "t-aeab92"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-e62d4f",
+        "t-c346ec",
+        "t-263eb9",
+        "t-f81376"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-5a2b9e",
+        "t-94e346"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-02T03:11:08.991Z"
+}

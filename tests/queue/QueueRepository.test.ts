@@ -204,10 +204,13 @@ describe('QueueRepository 并发与原子性（TC-3.5）', () => {
 })
 
 describe('QueueRepository 契约（复用 persistAtomic，不自造原子写）', () => {
-  it('源码复用 adapters 的 persistAtomic；本文件不出现第二套 temp+rename 实现', () => {
+  it('源码复用全仓唯一的 persistAtomic；本文件不出现第二套 temp+rename 实现', () => {
     const source = readFileSync(new URL('../../src/repositories/QueueRepository.ts', import.meta.url), 'utf8')
 
-    expect(source).toMatch(/import \{ persistAtomic \} from '\.\.\/adapters\/JsonLedgerRepository\.js'/)
+    // REQ-261002161439-277d t3：原子写从 adapters/JsonLedgerRepository.ts 迁到
+    // repositories/atomicWrite.ts（分片布局让写点变多，实现不能再钉在待删的单册适配器里）。
+    // 断言的本意不变——**复用唯一实现、不自造第二套**，只是路径跟着搬家。
+    expect(source).toMatch(/import \{ persistAtomic \} from '\.\/atomicWrite\.js'/)
     expect(source).toContain('persistAtomic(')
     // 自造原子写的指纹：临时文件名后缀 / 文件句柄 fsync
     expect(source).not.toContain('.tmp')

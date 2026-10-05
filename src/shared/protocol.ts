@@ -56,8 +56,12 @@ import {
   assertTaskTransition,
 } from '../domain/task/TaskStatus.js'
 import { checkAcceptance, checkPlanTaskReferences } from '../domain/task/Acceptability.js'
+// 计划任务表的需求条款引用（REQ-261002164800-d8f2 FR-2）：判定单点在 domain，协议层只搬运。
+import { normalizeRequirementRefs } from '../domain/task/RequirementRefs.js'
+import { assertFootprintFloor, normalizeFootprint } from '../domain/task/Footprint.js'
+import type { CardFootprint } from '../domain/task/Footprint.js'
 import type { StageKind } from '../domain/task/SubtaskTemplate.js'
-import { validateExplicitStages } from '../domain/task/SubtaskTemplate.js'
+import { resolvePlanStages } from '../domain/task/SubtaskTemplate.js'
 import type { TaskRole } from '../domain/task/TaskStatus.js'
 import type { VerificationItemSource } from '../domain/workflow/AcceptanceSheetSpec.js'
 import {
@@ -626,6 +630,30 @@ export interface PlanTask {
    * 此前只有 HTTP 建卡路由能设（routers/tasks.ts），**拆分节点表达不出来**——计划表里没有这个入口。
    */
   skipIntegration?: boolean
+  /**
+   * 引用的子卡链模板键（REQ-261003203909-55f2 FR-4）：如 `change-only` / `acceptance` / `ops`。
+   * 与 stages 二选一（同给 = REQBOARD_TEMPLATE_CONFLICT）；normalizePlanTasks 解析时
+   * 已把模板链写进 stages（批准所见 = 落库所得），本字段冗余记录引用键供统计/审计。
+   */
+  template?: string
+  /**
+   * 本卡承接的需求条款（REQ-261002164800-d8f2 FR-2）：如 `["FR-1","FR-2"]`。
+   *
+   * 此前该字段**只到工具返回体 schema 为止**——工具入参 schema 是 additionalProperties:false
+   * 且没收这个键、本接口也没有它、normalizePlanTasks 按白名单搬运直接丢，于是"计划携带任务表"
+   * 这条通道的引用**恒为空**，落库后卡上的 requirementRefs 全空、RTM serves 全空。
+   * 缺省 = 无显式引用（由计划文档的覆盖对照表兜底），不写空数组。
+   */
+  requirement_refs?: string[]
+  /**
+   * 卡片体量声明（REQ-261002175818-80a8 t2 / FR-1、FR-7）：`{ files, anchors, chars }`。
+   *
+   * 缺省 = **未声明**（存量计划与旧台账都是这个形状）：不判定、不报错、**不冒充 0**。
+   * 声明口径落在 domain（`domain/task/Footprint.ts`）：形状校验与「不得小于 implementation
+   * 点到的路径数」都在那里单点实现，本层只负责**搬运**——不搬就是静默丢弃，
+   * 本仓已在 `stages` 与 `requirement_refs` 上各栽过一次。
+   */
+  footprint?: CardFootprint
 }
 
 /**
@@ -680,11 +708,27 @@ export interface VerificationItem {
    * 裁决状态（挂起/续验持久化核心）：pending=待验 / passed=通过 / failed=不通过 /
    * not_verifiable=不可验收（无法按要求验，必填原因）——REQ-308b9a FR-9。
    */
-  status: 'pending' | 'passed' | 'failed' | 'not_verifiable'
-  /** 用户裁决意见（不通过时必填） */
+  status: 'pending' | 'passed' | 'failed' | 'not_verifiable' | 'unverified'
+  /** 用户裁决意见（不通过时必填；REQ-260930094139-2d65 FR-1 起通过同样必填——实际结果） */
   opinion?: string
   decidedAt?: number
   decidedBy?: ActorRef
+  /**
+   * 系统生成的缺口类验收项标记（REQ-260930094139-2d65 FR-3）：
+   * e2e=覆盖缺口 / orphan=孤儿用例 / consistency=三方一致性 / traceability=FR 追溯断链。
+   * 旧账本缺省 undefined = 普通任务/需求级项，读侧零迁移。
+   */
+  gapKind?: 'e2e' | 'orphan' | 'consistency' | 'traceability'
+
+  /**
+   * REQ-261001184609-cecb FR-1/FR-3：**实际结果与谁来填**。
+   * agent 提交验收材料时逐项落 result（来源记为 agent）；弹框对有结果的项只问裁决，
+   * 人不必重抄命令输出。needsHuman/humanReason 用于无法自动验证的项（界面视觉、线下流程）。
+   */
+  result?: string
+  resultSource?: 'agent' | 'human'
+  needsHuman?: boolean
+  humanReason?: string
 }
 
 /**
@@ -778,6 +822,39 @@ export interface ManualUpdate {
   summary: string
 }
 
+/**
+ * 归档清单**对账结果**（REQ-261004183621-de3f t1 / design/data-model.md）。
+ *
+ * 为什么存字段而不只写评论：评论是留痕（给人读），字段是查询面（看板/接口不必解析自然语言）。
+ * 集合不变量（单测主断言）：`listed ∪ exempted.path ∪ unlisted` = 目录内文件全集，且两两不相交。
+ */
+export interface ArchiveReconcile {
+  /** 当次生效的闸门（如实记录，便于事后解释"为什么这次没拦/拦了"）。 */
+  gate: 'enforce' | 'warn'
+  /** 已列（= 归档清单 `docs[].path`）。 */
+  listed: string[]
+  /** 命中豁免规则的文件与规则 id（`rtm-*.yml` / `queue.json` / `state/*` 等工具重建物）。 */
+  exempted: Array<{ path: string; rule: string }>
+  /** 未列（事实：既没进清单、也没命中豁免）。 */
+  unlisted: string[]
+  /** 显式豁免声明（处置：Agent 在 `unlisted_ack` 里写了理由的那些，`path ⊆ unlisted`）。 */
+  acknowledged: Array<{ path: string; reason: string }>
+  at: number
+}
+
+/**
+ * 归档清单**补录留痕**（REQ-261004183621-de3f t1 / FR-4）。
+ *
+ * 语义是**只追加**：清单是历史记录，补录不改写既有条目（与 `AmendTaskRefs` 的全量替换刻意不同）。
+ */
+export interface ArchiveAmendment {
+  /** 本次追加的清单条目。 */
+  docs: ArchiveDoc[]
+  reason: string
+  at: number
+  by: ActorRef
+}
+
 export interface ArchiveRecord {
   /** 需求目录（工作区相对路径，如 docs/requirements/REQ-xxxxxx） */
   dir: string
@@ -791,6 +868,10 @@ export interface ArchiveRecord {
   manualUpdates?: ManualUpdate[]
   /** 无手册更新时的理由（如"纯维护，不改变项目认知"） */
   manualNote?: string
+  /** 归档清单对账结果（REQ-261004183621-de3f）；缺省 = 本功能上线前归档的存量记录。 */
+  reconcile?: ArchiveReconcile
+  /** 清单补录留痕（只追加；缺省 = 从未补录）。 */
+  amendments?: ArchiveAmendment[]
   submittedAt: number
   submittedBy: ActorRef
   archivedAt?: number
@@ -822,11 +903,37 @@ export function normalizePlanTasks(raw: unknown): PlanTask[] {
     const acceptance = o.acceptance === undefined || o.acceptance === null ? '' : String(o.acceptance).trim().slice(0, 2000)
     const implementation = o.implementation === undefined || o.implementation === null ? '' : String(o.implementation).trim().slice(0, 4000)
     const executorHint = asExecutorHint(o.executorHint ?? o.executor_hint)
-    const stagesVerdict = o.stages === undefined || o.stages === null ? undefined : validateExplicitStages(o.stages as unknown[])
-    if (stagesVerdict !== undefined && !stagesVerdict.ok) bad(stagesVerdict.error)
-    const stages = stagesVerdict !== undefined && stagesVerdict.ok ? stagesVerdict.value : undefined
+    // 子卡段两种声明（REQ-261003203909-55f2 FR-4）：stages（显式枚举）或 template（引用模板键），
+    // 二选一——优先级与校验单点在 domain 的 resolvePlanStages。template 在**计划解析时**就解析成
+    // 具体链写进 stages（批准所见 = 落库所得），引用键冗余存 PlanTask.template 供统计。
+    const planStages = resolvePlanStages({
+      stages: o.stages as readonly unknown[] | undefined,
+      template: o.template as string | undefined,
+    })
+    if (!planStages.ok) {
+      if (planStages.code !== undefined) {
+        throw Object.assign(new Error('计划任务 ' + key + '：' + planStages.error + '（' + planStages.code + '）'), { code: planStages.code })
+      }
+      bad(planStages.error)
+    }
+    const stages = planStages.value
+    const template = typeof o.template === 'string' && o.template.trim().length > 0
+      ? o.template.trim().toLowerCase()
+      : undefined
     // 无接口可联调（REQ-260928185112-e20d）：计划表可显式声明，避免"零调用方"的卡也挂联调段。
     const skipIntegration = (o.skipIntegration ?? o.skip_integration) === true
+    // 需求条款引用（REQ-261002164800-d8f2 FR-2）：**保留**并当场校验——此前被白名单静默丢弃，
+    // 于是计划里写了 refs 也到不了落库，卡上恒空。校验单点在 domain（编号形态与文档条款定义位同源）。
+    // 两个拼法都认（snake 为主、camel 兼容人/历史写法），非法即抛 REQBOARD_BAD_REQUIREMENT_REF。
+    const requirementRefs = normalizeRequirementRefs(
+      o.requirement_refs ?? o.requirementRefs,
+      '计划任务 ' + key + ' 的 requirement_refs',
+    )
+    // 体量声明（REQ-261002175818-80a8 t2 / FR-1、FR-2）：**保留**并当场校验两条——
+    // ① 形状（未声明合法，返回 undefined）；② 声明不得小于 implementation 点到的路径数。
+    // 与上一个字段同一条教训：白名单搬运不带上它，计划里写了也到不了落库。
+    const footprint = normalizeFootprint(o.footprint, '计划任务 ' + key + ' 的 footprint')
+    assertFootprintFloor(footprint, implementation, '计划任务 ' + key + ' 的 footprint')
     out.push({
       key,
       title: normalizeTitle(o.title),
@@ -837,8 +944,11 @@ export function normalizePlanTasks(raw: unknown): PlanTask[] {
       ...(acceptance.length > 0 ? { acceptance } : {}),
       ...(implementation.length > 0 ? { implementation } : {}),
       ...(executorHint !== undefined ? { executorHint } : {}),
-      ...(stages !== undefined ? { stages } : {}),
+      ...(stages !== undefined ? { stages: [...stages] } : {}),
+      ...(template !== undefined ? { template } : {}),
       ...(skipIntegration ? { skipIntegration } : {}),
+      ...(requirementRefs.length > 0 ? { requirement_refs: requirementRefs } : {}),
+      ...(footprint !== undefined ? { footprint } : {}),
     })
   })
   // 第二遍依赖引用校验（自依赖/悬空/前向引用）——规则在 domain/task/Acceptability.ts（t2）。
@@ -886,6 +996,13 @@ export interface ExecutionRecord {
   evidence?: string[]
   /** 本次执行的 token 消耗（REQ-a33899）：开工/完工两次快照与差值；缺省=无快照。 */
   tokenUsage?: ExecutionTokenUsage
+  /**
+   * 本次执行的产出条目数（REQ-261004110201-f253 FR-2）= filesChanged.length + completed.length。
+   * 缺省 = 未知（改造前的历史执行未记录）——**缺省不参与零产出统计**（宁可漏报不误报）。
+   */
+  outputCount?: number
+  /** 零产出标记（FR-2）：outputCount === 0 时为 true；缺省 = 未知（读侧不计入零产出）。 */
+  zeroOutput?: boolean
 }
 
 // RequirementCategory 类型迁至 domain/requirement/Requirement.ts（t2），顶部再导出。
@@ -902,8 +1019,17 @@ export function asReqCategory(raw: unknown): RequirementCategory {
 // 推进事件（REQ-4842fe FR-11 / design/interfaces §4、design/observability §1）
 // ---------------------------------------------------------------------------
 
-/** 推进事件类型（一次事件 = 需求上的一小步）。 */
-export type AdvanceEvent = 'OPEN_PARENT' | 'RUN_SUBTASK' | 'FINALIZE_PARENT' | 'ROLLUP' | 'RETRY' | 'PAUSE'
+/**
+ * 推进事件类型（一次事件 = 需求上的一小步）。
+ *
+ * `DISPATCH_FAILED`（REQ-261002173819-69c7 FR-1/FR-2）：后台任务**投递失败**——没有 run 在跑，
+ * `autoRun` 保持 true，重试应当立刻可行。为什么不复用 `PAUSE`：`PAUSE` 的语义是"链已暂停、
+ * autoRun 置 false"，复用会让人在台账上看到"链已暂停"的假象。
+ */
+export type AdvanceEvent = 'OPEN_PARENT' | 'RUN_SUBTASK' | 'FINALIZE_PARENT' | 'ROLLUP' | 'RETRY' | 'PAUSE' | 'DISPATCH_FAILED'
+  // REQ-261003203909-55f2 FR-2：manual 段（人工核对）不派 workflow run——生成核对清单后停链等人
+  // （同 DISPATCH_FAILED 的口径：autoRun 保持 true，人补完核对记录后链即续跑；不是「链已暂停」）。
+  | 'AWAIT_MANUAL'
 
 /** 一次推进事件的留痕（台账 `advance.history[]`；看板与排障消费）。 */
 export interface AdvanceRecord {
@@ -917,6 +1043,8 @@ export interface AdvanceRecord {
   durationMs: number
   /** 一句话：做了什么、为什么停 */
   detail: string
+  /** 同一驱动批次的标识（REQ-261003222428-3556 FR-2）：同批并行事件共享，事后可还原「这批是一起跑的」。可选，旧数据无此键。 */
+  batchId?: string
 }
 
 /** 需求级推进运行状态（单飞锁 + 历史 + 停滞计数）。 */
@@ -1002,11 +1130,36 @@ export const PENDING_CONFIRM_TICKET_PREFIX = 'pc-'
  * 借鉴 DSH Goal 的 phase + activation 模式，但独立实现以适配需求流水线的多阶段特性。
  */
 export interface RequirementDive {
-  /** 执行相位：idle=空闲；active=可自动续跑；paused=终态暂停（如回合耗尽 round-limit）。 */
+  /**
+   * 执行相位。**REQ-261001213924-1441 FR-5 起降级为读侧兼容字段**：
+   * 新代码不再写它，可驱动的判定改看 activation + driverHealth（见 isDrivableRequirement）。
+   * 保留只为让旧台账与旧读取者（看板投影）有一版过渡。
+   */
   phase: 'idle' | 'active' | 'paused'
   
-  /** 激活状态：armed=自动续跑启用，disarmed=手动模式 */
+  /**
+   * **人的意图**：armed=要它自动跑，disarmed=我要手动。
+   *
+   * FR-5 纪律（REQ-261001213924-1441）：**只有人能改写它**——立项置 armed、reqboard_clear_pause 置 disarmed。
+   * 任何运行时故障（投递失败/检查点失败/agent 错误/回合上限）一律只写 driverHealth，**不得**把它改成 disarmed。
+   * 修前这是"一次异常 = 该需求永久没有自动化"的根因。
+   */
   activation: 'armed' | 'disarmed'
+
+  /**
+   * **运行时健康**（FR-5）：只有驱动侧能改。故障停下等人，而不是改写人的意图、也不是终态锁死。
+   */
+  driverHealth?: RequirementDriverHealth
+
+  /** 最近一次成功唤醒（投递成功或准入成功）的时间戳 ms——心跳对账的判据（FR-4）。 */
+  lastWakeAt?: number
+
+  /**
+   * 存量迁移印章（FR-8）：非空 = 这条记录已按新契约归一，迁移不再重复处理。
+   * 为什么不用「看起来像没迁过」反推：旧记录与新记录可能形态相同（比如都是 armed+active），
+   * 只有一个显式印章才能保证幂等。
+   */
+  migratedAt?: number
   
   /** 当前阶段已执行的回合数（仅「真正进入 history 的回合」才 +1） */
   roundsInStage: number
@@ -1022,6 +1175,26 @@ export interface RequirementDive {
   
   /** 最后活跃时间（Unix 时间戳 ms） */
   lastActiveAt?: number
+}
+
+/**
+ * 运行时健康（REQ-261001213924-1441 FR-5）——与"人的意图"（activation）分家的另一半。
+ *
+ * 语义：healthy=可继续驱动；paused=**停下来等人**（不是终态——人确认推进 / 看板「继续」即恢复）。
+ * 三个字段都进台账，好让"这条需求为什么不动了"在任务外也看得见、说得清。
+ */
+export interface RequirementDriverHealth {
+  state: 'healthy' | 'paused'
+  /**
+   * 结构化原因前缀（便于看板分组与人读）：
+   * round-limit:<stage> / wake-undeliverable / checkpoint-failed / queue-failed / driver-failed /
+   * agent-error / aborted / max-tokens / prompt-rejected
+   */
+  reason?: string
+  /** 进入当前 state 的时间戳 ms。 */
+  since?: number
+  /** 连续唤醒失败次数（成功即归零；达上限进 paused）。 */
+  attempts?: number
 }
 
 /**
@@ -1052,6 +1225,27 @@ export function isDiveRoundSource(source: unknown): source is DiveRoundSource {
     && typeof s.round === 'number' && Number.isFinite(s.round) && s.round > 0
 }
 
+/**
+ * 需求席位（REQ-261003215944-9e04 FR-2）——一条需求可以有多个窗口参与，**owner 唯一**。
+ *
+ * 为什么新增而不是改 `sourceSessionId`：后者是 39 条存量需求的唯一锚点，也是「立项来源窗口」
+ * 的审计字段，改名要动全仓读点。故两者并存：
+ *   · `seats` 有值 → 以它为权威；
+ *   · `seats` 缺省 → 读端**折算**为 `[{ windowKey: sourceSessionId, role: 'owner', joinedAt: createdAt }]`
+ *     （见 `application/internal/window.ts` 的 `seatsOf`）。
+ * 折算只发生在读端、**不写盘**：删掉折算即回到改前行为（存量零迁移、不 bump schemaVersion）。
+ */
+export interface WindowSeat {
+  /** 席位窗口（= root agent id = session id；见 adapters/SessionProbeAdapter.ts 的 windowKey） */
+  windowKey: string
+  /** owner 唯一且不可被解绑；worker 可领卡干活；observer 只读 */
+  role: 'owner' | 'worker' | 'observer'
+  /** 入席时间（Unix 时间戳 ms——与既有 createdAt / lastActiveAt 字段同形） */
+  joinedAt: number
+  /** 最近一次活动（Unix 时间戳 ms；**展示用，不参与授权**——避免"活跃度即权限"的隐式规则） */
+  lastSeenAt?: number
+}
+
 export interface RequirementRecord {
   id: string // REQ-xxxxxx
   title: string
@@ -1062,6 +1256,13 @@ export interface RequirementRecord {
   promptDifficulty?: PromptDifficulty
   /** 需求文档基础路径（用户在立项时选择，如 docs/requirements/<REQ>/ 或 docs/rfcs/） */
   docBasePath?: string
+  /**
+   * 需求级工作区根（REQ-260929210741-30ae FR-6）：立项时选定，绝对路径。
+   * 该需求的所有文件操作（docs/queue/产物登记/任务卡文档）以此根拼接相对路径。
+   * undefined = 存量需求 → 解析链落到会话 header.cwd。
+   * 一经落库不可变；非法值（非绝对路径/目录已删）读侧降级到会话 cwd + warn。
+   */
+  workspaceRoot?: string
   /** 文档链接（需求文档/UI/方案），相对工作区路径或 URL */
   docLinks?: { requirement?: string; ui?: string; proposal?: string; extras?: Array<{ label: string; path: string }> }
   status: RequirementStatus
@@ -1074,6 +1275,12 @@ export interface RequirementRecord {
    * 持久化在台账（非内存），重启后由恢复扫描读取；缺省 = 未开启（存量需求读出即旧行为）。
    */
   autoRun?: boolean
+  /**
+   * 需求级调度优先级（REQ-261004110201-f253 FR-4）：数值越大越先被派发；
+   * 同值按 `createdAt` 升序（稳定，避免抖动）。缺省 = 存量需求 → 视作 0（与改造前顺序一致）。
+   * 只影响**顺序**，不影响任何闸门与判定。
+   */
+  priority?: number
   /** 推进事件运行状态（单飞锁 + 事件历史 + 停滞计数；缺省 = 未跑过自动链） */
   advance?: AdvanceState
   /** Dive 模式状态（REQ-260925212722-96e7）：需求自动续跑与阶段控制。缺省 = 未启用 Dive 模式（手动模式） */
@@ -1082,6 +1289,12 @@ export interface RequirementRecord {
   reviewSessionId?: string
   /** 立项来源窗口（自动立项时写入；人工建卡不填）——窗口↔需求 n:n 的需求侧锚点 */
   sourceSessionId?: string
+  /**
+   * 需求席位（REQ-261003215944-9e04 FR-2）：一条需求可以有多个窗口参与。
+   * 缺省 = 存量需求 → 读端折算为单 owner（`sourceSessionId`），**不落盘、不迁移**。
+   * 全链可缺省，故 `REQBOARD_SCHEMA_VERSION` 维持 9。
+   */
+  seats?: WindowSeat[]
   // C6（REQ-47939a t10）：预留字段 projectId / parentId 已删除——全仓引用 0、从未落过盘，
   // 只有类型声明会让读代码的人以为功能存在（design/migration.md §2 C6）。历史数据里若残留
   // 这两个键，由迁移脚本删除（scripts/migrate-ledger.ts C6）。
@@ -1120,6 +1333,11 @@ export interface RequirementRecord {
   acceptanceOverride?: AcceptanceOverride
   /** 归档材料（agent 准备）+ 归档结论（人） */
   archive?: ArchiveRecord
+  /**
+   * 回退留痕（REQ-261003204149-1e80 FR-1/FR-3）：最近一次需求级回退的 from→to。
+   * 缺省 = 从未回退过；`rollback.to === status` 即「当前处在回退态」（拆分守卫据此放行重建）。
+   */
+  rollback?: RollbackMark
   comments: CommentRecord[]
   version: number
   createdAt: number
@@ -1134,6 +1352,36 @@ export interface TaskReportSummary {
   reportIndex: number
   filesChanged: string[]
   completed: string[]
+}
+
+/**
+ * 需求级回退留痕（REQ-261003204149-1e80 FR-1 / FR-3）——最近一次回退的 from→to 与发起人。
+ *
+ * 为什么只存**最近一次**：它是**状态标记**（「当前处在回退态」，拆分守卫据此判定可否重建），
+ * 不是历史账——历史由 `statusHistory` 的状态事件与 `[回退]` 评论承担（只增不改）。
+ * 重复回退覆盖它，符合本仓既有的「后写覆盖前写」断点口径。
+ *
+ * 缺省 = 从未回退过（存量台账读出即旧行为，无需迁移）。
+ */
+export interface RollbackMark {
+  from: RequirementRecord['status']
+  to: RequirementRecord['status']
+  at: number
+  by: ActorRef
+  reason?: string
+  /**
+   * 第几次回退（REQ-261004121649-bfa7 t3 / FR-4）。
+   * 缺省 = 存量记录（从未记过次数）→ 读端按 1 计，故**无需迁移**。
+   */
+  seq?: number
+  /**
+   * 最近一次回退**物化出来的卡 id**（REQ-261004121649-bfa7 t3 / FR-4）——
+   * 批量清理入口的唯一输入，让人不必逐张点选。
+   *
+   * 为什么不能靠"反查 reworkOf"替代：反查分不清"这批是我刚物化的"与"上一批还没清的"，
+   * 清理就没有边界（t6 的兜底路径正是给**没有这个字段**的旧卡用的，且必须如实声明匹配方式）。
+   */
+  lastMaterialized?: string[]
 }
 
 export interface TaskScope {
@@ -1200,10 +1448,30 @@ export interface TaskRecord {
   stageKind?: StageKind
   /** 该卡显式声明子卡 stages（FR-1b 逃生舱口；不填则按卡类型走映射表） */
   stages?: StageKind[]
+  /**
+   * 该卡落库时引用的子卡链模板键（REQ-261003203909-55f2 FR-4；冗余记录供统计/审计）。
+   * stages 已存解析后的具体链，本字段只回答「这条链是从哪个模板键来的」；缺省 = 未引用模板。
+   */
+  template?: string
   /** 失败重跑次数（默认 0） */
   attempt?: number
   /** 卡片修订记录（append-only，INV-6） */
   revisions?: CardRevision[]
+  /**
+   * 本卡是为取代哪张旧卡而物化的**重做卡**（REQ-261003204149-1e80 FR-4）。
+   *
+   * 需求级回退时：旧卡一律标 canceled，再按旧卡物化一张本字段指向旧卡的新卡
+   * ——让「这些活要重做」在 DAG 上可见，不被静默丢弃；重新拆分落库时这些重做卡被新计划取代。
+   * 缺省 = 常规卡（存量队列卡读出即旧行为）。
+   */
+  reworkOf?: string
+  /**
+   * manual 段核对清单骨架的生成时间（REQ-261003203909-55f2 FR-2 防伪造锚点）：
+   * 骨架由链落盘（mtime 必然 ≥ 链出身），若凭证门只看链出身，「骨架生成后一个字不改就汇报」
+   * 也能过门。本字段让 manual 子卡的新鲜度基准收紧为「骨架生成时间之后」——人核对后的
+   * 更新必然晚于骨架。缺省 = 非 manual 卡或骨架未生成（按链出身判定，旧行为）。
+   */
+  manualSkeletonAt?: number
   /**
    * 最近一次 workflow run 的证据（REQ-4842fe t5，子卡完工凭证第③项的持久化载体）。
    * 子卡凭证门在 done 时读取；父卡不写本字段。
@@ -1226,6 +1494,11 @@ export interface TaskRecord {
   cardDoc?: string
   /** 需求条款引用（RTM 覆盖度追踪：该任务实现/测试了哪些需求编号，如 ["FR-1", "FR-2"]） */
   requirementRefs?: string[]
+  /**
+   * 卡片体量声明（REQ-261002175818-80a8 t2 / FR-7）：与计划层（`PlanTask.footprint`）逐字一致。
+   * 旧台账无此字段 = **未声明**（回显「未声明」，不当成 0）；本字段可缺省，故不 bump schemaVersion。
+   */
+  footprint?: CardFootprint
   skipIntegration?: boolean
   status: TaskStatus
   blocked: boolean
@@ -1725,6 +1998,107 @@ export interface TokenSnapshot {
   totals: TokenBuckets
   /** projection=来自 sessionProjections；unavailable=服务不可得，未取到 */
   source: 'projection' | 'unavailable'
+
+  // ── REQ-261004154937-2ca3（跨会话聚合口径）：以下全为**可选**新字段，旧快照没有它们 ──
+  /**
+   * 口径：`self` = 只算了本窗口会话（旧行为 / 降级）；`self+descendants` = 已聚合后代子代理会话。
+   * 缺席 = 旧快照（按 self 理解，但差值侧要标 legacy）。
+   */
+  scope?: 'self' | 'self+descendants'
+  /**
+   * 参与本次合计的成员及其水位（顺序无关；**含 depth:0 的自身**）。
+   * 恒等式：`totals === Σ members[].totals`。
+   */
+  members?: readonly TokenSnapshotMember[]
+  /** 取不到用量、因而**未参与合计**的成员 id（缺失 ≠ 0：它们不进 totals，只进这里） */
+  degradedMembers?: readonly string[]
+  /** 降级原因（服务缺失 / 冷读超预算 / 旧快照） */
+  degradedReason?: TokenSnapshotDegradedReason
+}
+
+/** 聚合口径下的一个成员会话（REQ-261004154937-2ca3）。 */
+export interface TokenSnapshotMember {
+  readonly sessionId: string
+  /** delegationDepth：0 = 本窗口自身，1 = 直接子代理，≥2 = 孙代理 */
+  readonly depth: number
+  /** 读数水位（投影缓存 asOfSeq / 日志序号）；缺失 = 该成员两次读数不可比 */
+  readonly seq?: number
+  readonly totals: TokenBuckets
+}
+
+/** 血缘里的一条后代记录（REQ-261004154937-2ca3；`descendantSessions` 的返回项）。 */
+export interface SessionLineageEntry {
+  readonly sessionId: string
+  /** delegationDepth：1 = 直接子代理，≥2 = 孙代理 */
+  readonly depth: number
+  readonly parentSessionId: string
+}
+
+/** 快照/差值的降级原因（REQ-261004154937-2ca3）。 */
+export type TokenSnapshotDegradedReason =
+  /** 血缘服务（sessionPersistence / sessionProjectionCache）不可得 → 退回只算自身 */
+  | 'descendants-unavailable'
+  /** 冷读兜底超出预算 → 超出的成员未参与合计 */
+  | 'cold-read-budget'
+  /** 某成员水位（seq）缺失或不可比 → 该成员不参与本次差值（REQ-261004154937-2ca3 复核段加：
+   *  与「冷读超预算」是两回事，不能共用一个标签——否则面板上说的原因会是假的） */
+  | 'member-unavailable'
+  /** 快照本身不可得（source='unavailable'）→ 差值为空桶（既有语义：缺失不猜） */
+  | 'snapshot-unavailable'
+  /** 旧快照（无 members）或成员形状不可信参与差值 → 只能退化为总数相减 */
+  | 'legacy-snapshot'
+
+/**
+ * 当轮上下文压力参考（REQ-261002175818-80a8 t4 / FR-8）——**只读展示，非门禁判据**。
+ *
+ * 为什么字段全可缺席：DSH token-meter 自述这三个字段是 last-wins 的**非原子**读数，
+ * 且 "not a billing or gating input"。任何缺席都表示"这一刻取不到"，**绝不用 0 冒充**——
+ * 冒充 0 会让上游把"不可得"当成"余量充裕"来用（同 TokenSnapshot 的纪律；R-013）。
+ */
+export interface ContextPressureSnapshot {
+  at: number
+  contextWindow?: number
+  pressureTokens?: number
+  projectedTokens?: number
+  /** projection=来自 sessionProjections；unavailable=服务不可得/形状不符 */
+  source: 'projection' | 'unavailable'
+}
+
+/**
+ * 一张超容量卡（REQ-261002175818-80a8 t5 / FR-4）——给人看的是 key + 批数，
+ * 给机器看的是可核算的数值。
+ *
+ * 为什么**不落库**：判定是"声明的量"算出来的，而声明会随计划重交而变；
+ * 落库的判定会立刻过期，形成两处真相（见 design/architecture.md §关键算法）。
+ */
+export interface OverCapacityItem {
+  /** 计划内引用键（如 t1），与批准文本里的 key 同一套 */
+  key: string
+  /** 卡片标题（批准人不必回查计划） */
+  title: string
+  /** 合成细节量（展示口径，两位小数） */
+  detailUnits: number
+  /** 当轮生效的容量 */
+  capacity: number
+  /** 建议批数（≥2） */
+  suggestedBatches: number
+  /** 一句话修复指引（按目录 / 按接口切的建议） */
+  hint: string
+}
+
+/**
+ * 判据自述（REQ-261002175818-80a8 t5 / FR-3、FR-4）：容量是**我们的常量**，不是运行时读数。
+ *
+ * 为什么把它随返回体一起给出：余量参考（contextPressure）是"当轮还剩多少"的只读展示，
+ * 与"一张卡要多少"是两码事；不写明判据来源，下一个人很容易拿余量去判容量（FR-8 的边界）。
+ */
+export interface CapacityNote {
+  /** constant=内置常量；config=插件配置覆盖 */
+  source: 'constant' | 'config'
+  /** 本次生效的容量值 */
+  value: number
+  /** 是否经过真实数据标定。**本次恒为 false**（校准闭环另立需求） */
+  calibrated: boolean
 }
 
 /** 需求级聚合（读路径 O(1)）：按节点与合计。 */
@@ -1842,5 +2216,409 @@ export interface InjectionCost {
   sharePct?: number
   byStage: PromptPartCost[]
   items: InjectionItem[]
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+ * 需求详情页「工作汇报」：六端点的响应形状（REQ-261004222448-292a t-361f2f）
+ *
+ * 为什么集中在这里：六个 Tab 各取各的数，形状若不先定死，同一个概念（缺口/文档/执行）
+ * 会在头部、文档页、对话页各长一样，前端只能靠猜。本节的类型是**唯一契约**，
+ * 后续实现只填肉、不改骨架（改骨架 = 回计划重新批）。
+ *
+ * 降级纪律：任何一块「读不到」都返回 `Degrade`，**不许用 0 或空数组冒充「没有」**——
+ * 「真的没有」与「读不到」是两件事，页面文案也不同（见 FR-12）。
+ * ══════════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * 降级原因（四种，各自对应一句人话文案；页面不得把它们混成一句）。
+ * - port-unavailable：端口未装配（老版本/未接线）→「不可用（端口未装配）」
+ * - file-missing：登记过但文件不在 → 路径划线 +「文件缺失」
+ * - ledger-unreadable：台账读不到 →「不可用（台账读不到）」
+ * - no-snapshot：没有那次执行的 token 快照 →「无 token 快照」
+ */
+export type DegradeReason =
+  | 'port-unavailable'
+  | 'file-missing'
+  | 'ledger-unreadable'
+  | 'no-snapshot'
+
+/**
+ * 统一降级信封：任何只读端点在「读不到」时返回它，而不是抛错或回 0。
+ * 判据：`available === false` 即降级，页面**必须**按 `reason` 给不同文案。
+ */
+export interface Degrade {
+  available: false
+  reason: DegradeReason
+  /** 人话补充（例如具体哪个文件、哪个端口），页面直接展示 */
+  note: string
+}
+
+/** 正常响应（`available` 缺省即真）与降级响应的联合。 */
+export type PanelResult<T> = (T & { available?: true }) | Degrade
+
+/** 类型守卫：判是否为降级信封（前端与用例共用一份，避免各写各的）。 */
+export function isDegrade(value: unknown): value is Degrade {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    (value as { available?: unknown }).available === false
+  )
+}
+
+/* ── 端点 1：首屏（结论头 + 操作条 + 状态带） ─────────────────────────────── */
+
+/** 结论头：这条需求是谁、什么状态、在哪些窗口手里。 */
+export interface ReportHead {
+  id: string
+  title: string
+  category: string
+  promptDifficulty?: string
+  status: RequirementStatus
+  /** 是否被阻塞（阻塞时 head 必须给出原因，不许只给红旗） */
+  blocked: boolean
+  blockedReason?: string
+  createdAt: number
+  updatedAt: number
+  /** 席位表：owner / worker / observer（跳转按钮按它逐个渲染） */
+  seats: WindowSeat[]
+  /**
+   * 窗口跳转入口（**现有能力，不得回退**）：
+   * `archived=true` 表示该会话已归档——仍可点（先恢复再打开），不是灰按钮。
+   */
+  sessionJump: { windowKey: string; archived: boolean }[]
+}
+
+/** 状态带第一格「做到哪了」。 */
+export interface ReportProgress {
+  stageEnteredAt?: number
+  stageStayedMs?: number
+  sinceUpdateMs: number
+  tasks: {
+    total: number
+    done: number
+    running: number
+    todo: number
+    subChainDone: number
+    subChainTotal: number
+  }
+}
+
+/** 缺口一条（FR-4）：必须有 what + why + 指得回去的 ref。 */
+export interface ReportGap {
+  severity: 'red' | 'yellow' | 'gray'
+  what: string
+  why: string
+  ref?: {
+    kind: 'clause' | 'artifact' | 'task' | 'confirm'
+    id: string
+  }
+}
+
+/**
+ * 操作条一个按钮（FR-3）：**只给当前状态下合法的动作**，并写清后果。
+ * 终态（archived/canceled/done）必须返回空数组——页面据此不渲染任何动作按钮。
+ */
+export interface ReportAction {
+  key:
+    | 'move'
+    | 'plan-approve'
+    | 'plan-reject'
+    | 'verify-pass'
+    | 'verify-rework'
+    | 'cancel'
+  label: string
+  to?: RequirementStatus
+  consequence: string
+  /** 只有人能点（agent 调用会被代码级拒绝）——页面标注，不隐藏 */
+  humanOnly: boolean
+}
+
+/** 端点 1 响应。 */
+export interface ReportResponse {
+  head: ReportHead
+  progress: ReportProgress
+  /** 一句话结论：在跑什么 / 谁在跑 / 几件事等人 / 下一步谁动手 */
+  verdictLine: string
+  /** 「几件事等人」的数字（必须与 gaps 中的红色条数口径一致） */
+  waitingHuman: number
+  gaps: ReportGap[]
+  actions: ReportAction[]
+  nextStepForAgent?: string
+}
+
+/* ── 端点 2：汇报七条（主干） ─────────────────────────────────────────────── */
+
+/** 一条内容的来源：现有实现 / 靠新增文档节 / 本需求新机制。 */
+export type TrunkSource = 'doc' | 'ledger' | 'auto' | 'human' | 'new-section'
+
+/** 主干七条的键（与需求文档 FR-1/2/14/15 一一对应）。 */
+export type TrunkKey =
+  | 'why'
+  | 'problem'
+  | 'approach'
+  | 'scope'
+  | 'decision'
+  | 'tech'
+  | 'highlight'
+
+/** 亮点里的「自动事实」（可计算，永远为真）——不需要人写。 */
+export interface TrunkFact {
+  label: string
+  value: string
+  evidence?: string[]
+}
+
+/**
+ * 亮点里的「人写判断」：必须有证据指针。
+ * `evidence` 为空数组 ⇒ 页面渲染「未提供证据（不计入亮点）」——这是**反应付**的机制保证。
+ */
+export interface TrunkHighlight {
+  diff: string
+  why: string
+  evidence: string[]
+}
+
+export interface TrunkItem {
+  key: TrunkKey
+  source: TrunkSource[]
+  /** 2~4 行摘要；空数组 ⇒ 无内容（与 missing 搭配） */
+  summary: string[]
+  /** 文档没写这一节（**不许编**，页面照实渲染「文档未提供该节」） */
+  missing?: 'doc-section-missing'
+  /** 「点开原文」/「看往返」等入口 */
+  openRefs: { label: string; path?: string; doc?: string }[]
+  /** 仅 key='highlight'：自动事实 */
+  facts?: TrunkFact[]
+  /** 仅 key='highlight'：人写判断（evidence 空 ⇒ 不上桌） */
+  highlights?: TrunkHighlight[]
+  /** 仅 key='highlight'：成果清单（自动汇总） */
+  achievement?: string[]
+}
+
+export interface TrunkResponse {
+  items: TrunkItem[]
+  /** 文档最后更新时间（页面标「文档最后更新于…」，让人知道读到的是哪一版） */
+  docLastUpdated?: number
+}
+
+/* ── 端点 3：文档 + 核验 + 门禁 ───────────────────────────────────────────── */
+
+export type DocPanelKind =
+  | 'requirement'
+  | 'design'
+  | 'plan'
+  | 'task-detail'
+  | 'verification'
+  | 'retro'
+  | 'notes'
+
+/** 文档在页面上的状态（file-missing 必须标灰，不许当正常文档列着）。 */
+export type DocPanelState =
+  | 'confirmed'
+  | 'pending'
+  | 'unregistered'
+  | 'file-missing'
+
+export interface DocPanelEntry {
+  kind: DocPanelKind
+  path: string
+  registeredAt?: number
+  state: DocPanelState
+}
+
+/** 门禁裁决留痕（谁批的 / 什么时候 / 用什么方式）。 */
+export interface GateVerdict {
+  gate:
+    | 'requirement'
+    | 'design'
+    | 'plan'
+    | 'implementation'
+    | 'verification'
+    | 'archive'
+  verdict: 'passed' | 'rejected' | 'pending' | 'not-reached'
+  /** 三种确认方式各自留痕，便于审计 */
+  via?: 'dialog' | 'board' | 'evidence-text'
+  at?: number
+  by?: ActorRef
+  reason?: string
+}
+
+export interface DocsResponse {
+  /** **全部铺开**（前端不做内层滚动、不折叠成一行） */
+  documents: DocPanelEntry[]
+  /** 生成物（台账 queue.json / RTM 等），与「人写的文档」分开列 */
+  generated: { label: string; path: string }[]
+  /** 验收单（列照抄现有 verification 的：实际结果 / 来源 / 需人工 / 意见 / 裁决） */
+  verification?: VerificationSheet
+  gates: GateVerdict[]
+  archive?: ArchiveRecord
+}
+
+/* ── 端点 4：DAG + 每步执行结果 ───────────────────────────────────────────── */
+
+/** DAG 图数据（`dag-view` 的入参形状；不改画布）。 */
+export interface DagGraphNode {
+  id: string
+  title: string
+  parentId?: string
+  stageKind?: StageKind
+  status: TaskStatus
+  dependsOn: string[]
+  claimedBy?: string
+  layer?: number
+  /** 该卡的子卡链没生成（与「手动建卡」区分开） */
+  chainMissing?: boolean
+}
+
+/**
+ * 每步执行结果：字段照抄现有执行记录 + 最近一次汇报。
+ * 不新增字段——现成就够（trigger/outcome/error/evidence/attempt + 汇报四要素）。
+ */
+export interface DagStep {
+  taskId: string
+  stage: string
+  sessionId?: string
+  trigger: 'manual' | 'auto'
+  startedAt: number
+  endedAt?: number
+  outcome: 'running' | 'succeeded' | 'failed' | 'cancelled'
+  error?: string
+  evidence: string[]
+  attempt: number
+  report?: {
+    summary: string
+    completed: string[]
+    filesChanged: string[]
+    nextStep?: string
+  }
+  /** 产出条目数（0 = 零产出执行，页面标黄） */
+  outputCount?: number
+}
+
+export interface DagResponse {
+  tasks: DagGraphNode[]
+  steps: DagStep[]
+  criticalPath?: string[]
+}
+
+/* ── 端点 5：对话一条流 ───────────────────────────────────────────────────── */
+
+/** 系统消息的类型（措辞取台账原文，页面不重新措辞）。 */
+export type DialogueSystemEvt =
+  | 'stage-advance'
+  | 'plan-rejected'
+  | 'handoff'
+  | 'interrupt'
+  | 'confirm-pending'
+  | 'verify'
+
+export type DialogueItem =
+  | {
+      kind: 'human' | 'agent'
+      at: number
+      windowKey?: string
+      text: string
+    }
+  | {
+      kind: 'system'
+      at: number
+      text: string
+      evt: DialogueSystemEvt
+      /** 由 createdAt + 评论反推的**回填**事件（页面须打「回填」标，别读成实时发生） */
+      inferred?: boolean
+    }
+
+export interface DialogueResponse {
+  items: DialogueItem[]
+  page: { before?: number; hasMore: boolean; total: number }
+}
+
+/* ── 端点 6：提示词（装配 + 留痕 + 上下文） ───────────────────────────────── */
+
+/** 系统提示词片段（`text` 是**正文**——页面点开就能读，不给截断预览冒充正文）。 */
+export interface PromptSection {
+  id: string
+  /** file=有独立源文件可打开；shell=路由壳（多片合成，无单独文件） */
+  kind: 'file' | 'shell'
+  chars: number
+  text: string
+}
+
+/** 注入留痕一条（含新增字段；旧条目按 unknown/null 降级，**不默认成已投递**）。 */
+export interface PromptInjectionRecord {
+  at: number
+  windowKey: string
+  /** 三个记录点；旧条目缺字段 → unknown */
+  origin: 'gate-h3' | 'dive-node' | 'dive-round' | 'unknown'
+  /** null = 旧条目不可知（不许当 true 渲染） */
+  delivered: boolean | null
+  routeKey?: string
+  fragmentIds: string[]
+  charCount?: number
+  trimmed: string[]
+  text?: string
+  truncated?: boolean
+}
+
+export interface PromptsResponse {
+  system: {
+    routeKey?: string
+    hitLevel?: string
+    perTurnChars?: number
+    perTurnEstTokens?: number
+    sections: PromptSection[]
+    /** 被裁片段：同样给正文（回答「它为什么不知道某个术语」） */
+    trimmed: { id: string; chars: number; text?: string }[]
+    unavailable?: true
+  }
+  injections: PromptInjectionRecord[]
+  context: {
+    medianUsagePct?: number
+    compressions: number
+    policy: string[]
+    isolations: {
+      at: number
+      stage: string
+      status: string
+      packageChars: number
+      reason: string
+    }[]
+    available: boolean
+  }
+}
+
+/* ── 端点 7：Token（在现有响应上扩展） ────────────────────────────────────── */
+
+/** 按阶段的 token 行（节点＝阶段；比现有按节点表多「每次调用均」与「缓存命中」）。 */
+export interface TokenStageRow {
+  stage: string
+  calls: number
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  totalTokens: number
+  sharePct: number
+  /** 合计 ÷ 调用数（跨阶段可比，用来发现「上下文重复」） */
+  perCallTokens: number
+  cacheHitPct: number
+}
+
+/** 可优化点：**每条必须带依据数字**（不做无凭据的建议）。 */
+export interface TokenOptimization {
+  title: string
+  basis: string
+  suggestion: string
+}
+
+/** Token 块的可得性三态：快照齐 / 部分（下界）/ 完全不可得。 */
+export type TokenAvailability = 'full' | 'partial' | 'none'
+
+/** Token 端点的扩展部分（并入现有响应；`none` 时页面**不得**渲染 0 值表）。 */
+export interface TokenPanelExtension {
+  byStage: TokenStageRow[]
+  optimizations: TokenOptimization[]
+  availability: TokenAvailability
+  missingStages?: string[]
+  boundsAreLowerBound?: boolean
 }
 

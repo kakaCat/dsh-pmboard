@@ -10,17 +10,17 @@
  *
  * 工作区目录名必须可预测（归一层按 basename 剥前缀），故临时目录下建 agent-dh/。
  */
+import { makeTestStore } from '../application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../../src/http/routes.js'
 
 let base: string
 let root: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   base = mkdtempSync(join(tmpdir(), 'pmboard-docs-'))
@@ -33,7 +33,7 @@ beforeEach(() => {
   writeFileSync(join(root, 'docs/architecture/documentation-standard.md'), '# doc')
   writeFileSync(join(root, 'packages/pages/x.ts'), 'export const x = 1')
   writeFileSync(join(base, 'quantsys-v2/main.py'), '# sibling repo file')
-  store = new ReqboardStore({ file: join(root, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(base, { recursive: true, force: true }) })
 
@@ -57,7 +57,7 @@ function fakeRes(): any {
   return res
 }
 
-const newHandler = () => createReqboardHandler({ store, now: () => 1000, cwd: root })
+const newHandler = () => createReqboardHandler({ store: store, requirementStore: store, now: () => 1000, cwd: root })
 
 async function readFile(path: string) {
   const res = fakeRes()

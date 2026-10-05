@@ -4,11 +4,11 @@
  * 覆盖：文件名→种类推断；目录扫描补登（autoDiscovered 标记）；幂等（重复扫描不重复）；
  * 已登记文件跳过；目录不存在不炸。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { discoverArtifacts, syncReqArtifacts, syncAllReqArtifacts, reqDirRel } from '../src/adapters/ArtifactSync.js'
 import { kindForRelPath } from '../src/domain/artifact/ArtifactSpec.js'
 import { discoverArtifactsFrom } from '../src/application/internal/artifact-discovery.js'
@@ -16,12 +16,12 @@ import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import type { RequirementRecord, StageArtifact } from '../src/shared/protocol.js'
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 const REQ = 'REQ-abc123'
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-sync-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -32,7 +32,7 @@ async function seedReq(artifacts?: StageArtifact[]): Promise<void> {
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
     ...(artifacts !== undefined ? { artifacts } : {}),
   } as unknown as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 function writeReqFile(rel: string, content = 'x'): void {
@@ -61,7 +61,7 @@ describe('discoverArtifacts（纯扫描）', () => {
     writeReqFile('requirement.md')
     writeReqFile('prototype.html')
     writeReqFile('tasks/t-abc123.md')
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     const found = discoverArtifacts(req, join(dir, reqDirRel(REQ)), reqDirRel(REQ))
     const byPath = Object.fromEntries(found.map(a => [a.path, a]))
     expect(byPath[reqDirRel(REQ) + '/requirement.md'].kind).toBe('requirement')
@@ -75,14 +75,14 @@ describe('discoverArtifacts（纯扫描）', () => {
     const p = reqDirRel(REQ) + '/requirement.md'
     await seedReq([{ stage: 'brainstorming', kind: 'requirement', path: p, registeredAt: 1, registeredBy: { kind: 'agent' } }])
     writeReqFile('requirement.md')
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     const found = discoverArtifacts(req, join(dir, reqDirRel(REQ)), reqDirRel(REQ))
     expect(found).toHaveLength(0)
   })
 
   it('目录不存在 → 返回空数组不炸', async () => {
     await seedReq()
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     expect(discoverArtifacts(req, join(dir, 'nope'), reqDirRel(REQ))).toEqual([])
   })
 })
@@ -93,21 +93,21 @@ describe('syncReqArtifacts（落库）', () => {
     writeReqFile('prototype.html')
     const added1 = await syncReqArtifacts(store, REQ, dir)
     expect(added1).toBe(1)
-    const req1 = store.snapshot().requirements.find(r => r.id === REQ)!
+    const req1 = store.peek(REQ)!
     expect(req1.artifacts).toHaveLength(1)
     expect(req1.artifacts![0].autoDiscovered).toBe(true)
     expect(req1.comments.some(c => c.body.includes('产物自动发现'))).toBe(true)
 
     const added2 = await syncReqArtifacts(store, REQ, dir)
     expect(added2).toBe(0)
-    expect(store.snapshot().requirements.find(r => r.id === REQ)!.artifacts).toHaveLength(1)
+    expect(store.peek(REQ)!.artifacts).toHaveLength(1)
   })
 
   it('design/*.md 补登为设计文档，归设计节点（FR-1/FR-3）', async () => {
     await seedReq()
     writeReqFile('design/architecture.md')
     expect(await syncReqArtifacts(store, REQ, dir)).toBe(1)
-    const a = store.snapshot().requirements.find(r => r.id === REQ)!.artifacts![0]
+    const a = store.peek(REQ)!.artifacts![0]
     expect(a.path).toBe(reqDirRel(REQ) + '/design/architecture.md')
     expect(a.kind).toBe('design')
     expect(a.stage).toBe('design')
@@ -118,7 +118,7 @@ describe('syncReqArtifacts（落库）', () => {
     await seedReq([{ stage: 'design', kind: 'notes', path: p, autoDiscovered: true, registeredAt: 1, registeredBy: { kind: 'agent' } }])
     writeReqFile('design/architecture.md')
     await syncReqArtifacts(store, REQ, dir)
-    const a = store.snapshot().requirements.find(r => r.id === REQ)!.artifacts![0]
+    const a = store.peek(REQ)!.artifacts![0]
     expect(a.kind).toBe('design')
     expect(a.stage).toBe('design')
     // 已回填 + 已登记 → 再跑一次无动作（无新文件、无待回填）
@@ -130,15 +130,18 @@ describe('syncReqArtifacts（落库）', () => {
     await seedReq([{ stage: 'design', kind: 'notes', path: p, registeredAt: 1, registeredBy: { kind: 'agent' } }])
     writeReqFile('design/architecture.md')
     await syncReqArtifacts(store, REQ, dir)
-    expect(store.snapshot().requirements.find(r => r.id === REQ)!.artifacts![0].kind).toBe('notes')
+    expect(store.peek(REQ)!.artifacts![0].kind).toBe('notes')
   })
 
   it('syncAllReqArtifacts 扫描全部需求', async () => {
     await seedReq()
     writeReqFile('requirement.md')
     writeReqFile('prototype.html')
-    const total = await syncAllReqArtifacts(store, dir)
-    expect(total).toBe(2)
+    const res = await syncAllReqArtifacts(store, dir)
+    // REQ-261001203710-0fbf t2：返回体由裸 number 扩为 { scanned, skipped }
+    expect(res.scanned).toBe(2)
+    // 本夹具只有一条记录、且它属于本根（或未归属按 cwd 兜底）→ 没有被跳过的别人的项目
+    expect(res.skipped).toBe(0)
   })
 })
 
@@ -152,7 +155,7 @@ describe('discoverArtifactsFrom（application 核心：只走 DocRepository 端�
     writeReqFile('requirement.md')
     writeReqFile('prototype.html')
     writeReqFile('design/architecture.md')
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     const found = discoverArtifactsFrom(new FileDocRepository({ workspaceRoot: dir }), req)
     const byPath = Object.fromEntries(found.map(a => [a.path, a]))
     expect(byPath[reqDirRel(REQ) + '/requirement.md'].kind).toBe('requirement')
@@ -165,7 +168,7 @@ describe('discoverArtifactsFrom（application 核心：只走 DocRepository 端�
     await seedReq()
     writeReqFile('tasks/t-abc123.md')
     writeReqFile('prototype.html')
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     const core = discoverArtifactsFrom(new FileDocRepository({ workspaceRoot: dir }), req)
     const shim = discoverArtifacts(req, join(dir, reqDirRel(REQ)), reqDirRel(REQ))
     expect(project(core)).toEqual(project(shim))

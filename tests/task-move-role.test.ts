@@ -20,13 +20,14 @@ function seedParent() {
     task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', title: '父卡' }),
     task({ id: 't-s', requirementId: 'REQ-000001', parentId: 't-p', stageKind: 'dev' as never, status: 'todo' }),
   ] })
-  h.repo.ledger.requirements = [req({ status: 'implementing' })]
+  h.seedRequirementSync(req({ status: 'implementing' }))
   return h
 }
 
 describe('reqboard_task_move（FR-5）', () => {
   it('TC-10 用 legacy 边推父卡（in_progress→in_review）→ 报错含「父卡」与合法边', async () => {
     const h = seedParent()
+    await h.seedSettled()
     const t = defineTaskMoveTool(h.deps)
     const err = await run(t, { task_id: 't-p', to: 'in_review' }).catch((e: Error) => e)
     const msg = String((err as Error).message ?? err)
@@ -39,6 +40,7 @@ describe('reqboard_task_move（FR-5）', () => {
 
   it('子卡的角色与合法边也被说清（子卡不进联调/测试/复核）', async () => {
     const h = seedParent()
+    await h.seedSettled()
     const err = await run(defineTaskMoveTool(h.deps), { task_id: 't-s', to: 'testing' }).catch((e: Error) => e)
     const msg = String((err as Error).message ?? err)
     expect(msg).toContain('子卡')
@@ -47,7 +49,8 @@ describe('reqboard_task_move（FR-5）', () => {
 
   it('TC-11 只传 acceptance → 台账更新 + 卡文档同步 + 状态不变', async () => {
     const h = makeHarness({ tasks: [task({ id: 't-a', requirementId: 'REQ-000001', status: 'todo', acceptance: '功能正常' })] })
-    h.repo.ledger.requirements = [req({ status: 'implementing' })]
+    h.seedRequirementSync(req({ status: 'implementing' }))
+    await h.seedSettled()
     const card = 'docs/requirements/REQ-000001/tasks/t-a.md'
     h.docs.put(card, ['# t-a', '', '## 在做什么', 'x', '', '## 得到什么结果', '', '功能正常', '', '## 下一步', 'y', ''].join('\n'))
 
@@ -66,6 +69,7 @@ describe('reqboard_task_move（FR-5）', () => {
 
   it('既不传 to 也不传 acceptance → 明确拒绝（不静默当成功）', async () => {
     const h = seedParent()
+    await h.seedSettled()
     const out = await run(defineTaskMoveTool(h.deps), { task_id: 't-p' })
     expect(out.success).toBe(false)
     expect(String(out.error)).toContain('acceptance')
@@ -73,7 +77,7 @@ describe('reqboard_task_move（FR-5）', () => {
 
   it('acceptance 是空话 → REQBOARD_INVALID_INPUT（沿用计划期门槛）', async () => {
     const h = makeHarness({ tasks: [task({ id: 't-a', requirementId: 'REQ-000001', status: 'todo' })] })
-    h.repo.ledger.requirements = [req({ status: 'implementing' })]
+    h.seedRequirementSync(req({ status: 'implementing' }))
     const err = await run(defineTaskMoveTool(h.deps), { task_id: 't-a', acceptance: '功能正常' }).catch((e: Error) => e)
     expect(String((err as Error).message ?? err)).toContain('REQBOARD_INVALID_INPUT')
   })

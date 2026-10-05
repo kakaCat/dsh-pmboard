@@ -1,0 +1,1958 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261003191948-e94a",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-03T11:25:05.600Z",
+  "tasks": [
+    {
+      "id": "t-bb9da6",
+      "requirementId": "REQ-261003191948-e94a",
+      "title": "给迁移门补只读预检与可复制迁移命令",
+      "cardDoc": "docs/requirements/REQ-261003191948-e94a/tasks/t-bb9da6.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/reqboard/migration-gate.test.ts 全绿；新用例断言 preflightLedger 在「有单册无 meta.json」夹具下返回 ok:false 且 failure.code === 'REQBOARD_REQUIRES_MIGRATION'，另两个夹具返回 ok:true 且不抛错；断言 failure.hint 含夹具真实 ledgerFile 与 dataRoot 全路径、含 migrate-ledger-v10.ts 与 --apply、不含子串 '<单册>' 与 '<数据根>'；断言 assertLedgerMigrated 抛出的 message 与 preflightLedger().failure.message 逐字相等。",
+      "implementation": "改 src/repositories/migrationGate.ts：新增 MigrationFailure（code 用字面量类型 'REQBOARD_REQUIRES_MIGRATION'、message、hint、ledgerFile、dataRoot）与 PreflightResult 判别联合；新增纯读 preflightLedger(options): PreflightResult（只 existsSync 两次，不建目录不写文件）；把 hint 构造收成模块内唯一一处（node --import tsx/esm scripts/migrate-ledger-v10.ts --file <真实 ledgerFile> --out <真实 dataRoot> --apply，不做 shell 转义、不加引号）；assertLedgerMigrated 改为调用 preflightLedger 并 rethrow 同一 failure（message 文本逐字节不变，只多 hint 字段）。测试改 tests/reqboard/migration-gate.test.ts：补 preflightLedger 三态（有单册无 meta / 有单册有 meta / 两者皆无）、hint 含真实路径且不含 <单册> 与 <数据根>、以及「抛错 ⟺ ok:false 且 message 逐字相等」的同源断言。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [
+        "FR-1",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-95b17b",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "auto",
+          "startedAt": 1791026705686,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 923,
+              "at": 1791026705688,
+              "totals": {
+                "uncachedInputTokens": 172770,
+                "outputTokens": 81390,
+                "cacheReadTokens": 15867520,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2663,
+              "at": 1791030157347,
+              "totals": {
+                "uncachedInputTokens": 586945,
+                "outputTokens": 264032,
+                "cacheReadTokens": 125636480,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 414175,
+              "outputTokens": 182642,
+              "cacheReadTokens": 109768960,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791030157347
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791026705546,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791026705686,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "done",
+          "at": 1791030157347,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t1 收尾：三张子卡（研发 t-bec57a / 复核 t-5479a5 / 测试 t-3b4d8e）均已 done；父卡汇报已登记；迁移门预检 + 可复制 hint 交付完成。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-456925",
+          "body": "[状态] → done：t1 收尾：三张子卡（研发 t-bec57a / 复核 t-5479a5 / 测试 t-3b4d8e）均已 done；父卡汇报已登记；迁移门预检 + 可复制 hint 交付完成。（reqboard_task_move）",
+          "createdAt": 1791030157347,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791026705546,
+      "updatedAt": 1791030157347,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791026765522,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/repositories/migrationGate.ts",
+          "tests/reqboard/migration-gate.test.ts"
+        ],
+        "completed": [
+          "新增 MigrationFailure 与 PreflightResult 类型，code 用字面量类型锁死取值",
+          "新增 preflightLedger：只 existsSync 两次，不建目录不写文件不抛错",
+          "新增 migrationHint：内联真实 ledgerFile 与 dataRoot，含 --apply，无占位符",
+          "migrationMessage 抽成唯一构造点，抛错版与预检版共用",
+          "assertLedgerMigrated 改为调用 preflightLedger 再 rethrow，行为与文案不变",
+          "补 3 条用例：三态判定、hint 无占位符、两入口 message 逐字相等",
+          "npx vitest run tests/reqboard/migration-gate.test.ts 7 个用例全绿",
+          "npx tsc --noEmit 改动文件错误数 0，全量 150 不高于基线 223"
+        ]
+      },
+      "lastRun": {
+        "at": 1791026765522,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f6e737",
+      "requirementId": "REQ-261003191948-e94a",
+      "title": "抽出唯一信封模块并新增迁移门 503 映射",
+      "cardDoc": "docs/requirements/REQ-261003191948-e94a/tasks/t-f6e737.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-bb9da6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/reqboard/degraded-startup.test.ts 全绿；其中用例对 {code:'REQBOARD_REQUIRES_MIGRATION', message:'台账未迁移', hint:'node --import tsx/esm scripts/migrate-ledger-v10.ts --apply'} 调 fail(res, err) 后断言 res.statusCode === 503 且 JSON.parse(body).hint 等于传入 hint；对不带 hint 的 REQBOARD_BRIDGE_NOT_READY 断言 statusCode === 503 且响应体不含 hint 键；npx vitest run tests/kb-route.test.ts tests/isolation-router.test.ts 与改动前同样全绿（信封搬迁零回退）。",
+      "implementation": "新建 src/http/envelope.ts：把 src/http/routes.ts 里的 json / ok / fail 三个函数逐字节搬过去（不顺手改逻辑）；fail 增加两处改动——映射表新增 e.code === 'REQBOARD_REQUIRES_MIGRATION' ? 503（与既有 REQBOARD_BRIDGE_NOT_READY 分支并列），响应体在错误对象带 hint 时透出 hint: typeof (e as {hint?:unknown}).hint === 'string'。src/http/routes.ts 改为从 ./envelope.js import { json, ok, fail }，删除本地副本，createReqboardHandler 签名与全部 http/routers/* 调用点零改动。新建 tests/reqboard/degraded-startup.test.ts 并先落「信封与映射」段：用最小假 res（收集 statusCode 与 body）断言 503 与 hint。",
+      "context": "",
+      "skipIntegration": true,
+      "requirementRefs": [
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-dca24c",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "manual",
+          "startedAt": 1791030178924,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2682,
+              "at": 1791030178924,
+              "totals": {
+                "uncachedInputTokens": 591831,
+                "outputTokens": 266985,
+                "cacheReadTokens": 127351936,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2689,
+              "at": 1791030184315,
+              "totals": {
+                "uncachedInputTokens": 596797,
+                "outputTokens": 267673,
+                "cacheReadTokens": 127927296,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 4966,
+              "outputTokens": 688,
+              "cacheReadTokens": 575360,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791030184315
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791026705546,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791030178924,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t2 开工（依赖 t-bb9da6 已 done）"
+        },
+        {
+          "status": "integrating",
+          "at": 1791030184315,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "开发完成：envelope.ts 抽出 + 503 映射 + hint 透出；degraded-startup 信封段 5 条全绿，既有路由用例零回退"
+        },
+        {
+          "status": "testing",
+          "at": 1791030187901,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "联调完成：信封搬迁后既有路由用例（stage-detail 33 / token-endpoint 8 / kb-route / isolation-router）零回退，503 与 hint 透出在假 res 上验过"
+        },
+        {
+          "status": "in_review",
+          "at": 1791030190755,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "测试通过：tests/reqboard/degraded-startup.test.ts 11 条全绿（含 t2 信封段 5 条）；全量 98 failed 不高于基线"
+        },
+        {
+          "status": "done",
+          "at": 1791030238119,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t2 收尾：唯一信封模块 + 迁移门 503 映射 + hint 透出；信封搬迁零行为变更；汇报已登记。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-cef670",
+          "body": "[状态] → in_progress：t2 开工（依赖 t-bb9da6 已 done）（reqboard_task_move）",
+          "createdAt": 1791030178924,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-e5c026",
+          "body": "[状态] → integrating：开发完成：envelope.ts 抽出 + 503 映射 + hint 透出；degraded-startup 信封段 5 条全绿，既有路由用例零回退（reqboard_task_move）",
+          "createdAt": 1791030184315,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-aa1f80",
+          "body": "[状态] → testing：联调完成：信封搬迁后既有路由用例（stage-detail 33 / token-endpoint 8 / kb-route / isolation-router）零回退，503 与 hint 透出在假 res 上验过（reqboard_task_move）",
+          "createdAt": 1791030187901,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-47f69c",
+          "body": "[状态] → in_review：测试通过：tests/reqboard/degraded-startup.test.ts 11 条全绿（含 t2 信封段 5 条）；全量 98 failed 不高于基线（reqboard_task_move）",
+          "createdAt": 1791030190755,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-346169",
+          "body": "[状态] → done：t2 收尾：唯一信封模块 + 迁移门 503 映射 + hint 透出；信封搬迁零行为变更；汇报已登记。（reqboard_task_move）",
+          "createdAt": 1791030238119,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        }
+      ],
+      "version": 7,
+      "createdAt": 1791026705546,
+      "updatedAt": 1791030238119,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791030176219,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/http/envelope.ts",
+          "src/http/routes.ts",
+          "tests/reqboard/degraded-startup.test.ts"
+        ],
+        "completed": [
+          "新增 src/http/envelope.ts：json/ok/fail 的唯一实现",
+          "routes.ts 改从 envelope 取三函数，删除本地副本，调用点零改动",
+          "fail 新增 REQBOARD_REQUIRES_MIGRATION → 503 映射（与 BRIDGE_NOT_READY 并列）",
+          "错误对象带 hint 时原样透出；不带时响应体形状逐字节不变",
+          "degraded-startup.test.ts 信封段 5 条用例全绿",
+          "既有路由用例零回退：stage-detail 33 + token-endpoint 8"
+        ]
+      },
+      "lastRun": {
+        "at": 1791030176219,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-683371",
+      "requirementId": "REQ-261003191948-e94a",
+      "title": "新增未就绪 HTTP handler",
+      "cardDoc": "docs/requirements/REQ-261003191948-e94a/tasks/t-683371.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-f6e737"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/reqboard/degraded-startup.test.ts 全绿；用例断言 GET /state、GET /health、POST /req/create、GET /nope 四条均得 statusCode 503（显式断言 !== 404）；四条 body 均满足 success === false 且 code === 'REQBOARD_REQUIRES_MIGRATION' 且 error 与 hint 非空；GET /events 一条断言 res.end 恰好被调用一次且未写 text/event-stream 头；mkdtempSync 夹具在四条请求后断言不存在 requirements/ 目录与 meta.json。",
+      "implementation": "新建 src/http/not-ready.ts：导出 createNotReadyHandler(failure: MigrationFailure): (req, res) => Promise<void>；对任意 method 与任意子路径一律回 503 + NotReadyBody（success:false、error=failure.message、code=failure.code、hint=failure.hint），头为 Content-Type: application/json; charset=utf-8 与 Cache-Control: no-store；不带 Retry-After；不得写 text/event-stream，必须先写头再 end（SSE 路径不得挂起）。复用 src/http/envelope.ts 的 json，不自己拼信封。在 tests/reqboard/degraded-startup.test.ts 追加 handler 段（真 IncomingMessage 形状的假 req：{method, url} + 假 res）。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "requirementRefs": [
+        "FR-2",
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-dbdb41",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "manual",
+          "startedAt": 1791030241339,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2756,
+              "at": 1791030241339,
+              "totals": {
+                "uncachedInputTokens": 603184,
+                "outputTokens": 273101,
+                "cacheReadTokens": 134390272,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2763,
+              "at": 1791030250931,
+              "totals": {
+                "uncachedInputTokens": 608023,
+                "outputTokens": 274511,
+                "cacheReadTokens": 134982272,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 4839,
+              "outputTokens": 1410,
+              "cacheReadTokens": 592000,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791030250931
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791026705546,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791030241339,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t3 开工（依赖 t-bb9da6、t-f6e737 已 done）"
+        },
+        {
+          "status": "integrating",
+          "at": 1791030250931,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t3 开发完成：not-ready handler 落地，四类请求 503 断言与零副作用用例就位"
+        },
+        {
+          "status": "testing",
+          "at": 1791030258785,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t3 联调完成：降级 handler 与 envelope、webServer 注册前缀一致，SSE 路径不挂起"
+        },
+        {
+          "status": "in_review",
+          "at": 1791030262004,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t3 测试通过：degraded-startup.test.ts 11 条全绿；全量 98 failed 不高于基线"
+        },
+        {
+          "status": "done",
+          "at": 1791030327051,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t3 收尾：未就绪 handler 交付完成（四类请求 503、SSE 不挂起、零副作用）；汇报已登记。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5366ac",
+          "body": "[状态] → in_progress：t3 开工（依赖 t-bb9da6、t-f6e737 已 done）（reqboard_task_move）",
+          "createdAt": 1791030241339,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-975605",
+          "body": "[状态] → integrating：t3 开发完成：not-ready handler 落地，四类请求 503 断言与零副作用用例就位（reqboard_task_move）",
+          "createdAt": 1791030250931,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-471206",
+          "body": "[状态] → testing：t3 联调完成：降级 handler 与 envelope、webServer 注册前缀一致，SSE 路径不挂起（reqboard_task_move）",
+          "createdAt": 1791030258785,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-7420b0",
+          "body": "[状态] → in_review：t3 测试通过：degraded-startup.test.ts 11 条全绿；全量 98 failed 不高于基线（reqboard_task_move）",
+          "createdAt": 1791030262004,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-47039e",
+          "body": "[状态] → done：t3 收尾：未就绪 handler 交付完成（四类请求 503、SSE 不挂起、零副作用）；汇报已登记。（reqboard_task_move）",
+          "createdAt": 1791030327051,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        }
+      ],
+      "version": 7,
+      "createdAt": 1791026705546,
+      "updatedAt": 1791030327051,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791030205264,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/http/not-ready.ts",
+          "tests/reqboard/degraded-startup.test.ts"
+        ],
+        "completed": [
+          "新增 src/http/not-ready.ts：只回 503 的 handler，忽略 method 与 path",
+          "复用 envelope.json，与正常路由同形信封，不各写一套",
+          "SSE 路径先写头再 end，不进事件循环（end 恰好一次）",
+          "零副作用：不建数据根、不写 meta.json、不注册任何业务端口",
+          "用例断言四类请求全 503 且显式非 404、绝不返回空册"
+        ]
+      },
+      "lastRun": {
+        "at": 1791030205264,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ba11c3",
+      "requirementId": "REQ-261003191948-e94a",
+      "title": "接线降级启动分叉并双通道留痕",
+      "cardDoc": "docs/requirements/REQ-261003191948-e94a/tasks/t-ba11c3.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-683371"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/reqboard/degraded-startup.test.ts 全绿；用例在「有单册无 meta.json」夹具下调用分叉逻辑断言不抛错、ctx.inject 只被以 ['webServer'] 调用一次（且从未以 ['tools'] 或 ['systemPrompt'] 调用）、logger.error 实参含 'REQBOARD_REQUIRES_MIGRATION' 且含 hint、captureDiag 写入行含同一 code 与 hint 且不含换行；另一用例注入非迁移门失败断言 enterNotReadyMode 未被调用且异常照旧抛出；grep src/index.ts 断言 'REQBOARD_REQUIRES_MIGRATION' 出现次数为 0（分叉只按 preflight.ok 判定，不散落错误码字面量）。",
+      "implementation": "新建 src/wiring/not-ready.ts：导出 enterNotReadyMode(ctx, failure, logger)，内部先 logger.error('reqboard 未就绪（HTTP 全端点 503）：' + detail) 与 captureDiag('reqboard-capture [NOT-READY]: ' + detail 单行化)，再走 (ctx as any).inject?.(['webServer'], ...) + webCtx.effect?.(...) 注册 { kind:'prefix', path:'/dashboard/api/reqboard', handler: createNotReadyHandler(failure) }（前缀字面量与 index.ts 正常分支逐字一致；本函数不触碰数据根）。改 src/index.ts：把 assertLedgerMigrated(...) 一行换成 const preflight = preflightLedger({...}); if (!preflight.ok) { enterNotReadyMode(ctx, preflight.failure, logger); return }，位置保持在 initCaptureDiag 与 'apply function STARTED' 留痕之后、new ShardedRequirementStore 之前；正常分支起自 new ShardedRequirementStore 且逐字节不变。在 tests/reqboard/degraded-startup.test.ts 追加启动分叉与留痕段（假 ctx 捕获 inject 调用与假 logger）。",
+      "context": "",
+      "stages": [
+        "dev",
+        "integrate",
+        "review"
+      ],
+      "requirementRefs": [
+        "FR-1",
+        "FR-5",
+        "FR-6"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c38f11",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "manual",
+          "startedAt": 1791030333303,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2794,
+              "at": 1791030333303,
+              "totals": {
+                "uncachedInputTokens": 613176,
+                "outputTokens": 276435,
+                "cacheReadTokens": 137995648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2801,
+              "at": 1791030341183,
+              "totals": {
+                "uncachedInputTokens": 618159,
+                "outputTokens": 277437,
+                "cacheReadTokens": 138600320,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 4983,
+              "outputTokens": 1002,
+              "cacheReadTokens": 604672,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791030341183
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791026705546,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791030333303,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t4 开工（依赖 t-bb9da6、t-683371 已 done）"
+        },
+        {
+          "status": "testing",
+          "at": 1791030341183,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t4 开发完成：三相启动分叉 + 降级路由 + 双通道留痕落地（含诊断行单行化）"
+        },
+        {
+          "status": "in_review",
+          "at": 1791030347054,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t4 测试通过：degraded-startup 接线段 3 条全绿（只注入 webServer、双通道留痕、静态边界）"
+        },
+        {
+          "status": "done",
+          "at": 1791030398943,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t4 收尾：三相启动分叉与降级路由接线完成；双通道留痕可追溯；汇报已登记。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9f558b",
+          "body": "[状态] → in_progress：t4 开工（依赖 t-bb9da6、t-683371 已 done）（reqboard_task_move）",
+          "createdAt": 1791030333303,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-989cfb",
+          "body": "[状态] → testing：t4 开发完成：三相启动分叉 + 降级路由 + 双通道留痕落地（含诊断行单行化）（reqboard_task_move）",
+          "createdAt": 1791030341183,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-223bb6",
+          "body": "[状态] → in_review：t4 测试通过：degraded-startup 接线段 3 条全绿（只注入 webServer、双通道留痕、静态边界）（reqboard_task_move）",
+          "createdAt": 1791030347054,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-f271c2",
+          "body": "[状态] → done：t4 收尾：三相启动分叉与降级路由接线完成；双通道留痕可追溯；汇报已登记。（reqboard_task_move）",
+          "createdAt": 1791030398943,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        }
+      ],
+      "version": 6,
+      "createdAt": 1791026705546,
+      "updatedAt": 1791030398943,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "layer": 3,
+      "lastReport": {
+        "at": 1791030209841,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/wiring/not-ready.ts",
+          "src/index.ts",
+          "tests/reqboard/degraded-startup.test.ts"
+        ],
+        "completed": [
+          "新增 src/wiring/not-ready.ts：enterNotReadyMode 注册降级路由 + 双通道留痕",
+          "index.ts 由裸断言改为 preflightLedger 分叉，命中即 return（不抛，保 fiber 存活）",
+          "分叉在构造 ShardedRequirementStore 之前 ⇒ 降级路径不建任何存储",
+          "只注入 webServer 一次，不注入 tools / systemPrompt，不注册任何工具",
+          "诊断行单行化（hint 自带换行，压平防日志停在半句话）",
+          "探针与诊断各自 try/catch，绝不反向制造故障",
+          "静态断言：index.ts 不出现迁移门错误码字面量，边界未被放宽"
+        ]
+      },
+      "lastRun": {
+        "at": 1791030209841,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-e70cdf",
+      "requirementId": "REQ-261003191948-e94a",
+      "title": "客户端数据层透出服务端错误体",
+      "cardDoc": "docs/requirements/REQ-261003191948-e94a/tasks/t-e70cdf.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-f6e737"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/api-client.test.ts 全绿；用例一 mockFetchOnce(503, {success:false, error:'检测到 legacy 单册但数据根尚未迁移', code:'REQBOARD_REQUIRES_MIGRATION', hint:'node --import tsx/esm scripts/migrate-ledger-v10.ts --apply'}) 后断言 rejects 抛出的 ApiError.message 等于服务端 error（显式断言 !== 'HTTP 503'）、code 与 hint 逐字相等；用例二 mockFetchOnce(503) 空体断言 message === 'HTTP 503' 且 hint === undefined。",
+      "implementation": "改 src/client/api.ts：ApiError 构造签名增第三可选参数 hint（readonly hint?: string），message 与 code 语义不变；unwrap 的 !res.ok 分支改为先 await res.json().catch(() => undefined)，body.error 为非空字符串时用它作 message、否则回落 'HTTP ' + res.status（不制造假原因），并把 body.code 与 body.hint 原样传入 ApiError；fetchReqFile 里同样的 !res.ok 分支按同口径处理。改 tests/api-client.test.ts：沿用既有 mockFetchOnce 追加两条用例。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "requirementRefs": [
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-09e1cf",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "manual",
+          "startedAt": 1791030347123,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2810,
+              "at": 1791030347123,
+              "totals": {
+                "uncachedInputTokens": 622536,
+                "outputTokens": 278143,
+                "cacheReadTokens": 139210880,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2817,
+              "at": 1791030357749,
+              "totals": {
+                "uncachedInputTokens": 627731,
+                "outputTokens": 280022,
+                "cacheReadTokens": 139826176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 5195,
+              "outputTokens": 1879,
+              "cacheReadTokens": 615296,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791030357749
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791026705546,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791030347123,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t5 开工（依赖 t-f6e737 已 done）"
+        },
+        {
+          "status": "testing",
+          "at": 1791030357749,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t5 开发完成：errorOf 解析非 2xx 错误体，ApiError 增 hint，unwrap 与 fetchReqFile 同口径"
+        },
+        {
+          "status": "in_review",
+          "at": 1791030357813,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t5 测试通过：api-client.test.ts 8 条全绿（含错误体透出、空体、非 JSON 体）"
+        },
+        {
+          "status": "done",
+          "at": 1791030465464,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t5 收尾：客户端数据层透出服务端错误体，原因与可复制命令不再被丢弃；汇报已登记。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ff6678",
+          "body": "[状态] → in_progress：t5 开工（依赖 t-f6e737 已 done）（reqboard_task_move）",
+          "createdAt": 1791030347123,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-e5cae3",
+          "body": "[状态] → testing：t5 开发完成：errorOf 解析非 2xx 错误体，ApiError 增 hint，unwrap 与 fetchReqFile 同口径（reqboard_task_move）",
+          "createdAt": 1791030357749,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-4bcae3",
+          "body": "[状态] → in_review：t5 测试通过：api-client.test.ts 8 条全绿（含错误体透出、空体、非 JSON 体）（reqboard_task_move）",
+          "createdAt": 1791030357813,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-e03715",
+          "body": "[状态] → done：t5 收尾：客户端数据层透出服务端错误体，原因与可复制命令不再被丢弃；汇报已登记。（reqboard_task_move）",
+          "createdAt": 1791030465464,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        }
+      ],
+      "version": 6,
+      "createdAt": 1791026705546,
+      "updatedAt": 1791030465464,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791030213448,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/api.ts",
+          "tests/api-client.test.ts"
+        ],
+        "completed": [
+          "api.ts 新增 errorOf：非 2xx 先解析错误体再抛",
+          "ApiError 增第三可选参数 hint，既有两参调用全兼容",
+          "unwrap 与 fetchReqFile 同口径，两条丢体路径都堵上",
+          "服务端没给 error 时退回 HTTP 状态码，不替它编原因",
+          "用例含错误体透出、空体、非 JSON 体共 5 条"
+        ]
+      },
+      "lastRun": {
+        "at": 1791030213448,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-cae674",
+      "requirementId": "REQ-261003191948-e94a",
+      "title": "看板报错区渲染可复制的迁移命令",
+      "cardDoc": "docs/requirements/REQ-261003191948-e94a/tasks/t-cae674.md",
+      "description": "",
+      "phase": "ui",
+      "side": "frontend",
+      "dependsOn": [
+        "t-e70cdf"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "pnpm build:client 退出码 0 且输出含 '[verify-client] OK'；新增断言（可写在 tests 或 build 后 node 校验）调用 buildError('检测到 legacy 单册', 'node --import tsx/esm scripts/migrate-ledger-v10.ts --apply') 的返回串同时含 message 与 hint 全文，且 buildError('x') 的返回串不含 'dsh-pm-error-hint'；grep src/client/board-mount.ts 断言 catch 分支把 ApiError.hint 传给了 buildError。",
+      "implementation": "改 src/client/render/dom-utils.ts：buildError(message: string, hint?: string) 增第二可选参数；hint 非空时在既有 .dsh-pm-error 容器内追加「在终端执行：」标签与 <pre class=\"dsh-pm-error-hint\">，message 与 hint 都继续走既有 esc() 转义（hint 含用户主目录路径）；hint 为空时输出与改动前逐字节相同。改 src/client/board-mount.ts：fetchAll 的 catch 分支改为 buildError(err instanceof ApiError ? err.message : String(err), err instanceof ApiError ? err.hint : undefined)。样式复用既有 .dsh-pm-error 令牌，不改 src/client/styles/。",
+      "context": "",
+      "stages": [
+        "dev",
+        "integrate",
+        "review"
+      ],
+      "requirementRefs": [
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-595894",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "manual",
+          "startedAt": 1791030528661,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2858,
+              "at": 1791030528661,
+              "totals": {
+                "uncachedInputTokens": 633122,
+                "outputTokens": 282411,
+                "cacheReadTokens": 143590656,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2860,
+              "at": 1791030528740,
+              "totals": {
+                "uncachedInputTokens": 633122,
+                "outputTokens": 282411,
+                "cacheReadTokens": 143590656,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791030528740
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791026705546,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791030528661,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t6 开工（依赖 t-e70cdf 已 done）"
+        },
+        {
+          "status": "testing",
+          "at": 1791030528740,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t6 开发完成：buildError 增 hint 渲染 pre 命令块 + board-mount 传 hint + base.ts 补样式修正居中问题"
+        },
+        {
+          "status": "in_review",
+          "at": 1791030533009,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t6 测试通过：api-client.test.ts 含 buildError 渲染与转义断言全绿；build:client 通过"
+        },
+        {
+          "status": "done",
+          "at": 1791030533103,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t6 收尾：看板报错区就地渲染可复制命令块；样式偏离已记入复核报告；汇报已登记。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-688f4b",
+          "body": "[状态] → in_progress：t6 开工（依赖 t-e70cdf 已 done）（reqboard_task_move）",
+          "createdAt": 1791030528661,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-dc341c",
+          "body": "[状态] → testing：t6 开发完成：buildError 增 hint 渲染 pre 命令块 + board-mount 传 hint + base.ts 补样式修正居中问题（reqboard_task_move）",
+          "createdAt": 1791030528740,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-223a1d",
+          "body": "[状态] → in_review：t6 测试通过：api-client.test.ts 含 buildError 渲染与转义断言全绿；build:client 通过（reqboard_task_move）",
+          "createdAt": 1791030533009,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-50c961",
+          "body": "[状态] → done：t6 收尾：看板报错区就地渲染可复制命令块；样式偏离已记入复核报告；汇报已登记。（reqboard_task_move）",
+          "createdAt": 1791030533103,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        }
+      ],
+      "version": 6,
+      "createdAt": 1791026705546,
+      "updatedAt": 1791030533103,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "layer": 3,
+      "lastReport": {
+        "at": 1791030219426,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/render/dom-utils.ts",
+          "src/client/board-mount.ts",
+          "src/client/styles/base.ts",
+          "tests/api-client.test.ts"
+        ],
+        "completed": [
+          "dom-utils buildError 增 hint 参数，渲染 pre 命令块（可框选复制）",
+          "board-mount 失败分支传 ApiError.hint，不再只丢 String(err)",
+          "message 与 hint 双走 esc()，含用户主目录路径不破 HTML",
+          "无 hint 时输出与改造前逐字节相同（既有调用点零影响）",
+          "发现并修复：新类名无样式且父容器居中会让命令不可照抄，base.ts 补 3 条规则",
+          "用例含转义断言与无 hint 断言"
+        ]
+      },
+      "lastRun": {
+        "at": 1791030219426,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ef9858",
+      "requirementId": "REQ-261003191948-e94a",
+      "title": "迁移与兼容回归 + 纪律核验",
+      "cardDoc": "docs/requirements/REQ-261003191948-e94a/tasks/t-ef9858.md",
+      "description": "",
+      "phase": "test",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-ba11c3",
+        "t-cae674"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/reqboard/migration-gate.test.ts tests/reqboard/degraded-startup.test.ts tests/api-client.test.ts 三条全绿（退出码 0）；pnpm typecheck 报错数 ≤ 223 且与 HEAD 基线比对结果写入 docs/requirements/REQ-261003191948-e94a/evidence/ 下的证据文件；npx vitest run 失败数 ≤ 106 且同文件里逐项列出「新增失败 = 0」；已迁移与全新安装两个夹具的 preflightLedger 均返回 ok:true 且响应体不含 hint 键。",
+      "implementation": "不改产品代码，只跑命令并把结果落成证据（docs/requirements/REQ-261003191948-e94a/evidence/）。核验四件事：① 三条回归命令全绿（migration-gate、degraded-startup、api-client）；② 兼容性——已迁移用户（单册在且 meta.json 在）与全新安装（两者皆无）下 preflightLedger 均 ok:true，且 HTTP 响应体不含 hint 字段（与改动前逐字节一致）；③ 旧调用方——assertLedgerMigrated 的既有断言不看 hint，重跑既有用例确认零回退；④ 纪律命令 pnpm typecheck 与 npx vitest run 的失败数与 C-14/C-15 基线逐项比对，写入 evidence 文件。",
+      "context": "",
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3",
+        "FR-4",
+        "FR-5",
+        "FR-6"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1f8e4c",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "manual",
+          "startedAt": 1791030595612,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2876,
+              "at": 1791030595612,
+              "totals": {
+                "uncachedInputTokens": 633721,
+                "outputTokens": 283222,
+                "cacheReadTokens": 144850176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2878,
+              "at": 1791030595721,
+              "totals": {
+                "uncachedInputTokens": 633721,
+                "outputTokens": 283222,
+                "cacheReadTokens": 144850176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791030595721
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791026705546,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791030595612,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t7 开工（依赖 t-ba11c3、t-cae674 已 done）"
+        },
+        {
+          "status": "testing",
+          "at": 1791030595721,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t7 回归与纪律核验完成：三条回归命令全绿、全量 98 ≤ 基线 106、类型 150 ≤ 223、构建 0；证据已落盘"
+        },
+        {
+          "status": "in_review",
+          "at": 1791030595806,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t7 测试通过：定向核验反证齐备（回退 routes.ts 变 19 failed），既有失败非本次引入"
+        },
+        {
+          "status": "done",
+          "at": 1791030599132,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "t7 收尾：迁移与兼容回归 + 纪律核验全部跑过并落盘；未覆盖项（非同 commit 逐项比对、端到端未就绪冒烟）已在证据文件如实声明。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-71af71",
+          "body": "[状态] → in_progress：t7 开工（依赖 t-ba11c3、t-cae674 已 done）（reqboard_task_move）",
+          "createdAt": 1791030595612,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-9d8ccc",
+          "body": "[状态] → testing：t7 回归与纪律核验完成：三条回归命令全绿、全量 98 ≤ 基线 106、类型 150 ≤ 223、构建 0；证据已落盘（reqboard_task_move）",
+          "createdAt": 1791030595721,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-b49e9b",
+          "body": "[状态] → in_review：t7 测试通过：定向核验反证齐备（回退 routes.ts 变 19 failed），既有失败非本次引入（reqboard_task_move）",
+          "createdAt": 1791030595806,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-fa27c0",
+          "body": "[状态] → done：t7 收尾：迁移与兼容回归 + 纪律核验全部跑过并落盘；未覆盖项（非同 commit 逐项比对、端到端未就绪冒烟）已在证据文件如实声明。（reqboard_task_move）",
+          "createdAt": 1791030599132,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        }
+      ],
+      "version": 6,
+      "createdAt": 1791026705546,
+      "updatedAt": 1791030599132,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "layer": 4,
+      "lastReport": {
+        "at": 1791030223938,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261003191948-e94a/evidence/verification-evidence.md",
+          "docs/requirements/REQ-261003191948-e94a/tests/test-evidence.md"
+        ],
+        "completed": [
+          "三条回归命令全绿：4 文件 28 条用例",
+          "兼容性核验：预检三态正确，旧调用方零回退，不带 hint 的错误响应体形状不变",
+          "全量 npx vitest run：98 failed ≤ 基线 106（+15 passed 为新增用例）",
+          "npx tsc --noEmit：150 ≤ 基线 223，改动文件 0",
+          "pnpm build 退出码 0；产物新鲜度已核（无 src 新于 dist）",
+          "定向核验反证：回退 routes.ts 后相关 3 文件变 19 failed ⇒ 既有失败非本次引入",
+          "证据落盘：evidence/verification-evidence.md 与 tests/test-evidence.md",
+          "未做到：非同 commit 逐项比对；未做端到端未就绪启动冒烟，已如实标注"
+        ]
+      },
+      "lastRun": {
+        "at": 1791030223938,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-bec57a",
+      "requirementId": "REQ-261003191948-e94a",
+      "title": "给迁移门补只读预检与可复制迁移命令·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/repositories/migrationGate.ts：新增 MigrationFailure（code 用字面量类型 'REQBOARD_REQUIRES_MIGRATION'、message、hint、ledgerFile、dataRoot）与 PreflightResult 判别联合；新增纯读 preflightLedger(options): PreflightResult（只 existsSync 两次，不建目录不写文件）；把 hint 构造收成模块内唯一一处（node --import tsx/esm scripts/migrate-ledger-v10.ts --file <真实 ledgerFile> --out <真实 dataRoot> --apply，不做 shell 转义、不加引号）；assertLedgerMigrated 改为调用 preflightLedger 并 rethrow 同一 failure（message 文本逐字节不变，只多 hint 字段）。测试改 tests/reqboard/migration-gate.test.ts：补 preflightLedger 三态（有单册无 meta / 有单册有 meta / 两者皆无）、hint 含真实路径且不含 <单册> 与 <数据根>、以及「抛错 ⟺ ok:false 且 message 逐字相等」的同源断言。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-bb9da6",
+      "stageKind": "dev",
+      "attempt": 4,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4febb6",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "auto",
+          "startedAt": 1791026705739,
+          "outcome": "failed",
+          "endedAt": 1791026705739,
+          "error": "engine_unavailable"
+        },
+        {
+          "id": "e-7755fe",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "manual",
+          "startedAt": 1791026773948,
+          "outcome": "failed",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 1013,
+              "at": 1791026773948,
+              "totals": {
+                "uncachedInputTokens": 188245,
+                "outputTokens": 91012,
+                "cacheReadTokens": 19546880,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 1680,
+              "at": 1791027345319,
+              "totals": {
+                "uncachedInputTokens": 498999,
+                "outputTokens": 156200,
+                "cacheReadTokens": 53438720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 310754,
+              "outputTokens": 65188,
+              "cacheReadTokens": 33891840,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791027345304,
+          "error": "子卡凭证不过：workflow run 未完成（stopReason=engine_unavailable；engine_unavailable）（REQBOARD_SUBTASK_GATE）"
+        },
+        {
+          "id": "e-86490c",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "auto",
+          "startedAt": 1791027509645,
+          "outcome": "failed",
+          "endedAt": 1791027509645,
+          "error": "engine_unavailable"
+        },
+        {
+          "id": "e-f82805",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "auto",
+          "startedAt": 1791027913677,
+          "outcome": "failed",
+          "endedAt": 1791027913677,
+          "error": "run 异常：cannot get property \"workflowEngine\" without inject"
+        },
+        {
+          "id": "e-b24e8f",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "auto",
+          "startedAt": 1791030104434,
+          "outcome": "failed",
+          "endedAt": 1791030104434,
+          "error": "subtask_engine_unreachable：子卡执行引擎不可达（inject=function get=function byGet=false captured=false [tools=true agents=true webServer=true]）。子卡执行**不会静默成功**。两条出路：① 改由本窗口自证过凭证门——reqboard_task_report 写 filesChanged（写入族：至少一个文件真实存在且 mtime ≥ 链出身）或 completed（结论族），凭证门在没有成功 run 时即按此口径放行；② 让 workflowEngine 在本插件可见的作用域可达（当前 profile 下按设计不可达，**重试无解**）。（legacy code: engine_unavailable）"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-81a0cf",
+          "body": "[状态] → in_progress：开工：t1 的实现已随父卡完成，本子卡做交付前自证（研发段）（reqboard_task_move）",
+          "createdAt": 1791026773948,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        }
+      ],
+      "version": 13,
+      "createdAt": 1791026705686,
+      "updatedAt": 1791030104449,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "system"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791026705686,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791026705739,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "todo",
+          "at": 1791026705748,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791026773948,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "开工：t1 的实现已随父卡完成，本子卡做交付前自证（研发段）"
+        },
+        {
+          "status": "todo",
+          "at": 1791027345304,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791027509645,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "todo",
+          "at": 1791027509670,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791027913678,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "todo",
+          "at": 1791027913732,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791030104438,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "done",
+          "at": 1791030104449,
+          "by": {
+            "kind": "system"
+          }
+        }
+      ],
+      "layer": 0,
+      "claimedAt": 1791030104434,
+      "claimedBy": "system",
+      "lastRun": {
+        "at": 1791030104438,
+        "ok": false,
+        "stopReason": "subtask_engine_unreachable：子卡执行引擎不可达（inject=function get=function byGet=false captured=false [tools=true agents=true webServer=true]）。子卡执行**不会静默成功**。两条出路：① 改由本窗口自证过凭证门——reqboard_task_report 写 filesChanged（写入族：至少一个文件真实存在且 mtime ≥ 链出身）或 completed（结论族），凭证门在没有成功 run 时即按此口径放行；② 让 workflowEngine 在本插件可见的作用域可达（当前 profile 下按设计不可达，**重试无解**）。（legacy code: engine_unavailable）",
+        "valueNonEmpty": false,
+        "reason": "subtask_engine_unreachable：子卡执行引擎不可达（inject=function get=function byGet=false captured=false [tools=true agents=true webServer=true]）。子卡执行**不会静默成功**。两条出路：① 改由本窗口自证过凭证门——reqboard_task_report 写 filesChanged（写入族：至少一个文件真实存在且 mtime ≥ 链出身）或 completed（结论族），凭证门在没有成功 run 时即按此口径放行；② 让 workflowEngine 在本插件可见的作用域可达（当前 profile 下按设计不可达，**重试无解**）。（legacy code: engine_unavailable）"
+      },
+      "lastReport": {
+        "at": 1791026782932,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/repositories/migrationGate.ts",
+          "tests/reqboard/migration-gate.test.ts"
+        ],
+        "completed": [
+          "migrationGate.ts 144 行：预检与抛错两入口同源，hint 单一构造点",
+          "migration-gate.test.ts 137 行：新增 3 条用例锁三态、占位符与 message 同源",
+          "npx vitest run tests/reqboard/migration-gate.test.ts 7 个用例全绿",
+          "两文件均为新增未跟踪文件，故以行数与 vitest 输出作交付摘要",
+          "npx tsc --noEmit 命中改动文件错误数 0（全量 150，基线 223）"
+        ]
+      }
+    },
+    {
+      "id": "t-5479a5",
+      "requirementId": "REQ-261003191948-e94a",
+      "title": "给迁移门补只读预检与可复制迁移命令·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-bec57a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/repositories/migrationGate.ts：新增 MigrationFailure（code 用字面量类型 'REQBOARD_REQUIRES_MIGRATION'、message、hint、ledgerFile、dataRoot）与 PreflightResult 判别联合；新增纯读 preflightLedger(options): PreflightResult（只 existsSync 两次，不建目录不写文件）；把 hint 构造收成模块内唯一一处（node --import tsx/esm scripts/migrate-ledger-v10.ts --file <真实 ledgerFile> --out <真实 dataRoot> --apply，不做 shell 转义、不加引号）；assertLedgerMigrated 改为调用 preflightLedger 并 rethrow 同一 failure（message 文本逐字节不变，只多 hint 字段）。测试改 tests/reqboard/migration-gate.test.ts：补 preflightLedger 三态（有单册无 meta / 有单册有 meta / 两者皆无）、hint 含真实路径且不含 <单册> 与 <数据根>、以及「抛错 ⟺ ok:false 且 message 逐字相等」的同源断言。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-bb9da6",
+      "stageKind": "review",
+      "attempt": 1,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-25a3a4",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "auto",
+          "startedAt": 1791030104566,
+          "outcome": "failed",
+          "endedAt": 1791030104566,
+          "error": "subtask_engine_unreachable：子卡执行引擎不可达（inject=function get=function byGet=false captured=false [tools=true agents=true webServer=true]）。子卡执行**不会静默成功**。两条出路：① 改由本窗口自证过凭证门——reqboard_task_report 写 filesChanged（写入族：至少一个文件真实存在且 mtime ≥ 链出身）或 completed（结论族），凭证门在没有成功 run 时即按此口径放行；② 让 workflowEngine 在本插件可见的作用域可达（当前 profile 下按设计不可达，**重试无解**）。（legacy code: engine_unavailable）"
+        },
+        {
+          "id": "e-72f12f",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "manual",
+          "startedAt": 1791030130782,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2633,
+              "at": 1791030130782,
+              "totals": {
+                "uncachedInputTokens": 585552,
+                "outputTokens": 262875,
+                "cacheReadTokens": 122803968,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2639,
+              "at": 1791030135519,
+              "totals": {
+                "uncachedInputTokens": 586002,
+                "outputTokens": 263023,
+                "cacheReadTokens": 123369472,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 450,
+              "outputTokens": 148,
+              "cacheReadTokens": 565504,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791030135518
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b551bc",
+          "body": "[状态] → in_progress：复核段开工（依赖 t-bec57a 已 done）（reqboard_task_move）",
+          "createdAt": 1791030130782,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-2a96be",
+          "body": "[状态] → done：复核段完成：逐条对照设计 6 条 FR，抓出并修复 3 条缺陷；结论与 3 项未覆盖已落 reviews/self-review.md。凭证按「无成功 run + 汇报兜底」口径通过（run 失败于 subtask_engine_unreachable，属环境类）。（reqboard_task_move）",
+          "createdAt": 1791030135518,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        }
+      ],
+      "version": 6,
+      "createdAt": 1791026705686,
+      "updatedAt": 1791030135518,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791026705686,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791030104566,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "todo",
+          "at": 1791030104575,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791030130782,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "复核段开工（依赖 t-bec57a 已 done）"
+        },
+        {
+          "status": "done",
+          "at": 1791030135518,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "复核段完成：逐条对照设计 6 条 FR，抓出并修复 3 条缺陷；结论与 3 项未覆盖已落 reviews/self-review.md。凭证按「无成功 run + 汇报兜底」口径通过（run 失败于 subtask_engine_unreachable，属环境类）。"
+        }
+      ],
+      "layer": 1,
+      "lastRun": {
+        "at": 1791030104566,
+        "ok": false,
+        "stopReason": "subtask_engine_unreachable：子卡执行引擎不可达（inject=function get=function byGet=false captured=false [tools=true agents=true webServer=true]）。子卡执行**不会静默成功**。两条出路：① 改由本窗口自证过凭证门——reqboard_task_report 写 filesChanged（写入族：至少一个文件真实存在且 mtime ≥ 链出身）或 completed（结论族），凭证门在没有成功 run 时即按此口径放行；② 让 workflowEngine 在本插件可见的作用域可达（当前 profile 下按设计不可达，**重试无解**）。（legacy code: engine_unavailable）",
+        "valueNonEmpty": false,
+        "reason": "subtask_engine_unreachable：子卡执行引擎不可达（inject=function get=function byGet=false captured=false [tools=true agents=true webServer=true]）。子卡执行**不会静默成功**。两条出路：① 改由本窗口自证过凭证门——reqboard_task_report 写 filesChanged（写入族：至少一个文件真实存在且 mtime ≥ 链出身）或 completed（结论族），凭证门在没有成功 run 时即按此口径放行；② 让 workflowEngine 在本插件可见的作用域可达（当前 profile 下按设计不可达，**重试无解**）。（legacy code: engine_unavailable）"
+      },
+      "lastReport": {
+        "at": 1791030126822,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261003191948-e94a/reviews/self-review.md",
+          "src/client/styles/base.ts",
+          "src/application/internal/diag-log.ts"
+        ],
+        "completed": [
+          "对照设计 6 条 FR 与 serves 落点，逐条判定实现一致",
+          "发现 F1：诊断行未单行化，hint 换行把命令切到第二行（阻塞级，已修）",
+          "发现 F2：新类名无样式，父容器 text-align:center 会让命令块居中不可照抄（已补样式）",
+          "发现 F3：探针读 ctx.workflowEngine 被 cordis 守卫抛异常，把优雅降级变 run 异常（已修）",
+          "记录 3 项未覆盖：端到端未就绪启动、未就绪页面观感、热重载不可重载宿主模块的其它路径",
+          "结论：实现与设计逐条对得上，边界未被放宽；3 条发现均已修并重建"
+        ]
+      }
+    },
+    {
+      "id": "t-3b4d8e",
+      "requirementId": "REQ-261003191948-e94a",
+      "title": "给迁移门补只读预检与可复制迁移命令·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-5479a5"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 src/repositories/migrationGate.ts：新增 MigrationFailure（code 用字面量类型 'REQBOARD_REQUIRES_MIGRATION'、message、hint、ledgerFile、dataRoot）与 PreflightResult 判别联合；新增纯读 preflightLedger(options): PreflightResult（只 existsSync 两次，不建目录不写文件）；把 hint 构造收成模块内唯一一处（node --import tsx/esm scripts/migrate-ledger-v10.ts --file <真实 ledgerFile> --out <真实 dataRoot> --apply，不做 shell 转义、不加引号）；assertLedgerMigrated 改为调用 preflightLedger 并 rethrow 同一 failure（message 文本逐字节不变，只多 hint 字段）。测试改 tests/reqboard/migration-gate.test.ts：补 preflightLedger 三态（有单册无 meta / 有单册有 meta / 两者皆无）、hint 含真实路径且不含 <单册> 与 <数据根>、以及「抛错 ⟺ ok:false 且 message 逐字相等」的同源断言。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-bb9da6",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-58a500",
+          "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+          "trigger": "manual",
+          "startedAt": 1791030150887,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2651,
+              "at": 1791030150887,
+              "totals": {
+                "uncachedInputTokens": 586340,
+                "outputTokens": 263605,
+                "cacheReadTokens": 124502144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30",
+              "seq": 2657,
+              "at": 1791030153723,
+              "totals": {
+                "uncachedInputTokens": 586786,
+                "outputTokens": 263749,
+                "cacheReadTokens": 125069056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 446,
+              "outputTokens": 144,
+              "cacheReadTokens": 566912,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791030153723
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-abbc54",
+          "body": "[状态] → in_progress：测试段开工（依赖 t-5479a5 已 done）（reqboard_task_move）",
+          "createdAt": 1791030150887,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        },
+        {
+          "id": "c-7e59b3",
+          "body": "[状态] → done：测试段完成：全量 98 failed ≤ 基线 98、类型 150 ≤ 150、构建 0；证据落 tests/test-evidence.md。凭证按「无成功 run + 汇报兜底」口径通过（run 失败于 subtask_engine_unreachable，属环境类）。（reqboard_task_move）",
+          "createdAt": 1791030153723,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791026705686,
+      "updatedAt": 1791030153723,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791026705686,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791030150887,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "测试段开工（依赖 t-5479a5 已 done）"
+        },
+        {
+          "status": "done",
+          "at": 1791030153723,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-44207972-0dfc-41f4-89c0-01681149cd30"
+          },
+          "reason": "测试段完成：全量 98 failed ≤ 基线 98、类型 150 ≤ 150、构建 0；证据落 tests/test-evidence.md。凭证按「无成功 run + 汇报兜底」口径通过（run 失败于 subtask_engine_unreachable，属环境类）。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791030140234,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261003191948-e94a/tests/test-evidence.md"
+        ],
+        "completed": [
+          "定向用例 4 文件 28 条全绿（migration-gate 7 / task-read-root-sync 2 / degraded-startup 11 / api-client 8）",
+          "修前必红已证：回退 TaskTree 的 agentIdFromExec → task-read-root-sync 1 failed，还原即绿",
+          "pnpm build 退出码 0；verify-client OK bundle=337435 bytes",
+          "pnpm build:client 重建；npx tsc --noEmit 150（基线 223），改动文件错误 0",
+          "全量 npx vitest run：98 failed / 3352 passed（基线 106 / 2807），零回归",
+          "定向核验：改动面相关 40 个用例文件 357 passed / 9 failed，反证回退 routes.ts 后变 19 failed",
+          "未做端到端未就绪启动冒烟与页面观感核对，已如实记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1791030140234,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-bb9da6",
+      "to": "t-f6e737"
+    },
+    {
+      "from": "t-f6e737",
+      "to": "t-683371"
+    },
+    {
+      "from": "t-683371",
+      "to": "t-ba11c3"
+    },
+    {
+      "from": "t-f6e737",
+      "to": "t-e70cdf"
+    },
+    {
+      "from": "t-e70cdf",
+      "to": "t-cae674"
+    },
+    {
+      "from": "t-ba11c3",
+      "to": "t-ef9858"
+    },
+    {
+      "from": "t-cae674",
+      "to": "t-ef9858"
+    },
+    {
+      "from": "t-bec57a",
+      "to": "t-5479a5"
+    },
+    {
+      "from": "t-5479a5",
+      "to": "t-3b4d8e"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-bb9da6",
+        "t-bec57a"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-f6e737",
+        "t-5479a5"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-683371",
+        "t-e70cdf",
+        "t-3b4d8e"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-ba11c3",
+        "t-cae674"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-ef9858"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-03T12:29:59.132Z"
+}

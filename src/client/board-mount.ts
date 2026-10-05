@@ -16,8 +16,15 @@ import {
   type BoardViewKind, type ListSortDir, type ListSortKey, type ListViewOpts,
 } from './view.ts'
 import * as api from './api.ts'
+// REQ-261003191948-e94a FR-4：失败呈现要区分「服务端说了什么」（ApiError.message/hint）
+// 与「本地异常」（String(err)）——前者带可复制的修复命令。
+import { ApiError } from './api.ts'
 import { openDocInSidebar, resolveCurrentSessionId, setDocWorkspaceContext } from './open-doc.ts'
+// REQ-261004103330-005f t11：设置弹窗（单例；挂 body、自建委派；跳会话与打开文档由本模块注入）
+import { configureBoardSettings, disposeBoardSettings, openBoardSettings } from './settings/singleton.ts'
 import { archivedSessionIds, handleSessionJump, jumpToSession, windowServiceAccess, type SessionJumpResult } from './session-jump.ts'
+// REQ-261004210128-283d FR-5/FR-8：运行态订阅与重绘门控（读数与映射的唯一实现在 session-running）
+import { NO_RUNNING, relevantSessionIds, runningAmong, runningSessionIds, sameRunningSet, subscribeSessionRunning } from './session-running.ts'
 import { fmt } from '../domain/text/fmt.js'
 // REQ-260928222643-4d34 FR-2：一次性定位交接——挂载时消费节点面板登记的 REQ id
 import * as boardFocus from './board-focus.ts'
@@ -25,6 +32,12 @@ import { renderStageNode } from './stage-panel.ts'
 import { hasInjectionWindow, renderInjectionInfo } from './injection-info.ts'
 import { renderTokenPlaceholder, renderTokenTab } from './token-info.ts'
 import { renderMarksBlock, renderMarksPlaceholder } from './marks-info.ts'
+// REQ-261004184822-9881 FR-1/FR-3：重绘前后记住并回填泳道滚动位置（位置不得因刷新归零）
+import { captureBoardScroll, restoreBoardScroll } from './board-scroll.ts'
+// REQ-261004195831-0f52 FR-1/FR-2/FR-3：详情正文按需取全文（/state 只发摘要），
+// 取数中/未找到/失败三种非成功态各有明确占位——此前详情页直接拿摘要当全文渲染，点开即崩。
+import { createReqDetailStore } from './req-detail-store.ts'
+import { buildDetailError, buildDetailLoading, buildDetailMissing } from './views/detail-states.ts'
 import { updateTraceabilityView } from './traceability-handler.js'
 import { tryMountDagCanvas } from './dag-mount.js'
 import type { StageOverview, StageKey } from '../shared/protocol.ts'
@@ -126,17 +139,23 @@ type ViewMode =
 /**
  * 会话跳转结果的**明确反馈**（REQ-31e11f #5：不允许点了没反应）。
  * 'opened' 不打扰（已经跳过去了）；其余结果必须能说清“为什么没跳”。
+ * REQ-261002153446-c600：'restore-failed'（取消归档动作失败）也是「没跳」的一种，
+ * 文案要给出一条真的能走的路（去会话列表手动恢复）。
  * 导出以便单测覆盖（纯函数，无 DOM 依赖）。
  */
 export function jumpResultMessage(result: SessionJumpResult, sid: string): string {
   const short = sid.length > 18 ? sid.slice(0, 18) + '…' : sid
   switch (result) {
     case 'archived':
-      return '该会话已归档（' + short + '）：日志保留、侧栏不可见，无法跳转'
+      // 已归档 + 客户端不支持取消归档（旧版本）：说清是能力问题，不是「这功能不存在」
+      return '该会话已归档（' + short + '），且当前客户端不支持取消归档，无法跳转'
+    case 'restore-failed':
+      // 恢复动作本身失败：不跳、也不假装跳了
+      return '取消归档失败（' + short + '）：会话未恢复，未跳转（可到会话列表手动恢复后重试）'
     case 'missing':
       return '该会话不在当前会话列表（' + short + '）：可能已删除或不在当前工作区'
     case 'unavailable':
-      return '会话导航服务不可用（uiWorkspace 未注入），请刷新页面后重试'
+      return '会话导航服务暂不可用（uiWorkspace 未注入），请刷新页面后重试'
     case 'opened':
       return ''
     default:
@@ -169,6 +188,67 @@ export interface BoardAttachment {
 /** 宿主「恒在看」兜底（未提供可见性门闩时）。 */
 const ALWAYS_ACTIVE = (): boolean => true
 
+/* ---------------------------------------------------------------- 详情页草稿 */
+
+/**
+ * 详情页里「用户自己弄出来的状态」——重绘必须原样还回去（REQ-261004195831-0f52 FR-3）。
+ *
+ * 为什么需要它：详情每收到一次 SSE / 轮询就整段 `innerHTML` 重建，而「停在哪个 Tab」与
+ * 「评论框里打了一半的字」只活在 DOM 上——重建即归零（与泳道滚动位置同一类缺陷，
+ * 复用同一套「重绘前取值 / 重绘后回填」做法，见 board-scroll.ts）。
+ */
+export interface DetailDraft {
+  reqId: string
+  /** 当前激活的 Tab 名（data-tab）；空串 = 无 */
+  tab: string
+  /** 评论输入框里未提交的草稿；空串 = 无 */
+  comment: string
+}
+
+/** 切换详情页的 Tab（点击与回填**共用**同一处实现，避免两套切法各说各话）。 */
+export function setDetailTab(detail: HTMLElement, tabName: string): void {
+  detail.querySelectorAll<HTMLElement>('.dsh-pm-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tabName)
+  })
+  detail.querySelectorAll<HTMLElement>('.dsh-pm-tab-content').forEach(c => {
+    c.classList.toggle('active', c.dataset.tabContent === tabName)
+  })
+}
+
+/** 重绘前取值：只认当前详情容器（看板/任务页没有详情容器 → undefined，静默跳过）。 */
+export function captureDetailDraft(el: HTMLElement): DetailDraft | undefined {
+  // 容器可能只有 innerHTML（宿主桩 / 极简容器）：没有查询能力就静默跳过，
+  // 绝不因为「取一次草稿」这件小事把整次渲染带崩（同 board-scroll 的既有纪律）。
+  if (typeof el.querySelector !== 'function') return undefined
+  const detail = el.querySelector<HTMLElement>('.dsh-pm-detail[data-detail-req]')
+  if (detail === null) return undefined
+  const active = detail.querySelector<HTMLElement>('.dsh-pm-tab.active')
+  const input = detail.querySelector<HTMLInputElement>('[data-role="comment-input"]')
+  return {
+    reqId: detail.dataset.detailReq ?? '',
+    tab: active?.dataset.tab ?? '',
+    comment: input?.value ?? '',
+  }
+}
+
+/**
+ * 重绘后回填。**只回填同一条需求**：A 需求的草稿不得贴到 B 需求（换需求时草稿是新的空白），
+ * 找不到容器/元素即静默跳过（与 restoreBoardScroll 同纪律，绝不创建节点）。
+ */
+export function restoreDetailDraft(el: HTMLElement, draft: DetailDraft | undefined): void {
+  if (draft === undefined || draft.reqId.length === 0) return
+  if (typeof el.querySelector !== 'function') return
+  const detail = el.querySelector<HTMLElement>('.dsh-pm-detail[data-detail-req="' + draft.reqId + '"]')
+  if (detail === null || detail.dataset.detailReq !== draft.reqId) return
+  if (draft.tab.length > 0 && detail.querySelector('.dsh-pm-tab[data-tab="' + draft.tab + '"]') !== null) {
+    setDetailTab(detail, draft.tab)
+  }
+  if (draft.comment.length > 0) {
+    const input = detail.querySelector<HTMLInputElement>('[data-role="comment-input"]')
+    if (input !== null) input.value = draft.comment
+  }
+}
+
 /**
  * 把命令式看板挂到宿主给的容器上 —— 集中承担容器上的 click/change 事件委派、
  * fetchAll、startEvents 订阅、轮询与 visibilitychange）整体下沉到这里；返回句柄由宿主决定
@@ -200,6 +280,14 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
   let unsubEvents: (() => void) | undefined
   let pollTimer: number | undefined
   let disposed = false
+  /**
+   * 运行态订阅的退订句柄 + 上一次渲染用过的在跑集合（REQ-261004210128-283d FR-5/FR-8）。
+   *
+   * 为什么必须留存「上一次的集合」：`ctx.sessions.list` 这个 store 在**任意**会话的任何变化时都会通知
+   * （官方整表重投影）——不看门控就重绘，别的窗口每动一下都会把看板整块 `innerHTML` 刷一遍。
+   */
+  let unsubRunning: (() => void) | undefined
+  let lastRunning: ReadonlySet<string> = NO_RUNNING
 
   const listOpts = (): ListViewOpts => ({
     sortKey: listSortKey, sortDir: listSortDir, page: listPage, pageSize: listPageSize,
@@ -207,6 +295,24 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
 
   /** 已归档会话 id 集合（渲染时实时读取 → 归档/取消归档后下次重绘即生效）。 */
   const archivedSids = (): ReadonlySet<string> => archivedSessionIds()
+
+  /**
+   * 本次渲染关心的「在跑集合」：只保留当前页需求绑定的窗口（席位 ∪ 来源窗口）。
+   * 渲染时实时读（与 `archivedSids()` 同款）——不留缓存副本，避免第二份真相。
+   */
+  const runningNow = (): ReadonlySet<string> =>
+    runningAmong(relevantSessionIds((state?.requirements ?? []) as never), runningSessionIds())
+
+  /**
+   * 相关运行态是否变化（重绘门控）：无关会话的抖动在这里被挡掉。
+   * state 尚未到达时，只比较「空集 vs 空集」——取数完成后的首次 render 自会收敛。
+   */
+  const runningChanged = (): boolean => {
+    const next = runningNow()
+    if (sameRunningSet(next, lastRunning)) return false
+    lastRunning = next
+    return true
+  }
 
   const writeListPref = (): void => {
     try {
@@ -230,60 +336,131 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
 
   // ---- 渲染 ------------------------------------------------------------
 
+  /**
+   * 详情全文取数（REQ-261004195831-0f52 FR-1/FR-3）。
+   *
+   * `onChange` 走 `scheduleRender` 而不是直接 `render()`：`ensure` 在"登记 loading"这一拍
+   * **同步**回调，直接重绘会在同一次 render 里再进一次 render（递归一圈、白挂一次 DAG）；
+   * 微任务里合并成一次重绘，既去重也避免同步重入。
+   */
+  let renderScheduled = false
+  const scheduleRender = (): void => {
+    if (renderScheduled || disposed) return
+    renderScheduled = true
+    void Promise.resolve().then(() => {
+      renderScheduled = false
+      if (!disposed) render()
+    })
+  }
+
+  const reqDetail = createReqDetailStore({
+    fetchRequirement: (id: string) => api.fetchRequirement(id),
+    onChange: () => { if (mode.kind === 'req') scheduleRender() },
+  })
+
+  /**
+   * 最近一次成功渲染的详情全文（按需求 id）。**只为「重新取数途中不闪白」**：
+   * 台账 revision 一变就会重取，若这期间退回 loading 占位，每有一条 SSE 详情页就闪一下
+   * （requirement.md 非功能需求明确要求「无白屏、无闪烁」）。取数失败/未找到仍如实落对应占位，
+   * 绝不拿旧数据假装新数据。
+   */
+  const lastRenderedDetail = new Map<string, RequirementRecord>()
+
   const render = (): void => {
     if (viewEl === undefined) return
     if (state === undefined) { viewEl.innerHTML = buildEmpty(); return }
+    // REQ-261004184822-9881 FR-1：下面的 innerHTML 赋值会销毁 `.dsh-pm-lanes`（横向滚动容器）
+    // 与各列的 `.dsh-pm-lane-cards`（列内纵向容器）——位置只活在 DOM 上，故赋值前读出来、赋值后写回去。
+    // 非泳道视图（列表 / 详情 / 任务总览）两边都静默跳过，且 capture 不覆盖已有记忆（FR-2）。
+    captureBoardScroll(viewEl)
     // mode 在闭包内可被事件回调改写，直接 switch 无法做判别收窄；取 const 快照后再收窄（类型层修复，无行为变化）
     const cur = mode
     switch (cur.kind) {
-      case 'board':
-        viewEl.innerHTML = buildBoard(state, Date.now(), boardView, listOpts(), archivedSids())
+      case 'board': {
+        // REQ-261004210128-283d FR-3/FR-4：渲染时实时读运行态，并把本次用的集合记为门控基准
+        const running = runningNow()
+        lastRunning = running
+        viewEl.innerHTML = buildBoard(state, Date.now(), boardView, listOpts(), archivedSids(), running)
         break
+      }
       case 'req': {
-        const req = state.requirements.find(r => r.id === cur.reqId)
-        // DAG 画布与绿点共用同一份事实源：需求任务 + 队列 ready[]（缺 ready 时画布标「推导」）
-        const reqTasks = req === undefined ? [] : state.tasks.filter(t => t.requirementId === req.id)
-        const reqReady = req === undefined ? undefined : state.ready?.[req.id]
-        viewEl.innerHTML = req
-          ? buildReqDetail(req, state.tasks, Date.now(), archivedSids())
-          : buildBoard(state, Date.now(), boardView, listOpts(), archivedSids())
-        if (!req) mode = { kind: 'board' }
-        else {
-          setStageNavActive(activeStage)
-          void verifyDocExistence()
-          // REQ-6f39b5：节点导航已删除，概览 Tab「当前阶段详情」进入即自动加载当前阶段
-          void loadStageDetail(req.id, req.status)
-          // REQ-422af1 t11：「本次注入了什么」只读块（按来源窗口回查留痕）
-          void loadInjectionInfo(req.sourceSessionId)
-          // REQ-a33899 t6：Token tab 内容（打开详情即预取，切到该 tab 直接可见）
-          void loadTokenTab(req.id)
-          // REQ-d3e61a T-5：条款接收状态（打开详情即取，红名单第一时间可见）
-          void loadMarksBlock(req.id)
-          // 挂载 DAG Canvas（REQ-260928001915-f978）：真依赖边 + 悬停/钉住 + 关键路径/只看主线
-          tryMountDagCanvas(reqTasks, reqReady)
+        // REQ-261004195831-0f52 FR-1/FR-2/FR-3：**摘要只喂骨架，正文来自按需取全文**。
+        // 改前这里直接 `state.requirements.find()` 交给 buildReqDetail —— `/state` 只发摘要后
+        // 那句就是线上崩溃点（`renderComments(req.comments)` 对 undefined 取 .length）。
+        const summary = state.requirements.find(r => r.id === cur.reqId)
+        const entry = reqDetail.get(cur.reqId)
+        // 每次重绘都无脑调：store 自己负责在途去重与按版本失效（版本没变就是纯读）
+        reqDetail.ensure(cur.reqId, summary?.version, state.revision)
+        // 与泳道滚动同款：innerHTML 赋值前把「用户自己弄出来的状态」取出来
+        const draft = captureDetailDraft(viewEl)
+        if (entry?.status === 'missing') {
+          // 未找到（404）：说清是哪条需求没了 + 给返回按钮；**不**静默弹回看板（改前的行为）。
+          // 优先级排在「上一次渲染过的全文」之前：需求被删后不能继续拿旧数据装作还在。
+          viewEl.innerHTML = buildDetailMissing(cur.reqId, entry.message)
+        } else if (entry?.status === 'error') {
+          // 失败：原因 + 可复制命令 + 重试入口，同样留在详情态（同样不得被旧数据挡住）
+          viewEl.innerHTML = buildDetailError(cur.reqId, entry.message, entry.hint)
+        } else if (entry?.status === 'ready' || lastRenderedDetail.has(cur.reqId)) {
+          // ready = 有全文；loading + 上一次渲染过的全文 = **重新取数途中**：
+          // 先拿旧的顶着一帧（否则每来一条 SSE 详情页就闪一下 loading），新数据到了再换。
+          const ready = entry?.status === 'ready' ? entry.record : lastRenderedDetail.get(cur.reqId)
+          if (ready === undefined) {
+            viewEl.innerHTML = buildDetailLoading(cur.reqId)
+          } else {
+            // DAG 画布与绿点共用同一份事实源：需求任务 + 队列 ready[]（缺 ready 时画布标「推导」）
+            const reqTasks = state.tasks.filter(t => t.requirementId === ready.id)
+            const reqReady = state.ready?.[ready.id]
+            lastRenderedDetail.set(cur.reqId, ready)
+            viewEl.innerHTML = buildReqDetail(ready, state.tasks, Date.now(), archivedSids())
+            setStageNavActive(activeStage)
+            void verifyDocExistence()
+            // REQ-6f39b5：节点导航已删除，概览 Tab「当前阶段详情」进入即自动加载当前阶段
+            void loadStageDetail(ready.id, ready.status)
+            // REQ-422af1 t11：「本次注入了什么」只读块（按来源窗口回查留痕）
+            void loadInjectionInfo(ready.sourceSessionId)
+            // REQ-a33899 t6：Token tab 内容（打开详情即预取，切到该 tab 直接可见）
+            void loadTokenTab(ready.id)
+            // REQ-d3e61a T-5：条款接收状态（打开详情即取，红名单第一时间可见）
+            void loadMarksBlock(ready.id)
+            // 挂载 DAG Canvas（REQ-260928001915-f978）：真依赖边 + 悬停/钉住 + 关键路径/只看主线
+            // REQ-261001210304-0dfb FR-4：需求视图状态记忆键含需求 id，
+            // 否则同一块 #dag-canvas 承载不同需求时会把上一个需求的方向/开关带过来。
+            tryMountDagCanvas(reqTasks, reqReady, 'dag-canvas', { stateKey: 'dag-canvas::' + ready.id })
+          }
+        } else {
+          viewEl.innerHTML = buildDetailLoading(cur.reqId)
         }
+        restoreDetailDraft(viewEl, draft)
         break
       }
       case 'task': {
         const task = state.tasks.find(t => t.id === cur.taskId)
         const req = task ? state.requirements.find(r => r.id === task.requirementId) : undefined
-        viewEl.innerHTML = task
-          ? buildTaskDetail(task, req, Date.now(), state.tasks, archivedSids())
-          : buildBoard(state, Date.now(), boardView, listOpts(), archivedSids())
-        if (!task) mode = { kind: 'board' }
+        if (task) {
+          viewEl.innerHTML = buildTaskDetail(task, req, Date.now(), state.tasks, archivedSids())
+        } else {
+          // 回落看板时同样带上运行态（否则「任务详情 → 看板」这条路径会丢掉指示）
+          const running = runningNow()
+          lastRunning = running
+          viewEl.innerHTML = buildBoard(state, Date.now(), boardView, listOpts(), archivedSids(), running)
+          mode = { kind: 'board' }
+        }
         break
       }
       case 'tasks':
         viewEl.innerHTML = buildTasksPage(state)
         break
     }
+    // 新 DOM 已在屏：把位置写回去（找不到泳道容器 / 该列就跳过，绝不创建节点）
+    restoreBoardScroll(viewEl)
   }
 
   // ---- 数据 ------------------------------------------------------------
 
   const fetchAll = async (): Promise<void> => {
     try {
-      const s = await api.fetchState()
+      // FR-11：带上当前会话 id，服务端才能把读根解析成**本会话的工作区**（而不是插件宿主目录）
+      const s = await api.fetchState(resolveCurrentSessionId())
       state = s
       // FR-4：缓存服务端工作区根——open-doc 打开与显示文档统一走绝对路径（与查看会话工作区解耦）；
       // 同时缓存需求级 workspaceRoot 表（FR-6：产物相对需求工作区落盘，读路径必须同根，
@@ -292,7 +469,7 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
       for (const r of s.requirements) {
         if (typeof r.workspaceRoot === 'string' && r.workspaceRoot.length > 0) reqRoots[r.id] = r.workspaceRoot
       }
-      setDocWorkspaceContext(s.workspaceRoot, s.homeDir, reqRoots)
+      setDocWorkspaceContext(s.workspaceRoot, s.homeDir, reqRoots, s.sessionWorkspaceRoot)
 
       // 🔧 修复：刷新时重置 activeStage 为需求当前状态
       // 如果当前在需求详情页，将 activeStage 重置为该需求的当前状态
@@ -307,7 +484,14 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
       }
       render()
     } catch (err) {
-      if (viewEl !== undefined) viewEl.innerHTML = buildError(String(err))
+      // REQ-261003191948-e94a FR-4：把服务端给的原因与**可复制命令**一起呈现。
+      // 此前只传 String(err)（=「Error: HTTP 404」），服务端说的话全丢了。
+      if (viewEl !== undefined) {
+        viewEl.innerHTML = buildError(
+          err instanceof ApiError ? err.message : String(err),
+          err instanceof ApiError ? err.hint : undefined,
+        )
+      }
     }
   }
 
@@ -336,9 +520,23 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
     console.log('[pmboard] handling action:', action)
 
     switch (action) {
+      case 'settings-open':
+        // 弹窗挂 document.body（R1：容器会被 innerHTML 重绘抹掉），故它自建委派（R2）；
+        // 跳会话与打开文档经下方 deps 注入，不反向 import 本模块（避免成环）。
+        openBoardSettings('limits')
+        return
       case 'refresh':
         void fetchAll()
         return
+      case 'retry-detail': {
+        // REQ-261004195831-0f52 FR-2：详情取数失败/未找到后的重试入口。
+        // 只重取这条需求（不是整块看板）：store 会清旧结果并立刻登记 loading。
+        const reqId = el.dataset.id
+        if (reqId === undefined || reqId.length === 0) return
+        reqDetail.retry(reqId)
+        render()
+        return
+      }
       case 'switch-view': {
         const next = el.dataset.view
         if (next === 'lanes' || next === 'list') {
@@ -378,25 +576,10 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         if (!tabName) return
         
         // 切换 Tab active 状态
-        const tabsContainer = tab.closest('.dsh-pm-detail')
+        const tabsContainer = tab.closest<HTMLElement>('.dsh-pm-detail')
         if (!tabsContainer) return
-        
-        tabsContainer.querySelectorAll('.dsh-pm-tab').forEach(t => {
-          t.classList.remove('active')
-        })
-        tab.classList.add('active')
-        
-        // 切换内容区显示
-        tabsContainer.querySelectorAll('.dsh-pm-tab-content').forEach(content => {
-          content.classList.remove('active')
-        })
-        
-        const targetContent = tabsContainer.querySelector(
-          `.dsh-pm-tab-content[data-tab-content="${tabName}"]`
-        )
-        if (targetContent) {
-          targetContent.classList.add('active')
-        }
+        // 与「重绘后回填」共用同一处切换实现（setDetailTab），避免两套切法各说各话
+        setDetailTab(tabsContainer, tabName)
         // REQ-a33899 t6：Token tab 首次切到时确保已取数（打开详情时通常已预取）
         if (tabName === 'token') {
           const reqId = (tabsContainer as HTMLElement).dataset.detailReq
@@ -597,7 +780,14 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         if (!reqId) return
         // REQ-a8d582 FR-1：先把「不通过 / 未裁决」摆到人眼前再问是否仍要通过。
         // 取消 → 直接 return：一个请求都不发（验收标准 2 的"零副作用"就落在这里）。
-        const target = state?.requirements.find(r => r.id === reqId)
+        // REQ-261004195831-0f52：确认文案要读**验收材料本体**（摘要里没有该字段）——
+        // 优先用详情取数条目里的全文；只有条目未就绪时才退回摘要（此时文案口径与旧版一致，
+        // 并顺手触发一次取数，让下一次点击拿得到真材料）。
+        const full = reqDetail.get(reqId)
+        if (full === undefined) reqDetail.ensure(reqId)
+        const target = full?.status === 'ready'
+          ? full.record
+          : state?.requirements.find(r => r.id === reqId)
         const copy = verifyConfirmCopy(target)
         if (!window.confirm(copy.message)) return
         void api
@@ -620,13 +810,9 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
           .catch(e => window.alert(String(e)))
         return
       }
-      case 'archive-req': {
-        const reqId = el.dataset.id
-        if (reqId) {
-          void api.archiveReq({ id: reqId }).then(() => fetchAll()).catch(e => window.alert(String(e)))
-        }
-        return
-      }
+      // REQ-261002105242-a3fb FR-4：归档动作的事件分支已删除——它的端点（POST /req/archive）
+      // 由 REQ-9f4a44 移除，按钮本身也不再渲染（renderActionBar 对终态早退）。留着分支只会
+      // 变成一条永远进不来、进来了也必然 404 的死路。
       case 'plan-approve': {
         const reqId = el.dataset.id
         if (reqId) {
@@ -687,7 +873,7 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
     if (paths.length === 0) return
     let verdicts: api.DocPathVerdictView[]
     try {
-      verdicts = (await api.resolveReqDocs(paths)).results ?? []
+      verdicts = (await api.resolveReqDocs(paths, resolveCurrentSessionId())).results ?? []
     } catch {
       // 通道不可用 → 不做任何标记（宁可保持可点击，也不误标「缺失」；R-013 诚实降级）
       return
@@ -829,9 +1015,29 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
   // 容器上的 click/change 事件委派（渲染出的卡片按钮全走这里）
   container.addEventListener('click', onClick)
   container.addEventListener('change', onChange)
+  // REQ-261004111917-f473 FR-2：看板**已在屏**时的定位通道。
+  // 只在挂载时取一次 `takeBoardFocus()` 覆盖不到这种情形（面板不重挂 → 意图只能滞留到下次进看板），
+  // 故挂载期间订阅定位通知；handler 与既有 open-req 分支同款：清阶段选中态 + 切详情 + 重绘。
+  const unsubFocus = boardFocus.subscribeBoardFocus((reqId) => {
+    // 返回 false = 本实例**没消费**（已卸载或不在屏）→ 交回持有器：
+    // 否则「隐藏实例把意图吃掉、随即被卸载」会让用户再也看不到这次定位（复核 R2）
+    if (disposed || !isActive()) return false
+    activeStage = undefined
+    mode = { kind: 'req', reqId }
+    render()
+    return true
+  })
   // 挂载即拉一次；SSE 订阅随 disposer 释放
   void fetchAll()
   startEvents()
+  /**
+   * 运行态订阅（REQ-261004210128-283d FR-5）：会话 store 一通知就比一次「相关运行集合」，
+   * 变了才重绘——无关会话的抖动在这里被挡掉，看板不会被别的窗口刷屏式重绘。
+   */
+  unsubRunning = subscribeSessionRunning(() => {
+    if (disposed || !runningChanged()) return
+    scheduleRender()
+  })
 
   const stopPolling = (): void => {
     if (pollTimer !== undefined) { window.clearInterval(pollTimer); pollTimer = undefined }
@@ -855,12 +1061,20 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
     dispose: () => {
       if (disposed) return
       disposed = true
+      // 先退订定位通道（复核 R7d：容器桩若在 removeEventListener 上抛错，不该连累退订）
+      unsubFocus()
       container.removeEventListener('click', onClick)
       container.removeEventListener('change', onChange)
       unsubEvents?.()
       unsubEvents = undefined
+      // REQ-261004210128-283d FR-8：运行态订阅一并释放（disposed 已置真 → 迟到的通知也不会重绘）
+      unsubRunning?.()
+      unsubRunning = undefined
       stopPolling()
       if (poll) document.removeEventListener('visibilitychange', onVisibility)
+      // REQ-261004195831-0f52：卸载即作废在途取数（迟到响应不得写回已释放的视图）
+      reqDetail.reset()
+      lastRenderedDetail.clear()
       viewEl = undefined
     },
   }
@@ -871,6 +1085,15 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
  * 薄转发：让「挂载即在看」的 React 宿主不必知道内部句柄形状。
  */
 export function attachBoard(container: HTMLElement, options: AttachBoardOptions = {}): () => void {
+  // 设置弹窗挂在 body 上（R1），容器卸载时一并释放，避免残留浮层
+  configureBoardSettings({
+    jumpToWindow: (windowKey) => { void jumpToSession(windowServiceAccess(), windowKey) },
+    openDoc: (path) => openDocInSidebar(window.__dshPmCtx, path, resolveCurrentSessionId()),
+    settingsButton: () => container.querySelector<HTMLElement>('[data-action="settings-open"]') ?? undefined,
+  })
   const attachment = createBoardAttachment(container, options)
-  return () => { attachment.dispose() }
+  return () => {
+    attachment.dispose()
+    disposeBoardSettings()
+  }
 }

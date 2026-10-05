@@ -1,0 +1,34 @@
+task:
+  id: t-4ba5d0
+  title: "[重做] 看板扫描不再拿全部项目的清单用同一个目录去扫·测试"
+  status: canceled
+  implements: |-
+    src/adapters/ArtifactSync.ts 的 syncAllReqArtifacts(store, cwd)：去掉 snapshot.requirements.map(r => r.id) 全量遍历，改为逐记录解析根；返回值由 number 扩为 {scanned, skipped}。同步唯一调用点 src/http/routers/stages.ts（保持 .catch(()=>{}) 不阻断看板）。测试：两项目夹具下断言 B 的目录零访问（探针计数或递归清单比对）+ skipped ≥ 1。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261001203710-0fbf
+    TASK_ID: t-4ba5d0
+    TASK_TITLE: "[重做] 看板扫描不再拿全部项目的清单用同一个目录去扫·测试"
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 0
+  workflow:
+    - phase: implement
+      status: pending
+metadata:
+  stage: implementing
+  requirement_id: REQ-261001203710-0fbf
+  generated_at: 2026-10-03T15:07:46.884Z
+  version: 2
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-04T08:18:51.659Z

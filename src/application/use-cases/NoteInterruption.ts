@@ -13,9 +13,11 @@
  * @module dsh-pmboard/application/use-cases/NoteInterruption
  */
 import type { UseCaseDeps } from '../ports.js'
+import { firstWritableBound } from '../../application/internal/window.js'
+import { requirementStoreOf, mutateIfPresent } from './queue-access.js'
+import { boundSummariesOf } from '../internal/binding-read.js'
 import { normalizeText, type InterruptionRecord } from '../../shared/protocol.js'
 import { fmt } from '../../domain/text/fmt.js'
-import { openRequirementsFor } from '../internal/window.js'
 import { stampInterruption } from '../internal/interruption.js'
 import { reject, agentIdFromExec, requireLiveDriver } from '../internal/support.js'
 
@@ -37,30 +39,33 @@ export async function noteInterruptionCore(
   explicitId = '',
   tool?: string,
 ): Promise<NoteInterruptionResult | undefined> {
-  const bound = openRequirementsFor(deps.repo.snapshot(), windowKey)
-  const target = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : bound[0]
+  // t8/B11：绑定读走新端口（只读摘要；下游只用到 id）
+  const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
+  const target = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : firstWritableBound(bound, windowKey)
   if (target === undefined) return undefined
   const nowTs = deps.clock.now()
-  const result = await deps.repo.mutate('requirement-updated', (ledger) => {
-    const req = ledger.requirements.find(r => r.id === target.id)
-    if (req === undefined) return undefined
-    if (stampInterruption(req, nowTs, reason, tool)) {
+  // B12 阶段②a：旧整册 mutate ⇒ 新端口的**按 id 定点**变更（统一的"找不到=无变更"收口）。
+  const result = await mutateIfPresent(requirementStoreOf(deps), target.id, (req) => {
+    // 无改动如实回 undefined：旧写法返回变更集、由 diff 判"无变化"；新口若硬报 changed 会空写并 bump。
+    if (stampInterruption(req, nowTs, reason, tool, { explicit: true })) {
       req.comments.push({
         id: deps.ids.comment(),
         body: fmt('[断点] {reason}（阶段 {stage}，下一步 {action}）', {
-          reason,
+          // 用台账里那份**已截断**的原因：正文与字段必须是同一份真相（FR-8）
+          reason: req.interruption?.reason ?? reason,
           stage: req.status,
           action: req.interruption?.pendingAction ?? '',
         }),
         createdAt: nowTs,
         createdBy: { kind: 'system' },
       })
-      req.version += 1
+      // version 由适配器自增（ShardedRequirementWriter），回调不再 `+= 1`
       req.updatedAt = nowTs
+      return { changed: true }
     }
-    return { requirements: [req] }
+    return undefined
   })
-  const changed = (result.changed.requirements ?? [])[0]
+  const changed = result?.requirement
   const interruption = changed?.interruption
   if (changed === undefined || interruption === undefined) return undefined
   return {

@@ -16,7 +16,7 @@ const exec = { agent: { id: 'session-w-001' } }
 
 function planSeed() {
   const h = makeHarness()
-  h.repo.ledger.requirements = [req({
+  h.seedRequirementSync(req({
     id: 'REQ-000001',
     status: 'decomposing',
     category: 'feature',
@@ -36,7 +36,7 @@ function planSeed() {
       submittedAt: h.clock.t,
       submittedBy: { kind: 'agent', sessionId: 'session-w-001' },
     },
-  })]
+  }))
   // 任务不在此 seed（v9 口径，B-4/B-5）："无任务" = **没有队列文件**，由各用例显式断言，
   // 不静默省略——失败路径尤其要断言 `queueExists === false`（比"读到 0 条"更强，见 t-e96a0c 验收）。
   h.questions.answers = [{ selected: [DEFAULT_CONFIRM_OPTIONS[0] as string] }]
@@ -46,10 +46,11 @@ function planSeed() {
 describe('批准计划 → 同步落库任务卡（FR-1/FR-2）', () => {
   it('成功路径：同一调用返回时队列任务数 = 计划卡数，且进入 implementing', async () => {
     const h = planSeed()
+  await h.seedSettled()
     expect(h.queueExists('REQ-000001')).toBe(false) // 前置锚：从"无队列"开始（否则下面的 2 张卡可能是旧的）
     const out = await askConfirm(h.deps, { requirement_id: 'REQ-000001', target: 'plan', question: '批准？' }, exec) as { confirmed?: boolean }
     expect(out.confirmed).toBe(true)
-    const r = h.repo.ledger.requirements[0]!
+    const r = (await h.store.get('REQ-000001'))!
     expect(r.status).toBe('implementing')
     expect(r.autoRun).toBe(true)
     const tasks = await h.tasksOf('REQ-000001')
@@ -63,12 +64,13 @@ describe('批准计划 → 同步落库任务卡（FR-1/FR-2）', () => {
 
   it('失败路径：落库被覆盖门禁拦住 → 不推进，且 pausedReason/评论/告警齐备', async () => {
     const h = planSeed()
+  await h.seedSettled()
     h.docs.put('docs/requirements/REQ-000001/requirement.md', '**FR-1 覆盖门禁**：拆分时逐条核对。')
     const alerts: unknown[] = []
     h.deps.alert = { alert: (a: unknown) => { alerts.push(a) } } as never
     const out = await askConfirm(h.deps, { requirement_id: 'REQ-000001', target: 'plan', question: '批准？' }, exec) as { confirmed?: boolean }
     expect(out.confirmed).toBe(true)
-    const r = h.repo.ledger.requirements[0]!
+    const r = (await h.store.get('REQ-000001'))!
     expect(r.status).toBe('decomposing')
     expect(r.autoRun).toBeUndefined()
     // B-4：失败路径断言**更强的那个** —— 队列文件根本不存在（"校验失败不落盘"）。

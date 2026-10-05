@@ -16,6 +16,9 @@
  * @module dsh-pmboard/application/internal/rtm-yaml
  */
 import type { UseCaseDeps } from '../ports.js'
+import { requirementStoreOf } from '../use-cases/queue-access.js'
+// REQ-261001203710-0fbf t7：RTM 写入前按需求 id 核验写盘根（判定下沉，一处覆盖十处调用点）
+import { assertWritableRequirementProject } from './support.js'
 import { recordRTMFailure, clearRTMFailure } from './rtm-health.js'
 import { flowProfileFor, type RequirementCategory, type RequirementRecord, type TaskRecord } from '../../shared/protocol.js'
 import { stageOfStatus } from '../../../vendor/reqboard/src/rtm/lifecycle-generator.js'
@@ -32,7 +35,7 @@ export interface RtmYamlPayload {
 }
 
 /**
- * 台账只读快照的形状（JsonLedgerRepository.snapshot() 返回的 LedgerView 是 readonly 数组，
+ * 台账只读快照的形状（旧单册适配器（已删除）.台账快照读（已删除） 返回的 LedgerView 是 readonly 数组，
  * 这里按只读接收，避免为了类型而复制一份）。
  *
  * **不含 `tasks`**（REQ-260927202051-f6df）：schema v9 后任务不再存台账，任务由调用方从队列
@@ -82,6 +85,11 @@ function ledgerReaderOf(snap: RTMLedgerSnapshot, tasks: readonly TaskRecord[]): 
         ...(typeof r.sourceSessionId === 'string' && r.sourceSessionId.length > 0
           ? { sourceSessionId: r.sourceSessionId }
           : {}),
+        // REQ-260930094139-2d65 FR-4：状态转移历史进 RTM 投影（只取 status/at——
+        // lifecycle-generator 用它算真实阶段 entered_at/completed_at，替代 createdAt/updatedAt 回落）。
+        ...(Array.isArray(r.statusHistory) && r.statusHistory.length > 0
+          ? { statusHistory: r.statusHistory.map(e => ({ status: e.status, at: e.at })) }
+          : {}),
         artifacts: (r.artifacts ?? []).map(a => ({
           kind: a.kind,
           path: a.path,
@@ -130,18 +138,24 @@ export function coverageGateOf(
 /**
  * 触发一次 RTM 同步。返回结构化结果；异常被吞并记 warning（不抛）。
  */
-export function syncRTMYaml(
+export async function syncRTMYaml(
   deps: UseCaseDeps,
   tasks: readonly TaskRecord[],
   reqId: string,
   trigger: RTMTrigger,
   payload?: RtmYamlPayload,
-): RTMTriggerResult | undefined {
+): Promise<RTMTriggerResult | undefined> {
   // FR-9：本函数的契约是"失败绝不打断主流程"——**连取根/取快照都必须在 try 内**。
   // 此前它们在 try 之外求值，docs/repo 端口缺失时会在进 try 之前抛出去（实测：不注入
   // docs 的工具用例会炸），与"RTM 是增强层"的承诺相反。
   try {
-    return syncRTMYamlWithSnapshot(deps.docs.workspaceRoot(), deps.repo.snapshot(), tasks, reqId, trigger, payload)
+    // t8/B11：整册读换成摘要页（与路由侧三处先例同形），不再经桥的同步快照。
+    const page = await requirementStoreOf(deps).listSummaries({ scope: 'all' })
+    // REQ-261001203710-0fbf t7 / FR-2：RTM 是**工作区相对**落盘，且根取自 `deps.docs.workspaceRoot()`
+    // （宿主级单例、会被别的窗口改）。写入前按需求 id 核验即将写的根 = 该需求声明的根；
+    // 不一致就抛 PROJECT_ROOT_MISMATCH（由下面的 catch 如实记为 RTM 失败，不写错地方、也不静默）。
+    await assertWritableRequirementProject(deps, reqId)
+    return syncRTMYamlWithSnapshot(deps.docs.workspaceRoot(), { requirements: page.items as never }, tasks, reqId, trigger, payload)
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)
     console.warn('[rtm-yaml] ' + trigger + ' ' + reqId + ' 取工作区根/台账快照失败（已忽略，不影响主流程）:', err)

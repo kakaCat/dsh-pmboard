@@ -1,0 +1,38 @@
+task:
+  id: t-542e92
+  title: 扩端口签名与 handoff 配置契约·测试
+  status: done
+  implements: |-
+    src/application/ports.ts：WindowOpenerPort.create 改签名为 create(opts?: { cwd?: string; workspaceId?: string })，并加可选方法 resolveSourceProject(sourceSessionId): { workspaceId?: string; cwd?: string } | undefined（测试替身可不实现）。src/plugin-config.ts：新增 handoffSettings(config) → { warn, fork, critical }，缺省 0.75/0.85/0.90；非有限数或不满足 0 < warn < fork < critical ≤ 1 → 装配期抛错（照 seatsMaxSetting 的写法与纪律）。不动任何既有调用点的运行行为。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-2cf050
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004150249-731e
+    TASK_ID: t-542e92
+    TASK_TITLE: 扩端口签名与 handoff 配置契约·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T07:48:55.946Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004150249-731e
+  generated_at: 2026-10-04T07:48:50.846Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-04T07:48:55.947Z

@@ -1,10 +1,10 @@
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { type ReqboardLedger, type TaskRecord, type TokenBuckets } from '../src/shared/protocol.js'
 
@@ -40,10 +40,10 @@ const SEED_TASK: TaskRecord = {
 }
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-prognodes-'))
-  store = new ReqboardStore({ file: join(dir, 'l.json') })
+  store = makeTestStore()
   await store.replaceAll('seed', ledger())
   // v9：任务落队列（真实 TaskStore + 临时目录 = 与 handler 的 taskStore 同源）
   await taskStoreAt(dir).createMany('REQ-abc123', [{ ...SEED_TASK }])
@@ -68,7 +68,7 @@ async function get(handler: any, url: string) {
 
 describe('REQ-a33899 · 会话顶部每节点 token（无节点快照时用执行差值兜底）', () => {
   it('implementing 节点用任务执行差值兜底 → 会话顶部能显示数字', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     const res = await get(handler, '/session/' + SID + '/progress')
     expect(res.statusCode).toBe(200)
     const nodes = res.payload.data.nodes
@@ -86,9 +86,25 @@ describe('REQ-a33899 · 会话顶部每节点 token（无节点快照时用执�
     // "纯删除不产生 changed → 提前返回不写盘"取舍（已在汇报中报 Lead 为 src 侧缺陷），
     // 于是队列文件根本不变、断言假红。
     await taskStoreAt(dir).mutate('REQ-abc123', (tasks) => tasks.map(t => ({ ...t, executions: [] })))
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     const res = await get(handler, '/session/' + SID + '/progress')
     const nodes = res.payload.data.nodes
     expect(nodes.every((n: any) => n.tokens === undefined)).toBe(true)
+  })
+
+  /**
+   * TC-3c（REQ-261004143941-b2ca FR-1）：需求**没有节点快照**、只有任务执行差值时，
+   * `tokenTotal` 必须含这段兜底差值——否则窄档流程图会显示「0」而节点上却有数字（自相矛盾）。
+   */
+  it('TC-3c 兜底夹具：tokenTotal 等于执行差值合计（不是 0、不是仅 byStage）', async () => {
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
+    const res = await get(handler, '/session/' + SID + '/progress')
+    expect(res.statusCode).toBe(200)
+    const data = res.payload.data
+    const sumNodes = (data.nodes as Array<{ tokens?: { total?: number } }>)
+      .reduce((n, x) => n + (x.tokens?.total ?? 0), 0)
+    expect(data.requirement.tokenTotal).toBe(39) // B(3) 三桶和：只有 implementing 的兜底差值
+    expect(data.requirement.tokenTotal).toBe(sumNodes)
+    expect(data.requirement.tokenTotal).toBeGreaterThan(0)
   })
 })

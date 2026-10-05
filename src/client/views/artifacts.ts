@@ -7,7 +7,7 @@ import { esc } from '../html.js'
 import type { ReqCard, RequirementRecord, RequirementStatus } from '../types.ts'
 import type { ArtifactKind, StageArtifact, StageKey } from '../../shared/protocol.ts'
 import { ARTIFACT_CONFIRM_GATES, REQ_TRANSITIONS, STAGE_ARTIFACT_REQUIREMENTS, confirmGateKindFor, flowProfileFor, fmtTokens } from '../../shared/protocol.ts'
-import { CATEGORY_LABELS, NO_ARCHIVED, PHASE_LABELS, STATUS_LABELS, fmtDur, fmtTime, isTerminal, progress, renderSessionChip, renderWindowChip } from '../render/dom-utils.ts'
+import { CATEGORY_LABELS, NO_ARCHIVED, PHASE_LABELS, STATUS_LABELS, fmtDur, fmtTime, isTerminal, progress, renderRunningDot, renderSessionChip, renderWindowChip } from '../render/dom-utils.ts'
 import { eventsOf } from './timeline.ts'
 import { artifactKindLabel } from '../../shared/artifact-labels.ts'
 import { progressText, renderAutoBadge, renderAutoControls, subtaskProgress } from '../render/subtask-view.ts'
@@ -118,7 +118,14 @@ export function renderArtifactDerived(req: RequirementRecord): string {
   return '<div class="dsh-pm-artifact-derived">' + parts.join(' · ') + '</div>'
 }
 
-export function renderReqCard(card: ReqCard, now: number, archived: ReadonlySet<string> = NO_ARCHIVED): string {
+/**
+ * 泳道卡片。
+ *
+ * `running`（REQ-261004210128-283d FR-3）：该需求绑定窗口此刻是否正在跑回合。
+ * **只接布尔**（由调用方用 `requirementRunning` 算好）——避免两个视图各自散落映射逻辑；
+ * 缺省 `false` = 今天的输出（「省略参数逐字节一致」这条断言靠它成立）。
+ */
+export function renderReqCard(card: ReqCard, now: number, archived: ReadonlySet<string> = NO_ARCHIVED, running = false): string {
   const { req, tasks, doneCount, totalCount, readyIds, blocked } = card
   const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
   const cat = req.category ? `<span class="dsh-pm-cat" data-cat="${req.category}">${CATEGORY_LABELS[req.category] ?? req.category}</span>` : ''
@@ -131,6 +138,9 @@ export function renderReqCard(card: ReqCard, now: number, archived: ReadonlySet<
   const readyChip = readyIds.length > 0 ? `<span class="dsh-pm-flag ready">${readyIds.length} ready</span>` : ''
   // 窗口 chip：立项来源窗口（窗口↔需求关联）+ 最近执行会话
   const timeLine = renderCardTime(req, now)
+  // REQ-261004210128-283d FR-3（2026-10-04 用户裁定版，第二次调整）：运行中指示是**项目级**信号，
+  // 泳道卡与列表行统一**紧跟项目 ID**——挂在项目标识上最直白，不让读者去别处找。
+  const runningDot = renderRunningDot(running)
   const sessionChip = renderWindowChip(req, archived) + renderSessionChip(tasks, archived)
   const actions = cardActions(req)
   const artifactChips = renderArtifactChips(req)
@@ -140,14 +150,14 @@ export function renderReqCard(card: ReqCard, now: number, archived: ReadonlySet<
   return `
     <div class="dsh-pm-card${blocked ? ' is-blocked' : ''}${req.status === 'done' ? ' is-archived' : ''}" data-req="${esc(req.id)}" data-action="open-req">
       <div class="dsh-pm-card-top">
-        <span class="dsh-pm-card-id">${esc(req.id)}</span>
+        <span class="dsh-pm-card-id">${esc(req.id)}</span>${runningDot}
         ${cat}${planChipHtml}${blockedChip}${pausedChip}${readyChip}${autoChip}
       </div>
       <div class="dsh-pm-card-title">${esc(req.title)}</div>
       <div class="dsh-pm-card-progress">
         <div class="dsh-pm-card-bar"><div class="dsh-pm-card-bar-fill" style="width:${pct}%"></div></div>
         <span class="dsh-pm-card-pct">${progress(doneCount, totalCount)}</span>
-        ${card.tokenTotal !== undefined ? `<span class="dsh-pm-token-badge" title="累计 Token（会话快照差值合计；口径见详情 Token tab）">🪙 ${esc(fmtTokens(card.tokenTotal))}</span>` : ''}
+        ${card.tokenTotal !== undefined ? `<span class="dsh-pm-token-badge" title="累计 Token（会话快照差值合计，含子代理；口径见详情 Token tab）">🪙 ${esc(fmtTokens(card.tokenTotal))}</span>` : ''}
       </div>
       ${sub.subtasksTotal > 0 ? `<div class="dsh-pm-card-substat" title="父卡按依赖并行；子卡在父卡内串行">${esc(progressText(sub))}</div>` : ''}
       ${artifactChips}

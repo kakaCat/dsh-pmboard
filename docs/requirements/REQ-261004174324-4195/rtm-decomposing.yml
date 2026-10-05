@@ -1,0 +1,741 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261004174324-4195
+  generated_at: 2026-10-04T09:51:03.522Z
+  version: 100
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T10:04:40.426Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 删除「知识库」侧栏入口与知识库页
+      source: requirement.md
+      line: 80
+    - id: FR-2
+      title: 缺层即自举（启动检测，幂等一次）
+      source: requirement.md
+      line: 106
+    - id: FR-3
+      title: 自举产物深度（骨架 + 全部可生成物，手写页占位）
+      source: requirement.md
+      line: 135
+    - id: FR-4
+      title: 生成器通用化（宿主用例 + 根参数化）
+      source: requirement.md
+      line: 163
+    - id: FR-5
+      title: 安全与响亮（非生成区零改动）
+      source: requirement.md
+      line: 189
+    - id: FR-6
+      title: 回退开关 `knowledge.autoBootstrap`
+      source: requirement.md
+      line: 215
+    - id: FR-7
+      title: 门禁与测试同步
+      source: requirement.md
+      line: 234
+  design_sections:
+    - ref: design/architecture.md#现状与目标
+      title: 现状与目标 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 现状与目标
+    - ref: design/architecture.md#模块划分与依赖方向
+      title: 模块划分与依赖方向 `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: 模块划分与依赖方向
+    - ref: design/architecture.md#触发链根确定的三个通知点
+      title: 触发链：根确定的三个通知点 `
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: 触发链根确定的三个通知点
+    - ref: design/architecture.md#幂等与去重
+      title: 幂等与去重 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/architecture.md
+      section: 幂等与去重
+    - ref: design/architecture.md#失败语义
+      title: 失败语义 `
+      serves:
+        - FR-5
+      file: design/architecture.md
+      section: 失败语义
+    - ref: design/architecture.md#删除面与保留面
+      title: 删除面与保留面 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: 删除面与保留面
+    - ref: design/architecture.md#迁移灰度与回滚
+      title: 迁移、灰度与回滚 `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: 迁移灰度与回滚
+    - ref: design/architecture.md#门禁与回归口径
+      title: 门禁与回归口径 `
+      serves:
+        - FR-7
+      file: design/architecture.md
+      section: 门禁与回归口径
+    - ref: design/architecture.md#文档同步
+      title: 文档同步 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: 文档同步
+    - ref: design/data-model.md#实体总览
+      title: 实体总览 `
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: 实体总览
+    - ref: design/data-model.md#自举结果对象
+      title: 自举结果对象 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/data-model.md
+      section: 自举结果对象
+    - ref: design/data-model.md#生成物文件契约
+      title: 生成物文件契约 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/data-model.md
+      section: 生成物文件契约
+    - ref: design/data-model.md#INDEX-生成区与手写区
+      title: INDEX 生成区与手写区 `
+      serves:
+        - FR-3
+        - FR-5
+      file: design/data-model.md
+      section: INDEX-生成区与手写区
+    - ref: design/data-model.md#配置数据契约
+      title: 配置数据契约 `
+      serves:
+        - FR-6
+      file: design/data-model.md
+      section: 配置数据契约
+    - ref: design/data-model.md#去重表与并发
+      title: 去重表与并发 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/data-model.md
+      section: 去重表与并发
+    - ref: design/data-model.md#删除面数据影响
+      title: 删除面数据影响 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 删除面数据影响
+    - ref: design/interfaces.md#新增用例-ensureKnowledgeLayer
+      title: 新增用例 `ensureKnowledgeLayer` `
+      serves:
+        - FR-2
+        - FR-4
+      file: design/interfaces.md
+      section: 新增用例-ensureKnowledgeLayer
+    - ref: design/interfaces.md#新增窄端口-KbSourcePort
+      title: 新增窄端口 `KbSourcePort` `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: 新增窄端口-KbSourcePort
+    - ref: design/interfaces.md#领域纯函数-srcdomainknowledgegeneratets
+      title: 领域纯函数 `src/domain/knowledge/generate.ts` `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/interfaces.md
+      section: 领域纯函数-srcdomainknowledgegeneratets
+    - ref: design/interfaces.md#CLI-契约保持不变
+      title: CLI 契约（保持不变） `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: CLI-契约保持不变
+    - ref: design/interfaces.md#配置契约-knowledgeautoBootstrap
+      title: 配置契约 `knowledge.autoBootstrap` `
+      serves:
+        - FR-6
+      file: design/interfaces.md
+      section: 配置契约-knowledgeautoBootstrap
+    - ref: design/interfaces.md#数据契约生成物与写入规则
+      title: 数据契约：生成物与写入规则 `
+      serves:
+        - FR-3
+        - FR-5
+      file: design/interfaces.md
+      section: 数据契约生成物与写入规则
+    - ref: design/interfaces.md#客户端契约变更
+      title: 客户端契约变更 `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: 客户端契约变更
+    - ref: design/interfaces.md#Agent-侧契约零变化
+      title: Agent 侧契约（零变化） `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: Agent-侧契约零变化
+    - ref: design/interfaces.md#与需求的显式偏离
+      title: 与需求的显式偏离 `
+      serves:
+        - FR-6
+      file: design/interfaces.md
+      section: 与需求的显式偏离
+    - ref: design/use-cases.md#UC-1-空项目首次启动知识层自动长出
+      title: UC-1 空项目首次启动：知识层自动长出 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/use-cases.md
+      section: UC-1-空项目首次启动知识层自动长出
+    - ref: design/use-cases.md#UC-2-已有知识层的项目启动零写入
+      title: UC-2 已有知识层的项目启动：零写入 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/use-cases.md
+      section: UC-2-已有知识层的项目启动零写入
+    - ref: design/use-cases.md#UC-3-人写过的内容被保护
+      title: UC-3 人写过的内容被保护 `
+      serves:
+        - FR-3
+        - FR-5
+      file: design/use-cases.md
+      section: UC-3-人写过的内容被保护
+    - ref: design/use-cases.md#UC-4-只读或不可写根响亮失败但不挡启动
+      title: UC-4 只读或不可写根：响亮失败但不挡启动 `
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-4-只读或不可写根响亮失败但不挡启动
+    - ref: design/use-cases.md#UC-5-维护者关掉自举
+      title: UC-5 维护者关掉自举 `
+      serves:
+        - FR-6
+      file: design/use-cases.md
+      section: UC-5-维护者关掉自举
+    - ref: design/use-cases.md#UC-6-人想读知识层内容不再走-UI
+      title: UC-6 人想读知识层内容：不再走 UI `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-6-人想读知识层内容不再走-UI
+    - ref: design/use-cases.md#UC-7-Agent-建立项目认知
+      title: UC-7 Agent 建立项目认知 `
+      serves:
+        - FR-2
+        - FR-4
+      file: design/use-cases.md
+      section: UC-7-Agent-建立项目认知
+    - ref: design/use-cases.md#UC-8-CLI-与宿主同源
+      title: UC-8 CLI 与宿主同源 `
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: UC-8-CLI-与宿主同源
+outputs:
+  tasks:
+    - id: t-87e952
+      title: 让「项目知识」能被机器算出来（领域纯函数）
+      implements: 新建 src/domain/knowledge/generate.ts，导出 extractSymbols / renderCodeMap / renderDesignTokens / scaffoldIndex / replaceGeneratedSection；口径逐字沿用 scripts/kb-build.mts 现值（导出正则、SRC_KINDS、GROUP_TOP=24、TSV 表头）；零 IO、无时间戳。新增 tests/kb-generate.test.ts。
+      serves:
+        - FR-3
+        - FR-4
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-768db3
+      title: 缺层就补：一次自举该写什么、不该碰什么（用例）
+      implements: src/application/ports.ts 增窄端口 KbSourcePort { list, read }；新建 src/application/use-cases/EnsureKnowledgeLayer.ts（根取自 docs.workspaceRoot()、先算后写、逐文件内容比对、手写页永不写、markers-missing 零写入、根漂移中止、失败不抛）；新增 tests/kb-ensure.test.ts。
+      serves:
+        - FR-2
+        - FR-5
+      depends_on:
+        - t-87e952
+      phase: implement
+      side: backend
+    - id: t-872d22
+      title: 手动命令与自动自举走同一条路（CLI 薄包装）
+      implements: scripts/kb-build.mts 改为解析 argv（--write / --check / --backfill / 新增 --root）→ 构造 FileDocRepository({ workspaceRoot }) → 调用例；打印格式与退出码语义不变；--backfill 保留在脚本。新增 tests/kb-cli-parity.test.ts。
+      serves:
+        - FR-4
+      depends_on:
+        - t-768db3
+      phase: implement
+      side: backend
+    - id: t-a74f54
+      title: 插件在「根确定」时自己动手（宿主接线 + 开关）
+      implements: 新建 src/application/internal/knowledge-bootstrap.ts（Map<realKey, Promise> 去重、失败留存不重试、force）；src/plugin-config.ts 增 knowledge.autoBootstrap（默认 true，非布尔装配期抛错）；三处通知点接线：src/index.ts 激活末尾、application/internal/support.ts 的 applyWorkspaceRoot 之后、http/routers/shared.ts 的 resolveDocRoot 命中 session 后。新增 tests/kb-bootstrap-hooks.test.ts。
+      serves:
+        - FR-2
+        - FR-6
+      depends_on:
+        - t-768db3
+      phase: implement
+      side: backend
+    - id: t-be4f48
+      title: 把「知识库」入口和页面拿掉（含说明书同步）
+      implements: 删除 src/client/views/knowledge.ts、src/client/page/register-knowledge.ts、src/client/styles/knowledge.ts、tests/kb-client-page.test.ts、scripts/knowledge-page-probe.mts；修改 src/client/index.ts（删 import 与注册两行）、src/client/styles.ts（删 KNOWLEDGE_CSS import 与拼接项）；同步 docs/architecture/project-manual.md 侧栏插槽表与 README.md 知识层节（补一句自动自举）。保留 /kb 路由、reqboard_kb、KnowledgeRepository。
+      serves:
+        - FR-1
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-a734f8
+      title: 老行为可回退：开关、兼容与基线（迁移验证）
+      implements: 新增 tests/kb-bootstrap-compat.test.ts：autoBootstrap:false / enabled:false / 不写配置三态；本仓影子副本自举后零写入；legacy-cwd 与 session 两种读根各作用于该根。证据落 docs/requirements/REQ-261004174324-4195/evidence/baseline.txt（pnpm test / pnpm typecheck 的退出码与失败数）与 evidence/kb-check.txt。
+      serves:
+        - FR-6
+        - FR-7
+      depends_on:
+        - t-a74f54
+        - t-be4f48
+      phase: test
+      side: backend
+    - id: t-54841e
+      title: 端到端演练与交付证据
+      implements: mktemp -d 空项目用 npx tsx scripts/kb-build.mts --write --root <dir> 跑一次并记录 5 产物；再跑一次比对 mtime；手写 architecture.md 与 INDEX 手写行后重跑验证保护；执行删除面 grep 与四条门禁命令。证据落 docs/requirements/REQ-261004174324-4195/evidence/ 下 e2e-bootstrap.txt、e2e-idempotent.txt、manual-protect.txt、grep-deleted.txt、gates.txt。
+      serves:
+        - FR-7
+      depends_on:
+        - t-872d22
+        - t-a734f8
+      phase: test
+      side: backend
+    - id: t-b45cfb
+      title: 让「项目知识」能被机器算出来（领域纯函数）·研发
+      implements: |-
+        新建 src/domain/knowledge/generate.ts，导出 extractSymbols / renderCodeMap / renderDesignTokens / scaffoldIndex / replaceGeneratedSection；口径逐字沿用 scripts/kb-build.mts 现值（导出正则、SRC_KINDS、GROUP_TOP=24、TSV 表头）；零 IO、无时间戳。新增 tests/kb-generate.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-377ab6
+      title: 让「项目知识」能被机器算出来（领域纯函数）·联调
+      implements: |-
+        新建 src/domain/knowledge/generate.ts，导出 extractSymbols / renderCodeMap / renderDesignTokens / scaffoldIndex / replaceGeneratedSection；口径逐字沿用 scripts/kb-build.mts 现值（导出正则、SRC_KINDS、GROUP_TOP=24、TSV 表头）；零 IO、无时间戳。新增 tests/kb-generate.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-b45cfb
+      phase: implement
+      side: backend
+    - id: t-7df1d8
+      title: 让「项目知识」能被机器算出来（领域纯函数）·复核
+      implements: |-
+        新建 src/domain/knowledge/generate.ts，导出 extractSymbols / renderCodeMap / renderDesignTokens / scaffoldIndex / replaceGeneratedSection；口径逐字沿用 scripts/kb-build.mts 现值（导出正则、SRC_KINDS、GROUP_TOP=24、TSV 表头）；零 IO、无时间戳。新增 tests/kb-generate.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-377ab6
+      phase: implement
+      side: backend
+    - id: t-8d270d
+      title: 让「项目知识」能被机器算出来（领域纯函数）·测试
+      implements: |-
+        新建 src/domain/knowledge/generate.ts，导出 extractSymbols / renderCodeMap / renderDesignTokens / scaffoldIndex / replaceGeneratedSection；口径逐字沿用 scripts/kb-build.mts 现值（导出正则、SRC_KINDS、GROUP_TOP=24、TSV 表头）；零 IO、无时间戳。新增 tests/kb-generate.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-7df1d8
+      phase: implement
+      side: backend
+    - id: t-93c308
+      title: 缺层就补：一次自举该写什么、不该碰什么（用例）·研发
+      implements: |-
+        src/application/ports.ts 增窄端口 KbSourcePort { list, read }；新建 src/application/use-cases/EnsureKnowledgeLayer.ts（根取自 docs.workspaceRoot()、先算后写、逐文件内容比对、手写页永不写、markers-missing 零写入、根漂移中止、失败不抛）；新增 tests/kb-ensure.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-87e952
+      phase: implement
+      side: backend
+    - id: t-e38382
+      title: 缺层就补：一次自举该写什么、不该碰什么（用例）·联调
+      implements: |-
+        src/application/ports.ts 增窄端口 KbSourcePort { list, read }；新建 src/application/use-cases/EnsureKnowledgeLayer.ts（根取自 docs.workspaceRoot()、先算后写、逐文件内容比对、手写页永不写、markers-missing 零写入、根漂移中止、失败不抛）；新增 tests/kb-ensure.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-93c308
+      phase: implement
+      side: backend
+    - id: t-7b7398
+      title: 缺层就补：一次自举该写什么、不该碰什么（用例）·复核
+      implements: |-
+        src/application/ports.ts 增窄端口 KbSourcePort { list, read }；新建 src/application/use-cases/EnsureKnowledgeLayer.ts（根取自 docs.workspaceRoot()、先算后写、逐文件内容比对、手写页永不写、markers-missing 零写入、根漂移中止、失败不抛）；新增 tests/kb-ensure.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-e38382
+      phase: implement
+      side: backend
+    - id: t-ff79f1
+      title: 缺层就补：一次自举该写什么、不该碰什么（用例）·测试
+      implements: |-
+        src/application/ports.ts 增窄端口 KbSourcePort { list, read }；新建 src/application/use-cases/EnsureKnowledgeLayer.ts（根取自 docs.workspaceRoot()、先算后写、逐文件内容比对、手写页永不写、markers-missing 零写入、根漂移中止、失败不抛）；新增 tests/kb-ensure.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-7b7398
+      phase: implement
+      side: backend
+    - id: t-ebc17e
+      title: 手动命令与自动自举走同一条路（CLI 薄包装）·研发
+      implements: |-
+        scripts/kb-build.mts 改为解析 argv（--write / --check / --backfill / 新增 --root）→ 构造 FileDocRepository({ workspaceRoot }) → 调用例；打印格式与退出码语义不变；--backfill 保留在脚本。新增 tests/kb-cli-parity.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-768db3
+      phase: implement
+      side: backend
+    - id: t-e9dc15
+      title: 手动命令与自动自举走同一条路（CLI 薄包装）·联调
+      implements: |-
+        scripts/kb-build.mts 改为解析 argv（--write / --check / --backfill / 新增 --root）→ 构造 FileDocRepository({ workspaceRoot }) → 调用例；打印格式与退出码语义不变；--backfill 保留在脚本。新增 tests/kb-cli-parity.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-ebc17e
+      phase: implement
+      side: backend
+    - id: t-aae371
+      title: 手动命令与自动自举走同一条路（CLI 薄包装）·复核
+      implements: |-
+        scripts/kb-build.mts 改为解析 argv（--write / --check / --backfill / 新增 --root）→ 构造 FileDocRepository({ workspaceRoot }) → 调用例；打印格式与退出码语义不变；--backfill 保留在脚本。新增 tests/kb-cli-parity.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-e9dc15
+      phase: implement
+      side: backend
+    - id: t-9fbbc6
+      title: 手动命令与自动自举走同一条路（CLI 薄包装）·测试
+      implements: |-
+        scripts/kb-build.mts 改为解析 argv（--write / --check / --backfill / 新增 --root）→ 构造 FileDocRepository({ workspaceRoot }) → 调用例；打印格式与退出码语义不变；--backfill 保留在脚本。新增 tests/kb-cli-parity.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-aae371
+      phase: implement
+      side: backend
+    - id: t-15c9a6
+      title: 插件在「根确定」时自己动手（宿主接线 + 开关）·研发
+      implements: |-
+        新建 src/application/internal/knowledge-bootstrap.ts（Map<realKey, Promise> 去重、失败留存不重试、force）；src/plugin-config.ts 增 knowledge.autoBootstrap（默认 true，非布尔装配期抛错）；三处通知点接线：src/index.ts 激活末尾、application/internal/support.ts 的 applyWorkspaceRoot 之后、http/routers/shared.ts 的 resolveDocRoot 命中 session 后。新增 tests/kb-bootstrap-hooks.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-768db3
+      phase: implement
+      side: backend
+    - id: t-a0a37b
+      title: 插件在「根确定」时自己动手（宿主接线 + 开关）·联调
+      implements: |-
+        新建 src/application/internal/knowledge-bootstrap.ts（Map<realKey, Promise> 去重、失败留存不重试、force）；src/plugin-config.ts 增 knowledge.autoBootstrap（默认 true，非布尔装配期抛错）；三处通知点接线：src/index.ts 激活末尾、application/internal/support.ts 的 applyWorkspaceRoot 之后、http/routers/shared.ts 的 resolveDocRoot 命中 session 后。新增 tests/kb-bootstrap-hooks.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-15c9a6
+      phase: implement
+      side: backend
+    - id: t-5322fe
+      title: 插件在「根确定」时自己动手（宿主接线 + 开关）·复核
+      implements: |-
+        新建 src/application/internal/knowledge-bootstrap.ts（Map<realKey, Promise> 去重、失败留存不重试、force）；src/plugin-config.ts 增 knowledge.autoBootstrap（默认 true，非布尔装配期抛错）；三处通知点接线：src/index.ts 激活末尾、application/internal/support.ts 的 applyWorkspaceRoot 之后、http/routers/shared.ts 的 resolveDocRoot 命中 session 后。新增 tests/kb-bootstrap-hooks.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-a0a37b
+      phase: implement
+      side: backend
+    - id: t-794841
+      title: 插件在「根确定」时自己动手（宿主接线 + 开关）·测试
+      implements: |-
+        新建 src/application/internal/knowledge-bootstrap.ts（Map<realKey, Promise> 去重、失败留存不重试、force）；src/plugin-config.ts 增 knowledge.autoBootstrap（默认 true，非布尔装配期抛错）；三处通知点接线：src/index.ts 激活末尾、application/internal/support.ts 的 applyWorkspaceRoot 之后、http/routers/shared.ts 的 resolveDocRoot 命中 session 后。新增 tests/kb-bootstrap-hooks.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-5322fe
+      phase: implement
+      side: backend
+    - id: t-c7e9dc
+      title: 把「知识库」入口和页面拿掉（含说明书同步）·研发
+      implements: |-
+        删除 src/client/views/knowledge.ts、src/client/page/register-knowledge.ts、src/client/styles/knowledge.ts、tests/kb-client-page.test.ts、scripts/knowledge-page-probe.mts；修改 src/client/index.ts（删 import 与注册两行）、src/client/styles.ts（删 KNOWLEDGE_CSS import 与拼接项）；同步 docs/architecture/project-manual.md 侧栏插槽表与 README.md 知识层节（补一句自动自举）。保留 /kb 路由、reqboard_kb、KnowledgeRepository。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-a47379
+      title: 把「知识库」入口和页面拿掉（含说明书同步）·联调
+      implements: |-
+        删除 src/client/views/knowledge.ts、src/client/page/register-knowledge.ts、src/client/styles/knowledge.ts、tests/kb-client-page.test.ts、scripts/knowledge-page-probe.mts；修改 src/client/index.ts（删 import 与注册两行）、src/client/styles.ts（删 KNOWLEDGE_CSS import 与拼接项）；同步 docs/architecture/project-manual.md 侧栏插槽表与 README.md 知识层节（补一句自动自举）。保留 /kb 路由、reqboard_kb、KnowledgeRepository。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-c7e9dc
+      phase: implement
+      side: frontend
+    - id: t-d1021a
+      title: 把「知识库」入口和页面拿掉（含说明书同步）·复核
+      implements: |-
+        删除 src/client/views/knowledge.ts、src/client/page/register-knowledge.ts、src/client/styles/knowledge.ts、tests/kb-client-page.test.ts、scripts/knowledge-page-probe.mts；修改 src/client/index.ts（删 import 与注册两行）、src/client/styles.ts（删 KNOWLEDGE_CSS import 与拼接项）；同步 docs/architecture/project-manual.md 侧栏插槽表与 README.md 知识层节（补一句自动自举）。保留 /kb 路由、reqboard_kb、KnowledgeRepository。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-a47379
+      phase: implement
+      side: frontend
+    - id: t-800d17
+      title: 把「知识库」入口和页面拿掉（含说明书同步）·测试
+      implements: |-
+        删除 src/client/views/knowledge.ts、src/client/page/register-knowledge.ts、src/client/styles/knowledge.ts、tests/kb-client-page.test.ts、scripts/knowledge-page-probe.mts；修改 src/client/index.ts（删 import 与注册两行）、src/client/styles.ts（删 KNOWLEDGE_CSS import 与拼接项）；同步 docs/architecture/project-manual.md 侧栏插槽表与 README.md 知识层节（补一句自动自举）。保留 /kb 路由、reqboard_kb、KnowledgeRepository。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-d1021a
+      phase: implement
+      side: frontend
+    - id: t-ba8bd1
+      title: 老行为可回退：开关、兼容与基线（迁移验证）·研发
+      implements: |-
+        新增 tests/kb-bootstrap-compat.test.ts：autoBootstrap:false / enabled:false / 不写配置三态；本仓影子副本自举后零写入；legacy-cwd 与 session 两种读根各作用于该根。证据落 docs/requirements/REQ-261004174324-4195/evidence/baseline.txt（pnpm test / pnpm typecheck 的退出码与失败数）与 evidence/kb-check.txt。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-a74f54
+        - t-be4f48
+      phase: test
+      side: backend
+    - id: t-274dc8
+      title: 老行为可回退：开关、兼容与基线（迁移验证）·复核
+      implements: |-
+        新增 tests/kb-bootstrap-compat.test.ts：autoBootstrap:false / enabled:false / 不写配置三态；本仓影子副本自举后零写入；legacy-cwd 与 session 两种读根各作用于该根。证据落 docs/requirements/REQ-261004174324-4195/evidence/baseline.txt（pnpm test / pnpm typecheck 的退出码与失败数）与 evidence/kb-check.txt。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-ba8bd1
+      phase: test
+      side: backend
+    - id: t-91c312
+      title: 老行为可回退：开关、兼容与基线（迁移验证）·测试
+      implements: |-
+        新增 tests/kb-bootstrap-compat.test.ts：autoBootstrap:false / enabled:false / 不写配置三态；本仓影子副本自举后零写入；legacy-cwd 与 session 两种读根各作用于该根。证据落 docs/requirements/REQ-261004174324-4195/evidence/baseline.txt（pnpm test / pnpm typecheck 的退出码与失败数）与 evidence/kb-check.txt。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-274dc8
+      phase: test
+      side: backend
+    - id: t-2c1d91
+      title: 端到端演练与交付证据·研发
+      implements: |-
+        mktemp -d 空项目用 npx tsx scripts/kb-build.mts --write --root <dir> 跑一次并记录 5 产物；再跑一次比对 mtime；手写 architecture.md 与 INDEX 手写行后重跑验证保护；执行删除面 grep 与四条门禁命令。证据落 docs/requirements/REQ-261004174324-4195/evidence/ 下 e2e-bootstrap.txt、e2e-idempotent.txt、manual-protect.txt、grep-deleted.txt、gates.txt。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-872d22
+        - t-a734f8
+      phase: test
+      side: backend
+    - id: t-b27618
+      title: 端到端演练与交付证据·复核
+      implements: |-
+        mktemp -d 空项目用 npx tsx scripts/kb-build.mts --write --root <dir> 跑一次并记录 5 产物；再跑一次比对 mtime；手写 architecture.md 与 INDEX 手写行后重跑验证保护；执行删除面 grep 与四条门禁命令。证据落 docs/requirements/REQ-261004174324-4195/evidence/ 下 e2e-bootstrap.txt、e2e-idempotent.txt、manual-protect.txt、grep-deleted.txt、gates.txt。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-2c1d91
+      phase: test
+      side: backend
+    - id: t-fb431f
+      title: 端到端演练与交付证据·测试
+      implements: |-
+        mktemp -d 空项目用 npx tsx scripts/kb-build.mts --write --root <dir> 跑一次并记录 5 产物；再跑一次比对 mtime；手写 architecture.md 与 INDEX 手写行后重跑验证保护；执行删除面 grep 与四条门禁命令。证据落 docs/requirements/REQ-261004174324-4195/evidence/ 下 e2e-bootstrap.txt、e2e-idempotent.txt、manual-protect.txt、grep-deleted.txt、gates.txt。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-b27618
+      phase: test
+      side: backend
+traceability:
+  design_to_tasks:
+    design/architecture.md#现状与目标:
+      - t-768db3
+      - t-a74f54
+      - t-be4f48
+    design/architecture.md#模块划分与依赖方向:
+      - t-87e952
+      - t-872d22
+    design/architecture.md#触发链根确定的三个通知点:
+      - t-768db3
+      - t-a74f54
+    design/architecture.md#幂等与去重:
+      - t-768db3
+      - t-a74f54
+    design/architecture.md#失败语义:
+      - t-768db3
+    design/architecture.md#删除面与保留面:
+      - t-be4f48
+    design/architecture.md#迁移灰度与回滚:
+      - t-a74f54
+      - t-a734f8
+    design/architecture.md#门禁与回归口径:
+      - t-a734f8
+      - t-54841e
+    design/architecture.md#文档同步:
+      - t-be4f48
+    design/data-model.md#实体总览:
+      - t-87e952
+    design/data-model.md#自举结果对象:
+      - t-768db3
+      - t-a74f54
+    design/data-model.md#生成物文件契约:
+      - t-87e952
+      - t-872d22
+    design/data-model.md#INDEX-生成区与手写区:
+      - t-87e952
+      - t-768db3
+    design/data-model.md#配置数据契约:
+      - t-a74f54
+      - t-a734f8
+    design/data-model.md#去重表与并发:
+      - t-768db3
+      - t-a74f54
+    design/data-model.md#删除面数据影响:
+      - t-be4f48
+    design/interfaces.md#新增用例-ensureKnowledgeLayer:
+      - t-87e952
+      - t-768db3
+      - t-872d22
+      - t-a74f54
+    design/interfaces.md#新增窄端口-KbSourcePort:
+      - t-87e952
+      - t-872d22
+    design/interfaces.md#领域纯函数-srcdomainknowledgegeneratets:
+      - t-87e952
+      - t-872d22
+    design/interfaces.md#CLI-契约保持不变:
+      - t-87e952
+      - t-872d22
+    design/interfaces.md#配置契约-knowledgeautoBootstrap:
+      - t-a74f54
+      - t-a734f8
+    design/interfaces.md#数据契约生成物与写入规则:
+      - t-87e952
+      - t-768db3
+    design/interfaces.md#客户端契约变更:
+      - t-be4f48
+    design/interfaces.md#Agent-侧契约零变化:
+      - t-be4f48
+    design/interfaces.md#与需求的显式偏离:
+      - t-a74f54
+      - t-a734f8
+    design/use-cases.md#UC-1-空项目首次启动知识层自动长出:
+      - t-87e952
+      - t-768db3
+      - t-a74f54
+    design/use-cases.md#UC-2-已有知识层的项目启动零写入:
+      - t-768db3
+      - t-a74f54
+    design/use-cases.md#UC-3-人写过的内容被保护:
+      - t-87e952
+      - t-768db3
+    design/use-cases.md#UC-4-只读或不可写根响亮失败但不挡启动:
+      - t-768db3
+    design/use-cases.md#UC-5-维护者关掉自举:
+      - t-a74f54
+      - t-a734f8
+    design/use-cases.md#UC-6-人想读知识层内容不再走-UI:
+      - t-be4f48
+    design/use-cases.md#UC-7-Agent-建立项目认知:
+      - t-87e952
+      - t-768db3
+      - t-872d22
+      - t-a74f54
+    design/use-cases.md#UC-8-CLI-与宿主同源:
+      - t-87e952
+      - t-872d22
+  fr_to_tasks:
+    FR-1:
+      - t-768db3
+      - t-a74f54
+      - t-be4f48
+    FR-2:
+      - t-768db3
+      - t-a74f54
+      - t-be4f48
+      - t-87e952
+      - t-872d22
+    FR-3:
+      - t-87e952
+      - t-872d22
+      - t-768db3
+      - t-a74f54
+    FR-4:
+      - t-87e952
+      - t-872d22
+      - t-768db3
+      - t-a74f54
+    FR-5:
+      - t-768db3
+      - t-a74f54
+      - t-87e952
+    FR-6:
+      - t-a74f54
+      - t-a734f8
+    FR-7:
+      - t-a734f8
+      - t-54841e
+coverage:
+  implementation:
+    total: 33
+    covered: 33
+    uncovered: []
+    rate: 100
+    total_designs: 33
+    covered_designs: 33

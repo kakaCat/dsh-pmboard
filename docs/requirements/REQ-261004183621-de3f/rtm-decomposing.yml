@@ -1,0 +1,714 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261004183621-de3f
+  generated_at: 2026-10-04T10:39:26.307Z
+  version: 115
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T11:42:54.675Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 归档提交时对账并把三类清单如实给出
+      source: requirement.md
+      line: 87
+    - id: FR-2
+      title: 未列未豁免必须显式处置，否则拒绝提交
+      source: requirement.md
+      line: 112
+    - id: FR-3
+      title: 豁免规则常量单点
+      source: requirement.md
+      line: 138
+    - id: FR-4
+      title: 已归档需求的一次受控补录
+      source: requirement.md
+      line: 163
+    - id: FR-5
+      title: 漏登与豁免持久可见
+      source: requirement.md
+      line: 188
+    - id: FR-6
+      title: 门禁、测试与行为变更的回退
+      source: requirement.md
+      line: 206
+  design_sections:
+    - ref: design/architecture.md#现状与改动面
+      title: 现状与改动面 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 现状与改动面
+    - ref: design/architecture.md#对账三分类的实现落点
+      title: 对账三分类的实现落点 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 对账三分类的实现落点
+    - ref: design/architecture.md#豁免规则常量domain-纯数据
+      title: 豁免规则常量（domain 纯数据） `
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: 豁免规则常量domain-纯数据
+    - ref: design/architecture.md#补录通道的架构位置单一写入口
+      title: 补录通道的架构位置（单一写入口） `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: 补录通道的架构位置单一写入口
+    - ref: design/architecture.md#可见性台账字段-评论-看板
+      title: 可见性：台账字段 + 评论 + 看板 `
+      serves:
+        - FR-5
+      file: design/architecture.md
+      section: 可见性台账字段-评论-看板
+    - ref: design/architecture.md#行为变更灰度与回滚
+      title: 行为变更、灰度与回滚 `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: 行为变更灰度与回滚
+    - ref: design/data-model.md#ArchiveRecord-增量字段
+      title: ArchiveRecord 增量字段 `
+      serves:
+        - FR-1
+        - FR-5
+      file: design/data-model.md
+      section: ArchiveRecord-增量字段
+    - ref: design/data-model.md#三种清单的形状与不变量
+      title: 三种清单的形状与不变量 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 三种清单的形状与不变量
+    - ref: design/data-model.md#补录的数据语义
+      title: 补录的数据语义 `
+      serves:
+        - FR-4
+      file: design/data-model.md
+      section: 补录的数据语义
+    - ref: design/data-model.md#留痕与可见性
+      title: 留痕与可见性 `
+      serves:
+        - FR-5
+      file: design/data-model.md
+      section: 留痕与可见性
+    - ref: design/data-model.md#兼容与迁移
+      title: 兼容与迁移 `
+      serves:
+        - FR-6
+      file: design/data-model.md
+      section: 兼容与迁移
+    - ref: design/interfaces.md#提交入参新增-unlistedack
+      title: 提交入参新增 `unlisted_ack` `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: 提交入参新增-unlistedack
+    - ref: design/interfaces.md#提交返回体三份清单
+      title: 提交返回体三份清单 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: 提交返回体三份清单
+    - ref: design/interfaces.md#补录入口工具-看板共用用例
+      title: 补录入口（工具 + 看板共用用例） `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: 补录入口工具-看板共用用例
+    - ref: design/interfaces.md#错误码与文案
+      title: 错误码与文案 `
+      serves:
+        - FR-2
+        - FR-4
+      file: design/interfaces.md
+      section: 错误码与文案
+    - ref: design/interfaces.md#配置-archiveunlistedGate
+      title: 配置 `archive.unlistedGate` `
+      serves:
+        - FR-6
+      file: design/interfaces.md
+      section: 配置-archiveunlistedGate
+    - ref: design/interfaces.md#豁免常量接口
+      title: 豁免常量接口 `
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: 豁免常量接口
+    - ref: design/use-cases.md#UC-1-提交归档材料时漏列-当场被拦
+      title: UC-1 提交归档材料时漏列 → 当场被拦 `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-1-提交归档材料时漏列-当场被拦
+    - ref: design/use-cases.md#UC-2-有意只收关键文档-显式声明豁免
+      title: UC-2 有意只收关键文档 → 显式声明豁免 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/use-cases.md
+      section: UC-2-有意只收关键文档-显式声明豁免
+    - ref: design/use-cases.md#UC-3-机器生成物自动豁免
+      title: UC-3 机器生成物自动豁免 `
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-3-机器生成物自动豁免
+    - ref: design/use-cases.md#UC-4-归档后发现清单不全-受控补录
+      title: UC-4 归档后发现清单不全 → 受控补录 `
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: UC-4-归档后发现清单不全-受控补录
+    - ref: design/use-cases.md#UC-5-复核者在看板看对账结果
+      title: UC-5 复核者在看板看对账结果 `
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-5-复核者在看板看对账结果
+    - ref: design/use-cases.md#UC-6-维护者回退到只警告
+      title: UC-6 维护者回退到"只警告" `
+      serves:
+        - FR-6
+      file: design/use-cases.md
+      section: UC-6-维护者回退到只警告
+outputs:
+  tasks:
+    - id: t-a462e8
+      title: 先把规矩定死：哪些文件不用进清单、对账结果长什么样
+      implements: 新增 src/domain/requirement/archive-exemptions.ts（四条规则：rtm-*.yml 文件名通配、rtm-* 任一段前缀目录、queue.json、state 段；每条带 reason；导出 matchArchiveExemption，零 IO）；在 src/shared/protocol.ts 给 ArchiveRecord 加两个可选字段 reconcile / amendments 并导出类型；新增 tests/archive-exemptions.test.ts。
+      serves:
+        - FR-1
+        - FR-3
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-526edb
+      title: 漏登当场见：提交时对账，不处置就不让过
+      implements: 改 src/application/use-cases/SubmitArchive.ts：目录遍历对账前移到写台账之前，产出 listed/exempted/unlisted 三分类；未列未豁免且未被 unlisted_ack 覆盖 → 拒绝（码 REQBOARD_UNLISTED_ACK_REQUIRED，文案列出未列文件与两种处置）；warn 模式不拒；对账结果写入归档记录与需求评论；返回体给 reconcile 并保留 unlisted_files/warning。改 src/tools/SubmitTool/SubmitTool.ts 入参（unlisted_ack）与出参（reconcile）schema。新增 tests/archive-reconcile.test.ts。
+      serves:
+        - FR-1
+        - FR-2
+      depends_on:
+        - t-a462e8
+      phase: implement
+      side: backend
+    - id: t-f2cda3
+      title: 归档后发现漏了也能补：受控补录一条路
+      implements: 新增 src/application/use-cases/AmendArchiveManifest.ts（只追加 docs 条目、写一条 amendments、需求评论留痕、已列 path 幂等跳过、状态守卫 archived/legacy done、归属守卫）；新增 src/tools/ArchiveAmendTool/ 工具壳并在 src/tools/index.ts 注册；在 src/http/routers/requirements.ts 加看板路由调同一用例。新增 tests/archive-amend.test.ts。
+      serves:
+        - FR-4
+      depends_on:
+        - t-a462e8
+      phase: implement
+      side: backend
+    - id: t-14bf5e
+      title: 让人看得见：归档页显示列了多少、豁免多少、漏了什么
+      implements: 改 src/client/views/verification.ts 归档区块：新增「对账」行（已列/豁免/未列计数 + 闸门），未列非空可展开明细，老记录显示「未对账（本功能上线前归档）」；src/client/types.ts 补字段类型；必要时补极少量样式。新增 tests/archive-manifest-view.test.ts。
+      serves:
+        - FR-5
+      depends_on:
+        - t-a462e8
+      phase: implement
+      side: backend
+    - id: t-8faf50
+      title: 太严可回退：闸门开关与装配期校验
+      implements: src/plugin-config.ts 增 archive.unlistedGate 解析（缺省 enforce，非法值装配期抛错）；src/index.ts 装配注入；src/application/ports.ts 增可选字段。新增 tests/archive-gate-config.test.ts。
+      serves:
+        - FR-6
+      depends_on:
+        - t-a462e8
+      phase: implement
+      side: backend
+    - id: t-b84359
+      title: 老记录与旧调用方怎么办（迁移与兼容）
+      implements: 新增 tests/archive-compat.test.ts：无 reconcile 的存量记录在详情透传与看板渲染下不报错且不显示 0；warn 模式下漏列提交成功且 reconcile.gate=warn；老字段 unlisted_files/warning 仍在。证据落 docs/requirements/REQ-261004183621-de3f/evidence/compat.txt。
+      serves:
+        - FR-4
+        - FR-5
+        - FR-6
+      depends_on:
+        - t-526edb
+        - t-f2cda3
+        - t-14bf5e
+        - t-8faf50
+      phase: test
+      side: backend
+    - id: t-53545b
+      title: 端到端演练与交付证据
+      implements: 新增 scripts/archive-reconcile-drill.mts：临时工作区造假需求目录（含豁免项与未列项），依次演示漏列→拒、声明豁免→过、补录 3 条、重复补录幂等、warn 模式不拒；输出重定向到 evidence/archive-reconcile-drill.txt。四条门禁结果落 evidence/gates.txt。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      depends_on:
+        - t-526edb
+        - t-f2cda3
+        - t-8faf50
+      phase: test
+      side: backend
+    - id: t-34d490
+      title: 先把规矩定死：哪些文件不用进清单、对账结果长什么样·研发
+      implements: |-
+        新增 src/domain/requirement/archive-exemptions.ts（四条规则：rtm-*.yml 文件名通配、rtm-* 任一段前缀目录、queue.json、state 段；每条带 reason；导出 matchArchiveExemption，零 IO）；在 src/shared/protocol.ts 给 ArchiveRecord 加两个可选字段 reconcile / amendments 并导出类型；新增 tests/archive-exemptions.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-ee723d
+      title: 先把规矩定死：哪些文件不用进清单、对账结果长什么样·联调
+      implements: |-
+        新增 src/domain/requirement/archive-exemptions.ts（四条规则：rtm-*.yml 文件名通配、rtm-* 任一段前缀目录、queue.json、state 段；每条带 reason；导出 matchArchiveExemption，零 IO）；在 src/shared/protocol.ts 给 ArchiveRecord 加两个可选字段 reconcile / amendments 并导出类型；新增 tests/archive-exemptions.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-34d490
+      phase: implement
+      side: backend
+    - id: t-92b2f6
+      title: 先把规矩定死：哪些文件不用进清单、对账结果长什么样·复核
+      implements: |-
+        新增 src/domain/requirement/archive-exemptions.ts（四条规则：rtm-*.yml 文件名通配、rtm-* 任一段前缀目录、queue.json、state 段；每条带 reason；导出 matchArchiveExemption，零 IO）；在 src/shared/protocol.ts 给 ArchiveRecord 加两个可选字段 reconcile / amendments 并导出类型；新增 tests/archive-exemptions.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-ee723d
+      phase: implement
+      side: backend
+    - id: t-11f2a5
+      title: 先把规矩定死：哪些文件不用进清单、对账结果长什么样·测试
+      implements: |-
+        新增 src/domain/requirement/archive-exemptions.ts（四条规则：rtm-*.yml 文件名通配、rtm-* 任一段前缀目录、queue.json、state 段；每条带 reason；导出 matchArchiveExemption，零 IO）；在 src/shared/protocol.ts 给 ArchiveRecord 加两个可选字段 reconcile / amendments 并导出类型；新增 tests/archive-exemptions.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-92b2f6
+      phase: implement
+      side: backend
+    - id: t-3b5bb4
+      title: 漏登当场见：提交时对账，不处置就不让过·研发
+      implements: |-
+        改 src/application/use-cases/SubmitArchive.ts：目录遍历对账前移到写台账之前，产出 listed/exempted/unlisted 三分类；未列未豁免且未被 unlisted_ack 覆盖 → 拒绝（码 REQBOARD_UNLISTED_ACK_REQUIRED，文案列出未列文件与两种处置）；warn 模式不拒；对账结果写入归档记录与需求评论；返回体给 reconcile 并保留 unlisted_files/warning。改 src/tools/SubmitTool/SubmitTool.ts 入参（unlisted_ack）与出参（reconcile）schema。新增 tests/archive-reconcile.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-a462e8
+      phase: implement
+      side: backend
+    - id: t-315959
+      title: 漏登当场见：提交时对账，不处置就不让过·联调
+      implements: |-
+        改 src/application/use-cases/SubmitArchive.ts：目录遍历对账前移到写台账之前，产出 listed/exempted/unlisted 三分类；未列未豁免且未被 unlisted_ack 覆盖 → 拒绝（码 REQBOARD_UNLISTED_ACK_REQUIRED，文案列出未列文件与两种处置）；warn 模式不拒；对账结果写入归档记录与需求评论；返回体给 reconcile 并保留 unlisted_files/warning。改 src/tools/SubmitTool/SubmitTool.ts 入参（unlisted_ack）与出参（reconcile）schema。新增 tests/archive-reconcile.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-3b5bb4
+      phase: implement
+      side: backend
+    - id: t-0428f0
+      title: 漏登当场见：提交时对账，不处置就不让过·复核
+      implements: |-
+        改 src/application/use-cases/SubmitArchive.ts：目录遍历对账前移到写台账之前，产出 listed/exempted/unlisted 三分类；未列未豁免且未被 unlisted_ack 覆盖 → 拒绝（码 REQBOARD_UNLISTED_ACK_REQUIRED，文案列出未列文件与两种处置）；warn 模式不拒；对账结果写入归档记录与需求评论；返回体给 reconcile 并保留 unlisted_files/warning。改 src/tools/SubmitTool/SubmitTool.ts 入参（unlisted_ack）与出参（reconcile）schema。新增 tests/archive-reconcile.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-315959
+      phase: implement
+      side: backend
+    - id: t-3b0327
+      title: 漏登当场见：提交时对账，不处置就不让过·测试
+      implements: |-
+        改 src/application/use-cases/SubmitArchive.ts：目录遍历对账前移到写台账之前，产出 listed/exempted/unlisted 三分类；未列未豁免且未被 unlisted_ack 覆盖 → 拒绝（码 REQBOARD_UNLISTED_ACK_REQUIRED，文案列出未列文件与两种处置）；warn 模式不拒；对账结果写入归档记录与需求评论；返回体给 reconcile 并保留 unlisted_files/warning。改 src/tools/SubmitTool/SubmitTool.ts 入参（unlisted_ack）与出参（reconcile）schema。新增 tests/archive-reconcile.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-0428f0
+      phase: implement
+      side: backend
+    - id: t-711b02
+      title: 归档后发现漏了也能补：受控补录一条路·研发
+      implements: |-
+        新增 src/application/use-cases/AmendArchiveManifest.ts（只追加 docs 条目、写一条 amendments、需求评论留痕、已列 path 幂等跳过、状态守卫 archived/legacy done、归属守卫）；新增 src/tools/ArchiveAmendTool/ 工具壳并在 src/tools/index.ts 注册；在 src/http/routers/requirements.ts 加看板路由调同一用例。新增 tests/archive-amend.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-a462e8
+      phase: implement
+      side: backend
+    - id: t-0a0223
+      title: 归档后发现漏了也能补：受控补录一条路·联调
+      implements: |-
+        新增 src/application/use-cases/AmendArchiveManifest.ts（只追加 docs 条目、写一条 amendments、需求评论留痕、已列 path 幂等跳过、状态守卫 archived/legacy done、归属守卫）；新增 src/tools/ArchiveAmendTool/ 工具壳并在 src/tools/index.ts 注册；在 src/http/routers/requirements.ts 加看板路由调同一用例。新增 tests/archive-amend.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-711b02
+      phase: implement
+      side: backend
+    - id: t-63524a
+      title: 归档后发现漏了也能补：受控补录一条路·复核
+      implements: |-
+        新增 src/application/use-cases/AmendArchiveManifest.ts（只追加 docs 条目、写一条 amendments、需求评论留痕、已列 path 幂等跳过、状态守卫 archived/legacy done、归属守卫）；新增 src/tools/ArchiveAmendTool/ 工具壳并在 src/tools/index.ts 注册；在 src/http/routers/requirements.ts 加看板路由调同一用例。新增 tests/archive-amend.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-0a0223
+      phase: implement
+      side: backend
+    - id: t-4435da
+      title: 归档后发现漏了也能补：受控补录一条路·测试
+      implements: |-
+        新增 src/application/use-cases/AmendArchiveManifest.ts（只追加 docs 条目、写一条 amendments、需求评论留痕、已列 path 幂等跳过、状态守卫 archived/legacy done、归属守卫）；新增 src/tools/ArchiveAmendTool/ 工具壳并在 src/tools/index.ts 注册；在 src/http/routers/requirements.ts 加看板路由调同一用例。新增 tests/archive-amend.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-63524a
+      phase: implement
+      side: backend
+    - id: t-b648cb
+      title: 让人看得见：归档页显示列了多少、豁免多少、漏了什么·研发
+      implements: |-
+        改 src/client/views/verification.ts 归档区块：新增「对账」行（已列/豁免/未列计数 + 闸门），未列非空可展开明细，老记录显示「未对账（本功能上线前归档）」；src/client/types.ts 补字段类型；必要时补极少量样式。新增 tests/archive-manifest-view.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-a462e8
+      phase: implement
+      side: backend
+    - id: t-675ba1
+      title: 让人看得见：归档页显示列了多少、豁免多少、漏了什么·联调
+      implements: |-
+        改 src/client/views/verification.ts 归档区块：新增「对账」行（已列/豁免/未列计数 + 闸门），未列非空可展开明细，老记录显示「未对账（本功能上线前归档）」；src/client/types.ts 补字段类型；必要时补极少量样式。新增 tests/archive-manifest-view.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-b648cb
+      phase: implement
+      side: backend
+    - id: t-f42f20
+      title: 让人看得见：归档页显示列了多少、豁免多少、漏了什么·复核
+      implements: |-
+        改 src/client/views/verification.ts 归档区块：新增「对账」行（已列/豁免/未列计数 + 闸门），未列非空可展开明细，老记录显示「未对账（本功能上线前归档）」；src/client/types.ts 补字段类型；必要时补极少量样式。新增 tests/archive-manifest-view.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-675ba1
+      phase: implement
+      side: backend
+    - id: t-89d6b7
+      title: 让人看得见：归档页显示列了多少、豁免多少、漏了什么·测试
+      implements: |-
+        改 src/client/views/verification.ts 归档区块：新增「对账」行（已列/豁免/未列计数 + 闸门），未列非空可展开明细，老记录显示「未对账（本功能上线前归档）」；src/client/types.ts 补字段类型；必要时补极少量样式。新增 tests/archive-manifest-view.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-f42f20
+      phase: implement
+      side: backend
+    - id: t-42c7f6
+      title: 太严可回退：闸门开关与装配期校验·研发
+      implements: |-
+        src/plugin-config.ts 增 archive.unlistedGate 解析（缺省 enforce，非法值装配期抛错）；src/index.ts 装配注入；src/application/ports.ts 增可选字段。新增 tests/archive-gate-config.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-a462e8
+      phase: implement
+      side: backend
+    - id: t-f6fb5d
+      title: 太严可回退：闸门开关与装配期校验·联调
+      implements: |-
+        src/plugin-config.ts 增 archive.unlistedGate 解析（缺省 enforce，非法值装配期抛错）；src/index.ts 装配注入；src/application/ports.ts 增可选字段。新增 tests/archive-gate-config.test.ts。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-42c7f6
+      phase: implement
+      side: backend
+    - id: t-87b5ef
+      title: 太严可回退：闸门开关与装配期校验·复核
+      implements: |-
+        src/plugin-config.ts 增 archive.unlistedGate 解析（缺省 enforce，非法值装配期抛错）；src/index.ts 装配注入；src/application/ports.ts 增可选字段。新增 tests/archive-gate-config.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-f6fb5d
+      phase: implement
+      side: backend
+    - id: t-4a81ad
+      title: 太严可回退：闸门开关与装配期校验·测试
+      implements: |-
+        src/plugin-config.ts 增 archive.unlistedGate 解析（缺省 enforce，非法值装配期抛错）；src/index.ts 装配注入；src/application/ports.ts 增可选字段。新增 tests/archive-gate-config.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-87b5ef
+      phase: implement
+      side: backend
+    - id: t-cd5898
+      title: 老记录与旧调用方怎么办（迁移与兼容）·研发
+      implements: |-
+        新增 tests/archive-compat.test.ts：无 reconcile 的存量记录在详情透传与看板渲染下不报错且不显示 0；warn 模式下漏列提交成功且 reconcile.gate=warn；老字段 unlisted_files/warning 仍在。证据落 docs/requirements/REQ-261004183621-de3f/evidence/compat.txt。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-526edb
+        - t-f2cda3
+        - t-14bf5e
+        - t-8faf50
+      phase: test
+      side: backend
+    - id: t-52350a
+      title: 老记录与旧调用方怎么办（迁移与兼容）·复核
+      implements: |-
+        新增 tests/archive-compat.test.ts：无 reconcile 的存量记录在详情透传与看板渲染下不报错且不显示 0；warn 模式下漏列提交成功且 reconcile.gate=warn；老字段 unlisted_files/warning 仍在。证据落 docs/requirements/REQ-261004183621-de3f/evidence/compat.txt。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-cd5898
+      phase: test
+      side: backend
+    - id: t-d0364d
+      title: 老记录与旧调用方怎么办（迁移与兼容）·测试
+      implements: |-
+        新增 tests/archive-compat.test.ts：无 reconcile 的存量记录在详情透传与看板渲染下不报错且不显示 0；warn 模式下漏列提交成功且 reconcile.gate=warn；老字段 unlisted_files/warning 仍在。证据落 docs/requirements/REQ-261004183621-de3f/evidence/compat.txt。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-52350a
+      phase: test
+      side: backend
+    - id: t-723279
+      title: 端到端演练与交付证据·研发
+      implements: |-
+        新增 scripts/archive-reconcile-drill.mts：临时工作区造假需求目录（含豁免项与未列项），依次演示漏列→拒、声明豁免→过、补录 3 条、重复补录幂等、warn 模式不拒；输出重定向到 evidence/archive-reconcile-drill.txt。四条门禁结果落 evidence/gates.txt。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-526edb
+        - t-f2cda3
+        - t-8faf50
+      phase: test
+      side: backend
+    - id: t-373b4b
+      title: 端到端演练与交付证据·复核
+      implements: |-
+        新增 scripts/archive-reconcile-drill.mts：临时工作区造假需求目录（含豁免项与未列项），依次演示漏列→拒、声明豁免→过、补录 3 条、重复补录幂等、warn 模式不拒；输出重定向到 evidence/archive-reconcile-drill.txt。四条门禁结果落 evidence/gates.txt。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-723279
+      phase: test
+      side: backend
+    - id: t-5c70ab
+      title: 端到端演练与交付证据·测试
+      implements: |-
+        新增 scripts/archive-reconcile-drill.mts：临时工作区造假需求目录（含豁免项与未列项），依次演示漏列→拒、声明豁免→过、补录 3 条、重复补录幂等、warn 模式不拒；输出重定向到 evidence/archive-reconcile-drill.txt。四条门禁结果落 evidence/gates.txt。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-373b4b
+      phase: test
+      side: backend
+    - id: t-254554
+      title: 返工：漏登当场见：提交时对账，不处置就不让过
+      implements: 按验收意见修复：需修改
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-f48bd0
+      title: 返工：漏登当场见：提交时对账，不处置就不让过·研发
+      implements: |-
+        按验收意见修复：需修改
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-a65ad7
+      title: 返工：漏登当场见：提交时对账，不处置就不让过·联调
+      implements: |-
+        按验收意见修复：需修改
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-f48bd0
+      phase: implement
+      side: backend
+    - id: t-4d8c9c
+      title: 返工：漏登当场见：提交时对账，不处置就不让过·复核
+      implements: |-
+        按验收意见修复：需修改
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-a65ad7
+      phase: implement
+      side: backend
+    - id: t-2774b5
+      title: 返工：漏登当场见：提交时对账，不处置就不让过·测试
+      implements: |-
+        按验收意见修复：需修改
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-4d8c9c
+      phase: implement
+      side: backend
+traceability:
+  design_to_tasks:
+    design/architecture.md#现状与改动面:
+      - t-a462e8
+      - t-526edb
+      - t-53545b
+    design/architecture.md#对账三分类的实现落点:
+      - t-a462e8
+      - t-526edb
+      - t-53545b
+    design/architecture.md#豁免规则常量domain-纯数据:
+      - t-a462e8
+    design/architecture.md#补录通道的架构位置单一写入口:
+      - t-f2cda3
+      - t-b84359
+      - t-53545b
+    design/architecture.md#可见性台账字段-评论-看板:
+      - t-14bf5e
+      - t-b84359
+    design/architecture.md#行为变更灰度与回滚:
+      - t-8faf50
+      - t-b84359
+    design/data-model.md#ArchiveRecord-增量字段:
+      - t-a462e8
+      - t-526edb
+      - t-14bf5e
+      - t-b84359
+      - t-53545b
+    design/data-model.md#三种清单的形状与不变量:
+      - t-a462e8
+      - t-526edb
+      - t-53545b
+    design/data-model.md#补录的数据语义:
+      - t-f2cda3
+      - t-b84359
+      - t-53545b
+    design/data-model.md#留痕与可见性:
+      - t-14bf5e
+      - t-b84359
+    design/data-model.md#兼容与迁移:
+      - t-8faf50
+      - t-b84359
+    design/interfaces.md#提交入参新增-unlistedack:
+      - t-526edb
+      - t-53545b
+    design/interfaces.md#提交返回体三份清单:
+      - t-a462e8
+      - t-526edb
+      - t-53545b
+    design/interfaces.md#补录入口工具-看板共用用例:
+      - t-f2cda3
+      - t-b84359
+      - t-53545b
+    design/interfaces.md#错误码与文案:
+      - t-526edb
+      - t-f2cda3
+      - t-b84359
+      - t-53545b
+    design/interfaces.md#配置-archiveunlistedGate:
+      - t-8faf50
+      - t-b84359
+    design/interfaces.md#豁免常量接口:
+      - t-a462e8
+    design/use-cases.md#UC-1-提交归档材料时漏列-当场被拦:
+      - t-526edb
+      - t-53545b
+    design/use-cases.md#UC-2-有意只收关键文档-显式声明豁免:
+      - t-526edb
+      - t-14bf5e
+      - t-b84359
+      - t-53545b
+    design/use-cases.md#UC-3-机器生成物自动豁免:
+      - t-a462e8
+    design/use-cases.md#UC-4-归档后发现清单不全-受控补录:
+      - t-f2cda3
+      - t-b84359
+      - t-53545b
+    design/use-cases.md#UC-5-复核者在看板看对账结果:
+      - t-14bf5e
+      - t-b84359
+    design/use-cases.md#UC-6-维护者回退到只警告:
+      - t-8faf50
+      - t-b84359
+  fr_to_tasks:
+    FR-1:
+      - t-a462e8
+      - t-526edb
+      - t-53545b
+      - t-14bf5e
+      - t-b84359
+    FR-2:
+      - t-a462e8
+      - t-526edb
+      - t-53545b
+      - t-f2cda3
+      - t-b84359
+      - t-14bf5e
+    FR-3:
+      - t-a462e8
+    FR-4:
+      - t-f2cda3
+      - t-b84359
+      - t-53545b
+      - t-526edb
+    FR-5:
+      - t-14bf5e
+      - t-b84359
+      - t-a462e8
+      - t-526edb
+      - t-53545b
+    FR-6:
+      - t-8faf50
+      - t-b84359
+coverage:
+  implementation:
+    total: 23
+    covered: 23
+    uncovered: []
+    rate: 100
+    total_designs: 23
+    covered_designs: 23

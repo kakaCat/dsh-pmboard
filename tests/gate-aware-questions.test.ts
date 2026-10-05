@@ -144,7 +144,7 @@ describe('三条 pm 弹框路径各触发一次链', () => {
       requirements: [req({ id: REQ_ID, status: 'accepting', sourceSessionId: W, verification: { sheet } as never })],
     })
     const { port, seenOpts } = queueUI([
-      [{ id: 'v1-1', selected: [ACCEPT_ITEM_OPTIONS.pass] }],
+      [{ id: 'v1-1', selected: [ACCEPT_ITEM_OPTIONS.pass], custom: '实际结果：符合判据' }],
       [{ id: 'final-pass', selected: [FINAL_PASS_LABEL] }],
     ])
     const { chain, pending } = chainWithStore()

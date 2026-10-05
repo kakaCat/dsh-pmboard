@@ -85,12 +85,12 @@ describe('FR-3 需求归档 → worktree 合并清理提示', () => {
     h.deps.delivery = spy.port
     await submitVerification(h.deps, { summary: '交付', evidence: ['npx vitest run 全绿'] }, EXEC)
     // 把验收单各项置为已通过（模拟逐项裁决过完）
-    const sheet = h.repo.ledger.requirements[0]!.verification!.sheet!
+    const sheet = (await h.store.get('REQ-000001'))!.verification!.sheet!
     for (const it of sheet.items) it.status = 'passed'
     h.questions.answers = [{ id: 'final-pass', selected: [FINAL_PASS_LABEL] }]
     const out: any = await acceptSheet(h.deps, {}, EXEC)
     expect(out.archived).toBe(true)
-    expect(h.repo.ledger.requirements[0]!.status).toBe('archived')
+    expect((await h.store.get('REQ-000001'))!.status).toBe('archived')
     expect(spy.sent).toHaveLength(1)
     expect(spy.sent[0]!.text).toContain('git merge --no-ff feature/REQ-000001')
     expect(spy.sent[0]!.text).toContain('git worktree remove .worktrees/REQ-000001/')

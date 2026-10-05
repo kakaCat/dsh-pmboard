@@ -1,0 +1,14 @@
+# case E1 · 提交验收材料 · serves: FR-2
+case: E1
+checks:
+  - path: requirement.status            # 提交验收材料后需求进入验收态
+    op: eq
+    value: accepting
+  - path: requirement.artifacts[?kind='verification']
+    op: exists                          # verification 产物已登记
+  - path: requirement.artifacts[?kind='verification'].evidence
+    op: exists                          # evidence 清单非空（≥1 条）
+  - path: requirement.artifacts[?kind='verification'].evidence
+    op: count_lte
+    value: 20                           # evidence 条数上限 20
+  # evidence 每条的「可复核锚点」质量由 rubric verification-evidence 判

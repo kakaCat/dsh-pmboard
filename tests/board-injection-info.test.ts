@@ -7,6 +7,7 @@
  *   ③ 注入 `<script>` 探针时输出被转义（含转义实体、无可执行标签）。
  * 另加：只读性（GET 不改留痕文件）、窗口过滤、k 边界。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
@@ -20,7 +21,6 @@ import {
   injectionLogInputFromResolved,
   type InjectionLogEntry,
 } from '../src/application/internal/injection-log.js'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { resolveStagePrompt } from '../src/domain/prompt/index.js'
 import type { RequirementRecord } from '../src/client/types.ts'
@@ -137,8 +137,8 @@ describe('GET /injection-log（只读查询接口）', () => {
     log.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'accepting', difficulty: 'light', category: 'feature' }), W2))
     await log.flush()
 
-    const store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
-    const handler = createReqboardHandler({ store, now: () => Date.now(), injectionLog: log })
+    const store = makeTestStore()
+    const handler = createReqboardHandler({ store: store, requirementStore: store, now: () => Date.now(), injectionLog: log })
 
     const res = fakeRes()
     await handler(fakeGetReq('/injection-log?window=' + W + '&k=10'), res)
@@ -163,8 +163,8 @@ describe('GET /injection-log（只读查询接口）', () => {
     await log.flush()
     const before = { size: statSync(file).size, text: readFileSync(file, 'utf8') }
 
-    const store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
-    const handler = createReqboardHandler({ store, now: () => Date.now(), injectionLog: log })
+    const store = makeTestStore()
+    const handler = createReqboardHandler({ store: store, requirementStore: store, now: () => Date.now(), injectionLog: log })
     const res = fakeRes()
     await handler(fakeGetReq('/injection-log'), res)
     expect(res.statusCode).toBe(200)
@@ -175,8 +175,8 @@ describe('GET /injection-log（只读查询接口）', () => {
 
   it('k 越界 → 400（响亮拒绝，不静默截断）', async () => {
     const { log } = makeLogFile()
-    const store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
-    const handler = createReqboardHandler({ store, now: () => Date.now(), injectionLog: log })
+    const store = makeTestStore()
+    const handler = createReqboardHandler({ store: store, requirementStore: store, now: () => Date.now(), injectionLog: log })
     for (const bad of ['0', '201', 'abc', '1.5']) {
       const res = fakeRes()
       await handler(fakeGetReq('/injection-log?k=' + bad), res)
@@ -186,8 +186,8 @@ describe('GET /injection-log（只读查询接口）', () => {
   })
 
   it('留痕端口未装配 → 空清单 available=false（不抛错，看板不因此变红）', async () => {
-    const store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
-    const handler = createReqboardHandler({ store, now: () => Date.now() })
+    const store = makeTestStore()
+    const handler = createReqboardHandler({ store: store, requirementStore: store, now: () => Date.now() })
     const res = fakeRes()
     await handler(fakeGetReq('/injection-log'), res)
     expect(res.statusCode).toBe(200)

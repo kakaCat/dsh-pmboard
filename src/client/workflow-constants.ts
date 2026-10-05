@@ -13,16 +13,21 @@
  * 流程节点定义
  * 7 个主态：draft → brainstorming → design → decomposing → implementing → accepting → archived
  * 1 个过渡态：done（后端终态，done 但未 archived）
+ *
+ * `desc` 是**界面上的简短副标题**（如"立项 · 立项草稿"里的后半句），逐字取自本需求的界面基准
+ * `docs/requirements/REQ-261004103330-005f/prototype/board-settings.html` 的 `STAGES[].desc`。
+ * 它与 `application/dive/stage-configs.ts` 的 `description` **不是一回事**：后者是给 Agent 看的行为说明
+ * （更长，且属服务端层，客户端不得引用）。两者用途不同故不合并——但副标题只在本表这一处出现。
  */
 export const WORKFLOW_STAGES = {
-  draft: { label: '立项', color: '#9aa4b2', order: 0 },
-  brainstorming: { label: '需求分析', color: '#f0a020', order: 1 },
-  design: { label: '设计', color: '#c2255c', order: 2 },
-  decomposing: { label: '拆分', color: '#8e44ad', order: 3 },
-  implementing: { label: '实施', color: '#4a7dff', order: 4 },
-  accepting: { label: '验收', color: '#17a2b8', order: 5 },
-  done: { label: '完成', color: '#28a745', order: 6 },
-  archived: { label: '归档', color: '#28a745', order: 7 }
+  draft: { label: '立项', color: '#9aa4b2', order: 0, desc: '立项草稿' },
+  brainstorming: { label: '需求分析', color: '#f0a020', order: 1, desc: '调研与写需求文档' },
+  design: { label: '设计', color: '#c2255c', order: 2, desc: '写设计文档' },
+  decomposing: { label: '拆分', color: '#8e44ad', order: 3, desc: '写拆分计划（等人工批准）' },
+  implementing: { label: '实施', color: '#4a7dff', order: 4, desc: '全自动执行任务' },
+  accepting: { label: '验收', color: '#17a2b8', order: 5, desc: '等人工验收' },
+  done: { label: '完成', color: '#28a745', order: 6, desc: '无后续行为' },
+  archived: { label: '归档', color: '#28a745', order: 7, desc: '无后续行为' }
 } as const
 
 /** 工作流阶段类型 */

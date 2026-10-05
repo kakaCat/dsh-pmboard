@@ -191,7 +191,8 @@ describe('E2E② 交付 → 三方一致性验收单', () => {
     })
     const out: any = await submitVerification(hh.deps, { summary: '交付完成', evidence: ['npx vitest run 全绿'] }, EXEC)
     expect(out.success).toBe(true)
-    const sheet = hh.repo.ledger.requirements[0].verification?.sheet
+    const __rec = (await hh.store.get((await hh.store.listSummaries({ scope: 'all' })).items[0]!.id))!
+    const sheet = __rec.verification?.sheet
     const item = sheet?.items.find((i: any) => i.criterion.includes('三方一致性'))
     expect(item, '验收单应当出现三方一致性缺口项').toBeDefined()
     expect(item?.criterion).toContain('FR-4')
@@ -210,7 +211,8 @@ describe('E2E② 交付 → 三方一致性验收单', () => {
     })
     const out: any = await submitVerification(hh.deps, { summary: '交付完成', evidence: ['npx vitest run 全绿'] }, EXEC)
     expect(out.success).toBe(true)
-    const sheet = hh.repo.ledger.requirements[0].verification?.sheet
+    const __rec = (await hh.store.get((await hh.store.listSummaries({ scope: 'all' })).items[0]!.id))!
+    const sheet = __rec.verification?.sheet
     expect(sheet?.items.some((i: any) => i.criterion.includes('三方一致性'))).toBe(false)
   })
 })

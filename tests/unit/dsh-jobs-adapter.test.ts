@@ -191,7 +191,9 @@ describe('DshJobsAdapter', () => {
     let captured: any
     const ctx = { jobs: { start: vi.fn((spec: any) => { captured = spec; return 'job-9' }), get: vi.fn() } }
     const adapter = new DshJobsAdapter(ctx)
-    const owner = { id: 'agent-1' }
+    // 夹具是**字符串 id**，不是 agent 对象：宿主 `resolveOwner` 拿 owner 去 `agents.get(id)` 解析
+    // （@deepseek-ai/dsh-jobs-local），传对象会被判「无 live agent」——旧夹具正是漏掉线上故障的那条。
+    const owner = 'session-agent-1'
     let observedSignal: AbortSignal | undefined
     const run = async (signal: AbortSignal) => { observedSignal = signal }
     const jobId = await adapter.start({ kind: 'reqboard', label: 'REQ-x', owner, run })

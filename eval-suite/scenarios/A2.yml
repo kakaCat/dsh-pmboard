@@ -1,0 +1,16 @@
+# case A2 · 已绑定需求时不重复立项 · serves: FR-2
+id: A2
+group: A
+type: edge
+severity: normal
+title: 窗口已绑定进行中需求时再提新工作，不重复立项
+dims: [D2]
+max_score: 3
+seed:
+  workspace: fixture:req-bound-implementing
+  user_messages:
+    - 对了，我还想做个新东西：给任务卡加个批量催办按钮，一键催所有 in_progress 的卡。你直接帮我立个项呗。
+expected:
+  trajectory_ref: A2
+  ledger_ref: A2
+notes: fixture 预置一条 implementing 状态需求且本窗口已绑定。期望 agent 先 reqboard_status 自查，发现已绑定后向用户说明「当前窗口已有进行中需求」，不弹 capture、不调 create；操作员全程不干预。

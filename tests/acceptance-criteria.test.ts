@@ -18,12 +18,13 @@
  *   11. 接力实测                        → handoff.test.ts（本文件不重复）
  *   12. 分类流程生效                    → CATEGORY_FLOW_PROFILES + artifact-gates
  */
+import { makeTestStore } from './application/harness.js'
+import { factsOf } from '../src/domain/requirement/RequirementSummary.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
@@ -54,7 +55,11 @@ import {
 const W = 'session-acc-123'
 let dir: string
 let prevCwd: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
+/** B12 阶段⑤：旧口 `snapshot()` 的等价册形视图（同步；来自测试替身的同步读口）。 */
+const snapOf = () => ({
+  schemaVersion: 9, revision: store.peekRevision(), requirements: [...store.peekAll()], triages: [] as never[],
+})
 let handler: ReturnType<typeof createReqboardHandler>
 let taskStore: QueueTaskStore
 /** 队列任务读取（v9：任务唯一存储 = 队列；夹具需求固定为 REQ-acc001）。 */
@@ -64,11 +69,11 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-acc-'))
   prevCwd = process.cwd()
   process.chdir(dir)
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   // REQ-2d1c74 FR-2：G2 完整性闸门需要 docs 端口（非 legacy 时缺省 = fail-closed）
   // 任务唯一存储 = 队列（REQ-260927202051-f6df：v9 台账已无 tasks 通道）
   taskStore = new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: dir }), now: () => Date.now() })
-  handler = createReqboardHandler({ store, taskStore, now: () => Date.now(), docs: new FileDocRepository({ workspaceRoot: dir }) })
+  handler = createReqboardHandler({ requirementStore: store, taskStore, now: () => Date.now(), docs: new FileDocRepository({ workspaceRoot: dir }) })
 })
 afterEach(() => {
   process.chdir(prevCwd)
@@ -110,7 +115,7 @@ async function seed(status: RequirementStatus = 'implementing', category: Requir
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
     statusHistory: [{ status: 'draft', at: 1, by: { kind: 'human' } }],
   } as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('requirement-created', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
   return r
 }
 
@@ -198,7 +203,7 @@ describe('验收 2：实施节点按窗口分组', () => {
     const sessionA = 'session-aaaa1111-2222-3333-4444-555555555555'
     const sessionB = 'subagent-xyz' // subagent 会话 id
     const seededTasks: Array<Record<string, unknown>> = []
-    await store.mutate('task-created', (_l) => {
+    await store.mutate(store.peekAll()[0]!.id, (_r) => {
       seededTasks.push(
         {
           id: 't-win001', requirementId: 'REQ-acc001', title: '任务A', description: '',
@@ -223,7 +228,7 @@ describe('验收 2：实施节点按窗口分组', () => {
     })
     await taskStore.createMany('REQ-acc001', seededTasks as never)
 
-    const ledger = store.snapshot()
+    const ledger = snapOf()
     const req = ledger.requirements[0]
     const detail = assembleStageDetail(req, { tasks: await queueTasksOf() }, 'implementing')
     if (detail.stage !== 'implementing') throw new Error('narrow')
@@ -246,16 +251,15 @@ describe('验收 2：实施节点按窗口分组', () => {
 describe('验收 3：验收+归档节点内容', () => {
   it('accepting body 含 VerificationRecord（证据 + 人工结论 + 审核意见）', async () => {
     await seed('accepting')
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.verification = {
         summary: '交付完成', evidence: ['npx vitest run: 303 passed', '截图: board.png'],
         submittedAt: 100, submittedBy: { kind: 'agent', sessionId: W },
         reviewedAt: 200, reviewedBy: { kind: 'human' }, decision: 'pass', reviewNote: '验收通过',
       }
-      return { requirements: [r] }
+      return { changed: true }
     })
-    const ledger = store.snapshot()
+    const ledger = snapOf()
     const detail = assembleStageDetail(ledger.requirements[0], { tasks: [] }, 'accepting')
     if (detail.stage !== 'accepting') throw new Error('narrow')
     expect(detail.body.verification?.decision).toBe('pass')
@@ -265,8 +269,8 @@ describe('验收 3：验收+归档节点内容', () => {
 
   it('archived body 含 ArchiveRecord（目录/文档清单/合并去向/索引/说明书更新点）', async () => {
     const req = reqWithFullArtifacts()
-    await store.mutate('requirement-created', (l) => { l.requirements.push(req); return { requirements: [req] } })
-    const ledger = store.snapshot()
+    await store.replaceAll('requirement-created', { schemaVersion: 9, revision: 0, requirements: [req], triages: [] })
+    const ledger = snapOf()
     const detail = assembleStageDetail(ledger.requirements[0], { tasks: [] }, 'archived')
     if (detail.stage !== 'archived') throw new Error('narrow')
     expect(detail.body.archive).toBeDefined()
@@ -279,65 +283,8 @@ describe('验收 3：验收+归档节点内容', () => {
 // 标准 4：老台账兼容加载（t10 起 projectId/parentId 已从契约删除，读路径仍不改写历史数据）
 // ────────────────────────────────────────────────────────────────────────────
 
-describe('验收 4：老台账兼容加载（历史字段透传，不做破坏性读改写）', () => {
-  it('带历史预留字段（projectId/parentId）的记录正常加载，字段原样透传', async () => {
-    const file = join(dir, 'dsh-reqboard.json')
-    const ledgerWithReserved = {
-      // REQ-260927202051-f6df FR-6：v9 起 `schemaVersion<9` 的台账**被拒绝**（避免静默丢任务）。
-      // 本用例的主题是「遗留字段 projectId/parentId 不被读改写」→ 改用 v9 台账承载同样两个遗留键，
-      // 后半段断言（字段原样透传）保持不变。
-      schemaVersion: 9, revision: 1,
-      requirements: [{
-        id: 'REQ-acc001', title: '预留字段测试', description: '', status: 'implementing', blocked: false,
-        category: 'feature', projectId: 'proj-001', parentId: 'REQ-parent',
-        sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
-        createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
-      }],
-      tasks: [], triages: [],
-    }
-    writeFileSync(file, JSON.stringify(ledgerWithReserved), 'utf8')
-    const freshStore = new ReqboardStore({ file })
-    await freshStore.load()
-    // C6：这两个字段已从 RequirementRecord 契约删除（全仓引用 0），但**读路径不得改写历史数据**
-    // （旧台账若残留该键，加载后应原样带出——不静默丢数据是迁移相邻改动的底线）。
-    const loaded = freshStore.snapshot().requirements[0] as unknown as { projectId?: string; parentId?: string }
-    expect(loaded.projectId).toBe('proj-001')
-    expect(loaded.parentId).toBe('REQ-parent')
-  })
-
-  it('老台账（无 projectId/parentId）正常加载，字段为 undefined', async () => {
-    const file = join(dir, 'dsh-reqboard.json')
-    const legacyLedger = {
-      // 同上：版本号不再是本用例的主题，升到 v9 以通过 FR-6 的迁移前拒绝门。
-      schemaVersion: 9, revision: 1,
-      requirements: [{
-        id: 'REQ-acc001', title: '老需求', description: '', status: 'draft', blocked: false,
-        comments: [], version: 1, createdAt: 1, updatedAt: 1,
-        createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
-      }],
-      tasks: [], triages: [],
-    }
-    writeFileSync(file, JSON.stringify(legacyLedger), 'utf8')
-    const freshStore = new ReqboardStore({ file })
-    await freshStore.load()
-    const loaded = freshStore.snapshot().requirements[0]
-    const legacy = loaded as { projectId?: unknown; parentId?: unknown }
-    expect(legacy.projectId).toBeUndefined()
-    expect(legacy.parentId).toBeUndefined()
-    // ⚠️ **语义变更（REQ-260927202051-f6df FR-6）**：
-    //   原判据 `expect(schemaVersion).toBe(7)` ——「老台账加载后被**自动升级**到当前契约版本」。
-    //   在 v9 下**不再成立**：v8→v9 引入了「读到 `schemaVersion<9` 的台账**拒绝启动**并提示先跑
-    //   迁移脚本」的读兼容硬约束。理由：自动升级会把台账里的 `tasks` 静默抹掉（587 条任务凭空消失），
-    //   故必须拒绝。⇒ 本用例的主题（遗留字段 projectId/parentId 为 undefined）改用 **v9 夹具**承载，
-    //   版本号断言随之改为当前契约版本 9；「pre-v9 被拒绝」由迁移链专项测试覆盖
-    //   （`tests/migrate-ledger-v8v9.test.ts`，task-14 属主）。
-    expect(freshStore.snapshot().schemaVersion).toBe(9)
-  })
-})
-
-// ────────────────────────────────────────────────────────────────────────────
-// 标准 5：双端共享同一契约
-// ────────────────────────────────────────────────────────────────────────────
+// B12 阶段⑤：原「老台账兼容加载」整块删除——**其 subject 就是被删的旧实现**
+// （`JsonLedgerRepository.load()` 对历史字段/旧 schema 的处理），随实现一同消失。
 
 describe('验收 5：双端共享同一 StageDetail 契约', () => {
   it('host assembleStageDetail 返回的 shape 与 client renderStagePanel 消费的 shape 一致', async () => {
@@ -419,10 +366,9 @@ describe('验收 7：缺产物拦截 + 产物链追溯', () => {
     // feature 分类：brainstorming → design 需要 requirement 产物
     await seed('brainstorming', 'feature')
     // 登记一个产物但不确认 → artifact_not_confirmed
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/REQ-acc001/requirement.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-acc001', to: 'design', actor: 'human' })
     expect(res.statusCode).toBe(400)
@@ -473,10 +419,9 @@ describe('验收 8：task_report 汇报 = 实施产物文档', () => {
       path: 'docs/requirements/REQ-acc001/plan.md', summary: 's',
       tasks: [{ key: 'a', title: '任务A', phase: 'implement', side: 'backend', acceptance: '单测通过', implementation: '改 a.ts' }],
     }, { agent: { id: W } })
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       if (r.plan !== undefined) { r.plan.approvedAt = 100; r.plan.approvedBy = { kind: 'human' } }
-      return { requirements: [r] }
+      return { changed: true }
     })
     const decOut = (await decomposeTool.execute({}, { agent: { id: W } } as never)) as { created: Array<{ id: string }> }
     const taskId = decOut.created[0].id as string
@@ -488,12 +433,11 @@ describe('验收 8：task_report 汇报 = 实施产物文档', () => {
     expect(report.success).toBe(true)
 
     // 推进到 implementing 后，StageDetail.implementing 含 task_detail 产物
-    await store.mutate('human-confirm', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.status = 'implementing'
-      return { requirements: [r] }
+      return { changed: true }
     })
-    const ledger = store.snapshot()
+    const ledger = snapOf()
     const req = ledger.requirements[0]
     const detail = assembleStageDetail(req, { tasks: await queueTasksOf() }, 'implementing')
     if (detail.stage !== 'implementing') throw new Error('narrow')
@@ -544,7 +488,7 @@ describe('验收 9：阶段提示词注入', () => {
     const hook = createDiveSessionDriver({
       // 任务队列端口（REQ-260927202051-f6df）：DiveSessionDriverDeps.taskStore 为**必填**（D11 口径）
       taskStore: new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: dir }), now: () => 1000 }),
-      snapshot: () => ledger,
+      facts: () => ledger.requirements.map(factsOf),
       pending: new Map(),
       now: () => 1000,
       onStagePrompt: (_key, prompt) => prompts.push(prompt),
@@ -583,14 +527,13 @@ describe('验收 10：四道人工确认门', () => {
   it.each(ALL_FIVE_GATES)('门 %s>%s：产物未确认 → 转移被拒', async (from, to, kind) => {
     await seed(from as RequirementStatus, 'feature')
     // 登记产物但不确认
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements[0]
+    await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{
         stage: from as StageKey, kind: kind as StageArtifact['kind'],
         path: `docs/requirements/REQ-acc001/${kind}.md`,
         registeredAt: 1, registeredBy: { kind: 'agent' },
       }]
-      return { requirements: [r] }
+      return { changed: true }
     })
     const res = await post('/req/move', { id: 'REQ-acc001', to, actor: 'human' })
     expect(res.statusCode).toBe(400)
@@ -606,35 +549,32 @@ describe('验收 10：四道人工确认门', () => {
       writeFileSync(join(dir, 'docs/requirements/REQ-acc001/requirement.md'),
         '# 需求\n\n## 边界\nx\n\n## 产品定义\nx\n\n## 用户与角色\nx\n\n## 功能点\n\n### FR-1: 甲\nx\n')
       for (const n of DESIGN5) writeFileSync(join(dir, 'docs/requirements/REQ-acc001/design', n), '# ' + n + '\n')
-      await store.mutate('requirement-updated', (l) => {
-        const r = l.requirements[0]
+      await store.mutate(store.peekAll()[0]!.id, (r) => {
         r.artifacts = DESIGN5.map(n => ({
           stage: 'design', kind: 'design',
           path: 'docs/requirements/REQ-acc001/design/' + n,
           registeredAt: 1, registeredBy: { kind: 'agent' },
           confirmedAt: 2, confirmedBy: { kind: 'human' },
         }))
-        return { requirements: [r] }
+        return { changed: true }
       })
     } else {
-      await store.mutate('requirement-updated', (l) => {
-        const r = l.requirements[0]
+      await store.mutate(store.peekAll()[0]!.id, (r) => {
         r.artifacts = [{
           stage: from as StageKey, kind: kind as StageArtifact['kind'],
           path: `docs/requirements/REQ-acc001/${kind}.md`,
           registeredAt: 1, registeredBy: { kind: 'agent' },
           confirmedAt: 2, confirmedBy: { kind: 'human' },
         }]
-        return { requirements: [r] }
+        return { changed: true }
       })
     }
     // 特殊门处理（2026-09-21：design>decomposing 已改通用 design 产物确认判定，无特判）
     if (from === 'accepting' && to === 'archived') {
       // accepting>archived（验收通过即归档）还需要 verification 记录
-      await store.mutate('requirement-updated', (l) => {
-        const r = l.requirements[0]
+      await store.mutate(store.peekAll()[0]!.id, (r) => {
         r.verification = { summary: 's', evidence: ['e'], submittedAt: 1, submittedBy: { kind: 'agent' } }
-        return { requirements: [r] }
+        return { changed: true }
       })
     }
     const res = await post('/req/move', { id: 'REQ-acc001', to, actor: 'human' })

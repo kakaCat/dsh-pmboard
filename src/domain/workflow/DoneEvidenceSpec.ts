@@ -25,6 +25,12 @@ interface TaskWithHistory {
   id: string
   title: string
   requirementId: string
+  /**
+   * 父卡 id（REQ-261001170807-06fd FR-1）：用于在节流判据里识别"本卡自己的子卡"。
+   * 子卡关闭本身豁免节流，但它的 done 事件不该给**它的父卡**上弦——否则
+   * "关完子卡 → 关父卡"这个唯一正确的收尾顺序必然被 60s 节流拒绝。
+   */
+  parentId?: string
   statusHistory?: readonly { status: string; by: { kind: string }; at: number }[]
 }
 
@@ -42,9 +48,38 @@ export function findRecentAgentDoneTask(
   const hit = tasks.find(t =>
     t.id !== taskId
     && t.requirementId === requirementId
+    // FR-1：本卡自己的子卡不算"别人刚关过"——父子链收尾是正常动作，不是批量关闭滥用。
+    && t.parentId !== taskId
     && (t.statusHistory ?? []).some(h => h.status === 'done' && h.by.kind === 'agent' && now - h.at < throttleMs),
   )
   return hit === undefined ? undefined : { id: hit.id, title: hit.title }
+}
+
+/**
+ * 节流剩余等待毫秒（REQ-261001154450-b918 FR-4）：不节流 → 0；节流 → 还要等多久。
+ *
+ * 为什么需要它：旧拒绝文案只说"请稍后"，agent 只能猜——实测（REQ-8475）猜出的解法是
+ * 连打 32 次 `sleep 62`，纯等待 33.1 分钟（占该需求墙钟 65%）。把剩余时间算出来，
+ * 文案就能给人一个**确定的答复**。
+ */
+export function doneThrottleRemainingMs(
+  tasks: readonly TaskWithHistory[],
+  taskId: string,
+  requirementId: string,
+  now: number,
+  throttleMs: number,
+): number {
+  let remaining = 0
+  for (const t of tasks) {
+    if (t.id === taskId || t.requirementId !== requirementId) continue
+    if (t.parentId === taskId) continue // FR-1：父子链收尾不上弦（与 findRecentAgentDoneTask 同口径）
+    for (const h of t.statusHistory ?? []) {
+      if (h.status !== 'done' || h.by.kind !== 'agent') continue
+      const left = throttleMs - (now - h.at)
+      if (left > remaining) remaining = left
+    }
+  }
+  return remaining > 0 ? remaining : 0
 }
 
 export interface DoneEvidenceInput {
@@ -57,6 +92,8 @@ export interface DoneEvidenceInput {
   fileEvidence: boolean
   /** 节流命中的其他任务（findRecentAgentDoneTask 的产物）。 */
   recentDoneTask?: RecentDoneTaskLike
+  /** 节流剩余等待毫秒（doneThrottleRemainingMs 的产物）——用来把"还要等多久"写进拒绝文案。 */
+  throttleRemainingMs?: number
   /** 汇报里 packages/pages/<pkg>/src/ 下的改动文件（构建新鲜度检查用）。 */
   pagesSrcFiles: readonly string[]
   clientBuildExists: boolean
@@ -98,7 +135,16 @@ export function checkDoneEvidence(input: DoneEvidenceInput): DoneEvidenceVerdict
     return {
       ok: false,
       code: 'REQBOARD_BULK_CLOSE',
-      reason: fmt('reqboard_task_move 未执行：done 凭证门——60 秒内刚关闭了任务 {id}（{title}）。禁止批量关闭：逐任务复核，稍后再试（事故 C 修复）', { id: input.recentDoneTask.id, title: input.recentDoneTask.title }),
+      reason: fmt(
+        'reqboard_task_move 未执行：done 凭证门——刚关闭过任务 {id}（{title}），同需求 60 秒内不得再关第二张**非子卡**任务（事故 C）。{eta}。合规路径：① 等待后可继续（这是设计内的节流，不是故障）；② 子卡链不受此限（子卡走三项口径，可先推进子卡）；③ 批量收口交给自动链 reqboard_task_run，由链逐张关闭（REQ-261001154450-b918 FR-4：文案必须给出确定等待时间，禁止让 agent 靠试探/硬等找节奏）',
+        {
+          id: input.recentDoneTask.id,
+          title: input.recentDoneTask.title,
+          eta: (input.throttleRemainingMs ?? 0) > 0
+            ? fmt('还需等待约 {sec} 秒', { sec: String(Math.ceil((input.throttleRemainingMs ?? 0) / 1000)) })
+            : '请稍后重试',
+        },
+      ),
     }
   }
   // ④ 页面插件构建新鲜度（事故 D）

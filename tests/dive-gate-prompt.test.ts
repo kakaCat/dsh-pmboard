@@ -11,6 +11,8 @@
  *
  * @module dsh-pmboard/tests/dive-gate-prompt
  */
+import { makeTestStore } from './application/harness.js'
+import { factsOf } from '../src/domain/requirement/RequirementSummary.js'
 import { describe, it, expect, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -24,7 +26,6 @@ import {
   type GatePromptExhausted,
 } from '../src/application/dive/gate-prompt.js'
 import { assembleDiveSessionDriver } from '../src/wiring/pm-capture-root.js'
-import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
 import { DEFAULT_CONFIRM_OPTIONS } from '../src/domain/text/labels.js'
 import { makeHarness, req as reqFixture, FixedClock, type Harness } from './application/harness.js'
 import type { AskAnswer, AskQuestion, GatePromptPort, UserQuestionPort } from '../src/application/ports.js'
@@ -32,7 +33,7 @@ import type { StageArtifact } from '../src/shared/protocol.js'
 
 const W = 'session-dive-gate-001'
 const T0 = 1_700_000_000_000
-const ARTIFACT_PATH = 'docs/requirements/REQ-gate01/requirement.md'
+const ARTIFACT_PATH = 'docs/requirements/REQ-9a7e01/requirement.md'
 
 /** 记录弹框次数/门声明/题干的假弹框通道（工具层的 UserQuestionPort）。 */
 class RecordingQuestions implements UserQuestionPort {
@@ -78,8 +79,8 @@ function makeUc(artifactConfirmed: boolean, behavior: RecordingQuestions['behavi
   h.deps.questions = questions
   const root = tmpDir()
   ;(h.docs as unknown as { workspaceRoot: () => string }).workspaceRoot = () => root
-  h.repo.ledger.requirements.push(reqFixture({
-    id: 'REQ-gate01',
+  h.seedRequirementSync(reqFixture({
+    id: 'REQ-9a7e01',
     status: 'brainstorming',
     sourceSessionId: W,
     artifacts: [stageArtifact(artifactConfirmed)],
@@ -114,7 +115,10 @@ function scenario(opts: { artifactConfirmed: boolean; behavior: RecordingQuestio
       })
     : undefined
   const driver = createDiveSessionDriver({
-    snapshot: () => h.repo.ledger,
+    // B12 阶段⑤族 B：`facts` 是**同步端口**（驱动在 sync 回调里调它），不能 await ⇒
+    // 改读 harness 自己的镜像 `h.ledger`（同一份数据、不再经旧端口）；
+    // 该镜像随 harness 的桥一起消失时，这里要改成"在 async setup 里取一次快照"（见设计 §78 第 ⑱ 条）。
+    facts: () => h.ledger.requirements.map(factsOf),
     // v9：driver 结算节点要读队列任务（DiveSessionDriverDeps.taskStore 为必填）
     taskStore: h.taskStore,
     pending: new Map(),
@@ -128,8 +132,8 @@ function scenario(opts: { artifactConfirmed: boolean; behavior: RecordingQuestio
     idle: () => driver.onAgentStatus({ id: W, session: { id: W } }, 'idle'),
     flush: async () => { for (let i = 0; i < 5; i += 1) await new Promise((r) => setTimeout(r, 0)) },
     advanceClock: (ms) => { h.clock.t += ms },
-    status: () => h.repo.snapshot().requirements[0]!.status,
-    comments: () => h.repo.snapshot().requirements[0]!.comments.map((c) => c.body),
+    status: () => h.ledger.requirements[0]!.status,
+    comments: () => h.ledger.requirements[0]!.comments.map((c) => c.body),
   }
 }
 
@@ -178,6 +182,7 @@ describe('gatePromptFor：人工门状态投影（design I-10）', () => {
 describe('TC-15 Dive 在人工门主动弹框（有边界重弹）', () => {
   it('门已满足未推进 → 弹「推进确认」（kind=plan）；肯定 → 同一条人工门路径推进', async () => {
     const s = scenario({ artifactConfirmed: true, behavior: 'yes', wirePort: true })
+    await s.h.seedSettled()
     s.idle()
     expect(s.questions.prompts).toBe(1)
     expect(s.questions.gates).toEqual(['G1'])
@@ -188,7 +193,7 @@ describe('TC-15 Dive 在人工门主动弹框（有边界重弹）', () => {
     // 人点肯定 → 落章保留 + 人工门 transitionRequirement(actor=human) 推进。
     await s.flush()
     expect(s.status()).toBe('design')
-    const history = s.h.repo.snapshot().requirements[0]!.statusHistory ?? []
+    const history = s.h.ledger.requirements[0]!.statusHistory ?? []
     expect(history[history.length - 1]!.status).toBe('design')
     expect(history[history.length - 1]!.by.kind).toBe('human')
     // 推进后门换了一道（G2 无 design 产物）→ 不再弹（不刷屏）。
@@ -200,6 +205,7 @@ describe('TC-15 Dive 在人工门主动弹框（有边界重弹）', () => {
 
   it('同一次等待只弹 1 次；冷却内不弹、超冷却再弹 1 次到顶，之后留痕停手', async () => {
     const s = scenario({ artifactConfirmed: true, behavior: 'empty', wirePort: true })
+    await s.h.seedSettled()
     s.idle()
     await s.flush()
     expect(s.questions.prompts).toBe(1)
@@ -228,6 +234,7 @@ describe('TC-15 Dive 在人工门主动弹框（有边界重弹）', () => {
 
   it('未装配 GatePromptPort → 与改动前逐字一致（零弹框/零投递/零留痕/状态不变）', async () => {
     const s = scenario({ artifactConfirmed: true, behavior: 'yes', wirePort: false })
+    await s.h.seedSettled()
     s.idle()
     await s.flush()
     s.advanceClock(GATE_PROMPT_COOLDOWN_MS * 3)
@@ -242,6 +249,7 @@ describe('TC-15 Dive 在人工门主动弹框（有边界重弹）', () => {
 
   it('弹框通道不可用 → 降级为提醒消息，绝不替代人推进', async () => {
     const s = scenario({ artifactConfirmed: true, behavior: 'unavailable', wirePort: true })
+    await s.h.seedSettled()
     s.idle()
     await s.flush()
     expect(s.questions.prompts).toBe(0)
@@ -253,14 +261,15 @@ describe('TC-15 Dive 在人工门主动弹框（有边界重弹）', () => {
 
   it('到顶 → 组合根写台账 comment 并停手（响亮不静默）', async () => {
     const dir = tmpDir()
-    const store = new JsonLedgerRepository({ file: join(dir, 'dsh-reqboard.json') })
+    // B12 阶段③a：本地存储换统一工厂的内存替身（新端口）
+    const store = makeTestStore()
     const seed = reqFixture({
-      id: 'REQ-gate02',
+      id: 'REQ-261003000005-9a7e',
       status: 'brainstorming',
       sourceSessionId: W,
       artifacts: [stageArtifact(true)],
     })
-    await store.mutate('seed', (l) => { l.requirements.push(seed); return { requirements: [seed] } })
+    await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [seed], triages: [] })
 
     const clock = new FixedClock(T0)
     const h = makeHarness()
@@ -271,7 +280,7 @@ describe('TC-15 Dive 在人工门主动弹框（有边界重弹）', () => {
       prompt: async () => { prompts += 1; return { answered: false, affirmative: false } },
     }
     assembleDiveSessionDriver({
-      store,
+
       runtime: {
         pendingCapture: new Map(),
         toolTrace: new Map(),
@@ -298,14 +307,14 @@ describe('TC-15 Dive 在人工门主动弹框（有边界重弹）', () => {
     idle(); await flush()
     expect(prompts).toBe(GATE_PROMPT_MAX_POPS)
     await flush()
-    const bodies = store.snapshot().requirements.find((r) => r.id === 'REQ-gate02')!.comments.map((c) => c.body)
+    const bodies = (await store.get('REQ-261003000005-9a7e'))!.comments.map((c) => c.body)
     expect(bodies.some((b) => b.includes('Dive 弹框停手') && b.includes('G1'))).toBe(true)
 
     // 到顶后不再弹，也不重复写 comment。
     clock.t += GATE_PROMPT_COOLDOWN_MS * 3
     idle(); await flush()
     expect(prompts).toBe(GATE_PROMPT_MAX_POPS)
-    const after = store.snapshot().requirements.find((r) => r.id === 'REQ-gate02')!.comments
+    const after = (await store.get('REQ-261003000005-9a7e'))!.comments
       .filter((c) => c.body.includes('Dive 弹框停手'))
     expect(after).toHaveLength(1)
   })

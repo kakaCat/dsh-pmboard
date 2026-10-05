@@ -18,6 +18,7 @@
  *
  * @module dsh-pmboard/tests/queue/v9-harness
  */
+import { legacyStoreProjection } from '../support/legacy-store-projection.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -25,8 +26,7 @@ import type {
   LedgerChange,
   LedgerView,
   MutableLedger,
-  MutateResult,
-  ReqboardRepository,
+  LedgerMutateResult,
   UseCaseDeps,
 } from '../../src/application/ports.js'
 import { JsonQueueRepository } from '../../src/repositories/QueueRepository.js'
@@ -40,7 +40,7 @@ import {
 import { FakeDocs, FakeQuestions, FakeSession, FixedClock, SeqIds } from '../application/harness.js'
 
 /** v9 口径的内存台账仓储（结构上没有 `tasks` 键）。 */
-export class V9Repo implements ReqboardRepository {
+export class V9Repo {
   ledger: ReqboardLedger
 
   constructor(seed: { revision?: number; requirements?: readonly RequirementRecord[]; triages?: ReqboardLedger['triages'] } = {}) {
@@ -60,7 +60,7 @@ export class V9Repo implements ReqboardRepository {
     return structuredClone(this.ledger)
   }
 
-  async mutate(_reason: string, fn: (ledger: MutableLedger) => LedgerChange | undefined): Promise<MutateResult> {
+  async mutate(_reason: string, fn: (ledger: MutableLedger) => LedgerChange | undefined): Promise<LedgerMutateResult> {
     const draft = structuredClone(this.ledger)
     const changed = fn(draft)
     if (changed === undefined) {
@@ -117,7 +117,10 @@ export async function makeV9Harness(seed: V9HarnessSeed = {}): Promise<V9Harness
   const warnings: string[] = []
   const queueRepo = new JsonQueueRepository({ workspaceRoot: root, onWarn: (m) => warnings.push(m) })
   const taskStore = new QueueTaskStore({ repo: queueRepo, now: () => clock.t, onWarn: (m) => warnings.push(m) })
-  const deps: UseCaseDeps = { repo, docs, clock, ids, session, questions, doneThrottleMs: 0, taskStore }
+  // B12 阶段④-1：UseCaseDeps.store 转必填 ⇒ 本夹具补过渡投影（与 repo 同源）
+  const deps: UseCaseDeps = {
+    store: legacyStoreProjection(repo as never), docs, clock, ids, session, questions, doneThrottleMs: 0, taskStore,
+  }
 
   if (seed.tasks !== undefined && seed.tasks.length > 0) {
     const byRequirement = new Map<string, TaskRecord[]>()

@@ -16,12 +16,12 @@
  * confirmedAt / 需求状态），而不是「函数被调用过」。旧序回归（migration.test.ts /
  * consistency.test.ts 等）与本文件同批跑绿。
  */
+import { makeHarness } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { SystemClock } from '../src/adapters/SystemClock.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
@@ -32,7 +32,7 @@ import type { UseCaseDeps } from '../src/application/ports.js'
 import type { RequirementRecord, StageArtifact } from '../src/shared/protocol.js'
 
 const W = 'session-e2e-design-001'
-const REQ = 'REQ-e2e001'
+const REQ = 'REQ-261003000004-e2e0'
 const REQUIREMENT_PATH = 'docs/requirements/' + REQ + '/requirement.md'
 const DESIGN_DIR = 'docs/requirements/' + REQ + '/design'
 /** feature 类型的五份必交设计文档（category-doc-sets.CATEGORY_DELTAS）。 */
@@ -43,11 +43,14 @@ const ASK_OPTIONS = [AFFIRM, '需要修改']
 const EXEC = { agent: { id: W } }
 
 let root: string
-let store: JsonLedgerRepository
+// B12 阶段③a：存储换统一工厂的新端口
+let h: ReturnType<typeof makeHarness>
+let store: ReturnType<typeof makeHarness>['store']
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'pmboard-e2e-design-'))
-  store = new JsonLedgerRepository({ file: join(root, 'dsh-reqboard.json') })
+  h = makeHarness({})
+  store = h.store
 })
 afterEach(() => { rmSync(root, { recursive: true, force: true }) })
 
@@ -116,8 +119,7 @@ function makeQuestions(selected: string[]): { svc: { ask: (req: unknown) => Prom
 
 function makeTools(selected: string[] = [AFFIRM]) {
   const { svc, asked } = makeQuestions(selected)
-  const deps: UseCaseDeps = {
-    repo: store,
+  const deps: UseCaseDeps = { store: store,
 
     taskStore: taskStoreAt(root),
     docs: new FileDocRepository({ workspaceRoot: root }),
@@ -172,11 +174,12 @@ function reqRecord(over: Partial<RequirementRecord> = {}): RequirementRecord {
 
 async function seed(over: Partial<RequirementRecord> = {}): Promise<void> {
   const r = reqRecord(over)
-  await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  // 原样导入（保持记录字段原值）
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
-const designArtifacts = (): StageArtifact[] =>
-  (store.snapshot().requirements[0]!.artifacts ?? []).filter(a => a.kind === 'design')
+const designArtifacts = async (): Promise<StageArtifact[]> =>
+  ((await store.get(REQ))?.artifacts ?? []).filter(a => a.kind === 'design')
 
 describe('TC-19 E2E：设计阶段死锁复跑（登记 → 确认 → 推进，不打开看板）', () => {
   it('登记前 move 仍被产物存在门拦住：REQBOARD_MISSING_ARTIFACT（修的是入口，不是闸门）', async () => {
@@ -184,7 +187,7 @@ describe('TC-19 E2E：设计阶段死锁复跑（登记 → 确认 → 推进，
     const t = makeTools()
     // 文档已落盘但产物簿没有 kind=design（事故现场）——旧闸门照旧拦
     await expect(t.move.execute({ to: 'decomposing' }, EXEC)).rejects.toThrow(/REQBOARD_MISSING_ARTIFACT/)
-    expect(store.snapshot().requirements[0]!.status).toBe('design')
+    expect((await store.get(REQ))!.status).toBe('design')
   })
 
   it('登记 ≠ 落章：submit 后未确认时 move 报 REQBOARD_ARTIFACT_NOT_CONFIRMED（两态文案分叉）', async () => {
@@ -193,7 +196,7 @@ describe('TC-19 E2E：设计阶段死锁复跑（登记 → 确认 → 推进，
     const reg = await t.submit.execute({ kind: 'design' }, EXEC)
     expect(reg.registered_count).toBe(5)
     await expect(t.move.execute({ to: 'decomposing' }, EXEC)).rejects.toThrow(/REQBOARD_ARTIFACT_NOT_CONFIRMED/)
-    expect(store.snapshot().requirements[0]!.status).toBe('design')
+    expect((await store.get(REQ))!.status).toBe('design')
   })
 
   it('一次通过（A1）：submit(kind=design) → ask_confirm（默认自动推进）→ 需求直接进入 decomposing，全程无 REQBOARD_MISSING_ARTIFACT', async () => {
@@ -211,7 +214,7 @@ describe('TC-19 E2E：设计阶段死锁复跑（登记 → 确认 → 推进，
       expect(d.registered).toBe(true)
       expect(d.confirmed).toBe(false)
     }
-    expect(designArtifacts()).toHaveLength(5)
+    expect(await designArtifacts()).toHaveLength(5)
 
     // ③ 弹框确认：肯定项 → 成组落章 + 自动推进
     const ask = await t.ask.execute(
@@ -225,10 +228,10 @@ describe('TC-19 E2E：设计阶段死锁复跑（登记 → 确认 → 推进，
     expect(ask.to).toBe('decomposing')
 
     // 终态：5 份全部落章 + 需求进入拆分
-    const arts = designArtifacts()
+    const arts = await designArtifacts()
     expect(arts).toHaveLength(5)
     for (const a of arts) expect(a.confirmedAt).toBeDefined()
-    expect(store.snapshot().requirements[0]!.status).toBe('decomposing')
+    expect((await store.get(REQ))!.status).toBe('decomposing')
   })
 
   it('字面三步链（卡面顺序）：落盘 5 份 → submit(design) → ask_confirm(advance:false) → move(decomposing) 一次通过', async () => {
@@ -245,13 +248,13 @@ describe('TC-19 E2E：设计阶段死锁复跑（登记 → 确认 → 推进，
     )
     expect(ask.confirmed).toBe(true)
     expect(ask.advanced).toBe(false)
-    expect(store.snapshot().requirements[0]!.status).toBe('design')
-    for (const a of designArtifacts()) expect(a.confirmedAt).toBeDefined()
+    expect((await store.get(REQ))!.status).toBe('design')
+    for (const a of await designArtifacts()) expect(a.confirmedAt).toBeDefined()
 
     const mv = await t.move.execute({ to: 'decomposing', reason: '设计文档已确认' }, EXEC)
     expect(mv.success).toBe(true)
     expect(mv.to).toBe('decomposing')
-    expect(store.snapshot().requirements[0]!.status).toBe('decomposing')
+    expect((await store.get(REQ))!.status).toBe('decomposing')
   })
 
   it('迁移兼容：legacy（artifacts 空）存量需求 design→decomposing 仍放行，不要求登记/确认', async () => {
@@ -260,8 +263,8 @@ describe('TC-19 E2E：设计阶段死锁复跑（登记 → 确认 → 推进，
     const mv = await t.move.execute({ to: 'decomposing', reason: '存量需求照旧放行' }, EXEC)
     expect(mv.success).toBe(true)
     expect(mv.to).toBe('decomposing')
-    expect(store.snapshot().requirements[0]!.status).toBe('decomposing')
+    expect((await store.get(REQ))!.status).toBe('decomposing')
     // 放行不等于伪造：产物簿保持为空，闸门未凭空造产物
-    expect(store.snapshot().requirements[0]!.artifacts ?? []).toHaveLength(0)
+    expect((await store.get(REQ))!.artifacts ?? []).toHaveLength(0)
   })
 })

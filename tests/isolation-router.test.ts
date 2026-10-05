@@ -8,21 +8,21 @@
  *  4. 留痕文件损坏（readAll 抛错）→ 降级 available=false + 空清单，不 500；
  *  5. 正常路径：写入顺序旧→新、取最近 k 条、available=true。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import type { IsolationTraceEntry } from '../src/application/use-cases/IsolateNodeContext.js'
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-isolation-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -65,7 +65,7 @@ function stubLog(entries: IsolationTraceEntry[] | 'throw') {
 
 describe('GET /isolation-log', () => {
   it('k 非法 → 400', async () => {
-    const handler = createReqboardHandler({ store, now: () => Date.now(), isolationLog: stubLog([]) })
+    const handler = createReqboardHandler({ requirementStore: store, now: () => Date.now(), isolationLog: stubLog([]) })
     for (const bad of ['k=0', 'k=201', 'k=abc', 'k=1.5', 'k=-3']) {
       const res = await get(handler, `/isolation-log?${bad}`)
       expect(res.statusCode, bad).toBe(400)
@@ -74,7 +74,7 @@ describe('GET /isolation-log', () => {
   })
 
   it('端口未装配 → available=false + 空清单（不报错）', async () => {
-    const handler = createReqboardHandler({ store, now: () => Date.now() })
+    const handler = createReqboardHandler({ store: store, requirementStore: store, now: () => Date.now() })
     const res = await get(handler, '/isolation-log')
     expect(res.statusCode).toBe(200)
     expect(res.payload.data.available).toBe(false)
@@ -89,7 +89,7 @@ describe('GET /isolation-log', () => {
       entry({ at: 3, windowKey: 'w-a', stage: 'design' }),
       entry({ at: 4, windowKey: 'w-c', stage: 'implementing' }),
     ])
-    const handler = createReqboardHandler({ store, now: () => Date.now(), isolationLog: log })
+    const handler = createReqboardHandler({ requirementStore: store, now: () => Date.now(), isolationLog: log })
     const res = await get(handler, '/isolation-log?window=w-a')
     expect(res.statusCode).toBe(200)
     const d = res.payload.data
@@ -100,7 +100,7 @@ describe('GET /isolation-log', () => {
   })
 
   it('留痕文件损坏（readAll 抛错）→ 降级 available=false，不 500', async () => {
-    const handler = createReqboardHandler({ store, now: () => Date.now(), isolationLog: stubLog('throw') })
+    const handler = createReqboardHandler({ requirementStore: store, now: () => Date.now(), isolationLog: stubLog('throw') })
     const res = await get(handler, '/isolation-log')
     expect(res.statusCode).toBe(200)
     expect(res.payload.data.available).toBe(false)
@@ -115,7 +115,7 @@ describe('GET /isolation-log', () => {
       entry({ at: 4, stage: 'decomposing' }),
       entry({ at: 5, stage: 'implementing' }),
     ])
-    const handler = createReqboardHandler({ store, now: () => Date.now(), isolationLog: log })
+    const handler = createReqboardHandler({ requirementStore: store, now: () => Date.now(), isolationLog: log })
     const res = await get(handler, '/isolation-log?k=2')
     expect(res.statusCode).toBe(200)
     const d = res.payload.data
@@ -129,7 +129,7 @@ describe('GET /isolation-log', () => {
       entry({ at: 1, windowKey: 'w-a' }),
       entry({ at: 2, windowKey: 'w-b' }),
     ])
-    const handler = createReqboardHandler({ store, now: () => Date.now(), isolationLog: log })
+    const handler = createReqboardHandler({ requirementStore: store, now: () => Date.now(), isolationLog: log })
     const res = await get(handler, '/isolation-log')
     expect(res.payload.data.total).toBe(2)
     expect(res.payload.data.window).toBe(null)

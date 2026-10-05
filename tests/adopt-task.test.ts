@@ -23,13 +23,15 @@ function base(extra: Record<string, unknown>[] = []) {
     task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', title: '父卡' }),
     ...extra.map((o) => task(o as never)),
   ] })
-  h.repo.ledger.requirements = [req({ status: 'implementing' })]
+  // t8/B11：同步播种入口（镜像 + 存储都要写）
+  h.seedRequirementSync(req({ status: 'implementing' }))
   return h
 }
 
 describe('reqboard_task_adopt（归属补救）', () => {
   it('缺归属的卡挂到父卡下 → parentId/stageKind 落库 + 角色翻成子卡 + 双侧留痕', async () => {
     const h = base([{ id: 't-x', requirementId: 'REQ-000001', status: 'todo', title: '无归属卡' }])
+    await h.seedSettled()
     const out = await run(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-p', stage_kind: 'dev', reason: '拆分时漏写归属' })
     expect(out.success).toBe(true)
     expect(out.role).toBe('subtask')
@@ -41,7 +43,9 @@ describe('reqboard_task_adopt（归属补救）', () => {
     expect(x.stageKind).toBe('dev')
     expect(x.status).toBe('todo') // 状态不动
     expect((x.comments ?? []).some((c) => String(c.body).includes('[归属]'))).toBe(true)
-    expect(h.repo.ledger.requirements[0]!.comments.some((c: any) => String(c.body).includes('[归属补救]'))).toBe(true)
+    // B12 阶段⑤族 B：读点改走新端口（定点读）
+    const reqRow = (await h.store.get('REQ-000001'))!
+    expect(reqRow.comments.some((c) => String(c.body).includes('[归属补救]'))).toBe(true)
 
     // 角色翻转的可观测判据：子卡合法边里没有 in_review（存量五段才有）
     const err = await executor(defineTaskMoveTool(h.deps), { task_id: 't-x', to: 'in_review' })
@@ -53,6 +57,7 @@ describe('reqboard_task_adopt（归属补救）', () => {
       { id: 't-s', requirementId: 'REQ-000001', status: 'todo', parentId: 't-p', stageKind: 'dev', title: '既有子卡' },
       { id: 't-p2', requirementId: 'REQ-000001', status: 'todo', title: '另一父卡' },
     ])
+    await h.seedSettled()
     const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-s', parent_id: 't-p2', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_ADOPT_ALREADY')
     expect(err.msg).toContain('force=true')
@@ -64,6 +69,7 @@ describe('reqboard_task_adopt（归属补救）', () => {
       { id: 't-s', requirementId: 'REQ-000001', status: 'todo', parentId: 't-p', stageKind: 'dev', title: '既有子卡' },
       { id: 't-p2', requirementId: 'REQ-000001', status: 'todo', title: '另一父卡' },
     ])
+    await h.seedSettled()
     const out = await run(defineTaskAdoptTool(h.deps), { task_id: 't-s', parent_id: 't-p2', stage_kind: 'dev', force: true, reason: '挂错父卡' })
     expect(out.previous_parent_id).toBe('t-p')
     expect((await h.tasksOf('REQ-000001')).find((t) => t.id === 't-s')!.parentId).toBe('t-p2')
@@ -74,6 +80,7 @@ describe('reqboard_task_adopt（归属补救）', () => {
       { id: 't-s', requirementId: 'REQ-000001', status: 'todo', parentId: 't-p', stageKind: 'dev', title: '子卡' },
       { id: 't-x', requirementId: 'REQ-000001', status: 'todo', title: '无归属卡' },
     ])
+    await h.seedSettled()
     const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-s', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_ADOPT_PARENT_IS_SUBTASK')
   })
@@ -83,18 +90,21 @@ describe('reqboard_task_adopt（归属补救）', () => {
       { id: 't-x', requirementId: 'REQ-000001', status: 'todo', title: '有子卡的顶层卡' },
       { id: 't-c', requirementId: 'REQ-000001', status: 'todo', parentId: 't-x', stageKind: 'dev', title: '子卡' },
     ])
+    await h.seedSettled()
     const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-p', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_ADOPT_HAS_CHILDREN')
   })
 
   it('自指依赖（该卡 dependsOn 含目标父卡）→ 拒', async () => {
     const h = base([{ id: 't-x', requirementId: 'REQ-000001', status: 'todo', title: '无归属卡', dependsOn: ['t-p'] }])
+    await h.seedSettled()
     const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-p', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_ADOPT_DEPENDENCY')
   })
 
   it('状态不在子卡生命周期（in_review）→ 拒', async () => {
     const h = base([{ id: 't-x', requirementId: 'REQ-000001', status: 'in_review', title: '待复核卡' }])
+    await h.seedSettled()
     const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-p', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_ADOPT_STATUS')
     expect(err.msg).toContain('in_progress')
@@ -102,6 +112,7 @@ describe('reqboard_task_adopt（归属补救）', () => {
 
   it('stageKind 缺省且卡上没有 → 拒（INV-2）', async () => {
     const h = base([{ id: 't-x', requirementId: 'REQ-000001', status: 'todo', title: '无归属卡' }])
+    await h.seedSettled()
     const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-p' })
     expect(err.code).toBe('REQBOARD_INVALID_INPUT')
     expect(err.msg).toContain('stage_kind')
@@ -112,6 +123,7 @@ describe('reqboard_task_adopt（归属补救）', () => {
       { id: 't-s1', requirementId: 'REQ-000001', status: 'todo', parentId: 't-p', stageKind: 'dev', title: '既有 dev 子卡' },
       { id: 't-x', requirementId: 'REQ-000001', status: 'todo', title: '无归属卡' },
     ])
+    await h.seedSettled()
     const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-p', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_ADOPT_INVARIANT')
     // 零副作用：没有落库
@@ -124,7 +136,10 @@ describe('reqboard_task_adopt（归属补救）', () => {
       task({ id: 't-x', requirementId: 'REQ-000001', status: 'todo', title: '本需求卡' }),
       task({ id: 't-other', requirementId: 'REQ-000002', status: 'todo', title: '他需求卡' }),
     ] })
-    h.repo.ledger.requirements = [req({ status: 'implementing' }), req({ id: 'REQ-000002', status: 'implementing' })]
+    // t8/B11：两次同步播种（去数组壳）
+    h.seedRequirementSync(req({ status: 'implementing' }))
+    h.seedRequirementSync(req({ id: 'REQ-000002', status: 'implementing' }))
+    await h.seedSettled()
     const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-other', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_INVALID_INPUT')
   })

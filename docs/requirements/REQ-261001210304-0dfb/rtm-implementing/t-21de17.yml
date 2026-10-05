@@ -1,0 +1,35 @@
+task:
+  id: t-21de17
+  title: 面板易变字段出注入字符串（稳定钩子 + 补丁）
+  status: done
+  implements: "① src/client/panel-freshness.ts：freshnessSpan() 改为无参、只输出稳定占位 '<span class=\"dsh-pm-np-fresh\" data-dsh-pm-fresh-slot></span>'（不含任何随时间变化的值）；新增 hydrateFreshness(root: ParentNode, f: NodePanelFreshness)：查 [data-dsh-pm-fresh-slot]（缺失即静默返回），写 textContent = '数据时间 ' + clockText(fetchedAt)（缺省 '数据时间 —'）、classList.toggle('is-stale', fetchedAt 缺失或超 staleAfterMs)、title = 刷新周期文案、dataset.fetchedAt/data-stale/data-refresh-ms；幂等、不插删元素。renderFreshnessBar 的失败红条与「插件已更新」保持原样（仅异常态出现）。② src/client/node-panel.ts：新增 relSlot(at: number): string → '<span data-dsh-pm-rel=\"<ms>\"></span>'，把 renderHead 的「最近动态」、renderDraftInfo 的创建时间、renderArchivedInfo 的已归档三处 rel() 文本换成 relSlot（外层类名与样式不动）；新增 hydrateRelTimes(root: ParentNode, now = Date.now())：对每个 [data-dsh-pm-rel] 写 rel() 文本；renderNodePanel 入参新增可选 now（测试固定时钟用）。③ 新增 src/client/panel-hydrate.ts：hydrateNodePanel(root, { freshness?, tab?, now? }) = hydrateFreshness + hydrateRelTimes + applyTab（[data-action=np-switch-view] 的 is-active 与 .dsh-pm-np-pane 的 hidden 按 tab 恢复，缺省 'flow'；找不到元素静默返回）。④ 更新 tests/panel-freshness-render.test.ts：断言改为字符串含 data-dsh-pm-fresh-slot 且不含 '数据时间' 与具体 fetchedAt；新增用例：仅 freshness.fetchedAt 差 5000 的两次 renderNodePanel 输出逐字节相同（并单独比对 dsh-pm-dag-panel 段）。⑤ 新增 tests/panel-hydrate.test.ts（头部 serves: FR-2, FR-3, FR-5）：极简 DOM 桩断言 A3-1（文本/属性/is-stale 翻转、元素未被替换）、A3-2（固定 now 下 刚刚/5 分钟前/日期）、A3-3（tab='list' 时泳道 pane 无 hidden、DAG pane 有 hidden）。验证：npx vitest run tests/panel-freshness-render.test.ts tests/panel-hydrate.test.ts。"
+  serves:
+    - FR-2
+    - FR-3
+    - FR-5
+  depends_on: []
+  phase: implement
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261001210304-0dfb
+    TASK_ID: t-21de17
+    TASK_TITLE: 面板易变字段出注入字符串（稳定钩子 + 补丁）
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-01T13:48:22.572Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261001210304-0dfb
+  generated_at: 2026-10-01T13:44:41.247Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-01T13:48:26.124Z

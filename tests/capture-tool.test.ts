@@ -5,14 +5,15 @@
  * → 绑定本窗口 → 推进 brainstorming；通道不可用 → fallback=board **不伪造立项**；
  * 用户取消 → 中性失败；名称为空 → 响亮失败；窗口已绑定 → 拒绝（白弹一次框是最贵的浪费）。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { defineCaptureTool } from './helpers/tool-deps.js'
 import {
   CAPTURE_QUESTION_IDS,
+  WORKSPACE_SENTINELS,
   buildCaptureQuestions,
   mapCaptureAnswers,
 } from '../src/application/internal/capture-mapping.js'
@@ -22,7 +23,7 @@ import type { RequirementRecord } from '../src/shared/protocol.js'
 const W = 'session-capture-1'
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 /**
  * 假弹框服务：记录收到的问题，按给定作答返回（'abort' → 抛 ASK_ABORTED）。
@@ -50,6 +51,7 @@ const NOW = 1_700_000_000_000
 function makeTool(opts: { svc?: unknown; rejections?: unknown; workspaceRoot?: string } = {}) {
   const deps = {
     store,
+
     now: () => NOW,
     ...(opts.svc !== undefined ? { userQuestions: () => opts.svc } : {}),
     ...(opts.rejections !== undefined ? { rejections: opts.rejections } : {}),
@@ -63,7 +65,7 @@ const run = (tool: { execute: (a: unknown, e: unknown) => Promise<any> }, args: 
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-capture-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -74,7 +76,7 @@ async function seedBound(): Promise<void> {
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
     statusHistory: [{ status: 'draft', at: 1, by: { kind: 'human' } }],
   } as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 const FOUR: AskAnswer[] = [
@@ -82,18 +84,25 @@ const FOUR: AskAnswer[] = [
   { id: CAPTURE_QUESTION_IDS.category, selected: ['bug'] },
   { id: CAPTURE_QUESTION_IDS.difficulty, selected: ['advanced'] },
   { id: CAPTURE_QUESTION_IDS.doc_location, selected: ['docs/requirements/<REQ>/'] },
+  // 第 5 问（FR-6）：工作区——选会话空间哨兵（测试 exec 无 header.cwd，用例回落 process.cwd()）
+  { id: CAPTURE_QUESTION_IDS.workspace, selected: [WORKSPACE_SENTINELS.session] },
 ]
 
-describe('reqboard_capture · 四问口径', () => {
-  it('buildCaptureQuestions：恰好四问，id 顺序 = 名称/类型/难度/文档位置；名称题首项为"✖️ 不需要立项"，候选次之且首个候选即推荐位', () => {
-    const qs = buildCaptureQuestions(['候选一', '候选二'])
-    expect(qs.map(q => q.id)).toEqual(['name', 'category', 'difficulty', 'doc_location'])
+describe('reqboard_capture · 五问口径', () => {
+  const WS_OPTS = { sessionCwd: '/proj/session', hostCwd: '/proj/host' }
+
+  it('buildCaptureQuestions：恰好五问，id 顺序 = 名称/类型/难度/文档位置/工作区；名称题首项为"✖️ 不需要立项"，候选次之且首个候选即推荐位', () => {
+    const qs = buildCaptureQuestions(['候选一', '候选二'], WS_OPTS)
+    expect(qs.map(q => q.id)).toEqual(['name', 'category', 'difficulty', 'doc_location', 'workspace'])
     expect(qs[0]!.options?.[0]!.label).toContain('✖️')
     expect(qs[0]!.options?.[1]).toMatchObject({ label: '候选一', description: '推荐' })
     expect(qs[1]!.options?.map(o => o.label)).toContain('feature')
     expect(qs[2]!.options?.map(o => o.label)).toEqual(['simple', 'standard', 'advanced', 'expert'])
     expect(qs[2]!.options?.find(o => o.description === '推荐')?.label).toBe('standard')
     expect(qs[3]!.options?.[0]!.label).toBe('docs/requirements/<REQ>/')
+    // 第 5 问：工作区三选项，默认项 = 会话空间哨兵
+    expect(qs[4]!.options?.[0]).toMatchObject({ label: WORKSPACE_SENTINELS.session })
+    expect(qs[4]!.options?.[1]).toMatchObject({ label: WORKSPACE_SENTINELS.host })
   })
 
   it('mapCaptureAnswers：名称自定义优先于选项；类型/难度取选项', () => {
@@ -101,10 +110,12 @@ describe('reqboard_capture · 四问口径', () => {
       { id: 'name', selected: ['候选名称'], custom: '  用户自定义名称  ' },
       { id: 'category', selected: ['spike'] },
       { id: 'difficulty', selected: ['expert'] },
+      { id: 'workspace', selected: [WORKSPACE_SENTINELS.session] },
     ])
     expect(m.title).toBe('用户自定义名称')
     expect(m.category).toBe('spike')
     expect(m.difficulty).toBe('expert')
+    expect(m.workspace).toBe(WORKSPACE_SENTINELS.session)
     expect(m.defaultsUsed).toEqual(['doc_location'])
   })
 
@@ -112,7 +123,8 @@ describe('reqboard_capture · 四问口径', () => {
     const m = mapCaptureAnswers([{ id: 'name', selected: ['只要名称'] }])
     expect(m.category).toBe('feature')
     expect(m.difficulty).toBe('standard')
-    expect(m.defaultsUsed).toEqual(['category', 'difficulty', 'doc_location'])
+    expect(m.workspace).toBe(WORKSPACE_SENTINELS.session)
+    expect(m.defaultsUsed).toEqual(['category', 'difficulty', 'doc_location', 'workspace'])
     const bad = mapCaptureAnswers([
       { id: 'name', selected: ['x'] },
       { id: 'category', selected: ['不存在的类型'] },
@@ -120,24 +132,25 @@ describe('reqboard_capture · 四问口径', () => {
     ])
     expect(bad.category).toBe('feature')
     expect(bad.difficulty).toBe('standard')
-    expect(bad.defaultsUsed).toEqual(['category', 'difficulty', 'doc_location'])
+    expect(bad.workspace).toBe(WORKSPACE_SENTINELS.session)
+    expect(bad.defaultsUsed).toEqual(['category', 'difficulty', 'doc_location', 'workspace'])
   })
 })
 
 describe('reqboard_capture · 一次调用一把梭（AC-7.2）', () => {
-  it('四问同批弹出 → 创建即立项 → 绑定本窗口 → 推进 brainstorming', async () => {
+  it('五问同批弹出 → 创建即立项 → 绑定本窗口 → 推进 brainstorming', async () => {
     const svc = makeSvc(FOUR)
     const out = await run(makeTool({ svc, workspaceRoot: dir }), { title_options: ['候选名称'] })
-    // 四问同批
-    expect(svc.seen.questions).toHaveLength(4)
-    expect((svc.seen.questions as { id?: string }[]).map(q => q.id)).toEqual(['name', 'category', 'difficulty', 'doc_location'])
+    // 五问同批
+    expect(svc.seen.questions).toHaveLength(5)
+    expect((svc.seen.questions as { id?: string }[]).map(q => q.id)).toEqual(['name', 'category', 'difficulty', 'doc_location', 'workspace'])
     // 立项成功 + 绑定 + 推进
     expect(out.success).toBe(true)
     expect(out.requirement_id).toMatch(/^REQ-/)
     expect(out.status).toBe('brainstorming')
     expect(out.answers).toMatchObject({ title: '候选名称', category: 'bug', difficulty: 'advanced' })
     expect(out.defaults_used).toEqual([])
-    const req = store.snapshot().requirements.find(r => r.id === out.requirement_id)!
+    const req = store.peekAll().find(r => r.id === out.requirement_id)!
     expect(req.sourceSessionId).toBe(W)
     expect(req.status).toBe('brainstorming')
     expect(req.category).toBe('bug')
@@ -164,7 +177,7 @@ describe('reqboard_capture · 一次调用一把梭（AC-7.2）', () => {
     ])
     const out = await run(makeTool({ svc }), {})
     expect(out.answers.title).toBe('我自己起的名字')
-    expect(store.snapshot().requirements[0]!.title).toBe('我自己起的名字')
+    expect(store.peekAll()[0]!.title).toBe('我自己起的名字')
   })
 
   it('弹框通道不可用 → fallback=board，且**不创建任何需求**', async () => {
@@ -172,7 +185,7 @@ describe('reqboard_capture · 一次调用一把梭（AC-7.2）', () => {
     expect(out.success).toBe(false)
     expect(out.requirement_id).toBe('')
     expect(out.fallback).toBe('board')
-    expect(store.snapshot().requirements).toHaveLength(0)
+    expect(store.peekAll()).toHaveLength(0)
   })
 
   it('用户取消（ASK_ABORTED）→ 中性失败，不创建需求', async () => {
@@ -180,7 +193,7 @@ describe('reqboard_capture · 一次调用一把梭（AC-7.2）', () => {
     expect(out.success).toBe(false)
     expect(out.fallback).toBeUndefined()
     expect(out.note).toContain('未作答')
-    expect(store.snapshot().requirements).toHaveLength(0)
+    expect(store.peekAll()).toHaveLength(0)
   })
 
   it('名称为空 → 响亮失败（名称没有默认值，不猜不补）', async () => {
@@ -188,14 +201,29 @@ describe('reqboard_capture · 一次调用一把梭（AC-7.2）', () => {
     const out = await run(makeTool({ svc }), {})
     expect(out.success).toBe(false)
     expect(out.note).toContain('需求名称')
-    expect(store.snapshot().requirements).toHaveLength(0)
+    expect(store.peekAll()).toHaveLength(0)
   })
 
-  it('窗口已绑定进行中需求 → 拒绝（不白弹一次框）', async () => {
+  // REQ-261003215944-9e04 FR-4（t6）：本条原断言「已绑定 → 一律拒绝」。
+  // 需求明确把这里从"拒绝"改成**显式选择**：缺省 = 本窗口接第二个项目（second），
+  // 另一条分支 handoff = 开新窗口并把需求交给它。故拆成三条：
+  //   a) 缺省（不传）= second，成功立项且仍归属本窗口；
+  //   b) 显式 handoff：交给新窗口（新窗口能力缺失时如实拒绝，不静默降级成 second）；
+  //   c) 「不白弹一次框」这条**初衷**依然由 reqboard_create 那条守卫守住（见 support.ts）。
+  it('窗口已绑定进行中需求 → 缺省走 second：本窗口接第二个项目（不再一律拒绝）', async () => {
     await seedBound()
     const svc = makeSvc(FOUR)
-    await expect(run(makeTool({ svc }), {})).rejects.toMatchObject({ code: 'REQBOARD_WINDOW_BOUND' })
-    expect(svc.seen.questions).toHaveLength(0) // 弹框根本没发生
+    const out = await run(makeTool({ svc }), {})
+    expect(out.success).toBe(true)
+    expect(out.bound_policy).toBe('second')
+    expect(svc.seen.questions.length).toBeGreaterThan(0) // 这次确实弹了框（用户选择了接第二个）
+  })
+
+  it('窗口已绑定 + on_window_bound=handoff 但无开窗能力 → 如实拒绝（不静默降级成 second）', async () => {
+    await seedBound()
+    const svc = makeSvc(FOUR)
+    await expect(run(makeTool({ svc }), { on_window_bound: 'handoff' }))
+      .rejects.toMatchObject({ code: 'REQBOARD_OPEN_WINDOW_UNAVAILABLE' })
   })
 })
 
@@ -210,7 +238,7 @@ describe('reqboard_capture · 拒绝即终端（REQ-260924002956-f37c BUG-1）',
     // 只发一段：后续问题根本没有机会被问到（BUG-1 的现象就是"还继续问类型"）
     expect(svc.seen.calls).toHaveLength(1)
     expect(svc.seen.questions.map(q => (q as { id?: string }).id)).toEqual(['name'])
-    expect(store.snapshot().requirements).toHaveLength(0)
+    expect(store.peekAll()).toHaveLength(0)
   })
 })
 
@@ -224,7 +252,7 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     expect(out.requirement_id).toBe('')
     expect(out.note).toContain('不立项')
     expect(recorded).toEqual([{ windowKey: W, at: NOW }])
-    expect(store.snapshot().requirements).toHaveLength(0)
+    expect(store.peekAll()).toHaveLength(0)
   })
 
   it('留痕写失败 → 降级不阻断「未立项」返回（留痕是增强不是门槛）', async () => {
@@ -233,7 +261,7 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     const out = await run(makeTool({ svc, rejections }), {})
     expect(out.success).toBe(false)
     expect(out.note).toContain('不立项')
-    expect(store.snapshot().requirements).toHaveLength(0)
+    expect(store.peekAll()).toHaveLength(0)
   })
 
   it('前置检查命中近期拒绝（30 分钟内）→ 不弹框直接返回未立项（超时重弹被拦截）', async () => {
@@ -243,7 +271,7 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     expect(out.success).toBe(false)
     expect(out.note).toContain('30 分钟')
     expect(svc.seen.questions).toHaveLength(0) // 弹框根本没发生
-    expect(store.snapshot().requirements).toHaveLength(0)
+    expect(store.peekAll()).toHaveLength(0)
   })
 
   it('拒绝留痕超 30 分钟 → 不粘滞，正常弹框立项', async () => {
@@ -254,7 +282,7 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     })
     const out = await run(stale, { title_options: ['候选名称'] })
     expect(out.success).toBe(true)
-    expect(svc.seen.questions).toHaveLength(4)
+    expect(svc.seen.questions).toHaveLength(5)
   })
 
   it('其他窗口的拒绝留痕 → 本窗口不粘滞，正常弹框立项', async () => {
@@ -265,7 +293,7 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     })
     const out = await run(other, { title_options: ['候选名称'] })
     expect(out.success).toBe(true)
-    expect(svc.seen.questions).toHaveLength(4)
+    expect(svc.seen.questions).toHaveLength(5)
   })
 
   it('留痕读损坏 → 按无记录降级，正常弹框（绝不因留痕故障误拦截）', async () => {
@@ -273,6 +301,6 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     const rejections = { record: () => {}, readAll: async () => { throw new Error('corrupt json') } }
     const out = await run(makeTool({ svc, rejections }), { title_options: ['候选名称'] })
     expect(out.success).toBe(true)
-    expect(svc.seen.questions).toHaveLength(4)
+    expect(svc.seen.questions).toHaveLength(5)
   })
 })

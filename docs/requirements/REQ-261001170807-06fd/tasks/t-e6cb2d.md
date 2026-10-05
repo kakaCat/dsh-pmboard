@@ -1,0 +1,33 @@
+# t-e6cb2d 修复：子卡模板产可执行验收标准·复现
+
+> 需求：REQ-261001170807-06fd 节流不再惩罚正常收尾 + 子卡验收标准自带可跑命令
+
+## 在做什么
+修复：子卡模板产可执行验收标准·复现
+
+## 解决什么问题
+（未填写——开工前补充这张卡要解决的业务问题）
+
+## 得到什么结果
+
+`npx vitest run tests/e2e-close-chain.test.ts` → 修复前失败、修复后通过（两次输出见 `docs/requirements/REQ-261001170807-06fd/evidence/repro-red.txt`）
+
+## 汇报 1（2026-10-01T10:21:12.497Z，窗口 session-5c6e21ed-e2cd-4a84-a733-f2749361dcea）
+
+t3·repro：子卡模板验收标准改为可执行命令后，收尾不再需要逐张回补（对照 REQ-b918 回补 38 张卡的代价）。
+
+### 完成项
+
+- 16 阶段锚点改造
+- 用例 2/2 绿
+
+### 改动文件
+
+- `src/domain/task/SubtaskTemplate.ts`
+- `tests/subtask-template-acceptance.test.ts`
+
+### 下一步
+
+父卡收尾
+
+---

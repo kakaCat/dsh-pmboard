@@ -2,7 +2,8 @@
  * 子卡链与自动链控制面（REQ-4842fe FR-1/FR-12 / t-3be71b）——**纯字符串渲染函数**，可单测。
  *
  * 两件事：
- *  ① 自动状态徽标：运行中 / 已暂停 / 熔断 / 手动（口径 = design/observability §2）；
+ *  ① 自动状态徽标：自动链 / 已暂停 / 熔断 / 手动（口径 = design/observability §2；
+ *     2026-10-04 用户裁定：原「运行中」与运行态圆圈撞词，改叫「自动链」）；
  *  ② 父卡 → 子卡链：折叠展开（原生 <details>，零 JS）、stageKind 徽标 + attempt、
  *     父卡进度 = 子卡 done/total；**存量卡不出现子卡区**（外观与现状一致）。
  *
@@ -33,15 +34,18 @@ export const stageKindLabel = (k: StageKind | undefined): string =>
   k === undefined ? '子卡' : STAGE_LABELS[k] ?? k
 
 /**
- * 自动状态徽标（design/observability §2 口径）：
- *  - autoRun=true → 运行中；
- *  - autoRun=false 且暂停原因为停滞/失败 → 熔断（防无人值守烧 token）；
- *  - autoRun=false 其它 → 已暂停；
+ * 自动状态徽标（design/observability §2 口径；文案 2026-10-04 用户裁定）：
+ *  - autoRun=true → 自动链；
+ *  - autoRun=false 且暂停原因为停滞/失败 → 自动链·熔断（防无人值守烧 token）；
+ *  - autoRun=false 其它 → 自动链·已暂停；
  *  - autoRun 缺省 → 手动（存量卡/人工流程）。
+ *
+ * 为什么前两档原先叫「运行中/已暂停」：那是运行态语汇，会与卡片上的运行中圆圈撞词
+ * （圆圈=事实"窗口在跑回合"，徽标=机制"自动链开关"）——故三档统一加「自动链」前缀。
  */
 export function autoBadgeOf(req: Pick<RequirementRecord, 'autoRun' | 'advance'>): AutoBadge {
   if (req.autoRun === true) {
-    return { kind: 'running', label: '运行中', title: '自动链运行中：每完成一步自动触发下一步（点「暂停」可随时停）' }
+    return { kind: 'running', label: '自动链', title: '自动链运行中：每完成一步自动触发下一步（点「暂停」可随时停）' }
   }
   if (req.autoRun === false) {
     const reason = req.advance?.pausedReason
@@ -50,11 +54,11 @@ export function autoBadgeOf(req: Pick<RequirementRecord, 'autoRun' | 'advance'>)
       const why = reason === 'stagnation' ? '停滞' : reason === 'fail' ? '失败' : '熔断'
       return {
         kind: 'breaker',
-        label: '熔断',
+        label: '自动链·熔断',
         title: fmt('连续失败/停滞达阈值已自动暂停（{why}），需人工处置后再继续', { why }),
       }
     }
-    return { kind: 'paused', label: '已暂停', title: '自动链已暂停：不推下一张牌，已有状态不丢；点「继续」即续跑' }
+    return { kind: 'paused', label: '自动链·已暂停', title: '自动链已暂停：不推下一张牌，已有状态不丢；点「继续」即续跑' }
   }
   return { kind: 'manual', label: '手动', title: '未开启自动链（存量卡/人工流程），外观与推进方式与改造前一致' }
 }

@@ -1,0 +1,33 @@
+task:
+  id: t-63e66a
+  title: 冻结并修正解锁回执契约（无损 + 不说假成功）
+  status: done
+  implements: "在 clearPause 内声明闭包 let previousActivation: string | undefined，并在 deps.repo.mutate 的变更器里 previousActivation = req.dive?.activation（不再从 mutate() 返回结果读）；变更器末尾改为 return { requirements: [req] }；三处 reject(...) 改为 return reject(...)（reject 返回 never → target 收窄，消 TS18048）；回执组装改为 ...(previousActivation !== undefined ? { previous_activation: previousActivation } : {})；失败判定从恒为假的 result === undefined 改为 result.changed.requirements.length === 0 时 reject REQBOARD_MUTATION_FAILED（防假成功）。工具壳、output.schema、参数形状一律不动。"
+  serves:
+    - FR-1
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002140814-1a5d
+    TASK_ID: t-63e66a
+    TASK_TITLE: 冻结并修正解锁回执契约（无损 + 不说假成功）
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T06:17:02.286Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002140814-1a5d
+  generated_at: 2026-10-02T06:14:12.246Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-02T06:21:05.962Z

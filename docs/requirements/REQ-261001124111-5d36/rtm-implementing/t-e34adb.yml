@@ -1,0 +1,38 @@
+task:
+  id: t-e34adb
+  title: "版本戳通道：bundle 内联戳 + SSE event: build 帧·测试"
+  status: done
+  implements: |-
+    改 scripts/wrap-client.mjs：读 lib/client.cjs 算 sha256 取前 12 位，注入 window.__DSH_PM_BUILD__ = "<stamp>"。改 src/http/routers/stages.ts 的 handleEvents：连接建立后补一帧 event: build + data: {"stamp":"…"}（读包根 lib/client.cjs 现算同口径哈希；读不到 → 不发帧，不声称）。客户端收到 build 帧时与内联戳比对，不等 → 经 buildNotice 显示「插件已更新（S1 → S2），点此刷新」（每个连接只提示一次，不自动 reload）。
+
+    [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+  serves: []
+  depends_on:
+    - t-d75737
+  phase: implement
+  side: fullstack
+  workflow_params:
+    REQ_ID: REQ-261001124111-5d36
+    TASK_ID: t-e34adb
+    TASK_TITLE: "版本戳通道：bundle 内联戳 + SSE event: build 帧·测试"
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: fullstack
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-01T05:01:47.496Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261001124111-5d36
+  generated_at: 2026-10-01T05:01:41.187Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-01T05:18:29.804Z

@@ -21,7 +21,7 @@ export interface FileDocRepositoryOptions {
 }
 
 export class FileDocRepository implements DocRepository {
-  private readonly root: string
+  private root: string
 
   constructor(options: FileDocRepositoryOptions = {}) {
     this.root = options.workspaceRoot ?? process.cwd()
@@ -29,6 +29,21 @@ export class FileDocRepository implements DocRepository {
 
   workspaceRoot(): string {
     return this.root
+  }
+
+  /**
+   * 动态校正工作区根（REQ-260929210741-30ae FR-5）。
+   *
+   * 为什么需要：插件 apply() 在宿主启动时执行，此时 process.cwd() 是宿主启动目录
+   * （DSH Web 模式 = deepseek-harness 安装目录），不是任何会话的工作区。
+   * DSH 每个会话的 header.cwd 才是用户工作区——它在会话创建时确定、不可变。
+   * 用例入口处（agentIdFromExec）从 exec.agent.session.header.cwd 取到后调本方法校正；
+   * 无会话上下文（看板路由 / 启动恢复）保持构造值不变。
+   */
+  setWorkspaceRoot(root: string): void {
+    if (typeof root === 'string' && root.length > 0 && root !== this.root) {
+      this.root = root
+    }
   }
 
   /** 相对路径 → 绝对路径（已是绝对路径则原样返回）。 */

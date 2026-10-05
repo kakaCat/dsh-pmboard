@@ -1,0 +1,515 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-260930230225-71be
+  generated_at: 2026-09-30T15:12:34.902Z
+  version: 76
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-02T06:37:24.758Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/architecture.md#A-1-现状与故障链
+      title: A-1 · 现状与故障链
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: A-1-现状与故障链
+    - ref: design/architecture.md#A-2-目标结构与信息层级
+      title: A-2 · 目标结构与信息层级
+      serves:
+        - FR-1
+        - FR-3
+      file: design/architecture.md
+      section: A-2-目标结构与信息层级
+    - ref: design/architecture.md#A-3-分层职责
+      title: A-3 · 分层职责
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: A-3-分层职责
+    - ref: design/architecture.md#A-4-详情面板的定位模型
+      title: A-4 · 详情面板的定位模型
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: A-4-详情面板的定位模型
+    - ref: design/architecture.md#A-5-回滚路径
+      title: A-5 · 回滚路径
+      serves:
+        - FR-5
+      file: design/architecture.md
+      section: A-5-回滚路径
+    - ref: design/architecture.md#A-6-不变式与残余风险
+      title: A-6 · 不变式与残余风险
+      serves:
+        - FR-5
+        - FR-6
+      file: design/architecture.md
+      section: A-6-不变式与残余风险
+    - ref: design/data-model.md#D-1-持久化与接口零变更
+      title: D-1 · 持久化与接口：零变更
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: D-1-持久化与接口零变更
+    - ref: design/data-model.md#D-2-派生模型buildFlowChartModel
+      title: D-2 · 派生模型：buildFlowChartModel
+      serves:
+        - FR-1
+        - FR-3
+      file: design/data-model.md
+      section: D-2-派生模型buildFlowChartModel
+    - ref: design/data-model.md#D-3-档位阈值常量单一源
+      title: D-3 · 档位阈值常量（单一源）
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: D-3-档位阈值常量单一源
+    - ref: design/data-model.md#D-4-兼容与降级
+      title: D-4 · 兼容与降级
+      serves:
+        - FR-2
+        - FR-4
+      file: design/data-model.md
+      section: D-4-兼容与降级
+    - ref: design/interfaces.md#I-1-槽位注册契约
+      title: I-1 · 槽位注册契约
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: I-1-槽位注册契约
+    - ref: design/interfaces.md#I-2-DOM-契约保持不变
+      title: I-2 · DOM 契约（保持不变）
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: I-2-DOM-契约保持不变
+    - ref: design/interfaces.md#I-3-CSS-档位契约
+      title: I-3 · CSS 档位契约
+      serves:
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: I-3-CSS-档位契约
+    - ref: design/interfaces.md#I-4-详情面板定位契约
+      title: I-4 · 详情面板定位契约
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: I-4-详情面板定位契约
+    - ref: design/interfaces.md#I-5-不变式与错误语义
+      title: I-5 · 不变式与错误语义
+      serves:
+        - FR-1
+        - FR-2
+        - FR-5
+      file: design/interfaces.md
+      section: I-5-不变式与错误语义
+    - ref: design/use-cases.md#U-1-主用例扫一眼知道这个会话做到哪了
+      title: U-1 · 主用例：扫一眼知道这个会话做到哪了
+      serves:
+        - FR-1
+        - FR-3
+      file: design/use-cases.md
+      section: U-1-主用例扫一眼知道这个会话做到哪了
+    - ref: design/use-cases.md#U-2-分支用例点节点看该阶段详情
+      title: U-2 · 分支用例：点节点看该阶段详情
+      serves:
+        - FR-2
+        - FR-4
+      file: design/use-cases.md
+      section: U-2-分支用例点节点看该阶段详情
+    - ref: design/use-cases.md#U-3-异常与降级用例
+      title: U-3 · 异常与降级用例
+      serves:
+        - FR-1
+        - FR-3
+        - FR-5
+      file: design/use-cases.md
+      section: U-3-异常与降级用例
+outputs:
+  tasks:
+    - id: t-a4d8f7
+      title: 抽出流程图模型与档位常量（契约卡）
+      implements: 新增 src/client/flow-chart-model.ts：导出 FLOW（七节点与序）、FLOW_TIERS{token:880,link:620,label:460}、类型 FlowNodeModel / FlowChartModel、纯函数 buildFlowChartModel(input)（状态→四态、分类→skipped、nodes[]→token、progress→countText、状态不在 FLOW 时 currentKey=null）。同卡新建 tests/header-progress-responsive.test.ts 并写 TC-5 模型映射用例（7 种 status 的 state 序列、skip、token、countText、currentKey=null）。本卡不改任何既有文件。
+      serves:
+        - FR-3
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-a463b1
+      title: 会话头部挂载点迁到模式标签后（注册卡）
+      implements: "改 src/client/index.ts：注册槽位名 conversation.session.header.utilities → conversation.session.header.actions，order: 5 → order: 0，id / inject / RequirementProgressAction 不变；订正文件头与注册处两处旧注释（旧注释称模式选择器在 utilities、order 10，与事实不符）。不改样式与组件代码。"
+      serves:
+        - FR-1
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-c60f21
+      title: 组件改为消费图表模型（视图接线卡）
+      implements: 改 src/client/conversation-progress.ts：删掉内联的状态推导，改调 buildFlowChartModel(data)；渲染标记与契约保持设计 I-2 —— 类名 .dsh-pm-flow-node / .dsh-pm-flow-dot / .dsh-pm-flow-meta / .dsh-pm-flow-label / .dsh-pm-flow-token / .dsh-pm-flow-link / .dsh-pm-cprog-inline-count，属性 data-state / data-selected，节点点击打开详情面板的行为全部不变；订正文件头旧注释。
+      serves:
+        - FR-1
+      depends_on:
+        - t-a4d8f7
+      phase: implement
+      side: frontend
+    - id: t-d281b6
+      title: 流程图收缩与四档降级样式（样式卡）
+      implements: 改 src/client/styles/board.ts：.dsh-pm-cprog 加 min-width:0 与 max-width:100%；.dsh-pm-cprog-inline 加 min-width:0 与 max-width:64vw；.dsh-pm-flow 保留 overflow-x:auto；用 FLOW_TIERS 插值写三段 @container（880 隐 token；620 隐连线与非当前节点名、节点 min-width 28px；460 隐全部节点名、节点 min-width 24px）；详情面板宽档 position absolute + right 0 + width min(420px, calc(100vw - 32px)) + max-height min(68vh, calc(100vh - 100px))，窄档（≤620）position fixed + top 78px + right 12px。token 行隐藏规则写在 board.ts，token.ts 不改。
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+      depends_on:
+        - t-a4d8f7
+      phase: ui
+      side: frontend
+    - id: t-7a9405
+      title: 六档视口探针与静态契约单测（回归门卡）
+      implements: "新增 scripts/header-progress-probe.mts：标本页复刻 DSH 标题行几何（container-type: inline-size 的 .titleRow + flex:1/min-width:0 的 titleCluster + flex:none 的 headerActions/headerUtilities + 模式标签占位块），图表 DOM 由 buildFlowChartModel 按 I-2 类名生成；六档视口 1280/1024/900/768/640/480 量 A1 标题行不溢出、A2 档位可见集、A3 当前节点可见、A4 面板不越界、A5 宽档零回归、A6 圆点 7 / 连线 6，输出 DIAG 行与 PROBE PASS/FAIL，找不到 Chrome 退出码 2。同时在 tests/header-progress-responsive.test.ts 补齐 TC-1（挂载契约）、TC-2（FLOW_TIERS 与 CSS 阈值逐一相等）、TC-3（收缩与兜底规则）、TC-4（面板双模）、TC-6（无需求 return null 分支仍在）。"
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+      depends_on:
+        - t-a463b1
+        - t-c60f21
+        - t-d281b6
+      phase: test
+      side: frontend
+    - id: t-b817a1
+      title: 兼容与回滚验证（无容器祖先降级）
+      implements: 给 scripts/header-progress-probe.mts 加 --fallback 模式：标本页去掉 container-type 祖先，断言全量渲染下 max-width:64vw + overflow-x:auto 兜底仍使标题行不溢出（设计 D-4 的降级路径）；把回滚步骤写成可复跑说明（还原 src/client/index.ts 的槽位名与 order 即回到 utilities）；pnpm build:client 后在本 GUI 重载，录 evidence/ 下宽档与窄档各一张实机截图。
+      serves:
+        - FR-5
+        - FR-6
+      depends_on:
+        - t-7a9405
+      phase: test
+      side: frontend
+    - id: t-ca7600
+      title: 抽出流程图模型与档位常量（契约卡）·研发
+      implements: |-
+        新增 src/client/flow-chart-model.ts：导出 FLOW（七节点与序）、FLOW_TIERS{token:880,link:620,label:460}、类型 FlowNodeModel / FlowChartModel、纯函数 buildFlowChartModel(input)（状态→四态、分类→skipped、nodes[]→token、progress→countText、状态不在 FLOW 时 currentKey=null）。同卡新建 tests/header-progress-responsive.test.ts 并写 TC-5 模型映射用例（7 种 status 的 state 序列、skip、token、countText、currentKey=null）。本卡不改任何既有文件。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-6eac27
+      title: 抽出流程图模型与档位常量（契约卡）·复核
+      implements: |-
+        新增 src/client/flow-chart-model.ts：导出 FLOW（七节点与序）、FLOW_TIERS{token:880,link:620,label:460}、类型 FlowNodeModel / FlowChartModel、纯函数 buildFlowChartModel(input)（状态→四态、分类→skipped、nodes[]→token、progress→countText、状态不在 FLOW 时 currentKey=null）。同卡新建 tests/header-progress-responsive.test.ts 并写 TC-5 模型映射用例（7 种 status 的 state 序列、skip、token、countText、currentKey=null）。本卡不改任何既有文件。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-ca7600
+      phase: implement
+      side: frontend
+    - id: t-6ca52f
+      title: 抽出流程图模型与档位常量（契约卡）·测试
+      implements: |-
+        新增 src/client/flow-chart-model.ts：导出 FLOW（七节点与序）、FLOW_TIERS{token:880,link:620,label:460}、类型 FlowNodeModel / FlowChartModel、纯函数 buildFlowChartModel(input)（状态→四态、分类→skipped、nodes[]→token、progress→countText、状态不在 FLOW 时 currentKey=null）。同卡新建 tests/header-progress-responsive.test.ts 并写 TC-5 模型映射用例（7 种 status 的 state 序列、skip、token、countText、currentKey=null）。本卡不改任何既有文件。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-6eac27
+      phase: implement
+      side: frontend
+    - id: t-8067d1
+      title: 会话头部挂载点迁到模式标签后（注册卡）·研发
+      implements: |-
+        改 src/client/index.ts：注册槽位名 conversation.session.header.utilities → conversation.session.header.actions，order: 5 → order: 0，id / inject / RequirementProgressAction 不变；订正文件头与注册处两处旧注释（旧注释称模式选择器在 utilities、order 10，与事实不符）。不改样式与组件代码。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-b3079e
+      title: 会话头部挂载点迁到模式标签后（注册卡）·复核
+      implements: |-
+        改 src/client/index.ts：注册槽位名 conversation.session.header.utilities → conversation.session.header.actions，order: 5 → order: 0，id / inject / RequirementProgressAction 不变；订正文件头与注册处两处旧注释（旧注释称模式选择器在 utilities、order 10，与事实不符）。不改样式与组件代码。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-8067d1
+      phase: implement
+      side: frontend
+    - id: t-4ef34b
+      title: 会话头部挂载点迁到模式标签后（注册卡）·测试
+      implements: |-
+        改 src/client/index.ts：注册槽位名 conversation.session.header.utilities → conversation.session.header.actions，order: 5 → order: 0，id / inject / RequirementProgressAction 不变；订正文件头与注册处两处旧注释（旧注释称模式选择器在 utilities、order 10，与事实不符）。不改样式与组件代码。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-b3079e
+      phase: implement
+      side: frontend
+    - id: t-e6de10
+      title: 组件改为消费图表模型（视图接线卡）·研发
+      implements: |-
+        改 src/client/conversation-progress.ts：删掉内联的状态推导，改调 buildFlowChartModel(data)；渲染标记与契约保持设计 I-2 —— 类名 .dsh-pm-flow-node / .dsh-pm-flow-dot / .dsh-pm-flow-meta / .dsh-pm-flow-label / .dsh-pm-flow-token / .dsh-pm-flow-link / .dsh-pm-cprog-inline-count，属性 data-state / data-selected，节点点击打开详情面板的行为全部不变；订正文件头旧注释。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-a4d8f7
+      phase: implement
+      side: frontend
+    - id: t-d89a4f
+      title: 组件改为消费图表模型（视图接线卡）·复核
+      implements: |-
+        改 src/client/conversation-progress.ts：删掉内联的状态推导，改调 buildFlowChartModel(data)；渲染标记与契约保持设计 I-2 —— 类名 .dsh-pm-flow-node / .dsh-pm-flow-dot / .dsh-pm-flow-meta / .dsh-pm-flow-label / .dsh-pm-flow-token / .dsh-pm-flow-link / .dsh-pm-cprog-inline-count，属性 data-state / data-selected，节点点击打开详情面板的行为全部不变；订正文件头旧注释。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-e6de10
+      phase: implement
+      side: frontend
+    - id: t-93ea0d
+      title: 组件改为消费图表模型（视图接线卡）·测试
+      implements: |-
+        改 src/client/conversation-progress.ts：删掉内联的状态推导，改调 buildFlowChartModel(data)；渲染标记与契约保持设计 I-2 —— 类名 .dsh-pm-flow-node / .dsh-pm-flow-dot / .dsh-pm-flow-meta / .dsh-pm-flow-label / .dsh-pm-flow-token / .dsh-pm-flow-link / .dsh-pm-cprog-inline-count，属性 data-state / data-selected，节点点击打开详情面板的行为全部不变；订正文件头旧注释。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-d89a4f
+      phase: implement
+      side: frontend
+    - id: t-5ce083
+      title: 流程图收缩与四档降级样式（样式卡）·研发
+      implements: |-
+        改 src/client/styles/board.ts：.dsh-pm-cprog 加 min-width:0 与 max-width:100%；.dsh-pm-cprog-inline 加 min-width:0 与 max-width:64vw；.dsh-pm-flow 保留 overflow-x:auto；用 FLOW_TIERS 插值写三段 @container（880 隐 token；620 隐连线与非当前节点名、节点 min-width 28px；460 隐全部节点名、节点 min-width 24px）；详情面板宽档 position absolute + right 0 + width min(420px, calc(100vw - 32px)) + max-height min(68vh, calc(100vh - 100px))，窄档（≤620）position fixed + top 78px + right 12px。token 行隐藏规则写在 board.ts，token.ts 不改。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-a4d8f7
+      phase: ui
+      side: frontend
+    - id: t-17f5b3
+      title: 流程图收缩与四档降级样式（样式卡）·复核
+      implements: |-
+        改 src/client/styles/board.ts：.dsh-pm-cprog 加 min-width:0 与 max-width:100%；.dsh-pm-cprog-inline 加 min-width:0 与 max-width:64vw；.dsh-pm-flow 保留 overflow-x:auto；用 FLOW_TIERS 插值写三段 @container（880 隐 token；620 隐连线与非当前节点名、节点 min-width 28px；460 隐全部节点名、节点 min-width 24px）；详情面板宽档 position absolute + right 0 + width min(420px, calc(100vw - 32px)) + max-height min(68vh, calc(100vh - 100px))，窄档（≤620）position fixed + top 78px + right 12px。token 行隐藏规则写在 board.ts，token.ts 不改。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-5ce083
+      phase: ui
+      side: frontend
+    - id: t-f7b178
+      title: 流程图收缩与四档降级样式（样式卡）·测试
+      implements: |-
+        改 src/client/styles/board.ts：.dsh-pm-cprog 加 min-width:0 与 max-width:100%；.dsh-pm-cprog-inline 加 min-width:0 与 max-width:64vw；.dsh-pm-flow 保留 overflow-x:auto；用 FLOW_TIERS 插值写三段 @container（880 隐 token；620 隐连线与非当前节点名、节点 min-width 28px；460 隐全部节点名、节点 min-width 24px）；详情面板宽档 position absolute + right 0 + width min(420px, calc(100vw - 32px)) + max-height min(68vh, calc(100vh - 100px))，窄档（≤620）position fixed + top 78px + right 12px。token 行隐藏规则写在 board.ts，token.ts 不改。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-17f5b3
+      phase: ui
+      side: frontend
+    - id: t-b8ffb8
+      title: 六档视口探针与静态契约单测（回归门卡）·研发
+      implements: |-
+        新增 scripts/header-progress-probe.mts：标本页复刻 DSH 标题行几何（container-type: inline-size 的 .titleRow + flex:1/min-width:0 的 titleCluster + flex:none 的 headerActions/headerUtilities + 模式标签占位块），图表 DOM 由 buildFlowChartModel 按 I-2 类名生成；六档视口 1280/1024/900/768/640/480 量 A1 标题行不溢出、A2 档位可见集、A3 当前节点可见、A4 面板不越界、A5 宽档零回归、A6 圆点 7 / 连线 6，输出 DIAG 行与 PROBE PASS/FAIL，找不到 Chrome 退出码 2。同时在 tests/header-progress-responsive.test.ts 补齐 TC-1（挂载契约）、TC-2（FLOW_TIERS 与 CSS 阈值逐一相等）、TC-3（收缩与兜底规则）、TC-4（面板双模）、TC-6（无需求 return null 分支仍在）。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-a463b1
+        - t-c60f21
+        - t-d281b6
+      phase: test
+      side: frontend
+    - id: t-6b59c2
+      title: 六档视口探针与静态契约单测（回归门卡）·复核
+      implements: |-
+        新增 scripts/header-progress-probe.mts：标本页复刻 DSH 标题行几何（container-type: inline-size 的 .titleRow + flex:1/min-width:0 的 titleCluster + flex:none 的 headerActions/headerUtilities + 模式标签占位块），图表 DOM 由 buildFlowChartModel 按 I-2 类名生成；六档视口 1280/1024/900/768/640/480 量 A1 标题行不溢出、A2 档位可见集、A3 当前节点可见、A4 面板不越界、A5 宽档零回归、A6 圆点 7 / 连线 6，输出 DIAG 行与 PROBE PASS/FAIL，找不到 Chrome 退出码 2。同时在 tests/header-progress-responsive.test.ts 补齐 TC-1（挂载契约）、TC-2（FLOW_TIERS 与 CSS 阈值逐一相等）、TC-3（收缩与兜底规则）、TC-4（面板双模）、TC-6（无需求 return null 分支仍在）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-b8ffb8
+      phase: test
+      side: frontend
+    - id: t-cb9a10
+      title: 六档视口探针与静态契约单测（回归门卡）·测试
+      implements: |-
+        新增 scripts/header-progress-probe.mts：标本页复刻 DSH 标题行几何（container-type: inline-size 的 .titleRow + flex:1/min-width:0 的 titleCluster + flex:none 的 headerActions/headerUtilities + 模式标签占位块），图表 DOM 由 buildFlowChartModel 按 I-2 类名生成；六档视口 1280/1024/900/768/640/480 量 A1 标题行不溢出、A2 档位可见集、A3 当前节点可见、A4 面板不越界、A5 宽档零回归、A6 圆点 7 / 连线 6，输出 DIAG 行与 PROBE PASS/FAIL，找不到 Chrome 退出码 2。同时在 tests/header-progress-responsive.test.ts 补齐 TC-1（挂载契约）、TC-2（FLOW_TIERS 与 CSS 阈值逐一相等）、TC-3（收缩与兜底规则）、TC-4（面板双模）、TC-6（无需求 return null 分支仍在）。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-6b59c2
+      phase: test
+      side: frontend
+    - id: t-7a96ce
+      title: 兼容与回滚验证（无容器祖先降级）·研发
+      implements: |-
+        给 scripts/header-progress-probe.mts 加 --fallback 模式：标本页去掉 container-type 祖先，断言全量渲染下 max-width:64vw + overflow-x:auto 兜底仍使标题行不溢出（设计 D-4 的降级路径）；把回滚步骤写成可复跑说明（还原 src/client/index.ts 的槽位名与 order 即回到 utilities）；pnpm build:client 后在本 GUI 重载，录 evidence/ 下宽档与窄档各一张实机截图。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-7a9405
+      phase: test
+      side: frontend
+    - id: t-469164
+      title: 兼容与回滚验证（无容器祖先降级）·复核
+      implements: |-
+        给 scripts/header-progress-probe.mts 加 --fallback 模式：标本页去掉 container-type 祖先，断言全量渲染下 max-width:64vw + overflow-x:auto 兜底仍使标题行不溢出（设计 D-4 的降级路径）；把回滚步骤写成可复跑说明（还原 src/client/index.ts 的槽位名与 order 即回到 utilities）；pnpm build:client 后在本 GUI 重载，录 evidence/ 下宽档与窄档各一张实机截图。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-7a96ce
+      phase: test
+      side: frontend
+    - id: t-1fb244
+      title: 兼容与回滚验证（无容器祖先降级）·测试
+      implements: |-
+        给 scripts/header-progress-probe.mts 加 --fallback 模式：标本页去掉 container-type 祖先，断言全量渲染下 max-width:64vw + overflow-x:auto 兜底仍使标题行不溢出（设计 D-4 的降级路径）；把回滚步骤写成可复跑说明（还原 src/client/index.ts 的槽位名与 order 即回到 utilities）；pnpm build:client 后在本 GUI 重载，录 evidence/ 下宽档与窄档各一张实机截图。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-469164
+      phase: test
+      side: frontend
+traceability:
+  design_to_tasks:
+    design/architecture.md#A-1-现状与故障链:
+      - t-a463b1
+      - t-c60f21
+      - t-d281b6
+      - t-7a9405
+    design/architecture.md#A-2-目标结构与信息层级:
+      - t-a4d8f7
+      - t-a463b1
+      - t-c60f21
+      - t-d281b6
+      - t-7a9405
+    design/architecture.md#A-3-分层职责:
+      - t-a4d8f7
+      - t-d281b6
+      - t-7a9405
+    design/architecture.md#A-4-详情面板的定位模型:
+      - t-d281b6
+      - t-7a9405
+    design/architecture.md#A-5-回滚路径:
+      - t-7a9405
+      - t-b817a1
+    design/architecture.md#A-6-不变式与残余风险:
+      - t-7a9405
+      - t-b817a1
+    design/data-model.md#D-1-持久化与接口零变更:
+      - t-a463b1
+      - t-c60f21
+    design/data-model.md#D-2-派生模型buildFlowChartModel:
+      - t-a4d8f7
+      - t-a463b1
+      - t-c60f21
+      - t-d281b6
+      - t-7a9405
+    design/data-model.md#D-3-档位阈值常量单一源:
+      - t-a4d8f7
+      - t-d281b6
+      - t-7a9405
+    design/data-model.md#D-4-兼容与降级:
+      - t-d281b6
+      - t-7a9405
+    design/interfaces.md#I-1-槽位注册契约:
+      - t-a463b1
+      - t-c60f21
+    design/interfaces.md#I-2-DOM-契约保持不变:
+      - t-a4d8f7
+      - t-d281b6
+      - t-7a9405
+    design/interfaces.md#I-3-CSS-档位契约:
+      - t-a4d8f7
+      - t-d281b6
+      - t-7a9405
+    design/interfaces.md#I-4-详情面板定位契约:
+      - t-d281b6
+      - t-7a9405
+    design/interfaces.md#I-5-不变式与错误语义:
+      - t-a463b1
+      - t-c60f21
+      - t-d281b6
+      - t-7a9405
+      - t-b817a1
+    design/use-cases.md#U-1-主用例扫一眼知道这个会话做到哪了:
+      - t-a4d8f7
+      - t-a463b1
+      - t-c60f21
+      - t-d281b6
+      - t-7a9405
+    design/use-cases.md#U-2-分支用例点节点看该阶段详情:
+      - t-d281b6
+      - t-7a9405
+    design/use-cases.md#U-3-异常与降级用例:
+      - t-a4d8f7
+      - t-a463b1
+      - t-c60f21
+      - t-d281b6
+      - t-7a9405
+      - t-b817a1
+  fr_to_tasks:
+    FR-1:
+      - t-a463b1
+      - t-c60f21
+      - t-d281b6
+      - t-7a9405
+      - t-a4d8f7
+      - t-b817a1
+    FR-2:
+      - t-a463b1
+      - t-c60f21
+      - t-d281b6
+      - t-7a9405
+      - t-a4d8f7
+      - t-b817a1
+    FR-3:
+      - t-a4d8f7
+      - t-a463b1
+      - t-c60f21
+      - t-d281b6
+      - t-7a9405
+      - t-b817a1
+    FR-4:
+      - t-a4d8f7
+      - t-d281b6
+      - t-7a9405
+    FR-5:
+      - t-7a9405
+      - t-b817a1
+      - t-a463b1
+      - t-c60f21
+      - t-d281b6
+      - t-a4d8f7
+    FR-6:
+      - t-7a9405
+      - t-b817a1
+coverage:
+  implementation:
+    total: 18
+    covered: 18
+    uncovered: []
+    rate: 100
+    total_designs: 18
+    covered_designs: 18

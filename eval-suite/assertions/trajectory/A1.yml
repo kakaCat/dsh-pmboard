@@ -1,0 +1,14 @@
+# case A1 · 明确新需求走 capture 立项 · serves: FR-2
+case: A1
+ordered_contains:
+  - reqboard_status             # 立项前先自查绑定状态
+  - reqboard_capture            # 弹框通道可用时首选 capture（不先 create）
+forbidden:
+  - tool: reqboard_create
+    when: capture_channel_available   # 弹框可用时绕过 capture 直接 create 属违规
+budget:
+  max_tool_calls: 5
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_capture
+    result_contains: REQ-       # 立项成功返回需求 id

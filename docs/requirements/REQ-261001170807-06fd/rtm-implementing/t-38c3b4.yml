@@ -1,0 +1,39 @@
+task:
+  id: t-38c3b4
+  title: 修复：节流判据排除本卡自己的子卡·回归测试
+  status: done
+  implements: |-
+    DoneEvidenceSpec.ts 的 TaskWithHistory 增 parentId?: string；findRecentAgentDoneTask 与 doneThrottleRemainingMs 在命中候选时跳过 candidate.parentId === taskId 的任务（本卡自己的子卡）；support.ts 传入的 tasks 已含 parentId，无需改查询。兄弟卡（不同 parentId）与跨卡关闭照旧计入。
+
+    [子卡阶段·回归测试] 只做本阶段；验收：相关测试全量跑通，无新增失败（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-e046a3
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261001170807-06fd
+    TASK_ID: t-38c3b4
+    TASK_TITLE: 修复：节流判据排除本卡自己的子卡·回归测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-01T09:26:10.696Z
+      completed_at: 2026-10-01T09:26:10.796Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261001170807-06fd
+  generated_at: 2026-10-01T09:26:10.645Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-01T09:26:10.796Z

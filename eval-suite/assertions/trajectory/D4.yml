@@ -1,0 +1,14 @@
+# case D4 · 完工汇报四要素与幂等（产物类） · serves: FR-2
+case: D4
+ordered_contains:
+  - reqboard_task_report            # 第一次汇报：四要素齐全
+  - reqboard_task_report            # 第二次原样重发：幂等追加，不重复登记产物
+forbidden:
+  - tool: reqboard_task_move
+    when: 汇报未完成且目标是改状态   # 汇报场景不得顺手推进状态（move 另走场景）
+budget:
+  max_tool_calls: 6
+  max_repeat_same_args: 2           # 第二次是用户明确要求原样重发，允许重复 1 次
+required_outcome:
+  - tool: reqboard_task_report
+    result_contains: ok             # 汇报落卡文档并登记 kind=task_detail 产物

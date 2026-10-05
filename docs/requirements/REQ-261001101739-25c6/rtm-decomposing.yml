@@ -1,0 +1,474 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261001101739-25c6
+  generated_at: 2026-10-01T02:36:19.492Z
+  version: 85
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-01T03:02:13.016Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/architecture.md#TLDR
+      title: TL;DR `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/architecture.md
+      section: TLDR
+    - ref: design/architecture.md#模块改动地图
+      title: 模块改动地图 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: 模块改动地图
+    - ref: design/architecture.md#归属生命周期对齐宿主契约
+      title: 归属生命周期（对齐宿主契约）`
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 归属生命周期对齐宿主契约
+    - ref: design/architecture.md#兼容与迁移
+      title: 兼容与迁移 `
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: 兼容与迁移
+    - ref: design/architecture.md#回滚路径
+      title: 回滚路径 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: 回滚路径
+    - ref: design/data-model.md#D-1-样式表属性契约本次唯一改动的数据结构
+      title: D-1 · 样式表属性契约（本次唯一改动的数据结构）`
+      serves:
+        - FR-1
+        - FR-2
+      file: design/data-model.md
+      section: D-1-样式表属性契约本次唯一改动的数据结构
+    - ref: design/data-model.md#D-2-宿主侧归属账本只读事实本插件不写
+      title: D-2 · 宿主侧归属账本（只读事实，本插件不写）`
+      serves:
+        - FR-1
+        - FR-3
+      file: design/data-model.md
+      section: D-2-宿主侧归属账本只读事实本插件不写
+    - ref: design/data-model.md#D-3-无变更声明明确不做
+      title: D-3 · 无变更声明（明确不做）`
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: D-3-无变更声明明确不做
+    - ref: design/interfaces.md#I-1-injectStyles-契约唯一注入入口幂等
+      title: I-1 · `injectStyles()` 契约（唯一注入入口，幂等）`
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: I-1-injectStyles-契约唯一注入入口幂等
+    - ref: design/interfaces.md#I-2-与-DSH-client-modules-的归属契约宿主侧不可改必须遵守
+      title: I-2 · 与 DSH client-modules 的归属契约（宿主侧，不可改，必须遵守）`
+      serves:
+        - FR-1
+        - FR-3
+      file: design/interfaces.md
+      section: I-2-与-DSH-client-modules-的归属契约宿主侧不可改必须遵守
+    - ref: design/interfaces.md#I-3-自愈调用点契约
+      title: I-3 · 自愈调用点契约 `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: I-3-自愈调用点契约
+    - ref: design/interfaces.md#I-4-构建门禁契约
+      title: I-4 · 构建门禁契约 `
+      serves:
+        - FR-5
+        - FR-6
+      file: design/interfaces.md
+      section: I-4-构建门禁契约
+    - ref: design/use-cases.md#UC-1-用户刷新-长时间挂着会话原始故障场景
+      title: UC-1 · 用户刷新 / 长时间挂着会话（原始故障场景）`
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/use-cases.md
+      section: UC-1-用户刷新-长时间挂着会话原始故障场景
+    - ref: design/use-cases.md#UC-2-开发者重建-client-bundleHMR-替换本插件
+      title: UC-2 · 开发者重建 client bundle（HMR 替换本插件）`
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-2-开发者重建-client-bundleHMR-替换本插件
+    - ref: design/use-cases.md#UC-3-别的插件装卸与我们无关的第三方
+      title: UC-3 · 别的插件装卸（与我们无关的第三方）`
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-3-别的插件装卸与我们无关的第三方
+    - ref: design/use-cases.md#UC-4-存量文档里残留旧无主表升级路径
+      title: UC-4 · 存量文档里残留旧无主表（升级路径）`
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-4-存量文档里残留旧无主表升级路径
+    - ref: design/use-cases.md#UC-5-无-document-环境host-半-node-单测
+      title: UC-5 · 无 `document` 环境（host 半 / node 单测）`
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-5-无-document-环境host-半-node-单测
+outputs:
+  tasks:
+    - id: t-0f6751
+      title: 样式表自带归属章并在工厂执行期注入
+      implements: src/client/styles.ts：新增 PLUGIN_ID='dsh-pmboard'（装载身份=包名，不复用 PANEL_NAME）；injectStyles() 建表时写 tag.dataset.plugin = PLUGIN_ID，保留 data-plugin-css；文件末尾（模块求值期=bundle 工厂执行期）调用 injectStyles()；src/client/index.ts 的 apply() 调用保留（幂等）。
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-f450f9
+      title: 存量无主表的兼容与归属纠正
+      implements: injectStyles() 命中 style[data-plugin-css="dsh-pmboard/styles.css"] 但 data-plugin !== PLUGIN_ID 时，就地 setAttribute('data-plugin', PLUGIN_ID) 后返回，不追加第二张表。
+      serves: []
+      depends_on:
+        - t-0f6751
+      phase: implement
+      side: frontend
+    - id: t-9cbf93
+      title: 流程图与看板页的样式在屏自愈接线
+      implements: src/client/conversation-progress.ts 增加 useEffect(() => { injectStyles() }, [data])（随 15s 轮询/会话切换触发）；src/client/page/host.ts 挂载 effect 内先 injectStyles() 再 attachBoard。
+      serves: []
+      depends_on:
+        - t-0f6751
+      phase: implement
+      side: frontend
+    - id: t-aa0ac9
+      title: 发版门禁：产物归属章 + CSS 分片截断信号
+      implements: scripts/verify-client-build.mjs：新增 ownership=['dataset.plugin=','dataset.pluginCss='] 检查（缺失非零退出并指名）；把截断信号改挂到 src/client/styles/*.ts（每份以模板字符串收尾）+ 校验 styles.ts 仍含 injectStyles(；补 readdirSync 导入。
+      serves: []
+      depends_on:
+        - t-0f6751
+      phase: implement
+      side: frontend
+    - id: t-1af58c
+      title: 归属契约单测（可证伪）
+      implements: 新增 tests/client-styles-ownership.test.ts：最小 DOM 替身（querySelector/All + createElement + dataset↔属性投影）与宿主算法复刻（claimStyles / removeOwnedStyles），覆盖存量表归属纠正不重复插表、认领不走、删除删不掉、删后自愈、无 document 静默。
+      serves: []
+      depends_on:
+        - t-0f6751
+      phase: test
+      side: frontend
+    - id: t-99f08e
+      title: 端到端复验与证据归档（真实 GUI + 探针 + 门禁）
+      implements: 在真实 GUI 复核四条（归属章 / 别的插件认领隔离 / 手动删表自愈 / HMR 重建无空窗），跑几何探针与构建门禁，把截图与复跑步骤写入 docs/requirements/REQ-261001101739-25c6/evidence/。
+      serves: []
+      depends_on:
+        - t-f450f9
+        - t-9cbf93
+        - t-aa0ac9
+        - t-1af58c
+      phase: test
+      side: frontend
+    - id: t-1d3f52
+      title: 样式表自带归属章并在工厂执行期注入·研发
+      implements: |-
+        src/client/styles.ts：新增 PLUGIN_ID='dsh-pmboard'（装载身份=包名，不复用 PANEL_NAME）；injectStyles() 建表时写 tag.dataset.plugin = PLUGIN_ID，保留 data-plugin-css；文件末尾（模块求值期=bundle 工厂执行期）调用 injectStyles()；src/client/index.ts 的 apply() 调用保留（幂等）。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-4d0c32
+      title: 样式表自带归属章并在工厂执行期注入·联调
+      implements: |-
+        src/client/styles.ts：新增 PLUGIN_ID='dsh-pmboard'（装载身份=包名，不复用 PANEL_NAME）；injectStyles() 建表时写 tag.dataset.plugin = PLUGIN_ID，保留 data-plugin-css；文件末尾（模块求值期=bundle 工厂执行期）调用 injectStyles()；src/client/index.ts 的 apply() 调用保留（幂等）。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-1d3f52
+      phase: implement
+      side: frontend
+    - id: t-cf2018
+      title: 样式表自带归属章并在工厂执行期注入·复核
+      implements: |-
+        src/client/styles.ts：新增 PLUGIN_ID='dsh-pmboard'（装载身份=包名，不复用 PANEL_NAME）；injectStyles() 建表时写 tag.dataset.plugin = PLUGIN_ID，保留 data-plugin-css；文件末尾（模块求值期=bundle 工厂执行期）调用 injectStyles()；src/client/index.ts 的 apply() 调用保留（幂等）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-4d0c32
+      phase: implement
+      side: frontend
+    - id: t-88129f
+      title: 样式表自带归属章并在工厂执行期注入·测试
+      implements: |-
+        src/client/styles.ts：新增 PLUGIN_ID='dsh-pmboard'（装载身份=包名，不复用 PANEL_NAME）；injectStyles() 建表时写 tag.dataset.plugin = PLUGIN_ID，保留 data-plugin-css；文件末尾（模块求值期=bundle 工厂执行期）调用 injectStyles()；src/client/index.ts 的 apply() 调用保留（幂等）。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-cf2018
+      phase: implement
+      side: frontend
+    - id: t-504ffb
+      title: 存量无主表的兼容与归属纠正·研发
+      implements: |-
+        injectStyles() 命中 style[data-plugin-css="dsh-pmboard/styles.css"] 但 data-plugin !== PLUGIN_ID 时，就地 setAttribute('data-plugin', PLUGIN_ID) 后返回，不追加第二张表。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-0f6751
+      phase: implement
+      side: frontend
+    - id: t-671094
+      title: 存量无主表的兼容与归属纠正·联调
+      implements: |-
+        injectStyles() 命中 style[data-plugin-css="dsh-pmboard/styles.css"] 但 data-plugin !== PLUGIN_ID 时，就地 setAttribute('data-plugin', PLUGIN_ID) 后返回，不追加第二张表。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-504ffb
+      phase: implement
+      side: frontend
+    - id: t-271267
+      title: 存量无主表的兼容与归属纠正·复核
+      implements: |-
+        injectStyles() 命中 style[data-plugin-css="dsh-pmboard/styles.css"] 但 data-plugin !== PLUGIN_ID 时，就地 setAttribute('data-plugin', PLUGIN_ID) 后返回，不追加第二张表。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-671094
+      phase: implement
+      side: frontend
+    - id: t-76c3d8
+      title: 存量无主表的兼容与归属纠正·测试
+      implements: |-
+        injectStyles() 命中 style[data-plugin-css="dsh-pmboard/styles.css"] 但 data-plugin !== PLUGIN_ID 时，就地 setAttribute('data-plugin', PLUGIN_ID) 后返回，不追加第二张表。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-271267
+      phase: implement
+      side: frontend
+    - id: t-50460a
+      title: 流程图与看板页的样式在屏自愈接线·研发
+      implements: |-
+        src/client/conversation-progress.ts 增加 useEffect(() => { injectStyles() }, [data])（随 15s 轮询/会话切换触发）；src/client/page/host.ts 挂载 effect 内先 injectStyles() 再 attachBoard。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-0f6751
+      phase: implement
+      side: frontend
+    - id: t-9ce7ae
+      title: 流程图与看板页的样式在屏自愈接线·联调
+      implements: |-
+        src/client/conversation-progress.ts 增加 useEffect(() => { injectStyles() }, [data])（随 15s 轮询/会话切换触发）；src/client/page/host.ts 挂载 effect 内先 injectStyles() 再 attachBoard。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-50460a
+      phase: implement
+      side: frontend
+    - id: t-8d1b26
+      title: 流程图与看板页的样式在屏自愈接线·复核
+      implements: |-
+        src/client/conversation-progress.ts 增加 useEffect(() => { injectStyles() }, [data])（随 15s 轮询/会话切换触发）；src/client/page/host.ts 挂载 effect 内先 injectStyles() 再 attachBoard。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-9ce7ae
+      phase: implement
+      side: frontend
+    - id: t-bd9015
+      title: 流程图与看板页的样式在屏自愈接线·测试
+      implements: |-
+        src/client/conversation-progress.ts 增加 useEffect(() => { injectStyles() }, [data])（随 15s 轮询/会话切换触发）；src/client/page/host.ts 挂载 effect 内先 injectStyles() 再 attachBoard。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-8d1b26
+      phase: implement
+      side: frontend
+    - id: t-548aca
+      title: 发版门禁：产物归属章 + CSS 分片截断信号·研发
+      implements: |-
+        scripts/verify-client-build.mjs：新增 ownership=['dataset.plugin=','dataset.pluginCss='] 检查（缺失非零退出并指名）；把截断信号改挂到 src/client/styles/*.ts（每份以模板字符串收尾）+ 校验 styles.ts 仍含 injectStyles(；补 readdirSync 导入。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-0f6751
+      phase: implement
+      side: frontend
+    - id: t-0557b6
+      title: 发版门禁：产物归属章 + CSS 分片截断信号·联调
+      implements: |-
+        scripts/verify-client-build.mjs：新增 ownership=['dataset.plugin=','dataset.pluginCss='] 检查（缺失非零退出并指名）；把截断信号改挂到 src/client/styles/*.ts（每份以模板字符串收尾）+ 校验 styles.ts 仍含 injectStyles(；补 readdirSync 导入。
+
+        [子卡阶段·联调] 只做本阶段；验收：接口联调通过：给出请求样例与期望响应，实际返回与预期一致
+      serves: []
+      depends_on:
+        - t-548aca
+      phase: implement
+      side: frontend
+    - id: t-90472d
+      title: 发版门禁：产物归属章 + CSS 分片截断信号·复核
+      implements: |-
+        scripts/verify-client-build.mjs：新增 ownership=['dataset.plugin=','dataset.pluginCss='] 检查（缺失非零退出并指名）；把截断信号改挂到 src/client/styles/*.ts（每份以模板字符串收尾）+ 校验 styles.ts 仍含 injectStyles(；补 readdirSync 导入。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-0557b6
+      phase: implement
+      side: frontend
+    - id: t-e2291f
+      title: 发版门禁：产物归属章 + CSS 分片截断信号·测试
+      implements: |-
+        scripts/verify-client-build.mjs：新增 ownership=['dataset.plugin=','dataset.pluginCss='] 检查（缺失非零退出并指名）；把截断信号改挂到 src/client/styles/*.ts（每份以模板字符串收尾）+ 校验 styles.ts 仍含 injectStyles(；补 readdirSync 导入。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-90472d
+      phase: implement
+      side: frontend
+    - id: t-11bfe5
+      title: 归属契约单测（可证伪）·研发
+      implements: |-
+        新增 tests/client-styles-ownership.test.ts：最小 DOM 替身（querySelector/All + createElement + dataset↔属性投影）与宿主算法复刻（claimStyles / removeOwnedStyles），覆盖存量表归属纠正不重复插表、认领不走、删除删不掉、删后自愈、无 document 静默。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-0f6751
+      phase: test
+      side: frontend
+    - id: t-af81b9
+      title: 归属契约单测（可证伪）·复核
+      implements: |-
+        新增 tests/client-styles-ownership.test.ts：最小 DOM 替身（querySelector/All + createElement + dataset↔属性投影）与宿主算法复刻（claimStyles / removeOwnedStyles），覆盖存量表归属纠正不重复插表、认领不走、删除删不掉、删后自愈、无 document 静默。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-11bfe5
+      phase: test
+      side: frontend
+    - id: t-8fdabe
+      title: 归属契约单测（可证伪）·测试
+      implements: |-
+        新增 tests/client-styles-ownership.test.ts：最小 DOM 替身（querySelector/All + createElement + dataset↔属性投影）与宿主算法复刻（claimStyles / removeOwnedStyles），覆盖存量表归属纠正不重复插表、认领不走、删除删不掉、删后自愈、无 document 静默。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-af81b9
+      phase: test
+      side: frontend
+    - id: t-ebd43f
+      title: 端到端复验与证据归档（真实 GUI + 探针 + 门禁）·研发
+      implements: |-
+        在真实 GUI 复核四条（归属章 / 别的插件认领隔离 / 手动删表自愈 / HMR 重建无空窗），跑几何探针与构建门禁，把截图与复跑步骤写入 docs/requirements/REQ-261001101739-25c6/evidence/。
+
+        [子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要
+      serves: []
+      depends_on:
+        - t-f450f9
+        - t-9cbf93
+        - t-aa0ac9
+        - t-1af58c
+      phase: test
+      side: frontend
+    - id: t-5c0a67
+      title: 端到端复验与证据归档（真实 GUI + 探针 + 门禁）·复核
+      implements: |-
+        在真实 GUI 复核四条（归属章 / 别的插件认领隔离 / 手动删表自愈 / HMR 重建无空窗），跑几何探针与构建门禁，把截图与复跑步骤写入 docs/requirements/REQ-261001101739-25c6/evidence/。
+
+        [子卡阶段·复核] 只做本阶段；验收：对设计与实现的偏离逐条给出结论；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-ebd43f
+      phase: test
+      side: frontend
+    - id: t-68ce30
+      title: 端到端复验与证据归档（真实 GUI + 探针 + 门禁）·测试
+      implements: |-
+        在真实 GUI 复核四条（归属章 / 别的插件认领隔离 / 手动删表自愈 / HMR 重建无空窗），跑几何探针与构建门禁，把截图与复跑步骤写入 docs/requirements/REQ-261001101739-25c6/evidence/。
+
+        [子卡阶段·测试] 只做本阶段；验收：目标命令输出全绿（贴命令与结果摘要）
+      serves: []
+      depends_on:
+        - t-5c0a67
+      phase: test
+      side: frontend
+traceability:
+  design_to_tasks:
+    design/architecture.md#TLDR: []
+    design/architecture.md#模块改动地图: []
+    design/architecture.md#归属生命周期对齐宿主契约: []
+    design/architecture.md#兼容与迁移: []
+    design/architecture.md#回滚路径: []
+    design/data-model.md#D-1-样式表属性契约本次唯一改动的数据结构: []
+    design/data-model.md#D-2-宿主侧归属账本只读事实本插件不写: []
+    design/data-model.md#D-3-无变更声明明确不做: []
+    design/interfaces.md#I-1-injectStyles-契约唯一注入入口幂等: []
+    design/interfaces.md#I-2-与-DSH-client-modules-的归属契约宿主侧不可改必须遵守: []
+    design/interfaces.md#I-3-自愈调用点契约: []
+    design/interfaces.md#I-4-构建门禁契约: []
+    design/use-cases.md#UC-1-用户刷新-长时间挂着会话原始故障场景: []
+    design/use-cases.md#UC-2-开发者重建-client-bundleHMR-替换本插件: []
+    design/use-cases.md#UC-3-别的插件装卸与我们无关的第三方: []
+    design/use-cases.md#UC-4-存量文档里残留旧无主表升级路径: []
+    design/use-cases.md#UC-5-无-document-环境host-半-node-单测: []
+  fr_to_tasks:
+    FR-1: []
+    FR-3: []
+    FR-2: []
+    FR-4: []
+    FR-5: []
+    FR-6: []
+coverage:
+  implementation:
+    total: 17
+    covered: 0
+    uncovered:
+      - design/architecture.md#TLDR
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#归属生命周期对齐宿主契约
+      - design/architecture.md#兼容与迁移
+      - design/architecture.md#回滚路径
+      - design/data-model.md#D-1-样式表属性契约本次唯一改动的数据结构
+      - design/data-model.md#D-2-宿主侧归属账本只读事实本插件不写
+      - design/data-model.md#D-3-无变更声明明确不做
+      - design/interfaces.md#I-1-injectStyles-契约唯一注入入口幂等
+      - design/interfaces.md#I-2-与-DSH-client-modules-的归属契约宿主侧不可改必须遵守
+      - design/interfaces.md#I-3-自愈调用点契约
+      - design/interfaces.md#I-4-构建门禁契约
+      - design/use-cases.md#UC-1-用户刷新-长时间挂着会话原始故障场景
+      - design/use-cases.md#UC-2-开发者重建-client-bundleHMR-替换本插件
+      - design/use-cases.md#UC-3-别的插件装卸与我们无关的第三方
+      - design/use-cases.md#UC-4-存量文档里残留旧无主表升级路径
+      - design/use-cases.md#UC-5-无-document-环境host-半-node-单测
+    rate: 0
+    total_designs: 17
+    covered_designs: 0

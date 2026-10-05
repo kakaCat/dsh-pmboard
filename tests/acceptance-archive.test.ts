@@ -9,13 +9,13 @@
  *   - 归档前必须准备材料，且材料要符合该需求类型的文档规范（必填文档 + 合法合并去向 + 索引条目）；
  *   - 归档只能人点，归档后写入 archivePath 与时间线。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { defineVerifySubmitTool, defineArchiveSubmitTool, stubDocFile } from './helpers/tool-deps.js'
 import {
@@ -27,18 +27,19 @@ import {
 
 const W = 'session-abc-123'
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let verifyTool: { execute: (a: unknown, e: unknown) => Promise<any> }
 let archiveTool: { execute: (a: unknown, e: unknown) => Promise<any> }
 let handler: ReturnType<typeof createReqboardHandler>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-verify-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   const deps = { store, now: () => Date.now() } as never
   verifyTool = defineVerifySubmitTool(deps) as never
   archiveTool = defineArchiveSubmitTool(deps) as never
-  handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+  handler = createReqboardHandler({ requirementStore: store,
+    applicationDeps: { store: store } as never, taskStore: taskStoreAt(dir), now: () => Date.now() })
   // REQ-2d1c74 FR-5：archive 目录与清单内文档须真实落盘（agent-dh/ 前缀为仓库根相对形态）
   for (const p of ['requirement.md', 'plan.md', 'verification.md']) stubDocFile('agent-dh/docs/requirements/REQ-abc123/' + p)
 })
@@ -77,7 +78,7 @@ async function seed(status: RequirementStatus, category: RequirementRecord['cate
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
     statusHistory: [{ status, at: 1, by: { kind: 'human' } }],
   } as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 describe('验收：人工审核 + 证据闸', () => {
@@ -86,7 +87,7 @@ describe('验收：人工审核 + 证据闸', () => {
     const res = await post('/req/move', { id: 'REQ-abc123', to: 'archived', actor: 'agent' })
     expect(res.statusCode).toBe(403)
     expect(res.payload.code).toBe('human_gate')
-    expect(store.snapshot().requirements[0].status).toBe('accepting')
+    expect(store.peekAll()[0].status).toBe('accepting')
   })
 
   it('没有验收材料时人也不能过（先要证据）', async () => {
@@ -107,10 +108,10 @@ describe('验收：人工审核 + 证据闸', () => {
 
     // REQ-a8d582 FR-4（REQ-f0579a t1 补裁决步）：提交材料会生成逐项验收单（含需求级项，初始 pending），
     // 未裁决 = 不合规通过（须覆盖）。快乐路径必须先逐项裁决全过，再点「验收通过」。
-    const sheet = store.snapshot().requirements[0]!.verification!.sheet!
+    const sheet = store.peekAll()[0]!.verification!.sheet!
     const verdicts = await post('/req/verdicts', {
       id: 'REQ-abc123', version: sheet.version,
-      verdicts: sheet.items.map(i => ({ itemId: i.id, status: 'passed' })),
+      verdicts: sheet.items.map(i => ({ itemId: i.id, status: 'passed', opinion: '实际结果：全部符合' })),
     })
     expect(verdicts.statusCode).toBe(200)
 
@@ -208,7 +209,7 @@ describe('归档：文档合并规范 + 人工拍板', () => {
     expect(out.success).toBe(true)
     expect(out.required_docs).toEqual(['requirement', 'plan', 'verification'])
 
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     expect(req.archive?.dir).toBe('agent-dh/docs/requirements/REQ-abc123')
     expect(req.archivePath).toBe('agent-dh/docs/requirements/REQ-abc123')
     expect(req.archive?.mergedInto).toEqual(['agent-dh/docs/architecture/requirement-board.md'])
@@ -281,7 +282,7 @@ describe('文档金字塔：归档让项目认知向上生长', () => {
 
     const out = await run(archiveTool, goodArchive)
     expect(out.success).toBe(true)
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     expect(req.archive?.manualUpdates?.[0]?.section).toBe('关键概念（术语表）')
     expect(req.comments.at(-1)?.body).toContain('说明书更新：docs/architecture/project-manual.md#关键概念（术语表）')
   })

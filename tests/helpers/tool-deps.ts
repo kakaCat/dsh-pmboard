@@ -12,6 +12,7 @@
  *
  * @module dsh-pmboard/tests/helpers/tool-deps
  */
+import { legacyStoreProjection } from '../support/legacy-store-projection.js'
 import { mkdtempSync, realpathSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -20,11 +21,11 @@ import { SessionProbeAdapter } from '../../src/adapters/SessionProbeAdapter.js'
 import { FileDocRepository } from '../../src/adapters/FileDocRepository.js'
 import { RandomIdFactory } from '../../src/adapters/RandomIdFactory.js'
 import { UserQuestionsAdapter } from '../../src/adapters/UserQuestionsAdapter.js'
-import type { TaskStore, UseCaseDeps } from '../../src/application/ports.js'
-import type { JsonLedgerRepository } from '../../src/adapters/JsonLedgerRepository.js'
+import type { RequirementStore, TaskStore, UseCaseDeps } from '../../src/application/ports.js'
 import type { TaskRecord } from '../../src/shared/protocol.js'
 import { InMemoryQueueRepository } from '../application/harness.js'
 import { QueueTaskStore } from '../../src/repositories/QueueTaskStore.js'
+// t8/B11：新端口 → 旧 repo 的**测试侧投影**（同一份数据，见该文件头注释）。
 import {
   defineCreateTool as createTool,
   defineCaptureTool as captureTool,
@@ -40,7 +41,8 @@ import {
 
 /** 工具依赖：store 强依赖；agents/sessionProjections 为惰性服务访问器（缺失 → 认证降级）。 */
 export interface ReqboardToolDeps {
-  store: JsonLedgerRepository
+  /** B12 阶段⑤：夹具依赖的存储已迁到**新端口**（旧 JSON 台账实现待删）。 */
+  store: RequirementStore
   now: () => number
   /** 当前 agents 服务（unavailable → undefined）。 */
   agents?: () => unknown
@@ -65,6 +67,11 @@ export interface ReqboardToolDeps {
   recentUserMsgs?: Map<string, RecentUserMsg[]>
   /** 立项拒绝留痕端口（REQ-260922012924-2e29 FR-5；缺失 = 无粘滞，与 FR-5 前行为一致）。 */
   rejections?: UseCaseDeps['rejections']
+  /**
+   * 归档清单未列闸门（REQ-261004183621-de3f FR-6）：缺省 `enforce`；`warn` = 旧语义。
+   * 与真装配（`src/index.ts` 用 `archiveGateSetting(config)` 注入）同名字段，便于用例直投。
+   */
+  archiveUnlistedGate?: 'enforce' | 'warn'
   /** 挂起确认注册表（FR-9 停手守卫用；缺失 = 无挂起）。 */
   pendingConfirms?: UseCaseDeps['pendingConfirms']
   /**
@@ -161,11 +168,29 @@ export function stubDocFile(relPath: string, root?: string, content = '# 占位�
 }
 
 /** 旧 deps → 用例依赖（适配器即 t5 落地的端口实现）。导出供夹具测试断言装配口径。 */
+/** 旧 repo → 新端口视图；已是新端口则原样返回（与 toUseCaseDeps 的归一化口径同源）。 */
+function normalizeStore(v: unknown): RequirementStore {
+  const o = v as { get?: unknown; getSummary?: unknown } | undefined
+  const looksNew = typeof o?.get === 'function' || typeof o?.getSummary === 'function'
+  return looksNew ? (v as RequirementStore) : legacyStoreProjection(v as never)
+}
+
 export function toUseCaseDeps(deps: ReqboardToolDeps): UseCaseDeps {
   // 注意：doneThrottleMs 用 getter 活读——既有测试在工具构造后才把节流改成 0
   // （tests/decompose-tools.test.ts:329/439），快照会改变行为。
-  const uc: UseCaseDeps = {
-    repo: deps.store,
+  const uc: UseCaseDeps = { store: normalizeStore(deps.store),
+    // t8/B11：读点搬到新端口后要用 `deps.store`（缺装配会响亮抛错）。本助手是**一批夹具的收口点**
+    // （35 个测试文件经它转 deps），所以补在这里一处即可 —— 且投影与 `repo` 是**同一份数据**，
+    // 不会出现"两条路各持一份"的假绿。
+    //
+    // 为什么不在各测试文件里加：第 9/10 回合实测——同一文件里既有独立成行的字面量、又有内联字面量，
+    // 正则式批量改必然"改一半"，制造混合形状（见 notes/t8-progress.md §21/§22）。**收口点只有一处才对。**
+    // 随 B12 一起删除（届时夹具一律走 makeTestStore）。
+    // B12 阶段⑤：本助手是**一批夹具的收口点**（35 个测试文件经它转 deps），故此处做**类型无关归一化**：
+    //   · 夹具仍传旧 repo（未迁）→ 包一层 legacyStoreProjection（与 repo 同一份数据，不会"工具读 A 断言读 B"）
+    //   · 夹具已传新端口     → 直接用
+    // 这样族内可以**逐文件**迁移；实测一次性换 12 个文件会产生 300+ 条红。
+
     // v9：任务唯一存储 = 队列。**必须**用记忆化版本（同一 deps → 同一 store），
     // 否则多工厂各建一个 store，"工具读 A、断言读 B"的假红必现。
     taskStore: taskStoreOf(deps),
@@ -182,6 +207,8 @@ export function toUseCaseDeps(deps: ReqboardToolDeps): UseCaseDeps {
     questions: new UserQuestionsAdapter(() => deps.userQuestions?.()),
     ...(deps.rejections !== undefined ? { rejections: deps.rejections } : {}),
     ...(deps.pendingConfirms !== undefined ? { pendingConfirms: deps.pendingConfirms } : {}),
+    // REQ-261004183621-de3f FR-6：闸门配置按真装配同名转发（缺省 = enforce 由用例兜底）
+    ...(deps.archiveUnlistedGate !== undefined ? { archiveUnlistedGate: deps.archiveUnlistedGate } : {}),
   }
   Object.defineProperty(uc, 'doneThrottleMs', { get: () => deps.doneThrottleMs, enumerable: true, configurable: true })
   return uc

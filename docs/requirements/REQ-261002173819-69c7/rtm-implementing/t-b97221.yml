@@ -1,0 +1,38 @@
+task:
+  id: t-b97221
+  title: 收口：兼容核对、回归基线与端到端接回·研发
+  status: done
+  implements: |-
+    跑目标 6 文件与既有契约 5 文件；pnpm typecheck / pnpm test / pnpm build；兼容核对三项：① RequirementRecord 与 schemaVersion 无字段新增（唯一新增是 AdvanceEvent 的一个取值），② 看板 POST /req/autorun 返回键集合与改动前一致（不新增键），③ 旧台账（含 REQ-261002161439-277d 的 disarmed+idle）可被新代码原样读取且不被自动改写；端到端：对 REQ-261002161439-277d 点看板「继续」，60s 内读台账确认 dive.activation=armed、phase=active、roundsInStage 由 0 → 1（心跳 60s 一拍、lastWakeAt 早已超 10 分钟阈值）；结论与命令输出落 docs/requirements/REQ-261002173819-69c7/evidence/。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-884e02
+    - t-2c989c
+    - t-08b330
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002173819-69c7
+    TASK_ID: t-b97221
+    TASK_TITLE: 收口：兼容核对、回归基线与端到端接回·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-02T10:16:52.679Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002173819-69c7
+  generated_at: 2026-10-02T10:16:48.706Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-02T10:16:55.605Z

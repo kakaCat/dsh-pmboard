@@ -136,8 +136,12 @@ export function consistencyGaps(rows: readonly ConsistencyRow[]): string[] {
 /**
  * 从表格单元格里提取**计划键**（如 t4 / T-1）：人手写的覆盖对照表用计划键而非台账 id。
  * 根编号（FR-x）不算任务键；中文占位（如「落库后回填」）自然被正则滤掉。
+ *
+ * REQ-261002175818-80a8 t5：由「本模块私有」改为**导出**——FR-5 的标记在场校验也要按计划键
+ * 认人（"这一行是不是那张卡的行"）。导出而不是在新调用点再写一份：计划键的词法必须有**唯一**
+ * 实现，两份必然漂移（本仓 `requirement_refs` 的教训），而调用方读到的行正是本函数消费者的输入。
  */
-function planKeysIn(cell: string): string[] {
+export function planKeysIn(cell: string): string[] {
   return cell
     .split(/[，,、\s|]+/)
     .map(s => s.trim().replace(/^[（(]+|[）)]+$/g, ''))

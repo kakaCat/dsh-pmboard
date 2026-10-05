@@ -166,7 +166,7 @@ describe('审批入口外置到常驻操作条（#8）', () => {
     expect(moveTos.every(to => to === 'canceled')).toBe(true)
   })
 
-  it('已完成且材料已备：操作条给 archive-req，折叠区无重复按钮', () => {
+  it('已完成且材料已备：无人工按钮（端点已随 REQ-9f4a44 移除）', () => {
     const req = makeReq({
       id: 'REQ-bar4', status: 'done',
       archive: {
@@ -175,9 +175,14 @@ describe('审批入口外置到常驻操作条（#8）', () => {
       },
     })
     const html = buildReqDetail(req, [], T0)
-    expect(actionBar(html)).toContain('data-action="archive-req"')
-    expect((html.match(/data-action="archive-req"/g) ?? []).length).toBe(1)
-    expect(html.slice(html.indexOf('<details'))).not.toContain('data-action="archive-req"')
+    // REQ-261002105242-a3fb FR-4（2026-10-02）：本用例原先断言"操作条给 archive-req"——
+    // 那个按钮指向 POST /req/archive，而服务端该端点已由 REQ-9f4a44 移除（点了必 404）。
+    // 现在断言的是**没有**这个假出口：终态一律只读，材料由窗口 agent 走 reqboard_submit(kind=archive)。
+    expect(html).not.toContain('data-action="archive-req"')
+    expect(html).not.toContain('dsh-pm-action-bar')
+    // 信息面照常：归档目录 / 索引条目 / 材料补交路径仍然可见（只读 ≠ 空白）
+    expect(html).toContain('docs/requirements/REQ-x')
+    expect(html).toContain('reqboard_submit(kind=archive)')
   })
 
   it('终态（archived）已无可用人工操作 → 不渲染空操作条', () => {
@@ -296,6 +301,8 @@ describe('窗口 chip 可点且失败有明确反馈（#5）', () => {
     expect(html).toContain('data-archived="true"')
     expect(html).toContain('is-archived')
     expect(html).toContain('已归档')
+    // REQ-261002153446-c600 FR-3：点击会发生什么，点之前就写在 title 里
+    expect(html).toContain('点击取消归档并打开')
     // 旧实现：归档 chip 渲染成 <span ... aria-disabled>，点了完全没反应
     expect(html).not.toMatch(/<span[^>]*is-archived/)
   })
@@ -306,5 +313,13 @@ describe('窗口 chip 可点且失败有明确反馈（#5）', () => {
     expect(jumpResultMessage('missing', sid)).toContain('不在当前会话列表')
     expect(jumpResultMessage('unavailable', sid)).toContain('暂不可用')
     expect(jumpResultMessage('missing', sid)).toContain('session-1cee2467')
+  })
+
+  // REQ-261002153446-c600 FR-2：恢复失败是「没跳」的一种，文案要说清并给一条能走的路
+  it('jumpResultMessage：取消归档失败要说清没跳、并给手动恢复的路径', () => {
+    const msg = jumpResultMessage('restore-failed', sid)
+    expect(msg).toContain('取消归档失败')
+    expect(msg).toContain('未跳转')
+    expect(msg).toContain('session-1cee2467')
   })
 })

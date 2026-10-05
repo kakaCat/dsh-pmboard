@@ -1,0 +1,38 @@
+task:
+  id: t-fe325b
+  title: 一处原子写、一处分片 IO：仓储与原子写搬迁·研发
+  status: done
+  implements: |-
+    ① 新增 src/repositories/atomicWrite.ts，把 persistAtomic（temp → fsync → rename）从 src/adapters/JsonLedgerRepository.ts 原样迁出（保留临时文件名与同文件系统语义），JsonLedgerRepository 与 QueueRepository 改从此处 import——全仓只留一处实现；② 新增 src/repositories/RequirementShardRepository.ts：分片目录 IO 唯一入口，方法 readRecord/readJournal/readObject、writeRecordAtomic/writeObjectAtomic/appendJournal（追加前按计数截断未提交尾行）、moveToCold/moveFromCold、listHotIds/listColdIds、坏文件改名隔离（<file>.corrupt-<ts> + onWarn）；fs 能力经构造参数注入（供写/读探针接入），结构校验先于任何写。配 tests/reqboard/shard-repository.test.ts。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-061b26
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002161439-277d
+    TASK_ID: t-fe325b
+    TASK_TITLE: 一处原子写、一处分片 IO：仓储与原子写搬迁·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T09:01:31.322Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002161439-277d
+  generated_at: 2026-10-02T09:01:16.599Z
+  version: 5
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-02T10:16:10.871Z

@@ -1,0 +1,35 @@
+task:
+  id: t-8239b1
+  title: 让快照真的看得见子代理：血缘枚举 + 缓存优先取数 + 缺失不补 0
+  status: done
+  implements: "① src/application/ports.ts：SessionProbe 增 descendantSessions(windowKey): readonly SessionLineageEntry[] | undefined（缺失服务 → undefined），tokenTotals 注释改为「本窗口 + 全部后代」；② src/adapters/SessionProbeAdapter.ts：新增 list 枚举（sessionPersistence.list() 取 header）+ 闭包调用 + 逐成员取数（sessionProjectionCache.cachedSnapshot(header,['tokenUsage']) 优先，未命中走有界冷读：默认 maxColdReads=8、时间预算 200ms），拼出 members/totals/scope/degradedMembers；本窗口自身走既有 live 投影；③ src/index.ts：新增 ctx.inject(['sessionPersistence','sessionProjectionCache'], cb) 并把服务传给适配器（绝不直接读 ctx 属性）；④ 新增 tests/session-probe-lineage.test.ts（假服务，不需真磁盘）。"
+  serves:
+    - FR-1
+    - FR-3
+  depends_on:
+    - t-f5b87a
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004154937-2ca3
+    TASK_ID: t-8239b1
+    TASK_TITLE: 让快照真的看得见子代理：血缘枚举 + 缓存优先取数 + 缺失不补 0
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T08:08:16.850Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004154937-2ca3
+  generated_at: 2026-10-04T08:00:40.656Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-04T08:08:24.351Z

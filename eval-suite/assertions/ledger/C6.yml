@@ -1,0 +1,18 @@
+# case C6 · 父卡缺子卡链：先诊断再补链 · serves: FR-2
+case: C6
+checks:
+  - path: queue.tasks[?parentId='t-002']            # 补链后 t-002 名下子卡齐（fixture 预期段 dev/review/test 共 3 张）
+    op: count_eq
+    value: 3
+  - path: queue.tasks[?parentId='t-002'].stageKind  # 链段完整：含 dev
+    op: contains
+    value: dev
+  - path: queue.tasks[?parentId='t-002'].stageKind  # 含 review
+    op: contains
+    value: review
+  - path: queue.tasks[?parentId='t-002'].stageKind  # 含 test
+    op: contains
+    value: test
+  - path: queue.tasks[?id='t-002'].status           # 父卡本体状态不被补链动作改动
+    op: ne
+    value: canceled

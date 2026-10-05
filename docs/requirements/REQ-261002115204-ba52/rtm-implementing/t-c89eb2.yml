@@ -1,0 +1,38 @@
+task:
+  id: t-c89eb2
+  title: 零变更核验 + 全量回归 + 回滚路径演练（兼容卡）·复核
+  status: done
+  implements: |-
+    核验 + 回归，不改功能代码：① 零变更快照断言写进 tests/arg-guidance.test.ts（TC-5）：reqboard_task_report 参数字段名集合与必填集合、返回体 7 键与基线一致；② 全量 npx vitest run 与开工基线逐一对齐（基线 49 failed / 98 failed 用例，见 notes/baseline-2026-10-02.md），只允许不新增失败；③ npx tsc --noEmit ≤197 且改动文件零新增；④ 回滚演练：还原三处文本 → 重跑 C-16 生成 + 用例复现红 → 还原改动；⑤ pnpm build 并确认产物含本次文本（dist/index.mjs 命中「拆成多次调用」「汇报自检」）。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-17f489
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002115204-ba52
+    TASK_ID: t-c89eb2
+    TASK_TITLE: 零变更核验 + 全量回归 + 回滚路径演练（兼容卡）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-02T03:58:51.913Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002115204-ba52
+  generated_at: 2026-10-02T03:58:50.082Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-02T03:58:51.914Z

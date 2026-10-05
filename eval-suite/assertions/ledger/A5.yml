@@ -1,0 +1,18 @@
+# case A5 · 弹框不可用时降级文字取值 · serves: FR-2
+case: A5
+checks:
+  - path: queue.requirements
+    op: count_eq
+    value: 1
+  - path: requirement.id
+    op: matches
+    value: '^REQ-[0-9]{12}-[0-9a-f]{4}$'
+  - path: requirement.status
+    op: eq
+    value: draft
+  - path: requirement.category
+    op: eq
+    value: feature                  # 三值之一：类型取值正确
+  - path: requirement.prompt_difficulty
+    op: eq
+    value: standard                 # 三值之一：难度取值正确

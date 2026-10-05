@@ -1,0 +1,45 @@
+task:
+  id: t-5a2b9e
+  title: 接线看板两个视图：泳道挂归档条、列表终态分组复活·测试
+  status: done
+  implements: |-
+    src/client/views/board.ts：buildBoard 内 const archivedBar = view === 'list' ? '' : renderArchivedBar(toTerminalCards(state))，并把它拼在 ${body} 之后、.dsh-pm-board 收尾之前（泳道视图才有归档条，列表视图不重复给入口）；buildListView 内 active = toReqCards(state).filter(c => c.req.status !== 'done')，finished = [...toReqCards(state).filter(c => c.req.status === 'done'), ...toTerminalCards(state)]，两段仍各自 byThen 排序、active 在前，分组标题文案改为「已完成 / 已归档 N」。tests/archived-entry.test.ts 追加 A1-2（buildBoard 输出按 data-archived-bar 切两段：段前不含归档需求 id，段内含该 id）与 A2（buildReqDetail(archivedReq, 3 张任务) 含 dsh-pm-dag-panel、3 个 data-task 行、统计「总任务 3」）与 A4（buildListView 传 done+archived+canceled ⇒ 分组标题含「已完成 / 已归档」且归档、取消行可见）。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-e62d4f
+  phase: ui
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261002105242-a3fb
+    TASK_ID: t-5a2b9e
+    TASK_TITLE: 接线看板两个视图：泳道挂归档条、列表终态分组复活·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: ui
+  workflow_total: 4
+  workflow_done: 4
+  workflow:
+    - phase: ui
+      status: done
+      completed_at: 2026-10-02T03:01:20.954Z
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T03:01:20.954Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-02T03:01:18.689Z
+    - phase: commit
+      status: done
+      completed_at: 2026-10-02T03:01:20.954Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002105242-a3fb
+  generated_at: 2026-10-02T03:01:15.229Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 4
+  last_updated: 2026-10-02T03:01:20.954Z

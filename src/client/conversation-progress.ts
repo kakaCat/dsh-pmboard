@@ -1,10 +1,11 @@
 /**
- * 会话顶部需求进度（conversation.session.header.utilities 槽位 occupant）。
+ * 会话顶部需求进度（conversation.session.header.utilities 槽位 occupant，order -20 = 右侧工具组最左；
+ * REQ-260930230225-71be FR-1：验收反馈第二轮定稿「靠右边，放在 Finder/⋯ 那一组的左边」）。
  *
  * 解决的真实痛点（用户原话）：「agent 时间长，我总忘记之前都做了什么」——
  * 一个会话跑到一半回过头来，人不知道这个需求做到哪一步、还剩什么、谁在什么时候
- * 推进过。本组件把**该会话绑定的进行中需求**的流程图直接展示在模式选择器后面：
- *   - 显示态：流程图（立项→需求分析→设计→拆分→实施→验收→完成）始终可见；
+ * 推进过。本组件把**该会话绑定的进行中需求**的流程图直接展示在右侧工具组的最左边：
+ *   - 显示态：流程图（立项→需求分析→设计→拆分→实施→验收→归档）始终可见；
  *   - 详情展开：点击流程图任意位置展开完整详情面板（任务清单 + 状态时间线）。
  *
  * 数据来源：GET /dashboard/api/reqboard/session/:sessionId/progress（host 侧按
@@ -15,13 +16,23 @@
  */
 import { createElement as h, useState, useEffect, useRef, type ReactNode } from 'react'
 import { openDocInSidebar } from './open-doc.ts'
+// 样式表注入（幂等）：既保证本组件所在的文档有样式，也做**自愈**（见下方 effect）。
+import { injectStyles } from './styles.ts'
 import { renderNodePanel } from './node-panel.ts'
+// REQ-261001124111-5d36 t3：面板数据通道（刷新调度 + SSE 加速 + 版本戳）抽成 hook（模块头有"为什么拆"）
+import { usePanelRefresh } from './use-panel-refresh.ts'
 // REQ-260929010300-dbf9 FR-4/FR-5：会话面板 DAG 块挂 Canvas 真图（常量/挂载入口单一源）
 import { tryMountDagCanvas } from './dag-mount.ts'
 import { PANEL_DAG_CANVAS_ID } from './views/dag-view.js'
-import { fetchStageOverview, fetchState, subscribeEvents } from './api.ts'
-import type { StageOverview, StageKey } from '../shared/protocol.ts'
-import { CATEGORY_FLOW_PROFILES, fmtTokens } from '../shared/protocol.ts'
+// REQ-261001210304-0dfb FR-1/FR-2/FR-3/FR-4：视图状态记忆（改方向/切页签/滚动都不再被刷新吃掉）
+import { readDagViewState, writeDagViewState, clearDagViewState } from './dag/view-state.js'
+import { hydrateNodePanel } from './panel-hydrate.js'
+import { fetchState } from './api.ts'
+import type { StageKey } from '../shared/protocol.ts'
+import { fmtTokens } from '../shared/protocol.ts'
+// REQ-260930230225-71be FR-1/FR-3：流程图的节点口径（七节点 / 四态 / 分类跳过 / token / 计数）
+// 与档位阈值统一由模型模块提供，组件与探针共用同一份事实（见 data-model.md D-2/D-3）。
+import { buildFlowChartModel } from './flow-chart-model.ts'
 // REQ-260928222643-4d34 FR-1/FR-2/FR-3：项目看板入口（校验 + 一次性定位交接 + 导航唯一来源）
 import { requestBoardFocus } from './board-focus.ts'
 import { activateBoardEntry } from './board-entry.ts'
@@ -29,23 +40,6 @@ import { getPageLayout } from './page/page-runtime.ts'
 import { PANEL_ID } from './dom.ts'
 
 const BASE = '/dashboard/api/reqboard'
-
-/** 需求流水线（与 host 状态机同序）——流程图节点。 */
-const FLOW: ReadonlyArray<{ key: string; label: string }> = [
-  { key: 'draft', label: '立项' },
-  { key: 'brainstorming', label: '需求分析' },
-  { key: 'design', label: '设计' },
-  { key: 'decomposing', label: '拆分' },
-  { key: 'implementing', label: '实施' },
-  { key: 'accepting', label: '验收' },
-  // REQ-9f4a44：done 节点已移除（验收通过 → 直接归档）
-  { key: 'archived', label: '归档' },
-]
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: '立项', brainstorming: '需求分析', design: '设计', decomposing: '拆分',
-  implementing: '实施中', accepting: '待验收', done: '完成', archived: '归档', canceled: '已取消',
-}
 
 interface ProgressPayload {
   hasRequirement?: boolean
@@ -58,6 +52,11 @@ interface ProgressPayload {
     /** REQ-260923134706-e72f / FR-2：立项四问之一的提示词难度（老记录无字段 → null，面板省略该行） */
     promptDifficulty?: string | null
     sourceSessionId?: string | null; updatedAt?: number
+    /**
+     * REQ-261004143941-b2ca FR-1：需求累计 token。
+     * **缺失 ≠ 0**：无快照时宿主不发该键 → 这里拿不到 → 不渲染徽章（而不是显示「🪙 0」）。
+     */
+    tokenTotal?: number
   }
   progress?: { total?: number; done?: number; active?: number; percentage?: number; byStatus?: Record<string, number> }
   /** REQ-a33899：每节点 token（无快照 → 该节点省略 tokens 键，UI 显示「—」） */
@@ -89,14 +88,6 @@ function resolveSessionId(injected?: string): string | undefined {
   return undefined
 }
 
-/** 流程图节点状态：已完成 / 当前 / 未到。 */
-function flowState(index: number, currentIndex: number): 'done' | 'current' | 'pending' {
-  if (currentIndex < 0) return 'pending'
-  if (index < currentIndex) return 'done'
-  if (index === currentIndex) return 'current'
-  return 'pending'
-}
-
 export interface RequirementProgressProps {
   /** 由槽位 inject(sessionId) 注入（session 作用域槽位）。 */
   sessionId?: string
@@ -112,10 +103,6 @@ export function RequirementProgressAction(props: RequirementProgressProps): Reac
   const [data, setData] = useState<ProgressPayload | null>(null)
   const [detailOpen, setDetailOpen] = useState<boolean>(false)
   const [selectedStage, setSelectedStage] = useState<string | null>(null)
-  // REQ-31e11f 重设计：全流程一览（一次加载全部节点，监控时间线一眼看全）
-  const [stageOverview, setStageOverview] = useState<StageOverview | null>(null)
-  const [stageOverviewLoading, setStageOverviewLoading] = useState<boolean>(false)
-  const [stageOverviewErr, setStageOverviewErr] = useState<string>('')
   // REQ-260928222643-4d34 FR-3：入口失败就地提示（面板内可见，不静默）
   const [entryError, setEntryError] = useState<string>('')
   const wrapRef = useRef<HTMLDivElement | null>(null)
@@ -157,6 +144,13 @@ export function RequirementProgressAction(props: RequirementProgressProps): Reac
     return () => { alive = false; window.clearInterval(timer) }
   }, [injectedId])
 
+  // 样式自愈：本组件在屏期间每次数据刷新（15s 轮询 / 会话切换）都确认一次样式表在场。
+  // 为什么需要：DSH client-modules 按 data-plugin 归属**整批移除**样式表（HMR 替换、
+  // 图行裁剪），本表一旦被移除，只有下一次 materialize 才会重新注入——而本组件可能
+  // 一直挂在屏上（用户看到的就是「刷新后样式全丢且不恢复」）。injectStyles 幂等，
+  // 代价只是一次 querySelector（见 styles.ts 的「样式归属」）。
+  useEffect(() => { injectStyles() }, [data])
+
   // 展开详情时点外部关闭
   useEffect(() => {
     if (!detailOpen) return
@@ -169,43 +163,53 @@ export function RequirementProgressAction(props: RequirementProgressProps): Reac
   }, [detailOpen])
 
   // REQ-31e11f 重设计：展开即加载全流程一览（StageOverview，与看板同源）。
-  // 依赖 req.updatedAt —— 需求有任何推进（状态/任务/评论变化）自动刷新，
-  // 刷新时经 openStagesRef 保留用户手动展开态（真监控，不打断阅读）。
+  // REQ-261001124111-5d36 t3：刷新触发 / SSE 加速 / 版本戳全部收敛进 usePanelRefresh——
+  // **打开即拉 + 每 refreshMs 兜底轮询**（不再只依赖 req.updatedAt：任务级变化根本不改它，事故根因之一），
+  // 切换需求先清空再拉（FR-4 不串档）；失败与陈旧经 freshness 交给渲染层出红条（FR-2/FR-3）。
   const reqIdForStage = data?.requirement?.id
-  const reqUpdatedAt = data?.requirement?.updatedAt
-  useEffect(() => {
-    if (!detailOpen || reqIdForStage === undefined) {
-      setStageOverview(null)
-      return
-    }
-    let alive = true
-    setStageOverviewLoading(true)
-    setStageOverviewErr('')
-    fetchStageOverview(reqIdForStage)
-      .then((d) => { if (alive) setStageOverview(d) })
-      .catch((e) => { if (alive) setStageOverviewErr((e as Error).message) })
-      .finally(() => { if (alive) setStageOverviewLoading(false) })
-    return () => { alive = false }
-  }, [detailOpen, reqIdForStage, reqUpdatedAt])
+  const panelView = usePanelRefresh({ open: detailOpen, reqId: reqIdForStage })
+  const stageOverview = panelView.overview
+  const stageOverviewLoading = panelView.loading
+  const stageOverviewErr = panelView.error
+  const freshness = panelView.freshness
+  const buildNotice = panelView.buildNotice
 
-  // 订阅任务变更事件，实时刷新泳道图（修复：任务状态变更时需求 updatedAt 不变导致泳道不更新）
-  useEffect(() => {
-    if (!detailOpen || reqIdForStage === undefined) return
-    
-    // 订阅 SSE 事件
-    const unsubscribe = subscribeEvents((_revision, kind) => {
-      // 任务相关事件立即刷新 stageOverview
-      if (kind === 'task-moved' || kind === 'task-updated' || kind === 'task-created') {
-        let alive = true
-        fetchStageOverview(reqIdForStage)
-          .then((d) => { if (alive) setStageOverview(d) })
-          .catch((e) => { if (alive) setStageOverviewErr((e as Error).message) })
-        return () => { alive = false }
+  // ---- REQ-261001210304-0dfb：视图状态记忆键 + 面板补丁（全部必须在下面 `if (data === null…) return null`
+  // 早退之前声明——hooks 不能排在条件返回之后）----
+  // 键含需求 id：同一块画布会承载不同需求的图，键不含需求 id 就会串档（FR-4 / A5）。
+  const panelStateKey = reqIdForStage !== undefined ? PANEL_DAG_CANVAS_ID + '::' + reqIdForStage : undefined
+  const prevReqIdRef = useRef<string | undefined>(undefined)
+  // 新鲜度按 NodePanelFreshness 契约**显式挑字段**（面板渲染与补丁共用同一份投影）。
+  const panelFreshness = freshness === null
+    ? undefined
+    : {
+        ...(freshness.fetchedAt !== undefined ? { fetchedAt: freshness.fetchedAt } : {}),
+        ...(freshness.lastError !== undefined ? { lastError: freshness.lastError } : {}),
+        intervalMs: freshness.intervalMs,
+        staleAfterMs: freshness.staleAfterMs,
       }
+
+  // FR-4：切换需求时清掉上一需求的视图条目（键已含需求 id，这里是内存卫生；不影响"不串档"本身）。
+  useEffect(() => {
+    const prev = prevReqIdRef.current
+    if (prev !== undefined && prev !== reqIdForStage) clearDagViewState(PANEL_DAG_CANVAS_ID + '::' + prev)
+    prevReqIdRef.current = reqIdForStage
+  }, [reqIdForStage])
+
+  // FR-2/FR-3：注入 HTML **之后**补值——数据时间 / 「N 分钟前」/ 页签选择刻意不进注入字符串，
+  // 由补丁写进稳定钩子元素。这样"只是时间往前走了"不再让 __html 变化，React 就不会重设整段
+  // innerHTML（否则 DAG 画布、滚动位置、页签每次轮询都被重建）。每轮 freshness 变化都会重跑，
+  // 但只改文本与属性、不插删元素——画布与滚动不受影响。
+  useEffect(() => {
+    if (!detailOpen) return
+    const root = wrapRef.current
+    if (root === null) return
+    const tab = panelStateKey !== undefined ? readDagViewState(panelStateKey)?.tab : undefined
+    hydrateNodePanel(root, {
+      ...(panelFreshness !== undefined ? { freshness: panelFreshness } : {}),
+      ...(tab !== undefined ? { tab } : {}),
     })
-    
-    return () => unsubscribe()
-  }, [detailOpen, reqIdForStage])
+  }, [detailOpen, selectedStage, stageOverview, freshness, panelStateKey, buildNotice, data])
 
   // REQ-260923134706-e72f t6：实施节点 [流程图][泳道] tab 切换（注入 HTML 内的委托监听）。
   useEffect(() => {
@@ -223,10 +227,15 @@ export function RequirementProgressAction(props: RequirementProgressProps): Reac
       for (const pane of Array.from(panel.querySelectorAll<HTMLElement>('.dsh-pm-np-pane'))) {
         pane.hidden = pane.getAttribute('data-pane') !== view
       }
+      // REQ-261001210304-0dfb FR-2：把"人在看哪一页"记进视图状态记忆——
+      // 页签原先只活在 DOM class 上，整段重绘就跳回 DAG；记下来后由补丁按记忆恢复。
+      if (panelStateKey !== undefined && (view === 'flow' || view === 'list')) {
+        writeDagViewState(panelStateKey, { tab: view })
+      }
     }
     document.addEventListener('click', onClick)
     return () => document.removeEventListener('click', onClick)
-  }, [])
+  }, [panelStateKey])
 
   // 产物文档链接（注入 HTML 里的 data-action="open-doc"）→ 官方右侧栏打开全文（REQ-ff20ca t5）。
   // 挂 document 级（wrapRef 在 detailOpen 切换时被 React 重建，挂它上面 listener 会丢）。
@@ -288,76 +297,89 @@ export function RequirementProgressAction(props: RequirementProgressProps): Reac
       ? detail.body.tasks
       : undefined
     if (tasks === undefined || tasks.length === 0) return
-    tryMountDagCanvas(tasks, undefined, PANEL_DAG_CANVAS_ID)
-  }, [detailOpen, selectedStage, stageOverview])
+    // REQ-261001210304-0dfb FR-1：把记忆键交下去——挂载按记忆回填方向/开关/钉住/滚动，
+    // dispose 时写回。不传 keys（reqId 未知）时会退化成改造前行为，不报错。
+    tryMountDagCanvas(tasks, undefined, PANEL_DAG_CANVAS_ID, panelStateKey !== undefined ? { stateKey: panelStateKey } : undefined)
+  }, [detailOpen, selectedStage, stageOverview, panelStateKey])
 
   const req = data?.requirement
   if (data === null || data.hasRequirement !== true || req === undefined || req === null) return null
 
-  const done = data.progress?.done ?? 0
-  const total = data.progress?.total ?? 0
-  const status = req.status ?? 'draft'
-  const currentIndex = FLOW.findIndex(f => f.key === status)
+  // ---- 流程图模型（REQ-260930230225-71be FR-3：口径单一源，探针共用）----
+  // DOM 结构与类名保持不变（设计 interfaces.md I-2）：档位降级全部由 CSS 承担。
+  const model = buildFlowChartModel({
+    status: req.status,
+    category: req.category,
+    closed: data.closed,
+    progress: data.progress,
+    nodes: data.nodes,
+    // REQ-261004143941-b2ca FR-2：累计 token 走模型层落模（有效才算有），组件只负责渲染
+    ...(req.tokenTotal !== undefined ? { tokenTotal: req.tokenTotal } : {}),
+  })
   const title = req.title ?? '（未命名需求）'
-  const closed = data.closed === true
+  const closed = model.closed
 
   // ---- 流程图节点（始终可见，可点击）----
   // 分类差异化流程（REQ-31e11f）：该分类跳过的节点标灰，与缺产物标红区分。
-  const category = (req.category ?? 'feature') as keyof typeof CATEGORY_FLOW_PROFILES
-  const profile = CATEGORY_FLOW_PROFILES[category] ?? CATEGORY_FLOW_PROFILES.feature
-  const skippedStages = new Set(FLOW.filter(f => !(profile.stages as readonly string[]).includes(f.key)).map(f => f.key))
   // REQ-a33899：每节点 token。**与节点名同一行水平放置**（既有样式不变：圆点在上、名称在下）
-  const nodeTokens = new Map<string, number>()
-  for (const n of data.nodes ?? []) {
-    if (typeof n.key === 'string' && typeof n.tokens?.total === 'number') nodeTokens.set(n.key, n.tokens.total)
-  }
   const flowNodes: ReactNode[] = []
-  FLOW.forEach((stage, idx) => {
-    const st = flowState(idx, currentIndex)
+  model.nodes.forEach((stage, idx) => {
     const isSelected = selectedStage === stage.key
-    const skipped = skippedStages.has(stage.key)
     flowNodes.push(
       h('div', {
         key: `n-${stage.key}`,
         className: 'dsh-pm-flow-node',
-        'data-state': skipped ? 'skipped' : st,
+        'data-state': stage.skipped ? 'skipped' : stage.state,
         'data-selected': isSelected ? 'true' : undefined,
-        title: skipped ? `本分类（${category}）跳过「${stage.label}」` : undefined,
+        title: stage.skipped ? `本分类（${model.category}）跳过「${stage.label}」` : undefined,
         onClick: (e: MouseEvent) => {
           e.stopPropagation()
           setSelectedStage(stage.key)
           setDetailOpen(true)
         },
       }, [
-        h('span', { key: 'd', className: 'dsh-pm-flow-dot' }, skipped ? '—' : st === 'done' ? '✓' : st === 'current' ? '●' : idx + 1),
+        h('span', { key: 'd', className: 'dsh-pm-flow-dot' }, stage.skipped ? '—' : stage.state === 'done' ? '✓' : stage.state === 'current' ? '●' : stage.index + 1),
         h('div', { key: 'm', className: 'dsh-pm-flow-meta' }, [
           h('span', { key: 'l', className: 'dsh-pm-flow-label' }, stage.label),
-          ...(nodeTokens.has(stage.key)
-            ? [h('span', { key: 't', className: 'dsh-pm-flow-token' }, fmtTokens(nodeTokens.get(stage.key)!))]
+          ...(stage.token !== undefined
+            ? [h('span', { key: 't', className: 'dsh-pm-flow-token' }, fmtTokens(stage.token))]
             : []),
         ]),
       ]),
     )
-    if (idx < FLOW.length - 1) {
+    if (idx < model.nodes.length - 1) {
       flowNodes.push(
-        h('div', { key: `l-${stage.key}`, className: 'dsh-pm-flow-link', 'data-state': idx < currentIndex ? 'done' : 'pending' }),
+        h('div', { key: `l-${stage.key}`, className: 'dsh-pm-flow-link', 'data-state': stage.state === 'done' ? 'done' : 'pending' }),
       )
     }
   })
 
   // 流程图容器
+  // REQ-261004143941-b2ca FR-2：计数旁**常显**需求累计 Token。刻意放在 `.dsh-pm-flow` **之外**——
+  // 档位规则（`@container`）只作用于 flow 内部的节点/连线/节点 token，故这个「结论」不会被裁掉；
+  // 它是窄窗口下唯一还能看到的 token 读数（节点级明细在 <1000px 时按既有设计隐藏）。
+  const tokenTotalBadge = model.tokenTotal !== undefined
+    ? h('span', {
+        key: 'tt',
+        className: 'dsh-pm-token-badge dsh-pm-cprog-token-total',
+        title: '需求累计 Token（各节点快照差值合计，含任务执行兜底）',
+      }, [
+        h('span', { key: 'i', className: 'dsh-pm-cprog-token-ico' }, '🪙'),
+        fmtTokens(model.tokenTotal),
+      ])
+    : null
   const flowChart = h(
     'div',
     {
       key: 'flow',
       className: `dsh-pm-cprog-inline${closed ? ' is-closed' : ''}`,
-      title: `${req.id ?? ''}《${title}》${STATUS_LABEL[status] ?? status}${closed ? '（本会话最近完成）' : ''} · 点击节点查看详情`,
+      title: `${req.id ?? ''}《${title}》${model.statusLabel}${closed ? '（本会话最近完成）' : ''} · 点击节点查看详情`,
       'aria-expanded': detailOpen,
     },
     [
       h('div', { key: 'f', className: 'dsh-pm-flow' }, flowNodes),
-      h('span', { key: 'c', className: 'dsh-pm-cprog-inline-count' },
-        total > 0 ? `${done}/${total}` : (STATUS_LABEL[status] ?? status)),
+      h('span', { key: 'c', className: 'dsh-pm-cprog-inline-count' }, model.countText),
+      ...(tokenTotalBadge !== null ? [tokenTotalBadge] : []),
     ],
   )
 
@@ -378,6 +400,9 @@ export function RequirementProgressAction(props: RequirementProgressProps): Reac
   if (entryError.length > 0) {
     panelChildren.push(h('div', { key: 'entry-err', role: 'alert', className: 'dsh-pm-np-entry-err' }, entryError))
   }
+  // REQ-261001124111-5d36 t3：新鲜度按 NodePanelFreshness 的契约**显式挑字段**传下去
+  // （PanelFreshness 还带着 failureCount/inFlight/stale 等诊断字段，不该漏进渲染契约）。
+  // REQ-261001210304-0dfb：该投影已在早退之前算好（补丁 effect 也要用同一份），此处直接用 `panelFreshness`。
   if (stageOverviewLoading && stageOverview === null) {
     panelChildren.push(h('div', { key: 'ld', className: 'dsh-pm-cprog-empty' }, '详情加载中…'))
   } else if (stageOverviewErr.length > 0 && stageOverview === null) {
@@ -391,6 +416,9 @@ export function RequirementProgressAction(props: RequirementProgressProps): Reac
           overview: stageOverview,
           stage: (selectedStage ?? stageOverview.currentStage) as StageKey,
           requirement: { id: req.id ?? '', title, promptDifficulty: req.promptDifficulty ?? null, category: req.category ?? undefined },
+          // FR-2/FR-3/FR-5：数据时间、失败红条、插件已更新——有旧数据时也照出（不再被"有数据"吞掉）
+          ...(panelFreshness !== undefined ? { freshness: panelFreshness } : {}),
+          ...(buildNotice !== null ? { buildNotice } : {}),
         }),
       },
     }))

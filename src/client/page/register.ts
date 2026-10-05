@@ -10,6 +10,7 @@
  */
 import { registerPagePanel, type SlotRegistrar } from './page-panel.ts'
 import { BoardPanelHost } from './host.ts'
+import { PmboardPanelIcon } from './panel-icon.ts'
 import { PANEL_ID, PANEL_LABEL } from '../dom.ts'
 
 /** 侧栏条目排序：沿用原 sidebar.footer.action 的 order=110，界面次序不因迁移而变。 */
@@ -32,5 +33,7 @@ export function registerPmboardPage(ctx: PmboardPageContext): () => void {
     label: PANEL_LABEL,
     order: PMBOARD_PAGE_ORDER,
     Component: BoardPanelHost,
+    // 2026-09-30 用户裁定：侧栏条目此前没有标志图（Icon 缺省 = 不渲染任何内容），补上看板图标
+    Icon: PmboardPanelIcon,
   })
 }

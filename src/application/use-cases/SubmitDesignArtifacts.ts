@@ -16,13 +16,14 @@
  * @module dsh-pmboard/application/use-cases/SubmitDesignArtifacts
  */
 import type { UseCaseDeps } from '../ports.js'
+import { firstWritableBound } from '../../application/internal/window.js'
+import { boundSummariesOf } from '../internal/binding-read.js'
 import { coverageGateOf, syncRTMYaml } from '../internal/rtm-yaml.js'
-import { taskStoreOf } from './queue-access.js'
+import { requirementStoreOf, taskStoreOf, mutateIfPresent } from './queue-access.js'
 import { normalizeText, type StageArtifact } from '../../shared/protocol.js'
-import { openRequirementsFor } from '../internal/window.js'
 import { registerArtifact } from '../internal/artifact-gates.js'
 import { discoverArtifactsFrom } from '../internal/artifact-discovery.js'
-import { assertArtifactOpenable } from '../internal/content-gate-wiring.js'
+import { assertArtifactOpenable, checkDesignContentGate } from '../internal/content-gate-wiring.js'
 import { designDocPolicyOf, designDocRegistration } from '../internal/design-docs.js'
 import { fmt } from '../../domain/text/fmt.js'
 import {
@@ -30,6 +31,7 @@ import {
   agentIdFromExec,
   requireLiveDriver,
   notifyArtifactRegistered,
+  syncWorkspaceRootForRequirement,
 } from '../internal/support.js'
 
 /** design/ 目录下可作为设计文档登记的文件名（只认 .md，隐藏文件跳过）。 */
@@ -48,16 +50,24 @@ export async function submitDesignArtifacts(deps: UseCaseDeps, args: unknown, ex
   const explicitId = normalizeText(a.requirement_id, 'requirement_id', 64)
   const explicitPath = normalizeText(a.path, 'path', 400)
 
-  const snapshot = deps.repo.snapshot()
-  const bound = openRequirementsFor(snapshot, windowKey)
+  // t8/B11：绑定读走新端口（只读摘要；下游要整条字段，判据过后再取）
+  const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
   if (bound.length === 0) reject('reqboard_submit(kind=design) 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
-  const target = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : bound[0]
-  if (target === undefined) {
+  const picked = explicitId.length > 0 ? bound.find(r => r.id === explicitId) : firstWritableBound(bound, windowKey)
+  if (picked === undefined) {
     reject(
       fmt('reqboard_submit(kind=design) 未执行：需求 {id} 不是本窗口绑定的进行中需求', { id: explicitId }),
       'REQBOARD_NOT_BOUND_TO_WINDOW',
     )
   }
+  // 判据过了才取**整条**（下游要目标需求的字段）；get() 可空 ⇒ 显式守卫，不用 ! 断言
+  const target = await requirementStoreOf(deps).get(picked.id)
+  if (target === undefined) {
+    reject(fmt('reqboard_submit(kind=design) 未执行：需求 {id} 不在台账中', { id: picked.id }), 'REQBOARD_REQUIREMENT_NOT_FOUND')
+  }
+
+  // FR-6 二次校正（t5）：需求级 workspaceRoot 优先于会话 cwd。
+  syncWorkspaceRootForRequirement(deps, exec, target)
 
   const nowTs = deps.clock.now()
   const registeredBy = { kind: 'agent' as const, sessionId: windowKey }
@@ -83,13 +93,19 @@ export async function submitDesignArtifacts(deps: UseCaseDeps, args: unknown, ex
     }
   }
 
+  // ── 内容校验门禁（REQ-260929210741-30ae FR-2 / t3）：登记前校验设计文档结构 ──────
+  // 文档级 serves + H2 章节 serves + 悬空 FR 引用，聚合一次报全（空壳文档在 design 提交时
+  // 就拦截，不等到 plan 提交才爆）。存量/直种需求豁免（与本仓既有口径一致）。
+  const contentGate = await checkDesignContentGate(deps.docs, target)
+  if (contentGate !== undefined) reject(contentGate.message, contentGate.code)
+
   // ── 门禁预检（FR-2 触发点 4 / FR-5）：设计覆盖度必须 100% 才允许登记 ──────────
   // 先按**磁盘上已落盘**的设计文档生成 rtm-design.yml 并校验；未过门禁 → 当场拒绝且不登记
   // （避免"产物登记了、但追溯不全"的半截状态）。RTM 无覆盖度数据时不拦截（FR-9 降级）。
   // 存量/直种需求（artifacts 为空）豁免新门禁——与本仓既有口径一致（见 SubmitVerification 的 isLegacyForDocs）。
   const isLegacyForRtmGate = (target.artifacts ?? []).length === 0
   const gateProbe = candidates.length > 0 && !isLegacyForRtmGate
-    ? syncRTMYaml(deps, await taskStoreOf(deps).listByRequirement(target.id), target.id, 'submit:design')
+    ? await syncRTMYaml(deps, await taskStoreOf(deps).listByRequirement(target.id), target.id, 'submit:design')
     : undefined
   const designGate = coverageGateOf('design', gateProbe)
   if (designGate !== undefined && !designGate.passed) {
@@ -105,9 +121,7 @@ export async function submitDesignArtifacts(deps: UseCaseDeps, args: unknown, ex
   const priorDesignPaths = new Set(
     (target.artifacts ?? []).filter(x => x.stage === 'design' && x.kind === 'design').map(x => x.path),
   )
-  await deps.repo.mutate('requirement-updated', (ledger) => {
-    const req = ledger.requirements.find(r => r.id === target.id)
-    if (req === undefined) return undefined
+  await mutateIfPresent(requirementStoreOf(deps), target.id, (req) => {
     const added: StageArtifact[] = []
     for (const c of candidates) {
       if (registerArtifact(req, c)) added.push(c)
@@ -120,13 +134,12 @@ export async function submitDesignArtifacts(deps: UseCaseDeps, args: unknown, ex
       createdAt: nowTs,
       createdBy: { kind: 'agent', sessionId: windowKey },
     })
-    req.version += 1
     req.updatedAt = nowTs
     req.updatedBy = { kind: 'agent', sessionId: windowKey }
-    return { requirements: [req] }
+    return { changed: true }
   })
   const added = candidates.filter(c => !priorDesignPaths.has(c.path))
-  const reqNow = deps.repo.snapshot().requirements.find(r => r.id === target.id) ?? target
+  const reqNow = (await requirementStoreOf(deps).get(target.id)) ?? target
 
   // ── 逐份登记态投影（磁盘 / 产物簿 / 确认章三源，I-1 返回体）────────────────
   const onDisk = designDocNames(deps, target.id)
@@ -140,7 +153,7 @@ export async function submitDesignArtifacts(deps: UseCaseDeps, args: unknown, ex
   const ok = anyOnDisk || registeredCount > 0
   // RTM 触发点 4：提交设计文档 → rtm-design.yml（含 fr_to_design 与设计覆盖度）
   // 门禁预检已经生成过一次时不再重复生成。
-  if (ok && gateProbe === undefined) syncRTMYaml(deps, await taskStoreOf(deps).listByRequirement(target.id), target.id, 'submit:design')
+  if (ok && gateProbe === undefined) await syncRTMYaml(deps, await taskStoreOf(deps).listByRequirement(target.id), target.id, 'submit:design')
   return {
     success: ok,
     requirement_id: target.id,

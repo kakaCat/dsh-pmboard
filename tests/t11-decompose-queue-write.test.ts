@@ -67,9 +67,10 @@ describe('t11 · TC-9.1 拆分落队列（真实文件）', () => {
     expect(landed.createdIds).toHaveLength(2)
 
     // ② 台账**没有** tasks 键（v9）；需求侧只多了评论/产物，不长任务
-    expect(Object.prototype.hasOwnProperty.call(h.repo.ledger, 'tasks')).toBe(false)
+    // B12 阶段⑤族 B：改判『记录本身没有 tasks 键』（v9 起任务不在台账）
+    expect(await h.store.get(REQ_ID)).not.toHaveProperty('tasks')
     expect(await store.listByRequirement(REQ_ID)).toHaveLength(2)
-    expect(h.repo.ledger.requirements[0]?.comments.some(c => c.body.includes('[拆分]'))).toBe(true)
+    expect((await h.store.get(REQ_ID))?.comments.some(c => c.body.includes('[拆分]'))).toBe(true)
   })
 
   it('重复调用幂等：重复 id 不覆盖 + 文件 mtime 不变', async () => {

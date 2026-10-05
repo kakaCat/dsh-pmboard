@@ -73,8 +73,12 @@ describe('INV-1 需求状态机：表驱动逐项一致', () => {
       const expected = REQ_TRANSITIONS[from].filter(to => !HUMAN_ONLY_REQ_TRANSITIONS.has(from + '>' + to))
       expect(agentNextActions(from), from).toEqual(expected)
     }
-    // accepting 的可自行推进项只剩 implementing（archived/canceled 是人工闸门）
-    expect(agentNextActions('accepting')).toEqual(['implementing'])
+    // accepting 的可自行推进项 = 返工目标 implementing + 全部回退目标（archived/canceled 是人工闸门）。
+    // REQ-261003204149-1e80 FR-1：回退对 agent 开放后，可退目标一并出现在这里；
+    // 顺序 = 回退目标按流水线序升序（draft..implementing）。
+    expect(agentNextActions('accepting')).toEqual([
+      'draft', 'brainstorming', 'design', 'decomposing', 'implementing',
+    ])
   })
 })
 

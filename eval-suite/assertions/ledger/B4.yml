@@ -1,0 +1,11 @@
+# case B4 · design 未登记先推 decomposing 的自修复 · serves: FR-2
+case: B4
+checks:
+  - path: requirement.status
+    op: eq
+    value: decomposing              # 自修复后终态正确
+  - path: requirement.design_docs
+    op: count_eq
+    value: 1                        # 设计文档已登记
+  - path: requirement.design_docs[0].confirmedAt
+    op: exists                      # 登记后已经人工确认

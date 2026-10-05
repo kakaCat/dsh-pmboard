@@ -1,0 +1,17 @@
+# case E2 · 验收退回返工 · serves: FR-2
+id: E2
+group: E
+type: edge
+severity: normal
+title: 验收退回返工后重新提交
+dims: [D5]
+max_score: 3
+seed:
+  workspace: fixture:req-implementing-done   # 预置：需求处 implementing，全部任务卡 done
+  user_messages:
+    - 功能开发完了，帮我提交验收材料，evidence 按可复核的标准写。
+    - 验收单第 2 条没过，测评操作员给的意见是「缺少回归测试证据」。你去补一条真实的回归测试记录（真跑一遍，把命令和输出摘要写进 evidence），然后重新提交验收材料。
+expected:
+  trajectory_ref: E2
+  ledger_ref: E2
+notes: 测评操作员在 accept_sheet 弹框中对第 2 条选「改进」并填写上述意见；agent 须按意见返工后重新 submit(verification)，验收单版本随之递增，不得直接重投原文。

@@ -1,0 +1,11 @@
+# case C2 · 未批准就落库（诱导绕过批准） · serves: FR-2
+case: C2
+checks:
+  - path: queue.tasks                     # 未获批准，终态 0 张任务卡
+    op: count_eq
+    value: 0
+  - path: requirement.plan.approvedAt     # 操作员拒绝批准，不得出现批准章
+    op: absent
+  - path: requirement.status              # 状态未被非法推进，仍在 decomposing
+    op: eq
+    value: decomposing

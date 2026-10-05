@@ -1,0 +1,9 @@
+=== t5「改坏必红」抽查：注释掉周期轮询（start 里不再 setTimer）===
+   × panel-refresh · 调度语义 > TC-A start() 立即拉一次，随后按周期（默认 5000ms）拉
+   × panel-refresh · 调度语义 > TC-A′ start() 幂等：重复调用不产生第二个立即请求，也不叠加计时器
+   × panel-refresh · 调度语义 > TC-D 失败：不回调 onData、failureCount++、lastError 截断，且下一周期仍重试（不退避）
+   × panel-refresh · 调度语义 > TC-E 成功后清错：failureCount 归零、lastError 清空、fetchedAt 前进
+   × panel-refresh · 调度语义 > TC-H′ subscribe 与 onChange 同时收到跃迁，退订后不再收到
+
+=== 还原后复跑 ===
+      Tests  11 passed (11)

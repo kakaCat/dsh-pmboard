@@ -1,0 +1,36 @@
+task:
+  id: t-c1b553
+  title: 数据搬家：v9 单册迁到 v10 分片（可试跑、可幂等）·联调
+  status: done
+  implements: |-
+    新增 scripts/migrate-ledger-v10.ts，沿用既有 scripts/migrate-ledger.ts 的四模式与安全约定（--dry-run 缺省 / --apply / --verify / --rollback、--json 报告、写前 copyFileSync 备份、<ledgerDir>/state/server.pid 存活时拒绝 --apply、--force 跳过、--out 指定数据根）；导出 readV9Ledger()（供 t7 复用）与迁移主流程：读单册 → 逐需求落分片（comments 按原数组顺序赋 seq、statusHistory 与 advance.history 分 kind 落 history.jsonl、外置对象不存在则不建文件、status 属于 {archived,done} 者落 archive/）→ 最后写 meta.json（schemaVersion 10 + migrations 留痕 {from:9,to:10,at,by}）；带非空 tasks 的旧单册拒绝并指向既有 v9 脚本；无法装配的需求跳过并计入报告（不静默丢）。配 tests/reqboard/migrate-v10.test.ts。
+
+    [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+  serves: []
+  depends_on:
+    - t-27e57e
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002161439-277d
+    TASK_ID: t-c1b553
+    TASK_TITLE: 数据搬家：v9 单册迁到 v10 分片（可试跑、可幂等）·联调
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T09:36:43.611Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002161439-277d
+  generated_at: 2026-10-02T09:36:43.454Z
+  version: 5
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-02T10:16:10.994Z

@@ -7,11 +7,11 @@
  *
  * 链路按真实顺序走：需求文档 → 计划提交 → 人批准 → 拆分落库 → 确认拆分产物 → 推进入实施。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { definePlanSubmitTool, defineDecomposeTool, defineMoveTool } from './helpers/tool-deps.js'
 
 const W = 'session-e2e-0001'
@@ -33,7 +33,7 @@ const PLAN_TASKS = [{
 describe('全链路：需求文档 → 计划批准 → 拆分 → 出口门禁', () => {
   let dir: string
   let prevCwd: string
-  let store: ReqboardStore
+  let store: ReturnType<typeof makeTestStore>
   let plan: { execute: (a: unknown, e: unknown) => Promise<any> }
   let decompose: { execute: (a: unknown, e: unknown) => Promise<any> }
   let move: { execute: (a: unknown, e: unknown) => Promise<any> }
@@ -42,7 +42,7 @@ describe('全链路：需求文档 → 计划批准 → 拆分 → 出口门禁'
     dir = mkdtempSync(join(tmpdir(), 'pmboard-triad-e2e-'))
     prevCwd = process.cwd()
     process.chdir(dir)
-    store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+    store = makeTestStore()
     const deps = { store, now: () => Date.now(), doneThrottleMs: 0 }
     plan = definePlanSubmitTool(deps) as never
     decompose = defineDecomposeTool(deps) as never
@@ -71,15 +71,13 @@ describe('全链路：需求文档 → 计划批准 → 拆分 → 出口门禁'
       createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
       statusHistory: [{ status: 'design', at: 1, by: { kind: 'human' } }],
     }
-    await store.mutate('requirement-created', (l) => { (l.requirements as unknown[]).push(r); return { requirements: [r as never] } })
+    await store.replaceAll('requirement-created', { schemaVersion: 9, revision: 0, requirements: [r as never], triages: [] })
 
     // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘
     writeFileSync(join(dir, 'docs/requirements', REQ, 'plan.md'), '# 拆分计划\n')
     await plan.execute({ path: 'docs/requirements/' + REQ + '/plan.md', summary: '把甲做出来', tasks: PLAN_TASKS }, exec)
-    await store.mutate('requirement-updated', (l) => {
-      const req0 = l.requirements[0]
-      if (req0.plan !== undefined) { req0.plan.approvedAt = 1000; req0.plan.approvedBy = { kind: 'human' } }
-      return { requirements: [req0] }
+    await store.mutate(REQ, (req0) => {      if (req0.plan !== undefined) { req0.plan.approvedAt = 1000; req0.plan.approvedBy = { kind: 'human' } }
+      return { changed: true }
     })
     const out = await decompose.execute({
       tasks: [{ ...PLAN_TASKS[0], requirement_refs: ['FR-1'] }],
@@ -87,12 +85,10 @@ describe('全链路：需求文档 → 计划批准 → 拆分 → 出口门禁'
     const taskId = out.created[0].id as string
 
     // 人确认拆分产物（看板一键确认 / 弹框落章都写这里）
-    await store.mutate('artifact-confirmed', (l) => {
-      const req0 = l.requirements[0]
-      for (const a of req0.artifacts ?? []) {
+    await store.mutate(REQ, (req0) => {      for (const a of req0.artifacts ?? []) {
         if (a.kind === 'decomposition') { a.confirmedAt = 1000; a.confirmedBy = { kind: 'human' } }
       }
-      return { requirements: [req0] }
+      return { changed: true }
     })
     return taskId
   }

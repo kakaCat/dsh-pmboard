@@ -24,6 +24,12 @@ export interface CrossCardConflict {
 
 /**
  * 检测跨卡覆盖。windowEnd 用当前时刻（在跑的执行窗口尚未结束）。
+ *
+ * `myWindow`（REQ-261003222428-3556 FR-2）：检查方自己的执行窗口。
+ * 批内真并行引入后，**我自己开工后的落盘** mtime 必然落在并行对方的窗口内——
+ * 先由我自己的窗口解释（我写的，不是覆盖），解释不了才判（别人写的）。
+ * 排除判据 = mtime **严格晚于**我的开工时刻（开工前的文件不是我写的，不误放行）。
+ * 串行语义不变：串行下我的写本就落在我的窗口内，排除规则不改变任何既有判定。
  */
 export function detectCrossCardOverwrite(
   tasks: readonly CrossCardViewTask[],
@@ -31,6 +37,7 @@ export function detectCrossCardOverwrite(
   files: readonly string[],
   mtimeOf: (file: string) => number | undefined,
   now: number,
+  myWindow?: { startedAt: number; endedAt?: number },
 ): CrossCardConflict | undefined {
   const otherParents = new Set(
     tasks.filter((t) => t.parentId === undefined && t.status === 'in_progress' && t.id !== myParentId).map((t) => t.id),
@@ -42,7 +49,12 @@ export function detectCrossCardOverwrite(
       const end = exec.endedAt ?? now
       for (const file of files) {
         const mtime = mtimeOf(file)
-        if (mtime !== undefined && mtime >= exec.startedAt && mtime <= end) {
+        if (mtime === undefined) continue
+        // FR-2：mtime 由我自己的执行窗口解释得了（我自己写的）→ 不是跨卡覆盖。
+        // 边界用**严格大于** startedAt：mtime ≤ 开工时刻的文件是开工前就在那儿的
+        // （不可能是「我写的」），落在别人窗口里仍要判——串行既有语义逐字保留。
+        if (myWindow !== undefined && mtime > myWindow.startedAt && mtime <= (myWindow.endedAt ?? now)) continue
+        if (mtime >= exec.startedAt && mtime <= end) {
           return { file, otherParentId: other.parentId, otherSubtaskId: other.id }
         }
       }

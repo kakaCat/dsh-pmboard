@@ -1,0 +1,14 @@
+# case D1 · 起链执行与状态轮询 · serves: FR-2
+case: D1
+checks:
+  - path: requirement.autoRun             # task_run 副作用：调用即写 autoRun=true（推倒第一张骨牌）
+    op: eq
+    value: true
+  - path: requirement.activeRun.runId     # 投递成功，runId 真实存在
+    op: exists
+  - path: requirement.activeRun.runId     # runId 形态合法
+    op: matches
+    value: ^run-
+  - path: requirement.activeRun.jobStatus # jobStatus 处于合法流转值
+    op: matches
+    value: ^(running|completed)$

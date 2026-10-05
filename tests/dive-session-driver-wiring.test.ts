@@ -22,7 +22,7 @@ function makeDeps(
   const warns: string[] = []
   const infos: string[] = []
   const deps = {
-    store: { snapshot: () => emptyLedger() },
+
     runtime: {
       pendingCapture: new Map(),
       toolTrace: new Map(),
@@ -116,8 +116,10 @@ function makeFr11Harness(opts: {
   const ledger = { ...emptyLedger(), requirements: [requirement], tasks: [], triages: [] } as never as {
     requirements: Array<{ comments: Array<{ body: string }> }>
   }
-  const store = {
+    const repo = {
     snapshot: () => ledger,
+    // B12 阶段⑤族 B：补端口读口 `get`（断言按 id 定点读用）
+    get: async (id: string) => (ledger.requirements as Array<{ id?: string; comments?: Array<{ body: string }> }>).find((r) => r.id === id),
     mutate: async (_reason: string, fn: (l: unknown) => unknown) => ({ changed: (fn(ledger) ?? {}) as never, revision: 1 }),
   }
   let sessionHandler: SessionHandler | undefined
@@ -130,7 +132,7 @@ function makeFr11Harness(opts: {
     queueReminder: (requirementId: string, text: string) => { queueReminderCalls.push({ requirementId, text }) },
   }
   const deps = {
-    store,
+
     runtime: {
       pendingCapture: new Map(),
       toolTrace: new Map(),
@@ -151,6 +153,8 @@ function makeFr11Harness(opts: {
   assembleDiveSessionDriver(deps as never)
   return {
     ledger,
+    // B12 阶段⑤族 B：把新端口 stub 也交出去，供断言按 id 定点读
+
     queueReminderCalls,
     deliverCalls: () => deliveries,
     human: (text: string) => sessionHandler!(
@@ -179,9 +183,9 @@ describe('REQ-260927100007-b8ba FR-11：采集半零投递 / 里程碑只登记'
     await new Promise((r) => setTimeout(r, 0))
     expect(h.deliverCalls()).toBe(0)
     expect(h.queueReminderCalls).toHaveLength(0)
-    expect(h.ledger.requirements[0].comments).toHaveLength(1)
-    expect(h.ledger.requirements[0].comments[0].body).toContain('里程碑催办')
-    expect(h.ledger.requirements[0].comments[0].body).toContain('reqboard_ask_confirm')
+    expect(((await h.store.get('REQ-fr11'))!.comments ?? [])).toHaveLength(1)
+    expect(((await h.store.get('REQ-fr11'))!.comments ?? [])[0].body).toContain('里程碑催办')
+    expect(((await h.store.get('REQ-fr11'))!.comments ?? [])[0].body).toContain('reqboard_ask_confirm')
   })
 
   it('(2) armed+active 的里程碑催办 → 转 round 半 queueReminder（采集半仍零直投）', () => {

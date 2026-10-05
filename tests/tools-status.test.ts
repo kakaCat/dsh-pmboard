@@ -39,9 +39,14 @@ describe('reqboard_status.next_actions（窗口可自行推进的动作）', () 
     expect(out.note).toContain('reqboard_move')
   })
 
-  it('draft → 提交评审；implementing → 进验收', async () => {
+  it('draft → 提交评审；implementing → 进验收（并可见全部回退目标）', async () => {
     expect((await run('draft')).next_actions).toEqual(['brainstorming'])
-    expect((await run('implementing')).next_actions).toEqual(['accepting'])
+    // REQ-261003204149-1e80 FR-1：回退对 agent 开放后，implementing 的可自行发起项
+    // = 前进（accepting）+ 全部更早节点（draft..decomposing，按流水线序升序）。
+    // 这是**行为变更的如实反映**：旧断言 ['accepting'] 编码的正是「回退须人点」的旧规则。
+    expect((await run('implementing')).next_actions).toEqual([
+      'accepting', 'draft', 'brainstorming', 'design', 'decomposing',
+    ])
   })
 
   it('终态与未绑定窗口：无 next_actions', async () => {

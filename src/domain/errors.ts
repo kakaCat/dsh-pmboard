@@ -45,6 +45,11 @@ export const REQBOARD_ERROR_CODES = {
   storeInconsistent: 'store_inconsistent',
   /** 迁移校验不通过（脚本退出码 1 + 回滚） */
   migrationFailed: 'migration_failed',
+  /**
+   * 系统项（缺口类验收项）判通过却没写处置（HTTP 409）——REQ-261001154450-b918 FR-2。
+   * 系统项报的是机器发现的缺口；点通过不写处置等于把缺口静默吞掉（8475 实测三条如此）。
+   */
+  systemItemDispositionRequired: 'system_item_disposition_required',
 } as const
 
 /** 领域错误码字面量联合。 */

@@ -41,6 +41,7 @@ import {
   type TaskRecord,
 } from '../../shared/protocol.js'
 import { designDocStatus, designDocPolicyOf, EMPTY_DESIGN_DOC_POLICY } from '../internal/design-docs.js'
+import { requirementStoreOf } from '../use-cases/queue-access.js'
 import { assembleTraceability, contextOf, type AssembleStageOptions } from '../../stage-overview/assembler.js'
 import type { DesignDocPolicy } from '../internal/category-doc-sets.js'
 import type { UseCaseDeps } from '../ports.js'
@@ -385,8 +386,7 @@ export async function queryStageDetail(
   requirementId: string,
   stage: StageKey,
 ): Promise<StageDetail> {
-  const snapshot = deps.repo.snapshot()
-  const req = snapshot.requirements.find(r => r.id === requirementId)
+  const req = await requirementStoreOf(deps).get(requirementId)
   // REQ-2d1c74：host 侧读 requirement.md front-matter 注入设计文档策略（client 不碰 fs）
   const policy = req === undefined ? undefined : await designDocPolicyOf(deps.docs, req)
   // 任务来自队列（REQ-260927202051-f6df）：v9 台账已无 tasks。

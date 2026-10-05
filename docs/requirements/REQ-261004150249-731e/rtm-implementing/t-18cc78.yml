@@ -1,0 +1,39 @@
+task:
+  id: t-18cc78
+  title: 交接用例与 reqboard_handoff 工具·测试
+  status: done
+  implements: |-
+    新建 src/application/use-cases/HandoffOwner.ts：编排 ① 授权 canWrite(seatOf(req, wk), 'move-requirement')，否则 REQBOARD_SEAT_NOT_OWNER ② to_window 校验（存在 / ≠ 源 / 活窗口），否则 REQBOARD_HANDOFF_TARGET_INVALID ③ 开窗（复用 t4 的源项目解析）④ handoffOwner 写台账 ⑤ 断点 + 节点输入包经 deps.crossWindowDeliver.createMessage({ text, kind: 'reqboard-handoff' }).deliver(toWindow, msg)，失败不回滚但回执标 delivered=false + reason ⑥ 回执含 from_window/to_window/old_role/new_role/delivery/context_pressure。新建 src/tools/HandoffTool/HandoffTool.ts 与 prompt.ts（薄壳：schema + 摘要渲染），src/tools/index.ts 导出 defineHandoffTool。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-14bacb
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004150249-731e
+    TASK_ID: t-18cc78
+    TASK_TITLE: 交接用例与 reqboard_handoff 工具·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-04T07:54:17.010Z
+      completed_at: 2026-10-04T07:54:17.101Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004150249-731e
+  generated_at: 2026-10-04T07:54:06.870Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-04T07:54:17.101Z

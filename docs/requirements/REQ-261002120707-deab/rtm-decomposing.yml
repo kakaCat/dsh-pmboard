@@ -1,0 +1,316 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261002120707-deab
+  generated_at: 2026-10-02T04:17:46.180Z
+  version: 49
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-02T04:59:46.907Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/architecture.md#总体架构
+      title: 总体架构 `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/architecture.md
+      section: 总体架构
+    - ref: design/architecture.md#组件清单
+      title: 组件清单 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 组件清单
+    - ref: design/architecture.md#目录布局
+      title: 目录布局 `
+      serves:
+        - FR-2
+        - FR-4
+      file: design/architecture.md
+      section: 目录布局
+    - ref: design/architecture.md#关键设计决策
+      title: 关键设计决策 `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/architecture.md
+      section: 关键设计决策
+    - ref: design/data-model.md#场景脚本-Scenario
+      title: 场景脚本 Scenario `
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 场景脚本-Scenario
+    - ref: design/data-model.md#台账终态断言-LedgerAssert
+      title: 台账终态断言 LedgerAssert `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/data-model.md
+      section: 台账终态断言-LedgerAssert
+    - ref: design/data-model.md#轨迹断言-TrajectoryAssert
+      title: 轨迹断言 TrajectoryAssert `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/data-model.md
+      section: 轨迹断言-TrajectoryAssert
+    - ref: design/data-model.md#评分记录-ScoreRecord
+      title: 评分记录 ScoreRecord `
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: 评分记录-ScoreRecord
+    - ref: design/data-model.md#关联关系
+      title: 关联关系 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/data-model.md
+      section: 关联关系
+    - ref: design/interfaces.md#I-1-台账快照接口
+      title: I-1 台账快照接口 `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/interfaces.md
+      section: I-1-台账快照接口
+    - ref: design/interfaces.md#I-2-工具轨迹接口
+      title: I-2 工具轨迹接口 `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: I-2-工具轨迹接口
+    - ref: design/interfaces.md#I-3-LLM-评审接口
+      title: I-3 LLM 评审接口 `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/interfaces.md
+      section: I-3-LLM-评审接口
+    - ref: design/interfaces.md#I-4-评分计算接口
+      title: I-4 评分计算接口 `
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: I-4-评分计算接口
+    - ref: design/interfaces.md#I-5-报告模板接口
+      title: I-5 报告模板接口 `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: I-5-报告模板接口
+    - ref: design/interfaces.md#接口边界
+      title: 接口边界 `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/interfaces.md
+      section: 接口边界
+outputs:
+  tasks:
+    - id: t-6e0d19
+      title: 建 eval-suite 骨架与执行 runbook
+      implements: 创建 eval-suite/ 及 7 个子目录；README.md 引用 architecture.md 组件图并写清「如何发起一场测评」；runbook.md 把需求文档执行规程展开为可照做的操作清单（隔离 profile 准备、消息投递、快照与 trace 提取路径、三层评分顺序、报告落位）。
+      serves: []
+      depends_on: []
+      phase: doc
+      side: fullstack
+    - id: t-670e6c
+      title: 编制 A/B 组用例（立项+流转纪律，11 条）
+      implements: "按 data-model.md 的 Scenario/LedgerAssert/TrajectoryAssert 格式逐条编写；user_messages 写成可直接投递的真实话术；台账断言用算子表内算子；红线用例（B2/B3）标 severity: redline；与需求文档用例表核对 id/分值/维度一致。"
+      serves: []
+      depends_on: []
+      phase: doc
+      side: fullstack
+    - id: t-ef3b62
+      title: 编制 C/D 组用例（拆分+实施链，12 条）
+      implements: "同 t2 格式；C 组重点在计划批准前置与 key 一致性断言；D 组重点在 run_status 形状解读、失败暂停续跑、子卡三态；红线用例 C2/C3 标 severity: redline。"
+      serves: []
+      depends_on: []
+      phase: doc
+      side: fullstack
+    - id: t-6105b1
+      title: 编制 E/F/G 组用例（验收归档+对抗+效率，13 条）
+      implements: "同 t2 格式；E 组含归档 merged_into 按 spike→research 限定的断言；F 组含 REQBOARD_EVIDENCE_FAKE 伪造证据对抗；G 组含步数预算（标 baseline: TBD）与冗余调用循环检测。"
+      serves: []
+      depends_on: []
+      phase: doc
+      side: fullstack
+    - id: t-84be62
+      title: 编制 LLM 评审 rubric 与校准规范
+      implements: 按 interfaces.md I-3 的 rubric 结构逐份编写（三锚点 1/3/5 分 + JSON 输出格式）；覆盖可证伪性/完整性/evidence 真实性/合并真实性等维度；calibration/README 写明样本来源与回炉规则。
+      serves: []
+      depends_on: []
+      phase: doc
+      side: fullstack
+    - id: t-fa64d7
+      title: 报告模板+评分汇总+全量自检
+      implements: 按 interfaces.md I-5 写六节报告模板；写评分汇总计算表（维度权重与红线规则，与 interfaces.md I-4 公式逐符号一致）；跑全量自检：36 条三件套齐全性、id/分值/severity 与需求文档一致性、断言算子合法性、rubric 引用闭环；自检结果落 notes。
+      serves: []
+      depends_on: []
+      phase: review
+      side: fullstack
+    - id: t-1dbc77
+      title: 建 eval-suite 骨架与执行 runbook·研发
+      implements: |-
+        创建 eval-suite/ 及 7 个子目录；README.md 引用 architecture.md 组件图并写清「如何发起一场测评」；runbook.md 把需求文档执行规程展开为可照做的操作清单（隔离 profile 准备、消息投递、快照与 trace 提取路径、三层评分顺序、报告落位）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: doc
+      side: fullstack
+    - id: t-2a96d6
+      title: 建 eval-suite 骨架与执行 runbook·复核
+      implements: |-
+        创建 eval-suite/ 及 7 个子目录；README.md 引用 architecture.md 组件图并写清「如何发起一场测评」；runbook.md 把需求文档执行规程展开为可照做的操作清单（隔离 profile 准备、消息投递、快照与 trace 提取路径、三层评分顺序、报告落位）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-1dbc77
+      phase: doc
+      side: fullstack
+    - id: t-179322
+      title: 编制 A/B 组用例（立项+流转纪律，11 条）·研发
+      implements: |-
+        按 data-model.md 的 Scenario/LedgerAssert/TrajectoryAssert 格式逐条编写；user_messages 写成可直接投递的真实话术；台账断言用算子表内算子；红线用例（B2/B3）标 severity: redline；与需求文档用例表核对 id/分值/维度一致。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: doc
+      side: fullstack
+    - id: t-6ce90d
+      title: 编制 A/B 组用例（立项+流转纪律，11 条）·复核
+      implements: |-
+        按 data-model.md 的 Scenario/LedgerAssert/TrajectoryAssert 格式逐条编写；user_messages 写成可直接投递的真实话术；台账断言用算子表内算子；红线用例（B2/B3）标 severity: redline；与需求文档用例表核对 id/分值/维度一致。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-179322
+      phase: doc
+      side: fullstack
+    - id: t-6c7750
+      title: 编制 C/D 组用例（拆分+实施链，12 条）·研发
+      implements: |-
+        同 t2 格式；C 组重点在计划批准前置与 key 一致性断言；D 组重点在 run_status 形状解读、失败暂停续跑、子卡三态；红线用例 C2/C3 标 severity: redline。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: doc
+      side: fullstack
+    - id: t-cae322
+      title: 编制 C/D 组用例（拆分+实施链，12 条）·复核
+      implements: |-
+        同 t2 格式；C 组重点在计划批准前置与 key 一致性断言；D 组重点在 run_status 形状解读、失败暂停续跑、子卡三态；红线用例 C2/C3 标 severity: redline。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-6c7750
+      phase: doc
+      side: fullstack
+    - id: t-44989f
+      title: 编制 E/F/G 组用例（验收归档+对抗+效率，13 条）·研发
+      implements: |-
+        同 t2 格式；E 组含归档 merged_into 按 spike→research 限定的断言；F 组含 REQBOARD_EVIDENCE_FAKE 伪造证据对抗；G 组含步数预算（标 baseline: TBD）与冗余调用循环检测。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: doc
+      side: fullstack
+    - id: t-b5d93b
+      title: 编制 E/F/G 组用例（验收归档+对抗+效率，13 条）·复核
+      implements: |-
+        同 t2 格式；E 组含归档 merged_into 按 spike→research 限定的断言；F 组含 REQBOARD_EVIDENCE_FAKE 伪造证据对抗；G 组含步数预算（标 baseline: TBD）与冗余调用循环检测。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-44989f
+      phase: doc
+      side: fullstack
+    - id: t-93e406
+      title: 编制 LLM 评审 rubric 与校准规范·研发
+      implements: |-
+        按 interfaces.md I-3 的 rubric 结构逐份编写（三锚点 1/3/5 分 + JSON 输出格式）；覆盖可证伪性/完整性/evidence 真实性/合并真实性等维度；calibration/README 写明样本来源与回炉规则。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: doc
+      side: fullstack
+    - id: t-7866be
+      title: 编制 LLM 评审 rubric 与校准规范·复核
+      implements: |-
+        按 interfaces.md I-3 的 rubric 结构逐份编写（三锚点 1/3/5 分 + JSON 输出格式）；覆盖可证伪性/完整性/evidence 真实性/合并真实性等维度；calibration/README 写明样本来源与回炉规则。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-93e406
+      phase: doc
+      side: fullstack
+    - id: t-ad4270
+      title: 报告模板+评分汇总+全量自检·复核
+      implements: |-
+        按 interfaces.md I-5 写六节报告模板；写评分汇总计算表（维度权重与红线规则，与 interfaces.md I-4 公式逐符号一致）；跑全量自检：36 条三件套齐全性、id/分值/severity 与需求文档一致性、断言算子合法性、rubric 引用闭环；自检结果落 notes。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on: []
+      phase: review
+      side: fullstack
+traceability:
+  design_to_tasks:
+    design/architecture.md#总体架构: []
+    design/architecture.md#组件清单: []
+    design/architecture.md#目录布局: []
+    design/architecture.md#关键设计决策: []
+    design/data-model.md#场景脚本-Scenario: []
+    design/data-model.md#台账终态断言-LedgerAssert: []
+    design/data-model.md#轨迹断言-TrajectoryAssert: []
+    design/data-model.md#评分记录-ScoreRecord: []
+    design/data-model.md#关联关系: []
+    design/interfaces.md#I-1-台账快照接口: []
+    design/interfaces.md#I-2-工具轨迹接口: []
+    design/interfaces.md#I-3-LLM-评审接口: []
+    design/interfaces.md#I-4-评分计算接口: []
+    design/interfaces.md#I-5-报告模板接口: []
+    design/interfaces.md#接口边界: []
+  fr_to_tasks:
+    FR-1: []
+    FR-4: []
+    FR-2: []
+    FR-3: []
+coverage:
+  implementation:
+    total: 15
+    covered: 0
+    uncovered:
+      - design/architecture.md#总体架构
+      - design/architecture.md#组件清单
+      - design/architecture.md#目录布局
+      - design/architecture.md#关键设计决策
+      - design/data-model.md#场景脚本-Scenario
+      - design/data-model.md#台账终态断言-LedgerAssert
+      - design/data-model.md#轨迹断言-TrajectoryAssert
+      - design/data-model.md#评分记录-ScoreRecord
+      - design/data-model.md#关联关系
+      - design/interfaces.md#I-1-台账快照接口
+      - design/interfaces.md#I-2-工具轨迹接口
+      - design/interfaces.md#I-3-LLM-评审接口
+      - design/interfaces.md#I-4-评分计算接口
+      - design/interfaces.md#I-5-报告模板接口
+      - design/interfaces.md#接口边界
+    rate: 0
+    total_designs: 15
+    covered_designs: 0

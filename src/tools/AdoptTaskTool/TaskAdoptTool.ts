@@ -47,7 +47,7 @@ export function defineTaskAdoptTool(deps: UseCaseDeps) {
       task_id: { type: 'string', description: '要补归属的任务 id（t-xxxxxx）', required: true },
       parent_id: { type: 'string', description: '挂到哪张父卡下（t-xxxxxx，须为同需求的顶层卡）', required: true },
       stage_kind: { type: 'string', description: '子卡阶段（受控枚举 dev/integrate/review/test）；卡上已有 stageKind 时可不传' },
-      reason: { type: 'string', description: '补救原因（进队列卡片评论与需求评论留痕）' },
+      reason: { type: 'string', description: '补救原因（进队列卡片评论与需求评论留痕）；写法：每条短句（建议 ≤60 字）；需引号用「」避免半角双引号；文本过大拆成多次调用' },
       force: { type: 'boolean', description: '改挂已有归属的卡时必传（默认 false：只补缺失）' },
     },
     output: {
@@ -73,7 +73,7 @@ export function defineTaskAdoptTool(deps: UseCaseDeps) {
     },
     timeoutMs: LIMITS.timeoutWriteMs,
     async execute(args: unknown, exec: unknown): Promise<Record<string, unknown>> {
-      assertNoPendingConfirm(deps, deps.session.windowKey(exec))
+      await assertNoPendingConfirm(deps, deps.session.windowKey(exec))
       return await executeAdoptTask(deps, args, exec) as Record<string, unknown>
     },
   } as any)

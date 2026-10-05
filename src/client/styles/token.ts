@@ -44,10 +44,23 @@ details.dsh-pm-prompt > summary:hover { background: var(--dsw-hover, rgba(128,12
   background: var(--dsw-bg-primary, #fff); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11.5px; line-height: 1.55; color: var(--dsw-text-primary, #3b4048);
   white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; }
-/* 会话顶部流程图：token 与节点名同一行（既有 .dsh-pm-flow-node 列布局不变） */
-.dsh-pm-flow-meta { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; }
-.dsh-pm-flow-token { font-size: 10px; color: var(--dsw-text-primary, #333); font-variant-numeric: tabular-nums; }
+/* 会话顶部流程图：节点内**上下两行**（REQ-261004151652-d535 FR-1）——名字在上、该节点 token 在下。
+   为什么要纵向：横排时 7 节点名 + 数字 + 连线要 358px（节点被压到 32px 最小宽时数字还会串成
+   「827.8k10.9M922.0k12.7M」）；纵向实测只要 214px（省 40%），这才让「每节点数」在窄窗口留得住。
+
+   字号与配色（验收反馈「字体太大、颜色不对」后定稿）：
+     · 数字**与名字同号（8px）**，不再比名字大——名字是主、数字是辅，两者才像一套；
+     · 数字用**次要灰**（--dsw-text-secondary），不用正文黑：它不该压过带状态色的节点名；
+     · 名字保留原有的状态色（已完成绿 / 当前蓝 / 未到灰），那是「我在哪」的语义色，不动。 */
+.dsh-pm-flow-meta { display: flex; flex-direction: column; align-items: center; gap: 0; white-space: nowrap; }
+.dsh-pm-flow-token { font-size: 8px; color: var(--dsw-text-secondary, #8a9099); font-variant-numeric: tabular-nums; line-height: 1.15; }
 /* 卡面 / 列表：累计 token 徽章 */
-.dsh-pm-token-badge { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-size: 10px;
+.dsh-pm-token-badge { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-size: 9px;
   padding: 1px 6px; border-radius: 9px; background: rgba(194, 37, 92, .10); color: #c2255c; font-variant-numeric: tabular-nums; }
+/* 会话顶部流程图：需求累计 Token 徽章（REQ-261004143941-b2ca 交付；REQ-261004151652-d535 FR-3 改显隐策略）。
+   **默认隐藏**：宽档里「各节点相加」就是总数，再挂一个是重复信息；只有明细全隐的窄档
+   （styles/board.ts 的 label 档块，容器 ≤600px）才把它显示出来让位。降级路径（无容器查询）下默认隐藏
+   同样正确——那时全部明细可见，总数冗余。 */
+.dsh-pm-cprog-token-total { display: none; margin-left: 0; flex: none; }
+.dsh-pm-cprog-token-ico { font-size: 9px; line-height: 1; }
 `

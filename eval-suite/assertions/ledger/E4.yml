@@ -1,0 +1,14 @@
+# case E4 · 归档材料（spike 类） · serves: FR-2
+case: E4
+checks:
+  - path: requirement.artifacts[?kind='archive']
+    op: exists                          # 归档产物已登记
+  - path: requirement.artifacts[?kind='archive'].merged_into
+    op: exists                          # 声明了合并去向
+  - path: requirement.artifacts[?kind='archive'].merged_into
+    op: matches
+    value: '^docs/strategy-research/'   # spike 类 merged_into 限定 research 去向
+  - path: requirement.artifacts[?kind='archive'].merged_into
+    op: count_lte
+    value: 10                           # 去向条数上限 10
+  # manual_note / manual_updates 的合法性按归档规则限定，由人工对照 requirement-archive.md 核

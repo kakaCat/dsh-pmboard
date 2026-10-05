@@ -1,0 +1,38 @@
+task:
+  id: t-165008
+  title: 实现 applyDiveTransition 唯一写盘入口
+  status: done
+  implements: 新增 src/application/dive/applyDiveTransition.ts：读权威记录 → transitionDive → changed=false 时零写入返回 → changed=true 时写回并追加 comment（createdBy 由事件决定：arm-explicit = human，recover-auto = system，disarm-rollback 按调用方）。三条纪律照 src/application/internal/rearm.ts:13 的既有写法：幂等（条件在纯函数里）、永不抛（调用点在事件/请求路径上）、弹框在途守卫 dialogInFlight（语义沿用 rearm.ts:64）时 confirm-advance / recover-auto 零写入。
+  serves:
+    - FR-9
+  depends_on:
+    - t-b70b67
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261003215944-9e04
+    TASK_ID: t-165008
+    TASK_TITLE: 实现 applyDiveTransition 唯一写盘入口
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 3
+  workflow_done: 3
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-03T14:43:29.351Z
+    - phase: test
+      status: done
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261003215944-9e04
+  generated_at: 2026-10-03T14:42:37.949Z
+  version: 10
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 3
+  last_updated: 2026-10-03T14:44:52.350Z

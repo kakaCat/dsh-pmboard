@@ -1,0 +1,160 @@
+{
+  "_comment": "拟议 schema（原型用示例，非真实数据）· REQ-261004103330-005f · 文件：~/.dsh/dsh-reqboard-system.json",
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-04T10:31:12+08:00",
+  "paths": {
+    "_comment": "实际解析生效的绝对路径（不是配置里的写法）；装配时写入，每次启动核对一次",
+    "shardDataRoot": "/Users/mac/.dsh/reqboard",
+    "sqliteFile": "/Users/mac/.dsh/reqboard.sqlite",
+    "settingsFile": "/Users/mac/.dsh/dsh-reqboard-settings.json",
+    "legacyLedger": "/Users/mac/.dsh/dsh-reqboard.json",
+    "backupDirs": [
+      "/Users/mac/.dsh/backups/reqboard-20261002-1530"
+    ]
+  },
+  "active": {
+    "_comment": "当前真正在用的后端与它从何时起生效（来源＝settings|config|env|default）",
+    "backend": "json",
+    "since": "2026-10-03T09:12:40+08:00",
+    "source": "settings"
+  },
+  "stores": {
+    "_comment": "每个存储载体的体检快照（启动时与每次迁移后刷新）；陈旧＝条数/时间早于当前生效源",
+    "shards": {
+      "exists": true,
+      "requirements": 128,
+      "bytes": 1998848,
+      "headRevision": 4211
+    },
+    "sqlite": {
+      "exists": true,
+      "requirements": 44,
+      "bytes": 200704,
+      "migratedAt": "2026-10-02T15:30:04+08:00",
+      "stale": true,
+      "staleReason": "比当前分片少 84 条、且早于最近两次写入",
+      "sqliteSchemaVersion": 1,
+      "writtenBy": {
+        "pluginVersion": "0.1.0",
+        "buildStamp": "7f3c1ab9d204"
+      }
+    }
+  },
+  "history": [
+    {
+      "at": "2026-09-28T12:04:11+08:00",
+      "event": "startup",
+      "backend": "json",
+      "source": "config",
+      "requirements": 12,
+      "plugin": {
+        "version": "0.0.9",
+        "buildStamp": "1a9c4f02ab77"
+      }
+    },
+    {
+      "at": "2026-10-01T09:20:03+08:00",
+      "event": "upgrade",
+      "from": {
+        "version": "0.0.9",
+        "buildStamp": "1a9c4f02ab77"
+      },
+      "to": {
+        "version": "0.1.0",
+        "buildStamp": "7f3c1ab9d204"
+      },
+      "detectedBy": "startup-compare",
+      "note": "本次无表结构变更",
+      "plugin": {
+        "version": "0.1.0",
+        "buildStamp": "7f3c1ab9d204"
+      }
+    },
+    {
+      "at": "2026-10-02T15:30:04+08:00",
+      "event": "migration",
+      "from": "json",
+      "to": "sqlite",
+      "result": "ok",
+      "requirements": 44,
+      "durationMs": 4210,
+      "backupDir": "/Users/mac/.dsh/backups/reqboard-20261002-1530",
+      "windowKey": "session-4a1b77de",
+      "confirmedBy": {
+        "kind": "human",
+        "at": "2026-10-02T15:29:31+08:00",
+        "channel": "board-confirm",
+        "pluginVersion": "0.1.0"
+      },
+      "plugin": {
+        "version": "0.1.0",
+        "buildStamp": "7f3c1ab9d204"
+      }
+    },
+    {
+      "at": "2026-10-03T09:12:40+08:00",
+      "event": "backend-switched",
+      "from": "sqlite",
+      "to": "json",
+      "reason": "当日上游故障期间排查存储问题，先回分片",
+      "keptSqliteFile": true,
+      "confirmedBy": {
+        "kind": "human",
+        "at": "2026-10-03T09:12:02+08:00",
+        "channel": "board-confirm",
+        "pluginVersion": "0.1.0"
+      },
+      "plugin": {
+        "version": "0.1.0",
+        "buildStamp": "7f3c1ab9d204"
+      }
+    },
+    {
+      "at": "2026-10-04T10:31:12+08:00",
+      "event": "startup",
+      "backend": "json",
+      "source": "settings",
+      "requirements": 128,
+      "detected": {
+        "staleSqlite": true
+      },
+      "plugin": {
+        "version": "0.1.0",
+        "buildStamp": "7f3c1ab9d204"
+      }
+    }
+  ],
+  "counters": {
+    "migrations": 1,
+    "migrationsFailed": 0,
+    "rollbacks": 1,
+    "lastStartupAt": "2026-10-04T10:31:12+08:00",
+    "lastMigrationAt": "2026-10-02T15:30:04+08:00",
+    "upgrades": 1
+  },
+  "plugin": {
+    "_comment": "本安装的版本档案：单一来源 package.json.version；启动时与当前版本比对，不同即追加 upgrade 事件",
+    "name": "dsh-pmboard",
+    "version": "0.1.0",
+    "buildStamp": "7f3c1ab9d204",
+    "sqliteSchemaVersion": 1,
+    "recordedAt": "2026-10-04T10:31:12+08:00"
+  },
+  "compat": {
+    "_comment": "版本一致性核对结论；不一致时必须报警并给重建指引，不许硬读旧表",
+    "checkedAt": "2026-10-04T10:31:12+08:00",
+    "consistent": true,
+    "lastMigrationBy": {
+      "pluginVersion": "0.1.0",
+      "at": "2026-10-02T15:30:04+08:00"
+    },
+    "currentPluginVersion": "0.1.0",
+    "upgrades": [
+      {
+        "at": "2026-10-01T09:20:03+08:00",
+        "from": "0.0.9",
+        "to": "0.1.0"
+      }
+    ]
+  }
+}

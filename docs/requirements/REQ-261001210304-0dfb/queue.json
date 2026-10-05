@@ -1,0 +1,2480 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261001210304-0dfb",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-01T13:39:37.534Z",
+  "tasks": [
+    {
+      "id": "t-8e8fdc",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "建立 DAG 视图状态记忆表（契约先行）",
+      "cardDoc": "docs/requirements/REQ-261001210304-0dfb/tasks/t-8e8fdc.md",
+      "description": "新增 src/client/dag/view-state.ts + tests/dag-view-state.test.ts：按 data-model.md/interfaces.md §2 落地 DagViewSnapshot 与 read/write/clear/clearByPrefix/size/_reset，键 = canvasId::需求id，容量 16 FIFO。",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/dag-view-state.test.ts 全绿，其中 A1-1（合并写、拷贝隔离、非法滚动值按 0、容量 16 FIFO 淘汰、clearByPrefix）与 A5（np-dag-canvas::REQ-A 写 {dir:horizontal, focus:true} 后读 np-dag-canvas::REQ-B === undefined）两条用例通过；npx tsc --noEmit -p tsconfig.json 对本卡新增文件无新增错误。",
+      "implementation": "① 新增 src/client/dag/view-state.ts（纯函数、零 DOM、零 IO，照 panel-refresh.ts 的纯度纪律）：export interface DagViewSnapshot { dir?: LayoutDir; crit?: boolean; focus?: boolean; pinned?: string | null; tab?: 'flow' | 'list'; scrollTop?: number; scrollLeft?: number }（dir 复用 src/client/dag/dag-layout.ts 的 LayoutDir，不新造枚举）；模块内 const store = new Map<string, DagViewSnapshot>() 与 MAX_ENTRIES = 16；readDagViewState(key) 返回浅拷贝（miss → undefined），命中时按键重插刷新插入序；writeDagViewState(key, patch) 合并写，scrollTop/scrollLeft 非有限数或负数一律写 0，pinned 为 null 时照写（显式无钉住）；clearDagViewState(key)；clearDagViewStateByPrefix(prefix)；dagViewStateSize()；_resetDagViewState() 仅测试用；超容量按插入序淘汰最旧。② 新增 tests/dag-view-state.test.ts，头部注释写 serves: FR-1, FR-4, FR-5（本仓测试文件惯例，前 20 行内）：A1-1 合并写/拷贝隔离（改返回值不影响表内）/非法滚动值按 0/容量 16 FIFO/前缀清理；A5 键隔离（np-dag-canvas::REQ-A 写横向 + 只看主线 → 读 np-dag-canvas::REQ-B 为 undefined）。验证：npx vitest run tests/dag-view-state.test.ts；npx tsc --noEmit -p tsconfig.json（本次文件零新增错误）。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "requirementRefs": [
+        "FR-1",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-161a30",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790861992092,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 545,
+              "at": 1790861992100,
+              "totals": {
+                "uncachedInputTokens": 296313,
+                "outputTokens": 74382,
+                "cacheReadTokens": 8408064,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 648,
+              "at": 1790862084717,
+              "totals": {
+                "uncachedInputTokens": 310116,
+                "outputTokens": 85270,
+                "cacheReadTokens": 11504640,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 13803,
+              "outputTokens": 10888,
+              "cacheReadTokens": 3096576,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862084700
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790861977408,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790861992092,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开工 t1（契约先行）：新增 src/client/dag/view-state.ts 记忆表 + tests/dag-view-state.test.ts（A1-1/A5）"
+        },
+        {
+          "status": "done",
+          "at": 1790862084700,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "t1 完成：记忆表落地 + 9 条用例全绿，子卡链（研发/复核）均已收尾"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-43c8a5",
+          "body": "[状态] → in_progress：开工 t1（契约先行）：新增 src/client/dag/view-state.ts 记忆表 + tests/dag-view-state.test.ts（A1-1/A5）（reqboard_task_move）",
+          "createdAt": 1790861992092,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-047230",
+          "body": "[状态] → done：t1 完成：记忆表落地 + 9 条用例全绿，子卡链（研发/复核）均已收尾（reqboard_task_move）",
+          "createdAt": 1790862084700,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790861977408,
+      "updatedAt": 1790862084700,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790862081626,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/dag/view-state.ts",
+          "tests/dag-view-state.test.ts"
+        ],
+        "completed": [
+          "新增记忆表模块 src/client/dag/view-state.ts（DagViewSnapshot + read/write/clear/clearByPrefix/size/_reset，容量 16 FIFO，纯函数零 DOM）",
+          "新增单测 tests/dag-view-state.test.ts：A1-1（合并写/拷贝隔离/滚动值收敛/容量淘汰/前缀清）与 A5（键含需求 id，切需求不串档）",
+          "自测：npx vitest run tests/dag-view-state.test.ts → 9 passed；npx tsc --noEmit → 本卡文件零新增错误",
+          "子卡链收尾：研发 t-f14885、复核 t-dde296 均已完成并各有完工记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862081626,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9b6948",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "挂载接缝按记忆回填并同步工具条与滚动",
+      "cardDoc": "docs/requirements/REQ-261001210304-0dfb/tasks/t-9b6948.md",
+      "description": "改 src/client/views/dag-view.ts 与 src/client/dag-mount.ts：mountDagCanvas 增第 4 参 opts.stateKey（缺省 = 现状行为），挂载回填 initial、同步工具条 is-on、paint 后恢复滚动、disposer 先写回快照。",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-8e8fdc"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/dag-view-state.test.ts 中 A1-2/A1-3 通过：同一 canvas 连续两次 mountDagCanvas({stateKey:'k'})，中间 patch({dir:'horizontal',crit:true,focus:true,pinned:'t-b'})，第二次 viewer.state() === {horizontal,true,true,'t-b'}，且 [data-dag-dir=\"horizontal\"] 带 is-on、[data-dag-dir=\"vertical\"] 不带，wrap.scrollTop 恢复为记忆值；npx vitest run tests/dag-view.test.ts 全绿（不传 opts 的既有语义与断言不变）。",
+      "implementation": "① src/client/views/dag-view.ts：新增 export interface MountDagOptions { stateKey?: string }；把现有写死的 initial 提为导出常量 DEFAULT_DAG_STATE 后，mountDagCanvas(tasks, ready?, canvasId = DAG_CANVAS_ID, opts?: MountDagOptions) 里当 opts?.stateKey 有值时 snap = readDagViewState(key)，initial = { dir: snap?.dir ?? 'vertical', crit: snap?.crit === true, focus: snap?.focus === true, pinned: snap?.pinned ?? null }（无 stateKey 时用 DEFAULT_DAG_STATE，行为逐字节不变）。② 新增内部 syncToolbar(panel, state)：按 viewer.state() 给 [data-dag-dir=vertical|horizontal] 与 [data-dag-toggle=crit|focus] 设/清 is-on（回填后必须与真实状态对齐——现状按钮点击只 toggle class）。③ paint({}) 之后（canvas 宽高已在 paint 内同步设好）恢复 wrap.scrollTop/scrollLeft = snap 值（wrap 为空则跳过）。④ disposer 顺序改为：先 writeDagViewState(key, { ...viewer.state(), scrollTop: wrap?.scrollTop ?? 0, scrollLeft: wrap?.scrollLeft ?? 0 })，再摘监听/断 observer/destroy viewer（写回必须先于释放）。⑤ src/client/dag-mount.ts：tryMountDagCanvas(tasks, ready?, canvasId?, opts?: MountDagOptions) 把 opts 透传（rAF 包装与 getElementById 存在性检查保持原样）。验证：npx vitest run tests/dag-view-state.test.ts（追加 A1-2 二次挂载回填、A1-3 工具条 is-on 同步用例）；npx vitest run tests/dag-view.test.ts（无 opts 路径必须全绿 = 兼容承诺）。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review",
+        "test"
+      ],
+      "requirementRefs": [
+        "FR-1",
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c2743b",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862094339,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 654,
+              "at": 1790862094349,
+              "totals": {
+                "uncachedInputTokens": 310334,
+                "outputTokens": 87340,
+                "cacheReadTokens": 11705344,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 862,
+              "at": 1790862269432,
+              "totals": {
+                "uncachedInputTokens": 331385,
+                "outputTokens": 103344,
+                "cacheReadTokens": 19329280,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 21051,
+              "outputTokens": 16004,
+              "cacheReadTokens": 7623936,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862269413
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790861977408,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862094339,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开工 t2：mountDagCanvas 增 opts.stateKey（回填 initial + 工具条同步 + 滚动恢复 + dispose 写回），tryMountDagCanvas 透传"
+        },
+        {
+          "status": "done",
+          "at": 1790862269413,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "t2 完成：挂载接缝按记忆回填（A1-2/A1-3 通过、既有用例零回归），子卡链三张均已收尾"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-3e3f44",
+          "body": "[状态] → in_progress：开工 t2：mountDagCanvas 增 opts.stateKey（回填 initial + 工具条同步 + 滚动恢复 + dispose 写回），tryMountDagCanvas 透传（reqboard_task_move）",
+          "createdAt": 1790862094339,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-8c4ecd",
+          "body": "[状态] → done：t2 完成：挂载接缝按记忆回填（A1-2/A1-3 通过、既有用例零回归），子卡链三张均已收尾（reqboard_task_move）",
+          "createdAt": 1790862269413,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790861977408,
+      "updatedAt": 1790862269413,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790862267374,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/dag-view.ts",
+          "src/client/dag-mount.ts",
+          "tests/dag-view-state.test.ts"
+        ],
+        "completed": [
+          "src/client/views/dag-view.ts：MountDagOptions + DEFAULT_DAG_STATE 导出；mountDagCanvas 第 4 参 opts.stateKey（dispose 先写回、再按记忆回填 initial）；syncToolbar 让工具条 is-on 与真实状态对齐；paint 后恢复 wrap 滚动；disposer 先写回记忆再释放",
+          "src/client/dag-mount.ts：tryMountDagCanvas 透传 opts（rAF 与存在性检查不变）",
+          "tests/dag-view-state.test.ts：A1-2（刷新后方向/开关/钉住保持 + 滚动还原）、A1-3（工具条对齐）、兼容用例（不传 opts 不写记忆表）",
+          "自测：npx vitest run tests/dag-view-state.test.ts tests/dag-view.test.ts → 41 passed；全量 npx vitest run → 98 failed / 2924 passed（= 仓库既有基线，无新增）；tsc 改动文件零新增错误",
+          "子卡链收尾：研发 t-20229c、复核 t-c1ce4f、测试 t-6e3dda 均已完成并各有完工记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862267374,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-21de17",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "面板易变字段出注入字符串（稳定钩子 + 补丁）",
+      "cardDoc": "docs/requirements/REQ-261001210304-0dfb/tasks/t-21de17.md",
+      "description": "改 src/client/panel-freshness.ts、src/client/node-panel.ts，新增 src/client/panel-hydrate.ts：新鲜度与相对时间只留稳定钩子，值由 DOM 补丁填；更新 panel-freshness-render 断言并新增 panel-hydrate 用例。",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/panel-freshness-render.test.ts tests/panel-hydrate.test.ts 全绿：① 仅 freshness.fetchedAt 差 5000 的两次 renderNodePanel 输出逐字节相同（含 dsh-pm-dag-panel 段），且输出不含 '数据时间' 与具体时间戳；② hydrateFreshness 后 [data-dsh-pm-fresh-slot] 文本为 '数据时间 HH:MM:SS'、data-fetched-at 正确、超阈值带 is-stale，且该元素宿主未被替换；③ hydrateRelTimes 在固定 now 下产出「刚刚」「5 分钟前」「YYYY-MM-DD」；④ hydrateNodePanel({tab:'list'}) 后泳道 pane 无 hidden 且 list 页签带 is-active。",
+      "implementation": "① src/client/panel-freshness.ts：freshnessSpan() 改为无参、只输出稳定占位 '<span class=\"dsh-pm-np-fresh\" data-dsh-pm-fresh-slot></span>'（不含任何随时间变化的值）；新增 hydrateFreshness(root: ParentNode, f: NodePanelFreshness)：查 [data-dsh-pm-fresh-slot]（缺失即静默返回），写 textContent = '数据时间 ' + clockText(fetchedAt)（缺省 '数据时间 —'）、classList.toggle('is-stale', fetchedAt 缺失或超 staleAfterMs)、title = 刷新周期文案、dataset.fetchedAt/data-stale/data-refresh-ms；幂等、不插删元素。renderFreshnessBar 的失败红条与「插件已更新」保持原样（仅异常态出现）。② src/client/node-panel.ts：新增 relSlot(at: number): string → '<span data-dsh-pm-rel=\"<ms>\"></span>'，把 renderHead 的「最近动态」、renderDraftInfo 的创建时间、renderArchivedInfo 的已归档三处 rel() 文本换成 relSlot（外层类名与样式不动）；新增 hydrateRelTimes(root: ParentNode, now = Date.now())：对每个 [data-dsh-pm-rel] 写 rel() 文本；renderNodePanel 入参新增可选 now（测试固定时钟用）。③ 新增 src/client/panel-hydrate.ts：hydrateNodePanel(root, { freshness?, tab?, now? }) = hydrateFreshness + hydrateRelTimes + applyTab（[data-action=np-switch-view] 的 is-active 与 .dsh-pm-np-pane 的 hidden 按 tab 恢复，缺省 'flow'；找不到元素静默返回）。④ 更新 tests/panel-freshness-render.test.ts：断言改为字符串含 data-dsh-pm-fresh-slot 且不含 '数据时间' 与具体 fetchedAt；新增用例：仅 freshness.fetchedAt 差 5000 的两次 renderNodePanel 输出逐字节相同（并单独比对 dsh-pm-dag-panel 段）。⑤ 新增 tests/panel-hydrate.test.ts（头部 serves: FR-2, FR-3, FR-5）：极简 DOM 桩断言 A3-1（文本/属性/is-stale 翻转、元素未被替换）、A3-2（固定 now 下 刚刚/5 分钟前/日期）、A3-3（tab='list' 时泳道 pane 无 hidden、DAG pane 有 hidden）。验证：npx vitest run tests/panel-freshness-render.test.ts tests/panel-hydrate.test.ts。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review",
+        "test"
+      ],
+      "requirementRefs": [
+        "FR-2",
+        "FR-3",
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-55bb09",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862281197,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 868,
+              "at": 1790862281208,
+              "totals": {
+                "uncachedInputTokens": 331636,
+                "outputTokens": 105760,
+                "cacheReadTokens": 19565696,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1077,
+              "at": 1790862506070,
+              "totals": {
+                "uncachedInputTokens": 353085,
+                "outputTokens": 124563,
+                "cacheReadTokens": 28067968,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 21449,
+              "outputTokens": 18803,
+              "cacheReadTokens": 8502272,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862506020
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790861977408,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862281197,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开工 t3：新鲜度与相对时间改稳定钩子 + 新增 hydrateNodePanel 补丁（含页签恢复），消除「时间戳变 → 整段 innerHTML 重建」"
+        },
+        {
+          "status": "done",
+          "at": 1790862506020,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "t3 完成：易变字段出注入字符串 + 补丁落地（A2/A3 用例全绿、全量失败数 = 基线），子卡链三张均已收尾"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-81a967",
+          "body": "[状态] → in_progress：开工 t3：新鲜度与相对时间改稳定钩子 + 新增 hydrateNodePanel 补丁（含页签恢复），消除「时间戳变 → 整段 innerHTML 重建」（reqboard_task_move）",
+          "createdAt": 1790862281197,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-a6ce7f",
+          "body": "[状态] → done：t3 完成：易变字段出注入字符串 + 补丁落地（A2/A3 用例全绿、全量失败数 = 基线），子卡链三张均已收尾（reqboard_task_move）",
+          "createdAt": 1790862506020,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790861977408,
+      "updatedAt": 1790862506020,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790862502385,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/panel-freshness.ts",
+          "src/client/node-panel.ts",
+          "src/client/panel-hydrate.ts",
+          "tests/panel-freshness-render.test.ts",
+          "tests/panel-hydrate.test.ts"
+        ],
+        "completed": [
+          "src/client/panel-freshness.ts：freshnessSpan() 改稳定占位；新增 hydrateFreshness(root, f)（文本/is-stale/title/data-* 补值）",
+          "src/client/node-panel.ts：新增 relSlot(at) 与 hydrateRelTimes(root, now)；最近动态/创建时间/已归档三处人话文本改成稳定钩子",
+          "新增 src/client/panel-hydrate.ts：hydrateNodePanel(root, { freshness, tab, now })（新鲜度 + 相对时间 + 页签恢复）",
+          "tests/panel-freshness-render.test.ts 断言迁移 + 新增 A2-1/A2-2（两轮仅时间戳不同 → __html 逐字节相同、DAG 片段相同、串内无时间戳）；新增 tests/panel-hydrate.test.ts 10 条（A3-1…A3-3）",
+          "自测：全量 npx vitest run → 98 failed / 2936 passed（失败数 = 基线 98，通过数 +12）；tsc 零新增错误",
+          "端到端信号：探针 B 段已从「两轮 __html 不同」翻转为「逐字节相同」（FR-3 达标）",
+          "子卡链收尾：研发 t-918fd6、复核 t-adb83e、测试 t-118a86 均已完成并各有完工记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862502385,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2406b6",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "会话面板与需求详情接线（key 作用域 + 清理）",
+      "cardDoc": "docs/requirements/REQ-261001210304-0dfb/tasks/t-2406b6.md",
+      "description": "改 src/client/conversation-progress.ts 与 src/client/board-mount.ts：两处挂载传 stateKey，注入 HTML 后调 hydrateNodePanel（新鲜度 + 相对时间 + 页签恢复），页签点击写记忆，reqId 变化清上一键。",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-9b6948",
+        "t-21de17"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/panel-refresh-wiring.test.ts tests/client-view.test.ts tests/node-panel.test.ts 全绿；静态复核通过（可复核命令：grep -n \"stateKey\" src/client/conversation-progress.ts src/client/board-mount.ts 命中两处，形态分别为 PANEL_DAG_CANVAS_ID + '::' + reqId 与 'dag-canvas::' + req.id；grep -n \"hydrateNodePanel\\|writeDagViewState\\|clearDagViewState\" src/client/conversation-progress.ts 分别命中调用点）。",
+      "implementation": "① src/client/conversation-progress.ts：DAG 挂载 effect 内 const stateKey = PANEL_DAG_CANVAS_ID + '::' + reqIdForStage（reqId 缺省则不启用记忆、不调 hydrate）；调 tryMountDagCanvas(tasks, undefined, PANEL_DAG_CANVAS_ID, { stateKey })；同一 effect 内对本次渲染的容器根（承载 dangerouslySetInnerHTML 的节点 / wrapRef.current）调 hydrateNodePanel(root, { freshness: panelFreshness, tab: readDagViewState(stateKey)?.tab })（时序：React commit 之后执行，与现有 rAF 挂载协调，确保补丁作用在**本次** DOM 上）。② np-switch-view 点击委托：切换 class 之后 writeDagViewState(stateKey, { tab: view === 'list' ? 'list' : 'flow' })。③ 新增 effect：reqIdForStage 变化时 clearDagViewState(前一 reqId 的键)，避免记忆表跨需求残留。④ src/client/board-mount.ts：需求详情挂载改为 tryMountDagCanvas(reqTasks, reqReady, 'dag-canvas', { stateKey: 'dag-canvas::' + req.id })。验证：npx vitest run tests/panel-refresh-wiring.test.ts tests/client-view.test.ts tests/node-panel.test.ts 全绿 + 静态复核（grep）两处 stateKey 形态、hydrateNodePanel 调用点、页签写入与清理调用各一处。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-35c266",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862512212,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1083,
+              "at": 1790862512221,
+              "totals": {
+                "uncachedInputTokens": 353221,
+                "outputTokens": 125234,
+                "cacheReadTokens": 28343040,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1244,
+              "at": 1790862630839,
+              "totals": {
+                "uncachedInputTokens": 367679,
+                "outputTokens": 132774,
+                "cacheReadTokens": 35831168,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 14458,
+              "outputTokens": 7540,
+              "cacheReadTokens": 7488128,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862630818
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790861977408,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862512212,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开工 t4：会话面板与需求详情接线（传 stateKey + 注入后补丁 + 页签写记忆 + 切需求清理）"
+        },
+        {
+          "status": "done",
+          "at": 1790862630818,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "t4 完成：两处接线落地生效，子卡链（研发/复核）均已收尾"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-45ca25",
+          "body": "[状态] → in_progress：开工 t4：会话面板与需求详情接线（传 stateKey + 注入后补丁 + 页签写记忆 + 切需求清理）（reqboard_task_move）",
+          "createdAt": 1790862512212,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-1c5a8d",
+          "body": "[状态] → done：t4 完成：两处接线落地生效，子卡链（研发/复核）均已收尾（reqboard_task_move）",
+          "createdAt": 1790862630818,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790861977408,
+      "updatedAt": 1790862630818,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1790862626918,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/conversation-progress.ts",
+          "src/client/board-mount.ts"
+        ],
+        "completed": [
+          "src/client/conversation-progress.ts：记忆键 panelStateKey（canvasId::reqId）、切换需求清理 effect、补丁 effect（wrapRef 为根，传 freshness + 记忆 tab，deps 含 buildNotice/data）、DAG 挂载传 { stateKey }、页签点击 writeDagViewState({ tab })；新鲜度投影提到早退前供渲染与补丁共用",
+          "src/client/board-mount.ts：需求详情挂载传 { stateKey: 'dag-canvas::' + req.id }（复用同一机制，避免同一画布跨需求串档）",
+          "自测：七套相关用例 137 passed（panel-refresh-wiring/client-view/node-panel/card-layer/stage-colors/panel-hydrate/dag-view-state）+ 四套 127 passed（header-progress-responsive/compat-regression/panel-refresh/panel-freshness-render）",
+          "静态复核：stateKey 两处形态正确；hydrateNodePatch/writeDagViewState/clearDagViewState/readDagViewState 调用点各一处，均可 grep 复核",
+          "子卡链收尾：研发 t-8e45ea、复核 t-5dd17a 均已完成并各有完工记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862626918,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-5f7644",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "探针翻转 + 全量回归与构建验证",
+      "cardDoc": "docs/requirements/REQ-261001210304-0dfb/tasks/t-5f7644.md",
+      "description": "更新复现探针期望为「保活」，跑全量相关用例 + tsc + client 构建，产出验收材料用的运行日志。",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-2406b6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx tsx docs/requirements/REQ-261001210304-0dfb/evidence/probe-dag-reset.mts 输出：A 段显示一轮刷新后状态仍为 {\"dir\":\"horizontal\",\"crit\":true,\"focus\":true,\"pinned\":\"t-b\"}（不再回 vertical/false/false/null），B 段显示两轮 __html 逐字节相同 = true；npx vitest run tests/dag-view-state.test.ts tests/panel-hydrate.test.ts tests/panel-freshness-render.test.ts tests/dag-view.test.ts tests/node-panel.test.ts tests/panel-refresh.test.ts 全绿；npx tsc --noEmit -p tsconfig.json 对本次文件零新增错误；pnpm build:client 退出码 0 且 verify-client-build 通过。",
+      "implementation": "① 更新 docs/requirements/REQ-261001210304-0dfb/evidence/probe-dag-reset.mts：A 段断言翻转为「保活」（二次挂载后 state() 仍为 {horizontal,true,true,'t-b'}），B 段断言两轮 __html 逐字节相同（fetchedAt 差 5s），保留原有打印格式便于贴证据。② 全量回归：npx vitest run tests/dag-view-state.test.ts tests/panel-hydrate.test.ts tests/panel-freshness-render.test.ts tests/dag-view.test.ts tests/node-panel.test.ts tests/panel-refresh.test.ts。③ 静态：npx tsc --noEmit -p tsconfig.json，比对本次 5 个改动/新增 src 文件无新增错误（既有红单独列出，不算本次）。④ 构建：pnpm build:client（scripts/verify-client-build.mjs 必须绿）。⑤ 产出 docs/requirements/REQ-261001210304-0dfb/evidence/run-log.md：逐条贴命令 + 输出摘要（含探针新输出、用例数、构建结果），供验收材料引用。",
+      "context": "",
+      "stages": [
+        "verify"
+      ],
+      "requirementRefs": [
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-59d37d",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862630919,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1246,
+              "at": 1790862630928,
+              "totals": {
+                "uncachedInputTokens": 367679,
+                "outputTokens": 132774,
+                "cacheReadTokens": 35831168,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1337,
+              "at": 1790862701851,
+              "totals": {
+                "uncachedInputTokens": 379895,
+                "outputTokens": 140245,
+                "cacheReadTokens": 40155136,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 12216,
+              "outputTokens": 7471,
+              "cacheReadTokens": 4323968,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862701833
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790861977408,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862630919,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开工 t5：探针翻转为「保活」期望 + 全量回归 + tsc + client 构建 + 产出运行日志"
+        },
+        {
+          "status": "done",
+          "at": 1790862701833,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "t5 完成：探针翻转 + 全量回归（失败数=基线）+ tsc + client 构建全部通过，运行日志已落盘"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-97db1c",
+          "body": "[状态] → in_progress：开工 t5：探针翻转为「保活」期望 + 全量回归 + tsc + client 构建 + 产出运行日志（reqboard_task_move）",
+          "createdAt": 1790862630919,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-679e6f",
+          "body": "[状态] → done：t5 完成：探针翻转 + 全量回归（失败数=基线）+ tsc + client 构建全部通过，运行日志已落盘（reqboard_task_move）",
+          "createdAt": 1790862701833,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790861977408,
+      "updatedAt": 1790862701833,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "layer": 3,
+      "lastReport": {
+        "at": 1790862685857,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261001210304-0dfb/evidence/probe-dag-reset.mts",
+          "docs/requirements/REQ-261001210304-0dfb/evidence/run-log.md"
+        ],
+        "completed": [
+          "探针翻转为「保活」并跑通（A 段状态与滚动保持、B 段两轮 __html 相同）；探针新增 wrap 桩，把滚动还原纳入断言",
+          "六套必跑用例 102 passed；全量失败数 98 = 基线 98（无新增失败）；本需求累计新增 24 条断言全部通过",
+          "npx tsc --noEmit → 本次 8 个文件零错误；pnpm build:client → 退出码 0，verify-client OK（bundle=333950 bytes）",
+          "运行日志落盘：docs/requirements/REQ-261001210304-0dfb/evidence/run-log.md（命令 + 输出摘要 + 基线对比 + 人工验证 5 步）",
+          "子卡链收尾：校验子卡 t-61a6bf 已完成并有完工记录"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862685857,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f14885",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "建立 DAG 视图状态记忆表（契约先行）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "① 新增 src/client/dag/view-state.ts（纯函数、零 DOM、零 IO，照 panel-refresh.ts 的纯度纪律）：export interface DagViewSnapshot { dir?: LayoutDir; crit?: boolean; focus?: boolean; pinned?: string | null; tab?: 'flow' | 'list'; scrollTop?: number; scrollLeft?: number }（dir 复用 src/client/dag/dag-layout.ts 的 LayoutDir，不新造枚举）；模块内 const store = new Map<string, DagViewSnapshot>() 与 MAX_ENTRIES = 16；readDagViewState(key) 返回浅拷贝（miss → undefined），命中时按键重插刷新插入序；writeDagViewState(key, patch) 合并写，scrollTop/scrollLeft 非有限数或负数一律写 0，pinned 为 null 时照写（显式无钉住）；clearDagViewState(key)；clearDagViewStateByPrefix(prefix)；dagViewStateSize()；_resetDagViewState() 仅测试用；超容量按插入序淘汰最旧。② 新增 tests/dag-view-state.test.ts，头部注释写 serves: FR-1, FR-4, FR-5（本仓测试文件惯例，前 20 行内）：A1-1 合并写/拷贝隔离（改返回值不影响表内）/非法滚动值按 0/容量 16 FIFO/前缀清理；A5 键隔离（np-dag-canvas::REQ-A 写横向 + 只看主线 → 读 np-dag-canvas::REQ-B 为 undefined）。验证：npx vitest run tests/dag-view-state.test.ts；npx tsc --noEmit -p tsconfig.json（本次文件零新增错误）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-8e8fdc",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-364a58",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862051919,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 596,
+              "at": 1790862051930,
+              "totals": {
+                "uncachedInputTokens": 306795,
+                "outputTokens": 82482,
+                "cacheReadTokens": 9918976,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 616,
+              "at": 1790862063224,
+              "totals": {
+                "uncachedInputTokens": 308316,
+                "outputTokens": 83456,
+                "cacheReadTokens": 10508160,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1521,
+              "outputTokens": 974,
+              "cacheReadTokens": 589184,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862063204
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b48cfc",
+          "body": "[状态] → in_progress：开始研发：落地 DagViewSnapshot 与记忆表 API（reqboard_task_move）",
+          "createdAt": 1790862051919,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-af76c9",
+          "body": "[状态] → done：研发完成并已汇报：记忆表 + 9 条用例全绿（见本卡完工记录）（reqboard_task_move）",
+          "createdAt": 1790862063204,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790861992092,
+      "updatedAt": 1790862063204,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790861992092,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862051919,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开始研发：落地 DagViewSnapshot 与记忆表 API"
+        },
+        {
+          "status": "done",
+          "at": 1790862063204,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "研发完成并已汇报：记忆表 + 9 条用例全绿（见本卡完工记录）"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790862060118,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/dag/view-state.ts",
+          "tests/dag-view-state.test.ts"
+        ],
+        "completed": [
+          "新增 src/client/dag/view-state.ts：DagViewSnapshot（dir/crit/focus/pinned/tab/scrollTop/scrollLeft）+ readDagViewState（浅拷贝返回、命中重插刷新插入序）/ writeDagViewState（合并写、滚动值收敛为 0、pinned=null 照写、容量 16 FIFO 淘汰）/ clearDagViewState / clearDagViewStateByPrefix / dagViewStateSize / _resetDagViewState",
+          "新增 tests/dag-view-state.test.ts（头部 serves: FR-1, FR-2, FR-4, FR-5）：A1-1 合并写、拷贝隔离、非法滚动值按 0、容量 16 FIFO 与读命中刷新插入序、clear/clearByPrefix；A5 键隔离（REQ-A 写横向+只看主线 → REQ-B 为 undefined）",
+          "npx vitest run tests/dag-view-state.test.ts → 9 passed（全绿）",
+          "npx tsc --noEmit -p tsconfig.json → 本卡新增文件零新增错误（仓库既有 195 条历史错误与本卡无关）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862060118,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-dde296",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "建立 DAG 视图状态记忆表（契约先行）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-f14885"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "① 新增 src/client/dag/view-state.ts（纯函数、零 DOM、零 IO，照 panel-refresh.ts 的纯度纪律）：export interface DagViewSnapshot { dir?: LayoutDir; crit?: boolean; focus?: boolean; pinned?: string | null; tab?: 'flow' | 'list'; scrollTop?: number; scrollLeft?: number }（dir 复用 src/client/dag/dag-layout.ts 的 LayoutDir，不新造枚举）；模块内 const store = new Map<string, DagViewSnapshot>() 与 MAX_ENTRIES = 16；readDagViewState(key) 返回浅拷贝（miss → undefined），命中时按键重插刷新插入序；writeDagViewState(key, patch) 合并写，scrollTop/scrollLeft 非有限数或负数一律写 0，pinned 为 null 时照写（显式无钉住）；clearDagViewState(key)；clearDagViewStateByPrefix(prefix)；dagViewStateSize()；_resetDagViewState() 仅测试用；超容量按插入序淘汰最旧。② 新增 tests/dag-view-state.test.ts，头部注释写 serves: FR-1, FR-4, FR-5（本仓测试文件惯例，前 20 行内）：A1-1 合并写/拷贝隔离（改返回值不影响表内）/非法滚动值按 0/容量 16 FIFO/前缀清理；A5 键隔离（np-dag-canvas::REQ-A 写横向 + 只看主线 → 读 np-dag-canvas::REQ-B 为 undefined）。验证：npx vitest run tests/dag-view-state.test.ts；npx tsc --noEmit -p tsconfig.json（本次文件零新增错误）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-8e8fdc",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-99c6f1",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862068011,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 622,
+              "at": 1790862068025,
+              "totals": {
+                "uncachedInputTokens": 308503,
+                "outputTokens": 84249,
+                "cacheReadTokens": 10705792,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 636,
+              "at": 1790862077851,
+              "totals": {
+                "uncachedInputTokens": 309654,
+                "outputTokens": 84829,
+                "cacheReadTokens": 11104128,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1151,
+              "outputTokens": 580,
+              "cacheReadTokens": 398336,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862077832
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a94bde",
+          "body": "[状态] → in_progress：开始复核：对照 design/interfaces.md §2 与 data-model.md 核验 API 形状、键语义、纯度与边界（reqboard_task_move）",
+          "createdAt": 1790862068011,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-9a0c75",
+          "body": "[状态] → done：复核完成：API 与设计逐条对齐、纯度核验通过、9 用例复跑全绿，无偏离（见本卡完工记录）（reqboard_task_move）",
+          "createdAt": 1790862077832,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790861992092,
+      "updatedAt": 1790862077832,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790861992092,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862068011,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开始复核：对照 design/interfaces.md §2 与 data-model.md 核验 API 形状、键语义、纯度与边界"
+        },
+        {
+          "status": "done",
+          "at": 1790862077832,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "复核完成：API 与设计逐条对齐、纯度核验通过、9 用例复跑全绿，无偏离（见本卡完工记录）"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790862074010,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "对照 design/interfaces.md §2 逐条核对导出 API：readDagViewState / writeDagViewState / clearDagViewState / clearDagViewStateByPrefix / dagViewStateSize / _resetDagViewState + DagViewSnapshot 类型 + MAX_ENTRIES=16 —— 命名与语义一致，无偏离",
+          "对照 design/data-model.md 核对契约细节：字段可选（部分更新语义）、scrollTop/scrollLeft 非有限数或负数收敛为 0、pinned=null 为合法显式值、键形态约定 canvasId::需求id、不落盘 —— 均由用例覆盖",
+          "纯度核验：grep 无 document/window/localStorage/fetch/setTimeout/setInterval/Date.now 调用（仅注释提及 localStorage），符合「纯函数、零 DOM、零 IO」纪律",
+          "复跑 npx vitest run tests/dag-view-state.test.ts → 9 passed；npx tsc --noEmit 对本卡新增文件零新增错误",
+          "复核结论：无偏离；未发现需要返工的问题"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862074010,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-20229c",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "挂载接缝按记忆回填并同步工具条与滚动·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-8e8fdc"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "① src/client/views/dag-view.ts：新增 export interface MountDagOptions { stateKey?: string }；把现有写死的 initial 提为导出常量 DEFAULT_DAG_STATE 后，mountDagCanvas(tasks, ready?, canvasId = DAG_CANVAS_ID, opts?: MountDagOptions) 里当 opts?.stateKey 有值时 snap = readDagViewState(key)，initial = { dir: snap?.dir ?? 'vertical', crit: snap?.crit === true, focus: snap?.focus === true, pinned: snap?.pinned ?? null }（无 stateKey 时用 DEFAULT_DAG_STATE，行为逐字节不变）。② 新增内部 syncToolbar(panel, state)：按 viewer.state() 给 [data-dag-dir=vertical|horizontal] 与 [data-dag-toggle=crit|focus] 设/清 is-on（回填后必须与真实状态对齐——现状按钮点击只 toggle class）。③ paint({}) 之后（canvas 宽高已在 paint 内同步设好）恢复 wrap.scrollTop/scrollLeft = snap 值（wrap 为空则跳过）。④ disposer 顺序改为：先 writeDagViewState(key, { ...viewer.state(), scrollTop: wrap?.scrollTop ?? 0, scrollLeft: wrap?.scrollLeft ?? 0 })，再摘监听/断 observer/destroy viewer（写回必须先于释放）。⑤ src/client/dag-mount.ts：tryMountDagCanvas(tasks, ready?, canvasId?, opts?: MountDagOptions) 把 opts 透传（rAF 包装与 getElementById 存在性检查保持原样）。验证：npx vitest run tests/dag-view-state.test.ts（追加 A1-2 二次挂载回填、A1-3 工具条 is-on 同步用例）；npx vitest run tests/dag-view.test.ts（无 opts 路径必须全绿 = 兼容承诺）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-9b6948",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-32eef1",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862175225,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 772,
+              "at": 1790862175235,
+              "totals": {
+                "uncachedInputTokens": 324950,
+                "outputTokens": 98182,
+                "cacheReadTokens": 15857152,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 784,
+              "at": 1790862181396,
+              "totals": {
+                "uncachedInputTokens": 325864,
+                "outputTokens": 98745,
+                "cacheReadTokens": 16310528,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 914,
+              "outputTokens": 563,
+              "cacheReadTokens": 453376,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862181378
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-bc0b0c",
+          "body": "[状态] → in_progress：开始研发：挂载接缝按记忆回填 + 工具条同步 + 滚动恢复 + dispose 写回（reqboard_task_move）",
+          "createdAt": 1790862175225,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-964fe8",
+          "body": "[状态] → done：研发完成并已汇报：A1-2/A1-3 用例通过，既有 dag-view 用例 29 条全绿（见本卡完工记录）（reqboard_task_move）",
+          "createdAt": 1790862181378,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790862094339,
+      "updatedAt": 1790862181378,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790862094339,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862175225,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开始研发：挂载接缝按记忆回填 + 工具条同步 + 滚动恢复 + dispose 写回"
+        },
+        {
+          "status": "done",
+          "at": 1790862181378,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "研发完成并已汇报：A1-2/A1-3 用例通过，既有 dag-view 用例 29 条全绿（见本卡完工记录）"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790862179029,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/dag-view.ts",
+          "src/client/dag-mount.ts",
+          "tests/dag-view-state.test.ts"
+        ],
+        "completed": [
+          "src/client/views/dag-view.ts：新增 MountDagOptions 与导出常量 DEFAULT_DAG_STATE；mountDagCanvas 增第 4 参 opts；dispose 之后读记忆（保证读到用户最后一次选择）并按记忆构造 initial；新增 syncToolbar 让工具条 is-on 与 viewer.state() 对齐；paint 之后恢复 wrap.scrollTop/scrollLeft；disposer 改为先 writeDagViewState 再摘监听/断 observer/destroy",
+          "src/client/dag-mount.ts：tryMountDagCanvas 增 opts 形参并透传（rAF 包装与存在性检查不变）",
+          "tests/dag-view-state.test.ts：新增 A1-2（一轮刷新后方向/开关/钉住保持、滚动位置 180/12 还原）、A1-3（工具条 is-on 与真实状态对齐）、兼容用例（不传 opts = 缺省态且不写记忆表）",
+          "npx vitest run tests/dag-view-state.test.ts tests/dag-view.test.ts → 41 passed（12 + 29）",
+          "npx tsc --noEmit -p tsconfig.json → 本次改动文件零新增错误；git diff --stat：dag-view.ts +72/-6、dag-mount.ts +8/-2"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862179029,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c1ce4f",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "挂载接缝按记忆回填并同步工具条与滚动·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-20229c"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "① src/client/views/dag-view.ts：新增 export interface MountDagOptions { stateKey?: string }；把现有写死的 initial 提为导出常量 DEFAULT_DAG_STATE 后，mountDagCanvas(tasks, ready?, canvasId = DAG_CANVAS_ID, opts?: MountDagOptions) 里当 opts?.stateKey 有值时 snap = readDagViewState(key)，initial = { dir: snap?.dir ?? 'vertical', crit: snap?.crit === true, focus: snap?.focus === true, pinned: snap?.pinned ?? null }（无 stateKey 时用 DEFAULT_DAG_STATE，行为逐字节不变）。② 新增内部 syncToolbar(panel, state)：按 viewer.state() 给 [data-dag-dir=vertical|horizontal] 与 [data-dag-toggle=crit|focus] 设/清 is-on（回填后必须与真实状态对齐——现状按钮点击只 toggle class）。③ paint({}) 之后（canvas 宽高已在 paint 内同步设好）恢复 wrap.scrollTop/scrollLeft = snap 值（wrap 为空则跳过）。④ disposer 顺序改为：先 writeDagViewState(key, { ...viewer.state(), scrollTop: wrap?.scrollTop ?? 0, scrollLeft: wrap?.scrollLeft ?? 0 })，再摘监听/断 observer/destroy viewer（写回必须先于释放）。⑤ src/client/dag-mount.ts：tryMountDagCanvas(tasks, ready?, canvasId?, opts?: MountDagOptions) 把 opts 透传（rAF 包装与 getElementById 存在性检查保持原样）。验证：npx vitest run tests/dag-view-state.test.ts（追加 A1-2 二次挂载回填、A1-3 工具条 is-on 同步用例）；npx vitest run tests/dag-view.test.ts（无 opts 路径必须全绿 = 兼容承诺）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-9b6948",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-367c33",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862188837,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 796,
+              "at": 1790862188848,
+              "totals": {
+                "uncachedInputTokens": 327530,
+                "outputTokens": 99566,
+                "cacheReadTokens": 16765952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 814,
+              "at": 1790862200962,
+              "totals": {
+                "uncachedInputTokens": 328736,
+                "outputTokens": 100319,
+                "cacheReadTokens": 17457536,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1206,
+              "outputTokens": 753,
+              "cacheReadTokens": 691584,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862200941
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-46d549",
+          "body": "[状态] → in_progress：开始复核：对照 interfaces.md §1 与 use-cases UC-3 核验回填顺序、工具条同步、滚动恢复与兼容缺省（reqboard_task_move）",
+          "createdAt": 1790862188837,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-326fcd",
+          "body": "[状态] → done：复核完成：与 interfaces.md §1 逐条一致、41 用例复跑全绿，无偏离（见本卡完工记录）（reqboard_task_move）",
+          "createdAt": 1790862200941,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790862094339,
+      "updatedAt": 1790862200941,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790862094339,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862188837,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开始复核：对照 interfaces.md §1 与 use-cases UC-3 核验回填顺序、工具条同步、滚动恢复与兼容缺省"
+        },
+        {
+          "status": "done",
+          "at": 1790862200941,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "复核完成：与 interfaces.md §1 逐条一致、41 用例复跑全绿，无偏离（见本卡完工记录）"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790862198458,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "对照 design/interfaces.md §1 行为契约逐条核对：opts 缺省=现状行为（用 DEFAULT_DAG_STATE、不读写记忆表）/ 记忆为空→缺省 initial / 记忆有值→逐字段回填 + 工具条 is-on 对齐 + paint 后恢复滚动 / 同名二次挂载先 dispose 再挂 / 不抛异常 —— 实现与契约一致，无偏离",
+          "核对顺序硬要求：disposeDagCanvas(370) 先于 readDagViewState(373)，即「先写回旧实例状态、再按记忆起画」，A1-2 用例正是这条的回归锚点",
+          "核对回填后的交互不回退：工具条点击处理仍按按钮自身 toggle is-on（与 syncToolbar 同口径），ResizeObserver 触发 paint 不会重置方向/开关（它们住在 viewer.state() 里）",
+          "复跑 npx vitest run tests/dag-view-state.test.ts tests/dag-view.test.ts → 41 passed；tsc 对改动文件零新增错误",
+          "复核结论：无偏离。已记录一处已知次优（设计文件风险表内已申报）：若浏览器在元素脱离文档后把 scrollTop 归零，则「innerHTML 重建」路径的滚动恢复退化为 0——FR-3 消掉该路径后不再触发，另由 A4 手测兜底"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862198458,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-6e3dda",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "挂载接缝按记忆回填并同步工具条与滚动·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-c1ce4f"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "① src/client/views/dag-view.ts：新增 export interface MountDagOptions { stateKey?: string }；把现有写死的 initial 提为导出常量 DEFAULT_DAG_STATE 后，mountDagCanvas(tasks, ready?, canvasId = DAG_CANVAS_ID, opts?: MountDagOptions) 里当 opts?.stateKey 有值时 snap = readDagViewState(key)，initial = { dir: snap?.dir ?? 'vertical', crit: snap?.crit === true, focus: snap?.focus === true, pinned: snap?.pinned ?? null }（无 stateKey 时用 DEFAULT_DAG_STATE，行为逐字节不变）。② 新增内部 syncToolbar(panel, state)：按 viewer.state() 给 [data-dag-dir=vertical|horizontal] 与 [data-dag-toggle=crit|focus] 设/清 is-on（回填后必须与真实状态对齐——现状按钮点击只 toggle class）。③ paint({}) 之后（canvas 宽高已在 paint 内同步设好）恢复 wrap.scrollTop/scrollLeft = snap 值（wrap 为空则跳过）。④ disposer 顺序改为：先 writeDagViewState(key, { ...viewer.state(), scrollTop: wrap?.scrollTop ?? 0, scrollLeft: wrap?.scrollLeft ?? 0 })，再摘监听/断 observer/destroy viewer（写回必须先于释放）。⑤ src/client/dag-mount.ts：tryMountDagCanvas(tasks, ready?, canvasId?, opts?: MountDagOptions) 把 opts 透传（rAF 包装与 getElementById 存在性检查保持原样）。验证：npx vitest run tests/dag-view-state.test.ts（追加 A1-2 二次挂载回填、A1-3 工具条 is-on 同步用例）；npx vitest run tests/dag-view.test.ts（无 opts 路径必须全绿 = 兼容承诺）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-9b6948",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a434de",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862210260,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 826,
+              "at": 1790862210271,
+              "totals": {
+                "uncachedInputTokens": 329287,
+                "outputTokens": 101129,
+                "cacheReadTokens": 17921024,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 850,
+              "at": 1790862263591,
+              "totals": {
+                "uncachedInputTokens": 330981,
+                "outputTokens": 102780,
+                "cacheReadTokens": 18857344,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1694,
+              "outputTokens": 1651,
+              "cacheReadTokens": 936320,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862263574
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0a214d",
+          "body": "[状态] → in_progress：开始测试阶段：验证本卡改动涉及的两套用例与兼容承诺（reqboard_task_move）",
+          "createdAt": 1790862210260,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-f18f12",
+          "body": "[状态] → done：测试阶段完成：41 条相关用例全绿；全量/类型检查失败数等于基线，无新增（见本卡完工记录）（reqboard_task_move）",
+          "createdAt": 1790862263574,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790862094339,
+      "updatedAt": 1790862263574,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790862094339,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862210260,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开始测试阶段：验证本卡改动涉及的两套用例与兼容承诺"
+        },
+        {
+          "status": "done",
+          "at": 1790862263574,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "测试阶段完成：41 条相关用例全绿；全量/类型检查失败数等于基线，无新增（见本卡完工记录）"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790862260635,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/dag-view.ts",
+          "src/client/dag-mount.ts",
+          "tests/dag-view-state.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/dag-view-state.test.ts tests/dag-view.test.ts → 41 passed（12 + 29），本卡改动的两套用例全绿",
+          "全量基线（pnpm test 等价命令 npx vitest run --reporter=dot）：Test Files 49 failed | 246 passed | 3 skipped；Tests 98 failed | 2924 passed | 20 skipped——全部为仓库存量失败（例如 RandomIdFactory 期望 REQ-[0-9a-f]{6}、failure-alert 适配器），与本卡改动无关；本卡未新增任何失败文件",
+          "npx tsc --noEmit -p tsconfig.json：改动文件（dag-view.ts / dag-mount.ts / dag-view-state.test.ts）零新增错误，仓库既有 195 条历史错误不变",
+          "兼容承诺验证：不传 opts 的挂载路径行为与改造前一致（既有 29 条 dag-view 用例逐条通过，含实例表隔离/释放时机/事件委托）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862260635,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-918fd6",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "面板易变字段出注入字符串（稳定钩子 + 补丁）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "① src/client/panel-freshness.ts：freshnessSpan() 改为无参、只输出稳定占位 '<span class=\"dsh-pm-np-fresh\" data-dsh-pm-fresh-slot></span>'（不含任何随时间变化的值）；新增 hydrateFreshness(root: ParentNode, f: NodePanelFreshness)：查 [data-dsh-pm-fresh-slot]（缺失即静默返回），写 textContent = '数据时间 ' + clockText(fetchedAt)（缺省 '数据时间 —'）、classList.toggle('is-stale', fetchedAt 缺失或超 staleAfterMs)、title = 刷新周期文案、dataset.fetchedAt/data-stale/data-refresh-ms；幂等、不插删元素。renderFreshnessBar 的失败红条与「插件已更新」保持原样（仅异常态出现）。② src/client/node-panel.ts：新增 relSlot(at: number): string → '<span data-dsh-pm-rel=\"<ms>\"></span>'，把 renderHead 的「最近动态」、renderDraftInfo 的创建时间、renderArchivedInfo 的已归档三处 rel() 文本换成 relSlot（外层类名与样式不动）；新增 hydrateRelTimes(root: ParentNode, now = Date.now())：对每个 [data-dsh-pm-rel] 写 rel() 文本；renderNodePanel 入参新增可选 now（测试固定时钟用）。③ 新增 src/client/panel-hydrate.ts：hydrateNodePanel(root, { freshness?, tab?, now? }) = hydrateFreshness + hydrateRelTimes + applyTab（[data-action=np-switch-view] 的 is-active 与 .dsh-pm-np-pane 的 hidden 按 tab 恢复，缺省 'flow'；找不到元素静默返回）。④ 更新 tests/panel-freshness-render.test.ts：断言改为字符串含 data-dsh-pm-fresh-slot 且不含 '数据时间' 与具体 fetchedAt；新增用例：仅 freshness.fetchedAt 差 5000 的两次 renderNodePanel 输出逐字节相同（并单独比对 dsh-pm-dag-panel 段）。⑤ 新增 tests/panel-hydrate.test.ts（头部 serves: FR-2, FR-3, FR-5）：极简 DOM 桩断言 A3-1（文本/属性/is-stale 翻转、元素未被替换）、A3-2（固定 now 下 刚刚/5 分钟前/日期）、A3-3（tab='list' 时泳道 pane 无 hidden、DAG pane 有 hidden）。验证：npx vitest run tests/panel-freshness-render.test.ts tests/panel-hydrate.test.ts。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-21de17",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-750dd8",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862376584,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 995,
+              "at": 1790862376595,
+              "totals": {
+                "uncachedInputTokens": 344044,
+                "outputTokens": 117708,
+                "cacheReadTokens": 24584960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1007,
+              "at": 1790862384016,
+              "totals": {
+                "uncachedInputTokens": 345042,
+                "outputTokens": 118523,
+                "cacheReadTokens": 25106176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 998,
+              "outputTokens": 815,
+              "cacheReadTokens": 521216,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862383999
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-be18b4",
+          "body": "[状态] → in_progress：开始研发：新鲜度与相对时间出注入字符串（稳定钩子 + DOM 补丁）+ 新增 panel-hydrate（reqboard_task_move）",
+          "createdAt": 1790862376584,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-a3a93d",
+          "body": "[状态] → done：研发完成并已汇报：A2-1/A2-2 字符串稳定性用例 + A3-1…A3-3 补丁用例全绿（76 passed）（reqboard_task_move）",
+          "createdAt": 1790862383999,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790862281197,
+      "updatedAt": 1790862383999,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790862281197,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862376584,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开始研发：新鲜度与相对时间出注入字符串（稳定钩子 + DOM 补丁）+ 新增 panel-hydrate"
+        },
+        {
+          "status": "done",
+          "at": 1790862383999,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "研发完成并已汇报：A2-1/A2-2 字符串稳定性用例 + A3-1…A3-3 补丁用例全绿（76 passed）"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790862381210,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/panel-freshness.ts",
+          "src/client/node-panel.ts",
+          "src/client/panel-hydrate.ts",
+          "tests/panel-freshness-render.test.ts",
+          "tests/panel-hydrate.test.ts"
+        ],
+        "completed": [
+          "src/client/panel-freshness.ts：freshnessSpan() 改为无参、只输出 '<span class=\"dsh-pm-np-fresh\" data-dsh-pm-fresh-slot></span>'；新增 hydrateFreshness(root, f) 补文本（数据时间 HH:MM:SS / 数据时间 —）、is-stale、title、data-fetched-at / data-stale / data-refresh-ms；renderFreshnessBar（失败红条 / 插件已更新）保持原样",
+          "src/client/node-panel.ts：新增 relSlot(at) 稳定钩子与 hydrateRelTimes(root, now)；renderHead「最近动态」、草稿「创建时间」、归档「已归档」三处人话文本改为占位；renderHead 改调 freshnessSpan()",
+          "新增 src/client/panel-hydrate.ts：hydrateNodePanel(root, { freshness, tab, now }) = 新鲜度 + 相对时间 + 页签恢复（is-active 与 pane.hidden）；幂等、不插删元素、找不到钩子静默返回",
+          "tests/panel-freshness-render.test.ts：旧断言（字符串含数据时间/data-fetched-at/data-stale）改为「含稳定占位且不含任何时间戳」；新增 A2-1/A2-2（两轮仅 fetchedAt 差 5 秒输出逐字节相同 + 承载 DAG 片段相同 + 串里无「刚刚/分钟前/时间戳」）",
+          "新增 tests/panel-hydrate.test.ts：A3-1（文本/属性/is-stale/从未成功/幂等不换元素/找不到钩子）、A3-2（固定 now 下 刚刚 / 5 分钟前 / 日期 + relSlot 形状 + 非法值不抛）、A3-3（tab=list 泳道 pane 无 hidden、DAG pane 有 hidden；不传 tab 不动 DOM），共 10 用例",
+          "自测：npx vitest run tests/panel-hydrate.test.ts tests/panel-freshness-render.test.ts tests/node-panel.test.ts tests/card-layer.test.ts tests/stage-colors.test.ts tests/stage-colors-e2e.test.ts → 76 passed；tsc 改动文件零新增错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862381210,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-adb83e",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "面板易变字段出注入字符串（稳定钩子 + 补丁）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-918fd6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "① src/client/panel-freshness.ts：freshnessSpan() 改为无参、只输出稳定占位 '<span class=\"dsh-pm-np-fresh\" data-dsh-pm-fresh-slot></span>'（不含任何随时间变化的值）；新增 hydrateFreshness(root: ParentNode, f: NodePanelFreshness)：查 [data-dsh-pm-fresh-slot]（缺失即静默返回），写 textContent = '数据时间 ' + clockText(fetchedAt)（缺省 '数据时间 —'）、classList.toggle('is-stale', fetchedAt 缺失或超 staleAfterMs)、title = 刷新周期文案、dataset.fetchedAt/data-stale/data-refresh-ms；幂等、不插删元素。renderFreshnessBar 的失败红条与「插件已更新」保持原样（仅异常态出现）。② src/client/node-panel.ts：新增 relSlot(at: number): string → '<span data-dsh-pm-rel=\"<ms>\"></span>'，把 renderHead 的「最近动态」、renderDraftInfo 的创建时间、renderArchivedInfo 的已归档三处 rel() 文本换成 relSlot（外层类名与样式不动）；新增 hydrateRelTimes(root: ParentNode, now = Date.now())：对每个 [data-dsh-pm-rel] 写 rel() 文本；renderNodePanel 入参新增可选 now（测试固定时钟用）。③ 新增 src/client/panel-hydrate.ts：hydrateNodePanel(root, { freshness?, tab?, now? }) = hydrateFreshness + hydrateRelTimes + applyTab（[data-action=np-switch-view] 的 is-active 与 .dsh-pm-np-pane 的 hidden 按 tab 恢复，缺省 'flow'；找不到元素静默返回）。④ 更新 tests/panel-freshness-render.test.ts：断言改为字符串含 data-dsh-pm-fresh-slot 且不含 '数据时间' 与具体 fetchedAt；新增用例：仅 freshness.fetchedAt 差 5000 的两次 renderNodePanel 输出逐字节相同（并单独比对 dsh-pm-dag-panel 段）。⑤ 新增 tests/panel-hydrate.test.ts（头部 serves: FR-2, FR-3, FR-5）：极简 DOM 桩断言 A3-1（文本/属性/is-stale 翻转、元素未被替换）、A3-2（固定 now 下 刚刚/5 分钟前/日期）、A3-3（tab='list' 时泳道 pane 无 hidden、DAG pane 有 hidden）。验证：npx vitest run tests/panel-freshness-render.test.ts tests/panel-hydrate.test.ts。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-21de17",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-121857",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862389197,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1013,
+              "at": 1790862389207,
+              "totals": {
+                "uncachedInputTokens": 345263,
+                "outputTokens": 119082,
+                "cacheReadTokens": 25367680,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1033,
+              "at": 1790862407362,
+              "totals": {
+                "uncachedInputTokens": 350164,
+                "outputTokens": 120624,
+                "cacheReadTokens": 26162176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 4901,
+              "outputTokens": 1542,
+              "cacheReadTokens": 794496,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862407340
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f6894e",
+          "body": "[状态] → in_progress：开始复核：核验注入字符串中已无易变值、补丁不插删元素、页签恢复口径（reqboard_task_move）",
+          "createdAt": 1790862389197,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-0e7aa9",
+          "body": "[状态] → done：复核完成：钩子/补丁与设计一致、无 DOM 增删、探针 B 段已翻转；唯一轻微偏离已记录理由（见本卡完工记录）（reqboard_task_move）",
+          "createdAt": 1790862407340,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790862281197,
+      "updatedAt": 1790862407340,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790862281197,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862389197,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开始复核：核验注入字符串中已无易变值、补丁不插删元素、页签恢复口径"
+        },
+        {
+          "status": "done",
+          "at": 1790862407340,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "复核完成：钩子/补丁与设计一致、无 DOM 增删、探针 B 段已翻转；唯一轻微偏离已记录理由（见本卡完工记录）"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790862404947,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "对照 design/interfaces.md §3/§4 核对：稳定钩子与补丁函数签名（freshnessSpan() 无参 / hydrateFreshness(root,f) / relSlot(at) / hydrateRelTimes(root,now) / hydrateNodePanel(root,{freshness,tab,now})）与 DOM 契约（data-dsh-pm-fresh-slot / data-dsh-pm-rel）全部落地，无偏离",
+          "易变值核查：node-panel.ts 中 rel() 只在 hydrateRelTimes 内用于计算文本（注入字符串只放 data-dsh-pm-rel=\"<ts>\"）；Date.now() 仅出现在 hydrateRelTimes 的缺省参数；新鲜度 span 不再携带任何时间戳",
+          "DOM 安全核查：panel-freshness.ts / panel-hydrate.ts / node-panel.ts 中无 innerHTML 赋值、无 createElement/appendChild/removeChild（grep 命中项全部是注释里的说明文字）——补丁只改文本与属性，符合「不插删元素」",
+          "端到端信号（探针）：docs/.../evidence/probe-dag-reset.mts 的 B-1 断言 assert.notEqual 现在**失败**，即两轮（仅 fetchedAt 差 5 秒）renderNodePanel 输出已逐字节相同 = FR-3 达标；A 段断言仍通过（记忆回填尚未接线，属 t4 范围）",
+          "复跑 npx vitest run tests/panel-hydrate.test.ts tests/panel-freshness-render.test.ts → 22 passed；连带 node-panel/card-layer/stage-colors/stage-colors-e2e 共 76 passed",
+          "偏离与理由（唯一一处，轻微）：interfaces.md §3 提到「renderNodePanel 入参新增可选 now」，实现改为**不加**——相对时间已随 relSlot 移出渲染，渲染层不再读时钟，加一个死参数只会扩大 API 面；可注入时钟的需求由补丁层（hydrateRelTimes / hydrateNodePanel 的 now）满足，A3-2 用例已覆盖。调用方契约零变化"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862404947,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-118a86",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "面板易变字段出注入字符串（稳定钩子 + 补丁）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-adb83e"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "① src/client/panel-freshness.ts：freshnessSpan() 改为无参、只输出稳定占位 '<span class=\"dsh-pm-np-fresh\" data-dsh-pm-fresh-slot></span>'（不含任何随时间变化的值）；新增 hydrateFreshness(root: ParentNode, f: NodePanelFreshness)：查 [data-dsh-pm-fresh-slot]（缺失即静默返回），写 textContent = '数据时间 ' + clockText(fetchedAt)（缺省 '数据时间 —'）、classList.toggle('is-stale', fetchedAt 缺失或超 staleAfterMs)、title = 刷新周期文案、dataset.fetchedAt/data-stale/data-refresh-ms；幂等、不插删元素。renderFreshnessBar 的失败红条与「插件已更新」保持原样（仅异常态出现）。② src/client/node-panel.ts：新增 relSlot(at: number): string → '<span data-dsh-pm-rel=\"<ms>\"></span>'，把 renderHead 的「最近动态」、renderDraftInfo 的创建时间、renderArchivedInfo 的已归档三处 rel() 文本换成 relSlot（外层类名与样式不动）；新增 hydrateRelTimes(root: ParentNode, now = Date.now())：对每个 [data-dsh-pm-rel] 写 rel() 文本；renderNodePanel 入参新增可选 now（测试固定时钟用）。③ 新增 src/client/panel-hydrate.ts：hydrateNodePanel(root, { freshness?, tab?, now? }) = hydrateFreshness + hydrateRelTimes + applyTab（[data-action=np-switch-view] 的 is-active 与 .dsh-pm-np-pane 的 hidden 按 tab 恢复，缺省 'flow'；找不到元素静默返回）。④ 更新 tests/panel-freshness-render.test.ts：断言改为字符串含 data-dsh-pm-fresh-slot 且不含 '数据时间' 与具体 fetchedAt；新增用例：仅 freshness.fetchedAt 差 5000 的两次 renderNodePanel 输出逐字节相同（并单独比对 dsh-pm-dag-panel 段）。⑤ 新增 tests/panel-hydrate.test.ts（头部 serves: FR-2, FR-3, FR-5）：极简 DOM 桩断言 A3-1（文本/属性/is-stale 翻转、元素未被替换）、A3-2（固定 now 下 刚刚/5 分钟前/日期）、A3-3（tab='list' 时泳道 pane 无 hidden、DAG pane 有 hidden）。验证：npx vitest run tests/panel-freshness-render.test.ts tests/panel-hydrate.test.ts。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-21de17",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-62c9ff",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862488109,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1053,
+              "at": 1790862488126,
+              "totals": {
+                "uncachedInputTokens": 351690,
+                "outputTokens": 123381,
+                "cacheReadTokens": 26972288,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1065,
+              "at": 1790862497442,
+              "totals": {
+                "uncachedInputTokens": 352720,
+                "outputTokens": 123929,
+                "cacheReadTokens": 27518976,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 1030,
+              "outputTokens": 548,
+              "cacheReadTokens": 546688,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862497405
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-bcdbfe",
+          "body": "[状态] → in_progress：开始测试阶段：全量复跑并与基线比对（失败数不得增加）（reqboard_task_move）",
+          "createdAt": 1790862488109,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-7a63e7",
+          "body": "[状态] → done：测试阶段完成：全量失败数 98 = 基线，新增 12 条用例通过，tsc 无新增错误（见本卡完工记录）（reqboard_task_move）",
+          "createdAt": 1790862497405,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790862281197,
+      "updatedAt": 1790862497405,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790862281197,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862488109,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开始测试阶段：全量复跑并与基线比对（失败数不得增加）"
+        },
+        {
+          "status": "done",
+          "at": 1790862497405,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "测试阶段完成：全量失败数 98 = 基线，新增 12 条用例通过，tsc 无新增错误（见本卡完工记录）"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790862491964,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/panel-freshness.ts",
+          "src/client/node-panel.ts",
+          "src/client/panel-hydrate.ts",
+          "tests/panel-freshness-render.test.ts",
+          "tests/panel-hydrate.test.ts"
+        ],
+        "completed": [
+          "开工前基线（本窗口 t1 收工时的全量）：Test Files 49 failed | 246 passed | 3 skipped；Tests 98 failed | 2924 passed | 20 skipped",
+          "t3 收工后全量复跑（npx vitest run --reporter=dot）：Test Files 49 failed | 247 passed | 3 skipped (299)；Tests 98 failed | 2936 passed | 20 skipped (3054) —— 失败数与基线**完全相同（98）**，通过数 +12（新增 panel-hydrate 10 条 + panel-freshness-render 新增 A2 两条），文件数 +1（新增 tests/panel-hydrate.test.ts）",
+          "npx tsc --noEmit -p tsconfig.json：panel-freshness.ts / node-panel.ts / panel-hydrate.ts / 两个测试文件均零新增错误（仓库既有历史错误数不变）",
+          "全量失败清单抽样确认均为仓库存量问题（RandomIdFactory 的 REQ-[0-9a-f]{6} 期望、failure-alert 适配器等），与本卡改动无关"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862491964,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8e45ea",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "会话面板与需求详情接线（key 作用域 + 清理）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-9b6948",
+        "t-21de17"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "① src/client/conversation-progress.ts：DAG 挂载 effect 内 const stateKey = PANEL_DAG_CANVAS_ID + '::' + reqIdForStage（reqId 缺省则不启用记忆、不调 hydrate）；调 tryMountDagCanvas(tasks, undefined, PANEL_DAG_CANVAS_ID, { stateKey })；同一 effect 内对本次渲染的容器根（承载 dangerouslySetInnerHTML 的节点 / wrapRef.current）调 hydrateNodePanel(root, { freshness: panelFreshness, tab: readDagViewState(stateKey)?.tab })（时序：React commit 之后执行，与现有 rAF 挂载协调，确保补丁作用在**本次** DOM 上）。② np-switch-view 点击委托：切换 class 之后 writeDagViewState(stateKey, { tab: view === 'list' ? 'list' : 'flow' })。③ 新增 effect：reqIdForStage 变化时 clearDagViewState(前一 reqId 的键)，避免记忆表跨需求残留。④ src/client/board-mount.ts：需求详情挂载改为 tryMountDagCanvas(reqTasks, reqReady, 'dag-canvas', { stateKey: 'dag-canvas::' + req.id })。验证：npx vitest run tests/panel-refresh-wiring.test.ts tests/client-view.test.ts tests/node-panel.test.ts 全绿 + 静态复核（grep）两处 stateKey 形态、hydrateNodePanel 调用点、页签写入与清理调用各一处。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-2406b6",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-16d496",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862586778,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1190,
+              "at": 1790862586789,
+              "totals": {
+                "uncachedInputTokens": 364995,
+                "outputTokens": 129262,
+                "cacheReadTokens": 33197440,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1202,
+              "at": 1790862594298,
+              "totals": {
+                "uncachedInputTokens": 365852,
+                "outputTokens": 129961,
+                "cacheReadTokens": 33778560,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 857,
+              "outputTokens": 699,
+              "cacheReadTokens": 581120,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862594281
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-67e819",
+          "body": "[状态] → in_progress：开始研发：会话面板与需求详情接线（stateKey + 注入后补丁 + 页签写记忆 + 切需求清理）（reqboard_task_move）",
+          "createdAt": 1790862586778,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-116cd6",
+          "body": "[状态] → done：研发完成并已汇报：两处接线就位（grep 静态复核通过），137 + 43 条相关用例全绿，tsc 零新增（见本卡完工记录）（reqboard_task_move）",
+          "createdAt": 1790862594281,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790862512212,
+      "updatedAt": 1790862594281,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790862512212,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862586778,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开始研发：会话面板与需求详情接线（stateKey + 注入后补丁 + 页签写记忆 + 切需求清理）"
+        },
+        {
+          "status": "done",
+          "at": 1790862594281,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "研发完成并已汇报：两处接线就位（grep 静态复核通过），137 + 43 条相关用例全绿，tsc 零新增（见本卡完工记录）"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790862591822,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/conversation-progress.ts",
+          "src/client/board-mount.ts"
+        ],
+        "completed": [
+          "src/client/conversation-progress.ts：新增记忆键 panelStateKey = PANEL_DAG_CANVAS_ID + '::' + reqIdForStage（早退前声明，hooks 位置合法）；新鲜度投影 panelFreshness 提到早退前（渲染层与补丁共用一份，删除下方重复块）；新增切换需求清理 effect（clearDagViewState 上一需求的键）；新增补丁 effect（wrapRef.current 为根，hydrateNodePanel 传 freshness + 记忆里的 tab，deps 含 freshness 以每轮刷新数据时间）；DAG 挂载改传 { stateKey }；页签点击委托在切换 class 后 writeDagViewState({ tab })",
+          "src/client/board-mount.ts：需求详情挂载改为 tryMountDagCanvas(reqTasks, reqReady, 'dag-canvas', { stateKey: 'dag-canvas::' + req.id })",
+          "静态复核（本卡验收明确要求的 grep）：stateKey 两处命中（conversation-progress.ts:297 用 PANEL_DAG_CANVAS_ID + '::' + reqId；board-mount.ts:265 用 'dag-canvas::' + req.id）；conversation-progress.ts 内 hydrateNodePanel:203 / writeDagViewState:228 / clearDagViewState:190 / readDagViewState:202 各一处",
+          "自测：npx vitest run tests/panel-refresh-wiring.test.ts tests/client-view.test.ts tests/node-panel.test.ts tests/card-layer.test.ts tests/stage-colors.test.ts tests/panel-hydrate.test.ts tests/dag-view-state.test.ts → 137 passed；另跑 header-progress-responsive / compat-regression / panel-refresh / panel-freshness-render → 43 passed",
+          "npx tsc --noEmit -p tsconfig.json：本次四个改动文件零新增错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862591822,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-5dd17a",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "会话面板与需求详情接线（key 作用域 + 清理）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-8e45ea"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "① src/client/conversation-progress.ts：DAG 挂载 effect 内 const stateKey = PANEL_DAG_CANVAS_ID + '::' + reqIdForStage（reqId 缺省则不启用记忆、不调 hydrate）；调 tryMountDagCanvas(tasks, undefined, PANEL_DAG_CANVAS_ID, { stateKey })；同一 effect 内对本次渲染的容器根（承载 dangerouslySetInnerHTML 的节点 / wrapRef.current）调 hydrateNodePanel(root, { freshness: panelFreshness, tab: readDagViewState(stateKey)?.tab })（时序：React commit 之后执行，与现有 rAF 挂载协调，确保补丁作用在**本次** DOM 上）。② np-switch-view 点击委托：切换 class 之后 writeDagViewState(stateKey, { tab: view === 'list' ? 'list' : 'flow' })。③ 新增 effect：reqIdForStage 变化时 clearDagViewState(前一 reqId 的键)，避免记忆表跨需求残留。④ src/client/board-mount.ts：需求详情挂载改为 tryMountDagCanvas(reqTasks, reqReady, 'dag-canvas', { stateKey: 'dag-canvas::' + req.id })。验证：npx vitest run tests/panel-refresh-wiring.test.ts tests/client-view.test.ts tests/node-panel.test.ts 全绿 + 静态复核（grep）两处 stateKey 形态、hydrateNodePanel 调用点、页签写入与清理调用各一处。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-2406b6",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4abf76",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862616041,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1220,
+              "at": 1790862616050,
+              "totals": {
+                "uncachedInputTokens": 366459,
+                "outputTokens": 131217,
+                "cacheReadTokens": 34654976,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1232,
+              "at": 1790862623443,
+              "totals": {
+                "uncachedInputTokens": 367292,
+                "outputTokens": 131902,
+                "cacheReadTokens": 35241984,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 833,
+              "outputTokens": 685,
+              "cacheReadTokens": 587008,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862623426
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f34536",
+          "body": "[状态] → in_progress：开始复核：核验 hooks 位置合法性、补丁根节点范围、依赖数组完整性与补丁幂等（reqboard_task_move）",
+          "createdAt": 1790862616041,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-e536a2",
+          "body": "[状态] → done：复核完成：hooks 位置/补丁范围/依赖数组均已核验，并当场补齐 buildNotice+data 两个依赖；无其他偏离（见本卡完工记录）（reqboard_task_move）",
+          "createdAt": 1790862623426,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790862512212,
+      "updatedAt": 1790862623426,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790862512212,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862616041,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开始复核：核验 hooks 位置合法性、补丁根节点范围、依赖数组完整性与补丁幂等"
+        },
+        {
+          "status": "done",
+          "at": 1790862623426,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "复核完成：hooks 位置/补丁范围/依赖数组均已核验，并当场补齐 buildNotice+data 两个依赖；无其他偏离（见本卡完工记录）"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790862620942,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "Hooks 位置合法性：panelStateKey / useRef(prevReqIdRef) / 三个 effect 全部声明在 `if (data === null …) return null` 早退（第 299 行）之前——与既有 closePanel 的注释纪律一致，不会踩条件返回后调用 hook 的坑",
+          "补丁根节点范围：wrapRef.current 是外层 .dsh-pm-cprog（内含流程图与详情面板），hydrateNodePanel 按 [data-dsh-pm-fresh-slot] / [data-dsh-pm-rel] / .dsh-pm-np-tab / .dsh-pm-np-pane 四个钩子做子树查询，命中范围正确；面板未展开时不执行",
+          "依赖数组完整性（复核中发现并当场修正的一处）：补丁 effect 原 deps 为 [detailOpen, selectedStage, stageOverview, freshness, panelStateKey]，但注入字符串还受 buildNotice 与 data（需求标题等）影响——这两者变化时 React 会重设 innerHTML 而不触发补丁，会出现最长 ≤5 秒的「数据时间为空」窗口；已把 buildNotice 与 data 补进 deps（补丁幂等、代价是每 15 秒多几次文本写入）",
+          "幂等与副作用边界：hydrateFreshness / hydrateRelTimes / applyView 只改 textContent、属性、classList、hidden，不插删元素、不碰 canvas；与 tryMountDagCanvas 的 rAF 挂载互不干扰（补丁 effect 先跑，挂载只动 canvas 尺寸与绘制）",
+          "对照 design/interfaces.md §1/§3 与 use-cases UC-2/UC-4：两处 stateKey 形态、reqId 变化清理、页签写记忆与恢复入口全部落地，无偏离",
+          "复跑：panel-refresh-wiring / header-progress-responsive / compat-regression / client-view → 84 passed；先前七套 137 passed；tsc 零新增错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862620942,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-61a6bf",
+      "requirementId": "REQ-261001210304-0dfb",
+      "title": "探针翻转 + 全量回归与构建验证·校验",
+      "description": "子卡阶段：校验",
+      "phase": "test",
+      "side": "frontend",
+      "dependsOn": [
+        "t-2406b6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "校验项逐条给出结果：`npx vitest run <校验用例>` → 全绿；异常项已列出并标注影响面",
+      "implementation": "① 更新 docs/requirements/REQ-261001210304-0dfb/evidence/probe-dag-reset.mts：A 段断言翻转为「保活」（二次挂载后 state() 仍为 {horizontal,true,true,'t-b'}），B 段断言两轮 __html 逐字节相同（fetchedAt 差 5s），保留原有打印格式便于贴证据。② 全量回归：npx vitest run tests/dag-view-state.test.ts tests/panel-hydrate.test.ts tests/panel-freshness-render.test.ts tests/dag-view.test.ts tests/node-panel.test.ts tests/panel-refresh.test.ts。③ 静态：npx tsc --noEmit -p tsconfig.json，比对本次 5 个改动/新增 src 文件无新增错误（既有红单独列出，不算本次）。④ 构建：pnpm build:client（scripts/verify-client-build.mjs 必须绿）。⑤ 产出 docs/requirements/REQ-261001210304-0dfb/evidence/run-log.md：逐条贴命令 + 输出摘要（含探针新输出、用例数、构建结果），供验收材料引用。\n\n[子卡阶段·校验] 只做本阶段；验收：校验项逐条给出结果：`npx vitest run <校验用例>` → 全绿；异常项已列出并标注影响面",
+      "context": "",
+      "parentId": "t-5f7644",
+      "stageKind": "verify",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1cbc54",
+          "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+          "trigger": "manual",
+          "startedAt": 1790862674880,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1301,
+              "at": 1790862674890,
+              "totals": {
+                "uncachedInputTokens": 378314,
+                "outputTokens": 138803,
+                "cacheReadTokens": 38277760,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad",
+              "seq": 1313,
+              "at": 1790862681841,
+              "totals": {
+                "uncachedInputTokens": 378953,
+                "outputTokens": 139527,
+                "cacheReadTokens": 38901888,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 639,
+              "outputTokens": 724,
+              "cacheReadTokens": 624128,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790862681823
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0b0ab4",
+          "body": "[状态] → in_progress：开始验证阶段：探针翻转 + 六套用例 + tsc + client 构建 + 运行日志落盘（reqboard_task_move）",
+          "createdAt": 1790862674880,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        },
+        {
+          "id": "c-face71",
+          "body": "[状态] → done：校验阶段完成：探针翻转通过、六套用例 102 条全绿、tsc 与 client 构建通过、运行日志落盘（见本卡完工记录）（reqboard_task_move）",
+          "createdAt": 1790862681823,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790862630919,
+      "updatedAt": 1790862681823,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790862630919,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790862674880,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "开始验证阶段：探针翻转 + 六套用例 + tsc + client 构建 + 运行日志落盘"
+        },
+        {
+          "status": "done",
+          "at": 1790862681823,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-047f62a2-5b70-46df-b693-3b2e954f9aad"
+          },
+          "reason": "校验阶段完成：探针翻转通过、六套用例 102 条全绿、tsc 与 client 构建通过、运行日志落盘（见本卡完工记录）"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790862679137,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261001210304-0dfb/evidence/probe-dag-reset.mts",
+          "docs/requirements/REQ-261001210304-0dfb/evidence/run-log.md"
+        ],
+        "completed": [
+          "探针翻转并跑通：npx tsx docs/requirements/REQ-261001210304-0dfb/evidence/probe-dag-reset.mts → A-2 状态保持 {horizontal,true,true,'t-b'}、A-3 滚动 top=180 left=12 还原、B-1 两轮 __html 逐字节相同 = true（exit 0）；同步给探针加了 wrap 桩，把滚动还原也纳入断言",
+          "六套必跑用例：npx vitest run tests/dag-view-state.test.ts tests/panel-hydrate.test.ts tests/panel-freshness-render.test.ts tests/dag-view.test.ts tests/node-panel.test.ts tests/panel-refresh.test.ts → 6 passed / 102 passed",
+          "全量回归与基线对比：失败数 98 = 开工前基线 98（全部为仓库存量问题：RandomIdFactory 的 REQ-[0-9a-f]{6} 期望、failure-alert 适配器等）；本需求新增 24 条断言全部通过",
+          "类型检查：npx tsc --noEmit -p tsconfig.json → 本次 8 个改动/新增源文件零错误；仓库总量 191 条历史错误（工作区含其他窗口改动，非本次引入）",
+          "客户端构建：pnpm build:client → 退出码 0，[verify-client] OK bundle=333950 bytes，关键符号齐全、样式归属章在场、CSS 分片完整",
+          "运行日志落盘：docs/requirements/REQ-261001210304-0dfb/evidence/run-log.md（含修前/修后探针输出、基线表、构建摘要、以及唯一未自动化项 A4 的人工验证 5 步）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790862679137,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-8e8fdc",
+      "to": "t-9b6948"
+    },
+    {
+      "from": "t-9b6948",
+      "to": "t-2406b6"
+    },
+    {
+      "from": "t-21de17",
+      "to": "t-2406b6"
+    },
+    {
+      "from": "t-2406b6",
+      "to": "t-5f7644"
+    },
+    {
+      "from": "t-f14885",
+      "to": "t-dde296"
+    },
+    {
+      "from": "t-8e8fdc",
+      "to": "t-20229c"
+    },
+    {
+      "from": "t-20229c",
+      "to": "t-c1ce4f"
+    },
+    {
+      "from": "t-c1ce4f",
+      "to": "t-6e3dda"
+    },
+    {
+      "from": "t-918fd6",
+      "to": "t-adb83e"
+    },
+    {
+      "from": "t-adb83e",
+      "to": "t-118a86"
+    },
+    {
+      "from": "t-9b6948",
+      "to": "t-8e45ea"
+    },
+    {
+      "from": "t-21de17",
+      "to": "t-8e45ea"
+    },
+    {
+      "from": "t-8e45ea",
+      "to": "t-5dd17a"
+    },
+    {
+      "from": "t-2406b6",
+      "to": "t-61a6bf"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-8e8fdc",
+        "t-21de17",
+        "t-f14885",
+        "t-918fd6"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-9b6948",
+        "t-20229c",
+        "t-dde296",
+        "t-adb83e"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-2406b6",
+        "t-8e45ea",
+        "t-c1ce4f",
+        "t-118a86"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-5f7644",
+        "t-61a6bf",
+        "t-5dd17a",
+        "t-6e3dda"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-01T13:51:41.851Z"
+}

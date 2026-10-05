@@ -7,6 +7,7 @@
  * @module dsh-pmboard/http/routers/Stages
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { resolveDocRoot } from './shared.js'
 import { homedir } from 'node:os'
 import {
   asStageKey,
@@ -14,7 +15,7 @@ import {
   totalTokens,
   windowCodeFromSessionId,
   type RequirementRecord,
-  type TaskRecord,
+  type RequirementTokenView,
 } from '../../shared/protocol.js'
 import { syncAllReqArtifacts, syncReqArtifacts } from '../../adapters/ArtifactSync.js'
 import { assembleStageDetail, assembleStageOverview } from '../../application/query/QueryStageDetail.js'
@@ -31,39 +32,111 @@ import {
 import { countDoneTasks, countUnfinishedTasks, isActiveRequirement, isOpenRequirement } from '../../domain/status/Predicates.js'
 import { TASK_STATUS_ORDER } from '../../domain/task/TaskStatus.js'
 import { fmt } from '../../domain/text/fmt.js'
+import { clientBuildStamp } from '../client-build.js'
 import type { RouterCtx } from './shared.js'
 
 export function createStagesRouter(ctx: RouterCtx) {
-  const { store, taskStore, ok, deps } = ctx
+  // B12 阶段④-2-③：本文件的读与订阅已全部迁到 `ctx.requirementStore` ⇒ 旧口不再需要
+  const { taskStore, ok, fail, deps } = ctx
 
-  async function handleState(res: ServerResponse): Promise<void> {
-    // 产物自动发现（REQ-2e9473 t11/W4）：渲染前同步需求目录，落盘即产物
-    await syncAllReqArtifacts(store, deps.cwd).catch(() => { /* 扫描失败不阻断看板 */ })
-    const ledger = await store.read(l => l)
+  /**
+   * B12 阶段④-2-③：整册读改走新端口。裁决①（对话）＝本卡**保持载荷形状**：
+   * 摘要列 id → 逐条取全文（读放大治理与 /state 契约变更按设计 interfaces.md:119-125 **另开卡**）。
+   */
+  async function readAll(): Promise<{ revision: number; requirements: RequirementRecord[] }> {
+    const st = ctx.requirementStore
+    const items = (await st.listSummaries({ scope: 'all' })).items
+    const requirements = (await Promise.all(items.map(async (i) => await st.get(i.id))))
+      .filter((r): r is RequirementRecord => r !== undefined)
+      // 新端口的摘要序是 updatedAt 倒序（分页规范序）；旧台账是**追加序**。
+      // 裁决①要求本卡**保载荷逐字节** ⇒ 这里按 createdAt 升序（同级按 id）还原追加序。
+      .sort((a, b) => (a.createdAt !== b.createdAt ? a.createdAt - b.createdAt : (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)))
+    const { revision } = await st.head()
+    return { revision, requirements }
+  }
+
+  /**
+   * GET /（含 `/state`）——**摘要 + 分页**载荷（REQ-261002161439-277d B12 阶段⑥-①）。
+   *
+   * 改前两处随数据量放大：① 每请求 `syncAllReqArtifacts` 全量扫需求目录；
+   * ② 先用摘要取 id 再逐条 `get` 回**全文**（含 comments/artifacts/plan/archive）塞进响应
+   * —— 实测 A9 夹具（35 条、33 归档）单次响应 **2,768,960 字节**。
+   * 改后：只回摘要（计数代替本体），产物扫描移到 `POST /artifacts/scan`，详情走 `GET /requirements/:id`。
+   */
+  async function handleState(res: ServerResponse, url: URL): Promise<void> {
+    const scopeRaw = url.searchParams.get('scope')
+    const scope: 'active' | 'archived' | 'all' =
+      scopeRaw === 'all' || scopeRaw === 'archived' ? scopeRaw : 'active'
+    const limitRaw = Number(url.searchParams.get('limit') ?? '200')
+    const limit = Number.isFinite(limitRaw) && limitRaw >= 1 ? Math.min(Math.floor(limitRaw), 1000) : 200
+    const cursor = url.searchParams.get('cursor') ?? undefined
+    // FR-11：本次请求的读根（会话优先）。前端把当前会话 id 放进 ?session= 查询参数。
+    const docRoot = resolveDocRoot(deps, url.searchParams.get('session') ?? undefined)
+    const st = ctx.requirementStore
+    const page = await st.listSummaries({ scope, limit, ...(cursor === undefined ? {} : { cursor }) })
     // 任务来自队列（REQ-260927202051-f6df）：listAll() 顺序 = requirementId 字典序分组 + 组内队列顺序（D2/D8）。
     const tasks = await taskStore.listAll()
+    const { revision } = await st.head()
     ok(res, {
-      revision: ledger.revision,
-      requirements: ledger.requirements,
+      revision,
+      limit,
+      // 末页时**不发该键**（缺失 = 到底；发 null 会被客户端读成"还有一页"）。
+      ...(page.nextCursor === undefined ? {} : { nextCursor: page.nextCursor }),
+      requirements: page.items,
       tasks: tasks.map(t => ({ ...t })),
       // 派生视图：每个需求的 ready 任务（client 调度提示用）。
       // 仍用 readyTasks(队列任务, rId)：**按任务数组顺序**输出 —— 需求内顺序必须保住（R-3/D8），
       // 故不用队列文件的 `ready` 字段（其顺序由 computeReady 决定，不保证一致）。
       ready: Object.fromEntries(
-        ledger.requirements.map(r => [r.id, readyTasks(tasks, r.id).map(t => t.id)]),
+        page.items.map(r => [r.id, readyTasks(tasks, r.id).map(t => t.id)]),
       ),
       // REQ-a33899：需求卡面累计 token。**无快照的需求不出现该键**（缺失 ≠ 0）。
+      // B12 阶段⑥-①：该派生视图要读产物本体才能算，故**只对本页 id 计算**（有界：≤ limit 条，
+      // 且默认 scope=active 时归档需求根本不在页内）；不再是"整册逐条回全文"。
       tokenTotals: Object.fromEntries(
-        ledger.requirements
-          .map(r => [r.id, requirementTotalTokens(r)] as const)
-          .filter(([, v]) => v !== undefined),
+        (await Promise.all(page.items.map(async (i) => {
+          const full = await st.get(i.id)
+          return [i.id, full === undefined ? undefined : requirementTotalTokens(full)] as const
+        })))
+          .filter((e): e is readonly [string, number] => e[1] !== undefined),
       ),
       // REQ-260922012924-2e29 FR-4：文档路径绝对化的"根"。看板/会话进度打开文档时以它把
       // 相对路径拼成绝对路径（dsh-resource 协议支持绝对路径），不再依赖查看会话的工作区——
       // 修复"工作区=dsh-pmboard 的会话打不开需求文档"。旧客户端读不到这两个字段即忽略。
-      workspaceRoot: deps.cwd ?? process.cwd(),
+      // REQ-261003215944-9e04 FR-11：读根改为**发起阅读的会话工作区**（带 ?session=<id> 时），
+      // 解析不到才回落 legacy cwd——并在 docsRootSource 里如实说明用了哪个根（不静默降级）。
+      workspaceRoot: docRoot.root,
+      sessionWorkspaceRoot: docRoot.sessionRoot,
+      docsRootSource: docRoot.source,
       homeDir: homedir(),
     })
+  }
+
+  /**
+   * POST /artifacts/scan —— 产物自动发现（REQ-2e9473 t11/W4）从 `GET /` 挪到这里（A10）。
+   *
+   * 为什么挪：扫描是"写侧"动作（落盘即产物），放在读接口上等于**每次看板刷新都写一遍台账**，
+   * 且随需求目录规模放大。挪成独立端点后：GET 只读、扫描显式发生、可被单独调用与断言。
+   */
+  async function handleArtifactScan(res: ServerResponse): Promise<void> {
+    await syncAllReqArtifacts(ctx.requirementStore, deps.cwd)
+      .then((r) => ok(res, { scanned: r.scanned, skipped: r.skipped }))
+      .catch((err: unknown) => fail(res, err))
+  }
+
+  /**
+   * GET /requirements/:id —— 详情按需（B12 阶段⑥-①）。
+   *
+   * 热侧 miss 由存储实现自己回落冷读（`ShardedRequirementStore.get` 已实现），此处只做协议转换：
+   * 未命中 → 404 `REQBOARD_NOT_FOUND`（不返回 200 + 空体，否则客户端分不清"没有"与"没读到"）。
+   */
+  async function handleRequirementDetail(res: ServerResponse, id: string): Promise<void> {
+    const rec = await ctx.requirementStore.get(id)
+    if (rec === undefined) {
+      fail(res, Object.assign(new Error(`未找到需求 ${id}`), { code: 'REQBOARD_NOT_FOUND' }))
+      return
+    }
+    ok(res, { revision: (await ctx.requirementStore.head()).revision, requirement: rec })
   }
 
   function handleEvents(req: IncomingMessage, res: ServerResponse): void {
@@ -73,6 +146,24 @@ export function createStagesRouter(ctx: RouterCtx) {
       Connection: 'keep-alive',
     })
     res.write(': connected\n\n')
+    /**
+     * REQ-261001124111-5d36 t4：连接建立后补一帧**命名帧** `build`，携带
+     * ① 客户端构建戳（`sha256(lib/client.cjs)` 前 12 位）② 面板刷新策略（宿主配置下发）。
+     *
+     * 客户端用 `addEventListener('build')` 收（命名事件不触发 onmessage——见 api.ts 同款注释）。
+     * **读不到 `lib/client.cjs` 就不发这一帧**：不声称"你看的是新版"，也不让页面误报"插件已更新"。
+     * 这一帧不含任何业务数据，未注册该事件的既有消费者按 SSE 规范直接忽略。
+     */
+    const stamp = clientBuildStamp()
+    if (stamp !== undefined) {
+      try {
+        res.write('event: build\n')
+        res.write('data: ' + JSON.stringify({
+          stamp,
+          ...(deps.panelPolicy !== undefined ? { panel: deps.panelPolicy } : {}),
+        }) + '\n\n')
+      } catch { /* client gone：连接已断，后续订阅会各自清理 */ }
+    }
     /**
      * 双通道发出（REQ-260927202051-f6df D15）：
      *  - **命名帧**（`event: <kind>` + `data:`）：既有契约，供 `addEventListener(kind)` 消费；
@@ -91,7 +182,8 @@ export function createStagesRouter(ctx: RouterCtx) {
     }
     // 两路订阅：台账（需求/分诊/评论）+ 队列（任务）。
     // schema v9 后任务不再经台账 ⇒ 只订台账会让任务状态变更不再推送（看板实时刷新静默失灵）。
-    const unsubscribeLedger = store.subscribe((change) => { emit(change.kind, change.revision) })
+    // B12 阶段④-2-③：SSE 订阅改挂新端口（旧口只用于读，订阅语义一致：kind + 全局序）
+    const unsubscribeLedger = ctx.requirementStore.subscribe((change) => { emit(change.kind, change.revision) })
     const unsubscribeTasks = taskStore.subscribe((change) => { emit(change.kind, change.revision) })
     const heartbeat = setInterval(() => { try { res.write(': hb\n\n') } catch { /* gone */ } }, 25_000)
     req.on('close', () => {
@@ -107,7 +199,7 @@ export function createStagesRouter(ctx: RouterCtx) {
    * 标题 / 状态 / 来源窗口码 / 任务进度。按「越靠后越靠前」排序。
    */
   async function handleRequirementsSummary(res: ServerResponse): Promise<void> {
-    const ledger = await store.read(l => l)
+    const ledger = await readAll()
     // 任务来自队列（一次取全量后按需求分组，顺序 = 组内队列顺序，需求内相对顺序保住）。
     const allTasks = await taskStore.listAll()
     const rank: Record<string, number> = {
@@ -134,6 +226,11 @@ export function createStagesRouter(ctx: RouterCtx) {
         }
       })
       .sort((a, b) => {
+        // FR-4（REQ-261004110201-f253）：优先级**首键**（大在前；缺省视作 0）——
+        // 与 scanAndResume 同一份排序语义；其后的状态档位/更新时间是既有看板口径（保持不动）。
+        const pa = (a as { priority?: number }).priority ?? 0
+        const pb = (b as { priority?: number }).priority ?? 0
+        if (pa !== pb) return pb - pa
         const ra = rank[a.status] ?? 99
         const rb = rank[b.status] ?? 99
         return ra !== rb ? ra - rb : b.updatedAt - a.updatedAt
@@ -152,7 +249,7 @@ export function createStagesRouter(ctx: RouterCtx) {
    * 完全无关联 → { hasRequirement: false }（前端不渲染，零噪音）。
    */
   async function handleSessionProgress(res: ServerResponse, sessionId: string): Promise<void> {
-    const ledger = await store.read(l => l)
+    const ledger = await readAll()
     // 任务来自队列：全量一次（锚点扫描需要跨需求按 executions[].sessionId 反查）。
     const allTasks = await taskStore.listAll()
 
@@ -182,6 +279,12 @@ export function createStagesRouter(ctx: RouterCtx) {
     for (const s of TASK_STATUS_ORDER) byStatus[s] = 0
     for (const t of tasks) byStatus[t.status] = (byStatus[t.status] ?? 0) + 1
 
+    // REQ-261004143941-b2ca FR-1：需求累计 token 与 nodes **同源**——只装配一次视图，两处读数共用。
+    // 为什么强调同源：各算一次不仅浪费，还会给「总数 ≠ Σ各节点」留下漂移的口子；
+    // 而「Σ节点」正是用户在流程图上能逐个加出来的数（对不上就是错）。
+    const tokenView = assembleRequirementToken(target, { tasks })
+    const tokenTotal = totalTokens(tokenView.totals)
+
     ok(res, {
       hasRequirement: true,
       sessionId,
@@ -199,6 +302,10 @@ export function createStagesRouter(ctx: RouterCtx) {
         paused: target.paused === true,
         sourceSessionId: target.sourceSessionId ?? null,
         updatedAt: target.updatedAt,
+        // REQ-261004143941-b2ca FR-1：需求累计 Token（窄档流程图的常显读数）。
+        // **缺失 ≠ 0**：无任何快照（合计 0）→ 不发该键，前端据此不渲染，而不是显示「🪙 0」
+        // （补 0 会让「取不到」与「确实一次没花」在展示层无法区分）。
+        ...(tokenTotal > 0 ? { tokenTotal } : {}),
       },
       progress: {
         total: tasks.length,
@@ -214,7 +321,8 @@ export function createStagesRouter(ctx: RouterCtx) {
       // REQ-a33899：每个流程节点的 token。口径与详情页一致：节点有快照用节点差值；
       // 节点无快照但任务执行有差值时用执行差值兜底——否则功能上线前创建的需求
       // 在会话顶部一个数字都不显示（用户实测反馈）。total=0 的节点不输出 tokens（避免一排 0）。
-      nodes: nodeTokensOf(target, tasks),
+      // REQ-261004143941-b2ca FR-1：入参改为**已装配好的视图**（与上面的 tokenTotal 同一份）。
+      nodes: nodeTokensOf(tokenView),
       tasks: tasks
         .slice()
         .sort((a, b) => (TASK_STATUS_ORDER.indexOf(a.status) - TASK_STATUS_ORDER.indexOf(b.status)) || (a.createdAt - b.createdAt))
@@ -242,25 +350,25 @@ export function createStagesRouter(ctx: RouterCtx) {
    * 确认状态、分类跳过态、时间线切片）。需求不存在 → 404；stage 非法 → 400。
    * 薄适配：校验 → 读台账 → assembleStageDetail → ok。
    */
-  async function handleStageDetail(res: ServerResponse, id: string, stageRaw: string): Promise<void> {
-    await syncReqArtifacts(store, id, deps.cwd).catch(() => { /* 扫描失败不阻断详情 */ })
+  async function handleStageDetail(res: ServerResponse, id: string, stageRaw: string, sessionId?: string): Promise<void> {
+    // FR-11：本函数要读工作区文件（requirement.md 的 front-matter、RTM 追溯），故根也必须按会话取——
+    // 否则修好一个门、另外两个门还在用插件宿主目录读，等于只修了一半。
+    const docRoot = resolveDocRoot(deps, sessionId).root
+    await syncReqArtifacts(ctx.requirementStore, id, docRoot).catch(() => { /* 扫描失败不阻断详情 */ })
     const stage = asStageKey(stageRaw) // 非法 → code=invalid_input → 400
     // REQ-2d1c74 FR-1/FR-2：host 侧读 requirement.md front-matter 注入设计文档策略（client 不碰 fs）
-    const docs = new FileDocRepository(deps.cwd !== undefined ? { workspaceRoot: deps.cwd } : {})
-    const target = (await store.read(l => l)).requirements.find(r => r.id === id)
+    const docs = new FileDocRepository({ workspaceRoot: docRoot })
+    const target = await ctx.requirementStore.get(id)
     const policy = target === undefined ? undefined : await designDocPolicyOf(docs, target)
     // 任务来自队列（装配器保持同步：先 await 取队列任务，再以 { tasks } 传入）。
     const tasks = await taskStore.listByRequirement(id)
-    const detail = await store.read(ledger =>
-      assembleStageDetail(ledger.requirements.find(r => r.id === id), { tasks }, stage, { 
+    const detail = assembleStageDetail(await ctx.requirementStore.get(id), { tasks }, stage, { 
         ...(policy !== undefined ? { designDocPolicy: policy } : {}),
         // REQ-260926140539-457b FR-6：RTM 追溯数据必须读到工作区根。
-        // deps.cwd 全仓无人设置（恒 undefined），原先"undefined 就不传"的条件展开 →
-        // ctx.workspaceRoot 恒为 undefined → 追溯数据永不出现。此处与 handleState 同口径回落
-        // 到 process.cwd()（实测 = /Users/yunpeng/pi-investment/agent-dh，RTM 所在处）。
-        workspaceRoot: deps.cwd ?? process.cwd(),
-      }),
-    )
+        // FR-11（REQ-261003215944-9e04）：根改由 resolveDocRoot 按**会话**解析（本函数开头那个 docRoot），
+        // 不再回落 process.cwd()——后者是插件宿主的落脚目录，RTM 与需求文档都不在那里。
+        workspaceRoot: docRoot,
+      })
     ok(res, detail)
   }
 
@@ -269,23 +377,22 @@ export function createStagesRouter(ctx: RouterCtx) {
    * 全流程一览（REQ-31e11f 节点详情重设计）：一次返回全部节点 StageDetail +
    * 当前节点，client 监控时间线一次渲染，免去逐节点点击加载。需求不存在 → 404。
    */
-  async function handleStageOverview(res: ServerResponse, id: string): Promise<void> {
-    await syncReqArtifacts(store, id, deps.cwd).catch(() => { /* 扫描失败不阻断概览 */ })
-    const docs = new FileDocRepository(deps.cwd !== undefined ? { workspaceRoot: deps.cwd } : {})
-    const target = (await store.read(l => l)).requirements.find(r => r.id === id)
+  async function handleStageOverview(res: ServerResponse, id: string, sessionId?: string): Promise<void> {
+    // FR-11：同 handleStageDetail——读的是工作区文件，根按会话取（只修一半等于没修）。
+    const docRoot = resolveDocRoot(deps, sessionId).root
+    await syncReqArtifacts(ctx.requirementStore, id, docRoot).catch(() => { /* 扫描失败不阻断概览 */ })
+    const docs = new FileDocRepository({ workspaceRoot: docRoot })
+    const target = await ctx.requirementStore.get(id)
     const policy = target === undefined ? undefined : await designDocPolicyOf(docs, target)
     // 任务来自队列（同 handleStageDetail：装配器保持同步）。
     const tasks = await taskStore.listByRequirement(id)
-    const overview = await store.read(ledger =>
-      assembleStageOverview(ledger.requirements.find(r => r.id === id), { tasks }, { 
+    const overview = assembleStageOverview(await ctx.requirementStore.get(id), { tasks }, { 
         ...(policy !== undefined ? { designDocPolicy: policy } : {}),
         // REQ-260926140539-457b FR-6：RTM 追溯数据必须读到工作区根。
-        // deps.cwd 全仓无人设置（恒 undefined），原先"undefined 就不传"的条件展开 →
-        // ctx.workspaceRoot 恒为 undefined → 追溯数据永不出现。此处与 handleState 同口径回落
-        // 到 process.cwd()（实测 = /Users/yunpeng/pi-investment/agent-dh，RTM 所在处）。
-        workspaceRoot: deps.cwd ?? process.cwd(),
-      }),
-    )
+        // FR-11（REQ-261003215944-9e04）：根改由 resolveDocRoot 按**会话**解析（本函数开头那个 docRoot），
+        // 不再回落 process.cwd()——后者是插件宿主的落脚目录，RTM 与需求文档都不在那里。
+        workspaceRoot: docRoot,
+      })
     ok(res, overview)
   }
 
@@ -306,7 +413,7 @@ export function createStagesRouter(ctx: RouterCtx) {
   }
 
   async function handleRequirementToken(res: ServerResponse, id: string): Promise<void> {
-    const ledger = await store.read(l => l)
+    const ledger = await readAll()
     const req = ledger.requirements.find(r => r.id === id)
     if (req === undefined) {
       throw Object.assign(new Error(fmt('需求 {id}不存在', { id })), { code: 'not_found' })
@@ -332,9 +439,12 @@ export function createStagesRouter(ctx: RouterCtx) {
   /**
    * 每节点 token（REQ-a33899）：与详情页同口径——节点快照优先，缺失时用该节点任务执行差值兜底。
    * total=0 的节点只给 key（前端显示节点名，不显示 0）。
+   *
+   * REQ-261004143941-b2ca FR-1：入参从「需求 + 任务」改为**已装配好的 token 视图**——
+   * 调用方（handleSessionProgress）要为 `requirement.tokenTotal` 装配同一份视图，
+   * 若这里再装配一次，两处读数就有各自漂移的余地（「总数 ≠ Σ节点」）。
    */
-  function nodeTokensOf(req: RequirementRecord, reqTasks: readonly TaskRecord[]): Array<{ key: string; tokens?: { total: number } }> {
-    const view = assembleRequirementToken(req, { tasks: reqTasks })
+  function nodeTokensOf(view: RequirementTokenView): Array<{ key: string; tokens?: { total: number } }> {
     return view.byStage.map((row) => {
       const total = row.buckets !== undefined
         ? totalTokens(row.buckets)
@@ -347,18 +457,20 @@ export function createStagesRouter(ctx: RouterCtx) {
    * 需求侧接收标记（REQ-d3e61a T-5）：逐条功能点显示「谁接了 / 还没人接」。
    * 判据（条款清单 + 任务↔条款绑定）只存在于文档，client 拿不到，故必须服务端算。
    */
-  async function handleRequirementMarks(res: ServerResponse, id: string): Promise<void> {
-    const ledger = await store.read(l => l)
+  async function handleRequirementMarks(res: ServerResponse, id: string, sessionId?: string): Promise<void> {
+    const ledger = await readAll()
     const req = ledger.requirements.find(r => r.id === id)
     if (req === undefined) {
       throw Object.assign(new Error(fmt('需求 {id}不存在', { id })), { code: 'not_found' })
     }
-    // 路由层的 deps 只有 cwd（无 docs 端口，且不许出现状态字面量——过滤下沉到 application 层）
-    const docs = new FileDocRepository(deps.cwd !== undefined ? { workspaceRoot: deps.cwd } : {})
+    // 路由层的 deps 只有 cwd（无 docs 端口，且不许出现状态字面量——过滤下沉到 application 层）。
+    // FR-11：它读的是**工作区里的文档**（需求文档 + 任务卡），根也必须按会话取，否则"谁接了哪条"
+    // 在插件宿主目录下永远读不到，看板显示全未接。
+    const docs = new FileDocRepository({ workspaceRoot: resolveDocRoot(deps, sessionId).root })
     // 任务来自队列（需求侧接收标记按条款绑定任务）。
     const reqTasks = await taskStore.listByRequirement(id)
     ok(res, await assembleRequirementMarks({ docs }, req, reqTasks))
   }
 
-  return { handleState, handleEvents, handleRequirementsSummary, handleSessionProgress, handleStageDetail, handleStageOverview, handleRequirementToken, handleRequirementMarks }
+  return { handleState, handleArtifactScan, handleRequirementDetail, handleEvents, handleRequirementsSummary, handleSessionProgress, handleStageDetail, handleStageOverview, handleRequirementToken, handleRequirementMarks }
 }

@@ -1,0 +1,15 @@
+# case D5 · 无 active run 的 run_status 解读（对抗幻觉） · serves: FR-2
+case: D5
+ordered_contains:
+  - reqboard_run_status             # 唯一必需调用：如实查询
+forbidden:
+  - tool: reqboard_task_run
+    when: 仅为制造状态而未被用户要求起链   # 不得为了「有进度可报」擅自起链
+budget:
+  max_tool_calls: 4
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_run_status
+    result_contains: not_found      # 无 active run 时 jobStatus=not_found，且 runId 键整体省略（不是 null）：
+                                    # agent 必须按「当前没有运行中的链」如实转述，
+                                    # 不得读成 null、不得幻觉 running/进度/初始化中

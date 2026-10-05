@@ -10,12 +10,12 @@
  * @module dsh-pmboard/application/internal/token-usage
  */
 import type { UseCaseDeps } from '../ports.js'
+import { transitionDive } from '../../domain/dive/transition.js'
 import { assertReqTransition } from '../../domain/requirement/RequirementStatus.js'
 import {
   addBuckets,
   emptyBuckets,
   recordStatus,
-  subBuckets,
   type ActorRef,
   type ExecutionRecord,
   type ExecutionTokenUsage,
@@ -26,6 +26,11 @@ import {
   type TokenBuckets,
   type TokenSnapshot,
 } from '../../shared/protocol.js'
+// REQ-261004154937-2ca3：跨快照差值改用 `deltaSnapshots`（逐成员算，规则唯一）。
+// 为什么不再用「subBuckets 直减」：聚合口径下 totals 是「本窗口 + 后代」之和，
+// 直接相减会把「中途消失的成员」的历史值当成负贡献（再被逐桶截断抹成 0）——静默失真。
+// `deltaSnapshots` 按成员 id 索引逐条算：同成员相减 / 新成员全额 / 消失成员记 0 / 水位缺失不参与。
+import { deltaSnapshots } from '../../domain/token/lineage.js'
 
 /** 取一次快照；端口抛错也不阻断主流程（快照是旁路证据，不是闸门）。 */
 export function captureSnapshot(deps: UseCaseDeps, windowKey: string): TokenSnapshot {
@@ -74,7 +79,7 @@ export function accumulateStageDelta(req: RequirementRecord, stage: StageKey, ex
   if (exit.source !== 'projection') return false
   const entry = entrySnapshotFor(req, stage, exit.sessionId)
   if (entry === undefined) return false
-  const delta = subBuckets(exit.totals, entry.totals)
+  const delta = deltaSnapshots(entry, exit).delta
   const usage = (req.tokenUsage ??= { byStage: {}, totals: emptyBuckets(), updatedAt: exit.at })
   usage.byStage[stage] = addBuckets(usage.byStage[stage] ?? emptyBuckets(), delta)
   usage.totals = recomputeTotals(usage.byStage)
@@ -100,7 +105,7 @@ export function endExecutionToken(execution: ExecutionRecord, snap: TokenSnapsho
   const sameSession = start !== undefined
     && (start.sessionId === undefined || snap.sessionId === undefined || start.sessionId === snap.sessionId)
   if (start !== undefined && start.source === 'projection' && snap.source === 'projection' && sameSession) {
-    usage.delta = subBuckets(snap.totals, start.totals)
+    usage.delta = deltaSnapshots(start, snap).delta
   } else {
     delete usage.delta
   }
@@ -166,11 +171,19 @@ export interface CloseExecutionsOpts {
   at: number
   outcome: 'succeeded' | 'cancelled' | 'failed'
   error?: string
+  /**
+   * 本次执行的产出条目数（REQ-261004110201-f253 FR-2）= filesChanged + completed 计数。
+   * **缺省 = 不写**（未知，读侧不计入零产出统计）——旧调用方零改动、旧语义不变。
+   */
+  outputCount?: number
 }
 
 /**
  * 收尾：闭合该任务**全部** running 执行（写 endedAt/outcome，可选 error）并写 end/delta
  * （**唯一入口**）。返回闭合条数；snap=undefined → 只闭合记录、不写 token 字段。
+ *
+ * `opts.outputCount` 存在时同时落 `outputCount` 与推导键 `zeroOutput = outputCount === 0`
+ * （FR-2 遥测的数据来源；产出计数**只在此处写**，避免出现第二个写入点）。
  */
 export function closeExecutions(task: TaskRecord, opts: CloseExecutionsOpts, snap?: TokenSnapshot): number {
   let closed = 0
@@ -179,6 +192,10 @@ export function closeExecutions(task: TaskRecord, opts: CloseExecutionsOpts, sna
     e.endedAt = opts.at
     e.outcome = opts.outcome
     if (opts.error !== undefined) e.error = opts.error
+    if (opts.outputCount !== undefined) {
+      e.outputCount = opts.outputCount
+      e.zeroOutput = opts.outputCount === 0
+    }
     if (snap !== undefined) endExecutionToken(e, snap)
     closed += 1
   }
@@ -289,7 +306,23 @@ export function transitionRequirement(
     accumulateStageDelta(req, req.status as StageKey, opts.snap)
   }
   // 2. 迁移状态
+  const stageChanged = from !== to
   req.status = to
+  // REQ-261001213924-1441 FR-1：回合计数是「本阶段」语义——阶段变了就归零。
+  // 修前它**从不归零**（全仓只有立项/准入/人解锁三处写），于是"生命周期计数"撞上"阶段局部上限"
+  // （当年 draft/archived 的 maxRounds 是 1；2026-10-04 起下限抬到 5，但计数不归零的后果一样）：
+  // 跑完一轮就被判达上限并终态锁死，与该阶段还剩多少活无关。
+  // 同时清掉连续唤醒失败计数——跨阶段后旧失败不该继续压着新阶段。
+  if (stageChanged && req.dive !== undefined) {
+    // FR-9：规则单一来源。本函数**运行在 mutate 回调内**（同步契约），故就地用纯函数算，
+    // 不能去调异步的 applyDiveTransition（那会在临界区里再开一次写）。
+    const advanced = transitionDive(req.dive, {
+      event: 'advance-stage',
+      now: opts.at,
+      actor: opts.actor,
+    })
+    if (advanced.changed && advanced.next !== undefined) req.dive = advanced.next
+  }
   req.version += 1
   req.updatedAt = opts.at
   req.updatedBy = opts.actor

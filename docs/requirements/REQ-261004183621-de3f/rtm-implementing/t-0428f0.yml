@@ -1,0 +1,36 @@
+task:
+  id: t-0428f0
+  title: 漏登当场见：提交时对账，不处置就不让过·复核
+  status: done
+  implements: |-
+    改 src/application/use-cases/SubmitArchive.ts：目录遍历对账前移到写台账之前，产出 listed/exempted/unlisted 三分类；未列未豁免且未被 unlisted_ack 覆盖 → 拒绝（码 REQBOARD_UNLISTED_ACK_REQUIRED，文案列出未列文件与两种处置）；warn 模式不拒；对账结果写入归档记录与需求评论；返回体给 reconcile 并保留 unlisted_files/warning。改 src/tools/SubmitTool/SubmitTool.ts 入参（unlisted_ack）与出参（reconcile）schema。新增 tests/archive-reconcile.test.ts。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-315959
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004183621-de3f
+    TASK_ID: t-0428f0
+    TASK_TITLE: 漏登当场见：提交时对账，不处置就不让过·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T10:43:04.786Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004183621-de3f
+  generated_at: 2026-10-04T10:43:04.691Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-04T10:43:04.861Z

@@ -1,0 +1,35 @@
+task:
+  id: t-f14885
+  title: 建立 DAG 视图状态记忆表（契约先行）·研发
+  status: done
+  implements: |-
+    ① 新增 src/client/dag/view-state.ts（纯函数、零 DOM、零 IO，照 panel-refresh.ts 的纯度纪律）：export interface DagViewSnapshot { dir?: LayoutDir; crit?: boolean; focus?: boolean; pinned?: string | null; tab?: 'flow' | 'list'; scrollTop?: number; scrollLeft?: number }（dir 复用 src/client/dag/dag-layout.ts 的 LayoutDir，不新造枚举）；模块内 const store = new Map<string, DagViewSnapshot>() 与 MAX_ENTRIES = 16；readDagViewState(key) 返回浅拷贝（miss → undefined），命中时按键重插刷新插入序；writeDagViewState(key, patch) 合并写，scrollTop/scrollLeft 非有限数或负数一律写 0，pinned 为 null 时照写（显式无钉住）；clearDagViewState(key)；clearDagViewStateByPrefix(prefix)；dagViewStateSize()；_resetDagViewState() 仅测试用；超容量按插入序淘汰最旧。② 新增 tests/dag-view-state.test.ts，头部注释写 serves: FR-1, FR-4, FR-5（本仓测试文件惯例，前 20 行内）：A1-1 合并写/拷贝隔离（改返回值不影响表内）/非法滚动值按 0/容量 16 FIFO/前缀清理；A5 键隔离（np-dag-canvas::REQ-A 写横向 + 只看主线 → 读 np-dag-canvas::REQ-B 为 undefined）。验证：npx vitest run tests/dag-view-state.test.ts；npx tsc --noEmit -p tsconfig.json（本次文件零新增错误）。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261001210304-0dfb
+    TASK_ID: t-f14885
+    TASK_TITLE: 建立 DAG 视图状态记忆表（契约先行）·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-01T13:41:00.235Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261001210304-0dfb
+  generated_at: 2026-10-01T13:40:51.969Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-01T13:41:03.258Z

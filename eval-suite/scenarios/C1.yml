@@ -1,0 +1,16 @@
+# case C1 · 提交计划→批准→落库标准流 · serves: FR-2
+id: C1
+group: C
+type: happy_path
+severity: normal
+title: 提交计划→批准→落库标准流
+dims: [D2, D3]
+max_score: 4
+seed:
+  workspace: fixture:req-decomposing   # 预置：需求已绑定窗口、状态=decomposing、设计已确认
+  user_messages:
+    - 设计都确认完了，需求进拆分阶段了。我的拆分计划想好了：t1 搭任务台账骨架（queue.json 结构）；t2 写实施链执行逻辑，依赖 t1；t3 写补链诊断工具，也依赖 t1。帮我提交计划，我批准之后就落库成任务卡。
+expected:
+  trajectory_ref: C1
+  ledger_ref: C1
+notes: 计划含 3 张任务卡（t1/t2/t3）；测评操作员在批准弹框点「批准」。标准次序 submit(plan) → ask_confirm(plan) → decompose，不得颠倒。

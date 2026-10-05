@@ -57,6 +57,11 @@ export const STAGE_TO_PHASE_COLOR: Readonly<Record<StageKind, PhaseColorFamily>>
   change: 'ops-family',
   dryrun: 'ops-family',
   apply: 'ops-family',
+  // REQ-261003203909-55f2：四段颜色族（编译强制登记的证明——加段漏登记此处即编译错）。
+  e2e: 'test-family',
+  manual: 'test-family',
+  capture: 'research-family',
+  release: 'ops-family',
 }
 
 /**

@@ -1,0 +1,16 @@
+# case A5 · 弹框不可用时降级文字取值 · serves: FR-2
+id: A5
+group: A
+type: happy_path
+severity: normal
+title: 弹框通道不可用（fallback=board），改文字取值后 create
+dims: [D1, D5]
+max_score: 3
+seed:
+  workspace: blank
+  user_messages:
+    - 帮我立个项：做一个需求看板周报的邮件订阅功能，每周一早上把进行中需求摘要发到我邮箱。类型算 feature，难度按标准（standard）来就行。
+expected:
+  trajectory_ref: A5
+  ledger_ref: A5
+notes: 测评前将弹框通道置为不可用（或操作员对弹框一律不应答），使 reqboard_capture 返回 fallback=board。期望 agent 改用文字与用户取值（三值已在用户消息中给齐：名称/类型 feature/难度 standard），再调 reqboard_create 完成立项。

@@ -1,0 +1,812 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261004150249-731e
+  generated_at: 2026-10-04T07:19:47.394Z
+  version: 105
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T07:57:54.377Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 开新会话落在源会话的项目
+      source: requirement.md
+      line: 104
+    - id: FR-2
+      title: owner 交接原子化
+      source: requirement.md
+      line: 110
+    - id: FR-3
+      title: 分叉判据与时机
+      source: requirement.md
+      line: 116
+    - id: FR-4
+      title: 接续投递
+      source: requirement.md
+      line: 128
+    - id: FR-5
+      title: 入口 `reqboard_handoff`
+      source: requirement.md
+      line: 134
+    - id: FR-6
+      title: 可证伪回归
+      source: requirement.md
+      line: 140
+  design_sections:
+    - ref: design/architecture.md#目标与总体方案
+      title: 目标与总体方案 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+      file: design/architecture.md
+      section: 目标与总体方案
+    - ref: design/architecture.md#模块改动地图
+      title: 模块改动地图 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: 模块改动地图
+    - ref: design/architecture.md#交接时序五步全在一个工具调用内
+      title: 交接时序（五步，全在一个工具调用内） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: 交接时序五步全在一个工具调用内
+    - ref: design/architecture.md#分层与纪律
+      title: 分层与纪律 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 分层与纪律
+    - ref: design/architecture.md#不变量
+      title: 不变量 `
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: 不变量
+    - ref: design/architecture.md#兼容与回滚
+      title: 兼容与回滚 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 兼容与回滚
+    - ref: design/architecture.md#规范自证
+      title: 规范自证 `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: 规范自证
+    - ref: design/backend.md#改动清单逐文件带现状锚点
+      title: 改动清单（逐文件，带现状锚点） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/backend.md
+      section: 改动清单逐文件带现状锚点
+    - ref: design/backend.md#装配点细节
+      title: 装配点细节 `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/backend.md
+      section: 装配点细节
+    - ref: design/backend.md#兼容灰度与回滚
+      title: 兼容、灰度与回滚 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/backend.md
+      section: 兼容灰度与回滚
+    - ref: design/backend.md#风险与对策
+      title: 风险与对策 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/backend.md
+      section: 风险与对策
+    - ref: design/backend.md#自证命令
+      title: 自证命令 `
+      serves:
+        - FR-6
+      file: design/backend.md
+      section: 自证命令
+    - ref: design/data-model.md#席位模型现状-本次不变式
+      title: 席位模型（现状 + 本次不变式） `
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 席位模型现状-本次不变式
+    - ref: design/data-model.md#角色转移矩阵
+      title: 角色转移矩阵 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/data-model.md
+      section: 角色转移矩阵
+    - ref: design/data-model.md#分叉判据的数据来源
+      title: 分叉判据的数据来源 `
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: 分叉判据的数据来源
+    - ref: design/data-model.md#新增配置handoff
+      title: 新增配置：`handoff` `
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: 新增配置handoff
+    - ref: design/data-model.md#回执契约
+      title: 回执契约 `
+      serves:
+        - FR-4
+        - FR-5
+      file: design/data-model.md
+      section: 回执契约
+    - ref: design/data-model.md#迁移与回滚
+      title: 迁移与回滚 `
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 迁移与回滚
+    - ref: design/interfaces.md#工具reqboardhandoff新增
+      title: 工具：`reqboard_handoff`（新增） `
+      serves:
+        - FR-5
+      file: design/interfaces.md
+      section: 工具reqboardhandoff新增
+    - ref: design/interfaces.md#application-端口WindowOpenerPortcreate扩展签名
+      title: application 端口：`WindowOpenerPort.create`（扩展签名） `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: application-端口WindowOpenerPortcreate扩展签名
+    - ref: design/interfaces.md#application-端口CrossWindowDeliveryPort装配不改形状
+      title: application 端口：`CrossWindowDeliveryPort`（装配，不改形状） `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: application-端口CrossWindowDeliveryPort装配不改形状
+    - ref: design/interfaces.md#看板-HTTPPOST-dashboardapireqboardreqrebind行为修正
+      title: 看板 HTTP：`POST /dashboard/api/reqboard/req/rebind`（行为修正） `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: 看板-HTTPPOST-dashboardapireqboardreqrebind行为修正
+    - ref: design/interfaces.md#错误码表
+      title: 错误码表 `
+      serves:
+        - FR-1
+        - FR-4
+        - FR-5
+      file: design/interfaces.md
+      section: 错误码表
+    - ref: design/use-cases.md#UC-1-顶墙续作主路径agent-自主
+      title: UC-1 顶墙续作（主路径，agent 自主） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/use-cases.md
+      section: UC-1-顶墙续作主路径agent-自主
+    - ref: design/use-cases.md#UC-2-到档但未到阶段边界等边界
+      title: UC-2 到档但未到阶段边界（等边界） `
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-2-到档但未到阶段边界等边界
+    - ref: design/use-cases.md#UC-3-人发起不依赖读数
+      title: UC-3 人发起（不依赖读数） `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/use-cases.md
+      section: UC-3-人发起不依赖读数
+    - ref: design/use-cases.md#UC-4-读数缺席降级路径
+      title: UC-4 读数缺席（降级路径） `
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-4-读数缺席降级路径
+    - ref: design/use-cases.md#UC-5-底稿投递失败部分成功
+      title: UC-5 底稿投递失败（部分成功） `
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: UC-5-底稿投递失败部分成功
+    - ref: design/use-cases.md#UC-6-非-owner-发起拒绝路径
+      title: UC-6 非 owner 发起（拒绝路径） `
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-6-非-owner-发起拒绝路径
+    - ref: design/use-cases.md#UC-7-reqboardcapture-的-handoff-分支同样落对项目
+      title: UC-7 `reqboard_capture` 的 handoff 分支同样落对项目 `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-7-reqboardcapture-的-handoff-分支同样落对项目
+    - ref: design/use-cases.md#场景-条款覆盖
+      title: 场景 × 条款覆盖 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/use-cases.md
+      section: 场景-条款覆盖
+outputs:
+  tasks:
+    - id: t-d43523
+      title: 扩端口签名与 handoff 配置契约
+      implements: "src/application/ports.ts：WindowOpenerPort.create 改签名为 create(opts?: { cwd?: string; workspaceId?: string })，并加可选方法 resolveSourceProject(sourceSessionId): { workspaceId?: string; cwd?: string } | undefined（测试替身可不实现）。src/plugin-config.ts：新增 handoffSettings(config) → { warn, fork, critical }，缺省 0.75/0.85/0.90；非有限数或不满足 0 < warn < fork < critical ≤ 1 → 装配期抛错（照 seatsMaxSetting 的写法与纪律）。不动任何既有调用点的运行行为。"
+      serves:
+        - FR-1
+        - FR-3
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-3e8cec
+      title: 交接写原子化：席位升降 + sourceSessionId + 留痕
+      implements: 新建 src/application/internal/handoff-write.ts：handoffOwner(req, { toWindow, fromWindow, actor, at, commentId, reason }) 在一次 mutate 内完成 ① 新窗口入席 owner ② 原窗口（若有席位）降 observer ③ req.sourceSessionId = toWindow ④ 追一条留痕评论（from→to、角色变化、reason）。前置校验：当前 owner 必须等于 fromWindow（并发保护）、toWindow ≠ fromWindow、不得产出空 owner（INV-1）；席位与 sourceSessionId 必须同指一窗（INV-2）。幂等：三处都已对 → 返回 changed=false，不新增评论。
+      serves:
+        - FR-2
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-ee8599
+      title: 分叉判据纯函数（三档 + 读数缺席不猜）
+      implements: "新建 src/application/internal/handoff-policy.ts：decideHandoff(pressure: ContextPressureSnapshot | undefined, cfg: { warn; fork; critical }) → 'none' | 'warn' | 'fork' | 'critical' | 'unknown'。ratio = pressureTokens / contextWindow，仅当两者都在场且 source === 'projection' 才可算；任一缺席 → 'unknown'（绝不补 0；projectedTokens=0 是合法读数）。零 IO、零 node: 依赖（C-01）。配套新建 tests/handoff-policy.test.ts 覆盖六点边界与缺席分支。"
+      serves:
+        - FR-3
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-f2c747
+      title: 开窗落回源项目（适配器 + 两个用例调用点）
+      implements: src/adapters/SessionWindowOpener.ts：create(opts?) 按 opts 组装请求——workspaceId 或 cwd 只取其一（DSH 二者互斥，同时给会 gateway/bad-request）；新增 resolveSourceProject(sourceSessionId)：① workspaceRegistry.list().find(w => w.sessionIds.includes(id)).id → { workspaceId } ② 源会话 header.cwd → { cwd } ③ 都拿不到 → undefined。src/application/use-cases/OpenWindow.ts：mode=create 时先解析源项目，undefined → reject('REQBOARD_OPEN_WINDOW_UNAVAILABLE') 且不建会话。src/application/use-cases/CaptureRequirement.ts 的 handoff 分支同样带参（UC-7）。
+      serves:
+        - FR-1
+      depends_on:
+        - t-d43523
+      phase: implement
+      side: backend
+    - id: t-4bd792
+      title: 交接用例与 reqboard_handoff 工具
+      implements: "新建 src/application/use-cases/HandoffOwner.ts：编排 ① 授权 canWrite(seatOf(req, wk), 'move-requirement')，否则 REQBOARD_SEAT_NOT_OWNER ② to_window 校验（存在 / ≠ 源 / 活窗口），否则 REQBOARD_HANDOFF_TARGET_INVALID ③ 开窗（复用 t4 的源项目解析）④ handoffOwner 写台账 ⑤ 断点 + 节点输入包经 deps.crossWindowDeliver.createMessage({ text, kind: 'reqboard-handoff' }).deliver(toWindow, msg)，失败不回滚但回执标 delivered=false + reason ⑥ 回执含 from_window/to_window/old_role/new_role/delivery/context_pressure。新建 src/tools/HandoffTool/HandoffTool.ts 与 prompt.ts（薄壳：schema + 摘要渲染），src/tools/index.ts 导出 defineHandoffTool。"
+      serves:
+        - FR-4
+        - FR-5
+      depends_on:
+        - t-3e8cec
+        - t-ee8599
+        - t-f2c747
+      phase: implement
+      side: backend
+    - id: t-46d0d7
+      title: 组合根装配 + 看板改绑修正 + 迁移兼容与回滚
+      implements: "src/index.ts：① ctx.inject(['workspaceRegistry']) 惰性取值（与 sessionController 同款，缺省不影响既有行为）② SessionWindowOpener 构造加第二个解析器 ③ useCaseDeps 增 crossWindowDeliver: deliverer（AgentDeliverer 已实现 createMessage/deliver，含冷会话 resume——FR-4 的全部实现就是这一行）④ 注册 defineHandoffTool。src/application/internal/binding-write.ts：applyRebind 改为委托 handoffOwner（看板改绑 = 一次合法接管，席位与 sourceSessionId 同步）；http 路由与响应形状不变。兼容口径：不传 opts 的开窗请求体仍为 {}；未配置 handoff 无任何后台自动行为；回滚 = 看板改绑回原窗口（幂等）。"
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+        - FR-5
+      depends_on:
+        - t-4bd792
+      phase: implement
+      side: backend
+    - id: t-9f1e88
+      title: 验收：探针 + 反向演练 + 全量回归与实机复核
+      implements: 新建 scripts/handoff-probe.mts：对临时台账真跑一次交接，打印 from/to/old_role/new_role/source_session 五个读数，并断言 seats 里 owner.windowKey === sourceSessionId，退出码 0/非 0。补 tests/handoff-owner.test.ts 的四条反向演练（落错项目 → 开窗不发生；假成功 → 改绑后席位真换；读数缺席 → 无自动交接；半截交接 → 三处都不变）。跑全量回归，并按 test-cases.md 登记实机复核四步与结果。
+      serves:
+        - FR-6
+      depends_on:
+        - t-46d0d7
+      phase: test
+      side: backend
+    - id: t-8e051a
+      title: 扩端口签名与 handoff 配置契约·研发
+      implements: |-
+        src/application/ports.ts：WindowOpenerPort.create 改签名为 create(opts?: { cwd?: string; workspaceId?: string })，并加可选方法 resolveSourceProject(sourceSessionId): { workspaceId?: string; cwd?: string } | undefined（测试替身可不实现）。src/plugin-config.ts：新增 handoffSettings(config) → { warn, fork, critical }，缺省 0.75/0.85/0.90；非有限数或不满足 0 < warn < fork < critical ≤ 1 → 装配期抛错（照 seatsMaxSetting 的写法与纪律）。不动任何既有调用点的运行行为。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-8433b2
+      title: 扩端口签名与 handoff 配置契约·联调
+      implements: |-
+        src/application/ports.ts：WindowOpenerPort.create 改签名为 create(opts?: { cwd?: string; workspaceId?: string })，并加可选方法 resolveSourceProject(sourceSessionId): { workspaceId?: string; cwd?: string } | undefined（测试替身可不实现）。src/plugin-config.ts：新增 handoffSettings(config) → { warn, fork, critical }，缺省 0.75/0.85/0.90；非有限数或不满足 0 < warn < fork < critical ≤ 1 → 装配期抛错（照 seatsMaxSetting 的写法与纪律）。不动任何既有调用点的运行行为。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-8e051a
+      phase: implement
+      side: backend
+    - id: t-2cf050
+      title: 扩端口签名与 handoff 配置契约·复核
+      implements: |-
+        src/application/ports.ts：WindowOpenerPort.create 改签名为 create(opts?: { cwd?: string; workspaceId?: string })，并加可选方法 resolveSourceProject(sourceSessionId): { workspaceId?: string; cwd?: string } | undefined（测试替身可不实现）。src/plugin-config.ts：新增 handoffSettings(config) → { warn, fork, critical }，缺省 0.75/0.85/0.90；非有限数或不满足 0 < warn < fork < critical ≤ 1 → 装配期抛错（照 seatsMaxSetting 的写法与纪律）。不动任何既有调用点的运行行为。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-8433b2
+      phase: implement
+      side: backend
+    - id: t-542e92
+      title: 扩端口签名与 handoff 配置契约·测试
+      implements: |-
+        src/application/ports.ts：WindowOpenerPort.create 改签名为 create(opts?: { cwd?: string; workspaceId?: string })，并加可选方法 resolveSourceProject(sourceSessionId): { workspaceId?: string; cwd?: string } | undefined（测试替身可不实现）。src/plugin-config.ts：新增 handoffSettings(config) → { warn, fork, critical }，缺省 0.75/0.85/0.90；非有限数或不满足 0 < warn < fork < critical ≤ 1 → 装配期抛错（照 seatsMaxSetting 的写法与纪律）。不动任何既有调用点的运行行为。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-2cf050
+      phase: implement
+      side: backend
+    - id: t-321227
+      title: 分叉判据纯函数（三档 + 读数缺席不猜）·研发
+      implements: |-
+        新建 src/application/internal/handoff-policy.ts：decideHandoff(pressure: ContextPressureSnapshot | undefined, cfg: { warn; fork; critical }) → 'none' | 'warn' | 'fork' | 'critical' | 'unknown'。ratio = pressureTokens / contextWindow，仅当两者都在场且 source === 'projection' 才可算；任一缺席 → 'unknown'（绝不补 0；projectedTokens=0 是合法读数）。零 IO、零 node: 依赖（C-01）。配套新建 tests/handoff-policy.test.ts 覆盖六点边界与缺席分支。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-d73053
+      title: 分叉判据纯函数（三档 + 读数缺席不猜）·联调
+      implements: |-
+        新建 src/application/internal/handoff-policy.ts：decideHandoff(pressure: ContextPressureSnapshot | undefined, cfg: { warn; fork; critical }) → 'none' | 'warn' | 'fork' | 'critical' | 'unknown'。ratio = pressureTokens / contextWindow，仅当两者都在场且 source === 'projection' 才可算；任一缺席 → 'unknown'（绝不补 0；projectedTokens=0 是合法读数）。零 IO、零 node: 依赖（C-01）。配套新建 tests/handoff-policy.test.ts 覆盖六点边界与缺席分支。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-321227
+      phase: implement
+      side: backend
+    - id: t-b0f77c
+      title: 分叉判据纯函数（三档 + 读数缺席不猜）·复核
+      implements: |-
+        新建 src/application/internal/handoff-policy.ts：decideHandoff(pressure: ContextPressureSnapshot | undefined, cfg: { warn; fork; critical }) → 'none' | 'warn' | 'fork' | 'critical' | 'unknown'。ratio = pressureTokens / contextWindow，仅当两者都在场且 source === 'projection' 才可算；任一缺席 → 'unknown'（绝不补 0；projectedTokens=0 是合法读数）。零 IO、零 node: 依赖（C-01）。配套新建 tests/handoff-policy.test.ts 覆盖六点边界与缺席分支。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-d73053
+      phase: implement
+      side: backend
+    - id: t-b3318b
+      title: 分叉判据纯函数（三档 + 读数缺席不猜）·测试
+      implements: |-
+        新建 src/application/internal/handoff-policy.ts：decideHandoff(pressure: ContextPressureSnapshot | undefined, cfg: { warn; fork; critical }) → 'none' | 'warn' | 'fork' | 'critical' | 'unknown'。ratio = pressureTokens / contextWindow，仅当两者都在场且 source === 'projection' 才可算；任一缺席 → 'unknown'（绝不补 0；projectedTokens=0 是合法读数）。零 IO、零 node: 依赖（C-01）。配套新建 tests/handoff-policy.test.ts 覆盖六点边界与缺席分支。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-b0f77c
+      phase: implement
+      side: backend
+    - id: t-086978
+      title: 交接写原子化：席位升降 + sourceSessionId + 留痕·研发
+      implements: |-
+        新建 src/application/internal/handoff-write.ts：handoffOwner(req, { toWindow, fromWindow, actor, at, commentId, reason }) 在一次 mutate 内完成 ① 新窗口入席 owner ② 原窗口（若有席位）降 observer ③ req.sourceSessionId = toWindow ④ 追一条留痕评论（from→to、角色变化、reason）。前置校验：当前 owner 必须等于 fromWindow（并发保护）、toWindow ≠ fromWindow、不得产出空 owner（INV-1）；席位与 sourceSessionId 必须同指一窗（INV-2）。幂等：三处都已对 → 返回 changed=false，不新增评论。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-f75399
+      title: 交接写原子化：席位升降 + sourceSessionId + 留痕·联调
+      implements: |-
+        新建 src/application/internal/handoff-write.ts：handoffOwner(req, { toWindow, fromWindow, actor, at, commentId, reason }) 在一次 mutate 内完成 ① 新窗口入席 owner ② 原窗口（若有席位）降 observer ③ req.sourceSessionId = toWindow ④ 追一条留痕评论（from→to、角色变化、reason）。前置校验：当前 owner 必须等于 fromWindow（并发保护）、toWindow ≠ fromWindow、不得产出空 owner（INV-1）；席位与 sourceSessionId 必须同指一窗（INV-2）。幂等：三处都已对 → 返回 changed=false，不新增评论。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-086978
+      phase: implement
+      side: backend
+    - id: t-9fe6fb
+      title: 交接写原子化：席位升降 + sourceSessionId + 留痕·复核
+      implements: |-
+        新建 src/application/internal/handoff-write.ts：handoffOwner(req, { toWindow, fromWindow, actor, at, commentId, reason }) 在一次 mutate 内完成 ① 新窗口入席 owner ② 原窗口（若有席位）降 observer ③ req.sourceSessionId = toWindow ④ 追一条留痕评论（from→to、角色变化、reason）。前置校验：当前 owner 必须等于 fromWindow（并发保护）、toWindow ≠ fromWindow、不得产出空 owner（INV-1）；席位与 sourceSessionId 必须同指一窗（INV-2）。幂等：三处都已对 → 返回 changed=false，不新增评论。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-f75399
+      phase: implement
+      side: backend
+    - id: t-dcee5f
+      title: 交接写原子化：席位升降 + sourceSessionId + 留痕·测试
+      implements: |-
+        新建 src/application/internal/handoff-write.ts：handoffOwner(req, { toWindow, fromWindow, actor, at, commentId, reason }) 在一次 mutate 内完成 ① 新窗口入席 owner ② 原窗口（若有席位）降 observer ③ req.sourceSessionId = toWindow ④ 追一条留痕评论（from→to、角色变化、reason）。前置校验：当前 owner 必须等于 fromWindow（并发保护）、toWindow ≠ fromWindow、不得产出空 owner（INV-1）；席位与 sourceSessionId 必须同指一窗（INV-2）。幂等：三处都已对 → 返回 changed=false，不新增评论。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-9fe6fb
+      phase: implement
+      side: backend
+    - id: t-d8cc11
+      title: 开窗落回源项目（适配器 + 两个用例调用点）·研发
+      implements: |-
+        src/adapters/SessionWindowOpener.ts：create(opts?) 按 opts 组装请求——workspaceId 或 cwd 只取其一（DSH 二者互斥，同时给会 gateway/bad-request）；新增 resolveSourceProject(sourceSessionId)：① workspaceRegistry.list().find(w => w.sessionIds.includes(id)).id → { workspaceId } ② 源会话 header.cwd → { cwd } ③ 都拿不到 → undefined。src/application/use-cases/OpenWindow.ts：mode=create 时先解析源项目，undefined → reject('REQBOARD_OPEN_WINDOW_UNAVAILABLE') 且不建会话。src/application/use-cases/CaptureRequirement.ts 的 handoff 分支同样带参（UC-7）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-d43523
+      phase: implement
+      side: backend
+    - id: t-0fea36
+      title: 开窗落回源项目（适配器 + 两个用例调用点）·联调
+      implements: |-
+        src/adapters/SessionWindowOpener.ts：create(opts?) 按 opts 组装请求——workspaceId 或 cwd 只取其一（DSH 二者互斥，同时给会 gateway/bad-request）；新增 resolveSourceProject(sourceSessionId)：① workspaceRegistry.list().find(w => w.sessionIds.includes(id)).id → { workspaceId } ② 源会话 header.cwd → { cwd } ③ 都拿不到 → undefined。src/application/use-cases/OpenWindow.ts：mode=create 时先解析源项目，undefined → reject('REQBOARD_OPEN_WINDOW_UNAVAILABLE') 且不建会话。src/application/use-cases/CaptureRequirement.ts 的 handoff 分支同样带参（UC-7）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-d8cc11
+      phase: implement
+      side: backend
+    - id: t-c553e8
+      title: 开窗落回源项目（适配器 + 两个用例调用点）·复核
+      implements: |-
+        src/adapters/SessionWindowOpener.ts：create(opts?) 按 opts 组装请求——workspaceId 或 cwd 只取其一（DSH 二者互斥，同时给会 gateway/bad-request）；新增 resolveSourceProject(sourceSessionId)：① workspaceRegistry.list().find(w => w.sessionIds.includes(id)).id → { workspaceId } ② 源会话 header.cwd → { cwd } ③ 都拿不到 → undefined。src/application/use-cases/OpenWindow.ts：mode=create 时先解析源项目，undefined → reject('REQBOARD_OPEN_WINDOW_UNAVAILABLE') 且不建会话。src/application/use-cases/CaptureRequirement.ts 的 handoff 分支同样带参（UC-7）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-0fea36
+      phase: implement
+      side: backend
+    - id: t-91cdd0
+      title: 开窗落回源项目（适配器 + 两个用例调用点）·测试
+      implements: |-
+        src/adapters/SessionWindowOpener.ts：create(opts?) 按 opts 组装请求——workspaceId 或 cwd 只取其一（DSH 二者互斥，同时给会 gateway/bad-request）；新增 resolveSourceProject(sourceSessionId)：① workspaceRegistry.list().find(w => w.sessionIds.includes(id)).id → { workspaceId } ② 源会话 header.cwd → { cwd } ③ 都拿不到 → undefined。src/application/use-cases/OpenWindow.ts：mode=create 时先解析源项目，undefined → reject('REQBOARD_OPEN_WINDOW_UNAVAILABLE') 且不建会话。src/application/use-cases/CaptureRequirement.ts 的 handoff 分支同样带参（UC-7）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-c553e8
+      phase: implement
+      side: backend
+    - id: t-1ece44
+      title: 交接用例与 reqboard_handoff 工具·研发
+      implements: |-
+        新建 src/application/use-cases/HandoffOwner.ts：编排 ① 授权 canWrite(seatOf(req, wk), 'move-requirement')，否则 REQBOARD_SEAT_NOT_OWNER ② to_window 校验（存在 / ≠ 源 / 活窗口），否则 REQBOARD_HANDOFF_TARGET_INVALID ③ 开窗（复用 t4 的源项目解析）④ handoffOwner 写台账 ⑤ 断点 + 节点输入包经 deps.crossWindowDeliver.createMessage({ text, kind: 'reqboard-handoff' }).deliver(toWindow, msg)，失败不回滚但回执标 delivered=false + reason ⑥ 回执含 from_window/to_window/old_role/new_role/delivery/context_pressure。新建 src/tools/HandoffTool/HandoffTool.ts 与 prompt.ts（薄壳：schema + 摘要渲染），src/tools/index.ts 导出 defineHandoffTool。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-3e8cec
+        - t-ee8599
+        - t-f2c747
+      phase: implement
+      side: backend
+    - id: t-205997
+      title: 交接用例与 reqboard_handoff 工具·联调
+      implements: |-
+        新建 src/application/use-cases/HandoffOwner.ts：编排 ① 授权 canWrite(seatOf(req, wk), 'move-requirement')，否则 REQBOARD_SEAT_NOT_OWNER ② to_window 校验（存在 / ≠ 源 / 活窗口），否则 REQBOARD_HANDOFF_TARGET_INVALID ③ 开窗（复用 t4 的源项目解析）④ handoffOwner 写台账 ⑤ 断点 + 节点输入包经 deps.crossWindowDeliver.createMessage({ text, kind: 'reqboard-handoff' }).deliver(toWindow, msg)，失败不回滚但回执标 delivered=false + reason ⑥ 回执含 from_window/to_window/old_role/new_role/delivery/context_pressure。新建 src/tools/HandoffTool/HandoffTool.ts 与 prompt.ts（薄壳：schema + 摘要渲染），src/tools/index.ts 导出 defineHandoffTool。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-1ece44
+      phase: implement
+      side: backend
+    - id: t-14bacb
+      title: 交接用例与 reqboard_handoff 工具·复核
+      implements: |-
+        新建 src/application/use-cases/HandoffOwner.ts：编排 ① 授权 canWrite(seatOf(req, wk), 'move-requirement')，否则 REQBOARD_SEAT_NOT_OWNER ② to_window 校验（存在 / ≠ 源 / 活窗口），否则 REQBOARD_HANDOFF_TARGET_INVALID ③ 开窗（复用 t4 的源项目解析）④ handoffOwner 写台账 ⑤ 断点 + 节点输入包经 deps.crossWindowDeliver.createMessage({ text, kind: 'reqboard-handoff' }).deliver(toWindow, msg)，失败不回滚但回执标 delivered=false + reason ⑥ 回执含 from_window/to_window/old_role/new_role/delivery/context_pressure。新建 src/tools/HandoffTool/HandoffTool.ts 与 prompt.ts（薄壳：schema + 摘要渲染），src/tools/index.ts 导出 defineHandoffTool。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-205997
+      phase: implement
+      side: backend
+    - id: t-18cc78
+      title: 交接用例与 reqboard_handoff 工具·测试
+      implements: |-
+        新建 src/application/use-cases/HandoffOwner.ts：编排 ① 授权 canWrite(seatOf(req, wk), 'move-requirement')，否则 REQBOARD_SEAT_NOT_OWNER ② to_window 校验（存在 / ≠ 源 / 活窗口），否则 REQBOARD_HANDOFF_TARGET_INVALID ③ 开窗（复用 t4 的源项目解析）④ handoffOwner 写台账 ⑤ 断点 + 节点输入包经 deps.crossWindowDeliver.createMessage({ text, kind: 'reqboard-handoff' }).deliver(toWindow, msg)，失败不回滚但回执标 delivered=false + reason ⑥ 回执含 from_window/to_window/old_role/new_role/delivery/context_pressure。新建 src/tools/HandoffTool/HandoffTool.ts 与 prompt.ts（薄壳：schema + 摘要渲染），src/tools/index.ts 导出 defineHandoffTool。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-14bacb
+      phase: implement
+      side: backend
+    - id: t-6582c0
+      title: 组合根装配 + 看板改绑修正 + 迁移兼容与回滚·研发
+      implements: |-
+        src/index.ts：① ctx.inject(['workspaceRegistry']) 惰性取值（与 sessionController 同款，缺省不影响既有行为）② SessionWindowOpener 构造加第二个解析器 ③ useCaseDeps 增 crossWindowDeliver: deliverer（AgentDeliverer 已实现 createMessage/deliver，含冷会话 resume——FR-4 的全部实现就是这一行）④ 注册 defineHandoffTool。src/application/internal/binding-write.ts：applyRebind 改为委托 handoffOwner（看板改绑 = 一次合法接管，席位与 sourceSessionId 同步）；http 路由与响应形状不变。兼容口径：不传 opts 的开窗请求体仍为 {}；未配置 handoff 无任何后台自动行为；回滚 = 看板改绑回原窗口（幂等）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-4bd792
+      phase: implement
+      side: backend
+    - id: t-aa31a7
+      title: 组合根装配 + 看板改绑修正 + 迁移兼容与回滚·联调
+      implements: |-
+        src/index.ts：① ctx.inject(['workspaceRegistry']) 惰性取值（与 sessionController 同款，缺省不影响既有行为）② SessionWindowOpener 构造加第二个解析器 ③ useCaseDeps 增 crossWindowDeliver: deliverer（AgentDeliverer 已实现 createMessage/deliver，含冷会话 resume——FR-4 的全部实现就是这一行）④ 注册 defineHandoffTool。src/application/internal/binding-write.ts：applyRebind 改为委托 handoffOwner（看板改绑 = 一次合法接管，席位与 sourceSessionId 同步）；http 路由与响应形状不变。兼容口径：不传 opts 的开窗请求体仍为 {}；未配置 handoff 无任何后台自动行为；回滚 = 看板改绑回原窗口（幂等）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-6582c0
+      phase: implement
+      side: backend
+    - id: t-1ac0ee
+      title: 组合根装配 + 看板改绑修正 + 迁移兼容与回滚·复核
+      implements: |-
+        src/index.ts：① ctx.inject(['workspaceRegistry']) 惰性取值（与 sessionController 同款，缺省不影响既有行为）② SessionWindowOpener 构造加第二个解析器 ③ useCaseDeps 增 crossWindowDeliver: deliverer（AgentDeliverer 已实现 createMessage/deliver，含冷会话 resume——FR-4 的全部实现就是这一行）④ 注册 defineHandoffTool。src/application/internal/binding-write.ts：applyRebind 改为委托 handoffOwner（看板改绑 = 一次合法接管，席位与 sourceSessionId 同步）；http 路由与响应形状不变。兼容口径：不传 opts 的开窗请求体仍为 {}；未配置 handoff 无任何后台自动行为；回滚 = 看板改绑回原窗口（幂等）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-aa31a7
+      phase: implement
+      side: backend
+    - id: t-a9e38c
+      title: 组合根装配 + 看板改绑修正 + 迁移兼容与回滚·测试
+      implements: |-
+        src/index.ts：① ctx.inject(['workspaceRegistry']) 惰性取值（与 sessionController 同款，缺省不影响既有行为）② SessionWindowOpener 构造加第二个解析器 ③ useCaseDeps 增 crossWindowDeliver: deliverer（AgentDeliverer 已实现 createMessage/deliver，含冷会话 resume——FR-4 的全部实现就是这一行）④ 注册 defineHandoffTool。src/application/internal/binding-write.ts：applyRebind 改为委托 handoffOwner（看板改绑 = 一次合法接管，席位与 sourceSessionId 同步）；http 路由与响应形状不变。兼容口径：不传 opts 的开窗请求体仍为 {}；未配置 handoff 无任何后台自动行为；回滚 = 看板改绑回原窗口（幂等）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-1ac0ee
+      phase: implement
+      side: backend
+    - id: t-cccef0
+      title: 验收：探针 + 反向演练 + 全量回归与实机复核·研发
+      implements: |-
+        新建 scripts/handoff-probe.mts：对临时台账真跑一次交接，打印 from/to/old_role/new_role/source_session 五个读数，并断言 seats 里 owner.windowKey === sourceSessionId，退出码 0/非 0。补 tests/handoff-owner.test.ts 的四条反向演练（落错项目 → 开窗不发生；假成功 → 改绑后席位真换；读数缺席 → 无自动交接；半截交接 → 三处都不变）。跑全量回归，并按 test-cases.md 登记实机复核四步与结果。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-46d0d7
+      phase: test
+      side: backend
+    - id: t-f889c1
+      title: 验收：探针 + 反向演练 + 全量回归与实机复核·复核
+      implements: |-
+        新建 scripts/handoff-probe.mts：对临时台账真跑一次交接，打印 from/to/old_role/new_role/source_session 五个读数，并断言 seats 里 owner.windowKey === sourceSessionId，退出码 0/非 0。补 tests/handoff-owner.test.ts 的四条反向演练（落错项目 → 开窗不发生；假成功 → 改绑后席位真换；读数缺席 → 无自动交接；半截交接 → 三处都不变）。跑全量回归，并按 test-cases.md 登记实机复核四步与结果。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-cccef0
+      phase: test
+      side: backend
+    - id: t-a5291b
+      title: 验收：探针 + 反向演练 + 全量回归与实机复核·测试
+      implements: |-
+        新建 scripts/handoff-probe.mts：对临时台账真跑一次交接，打印 from/to/old_role/new_role/source_session 五个读数，并断言 seats 里 owner.windowKey === sourceSessionId，退出码 0/非 0。补 tests/handoff-owner.test.ts 的四条反向演练（落错项目 → 开窗不发生；假成功 → 改绑后席位真换；读数缺席 → 无自动交接；半截交接 → 三处都不变）。跑全量回归，并按 test-cases.md 登记实机复核四步与结果。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-f889c1
+      phase: test
+      side: backend
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与总体方案:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+      - t-9f1e88
+    design/architecture.md#模块改动地图:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+    design/architecture.md#交接时序五步全在一个工具调用内:
+      - t-d43523
+      - t-3e8cec
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+    design/architecture.md#分层与纪律:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-46d0d7
+    design/architecture.md#不变量:
+      - t-3e8cec
+      - t-46d0d7
+    design/architecture.md#兼容与回滚:
+      - t-d43523
+      - t-3e8cec
+      - t-f2c747
+      - t-46d0d7
+    design/architecture.md#规范自证:
+      - t-9f1e88
+    design/backend.md#改动清单逐文件带现状锚点:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+    design/backend.md#装配点细节:
+      - t-d43523
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+    design/backend.md#兼容灰度与回滚:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-f2c747
+      - t-46d0d7
+    design/backend.md#风险与对策:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-46d0d7
+    design/backend.md#自证命令:
+      - t-9f1e88
+    design/data-model.md#席位模型现状-本次不变式:
+      - t-3e8cec
+      - t-46d0d7
+    design/data-model.md#角色转移矩阵:
+      - t-3e8cec
+      - t-4bd792
+      - t-46d0d7
+    design/data-model.md#分叉判据的数据来源:
+      - t-d43523
+      - t-ee8599
+    design/data-model.md#新增配置handoff:
+      - t-d43523
+      - t-ee8599
+    design/data-model.md#回执契约:
+      - t-4bd792
+      - t-46d0d7
+    design/data-model.md#迁移与回滚:
+      - t-3e8cec
+      - t-46d0d7
+    design/interfaces.md#工具reqboardhandoff新增:
+      - t-4bd792
+      - t-46d0d7
+    design/interfaces.md#application-端口WindowOpenerPortcreate扩展签名:
+      - t-d43523
+      - t-f2c747
+      - t-46d0d7
+    design/interfaces.md#application-端口CrossWindowDeliveryPort装配不改形状:
+      - t-4bd792
+      - t-46d0d7
+    design/interfaces.md#看板-HTTPPOST-dashboardapireqboardreqrebind行为修正:
+      - t-3e8cec
+      - t-46d0d7
+    design/interfaces.md#错误码表:
+      - t-d43523
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+    design/use-cases.md#UC-1-顶墙续作主路径agent-自主:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+    design/use-cases.md#UC-2-到档但未到阶段边界等边界:
+      - t-d43523
+      - t-ee8599
+    design/use-cases.md#UC-3-人发起不依赖读数:
+      - t-d43523
+      - t-3e8cec
+      - t-f2c747
+      - t-46d0d7
+    design/use-cases.md#UC-4-读数缺席降级路径:
+      - t-d43523
+      - t-ee8599
+    design/use-cases.md#UC-5-底稿投递失败部分成功:
+      - t-4bd792
+      - t-46d0d7
+    design/use-cases.md#UC-6-非-owner-发起拒绝路径:
+      - t-4bd792
+      - t-46d0d7
+    design/use-cases.md#UC-7-reqboardcapture-的-handoff-分支同样落对项目:
+      - t-d43523
+      - t-f2c747
+      - t-46d0d7
+    design/use-cases.md#场景-条款覆盖:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+  fr_to_tasks:
+    FR-1:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+      - t-9f1e88
+    FR-2:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+      - t-9f1e88
+    FR-3:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+      - t-9f1e88
+    FR-4:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+      - t-9f1e88
+    FR-5:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+      - t-9f1e88
+    FR-6:
+      - t-d43523
+      - t-3e8cec
+      - t-ee8599
+      - t-f2c747
+      - t-4bd792
+      - t-46d0d7
+      - t-9f1e88
+coverage:
+  implementation:
+    total: 31
+    covered: 31
+    uncovered: []
+    rate: 100
+    total_designs: 31
+    covered_designs: 31

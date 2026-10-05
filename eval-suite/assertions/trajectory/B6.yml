@@ -1,0 +1,15 @@
+# case B6 · design→decomposing 标准流 · serves: FR-2
+case: B6
+ordered_contains:
+  - reqboard_submit             # kind=design 登记设计文档
+  - reqboard_ask_confirm        # kind=design 人工确认
+  - reqboard_move               # design_docs 全部 confirmed 后推进 decomposing
+forbidden:
+  - tool: reqboard_move
+    when: design_docs_unconfirmed   # 设计文档未全部确认前不得 move
+budget:
+  max_tool_calls: 10
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_move
+    result_contains: decomposing

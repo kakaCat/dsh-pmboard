@@ -1,0 +1,5954 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261001213924-1441",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-02T00:54:04.111Z",
+  "tasks": [
+    {
+      "id": "t-7a9e10",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "定死状态契约：人的意图与运行时健康分家",
+      "cardDoc": "docs/requirements/REQ-261001213924-1441/tasks/t-7a9e10.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/dive-round-state.test.ts 全绿（真值表）；tsc 过滤 round-state/protocol 无新增错误。",
+      "implementation": "改 protocol.ts 的 DiveState；改 round-state.ts 的 isDrivableRequirement；读侧兼容旧 phase。",
+      "context": "",
+      "requirementRefs": [
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6e847e",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902453196,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2168,
+              "at": 1790902453205,
+              "totals": {
+                "uncachedInputTokens": 928648,
+                "outputTokens": 311194,
+                "cacheReadTokens": 82562304,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2271,
+              "at": 1790902507296,
+              "totals": {
+                "uncachedInputTokens": 953356,
+                "outputTokens": 317719,
+                "cacheReadTokens": 86995456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 24708,
+              "outputTokens": 6525,
+              "cacheReadTokens": 4433152,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902507280
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902443976,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902453196,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "开工：定死状态契约（人的意图与运行时健康分家）"
+        },
+        {
+          "status": "done",
+          "at": 1790902507280,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "状态契约落地：人的意图与运行时健康分家、判定同源、真值表 18 passed"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b0fb8b",
+          "body": "[状态] → in_progress：开工：定死状态契约（人的意图与运行时健康分家）（reqboard_task_move）",
+          "createdAt": 1790902453196,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-26cccd",
+          "body": "[状态] → done：状态契约落地：人的意图与运行时健康分家、判定同源、真值表 18 passed（reqboard_task_move）",
+          "createdAt": 1790902507280,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902443976,
+      "updatedAt": 1790902507280,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1790902507164,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/shared/protocol.ts",
+          "src/application/dive/round-state.ts",
+          "tests/dive-round-state.test.ts"
+        ],
+        "completed": [
+          "拆分两个状态：activation（人的意图，只有人能改）/ driverHealth（运行时健康，只有驱动侧能写）",
+          "可驱动判定与准入栅栏改为同源，消除两处口径漂移",
+          "六行真值表 + 可逆性用例，18 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902507164,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-dd205a",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "回合计数改「本阶段」：阶段推进就归零",
+      "cardDoc": "docs/requirements/REQ-261001213924-1441/tasks/t-dd205a.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-7a9e10"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/dive-round-driver.test.ts：跨阶段后 roundsInStage===0；同阶段不归零。",
+      "implementation": "改 token-usage.ts 的 transitionRequirement：from !== to 时 roundsInStage=0、attempts=0。",
+      "context": "",
+      "requirementRefs": [
+        "FR-1"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-732e65",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902512417,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2280,
+              "at": 1790902512425,
+              "totals": {
+                "uncachedInputTokens": 975073,
+                "outputTokens": 318082,
+                "cacheReadTokens": 87556864,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2347,
+              "at": 1790902570370,
+              "totals": {
+                "uncachedInputTokens": 997892,
+                "outputTokens": 321511,
+                "cacheReadTokens": 89354752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 22819,
+              "outputTokens": 3429,
+              "cacheReadTokens": 1797888,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902570353
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902443976,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902512417,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "开工：回合计数改「本阶段」，阶段推进即归零"
+        },
+        {
+          "status": "done",
+          "at": 1790902570353,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "回合计数改为本阶段语义：跨阶段归零、同阶段保持，20 passed"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-18c040",
+          "body": "[状态] → in_progress：开工：回合计数改「本阶段」，阶段推进即归零（reqboard_task_move）",
+          "createdAt": 1790902512417,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-e94daf",
+          "body": "[状态] → done：回合计数改为本阶段语义：跨阶段归零、同阶段保持，20 passed（reqboard_task_move）",
+          "createdAt": 1790902570353,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902443976,
+      "updatedAt": 1790902570353,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790902539205,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/token-usage.ts",
+          "tests/dive-round-driver.test.ts"
+        ],
+        "completed": [
+          "跨阶段转换归零 roundsInStage 与连续失败计数",
+          "同阶段累计保持不动",
+          "存量（无 dive）不抛错；20 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902539205,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d5a14d",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "达上限不再锁死：人一动就能继续",
+      "cardDoc": "docs/requirements/REQ-261001213924-1441/tasks/t-d5a14d.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-7a9e10"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/dive-round-driver.test.ts tests/dive-rearm.test.ts：达上限后 activation 不变、reason 含 round-limit；recoverHealth 后可驱动。",
+      "implementation": "改 round-driver 的 terminalBlock/disarm 写 driverHealth；rearm 升级为 recoverHealth；看板继续走它。",
+      "context": "",
+      "requirementRefs": [
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-636eed",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902576264,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2355,
+              "at": 1790902576272,
+              "totals": {
+                "uncachedInputTokens": 998195,
+                "outputTokens": 322455,
+                "cacheReadTokens": 89964160,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2502,
+              "at": 1790902661118,
+              "totals": {
+                "uncachedInputTokens": 1026100,
+                "outputTokens": 335658,
+                "cacheReadTokens": 96354816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 27905,
+              "outputTokens": 13203,
+              "cacheReadTokens": 6390656,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902661101
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902443976,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902576264,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "开工：达上限不再锁死（人一动就能继续）"
+        },
+        {
+          "status": "done",
+          "at": 1790902661101,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "达上限/运行时故障改为可恢复的\"停下等人\"，activation 不再被改写；31 passed"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-93bbdb",
+          "body": "[状态] → in_progress：开工：达上限不再锁死（人一动就能继续）（reqboard_task_move）",
+          "createdAt": 1790902576264,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-cb9c5b",
+          "body": "[状态] → done：达上限/运行时故障改为可恢复的\"停下等人\"，activation 不再被改写；31 passed（reqboard_task_move）",
+          "createdAt": 1790902661101,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902443976,
+      "updatedAt": 1790902661101,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790902660980,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/rearm.ts",
+          "tests/dive-round-driver.test.ts",
+          "tests/dive-rearm.test.ts"
+        ],
+        "completed": [
+          "运行时故障只写 driverHealth，activation 永不被改写",
+          "达上限 = 停下等人（recoverHealth 即可恢复），comment 给出恢复路径",
+          "teardown 不再改写任何状态",
+          "31 passed；6 条旧断言按新契约修正"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902660980,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b67d56",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "把 agent 事件订阅搬到 agent 作用域上",
+      "cardDoc": "docs/requirements/REQ-261001213924-1441/tasks/t-b67d56.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-7a9e10"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/dive-wake-wiring.test.ts：注册在 agent.ctx；disposed 后注销；负例三者齐备。",
+      "implementation": "改 ReqboardDiveManager 与 round-subscriptions：agent/created → agent.ctx 注册；按 agent 注销。",
+      "context": "",
+      "requirementRefs": [
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-049f82",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902671771,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2511,
+              "at": 1790902671779,
+              "totals": {
+                "uncachedInputTokens": 1047845,
+                "outputTokens": 337526,
+                "cacheReadTokens": 97005824,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2873,
+              "at": 1790902908196,
+              "totals": {
+                "uncachedInputTokens": 1156003,
+                "outputTokens": 376403,
+                "cacheReadTokens": 100612096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 108158,
+              "outputTokens": 38877,
+              "cacheReadTokens": 3606272,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902908178
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902443976,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902671771,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "开工：把 agent 事件订阅搬到 agent 作用域上"
+        },
+        {
+          "status": "done",
+          "at": 1790902908178,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "agent 事件订阅改由 agent.ctx 持有并随 agent 注销；失败响亮三件套 + [WAKE-RX] 接收证明；10 passed"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-13a203",
+          "body": "[状态] → in_progress：开工：把 agent 事件订阅搬到 agent 作用域上（reqboard_task_move）",
+          "createdAt": 1790902671771,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-812691",
+          "body": "[状态] → done：agent 事件订阅改由 agent.ctx 持有并随 agent 注销；失败响亮三件套 + [WAKE-RX] 接收证明；10 passed（reqboard_task_move）",
+          "createdAt": 1790902908178,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902443976,
+      "updatedAt": 1790902908178,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790902908055,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-subscriptions.ts",
+          "src/application/dive/ReqboardDiveManager.ts",
+          "tests/dive-wake-wiring.test.ts"
+        ],
+        "completed": [
+          "per-agent 六路注册到 agent.ctx，按 agent 注销；root 只留 requirement-moved 与 agent/created",
+          "失败响亮：warn + 诊断 + comment 三者齐备，并有测试逐项断言",
+          "[WAKE-RX] 接收证明落诊断日志",
+          "10 passed（子集 69 passed）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902908055,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-39d8aa",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "加心跳兜底与唤醒链诊断",
+      "cardDoc": "docs/requirements/REQ-261001213924-1441/tasks/t-39d8aa.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-7a9e10"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/dive-rearm.test.ts：tick() woken 含该需求；3 次失败 → health=paused 且 activation 不变。",
+      "implementation": "新增 wake-reconciler.ts 并在组合根装配；早退分支加 captureDiag。",
+      "context": "",
+      "requirementRefs": [
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6038ca",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902921376,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2882,
+              "at": 1790902921384,
+              "totals": {
+                "uncachedInputTokens": 1177631,
+                "outputTokens": 378512,
+                "cacheReadTokens": 100730240,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3025,
+              "at": 1790903004337,
+              "totals": {
+                "uncachedInputTokens": 1202677,
+                "outputTokens": 391493,
+                "cacheReadTokens": 102598400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 25046,
+              "outputTokens": 12981,
+              "cacheReadTokens": 1868160,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903004318
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902443976,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902921376,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "开工：心跳对账 + [dive-diag] 结论"
+        },
+        {
+          "status": "done",
+          "at": 1790903004318,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "心跳兜底落地：只叫停滞需求、叫不动如实记健康位与诊断 comment；15 passed"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-847e84",
+          "body": "[状态] → in_progress：开工：心跳对账 + [dive-diag] 结论（reqboard_task_move）",
+          "createdAt": 1790902921376,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-0ca79e",
+          "body": "[状态] → done：心跳兜底落地：只叫停滞需求、叫不动如实记健康位与诊断 comment；15 passed（reqboard_task_move）",
+          "createdAt": 1790903004318,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902443976,
+      "updatedAt": 1790903004318,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790903004188,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/wake-heartbeat.ts",
+          "src/application/dive/ReqboardDiveManager.ts",
+          "tests/dive-rearm.test.ts"
+        ],
+        "completed": [
+          "心跳 tick()：只叫停滞需求，成功记 lastWakeAt、失败计数归零",
+          "连续 3 次失败 → health=paused(wake-undeliverable) + [dive-diag] comment，activation 不变",
+          "管理器 60s 心跳 + wakeTick() 手动入口；15 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903004188,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9314c7",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "回合收尾只认一个解析器",
+      "cardDoc": "docs/requirements/REQ-261001213924-1441/tasks/t-9314c7.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-7a9e10"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/dive-round-driver.test.ts：三种形状结论一致。",
+      "implementation": "改 round-driver 的 onSessionEvent 用 turnEndOutcome，删除窄读。",
+      "context": "",
+      "requirementRefs": [
+        "FR-6"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-25ddf0",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903255656,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3132,
+              "at": 1790903255665,
+              "totals": {
+                "uncachedInputTokens": 1229913,
+                "outputTokens": 401337,
+                "cacheReadTokens": 104658304,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3867,
+              "at": 1790904476405,
+              "totals": {
+                "uncachedInputTokens": 1309508,
+                "outputTokens": 456531,
+                "cacheReadTokens": 122638080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 79595,
+              "outputTokens": 55194,
+              "cacheReadTokens": 17979776,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790904476388
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902443976,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903255656,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "开工：turn/end 结局单一解析"
+        },
+        {
+          "status": "done",
+          "at": 1790904476388,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "回合收尾单一解析器落地（四种形态一套口径）；23 passed"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9e8245",
+          "body": "[状态] → in_progress：开工：turn/end 结局单一解析（reqboard_task_move）",
+          "createdAt": 1790903255656,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-f838d6",
+          "body": "[状态] → done：回合收尾单一解析器落地（四种形态一套口径）；23 passed（reqboard_task_move）",
+          "createdAt": 1790904476388,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902443976,
+      "updatedAt": 1790904476388,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1790904476246,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/interruption.ts",
+          "tests/dive-round-driver.test.ts"
+        ],
+        "completed": [
+          "round-driver 的 turn/end 改用共享解析器（修前 error/interrupted 被静默忽略）",
+          "四种形态统一口径 + 未知形态零写入",
+          "23 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1790904476246,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2c9ba9",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "一条真端到端断言当门禁（修前必红）",
+      "cardDoc": "docs/requirements/REQ-261001213924-1441/tasks/t-2c9ba9.md",
+      "description": "",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-dd205a",
+        "t-d5a14d",
+        "t-b67d56",
+        "t-39d8aa"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/dive-wake-e2e.test.ts 全绿；修前必红且留证。",
+      "implementation": "新增 tests/dive-wake-e2e.test.ts：真实组合根投递器 + 真 round driver。",
+      "context": "",
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3",
+        "FR-4",
+        "FR-7"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4a05f3",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903280968,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3183,
+              "at": 1790903280976,
+              "totals": {
+                "uncachedInputTokens": 1255327,
+                "outputTokens": 405886,
+                "cacheReadTokens": 105838208,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3453,
+              "at": 1790903418580,
+              "totals": {
+                "uncachedInputTokens": 1267368,
+                "outputTokens": 426027,
+                "cacheReadTokens": 111551744,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 12041,
+              "outputTokens": 20141,
+              "cacheReadTokens": 5713536,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903418563
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902443976,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903280968,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "开工：端到端闸门（按已证实故障红/绿）"
+        },
+        {
+          "status": "done",
+          "at": 1790903418563,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "端到端闸门落地（按已证实故障红/绿），并修出「恢复不还额度」的真实缺陷；45 passed"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-41f1d4",
+          "body": "[状态] → in_progress：开工：端到端闸门（按已证实故障红/绿）（reqboard_task_move）",
+          "createdAt": 1790903280968,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-7735b6",
+          "body": "[状态] → done：端到端闸门落地（按已证实故障红/绿），并修出「恢复不还额度」的真实缺陷；45 passed（reqboard_task_move）",
+          "createdAt": 1790903418563,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902443976,
+      "updatedAt": 1790903418563,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1790903418431,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/dive-wake-e2e.test.ts",
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/rearm.ts"
+        ],
+        "completed": [
+          "端到端闸门 5 条（覆盖你裁定的四类已证实故障）",
+          "顺带修掉：达上限后恢复没还额度（人点继续又立刻撞上限）",
+          "45 passed（e2e 5 + rearm 17 + driver 23）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903418431,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-703429",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "存量台账分类迁移与兼容回滚",
+      "cardDoc": "docs/requirements/REQ-261001213924-1441/tasks/t-703429.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-dd205a",
+        "t-d5a14d"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/dive-migration.test.ts：五种形态落矩阵结果并留痕；二次运行零写入。",
+      "implementation": "启动对账内做幂等迁移；读侧保留一版 phase 兼容；产出 tests/dive-migration.test.ts。",
+      "context": "",
+      "requirementRefs": [
+        "FR-2",
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-177e4e",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903434254,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3481,
+              "at": 1790903434263,
+              "totals": {
+                "uncachedInputTokens": 1268211,
+                "outputTokens": 427427,
+                "cacheReadTokens": 112379392,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3613,
+              "at": 1790903512702,
+              "totals": {
+                "uncachedInputTokens": 1272650,
+                "outputTokens": 440685,
+                "cacheReadTokens": 115527040,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 4439,
+              "outputTokens": 13258,
+              "cacheReadTokens": 3147648,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903512686
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902443976,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903434254,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "开工：存量台账迁移"
+        },
+        {
+          "status": "done",
+          "at": 1790903512686,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "存量台账幂等迁移落地（6 行矩阵 + 幂等 + 不改人的意图）；7 passed"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-806648",
+          "body": "[状态] → in_progress：开工：存量台账迁移（reqboard_task_move）",
+          "createdAt": 1790903434254,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-186e36",
+          "body": "[状态] → done：存量台账幂等迁移落地（6 行矩阵 + 幂等 + 不改人的意图）；7 passed（reqboard_task_move）",
+          "createdAt": 1790903512686,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902443976,
+      "updatedAt": 1790903512686,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1790903512554,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/migrate-dive-state.ts",
+          "src/shared/protocol.ts",
+          "src/index.ts",
+          "tests/dive-migration.test.ts",
+          "docs/requirements/REQ-261001213924-1441/design/data-model.md"
+        ],
+        "completed": [
+          "存量矩阵一次性幂等迁移（7 passed）",
+          "migratedAt 印章保证第二次零写入；盖章不 bump version",
+          "接启动对账；失败不致命并写诊断日志"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903512554,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-120a5e",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "定死状态契约：人的意图与运行时健康分家·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 protocol.ts 的 DiveState；改 round-state.ts 的 isDrivableRequirement；读侧兼容旧 phase。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-7a9e10",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d52ed6",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902506077,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2245,
+              "at": 1790902506086,
+              "totals": {
+                "uncachedInputTokens": 953356,
+                "outputTokens": 317719,
+                "cacheReadTokens": 86995456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2249,
+              "at": 1790902506294,
+              "totals": {
+                "uncachedInputTokens": 953356,
+                "outputTokens": 317719,
+                "cacheReadTokens": 86995456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902506278
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-4f734a",
+          "body": "[状态] → in_progress：dev 开工（reqboard_task_move）",
+          "createdAt": 1790902506077,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-2eeea7",
+          "body": "[状态] → done：dev 段完成（reqboard_task_move）",
+          "createdAt": 1790902506278,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902453196,
+      "updatedAt": 1790902506278,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902453196,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902506077,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902506278,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 段完成"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790902506146,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/shared/protocol.ts",
+          "src/application/dive/round-state.ts",
+          "tests/dive-round-state.test.ts"
+        ],
+        "completed": [
+          "protocol.ts：activation 注明只有人能改；新增 driverHealth{state,reason,since,attempts} 与 lastWakeAt；phase 降级为读侧兼容",
+          "round-state.ts：isDrivableRequirement 改看 activation + driverHealth（旧记录按 phase 兼容）",
+          "round-state.ts：准入栅栏 roundReservationValid 改为复用同一判定，避免两处口径漂移"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902506146,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-5e5845",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "定死状态契约：人的意图与运行时健康分家·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-120a5e"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "改 protocol.ts 的 DiveState；改 round-state.ts 的 isDrivableRequirement；读侧兼容旧 phase。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-7a9e10",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4d22d0",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902506370,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2251,
+              "at": 1790902506378,
+              "totals": {
+                "uncachedInputTokens": 953356,
+                "outputTokens": 317719,
+                "cacheReadTokens": 86995456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2255,
+              "at": 1790902506567,
+              "totals": {
+                "uncachedInputTokens": 953356,
+                "outputTokens": 317719,
+                "cacheReadTokens": 86995456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902506551
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-91745c",
+          "body": "[状态] → in_progress：integrate 开工（reqboard_task_move）",
+          "createdAt": 1790902506370,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-2fa338",
+          "body": "[状态] → done：integrate 段完成（reqboard_task_move）",
+          "createdAt": 1790902506551,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902453196,
+      "updatedAt": 1790902506551,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902453196,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902506370,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902506551,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 段完成"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790902506436,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/shared/protocol.ts",
+          "src/application/dive/round-state.ts",
+          "tests/dive-round-state.test.ts"
+        ],
+        "completed": [
+          "六行真值表：armed+healthy 可驱动；armed+paused 不可；disarmed+healthy 不可；旧记录 armed+active 放行；旧记录 armed+paused 拦下；旧记录 disarmed+idle 拦下",
+          "「停下等人」可逆性用例：只把 driverHealth 改回 healthy 即恢复可驱动，activation 不变"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902506436,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d75509",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "定死状态契约：人的意图与运行时健康分家·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-5e5845"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 protocol.ts 的 DiveState；改 round-state.ts 的 isDrivableRequirement；读侧兼容旧 phase。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-7a9e10",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f2178f",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902506641,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2257,
+              "at": 1790902506649,
+              "totals": {
+                "uncachedInputTokens": 953356,
+                "outputTokens": 317719,
+                "cacheReadTokens": 86995456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2261,
+              "at": 1790902506840,
+              "totals": {
+                "uncachedInputTokens": 953356,
+                "outputTokens": 317719,
+                "cacheReadTokens": 86995456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902506824
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1b420e",
+          "body": "[状态] → in_progress：review 开工（reqboard_task_move）",
+          "createdAt": 1790902506641,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-e26c11",
+          "body": "[状态] → done：review 段完成（reqboard_task_move）",
+          "createdAt": 1790902506824,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902453196,
+      "updatedAt": 1790902506824,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902453196,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902506641,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902506824,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 段完成"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790902506703,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/shared/protocol.ts",
+          "src/application/dive/round-state.ts",
+          "tests/dive-round-state.test.ts"
+        ],
+        "completed": [
+          "未改预留/准入/上限的判定语义（只把准入的 dive 判据改为同源）",
+          "未改工具面与 HTTP 形状",
+          "tsc 过滤 round-state / protocol 无输出"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902506703,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-35f9b5",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "定死状态契约：人的意图与运行时健康分家·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-d75509"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 protocol.ts 的 DiveState；改 round-state.ts 的 isDrivableRequirement；读侧兼容旧 phase。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-7a9e10",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-536f30",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902506911,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2263,
+              "at": 1790902506920,
+              "totals": {
+                "uncachedInputTokens": 953356,
+                "outputTokens": 317719,
+                "cacheReadTokens": 86995456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2267,
+              "at": 1790902507110,
+              "totals": {
+                "uncachedInputTokens": 953356,
+                "outputTokens": 317719,
+                "cacheReadTokens": 86995456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902507093
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0780e1",
+          "body": "[状态] → in_progress：test 开工（reqboard_task_move）",
+          "createdAt": 1790902506911,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-d0a2d8",
+          "body": "[状态] → done：test 段完成（reqboard_task_move）",
+          "createdAt": 1790902507093,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902453196,
+      "updatedAt": 1790902507093,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902453196,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902506911,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902507093,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 段完成"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790902506976,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/shared/protocol.ts",
+          "src/application/dive/round-state.ts",
+          "tests/dive-round-state.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/dive-round-state.test.ts → 18 passed（原 15 + 新 3）",
+          "npx vitest run tests/dive-round-driver.test.ts → 17 passed（无回归）",
+          "npx tsc --noEmit 过滤 round-state/protocol → 无输出"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902506976,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d2a647",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "回合计数改「本阶段」：阶段推进就归零·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-7a9e10"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 token-usage.ts 的 transitionRequirement：from !== to 时 roundsInStage=0、attempts=0。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-dd205a",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-093f4d",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902538074,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2319,
+              "at": 1790902538082,
+              "totals": {
+                "uncachedInputTokens": 997892,
+                "outputTokens": 321511,
+                "cacheReadTokens": 89354752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2323,
+              "at": 1790902538289,
+              "totals": {
+                "uncachedInputTokens": 997892,
+                "outputTokens": 321511,
+                "cacheReadTokens": 89354752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902538272
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ed66ca",
+          "body": "[状态] → in_progress：dev 开工（reqboard_task_move）",
+          "createdAt": 1790902538074,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-5a1d1e",
+          "body": "[状态] → done：dev 段完成（reqboard_task_move）",
+          "createdAt": 1790902538272,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902512417,
+      "updatedAt": 1790902538272,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902512417,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902538074,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902538272,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 段完成"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790902538142,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/token-usage.ts",
+          "tests/dive-round-driver.test.ts"
+        ],
+        "completed": [
+          "token-usage.ts 的 transitionRequirement：from !== to 时 roundsInStage=0 且 driverHealth.attempts=0",
+          "同阶段内调用（from === to）不动计数，阶段内累计保住",
+          "无 dive 字段的存量需求跨阶段转换不抛错"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902538142,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-0708e0",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "回合计数改「本阶段」：阶段推进就归零·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-d2a647"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "改 token-usage.ts 的 transitionRequirement：from !== to 时 roundsInStage=0、attempts=0。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-dd205a",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b76ea6",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902538368,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2325,
+              "at": 1790902538377,
+              "totals": {
+                "uncachedInputTokens": 997892,
+                "outputTokens": 321511,
+                "cacheReadTokens": 89354752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2329,
+              "at": 1790902538570,
+              "totals": {
+                "uncachedInputTokens": 997892,
+                "outputTokens": 321511,
+                "cacheReadTokens": 89354752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902538554
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5b44da",
+          "body": "[状态] → in_progress：integrate 开工（reqboard_task_move）",
+          "createdAt": 1790902538368,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-415f08",
+          "body": "[状态] → done：integrate 段完成（reqboard_task_move）",
+          "createdAt": 1790902538554,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902512417,
+      "updatedAt": 1790902538554,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902512417,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902538368,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902538554,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 段完成"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790902538435,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/token-usage.ts",
+          "tests/dive-round-driver.test.ts"
+        ],
+        "completed": [
+          "跨阶段 design→decomposing：计数 1→0、连续失败 2→0",
+          "同阶段 implementing→implementing：计数保持 3",
+          "存量（dive 缺失）不抛错"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902538435,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-bf99c7",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "回合计数改「本阶段」：阶段推进就归零·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-0708e0"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 token-usage.ts 的 transitionRequirement：from !== to 时 roundsInStage=0、attempts=0。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-dd205a",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a24328",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902538643,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2331,
+              "at": 1790902538651,
+              "totals": {
+                "uncachedInputTokens": 997892,
+                "outputTokens": 321511,
+                "cacheReadTokens": 89354752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2335,
+              "at": 1790902538848,
+              "totals": {
+                "uncachedInputTokens": 997892,
+                "outputTokens": 321511,
+                "cacheReadTokens": 89354752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902538832
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-443e00",
+          "body": "[状态] → in_progress：review 开工（reqboard_task_move）",
+          "createdAt": 1790902538643,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-5ac92e",
+          "body": "[状态] → done：review 段完成（reqboard_task_move）",
+          "createdAt": 1790902538832,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902512417,
+      "updatedAt": 1790902538832,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902512417,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902538643,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902538832,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 段完成"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790902538707,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/token-usage.ts",
+          "tests/dive-round-driver.test.ts"
+        ],
+        "completed": [
+          "未改 roundLimitFor / terminalBlock（那属 t3）",
+          "tsc 过滤 token-usage 无输出"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902538707,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-7231bf",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "回合计数改「本阶段」：阶段推进就归零·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-bf99c7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 token-usage.ts 的 transitionRequirement：from !== to 时 roundsInStage=0、attempts=0。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-dd205a",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c747cd",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902538921,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2337,
+              "at": 1790902538929,
+              "totals": {
+                "uncachedInputTokens": 997892,
+                "outputTokens": 321511,
+                "cacheReadTokens": 89354752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2341,
+              "at": 1790902539150,
+              "totals": {
+                "uncachedInputTokens": 997892,
+                "outputTokens": 321511,
+                "cacheReadTokens": 89354752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902539134
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b5e5b6",
+          "body": "[状态] → in_progress：test 开工（reqboard_task_move）",
+          "createdAt": 1790902538921,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-c9ba40",
+          "body": "[状态] → done：test 段完成（reqboard_task_move）",
+          "createdAt": 1790902539134,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902512417,
+      "updatedAt": 1790902539134,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902512417,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902538921,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902539134,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 段完成"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790902538987,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/token-usage.ts",
+          "tests/dive-round-driver.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/dive-round-driver.test.ts → 20 passed（原 17 + 新 3）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902538987,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a5aff0",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "达上限不再锁死：人一动就能继续·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-7a9e10"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 round-driver 的 terminalBlock/disarm 写 driverHealth；rearm 升级为 recoverHealth；看板继续走它。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-d5a14d",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-45dabf",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902659783,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2476,
+              "at": 1790902659792,
+              "totals": {
+                "uncachedInputTokens": 1026100,
+                "outputTokens": 335658,
+                "cacheReadTokens": 96354816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2480,
+              "at": 1790902660006,
+              "totals": {
+                "uncachedInputTokens": 1026100,
+                "outputTokens": 335658,
+                "cacheReadTokens": 96354816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902659982
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-86fd35",
+          "body": "[状态] → in_progress：dev 开工（reqboard_task_move）",
+          "createdAt": 1790902659783,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-01b8c4",
+          "body": "[状态] → done：dev 段完成（reqboard_task_move）",
+          "createdAt": 1790902659982,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902576264,
+      "updatedAt": 1790902659982,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902576264,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902659783,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902659982,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 段完成"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790902659852,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/rearm.ts",
+          "tests/dive-round-driver.test.ts",
+          "tests/dive-rearm.test.ts"
+        ],
+        "completed": [
+          "round-driver：disarm 只写 driverHealth（不改 activation）；teardown 不写任何状态",
+          "round-driver：达上限写 driverHealth={paused, reason:round-limit:<阶段>}，comment 给出恢复路径",
+          "rearm.ts 升级为 recoverHealth：运行时暂停清回 healthy；存量误停摆（disarmed+active）仍可恢复；人主动暂停/已健康一律零写入",
+          "看板「继续」入口沿用同一函数（旧名 rearmIfRecoverable 作为别名）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902659852,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-82a7f1",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "达上限不再锁死：人一动就能继续·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-a5aff0"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "改 round-driver 的 terminalBlock/disarm 写 driverHealth；rearm 升级为 recoverHealth；看板继续走它。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-d5a14d",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-be1558",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902660090,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2482,
+              "at": 1790902660098,
+              "totals": {
+                "uncachedInputTokens": 1026100,
+                "outputTokens": 335658,
+                "cacheReadTokens": 96354816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2486,
+              "at": 1790902660311,
+              "totals": {
+                "uncachedInputTokens": 1026100,
+                "outputTokens": 335658,
+                "cacheReadTokens": 96354816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902660292
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-cf0ccf",
+          "body": "[状态] → in_progress：integrate 开工（reqboard_task_move）",
+          "createdAt": 1790902660090,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-bd34b2",
+          "body": "[状态] → done：integrate 段完成（reqboard_task_move）",
+          "createdAt": 1790902660292,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902576264,
+      "updatedAt": 1790902660292,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902576264,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902660090,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902660292,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 段完成"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790902660164,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/rearm.ts",
+          "tests/dive-round-driver.test.ts",
+          "tests/dive-rearm.test.ts"
+        ],
+        "completed": [
+          "paused（round-limit:design）→ recoverHealth → healthy、attempts 归零、activation 全程 armed、isDrivableRequirement 恢复 true",
+          "负例：人 clear_pause（disarmed+idle）不可恢复且零写入；已健康时幂等不刷 comment"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902660164,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8af611",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "达上限不再锁死：人一动就能继续·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-82a7f1"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 round-driver 的 terminalBlock/disarm 写 driverHealth；rearm 升级为 recoverHealth；看板继续走它。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-d5a14d",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3986aa",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902660397,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2488,
+              "at": 1790902660405,
+              "totals": {
+                "uncachedInputTokens": 1026100,
+                "outputTokens": 335658,
+                "cacheReadTokens": 96354816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2492,
+              "at": 1790902660628,
+              "totals": {
+                "uncachedInputTokens": 1026100,
+                "outputTokens": 335658,
+                "cacheReadTokens": 96354816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902660612
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5c2c9c",
+          "body": "[状态] → in_progress：review 开工（reqboard_task_move）",
+          "createdAt": 1790902660397,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-94ea01",
+          "body": "[状态] → done：review 段完成（reqboard_task_move）",
+          "createdAt": 1790902660612,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902576264,
+      "updatedAt": 1790902660612,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902576264,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902660397,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902660612,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 段完成"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790902660479,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/rearm.ts",
+          "tests/dive-round-driver.test.ts",
+          "tests/dive-rearm.test.ts"
+        ],
+        "completed": [
+          "disarm/terminalBlock 两条写入路径均只写 driverHealth",
+          "teardown 从\"改写 activation\"改为彻底不写（修前正是它导致每次重启把需求打成手动）",
+          "tsc 过滤 round-driver/rearm/token-usage 无输出"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902660479,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-168f59",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "达上限不再锁死：人一动就能继续·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-8af611"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 round-driver 的 terminalBlock/disarm 写 driverHealth；rearm 升级为 recoverHealth；看板继续走它。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-d5a14d",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ec4dac",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902660705,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2494,
+              "at": 1790902660713,
+              "totals": {
+                "uncachedInputTokens": 1026100,
+                "outputTokens": 335658,
+                "cacheReadTokens": 96354816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2498,
+              "at": 1790902660916,
+              "totals": {
+                "uncachedInputTokens": 1026100,
+                "outputTokens": 335658,
+                "cacheReadTokens": 96354816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902660899
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-70e13d",
+          "body": "[状态] → in_progress：test 开工（reqboard_task_move）",
+          "createdAt": 1790902660705,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-1f70e1",
+          "body": "[状态] → done：test 段完成（reqboard_task_move）",
+          "createdAt": 1790902660899,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902576264,
+      "updatedAt": 1790902660899,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902576264,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902660705,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902660899,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 段完成"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790902660776,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/rearm.ts",
+          "tests/dive-round-driver.test.ts",
+          "tests/dive-rearm.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/dive-round-driver.test.ts tests/dive-rearm.test.ts → 31 passed（20 + 11）",
+          "把 6 条\"钉住旧行为\"的断言改为新契约（activation 不变 + driverHealth 暂停）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902660776,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d2bc95",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "把 agent 事件订阅搬到 agent 作用域上·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-7a9e10"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 ReqboardDiveManager 与 round-subscriptions：agent/created → agent.ctx 注册；按 agent 注销。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-b67d56",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a05b7c",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902906900,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2847,
+              "at": 1790902906908,
+              "totals": {
+                "uncachedInputTokens": 1156003,
+                "outputTokens": 376403,
+                "cacheReadTokens": 100612096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2851,
+              "at": 1790902907122,
+              "totals": {
+                "uncachedInputTokens": 1156003,
+                "outputTokens": 376403,
+                "cacheReadTokens": 100612096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902907097
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7cfbfe",
+          "body": "[状态] → in_progress：dev 开工（reqboard_task_move）",
+          "createdAt": 1790902906900,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-90636d",
+          "body": "[状态] → done：dev 段完成（reqboard_task_move）",
+          "createdAt": 1790902907097,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902671771,
+      "updatedAt": 1790902907097,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902671771,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902906900,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902907097,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 段完成"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790902906970,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-subscriptions.ts",
+          "src/application/dive/ReqboardDiveManager.ts",
+          "tests/dive-wake-wiring.test.ts"
+        ],
+        "completed": [
+          "round-subscriptions 拆为 root 组（2 路）与 per-agent 组（6 路：status/pre-step/inbox*3/error/disposed）",
+          "ReqboardDiveManager 经 agent/created 拿 agent，把 per-agent 六路注册到 agent.ctx，并按 agent id 记住解绑函数",
+          "拿不到 agent.ctx 时响亮失败：warn + 诊断日志 + 需求 comment 三者齐备",
+          "新增 [WAKE-RX] 接收证明（agent/status 到达即写诊断），把\"订阅成立\"与\"事件送达\"两件事分开观测"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902906970,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-cc716c",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "把 agent 事件订阅搬到 agent 作用域上·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-d2bc95"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "改 ReqboardDiveManager 与 round-subscriptions：agent/created → agent.ctx 注册；按 agent 注销。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-b67d56",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-93103a",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902907211,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2853,
+              "at": 1790902907219,
+              "totals": {
+                "uncachedInputTokens": 1156003,
+                "outputTokens": 376403,
+                "cacheReadTokens": 100612096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2857,
+              "at": 1790902907425,
+              "totals": {
+                "uncachedInputTokens": 1156003,
+                "outputTokens": 376403,
+                "cacheReadTokens": 100612096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902907408
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-61c1df",
+          "body": "[状态] → in_progress：integrate 开工（reqboard_task_move）",
+          "createdAt": 1790902907211,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-440793",
+          "body": "[状态] → done：integrate 段完成（reqboard_task_move）",
+          "createdAt": 1790902907408,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902671771,
+      "updatedAt": 1790902907408,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902671771,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902907211,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902907408,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 段完成"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790902907285,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-subscriptions.ts",
+          "src/application/dive/ReqboardDiveManager.ts",
+          "tests/dive-wake-wiring.test.ts"
+        ],
+        "completed": [
+          "agent/created → agent.ctx 恰好拿到六路；把 agent/status 发在插件 root 上无人接（证明没挂在插件 ctx）",
+          "agent/disposed → 六路全部注销，之后再发状态不再处理（假件会真的摘监听器，不空转）",
+          "负例三者齐备：warn 命中 agent.ctx、诊断日志命中 [WAKE-FAIL]、需求 comment 命中 [dive-diag]"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902907285,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-df1ad9",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "把 agent 事件订阅搬到 agent 作用域上·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-cc716c"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 ReqboardDiveManager 与 round-subscriptions：agent/created → agent.ctx 注册；按 agent 注销。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-b67d56",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-eabd05",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902907501,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2859,
+              "at": 1790902907509,
+              "totals": {
+                "uncachedInputTokens": 1156003,
+                "outputTokens": 376403,
+                "cacheReadTokens": 100612096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2863,
+              "at": 1790902907712,
+              "totals": {
+                "uncachedInputTokens": 1156003,
+                "outputTokens": 376403,
+                "cacheReadTokens": 100612096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902907696
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b60cf5",
+          "body": "[状态] → in_progress：review 开工（reqboard_task_move）",
+          "createdAt": 1790902907501,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-9c1b1e",
+          "body": "[状态] → done：review 段完成（reqboard_task_move）",
+          "createdAt": 1790902907696,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902671771,
+      "updatedAt": 1790902907696,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902671771,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902907501,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902907696,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 段完成"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790902907569,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-subscriptions.ts",
+          "src/application/dive/ReqboardDiveManager.ts",
+          "tests/dive-wake-wiring.test.ts"
+        ],
+        "completed": [
+          "核对宿主：agent/created 载荷 { agent, source, signal }；agent.ctx 存在于 agent-loop/src/agent.ts:105",
+          "核对接线：index.ts:386-387 两个 attach 端口形状不变，组合根与工具面无破坏性改动",
+          "【重要发现，须人裁决】FR-3 的「agent/* 被 scope 过滤器丢弃」这一前提**未被宿主机代码证实**：scopeTarget 的过滤器对**未打标签**的 ctx 一律放行（packages/core/scope/src/index.ts:171-176），而本插件经 profile 以普通 loader 条目装载（~/.dsh/profiles/web/cordis.patch.yml 无 isolate/scope），其 ctx 未打标签；宿主自带的 goal-round-driver 也把 agent/status 挂在插件 ctx 上且在生产可用（packages/goal/goal-round-driver/src/index.ts:245,269）。宿主规范给出的搬到 agent.ctx 的理由是**生命周期归属**（agent 处置即注销），不是作用域过滤。本卡改动按后者成立，并新增 [WAKE-RX] 接收证明，使「事件没到」与「到了但驱动侧断」可从诊断日志区分。"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902907569,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-438162",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "把 agent 事件订阅搬到 agent 作用域上·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-df1ad9"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 ReqboardDiveManager 与 round-subscriptions：agent/created → agent.ctx 注册；按 agent 注销。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-b67d56",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-daa48b",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790902907788,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2865,
+              "at": 1790902907796,
+              "totals": {
+                "uncachedInputTokens": 1156003,
+                "outputTokens": 376403,
+                "cacheReadTokens": 100612096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2869,
+              "at": 1790902907995,
+              "totals": {
+                "uncachedInputTokens": 1156003,
+                "outputTokens": 376403,
+                "cacheReadTokens": 100612096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790902907979
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-119867",
+          "body": "[状态] → in_progress：test 开工（reqboard_task_move）",
+          "createdAt": 1790902907788,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-f973ae",
+          "body": "[状态] → done：test 段完成（reqboard_task_move）",
+          "createdAt": 1790902907979,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902671771,
+      "updatedAt": 1790902907979,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902671771,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790902907788,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790902907979,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 段完成"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790902907857,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-subscriptions.ts",
+          "src/application/dive/ReqboardDiveManager.ts",
+          "tests/dive-wake-wiring.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/dive-wake-wiring.test.ts → 10 passed",
+          "相关子集（wake/round-state/round-driver/rearm/deliverer）→ 69 passed",
+          "tsc 过滤 dive/wiring 无新增错误（index.ts:161 与两处 dive 错误为存量）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790902907857,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8d83fa",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "加心跳兜底与唤醒链诊断·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-7a9e10"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新增 wake-reconciler.ts 并在组合根装配；早退分支加 captureDiag。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-39d8aa",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a385d0",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903002891,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 2999,
+              "at": 1790903002899,
+              "totals": {
+                "uncachedInputTokens": 1202677,
+                "outputTokens": 391493,
+                "cacheReadTokens": 102598400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3003,
+              "at": 1790903003138,
+              "totals": {
+                "uncachedInputTokens": 1202677,
+                "outputTokens": 391493,
+                "cacheReadTokens": 102598400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903003122
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-58bdb6",
+          "body": "[状态] → in_progress：dev 开工（reqboard_task_move）",
+          "createdAt": 1790903002891,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-7cb1f2",
+          "body": "[状态] → done：dev 段完成（reqboard_task_move）",
+          "createdAt": 1790903003122,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902921376,
+      "updatedAt": 1790903003122,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902921376,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903002891,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790903003122,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 段完成"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790903002969,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/wake-heartbeat.ts",
+          "src/application/dive/ReqboardDiveManager.ts",
+          "tests/dive-rearm.test.ts"
+        ],
+        "completed": [
+          "新增 wake-heartbeat：tick() 对账；只在「可驱动 + 停滞超过 10 分钟」时唤醒（新建需求视为停滞，叫一次）",
+          "叫醒成功 → 记 lastWakeAt、连续失败计数归零；失败累计 3 次 → 只写运行时健康 paused(wake-undeliverable) 并留 [dive-diag] comment",
+          "activation 在所有分支都不被改写；管理器 60s 跑一趟（unref，不吊住进程），并暴露 wakeTick() 供看板/诊断手动触发"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903002969,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-99baa7",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "加心跳兜底与唤醒链诊断·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-8d83fa"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "新增 wake-reconciler.ts 并在组合根装配；早退分支加 captureDiag。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-39d8aa",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-73f4c5",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903003224,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3005,
+              "at": 1790903003232,
+              "totals": {
+                "uncachedInputTokens": 1202677,
+                "outputTokens": 391493,
+                "cacheReadTokens": 102598400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3009,
+              "at": 1790903003476,
+              "totals": {
+                "uncachedInputTokens": 1202677,
+                "outputTokens": 391493,
+                "cacheReadTokens": 102598400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903003459
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c14e85",
+          "body": "[状态] → in_progress：integrate 开工（reqboard_task_move）",
+          "createdAt": 1790903003224,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-0941d0",
+          "body": "[状态] → done：integrate 段完成（reqboard_task_move）",
+          "createdAt": 1790903003459,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902921376,
+      "updatedAt": 1790903003459,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902921376,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903003224,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790903003459,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 段完成"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790903003297,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/wake-heartbeat.ts",
+          "src/application/dive/ReqboardDiveManager.ts",
+          "tests/dive-rearm.test.ts"
+        ],
+        "completed": [
+          "tick() 的 woken 含该需求且 lastWakeAt 落账",
+          "连续 3 次叫不动 → health=paused、reason=wake-undeliverable、attempts=3、activation 仍 armed、台账留下\"连续 3 次唤醒都没叫动\"的诊断",
+          "暂停后不反复推（skipped）；recoverHealth 一叫回来，心跳立刻能再叫醒它"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903003297,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-cf9e46",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "加心跳兜底与唤醒链诊断·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-99baa7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新增 wake-reconciler.ts 并在组合根装配；早退分支加 captureDiag。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-39d8aa",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3f726f",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903003557,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3011,
+              "at": 1790903003565,
+              "totals": {
+                "uncachedInputTokens": 1202677,
+                "outputTokens": 391493,
+                "cacheReadTokens": 102598400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3015,
+              "at": 1790903003773,
+              "totals": {
+                "uncachedInputTokens": 1202677,
+                "outputTokens": 391493,
+                "cacheReadTokens": 102598400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903003756
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1c8a51",
+          "body": "[状态] → in_progress：review 开工（reqboard_task_move）",
+          "createdAt": 1790903003557,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-f773da",
+          "body": "[状态] → done：review 段完成（reqboard_task_move）",
+          "createdAt": 1790903003756,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902921376,
+      "updatedAt": 1790903003756,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902921376,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903003557,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790903003756,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 段完成"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790903003627,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/wake-heartbeat.ts",
+          "src/application/dive/ReqboardDiveManager.ts",
+          "tests/dive-rearm.test.ts"
+        ],
+        "completed": [
+          "只在停滞（>10 分钟无成功唤醒）时才唤醒，正常在跑的需求一律跳过",
+          "只写 driverHealth / lastWakeAt / comment，不碰 activation",
+          "失败与暂停理由都进台账，人可读"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903003627,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b2f032",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "加心跳兜底与唤醒链诊断·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-cf9e46"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新增 wake-reconciler.ts 并在组合根装配；早退分支加 captureDiag。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-39d8aa",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1ea238",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903003855,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3017,
+              "at": 1790903003864,
+              "totals": {
+                "uncachedInputTokens": 1202677,
+                "outputTokens": 391493,
+                "cacheReadTokens": 102598400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3021,
+              "at": 1790903004123,
+              "totals": {
+                "uncachedInputTokens": 1202677,
+                "outputTokens": 391493,
+                "cacheReadTokens": 102598400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903004106
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-237233",
+          "body": "[状态] → in_progress：test 开工（reqboard_task_move）",
+          "createdAt": 1790903003855,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-802e51",
+          "body": "[状态] → done：test 段完成（reqboard_task_move）",
+          "createdAt": 1790903004106,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790902921376,
+      "updatedAt": 1790903004106,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790902921376,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903003855,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790903004106,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 段完成"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790903003949,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/wake-heartbeat.ts",
+          "src/application/dive/ReqboardDiveManager.ts",
+          "tests/dive-rearm.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/dive-rearm.test.ts → 15 passed（新增 4 条心跳用例）",
+          "相关子集（rearm/wake-wiring/round-driver）→ 45 passed",
+          "tsc 过滤 wake-heartbeat/ReqboardDiveManager → 无输出"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903003949,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8724cc",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "回合收尾只认一个解析器·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-7a9e10"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 round-driver 的 onSessionEvent 用 turnEndOutcome，删除窄读。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-9314c7",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-75b552",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790904475009,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3841,
+              "at": 1790904475018,
+              "totals": {
+                "uncachedInputTokens": 1309508,
+                "outputTokens": 456531,
+                "cacheReadTokens": 122638080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3845,
+              "at": 1790904475248,
+              "totals": {
+                "uncachedInputTokens": 1309508,
+                "outputTokens": 456531,
+                "cacheReadTokens": 122638080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790904475225
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-3820fa",
+          "body": "[状态] → in_progress：dev 开工（reqboard_task_move）",
+          "createdAt": 1790904475009,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-981b67",
+          "body": "[状态] → done：dev 段完成（reqboard_task_move）",
+          "createdAt": 1790904475225,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790903255656,
+      "updatedAt": 1790904475225,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790903255656,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790904475009,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790904475225,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 段完成"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790904475085,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/interruption.ts",
+          "tests/dive-round-driver.test.ts"
+        ],
+        "completed": [
+          "round-driver 的 turn/end 分支改调 internal/interruption.turnEndOutcome（与 session-driver 同一个解析器）",
+          "四种形态一套口径：completed/max-tokens/blocked 非异常；aborted:*/error:*/interrupted 异常",
+          "形态不认识 → 不猜不误报（与 session-driver 同约定）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790904475085,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-fbfb6d",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "回合收尾只认一个解析器·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-8724cc"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "改 round-driver 的 onSessionEvent 用 turnEndOutcome，删除窄读。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-9314c7",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-0525a3",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790904475339,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3847,
+              "at": 1790904475347,
+              "totals": {
+                "uncachedInputTokens": 1309508,
+                "outputTokens": 456531,
+                "cacheReadTokens": 122638080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3851,
+              "at": 1790904475562,
+              "totals": {
+                "uncachedInputTokens": 1309508,
+                "outputTokens": 456531,
+                "cacheReadTokens": 122638080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790904475546
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b1fbb3",
+          "body": "[状态] → in_progress：integrate 开工（reqboard_task_move）",
+          "createdAt": 1790904475339,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-d91cf7",
+          "body": "[状态] → done：integrate 段完成（reqboard_task_move）",
+          "createdAt": 1790904475546,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790903255656,
+      "updatedAt": 1790904475546,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790903255656,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790904475339,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790904475546,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 段完成"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790904475415,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/interruption.ts",
+          "tests/dive-round-driver.test.ts"
+        ],
+        "completed": [
+          "aborted:upstream-idle / error:ETIMEDOUT:stream idle 3m / interrupted → 都是\"停下等人\"，reason 为规范化原文",
+          "非异常形态（completed/blocked）不改任何状态",
+          "缺 reason 的未知形态零写入"
+        ]
+      },
+      "lastRun": {
+        "at": 1790904475415,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f235aa",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "回合收尾只认一个解析器·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-fbfb6d"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 round-driver 的 onSessionEvent 用 turnEndOutcome，删除窄读。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-9314c7",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-83f46c",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790904475650,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3853,
+              "at": 1790904475658,
+              "totals": {
+                "uncachedInputTokens": 1309508,
+                "outputTokens": 456531,
+                "cacheReadTokens": 122638080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3857,
+              "at": 1790904475873,
+              "totals": {
+                "uncachedInputTokens": 1309508,
+                "outputTokens": 456531,
+                "cacheReadTokens": 122638080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790904475857
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-cb1f3b",
+          "body": "[状态] → in_progress：review 开工（reqboard_task_move）",
+          "createdAt": 1790904475650,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-3ea615",
+          "body": "[状态] → done：review 段完成（reqboard_task_move）",
+          "createdAt": 1790904475857,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790903255656,
+      "updatedAt": 1790904475857,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790903255656,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790904475650,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790904475857,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 段完成"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790904475726,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/interruption.ts",
+          "tests/dive-round-driver.test.ts"
+        ],
+        "completed": [
+          "修前只认 max-tokens 与 aborted：上游流超时（error:*）与崩溃孤儿回合（interrupted）被静默吞掉，Dive 以为回合还在跑",
+          "解析器不新增分支、不重写语义，只做\"调用同源\""
+        ]
+      },
+      "lastRun": {
+        "at": 1790904475726,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-bb5dc4",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "回合收尾只认一个解析器·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-f235aa"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 round-driver 的 onSessionEvent 用 turnEndOutcome，删除窄读。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-9314c7",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a2fbf7",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790904475957,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3859,
+              "at": 1790904475965,
+              "totals": {
+                "uncachedInputTokens": 1309508,
+                "outputTokens": 456531,
+                "cacheReadTokens": 122638080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3863,
+              "at": 1790904476179,
+              "totals": {
+                "uncachedInputTokens": 1309508,
+                "outputTokens": 456531,
+                "cacheReadTokens": 122638080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790904476163
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-630733",
+          "body": "[状态] → in_progress：test 开工（reqboard_task_move）",
+          "createdAt": 1790904475957,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-cac9e5",
+          "body": "[状态] → done：test 段完成（reqboard_task_move）",
+          "createdAt": 1790904476163,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790903255656,
+      "updatedAt": 1790904476163,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790903255656,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790904475957,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790904476163,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 段完成"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790904476032,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/interruption.ts",
+          "tests/dive-round-driver.test.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/dive-round-driver.test.ts → 23 passed（新增 3 条）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790904476032,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-232e9b",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "一条真端到端断言当门禁（修前必红）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-dd205a",
+        "t-d5a14d",
+        "t-b67d56",
+        "t-39d8aa"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新增 tests/dive-wake-e2e.test.ts：真实组合根投递器 + 真 round driver。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-2c9ba9",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e9d54b",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903417483,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3433,
+              "at": 1790903417491,
+              "totals": {
+                "uncachedInputTokens": 1267368,
+                "outputTokens": 426027,
+                "cacheReadTokens": 111551744,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3437,
+              "at": 1790903417724,
+              "totals": {
+                "uncachedInputTokens": 1267368,
+                "outputTokens": 426027,
+                "cacheReadTokens": 111551744,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903417699
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b786c6",
+          "body": "[状态] → in_progress：dev 开工（reqboard_task_move）",
+          "createdAt": 1790903417483,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-aade4f",
+          "body": "[状态] → done：dev 段完成（reqboard_task_move）",
+          "createdAt": 1790903417699,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790903280968,
+      "updatedAt": 1790903417699,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790903280968,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903417483,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790903417699,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 段完成"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790903417562,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/dive-wake-e2e.test.ts",
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/rearm.ts"
+        ],
+        "completed": [
+          "新增 tests/dive-wake-e2e.test.ts：真实投递器（组合根产出）+ 真实 driver + 最小 IO 边界",
+          "①该跑就跑起来（含准入才计数）②达上限只停等人 ③人一动就继续 ④重启不改写人的意图 ⑤阶段推进计数归零",
+          "顺带修出一个真实缺陷：达上限后恢复，额度没还回去——人点了继续下一拍又立刻撞上限（rearm 里 reason 被先覆盖后读）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903417562,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8880ec",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "一条真端到端断言当门禁（修前必红）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-232e9b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新增 tests/dive-wake-e2e.test.ts：真实组合根投递器 + 真 round driver。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-2c9ba9",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-5d2399",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903417817,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3439,
+              "at": 1790903417826,
+              "totals": {
+                "uncachedInputTokens": 1267368,
+                "outputTokens": 426027,
+                "cacheReadTokens": 111551744,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3443,
+              "at": 1790903418047,
+              "totals": {
+                "uncachedInputTokens": 1267368,
+                "outputTokens": 426027,
+                "cacheReadTokens": 111551744,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903418030
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9df2be",
+          "body": "[状态] → in_progress：review 开工（reqboard_task_move）",
+          "createdAt": 1790903417817,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-c5fa82",
+          "body": "[状态] → done：review 段完成（reqboard_task_move）",
+          "createdAt": 1790903418030,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790903280968,
+      "updatedAt": 1790903418030,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790903280968,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903417817,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790903418030,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 段完成"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790903417899,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/dive-wake-e2e.test.ts",
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/rearm.ts"
+        ],
+        "completed": [
+          "修前必红：用例断言的 driverHealth 字段修前不存在；teardown 会改写 activation；达上限写 phase=paused；缺 delivery 端口时 drive 第一步就抛",
+          "按人裁决以「已证实故障」而非「作用域」为判据（前提更正见 architecture.md）",
+          "tsc 过滤无新增错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903417899,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-132309",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "一条真端到端断言当门禁（修前必红）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-8880ec"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新增 tests/dive-wake-e2e.test.ts：真实组合根投递器 + 真 round driver。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-2c9ba9",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a424a8",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903418140,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3445,
+              "at": 1790903418148,
+              "totals": {
+                "uncachedInputTokens": 1267368,
+                "outputTokens": 426027,
+                "cacheReadTokens": 111551744,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3449,
+              "at": 1790903418367,
+              "totals": {
+                "uncachedInputTokens": 1267368,
+                "outputTokens": 426027,
+                "cacheReadTokens": 111551744,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903418350
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7139e9",
+          "body": "[状态] → in_progress：test 开工（reqboard_task_move）",
+          "createdAt": 1790903418140,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-6c13c5",
+          "body": "[状态] → done：test 段完成（reqboard_task_move）",
+          "createdAt": 1790903418350,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790903280968,
+      "updatedAt": 1790903418350,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790903280968,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903418140,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790903418350,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 段完成"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790903418219,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/dive-wake-e2e.test.ts",
+          "src/application/dive/round-driver.ts",
+          "src/application/internal/rearm.ts"
+        ],
+        "completed": [
+          "npx vitest run tests/dive-wake-e2e.test.ts → 5 passed",
+          "连同 rearm（17）/ round-driver（23）→ 45 passed"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903418219,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b80aa4",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "存量台账分类迁移与兼容回滚·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-dd205a",
+        "t-d5a14d"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "启动对账内做幂等迁移；读侧保留一版 phase 兼容；产出 tests/dive-migration.test.ts。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-703429",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6108ef",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903511322,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3587,
+              "at": 1790903511331,
+              "totals": {
+                "uncachedInputTokens": 1272650,
+                "outputTokens": 440685,
+                "cacheReadTokens": 115527040,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3591,
+              "at": 1790903511541,
+              "totals": {
+                "uncachedInputTokens": 1272650,
+                "outputTokens": 440685,
+                "cacheReadTokens": 115527040,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903511524
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-129014",
+          "body": "[状态] → in_progress：dev 开工（reqboard_task_move）",
+          "createdAt": 1790903511322,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-49b077",
+          "body": "[状态] → done：dev 段完成（reqboard_task_move）",
+          "createdAt": 1790903511524,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790903434254,
+      "updatedAt": 1790903511524,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790903434254,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903511322,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790903511524,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "dev 段完成"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790903511394,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/migrate-dive-state.ts",
+          "src/shared/protocol.ts",
+          "src/index.ts",
+          "tests/dive-migration.test.ts",
+          "docs/requirements/REQ-261001213924-1441/design/data-model.md"
+        ],
+        "completed": [
+          "新增 migrate-dive-state：按数据模型矩阵逐条迁移（误停摆恢复 / 人主动暂停不动 / 终态暂停降级为可恢复 / 常态补健康 / 旧计数归零 / 无 dive 保守补全）",
+          "幂等靠 dive.migratedAt 印章（形态相同的新旧记录也能区分），盖章不 bump version（不让在飞回合的预留失效）",
+          "接到启动对账上跑一次；失败不致命（读侧仍兼容 phase），结果写诊断日志"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903511394,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d57ede",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "存量台账分类迁移与兼容回滚·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-b80aa4"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "启动对账内做幂等迁移；读侧保留一版 phase 兼容；产出 tests/dive-migration.test.ts。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-703429",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d95f76",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903511629,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3593,
+              "at": 1790903511637,
+              "totals": {
+                "uncachedInputTokens": 1272650,
+                "outputTokens": 440685,
+                "cacheReadTokens": 115527040,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3597,
+              "at": 1790903511855,
+              "totals": {
+                "uncachedInputTokens": 1272650,
+                "outputTokens": 440685,
+                "cacheReadTokens": 115527040,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903511839
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d555e1",
+          "body": "[状态] → in_progress：integrate 开工（reqboard_task_move）",
+          "createdAt": 1790903511629,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-8a1bc5",
+          "body": "[状态] → done：integrate 段完成（reqboard_task_move）",
+          "createdAt": 1790903511839,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790903434254,
+      "updatedAt": 1790903511839,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790903434254,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903511629,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790903511839,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "integrate 段完成"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790903511708,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/migrate-dive-state.ts",
+          "src/shared/protocol.ts",
+          "src/index.ts",
+          "tests/dive-migration.test.ts",
+          "docs/requirements/REQ-261001213924-1441/design/data-model.md"
+        ],
+        "completed": [
+          "矩阵 6 行各自断言（含最老的\"连 dive 字段都没有\"的记录）",
+          "第二次迁移零写入（逐字节比对）",
+          "人主动暂停（disarmed+idle）全流程 activation 不变"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903511708,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-3427d0",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "存量台账分类迁移与兼容回滚·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-d57ede"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "启动对账内做幂等迁移；读侧保留一版 phase 兼容；产出 tests/dive-migration.test.ts。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-703429",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-41f5e0",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903511939,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3599,
+              "at": 1790903511947,
+              "totals": {
+                "uncachedInputTokens": 1272650,
+                "outputTokens": 440685,
+                "cacheReadTokens": 115527040,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3603,
+              "at": 1790903512160,
+              "totals": {
+                "uncachedInputTokens": 1272650,
+                "outputTokens": 440685,
+                "cacheReadTokens": 115527040,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903512144
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-4da398",
+          "body": "[状态] → in_progress：review 开工（reqboard_task_move）",
+          "createdAt": 1790903511939,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-dab4eb",
+          "body": "[状态] → done：review 段完成（reqboard_task_move）",
+          "createdAt": 1790903512144,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790903434254,
+      "updatedAt": 1790903512144,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790903434254,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903511939,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790903512144,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "review 段完成"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1790903512016,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/migrate-dive-state.ts",
+          "src/shared/protocol.ts",
+          "src/index.ts",
+          "tests/dive-migration.test.ts",
+          "docs/requirements/REQ-261001213924-1441/design/data-model.md"
+        ],
+        "completed": [
+          "只有\"误停摆\"会改 activation（那是运行时故障改错了人的意图，必须恢复）",
+          "只有真的改了状态的记录才写 comment；只盖章的不写",
+          "设计文档补记 migratedAt 这一实施期补充及其理由"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903512016,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a9f90e",
+      "requirementId": "REQ-261001213924-1441",
+      "title": "存量台账分类迁移与兼容回滚·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-3427d0"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "启动对账内做幂等迁移；读侧保留一版 phase 兼容；产出 tests/dive-migration.test.ts。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-703429",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-59d436",
+          "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+          "trigger": "manual",
+          "startedAt": 1790903512266,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3605,
+              "at": 1790903512275,
+              "totals": {
+                "uncachedInputTokens": 1272650,
+                "outputTokens": 440685,
+                "cacheReadTokens": 115527040,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4",
+              "seq": 3609,
+              "at": 1790903512491,
+              "totals": {
+                "uncachedInputTokens": 1272650,
+                "outputTokens": 440685,
+                "cacheReadTokens": 115527040,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790903512475
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-dcc7bc",
+          "body": "[状态] → in_progress：test 开工（reqboard_task_move）",
+          "createdAt": 1790903512266,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        },
+        {
+          "id": "c-4b21f2",
+          "body": "[状态] → done：test 段完成（reqboard_task_move）",
+          "createdAt": 1790903512475,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790903434254,
+      "updatedAt": 1790903512475,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790903434254,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790903512266,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 开工"
+        },
+        {
+          "status": "done",
+          "at": 1790903512475,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fc0c4b27-505e-4897-adf1-f6d70f624de4"
+          },
+          "reason": "test 段完成"
+        }
+      ],
+      "layer": 5,
+      "lastReport": {
+        "at": 1790903512344,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/migrate-dive-state.ts",
+          "src/shared/protocol.ts",
+          "src/index.ts",
+          "tests/dive-migration.test.ts",
+          "docs/requirements/REQ-261001213924-1441/design/data-model.md"
+        ],
+        "completed": [
+          "npx vitest run tests/dive-migration.test.ts → 7 passed",
+          "dive 相关八个文件一起跑 → 97 passed（另 2 条 layer-boundary 是存量问题：domain 里 Date.now、application 里既有 node:fs/cordis import，与本次改动无关）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790903512344,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-7a9e10",
+      "to": "t-dd205a"
+    },
+    {
+      "from": "t-7a9e10",
+      "to": "t-d5a14d"
+    },
+    {
+      "from": "t-7a9e10",
+      "to": "t-b67d56"
+    },
+    {
+      "from": "t-7a9e10",
+      "to": "t-39d8aa"
+    },
+    {
+      "from": "t-7a9e10",
+      "to": "t-9314c7"
+    },
+    {
+      "from": "t-dd205a",
+      "to": "t-2c9ba9"
+    },
+    {
+      "from": "t-d5a14d",
+      "to": "t-2c9ba9"
+    },
+    {
+      "from": "t-b67d56",
+      "to": "t-2c9ba9"
+    },
+    {
+      "from": "t-39d8aa",
+      "to": "t-2c9ba9"
+    },
+    {
+      "from": "t-dd205a",
+      "to": "t-703429"
+    },
+    {
+      "from": "t-d5a14d",
+      "to": "t-703429"
+    },
+    {
+      "from": "t-120a5e",
+      "to": "t-5e5845"
+    },
+    {
+      "from": "t-5e5845",
+      "to": "t-d75509"
+    },
+    {
+      "from": "t-d75509",
+      "to": "t-35f9b5"
+    },
+    {
+      "from": "t-7a9e10",
+      "to": "t-d2a647"
+    },
+    {
+      "from": "t-d2a647",
+      "to": "t-0708e0"
+    },
+    {
+      "from": "t-0708e0",
+      "to": "t-bf99c7"
+    },
+    {
+      "from": "t-bf99c7",
+      "to": "t-7231bf"
+    },
+    {
+      "from": "t-7a9e10",
+      "to": "t-a5aff0"
+    },
+    {
+      "from": "t-a5aff0",
+      "to": "t-82a7f1"
+    },
+    {
+      "from": "t-82a7f1",
+      "to": "t-8af611"
+    },
+    {
+      "from": "t-8af611",
+      "to": "t-168f59"
+    },
+    {
+      "from": "t-7a9e10",
+      "to": "t-d2bc95"
+    },
+    {
+      "from": "t-d2bc95",
+      "to": "t-cc716c"
+    },
+    {
+      "from": "t-cc716c",
+      "to": "t-df1ad9"
+    },
+    {
+      "from": "t-df1ad9",
+      "to": "t-438162"
+    },
+    {
+      "from": "t-7a9e10",
+      "to": "t-8d83fa"
+    },
+    {
+      "from": "t-8d83fa",
+      "to": "t-99baa7"
+    },
+    {
+      "from": "t-99baa7",
+      "to": "t-cf9e46"
+    },
+    {
+      "from": "t-cf9e46",
+      "to": "t-b2f032"
+    },
+    {
+      "from": "t-7a9e10",
+      "to": "t-8724cc"
+    },
+    {
+      "from": "t-8724cc",
+      "to": "t-fbfb6d"
+    },
+    {
+      "from": "t-fbfb6d",
+      "to": "t-f235aa"
+    },
+    {
+      "from": "t-f235aa",
+      "to": "t-bb5dc4"
+    },
+    {
+      "from": "t-dd205a",
+      "to": "t-232e9b"
+    },
+    {
+      "from": "t-d5a14d",
+      "to": "t-232e9b"
+    },
+    {
+      "from": "t-b67d56",
+      "to": "t-232e9b"
+    },
+    {
+      "from": "t-39d8aa",
+      "to": "t-232e9b"
+    },
+    {
+      "from": "t-232e9b",
+      "to": "t-8880ec"
+    },
+    {
+      "from": "t-8880ec",
+      "to": "t-132309"
+    },
+    {
+      "from": "t-dd205a",
+      "to": "t-b80aa4"
+    },
+    {
+      "from": "t-d5a14d",
+      "to": "t-b80aa4"
+    },
+    {
+      "from": "t-b80aa4",
+      "to": "t-d57ede"
+    },
+    {
+      "from": "t-d57ede",
+      "to": "t-3427d0"
+    },
+    {
+      "from": "t-3427d0",
+      "to": "t-a9f90e"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-7a9e10",
+        "t-120a5e"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-dd205a",
+        "t-d5a14d",
+        "t-b67d56",
+        "t-39d8aa",
+        "t-9314c7",
+        "t-d2a647",
+        "t-a5aff0",
+        "t-d2bc95",
+        "t-8d83fa",
+        "t-8724cc",
+        "t-5e5845"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-703429",
+        "t-b80aa4",
+        "t-2c9ba9",
+        "t-232e9b",
+        "t-0708e0",
+        "t-82a7f1",
+        "t-cc716c",
+        "t-99baa7",
+        "t-fbfb6d",
+        "t-d75509"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-d57ede",
+        "t-8880ec",
+        "t-bf99c7",
+        "t-8af611",
+        "t-df1ad9",
+        "t-cf9e46",
+        "t-f235aa",
+        "t-35f9b5"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-3427d0",
+        "t-132309",
+        "t-7231bf",
+        "t-168f59",
+        "t-438162",
+        "t-b2f032",
+        "t-bb5dc4"
+      ]
+    },
+    {
+      "layer": 5,
+      "tasks": [
+        "t-a9f90e"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-02T01:27:56.405Z"
+}

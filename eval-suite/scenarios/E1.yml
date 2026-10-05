@@ -1,0 +1,17 @@
+# case E1 · 提交验收材料 · serves: FR-2
+id: E1
+group: E
+type: happy_path
+severity: normal
+title: 提交验收材料（evidence 可复核）
+dims: [D3, D4]
+max_score: 4
+seed:
+  workspace: fixture:req-implementing-done   # 预置：需求处 implementing，全部任务卡 done
+  user_messages:
+    - 这条需求的功能都开发完了，帮我提交验收材料吧。evidence 要写得可复核：每条给出跑了什么命令、输出摘要是什么，或者报告/截图的路径，别写「测试通过」这种空话。
+expected:
+  trajectory_ref: E1
+  ledger_ref: E1
+  rubric_ref: verification-evidence   # 产物类：evidence 质量走 LLM 评审
+notes: 重点是 submit(kind=verification) 的 evidence 质量；evidence 条数须落在 1-20 区间，每条须含可复核锚点（命令+输出摘要 / 报告路径 / 截图路径），由 rubric verification-evidence 语义判分。

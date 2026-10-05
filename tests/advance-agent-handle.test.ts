@@ -9,6 +9,7 @@
  * ⇒ `tasks.find` 抛 `Cannot read properties of undefined (reading 'find')`（3 条用例红）。
  * 生产调用点 `ExecuteTask.ts:171` 已传 `queueTasks`，本处仅补齐测试夹具。
  */
+import { legacyStoreProjection } from './support/legacy-store-projection.js'
 import { describe, it, expect } from 'vitest'
 import { ensureAgentHandle } from '../src/application/internal/agent-handle.js'
 import type { UseCaseDeps } from '../src/application/ports.js'
@@ -25,33 +26,35 @@ function fixture(opts: { boundWindow?: string; online?: boolean; parentExists?: 
     ? []
     : [{ id: 't-p', requirementId: 'REQ-x' }]) as unknown as readonly TaskRecord[]
   const requirements = [{ id: 'REQ-x', sourceSessionId: opts.boundWindow }]
+  const fakeRepo = { snapshot: () => ({ tasks, requirements, triages: [] }) }
   const agent = { session: {} }
   const deps = {
-    repo: { snapshot: () => ({ tasks, requirements, triages: [] }) },
+    store: legacyStoreProjection(fakeRepo as never),
+
     agents: () => ({ get: (id: string) => (opts.online === true && id === opts.boundWindow ? agent : undefined) }),
   } as unknown as UseCaseDeps
   return { deps, tasks }
 }
 
-describe('ensureAgentHandle（D14）', () => {
-  it('调用方带 exec.agent → 原样透传（工具路径）', () => {
+describe('ensureAgentHandle（D14）', async () => {
+  it('调用方带 exec.agent → 原样透传（工具路径）', async () => {
     const exec = { agent: { session: {} } }
     const { deps, tasks } = fixture({ boundWindow: 'w1', online: false })
-    const r = ensureAgentHandle(deps, 't-p', 't-sub', exec, tasks)
+    const r = await ensureAgentHandle(deps, 't-p', 't-sub', exec, tasks)
     expect(r.ok).toBe(true)
     if (r.ok) expect(r.exec).toBe(exec)
   })
 
-  it('缺 exec 但绑定窗口在线 → 兜底解析出 { agent }（看板「继续」/启动恢复）', () => {
+  it('缺 exec 但绑定窗口在线 → 兜底解析出 { agent }（看板「继续」/启动恢复）', async () => {
     const { deps, tasks } = fixture({ boundWindow: 'session-a', online: true })
-    const r = ensureAgentHandle(deps, 't-p', 't-sub', undefined, tasks)
+    const r = await ensureAgentHandle(deps, 't-p', 't-sub', undefined, tasks)
     expect(r.ok).toBe(true)
     if (r.ok) expect((r.exec as { agent?: unknown }).agent).toBeDefined()
   })
 
-  it('绑定窗口不在线 → ok:false，原因含窗口与恢复命令', () => {
+  it('绑定窗口不在线 → ok:false，原因含窗口与恢复命令', async () => {
     const { deps, tasks } = fixture({ boundWindow: 'session-a', online: false })
-    const r = ensureAgentHandle(deps, 't-p', 't-sub', undefined, tasks)
+    const r = await ensureAgentHandle(deps, 't-p', 't-sub', undefined, tasks)
     expect(r.ok).toBe(false)
     if (!r.ok) {
       expect(r.reason).toContain('session-a')
@@ -59,9 +62,9 @@ describe('ensureAgentHandle（D14）', () => {
     }
   })
 
-  it('父卡不存在 → ok:false（窗口未知，仍给可读原因）', () => {
+  it('父卡不存在 → ok:false（窗口未知，仍给可读原因）', async () => {
     const { deps, tasks } = fixture({ parentExists: false, online: true })
-    const r = ensureAgentHandle(deps, 't-nope', 't-sub', undefined, tasks)
+    const r = await ensureAgentHandle(deps, 't-nope', 't-sub', undefined, tasks)
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.reason).toContain('不在线')
   })

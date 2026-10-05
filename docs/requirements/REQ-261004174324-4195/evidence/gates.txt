@@ -1,0 +1,32 @@
+# t7 四条门禁汇总（REQ-261004174324-4195，2026-10-04）
+
+## 1) pnpm build（host + client，C-11）
+```
+exit=0
+✔ Build complete in 836ms
+wrapped dsh-pmboard -> lib/client.js 359489 bytes
+[verify-client] OK  bundle=388364 bytes, 关键符号齐全, 样式归属章在场, CSS 分片完整
+```
+
+## 2) pnpm test（全量，C-14）
+```
+ Test Files  47 failed | 359 passed | 3 skipped (409)
+      Tests  97 failed | 4320 passed | 20 skipped (4437)
+```
+对照：本仓 C-14 记录基线 106 failed / 2807 passed → 本次 **97 failed / 4320 passed**（低于基线）；
+且与本次改动前的同一窗口捕获（97 failed / 4276 passed）**失败数完全一致**（新增用例全绿，无新增失败）。
+
+## 3) npx tsc --noEmit（C-15）
+```
+exit=2（tsc 有错时退出码 2）
+error TS 行数：152
+本仓 C-15 记录基线：223 → 低于基线
+本次新增文件相关错误行数：0
+```
+
+## 4) npx tsx scripts/kb-build.mts --check（C-13）
+```
+exit=0
+[verify] 生成物与库内一致（零漂移）
+```
+对照基线：改动前该命令是红的（4 处漂移，见 kb-check-baseline.txt）→ 现在为绿。

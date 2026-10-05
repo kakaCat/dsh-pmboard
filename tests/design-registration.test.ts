@@ -9,12 +9,12 @@
  *  - `path` 单份登记仍走可打开性校验（伪路径 / 不存在当场拒）；
  *  - 登记后 G2 不再报 missing_artifact（登记入口确实被闸门读到）。
  */
+import { makeHarness } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { SystemClock } from '../src/adapters/SystemClock.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
@@ -26,22 +26,26 @@ import type { RequirementRecord, StageArtifact } from '../src/shared/protocol.js
 
 const W = 'session-design-reg-001'
 const OTHER = 'session-design-reg-999'
-const REQ = 'REQ-d30001'
+const REQ = 'REQ-261003000003-d3e1'
 const DESIGN5 = ['architecture.md', 'data-model.md', 'interfaces.md', 'test-cases.md', 'use-cases.md']
 const DESIGN_DIR = 'docs/requirements/' + REQ + '/design'
 
 let root: string
-let store: JsonLedgerRepository
+// B12 阶段③a：存储换统一工厂的新端口
+let h: ReturnType<typeof makeHarness>
+let store: ReturnType<typeof makeHarness>['store']
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'pmboard-design-reg-'))
-  store = new JsonLedgerRepository({ file: join(root, 'dsh-reqboard.json') })
+  h = makeHarness({})
+  store = h.store
 })
 afterEach(() => { rmSync(root, { recursive: true, force: true }) })
 
 const depsWith = () =>
   ({
-    repo: store,
+
+    store,
 
     taskStore: taskStoreAt(root),
     docs: new FileDocRepository({ workspaceRoot: root }),
@@ -61,7 +65,8 @@ async function seed(sourceSessionId = W): Promise<void> {
     sourceSessionId, comments: [], version: 1, createdAt: 1, updatedAt: 1,
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [], artifacts: [] as StageArtifact[],
   } as unknown as RequirementRecord
-  await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  // 原样导入（保持记录字段原值；seedRequirementSync 会因 create+回填把 version 顶到 2）
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 function writeDesign(names: readonly string[]): void {
@@ -69,8 +74,8 @@ function writeDesign(names: readonly string[]): void {
   for (const n of names) writeFileSync(join(root, DESIGN_DIR, n), '# ' + n + '\n')
 }
 
-const designArtifacts = (): StageArtifact[] =>
-  (store.snapshot().requirements[0].artifacts ?? []).filter(a => a.kind === 'design')
+const designArtifacts = async (): Promise<StageArtifact[]> =>
+  ((await store.get(REQ))?.artifacts ?? []).filter(a => a.kind === 'design')
 
 describe('TC-1 正向：扫 design/ 登记 5 份，二次幂等', () => {
   it('首次 registered_count=5 且 5 条 kind=design 入簿；二次 registered_count=0', async () => {
@@ -81,7 +86,7 @@ describe('TC-1 正向：扫 design/ 登记 5 份，二次幂等', () => {
     expect(first.success).toBe(true)
     expect(first.requirement_id).toBe(REQ)
     expect(first.registered_count).toBe(5)
-    expect(designArtifacts()).toHaveLength(5)
+    expect(await designArtifacts()).toHaveLength(5)
     // 逐份态：磁盘有 / 已登记 / 未落章
     expect(first.design_docs).toHaveLength(5)
     for (const d of first.design_docs) {
@@ -95,7 +100,7 @@ describe('TC-1 正向：扫 design/ 登记 5 份，二次幂等', () => {
     const second = await run({ kind: 'design' })
     expect(second.success).toBe(true)
     expect(second.registered_count).toBe(0)
-    expect(designArtifacts()).toHaveLength(5)
+    expect(await designArtifacts()).toHaveLength(5)
     for (const d of second.design_docs) expect(d.registered).toBe(true)
   })
 
@@ -106,14 +111,14 @@ describe('TC-1 正向：扫 design/ 登记 5 份，二次幂等', () => {
     writeFileSync(join(root, DESIGN_DIR, 'risks.md'), '# risks\n')
     const out = await run({ kind: 'design' })
     expect(out.registered_count).toBe(1)
-    expect(designArtifacts()).toHaveLength(6)
+    expect(await designArtifacts()).toHaveLength(6)
   })
 
   it('登记后 G2 读得到（不再 missing_artifact，转为待确认）', async () => {
     await seed()
     writeDesign(DESIGN5)
     await run({ kind: 'design' })
-    const failure = assertArtifactGates(store.snapshot().requirements[0], 'design', 'decomposing')
+    const failure = assertArtifactGates((await store.get(REQ)) as RequirementRecord, 'design', 'decomposing')
     expect(failure?.code).toBe('artifact_not_confirmed')
     expect(failure?.code).not.toBe('missing_artifact')
   })
@@ -126,7 +131,7 @@ describe('TC-19 前半 · 边界：空目录返回 0 且不谎报成功', () => 
     expect(out.registered_count).toBe(0)
     expect(out.success).toBe(false)
     expect(out.note).toContain('未发现可登记的设计文档')
-    expect(designArtifacts()).toHaveLength(0)
+    expect(await designArtifacts()).toHaveLength(0)
     // 必交清单仍逐份回报（on_disk=false），让 agent 知道还差哪份
     expect(out.design_docs).toHaveLength(5)
     for (const d of out.design_docs) expect(d.on_disk).toBe(false)
@@ -139,7 +144,7 @@ describe('TC-19 前半 · 边界：空目录返回 0 且不谎报成功', () => 
     const out = await run({ kind: 'design' })
     expect(out.registered_count).toBe(0)
     expect(out.success).toBe(false)
-    expect(designArtifacts()).toHaveLength(0)
+    expect(await designArtifacts()).toHaveLength(0)
   })
 })
 
@@ -149,7 +154,7 @@ describe('I-1 path 语义：单份登记 + 可打开性校验', () => {
     writeDesign(DESIGN5)
     const out = await run({ kind: 'design', path: DESIGN_DIR + '/architecture.md' })
     expect(out.registered_count).toBe(1)
-    expect(designArtifacts().map(a => a.path)).toEqual([DESIGN_DIR + '/architecture.md'])
+    expect((await designArtifacts()).map(a => a.path)).toEqual([DESIGN_DIR + '/architecture.md'])
     const again = await run({ kind: 'design', path: DESIGN_DIR + '/architecture.md' })
     expect(again.registered_count).toBe(0)
   })

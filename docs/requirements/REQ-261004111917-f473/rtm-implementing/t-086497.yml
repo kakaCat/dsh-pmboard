@@ -1,0 +1,38 @@
+task:
+  id: t-086497
+  title: 宿主兼容入口：/dashboard 不再 404·测试
+  status: done
+  implements: |-
+    新增 src/http/legacy-board-route.ts：导出 createLegacyBoardRouteHandler()——GET/HEAD 回 200 text/html（cache-control: no-store），body 严格按 design/interfaces.md §宿主 HTTP 路由契约 的中转 HTML（含 location.replace("/" + location.search + location.hash)），其余方法 405 + allow: GET, HEAD，且不读台账、无时间戳/随机。改 src/index.ts 的 webServer 注入块：在既有前缀路由旁并列注册 exact 路由 '/dashboard' 与 '/dashboard/'（exact 表先于 fallback 命中，故不再落 404），把两条注册的 disposer 与既有路由一起 return 给 webCtx.effect（幂等撤销）。新增 tests/legacy-board-route.test.ts（最小假 req/res，仿 tests/reqboard/degraded-startup.test.ts，零网络）。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-8b5bf8
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004111917-f473
+    TASK_ID: t-086497
+    TASK_TITLE: 宿主兼容入口：/dashboard 不再 404·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T03:35:03.983Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004111917-f473
+  generated_at: 2026-10-04T03:33:14.135Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-04T03:35:03.984Z

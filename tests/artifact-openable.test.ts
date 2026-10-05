@@ -4,11 +4,11 @@
  * 验收口径：不存在路径报 REQBOARD_FILE_MISSING，brace/越界路径报 REQBOARD_ARTIFACT_NOT_OPENABLE，
  * 消息含 normalized 路径与原因；submit（requirement/plan/archive）与 ArtifactSync 两入口都覆盖。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { discoverArtifacts, reqDirRel } from '../src/adapters/ArtifactSync.js'
 import { assertArtifactOpenable } from '../src/application/internal/design-gates.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
@@ -19,11 +19,11 @@ const W = 'session-open-001'
 const REQ = 'REQ-ab0001' // 归档目录约定要求 REQ-xxxxxx（6 位 hex）
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-openable-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -34,7 +34,7 @@ async function seed(status: string, category = 'feature'): Promise<void> {
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
     artifacts: [{ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/' + REQ + '/requirement.md', registeredAt: 1 } as StageArtifact],
   } as unknown as RequirementRecord
-  await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 const run = (tool: { execute: (a: unknown, e: unknown) => Promise<any> }, args: unknown) =>
@@ -110,7 +110,7 @@ describe('submit 入口：登记即拦（不再等人点看才发现）', () => 
     writeFileSync(join(dir, 'docs/requirements', REQ, 'decomposition.md'), '# 拆分计划\n')
     const out = await run(tool, { path: planPath, summary: '拆分计划' })
     expect(out.success).toBe(true)
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     expect(req.plan?.path).toBe(planPath)
   })
 
@@ -157,7 +157,7 @@ describe('ArtifactSync 入口：自动发现路径形态防御过滤', () => {
     mkdirSync(abs, { recursive: true })
     writeFileSync(join(abs, 'prototype.html'), '<html/>')
     writeFileSync(join(abs, 'proto-{a,b}.html'), '<html/>') // brace 形态
-    const req = store.snapshot().requirements[0]
+    const req = store.peekAll()[0]
     const found = discoverArtifacts(req, abs, reqDirRel(REQ))
     const paths = found.map(a => a.path)
     expect(paths.some(p => p.endsWith('prototype.html'))).toBe(true)

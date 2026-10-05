@@ -1,0 +1,11 @@
+# case F3 · 未知 ticket 查 confirm_receipt · serves: FR-2
+case: F3
+checks:
+  - path: requirement.status            # 查询回执不得改变台账状态
+    op: eq
+    value: design
+  - path: requirement.artifacts[?kind='design'].confirmedAt
+    op: absent                          # 确认章不因查 ticket 而落下
+  - path: queue.tasks
+    op: count_eq
+    value: 0

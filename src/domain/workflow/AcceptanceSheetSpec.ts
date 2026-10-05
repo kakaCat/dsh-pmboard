@@ -27,13 +27,105 @@ export interface SheetItemLike {
   source: VerificationItemSource
   criterion: string
   evidence: string[]
-  /** 四值（REQ-308b9a FR-9）：not_verifiable=不可验收/不适用，须带原因，不阻断通过 */
-  status: 'pending' | 'passed' | 'failed' | 'not_verifiable'
+  /**
+   * 五值（REQ-308b9a FR-9 + REQ-261001154450-b918 FR-1）：
+   * not_verifiable=不可验收/不适用，须带原因，不阻断通过；
+   * unverified=人点了通过但没留实际结果——**不计入通过**（旧实现写占位文案仍记 passed）。
+   */
+  status: 'pending' | 'passed' | 'failed' | 'not_verifiable' | 'unverified'
   opinion?: string
   decidedAt?: number
   decidedBy?: ActorRef
   /** 系统生成的缺口类验收项标记（REQ-260930094139-2d65 FR-3，对齐 protocol.VerificationItem.gapKind）。 */
   gapKind?: 'e2e' | 'orphan' | 'consistency' | 'traceability'
+  /**
+   * REQ-261001184609-cecb FR-1/FR-3：实际结果与「谁来填」。
+   * **验证是执行方的活，裁决是人的活**——agent 提交验收材料时逐项落 result，
+   * 弹框就不再逼人把命令输出重抄一遍；resultSource 让台账能分辨谁填的。
+   * needsHuman/humanReason 用于**无法自动验证**的项（界面视觉、线下流程），
+   * 这类项必须显式标注理由，人才知道为什么要自己动手。
+   */
+  result?: string
+  resultSource?: 'agent' | 'human'
+  needsHuman?: boolean
+  humanReason?: string
+}
+
+/**
+ * REQ-261001184609-cecb FR-1（材料即结果）：把验收材料里形如
+ * `<itemId> :: <命令 + 实际输出摘要>` 的证据**绑定到对应验收项**。
+ *
+ * 为什么要它：验证是执行方的活——agent 已经跑过命令，结果就该直接落库，
+ * 而不是让验收的人在弹框里把输出重抄一遍（重抄既费人也不比原始输出更可信）。
+ *
+ * 纪律：**不伪造**——键不匹配、两侧有空、无 `::` 的（老写法）一律不绑定；
+ * 老写法保持"整单证据"的原语义，行为不变。
+ */
+export function bindItemResults(
+  items: readonly SheetItemLike[],
+  evidence: readonly string[],
+): { bound: number; unmatched: readonly string[] } {
+  const SEP = ' :: '
+  let bound = 0
+  const unmatched: string[] = []
+  for (const raw of evidence) {
+    const idx = raw.indexOf(SEP)
+    if (idx <= 0) continue // 老写法（无 ::）→ 不绑定，保持整单证据语义
+    const key = raw.slice(0, idx).trim()
+    const val = raw.slice(idx + SEP.length).trim()
+    if (key.length === 0 || val.length === 0) continue
+    const it = items.find(i => i.id === key)
+    if (it === undefined) {
+      unmatched.push(key)
+      continue
+    }
+    // REQ-261001184609-cecb FR-2/t4：**人填过的结果不覆盖**——人的裁决意见优先于 agent 的批量回填，
+    // 否则重交材料会把人工复核的结论冲掉（证据只增不减）。
+    if ((it as { resultSource?: string }).resultSource === 'human') continue
+    // 500 字符上限：台账里存摘要，不存整屏输出
+    ;(it as { result?: string }).result = val.slice(0, 500)
+    ;(it as { resultSource?: 'agent' | 'human' }).resultSource = 'agent'
+    bound++
+  }
+  return { bound, unmatched }
+}
+
+
+/**
+ * REQ-261001184609-cecb FR-2：**验收项还需不需要人填「实际结果」**。
+ *
+ * 判断顺序（先自动、后人工）：
+ *   1. 该项已带结果（result 非空）且不是「必须人看」的项 → **不再问第二问**：人只做裁决；
+ *   2. 其余（无结果、或 needsHuman）→ 保留第二问，让人补结果（needsHuman 时还要写清为什么必须人看）。
+ *
+ * 这是"验证归执行方、裁决归人"的开关：判断为 false 时，弹框对这项只问一次。
+ */
+export function needsResultInput(it: {
+  result?: string
+  needsHuman?: boolean
+}): boolean {
+  const hasResult = (it.result ?? '').trim().length > 0
+  if (it.needsHuman === true) return true // 必须人看的项永远要人给结果
+  return !hasResult
+}
+
+/**
+ * REQ-261001184609-cecb FR-3：需要人工确认时，把**理由**写进题干——
+ * 不写理由，人就不知道自己为什么被叫来动手（等于把工作丢给人还不解释）。
+ * 非人工项返回空串。
+ */
+export function humanNotice(it: { needsHuman?: boolean; humanReason?: string }): string {
+  if (it.needsHuman !== true) return ''
+  const why = (it.humanReason ?? '').trim()
+  return why.length > 0 ? '需人工确认：' + why : '需人工确认'
+}
+
+
+/** REQ-261001184609-cecb t4：**回滚开关**——设了 DSH_REQBOARD_NO_ITEM_RESULT 即关闭自动回填，
+ *  行为回到"人自己填结果"（旧口径）。回滚是一行配置，不需要改代码。 */
+export function itemResultBindingEnabled(env: Record<string, string | undefined>): boolean {
+  const v = (env['DSH_REQBOARD_NO_ITEM_RESULT'] ?? '').trim()
+  return v === '' || v === '0' || v === 'false'
 }
 
 /**
@@ -294,7 +386,7 @@ export function buildSheet(input: SheetBuildInput): SheetBuildResult {
 /** 逐项裁决入参。 */
 export interface SheetVerdictInput {
   itemId: string
-  status: 'passed' | 'failed' | 'not_verifiable'
+  status: 'passed' | 'failed' | 'not_verifiable' | 'unverified'
   opinion?: string
 }
 
@@ -380,6 +472,22 @@ export function applyVerdicts(
   tasks: readonly ReworkSourceTaskLike[],
 ): ApplySheetVerdictsResult {
   const failedItems: SheetItemLike[] = []
+  // ── 前置校验（REQ-261001154450-b918 FR-2）：整批先验证、后落状态 ──
+  // 系统项（gapKind / 「不可照着验」前缀项）报的是机器发现的缺口；点「通过」却不写处置，
+  // 等于把缺口吞掉——8475 实测三条系统项就是这样零处置通过的。必须在**任何 in-place
+  // 修改之前**抛错，否则会留下半批已改的记录。
+  for (const verdict of verdicts) {
+    const item = sheet.items.find(i => i.id === verdict.itemId)
+    if (item === undefined) {
+      throw domainError(REQBOARD_ERROR_CODES.invalidInput, fmt('验收项 {itemId} 不存在', { itemId: verdict.itemId }))
+    }
+    if (verdict.status === 'passed' && isSystemItem(item) && (verdict.opinion ?? '').trim().length === 0) {
+      throw domainError(
+        'system_item_disposition_required',
+        fmt('系统项通过必须写明处置（{itemId}）——它报的是缺口，点通过却不写处置等于把缺口静默吞掉', { itemId: item.id }),
+      )
+    }
+  }
   for (const verdict of verdicts) {
     const item = sheet.items.find(i => i.id === verdict.itemId)
     if (item === undefined) {
@@ -414,9 +522,41 @@ export function applyVerdicts(
   }
 }
 
-/** 是否全部通过（任一 pending/failed/not_verifiable → false）。 */
+/** 是否全部通过（任一 pending/failed/not_verifiable/unverified → false）。 */
 export function isAllPassed(sheet: SheetLike): boolean {
   return sheet.items.every(i => i.status === 'passed')
+}
+
+/**
+ * 是否系统生成的缺口类验收项（REQ-261001154450-b918 FR-2）。
+ * 判据：带 gapKind（e2e/orphan/consistency/traceability），或旧类「不可照着验」前缀项。
+ */
+export function isSystemItem(i: Pick<SheetItemLike, 'gapKind' | 'criterion'>): boolean {
+  return i.gapKind !== undefined || i.criterion.startsWith(UNVERIFIABLE_PREFIX)
+}
+
+/** 未复核项 id 列表（通过但没留实际结果）——不计入通过（FR-1）。 */
+export function unverifiedItemsOf(sheet: SheetLike): string[] {
+  return sheet.items.filter(i => i.status === 'unverified').map(i => i.id)
+}
+
+/**
+ * 系统项通过了、却没写书面处置的 id 列表（FR-2）。
+ *
+ * 为什么单独一条规则：系统项本身就是"机器报出来的缺口"（缺 E2E / 追溯断链 / 不可照着验），
+ * 让人点一下"通过"而不写处置，等于把缺口静默吞掉——REQ-8475 实测 3 条系统项零处置通过。
+ */
+export function dispositionMissingItems(sheet: SheetLike): string[] {
+  return sheet.items
+    .filter(i => i.status === 'passed' && isSystemItem(i) && (i.opinion ?? '').trim().length === 0)
+    .map(i => i.id)
+}
+
+/** 验收门状态（FR-1）：全通过→passed；有未复核→pending（不得归档）；有失败→blocked。 */
+export function sheetGateStatus(sheet: SheetLike): 'passed' | 'pending' | 'blocked' {
+  if (sheet.items.some(i => i.status === 'failed')) return 'blocked'
+  if (sheet.items.some(i => i.status === 'pending' || i.status === 'unverified')) return 'pending'
+  return 'passed'
 }
 
 /**

@@ -29,6 +29,7 @@ const FACTORIES = [
   'defineAdvanceTool',
   'defineRunStatusTool',
   'defineTaskStatusTool',
+  'defineTaskRefsTool',
   'defineNoteInterruptionTool',
   'defineClearPauseTool',
   'defineMoveTool',
@@ -41,7 +42,7 @@ const factoryOf = (name: string): ((d: unknown) => any) | undefined =>
 
 describe('reqboard 工具 schema（构造即编译全部工具）', () => {
   it('工厂清单齐备（18 个全量；少一个即红）', () => {
-    expect(FACTORIES).toHaveLength(18)
+    expect(FACTORIES).toHaveLength(19)
     for (const name of FACTORIES) expect(typeof factoryOf(name), name + ' 未导出').toBe('function')
   })
 
@@ -69,10 +70,12 @@ function readdirSyncSafe(dir: string): string[] {
  * parameters: { schema: … }（旧式 JSON Schema 写法）。为什么不构造后看对象：defineTool 会把 DSL
  * 归一化成 { type:'object', properties:{…} }，构造后的形状已经看不出原来怎么写的了。
  *
- * 例外是**显式留债**：clear_pause 仍是旧式写法，其修复属需求级工具治理
- * （requirement P7 / design use-cases §范围外，另立项），不在本需求改其行为。
+ * 例外曾是**显式留债**：clear_pause 用旧式写法，其修复被标注为"另立项治理"。
+ * **2026-10-02 该留债已清偿**（REQ-261002110908-81d0 解锁修复：parameters 改回顶层
+ * requirement_id、窗口身份改走 deps.session.windowKey），故标记集清空——本门禁现已对全部
+ * 工具生效（不再有例外）。如未来再出现旧式写法，必须在本集合登记并写明理由与到期日。
  */
-const LEGACY_PARAM_SHAPE = new Set(['ClearPauseTool'])
+const LEGACY_PARAM_SHAPE = new Set<string>()
 
 describe('reqboard 工具参数 DSL 形状（源码级：不得出现 parameters.schema）', () => {
   const ROOT = fileURLToPath(new URL('../src/tools', import.meta.url))

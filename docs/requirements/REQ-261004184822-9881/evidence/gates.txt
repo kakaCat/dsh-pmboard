@@ -1,0 +1,39 @@
+# REQ-261004184822-9881 四门禁读数
+生成时间：2026-10-04 19:05:56
+工作区：/Users/mac/Documents/ai/dsh/dsh-pmboard
+
+## $ pnpm build（host + client）
+exit=0
+ℹ 1 files, total: 410.26 kB
+✔ Build complete in 835ms
+wrapped dsh-pmboard -> lib/client.js 377818 bytes
+[verify-client] OK  bundle=410557 bytes, 关键符号齐全, 样式归属章在场, CSS 分片完整
+
+## $ pnpm build:client（单独再跑一次并读校验行）
+exit=0
+> tsdown -c tsdown.client.config.mjs && node scripts/wrap-client.mjs && node scripts/verify-client-build.mjs
+wrapped dsh-pmboard -> lib/client.js 377818 bytes
+[verify-client] OK  bundle=410557 bytes, 关键符号齐全, 样式归属章在场, CSS 分片完整
+
+## 客户端构建戳（sha256(lib/client.cjs) 前 12 位；页面刷新后应与服务端一致）
+17e9dba1f362
+
+## $ pnpm typecheck
+exit=2
+错误数=153（文档基线 223）
+本次改动文件零类型错误
+
+## $ npx vitest run tests/board-lane-scroll.test.ts
+exit=0
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  19:06:08
+   Duration  718ms (transform 293ms, setup 0ms, collect 392ms, tests 15ms, environment 0ms, prepare 54ms)
+
+
+## $ pnpm test（全量；与基线比对看失败数）
+exit=1
+ Test Files  47 failed | 371 passed | 3 skipped (421)
+      Tests  98 failed | 4416 passed | 20 skipped (4534)
+（文档基线：106 failed / 2807 passed；本需求开工前后均为 98 failed）

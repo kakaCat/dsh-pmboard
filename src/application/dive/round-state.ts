@@ -7,12 +7,79 @@
  *
  * @module dsh-pmboard/application/dive/round-state
  */
-import type { DiveRoundSource, RequirementRecord, RequirementStatus } from '../../shared/protocol.js'
+import type { DiveRoundSource, RequirementDive, RequirementStatus } from '../../shared/protocol.js'
 import { isDiveRoundSource } from '../../shared/protocol.js'
 import { getStageConfig } from './stage-configs.js'
 
 /** 预留的相位：queued（已入队）→ claimed（已被 step 认领）→ admitted（已进入 history）。单向。 */
 export type RoundPhase = 'queued' | 'claimed' | 'admitted'
+
+/**
+ * 连续同因失败达此数 → 熔断停手（REQ-261004065652-5c1c FR-2）。
+ *
+ * 为什么是 3：实测死循环均值 23 回合/分（峰值 74）——**任何 >0 的重复都在烧额度**，
+ * 所以取保守侧；抖动场景下 3 次退避足够自愈（30s/1m/2m）。
+ */
+export const FAILURE_BREAKER_THRESHOLD = 3
+
+/** 退避基数与封顶（FR-2）。 */
+export const FAILURE_BACKOFF_BASE_MS = 30_000
+export const FAILURE_BACKOFF_MAX_MS = 10 * 60 * 1000
+
+/** 失败退避账（**内存态**：不落盘——落盘会让它退化成"第二个台账"，重新依赖 I/O）。 */
+export interface DriverFailure {
+  /** 病因类别（复用 `upstream-failure.reasonClassOf` 的口径）。 */
+  reasonClass: string
+  /** 连续同因失败次数（原因类别变化即归零）。 */
+  count: number
+  /** 不早于该时刻才允许再起轮（毫秒时间戳）。 */
+  nextAt: number
+}
+
+/**
+ * 内存闭锁（**内存态**：存在即不起轮）。
+ *
+ * 为什么必须有它、而不能只靠台账 `driverHealth`：2026-10-03 的死循环里，
+ * 台账**写对了**（18:03:52 就写了 `paused`），但驱动**读不到**（同步投影陈旧）。
+ * 闭锁的全部价值就是「**与 I/O 无关的当拍判定**」——即使投影再出一次同样的缺陷，
+ * 也不可能出现"没人推进却一直起轮"。
+ */
+export interface DriverLatch {
+  reasonClass: string
+  /** 人话原因（进日志/留痕；≤200 字符）。 */
+  reason: string
+  at: number
+  /**
+   * 本次停手的**台账写是否已成功**（写成功后由回调翻真）。
+   *
+   * 为什么需要它（反向演练②实测抓到的假解锁）：解锁判据里有一条"台账显式 healthy = 有人清过"，
+   * 而**写盘失败**时台账里的 `driverHealth` 是**缺失**的——若把"缺失"当成"健康"，
+   * 闭锁会立刻自己解开，fail-closed 就成了空话。`writable` 把"我们确认写过"与"没写成"分开。
+   */
+  writable: boolean
+}
+
+/** 退避窗口：`base × 2^(n-1)`，封顶 `FAILURE_BACKOFF_MAX_MS`。`n ≤ 1` 取基数。 */
+export function backoffFor(count: number): number {
+  const n = count <= 1 ? 0 : count - 1
+  const span = FAILURE_BACKOFF_BASE_MS * Math.pow(2, Math.min(n, 20))
+  return Math.min(span, FAILURE_BACKOFF_MAX_MS)
+}
+
+/**
+ * 记一次失败：**同因累加、异因归零**（不同病因分开数，避免"抖动 + 额度"互相掩盖）。
+ * 纯函数——时间由调用方注入，便于假时钟用例。
+ */
+export function recordFailure(prev: DriverFailure | undefined, reasonClass: string, now: number): DriverFailure {
+  const count = prev !== undefined && prev.reasonClass === reasonClass ? prev.count + 1 : 1
+  return { reasonClass, count, nextAt: now + backoffFor(count) }
+}
+
+/** 熔断是否已触发（`count ≥ 阈值`）。 */
+export function breakerTripped(failure: DriverFailure | undefined): boolean {
+  return failure !== undefined && failure.count >= FAILURE_BREAKER_THRESHOLD
+}
+
 
 /** 一次回合预留（对齐 dsh-goal-round-driver 的 attempt）。 */
 export interface RoundAttempt {
@@ -48,6 +115,10 @@ export interface DriverState {
   run?: Promise<void>
   /** teardown 已关闭准入 */
   stopping: boolean
+  /** 失败退避账（FR-2，内存态）：退避期内不起轮；同因达阈值 → 熔断。 */
+  failure?: DriverFailure
+  /** 内存闭锁（FR-3，内存态）：存在即不起轮，**先于一切台账判据**。 */
+  latch?: DriverLatch
 }
 
 /** 逐字（结构）相等：只吃 JSON 值（消息 content 是 JSON）。 */
@@ -84,11 +155,30 @@ export function sameQueued(content: unknown, source: unknown, attempt: RoundAtte
 }
 
 /** 进入 step 前/后的完整栅栏（fail-closed）。任何一条不成立即不得放行。 */
+/**
+ * 驱动/准入判定所需的**最小形状**（B12 阶段①-a）。
+ *
+ * 为什么不用 `RequirementRecord`：判定只需要 `dive` 与 `advance.pausedReason` 这两个有界字段，
+ * 而同步缝（`round-driver` 的 idle 拍）拿不到整条记录——它拿的是 `RequirementFacts` 窄投影。
+ * 用结构类型收窄后**两种入参都满足**：整条记录（异步路径）与窄投影（同步路径）都能传，
+ * 且判定逻辑仍只有这一份（FR-5 要求准入栅栏与驱动前置条件**同源判定**，不得各看一套）。
+ */
+export interface DrivableShape {
+  readonly dive?: RequirementDive
+  readonly advance?: { readonly pausedReason?: string }
+}
+
+/** 准入判定所需的最小形状（比 `DrivableShape` 多 id/version 的陈旧性比对）。 */
+export interface ReservationShape extends DrivableShape {
+  readonly id: string
+  readonly version: number
+}
+
 export interface ReservationCheck {
   state: DriverState
   content: unknown
   source: DiveRoundSource
-  req: RequirementRecord | undefined
+  req: ReservationShape | undefined
   /** 驱动所在插件 fiber 是否 active（对齐 Goal 的 ctx.fiber.state === 2） */
   fiberActive: boolean
   /** agents.get(req.sourceSessionId) === state.agent（精确活体） */
@@ -108,23 +198,118 @@ export function roundReservationValid(c: ReservationCheck): boolean {
   if (req.id !== source.requirementId || req.version !== source.revision) return false
   const dive = req.dive
   if (dive === undefined) return false
-  if (dive.activation !== 'armed' || dive.phase !== 'active') return false
+  // FR-5：与 isDrivableRequirement **同源判定**——准入栅栏与驱动前置条件不得各看一套字段
+  // （修前两处都看 phase；引入 driverHealth 后若只改一处，就会出现"能驱动但准入拒绝"的缝）。
+  if (!isDrivableRequirement(req)) return false
   return source.round === (dive.roundsInStage ?? 0) + 1
 }
 
-/** 回合上限（权威来源 = stage-configs 的每阶段 maxRounds；未知阶段回落 10）。 */
+/**
+ * 阶段上限的**内存快照来源**（REQ-261004103330-005f FR-2 / t6）。
+ *
+ * 为什么必须走"模块级快照 + 同步读"而不是每次去问端口：`roundLimitFor` 被 `round-driver` 在
+ * **回合判定的热路径**上同步调用（判定 → `await checkpoint` → 起轮）。端口读设置要读盘、是异步的，
+ * 一旦在这里 `await`，判定与排队之间就多出一个可被设置的窗口——本模块既有的竞态栅栏纪律会失守。
+ *
+ * 快照的三路刷新（装配在 `src/index.ts`）：
+ *   ① 装配期灌初值；② 设置变更（PATCH 广播 → `subscribe`）时刷新；③ 设置文件被外部改动时按 mtime 轮询刷新。
+ *
+ * 结构类型而不是 import `ResolvedRunSettings`：本模块保持"零上层依赖"，
+ * 单测可以直接喂最小对象（`{ stageMaxRounds: { implementing: { value: 5 } } }`）。
+ */
+export interface StageLimitSource {
+  readonly stageMaxRounds: Readonly<Record<string, { readonly value: number } | undefined>>
+}
+
+let stageLimitSource: StageLimitSource | undefined
+
+/** 装上限快照（传 `undefined` 即卸载）。幂等；装配期灌初值、之后由订阅/轮询刷新。 */
+export function installStageLimitSnapshot(source: StageLimitSource | undefined): void {
+  stageLimitSource = source
+}
+
+/**
+ * 回合上限（权威来源 = 已安装的设置快照；未安装回落 `stage-configs` 的**默认值表**；未知阶段 10）。
+ *
+ * 两条不能省的兜底：
+ *   · **未安装 → 与改造前逐字一致**（`tests/dive-round-state.test.ts` 锁着这条向后兼容）；
+ *   · 快照里该阶段的值不是有限数 → 同样回落默认表。若不兜底，`roundsInStage >= NaN` 恒为 false，
+ *     上限会**静默失效**（跑飞需求一路跑下去，正是这张卡要根治的事）。
+ */
 export function roundLimitFor(status: RequirementStatus | string): number {
+  const fromSettings = stageLimitSource?.stageMaxRounds[status]?.value
+  if (typeof fromSettings === 'number' && Number.isFinite(fromSettings)) return fromSettings
   return getStageConfig(status as RequirementStatus)?.maxRounds ?? 10
 }
 
 /** 回合消息正文（纯函数，供端口注入与测试固定；内容不变量据此逐字比对）。 */
 export function renderDiveRoundText(input: { requirementId: string; round: number; status: string }): string {
-  return '继续执行需求 ' + input.requirementId + '（Dive 模式自动续跑，第 ' + input.round + ' 回合）\n\n当前状态：' + input.status
+  const header = '继续执行需求 ' + input.requirementId + '（Dive 模式自动续跑，第 ' + input.round + ' 回合）\n\n当前状态：' + input.status
+  
+  // 按阶段生成针对性指令
+  let instruction = ''
+  switch (input.status) {
+    case 'brainstorming':
+      instruction = '\n\n**本阶段任务：调研用户意图，写需求文档**' +
+        '\n- 参考模板：docs/requirements/' + input.requirementId + '/requirement.md' +
+        '\n- 写完后调 reqboard_submit(kind=requirement) 登记产物' +
+        '\n- 然后调 reqboard_ask_confirm(target=artifact, kind=requirement) 请人确认'
+      break
+    case 'design':
+      instruction = '\n\n**本阶段任务：写设计文档**' +
+        '\n- 目录：docs/requirements/' + input.requirementId + '/design/' +
+        '\n- 写完后调 reqboard_submit(kind=design) 登记' +
+        '\n- 然后调 reqboard_ask_confirm(target=artifact, kind=design) 请人确认'
+      break
+    case 'decomposing':
+      instruction = '\n\n**本阶段任务：写拆分计划**' +
+        '\n- 路径：docs/requirements/' + input.requirementId + '/decomposition.md' +
+        '\n- 写完后调 reqboard_submit(kind=plan) 提交' +
+        '\n- 然后调 reqboard_ask_confirm(target=plan) 请人批准'
+      break
+    case 'implementing':
+      instruction = '\n\n**本阶段任务：执行任务卡**' +
+        '\n- 用 reqboard_status() 查看当前任务' +
+        '\n- 按任务说明执行，完成后调 reqboard_task_move 推进状态'
+      break
+    case 'accepting':
+      instruction = '\n\n**本阶段任务：准备验收材料**' +
+        '\n- 调 reqboard_submit(kind=verification) 提交验收材料' +
+        '\n- 等待人工逐项验收'
+      break
+  }
+  
+  return header + instruction
 }
 
-/** 是否「可起轮」的需求（armed + active）。 */
-export function isDrivableRequirement(req: RequirementRecord | undefined): boolean {
-  return req !== undefined && req.dive?.activation === 'armed' && req.dive?.phase === 'active'
+/**
+ * 是否「可起轮」（REQ-261001213924-1441 FR-5 起改用两套状态判定）。
+ *
+ * 判据：**人的意图**为 armed（只有人能改）且**运行时健康**非 paused（驱动侧写）。
+ * phase 只在旧记录（无 driverHealth）时作读侧兼容——避免"phase=paused 终态锁死"的老语义复活。
+ */
+export function isDrivableRequirement(req: DrivableShape | undefined): boolean {
+  const dive = req?.dive
+  if (dive === undefined) return false
+  if (dive.activation !== 'armed') return false
+  // [实施链已暂停 => 不起轮] advance 因停滞/失败/人工把 pausedReason 写上（AdvanceChain.pauseRequirement）——
+  // 不拦的话，Dive 会对一条已放弃自动推进的需求**无限起轮**（本轮实测的死循环）。人工「继续」会清空它（requirements.ts）。
+  if (req?.advance?.pausedReason !== undefined) return false
+  if (dive.driverHealth !== undefined) return dive.driverHealth.state !== 'paused'
+  return dive.phase !== 'paused'
+}
+
+/**
+ * 是否「因基础设施原因被误解除武装」（REQ-261001201200-8f8b FR-4）——可自动恢复。
+ *
+ * 为什么用 phase 当判别器而不是新增字段：**既有语义已经区分了两种 disarmed**——
+ *   · 人主动 \`reqboard_clear_pause\` → activation=disarmed 且 **phase=idle**（"我要手动跑"）；
+ *   · 回合上限/中止 → phase=paused（终态，需人解锁）；
+ *   · 驱动失败/投递失败/检查点失败/agent 错误/teardown 遗留 → activation=disarmed 但 **phase 仍是 active**。
+ * 只有最后一种该被自动恢复。本判据零 IO、不新增字段，故不需要台账迁移。
+ */
+export function isRecoverableDisarm(req: DrivableShape | undefined): boolean {
+  return req !== undefined && req.dive?.activation === 'disarmed' && req.dive?.phase === 'active'
 }
 
 // ── 宿主对象的结构访问器（零框架依赖；防 application 反向 import adapters/框架） ──

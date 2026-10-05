@@ -1,0 +1,155 @@
+# 前端设计令牌（生成物）
+
+> 生成物：由 `scripts/kb-build.mts` 从 src\/client\/styles? 确定性抽取，**请勿手改**（改样式后重跑）。
+> 全量类名（649 个）在 `docs/knowledge/design-tokens.classes.tsv`——机器索引、不进上下文，用 `reqboard_kb(kind='tokens', query='<类名>')` 检索。
+
+## 颜色 #colors
+
+- `#4a7dff` · 59 次 · base.ts
+- `#999` · 57 次 · base.ts
+- `#fff` · 47 次 · base.ts
+- `#333` · 43 次 · base.ts
+- `#888` · 41 次 · base.ts
+- `#28a745` · 35 次 · base.ts
+- `#dc3545` · 34 次 · base.ts
+- `#666` · 23 次 · base.ts
+- `#86868b` · 18 次 · node-panel.ts
+- `#444` · 15 次 · base.ts
+- `#e5e7eb` · 15 次 · board.ts
+- `#b07800` · 14 次 · base.ts
+- `#17a2b8` · 12 次 · base.ts
+- `#222` · 12 次 · base.ts
+- `#2f5fd0` · 12 次 · board.ts
+- `#9aa4b2` · 12 次 · base.ts
+- `#f0a020` · 12 次 · base.ts
+- `#6b7280` · 11 次 · base.ts
+- `#1e7e34` · 10 次 · board.ts
+- `#aaa` · 9 次 · board.ts
+- `#6f2f8c` · 7 次 · files.ts
+- `#8e44ad` · 7 次 · base.ts
+- `#f3f4f6` · 7 次 · token.ts
+- `#f9fafb` · 7 次 · base.ts
+- `#111827` · 6 次 · base.ts
+- `#777` · 5 次 · base.ts
+- `#b42318` · 5 次 · marks.ts
+- `#0e7c8f` · 4 次 · files.ts
+- `#1d1d1f` · 4 次 · node-panel.ts
+- `#a86a00` · 4 次 · files.ts
+- `#c2255c` · 4 次 · base.ts
+- `#ffffff` · 4 次 · traceability.ts
+- `#0969da` · 3 次 · traceability.ts
+- `#248a3d` · 3 次 · node-panel.ts
+- `#6c757d` · 3 次 · base.ts
+- `#9ca3af` · 3 次 · base.ts
+- `#bbb` · 3 次 · detail.ts
+- `#ccc` · 3 次 · panel.ts
+- `#f5f5f7` · 3 次 · dag.ts
+- `#1f2328` · 2 次 · traceability.ts
+- `#20c997` · 2 次 · detail.ts
+- `#3b4048` · 2 次 · base.ts
+- `#555` · 2 次 · base.ts
+- `#8a5a00` · 2 次 · base.ts
+- `#d92d20` · 2 次 · marks.ts
+- `#f7f8fa` · 2 次 · files.ts
+- `#ff9800` · 2 次 · traceability.ts
+- `#0071e3` · 1 次 · node-panel.ts
+- `#027a48` · 1 次 · marks.ts
+- `#1f2733` · 1 次 · node-panel.ts
+- `#2563eb` · 1 次 · files.ts
+- `#2f6fed` · 1 次 · settings.ts
+- `#2f8f5b` · 1 次 · settings.ts
+- `#34c759` · 1 次 · node-panel.ts
+- `#374151` · 1 次 · board.ts
+- `#4a4a4f` · 1 次 · settings.ts
+- `#5c4a12` · 1 次 · token.ts
+- `#6e6e73` · 1 次 · node-panel.ts
+- `#8a5cf6` · 1 次 · settings.ts
+- `#8a9099` · 1 次 · token.ts
+- `#a3abb8` · 1 次 · node-panel.ts
+- `#b0b4bb` · 1 次 · token.ts
+- `#b45309` · 1 次 · base.ts
+- `#c0392b` · 1 次 · node-panel.ts
+- `#c7c7cc` · 1 次 · node-panel.ts
+- `#d2455c` · 1 次 · settings.ts
+- `#d33` · 1 次 · base.ts
+- `#d64545` · 1 次 · settings.ts
+- `#ddd` · 1 次 · files.ts
+- `#e0a030` · 1 次 · settings.ts
+- `#ebebf0` · 1 次 · node-panel.ts
+- `#eee` · 1 次 · files.ts
+- `#eef1f5` · 1 次 · files.ts
+- `#fafafa` · 1 次 · node-panel.ts
+- `#fbfbfc` · 1 次 · token.ts
+- `#ff9500` · 1 次 · node-panel.ts
+
+## 变量 #vars
+
+- `--dsh-pm-np-amber` · node-panel.ts
+- `--dsh-pm-np-bg` · node-panel.ts
+- `--dsh-pm-np-bg-hover` · node-panel.ts
+- `--dsh-pm-np-blue` · node-panel.ts
+- `--dsh-pm-np-green` · node-panel.ts
+- `--dsh-pm-np-line` · node-panel.ts
+- `--dsh-pm-np-line-soft` · node-panel.ts
+- `--dsh-pm-np-red` · node-panel.ts
+- `--dsh-pm-np-text` · node-panel.ts
+- `--dsh-pm-np-text2` · node-panel.ts
+- `--dsh-pm-np-text3` · node-panel.ts
+- `--pm-bg-soft` · base.ts
+- `--pm-btn-h` · base.ts
+- `--pm-btn-h-sm` · base.ts
+- `--pm-c-accepting` · base.ts
+- `--pm-c-archived` · base.ts
+- `--pm-c-brainstorming` · base.ts
+- `--pm-c-danger` · base.ts
+- `--pm-c-decomposing` · base.ts
+- `--pm-c-design` · base.ts
+- `--pm-c-done` · base.ts
+- `--pm-c-draft` · base.ts
+- `--pm-c-implementing` · base.ts
+- `--pm-c-warn` · base.ts
+- `--pm-gap` · base.ts
+- `--pm-gap-lg` · base.ts
+- `--pm-gap-sm` · base.ts
+- `--pm-line` · base.ts
+- `--pm-line-strong` · base.ts
+- `--pm-radius` · base.ts
+- `--pm-radius-pill` · base.ts
+- `--pm-radius-sm` · base.ts
+- `--pm-shadow-card` · base.ts
+- `--pm-shadow-hover` · base.ts
+- `--pm-stage` · base.ts
+
+## 断点 #breakpoints
+
+- `max-width: 1200px`
+- `max-width: 1180px`
+- `max-width: 880px`
+- `max-width: 768px`
+
+## 类名前缀分组 #classes（Top 24，共 122 组）
+
+- `dsh-pm-set` · 86 个
+- `dsh-pm-np` · 70 个
+- `dsh-pm-sn` · 32 个
+- `dsh-pm-cprog` · 29 个
+- `dsh-pm-list` · 23 个
+- `dsh-pm-trace` · 20 个
+- `dsh-pm-dag` · 18 个
+- `dsh-pm-stage` · 18 个
+- `dsh-pm-coverage` · 16 个
+- `dsh-pm-plan` · 14 个
+- `dsh-pm-task` · 14 个
+- `dsh-pm-card` · 11 个
+- `dsh-pm-gantt` · 11 个
+- `dsh-pm-mk` · 10 个
+- `dsh-pm-artifact` · 9 个
+- `dsh-pm-doc` · 8 个
+- `dsh-pm-timeline` · 8 个
+- `dsh-pm-archive` · 7 个
+- `dsh-pm-completeness` · 7 个
+- `dsh-pm-flow` · 7 个
+- `dsh-pm-stat` · 7 个
+- `dsh-pm-tl` · 7 个
+- `dsh-pm-archived` · 6 个
+- `dsh-pm-comment` · 6 个

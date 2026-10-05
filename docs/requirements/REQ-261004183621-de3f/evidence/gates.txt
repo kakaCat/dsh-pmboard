@@ -1,0 +1,36 @@
+# t7 四条门禁汇总（REQ-261004183621-de3f，2026-10-04）
+
+## 1) pnpm build（host + client，C-11）
+```
+exit=0
+✔ Build complete in 829ms
+wrapped dsh-pmboard -> lib/client.js 371229 bytes
+[verify-client] OK  bundle=403092 bytes, 关键符号齐全, 样式归属章在场, CSS 分片完整
+```
+
+## 2) pnpm test（全量，C-14）
+```
+ Test Files  48 failed | 367 passed | 3 skipped (418)
+      Tests  99 failed | 4394 passed | 20 skipped (4513)
+```
+对照：改动前同窗口基线 97 failed / 4320 passed → 本次 99 failed / 4394 passed（新增用例全绿）。
+逐文件核对后新增失败的 3 个文件均为**环境缺口/未跟踪工作流**，非本次改动（明细见 compat.txt）。
+
+## 3) npx tsc --noEmit（C-15）
+```
+error TS 行数：148
+本仓 C-15 记录基线：223 → 低于基线；本次新增文件相关错误 0 条
+```
+
+## 4) npx tsx scripts/kb-build.mts --check（C-13）
+```
+exit=0
+[verify] 生成物与库内一致（零漂移）
+```
+
+## 5) 端到端演练（t7 专属）
+```
+
+演练结论：五步全部符合期望 ✅
+```
+（五步：漏列拒 → 声明豁免过 → 补录 3 条 → 重复补录幂等 → warn 不拒；完整输出见 archive-reconcile-drill.txt）

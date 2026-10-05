@@ -38,6 +38,11 @@ export interface LedgerRequirementLike {
   /** 立项绑定窗口（窗口↔需求的需求侧锚点）；缺省 = 未绑定窗口。 */
   sourceSessionId?: string
   artifacts?: LedgerArtifactLike[]
+  /**
+   * 状态转移历史投影（REQ-260930094139-2d65 FR-4）：只取 status/at 两字段，
+   * ActorRef/reason 不进 RTM。缺省 = 存量台账无记录 → 生成器走回落 + timestamps_inferred。
+   */
+  statusHistory?: readonly { status: string; at: number }[]
 }
 
 /** 只读台账端口（真实实现见 dsh-pmboard 的适配器）。 */

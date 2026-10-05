@@ -12,11 +12,11 @@
  * 门先于 G2 完整性门拦截（见 tests/design-completeness-gate.test.ts「已登记但未确认」例），
  * 故「待确认」文案同时锁在**闸门函数** `checkDesignCompletenessGate` 这一层。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { defineMoveTool, defineAskConfirmTool } from './helpers/tool-deps.js'
 import { checkDesignCompletenessGate } from '../src/application/internal/design-gates.js'
@@ -29,11 +29,11 @@ const DESIGN4 = DESIGN5.slice(0, 4) // 缺 use-cases.md
 const DESIGN_DIR = 'docs/requirements/' + REQ + '/design'
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-g2-msg-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -63,7 +63,7 @@ async function seed(opts: SeedOpts): Promise<void> {
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
     artifacts,
   } as unknown as RequirementRecord
-  await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 const run = (tool: { execute: (a: unknown, e: unknown) => Promise<any> }, args: unknown) =>
@@ -116,7 +116,7 @@ describe('TC-2/TC-3 两种病因两种话（同一 code，两串不相同）', (
   it('TC-3 待确认（闸门函数层）：checkDesignCompletenessGate 同 code 出「待确认」+ 确认命令', async () => {
     writeDocset(DESIGN5)
     await seed({ registered: DESIGN5, unconfirmed: ['use-cases.md'] })
-    const gate = await checkDesignCompletenessGate(docsReader() as never, store.snapshot().requirements[0])
+    const gate = await checkDesignCompletenessGate(docsReader() as never, store.peekAll()[0])
     expect(gate?.code).toBe('design_doc_incomplete')
     expect(gate?.message).toContain('待确认')
     expect(gate?.message).toContain('reqboard_ask_confirm(target=artifact, kind=design)')

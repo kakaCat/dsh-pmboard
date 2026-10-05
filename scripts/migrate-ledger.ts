@@ -35,7 +35,7 @@
 import { copyFileSync, existsSync, readFileSync, readdirSync, renameSync, rmdirSync, mkdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { basename, dirname, join, resolve } from 'node:path'
-import { persistAtomic } from '../src/adapters/JsonLedgerRepository.js'
+import { persistAtomic } from '../src/repositories/atomicWrite.js'
 import { QUEUE_VERSION, type QueueEdge, type QueueFile, type QueueLayer, type ValidationResult } from '../src/domain/queue/QueueTypes.js'
 // 拓扑与校验**唯一实现**（t2/t3）。迁移脚本一律 import，绝不重抄一份——
 // 重复实现 = 第二套拓扑/校验语义，本仓吃过这个亏（design/interfaces.md I-3/I-4）。

@@ -11,9 +11,14 @@
  * @module dsh-pmboard/http/routes
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { JsonLedgerRepository as ReqboardStore } from '../adapters/JsonLedgerRepository.js'
 import type { TaskStore } from '../application/ports.js'
 import { newCommentId, newRequirementId, newTaskId } from '../shared/protocol.js'
+
+/**
+ * 路由层需要的台账能力（**t8 切换点**）：沿用桥导出的 `LegacyLedgerSurface`
+ * （旧端口 + `getRequirement` / `subscribe` 这两个端口外方法）。
+ * 收敛到**同一处定义**，避免 routes 与 routers 各写一份结构类型而漂移。
+ */
 import type { InjectionLogReadPort } from '../application/internal/injection-log.js'
 import type { IsolationLogReadPort } from '../application/internal/isolation-trace.js'
 import type { RouterCtx } from './routers/shared.js'
@@ -24,9 +29,17 @@ import { createVerdictsRouter } from './routers/verdicts.js'
 import { createArtifactsRouter } from './routers/artifacts.js'
 import { createInjectionRouter } from './routers/injection.js'
 import { createIsolationRouter } from './routers/isolation.js'
+import { createKnowledgeRouter } from './routers/knowledge.js'
+import { createSettingsRouter } from './routers/settings.js'
 
 export interface ReqboardRouteDeps {
-  store: ReqboardStore
+  /**
+   * 新需求存储端口（B12 阶段④-2）——**必填**：路由侧新代码一律走它。
+   *
+   * 为什么不从 `applicationDeps.store` 可选透传：可选会把"装配漏了"从编译期挪到运行期
+   * （本项目的老教训），故此处编译期必填——组合根（src/index.ts）已持有分片 store，直接传即可。
+   */
+  requirementStore: import('../application/ports.js').RequirementStore
   /**
    * 任务存储（队列）端口（REQ-260927202051-f6df I-1）——**必填**。
    *
@@ -52,6 +65,16 @@ export interface ReqboardRouteDeps {
   }
   /** 工作区根（REQ-2e9473 t11 产物自动发现扫描 docs/requirements/ 用；缺省 process.cwd()）。 */
   cwd?: string
+  /**
+   * 会话工作区解析器（REQ-261003215944-9e04 FR-11）：会话 id → 该会话的 header.cwd。
+   * 缺省 → 读根回落 legacy cwd，响应里如实标注 docsRootSource。
+   */
+  sessionWorkspace?: (sessionId: string | undefined) => string | undefined
+  /**
+   * 知识层自举通知口（REQ-261004174324-4195 t4）：读根按会话解析成功时通知一次（即发即忘）。
+   * 缺省 → 不自举（老行为）。
+   */
+  knowledgeBootstrap?: { ensure(root?: string): void }
   /** 文档仓储（REQ-308b9a AC-7.7：看板裁决后回填 verification.md）。 */
   docs?: import('../application/ports.js').DocRepository
   /** 闸门后置链（REQ-e3b6a0 t9 / FR-9）：看板一键确认后触发 Phase B。缺省 → 只落章。 */
@@ -65,32 +88,30 @@ export interface ReqboardRouteDeps {
   advance?: (requirementId: string) => Promise<{ steps: number; stopped: string }>
   /** 应用层用例依赖（2026-09-26）：看板「拆分」入口直接调用 executeDecompose。 */
   applicationDeps?: import('../application/ports.js').UseCaseDeps
+  /**
+   * 需求面板刷新策略（REQ-261001124111-5d36 t4）：随 SSE 的 `build` 帧下发（缺省 → 帧里不带）。
+   */
+  panelPolicy?: { refreshMs: number; staleAfterMs: number }
+  /**
+   * 运行设置 / 系统记录 / 宿主级动作票据（REQ-261004103330-005f t8 消费、t5 装配期注入）。
+   *
+   * 三个都**可选**只为不打断既有大量测试的构造点；但设置路由对缺失是**响亮 500**
+   * （组合根 bug，绝不伪造空设置、也绝不伪造"已确认"），语义见 `routers/settings.ts` 头注。
+   */
+  settings?: import('../application/ports.js').SettingsStore
+  systemRecord?: import('../application/ports.js').SystemRecordStore
+  storageActions?: import('./routers/shared.js').StorageActionPort
+  /** 文件路径选择端口（「选择…」）：缺省 = 该部署弹不出系统选择窗口。 */
+  pickStoragePath?: import('../application/ports.js').StoragePathPickerPort
+  /** 插件版本信息（FR-15）：组合根从 `package.json` 读；缺省 → 响应如实写 `unknown`。 */
+  pluginInfo?: { name: string; version: string }
+  /** `dshHome` 绝对路径：派生设置/记录文件路径（GET 的 paths、错误消息里的可复制路径）。 */
+  dshHome?: string
 }
 
-function json(res: ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
-  res.end(JSON.stringify(body))
-}
-
-function ok(res: ServerResponse, data: unknown): void {
-  json(res, 200, { success: true, data })
-}
-
-/**
- * 错误 → HTTP 状态码的**唯一映射点**（t7：此前散在各处理器的 badInput/notFound，
- * 现集中在此）。code 语义对齐 design/domain-model.md §7。
- */
-function fail(res: ServerResponse, err: unknown): void {
-  const e = err as { message?: string; code?: string }
-  const status = e.code === 'invalid_input' || e.code === 'invalid_transition' || e.code === 'invalid_dag'
-    // verify_override_required（REQ-a8d582 FR-4）：不合规通过缺覆盖说明 → 400（补上说明可重发）
-    || e.code === 'missing_artifact' || e.code === 'artifact_not_confirmed' || e.code === 'verify_override_required'
-    // REQ-2d1c74 FR-2/FR-3：G2 完整性门与拆分内容硬门 = 流程不满足（补交/挪内容后可重发）→ 400
-    || e.code === 'design_doc_incomplete' || e.code === 'design_contains_decomposition' ? 400
-    : e.code === 'human_gate' || e.code === 'system_gate' ? 403
-    : e.code === 'not_found' ? 404 : 500
-  json(res, status, { success: false, error: e.message ?? String(err), ...(e.code ? { code: e.code } : {}) })
-}
+// REQ-261003191948-e94a t2：信封与错误映射的**唯一实现**搬到 ./envelope.js——
+// 让"未就绪 handler"（src/http/not-ready.ts）与正常路由共用同一份响应形状，不各写一套。
+import { fail, json, ok } from './envelope.js'
 
 /** 入参/流程不满足 → 400（消息即指引）。 */
 function badInput(message: string): never {
@@ -115,7 +136,7 @@ async function readBody(req: IncomingMessage): Promise<Record<string, unknown>> 
 }
 
 export function createReqboardHandler(deps: ReqboardRouteDeps) {
-  const { store, now } = deps
+  const { now } = deps
   // 必填（编译期保证，见 ReqboardRouteDeps.taskStore 注释）：schema v9 后任务不再存台账。
   const taskStore = deps.taskStore
   const ids = {
@@ -130,13 +151,13 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
    */
   async function mintId(kind: 'requirement' | 'task'): Promise<string> {
     if (kind === 'requirement') {
-      return store.read(ledger => {
-        for (let i = 0; i < 20; i++) {
-          const id = ids.requirement()
-          if (!ledger.requirements.some(r => r.id === id)) return id
-        }
-        throw new Error('id 生成冲突过多')
-      })
+      // B12 阶段④-2-③：id 去重改走新端口。按设计纪律（interfaces.md 调用纪律 1）
+      // **按 id 用 getSummary**，不要 listSummaries 之后从中找一条（那是把整册读法换个名字）。
+      for (let i = 0; i < 20; i++) {
+        const id = ids.requirement()
+        if ((await deps.requirementStore.getSummary(id)) === undefined) return id
+      }
+      throw new Error('id 生成冲突过多')
     }
     for (let i = 0; i < 20; i++) {
       const id = ids.task()
@@ -146,8 +167,8 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
   }
 
   const ctx: RouterCtx = {
-    store,
     taskStore,
+    requirementStore: deps.requirementStore,
     now,
     deps: {
       ...(deps.cwd !== undefined ? { cwd: deps.cwd } : {}),
@@ -158,8 +179,21 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
       ...(deps.docs !== undefined ? { docs: deps.docs } : {}),
       ...(deps.gateChain !== undefined ? { gateChain: deps.gateChain } : {}),
       ...(deps.agents !== undefined ? { agents: deps.agents } : {}),
+      // REQ-261003215944-9e04 FR-11：会话工作区解析器**必须显式转发**——本映射是白名单，
+      // 漏一行就等于"组合根传了、路由收不到"。测试里"需求目录外的文档仍判不存在"那条就是它的照妖镜。
+      ...(deps.sessionWorkspace !== undefined ? { sessionWorkspace: deps.sessionWorkspace } : {}),
       ...(deps.advance !== undefined ? { advance: deps.advance } : {}),
       ...(deps.applicationDeps !== undefined ? { applicationDeps: deps.applicationDeps } : {}),
+      // REQ-261001124111-5d36 t4：面板刷新策略进 SSE 的 build 帧（缺省 → 不下发，客户端用缺省值）
+      ...(deps.panelPolicy !== undefined ? { panelPolicy: deps.panelPolicy } : {}),
+      // REQ-261004103330-005f t8：设置类路由的五个依赖（本映射是白名单，漏一行 = "组合根传了、路由收不到"）
+      ...(deps.settings !== undefined ? { settings: deps.settings } : {}),
+      ...(deps.systemRecord !== undefined ? { systemRecord: deps.systemRecord } : {}),
+      ...(deps.storageActions !== undefined ? { storageActions: deps.storageActions } : {}),
+      // REQ-261004103330-005f：「选择…」的文件路径选择端口（白名单照旧：漏一行 = 组合根传了、路由收不到）
+      ...(deps.pickStoragePath !== undefined ? { pickStoragePath: deps.pickStoragePath } : {}),
+      ...(deps.pluginInfo !== undefined ? { pluginInfo: deps.pluginInfo } : {}),
+      ...(deps.dshHome !== undefined ? { dshHome: deps.dshHome } : {}),
     },
     ids,
     mintId,
@@ -176,7 +210,9 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
   const verdicts = createVerdictsRouter(ctx)
   const artifacts = createArtifactsRouter(ctx)
   const injection = createInjectionRouter(ctx)
+  const knowledge = createKnowledgeRouter(ctx)
   const isolation = createIsolationRouter(ctx)
+  const settings = createSettingsRouter(ctx)
 
   // -- 分发 ----------------------------------------------------------------
 
@@ -186,18 +222,24 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
       const sub = url.pathname.replace(/^\/dashboard\/api\/reqboard\/?/, '')
       const method = req.method ?? 'GET'
 
-      if (method === 'GET' && (sub === '' || sub === 'state')) return await stages.handleState(res)
+      if (method === 'GET' && (sub === '' || sub === 'state')) return await stages.handleState(res, url)
       if (method === 'GET' && sub === 'events') return stages.handleEvents(req, res)
       if (method === 'GET' && sub === 'health') return ok(res, { status: 'ok' })
       // 注入留痕只读回查（REQ-422af1 t11）：看板「本次注入了什么」的唯一数据源
       if (method === 'GET' && sub === 'injection-log') return await injection.handleInjectionLog(res, url)
       // 节点隔离留痕只读回查（REQ-260923134706-e72f t2）：看板「执行流程→上下文管理」的唯一数据源
       if (method === 'GET' && sub === 'isolation-log') return await isolation.handleIsolationLog(res, url)
+      if (method === 'GET' && sub === 'kb') return await knowledge.handleKb(res, url)
       if (method === 'GET' && sub === 'file') {
         const p = url.searchParams.get('path') ?? ''
-        return await artifacts.handleFileRead(res, p)
+        return await artifacts.handleFileRead(res, p, url.searchParams.get('session') ?? undefined)
       }
       if (method === 'GET' && sub === 'requirements/summary') return await stages.handleRequirementsSummary(res)
+      // B12 阶段⑥-①：详情按需（放在 summary/token/marks/stages 之后，避免抢它们的匹配）
+      if (method === 'GET' && /^requirements\/[^/]+$/.test(sub)) {
+        return await stages.handleRequirementDetail(res, decodeURIComponent(sub.slice('requirements/'.length)))
+      }
+      if (method === 'POST' && sub === 'artifacts/scan') return await stages.handleArtifactScan(res)
       if (method === 'GET' && /^requirements\/[^/]+\/token$/.test(sub)) {
         const id = decodeURIComponent(sub.split('/')[1] ?? '')
         if (id.length === 0) {
@@ -211,14 +253,14 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
         if (id.length === 0) {
           return json(res, 400, { success: false, error: '缺少 id 参数', code: 'invalid_input' })
         }
-        return await stages.handleRequirementMarks(res, id)
+        return await stages.handleRequirementMarks(res, id, url.searchParams.get('session') ?? undefined)
       }
       if (method === 'GET' && /^requirements\/[^/]+\/stages$/.test(sub)) {
         const id = decodeURIComponent(sub.split('/')[1] ?? '')
         if (id.length === 0) {
           return json(res, 400, { success: false, error: '缺少 id 参数', code: 'invalid_input' })
         }
-        return await stages.handleStageOverview(res, id)
+        return await stages.handleStageOverview(res, id, url.searchParams.get('session') ?? undefined)
       }
       if (method === 'GET' && /^requirements\/[^/]+\/stage\/[^/]+$/.test(sub)) {
         const parts = sub.split('/')
@@ -227,7 +269,7 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
         if (id.length === 0 || stage.length === 0) {
           return json(res, 400, { success: false, error: '缺少 id 或 stage 参数', code: 'invalid_input' })
         }
-        return await stages.handleStageDetail(res, id, stage)
+        return await stages.handleStageDetail(res, id, stage, url.searchParams.get('session') ?? undefined)
       }
       if (method === 'GET' && sub.startsWith('session/') && sub.endsWith('/progress')) {
         const sid = decodeURIComponent(sub.slice('session/'.length, sub.length - '/progress'.length))
@@ -249,6 +291,12 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
       if (method === 'POST' && sub === 'req/autorun') return await requirements.handleAutoRun(req, res)
       // 看板「拆分」入口（2026-09-26 恢复）：批准计划后落库任务卡（自动拆分路径未装配时的恢复口）
       if (method === 'POST' && sub === 'req/decompose') return await requirements.handleReqDecompose(req, res)
+      // REQ-261004183621-de3f FR-4：看板「补录归档清单」（只追加 + 留痕）
+      if (method === 'POST' && sub === 'req/archive-amend') return await requirements.handleArchiveAmend(req, res)
+      // 看板「改绑到本窗口」入口（REQ-261003222428-3556 FR-6 / N-2，仅人发起，留痕经 applyRebind）
+      if (method === 'POST' && sub === 'req/rebind') return await requirements.handleReqRebind(req, res)
+      // REQ-261004121649-bfa7 t3/t6 · FR-4：误物化批量清场（仅人——刻意不注册 agent 工具，与 rebind 同款）
+      if (method === 'POST' && sub === 'req/rollback-cleanup') return await requirements.handleRollbackCleanup(req, res)
       if (method === 'POST' && sub === 'req/artifact/confirm') return await requirements.handleArtifactConfirm(req, res)
       if (method === 'POST' && sub === 'task/create') return await tasks.handleTaskCreate(req, res)
       if (method === 'POST' && sub === 'task/move') return await tasks.handleTaskMove(req, res)
@@ -256,6 +304,17 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
       if (method === 'POST' && sub === 'comment') return await requirements.handleComment(req, res)
       // 文档可打开性批量解析（REQ-b63a7d t4）：前端一次请求替代逐条预检
       if (method === 'POST' && sub === 'docs/resolve') return await artifacts.handleDocsResolve(req, res)
+
+      // 运行设置（REQ-261004103330-005f FR-3/FR-4/FR-6/FR-11/FR-14）
+      // `settings` 与 `settings/system` 都是精确匹配（===），顺序无歧义
+      if (method === 'GET' && sub === 'settings') return await settings.handleGetSettings(res)
+      if (method === 'PATCH' && sub === 'settings') return await settings.handlePatchSettings(req, res)
+      if (method === 'GET' && sub === 'settings/system') return await settings.handleGetSystemRecord(res, url)
+      if (method === 'POST' && sub === 'settings/storage/request') return await settings.handleStorageRequest(req, res)
+      if (method === 'POST' && sub === 'settings/storage/switch') return await settings.handleStorageSwitch(req, res)
+      if (method === 'POST' && sub === 'settings/storage/migrate') return await settings.handleStorageMigrate(req, res)
+      if (method === 'POST' && sub === 'settings/storage/pick-path') return await settings.handleStoragePickPath(res)
+      if (method === 'POST' && sub === 'settings/open-file') return await settings.handleOpenConfigFile(req, res)
 
       json(res, 404, { success: false, error: `未知路由：${method} ${url.pathname}`, code: 'not_found' })
     } catch (err) {

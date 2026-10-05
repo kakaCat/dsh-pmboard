@@ -1,0 +1,16 @@
+# case D1 · 起链执行与状态轮询 · serves: FR-2
+case: D1
+ordered_contains:
+  - reqboard_task_run               # 投递起链（知悉 autoRun 副作用）
+  - reqboard_run_status             # 投递后轮询运行态，不把 dispatched 当完成
+forbidden:
+  - tool: reqboard_task_run
+    when: active_run.jobStatus == running   # 已有链在跑时不得重复起链
+budget:
+  max_tool_calls: 6
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_task_run
+    result_contains: dispatched     # 投递回执：dispatched + runId，含 autoRun=true 副作用
+  - tool: reqboard_run_status
+    result_contains: runId          # 有 active run 时回执含 runId

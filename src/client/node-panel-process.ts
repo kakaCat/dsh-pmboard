@@ -73,7 +73,7 @@ export const STAGE_PROCESS: Record<MainStageKey, StageProcessSpec> = {
       '下阶段注入：需求分析提示词 + requirement.md 模板地址',
     ],
     actions: [
-      act('立项四问作答（reqboard_capture）', '', { kind: 'always' }),
+      act('立项五问作答（reqboard_capture）', '', { kind: 'always' }),
       act('创建需求记录并绑定窗口', '', { kind: 'always' }),
       act('生成需求 ID 与文档目录', '', { kind: 'always' }),
     ],
@@ -342,7 +342,7 @@ function renderActionsSec(payload: StageDetail, ctx: ProcessFoldContext): string
     '</div>'
   }).join('')
 
-  // 立项节点：用户选择（立项四问，真实记录）
+  // 立项节点：用户选择（立项五问，真实记录）
   let choices = ''
   if (payload.stage === 'draft') {
     const body = (payload as Extract<StageDetail, { stage: 'draft' }>).body
@@ -353,7 +353,7 @@ function renderActionsSec(payload: StageDetail, ctx: ProcessFoldContext): string
       lines.push(`提示词难度：${ctx.requirement.promptDifficulty}`)
     }
     lines.push(`文档位置：docs/requirements/${ctx.requirement.id}/`)
-    choices = `<div class="dsh-pm-np-sec"><div class="dsh-pm-np-sec-title">👤 用户选择（立项四问）</div>` +
+    choices = `<div class="dsh-pm-np-sec"><div class="dsh-pm-np-sec-title">👤 用户选择（立项五问）</div>` +
       lines.map(l => '<div class="dsh-pm-np-policy">' + esc(l) + '</div>').join('') + '</div>'
   }
 

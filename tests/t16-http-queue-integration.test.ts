@@ -13,18 +13,18 @@
  *   GET  /state        → 616 口径同款：tasks = Σ 队列文件、出口无 `layer`、ready 与队列一致
  *   全链收口：两卡 done 后 → 需求 rollup 由 system 推进到 accepting（台账只存需求，任务在队列）
  */
+import { makeTestStore } from './application/harness.js'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 
 let root: string
-let store: JsonLedgerRepository
+let store: ReturnType<typeof makeTestStore>
 let taskStore: QueueTaskStore
 let handler: ReturnType<typeof createReqboardHandler>
 let queueFile: (reqId: string) => string
@@ -52,17 +52,18 @@ const post = async (url: string, body: unknown) => { const res = fakeRes(); awai
 
 /** 磁盘真值：队列文件（含 layer）＋台账文本。 */
 const readQueue = (reqId: string): any => JSON.parse(readFileSync(queueFile(reqId), 'utf8'))
-const readLedger = (): { requirements: any[]; revision: number } =>
-  JSON.parse(readFileSync(join(root, 'dsh-reqboard.json'), 'utf8')) as { requirements: any[]; revision: number }
-const ledgerHasTasksKey = (): boolean =>
-  Object.prototype.hasOwnProperty.call(JSON.parse(readFileSync(join(root, 'dsh-reqboard.json'), 'utf8')) as Record<string, unknown>, 'tasks')
+// B12 阶段⑤：本夹具不再读旧 JSON 台账文件（分片存储不产出它）——改读**新端口**
+const readLedgerVia = async (id: string): Promise<any> => store.get(id)
+// 同义判据：记录本身**没有** tasks 键（v9 起任务不在台账）
+const ledgerHasTasksKey = async (id: string): Promise<boolean> =>
+  Object.prototype.hasOwnProperty.call((await store.get(id)) ?? {}, 'tasks')
 
 beforeEach(async () => {
   root = mkdtempSync(join(tmpdir(), 'pmboard-t16-integrate-'))
-  store = new JsonLedgerRepository({ file: join(root, 'dsh-reqboard.json') })
+  store = makeTestStore()
   const queueRepo = new JsonQueueRepository({ workspaceRoot: root })
   taskStore = new QueueTaskStore({ repo: queueRepo, now: () => Date.now() })
-  handler = createReqboardHandler({ store, taskStore, now: () => Date.now(), cwd: root })
+  handler = createReqboardHandler({ requirementStore: store, taskStore, now: () => Date.now(), cwd: root, applicationDeps: { store } } as never)
   queueFile = (reqId) => join(root, 'docs/requirements', reqId, 'queue.json')
 })
 afterEach(() => { rmSync(root, { recursive: true, force: true }) })
@@ -76,12 +77,8 @@ async function seedRequirement(): Promise<string> {
   const created = await post('/req/create', { title: '联调夹具需求' })
   expect(created.statusCode).toBe(200)
   const id = created.payload.data.id as string
-  // mutate 语义：变更器拿 draft **原地改**，返回值只用于变更通知（不原地改 = 静默不落盘）
-  await store.mutate('requirement-updated', (ledger) => {
-    const r = ledger.requirements.find(x => x.id === id)
-    if (r !== undefined) r.status = 'implementing'
-    return { requirements: r === undefined ? [] : [r] }
-  })
+  // B12 阶段⑤：新端口是**按 id 定点写**（回调拿到的就是那一条 draft，原地改即落盘）
+  await store.mutate(id, (r) => { r.status = 'implementing'; return { changed: true } })
   return id
 }
 
@@ -117,7 +114,7 @@ describe('t16 联调：reqboard HTTP 面 × queue.json（真实 handler + 真实
     expect(q.ready).toEqual([aId]) // 下游未解锁
     expect(q.edges).toEqual([{ from: aId, to: bId }])
     // 期望：任务不进台账（v9 无 tasks 键）
-    expect(ledgerHasTasksKey()).toBe(false)
+    expect(await ledgerHasTasksKey(reqId)).toBe(false)
 
     // ── 样例 2：GET /state（读回与磁盘真值逐字段一致）─────────────────────
     const state = await get('/state')
@@ -166,10 +163,10 @@ describe('t16 联调：reqboard HTTP 面 × queue.json（真实 handler + 真实
       const moved = await post('/task/move', { id: bId, to, actor: 'human' })
       expect(moved.statusCode).toBe(200)
     }
-    const req = readLedger().requirements.find((r: any) => r.id === reqId)
+    const req = await readLedgerVia(reqId)
     expect(req.status).toBe('accepting')
     expect(req.updatedBy.kind).toBe('system')
-    expect(ledgerHasTasksKey()).toBe(false)
+    expect(await ledgerHasTasksKey(reqId)).toBe(false)
     expect(readQueue(reqId).tasks.every((t: any) => t.status === 'done')).toBe(true)
 
     // ── 样例 6：错误契约（与生产探针同款，逐条对齐 code）──────────────────
@@ -223,6 +220,6 @@ describe('t16 联调：reqboard HTTP 面 × queue.json（真实 handler + 真实
     const quarantined = readdirSync(dir).filter((f: string) => f.includes('.corrupt-'))
     expect(quarantined.length).toBe(1)
     // 该需求仍在台账（需求记录不受队列损坏影响），只是任务视图为空
-    expect(readLedger().requirements.some((r: any) => r.id === reqId)).toBe(true)
+    expect((await readLedgerVia(reqId)) !== undefined).toBe(true)
   })
 })

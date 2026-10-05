@@ -6,19 +6,19 @@
  *   未提交计划 → 拒绝；提交未批准 → 拒绝；人批准 → 才可落库；
  *   落库内容必须等于批准的计划（批了 A 不能落库 B）；重提交自动作废旧批准。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { definePlanSubmitTool, defineDecomposeTool, defineTaskMoveTool, defineTaskReportTool, stubDocFile, taskStoreOf, type ReqboardToolDeps } from './helpers/tool-deps.js'
 import type { RequirementRecord, RequirementStatus } from '../src/shared/protocol.js'
 
 const W = 'session-abc-123'
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 let planTool: { execute: (a: unknown, e: unknown) => Promise<any> }
 let decompose: { execute: (a: unknown, e: unknown) => Promise<any> }
 let taskMove: { execute: (a: unknown, e: unknown) => Promise<any> }
@@ -32,14 +32,14 @@ const queueTasksOf = (reqId: string) => taskStoreOf(deps).listByRequirement(reqI
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-plan-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   trace = new Map()
   deps = { store, now: () => Date.now(), toolTrace: trace, doneThrottleMs: 0 } as never
   planTool = definePlanSubmitTool(deps) as never
   decompose = defineDecomposeTool(deps) as never
   taskMove = defineTaskMoveTool(deps) as never
   reportTool = defineTaskReportTool(deps) as never
-  handler = createReqboardHandler({ store, taskStore: taskStoreOf(deps), now: () => Date.now() })
+  handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreOf(deps), now: () => Date.now() })
   // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘
   for (const p of ['p.md', 'docs/requirements/REQ-abc123/decomposition.md']) stubDocFile(p)
 })
@@ -52,7 +52,7 @@ async function seed(status: RequirementStatus = 'decomposing'): Promise<Requirem
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
     statusHistory: [{ status: 'draft', at: 1, by: { kind: 'human' } }],
   } as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('requirement-created', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
   return r
 }
 
@@ -108,7 +108,7 @@ describe('计划闸门（拆分前必须先有计划且获批）', () => {
     await expect(run(decompose, {})).rejects.toThrow(/还没有已批准的拆分计划/)
     expect(await queueTasksOf('REQ-abc123')).toHaveLength(0)
     // 计划已进台账（供人审批）
-    const req = store.snapshot().requirements[0]
+    const req = ((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!
     expect(req.plan?.path).toBe('docs/requirements/REQ-abc123/decomposition.md')
     expect(req.plan?.approvedAt).toBeUndefined()
     expect(req.comments.some(c => c.body.includes('[计划] 提交拆分计划'))).toBe(true)
@@ -126,9 +126,9 @@ describe('计划闸门（拆分前必须先有计划且获批）', () => {
     expect(out.created.map((c: { key: string }) => c.key)).toEqual(['proto', 'ui'])
     expect(out.created[1].depends_on).toEqual([out.created[0].id])
     expect(out.requirement_status).toBe('decomposing')
-    const ledger = store.snapshot()
+    const ledgerReq = (await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id))!
     expect(await queueTasksOf('REQ-abc123')).toHaveLength(2)
-    expect(ledger.requirements[0].comments.some(c => c.body.includes('[拆分] 按已批准的拆分计划落库 2 个任务'))).toBe(true)
+    expect(ledgerReq.comments.some((c) => c.body.includes('[拆分] 按已批准的拆分计划落库 2 个任务'))).toBe(true)
   })
 
   // REQ-260928185112-e20d：此前 stages 只到协议层（normalizePlanTasks 收下，但 draft 映射没往下传），
@@ -142,7 +142,7 @@ describe('计划闸门（拆分前必须先有计划且获批）', () => {
     ])
 
     // ① 计划落库时字段还在（未被 normalizePlanTasks 丢）
-    const plan = store.snapshot().requirements[0]?.plan
+    const plan = ((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!?.plan
     expect(plan?.tasks.find(t => t.key === 'doc')?.stages).toEqual(['dev', 'review'])
     expect(plan?.tasks.find(t => t.key === 'impl')?.skipIntegration).toBe(true)
 
@@ -165,6 +165,66 @@ describe('计划闸门（拆分前必须先有计划且获批）', () => {
     expect(await queueTasksOf('REQ-abc123')).toHaveLength(0)
   })
 
+  // ── REQ-261003203909-55f2（TC-8/TC-9 · FR-4/FR-5）：template 一等字段全链路 ──
+
+  it('TC-9 template 引用键：计划解析时即落成具体链（批准所见 = 落库所得）', async () => {
+    await seed('decomposing')
+    await submitPlan([
+      { key: 'copy', title: '改文案', phase: 'implement', side: 'backend', acceptance: '跑 npx vitest run tests/x.test.ts 全绿', implementation: '改 src/x.ts', template: 'change-only' },
+    ])
+    const plan = ((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!?.plan
+    // 解析后的链与引用键都在计划里（人批准时看到的是具体链，不是抽象键）
+    expect(plan?.tasks.find(t => t.key === 'copy')?.stages).toEqual(['dev', 'review'])
+    expect(plan?.tasks.find(t => t.key === 'copy')?.template).toBe('change-only')
+  })
+
+  it('TC-8 template 一路落到队列卡：stages 为解析链 + template 冗余记录（UC-1）', async () => {
+    await seed('decomposing')
+    await submitPlan([
+      { key: 'copy', title: '改文案', phase: 'implement', side: 'backend', acceptance: '跑 npx vitest run tests/x.test.ts 全绿', implementation: '改 src/x.ts', template: 'change-only' },
+    ])
+    await post('/req/plan/approve', { id: 'REQ-abc123' })
+    const out = await run(decompose, {})
+    expect(out.success).toBe(true)
+    const tasks = await queueTasksOf('REQ-abc123')
+    expect(tasks.find(t => t.title === '改文案')?.stages).toEqual(['dev', 'review'])
+    expect(tasks.find(t => t.title === '改文案')?.template).toBe('change-only')
+  })
+
+  it('TC-9 非法 template → 计划提交被拒（REQBOARD_TEMPLATE_INVALID，列合法键）', async () => {
+    await seed('decomposing')
+    await expect(
+      submitPlan([
+        { key: 'bad', title: '拼错的键', phase: 'implement', side: 'backend', acceptance: '跑 npx vitest run tests/x.test.ts 全绿', implementation: '改 src/x.ts', template: 'chnage-only' },
+      ]),
+    ).rejects.toThrow(/REQBOARD_TEMPLATE_INVALID/)
+    await expect(
+      submitPlan([
+        { key: 'bad', title: '拼错的键', phase: 'implement', side: 'backend', acceptance: '跑 npx vitest run tests/x.test.ts 全绿', implementation: '改 src/x.ts', template: 'chnage-only' },
+      ]),
+    ).rejects.toThrow(/change-only/) // 合法键清单在文案里（响亮失败不让人猜）
+    expect(((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!?.plan).toBeUndefined()
+  })
+
+  it('TC-9 stages 与 template 同给 → 拒绝（REQBOARD_TEMPLATE_CONFLICT，二选一禁双口径）', async () => {
+    await seed('decomposing')
+    await expect(
+      submitPlan([
+        { key: 'both', title: '双口径卡', phase: 'implement', side: 'backend', acceptance: '跑 npx vitest run tests/x.test.ts 全绿', implementation: '改 src/x.ts', stages: ['dev'], template: 'change-only' },
+      ]),
+    ).rejects.toThrow(/REQBOARD_TEMPLATE_CONFLICT/)
+  })
+
+  it('TC-9 template + skipIntegration 合法叠加（先取模板链，展开时再裁联调）', async () => {
+    await seed('decomposing')
+    await submitPlan([
+      { key: 'feat', title: '有模板但裁联调', phase: 'implement', side: 'backend', acceptance: '跑 npx vitest run tests/x.test.ts 全绿', implementation: '改 src/x.ts', template: 'feature', skipIntegration: true },
+    ])
+    const plan = ((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!?.plan
+    expect(plan?.tasks.find(t => t.key === 'feat')?.stages).toEqual(['dev', 'integrate', 'review', 'test'])
+    expect(plan?.tasks.find(t => t.key === 'feat')?.skipIntegration).toBe(true)
+  })
+
   it('人退回（附理由）→ 不能拆；重新提交会作废旧批准', async () => {
     await seed('decomposing')
     await submitPlan()
@@ -176,7 +236,7 @@ describe('计划闸门（拆分前必须先有计划且获批）', () => {
 
     // 重写后再提交：旧批准（此处为退回态）不影响，新计划仍需重新批准
     await submitPlan([{ key: 'solo', title: '重写后的单任务', acceptance: 'run x 输出 ok', implementation: '改 x.ts 后跑 run x 验证输出' }])
-    const after = store.snapshot().requirements[0]
+    const after = ((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!
     expect(after.plan?.approvedAt).toBeUndefined()
     await expect(run(decompose, {})).rejects.toThrow(/REQBOARD_PLAN_NOT_APPROVED/)
     await post('/req/plan/approve', { id: 'REQ-abc123' })
@@ -199,7 +259,7 @@ describe('计划闸门（拆分前必须先有计划且获批）', () => {
     await expect(submitPlan([{ key: 'a', title: 'A' }, { key: 'a', title: 'B' }])).rejects.toThrow(/key 重复/)
     await expect(submitPlan([{ key: 'a', title: 'A', depends_on: ['nope'] }])).rejects.toThrow(/不存在的 key/)
     await expect(submitPlan([{ key: 'a', title: '' }])).rejects.toThrow()
-    expect(store.snapshot().requirements[0].plan).toBeUndefined()
+    expect(((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!.plan).toBeUndefined()
   })
 
   it('越权：不能给别的窗口的需求提交计划', async () => {
@@ -225,13 +285,12 @@ describe('批准后的执行链（计划 → 任务卡 → 自动验收）', () 
     recordToolTrace(trace, W, 'edit', Date.now())
     await run(reportTool, { task_id: proto, summary: '协议层完成', completed: ['protocol.ts 改完'] })
     await run(taskMove, { task_id: proto, to: 'done' })
-    expect(store.snapshot().requirements[0].status).toBe('decomposing')
+    expect(((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!.status).toBe('decomposing')
 
     // 模拟人确认拆分清单（human gate 通过）→ 需求进入实施态，任务事实驱动 R2 进验收
-    await store.mutate('human-confirm', (l) => {
-      const r = l.requirements.find(x => x.id === 'REQ-abc123')!
+    await store.mutate('REQ-abc123', (r) => {
       r.status = 'implementing'
-      return { requirements: [r] }
+      return { changed: true }
     })
 
     for (const to of ['in_progress', 'testing', 'in_review']) await run(taskMove, { task_id: ui, to })
@@ -239,7 +298,7 @@ describe('批准后的执行链（计划 → 任务卡 → 自动验收）', () 
     rec2(trace, W, 'edit', Date.now())
     await run(reportTool, { task_id: ui, summary: 'UI 完成', completed: ['view.ts 改完'] })
     await run(taskMove, { task_id: ui, to: 'done' })
-    expect(store.snapshot().requirements[0].status).toBe('accepting')
+    expect(((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!.status).toBe('accepting')
     // 任务的验收标准来自计划，一路带进任务卡
     expect((await queueTasksOf('REQ-abc123')).map(t => t.acceptance)).toEqual(['protocol.ts 单测绿', '截图可见'])
   })

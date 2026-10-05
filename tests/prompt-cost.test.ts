@@ -1,10 +1,10 @@
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import {
   injectionWindowsOf, summarizeInjections, summarizeSystemPrompt, unavailableSystemPromptCost,
@@ -84,15 +84,15 @@ function seededLedger(): ReqboardLedger {
       blocked: false, sourceSessionId: 'session-abc12345-0000', comments: [], version: 1, createdAt: 1, updatedAt: 1,
       createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
     }],
-    tasks: [], triages: [],
+
   }
 }
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-pcost-'))
-  store = new ReqboardStore({ file: join(dir, 'l.json') })
+  store = makeTestStore()
   await store.replaceAll('seed', seededLedger())
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
@@ -116,7 +116,7 @@ async function get(handler: any, url: string) {
 
 describe('REQ-a33899 t5 · 接口接线', () => {
   it('无 systemPrompt 服务 → systemPrompt.source=unavailable（不猜数字）', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir), store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     const res = await get(handler, '/requirements/REQ-abc123/token')
     expect(res.statusCode).toBe(200)
     expect(res.payload.data.systemPrompt.source).toBe('unavailable')
@@ -124,8 +124,8 @@ describe('REQ-a33899 t5 · 接口接线', () => {
   })
 
   it('有 systemPrompt + 注入留痕端口 → 两块成本就位', async () => {
-    const handler = createReqboardHandler({ taskStore: taskStoreAt(dir),
-      store,
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir),
+
       now: () => Date.now(),
       systemPrompt: () => ({ assemble: async () => ({ sections: [{ name: 'genome:rules', text: 'abcd' }], contexts: [], tools: [] }) }),
       injectionLog: {

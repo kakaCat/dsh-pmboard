@@ -16,6 +16,9 @@ import { registerBizToolviews } from './toolviews/index.ts'
 import { PANEL_NAME } from './dom.ts'
 import { registerPmboardPage } from './page/register.ts'
 import { clearPageLayout, setPageLayout, type PageLayoutFace } from './page/page-runtime.ts'
+// REQ-261004111917-f473 FR-2：旧看板深链（/#pmboard?req=REQ-…）的消费端
+import { consumePmboardDeepLink } from './deep-link.ts'
+import { clearBoardFocus, requestBoardFocus } from './board-focus.ts'
 
 export const name = 'dsh-pmboard/client'
 // sidebarRight（REQ-ff20ca t5）：官方右侧栏导航面——Cordis 要求服务先声明 inject
@@ -76,6 +79,37 @@ export function apply(ctx: ApplyContext): void {
       console.error('[dsh-pmboard] Failed to register page panel:', e)
     }
 
+    // REQ-261004111917-f473 FR-2/FR-3：消费一次旧看板深链。
+    // 宿主兼容入口把 /dashboard 送回应用根并**保留片段**——`req` 只存在于 location.hash 里
+    // （HTTP 请求不含片段），所以「打开哪个需求」只能在这里读。放在页面注册**之后**：
+    // layout.selectPanel 对未注册的面板会抛错，注册在前才有意义（延迟注册由消费端有界重试兜住）。
+    // 降级：layout 未注入 → **不消费**（省掉一整轮无谓重试）并按契约给一条专属诊断（复核 #5）。
+    if (ctx.layout === undefined) {
+      console.warn('[dsh-pmboard] 深链：layout 不可用（页面导航服务未注入），本次不打开看板')
+    } else {
+      const layout = ctx.layout
+      try {
+        void consumePmboardDeepLink(window.location.hash, {
+          selectPanel: (id) => { layout.selectPanel(id) },
+          requestFocus: requestBoardFocus,
+          clearFocus: clearBoardFocus,
+          clearHash: () => {
+            const { pathname, search } = window.location
+            try {
+              // 清片段、保留路径与查询：不落存储、不把 req 留在 URL 上常驻
+              window.history.replaceState(null, '', pathname + search)
+            } catch {
+              window.location.hash = ''
+            }
+          },
+          log: (message, detail) => { console.warn('[dsh-pmboard] ' + message, detail) },
+        // 消费端自身已把异常收敛成返回值；这里再兜一层，杜绝「未处理的 Promise 拒绝」浮到控制台顶层
+        }).catch((e: unknown) => { console.error('[dsh-pmboard] deep link consume rejected:', e) })
+      } catch (e) {
+        console.error('[dsh-pmboard] Failed to consume deep link:', e)
+      }
+    }
+
     window.__dshReqboardClient = {
       dispose: () => {
         disposePage?.()
@@ -92,7 +126,18 @@ export function apply(ctx: ApplyContext): void {
     if (slots) {
       // 会话标题栏的「需求进度」流程图：session 作用域槽位会把 sessionId 交给 inject，
       // 组件据此查该会话绑定的需求进度（无绑定需求 → 渲染 null，槽位不占位）。
-      // order: 5 让它显示在模式选择器后面（模式选择器通常是 order: 10）
+      //
+      // REQ-260930230225-71be FR-1（验收反馈第二轮定稿）：挂在 conversation.session.header.utilities，
+      // order: -20 —— 落在**右侧工具组的最左边**，紧邻「在应用中打开」的左侧。
+      //
+      // 为什么是 -20：官方占用者的 order 是明确的——utilities 里 ui-open-in-app -10、
+      // ui-schedule -5、session-log-export（默认 0）；标题簇（actions）里 subagent 目录 -30、
+      // Team 导航 -20、模式标签 -10、**ui-jobs「N 个后台任务」+20**。取 -20 既排在
+      // 后台任务那组之后（它们在小标题簇里），又紧贴在右侧工具组第一位（在应用中打开）的左边。
+      // 用户验收原话：「这个（Finder/⋯/侧栏开关 那一组）左边」「节点应该靠右边」。
+      //
+      // 收缩与降级由 styles/board.ts 的四档 @container 承担（阈值 FLOW_TIERS 1100/900/700），
+      // 与座位无关，两个座位下都自适应。
       //
       // FIX: 用 try-catch 包裹槽位注册，避免与 DSH 框架对话节点系统冲突导致
       // "assistant-step withdrew materialized target 'chat'" 错误影响整个插件加载
@@ -102,7 +147,7 @@ export function apply(ctx: ApplyContext): void {
             {
               name: 'conversation.session.header.utilities',
               id: PANEL_NAME + ':progress',
-              order: 5,
+              order: -20,
               inject: (sessionId: string) => ({ sessionId }),
             },
             RequirementProgressAction,

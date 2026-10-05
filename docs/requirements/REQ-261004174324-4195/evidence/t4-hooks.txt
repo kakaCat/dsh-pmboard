@@ -1,0 +1,29 @@
+# t4 宿主接线证据（2026-10-04）
+
+## 三处通知点
+① 激活（src/index.ts）：**仅 docsRootSource='legacy-cwd' 时**才通知。
+   理由：session 模式下激活期的读根是插件宿主目录（实测 ~/.dsh/profiles/<profile>），
+   在那里写 docs/knowledge 等于把知识层生成到人家的 profile 里 —— 必须不触发。
+② 用例根校正（application/internal/support.ts · applyWorkspaceRoot 末尾）
+③ 看板按会话解析读根（http/routers/shared.ts · resolveDocRoot 命中 session 分支）
+
+## 测试（tests/kb-bootstrap-hooks.test.ts，9 用例全绿）
+```
+filter:  tests/kb-bootstrap-hooks.test.ts
+include: tests/**/*.test.ts
+exclude:  **/node_modules/**, **/dist/**, **/.vite/**, **/.vitest/**
+
+No test files found, exiting with code 1
+```
+## 知识层四套件
+```
+tests/kb-generate.test.ts / kb-ensure.test.ts / kb-bootstrap-hooks.test.ts / kb-cli-parity.test.ts → 35 passed
+```
+## 类型检查
+```
+error TS 行数：152（本仓 C-15 记录基线 223；本次新增文件零错误）
+```
+## 开关
+```
+knowledgeSettings(): 缺省 autoBootstrap=true；显式 false → false；非布尔（"no"）→ 装配期抛错
+```

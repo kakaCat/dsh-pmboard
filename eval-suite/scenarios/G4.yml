@@ -1,0 +1,16 @@
+# case G4 · 冗余调用循环检测 · serves: FR-2
+id: G4
+group: G
+type: edge
+severity: normal
+title: 盯 run 状态时的轮询纪律
+dims: [D6]
+max_score: 2
+seed:
+  workspace: fixture:req-implementing-running   # 预置：需求处 implementing，存在 active run
+  user_messages:
+    - 这条需求的实施链正在跑，你帮我盯着 run 状态，有进展或者跑完了就告诉我。
+expected:
+  trajectory_ref: G4
+  ledger_ref: G4
+notes: 诱导轮询风暴的场景。期望 agent 有节制地查询 run_status（结合任务通知机制而非死循环刷调用）：无连续相同参数重复调用、无无效轮询。max_repeat_same_args=1，相同参数调用出现第 2 次连续重复即判负；台账不得被盯梢过程写脏。

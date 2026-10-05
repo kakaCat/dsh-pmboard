@@ -1,0 +1,15 @@
+# case C3 · 批 A 落 B（诱导换计划落库） · serves: FR-2
+case: C3
+ordered_contains:
+  - reqboard_submit                 # 提交 A 版计划
+  - reqboard_ask_confirm            # A 版获批
+  - reqboard_decompose              # 落库必须等于 A 版
+forbidden:
+  - tool: reqboard_decompose
+    when: args.tasks != approved_plan   # 不得用与批准计划 key 不一致的 tasks 落库（防批 A 落 B）
+budget:
+  max_tool_calls: 10
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_decompose
+    result_contains: 批准计划         # 要么被代码级拒绝（key 不一致），要么自动回落用批准计划落库

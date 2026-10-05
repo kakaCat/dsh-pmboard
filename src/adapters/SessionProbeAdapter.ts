@@ -13,7 +13,30 @@
  * @module dsh-pmboard/adapters/SessionProbeAdapter
  */
 import type { SessionProbe } from '../application/ports.js'
-import { emptyBuckets, type TokenBuckets, type TokenSnapshot } from '../shared/protocol.js'
+import {
+  emptyBuckets,
+  type TokenBuckets,
+  type TokenSnapshot,
+  type TokenSnapshotMember,
+  type SessionLineageEntry,
+  type ContextPressureSnapshot,
+} from '../shared/protocol.js'
+import { descendantsOf, sumMembers, type LineageHeader } from '../domain/token/lineage.js'
+
+/**
+ * DSH 两个服务的**最小形状**（鸭子探测，不 import DSH 类型以免与版本耦合）：
+ *  · persistence：只用到 `list()`（枚举 header，零日志读）与 `open()/read()`（冷读兜底）；
+ *  · projectionCache：`cachedSnapshot(header, keys)` **同步**返回 `{asOfSeq, values}`，
+ *    以及 `coldSnapshot(header, inheritedEventCount, events)`（冷读后写回缓存）。
+ */
+interface PersistenceLike {
+  list?: () => Promise<readonly unknown[]>
+  open?: (id: string, access: 'read' | 'write') => Promise<unknown>
+}
+interface ProjectionCacheLike {
+  cachedSnapshot?: (meta: unknown, keys?: readonly string[]) => { asOfSeq?: number; values?: Record<string, unknown> } | undefined
+  coldSnapshot?: (meta: unknown, inheritedEventCount: number, events: readonly unknown[]) => unknown
+}
 
 // ---------------------------------------------------------------------------
 // 纯缓冲逻辑（工具痕迹 / 近期用户消息）已迁至 application/internal/session-buffers.ts（2026-09-26）：
@@ -59,12 +82,35 @@ export interface SessionProbeAdapterOptions {
   agents?: () => unknown
   /** 当前 sessionProjections 服务（unavailable → undefined）；direct-human 校验用。 */
   sessionProjections?: () => unknown
+  /**
+   * 会话持久化服务（REQ-261004154937-2ca3）：只用它的 `list()` 枚举血缘 header。
+   * 不可得 → 退回只算自身并标 `descendants-unavailable`（**不假装聚合过**）。
+   */
+  sessionPersistence?: () => unknown
+  /**
+   * 投影缓存服务（REQ-261004154937-2ca3）：`cachedSnapshot(header, ['tokenUsage'])` **同步**读单会话用量
+   * （缓存命中零日志读）。不可得 → 同上退回自身。
+   */
+  sessionProjectionCache?: () => unknown
+  /** 血缘成员上限（默认 64）：异常数据不该把内存撑爆。 */
+  maxLineageMembers?: number
+  /** 单次刷新的冷读预算（默认 8 个）：超出的成员本轮只标 degraded，不拖慢主流程。 */
+  maxColdReads?: number
   /** 时间源（matchesRecentUserMessage 的时间窗起点）；默认 Date.now。 */
   now?: () => number
 }
 
 export class SessionProbeAdapter implements SessionProbe {
   private readonly opts: SessionProbeAdapterOptions
+  /**
+   * 血缘成员缓存（REQ-261004154937-2ca3）：枚举是异步的、快照链是同步的，故**集合异步刷新、
+   * 用量同步读**——这里存的是"上一次刷新已知的后代集合"（含 header，供 `cachedSnapshot` 使用）。
+   */
+  private readonly lineageCache = new Map<string, { at: number; entries: Array<{ id: string; depth: number; header: unknown }> }>()
+  /** 同一窗口的刷新去重（避免并发刷新打爆 list()）。 */
+  private readonly lineageInFlight = new Set<string>()
+  /** 已尝试过冷读的会话（每个只试一次，失败就继续记 degraded，不做菊花链重试）。 */
+  private readonly coldTried = new Set<string>()
 
   constructor(options: SessionProbeAdapterOptions = {}) {
     this.opts = options
@@ -146,6 +192,41 @@ export class SessionProbeAdapter implements SessionProbe {
    * 任一环节不可得（服务未装配 / 窗口无会话 / 投影未产出）→ source='unavailable' 空桶，**不抛错**。
    */
   tokenTotals(windowKey: string): TokenSnapshot {
+    const self = this.selfTotals(windowKey)
+    if (self.source === 'unavailable') return self
+
+    // 血缘服务不可得 → 退回只算自身，**如实标降级**（不假装聚合过）
+    if (this.lineageServices() === undefined) {
+      return { ...self, scope: 'self', degradedReason: 'descendants-unavailable' }
+    }
+    // 集合异步刷新（fire-and-forget）：枚举是异步的，而快照链是同步的——
+    // 故这里只用**上一次刷新的成员集合**，本轮同步逐个读用量（cachedSnapshot 是同步的）。
+    if (!this.lineageCache.has(windowKey)) void this.refreshDescendants(windowKey)
+    const { members: kids, degraded, overBudget } = this.readDescendantMembers(windowKey)
+
+    const selfMember: TokenSnapshotMember = {
+      sessionId: self.sessionId ?? windowKey,
+      depth: 0,
+      ...(self.seq !== undefined ? { seq: self.seq } : {}),
+      totals: self.totals,
+    }
+    const members: TokenSnapshotMember[] = [selfMember, ...kids]
+    return {
+      ...self,
+      scope: 'self+descendants',
+      totals: sumMembers(members),
+      members,
+      ...(degraded.length > 0
+        ? { degradedMembers: degraded, degradedReason: overBudget ? 'cold-read-budget' : 'member-unavailable' }
+        : {}),
+    }
+  }
+
+  /**
+   * 本窗口会话自身的投影读数（改造前的原逻辑，逐字保留）——聚合链的第一段。
+   * 任一环节不可得 → `source='unavailable'` 空桶，**不抛错**。
+   */
+  private selfTotals(windowKey: string): TokenSnapshot {
     const now = this.opts.now?.() ?? Date.now()
     const unavailable = (): TokenSnapshot => ({ at: now, totals: emptyBuckets(), source: 'unavailable' })
     const agents = this.opts.agents?.() as { get?: (id: string) => unknown } | undefined
@@ -176,6 +257,189 @@ export class SessionProbeAdapter implements SessionProbe {
       totals,
       source: 'projection',
     }
+  }
+
+  /** 血缘两个服务（鸭子探测；任一不可用即视为不可得）。 */
+  private lineageServices(): { persistence: PersistenceLike; cache: ProjectionCacheLike } | undefined {
+    const persistence = this.opts.sessionPersistence?.() as PersistenceLike | undefined
+    const cache = this.opts.sessionProjectionCache?.() as ProjectionCacheLike | undefined
+    if (typeof persistence?.list !== 'function' || typeof cache?.cachedSnapshot !== 'function') return undefined
+    return { persistence, cache }
+  }
+
+  /**
+   * 该窗口会话的后代子代理会话（端口方法，**异步且不抛错**）：枚举走 `sessionPersistence.list()`，
+   * 闭包规则在 `descendantsOf`（fork 窗口不算后代）。服务不可得 → `undefined`。
+   */
+  async descendantSessions(windowKey: string): Promise<readonly SessionLineageEntry[] | undefined> {
+    const svc = this.lineageServices()
+    if (svc === undefined) return undefined
+    const selfId = this.selfSessionId(windowKey)
+    if (selfId === undefined) return undefined
+    const headers = await this.listHeaders(svc)
+    if (headers === undefined) return undefined
+    // 顺手把集合写进缓存：本方法既是「查血缘」的公开口，也是`tokenTotals`（同步）的**预热口**
+    this.cacheLineage(windowKey, selfId, headers)
+    return descendantsOf(headers, selfId).map(d => ({
+      sessionId: d.sessionId,
+      depth: d.depth,
+      parentSessionId: headers.find(h => h.id === d.sessionId)?.parentSession ?? selfId,
+    }))
+  }
+
+  /** 把血缘闭包写进成员缓存（纯计算，无 IO）。 */
+  private cacheLineage(windowKey: string, selfId: string, headers: readonly LineageHeader[]): void {
+    const limit = this.opts.maxLineageMembers ?? 64
+    const byId = new Map(headers.map(h => [h.id, h] as const))
+    const entries = descendantsOf(headers, selfId)
+      .slice(0, limit)
+      .map(d => ({ id: d.sessionId, depth: d.depth, header: byId.get(d.sessionId) as unknown }))
+      .filter(e => e.header !== undefined)
+    this.lineageCache.set(windowKey, { at: this.opts.now?.() ?? Date.now(), entries })
+  }
+
+  /** 刷新血缘成员缓存（异步；失败静默——读数侧照旧标自身/降级）。 */
+  private async refreshDescendants(windowKey: string): Promise<void> {
+    if (this.lineageInFlight.has(windowKey)) return
+    this.lineageInFlight.add(windowKey)
+    try {
+      const svc = this.lineageServices()
+      if (svc === undefined) return
+      const selfId = this.selfSessionId(windowKey)
+      if (selfId === undefined) return
+      const headers = await this.listHeaders(svc)
+      if (headers === undefined) return
+      this.cacheLineage(windowKey, selfId, headers)
+    } catch {
+      /* 血缘刷新失败：保留上一次已知集合；读侧照旧标降级 */
+    } finally {
+      this.lineageInFlight.delete(windowKey)
+    }
+  }
+
+  /** 列出全部会话 header（`sessionPersistence.list()`；不可得 → undefined）。 */
+  private async listHeaders(svc: { persistence: PersistenceLike }): Promise<LineageHeader[] | undefined> {
+    try {
+      const snapshots = await svc.persistence.list!()
+      if (!Array.isArray(snapshots)) return undefined
+      const out: LineageHeader[] = []
+      for (const s of snapshots) {
+        const header = (s as { header?: unknown }).header
+        const id = (header as { id?: unknown } | undefined)?.id
+        if (typeof id !== 'string' || id.length === 0) continue
+        const h = header as { parentSession?: unknown; origin?: unknown; delegationDepth?: unknown }
+        out.push({
+          id,
+          ...(typeof h.parentSession === 'string' ? { parentSession: h.parentSession } : {}),
+          ...(h.origin === 'subagent' ? { origin: 'subagent' as const } : {}),
+          ...(typeof h.delegationDepth === 'number' ? { delegationDepth: h.delegationDepth } : {}),
+        })
+      }
+      return out
+    } catch {
+      return undefined
+    }
+  }
+
+  /** 本窗口会话 id（agents.get(windowKey).session.id）。 */
+  private selfSessionId(windowKey: string): string | undefined {
+    try {
+      const agents = this.opts.agents?.() as { get?: (id: string) => unknown } | undefined
+      if (typeof agents?.get !== 'function') return undefined
+      return readSessionId((agents.get(windowKey) as { session?: unknown } | undefined)?.session)
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * 同步读已知后代的用量（缓存命中零日志读）。未命中 → 记 degraded，并按预算**异步预热**（冷读后
+   * 写回投影缓存，下一轮即可命中）；超出预算的成员本轮只标 `cold-read-budget`。
+   */
+  private readDescendantMembers(
+    windowKey: string,
+  ): { members: TokenSnapshotMember[]; degraded: string[]; overBudget: boolean } {
+    const cached = this.lineageCache.get(windowKey)
+    const svc = this.lineageServices()
+    if (cached === undefined || svc === undefined) return { members: [], degraded: [], overBudget: false }
+    const budget = this.opts.maxColdReads ?? 8
+    const members: TokenSnapshotMember[] = []
+    const degraded: string[] = []
+    let cold = 0
+    let overBudget = false
+    for (const entry of cached.entries) {
+      const snap = svc.cache.cachedSnapshot!(entry.header, ['tokenUsage'])
+      const totals = readTokenTotals(snap?.values?.tokenUsage)
+      if (totals === undefined) {
+        degraded.push(entry.id)
+        if (cold < budget) { cold += 1; void this.warmCold(svc, entry.header, entry.id) } else { overBudget = true }
+        continue
+      }
+      const seq = typeof snap?.asOfSeq === 'number' ? snap.asOfSeq : undefined
+      members.push({ sessionId: entry.id, depth: entry.depth, ...(seq === undefined ? {} : { seq }), totals })
+    }
+    return { members, degraded, overBudget }
+  }
+
+  /**
+   * 冷读预热（异步、尽力而为、每个会话只试一次）：读该会话日志 → 交给投影缓存 `coldSnapshot`
+   * （它会写回缓存行）→ 下一轮同步读即可命中。失败即放弃，该成员继续记 degraded（不补 0）。
+   */
+  private async warmCold(svc: { persistence: PersistenceLike; cache: ProjectionCacheLike }, header: unknown, id: string): Promise<void> {
+    if (this.coldTried.has(id)) return
+    this.coldTried.add(id)
+    const open = svc.persistence.open
+    if (typeof open !== 'function' || typeof svc.cache.coldSnapshot !== 'function') return
+    try {
+      const handle = (await open(id, 'read')) as {
+        read?: () => Promise<{ events?: readonly unknown[] }>
+        inheritedEventCount?: number
+        close?: () => Promise<void>
+        [Symbol.asyncDispose]?: () => Promise<void>
+      }
+      try {
+        const res = await handle.read?.()
+        svc.cache.coldSnapshot(header, handle.inheritedEventCount ?? 0, res?.events ?? [])
+      } finally {
+        if (typeof handle.close === 'function') await handle.close()
+        else if (typeof handle[Symbol.asyncDispose] === 'function') await handle[Symbol.asyncDispose]!()
+      }
+    } catch {
+      /* 冷读失败：缓存保持未命中，该成员继续标 degraded */
+    }
+  }
+
+  /**
+   * 当轮上下文压力**参考**（REQ-261002175818-80a8 t4 / FR-8）——只读展示，**非门禁判据**。
+   *
+   * 为什么照抄 tokenTotals 的三级降级：这是同一个投影服务、同一种"取不到就是取不到"的处境，
+   * 两条读数口径必须逐字一致，否则调用方要学两套缺失语义。token-meter 自述 contextPressure
+   * 的字段刻意非原子（last-wins）且 "not a gating input"——所以缺席的字段**绝不补 0**：
+   * 补 0 会让上游把"不可得"读成"余量充裕"。
+   */
+  contextPressure(windowKey: string): ContextPressureSnapshot {
+    const now = this.opts.now?.() ?? Date.now()
+    const unavailable = (): ContextPressureSnapshot => ({ at: now, source: 'unavailable' })
+    const agents = this.opts.agents?.() as { get?: (id: string) => unknown } | undefined
+    const projections = this.opts.sessionProjections?.() as
+      { stateOf?: (session: unknown, kind: string) => unknown } | undefined
+    if (typeof agents?.get !== 'function' || typeof projections?.stateOf !== 'function') return unavailable()
+    let session: unknown
+    try {
+      session = (agents.get(windowKey) as { session?: unknown } | undefined)?.session
+    } catch {
+      return unavailable()
+    }
+    if (session === undefined || session === null) return unavailable()
+    let state: unknown
+    try {
+      state = projections.stateOf(session, 'contextPressure')
+    } catch {
+      return unavailable()
+    }
+    const read = readContextPressure(state)
+    if (read === undefined) return unavailable()
+    return { at: now, ...read, source: 'projection' }
   }
 
   /** 某窗口"自 since 以来最后一次真实工具动作"的 workLike 计数；无痕迹表 → 0。 */
@@ -221,6 +485,32 @@ export function readTokenTotals(state: unknown): TokenBuckets | undefined {
   const w = readBucketNumber(src, 'cacheWriteTokens')
   if (a === undefined || o === undefined || r === undefined || w === undefined) return undefined
   return { uncachedInputTokens: a, outputTokens: o, cacheReadTokens: r, cacheWriteTokens: w }
+}
+
+/**
+ * 从 contextPressure 投影状态读三个参考量（REQ-261002175818-80a8 t4）。
+ *
+ * 口径（照 readTokenTotals 的"缺字段 → 视为不可得"）：每个字段独立判定，
+ * **缺席就让它缺席**——只有整个状态形状不符（非对象 / 三字段一个都读不出数）才整体返回 undefined，
+ * 由调用方落到 `source='unavailable'`。为什么不用 0 补齐：这读数会被展示给人看，
+ * 补 0 与"真的 0"在展示层无法区分（R-013）。
+ */
+export function readContextPressure(state: unknown): {
+  contextWindow?: number
+  pressureTokens?: number
+  projectedTokens?: number
+} | undefined {
+  if (typeof state !== 'object' || state === null || Array.isArray(state)) return undefined
+  const src = state as Record<string, unknown>
+  const contextWindow = readBucketNumber(src, 'contextWindow')
+  const pressureTokens = readBucketNumber(src, 'pressureTokens')
+  const projectedTokens = readBucketNumber(src, 'projectedTokens')
+  if (contextWindow === undefined && pressureTokens === undefined && projectedTokens === undefined) return undefined
+  return {
+    ...(contextWindow !== undefined ? { contextWindow } : {}),
+    ...(pressureTokens !== undefined ? { pressureTokens } : {}),
+    ...(projectedTokens !== undefined ? { projectedTokens } : {}),
+  }
 }
 
 /** 会话 id（缺省 → undefined）。 */

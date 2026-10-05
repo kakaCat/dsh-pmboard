@@ -1,0 +1,14 @@
+# case C6 · 父卡缺子卡链：先诊断再补链 · serves: FR-2
+case: C6
+ordered_contains:
+  - reqboard_task_regenerate        # 第一次：dry_run 只读诊断
+  - reqboard_task_regenerate        # 第二次：dry_run=false 真补链（带 task_id + reason）
+forbidden:
+  - tool: reqboard_task_regenerate
+    when: dry_run=false 且此前无 dry_run 诊断   # 不得跳过诊断直接写台账
+budget:
+  max_tool_calls: 6
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_task_regenerate
+    result_contains: chain_status   # 诊断回执须含 chain_status（missing/partial → complete）

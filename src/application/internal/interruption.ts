@@ -13,6 +13,8 @@
  * @module dsh-pmboard/application/internal/interruption
  */
 import type { InterruptionRecord, RequirementRecord } from '../../shared/protocol.js'
+// REQ-261004065652-5c1c FR-8：去重键用**病因类别**（与 FR-1 的失败分类同源），并把写进台账的原因截断。
+import { reasonClassOf, truncateReason } from './upstream-failure.js'
 
 /** `turn/end` 的规范化结论。形态不认识 → 调用方不写、不报错（不猜、不误报）。 */
 export interface TurnEndOutcome {
@@ -102,6 +104,16 @@ export function nextActionFor(req: RequirementRecord): string {
 }
 
 /**
+ * 断点留痕的**同类最小间隔**（REQ-261004065652-5c1c FR-8）。
+ *
+ * 为什么需要：2026-10-03 的死循环里，`error:AUTH` 与 `aborted:user` 交替出现，
+ * 而修前的幂等键是**原因原文**（`prev.reason === reason`）——两者永远不相等 ⇒ 每拍都写一条，
+ * 4 小时里刷了 15+ 条断点评论（每条还带着 300 字符的 403 原文）。
+ * 现在按**病因类别**去重 + 时间窗限流：同一类病在窗口内只留第一条。
+ */
+export const INTERRUPTION_MIN_INTERVAL_MS = 10 * 60 * 1000
+
+/**
  * 写入器 A：交棒用例 mutate 尾部调用——`reason="checkpoint"`，stage/pendingAction
  * 取自当前记录。**幂等**：stage 与 pendingAction 都未变时不写、不 bump updatedAt
  * （避免每个工具都制造一次变更）。返回是否落笔。
@@ -120,13 +132,38 @@ export function stampCheckpoint(req: RequirementRecord, now: number, tool?: stri
  * 写入器 B / B′：显式补写/覆盖 `reason`（保留由状态重算的 `pendingAction`）。
  * 后写覆盖前写（同一需求只保留一个 interruption 对象，避免两份真相）。
  */
-export function stampInterruption(req: RequirementRecord, now: number, reason: string, tool?: string): boolean {
+export function stampInterruption(
+  req: RequirementRecord,
+  now: number,
+  reason: string,
+  tool?: string,
+  opts: { minIntervalMs?: number; explicit?: boolean } = {},
+): boolean {
+  const minIntervalMs = opts.minIntervalMs ?? INTERRUPTION_MIN_INTERVAL_MS
   const pendingAction = nextActionFor(req)
   const prev = req.interruption
-  if (prev !== undefined && prev.reason === reason && prev.stage === req.status && prev.pendingAction === pendingAction) {
-    return false
+  // **显式**写（`reqboard_note_interruption`，人或 agent 明确要求记一笔）不受限流：
+  // 把"我要求记录"静默吞掉是这个工具最不该有的行为；限流只针对**自动**路径（turn/end 逐拍补写）。
+  if (prev !== undefined && opts.explicit !== true) {
+    // 形 = 阶段 + 下一步。形没变 ⇒ 这次中断没带来**新信息**，只带来"又失败了一次"。
+    const sameShape = prev.stage === req.status && prev.pendingAction === pendingAction
+    // `checkpoint` 不是病因，是"交棒"这一动作的标记：checkpoint ↔ 异常 之间的切换
+    // 属于**信息升级**（"上传失败" 比 "刚交棒" 有用），一律放行。
+    const involvesCheckpoint = reasonClassOf(reason) === 'checkpoint' || reasonClassOf(prev.reason) === 'checkpoint'
+    // 形没变、且不是 checkpoint 切换 ⇒ 走**每需求限流**：窗口内只留第一条。
+    //
+    // 为什么限流键里**不**放病因类别（与设计初稿的差异，需记档）：初稿写的是
+    // 「去重键 = 病因类别 + 阶段 + 下一步；同类 10 分钟内不写」，但它同一段又要求
+    // 「交替注入 A/B 各 10 次 → 写入 ≤ 2」——两者不可能同时成立：交替时每一条都与上一条**不同类**，
+    // 拿"与上一条比"的键去判，20 条条条都"新"，一条都压不住。
+    // 真目标是"别让死循环把台账刷爆"（实测 4.5 小时刷了 15+ 条 + 每次 bump version），
+    // 故这里用**每需求全局限流**；病因类别仍原样记进 `reason`，人照样看得见是哪一类病。
+    // 代价（已知并接受）：窗口内被压掉的那些次，台账上的 `reason` 会滞后到最多 10 分钟前的病因。
+    // 断点是"粗指针"不是日志，这个代价买的是"台账不再被刷"。
+    if (sameShape && !involvesCheckpoint && now - prev.at < minIntervalMs) return false
   }
-  req.interruption = buildInterruption(req, now, reason, pendingAction, tool)
+  // 落库的原因**截断**（实测一条 403 文案 ≈300 字符，逐条落盘会放大台账）。
+  req.interruption = buildInterruption(req, now, truncateReason(reason), pendingAction, tool)
   return true
 }
 

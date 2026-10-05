@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { RequirementRecord } from '../../shared/protocol.js'
-import type { RTMTrigger, RTMTriggerResult } from './rtm-yaml.js'
+import type { RTMTrigger, } from './rtm-yaml.js'
 
 /** RTM 生成失败记录 */
 export interface RTMFailureRecord {

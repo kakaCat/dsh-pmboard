@@ -10,17 +10,16 @@ import { AgentDeliverer } from '../adapters/AgentDeliverer.js';
 import { createDiveSessionDriver, type DiveSessionDriverDeps } from '../application/dive/session-driver.js'
 import type { DiveRoundDriver } from '../application/dive/round-driver.js';
 import type { ToolTraceEntry, RecentUserMsg } from '../adapters/SessionProbeAdapter.js';
-import type { JsonLedgerRepository } from '../adapters/JsonLedgerRepository.js';
 import type { InjectionLogFile } from '../adapters/InjectionLogFile.js';
 import type { AddressInjection } from '../adapters/TemplateRoot.js';
 import type { GateChainPort } from '../application/gate/GatePostChain.js';
-import type { GatePromptPort, TaskStore, UseCaseDeps } from '../application/ports.js';
+import type { GatePromptPort, RequirementStore, TaskStore, UseCaseDeps } from '../application/ports.js';
 import { gatePromptExhaustedComment } from '../application/dive/gate-prompt.js';
-import { draftRequirementsFor } from '../application/internal/window.js';
+import { draftPromptFactsFor } from '../application/internal/window.js';
 import { isDrivableRequirement } from '../application/dive/round-state.js';
 import { applyPickupAdvance } from '../application/internal/rollup.js';
 import { snapshotProviderFor } from '../application/internal/token-usage.js';
-import { newCommentId, type RequirementRecord } from '../shared/protocol.js';
+import { newCommentId } from '../shared/protocol.js';
 import { captureDiag } from '../application/internal/diag-log.js';
 import { noteInterruptionForWindow } from '../application/use-cases/NoteInterruption.js';
 
@@ -36,6 +35,22 @@ export interface CaptureRuntimeDeps {
   plugin: string;
   /** agents 服务惰性读取（inject 回调到达后才有值）。 */
   getAgents: () => unknown;
+  /**
+   * 回合消息 id 工厂（REQ-261001201200-8f8b FR-1）：缺省回落到 protocol 的 newCommentId()。
+   *
+   * 为什么必须可注入：投递器类签名是三参 `(resolveAgents, idFactory, plugin)`，而组合根此前只传两参
+   * ——`{plugin}` 落进 idFactory 位 → createRoundMessage 抛 TypeError → 驱动就地 disarm 需求 →
+   * 此后所有唤醒触发在 isDrivableRequirement() 静默 return（表现为「人工门确认后不自动续跑」）。
+   * 消息 id 只进投递消息，**不入台账**。
+   */
+  idFactory?: () => string;
+  /**
+   * 冷会话 resume 的服务解析器（REQ-261003215944-9e04 FR-7）：缺省 = 只能投热窗口。
+   * 与 getAgents 分开：热路径是同步的（agents.get 活体句柄），冷路径必然异步（resolveAgent）。
+   */
+  getSessionController?: () => unknown;
+  /** 投递后的落盘确认（sessions.flush）；缺省 = 跳过确认。 */
+  flushSession?: (agent: unknown) => Promise<boolean> | boolean;
 }
 
 export interface CaptureRuntime {
@@ -53,12 +68,27 @@ export function createCaptureRuntime(deps: CaptureRuntimeDeps): CaptureRuntime {
   // 最近用户消息缓冲（REQ-2e9473 t10）：窗口 → 清洗后用户消息，confirm_artifact 文字确认核验读取。
   const recentUserMsgs = new Map<string, RecentUserMsg[]>();
   // 唯一投递实现（REQ-e3b6a0 t4）：状态转移注入、30 分钟催办、后续闸门链 H4 三者共用同一形状。
-  const deliverer = new AgentDeliverer(deps.getAgents, { plugin: deps.plugin });
+  // 三参构造（REQ-261001201200-8f8b FR-1）：idFactory 位必须是**函数**——修前这里传的是 {plugin}，
+  // 于是 createRoundMessage 里 this.idFactory() 抛 TypeError（装配错误被拖到运行期并被吞掉）。
+  // 缺省 newCommentId()：未显式注入时也保证「构造即安全」（消息 id 不入台账）。
+  const idFactory = deps.idFactory ?? newCommentId;
+  const deliverer = new AgentDeliverer(
+    deps.getAgents,
+    idFactory,
+    deps.plugin,
+    deps.getSessionController,
+    deps.flushSession,
+  );
   return { pendingCapture, toolTrace, recentUserMsgs, deliverer };
 }
 
 export interface DiveDriverAssemblyDeps {
-  store: JsonLedgerRepository;
+  /**
+   * 新需求端口（t8/B12 阶段①-a）：供「同步缝」取**窄投影**（`peekFacts()`）用，
+   * 与 `GateChainDeps.requirementStore` 同款。`store`（桥）仍保留——它还给
+   * 已判结构性不可迁的 `boundary-guard` 供数（那一处随删桥单独裁定）。
+   */
+  requirementStore: RequirementStore;
   runtime: CaptureRuntime;
   now: () => number;
   /** 模板地址注入（REQ-260922213356-4a45 T-3）：绝对模板根 + 开关；缺省不注入。 */
@@ -125,7 +155,9 @@ export interface DiveDriverAssemblyDeps {
 export function assembleDiveSessionDriver(deps: DiveDriverAssemblyDeps): (() => void) | undefined {
   const { pendingCapture, toolTrace, recentUserMsgs } = deps.runtime;
   const driverDeps: DiveSessionDriverDeps = {
-    snapshot: () => deps.store.snapshot(),
+    // B12 阶段①-a：驱动器所有同步判定（绑定/待捕获/阶段提示词/越界守卫）都走这一条窄投影，
+    // 整册同步快照在这条链上**已无用户**（`deps.store` 仍保留给下面的 mutate 缝）。
+    facts: () => deps.requirementStore.peekFacts(),
     // 任务队列端口（REQ-260927202051-f6df）：v9 台账已无 tasks，注入「当前任务」需从队列取。
     // 直接传实例（**不**走 `useCaseDeps()`——那个 getter 约定只在异步边界调用，此处是构造期）。
     taskStore: deps.taskStore,
@@ -135,17 +167,24 @@ export function assembleDiveSessionDriver(deps: DiveDriverAssemblyDeps): (() => 
     // R1 接手推进：已绑定窗口出现直接人类消息 = 该窗口仍在推进其需求 → 其 draft 需求
     // 自动进评审（人工闸门仍在：方案确认/拆分确认/验收均为人工，代码级不可越过）。
     onBoundWindowActivity: (windowKey) => {
-      const drafts = draftRequirementsFor(deps.store.snapshot(), windowKey);
+      // t8/B12 阶段①-a：这一缝只需 status + sourceSessionId ⇒ 走新端口的同步窄投影，
+      // 不再借桥的整册快照（`deps.store` 仍留着给 boundary-guard 用，见接口注释）。
+      const drafts = draftPromptFactsFor(deps.requirementStore.peekFacts(), windowKey);
       if (drafts.length === 0) return;
-      void deps.store.mutate('requirement-moved', (ledger) => {
-        // FR-6：接手推进属派生推进，带写时快照提供者（显式窗口码优先，退回 req.sourceSessionId，
-        // 都无 → 诚实不写，不伪造）。windowKey 即本窗口（onBoundWindowActivity 的参数）。
-        const snapshot = snapshotProviderFor(deps.useCaseDeps(), windowKey);
-        const advanced = drafts
-          .map((d) => applyPickupAdvance(ledger, d.id, { now: deps.now(), commentId: () => newCommentId(), snapshot }))
-          .filter((r): r is RequirementRecord => r !== undefined);
-        return advanced.length > 0 ? { requirements: advanced } : undefined;
-      }).catch((err) => deps.logger.warn('reqboard rollup (pickup advance) failed:', err));
+      // B12 阶段⑤：改走新端口**逐条定点写**；`applyPickupAdvance` 仍吃册形视图 ⇒ 在调用点用单条现搭
+      // （适配第 8 次应用）。
+      // FR-6：接手推进属派生推进，带写时快照提供者（显式窗口码优先，退回 req.sourceSessionId，
+      // 都无 → 诚实不写，不伪造）。windowKey 即本窗口（onBoundWindowActivity 的参数）。
+      const snapshot = snapshotProviderFor(deps.useCaseDeps(), windowKey);
+      void Promise.all(drafts.map(async (d) => {
+        await deps.requirementStore.mutateIf(d.id, (await deps.requirementStore.get(d.id))?.version ?? 0, (r) => {
+          const before = r.status;
+          applyPickupAdvance({ revision: 0, requirements: [r], triages: [] } as never, d.id, {
+            now: deps.now(), commentId: () => newCommentId(), snapshot,
+          });
+          return before === r.status ? undefined : { changed: true };
+        });
+      })).catch((err) => deps.logger.warn('reqboard rollup (pickup advance) failed:', err));
     },
     // ── 投递白名单（REQ-260927100007-b8ba FR-11）────────────────────────────────────
     // 通用 plugin 投递路径 `deliverer.deliver()`（→ agent.followup，**会新起一轮 agent loop**）
@@ -161,7 +200,8 @@ export function assembleDiveSessionDriver(deps: DiveDriverAssemblyDeps): (() => 
     //     旧的 onStagePrompt 投递是纯冗余且会额外起轮（FR-11 实测根因），故不再提供该 dep；
     //   · **里程碑催办**只在此登记——armed+active 转 round 半 queueReminder，其余只写 comment。
     onMilestoneNotice: (input) => {
-      const req = deps.store.snapshot().requirements.find((r) => r.id === input.requirementId)
+      // B12 阶段①-a：只需 id/status/dive/advance 的有界字段 ⇒ 走窄投影（isDrivableRequirement 收的就是这个形状）
+      const req = deps.requirementStore.peekFacts().find((r) => r.id === input.requirementId)
       if (req === undefined) {
         deps.logger.warn(`reqboard milestone notice 无法登记：需求不存在（${input.requirementId}）`)
         return
@@ -179,13 +219,11 @@ export function assembleDiveSessionDriver(deps: DiveDriverAssemblyDeps): (() => 
       }
       // 非 armed+active（全仓现状：0 个需求开过 armed）：只写台账 comment，绝不投递会话——
       // 留下"催办到期"与可用的下一步，不静默。
-      void deps.store.mutate('dive-milestone-comment', (ledger) => {
-        const r = ledger.requirements.find((x) => x.id === input.requirementId)
-        if (r === undefined) return undefined
+      void deps.requirementStore.mutate(input.requirementId, (r) => {
         r.comments.push({
           id: newCommentId(),
           body: '[里程碑催办] ' + input.text
-            + ' 当前需求未 armed+active（dive.activation=' + (r.dive?.activation ?? 'undefined')
+            + ' 当前需求未 armed+active（dive.activation 现值 = ' + (r.dive?.activation ?? 'undefined')
             + '，phase=' + (r.dive?.phase ?? 'undefined') + '）→ 本轮不投递会话。'
             + '下一步：人工调 reqboard_ask_confirm 弹框请人确认，或需求 armed 后由 round 半投递。',
           createdAt: deps.now(),
@@ -193,8 +231,8 @@ export function assembleDiveSessionDriver(deps: DiveDriverAssemblyDeps): (() => 
         })
         r.version += 1
         r.updatedAt = deps.now()
-        return { requirements: [r] }
-      }).catch((err) => deps.logger.warn('reqboard milestone comment 写失败：', err))
+        return { changed: true }
+      }).catch((err) => deps.logger.warn('reqboard 里程碑催办 comment 写失败：', err)).catch((err) => deps.logger.warn('reqboard milestone comment 写失败：', err))
     },
     toolTrace,
     recentUserMsgs,
@@ -225,9 +263,7 @@ export function assembleDiveSessionDriver(deps: DiveDriverAssemblyDeps): (() => 
     },
     // FR-14：弹框到上限 → 写台账 comment（响亮，不静默；此后停手不再重弹）。
     onGatePromptExhausted: (info) => {
-      void deps.store.mutate('dive-gate-prompt-exhausted', (ledger) => {
-        const r = ledger.requirements.find((x) => x.id === info.requirementId);
-        if (r === undefined) return undefined;
+      void deps.requirementStore.mutate(info.requirementId, (r) => {
         r.comments.push({
           id: newCommentId(),
           body: gatePromptExhaustedComment(info),
@@ -236,8 +272,8 @@ export function assembleDiveSessionDriver(deps: DiveDriverAssemblyDeps): (() => 
         });
         r.version += 1;
         r.updatedAt = deps.now();
-        return { requirements: [r] };
-      }).catch((err) => deps.logger.warn('reqboard gate-prompt exhausted comment 写失败：', err));
+        return { changed: true }
+      }).catch((err) => deps.logger.warn('reqboard gate-prompt exhausted comment 写失败：', err)).catch((err) => deps.logger.warn('reqboard gate-prompt exhausted comment 写失败：', err));
     },
     logger: { info: (m) => deps.logger.info(m), debug: (m) => deps.logger.debug(m) },
     ...(deps.round !== undefined ? { round: deps.round } : {}),

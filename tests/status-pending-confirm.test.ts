@@ -7,11 +7,11 @@
  *   · 无挂起 → 空数组（不 omit，形状稳定）；
  *   · 台账已落章（人走看板/证据通道作答）→ 陈旧记录不列（否则守卫死锁，TC-9）。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { SessionProbeAdapter } from '../src/adapters/SessionProbeAdapter.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
@@ -23,18 +23,18 @@ import type { RequirementRecord, StageArtifact } from '../src/shared/protocol.js
 
 const W = 'session-status-pending-001'
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-status-pending-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
 function makeDeps(): UseCaseDeps & { pendingConfirms: PendingConfirmRegistry } {
   const now = (): number => Date.now()
   return {
-    repo: store,
+    store: store,
     docs: new FileDocRepository({ workspaceRoot: dir }),
     clock: { now },
     ids: new RandomIdFactory(),
@@ -59,7 +59,7 @@ async function seedArtifact(confirmedAt?: number): Promise<void> {
       ...(confirmedAt === undefined ? {} : { confirmedAt }),
     } as StageArtifact],
   } as RequirementRecord
-  await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 const exec = { agent: { id: W } }

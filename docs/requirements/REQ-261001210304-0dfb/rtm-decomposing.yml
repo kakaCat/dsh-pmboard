@@ -1,0 +1,451 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261001210304-0dfb
+  generated_at: 2026-10-01T13:39:37.466Z
+  version: 49
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-01T13:51:41.970Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/architecture.md#问题与现状
+      title: 问题与现状 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 问题与现状
+    - ref: design/architecture.md#总体方案
+      title: 总体方案 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 总体方案
+    - ref: design/architecture.md#模块改动地图
+      title: 模块改动地图 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: 模块改动地图
+    - ref: design/architecture.md#备选方案与取舍
+      title: 备选方案与取舍 `
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: 备选方案与取舍
+    - ref: design/architecture.md#风险与边界
+      title: 风险与边界 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 风险与边界
+    - ref: design/data-model.md#新增视图状态快照-DagViewSnapshot
+      title: 新增：视图状态快照 `DagViewSnapshot` `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/data-model.md
+      section: 新增视图状态快照-DagViewSnapshot
+    - ref: design/data-model.md#存储键与生命周期
+      title: 存储键与生命周期 `
+      serves:
+        - FR-4
+      file: design/data-model.md
+      section: 存储键与生命周期
+    - ref: design/data-model.md#容量淘汰与不持久化
+      title: 容量、淘汰与不持久化 `
+      serves:
+        - FR-4
+      file: design/data-model.md
+      section: 容量淘汰与不持久化
+    - ref: design/data-model.md#与既有-DagState-的关系
+      title: 与既有 `DagState` 的关系 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 与既有-DagState-的关系
+    - ref: design/data-model.md#协议-台账零变更
+      title: 协议 / 台账零变更 `
+      serves:
+        - FR-4
+      file: design/data-model.md
+      section: 协议-台账零变更
+    - ref: design/interfaces.md#1
+      title: 挂载接口：`mountDagCanvas` / `tryMountDagCanvas` `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/interfaces.md
+      section: "1"
+    - ref: design/interfaces.md#2
+      title: 记忆表接口：`src/client/dag/view-state.ts`（新增） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/interfaces.md
+      section: "2"
+    - ref: design/interfaces.md#3
+      title: 面板补丁接口（易变字段出字符串） `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: "3"
+    - ref: design/interfaces.md#4
+      title: DOM 契约（稳定钩子，样式与探针依赖） `
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: "4"
+    - ref: design/interfaces.md#5
+      title: 受影响的既有测试与调用方 `
+      serves:
+        - FR-5
+      file: design/interfaces.md
+      section: "5"
+    - ref: design/use-cases.md#UC-1-调好视图后继续盯进度
+      title: UC-1 调好视图后继续盯进度 `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-1-调好视图后继续盯进度
+    - ref: design/use-cases.md#UC-2-切到泳道滚到中段继续看
+      title: UC-2 切到泳道、滚到中段继续看 `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-2-切到泳道滚到中段继续看
+    - ref: design/use-cases.md#UC-3-数据真的变了任务推进
+      title: UC-3 数据真的变了（任务推进）`
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/use-cases.md
+      section: UC-3-数据真的变了任务推进
+    - ref: design/use-cases.md#UC-4-切换需求-关闭面板-重载页面
+      title: UC-4 切换需求 / 关闭面板 / 重载页面 `
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: UC-4-切换需求-关闭面板-重载页面
+    - ref: design/use-cases.md#UC-5-异常态与降级
+      title: UC-5 异常态与降级 `
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-5-异常态与降级
+    - ref: design/use-cases.md#状态流转用户视角
+      title: 状态流转（用户视角） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/use-cases.md
+      section: 状态流转用户视角
+outputs:
+  tasks:
+    - id: t-8e8fdc
+      title: 建立 DAG 视图状态记忆表（契约先行）
+      implements: "① 新增 src/client/dag/view-state.ts（纯函数、零 DOM、零 IO，照 panel-refresh.ts 的纯度纪律）：export interface DagViewSnapshot { dir?: LayoutDir; crit?: boolean; focus?: boolean; pinned?: string | null; tab?: 'flow' | 'list'; scrollTop?: number; scrollLeft?: number }（dir 复用 src/client/dag/dag-layout.ts 的 LayoutDir，不新造枚举）；模块内 const store = new Map<string, DagViewSnapshot>() 与 MAX_ENTRIES = 16；readDagViewState(key) 返回浅拷贝（miss → undefined），命中时按键重插刷新插入序；writeDagViewState(key, patch) 合并写，scrollTop/scrollLeft 非有限数或负数一律写 0，pinned 为 null 时照写（显式无钉住）；clearDagViewState(key)；clearDagViewStateByPrefix(prefix)；dagViewStateSize()；_resetDagViewState() 仅测试用；超容量按插入序淘汰最旧。② 新增 tests/dag-view-state.test.ts，头部注释写 serves: FR-1, FR-4, FR-5（本仓测试文件惯例，前 20 行内）：A1-1 合并写/拷贝隔离（改返回值不影响表内）/非法滚动值按 0/容量 16 FIFO/前缀清理；A5 键隔离（np-dag-canvas::REQ-A 写横向 + 只看主线 → 读 np-dag-canvas::REQ-B 为 undefined）。验证：npx vitest run tests/dag-view-state.test.ts；npx tsc --noEmit -p tsconfig.json（本次文件零新增错误）。"
+      serves:
+        - FR-1
+        - FR-4
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-9b6948
+      title: 挂载接缝按记忆回填并同步工具条与滚动
+      implements: "① src/client/views/dag-view.ts：新增 export interface MountDagOptions { stateKey?: string }；把现有写死的 initial 提为导出常量 DEFAULT_DAG_STATE 后，mountDagCanvas(tasks, ready?, canvasId = DAG_CANVAS_ID, opts?: MountDagOptions) 里当 opts?.stateKey 有值时 snap = readDagViewState(key)，initial = { dir: snap?.dir ?? 'vertical', crit: snap?.crit === true, focus: snap?.focus === true, pinned: snap?.pinned ?? null }（无 stateKey 时用 DEFAULT_DAG_STATE，行为逐字节不变）。② 新增内部 syncToolbar(panel, state)：按 viewer.state() 给 [data-dag-dir=vertical|horizontal] 与 [data-dag-toggle=crit|focus] 设/清 is-on（回填后必须与真实状态对齐——现状按钮点击只 toggle class）。③ paint({}) 之后（canvas 宽高已在 paint 内同步设好）恢复 wrap.scrollTop/scrollLeft = snap 值（wrap 为空则跳过）。④ disposer 顺序改为：先 writeDagViewState(key, { ...viewer.state(), scrollTop: wrap?.scrollTop ?? 0, scrollLeft: wrap?.scrollLeft ?? 0 })，再摘监听/断 observer/destroy viewer（写回必须先于释放）。⑤ src/client/dag-mount.ts：tryMountDagCanvas(tasks, ready?, canvasId?, opts?: MountDagOptions) 把 opts 透传（rAF 包装与 getElementById 存在性检查保持原样）。验证：npx vitest run tests/dag-view-state.test.ts（追加 A1-2 二次挂载回填、A1-3 工具条 is-on 同步用例）；npx vitest run tests/dag-view.test.ts（无 opts 路径必须全绿 = 兼容承诺）。"
+      serves:
+        - FR-1
+        - FR-2
+      depends_on:
+        - t-8e8fdc
+      phase: implement
+      side: frontend
+    - id: t-21de17
+      title: 面板易变字段出注入字符串（稳定钩子 + 补丁）
+      implements: "① src/client/panel-freshness.ts：freshnessSpan() 改为无参、只输出稳定占位 '<span class=\"dsh-pm-np-fresh\" data-dsh-pm-fresh-slot></span>'（不含任何随时间变化的值）；新增 hydrateFreshness(root: ParentNode, f: NodePanelFreshness)：查 [data-dsh-pm-fresh-slot]（缺失即静默返回），写 textContent = '数据时间 ' + clockText(fetchedAt)（缺省 '数据时间 —'）、classList.toggle('is-stale', fetchedAt 缺失或超 staleAfterMs)、title = 刷新周期文案、dataset.fetchedAt/data-stale/data-refresh-ms；幂等、不插删元素。renderFreshnessBar 的失败红条与「插件已更新」保持原样（仅异常态出现）。② src/client/node-panel.ts：新增 relSlot(at: number): string → '<span data-dsh-pm-rel=\"<ms>\"></span>'，把 renderHead 的「最近动态」、renderDraftInfo 的创建时间、renderArchivedInfo 的已归档三处 rel() 文本换成 relSlot（外层类名与样式不动）；新增 hydrateRelTimes(root: ParentNode, now = Date.now())：对每个 [data-dsh-pm-rel] 写 rel() 文本；renderNodePanel 入参新增可选 now（测试固定时钟用）。③ 新增 src/client/panel-hydrate.ts：hydrateNodePanel(root, { freshness?, tab?, now? }) = hydrateFreshness + hydrateRelTimes + applyTab（[data-action=np-switch-view] 的 is-active 与 .dsh-pm-np-pane 的 hidden 按 tab 恢复，缺省 'flow'；找不到元素静默返回）。④ 更新 tests/panel-freshness-render.test.ts：断言改为字符串含 data-dsh-pm-fresh-slot 且不含 '数据时间' 与具体 fetchedAt；新增用例：仅 freshness.fetchedAt 差 5000 的两次 renderNodePanel 输出逐字节相同（并单独比对 dsh-pm-dag-panel 段）。⑤ 新增 tests/panel-hydrate.test.ts（头部 serves: FR-2, FR-3, FR-5）：极简 DOM 桩断言 A3-1（文本/属性/is-stale 翻转、元素未被替换）、A3-2（固定 now 下 刚刚/5 分钟前/日期）、A3-3（tab='list' 时泳道 pane 无 hidden、DAG pane 有 hidden）。验证：npx vitest run tests/panel-freshness-render.test.ts tests/panel-hydrate.test.ts。"
+      serves:
+        - FR-2
+        - FR-3
+        - FR-5
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-2406b6
+      title: 会话面板与需求详情接线（key 作用域 + 清理）
+      implements: "① src/client/conversation-progress.ts：DAG 挂载 effect 内 const stateKey = PANEL_DAG_CANVAS_ID + '::' + reqIdForStage（reqId 缺省则不启用记忆、不调 hydrate）；调 tryMountDagCanvas(tasks, undefined, PANEL_DAG_CANVAS_ID, { stateKey })；同一 effect 内对本次渲染的容器根（承载 dangerouslySetInnerHTML 的节点 / wrapRef.current）调 hydrateNodePanel(root, { freshness: panelFreshness, tab: readDagViewState(stateKey)?.tab })（时序：React commit 之后执行，与现有 rAF 挂载协调，确保补丁作用在**本次** DOM 上）。② np-switch-view 点击委托：切换 class 之后 writeDagViewState(stateKey, { tab: view === 'list' ? 'list' : 'flow' })。③ 新增 effect：reqIdForStage 变化时 clearDagViewState(前一 reqId 的键)，避免记忆表跨需求残留。④ src/client/board-mount.ts：需求详情挂载改为 tryMountDagCanvas(reqTasks, reqReady, 'dag-canvas', { stateKey: 'dag-canvas::' + req.id })。验证：npx vitest run tests/panel-refresh-wiring.test.ts tests/client-view.test.ts tests/node-panel.test.ts 全绿 + 静态复核（grep）两处 stateKey 形态、hydrateNodePanel 调用点、页签写入与清理调用各一处。"
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      depends_on:
+        - t-9b6948
+        - t-21de17
+      phase: implement
+      side: frontend
+    - id: t-5f7644
+      title: 探针翻转 + 全量回归与构建验证
+      implements: ① 更新 docs/requirements/REQ-261001210304-0dfb/evidence/probe-dag-reset.mts：A 段断言翻转为「保活」（二次挂载后 state() 仍为 {horizontal,true,true,'t-b'}），B 段断言两轮 __html 逐字节相同（fetchedAt 差 5s），保留原有打印格式便于贴证据。② 全量回归：npx vitest run tests/dag-view-state.test.ts tests/panel-hydrate.test.ts tests/panel-freshness-render.test.ts tests/dag-view.test.ts tests/node-panel.test.ts tests/panel-refresh.test.ts。③ 静态：npx tsc --noEmit -p tsconfig.json，比对本次 5 个改动/新增 src 文件无新增错误（既有红单独列出，不算本次）。④ 构建：pnpm build:client（scripts/verify-client-build.mjs 必须绿）。⑤ 产出 docs/requirements/REQ-261001210304-0dfb/evidence/run-log.md：逐条贴命令 + 输出摘要（含探针新输出、用例数、构建结果），供验收材料引用。
+      serves:
+        - FR-5
+      depends_on:
+        - t-2406b6
+      phase: test
+      side: frontend
+    - id: t-f14885
+      title: 建立 DAG 视图状态记忆表（契约先行）·研发
+      implements: |-
+        ① 新增 src/client/dag/view-state.ts（纯函数、零 DOM、零 IO，照 panel-refresh.ts 的纯度纪律）：export interface DagViewSnapshot { dir?: LayoutDir; crit?: boolean; focus?: boolean; pinned?: string | null; tab?: 'flow' | 'list'; scrollTop?: number; scrollLeft?: number }（dir 复用 src/client/dag/dag-layout.ts 的 LayoutDir，不新造枚举）；模块内 const store = new Map<string, DagViewSnapshot>() 与 MAX_ENTRIES = 16；readDagViewState(key) 返回浅拷贝（miss → undefined），命中时按键重插刷新插入序；writeDagViewState(key, patch) 合并写，scrollTop/scrollLeft 非有限数或负数一律写 0，pinned 为 null 时照写（显式无钉住）；clearDagViewState(key)；clearDagViewStateByPrefix(prefix)；dagViewStateSize()；_resetDagViewState() 仅测试用；超容量按插入序淘汰最旧。② 新增 tests/dag-view-state.test.ts，头部注释写 serves: FR-1, FR-4, FR-5（本仓测试文件惯例，前 20 行内）：A1-1 合并写/拷贝隔离（改返回值不影响表内）/非法滚动值按 0/容量 16 FIFO/前缀清理；A5 键隔离（np-dag-canvas::REQ-A 写横向 + 只看主线 → 读 np-dag-canvas::REQ-B 为 undefined）。验证：npx vitest run tests/dag-view-state.test.ts；npx tsc --noEmit -p tsconfig.json（本次文件零新增错误）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-dde296
+      title: 建立 DAG 视图状态记忆表（契约先行）·复核
+      implements: |-
+        ① 新增 src/client/dag/view-state.ts（纯函数、零 DOM、零 IO，照 panel-refresh.ts 的纯度纪律）：export interface DagViewSnapshot { dir?: LayoutDir; crit?: boolean; focus?: boolean; pinned?: string | null; tab?: 'flow' | 'list'; scrollTop?: number; scrollLeft?: number }（dir 复用 src/client/dag/dag-layout.ts 的 LayoutDir，不新造枚举）；模块内 const store = new Map<string, DagViewSnapshot>() 与 MAX_ENTRIES = 16；readDagViewState(key) 返回浅拷贝（miss → undefined），命中时按键重插刷新插入序；writeDagViewState(key, patch) 合并写，scrollTop/scrollLeft 非有限数或负数一律写 0，pinned 为 null 时照写（显式无钉住）；clearDagViewState(key)；clearDagViewStateByPrefix(prefix)；dagViewStateSize()；_resetDagViewState() 仅测试用；超容量按插入序淘汰最旧。② 新增 tests/dag-view-state.test.ts，头部注释写 serves: FR-1, FR-4, FR-5（本仓测试文件惯例，前 20 行内）：A1-1 合并写/拷贝隔离（改返回值不影响表内）/非法滚动值按 0/容量 16 FIFO/前缀清理；A5 键隔离（np-dag-canvas::REQ-A 写横向 + 只看主线 → 读 np-dag-canvas::REQ-B 为 undefined）。验证：npx vitest run tests/dag-view-state.test.ts；npx tsc --noEmit -p tsconfig.json（本次文件零新增错误）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-f14885
+      phase: implement
+      side: frontend
+    - id: t-20229c
+      title: 挂载接缝按记忆回填并同步工具条与滚动·研发
+      implements: |-
+        ① src/client/views/dag-view.ts：新增 export interface MountDagOptions { stateKey?: string }；把现有写死的 initial 提为导出常量 DEFAULT_DAG_STATE 后，mountDagCanvas(tasks, ready?, canvasId = DAG_CANVAS_ID, opts?: MountDagOptions) 里当 opts?.stateKey 有值时 snap = readDagViewState(key)，initial = { dir: snap?.dir ?? 'vertical', crit: snap?.crit === true, focus: snap?.focus === true, pinned: snap?.pinned ?? null }（无 stateKey 时用 DEFAULT_DAG_STATE，行为逐字节不变）。② 新增内部 syncToolbar(panel, state)：按 viewer.state() 给 [data-dag-dir=vertical|horizontal] 与 [data-dag-toggle=crit|focus] 设/清 is-on（回填后必须与真实状态对齐——现状按钮点击只 toggle class）。③ paint({}) 之后（canvas 宽高已在 paint 内同步设好）恢复 wrap.scrollTop/scrollLeft = snap 值（wrap 为空则跳过）。④ disposer 顺序改为：先 writeDagViewState(key, { ...viewer.state(), scrollTop: wrap?.scrollTop ?? 0, scrollLeft: wrap?.scrollLeft ?? 0 })，再摘监听/断 observer/destroy viewer（写回必须先于释放）。⑤ src/client/dag-mount.ts：tryMountDagCanvas(tasks, ready?, canvasId?, opts?: MountDagOptions) 把 opts 透传（rAF 包装与 getElementById 存在性检查保持原样）。验证：npx vitest run tests/dag-view-state.test.ts（追加 A1-2 二次挂载回填、A1-3 工具条 is-on 同步用例）；npx vitest run tests/dag-view.test.ts（无 opts 路径必须全绿 = 兼容承诺）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-8e8fdc
+      phase: implement
+      side: frontend
+    - id: t-c1ce4f
+      title: 挂载接缝按记忆回填并同步工具条与滚动·复核
+      implements: |-
+        ① src/client/views/dag-view.ts：新增 export interface MountDagOptions { stateKey?: string }；把现有写死的 initial 提为导出常量 DEFAULT_DAG_STATE 后，mountDagCanvas(tasks, ready?, canvasId = DAG_CANVAS_ID, opts?: MountDagOptions) 里当 opts?.stateKey 有值时 snap = readDagViewState(key)，initial = { dir: snap?.dir ?? 'vertical', crit: snap?.crit === true, focus: snap?.focus === true, pinned: snap?.pinned ?? null }（无 stateKey 时用 DEFAULT_DAG_STATE，行为逐字节不变）。② 新增内部 syncToolbar(panel, state)：按 viewer.state() 给 [data-dag-dir=vertical|horizontal] 与 [data-dag-toggle=crit|focus] 设/清 is-on（回填后必须与真实状态对齐——现状按钮点击只 toggle class）。③ paint({}) 之后（canvas 宽高已在 paint 内同步设好）恢复 wrap.scrollTop/scrollLeft = snap 值（wrap 为空则跳过）。④ disposer 顺序改为：先 writeDagViewState(key, { ...viewer.state(), scrollTop: wrap?.scrollTop ?? 0, scrollLeft: wrap?.scrollLeft ?? 0 })，再摘监听/断 observer/destroy viewer（写回必须先于释放）。⑤ src/client/dag-mount.ts：tryMountDagCanvas(tasks, ready?, canvasId?, opts?: MountDagOptions) 把 opts 透传（rAF 包装与 getElementById 存在性检查保持原样）。验证：npx vitest run tests/dag-view-state.test.ts（追加 A1-2 二次挂载回填、A1-3 工具条 is-on 同步用例）；npx vitest run tests/dag-view.test.ts（无 opts 路径必须全绿 = 兼容承诺）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-20229c
+      phase: implement
+      side: frontend
+    - id: t-6e3dda
+      title: 挂载接缝按记忆回填并同步工具条与滚动·测试
+      implements: |-
+        ① src/client/views/dag-view.ts：新增 export interface MountDagOptions { stateKey?: string }；把现有写死的 initial 提为导出常量 DEFAULT_DAG_STATE 后，mountDagCanvas(tasks, ready?, canvasId = DAG_CANVAS_ID, opts?: MountDagOptions) 里当 opts?.stateKey 有值时 snap = readDagViewState(key)，initial = { dir: snap?.dir ?? 'vertical', crit: snap?.crit === true, focus: snap?.focus === true, pinned: snap?.pinned ?? null }（无 stateKey 时用 DEFAULT_DAG_STATE，行为逐字节不变）。② 新增内部 syncToolbar(panel, state)：按 viewer.state() 给 [data-dag-dir=vertical|horizontal] 与 [data-dag-toggle=crit|focus] 设/清 is-on（回填后必须与真实状态对齐——现状按钮点击只 toggle class）。③ paint({}) 之后（canvas 宽高已在 paint 内同步设好）恢复 wrap.scrollTop/scrollLeft = snap 值（wrap 为空则跳过）。④ disposer 顺序改为：先 writeDagViewState(key, { ...viewer.state(), scrollTop: wrap?.scrollTop ?? 0, scrollLeft: wrap?.scrollLeft ?? 0 })，再摘监听/断 observer/destroy viewer（写回必须先于释放）。⑤ src/client/dag-mount.ts：tryMountDagCanvas(tasks, ready?, canvasId?, opts?: MountDagOptions) 把 opts 透传（rAF 包装与 getElementById 存在性检查保持原样）。验证：npx vitest run tests/dag-view-state.test.ts（追加 A1-2 二次挂载回填、A1-3 工具条 is-on 同步用例）；npx vitest run tests/dag-view.test.ts（无 opts 路径必须全绿 = 兼容承诺）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-c1ce4f
+      phase: implement
+      side: frontend
+    - id: t-918fd6
+      title: 面板易变字段出注入字符串（稳定钩子 + 补丁）·研发
+      implements: |-
+        ① src/client/panel-freshness.ts：freshnessSpan() 改为无参、只输出稳定占位 '<span class="dsh-pm-np-fresh" data-dsh-pm-fresh-slot></span>'（不含任何随时间变化的值）；新增 hydrateFreshness(root: ParentNode, f: NodePanelFreshness)：查 [data-dsh-pm-fresh-slot]（缺失即静默返回），写 textContent = '数据时间 ' + clockText(fetchedAt)（缺省 '数据时间 —'）、classList.toggle('is-stale', fetchedAt 缺失或超 staleAfterMs)、title = 刷新周期文案、dataset.fetchedAt/data-stale/data-refresh-ms；幂等、不插删元素。renderFreshnessBar 的失败红条与「插件已更新」保持原样（仅异常态出现）。② src/client/node-panel.ts：新增 relSlot(at: number): string → '<span data-dsh-pm-rel="<ms>"></span>'，把 renderHead 的「最近动态」、renderDraftInfo 的创建时间、renderArchivedInfo 的已归档三处 rel() 文本换成 relSlot（外层类名与样式不动）；新增 hydrateRelTimes(root: ParentNode, now = Date.now())：对每个 [data-dsh-pm-rel] 写 rel() 文本；renderNodePanel 入参新增可选 now（测试固定时钟用）。③ 新增 src/client/panel-hydrate.ts：hydrateNodePanel(root, { freshness?, tab?, now? }) = hydrateFreshness + hydrateRelTimes + applyTab（[data-action=np-switch-view] 的 is-active 与 .dsh-pm-np-pane 的 hidden 按 tab 恢复，缺省 'flow'；找不到元素静默返回）。④ 更新 tests/panel-freshness-render.test.ts：断言改为字符串含 data-dsh-pm-fresh-slot 且不含 '数据时间' 与具体 fetchedAt；新增用例：仅 freshness.fetchedAt 差 5000 的两次 renderNodePanel 输出逐字节相同（并单独比对 dsh-pm-dag-panel 段）。⑤ 新增 tests/panel-hydrate.test.ts（头部 serves: FR-2, FR-3, FR-5）：极简 DOM 桩断言 A3-1（文本/属性/is-stale 翻转、元素未被替换）、A3-2（固定 now 下 刚刚/5 分钟前/日期）、A3-3（tab='list' 时泳道 pane 无 hidden、DAG pane 有 hidden）。验证：npx vitest run tests/panel-freshness-render.test.ts tests/panel-hydrate.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-adb83e
+      title: 面板易变字段出注入字符串（稳定钩子 + 补丁）·复核
+      implements: |-
+        ① src/client/panel-freshness.ts：freshnessSpan() 改为无参、只输出稳定占位 '<span class="dsh-pm-np-fresh" data-dsh-pm-fresh-slot></span>'（不含任何随时间变化的值）；新增 hydrateFreshness(root: ParentNode, f: NodePanelFreshness)：查 [data-dsh-pm-fresh-slot]（缺失即静默返回），写 textContent = '数据时间 ' + clockText(fetchedAt)（缺省 '数据时间 —'）、classList.toggle('is-stale', fetchedAt 缺失或超 staleAfterMs)、title = 刷新周期文案、dataset.fetchedAt/data-stale/data-refresh-ms；幂等、不插删元素。renderFreshnessBar 的失败红条与「插件已更新」保持原样（仅异常态出现）。② src/client/node-panel.ts：新增 relSlot(at: number): string → '<span data-dsh-pm-rel="<ms>"></span>'，把 renderHead 的「最近动态」、renderDraftInfo 的创建时间、renderArchivedInfo 的已归档三处 rel() 文本换成 relSlot（外层类名与样式不动）；新增 hydrateRelTimes(root: ParentNode, now = Date.now())：对每个 [data-dsh-pm-rel] 写 rel() 文本；renderNodePanel 入参新增可选 now（测试固定时钟用）。③ 新增 src/client/panel-hydrate.ts：hydrateNodePanel(root, { freshness?, tab?, now? }) = hydrateFreshness + hydrateRelTimes + applyTab（[data-action=np-switch-view] 的 is-active 与 .dsh-pm-np-pane 的 hidden 按 tab 恢复，缺省 'flow'；找不到元素静默返回）。④ 更新 tests/panel-freshness-render.test.ts：断言改为字符串含 data-dsh-pm-fresh-slot 且不含 '数据时间' 与具体 fetchedAt；新增用例：仅 freshness.fetchedAt 差 5000 的两次 renderNodePanel 输出逐字节相同（并单独比对 dsh-pm-dag-panel 段）。⑤ 新增 tests/panel-hydrate.test.ts（头部 serves: FR-2, FR-3, FR-5）：极简 DOM 桩断言 A3-1（文本/属性/is-stale 翻转、元素未被替换）、A3-2（固定 now 下 刚刚/5 分钟前/日期）、A3-3（tab='list' 时泳道 pane 无 hidden、DAG pane 有 hidden）。验证：npx vitest run tests/panel-freshness-render.test.ts tests/panel-hydrate.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-918fd6
+      phase: implement
+      side: frontend
+    - id: t-118a86
+      title: 面板易变字段出注入字符串（稳定钩子 + 补丁）·测试
+      implements: |-
+        ① src/client/panel-freshness.ts：freshnessSpan() 改为无参、只输出稳定占位 '<span class="dsh-pm-np-fresh" data-dsh-pm-fresh-slot></span>'（不含任何随时间变化的值）；新增 hydrateFreshness(root: ParentNode, f: NodePanelFreshness)：查 [data-dsh-pm-fresh-slot]（缺失即静默返回），写 textContent = '数据时间 ' + clockText(fetchedAt)（缺省 '数据时间 —'）、classList.toggle('is-stale', fetchedAt 缺失或超 staleAfterMs)、title = 刷新周期文案、dataset.fetchedAt/data-stale/data-refresh-ms；幂等、不插删元素。renderFreshnessBar 的失败红条与「插件已更新」保持原样（仅异常态出现）。② src/client/node-panel.ts：新增 relSlot(at: number): string → '<span data-dsh-pm-rel="<ms>"></span>'，把 renderHead 的「最近动态」、renderDraftInfo 的创建时间、renderArchivedInfo 的已归档三处 rel() 文本换成 relSlot（外层类名与样式不动）；新增 hydrateRelTimes(root: ParentNode, now = Date.now())：对每个 [data-dsh-pm-rel] 写 rel() 文本；renderNodePanel 入参新增可选 now（测试固定时钟用）。③ 新增 src/client/panel-hydrate.ts：hydrateNodePanel(root, { freshness?, tab?, now? }) = hydrateFreshness + hydrateRelTimes + applyTab（[data-action=np-switch-view] 的 is-active 与 .dsh-pm-np-pane 的 hidden 按 tab 恢复，缺省 'flow'；找不到元素静默返回）。④ 更新 tests/panel-freshness-render.test.ts：断言改为字符串含 data-dsh-pm-fresh-slot 且不含 '数据时间' 与具体 fetchedAt；新增用例：仅 freshness.fetchedAt 差 5000 的两次 renderNodePanel 输出逐字节相同（并单独比对 dsh-pm-dag-panel 段）。⑤ 新增 tests/panel-hydrate.test.ts（头部 serves: FR-2, FR-3, FR-5）：极简 DOM 桩断言 A3-1（文本/属性/is-stale 翻转、元素未被替换）、A3-2（固定 now 下 刚刚/5 分钟前/日期）、A3-3（tab='list' 时泳道 pane 无 hidden、DAG pane 有 hidden）。验证：npx vitest run tests/panel-freshness-render.test.ts tests/panel-hydrate.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-adb83e
+      phase: implement
+      side: frontend
+    - id: t-8e45ea
+      title: 会话面板与需求详情接线（key 作用域 + 清理）·研发
+      implements: |-
+        ① src/client/conversation-progress.ts：DAG 挂载 effect 内 const stateKey = PANEL_DAG_CANVAS_ID + '::' + reqIdForStage（reqId 缺省则不启用记忆、不调 hydrate）；调 tryMountDagCanvas(tasks, undefined, PANEL_DAG_CANVAS_ID, { stateKey })；同一 effect 内对本次渲染的容器根（承载 dangerouslySetInnerHTML 的节点 / wrapRef.current）调 hydrateNodePanel(root, { freshness: panelFreshness, tab: readDagViewState(stateKey)?.tab })（时序：React commit 之后执行，与现有 rAF 挂载协调，确保补丁作用在**本次** DOM 上）。② np-switch-view 点击委托：切换 class 之后 writeDagViewState(stateKey, { tab: view === 'list' ? 'list' : 'flow' })。③ 新增 effect：reqIdForStage 变化时 clearDagViewState(前一 reqId 的键)，避免记忆表跨需求残留。④ src/client/board-mount.ts：需求详情挂载改为 tryMountDagCanvas(reqTasks, reqReady, 'dag-canvas', { stateKey: 'dag-canvas::' + req.id })。验证：npx vitest run tests/panel-refresh-wiring.test.ts tests/client-view.test.ts tests/node-panel.test.ts 全绿 + 静态复核（grep）两处 stateKey 形态、hydrateNodePanel 调用点、页签写入与清理调用各一处。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-9b6948
+        - t-21de17
+      phase: implement
+      side: frontend
+    - id: t-5dd17a
+      title: 会话面板与需求详情接线（key 作用域 + 清理）·复核
+      implements: |-
+        ① src/client/conversation-progress.ts：DAG 挂载 effect 内 const stateKey = PANEL_DAG_CANVAS_ID + '::' + reqIdForStage（reqId 缺省则不启用记忆、不调 hydrate）；调 tryMountDagCanvas(tasks, undefined, PANEL_DAG_CANVAS_ID, { stateKey })；同一 effect 内对本次渲染的容器根（承载 dangerouslySetInnerHTML 的节点 / wrapRef.current）调 hydrateNodePanel(root, { freshness: panelFreshness, tab: readDagViewState(stateKey)?.tab })（时序：React commit 之后执行，与现有 rAF 挂载协调，确保补丁作用在**本次** DOM 上）。② np-switch-view 点击委托：切换 class 之后 writeDagViewState(stateKey, { tab: view === 'list' ? 'list' : 'flow' })。③ 新增 effect：reqIdForStage 变化时 clearDagViewState(前一 reqId 的键)，避免记忆表跨需求残留。④ src/client/board-mount.ts：需求详情挂载改为 tryMountDagCanvas(reqTasks, reqReady, 'dag-canvas', { stateKey: 'dag-canvas::' + req.id })。验证：npx vitest run tests/panel-refresh-wiring.test.ts tests/client-view.test.ts tests/node-panel.test.ts 全绿 + 静态复核（grep）两处 stateKey 形态、hydrateNodePanel 调用点、页签写入与清理调用各一处。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-8e45ea
+      phase: implement
+      side: frontend
+    - id: t-61a6bf
+      title: 探针翻转 + 全量回归与构建验证·校验
+      implements: |-
+        ① 更新 docs/requirements/REQ-261001210304-0dfb/evidence/probe-dag-reset.mts：A 段断言翻转为「保活」（二次挂载后 state() 仍为 {horizontal,true,true,'t-b'}），B 段断言两轮 __html 逐字节相同（fetchedAt 差 5s），保留原有打印格式便于贴证据。② 全量回归：npx vitest run tests/dag-view-state.test.ts tests/panel-hydrate.test.ts tests/panel-freshness-render.test.ts tests/dag-view.test.ts tests/node-panel.test.ts tests/panel-refresh.test.ts。③ 静态：npx tsc --noEmit -p tsconfig.json，比对本次 5 个改动/新增 src 文件无新增错误（既有红单独列出，不算本次）。④ 构建：pnpm build:client（scripts/verify-client-build.mjs 必须绿）。⑤ 产出 docs/requirements/REQ-261001210304-0dfb/evidence/run-log.md：逐条贴命令 + 输出摘要（含探针新输出、用例数、构建结果），供验收材料引用。
+
+        [子卡阶段·校验] 只做本阶段；验收：校验项逐条给出结果：`npx vitest run <校验用例>` → 全绿；异常项已列出并标注影响面
+      serves: []
+      depends_on:
+        - t-2406b6
+      phase: test
+      side: frontend
+traceability:
+  design_to_tasks:
+    design/architecture.md#问题与现状:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+    design/architecture.md#总体方案:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+    design/architecture.md#模块改动地图:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+      - t-5f7644
+    design/architecture.md#备选方案与取舍:
+      - t-21de17
+    design/architecture.md#风险与边界:
+      - t-8e8fdc
+      - t-21de17
+      - t-2406b6
+    design/data-model.md#新增视图状态快照-DagViewSnapshot:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+    design/data-model.md#存储键与生命周期:
+      - t-8e8fdc
+      - t-2406b6
+    design/data-model.md#容量淘汰与不持久化:
+      - t-8e8fdc
+      - t-2406b6
+    design/data-model.md#与既有-DagState-的关系:
+      - t-8e8fdc
+      - t-9b6948
+      - t-2406b6
+    design/data-model.md#协议-台账零变更:
+      - t-8e8fdc
+      - t-2406b6
+    design/interfaces.md#1:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+    design/interfaces.md#2:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+    design/interfaces.md#3:
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+    design/interfaces.md#4:
+      - t-21de17
+    design/interfaces.md#5:
+      - t-21de17
+      - t-5f7644
+    design/use-cases.md#UC-1-调好视图后继续盯进度:
+      - t-8e8fdc
+      - t-9b6948
+      - t-2406b6
+    design/use-cases.md#UC-2-切到泳道滚到中段继续看:
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+    design/use-cases.md#UC-3-数据真的变了任务推进:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+    design/use-cases.md#UC-4-切换需求-关闭面板-重载页面:
+      - t-8e8fdc
+      - t-2406b6
+    design/use-cases.md#UC-5-异常态与降级:
+      - t-21de17
+    design/use-cases.md#状态流转用户视角:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+  fr_to_tasks:
+    FR-1:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+      - t-5f7644
+    FR-2:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+      - t-5f7644
+    FR-3:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+      - t-5f7644
+    FR-4:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+      - t-5f7644
+    FR-5:
+      - t-8e8fdc
+      - t-9b6948
+      - t-21de17
+      - t-2406b6
+      - t-5f7644
+coverage:
+  implementation:
+    total: 21
+    covered: 21
+    uncovered: []
+    rate: 100
+    total_designs: 21
+    covered_designs: 21

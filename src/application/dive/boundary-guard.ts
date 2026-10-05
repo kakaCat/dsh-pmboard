@@ -7,7 +7,9 @@
  *
  * @module dsh-pmboard/application/dive/boundary-guard
  */
-import { openRequirementsFor } from '../internal/window.js'
+import { openPromptFactsFor } from '../internal/window.js'
+import { firstWritableBound } from '../../application/internal/window.js'
+import type { RequirementFacts } from '../../domain/requirement/RequirementSummary.js'
 import { isOutOfBounds, correctiveActionFor } from '../../domain/stage/StageActions.js'
 import { fmt } from '../../domain/text/fmt.js'
 import type { RequirementStatus } from '../../domain/requirement/RequirementStatus.js'
@@ -19,7 +21,15 @@ const THROTTLE_MS = 300_000
 const injected = new Map<string, { status: RequirementStatus; at: number }>()
 
 export interface BoundaryGuardDeps {
-  snapshot(): Parameters<typeof openRequirementsFor>[0]
+  /**
+   * **同步**窄投影（B12 阶段①-a）。
+   *
+   * 为什么可以是非权威投影：本守卫**只注入一条纠偏提示**——它的返回值在
+   * `session-driver` 里被丢弃、既不拦工具也不参与任何门禁（`guardToolCall` 的调用点是语句）。
+   * ⇒ 读到略旧的数据最坏只是"多/少提示一次"，不会放过或挡下任何写操作。
+   * （设计文档 §333 曾判它"结构性不可迁"，第 403 回合按上述取证推翻，见 §20.1。）
+   */
+  facts(): readonly RequirementFacts[]
   inject(windowKey: string, text: string): void
   now(): number
 }
@@ -48,9 +58,11 @@ export function guardToolCall(
   args: Record<string, unknown> | undefined,
 ): boolean {
   if (!toolName.startsWith('reqboard_')) return false
-  const bound = openRequirementsFor(deps.snapshot(), windowKey)
+  const bound = openPromptFactsFor(deps.facts(), windowKey)
   if (bound.length === 0) return false
-  const req = bound[0]
+  const req = firstWritableBound(bound, windowKey)
+  // FR-3：本窗口在这些需求上都没有**可写**席位（例如被打成 observer）→ 与"没绑定"同义：不注入。
+  if (req === undefined) return false
   const status = req.status
 
   if (toolName === 'reqboard_submit') {

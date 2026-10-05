@@ -13,6 +13,8 @@ import type { UseCaseDeps } from '../ports.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { stageLabel, STAGE_EVIDENCE_KIND, type StageKind } from '../../domain/task/SubtaskTemplate.js'
 import { generateSubtaskScript } from '../internal/workflow-script.js'
+import { resolveStageModel } from '../../domain/task/StageRouting.js'
+import { shouldAlertZeroOutput, zeroOutputStreak } from '../../domain/workflow/StageTelemetry.js'
 // FR-11 路线 A：团队执行驱动（团队服务可用时优先于 workflow）。
 import { runSubtaskViaTeam } from './SubtaskTeamRun.js'
 // D14（REQ-260927123256-196b 的模块，此前**未接线**）：看板「继续」/启动恢复入口无 exec.agent 时
@@ -29,7 +31,7 @@ import {
   safeWindowKey,
   snapshotForWindow,
 } from '../internal/token-usage.js'
-import { taskStoreOf, readyTasksOf } from './queue-access.js'
+import { requirementStoreOf, taskStoreOf, readyTasksOf, mutateQueue, mutateIfPresent } from './queue-access.js'
 
 /** 子代理产出的结构化摘要（filesChanged / 完成项 / 证据）。 */
 export interface SubtaskOutput {
@@ -91,13 +93,34 @@ export function isNonEmptyValue(v: unknown): boolean {
  * 为什么需要：子卡此前普遍带着"父卡验收全文"，于是 dev 段去跑 build/grep 零命中、
  * integrate 与 test 段各跑一遍同一批命令（实测 integrate 6 张卡共 24.7 min、**零落盘产出**）。
  * 口径：**父卡的终态验收命令只在 test 段执行**；其余段只做本卡范围内的活，不越界、不重复。
+ *
+ * REQ-261003203909-55f2 FR-7：类型改 `Record<StageKind,string>`——**20 段全登记成为编译期义务**
+ * （此前 `Record<string,string>` + `?? ''`：新段漏写边界规则静默落空，子代理拿到的提示词没有
+ * 边界约束）。原 `doc` 键被移除：它不是 StageKind（受控枚举无 doc），`stageKind` 取不到它，
+ * 是松散类型掩盖的死配置。
  */
-const STAGE_SCOPE_RULE: Readonly<Record<string, string>> = {
+export const STAGE_SCOPE_RULE: Readonly<Record<StageKind, string>> = {
   dev: '【本步边界】只做本卡范围内的改动与本地验证（改动落盘 + 与本卡文件相关的测试/命令）。**不要**执行父卡的终态验收命令（全量测试 / build:client / grep 零命中等）——那属于测试段。',
   integrate: '【本步边界】只做本卡范围的接口对接与**真实一次调用**验证（给请求样例 + 实际响应）。**不要**重复跑父卡终态验收命令（属测试段），**不要**为此改写实现（属研发段）。',
   review: '【本步边界】只给"设计与实现是否偏离"的逐条结论与依据。**不要**改代码，**不要**跑父卡终态验收命令（属测试段）。',
   test: '【本步边界】父卡的终态验收命令由本段执行：逐条跑并贴命令 + 退出码 + 计数摘要。**不要**改代码；跑不过就如实报失败并给出失败输出。',
-  doc: '【本步边界】只写本卡声明的文档产物，并给一条可复核命令（cat/grep 看到什么算过）。不要改代码。',
+  repro: '【本步边界】只复现缺陷：写最小回归用例并证明「修复前失败」（贴输出）。**不要**改实现（属修复段）。',
+  fix: '【本步边界】只做根因修复并让回归用例转绿（贴命令与输出），根因单独写明。**不要**扩大改动面（无关重构另立卡）。',
+  regress: '【本步边界】只跑回归：失败数 ≤ 开工前基线并贴比对输出。**不要**改代码；新增失败如实报。',
+  probe: '【本步边界】只回答本卡的可证伪问题并贴证据（命令 + 输出）。**不要**下实施结论（属分析段），**不要**改代码。',
+  collect: '【本步边界】只取数：来源/时点/样本量标注，产物落盘。**不要**做结论分析（属分析段）。',
+  analyze: '【本步边界】只做结论分析：结论含置信度与适用边界，列出被证伪的假设。**不要**改代码，**不要**重复取数（属取数段）。',
+  prepare: '【本步边界】只做方案/脚本准备并自检可复现（脚本命令 + 输出摘要）。**不要**直接执行真实变更（属执行/实施段）。',
+  run: '【本步边界】只执行准备好的脚本并落库结果（记录条数/输出路径可复核）。**不要**临时改脚本逻辑（属准备段）。',
+  verify: '【本步边界】只逐条校验并给结果（异常项列出并标注影响面）。**不要**改被校验的对象。',
+  change: '【本步边界】只声明变更内容与回滚方式，并给可执行验证命令。**不要**实施生效（属实施段）。',
+  dryrun: '【本步边界】只做试运行并比对预期（--dry-run + 输出）。**不要**让变更真实生效（属实施段）。',
+  apply: '【本步边界】只做实施生效 + 可复核验证输出。**不要**变更方案本身（属变更段）。',
+  // REQ-261003203909-55f2 新增四段（文本与 STAGE_ACCEPTANCE 同源）：
+  e2e: '【本步边界】只做端到端场景断言（写用例 + 跑 + 贴「场景名/命令/退出码」）。**不要**改实现代码（属研发段），**不要**重复跑父卡终态验收命令（属测试段）。',
+  manual: '【本步边界】只生成核对清单并停下等人。**禁止**代替人做核对、**禁止**伪造核对结果（未核对就写「通过」）。',
+  release: '【本步边界】只做构建/发版与回滚方式声明（构建戳/版本号断言 + 输出）。**不要**改功能代码（属研发段）。',
+  capture: '【本步边界】只采集不改动：产物落盘 evidence/ 并给可复核命令。**不要**做结论分析（属分析段）。',
 }
 
 export function buildSubtaskPrompt(parent: TaskRecord, subtask: TaskRecord, label: string, workspaceRoot?: string): string {
@@ -172,12 +195,61 @@ function fail(subtaskId: string, reason: string, code: string, extra: Partial<Ex
   return { ok: false, subtaskId, reason, code, ...extra }
 }
 
+const ZERO_OUTPUT_ALERT_MARK = '[零产出告警]'
+
+/**
+ * 零产出告警（REQ-261004110201-f253 FR-3）。
+ *
+ * 判据全部来自**已落盘数据**（子卡执行记录 + 需求评论），不依赖内存状态 ⇒ 可重放、无并发新面：
+ *   · streak = 该阶段末尾连续 zeroOutput 执行数（未知即断，见 domain 侧注释）；
+ *   · alerted = 台账里同阶段既有告警条数；
+ *   · 写新告警当且仅当 floor(streak / threshold) > alerted。
+ *
+ * 边界：阈值/阶段名缺失、需求不存在、无 streak → 静默返回（没问题就不说话）；
+ * 写盘失败只 warn（旁路能力，绝不拖垮子卡交付）。
+ */
+async function maybeAlertZeroOutput(deps: UseCaseDeps, requirementId: string, stageKind: string): Promise<void> {
+  const threshold = deps.zeroOutputAlertThreshold ?? 2
+  if (stageKind.length === 0 || !Number.isFinite(threshold) || threshold < 1) return
+  try {
+    const tasks = await taskStoreOf(deps).listByRequirement(requirementId)
+    const execs = tasks
+      .filter((t) => t.parentId !== undefined && String(t.stageKind ?? '') === stageKind)
+      .flatMap((t) => t.executions ?? [])
+    const streak = zeroOutputStreak(execs)
+    if (streak < threshold) return
+    const req0 = await requirementStoreOf(deps).get(requirementId)
+    if (req0 === undefined) return
+    const alerted = (req0.comments ?? [])
+      .filter((c) => String(c.body ?? '').includes(ZERO_OUTPUT_ALERT_MARK) && String(c.body ?? '').includes('stage=' + stageKind))
+      .length
+    if (!shouldAlertZeroOutput(streak, alerted, threshold)) return
+    const lastDuration = execs
+      .filter((e) => e.endedAt !== undefined)
+      .sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0))[0]
+    const durationMs = lastDuration === undefined ? 0 : Math.max(0, (lastDuration.endedAt ?? 0) - lastDuration.startedAt)
+    const at = deps.clock.now()
+    await mutateIfPresent(requirementStoreOf(deps), requirementId, (req) => {
+      req.comments.push({
+        id: deps.ids.comment(),
+        body: fmt('{mark} stage={stage} streak={streak} threshold={threshold} 最近耗时={ms}ms'
+          + '——该阶段连续多次零落盘产出，建议人工核对模板与提示词（系统不会自动改模板）。',
+        { mark: ZERO_OUTPUT_ALERT_MARK, stage: stageKind, streak: String(streak), threshold: String(threshold), ms: String(durationMs) }),
+        createdAt: at,
+        createdBy: { kind: 'system' },
+      })
+      return { changed: true }
+    })
+  } catch (err) {
+    try { console.warn('[ExecuteTask] 零产出告警写入失败（不阻断交付）：', err) } catch { /* 兜底 */ }
+  }
+}
+
 /**
  * 执行一张子卡（幂等：已 done 直接返回；已在 in_progress 不重复开执行记录）。
  * 失败**不改子卡状态**（退回 todo + attempt+1 属 t8 失败语义，由事件链决定）。
  */
 export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInput): Promise<ExecuteSubtaskResult> {
-  const snap = deps.repo.snapshot()
   const store = taskStoreOf(deps)
   // UC-2（REQ-260927202051-f6df FR-2）：子卡与父卡一律从**队列**取（台账 v9 已无 tasks）。
   const task = await store.get(input.subtaskId)
@@ -197,13 +269,13 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
 
   // D14 接线：三条入口（工具/看板/启动恢复）在此统一拿 agent 句柄；解不到就**可读地失败**，
   // 不让引擎的 TypeError（reading 'session'）当结论。团队分支与 workflow 分支共用它。
-  const handle = ensureAgentHandle(deps, parent.id, task.id, input.exec, queueTasks)
+  const handle = await ensureAgentHandle(deps, parent.id, task.id, input.exec, queueTasks)
   if (!handle.ok) return fail(task.id, handle.reason, 'REQBOARD_SUBTASK_GATE', base)
   const runExec = handle.exec
 
   // 自动链子卡会话码（REQ-260927121324-abde FR-4）：safeWindowKey 解析（'system' / 缺 agent → undefined），
   // 解析不到退回该需求的绑定窗口（sourceSessionId），再无 → 诚实不写快照（缺失 ≠ 0，禁止编造）。
-  const req = snap.requirements.find((r) => r.id === task.requirementId)
+  const req = await requirementStoreOf(deps).get(task.requirementId)
   const sessionKey = safeWindowKey(deps, input.exec) ?? req?.sourceSessionId
 
   const actor = { kind: 'system' as const }
@@ -212,10 +284,14 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
   const prompt = buildSubtaskPrompt(parent, task, label, deps.docs.workspaceRoot())
   let script: string
   try {
+    // FR-1（REQ-261004110201-f253）：按「子卡阶段 × 需求难度」查路由表；未配置/未命中 → 不注入
+    //（生成结果与改造前逐字节相同）。表在装配期已校验，此处只做纯解析。
+    const stageRoute = resolveStageModel(String(task.stageKind ?? ''), req?.promptDifficulty, deps.stageRouting)
     script = generateSubtaskScript({
       stageKind: String(task.stageKind ?? ''),
       stageLabel: label,
       prompt,
+      ...(stageRoute !== undefined ? { route: stageRoute } : {}),
     })
   } catch (err) {
     return fail(task.id, (err as Error).message, (err as { code?: string }).code ?? 'workflow_script_contract', base)
@@ -303,6 +379,8 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
   const ranAt = deps.clock.now()
 
   // REQ-4842fe t9/FR-10 次防线：产出文件的 mtime 落在另一张在跑父卡的执行窗口内 → 判跨卡覆盖。
+  // FR-2（REQ-261003222428-3556）：传入我自己的执行窗口——并行组里我自己的开工落盘 mtime
+  // 必落在对方窗口内，先由我的窗口解释（我写的≠覆盖），解释不了才判。
   if (outcome.ok && parsed.filesChanged.length > 0) {
     const conflict = detectCrossCardOverwrite(
       queueTasks,
@@ -310,6 +388,7 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
       parsed.filesChanged,
       (f) => deps.docs.stat(f)?.mtimeMs,
       ranAt,
+      { startedAt, endedAt: ranAt },
     )
     if (conflict !== undefined) {
       return fail(
@@ -327,7 +406,7 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
 
   // REQ-260925110957-552d: 执行成功后才写 in_progress + lastRun + lastReport
   // 任务写经 TaskStore（台账 v9 无 tasks 键）；本步只改任务，需求侧无写入。
-  await store.mutate(task.requirementId, (tasks) => {
+  await mutateQueue(deps, task.requirementId, (tasks) => {
     const t = tasks.find((x) => x.id === task.id)
     if (t === undefined) return undefined
     
@@ -373,16 +452,28 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
 
   try {
     const doneAt = deps.clock.now()
-    await store.mutate(task.requirementId, (tasks) => {
+    // t8/B11：done 凭证门只需要需求的 createdAt ⇒ 取**摘要**（零文件读）
+    const reqCreatedAtForDone = (await requirementStoreOf(deps).getSummary(task.requirementId))?.createdAt
+    await mutateQueue(deps, task.requirementId, (tasks) => {
       const t = tasks.find((x) => x.id === task.id)
       if (t === undefined) return undefined
       // D4：assertDoneEvidence 新签名 (deps, windowKey, task, ledger, tasks)。
-      assertDoneEvidence(deps, input.windowKey, t, deps.repo.snapshot(), tasks)
+      assertDoneEvidence(deps, input.windowKey, t, reqCreatedAtForDone, tasks)
       transitionTask(t, 'done', { at: doneAt, actor, role: isSubtask(t) ? 'subtask' : 'legacy' })
       // 收尾唯一入口（FR-5）：闭合全部 running 并写 end/delta（快照在完工时刻新取，非开工旧值）。
-      closeExecutions(t, { at: doneAt, outcome: 'succeeded' }, snapshotForWindow(deps, sessionKey))
+      // FR-2（REQ-261004110201-f253）：同时落产出条目数（filesChanged + completed）——
+      // 阶段遥测的数据来源；产出为空 → zeroOutput=true（供零产出告警与模板校准）。
+      closeExecutions(t, {
+        at: doneAt,
+        outcome: 'succeeded',
+        outputCount: parsed.filesChanged.length + parsed.completed.length,
+      }, snapshotForWindow(deps, sessionKey))
       return tasks
     })
+    // FR-3（REQ-261004110201-f253）：零产出告警——本卡完工后按已落盘数据推导「连续零产出」，
+    // 达阈值（且按 floor(streak/threshold) 去重）就在需求台账留一条结构化告警。
+    // **只告警、不改模板、不改路由、不阻断链**；告警写失败只 warn（旁路，不能拖垮交付）。
+    await maybeAlertZeroOutput(deps, task.requirementId, String(task.stageKind ?? ''))
     return { ok: true, ...base, filesChanged: parsed.filesChanged }
   } catch (err) {
     const code = (err as { code?: string }).code ?? 'REQBOARD_SUBTASK_GATE'
@@ -395,7 +486,7 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
       reason: reason.substring(0, 100)
     })
     const failedAt = deps.clock.now()
-    await store.mutate(task.requirementId, (tasks) => {
+    await mutateQueue(deps, task.requirementId, (tasks) => {
       const t = tasks.find((x) => x.id === task.id)
       if (t === undefined) return undefined
       // 收尾唯一入口（FR-5）：失败同样闭合 running 并写 end/delta（error 一并落账）。

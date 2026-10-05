@@ -104,8 +104,8 @@ describe('TC-14 四处 pm 弹框 header 均带标志', () => {
       requirements: [req({ id: REQ_ID, status: 'accepting', sourceSessionId: W, verification: { sheet } as never })],
     })
     h.questions.answers = [
-      { id: 'v1-1', selected: [ACCEPT_ITEM_OPTIONS.pass] },
-      { id: 'v1-2', selected: [ACCEPT_ITEM_OPTIONS.pass] },
+      { id: 'v1-1', selected: [ACCEPT_ITEM_OPTIONS.pass], custom: '实际结果：符合判据' },
+      { id: 'v1-2', selected: [ACCEPT_ITEM_OPTIONS.pass], custom: '实际结果：符合判据' },
       { id: 'final-pass', selected: [FINAL_PASS_LABEL] },
     ]
     const rec = recordingQuestions()
@@ -113,9 +113,13 @@ describe('TC-14 四处 pm 弹框 header 均带标志', () => {
 
     await acceptSheet(h.deps, {}, exec)
 
+    // REQ-261001154450-b918 FR-1：每个验收项现在是**两问**（裁决 + 实际结果），
+    // 第二问同样必须带 PM 标志——漏了前缀会被本用例抓出来（本轮就抓到一次）。
     expect(rec.seen).toEqual([
       pmHeader('需求级验收'),
+      pmHeader('实际结果'),
       pmHeader('验收项 t-000001'),
+      pmHeader('实际结果'),
       pmHeader('验收通过'),
     ])
     for (const header of rec.seen) expect(header.startsWith(PM_BADGE_PREFIX)).toBe(true)

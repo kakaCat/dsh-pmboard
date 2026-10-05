@@ -32,7 +32,8 @@ describe('父卡并发上限（6.1）', () => {
     // 口径跟随常量：上限改数值时本用例自动跟随，避免"测试把上限钉死"（2026-09-28）。
     const N = LIMITS.advanceMaxParallelParents
     const h = makeHarness()
-    h.repo.ledger.requirements = [req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true })]
+    h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true }))
+    await h.seedSettled()
     await h.setTasks('REQ-000001', [
       ...Array.from({ length: N }, (_, i) => task({ id: 't-p' + (i + 1), requirementId: 'REQ-000001', status: 'in_progress', title: 'p' + (i + 1) })),
       task({ id: 't-pX', requirementId: 'REQ-000001', status: 'todo', title: 'px' }),
@@ -49,7 +50,12 @@ describe('父卡层并行（6.2）', () => {
   it('两张互不依赖父卡的子卡链同时推进，都完成后 rollup 进 accepting', async () => {
     const h = makeHarness()
     h.docs.put(FILE, 'x')
-    h.repo.ledger.requirements = [req({ id: 'REQ-000001', status: 'implementing', category: 'doc', autoRun: true })]
+    h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing', category: 'doc', autoRun: true }))
+    await h.seedSettled()
+    // **时序保真**（B12 阶段②e）：文档在 t=0 写入，链随后开工。零时钟下"文件 mtime"与
+    // "子卡执行窗口"同为 0 ⇒ 跨卡覆盖守卫（cross-card.ts:45）会把产出误判成"落在别人窗口内"。
+    // 本用例要验的是**并行父卡都收尾 → rollup**，不是跨卡检测（6.5 专测）⇒ 把时间线拉开区分度。
+    h.clock.t = 100
     await h.setTasks('REQ-000001', [
       task({ id: 't-a', requirementId: 'REQ-000001', status: 'todo', title: 'A' }),
       task({ id: 't-b', requirementId: 'REQ-000001', status: 'todo', title: 'B' }),
@@ -61,7 +67,7 @@ describe('父卡层并行（6.2）', () => {
     expect(doneTasks.filter(t => t.parentId === undefined)).toHaveLength(2)
     expect(doneTasks.find(t => t.id === 't-a')!.status).toBe('done')
     expect(doneTasks.find(t => t.id === 't-b')!.status).toBe('done')
-    expect(h.repo.ledger.requirements[0]!.status).toBe('accepting')
+    expect((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id))!.status).toBe('accepting')
   })
 })
 
@@ -108,7 +114,8 @@ describe('运行期跨卡覆盖兜底（6.5）', () => {
   it('子卡产出文件落在另一在跑父卡窗口 → 子卡判失败（REQBOARD_CROSS_CARD）', async () => {
     const h = makeHarness()
     h.docs.put(FILE, 'x')
-    h.repo.ledger.requirements = [req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true })]
+    h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true }))
+    await h.seedSettled()
     await h.setTasks('REQ-000001', [
       task({ id: 't-a', requirementId: 'REQ-000001', status: 'in_progress', title: 'A', claimedAt: h.clock.t }),
       task({ id: 't-a1', requirementId: 'REQ-000001', status: 'in_progress', parentId: 't-a', stageKind: 'dev' as never, executions: [{ id: 'e1', trigger: 'auto', startedAt: h.clock.t, outcome: 'running' }] } as never),

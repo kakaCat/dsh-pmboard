@@ -10,4 +10,11 @@
 - [ ] **批准闸门**：调 `reqboard_ask_confirm(target=plan)` 弹框请人批准——
       批准后自动落库任务卡并进入实施（看板「批准计划」同样有效）；未获批准不得落库。
 - [ ] **卡内必给验收**：每张卡写可证伪的 acceptance（跑什么、看到什么算过），不放空话。
+- [ ] **容量纪律**：容量缺省 16 DU，`detailUnits = files×1 + anchors×0.5 + chars/2000`
+      （权重/容量单一源：`src/domain/limits.ts`）。
+- [ ] **每卡必声明 footprint**：`files` / `anchors` / `chars` 为正整数，`files` 不得小于
+      implementation 点到的路径数（可留余量；缩水会被 `REQBOARD_BAD_FOOTPRINT` 拒）。
+- [ ] **超容量自己切**：`detailUnits > 容量` 就按目录 / 接口切小；确需保留则在该卡计划行写
+      `⚠️超容量(建议N批)`，N = 算出的批数（写错会被 `plan_overcapacity_marker_missing` 拒）。
+- [ ] **批准清单照抄**：超容量清单自带「超容量 N 张：…」标签，别再拼一遍。
 - [ ] 下一步：implementing —— 用 reqboard_ask_confirm(target=plan) 交棒；未获批准不得进入。

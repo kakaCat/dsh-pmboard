@@ -1,0 +1,38 @@
+task:
+  id: t-91cdd0
+  title: 开窗落回源项目（适配器 + 两个用例调用点）·测试
+  status: done
+  implements: |-
+    src/adapters/SessionWindowOpener.ts：create(opts?) 按 opts 组装请求——workspaceId 或 cwd 只取其一（DSH 二者互斥，同时给会 gateway/bad-request）；新增 resolveSourceProject(sourceSessionId)：① workspaceRegistry.list().find(w => w.sessionIds.includes(id)).id → { workspaceId } ② 源会话 header.cwd → { cwd } ③ 都拿不到 → undefined。src/application/use-cases/OpenWindow.ts：mode=create 时先解析源项目，undefined → reject('REQBOARD_OPEN_WINDOW_UNAVAILABLE') 且不建会话。src/application/use-cases/CaptureRequirement.ts 的 handoff 分支同样带参（UC-7）。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-c553e8
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004150249-731e
+    TASK_ID: t-91cdd0
+    TASK_TITLE: 开窗落回源项目（适配器 + 两个用例调用点）·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T07:51:47.865Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004150249-731e
+  generated_at: 2026-10-04T07:51:41.740Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-04T07:51:47.865Z

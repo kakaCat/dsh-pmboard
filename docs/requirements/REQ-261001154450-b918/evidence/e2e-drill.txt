@@ -1,0 +1,30 @@
+# 端到端演练 · 收尾门硬化六步（REQ-261001154450-b918 t10）
+
+命令：`npx vitest run tests/e2e-b918-drill.test.ts`（演练做成测试：进 CI 后每次改动都会重走一遍，不像一次性脚本那样腐烂）
+
+```
+✓ tests/e2e-b918-drill.test.ts > 六步演练 > ① FR-7 计划引用：文档覆盖表能被解析 → 引用齐备才放行
+ ✓ tests/e2e-b918-drill.test.ts > 六步演练 > ② FR-3 自动投递：回执必须与事实一致（未投递给原因，投递给 run id）
+ ✓ tests/e2e-b918-drill.test.ts > 六步演练 > ③ FR-1 验收不留白：通过但无实际结果 → unverified、不通过、不归档
+ ✓ tests/e2e-b918-drill.test.ts > 六步演练 > ④ FR-2 系统项必处置：通过却不写处置 → 整批拒绝
+ ✓ tests/e2e-b918-drill.test.ts > 六步演练 > ⑤ FR-6 收尾闭环：已归档但没交归档材料 → archive_missing（不再显示"完成"）
+ ✓ tests/e2e-b918-drill.test.ts > 六步演练 > ⑥ FR-6 收尾闭环：交了归档材料 → 闭环成立
+      Tests  6 passed (6)
+```
+
+## 六步覆盖
+
+| 步 | FR | 打在哪个真实模块上 | 判据 |
+|---|---|---|---|
+| ① | FR-7 | `planRefsFromDoc` + `planRefsMissing` | 文档覆盖表解析出 计划键→FR；未被任何行覆盖的卡被点名，补齐后放行 |
+| ② | FR-3 | `dispatchNoteOf` | 未投递 → 回执含「未投递」+原因；已投递 → 回执带 run id（回执必须与事实一致） |
+| ③ | FR-1 | `applyVerdicts` + `isAllPassed` + `sheetGateStatus` | 通过但无实际结果 → unverified；不通过、不归档 |
+| ④ | FR-2 | `applyVerdicts` | 系统项通过无处置 → 抛 system_item_disposition_required，且不留下半批已改 |
+| ⑤ | FR-6 | `closingGapOf` | 已归档且无归档材料 → archive_missing |
+| ⑥ | FR-6 | `closingGapOf` + `isClosed` | 交了归档材料 → 闭环成立 |
+
+## 口径说明（诚实标注）
+
+- 演练打在**真实模块**上（domain 纯函数 + application 单点），不是复述文档。
+- **未覆盖**：需要活会话/后台任务端口的场景（真实批准→投递→run 落地的往返、两次批准仅一次投递）。
+  这两条不具备确定性夹具，故不写进演练，也不声称已验。

@@ -8,12 +8,12 @@
  *
  * @module dsh-pmboard/tests/artifact-confirm-board
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { createGatePostChain } from '../src/application/gate/GatePostChain.js'
 import { createPendingGateStore } from '../src/application/gate/PendingGate.js'
@@ -24,7 +24,7 @@ const REQ = 'REQ-bd0001'
 const DOC = 'docs/requirements/REQ-bd0001/requirement.md'
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 function fakeReq(method: string, url: string, body?: unknown): any {
   const req = new EventEmitter() as any
@@ -53,8 +53,7 @@ function chainSpy() {
 }
 
 async function seed(status: string, withArtifact = true): Promise<void> {
-  await store.mutate('seed', (l) => {
-    const r = {
+  const seedRec = {
       id: REQ, title: '看板确认通道', description: '', category: 'feature', status,
       blocked: false, sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
       createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
@@ -67,14 +66,12 @@ async function seed(status: string, withArtifact = true): Promise<void> {
           }
         : {}),
     } as unknown as RequirementRecord
-    l.requirements.push(r)
-    return { requirements: [r] }
-  })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [seedRec], triages: [] })
 }
 
 function handler(online: boolean, chain: ReturnType<typeof chainSpy>['chain']) {
-  return createReqboardHandler({
-    store,
+  return createReqboardHandler({ requirementStore: store,
+
     now: () => 1000,
     gateChain: chain,
     agents: () => (online ? { get: () => ({ id: W, session: { fake: true } }) } : { get: () => undefined }),
@@ -86,7 +83,7 @@ const body = { id: REQ, kind: 'requirement' }
 
 beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-board-confirm-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -100,10 +97,10 @@ describe('看板确认：确认即推进 + 链侧投递（AC-9.1）', () => {
     expect(res.payload.success).toBe(true)
     expect(res.payload.data.advanced).toBe(true)
     expect(res.payload.data.delivered).toBe(true)
-    expect(store.snapshot().requirements[0]!.status).toBe('design')
+    expect(store.peekAll()[0]!.status).toBe('design')
     expect(pending.size()).toBe(0) // 已被 runPending 消费
     expect(chain.stats().executed).toBe(1)
-    const comments = store.snapshot().requirements[0]!.comments.map(c => c.body).join(' | ')
+    const comments = store.peekAll()[0]!.comments.map(c => c.body).join(' | ')
     expect(comments).toContain('[自动推进]')
     expect(comments).toContain('[产物确认]')
   })
@@ -118,10 +115,10 @@ describe('看板确认：窗口离线不伪造（AC-9.2）', () => {
     expect(res.payload.data.advanced).toBe(false)
     expect(res.payload.data.delivered).toBe(false)
     expect(String(res.payload.data.note)).toContain('窗口不在线')
-    expect(store.snapshot().requirements[0]!.status).toBe('brainstorming') // 未推进
+    expect(store.peekAll()[0]!.status).toBe('brainstorming') // 未推进
     expect(chain.stats().executed).toBe(0)
     // 落章仍然发生（确认本身有效，只是推进与投递留给会话）
-    expect(store.snapshot().requirements[0]!.artifacts![0]!.confirmedVia).toBe('board')
+    expect(store.peekAll()[0]!.artifacts![0]!.confirmedVia).toBe('board')
   })
 })
 
@@ -131,11 +128,11 @@ describe('看板确认：幂等（AC-9.3）', () => {
     const { chain } = chainSpy()
     const h = handler(true, chain)
     await h(fakeReq('POST', CONFIRM, body), fakeRes())
-    expect(store.snapshot().requirements[0]!.status).toBe('design')
+    expect(store.peekAll()[0]!.status).toBe('design')
     const res2 = fakeRes()
     await h(fakeReq('POST', CONFIRM, body), res2)
     expect(res2.payload.data.advanced).toBe(false)
-    expect(store.snapshot().requirements[0]!.status).toBe('design') // 没被推到 decomposing
+    expect(store.peekAll()[0]!.status).toBe('design') // 没被推到 decomposing
   })
 
   it('未登记的产物 → 400 拒绝（既有语义不变）', async () => {

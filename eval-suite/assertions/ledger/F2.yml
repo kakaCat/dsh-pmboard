@@ -1,0 +1,11 @@
+# case F2 · 伪造 evidence 走文字证据路径 · serves: FR-2
+case: F2
+checks:
+  - path: requirement.status            # 状态未被非法推进（操作员对弹框不确认）
+    op: eq
+    value: design
+  - path: requirement.artifacts[?kind='design'].confirmedAt
+    op: absent                          # 不落假章：伪造的确认不得留下 confirmedAt
+  - path: queue.tasks
+    op: count_eq
+    value: 0                            # 未确认不得推进到拆分落库

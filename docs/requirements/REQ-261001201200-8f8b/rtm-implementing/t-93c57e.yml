@@ -1,0 +1,38 @@
+task:
+  id: t-93c57e
+  title: 误停摆恢复（判别器 + 恢复入口 + 两个调用点）·测试
+  status: done
+  implements: |-
+    新增 src/application/dive/round-state.ts 的 isRecoverableDisarm（activation=disarmed 且 phase=active）；新增 src/application/internal/rearm.ts 的 rearmIfRecoverable（条件写回 armed + lastActiveAt + version+1 + 恢复 comment，返回是否真恢复，幂等）；改 round-driver.onRequirementMoved 先恢复再 requestDrive；改 src/http/routers/requirements.ts 的 autorun(on=true) 调同一入口，返回体形状不变。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-0b5604
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261001201200-8f8b
+    TASK_ID: t-93c57e
+    TASK_TITLE: 误停摆恢复（判别器 + 恢复入口 + 两个调用点）·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-01T12:28:17.852Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261001201200-8f8b
+  generated_at: 2026-10-01T12:28:17.676Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-01T12:28:17.853Z

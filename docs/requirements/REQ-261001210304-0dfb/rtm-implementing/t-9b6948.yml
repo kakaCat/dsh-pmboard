@@ -1,0 +1,35 @@
+task:
+  id: t-9b6948
+  title: 挂载接缝按记忆回填并同步工具条与滚动
+  status: done
+  implements: "① src/client/views/dag-view.ts：新增 export interface MountDagOptions { stateKey?: string }；把现有写死的 initial 提为导出常量 DEFAULT_DAG_STATE 后，mountDagCanvas(tasks, ready?, canvasId = DAG_CANVAS_ID, opts?: MountDagOptions) 里当 opts?.stateKey 有值时 snap = readDagViewState(key)，initial = { dir: snap?.dir ?? 'vertical', crit: snap?.crit === true, focus: snap?.focus === true, pinned: snap?.pinned ?? null }（无 stateKey 时用 DEFAULT_DAG_STATE，行为逐字节不变）。② 新增内部 syncToolbar(panel, state)：按 viewer.state() 给 [data-dag-dir=vertical|horizontal] 与 [data-dag-toggle=crit|focus] 设/清 is-on（回填后必须与真实状态对齐——现状按钮点击只 toggle class）。③ paint({}) 之后（canvas 宽高已在 paint 内同步设好）恢复 wrap.scrollTop/scrollLeft = snap 值（wrap 为空则跳过）。④ disposer 顺序改为：先 writeDagViewState(key, { ...viewer.state(), scrollTop: wrap?.scrollTop ?? 0, scrollLeft: wrap?.scrollLeft ?? 0 })，再摘监听/断 observer/destroy viewer（写回必须先于释放）。⑤ src/client/dag-mount.ts：tryMountDagCanvas(tasks, ready?, canvasId?, opts?: MountDagOptions) 把 opts 透传（rAF 包装与 getElementById 存在性检查保持原样）。验证：npx vitest run tests/dag-view-state.test.ts（追加 A1-2 二次挂载回填、A1-3 工具条 is-on 同步用例）；npx vitest run tests/dag-view.test.ts（无 opts 路径必须全绿 = 兼容承诺）。"
+  serves:
+    - FR-1
+    - FR-2
+  depends_on:
+    - t-8e8fdc
+  phase: implement
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261001210304-0dfb
+    TASK_ID: t-9b6948
+    TASK_TITLE: 挂载接缝按记忆回填并同步工具条与滚动
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-01T13:44:27.451Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261001210304-0dfb
+  generated_at: 2026-10-01T13:41:34.386Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-01T13:44:29.465Z

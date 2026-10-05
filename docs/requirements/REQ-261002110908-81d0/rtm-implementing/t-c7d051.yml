@@ -1,0 +1,38 @@
+task:
+  id: t-c7d051
+  title: 定死长文本入参约定契约：共享常量 + 覆盖清单 + 断言助手·复核
+  status: done
+  implements: |-
+    ① src/tools/shared.ts（既有 22 行，只追加导出）：export const LONG_TEXT_ARG_NOTE: string —— 42 字，含三锚点（每条短句建议 ≤60 字 / 需引号用「」避免半角双引号 / 文本过大拆成多次调用）；export const LONG_TEXT_FIELDS: readonly { tool: string; field: string }[] —— 登记 reqboard_task_report(summary,completed,next_step)、reqboard_submit(summary,evidence,change_note)、reqboard_ask_confirm(question,evidence)、reqboard_task_move(reason,acceptance)、reqboard_capture(summary,reason)、reqboard_note_interruption(reason)、reqboard_task_adopt(reason)、reqboard_task_regenerate(reason)。② 新建 tests/arg-guidance.test.ts：导出 assertNoteAnchors(description) 返回缺失锚点名单，文件头写 // serves: FR-2。③ 用例：常量含三锚点且 ≤120 字；清单 ≥7 个工具；反向：assertNoteAnchors('随便一段没有约定的文本') 非空。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-43f868
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002110908-81d0
+    TASK_ID: t-c7d051
+    TASK_TITLE: 定死长文本入参约定契约：共享常量 + 覆盖清单 + 断言助手·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T04:04:31.268Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002110908-81d0
+  generated_at: 2026-10-02T04:04:31.078Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-02T04:04:31.269Z

@@ -1,12 +1,12 @@
 /**
  * 项目看板 client 视图纯函数单测 —— 数据 → innerHTML 的渲染正确性。
- * 覆盖：泳道看板 / 需求详情（DAG + 任务列 + 闸门）/ 任务详情 / 空态错误。· serves: FR-1, FR-6
+ * 覆盖：泳道看板 / 需求详情（DAG + 任务列 + 闸门）/ 任务详情 / 空态错误 / 运行中指示。· serves: FR-1, FR-3, FR-4, FR-6, FR-8
  * 渲染函数零 DOM 依赖（纯字符串），Node 环境直接跑。
  */
 import { describe, it, expect } from 'vitest'
 import {
   buildBoard, buildReqDetail, buildTaskDetail, buildTasksPage, buildEmpty, buildError,
-  toReqCards, LANE_STATUSES,
+  buildListView, toReqCards, LANE_STATUSES,
 } from '../src/client/view.ts'
 import type { BoardState, RequirementRecord, RequirementStatus, TaskRecord } from '../src/client/types.ts'
 
@@ -51,7 +51,10 @@ describe('buildBoard', () => {
       expect(html).toContain(`data-lane="${s}"`)
     }
     expect(html).toContain('项目看板')
-    expect(html).toContain('data-action="new-req"')
+    // 2026-09-30 用户裁定：看板不提供人工创建入口——需求与任务一律经 agent 工具链创建
+    expect(html).not.toContain('data-action="new-req"')
+    expect(html).not.toContain('data-action="open-tasks"')
+    expect(html).toContain('data-action="refresh"')
   })
 
   it('places requirement cards in their status lane', () => {
@@ -70,18 +73,24 @@ describe('buildBoard', () => {
     expect(html).toContain('1/2')
   })
 
-  it('excludes archived and canceled from lanes（归档/取消不进泳道）', () => {
+  it('excludes archived and canceled from lanes（归档/取消不进泳道，改出现于底部归档条）', () => {
     const open = makeReq({ id: 'REQ-000001', status: 'done' })
     const archived = makeReq({ id: 'REQ-000002', status: 'archived' })
     const canceled = makeReq({ id: 'REQ-000003', status: 'canceled' })
     const html = buildBoard(makeState({ requirements: [open, archived, canceled] }))
-    // done（待归档）归入验收泳道；archived/canceled 被 toReqCards 过滤，不进任何泳道。
-    // 历史断言曾要求 dsh-pm-archived-bar——该渲染在基线里已不存在（CSS 残留），
-    // 2026-09-29 经用户裁定按真实行为校正（另见完工记录：归档条回归另议）。
+    // done（待归档）归入验收泳道；archived/canceled 不进任何泳道。
+    // REQ-261002105242-a3fb FR-1（2026-10-02）：归档条回归——归档/取消需求不再从看板**消失**，
+    // 但只出现在底部归档条里。判据因此更精确：泳道段（归档条之前）依旧不含它们，
+    // 整页则必须含它们（否则又回到"数据在、入口没了"的老毛病）。
+    // 历史断言曾要求 dsh-pm-archived-bar，2026-09-29 因该渲染在基线里缺失被删；本次把它修回来。
     expect(html).toContain('data-lane="accepting"')
     expect(html).toContain('data-req="REQ-000001"')
-    expect(html).not.toContain('data-req="REQ-000002"')
-    expect(html).not.toContain('data-req="REQ-000003"')
+    const lanesHtml = html.split('data-archived-bar')[0] ?? ''
+    expect(lanesHtml).not.toContain('data-req="REQ-000002"')
+    expect(lanesHtml).not.toContain('data-req="REQ-000003"')
+    expect(html).toContain('data-archived-bar')
+    expect(html).toContain('data-req="REQ-000002"')
+    expect(html).toContain('data-req="REQ-000003"')
   })
 
   it('escapes HTML in title (XSS guard)', () => {
@@ -256,6 +265,21 @@ describe('窗口关联可见性', () => {
   it('人工建卡（无 sourceSessionId）不渲染窗口 chip', () => {
     const html = buildBoard(makeState({ requirements: [makeReq()] }))
     expect(html).not.toContain('dsh-pm-window')
+  })
+
+  it('列表视图：操作列不再重复「会话」按钮（负责人 chip 已是同一跳转）', () => {
+    // 2026-09-30 用户裁定：负责人列的窗口 chip 本身可点跳会话，「操作」列的会话按钮重复，已删
+    const sid = 'session-w-b7c52392'
+    const req = makeReq({ sourceSessionId: sid })
+    const html = buildListView(makeState({ requirements: [req] }), 1700000000000)
+    const row = html.slice(html.indexOf('dsh-pm-list-row'))
+    expect(row).not.toContain('>会话<')
+    // 跳转能力保留：整行恰好一处 jump-session（负责人 chip）
+    expect((row.match(/jump-session/g) ?? []).length).toBe(1)
+    expect(row).toContain(`data-sid="${sid}"`)
+    // 操作列只剩卡面推进按钮
+    const actions = row.slice(row.indexOf('dsh-pm-list-actions'))
+    expect(actions).not.toContain('jump-session')
   })
 
   it('详情页头部也显示来源窗口 chip', () => {
@@ -558,7 +582,8 @@ describe('验收区与归档区', () => {
     expect(detail).toContain('需求文档')
     expect(detail).toContain('agent-dh/docs/architecture/requirement-board.md')
     expect(detail).toContain('索引条目：需求看板加时间线与计划模式')
-    expect(detail).toContain('data-action="archive-req"')
+    // REQ-261002105242-a3fb FR-4：归档按钮随服务端端点（REQ-9f4a44 移除 POST /req/archive）一起下线
+    expect(detail).not.toContain('data-action="archive-req"')
     expect(buildBoard(makeState({ requirements: [ready] }), T0)).toContain('待归档')
 
     const archived = makeReq({ status: 'archived', archive: { ...archive, archivedAt: T0 + HOUR, archivedBy: { kind: 'human' as const } } })
@@ -660,5 +685,111 @@ describe('立项取消按钮', () => {
     for (const s of ['done', 'canceled', 'archived'] as const) {
       expect(buildReqDetail(makeReq({ status: s }), [])).not.toContain('立项取消')
     }
+  })
+})
+
+// ── 运行中指示（REQ-261004210128-283d t2/t4 · TC-08～TC-10）· serves: FR-3, FR-4, FR-8 ──
+describe('运行中指示（泳道卡 + 列表行）', () => {
+  const running = (sid: string) => new Set<string>([sid])
+
+  it('TC-08 传 running 集合：泳道卡出现 data-running 恰 1 次，且带 aria-label', () => {
+    const req = makeReq({ id: 'REQ-000001', status: 'implementing', sourceSessionId: 's-a' })
+    const html = buildBoard(makeState({ requirements: [req] }), 1, 'lanes', {}, undefined, running('s-a'))
+    expect(html.split('data-running="true"').length - 1).toBe(1)
+    expect(html).toContain('aria-label="会话进行中"')
+    // 幂等：同输入两次调用结果逐字节相等
+    const again = buildBoard(makeState({ requirements: [req] }), 1, 'lanes', {}, undefined, running('s-a'))
+    expect(again).toBe(html)
+  })
+
+  it('TC-09 省略 running 参数：输出与不含指示的版本逐字节一致（旧调用点零回归）', () => {
+    const req = makeReq({ id: 'REQ-000001', status: 'implementing', sourceSessionId: 's-a' })
+    const state = makeState({ requirements: [req] })
+    expect(buildBoard(state, 1)).toBe(buildBoard(state, 1, 'lanes', {}, undefined, new Set()))
+    expect(buildBoard(state, 1)).not.toContain('data-running')
+  })
+
+  it('TC-09b 无关会话在跑：该需求不出指示（不误报）', () => {
+    const req = makeReq({ id: 'REQ-000001', status: 'implementing', sourceSessionId: 's-a' })
+    const html = buildBoard(makeState({ requirements: [req] }), 1, 'lanes', {}, undefined, running('s-other'))
+    expect(html).not.toContain('data-running')
+  })
+
+  it('TC-09c 人工建卡（无窗口绑定）：不出指示，也不出空壳', () => {
+    const req = makeReq({ id: 'REQ-000001', status: 'implementing' })
+    const html = buildBoard(makeState({ requirements: [req] }), 1, 'lanes', {}, undefined, running('s-a'))
+    expect(html).not.toContain('data-running')
+  })
+
+  it('TC-09d 多席位：worker 在跑也出指示（席位权威）', () => {
+    const req = makeReq({
+      id: 'REQ-000001', status: 'implementing', sourceSessionId: 's-owner',
+      seats: [
+        { windowKey: 's-owner', role: 'owner', joinedAt: 1 },
+        { windowKey: 's-worker', role: 'worker', joinedAt: 1 },
+      ],
+    })
+    const html = buildBoard(makeState({ requirements: [req] }), 1, 'lanes', {}, undefined, running('s-worker'))
+    expect(html).toContain('data-running="true"')
+  })
+
+  it('TC-10 列表视图：同一需求出现同款指示；泳道与列表同时出现/消失', () => {
+    const req = makeReq({ id: 'REQ-000001', status: 'implementing', sourceSessionId: 's-a' })
+    const state = makeState({ requirements: [req] })
+    const listOn = buildBoard(state, 1, 'list', {}, undefined, running('s-a'))
+    const listOff = buildBoard(state, 1, 'list', {}, undefined, new Set())
+    expect(listOn).toContain('data-running="true"')
+    expect(listOff).not.toContain('data-running')
+    // 与泳道同判据：同一集合下两处表现一致
+    expect(buildBoard(state, 1, 'lanes', {}, undefined, running('s-a'))).toContain('data-running="true"')
+  })
+})
+
+// ── 运行中指示的样式契约（REQ-261004210128-283d t4 · A9 的自动化锚点）· serves: FR-7 ──
+describe('运行中指示样式（动效偏好与主题令牌）', () => {
+  it('样式分片含指示规则、旋转关键帧与 prefers-reduced-motion 降级分支', async () => {
+    const { BOARD_CSS } = await import('../src/client/styles/board.ts')
+    expect(BOARD_CSS).toContain('.dsh-pm-running')
+    expect(BOARD_CSS).toContain('@keyframes dsh-pm-running-spin')
+    expect(BOARD_CSS).toContain('prefers-reduced-motion: reduce')
+    // 降级分支里必须点名弧线动画（否则「减少动效」下仍在转）
+    const reduced = BOARD_CSS.slice(BOARD_CSS.indexOf('prefers-reduced-motion'))
+    expect(reduced).toContain('.dsh-pm-running-arc')
+    expect(reduced).toContain('animation: none')
+    // 颜色跟随主题：描边用 currentColor；容器颜色取主题令牌 var(--dsw-…)（不裸写十六进制当主色）
+    const strokeRule = BOARD_CSS.slice(BOARD_CSS.indexOf('.dsh-pm-running-track,'), BOARD_CSS.indexOf('.dsh-pm-running-track {'))
+    expect(strokeRule).toContain('currentColor')
+    const colorRule = BOARD_CSS.slice(BOARD_CSS.indexOf('.dsh-pm-running {'), BOARD_CSS.indexOf('.dsh-pm-running-svg'))
+    expect(colorRule).toMatch(/color:\s*var\(--dsw-/)
+  })
+})
+
+// ── 运行中指示的位置契约（2026-10-04 用户裁定：两个视图都紧跟项目 ID）· serves: FR-3, FR-4 ──
+describe('运行中指示的位置（泳道卡与列表行都紧跟项目 ID）', () => {
+  const req = () => makeReq({ id: 'REQ-000001', status: 'implementing', sourceSessionId: 's-a' })
+  const busy = new Set(['s-a'])
+  /** 圆圈紧跟 ID（两个视图共用同一邻接形状）。 */
+  const idThenDot = '<span class="dsh-pm-card-id">REQ-000001</span><span class="dsh-pm-running"'
+
+  it('泳道卡：圆圈紧跟项目 ID（在卡面顶部那行内，不在窗口 chip 行）', () => {
+    const html = buildBoard(makeState({ requirements: [req()] }), 1, 'lanes', {}, undefined, busy)
+    expect(html).toContain(idThenDot)
+    const iDot = html.indexOf('data-running="true"')
+    const iTitle = html.indexOf('dsh-pm-card-title')
+    const iWindow = html.indexOf('dsh-pm-window')
+    expect(iDot).toBeGreaterThan(-1)
+    expect(iDot).toBeLessThan(iTitle)    // 在卡面顶部那行内（标题之前）
+    expect(iDot).toBeLessThan(iWindow)   // 排在窗口 chip 之前
+    // 顶部那行确实包含它
+    const top = html.slice(html.indexOf('dsh-pm-card-top'), iTitle)
+    expect(top).toContain('data-running="true"')
+  })
+
+  it('列表行：圆圈紧跟在项目 ID 之后（ID 单元格内）', () => {
+    const html = buildBoard(makeState({ requirements: [req()] }), 1, 'list', {}, undefined, busy)
+    expect(html).toContain(idThenDot)
+    // 标题列不再有圆圈
+    const titleCell = html.slice(html.indexOf('dsh-pm-td-title'), html.indexOf('dsh-pm-col-cat'))
+    expect(titleCell).not.toContain('data-running="true"')
   })
 })

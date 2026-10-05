@@ -10,11 +10,11 @@
  *
  * 验收标准对照：requirement.md §5.11「接力实测」。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import {
   definePlanSubmitTool,
   defineDecomposeTool,
@@ -32,7 +32,7 @@ const WINDOW_B = 'session-bbbb6666-7777-8888-9999-000000000000'
 
 let dir: string
 let prevCwd: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 /** 提到 describe 作用域：StageDetail 装配要读**队列**任务（v9 台账已无 tasks）。 */
 let deps: ReqboardToolDeps
 /** 队列任务读取（`assembleStageDetail` 的 `{ tasks }` 入参来源）。 */
@@ -46,7 +46,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-handoff-'))
   prevCwd = process.cwd()
   process.chdir(dir)
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
   deps = { store, now: () => Date.now() } as never
   planTool = definePlanSubmitTool(deps) as never
   decompose = defineDecomposeTool(deps) as never
@@ -69,7 +69,7 @@ async function seed(status: RequirementStatus = 'design', sourceSessionId: strin
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
     statusHistory: [{ status: 'draft', at: 1, by: { kind: 'human' } }],
   } as RequirementRecord
-  await store.mutate('requirement-created', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('requirement-created', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
   return r
 }
 
@@ -87,10 +87,8 @@ const CHAIN_TASKS = [
 async function windowACompletesSetup(): Promise<string[]> {
   await seed('decomposing')
   await run(planTool, { path: 'docs/requirements/REQ-hand1/decomposition.md', summary: '目标：加时间线；做法：协议→UI→测试', tasks: CHAIN_TASKS })
-  await store.mutate('requirement-updated', (l) => {
-    const r = l.requirements[0]
-    if (r.plan !== undefined) { r.plan.approvedAt = 1000; r.plan.approvedBy = { kind: 'human' } }
-    return { requirements: [r] }
+  await store.mutate('REQ-hand1', (r) => {    if (r.plan !== undefined) { r.plan.approvedAt = 1000; r.plan.approvedBy = { kind: 'human' } }
+    return { changed: true }
   })
   const out = await run(decompose, {})
   return out.created.map((c: { id: string }) => c.id)
@@ -140,8 +138,7 @@ describe('接力实测：任务卡自足（新窗口零会话历史可续作）'
 
   it('StageDetail.decomposing 暴露 dependsOn 依赖链（handoff 数据锚点）', async () => {
     const ids = await windowACompletesSetup()
-    const ledger = store.snapshot()
-    const req = ledger.requirements[0]
+    const req = (await store.get('REQ-hand1'))!
 
     const detail = assembleStageDetail(req, { tasks: await queueTasksOf(req.id) }, 'decomposing')
     if (detail.stage !== 'decomposing') throw new Error('narrow')
@@ -213,8 +210,7 @@ describe('接力实测：task_report 追加后文件仍结构化', () => {
     expect(card2).toContain('协议层加时间线字段')
 
     // 窗口 B 从 StageDetail 读产物链（requirement → plan → decomposition → task_detail）
-    const ledger = store.snapshot()
-    const req = ledger.requirements[0]
+    const req = (await store.get('REQ-hand1'))!
     const detail = assembleStageDetail(req, { tasks: await queueTasksOf(req.id) }, 'implementing')
     if (detail.stage !== 'implementing') throw new Error('narrow')
 
@@ -228,17 +224,14 @@ describe('接力实测：task_report 追加后文件仍结构化', () => {
     const [, t2] = await windowACompletesSetup()
 
     // 需求先进入 implementing（模拟人确认拆分清单）
-    await store.mutate('human-confirm', (l) => {
-      const r = l.requirements.find(x => x.id === 'REQ-hand1')!
+    await store.mutate('REQ-hand1', (r) => {
       r.status = 'implementing'
-      return { requirements: [r] }
+      return { changed: true }
     })
 
     // 模拟接力：需求重新绑定到窗口 B（新窗口接手）
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements.find(x => x.id === 'REQ-hand1')!
-      r.sourceSessionId = WINDOW_B
-      return { requirements: [r] }
+    await store.mutate('REQ-hand1', (r) => {      r.sourceSessionId = WINDOW_B
+      return { changed: true }
     })
 
     // 窗口 B 开工 t2
@@ -298,8 +291,7 @@ describe('接力实测：handoff 契约——新窗口不读历史对话即可�
 
     // ── 窗口 B：零会话历史，仅凭任务卡 + StageDetail 接手 t2 ──
     // B 读 StageDetail.implementing 拿到产物链和任务列表
-    const ledgerBefore = store.snapshot()
-    const reqBefore = ledgerBefore.requirements[0]
+    const reqBefore = (await store.get('REQ-hand1'))!
     const detail = assembleStageDetail(reqBefore, { tasks: await queueTasksOf(reqBefore.id) }, 'implementing')
     if (detail.stage !== 'implementing') throw new Error('narrow')
 
@@ -318,16 +310,12 @@ describe('接力实测：handoff 契约——新窗口不读历史对话即可�
     expect(cardContent).toContain('协议层加时间线字段')
 
     // B 开工 + 汇报
-    await store.mutate('human-confirm', (l) => {
-      const r = l.requirements.find(x => x.id === 'REQ-hand1')!
-      r.status = 'implementing'
-      return { requirements: [r] }
+    await store.mutate('REQ-hand1', (r) => {      r.status = 'implementing'
+      return { changed: true }
     })
     // 模拟接力：需求重新绑定到窗口 B
-    await store.mutate('requirement-updated', (l) => {
-      const r = l.requirements.find(x => x.id === 'REQ-hand1')!
-      r.sourceSessionId = WINDOW_B
-      return { requirements: [r] }
+    await store.mutate('REQ-hand1', (r) => {      r.sourceSessionId = WINDOW_B
+      return { changed: true }
     })
     await run(taskMove, { task_id: t2, to: 'in_progress', reason: 'B 接手' }, WINDOW_B)
     await run(taskReport, {
@@ -336,8 +324,7 @@ describe('接力实测：handoff 契约——新窗口不读历史对话即可�
     }, WINDOW_B)
 
     // ── 验证产物链完整：从 implementing StageDetail 可追溯到全部产物 ──
-    const ledgerAfter = store.snapshot()
-    const reqAfter = ledgerAfter.requirements[0]
+    const reqAfter = (await store.get('REQ-hand1'))!
     const finalDetail = assembleStageDetail(reqAfter, { tasks: await queueTasksOf(reqAfter.id) }, 'implementing')
     if (finalDetail.stage !== 'implementing') throw new Error('narrow')
 

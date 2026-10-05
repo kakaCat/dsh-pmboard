@@ -20,7 +20,7 @@ export interface VerificationDocItem {
   criterion: string
   /** 派生的操作步骤来源（任务卡 acceptance / 需求级标准） */
   howToVerify: string
-  status: 'pending' | 'passed' | 'failed' | 'not_verifiable'
+  status: 'pending' | 'passed' | 'failed' | 'not_verifiable' | 'unverified'
   opinion?: string
   /** 裁决人（验收结果表用） */
   decidedBy?: string
@@ -44,6 +44,8 @@ const STATUS_MARK: Readonly<Record<VerificationDocItem['status'], string>> = {
   passed: '✓ 通过',
   failed: '✗ 不通过',
   not_verifiable: '⊘ 不可验收',
+  // REQ-261001154450-b918 FR-1：通过但没留实际结果的项——**不计入通过**，故与 ✓ 通过分开标注
+  unverified: '◻ 未复核（未附实际结果）',
 }
 
 /** 毫秒时间戳 → YYYY-MM-DD HH:mm（无中文拼接，纯数字格式）。 */
@@ -60,6 +62,21 @@ function toSteps(text: string): string[] {
   return parts.length > 0 ? parts : [text.trim() || '（未填写验收标准）']
 }
 
+/**
+ * 验收内容去重（人读纪律）：criterion 常写成「【标题】验收：<acceptance 原文>」，
+ * 而 howToVerify 就是同一串 acceptance——同一段话在「验收内容/操作步骤/预期结果」重复三遍。
+ * 这里把 howToVerify 原文从 criterion 里剥掉，「验收内容」只留业务结果（【标题】验收），
+ * 操作细节由「操作步骤」一节独占。剥完剩余过短（系统项 criterion == howToVerify）→ 保留原文。
+ */
+function dedupCriterion(criterion: string, howToVerify: string): string {
+  const how = howToVerify.trim()
+  if (how.length === 0) return criterion
+  const idx = criterion.indexOf(how)
+  if (idx < 0) return criterion
+  const head = criterion.slice(0, idx).replace(/[：:]\s*$/, '').trim()
+  return head.length >= 6 ? head : criterion
+}
+
 export function renderVerificationDoc(input: VerificationDocInput): string {
   const lines: string[] = []
   lines.push(fmt('# {reqId} 验收文档', { reqId: input.reqId }))
@@ -73,12 +90,12 @@ export function renderVerificationDoc(input: VerificationDocInput): string {
   for (const it of input.items) {
     lines.push(fmt('### {id} · {title}', { id: it.id, title: it.title }))
     lines.push('')
-    lines.push(fmt('**验收内容**：{criterion}', { criterion: it.criterion }))
+    lines.push(fmt('**验收内容**：{criterion}', { criterion: dedupCriterion(it.criterion, it.howToVerify) }))
     lines.push('')
     lines.push('**操作步骤**：')
     toSteps(it.howToVerify).forEach((s, i) => lines.push(fmt('{n}. {step}', { n: i + 1, step: s })))
     lines.push('')
-    lines.push(fmt('**预期结果**：按上述步骤执行后满足验收标准：{how}', { how: it.howToVerify }))
+    lines.push('**预期结果**：上述步骤全部执行成功，输出与「验收内容」描述一致即通过')
     lines.push('')
     lines.push(fmt('**实际结果**：{actual}', { actual: it.opinion ?? '（待填写）' }))
     lines.push('')

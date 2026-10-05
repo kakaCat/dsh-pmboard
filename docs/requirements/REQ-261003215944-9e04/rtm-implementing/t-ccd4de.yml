@@ -1,0 +1,39 @@
+task:
+  id: t-ccd4de
+  title: 跨窗口投递自署 kind 并修冷会话断点
+  status: done
+  implements: 改 src/adapters/AgentDeliverer.ts：投递前用 sessionController.resolveAgent(windowKey) 支持冷会话 resume（现状 src/adapters/AgentDeliverer.ts:81-83 用 agents.get() 对冷会话返回 undefined，只会说'窗口不在线'），消息用自署 source.kind（如 'reqboard-open-window'）经 agent.followup 投递，并在投递后 sessions.flush。禁止使用 sessionController.prompt（它把消息标成 kind:'user'，见 packages/api/session-controller/src/commands.ts:331-336）。配方照 packages/schedule/schedule/src/runtime.ts:101-123。
+  serves:
+    - FR-7
+  depends_on:
+    - t-5677c4
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261003215944-9e04
+    TASK_ID: t-ccd4de
+    TASK_TITLE: 跨窗口投递自署 kind 并修冷会话断点
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 3
+  workflow_done: 3
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-03T15:17:53.201Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-03T15:18:43.875Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261003215944-9e04
+  generated_at: 2026-10-03T15:17:53.200Z
+  version: 10
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 3
+  last_updated: 2026-10-03T15:19:04.566Z

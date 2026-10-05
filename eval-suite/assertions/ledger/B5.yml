@@ -1,0 +1,11 @@
+# case B5 · 已确认产物重写须带 change_note · serves: FR-2
+case: B5
+checks:
+  - path: requirement.status
+    op: eq
+    value: brainstorming            # 重写产物不推进状态
+  - path: requirement.artifacts[?kind='requirement'].confirmedAt
+    op: absent                      # 旧确认已作废
+  - path: requirement.pending_confirms
+    op: contains
+    value: requirement              # 新确认待办已挂起

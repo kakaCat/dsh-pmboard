@@ -1,0 +1,38 @@
+task:
+  id: t-e16560
+  title: 刷新别把人弹回去：把它接在重绘那两行上·研发
+  status: done
+  implements: |-
+    改 src/client/board-mount.ts 的 render()：在 switch (mode.kind) 之前调 captureBoardScroll(viewEl)、之后调 restoreBoardScroll(viewEl)（viewEl === undefined 与 state === undefined 的空态分支不进记忆）。在 tests/board-lane-scroll.test.ts 追加 TC-5：桩容器（innerHTML setter 重建泳道桩并把 scrollLeft 归 0）+ fetch 桩 + 假 EventSource + 假计时器，走真 attachBoard 断言「首拉渲染后置 260 → 推进 20 秒轮询 → 仍为 260」，并模拟 switch-view 切列表再切回泳道仍为 260。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-19e1e2
+  phase: implement
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261004184822-9881
+    TASK_ID: t-e16560
+    TASK_TITLE: 刷新别把人弹回去：把它接在重绘那两行上·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T11:01:58.040Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004184822-9881
+  generated_at: 2026-10-04T11:01:47.422Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-04T11:01:58.040Z

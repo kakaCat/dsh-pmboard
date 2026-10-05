@@ -1,0 +1,278 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261003204143-3219
+  generated_at: 2026-10-03T13:38:13.232Z
+  version: 39
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-03T14:07:08.772Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/design.md#目标
+      title: 目标（
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/design.md
+      section: 目标
+    - ref: design/design.md#复现
+      title: 复现（
+      serves:
+        - FR-2
+      file: design/design.md
+      section: 复现
+    - ref: design/design.md#根因
+      title: 根因（
+      serves:
+        - FR-1
+      file: design/design.md
+      section: 根因
+    - ref: design/design.md#修复方案
+      title: 修复方案（
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/design.md
+      section: 修复方案
+    - ref: design/design.md#FR-1-schema-补声明核对即过不重复改
+      title: FR-1 · schema 补声明（核对即过，不重复改）（
+      serves:
+        - FR-1
+      file: design/design.md
+      section: FR-1-schema-补声明核对即过不重复改
+    - ref: design/design.md#FR-2-动态契约用例已落盘保持绿
+      title: FR-2 · 动态契约用例（已落盘，保持绿）（
+      serves:
+        - FR-2
+      file: design/design.md
+      section: FR-2-动态契约用例已落盘保持绿
+    - ref: design/design.md#FR-3-answers-键清单收敛一处共享常量
+      title: FR-3 · answers 键清单收敛一处共享常量（
+      serves:
+        - FR-3
+      file: design/design.md
+      section: FR-3-answers-键清单收敛一处共享常量
+    - ref: design/design.md#与并行窗口REQ-261003204149-1e80的分工
+      title: 与并行窗口（REQ-261003204149-1e80）的分工（
+      serves:
+        - FR-1
+        - FR-3
+      file: design/design.md
+      section: 与并行窗口REQ-261003204149-1e80的分工
+    - ref: design/design.md#回归测试落点
+      title: 回归测试落点（
+      serves:
+        - FR-2
+        - FR-3
+      file: design/design.md
+      section: 回归测试落点
+    - ref: design/design.md#验收口径
+      title: 验收口径（
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/design.md
+      section: 验收口径
+    - ref: design/design.md#边界不做
+      title: 边界（不做）（
+      serves:
+        - FR-1
+      file: design/design.md
+      section: 边界不做
+outputs:
+  tasks:
+    - id: t-597b7c
+      title: 验证契约用例能抓住漂移（复现卡）
+      implements: ① 备份并临时编辑 CaptureTool.ts 摘除 answers.properties.workspace；② 跑 npx vitest run tests/capture-output-contract.test.ts，记录红且点名 answers.workspace；③ 恢复文件，重跑确认绿；④ 不提交任何摘除态改动
+      serves:
+        - FR-1
+        - FR-2
+      depends_on: []
+      phase: analysis
+      side: backend
+    - id: t-52f295
+      title: 落地 answers 键共享常量并核对 schema 声明（修复卡）
+      implements: ① capture-mapping.ts 新增 export const CAPTURE_ANSWER_KEYS = ['title','category','difficulty','docLocation','workspace'] as const，CaptureMapping.answers 类型改为 Record<(typeof CAPTURE_ANSWER_KEYS)[number], string>；② CaptureTool.ts 的 answers.properties 改由 Object.fromEntries(CAPTURE_ANSWER_KEYS.map(k=>[k,{type:'string',description:...}])) 生成，保留 workspace 注释锚点；③ tests/capture-output-contract.test.ts 增键集断言：mapCaptureAnswers(全量作答).answers 键集 === CAPTURE_ANSWER_KEYS === schema answers.properties 键集
+      serves:
+        - FR-1
+        - FR-3
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-993fe5
+      title: 全量回归与反向演练证据（回归测试卡）
+      implements: ① 跑五文件 vitest 套件记录结果；② 汇总 t1/t2 反向演练证据到任务汇报；③ 发现红则退回 t2 修复，不降级断言
+      serves:
+        - FR-2
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-edb079
+      title: 验证契约用例能抓住漂移（复现卡）·取数调研
+      implements: |-
+        ① 备份并临时编辑 CaptureTool.ts 摘除 answers.properties.workspace；② 跑 npx vitest run tests/capture-output-contract.test.ts，记录红且点名 answers.workspace；③ 恢复文件，重跑确认绿；④ 不提交任何摘除态改动
+
+        [子卡阶段·取数调研] 只做本阶段；验收：数据样本量与来源已标注：给出取数命令（如 `npx tsx scripts/<脚本>.mts`）或输出文件路径，对齐 R-013 来源与时点口径
+      serves: []
+      depends_on: []
+      phase: analysis
+      side: backend
+    - id: t-6bf6ca
+      title: 验证契约用例能抓住漂移（复现卡）·分析
+      implements: |-
+        ① 备份并临时编辑 CaptureTool.ts 摘除 answers.properties.workspace；② 跑 npx vitest run tests/capture-output-contract.test.ts，记录红且点名 answers.workspace；③ 恢复文件，重跑确认绿；④ 不提交任何摘除态改动
+
+        [子卡阶段·分析] 只做本阶段；验收：结论含置信度与适用边界，并列出被证伪的假设（附支撑数据的命令或 `docs/requirements/<REQ>/` 下证据路径）
+      serves: []
+      depends_on:
+        - t-edb079
+      phase: analysis
+      side: backend
+    - id: t-f054d1
+      title: 验证契约用例能抓住漂移（复现卡）·复核
+      implements: |-
+        ① 备份并临时编辑 CaptureTool.ts 摘除 answers.properties.workspace；② 跑 npx vitest run tests/capture-output-contract.test.ts，记录红且点名 answers.workspace；③ 恢复文件，重跑确认绿；④ 不提交任何摘除态改动
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-6bf6ca
+      phase: analysis
+      side: backend
+    - id: t-c4be54
+      title: 落地 answers 键共享常量并核对 schema 声明（修复卡）·复现
+      implements: |-
+        ① capture-mapping.ts 新增 export const CAPTURE_ANSWER_KEYS = ['title','category','difficulty','docLocation','workspace'] as const，CaptureMapping.answers 类型改为 Record<(typeof CAPTURE_ANSWER_KEYS)[number], string>；② CaptureTool.ts 的 answers.properties 改由 Object.fromEntries(CAPTURE_ANSWER_KEYS.map(k=>[k,{type:'string',description:...}])) 生成，保留 workspace 注释锚点；③ tests/capture-output-contract.test.ts 增键集断言：mapCaptureAnswers(全量作答).answers 键集 === CAPTURE_ANSWER_KEYS === schema answers.properties 键集
+
+        [子卡阶段·复现] 只做本阶段；验收：`npx vitest run <新增回归用例>` → 修复前失败、修复后通过（贴两次输出）
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-d26141
+      title: 落地 answers 键共享常量并核对 schema 声明（修复卡）·修复
+      implements: |-
+        ① capture-mapping.ts 新增 export const CAPTURE_ANSWER_KEYS = ['title','category','difficulty','docLocation','workspace'] as const，CaptureMapping.answers 类型改为 Record<(typeof CAPTURE_ANSWER_KEYS)[number], string>；② CaptureTool.ts 的 answers.properties 改由 Object.fromEntries(CAPTURE_ANSWER_KEYS.map(k=>[k,{type:'string',description:...}])) 生成，保留 workspace 注释锚点；③ tests/capture-output-contract.test.ts 增键集断言：mapCaptureAnswers(全量作答).answers 键集 === CAPTURE_ANSWER_KEYS === schema answers.properties 键集
+
+        [子卡阶段·修复] 只做本阶段；验收：`npx vitest run <回归用例>` → 转绿（贴命令与输出），且根因单独写明
+      serves: []
+      depends_on:
+        - t-c4be54
+      phase: implement
+      side: backend
+    - id: t-8fb70b
+      title: 落地 answers 键共享常量并核对 schema 声明（修复卡）·复核
+      implements: |-
+        ① capture-mapping.ts 新增 export const CAPTURE_ANSWER_KEYS = ['title','category','difficulty','docLocation','workspace'] as const，CaptureMapping.answers 类型改为 Record<(typeof CAPTURE_ANSWER_KEYS)[number], string>；② CaptureTool.ts 的 answers.properties 改由 Object.fromEntries(CAPTURE_ANSWER_KEYS.map(k=>[k,{type:'string',description:...}])) 生成，保留 workspace 注释锚点；③ tests/capture-output-contract.test.ts 增键集断言：mapCaptureAnswers(全量作答).answers 键集 === CAPTURE_ANSWER_KEYS === schema answers.properties 键集
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-d26141
+      phase: implement
+      side: backend
+    - id: t-a71498
+      title: 落地 answers 键共享常量并核对 schema 声明（修复卡）·回归测试
+      implements: |-
+        ① capture-mapping.ts 新增 export const CAPTURE_ANSWER_KEYS = ['title','category','difficulty','docLocation','workspace'] as const，CaptureMapping.answers 类型改为 Record<(typeof CAPTURE_ANSWER_KEYS)[number], string>；② CaptureTool.ts 的 answers.properties 改由 Object.fromEntries(CAPTURE_ANSWER_KEYS.map(k=>[k,{type:'string',description:...}])) 生成，保留 workspace 注释锚点；③ tests/capture-output-contract.test.ts 增键集断言：mapCaptureAnswers(全量作答).answers 键集 === CAPTURE_ANSWER_KEYS === schema answers.properties 键集
+
+        [子卡阶段·回归测试] 只做本阶段；验收：`pnpm test` → 无新增失败（与基线比对，贴汇总输出）
+      serves: []
+      depends_on:
+        - t-8fb70b
+      phase: implement
+      side: backend
+    - id: t-ffa854
+      title: 全量回归与反向演练证据（回归测试卡）·研发
+      implements: |-
+        ① 跑五文件 vitest 套件记录结果；② 汇总 t1/t2 反向演练证据到任务汇报；③ 发现红则退回 t2 修复，不降级断言
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-577017
+      title: 全量回归与反向演练证据（回归测试卡）·复核
+      implements: |-
+        ① 跑五文件 vitest 套件记录结果；② 汇总 t1/t2 反向演练证据到任务汇报；③ 发现红则退回 t2 修复，不降级断言
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-ffa854
+      phase: test
+      side: backend
+    - id: t-6de87b
+      title: 全量回归与反向演练证据（回归测试卡）·测试
+      implements: |-
+        ① 跑五文件 vitest 套件记录结果；② 汇总 t1/t2 反向演练证据到任务汇报；③ 发现红则退回 t2 修复，不降级断言
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-577017
+      phase: test
+      side: backend
+traceability:
+  design_to_tasks:
+    design/design.md#目标:
+      - t-597b7c
+      - t-52f295
+      - t-993fe5
+    design/design.md#复现:
+      - t-597b7c
+      - t-993fe5
+    design/design.md#根因:
+      - t-597b7c
+      - t-52f295
+    design/design.md#修复方案:
+      - t-597b7c
+      - t-52f295
+      - t-993fe5
+    design/design.md#FR-1-schema-补声明核对即过不重复改:
+      - t-597b7c
+      - t-52f295
+    design/design.md#FR-2-动态契约用例已落盘保持绿:
+      - t-597b7c
+      - t-993fe5
+    design/design.md#FR-3-answers-键清单收敛一处共享常量:
+      - t-52f295
+    design/design.md#与并行窗口REQ-261003204149-1e80的分工:
+      - t-597b7c
+      - t-52f295
+    design/design.md#回归测试落点:
+      - t-597b7c
+      - t-52f295
+      - t-993fe5
+    design/design.md#验收口径:
+      - t-597b7c
+      - t-52f295
+      - t-993fe5
+    design/design.md#边界不做:
+      - t-597b7c
+      - t-52f295
+  fr_to_tasks:
+    FR-1:
+      - t-597b7c
+      - t-52f295
+      - t-993fe5
+    FR-2:
+      - t-597b7c
+      - t-52f295
+      - t-993fe5
+    FR-3:
+      - t-597b7c
+      - t-52f295
+      - t-993fe5
+coverage:
+  implementation:
+    total: 11
+    covered: 11
+    uncovered: []
+    rate: 100
+    total_designs: 11
+    covered_designs: 11

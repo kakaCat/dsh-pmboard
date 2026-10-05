@@ -58,8 +58,10 @@ describe('taskCompletenessGap（FR-3 判定）', () => {
 describe('executeMoveRequirement：decomposing→implementing 被守卫拦下（FR-3）', () => {
   it('计划有卡、队列 0 卡 → REQBOARD_TASK_INCOMPLETE，且需求状态不变', async () => {
     const h = makeHarness()
-    h.repo.ledger.requirements = [liveReq({ plan: planOf(2) })]
+    // t8/B11：同步播种入口（镜像 + 存储都要写）
+    h.seedRequirementSync(liveReq({ plan: planOf(2) }))
     // B-5（Lead 裁定）：不许静默删掉"此刻没有任务"这条保证 —— 换成显式前置断言（更强、且意图可见）。
+    await h.seedSettled()
     // v9 口径：任务只在队列；"0 卡" = 该需求没有队列文件（不 seed 即无队列）。
     expect(h.queueExists('REQ-000001')).toBe(false)
     expect(await h.tasksOf('REQ-000001')).toHaveLength(0)
@@ -70,6 +72,8 @@ describe('executeMoveRequirement：decomposing→implementing 被守卫拦下（
       code = (err as { code?: string }).code
     }
     expect(code).toBe('REQBOARD_TASK_INCOMPLETE')
-    expect(h.repo.ledger.requirements[0]!.status).toBe('decomposing')
+    // B12 阶段⑤族 B：读点改定点读
+    const row = (await h.store.listSummaries({ scope: 'all' })).items[0]!
+    expect(row.status).toBe('decomposing')
   })
 })

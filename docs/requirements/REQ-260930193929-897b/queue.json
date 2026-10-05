@@ -2067,7 +2067,7 @@
         "tables": [],
         "files": []
       },
-      "acceptance": "怎么验（可执行）：① `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t \"看板路径\"` → 期望 `2 passed`（看板一键确认的正向推进与反向仍拦）；② `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t \"存量兼容\"` → 期望通过（无 workspaceRoot 时 no-op）；③ `test -f docs/requirements/REQ-260930193929-897b/notes/rollback.md && echo ok` → 期望输出 `ok`。",
+      "acceptance": "怎么验（可执行）：① `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t \"E2E\"` → 期望 `2 passed`（用例已由「看板路径」升格为显式 E2E 场景，原 `-t \"看板路径\"` 已失效）；② `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t \"存量兼容\"` → 期望通过（无 workspaceRoot 时 no-op）；③ `test -f docs/requirements/REQ-260930193929-897b/notes/rollback.md && echo ok` → 期望输出 `ok`。",
       "implementation": "在 support.ts 确认 no-op 分支在 requirement.workspaceRoot 缺失/空串时提前返回且不触碰 docs/queueRepo；对看板路由两处路径补用例；在 docs/requirements/REQ-260930193929-897b/notes/rollback.md 写明回滚清单与验证方式（还原 src/application/internal/support.ts、AskConfirm.ts、confirm-settle.ts、ConfirmArtifact.ts、http/routers/requirements.ts；删除 tests/design-gate-workspace-root.test.ts）。\n\n[子卡阶段·研发] 只做本阶段；验收：改动已落盘，相关测试或命令跑通并附输出摘要",
       "context": "",
       "parentId": "t-671de7",
@@ -2140,7 +2140,7 @@
       ],
       "version": 4,
       "createdAt": 1790772010826,
-      "updatedAt": 1790772472725,
+      "updatedAt": 1790857437967,
       "createdBy": {
         "kind": "system"
       },
@@ -2489,6 +2489,734 @@
         "stopReason": "reported",
         "valueNonEmpty": true
       }
+    },
+    {
+      "id": "t-8cc56a",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "返工：E2E 覆盖：**无（缺口）**——本需求交付涉及多组件串联，但只交了单元/集成测试。请补一条端到端场景用例（断言可观察",
+      "description": "验收不通过项返工（v1 项 v1-8）：E2E 覆盖：**无（缺口）**——本需求交付涉及多组件串联，但只交了单元/集成测试。请补一条端到端场景用例（断言可观察终态）；若确认无需 E2E，通过时必须在意见中写明理由。",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "怎么验（可执行）：① `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t \"E2E\"` → 期望 `2 passed`：E2E 正向断言 4 项可观察终态（HTTP 200 + advanced=true + 无 gate_failure；status=decomposing；statusHistory 非空；评论含「看板一键确认产物」），E2E 反向断言 advanced=false、gate_failure.code=design_doc_incomplete、status 留在 design；② `node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts` → 期望 `13 passed`；③ 读数限制：该项读数只认 requirement.md 的测试策略表，而该文档已确认且平台禁止在 implementing 阶段重交（REQBOARD_BAD_STATUS），故读数仍显示缺口——处置与理由见 docs/requirements/REQ-260930193929-897b/tests/test-evidence.md 的「返工响应」节。",
+      "implementation": "按验收意见修复：改进（需修改）",
+      "context": "承接自 需求级验收项；验收意见：改进（需修改）",
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-852732",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790857443141,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1846,
+              "at": 1790857443150,
+              "totals": {
+                "uncachedInputTokens": 252954,
+                "outputTokens": 266862,
+                "cacheReadTokens": 71229312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1965,
+              "at": 1790858034607,
+              "totals": {
+                "uncachedInputTokens": 294659,
+                "outputTokens": 279507,
+                "cacheReadTokens": 77549056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 41705,
+              "outputTokens": 12645,
+              "cacheReadTokens": 6319744,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790858034588
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-8cbed5",
+          "body": "[状态] → in_progress：返工开工：按验收意见补 E2E 端到端场景用例（reqboard_task_move）",
+          "createdAt": 1790857443141,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-7babe1",
+          "body": "[状态] → done：返工完成：E2E 两条已补并通过，四张子卡全完成；读数限制已按验收项出口处置并留证（reqboard_task_move）",
+          "createdAt": 1790858034588,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790857270961,
+      "updatedAt": 1790858034588,
+      "createdBy": {
+        "kind": "human",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790857270961,
+          "by": {
+            "kind": "human",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "验收不通过 → 自动生成返工任务（W6）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1790857443141,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "返工开工：按验收意见补 E2E 端到端场景用例"
+        },
+        {
+          "status": "done",
+          "at": 1790858034588,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "返工完成：E2E 两条已补并通过，四张子卡全完成；读数限制已按验收项出口处置并留证"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790857968749,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts",
+          "docs/requirements/REQ-260930193929-897b/tests/test-evidence.md",
+          "docs/requirements/REQ-260930193929-897b/reviews/self-review.md"
+        ],
+        "completed": [
+          "验收意见（v1-8 E2E 覆盖缺口）已兑现：补 E2E 两条，断言可观察终态（需求状态 / 状态迁移历史 / 推进留痕），另含反向「真缺文件不推进」",
+          "四条子卡（研发/联调/复核/测试）全部完成并各自留下完工记录；本次返工**未改任何产品代码**，只改测试与三份文档",
+          "读数限制未粉饰：E2E 项读数只认 requirement.md 的测试策略表，而该文档已确认且平台禁止在 implementing 阶段重交（REQBOARD_BAD_STATUS）→ 已撤回加节改动保持零漂移，改走验收项自带出口（通过 + 写明理由），理由可直接引用 tests/test-evidence.md 的「返工响应」节",
+          "验证：`-t \"E2E\"` → 2 passed；本文件 → 13 passed；全量 97 failed（与返工前持平、零新增）；类型 192 条（当前树基线），改动文件零错误",
+          "A/B 归因实验：把根校正临时改为 no-op 后 design-completeness-gate.test.ts 仍 5 failed / 11 passed（一字不差）→ 该领域存量失败与本需求无关"
+        ]
+      },
+      "lastRun": {
+        "at": 1790857968749,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-400452",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "返工：E2E 覆盖：**无（缺口）**——本需求交付涉及多组件串联，但只交了单元/集成测试。请补一条端到端场景用例（断言可观察·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "按验收意见修复：改进（需修改）\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "承接自 需求级验收项；验收意见：改进（需修改）",
+      "parentId": "t-8cc56a",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b3a8d9",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790857533190,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1864,
+              "at": 1790857533198,
+              "totals": {
+                "uncachedInputTokens": 261446,
+                "outputTokens": 269337,
+                "cacheReadTokens": 72229120,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1912,
+              "at": 1790857754139,
+              "totals": {
+                "uncachedInputTokens": 281095,
+                "outputTokens": 275792,
+                "cacheReadTokens": 74832128,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 19649,
+              "outputTokens": 6455,
+              "cacheReadTokens": 2603008,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790857754124
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-4d6ce9",
+          "body": "[状态] → in_progress：返工·研发子卡开工：补 E2E 场景用例（reqboard_task_move）",
+          "createdAt": 1790857533190,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-15f3b3",
+          "body": "[状态] → done：返工研发完成：E2E 两条落地并通过，A/B 归因排除存量失败与本需求相关（reqboard_task_move）",
+          "createdAt": 1790857754124,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790857443141,
+      "updatedAt": 1790857754124,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790857443141,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790857533190,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "返工·研发子卡开工：补 E2E 场景用例"
+        },
+        {
+          "status": "done",
+          "at": 1790857754124,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "返工研发完成：E2E 两条落地并通过，A/B 归因排除存量失败与本需求相关"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1790857577250,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts",
+          "docs/requirements/REQ-260930193929-897b/tests/test-evidence.md",
+          "docs/requirements/REQ-260930193929-897b/reviews/self-review.md"
+        ],
+        "completed": [
+          "按验收意见补 E2E：把原「看板路径」两条用例升格为显式 E2E 场景，并补齐可观察终态断言——正向断言 4 项（HTTP 200 + advanced=true + 无 gate_failure；status=decomposing；statusHistory 非空；评论含「看板一键确认产物」），反向断言 3 项（advanced=false；gate_failure.code=design_doc_incomplete；status 留在 design）",
+          "保留场景成立性前置断言：同一时刻同一文件，错根 A 下 exists=false、需求根 B 下 exists=true",
+          "命令与结果：`vitest run tests/design-gate-workspace-root.test.ts -t \"E2E\"` → 2 passed；本文件全量 → 13 passed",
+          "返工期间发现仓基线已移动（103 失败/213 类型错误 → 97 失败/192 类型错误，期间两个新提交合入），故做最小 A/B 归因：把我的校正临时改成真 no-op 后，design-completeness-gate.test.ts 仍是 5 failed / 11 passed（与生效时一字不差）→ 那些失败与本需求无关",
+          "改动/新增文件零类型错误；唯一命中的 requirements.ts(459,23) 是改动前基线里就存在的同一处 cast 错误（当时 451 行）"
+        ]
+      },
+      "lastRun": {
+        "at": 1790857577250,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1c0aea",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "返工：E2E 覆盖：**无（缺口）**——本需求交付涉及多组件串联，但只交了单元/集成测试。请补一条端到端场景用例（断言可观察·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-400452"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "按验收意见修复：改进（需修改）\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "承接自 需求级验收项；验收意见：改进（需修改）",
+      "parentId": "t-8cc56a",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-94e125",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790857754215,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1914,
+              "at": 1790857754223,
+              "totals": {
+                "uncachedInputTokens": 281095,
+                "outputTokens": 275792,
+                "cacheReadTokens": 74832128,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1930,
+              "at": 1790857830850,
+              "totals": {
+                "uncachedInputTokens": 289268,
+                "outputTokens": 277557,
+                "cacheReadTokens": 75905408,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 8173,
+              "outputTokens": 1765,
+              "cacheReadTokens": 1073280,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790857830833
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ffb62a",
+          "body": "[状态] → in_progress：返工·联调子卡开工：核对链路串通（reqboard_task_move）",
+          "createdAt": 1790857754215,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-f630b5",
+          "body": "[状态] → done：返工联调完成：四层链路串通、四类断点各有断言（reqboard_task_move）",
+          "createdAt": 1790857830833,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790857443141,
+      "updatedAt": 1790857830833,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790857443141,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790857754215,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "返工·联调子卡开工：核对链路串通"
+        },
+        {
+          "status": "done",
+          "at": 1790857830833,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "返工联调完成：四层链路串通、四类断点各有断言"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1790857762007,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts"
+        ],
+        "completed": [
+          "四层串通核对：真实 FileDocRepository（错根 A）→ JsonLedgerRepository（台账）→ createReqboardHandler（HTTP 端点）→ transitionRequirement（状态机）。E2E 正向一次运行同时穿过这四层，任一层断链断言即红",
+          "四类断点逐项核对：① 放行（HTTP 200 且 advanced=true 且无 gate_failure）；② 拦截（真缺文件时 advanced=false + code=design_doc_incomplete + gaps 准确）；③ 留痕（comments 含「看板一键确认产物」、statusHistory 非空）；④ 不静默/不误推进（反向场景状态留在 design）",
+          "请求样例与期望响应一致：`POST /dashboard/api/reqboard/req/artifact/confirm {id:'REQ-g2ws01', kind:'design'}` → 期望 200 + advanced=true；实测一致",
+          "命令与结果：`node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t \"E2E\"` → 2 passed；本文件全量 → 13 passed",
+          "联调结论：链路无断点。验收项的读数限制（只认 requirement.md 测试策略表）属**读数机制**问题，不属链路问题，已单独记录在 test-evidence 的「返工响应」节"
+        ]
+      },
+      "lastRun": {
+        "at": 1790857762007,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-3ec560",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "返工：E2E 覆盖：**无（缺口）**——本需求交付涉及多组件串联，但只交了单元/集成测试。请补一条端到端场景用例（断言可观察·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-1c0aea"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "按验收意见修复：改进（需修改）\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "承接自 需求级验收项；验收意见：改进（需修改）",
+      "parentId": "t-8cc56a",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ec5f87",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790857830927,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1932,
+              "at": 1790857830935,
+              "totals": {
+                "uncachedInputTokens": 289268,
+                "outputTokens": 277557,
+                "cacheReadTokens": 75905408,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1943,
+              "at": 1790857899997,
+              "totals": {
+                "uncachedInputTokens": 293845,
+                "outputTokens": 278438,
+                "cacheReadTokens": 76449280,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 4577,
+              "outputTokens": 881,
+              "cacheReadTokens": 543872,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790857899981
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b1b0b2",
+          "body": "[状态] → in_progress：返工·复核子卡开工：核对是否满足验收意见（reqboard_task_move）",
+          "createdAt": 1790857830927,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-1675e7",
+          "body": "[状态] → done：返工复核完成：验收意见兑现、无偏离、未粉饰读数限制（reqboard_task_move）",
+          "createdAt": 1790857899981,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790857443141,
+      "updatedAt": 1790857899981,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790857443141,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790857830927,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "返工·复核子卡开工：核对是否满足验收意见"
+        },
+        {
+          "status": "done",
+          "at": 1790857899981,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "返工复核完成：验收意见兑现、无偏离、未粉饰读数限制"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1790857831008,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts",
+          "docs/requirements/REQ-260930193929-897b/tests/test-evidence.md",
+          "docs/requirements/REQ-260930193929-897b/reviews/self-review.md"
+        ],
+        "completed": [
+          "对照验收意见逐条核对：意见要求「补一条端到端场景用例（断言可观察终态）」——已补**两条**（正向 + 反向），且断言的是可观察终态（需求状态 / 状态迁移历史 / 推进留痕），不是内部函数返回值。要求满足",
+          "本次返工改动面核对：只改测试文件与三份文档（test-evidence / self-review / 需求无改动），**未改任何产品代码**、未新增依赖、未动闸门判定与协议",
+          "读数限制的处置核对：E2E 项读数只认 requirement.md 的测试策略表；该文档已确认且平台禁止在 implementing 阶段重交（实测 REQBOARD_BAD_STATUS，回退 brainstorming 会作废既有确认）→ 已**撤回**加节的改动，磁盘与确认版本逐字节一致（13283 字节），未制造漂移，改走验收项自带出口（通过 + 写明理由）",
+          "无偏离项：未把「读数仍显示缺口」粉饰为已解决；该限制与建议理由已写入 tests/test-evidence.md 的「返工响应」节，验收人可直接引用",
+          "提醒：该项通过时请在意见中写明理由（读数机制限制），否则下一轮验收会原样再出现同一缺口"
+        ]
+      },
+      "lastRun": {
+        "at": 1790857831008,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-6934f4",
+      "requirementId": "REQ-260930193929-897b",
+      "title": "返工：E2E 覆盖：**无（缺口）**——本需求交付涉及多组件串联，但只交了单元/集成测试。请补一条端到端场景用例（断言可观察·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-3ec560"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "按验收意见修复：改进（需修改）\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "承接自 需求级验收项；验收意见：改进（需修改）",
+      "parentId": "t-8cc56a",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-afab1c",
+          "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+          "trigger": "manual",
+          "startedAt": 1790857900109,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1945,
+              "at": 1790857900116,
+              "totals": {
+                "uncachedInputTokens": 293845,
+                "outputTokens": 278438,
+                "cacheReadTokens": 76449280,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "end": {
+              "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c",
+              "seq": 1955,
+              "at": 1790857968671,
+              "totals": {
+                "uncachedInputTokens": 294354,
+                "outputTokens": 279269,
+                "cacheReadTokens": 76998528,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection"
+            },
+            "delta": {
+              "uncachedInputTokens": 509,
+              "outputTokens": 831,
+              "cacheReadTokens": 549248,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1790857968656
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ec5eca",
+          "body": "[状态] → in_progress：返工·测试子卡开工：跑定向与全量（reqboard_task_move）",
+          "createdAt": 1790857900109,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        },
+        {
+          "id": "c-60c8ce",
+          "body": "[状态] → done：返工测试完成：定向 2/13 通过，全量与类型均无新增（A/B 已归因存量失败）（reqboard_task_move）",
+          "createdAt": 1790857968656,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1790857443141,
+      "updatedAt": 1790857968656,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1790857443141,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1790857900109,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "返工·测试子卡开工：跑定向与全量"
+        },
+        {
+          "status": "done",
+          "at": 1790857968656,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-a8201e1d-9d20-4697-aad0-927b83f54a3c"
+          },
+          "reason": "返工测试完成：定向 2/13 通过，全量与类型均无新增（A/B 已归因存量失败）"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1790857900193,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/design-gate-workspace-root.test.ts",
+          "docs/requirements/REQ-260930193929-897b/tests/test-evidence.md",
+          "docs/requirements/REQ-260930193929-897b/reviews/self-review.md"
+        ],
+        "completed": [
+          "定向命令与结果：`node_modules/.bin/vitest run tests/design-gate-workspace-root.test.ts -t \"E2E\"` → 2 passed；本文件全量 → 13 passed",
+          "全量回归（当前树）：`node_modules/.bin/vitest run` → 97 failed | 2880 passed（295 文件）。与返工前同一棵树的 97 failed 持平 → 本次返工**零新增失败**",
+          "A/B 归因（关键）：把我的根校正临时改成真 no-op 后重跑 tests/design-completeness-gate.test.ts → 仍 5 failed / 11 passed，与生效时一字不差 → 该领域内的存量失败与本需求无关",
+          "类型检查：192 条（当前树基线），改动/新增文件零错误；唯一命中的 requirements.ts(459,23) 是改动前基线里就存在的同一处 cast 错误（当时 451 行）",
+          "验收标准逐条对照：① 2 passed ✅；② 13 passed ✅；③ 读数限制已按验收项自带出口处置并写明理由位置 ✅"
+        ]
+      },
+      "lastRun": {
+        "at": 1790857900193,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
     }
   ],
   "edges": [
@@ -2551,6 +3279,18 @@
     {
       "from": "t-40797a",
       "to": "t-eecd25"
+    },
+    {
+      "from": "t-400452",
+      "to": "t-1c0aea"
+    },
+    {
+      "from": "t-1c0aea",
+      "to": "t-3ec560"
+    },
+    {
+      "from": "t-3ec560",
+      "to": "t-6934f4"
     }
   ],
   "layers": [
@@ -2558,7 +3298,9 @@
       "layer": 0,
       "tasks": [
         "t-be2369",
-        "t-59fed4"
+        "t-59fed4",
+        "t-8cc56a",
+        "t-400452"
       ]
     },
     {
@@ -2566,7 +3308,8 @@
       "tasks": [
         "t-b9d8e9",
         "t-79a599",
-        "t-10098f"
+        "t-10098f",
+        "t-1c0aea"
       ]
     },
     {
@@ -2577,7 +3320,8 @@
         "t-d4ec69",
         "t-18a70f",
         "t-359e38",
-        "t-85644c"
+        "t-85644c",
+        "t-3ec560"
       ]
     },
     {
@@ -2585,7 +3329,8 @@
       "tasks": [
         "t-5da4f0",
         "t-40797a",
-        "t-904889"
+        "t-904889",
+        "t-6934f4"
       ]
     },
     {
@@ -2598,5 +3343,5 @@
     }
   ],
   "ready": [],
-  "updated_at": "2026-09-30T12:48:05.557Z"
+  "updated_at": "2026-10-01T12:33:54.607Z"
 }

@@ -1,0 +1,38 @@
+task:
+  id: t-750590
+  title: 挂起确认机制扩写：storage-action + 一次性 consume·复核
+  status: done
+  implements: |-
+    改 src/adapters/PendingConfirmRegistry.ts：register() 接受 target:'storage-action' 且 requirementId 可空（存储开关是宿主级动作），新增 consume(ticket) 原子校验『已落章 + 未过期 + 未消费』并置为已消费（并发两次只成功一次，落章沿用 settle 既有形状含 channel/sessionId/pluginVersion）；新增 tests/reqboard/pending-confirm-consume.test.ts。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-8742f1
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261004103330-005f
+    TASK_ID: t-750590
+    TASK_TITLE: 挂起确认机制扩写：storage-action + 一次性 consume·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-04T09:12:10.749Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261004103330-005f
+  generated_at: 2026-10-04T09:12:03.663Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-04T09:12:10.750Z

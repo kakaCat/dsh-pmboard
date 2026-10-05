@@ -1,0 +1,42 @@
+# t9 兼容与回归证据（REQ-261001154450-b918 · serves: FR-1…FR-8）
+
+生成时间：2026-10-01T08:35:04.493Z
+口径：同一 node_modules、同命令（`pnpm test` / `npx tsc --noEmit`）。
+
+## 对照一：HEAD（188c4a5）vs 当前工作树
+
+| 面 | HEAD 188c4a5 | 当前工作树 |
+|---|---|---|
+| 测试 | **160 failed / 2540 passed**（263 文件） | Test Files  49 failed | 238 passed | 3 skipped (290) |
+| 类型错误 | **223** | 212 |
+
+```
+HEAD 全量：
+  Test Files  53 failed | 207 passed | 3 skipped (263)
+  Tests  160 failed | 2540 passed | 20 skipped (2720)
+当前全量：
+Test Files  49 failed | 238 passed | 3 skipped (290)
+      Tests  106 failed | 2842 passed | 20 skipped (2968)
+```
+
+**诚实说明（重要）**：当前工作树里还积压着**其它需求的未提交改动**（178 个文件），
+所以这张表证明的是"整棵工作树不劣于 HEAD"，**不能把 160→106 的改善单独归给本需求**。
+
+## 对照二：本需求开工前后（真正的零回归口径）
+
+| 面 | 开工前（本会话实测） | 完工时 | 判读 |
+|---|---|---|---|
+| `pnpm test` 失败数 | **106** | **106** | 零新增失败 |
+| `pnpm test` 通过数 | 2807 | 2842 | +35 = 本需求新增用例 |
+| `npx tsc --noEmit` 错误数 | 212 | 212 | 零新增类型错误 |
+| `pnpm run kb:check` | 10 项全过 | **11 项全过** | 新增 K11 |
+
+口径依据：C-14（失败数不高于基线）、C-15（错误数不高于基线）——本仓存在既有失败，
+"全绿"不是可判定的期望，"不高于基线"才是。
+
+## 兼容面（存量数据读路径）
+
+- 存量台账（无 `unverified` 项、无挂起 `createdAt`/TTL、无 `closing_gap`）由全量测试里的既有夹具持续覆盖
+  （`tests/fixtures/ledger-v4-sample.json` 等），失败数与开工前一致 → 读路径未被打断。
+- 挂起确认：旧记录无 `createdAt` 视为不过期（`tests/pending-confirm-ttl.test.ts` 覆盖跨窗口/边界）。
+- 验收裁决：`unverified` 是状态联合的新增成员，旧两态读取路径不变（`req-b918-gates` 覆盖）。

@@ -2,14 +2,14 @@
 /**
  * 立项拒绝留痕文件适配器（REQ-260922012924-2e29 FR-5）—— <dshHome>/state/capture-rejections.json（ring buffer）。
  *
- * 与 IsolationTraceFile 同款纪律：原子写沿用 JsonLedgerRepository 的 persistAtomic
+ * 与 IsolationTraceFile 同款纪律：原子写沿用 旧单册适配器（已删除） 的 persistAtomic
  * （temp + fsync + rename）；写入串行队列避免并发覆盖；缺文件视为空；文件损坏/写入失败
  * 走 onError——**只告警，绝不冒泡到立项路径**（留痕是旁路，不是流水线的一部分）。
  *
  * @module dsh-pmboard/adapters/CaptureRejectionFile
  */
 import { readFile } from 'node:fs/promises'
-import { persistAtomic } from './JsonLedgerRepository.js'
+import { persistAtomic } from '../repositories/atomicWrite.js'
 import { fmt } from '../domain/text/fmt.js'
 import { appendCaptureRejection, isCaptureRejection } from '../application/internal/capture-rejections.js'
 import type { CaptureRejection, CaptureRejectionPort } from '../application/ports.js'

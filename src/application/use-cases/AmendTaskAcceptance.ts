@@ -14,12 +14,12 @@
  * @module dsh-pmboard/application/use-cases/AmendTaskAcceptance
  */
 import type { UseCaseDeps } from '../ports.js'
-import { reject, agentIdFromExec, requireLiveDriver } from '../internal/support.js'
-import { openRequirementsFor } from '../internal/window.js'
+import { boundSummariesOf } from '../internal/binding-read.js'
+import { reject, agentIdFromExec, requireLiveDriver, assertWritableRequirementProject } from '../internal/support.js'
 import { normalizeText } from '../../shared/protocol.js'
 import { checkAcceptance } from '../../domain/task/Acceptability.js'
 import { fmt } from '../../domain/text/fmt.js'
-import { taskStoreOf } from './queue-access.js'
+import { requirementStoreOf, taskStoreOf } from './queue-access.js'
 
 /** 从 args 里读可选的 acceptance（未传 / 空串 → undefined，表示"不改"）。 */
 export function requestedAcceptance(args: unknown): string | undefined {
@@ -49,8 +49,8 @@ export async function amendTaskAcceptanceIfRequested(
   const verdict = checkAcceptance(taskId, next)
   if (!verdict.ok) reject(fmt('reqboard_task_move 未执行（修订验收标准被拒）：{reason}', { reason: verdict.reason }), 'REQBOARD_INVALID_INPUT')
 
-  const snapshot = deps.repo.snapshot()
-  const bound = openRequirementsFor(snapshot, windowKey)
+  // t8/B11：绑定读走新端口（只读摘要）
+  const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
   const store = taskStoreOf(deps)
   const task = await store.get(taskId)
   if (task === undefined) reject(fmt('reqboard_task_move 未执行：任务 {id} 不存在', { id: taskId }), 'REQBOARD_TASK_NOT_FOUND')
@@ -74,6 +74,8 @@ export async function amendTaskAcceptanceIfRequested(
   // 卡文档同步（人读的唯一事实源）：把「## 得到什么结果」段替换为新文本；无该段则不硬造。
   // 旧卡（改名前的 ## 验收标准）必须继续命中——存量卡不重写，能改才谈得上兼容（REQ-640a55 FR-5）。
   const docPath = 'docs/requirements/' + task.requirementId + '/tasks/' + taskId + '.md'
+  // REQ-261001203710-0fbf t7 / FR-2：改验收标准也要写任务卡文档（工作区相对）——写前核验根
+  await assertWritableRequirementProject(deps, task.requirementId)
   try {
     if (deps.docs.exists(docPath)) {
       const text = await deps.docs.read(docPath)

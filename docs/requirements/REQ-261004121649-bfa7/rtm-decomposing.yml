@@ -1,0 +1,488 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261004121649-bfa7
+  generated_at: 2026-10-04T06:24:18.589Z
+  version: 88
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-04T08:57:45.502Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/architecture.md#现状与病灶
+      title: 现状与病灶（
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: 现状与病灶
+    - ref: design/architecture.md#设计
+      title: 设计（
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 设计
+    - ref: design/architecture.md#回滚与兼容
+      title: 回滚与兼容（
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: 回滚与兼容
+    - ref: design/data-model.md#一任务卡上新增的可追溯字段
+      title: 一、任务卡上新增的可追溯字段（
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 一任务卡上新增的可追溯字段
+    - ref: design/data-model.md#二回退序号与幂等记录
+      title: 二、回退序号与幂等记录（
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: 二回退序号与幂等记录
+    - ref: design/data-model.md#三兼容与迁移
+      title: 三、兼容与迁移（
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: 三兼容与迁移
+    - ref: design/interfaces.md#一物化编排的返回体
+      title: 一、物化编排的返回体（
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: 一物化编排的返回体
+    - ref: design/interfaces.md#二幂等键与上限
+      title: 二、幂等键与上限（
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: 二幂等键与上限
+    - ref: design/interfaces.md#三批量清理入口
+      title: 三、批量清理入口（
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: 三批量清理入口
+    - ref: design/interfaces.md#四错误码
+      title: 四、错误码（
+      serves:
+        - FR-3
+        - FR-4
+      file: design/interfaces.md
+      section: 四错误码
+    - ref: design/use-cases.md#场景-1实施中发现描述不对要退回设计
+      title: 场景 1：实施中发现描述不对，要退回设计（
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: 场景-1实施中发现描述不对要退回设计
+    - ref: design/use-cases.md#场景-2回退物化后想反悔
+      title: 场景 2：回退物化后想反悔（
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: 场景-2回退物化后想反悔
+    - ref: design/use-cases.md#场景-3回退被误用
+      title: 场景 3：回退被误用（
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: 场景-3回退被误用
+    - ref: design/use-cases.md#边界提醒非目标
+      title: 边界提醒（非目标）（
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: 边界提醒非目标
+outputs:
+  tasks:
+    - id: t-3b61dd
+      title: 回退只动物化该动的卡：子卡原地复位，不再升格成新父卡
+      implements: src/application/internal/rollback.ts 的物化段（生成 reworkDrafts 处）：先按 `parentId === undefined` 分流——顶层父卡 → 生成重做草稿（继承标题/phase/side/acceptance，`reworkOf=原卡id`）；子卡 → 收集到新增的 `resetSubtasks` 列表，不再进 reworkDrafts。rollback-tasks.ts 里物化与复位分别落库（复位 = mutate 把 status 置回 todo，**不动** parentId/stageKind）。
+      serves:
+        - FR-1
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-b721a6
+      title: 回退物化要幂等、要有上限：超限整次拒绝，队列零新增
+      implements: 需求记录上维护 `rollback = { seq, lastAt, lastMaterialized }`（挂需求记录，不进队列文件）：物化前先查 (requirementId, taskId, seq) 是否已有重做卡 → 有则跳过；物化张数 > 20 则在**落库前**抛错并返回明细。MoveRequirement 的「任务先写、需求后写」顺序不变：拒绝发生在任务写入之前，所以天然零新增。
+      serves:
+        - FR-3
+      depends_on:
+        - t-3b61dd
+      phase: implement
+      side: backend
+    - id: t-f98040
+      title: 误物化能一次清掉：仅人的批量清理入口 + 可核对回执
+      implements: src/http/routers/requirements.ts 新增 `POST /req/rollback-cleanup`：body `{ id, rollbackSeq }` → 消费 `requirement.rollback.lastMaterialized` 批量置 canceled（**不碰 done 卡**）+ 按 `reworkOf` 反查还原 `parentId`；沿用既有「仅人」闸门写法（与 canceled/归档同口径）；未知序号 → `REQBOARD_UNKNOWN_ROLLBACK_SEQ`。复用 rollback-revocation.ts 的回收判定，不新造一套。
+      serves:
+        - FR-4
+      depends_on:
+        - t-3b61dd
+      phase: implement
+      side: backend
+    - id: t-c98915
+      title: 重做卡物化即终态：不再自动展开子卡链
+      implements: "rollback-tasks.ts 生成重做草稿时显式带 `stages: []`（当前缺省会导致开工时懒展开子链）。测试：物化后模拟一次「开工」（调用既有开工路径）→ 断言该卡名下子卡数仍为 0。"
+      serves:
+        - FR-2
+      depends_on:
+        - t-3b61dd
+      phase: implement
+      side: backend
+    - id: t-d66a34
+      title: 用「修复前必红」的用例钉死四条行为
+      implements: 新增 tests/rollback-materialize.test.ts（内存队列 + 台账替身，**不碰真实工作区**——今天刚有测试把文件写进真实仓库的教训）。夹具用「6 顶层 + 11 子卡」复现原事故形状（对应实测 17 张）。每条用例先证「当前实现下会红」（判别力），再接修复。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      depends_on:
+        - t-b721a6
+        - t-f98040
+        - t-c98915
+      phase: test
+      side: backend
+    - id: t-ff3d8a
+      title: 老数据兜底与回执诚实性：没有回退序号的旧卡怎么匹配
+      implements: 清理入口对「无 `lastMaterialized` 记录」的需求走兜底路径：按 `reworkOf` + 标题前缀匹配候选，**逐条**在回执里给出 matchedBy/skipped 及原因；不做模糊删除。文档：把这条口径写进 design/data-model.md 对应的兼容节（已写，实施时核对一致）。
+      serves:
+        - FR-3
+      depends_on:
+        - t-3b61dd
+      phase: implement
+      side: backend
+    - id: t-449ac5
+      title: 回退只动物化该动的卡：子卡原地复位，不再升格成新父卡·研发
+      implements: |-
+        src/application/internal/rollback.ts 的物化段（生成 reworkDrafts 处）：先按 `parentId === undefined` 分流——顶层父卡 → 生成重做草稿（继承标题/phase/side/acceptance，`reworkOf=原卡id`）；子卡 → 收集到新增的 `resetSubtasks` 列表，不再进 reworkDrafts。rollback-tasks.ts 里物化与复位分别落库（复位 = mutate 把 status 置回 todo，**不动** parentId/stageKind）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-968fe6
+      title: 回退只动物化该动的卡：子卡原地复位，不再升格成新父卡·联调
+      implements: |-
+        src/application/internal/rollback.ts 的物化段（生成 reworkDrafts 处）：先按 `parentId === undefined` 分流——顶层父卡 → 生成重做草稿（继承标题/phase/side/acceptance，`reworkOf=原卡id`）；子卡 → 收集到新增的 `resetSubtasks` 列表，不再进 reworkDrafts。rollback-tasks.ts 里物化与复位分别落库（复位 = mutate 把 status 置回 todo，**不动** parentId/stageKind）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-449ac5
+      phase: implement
+      side: backend
+    - id: t-d86de5
+      title: 回退只动物化该动的卡：子卡原地复位，不再升格成新父卡·复核
+      implements: |-
+        src/application/internal/rollback.ts 的物化段（生成 reworkDrafts 处）：先按 `parentId === undefined` 分流——顶层父卡 → 生成重做草稿（继承标题/phase/side/acceptance，`reworkOf=原卡id`）；子卡 → 收集到新增的 `resetSubtasks` 列表，不再进 reworkDrafts。rollback-tasks.ts 里物化与复位分别落库（复位 = mutate 把 status 置回 todo，**不动** parentId/stageKind）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-968fe6
+      phase: implement
+      side: backend
+    - id: t-3b2a85
+      title: 回退只动物化该动的卡：子卡原地复位，不再升格成新父卡·测试
+      implements: |-
+        src/application/internal/rollback.ts 的物化段（生成 reworkDrafts 处）：先按 `parentId === undefined` 分流——顶层父卡 → 生成重做草稿（继承标题/phase/side/acceptance，`reworkOf=原卡id`）；子卡 → 收集到新增的 `resetSubtasks` 列表，不再进 reworkDrafts。rollback-tasks.ts 里物化与复位分别落库（复位 = mutate 把 status 置回 todo，**不动** parentId/stageKind）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-d86de5
+      phase: implement
+      side: backend
+    - id: t-e520c7
+      title: 回退物化要幂等、要有上限：超限整次拒绝，队列零新增·研发
+      implements: |-
+        需求记录上维护 `rollback = { seq, lastAt, lastMaterialized }`（挂需求记录，不进队列文件）：物化前先查 (requirementId, taskId, seq) 是否已有重做卡 → 有则跳过；物化张数 > 20 则在**落库前**抛错并返回明细。MoveRequirement 的「任务先写、需求后写」顺序不变：拒绝发生在任务写入之前，所以天然零新增。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-3b61dd
+      phase: implement
+      side: backend
+    - id: t-a30bc1
+      title: 回退物化要幂等、要有上限：超限整次拒绝，队列零新增·联调
+      implements: |-
+        需求记录上维护 `rollback = { seq, lastAt, lastMaterialized }`（挂需求记录，不进队列文件）：物化前先查 (requirementId, taskId, seq) 是否已有重做卡 → 有则跳过；物化张数 > 20 则在**落库前**抛错并返回明细。MoveRequirement 的「任务先写、需求后写」顺序不变：拒绝发生在任务写入之前，所以天然零新增。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-e520c7
+      phase: implement
+      side: backend
+    - id: t-9c4db3
+      title: 回退物化要幂等、要有上限：超限整次拒绝，队列零新增·复核
+      implements: |-
+        需求记录上维护 `rollback = { seq, lastAt, lastMaterialized }`（挂需求记录，不进队列文件）：物化前先查 (requirementId, taskId, seq) 是否已有重做卡 → 有则跳过；物化张数 > 20 则在**落库前**抛错并返回明细。MoveRequirement 的「任务先写、需求后写」顺序不变：拒绝发生在任务写入之前，所以天然零新增。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-a30bc1
+      phase: implement
+      side: backend
+    - id: t-37dc35
+      title: 回退物化要幂等、要有上限：超限整次拒绝，队列零新增·测试
+      implements: |-
+        需求记录上维护 `rollback = { seq, lastAt, lastMaterialized }`（挂需求记录，不进队列文件）：物化前先查 (requirementId, taskId, seq) 是否已有重做卡 → 有则跳过；物化张数 > 20 则在**落库前**抛错并返回明细。MoveRequirement 的「任务先写、需求后写」顺序不变：拒绝发生在任务写入之前，所以天然零新增。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-9c4db3
+      phase: implement
+      side: backend
+    - id: t-0e0b30
+      title: 重做卡物化即终态：不再自动展开子卡链·研发
+      implements: |-
+        rollback-tasks.ts 生成重做草稿时显式带 `stages: []`（当前缺省会导致开工时懒展开子链）。测试：物化后模拟一次「开工」（调用既有开工路径）→ 断言该卡名下子卡数仍为 0。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-3b61dd
+      phase: implement
+      side: backend
+    - id: t-2f9c59
+      title: 重做卡物化即终态：不再自动展开子卡链·联调
+      implements: |-
+        rollback-tasks.ts 生成重做草稿时显式带 `stages: []`（当前缺省会导致开工时懒展开子链）。测试：物化后模拟一次「开工」（调用既有开工路径）→ 断言该卡名下子卡数仍为 0。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-0e0b30
+      phase: implement
+      side: backend
+    - id: t-0a4d64
+      title: 重做卡物化即终态：不再自动展开子卡链·复核
+      implements: |-
+        rollback-tasks.ts 生成重做草稿时显式带 `stages: []`（当前缺省会导致开工时懒展开子链）。测试：物化后模拟一次「开工」（调用既有开工路径）→ 断言该卡名下子卡数仍为 0。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-2f9c59
+      phase: implement
+      side: backend
+    - id: t-f44566
+      title: 重做卡物化即终态：不再自动展开子卡链·测试
+      implements: |-
+        rollback-tasks.ts 生成重做草稿时显式带 `stages: []`（当前缺省会导致开工时懒展开子链）。测试：物化后模拟一次「开工」（调用既有开工路径）→ 断言该卡名下子卡数仍为 0。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-0a4d64
+      phase: implement
+      side: backend
+    - id: t-70dc5f
+      title: 误物化能一次清掉：仅人的批量清理入口 + 可核对回执·研发
+      implements: |-
+        src/http/routers/requirements.ts 新增 `POST /req/rollback-cleanup`：body `{ id, rollbackSeq }` → 消费 `requirement.rollback.lastMaterialized` 批量置 canceled（**不碰 done 卡**）+ 按 `reworkOf` 反查还原 `parentId`；沿用既有「仅人」闸门写法（与 canceled/归档同口径）；未知序号 → `REQBOARD_UNKNOWN_ROLLBACK_SEQ`。复用 rollback-revocation.ts 的回收判定，不新造一套。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-3b61dd
+      phase: implement
+      side: backend
+    - id: t-cfb2d4
+      title: 误物化能一次清掉：仅人的批量清理入口 + 可核对回执·联调
+      implements: |-
+        src/http/routers/requirements.ts 新增 `POST /req/rollback-cleanup`：body `{ id, rollbackSeq }` → 消费 `requirement.rollback.lastMaterialized` 批量置 canceled（**不碰 done 卡**）+ 按 `reworkOf` 反查还原 `parentId`；沿用既有「仅人」闸门写法（与 canceled/归档同口径）；未知序号 → `REQBOARD_UNKNOWN_ROLLBACK_SEQ`。复用 rollback-revocation.ts 的回收判定，不新造一套。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-70dc5f
+      phase: implement
+      side: backend
+    - id: t-b6aa22
+      title: 误物化能一次清掉：仅人的批量清理入口 + 可核对回执·复核
+      implements: |-
+        src/http/routers/requirements.ts 新增 `POST /req/rollback-cleanup`：body `{ id, rollbackSeq }` → 消费 `requirement.rollback.lastMaterialized` 批量置 canceled（**不碰 done 卡**）+ 按 `reworkOf` 反查还原 `parentId`；沿用既有「仅人」闸门写法（与 canceled/归档同口径）；未知序号 → `REQBOARD_UNKNOWN_ROLLBACK_SEQ`。复用 rollback-revocation.ts 的回收判定，不新造一套。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-cfb2d4
+      phase: implement
+      side: backend
+    - id: t-637839
+      title: 误物化能一次清掉：仅人的批量清理入口 + 可核对回执·测试
+      implements: |-
+        src/http/routers/requirements.ts 新增 `POST /req/rollback-cleanup`：body `{ id, rollbackSeq }` → 消费 `requirement.rollback.lastMaterialized` 批量置 canceled（**不碰 done 卡**）+ 按 `reworkOf` 反查还原 `parentId`；沿用既有「仅人」闸门写法（与 canceled/归档同口径）；未知序号 → `REQBOARD_UNKNOWN_ROLLBACK_SEQ`。复用 rollback-revocation.ts 的回收判定，不新造一套。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-b6aa22
+      phase: implement
+      side: backend
+    - id: t-17f385
+      title: 老数据兜底与回执诚实性：没有回退序号的旧卡怎么匹配·研发
+      implements: |-
+        清理入口对「无 `lastMaterialized` 记录」的需求走兜底路径：按 `reworkOf` + 标题前缀匹配候选，**逐条**在回执里给出 matchedBy/skipped 及原因；不做模糊删除。文档：把这条口径写进 design/data-model.md 对应的兼容节（已写，实施时核对一致）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-3b61dd
+      phase: implement
+      side: backend
+    - id: t-bf58f4
+      title: 老数据兜底与回执诚实性：没有回退序号的旧卡怎么匹配·联调
+      implements: |-
+        清理入口对「无 `lastMaterialized` 记录」的需求走兜底路径：按 `reworkOf` + 标题前缀匹配候选，**逐条**在回执里给出 matchedBy/skipped 及原因；不做模糊删除。文档：把这条口径写进 design/data-model.md 对应的兼容节（已写，实施时核对一致）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-17f385
+      phase: implement
+      side: backend
+    - id: t-2824d4
+      title: 老数据兜底与回执诚实性：没有回退序号的旧卡怎么匹配·复核
+      implements: |-
+        清理入口对「无 `lastMaterialized` 记录」的需求走兜底路径：按 `reworkOf` + 标题前缀匹配候选，**逐条**在回执里给出 matchedBy/skipped 及原因；不做模糊删除。文档：把这条口径写进 design/data-model.md 对应的兼容节（已写，实施时核对一致）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-bf58f4
+      phase: implement
+      side: backend
+    - id: t-affc5f
+      title: 老数据兜底与回执诚实性：没有回退序号的旧卡怎么匹配·测试
+      implements: |-
+        清理入口对「无 `lastMaterialized` 记录」的需求走兜底路径：按 `reworkOf` + 标题前缀匹配候选，**逐条**在回执里给出 matchedBy/skipped 及原因；不做模糊删除。文档：把这条口径写进 design/data-model.md 对应的兼容节（已写，实施时核对一致）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-2824d4
+      phase: implement
+      side: backend
+    - id: t-9729e4
+      title: 用「修复前必红」的用例钉死四条行为·研发
+      implements: |-
+        新增 tests/rollback-materialize.test.ts（内存队列 + 台账替身，**不碰真实工作区**——今天刚有测试把文件写进真实仓库的教训）。夹具用「6 顶层 + 11 子卡」复现原事故形状（对应实测 17 张）。每条用例先证「当前实现下会红」（判别力），再接修复。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-b721a6
+        - t-f98040
+        - t-c98915
+      phase: test
+      side: backend
+    - id: t-52ac9a
+      title: 用「修复前必红」的用例钉死四条行为·复核
+      implements: |-
+        新增 tests/rollback-materialize.test.ts（内存队列 + 台账替身，**不碰真实工作区**——今天刚有测试把文件写进真实仓库的教训）。夹具用「6 顶层 + 11 子卡」复现原事故形状（对应实测 17 张）。每条用例先证「当前实现下会红」（判别力），再接修复。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-9729e4
+      phase: test
+      side: backend
+    - id: t-7e6a13
+      title: 用「修复前必红」的用例钉死四条行为·测试
+      implements: |-
+        新增 tests/rollback-materialize.test.ts（内存队列 + 台账替身，**不碰真实工作区**——今天刚有测试把文件写进真实仓库的教训）。夹具用「6 顶层 + 11 子卡」复现原事故形状（对应实测 17 张）。每条用例先证「当前实现下会红」（判别力），再接修复。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-52ac9a
+      phase: test
+      side: backend
+traceability:
+  design_to_tasks:
+    design/architecture.md#现状与病灶:
+      - t-3b61dd
+      - t-d66a34
+    design/architecture.md#设计:
+      - t-3b61dd
+      - t-c98915
+      - t-d66a34
+    design/architecture.md#回滚与兼容:
+      - t-3b61dd
+      - t-d66a34
+    design/data-model.md#一任务卡上新增的可追溯字段:
+      - t-3b61dd
+      - t-d66a34
+    design/data-model.md#二回退序号与幂等记录:
+      - t-b721a6
+      - t-d66a34
+      - t-ff3d8a
+    design/data-model.md#三兼容与迁移:
+      - t-b721a6
+      - t-d66a34
+      - t-ff3d8a
+    design/interfaces.md#一物化编排的返回体:
+      - t-b721a6
+      - t-d66a34
+      - t-ff3d8a
+    design/interfaces.md#二幂等键与上限:
+      - t-b721a6
+      - t-d66a34
+      - t-ff3d8a
+    design/interfaces.md#三批量清理入口:
+      - t-f98040
+      - t-d66a34
+    design/interfaces.md#四错误码:
+      - t-b721a6
+      - t-f98040
+      - t-d66a34
+      - t-ff3d8a
+    design/use-cases.md#场景-1实施中发现描述不对要退回设计:
+      - t-f98040
+      - t-d66a34
+    design/use-cases.md#场景-2回退物化后想反悔:
+      - t-f98040
+      - t-d66a34
+    design/use-cases.md#场景-3回退被误用:
+      - t-f98040
+      - t-d66a34
+    design/use-cases.md#边界提醒非目标:
+      - t-f98040
+      - t-d66a34
+  fr_to_tasks:
+    FR-1:
+      - t-3b61dd
+      - t-d66a34
+      - t-c98915
+    FR-2:
+      - t-3b61dd
+      - t-c98915
+      - t-d66a34
+    FR-3:
+      - t-b721a6
+      - t-d66a34
+      - t-ff3d8a
+      - t-f98040
+    FR-4:
+      - t-f98040
+      - t-d66a34
+      - t-b721a6
+      - t-ff3d8a
+coverage:
+  implementation:
+    total: 14
+    covered: 14
+    uncovered: []
+    rate: 100
+    total_designs: 14
+    covered_designs: 14

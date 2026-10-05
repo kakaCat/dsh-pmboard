@@ -6,13 +6,14 @@
  * @module dsh-pmboard/application/use-cases/ReportTask
  */
 import type { UseCaseDeps } from '../ports.js'
+import { requirementStoreOf, mutateIfPresent } from './queue-access.js'
+import { openRequirementsForVia, canWrite, seatOf } from '../internal/window.js'
 import { inferWorkflowPhase, syncRTMYaml } from '../internal/rtm-yaml.js'
 import {
   normalizeText,
   type StageArtifact,
 } from '../../shared/protocol.js'
 import { normalizeArtifactPath } from '../../domain/artifact/ArtifactPath.js'
-import { openRequirementsFor } from '../internal/window.js'
 // FR-11 路线 A：团队 Worker 的合法写回路径（授权取自 live TeamService，不取用户输入）。
 import { ownsTeamTask } from '../internal/team-dispatch.js'
 import { captureSnapshot, refreshRunningExecution } from '../internal/token-usage.js'
@@ -20,6 +21,7 @@ import {
   reject,
   agentIdFromExec,
   requireLiveDriver,
+  ensureWritableProjectRoot,
 } from '../internal/support.js'
 import { taskStoreOf } from './queue-access.js'
 
@@ -46,7 +48,6 @@ export async function executeReportTask(deps: UseCaseDeps, args: unknown, exec: 
       const nextStep = normalizeText(a.next_step, 'next_step', 1000)
 
       // ── 越权校验（与 task_move 同款）：任务必须属于本窗口绑定的需求 ──────────
-      const snapshot = deps.repo.snapshot()
       const store = taskStoreOf(deps)
       const task = await store.get(taskId)
       if (task === undefined) {
@@ -54,19 +55,34 @@ export async function executeReportTask(deps: UseCaseDeps, args: unknown, exec: 
       }
       // 越权校验两条合法路径：① 本窗口绑定的需求；② **团队 Worker 汇报它自己认领的卡**
       // （FR-11 路线 A：Worker 是独立会话，窗口码天然不等于 sourceSessionId，没有②则链第二张卡必停）。
-      const bound = openRequirementsFor(snapshot, windowKey)
+      const bound = await openRequirementsForVia(requirementStoreOf(deps), windowKey)
       const viaTeam = deps.teams !== undefined && deps.teams.available()
         && ownsTeamTask(deps.teams, (exec as { agent?: unknown } | undefined)?.agent, windowKey, task.teamTaskId)
-      if (!bound.some(r => r.id === task.requirementId) && !viaTeam) {
+      const viaWindow = bound.find(r => r.id === task.requirementId)
+      if (viaWindow === undefined && !viaTeam) {
         reject(
           'reqboard_task_report 未执行：任务 ' + taskId + ' 不属于本窗口绑定的需求',
           'REQBOARD_NOT_BOUND_TO_WINDOW',
         )
       }
-      const req = snapshot.requirements.find(r => r.id === task.requirementId)
+      // 席位角色（FR-3）：**绑定 ≠ 可写**——observer 席位也在 bound 里（只读场景要看得见它）。
+      // 走 ② 团队路线的（Worker 汇报自己认领的卡，无席位）不受此限：那本来就不是台账绑定授权。
+      if (viaTeam !== true && viaWindow !== undefined) {
+        const seatCheck = canWrite(seatOf(viaWindow, windowKey), 'report-task')
+        if (!seatCheck.ok) {
+          reject(
+            'reqboard_task_report 未执行：本窗口在该需求上的席位不允许汇报（' + seatCheck.code + '）',
+            seatCheck.code,
+          )
+        }
+      }
+      const req = await requirementStoreOf(deps).get(task.requirementId)
       if (req === undefined) {
         reject('reqboard_task_report 未执行：需求 ' + task.requirementId + ' 不在台账中', 'REQBOARD_STORE_INCONSISTENT')
       }
+      // REQ-261001203710-0fbf t7 / FR-2：任务卡文档是**工作区相对**落盘（两条写盘点：骨架头 + 追加段）。
+      // 写之前核验即将写的根 = 这条需求声明的根；不一致即拒（完工记录绝不能落到别的项目里）。
+      ensureWritableProjectRoot(deps, req)
 
 
       // ── 渲染汇报段并追加落盘（文件不存在则先写任务卡骨架头）────────────────
@@ -136,6 +152,11 @@ export async function executeReportTask(deps: UseCaseDeps, args: unknown, exec: 
         const tk = tasks.find(x => x.id === task.id)
         if (tk === undefined) return undefined
         tk.lastReport = { at: nowTs, reportIndex, filesChanged: [...filesChanged], completed: [...completed] }
+        // REQ-260929195829-6e02 t1：同步写 lastRun——人工推进的子卡没有 workflow run，
+        // 凭证门需要 lastRun 作为执行证据。stopReason='reported' 表示"经 reqboard_task_report 汇报完成"。
+        if (tk.lastRun === undefined) {
+          tk.lastRun = { at: nowTs, ok: true, stopReason: 'reported', valueNonEmpty: true }
+        }
         tk.version += 1
         tk.updatedAt = nowTs
         // 中途刷新唯一入口（REQ-260927121324-abde FR-5）：刷新最近一条同会话 running 的
@@ -144,9 +165,7 @@ export async function executeReportTask(deps: UseCaseDeps, args: unknown, exec: 
         return tasks
       })
       // ② 需求写（产物登记 + 改动文件上浮 + 评论）——不含任何任务字段。
-      const result = await deps.repo.mutate('requirement-updated', (ledger) => {
-        const r = ledger.requirements.find(x => x.id === req.id)
-        if (r === undefined) return undefined
+      const result = await mutateIfPresent(requirementStoreOf(deps), req.id, (r) => {
         r.artifacts ??= []
         const already = r.artifacts.some(x => x.path === artifact.path && x.kind === artifact.kind)
         if (!already) r.artifacts.push(artifact)
@@ -179,12 +198,11 @@ export async function executeReportTask(deps: UseCaseDeps, args: unknown, exec: 
           createdAt: nowTs,
           createdBy: { kind: 'agent', sessionId: windowKey },
         })
-        r.version += 1
         r.updatedAt = nowTs
         r.updatedBy = { kind: 'agent', sessionId: windowKey }
-        return { requirements: [r] }
+        return { changed: true }
       })
-      const changed = (result.changed.requirements ?? [])[0]
+      const changed = result?.requirement
       if (changed === undefined) reject('reqboard_task_report 写入失败：台账状态异常', 'REQBOARD_STORE_INCONSISTENT')
       // 产物已登记 = 同 path 的 artifact 存在（不管是本次登记还是 decompose 时已登记）
       const artifactRegistered = changed.artifacts?.some(x => x.path === artifact.path) ?? false

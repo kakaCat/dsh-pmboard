@@ -11,11 +11,11 @@
  * requirement_clause_duplicates、REQBOARD_MISSING_REQUIRED_DOC、REQBOARD_ARTIFACT_NOT_OPENABLE、
  * REQBOARD_FILE_MISSING、design_contains_decomposition、REQBOARD_EVIDENCE_FAKE。
  */
+import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonLedgerRepository as ReqboardStore } from '../src/adapters/JsonLedgerRepository.js'
 import { envelope, GATE_HOW_ANCHOR } from '../src/application/internal/gate-feedback.js'
 import {
   checkDesignCompletenessGate,
@@ -91,11 +91,11 @@ async function thrown(fn: () => unknown): Promise<GateLike> {
 }
 
 let dir: string
-let store: ReqboardStore
+let store: ReturnType<typeof makeTestStore>
 
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'pmboard-envelope-'))
-  store = new ReqboardStore({ file: join(dir, 'dsh-reqboard.json') })
+  store = makeTestStore()
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -105,7 +105,7 @@ async function seedReq(o: { id: string; status: string }): Promise<void> {
     blocked: false, sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
   } as unknown as RequirementRecord
-  await store.mutate('seed', (l) => { l.requirements.push(r); return { requirements: [r] } })
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
 const run = (tool: { execute: (a: unknown, e: unknown) => Promise<any> }, args: unknown) =>

@@ -1,0 +1,38 @@
+task:
+  id: t-0170cd
+  title: 后台任务的户主改成身份证号：owner 口径收口·测试
+  status: done
+  implements: |-
+    src/application/internal/support.ts 新增导出 dispatchOwnerOf(exec)：复用 src/application/dive/round-state.ts:197 的 agentIdOf（读取顺序 agent.id → agent.session.id），只转出不复写第二份；src/application/ports.ts 的 JobStartSpec.owner 由 unknown 收紧为 string | undefined（注释写清宿主契约：agents.get(id) 要字符串）；src/application/use-cases/AdvanceChain.ts:517 改为 owner: dispatchOwnerOf(exec)；tests/unit/dsh-jobs-adapter.test.ts:194 的 owner 夹具由 {id:'agent-1'} 改为字符串 'session-agent-1'（保留『透传不改写』断言）；新建 tests/advance-dispatch-owner.test.ts，先落 D-4（owner 捕获为字符串）与 D-6（dispatchOwnerOf 与 agentIdOf 四输入逐例相等）两例。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-30dd7a
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261002173819-69c7
+    TASK_ID: t-0170cd
+    TASK_TITLE: 后台任务的户主改成身份证号：owner 口径收口·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-02T10:04:42.267Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261002173819-69c7
+  generated_at: 2026-10-02T10:03:33.197Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-02T10:04:42.267Z

@@ -1,0 +1,12 @@
+# case E2 · 验收退回返工 · serves: FR-2
+case: E2
+ordered_contains:
+  - reqboard_submit           # 首次 submit(verification)
+  - reqboard_accept_sheet     # 走验收单，操作员退回第 2 条
+  - reqboard_submit           # 按意见返工后重新 submit(verification)
+budget:
+  max_tool_calls: 18
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_submit     # 末次重交被接受（版本递增见台账断言）
+    result_contains: ok

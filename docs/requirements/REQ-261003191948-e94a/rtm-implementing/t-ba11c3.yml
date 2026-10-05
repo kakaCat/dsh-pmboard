@@ -1,0 +1,36 @@
+task:
+  id: t-ba11c3
+  title: 接线降级启动分叉并双通道留痕
+  status: done
+  implements: "新建 src/wiring/not-ready.ts：导出 enterNotReadyMode(ctx, failure, logger)，内部先 logger.error('reqboard 未就绪（HTTP 全端点 503）：' + detail) 与 captureDiag('reqboard-capture [NOT-READY]: ' + detail 单行化)，再走 (ctx as any).inject?.(['webServer'], ...) + webCtx.effect?.(...) 注册 { kind:'prefix', path:'/dashboard/api/reqboard', handler: createNotReadyHandler(failure) }（前缀字面量与 index.ts 正常分支逐字一致；本函数不触碰数据根）。改 src/index.ts：把 assertLedgerMigrated(...) 一行换成 const preflight = preflightLedger({...}); if (!preflight.ok) { enterNotReadyMode(ctx, preflight.failure, logger); return }，位置保持在 initCaptureDiag 与 'apply function STARTED' 留痕之后、new ShardedRequirementStore 之前；正常分支起自 new ShardedRequirementStore 且逐字节不变。在 tests/reqboard/degraded-startup.test.ts 追加启动分叉与留痕段（假 ctx 捕获 inject 调用与假 logger）。"
+  serves:
+    - FR-1
+    - FR-5
+    - FR-6
+  depends_on:
+    - t-683371
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261003191948-e94a
+    TASK_ID: t-ba11c3
+    TASK_TITLE: 接线降级启动分叉并双通道留痕
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-03T12:23:29.907Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261003191948-e94a
+  generated_at: 2026-10-03T12:23:29.905Z
+  version: 6
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-03T12:26:38.983Z

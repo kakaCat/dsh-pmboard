@@ -27,7 +27,7 @@ const noopRunner: WorkflowRunner = {
 function seedDeliveredBeforeClaim(subFiles: string) {
   const h = makeHarness()
   h.docs.put(FILE, 'x', 1000)
-  h.repo.ledger.requirements = [req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true })]
+  h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true }))
   const parent = task({
     id: 't-p', requirementId: 'REQ-000001', status: 'in_progress',
     title: '父卡', claimedAt: 2000, claimedBy: 'session-w-001',
@@ -54,6 +54,7 @@ function parentOf(h: ReturnType<typeof makeHarness>): TaskRecord {
 describe('父卡收尾凭证基准（不可变出身，父子同口径）', () => {
   it('交付早于认领（手工交付）：父卡仍能收尾并 rollup 进验收', async () => {
     const h = seedDeliveredBeforeClaim(FILE)
+    await h.seedSettled()
     const out = await advanceRequirement(h.deps, 'REQ-000001')
     const fin = out.steps.find((s) => s.event === 'FINALIZE_PARENT')
     expect(fin?.outcome).toBe('ok')
@@ -63,6 +64,7 @@ describe('父卡收尾凭证基准（不可变出身，父子同口径）', () =
 
   it('真无证据（上报文件不存在且无工具痕迹）：父卡仍被拦在 done 之外', async () => {
     const h = seedDeliveredBeforeClaim(MISSING)
+    await h.seedSettled()
     const out = await advanceRequirement(h.deps, 'REQ-000001')
     expect(out.stopped).toBe('paused')
     expect(parentOf(h).status).toBe('in_progress')

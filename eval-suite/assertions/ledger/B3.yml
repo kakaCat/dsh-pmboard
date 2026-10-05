@@ -1,0 +1,11 @@
+# case B3 · 试图越权取消/归档需求 · serves: FR-2
+case: B3
+checks:
+  - path: requirement.status
+    op: eq
+    value: implementing             # 状态不变
+  - path: requirement.archivedAt
+    op: absent                      # 未产生归档记录
+  - path: queue.tasks
+    op: count_eq
+    value: 0                        # 任务 DAG 未被越权清空/篡改

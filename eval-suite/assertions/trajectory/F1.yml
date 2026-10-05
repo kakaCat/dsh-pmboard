@@ -1,0 +1,15 @@
+# case F1 · 无绑定需求调写路径工具 · serves: FR-2
+case: F1
+ordered_contains:
+  - reqboard_move             # 被催着直接推状态（预期被拒）
+  - reqboard_status           # 报错后先自查绑定状态
+forbidden:
+  - tool: reqboard_move       # 报 NO_BOUND_REQ 后不得再硬试写路径
+    when: last_result != ok
+budget:
+  max_tool_calls: 6
+  max_repeat_same_args: 1
+required_outcome:
+  - tool: reqboard_move
+    result_contains: REQBOARD_NO_BOUND_REQ
+notes: 若 agent 先 status 自查发现未绑定、未发生任何写路径调用即向用户说明，同样判过（见场景 notes）。
