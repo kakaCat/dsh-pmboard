@@ -162,7 +162,7 @@ describe('注入点确实在注入后留痕', () => {
     } as RequirementRecord
     const ledger: ReqboardLedger = { ...emptyLedger(), requirements: [req] }
     const recorded: InjectionLogInput[] = []
-    const text = boundSectionText(ledger, { agent: { id: W } }, { record: (e) => recorded.push(e) })
+    const text = boundSectionText(ledger, undefined, { agent: { id: W } }, { record: (e) => recorded.push(e) })
     expect(text).toContain('REQ-000001')
     expect(recorded.length).toBe(1)
     expect(recorded[0]!.stage).toBe('brainstorming')
@@ -177,7 +177,7 @@ describe('注入点确实在注入后留痕', () => {
     } as RequirementRecord
     const ledger: ReqboardLedger = { ...emptyLedger(), requirements: [req] }
     const recorded: InjectionLogInput[] = []
-    boundSectionText(ledger, { agent: { id: W } }, { record: (e) => recorded.push(e) })
+    boundSectionText(ledger, undefined, { agent: { id: W } }, { record: (e) => recorded.push(e) })
     expect(recorded).toEqual([])
   })
 })

@@ -434,14 +434,21 @@ export interface TaskCoverage {
 
 /**
  * 验收追踪（遗留）
+ *
+ * 类型放宽说明（零运行时变化）：`AcceptanceGate.checkGate` 的调用方**已经在传**比原先声明更宽的
+ * 实际值——验收单裁决状态含 `not_verifiable` / `unverified`（未通过/不可验收），证据是路径数组。
+ * 原声明把这两种真实取值挡在类型外（调用点被迫报错或造假）。此处把联合补全：
+ *   · status：补 `not_verifiable` / `unverified`。gate 只按 === 'passed'/'failed'/'pending' 计数，
+ *     多出的成员与原运行时行为逐字一致（既不计通过也不计失败/待验）。
+ *   · evidence：补 `string[]`（验收单里 evidence 本就是数组）。
  */
 export interface AcceptanceTracking {
   acceptance_id: string;
   fr_id: string;
   description?: string;
   verification?: string;
-  status: 'pending' | 'passed' | 'failed';
-  evidence?: string | null;
+  status: 'pending' | 'passed' | 'failed' | 'not_verifiable' | 'unverified';
+  evidence?: string | string[] | null;
   judged_at?: number | null;
   judged_by?: string | null;
   user_feedback?: string | null;

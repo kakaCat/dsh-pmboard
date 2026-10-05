@@ -104,9 +104,10 @@ describe('livePendingConfirm：过滤已 settle / 已过期 / 台账已落章（
   it('已 settle → undefined；台账查不到需求 → 保守仍拦', async () => {
     const registry = new PendingConfirmRegistry({ now: () => 0, ttlMs: 1000 })
     const p = registry.register({ windowKey: W, requirementId: 'REQ-x', target: 'plan' })
-    expect((await livePendingConfirm(depsOf(registry), W))?.ticket).toBe(p.ticket)
+    // 「台账查不到需求」正是本用例的前提：空需求册
+    expect((await livePendingConfirm(depsOf(registry, []), W))?.ticket).toBe(p.ticket)
     registry.settle(p.ticket, { confirmed: false, advanced: false })
-    expect(await livePendingConfirm(depsOf(registry), W)).toBeUndefined()
+    expect(await livePendingConfirm(depsOf(registry, []), W)).toBeUndefined()
   })
 
   it('未装配端口（deps.pendingConfirms 缺省）→ undefined', async () => {

@@ -15,6 +15,7 @@ import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createReqboardHandler } from '../src/http/routes.js'
+import { taskStoreAt } from './queue/route-deps.js'
 import type { IsolationTraceEntry } from '../src/application/use-cases/IsolateNodeContext.js'
 
 let dir: string
@@ -65,7 +66,7 @@ function stubLog(entries: IsolationTraceEntry[] | 'throw') {
 
 describe('GET /isolation-log', () => {
   it('k 非法 → 400', async () => {
-    const handler = createReqboardHandler({ requirementStore: store, now: () => Date.now(), isolationLog: stubLog([]) })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now(), isolationLog: stubLog([]) })
     for (const bad of ['k=0', 'k=201', 'k=abc', 'k=1.5', 'k=-3']) {
       const res = await get(handler, `/isolation-log?${bad}`)
       expect(res.statusCode, bad).toBe(400)
@@ -74,7 +75,7 @@ describe('GET /isolation-log', () => {
   })
 
   it('端口未装配 → available=false + 空清单（不报错）', async () => {
-    const handler = createReqboardHandler({ store: store, requirementStore: store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     const res = await get(handler, '/isolation-log')
     expect(res.statusCode).toBe(200)
     expect(res.payload.data.available).toBe(false)
@@ -89,7 +90,7 @@ describe('GET /isolation-log', () => {
       entry({ at: 3, windowKey: 'w-a', stage: 'design' }),
       entry({ at: 4, windowKey: 'w-c', stage: 'implementing' }),
     ])
-    const handler = createReqboardHandler({ requirementStore: store, now: () => Date.now(), isolationLog: log })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now(), isolationLog: log })
     const res = await get(handler, '/isolation-log?window=w-a')
     expect(res.statusCode).toBe(200)
     const d = res.payload.data
@@ -100,7 +101,7 @@ describe('GET /isolation-log', () => {
   })
 
   it('留痕文件损坏（readAll 抛错）→ 降级 available=false，不 500', async () => {
-    const handler = createReqboardHandler({ requirementStore: store, now: () => Date.now(), isolationLog: stubLog('throw') })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now(), isolationLog: stubLog('throw') })
     const res = await get(handler, '/isolation-log')
     expect(res.statusCode).toBe(200)
     expect(res.payload.data.available).toBe(false)
@@ -115,7 +116,7 @@ describe('GET /isolation-log', () => {
       entry({ at: 4, stage: 'decomposing' }),
       entry({ at: 5, stage: 'implementing' }),
     ])
-    const handler = createReqboardHandler({ requirementStore: store, now: () => Date.now(), isolationLog: log })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now(), isolationLog: log })
     const res = await get(handler, '/isolation-log?k=2')
     expect(res.statusCode).toBe(200)
     const d = res.payload.data
@@ -129,7 +130,7 @@ describe('GET /isolation-log', () => {
       entry({ at: 1, windowKey: 'w-a' }),
       entry({ at: 2, windowKey: 'w-b' }),
     ])
-    const handler = createReqboardHandler({ requirementStore: store, now: () => Date.now(), isolationLog: log })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now(), isolationLog: log })
     const res = await get(handler, '/isolation-log')
     expect(res.payload.data.total).toBe(2)
     expect(res.payload.data.window).toBe(null)

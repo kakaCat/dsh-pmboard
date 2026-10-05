@@ -8,7 +8,6 @@
  *
  * @module dsh-pmboard/tests/dive-rearm
  */
-import { legacyStoreProjection } from './support/legacy-store-projection.js'
 import type { RequirementStore } from '../src/application/ports.js'
 import { legacyStoreProjection } from './support/legacy-store-projection.js'
 import { factsOf } from '../src/domain/requirement/RequirementSummary.js'

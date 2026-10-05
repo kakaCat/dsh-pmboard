@@ -15,6 +15,7 @@ import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createReqboardHandler } from '../src/http/routes.js'
+import { taskStoreAt } from './queue/route-deps.js'
 import { createGatePostChain } from '../src/application/gate/GatePostChain.js'
 import { createPendingGateStore } from '../src/application/gate/PendingGate.js'
 import type { RequirementRecord } from '../src/shared/protocol.js'
@@ -71,7 +72,7 @@ async function seed(status: string, withArtifact = true): Promise<void> {
 
 function handler(online: boolean, chain: ReturnType<typeof chainSpy>['chain']) {
   return createReqboardHandler({ requirementStore: store,
-
+    taskStore: taskStoreAt(dir),
     now: () => 1000,
     gateChain: chain,
     agents: () => (online ? { get: () => ({ id: W, session: { fake: true } }) } : { get: () => undefined }),

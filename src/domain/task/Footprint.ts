@@ -263,7 +263,10 @@ function clip(text: string, maxChars: number): string {
 export function overCapacitySummary(
   tasks: readonly FootprintSummaryInput[],
   capacity: number,
-  maxChars = LIMITS.footprintSummaryMaxChars,
+  // 显式标注 `number`（REQ-261004222448-292a 基线修复）：默认值是 `LIMITS.*` 的 const 字面量，
+  // 不标注就会被推断成字面量类型 `120`，于是「调用方显式传更大预算」（本函数文档明写的用法）
+  // 在类型上被禁止。标注后签名与本函数文档一致，运行期一字未改。
+  maxChars: number = LIMITS.footprintSummaryMaxChars,
 ): string {
   const over: { key: string; units: number; batches: number }[] = []
   for (const t of tasks) {

@@ -94,22 +94,22 @@ function extractSectionSummary(content: string, maxLines: number = 5): string {
  * @param requirement 需求记录
  * @returns 占位符数据
  */
-export function generateTaskCardPlaceholders(
+export async function generateTaskCardPlaceholders(
   planTask: PlanTask,
   taskId: string,
   docs: DocsReader,
   requirement: RequirementRecord
-): TaskCardPlaceholders {
+): Promise<TaskCardPlaceholders> {
   const frRefs = planTask.requirement_refs || []
   const designDir = `docs/requirements/${requirement.id}/design`
   const requirementPath = `docs/requirements/${requirement.id}/requirement.md`
   
-  // 1. 提取设计章节
-  const designSections = extractAllDesignSections(docs, designDir)
+  // 1. 提取设计章节（extractAllDesignSections 因 DocsReader.read 异步而返回 Promise）
+  const designSections = await extractAllDesignSections(docs, designDir)
   const relatedSections = findDesignSectionsForFRs(designSections, frRefs)
   
-  // 2. 读取需求文档
-  const requirementDoc = docs.read?.(requirementPath) || ''
+  // 2. 读取需求文档（DocsReader.read 是异步端口，此前漏 await ⇒ 把 Promise 当 string 用）
+  const requirementDoc = (await docs.read?.(requirementPath)) || ''
   
   // 3. 生成设计引用
   let designReference = ''
@@ -222,13 +222,13 @@ export function renderTaskCard(
  * @param templateContent 模板内容
  * @returns 渲染后的任务卡内容
  */
-export function generateTaskCardSkeleton(
+export async function generateTaskCardSkeleton(
   planTask: PlanTask,
   taskId: string,
   docs: DocsReader,
   requirement: RequirementRecord,
   templateContent: string
-): string {
-  const placeholders = generateTaskCardPlaceholders(planTask, taskId, docs, requirement)
+): Promise<string> {
+  const placeholders = await generateTaskCardPlaceholders(planTask, taskId, docs, requirement)
   return renderTaskCard(templateContent, placeholders)
 }

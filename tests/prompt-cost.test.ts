@@ -84,7 +84,7 @@ function seededLedger(): ReqboardLedger {
       blocked: false, sourceSessionId: 'session-abc12345-0000', comments: [], version: 1, createdAt: 1, updatedAt: 1,
       createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
     }],
-
+    triages: [],
   }
 }
 

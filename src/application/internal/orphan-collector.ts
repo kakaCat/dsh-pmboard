@@ -30,7 +30,7 @@ export interface OrphanResult {
  */
 export function identifyOrphans(
   tasks: TaskRecord[],
-  activeJobIds: Set<string>,
+  _activeJobIds: Set<string>,
   thresholdMs: number = LIMITS.orphanTimeoutMs
 ): OrphanResult {
   const now = Date.now()
@@ -88,7 +88,7 @@ export function identifyOrphans(
  */
 export function isOrphan(
   task: TaskRecord,
-  activeJobIds: Set<string>,
+  _activeJobIds: Set<string>,
   thresholdMs: number = LIMITS.orphanTimeoutMs
 ): boolean {
   if (task.status !== 'in_progress') {

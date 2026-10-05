@@ -47,7 +47,10 @@ describe('acceptanceGateCheck', () => {
       blocked: false,
       createdAt: Date.now(),
       createdBy: { kind: 'human', sessionId: 'test' },
-      comments: []
+      comments: [],
+      version: 1,
+      updatedAt: Date.now(),
+      updatedBy: { kind: 'human', sessionId: 'test' }
     }
 
     const result = await acceptanceGateCheck(req, tmpDir)
@@ -79,7 +82,10 @@ describe('acceptanceGateCheck', () => {
       blocked: false,
       createdAt: Date.now(),
       createdBy: { kind: 'human', sessionId: 'test' },
-      comments: []
+      comments: [],
+      version: 1,
+      updatedAt: Date.now(),
+      updatedBy: { kind: 'human', sessionId: 'test' }
     }
 
     const result = await acceptanceGateCheck(req, tmpDir)
@@ -99,7 +105,10 @@ describe('acceptanceGateCheck', () => {
       blocked: false,
       createdAt: Date.now(),
       createdBy: { kind: 'human', sessionId: 'test' },
-      comments: []
+      comments: [],
+      version: 1,
+      updatedAt: Date.now(),
+      updatedBy: { kind: 'human', sessionId: 'test' }
     }
 
     const result = await acceptanceGateCheck(req, tmpDir)

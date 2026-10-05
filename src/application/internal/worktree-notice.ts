@@ -16,10 +16,10 @@ import {
 } from '../../domain/prompt/worktree-events.js'
 /** 投递一次事件型 worktree 提示；返回是否送达（false = 未装配/窗口为空/投递失败，均不抛）。 */
 export function deliverWorktreeNotice(
-  deps: UseCaseDeps,
-  windowKey: string,
-  event: WorktreeEvent,
-  ctx: WorktreeEventContext,
+  _deps: UseCaseDeps,
+  _windowKey: string,
+  _event: WorktreeEvent,
+  _ctx: WorktreeEventContext,
 ): boolean {
   // Dive模式下不投递worktree通知，直接返回false
   return false

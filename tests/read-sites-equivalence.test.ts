@@ -214,7 +214,20 @@ describe('读方等价性证据（REQ-260927202051-f6df / D8 a~e）', () => {
     // 只是投影口径变了）；全文改由 `GET /requirements/:id` 提供，另有 state-payload 用例把守。
     // 默认 `scope=active`：归档需求**不在**本页（这正是 A9"归档 33→200 字节不增长"的机制）。
     const ledger = store.peekAll().filter(r => isActiveRequirement(r))
-    const rows = data.requirements as readonly Record<string, unknown>[]
+    // 响应元素是**摘要投影**（不是全文 RequirementRecord）：按投影字段读即可，
+    // 无需把它当索引对象（`Record<string, unknown>` 与 interface 互不兼容）。
+    type SummaryRow = {
+      id: string
+      title?: string
+      status?: string
+      blocked?: boolean
+      createdAt?: number
+      updatedAt?: number
+      version?: number
+      commentCount?: number
+      artifactCount?: number
+    }
+    const rows = data.requirements as readonly SummaryRow[]
     expect(rows.length).toBe(ledger.length)
     for (const row of rows) {
       const full = ledger.find(r => r.id === row.id)!

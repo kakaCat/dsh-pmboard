@@ -50,7 +50,10 @@ describe('taskCoverageGateCheck', () => {
       blocked: false,
       createdAt: Date.now(),
       createdBy: { kind: 'human', sessionId: 'test' },
-      comments: []
+      comments: [],
+      version: 1,
+      updatedAt: Date.now(),
+      updatedBy: { kind: 'human', sessionId: 'test' }
     }
 
     const result = await taskCoverageGateCheck(req, tmpDir)
@@ -82,7 +85,10 @@ describe('taskCoverageGateCheck', () => {
       blocked: false,
       createdAt: Date.now(),
       createdBy: { kind: 'human', sessionId: 'test' },
-      comments: []
+      comments: [],
+      version: 1,
+      updatedAt: Date.now(),
+      updatedBy: { kind: 'human', sessionId: 'test' }
     }
 
     const result = await taskCoverageGateCheck(req, tmpDir)
@@ -103,7 +109,10 @@ describe('taskCoverageGateCheck', () => {
       blocked: false,
       createdAt: Date.now(),
       createdBy: { kind: 'human', sessionId: 'test' },
-      comments: []
+      comments: [],
+      version: 1,
+      updatedAt: Date.now(),
+      updatedBy: { kind: 'human', sessionId: 'test' }
     }
 
     const result = await taskCoverageGateCheck(req, tmpDir)

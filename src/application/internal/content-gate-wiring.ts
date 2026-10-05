@@ -613,7 +613,7 @@ export async function checkFullTraceability(
   // 提取设计章节
   const { extractAllDesignSections, checkDesignCoverage, checkImplementationCoverage } = 
     await import('./content-trace.js')
-  const designSections = extractAllDesignSections(docs, designDir)
+  const designSections = await extractAllDesignSections(docs, designDir)
   
   // Level 1: 需求 ← 设计
   const designGaps = checkDesignCoverage(frList, designSections)

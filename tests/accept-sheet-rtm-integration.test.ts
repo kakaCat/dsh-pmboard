@@ -14,10 +14,10 @@ describe('AcceptSheet RTM Integration', () => {
           criterion: `验收项${i + 1}`,
           howToVerify: `验证方式${i + 1}`,
           status: 'passed' as const,
-          evidence: `已通过 ${i + 1}`,
+          evidence: [`已通过 ${i + 1}`],
           decidedAt: Date.now(),
           decidedBy: { kind: 'human' as const, sessionId: 'test' },
-          opinion: null
+          opinion: undefined
         })),
         // 2 项 failed
         {
@@ -26,7 +26,7 @@ describe('AcceptSheet RTM Integration', () => {
           criterion: '验收项11',
           howToVerify: '验证方式11',
           status: 'failed' as const,
-          evidence: null,
+          evidence: [],
           decidedAt: Date.now(),
           decidedBy: { kind: 'human' as const, sessionId: 'test' },
           opinion: 'Need rework'
@@ -37,7 +37,7 @@ describe('AcceptSheet RTM Integration', () => {
           criterion: '验收项12',
           howToVerify: '验证方式12',
           status: 'failed' as const,
-          evidence: null,
+          evidence: [],
           decidedAt: Date.now(),
           decidedBy: { kind: 'human' as const, sessionId: 'test' },
           opinion: 'Fix required'
@@ -71,10 +71,10 @@ describe('AcceptSheet RTM Integration', () => {
         criterion: `验收项${i + 1}`,
         howToVerify: `验证方式${i + 1}`,
         status: 'passed' as const,
-        evidence: `已通过 ${i + 1}`,
+        evidence: [`已通过 ${i + 1}`],
         decidedAt: Date.now(),
         decidedBy: { kind: 'human' as const, sessionId: 'test' },
-        opinion: null
+        opinion: undefined
       })),
       reworkOnly: false,
       generatedAt: Date.now(),
@@ -106,10 +106,10 @@ describe('AcceptSheet RTM Integration', () => {
           criterion: `验收项${i + 1}`,
           howToVerify: `验证方式${i + 1}`,
           status: 'passed' as const,
-          evidence: `已通过 ${i + 1}`,
+          evidence: [`已通过 ${i + 1}`],
           decidedAt: Date.now(),
           decidedBy: { kind: 'human' as const, sessionId: 'test' },
-          opinion: null
+          opinion: undefined
         })),
         // 5 项 pending
         ...Array.from({ length: 5 }, (_, i) => ({
@@ -118,10 +118,10 @@ describe('AcceptSheet RTM Integration', () => {
           criterion: `验收项${i + 6}`,
           howToVerify: `验证方式${i + 6}`,
           status: 'pending' as const,
-          evidence: null,
-          decidedAt: null,
-          decidedBy: null,
-          opinion: null
+          evidence: [],
+          decidedAt: undefined,
+          decidedBy: undefined,
+          opinion: undefined
         }))
       ],
       reworkOnly: false,

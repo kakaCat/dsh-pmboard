@@ -22,6 +22,9 @@ import type { RequirementCategory } from '../domain/requirement/Requirement.js'
 import type { ArtifactKind, ArchiveDoc, ArchiveDocRule } from '../domain/artifact/ArtifactSpec.js'
 // 依赖传递归约（零 import 纯函数）：计划任务表的 depends_on 同样只保留**直接前置**。
 import { transitiveReduce } from '../domain/queue/transitiveReduction.js'
+// RTM 验收追踪的**唯一声明处**在 vendor（type-only 引用：编译期擦除，不进运行时不增依赖）。
+// VerificationSheet.rtmTracking 是 RTM 增强层快照，直接复用该形状，避免在协议层再抄一份造成漂移。
+import type { AcceptanceTracking } from '../../vendor/reqboard/src/types/rtm.js'
 
 // ---------------------------------------------------------------------------
 // 提示词难度级别（用于注入不同复杂度的提示词）
@@ -729,6 +732,11 @@ export interface VerificationItem {
   resultSource?: 'agent' | 'human'
   needsHuman?: boolean
   humanReason?: string
+  /**
+   * 「怎么验」操作细节（可选）：与 criterion（怎么算过）分开存。
+   * 旧账本/存量记录缺省 undefined = 无该字段，读侧回落 criterion——纯声明，读侧零迁移。
+   */
+  howToVerify?: string
 }
 
 /**
@@ -742,6 +750,12 @@ export interface VerificationSheet {
   generatedBy: ActorRef
   /** 本轮是否只含上一版未过项（返工续验标记） */
   reworkOnly?: boolean
+  /**
+   * 上一版 RTM 验收追踪快照（**可选**，RTM 增强层数据）。
+   * 缺省 undefined = 无该字段（存量记录零迁移）；`SubmitVerification` 读它做返工续验的
+   * 「只生成上版 failed 项」输入。此处只声明形状（与 vendor 的 AcceptanceTracking 同源），不接线。
+   */
+  rtmTracking?: AcceptanceTracking[]
 }
 
 /**

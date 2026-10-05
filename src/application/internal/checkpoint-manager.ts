@@ -48,8 +48,10 @@ export class CheckpointManager {
     return {
       runId: advance.runId,
       currentSubtaskId: advance.currentSubtaskId,
-      stepIndex: advance.stepIndex,
-      heartbeatAt: advance.heartbeatAt
+      // 两个时间/序号字段在 AdvanceState 上是可选的（存量记录缺省）；Checkpoint 要求必填，
+      // 故取安全缺省：缺省即「第 0 步 / 无心跳（极旧）」——只在退化记录上生效，writeCheckpoint 路径始终有值。
+      stepIndex: advance.stepIndex ?? 0,
+      heartbeatAt: advance.heartbeatAt ?? 0
     }
   }
 

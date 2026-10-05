@@ -23,7 +23,7 @@ import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
 import { UserQuestionsAdapter } from '../src/adapters/UserQuestionsAdapter.js'
 import { PendingConfirmRegistry } from '../src/adapters/PendingConfirmRegistry.js'
 import { defineAskConfirmTool, defineConfirmReceiptTool } from '../src/tools/index.js'
-import type { AgentDeliveryPort, AskAnswer, UseCaseDeps } from '../src/application/ports.js'
+import type { CrossWindowDeliveryPort, AskAnswer, UseCaseDeps } from '../src/application/ports.js'
 import type { RequirementRecord, StageArtifact } from '../src/shared/protocol.js'
 
 const W = 'session-pending-001'
@@ -41,8 +41,13 @@ afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
 type AskFn = () => Promise<{ answers?: AskAnswer[] }>
 
-/** 真适配器构造 UseCaseDeps；pending=true 才装配挂起确认注册表（缺省 = 旧阻塞语义）。 */
-function makeDeps(ask: AskFn, opts: { pending?: boolean; delivery?: AgentDeliveryPort } = {}): UseCaseDeps {
+/**
+ * 真适配器构造 UseCaseDeps；pending=true 才装配挂起确认注册表（缺省 = 旧阻塞语义）。
+ *
+ * `crossWindowDeliver` 是**现存的**跨窗口投递端口（旧 `delivery` / `AgentDeliveryPort.deliver`
+ * 已随 Dive 化删除）——本文件只在 TC-7 用它作"装好可用投递通道"的观察点。
+ */
+function makeDeps(ask: AskFn, opts: { pending?: boolean; crossWindowDeliver?: CrossWindowDeliveryPort } = {}): UseCaseDeps {
   const now = (): number => Date.now()
   const deps = {
     store: store,
@@ -55,7 +60,7 @@ function makeDeps(ask: AskFn, opts: { pending?: boolean; delivery?: AgentDeliver
     doneThrottleMs: 0,
   } as unknown as UseCaseDeps & Record<string, unknown>
   if (opts.pending === true) deps.pendingConfirms = new PendingConfirmRegistry({ now })
-  if (opts.delivery !== undefined) deps.delivery = opts.delivery
+  if (opts.crossWindowDeliver !== undefined) deps.crossWindowDeliver = opts.crossWindowDeliver
   return deps
 }
 
@@ -161,10 +166,22 @@ describe('T-6 回执（FR-3 / I-4）', () => {
     let resolveAsk: (v: { answers?: AskAnswer[] }) => void = () => {}
     const deferred = new Promise<{ answers?: AskAnswer[] }>((res) => { resolveAsk = res })
     const delivered: string[] = []
-    const deps = makeDeps(() => deferred, {
-      pending: true,
-      delivery: { deliver: (w, m) => { delivered.push(w + ':' + m.text); return { delivered: true } } },
-    })
+    // ⚠️ 唤醒投递已随 Dive 化删除：`src/application/internal/pending-confirm.ts` 的 `wake()` 现在
+    // **只按原样构造文案、再 `void text` 显式标记"本轮不消费"**（注释原文「deliver已删除：
+    // Dive模式下唤醒由roundDriver处理」）。故本用例装一个**可用**的跨窗口投递端口当观察点，
+    // 断言"端子在、但这条路径不投递"——若哪天唤醒重新经该端口投递，本断言立刻变红。
+    const crossWindowDeliver: CrossWindowDeliveryPort = {
+      async deliver(windowKey: string, message: unknown) {
+        delivered.push(windowKey + ':' + String((message as { text?: string }).text))
+        return { delivered: true }
+      },
+      createMessage: (params: { text: string; kind: string }) => ({
+        message: { text: params.text, source: { kind: params.kind } }, messageId: 'm-1',
+      }),
+    }
+    const deps = makeDeps(() => deferred, { pending: true, crossWindowDeliver })
+    // 先证明"端子真的装上了"——否则下面的"没投递"可能只是没装配
+    expect((deps as { crossWindowDeliver?: unknown }).crossWindowDeliver).toBe(crossWindowDeliver)
     const askTool = defineAskConfirmTool(deps) as any
     const receiptTool = defineConfirmReceiptTool(deps) as any
 
@@ -188,9 +205,8 @@ describe('T-6 回执（FR-3 / I-4）', () => {
     expect(out.from).toBe('brainstorming')
     expect(out.to).toBe('design')
     expect(out.requirement_id).toBe('REQ-abc123')
-    // 唤醒窗口：投递过一次且带取回执命令
-    expect(delivered).toHaveLength(1)
-    expect(delivered[0]).toContain('reqboard_confirm_receipt')
+    // 唤醒窗口：Dive 化后 `wake()` 只产文案、不投递（见上方端子说明）——断言"未投递"
+    expect(delivered).toEqual([])
   })
 
   it('TC-8 未知 ticket → REQBOARD_UNKNOWN_TICKET', async () => {

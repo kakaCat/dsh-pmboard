@@ -10,6 +10,7 @@ import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createReqboardHandler } from '../src/http/routes.js'
+import { taskStoreAt } from './queue/route-deps.js'
 import { stubDocFile } from './helpers/tool-deps.js'
 
 let dir: string
@@ -50,7 +51,7 @@ async function post(handler: any, url: string, body: unknown) {
 
 describe('路由层自动推进（R2 实施完成 → 验收）', () => {
   it('全部任务 done 后，需求在同一笔 mutate 内自动进 accepting', async () => {
-    const handler = createReqboardHandler({ store: store, requirementStore: store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     // 建需求 → 手工推进到 implementing（人工闸门由 actor=human 满足）
     const created = await post(handler, '/req/create', { title: '自动推进验证' })
     const reqId = created.payload.data.id
@@ -86,7 +87,7 @@ describe('路由层自动推进（R2 实施完成 → 验收）', () => {
   })
 
   it('decompose 后需求停在 decomposing（五门裁定：拆分清单须人确认）', async () => {
-    const handler = createReqboardHandler({ store: store, requirementStore: store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     const created = await post(handler, '/req/create', { title: '五门验证' })
     const reqId = created.payload.data.id
     // 给需求挂上 sourceSessionId（模拟窗口绑定）
@@ -116,7 +117,7 @@ describe('路由层自动推进（R2 实施完成 → 验收）', () => {
   })
 
   it('人工闸门仍把守：任务全 done 停在验收；验收通过即直接归档（REQ-9f4a44）', async () => {
-    const handler = createReqboardHandler({ store: store, requirementStore: store, now: () => Date.now() })
+    const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     const created = await post(handler, '/req/create', { title: '闸门验证' })
     const reqId = created.payload.data.id
     for (const to of ['brainstorming', 'design', 'decomposing', 'implementing']) {

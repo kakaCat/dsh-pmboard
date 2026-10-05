@@ -3,7 +3,8 @@ import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { generateAcceptanceTracking } from '../src/application/internal/submit-rtm-integration.js';
-import type { AcceptanceTracking } from '../../../../tools/reqboard/src/types/rtm.js';
+// vendor 化后 RTM 类型的唯一声明处（REQ-261004183621-de3f 之前是 tools/reqboard/src/types/rtm.js）
+import type { AcceptanceTracking } from '../vendor/reqboard/src/types/rtm.js';
 
 describe('Submit RTM Integration', () => {
   let testDir: string;

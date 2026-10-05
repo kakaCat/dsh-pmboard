@@ -4,6 +4,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { generateStatusRTM } from '../src/application/internal/status-rtm-integration.js';
 import type { TaskRecord, VerificationSheet } from '../src/shared/protocol.js';
+import { task } from './application/harness.js';
 
 describe('Status RTM Integration', () => {
   let testDir: string;
@@ -44,19 +45,14 @@ describe('Status RTM Integration', () => {
 
   it('返回 fr_coverage（total_frs=3, covered_frs=2, unreceived_clauses=[FR-3], coverage_rate=67%）', () => {
     const tasks: TaskRecord[] = [
-      {
+      task({
         id: 't-1',
         title: '任务1',
         requirementRefs: ['FR-1', 'FR-2'],
         status: 'done',
         phase: 'implement',
         side: 'backend',
-        dependsOn: [],
-        createdAt: Date.now(),
-        createdBy: { kind: 'agent', sessionId: 'test' },
-        updatedAt: Date.now(),
-        updatedBy: { kind: 'agent', sessionId: 'test' },
-      } as TaskRecord,
+      }),
     ];
 
     const result = generateStatusRTM(reqDir, tasks);
@@ -73,19 +69,14 @@ describe('Status RTM Integration', () => {
 
   it('返回 fr_acceptance_progress（total=12, passed=10, failed=2, pass_rate=83%, gate_status=blocked）', () => {
     const tasks: TaskRecord[] = [
-      {
+      task({
         id: 't-1',
         title: '任务1',
         requirementRefs: ['FR-1'],
         status: 'done',
         phase: 'implement',
         side: 'backend',
-        dependsOn: [],
-        createdAt: Date.now(),
-        createdBy: { kind: 'agent', sessionId: 'test' },
-        updatedAt: Date.now(),
-        updatedBy: { kind: 'agent', sessionId: 'test' },
-      } as TaskRecord,
+      }),
     ];
 
     // 创建验收单（12项：10 passed + 2 failed）
@@ -98,10 +89,10 @@ describe('Status RTM Integration', () => {
           criterion: `验收项${i + 1}`,
           howToVerify: `验证方式${i + 1}`,
           status: 'passed' as const,
-          evidence: `已通过 ${i + 1}`,
+          evidence: [`已通过 ${i + 1}`],
           decidedAt: Date.now(),
           decidedBy: { kind: 'human' as const, sessionId: 'test' },
-          opinion: null
+          opinion: undefined
         })),
         {
           id: 'item-11',
@@ -109,7 +100,7 @@ describe('Status RTM Integration', () => {
           criterion: '验收项11',
           howToVerify: '验证方式11',
           status: 'failed' as const,
-          evidence: null,
+          evidence: [],
           decidedAt: Date.now(),
           decidedBy: { kind: 'human' as const, sessionId: 'test' },
           opinion: 'Need fix'
@@ -120,7 +111,7 @@ describe('Status RTM Integration', () => {
           criterion: '验收项12',
           howToVerify: '验证方式12',
           status: 'failed' as const,
-          evidence: null,
+          evidence: [],
           decidedAt: Date.now(),
           decidedBy: { kind: 'human' as const, sessionId: 'test' },
           opinion: 'Need rework'

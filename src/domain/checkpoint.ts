@@ -21,8 +21,14 @@ export interface Checkpoint {
   /** 最后心跳时间（ms timestamp） */
   heartbeatAt: number;
   
-  /** Checkpoint 创建时间（ms timestamp） */
-  createdAt: number;
+  /**
+   * Checkpoint 创建时间（ms timestamp）。
+   *
+   * **可选**：只有 `createCheckpoint` 会填它；断点经 `writeCheckpoint` 落进
+   * `RequirementRecord.advance` 时**不持久化本字段**，故 `readCheckpoint` 读回来的
+   * Checkpoint 本就没有它（读侧从未读该字段）。声明为可选 = 如实描述既有事实，零行为变化。
+   */
+  createdAt?: number;
   
   /** 已完成的子卡ID列表 */
   completedSubtasks?: string[];

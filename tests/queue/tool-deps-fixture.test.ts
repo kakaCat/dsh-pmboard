@@ -12,14 +12,14 @@
  * 另：显式注入优先（测试想用自己的 store / 文件底座时不被覆盖）。
  */
 
-import { } from '../application/harness.js'
+import { makeTestStore } from '../application/harness.js'
 import { describe, expect, it } from 'vitest'
 import { taskStoreOf, toUseCaseDeps, type ReqboardToolDeps } from '../helpers/tool-deps.js'
 import { QueueTaskStore } from '../../src/repositories/QueueTaskStore.js'
 
 function deps(over: Partial<ReqboardToolDeps> = {}): ReqboardToolDeps {
   return {
-
+    store: makeTestStore(),
     now: () => 1_000_000,
     ...over,
   }

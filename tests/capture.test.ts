@@ -182,6 +182,6 @@ describe('boundSectionText（绑定窗口推进纪律）', () => {
 
   it('已结束需求（done/archived）不算绑定 → 空段', () => {
     const l: ReqboardLedger = { ...emptyLedger(), requirements: [req({ status: 'done', sourceSessionId: W })] }
-    expect(boundSectionText(l, { agent: { id: W } })).toBe('')
+    expect(boundSectionText(l, undefined, { agent: { id: W } })).toBe('')
   })
 })

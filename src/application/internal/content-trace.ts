@@ -420,8 +420,13 @@ export function extractDesignSections(designDocContent: string, filePath: string
  * @param docs DocsReader 实例
  * @param designDir 设计文档目录（如 docs/requirements/REQ-xxx/design）
  * @returns 所有设计章节
+ *
+ * `DocsReader.read` 是异步端口（Promise<string>），故本函数只能是 async：
+ * 原实现把 Promise 直接交给同步的 `extractDesignSections`（`text.split` ⇒ TypeError）。
+ * 唯一的调用方都在 async 上下文（`checkFullTraceability` / `generateTaskCardPlaceholders`），
+ * 故补 `await` 后签名变为 Promise<DesignSection[]>，调用点各加一次 await。
  */
-export function extractAllDesignSections(docs: DocsReader, designDir: string): DesignSection[] {
+export async function extractAllDesignSections(docs: DocsReader, designDir: string): Promise<DesignSection[]> {
   const allSections: DesignSection[] = []
   
   // 列出设计目录下的所有 .md 文件
@@ -434,7 +439,7 @@ export function extractAllDesignSections(docs: DocsReader, designDir: string): D
   // 逐个文件提取章节
   for (const fileName of designFiles) {
     const filePath = `${designDir}/${fileName}`
-    const content = docs.read?.(filePath)
+    const content = await docs.read?.(filePath)
     if (!content) continue
     
     const sections = extractDesignSections(content, filePath)

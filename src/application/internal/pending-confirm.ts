@@ -118,7 +118,7 @@ export function suspendConfirm(
 }
 
 /** 唤醒窗口：告知作答已落地与取回执的唯一命令。Dive模式下通过事件驱动，无需投递。 */
-function wake(deps: UseCaseDeps, windowKey: string, ticket: string, body: SettledBody): void {
+function wake(_deps: UseCaseDeps, _windowKey: string, ticket: string, body: SettledBody): void {
   const text = body.confirmed === true
     ? fmt('用户已在确认弹框作答（ticket {t}）：已落章{adv}。请调 reqboard_confirm_receipt(ticket="{t}") 取回执', {
         t: ticket,
@@ -126,4 +126,6 @@ function wake(deps: UseCaseDeps, windowKey: string, ticket: string, body: Settle
       })
     : fmt('用户已在确认弹框作答（ticket {t}）：未确认，节点未推进。按用户意见处理后可重新发起确认', { t: ticket })
   // deliver已删除：Dive模式下唤醒由roundDriver处理
+  // 文案仍按原样构造（保留原文与 fmt 调用，行为不变），仅显式标记「本轮不消费」。
+  void text
 }

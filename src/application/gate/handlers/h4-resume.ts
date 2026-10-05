@@ -14,7 +14,7 @@ export interface H4ResumeDeps {
   // 不再需要任何依赖
 }
 
-export function createH4ResumeHandler(deps: H4ResumeDeps): GateHandler {
+export function createH4ResumeHandler(_deps: H4ResumeDeps): GateHandler {
   return {
     name: 'h4-resume',
     async run({ ctx }: ChainInput): Promise<HandlerOutcome> {

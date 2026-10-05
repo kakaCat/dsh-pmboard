@@ -53,17 +53,23 @@ describe('pmHeader：来源标志唯一注入点', () => {
 })
 
 describe('TC-14 四处 pm 弹框 header 均带标志', () => {
-  it('立项四问（两段合计 4 问）header 全部带前缀，题干不变', () => {
+  it('立项五问（两段合计 5 问）header 全部带前缀，题干不变', () => {
+    // 明细段要求工作区选项（`sessionCwd` / `hostCwd`），与本仓其它调用点同形。
+    const WS_OPTS = { sessionCwd: '/proj/session', hostCwd: '/proj/host' }
     const intent = buildCaptureIntentQuestions(['候选 A'])
-    const detail = buildCaptureDetailQuestions()
-    const all = buildCaptureQuestions(['候选 A'])
-    expect(all).toHaveLength(4)
-    expect([...intent, ...detail]).toHaveLength(4)
+    const detail = buildCaptureDetailQuestions(WS_OPTS)
+    const all = buildCaptureQuestions(['候选 A'], WS_OPTS)
+    // 权威口径 = 5 问（多"工作区"，见 src/application/internal/capture-mapping.ts 与
+    // tests/capture-tool.test.ts 的 id 顺序断言）；角标与问题必须一一对应。
+    expect(all).toHaveLength(5)
+    expect([...intent, ...detail]).toHaveLength(5)
+    expect(all.map(q => q.id)).toEqual(['name', 'category', 'difficulty', 'doc_location', 'workspace'])
     expect(all.map(q => q.header)).toEqual([
       pmHeader('需求名称'),
       pmHeader('需求类型'),
       pmHeader('提示词难度'),
       pmHeader('需求文档位置'),
+      pmHeader('工作区'),
     ])
     for (const q of all) expect(q.header!.startsWith(PM_BADGE_PREFIX)).toBe(true)
     // 正文不注入标志（标志在 header，不在 question）

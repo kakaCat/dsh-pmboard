@@ -12,7 +12,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { RequirementRecord } from '../../shared/protocol.js'
-import type { RTMTrigger, } from './rtm-yaml.js'
+// RTMTrigger 的定义在 vendor 生成器（rtm-yaml 只是 import 它、并未再导出），故从源头取类型。
+import type { RTMTrigger } from '../../../vendor/reqboard/src/rtm/generator.js'
 
 /** RTM 生成失败记录 */
 export interface RTMFailureRecord {

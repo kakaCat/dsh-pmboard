@@ -174,7 +174,8 @@ describe('立项拒绝路径不进链（REQ-260924002956-f37c BUG-2）', () => {
     h.deps.questions = new GateAwareQuestions(port, chain)
     h.deps.rejections = { record: () => {}, readAll: async () => [] }
 
-    const out = await captureRequirement(h.deps, {}, { agent: { id: W } })
+    // 用例签名是 `Promise<unknown>`（用例返回体无导出类型）：按本用例断言到的形状就地收窄。
+    const out = (await captureRequirement(h.deps, {}, { agent: { id: W } })) as { success: boolean }
     expect(out.success).toBe(false)
     // 拒绝不是"闸门作答"：不入队、不给窗口发"闸门待改进"
     expect(chain.stats().enqueued).toBe(0)
@@ -207,7 +208,7 @@ describe('立项拒绝路径不进链（REQ-260924002956-f37c BUG-2）', () => {
     h.deps.questions = new GateAwareQuestions(port, chain)
     h.deps.rejections = { record: () => {}, readAll: async () => [] }
 
-    const out = await captureRequirement(h.deps, {}, { agent: { id: W } })
+    const out = (await captureRequirement(h.deps, {}, { agent: { id: W } })) as { success: boolean }
     expect(out.success).toBe(true)
     expect(askedIds).toEqual(['name', 'category', 'difficulty', 'doc_location'])
     expect(gateSeen).toEqual([undefined, 'G0']) // 第一段不带 gate；G0 只登记在肯定分支

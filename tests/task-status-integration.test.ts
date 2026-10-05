@@ -43,7 +43,8 @@ afterEach(() => { rmSync(root, { recursive: true, force: true }) })
 
 /** 真适配器构造 UseCaseDeps（工具壳吃 application 端口）；无 agents → 认证降级放行。 */
 const deps = () => ({
-
+  // B12 阶段③a：需求存储端口（必填）——与播种（`h.store.replaceAll`）**同一份**，保证"写 A 读 A"
+  store: h.store,
   // 任务队列端口（REQ-260927202051-f6df）：v9 起任务唯一入口；同一实例保证"写 A 读 A"
   taskStore,
   docs: new FileDocRepository({ workspaceRoot: root }),

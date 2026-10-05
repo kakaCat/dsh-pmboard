@@ -17,6 +17,7 @@ import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createReqboardHandler } from '../../src/http/routes.js'
+import { taskStoreAt } from '../queue/route-deps.js'
 
 let base: string
 let root: string
@@ -57,7 +58,7 @@ function fakeRes(): any {
   return res
 }
 
-const newHandler = () => createReqboardHandler({ store: store, requirementStore: store, now: () => 1000, cwd: root })
+const newHandler = () => createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(root), now: () => 1000, cwd: root })
 
 async function readFile(path: string) {
   const res = fakeRes()

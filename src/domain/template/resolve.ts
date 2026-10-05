@@ -9,7 +9,6 @@
 import { ALL_STAGE_PROMPT_KEYS } from '../stage/StagePromptSpec.js'
 import { CATEGORIES, DEFAULT_CATEGORY, isPromptStage, type Category } from '../prompt/types.js'
 import { fmt } from '../text/fmt.js'
-import { NODE_TEMPLATES } from './registry.js'
 import type { CurrentTaskRef, DocRef, TemplateRef, UpstreamSource } from './types.js'
 
 /** 非可注入节点（入口态/终态）：调用方不应到达，到达时返回空集（不是错误）。 */
@@ -31,7 +30,15 @@ export function resolveNodeTemplates(stage: string, category: Category | string 
   if (!(CATEGORIES as readonly string[]).includes(cat)) {
     throw new Error(fmt('resolveNodeTemplates：非法类型 {cat}（合法：{legal}）', { cat: JSON.stringify(cat), legal: CATEGORIES.join('/') }))
   }
-  return NODE_TEMPLATES[stage]?.[cat] ?? []
+  // 遗留缺陷（**刻意不修**，见 ./types.ts 头注「遗留缺陷」节）：`NODE_TEMPLATES` 声明是
+  // `NodeTemplateEntry[]`（数组），原式 `NODE_TEMPLATES[stage]?.[cat]` 是**按字符串索引数组**——
+  // 运行时恒不命中 ⇒ 恒为 undefined ⇒ 本函数恒返回空集（地址段的「产出模板」块因此从不渲染）。
+  //
+  // 数组索引必须是 number（TS7015 即由此而来），无法逐字保留该表达式；故此处如实写出
+  // 「取不到」的结论，保持**零行为变化**。刻意**不**改成按 stage/category 真查表
+  // （registry 条目只有 relPath、没有 title/purpose，真查表会开始渲染 `undefined` —— 那是
+  // 「半成品功能补完」，属行为变化，不属类型对齐）。
+  return []
 }
 
 /** 产物种类 → 人读名（找不到映射回落 kind 原文；与 shared/artifact-labels 的一致性由守护单测断言）。 */

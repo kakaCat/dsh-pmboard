@@ -4,6 +4,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { generateRTMData } from '../src/application/internal/rtm-integration.js';
 import type { TaskRecord } from '../src/shared/protocol.js';
+import { task } from './application/harness.js';
 
 describe('Decompose RTM Integration', () => {
   let testDir: string;
@@ -47,32 +48,22 @@ describe('Decompose RTM Integration', () => {
 
   it('完全覆盖：2个任务覆盖3个FR，返回coverage_rate=100%', async () => {
     const tasks: TaskRecord[] = [
-      {
+      task({
         id: 't-1',
         title: '任务1',
         requirementRefs: ['FR-1', 'FR-2'],
         status: 'todo',
         phase: 'implement',
         side: 'backend',
-        dependsOn: [],
-        createdAt: Date.now(),
-        createdBy: { kind: 'agent', sessionId: 'test' },
-        updatedAt: Date.now(),
-        updatedBy: { kind: 'agent', sessionId: 'test' },
-      } as TaskRecord,
-      {
+      }),
+      task({
         id: 't-2',
         title: '任务2',
         requirementRefs: ['FR-3'],
         status: 'todo',
         phase: 'implement',
         side: 'backend',
-        dependsOn: [],
-        createdAt: Date.now(),
-        createdBy: { kind: 'agent', sessionId: 'test' },
-        updatedAt: Date.now(),
-        updatedBy: { kind: 'agent', sessionId: 'test' },
-      } as TaskRecord,
+      }),
     ];
 
     const result = await generateRTMData(reqDir, tasks);
@@ -93,32 +84,22 @@ describe('Decompose RTM Integration', () => {
 
   it('部分覆盖：2个任务只覆盖2个FR，返回coverage_rate=67%', async () => {
     const tasks: TaskRecord[] = [
-      {
+      task({
         id: 't-1',
         title: '任务1',
         requirementRefs: ['FR-1'],
         status: 'todo',
         phase: 'implement',
         side: 'backend',
-        dependsOn: [],
-        createdAt: Date.now(),
-        createdBy: { kind: 'agent', sessionId: 'test' },
-        updatedAt: Date.now(),
-        updatedBy: { kind: 'agent', sessionId: 'test' },
-      } as TaskRecord,
-      {
+      }),
+      task({
         id: 't-2',
         title: '任务2',
         requirementRefs: ['FR-2'],
         status: 'todo',
         phase: 'implement',
         side: 'backend',
-        dependsOn: [],
-        createdAt: Date.now(),
-        createdBy: { kind: 'agent', sessionId: 'test' },
-        updatedAt: Date.now(),
-        updatedBy: { kind: 'agent', sessionId: 'test' },
-      } as TaskRecord,
+      }),
     ];
 
     const result = await generateRTMData(reqDir, tasks);
@@ -135,19 +116,14 @@ describe('Decompose RTM Integration', () => {
     rmSync(join(reqDir, 'functional-requirements'), { recursive: true, force: true });
 
     const tasks: TaskRecord[] = [
-      {
+      task({
         id: 't-1',
         title: '任务1',
         requirementRefs: [],
         status: 'todo',
         phase: 'implement',
         side: 'backend',
-        dependsOn: [],
-        createdAt: Date.now(),
-        createdBy: { kind: 'agent', sessionId: 'test' },
-        updatedAt: Date.now(),
-        updatedBy: { kind: 'agent', sessionId: 'test' },
-      } as TaskRecord,
+      }),
     ];
 
     const result = await generateRTMData(reqDir, tasks);

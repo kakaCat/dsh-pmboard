@@ -223,11 +223,13 @@ describe('FR-3 · agent 事件必须注册在 agent.ctx（修前挂插件 ctx �
     const h = managerHarness([makeReq()]);
     const agentBus = fakeBus()
     const agent = { id: WINDOW, session: { id: WINDOW }, ctx: agentBus.ctx }
-    h.ctx.emit('agent/created', { agent })
+    // 假 agent 只提供订阅/投递用到的字段；宿主 `agent/created` 载荷要求完整 Agent 句柄，
+    // 故载荷按既有本文件口径（见下方 `as never` 装配）放宽——**只放宽载荷形状，断言不动**。
+    h.ctx.emit('agent/created', { agent } as never)
     expect(agentBus.names().sort()).toEqual(['agent/disposed', 'agent/error', 'agent/inbox/claimed', 'agent/inbox/discarded', 'agent/inbox/inserted', 'agent/pre-step', 'agent/status'])
     agentBus.fire('agent/status', { agent, status: 'idle' })
     expect(h.statuses).toEqual([[agent, 'idle']])
-    h.ctx.emit('agent/status', { agent, status: 'idle' })
+    h.ctx.emit('agent/status', { agent, status: 'idle' } as never)
     expect(h.statuses, '插件 root 上不该有 agent/status 监听器').toHaveLength(1)
   })
 
@@ -235,7 +237,7 @@ describe('FR-3 · agent 事件必须注册在 agent.ctx（修前挂插件 ctx �
     const h = managerHarness([makeReq()]);
     const agentBus = fakeBus()
     const agent = { id: WINDOW, session: { id: WINDOW }, ctx: agentBus.ctx }
-    h.ctx.emit('agent/created', { agent })
+    h.ctx.emit('agent/created', { agent } as never)
     agentBus.fire('agent/disposed', { agent })
     expect(agentBus.offs.sort()).toEqual(['agent/disposed', 'agent/error', 'agent/inbox/claimed', 'agent/inbox/discarded', 'agent/inbox/inserted', 'agent/pre-step', 'agent/status'])
     agentBus.fire('agent/status', { agent, status: 'idle' })
@@ -247,7 +249,7 @@ describe('FR-3 · agent 事件必须注册在 agent.ctx（修前挂插件 ctx �
     const diagPath = join(tmpdir(), 'dsh-pmboard-diag-' + process.pid + '.log')
     initCaptureDiag(diagPath)
     const h = managerHarness([makeReq()]);
-    h.ctx.emit('agent/created', { agent: { id: WINDOW, session: { id: WINDOW } } })
+    h.ctx.emit('agent/created', { agent: { id: WINDOW, session: { id: WINDOW } } } as never)
     await new Promise((r) => setTimeout(r, 20))
     expect(h.warns.join(' '), '① warn').toContain('agent.ctx');
     const diag = readSync(diagPath, 'utf8');

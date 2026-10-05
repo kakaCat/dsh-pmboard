@@ -48,12 +48,17 @@ export function generateStatusRTM(
   
   // 创建简化的 task_coverage（只包含 covers_frs）
   const taskCoverage = tasksWithRefs.map(task => ({
+    // TaskCoverage 的必填字段：task_id / assigned_at 在 checkCoverage 里**从不被读**
+    // （只读 covers_frs），此处按 vendor 自己的 fillTaskCoverage 同款口径补齐，
+    // 使本地对象满足声明——覆盖度结果逐字不变。
+    task_id: task.key,
     task_key: task.key,
     task_title: task.title,
     covers_frs: task.requirement_refs.filter(ref => 
       frMetadata.some(fr => fr.id === ref)
     ),
-    covers_acceptance: [] // 不需要详细验收项
+    covers_acceptance: [], // 不需要详细验收项
+    assigned_at: Date.now()
   }))
   
   // 3. 检查覆盖度

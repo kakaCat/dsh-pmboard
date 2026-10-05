@@ -4,7 +4,6 @@
  * 用假事件总线驱动真实的 wireDiveRoundSubscriptions 与 round 状态机。
  */
 import { legacyStoreProjection } from './support/legacy-store-projection.js'
-import { legacyStoreProjection } from './support/legacy-store-projection.js'
 import { factsOf } from '../src/domain/requirement/RequirementSummary.js'
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'

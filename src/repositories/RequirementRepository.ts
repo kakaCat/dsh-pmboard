@@ -90,8 +90,10 @@ export class InMemoryRequirementRepository implements RequirementRepository {
     return {
       runId: req.advance.runId,
       currentSubtaskId: req.advance.currentSubtaskId,
-      stepIndex: req.advance.stepIndex,
-      heartbeatAt: req.advance.heartbeatAt
+      // 两个时间/序号字段在 AdvanceState 上是可选的（存量记录缺省）；Checkpoint 要求必填，
+      // 故取安全缺省：缺省即「第 0 步 / 无心跳（极旧）」——只在退化记录上生效，正常写入路径始终有值。
+      stepIndex: req.advance.stepIndex ?? 0,
+      heartbeatAt: req.advance.heartbeatAt ?? 0
     }
   }
   

@@ -6,15 +6,12 @@
  * 本测试锁：① 有 checkpoint + 宿主 JobsPort → 返回 runId/stepIndex/jobStatus；
  * ② 无 JobsPort → 不抛错、如实 not_found；③ 无 checkpoint → 不出现 run_id 键；④ 需求缺失 → 响亮报错。
  */
-import { legacyStoreProjection } from './support/legacy-store-projection.js'
 import { describe, it, expect } from 'vitest'
 import { defineRunStatusTool } from '../src/tools/RunStatusTool/RunStatusTool.js'
 import type { UseCaseDeps } from '../src/application/ports.js'
 
 function depsOf(requirements: unknown[], tasks: unknown[] = [], jobs?: unknown): UseCaseDeps {
-  const ledger = { schemaVersion: 1, revision: 0, requirements, tasks, triages: [] }
   return {
-    store: legacyStoreProjection({ snapshot: () => ledger, read: async (fn: (v: unknown) => unknown) => fn(ledger), mutate: async () => ({ changed: {} }), replaceAll: async () => {} } as never),
     session: { windowKey: () => 'session-w-001' },
     // v9（REQ-260927202051-f6df）：任务改从队列取；工具在「有 checkpoint」的路径上
     // 必须拿到 TaskStore，否则按端口缺省语义**显式失败**（这正是它该有的行为）。

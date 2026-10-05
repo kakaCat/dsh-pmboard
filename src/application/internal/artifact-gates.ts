@@ -134,8 +134,19 @@ export interface GateFailure {
     | 'design_contains_decomposition'
     // ── 超容量标记在场（REQ-261002175818-80a8 t5 / FR-5）──
     | 'plan_overcapacity_marker_missing'
-  /** 缺/待确认的产物 kind */
-  kind: ArtifactKind
+    // ── 既有实现已在返回的码（此前漏在联合里，被 tsc 拒收；补声明，零行为变化）──
+    // 设计文档内容门（content-gate-wiring:checkDesignContentGate）
+    | 'REQBOARD_DESIGN_CONTENT_GATE'
+    // 三级追溯覆盖度门（content-gate-wiring:assertFullTraceabilityGate）
+    | 'traceability_incomplete'
+  /**
+   * 缺/待确认的产物 kind。
+   *
+   * **可选**：绝大多数闸门都指向单一产物 kind，但三级追溯覆盖度门
+   * （`assertFullTraceabilityGate`：需求←设计←任务←测试）跨越整条链、不对应某一个产物，
+   * 该返回点本来就不带本字段。声明为可选 = 如实描述既有实现，零行为变化。
+   */
+  kind?: ArtifactKind
   /** 提示消息（含产物 path 或缺失说明） */
   message: string
   /** 结构化缺口（如缺失的根编号清单）：供 agent 精确修复与 UI 标红 */

@@ -198,7 +198,7 @@ describe('capture.ts systemPrompt 组装注入', () => {
       ...emptyLedger(),
       requirements: [req({ sourceSessionId: W, status: 'brainstorming', category: 'feature' })],
     }
-    const text = boundSectionText(l, { agent: { id: W } })
+    const text = boundSectionText(l, undefined, { agent: { id: W } })
     expect(text).toContain('REQ-000001')
     expect(text).toContain('brainstorming')
     expect(text).toContain(lightText('brainstorming'))
@@ -209,7 +209,7 @@ describe('capture.ts systemPrompt 组装注入', () => {
       ...emptyLedger(),
       requirements: [req({ sourceSessionId: W, status: 'design', category: 'feature' })],
     }
-    const text = boundSectionText(l, { agent: { id: W } })
+    const text = boundSectionText(l, undefined, { agent: { id: W } })
     expect(text).toContain(lightText('design'))
   })
 
@@ -218,7 +218,7 @@ describe('capture.ts systemPrompt 组装注入', () => {
       ...emptyLedger(),
       requirements: [req({ sourceSessionId: W, status: 'implementing', category: 'feature' })],
     }
-    const text = boundSectionText(l, { agent: { id: W } })
+    const text = boundSectionText(l, undefined, { agent: { id: W } })
     expect(text).toContain(lightText('implementing'))
     expect(text).toContain('reqboard_task_report')
   })
@@ -228,7 +228,7 @@ describe('capture.ts systemPrompt 组装注入', () => {
       ...emptyLedger(),
       requirements: [req({ sourceSessionId: W, status: 'accepting', category: 'feature' })],
     }
-    const text = boundSectionText(l, { agent: { id: W } })
+    const text = boundSectionText(l, undefined, { agent: { id: W } })
     expect(text).toContain(lightText('accepting'))
     expect(text).toContain('验收')
   })
@@ -239,11 +239,11 @@ describe('capture.ts systemPrompt 组装注入', () => {
       requirements: [req({ sourceSessionId: W, status: 'archived', category: 'feature' })],
     }
     // archived 不是 open 状态 → boundSectionText 不注入（零噪音）
-    expect(boundSectionText(l, { agent: { id: W } })).toBe('')
+    expect(boundSectionText(l, undefined, { agent: { id: W } })).toBe('')
   })
 
   it('未绑定窗口 → 空段（零噪音）', () => {
-    expect(boundSectionText(emptyLedger(), { agent: { id: W } })).toBe('')
+    expect(boundSectionText(emptyLedger(), undefined, { agent: { id: W } })).toBe('')
   })
 
   it('已结束需求（done）不算绑定 → 空段', () => {
@@ -251,7 +251,7 @@ describe('capture.ts systemPrompt 组装注入', () => {
       ...emptyLedger(),
       requirements: [req({ sourceSessionId: W, status: 'done' })],
     }
-    expect(boundSectionText(l, { agent: { id: W } })).toBe('')
+    expect(boundSectionText(l, undefined, { agent: { id: W } })).toBe('')
   })
 })
 
@@ -261,7 +261,7 @@ describe('分类档案跳过阶段不注入', () => {
       ...emptyLedger(),
       requirements: [req({ sourceSessionId: W, status: 'brainstorming', category: 'bug' })],
     }
-    const text = boundSectionText(l, { agent: { id: W } })
+    const text = boundSectionText(l, undefined, { agent: { id: W } })
     // bug 分类的 stages 不含 brainstorming → 不注入提示词
     expect(text).not.toContain(lightText('brainstorming'))
   })
@@ -271,7 +271,7 @@ describe('分类档案跳过阶段不注入', () => {
       ...emptyLedger(),
       requirements: [req({ sourceSessionId: W, status: 'design', category: 'spike' })],
     }
-    const text = boundSectionText(l, { agent: { id: W } })
+    const text = boundSectionText(l, undefined, { agent: { id: W } })
     expect(text).not.toContain(lightText('design'))
   })
 
@@ -280,7 +280,7 @@ describe('分类档案跳过阶段不注入', () => {
       ...emptyLedger(),
       requirements: [req({ sourceSessionId: W, status: 'implementing', category: 'spike' })],
     }
-    const text = boundSectionText(l, { agent: { id: W } })
+    const text = boundSectionText(l, undefined, { agent: { id: W } })
     // REQ-422af1 t8：注入文本按 category 分化（spike 带 spike 类型档），
     // 故此处对照"同 category 的解析结果"——lightText 的缺省 category 是 feature。
     expect(text).toContain(resolveStagePrompt({ stage: 'implementing', category: 'spike' }).text)
@@ -292,7 +292,7 @@ describe('分类档案跳过阶段不注入', () => {
         ...emptyLedger(),
         requirements: [req({ sourceSessionId: W, status, category: 'feature' })],
       }
-      const text = boundSectionText(l, { agent: { id: W } })
+      const text = boundSectionText(l, undefined, { agent: { id: W } })
       expect(text, status).toContain(lightText(status))
     }
   })

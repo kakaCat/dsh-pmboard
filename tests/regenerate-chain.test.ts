@@ -6,23 +6,25 @@
  */
 import { describe, it, expect } from 'vitest'
 import { chainDiagnosis, regenerateChain } from '../src/application/internal/lazy-expand.js'
+import type { StageKind, TaskRecord, TaskStatus } from '../src/shared/protocol.js'
+import { task } from './application/harness.js'
 
 let seq = 0
 const ids = { requirement: () => 'REQ-x', task: () => 't-new' + String(++seq), execution: () => 'e-x', comment: () => 'c-x' }
 
-function parentCard(over: Record<string, unknown> = {}) {
-  return {
+function parentCard(over: Partial<TaskRecord> = {}): TaskRecord {
+  return task({
     id: 't-p1', requirementId: 'REQ-t', title: '父卡', phase: 'implement', side: 'backend',
-    dependsOn: ['t-ext'], scope: { apis: [], tables: [], files: [] }, context: 'ctx',
+    dependsOn: ['t-ext'], context: 'ctx',
     implementation: 'impl', status: 'in_progress', ...over,
-  }
+  })
 }
-function kidCard(stageKind: string, status = 'todo') {
-  return {
+function kidCard(stageKind: StageKind, status: TaskStatus = 'todo'): TaskRecord {
+  return task({
     id: 't-k-' + stageKind, requirementId: 'REQ-t', title: '父卡·' + stageKind, phase: 'implement',
-    side: 'backend', dependsOn: [], scope: { apis: [], tables: [], files: [] }, context: 'ctx',
+    side: 'backend', dependsOn: [], context: 'ctx',
     implementation: 'impl', status, parentId: 't-p1', stageKind, attempt: 0,
-  }
+  })
 }
 
 describe('chainDiagnosis：链体检（只读）', () => {

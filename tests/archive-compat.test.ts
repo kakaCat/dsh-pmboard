@@ -14,6 +14,9 @@ import { defineArchiveSubmitTool, stubDocFile, toUseCaseDeps } from './helpers/t
 import { amendArchiveManifest } from '../src/application/use-cases/AmendArchiveManifest.js'
 import { archiveReconcileLine, renderArchiveSection } from '../src/client/views/verification.ts'
 import type { RequirementRecord, RequirementStatus } from '../src/shared/protocol.js'
+// 看板渲染器吃的是**客户端视图类型**（`src/client/types.ts`），与协议类型同形但非同一份声明
+// （当前只在 VerificationItem.status 的枚举宽度上有差）——渲染断言按视图类型声明。
+import type { RequirementRecord as ClientRequirementRecord } from '../src/client/types.js'
 
 const W = 'session-abc-123'
 const DIR = 'docs/requirements/REQ-abc123'
@@ -81,7 +84,7 @@ describe('存量记录（无新字段）', () => {
         dir: DIR, docs: [], mergedInto: [], indexEntry: '存量', submittedAt: 1,
         submittedBy: { kind: 'agent', sessionId: W },
       },
-    } as unknown as RequirementRecord
+    } as unknown as ClientRequirementRecord
     expect(archiveReconcileLine(legacy)).toContain('未对账')
     expect(renderArchiveSection(legacy)).toContain('未对账（本功能上线前归档）')
   })

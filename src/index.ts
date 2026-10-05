@@ -113,6 +113,30 @@ import { reconcileTerminalDive } from './application/internal/reconcile-terminal
 import { humanGateOf } from './application/internal/human-gate.js';
 import { checkChainBudget, DEFAULT_CHAIN_BUDGET_LIMITS } from './application/internal/chain-budget.js';
 
+/**
+ * 本插件**自发事件**的 cordis 事件表声明（纯类型，零运行时）。
+ *
+ * 为什么需要：下方存储订阅桥会 `ctx.emit('reqboard/requirement-moved', ...)`（订阅方在
+ * `application/dive/round-subscriptions.ts`），但该事件名从未在 cordis 的 `Events` 里声明，
+ * 故 `ctx.emit(...)` 命不中任何重载（TS2769）。cordis 的官方扩展点正是这里的接口合并
+ * （其 README 的示例：「declare module ... { interface Events { ... } }」）。
+ *
+ * 放在插件入口（而非独立 .d.ts）是为了让它落在构建入口的 import 图里：`tsdown` 的 `dts: true`
+ * 生成的 `dist/index.d.mts` 因而不丢这条声明——宿主/其他插件据此看到本插件发射的事件。
+ */
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /** 需求状态发生迁移（store 订阅桥发射；Dive 的 roundDriver 据此判续跑）。 */
+    'reqboard/requirement-moved'(payload: {
+      requirementId: string
+      /** 迁移前的状态（历史不足两条时取当前状态，与发射点一致） */
+      from: string
+      /** 迁移后的状态 */
+      to: string
+    }): void
+  }
+}
+
 export const name = 'dsh-pmboard';
 
 /** 台账文件名（DSH 主目录，卸载插件不删除）。 */

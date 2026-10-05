@@ -26,6 +26,7 @@ import { defineArchiveAmendTool, defineSubmitTool } from '../src/tools/index.js'
 import { toUseCaseDeps, stubDocFile, type ReqboardToolDeps } from './helpers/tool-deps.js'
 import { renderArchiveSection } from '../src/client/views/verification.ts'
 import type { RequirementRecord } from '../src/shared/protocol.js'
+import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
 
 const W = 'session-e2e'
 const DIR = 'docs/requirements/REQ-abc123'
@@ -40,8 +41,10 @@ function toolDeps(gate?: 'enforce' | 'warn'): ReqboardToolDeps {
   } as never
 }
 
-const run = (tool: { execute: (a: unknown, e: unknown) => Promise<any> }, args: unknown) =>
-  tool.execute(args, { agent: { id: W } })
+// 工具壳签名收窄为真实 `ToolDefinition`（`execute` 的第二个参数是 `ToolRunContext`，
+// 用 `(a: unknown, e: unknown)` 描述会因参数逆变而不兼容）；返回值仍按 `any` 读，断言各自负责。
+const run = (tool: ToolDefinition, args: unknown): Promise<any> =>
+  tool.execute(args, { agent: { id: W } } as never)
 
 /** 造 fixture：3 份必列 + 1 份豁免（rtm-design.yml）+ 1 份未列（tasks/t-1.md）。 */
 function plantFixture(): void {

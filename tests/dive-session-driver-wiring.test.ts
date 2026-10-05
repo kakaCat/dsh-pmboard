@@ -154,7 +154,7 @@ function makeFr11Harness(opts: {
   return {
     ledger,
     // B12 阶段⑤族 B：把新端口 stub 也交出去，供断言按 id 定点读
-
+    store: repo,
     queueReminderCalls,
     deliverCalls: () => deliveries,
     human: (text: string) => sessionHandler!(

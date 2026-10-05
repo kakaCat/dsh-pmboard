@@ -8,6 +8,10 @@ export default defineConfig({
       // node_modules 里没有它——不映射时任何 import 到 page/host.ts 的用例会整文件失败。
       // 垫片只实现最小契约（见 tests/stubs/react.ts）。
       react: fileURLToPath(new URL('./tests/stubs/react.ts', import.meta.url)),
+      // react-dom 同因（本包 external、node_modules 里没有）：`react-dom/server` 的静态渲染
+      // 由 tests/stubs/react-dom-server.ts 垫（只有结构可断言的极简序列化，不是真 react-dom）。
+      // 注意：别名是「整段相等或前缀 + '/'」匹配，故本条不会与上面的 `react` 互相截胡。
+      'react-dom/server': fileURLToPath(new URL('./tests/stubs/react-dom-server.ts', import.meta.url)),
     },
   },
   test: {

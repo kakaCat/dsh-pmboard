@@ -70,7 +70,10 @@ describe('CheckpointManager', () => {
     it('不修改原对象', () => {
       const req = createRequirement('REQ-1')
       const checkpoint: Checkpoint = {
-        runId: 'run-123'
+        runId: 'run-123',
+        stepIndex: 0,
+        heartbeatAt: Date.now(),
+        createdAt: Date.now()
       }
       
       const updated = manager.writeCheckpoint(req, checkpoint)
@@ -255,8 +258,8 @@ describe('CheckpointManager', () => {
     it('并发写入：最后一次生效', () => {
       const req = createRequirement('REQ-1')
       
-      const checkpoint1: Checkpoint = { runId: 'run-1', stepIndex: 1 }
-      const checkpoint2: Checkpoint = { runId: 'run-2', stepIndex: 2 }
+      const checkpoint1: Checkpoint = { runId: 'run-1', stepIndex: 1, heartbeatAt: Date.now(), createdAt: Date.now() }
+      const checkpoint2: Checkpoint = { runId: 'run-2', stepIndex: 2, heartbeatAt: Date.now(), createdAt: Date.now() }
       
       const updated1 = manager.writeCheckpoint(req, checkpoint1)
       const updated2 = manager.writeCheckpoint(req, checkpoint2)

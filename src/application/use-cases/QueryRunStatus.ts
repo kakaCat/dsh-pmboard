@@ -55,7 +55,7 @@ export interface QueryParams {
  * @returns 运行状态快照
  */
 export async function queryRunStatus(params: QueryParams): Promise<RunStatus> {
-  const { requirementId, getRequirement, getTasks } = params
+  const { getRequirement, getTasks } = params
   const checkpointManager = new CheckpointManager()
   
   // 获取需求记录
