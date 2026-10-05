@@ -29,7 +29,7 @@ import {
   queryReport,
   type ReportQueryDeps,
 } from '../src/application/query/QueryReport.js'
-import { queryDocs } from '../src/application/query/QueryDocs.js'
+import { queryDocs, isDeliverableDocPath } from '../src/application/query/QueryDocs.js'
 import { queryDag } from '../src/application/query/QueryDag.js'
 import {
   buildOptimizations,
@@ -572,7 +572,7 @@ describe('QueryToken：按阶段聚合 + 优化点 + 三态', () => {
 // ---------------------------------------------------------------------------
 
 describe('queryDocs：文档 + 生成物 + 核验表 + 六道门', () => {
-  it('documents 全部铺开：已确认 / 待确认 / 文件缺失 / 未登记四种态都在', async () => {
+  it('documents 只装「确定文档」：已确认 / 待确认 / 文件缺失 / 未登记四种态都在', async () => {
     const h = makeFixture({
       req: {
         status: 'design',
@@ -588,9 +588,11 @@ describe('queryDocs：文档 + 生成物 + 核验表 + 六道门', () => {
             path: 'docs/requirements/' + REQ_ID + '/design/backend.md',
             registeredAt: 3_000, registeredBy: HUMAN,
           },
+          // 「登记过、文件却不在」这一态必须**在确定文档里**覆盖到：用一份交付物路径
+          // （reviews/*.md 在白名单里），而不是随便一条产物——否则测的是"其它发现"那一侧。
           {
-            stage: 'design', kind: 'notes',
-            path: 'docs/requirements/' + REQ_ID + '/notes/gone.md',
+            stage: 'accepting', kind: 'notes',
+            path: 'docs/requirements/' + REQ_ID + '/reviews/gone.md',
             registeredAt: 3_100, registeredBy: HUMAN,
           },
         ],
@@ -605,12 +607,93 @@ describe('queryDocs：文档 + 生成物 + 核验表 + 六道门', () => {
     const byPath = new Map(res.documents.map(d => [d.path, d]))
     expect(byPath.get('docs/requirements/' + REQ_ID + '/requirement.md')?.state).toBe('confirmed')
     expect(byPath.get('docs/requirements/' + REQ_ID + '/design/backend.md')?.state).toBe('pending')
-    expect(byPath.get('docs/requirements/' + REQ_ID + '/notes/gone.md')?.state).toBe('file-missing')
+    expect(byPath.get('docs/requirements/' + REQ_ID + '/reviews/gone.md')?.state).toBe('file-missing')
     expect(byPath.get('docs/requirements/' + REQ_ID + '/design/architecture.md')?.state).toBe('unregistered')
     expect(byPath.get('docs/requirements/' + REQ_ID + '/requirement.md')?.registeredAt).toBe(2_000)
     // 未登记的设计文档也铺开（不截断、不折叠）
     expect(res.documents.length).toBeGreaterThan(3)
     expect(res.documents.every(d => typeof d.path === 'string' && typeof d.state === 'string')).toBe(true)
+    // 明确：`notes/` 不在交付物白名单里（口径见 QueryDocs §确定文档 vs 其它发现）
+    expect(res.documents.some(d => d.path.endsWith('/notes/gone.md'))).toBe(false)
+  })
+
+  it('其它发现：非交付物**按类型分组计数 + 每类最多 3 个样例**，不混进 documents', async () => {
+    const dir = 'docs/requirements/' + REQ_ID
+    // 自动扫描补登的非交付物（线上真实形状：rtm yml / prototype 截图 / 源码 / 仓库级 md）
+    const noise = [
+      ...Array.from({ length: 7 }, (_, i) => ({
+        stage: 'accepting' as const, kind: 'notes' as const,
+        path: dir + '/rtm-implementing/t-' + String(i) + '.yml', registeredAt: 1_100, registeredBy: HUMAN,
+      })),
+      ...Array.from({ length: 4 }, (_, i) => ({
+        stage: 'accepting' as const, kind: 'notes' as const,
+        path: dir + '/prototype/shot-' + String(i) + '.png', registeredAt: 1_200, registeredBy: HUMAN,
+      })),
+      {
+        stage: 'implementing' as const, kind: 'task_output' as const,
+        path: 'src/application/query/QueryDocs.ts', registeredAt: 1_300, registeredBy: HUMAN,
+      },
+      {
+        // 仓库级 .md（不是本需求的交付物）：后缀是 md 也一样进「其它发现」
+        stage: 'implementing' as const, kind: 'task_output' as const,
+        path: 'templates/design/architecture.md', registeredAt: 1_400, registeredBy: HUMAN,
+      },
+    ]
+    const requirement = {
+      stage: 'brainstorming' as const, kind: 'requirement' as const,
+      path: dir + '/requirement.md', registeredAt: 1_000, registeredBy: HUMAN,
+    }
+    const artifacts = [requirement, ...noise]
+    const h = makeFixture({ req: { status: 'implementing', artifacts } })
+    const res = ok(await queryDocs(makeDeps(h), { requirementId: REQ_ID }))
+    const discovered = res.discovered ?? []
+    const byKind = new Map(discovered.map(g => [g.kind, g]))
+    expect(byKind.get('yml')?.count).toBe(7)
+    expect(byKind.get('png')?.count).toBe(4)
+    expect(byKind.get('ts')?.count).toBe(1)
+    expect(byKind.get('md')?.count).toBe(1)
+    // 样例最多 3 个，且是路径字典序（稳定、可断言），余量靠 count 说出来
+    expect(byKind.get('yml')?.samples).toHaveLength(3)
+    expect(byKind.get('yml')?.samples).toEqual([...byKind.get('yml')!.samples].sort())
+    // 排序：条数多的在前
+    expect(discovered.map(g => g.kind)[0]).toBe('yml')
+    // 非交付物**一条都不进** documents（只有需求文档那一份）
+    const fromLedger = res.documents.filter(d => artifacts.some(a => a.path === d.path))
+    expect(fromLedger.map(d => d.path)).toEqual([dir + '/requirement.md'])
+    // 诚实性判据（本条的机械锚点）：documents 里**来自台账**的行数 + Σ discovered.count
+    // == 台账产物总数。分类只许搬家、不许把东西丢掉——去重/过滤条件一变，先坏的就是这个恒等式。
+    // （另注：`unregistered` 的设计文档行来自"分类要求但未登记"，台账里本来就没有这条产物记录，
+    //  故不进本判据——线上无该行时，等式退化为 `documents.length + Σ count == 总数`。）
+    expect(fromLedger.length + discovered.reduce((n, g) => n + g.count, 0)).toBe(artifacts.length)
+    expect(artifacts.length).toBe(14)
+  })
+
+  it('discoveredOf：交付物白名单只管需求目录内（design/tasks/reviews/tests/evidence 的 .md）', () => {
+    const dir = 'docs/requirements/' + REQ_ID
+    for (const p of [
+      dir + '/requirement.md',
+      dir + '/decomposition.md',
+      dir + '/verification.md',
+      dir + '/design/architecture.md',
+      dir + '/tasks/t-1.md',
+      dir + '/reviews/r.md',
+      dir + '/tests/t.md',
+      dir + '/evidence/v.md',
+    ]) {
+      expect(isDeliverableDocPath(REQ_ID, p), p).toBe(true)
+    }
+    for (const p of [
+      dir + '/notes/n.md',
+      dir + '/prototype/README.md',
+      dir + '/design/architecture.png',
+      dir + '/queue.json',
+      dir + '/rtm-implementing/t-1.yml',
+      'templates/design/architecture.md',
+      'docs/knowledge/code-map.md',
+      'src/shared/protocol.ts',
+    ]) {
+      expect(isDeliverableDocPath(REQ_ID, p), p).toBe(false)
+    }
   })
 
   it('generated：queue.json 与 rtm-*.yml 只在确实存在时列出', async () => {

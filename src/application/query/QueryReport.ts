@@ -39,6 +39,7 @@ import {
 } from '../../shared/protocol.js'
 import { PIPELINE_ORDER } from '../../domain/requirement/RollbackSpec.js'
 import { assertArtifactGates } from '../internal/artifact-gates.js'
+import { isDeliverableDocPath } from './QueryDocs.js'
 import { parseDocument, extractClauseDefinitions, extractSkippedClauses } from '../internal/content-gates.js'
 import {
   clauseReceiveStatus,
@@ -506,14 +507,21 @@ function sessionJumpOf(deps: ReportQueryDeps, req: RequirementRecord): ReportHea
 // 补项 · 首屏三处数据（Tab 角标 / 评论列表 / 结果与成效）
 // ---------------------------------------------------------------------------
 
-/** 首屏评论列表的条数上限（FR-11 #6：长列表默认只渲染最近 N 条，更早的分页取）。 */
-export const REPORT_COMMENT_HEAD_LIMIT = 10
+/**
+ * 首屏评论列表的条数上限（缺陷修复：原为 10 条）。
+ *
+ * 为什么从 10 收到 3：台账评论里有**机器转储**（「产物自动发现」扫描日志一条 11,157 字）。
+ * 线上实测 10 条合计 13,317 字，把 Tab 栏顶到 top=1118px（视口高 713）——首屏根本看不到
+ * 六个 Tab。这是"看不看得到"的缺陷，不是排版偏好。
+ * 更早的评论仍可读（总数由 `commentsTotal` 如实给出，分页 ≠ 内层滚动，FR-11 #6/#7）。
+ */
+export const REPORT_COMMENT_HEAD_LIMIT = 3
 
 /**
  * 评论列表（补能力回退：旧详情页显示台账评论，新页只剩输入框 = 用户看不到评论了）。
  *
  * 三条口径：
- *  - **尾部 10 条、顺序原样**（台账是追加序 = 新的在后）：前端不排序——排序口径两处实现会漂移，
+ *  - **尾部 3 条、顺序原样**（台账是追加序 = 新的在后）：前端不排序——排序口径两处实现会漂移，
  *    而"时间线顺序"是这条列表唯一的语义；
  *  - **不额外读盘**：只用已经读到的 `req.comments`（首屏是唯一请求，再读一次台账只为一个列表不划算）；
  *  - 历史评论没有 actor 字段 → 按 `commentActorLabel`（client）的**同口径**折算为「人」，
@@ -547,7 +555,14 @@ function tabCountsOf(
   tasks: readonly TaskRecord[],
 ): NonNullable<ReportResponse['tabCounts']> {
   const counts: NonNullable<ReportResponse['tabCounts']> = {}
-  if (Array.isArray(req.artifacts)) counts.docs = String(req.artifacts.length)
+  if (Array.isArray(req.artifacts)) {
+    // 角标必须与「文档」Tab 里那张表**同源**（验收现场逮到的不一致）：那里只列**确定文档**
+    // （人写的交付物，`isDeliverableDocPath` 白名单），若这里按台账产物总数算，
+    // 同一个东西就有两个数字（线上实测角标 317 / 列表 97）——FR-11 #2 明令禁止。
+    // 口径差一处：列表还会补「该有但未登记」的设计文档行（`unregistered`，台账里本就没这条记录），
+    // 那是**待写**提示而不是已登记产物，故不进角标（角标读作「已登记确定文档 N 份」）。
+    counts.docs = String(req.artifacts.filter(a => isDeliverableDocPath(req.id, a.path)).length)
+  }
   counts.dag = String(tasks.length)
   const tokens = requirementTotalTokens(req)
   if (tokens !== undefined) counts.token = fmtTokens(tokens)
@@ -696,6 +711,9 @@ export async function queryReport(
     sessionJump: sessionJumpOf(deps, req),
     // 评论列表：只用已读到的 req.comments（不额外读盘），空数组照给（"确实没有评论" ≠ "读不到"）
     comments: commentsOf(req),
+    // 总条数：列表只给最近 3 条，但"一共几条"是事实，必须一起给（否则「最近 3 条」会被读成
+    // "只有 3 条"——拿省略当事实，正是 FR-12 要堵的那类谎）
+    commentsTotal: (req.comments ?? []).length,
   }
 
   const response: ReportResponse = {

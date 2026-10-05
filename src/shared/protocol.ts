@@ -2301,18 +2301,29 @@ export interface ReportHead {
    */
   sessionJump: { windowKey: string; archived: boolean }[]
   /**
-   * 台账评论**最近 10 条**（补能力回退：旧详情页显示评论列表，新页只有输入框 = 用户看不到评论了）。
+   * 台账评论**最近 3 条**（补能力回退：旧详情页显示评论列表，新页只有输入框 = 用户看不到评论了）。
    *
    * 口径（为什么是这三个字段、而不是整条 `CommentRecord`）：
    *  - **新的在后**，顺序与台账 `req.comments` 一致（同一条时间线，读者从旧读到新）；
-   *  - **只给尾部 10 条**：首屏是唯一请求，把整本评论搬上来既拖慢首屏、也让页面无界变长；
-   *    更早的评论走"加载更早"（分页 ≠ 内层滚动，FR-11 #6/#7）；
+   *  - **只给尾部 3 条**（原为 10 条，见 `REPORT_COMMENT_HEAD_LIMIT`）：首屏是唯一请求，
+   *    把整本评论搬上来既拖慢首屏、也让页面无界变长——台账里一条「产物自动发现」的系统转储
+   *    就有 11,157 字，10 条合计 13,317 字，实测把 Tab 栏顶到 top=1118（视口 713）→ 首屏看不到
+   *    六个 Tab。这是缺陷根因，不是美观偏好。更早的评论走"加载更早"（分页 ≠ 内层滚动，
+   *    FR-11 #6/#7）；总数由 `commentsTotal` 如实给出。
    *  - 渲染一行只要"什么时候 / 谁 / 说了什么"，`id` 前端用不上（点开单条是后续卡片的事）；
    *  - **缺省 = 未采集（服务端没下发）**：页面**整块不渲染**，也不写"暂无评论"——
    *    "没有评论"（`[]`）与"读不到评论"（缺省）必须分开（FR-12）；`by` 缺失由渲染侧按
    *    `commentActorLabel` 的同口径折算为「人」（历史评论没有 actor 字段）。
    */
   comments?: { at: number; body: string; by: ActorRef }[]
+  /**
+   * 台账评论**总条数**（加法式可选字段）：只为一句诚实话——"最近 3 条"不等于"一共 3 条"。
+   *
+   * 为什么必须给：把列表限到 3 条是内容控制，不是"更早的评论不存在"。少了这个数，页面上的
+   * 「最近评论 3 条」会被读成"这条需求只有 3 条评论"——拿省略当事实正是 FR-12 要堵的那类谎。
+   * 缺省 = 服务端没给总数（渲染侧退回"只报已渲染条数"，不猜）。
+   */
+  commentsTotal?: number
 }
 
 /** 状态带第一格「做到哪了」。 */
@@ -2515,10 +2526,28 @@ export interface GateVerdict {
 }
 
 export interface DocsResponse {
-  /** **全部铺开**（前端不做内层滚动、不折叠成一行） */
+  /**
+   * **确定文档**：人写的交付物（`requirement.md` / `design/*.md` / `decomposition.md` /
+   * `tasks/*.md` / `verification.md` / `reviews/*.md` / `tests/*.md` / `evidence/*.md`），
+   * **全部铺开**（前端不做内层滚动、不折叠成一行）。
+   *
+   * 口径变更（缺陷修复，不是重构）：这里原来装的是**台账全部产物**——实测 317 条，其中
+   * 167 条 `task-detail`（含 83 个被扫进来的 `src/*.ts` 源文件）、141 条 `notes`
+   * （84 个 `rtm-implementing/t-*.yml`、44 个 prototype 截图、若干 .txt/.json）。
+   * 317 行把一个 Tab 变成倾倒场，读者数不清也读不完；自动扫到的**非交付物**改由 `discovered`
+   * 按类型分组给计数（见下），诚实性判据是「`documents.length` + `discovered` 各分组 count 之和
+   * == 台账产物总数」——分类只许搬家，不许把东西丢掉。
+   */
   documents: DocPanelEntry[]
   /** 生成物（台账 queue.json / RTM 等），与「人写的文档」分开列 */
   generated: { label: string; path: string }[]
+  /**
+   * **其它发现**（加法式可选字段）：自动扫描到的非交付物，按后缀/类型分组计数。
+   * 每组最多给 3 个 `samples` 路径（样例），其余靠 `count` 说出来——**不折叠成一行、
+   * 也不做内层滚动**：读者要能数出"还有多少同类"，而不是只看到一句"还有很多"。
+   * 缺省 = 没有额外发现（老服务端 / 干净目录）。
+   */
+  discovered?: { kind: string; count: number; samples: string[] }[]
   /** 验收单（列照抄现有 verification 的：实际结果 / 来源 / 需人工 / 意见 / 裁决） */
   verification?: VerificationSheet
   gates: GateVerdict[]

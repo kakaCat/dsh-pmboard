@@ -377,6 +377,69 @@ describe('归档块（FR-7 第三部分的归档面）', () => {
   })
 })
 
+/* --------------------------------------------------------------- ②b 其它发现 */
+
+/**
+ * 「其它发现」块（缺陷修复：原来那 220 条非交付物混在确定文档里逐行倒 → 317 行倾倒）。
+ *
+ * 机械判据：**分组的计数行**（`data-discovered-group` + `data-discovered-count` + 每类 ≤3 个
+ * `data-discovered-sample`），余量写成一句人话「其余 N 个同类，去文档目录查看」，
+ * 且**不折叠成一行、不做内层滚动**（每一类一行，计数可加总）。
+ */
+describe('其它发现 · 按类型分组的计数行（不混进确定文档）', () => {
+  const DISCOVERED = [
+    { kind: 'yml', count: 90, samples: [DIR + '/rtm-implementing/t-1.yml', DIR + '/rtm-accepting.yml', DIR + '/rtm-design.yml'] },
+    { kind: 'png', count: 3, samples: [DIR + '/prototype/a.png', DIR + '/prototype/b.png', DIR + '/prototype/c.png'] },
+    { kind: 'mts', count: 1, samples: ['scripts/req-report-probe.mts'] },
+  ]
+
+  it('每类一行：data-discovered-group / -count / ≤3 个 -sample，余量写清条数', () => {
+    const html = render(makeDocs({ discovered: DISCOVERED }))
+    expect(html).toContain('data-doc-section="discovered"')
+    for (const g of DISCOVERED) {
+      expect(html).toContain('data-discovered-group="' + g.kind + '"')
+      expect(html).toContain('data-discovered-count="' + String(g.count) + '"')
+      // 组内样例条数 == samples.length 且 ≤ 3
+      const at = html.indexOf('data-discovered-group="' + g.kind + '"')
+      const li = html.slice(at, html.indexOf('</li>', at))
+      expect(countOf(li, 'data-discovered-sample="1"'), g.kind).toBe(g.samples.length)
+      expect(g.samples.length).toBeLessThanOrEqual(3)
+    }
+    // 余量必须**可数**：90-3=87、3-3=0、1-1=0
+    expect(html).toContain('其余 87 个同类，去文档目录查看')
+    expect(html).toContain('全部 3 个已列在上面')
+    // 合计行（读者一眼看出体量）
+    expect(html).toContain('共 94 项')
+    // 分组行**不是**文档表行：确定文档行数仍恒等于 documents.length
+    expect(countOf(html, 'data-doc-row="1"')).toBe(DOCS.length)
+  })
+
+  it('样例可点开正文（走与文档行同一条 data-open-doc 委派），且不出现 overflow', () => {
+    const html = render(makeDocs({ discovered: DISCOVERED }))
+    expect(html).toContain('data-open-doc="' + DIR + '/rtm-implementing/t-1.yml"')
+    expect(html).toContain('data-open-doc="scripts/req-report-probe.mts"')
+    expect(html).not.toMatch(/overflow:\s*(auto|scroll)/)
+  })
+
+  it('没有其它发现 → 整块不渲染（不给"其它发现 0 项"这种噪声）', () => {
+    expect(render(makeDocs())).not.toContain('data-doc-section="discovered"')
+    expect(render(makeDocs({ discovered: [] }))).not.toContain('data-doc-section="discovered"')
+  })
+
+  it('脏数据（缺 kind / count 非数 / samples 非数组）不把渲染路径打崩', () => {
+    const html = render(makeDocs({
+      discovered: [
+        { kind: 'yml', count: undefined as unknown as number, samples: undefined as unknown as string[] },
+        { count: 5 } as unknown as { kind: string; count: number; samples: string[] },
+      ] as never,
+    }))
+    expect(html).toContain('data-discovered-group="yml"')
+    expect(html).toContain('data-discovered-count="0"')
+    expect(html).toContain('未给样例（服务端只给了计数）')
+    expect(html).not.toContain('NaN')
+  })
+})
+
 /* --------------------------------------------------------------- ⑦ 空态 / 降级 */
 
 describe('空态与形状守卫（FR-12：禁 0 冒充、禁留白）', () => {

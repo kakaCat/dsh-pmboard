@@ -97,13 +97,24 @@ const OUTCOME_VERDICT: Record<'pass' | 'rework' | 'pending', string> = {
  * 遗留条目展示上限（字符）。截断是为了保住"常驻头部一屏读完"（FR-3），
  * **不是藏内容**：每条超长都在这里显式标 `…`，并指向『文档』Tab 的验收单原文。
  */
-const LEFTOVER_MAX = 300
+const LEFTOVER_MAX = 140
+
+/**
+ * 遗留条目**渲染条数**上限（上线冒烟实测补）。为什么必须有：这一格是常驻头部的第三格，
+ * 实测真数据下 20 条遗留共 3,121 字 → 该格高 **1501px**，把六个 Tab 顶到 1899px 之外
+ * （视口 713）——「首屏答出是什么/到哪了/卡在哪/缺什么」当场失效，而这一格自己的文案
+ * 还写着「首屏摘要不含逐项」，属于自相矛盾。
+ *
+ * 取舍：**先列前 N 条 + 明写「其余 M 条见验收单」**——省略要可见、要可数（不是静默截断）。
+ * 完整逐项在『文档』Tab 的验收单里逐行铺开，一个都没丢。
+ */
+const LEFTOVER_SHOWN_MAX = 3
 
 /**
  * 遗留问题与后续（FR-5）。
  *
  * 三种收尾各有说辞（禁留白、禁空表格）：
- *  - 有条目 → 逐条铺开（`data-leftover`），末尾指回验收单原文；
+ *  - 有条目 → 先列前 N 条（`data-leftover`）+ 「其余 M 条」指针，末尾指回验收单原文；
  *  - 条目为空且**有通过项** → 「无遗留问题」（逐项全通过是真的，不是"没数据"）；
  *  - 条目为空且**一项都没通过** → 说明验收单是空的（`passed===0` 且无遗留 = 没有可裁决的逐项），
  *    绝不写"全部通过"。后者与"没有验收单"（走另一个分支）是两句话。
@@ -113,13 +124,20 @@ function leftoversHtml(o: NonNullable<ReportResponse['outcome']>): string {
     .map(l => (typeof l === 'string' ? l.trim() : ''))
     .filter(l => l.length > 0)
   if (rows.length > 0) {
-    // 刻意**不给标题加 `data-leftover-*` 属性**：`data-leftover` 必须精确等于遗留条数
-    // （多一个同前缀的属性，`countOf(html,'data-leftover')` 这类计数断言就会数出 N+1）。
+    const shown = rows.slice(0, LEFTOVER_SHOWN_MAX)
+    const rest = rows.length - shown.length
+    // 刻意**不给标题加含 `data-leftover` 子串的属性**：`countOf(html,'data-leftover')` 必须精确
+    // 等于**渲染出来的行数**（多一个同前缀属性就会多算一条）。故总数用 `data-more-leftovers`
+    // 与标题文案承载（`data-more-leftovers` 里不含 `data-leftover` 这个子串）。
     return '<span class="dsh-pm-outcome-leftover-title">遗留问题与后续（'
-      + String(rows.length) + ' 项）</span>'
-      + rows.map(l => '<div class="dsh-pm-outcome-leftover" data-leftover="1">'
+      + String(rows.length) + ' 项'
+      + (rest > 0 ? '，先列前 ' + String(shown.length) + ' 项' : '') + '）</span>'
+      + shown.map(l => '<div class="dsh-pm-outcome-leftover" data-leftover="1">'
         + esc(short(l, LEFTOVER_MAX)) + '</div>').join('')
-      + '<span class="dsh-pm-band-mut">逐项原文与证据见『文档』Tab 的验收单</span>'
+      + (rest > 0
+        ? '<span class="dsh-pm-band-mut" data-more-leftovers="' + String(rest) + '">其余 '
+          + String(rest) + ' 项见『文档』Tab 的验收单（逐项铺开，未省略）</span>'
+        : '<span class="dsh-pm-band-mut">逐项原文与证据见『文档』Tab 的验收单</span>')
   }
   const none = num(o.passed) > 0
     ? '无遗留问题：验收单逐项全部通过'

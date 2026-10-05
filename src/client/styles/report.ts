@@ -327,4 +327,99 @@ export const REPORT_CSS = `
    「首屏答出卡在哪 / 缺什么」当场失败（探针 A1 变红）；而 .dsh-pm-stats 用的
    repeat(auto-fit, minmax(260px, 1fr)) 在**真正窄**的窗口本来就会自然退到两栏、一栏。
    两个口径冲突时取产品判据（一屏定调 + FR-3），故本行只留说明不留规则。 */
+
+/* ═══ ⑦ 密度：让同一屏读得下的信息量回到原型那一版（**缺陷修复，不是审美偏好**）═══
+   现场（线上真数据）：Tab 栏 top=1118px，视口高 713 → 首屏根本看不到六个 Tab。
+   根因是两处内容失控（评论 10 条 13,317 字 / 文档 Tab 317 行倾倒）叠加本片过松的间距。
+   内容那两处已在 QueryReport / QueryDocs 收口；这一段只负责**把间距压回原型口径**。
+
+   三条纪律（本段不得违反）：
+    - **不动结构**：仍是「常驻头部 + 状态带三格 + 六个同级 Tab」，一个元素都不少（只改间距/字号）；
+    - **不加内层滚动、不限高**：本段不出现 overflow / max-height。高度是靠"字号 + 行距 + 内边距
+      收紧 + 少渲染几条"挣回来的，不是靠把内容关进一个滚动框（那会让"有多少"变成不可数，FR-11 #7）；
+    - **高特异性覆盖**：只追加 .dsh-pm-detail[data-report-shell] 与 [data-report-head] 作用域内的
+      规则（base.ts / detail.ts 的既有规则原样不动——本片追加在末尾，靠特异性取胜，不靠顺序）。 */
+
+/* 壳体与状态带的块间距：原来 16px 段间距 + 16/24 页面留白 + 12px 卡片内边距，三层留白叠在一起 */
+.dsh-pm-detail[data-report-shell] { padding: 8px 16px 12px; gap: 8px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-stats[data-report-band] { gap: 8px; padding: 8px; }
+/* 状态带卡片：更"实"（边框 + 极浅底 + 小内边距），不再靠大片留白撑高度 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-stat {
+  padding: 6px 8px; gap: 2px; border-radius: 6px;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.04));
+  border: 1px solid var(--pm-line, rgba(128,128,128,.16));
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-stat-label { font-size: 10.5px; margin-bottom: 2px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-band-body { font-size: 11.5px; line-height: 1.45; }
+/* 缺口逐条：由「竖向三行卡片」压成「一条流水」（what / why / ref 同行折行），
+   每条从 ~100px 降到 ~34px——这是 900 窄档能过 713 的关键一处。三档配色原样保留。 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-gap-line {
+  display: block; margin: 1px 0; padding: 1px 5px; border-radius: 4px; border-left-width: 3px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-gap-why { display: inline; font-size: 10.5px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-gap-ref { font-size: 10px; padding: 0 4px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-gap-more { font-size: 10.5px; margin-top: 2px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-outcome-leftover { font-size: 11px; line-height: 1.4; margin: 2px 0; padding: 3px 7px; }
+
+/* 常驻头部：行距与块间距（原型头部整体很紧；这里只压间距与字号，元素一个不少） */
+.dsh-pm-detail-head[data-report-head] { align-items: baseline; gap: 2px 8px; padding: 0; }
+.dsh-pm-detail-head[data-report-head] > .dsh-pm-btn { padding: 2px 8px; font-size: 11px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-status { font-size: 10.5px; padding: 1px 8px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-report-meta { font-size: 11px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-detail-title { font-size: 18px; line-height: 1.2; margin-top: 0; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-progress-dots { margin: 0; padding: 0; gap: 10px; }
+/* 8 态阶段条压紧（点 + 标签两行；当前态仍放大，一眼看出在哪一步） */
+.dsh-pm-detail-head[data-report-head] .dsh-pm-dot-wrapper { gap: 4px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-dot { width: 9px; height: 9px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-dot-wrapper.current .dsh-pm-dot { width: 12px; height: 12px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-dot-label { font-size: 9.5px; }
+/* 一句话结论：仍是"一屏内最重要的一句"（加粗 + 左主色条），只是不再用 15px/10-14px 内边距占掉半屏 */
+.dsh-pm-detail-head[data-report-head] .dsh-pm-report-verdict {
+  font-size: 12.5px; font-weight: 600; line-height: 1.35; padding: 4px 8px; border-radius: 6px;
+  border-left-width: 3px;
+}
+.dsh-pm-detail-head[data-report-head] .dsh-pm-report-next { font-size: 11px; line-height: 1.4; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-report-actions,
+.dsh-pm-detail-head[data-report-head] .dsh-pm-report-windows { gap: 2px 10px; padding-top: 3px; align-items: baseline; }
+/* 每个动作由「竖排三块」（按钮 / 需人操作 / 后果）改成一行折行：后果说明仍逐字在，只是不独占三行 */
+.dsh-pm-detail-head[data-report-head] .dsh-pm-report-action {
+  flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 2px 6px; max-width: 100%;
+}
+.dsh-pm-detail-head[data-report-head] .dsh-pm-report-action .dsh-pm-btn { padding: 2px 8px; font-size: 11px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-human-only { font-size: 9.5px; padding: 0 5px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-action-consequence { font-size: 10.5px; line-height: 1.35; }
+/* 评论列表：行距与正文压紧（**不给限高、不进 overflow**——条数与截断由渲染层控制，
+   见 report-head.ts 的 COMMENT_RENDER_LIMIT / COMMENT_BODY_MAX；本段只让 3 条装得更小） */
+.dsh-pm-detail-head[data-report-head] .dsh-pm-comments { gap: 2px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-comment { padding: 1px 7px; border-radius: 4px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-comment-meta { font-size: 10px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-comment-body { font-size: 11.5px; line-height: 1.35; margin-top: 0; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-comment-form .dsh-pm-input { padding: 2px 8px; font-size: 11.5px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-comment-long-flag { color: #b45309; font-weight: 600; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-comment-form { margin-top: 2px; }
+.dsh-pm-detail-head[data-report-head] .dsh-pm-comment-form .dsh-pm-btn { padding: 2px 8px; font-size: 11px; }
+
+/* Tab 栏：六个同级 Tab 也在首屏里露头（选中态与角标配色不动，只收内边距与字号） */
+.dsh-pm-tabs[data-report-tabs] .dsh-pm-tab { padding: 6px 11px; font-size: 12px; }
+
+/* ── 文档 Tab 的表格口径（对齐原型 table.t：12px 正文 / 11px 灰表头 / 8px 12px 行内边距）──
+   为什么字变小反而"密"：原型那一版的密度就是靠"同样 12px + 更紧的行"换来的；
+   行内边距按原型给 8px 12px（纵向 8 比原来的 7 略松，横向 12 让长路径少折两行——净值更矮）。 */
+.dsh-pm-docs-table, .dsh-pm-docs-table th, .dsh-pm-docs-table td { font-size: 12px; }
+.dsh-pm-docs-table th, .dsh-pm-docs-table td { padding: 8px 12px; }
+.dsh-pm-docs-table th { font-size: 11px; color: var(--dsw-text-secondary, #888); }
+.dsh-pm-docs .dsh-pm-doc-state { font-size: 11px; }
+
+/* ── 「其它发现」：按类型分组的计数行（每类一行，类型徽标 + 计数 + ≤3 个样例 + 余量说明）── */
+.dsh-pm-docs .dsh-pm-discovered-group {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px;
+  padding: 4px 8px; border-radius: 5px;
+  background: var(--dsw-bg-secondary, rgba(128,128,128,.04));
+  border: 1px solid var(--pm-line, rgba(128,128,128,.14));
+}
+.dsh-pm-docs .dsh-pm-discovered-num {
+  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--dsw-text-primary, #333);
+}
+.dsh-pm-docs .dsh-pm-discovered-rest { font-size: 11px; color: var(--dsw-text-secondary, #888); }
+.dsh-pm-docs [data-discovered-sample] { font-size: 11px; }
 `

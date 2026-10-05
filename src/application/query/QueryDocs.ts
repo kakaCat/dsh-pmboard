@@ -1,15 +1,27 @@
 /**
  * 文档 Tab 的服务端聚合（REQ-261004222448-292a t-43fcf4 / serves: FR-7）——S-10。
  *
- * 四块：文档**全部铺开**（不截断、不折叠）+ 生成物 + 核验表 + 六道门的裁决留痕（+ 归档透传）。
+ * 四块：**确定文档**逐行铺开（不截断、不折叠）+ 生成物 + 核验表 + 六道门的裁决留痕（+ 归档透传）。
  *
- * 三条口径说明（都是"为什么这么写"）：
+ * 五条口径说明（都是"为什么这么写"）：
  *   ① `state` 优先级：**文件不在 > 待确认 > 已确认**。`file-missing` 必须压过 `confirmed`：
  *      文档章盖过、文件却被删了，页面若显示「已确认」就是骗人（对标现有 `doc-missing` 标灰）。
  *   ② 端口未装配（`deps.docs === undefined`）→ **整块降级**，而不是给每行标 `file-missing`：
  *      `file-missing` 的语义是"登记过但文件确实不在"，端口缺省时我们**无法断言文件在不在**
  *      ——把未知标成"确定缺失"正是 FR-12 要堵的那类谎（T-15/T-16 的文案也不同）。
  *   ③ 「未登记」= 该分类模板要求、但台账里没有登记记录的文档（设计文档集，与 G2 同源判定）。
+ *   ④ **`documents` 只装「确定文档」= 人写的交付物**（`isDeliverableDocPath` 的 8 类路径）。
+ *      这是缺陷修复（验收现场逮到的"317 行倾倒"）：台账 `artifacts` 里混着**自动扫描**补登的
+ *      过程产物——线上实测 317 条里 220 条不是交付物（83 个 `src/*.ts` 之类的 task_output 改动文件、
+ *      90 个 `rtm-implementing/t-*.yml`、38 张 prototype 截图、若干 .txt/.json）。
+ *      它们不是"人写的文档"，混进同一张表只会让读者数不清也读不完；改由 `discovered`
+ *      按后缀分组给**计数 + 3 个样例**（不折叠成一行、不做内层滚动）。
+ *   ⑤ **分类只许搬家，不许丢东西**（诚实性判据）：
+ *      `documents`（来自台账的那些行）条数 + `discovered` 各分组 count 之和 == 台账产物总数。
+ *      所以这里**不按路径去重**：同一路径在台账里登记了两次（如某张卡既是 task_detail 又是
+ *      task_output），就如实出两行——去重会让上面这个恒等式对不上，等于悄悄吞掉一条记录。
+ *      另注：`unregistered` 的设计文档行**不在**这个恒等式里（它们来自"分类要求但未登记"，
+ *      台账里本来就没有这条产物记录，不是被分类搬走的）。
  *
  * @module dsh-pmboard/application/query/QueryDocs
  */
@@ -64,6 +76,85 @@ const PANEL_KIND: Readonly<Record<ArtifactKind, DocPanelKind>> = {
 /** 产物登记态 → 面板 state（文件不在时由调用方盖成 file-missing）。 */
 function stateOf(artifact: StageArtifact): DocPanelState {
   return artifact.confirmedAt !== undefined ? 'confirmed' : 'pending'
+}
+
+/* ────────────────────────────────────────────────── 确定文档 vs 其它发现 */
+
+/**
+ * 「确定文档」的路径白名单（**相对需求目录**）——人写的交付物只有这 8 类：
+ * `requirement.md` / `design/*.md` / `decomposition.md` / `tasks/*.md` / `verification.md` /
+ * `reviews/*.md` / `tests/*.md` / `evidence/*.md`。
+ *
+ * 为什么用白名单而不是"排除法"（排除 .png/.yml/…）：排除法里，"没被排除"的东西会**自动**
+ * 变成文档——这正是 317 行倾倒的成因（自动扫描补登的 `src/*.ts`、prototype 截图全都在里面）。
+ * 白名单把默认值反过来：**认不出的一律不算交付物**，进了 `discovered` 也仍然看得见（计数 + 样例），
+ * 不会消失。代价是新增一类交付物时要显式加一行——那是决策，本来就该有人做。
+ *
+ * 注意白名单**只管需求目录内**的路径：`docs/knowledge/code-map.md`、`templates/design/*.md`
+ * 这类仓库级文件就算后缀是 .md 也不是**这条需求**的交付物（它们是任务改动过的文件，
+ * 出现在台账里是因为 `task_output` 记的是"改了哪些文件"）。
+ */
+const DELIVERABLE_DOC_PATTERNS: readonly RegExp[] = [
+  /^requirement\.md$/,
+  /^decomposition\.md$/,
+  /^verification\.md$/,
+  /^design\/[^/]+\.md$/,
+  /^tasks\/[^/]+\.md$/,
+  /^reviews\/[^/]+\.md$/,
+  /^tests\/[^/]+\.md$/,
+  /^evidence\/[^/]+\.md$/,
+]
+
+/** 需求目录前缀（台账路径都是工作区相对路径）。 */
+export function reqDirOf(requirementId: string): string {
+  return 'docs/requirements/' + requirementId + '/'
+}
+
+/** 这一条产物是不是「确定文档」（人写的交付物）。见 `DELIVERABLE_DOC_PATTERNS`。 */
+export function isDeliverableDocPath(requirementId: string, path: string): boolean {
+  const prefix = reqDirOf(requirementId)
+  if (typeof path !== 'string' || !path.startsWith(prefix)) return false
+  const rel = path.slice(prefix.length)
+  return DELIVERABLE_DOC_PATTERNS.some(re => re.test(rel))
+}
+
+/** 分组键：小写后缀（不含点）；无后缀 → `other`（认不出就如实说"认不出"）。 */
+function kindOfPath(path: string): string {
+  const name = String(path).split('/').pop() ?? ''
+  const dot = name.lastIndexOf('.')
+  if (dot <= 0 || dot === name.length - 1) return 'other'
+  return name.slice(dot + 1).toLowerCase()
+}
+
+/**
+ * 非交付物 → **按类型分组的计数**（`discovered`）。
+ *
+ * 三条口径：
+ *  - **每组最多 3 个样例**（`samples`，路径字典序 = 稳定可断言）：页面要能回答"还有多少同类"，
+ *    而不是把 220 个路径再倒一遍——样例让人认得出这是什么，计数让人数得清有多少；
+ *  - **顺序：条数多的在前**（读者先看到体量最大的那类），同数按 kind 字典序（不依赖 Map 插入序）；
+ *  - 分组覆盖**全部**非交付物产物：`Σ count` 必须能对上"台账产物总数 − 确定文档条数"，
+ *    任何一条被漏掉都会让页面上的数字对不上账（本条的诚实性判据）。
+ */
+export function discoveredOf(
+  artifacts: readonly StageArtifact[],
+  requirementId: string,
+): { kind: string; count: number; samples: string[] }[] {
+  const groups = new Map<string, string[]>()
+  for (const a of artifacts) {
+    if (isDeliverableDocPath(requirementId, a.path)) continue
+    const kind = kindOfPath(a.path)
+    const paths = groups.get(kind)
+    if (paths === undefined) groups.set(kind, [a.path])
+    else paths.push(a.path)
+  }
+  return [...groups.entries()]
+    .map(([kind, paths]) => ({
+      kind,
+      count: paths.length,
+      samples: [...paths].sort().slice(0, 3),
+    }))
+    .sort((a, b) => (b.count - a.count) || (a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0))
 }
 
 /** 已登记产物 → 文档行（含"文件在不在"）。 */
@@ -395,13 +486,24 @@ export async function queryDocs(
     tasks = []
   }
 
+  // 台账产物一分为二（口径见文件头 ④/⑤）：确定文档逐行铺开；其余按后缀分组给计数 + 样例。
+  // 两侧共用同一份 `req.artifacts`，**不重不漏**：documents 的台账来源行数 + Σ discovered.count
+  // 恒等于 artifacts.length（去重 / 过滤条件一变，先坏的就是这个恒等式）。
+  // `reqId` 单独取一份 const：箭头函数里读 `req.id` 会丢掉上面那次 undefined 收窄（TS 不接受
+  // 对 `let` 的收窄穿过闭包），而把 `req!` 写进闭包等于人为关掉一处检查。
+  const reqId = req.id
+  const artifacts = req.artifacts ?? []
+  const deliverables = artifacts.filter(a => isDeliverableDocPath(reqId, a.path))
+  const discovered = discoveredOf(artifacts, reqId)
+
   const response: DocsResponse = {
     documents: [
-      ...entriesOfArtifacts(req.artifacts ?? [], p => docs.exists(p)),
+      ...entriesOfArtifacts(deliverables, p => docs.exists(p)),
       ...(await entriesOfMissingDesignDocs(docs, req)),
     ],
     generated: generatedOf(docs, req),
     gates: buildGateVerdicts(req, tasks),
+    ...(discovered.length > 0 ? { discovered } : {}),
     ...(req.verification?.sheet !== undefined ? { verification: verificationOf(req) } : {}),
     ...(req.archive !== undefined ? { archive: req.archive } : {}),
   }

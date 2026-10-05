@@ -2,10 +2,15 @@
  * 「文档」Tab 面板（REQ-261004222448-292a · FR-7 / FR-11 #7 / FR-12）——t-b9dd2c 实现 render。
  *
  * 三块合一（FR-7）：**确定文档清单** + **核验表** + **门禁裁决留痕**（外加归档）。
- * 五条纪律（改代码时必须保住）：
- *  ① **一律铺开、不做内层滚动**（FR-11 #7）：documents / generated / 验收单逐项 / 六道门 / 归档清单
- *     全部逐行渲染，一个不省（`data-doc-row` 的条数**恒等于** `documents.length`——这是"铺开"的机械判据）。
- *     本文件产出的字符串里不得出现 `overflow: auto|scroll`：长了就交给**页面**滚动。
+ * 六条纪律（改代码时必须保住）：
+ *  ① **一律铺开、不做内层滚动**（FR-11 #7）：documents / generated / discovered / 验收单逐项 /
+ *     六道门 / 归档清单全部逐行渲染，一个不省（`data-doc-row` 的条数**恒等于** `documents.length`
+ *     ——这是"铺开"的机械判据）。本文件产出的字符串里不得出现 `overflow: auto|scroll`：
+ *     长了就交给**页面**滚动。
+ *  ①b **「确定文档」与「其它发现」是两件事**（验收现场逮到的"317 行倾倒"）：
+ *     `documents` 只装人写的交付物（服务端白名单判定），自动扫描到的非交付物走 `discovered`
+ *     ——**按类型分组的计数行 + 每类最多 3 个样例**，余量写成「其余 N 个同类，去文档目录查看」。
+ *     不许把 `discovered` 折叠成不可数的一行，也不许给它内层滚动：读者要能数出"还有多少同类"。
  *  ② **正文点开才取**（FR-11 #8）：文档行只给路径 + `data-open-doc`，渲染时**不**取正文；
  *     点开由**壳**的委派接（`ReportTabsController.attach`：`[data-open-doc]` → `ctx.openDoc(path)`
  *     → open-doc → 官方右侧栏）。面板**故意不带** `data-action="open-doc"`：那条老链
@@ -79,6 +84,17 @@ function asGate(raw: unknown): GateVerdict | undefined {
 }
 function asGenerated(raw: unknown): DocsResponse['generated'][number] | undefined {
   return raw !== null && typeof raw === 'object' ? (raw as DocsResponse['generated'][number]) : undefined
+}
+/** 「其它发现」分组守卫：`kind` 必须是字符串（计数缺失时按 0 处理，不渲染 "NaN 个"）。 */
+function asDiscoveredGroup(raw: unknown): { kind: string; count: number; samples: string[] } | undefined {
+  if (raw === null || typeof raw !== 'object') return undefined
+  const g = raw as { kind?: unknown; count?: unknown; samples?: unknown }
+  if (typeof g.kind !== 'string' || g.kind.length === 0) return undefined
+  return {
+    kind: g.kind,
+    count: typeof g.count === 'number' ? g.count : 0,
+    samples: Array.isArray(g.samples) ? (g.samples as string[]) : [],
+  }
 }
 function asArchiveDoc(raw: unknown): ArchiveDoc | undefined {
   return raw !== null && typeof raw === 'object' ? (raw as ArchiveDoc) : undefined
@@ -283,7 +299,10 @@ function documentsSection(rawDocs: readonly unknown[]): string {
     + '<span class="dsh-pm-block-title">确定文档</span>'
     + (docs.length === 0
       ? '<span class="dsh-pm-hint">台账里还没有登记任何文档</span>'
-      : '<span class="dsh-pm-hint">共 ' + String(docs.length) + ' 份 · 全部铺开（不做内层滚动）· 正文点开才取</span>')
+      // 这 8 类之外的东西**不是消失了**：它们在下方的「其它发现」里按类型计数（服务端口径见
+      // QueryDocs §确定文档 vs 其它发现）。这句点明"这里只有交付物"，读者才不会以为少了东西。
+      : '<span class="dsh-pm-hint">共 ' + String(docs.length) + ' 份 · 全部铺开（不做内层滚动）· 正文点开才取'
+        + ' · 只列人写的交付物（自动扫描到的其它文件见下方「其它发现」）</span>')
     + '</div>'
   if (docs.length === 0) {
     // 空态也要有说辞：不画空表格，也不写"0 份"（FR-12：数字只用于真实计数）
@@ -329,6 +348,84 @@ function generatedSection(rawGenerated: readonly unknown[]): string {
     + '</li>').join('')
   return '<div class="dsh-pm-block" data-doc-section="generated">' + head
     + '<ul class="dsh-pm-doc-list" data-generated-list="1">' + rows + '</ul>'
+    + '</div>'
+}
+
+/* ────────────────────────────────────────────────────────────── ②b 其它发现 */
+
+/**
+ * 后缀 → 可读类型名（认不得的后缀**照实显示** `.xxx`，不假装认得）。
+ *
+ * 为什么要有这份表：`kind` 是分组键（后缀，机器口径，`data-discovered-group` 用它），
+ * 而页面是给人读的——`yml` / `mts` 这类缩写对照着看才知道是什么。**没有中文名的就写 `.ext`**，
+ * 编一个"文档"之类的名字比不写更糟（读者会以为是交付物）。
+ */
+const DISCOVERED_KIND_LABEL: Readonly<Record<string, string>> = {
+  png: '图片（prototype 截图 / 证据图）',
+  html: 'HTML（原型稿 / 标本页）',
+  yml: 'YAML（RTM 追溯矩阵 / 工具数据）',
+  yaml: 'YAML（RTM 追溯矩阵 / 工具数据）',
+  json: 'JSON（工具生成，如 queue.json）',
+  ts: 'TypeScript 源码（任务改动过的文件）',
+  mts: 'TypeScript 脚本（任务改动过的文件）',
+  txt: '纯文本（命令输出 / 中间证据）',
+  tsv: 'TSV（机器索引）',
+  md: 'Markdown（不在交付物白名单内的）',
+  other: '无后缀文件',
+}
+
+/** 分组的可读名：表里有就用表里的，没有就照实写后缀（认不出 ≠ 不存在）。 */
+function discoveredKindLabel(kind: string): string {
+  return DISCOVERED_KIND_LABEL[kind] ?? ('.' + kind + ' 文件')
+}
+
+/** 一个分组的样例路径（可点开正文；与文档行同一套 `data-open-doc` 委派）。 */
+function discoveredSample(path: string): string {
+  return '<button type="button" class="dsh-pm-doc-path"'
+    + ' data-open-doc="' + esc(path) + '" data-discovered-sample="1"'
+    + ' title="点开正文：' + esc(displayDocPath(path)) + '">' + esc(displayDocPath(path)) + '</button>'
+}
+
+/**
+ * 「其它发现」块：**按类型分组的计数行**（缺陷修复：原来这 220 条混在确定文档里逐行倒）。
+ *
+ * 三条纪律：
+ *  - **不折叠成一行、不做内层滚动**：每一类单独一行，带 `count`（可数）与最多 3 个样例（可认）；
+ *    余量必须写成一句人话「其余 N 个同类，去文档目录查看」——写成"其余若干"就是不可数；
+ *  - **样例点得开**：它们是真实文件路径，走与文档行**同一条** `data-open-doc` 委派
+ *    （本面板不接 `data-action="open-doc"`，理由见文件头 ②）；
+ *  - 这一块**不是**"剩下的垃圾"：它是"自动扫描到了这些、它们不是人写的交付物"的如实交代，
+ *    计数加总与文档行数一起对上台账产物总数（服务端 `discoveredOf` 的诚实性判据）。
+ */
+function discoveredSection(rawDiscovered: readonly unknown[]): string {
+  const groups = coerceAll(rawDiscovered, asDiscoveredGroup)
+  if (groups.length === 0) return ''
+  const total = groups.reduce((n, g) => n + (Number.isFinite(g.count) ? Math.max(0, Math.trunc(g.count)) : 0), 0)
+  const head = '<div class="dsh-pm-block-head">'
+    + '<span class="dsh-pm-block-title">其它发现（自动扫描到的非交付物）</span>'
+    + '<span class="dsh-pm-hint">共 ' + String(total) + ' 项 / ' + String(groups.length)
+    + ' 类 · 按类型分组计数，每类最多 3 个样例（全部铺开，不做内层滚动）</span>'
+    + '</div>'
+  const rows = groups.map((g) => {
+    const count = Number.isFinite(g.count) ? Math.max(0, Math.trunc(g.count)) : 0
+    const samples = coerceAll(Array.isArray(g.samples) ? g.samples : [], asString)
+    const rest = Math.max(0, count - samples.length)
+    return '<li class="dsh-pm-discovered-group" data-discovered-group="' + esc(g.kind) + '"'
+      + ' data-discovered-count="' + String(count) + '">'
+      + '<span class="dsh-pm-doc-kind">' + esc(discoveredKindLabel(g.kind)) + '</span>'
+      + '<span class="dsh-pm-discovered-num">' + String(count) + ' 个</span>'
+      + (samples.length === 0
+        ? '<span class="dsh-pm-hint">未给样例（服务端只给了计数）</span>'
+        : '<span class="dsh-pm-hint">样例：</span>' + samples.map(discoveredSample).join(''))
+      + '<span class="dsh-pm-discovered-rest">'
+      + (rest > 0
+        ? '其余 ' + String(rest) + ' 个同类，去文档目录查看'
+        : '全部 ' + String(count) + ' 个已列在上面')
+      + '</span>'
+      + '</li>'
+  }).join('')
+  return '<div class="dsh-pm-block" data-doc-section="discovered">' + head
+    + '<ul class="dsh-pm-doc-list" data-discovered-list="1">' + rows + '</ul>'
     + '</div>'
 }
 
@@ -611,6 +708,7 @@ function renderDocs(data: unknown): string {
   return '<section class="dsh-pm-docs" data-panel="docs" data-docs-shape="ok">'
     + documentsSection(d.documents)
     + generatedSection(d.generated)
+    + discoveredSection(d.discovered ?? [])
     + verificationSection(d.verification)
     + gatesSection(d.gates)
     + (d.archive === undefined ? '' : archiveSection(d.archive))

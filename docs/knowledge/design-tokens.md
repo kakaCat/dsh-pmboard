@@ -1,15 +1,15 @@
 # 前端设计令牌（生成物）
 
 > 生成物：由 `scripts/kb-build.mts` 从 src\/client\/styles? 确定性抽取，**请勿手改**（改样式后重跑）。
-> 全量类名（779 个）在 `docs/knowledge/design-tokens.classes.tsv`——机器索引、不进上下文，用 `reqboard_kb(kind='tokens', query='<类名>')` 检索。
+> 全量类名（783 个）在 `docs/knowledge/design-tokens.classes.tsv`——机器索引、不进上下文，用 `reqboard_kb(kind='tokens', query='<类名>')` 检索。
 
 ## 颜色 #colors
 
 - `#4a7dff` · 63 次 · base.ts
-- `#888` · 61 次 · base.ts
+- `#888` · 63 次 · base.ts
 - `#999` · 61 次 · base.ts
 - `#fff` · 51 次 · base.ts
-- `#333` · 49 次 · base.ts
+- `#333` · 50 次 · base.ts
 - `#28a745` · 37 次 · base.ts
 - `#dc3545` · 36 次 · base.ts
 - `#666` · 26 次 · base.ts
@@ -36,8 +36,8 @@
 - `#1d1d1f` · 6 次 · node-panel.ts
 - `#555` · 6 次 · base.ts
 - `#777` · 6 次 · base.ts
+- `#b45309` · 6 次 · base.ts
 - `#0e7c8f` · 5 次 · files.ts
-- `#b45309` · 5 次 · base.ts
 - `#a86a00` · 4 次 · files.ts
 - `#b0b4bb` · 4 次 · report.ts
 - `#c2255c` · 4 次 · base.ts
@@ -128,7 +128,7 @@
 - `max-width: 880px`
 - `max-width: 768px`
 
-## 类名前缀分组 #classes（Top 24，共 142 组）
+## 类名前缀分组 #classes（Top 24，共 143 组）
 
 - `dsh-pm-set` · 86 个
 - `dsh-pm-np` · 70 个
@@ -153,4 +153,4 @@
 - `dsh-pm-tok` · 9 个
 - `dsh-pm-timeline` · 8 个
 - `dsh-pm-archive` · 7 个
-- `dsh-pm-completeness` · 7 个
+- `dsh-pm-comment` · 7 个

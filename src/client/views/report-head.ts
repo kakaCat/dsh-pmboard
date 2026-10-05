@@ -172,29 +172,91 @@ function actorOf(by: ActorRef): { actor: 'human' | 'agent' | 'system'; text: str
 }
 
 /**
+ * 首屏评论列表：**最多渲染最近几条**（与服务端 `REPORT_COMMENT_HEAD_LIMIT` 同口径的渲染侧兜底）。
+ *
+ * 为什么渲染侧也要限一次：服务端的条数上限只对"新服务端 + 本次请求"生效；壳还会拿到
+ * 缓存快照 / 旧服务端 / 手工喂进来的载荷。渲染层是"页面到底有多长"的最后一关，
+ * 这一关不设，Tab 栏被顶出首屏的缺陷就会从另一条路回来。
+ * （客户端不能 import application 层——`tests/layer-boundary.test.ts`——故此处独立一份常量，
+ * 值必须与 `QueryReport.REPORT_COMMENT_HEAD_LIMIT` 一致，改一处必须改另一处。）
+ */
+export const COMMENT_RENDER_LIMIT = 3
+/** 单条正文的渲染上限（字）。超出截断 + 省略号，全文进 `title`（不新造展开交互）。 */
+export const COMMENT_BODY_MAX = 200
+/** 超长正文的判定阈值（字）：超过它就不是"人写的一句话"，而是机器转储（见 COMMENT_LONG_HEAD_MAX）。 */
+export const COMMENT_LONG_THRESHOLD = 1000
+/** 超长正文只渲染**首行前多少字**（再配「共 N 字」）。 */
+export const COMMENT_LONG_HEAD_MAX = 120
+
+/**
+ * 一条评论的正文渲染计划（纯函数，便于单测直接钉住三档口径）。
+ *
+ * 三档（为什么这么分，而不是"统一截 200 字"）：
+ *  - **≤ 200 字**：原样（人写的评论通常就这么长）；
+ *  - **200 ~ 1000 字**：截 200 字 + `…`，全文进 `title`（读者悬停仍读得到全文）；
+ *  - **> 1000 字**：这类是「产物自动发现」之类的**机器转储**（线上实测一条 11,157 字，
+ *    10 条合计 13,317 字把 Tab 栏顶到 top=1118、首屏看不到六个 Tab）。它不该把页面顶爆，
+ *    也不该假装自己是一句话——只给首行前 120 字 + 「共 N 字」，并打 `data-comment-long="1"`
+ *    让页面/断言都能一眼认出"这是被收纳起来的转储"。
+ */
+export function commentRenderPlan(body: string): { text: string; full: string; long: boolean } {
+  const full = typeof body === 'string' ? body : String(body ?? '')
+  if (full.length > COMMENT_LONG_THRESHOLD) {
+    const firstLine = full.split(/\r?\n/, 1)[0] ?? ''
+    const head = firstLine.slice(0, COMMENT_LONG_HEAD_MAX)
+    const cut = firstLine.length > COMMENT_LONG_HEAD_MAX
+    return {
+      text: head + (cut ? '…' : '') + '（首行前 ' + String(COMMENT_LONG_HEAD_MAX) + ' 字 · 共 ' + String(full.length) + ' 字）',
+      full,
+      long: true,
+    }
+  }
+  if (full.length > COMMENT_BODY_MAX) {
+    return { text: full.slice(0, COMMENT_BODY_MAX) + '…', full, long: false }
+  }
+  return { text: full, full, long: false }
+}
+
+/**
  * 台账评论列表（**补能力回退**：旧详情页能看到评论，新页只有输入框 = 用户看不到评论了）。
  *
- * 三条纪律：
+ * 四条纪律：
  *  - `comments === undefined`（服务端没下发）→ **整块不渲染**：不用"暂无评论"冒充"读不到"（FR-12）；
  *  - `comments === []`（服务端明确说"确实没有评论"）→ 给一句解释性空态，不是留白；
  *  - **不做内层滚动**（FR-11 #7）：列表长了靠页面滚，不进 `overflow` 容器，
- *    也不做"限高 + 滚动"（那会让"有多少条"变成不可数）。
+ *    也不做"限高 + 滚动"（那会让"有多少条"变成不可数）。所以"不顶爆首屏"靠的是**少渲染几条 +
+ *    截断正文 + 压紧行距**，不是砍内容；
+ *  - **限条数必须同时报总数**（`head.commentsTotal`）：只渲染 3 条却不说话，等于把
+ *    "还有 7 条"藏起来——那不是内容控制，是丢信息。
  */
-export function buildCommentList(comments: ReportHead['comments']): string {
+export function buildCommentList(comments: ReportHead['comments'], total?: number): string {
   if (comments === undefined) return ''
   if (comments.length === 0) {
     return '<div class="dsh-pm-comments" data-comment-list="empty">'
       + '<div class="dsh-pm-empty">暂无评论：这条需求还没有人 / agent 留过言</div></div>'
   }
-  const rows = comments.map((c) => {
+  // 只渲染最近 N 条（新的在后 → 取尾部）；被省略的条数必须写出来
+  const shown = comments.length > COMMENT_RENDER_LIMIT ? comments.slice(-COMMENT_RENDER_LIMIT) : comments
+  const totalCount = typeof total === 'number' && Number.isFinite(total) && total >= comments.length
+    ? total
+    : comments.length
+  const omitted = Math.max(0, totalCount - shown.length)
+  const rows = shown.map((c) => {
     const who = actorOf(c.by)
-    return '<div class="dsh-pm-comment" data-comment-row="1" data-actor="' + who.actor + '">'
+    const plan = commentRenderPlan(c.body)
+    return '<div class="dsh-pm-comment" data-comment-row="1" data-actor="' + who.actor + '"'
+      + (plan.long ? ' data-comment-long="1"' : '') + '>'
       + '<span class="dsh-pm-comment-meta"><span class="dsh-pm-comment-who" data-actor="' + who.actor + '">'
-      + esc(who.text) + '</span> · ' + esc(fmtTime(c.at)) + '</span>'
-      + '<div class="dsh-pm-comment-body">' + esc(c.body) + '</div></div>'
+      + esc(who.text) + '</span> · ' + esc(fmtTime(c.at))
+      + (plan.long ? ' · <span class="dsh-pm-comment-long-flag">系统长日志（已收纳）</span>' : '')
+      + '</span>'
+      + '<div class="dsh-pm-comment-body" title="' + esc(plan.full) + '">' + esc(plan.text) + '</div></div>'
   }).join('')
-  return '<div class="dsh-pm-comments" data-comment-list="1">'
-    + '<span class="dsh-pm-action-bar-label">最近评论 ' + String(comments.length) + ' 条（新的在下）</span>'
+  const label = '最近评论 ' + String(shown.length) + ' 条（新的在下）'
+    + (omitted > 0 ? ' · 共 ' + String(totalCount) + ' 条，更早的 ' + String(omitted) + ' 条见台账' : '')
+  return '<div class="dsh-pm-comments" data-comment-list="1" data-comment-shown="' + String(shown.length) + '"'
+    + ' data-comment-total="' + String(totalCount) + '">'
+    + '<span class="dsh-pm-action-bar-label">' + esc(label) + '</span>'
     + rows + '</div>'
 }
 
@@ -264,13 +326,13 @@ export function buildReportHead(report: ReportResponse, now: number = Date.now()
     // 评论**列表**仍渲染：它是台账已记下的事实（审计要看"谁批的、说了什么"），只读不等于看不见。
     parts.push('<div class="dsh-pm-gate" data-readonly="1">终态只读：'
       + (h.status === 'canceled' ? '已取消' : '已归档') + '，无可执行动作</div>')
-    parts.push(buildCommentList(h.comments))
+    parts.push(buildCommentList(h.comments, h.commentsTotal))
   } else {
     parts.push(buildReportActionBar(report))
     parts.push(buildWindowJumps(report))
     // 评论列表在评论框**附近**（列表在上、输入框在下，与时间线"新的在下"同向）。
     // 档二（compact）不渲染输入框，但列表照渲染：评论是内容，不是"写入口"。
-    parts.push(buildCommentList(h.comments))
+    parts.push(buildCommentList(h.comments, h.commentsTotal))
     // 评论框：既有能力的**唯一落点**（写入通道与旧页同一条）。
     // 草稿的保住靠 board-mount 的分段替换 + capture/restore（见 board-mount §applyReportSegments）。
     if (opts.compact !== true) {

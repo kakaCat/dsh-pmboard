@@ -26,7 +26,10 @@ import {
   type VerificationSheet,
 } from '../src/shared/protocol.js'
 import { REPORT_COMMENT_HEAD_LIMIT, queryReport, type ReportQueryDeps } from '../src/application/query/QueryReport.js'
-import { buildCommentList, buildReportHead } from '../src/client/views/report-head.ts'
+import {
+  COMMENT_BODY_MAX, COMMENT_LONG_HEAD_MAX, COMMENT_RENDER_LIMIT,
+  buildCommentList, buildReportHead, commentRenderPlan,
+} from '../src/client/views/report-head.ts'
 import { buildOutcomeCell, buildReportBand } from '../src/client/views/report-band.ts'
 import { REPORT_TABS, buildTabBar } from '../src/client/views/report-tabs.ts'
 import { fmtTime } from '../src/client/render/dom-utils.ts'
@@ -150,7 +153,11 @@ describe('① Tab 角标关键数字（FR-11 #4）', () => {
       },
     }, [makeTask(), makeTask({ id: 't-gap002' }), makeTask({ id: 't-gap003' })])
 
-    expect(report.tabCounts?.docs).toBe('3') // 已登记产物 3 条
+    // 角标 = **确定文档**（人写的交付物，`isDeliverableDocPath`）数，与「文档」Tab 那张表同源。
+    // 夹具三条产物里 `tasks/t-1.md` 与 `verification.md` 是交付物，`notes/n.md` 不在白名单
+    // （归「其它发现」）→ 2。修前按台账产物总数算是 3，线上实测就是「角标 317 / 列表 97」
+    // 这种同一个东西两个数字（FR-11 #2 禁止）。
+    expect(report.tabCounts?.docs).toBe('2')
     expect(report.tabCounts?.dag).toBe('3') // 任务卡 3 张
     expect(report.tabCounts?.token).toBe('1.8M') // 合计 1_840_000，按 K/M 格式化
     // 首屏不加读：需要会话事件 / 注入留痕 / 主干装配的口一律**不填**（页面就不显示那个角标）
@@ -191,7 +198,7 @@ describe('① Tab 角标关键数字（FR-11 #4）', () => {
     try {
       tokenDef!.badge = r => r?.tabCounts?.token
       const html = buildTabBar(report, 'trunk')
-      expect(html).toContain('data-badge="docs">3<')
+      expect(html).toContain('data-badge="docs">2<')
       expect(html).toContain('data-badge="dag">1<')
       expect(html).toContain('data-badge="token">1.8M<')
       expect(countOf(html, 'data-badge=')).toBe(3)
@@ -235,15 +242,56 @@ describe('② 评论列表（能力回退：旧页能看评论，新页只剩输
     createdBy: i % 3 === 0 ? HUMAN : i % 3 === 1 ? AGENT : SYSTEM,
   }))
 
-  it('只给最近 10 条、新的在后（与服务端 req.comments 顺序一致，不多读一次台账）', async () => {
+  it('只给最近 N 条（默认 3）、新的在后，且**如实给出总条数**（省略 ≠ 不存在）', async () => {
     const report = await reportOf({ comments: many })
     const comments = report.head.comments ?? []
     expect(comments).toHaveLength(REPORT_COMMENT_HEAD_LIMIT)
-    // 尾部 10 条：第 5~14 条；顺序原样（新的在后）
-    expect(comments.map(c => c.body)).toEqual(many.slice(-10).map(c => c.body))
+    expect(REPORT_COMMENT_HEAD_LIMIT).toBe(3) // 缺陷修复：原 10 条（13,317 字把 Tab 栏顶出首屏）
+    // 尾部 N 条：第 12~14 条；顺序原样（新的在后）
+    expect(comments.map(c => c.body)).toEqual(many.slice(-REPORT_COMMENT_HEAD_LIMIT).map(c => c.body))
     expect(comments[comments.length - 1]?.body).toBe('第 14 条评论')
     // ActorRef 原样带出（渲染侧据此区分人 / agent / 系统）
-    expect(comments.map(c => c.by)).toEqual(many.slice(-10).map(c => c.createdBy))
+    expect(comments.map(c => c.by)).toEqual(many.slice(-REPORT_COMMENT_HEAD_LIMIT).map(c => c.createdBy))
+    // 总数必须一起给：列表限到 3 条时，「最近 3 条」会被读成"只有 3 条"
+    expect(report.head.commentsTotal).toBe(many.length)
+  })
+
+  it('正文截断与系统长日志收纳（渲染层三档口径，不新造展开交互）', () => {
+    const long = 'x'.repeat(5_000)
+    const plan = (body: string) => commentRenderPlan(body)
+    // ≤200 字：原样
+    expect(plan('短评').text).toBe('短评')
+    expect(plan('短评').long).toBe(false)
+    // 200~1000 字：截 200 + 省略号；全文进 title（读者悬停仍读得到）
+    const mid = plan('y'.repeat(300))
+    expect(mid.text).toBe('y'.repeat(COMMENT_BODY_MAX) + '…')
+    expect(mid.long).toBe(false)
+    expect(mid.full).toHaveLength(300)
+    // >1000 字（机器转储）：只给首行前 120 字 + 「共 N 字」，并打 long 标
+    const big = plan(long)
+    expect(big.long).toBe(true)
+    expect(big.text).toContain('x'.repeat(COMMENT_LONG_HEAD_MAX))
+    expect(big.text).toContain('共 5000 字')
+    expect(big.text.length).toBeLessThan(COMMENT_LONG_HEAD_MAX + 40)
+
+    const html = buildCommentList([
+      { at: 1_700_000_000_000, body: '正常短评', by: HUMAN },
+      { at: 1_700_000_000_001, body: 'z'.repeat(300), by: HUMAN },
+      { at: 1_700_000_000_002, body: long, by: SYSTEM },
+    ])
+    expect(countOf(html, 'data-comment-row="1"')).toBe(3)
+    expect(countOf(html, 'data-comment-long="1"')).toBe(1)
+    expect(html).toContain('系统长日志（已收纳）')
+    // 全文在 title 里（截断只发生在可见正文上；不可信输入照样转义）
+    expect(html).toContain('title="' + 'z'.repeat(300) + '"')
+    // 渲染层兜底：即使服务端给了 10 条（旧服务端/缓存快照），也只渲染最近 3 条
+    const ten = Array.from({ length: 10 }, (_, i) => ({
+      at: 1_700_000_000_000 + i, body: '第 ' + String(i + 1) + ' 条', by: HUMAN,
+    }))
+    const capped = buildCommentList(ten, 10)
+    expect(countOf(capped, 'data-comment-row="1"')).toBe(COMMENT_RENDER_LIMIT)
+    expect(capped).toContain('第 10 条')
+    expect(capped).toContain('共 10 条，更早的 7 条见台账')
   })
 
   it('渲染：每行一条 data-comment-row，带时间与作者（人 / 窗口码 / 系统可分辨）', () => {
@@ -397,7 +445,23 @@ describe('③ 结果与成效（FR-5）', () => {
     }))
     expect(pending).toContain('data-outcome="pending"')
     expect(pending).toContain('data-outcome-pending="4"')
-    expect(countOf(pending, 'data-leftover="1"')).toBe(4)
+    // 渲染条数上限 3（上线冒烟实测补）：这一格是常驻头部第三格，真数据下 20 条遗留 3,121 字
+    // 会让它高 1501px，把六个 Tab 顶出首屏。故**先列前 3 条**，其余用**可数**的指针交代
+    // （省略要可见：标题写总数、指针写剩余条数），完整逐项仍在文档 Tab 的验收单里逐行铺开。
+    expect(countOf(pending, 'data-leftover="1"')).toBe(3)
+    expect(pending).toContain('遗留问题与后续（4 项，先列前 3 项）')
+    expect(pending).toContain('data-more-leftovers="1"')
+    // 标题/指针**不许**含 `data-leftover` 子串：`countOf(html,'data-leftover')` 必须精确等于渲染行数
+    expect(countOf(pending, 'data-leftover')).toBe(3)
+    // 30 条也只渲染 3 行（防"条数一多就把首屏吃掉"回归）
+    const many = buildOutcomeCell(makeReportResponse({
+      outcome: {
+        verdict: 'rework', passed: 0, failed: 30, pendingItems: 0,
+        leftovers: Array.from({ length: 30 }, (_, i) => '不通过：第 ' + String(i + 1) + ' 项'),
+      },
+    }))
+    expect(countOf(many, 'data-leftover="1"')).toBe(3)
+    expect(many).toContain('data-more-leftovers="27"')
   })
 
   it('没有验收单 → 不给 outcome，页面走既有解释性空态（且与"0 项通过"是两句不同的话）', async () => {

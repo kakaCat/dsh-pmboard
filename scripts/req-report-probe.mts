@@ -13,8 +13,12 @@
  *      卡在哪 / 缺什么 = `[data-band-cell="gaps"]` 非空（「无缺口」也是答）；六个同级 Tab = `[data-report-tabs]`。
  *      「在首屏内」的判定集照 design/test-cases.md 的探针行与 architecture.md 的 L0 定义
  *      （**结论头 / 操作条 / 状态带**），即这三者的落点 `top` 必须落在视口高度内（不滚动可见）。
- *      **Tab 栏的位置只打印、不判失败**：L0 首屏不含 Tab 栏（它是 L1 的入口），
- *      design/test-cases.md 的探针行也没把它列进首屏判定——把不判的东西判红，探针会被绕过。
+ *      **Tab 栏的位置是硬判据**（`tabsTop ≤ 713`，2026-10 缺陷修复后追加）：缺陷现场是
+ *      线上真数据把 Tab 栏顶到 top=1118（视口 713）→ 首屏看不到六个 Tab。旧口径按
+ *      design/test-cases.md 只判 L0 三块、Tab 栏只打印，于是这处"进不去"的缺陷一路绿灯。
+ *      判据升级的理由：Tab 栏是六块内容的**唯一入口**，首屏看不到它 = 六块都读不到，
+ *      这比"落点差几个像素"严重得多。对应地，评论列表整块高度也设上限（≤ 260px）：
+ *      它是被顶爆的现场，且**不许**用 max-height / 内层滚动达标（A3 会同时判红）。
  *   A2 无横向溢出：`documentElement.scrollWidth <= clientWidth + 1`（卡原文口径）；
  *      **另加**报告壳自身同判据——因为 `.dsh-pm-detail` 计算 `overflow-x:auto`（见 A3 的例外），
  *      横向溢出会被它自己吃掉、不冒泡到 documentElement，只查 documentElement 会永远绿（假绿防线）。
@@ -38,6 +42,8 @@ import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { buildReportShell } from '../src/client/views/report-tabs.js'
+// 评论列表的渲染上限（条数）从**渲染层**取，避免探针自己写一份会漂移的常量
+import { COMMENT_RENDER_LIMIT } from '../src/client/views/report-head.js'
 import type { PanelResult, ReportResponse, TrunkResponse } from '../src/shared/protocol.js'
 import { BASE_CSS } from '../src/client/styles/base.js'
 import { DETAIL_CSS } from '../src/client/styles/detail.js'
@@ -83,6 +89,36 @@ const H = 3600_000
 /** 未激活的面板 key（A4：这些 key 的 `data-panel` 不得出现在 DOM 里）。 */
 const INACTIVE_PANEL_KEYS: readonly string[] = ['docs', 'dag', 'dialogue', 'token', 'prompts']
 
+/**
+ * Tab 栏 top 的**硬上限**（px）= headless 下 800 档实测视口高 713（见 WINDOW_HEIGHT 的口径说明）。
+ *
+ * 为什么它从"只打印的诊断"升成硬判据：缺陷修复后（REQ-261004222448-292a 验收现场）
+ * 线上真数据曾把 Tab 栏顶到 top=1118 → **首屏看不到六个 Tab**，而这处缺陷在旧判据下
+ * 一路绿灯（旧口径认为"L0 首屏不含 Tab 栏"，故只打印）。第一屏看不见入口，等于六块内容
+ * 都进不去——这就是"看不到"的缺陷，必须判红，否则它会再次悄悄退回去。
+ */
+const TABS_TOP_MAX = 713
+
+/**
+ * 评论列表容器（`data-comment-list`）的**整块高度上限**（px）。
+ *
+ * 与 TABS_TOP_MAX 同源：台账里一条机器转储就 11,157 字，评论列表是"顶爆首屏"的现场。
+ * 它**不许**用限高/内层滚动解决（FR-11 #7），只能靠"少渲染几条 + 截断正文 + 压紧行距"，
+ * 所以探针量的是**整块高度**——限高就会在这里露馅（同时 A3 的内层滚动判据也会红）。
+ */
+const COMMENT_LIST_MAX_H = 260
+
+/**
+ * 线上真实存在的「产物自动发现」系统转储（`/report` 里一条 11,157 字）的等价标本：
+ * 同一形状（首行一句话 + 超长明细），长度也同量级。
+ *
+ * 为什么标本里必须有它：① 缺陷 ① 的现场就是这类机器转储；只喂人写的短评论，探针永远看不到
+ * 这一支（截断/收纳逻辑写错了也全绿）；② 它同时验证"限条数 + 截断"之后评论列表仍 ≤ 260px。
+ */
+const LONG_SYSTEM_LOG = '[产物自动发现] 扫描需求目录：补登 141 个过程产物、回填 0 个过期种类'
+  + '（落进 docs/requirements/' + REQ_ID + '/queue.json 与 rtm-*.yml）。明细：'
+  + Array.from({ length: 600 }, (_, i) => 'artifact-' + String(i) + '.png').join('、')
+
 /** 报告标本（在途 / 终态各一份）。字段全部按 `ReportResponse` 的形状给，不做 `as never` 掩盖。 */
 function reportOf(state: SpecimenState): ReportResponse {
   const common = {
@@ -110,6 +146,8 @@ function reportOf(state: SpecimenState): ReportResponse {
         ],
         comments: [
           { at: T0 - 40 * M, body: '[文档变更] 设计稿 v3：状态带三格定稿，缺口只列最严重 5 条', by: { kind: 'human' } },
+          // 机器转储夹在中间：证明"收纳"是**逐条**判定的，不是只处理第一条/最后一条
+          { at: T0 - 30 * M, body: LONG_SYSTEM_LOG, by: { kind: 'agent', sessionId: 'session-w-b262610a' } },
           { at: T0 - 12 * M, body: '口径勘误：内层滚动判据改为真 DOM 实测，不再 grep CSS 文本（会误伤 DAG 视口）', by: { kind: 'agent', sessionId: 'session-w-b262610a' } },
         ],
       },
@@ -234,7 +272,7 @@ function asPanelPayload(v: object): PanelResult<unknown> {
  * height:100% / overflow:hidden）——只有放进这层真实框架，`.dsh-pm-detail` 的
  * 「页面级滚动容器」身份才是真的（不然量出来的滚动行为是另一回事）。
  */
-function specimenHtml(width: number, state: SpecimenState): string {
+function specimenHtml(width: number, state: SpecimenState, expectLong: number): string {
   const report = reportOf(state)
   const shell = buildReportShell(report, 'trunk', {
     data: asPanelPayload(TRUNK_SPECIMEN),
@@ -344,10 +382,32 @@ body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; 
      「一屏内能找到落点」正是卡与设计的措辞，而状态带三格本身可以比一屏更高（5 条缺口），
      要求整块可见等于要求"缺口不许超过 2 条"，与 FR-4「首屏放前 3~5 条」自相矛盾。 */
   var vh = de.clientHeight;
+  var TABS_TOP_MAX = ${String(TABS_TOP_MAX)};
+  var COMMENT_LIST_MAX_H = ${String(COMMENT_LIST_MAX_H)};
+  var COMMENT_RENDER_LIMIT = ${String(COMMENT_RENDER_LIMIT)};
+  var EXPECT_LONG = ${String(expectLong)};
+  function hOf(el) { return el === null ? 0 : Math.round(el.getBoundingClientRect().height); }
+  /* 评论列表容器（data-comment-list）：它是"头部长日志把 Tab 顶出首屏"那处缺陷的现场。
+     量它的**整块高度**（不设限高、不做内层滚动，所以只能靠内容控制）并设硬上限 COMMENT_MAX_H。
+     容器的子元素高度明细也一并量：要压的时候得知道压的是哪一块。 */
+  var comments = shell === null ? null : shell.querySelector('[data-comment-list]');
+  var commentRows = comments === null ? 0 : comments.querySelectorAll('[data-comment-row]').length;
+  var commentLong = comments === null ? 0 : comments.querySelectorAll('[data-comment-long="1"]').length;
+  var headParts = [];
+  if (head !== null) {
+    for (var hp = 0; hp < head.children.length; hp++) {
+      headParts.push(desc(head.children[hp]) + '=' + String(hOf(head.children[hp])));
+    }
+  }
   var geom = {
     vh: vh,
     headTop: topOf(head), actionsTop: topOf(actions), bandTop: topOf(band),
-    gapsTop: topOf(gaps), tabsTop: topOf(tabs)
+    gapsTop: topOf(gaps), tabsTop: topOf(tabs),
+    headH: hOf(head), bandH: hOf(band), commentsH: hOf(comments),
+    progressCellH: hOf(progress), gapsCellH: hOf(gaps),
+    outcomeCellH: hOf(shell === null ? null : shell.querySelector('[data-band-cell="outcome"]')),
+    commentRows: commentRows, commentLong: commentLong,
+    headParts: headParts
   };
   function inFold(t) { return t >= 0 && t < vh; }
   geom.headInFold = inFold(geom.headTop);
@@ -356,7 +416,25 @@ body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; 
   /* 终态没有操作条（FR-3：终态只读，不留假出口）→ 那就没有可判的落点，不算失败。 */
   geom.actionsInFold = actions === null ? true : inFold(geom.actionsTop);
   geom.foldOk = geom.headInFold && geom.bandInFold && geom.gapsInFold && geom.actionsInFold;
-  geom.tabsInFold = inFold(geom.tabsTop); /* 只作诊断：L0 首屏不含 Tab 栏（见文件头注释） */
+  /* Tab 栏进首屏：**硬判据**（缺陷修复：线上真数据曾顶到 1118，首屏看不到六个 Tab）。
+     口径 = 落在视口内（top < vh）且不超上限 TABS_TOP_MAX（=713，即实测视口高）。 */
+  geom.tabsInFold = inFold(geom.tabsTop) && geom.tabsTop <= TABS_TOP_MAX;
+  if (!geom.tabsInFold) {
+    problems.push('A1 首屏：Tab 栏不在首屏内（top ' + String(geom.tabsTop) + ' > 上限 ' + String(TABS_TOP_MAX)
+      + '，视口高 ' + String(vh) + '）——六个 Tab 是六块内容的唯一入口，首屏看不到它等于都进不去');
+  }
+  /* 评论列表：整块高度上限（不许靠限高/内层滚动达标）+ 条数上限 + 长日志必须被收纳 */
+  if (geom.commentsH > COMMENT_LIST_MAX_H) {
+    problems.push('A1 首屏：评论列表整块高 ' + String(geom.commentsH) + 'px > 上限 ' + String(COMMENT_LIST_MAX_H)
+      + 'px（不许用 max-height/内层滚动解决，只能少渲染几条 + 截断正文 + 压紧行距）');
+  }
+  if (geom.commentRows > COMMENT_RENDER_LIMIT) {
+    problems.push('A1 首屏：评论渲染了 ' + String(geom.commentRows) + ' 行 > 上限 ' + String(COMMENT_RENDER_LIMIT) + ' 行');
+  }
+  if (geom.commentLong !== EXPECT_LONG) {
+    problems.push('A1 首屏：超长系统日志被收纳的行数 ' + String(geom.commentLong) + ' ≠ 期望 ' + String(EXPECT_LONG)
+      + '（data-comment-long="1" 没打上：11k 字的机器转储会整段铺开，把 Tab 栏顶出首屏）');
+  }
   if (!geom.headInFold) problems.push('A1 首屏：结论头不在首屏内（top ' + String(geom.headTop) + '，视口高 ' + String(vh) + '）');
   if (!geom.actionsInFold) problems.push('A1 首屏：操作条不在首屏内（top ' + String(geom.actionsTop) + '，视口高 ' + String(vh) + '）');
   if (!geom.bandInFold) problems.push('A1 首屏：状态带不在首屏内（top ' + String(geom.bandTop) + '，视口高 ' + String(vh) + '）');
@@ -382,6 +460,7 @@ body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; 
     w: de.clientWidth, state: ${JSON.stringify(state)}, vh: vh,
     doc: docBox, shell: shellBox, docOverflow: docOverflow, shellOverflow: shellOverflow,
     a1: a1, geom: geom, a3: { scanned: scanned, bad: bad }, overlaps: overlaps,
+    tabsTopMax: TABS_TOP_MAX, commentListMaxH: COMMENT_LIST_MAX_H, commentRenderLimit: COMMENT_RENDER_LIMIT,
     a4: { present: present, hostCount: hostCount, trunkPresent: trunkPresent },
     problems: problems
   });
@@ -417,9 +496,15 @@ interface Diag {
   }
   geom: {
     vh: number; headTop: number; actionsTop: number; bandTop: number; gapsTop: number; tabsTop: number
+    headH: number; bandH: number; commentsH: number
+    progressCellH: number; gapsCellH: number; outcomeCellH: number
+    commentRows: number; commentLong: number; headParts: string[]
     headInFold: boolean; bandInFold: boolean; gapsInFold: boolean; actionsInFold: boolean
     foldOk: boolean; tabsInFold: boolean
   }
+  tabsTopMax: number
+  commentListMaxH: number
+  commentRenderLimit: number
   a3: { scanned: number; bad: string[] }
   overlaps: string[]
   a4: { present: string[]; hostCount: number; trunkPresent: boolean }
@@ -485,7 +570,7 @@ function main(): void {
   for (const state of STATES) {
     for (const width of WIDTHS) {
       const page = join(dir, `${String(width)}-${state.key}.html`)
-      writeFileSync(page, specimenHtml(width, state.key))
+      writeFileSync(page, specimenHtml(width, state.key, state.key === 'inflight' ? 1 : 0))
 
       let diag: Diag | undefined
       try {
@@ -522,8 +607,16 @@ function main(): void {
         + ` band@${String(diag.geom.bandTop)}(内=${yn(diag.geom.bandInFold)})`
         + ` gaps@${String(diag.geom.gapsTop)}(内=${yn(diag.geom.gapsInFold)})，视口高 ${String(diag.geom.vh)}`
         + ` → L0 首屏全落点可见=${yn(diag.geom.foldOk)}`)
-      line(`     [诊断] Tab 栏@${String(diag.geom.tabsTop)} 在首屏内=${yn(diag.geom.tabsInFold)}`
-        + '（L0 首屏不含 Tab 栏：它是 L1 入口，随页面滚动到达；仅打印不判失败）')
+      line(`A1 首屏：Tab 栏@${String(diag.geom.tabsTop)} ≤ 上限 ${String(diag.tabsTopMax)} 且落在视口内`
+        + `(${String(diag.geom.vh)}px) → ${yn(diag.geom.tabsInFold)}（**硬判据**：首屏看不到六个 Tab 就是"进不去"）`)
+      line(`A1 首屏：评论列表整块高 ${String(diag.geom.commentsH)}px ≤ 上限 ${String(diag.commentListMaxH)}px → `
+        + `${yn(diag.geom.commentsH <= diag.commentListMaxH)}`
+        + ` ｜ 渲染 ${String(diag.geom.commentRows)} 行 ≤ ${String(diag.commentRenderLimit)} 行 → `
+        + `${yn(diag.geom.commentRows <= diag.commentRenderLimit)}`
+        + ` ｜ 超长系统日志收纳 ${String(diag.geom.commentLong)} 行（data-comment-long）`)
+      line(`     [诊断] 分量高度：头部 ${String(diag.geom.headH)}px（${diag.geom.headParts.join(' ')}）`
+        + ` ｜ 状态带 ${String(diag.geom.bandH)}px（做到哪了 ${String(diag.geom.progressCellH)}`
+        + ` / 缺口 ${String(diag.geom.gapsCellH)} / 成效 ${String(diag.geom.outcomeCellH)}）`)
       line(`A5 操作条按钮不重叠：${String(0)} 处相交 → ${yn(diag.overlaps.length === 0)}（窄档 design/test-cases.md 要求）`)
 
       // A2：无横向溢出
@@ -546,11 +639,13 @@ function main(): void {
         && diag.a3.bad.length === 0
         && diag.a4.present.length === 0 && diag.a4.hostCount === 1 && diag.a4.trunkPresent
         && diag.geom.foldOk && diag.overlaps.length === 0
+        && diag.geom.tabsInFold && diag.geom.commentsH <= diag.commentListMaxH
+        && diag.geom.commentRows <= diag.commentRenderLimit
         && diag.w === width
 
       if (ok) {
         passed++
-        console.log(`PASS w=${String(diag.w)} state=${state.key}（四问可答·L0 落点在首屏 ✓ / 无横向溢出 ✓ / 无内层滚动容器 ✓ / 未激活面板缺席 ✓ / 操作条不重叠 ✓）`)
+        console.log(`PASS w=${String(diag.w)} state=${state.key}（四问可答·L0 落点在首屏 ✓ / Tab 栏 top=${String(diag.geom.tabsTop)} ≤ ${String(diag.tabsTopMax)} ✓ / 评论列表 ${String(diag.geom.commentsH)}px ≤ ${String(diag.commentListMaxH)}px ✓ / 无横向溢出 ✓ / 无内层滚动容器 ✓ / 未激活面板缺席 ✓ / 操作条不重叠 ✓）`)
       } else {
         console.error(`FAIL w=${String(width)} state=${state.key}`)
         for (const p of diag.problems) console.error('  - ' + p)
@@ -574,7 +669,8 @@ function main(): void {
     process.exit(1)
   }
   console.log(`\nPROBE PASS（${String(passed)}/4 组合：1280/900 × 在途 implementing/终态 archived；`
-    + '四问可答（L0 结论头/操作条/状态带落点在首屏）/ 无横向溢出 / 无内层滚动容器 / 未激活面板缺席 / 操作条不重叠）')
+    + '四问可答（L0 结论头/操作条/状态带落点在首屏）/ **Tab 栏 top ≤ 713** / 评论列表整块 ≤ 260px /'
+    + ' 无横向溢出 / 无内层滚动容器 / 未激活面板缺席 / 操作条不重叠）')
 }
 
 function yn(v: boolean): string {
