@@ -19,11 +19,21 @@ function view(over: Partial<RequirementTokenView> = {}): RequirementTokenView {
 }
 
 describe('REQ-a33899 t6 · Token tab 渲染', () => {
-  it('渲染五格汇总 + 折叠块 + 节点表（有快照给数字、无快照给「无快照」）', () => {
+  /**
+   * 2026-10-04 契约变更（REQ-261004222448-292a · FR-10 / t-f62af2）：Token Tab 的主视图
+   * **从「按流程节点」改成「按阶段」**，并加了「每次调用均 / 缓存命中率」两列与可优化点；
+   * 旧的「五格汇总卡」被**表尾合计（本条）+ 上卷行**取代——同一个数字不在两处出现（FR-11 #2）。
+   * 本用例即按新契约重写（旧断言编码的是旧契约，不是被删的功能）。
+   */
+  it('按阶段表（八列）+ 表尾合计 + 上卷行（有快照给数字、无快照给「无快照」）', () => {
     const html = renderTokenTab(view())
-    expect(html).toContain('dsh-pm-stats')
-    expect(html).toContain('📊 按流程节点')
+    expect(html).toContain('📊 按阶段')
     expect(html).toContain('dsh-pm-tok-table')
+    expect(html).toContain('data-stage-row="1"')
+    expect(html).toContain('每次调用均')
+    expect(html).toContain('缓存命中率')
+    expect(html).toContain('合计（本条）')
+    expect(html).toContain('data-rollup="1"')
     expect(html).toContain('t-abc123')
     expect(html).toContain('无快照')
     // 无快照的节点不得渲染 0
@@ -31,7 +41,12 @@ describe('REQ-a33899 t6 · Token tab 渲染', () => {
     expect(designRow).toContain('无快照')
   })
 
-  it('固定系统提示词：每段可展开看具体内容（pre），不可用明确标注', () => {
+  /**
+   * 反转断言（同上契约变更）：固定系统提示词块**已移出** Token Tab，迁到「提示词」Tab
+   * （FR-9 / t-702b00：`/requirements/:id/prompts` 的 A 段逐段给名字 + 字符 + 正文）。
+   * 因此本用例由「应当有」反转成「不得有」——即便载荷里仍带着 `systemPrompt`，本面板也不渲染它。
+   */
+  it('固定系统提示词块**不在**本面板（已迁到「提示词」Tab：同一数字/正文不在两处出现）', () => {
     const html = renderTokenTab(view({
       systemPrompt: {
         perTurnChars: 100, perTurnEstTokens: 25, turns: 0, sections: [
@@ -39,14 +54,15 @@ describe('REQ-a33899 t6 · Token tab 渲染', () => {
         ], contexts: [], toolsChars: 0, source: 'assembled',
       },
     }))
-    expect(html).toContain('🧱 固定系统提示词')
-    expect(html).toContain('dsh-pm-prompt-text')
-    expect(html).toContain('R-001 买入前确认')
-    expect(html).toContain('回合数不可得')
+    expect(html).not.toContain('固定系统提示词')
+    expect(html).not.toContain('dsh-pm-prompt-text')
+    expect(html).not.toContain('data-prompt-section')
+    expect(html).not.toContain('R-001 买入前确认')
 
+    // 装配不可得时同样不在这里说：那是提示词 Tab 的空态（「装配服务不可得」）
     const off = renderTokenTab(view({ systemPrompt: { perTurnChars: 0, perTurnEstTokens: 0, turns: 0, sections: [], contexts: [], toolsChars: 0, source: 'unavailable' } }))
-    expect(off).toContain('不可用')
-    expect(off).toContain('不猜数字')
+    expect(off).not.toContain('固定系统提示词')
+    expect(off).not.toContain('不猜数字')
   })
 
   it('注入提示词：有记录给聚合与明细，无记录给空态（不张冠李戴）', () => {

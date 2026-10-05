@@ -19,6 +19,8 @@ import { TRACEABILITY_CSS } from './styles/traceability.ts'
 import { DAG_CSS } from './styles/dag.ts'
 // REQ-261004103330-005f t11：设置弹窗样式分片（纯新增区段，不改既有选择器）
 import { SETTINGS_CSS } from './styles/settings.ts'
+// REQ-261004222448-292a：详情页「工作汇报」壳样式分片（纯新增区段；六个面板的专属类名续写在此片末尾）
+import { REPORT_CSS } from './styles/report.ts'
 
 /**
  * 本插件在 DSH client-modules 里的**装载身份**（= package.json 的包名，也就是
@@ -40,7 +42,7 @@ const CSS_TAG = 'dsh-pmboard/styles.css'
 // REQ-260923134706-e72f t5：NODE_PANEL_CSS 追加在末尾（纯新增区段，不改既有选择器）
 // REQ-260926140539-457b FR-6：TRACEABILITY_CSS 追加在末尾（纯新增区段，不改既有选择器）
 // REQ-260928001915-f978：DAG_CSS（真 DAG 画布面板）追加在末尾（纯新增区段，不改既有选择器）
-const CSS = BASE_CSS + DETAIL_CSS + FILES_CSS + BOARD_CSS + PANEL_CSS + TOKEN_CSS + MARKS_CSS + SUBTASK_CSS + NODE_PANEL_CSS + TRACEABILITY_CSS + DAG_CSS + SETTINGS_CSS
+const CSS = BASE_CSS + DETAIL_CSS + FILES_CSS + BOARD_CSS + PANEL_CSS + TOKEN_CSS + MARKS_CSS + SUBTASK_CSS + NODE_PANEL_CSS + TRACEABILITY_CSS + DAG_CSS + SETTINGS_CSS + REPORT_CSS
 
 /**
  * 注入本插件样式表（幂等）。

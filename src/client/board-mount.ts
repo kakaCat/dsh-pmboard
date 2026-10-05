@@ -38,6 +38,16 @@ import { captureBoardScroll, restoreBoardScroll } from './board-scroll.ts'
 // 取数中/未找到/失败三种非成功态各有明确占位——此前详情页直接拿摘要当全文渲染，点开即崩。
 import { createReqDetailStore } from './req-detail-store.ts'
 import { buildDetailError, buildDetailLoading, buildDetailMissing } from './views/detail-states.ts'
+// REQ-261004222448-292a t-ab048e：详情页新壳（常驻头部 + 六个同级 Tab + 懒加载 + 分段局部更新）。
+// 旧详情页（buildReqDetail）**不删**：报告端点未接线（旧服务端 404 / 形状不符）时按原样回落，
+// 这样"新前端 + 旧服务端"不会白屏，也不会把既有能力（评论、验收单、追溯…）直接砍掉。
+import {
+  createReportShell, isReportTabKey,
+  type ReportShellController, type ReportShellSegments,
+} from './views/report-tabs.js'
+// DAG 画布是**命令式**挂载（面板只出承载容器）：画布 id 由面板导出，别在本模块另拼一个
+// （旧详情页用的是 'dag-canvas'，两套互不抢元素）。
+import { DAG_PANEL_CANVAS_ID } from './views/panels/dag.js'
 import { updateTraceabilityView } from './traceability-handler.js'
 import { tryMountDagCanvas } from './dag-mount.js'
 import type { StageOverview, StageKey } from '../shared/protocol.ts'
@@ -193,16 +203,56 @@ const ALWAYS_ACTIVE = (): boolean => true
 /**
  * 详情页里「用户自己弄出来的状态」——重绘必须原样还回去（REQ-261004195831-0f52 FR-3）。
  *
- * 为什么需要它：详情每收到一次 SSE / 轮询就整段 `innerHTML` 重建，而「停在哪个 Tab」与
+ * 为什么需要它：详情每收到一次 SSE / 轮询就重建 DOM，而「停在哪个 Tab」与
  * 「评论框里打了一半的字」只活在 DOM 上——重建即归零（与泳道滚动位置同一类缺陷，
  * 复用同一套「重绘前取值 / 重绘后回填」做法，见 board-scroll.ts）。
+ *
+ * REQ-261004222448-292a 起详情页**不止一个**评论框（常驻头部一个 + 对话 Tab 一个），
+ * 故草稿从"一句话"变成"按表单分槽的若干句"：槽位键见 {@link draftKeyOf}。
  */
 export interface DetailDraft {
   reqId: string
   /** 当前激活的 Tab 名（data-tab）；空串 = 无 */
   tab: string
-  /** 评论输入框里未提交的草稿；空串 = 无 */
+  /** 头部那个评论框的值（= `comments['head']`；保留这个字段名，避免动到既有读者） */
   comment: string
+  /** 各评论表单的草稿：键 = 槽位键（`data-draft-key` / 所在面板 / 出现次序） */
+  comments: Record<string, string>
+}
+
+/**
+ * 草稿的**跨重绘记忆**（模块级，键 `reqId::槽位`）。
+ *
+ * 为什么不能只靠 DetailDraft（那是一次重绘前/后的快照）：切 Tab 会把面板段整段换掉——
+ * 对话 Tab 的回复框连节点都没了，快照里没它，文字就丢了；切回来时框是新建的，也没人把字写回去。
+ * 记忆放在模块级后，切走再切回仍能取回（同 board-scroll 的"模块级记忆"思路，且换需求不串）。
+ */
+const commentDrafts = new Map<string, string>()
+
+/**
+ * 一个评论表单的草稿槽位键。
+ *
+ * 优先级：显式 `data-draft-key` → 它所在的面板（`[data-panel="<tab>"]`，壳自己的标记，
+ * **不是**某个面板的内部知识）→ 头部（`[data-report-head]`）→ 出现次序兜底。
+ * 用"所在面板"而不是"出现次序"：切走再切回时表单位置会变（面板段被换掉），
+ * 按次序记会把对话的草稿记到文档面板的槽里（互相踩），按面板记则天然分开。
+ */
+export function draftKeyOf(form: Element, index: number): string {
+  const explicit = (form as HTMLElement).dataset?.draftKey
+  if (typeof explicit === 'string' && explicit.length > 0) return explicit
+  const closest = (form as { closest?: (sel: string) => Element | null }).closest
+  if (typeof closest === 'function') {
+    const panel = closest.call(form, '[data-panel]')?.getAttribute('data-panel')
+    if (typeof panel === 'string' && panel.length > 0) return 'panel:' + panel
+    if (closest.call(form, '[data-report-head]') !== null) return 'head'
+  }
+  return 'draft-' + String(index)
+}
+
+/** 详情容器里的全部评论表单（顺序 = DOM 顺序，仅作兜底槽位键用）。 */
+function commentForms(detail: HTMLElement): HTMLElement[] {
+  if (typeof detail.querySelectorAll !== 'function') return []
+  return Array.from(detail.querySelectorAll<HTMLElement>('.dsh-pm-comment-form'))
 }
 
 /** 切换详情页的 Tab（点击与回填**共用**同一处实现，避免两套切法各说各话）。 */
@@ -215,6 +265,25 @@ export function setDetailTab(detail: HTMLElement, tabName: string): void {
   })
 }
 
+/**
+ * 取「被点的那个发送按钮**所在表单**」里的评论输入框。
+ *
+ * 为什么不能按"页面里第一个 `[data-role=comment-input]`"取：详情页现在同时有两个以上评论框
+ * （常驻头部 + 对话 Tab），按第一个取会让面板里的「发送」读到头部那个（多为空）
+ * → 点了没反应、也不报错（静默失败）。这是对话面板卡实测到的真缺陷。
+ * 作用域取不到才回落整页（旧壳只有一个评论框，行为与改造前一致）。
+ */
+export function commentInputOf(button: Element, root: HTMLElement | undefined): HTMLInputElement | undefined {
+  const closest = (button as { closest?: (sel: string) => Element | null }).closest
+  const form = typeof closest === 'function' ? closest.call(button, '.dsh-pm-comment-form') : null
+  const scoped = form === null
+    ? null
+    : (form as Element).querySelector<HTMLInputElement>('[data-role="comment-input"]')
+  if (scoped !== null && scoped !== undefined) return scoped
+  if (root === undefined || typeof root.querySelector !== 'function') return undefined
+  return root.querySelector<HTMLInputElement>('[data-role="comment-input"]') ?? undefined
+}
+
 /** 重绘前取值：只认当前详情容器（看板/任务页没有详情容器 → undefined，静默跳过）。 */
 export function captureDetailDraft(el: HTMLElement): DetailDraft | undefined {
   // 容器可能只有 innerHTML（宿主桩 / 极简容器）：没有查询能力就静默跳过，
@@ -222,13 +291,21 @@ export function captureDetailDraft(el: HTMLElement): DetailDraft | undefined {
   if (typeof el.querySelector !== 'function') return undefined
   const detail = el.querySelector<HTMLElement>('.dsh-pm-detail[data-detail-req]')
   if (detail === null) return undefined
+  const reqId = detail.dataset.detailReq ?? ''
   const active = detail.querySelector<HTMLElement>('.dsh-pm-tab.active')
-  const input = detail.querySelector<HTMLInputElement>('[data-role="comment-input"]')
-  return {
-    reqId: detail.dataset.detailReq ?? '',
-    tab: active?.dataset.tab ?? '',
-    comment: input?.value ?? '',
-  }
+  const comments: Record<string, string> = {}
+  commentForms(detail).forEach((form, i) => {
+    const key = draftKeyOf(form, i)
+    const input = typeof form.querySelector === 'function'
+      ? form.querySelector<HTMLInputElement>('[data-role="comment-input"]')
+      : null
+    const value = input?.value ?? ''
+    comments[key] = value
+    // 顺手写进模块级记忆：**只记此刻真实存在的表单**（缺席的表单不许被写成空串，
+    // 否则"切走再切回"会把用户没动过的那个框的草稿抹掉）
+    if (reqId.length > 0) commentDrafts.set(reqId + '::' + key, value)
+  })
+  return { reqId, tab: active?.dataset.tab ?? '', comment: comments['head'] ?? '', comments }
 }
 
 /**
@@ -243,10 +320,72 @@ export function restoreDetailDraft(el: HTMLElement, draft: DetailDraft | undefin
   if (draft.tab.length > 0 && detail.querySelector('.dsh-pm-tab[data-tab="' + draft.tab + '"]') !== null) {
     setDetailTab(detail, draft.tab)
   }
-  if (draft.comment.length > 0) {
-    const input = detail.querySelector<HTMLInputElement>('[data-role="comment-input"]')
-    if (input !== null) input.value = draft.comment
+  commentForms(detail).forEach((form, i) => {
+    const key = draftKeyOf(form, i)
+    // 本次快照优先；快照里没有这个槽位（表单是刚出现的，例如切回对话 Tab）→ 取模块级记忆
+    const value = draft.comments[key] ?? commentDrafts.get(draft.reqId + '::' + key)
+    if (value === undefined || value.length === 0) return
+    const input = typeof form.querySelector === 'function'
+      ? form.querySelector<HTMLInputElement>('[data-role="comment-input"]')
+      : null
+    if (input !== null) input.value = value
+  })
+}
+
+/**
+ * 分段局部更新（REQ-261004222448-292a · FR-11）：只换**内容变了**的那一段，不整段 `innerHTML` 重绘。
+ *
+ * 为什么这是"滚动位置 / 展开态 / 阅读位置不变"的实现方式：整页重绘会把没变的部分也换成新节点，
+ * 于是滚动与 `<details>` 展开态一起归零（本仓在泳道滚动上已踩过同一类缺陷，见 board-scroll.ts）。
+ * 分段之后，没变的段连 DOM 都不碰，状态自然留着。
+ *
+ * 草稿（评论框里打了一半的字）在头部段里——**换头就会丢**，故替换前 capture、替换后 restore。
+ * 回填刻意**不恢复 Tab 名**：当前 Tab 由壳控制器权威决定，DOM 上的 `.active` 只是它的投影；
+ * 把旧 Tab 回填回去会和刚渲染出来的 Tab 栏打架（页面显示 A 面板、标签高亮 B）。
+ *
+ * 段内比较用 `innerHTML` 字符串：真实 DOM 会把它再序列化一遍（属性引号、自闭合标签），
+ * 所以"看起来一样却不相等"时只是多换一次——**不是**正确性问题（每次都 restore 草稿）。
+ * 容器没有查询能力（宿主桩/极简容器）时静默跳过，绝不因此把整次渲染带崩。
+ */
+export function applyReportSegments(container: HTMLElement, segs: ReportShellSegments): void {
+  if (typeof container.querySelector !== 'function') return
+  const draft = captureDetailDraft(container)
+  let replaced = 0
+  for (const name of ['head', 'band', 'tabs', 'panel'] as const) {
+    const seg = container.querySelector<HTMLElement>('[data-report-seg="' + name + '"]')
+    if (seg === null) continue
+    const next = segs[name]
+    if (seg.innerHTML === next) continue
+    seg.innerHTML = next
+    replaced += 1
   }
+  if (replaced > 0 && draft !== undefined) restoreDetailDraft(container, { ...draft, tab: '' })
+}
+
+/**
+ * 面板内交互的**意图映射**（纯函数，便于在无 jsdom 的环境下断言）。
+ *
+ * 为什么要有这一层：六个面板只会返回**字符串**，点击得由事件委派落地——
+ * 直接写成一堆 `if (el.closest(...))` 的话，"哪个属性对应哪个动作"这件事就没法测，
+ * 而它恰恰是最容易写错、写错了又静默（点了没反应）的地方。
+ *
+ * 注意这里**不含** `data-open-doc`（点开正文）：那条链由壳自己接（`ReportTabsController.attach`
+ * → `ctx.openDoc`），只能有一处接——两边都接会点一下开两次（见 report-tabs.ts 的 attach 注释）。
+ */
+export type PanelIntent = { kind: 'load-earlier'; cursor?: number }
+
+export function panelIntentOf(target: Element): PanelIntent | undefined {
+  if (target === null || typeof (target as { closest?: unknown }).closest !== 'function') return undefined
+  // 「加载更早」：按 `data-load-earlier` **通用**匹配（不是对话专用——注入留痕等长列表同样要分页）。
+  // 游标优先取 DOM 上的 data-before（面板从服务端 page.before 渲染来的）；
+  // 缺了就不猜——由壳回落到当前载荷的 page.before，取不到只留一行说明。
+  const earlierEl = target.closest<HTMLElement>('[data-load-earlier]')
+  if (earlierEl !== null) {
+    const raw = earlierEl.dataset.before
+    const cursor = raw === undefined ? Number.NaN : Number(raw)
+    return Number.isFinite(cursor) ? { kind: 'load-earlier', cursor } : { kind: 'load-earlier' }
+  }
+  return undefined
 }
 
 /**
@@ -366,6 +505,78 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
    */
   const lastRenderedDetail = new Map<string, RequirementRecord>()
 
+  /**
+   * 详情页新壳控制器（REQ-261004222448-292a）：**一条需求一个**，换需求即作废旧的
+   * （在途的面板响应不得写回新需求的面板——与 req-detail-store 的世代纪律同款）。
+   * `onChange` 走 `scheduleRender`（不是在取数回调里直接 render）：登记 loading 那一拍是**同步**回调，
+   * 直接重绘会在同一次 render 里再进一次 render。
+   */
+  let reportShell: ReportShellController | undefined
+  let reportShellFor: string | undefined
+  /** 壳的交互委派（`data-open-doc` → `ctx.openDoc`）卸载函数；换壳/卸载时必须释放 */
+  let unsubShellDom: (() => void) | undefined
+  /** 已挂过 DAG 画布的宿主（幂等守卫：同节点同 stateKey 不重复挂；节点被换掉即重挂） */
+  let mountedReportDag: { host: Element; stateKey: string } | undefined
+  const shellForReq = (reqId: string): ReportShellController => {
+    if (reportShell !== undefined && reportShellFor === reqId) return reportShell
+    reportShell?.detach()
+    unsubShellDom?.()
+    unsubShellDom = undefined
+    mountedReportDag = undefined
+    reportShellFor = reqId
+    reportShell = createReportShell({
+      requirementId: reqId,
+      loadReport: () => api.fetchReport(reqId),
+      load: (key, params) => api.fetchReportPanel(reqId, key, params),
+      // 点开正文复用既有链路（open-doc → 官方右侧栏），不新造通道
+      openDoc: (path) => { openDocInSidebar(window.__dshPmCtx, path, resolveCurrentSessionId()) },
+      revision: state?.revision ?? 0,
+      onChange: () => { if (mode.kind === 'req') scheduleRender() },
+    })
+    // 委派挂在**容器**上（面板段每次都被整段替换，挂面板上等于每次都要重挂）
+    if (viewEl !== undefined) unsubShellDom = reportShell.attach(viewEl)
+    return reportShell
+  }
+
+  /**
+   * 切到 DAG Tab 且面板段进 DOM 后，挂一次画布（命令式挂载，面板只出承载容器）。
+   *
+   * 三条纪律：
+   *  - **任务来自看板 state 的 `TaskRecord[]`**（`state.tasks` 按需求过滤），不是 `DagResponse.tasks`：
+   *    画布要 `phase/side` 做角色配色，而 `DagGraphNode` 没有这两列——拿它去喂会配色/角色全丢，
+   *    用假值补上就是编数据；
+   *  - **stateKey 从宿主上读**（`data-dag-state-key`，面板已按 `<canvasId>::<reqId>` 算好）：
+   *    自己拼一遍，哪天拼法变了就与面板的视图状态记忆静默失配；
+   *  - **幂等**：同一宿主 + 同一 stateKey 只挂一次；宿主节点被分段替换换掉后是**新对象**，照挂
+   *    （`mountDagCanvas` 自身也幂等——先释放同名旧实例）。
+   *
+   * 旧详情页那条 `'dag-canvas'` 挂载**不动**（两条路径各用各的 id，不抢元素）。
+   */
+  const mountReportDagIfActive = (ctl: ReportShellController, reqId: string): void => {
+    if (viewEl === undefined || ctl.active() !== 'dag') { mountedReportDag = undefined; return }
+    if (typeof viewEl.querySelector !== 'function') return
+    const host = viewEl.querySelector<HTMLElement>('[data-dag-canvas]')
+    if (host === null) { mountedReportDag = undefined; return }
+    const stateKey = host.dataset.dagStateKey ?? ''
+    if (mountedReportDag !== undefined && mountedReportDag.host === host && mountedReportDag.stateKey === stateKey) return
+    mountedReportDag = { host, stateKey }
+    const reqTasks = state?.tasks.filter(t => t.requirementId === reqId) ?? []
+    tryMountDagCanvas(reqTasks, state?.ready?.[reqId], DAG_PANEL_CANVAS_ID, stateKey.length > 0 ? { stateKey } : {})
+  }
+
+  /**
+   * 这一次渲染该走新壳还是旧详情页？**只有"端点未接线"才回落旧页**：
+   *  - `unsupported`：200 但载荷不是报告摘要形状（中间层/桩）；
+   *  - `notFound`：`/report` 404 —— 旧服务端没有这条路由（需求真不存在时旧页也会 404，
+   *    由旧页渲染「未找到」，不会假装成功）。
+   * 其余（loading / ready / degraded / 其它失败）都留在新壳：那是"接线了但暂时读不到"，
+   * 页面该给的是诚实的三态说辞，而不是悄悄换一份实现。
+   */
+  const shellUnwired = (ctl: ReportShellController): boolean => {
+    const h = ctl.head()
+    return h.phase === 'unsupported' || (h.phase === 'error' && h.notFound === true)
+  }
+
   const render = (): void => {
     if (viewEl === undefined) return
     if (state === undefined) { viewEl.innerHTML = buildEmpty(); return }
@@ -384,6 +595,25 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         break
       }
       case 'req': {
+        // ── REQ-261004222448-292a：先试新壳（常驻头部 + 六个同级 Tab + 懒加载 + 分段更新）──
+        // 首屏只有 2 个请求（report + 默认 Tab trunk），且都不含正文；未点过的 Tab 一个请求都不发。
+        const shot = shellForReq(cur.reqId)
+        shot.setRevision(state.revision) // 台账变了 → 只重取「头部 + 当前 Tab」
+        shot.ensure()                    // 幂等：首次取 report；失败不自动重试
+        if (!shellUnwired(shot)) {
+          // 分段的单位：头部段 / 状态带段 / Tab 栏段 / 当前面板段。首帧没有壳 → 整段渲染；
+          // 之后一律分段替换（没变的段连 DOM 都不碰 → 滚动/展开/草稿由此保住）。
+          const canQuery = typeof viewEl.querySelector === 'function'
+          if (!canQuery || viewEl.querySelector('[data-report-seg="head"]') === null) {
+            viewEl.innerHTML = shot.html()
+          } else {
+            applyReportSegments(viewEl, shot.segments())
+          }
+          // DAG 面板的画布是命令式挂载：DOM 已在屏之后补挂一次（幂等）
+          mountReportDagIfActive(shot, cur.reqId)
+          break
+        }
+        // ── 报告端点未接线：按**改造前**的方式回落旧详情页（新前端 + 旧服务端不白屏）──
         // REQ-261004195831-0f52 FR-1/FR-2/FR-3：**摘要只喂骨架，正文来自按需取全文**。
         // 改前这里直接 `state.requirements.find()` 交给 buildReqDetail —— `/state` 只发摘要后
         // 那句就是线上崩溃点（`renderComments(req.comments)` 对 undefined 取 .length）。
@@ -506,6 +736,18 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
   const onClick = (ev: MouseEvent): void => {
     const target = ev.target as Element
     console.log('[pmboard] onClick', { target, tagName: target.tagName, className: target.className })
+    // REQ-261004222448-292a：详情页新壳的面板内分页（「加载更早」）先试——它没有 data-action，
+    // 走 `panelIntentOf` 的纯映射（可单测），落点是壳的分页合并（累积与合并都由壳负责）。
+    // 注意：`data-open-doc`（点开正文）**不在这里**——那条链由壳自己接（只能有一处接）。
+    const intent = panelIntentOf(target)
+    if (intent !== undefined) {
+      const reqId = target.closest<HTMLElement>('.dsh-pm-detail')?.dataset.detailReq
+        ?? (mode.kind === 'req' ? mode.reqId : undefined)
+      if (reqId === undefined || reqId.length === 0) return
+      shellForReq(reqId).loadEarlier(intent.cursor)
+      render()
+      return
+    }
     // 分页控件由 render/pagination 渲染（data-pmpage，无 data-action）
     const pageEl = target.closest<HTMLElement>('[data-pmpage]')
     if (pageEl !== null && state !== undefined) {
@@ -534,6 +776,21 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         const reqId = el.dataset.id
         if (reqId === undefined || reqId.length === 0) return
         reqDetail.retry(reqId)
+        render()
+        return
+      }
+      // REQ-261004222448-292a：新壳的两个显式重试出口（失败态不自动重试，重试是人的动作）
+      case 'report-panel-retry': {
+        const reqId = mode.kind === 'req' ? mode.reqId : undefined
+        if (reqId === undefined) return
+        shellForReq(reqId).retry()
+        render()
+        return
+      }
+      case 'report-head-retry': {
+        const reqId = mode.kind === 'req' ? mode.reqId : undefined
+        if (reqId === undefined) return
+        shellForReq(reqId).retryHead()
         render()
         return
       }
@@ -578,6 +835,18 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         // 切换 Tab active 状态
         const tabsContainer = tab.closest<HTMLElement>('.dsh-pm-detail')
         if (!tabsContainer) return
+        // REQ-261004222448-292a：新壳走控制器——**切到才取数**；同 revision 内切回命中缓存。
+        // 面板的"卸载上一个 / 挂载这一个"由分段替换完成（DOM 里任何时刻只有一个面板）。
+        // 这里**不**调 setDetailTab：active 类由控制器重绘的 Tab 栏给出（单一事实源），
+        // 在 DOM 上再改一遍只会短暂地与面板内容不一致。
+        if (tabsContainer.dataset.reportShell === '1') {
+          const shellReqId = tabsContainer.dataset.detailReq
+          if (shellReqId !== undefined && shellReqId.length > 0 && isReportTabKey(tabName)) {
+            shellForReq(shellReqId).select(tabName)
+          }
+          return
+        }
+        // 旧壳（回落路径）：语义与改造前**逐字不变**
         // 与「重绘后回填」共用同一处切换实现（setDetailTab），避免两套切法各说各话
         setDetailTab(tabsContainer, tabName)
         // REQ-a33899 t6：Token tab 首次切到时确保已取数（打开详情时通常已预取）
@@ -759,11 +1028,13 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         return
       }
       case 'add-comment': {
-        const input = viewEl?.querySelector<HTMLInputElement>('[data-role="comment-input"]')
+        // REQ-261004222448-292a：**按被点按钮所在的表单**取值——详情页现在有两个以上评论框
+        // （常驻头部 + 对话 Tab），按"第一个"取会让面板里的「发送」读头部那个（多为空）→ 静默不提交。
+        const input = commentInputOf(el, viewEl)
         const body = input?.value.trim()
         if (body && el.dataset.target && el.dataset.id) {
           void api.addComment({ target: el.dataset.target as 'req' | 'task', id: el.dataset.id, body, actor: 'human' })
-            .then(() => fetchAll())
+            .then(() => { if (input !== undefined) input.value = ''; return fetchAll() })
             .catch(e => window.alert(String(e)))
         }
         return
@@ -1075,6 +1346,14 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
       // REQ-261004195831-0f52：卸载即作废在途取数（迟到响应不得写回已释放的视图）
       reqDetail.reset()
       lastRenderedDetail.clear()
+      // REQ-261004222448-292a：新壳同样作废在途面板/头部响应（卸载后迟到者一律丢弃），
+      // 并释放壳自己的点击委派（`data-open-doc`）与 DAG 画布记忆
+      reportShell?.detach()
+      unsubShellDom?.()
+      unsubShellDom = undefined
+      mountedReportDag = undefined
+      reportShell = undefined
+      reportShellFor = undefined
       viewEl = undefined
     },
   }

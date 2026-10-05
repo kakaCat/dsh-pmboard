@@ -5,7 +5,24 @@
  * @module dsh-pmboard/client/api
  */
 import type { BoardState, RequirementRecord } from './types.ts'
-import type { RequirementMarksView, RequirementTokenView, StageDetail, StageOverview } from '../shared/protocol.ts'
+import type {
+  DagResponse,
+  DialogueResponse,
+  DocsResponse,
+  PanelResult,
+  PromptsResponse,
+  ReportResponse,
+  RequirementMarksView,
+  RequirementTokenView,
+  StageDetail,
+  StageOverview,
+  TokenAvailability,
+  TokenOptimization,
+  TrunkResponse,
+} from '../shared/protocol.ts'
+// REQ-261004222448-292a：Tab 键的**唯一定义**在壳模块（report-tabs.ts），这里只 import type
+// （类型引用编译期擦除，运行时不产生 client 内部环）。
+import type { ReportTabKey } from './views/report-tabs.js'
 import type { InjectionInfoResponse } from './injection-info.ts'
 import type { IsolationLogEntry } from './node-panel-process.ts'
 
@@ -303,9 +320,133 @@ export function fetchStageOverview(reqId: string): Promise<StageOverview> {
 
 /**
  * 单需求 token 去向（REQ-a33899 t6）：详情页「🪙 Token」tab 的数据源。
+ * REQ-261004222448-292a 起服务端在**同一响应**里并进扩展段（按阶段口径 + 优化点）——
+ * 完整载荷见 {@link TokenPanelPayload}。
  */
 export function fetchRequirementToken(reqId: string): Promise<RequirementTokenView> {
   return get<RequirementTokenView>(BASE + '/requirements/' + encodeURIComponent(reqId) + '/token')
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * 需求详情页「工作汇报」六个 Tab 的取数（REQ-261004222448-292a t-ab048e）
+ *
+ * 七条只读请求，全走既有 `unwrap` 信封（非 2xx 时把服务端原话带上来，见 errorOf）。
+ * **降级不抛错**：端口未装配 / 台账读不到时服务端回 `{available:false, reason, note}`
+ * （FR-12），页面按 reason 给不同文案——抛错会把"读不到"与"不存在"混成同一句"加载失败"，
+ * 那正是本需求要消灭的不诚实。
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** 面板端点的 URL（六个 Tab 一个形状，避免六处各拼一遍路径）。 */
+function panelUrl(id: string, endpoint: 'report' | 'trunk' | 'docs' | 'dag' | 'dialogue' | 'prompts'): string {
+  return BASE + '/requirements/' + encodeURIComponent(id) + '/' + endpoint
+}
+
+/** 分页查询串（只带真正给了的参数；没给就让服务端走默认 20）。 */
+function pageQuery(params?: { before?: number; limit?: number }): string {
+  if (params === undefined) return ''
+  const q = new URLSearchParams()
+  if (params.before !== undefined) q.set('before', String(params.before))
+  if (params.limit !== undefined) q.set('limit', String(params.limit))
+  const s = q.toString()
+  return s.length === 0 ? '' : '?' + s
+}
+
+/**
+ * 首屏唯一摘要请求：结论头 + 操作条 + 状态带（FR-3 / FR-4 / FR-5）。
+ * 进详情页时发（不切 Tab）；响应**不含正文**（正文一律点开才取）。
+ */
+export const fetchReport = (id: string): Promise<PanelResult<ReportResponse>> =>
+  get<PanelResult<ReportResponse>>(panelUrl(id, 'report'))
+
+/** 汇报七条（FR-1 / FR-2 / FR-14 / FR-15）：切到「汇报」Tab 才请求（默认 Tab，紧随首屏）。 */
+export const fetchReportTrunk = (id: string): Promise<PanelResult<TrunkResponse>> =>
+  get<PanelResult<TrunkResponse>>(panelUrl(id, 'trunk'))
+
+/** 确定文档 + 核验 + 门禁裁决留痕（FR-7）。清单**全部铺开**，前端不截断不折叠（FR-11 #7）。 */
+export const fetchReportDocs = (id: string): Promise<PanelResult<DocsResponse>> =>
+  get<PanelResult<DocsResponse>>(panelUrl(id, 'docs'))
+
+/** 工作步骤 DAG + 每步执行结果（FR-8）：节点详情默认不在首屏请求里。 */
+export const fetchReportDag = (id: string): Promise<PanelResult<DagResponse>> =>
+  get<PanelResult<DagResponse>>(panelUrl(id, 'dag'))
+
+/**
+ * 对话一条流（FR-6）：默认最近 20 条，`before` 取更早。
+ * 过滤在**服务端**做（工具调用 / 推理 / 过程叙述不进响应）——前端拿不到就不会渲染错。
+ */
+export const fetchReportDialogue = (
+  id: string,
+  params?: { before?: number; limit?: number },
+): Promise<PanelResult<DialogueResponse>> =>
+  get<PanelResult<DialogueResponse>>(panelUrl(id, 'dialogue') + pageQuery(params))
+
+/** agent 怎么跑的（FR-9）：提示词组段与被裁 + 注入来源与后果 + 上下文。正文点开才取。 */
+export const fetchReportPrompts = (id: string): Promise<PanelResult<PromptsResponse>> =>
+  get<PanelResult<PromptsResponse>>(panelUrl(id, 'prompts'))
+
+/**
+ * Token 端点的完整载荷（FR-10）：既有字段（totals/byStage/degraded…）**一个不改**，
+ * 扩展段（availability / optimizations / missingStages）由服务端并进同一响应。
+ *
+ * 为什么把扩展字段声明为必需：三态（full/partial/none）是页面"能不能显示数字"的唯一判据，
+ * 缺了它前端只能猜——猜就是编。服务端在扩展查询未装配时也会显式回 `availability:'none'`。
+ */
+export interface TokenPanelPayload {
+  requirementId: string
+  totals: RequirementTokenView['totals']
+  byStage: RequirementTokenView['byStage']
+  degraded: boolean
+  costEstimateCny?: number
+  systemPrompt?: RequirementTokenView['systemPrompt']
+  injections?: RequirementTokenView['injections']
+  availability: TokenAvailability
+  optimizations: TokenOptimization[]
+  missingStages?: string[]
+  boundsAreLowerBound?: boolean
+  /** 扩展段未装配时服务端给的人话（页面照实显示，不自己编） */
+  unavailableNote?: string
+  /**
+   * 降级信封的判别位：**缺省即真**（token 的"不可得"写在 `availability` 三态里，不走信封）。
+   * 声明在这里有两个作用：① 形状上它就是 `PanelResult`（`fetchReportPanel` 无需任何强制转换）；
+   * ② 万一服务端真回了 `available:false`，`isDegrade` 会照样按降级处理——不假装收到了数据。
+   */
+  available?: true
+}
+
+/**
+ * 取 Token 面板载荷（与既有 `/token` 端点**同一响应**，故复用既有取数函数）。
+ *
+ * 这里只做**声明收窄**：运行时字段由服务端并进来，缺字段时**不补默认值**——
+ * 补一个 `availability:'full'` 就是拿"未知"冒充"齐全"（FR-12 的反例）。
+ */
+export async function fetchReportToken(id: string): Promise<TokenPanelPayload> {
+  const base = await fetchRequirementToken(id)
+  return base as TokenPanelPayload
+}
+
+/**
+ * 六个 Tab 取数的**总入口**（Tab 键 → 端点）。
+ *
+ * 为什么集中一个分发函数：面板卡（t9~t14）应当只写 `render` 就能接上取数。
+ * 让六张卡各拼一遍 URL 的话，拼错的路径会以"这个 Tab 一直没有数据"的形式**静默**存在
+ * （不报错、也没有哪条用例测得到）。
+ */
+export function fetchReportPanel(
+  id: string,
+  key: ReportTabKey,
+  params?: { before?: number; limit?: number },
+): Promise<PanelResult<unknown>> {
+  switch (key) {
+    case 'trunk': return fetchReportTrunk(id)
+    case 'docs': return fetchReportDocs(id)
+    case 'dag': return fetchReportDag(id)
+    case 'dialogue': return fetchReportDialogue(id, params)
+    case 'prompts': return fetchReportPrompts(id)
+    case 'token':
+      // token 的"不可得"写在载荷里的 availability 三态（不走 Degrade 信封）——形状上同样满足
+      // PanelResult<unknown>（`available` 缺省即真），这里不补也不改任何字段。
+      return fetchReportToken(id)
+  }
 }
 
 /**
