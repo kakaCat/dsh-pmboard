@@ -234,8 +234,12 @@ describe('节名匹配容忍真实标题装饰（serves 标注 / 括号后缀 / 
     expect(matchesSectionName('产品定义（含收益预期）', TRUNK_SECTION_NAMES.productDefinition)).toBe(true)
   })
 
-  it('只允许"以节名开头"：`## 目标与总体方案` / `## 模块改动地图` 都不算「架构」→ 仍按缺节', () => {
-    expect(matchesSectionName('目标与总体方案 `serves: FR-11`', TRUNK_SECTION_NAMES.architecture)).toBe(false)
+  it('别名落地后：「目标与总体方案」算「架构」；但"包含式"误命中仍被挡住', () => {
+    // 这一条原先断言「目标与总体方案 不算架构」——那正是**当时的真实缺口**：本仓设计模板里
+    // 那一节的标题就叫「目标与总体方案」，只认「架构」时「实现思路」对任何真实文档都抽不到
+    // 设计侧内容。别名表落地后该断言按新契约反转：同义命中，不再静默丢失。
+    expect(matchesSectionName('目标与总体方案 `serves: FR-11`', TRUNK_SECTION_NAMES.architecture)).toBe(true)
+    // 别名不放宽判据：不是别名、也不以别名开头 → 仍不算命中
     expect(matchesSectionName('模块改动地图', TRUNK_SECTION_NAMES.architecture)).toBe(false)
     expect(matchesSectionName('总体架构', TRUNK_SECTION_NAMES.architecture)).toBe(false)
   })
@@ -573,5 +577,42 @@ describe('降级：台账读不到 → Degrade（不是 500，也不是空数组
     expect(res.available).toBe(false)
     if (!('reason' in res)) throw new Error('应为 Degrade')
     expect(res.note).toContain('磁盘坏了')
+  })
+})
+
+/**
+ * 节名别名表（真实文档验出来的缺口，主窗口收尾时补）。
+ *
+ * 缺口长这样：设计文档里写的节名是「架构」，而**本仓设计模板里那一节的标题是「目标与总体方案」**
+ * → 只认「架构」时，「实现思路」对任何真实文档都抽不到设计侧内容，只能回退计划摘要。
+ * 这种缺失不报错、不显眼，属于最坏的一种静默，故用别名表固定住。
+ */
+describe('节名别名：架构 ≡ 目标与总体方案', () => {
+  it('设计文档用模板真实标题时，抽「架构」也能命中', () => {
+    const doc = [
+      '# 架构文档（REQ-test）',
+      '',
+      '## 目标与总体方案 `serves: FR-1`',
+      '',
+      '方案主线：先说结论。',
+      '',
+      '## 模块改动地图 `serves: FR-1`',
+      '',
+      '无关内容。',
+    ].join('\n')
+    const s = extractSection(doc, '架构')
+    expect(s).toContain('方案主线')
+  })
+
+  it('别名不放宽判据：仍不许"包含"式误命中，H1 仍只认全等', () => {
+    const doc = ['', '## 模块改动地图 `serves: FR-1`', '', 'x'].join('\n')
+    expect(extractSection(doc, '架构')).toBeUndefined()
+    // H1（文档标题）仍只认"规范化后全等"：带括号后缀算等价，带额外词的不算命中
+    expect(extractSection('# 目标与总体方案详解\n\n正文', '架构')).toBeUndefined()
+  })
+
+  it('没有别名时行为逐字不变：边界/产品定义等仍按原判据', () => {
+    expect(extractSection('## 边界（不做什么）\n\n不做 A。', '边界')).toContain('不做 A')
+    expect(extractSection('## 别的节\n\nx', '边界')).toBeUndefined()
   })
 })

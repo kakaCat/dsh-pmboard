@@ -56,6 +56,21 @@ export const TRUNK_SECTION_NAMES = {
   highlight: '技术方案与亮点',
 } as const
 
+/**
+ * 节名别名表（真实文档验出来的一处缺口，t-242dd9 收尾时补）。
+ *
+ * 为什么需要它：**本仓的设计模板里根本没有叫「架构」的二级标题**——那一节的真实标题是
+ * `## 目标与总体方案`（见 `templates/design/architecture.md`）。若只认「架构」，
+ * 「实现思路」这一条对任何真实文档都抽不到设计侧内容，只能回退到计划摘要——
+ * 页面上表现为"永远少一半"，而这种缺失不会报错，属于最坏的一种静默。
+ *
+ * 纪律不变：仍是**写死的别名**，不是同义词联想、不是模型判断；命中判据仍是
+ * 「剥装饰后与别名之一相等或以它开头」。新增别名必须同时补一条用例（防别名表悄悄膨胀）。
+ */
+export const TRUNK_SECTION_ALIASES: Record<string, readonly string[]> = {
+  架构: ['架构', '目标与总体方案'],
+}
+
 /** 主干七条的顺序（与 protocol.ts 的 TrunkKey 一一对应，前端按此顺序渲染）。 */
 export const TRUNK_KEYS: readonly TrunkKey[] = ['why', 'problem', 'approach', 'scope', 'decision', 'tech', 'highlight']
 
@@ -128,9 +143,15 @@ export function matchesSectionName(rawTitle: string, heading: string, level = 2)
   const target = normalizeHeading(heading)
   if (target.length === 0) return false
   const clean = stripHeadingDecorations(rawTitle)
-  const equal = clean === target || normalizeHeading(rawTitle) === target
-  if (level <= 1) return equal
-  return equal || clean.startsWith(target)
+  // 别名表：目标节名之外，**同样写死**的等价标题（如「架构」≡「目标与总体方案」）。
+  // 别名与目标名走完全相同的判据（H1 仍只认全等），不因为它是别名就放宽。
+  const candidates = [target, ...(TRUNK_SECTION_ALIASES[target] ?? []).map(normalizeHeading)]
+  for (const name of candidates) {
+    if (name.length === 0) continue
+    const equal = clean === name || normalizeHeading(rawTitle) === name
+    if (level <= 1 ? equal : equal || clean.startsWith(name)) return true
+  }
+  return false
 }
 
 /**
