@@ -2,9 +2,9 @@ metadata:
   stage: decomposing
   requirement_id: REQ-261004222448-292a
   generated_at: 2026-10-04T16:57:59.409Z
-  version: 16
+  version: 242
   generated_by: dsh-pmboard
-  last_updated: 2026-10-05T01:16:50.544Z
+  last_updated: 2026-10-05T02:04:58.567Z
 inputs:
   requirements:
     - id: FR-1
@@ -647,6 +647,698 @@ outputs:
       depends_on:
         - t-4a7e43
       phase: implement
+      side: backend
+    - id: t-8062a2
+      title: 文档模板加两节（关键决策与取舍、技术方案与亮点）·研发
+      implements: |-
+        在 templates/design/architecture.md 及适用的设计模板里加两节骨架（关键决策与取舍、技术方案与亮点）；在 templates/brainstorming/feature.md 及按类型的模板里加同名节或指向设计节的说明。不改既有节名，只新增。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: doc
+      side: doc
+    - id: t-3ee6a8
+      title: 文档模板加两节（关键决策与取舍、技术方案与亮点）·复核
+      implements: |-
+        在 templates/design/architecture.md 及适用的设计模板里加两节骨架（关键决策与取舍、技术方案与亮点）；在 templates/brainstorming/feature.md 及按类型的模板里加同名节或指向设计节的说明。不改既有节名，只新增。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-8062a2
+      phase: doc
+      side: doc
+    - id: t-4490fa
+      title: 注入留痕加 origin/delivered/text 并补三处写入·研发
+      implements: |-
+        在 src/application/internal/injection-log.ts 扩 InjectionLogEntry，新增 origin（三个枚举值）、delivered、text、truncated；补三处写入点：src/application/gate/handlers/h3-inject.ts（标记 gate-h3，delivered 为真）、src/application/dive/session-driver.ts（标记 dive-node，delivered 为假）、src/adapters/AgentDeliverer.ts 的 createRoundMessage 与 deliverMessage（标记 dive-round，按实际投递结果记成败）。text 超过 8000 字符截断并置 truncated。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-361f2f
+      phase: implement
+      side: backend
+    - id: t-2683a4
+      title: 注入留痕加 origin/delivered/text 并补三处写入·联调
+      implements: |-
+        在 src/application/internal/injection-log.ts 扩 InjectionLogEntry，新增 origin（三个枚举值）、delivered、text、truncated；补三处写入点：src/application/gate/handlers/h3-inject.ts（标记 gate-h3，delivered 为真）、src/application/dive/session-driver.ts（标记 dive-node，delivered 为假）、src/adapters/AgentDeliverer.ts 的 createRoundMessage 与 deliverMessage（标记 dive-round，按实际投递结果记成败）。text 超过 8000 字符截断并置 truncated。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-4490fa
+      phase: implement
+      side: backend
+    - id: t-15fe7e
+      title: 注入留痕加 origin/delivered/text 并补三处写入·复核
+      implements: |-
+        在 src/application/internal/injection-log.ts 扩 InjectionLogEntry，新增 origin（三个枚举值）、delivered、text、truncated；补三处写入点：src/application/gate/handlers/h3-inject.ts（标记 gate-h3，delivered 为真）、src/application/dive/session-driver.ts（标记 dive-node，delivered 为假）、src/adapters/AgentDeliverer.ts 的 createRoundMessage 与 deliverMessage（标记 dive-round，按实际投递结果记成败）。text 超过 8000 字符截断并置 truncated。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-2683a4
+      phase: implement
+      side: backend
+    - id: t-948878
+      title: 注入留痕加 origin/delivered/text 并补三处写入·测试
+      implements: |-
+        在 src/application/internal/injection-log.ts 扩 InjectionLogEntry，新增 origin（三个枚举值）、delivered、text、truncated；补三处写入点：src/application/gate/handlers/h3-inject.ts（标记 gate-h3，delivered 为真）、src/application/dive/session-driver.ts（标记 dive-node，delivered 为假）、src/adapters/AgentDeliverer.ts 的 createRoundMessage 与 deliverMessage（标记 dive-round，按实际投递结果记成败）。text 超过 8000 字符截断并置 truncated。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-15fe7e
+      phase: implement
+      side: backend
+    - id: t-30e673
+      title: 服务端聚合查询：report、docs、dag、token 扩展·研发
+      implements: |-
+        新增四个查询文件：src/application/query/QueryReport.ts（结论头、操作条、状态带，含 buildGaps 四类判定与 verdictLine）、QueryDocs.ts（文档铺开清单、核验表、门禁裁决留痕、归档）、QueryDag.ts（图数据与每步执行结果，取任务执行记录与最近汇报）、QueryToken.ts（在现有 token 装配上加每次调用均、缓存命中率、优化点、可得性三态）。聚合全在服务端，前端不遍历。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-361f2f
+      phase: implement
+      side: backend
+    - id: t-9c6ff5
+      title: 服务端聚合查询：report、docs、dag、token 扩展·联调
+      implements: |-
+        新增四个查询文件：src/application/query/QueryReport.ts（结论头、操作条、状态带，含 buildGaps 四类判定与 verdictLine）、QueryDocs.ts（文档铺开清单、核验表、门禁裁决留痕、归档）、QueryDag.ts（图数据与每步执行结果，取任务执行记录与最近汇报）、QueryToken.ts（在现有 token 装配上加每次调用均、缓存命中率、优化点、可得性三态）。聚合全在服务端，前端不遍历。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-30e673
+      phase: implement
+      side: backend
+    - id: t-9e4efc
+      title: 服务端聚合查询：report、docs、dag、token 扩展·复核
+      implements: |-
+        新增四个查询文件：src/application/query/QueryReport.ts（结论头、操作条、状态带，含 buildGaps 四类判定与 verdictLine）、QueryDocs.ts（文档铺开清单、核验表、门禁裁决留痕、归档）、QueryDag.ts（图数据与每步执行结果，取任务执行记录与最近汇报）、QueryToken.ts（在现有 token 装配上加每次调用均、缓存命中率、优化点、可得性三态）。聚合全在服务端，前端不遍历。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-9c6ff5
+      phase: implement
+      side: backend
+    - id: t-017953
+      title: 服务端聚合查询：report、docs、dag、token 扩展·测试
+      implements: |-
+        新增四个查询文件：src/application/query/QueryReport.ts（结论头、操作条、状态带，含 buildGaps 四类判定与 verdictLine）、QueryDocs.ts（文档铺开清单、核验表、门禁裁决留痕、归档）、QueryDag.ts（图数据与每步执行结果，取任务执行记录与最近汇报）、QueryToken.ts（在现有 token 装配上加每次调用均、缓存命中率、优化点、可得性三态）。聚合全在服务端，前端不遍历。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-9e4efc
+      phase: implement
+      side: backend
+    - id: t-4be2d8
+      title: 会话文本抽取：dialogue 查询与过滤规则·研发
+      implements: |-
+        新增 src/application/query/QueryDialogue.ts：复用现有 SessionProbeAdapter 的快照事件与持久化冷读两条取数路径；只保留用户消息与助手消息的文本块；排除工具调用、工具结果、推理块、run_code 包裹内容与过程叙述；系统消息由状态事件、断点、交接、挂起确认、验收裁决组装，措辞取台账原文，回填事件带 inferred 标；游标分页默认 20 条。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-361f2f
+      phase: implement
+      side: backend
+    - id: t-3b4520
+      title: 会话文本抽取：dialogue 查询与过滤规则·联调
+      implements: |-
+        新增 src/application/query/QueryDialogue.ts：复用现有 SessionProbeAdapter 的快照事件与持久化冷读两条取数路径；只保留用户消息与助手消息的文本块；排除工具调用、工具结果、推理块、run_code 包裹内容与过程叙述；系统消息由状态事件、断点、交接、挂起确认、验收裁决组装，措辞取台账原文，回填事件带 inferred 标；游标分页默认 20 条。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-4be2d8
+      phase: implement
+      side: backend
+    - id: t-8d4808
+      title: 会话文本抽取：dialogue 查询与过滤规则·复核
+      implements: |-
+        新增 src/application/query/QueryDialogue.ts：复用现有 SessionProbeAdapter 的快照事件与持久化冷读两条取数路径；只保留用户消息与助手消息的文本块；排除工具调用、工具结果、推理块、run_code 包裹内容与过程叙述；系统消息由状态事件、断点、交接、挂起确认、验收裁决组装，措辞取台账原文，回填事件带 inferred 标；游标分页默认 20 条。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-3b4520
+      phase: implement
+      side: backend
+    - id: t-f116e5
+      title: 会话文本抽取：dialogue 查询与过滤规则·测试
+      implements: |-
+        新增 src/application/query/QueryDialogue.ts：复用现有 SessionProbeAdapter 的快照事件与持久化冷读两条取数路径；只保留用户消息与助手消息的文本块；排除工具调用、工具结果、推理块、run_code 包裹内容与过程叙述；系统消息由状态事件、断点、交接、挂起确认、验收裁决组装，措辞取台账原文，回填事件带 inferred 标；游标分页默认 20 条。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-8d4808
+      phase: implement
+      side: backend
+    - id: t-96eef1
+      title: 主干抽取：trunk 查询与既有节名匹配·研发
+      implements: |-
+        新增 src/application/query/QueryTrunk.ts 与纯函数 extractSection：按写死的节名（需求文档的产品定义节与边界节；设计文档的架构节、关键决策与取舍节、技术方案与亮点节）取节内容；七条各返回来源标与摘要，摘要只截原文、不生成新叙述；未命中时标为缺节；亮点里的自动事实由执行记录与产物算出，人写条目证据为空时原样返回空数组。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-361f2f
+      phase: implement
+      side: backend
+    - id: t-b21ac5
+      title: 主干抽取：trunk 查询与既有节名匹配·联调
+      implements: |-
+        新增 src/application/query/QueryTrunk.ts 与纯函数 extractSection：按写死的节名（需求文档的产品定义节与边界节；设计文档的架构节、关键决策与取舍节、技术方案与亮点节）取节内容；七条各返回来源标与摘要，摘要只截原文、不生成新叙述；未命中时标为缺节；亮点里的自动事实由执行记录与产物算出，人写条目证据为空时原样返回空数组。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-96eef1
+      phase: implement
+      side: backend
+    - id: t-8d731c
+      title: 主干抽取：trunk 查询与既有节名匹配·复核
+      implements: |-
+        新增 src/application/query/QueryTrunk.ts 与纯函数 extractSection：按写死的节名（需求文档的产品定义节与边界节；设计文档的架构节、关键决策与取舍节、技术方案与亮点节）取节内容；七条各返回来源标与摘要，摘要只截原文、不生成新叙述；未命中时标为缺节；亮点里的自动事实由执行记录与产物算出，人写条目证据为空时原样返回空数组。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-b21ac5
+      phase: implement
+      side: backend
+    - id: t-291256
+      title: 主干抽取：trunk 查询与既有节名匹配·测试
+      implements: |-
+        新增 src/application/query/QueryTrunk.ts 与纯函数 extractSection：按写死的节名（需求文档的产品定义节与边界节；设计文档的架构节、关键决策与取舍节、技术方案与亮点节）取节内容；七条各返回来源标与摘要，摘要只截原文、不生成新叙述；未命中时标为缺节；亮点里的自动事实由执行记录与产物算出，人写条目证据为空时原样返回空数组。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-8d731c
+      phase: implement
+      side: backend
+    - id: t-5a9887
+      title: 接线六条只读路由（分页 + 入参校验 + 降级）·研发
+      implements: |-
+        在 src/http/routes.ts 增六条只读分支；新增 src/http/routers/report.ts 与 src/http/routers/panels.ts；校验需求 id 形状、limit 不超过 50、windowKey 必须属于该需求的窗口集合；沿用现有信封与 available=false 降级纪律；沿用现有可选依赖注入方式，不新增写路由。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-43fcf4
+        - t-8eeed9
+        - t-242dd9
+        - t-cc7233
+      phase: implement
+      side: backend
+    - id: t-d67c87
+      title: 接线六条只读路由（分页 + 入参校验 + 降级）·联调
+      implements: |-
+        在 src/http/routes.ts 增六条只读分支；新增 src/http/routers/report.ts 与 src/http/routers/panels.ts；校验需求 id 形状、limit 不超过 50、windowKey 必须属于该需求的窗口集合；沿用现有信封与 available=false 降级纪律；沿用现有可选依赖注入方式，不新增写路由。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-5a9887
+      phase: implement
+      side: backend
+    - id: t-ebe6cb
+      title: 接线六条只读路由（分页 + 入参校验 + 降级）·复核
+      implements: |-
+        在 src/http/routes.ts 增六条只读分支；新增 src/http/routers/report.ts 与 src/http/routers/panels.ts；校验需求 id 形状、limit 不超过 50、windowKey 必须属于该需求的窗口集合；沿用现有信封与 available=false 降级纪律；沿用现有可选依赖注入方式，不新增写路由。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-d67c87
+      phase: implement
+      side: backend
+    - id: t-4b7116
+      title: 接线六条只读路由（分页 + 入参校验 + 降级）·测试
+      implements: |-
+        在 src/http/routes.ts 增六条只读分支；新增 src/http/routers/report.ts 与 src/http/routers/panels.ts；校验需求 id 形状、limit 不超过 50、windowKey 必须属于该需求的窗口集合；沿用现有信封与 available=false 降级纪律；沿用现有可选依赖注入方式，不新增写路由。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-ebe6cb
+      phase: implement
+      side: backend
+    - id: t-ac6c3f
+      title: 前端壳：头部三块 + Tab 容器 + 懒加载 + 局部更新·研发
+      implements: |-
+        新增三个视图文件：src/client/views/report-head.ts（结论头、窗口跳转按钮、操作条按钮与后果说明、终态只读）、report-band.ts（做到哪了、缺口、结果与成效三格）、report-tabs.ts（六个同级 Tab、角标数字、切到才请求、未激活面板不入 DOM、按需求与 Tab 与 revision 组成的内存缓存键）；改 src/client/board-mount.ts 为分段局部更新；档二收敛到同一数据模型，档一不改。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-497311
+      phase: implement
+      side: frontend
+    - id: t-d8a61b
+      title: 前端壳：头部三块 + Tab 容器 + 懒加载 + 局部更新·联调
+      implements: |-
+        新增三个视图文件：src/client/views/report-head.ts（结论头、窗口跳转按钮、操作条按钮与后果说明、终态只读）、report-band.ts（做到哪了、缺口、结果与成效三格）、report-tabs.ts（六个同级 Tab、角标数字、切到才请求、未激活面板不入 DOM、按需求与 Tab 与 revision 组成的内存缓存键）；改 src/client/board-mount.ts 为分段局部更新；档二收敛到同一数据模型，档一不改。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-ac6c3f
+      phase: implement
+      side: frontend
+    - id: t-386c7e
+      title: 前端壳：头部三块 + Tab 容器 + 懒加载 + 局部更新·复核
+      implements: |-
+        新增三个视图文件：src/client/views/report-head.ts（结论头、窗口跳转按钮、操作条按钮与后果说明、终态只读）、report-band.ts（做到哪了、缺口、结果与成效三格）、report-tabs.ts（六个同级 Tab、角标数字、切到才请求、未激活面板不入 DOM、按需求与 Tab 与 revision 组成的内存缓存键）；改 src/client/board-mount.ts 为分段局部更新；档二收敛到同一数据模型，档一不改。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-d8a61b
+      phase: implement
+      side: frontend
+    - id: t-237a9b
+      title: 前端壳：头部三块 + Tab 容器 + 懒加载 + 局部更新·测试
+      implements: |-
+        新增三个视图文件：src/client/views/report-head.ts（结论头、窗口跳转按钮、操作条按钮与后果说明、终态只读）、report-band.ts（做到哪了、缺口、结果与成效三格）、report-tabs.ts（六个同级 Tab、角标数字、切到才请求、未激活面板不入 DOM、按需求与 Tab 与 revision 组成的内存缓存键）；改 src/client/board-mount.ts 为分段局部更新；档二收敛到同一数据模型，档一不改。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-386c7e
+      phase: implement
+      side: frontend
+    - id: t-d8f196
+      title: 汇报 Tab（来源标、缺节、亮点反应付）·研发
+      implements: |-
+        新增 src/client/views/trunk.ts：渲染七条（每条 2~4 行摘要，带来源标：现有、节新增、全新；以及自动、人写、人工留痕）；缺节时渲染文档未提供该节；亮点证据为空时渲染未提供证据（不计入亮点）的虚线样式；点开原文接现有 open-doc 链路。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-ab048e
+      phase: implement
+      side: frontend
+    - id: t-e6d39a
+      title: 汇报 Tab（来源标、缺节、亮点反应付）·联调
+      implements: |-
+        新增 src/client/views/trunk.ts：渲染七条（每条 2~4 行摘要，带来源标：现有、节新增、全新；以及自动、人写、人工留痕）；缺节时渲染文档未提供该节；亮点证据为空时渲染未提供证据（不计入亮点）的虚线样式；点开原文接现有 open-doc 链路。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-d8f196
+      phase: implement
+      side: frontend
+    - id: t-6dc7ad
+      title: 汇报 Tab（来源标、缺节、亮点反应付）·复核
+      implements: |-
+        新增 src/client/views/trunk.ts：渲染七条（每条 2~4 行摘要，带来源标：现有、节新增、全新；以及自动、人写、人工留痕）；缺节时渲染文档未提供该节；亮点证据为空时渲染未提供证据（不计入亮点）的虚线样式；点开原文接现有 open-doc 链路。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-e6d39a
+      phase: implement
+      side: frontend
+    - id: t-c0443c
+      title: 汇报 Tab（来源标、缺节、亮点反应付）·测试
+      implements: |-
+        新增 src/client/views/trunk.ts：渲染七条（每条 2~4 行摘要，带来源标：现有、节新增、全新；以及自动、人写、人工留痕）；缺节时渲染文档未提供该节；亮点证据为空时渲染未提供证据（不计入亮点）的虚线样式；点开原文接现有 open-doc 链路。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-6dc7ad
+      phase: implement
+      side: frontend
+    - id: t-652fef
+      title: 文档 Tab（文档铺开 + 核验 + 门禁留痕）·研发
+      implements: |-
+        新增 src/client/views/docs-panel.ts：文档逐行铺开（类型、路径、登记时间、状态；文件缺失行划线标灰）；核验表照抄现有验证区列（实际结果、来源为 agent 或 human、需人工、意见、裁决）；门禁裁决留痕表（结论、方式、时间、理由）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-ab048e
+      phase: implement
+      side: frontend
+    - id: t-65c1cc
+      title: 文档 Tab（文档铺开 + 核验 + 门禁留痕）·联调
+      implements: |-
+        新增 src/client/views/docs-panel.ts：文档逐行铺开（类型、路径、登记时间、状态；文件缺失行划线标灰）；核验表照抄现有验证区列（实际结果、来源为 agent 或 human、需人工、意见、裁决）；门禁裁决留痕表（结论、方式、时间、理由）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-652fef
+      phase: implement
+      side: frontend
+    - id: t-f18284
+      title: 文档 Tab（文档铺开 + 核验 + 门禁留痕）·复核
+      implements: |-
+        新增 src/client/views/docs-panel.ts：文档逐行铺开（类型、路径、登记时间、状态；文件缺失行划线标灰）；核验表照抄现有验证区列（实际结果、来源为 agent 或 human、需人工、意见、裁决）；门禁裁决留痕表（结论、方式、时间、理由）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-65c1cc
+      phase: implement
+      side: frontend
+    - id: t-083ef6
+      title: 文档 Tab（文档铺开 + 核验 + 门禁留痕）·测试
+      implements: |-
+        新增 src/client/views/docs-panel.ts：文档逐行铺开（类型、路径、登记时间、状态；文件缺失行划线标灰）；核验表照抄现有验证区列（实际结果、来源为 agent 或 human、需人工、意见、裁决）；门禁裁决留痕表（结论、方式、时间、理由）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-f18284
+      phase: implement
+      side: frontend
+    - id: t-8d2ea4
+      title: DAG Tab（复用现有画布 + 每步执行结果）·研发
+      implements: |-
+        新增 src/client/views/dag-panel.ts：挂载现有 dag-mount 组件（画布与交互一律不改）；下方每步执行结果表八列（卡、阶段、谁做、触发、起止、结果、产出与汇报、证据与错误），含失败行（错误原文与重跑次数）与手动触发行示例。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-ab048e
+      phase: implement
+      side: frontend
+    - id: t-323272
+      title: DAG Tab（复用现有画布 + 每步执行结果）·联调
+      implements: |-
+        新增 src/client/views/dag-panel.ts：挂载现有 dag-mount 组件（画布与交互一律不改）；下方每步执行结果表八列（卡、阶段、谁做、触发、起止、结果、产出与汇报、证据与错误），含失败行（错误原文与重跑次数）与手动触发行示例。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-8d2ea4
+      phase: implement
+      side: frontend
+    - id: t-6e01c5
+      title: DAG Tab（复用现有画布 + 每步执行结果）·复核
+      implements: |-
+        新增 src/client/views/dag-panel.ts：挂载现有 dag-mount 组件（画布与交互一律不改）；下方每步执行结果表八列（卡、阶段、谁做、触发、起止、结果、产出与汇报、证据与错误），含失败行（错误原文与重跑次数）与手动触发行示例。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-323272
+      phase: implement
+      side: frontend
+    - id: t-34f276
+      title: DAG Tab（复用现有画布 + 每步执行结果）·测试
+      implements: |-
+        新增 src/client/views/dag-panel.ts：挂载现有 dag-mount 组件（画布与交互一律不改）；下方每步执行结果表八列（卡、阶段、谁做、触发、起止、结果、产出与汇报、证据与错误），含失败行（错误原文与重跑次数）与手动触发行示例。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-6e01c5
+      phase: implement
+      side: frontend
+    - id: t-8b9c17
+      title: 对话 Tab（一条流 + 系统消息 + 回复框）·研发
+      implements: |-
+        新增 src/client/views/dialogue-panel.ts：一条流（人与 agent 气泡 + 系统消息居中灰条），回填事件带回填标；底部回复框沿用现有评论提交链路；默认 20 条与加载更早的分页。不做内层滚动。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-ab048e
+      phase: implement
+      side: frontend
+    - id: t-7c5af5
+      title: 对话 Tab（一条流 + 系统消息 + 回复框）·联调
+      implements: |-
+        新增 src/client/views/dialogue-panel.ts：一条流（人与 agent 气泡 + 系统消息居中灰条），回填事件带回填标；底部回复框沿用现有评论提交链路；默认 20 条与加载更早的分页。不做内层滚动。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-8b9c17
+      phase: implement
+      side: frontend
+    - id: t-ebb697
+      title: 对话 Tab（一条流 + 系统消息 + 回复框）·复核
+      implements: |-
+        新增 src/client/views/dialogue-panel.ts：一条流（人与 agent 气泡 + 系统消息居中灰条），回填事件带回填标；底部回复框沿用现有评论提交链路；默认 20 条与加载更早的分页。不做内层滚动。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-7c5af5
+      phase: implement
+      side: frontend
+    - id: t-4c3c91
+      title: 对话 Tab（一条流 + 系统消息 + 回复框）·测试
+      implements: |-
+        新增 src/client/views/dialogue-panel.ts：一条流（人与 agent 气泡 + 系统消息居中灰条），回填事件带回填标；底部回复框沿用现有评论提交链路；默认 20 条与加载更早的分页。不做内层滚动。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-ebb697
+      phase: implement
+      side: frontend
+    - id: t-1aeb75
+      title: Token Tab（按阶段 + 每次调用均与缓存命中 + 优化点）·研发
+      implements: |-
+        改 src/client/token-info.ts：主视图换成按阶段八列（含每次调用均与缓存命中）；加可优化点列表（每条带依据数字）；三态 full 与 partial 与 none，partial 列出缺快照的阶段；把固定系统提示词块移出本 Tab（迁到提示词 Tab）。不做内层滚动。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-ab048e
+      phase: implement
+      side: frontend
+    - id: t-3d93e1
+      title: Token Tab（按阶段 + 每次调用均与缓存命中 + 优化点）·联调
+      implements: |-
+        改 src/client/token-info.ts：主视图换成按阶段八列（含每次调用均与缓存命中）；加可优化点列表（每条带依据数字）；三态 full 与 partial 与 none，partial 列出缺快照的阶段；把固定系统提示词块移出本 Tab（迁到提示词 Tab）。不做内层滚动。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-1aeb75
+      phase: implement
+      side: frontend
+    - id: t-f8f267
+      title: Token Tab（按阶段 + 每次调用均与缓存命中 + 优化点）·复核
+      implements: |-
+        改 src/client/token-info.ts：主视图换成按阶段八列（含每次调用均与缓存命中）；加可优化点列表（每条带依据数字）；三态 full 与 partial 与 none，partial 列出缺快照的阶段；把固定系统提示词块移出本 Tab（迁到提示词 Tab）。不做内层滚动。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-3d93e1
+      phase: implement
+      side: frontend
+    - id: t-7ae304
+      title: Token Tab（按阶段 + 每次调用均与缓存命中 + 优化点）·测试
+      implements: |-
+        改 src/client/token-info.ts：主视图换成按阶段八列（含每次调用均与缓存命中）；加可优化点列表（每条带依据数字）；三态 full 与 partial 与 none，partial 列出缺快照的阶段；把固定系统提示词块移出本 Tab（迁到提示词 Tab）。不做内层滚动。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-f8f267
+      phase: implement
+      side: frontend
+    - id: t-0971a7
+      title: 提示词 Tab（三段 + 正文铺开 + 规定与实际对照）·研发
+      implements: |-
+        把 src/client/node-panel-process.ts 的三段（注入规定与实际、上下文管理）迁入提示词 Tab，与 A 段（固定系统提示词：每段可展开看正文、被裁片段也给正文、完整系统提示词合并视图）、B 段（注入留痕：来源、后果、被裁、正文入口）合并；让 renderProcessFold 从死代码变成被调用。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-ab048e
+      phase: implement
+      side: frontend
+    - id: t-4a8b2f
+      title: 提示词 Tab（三段 + 正文铺开 + 规定与实际对照）·联调
+      implements: |-
+        把 src/client/node-panel-process.ts 的三段（注入规定与实际、上下文管理）迁入提示词 Tab，与 A 段（固定系统提示词：每段可展开看正文、被裁片段也给正文、完整系统提示词合并视图）、B 段（注入留痕：来源、后果、被裁、正文入口）合并；让 renderProcessFold 从死代码变成被调用。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-0971a7
+      phase: implement
+      side: frontend
+    - id: t-8faa7b
+      title: 提示词 Tab（三段 + 正文铺开 + 规定与实际对照）·复核
+      implements: |-
+        把 src/client/node-panel-process.ts 的三段（注入规定与实际、上下文管理）迁入提示词 Tab，与 A 段（固定系统提示词：每段可展开看正文、被裁片段也给正文、完整系统提示词合并视图）、B 段（注入留痕：来源、后果、被裁、正文入口）合并；让 renderProcessFold 从死代码变成被调用。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-4a8b2f
+      phase: implement
+      side: frontend
+    - id: t-fe3043
+      title: 提示词 Tab（三段 + 正文铺开 + 规定与实际对照）·测试
+      implements: |-
+        把 src/client/node-panel-process.ts 的三段（注入规定与实际、上下文管理）迁入提示词 Tab，与 A 段（固定系统提示词：每段可展开看正文、被裁片段也给正文、完整系统提示词合并视图）、B 段（注入留痕：来源、后果、被裁、正文入口）合并；让 renderProcessFold 从死代码变成被调用。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-8faa7b
+      phase: implement
+      side: frontend
+    - id: t-7f2690
+      title: 渲染断言·架构与降级·研发
+      implements: |-
+        新增 tests/report-shell.test.ts 与 tests/report-degrade.test.ts，覆盖取数架构与降级两组断言（请求计数、未激活面板缺席、无内层滚动、三类空态、不得用 0 表示未知）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-ab048e
+      phase: test
+      side: frontend
+    - id: t-db9c76
+      title: 渲染断言·架构与降级·复核
+      implements: |-
+        新增 tests/report-shell.test.ts 与 tests/report-degrade.test.ts，覆盖取数架构与降级两组断言（请求计数、未激活面板缺席、无内层滚动、三类空态、不得用 0 表示未知）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-7f2690
+      phase: test
+      side: frontend
+    - id: t-f062a1
+      title: 渲染断言·架构与降级·测试
+      implements: |-
+        新增 tests/report-shell.test.ts 与 tests/report-degrade.test.ts，覆盖取数架构与降级两组断言（请求计数、未激活面板缺席、无内层滚动、三类空态、不得用 0 表示未知）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-db9c76
+      phase: test
+      side: frontend
+    - id: t-c41e92
+      title: 渲染断言·内容与留痕·研发
+      implements: |-
+        新增三个测试文件：tests/report-content.test.ts、tests/report-prompt.test.ts、tests/report-template.test.ts，覆盖内容正确性与留痕与模板三组断言（抽取缺节、核验三列、对话过滤、按阶段 Token、亮点反应付、留痕新字段、模板两节）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-9eb784
+        - t-b9dd2c
+        - t-6fa33e
+        - t-2be0cd
+        - t-f62af2
+        - t-702b00
+      phase: test
+      side: frontend
+    - id: t-37d009
+      title: 渲染断言·内容与留痕·复核
+      implements: |-
+        新增三个测试文件：tests/report-content.test.ts、tests/report-prompt.test.ts、tests/report-template.test.ts，覆盖内容正确性与留痕与模板三组断言（抽取缺节、核验三列、对话过滤、按阶段 Token、亮点反应付、留痕新字段、模板两节）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-c41e92
+      phase: test
+      side: frontend
+    - id: t-11be69
+      title: 渲染断言·内容与留痕·测试
+      implements: |-
+        新增三个测试文件：tests/report-content.test.ts、tests/report-prompt.test.ts、tests/report-template.test.ts，覆盖内容正确性与留痕与模板三组断言（抽取缺节、核验三列、对话过滤、按阶段 Token、亮点反应付、留痕新字段、模板两节）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-37d009
+      phase: test
+      side: frontend
+    - id: t-c37d70
+      title: 渲染探针脚本（两档宽度 × 两种状态）·研发
+      implements: |-
+        新增 scripts/req-report-probe.mts，仿现有列表自适应探针（真实渲染函数 + 真实 CSS + headless Chrome）：宽 1280 与窄 900 两种宽度乘以在途与终态两种状态共四组合，断言首屏四问可答、无横向溢出、无内层滚动容器、未激活面板缺席；环境不可用时退出码 2。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-9eb784
+        - t-f62af2
+      phase: test
+      side: frontend
+    - id: t-8d3b2c
+      title: 渲染探针脚本（两档宽度 × 两种状态）·复核
+      implements: |-
+        新增 scripts/req-report-probe.mts，仿现有列表自适应探针（真实渲染函数 + 真实 CSS + headless Chrome）：宽 1280 与窄 900 两种宽度乘以在途与终态两种状态共四组合，断言首屏四问可答、无横向溢出、无内层滚动容器、未激活面板缺席；环境不可用时退出码 2。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-c37d70
+      phase: test
+      side: frontend
+    - id: t-551dc8
+      title: 渲染探针脚本（两档宽度 × 两种状态）·测试
+      implements: |-
+        新增 scripts/req-report-probe.mts，仿现有列表自适应探针（真实渲染函数 + 真实 CSS + headless Chrome）：宽 1280 与窄 900 两种宽度乘以在途与终态两种状态共四组合，断言首屏四问可答、无横向溢出、无内层滚动容器、未激活面板缺席；环境不可用时退出码 2。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-8d3b2c
+      phase: test
+      side: frontend
+    - id: t-437f57
+      title: 迁移与兼容核对 + 构建与知识层自检·研发
+      implements: |-
+        核对降级矩阵（旧留痕、旧需求无快照、文档缺节、端口未装配）均走显式降级；确认六个查询只读且不因台账后端（文件分片或 SQLite）而行为分叉；跑构建、客户端构建、类型检查与知识层自检四项。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-cbc2f6
+        - t-5d795a
+        - t-98684c
+      phase: test
+      side: backend
+    - id: t-586efe
+      title: 迁移与兼容核对 + 构建与知识层自检·复核
+      implements: |-
+        核对降级矩阵（旧留痕、旧需求无快照、文档缺节、端口未装配）均走显式降级；确认六个查询只读且不因台账后端（文件分片或 SQLite）而行为分叉；跑构建、客户端构建、类型检查与知识层自检四项。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-437f57
+      phase: test
+      side: backend
+    - id: t-f18a19
+      title: 迁移与兼容核对 + 构建与知识层自检·测试
+      implements: |-
+        核对降级矩阵（旧留痕、旧需求无快照、文档缺节、端口未装配）均走显式降级；确认六个查询只读且不因台账后端（文件分片或 SQLite）而行为分叉；跑构建、客户端构建、类型检查与知识层自检四项。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-586efe
+      phase: test
       side: backend
 traceability:
   design_to_tasks:

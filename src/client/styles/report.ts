@@ -321,4 +321,10 @@ export const REPORT_CSS = `
 .dsh-pm-iso-status { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
 .dsh-pm-iso-meta { font-size: 11px; color: var(--dsw-text-secondary, #999); }
 .dsh-pm-iso-reason { font-size: 12.5px; line-height: 1.6; word-break: break-word; }
+
+/* 关于「窄档三格退化为单栏」（design/test-cases.md）：**刻意不加 @media**。
+   实测：900×800 下若强推单栏，第三格（缺口清单）被推到 top=760 > 视口 713 →
+   「首屏答出卡在哪 / 缺什么」当场失败（探针 A1 变红）；而 .dsh-pm-stats 用的
+   repeat(auto-fit, minmax(260px, 1fr)) 在**真正窄**的窗口本来就会自然退到两栏、一栏。
+   两个口径冲突时取产品判据（一屏定调 + FR-3），故本行只留说明不留规则。 */
 `
