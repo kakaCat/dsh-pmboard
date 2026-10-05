@@ -43,7 +43,7 @@ import { isDeliverableDocPath } from './QueryDocs.js'
 import { parseDocument, extractClauseDefinitions, extractSkippedClauses } from '../internal/content-gates.js'
 import {
   clauseReceiveStatus,
-  collectTaskRefs,
+  collectReceiveRefs,
   extractAllDesignSections,
   type DesignSection,
 } from '../internal/content-trace.js'
@@ -645,7 +645,8 @@ export async function queryReport(
     return unreadable(err)
   }
 
-  // 条款接收投影：与 reqboard_status 同源（clauseReceiveStatus + collectTaskRefs）。
+  // 条款接收投影：与 reqboard_status 同源（clauseReceiveStatus + collectReceiveRefs）。
+  // collectReceiveRefs = 拆分文档 RTM 表 ∪ 台账卡片 requirementRefs —— 只信文档会漏判成红（见函数注释）。
   // 文档是**可选输入**：读失败不该让首屏整页 500（与 S-5「文档不可读 → 该条 missing，不是 500」同款纪律），
   // 故这里降级为"条款/设计环本次不判"并**留一条 warn**（不静默——静默会让缺口看起来"本来就没有"）。
   let marks: RequirementMarksView = {
@@ -659,7 +660,7 @@ export async function queryReport(
       if (docs.exists(requirementDoc)) {
         const doc = parseDocument(await docs.read(requirementDoc))
         const roots = extractClauseDefinitions(doc)
-        const status = clauseReceiveStatus(roots, await collectTaskRefs(docs, req), tasks, extractSkippedClauses(doc))
+        const status = clauseReceiveStatus(roots, await collectReceiveRefs(docs, req, tasks), tasks, extractSkippedClauses(doc))
         marks = {
           requirementId: req.id,
           clauses: status.map(s => ({ clause: s.clause, state: s.state, by: [...s.by] })),

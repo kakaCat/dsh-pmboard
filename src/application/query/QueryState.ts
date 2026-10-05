@@ -19,7 +19,7 @@ import {
   projectRequirement,
 } from '../internal/support.js'
 import { parseDocument, extractClauseDefinitions, extractSkippedClauses } from '../internal/content-gates.js'
-import { collectTaskRefs, clauseReceiveStatus, checkFullTraceability } from '../internal/content-gate-wiring.js'
+import { collectReceiveRefs, clauseReceiveStatus, checkFullTraceability } from '../internal/content-gate-wiring.js'
 import { designDocRegistrationOf } from '../internal/design-docs.js'
 import { generateStatusRTM } from '../internal/status-rtm-integration.js'
 import { checkRTMHealth } from '../internal/rtm-health.js'
@@ -75,7 +75,7 @@ export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): 
           if (roots.length > 0) {
             const status = clauseReceiveStatus(
               roots,
-              await collectTaskRefs(deps.docs, boundReq),
+              await collectReceiveRefs(deps.docs, boundReq, await tasksOf(boundReq.id)),
               await tasksOf(boundReq.id),
               extractSkippedClauses(doc),
             )

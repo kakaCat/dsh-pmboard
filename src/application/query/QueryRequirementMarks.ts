@@ -12,7 +12,7 @@
 import type { UseCaseDeps } from '../ports.js'
 import type { ClauseMarkRow, RequirementMarksView, RequirementRecord } from '../../shared/protocol.js'
 import { parseDocument, extractClauseDefinitions, extractSkippedClauses } from '../internal/content-gates.js'
-import { clauseReceiveStatus, collectTaskRefs } from '../internal/content-trace.js'
+import { clauseReceiveStatus, collectReceiveRefs } from '../internal/content-trace.js'
 
 export type { ClauseMarkRow, RequirementMarksView }
 
@@ -32,7 +32,7 @@ export async function assembleRequirementMarks(
   if (roots.length === 0) {
     return { requirementId: req.id, clauses: [], unreceived: [], available: true }
   }
-  const status = clauseReceiveStatus(roots, await collectTaskRefs(deps.docs, req), tasks, extractSkippedClauses(doc))
+  const status = clauseReceiveStatus(roots, await collectReceiveRefs(deps.docs, req, tasks), tasks, extractSkippedClauses(doc))
   const clauses: ClauseMarkRow[] = status.map(s => ({ clause: s.clause, state: s.state, by: [...s.by] }))
   return {
     requirementId: req.id,

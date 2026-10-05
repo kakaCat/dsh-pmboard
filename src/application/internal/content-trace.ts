@@ -265,6 +265,59 @@ export interface ReceiveTaskLike {
  *   skipped    本轮裁剪（需求文档里标了理由）
  *   unreceived **未被接收（红）**——既无卡接收、也未裁剪，**这正是 R9 蒸发时的形态**
  */
+/**
+ * 把**台账任务卡上的 `requirementRefs`** 投影成接收判据的输入形状。
+ *
+ * 为什么需要它（2026-10-05 上线实体查出的硬伤）：条款接收判据原先**只**信
+ * `decomposition.md` 里的 RTM 表（`collectTaskRefs`）。而 `reqboard_task_refs` 这个工具
+ * **只写台账卡片字段**，不写拆分文档——两个来源各说各话时，投影只读了文档那个空表。
+ * 实测本需求：18 张父卡在台账里明确覆盖 FR-1~FR-15，`decomposition.md` 里却一个 FR 引用都没有
+ * → 页面报「15 条条款全部没人接」= **页面撒谎**（人一眼就问出来了）。
+ */
+export function ledgerTaskRefs(
+  tasks: readonly { id: string; title?: string; requirementRefs?: readonly string[] }[],
+): ConsistencyTaskLike[] {
+  return tasks
+    .filter(t => (t.requirementRefs?.length ?? 0) > 0)
+    .map(t => ({ id: t.id, requirementRefs: [...(t.requirementRefs ?? [])], ...(t.title !== undefined ? { title: t.title } : {}) }))
+}
+
+/**
+ * 合并两个来源的任务↔条款绑定：**拆分文档的 RTM 表**（计划期意图）+ **台账卡片字段**（活的事实）。
+ *
+ * 口径（与 `clauseReceiveStatus` 的注释同源）：**任一来源声明了承接，就不该判红**——判红的语义是
+ * 「既没有卡承接、也没有裁剪记录」，不是「文档表里没写」。同 id 的重复行取其条款并集（不丢声明）。
+ */
+export function mergeTaskRefs(
+  docRefs: readonly ConsistencyTaskLike[],
+  ledgerRefs: readonly ConsistencyTaskLike[],
+): ConsistencyTaskLike[] {
+  const byId = new Map<string, ConsistencyTaskLike>()
+  for (const ref of [...docRefs, ...ledgerRefs]) {
+    const prev = byId.get(ref.id)
+    if (prev === undefined) {
+      byId.set(ref.id, ref)
+      continue
+    }
+    const title = prev.title ?? ref.title
+    byId.set(ref.id, {
+      id: ref.id,
+      requirementRefs: [...new Set([...(prev.requirementRefs ?? []), ...(ref.requirementRefs ?? []), ...(prev.requirement_refs ?? []), ...(ref.requirement_refs ?? [])])],
+      ...(title !== undefined ? { title } : {}),
+    })
+  }
+  return [...byId.values()]
+}
+
+/** 接收判据的完整输入：文档表 ∪ 台账卡（各调用点统一走这里，别再各自拼）。 */
+export async function collectReceiveRefs(
+  docs: DocsReader,
+  req: { id: string },
+  tasks: readonly { id: string; title?: string; requirementRefs?: readonly string[] }[],
+): Promise<ConsistencyTaskLike[]> {
+  return mergeTaskRefs(await collectTaskRefs(docs, req), ledgerTaskRefs(tasks))
+}
+
 export function clauseReceiveStatus(
   roots: readonly string[],
   taskRefs: readonly ConsistencyTaskLike[],
