@@ -410,6 +410,58 @@ export class SessionProbeAdapter implements SessionProbe {
   }
 
   /**
+   * 活窗口的会话事件快照（REQ-261004222448-292a t-497311 · FR-6）。
+   *
+   * **读不到给 `undefined`，不给 `[]`**：`[]` 的语义是「读到了、就是空的」——
+   * 两态混同会让「对话 Tab」把「读不到会话」渲染成「没有对话」，那正是本需求要修的诚实性缺陷。
+   */
+  snapshotEvents(windowKey: string): readonly unknown[] | undefined {
+    const agents = this.opts.agents?.() as { get?: (id: string) => unknown } | undefined
+    if (typeof agents?.get !== 'function') return undefined
+    let session: unknown
+    try {
+      session = (agents.get(windowKey) as { session?: unknown } | undefined)?.session
+    } catch {
+      return undefined
+    }
+    const fn = (session as { snapshotEvents?: () => unknown } | undefined)?.snapshotEvents
+    if (typeof fn !== 'function') return undefined
+    try {
+      const events = fn.call(session)
+      return Array.isArray(events) ? events : undefined
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * 冷会话的事件读法（FR-6 的第二条腿）：`sessionPersistence.open(id,'read')` → `read().events`。
+   * 收尾一律 close / asyncDispose（照 `warmCold` 的配方，句柄不关会漏会话资源）；
+   * 任何一步不可得/抛错 → `undefined`（**不抛错、不阻断**，与 tokenTotals 同款降级纪律）。
+   */
+  async readEvents(windowKey: string): Promise<readonly unknown[] | undefined> {
+    const persistence = this.opts.sessionPersistence?.() as PersistenceLike | undefined
+    const open = persistence?.open
+    if (typeof open !== 'function') return undefined
+    try {
+      const handle = (await open(windowKey, 'read')) as {
+        read?: () => Promise<{ events?: readonly unknown[] }>
+        close?: () => Promise<void>
+        [Symbol.asyncDispose]?: () => Promise<void>
+      }
+      try {
+        const res = await handle.read?.()
+        return Array.isArray(res?.events) ? res!.events : undefined
+      } finally {
+        if (typeof handle.close === 'function') await handle.close()
+        else if (typeof handle[Symbol.asyncDispose] === 'function') await handle[Symbol.asyncDispose]!()
+      }
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
    * 当轮上下文压力**参考**（REQ-261002175818-80a8 t4 / FR-8）——只读展示，**非门禁判据**。
    *
    * 为什么照抄 tokenTotals 的三级降级：这是同一个投影服务、同一种"取不到就是取不到"的处境，

@@ -155,6 +155,21 @@ export interface RouterCtx {
     pluginInfo?: { name: string; version: string }
     /** `dshHome` 绝对路径：设置/记录文件路径与「打开配置文件」的可复制路径由它派生（单一来源）。 */
     dshHome?: string
+    /**
+     * Token 端点的**扩展段**（REQ-261004222448-292a t-497311 FR-10）。
+     *
+     * 为什么用「回填钩子」而不是另起一条路由：`/requirements/:id/token` 的账本读、任务读、
+     * 注入留痕汇总都在 stages.ts 里（一处装配、一处口径）；扩展段只多「每次调用均 / 缓存命中 /
+     * 优化点 / 可得性三态」，再读一遍账本等于给"两处口径漂移"开门。故由 stages 拿到 base 视图后
+     * 回调本钩子，由它把扩展列并进同一响应。
+     *
+     * 缺省 → 不挂扩展段（老响应逐字不变；页面显示「无 token 快照」，**不补 0**）。
+     */
+    panelTokenExtension?: (
+      res: import('node:http').ServerResponse,
+      id: string,
+      base: import('../../shared/protocol.js').RequirementTokenView,
+    ) => Promise<void>
   }
   ids: { requirement: () => string; task: () => string; comment: () => string }
   mintId: (kind: 'requirement' | 'task') => Promise<string>

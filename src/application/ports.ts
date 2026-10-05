@@ -728,6 +728,21 @@ export interface SessionProbe {
     evidence: string,
     withinMs: number,
   ): { ok: boolean; matchedText?: string; reason?: string } | undefined
+  /**
+   * 读某窗口会话的**原始事件流**（REQ-261004222448-292a t-497311 · FR-6 对话 Tab 的数据源）。
+   *
+   * 两条读法分开列，是因为它们**同步/异步与可得性语义不同**，合成一个方法必然丢信息：
+   *  - `snapshotEvents`：活窗口的同步快照（`agents.get(key).session.snapshotEvents()`）；
+   *  - `readEvents`：冷会话回落持久化读（`sessionPersistence.open(id,'read')` → `read().events`）。
+   *
+   * **缺失语义（关键）**：`undefined` = 读不到；`[]` = 读到了、就是空的。
+   * 两态混同会让页面把「会话读不到」渲染成「没有对话」——正是本次要修的诚实性缺陷。
+   *
+   * 两个方法都**可选**：老装配（无此能力）→ 调用方按「未装配」降级（`port-unavailable`），
+   * 而不是拿空数组冒充。适配器实现见 `adapters/SessionProbeAdapter.ts`。
+   */
+  snapshotEvents?: (windowKey: string) => readonly unknown[] | undefined
+  readEvents?: (windowKey: string) => Promise<readonly unknown[] | undefined>
 }
 
 /**

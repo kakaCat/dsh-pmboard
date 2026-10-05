@@ -2562,8 +2562,14 @@ export interface PromptSection {
 export interface PromptInjectionRecord {
   at: number
   windowKey: string
-  /** 三个记录点；旧条目缺字段 → unknown */
-  origin: 'gate-h3' | 'dive-node' | 'dive-round' | 'unknown'
+  /**
+   * 记录点；旧条目缺字段 → unknown。
+   *
+   * `system-prompt` 是 t-cc7233 实施期**加法式**补的第四个值：`capture-section` 装配每轮
+   * 系统提示词时同样写留痕（设计稿只列了三个写入点）。加一个联合成员是向后兼容的扩项——
+   * 前端对未知值本就回落「来源未知」，而少了它，这一处的留痕就只能撒谎说自己是别的来源。
+   */
+  origin: 'gate-h3' | 'dive-node' | 'dive-round' | 'system-prompt' | 'unknown'
   /** null = 旧条目不可知（不许当 true 渲染） */
   delivered: boolean | null
   routeKey?: string

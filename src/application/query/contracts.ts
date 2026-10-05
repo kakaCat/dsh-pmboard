@@ -14,6 +14,7 @@
  * @module dsh-pmboard/application/query/contracts
  */
 import type { InjectionLogReadPort } from '../internal/injection-log.js'
+import type { IsolationLogReadPort } from '../internal/isolation-trace.js'
 import type { DocRepository, RequirementStore, SessionProbe, TaskStore } from '../ports.js'
 import type {
   DagResponse,
@@ -59,6 +60,20 @@ export interface PanelQueryDeps {
    * 注入时钟后测试可固定，断言才不是靠运气。
    */
   now?: () => number
+  /**
+   * 节点隔离留痕只读口（prompts 查询的「上下文」段用，t-497311 实施期加法式补入）。
+   *
+   * 为什么不在最初的四口里：t-361f2f 定契约时只核了六查询"取数主路径"的四个口，
+   * 「上下文 / 压缩 / 隔离」这一段的来源（`~/.dsh/state/node-isolation-log.json`）当时未被算进
+   * ——它不是台账、不是队列、不是会话、也不是注入留痕。缺省 = 该段显示「未采集」，**不显示 0**。
+   */
+  isolations?: IsolationLogReadPort
+  /**
+   * 固定系统提示词装配服务（读时装配，不落库；t-497311 实施期加法式补入）。
+   * 与既有 `/token` 的 `systemPrompt` 是**同一个**服务：两处若各接一个实例，
+   * 「本次完整系统提示词」与「每回合成本」就会各说各话。缺省 = 该段显示「装配服务不可得」。
+   */
+  systemPrompt?: () => unknown
 }
 
 /** 六查询的公共入参（分页参数只在需要的查询里生效）。 */
