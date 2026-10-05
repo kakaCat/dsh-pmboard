@@ -23,14 +23,25 @@
 
 ## 1. 文件一览
 
+> ⚠️ **先说清哪一版是最新的**（2026-10-05 补注）：本目录里 `detail-report.html` 是**最后一版原型**
+> （10-05 00:48，标题《需求详情页 · 工作汇报稿》），它与 `requirement.md` v3（15 FR）对齐，
+> 页面性质已从「证据面」改为「工作汇报」，并且**本身就是「紧凑头部 + 六个同级 Tab」**
+> （`?tab=report|doc|dag|chat|token|prompt` 可直达，Tab 带计数角标）。
+> 下面表格里那份 `detail-refactor.html` 是**上一版**（10-04 23:33，两栏 + 右栏的旧形态），
+> 只作历史与「三档展示面」讨论的存档——**照它实现会与需求 v3 打架**。
+
 | 文件 | 是什么 |
 |---|---|
+| `detail-report.html` | **最后一版原型（最新）**：工作汇报稿；紧凑头部 + 六个同级 Tab；`?state=inflight\|terminal`、`?tab=…`、`?open=1`、`?only=<条id>`、`?diag=1` |
+| `report-*.png` | 最后一版原型截图（整页 / 在途 / 终态 / 各 Tab：`report-tab-doc.png` 等） |
 | `current-detail-specimen.html` + `current-*.png` | **现状基线**：真实 `buildReqDetail` + 真实 CSS 渲染（生成器 `scripts/req-detail-current-specimen.mts`） |
-| `detail-refactor.html` | **重构稿**：三档展示面 × 在途/终态，可切换 |
-| `refactor-header.png` · `refactor-panel.png` · `refactor-panel-terminal.png` · `refactor-inflight.png` · `refactor-terminal.png` | 重构稿截图 |
-| `detail-eval-evidence.html` + `proto-*.png` | 旧稿（测评证据面）。转交"测评证据对外接口"需求 |
+| `detail-refactor.html`（**上一版，历史**） | 重构稿的旧形态：三档展示面 × 在途/终态，可切换。**其「两栏 + 右栏」不是本需求 v3 的形态** |
+| `refactor-header.png` · `refactor-panel.png` · `refactor-panel-terminal.png` · `refactor-inflight.png` · `refactor-terminal.png` | 上一版的截图（历史） |
+| `detail-eval-evidence.html` + `proto-*.png` | 旧稿（测评证据面）。转交「测评证据对外接口」需求 |
+| `detail-layout-variants.html` · `layout-v1/2/3.png` | 版面候选稿（讨论用，未采纳） |
 
 两份稿标本**同源**（需求 `REQ-261004201530-7f3c`，11 张卡），保证 before/after 可比。
+
 
 ## 2. 现状诊断（每条带证据）
 
