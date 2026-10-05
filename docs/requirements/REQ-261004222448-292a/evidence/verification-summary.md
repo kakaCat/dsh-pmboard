@@ -91,6 +91,26 @@ Token / 提示词），**切到哪个才请求哪个**；台账一变只换该�
     这轮也说明：**本机测试全绿 ≠ 上线可用**——冒烟必须打真端点。
 
 
+15. **【页面撒谎·已修】首屏「缺口 16 条」不成立** —— 人类验收时直接问「缺口 16 条 这个是真的吗」，
+    一查：**不是真的**。其中 15 条是「条款 FR-1~FR-15 没人接」，而真值是 **15/15 全部
+    已接收且完成**（台账 18 张父卡的 `requirementRefs` 完整覆盖 FR-1~15，且承接卡全部结单、带证据）。
+    - **根因**：`clauseReceiveStatus` 的输入只取 `collectTaskRefs`（读 `decomposition.md` 的 RTM 表），
+      而写绑定的 `reqboard_task_refs` **只写台账卡片字段**；本需求 `decomposition.md` 里一个 FR 引用
+      都没有（`grep FR-1` 零命中）→ `taskRefs=[]` → 15 条全判 `unreceived`。
+      **两个来源不一致，投影只信了空的那个。**
+    - **处置**：新增 `ledgerTaskRefs` / `mergeTaskRefs` / `collectReceiveRefs`（文档表 ∪ 台账卡），
+      三个调用点（`QueryReport` / `QueryRequirementMarks` / `QueryState`）统一走它；
+      口径写死为「判红 = 既没有卡承接、也没有裁剪记录」，**不是**「拆分文档那张表里没写」。
+    - **修后真数据复核**（读同一份 `queue.json` + `requirement.md` 直接算）：
+      修前 `FR-1…FR-15` 全红 → 修后 **0 条**，15/15 均 `done`；**缺口由 16 条降为 1 条**
+      （仅 `verification.md` 产物待确认——那条是真的）。
+    - **影响面**（都曾一起报错）：首屏缺口格与「几件事等人」计数、`reqboard_status` 的
+      `clause_receive_status` / `fr_coverage`、以及看板上的条款接收面。
+    - **回归**：`tests/receive-mark.test.ts` 新增 3 例——台账写了文档表空（事故现场）、
+      文档表写了台账空（原口径不许退化）、两边都有取并集。
+    - **教训**：这是「**两个真相来源之间没有合并**」的典型；判据必须写明它认哪个来源、
+      以及两个来源不一致时怎么办，否则投影会安静地给出与事实相反的红。
+
 ## 五、探针的反向验证（防"恒绿装饰"）
 
 | 步骤 | 命令 | 退出码 |
