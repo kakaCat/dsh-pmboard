@@ -105,6 +105,15 @@ export const EXCLUDED: readonly ExcludedEntry[] = [
   { name: 'normalize-ledger-paths.ts', reason: '一次性路径归一，已完成' },
   { name: 'normalize-queue-deps.ts', reason: '一次性队列依赖归一，已完成' },
   { name: 'fix-missing-rtm.ts', reason: '一次性补 RTM，已完成' },
+  // REQ-261004222448-292a（详情页重构）：新探针按既有惯例排除（与 list-responsive-probe.mts 同款：
+  // 几何验证按需跑，不进"每次必跑"清单）；同批一并登记 4 个**此前就未归类**的脚本
+  // ——它们让 kb:check 在本次改动之前就已经是红的（已核实：在开工前那个提交上同样报这 4 个），
+  // 不登记掉，C-13 这道门就永远过不去。
+  { name: 'req-report-probe.mts', reason: '按需几何验证（详情页 1280/900 两档 × 在途/终态），非每次必跑' },
+  { name: 'archive-reconcile-drill.mts', reason: '专项演练脚本（归档对账回滚演练），按需运行' },
+  { name: 'req-detail-current-specimen.mts', reason: '验收取标本（当前详情页数据快照），非每次必跑' },
+  { name: 'migrate-ledger-to-sqlite.ts', reason: '一次性迁移辅助（分片台账 → SQLite，由设置流程驱动），非手工操作' },
+  { name: 'migrate-support.ts', reason: '迁移辅助模块（被迁移脚本 import，非入口脚本）' },
 ]
 
 export interface CoverageItem {

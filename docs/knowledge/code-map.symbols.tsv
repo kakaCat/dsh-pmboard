@@ -181,7 +181,7 @@ src/application/gate/handlers/h2-compact.ts	createH2CompactHandler	function	expo
 src/application/gate/handlers/h3-inject.ts	H3InjectDeps	interface	export interface H3InjectDeps
 src/application/gate/handlers/h3-inject.ts	createH3InjectHandler	function	export function createH3InjectHandler(deps: H3InjectDeps): GateHandler
 src/application/gate/handlers/h4-resume.ts	H4ResumeDeps	interface	export interface H4ResumeDeps
-src/application/gate/handlers/h4-resume.ts	createH4ResumeHandler	function	export function createH4ResumeHandler(deps: H4ResumeDeps): GateHandler
+src/application/gate/handlers/h4-resume.ts	createH4ResumeHandler	function	export function createH4ResumeHandler(_deps: H4ResumeDeps): GateHandler
 src/application/gate/handlers/h5-audit.ts	H5AuditDeps	interface	export interface H5AuditDeps
 src/application/gate/handlers/h5-audit.ts	createH5AuditHandler	function	export function createH5AuditHandler(deps: H5AuditDeps): GateHandler
 src/application/gate/handlers/shared.ts	pickGateRequirement	function	export async function pickGateRequirement(store: RequirementStore, ctx: ConfirmContext): Promise<RequirementRecord | un…
@@ -381,7 +381,7 @@ src/application/internal/content-trace.ts	clauseReceiveStatus	function	export fu
 src/application/internal/content-trace.ts	unreceivedClauses	function	export function unreceivedClauses(status: readonly ClauseReceiveStatus[]): string[]
 src/application/internal/content-trace.ts	DesignSection	interface	export interface DesignSection
 src/application/internal/content-trace.ts	extractDesignSections	function	export function extractDesignSections(designDocContent: string, filePath: string): DesignSection[]
-src/application/internal/content-trace.ts	extractAllDesignSections	function	export function extractAllDesignSections(docs: DocsReader, designDir: string): DesignSection[]
+src/application/internal/content-trace.ts	extractAllDesignSections	function	export async function extractAllDesignSections(docs: DocsReader, designDir: string): Promise<DesignSection[]>
 src/application/internal/content-trace.ts	findDesignSectionsForFRs	function	export function findDesignSectionsForFRs(
 src/application/internal/content-trace.ts	checkDesignCoverage	function	export function checkDesignCoverage(
 src/application/internal/content-trace.ts	checkImplementationCoverage	function	export function checkImplementationCoverage(
@@ -435,12 +435,19 @@ src/application/internal/human-gate.ts	humanGateOf	function	export function huma
 src/application/internal/injection-address.ts	augmentResolvedPrompt	function	export function augmentResolvedPrompt(resolved: ResolvedPrompt, input: AddressSectionInput): ResolvedPrompt
 src/application/internal/injection-log.ts	INJECTION_LOG_CAP	const	export const INJECTION_LOG_CAP
 src/application/internal/injection-log.ts	INJECTION_LOG_REL	const	export const INJECTION_LOG_REL
+src/application/internal/injection-log.ts	InjectionLogOrigin	type	export type InjectionLogOrigin
+src/application/internal/injection-log.ts	INJECTION_LOG_TEXT_MAX	const	export const INJECTION_LOG_TEXT_MAX
 src/application/internal/injection-log.ts	InjectionLogEntry	interface	export interface InjectionLogEntry
+src/application/internal/injection-log.ts	InjectionLogView	interface	export interface InjectionLogView extends Omit<InjectionLogEntry, 'origin' | 'delivered'>
 src/application/internal/injection-log.ts	InjectionLogInput	type	export type InjectionLogInput
 src/application/internal/injection-log.ts	InjectionLogPort	interface	export interface InjectionLogPort
 src/application/internal/injection-log.ts	InjectionLogReadPort	interface	export interface InjectionLogReadPort
 src/application/internal/injection-log.ts	INJECTION_LOG_FIELDS	const	export const INJECTION_LOG_FIELDS: readonly (keyof InjectionLogEntry)[]
-src/application/internal/injection-log.ts	injectionLogInputFromResolved	function	export function injectionLogInputFromResolved(resolved: ResolvedPrompt, windowKey: string): InjectionLogInput
+src/application/internal/injection-log.ts	INJECTION_LOG_V2_FIELDS	const	export const INJECTION_LOG_V2_FIELDS: readonly (keyof InjectionLogEntry)[]
+src/application/internal/injection-log.ts	capInjectionText	function	export function capInjectionText(
+src/application/internal/injection-log.ts	toInjectionLogView	function	export function toInjectionLogView(entry: InjectionLogEntry): InjectionLogView
+src/application/internal/injection-log.ts	injectionLogInputFromResolved	function	export function injectionLogInputFromResolved(
+src/application/internal/injection-log.ts	injectionLogInputForRound	function	export function injectionLogInputForRound(params:
 src/application/internal/injection-log.ts	appendToInjectionLog	function	export function appendToInjectionLog(
 src/application/internal/injection-log.ts	queryInjectionLog	function	export function queryInjectionLog(entries: readonly InjectionLogEntry[], k: number): InjectionLogEntry[]
 src/application/internal/injection-log.ts	isInjectionLogEntry	function	export function isInjectionLogEntry(raw: unknown): raw is InjectionLogEntry
@@ -647,9 +654,9 @@ src/application/internal/support.ts	mapAgentError	function	export function mapAg
 src/application/internal/support.ts	assertNoPendingConfirm	function	export async function assertNoPendingConfirm(deps: UseCaseDeps, windowKey: string): Promise<void>
 src/application/internal/task-card-generator.ts	PlanTask	interface	export interface PlanTask
 src/application/internal/task-card-generator.ts	TaskCardPlaceholders	interface	export interface TaskCardPlaceholders
-src/application/internal/task-card-generator.ts	generateTaskCardPlaceholders	function	export function generateTaskCardPlaceholders(
+src/application/internal/task-card-generator.ts	generateTaskCardPlaceholders	function	export async function generateTaskCardPlaceholders(
 src/application/internal/task-card-generator.ts	renderTaskCard	function	export function renderTaskCard(
-src/application/internal/task-card-generator.ts	generateTaskCardSkeleton	function	export function generateTaskCardSkeleton(
+src/application/internal/task-card-generator.ts	generateTaskCardSkeleton	function	export async function generateTaskCardSkeleton(
 src/application/internal/task-completeness.ts	taskCompletenessGap	function	export function taskCompletenessGap(
 src/application/internal/task-transition.ts	TaskTransitionOpts	interface	export interface TaskTransitionOpts
 src/application/internal/task-transition.ts	transitionTask	function	export function transitionTask(task: TaskRecord, to: TaskStatus, opts: TaskTransitionOpts): void
@@ -787,6 +794,35 @@ src/application/ports.ts	JobStartSpec	interface	export interface JobStartSpec
 src/application/ports.ts	JobSnapshot	interface	export interface JobSnapshot
 src/application/ports.ts	JobsPort	interface	export interface JobsPort
 src/application/ports.ts	UseCaseDeps	interface	export interface UseCaseDeps
+src/application/query/contracts.ts	PendingConfirmReadPort	interface	export interface PendingConfirmReadPort
+src/application/query/contracts.ts	PanelQueryDeps	interface	export interface PanelQueryDeps
+src/application/query/contracts.ts	PanelQueryInput	interface	export interface PanelQueryInput
+src/application/query/contracts.ts	QueryReport	type	export type QueryReport
+src/application/query/contracts.ts	QueryTrunk	type	export type QueryTrunk
+src/application/query/contracts.ts	QueryDocs	type	export type QueryDocs
+src/application/query/contracts.ts	QueryDag	type	export type QueryDag
+src/application/query/contracts.ts	QueryDialogue	type	export type QueryDialogue
+src/application/query/contracts.ts	QueryPrompts	type	export type QueryPrompts
+src/application/query/contracts.ts	QueryTokenExtension	type	export type QueryTokenExtension
+src/application/query/contracts.ts	PanelQueries	interface	export interface PanelQueries
+src/application/query/QueryDag.ts	buildDagNodes	function	export function buildDagNodes(
+src/application/query/QueryDag.ts	buildDagSteps	function	export function buildDagSteps(tasks: readonly TaskRecord[]): DagStep[]
+src/application/query/QueryDag.ts	buildCriticalPath	function	export function buildCriticalPath(tasks: readonly TaskRecord[]): string[] | undefined
+src/application/query/QueryDag.ts	queryDag	function	export async function queryDag(
+src/application/query/QueryDialogue.ts	DialogueSessionEventsPort	interface	export interface DialogueSessionEventsPort
+src/application/query/QueryDialogue.ts	queryDialogue	const	export const queryDialogue: QueryDialogue
+src/application/query/QueryDialogue.ts	buildDialogue	const	export const buildDialogue: QueryDialogue
+src/application/query/QueryDocs.ts	buildGateVerdicts	function	export function buildGateVerdicts(req: RequirementRecord, tasks: readonly TaskRecord[]): GateVerdict[]
+src/application/query/QueryDocs.ts	queryDocs	function	export async function queryDocs(
+src/application/query/QueryPrompts.ts	toPromptInjectionRecord	function	export function toPromptInjectionRecord(entry: ReturnType<typeof toInjectionLogView>): PromptInjectionRecord
+src/application/query/QueryPrompts.ts	queryPrompts	function	export async function queryPrompts(
+src/application/query/QueryReport.ts	SessionArchiveReadPort	interface	export interface SessionArchiveReadPort
+src/application/query/QueryReport.ts	ReportQueryDeps	type	export type ReportQueryDeps
+src/application/query/QueryReport.ts	ReportTraceInput	interface	export interface ReportTraceInput
+src/application/query/QueryReport.ts	buildGaps	function	export function buildGaps(
+src/application/query/QueryReport.ts	buildActions	function	export function buildActions(req: RequirementRecord): ReportAction[]
+src/application/query/QueryReport.ts	REPORT_COMMENT_HEAD_LIMIT	const	export const REPORT_COMMENT_HEAD_LIMIT
+src/application/query/QueryReport.ts	queryReport	function	export async function queryReport(
 src/application/query/QueryRequirementMarks.ts	(anonymous)	other	export type
 src/application/query/QueryRequirementMarks.ts	assembleRequirementMarks	function	export async function assembleRequirementMarks(
 src/application/query/QueryRequirementToken.ts	TasksView	interface	export interface TasksView
@@ -802,6 +838,33 @@ src/application/query/QueryStageDetail.ts	(anonymous)	other	export type
 src/application/query/QueryStageDetail.ts	queryStageDetail	function	export async function queryStageDetail(
 src/application/query/QueryStageOverview.ts	queryStageOverview	function	export async function queryStageOverview(
 src/application/query/QueryState.ts	queryState	function	export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): Promise<unknown>
+src/application/query/QueryToken.ts	StageTokenTable	interface	export interface StageTokenTable
+src/application/query/QueryToken.ts	buildStageTokenTable	function	export function buildStageTokenTable(req: RequirementRecord, tasks: readonly TaskRecord[]): StageTokenTable
+src/application/query/QueryToken.ts	buildOptimizations	function	export function buildOptimizations(
+src/application/query/QueryToken.ts	queryTokenExtension	function	export async function queryTokenExtension(
+src/application/query/QueryTrunk.ts	TRUNK_SECTION_NAMES	const	export const TRUNK_SECTION_NAMES
+src/application/query/QueryTrunk.ts	TRUNK_SECTION_ALIASES	const	export const TRUNK_SECTION_ALIASES: Record<string, readonly string[]>
+src/application/query/QueryTrunk.ts	TRUNK_KEYS	const	export const TRUNK_KEYS: readonly TrunkKey[]
+src/application/query/QueryTrunk.ts	SectionSlice	interface	export interface SectionSlice
+src/application/query/QueryTrunk.ts	stripHeadingDecorations	function	export function stripHeadingDecorations(raw: string): string
+src/application/query/QueryTrunk.ts	normalizeHeading	function	export function normalizeHeading(raw: string): string
+src/application/query/QueryTrunk.ts	matchesSectionName	function	export function matchesSectionName(rawTitle: string, heading: string, level
+src/application/query/QueryTrunk.ts	findSection	function	export function findSection(text: string, heading: string): SectionSlice | undefined
+src/application/query/QueryTrunk.ts	extractSection	function	export function extractSection(text: string, heading: string): string | undefined
+src/application/query/QueryTrunk.ts	summaryOf	function	export function summaryOf(section: SectionSlice, max: number
+src/application/query/QueryTrunk.ts	TrunkDocInput	interface	export interface TrunkDocInput
+src/application/query/QueryTrunk.ts	TrunkDocsInput	interface	export interface TrunkDocsInput
+src/application/query/QueryTrunk.ts	TrunkTaskInput	interface	export interface TrunkTaskInput
+src/application/query/QueryTrunk.ts	TrunkLedgerInput	interface	export interface TrunkLedgerInput
+src/application/query/QueryTrunk.ts	AssembleTrunkInput	interface	export interface AssembleTrunkInput
+src/application/query/QueryTrunk.ts	GATE_TRACE_MARKERS	const	export const GATE_TRACE_MARKERS
+src/application/query/QueryTrunk.ts	gateTraces	function	export function gateTraces(ledger: TrunkLedgerInput): string[]
+src/application/query/QueryTrunk.ts	changedFilesOf	function	export function changedFilesOf(tasks: readonly TrunkTaskInput[]): string[]
+src/application/query/QueryTrunk.ts	buildFacts	function	export function buildFacts(ledger: TrunkLedgerInput, requirementText: string | undefined): TrunkFact[]
+src/application/query/QueryTrunk.ts	buildAchievement	function	export function buildAchievement(tasks: readonly TrunkTaskInput[]): string[]
+src/application/query/QueryTrunk.ts	parseHighlights	function	export function parseHighlights(section: SectionSlice): TrunkHighlight[]
+src/application/query/QueryTrunk.ts	assembleTrunk	function	export function assembleTrunk(input: AssembleTrunkInput): TrunkResponse
+src/application/query/QueryTrunk.ts	queryTrunk	const	export const queryTrunk: QueryTrunk
 src/application/settings/events.ts	SYSTEM_RECORD_SCHEMA_VERSION	const	export const SYSTEM_RECORD_SCHEMA_VERSION
 src/application/settings/events.ts	SYSTEM_HISTORY_MAX	const	export const SYSTEM_HISTORY_MAX
 src/application/settings/events.ts	SYSTEM_RECORD_FILE_REL	const	export const SYSTEM_RECORD_FILE_REL
@@ -991,6 +1054,15 @@ src/client/api.ts	submitVerdicts	function	export function submitVerdicts(input:
 src/client/api.ts	fetchStageDetail	function	export function fetchStageDetail(reqId: string, stage: string): Promise<StageDetail>
 src/client/api.ts	fetchStageOverview	function	export function fetchStageOverview(reqId: string): Promise<StageOverview>
 src/client/api.ts	fetchRequirementToken	function	export function fetchRequirementToken(reqId: string): Promise<RequirementTokenView>
+src/client/api.ts	fetchReport	const	export const fetchReport
+src/client/api.ts	fetchReportTrunk	const	export const fetchReportTrunk
+src/client/api.ts	fetchReportDocs	const	export const fetchReportDocs
+src/client/api.ts	fetchReportDag	const	export const fetchReportDag
+src/client/api.ts	fetchReportDialogue	const	export const fetchReportDialogue
+src/client/api.ts	fetchReportPrompts	const	export const fetchReportPrompts
+src/client/api.ts	TokenPanelPayload	interface	export interface TokenPanelPayload
+src/client/api.ts	fetchReportToken	function	export async function fetchReportToken(id: string): Promise<TokenPanelPayload>
+src/client/api.ts	fetchReportPanel	function	export function fetchReportPanel(
 src/client/api.ts	fetchRequirementMarks	function	export function fetchRequirementMarks(reqId: string): Promise<RequirementMarksView>
 src/client/api.ts	fetchReqFile	function	export async function fetchReqFile(path: string): Promise<string>
 src/client/api.ts	DocPathVerdictView	interface	export interface DocPathVerdictView
@@ -1018,9 +1090,14 @@ src/client/board-mount.ts	jumpResultMessage	function	export function jumpResultM
 src/client/board-mount.ts	AttachBoardOptions	interface	export interface AttachBoardOptions
 src/client/board-mount.ts	BoardAttachment	interface	export interface BoardAttachment
 src/client/board-mount.ts	DetailDraft	interface	export interface DetailDraft
+src/client/board-mount.ts	draftKeyOf	function	export function draftKeyOf(form: Element, index: number): string
 src/client/board-mount.ts	setDetailTab	function	export function setDetailTab(detail: HTMLElement, tabName: string): void
+src/client/board-mount.ts	commentInputOf	function	export function commentInputOf(button: Element, root: HTMLElement | undefined): HTMLInputElement | undefined
 src/client/board-mount.ts	captureDetailDraft	function	export function captureDetailDraft(el: HTMLElement): DetailDraft | undefined
 src/client/board-mount.ts	restoreDetailDraft	function	export function restoreDetailDraft(el: HTMLElement, draft: DetailDraft | undefined): void
+src/client/board-mount.ts	applyReportSegments	function	export function applyReportSegments(container: HTMLElement, segs: ReportShellSegments): void
+src/client/board-mount.ts	PanelIntent	type	export type PanelIntent
+src/client/board-mount.ts	panelIntentOf	function	export function panelIntentOf(target: Element): PanelIntent | undefined
 src/client/board-mount.ts	createBoardAttachment	function	export function createBoardAttachment(container: HTMLElement, options: AttachBoardOptions
 src/client/board-mount.ts	attachBoard	function	export function attachBoard(container: HTMLElement, options: AttachBoardOptions
 src/client/board-scroll.ts	MAX_LANES	const	export const MAX_LANES
@@ -1479,11 +1556,15 @@ src/client/styles/files.ts	FILES_CSS	const	export const FILES_CSS
 src/client/styles/marks.ts	MARKS_CSS	const	export const MARKS_CSS
 src/client/styles/node-panel.ts	NODE_PANEL_CSS	const	export const NODE_PANEL_CSS
 src/client/styles/panel.ts	PANEL_CSS	const	export const PANEL_CSS
+src/client/styles/report.ts	REPORT_CSS	const	export const REPORT_CSS
 src/client/styles/settings.ts	SETTINGS_CSS	const	export const SETTINGS_CSS
 src/client/styles/subtask.ts	SUBTASK_CSS	const	export const SUBTASK_CSS
 src/client/styles/token.ts	TOKEN_CSS	const	export const TOKEN_CSS
 src/client/styles/traceability.ts	TRACEABILITY_CSS	const	export const TRACEABILITY_CSS
-src/client/token-info.ts	renderTokenTab	function	export function renderTokenTab(view: RequirementTokenView): string
+src/client/token-info.ts	TokenRowInput	interface	export interface TokenRowInput
+src/client/token-info.ts	TokenPanelView	interface	export interface TokenPanelView
+src/client/token-info.ts	renderTokenPanel	function	export function renderTokenPanel(data: unknown): string
+src/client/token-info.ts	renderTokenTab	function	export function renderTokenTab(view: TokenPanelView): string
 src/client/token-info.ts	renderTokenPlaceholder	function	export function renderTokenPlaceholder(text: string): string
 src/client/toolviews/biz-row.ts	BizCard	interface	export interface BizCard
 src/client/toolviews/biz-row.ts	BizRowProps	interface	export interface BizRowProps
@@ -1610,6 +1691,58 @@ src/client/views/dag-view.ts	mountDagCanvas	function	export function mountDagCan
 src/client/views/detail-states.ts	buildDetailLoading	function	export function buildDetailLoading(reqId: string): string
 src/client/views/detail-states.ts	buildDetailMissing	function	export function buildDetailMissing(reqId: string, message: string): string
 src/client/views/detail-states.ts	buildDetailError	function	export function buildDetailError(reqId: string, message: string, hint?: string): string
+src/client/views/panels/dag.ts	DAG_PANEL_CANVAS_ID	const	export const DAG_PANEL_CANVAS_ID
+src/client/views/panels/dag.ts	dagPanel	const	export const dagPanel: ReportTabDef
+src/client/views/panels/dialogue.ts	DialogueMessage	type	export type DialogueMessage
+src/client/views/panels/dialogue.ts	LoadedDialogue	interface	export interface LoadedDialogue
+src/client/views/panels/dialogue.ts	readDialogue	function	export function readDialogue(data: unknown): LoadedDialogue | undefined
+src/client/views/panels/dialogue.ts	orderDialogue	function	export function orderDialogue(items: readonly DialogueMessage[]): DialogueMessage[]
+src/client/views/panels/dialogue.ts	filterDialogueItems	function	export function filterDialogueItems(
+src/client/views/panels/dialogue.ts	highlightDialogueText	function	export function highlightDialogueText(text: string, query: string): string
+src/client/views/panels/dialogue.ts	renderDialogue	function	export function renderDialogue(data: unknown, ctx: ReportTabCtx, query
+src/client/views/panels/dialogue.ts	applyDialogueSearch	function	export function applyDialogueSearch(root: HTMLElement, query: string): number
+src/client/views/panels/dialogue.ts	dialoguePanel	const	export const dialoguePanel: ReportTabDef
+src/client/views/panels/docs.ts	docsPanel	const	export const docsPanel: ReportTabDef
+src/client/views/panels/prompts.ts	renderPromptsPanel	function	export function renderPromptsPanel(data: unknown): string
+src/client/views/panels/prompts.ts	promptsPanel	const	export const promptsPanel: ReportTabDef
+src/client/views/panels/token.ts	tokenPanel	const	export const tokenPanel: ReportTabDef
+src/client/views/panels/trunk.ts	renderTrunkPanel	function	export function renderTrunkPanel(data: unknown): string
+src/client/views/panels/trunk.ts	trunkPanel	const	export const trunkPanel: ReportTabDef
+src/client/views/report-band.ts	GAP_HEAD_LIMIT	const	export const GAP_HEAD_LIMIT
+src/client/views/report-band.ts	buildProgressCell	function	export function buildProgressCell(report: ReportResponse): string
+src/client/views/report-band.ts	buildGapsCell	function	export function buildGapsCell(report: ReportResponse): string
+src/client/views/report-band.ts	buildOutcomeCell	function	export function buildOutcomeCell(report: ReportResponse): string
+src/client/views/report-band.ts	buildReportBand	function	export function buildReportBand(report: ReportResponse): string
+src/client/views/report-band.ts	buildReportBandPlaceholder	function	export function buildReportBandPlaceholder(p: ReportHeadPlaceholder): string
+src/client/views/report-head.ts	degradeText	function	export function degradeText(d: Degrade): string
+src/client/views/report-head.ts	ReportHeadPlaceholder	type	export type ReportHeadPlaceholder
+src/client/views/report-head.ts	buildReportHeadPlaceholder	function	export function buildReportHeadPlaceholder(p: ReportHeadPlaceholder): string
+src/client/views/report-head.ts	buildWindowJumps	function	export function buildWindowJumps(report: ReportResponse): string
+src/client/views/report-head.ts	buildReportActionBar	function	export function buildReportActionBar(report: ReportResponse): string
+src/client/views/report-head.ts	buildCommentList	function	export function buildCommentList(comments: ReportHead['comments']): string
+src/client/views/report-head.ts	ReportHeadOpts	interface	export interface ReportHeadOpts
+src/client/views/report-head.ts	buildReportHead	function	export function buildReportHead(report: ReportResponse, now: number
+src/client/views/report-tabs.ts	ReportTabKey	type	export type ReportTabKey
+src/client/views/report-tabs.ts	ReportPanelParams	interface	export interface ReportPanelParams
+src/client/views/report-tabs.ts	ReportTabCtx	interface	export interface ReportTabCtx
+src/client/views/report-tabs.ts	ReportTabDef	interface	export interface ReportTabDef
+src/client/views/report-tabs.ts	REPORT_TABS	const	export const REPORT_TABS: ReportTabDef[]
+src/client/views/report-tabs.ts	REPORT_TAB_KEYS	const	export const REPORT_TAB_KEYS: readonly ReportTabKey[]
+src/client/views/report-tabs.ts	isReportTabKey	function	export function isReportTabKey(v: unknown): v is ReportTabKey
+src/client/views/report-tabs.ts	isReportResponse	function	export function isReportResponse(v: unknown): v is ReportResponse
+src/client/views/report-tabs.ts	buildTabBar	function	export function buildTabBar(report: ReportResponse | undefined, active: ReportTabKey): string
+src/client/views/report-tabs.ts	ReportShellSegments	interface	export interface ReportShellSegments
+src/client/views/report-tabs.ts	ReportShellRenderOpts	interface	export interface ReportShellRenderOpts
+src/client/views/report-tabs.ts	buildReportShell	function	export function buildReportShell(
+src/client/views/report-tabs.ts	buildReportCompact	function	export function buildReportCompact(report: ReportResponse): string
+src/client/views/report-tabs.ts	ReportTabsOpts	interface	export interface ReportTabsOpts
+src/client/views/report-tabs.ts	ReportTabsController	interface	export interface ReportTabsController
+src/client/views/report-tabs.ts	createReportTabs	function	export function createReportTabs(opts: ReportTabsOpts): ReportTabsController
+src/client/views/report-tabs.ts	ReportHeadPhase	type	export type ReportHeadPhase
+src/client/views/report-tabs.ts	ReportHeadState	interface	export interface ReportHeadState
+src/client/views/report-tabs.ts	ReportShellOpts	interface	export interface ReportShellOpts
+src/client/views/report-tabs.ts	ReportShellController	interface	export interface ReportShellController
+src/client/views/report-tabs.ts	createReportShell	function	export function createReportShell(opts: ReportShellOpts): ReportShellController
 src/client/views/stage-detail.ts	buildProgressDots	function	export function buildProgressDots(currentStatus: RequirementStatus): string
 src/client/views/stage-detail.ts	buildTabs	function	export function buildTabs(): string
 src/client/views/stage-detail.ts	buildTabContents	function	export function buildTabContents(
@@ -2224,6 +2357,14 @@ src/http/routers/isolation.ts	ISOLATION_QUERY_DEFAULT	const	export const ISOLATI
 src/http/routers/isolation.ts	ISOLATION_QUERY_MAX	const	export const ISOLATION_QUERY_MAX
 src/http/routers/isolation.ts	createIsolationRouter	function	export function createIsolationRouter(ctx: RouterCtx)
 src/http/routers/knowledge.ts	createKnowledgeRouter	function	export function createKnowledgeRouter(ctx: RouterCtx)
+src/http/routers/panels.ts	PANEL_LIMIT_MAX	const	export const PANEL_LIMIT_MAX
+src/http/routers/panels.ts	PanelEndpoint	type	export type PanelEndpoint
+src/http/routers/panels.ts	degradeOf	function	export function degradeOf(reason: Degrade['reason'], note: string): Degrade
+src/http/routers/panels.ts	PanelsRouterDeps	interface	export interface PanelsRouterDeps
+src/http/routers/panels.ts	panelDepsFrom	function	export function panelDepsFrom(ctx: RouterCtx, over: Partial<PanelQueryDeps>
+src/http/routers/panels.ts	TokenResponseWithPanel	type	export type TokenResponseWithPanel
+src/http/routers/panels.ts	mergeTokenExtension	function	export function mergeTokenExtension(
+src/http/routers/panels.ts	createPanelsRouter	function	export function createPanelsRouter(ctx: RouterCtx, deps: PanelsRouterDeps)
 src/http/routers/requirements.ts	createRequirementsRouter	function	export function createRequirementsRouter(ctx: RouterCtx)
 src/http/routers/settings-support.ts	CONFIRM_YES	const	export const CONFIRM_YES
 src/http/routers/settings-support.ts	CONFIRM_NO	const	export const CONFIRM_NO
@@ -2536,6 +2677,39 @@ src/shared/protocol.ts	RequirementTokenView	interface	export interface Requireme
 src/shared/protocol.ts	RequirementMarksView	interface	export interface RequirementMarksView
 src/shared/protocol.ts	ClauseMarkRow	interface	export interface ClauseMarkRow
 src/shared/protocol.ts	InjectionCost	interface	export interface InjectionCost
+src/shared/protocol.ts	DegradeReason	type	export type DegradeReason
+src/shared/protocol.ts	Degrade	interface	export interface Degrade
+src/shared/protocol.ts	PanelResult	type	export type PanelResult<T>
+src/shared/protocol.ts	isDegrade	function	export function isDegrade(value: unknown): value is Degrade
+src/shared/protocol.ts	ReportHead	interface	export interface ReportHead
+src/shared/protocol.ts	ReportProgress	interface	export interface ReportProgress
+src/shared/protocol.ts	ReportGap	interface	export interface ReportGap
+src/shared/protocol.ts	ReportAction	interface	export interface ReportAction
+src/shared/protocol.ts	ReportResponse	interface	export interface ReportResponse
+src/shared/protocol.ts	TrunkSource	type	export type TrunkSource
+src/shared/protocol.ts	TrunkKey	type	export type TrunkKey
+src/shared/protocol.ts	TrunkFact	interface	export interface TrunkFact
+src/shared/protocol.ts	TrunkHighlight	interface	export interface TrunkHighlight
+src/shared/protocol.ts	TrunkItem	interface	export interface TrunkItem
+src/shared/protocol.ts	TrunkResponse	interface	export interface TrunkResponse
+src/shared/protocol.ts	DocPanelKind	type	export type DocPanelKind
+src/shared/protocol.ts	DocPanelState	type	export type DocPanelState
+src/shared/protocol.ts	DocPanelEntry	interface	export interface DocPanelEntry
+src/shared/protocol.ts	GateVerdict	interface	export interface GateVerdict
+src/shared/protocol.ts	DocsResponse	interface	export interface DocsResponse
+src/shared/protocol.ts	DagGraphNode	interface	export interface DagGraphNode
+src/shared/protocol.ts	DagStep	interface	export interface DagStep
+src/shared/protocol.ts	DagResponse	interface	export interface DagResponse
+src/shared/protocol.ts	DialogueSystemEvt	type	export type DialogueSystemEvt
+src/shared/protocol.ts	DialogueItem	type	export type DialogueItem
+src/shared/protocol.ts	DialogueResponse	interface	export interface DialogueResponse
+src/shared/protocol.ts	PromptSection	interface	export interface PromptSection
+src/shared/protocol.ts	PromptInjectionRecord	interface	export interface PromptInjectionRecord
+src/shared/protocol.ts	PromptsResponse	interface	export interface PromptsResponse
+src/shared/protocol.ts	TokenStageRow	interface	export interface TokenStageRow
+src/shared/protocol.ts	TokenOptimization	interface	export interface TokenOptimization
+src/shared/protocol.ts	TokenAvailability	type	export type TokenAvailability
+src/shared/protocol.ts	TokenPanelExtension	interface	export interface TokenPanelExtension
 src/stage-overview/assembler.ts	AssembleStageOptions	interface	export interface AssembleStageOptions
 src/stage-overview/assembler.ts	contextOf	function	export function contextOf(
 src/stage-overview/assembler.ts	TraceabilityBundle	interface	export interface TraceabilityBundle
