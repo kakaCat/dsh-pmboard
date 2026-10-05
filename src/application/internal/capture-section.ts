@@ -221,7 +221,12 @@ export function boundSectionTextFrom(
         lines.push('')
         lines.push(resolved.text)
         // INV-6：注入即留痕（本次到底注入了什么，可被看板/人核查）。
-        injectionLog?.record(injectionLogInputFromResolved(resolved, windowKey))
+        // FR-9（t-cc7233）：这一处是**每轮系统提示词的装配**——正文确实进了会话，
+        // 故 delivered=true、origin='system-prompt'（设计稿只列了三个写入点，这是实施发现的第四处）。
+        injectionLog?.record(injectionLogInputFromResolved(resolved, windowKey, {
+          origin: 'system-prompt',
+          delivered: true,
+        }))
       }
     }
   }

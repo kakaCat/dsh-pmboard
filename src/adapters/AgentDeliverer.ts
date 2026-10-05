@@ -8,6 +8,10 @@
  * @module dsh-pmboard/adapters/AgentDeliverer
  */
 import type { DiveRoundDeliveryPort, AgentDeliveryPort, CrossWindowDeliveryPort } from '../application/ports.js'
+import {
+  injectionLogInputForRound,
+  type InjectionLogPort,
+} from '../application/internal/injection-log.js'
 import { fmt } from '../domain/text/fmt.js'
 
 type MessageIdFactory = () => string
@@ -33,6 +37,8 @@ export class AgentDeliverer implements AgentDeliveryPort, DiveRoundDeliveryPort,
   private readonly resolveController: () => unknown
   /** 投递后的落盘确认（缺省 = 不确认，但仍如实报 delivered）。 */
   private readonly flushSession: FlushSession | undefined
+  /** 注入留痕口（FR-9 / t-cc7233）：缺省 = 不记（老装配逐字不变）。 */
+  private readonly injectionLog: InjectionLogPort | undefined
 
   /**
    * 构造期校验（REQ-261001201200-8f8b FR-1）：idFactory 必须是**函数**。
@@ -50,6 +56,12 @@ export class AgentDeliverer implements AgentDeliveryPort, DiveRoundDeliveryPort,
     resolveController?: () => unknown,
     /** FR-7（t5）：投递后的落盘确认（sessions.flush）；缺省 = 跳过确认。 */
     flushSession?: FlushSession,
+    /**
+     * 注入留痕口（REQ-261004222448-292a t-cc7233 FR-9）：`createRoundMessage` 造出来的回合消息
+     * 是**唯一真进会话**的投递路径，此前**一条留痕都没有**（采集缺口）——页面因此答不出
+     * 「这条提示词到底进了哪个窗口」。缺省 = 不记（老装配与既有测试逐字不变）。
+     */
+    injectionLog?: InjectionLogPort,
   ) {
     if (typeof idFactory !== 'function') {
       throw new TypeError(fmt('AgentDeliverer 装配错误：idFactory 必须是函数（收到 {got}）——请检查组合根是否按三参构造 (resolveAgents, idFactory, plugin)', {
@@ -61,6 +73,7 @@ export class AgentDeliverer implements AgentDeliveryPort, DiveRoundDeliveryPort,
     this.plugin = plugin
     this.resolveController = resolveController ?? (() => undefined)
     this.flushSession = flushSession
+    this.injectionLog = injectionLog
   }
 
   /** Dive 专用：创建回合消息（带 round 元数据和 source.kind='dive'）。 */
@@ -86,8 +99,28 @@ export class AgentDeliverer implements AgentDeliveryPort, DiveRoundDeliveryPort,
     return { message, messageId }
   }
 
-  /** Dive 专用：投递回合消息（直接调用 agent.followup，但消息带 source.kind='dive'）。 */
+  /**
+   * Dive 专用：投递回合消息（直接调用 agent.followup，但消息带 source.kind='dive'）。
+   *
+   * FR-9（t-cc7233）：**投递结果就地留痕**——这是唯一真进会话的路径，此前零留痕。
+   * 为什么把留痕包在投递外层：下面五个早退分支（服务缺失 / 不在线 / 无 followup / 抛错 / 成功）
+   * 都要记，写在里面就会出现「失败没留痕」的洞——失败恰恰是最该被看见的那种。
+   */
   deliverMessage(windowKey: string, message: unknown): { delivered: boolean; reason?: string } {
+    const result = this.deliverMessageRaw(windowKey, message)
+    this.recordRoundDelivery(windowKey, message, result.delivered)
+    return result
+  }
+
+  /** 记一条轮次投递留痕（只认 Dive 回合消息；跨窗口消息等不是「轮次」，不冒充）。 */
+  private recordRoundDelivery(windowKey: string, message: unknown, delivered: boolean): void {
+    if (this.injectionLog === undefined) return
+    const text = roundTextOf(message)
+    if (text === undefined) return
+    this.injectionLog.record(injectionLogInputForRound({ windowKey, text, delivered }))
+  }
+
+  private deliverMessageRaw(windowKey: string, message: unknown): { delivered: boolean; reason?: string } {
     const agents = this.resolveAgents() as AgentsLike | undefined
     if (typeof agents?.get !== 'function') {
       return { delivered: false, reason: 'agents 服务不可得（未装配 ctx.agents）' }
@@ -189,6 +222,23 @@ export class AgentDeliverer implements AgentDeliveryPort, DiveRoundDeliveryPort,
     }
     return { delivered: true }
   }
+}
+
+/**
+ * 取 Dive 回合消息的正文（供留痕）。**只认 `source.kind === 'dive'`**：
+ * 跨窗口消息（deliver 冷路径）虽同款形状但自署别的 kind，它不是「轮次投递」，
+ * 记成 dive-round 会让页面把交棒消息读成阶段纪律注入。
+ */
+function roundTextOf(message: unknown): string | undefined {
+  if (message === null || typeof message !== 'object') return undefined
+  const m = message as { content?: unknown; source?: unknown }
+  const source = m.source
+  if (source === null || typeof source !== 'object') return undefined
+  if ((source as { kind?: unknown }).kind !== 'dive') return undefined
+  if (!Array.isArray(m.content)) return undefined
+  const first = m.content[0] as { type?: unknown; text?: unknown } | undefined
+  if (first === undefined || first.type !== 'text' || typeof first.text !== 'string') return undefined
+  return first.text
 }
 
 /** 结构化描述一个不可预期的返回值（诊断用，不猜形状）。 */

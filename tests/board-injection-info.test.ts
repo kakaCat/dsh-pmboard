@@ -31,7 +31,7 @@ const W2 = 'session-injection-info-0002'
 
 /** 由真实解析结果组装一条留痕（字段与写入路径同源，避免手抄漂移）。 */
 function entryFor(at: number, windowKey: string, stage: 'brainstorming' | 'design' = 'brainstorming'): InjectionLogEntry {
-  const input = injectionLogInputFromResolved(resolveStagePrompt({ stage, difficulty: 'light', category: 'feature' }), windowKey)
+  const input = injectionLogInputFromResolved(resolveStagePrompt({ stage, difficulty: 'light', category: 'feature' }), windowKey, { origin: 'gate-h3', delivered: true })
   return { ...input, at }
 }
 
@@ -133,9 +133,9 @@ function makeLogFile(): { file: string; log: InjectionLogFile } {
 describe('GET /injection-log（只读查询接口）', () => {
   it('① 返回条目与写入留痕逐字段相等（含窗口过滤）', async () => {
     const { log } = makeLogFile()
-    log.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'brainstorming', difficulty: 'light', category: 'feature' }), W))
-    log.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'design', difficulty: 'heavy', category: 'bug' }), W))
-    log.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'accepting', difficulty: 'light', category: 'feature' }), W2))
+    log.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'brainstorming', difficulty: 'light', category: 'feature' }), W, { origin: 'gate-h3', delivered: true }))
+    log.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'design', difficulty: 'heavy', category: 'bug' }), W, { origin: 'gate-h3', delivered: true }))
+    log.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'accepting', difficulty: 'light', category: 'feature' }), W2, { origin: 'gate-h3', delivered: true }))
     await log.flush()
 
     const store = makeTestStore()
@@ -160,7 +160,7 @@ describe('GET /injection-log（只读查询接口）', () => {
 
   it('查询是只读的：GET 前后留痕文件字节不变', async () => {
     const { file, log } = makeLogFile()
-    log.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'implementing' }), W))
+    log.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'implementing' }), W, { origin: 'gate-h3', delivered: true }))
     await log.flush()
     const before = { size: statSync(file).size, text: readFileSync(file, 'utf8') }
 

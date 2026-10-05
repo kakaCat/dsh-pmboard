@@ -289,7 +289,12 @@ export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessio
             // 且经 agent.followup 会额外起一轮 agent loop。只留痕 + 发节点结算信号；
             // 凡"进会话"的投递只能走 round 半的 createRoundMessage（见投递白名单）。
             // INV-6：注入即留痕（与 capture-section 同一组装入口）。
-            deps.injectionLog?.record(injectionLogInputFromResolved(resolved, windowKey))
+            // INV-6 + FR-9（t-cc7233）：这一处**只留痕、不投递**（上一段已说明采集半不再投递），
+            // 故 delivered=false 如实记——否则页面会把「留了痕」读成「窗口收到了」。
+            deps.injectionLog?.record(injectionLogInputFromResolved(resolved, windowKey, {
+              origin: 'dive-node',
+              delivered: false,
+            }))
             // REQ-422af1 t10：idle = 上一回合的轮次边界 → 立即发节点结算信号（隔离在异步边界执行）。
             // 已结算过的节点不再结算（同一节点只遗弃一次上下文）。
             if (deps.onNodeSettled !== undefined && !settledNodes.has(windowKey + ':' + stage)) {

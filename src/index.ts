@@ -559,6 +559,8 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     // REQ-261003215944-9e04 FR-7（t5）：冷会话 resume + 投递后落盘确认。
     // 服务按调用时解析（惰性注入的回调未必在装配期送达）；缺省时投递器如实报"冷窗口投不到"。
     getSessionController: () => sessionControllerSvc,
+    // FR-9（REQ-261004222448-292a t-cc7233）：轮次投递（唯一真进会话的路径）也留痕。
+    injectionLog,
     flushSession: (agent: unknown) => {
       try {
         const svc = sessionsSvc as { flush?: (session: unknown) => Promise<boolean> | boolean } | undefined;

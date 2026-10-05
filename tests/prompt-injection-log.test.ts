@@ -71,7 +71,7 @@ describe('纯逻辑：ring buffer / 查询 / 校验', () => {
 
   it('injectionLogInputFromResolved 从 routeKey 拆出 stage/difficulty/category', () => {
     const resolved = resolveStagePrompt({ stage: 'design', difficulty: 'heavy', category: 'bug' })
-    const input = injectionLogInputFromResolved(resolved, W)
+    const input = injectionLogInputFromResolved(resolved, W, { origin: 'system-prompt', delivered: true })
     expect(input.stage).toBe('design')
     expect(input.difficulty).toBe('heavy')
     expect(input.category).toBe('bug')
@@ -89,13 +89,20 @@ describe('文件适配器：写入 / 读回 / 有界 / 缺文件', () => {
     const log = new InjectionLogFile(file, () => 777)
     const input: InjectionLogInput = injectionLogInputFromResolved(
       resolveStagePrompt({ stage: 'brainstorming', difficulty: 'light', category: 'feature' }), W,
+      { origin: 'system-prompt', delivered: true },
     )
     log.record(input)
     await log.flush()
     const all = await log.readAll()
     expect(all.length).toBe(1)
     const got = all[0]!
-    expect(Object.keys(got).sort()).toEqual([...INJECTION_LOG_FIELDS].sort())
+    // v2（t-cc7233）：十字段**仍然全在**（那段契约不变），另外多了 origin/delivered/text 三个
+    // 新条目必有的字段（truncated 只在正文被截断时出现）。
+    for (const k of INJECTION_LOG_FIELDS) expect(Object.keys(got)).toContain(k)
+    expect(got.origin).toBe('system-prompt')
+    expect(got.delivered).toBe(true)
+    expect(typeof got.text).toBe('string')
+    expect(got.truncated).toBeUndefined()
     expect(got.at).toBe(777)
     expect(got.windowKey).toBe(W)
     expect(got.routeKey).toBe('brainstorming/light/feature')
@@ -112,7 +119,7 @@ describe('文件适配器：写入 / 读回 / 有界 / 缺文件', () => {
     const dir = makeDir()
     const file = join(dir, 'prompt-injection-log.json')
     const log = new InjectionLogFile(file, (() => { let n = 0; return () => n++ })())
-    const input = injectionLogInputFromResolved(resolveStagePrompt({ stage: 'accepting' }), W)
+    const input = injectionLogInputFromResolved(resolveStagePrompt({ stage: 'accepting' }), W, { origin: 'system-prompt', delivered: true })
     for (let i = 0; i < INJECTION_LOG_CAP + 100; i++) log.record(input)
     await log.flush()
     const onDisk = JSON.parse(readFileSync(file, 'utf8')) as unknown[]
@@ -131,12 +138,12 @@ describe('文件适配器：写入 / 读回 / 有界 / 缺文件', () => {
     const dir = makeDir()
     const file = join(dir, 'prompt-injection-log.json')
     const first = new InjectionLogFile(file, () => 1)
-    first.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'design' }), W))
+    first.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'design' }), W, { origin: 'system-prompt', delivered: true }))
     await first.flush()
     rmSync(file, { force: true })
     const second = new InjectionLogFile(file, () => 2)
     await expect(second.readAll()).resolves.toEqual([])
-    second.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'design' }), W))
+    second.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'design' }), W, { origin: 'system-prompt', delivered: true }))
     await second.flush()
     expect((await second.readAll()).length).toBe(1)
     rmSync(dir, { recursive: true, force: true })
@@ -146,7 +153,7 @@ describe('文件适配器：写入 / 读回 / 有界 / 缺文件', () => {
     const dir = makeDir()
     const file = join(dir, 'prompt-injection-log.json')
     const log = new InjectionLogFile(file, (() => { let n = 0; return () => ++n })())
-    for (let i = 0; i < 3; i++) log.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'archived' }), W))
+    for (let i = 0; i < 3; i++) log.record(injectionLogInputFromResolved(resolveStagePrompt({ stage: 'archived' }), W, { origin: 'system-prompt', delivered: true }))
     await log.flush()
     expect(readdirSync(dir).filter((f) => f.endsWith('.tmp'))).toEqual([])
     expect((await log.queryLatest(2)).map((e) => e.at)).toEqual([2, 3])

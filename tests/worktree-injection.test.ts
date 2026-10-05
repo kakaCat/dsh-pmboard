@@ -15,11 +15,8 @@
 import { describe, it, expect } from 'vitest'
 import { makeHarness, req, task } from './application/harness.js'
 import { executeMoveTask } from '../src/application/use-cases/MoveTask.js'
-import { acceptSheet } from '../src/application/use-cases/AcceptSheet.js'
-import { submitVerification } from '../src/application/use-cases/SubmitVerification.js'
 import { deliverWorktreeNotice } from '../src/application/internal/worktree-notice.js'
 import type { CrossWindowDeliveryPort } from '../src/application/ports.js'
-import { FINAL_PASS_LABEL } from '../src/domain/text/labels.js'
 
 const EXEC = { agent: { id: 'session-w-001' } }
 const W = 'session-w-001'

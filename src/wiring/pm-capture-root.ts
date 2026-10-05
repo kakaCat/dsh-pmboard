@@ -11,6 +11,7 @@ import { createDiveSessionDriver, type DiveSessionDriverDeps } from '../applicat
 import type { DiveRoundDriver } from '../application/dive/round-driver.js';
 import type { ToolTraceEntry, RecentUserMsg } from '../adapters/SessionProbeAdapter.js';
 import type { InjectionLogFile } from '../adapters/InjectionLogFile.js';
+import type { InjectionLogPort } from '../application/internal/injection-log.js';
 import type { AddressInjection } from '../adapters/TemplateRoot.js';
 import type { GateChainPort } from '../application/gate/GatePostChain.js';
 import type { GatePromptPort, RequirementStore, TaskStore, UseCaseDeps } from '../application/ports.js';
@@ -51,6 +52,11 @@ export interface CaptureRuntimeDeps {
   getSessionController?: () => unknown;
   /** 投递后的落盘确认（sessions.flush）；缺省 = 跳过确认。 */
   flushSession?: (agent: unknown) => Promise<boolean> | boolean;
+  /**
+   * 注入留痕口（REQ-261004222448-292a t-cc7233 FR-9）：转交投递器，让**轮次投递**（唯一
+   * 真进会话的路径）也留下痕。缺省 = 不记（既有装配与测试逐字不变）。
+   */
+  injectionLog?: InjectionLogPort;
 }
 
 export interface CaptureRuntime {
@@ -78,6 +84,7 @@ export function createCaptureRuntime(deps: CaptureRuntimeDeps): CaptureRuntime {
     deps.plugin,
     deps.getSessionController,
     deps.flushSession,
+    deps.injectionLog,
   );
   return { pendingCapture, toolTrace, recentUserMsgs, deliverer };
 }

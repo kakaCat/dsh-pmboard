@@ -14,7 +14,7 @@
  * @module dsh-pmboard/application/query/contracts
  */
 import type { InjectionLogReadPort } from '../internal/injection-log.js'
-import type { RequirementStore, SessionProbe, TaskStore } from '../ports.js'
+import type { DocRepository, RequirementStore, SessionProbe, TaskStore } from '../ports.js'
 import type {
   DagResponse,
   DocsResponse,
@@ -45,6 +45,20 @@ export interface PanelQueryDeps {
   sessions: SessionProbe
   /** 工作区根（读文档正文与 RTM 用）；缺省时文档类查询降级为 `file-missing` */
   workspaceRoot?: string
+  /**
+   * 文档读端口（t-43fcf4 / t-242dd9 实施时补的**加法式**扩展，2026-10-05）。
+   *
+   * 为什么必须补：application 层禁止 `import node:`（`tests/layer-boundary.test.ts` 机械检查），
+   * 「文档在不在 / 正文是什么」只能走端口；`UseCaseDeps.docs` 就是那个口，组合根一行就能接上。
+   * **缺省 = 文档类查询按 `file-missing` 降级**（不是 500，也不是「没有文档」）。
+   */
+  docs?: DocRepository
+  /**
+   * 取"现在"的口子（同样加法式补入）。
+   * 为什么不让查询直接 `Date.now()`：停留时长 / 距上次更新是**渲染断言**要断言的数，
+   * 注入时钟后测试可固定，断言才不是靠运气。
+   */
+  now?: () => number
 }
 
 /** 六查询的公共入参（分页参数只在需要的查询里生效）。 */

@@ -80,7 +80,7 @@ describe('端到端：需求实质真的驱动了注入难度（FR-16 的核心�
     expect((resolved.difficultyReasons ?? []).length).toBeGreaterThan(0)
 
     // 留痕自动带走依据（看板可查"这次为什么按 heavy 注入"）
-    const entry = injectionLogInputFromResolved(resolved, 'w-test')
+    const entry = injectionLogInputFromResolved(resolved, 'w-test', { origin: 'gate-h3', delivered: true })
     expect(entry.difficulty).toBe('heavy')
     expect((entry.difficultyReasons ?? []).join(' ')).toContain('动架构')
   })

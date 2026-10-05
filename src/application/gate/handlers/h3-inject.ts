@@ -108,7 +108,13 @@ export function createH3InjectHandler(deps: H3InjectDeps): GateHandler {
           return miss({ kind: 'degraded', code: 'empty_prompt', reason: '取词结果为空（分片库缺该阶段）' })
         }
         const resolved = withAddress(located, deps, requirement, ctx.to, await deps.taskStore.listByRequirement(requirement.id))
-        deps.injectionLog?.record(injectionLogInputFromResolved(resolved, ctx.windowKey))
+        // FR-9（REQ-261004222448-292a t-cc7233）：H3 的注入随后会被回合投递送进窗口，
+        // 是**真投递进会话**——记 delivered=true、origin='gate-h3'，页面据此与
+        // 「只留痕」的节点结算（dive-node）区分开。
+        deps.injectionLog?.record(injectionLogInputFromResolved(resolved, ctx.windowKey, {
+          origin: 'gate-h3',
+          delivered: true,
+        }))
         if (scratch !== undefined) scratch.promptText = resolved.text
         return { kind: 'continue' }
       } catch (error) {
