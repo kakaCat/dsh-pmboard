@@ -906,6 +906,8 @@ export function apply(ctx: Context, config?: PluginConfig): void {
             },
             // 对话流要读会话事件：活窗口走同步快照，冷会话回落持久化读（见 SessionProbeAdapter）。
             sessionProbe,
+            // 首屏「几件事等人」读挂起确认（内存注册表；按需求问不到就按席位列逐个窗口问）。
+            pendingConfirms,
             // REQ-260923134706-e72f t2：isolationTrace 只读进路由（看板「执行流程→上下文管理」数据源），不能写。
             isolationLog: isolationTrace,
             // REQ-e3b6a0 t9 / FR-9：看板「确认产物」纳入切面——确认即推进 + 链侧投递（H2 需要会话句柄）。

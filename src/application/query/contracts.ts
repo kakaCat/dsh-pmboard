@@ -21,11 +21,21 @@ import type {
   DocsResponse,
   DialogueResponse,
   PanelResult,
+  PendingConfirmation,
   PromptsResponse,
   ReportResponse,
   TokenPanelExtension,
   TrunkResponse,
 } from '../../shared/protocol.js'
+
+/**
+ * 挂起确认的**只读**口（t-43fcf4 实施期补的加法式扩展）。
+ * 定义在这里而不是各查询里：三个查询（report / 后续任何"谁在等人"的块）口径必须同源。
+ */
+export interface PendingConfirmReadPort {
+  pendingForRequirement?(requirementId: string): readonly PendingConfirmation[]
+  pendingForWindow?(windowKey: string): PendingConfirmation | undefined
+}
 
 /**
  * 六查询共用的**四个只读端口**（施工前已核实三个已存在、一个为既有只读口）：
@@ -74,6 +84,15 @@ export interface PanelQueryDeps {
    * 「本次完整系统提示词」与「每回合成本」就会各说各话。缺省 = 该段显示「装配服务不可得」。
    */
   systemPrompt?: () => unknown
+  /**
+   * 挂起确认的**只读**口（t-43fcf4 实施期加法式补入）。
+   *
+   * 为什么按需求问而不是按窗口问：详情页是**按需求**打开的，它不知道「当前窗口」是谁。
+   * 现成的注册表只有 `pendingForWindow`，故两个方法都收：有 `pendingForRequirement` 就用它，
+   * 否则退化为「按该需求的席位列逐个窗口问」。两处都没有 → 缺口条显示
+   * 「挂起确认状态不可知」（**不写 0 条**冒充「没有人在等」）。
+   */
+  pendingConfirms?: PendingConfirmReadPort
 }
 
 /** 六查询的公共入参（分页参数只在需要的查询里生效）。 */

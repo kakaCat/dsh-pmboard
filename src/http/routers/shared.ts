@@ -163,6 +163,11 @@ export interface RouterCtx {
      */
     sessionProbe?: import('../../application/ports.js').SessionProbe
     /**
+     * 挂起确认只读口（REQ-261004222448-292a t-497311）：报告的「几件事等人」与缺口第四类要读它。
+     * 缺省 → 缺口里出现一条「挂起确认状态不可知」（**不写 0 条**冒充「没有人在等」）。
+     */
+    pendingConfirms?: import('../../application/query/contracts.js').PendingConfirmReadPort
+    /**
      * Token 端点的**扩展段**（REQ-261004222448-292a t-497311 FR-10）。
      *
      * 为什么用「回填钩子」而不是另起一条路由：`/requirements/:id/token` 的账本读、任务读、

@@ -121,6 +121,11 @@ export interface ReqboardRouteDeps {
    * 只注入桩、不必拖上真实台账/会话/文档端口。
    */
   panelQueries?: Partial<import('../application/query/contracts.js').PanelQueries>
+  /**
+   * 挂起确认只读口（REQ-261004222448-292a t-497311）：报告首屏的「几件事等人」读它。
+   * 缺省 → 该条缺口显示「挂起确认状态不可知」（不写 0 条冒充「没有人在等」）。
+   */
+  pendingConfirms?: import('../application/query/contracts.js').PendingConfirmReadPort
 }
 
 // REQ-261003191948-e94a t2：信封与错误映射的**唯一实现**搬到 ./envelope.js——
@@ -198,6 +203,8 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
       ...(deps.sessionWorkspace !== undefined ? { sessionWorkspace: deps.sessionWorkspace } : {}),
       // REQ-261004222448-292a t-497311：对话流要读会话事件（白名单照旧：漏一行 = 组合根传了、路由收不到）
       ...(deps.sessionProbe !== undefined ? { sessionProbe: deps.sessionProbe } : {}),
+      // REQ-261004222448-292a t-497311：「几件事等人」读挂起确认（白名单照旧）
+      ...(deps.pendingConfirms !== undefined ? { pendingConfirms: deps.pendingConfirms } : {}),
       ...(deps.advance !== undefined ? { advance: deps.advance } : {}),
       ...(deps.applicationDeps !== undefined ? { applicationDeps: deps.applicationDeps } : {}),
       // REQ-261001124111-5d36 t4：面板刷新策略进 SSE 的 build 帧（缺省 → 不下发，客户端用缺省值）

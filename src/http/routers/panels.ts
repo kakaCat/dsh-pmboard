@@ -17,6 +17,7 @@
 import type { ServerResponse } from 'node:http'
 import type { RouterCtx } from './shared.js'
 import type { PanelQueries, PanelQueryDeps } from '../../application/query/contracts.js'
+import { isRequirementId } from '../../domain/requirement/ReqboardPaths.js'
 import {
   isDegrade,
   type Degrade,
@@ -31,11 +32,13 @@ import {
 export const PANEL_LIMIT_MAX = 50
 
 /**
- * 需求 id 形状（`REQ-<数字>-<hex>`，本仓现行格式）。
- * 为什么要形状校验而不只是 `decodeURIComponent`：`queue.json` 的路径由 id 拼出，
- * 任何带 `/` 或 `..` 的 id 都是一个路径穿越面。**先判形状，再谈存不存在。**
+ * 需求 id 形状（**用仓内唯一判据**，不另写正则）。
+ *
+ * 为什么不能自己写死一条正则：`ReqboardPaths` 的 `isRequirementId` 同时接受
+ * `REQ-<12位时间戳>-<4hex>` 与存量的 `REQ-<6hex>` 两种形状，且它本身就是**路径穿越防线**
+ * （`queue.json` 的路径由 id 拼出）。另写一条更严的正则 = 让存量短 id 需求在六个面板端点上
+ * 一律 400（实测发现的缝），而更松的写法就是把穿越面重新打开。校验归它，路由只是调用方。
  */
-const REQ_ID_RE = /^REQ-\d{6,}-[0-9a-z]{4,}$/i
 
 /** 六条端点的键（与 PanelQueries 对齐；`token` 是扩展段，挂在既有端点后面）。 */
 export type PanelEndpoint = 'report' | 'trunk' | 'docs' | 'dag' | 'dialogue' | 'prompts' | 'token'
@@ -69,6 +72,7 @@ export function panelDepsFrom(ctx: RouterCtx, over: Partial<PanelQueryDeps> = {}
     ...(ctx.deps.systemPrompt !== undefined ? { systemPrompt: ctx.deps.systemPrompt } : {}),
     ...(ctx.deps.docs !== undefined ? { docs: ctx.deps.docs } : {}),
     ...(ctx.deps.sessionProbe !== undefined ? { sessions: ctx.deps.sessionProbe } : {}),
+    ...(ctx.deps.pendingConfirms !== undefined ? { pendingConfirms: ctx.deps.pendingConfirms } : {}),
     ...over,
   }
 }
@@ -112,7 +116,7 @@ export function createPanelsRouter(ctx: RouterCtx, deps: PanelsRouterDeps) {
   /** `:id` 形状校验（返回 undefined = 400 已写）。 */
   function idOf(res: ServerResponse, raw: string): string | undefined {
     const id = decodeURIComponent(raw)
-    if (!REQ_ID_RE.test(id)) {
+    if (!isRequirementId(id)) {
       ctx.json(res, 400, { success: false, error: `需求 id 形状非法：${raw}`, code: 'invalid_input' })
       return undefined
     }
