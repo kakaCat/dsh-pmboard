@@ -1,7 +1,7 @@
 # 前端设计令牌（生成物）
 
 > 生成物：由 `scripts/kb-build.mts` 从 src\/client\/styles? 确定性抽取，**请勿手改**（改样式后重跑）。
-> 全量类名（784 个）在 `docs/knowledge/design-tokens.classes.tsv`——机器索引、不进上下文，用 `reqboard_kb(kind='tokens', query='<类名>')` 检索。
+> 全量类名（793 个）在 `docs/knowledge/design-tokens.classes.tsv`——机器索引、不进上下文，用 `reqboard_kb(kind='tokens', query='<类名>')` 检索。
 
 ## 颜色 #colors
 
@@ -175,11 +175,11 @@
 - `dsh-pm-sn` · 32 个
 - `dsh-pm-cprog` · 29 个
 - `dsh-pm-list` · 23 个
+- `dsh-pm-trunk` · 22 个
 - `dsh-pm-trace` · 20 个
-- `dsh-pm-trunk` · 20 个
 - `dsh-pm-dag` · 19 个
+- `dsh-pm-report` · 18 个
 - `dsh-pm-stage` · 18 个
-- `dsh-pm-report` · 17 个
 - `dsh-pm-coverage` · 16 个
 - `dsh-pm-plan` · 14 个
 - `dsh-pm-task` · 14 个
@@ -191,6 +191,6 @@
 - `dsh-pm-mk` · 10 个
 - `dsh-pm-artifact` · 9 个
 - `dsh-pm-tok` · 9 个
+- `dsh-pm-md` · 8 个
 - `dsh-pm-timeline` · 8 个
 - `dsh-pm-archive` · 7 个
-- `dsh-pm-comment` · 7 个

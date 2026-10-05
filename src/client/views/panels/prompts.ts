@@ -25,6 +25,7 @@
  * @module dsh-pmboard/client/views/panels/prompts
  */
 import { esc } from '../../html.js'
+import { mdInline } from '../../render/md-inline.js'
 import { fmtTime } from '../../render/dom-utils.js'
 import { displayDocPath } from '../../open-doc.js'
 import { resolveFragmentRef } from '../../node-panel-process.js'
@@ -305,8 +306,8 @@ function renderSystemSection(view: PromptsView): string {
       + '<summary><span class="dsh-pm-prompt-name">本次完整系统提示词（' + String(view.sections.length) + ' 段合并）</span>'
       + '<span class="dsh-pm-prompt-meta">' + esc(String(chars)) + ' 字符 · 整段铺开</span></summary>'
       + preBlock(mergedText)
-      + '<div class="dsh-pm-note">「── 段名 ──」的分隔行是**本页加的**，不在提示词正文里；'
-      + '被裁片段单独标出（它们**没有**进本次装配）。</div></details>'
+      + '<div class="dsh-pm-note">「── 段名 ──」的分隔行是<b>本页加的</b>，不在提示词正文里；'
+      + '被裁片段单独标出（它们<b>没有</b>进本次装配）。</div></details>'
     : ''
   return '<section class="dsh-pm-pp-sec">' + head
     + '<div class="dsh-pm-note">' + esc(metaBits.join(' · ')) + '（字符数与 token 数是读时装配/估算，不是留痕）</div>'
@@ -365,7 +366,7 @@ function renderSpecVsActual(view: PromptsView): string {
       + '<div>两边都有：' + (both.length === 0 ? '—' : esc(both.join('、'))) + '</div>'
       + '<div>规定有 · 留痕未见：' + (onlySpec.length === 0 ? '—' : esc(onlySpec.join('、'))) + '</div>'
       + '<div>留痕有 · 规定清单未见：' + (onlyActual.length === 0 ? '—' : esc(onlyActual.join('、'))) + '</div>'
-      + '<div class="dsh-pm-note">差集按 **id 字面** 比对：装配段名与片段 id 的命名口径可能不同，'
+      + '<div class="dsh-pm-note">差集按 <b>id 字面</b> 比对：装配段名与片段 id 的命名口径可能不同，'
       + '所以「留痕未见」不等于「规定没落地」——落地与否看后果（B 段）。</div></div>'
     actualCol = '<div class="dsh-pm-sv-col" data-sv="actual"><div class="dsh-pm-sv-h">实际：注入留痕（最近一条）</div>'
       + '<div class="dsh-pm-note">' + esc(metaBits.join(' · ')) + '</div>'
@@ -456,7 +457,7 @@ function renderContextSection(view: PromptsView): string {
       + '<span class="dsh-pm-iso-status dsh-pm-np-iso-status">' + esc(ISO_LABEL[iso.status] ?? iso.status) + '</span>'
       + '<span class="dsh-pm-iso-meta dsh-pm-np-iso-meta">' + esc(iso.stage) + (iso.at === undefined ? '' : ' · ' + fmtTime(iso.at))
       + (iso.packageChars === undefined ? '' : ' · 输入包 ' + String(iso.packageChars) + ' 字符') + '</span>'
-      + '<div class="dsh-pm-iso-reason dsh-pm-np-iso-reason">' + esc(iso.reason) + '</div></div>').join('')
+      + '<div class="dsh-pm-iso-reason dsh-pm-np-iso-reason">' + mdInline(iso.reason) + '</div></div>').join('')
   return '<section class="dsh-pm-pp-sec">' + head
     + '<div class="dsh-pm-note" data-context-available="1">' + esc(bits.join(' · ')) + '</div>'
     + rows + '</section>'

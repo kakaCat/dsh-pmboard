@@ -21,6 +21,7 @@
  * @module dsh-pmboard/client/views/panels/dialogue
  */
 import { esc } from '../../html.js'
+import { mdInlineEscaped } from '../../render/md-inline.js'
 import { fmtTime, windowCodeFromSessionId } from '../../render/dom-utils.ts'
 import type { DialogueSystemEvt } from '../../../shared/protocol.js'
 import type { ReportTabCtx, ReportTabDef } from '../report-tabs.js'
@@ -133,10 +134,23 @@ export function filterDialogueItems(
 /**
  * 命中高亮（**先转义再包 `<mark>`**：转义在前，插入的标记只可能是我们自己写的）。
  * 用 `indexOf` 逐段切而不是正则：关键词是人手输的，正则元字符（`.`、`(`、`*`）不该被当成语法。
+ *
+ * 转义之后、返回之前再过一遍 `mdInlineEscaped`：对话正文也是**文档原文**（`**加粗**`、
+ * `` `innerHTML` `` 一样会出现），显示的转换必须与页面其它处**同一份实现**；
+ * 它接的是"已经转义好、且已经插了 `<mark>`"的串，所以**不能再转义一次**（否则 `<mark>` 变字面量）。
  */
 export function highlightDialogueText(text: string, query: string): string {
   const needle = query.trim().toLowerCase()
-  if (needle.length === 0) return esc(text)
+  return mdInlineEscaped(needle.length === 0 ? esc(text) : markHits(text, needle))
+}
+
+/**
+ * 逐段转义 + 包 `<mark>`：**下标切的是原文**、转义的是每一小段（不是在转义后的串上切）。
+ *
+ * 这条区分是必需的：`&` → `&amp;` 会让"转义后的串"与原文**长度不同**，
+ * 拿原文下标去切转义串，命中的位置就会漂到别处（正文越靠后漂得越多）。
+ */
+function markHits(text: string, needle: string): string {
   const hay = text.toLowerCase()
   let out = ''
   let i = 0

@@ -32,6 +32,9 @@
  *   A4 未激活面板缺席：默认只渲染 `trunk`；`[data-panel="token"|"docs"|"dag"|"dialogue"|"prompts"]`
  *      在真 DOM 里必须查不到（不是查字符串）。
  *   A5 操作条按钮不重叠：包围盒两两不相交（design/test-cases.md 对窄 900 档的第二条断言）。
+ *   A6 操作条版式（**仅 1280 档**，2026-10-05 人类验收「排版散架」后追加）：整块高 ≤ 72px，
+ *      且动作按钮 `offsetTop` 只有一个取值（同一行）；状态带三格各自 ≤ 220px
+ *      （格内每条只给「项名 + 状态」，全文进 title）。900 档不判——那档动作区折行是宽度使然。
  *
  * 用法：npx tsx scripts/req-report-probe.mts
  * 退出码：0 = 四组合全过；1 = 有断言失败；2 = 环境不可用（找不到 Chrome **或** Chrome 四组合全起不来），
@@ -107,6 +110,30 @@ const TABS_TOP_MAX = 713
  * 所以探针量的是**整块高度**——限高就会在这里露馅（同时 A3 的内层滚动判据也会红）。
  */
 const COMMENT_LIST_MAX_H = 260
+
+/**
+ * 操作条（`data-report-actionbar`）在 **1280 档**的整块高度上限（px）+ 按钮行数上限（1 行）。
+ *
+ * 来源：2026-10-05 人类验收「操作条排版散架」——`← 看板 ｜ 本阶段操作 ｜ 验收通过并归档
+ * [需人操作] 后果：…` 挤第一行、`退回返工` 第二行、`取消需求` 第三行，每个按钮后面还跟着
+ * 一段 inline 的「后果：…」。修法是把「标签 ｜ 按钮区 ｜ 需人操作标」分成三个并列项、
+ * 后果移到按钮下方（见 `report-head.ts#buildReportActionBar`）。
+ *
+ * 判据两条，**都只在 1280 档**判（900 档动作区本来就会折行——宽度不够，判它会逼着把按钮
+ * 缩到不可读）：
+ *  ① 整块高度 ≤ 本值（一条 ≈ 按钮 27px + 后果一行 15px + 上下内边距 16px ≈ 58px，留足余量）；
+ *  ② 动作按钮**只有一行**（`offsetTop` 只有一个取值）——"参差"正是多行且不等宽造成的。
+ */
+const ACTION_BAR_MAX_H = 72
+
+/**
+ * 状态带**单格**在 1280 档的高度上限（px）。
+ *
+ * 来源：2026-10-05 人类验收——三格把「验收标准原文 + 意见」整段塞进小格再截断，
+ * 读出来是"半句 + …"，且把首屏吃掉。口径改成格内每条只给「项名 + 状态」（≤1 行），
+ * 全文（what ｜ why ｜ 出处）进 `title`，逐项正文去它自己的落点（条款/门禁、『文档』Tab 的验收单）。
+ */
+const BAND_CELL_MAX_H = 220
 
 /**
  * 线上真实存在的「产物自动发现」系统转储（`/report` 里一条 11,157 字）的等价标本：
@@ -386,6 +413,8 @@ body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; 
   var COMMENT_LIST_MAX_H = ${String(COMMENT_LIST_MAX_H)};
   var COMMENT_RENDER_LIMIT = ${String(COMMENT_RENDER_LIMIT)};
   var EXPECT_LONG = ${String(expectLong)};
+  var ACTION_BAR_MAX_H = ${String(ACTION_BAR_MAX_H)};
+  var BAND_CELL_MAX_H = ${String(BAND_CELL_MAX_H)};
   function hOf(el) { return el === null ? 0 : Math.round(el.getBoundingClientRect().height); }
   /* 评论列表容器（data-comment-list）：它是"头部长日志把 Tab 顶出首屏"那处缺陷的现场。
      量它的**整块高度**（不设限高、不做内层滚动，所以只能靠内容控制）并设硬上限 COMMENT_MAX_H。
@@ -454,6 +483,49 @@ body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; 
   }
   if (overlaps.length > 0) problems.push('A5 操作条按钮重叠：' + overlaps.join(' ; '));
 
+  /* ── A6 操作条版式（2026-10-05 人类验收：三行参差 / 后果 inline 跟随）── */
+  var bar = shell === null ? null : shell.querySelector('[data-report-actionbar]');
+  var barH = hOf(bar);
+  var actionTops = [];
+  if (bar !== null) {
+    var actionBtns = bar.querySelectorAll('.dsh-pm-report-action > .dsh-pm-btn');
+    for (var ab = 0; ab < actionBtns.length; ab++) {
+      var at = Math.round(actionBtns[ab].offsetTop);
+      if (actionTops.indexOf(at) < 0) actionTops.push(at);
+    }
+  }
+  /* 只看 1280 档：900 档动作区折行是宽度使然（见 ACTION_BAR_MAX_H 注释） */
+  var barJudged = bar !== null && de.clientWidth >= 1280;
+  if (barJudged && barH > ACTION_BAR_MAX_H) {
+    problems.push('A6 操作条：1280 档整块高 ' + String(barH) + 'px > 上限 ' + String(ACTION_BAR_MAX_H)
+      + 'px（标签 / 按钮 / 后果不许挤成同一个文本流，后果应落在按钮下方一行）');
+  }
+  if (barJudged && actionTops.length > 1) {
+    problems.push('A6 操作条：1280 档动作按钮落在 ' + String(actionTops.length) + ' 行（offsetTop=' + actionTops.join(',')
+      + '），要求同一行——参差就是"第一个按钮跟标签挤一行、其余各自换行"');
+  }
+  /* 状态带三格：1280 档每格 ≤ BAND_CELL_MAX_H（口径见常量注释）。
+     三格等高等宽由 grid 保证（stretch），这里只判"有没有被内容撑爆"。 */
+  var bandTops = [];
+  var bandCellHs = [];
+  if (band !== null) {
+    var bandCells = band.querySelectorAll('[data-band-cell]');
+    for (var bc = 0; bc < bandCells.length; bc++) {
+      bandCellHs.push(Math.round(bandCells[bc].getBoundingClientRect().height));
+      var bt = Math.round(bandCells[bc].offsetTop);
+      if (bandTops.indexOf(bt) < 0) bandTops.push(bt);
+    }
+  }
+  var maxBandCellH = bandCellHs.length === 0 ? 0 : Math.max.apply(null, bandCellHs);
+  var bandJudged = band !== null && de.clientWidth >= 1280;
+  if (bandJudged && maxBandCellH > BAND_CELL_MAX_H) {
+    problems.push('A6 状态带：1280 档单格最高 ' + String(maxBandCellH) + 'px > 上限 ' + String(BAND_CELL_MAX_H)
+      + 'px（格内每条只给「项名 + 状态」，全文进 title，逐项正文去它自己的落点）');
+  }
+  if (bandJudged && bandTops.length > 1) {
+    problems.push('A6 状态带：1280 档三格不在同一行（offsetTop=' + bandTops.join(',') + '）');
+  }
+
   var diag = document.createElement('div');
   diag.id = 'diag';
   diag.textContent = JSON.stringify({
@@ -461,6 +533,8 @@ body { font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; 
     doc: docBox, shell: shellBox, docOverflow: docOverflow, shellOverflow: shellOverflow,
     a1: a1, geom: geom, a3: { scanned: scanned, bad: bad }, overlaps: overlaps,
     tabsTopMax: TABS_TOP_MAX, commentListMaxH: COMMENT_LIST_MAX_H, commentRenderLimit: COMMENT_RENDER_LIMIT,
+    barH: barH, actionTops: actionTops, actionBarMaxH: ACTION_BAR_MAX_H, barJudged: barJudged,
+    bandCellHs: bandCellHs, bandCellMaxH: BAND_CELL_MAX_H, bandJudged: bandJudged,
     a4: { present: present, hostCount: hostCount, trunkPresent: trunkPresent },
     problems: problems
   });
@@ -505,6 +579,13 @@ interface Diag {
   tabsTopMax: number
   commentListMaxH: number
   commentRenderLimit: number
+  barH: number
+  actionTops: number[]
+  actionBarMaxH: number
+  barJudged: boolean
+  bandCellHs: number[]
+  bandCellMaxH: number
+  bandJudged: boolean
   a3: { scanned: number; bad: string[] }
   overlaps: string[]
   a4: { present: string[]; hostCount: number; trunkPresent: boolean }
@@ -618,6 +699,13 @@ function main(): void {
         + ` ｜ 状态带 ${String(diag.geom.bandH)}px（做到哪了 ${String(diag.geom.progressCellH)}`
         + ` / 缺口 ${String(diag.geom.gapsCellH)} / 成效 ${String(diag.geom.outcomeCellH)}）`)
       line(`A5 操作条按钮不重叠：${String(0)} 处相交 → ${yn(diag.overlaps.length === 0)}（窄档 design/test-cases.md 要求）`)
+      line(`A6 操作条版式（1280 档硬判据）：整块高 ${String(diag.barH)}px ≤ 上限 ${String(diag.actionBarMaxH)}px → `
+        + `${yn(!diag.barJudged || diag.barH <= diag.actionBarMaxH)}`
+        + ` ｜ 动作按钮 ${String(diag.actionTops.length)} 行（offsetTop=[${diag.actionTops.join(', ')}]）→ `
+        + `${yn(!diag.barJudged || diag.actionTops.length <= 1)}`
+        + `${diag.barJudged ? '' : '（900 档不判：动作区折行是宽度使然）'}`)
+      line(`A6 状态带（1280 档硬判据）：三格高 [${diag.bandCellHs.join(', ')}]px ≤ 上限 ${String(diag.bandCellMaxH)}px/格 → `
+        + `${yn(!diag.bandJudged || diag.bandCellHs.every(h => h <= diag.bandCellMaxH))}`)
 
       // A2：无横向溢出
       line(`A2 无横向溢出：documentElement scrollWidth=${String(diag.doc.sw)} ≤ clientWidth=${String(diag.doc.cw)}+1 → ${yn(!diag.docOverflow)}`
@@ -639,13 +727,15 @@ function main(): void {
         && diag.a3.bad.length === 0
         && diag.a4.present.length === 0 && diag.a4.hostCount === 1 && diag.a4.trunkPresent
         && diag.geom.foldOk && diag.overlaps.length === 0
+        && (!diag.barJudged || (diag.barH <= diag.actionBarMaxH && diag.actionTops.length <= 1))
+        && (!diag.bandJudged || diag.bandCellHs.every(h => h <= diag.bandCellMaxH))
         && diag.geom.tabsInFold && diag.geom.commentsH <= diag.commentListMaxH
         && diag.geom.commentRows <= diag.commentRenderLimit
         && diag.w === width
 
       if (ok) {
         passed++
-        console.log(`PASS w=${String(diag.w)} state=${state.key}（四问可答·L0 落点在首屏 ✓ / Tab 栏 top=${String(diag.geom.tabsTop)} ≤ ${String(diag.tabsTopMax)} ✓ / 评论列表 ${String(diag.geom.commentsH)}px ≤ ${String(diag.commentListMaxH)}px ✓ / 无横向溢出 ✓ / 无内层滚动容器 ✓ / 未激活面板缺席 ✓ / 操作条不重叠 ✓）`)
+        console.log(`PASS w=${String(diag.w)} state=${state.key}（四问可答·L0 落点在首屏 ✓ / Tab 栏 top=${String(diag.geom.tabsTop)} ≤ ${String(diag.tabsTopMax)} ✓ / 评论列表 ${String(diag.geom.commentsH)}px ≤ ${String(diag.commentListMaxH)}px ✓ / 无横向溢出 ✓ / 无内层滚动容器 ✓ / 未激活面板缺席 ✓ / 操作条不重叠 ✓ / 操作条整块 ≤ ${String(diag.actionBarMaxH)}px 且按钮同一行 ✓）`)
       } else {
         console.error(`FAIL w=${String(width)} state=${state.key}`)
         for (const p of diag.problems) console.error('  - ' + p)
@@ -670,7 +760,7 @@ function main(): void {
   }
   console.log(`\nPROBE PASS（${String(passed)}/4 组合：1280/900 × 在途 implementing/终态 archived；`
     + '四问可答（L0 结论头/操作条/状态带落点在首屏）/ **Tab 栏 top ≤ 713** / 评论列表整块 ≤ 260px /'
-    + ' 无横向溢出 / 无内层滚动容器 / 未激活面板缺席 / 操作条不重叠）')
+    + ' 无横向溢出 / 无内层滚动容器 / 未激活面板缺席 / 操作条不重叠 / 操作条整块 ≤ 72px 且按钮同一行 / 状态带三格 ≤ 220px）')
 }
 
 function yn(v: boolean): string {

@@ -196,7 +196,7 @@ describe('report-head · 结论头与操作条（FR-3）', () => {
     expect(html).toContain('实施窗口下一步：批准拆分计划后落库任务卡')
   })
 
-  it('操作条：每条按钮带后果说明，humanOnly 标「需人操作」，走既有事件通道', () => {
+  it('操作条：按钮只写动作（后果进 title）、分级 + 危险动作带确认、走既有事件通道', () => {
     const html = buildReportHead(makeReport())
     expect(html).toContain('data-report-actions="1"')
     // 既有通道（不新造写路径）
@@ -205,9 +205,18 @@ describe('report-head · 结论头与操作条（FR-3）', () => {
     expect(html).toContain('data-action="move-req"')
     expect(html).toContain('data-to="canceled"') // cancel → move-req + to=canceled
     expect(html).toContain('data-action-key="cancel"')
-    expect(html).toContain('需人操作')
-    expect(countOf(html, '后果：')).toBe(2)
-    expect(html).toContain('后果：提交验收；任务全部完成时系统会自动推进')
+    // 2026-10-05 人类验收：**说明绝不挨着按钮**（VA/Octopus 按钮内容规范）——
+    // 后果进按钮 title（悬停可读全文）+ 点开后的确认框正文；常驻区只留主操作下方那一句短提示
+    expect(countOf(html, '后果：')).toBe(0)
+    expect(html).toContain('title="提交验收；任务全部完成时系统会自动推进"')
+    expect(countOf(html, 'dsh-pm-action-consequence')).toBe(1)
+    // 分级：1 个 primary（实心）+ 危险动作排最后且带 data-confirm（壳在点击那一跳弹确认）
+    expect(countOf(html, 'data-action-rank="primary"')).toBe(1)
+    expect(html.indexOf('data-action-rank="danger"')).toBeGreaterThan(html.indexOf('data-action-rank="primary"'))
+    expect(html).toContain('data-confirm="')
+    // 人工门整条只标一次（不再是逐按钮的粉色实心块）
+    expect(countOf(html, 'dsh-pm-human-only')).toBe(1)
+    expect(html).toContain('均需人工确认')
   })
 
   it('窗口跳转：每个席位一个按钮（data-jump-session + 角色标注），已归档仍可点', () => {
@@ -708,6 +717,53 @@ describe('report-shell · 点开正文的委派（只由壳接一处）', () => 
     expect(opened).toHaveLength(1)
     detach()
     expect(removed.sort()).toEqual(['click', 'input'])
+  })
+
+  it('壳的 attach：危险动作（data-confirm）先弹确认；拒绝就拦下点击（preventDefault + stopPropagation）', () => {
+    const handlers = new Map<string, (ev: Event) => void>()
+    const root = {
+      addEventListener: (t: string, h: (ev: Event) => void) => { handlers.set(t, h) },
+      removeEventListener: () => {},
+    } as unknown as HTMLElement
+    let opened = 0
+    const shell = createReportShell({
+      requirementId: REQ_ID,
+      loadReport: () => Promise.resolve(makeReport()),
+      load: (key) => Promise.resolve(panelStub(key)),
+      openDoc: () => { opened += 1 },
+      revision: 1,
+    })
+    shell.attach(root)
+    const click = handlers.get('click')!
+    let prevented = 0
+    let stopped = 0
+    const mkEvent = (el: unknown): Event => ({
+      target: {
+        closest: (sel: string) => (sel === '[data-confirm]' ? el : null),
+      },
+      preventDefault: () => { prevented += 1 },
+      stopPropagation: () => { stopped += 1 },
+    } as unknown as Event)
+    const danger = { dataset: { confirm: '「取消需求」：取消后需求移出在途泳道。确定执行吗？' }, getAttribute: () => null }
+
+    // 宿主（node 环境）没有 window.confirm → **放行**（点了没反应比没有确认更坏）
+    click(mkEvent(danger))
+    expect(prevented).toBe(0)
+
+    const g = globalThis as unknown as { window?: unknown }
+    const prev = g.window
+    try {
+      g.window = { confirm: () => false }
+      click(mkEvent(danger))
+      expect(prevented).toBe(1)
+      expect(stopped).toBe(1)
+      g.window = { confirm: () => true }
+      click(mkEvent(danger))
+      expect(prevented).toBe(1) // 确认通过：原样冒泡，交给既有通道
+    } finally {
+      g.window = prev
+    }
+    expect(opened).toBe(0) // 这条链子只管确认，不替通道开正文
   })
 
   it('壳的 attach：页内检索（[data-dialogue-search]）就地过滤，不重新取数', () => {

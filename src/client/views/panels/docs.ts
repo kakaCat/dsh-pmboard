@@ -37,6 +37,7 @@
  * @module dsh-pmboard/client/views/panels/docs
  */
 import { esc } from '../../html.js'
+import { mdInline } from '../../render/md-inline.js'
 import type { ReportTabCtx, ReportTabDef } from '../report-tabs.js'
 import type {
   ArchiveDoc,
@@ -470,22 +471,22 @@ function verifyRow(item: VerificationItem): string {
     + (needsHuman ? ' data-needs-human="1"' : '')
     + '>'
     + '<td class="dsh-pm-doc-cell-criterion"><span class="dsh-pm-hint">' + esc(item.id) + '</span> '
-    + esc(item.criterion) + '</td>'
+    + mdInline(item.criterion) + '</td>'
     + '<td class="dsh-pm-doc-cell-result">'
     + ((item.result ?? '').trim().length > 0
-      ? esc(item.result)
+      ? mdInline(item.result)
       : '<span class="dsh-pm-hint">未提供实际结果（agent 未实测 / 未填写）</span>')
     + '</td>'
     + '<td class="dsh-pm-doc-cell-source">' + sourceCell(item) + '</td>'
     + '<td class="dsh-pm-doc-cell-human">'
     + (needsHuman
       ? '<span class="dsh-pm-flag verify-pending">需人工确认'
-        + (reason.length > 0 ? '：' + esc(reason) : '（未写原因）') + '</span>'
+        + (reason.length > 0 ? '：' + mdInline(reason) : '（未写原因）') + '</span>'
       : '<span class="dsh-pm-hint">否（agent 可自证）</span>')
     + '</td>'
     + '<td class="dsh-pm-doc-cell-evidence">' + evidenceCell(item) + '</td>'
     + '<td class="dsh-pm-doc-cell-opinion">'
-    + (opinion.length > 0 ? esc(opinion) : '<span class="dsh-pm-hint">无意见（裁决时未写）</span>')
+    + (opinion.length > 0 ? mdInline(opinion) : '<span class="dsh-pm-hint">无意见（裁决时未写）</span>')
     + '</td>'
     + '<td class="dsh-pm-doc-cell-verdict">'
     // 注意用 `data-verify-verdict` 而不是 `data-verdict`：后者是**门禁行**的选择器，
@@ -524,7 +525,7 @@ function verificationSection(sheet: DocsResponse['verification']): string {
     + ' · 提交人：' + actorText(sheet.generatedBy)
     + (sheet.reworkOnly === true ? ' · 本轮只含上一版未过项（返工续验）' : '')
     + '</div>'
-    + (view.reviewNote === undefined ? '' : '<div class="dsh-pm-block-note">审核意见：' + esc(view.reviewNote) + '</div>')
+    + (view.reviewNote === undefined ? '' : '<div class="dsh-pm-block-note">审核意见：' + mdInline(view.reviewNote) + '</div>')
   const items = coerceAll(Array.isArray(sheet.items) ? sheet.items : [], asItem)
   if (items.length === 0) {
     return '<div class="dsh-pm-block" data-doc-section="verification">' + head + meta
@@ -567,7 +568,7 @@ function gateRow(g: GateVerdict): string {
     + '<td class="dsh-pm-doc-cell-reason">'
     // 有 reason 就显示**原文**（退回理由必须可读，不得改述）；没有就用该结论的默认说辞补上
     + (reason.length > 0
-      ? esc(reason)
+      ? mdInline(reason)
       : '<span class="dsh-pm-hint">'
         + esc((VERDICT_NOTE as Readonly<Record<string, string>>)[verdict] ?? '台账没有给这道门的说明') + '</span>')
     + '</td>'

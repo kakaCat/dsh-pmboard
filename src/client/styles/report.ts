@@ -130,7 +130,7 @@ export const REPORT_CSS = `
   font-size: var(--f-tiny); padding: 1px 7px; border-radius: var(--pm-pill);
   background: rgba(220,53,69,.12); color: var(--pm-danger); border: 0;
 }
-/* 「停留 … · 距上次更新 …」右对齐（原型 head-top 的「更新于 23:41」就在最右） */
+/* 「停留 … · 距上次更新 …」右对齐（原型 head-top 的」更新于 23:41」就在最右） */
 .dsh-pm-detail[data-report-shell] .dsh-pm-detail-updated {
   margin-left: auto; font-size: var(--f-small); color: var(--pm-text2);
   font-variant-numeric: tabular-nums;
@@ -180,28 +180,50 @@ export const REPORT_CSS = `
 .dsh-pm-detail[data-report-shell] .dsh-pm-dot-wrapper.current .dsh-pm-dot-label {
   color: var(--pm-text); font-weight: 600;
 }
-/* 操作条 = 原型 .actions（浅底 + 细边 + 6px 圆角的一条，「← 看板」 也在里面） */
+/* 操作条（2026-10-05 人类验收重做：三行参差 → **一行按钮** + 分级 + 只留一句常驻提示）。
+   层级：「← 看板」(单独在左) ｜ 标签 ｜ 按钮区 ｜ 「均需人工确认」。
+   按钮区自己承担换行；标签与行尾标不参与它的换行计算——上一版把标签/按钮/后果塞进
+   同一个 flex 流，换行点由最长的后果决定，于是"第一个按钮跟标签挤一行、其余各自换行"。 */
 .dsh-pm-detail[data-report-shell] .dsh-pm-rh-bar {
-  flex-basis: 100%; display: flex; align-items: flex-start; flex-wrap: wrap; gap: var(--s2);
+  flex-basis: 100%; display: flex; align-items: flex-start; flex-wrap: wrap; gap: 6px var(--s3);
   margin-top: var(--s2); padding: var(--s2) var(--s3);
   background: var(--pm-bg-softer); border: 1px solid var(--pm-line-soft); border-radius: var(--r1);
 }
 .dsh-pm-detail[data-report-shell] .dsh-pm-rh-bar .dsh-pm-report-actions {
-  flex: 1 1 0; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2);
+  flex: 1 1 420px; min-width: 0; display: flex; align-items: flex-start; flex-wrap: nowrap; gap: 6px var(--s3);
   padding: 0; border: 0; background: none;
 }
-.dsh-pm-detail[data-report-shell] .dsh-pm-action-bar-label { font-size: var(--f-small); color: var(--pm-text2); }
-/* 每个动作：按钮 + 「需人操作」标 + 后果说明，同行折行（后果是给动手前看的一句话） */
+/* 按钮区：**只装动作格**（标签与行尾标在它外面）。
+   等宽栅格而不是文本流 → 1280 档三个按钮同一行、同一 offsetTop（硬判据见探针 A6）；
+   900 档折行时也是等宽对齐（同一行的按钮宽度一致），不会参差。 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-action-grid {
+  flex: 1 1 auto; min-width: 0; display: grid; align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s1) var(--s3);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-action-bar-label {
+  font-size: var(--f-small); color: var(--pm-text2); padding-top: 6px; white-space: nowrap;
+}
+/* 每个动作 = 一格：**只有按钮**（说明不挨着按钮）；主操作下方允许一行短后果，其余全在 title */
 .dsh-pm-detail[data-report-shell] .dsh-pm-report-action {
-  display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px var(--s2); max-width: 100%;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; max-width: 100%;
 }
-.dsh-pm-detail[data-report-shell] .dsh-pm-action-consequence { font-size: var(--f-tiny); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-action .dsh-pm-btn { white-space: nowrap; }
+/* 常驻短后果：整条操作区**只允许这一句**（主操作下方），10.5px 灰、单行 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-action-consequence {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden;
+  max-width: 100%; font-size: 10.5px; line-height: 1.4; color: var(--pm-text3);
+}
+/* 行尾统一标一次（10.5px 灰字，不是三个粉色实心块）：逐按钮重复会被读成"要点三次"。
+   每格各自是否人工门写在 data-human-only="true" 上（机器可读）。 */
 .dsh-pm-detail[data-report-shell] .dsh-pm-human-only {
-  font-size: 9.5px; font-weight: 700; padding: 0 5px; border: 0; border-radius: 4px;
-  background: rgba(220,53,69,.12); color: var(--pm-danger);
+  font-size: 10.5px; font-weight: 400; padding: 0; border: 0; border-radius: 0;
+  background: none; color: var(--pm-text3); white-space: nowrap; margin-top: 7px;
 }
-/* 终态只读说明：跟操作条同一行，不再单独占一行 */
-.dsh-pm-detail[data-report-shell] .dsh-pm-gate { font-size: var(--f-small); color: var(--pm-text3); }
+/* 危险动作（取消这类）：红色 + 弱化（描边不实心），**排最后**（Pajamas · Destructive actions） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-btn.danger { color: var(--pm-danger); border-color: rgba(220,53,69,.35); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-btn.danger:hover { border-color: var(--pm-danger); background: rgba(220,53,69,.06); }
+/* 终态只读说明：跟操作条同一行，不再单独占一行（顶对齐按钮行，与标签同一条基线） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-gate { font-size: var(--f-small); color: var(--pm-text3); padding-top: 6px; }
 /* 窗口跳转 = 原型 .winbtn（等宽小胶囊） */
 .dsh-pm-detail[data-report-shell] .dsh-pm-report-windows {
   display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--s2); padding: 0;
@@ -286,22 +308,20 @@ export const REPORT_CSS = `
 }
 .dsh-pm-detail[data-report-shell] .dsh-pm-band-ok { color: var(--pm-ok-text); font-weight: 600; }
 .dsh-pm-detail[data-report-shell] .dsh-pm-band-mut { color: var(--pm-text3); }
-/* 缺口逐条 = 原型 .gap-line：一条一行（what 必现）。
-   我们的条目比原型多两个字段（why / ref），1240 宽下会折成两行——所以这里给整条**最多两行**
-   （超出由省略号收尾，不产生内层滚动）；≤1000px 档再压成一行（见文件末尾的窄档块）。 */
+/* 缺口逐条：**一条一行**（项名 + 状态），超出省略号收尾；全文（what ｜ why ｜ 出处）在 title。
+   2026-10-05 人类验收：原来把验收标准原文 + 意见整段塞进小格再截断，读出来是"半句 + …"；
+   常驻状态带只答"哪几条、多严重"，逐项原文在条款所在的文档 / 门禁（截断必须给出路）。 */
 .dsh-pm-detail[data-report-shell] .dsh-pm-gap-line {
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  display: flex; align-items: baseline; gap: 6px; min-width: 0;
   margin: 1px 0; padding: 0; border: 0; border-radius: 0; background: none;
-  font-size: 11.5px; line-height: 1.45;
+  font-size: 11.5px; line-height: 1.5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.dsh-pm-detail[data-report-shell] .dsh-pm-gap-what,
-.dsh-pm-detail[data-report-shell] .dsh-pm-gap-why,
-.dsh-pm-detail[data-report-shell] .dsh-pm-gap-ref { display: inline; margin-right: 6px; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-gap-what { font-weight: 400; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-gap-why { font-size: var(--f-small); color: var(--pm-text2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-gap-what { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* 出处芯片（如 FR-2 / 门禁号）：等宽小灰底，**不换行**（它是这一行的锚点） */
 .dsh-pm-detail[data-report-shell] .dsh-pm-gap-ref {
-  font-family: var(--pm-mono); font-size: var(--f-tiny); padding: 0 4px; border-radius: 4px;
-  background: var(--pm-bg-soft); color: var(--pm-text3); word-break: break-all;
+  flex: none; font-family: var(--pm-mono); font-size: var(--f-tiny); padding: 0 4px; border-radius: 4px;
+  background: var(--pm-bg-soft); color: var(--pm-text3);
 }
 .dsh-pm-detail[data-report-shell] .dsh-pm-gap-more { font-size: var(--f-tiny); color: var(--pm-text3); margin-top: 3px; }
 .dsh-pm-detail[data-report-shell] .dsh-pm-outcome-verdict { font-size: 12.5px; font-weight: 700; }
@@ -310,11 +330,12 @@ export const REPORT_CSS = `
 .dsh-pm-detail[data-report-shell] .dsh-pm-outcome-verdict[data-outcome="pending"] { color: var(--pm-warn); }
 .dsh-pm-detail[data-report-shell] .dsh-pm-outcome-counts { font-variant-numeric: tabular-nums; }
 .dsh-pm-detail[data-report-shell] .dsh-pm-outcome-leftover-title { display: block; margin-top: 3px; font-weight: 600; }
+/* 遗留逐条：同上**一条一行**（项名 · 状态）；标准原文与意见在 title，逐项正文在『文档』Tab 的验收单 */
 .dsh-pm-detail[data-report-shell] .dsh-pm-outcome-leftover {
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
-  font-size: 11px; line-height: 1.45; margin: 2px 0; padding: 0 0 0 8px;
+  font-size: 11px; line-height: 1.5; margin: 2px 0; padding: 0 0 0 8px;
   border-left: 3px solid rgba(240,160,32,.7); border-radius: 0; background: none;
-  color: var(--pm-text2); word-break: break-word;
+  color: var(--pm-text2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -369,6 +390,47 @@ export const REPORT_CSS = `
 .dsh-pm-detail[data-report-shell] .dsh-pm-empty { font-size: var(--f-small); color: var(--pm-text3); padding: 2px 0; }
 .dsh-pm-detail[data-report-shell] code {
   font-family: var(--pm-mono); font-size: 11px; color: var(--pm-text2); word-break: break-all;
+}
+/* ── 行内 Markdown 的显示层（render/md-inline.ts 产出的标签）──────────────────────────
+   正文是**文档原文**，标记在渲染层被剥掉/换标签（「**x**」→「<b>」、反引号里的 x→「<code>」、
+   行首 「#」/「>」/「- 」→标题/引文/列表）。产物一律是内联级元素（「<span>」），
+   块级形态靠这里的 「display」 决定——因为同一段 HTML 会落进 「<p>」 / 「<td>」 / 「<div>」 三种父节点。 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-h { display: block; font-weight: 650; color: var(--pm-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-quote {
+  display: block; padding-left: 9px; border-left: 3px solid var(--pm-line); color: var(--pm-text2);
+}
+/* 无序列表：「- 」 换成 「•」（伪元素出字形），悬挂缩进让折行对齐正文而不是回到标记下方 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-li {
+  display: block; padding-left: 15px; text-indent: -15px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-li::before {
+  content: '\\2022'; color: var(--pm-text3); margin-right: 6px;
+}
+/* 有序列表：序号照原文（1. / 2.），只挪到悬挂位——**不改字** */
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-oli { display: block; padding-left: 15px; text-indent: -15px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-num { color: var(--pm-text3); font-variant-numeric: tabular-nums; }
+/* 文档里的表格行（「| 列 | 列 |」）：剥掉管道符，改成带细竖分线的横向栅格 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-row {
+  display: flex; flex-wrap: wrap; align-items: baseline; padding: 1px 0;
+  border-bottom: 1px solid var(--pm-line-soft);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-cell { min-width: 0; padding-right: var(--s3); overflow-wrap: anywhere; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-cell + .dsh-pm-md-cell {
+  padding-left: var(--s3); border-left: 1px solid var(--pm-line-soft);
+}
+/* 行内 code：等宽 + 极浅底（正文里的 「x」 不再是两个反引号） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-h code,
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-quote code,
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-li code,
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-oli code,
+.dsh-pm-detail[data-report-shell] .dsh-pm-md-cell code,
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-line code,
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg-text code,
+.dsh-pm-detail[data-report-shell] .dsh-pm-block-summary code,
+.dsh-pm-detail[data-report-shell] .dsh-pm-sv-diff code,
+.dsh-pm-detail[data-report-shell] .dsh-pm-callout code {
+  font-size: .92em; padding: 0 4px; border-radius: 4px; background: var(--pm-bg-soft);
+  color: var(--pm-text); word-break: break-word;
 }
 /* 来源标 = 原型 .src[data-k]（文档蓝 / 台账紫 / 自动绿 / 人写橙 / 无灰） */
 .dsh-pm-detail[data-report-shell] .dsh-pm-src,
@@ -427,11 +489,20 @@ export const REPORT_CSS = `
 .dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-doc-table] th:nth-child(1) { width: 84px; }
 .dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-doc-table] th:nth-child(3) { width: 110px; }
 .dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-doc-table] th:nth-child(4) { width: 190px; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(1) { width: 52px; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(3) { width: 170px; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(4) { width: 76px; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(5) { width: 72px; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(7) { width: 96px; }
+/* 核验表（7 列）**逐列给宽**（2026-10-05 全 Tab 扫出的变形）：真数据里「标准 / 实际结果 /
+   证据 / 意见」都是整段人话或长路径，而「来源 / 需人工 / 裁决」只放短词。旧口径把标准压到 52px、
+   证据压到 72px，其余两列吃满余量——结果证据列**一个字符一行**，整张表被撑成九万像素的墙。
+   另：第一列原本吃「td:first-child { white-space: nowrap }」，52px 装不下就横着糊到邻列上
+   （文字互相重叠），这里放开换行。 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] td:first-child,
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:first-child { white-space: normal; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(1) { width: 19%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(2) { width: 12%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(3) { width: 8%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(4) { width: 8%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(5) { width: 30%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(6) { width: 17%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(7) { width: 6%; }
 .dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-gate-table] th:nth-child(1) { width: 108px; }
 .dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-gate-table] th:nth-child(2) { width: 96px; }
 .dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-gate-table] th:nth-child(3) { width: 96px; }
@@ -452,39 +523,58 @@ export const REPORT_CSS = `
 .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-docmeta {
   font-size: var(--f-small); color: var(--pm-text3); padding: 0 0 var(--s2);
 }
+/* 一条 = 左 150px 条名栏 + 右内容栏（原型 .row）。
+   「align-items: start」 是**必需**的：默认 stretch 会让左栏长到与内容同高，
+   于是栏内的 flex 行（标题/副标题/来源标）被 「align-content: stretch」 摊开——
+   那颗来源标就掉到正文中段去了（2026-10-05 验收指出的变形③）。 */
 .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-item {
   display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); column-gap: var(--gap-col);
+  align-items: start;
   margin: 0; padding: var(--s4) 0; border: 0; border-top: 1px solid var(--pm-line);
   border-radius: 0; background: none;
 }
 .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-item:first-of-type { border-top: 0; }
+/* 左栏（原型 .rail）：标题 → 副标题 → 来源标，自上而下紧凑排列、**顶对齐正文第一行** */
 .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-head {
-  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 3px 4px;
-  margin: 0; min-width: 0;
+  display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start; align-self: start;
+  gap: 2px 4px; margin: 0; min-width: 0;
 }
-.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-title { flex-basis: 100%; margin: 0; font-size: var(--f-h2); font-weight: 650; color: var(--pm-text); }
-.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-sub { flex-basis: 100%; font-size: var(--f-tiny); line-height: 1.5; color: var(--pm-text3); }
-/* 来源标在条名下面**同一行**排（原型 .rail .src 就是 inline 后换行，不是一标一行） */
-.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-head .dsh-pm-trunk-src { margin-top: 2px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-title { flex-basis: 100%; margin: 0; font-size: var(--f-h2); font-weight: 650; color: var(--pm-text); line-height: 1.35; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-sub { flex-basis: 100%; font-size: var(--f-tiny); line-height: 1.45; color: var(--pm-text3); }
+/* 来源标紧贴副标题（原型 .rail .src 就在副标题下面一行），不参与行间拉伸 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-head .dsh-pm-trunk-src { margin-top: 3px; }
+/* 正文栏：行距放宽到 1.68（原型 .sum 是 13px，靠行距分层而不是靠 margin 撑高） */
 .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-body {
   display: flex; flex-direction: column; gap: var(--s2); min-width: 0;
-  font-size: var(--f-body); line-height: 1.62;
+  font-size: var(--f-body); line-height: 1.68;
 }
-.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-line { margin: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-line { margin: 0; line-height: 1.68; }
 .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-mut { font-size: var(--f-small); color: var(--pm-text3); }
 .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-missing {
   font-size: var(--f-small); color: var(--pm-warn); background: rgba(240,160,32,.06);
   border: 1px dashed rgba(240,160,32,.45); border-radius: var(--r1); padding: 4px 8px;
 }
 .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-scope-hint { font-size: var(--f-small); font-weight: 600; color: var(--pm-text2); }
-.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-openrefs { display: flex; flex-wrap: wrap; gap: 6px; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-open {
-  font: inherit; font-size: var(--f-small); padding: 2px 10px; cursor: pointer;
-  border: 1px solid var(--pm-line); border-radius: var(--pm-pill);
-  background: var(--pm-surface); color: var(--pm-accent);
+/* 「点开原文」= **句尾一个小链接**（原型 .expand：accent / 12px / 无边框无底色 / hover 下划线）。
+   此前渲成整行胶囊，被读成输入框（2026-10-05 验收指出的变形②）。出处（哪份文档哪一节）
+   收成左侧一行灰字，完整路径在 title 里。 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-openrefs {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-top: 2px;
 }
-.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-open:hover { background: rgba(74,125,255,.08); }
-.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-open.is-nopath { color: var(--pm-text3); cursor: default; background: none; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-ref {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px var(--s2); max-width: 100%;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-ref-hint { font-size: var(--f-small); color: var(--pm-text3); word-break: break-word; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-open {
+  font: inherit; font-size: var(--f-small); padding: 0; margin: 0; cursor: pointer;
+  border: 0; border-radius: 0; background: none; color: var(--pm-accent); white-space: nowrap;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-open:hover { background: none; text-decoration: underline; }
+/* 没有原文文件可开的入口（指向台账 / 留痕）：**不可点**的一行灰字说明，不画按钮 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-open.is-nopath {
+  color: var(--pm-text3); cursor: default; background: none; white-space: normal; text-align: left;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-open.is-nopath:hover { text-decoration: none; }
 /* 亮点分组（原型 .hl-group / .hl-h / .fact / .fact-i / .hl / .hl-d / .hl-w / .hl-e） */
 .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-hl-group { display: flex; flex-direction: column; gap: var(--s2); }
 .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-hl-h { font-size: var(--f-small); font-weight: 400; color: var(--pm-text3); }
@@ -817,6 +907,23 @@ export const REPORT_CSS = `
   font-family: var(--pm-mono); font-size: var(--f-tiny); color: var(--pm-text3);
   background: var(--pm-bg-softer); border-radius: 4px; padding: 1px 6px; word-break: break-all;
 }
+/* 每步执行结果表（8 列）：**固定布局下不给宽就被平均分掉**——真数据 84 行里
+   「产出与汇报」是整段人话、」谁做」是 36 字符会话 id，各分到 1/8（≈155px）时
+   一列只能容十来个字，整表变成一堵折行的墙（2026-10-05 全 Tab 扫出的变形）。
+   宽口径：把余量给人话列（产出 31%），id 列给到能容 3 段的宽度，其余列只放短词。
+   第一列原本吃 「td:first-child { white-space: nowrap }」，这里放开——卡名可以折行。 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table[data-step-table] td:first-child,
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table[data-step-table] th:first-child { white-space: normal; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table[data-step-table] th:nth-child(1) { width: 16%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table[data-step-table] th:nth-child(2) { width: 9%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table[data-step-table] th:nth-child(3) { width: 11%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table[data-step-table] th:nth-child(4) { width: 7%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table[data-step-table] th:nth-child(5) { width: 12%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table[data-step-table] th:nth-child(6) { width: 6%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table[data-step-table] th:nth-child(7) { width: 25%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table[data-step-table] th:nth-child(8) { width: 14%; }
+/* 表头两行也不要撑破：长表头（产出与汇报）用较窄的字距换行，不挤列 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table[data-step-table] th { line-height: 1.35; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    ⑫ 窄档（原型只给了 1280 一档；≤1000px 时按同一套口径收得更紧，不换视觉语言）
@@ -829,7 +936,7 @@ export const REPORT_CSS = `
   .dsh-pm-detail[data-report-shell] .dsh-pm-stats[data-report-band] { gap: var(--s2); }
   /* 缺口一条压成一行：why / ref 是补充说明，窄档用省略号收尾（what 永远完整可见）。
      为什么必须收：900px 档下 5 条缺口各折 2~3 行会把六个 Tab 顶出首屏（那是验收判红的缺陷）。 */
-  .dsh-pm-detail[data-report-shell] .dsh-pm-gap-line { -webkit-line-clamp: 1; }
+  /* 缺口条本来就是一行（见上），窄档不再另压 */
   .dsh-pm-detail[data-report-shell] .dsh-pm-specvs,
   .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-hl-group[data-hl-group="facts"] { grid-template-columns: 1fr; }
 }

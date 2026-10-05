@@ -377,7 +377,7 @@ function renderAvailability(a: TokenAvailability, view: TokenPanelView): string 
       ? missing.map(s => stageLabel(s)).join('、')
       : (view.degraded === true ? '执行级快照缺口（任务执行行标「本次无快照」）' : '部分阶段（服务端未列出具体是哪几段）')
     return '<div class="dsh-pm-callout" data-availability-badge="partial">部分数据（下界）：'
-      + esc(which) + ' 的 token 快照不可得，这些阶段的消耗没进合计——**合计因此是下界**。</div>'
+      + esc(which) + ' 的 token 快照不可得，这些阶段的消耗没进合计——<b>合计因此是下界</b>。</div>'
   }
   return '<div class="dsh-pm-tok-avail" data-availability-badge="full">快照齐：各阶段都取到了会话快照，合计即全量。</div>'
 }
@@ -388,9 +388,9 @@ function renderCallout(view: TokenPanelView): string {
     ? ' 部分节点/执行无快照（人从看板点按钮推进或投影不可得），缺失段不计入合计。'
     : ''
   return '<div class="dsh-pm-callout">口径（REQ-261004154937-2ca3 起）：按执行该节点/任务的会话累计值差值统计，'
-    + '**含子代理**（该窗口派出去的子代理会话一并计入），也可能含同会话其他工作的消耗；'
-    + '**起链预算闸不含子代理**（闸门口径另议，两者不一致是已知的）；'
-    + '**本口径上线前的历史数字不含子代理**；费用与字符折算 token 均为**估算**；'
+    + '<b>含子代理</b>（该窗口派出去的子代理会话一并计入），也可能含同会话其他工作的消耗；'
+    + '<b>起链预算闸不含子代理</b>（闸门口径另议，两者不一致是已知的）；'
+    + '<b>本口径上线前的历史数字不含子代理</b>；费用与字符折算 token 均为<b>估算</b>；'
     + '缺失显示「无快照」，不补 0。' + degraded + '</div>'
 }
 

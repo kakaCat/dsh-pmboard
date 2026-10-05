@@ -139,29 +139,90 @@ export function buildWindowJumps(report: ReportResponse): string {
 }
 
 /**
- * 操作条（FR-3）：本阶段**合法**动作 + 每条后果说明 + humanOnly 标注。
+ * 操作条（FR-3）：本阶段**合法**动作。
  *
- * 终态显式早退（返回空串，不留空壳容器）——与既有 `renderActionBar` 同一口径：
- * 改成"渲染空 div"会让页面看起来像"按钮没加载出来"。
+ * ## 版式与分级（2026-10-05 人类验收「操作条排版散架」+ 设计原则）
+ *
+ * 上一版每条动作后面 inline 跟一段「后果：…」，三个动作各自换行 → 三行参差；「需人操作」
+ * 逐按钮重复三遍。这一版按通行设计原则重做（原型只作信息结构参考，不再按像素对齐）：
+ *
+ *  ① **按钮只写动作**（动词 + 宾语，就是服务端给的 `label`），说明绝不挨着按钮
+ *     ——VA Design System / Octopus 的按钮内容规范；后果的落点是**按需披露**：
+ *     按钮 `title`（悬停）→ 点开后的确认框正文（既有 `board-mount` 分支负责，那里才是说后果的地方）。
+ *  ② **动作分级**：一屏最多 1 个 primary（实心=第一个可执行动作），其余 secondary（描边），
+ *     危险动作（`cancel`）用 danger（红、弱化）**且排最后**（Pajamas · Destructive actions）。
+ *     危险动作还带 `data-confirm`：由壳在**捕获后立即**弹一次确认（见 `report-tabs.ts#attach`），
+ *     拒绝就拦下这次点击——它走的是 `move-req`，那条分支自己没有确认框。
+ *  ③ **常驻只留一句**：只给主操作下方一行 ≤40 字的灰字短后果（其余全在 `title`）；
+ *     截断口径取自「第一个冒号前的那一截」（如「通过即归档：需求进入终态…」→「通过即归档」），
+ *     取不到就用前 40 字 + 省略号。**整条操作区只允许这一句**。
+ *  ④ 「需人操作」**整条只标一次**：动作行末尾一句 10.5px 灰字（「均需人工确认」）；
+ *     每个动作是否人工门写在 `data-human-only="true"` 上（机器可读，供断言与审计）。
+ *
+ * 硬判据（`scripts/req-report-probe.mts` A6）：1280 档整条 ≤ 72px 且动作按钮同一行。
  */
 export function buildReportActionBar(report: ReportResponse): string {
   if (isTerminal(report.head.status)) return ''
   const actions = report.actions ?? []
   if (actions.length === 0) return ''
-  const buttons = actions.map((a) => {
+  // 危险动作排最后（不信任服务端顺序：顺序是**展示分级**，属渲染层职责）
+  const ordered = [...actions.filter(a => !isDanger(a.key)), ...actions.filter(a => isDanger(a.key))]
+  const primary = ordered.find(a => !isDanger(a.key))
+  const cells = ordered.map((a) => {
     const channel = ACTION_CHANNEL[a.key]
     const to = a.key === 'cancel' ? 'canceled' : a.to
-    return '<div class="dsh-pm-report-action" data-action-key="' + esc(a.key) + '">'
-      + '<button type="button" class="dsh-pm-btn" data-action="' + channel + '"'
+    const rank = isDanger(a.key) ? 'danger' : (a === primary ? 'primary' : 'secondary')
+    const cls = rank === 'primary' ? 'dsh-pm-btn primary' : (rank === 'danger' ? 'dsh-pm-btn danger' : 'dsh-pm-btn')
+    // 常驻短后果：只给主操作，且只一句（其余在 title 里，悬停可读全文）
+    const hint = a === primary
+      ? '<span class="dsh-pm-action-consequence">' + esc(shortConsequence(a.consequence)) + '</span>'
+      : ''
+    return '<div class="dsh-pm-report-action" data-action-key="' + esc(a.key) + '"'
+      + ' data-action-rank="' + rank + '"'
+      + (a.humanOnly ? ' data-human-only="true"' : '') + '>'
+      + '<button type="button" class="' + cls + '" data-action="' + channel + '"'
       + ' data-id="' + esc(report.head.id) + '"'
       + (to === undefined ? '' : ' data-to="' + esc(to) + '"')
+      // 危险动作：壳在这一跳弹确认（拒绝即拦下点击）；确认框正文用完整后果，一字不省
+      + (rank === 'danger'
+        ? ' data-confirm="' + esc('「' + a.label + '」：' + a.consequence + '\n\n确定执行吗？') + '"'
+        : '')
       + ' title="' + esc(a.consequence) + '">' + esc(a.label) + '</button>'
-      + (a.humanOnly ? '<span class="dsh-pm-human-only" title="agent 调用会被代码级拒绝">需人操作</span>' : '')
-      + '<span class="dsh-pm-action-consequence">后果：' + esc(a.consequence) + '</span>'
+      + hint
       + '</div>'
   }).join('')
+  const anyHumanOnly = actions.some(a => a.humanOnly === true)
   return '<div class="dsh-pm-report-actions" data-report-actions="1">'
-    + '<span class="dsh-pm-action-bar-label">本阶段操作</span>' + buttons + '</div>'
+    + '<span class="dsh-pm-action-bar-label">本阶段操作</span>'
+    + '<div class="dsh-pm-report-action-grid" data-action-grid="1">' + cells + '</div>'
+    + (anyHumanOnly
+      ? '<span class="dsh-pm-human-only" data-human-only-mark="1"'
+        + ' title="这些动作只有人能发起：agent 调用会被代码级拒绝（每格各自是否人工门见 data-human-only）">'
+        + '均需人工确认</span>'
+      : '')
+    + '</div>'
+}
+
+/** 危险动作：取消 / 归档类终态动作（红、弱化、排最后、必进确认）。 */
+function isDanger(key: ReportAction['key']): boolean {
+  return key === 'cancel'
+}
+
+/** 常驻短后果的字数上限（人类验收口径：≤40 字）。 */
+export const CONSEQUENCE_HINT_MAX = 40
+
+/**
+ * 后果 → 一行短提示（`通过即归档：需求进入终态、不再接受修改；…` → `通过即归档`）。
+ *
+ * 口径与状态带的 `oneLineLabel` 同源（第一个「：」前的状态/结论词就是那一句），
+ * 取不到就截前 40 字 + `…`：常驻只有一行，全文在按钮 `title` 与确认框里。
+ */
+export function shortConsequence(consequence: string): string {
+  const s = (typeof consequence === 'string' ? consequence : String(consequence ?? '')).trim()
+  if (s.length === 0) return ''
+  const colon = s.search(/[：:]/)
+  if (colon > 0 && colon <= CONSEQUENCE_HINT_MAX) return s.slice(0, colon)
+  return s.length <= CONSEQUENCE_HINT_MAX ? s : s.slice(0, CONSEQUENCE_HINT_MAX) + '…'
 }
 
 /**
@@ -224,14 +285,25 @@ export function commentRenderPlan(body: string): { text: string; full: string; l
 /**
  * 台账评论列表（**补能力回退**：旧详情页能看到评论，新页只有输入框 = 用户看不到评论了）。
  *
- * 四条纪律：
+ * 五条纪律：
  *  - `comments === undefined`（服务端没下发）→ **整块不渲染**：不用"暂无评论"冒充"读不到"（FR-12）；
  *  - `comments === []`（服务端明确说"确实没有评论"）→ 给一句解释性空态，不是留白；
+ *  - **机器事件不进头部**（2026-10-05 人类验收）：只列 `human` / `agent` 写的评论；
+ *    `system` 的一律滤掉——头部最近 3 条被 `[Dive] 已暂停自动续跑…` / `[断点] aborted:user…` 占满，
+ *    读者看到的是机器噪音而不是"谁说了什么"（它们的落点在『对话』Tab 的系统消息里）。
+ *    过滤后一条不剩 → **整块不渲染**（写"暂无评论"会是假话：台账里明明有评论，只是机器写的）。
  *  - **不做内层滚动**（FR-11 #7）：列表长了靠页面滚，不进 `overflow` 容器，
  *    也不做"限高 + 滚动"（那会让"有多少条"变成不可数）。所以"不顶爆首屏"靠的是**少渲染几条 +
  *    截断正文 + 压紧行距**，不是砍内容；
  *  - **限条数必须同时报总数**（`head.commentsTotal`）：只渲染 3 条却不说话，等于把
  *    "还有 7 条"藏起来——那不是内容控制，是丢信息。
+ *
+ * ## 过滤为什么在渲染层、不在 `commentsOf`
+ *
+ * 服务端的 `commentsOf` 是**台账投影**（"最近 N 条"是台账事实），它不该替页面做展示决策：
+ * 一旦它按 `kind` 过滤，"头部为什么少了 3 条"就再也无法从载荷本身看出来（口径分裂成两处，
+ * 且历史载荷的语义随版本漂移）。所以服务端口径**不动**，过滤只发生在这一跳——这样
+ * 载荷始终是台账原貌，页面想换展示口径也只改这里（可回溯、可单测）。
  */
 export function buildCommentList(comments: ReportHead['comments'], total?: number): string {
   if (comments === undefined) return ''
@@ -239,12 +311,16 @@ export function buildCommentList(comments: ReportHead['comments'], total?: numbe
     return '<div class="dsh-pm-comments" data-comment-list="empty">'
       + '<div class="dsh-pm-empty">暂无评论：这条需求还没有人 / agent 留过言</div></div>'
   }
+  // ⑥ 头部只列人 / agent 写的评论；机器事件（system）不进头部（落点在『对话』Tab）
+  const visible = comments.filter(c => actorOf(c.by).actor !== 'system')
+  const hidden = comments.length - visible.length
+  // 过滤后一条不剩 = 台账里只有机器事件：整块不渲染（既不留空壳，也不谎称"暂无评论"）
+  if (visible.length === 0) return ''
   // 只渲染最近 N 条（新的在后 → 取尾部）；被省略的条数必须写出来
-  const shown = comments.length > COMMENT_RENDER_LIMIT ? comments.slice(-COMMENT_RENDER_LIMIT) : comments
+  const shown = visible.length > COMMENT_RENDER_LIMIT ? visible.slice(-COMMENT_RENDER_LIMIT) : visible
   const totalCount = typeof total === 'number' && Number.isFinite(total) && total >= comments.length
     ? total
     : comments.length
-  const omitted = Math.max(0, totalCount - shown.length)
   const rows = shown.map((c) => {
     const who = actorOf(c.by)
     const plan = commentRenderPlan(c.body)
@@ -252,16 +328,31 @@ export function buildCommentList(comments: ReportHead['comments'], total?: numbe
       + (plan.long ? ' data-comment-long="1"' : '') + '>'
       + '<span class="dsh-pm-comment-meta"><span class="dsh-pm-comment-who" data-actor="' + who.actor + '">'
       + esc(who.text) + '</span> · ' + esc(fmtTime(c.at))
-      + (plan.long ? ' · <span class="dsh-pm-comment-long-flag">系统长日志（已收纳）</span>' : '')
+      + (plan.long ? ' · <span class="dsh-pm-comment-long-flag">长日志（已收纳）</span>' : '')
       + '</span>'
       + '<div class="dsh-pm-comment-body" title="' + esc(plan.full) + '">' + esc(plan.text) + '</div></div>'
   }).join('')
-  const label = '最近评论 ' + String(shown.length) + ' 条（新的在下）'
-    + (omitted > 0 ? ' · 共 ' + String(totalCount) + ' 条，更早的 ' + String(omitted) + ' 条见台账' : '')
+  const label = '最近评论 ' + String(shown.length) + ' 条（新的在下）' + tailNote(hidden, totalCount, comments.length, shown.length)
   return '<div class="dsh-pm-comments" data-comment-list="1" data-comment-shown="' + String(shown.length) + '"'
-    + ' data-comment-total="' + String(totalCount) + '">'
+    + ' data-comment-total="' + String(totalCount) + '" data-comment-hidden="' + String(hidden) + '">'
     + '<span class="dsh-pm-action-bar-label">' + esc(label) + '</span>'
     + rows + '</div>'
+}
+
+/**
+ * 列表标签的尾注：没列出来的那些**去哪了**（省略 ≠ 不存在）。
+ *
+ * 两支分开写、不合并成一句笼统的"其余 N 条"：机器事件与"更早的人话"落点不同
+ * （前者在『对话』Tab，后者在台账），混成一句读者就不知道该去哪儿找。
+ */
+function tailNote(hidden: number, totalCount: number, rawCount: number, shownCount: number): string {
+  if (hidden > 0) {
+    const earlier = Math.max(0, totalCount - rawCount)
+    return ' · 共 ' + String(totalCount) + ' 条，' + String(hidden) + ' 条机器事件未列（在「对话」Tab 的系统消息里）'
+      + (earlier > 0 ? '，更早的 ' + String(earlier) + ' 条见台账' : '')
+  }
+  const omitted = Math.max(0, totalCount - shownCount)
+  return omitted > 0 ? ' · 共 ' + String(totalCount) + ' 条，更早的 ' + String(omitted) + ' 条见台账' : ''
 }
 
 /** 头部渲染选项。 */

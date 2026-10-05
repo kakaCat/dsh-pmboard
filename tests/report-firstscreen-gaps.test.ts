@@ -27,10 +27,10 @@ import {
 } from '../src/shared/protocol.js'
 import { REPORT_COMMENT_HEAD_LIMIT, queryReport, type ReportQueryDeps } from '../src/application/query/QueryReport.js'
 import {
-  COMMENT_BODY_MAX, COMMENT_LONG_HEAD_MAX, COMMENT_RENDER_LIMIT,
-  buildCommentList, buildReportHead, commentRenderPlan,
+  COMMENT_BODY_MAX, COMMENT_LONG_HEAD_MAX, COMMENT_RENDER_LIMIT, CONSEQUENCE_HINT_MAX,
+  buildCommentList, buildReportHead, commentRenderPlan, shortConsequence,
 } from '../src/client/views/report-head.ts'
-import { buildOutcomeCell, buildReportBand } from '../src/client/views/report-band.ts'
+import { SHORT_MAX, buildGapsCell, buildOutcomeCell, buildReportBand, oneLineLabel } from '../src/client/views/report-band.ts'
 import { REPORT_TABS, buildTabBar } from '../src/client/views/report-tabs.ts'
 import { fmtTime } from '../src/client/render/dom-utils.ts'
 
@@ -256,7 +256,7 @@ describe('② 评论列表（能力回退：旧页能看评论，新页只剩输
     expect(report.head.commentsTotal).toBe(many.length)
   })
 
-  it('正文截断与系统长日志收纳（渲染层三档口径，不新造展开交互）', () => {
+  it('正文截断与长日志收纳（渲染层三档口径，不新造展开交互）', () => {
     const long = 'x'.repeat(5_000)
     const plan = (body: string) => commentRenderPlan(body)
     // ≤200 字：原样
@@ -277,11 +277,13 @@ describe('② 评论列表（能力回退：旧页能看评论，新页只剩输
     const html = buildCommentList([
       { at: 1_700_000_000_000, body: '正常短评', by: HUMAN },
       { at: 1_700_000_000_001, body: 'z'.repeat(300), by: HUMAN },
-      { at: 1_700_000_000_002, body: long, by: SYSTEM },
+      // 长日志的标本用 agent（2026-10-05 起 system 评论不进头部，见下一条用例）：
+      // 机器转储会以 agent 身份落台账，这一支的收纳逻辑因此仍必须被钉住
+      { at: 1_700_000_000_002, body: long, by: AGENT },
     ])
     expect(countOf(html, 'data-comment-row="1"')).toBe(3)
     expect(countOf(html, 'data-comment-long="1"')).toBe(1)
-    expect(html).toContain('系统长日志（已收纳）')
+    expect(html).toContain('长日志（已收纳）')
     // 全文在 title 里（截断只发生在可见正文上；不可信输入照样转义）
     expect(html).toContain('title="' + 'z'.repeat(300) + '"')
     // 渲染层兜底：即使服务端给了 10 条（旧服务端/缓存快照），也只渲染最近 3 条
@@ -294,26 +296,32 @@ describe('② 评论列表（能力回退：旧页能看评论，新页只剩输
     expect(capped).toContain('共 10 条，更早的 7 条见台账')
   })
 
-  it('渲染：每行一条 data-comment-row，带时间与作者（人 / 窗口码 / 系统可分辨）', () => {
+  it('渲染：每行一条 data-comment-row，带时间与作者（人 / 窗口码可分辨；机器事件不进头部）', () => {
     const html = buildCommentList([
       { at: 1_700_000_000_000, body: '人写的评论', by: HUMAN },
       { at: 1_700_000_060_000, body: 'agent 写的评论', by: AGENT },
       { at: 1_700_000_120_000, body: '系统事件评论', by: SYSTEM },
     ])
-    expect(countOf(html, 'data-comment-row="1"')).toBe(3)
+    // 2026-10-05 人类验收：头部只列人 / agent 写的评论。
+    // 线上头部最近 3 条被 `[Dive] 已暂停自动续跑…` / `[断点] aborted:user…` 占满——
+    // 那是机器事件，读者在头部看到的是噪音而不是"谁说了什么"（它们的落点在『对话』Tab）。
+    expect(countOf(html, 'data-comment-row="1"')).toBe(2)
     expect(html).toContain('人写的评论')
     expect(html).toContain('agent 写的评论')
-    expect(html).toContain('系统事件评论')
-    // 作者口径复用 commentActorLabel（人 / 窗口 w-xxxx / 系统），data-actor 供样式与断言选择
+    expect(html).not.toContain('系统事件评论')
+    // 作者口径复用 commentActorLabel（人 / 窗口 w-xxxx），data-actor 供样式与断言选择
     expect(html).toContain('data-actor="human"')
     expect(html).toContain('data-actor="agent"')
-    expect(html).toContain('data-actor="system"')
+    expect(html).not.toContain('data-actor="system"')
     expect(html).toContain('>人<')
     expect(html).toContain('窗口 ')
-    expect(html).toContain('>系统<')
+    // 没列出来的机器事件必须**说出去哪看**（省略 ≠ 不存在）
+    expect(html).toContain('1 条机器事件未列')
+    expect(html).toContain('对话')
+    expect(html).toContain('data-comment-hidden="1"')
     // 时间戳与正文都渲染；正文转义（内容不可信）
     expect(html).toContain(fmtTime(1_700_000_000_000)) // 与既有详情页同一份时间口径
-    expect(countOf(html, 'dsh-pm-comment-body')).toBe(3)
+    expect(countOf(html, 'dsh-pm-comment-body')).toBe(2)
     // 评论正文是不可信输入：必须转义（原样塞进去就是一条注入通道）
     const injected = buildCommentList([{ at: 1_700_000_000_000, body: '<img src=x onerror="boom()">', by: HUMAN }])
     expect(injected).not.toContain('<img')
@@ -327,6 +335,24 @@ describe('② 评论列表（能力回退：旧页能看评论，新页只剩输
     expect(html).toContain('data-comment-list="empty"')
     expect(html).toContain('暂无评论')
     expect(html).not.toContain('data-comment-row=')
+  })
+
+  it('全是机器事件（system）→ 过滤后 0 条：整块不渲染（不留空壳、不写"暂无评论"）', () => {
+    const onlySystem = [
+      { at: 1_700_000_000_000, body: '[Dive] 已暂停自动续跑（运行时原因：aborted:user）', by: SYSTEM },
+      { at: 1_700_000_060_000, body: '[断点] aborted:user（阶段 accepting）', by: SYSTEM },
+    ]
+    // 台账里**有**评论（只是机器写的）→ 说"暂无评论"是假话，所以整块不渲染
+    expect(buildCommentList(onlySystem)).toBe('')
+    // 头部同样不留空壳（`data-comment-list=` 一个都不出现）
+    const report = makeReportResponse()
+    const head = buildReportHead({ ...report, head: { ...report.head, comments: onlySystem } })
+    expect(head).not.toContain('data-comment-list=')
+    expect(head).not.toContain('暂无评论')
+    // 过滤只发生在渲染层：服务端载荷（台账投影）里的机器事件原样保留，人写的一条照常渲染
+    const mixed = buildCommentList([...onlySystem, { at: 1_700_000_120_000, body: '人写的', by: HUMAN }])
+    expect(countOf(mixed, 'data-comment-row="1"')).toBe(1)
+    expect(mixed).toContain('人写的')
   })
 
   it('未采集（服务端没下发）→ 整块不渲染，也不写"暂无评论"冒充"没有"', () => {
@@ -349,6 +375,147 @@ describe('② 评论列表（能力回退：旧页能看评论，新页只剩输
     const terminal = buildReportHead({ ...report, head: { ...report.head, status: 'archived' } })
     expect(terminal).toContain('data-comment-row="1"')
     expect(terminal).not.toContain('data-action="add-comment"')
+  })
+})
+
+/* --------------------------------------------------- ②b 操作条版式（2026-10-05 验收） */
+
+/**
+ * 人类验收原话一：「操作条排版散架」——`← 看板 ｜ 本阶段操作 ｜ 验收通过并归档 [需人操作] 后果：…`
+ * 挤第一行，`退回返工` 单独第二行、`取消需求` 第三行。
+ * 人类验收原话二（同日更正）：「按通行设计原则改，别再加局部补丁」——按钮只写动作，
+ * 说明按需披露（title → 确认框），动作分级（1 primary / 其余 secondary / 危险 danger 排最后），
+ * 同类信息同一套截断口径。
+ *
+ * 这里钉住结构不变量；像素判据在 `scripts/req-report-probe.mts` A6
+ * （1280 档整条 ≤ 72px、动作按钮同一行）。
+ */
+describe('②b 操作条版式（一行按钮 / 说明不挨着按钮 / 分级与确认）', () => {
+  const ACTIONS: ReportResponse['actions'] = [
+    { key: 'verify-pass', to: 'archived', label: '验收通过并归档', consequence: '通过即归档：需求进入终态、不再接受修改；验收单结论一并落章', humanOnly: true },
+    { key: 'verify-rework', to: 'implementing', label: '退回返工', consequence: '退回实施：验收单标记返工项，实施窗口按意见重做后重新提交', humanOnly: true },
+    { key: 'cancel', label: '取消需求', consequence: '取消：需求移出在途泳道（人工门；可用回退边撤回）', humanOnly: true },
+  ]
+  const head = (): string => buildReportHead(makeReportResponse({ actions: ACTIONS }))
+
+  it('按钮自成一个容器：标签与 ← 看板 不在里面（换行只由按钮数决定）', () => {
+    const html = head()
+    expect(countOf(html, 'data-action-grid="1"')).toBe(1)
+    const open = html.indexOf('<div class="dsh-pm-report-action-grid"')
+    const afterGrid = html.indexOf('data-human-only-mark="1"')
+    expect(open).toBeGreaterThan(-1)
+    expect(afterGrid).toBeGreaterThan(open)
+    const grid = html.slice(open, afterGrid)
+    expect(countOf(grid, 'data-action-key=')).toBe(3)
+    expect(grid).not.toContain('data-action="back"')
+    expect(grid).not.toContain('本阶段操作')
+    expect(html.indexOf('data-action="back"')).toBeLessThan(open)
+    expect(html.indexOf('本阶段操作')).toBeLessThan(open)
+  })
+
+  it('说明不挨着按钮：常驻区只有主操作下方一句 ≤40 字短提示，后果全文进 title', () => {
+    const html = head()
+    // 整条操作区只允许一句常驻提示（其余全在 title / 确认框）
+    expect(countOf(html, 'dsh-pm-action-consequence')).toBe(1)
+    expect(html).toContain('>通过即归档<') // 冒号前那一截就是那一句
+    for (const a of ACTIONS) {
+      // 后果全文一个字不丢（悬停可读），且**没有** inline 跟在按钮后面的「后果：…」
+      expect(html).toContain('title="' + a.consequence + '"')
+    }
+    expect(countOf(html, '后果：')).toBe(0)
+  })
+
+  it('分级：1 个 primary + 其余 secondary + 危险动作（取消）红、排最后、带 data-confirm', () => {
+    const html = head()
+    expect(countOf(html, 'data-action-rank="primary"')).toBe(1)
+    expect(countOf(html, 'data-action-rank="secondary"')).toBe(1)
+    expect(countOf(html, 'data-action-rank="danger"')).toBe(1)
+    expect(html).toContain('class="dsh-pm-btn primary"')
+    expect(html).toContain('class="dsh-pm-btn danger"')
+    // 危险动作排最后（Pajamas · Destructive actions）+ 必须进确认框（壳在点击那一跳弹）
+    expect(html.indexOf('data-action-rank="danger"')).toBeGreaterThan(html.indexOf('data-action-rank="secondary"'))
+    expect(html).toContain('data-confirm="')
+    expect(html).toContain('确定执行吗？')
+    // 服务端给的顺序就算把取消放在第一位，渲染层也要把它挪到最后（顺序是展示分级，属渲染层）
+    const reordered = buildReportHead(makeReportResponse({ actions: [ACTIONS[2], ACTIONS[0]] }))
+    expect(reordered.indexOf('data-action-rank="danger"')).toBeGreaterThan(reordered.indexOf('data-action-rank="primary"'))
+  })
+
+  it('「均需人工确认」整条只标一次（不是三个粉色实心块）；每格的人工门写在 data-human-only 上', () => {
+    const html = head()
+    expect(countOf(html, 'dsh-pm-human-only')).toBe(1)
+    expect(countOf(html, '均需人工确认')).toBe(1)
+    expect(countOf(html, 'data-human-only="true"')).toBe(ACTIONS.length)
+    expect(countOf(html, 'data-human-only-mark="1"')).toBe(1)
+    // 没有人工门动作时，行尾标**不渲染**（不留一句无指代的"均需人工确认"）
+    const auto = buildReportHead(makeReportResponse({
+      actions: [{ key: 'move', to: 'accepting', label: '提交验收', consequence: '推进到验收态由人逐项裁决', humanOnly: false }],
+    }))
+    expect(auto).not.toContain('dsh-pm-human-only')
+    expect(auto).not.toContain('均需人工确认')
+  })
+
+  it('短后果口径：取「：」前那一截，取不到就截 40 字 + 省略号（同类信息同一套截断口径）', () => {
+    expect(shortConsequence('通过即归档：需求进入终态、不再接受修改')).toBe('通过即归档')
+    expect(shortConsequence('取消：需求移出在途泳道')).toBe('取消')
+    const long = 'x'.repeat(80)
+    expect(shortConsequence(long)).toBe('x'.repeat(CONSEQUENCE_HINT_MAX) + '…')
+    expect(shortConsequence('')).toBe('')
+  })
+})
+
+/* ------------------------------------------- ②c 状态带一行口径（2026-10-05 验收） */
+
+/**
+ * 人类验收：状态带三格把「验收标准原文 + 意见」整段塞进小格，再靠省略号截断 → 半句 + `…`，读不了。
+ * 口径：格内每条只给「项名 + 状态」（≤1 行），完整原文在**对应的落点**
+ * （缺口 → 条款/门禁；遗留 → 『文档』Tab 的验收单），中间那一步是 `title`。
+ * 像素判据在探针（1280 档三格各自 ≤ 220px）。
+ */
+describe('②c 状态带一行口径（项名 · 状态；全文进 title）', () => {
+  it('oneLineLabel：短状态词后置；项名取【】或第一个分句；超长截断给省略号', () => {
+    expect(oneLineLabel('未裁决：【定死接口与降级契约】验收：命令 pnpm typecheck 退出码 0'))
+      .toBe('定死接口与降级契约 · 未裁决')
+    expect(oneLineLabel('不通过：窄屏不溢出：375px 下横向滚动')).toBe('窄屏不溢出 · 不通过')
+    expect(oneLineLabel('条款 FR-2 没人接：既没有任务卡承接它')).toBe('条款 FR-2 没人接')
+    expect(oneLineLabel('一句话没有标点')).toBe('一句话没有标点')
+    expect(oneLineLabel('')).toBe('')
+    const long = oneLineLabel('项名' + '很长的说明'.repeat(30))
+    expect(long.endsWith('…')).toBe(true)
+    expect(long.length).toBeLessThanOrEqual(SHORT_MAX + 1)
+  })
+
+  it('缺口条：一行短标（点 + 条款号 + 一句话），why 与全文进 title，ref 芯片保留', () => {
+    const html = buildGapsCell(makeReportResponse({
+      gaps: [{
+        severity: 'red',
+        what: '条款 FR-2 没人接：既没有任务卡承接它，也没有「本轮裁剪」记录——这正是条款在流水线上蒸发的形态',
+        why: '没有裁剪记录就无法判断是漏接还是有意为之',
+        ref: { kind: 'clause', id: 'FR-2' },
+      }],
+    }))
+    // 一行短标：术语前缀与条款号被剥掉（条款号由旁边芯片显示，不在同一行重复两遍）
+    expect(html).toContain('<span class="dsh-pm-gap-what">🔴 没人接</span>')
+    expect(html).toContain('data-ref-id="FR-2"')
+    // 全文（what ｜ why ｜ 出处）在 title：截断必须给出路
+    const title = /title="([^"]*)"/.exec(html)?.[1] ?? ''
+    expect(title).toContain('既没有任务卡承接它')
+    expect(title).toContain('没有裁剪记录就无法判断是漏接还是有意为之')
+    expect(title).toContain('FR-2')
+    // 格内不再渲染整段 why（正文落点在条款/门禁）
+    expect(html).not.toContain('dsh-pm-gap-why')
+  })
+
+  it('遗留条：一行「项名 · 状态」，标准原文进 title（正文在验收单）', () => {
+    const html = buildOutcomeCell(makeReportResponse({
+      outcome: {
+        verdict: 'pending', passed: 0, failed: 0, pendingItems: 1,
+        leftovers: ['未裁决：【定死接口与降级契约（六端点 + 信封类型）】验收：命令 pnpm typecheck 退出码 0；命令 grep -c "available: false"'],
+      },
+    }))
+    expect(html).toContain('>定死接口与降级契约（六端点 + 信封类型） · 未裁决</div>')
+    const title = /title="([^"]*)"/.exec(html)?.[1] ?? ''
+    expect(title).toContain('命令 pnpm typecheck 退出码 0')
   })
 })
 

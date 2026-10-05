@@ -26,6 +26,7 @@ import { docsPanel } from '../src/client/views/panels/docs.js'
 import { renderDialogue } from '../src/client/views/panels/dialogue.js'
 import { renderTokenPanel } from '../src/client/token-info.js'
 import { esc } from '../src/client/html.js'
+import { mdInline } from '../src/client/render/md-inline.js'
 import type { ReportTabCtx } from '../src/client/views/report-tabs.js'
 import type {
   DialogueResponse,
@@ -198,7 +199,10 @@ describe('T-9 · 主干抽取：缺节照实说、有节只截原文（FR-1 / FR
       const block = trunkItemOf(html, item.key)
       for (const line of item.summary) {
         expect(ALL_DOC_TEXT, item.key + ' 的摘要不是原文子串：' + line).toContain(line)
-        expect(block, item.key + ' 渲染时改写了原文：' + line).toContain(esc(line))
+        // 渲染层只做**显示转换**（「**x**」→「<b>x</b>」等，见 render/md-inline.ts），
+        // 字一个不改：所以断言的是"这一行经同一个转换函数出现在这一条里"，
+        // 而不是"原样字符串出现"（那会把 Markdown 标记重新露到页面上——2026-10-05 验收的变形①）。
+        expect(block, item.key + ' 渲染时改写了原文：' + line).toContain(mdInline(line))
         checked += 1
       }
     }

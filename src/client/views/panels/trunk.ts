@@ -22,6 +22,7 @@
  * @module dsh-pmboard/client/views/panels/trunk
  */
 import { esc } from '../../html.js'
+import { mdInline, mdPlain } from '../../render/md-inline.js'
 import type { ReportTabCtx, ReportTabDef } from '../report-tabs.js'
 import type { TrunkKey, TrunkSource } from '../../../shared/protocol.js'
 import { fmtTime } from '../../render/dom-utils.js'
@@ -228,31 +229,69 @@ function evidenceChips(paths: readonly string[]): string {
     + ' title="证据指针（可核验处）：' + esc(p) + '">' + esc(p) + '</span>').join('')
 }
 
+/** 路径末段（`docs/a/b/requirement.md` → `requirement.md`）：给人看的短出处，不占整行。 */
+function baseName(path: string): string {
+  const parts = path.split('/')
+  return parts[parts.length - 1] ?? path
+}
+
+/**
+ * 出处短标（**给眼睛看的**）：`requirement.md § 产品定义`。
+ *
+ * 为什么不把服务端的 `label`（`原文 · docs/requirements/…/requirement.md § 产品定义`）
+ * 直接铺出来：那是一整行的长度，画出来像输入框（2026-10-05 验收指出的变形②）。
+ * 完整出处一个字不丢——服务端 label 与完整路径都进 `title`（悬停可见、审计可查）。
+ */
+function refHint(r: TrunkRef): string {
+  const doc = strOf(r.doc)
+  const name = r.path !== undefined && r.path.length > 0 ? baseName(r.path) : ''
+  if (name.length === 0) return ''
+  return doc.length > 0 ? name + ' § ' + doc : name
+}
+
 /**
  * 「点开原文」入口。
  *
  * 只给**有 `path` 的**入口发 `data-open-doc`（点击由 board-mount 委托 → `ctx.openDoc(path)`）；
  * 像「改动文件清单（执行记录）」「人工门往返留痕（台账评论）」这类没有原文文件的入口，
  * 渲染成**不可点**的说明块——画成按钮却点了没反应，比不可点更坏。
+ *
+ * 形态照原型（`<span class="expand">点开看原文 →</span>`，见 detail-report.html 的 `.expand`）：
+ * **句尾一个小链接**——accent 色、无边框无底色、hover 才下划线。此前渲成整行胶囊，
+ * 被读成"输入框"（变形②）；文档表里的路径按钮是表格单元格内容，**保持不变**。
  */
 function openRefNodes(refs: readonly TrunkRef[]): string {
   if (refs.length === 0) return ''
   const nodes = refs.map(r => {
-    const raw = strOf(r.doc)
-    const docHint = raw.length > 0 ? '（文档里的标题：' + raw + '）' : ''
+    const label = strOf(r.label)
+    const hint = refHint(r)
+    const hintNode = hint.length === 0
+      ? ''
+      : '<span class="dsh-pm-trunk-ref-hint">来源：' + mdInline(hint) + '</span>'
     if (r.path !== undefined && r.path.length > 0) {
-      return '<button type="button" class="dsh-pm-trunk-open" data-open-doc="' + esc(r.path) + '"'
-        + ' title="' + esc('点开原文：' + r.path + docHint) + '">' + esc(r.label) + '</button>'
+      const docHint = strOf(r.doc).length > 0 ? '（文档里的标题：' + strOf(r.doc) + '）' : ''
+      // 服务端 label 原样进 title：页面上收成短链接，但"这条出自哪份文档哪一节"一个字不丢
+      // title 里只能是**纯文本**（属性不做 HTML 解析）：`mdPlain` 把原文里的 Markdown 标记剥掉，
+      // 免得 tooltip 里出现 `serves: …` 这种反引号字面量
+      const title = '点开原文：' + r.path + docHint + (label.length > 0 ? '｜出处标：' + label : '')
+      return '<span class="dsh-pm-trunk-ref">' + hintNode
+        + '<button type="button" class="dsh-pm-trunk-open" data-open-doc="' + esc(r.path) + '"'
+        + ' title="' + esc(mdPlain(title)) + '">点开看原文 →</button></span>'
     }
-    return '<span class="dsh-pm-trunk-open is-nopath"'
-      + ' title="该入口指向留痕 / 台账，没有可打开的原文文件">' + esc(r.label) + '</span>'
+    return '<span class="dsh-pm-trunk-ref"><span class="dsh-pm-trunk-open is-nopath"'
+      + ' title="该入口指向留痕 / 台账，没有可打开的原文文件">' + esc(label) + '</span></span>'
   }).join('')
   return '<div class="dsh-pm-trunk-openrefs" data-open-refs="1">' + nodes + '</div>'
 }
 
-/** 摘要行：**每行一个节点**（FR-1 的"2~4 行"要数得出来，也便于逐行断言）。 */
+/**
+ * 摘要行：**每行一个节点**（FR-1 的"2~4 行"要数得出来，也便于逐行断言）。
+ *
+ * 正文是**文档原文**，里面的 Markdown 标记只在这里做显示层转换（`**粗**` → `<b>` 等，
+ * 见 `render/md-inline.ts`）——服务端的"摘要必须是原文子串"契约因此不受影响。
+ */
 function summaryLines(lines: readonly string[]): string {
-  return lines.map(line => '<p class="dsh-pm-trunk-line" data-summary-line="1">' + esc(line) + '</p>').join('')
+  return lines.map(line => '<p class="dsh-pm-trunk-line" data-summary-line="1">' + mdInline(line) + '</p>').join('')
 }
 
 /** a 类：自动事实（可计算、永远为真）。没有就不出这一组，**不写 0**（未采集 ≠ 零）。 */
@@ -263,8 +302,8 @@ function factsGroup(facts: readonly TrunkFactView[]): string {
       + '<div class="dsh-pm-trunk-mut" data-fact-none="1">尚无自动事实：还没有执行记录（未采集，不冒充零）</div></div>'
   }
   const rows = facts.map(f => '<div class="dsh-pm-fact" data-fact="1">'
-    + '<span class="dsh-pm-fact-label">' + esc(f.label) + '</span>'
-    + '<b class="dsh-pm-fact-value">' + esc(f.value) + '</b>'
+    + '<span class="dsh-pm-fact-label">' + mdInline(f.label) + '</span>'
+    + '<b class="dsh-pm-fact-value">' + mdInline(f.value) + '</b>'
     + (f.evidence.length > 0
       ? '<span class="dsh-pm-fact-evid"><span class="dsh-pm-trunk-mut">证据：</span>' + evidenceChips(f.evidence) + '</span>'
       : '<span class="dsh-pm-trunk-mut" title="这条自动事实没有给证据指针">无证据指针</span>')
@@ -280,8 +319,8 @@ function writtenGroup(highlights: readonly TrunkHighlightView[]): string {
       + '<div class="dsh-pm-trunk-mut" data-hl-none="1">未见带证据的人写差异（文档该节未写，不是零条）</div></div>'
   }
   const cards = highlights.map(h => '<div class="dsh-pm-hl" data-hl="with-evidence">'
-    + '<div class="dsh-pm-hl-diff">差异：' + esc(h.diff.length > 0 ? h.diff : '（未写差异点）') + '</div>'
-    + '<div class="dsh-pm-hl-why">为什么：' + esc(h.why.length > 0 ? h.why : '（未写为什么）') + '</div>'
+    + '<div class="dsh-pm-hl-diff">差异：' + mdInline(h.diff.length > 0 ? h.diff : '（未写差异点）') + '</div>'
+    + '<div class="dsh-pm-hl-why">为什么：' + mdInline(h.why.length > 0 ? h.why : '（未写为什么）') + '</div>'
     + '<div class="dsh-pm-hl-evid"><span class="dsh-pm-trunk-mut">证据：</span>' + evidenceChips(h.evidence) + '</div>'
     + '</div>').join('')
   return '<div class="dsh-pm-trunk-hl-group" data-hl-group="written">' + head
@@ -299,8 +338,8 @@ function writtenGroup(highlights: readonly TrunkHighlightView[]): string {
 function noEvidenceGroup(highlights: readonly TrunkHighlightView[]): string {
   if (highlights.length === 0) return ''
   const cards = highlights.map(h => '<div class="dsh-pm-hl-missing" data-evid="no" data-hl="no-evidence">'
-    + '<div class="dsh-pm-hl-diff">差异：' + esc(h.diff.length > 0 ? h.diff : '（未写差异点）') + '</div>'
-    + (h.why.length > 0 ? '<div class="dsh-pm-hl-why">为什么：' + esc(h.why) + '</div>' : '')
+    + '<div class="dsh-pm-hl-diff">差异：' + mdInline(h.diff.length > 0 ? h.diff : '（未写差异点）') + '</div>'
+    + (h.why.length > 0 ? '<div class="dsh-pm-hl-why">为什么：' + mdInline(h.why) + '</div>' : '')
     + '<div class="dsh-pm-hl-evid">'
     + '<span class="dsh-pm-evidence-missing">未提供证据（不计入亮点）</span>'
     + '<span class="dsh-pm-trunk-mut">补指针的方式：指向改动文件 / 测试用例 / 评审记录或台账留痕</span>'

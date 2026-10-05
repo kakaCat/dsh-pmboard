@@ -13,6 +13,7 @@
  * @module dsh-pmboard/client/views/report-band
  */
 import { esc } from '../html.js'
+import { mdPlain } from '../render/md-inline.js'
 import type { ReportGap, ReportResponse } from '../../shared/protocol.js'
 import { STATUS_LABELS, fmtDur, isTerminal, short } from '../render/dom-utils.js'
 import { degradeText, type ReportHeadPlaceholder } from './report-head.js'
@@ -55,7 +56,76 @@ export function buildProgressCell(report: ReportResponse): string {
   return cell('做到哪了', lines.join('<br>'), ' data-band-cell="progress"')
 }
 
-/** 第二格：缺口清单（无缺口 → 一行"无缺口"，不画空表格）。 */
+/* ────────────────────────────────────────────────────────────── 一行短标 + 出处 */
+
+/** 一行短标的字数上限（超出省略号收尾；全文一律进 `title`——截断必须给出路）。 */
+export const SHORT_MAX = 44
+
+/** 状态词前缀（`未裁决：…` / `不通过：…`）的最大字数：超过它就不是"状态词 + 正文"，而是正文自己带冒号。 */
+const STATUS_HEAD_MAX = 8
+
+function clampText(s: string, max: number): string {
+  return s.length <= max ? s : s.slice(0, max) + '…'
+}
+
+/**
+ * 把一条台账原文压成**一行**（`项名 · 状态`），全文由调用方放进 `title`。
+ *
+ * 为什么要压（2026-10-05 人类验收：状态带三格把"验收标准原文 + 意见"整段塞进小格，
+ * 再靠省略号截断 → 半句 + `…`，读不了）：常驻状态带是**一眼看结论**的地方，
+ * 逐项原文的落点在『文档』Tab 的验收单（那里逐项铺开、一个字不省）。
+ *
+ * 口径（同一套规则用于缺口条与遗留条——"同类信息同一套截断口径"，不许一处两行一处一行）：
+ *  ① `未裁决：/ 不通过：` 这种**短前缀**（≤8 字）是状态词，抽出来放到末尾（`项名 · 状态`）；
+ *  ② 项名优先取 `【…】` 里的名字（台账里"标准原文"常被方括号括起），否则取第一个分句
+ *     （到 `：；，。` 为止），再截到 `SHORT_MAX` 字。
+ */
+export function oneLineLabel(text: string, max = SHORT_MAX): string {
+  const s = (typeof text === 'string' ? text : String(text ?? '')).trim()
+  if (s.length === 0) return ''
+  let status = ''
+  let body = s
+  const colon = s.search(/[：:]/)
+  if (colon > 0 && colon <= STATUS_HEAD_MAX) {
+    status = s.slice(0, colon).trim()
+    body = s.slice(colon + 1).trim()
+  }
+  if (body.length === 0) return status
+  const bracket = /^【([^】]{1,60})】/.exec(body)
+  let name = bracket !== null ? bracket[1] : body
+  if (bracket === null) {
+    const cut = body.search(/[：:；;，,。]/)
+    if (cut > 0) name = body.slice(0, cut)
+  }
+  name = clampText(name.trim(), max)
+  return status.length === 0 ? name : name + ' · ' + status
+}
+
+/** 转义 RegExp 元字符（ref id 来自台账，可能带 `.` / `(` 之类）。 */
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * 缺口条的短标：有 `ref` 时**把条款号从正文里剥掉**（它由旁边的 ref 芯片显示），
+ * 免得同一行出现两遍「FR-2」（线上真数据是「条款 FR-2 没人接：…」）。
+ */
+function gapShort(gap: ReportGap): string {
+  const label = oneLineLabel(gap.what)
+  const id = gap.ref?.id ?? ''
+  if (id.length === 0) return label
+  return label
+    .replace(new RegExp('^条款\\s*' + escapeRe(id) + '\\s*[：:，,]?\\s*'), '')
+    .replace(new RegExp('^' + escapeRe(id) + '\\s*[：:，,]?\\s*'), '')
+    .trim()
+}
+
+/**
+ * 第二格：缺口清单（无缺口 → 一行"无缺口"，不画空表格）。
+ *
+ * 每条**只给「severity 点 + 条款号 + 一句话」**：`why`（为什么算缺口）与 `what` 全文进 `title`，
+ * 逐项原文的落点是条款所在的文档 / 门禁（见 `ref`）。理由见本文件末「状态带口径」注。
+ */
 export function buildGapsCell(report: ReportResponse): string {
   const gaps = (report.gaps ?? []).slice()
   if (gaps.length === 0) {
@@ -70,9 +140,14 @@ export function buildGapsCell(report: ReportResponse): string {
     const ref = g.ref === undefined ? ''
       : '<span class="dsh-pm-gap-ref" data-ref-kind="' + esc(g.ref.kind) + '" data-ref-id="' + esc(g.ref.id)
         + '">' + esc(g.ref.id) + '</span>'
-    return '<div class="dsh-pm-gap-line" data-severity="' + esc(g.severity) + '">'
-      + '<span class="dsh-pm-gap-what">' + esc(GAP_DOT[g.severity] ?? '⚪') + ' ' + esc(g.what) + '</span>'
-      + '<span class="dsh-pm-gap-why">' + esc(g.why) + '</span>' + ref + '</div>'
+    // 全文（what + why + ref）进 title：一行短标是**入口**，不是结论的全部
+    const full = g.what + (g.why.length === 0 ? '' : '｜为什么：' + g.why)
+      + (g.ref === undefined ? '' : '｜出处：' + g.ref.kind + ' ' + g.ref.id)
+    const short = gapShort(g)
+    return '<div class="dsh-pm-gap-line" data-severity="' + esc(g.severity) + '"'
+      + ' title="' + esc(full) + '">'
+      + '<span class="dsh-pm-gap-what">' + esc(GAP_DOT[g.severity] ?? '⚪') + ' '
+      + esc(short.length === 0 ? g.what : short) + '</span>' + ref + '</div>'
   }).join('')
   const more = sorted.length > GAP_HEAD_LIMIT
     ? '<div class="dsh-pm-gap-more">还有 ' + String(sorted.length - GAP_HEAD_LIMIT)
@@ -132,8 +207,10 @@ function leftoversHtml(o: NonNullable<ReportResponse['outcome']>): string {
     return '<span class="dsh-pm-outcome-leftover-title">遗留问题与后续（'
       + String(rows.length) + ' 项'
       + (rest > 0 ? '，先列前 ' + String(shown.length) + ' 项' : '') + '）</span>'
-      + shown.map(l => '<div class="dsh-pm-outcome-leftover" data-leftover="1">'
-        + esc(short(l, LEFTOVER_MAX)) + '</div>').join('')
+      // 每条**只给一行**（`项名 · 状态`）：标准原文与意见进 title，逐项正文在『文档』Tab 的验收单
+      + shown.map(l => '<div class="dsh-pm-outcome-leftover" data-leftover="1"'
+        + ' title="' + esc(mdPlain(short(l, LEFTOVER_MAX))) + '">'
+        + esc(oneLineLabel(l)) + '</div>').join('')
       + (rest > 0
         ? '<span class="dsh-pm-band-mut" data-more-leftovers="' + String(rest) + '">其余 '
           + String(rest) + ' 项见『文档』Tab 的验收单（逐项铺开，未省略）</span>'

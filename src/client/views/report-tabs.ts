@@ -376,6 +376,22 @@ function openDocPathOf(el: HTMLElement): string {
 }
 
 /**
+ * 取 `data-confirm` 的值（缺失/空 = 这次点击不需要确认）。
+ *
+ * 用途：**危险动作**（取消这类，见 `report-head.ts#buildReportActionBar` 的 data-confirm）。
+ * 它们的既有通道 `move-req` 自己**没有确认框**（`board-mount` 的该分支直接发请求），
+ * 而"危险动作必须进确认框"是设计原则（Pajamas · Destructive actions）。
+ * 壳的点击委派比 `board-mount` 挂在容器上的委派**更靠内**（按钮 → viewEl → container），
+ * 所以在这里拦是最短的一跳：拒绝就 `stopPropagation`，请求根本不会发出去。
+ */
+function confirmTextOf(el: HTMLElement): string {
+  const fromDataset = el.dataset === undefined ? undefined : el.dataset.confirm
+  if (typeof fromDataset === 'string' && fromDataset.length > 0) return fromDataset
+  if (typeof el.getAttribute !== 'function') return ''
+  return el.getAttribute('data-confirm') ?? ''
+}
+
+/**
  * 面板内的**就地**交互（当前只有对话 Tab 的页内检索）：只过滤**已加载**的消息，不重新取数
  * （"更早的还没加载"由「加载更早」管，检索栏自己会写明范围）。
  *
@@ -392,6 +408,31 @@ function handlePanelInput(root: HTMLElement, ev: Event): boolean {
   // 作用域 = 该输入框所在的面板（`data-panel` 由面板根提供）；找不到才用壳根
   const panel = box.closest<HTMLElement>('[data-panel]') ?? root
   applyDialogueSearch(panel, box.value)
+  return true
+}
+
+/**
+ * 危险动作的确认（返回 true = 这次点击**已被拦下**）。
+ *
+ * 三个"别做"：
+ *  · **不拦没有 `data-confirm` 的点击**——普通动作的确认归各自通道（`verify-pass` 有自己的
+ *    读材料的确认框，`verify-rework` 有自己的 prompt），壳再弹一次就是两次确认；
+ *  · **宿主没有 `confirm` 能力时放行**（不静默吞掉点击：点了没反应比没有确认更坏）；
+ *  · **不 preventDefault 之外的副作用**：确认通过就原样冒泡，通道照旧收到这次点击。
+ */
+function handleDangerConfirm(ev: Event): boolean {
+  const target = ev.target as Element | null
+  if (target === null || typeof target.closest !== 'function') return false
+  const el = target.closest<HTMLElement>('[data-confirm]')
+  if (el === null) return false
+  const text = confirmTextOf(el)
+  if (text.length === 0) return false
+  const win = typeof window === 'undefined' ? undefined : window
+  if (win === undefined || typeof win.confirm !== 'function') return false
+  if (win.confirm(text)) return false
+  // 拒绝：拦在壳这一层，`board-mount` 的容器委派（更外层）收不到这次点击
+  ev.preventDefault()
+  ev.stopPropagation()
   return true
 }
 
@@ -528,6 +569,8 @@ export function createReportTabs(opts: ReportTabsOpts): ReportTabsController {
     attach(root) {
       if (typeof root.addEventListener !== 'function') return () => { /* 无 DOM 能力：静默 */ }
       const onClick = (ev: Event): void => {
+        // 危险动作的确认先跑：拒绝就拦下（更外层的容器委派收不到这次点击）
+        if (handleDangerConfirm(ev)) return
         const target = ev.target as Element | null
         if (target === null || typeof target.closest !== 'function') return
         const openEl = target.closest<HTMLElement>('[data-open-doc]')

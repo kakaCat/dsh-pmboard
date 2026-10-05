@@ -33,6 +33,7 @@
  * @module dsh-pmboard/client/views/panels/dag
  */
 import { esc } from '../../html.js'
+import { mdInline } from '../../render/md-inline.js'
 import type { DagGraphNode, DagResponse, DagStep } from '../../../shared/protocol.js'
 import type { ReportTabCtx, ReportTabDef } from '../report-tabs.js'
 
@@ -288,7 +289,7 @@ function outputCellHtml(step: DagStep): string {
 
   const summary = report === undefined ? undefined : report.summary
   parts.push('<div class="dsh-pm-report-step-summary">'
-    + (typeof summary === 'string' && summary.length > 0 ? esc(summary) : '（未汇报）') + '</div>')
+    + (typeof summary === 'string' && summary.length > 0 ? mdInline(summary) : '（未汇报）') + '</div>')
 
   const bits: string[] = []
   bits.push(completed === undefined ? '完成 未记录' : '完成 ' + String(completed) + ' 项')
@@ -301,7 +302,7 @@ function outputCellHtml(step: DagStep): string {
     parts.push('<div class="dsh-pm-report-zero" data-zero-mark="1">⚠ 零产出：这次执行没有产出任何报告条目或文件改动</div>')
   }
   if (report !== undefined && typeof report.nextStep === 'string' && report.nextStep.length > 0) {
-    parts.push('<div class="dsh-pm-muted">下一步：' + esc(report.nextStep) + '</div>')
+    parts.push('<div class="dsh-pm-muted">下一步：' + mdInline(report.nextStep) + '</div>')
   }
   return parts.join('')
 }
@@ -311,14 +312,14 @@ function evidenceCellHtml(step: DagStep): string {
   const parts: string[] = []
   if (step.outcome === 'failed') {
     const err = typeof step.error === 'string' && step.error.length > 0 ? step.error : '（未记录错误原文）'
-    parts.push('<div class="dsh-pm-report-step-error" data-step-error-text="1">错误：' + esc(err) + '</div>')
+    parts.push('<div class="dsh-pm-report-step-error" data-step-error-text="1">错误：' + mdInline(err) + '</div>')
   }
   const list = Array.isArray(step.evidence) ? step.evidence : []
   if (list.length === 0) {
     parts.push('<div class="dsh-pm-muted">（无证据）</div>')
   } else {
     parts.push('<ul class="dsh-pm-report-evidence">'
-      + list.map(e => '<li>' + esc(e) + '</li>').join('') + '</ul>')
+      + list.map(e => '<li>' + mdInline(e) + '</li>').join('') + '</ul>')
   }
   return parts.join('')
 }
