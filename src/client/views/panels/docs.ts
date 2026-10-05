@@ -620,9 +620,10 @@ function renderDocs(data: unknown): string {
 export const docsPanel: ReportTabDef = {
   key: 'docs',
   label: '文档',
-  // 角标数字必须来自服务端计数（T-8）：DocsResponse 目前没有文档计数字段
-  // → 返回 undefined = 不显示角标，绝不用前端 documents.length 冒充服务端计数。
-  badge: () => undefined,
+  // 角标数字来自服务端计数（T-8）：`tabCounts.docs` = 该需求已登记产物条数。
+  // 取不到（服务端没给 / 这条台账没有产物登记字段）→ undefined = 不渲染角标，
+  // 绝不用前端 `documents.length` 冒充服务端计数。
+  badge: (report) => report?.tabCounts?.docs,
   // 第二个参数（ctx）在纯渲染里用不上：点开正文由**壳**的 attach 委派接
   // （`[data-open-doc]` → `ctx.openDoc`）。渲染函数自己调 ctx.openDoc 就变成"渲染时副作用"，
   // 也与壳的分段重绘纪律冲突（面板段每次变更都被整段替换）。

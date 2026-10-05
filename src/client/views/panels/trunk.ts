@@ -397,9 +397,10 @@ export function renderTrunkPanel(data: unknown): string {
 export const trunkPanel: ReportTabDef = {
   key: 'trunk',
   label: '汇报',
-  // 角标数字必须来自首屏 report 快照（不前端遍历）。ReportResponse 目前**没有**按 Tab 的计数
-  // → 返回 undefined = 不显示角标，绝不用前端推算的数字冒充服务端计数（T-8）。
-  badge: () => undefined,
+  // 角标数字必须来自首屏 report 快照里的**服务端计数**（T-8）。
+  // trunk **本卡不填**：主干有内容的条数要跑一遍主干装配（再过一遍需求/设计文档），
+  // 为角标把首屏的文档读翻倍——太贵，故服务端留空（不知道就不显示，绝不用前端推算的数字冒充）。
+  badge: (report) => report?.tabCounts?.trunk,
   // `_ctx` 不参与渲染：点击入口只产出 `data-open-doc`，由 board-mount 委托到 `ctx.openDoc(path)`；
   // 渲染保持无副作用，测试才能只对字符串断言。
   render: (data: unknown, _ctx: ReportTabCtx): string => renderTrunkPanel(data),

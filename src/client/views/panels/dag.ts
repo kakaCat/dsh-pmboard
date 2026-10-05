@@ -404,6 +404,8 @@ function renderDagPanel(data: unknown, ctx: ReportTabCtx): string {
 export const dagPanel: ReportTabDef = {
   key: 'dag',
   label: 'DAG',
-  badge: () => undefined,
+  // 角标数字来自服务端计数（T-8）：`tabCounts.dag` = 任务卡数（与 DAG 图的节点数同源）。
+  // 取不到 → undefined = 不渲染角标。
+  badge: (report) => report?.tabCounts?.dag,
   render: (data, ctx) => renderDagPanel(data, ctx),
 }

@@ -2300,6 +2300,19 @@ export interface ReportHead {
    * `archived=true` 表示该会话已归档——仍可点（先恢复再打开），不是灰按钮。
    */
   sessionJump: { windowKey: string; archived: boolean }[]
+  /**
+   * 台账评论**最近 10 条**（补能力回退：旧详情页显示评论列表，新页只有输入框 = 用户看不到评论了）。
+   *
+   * 口径（为什么是这三个字段、而不是整条 `CommentRecord`）：
+   *  - **新的在后**，顺序与台账 `req.comments` 一致（同一条时间线，读者从旧读到新）；
+   *  - **只给尾部 10 条**：首屏是唯一请求，把整本评论搬上来既拖慢首屏、也让页面无界变长；
+   *    更早的评论走"加载更早"（分页 ≠ 内层滚动，FR-11 #6/#7）；
+   *  - 渲染一行只要"什么时候 / 谁 / 说了什么"，`id` 前端用不上（点开单条是后续卡片的事）；
+   *  - **缺省 = 未采集（服务端没下发）**：页面**整块不渲染**，也不写"暂无评论"——
+   *    "没有评论"（`[]`）与"读不到评论"（缺省）必须分开（FR-12）；`by` 缺失由渲染侧按
+   *    `commentActorLabel` 的同口径折算为「人」（历史评论没有 actor 字段）。
+   */
+  comments?: { at: number; body: string; by: ActorRef }[]
 }
 
 /** 状态带第一格「做到哪了」。 */
@@ -2358,6 +2371,50 @@ export interface ReportResponse {
   gaps: ReportGap[]
   actions: ReportAction[]
   nextStepForAgent?: string
+  /**
+   * Tab 角标关键数字（FR-11 #4）：「对话 42」「Token 1.84M」——默认页不切 Tab 也能看出"有多少"。
+   *
+   * 三条口径（都是**服务端算好的短字符串**，前端不遍历、不推算）：
+   *  - 值一律是**已格式化**的短串（`'7'` / `'42'` / `'1.84M'`）：角标是给人扫一眼的；
+   *  - **只填能便宜拿到的**：`docs`=已登记产物条数、`dag`=任务卡数、`token`=需求 token 合计
+   *    （台账没有 `tokenUsage` 就**不给**——不写 `'0'` 冒充"没花过"）；
+   *  - 需要额外读会话事件/留痕才能得到的（`dialogue` / `prompts`）**首屏一律不填**：
+   *    首屏是唯一请求，不为了一个角标加读（不知道就不显示，符合 FR-12）；
+   *    `trunk` 同理留空（要跑一遍主干装配 = 为角标再读一遍文档目录）。
+   *
+   * 缺省 = 整字段没有（旧服务端）→ 六个 Tab 一个角标都不渲染，绝不显示 `0`。
+   */
+  tabCounts?: {
+    trunk?: string
+    docs?: string
+    dag?: string
+    dialogue?: string
+    token?: string
+    prompts?: string
+  }
+  /**
+   * 结果与成效（FR-5）：验收结论 + 逐项计数 + 遗留问题与后续。
+   *
+   * **没有验收单就不给**（`undefined`）——页面走既有的解释性空态（"尚未到验收段 / 结论见文档 Tab"），
+   * 绝不写"通过 0 项"（`passed=0` 是"验收单里一项都没通过"这个**事实**，与"没有验收单"是两句话，
+   * 见 FR-12 的禁 0 冒充）。
+   *
+   * 数字全部来自台账 `verification.sheet` 的逐项 `status`（服务端一次数完，前端不重算）：
+   *  - `passed` / `failed` = 对应状态项数；
+   *  - `pendingItems` = `pending` + `unverified`（都是"还没裁决"；`not_verifiable` 算**已裁决**，
+   *    与 domain 的 `isFullyDecided` 同口径，故不进这一桶）；
+   *  - `verdict` = **人的裁决**（`verification.decision`）：`pass` / `rework` / 两者都没有（材料已交
+   *    但人还没裁）→ `'pending'`。不从逐项结果倒推裁决——"全项通过但人没确认" ≠ "人已确认通过"；
+   *  - `leftovers` = 逐项里**没有通过**的项（failed / not_verifiable / pending / unverified）逐条带
+   *    原因——台账没有单独的"遗留"字段，能核对的只有验收单，故遗留一律从逐项落，**不编**。
+   */
+  outcome?: {
+    verdict: 'pass' | 'rework' | 'pending'
+    passed: number
+    failed: number
+    pendingItems: number
+    leftovers: string[]
+  }
 }
 
 /* ── 端点 2：汇报七条（主干） ─────────────────────────────────────────────── */

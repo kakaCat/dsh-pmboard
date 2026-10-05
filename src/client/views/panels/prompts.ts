@@ -485,6 +485,7 @@ export function renderPromptsPanel(data: unknown): string {
 export const promptsPanel: ReportTabDef = {
   key: 'prompts',
   label: '提示词',
-  badge: () => undefined,
+  // 同上：计数只认首屏快照里的服务端值；留空就不显示角标（提示词段数需要额外读留痕，首屏不为此加读）
+  badge: (report) => report?.tabCounts?.prompts,
   render: (data) => renderPromptsPanel(data),
 }

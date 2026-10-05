@@ -20,6 +20,7 @@ import {
   HUMAN_ONLY_REQ_TRANSITIONS,
   REQ_TRANSITIONS,
   STAGE_ARTIFACT_REQUIREMENTS,
+  fmtTokens,
   windowCodeFromSessionId,
   type Degrade,
   type PanelResult,
@@ -34,6 +35,7 @@ import {
   type RequirementStatus,
   type StageKey,
   type TaskRecord,
+  type VerificationItem,
 } from '../../shared/protocol.js'
 import { PIPELINE_ORDER } from '../../domain/requirement/RollbackSpec.js'
 import { assertArtifactGates } from '../internal/artifact-gates.js'
@@ -47,6 +49,14 @@ import {
 import { PENDING_CONFIRM_BLOCKED_TOOLS, PENDING_CONFIRM_RECOVERY } from '../internal/pending-guard.js'
 import { seatsOf } from '../internal/window.js'
 import { ALL_STAGE_KEYS } from '../../shared/protocol.js'
+// 「需求 token 合计」的**唯一口径**（卡面徽标同源：`/state` 的 card.tokenTotal 也走它）。
+// 为什么不在这里用 `totalTokens(req.tokenUsage.totals)` 再写一遍：口径两处实现必然漂移，
+// 漂移的症状是"看板卡 1.8M、Token 角标 1.9M"——同一个数字两处不一致，谁都不知道信哪个。
+// 已知口径差（留给主窗口裁定，本卡不动 QueryToken）：Token Tab 表内「本条合计」是
+// Σ 各阶段行（节点无快照时用任务执行差值兜底），与这里的 `totals = Σ 各节点` 在
+// "有任务执行差值、却没有节点快照"的存量需求上会不同（那边更大）。要两处逐字节一致，
+// 得让其中一处改用另一处的口径——那是一次产品裁定，不该由一张角标卡偷偷决定。
+import { requirementTotalTokens } from './QueryRequirementToken.js'
 import type { PanelQueryDeps, PanelQueryInput, PendingConfirmReadPort } from './contracts.js'
 
 // ---------------------------------------------------------------------------
@@ -493,6 +503,104 @@ function sessionJumpOf(deps: ReportQueryDeps, req: RequirementRecord): ReportHea
 }
 
 // ---------------------------------------------------------------------------
+// 补项 · 首屏三处数据（Tab 角标 / 评论列表 / 结果与成效）
+// ---------------------------------------------------------------------------
+
+/** 首屏评论列表的条数上限（FR-11 #6：长列表默认只渲染最近 N 条，更早的分页取）。 */
+export const REPORT_COMMENT_HEAD_LIMIT = 10
+
+/**
+ * 评论列表（补能力回退：旧详情页显示台账评论，新页只剩输入框 = 用户看不到评论了）。
+ *
+ * 三条口径：
+ *  - **尾部 10 条、顺序原样**（台账是追加序 = 新的在后）：前端不排序——排序口径两处实现会漂移，
+ *    而"时间线顺序"是这条列表唯一的语义；
+ *  - **不额外读盘**：只用已经读到的 `req.comments`（首屏是唯一请求，再读一次台账只为一个列表不划算）；
+ *  - 历史评论没有 actor 字段 → 按 `commentActorLabel`（client）的**同口径**折算为「人」，
+ *    不臆造 agent / 系统（写路径里 GUI 评论框落的就是 human）。
+ */
+function commentsOf(req: RequirementRecord): NonNullable<ReportHead['comments']> {
+  return (req.comments ?? []).slice(-REPORT_COMMENT_HEAD_LIMIT).map(c => ({
+    at: c.createdAt,
+    body: c.body,
+    by: c.createdBy ?? { kind: 'human' },
+  }))
+}
+
+/**
+ * Tab 角标关键数字（FR-11 #4）：**只填能便宜拿到的**，值一律是服务端算好的短字符串。
+ *
+ * 拿到什么、为什么：
+ *  - `docs` = 已登记产物条数。**只在台账确实带 `artifacts` 字段时给**：存量需求（v5 及更早）根本
+ *    没有产物登记这个键，"一条都没登记"与"这台账还没有这个功能"分不开，报 `'0'` 就是用 0 冒充未知；
+ *  - `dag` = 任务卡数（同一份 `listByRequirement`，与 DAG Tab 的节点数同源）。队列已读到
+ *    （读不到早在 queryReport 里降级了），所以 `'0'` 是**真实计数**："还没拆分落卡"是可执行的信息；
+ *  - `token` = 需求 token 合计（K/M）。台账没有 `tokenUsage` 就**不给**：`'0'` 会被读成"没花过"，
+ *    而实际是"没有快照"（写路径口径：任一端不可得就什么都不记，见 internal/token-usage）；
+ *  - `trunk` / `dialogue` / `prompts` **留空**（页面就不显示那个角标）：
+ *    `dialogue` / `prompts` 要读会话事件与注入留痕——首屏是唯一请求，不为一个角标加读；
+ *    `trunk` 要跑一遍主干装配（再过一遍需求/设计文档）——为角标把首屏的文档读翻倍，太贵。
+ *    这不是漏了：不知道就不显示，绝不用前端推算的数字冒充服务端计数（FR-12 / T-8）。
+ */
+function tabCountsOf(
+  req: RequirementRecord,
+  tasks: readonly TaskRecord[],
+): NonNullable<ReportResponse['tabCounts']> {
+  const counts: NonNullable<ReportResponse['tabCounts']> = {}
+  if (Array.isArray(req.artifacts)) counts.docs = String(req.artifacts.length)
+  counts.dag = String(tasks.length)
+  const tokens = requirementTotalTokens(req)
+  if (tokens !== undefined) counts.token = fmtTokens(tokens)
+  return counts
+}
+
+/** 一条没通过的验收项 → 遗留问题原文（带裁决意见/原因：遗留必须能追到人说过的话）。 */
+function leftoverOf(item: VerificationItem): string {
+  // 标准原文缺了就退回 id：遗留条目**必须指得回去**，不能只剩一句"不通过"
+  const criterion = item.criterion.trim().length > 0 ? item.criterion.trim() : '（验收项 ' + item.id + ' 未写标准原文）'
+  const opinion = (item.opinion ?? '').trim()
+  const tail = opinion.length > 0 ? '：' + opinion : ''
+  switch (item.status) {
+    case 'failed': return fmt('不通过：{criterion}{tail}', { criterion, tail })
+    case 'not_verifiable': return fmt('不可验收（无法按要求验）：{criterion}{tail}', { criterion, tail })
+    case 'unverified': return fmt('未复核（已过但没留实际结果）：{criterion}', { criterion })
+    default: return fmt('未裁决：{criterion}', { criterion })
+  }
+}
+
+/**
+ * 结果与成效（FR-5）：**有验收单才给**，没有就 `undefined`（页面走解释性空态）。
+ *
+ * 数字全部来自台账 `verification.sheet` 的逐项 `status`（这里一次数完，前端不重算）：
+ *  - `passed` / `failed` 是**真实计数**（0 合法：0 项通过是事实）；
+ *  - `pendingItems` = `pending` + `unverified`（历史遗留的未裁决值）；`not_verifiable` 算**已裁决**
+ *    （与 domain `isFullyDecided` 同口径），故不进这一桶；
+ *  - `verdict` 只认**人的裁决**（`verification.decision`）：`pass` / `rework` / 两者都没有
+ *    （材料已交、人还没裁）→ `'pending'`。**不从逐项结果倒推**——"全项通过但人没确认"与
+ *    "人已确认通过"是两件事，后者才作数；
+ *  - `leftovers` = 逐项里**没有通过**的（failed / not_verifiable / pending / unverified）逐条带原因。
+ *    台账没有单独的"遗留"字段，能核对的只有验收单，故遗留一律从逐项落，**不编**；
+ *    把未裁决项也列进去是刻意的：否则"三项计数之外"的项（如不可验收）会在页面上**无声消失**。
+ */
+function outcomeOf(req: RequirementRecord): ReportResponse['outcome'] {
+  const verification = req.verification
+  const sheet = verification?.sheet
+  // 没有验收单 → 不给 outcome。**不是** `passed: 0`——"还没验收"与"验收了但一项都没过"是两句话，
+  // 写错就是把"不知道"当成"零"（FR-12 的禁 0 冒充）。
+  if (sheet === undefined) return undefined
+  const items = sheet.items ?? []
+  const count = (status: VerificationItem['status']): number => items.filter(i => i.status === status).length
+  const decision = verification?.decision
+  return {
+    verdict: decision === 'pass' ? 'pass' : decision === 'rework' ? 'rework' : 'pending',
+    passed: count('passed'),
+    failed: count('failed'),
+    pendingItems: count('pending') + count('unverified'),
+    leftovers: items.filter(i => i.status !== 'passed').map(leftoverOf),
+  }
+}
+
+// ---------------------------------------------------------------------------
 // S-1 · 端点入口
 // ---------------------------------------------------------------------------
 
@@ -569,6 +677,8 @@ export async function queryReport(
   // （协议注释里那句"红条数"是更早的写法；产品口径优先，且两者都钉在用例里防漂移）。
   const waitingHuman = gaps.length
   const nextStepForAgent = nextStepOf(req, progress, gaps)
+  // 结果与成效：没有验收单时**恒 undefined**（由 outcomeOf 判），页面据此走解释性空态
+  const outcome = outcomeOf(req)
 
   const head: ReportHead = {
     id: req.id,
@@ -584,6 +694,8 @@ export async function queryReport(
     updatedAt: req.updatedAt,
     seats: seatsOf(req),
     sessionJump: sessionJumpOf(deps, req),
+    // 评论列表：只用已读到的 req.comments（不额外读盘），空数组照给（"确实没有评论" ≠ "读不到"）
+    comments: commentsOf(req),
   }
 
   const response: ReportResponse = {
@@ -594,6 +706,8 @@ export async function queryReport(
     gaps,
     actions,
     ...(nextStepForAgent !== undefined ? { nextStepForAgent } : {}),
+    tabCounts: tabCountsOf(req, tasks),
+    ...(outcome !== undefined ? { outcome } : {}),
   }
   return response
 }

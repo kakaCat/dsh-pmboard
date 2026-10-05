@@ -14,7 +14,7 @@
  */
 import { esc } from '../html.js'
 import type { ReportGap, ReportResponse } from '../../shared/protocol.js'
-import { STATUS_LABELS, fmtDur, isTerminal } from '../render/dom-utils.js'
+import { STATUS_LABELS, fmtDur, isTerminal, short } from '../render/dom-utils.js'
 import { degradeText, type ReportHeadPlaceholder } from './report-head.js'
 
 /**
@@ -82,14 +82,79 @@ export function buildGapsCell(report: ReportResponse): string {
 }
 
 /**
+ * 验收结论 → 一句人话（FR-5：通过 / 返工 / 待裁决，三态各有说辞，不留白）。
+ *
+ * 为什么键是 `ReportResponse['outcome']` 那三个值：结论只认**人的裁决**（服务端从
+ * `verification.decision` 折算），页面不猜、也不从逐项计数倒推。
+ */
+const OUTCOME_VERDICT: Record<'pass' | 'rework' | 'pending', string> = {
+  pass: '✅ 验收通过',
+  rework: '🔁 退回返工（不通过项待重做后重判）',
+  pending: '⏳ 验收进行中（人尚未裁决）',
+}
+
+/**
+ * 遗留条目展示上限（字符）。截断是为了保住"常驻头部一屏读完"（FR-3），
+ * **不是藏内容**：每条超长都在这里显式标 `…`，并指向『文档』Tab 的验收单原文。
+ */
+const LEFTOVER_MAX = 300
+
+/**
+ * 遗留问题与后续（FR-5）。
+ *
+ * 三种收尾各有说辞（禁留白、禁空表格）：
+ *  - 有条目 → 逐条铺开（`data-leftover`），末尾指回验收单原文；
+ *  - 条目为空且**有通过项** → 「无遗留问题」（逐项全通过是真的，不是"没数据"）；
+ *  - 条目为空且**一项都没通过** → 说明验收单是空的（`passed===0` 且无遗留 = 没有可裁决的逐项），
+ *    绝不写"全部通过"。后者与"没有验收单"（走另一个分支）是两句话。
+ */
+function leftoversHtml(o: NonNullable<ReportResponse['outcome']>): string {
+  const rows = (o.leftovers ?? [])
+    .map(l => (typeof l === 'string' ? l.trim() : ''))
+    .filter(l => l.length > 0)
+  if (rows.length > 0) {
+    // 刻意**不给标题加 `data-leftover-*` 属性**：`data-leftover` 必须精确等于遗留条数
+    // （多一个同前缀的属性，`countOf(html,'data-leftover')` 这类计数断言就会数出 N+1）。
+    return '<span class="dsh-pm-outcome-leftover-title">遗留问题与后续（'
+      + String(rows.length) + ' 项）</span>'
+      + rows.map(l => '<div class="dsh-pm-outcome-leftover" data-leftover="1">'
+        + esc(short(l, LEFTOVER_MAX)) + '</div>').join('')
+      + '<span class="dsh-pm-band-mut">逐项原文与证据见『文档』Tab 的验收单</span>'
+  }
+  const none = num(o.passed) > 0
+    ? '无遗留问题：验收单逐项全部通过'
+    : '验收单为空（0 项）：没有可裁决的逐项，逐项结果见『文档』Tab'
+  // 同样避开 `data-leftover` 前缀（见上）：空态用一个独立属性，`data-leftover` 只在真有遗留时出现
+  return '<span class="dsh-pm-band-mut" data-no-leftover="1">' + esc(none) + '</span>'
+}
+
+/**
  * 第三格：结果与成效（FR-5）。
  *
- * 未到验收段 → 解释性空态（说清"什么时候会出现"），不画空表格。
- * 已到验收段/终态 → 首屏摘要里**没有**逐项验收结论（`ReportResponse` 无该字段，见交付答复的契约缺口），
- * 所以这里只给"结论在哪看"的指针——**不编结论**。
+ * 两态：
+ *  - **有 `outcome`**（台账里有验收单）→ 结论 + 逐项计数 + 遗留问题与后续；
+ *  - **没有 `outcome`** → 解释性空态（说清"什么时候会出现"），不画空表格。
+ *
+ * 禁 0 冒充（FR-12）：`通过 0 项` 只在验收单**确实一项都没过**时出现（那是事实）；
+ * "还没有验收单"走的是另一句话（"尚未到验收段 / 结论见文档 Tab"），两者绝不混。
  */
 export function buildOutcomeCell(report: ReportResponse): string {
   const status = report.head.status
+  const o = report.outcome
+  // 取消态：没有验收结论可给（保持既有说辞）；其余状态只要有验收单就用逐项数据说话
+  if (status !== 'canceled' && o !== undefined) {
+    const passed = num(o.passed)
+    const failed = num(o.failed)
+    const pending = num(o.pendingItems)
+    const counts = '<span class="dsh-pm-outcome-counts">逐项：'
+      + '<span data-outcome-passed="' + String(passed) + '">通过 ' + String(passed) + ' 项</span>'
+      + ' · <span data-outcome-failed="' + String(failed) + '">不通过 ' + String(failed) + ' 项</span>'
+      + ' · <span data-outcome-pending="' + String(pending) + '">待定 ' + String(pending) + ' 项</span>'
+      + '</span>'
+    const verdict = '<span class="dsh-pm-outcome-verdict" data-outcome="' + esc(o.verdict) + '">'
+      + esc(OUTCOME_VERDICT[o.verdict] ?? o.verdict) + '</span>'
+    return cell('结果与成效', verdict + '<br>' + counts + '<br>' + leftoversHtml(o), ' data-band-cell="outcome"')
+  }
   const body = isTerminal(status)
     ? (status === 'canceled'
       ? '<span class="dsh-pm-band-mut">已取消：无验收结论</span>'

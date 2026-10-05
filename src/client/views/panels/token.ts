@@ -19,6 +19,8 @@ import { renderTokenPanel } from '../../token-info.js'
 export const tokenPanel: ReportTabDef = {
   key: 'token',
   label: 'Token',
-  badge: () => undefined,
+  // 角标读首屏快照里的服务端计数（`tabCounts.token`，已格式化短串如 1.84M）：
+  // 首屏就看得见「花了多少」，而不用先切到这个 Tab；服务端没给就**不显示角标**（不前端遍历、不写 0）。
+  badge: (report) => report?.tabCounts?.token,
   render: (data) => renderTokenPanel(data),
 }

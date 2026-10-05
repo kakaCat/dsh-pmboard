@@ -326,8 +326,9 @@ export function applyDialogueSearch(root: HTMLElement, query: string): number {
 export const dialoguePanel: ReportTabDef = {
   key: 'dialogue',
   label: '对话',
-  // 角标数字只能来自首屏 report 快照里的**服务端计数**（T-8）；ReportResponse 目前没有按 Tab 计数
-  // → 返回 undefined = 不显示角标，绝不用前端遍历推算的数字冒充服务端计数。
-  badge: () => undefined,
+  // 角标数字只能来自首屏 report 快照里的**服务端计数**（T-8）。
+  // 对话条数要读会话事件——首屏是唯一请求，不为了一个角标加读，故服务端留空
+  // （取不到 → undefined = 不渲染角标，绝不用前端遍历推算的数字冒充）。
+  badge: (report) => report?.tabCounts?.dialogue,
   render: (data, ctx) => renderDialogue(data, ctx),
 }
