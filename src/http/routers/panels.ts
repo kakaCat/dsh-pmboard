@@ -17,6 +17,8 @@
 import type { ServerResponse } from 'node:http'
 import { resolveDocRoot, type RouterCtx } from './shared.js'
 import { FileDocRepository } from '../../adapters/FileDocRepository.js'
+import { JsonQueueRepository } from '../../repositories/QueueRepository.js'
+import { QueueTaskStore } from '../../repositories/QueueTaskStore.js'
 import type { PanelQueries, PanelQueryDeps } from '../../application/query/contracts.js'
 import { isRequirementId } from '../../domain/requirement/ReqboardPaths.js'
 import {
@@ -127,7 +129,15 @@ export function createPanelsRouter(ctx: RouterCtx, deps: PanelsRouterDeps) {
   function depsForSession(sessionId: string | undefined): Partial<PanelQueryDeps> {
     if (ctx.deps.sessionWorkspace === undefined) return panelDeps
     const root = resolveDocRoot(ctx.deps, sessionId).root
-    return { ...panelDeps, docs: new FileDocRepository({ workspaceRoot: root }) }
+    // 任务根同一道理：`queue.json` 也在工作区里。组合根那份 TaskStore 吃 `process.cwd()`，
+    // 在本部署形态下读不到任何队列（既有 `/stage/:stage` 端点同样返回 0 张卡）。
+    // 这里**只读**地用会话根建一份队列读端——不碰写路径，任务的落库仍归组合根那一份。
+    const tasks = new QueueTaskStore({
+      repo: new JsonQueueRepository({ workspaceRoot: root }),
+      now: ctx.now,
+      onWarn: () => {},
+    })
+    return { ...panelDeps, docs: new FileDocRepository({ workspaceRoot: root }), tasks }
   }
 
   /** `:id` 形状校验（返回 undefined = 400 已写）。 */
