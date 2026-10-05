@@ -1,425 +1,849 @@
 /**
  * pmboard 样式分片 · report（需求详情页「工作汇报」壳，REQ-261004222448-292a）。
  *
- * 分片边界（谁该往这里写）：
- *  - **只放详情壳自己的东西**：常驻头部段 / 状态带段 / Tab 栏段 / 面板包装器（`data-tab-host`）
- *    与六个面板共同的排版约定；
- *  - 六个面板的**专属**类名（`.dsh-pm-trunk*` / `.dsh-pm-docs*` …）按同一约定续写在本分片末尾
- *    （它们是同一棵 DOM 树上的东西，拆成六片只会让"同一处改样式"变成六处）；
- *  - 纯新增区段，**不改既有选择器**（拼接顺序见 `styles.ts`：本片追加在末尾）。
+ * ## 这一片是什么
  *
- * 两条**必须保住**的基础规则（在最上面，别删）：
+ * **报告页的外观收在自己这一层**（2026-10-05 重做，第二轮验收「样式还是不对」的处置）。
+ *
+ * 为什么必须自己一层：壳与六个面板沿用的是旧详情页的类（`.dsh-pm-detail-head` /
+ * `.dsh-pm-stats` / `.dsh-pm-tabs` / `.dsh-pm-block` / `.dsh-pm-dot` …），而它们的**外观由旧分片定义**
+ * ——两套视觉语言叠在一起，看出来的就是「旧详情页 + 一层补丁」。旧分片的规则**一个字都不许改**
+ * （那是别的页面的长相），所以这里把报告页需要的全部外观**重写一遍**，并靠
+ * `.dsh-pm-detail[data-report-shell]` 前缀把特异性提到旧规则之上（旧规则最高是
+ * `.dsh-pm-detail details.dsh-pm-fold summary` 量级；本片对应写作 `.dsh-pm-detail[data-report-shell] details.dsh-pm-fold summary`）。
+ *
+ * ## 视觉唯一规范
+ *
+ * `docs/requirements/REQ-261004222448-292a/prototype/detail-report.html` 的内联 `<style>`。
+ * 本片的每条规则都能指回原型那一段（注释里给的是原型的类名），尺寸/字号/间距用原型 `:root` 的原值
+ * （`--s1..--s6` / `--r1..--r2` / `--f-*` / `--page` / `--rail` / `--gap-col`）。
+ *
+ * 色值口径：**前景与表面一律走主题变量**（`var(--dsw-text-primary, #1d1d1f)` 这种回退写法，
+ * 回退值就是原型浅色稿的原值）——暗色主题下不会闪成白底黑字；线条/底色用原型的中性半透明灰
+ * （`rgba(128,128,128,.20)` 一类），那本身在深/浅两套主题下都成立。
+ *
+ * ## 两条不许丢的规则（最上面两条）
+ *
  *  - `.dsh-pm-tab-panel { display: block }`：面板包装器不吃内层滚动（FR-11 #7：一律铺开，长了走页面滚动）；
- *  - 对话面板的页内检索靠 `hidden` 属性 + `data-msg-hit` 双判据隐藏不命中的消息，而既有分片里若有
- *    `display` 规则盖在那些节点上，`[hidden]` 就会失效（浏览器默认 `[hidden]{display:none}` 是**最弱**
- *    的一条，任何 `display: block/flex` 都能盖掉它）。因此这里把隐藏规则显式钉死。
+ *  - 对话面板的页内检索靠 `hidden` + `data-msg-hit` 双判据隐藏不命中的消息，而本片把 `.dsh-pm-msg`
+ *    改成了 `display:flex`——任何 `display` 规则都会盖掉浏览器默认的 `[hidden]{display:none}`
+ *    （那是最弱的一条），所以这里用**更高特异性**把隐藏规则钉死。
  *
- * 下面按六块续写：① 常驻头部 ② 状态带三格 ③ Tab 栏 ④ 六个面板的排版（含宽表 / 正文块 / 对话气泡）
- * ⑤ 反应付（无证据亮点）⑥ 各面板的块级排版。**全片不含任何内层滚动**——没有限高、也没有轴向滚动条；
- * 能用既有分片的类就复用（`.dsh-pm-btn` / `.dsh-pm-doc-path` / `.dsh-pm-tok-table` / `.dsh-pm-dag-*` …），
- * 本片只补壳与六个面板自己的类名，不重复定义已有选择器。
+ * ## 硬约束（本片自我约束，探针会真 DOM 实测）
+ *
+ * 全片**不出现** overflow 的 auto / scroll 取值，**也不出现**高度上限（不限高）：一律铺开、不做内层滚动。
+ * （这两个 CSS 片段刻意不在这里按原样写出：注释里留一份同样的字面量，会让「分片是否违规」只能靠
+ *   人去分辨注释与规则——探针只看真 DOM，这条纪律也照同一口径表述。）
+ * 高度是靠字号/行距/内边距收紧 + 少渲染几条挣回来的，不是靠把内容关进滚动框。
  */
 export const REPORT_CSS = `
-/* 详情壳：面板包装器不吃内层滚动（FR-11 #7：一律铺开，长了走页面滚动） */
+/* ══════════════════════════════════════════════════════════════════════════
+   ⓪ 基底：面板包装器不吃内层滚动 · 检索隐藏规则钉死
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* 面板包装器：一律铺开（FR-11 #7）。这条是壳体契约，不加作用域前缀也要成立。 */
 .dsh-pm-tab-panel { display: block; }
 
-/* 对话面板页内检索：不命中的消息必须真的看不见（双判据，防被别处的 display 规则盖掉） */
+/* 对话面板页内检索：不命中的消息必须真的看不见。
+   下面把 .dsh-pm-msg 写成了 display:flex，故这里必须用更高特异性（+1 个类 = .dsh-pm-detail[data-report-shell]）
+   才盖得住；两条都留，防的是"后人又给 .dsh-pm-msg 加了一条 display"。 */
 .dsh-pm-msg[hidden],
 .dsh-pm-msg[data-msg-hit="0"] { display: none; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg[hidden],
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg[data-msg-hit="0"] { display: none; }
 
-/* ═══ ① 常驻头部（FR-3 / FR-12）：身份与状态徽标 · 阶段条 · 停留时长 · 一句话结论 · 操作条 · 窗口跳转 ═══
-   这一块解决什么：头部是整页唯一常驻不折叠的一段，读者要在一屏内读完「这是什么需求 / 走到哪一步 /
-   现在最要紧的一句 / 我能不能动手」。所以字段有轻重：结论最显眼，操作按钮带后果说明与「需人操作」标。 */
-.dsh-pm-detail-head[data-report-head] { gap: 8px 10px; padding: 2px 0 6px; }
-.dsh-pm-report-meta { font-size: 12px; color: var(--dsw-text-secondary, #888); }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-report-meta[data-blocked-reason] { color: #b42318; font-weight: 600; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-detail-title { line-height: 1.3; letter-spacing: -.01em; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-card-id { flex: none; }
-/* 8 态阶段条：外观仍归既有 .dsh-pm-dot*，这里只把「当前态」加重（在哪一步必须一眼看出） */
-.dsh-pm-detail-head[data-report-head] .dsh-pm-dot-wrapper.current .dsh-pm-dot { box-shadow: 0 0 0 3px rgba(74,125,255,.22); }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-dot-wrapper.current .dsh-pm-dot-label { font-weight: 700; color: #4a7dff; }
-/* 一句话结论：一屏内最重要的一句，独占一行、加粗、左侧主色条 */
-.dsh-pm-report-verdict {
-  flex-basis: 100%; font-size: 15px; font-weight: 600; line-height: 1.6;
-  color: var(--dsw-text-primary, #1d1d1f);
-  background: linear-gradient(135deg, rgba(74,125,255,.10), rgba(74,125,255,.02));
-  border: 1px solid rgba(74,125,255,.28); border-left: 4px solid #4a7dff;
-  border-radius: 8px; padding: 10px 14px;
-}
-/* 有人在等（waitingHuman > 0）→ 结论条转告警色：那是行动信号，不是叙述 */
-.dsh-pm-report-verdict:not([data-waiting-human="0"]) {
-  background: linear-gradient(135deg, rgba(240,160,32,.14), rgba(240,160,32,.03));
-  border-color: rgba(240,160,32,.45); border-left-color: #f0a020;
-}
-.dsh-pm-report-next { flex-basis: 100%; font-size: 12px; color: var(--dsw-text-secondary, #6e6e73); }
-/* 操作条 + 窗口跳转：各自独占一行；每个动作竖排成块（按钮 / 需人操作标 / 后果说明） */
-.dsh-pm-report-actions, .dsh-pm-report-windows { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 10px 14px; padding-top: 8px; }
-.dsh-pm-report-actions { border-top: 1px dashed var(--pm-line, rgba(128,128,128,.28)); }
-.dsh-pm-report-windows { align-items: center; }
-.dsh-pm-report-action { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; max-width: 280px; }
-.dsh-pm-report-action .dsh-pm-btn { flex: none; }
-.dsh-pm-action-consequence { font-size: 11px; line-height: 1.45; color: var(--dsw-text-secondary, #888); }
-/* humanOnly：「需人操作」是警告标（agent 调用会被代码级拒绝），不是装饰，所以显式着色 */
-.dsh-pm-human-only {
-  font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px;
-  background: rgba(220,53,69,.12); color: #b42318; border: 1px solid rgba(220,53,69,.3);
-}
+/* ══════════════════════════════════════════════════════════════════════════
+   ① 壳体与设计令牌（对应原型 :root + .wrap）
+   ══════════════════════════════════════════════════════════════════════════ */
 
-/* ═══ ② 状态带三格（FR-4 / FR-5）：做到哪了 · 缺口清单 · 结果与成效 ═══
-   这一块解决什么：三格常驻、都不折叠；缺口按 🔴🟡⚪ 三档可区分（圆点之外再给左侧色条与底色，
-   色弱 / 打印也分得出）；「无缺口」是一条正向结论行，不是空表。 */
-.dsh-pm-stats[data-report-band] { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); align-items: start; gap: 12px; }
-.dsh-pm-report-band-body { font-size: 13px; line-height: 1.75; color: var(--dsw-text-primary, #333); word-break: break-word; }
-.dsh-pm-band-ok { color: #1e7e34; font-weight: 600; }
-.dsh-pm-band-mut { color: var(--dsw-text-secondary, #888); }
-.dsh-pm-gap-line {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
-  margin: 4px 0; padding: 6px 9px; border-radius: 6px;
-  background: var(--dsw-bg-secondary, rgba(128,128,128,.05));
-  border-left: 3px solid var(--pm-line, #d0d5dd);
-}
-.dsh-pm-gap-line[data-severity="red"] { border-left-color: #dc3545; background: rgba(220,53,69,.07); }
-.dsh-pm-gap-line[data-severity="yellow"] { border-left-color: #f0a020; background: rgba(240,160,32,.08); }
-.dsh-pm-gap-line[data-severity="gray"] { border-left-color: #b0b4bb; }
-.dsh-pm-gap-what { font-weight: 600; }
-.dsh-pm-gap-why { font-size: 12px; color: var(--dsw-text-secondary, #888); }
-.dsh-pm-gap-ref {
-  font-family: ui-monospace, monospace; font-size: 11px; padding: 1px 6px; border-radius: 4px;
-  background: rgba(128,128,128,.12); color: var(--dsw-text-secondary, #555); word-break: break-all;
-}
-.dsh-pm-gap-more { font-size: 12px; color: var(--dsw-text-secondary, #888); margin-top: 6px; }
-/* 结果与成效：结论 → 逐项计数 → 遗留问题与后续 */
-.dsh-pm-outcome-verdict { font-size: 13px; font-weight: 700; }
-.dsh-pm-outcome-verdict[data-outcome="pass"] { color: #1e7e34; }
-.dsh-pm-outcome-verdict[data-outcome="rework"] { color: #b42318; }
-.dsh-pm-outcome-verdict[data-outcome="pending"] { color: #8a5a00; }
-.dsh-pm-outcome-counts { font-variant-numeric: tabular-nums; }
-.dsh-pm-outcome-leftover-title { display: block; margin-top: 6px; font-weight: 700; }
-.dsh-pm-outcome-leftover {
-  font-size: 12.5px; line-height: 1.6; margin: 4px 0; padding: 5px 9px; word-break: break-word;
-  border-left: 3px solid rgba(240,160,32,.7); background: rgba(240,160,32,.07); border-radius: 0 6px 6px 0;
-}
+.dsh-pm-detail[data-report-shell] {
+  /* ── 原型令牌（原值照抄 detail-report.html 的 :root）──
+     前景走 --dsw-*（暗色主题跟着变），回退值 = 原型浅色稿原值。 */
+  --pm-text: var(--dsw-text-primary, #1d1d1f);
+  --pm-text2: var(--dsw-text-secondary, #5f6368);
+  --pm-text3: var(--dsw-alias-label-tertiary, var(--dsw-text-secondary, #9aa0a6));
+  --pm-accent: var(--dsw-accent, #4a7dff);
+  --pm-ok: #28a745; --pm-warn: #b07800; --pm-danger: #dc3545;
+  --pm-line: rgba(128,128,128,.20); --pm-line-soft: rgba(128,128,128,.11);
+  --pm-bg-soft: rgba(128,128,128,.045); --pm-bg-softer: rgba(128,128,128,.028);
+  --pm-surface: var(--dsw-bg-primary, #fff);
+  /* 语义**前景**色：浅色底上就是原型那几个深色值；暗色主题下由文件末尾的
+     [data-ds-dark-theme] 块整体换成亮一档的同色相值（否则深绿/深棕在暗底上读不出）。 */
+  --pm-ok-text: #1e7e34; --pm-warn-text: #a86a00;
+  --pm-agent: #8e44ad; --pm-teal-text: #0e7c8f;
+  --pm-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* 间距 / 圆角 / 字阶：原型同名令牌（--pill 改名 --pm-pill，避免与全局撞名） */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 28px;
+  --r1: 6px; --r2: 10px; --pm-pill: 999px;
+  --f-h1: 21px; --f-h2: 13.5px; --f-body: 13px; --f-small: 11.5px; --f-tiny: 10.5px;
+  --rail: 150px; --gap-col: 22px;
 
-/* ═══ ③ Tab 栏（FR-11）：六个同级 Tab 的选中态与角标数字 ═══
-   这一块解决什么：六个 Tab 是同级关系，选中态必须显眼（壳标的是 active 类），角标数字是小圆标
-   （没有数字就不渲染角标，所以只写带 data-badge 的那一支）。基座外观复用 files.ts 的 .dsh-pm-tabs，
-   这里只把内边距归零（外层 .dsh-pm-detail 已有页面留白）并压紧字号。 */
-.dsh-pm-tabs[data-report-tabs] { flex-wrap: wrap; gap: 2px; padding: 0; margin-top: 2px; }
-.dsh-pm-tabs[data-report-tabs] .dsh-pm-tab { display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px; font-size: 13px; }
-.dsh-pm-tab-icon { font-size: 13px; line-height: 1; }
-.dsh-pm-tabs[data-report-tabs] .dsh-pm-fold-count[data-badge] {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 17px; height: 17px; padding: 0 5px; border-radius: 9px;
-  font-size: 10px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
-  background: rgba(128,128,128,.18); color: var(--dsw-text-secondary, #666);
+  /* 版心：原型 .wrap { max-width: 1240px; padding: 22px 20px 90px } → 1240 + 2×20 = 1280 */
+  display: flex; flex-direction: column; gap: 0;
+  max-width: 1280px; margin: 0 auto;
+  padding: 8px 20px 72px;
+  font-size: var(--f-body); line-height: 1.55; color: var(--pm-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
-.dsh-pm-tabs[data-report-tabs] .dsh-pm-tab.active .dsh-pm-fold-count[data-badge] { background: #4a7dff; color: #fff; }
+.dsh-pm-detail[data-report-shell] [data-report-seg] { min-width: 0; }
+/* 段间距照原型：结论头自带下边框、状态带自带上下留白与下边框、Tab 宿主只留一点上留白 */
+.dsh-pm-detail[data-report-shell] [data-report-seg="band"] { padding: 6px 0; border-bottom: 1px solid var(--pm-line); }
+.dsh-pm-detail[data-report-shell] [data-report-seg="tabs"] { padding-top: var(--s2); }
 
-/* ═══ ④ 六个面板的排版（FR-11 #7：一律铺开，长了走页面滚动）═══
-   这一块解决什么：六个面板各自的类名此前只有壳、没有样式，读起来是一坨堆叠的文本。
-   统一给「面板 = 纵向块 + 块间距」，再单独处理三类最容易坏的东西：宽表 / 代码正文块 / 对话气泡。 */
-.dsh-pm-tab-panel[data-tab-host] { padding-top: 12px; }
-.dsh-pm-trunk, .dsh-pm-docs, .dsh-pm-report-dag, .dsh-pm-dialogue, .dsh-pm-token-panel, .dsh-pm-prompts {
-  display: flex; flex-direction: column; gap: 14px; min-width: 0;
-}
-/* 宽表（文档清单 / 核验表 / 门禁表 / 每步执行结果）：定宽布局 + 断词。
-   长路径与长证据串是无空格 monospace，会横向撑破容器 → 一律 break-all（t-98684c 的探针断言无横向溢出）。 */
-.dsh-pm-docs-table, .dsh-pm-report-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 12.5px; }
-.dsh-pm-docs-table th, .dsh-pm-docs-table td,
-.dsh-pm-report-table th, .dsh-pm-report-table td {
-  padding: 7px 8px; text-align: left; vertical-align: top;
-  border-bottom: 1px solid var(--pm-line, #e5e7eb); word-break: break-word;
-}
-.dsh-pm-docs-table th, .dsh-pm-report-table th {
-  font-size: 11.5px; font-weight: 600; color: var(--dsw-text-secondary, #888);
-  background: var(--dsw-bg-secondary, rgba(128,128,128,.06));
-}
-.dsh-pm-docs-table code, .dsh-pm-docs-table .dsh-pm-doc-path,
-.dsh-pm-report-table code, .dsh-pm-doc-cell-path { word-break: break-all; }
-.dsh-pm-docs-table tbody tr:last-child td, .dsh-pm-report-table tbody tr:last-child td { border-bottom: none; }
-.dsh-pm-doc-row.is-missing { background: rgba(128,128,128,.05); }
-/* 宽表行悬停：列多行密，悬停才分得清读到哪一行的哪一列 */
-.dsh-pm-docs-table tr.dsh-pm-doc-row:hover,
-.dsh-pm-report-table tr.dsh-pm-report-step:hover { background: var(--dsw-hover, rgba(128,128,128,.06)); }
-/* 窄列显式给宽：把余量留给「路径 / 证据 / 意见」这些长文本列 */
-.dsh-pm-doc-cell-kind { width: 92px; }
-.dsh-pm-doc-cell-time { width: 118px; }
-.dsh-pm-doc-cell-state { width: 168px; }
-.dsh-pm-doc-state { font-size: 11.5px; }
-.dsh-pm-verify-verdict { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: rgba(128,128,128,.12); }
-.dsh-pm-verify-verdict[data-verify-verdict="passed"] { background: rgba(40,167,69,.15); color: #1e7e34; }
-.dsh-pm-verify-verdict[data-verify-verdict="failed"] { background: rgba(220,53,69,.12); color: #b42318; }
-.dsh-pm-verify-verdict[data-verify-verdict="pending"] { background: rgba(240,160,32,.16); color: #8a5a00; }
-.dsh-pm-verify-verdict[data-verify-verdict="not_verifiable"] { background: rgba(128,128,128,.16); color: #555; }
-.dsh-pm-src { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(128,128,128,.12); color: var(--dsw-text-secondary, #666); }
-.dsh-pm-src[data-source="agent"] { background: rgba(74,125,255,.12); color: #2f5fd0; }
-.dsh-pm-src[data-source="human"] { background: rgba(240,160,32,.16); color: #8a5a00; }
-/* 代码 / 正文块（提示词正文、注入留痕正文）：等宽、浅底、整段铺开——不设高度上限、不出内层滚动条 */
-.dsh-pm-prompt-pre {
-  white-space: pre-wrap; word-break: break-word; margin: 0; padding: 10px 12px;
-  border: 1px solid var(--pm-line, rgba(128,128,128,.15)); border-radius: 8px;
-  background: var(--dsw-bg-secondary, #fafafa);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11.5px; line-height: 1.6; color: var(--dsw-text-primary, #3b4048);
-}
-/* 对话（FR-6）：一条连续时间线 —— 人 / agent 两种气泡、系统消息居中灰底小字、回填标显眼 */
-.dsh-pm-dialogue-search {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
-  padding: 8px 10px; border: 1px solid var(--pm-line, rgba(128,128,128,.2));
-  border-radius: 8px; background: var(--dsw-bg-secondary, rgba(128,128,128,.05));
-}
-.dsh-pm-dialogue-search .dsh-pm-input { flex: 1 1 220px; min-width: 0; }
-.dsh-pm-dialogue-hits { font-size: 12px; color: var(--dsw-text-secondary, #888); font-variant-numeric: tabular-nums; }
-.dsh-pm-dialogue-scope { flex-basis: 100%; font-size: 11px; color: var(--dsw-text-secondary, #999); }
-.dsh-pm-dialogue-list { display: flex; flex-direction: column; gap: 10px; }
-.dsh-pm-msg {
-  min-width: 0; padding: 8px 12px; border-radius: 10px;
-  border: 1px solid var(--pm-line, rgba(128,128,128,.18)); background: var(--dsw-bg-primary, #fff);
-}
-.dsh-pm-msg-head { margin-bottom: 4px; }
-.dsh-pm-msg-meta { font-size: 11px; color: var(--dsw-text-secondary, #999); }
-.dsh-pm-msg-actor { font-weight: 700; }
-.dsh-pm-msg-time { font-variant-numeric: tabular-nums; }
-.dsh-pm-msg-window { font-family: ui-monospace, monospace; word-break: break-all; }
-.dsh-pm-msg-text { font-size: 13px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
-.dsh-pm-msg--human { background: rgba(74,125,255,.07); border-color: rgba(74,125,255,.3); margin-right: 10%; }
-.dsh-pm-msg--agent { background: var(--dsw-bg-secondary, rgba(128,128,128,.06)); margin-left: 10%; }
-.dsh-pm-msg--system {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px;
-  margin: 0 6%; padding: 6px 10px; text-align: center;
-  background: rgba(128,128,128,.08); border-style: dashed;
-  font-size: 11.5px; color: var(--dsw-text-secondary, #888);
-}
-.dsh-pm-msg-system-text { font-size: 11.5px; line-height: 1.5; }
-/* 回填标（data-inferred）：这条是事后按台账时间 + 评论反推的，不标会被读成「刚刚推进了阶段」 */
-.dsh-pm-msg-inferred {
-  font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px;
-  color: #8a5a00; background: rgba(240,160,32,.2); border: 1px dashed rgba(240,160,32,.7);
-}
-.dsh-pm-dialogue-hit { background: rgba(255,214,0,.5); color: inherit; border-radius: 2px; padding: 0 1px; }
-.dsh-pm-dialogue-note { font-size: 12px; color: #b45309; }
-.dsh-pm-dialogue-more { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.dsh-pm-dialogue-more-note { font-size: 12px; color: var(--dsw-text-secondary, #888); }
-.dsh-pm-dialogue-reply { margin-top: 0; padding-top: 8px; border-top: 1px dashed var(--pm-line, rgba(128,128,128,.2)); }
+/* ══════════════════════════════════════════════════════════════════════════
+   ② 常驻头部（对应原型 .head / .head-top / .chip / h1.title / .verdict / .stages / .actions / .winbtn）
+   ══════════════════════════════════════════════════════════════════════════ */
 
-/* ═══ ⑤ 反应付的视觉落点（FR-15）：无证据亮点必须与正常亮点一眼可分 ═══
-   这一块解决什么：正常亮点是**实线绿框**（可核验），无证据条目是**虚线弱化框**（不计入亮点）。
-   两者不共容器也不共样式——做得一样，读者就分不出哪条能核验，「反应付」就退化成一句口号。 */
-.dsh-pm-hl {
-  display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: 8px;
-  border: 1px solid rgba(40,167,69,.35); border-left: 3px solid #28a745; background: rgba(40,167,69,.05);
+.dsh-pm-detail[data-report-shell] .dsh-pm-detail-head[data-report-head] {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--s2);
+  padding: 0 0 var(--s3); border-bottom: 1px solid var(--pm-line);
 }
-.dsh-pm-hl-diff { font-weight: 600; }
-.dsh-pm-hl-why { font-size: 12.5px; color: var(--dsw-text-primary, #333); }
-.dsh-pm-hl-evid { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
-.dsh-pm-hl-list { display: flex; flex-direction: column; gap: 8px; }
-.dsh-pm-hl-missing {
-  display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: 8px;
-  border: 1px dashed var(--dsw-text-secondary, #b0b4bb); background: transparent; color: var(--dsw-text-secondary, #888);
+/* 身份行（原型 .head-top）：id · 状态芯片 · 分类 · 难度 · 「更新于 …」 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-rh-top {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2);
+  flex-basis: 100%; min-width: 0; font-size: var(--f-small); color: var(--pm-text2);
 }
-.dsh-pm-hl-missing .dsh-pm-hl-diff { font-weight: 500; color: var(--dsw-text-secondary, #777); }
-.dsh-pm-hl-missing .dsh-pm-hl-evid { gap: 8px; }
-.dsh-pm-evidence-missing {
-  font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px;
-  color: #b45309; border: 1px dashed rgba(180,83,9,.7); background: rgba(240,160,32,.08);
+.dsh-pm-detail[data-report-shell] .dsh-pm-card-id {
+  font-family: var(--pm-mono); font-size: 11px; color: var(--pm-text2);
 }
-.dsh-pm-trunk-hl-unpay { border: 1px dashed rgba(180,83,9,.45); border-radius: 8px; padding: 10px 12px; background: rgba(240,160,32,.05); }
-/* 亮点 / 事实里的证据指针：小等宽胶囊（长路径不撑破所在行） */
-.dsh-pm-hl-evid .dsh-pm-evidence, .dsh-pm-fact-evid .dsh-pm-evidence {
-  display: inline-block; font-family: ui-monospace, monospace; font-size: 11px;
-  padding: 1px 6px; border-radius: 4px; background: rgba(128,128,128,.1);
-  color: var(--dsw-text-secondary, #555); word-break: break-all;
+/* 状态芯片 = 原型 .chip.solid（主色浅底 / 主色字 / 600）；终态换绿，取消换灰 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-status {
+  font-size: var(--f-tiny); font-weight: 600; line-height: 1.5;
+  padding: 1px 8px; border: 0; border-radius: var(--pm-pill);
+  background: rgba(74,125,255,.12); color: var(--pm-accent);
 }
+.dsh-pm-detail[data-report-shell] .dsh-pm-status[data-status="done"],
+.dsh-pm-detail[data-report-shell] .dsh-pm-status[data-status="archived"] { background: rgba(40,167,69,.13); color: var(--pm-ok-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-status[data-status="canceled"] { background: var(--pm-bg-soft); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-status[data-status="accepting"] { background: rgba(23,162,184,.14); color: var(--pm-teal-text); }
+/* 分类 / 难度 / 阻塞理由 = 原型 .chip（细边胶囊） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-meta {
+  font-size: var(--f-tiny); line-height: 1.5; padding: 1px 8px;
+  border: 1px solid var(--pm-line); border-radius: var(--pm-pill); color: var(--pm-text2);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-meta[data-blocked-reason] {
+  border-color: rgba(220,53,69,.35); color: var(--pm-danger); font-weight: 600;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-flag {
+  font-size: var(--f-tiny); padding: 1px 7px; border-radius: var(--pm-pill);
+  background: rgba(220,53,69,.12); color: var(--pm-danger); border: 0;
+}
+/* 「停留 … · 距上次更新 …」右对齐（原型 head-top 的「更新于 23:41」就在最右） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-detail-updated {
+  margin-left: auto; font-size: var(--f-small); color: var(--pm-text2);
+  font-variant-numeric: tabular-nums;
+}
+/* 标题 = 原型 h1.title（21px / 660 / 1.32 / -0.2px） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-detail-title {
+  flex-basis: 100%; margin: var(--s2) 0 0; font-size: var(--f-h1); font-weight: 660;
+  line-height: 1.32; letter-spacing: -.2px; color: var(--pm-text);
+}
+/* 次级行 = 原型标题下那行「创建 22:28（人）· 窗口（点击跳转到该会话）：…」 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-rh-sub {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 2px var(--s2);
+  flex-basis: 100%; min-width: 0; font-size: var(--f-small); color: var(--pm-text2);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-rh-sub .dsh-pm-report-meta {
+  border: 0; padding: 0; font-size: var(--f-small); color: var(--pm-text2);
+}
+/* 一句话结论 = 原型 .verdict（左侧 3px 主色条 + 13.5px） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-verdict {
+  flex-basis: 100%; margin-top: var(--s2); padding: 0 0 0 var(--s3);
+  border: 0; border-left: 3px solid var(--pm-accent); border-radius: 0; background: none;
+  font-size: var(--f-h2); font-weight: 400; line-height: 1.5; color: var(--pm-text);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-next {
+  flex-basis: 100%; font-size: var(--f-small); line-height: 1.5; color: var(--pm-text2);
+}
+/* 阶段条 = 原型 .stages / .stage：4px 圆头条 + 10px 居中标签（done 绿 / cur 蓝） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-progress-dots {
+  flex-basis: 100%; display: flex; gap: var(--s1);
+  margin: var(--s2) 0 0; padding: 0; max-width: 520px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-dot-wrapper {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: var(--s1);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-dot {
+  width: 100%; height: 4px; border-radius: var(--pm-pill); opacity: 1;
+  background: rgba(128,128,128,.18);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-dot-wrapper.completed .dsh-pm-dot { background: var(--pm-ok); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-dot-wrapper.current .dsh-pm-dot {
+  width: 100%; height: 4px; background: var(--pm-accent); box-shadow: none;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-dot-label {
+  font-size: 10px; line-height: 1.4; color: var(--pm-text3); text-align: center; white-space: nowrap;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-dot-wrapper.completed .dsh-pm-dot-label,
+.dsh-pm-detail[data-report-shell] .dsh-pm-dot-wrapper.current .dsh-pm-dot-label {
+  color: var(--pm-text); font-weight: 600;
+}
+/* 操作条 = 原型 .actions（浅底 + 细边 + 6px 圆角的一条，「← 看板」 也在里面） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-rh-bar {
+  flex-basis: 100%; display: flex; align-items: flex-start; flex-wrap: wrap; gap: var(--s2);
+  margin-top: var(--s2); padding: var(--s2) var(--s3);
+  background: var(--pm-bg-softer); border: 1px solid var(--pm-line-soft); border-radius: var(--r1);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-rh-bar .dsh-pm-report-actions {
+  flex: 1 1 0; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2);
+  padding: 0; border: 0; background: none;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-action-bar-label { font-size: var(--f-small); color: var(--pm-text2); }
+/* 每个动作：按钮 + 「需人操作」标 + 后果说明，同行折行（后果是给动手前看的一句话） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-action {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px var(--s2); max-width: 100%;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-action-consequence { font-size: var(--f-tiny); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-human-only {
+  font-size: 9.5px; font-weight: 700; padding: 0 5px; border: 0; border-radius: 4px;
+  background: rgba(220,53,69,.12); color: var(--pm-danger);
+}
+/* 终态只读说明：跟操作条同一行，不再单独占一行 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-gate { font-size: var(--f-small); color: var(--pm-text3); }
+/* 窗口跳转 = 原型 .winbtn（等宽小胶囊） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-windows {
+  display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--s2); padding: 0;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-window {
+  font-family: var(--pm-mono); font-size: 11px; line-height: 1.5;
+  padding: 1px 9px; border: 1px solid var(--pm-line); border-radius: var(--pm-pill);
+  background: var(--pm-surface); color: var(--pm-text); cursor: pointer;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-window:hover {
+  border-color: var(--pm-accent); color: var(--pm-accent); background: rgba(74,125,255,.06);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-window.is-archived { border-style: dashed; color: var(--pm-text2); }
+/* 按钮 = 原型 .abtn */
+.dsh-pm-detail[data-report-shell] .dsh-pm-btn {
+  padding: 5px 12px; border: 1px solid var(--pm-line); border-radius: var(--r1);
+  background: var(--pm-surface); color: var(--pm-text); font-size: 12px; cursor: pointer;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-btn:hover { border-color: var(--pm-accent); background: rgba(74,125,255,.06); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-btn.primary {
+  background: var(--pm-accent); border-color: var(--pm-accent); color: #fff;
+}
+/* 输入框（评论 / 回复 / 检索）：原型 .replybox input */
+.dsh-pm-detail[data-report-shell] .dsh-pm-input {
+  padding: 5px 10px; border: 1px solid var(--pm-line); border-radius: var(--r1);
+  background: var(--pm-surface); color: var(--pm-text); font-size: 12.5px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-input::placeholder { color: var(--pm-text3); }
+/* 评论列表（头部最近几条）：紧凑流式块——列表在上、输入框在下（与"新的在下"同向） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-comments {
+  flex-basis: 100%; display: flex; flex-direction: column; gap: 0; margin-top: var(--s1); min-width: 0;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-comments > .dsh-pm-action-bar-label {
+  font-size: var(--f-tiny); color: var(--pm-text3); margin-bottom: 2px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-comment {
+  display: flex; align-items: baseline; gap: 6px; min-width: 0;
+  padding: 1px 0; border: 0; border-bottom: 1px solid var(--pm-line-soft); border-radius: 0;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-comment:last-child { border-bottom: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-comment-meta { flex: none; font-size: 10px; color: var(--pm-text3); white-space: nowrap; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-comment-who { font-weight: 600; color: var(--pm-text2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-comment-who[data-actor="human"] { color: var(--pm-accent); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-comment-long-flag { color: var(--pm-warn); font-weight: 600; }
+/* 正文最多两行（全文在 title 属性里，一字不丢；再长的那类是机器转储，已在渲染层收纳） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-comment-body {
+  flex: 1 1 auto; min-width: 0;
+  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: var(--f-small); line-height: 1.35; color: var(--pm-text); word-break: break-word;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-comment-form {
+  flex-basis: 100%; display: flex; gap: var(--s2); margin-top: var(--s1); min-width: 0;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-comment-form .dsh-pm-input { flex: 1 1 auto; min-width: 0; padding: 3px 8px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-comment-form .dsh-pm-btn { padding: 3px 10px; }
 
-/* ═══ ⑥ 各面板的块级排版：汇报（trunk）· 文档（docs）· DAG · Token · 提示词（prompts）═══
-   这一块解决什么：把每个面板内部的「节 / 卡片 / 分组标题」立起来——每块可读、成块、不溢出。 */
-/* ── 汇报（trunk）：七节卡片 + 自动事实 / 人写差异分组 + 成果清单 ── */
-.dsh-pm-trunk-docmeta { font-size: 12px; color: var(--dsw-text-secondary, #888); }
-.dsh-pm-trunk-item { border: 1px solid var(--pm-line, rgba(128,128,128,.18)); border-radius: 10px; padding: 12px 14px; background: var(--dsw-bg-primary, #fff); }
-.dsh-pm-trunk-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
-.dsh-pm-trunk-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--dsw-text-primary, #1d1d1f); }
-.dsh-pm-trunk-sub { font-size: 12px; color: var(--dsw-text-secondary, #888); }
-.dsh-pm-trunk-body { display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 1.75; }
-.dsh-pm-trunk-line { margin: 0; }
-.dsh-pm-trunk-mut { font-size: 12px; color: var(--dsw-text-secondary, #888); }
-.dsh-pm-trunk-missing { font-size: 12px; color: #b45309; background: rgba(240,160,32,.1); border: 1px dashed rgba(240,160,32,.45); border-radius: 6px; padding: 6px 10px; }
-.dsh-pm-trunk-scope-hint { font-size: 12px; font-weight: 600; color: var(--dsw-text-secondary, #6e6e73); }
-.dsh-pm-trunk-src { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(128,128,128,.12); color: var(--dsw-text-secondary, #666); }
-.dsh-pm-trunk-src[data-source="doc"] { background: rgba(74,125,255,.12); color: #2f5fd0; }
-.dsh-pm-trunk-src[data-source="ledger"] { background: rgba(23,162,184,.14); color: #0e7c8f; }
-.dsh-pm-trunk-src[data-source="auto"] { background: rgba(40,167,69,.12); color: #1e7e34; }
-.dsh-pm-trunk-src[data-source="human"] { background: rgba(240,160,32,.16); color: #8a5a00; }
-.dsh-pm-trunk-openrefs { display: flex; flex-wrap: wrap; gap: 6px; }
-.dsh-pm-trunk-open {
-  font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 980px; cursor: pointer;
-  border: 1px solid var(--pm-line, rgba(128,128,128,.3)); background: transparent; color: var(--dsw-accent, #4a7dff);
+/* ══════════════════════════════════════════════════════════════════════════
+   ③ 状态带三格（对应原型 .band / .band-i / .band-h / .band-b / .gap-line / .dot）
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.dsh-pm-detail[data-report-shell] .dsh-pm-stats[data-report-band] {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s3);
+  padding: 0; margin: 0;
 }
-.dsh-pm-trunk-open:hover { background: rgba(74,125,255,.1); }
-.dsh-pm-trunk-open.is-nopath { color: var(--dsw-text-secondary, #888); cursor: default; }
-.dsh-pm-fact { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; font-size: 13px; padding: 5px 0; border-bottom: 1px dashed var(--pm-line, rgba(128,128,128,.15)); }
-.dsh-pm-fact:last-child { border-bottom: none; }
-.dsh-pm-fact-label { font-size: 12px; color: var(--dsw-text-secondary, #888); }
-.dsh-pm-fact-value { font-variant-numeric: tabular-nums; }
-.dsh-pm-fact-evid { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.dsh-pm-trunk-hl-group { display: flex; flex-direction: column; gap: 8px; }
-.dsh-pm-trunk-hl-h { font-size: 12px; font-weight: 700; color: var(--dsw-text-secondary, #6e6e73); }
-.dsh-pm-trunk-ach-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.dsh-pm-trunk-ach { display: flex; align-items: center; gap: 8px; }
-.dsh-pm-trunk-ach-path { font-family: ui-monospace, monospace; font-size: 12px; word-break: break-all; }
-/* ── 文档（docs）：清单 / 核验 / 门禁 / 归档四块（表格样式见上面「宽表」） ── */
-.dsh-pm-block-title { font-size: 13px; font-weight: 700; color: var(--dsw-text-primary, #333); }
-.dsh-pm-doc-generated { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-/* ── DAG：图数据摘要 + 每步执行结果（画布骨架沿用既有 .dsh-pm-dag-* 分片，不在此重定义） ── */
-.dsh-pm-dag-summary {
-  display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 9px 12px; border-radius: 10px;
-  font-size: 12px; font-variant-numeric: tabular-nums; color: var(--dsh-pm-np-text2, #6e6e73);
-  background: var(--dsh-pm-np-bg, #f5f5f7); border: 1px solid var(--dsh-pm-np-line-soft, rgba(0,0,0,.08));
-}
-.dsh-pm-report-sec-title { margin: 0; font-size: 14px; font-weight: 700; color: var(--dsw-text-primary, #333); }
-.dsh-pm-report-step[data-outcome="failed"] { background: rgba(220,53,69,.05); }
-.dsh-pm-report-step-title { font-weight: 600; }
-.dsh-pm-report-step-outcome { font-weight: 600; }
-.dsh-pm-report-step-summary { font-size: 12.5px; line-height: 1.6; }
-.dsh-pm-report-step-error { font-family: ui-monospace, monospace; font-size: 11.5px; color: #b42318; background: rgba(220,53,69,.08); border-radius: 6px; padding: 5px 8px; word-break: break-word; }
-.dsh-pm-report-zero { font-size: 12px; font-weight: 600; color: #8a5a00; background: rgba(240,160,32,.16); border: 1px solid rgba(240,160,32,.4); border-radius: 6px; padding: 4px 8px; }
-.dsh-pm-report-evidence { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
-.dsh-pm-report-evidence li { font-family: ui-monospace, monospace; font-size: 11px; color: var(--dsw-text-secondary, #555); background: rgba(128,128,128,.08); border-radius: 4px; padding: 3px 7px; word-break: break-all; }
-.dsh-pm-muted { font-size: 11.5px; color: var(--dsw-text-secondary, #888); }
-/* ── Token：口径说明 + 按阶段表 + 可优化点（表格沿用既有 .dsh-pm-tok-table） ── */
-.dsh-pm-tok-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 0; font-size: 14px; font-weight: 700; color: var(--dsw-text-primary, #333); }
-.dsh-pm-tok-h-note { font-size: 11.5px; font-weight: 400; color: var(--dsw-text-secondary, #888); }
-.dsh-pm-tok-avail { font-size: 12px; color: #1e7e34; background: rgba(40,167,69,.1); border: 1px solid rgba(40,167,69,.3); border-radius: 8px; padding: 6px 10px; }
-.dsh-pm-tok-total td { font-weight: 700; background: var(--dsw-bg-secondary, rgba(128,128,128,.06)); }
-.dsh-pm-opt-list { display: flex; flex-direction: column; gap: 8px; }
-.dsh-pm-opt { display: flex; flex-direction: column; gap: 3px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--pm-line, rgba(128,128,128,.18)); background: var(--dsw-bg-secondary, rgba(128,128,128,.04)); }
-.dsh-pm-opt-title { font-weight: 600; }
-.dsh-pm-opt-basis { font-size: 12px; color: var(--dsw-text-secondary, #888); }
-.dsh-pm-opt-sug { font-size: 12.5px; line-height: 1.6; }
-/* ── 提示词（prompts）：A 系统提示词 / B 注入留痕 / C 上下文 + 规定 vs 实际 ── */
-.dsh-pm-pp-sec { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--pm-line, rgba(128,128,128,.18)); border-radius: 10px; background: var(--dsw-bg-primary, #fff); }
-.dsh-pm-pp-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 0; font-size: 14px; font-weight: 700; color: var(--dsw-text-primary, #333); }
-.dsh-pm-pp-h-note { font-size: 11.5px; font-weight: 400; color: var(--dsw-text-secondary, #888); }
-/* 注入留痕：左侧色条按「后果」上色（已投递 / 只留痕未投递 / 投递不可知），别让人把"留了痕"读成"进了会话" */
-.dsh-pm-inj { display: flex; flex-direction: column; gap: 5px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--pm-line, rgba(128,128,128,.18)); border-left: 3px solid var(--pm-line, #d0d5dd); background: var(--dsw-bg-primary, #fff); }
-.dsh-pm-inj[data-delivered="true"] { border-left-color: #28a745; }
-.dsh-pm-inj[data-delivered="false"] { border-left-color: #dc3545; background: rgba(220,53,69,.04); }
-.dsh-pm-inj[data-delivered="unknown"] { border-left-color: #b0b4bb; background: rgba(128,128,128,.04); }
-.dsh-pm-inj-meta { font-size: 11.5px; color: var(--dsw-text-secondary, #999); }
-.dsh-pm-inj-verdict { font-size: 12.5px; font-weight: 600; }
-.dsh-pm-inj-line { font-size: 12px; color: var(--dsw-text-secondary, #888); }
-.dsh-pm-inj-body { border: 1px dashed var(--pm-line, rgba(128,128,128,.25)); border-radius: 8px; padding: 6px 10px; }
-.dsh-pm-inj-body > summary { cursor: pointer; font-size: 12px; color: var(--dsw-text-secondary, #6e6e73); }
-.dsh-pm-specvs { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-.dsh-pm-sv-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px 12px; border: 1px solid var(--pm-line, rgba(128,128,128,.18)); border-radius: 8px; background: var(--dsw-bg-secondary, rgba(128,128,128,.04)); }
-.dsh-pm-sv-h { font-size: 12px; font-weight: 700; color: var(--dsw-text-secondary, #6e6e73); }
-.dsh-pm-sv-list { margin: 0; padding-left: 18px; font-size: 12.5px; }
-.dsh-pm-sv-list code { font-family: ui-monospace, monospace; font-size: 11px; word-break: break-all; }
-.dsh-pm-sv-trimmed { color: #b45309; }
-.dsh-pm-sv-frags { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; }
-.dsh-pm-sv-diff { font-size: 12px; line-height: 1.7; word-break: break-word; }
-.dsh-pm-iso { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 8px; background: var(--dsw-bg-secondary, rgba(128,128,128,.05)); }
-.dsh-pm-iso-status { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
-.dsh-pm-iso-meta { font-size: 11px; color: var(--dsw-text-secondary, #999); }
-.dsh-pm-iso-reason { font-size: 12.5px; line-height: 1.6; word-break: break-word; }
-
-/* 关于「窄档三格退化为单栏」（design/test-cases.md）：**刻意不加 @media**。
-   实测：900×800 下若强推单栏，第三格（缺口清单）被推到 top=760 > 视口 713 →
-   「首屏答出卡在哪 / 缺什么」当场失败（探针 A1 变红）；而 .dsh-pm-stats 用的
-   repeat(auto-fit, minmax(260px, 1fr)) 在**真正窄**的窗口本来就会自然退到两栏、一栏。
-   两个口径冲突时取产品判据（一屏定调 + FR-3），故本行只留说明不留规则。 */
-
-/* ═══ ⑦ 密度：让同一屏读得下的信息量回到原型那一版（**缺陷修复，不是审美偏好**）═══
-   现场（线上真数据）：Tab 栏 top=1118px，视口高 713 → 首屏根本看不到六个 Tab。
-   根因是两处内容失控（评论 10 条 13,317 字 / 文档 Tab 317 行倾倒）叠加本片过松的间距。
-   内容那两处已在 QueryReport / QueryDocs 收口；这一段只负责**把间距压回原型口径**。
-
-   三条纪律（本段不得违反）：
-    - **不动结构**：仍是「常驻头部 + 状态带三格 + 六个同级 Tab」，一个元素都不少（只改间距/字号）；
-    - **不加内层滚动、不限高**：本段不出现 overflow / max-height。高度是靠"字号 + 行距 + 内边距
-      收紧 + 少渲染几条"挣回来的，不是靠把内容关进一个滚动框（那会让"有多少"变成不可数，FR-11 #7）；
-    - **高特异性覆盖**：只追加 .dsh-pm-detail[data-report-shell] 与 [data-report-head] 作用域内的
-      规则（base.ts / detail.ts 的既有规则原样不动——本片追加在末尾，靠特异性取胜，不靠顺序）。 */
-
-/* 壳体与状态带的块间距：原来 16px 段间距 + 16/24 页面留白 + 12px 卡片内边距，三层留白叠在一起 */
-.dsh-pm-detail[data-report-shell] { padding: 8px 16px 12px; gap: 8px; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-stats[data-report-band] { gap: 8px; padding: 8px; }
-/* 状态带卡片：更"实"（边框 + 极浅底 + 小内边距），不再靠大片留白撑高度 */
+/* 每格 = 原型 .band-i：极浅边 + 左侧 3px 语义色条（不用大留白，也不用卡片阴影） */
 .dsh-pm-detail[data-report-shell] .dsh-pm-stat {
-  padding: 6px 8px; gap: 2px; border-radius: 6px;
-  background: var(--dsw-bg-secondary, rgba(128,128,128,.04));
-  border: 1px solid var(--pm-line, rgba(128,128,128,.16));
+  display: block; margin: 0; padding: var(--s2) var(--s3);
+  border: 1px solid var(--pm-line-soft); border-left: 3px solid var(--pm-text3);
+  border-radius: var(--r1); background: none; min-width: 0;
 }
-.dsh-pm-detail[data-report-shell] .dsh-pm-stat-label { font-size: 10.5px; margin-bottom: 2px; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-report-band-body { font-size: 11.5px; line-height: 1.45; }
-/* 缺口逐条：由「竖向三行卡片」压成「一条流水」（what / why / ref 同行折行），
-   每条从 ~100px 降到 ~34px——这是 900 窄档能过 713 的关键一处。三档配色原样保留。 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-stat[data-band-cell="progress"] { border-left-color: var(--pm-accent); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-stat[data-band-cell="gaps"] { border-left-color: var(--pm-danger); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-stat[data-band-cell="outcome"] { border-left-color: var(--pm-ok); }
+/* 「无缺口」是一条正向结论 → 色条跟着转绿（:has 只影响配色，不影响内容与结构） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-stat:has([data-gaps="none"]) { border-left-color: var(--pm-ok); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-stat-label {
+  font-size: var(--f-small); font-weight: 400; text-transform: none;
+  color: var(--pm-text3); margin-bottom: 3px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-band-body {
+  font-size: 12.5px; line-height: 1.6; color: var(--pm-text); word-break: break-word;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-band-ok { color: var(--pm-ok-text); font-weight: 600; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-band-mut { color: var(--pm-text3); }
+/* 缺口逐条 = 原型 .gap-line：一条一行（what 必现）。
+   我们的条目比原型多两个字段（why / ref），1240 宽下会折成两行——所以这里给整条**最多两行**
+   （超出由省略号收尾，不产生内层滚动）；≤1000px 档再压成一行（见文件末尾的窄档块）。 */
 .dsh-pm-detail[data-report-shell] .dsh-pm-gap-line {
-  display: block; margin: 1px 0; padding: 1px 5px; border-radius: 4px; border-left-width: 3px;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  margin: 1px 0; padding: 0; border: 0; border-radius: 0; background: none;
+  font-size: 11.5px; line-height: 1.45;
 }
-.dsh-pm-detail[data-report-shell] .dsh-pm-gap-why { display: inline; font-size: 10.5px; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-gap-ref { font-size: 10px; padding: 0 4px; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-gap-more { font-size: 10.5px; margin-top: 2px; }
-.dsh-pm-detail[data-report-shell] .dsh-pm-outcome-leftover { font-size: 11px; line-height: 1.4; margin: 2px 0; padding: 3px 7px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-gap-what,
+.dsh-pm-detail[data-report-shell] .dsh-pm-gap-why,
+.dsh-pm-detail[data-report-shell] .dsh-pm-gap-ref { display: inline; margin-right: 6px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-gap-what { font-weight: 400; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-gap-why { font-size: var(--f-small); color: var(--pm-text2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-gap-ref {
+  font-family: var(--pm-mono); font-size: var(--f-tiny); padding: 0 4px; border-radius: 4px;
+  background: var(--pm-bg-soft); color: var(--pm-text3); word-break: break-all;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-gap-more { font-size: var(--f-tiny); color: var(--pm-text3); margin-top: 3px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-outcome-verdict { font-size: 12.5px; font-weight: 700; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-outcome-verdict[data-outcome="pass"] { color: var(--pm-ok-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-outcome-verdict[data-outcome="rework"] { color: var(--pm-danger); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-outcome-verdict[data-outcome="pending"] { color: var(--pm-warn); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-outcome-counts { font-variant-numeric: tabular-nums; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-outcome-leftover-title { display: block; margin-top: 3px; font-weight: 600; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-outcome-leftover {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+  font-size: 11px; line-height: 1.45; margin: 2px 0; padding: 0 0 0 8px;
+  border-left: 3px solid rgba(240,160,32,.7); border-radius: 0; background: none;
+  color: var(--pm-text2); word-break: break-word;
+}
 
-/* 常驻头部：行距与块间距（原型头部整体很紧；这里只压间距与字号，元素一个不少） */
-.dsh-pm-detail-head[data-report-head] { align-items: baseline; gap: 2px 8px; padding: 0; }
-.dsh-pm-detail-head[data-report-head] > .dsh-pm-btn { padding: 2px 8px; font-size: 11px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-status { font-size: 10.5px; padding: 1px 8px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-report-meta { font-size: 11px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-detail-title { font-size: 18px; line-height: 1.2; margin-top: 0; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-progress-dots { margin: 0; padding: 0; gap: 10px; }
-/* 8 态阶段条压紧（点 + 标签两行；当前态仍放大，一眼看出在哪一步） */
-.dsh-pm-detail-head[data-report-head] .dsh-pm-dot-wrapper { gap: 4px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-dot { width: 9px; height: 9px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-dot-wrapper.current .dsh-pm-dot { width: 12px; height: 12px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-dot-label { font-size: 9.5px; }
-/* 一句话结论：仍是"一屏内最重要的一句"（加粗 + 左主色条），只是不再用 15px/10-14px 内边距占掉半屏 */
-.dsh-pm-detail-head[data-report-head] .dsh-pm-report-verdict {
-  font-size: 12.5px; font-weight: 600; line-height: 1.35; padding: 4px 8px; border-radius: 6px;
-  border-left-width: 3px;
-}
-.dsh-pm-detail-head[data-report-head] .dsh-pm-report-next { font-size: 11px; line-height: 1.4; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-report-actions,
-.dsh-pm-detail-head[data-report-head] .dsh-pm-report-windows { gap: 2px 10px; padding-top: 3px; align-items: baseline; }
-/* 每个动作由「竖排三块」（按钮 / 需人操作 / 后果）改成一行折行：后果说明仍逐字在，只是不独占三行 */
-.dsh-pm-detail-head[data-report-head] .dsh-pm-report-action {
-  flex-direction: row; align-items: baseline; flex-wrap: wrap; gap: 2px 6px; max-width: 100%;
-}
-.dsh-pm-detail-head[data-report-head] .dsh-pm-report-action .dsh-pm-btn { padding: 2px 8px; font-size: 11px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-human-only { font-size: 9.5px; padding: 0 5px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-action-consequence { font-size: 10.5px; line-height: 1.35; }
-/* 评论列表：行距与正文压紧（**不给限高、不进 overflow**——条数与截断由渲染层控制，
-   见 report-head.ts 的 COMMENT_RENDER_LIMIT / COMMENT_BODY_MAX；本段只让 3 条装得更小） */
-.dsh-pm-detail-head[data-report-head] .dsh-pm-comments { gap: 2px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-comment { padding: 1px 7px; border-radius: 4px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-comment-meta { font-size: 10px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-comment-body { font-size: 11.5px; line-height: 1.35; margin-top: 0; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-comment-form .dsh-pm-input { padding: 2px 8px; font-size: 11.5px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-comment-long-flag { color: #b45309; font-weight: 600; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-comment-form { margin-top: 2px; }
-.dsh-pm-detail-head[data-report-head] .dsh-pm-comment-form .dsh-pm-btn { padding: 2px 8px; font-size: 11px; }
+/* ══════════════════════════════════════════════════════════════════════════
+   ④ Tab 栏（对应原型 .tabs / .tab / .tab.active / .tab .cnt）
+   ——文字页签 + 选中下划线 + 计数角标；**不是**胶囊芯片
+   ══════════════════════════════════════════════════════════════════════════ */
 
-/* Tab 栏：六个同级 Tab 也在首屏里露头（选中态与角标配色不动，只收内边距与字号） */
-.dsh-pm-tabs[data-report-tabs] .dsh-pm-tab { padding: 6px 11px; font-size: 12px; }
-
-/* ── 文档 Tab 的表格口径（对齐原型 table.t：12px 正文 / 11px 灰表头 / 8px 12px 行内边距）──
-   为什么字变小反而"密"：原型那一版的密度就是靠"同样 12px + 更紧的行"换来的；
-   行内边距按原型给 8px 12px（纵向 8 比原来的 7 略松，横向 12 让长路径少折两行——净值更矮）。 */
-.dsh-pm-docs-table, .dsh-pm-docs-table th, .dsh-pm-docs-table td { font-size: 12px; }
-.dsh-pm-docs-table th, .dsh-pm-docs-table td { padding: 8px 12px; }
-.dsh-pm-docs-table th { font-size: 11px; color: var(--dsw-text-secondary, #888); }
-.dsh-pm-docs .dsh-pm-doc-state { font-size: 11px; }
-
-/* ── 「其它发现」：按类型分组的计数行（每类一行，类型徽标 + 计数 + ≤3 个样例 + 余量说明）── */
-.dsh-pm-docs .dsh-pm-discovered-group {
-  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px;
-  padding: 4px 8px; border-radius: 5px;
-  background: var(--dsw-bg-secondary, rgba(128,128,128,.04));
-  border: 1px solid var(--pm-line, rgba(128,128,128,.14));
+.dsh-pm-detail[data-report-shell] .dsh-pm-tabs[data-report-tabs] {
+  display: flex; flex-wrap: wrap; gap: var(--s1);
+  margin: 0 0 var(--s3); padding: 0; border-bottom: 1px solid var(--pm-line);
 }
-.dsh-pm-docs .dsh-pm-discovered-num {
-  font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--dsw-text-primary, #333);
+.dsh-pm-detail[data-report-shell] .dsh-pm-tab {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 7px 12px; margin-bottom: -1px;
+  border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none;
+  color: var(--pm-text2); font-size: 12.5px; font-weight: 400; cursor: pointer;
 }
-.dsh-pm-docs .dsh-pm-discovered-rest { font-size: 11px; color: var(--dsw-text-secondary, #888); }
-.dsh-pm-docs [data-discovered-sample] { font-size: 11px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-tab:hover { background: none; color: var(--pm-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-tab.active {
+  color: var(--pm-accent); border-bottom-color: var(--pm-accent); font-weight: 600; background: none;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-tab-icon { font-size: 13px; line-height: 1; }
+/* 计数角标 = 原型 .tab .cnt（灰底小胶囊；没有数字就不渲染，渲染层已保证） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-fold-count[data-badge] {
+  display: inline-flex; align-items: center; margin-left: 3px; padding: 0 6px;
+  border-radius: var(--pm-pill); background: var(--pm-bg-soft); color: var(--pm-text3);
+  font-size: var(--f-tiny); font-weight: 400; font-variant-numeric: tabular-nums;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-tab.active .dsh-pm-fold-count[data-badge] {
+  background: rgba(74,125,255,.12); color: var(--pm-accent);
+}
+/* 面板段：顶到 Tab 栏下沿，不再叠一层内边距 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-tab-panel[data-tab-host] { padding: 0; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⑤ 公共件：面板小标题 / 提示行 / 芯片 / 空态
+   （原型 .panel h4 · .mut · .src · .evidence · .note · .dchip）
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.dsh-pm-detail[data-report-shell] .dsh-pm-block-head {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s2);
+  margin: var(--s4) 0 var(--s2); padding: 0; border: 0;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-block { display: block; margin: 0 0 var(--s5); padding: 0; border: 0; background: none; border-radius: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-block-title { font-size: 12.5px; font-weight: 650; color: var(--pm-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-block-summary { font-size: 12.5px; line-height: 1.6; color: var(--pm-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-block-note { font-size: var(--f-small); color: var(--pm-danger); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-block-path { font-family: var(--pm-mono); font-size: 11px; color: var(--pm-text2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-hint { font-size: var(--f-small); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-muted { font-size: var(--f-small); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-note { font-size: var(--f-small); line-height: 1.55; color: var(--pm-text3); margin-top: var(--s2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-empty { font-size: var(--f-small); color: var(--pm-text3); padding: 2px 0; }
+.dsh-pm-detail[data-report-shell] code {
+  font-family: var(--pm-mono); font-size: 11px; color: var(--pm-text2); word-break: break-all;
+}
+/* 来源标 = 原型 .src[data-k]（文档蓝 / 台账紫 / 自动绿 / 人写橙 / 无灰） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-src,
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-src {
+  font-size: 9.5px; line-height: 1.5; padding: 1px 6px; border: 0; border-radius: var(--r1);
+  background: rgba(128,128,128,.14); color: var(--pm-text3); white-space: nowrap;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-src[data-source="agent"],
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-src[data-source="doc"],
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-src[data-source="auto"] { background: rgba(74,125,255,.12); color: var(--pm-accent); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-src[data-source="ledger"],
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-src[data-source="new-section"] { background: rgba(142,68,173,.12); color: var(--pm-agent); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-src[data-source="human"],
+.dsh-pm-detail[data-report-shell] .dsh-pm-src[data-source="human"] { background: rgba(240,160,32,.16); color: var(--pm-warn-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-src[data-source="none"] { background: rgba(128,128,128,.14); color: var(--pm-text3); }
+/* 证据指针 = 原型 .evidence（细边胶囊，等宽） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-evidence {
+  display: inline-block; font-family: var(--pm-mono); font-size: 11px; line-height: 1.5;
+  padding: 1px 7px; border: 1px solid var(--pm-line); border-radius: var(--r1);
+  background: var(--pm-surface); color: var(--pm-accent); word-break: break-all;
+}
+.dsh-pm-detail[data-report-shell] ul.dsh-pm-evidence { display: flex; flex-direction: column; gap: 3px; }
+.dsh-pm-detail[data-report-shell] ul.dsh-pm-evidence li {
+  font-family: var(--pm-mono); font-size: 11px; color: var(--pm-text2);
+  background: var(--pm-bg-softer); border-radius: 4px; padding: 2px 7px; word-break: break-all;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-evidence-missing { font-size: var(--f-small); font-weight: 600; color: var(--pm-danger); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-review { font-size: var(--f-small); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-review[data-state="pass"] { color: var(--pm-ok-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-review[data-state="pending"] { color: var(--pm-warn); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-flag.verify-pending { background: rgba(240,160,32,.16); color: var(--pm-warn-text); }
+/* 表格 = 原型 table.t（th 11px 灰底 / td 12px / 8px 12px / 细横线） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table,
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table,
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-table {
+  width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table th,
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table th,
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-table th {
+  text-align: left; font-size: var(--f-tiny); font-weight: 600; color: var(--pm-text2);
+  background: var(--pm-bg-soft); padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--pm-line); white-space: nowrap;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table td,
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table td,
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-table td {
+  padding: var(--s2) var(--s3); border-bottom: 1px solid var(--pm-line-soft);
+  vertical-align: top; text-align: left; font-size: 12px; line-height: 1.55;
+  word-break: break-word; overflow-wrap: anywhere;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table td:first-child,
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table td:first-child,
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-table td:first-child { white-space: nowrap; }
+/* 列宽：把余量留给长文本列（路径 / 意见 / 证据）——固定布局下不给宽就会被平均分掉 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-doc-table] th:nth-child(1) { width: 84px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-doc-table] th:nth-child(3) { width: 110px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-doc-table] th:nth-child(4) { width: 190px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(1) { width: 52px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(3) { width: 170px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(4) { width: 76px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(5) { width: 72px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-verify-table] th:nth-child(7) { width: 96px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-gate-table] th:nth-child(1) { width: 108px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-gate-table] th:nth-child(2) { width: 96px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-gate-table] th:nth-child(3) { width: 96px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-gate-table] th:nth-child(4) { width: 100px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table[data-gate-table] th:nth-child(5) { width: 110px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-table th:first-child { width: 16%; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table th { white-space: normal; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs-table tbody tr:hover,
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-table tbody tr:hover,
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-table tbody tr:hover { background: var(--pm-bg-softer); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⑥ 汇报 Tab（trunk）：原型 .row / .rail / .body-col / .sum
+   ——七条 = 左 150px 条名栏 + 右内容栏，细线分隔（不是七张卡片）
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk { display: block; min-width: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-docmeta {
+  font-size: var(--f-small); color: var(--pm-text3); padding: 0 0 var(--s2);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-item {
+  display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); column-gap: var(--gap-col);
+  margin: 0; padding: var(--s4) 0; border: 0; border-top: 1px solid var(--pm-line);
+  border-radius: 0; background: none;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-item:first-of-type { border-top: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-head {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 3px 4px;
+  margin: 0; min-width: 0;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-title { flex-basis: 100%; margin: 0; font-size: var(--f-h2); font-weight: 650; color: var(--pm-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-sub { flex-basis: 100%; font-size: var(--f-tiny); line-height: 1.5; color: var(--pm-text3); }
+/* 来源标在条名下面**同一行**排（原型 .rail .src 就是 inline 后换行，不是一标一行） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-head .dsh-pm-trunk-src { margin-top: 2px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-body {
+  display: flex; flex-direction: column; gap: var(--s2); min-width: 0;
+  font-size: var(--f-body); line-height: 1.62;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-line { margin: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-mut { font-size: var(--f-small); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-missing {
+  font-size: var(--f-small); color: var(--pm-warn); background: rgba(240,160,32,.06);
+  border: 1px dashed rgba(240,160,32,.45); border-radius: var(--r1); padding: 4px 8px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-scope-hint { font-size: var(--f-small); font-weight: 600; color: var(--pm-text2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-openrefs { display: flex; flex-wrap: wrap; gap: 6px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-open {
+  font: inherit; font-size: var(--f-small); padding: 2px 10px; cursor: pointer;
+  border: 1px solid var(--pm-line); border-radius: var(--pm-pill);
+  background: var(--pm-surface); color: var(--pm-accent);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-open:hover { background: rgba(74,125,255,.08); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-open.is-nopath { color: var(--pm-text3); cursor: default; background: none; }
+/* 亮点分组（原型 .hl-group / .hl-h / .fact / .fact-i / .hl / .hl-d / .hl-w / .hl-e） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-hl-group { display: flex; flex-direction: column; gap: var(--s2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-hl-h { font-size: var(--f-small); font-weight: 400; color: var(--pm-text3); }
+/* a) 自动事实：两列栅格的小盒子（原型 .fact） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-hl-group[data-hl-group="facts"] {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-hl-group[data-hl-group="facts"] > .dsh-pm-trunk-hl-h { grid-column: 1 / -1; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-hl-group[data-hl-group="facts"] > .dsh-pm-trunk-mut { grid-column: 1 / -1; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-fact {
+  display: block; padding: var(--s2) var(--s3); border: 1px solid var(--pm-line-soft);
+  border-radius: var(--r1); font-size: 12px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-fact-label { font-size: 12px; color: var(--pm-text2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-fact-value { display: block; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-fact-evid { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
+/* b) 人写差异：实线细边小卡（原型 .hl） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-hl-list { display: flex; flex-direction: column; gap: var(--s2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-hl {
+  display: block; padding: var(--s2) var(--s3); margin: 0;
+  border: 1px solid var(--pm-line-soft); border-radius: var(--r1); background: none;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-hl-diff { font-size: 12.5px; font-weight: 600; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-hl-why { font-size: var(--f-small); color: var(--pm-text2); margin-top: 2px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-hl-evid {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-top: var(--s2);
+  font-size: var(--f-small);
+}
+/* 反例：无证据的差异 = 虚线红边弱化（与可核验的那堆一眼可分，FR-15） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-hl-missing {
+  display: block; padding: var(--s2) var(--s3); margin: 0 0 var(--s2);
+  border: 1px dashed rgba(220,53,69,.35); border-radius: var(--r1); background: rgba(220,53,69,.03);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-hl-missing .dsh-pm-hl-why { color: var(--pm-text2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-hl-unpay { padding: 0; border: 0; background: none; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-ach-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-ach { display: flex; align-items: center; gap: var(--s2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-ach-path { font-family: var(--pm-mono); font-size: 11.5px; color: var(--pm-text2); word-break: break-all; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⑦ 文档 Tab（docs）：面板小标题 + table.t + 清单 / 生成物 / 其它发现 / 核验 / 门禁 / 归档
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs { display: block; min-width: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs > .dsh-pm-block:first-child > .dsh-pm-block-head { margin-top: 0; }
+/* 文档路径 = 原型 .evidence 那种可点的小胶囊 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-path {
+  font-family: var(--pm-mono); font-size: 11px; line-height: 1.5; text-align: left; cursor: pointer;
+  padding: 1px 7px; border: 1px solid var(--pm-line); border-radius: var(--r1);
+  background: var(--pm-surface); color: var(--pm-accent); text-decoration: none; word-break: break-all;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-path:hover { background: rgba(74,125,255,.08); text-decoration: none; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-path.dsh-pm-doc-missing {
+  border-style: dashed; background: none; color: var(--pm-text3); cursor: default;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-state { font-size: 11.5px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-verify-verdict {
+  font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: var(--pm-pill);
+  background: var(--pm-bg-soft); color: var(--pm-text2);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-verify-verdict[data-verify-verdict="passed"] { background: rgba(40,167,69,.13); color: var(--pm-ok-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-verify-verdict[data-verify-verdict="failed"] { background: rgba(220,53,69,.12); color: var(--pm-danger); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-verify-verdict[data-verify-verdict="pending"] { background: rgba(240,160,32,.16); color: var(--pm-warn-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-list { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-list li { display: flex; align-items: baseline; gap: var(--s2); font-size: 12.5px; line-height: 1.6; flex-wrap: wrap; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-label { font-size: var(--f-small); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-kind { font-size: 9.5px; padding: 1px 6px; border-radius: var(--r1); background: var(--pm-bg-soft); color: var(--pm-text2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-group { display: flex; flex-direction: column; gap: 3px; margin: var(--s2) 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-generated { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s2); }
+/* 其它发现：一行一类（类型徽标 + 计数 + 样例） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs .dsh-pm-discovered-group {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px var(--s2);
+  padding: 3px 0; border: 0; background: none;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs .dsh-pm-discovered-num { font-size: 12px; font-weight: 650; color: var(--pm-text); font-variant-numeric: tabular-nums; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs .dsh-pm-discovered-rest { font-size: var(--f-small); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-docs [data-discovered-sample] { font-size: var(--f-small); }
+/* 归档对账 / 清单豁免：逐条铺开的小字行 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-archive-reconcile { font-size: 12px; color: var(--pm-text2); font-variant-numeric: tabular-nums; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-archive-reconcile[data-reconcile="none"] { color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-archive-unlisted { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-archive-unlisted li { font-size: var(--f-small); color: var(--pm-text2); word-break: break-all; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-archive-noack { color: var(--pm-danger); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-archive-ack { color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-cell-source,
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-cell-human,
+.dsh-pm-detail[data-report-shell] .dsh-pm-doc-cell-verdict { white-space: normal; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⑧ 对话 Tab（dialogue）：原型 .speak / .msg / .msg.sys / .msg .who / .msg .when
+   ——**一条流**：人 / agent 是「标签 + 时间 + 正文」的一行，系统消息居中灰底胶囊
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.dsh-pm-detail[data-report-shell] .dsh-pm-dialogue { display: block; min-width: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-dialogue-search {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2);
+  padding: var(--s2) var(--s3); margin-bottom: var(--s3);
+  border: 1px solid var(--pm-line-soft); border-radius: var(--r1); background: var(--pm-bg-softer);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-dialogue-search .dsh-pm-input { flex: 1 1 220px; min-width: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-dialogue-hits { font-size: var(--f-small); color: var(--pm-text2); font-variant-numeric: tabular-nums; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-dialogue-scope { flex-basis: 100%; font-size: var(--f-tiny); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-dialogue-note { font-size: var(--f-small); color: var(--pm-warn); margin-bottom: var(--s2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-dialogue-list { display: flex; flex-direction: column; gap: var(--s2); min-width: 0; }
+/* 一条消息：不再是人/agent 两种气泡，而是同一条流里的一行 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 4px;
+  margin: 0; padding: 0; min-width: 0;
+  border: 0; border-radius: 0; background: none; font-size: 12.5px; line-height: 1.6;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg--human,
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg--agent { margin: 0; background: none; border: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg-head { display: inline; margin: 0; white-space: nowrap; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg-meta { font-size: var(--f-tiny); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg-actor {
+  font-size: 10px; font-weight: 600; line-height: 1.5; padding: 1px 7px; margin-right: 6px;
+  border-radius: var(--pm-pill); background: var(--pm-bg-soft); color: var(--pm-text2);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg--human .dsh-pm-msg-actor { background: rgba(74,125,255,.13); color: var(--pm-accent); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg--agent .dsh-pm-msg-actor { background: rgba(142,68,173,.13); color: var(--pm-agent); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg-window { font-family: var(--pm-mono); font-size: var(--f-tiny); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg-time { font-size: var(--f-tiny); color: var(--pm-text3); font-variant-numeric: tabular-nums; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg-text { flex: 1 1 60%; min-width: 0; font-size: 12.5px; line-height: 1.6; color: var(--pm-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg--system {
+  display: flex; align-items: baseline; justify-content: center; gap: 6px; flex-wrap: wrap;
+  margin: 0; padding: 2px 10px; text-align: center;
+  background: var(--pm-bg-softer); border: 0; border-radius: var(--pm-pill);
+  font-size: var(--f-small); color: var(--pm-text3);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg-system-text { font-size: var(--f-small); line-height: 1.5; }
+/* 回填标 = 原型 .inferred（虚线橙） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-msg-inferred {
+  font-size: 9.5px; line-height: 1.5; padding: 0 5px; border-radius: var(--r1);
+  color: var(--pm-warn); border: 1px dashed rgba(240,160,32,.5); background: none;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-dialogue-hit { background: rgba(255,214,0,.5); color: inherit; border-radius: 2px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-dialogue-more { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-dialogue-more-note { font-size: var(--f-small); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-dialogue-reply { display: flex; gap: var(--s2); margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--pm-line-soft); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-dialogue-reply .dsh-pm-input { flex: 1 1 auto; min-width: 0; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⑨ Token Tab：原型 .panel h4 / table.t / .opt / .opt-i
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.dsh-pm-detail[data-report-shell] .dsh-pm-token-panel { display: block; min-width: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-h,
+.dsh-pm-detail[data-report-shell] .dsh-pm-pp-h {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s2);
+  margin: var(--s4) 0 var(--s2); font-size: 12.5px; font-weight: 650; color: var(--pm-text);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-token-panel > .dsh-pm-tok-h:first-of-type,
+.dsh-pm-detail[data-report-shell] .dsh-pm-prompts > .dsh-pm-pp-sec:first-child > .dsh-pm-pp-h:first-child { margin-top: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-h-note,
+.dsh-pm-detail[data-report-shell] .dsh-pm-pp-h-note { font-size: var(--f-small); font-weight: 400; color: var(--pm-text3); }
+/* 口径说明 / 三态徽标：收成原型那种克制的注释块（不再用大块黄色告警） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-callout,
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-avail {
+  font-size: var(--f-small); line-height: 1.6; padding: var(--s2) var(--s3);
+  border: 1px solid var(--pm-line-soft); border-radius: var(--r1);
+  background: var(--pm-bg-softer); color: var(--pm-text2);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-avail {
+  border-color: rgba(40,167,69,.3); background: rgba(40,167,69,.05); color: var(--pm-ok-text);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-callout[data-availability-badge="partial"] {
+  border-color: rgba(240,160,32,.4); background: rgba(240,160,32,.06); color: var(--pm-warn-text);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-callout[data-availability-badge="none"] {
+  border-color: rgba(128,128,128,.3); color: var(--pm-text2);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-table td { font-variant-numeric: tabular-nums; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-node { cursor: default; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-more { font-size: var(--f-tiny); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-sub { background: var(--pm-bg-softer); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-sub td { font-size: var(--f-small); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-sub-num { float: right; color: var(--pm-text2); font-variant-numeric: tabular-nums; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-nosnap { color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-tok-total td { font-weight: 650; color: var(--pm-text); background: var(--pm-bg-soft); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-bar {
+  display: inline-block; width: 72px; height: 6px; border-radius: var(--pm-pill);
+  background: var(--pm-line); vertical-align: middle;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-bar > i { display: block; height: 6px; border-radius: var(--pm-pill); background: var(--pm-accent); }
+/* 可优化点 = 原型 .opt-i（左侧 3px 橙条的小卡，每条都带依据数字） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-opt-list { display: flex; flex-direction: column; gap: var(--s2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-opt {
+  display: block; padding: var(--s2) var(--s3);
+  border: 1px solid var(--pm-line-soft); border-left: 3px solid var(--pm-warn);
+  border-radius: var(--r1); background: none; font-size: 12.5px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-opt-title { display: block; font-weight: 600; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-opt-basis { font-size: var(--f-small); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-opt-sug { font-size: 12.5px; line-height: 1.6; color: var(--pm-text2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-sum {
+  display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4);
+  font-size: var(--f-small); color: var(--pm-text3); margin-bottom: var(--s2);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-sum b { color: var(--pm-text); font-variant-numeric: tabular-nums; }
+/* 折叠块（注入成本）：原型 details 的克制长相——细边 + 小标题行 */
+.dsh-pm-detail[data-report-shell] details.dsh-pm-fold {
+  border: 1px solid var(--pm-line-soft); border-radius: var(--r1); background: none;
+}
+.dsh-pm-detail[data-report-shell] details.dsh-pm-fold > summary {
+  display: flex; align-items: center; gap: var(--s2); padding: 5px var(--s3);
+  font-size: 12px; font-weight: 600; color: var(--pm-text2); background: none; cursor: pointer;
+}
+.dsh-pm-detail[data-report-shell] details.dsh-pm-fold > summary:hover { background: var(--pm-bg-softer); }
+.dsh-pm-detail[data-report-shell] details.dsh-pm-fold .dsh-pm-fold-body { padding: var(--s2) var(--s3); border-top: 1px solid var(--pm-line-soft); }
+.dsh-pm-detail[data-report-shell] details.dsh-pm-fold .dsh-pm-fold-count { font-size: var(--f-small); font-weight: 400; color: var(--pm-text3); margin-left: auto; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-impact-row { display: flex; align-items: center; gap: var(--s2); font-size: var(--f-small); margin: 3px 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-impact-name { width: 130px; color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-impact-bar { flex: 1; height: 6px; border-radius: var(--pm-pill); background: var(--pm-bg-soft); overflow: hidden; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-impact-bar > i { display: block; height: 6px; background: rgba(194,37,92,.75); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-impact-val { width: 80px; text-align: right; color: var(--pm-text2); font-variant-numeric: tabular-nums; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⑩ 提示词 Tab（prompts）：原型 .frag / pre.prompt-text / .spec-vs / .sv-col / .ctx-line
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.dsh-pm-detail[data-report-shell] .dsh-pm-prompts { display: block; min-width: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-pp-sec { display: block; padding: 0; border: 0; background: none; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-prompt,
+.dsh-pm-detail[data-report-shell] details.dsh-pm-prompt {
+  margin: 0 0 var(--s2); border: 1px solid var(--pm-line-soft); border-radius: var(--r1);
+  background: none; overflow: visible;
+}
+.dsh-pm-detail[data-report-shell] details.dsh-pm-prompt > summary {
+  display: flex; align-items: center; gap: var(--s2); padding: var(--s2) var(--s3);
+  font-size: 12px; color: var(--pm-text2); background: none; cursor: pointer;
+}
+.dsh-pm-detail[data-report-shell] details.dsh-pm-prompt > summary:hover { background: var(--pm-bg-softer); }
+.dsh-pm-detail[data-report-shell] details.dsh-pm-prompt > summary::-webkit-details-marker { display: none; }
+.dsh-pm-detail[data-report-shell] details.dsh-pm-prompt > summary::before {
+  content: '\\25B8'; color: var(--pm-text3); font-size: 10px; transform: none;
+}
+.dsh-pm-detail[data-report-shell] details.dsh-pm-prompt[open] > summary::before { content: '\\25BE'; transform: none; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-prompt-name { font-family: var(--pm-mono); font-size: 11px; font-weight: 400; color: var(--pm-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-prompt-meta { margin-left: auto; font-size: var(--f-small); color: var(--pm-text3); font-variant-numeric: tabular-nums; }
+/* 被裁片段 = 原型 .frag.trimmed（虚线橙） */
+.dsh-pm-detail[data-report-shell] details.dsh-pm-prompt[data-prompt-trimmed] {
+  border-style: dashed; border-color: rgba(240,160,32,.5); background: rgba(240,160,32,.05);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-prompt-pre { display: block; width: auto; margin: var(--s2) var(--s3) var(--s3); }
+.dsh-pm-detail[data-report-shell] details.dsh-pm-prompt > .dsh-pm-prompt-pre,
+.dsh-pm-detail[data-report-shell] .dsh-pm-prompt .dsh-pm-prompt-pre { border-radius: var(--r1); }
+/* 规定 vs 实际 = 原型 .spec-vs / .sv-col / .sv-h */
+.dsh-pm-detail[data-report-shell] .dsh-pm-specvs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-sv-col {
+  display: block; min-width: 0; padding: var(--s2) var(--s3);
+  border: 1px solid var(--pm-line-soft); border-radius: var(--r1); background: none;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-sv-h { font-size: var(--f-small); color: var(--pm-text3); margin-bottom: var(--s2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-sv-list { margin: 0; padding-left: 18px; font-size: 12.5px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-sv-list code { font-family: var(--pm-mono); font-size: 11px; word-break: break-all; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-sv-trimmed { color: var(--pm-warn); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-sv-frags { display: flex; flex-wrap: wrap; gap: 4px; font-size: var(--f-small); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-sv-diff { font-size: var(--f-small); line-height: 1.65; color: var(--pm-text2); word-break: break-word; }
+/* 片段芯片（可点开源文件 / 路由壳） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-np-doc {
+  font-family: var(--pm-mono); font-size: 11px; padding: 1px 7px; cursor: pointer;
+  border: 1px solid var(--pm-line); border-radius: var(--r1); background: var(--pm-surface); color: var(--pm-accent);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-np-shell {
+  font-family: var(--pm-mono); font-size: 11px; padding: 1px 7px; border: 1px dashed var(--pm-line);
+  border-radius: var(--r1); color: var(--pm-text3);
+}
+/* 注入留痕 = 原型「三个来源 / 两种后果」的逐条卡（左侧色条按后果上色） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-inj {
+  display: block; margin-bottom: var(--s2); padding: var(--s2) var(--s3);
+  border: 1px solid var(--pm-line-soft); border-left: 3px solid var(--pm-text3);
+  border-radius: var(--r1); background: none; font-size: 12.5px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-inj[data-delivered="true"] { border-left-color: var(--pm-ok); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-inj[data-delivered="false"] { border-left-color: var(--pm-danger); background: rgba(220,53,69,.03); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-inj[data-delivered="unknown"] { border-left-color: rgba(128,128,128,.5); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-inj-meta { font-size: var(--f-small); color: var(--pm-text3); font-family: var(--pm-mono); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-inj-verdict { font-size: 12.5px; font-weight: 600; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-inj-line { font-size: var(--f-small); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-np-inj-frags { display: flex; flex-wrap: wrap; gap: 4px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-inj-body,
+.dsh-pm-detail[data-report-shell] details.dsh-pm-inj-body {
+  margin-top: var(--s2); padding: var(--s2) var(--s3);
+  border: 1px dashed var(--pm-line); border-radius: var(--r1); background: none;
+}
+.dsh-pm-detail[data-report-shell] details.dsh-pm-inj-body > summary { font-size: var(--f-small); color: var(--pm-text2); cursor: pointer; }
+/* 上下文 / 节点隔离留痕 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-iso,
+.dsh-pm-detail[data-report-shell] .dsh-pm-np-iso {
+  display: block; margin-top: var(--s2); padding: 5px var(--s3);
+  border: 1px solid var(--pm-line-soft); border-left: 3px solid var(--pm-text3);
+  border-radius: var(--r1); background: none;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-iso-status,
+.dsh-pm-detail[data-report-shell] .dsh-pm-np-iso-status { font-size: var(--f-tiny); font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--pm-text2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-iso-meta,
+.dsh-pm-detail[data-report-shell] .dsh-pm-np-iso-meta { font-size: var(--f-tiny); color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-iso-reason,
+.dsh-pm-detail[data-report-shell] .dsh-pm-np-iso-reason { font-size: 12.5px; line-height: 1.6; color: var(--pm-text); word-break: break-word; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-np-inj-entry { margin-bottom: var(--s2); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⑪ DAG Tab：原型 .dchip / 每步执行结果表（画布本身沿用既有 .dsh-pm-dag-* 分片，不在这里重定义）
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-dag { display: block; min-width: 0; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-dag-summary {
+  display: flex; flex-wrap: wrap; gap: 4px var(--s4); padding: var(--s2) var(--s3);
+  border: 1px solid var(--pm-line-soft); border-radius: var(--r1); background: var(--pm-bg-softer);
+  font-size: var(--f-small); color: var(--pm-text2); font-variant-numeric: tabular-nums;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-sec-title {
+  margin: var(--s4) 0 var(--s2); font-size: 12.5px; font-weight: 650; color: var(--pm-text);
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-step[data-outcome="failed"] { background: rgba(220,53,69,.04); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-step-title { font-weight: 600; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-step-outcome { font-weight: 600; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-step-summary { font-size: var(--f-small); line-height: 1.55; color: var(--pm-text2); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-step-error {
+  margin-top: 3px; font-family: var(--pm-mono); font-size: 11px; color: var(--pm-danger);
+  background: rgba(220,53,69,.07); border-radius: 4px; padding: 3px 7px; word-break: break-word;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-zero {
+  margin-top: 3px; font-size: var(--f-small); font-weight: 600; color: var(--pm-warn-text);
+  background: rgba(240,160,32,.12); border: 1px solid rgba(240,160,32,.4);
+  border-radius: 4px; padding: 2px 7px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-evidence { list-style: none; margin: 3px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-evidence li {
+  font-family: var(--pm-mono); font-size: var(--f-tiny); color: var(--pm-text3);
+  background: var(--pm-bg-softer); border-radius: 4px; padding: 1px 6px; word-break: break-all;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⑫ 窄档（原型只给了 1280 一档；≤1000px 时按同一套口径收得更紧，不换视觉语言）
+   ——只改间距与"补充说明"的呈现，不改结构、不改内容归属、不加内层滚动
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1000px) {
+  .dsh-pm-detail[data-report-shell] { padding: 12px 14px 64px; }
+  .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-item { grid-template-columns: 1fr; row-gap: var(--s2); }
+  .dsh-pm-detail[data-report-shell] .dsh-pm-stats[data-report-band] { gap: var(--s2); }
+  /* 缺口一条压成一行：why / ref 是补充说明，窄档用省略号收尾（what 永远完整可见）。
+     为什么必须收：900px 档下 5 条缺口各折 2~3 行会把六个 Tab 顶出首屏（那是验收判红的缺陷）。 */
+  .dsh-pm-detail[data-report-shell] .dsh-pm-gap-line { -webkit-line-clamp: 1; }
+  .dsh-pm-detail[data-report-shell] .dsh-pm-specvs,
+  .dsh-pm-detail[data-report-shell] .dsh-pm-trunk-hl-group[data-hl-group="facts"] { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ⑬ 暗色主题：只换"语义前景色"这一组令牌
+   ——DSH 在 <html>/<body> 上挂 [data-ds-dark-theme]；原型是浅色稿，其深绿/深棕/深紫
+     在暗底上对比不足，故这里把同色相提亮一档。线条与底色用的是中性半透明灰，
+     深/浅两套都成立，不需要覆盖。
+   ══════════════════════════════════════════════════════════════════════════ */
+
+[data-ds-dark-theme] .dsh-pm-detail[data-report-shell] {
+  --pm-ok: #3fae57; --pm-warn: #d9a14a; --pm-danger: #e8565f;
+  --pm-ok-text: #5fce7a; --pm-warn-text: #e0b566;
+  --pm-agent: #c08fd8; --pm-teal-text: #57c7d6;
+}
 `

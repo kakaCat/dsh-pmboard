@@ -61,10 +61,14 @@ export function buildReportHeadPlaceholder(p: ReportHeadPlaceholder): string {
   const retry = p.phase === 'error' && p.notFound !== true
     ? '<button type="button" class="dsh-pm-btn" data-action="report-head-retry">重试</button>'
     : ''
-  return '<div class="dsh-pm-detail-head" data-report-head="placeholder" data-head-state="' + p.phase + '">'
+  // 行盒（`dsh-pm-rh-bar`）与真实头部同一套结构：占位也该长成"结论头的操作条"，
+  // 否则数据到达时整块跳动（样式见 styles/report.ts 的「① 壳体与常驻头部」）。
+  return '<div class="dsh-pm-detail-head dsh-pm-rh" data-report-head="placeholder" data-head-state="' + p.phase + '">'
+    + '<div class="dsh-pm-rh-bar" data-report-actionbar="1">'
     + '<button type="button" class="dsh-pm-btn" data-action="back" title="返回看板">← 看板</button>'
     + '<span class="dsh-pm-empty">' + esc(text) + '</span>'
     + retry
+    + '</div>'
     + '</div>'
 }
 
@@ -279,24 +283,25 @@ export function buildReportHead(report: ReportResponse, now: number = Date.now()
   const h = report.head
   const p = report.progress
   const terminal = isTerminal(h.status)
-  const parts: string[] = []
 
-  parts.push('<button type="button" class="dsh-pm-btn" data-action="back" title="返回看板">← 看板</button>')
-  parts.push('<span class="dsh-pm-card-id">' + esc(h.id) + '</span>')
-  parts.push('<span class="dsh-pm-status" data-status="' + esc(h.status) + '">' + esc(STATUS_LABELS[h.status] ?? h.status) + '</span>')
+  /* ① 身份行（原型 head-top 的那一行）：id · 状态芯片 · 分类 · 难度 · 停留/更新时刻。
+     为什么单起一个行盒：旧底座把这些当**并列的 flex 子项**，各自换行后"谁/什么状态/什么时候"
+     散成三四行；收进一个行盒，它们才回到同一行（换行只发生在行盒之间）。 */
+  const top: string[] = []
+  top.push('<span class="dsh-pm-card-id">' + esc(h.id) + '</span>')
+  top.push('<span class="dsh-pm-status" data-status="' + esc(h.status) + '">' + esc(STATUS_LABELS[h.status] ?? h.status) + '</span>')
   if (h.blocked) {
     const why = typeof h.blockedReason === 'string' && h.blockedReason.length > 0 ? h.blockedReason : ''
-    parts.push('<span class="dsh-pm-flag blocked"' + (why.length > 0 ? ' title="' + esc(why) + '"' : '') + '>阻塞</span>')
-    if (why.length > 0) parts.push('<span class="dsh-pm-report-meta" data-blocked-reason="1">' + esc(why) + '</span>')
+    top.push('<span class="dsh-pm-flag blocked"' + (why.length > 0 ? ' title="' + esc(why) + '"' : '') + '>阻塞</span>')
+    if (why.length > 0) top.push('<span class="dsh-pm-report-meta" data-blocked-reason="1">' + esc(why) + '</span>')
   }
-  parts.push('<span class="dsh-pm-report-meta" data-category="' + esc(h.category) + '">分类 '
+  top.push('<span class="dsh-pm-report-meta" data-category="' + esc(h.category) + '">分类 '
     + esc(CATEGORY_LABELS[h.category] ?? h.category) + '</span>')
   const diff = difficultyLabel(h.promptDifficulty)
   if (diff !== undefined) {
-    parts.push('<span class="dsh-pm-report-meta" data-difficulty="' + esc(h.promptDifficulty ?? '') + '">难度 '
+    top.push('<span class="dsh-pm-report-meta" data-difficulty="' + esc(h.promptDifficulty ?? '') + '">难度 '
       + esc(diff) + '</span>')
   }
-
   // 停留时长 / 距上次更新：服务端给了就用服务端的，没给才用本地时钟推——**都不给就不说这一句**
   const stayed = typeof p.stageStayedMs === 'number'
     ? p.stageStayedMs
@@ -307,11 +312,24 @@ export function buildReportHead(report: ReportResponse, now: number = Date.now()
   const timing = (stayed === undefined ? '' : '停留 ' + fmtDur(stayed))
     + (stayed !== undefined && since !== undefined ? ' · ' : '')
     + (since === undefined ? '' : '距上次更新 ' + fmtDur(since))
-  if (timing.length > 0) parts.push('<span class="dsh-pm-detail-updated">' + esc(timing) + '</span>')
+  if (timing.length > 0) top.push('<span class="dsh-pm-detail-updated">' + esc(timing) + '</span>')
 
-  parts.push('<h1 class="dsh-pm-detail-title">' + esc(h.title) + '</h1>')
-  // 8 态阶段条复用既有实现（同一份阶段表/同一个外观），不另画一套
-  parts.push(buildProgressDots(h.status))
+  /* ② 标题（21px 一行独占；原型的 h1.title 就是整页视觉的重心） */
+  const title = '<h1 class="dsh-pm-detail-title">' + esc(h.title) + '</h1>'
+
+  /* ③ 次级行（原型标题下面那一行）：创建时刻 + 窗口跳转。
+     终态与档二各自真实：终态不渲染窗口跳转（不留假出口），档二不渲染创建时刻（会话里已有）。 */
+  const created = terminal || opts.compact === true
+    ? ''
+    : '<span class="dsh-pm-report-meta" data-created-at="' + String(h.createdAt) + '">创建于 '
+      + esc(fmtTime(h.createdAt)) + '</span>'
+  const windows = terminal ? '' : buildWindowJumps(report)
+  const sub = created + windows
+
+  const parts: string[] = []
+  parts.push('<div class="dsh-pm-rh-top" data-head-row="top">' + top.join('') + '</div>')
+  parts.push(title)
+  if (sub.length > 0) parts.push('<div class="dsh-pm-rh-sub" data-head-row="sub">' + sub + '</div>')
   // 一句话结论（在跑什么 / 谁在跑 / 几件事等人 / 下一步谁动手）
   parts.push('<div class="dsh-pm-report-verdict" data-report-verdict="1"'
     + ' data-waiting-human="' + String(typeof report.waitingHuman === 'number' ? report.waitingHuman : 0) + '">'
@@ -320,16 +338,21 @@ export function buildReportHead(report: ReportResponse, now: number = Date.now()
   if (next.length > 0) {
     parts.push('<div class="dsh-pm-report-next" data-next-step="1">🤖 实施窗口下一步：' + esc(next) + '</div>')
   }
+  // 8 态阶段条复用既有实现（同一份阶段表/同一个外观），不另画一套
+  parts.push(buildProgressDots(h.status))
 
+  /* ④ 操作条（原型 .actions 那个浅底横条）：`← 看板` + 本阶段合法动作。
+     为什么把返回键收进这条：原型里它就是操作条的第一个按钮；散在头部顶行会多出一行。 */
+  const back = '<button type="button" class="dsh-pm-btn" data-action="back" title="返回看板">← 看板</button>'
   if (terminal) {
     // 终态只读：只留 ← 看板（不渲染操作条 / 窗口跳转 / 评论框——不留任何假出口）。
     // 评论**列表**仍渲染：它是台账已记下的事实（审计要看"谁批的、说了什么"），只读不等于看不见。
-    parts.push('<div class="dsh-pm-gate" data-readonly="1">终态只读：'
-      + (h.status === 'canceled' ? '已取消' : '已归档') + '，无可执行动作</div>')
+    parts.push('<div class="dsh-pm-rh-bar" data-report-actionbar="1">' + back
+      + '<div class="dsh-pm-gate" data-readonly="1">终态只读：'
+      + (h.status === 'canceled' ? '已取消' : '已归档') + '，无可执行动作</div></div>')
     parts.push(buildCommentList(h.comments, h.commentsTotal))
   } else {
-    parts.push(buildReportActionBar(report))
-    parts.push(buildWindowJumps(report))
+    parts.push('<div class="dsh-pm-rh-bar" data-report-actionbar="1">' + back + buildReportActionBar(report) + '</div>')
     // 评论列表在评论框**附近**（列表在上、输入框在下，与时间线"新的在下"同向）。
     // 档二（compact）不渲染输入框，但列表照渲染：评论是内容，不是"写入口"。
     parts.push(buildCommentList(h.comments, h.commentsTotal))
@@ -342,11 +365,9 @@ export function buildReportHead(report: ReportResponse, now: number = Date.now()
         + '<input type="text" class="dsh-pm-input" data-role="comment-input" placeholder="写评论（以「人」身份记录）…" />'
         + '<button type="button" class="dsh-pm-btn" data-action="add-comment" data-target="req" data-id="'
         + esc(h.id) + '">发送</button></div>')
-      parts.push('<span class="dsh-pm-report-meta" data-created-at="' + String(h.createdAt) + '">创建于 '
-        + esc(fmtTime(h.createdAt)) + '</span>')
     }
   }
 
-  return '<div class="dsh-pm-detail-head" data-report-head="1" data-head-state="'
+  return '<div class="dsh-pm-detail-head dsh-pm-rh" data-report-head="1" data-head-state="'
     + (terminal ? 'terminal' : 'inflight') + '">' + parts.join('') + '</div>'
 }

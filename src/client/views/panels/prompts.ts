@@ -88,9 +88,14 @@ function readStrings(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
 }
 
-/** 正文块的统一外壳：**没有 max-height、没有 overflow**——整段铺开（FR-11 #7）。 */
-const PRE_STYLE = 'white-space:pre-wrap;word-break:break-word;margin:0;padding:10px 12px;'
-  + 'background:var(--dsw-bg-primary,#fff);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.55'
+/** 正文块的统一外壳：**没有 max-height、没有 overflow**——整段铺开（FR-11 #7）。
+ *  外观按原型 `pre.prompt-text` 的口径内联（12px 内边距 / 11.5px 等宽 / 1.6 行距 / 极浅底 + 细边 + 6px 圆角）：
+ *  这里内联而不只靠分片，是因为**同一份正文块**在非报告页（节点面板）也会出现；
+ *  底色与边框一律走变量，暗色主题下不会闪成白底。 */
+const PRE_STYLE = 'white-space:pre-wrap;word-break:break-word;margin:0;padding:12px;'
+  + 'border:1px solid var(--pm-line-soft, rgba(128,128,128,.11));border-radius:6px;'
+  + 'background:var(--pm-bg-softer, rgba(128,128,128,.028));color:inherit;'
+  + 'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.6'
 
 function preBlock(text: string, attrs = ''): string {
   return '<pre class="dsh-pm-prompt-pre"' + attrs + ' style="' + PRE_STYLE + '">' + esc(text) + '</pre>'

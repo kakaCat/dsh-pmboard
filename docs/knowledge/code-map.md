@@ -1,14 +1,14 @@
 # 代码地图（模块级）
 
 > 生成物：由 `scripts/kb-build.mts` 从 `src/**/*.ts` 确定性抽取，**请勿手改**（改源码后重跑）。
-> 全量符号（2815 条）在 `docs/knowledge/code-map.symbols.tsv`——机器索引、不进上下文，用 `reqboard_kb(kind='map', query='<符号>')` 检索。
+> 全量符号（2816 条）在 `docs/knowledge/code-map.symbols.tsv`——机器索引、不进上下文，用 `reqboard_kb(kind='map', query='<符号>')` 检索。
 
 ## 模块总览 #modules
 
 | 模块 | 文件 | 字符 | 导出符号 | 角色 |
 |---|---|---|---|---|
-| `src/application` | 164 | 1217214 | 954 | dsh-pmboard/application/gate — 门禁系统统一导出（REQ-260925212722-96e7） |
-| `src/client` | 111 | 1043304 | 780 | Dsh-pmboard client half — M3: 泳道看板 GUI（需求状态列 + 详情 + 待归类 + 会话跳转）。 |
+| `src/application` | 164 | 1220283 | 955 | dsh-pmboard/application/gate — 门禁系统统一导出（REQ-260925212722-96e7） |
+| `src/client` | 111 | 1071481 | 780 | Dsh-pmboard client half — M3: 泳道看板 GUI（需求状态列 + 详情 + 待归类 + 会话跳转）。 |
 | `src/domain` | 73 | 407553 | 533 | dsh-pmboard/domain/prompt — 提示词加载路由唯一入口（REQ-422af1 t3，INV-1）。 |
 | `src/http` | 17 | 171298 | 70 | dsh-pmboard/http/client-build — 客户端构建戳（REQ-261001124111-5d36 t4）——把「页面跑的是哪一版前端代码」变成可比较的事实。 |
 | `src/repositories` | 20 | 151701 | 88 | dsh-pmboard/repositories/atomicWrite — 原子写（REQ-261002161439-277d · t3 / FR-2）——**全仓唯一的 temp + fsync + rename 实现**。 |

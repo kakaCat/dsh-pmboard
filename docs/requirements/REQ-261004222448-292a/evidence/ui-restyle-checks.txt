@@ -1,0 +1,58 @@
+# 样式重做轮：命令与原始结果（REQ-261004222448-292a / 2026-10-05 10:58)
+# 本文件由实施轮逐条真跑后原样收集；截图见同目录 ui-restyle-{trunk,docs,token,prompts}.png
+
+## 1) npx vitest run <14 个本需求测试文件>
+ ✓ tests/dialogue-panel.test.ts  (23 tests) 7ms
+ ✓ tests/trunk-panel.test.ts  (31 tests) 6ms
+ ✓ tests/docs-panel.test.ts  (25 tests) 12ms
+ ✓ tests/report-content.test.ts  (20 tests) 17ms
+ ✓ tests/dag-panel.test.ts  (22 tests) 7ms
+ ✓ tests/report-degrade.test.ts  (18 tests) 19ms
+ ✓ tests/token-panel.test.ts  (16 tests) 9ms
+ ✓ tests/report-firstscreen-gaps.test.ts  (17 tests) 15ms
+ ✓ tests/prompts-panel.test.ts  (19 tests) 7ms
+ ✓ tests/report-prompt.test.ts  (9 tests) 6ms
+ ✓ tests/report-template.test.ts  (9 tests) 25ms
+ ❯ tests/node-panel-styles.test.ts  (15 tests | 1 failed) 18ms
+ ✓ tests/report-shell.test.ts  (45 tests) 124ms
+ ✓ tests/report-routes.test.ts  (15 tests) 13ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ ❯ tests/node-panel-styles.test.ts:47:28
+ Test Files  1 failed | 13 passed (14)
+      Tests  1 failed | 283 passed (284)
+
+  （node-panel-styles 的红是**既存**：HEAD 版 styles/node-panel.ts 里就没有它断言的两条字面量，非本轮引入）
+
+## 2) npx tsx scripts/req-report-probe.mts
+[w=1280 · 在途 implementing]
+  A1 首屏：Tab 栏@631 ≤ 上限 713 且落在视口内(713px) → ✓（**硬判据**：首屏看不到六个 Tab 就是"进不去"）
+  A1 首屏：评论列表整块高 88px ≤ 上限 260px → ✓ ｜ 渲染 3 行 ≤ 3 行 → ✓ ｜ 超长系统日志收纳 1 行（data-comment-long）
+PASS w=1280 state=inflight（四问可答·L0 落点在首屏 ✓ / Tab 栏 top=631 ≤ 713 ✓ / 评论列表 88px ≤ 260px ✓ / 无横向溢出 ✓ / 无内层滚动容器 ✓ / 未激活面板缺席 ✓ / 操作条不重叠 ✓）
+[w=900 · 在途 implementing]
+  A1 首屏：Tab 栏@588 ≤ 上限 713 且落在视口内(713px) → ✓（**硬判据**：首屏看不到六个 Tab 就是"进不去"）
+  A1 首屏：评论列表整块高 88px ≤ 上限 260px → ✓ ｜ 渲染 3 行 ≤ 3 行 → ✓ ｜ 超长系统日志收纳 1 行（data-comment-long）
+PASS w=900 state=inflight（四问可答·L0 落点在首屏 ✓ / Tab 栏 top=588 ≤ 713 ✓ / 评论列表 88px ≤ 260px ✓ / 无横向溢出 ✓ / 无内层滚动容器 ✓ / 未激活面板缺席 ✓ / 操作条不重叠 ✓）
+[w=1280 · 终态 archived]
+  A1 首屏：Tab 栏@425 ≤ 上限 713 且落在视口内(713px) → ✓（**硬判据**：首屏看不到六个 Tab 就是"进不去"）
+  A1 首屏：评论列表整块高 41px ≤ 上限 260px → ✓ ｜ 渲染 1 行 ≤ 3 行 → ✓ ｜ 超长系统日志收纳 0 行（data-comment-long）
+PASS w=1280 state=terminal（四问可答·L0 落点在首屏 ✓ / Tab 栏 top=425 ≤ 713 ✓ / 评论列表 41px ≤ 260px ✓ / 无横向溢出 ✓ / 无内层滚动容器 ✓ / 未激活面板缺席 ✓ / 操作条不重叠 ✓）
+[w=900 · 终态 archived]
+  A1 首屏：Tab 栏@429 ≤ 上限 713 且落在视口内(713px) → ✓（**硬判据**：首屏看不到六个 Tab 就是"进不去"）
+  A1 首屏：评论列表整块高 41px ≤ 上限 260px → ✓ ｜ 渲染 1 行 ≤ 3 行 → ✓ ｜ 超长系统日志收纳 0 行（data-comment-long）
+PASS w=900 state=terminal（四问可答·L0 落点在首屏 ✓ / Tab 栏 top=429 ≤ 713 ✓ / 评论列表 41px ≤ 260px ✓ / 无横向溢出 ✓ / 无内层滚动容器 ✓ / 未激活面板缺席 ✓ / 操作条不重叠 ✓）
+PROBE PASS（4/4 组合：1280/900 × 在途 implementing/终态 archived；四问可答（L0 结论头/操作条/状态带落点在首屏）/ **Tab 栏 top ≤ 713** / 评论列表整块 ≤ 260px / 无横向溢出 / 无内层滚动容器 / 未激活面板缺席 / 操作条不重叠）
+
+## 3) pnpm build:client
+✔ Build complete in 904ms
+wrapped dsh-pmboard -> lib/client.js 519657 bytes
+[verify-client] OK  bundle=571905 bytes, 关键符号齐全, 样式归属章在场, CSS 分片完整
+
+## 4) npx tsc --noEmit -p tsconfig.json
+tsc: 0 errors
+
+## 5) pnpm kb:build && pnpm kb:check
+[skip] docs/knowledge/INDEX.md（内容一致）
+kb-build: 符号 2816 条 · 颜色 85 · 变量 66 · 断点 5 · 类名 784 · INDEX 101 行
+✅ K10 覆盖 10 项全部有条目、四要素齐全、清单零漂移（条目 11 条）  [docs/knowledge/conventions.md]
+✅ K11 11 条规范期望可判定、豁免均带基线  [docs/knowledge/conventions.md]
+kb-probe: 全部通过（11 项检查）
