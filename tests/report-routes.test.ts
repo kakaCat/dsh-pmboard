@@ -206,3 +206,71 @@ describe('Token 扩展段：就地加列（老读法不判死刑）', () => {
     expect(merged.availability).toBe('full')
   })
 })
+
+/**
+ * 设计文档承诺的两段路径 `/report/trunk`（上线冒烟实测补的用例）。
+ *
+ * 事故出处：重启宿主后 smoke test 打这条路径 → 404「未知路由」。功能没坏（客户端用的是单段
+ * `/trunk`），但**被 interfaces.md 承诺的地址打不开**就是契约违约，且这种违约此前**没有任何
+ * 用例看得见**——我的路由用例当时写的是实现里的那条路径。教训：断言要照着**文档**写，
+ * 不是照着实现写。两条路径现在都被钉住，且响应必须逐字段相同。
+ */
+describe('端点别名：/report/trunk ≡ /trunk（设计文档路径必须真的能打开）', () => {
+  it('两条路径都 200，且响应逐字段相同；非法 id 两条都 400', async () => {
+    const h = harness()
+    const byShort = fakeRes()
+    await h.handler(fakeReq(`/requirements/${REQ}/trunk`), byShort)
+    const byLong = fakeRes()
+    await h.handler(fakeReq(`/requirements/${REQ}/report/trunk`), byLong)
+
+    expect(byShort.statusCode).toBe(200)
+    expect(byLong.statusCode).toBe(200)
+    expect(byLong.payload).toEqual(byShort.payload)
+    // 两条路径都真的走到了同一个查询（而不是一条空转）
+    expect(h.calls.map((c) => c.key)).toEqual(['trunk', 'trunk'])
+
+    const bad = fakeRes()
+    await h.handler(fakeReq('/requirements/..%2F..%2Fetc%2Fpasswd/report/trunk'), bad)
+    expect(bad.statusCode).toBe(400)
+    rmSync(h.dir, { recursive: true, force: true })
+  })
+})
+
+/**
+ * 会话根解析：面板端点必须**按会话**解析文档根（上线冒烟实测补的回归）。
+ *
+ * 事故出处：宿主进程 cwd 是插件宿主目录，不带会话时 `/docs` 把 317 份登记文档**全判成
+ * file-missing**、`/trunk` 把七条主干全判成「文档未提供该节」——页面在撒谎。
+ * 既有文档类端点早就是按会话解析的；这条用例钉住新端点也走同一口径。
+ */
+describe('会话根解析（文档类查询不许用宿主 cwd）', () => {
+  it('带 ?session= 时会把该会话交给根解析器；不带时不调它（回落 legacy-cwd）', async () => {
+    const seen: Array<string | undefined> = []
+    const dir = mkdtempSync(join(tmpdir(), 'pmboard-panels-session-'))
+    const handler = createReqboardHandler({
+      requirementStore: makeTestStore() as never,
+      taskStore: taskStoreAt(dir),
+      now: () => 1,
+      injectionLog: { readAll: async () => [] } as never,
+      // 只记录「用哪个会话问过」；返回 undefined = 解析不到工作区根 → 回落 legacy-cwd
+      sessionWorkspace: (sid?: string) => { seen.push(sid); return undefined },
+      panelQueries: {
+        docs: (async () => ({ documents: [] })) as never,
+        trunk: (async () => ({ items: [] })) as never,
+        report: (async () => ({ gaps: [] })) as never,
+      },
+    })
+
+    const withSession = fakeRes()
+    await handler(fakeReq(`/requirements/${REQ}/docs?session=sess-abc`), withSession)
+    expect(withSession.statusCode).toBe(200)
+    expect(seen).toContain('sess-abc')
+
+    const without = fakeRes()
+    await handler(fakeReq(`/requirements/${REQ}/docs`), without)
+    expect(without.statusCode).toBe(200)
+    // 不带会话 → 不该拿空串去问（解析器只在真给了会话时才被调用）
+    expect(seen.filter((s) => s === undefined)).toHaveLength(0)
+    rmSync(dir, { recursive: true, force: true })
+  })
+})

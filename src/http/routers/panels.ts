@@ -15,7 +15,8 @@
  * @module dsh-pmboard/http/routers/panels
  */
 import type { ServerResponse } from 'node:http'
-import type { RouterCtx } from './shared.js'
+import { resolveDocRoot, type RouterCtx } from './shared.js'
+import { FileDocRepository } from '../../adapters/FileDocRepository.js'
 import type { PanelQueries, PanelQueryDeps } from '../../application/query/contracts.js'
 import { isRequirementId } from '../../domain/requirement/ReqboardPaths.js'
 import {
@@ -113,6 +114,22 @@ export function mergeTokenExtension(
 export function createPanelsRouter(ctx: RouterCtx, deps: PanelsRouterDeps) {
   const panelDeps: Partial<PanelQueryDeps> = { ...panelDepsFrom(ctx), ...deps.panelDeps }
 
+  /**
+   * 按**会话**解析文档根后再装配依赖（上线冒烟实测补的修复）。
+   *
+   * 事故出处：宿主进程的 `process.cwd()` 是插件宿主目录（实测 `~/.dsh/profiles/<profile>`），
+   * 不是用户工作区。六条端点若直接用组合根那份 cwd 文档仓储，`/docs` 会把**全部**登记文档
+   * 判成 `file-missing`、`/trunk` 会把七条主干全判成「文档未提供该节」——页面在撒谎。
+   * 既有路由（`/stage/:stage`、marks）早就是这么解的：`resolveDocRoot(deps, sessionId)` →
+   * 按会话拿工作区根，再据此建一份文档仓储。这里与它们**同一口径**（`?session=` 由前端带上）。
+   * 解析不到会话根时回落 `legacy-cwd`——与既有行为一致，且响应里的 `file-missing` 才是真的。
+   */
+  function depsForSession(sessionId: string | undefined): Partial<PanelQueryDeps> {
+    if (ctx.deps.sessionWorkspace === undefined) return panelDeps
+    const root = resolveDocRoot(ctx.deps, sessionId).root
+    return { ...panelDeps, docs: new FileDocRepository({ workspaceRoot: root }) }
+  }
+
   /** `:id` 形状校验（返回 undefined = 400 已写）。 */
   function idOf(res: ServerResponse, raw: string): string | undefined {
     const id = decodeURIComponent(raw)
@@ -179,7 +196,8 @@ export function createPanelsRouter(ctx: RouterCtx, deps: PanelsRouterDeps) {
     const input: { requirementId: string; before?: number; limit?: number } = { requirementId: id }
     if (before !== undefined) input.before = before
     if (limit !== undefined) input.limit = limit
-    const out = await query(panelDeps as PanelQueryDeps, input)
+    // 文档类查询用**按会话解析**的文档仓储（见 depsForSession 的事故注释）
+    const out = await query(depsForSession(url.searchParams.get('session') ?? undefined) as PanelQueryDeps, input)
     return ctx.ok(res, out)
   }
 
@@ -196,14 +214,17 @@ export function createPanelsRouter(ctx: RouterCtx, deps: PanelsRouterDeps) {
   }
 
   /**
-   * 单条 GET 分发：`/requirements/:id/report|trunk|docs|dag|dialogue|prompts`。
+   * 单条 GET 分发：`/requirements/:id/report|trunk|docs|dag|dialogue|prompts`，
+   * 并接受设计文档承诺的两段写法 `/requirements/:id/report/trunk`（同一处理器）。
    * 返回 true = 已处理（调用方不必再往下试）。
    */
   async function handlePanels(res: ServerResponse, sub: string, url: URL): Promise<boolean> {
-    const m = /^requirements\/([^/]+)\/(report|trunk|docs|dag|dialogue|prompts)$/.exec(sub)
+    const m = /^requirements\/([^/]+)\/(report\/trunk|report|trunk|docs|dag|dialogue|prompts)$/.exec(sub)
     if (m === null) return false
     const rawId = m[1] ?? ''
-    const endpoint = m[2] as PanelEndpoint
+    // `report/trunk` 归一到 `trunk`：**同一个处理器、同一份校验与降级**，
+    // 别名只改路径不改语义（两条路径的响应逐字段相同，有用例钉住）。
+    const endpoint = (m[2] === 'report/trunk' ? 'trunk' : m[2]) as PanelEndpoint
     if (endpoint === 'report' || endpoint === 'trunk') {
       if (endpoint === 'report') await run(res, 'report', rawId, url)
       else await run(res, 'trunk', rawId, url)
@@ -234,7 +255,7 @@ export function createPanelsRouter(ctx: RouterCtx, deps: PanelsRouterDeps) {
         unavailableNote: 'token 扩展查询未装配',
       })
     }
-    const out = await query(panelDeps as PanelQueryDeps, { requirementId: id })
+    const out = await query(depsForSession(undefined) as PanelQueryDeps, { requirementId: id })
     if (isDegrade(out)) {
       return ctx.ok(res, { ...base, optimizations: [], availability: out.reason === 'no-snapshot' ? 'none' : 'partial' })
     }

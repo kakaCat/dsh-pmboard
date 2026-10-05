@@ -8,9 +8,9 @@
 | 模块 | 文件 | 字符 | 导出符号 | 角色 |
 |---|---|---|---|---|
 | `src/application` | 164 | 1212503 | 951 | dsh-pmboard/application/gate — 门禁系统统一导出（REQ-260925212722-96e7） |
-| `src/client` | 111 | 1028758 | 775 | Dsh-pmboard client half — M3: 泳道看板 GUI（需求状态列 + 详情 + 待归类 + 会话跳转）。 |
+| `src/client` | 111 | 1029428 | 775 | Dsh-pmboard client half — M3: 泳道看板 GUI（需求状态列 + 详情 + 待归类 + 会话跳转）。 |
 | `src/domain` | 73 | 407553 | 533 | dsh-pmboard/domain/prompt — 提示词加载路由唯一入口（REQ-422af1 t3，INV-1）。 |
-| `src/http` | 17 | 169459 | 70 | dsh-pmboard/http/client-build — 客户端构建戳（REQ-261001124111-5d36 t4）——把「页面跑的是哪一版前端代码」变成可比较的事实。 |
+| `src/http` | 17 | 170818 | 70 | dsh-pmboard/http/client-build — 客户端构建戳（REQ-261001124111-5d36 t4）——把「页面跑的是哪一版前端代码」变成可比较的事实。 |
 | `src/repositories` | 20 | 151701 | 88 | dsh-pmboard/repositories/atomicWrite — 原子写（REQ-261002161439-277d · t3 / FR-2）——**全仓唯一的 temp + fsync + rename 实现**。 |
 | `src/tools` | 70 | 140471 | 65 | （无模块说明） |
 | `src/adapters` | 26 | 139825 | 74 | dsh-pmboard/adapters/AgentDeliverer — 会话投递适配器（REQ-e3b6a0 t4 / FR-5）——**Dive专用投递实现**。 |

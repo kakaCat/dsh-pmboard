@@ -265,8 +265,12 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
       if (method === 'GET' && sub === 'requirements/summary') return await stages.handleRequirementsSummary(res)
       // 详情页六条只读端点（REQ-261004222448-292a t-497311）：形状/分页校验与降级在 panels 里一处实现。
       // 必须排在「详情按需」的 `/^requirements\/[^/]+$/` 之前判定——那条约不上带额外段的路径，
-      // 但顺序写清楚可以防将来有人把详情匹配放宽成前缀匹配。
-      if (method === 'GET' && /^requirements\/[^/]+\/(report|trunk|docs|dag|dialogue|prompts)$/.test(sub)) {
+      // 但顺序写清楚可以防止将来有人把详情匹配放宽成前缀匹配。
+      //
+      // `report/trunk` 是 design/interfaces.md 承诺的路径（两段），客户端实际用的是单段 `trunk`。
+      // 上线冒烟实测：前者 404、后者 200 —— 功能没坏，但**被文档承诺的地址打不开**就是契约违约。
+      // 处置：两条都接（别名并进同一处理器），而不是回头改已批准的设计文档。
+      if (method === 'GET' && /^requirements\/[^/]+\/(report\/trunk|report|trunk|docs|dag|dialogue|prompts)$/.test(sub)) {
         await panels.handlePanels(res, sub, url)
         return
       }

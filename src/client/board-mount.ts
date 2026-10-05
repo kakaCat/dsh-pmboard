@@ -527,7 +527,7 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
     reportShell = createReportShell({
       requirementId: reqId,
       loadReport: () => api.fetchReport(reqId),
-      load: (key, params) => api.fetchReportPanel(reqId, key, params),
+      load: (key, params) => api.fetchReportPanel(reqId, key, params, resolveCurrentSessionId()),
       // 点开正文复用既有链路（open-doc → 官方右侧栏），不新造通道
       openDoc: (path) => { openDocInSidebar(window.__dshPmCtx, path, resolveCurrentSessionId()) },
       revision: state?.revision ?? 0,

@@ -336,39 +336,52 @@ export function fetchRequirementToken(reqId: string): Promise<RequirementTokenVi
  * 那正是本需求要消灭的不诚实。
  * ────────────────────────────────────────────────────────────────────────── */
 
-/** 面板端点的 URL（六个 Tab 一个形状，避免六处各拼一遍路径）。 */
-function panelUrl(id: string, endpoint: 'report' | 'trunk' | 'docs' | 'dag' | 'dialogue' | 'prompts'): string {
-  return BASE + '/requirements/' + encodeURIComponent(id) + '/' + endpoint
+/**
+ * 面板端点的 URL（六个 Tab 一个形状，避免六处各拼一遍路径）。
+ *
+ * `sessionId` **必须带上**：服务端据它把「文档根」解析成该会话的工作区根
+ * （宿主进程 cwd 是插件宿主目录，不带会话时登记文档会被判成 file-missing——
+ * 上线冒烟实测踩过：317 份文档全被判缺失，页面在撒谎）。既有文档类端点同一口径。
+ */
+function panelUrl(
+  id: string,
+  endpoint: 'report' | 'trunk' | 'docs' | 'dag' | 'dialogue' | 'prompts',
+  sessionId?: string,
+): string {
+  const base = BASE + '/requirements/' + encodeURIComponent(id) + '/' + endpoint
+  return sessionId !== undefined && sessionId.length > 0
+    ? base + '?session=' + encodeURIComponent(sessionId)
+    : base
 }
 
-/** 分页查询串（只带真正给了的参数；没给就让服务端走默认 20）。 */
-function pageQuery(params?: { before?: number; limit?: number }): string {
-  if (params === undefined) return ''
+/** 把分页参数接在当前 URL 之后（已有 `?` 就用 `&`；没参数原样返回）。 */
+function appendPageQuery(url: string, params?: { before?: number; limit?: number }): string {
+  if (params === undefined) return url
   const q = new URLSearchParams()
   if (params.before !== undefined) q.set('before', String(params.before))
   if (params.limit !== undefined) q.set('limit', String(params.limit))
   const s = q.toString()
-  return s.length === 0 ? '' : '?' + s
+  return s.length === 0 ? url : url + (url.includes('?') ? '&' : '?') + s
 }
 
 /**
  * 首屏唯一摘要请求：结论头 + 操作条 + 状态带（FR-3 / FR-4 / FR-5）。
  * 进详情页时发（不切 Tab）；响应**不含正文**（正文一律点开才取）。
  */
-export const fetchReport = (id: string): Promise<PanelResult<ReportResponse>> =>
-  get<PanelResult<ReportResponse>>(panelUrl(id, 'report'))
+export const fetchReport = (id: string, sessionId?: string): Promise<PanelResult<ReportResponse>> =>
+  get<PanelResult<ReportResponse>>(panelUrl(id, 'report', sessionId))
 
 /** 汇报七条（FR-1 / FR-2 / FR-14 / FR-15）：切到「汇报」Tab 才请求（默认 Tab，紧随首屏）。 */
-export const fetchReportTrunk = (id: string): Promise<PanelResult<TrunkResponse>> =>
-  get<PanelResult<TrunkResponse>>(panelUrl(id, 'trunk'))
+export const fetchReportTrunk = (id: string, sessionId?: string): Promise<PanelResult<TrunkResponse>> =>
+  get<PanelResult<TrunkResponse>>(panelUrl(id, 'trunk', sessionId))
 
 /** 确定文档 + 核验 + 门禁裁决留痕（FR-7）。清单**全部铺开**，前端不截断不折叠（FR-11 #7）。 */
-export const fetchReportDocs = (id: string): Promise<PanelResult<DocsResponse>> =>
-  get<PanelResult<DocsResponse>>(panelUrl(id, 'docs'))
+export const fetchReportDocs = (id: string, sessionId?: string): Promise<PanelResult<DocsResponse>> =>
+  get<PanelResult<DocsResponse>>(panelUrl(id, 'docs', sessionId))
 
 /** 工作步骤 DAG + 每步执行结果（FR-8）：节点详情默认不在首屏请求里。 */
-export const fetchReportDag = (id: string): Promise<PanelResult<DagResponse>> =>
-  get<PanelResult<DagResponse>>(panelUrl(id, 'dag'))
+export const fetchReportDag = (id: string, sessionId?: string): Promise<PanelResult<DagResponse>> =>
+  get<PanelResult<DagResponse>>(panelUrl(id, 'dag', sessionId))
 
 /**
  * 对话一条流（FR-6）：默认最近 20 条，`before` 取更早。
@@ -377,12 +390,13 @@ export const fetchReportDag = (id: string): Promise<PanelResult<DagResponse>> =>
 export const fetchReportDialogue = (
   id: string,
   params?: { before?: number; limit?: number },
+  sessionId?: string,
 ): Promise<PanelResult<DialogueResponse>> =>
-  get<PanelResult<DialogueResponse>>(panelUrl(id, 'dialogue') + pageQuery(params))
+  get<PanelResult<DialogueResponse>>(appendPageQuery(panelUrl(id, 'dialogue', sessionId), params))
 
 /** agent 怎么跑的（FR-9）：提示词组段与被裁 + 注入来源与后果 + 上下文。正文点开才取。 */
-export const fetchReportPrompts = (id: string): Promise<PanelResult<PromptsResponse>> =>
-  get<PanelResult<PromptsResponse>>(panelUrl(id, 'prompts'))
+export const fetchReportPrompts = (id: string, sessionId?: string): Promise<PanelResult<PromptsResponse>> =>
+  get<PanelResult<PromptsResponse>>(panelUrl(id, 'prompts', sessionId))
 
 /**
  * Token 端点的完整载荷（FR-10）：既有字段（totals/byStage/degraded…）**一个不改**，
@@ -435,13 +449,14 @@ export function fetchReportPanel(
   id: string,
   key: ReportTabKey,
   params?: { before?: number; limit?: number },
+  sessionId?: string,
 ): Promise<PanelResult<unknown>> {
   switch (key) {
-    case 'trunk': return fetchReportTrunk(id)
-    case 'docs': return fetchReportDocs(id)
-    case 'dag': return fetchReportDag(id)
-    case 'dialogue': return fetchReportDialogue(id, params)
-    case 'prompts': return fetchReportPrompts(id)
+    case 'trunk': return fetchReportTrunk(id, sessionId)
+    case 'docs': return fetchReportDocs(id, sessionId)
+    case 'dag': return fetchReportDag(id, sessionId)
+    case 'dialogue': return fetchReportDialogue(id, params, sessionId)
+    case 'prompts': return fetchReportPrompts(id, sessionId)
     case 'token':
       // token 的"不可得"写在载荷里的 availability 三态（不走 Degrade 信封）——形状上同样满足
       // PanelResult<unknown>（`available` 缺省即真），这里不补也不改任何字段。
