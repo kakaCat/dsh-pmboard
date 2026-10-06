@@ -1,0 +1,47 @@
+task:
+  id: t-816d13
+  title: Tab 栏换内联 SVG 并补 tablist/tab 语义与方向键·复核
+  status: done
+  implements: |-
+    改 src/client/views/report-tabs.ts：① TAB_ICONS（:81）与 buildTabBar（:130）的图标位改用 TAB_ICON_SVG（import from '../icons.js'），保留 .dsh-pm-tab-icon 与 data-proto-icon-before；② 每个 Tab **在既有属性之后追加** role=tab、id=tab-<key>、aria-selected、aria-controls=panel-<key>、tabindex（选中 0、其余 -1），容器 .dsh-pm-tabs 追加 role=tablist 与 aria-label；③ panelWrapper（:179）追加 role=tabpanel、id=panel-<key>、aria-labelledby=tab-<key>；④ 在既有控制器（:570-590 的 click 委派同一处）加 keydown 分支：←/→ 相邻、Home/End 首尾，切换复用既有 data-action=switch-tab 与 data-tab；⑤ 未激活面板仍不入 DOM。属性顺序选追加式（不改 tests/report-shell.test.ts:138），选择写进实施汇报。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-3d7758
+  phase: ui
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261005155003-f32f
+    TASK_ID: t-816d13
+    TASK_TITLE: Tab 栏换内联 SVG 并补 tablist/tab 语义与方向键·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: ui
+  workflow_total: 5
+  workflow_done: 5
+  workflow:
+    - phase: ui
+      status: done
+      completed_at: 2026-10-05T12:43:19.123Z
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T12:43:19.123Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T12:43:19.123Z
+    - phase: commit
+      status: done
+      completed_at: 2026-10-05T12:43:19.123Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005155003-f32f
+  generated_at: 2026-10-05T12:43:18.841Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 5
+  last_updated: 2026-10-05T12:43:19.123Z

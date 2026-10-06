@@ -1,0 +1,38 @@
+task:
+  id: t-0afcc4
+  title: 加 R1 模板门禁探针与 R2 节名双向一致探针·复核
+  status: done
+  implements: |-
+    新增 scripts/template-gate-probe.mts（R1）：按 scripts/template-render-map.json 映射表渲染 templates/**/*.md 占位符（如 {{TASK_ID}}→t-000000、{{DESIGN_SERVES}}→FR-1；未在表内的占位符 → exit 1 并点名），把渲染结果喂 missingCategoryDocs + checkRequirementDocFormatGate + checkDesignSectionsHaveServes，0 缺口才 exit 0；提供 --json（机器可读结构；退出码语义不变 0 通过 / 1 判据失败 / 2 环境不可用）。新增 scripts/doc-section-parity.mts（R2）：门禁必填节集合（BASE+DELTA）与模板 H2 集合双向相等，并体现『讨论与裁定记录（D-x）』仅 feature 模板（D-12）；两个方向各造一次反例必须失败。两个脚本沿用既有 tsx 跑法（npx tsx scripts/...），不直跑 node。依据 design-brief §6 与 §10 #17/#26/#47。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-819444
+  phase: test
+  side: doc
+  workflow_params:
+    REQ_ID: REQ-261005105032-3b02
+    TASK_ID: t-0afcc4
+    TASK_TITLE: 加 R1 模板门禁探针与 R2 节名双向一致探针·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: doc
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T10:14:06.303Z
+    - phase: implement
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005105032-3b02
+  generated_at: 2026-10-05T10:14:05.932Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T11:19:27.953Z

@@ -1,0 +1,47 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261006115829-dafb
+  generated_at: 2026-10-06T04:02:21.263Z
+  version: 4
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T04:23:14.328Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 新增排查条目页
+      source: requirement.md
+      line: 61
+    - id: FR-2
+      title: 条目挂进入口
+      source: requirement.md
+      line: 88
+    - id: FR-3
+      title: 判据可跑
+      source: requirement.md
+      line: 108
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: "用户（2026-10-06 直接消息）：「Failed to load resource: the server responded with a status of 404 (Not Found)」「Failed to load resource: net::ERR_FAILEDdsh-app://app/plugins/events:1」「报错了」"
+      verdict: 把这两条报错当一条需求排查，先判「噪声 vs 真缺陷」，不先动代码
+      serves:
+        - FR-1
+      criterion: 验收标准 1 的判定命令集
+    - id: D-2
+      source: 用户（立项弹框「确认 404 的地址」选中）：「是 plugins/??…&rev=… 这种插件包地址」
+      verdict: 404 = 插件包 rev 过期（重建/重启竞态），不是本插件缺陷
+      serves:
+        - FR-1
+        - FR-3
+      criterion: FR-3 验收标准 1（同一地址 200 / 改 rev 404）
+    - id: D-3
+      source: 用户（产物范围弹框选中）：「结论 + 把判据沉淀成排查条目（文档，推荐）」
+      verdict: 产物 = 排查条目文档（guides）+ 入口回链；不改运行时代码
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      criterion: 验收标准 4（改动只在 docs/）
+status:
+  artifacts: []

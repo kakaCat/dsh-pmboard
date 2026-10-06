@@ -1,0 +1,79 @@
+t10 / t-c08714 · 操作条文案收敛 + 真删 DOM 节点（FR-11 / D-6）实测与原型对照
+================================================================================
+
+一、口径（可复现）
+--------------------------------------------------------------------------------
+- 标本 / 浏览器 / 量法与 t9 完全相同（真壳 + 真实 13 片 CSS + headless Chrome `--dump-dom`，1280 / 900）。
+- 「本阶段操作」节点用**真 DOM 查询**（不是字符串 grep 注释）：`[data-report-actionbar]
+  .dsh-pm-action-bar-label`，并数全页同类节点与其文本。
+
+二、真壳实测（1280 与 900 读数一致）
+--------------------------------------------------------------------------------
+① 操作条内的「本阶段操作」节点：**false（不存在）** ✓ —— 真删，不是 CSS 隐藏。
+   全页 `.dsh-pm-action-bar-label` 计数 = **2**，分别是：
+     · 评论列表标签（文本「最近评论 3 条（新的在下）」）—— FR-11 明确要求保留；
+     · 窗口组的分组标签（文本「窗口」）—— 同 class 的第三处用法，t10 卡面明确"不许顺手删"。
+② 主操作按钮 `aria-describedby`（1280 / 900 同值）：
+     aria-describedby = `dsh-pm-action-desc-REQ-261004222448-292a`
+     指向节点 class = `dsh-pm-action-consequence dsh-pm-sr-only`
+     指向节点文本 === 服务端 `consequence` ✓（服务端="推进到验收态后由人逐项裁决；未过项自动返工。"）
+     隐藏读数（1280）：rect 1×1px（top 7 / left 96..97）、计算样式
+       position:absolute / width:1px / height:1px / clip-path:inset(50%) / overflow:hidden
+     —— 视觉隐藏但对读屏可见（**不是** display:none；display:none 会把节点摘出可访问树）。
+   按钮 `title` 全文保留（title === 服务端 consequence，一字未省）——两条披露通道都在。
+③ 行尾标：文本 = 「需人工确认」 ✓；`data-human-only-mark="1"` 仍在 ✓；
+   每格 `data-human-only="true"` 计数 = 2 = 标本里 humanOnly 的动作数（与改前一致）✓。
+④ `grep -rn '本阶段操作' src/client/views/` 的实测结果（见第四节：有一处落卡面外，需裁定）。
+⑤ `pnpm build:client` → `[verify-client] OK  bundle=623429 bytes, 关键符号齐全, 样式归属章在场, CSS 分片完整`，退出码 0 ✓。
+⑥ `npx tsc --noEmit` 退出码 0 ✓；`npx tsx scripts/req-report-probe.mts` 退出码 0（A6 操作条 27px ≤ 72px、
+   按钮同一行；A5 不重叠）✓。
+
+三、原型对照（权威原型 `prototypes/detail-ui-v3.html#FR-11`，1280 / 900 · 在途 · `?v=next&annot=0`）
+--------------------------------------------------------------------------------
+原型实测：
+  · `.dsh-pm-action-bar-label`（操作条那一处）：`display: none`，包围盒 **0×0**，**DOM 节点仍在**；
+    全页同类节点 3 个（操作条 1 + 评论列表 1 + 窗口组 1）。
+  · `.dsh-pm-action-consequence`：`display: none`，包围盒 **0×0**，`clip-path: none`，DOM 仍在，
+    文本为完整后果；主操作按钮**没有** `aria-describedby`（`descId=null`）。
+差异（原型只是预览，本卡要求真做）：
+1. 原型是"CSS 隐藏、DOM 仍在"（受"只换 CSS 层"的约束），真壳按 FR-11 #1 **真删**那个标签节点 →
+   这是**方向一致的差异**：原型预览不出"节点没了"，真壳做到了（判据是 DOM 断言，不是 grep）。
+2. 原型的后果节点同样只是 `display:none`（读屏也读不到），真壳改成"1px 裁切 + clip-path 的
+   `dsh-pm-sr-only`"并补 `aria-describedby` → 披露位置换了、读屏拿得到（FR-11 #2 的正解）。
+3. 原型没做 `aria-describedby`（它是静态预览、无 JS 也能过）→ 真壳比原型多这一条属性，属**加法**，
+   不构成回退。
+
+四、`grep` 实测结果与需裁定的一点
+--------------------------------------------------------------------------------
+`grep -rn '本阶段操作' src/client/views/`：
+  - `src/client/views/report-head.ts`：仅出现在**注释**里（说明"已删"），**渲染产物里没有**；
+  - `src/client/views/artifacts.ts` / `verification.ts`：仅出现在本次新增的**注释**里（说明为何改文案）；
+  - `src/client/views/stage-detail.ts:241`：`BAR_LABEL = '<span class="dsh-pm-action-bar-label">本阶段操作</span>'`
+    ——这是**旧详情页**（`renderActionBar`，非报告壳）的操作条标签，**仍会渲染**。
+卡面写的期望是"只命中评论列表 report-head.ts:338 那一处"，但该处文本是「最近评论 N 条（新的在下）」，
+不含「本阶段操作」四字；真正含这四个字的是旧页 `stage-detail.ts`。t10 的文件清单只有
+`report-head.ts` / `styles/report.ts` / `artifacts.ts` / `verification.ts`（`stage-detail.ts` 属 t12 的文件，
+且 t12 的卡面只动 `buildProgressDots`），故**未越界修改**，在此登记为需裁定项：
+  若"FR-11 的文案收敛"也覆盖旧详情页的操作条标签，请另开小卡（一行常量的删除 + 旧页断言同步）。
+`grep -rn 'dsh-pm-action-bar-label' src/client/views/`：
+  - `report-head.ts:138`（窗口组标签）、`report-head.ts:365`（评论列表标签，动态文本）、
+    `stage-detail.ts:241` / `:333`（旧页）。报告壳里那一处（原 `:196`）已删。
+
+五、t16 需要的红断言清单（本卡**未动**测试；实测失败 3 条断言 / 3 个用例）
+--------------------------------------------------------------------------------
+`npx vitest run tests/report-shell.test.ts tests/report-firstscreen-gaps.test.ts`
+→ 3 failed | 79 passed（82）：
+  1. `tests/report-shell.test.ts:283`：`expect(html).toContain('均需人工确认')` —— 文案已改「需人工确认」。
+  2. `tests/report-firstscreen-gaps.test.ts:447`：`countOf(html,'均需人工确认') === 1` —— 同上（实得 0）。
+  3. `tests/report-firstscreen-gaps.test.ts:420`：`expect(html).toContain('>通过即归档<')`
+     —— 常驻节点文本已按 FR-11 #2 改成**完整**后果（`通过即归档：需求进入终态…`），
+       不再有"冒号前那一截"的可见短句；`countOf(html,'dsh-pm-action-consequence') === 1`（:419）**仍绿**。
+       ⚠️ `design/interfaces.md` 的「已知耦合与实施约束」⑦ 预测这一处"仍绿"（它假定常驻节点保留短句）。
+       本卡按需求正文 FR-11 #2 与验收锚点（"节点文本 === 服务端 consequence"）落成**完整后果**，
+       故该预测与需求正文冲突，以需求正文为准；t16 需一并把这一处改成新判据
+       （建议：`aria-describedby` 指向的节点文本 === 服务端 `consequence` + 该节点宽高 ≤1px 或
+       有 `clip-path`），而不是只把短句换成另一句短句。
+未变红（已在实测中复核）：`report-firstscreen-gaps.test.ts:411`（`grid` 内不含「本阶段操作」）、
+`:413`（`indexOf('本阶段操作') = -1 < grid 起点`）、`:419`（后果节点计数 1）、`:448`/`:449`
+（`data-human-only="true"` 计数、`data-human-only-mark="1"`）、`report-shell.test.ts:138`（Tab 栏属性顺序）、
+`:276`（后果节点计数 1）、`:282`（`dsh-pm-human-only` 计数 1）。

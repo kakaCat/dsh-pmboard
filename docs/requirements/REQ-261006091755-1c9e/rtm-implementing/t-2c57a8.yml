@@ -1,0 +1,38 @@
+task:
+  id: t-2c57a8
+  title: 让豁免在拆分锚点维也算数·复核
+  status: done
+  implements: |-
+    改 src/application/internal/content-gate-wiring.ts：在 assertUiCardPrototypeAnchors 的 if (!applies) return undefined 之后插入前置 if (prototypeExemptOf(req, doc.frontmatter).active && registeredPrototypesOf(req).length === 0) return undefined（带注释：豁免生效 ∧ 无已登记原型产物 → 无「可锚」对象，整维跳过；判据全部复用既有单点）。import 侧：在既有 './prototype-gates.js' 的 import 里补 prototypeExemptOf；新增 import { registeredPrototypesOf } from './prototype-registration.js'。不动 plan-prototype-refs / 逐卡判据 / 错误码 / 文案。验证：npx vitest run tests/plan-prototype-anchor-gate.test.ts；pnpm typecheck。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-620937
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006091755-1c9e
+    TASK_ID: t-2c57a8
+    TASK_TITLE: 让豁免在拆分锚点维也算数·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T01:33:30.361Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006091755-1c9e
+  generated_at: 2026-10-06T01:33:14.214Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T01:33:30.361Z

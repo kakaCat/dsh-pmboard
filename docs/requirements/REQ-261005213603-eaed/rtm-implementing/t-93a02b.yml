@@ -1,0 +1,45 @@
+task:
+  id: t-93a02b
+  title: 把新判据接进渲染单点与两处视图·研发
+  status: done
+  implements: |-
+    改 src/client/render/dom-utils.ts：renderRunningDot(mark?: RunningMark) —— undefined 返回空串（不渲染空壳）；cause='session' 时 aria-label/title 保持既有逐字文案，cause='run' 时 aria-label='后台 run 进行中'、title='后台 run 进行中（子卡链在执行，窗口可以已空闲）'；class / data-running / SVG 结构不变。改 src/client/views/artifacts.ts：renderReqCard 第 4 参 running=false → mark?: RunningMark，内部 renderRunningDot(mark)。改 src/client/views/board.ts：泳道卡映射改调 requirementRunningMark(c.req, isRunning, now)；renderListCard 第 2 参 _now → now 并在内部调 requirementRunningMark(req, sid => running.has(sid), now)；buildBoard / buildListView 第 5/4 参签名不变。验证：npx vitest run tests/client-view.test.ts；pnpm build:client。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-ff7d59
+  phase: ui
+  side: fullstack
+  workflow_params:
+    REQ_ID: REQ-261005213603-eaed
+    TASK_ID: t-93a02b
+    TASK_TITLE: 把新判据接进渲染单点与两处视图·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: fullstack
+    PHASE: ui
+  workflow_total: 4
+  workflow_done: 4
+  workflow:
+    - phase: ui
+      status: done
+      completed_at: 2026-10-05T15:28:53.053Z
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T15:28:56.628Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T15:28:56.628Z
+    - phase: commit
+      status: done
+      completed_at: 2026-10-05T15:28:56.628Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005213603-eaed
+  generated_at: 2026-10-05T15:28:49.051Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 4
+  last_updated: 2026-10-05T15:28:56.629Z

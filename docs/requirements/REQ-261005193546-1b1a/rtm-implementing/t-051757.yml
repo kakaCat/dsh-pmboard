@@ -1,0 +1,39 @@
+task:
+  id: t-051757
+  title: 服务端投影收敛：阶段详情基类一次收敛 + DAG 层号现算 + 文档/报告/状态面收编
+  status: done
+  implements: ① `src/application/query/QueryStageDetail.ts`：在基类 `StageDetailAssembler.assemble()` 里、调 `this.buildBody(...)` **之前**，把传给 body 的 `ledger.tasks` 换成 `liveTasksOf(...)`——**一次收敛覆盖 8 个 body**（拆分/实施两处因此同时正确），**不逐 body 各写一遍**（本次病根正是「某处漏了」，逐 body 补等于把病根留在原地）；`toStageTaskRef` / `toStageTaskExecution` 出参的 `dependsOn` 写**剪边后**的边（`splitDependencyEdges` 的 `satisfied ∪ pending`），否则下层会重新拿到指向取消卡的边、长出幽灵层。② `src/application/query/QueryDag.ts`：`queryDag` 里 `const live = liveTasksOf(tasks)`，`buildDagNodes` / `buildDagSteps` / `buildCriticalPath` 三处同源喂 `live`；节点 `layer` 改由 `liveLayers(live)` **现算**，不再转发落盘 `layer`（落盘值登记为历史派生值，INV-5 ③）；`buildCriticalPath` 里 `const alive = tasks.filter(...)` 的手写式**删掉**（复用单点，其「显式剪边」语义保留）。③ `src/application/query/QueryDocs.ts`：实施门处的手写 filter 收编为 `liveTasksOf`；文档面板按 A3——`req.artifacts` 先剔掉「路径以 `/tasks/<task_id>.md` 结尾且该 `task_id` 属已取消卡」的产物，`documents` 与 `discovered` **两侧同源同改**（**不补偿性**塞进 `discovered`），文件头恒等式改写为活卡口径（`documents` 台账来源行数 + Σ `discovered[].count` == `artifacts.length − 取消卡名下产物条数`）。④ `src/application/query/QueryReport.ts` 的 `progressOf` 与 `src/application/query/QueryState.ts` 的两处手写 filter 收编为 `liveTasksOf` + `liveCountOf`（数值不变，只换判据来源）。改 `tests/stage-detail.test.ts`，新增 `tests/canceled-projection-single-source.test.ts`（含 DAG 层号与文档面板恒等式两条）。验证：`npx vitest run tests/stage-detail.test.ts tests/canceled-projection-single-source.test.ts`。依据 design/architecture.md §消费点清单 ②/③ 与 interfaces.md §4.1。
+  serves:
+    - FR-1
+    - FR-2
+    - FR-5
+  depends_on:
+    - t-f93435
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005193546-1b1a
+    TASK_ID: t-051757
+    TASK_TITLE: 服务端投影收敛：阶段详情基类一次收敛 + DAG 层号现算 + 文档/报告/状态面收编
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-05T16:49:22.442Z
+      completed_at: 2026-10-05T17:01:03.236Z
+    - phase: doc
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005193546-1b1a
+  generated_at: 2026-10-05T16:36:04.509Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T17:01:03.236Z

@@ -1,0 +1,35 @@
+task:
+  id: t-64bf2e
+  title: 抽出推进单点 applyConfirmedAdvance 并让首次确认路径复用·研发
+  status: done
+  implements: |-
+    在 src/application/internal/confirm-settle.ts 新增导出 applyConfirmedAdvance（签名与语义逐字照 design/interfaces.md I-1：canReqTransition 不过则返回兜底文案；否则 mutateIfPresent 内 status !== from 原样返回，否则 transitionRequirement + [自动推进] 评论 + stampCheckpoint；异常吞进 advanceNote 不抛）。把 applyConfirmDecision 里 try { mutateIfPresent(...) } catch {} 整块换成一次调用，advanced/advanceNote 取返回体。不动 contentGateFailure / designGateFailure 两个分支、兜底文案、第 267 行 applyDiveTransition 的位置与条件、plan 门合并整块。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006094052-1da2
+    TASK_ID: t-64bf2e
+    TASK_TITLE: 抽出推进单点 applyConfirmedAdvance 并让首次确认路径复用·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T01:49:00.917Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006094052-1da2
+  generated_at: 2026-10-06T01:49:00.916Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T01:49:09.206Z

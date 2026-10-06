@@ -1,0 +1,45 @@
+task:
+  id: t-b38bae
+  title: 操作条文案收敛并真删 DOM 节点（含两处提示文案同步）·测试
+  status: done
+  implements: |-
+    改 src/client/views/report-head.ts：① 真删 buildReportActionBar 里 .dsh-pm-action-bar-label（:196 的「本阶段操作」）——同名 class 在评论列表 :338 仍在用，不许顺手删；② 常驻后果节点退出可见流：:178 的 span.dsh-pm-action-consequence 保留 class 名并加 dsh-pm-sr-only，文本 === 服务端 consequence；主操作按钮在既有属性之后追加 aria-describedby 指向它，按钮 title 全文保留；③ 行尾标「均需人工确认」改为「需人工确认」，data-human-only-mark=1 与每格 data-human-only=true 逐字不动；④ 同步两处引用：src/client/views/artifacts.ts:273 与 src/client/views/verification.ts:205 改为点名具体位置；⑤ src/client/styles/report.ts 新增 .dsh-pm-sr-only（1px 裁切或 clip-path: inset(50%) 加 white-space: nowrap）。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-77438e
+  phase: ui
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261005155003-f32f
+    TASK_ID: t-b38bae
+    TASK_TITLE: 操作条文案收敛并真删 DOM 节点（含两处提示文案同步）·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: ui
+  workflow_total: 4
+  workflow_done: 4
+  workflow:
+    - phase: ui
+      status: done
+      completed_at: 2026-10-05T14:23:22.638Z
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T14:23:22.638Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T14:23:19.604Z
+    - phase: commit
+      status: done
+      completed_at: 2026-10-05T14:23:22.638Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005155003-f32f
+  generated_at: 2026-10-05T14:23:14.628Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 4
+  last_updated: 2026-10-05T14:23:22.638Z

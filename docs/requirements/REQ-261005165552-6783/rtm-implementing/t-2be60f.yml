@@ -1,0 +1,36 @@
+task:
+  id: t-2be60f
+  title: 反例回归：三组外来原文含占位符时文本字面保真且不抛·研发
+  status: done
+  implements: |-
+    新增 tests/capture-literal-section.test.ts（文件头 20 行内带 serves: FR-2）。内置与宿主 renderPrompt 同语义的判据 hostLikeRender：interpolate === false 时原样返回文本；否则扫描完整双花括号变量组，名字不匹配 /^[a-z][a-z0-9_]*$/ 抛 malformed prompt variable reference，名字合法但未注册抛 unknown prompt variable。三组反例：① boundSectionTextFrom 的在制任务 acceptance/description 含占位符；② capturePromptForMessage 的用户消息节选含占位符；③ boundSectionTextFrom 的需求标题含占位符。每组跑两态：开关 true 必抛（证伪半）、开关 false 返回原文本（保真半）且文本逐字含该占位符。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-448429
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005165552-6783
+    TASK_ID: t-2be60f
+    TASK_TITLE: 反例回归：三组外来原文含占位符时文本字面保真且不抛·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T09:05:00.885Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005165552-6783
+  generated_at: 2026-10-05T09:04:57.566Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T09:05:03.215Z

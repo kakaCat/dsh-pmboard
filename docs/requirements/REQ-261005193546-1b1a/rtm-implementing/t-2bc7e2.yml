@@ -1,0 +1,36 @@
+task:
+  id: t-2bc7e2
+  title: 用例矩阵（一）：视图与依赖面 TC-2 / TC-3 / TC-4·研发
+  status: done
+  implements: |-
+    新增三个用例文件（标本 S-1 = 132 张 = 106 活卡 + 26 已取消，其中活卡 `t-l`（`todo`）的唯一前置 `t-c` 已取消；S-2 = 同标本但不过滤，只用于证明差值）：① `tests/canceled-layer-parity.test.ts`（TC-2）——三处层号同台比对：服务端 `liveLayers`、把指向取消卡的边删掉后**手工重算**、以及客户端真正算层的 `topoLevels`；逐卡相等，`t-l` 层号 `=== 0`（不是 1），层号按活卡压实无「第 N 层 · 0 张」空层，`t-l` 仍在活卡集合里（不成孤岛）。② `tests/canceled-ready-unlock.test.ts`（TC-3）——`readyTasks`（shared）/ `computeReady`（写路径）/ `readyTasksOf`（application）/ `isReadyTask`（单点）/ `/state` 的 `ready[reqId]` 五处都含 `t-l` 且前四个集合两两相等，容器内 `[data-status="canceled"]` 条数 `=== 0`（证明「真的能开工」，不是复述「不掉层」）。③ `tests/canceled-four-faces.test.ts`（TC-4）——四个展示面同数：DAG 层级行数、`toCard` 的 `doneCount`/`totalCount`、`.dsh-pm-gantt-bar` 条数、`.dsh-pm-trace-node[data-type="task"]` 条数，四数全等于 `liveCountOf(S-1)`；对照 S-2 同一组读数差 `=== 26`。追溯那一面**只对「上线后新触发过 RTM」的标本断言数值**，存量标本只断言「不出现取消卡行」。验证：`npx vitest run tests/canceled-layer-parity.test.ts tests/canceled-ready-unlock.test.ts tests/canceled-four-faces.test.ts`。依据 design/test-cases.md TC-2/TC-3/TC-4 与 §边界与假红防线。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-dcdb26
+  phase: test
+  side: fullstack
+  workflow_params:
+    REQ_ID: REQ-261005193546-1b1a
+    TASK_ID: t-2bc7e2
+    TASK_TITLE: 用例矩阵（一）：视图与依赖面 TC-2 / TC-3 / TC-4·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: fullstack
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T17:20:48.329Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005193546-1b1a
+  generated_at: 2026-10-05T17:20:40.427Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T17:20:57.482Z

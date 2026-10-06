@@ -1,0 +1,62 @@
+需求详情页 · 对比度报表（WCAG 2.x 相对亮度公式，读 src/client/styles/report.ts 的令牌声明）
+口径：详情页是白底浅色岛（背景 #ffffff）；alpha 一律先压到白底再算亮度。
+阈值：真文字 >= 4.5:1；有意义的非文本 >= 3:1。
+
+== A. 真文字（阈值 4.5:1）==
+正文                                         #1d1d1f on #ffffff         16.83:1    PASS
+次要文字                                     #6e6e73 on #ffffff         5.07:1     PASS
+文字级主色（选中 Tab / 链接式按钮 / 人名）   #0071e3 on #ffffff         4.70:1     PASS
+危险文字（阻塞 / 取消）                      #d70015 on #ffffff         5.38:1     PASS
+警告文字                                     #c93400 on #ffffff         5.28:1     PASS
+成功文字                                     #1e7e34 on #ffffff         5.14:1     PASS
+验收态（青）                                 #0e7c8f on #ffffff         4.89:1     PASS
+agent 署名                                   #6e6e73 on #ffffff         5.07:1     PASS
+主按钮（白字压主色底，反白）                 #ffffff on #0071e3         4.70:1     PASS
+
+== B. 有意义的非文本（阈值 3:1）==
+焦点环（文字级主色）                         #0071e3 on #ffffff         4.70:1     PASS
+进度条当前与完成段                           #0071e3 on #ffffff         4.70:1     PASS
+Tab 图标（未选中，继承文字色）               #6e6e73 on #ffffff         5.07:1     PASS
+Tab 图标（选中）                             #0071e3 on #ffffff         4.70:1     PASS
+缺口严重度标记 red                           #d70015 on #ffffff         5.38:1     PASS
+缺口严重度标记 yellow                        #c93400 on #ffffff         5.28:1     PASS
+缺口严重度标记 gray                          #6e6e73 on #ffffff         5.07:1     PASS
+装饰性图标（三级色，仅非文本）               #86868b on #ffffff         3.62:1     PASS
+
+== C. 纯装饰（只登记不计判，WCAG 1.4.11「可通过其它方式识别」）==
+发丝分隔线                                   #e5e5e5 on #ffffff         1.26:1     EXEMPT（不标识控件/状态；两侧有文字与留白）
+更强分隔线                                   #d6d6d6 on #ffffff         1.45:1     EXEMPT（同上，仅加重分隔）
+进度条未开始段                               #f5f5f7 on #ffffff         1.09:1     EXEMPT（未开始段不承载信息，两侧有阶段名文字）
+焦点环 halo                                  0 0 0 3px rgba(0,113,227,.25) —          EXEMPT（装饰性光晕，承担对比度的是 outline 本身）
+
+== D. 芯片 tint 三条（组合背景：文字压在旧同色浅底上；FR-10 后**备而未用**，仍须达标）==
+   底色口径：这三个令牌是"某处若再出现同色浅底芯片就启用"的备用品，故按**旧芯片真实的浅底**取值
+   （下列 rgba，合成到白岛后即为判据背景）——不是"语义色 12%"（那个口径更浅，见 D2 仅供参考）。
+成功芯片文字（备而未用）                     #1e7d34 on #e3f4e7         4.55:1     PASS
+   （旧「已归档 / 验收通过」芯片底色，rgba(40,167,69,.13)） 
+验收态芯片文字（备而未用）                   #0d7789 on #dff2f5         4.52:1     PASS
+   （旧「验收中」芯片底色，rgba(23,162,184,.14)） 
+危险芯片文字（备而未用）                     #c7303e on #fbe7e9         4.52:1     PASS
+   （旧「阻塞 / 取消」芯片底色，rgba(220,53,69,.12)） 
+   D2 仅供参考（语义色 12% 合成口径，**不计判**）：
+   成功芯片文字（备而未用）                  #1e7d34 on #e4f0e7         4.44:1     INFO
+   验收态芯片文字（备而未用）                #0d7789 on #e2eff2         4.45:1     INFO
+   危险芯片文字（备而未用）                  #c7303e on #fae0e3         4.29:1     INFO
+
+== E. 浅色岛口径（FR-4 #3）==
+report.ts 引用 [data-ds-dark-theme] 次数     0                          0          PASS
+不再引用宿主令牌 --dsw-alias-label-tertiary  0 处                       0          PASS
+不再引用宿主令牌 --dsw-text-primary          0 处                       0          PASS
+不再引用宿主令牌 --dsw-text-secondary        0 处                       0          PASS
+不再引用宿主令牌 --dsw-text-tertiary         0 处                       0          PASS
+不再引用宿主令牌 --dsw-accent                0 处                       0          PASS
+不再引用宿主令牌 --dsw-bg-primary            0 处                       0          PASS
+不再引用宿主令牌 --dsw-bg-secondary          0 处                       0          PASS
+不再引用宿主令牌 --dsw-border                0 处                       0          PASS
+
+== F. tint 备用令牌在场（FR-4 #6）==
+--pm-ok-text-tint 已声明                     在场                       —          PASS
+--pm-teal-text-tint 已声明                   在场                       —          PASS
+--pm-danger-text 已声明                      在场                       —          PASS
+
+RESULT: PASS（A/B/D 全部计判项达标；C 逐条登记豁免；E 浅色岛口径成立；F 备用令牌在场）

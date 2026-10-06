@@ -1,0 +1,79 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261006130057-7a43
+  generated_at: 2026-10-06T05:12:28.585Z
+  version: 7
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T06:42:05.670Z
+outputs:
+  requirements: []
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 2026-10-06 会话首条：「pm插件需求详情页的ui有很多地方需要优化，你帮我优化一下你先给我一个优化原型」
+      verdict: 原型先行：先交 `prototypes/detail.html` 评审，评审意见落 D-x 后再进 design；不先写实施代码
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      criterion: 用户明确要求「先给原型」；评审前写实施代码有返工风险
+    - id: D-2
+      source: 2026-10-06 会话第 2 条：「tab里的内容也要优化一下」
+      verdict: 优化范围从「首屏+汇报 Tab」扩到全部 Tab 的面板内容
+      serves:
+        - FR-6
+      criterion: 用户点名 tab 内容；现状文档/对话/Token/提示词面板密度不一
+    - id: D-3
+      source: 2026-10-06 会话第 2 条：「dag是可以用现在的但是要注意适配」
+      verdict: DAG 画布不重做，沿用现有组件；只做容器/缩放/空态的新版式适配
+      serves:
+        - FR-7
+      criterion: 用户明确「可以用现在的」；重绘画布成本高且无收益
+    - id: D-4
+      source: 2026-10-06 会话第 2 条：「我发现缺少验收的tab」
+      verdict: 新增同级「验收」Tab：验收单从「文档」Tab 核验节提出，独立承载逐项裁决/材料/历史
+      serves:
+        - FR-8
+      criterion: 用户指出缺失；现状验收单埋在文档 Tab（src/client/views/panels/docs.ts 核验节）
+    - id: D-5
+      source: 2026-10-06 会话第 4 条：「对话改成 app聊天那样，改成分页的，聊天正序的逻辑展示」
+      verdict: 对话 Tab 改聊天 App 形态：气泡式消息、分页加载、正序（旧→新，最新在底部）
+      serves:
+        - FR-6
+      criterion: 用户明确三要素（气泡/分页/正序）；时间线列表不符合阅读习惯
+    - id: D-6
+      source: 2026-10-06 会话第 5 条：「对话不需要发送，对话是历史聊天的记录」
+      verdict: 对话 Tab 为只读历史记录：去掉输入条/发送按钮，版面标注「历史记录 · 只读」
+      serves:
+        - FR-6
+      criterion: 用户明确「不需要发送」；历史记录给输入框是假入口
+    - id: D-7
+      source: 2026-10-06 会话第 6、8 条：「我没看到分页栏」「聊天记录每看到分页」+ 弹框确认形态=聊天式顶部加载更早
+      verdict: 分页栏维持「顶部聊天式加载更早」形态，但做醒目工具条并吸顶（滚动时始终可见）
+      serves:
+        - FR-6
+      criterion: 用户两次反馈看不到；弹框二选确认保留顶部聊天式形态，问题定为视觉权重不足
+    - id: D-8
+      source: 2026-10-06 会话第 9 条：「验收里面应该是rtm的列表比较好吧」
+      verdict: 验收 Tab 主视图从「验收单逐项表」改为 RTM 验收追踪列表：按 FR 逐行（覆盖链 + 验收状态 + 证据），逐项实际结果收进行展开
+      serves:
+        - FR-8
+      criterion: 用户建议 RTM 列表；仓里 AcceptanceTracking（vendor/reqboard/src/types/rtm.ts）即按 fr_id 组织，数据源天然匹配
+    - id: D-9
+      source: 2026-10-06 会话第 10 条：「可以设计了」
+      verdict: 需求文档与原型 v1.5 定稿，进入设计阶段
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      criterion: 用户明确放行；五轮评审意见已全部落账（D-1~D-8）
+status:
+  artifacts: []

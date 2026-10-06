@@ -1,0 +1,60 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261006094052-1da2
+  generated_at: 2026-10-06T01:41:43.704Z
+  version: 5
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T01:56:22.417Z
+outputs:
+  requirements: []
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 交接底稿：「确认门（brainstorming → design）走完后，产物已落章（confirmedAt 有值），需求却仍停在 brainstorming；agent 侧无路可走」
+      verdict: 立独立需求修复该缺陷（不在来源需求里夹带改）
+      serves:
+        - FR-1
+        - FR-2
+      criterion: A1, A2
+    - id: D-2
+      source: 交接底稿修复方向 1：「把推进块从 confirm-settle.ts 的 applyConfirmDecision 抽成单点，让 AskConfirm.ts:96-135 早退分支在「已落章 + 有 advanceTo + 闸门通过」时执行推进」
+      verdict: 采纳：早退分支执行**同一份**推进实现，返回 `advanced:true` 与 `from/to`；闸门不过时行为不变
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      criterion: A1, A2
+    - id: D-3
+      source: 交接底稿修复方向 2：「triggerAutoConfirm 在「本次推进所需产物未齐备」时不弹确认门（不制造注定失败的确认）」
+      verdict: 收窄采纳：**只**预判原型存在门（UI 需求缺原型）；不预判裁定门/内容门，避免把「确认章是可选加强」改成「下游齐了才配确认」
+      serves:
+        - FR-3
+      criterion: A3
+    - id: D-4
+      source: 交接底稿修复方向 3：「给 artifact 补 artifactAwaitingAdvance（与 plan 同款），或统一判定「已落章 + 有下一阶段 + 状态未变 ⇒ 待推进」」
+      verdict: 采纳后半句：早退分支直接判定并**兑现**推进（不再需要第二次人工弹框，人已答过「确认推进」）
+      serves:
+        - FR-1
+      criterion: A1
+    - id: D-5
+      source: 交接底稿：「提示词层（次要）：写明「确认被闸门拦住 → 补齐产物后重发确认门；不得以『请到面板点一下』收尾」」
+      verdict: 采纳：回执 note 与工具提示语写明恢复路径
+      serves:
+        - FR-4
+      criterion: A3
+    - id: D-6
+      source: 用户消息：「应该立项了吧？」
+      verdict: 立项并绑定本窗口 REQ-261006094052-1da2；台账记为 feature / expert（弹框作答值），与底稿建议的 bug / standard 不同，按台账为准并在此留痕
+      serves:
+        - FR-1
+      criterion: A4
+    - id: D-7
+      source: 交接底稿：「不要在本窗口碰 REQ-261006092213-4f5b 的验收项改造（那是另一个需求）」
+      verdict: 边界：本次只改确认门/推进/自动确认四处，不碰 4f5b 的验收单改造
+      serves:
+        - FR-1
+        - FR-4
+      criterion: A4
+status:
+  artifacts: []

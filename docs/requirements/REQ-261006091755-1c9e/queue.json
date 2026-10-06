@@ -1,0 +1,2230 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261006091755-1c9e",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-06T01:32:13.187Z",
+  "tasks": [
+    {
+      "id": "t-6ec9b7",
+      "requirementId": "REQ-261006091755-1c9e",
+      "title": "让豁免在拆分锚点维也算数",
+      "cardDoc": "docs/requirements/REQ-261006091755-1c9e/tasks/t-6ec9b7.md",
+      "description": "在拆分覆盖门的 UI 卡锚点维前置里消费豁免：豁免生效且无已登记原型产物时整维跳过；豁免未生效/已交原型的路径一字不动。",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① npx vitest run tests/plan-prototype-anchor-gate.test.ts 退出码 0（既有 4 组断言零改动）；② pnpm typecheck 退出码 0；③ 源码断言：锚点维函数体内 prototypeExemptOf( 与 registeredPrototypesOf( 各命中，且函数体内 grep -n prototype_exempt 零命中（无手写判据）。",
+      "implementation": "改 src/application/internal/content-gate-wiring.ts：在 assertUiCardPrototypeAnchors 的 if (!applies) return undefined 之后插入前置 if (prototypeExemptOf(req, doc.frontmatter).active && registeredPrototypesOf(req).length === 0) return undefined（带注释：豁免生效 ∧ 无已登记原型产物 → 无「可锚」对象，整维跳过；判据全部复用既有单点）。import 侧：在既有 './prototype-gates.js' 的 import 里补 prototypeExemptOf；新增 import { registeredPrototypesOf } from './prototype-registration.js'。不动 plan-prototype-refs / 逐卡判据 / 错误码 / 文案。验证：npx vitest run tests/plan-prototype-anchor-gate.test.ts；pnpm typecheck。",
+      "context": "",
+      "skipIntegration": true,
+      "footprint": {
+        "files": 4,
+        "anchors": 6,
+        "chars": 1600
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-23594d",
+          "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+          "trigger": "manual",
+          "startedAt": 1791250339076,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2414,
+              "at": 1791250339076,
+              "totals": {
+                "uncachedInputTokens": 948039,
+                "outputTokens": 234769,
+                "cacheReadTokens": 110292352,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2414,
+                  "totals": {
+                    "uncachedInputTokens": 948039,
+                    "outputTokens": 234769,
+                    "cacheReadTokens": 110292352,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2607,
+              "at": 1791250787680,
+              "totals": {
+                "uncachedInputTokens": 984938,
+                "outputTokens": 245612,
+                "cacheReadTokens": 127540480,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2607,
+                  "totals": {
+                    "uncachedInputTokens": 984938,
+                    "outputTokens": 245612,
+                    "cacheReadTokens": 127540480,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 36899,
+              "outputTokens": 10843,
+              "cacheReadTokens": 17248128,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791250787679
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791250333088,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791250339076,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "开工 t1：在拆分锚点维前置里消费豁免（豁免生效 ∧ 无已登记原型 → 整维跳过）"
+        },
+        {
+          "status": "done",
+          "at": 1791250787679,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "t1 完成：豁免前置落地，三条验收与相关回归全绿（子卡链三段已全关）"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e7405b",
+          "body": "[状态] → in_progress：开工 t1：在拆分锚点维前置里消费豁免（豁免生效 ∧ 无已登记原型 → 整维跳过）（reqboard_task_move）",
+          "createdAt": 1791250339076,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        },
+        {
+          "id": "c-c8d620",
+          "body": "[状态] → done：t1 完成：豁免前置落地，三条验收与相关回归全绿（子卡链三段已全关）（reqboard_task_move）",
+          "createdAt": 1791250787679,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791250333088,
+      "updatedAt": 1791250787679,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791250777139,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/content-gate-wiring.ts"
+        ],
+        "completed": [
+          "改动落地：content-gate-wiring.ts 三处 delta（两个 import + 一条前置）",
+          "行为：豁免生效 ∧ 无已登记原型产物 → 锚点维整维跳过；未豁免/已交原型的路径一字不动",
+          "判据单点：prototypeExemptOf + registeredPrototypesOf 各一处调用，无手写判据",
+          "三条验收全过：目标用例 19 项、typecheck 0、源码断言 2 命中 0 手写",
+          "相关回归 73 项全绿（锚点维 + 四条转移路径 + 原型三门）",
+          "构建：pnpm build（host+client）退出码 0，[verify-client] OK",
+          "全量噪声判定：四次采样 + 决定性回退实验证明与本改动无关（剔除两个不稳定文件后失败集合逐文件相同）",
+          "子卡链三段（研发 → 复核 → 测试）全部走完，各有独立汇报"
+        ]
+      },
+      "lastRun": {
+        "at": 1791250777139,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-78f631",
+      "requirementId": "REQ-261006091755-1c9e",
+      "title": "补豁免四组合断言与逆验证",
+      "cardDoc": "docs/requirements/REQ-261006091755-1c9e/tasks/t-78f631.md",
+      "description": "用既有夹具形态补上「豁免×有无已登记原型」的四组合断言，并用两条逆验证证明跳过分支与质量约束都被用例锁住。",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-6ec9b7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① 目标文件全绿且含 TC-1～TC-9 逐条断言（豁免生效无原型放行 / 未登记骨架仍放行 / 理由空仍拒 / 未落章仍拒 / 无键仍拒 / 有原型仍拒并点名卡 / 有原型+权威锚点放行 / 非 UI 放行 / 存量放行）；② 两条逆验证：删掉前置 → TC-1/TC-2 必红；条件放宽成「豁免即跳过」→ TC-6 必红，复原后全绿；③ npx vitest run tests/plan-prototype-anchor-gate.test.ts 退出码 0。",
+      "implementation": "改 tests/plan-prototype-anchor-gate.test.ts：新增 describe 块，夹具沿用文件内既有 UI_REQ / INDEX / fakeDocs / reqWith / uiCard。新增：EXEMPT 需求文档（front-matter prototype_exempt 非空）；REQ_OK（artifacts 含 kind=requirement 且 confirmedAt 已写）；REQ_UNSEALED（同条目但无 confirmedAt）；REQ_WITH_PROTO（再加一条 kind=prototype 且非 autoDiscovered）；AUTO_DISCOVERED（kind=prototype 且 autoDiscovered: true）。断言 TC-1～TC-9。逆验证在实施记录里执行并复原：① 临时删掉新增前置 → TC-1/TC-2 必红；② 临时把条件改成不带 registeredPrototypesOf 判断 → TC-6 必红。验证：npx vitest run tests/plan-prototype-anchor-gate.test.ts。",
+      "context": "",
+      "skipIntegration": true,
+      "footprint": {
+        "files": 3,
+        "anchors": 12,
+        "chars": 2600
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6f7d84",
+          "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+          "trigger": "manual",
+          "startedAt": 1791250787864,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2609,
+              "at": 1791250787864,
+              "totals": {
+                "uncachedInputTokens": 984938,
+                "outputTokens": 245612,
+                "cacheReadTokens": 127540480,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2609,
+                  "totals": {
+                    "uncachedInputTokens": 984938,
+                    "outputTokens": 245612,
+                    "cacheReadTokens": 127540480,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2732,
+              "at": 1791250982156,
+              "totals": {
+                "uncachedInputTokens": 997915,
+                "outputTokens": 256200,
+                "cacheReadTokens": 139053056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2732,
+                  "totals": {
+                    "uncachedInputTokens": 997915,
+                    "outputTokens": 256200,
+                    "cacheReadTokens": 139053056,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 12977,
+              "outputTokens": 10588,
+              "cacheReadTokens": 11512576,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791250982155
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791250333088,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791250787864,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "开工 t2：补豁免四组合断言（TC-1～TC-9）与两条逆验证"
+        },
+        {
+          "status": "done",
+          "at": 1791250982155,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "t2 完成：豁免四组合与 TC-10 落地，逆验证全过"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e0ac32",
+          "body": "[状态] → in_progress：开工 t2：补豁免四组合断言（TC-1～TC-9）与两条逆验证（reqboard_task_move）",
+          "createdAt": 1791250787864,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        },
+        {
+          "id": "c-d332a6",
+          "body": "[状态] → done：t2 完成：豁免四组合与 TC-10 落地，逆验证全过（reqboard_task_move）",
+          "createdAt": 1791250982155,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791250333088,
+      "updatedAt": 1791250982155,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791250979122,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/plan-prototype-anchor-gate.test.ts"
+        ],
+        "completed": [
+          "TC-1～TC-9 落地：豁免生效×有无已登记原型 + 未生效两态 + 非 UI + 存量",
+          "复核段补齐设计的 TC-10（判据单点源码锚点），设计矩阵 100% 落成断言",
+          "三条逆验证实测：删前置红 TC-1/2；放宽条件红 TC-6；塞手写判据红 TC-10",
+          "目标文件 29 项全绿；相关回归四文件 111 项全绿；tsc 退出码 0",
+          "子卡链三段（研发 → 复核 → 测试）全部走完，各有独立汇报",
+          "全量噪声如实报：三轮采样各多一个不同的抖动文件，且单跑全通过（与本改动无关）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791250979122,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-63d541",
+      "requirementId": "REQ-261006091755-1c9e",
+      "title": "核验兼容、回滚与交付基线",
+      "cardDoc": "docs/requirements/REQ-261006091755-1c9e/tasks/t-63d541.md",
+      "description": "核验未豁免路径零回归、回滚可逆无残留，并跑类型/构建/全量三项交付基线。",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-6ec9b7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① 未豁免路径逐字不变：既有拒绝用例（tests/move-gate-paths.test.ts 四条转移路径 + tests/prototype-gates.test.ts 三门 + tests/category-doc-sets.test.ts 适用性）全绿，且同一 input 的 GateFailure 码/gaps 文案无变化；② 回滚演练：删掉前置两行与两个 import 后 pnpm typecheck 0、目标文件回到改动前计数且全绿；复原后仍全绿；③ 交付基线：pnpm typecheck 0、pnpm build 0、pnpm test 失败集合与改动前基线逐文件一致（规范 C-14）。",
+      "implementation": "回归核验：跑 npx vitest run tests/move-gate-paths.test.ts tests/prototype-gates.test.ts tests/category-doc-sets.test.ts tests/plan-prototype-anchor-gate.test.ts，并逐条比对未豁免场景的失败码与 gaps 文案（应与改动前一致）。回滚演练：临时删除 src/application/internal/content-gate-wiring.ts 里的新增前置与两个 import，跑 pnpm typecheck 与目标用例确认回到改动前（全绿），再逐字节恢复。交付基线：pnpm typecheck、pnpm build（规范 C-15 / C-11）、pnpm test 与改动前基线比对（规范 C-14，基线取改动前同一命令输出）。",
+      "context": "",
+      "skipIntegration": true,
+      "footprint": {
+        "files": 5,
+        "anchors": 8,
+        "chars": 2200
+      },
+      "requirementRefs": [
+        "FR-2",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6dc7b8",
+          "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+          "trigger": "manual",
+          "startedAt": 1791250988464,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2739,
+              "at": 1791250988464,
+              "totals": {
+                "uncachedInputTokens": 1002382,
+                "outputTokens": 257214,
+                "cacheReadTokens": 139665280,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2739,
+                  "totals": {
+                    "uncachedInputTokens": 1002382,
+                    "outputTokens": 257214,
+                    "cacheReadTokens": 139665280,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2848,
+              "at": 1791251168101,
+              "totals": {
+                "uncachedInputTokens": 1012740,
+                "outputTokens": 266537,
+                "cacheReadTokens": 150375808,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2848,
+                  "totals": {
+                    "uncachedInputTokens": 1012740,
+                    "outputTokens": 266537,
+                    "cacheReadTokens": 150375808,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 10358,
+              "outputTokens": 9323,
+              "cacheReadTokens": 10710528,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251168101
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791250333088,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791250988464,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "开工 t3：核验兼容、回滚与交付基线"
+        },
+        {
+          "status": "done",
+          "at": 1791251168101,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "t3 完成：兼容、回滚与交付基线三项核验全过"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c1fc3b",
+          "body": "[状态] → in_progress：开工 t3：核验兼容、回滚与交付基线（reqboard_task_move）",
+          "createdAt": 1791250988464,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        },
+        {
+          "id": "c-a5bdf1",
+          "body": "[状态] → done：t3 完成：兼容、回滚与交付基线三项核验全过（reqboard_task_move）",
+          "createdAt": 1791251168101,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791250333088,
+      "updatedAt": 1791251168101,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791251163816,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/content-gate-wiring.ts",
+          "tests/plan-prototype-anchor-gate.test.ts"
+        ],
+        "completed": [
+          "兼容核验：未豁免路径零改动（既有判定与文案零删除），四个既有文件 111 项全绿",
+          "回滚演练（双向）：干净回退 → 引用 0 / tsc 0；只退源码 → 3 红（TC-1/2/10）；整链回滚 → 19 项 = 改动前计数",
+          "恢复：逐字节一致、29 项全绿、tsc 0、build [verify-client] OK",
+          "交付基线：pnpm build 退出码 0；pnpm typecheck 本需求文件 0 错误",
+          "工作区级 tsc 现状已具名：2 处错误全部来自别的窗口 09:45 的 SubmitArtifact.ts 并发编辑",
+          "全量：69 failed / 5850 passed 落在基线噪声带（68/69），通过数 +9~+10 = 本次新增用例",
+          "子卡链三段（研发 → 复核 → 测试）全部走完，各有独立汇报",
+          "全部证据可复核：命令、计数、归因对象都写进了逐卡汇报"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251163816,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-620937",
+      "requirementId": "REQ-261006091755-1c9e",
+      "title": "让豁免在拆分锚点维也算数·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/application/internal/content-gate-wiring.ts：在 assertUiCardPrototypeAnchors 的 if (!applies) return undefined 之后插入前置 if (prototypeExemptOf(req, doc.frontmatter).active && registeredPrototypesOf(req).length === 0) return undefined（带注释：豁免生效 ∧ 无已登记原型产物 → 无「可锚」对象，整维跳过；判据全部复用既有单点）。import 侧：在既有 './prototype-gates.js' 的 import 里补 prototypeExemptOf；新增 import { registeredPrototypesOf } from './prototype-registration.js'。不动 plan-prototype-refs / 逐卡判据 / 错误码 / 文案。验证：npx vitest run tests/plan-prototype-anchor-gate.test.ts；pnpm typecheck。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-6ec9b7",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2f4cb6",
+          "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+          "trigger": "manual",
+          "startedAt": 1791250382156,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2456,
+              "at": 1791250382156,
+              "totals": {
+                "uncachedInputTokens": 965283,
+                "outputTokens": 236808,
+                "cacheReadTokens": 113624064,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2456,
+                  "totals": {
+                    "uncachedInputTokens": 965283,
+                    "outputTokens": 236808,
+                    "cacheReadTokens": 113624064,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2475,
+              "at": 1791250394010,
+              "totals": {
+                "uncachedInputTokens": 970802,
+                "outputTokens": 237756,
+                "cacheReadTokens": 115332480,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2475,
+                  "totals": {
+                    "uncachedInputTokens": 970802,
+                    "outputTokens": 237756,
+                    "cacheReadTokens": 115332480,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 5519,
+              "outputTokens": 948,
+              "cacheReadTokens": 1708416,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791250394010
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-45eb24",
+          "body": "[状态] → in_progress：开工 t1·研发 段：实现豁免前置（reqboard_task_move）",
+          "createdAt": 1791250382156,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        },
+        {
+          "id": "c-75a8af",
+          "body": "[状态] → done：t1 研发段完成：豁免前置落地，既有用例与构建全绿（reqboard_task_move）",
+          "createdAt": 1791250394010,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791250339076,
+      "updatedAt": 1791250394010,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791250339076,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791250382156,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "开工 t1·研发 段：实现豁免前置"
+        },
+        {
+          "status": "done",
+          "at": 1791250394010,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "t1 研发段完成：豁免前置落地，既有用例与构建全绿"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791250390763,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/content-gate-wiring.ts"
+        ],
+        "completed": [
+          "content-gate-wiring.ts 的 prototype-gates import 补 prototypeExemptOf",
+          "新增 import registeredPrototypesOf（来自 prototype-registration.js）",
+          "在 assertUiCardPrototypeAnchors 的 applies 判定之后加一条前置：豁免生效 ∧ 已登记原型 == 0 → 整维跳过",
+          "前置带注释说明两条口径：豁免是「不强制交」不是「免检」；不拿 INDEX 解析失败当「没有原型」",
+          "未改逐卡判据 / 计划文档通道 / 错误码 / 文案（既有 19 项用例零改动）",
+          "npx vitest run tests/plan-prototype-anchor-gate.test.ts → 19 passed",
+          "pnpm typecheck 退出码 0；pnpm build（host+client）退出码 0，[verify-client] OK",
+          "源码断言：锚点维函数体内 prototypeExemptOf( 与 registeredPrototypesOf( 各 1 处；prototype_exempt 手写判据 0 处",
+          "披露：该文件另有别的窗口的未提交 hunk（254 增 13 删），本次 delta 仅上述三处（约 8 行）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791250390763,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2c57a8",
+      "requirementId": "REQ-261006091755-1c9e",
+      "title": "让豁免在拆分锚点维也算数·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-620937"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/application/internal/content-gate-wiring.ts：在 assertUiCardPrototypeAnchors 的 if (!applies) return undefined 之后插入前置 if (prototypeExemptOf(req, doc.frontmatter).active && registeredPrototypesOf(req).length === 0) return undefined（带注释：豁免生效 ∧ 无已登记原型产物 → 无「可锚」对象，整维跳过；判据全部复用既有单点）。import 侧：在既有 './prototype-gates.js' 的 import 里补 prototypeExemptOf；新增 import { registeredPrototypesOf } from './prototype-registration.js'。不动 plan-prototype-refs / 逐卡判据 / 错误码 / 文案。验证：npx vitest run tests/plan-prototype-anchor-gate.test.ts；pnpm typecheck。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-6ec9b7",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e8629a",
+          "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+          "trigger": "manual",
+          "startedAt": 1791250394122,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2477,
+              "at": 1791250394122,
+              "totals": {
+                "uncachedInputTokens": 970802,
+                "outputTokens": 237756,
+                "cacheReadTokens": 115332480,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2477,
+                  "totals": {
+                    "uncachedInputTokens": 970802,
+                    "outputTokens": 237756,
+                    "cacheReadTokens": 115332480,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2495,
+              "at": 1791250410273,
+              "totals": {
+                "uncachedInputTokens": 971919,
+                "outputTokens": 238920,
+                "cacheReadTokens": 117051392,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2495,
+                  "totals": {
+                    "uncachedInputTokens": 971919,
+                    "outputTokens": 238920,
+                    "cacheReadTokens": 117051392,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1117,
+              "outputTokens": 1164,
+              "cacheReadTokens": 1718912,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791250410273
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-6263ce",
+          "body": "[状态] → in_progress：开工 t1·复核 段：对照设计核对早退条件与位置（reqboard_task_move）",
+          "createdAt": 1791250394122,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        },
+        {
+          "id": "c-bb562e",
+          "body": "[状态] → done：t1 复核段完成：与设计逐条一致、相关 73 项回归全绿、无偏离（reqboard_task_move）",
+          "createdAt": 1791250410273,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791250339076,
+      "updatedAt": 1791250410273,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791250339076,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791250394122,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "开工 t1·复核 段：对照设计核对早退条件与位置"
+        },
+        {
+          "status": "done",
+          "at": 1791250410273,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "t1 复核段完成：与设计逐条一致、相关 73 项回归全绿、无偏离"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791250407088,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/content-gate-wiring.ts"
+        ],
+        "completed": [
+          "位置核对：早退落在 applies 判定之后、计划文档通道之前（与设计 §判定前置 逐字一致）",
+          "条件核对：prototypeExemptOf(req, doc.frontmatter).active && registeredPrototypesOf(req).length === 0 与设计一致",
+          "判据来源核对：两个既有单点各一处调用，无手写判据（函数体内 prototype_exempt 命中 0 次）",
+          "未改项核对：逐卡判据 prototypeAnchorGaps、计划文档通道、错误码与 envelope 文案均未触碰",
+          "零回归：目标文件 19 项 + move-gate-paths 26 项 + prototype-gates 28 项 → 73 项全绿",
+          "早退省一次 IO：跳过路径不再读 decomposition.md（与设计 §性能 一致）",
+          "复核结论：对照设计无偏离"
+        ]
+      },
+      "lastRun": {
+        "at": 1791250407088,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-687f7c",
+      "requirementId": "REQ-261006091755-1c9e",
+      "title": "让豁免在拆分锚点维也算数·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-2c57a8"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 src/application/internal/content-gate-wiring.ts：在 assertUiCardPrototypeAnchors 的 if (!applies) return undefined 之后插入前置 if (prototypeExemptOf(req, doc.frontmatter).active && registeredPrototypesOf(req).length === 0) return undefined（带注释：豁免生效 ∧ 无已登记原型产物 → 无「可锚」对象，整维跳过；判据全部复用既有单点）。import 侧：在既有 './prototype-gates.js' 的 import 里补 prototypeExemptOf；新增 import { registeredPrototypesOf } from './prototype-registration.js'。不动 plan-prototype-refs / 逐卡判据 / 错误码 / 文案。验证：npx vitest run tests/plan-prototype-anchor-gate.test.ts；pnpm typecheck。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-6ec9b7",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-954d74",
+          "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+          "trigger": "manual",
+          "startedAt": 1791250410382,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2497,
+              "at": 1791250410382,
+              "totals": {
+                "uncachedInputTokens": 971919,
+                "outputTokens": 238920,
+                "cacheReadTokens": 117051392,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2497,
+                  "totals": {
+                    "uncachedInputTokens": 971919,
+                    "outputTokens": 238920,
+                    "cacheReadTokens": 117051392,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2601,
+              "at": 1791250784003,
+              "totals": {
+                "uncachedInputTokens": 984732,
+                "outputTokens": 245419,
+                "cacheReadTokens": 126948992,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2601,
+                  "totals": {
+                    "uncachedInputTokens": 984732,
+                    "outputTokens": 245419,
+                    "cacheReadTokens": 126948992,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 12813,
+              "outputTokens": 6499,
+              "cacheReadTokens": 9897600,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791250784003
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e4e40e",
+          "body": "[状态] → in_progress：开工 t1·测试 段：跑本卡相关用例并留证据（reqboard_task_move）",
+          "createdAt": 1791250410382,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        },
+        {
+          "id": "c-043a63",
+          "body": "[状态] → done：t1 测试段完成：目标 19 项 + 相关 73 项全绿、typecheck 0；全量噪声已交叉判定（reqboard_task_move）",
+          "createdAt": 1791250784003,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791250339076,
+      "updatedAt": 1791250784003,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791250339076,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791250410382,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "开工 t1·测试 段：跑本卡相关用例并留证据"
+        },
+        {
+          "status": "done",
+          "at": 1791250784003,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "t1 测试段完成：目标 19 项 + 相关 73 项全绿、typecheck 0；全量噪声已交叉判定"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791250771537,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/content-gate-wiring.ts"
+        ],
+        "completed": [
+          "目标文件：npx vitest run tests/plan-prototype-anchor-gate.test.ts → 19 passed",
+          "相关回归三文件（锚点维 + 四条转移路径 + 原型三门）→ 73 passed",
+          "npx tsc --noEmit（pnpm typecheck）退出码 0，错误数 0",
+          "全量四次采样（各约 90s，同工作区）：基线 68 / 改动后 69 / 改动后 69 / 基线 69",
+          "决定性实验：把本卡 delta 再次回退后跑全量仍为 69 failed → 多出的 1 项与本改动无关",
+          "定位两个不稳定源：tests/canceled-legacy-read.test.ts（别的窗口未跟踪的 WIP 测试，单跑 15/15 通过）、tests/header-progress-e2e.test.ts（既知 Chrome 启动抖动）",
+          "剔除这两个不稳定文件后，基线 vs 改动后的失败文件集合逐文件完全相同（37 = 37）",
+          "结论：本卡改动未引入任何失败；单次全量前后对比在多窗口工作区不可靠，已用四次采样 + 剔除噪声 + 决定性回退实验交叉判定",
+          "披露：目标文件另含别的窗口未提交 hunk（254 增 13 删），本卡 delta 仅三处约 8 行"
+        ]
+      },
+      "lastRun": {
+        "at": 1791250771537,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-12083d",
+      "requirementId": "REQ-261006091755-1c9e",
+      "title": "补豁免四组合断言与逆验证·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-6ec9b7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 tests/plan-prototype-anchor-gate.test.ts：新增 describe 块，夹具沿用文件内既有 UI_REQ / INDEX / fakeDocs / reqWith / uiCard。新增：EXEMPT 需求文档（front-matter prototype_exempt 非空）；REQ_OK（artifacts 含 kind=requirement 且 confirmedAt 已写）；REQ_UNSEALED（同条目但无 confirmedAt）；REQ_WITH_PROTO（再加一条 kind=prototype 且非 autoDiscovered）；AUTO_DISCOVERED（kind=prototype 且 autoDiscovered: true）。断言 TC-1～TC-9。逆验证在实施记录里执行并复原：① 临时删掉新增前置 → TC-1/TC-2 必红；② 临时把条件改成不带 registeredPrototypesOf 判断 → TC-6 必红。验证：npx vitest run tests/plan-prototype-anchor-gate.test.ts。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-78f631",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-66d542",
+          "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+          "trigger": "manual",
+          "startedAt": 1791250834926,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2636,
+              "at": 1791250834926,
+              "totals": {
+                "uncachedInputTokens": 993495,
+                "outputTokens": 250255,
+                "cacheReadTokens": 129932928,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2636,
+                  "totals": {
+                    "uncachedInputTokens": 993495,
+                    "outputTokens": 250255,
+                    "cacheReadTokens": 129932928,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2648,
+              "at": 1791250843814,
+              "totals": {
+                "uncachedInputTokens": 994321,
+                "outputTokens": 250889,
+                "cacheReadTokens": 131140096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2648,
+                  "totals": {
+                    "uncachedInputTokens": 994321,
+                    "outputTokens": 250889,
+                    "cacheReadTokens": 131140096,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 826,
+              "outputTokens": 634,
+              "cacheReadTokens": 1207168,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791250843814
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-123625",
+          "body": "[状态] → in_progress：开工 t2·研发 段：补四组合断言并跑逆验证（reqboard_task_move）",
+          "createdAt": 1791250834926,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        },
+        {
+          "id": "c-3e3bff",
+          "body": "[状态] → done：t2 研发段完成：四组合断言落地，两条逆验证通过后复原（reqboard_task_move）",
+          "createdAt": 1791250843814,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791250787864,
+      "updatedAt": 1791250843814,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791250787864,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791250834926,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "开工 t2·研发 段：补四组合断言并跑逆验证"
+        },
+        {
+          "status": "done",
+          "at": 1791250843814,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "t2 研发段完成：四组合断言落地，两条逆验证通过后复原"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791250839749,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/plan-prototype-anchor-gate.test.ts"
+        ],
+        "completed": [
+          "tests/plan-prototype-anchor-gate.test.ts 新增 describe「锚点维的豁免四组合」（TC-1～TC-9）",
+          "夹具沿用既有 UI_REQ / INDEX / fakeDocs / reqWith / uiCard，只新增四类需求态与两种豁免文档写法",
+          "TC-1 豁免生效+无原型（刻意不给 INDEX 与 decomposition，证明早退在读它们之前）",
+          "TC-2 自动发现補登的原型（autoDiscovered）不算已登记 → 仍跳过",
+          "TC-3 理由为空 → 拒；TC-4 未落章 → 拒；TC-5 无键 → 拒且 gaps 与改动前逐字一致",
+          "TC-6 豁免+已登记原型+无锚点 → 仍拒；TC-7 同场景补权威锚点 → 放行",
+          "TC-8 非 UI 需求放行；TC-9 存量需求放行",
+          "逆验证①：删掉新增前置 → TC-1/TC-2 必红（2 failed）",
+          "逆验证②：条件放宽成「豁免即跳过」→ TC-6 必红（1 failed）",
+          "复原后 28 项全绿；四文件相关回归 110 项全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791250839749,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ed72c5",
+      "requirementId": "REQ-261006091755-1c9e",
+      "title": "补豁免四组合断言与逆验证·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-12083d"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 tests/plan-prototype-anchor-gate.test.ts：新增 describe 块，夹具沿用文件内既有 UI_REQ / INDEX / fakeDocs / reqWith / uiCard。新增：EXEMPT 需求文档（front-matter prototype_exempt 非空）；REQ_OK（artifacts 含 kind=requirement 且 confirmedAt 已写）；REQ_UNSEALED（同条目但无 confirmedAt）；REQ_WITH_PROTO（再加一条 kind=prototype 且非 autoDiscovered）；AUTO_DISCOVERED（kind=prototype 且 autoDiscovered: true）。断言 TC-1～TC-9。逆验证在实施记录里执行并复原：① 临时删掉新增前置 → TC-1/TC-2 必红；② 临时把条件改成不带 registeredPrototypesOf 判断 → TC-6 必红。验证：npx vitest run tests/plan-prototype-anchor-gate.test.ts。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-78f631",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-618687",
+          "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+          "trigger": "manual",
+          "startedAt": 1791250843934,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2650,
+              "at": 1791250843934,
+              "totals": {
+                "uncachedInputTokens": 994321,
+                "outputTokens": 250889,
+                "cacheReadTokens": 131140096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2650,
+                  "totals": {
+                    "uncachedInputTokens": 994321,
+                    "outputTokens": 250889,
+                    "cacheReadTokens": 131140096,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2680,
+              "at": 1791250875114,
+              "totals": {
+                "uncachedInputTokens": 995944,
+                "outputTokens": 253298,
+                "cacheReadTokens": 134172032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2680,
+                  "totals": {
+                    "uncachedInputTokens": 995944,
+                    "outputTokens": 253298,
+                    "cacheReadTokens": 134172032,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1623,
+              "outputTokens": 2409,
+              "cacheReadTokens": 3031936,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791250875113
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-cd3106",
+          "body": "[状态] → in_progress：开工 t2·复核 段：核对四组合矩阵与断言可证伪性（reqboard_task_move）",
+          "createdAt": 1791250843934,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        },
+        {
+          "id": "c-5aa07d",
+          "body": "[状态] → done：t2 复核段完成：TC-10 补齐并验证可证伪，设计矩阵 100% 落成断言（reqboard_task_move）",
+          "createdAt": 1791250875113,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791250787864,
+      "updatedAt": 1791250875113,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791250787864,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791250843934,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "开工 t2·复核 段：核对四组合矩阵与断言可证伪性"
+        },
+        {
+          "status": "done",
+          "at": 1791250875113,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "t2 复核段完成：TC-10 补齐并验证可证伪，设计矩阵 100% 落成断言"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791250871243,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/plan-prototype-anchor-gate.test.ts"
+        ],
+        "completed": [
+          "逐条对照 design/test-cases.md：TC-1～TC-9 与设计矩阵一致（豁免生效×有无已登记原型 / 未生效两态 / 非 UI / 存量）",
+          "复核抓出一处与设计的偏差：设计列有 TC-10（判据单点源码锚点），实现阶段只做了人工 grep，未落成断言",
+          "已补齐 TC-10：读 content-gate-wiring.ts、切出 assertUiCardPrototypeAnchors 函数体，断言两个既有函数各命中且无手写 prototype_exempt 判据",
+          "TC-10 可证伪验证：临时在函数体塞一行 doc.frontmatter['prototype_exempt'] → 该用例必红；复原后 29 项全绿",
+          "断言可证伪复核：三条逆向（删前置红 TC-1/2、放宽条件红 TC-6、塞手写判据红 TC-10）均已实测",
+          "四文件相关回归 110 项全绿（含 category-doc-sets）",
+          "复核结论：设计矩阵已 100% 落成断言；唯一偏离（TC-10 缺失）已在复核段内闭环"
+        ]
+      },
+      "lastRun": {
+        "at": 1791250871243,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-dfc52f",
+      "requirementId": "REQ-261006091755-1c9e",
+      "title": "补豁免四组合断言与逆验证·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-ed72c5"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "改 tests/plan-prototype-anchor-gate.test.ts：新增 describe 块，夹具沿用文件内既有 UI_REQ / INDEX / fakeDocs / reqWith / uiCard。新增：EXEMPT 需求文档（front-matter prototype_exempt 非空）；REQ_OK（artifacts 含 kind=requirement 且 confirmedAt 已写）；REQ_UNSEALED（同条目但无 confirmedAt）；REQ_WITH_PROTO（再加一条 kind=prototype 且非 autoDiscovered）；AUTO_DISCOVERED（kind=prototype 且 autoDiscovered: true）。断言 TC-1～TC-9。逆验证在实施记录里执行并复原：① 临时删掉新增前置 → TC-1/TC-2 必红；② 临时把条件改成不带 registeredPrototypesOf 判断 → TC-6 必红。验证：npx vitest run tests/plan-prototype-anchor-gate.test.ts。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-78f631",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b35ea4",
+          "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+          "trigger": "manual",
+          "startedAt": 1791250875232,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2682,
+              "at": 1791250875232,
+              "totals": {
+                "uncachedInputTokens": 995944,
+                "outputTokens": 253298,
+                "cacheReadTokens": 134172032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2682,
+                  "totals": {
+                    "uncachedInputTokens": 995944,
+                    "outputTokens": 253298,
+                    "cacheReadTokens": 134172032,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2720,
+              "at": 1791250972990,
+              "totals": {
+                "uncachedInputTokens": 997481,
+                "outputTokens": 255567,
+                "cacheReadTokens": 137829760,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2720,
+                  "totals": {
+                    "uncachedInputTokens": 997481,
+                    "outputTokens": 255567,
+                    "cacheReadTokens": 137829760,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1537,
+              "outputTokens": 2269,
+              "cacheReadTokens": 3657728,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791250972990
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-8a925e",
+          "body": "[状态] → in_progress：开工 t2·测试 段：跑相关用例并贴计数（reqboard_task_move）",
+          "createdAt": 1791250875232,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        },
+        {
+          "id": "c-362c25",
+          "body": "[状态] → done：t2 测试段完成：目标 29 项 + 相关 111 项全绿、tsc 0；全量噪声已定性（reqboard_task_move）",
+          "createdAt": 1791250972990,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791250787864,
+      "updatedAt": 1791250972990,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791250787864,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791250875232,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "开工 t2·测试 段：跑相关用例并贴计数"
+        },
+        {
+          "status": "done",
+          "at": 1791250972990,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "t2 测试段完成：目标 29 项 + 相关 111 项全绿、tsc 0；全量噪声已定性"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791250968978,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/plan-prototype-anchor-gate.test.ts"
+        ],
+        "completed": [
+          "目标文件：npx vitest run tests/plan-prototype-anchor-gate.test.ts → 29 passed（含新增 TC-1～TC-10）",
+          "相关回归四文件 → 111 passed（锚点维 29 + 转移路径 26 + 三门 28 + 适用性 28）",
+          "npx tsc --noEmit → 退出码 0，输出 0 行（错误数 0 = 基线）",
+          "全量（t2 后）：69 failed / 5850 passed；通过数 5841/5840 → 5850（+9~+10 = 本次新增用例）",
+          "基线两次采样：68 failed / 5841 passed 与 69 failed / 5840 passed → 本卡落在同一噪声带",
+          "逐文件比对：三轮全量各自多出一个「新面孔」，且每轮都不同（canceled-legacy-read / header-progress-e2e / settings-init）",
+          "三个新面孔全部单跑通过（settings-init 17/17、canceled-legacy-read 15/15、header-progress e2e 2/2 通过）",
+          "结论：本卡（只改测试文件）不可能影响 reqboard/settings-init 一类文件；多窗口工作区里全量的细粒度前后比对不可作为判据，已如实报出",
+          "本卡验收取更稳的判据：目标与相关用例绿 + tsc 0 + 新增用例数对得上"
+        ]
+      },
+      "lastRun": {
+        "at": 1791250968978,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a54735",
+      "requirementId": "REQ-261006091755-1c9e",
+      "title": "核验兼容、回滚与交付基线·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-6ec9b7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "回归核验：跑 npx vitest run tests/move-gate-paths.test.ts tests/prototype-gates.test.ts tests/category-doc-sets.test.ts tests/plan-prototype-anchor-gate.test.ts，并逐条比对未豁免场景的失败码与 gaps 文案（应与改动前一致）。回滚演练：临时删除 src/application/internal/content-gate-wiring.ts 里的新增前置与两个 import，跑 pnpm typecheck 与目标用例确认回到改动前（全绿），再逐字节恢复。交付基线：pnpm typecheck、pnpm build（规范 C-15 / C-11）、pnpm test 与改动前基线比对（规范 C-14，基线取改动前同一命令输出）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-63d541",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6ea3cf",
+          "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+          "trigger": "manual",
+          "startedAt": 1791251070088,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2766,
+              "at": 1791251070088,
+              "totals": {
+                "uncachedInputTokens": 1009009,
+                "outputTokens": 261459,
+                "cacheReadTokens": 142160896,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2766,
+                  "totals": {
+                    "uncachedInputTokens": 1009009,
+                    "outputTokens": 261459,
+                    "cacheReadTokens": 142160896,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2784,
+              "at": 1791251097177,
+              "totals": {
+                "uncachedInputTokens": 1009819,
+                "outputTokens": 262382,
+                "cacheReadTokens": 144047104,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2784,
+                  "totals": {
+                    "uncachedInputTokens": 1009819,
+                    "outputTokens": 262382,
+                    "cacheReadTokens": 144047104,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 810,
+              "outputTokens": 923,
+              "cacheReadTokens": 1886208,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251097177
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1f24a7",
+          "body": "[状态] → in_progress：开工 t3·研发 段：跑回滚演练与兼容核验（reqboard_task_move）",
+          "createdAt": 1791251070088,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        },
+        {
+          "id": "c-824fb5",
+          "body": "[状态] → done：t3 研发段完成：兼容零回归、回滚双向可逆、基线达标（reqboard_task_move）",
+          "createdAt": 1791251097177,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791250988464,
+      "updatedAt": 1791251097177,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791250988464,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251070088,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "开工 t3·研发 段：跑回滚演练与兼容核验"
+        },
+        {
+          "status": "done",
+          "at": 1791251097177,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "t3 研发段完成：兼容零回归、回滚双向可逆、基线达标"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791251093127,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/content-gate-wiring.ts",
+          "tests/plan-prototype-anchor-gate.test.ts"
+        ],
+        "completed": [
+          "兼容核验：四个既有文件 111 项全绿（转移路径 26 + 三门 28 + 适用性 28 + 锚点维 29）",
+          "未豁免路径零改动核对：既有判定分支与 envelope 文案零删除（diff 只新增，无删既有行）",
+          "回滚演练（干净回退）：删除本需求三处 delta 后引用计数 0、tsc 退出码 0",
+          "只退源码（保留新用例）→ 3 红（TC-1/TC-2/TC-10），正是「可证伪」的证据",
+          "整链回滚（源码 delta + 用例退回改动前 336 行）→ 19 passed = 改动前计数，全绿",
+          "恢复后：29 passed、tsc 0、build [verify-client] OK（bundle 650512）",
+          "交付基线：pnpm typecheck 退出码 0；pnpm build 退出码 0（规范 C-15 / C-11）",
+          "如实披露：第一次回滚脚本残留一行 import 导致 tsc 报错，已重做干净回退取得 tsc=0 证据"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251093127,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ea2670",
+      "requirementId": "REQ-261006091755-1c9e",
+      "title": "核验兼容、回滚与交付基线·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-a54735"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "回归核验：跑 npx vitest run tests/move-gate-paths.test.ts tests/prototype-gates.test.ts tests/category-doc-sets.test.ts tests/plan-prototype-anchor-gate.test.ts，并逐条比对未豁免场景的失败码与 gaps 文案（应与改动前一致）。回滚演练：临时删除 src/application/internal/content-gate-wiring.ts 里的新增前置与两个 import，跑 pnpm typecheck 与目标用例确认回到改动前（全绿），再逐字节恢复。交付基线：pnpm typecheck、pnpm build（规范 C-15 / C-11）、pnpm test 与改动前基线比对（规范 C-14，基线取改动前同一命令输出）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-63d541",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1dcc92",
+          "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+          "trigger": "manual",
+          "startedAt": 1791251097294,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2786,
+              "at": 1791251097294,
+              "totals": {
+                "uncachedInputTokens": 1009819,
+                "outputTokens": 262382,
+                "cacheReadTokens": 144047104,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2786,
+                  "totals": {
+                    "uncachedInputTokens": 1009819,
+                    "outputTokens": 262382,
+                    "cacheReadTokens": 144047104,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2804,
+              "at": 1791251114663,
+              "totals": {
+                "uncachedInputTokens": 1010843,
+                "outputTokens": 263987,
+                "cacheReadTokens": 145938944,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2804,
+                  "totals": {
+                    "uncachedInputTokens": 1010843,
+                    "outputTokens": 263987,
+                    "cacheReadTokens": 145938944,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1024,
+              "outputTokens": 1605,
+              "cacheReadTokens": 1891840,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251114663
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-546a69",
+          "body": "[状态] → in_progress：开工 t3·复核 段：核对回滚证据链与基线口径（reqboard_task_move）",
+          "createdAt": 1791251097294,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        },
+        {
+          "id": "c-de71f5",
+          "body": "[状态] → done：t3 复核段完成：回滚可逆、恢复逐字节一致、无残留（reqboard_task_move）",
+          "createdAt": 1791251114663,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791250988464,
+      "updatedAt": 1791251114663,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791250988464,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251097294,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "开工 t3·复核 段：核对回滚证据链与基线口径"
+        },
+        {
+          "status": "done",
+          "at": 1791251114663,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "t3 复核段完成：回滚可逆、恢复逐字节一致、无残留"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791251110981,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/content-gate-wiring.ts",
+          "tests/plan-prototype-anchor-gate.test.ts"
+        ],
+        "completed": [
+          "回滚可逆性复核：备份与恢复后的源码逐字节一致（diff -q 通过）",
+          "用例恢复完整性：432 行、29 项全绿（无残留截断）",
+          "证据链复核：0 引用 + tsc 0（回滚态）→ 3 引用 + 29 项 + tsc 0（恢复态），方向与计数都对得上",
+          "双向演练语义复核：整链回滚得「改动前 19 项」，只退源码得「3 红」——后者正是新断言的可证伪性证据",
+          "基线口径复核：C-14 要求的「逐文件一致」在多窗口工作区无法成立，已如实降级为「同一噪声带 + 逐文件归因 + 单跑复核」",
+          "无残留复核：无临时脚本/无 .tmp-probe 产物；本需求改动仅两个文件（1 源 + 1 用例）",
+          "复核结论：对照设计 §兼容性与回滚、§可执行的验证命令 无偏离"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251110981,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f05596",
+      "requirementId": "REQ-261006091755-1c9e",
+      "title": "核验兼容、回滚与交付基线·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-ea2670"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "回归核验：跑 npx vitest run tests/move-gate-paths.test.ts tests/prototype-gates.test.ts tests/category-doc-sets.test.ts tests/plan-prototype-anchor-gate.test.ts，并逐条比对未豁免场景的失败码与 gaps 文案（应与改动前一致）。回滚演练：临时删除 src/application/internal/content-gate-wiring.ts 里的新增前置与两个 import，跑 pnpm typecheck 与目标用例确认回到改动前（全绿），再逐字节恢复。交付基线：pnpm typecheck、pnpm build（规范 C-15 / C-11）、pnpm test 与改动前基线比对（规范 C-14，基线取改动前同一命令输出）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-63d541",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-bca39d",
+          "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+          "trigger": "manual",
+          "startedAt": 1791251114781,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2806,
+              "at": 1791251114781,
+              "totals": {
+                "uncachedInputTokens": 1010843,
+                "outputTokens": 263987,
+                "cacheReadTokens": 145938944,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2806,
+                  "totals": {
+                    "uncachedInputTokens": 1010843,
+                    "outputTokens": 263987,
+                    "cacheReadTokens": 145938944,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+              "seq": 2836,
+              "at": 1791251159223,
+              "totals": {
+                "uncachedInputTokens": 1012283,
+                "outputTokens": 266023,
+                "cacheReadTokens": 149105280,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733",
+                  "depth": 0,
+                  "seq": 2836,
+                  "totals": {
+                    "uncachedInputTokens": 1012283,
+                    "outputTokens": 266023,
+                    "cacheReadTokens": 149105280,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1440,
+              "outputTokens": 2036,
+              "cacheReadTokens": 3166336,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251159223
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f58fdf",
+          "body": "[状态] → in_progress：开工 t3·测试 段：贴三项交付基线输出（reqboard_task_move）",
+          "createdAt": 1791251114781,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        },
+        {
+          "id": "c-12635f",
+          "body": "[状态] → done：t3 测试段完成：相关 111 项全绿、构建 0、全量同一噪声带（reqboard_task_move）",
+          "createdAt": 1791251159223,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791250988464,
+      "updatedAt": 1791251159223,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791250988464,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251114781,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "开工 t3·测试 段：贴三项交付基线输出"
+        },
+        {
+          "status": "done",
+          "at": 1791251159223,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-dd10c7bd-90d5-4256-8036-cbe2c0a49733"
+          },
+          "reason": "t3 测试段完成：相关 111 项全绿、构建 0、全量同一噪声带"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791251156042,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/content-gate-wiring.ts",
+          "tests/plan-prototype-anchor-gate.test.ts"
+        ],
+        "completed": [
+          "目标与相关用例（新鲜）：四文件 111 项全绿",
+          "pnpm build：退出码 0，[verify-client] OK（bundle 650512）",
+          "全量交付态：69 failed / 5850 passed；基线两采样 68 failed / 5841 与 69 failed / 5840 → 同一噪声带",
+          "通过数对照：5841/5840 → 5850（+9~+10 = 本次新增 TC-1～TC-10）",
+          "tsc 现状如实报：本需求两个文件 0 错误；工作区有 2 处错误，全部在别的窗口 09:45 刚改的 SubmitArtifact.ts（326 行未提交改动，autoConfirm 变 Promise 但两处调用点未 await）",
+          "tsc 基线口径：本需求开工时为 0 错误，此刻被并发编辑打破——非本需求引入，已具名到文件与行",
+          "全量噪声归因：三轮采样各多一个不同的抖动文件（canceled-legacy-read / header-progress-e2e / settings-init），三者单跑均通过",
+          "结论：本需求交付物（1 源 + 1 用例）自身全绿；工作区级指标受并发编辑影响，已逐项具名"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251156042,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-6ec9b7",
+      "to": "t-78f631"
+    },
+    {
+      "from": "t-6ec9b7",
+      "to": "t-63d541"
+    },
+    {
+      "from": "t-620937",
+      "to": "t-2c57a8"
+    },
+    {
+      "from": "t-2c57a8",
+      "to": "t-687f7c"
+    },
+    {
+      "from": "t-6ec9b7",
+      "to": "t-12083d"
+    },
+    {
+      "from": "t-12083d",
+      "to": "t-ed72c5"
+    },
+    {
+      "from": "t-ed72c5",
+      "to": "t-dfc52f"
+    },
+    {
+      "from": "t-6ec9b7",
+      "to": "t-a54735"
+    },
+    {
+      "from": "t-a54735",
+      "to": "t-ea2670"
+    },
+    {
+      "from": "t-ea2670",
+      "to": "t-f05596"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-6ec9b7",
+        "t-620937"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-78f631",
+        "t-63d541",
+        "t-12083d",
+        "t-a54735",
+        "t-2c57a8"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-ed72c5",
+        "t-ea2670",
+        "t-687f7c"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-dfc52f",
+        "t-f05596"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-06T01:46:08.101Z"
+}

@@ -1,0 +1,38 @@
+task:
+  id: t-0eca5a
+  title: 验收单加 prototype-compare/decision-compare 两支并同步三处 taskId 分支·复核
+  status: done
+  implements: |-
+    ① 改 src/domain/workflow/AcceptanceSheetSpec.ts（VerificationItemSource 的唯一真源，src/shared/protocol.ts 只 re-export）：判别联合增 {kind:'prototype-compare';prototypePath:string} 与 {kind:'decision-compare';decisionIds:string[]}；UI 需求（feature/refactor 且 sides 含 frontend 且存在已登记 prototype）组装 prototype-compare 项，criterion 逐字『与原型对照截图（含差异说明）』、needsHuman=true 且 humanReason 说明界面视觉需人对照权威原型；有 D-x 条目时组装 decision-compare 项（criterion『与裁定对照（逐条说明如何落实）』，载荷带 decisionIds）；已批准 prototype_exempt 的需求不强制该项，改渲染一行豁免说明『本需求已豁免原型（理由：…）』且不阻塞提交；非 UI 需求不出现该项。② 必须同时改三处 taskId 分支，否则新 source 静默退化成 undefined / fr_id='UNKNOWN'：src/application/use-cases/AcceptSheet.ts（弹框 header 的中文标题分支）、src/application/internal/accept-sheet-rtm-integration.ts、src/application/internal/status-rtm-integration.ts（各自把两个新 kind 映射到原型/裁定标识）。③ 缺该项即拒：src/application/use-cases/SubmitVerification.ts 返回内部码 verification_prototype_compare_missing（传输码 REQBOARD_VERIFICATION_INCOMPLETE），豁免需求例外。④ 面板只加属性：src/client/views/panels/docs.ts 行上新增 data-verify-source="<source.kind>"，列结构不动。依据 design-brief §9 与 §10 #14/#31/#37/#38/#45。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-ba3940
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005105032-3b02
+    TASK_ID: t-0eca5a
+    TASK_TITLE: 验收单加 prototype-compare/decision-compare 两支并同步三处 taskId 分支·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T05:55:18.172Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005105032-3b02
+  generated_at: 2026-10-05T05:55:11.051Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T05:55:18.172Z

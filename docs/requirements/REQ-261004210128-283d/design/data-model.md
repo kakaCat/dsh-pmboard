@@ -66,6 +66,10 @@ interface ClientWindowSeat { windowKey: string; role: 'owner' | 'worker' | 'obse
 - 用 `updatedAt` 距今小于阈值推断「在跑」；
 - 用 `autoRun === true` 推断「在跑」（机制开着 ≠ 有回合在跑）；
 - 用 `advanceLockAt` 新鲜度推断「在跑」（那是 host 侧派发锁，粒度不同）；
+  > **取代标注（2026-10-05，REQ-261005213603-eaed）**：本条的「禁用」已被该需求撤销并升级为**正式判据**——
+  > 推进锁是 host 认领 + 30s 心跳续租的「有 run 在跑」证书（与该需求原文的 WIP 闸门同阈值、同运算符）。
+  > 见 `docs/requirements/REQ-261005213603-eaed/design/architecture.md` §判据定义与新鲜度口径。
+  > 本行保留为历史（不删），下一条执行记录判据**仍然禁用**。
 - 用 `tasks[].executions[].outcome === 'running'` 推断「在跑」（历史执行记录，可能是残留）。
 
 ## 是否改表 / 迁移 / 回滚 `serves: FR-8`

@@ -1,0 +1,38 @@
+task:
+  id: t-10c72e
+  title: 裁决口径与底线：零输入通过 / unverified / 放行判据·复核
+  status: done
+  implements: |-
+    src/application/use-cases/AcceptSheet.ts：resultOf 顺序固定为 第2问自填 → 第1问自填 → item.result（去掉 it.evidence[0] 兜底）；finalizeIfAllPassed 放行判据加 unverified（pending 与 unverified 都不放行）；返回体加 unverified。src/domain/workflow/AcceptanceSheetSpec.ts：applyVerdicts 的 passed 校验放宽为「opinion 或 result 非空」，两者皆空记 unverified；failed / not_verifiable / 系统项处置必填规则不变。src/application/internal/verdicts.ts：opinion 非空且 ≠ item.result 时写 result=opinion、resultSource='human'。新增 tests/accept-sheet-zero-input.test.ts。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-48a832
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006092213-4f5b
+    TASK_ID: t-10c72e
+    TASK_TITLE: 裁决口径与底线：零输入通过 / unverified / 放行判据·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T02:57:15.881Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006092213-4f5b
+  generated_at: 2026-10-06T02:24:51.415Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T02:57:15.882Z

@@ -1,0 +1,38 @@
+task:
+  id: t-baac03
+  title: 探针与机器自检（回归 + 构建 + 知识层生成物 + 尺寸门禁）·复核
+  status: done
+  implements: |-
+    新增 `scripts/open-window-inherit-probe.mts`（假宿主服务跑通三入口链，打印 source_title / child_title / source_preset / child_preset / source_model / child_model 六读数并断言三对相等，另打印三段附加耗时；退出码 0 或 1）；跑并记录 `pnpm build`、`pnpm typecheck`、`pnpm test`（对照基线 106）、`npx tsx scripts/kb-build.mts --write` 后 `pnpm kb:check`、`npx vitest run tests/size-budget.test.ts`；命令与输出摘要写进 `docs/requirements/REQ-261005151245-54ae/evidence/checks.md`。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-72133a
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005151245-54ae
+    TASK_ID: t-baac03
+    TASK_TITLE: 探针与机器自检（回归 + 构建 + 知识层生成物 + 尺寸门禁）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T07:42:40.468Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005151245-54ae
+  generated_at: 2026-10-05T07:42:40.215Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T07:42:40.468Z

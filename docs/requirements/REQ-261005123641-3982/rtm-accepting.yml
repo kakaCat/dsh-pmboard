@@ -1,0 +1,251 @@
+metadata:
+  stage: accepting
+  requirement_id: REQ-261005123641-3982
+  generated_at: 2026-10-05T05:08:47.815Z
+  version: 3
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-05T05:09:29.651Z
+inputs:
+  tasks:
+    - id: t-ca2fee
+      title: 守卫改为按需求记录声明根判定，并在写前校正共享仓储根
+      status: done
+    - id: t-b40ed3
+      title: 立项两条路径（capture / create）守卫前置到建档之前
+      status: done
+    - id: t-1827cb
+      title: 并发窗口回归 + 真错配/声明根不可用用例（含重写失效用例）
+      status: done
+    - id: t-a26171
+      title: 写侧口径落文档：记录声明根为唯一权威、共享单例仅缓存
+      status: done
+    - id: t-dc8874
+      title: 守卫改为按需求记录声明根判定，并在写前校正共享仓储根·研发
+      status: done
+    - id: t-e11a6a
+      title: 守卫改为按需求记录声明根判定，并在写前校正共享仓储根·复核
+      status: done
+    - id: t-c9ef57
+      title: 立项两条路径（capture / create）守卫前置到建档之前·研发
+      status: done
+    - id: t-279e67
+      title: 立项两条路径（capture / create）守卫前置到建档之前·复核
+      status: done
+    - id: t-bbcecc
+      title: 并发窗口回归 + 真错配/声明根不可用用例（含重写失效用例）·研发
+      status: done
+    - id: t-82bbf9
+      title: 并发窗口回归 + 真错配/声明根不可用用例（含重写失效用例）·复核
+      status: done
+    - id: t-801f25
+      title: 并发窗口回归 + 真错配/声明根不可用用例（含重写失效用例）·测试
+      status: done
+    - id: t-2e659a
+      title: 写侧口径落文档：记录声明根为唯一权威、共享单例仅缓存·研发
+      status: done
+    - id: t-b55e86
+      title: 写侧口径落文档：记录声明根为唯一权威、共享单例仅缓存·复核
+      status: done
+outputs:
+  test_cases:
+    - id: TC-1
+      title: "TC-1: 邻居窗口改走共享根后，本窗口的写入不再被误拒"
+      covers:
+        - t-ca2fee
+        - t-dc8874
+        - t-bbcecc
+        - t-1827cb
+      validates:
+        - FR-1
+        - FR-2
+        - FR-5
+      source: tests/test-evidence.md
+    - id: TC-2
+      title: "TC-2: 记录声明的根是权威"
+      covers:
+        - t-ca2fee
+        - t-dc8874
+      validates:
+        - FR-1
+        - FR-2
+      source: tests/test-evidence.md
+    - id: TC-3
+      title: "TC-3: 声明根不可用 → 响亮拒绝，不写到任何地方"
+      covers:
+        - t-ca2fee
+        - t-dc8874
+      validates:
+        - FR-2
+      source: tests/test-evidence.md
+    - id: TC-4
+      title: "TC-4: 非绝对声明根 → 不判（变更记①）"
+      covers:
+        - t-ca2fee
+        - t-dc8874
+      validates:
+        - FR-2
+      source: tests/test-evidence.md
+    - id: TC-5
+      title: "TC-5: 存量记录（未声明根）→ 回落调用方根并校正"
+      covers:
+        - t-ca2fee
+        - t-dc8874
+      validates:
+        - FR-2
+      source: tests/test-evidence.md
+    - id: TC-6
+      title: "TC-6: 校正失效的最后防线仍抛 MISMATCH"
+      covers:
+        - t-ca2fee
+        - t-e11a6a
+      validates:
+        - FR-2
+        - FR-4
+      source: tests/test-evidence.md
+    - id: TC-7
+      title: "TC-7: 守卫先于副作用（半截失败消除）"
+      covers:
+        - t-b40ed3
+        - t-c9ef57
+        - t-279e67
+      validates:
+        - FR-3
+      source: tests/test-evidence.md
+    - id: TC-8
+      title: "TC-8: 判别力自证——新用例在旧实现下会红"
+      covers:
+        - t-bbcecc
+        - t-82bbf9
+        - t-1827cb
+      validates:
+        - FR-1
+        - FR-3
+        - FR-5
+      source: tests/test-evidence.md
+    - id: TC-9
+      title: "TC-9: 全量失败数 ≤ 基线；类型检查 ≤ 基线"
+      covers:
+        - t-801f25
+        - t-1827cb
+      validates:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      source: tests/test-evidence.md
+    - id: TC-10
+      title: "TC-10: 口径落文档、旧结论作废、变更记留痕"
+      covers:
+        - t-a26171
+        - t-2e659a
+        - t-b55e86
+      validates:
+        - FR-1
+        - FR-2
+      source: tests/test-evidence.md
+traceability:
+  task_to_tests:
+    t-ca2fee:
+      - TC-1
+      - TC-2
+      - TC-3
+      - TC-4
+      - TC-5
+      - TC-6
+    t-b40ed3:
+      - TC-7
+    t-1827cb:
+      - TC-1
+      - TC-8
+      - TC-9
+    t-a26171:
+      - TC-10
+    t-dc8874:
+      - TC-1
+      - TC-2
+      - TC-3
+      - TC-4
+      - TC-5
+    t-e11a6a:
+      - TC-6
+    t-c9ef57:
+      - TC-7
+    t-279e67:
+      - TC-7
+    t-bbcecc:
+      - TC-1
+      - TC-8
+    t-82bbf9:
+      - TC-8
+    t-801f25:
+      - TC-9
+    t-2e659a:
+      - TC-10
+    t-b55e86:
+      - TC-10
+  fr_to_tests:
+    FR-1:
+      - TC-1
+      - TC-2
+      - TC-3
+      - TC-4
+      - TC-5
+      - TC-6
+      - TC-7
+      - TC-8
+      - TC-9
+      - TC-10
+    FR-2:
+      - TC-1
+      - TC-2
+      - TC-3
+      - TC-4
+      - TC-5
+      - TC-6
+      - TC-7
+      - TC-8
+      - TC-9
+      - TC-10
+    FR-3:
+      - TC-7
+      - TC-1
+      - TC-8
+      - TC-9
+      - TC-2
+      - TC-3
+      - TC-4
+      - TC-5
+      - TC-6
+      - TC-10
+    FR-4:
+      - TC-1
+      - TC-8
+      - TC-9
+      - TC-2
+      - TC-3
+      - TC-4
+      - TC-5
+      - TC-6
+      - TC-7
+      - TC-10
+    FR-5:
+      - TC-1
+      - TC-8
+      - TC-9
+      - TC-2
+      - TC-3
+      - TC-4
+      - TC-5
+      - TC-6
+      - TC-7
+      - TC-10
+coverage:
+  testing:
+    total: 13
+    covered: 13
+    uncovered: []
+    rate: 100
+    total_tasks: 13
+    tested_tasks: 13
+    untested: []

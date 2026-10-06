@@ -1,0 +1,45 @@
+task:
+  id: t-781e2f
+  title: 落地浅色岛令牌块并移除宿主深色覆盖·测试
+  status: done
+  implements: |-
+    改 src/client/styles/report.ts 三处：① `.dsh-pm-detail[data-report-shell]` 令牌块（现 :62-74）改为页面自持浅色原值——--pm-text:#1d1d1f、--pm-text2:#6e6e73、--pm-text3:#86868b（注释写明只许非文本）、--pm-accent:#0071e3、--pm-surface:#fff、--pm-warn-text:#c93400、--pm-danger:#d70015、--pm-line:#0000001a、--pm-bg-soft:#f5f5f7，删掉全部 var(--dsw-…, 回退值) 那一层；② 新增 --pm-accent-text: var(--pm-accent) 与 --pm-line-strong:#00000029，删除 --pm-line-soft，--r1/--r2 归并为 8px（--pm-pill 不动）；③ 文件头与 :70-71 注释改成「浅色岛，不跟随宿主主题」，并整块删除 :962-966 的 [data-ds-dark-theme] .dsh-pm-detail[data-report-shell] 覆盖块。其它样式分片（base/board/detail/node-panel…）一行不改。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-e0b5bd
+  phase: ui
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261005155003-f32f
+    TASK_ID: t-781e2f
+    TASK_TITLE: 落地浅色岛令牌块并移除宿主深色覆盖·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: ui
+  workflow_total: 4
+  workflow_done: 4
+  workflow:
+    - phase: ui
+      status: done
+      completed_at: 2026-10-05T12:25:45.604Z
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T12:25:45.604Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T12:25:43.157Z
+    - phase: commit
+      status: done
+      completed_at: 2026-10-05T12:25:45.604Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005155003-f32f
+  generated_at: 2026-10-05T12:24:32.748Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 4
+  last_updated: 2026-10-05T12:25:45.604Z

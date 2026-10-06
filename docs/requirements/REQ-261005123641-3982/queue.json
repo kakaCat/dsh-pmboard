@@ -1,0 +1,2405 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261005123641-3982",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-05T04:52:27.834Z",
+  "tasks": [
+    {
+      "id": "t-ca2fee",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "守卫改为按需求记录声明根判定，并在写前校正共享仓储根",
+      "cardDoc": "docs/requirements/REQ-261005123641-3982/tasks/t-ca2fee.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) npx vitest run tests/project-scope.test.ts -t \"守卫\" → 414/430/443/448 四条未修改即全绿；2) npx tsc --noEmit → 错误数 ≤ 基线；3) grep -n \"export function ensureWritableProjectRoot\" -A 6 src/application/internal/support.ts → 可见第 3 参 caller?；4) 12 处守卫调用点数量与基线一致（本卡不动调用点）。",
+      "implementation": "改 src/application/internal/support.ts：① ensureWritableProjectRoot(deps, record, caller?) 增加可选第 3 参 { callerRoot?: string }；② 判定顺序按 design/interfaces.md 六行表：无 workspaceRoot 探针 → 返回 undefined（不判）；declared 非空时 !isAbsoluteRoot 或 docs.exists(declared)===false → 抛 REQBOARD_INVALID_WORKSPACE；否则 applyWorkspaceRoot(deps, declared) 写前校正 → 复核探针值：相同 → 返回声明根，仍不同 → 抛 REQBOARD_PROJECT_ROOT_MISMATCH（语义收窄为校正失效的最后防线）；③ declared 为空：有 callerRoot → 校正到它并返回，否则 undefined；④ assertWritableRequirementProject(deps, reqId, caller?) 保持按 id 取记录 → 调同一实现。函数名不变（t8 门禁 GUARD_CALL 依赖）；存在性判定用既有 DocRepository.exists（绝对路径直通），不新增端口方法。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "skipIntegration": true,
+      "footprint": {
+        "files": 1,
+        "anchors": 4,
+        "chars": 1800
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-2a94f4",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791175961982,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 631,
+              "at": 1791175961983,
+              "totals": {
+                "uncachedInputTokens": 125210,
+                "outputTokens": 87932,
+                "cacheReadTokens": 9752832,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 631,
+                  "totals": {
+                    "uncachedInputTokens": 125210,
+                    "outputTokens": 87932,
+                    "cacheReadTokens": 9752832,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 762,
+              "at": 1791176108348,
+              "totals": {
+                "uncachedInputTokens": 139502,
+                "outputTokens": 103739,
+                "cacheReadTokens": 14145536,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 762,
+                  "totals": {
+                    "uncachedInputTokens": 139502,
+                    "outputTokens": 103739,
+                    "cacheReadTokens": 14145536,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 14292,
+              "outputTokens": 15807,
+              "cacheReadTokens": 4392704,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176108348
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791175947687,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791175961982,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "开工 t1：按需求 id 取记录、以记录声明根为唯一权威重写写盘守卫（写前校正 + 校正失效才拒）"
+        },
+        {
+          "status": "done",
+          "at": 1791176108348,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "t1 完成：守卫判定输入改为记录声明根 + 写前校正；研发/复核两条子卡均已完成并留有汇报"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1844ef",
+          "body": "[状态] → in_progress：开工 t1：按需求 id 取记录、以记录声明根为唯一权威重写写盘守卫（写前校正 + 校正失效才拒）（reqboard_task_move）",
+          "createdAt": 1791175961982,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-91c2d1",
+          "body": "[状态] → done：t1 完成：守卫判定输入改为记录声明根 + 写前校正；研发/复核两条子卡均已完成并留有汇报（reqboard_task_move）",
+          "createdAt": 1791176108348,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791175947687,
+      "updatedAt": 1791176108348,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791176103685,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/support.ts"
+        ],
+        "completed": [
+          "写盘守卫不再读共享单例的当前根，改为按需求 id 取记录、以记录声明根判定",
+          "写前把共享仓储的根校正到声明根（复用读侧唯一实现），多窗口串味不再让本窗口被误拒",
+          "新增声明根可用性硬校验：非绝对/不存在 → REQBOARD_INVALID_WORKSPACE，写侧不降级到会话 cwd",
+          "PROJECT_ROOT_MISMATCH 收窄为校正失效的最后防线（给两个绝对路径）",
+          "接口加性：第 3 参 callerRoot 可缺省，12 处外部调用点与 1 处内部复用逐字未动",
+          "自测证据：守卫用例 414/430/443/448 未修改即绿；tsc 1 = 基线 1；t8 白名单用例通过；diff +84/-28",
+          "如实登记的遗留：452 旧契约用例待 t3 重写；t8 写盘覆盖对 EnsureKnowledgeLayer.ts:169 报红（HEAD 既存）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176103685,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b40ed3",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "立项两条路径（capture / create）守卫前置到建档之前",
+      "cardDoc": "docs/requirements/REQ-261005123641-3982/tasks/t-b40ed3.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-ca2fee"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) grep -c \"ensureWritableProjectRoot\" src/application/use-cases/CaptureRequirement.ts → ≥2（前置 + 护栏）；2) grep -n \"ensureWritableProjectRoot\" src/application/use-cases/CreateRequirement.ts → 行号小于 createRequirementDirect 调用行；3) npx vitest run tests/project-scope.test.ts tests/application → 全绿。",
+      "implementation": "src/application/use-cases/CaptureRequirement.ts：在 ④createRequirementDirect(:277) 之前用已解析的 workspaceRoot 调 ensureWritableProjectRoot(deps, { workspaceRoot }, { callerRoot: sessionCwd })；拒绝即台账零写入；:300 既有调用保留为护栏。src/application/use-cases/CreateRequirement.ts：把 :63 的守卫前置到 createRequirementDirect(:52) 之前并传 callerRoot: sessionCwd。顺序约束：校正与紧随的写盘之间不插入新的 await。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "skipIntegration": true,
+      "footprint": {
+        "files": 2,
+        "anchors": 3,
+        "chars": 1600
+      },
+      "requirementRefs": [
+        "FR-2",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3e0cbc",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791176117228,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 769,
+              "at": 1791176117228,
+              "totals": {
+                "uncachedInputTokens": 143331,
+                "outputTokens": 105441,
+                "cacheReadTokens": 14375296,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 769,
+                  "totals": {
+                    "uncachedInputTokens": 143331,
+                    "outputTokens": 105441,
+                    "cacheReadTokens": 14375296,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 924,
+              "at": 1791176265495,
+              "totals": {
+                "uncachedInputTokens": 156715,
+                "outputTokens": 125891,
+                "cacheReadTokens": 20436352,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 924,
+                  "totals": {
+                    "uncachedInputTokens": 156715,
+                    "outputTokens": 125891,
+                    "cacheReadTokens": 20436352,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 13384,
+              "outputTokens": 20450,
+              "cacheReadTokens": 6061056,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176265494
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791175947687,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791176117228,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "开工 t2：capture / create 的守卫前置到建档之前（拒绝即台账零写入）"
+        },
+        {
+          "status": "done",
+          "at": 1791176265494,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "t2 完成：capture / create 守卫前置到建档之前；研发与复核子卡均已完成并留有汇报"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-3a5f0c",
+          "body": "[状态] → in_progress：开工 t2：capture / create 的守卫前置到建档之前（拒绝即台账零写入）（reqboard_task_move）",
+          "createdAt": 1791176117228,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-1e6c5f",
+          "body": "[状态] → done：t2 完成：capture / create 守卫前置到建档之前；研发与复核子卡均已完成并留有汇报（reqboard_task_move）",
+          "createdAt": 1791176265494,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791175947687,
+      "updatedAt": 1791176265494,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791176261191,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/CaptureRequirement.ts",
+          "src/application/use-cases/CreateRequirement.ts",
+          "docs/requirements/REQ-261005123641-3982/design/interfaces.md"
+        ],
+        "completed": [
+          "capture 与 create 两条立项路径的写盘根守卫都前置到建档之前（拒绝即台账零写入）",
+          "两条路径都传 callerRoot（会话 cwd），保留「记录未声明根」的存量兜底",
+          "capture 建档后保留同口径护栏；create 的 RTM 写盘改由 syncRTMYaml 内部按需求 id 守卫",
+          "实施期裁决（相对根 → 不判）落进代码与 design/interfaces.md 变更记①",
+          "基线对照：HEAD worktree 实测 2 红 72 绿；改后 3 红 71 绿 → 净新增意外红 0（唯一新红是 t3 要重写的旧契约用例）",
+          "tsc 错误 1 = 基线 1"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176261191,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1827cb",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "并发窗口回归 + 真错配/声明根不可用用例（含重写失效用例）",
+      "cardDoc": "docs/requirements/REQ-261005123641-3982/tasks/t-1827cb.md",
+      "description": "",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-b40ed3"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) npx vitest run tests/project-root-concurrency.test.ts tests/project-scope.test.ts → 全绿；2) npx vitest run tests/project-scope.test.ts -t \"写盘覆盖\" → 绿（三份清单零改动）；3) git diff --stat tests/project-scope.test.ts → 仅 1 个用例块变动；4) pnpm test → 失败数 ≤ 开工前基线。",
+      "implementation": "新增 tests/project-root-concurrency.test.ts：TC-1 A 写 → B 调 reqboard_status（触发单例校正）→ A 再写，两次都成功且 B 目录零新增；TC-2 记录声明 B、调用方根 A → 校正到 B 并返回 B，A 目录零新增；TC-3 声明根不存在/相对写法 → REQBOARD_INVALID_WORKSPACE 且调用方根零写入；TC-5 记录无 workspaceRoot → 回落调用方根并标注、不误拒。重写 tests/project-scope.test.ts:452 那条编码旧契约的失效用例到新契约（等强度断言：校正到声明根 + 调用方根零写入 + 返回值 = 声明根）；414/430/443/448 与 t8 写盘覆盖用例逐字不动。",
+      "context": "",
+      "footprint": {
+        "files": 2,
+        "anchors": 5,
+        "chars": 2200
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3",
+        "FR-4",
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-18e9a5",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791176287160,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 931,
+              "at": 1791176287160,
+              "totals": {
+                "uncachedInputTokens": 160444,
+                "outputTokens": 131346,
+                "cacheReadTokens": 20702080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 931,
+                  "totals": {
+                    "uncachedInputTokens": 160444,
+                    "outputTokens": 131346,
+                    "cacheReadTokens": 20702080,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 1159,
+              "at": 1791176859672,
+              "totals": {
+                "uncachedInputTokens": 179021,
+                "outputTokens": 154424,
+                "cacheReadTokens": 30242688,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 1159,
+                  "totals": {
+                    "uncachedInputTokens": 179021,
+                    "outputTokens": 154424,
+                    "cacheReadTokens": 30242688,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 18577,
+              "outputTokens": 23078,
+              "cacheReadTokens": 9540608,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176859672
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791175947687,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791176287160,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "开工 t3：补多窗口并发回归用例，并按新契约重写被推翻的旧用例"
+        },
+        {
+          "status": "done",
+          "at": 1791176859672,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "t3 完成：并发回归 6 例 + 旧契约用例重写；判别力自证与全量对照证据齐备，研发/复核/测试三条子卡均已完成"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-88db77",
+          "body": "[状态] → in_progress：开工 t3：补多窗口并发回归用例，并按新契约重写被推翻的旧用例（reqboard_task_move）",
+          "createdAt": 1791176287160,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-863023",
+          "body": "[状态] → done：t3 完成：并发回归 6 例 + 旧契约用例重写；判别力自证与全量对照证据齐备，研发/复核/测试三条子卡均已完成（reqboard_task_move）",
+          "createdAt": 1791176859672,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791175947687,
+      "updatedAt": 1791176859672,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791176856980,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/project-root-concurrency.test.ts",
+          "tests/project-scope.test.ts"
+        ],
+        "completed": [
+          "新增 tests/project-root-concurrency.test.ts 6 例：并发互踩不再误拒、记录是权威、声明根不可用响亮拒绝、相对根不判、存量回落、校正失效最后防线",
+          "重写 tests/project-scope.test.ts 里编码旧契约的用例为等强度新断言（等强度：产物只能在声明根下、调用方根零新增）",
+          "判别力自证：新用例在旧实现下 4/6 红、重写用例也红 → 修复后全绿（用例真在测本次行为）",
+          "全量对照：带改动 68 失败 vs 隔离副本基线 69 失败；「只有现在红」的失败文件集为空（零新增红）",
+          "tsc --noEmit 1 = 基线 1；既有四条守卫用例与 t8 三份清单逐字未动（diff 11+/13−，仅一个用例块）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176856980,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a26171",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "写侧口径落文档：记录声明根为唯一权威、共享单例仅缓存",
+      "cardDoc": "docs/requirements/REQ-261005123641-3982/tasks/t-a26171.md",
+      "description": "",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-ca2fee"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "1) grep -n \"唯一权威\\|仅作缓存\\|按需求 id\" docs/architecture/gate-read-root.md → 命中；2) grep -n \"gate-read-root\" docs/architecture/project-manual.md → 命中；3) pnpm kb:probe → 无死链；4) pnpm kb:check → 退出码 = 开工前基线（未新增漂移）。",
+      "implementation": "更新 docs/architecture/gate-read-root.md：补写侧姊妹篇——写入根的唯一权威 = 该 REQ 记录的 workspaceRoot（按需求 id 定位记录）；进程共享根仅作缓存，任何判定不得读其当前值；写侧不降级（声明根不可用即拒，不回落调用方 cwd）。并在 docs/architecture/project-manual.md 对应篇章挂接该页，避免孤儿页。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "skipIntegration": true,
+      "footprint": {
+        "files": 2,
+        "anchors": 3,
+        "chars": 1400
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b4b606",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791176312294,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 960,
+              "at": 1791176312294,
+              "totals": {
+                "uncachedInputTokens": 165340,
+                "outputTokens": 135541,
+                "cacheReadTokens": 21821184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 960,
+                  "totals": {
+                    "uncachedInputTokens": 165340,
+                    "outputTokens": 135541,
+                    "cacheReadTokens": 21821184,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 1075,
+              "at": 1791176574823,
+              "totals": {
+                "uncachedInputTokens": 174809,
+                "outputTokens": 148831,
+                "cacheReadTokens": 26538368,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 1075,
+                  "totals": {
+                    "uncachedInputTokens": 174809,
+                    "outputTokens": 148831,
+                    "cacheReadTokens": 26538368,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 9469,
+              "outputTokens": 13290,
+              "cacheReadTokens": 4717184,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176574821
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791175947687,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791176312294,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "开工 t4：把写侧口径写进 docs/architecture（gate-read-root 的姊妹篇）"
+        },
+        {
+          "status": "done",
+          "at": 1791176574821,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "t4 完成：写侧口径落进 gate-read-root 现行节（旧结论作废留痕）+ manual 挂接；研发/复核子卡均已完成"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d9e6d2",
+          "body": "[状态] → in_progress：开工 t4：把写侧口径写进 docs/architecture（gate-read-root 的姊妹篇）（reqboard_task_move）",
+          "createdAt": 1791176312294,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-87edfc",
+          "body": "[状态] → done：t4 完成：写侧口径落进 gate-read-root 现行节（旧结论作废留痕）+ manual 挂接；研发/复核子卡均已完成（reqboard_task_move）",
+          "createdAt": 1791176574821,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791175947687,
+      "updatedAt": 1791176574821,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791176567578,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/architecture/gate-read-root.md",
+          "docs/architecture/project-manual.md"
+        ],
+        "completed": [
+          "写侧现行口径落进 docs/architecture/gate-read-root.md：唯一权威 = 记录声明的 workspaceRoot（按 REQ id 定位），共享根只是缓存",
+          "两起现场与时间戳入档（12:29 立项误拒、12:31 批准了但没落库），后来人能看到为什么改",
+          "旧节「只核验不代为校正」显式作废并保留为历史教训（含 51 目录污染事故）",
+          "已知缺口表的单例并发行按现状改写：判定不再依赖共享根，架构级每窗口一实例仍未做",
+          "project-manual.md 挂接标签更新为读/写两侧，避免孤儿页",
+          "基线对照如实报：kb:check 漂移仍为同一 2 处、kb:probe 4 项失败来自他需求新增 scripts；本卡零新增漂移条目"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176567578,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-dc8874",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "守卫改为按需求记录声明根判定，并在写前校正共享仓储根·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/application/internal/support.ts：① ensureWritableProjectRoot(deps, record, caller?) 增加可选第 3 参 { callerRoot?: string }；② 判定顺序按 design/interfaces.md 六行表：无 workspaceRoot 探针 → 返回 undefined（不判）；declared 非空时 !isAbsoluteRoot 或 docs.exists(declared)===false → 抛 REQBOARD_INVALID_WORKSPACE；否则 applyWorkspaceRoot(deps, declared) 写前校正 → 复核探针值：相同 → 返回声明根，仍不同 → 抛 REQBOARD_PROJECT_ROOT_MISMATCH（语义收窄为校正失效的最后防线）；③ declared 为空：有 callerRoot → 校正到它并返回，否则 undefined；④ assertWritableRequirementProject(deps, reqId, caller?) 保持按 id 取记录 → 调同一实现。函数名不变（t8 门禁 GUARD_CALL 依赖）；存在性判定用既有 DocRepository.exists（绝对路径直通），不新增端口方法。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-ca2fee",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-edf845",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791176069371,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 692,
+              "at": 1791176069371,
+              "totals": {
+                "uncachedInputTokens": 134489,
+                "outputTokens": 99875,
+                "cacheReadTokens": 11669760,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 692,
+                  "totals": {
+                    "uncachedInputTokens": 134489,
+                    "outputTokens": 99875,
+                    "cacheReadTokens": 11669760,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 716,
+              "at": 1791176079331,
+              "totals": {
+                "uncachedInputTokens": 135547,
+                "outputTokens": 100649,
+                "cacheReadTokens": 12559232,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 716,
+                  "totals": {
+                    "uncachedInputTokens": 135547,
+                    "outputTokens": 100649,
+                    "cacheReadTokens": 12559232,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1058,
+              "outputTokens": 774,
+              "cacheReadTokens": 889472,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176079331
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-948b3c",
+          "body": "[状态] → in_progress：研发子卡开工：support.ts 守卫重写（判定输入改为记录声明根 + 写前校正）（reqboard_task_move）",
+          "createdAt": 1791176069371,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-19bace",
+          "body": "[状态] → done：研发完成：守卫判定输入改为记录声明根 + 写前校正；已汇报（diff +84/-28，support.ts）（reqboard_task_move）",
+          "createdAt": 1791176079331,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791175961982,
+      "updatedAt": 1791176079331,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791175961982,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791176069371,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "研发子卡开工：support.ts 守卫重写（判定输入改为记录声明根 + 写前校正）"
+        },
+        {
+          "status": "done",
+          "at": 1791176079331,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "研发完成：守卫判定输入改为记录声明根 + 写前校正；已汇报（diff +84/-28，support.ts）"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791176077311,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/support.ts"
+        ],
+        "completed": [
+          "守卫判定输入从「共享单例当前值」改为「该需求记录自己声明的根」",
+          "新增可选第 3 参 callerRoot；12 处外部调用点与 1 处内部复用逐字未动",
+          "新增 REQBOARD_INVALID_WORKSPACE：声明根非绝对或不存在即响亮拒绝，写侧不降级",
+          "写前校正复用读侧唯一实现 applyWorkspaceRoot；PROJECT_ROOT_MISMATCH 收窄为校正失效的最后防线",
+          "自测：守卫用例 414/430/443/448 未修改即绿（唯一红的是编码旧契约的 452，由 t3 重写）",
+          "自测：tsc 错误 1 = 开工前基线 1（既有 tests/receive-mark.test.ts，与本卡无关）",
+          "自测：grep 签名第 3 参 caller?: WriteRootCaller 可见；ensureWritable 7 处 + assertWritable 6 处"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176077311,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-e11a6a",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "守卫改为按需求记录声明根判定，并在写前校正共享仓储根·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-dc8874"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/application/internal/support.ts：① ensureWritableProjectRoot(deps, record, caller?) 增加可选第 3 参 { callerRoot?: string }；② 判定顺序按 design/interfaces.md 六行表：无 workspaceRoot 探针 → 返回 undefined（不判）；declared 非空时 !isAbsoluteRoot 或 docs.exists(declared)===false → 抛 REQBOARD_INVALID_WORKSPACE；否则 applyWorkspaceRoot(deps, declared) 写前校正 → 复核探针值：相同 → 返回声明根，仍不同 → 抛 REQBOARD_PROJECT_ROOT_MISMATCH（语义收窄为校正失效的最后防线）；③ declared 为空：有 callerRoot → 校正到它并返回，否则 undefined；④ assertWritableRequirementProject(deps, reqId, caller?) 保持按 id 取记录 → 调同一实现。函数名不变（t8 门禁 GUARD_CALL 依赖）；存在性判定用既有 DocRepository.exists（绝对路径直通），不新增端口方法。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-ca2fee",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-5010f2",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791176097667,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 742,
+              "at": 1791176097667,
+              "totals": {
+                "uncachedInputTokens": 138539,
+                "outputTokens": 102679,
+                "cacheReadTokens": 13458688,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 742,
+                  "totals": {
+                    "uncachedInputTokens": 138539,
+                    "outputTokens": 102679,
+                    "cacheReadTokens": 13458688,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 756,
+              "at": 1791176106411,
+              "totals": {
+                "uncachedInputTokens": 139357,
+                "outputTokens": 103634,
+                "cacheReadTokens": 13915904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 756,
+                  "totals": {
+                    "uncachedInputTokens": 139357,
+                    "outputTokens": 103634,
+                    "cacheReadTokens": 13915904,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 818,
+              "outputTokens": 955,
+              "cacheReadTokens": 457216,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176106411
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-714ca4",
+          "body": "[状态] → in_progress：复核子卡开工：对照 design/interfaces.md 六行表逐条核对判定顺序、层边界与门禁兼容（reqboard_task_move）",
+          "createdAt": 1791176097667,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-3df695",
+          "body": "[状态] → done：复核完成：无偏离（判定顺序逐条对齐设计；层边界零新增 import；三条不误伤边界保持）（reqboard_task_move）",
+          "createdAt": 1791176106411,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791175961982,
+      "updatedAt": 1791176106411,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791175961982,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791176097667,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "复核子卡开工：对照 design/interfaces.md 六行表逐条核对判定顺序、层边界与门禁兼容"
+        },
+        {
+          "status": "done",
+          "at": 1791176106411,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "复核完成：无偏离（判定顺序逐条对齐设计；层边界零新增 import；三条不误伤边界保持）"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791176103303,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "判定顺序逐条对照 design/interfaces.md 六行表：无探针→undefined；声明根非绝对/不存在→INVALID_WORKSPACE；写前校正→复核；校正后仍不一致→MISMATCH；无声明根→callerRoot 或 undefined——**无偏离**",
+          "三条「不误伤」边界保持：无探针不判、记录未声明不判、读不回不判",
+          "层边界：本次新增 import 0 条；support.ts 内 node: 仅出现在既有注释（line 204），layer-boundary 红名单不含本文件",
+          "门禁兼容：函数名未变，t8「白名单不许腐烂」用例通过（守卫调用仍在白名单文件内）",
+          "注释纪律：旧取舍「只核验不代为重定向」被推翻的理由如实保留，并写明由「声明根可信化 + 存在性硬校验」两条替代承担",
+          "遗留风险（如实报）：写侧对「相对路径声明根」由不判变为拒绝（行为收紧，需 t3 用例覆盖）；旧契约用例 452 待 t3 重写；t8 写盘覆盖门禁对 EnsureKnowledgeLayer.ts:169 报红（HEAD 既存、非本卡引入，属知识层需求范围）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176103303,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c9ef57",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "立项两条路径（capture / create）守卫前置到建档之前·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-ca2fee"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/application/use-cases/CaptureRequirement.ts：在 ④createRequirementDirect(:277) 之前用已解析的 workspaceRoot 调 ensureWritableProjectRoot(deps, { workspaceRoot }, { callerRoot: sessionCwd })；拒绝即台账零写入；:300 既有调用保留为护栏。src/application/use-cases/CreateRequirement.ts：把 :63 的守卫前置到 createRequirementDirect(:52) 之前并传 callerRoot: sessionCwd。顺序约束：校正与紧随的写盘之间不插入新的 await。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-b40ed3",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8b0f8f",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791176245223,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 882,
+              "at": 1791176245223,
+              "totals": {
+                "uncachedInputTokens": 154652,
+                "outputTokens": 123234,
+                "cacheReadTokens": 18855808,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 882,
+                  "totals": {
+                    "uncachedInputTokens": 154652,
+                    "outputTokens": 123234,
+                    "cacheReadTokens": 18855808,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 890,
+              "at": 1791176247844,
+              "totals": {
+                "uncachedInputTokens": 155133,
+                "outputTokens": 123333,
+                "cacheReadTokens": 19117312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 890,
+                  "totals": {
+                    "uncachedInputTokens": 155133,
+                    "outputTokens": 123333,
+                    "cacheReadTokens": 19117312,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 481,
+              "outputTokens": 99,
+              "cacheReadTokens": 261504,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176247844
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c5aeeb",
+          "body": "[状态] → in_progress：研发子卡开工：capture / create 守卫前置到建档之前（reqboard_task_move）",
+          "createdAt": 1791176245223,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-2e5604",
+          "body": "[状态] → done：研发完成：守卫前置到建档之前（capture / create 两条路径）；已汇报改动与基线对照（reqboard_task_move）",
+          "createdAt": 1791176247844,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791176117228,
+      "updatedAt": 1791176247844,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791176117228,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791176245223,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "研发子卡开工：capture / create 守卫前置到建档之前"
+        },
+        {
+          "status": "done",
+          "at": 1791176247844,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "研发完成：守卫前置到建档之前（capture / create 两条路径）；已汇报改动与基线对照"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791176245316,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/CaptureRequirement.ts",
+          "src/application/use-cases/CreateRequirement.ts",
+          "docs/requirements/REQ-261005123641-3982/design/interfaces.md"
+        ],
+        "completed": [
+          "capture：守卫前置到 ④建档之前（用弹框解析出的 workspaceRoot 判定），拒绝即台账零写入；建档后保留同口径护栏",
+          "create：守卫从建档之后移到建档之前并传 callerRoot；RTM 写盘仍由 syncRTMYaml 内部按需求 id 守卫",
+          "实施期裁决落到代码：非绝对声明根 → 不判（返回探针当前值，与改动前逐字一致）",
+          "裁决作为变更记①写进 design/interfaces.md 的判定顺序表（含裁决人、日期、理由、影响面）",
+          "自测：守卫用例 414/430/443/448 未修改即绿；签名与调用点计数未变",
+          "自测：tests/project-scope.test.ts + tests/application → 3 红，其中 2 红用 HEAD worktree 实测为基线既存（t8 EnsureKnowledgeLayer.ts:169、RandomIdFactory 的 REQ id 格式）；第 3 红是 452 旧契约用例，归 t3 重写 → 本卡净新增意外红 0 条",
+          "自测：tsc 错误 1 = 基线 1；capture 守卫 3 处（import + 前置 + 护栏）、create 守卫行 54 < createRequirementDirect 行 55"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176245316,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-279e67",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "立项两条路径（capture / create）守卫前置到建档之前·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-c9ef57"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/application/use-cases/CaptureRequirement.ts：在 ④createRequirementDirect(:277) 之前用已解析的 workspaceRoot 调 ensureWritableProjectRoot(deps, { workspaceRoot }, { callerRoot: sessionCwd })；拒绝即台账零写入；:300 既有调用保留为护栏。src/application/use-cases/CreateRequirement.ts：把 :63 的守卫前置到 createRequirementDirect(:52) 之前并传 callerRoot: sessionCwd。顺序约束：校正与紧随的写盘之间不插入新的 await。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-b40ed3",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-0b0d02",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791176252296,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 896,
+              "at": 1791176252296,
+              "totals": {
+                "uncachedInputTokens": 155276,
+                "outputTokens": 124031,
+                "cacheReadTokens": 19379328,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 896,
+                  "totals": {
+                    "uncachedInputTokens": 155276,
+                    "outputTokens": 124031,
+                    "cacheReadTokens": 19379328,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 918,
+              "at": 1791176263343,
+              "totals": {
+                "uncachedInputTokens": 156539,
+                "outputTokens": 125789,
+                "cacheReadTokens": 20170880,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 918,
+                  "totals": {
+                    "uncachedInputTokens": 156539,
+                    "outputTokens": 125789,
+                    "cacheReadTokens": 20170880,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1263,
+              "outputTokens": 1758,
+              "cacheReadTokens": 791552,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176263342
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7393bc",
+          "body": "[状态] → in_progress：复核子卡开工：核对守卫先于副作用、校正与写盘之间无新 await、计划外调用点未动（reqboard_task_move）",
+          "createdAt": 1791176252296,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-5b54d1",
+          "body": "[状态] → done：复核完成：守卫先于副作用、零写入保证成立、改动面仅限本卡文件——无偏离（reqboard_task_move）",
+          "createdAt": 1791176263342,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791176117228,
+      "updatedAt": 1791176263342,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791176117228,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791176252296,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "复核子卡开工：核对守卫先于副作用、校正与写盘之间无新 await、计划外调用点未动"
+        },
+        {
+          "status": "done",
+          "at": 1791176263342,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "复核完成：守卫先于副作用、零写入保证成立、改动面仅限本卡文件——无偏离"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791176261100,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "守卫先于副作用：capture 守卫行 280 < 建档 283 < 推进 297；create 守卫行 54 < 建档 55——FR-3 达成",
+          "校正与紧随写盘之间无新 await：守卫后是台账写入（宿主级 ~/.dsh，与工作区根无关）；工作区相对写入集中在 RTM 段，该段有护栏且 syncRTMYaml 内部按需求 id 守卫",
+          "零写入保证成立：守卫拒绝时 create 未执行，台账不会出现该 REQ",
+          "影响面核对：本卡只改 2 个 src 文件；同目录另有两处改动（Decompose.ts / MoveRequirement.ts）零命中本次需求号与守卫符号，属他需求在建工作",
+          "变更记① 与代码逐字一致：非绝对声明根 → 不判，返回探针当前值",
+          "遗留如实报：452 旧契约用例待 t3 重写；t8 写盘覆盖对 EnsureKnowledgeLayer.ts:169 报红为 HEAD 基线既存"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176261100,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-bbcecc",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "并发窗口回归 + 真错配/声明根不可用用例（含重写失效用例）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-b40ed3"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新增 tests/project-root-concurrency.test.ts：TC-1 A 写 → B 调 reqboard_status（触发单例校正）→ A 再写，两次都成功且 B 目录零新增；TC-2 记录声明 B、调用方根 A → 校正到 B 并返回 B，A 目录零新增；TC-3 声明根不存在/相对写法 → REQBOARD_INVALID_WORKSPACE 且调用方根零写入；TC-5 记录无 workspaceRoot → 回落调用方根并标注、不误拒。重写 tests/project-scope.test.ts:452 那条编码旧契约的失效用例到新契约（等强度断言：校正到声明根 + 调用方根零写入 + 返回值 = 声明根）；414/430/443/448 与 t8 写盘覆盖用例逐字不动。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-1827cb",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d1fdcd",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791176584840,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 1089,
+              "at": 1791176584840,
+              "totals": {
+                "uncachedInputTokens": 175803,
+                "outputTokens": 150033,
+                "cacheReadTokens": 27146496,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 1089,
+                  "totals": {
+                    "uncachedInputTokens": 175803,
+                    "outputTokens": 150033,
+                    "cacheReadTokens": 27146496,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 1111,
+              "at": 1791176607360,
+              "totals": {
+                "uncachedInputTokens": 177067,
+                "outputTokens": 151546,
+                "cacheReadTokens": 28068096,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 1111,
+                  "totals": {
+                    "uncachedInputTokens": 177067,
+                    "outputTokens": 151546,
+                    "cacheReadTokens": 28068096,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1264,
+              "outputTokens": 1513,
+              "cacheReadTokens": 921600,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176607360
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1a43d1",
+          "body": "[状态] → in_progress：研发子卡开工：新增并发回归用例 + 重写旧契约用例（reqboard_task_move）",
+          "createdAt": 1791176584840,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-436b7e",
+          "body": "[状态] → done：研发完成：新增并发回归 6 例 + 重写旧契约用例；已汇报（并发文件 6/6 绿）（reqboard_task_move）",
+          "createdAt": 1791176607360,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791176287160,
+      "updatedAt": 1791176607360,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791176287160,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791176584840,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "研发子卡开工：新增并发回归用例 + 重写旧契约用例"
+        },
+        {
+          "status": "done",
+          "at": 1791176607360,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "研发完成：新增并发回归 6 例 + 重写旧契约用例；已汇报（并发文件 6/6 绿）"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791176585491,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/project-root-concurrency.test.ts",
+          "tests/project-scope.test.ts"
+        ],
+        "completed": [
+          "新增 tests/project-root-concurrency.test.ts 共 6 例：邻居窗口改走共享根后两次写入均成功且 B 目录零新增（TC-1）；记录是权威、校正到声明根（TC-2）；声明根不可用 → INVALID_WORKSPACE 且调用方目录零新增（TC-3）；非绝对根不判（TC-4，变更记①）；存量记录回落 callerRoot（TC-5）；校正失效 → MISMATCH 且文案含两个绝对路径（TC-6）",
+          "重写 tests/project-scope.test.ts 里编码旧契约的那条用例为等强度新断言：校正到记录声明根 + 产物只在声明根下 + 调用方当前根零新增",
+          "旧用例所在文件的其余四条（414/430/443/448）与 t8 三份清单逐字未动：git diff 11 insertions / 13 deletions，仅一个用例块",
+          "自测：tests/project-root-concurrency.test.ts 6/6 绿；tests/project-scope.test.ts 仅剩 HEAD 既存的 t8 红（EnsureKnowledgeLayer.ts:169）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176585491,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-82bbf9",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "并发窗口回归 + 真错配/声明根不可用用例（含重写失效用例）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-bbcecc"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新增 tests/project-root-concurrency.test.ts：TC-1 A 写 → B 调 reqboard_status（触发单例校正）→ A 再写，两次都成功且 B 目录零新增；TC-2 记录声明 B、调用方根 A → 校正到 B 并返回 B，A 目录零新增；TC-3 声明根不存在/相对写法 → REQBOARD_INVALID_WORKSPACE 且调用方根零写入；TC-5 记录无 workspaceRoot → 回落调用方根并标注、不误拒。重写 tests/project-scope.test.ts:452 那条编码旧契约的失效用例到新契约（等强度断言：校正到声明根 + 调用方根零写入 + 返回值 = 声明根）；414/430/443/448 与 t8 写盘覆盖用例逐字不动。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-1827cb",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3aad83",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791176610983,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 1117,
+              "at": 1791176610983,
+              "totals": {
+                "uncachedInputTokens": 177268,
+                "outputTokens": 151995,
+                "cacheReadTokens": 28376576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 1117,
+                  "totals": {
+                    "uncachedInputTokens": 177268,
+                    "outputTokens": 151995,
+                    "cacheReadTokens": 28376576,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 1125,
+              "at": 1791176614096,
+              "totals": {
+                "uncachedInputTokens": 177807,
+                "outputTokens": 152169,
+                "cacheReadTokens": 28685696,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 1125,
+                  "totals": {
+                    "uncachedInputTokens": 177807,
+                    "outputTokens": 152169,
+                    "cacheReadTokens": 28685696,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 539,
+              "outputTokens": 174,
+              "cacheReadTokens": 309120,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176614096
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-04755c",
+          "body": "[状态] → in_progress：复核子卡开工：核验用例判别力、既有断言未被误伤（reqboard_task_move）",
+          "createdAt": 1791176610983,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-27df75",
+          "body": "[状态] → done：复核完成：判别力自证 4/6 红于旧实现、修复后全绿、既有断言未误伤——无偏离（reqboard_task_move）",
+          "createdAt": 1791176614096,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791176287160,
+      "updatedAt": 1791176614096,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791176287160,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791176610983,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "复核子卡开工：核验用例判别力、既有断言未被误伤"
+        },
+        {
+          "status": "done",
+          "at": 1791176614096,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "复核完成：判别力自证 4/6 红于旧实现、修复后全绿、既有断言未误伤——无偏离"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791176611256,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "判别力自证（在基线副本里用 HEAD 旧守卫跑新用例）：6 条新用例红 4 条——TC-1 邻居改根后误拒、TC-2 记录是权威却抛错、TC-3 拒绝码不是 INVALID_WORKSPACE、TC-5 存量记录直接 undefined",
+          "刻意保留的两条旧行为在新旧实现下都绿：TC-4 非绝对根不判（变更记①）、TC-6 校正失效仍抛 MISMATCH（最后防线）",
+          "重写后的旧契约用例在旧实现下也变红（说明它不是跟着实现一起改的空用例）",
+          "既有断言未被误伤：project-scope.test.ts 其余四条与新用例文件并存时全绿；t8「白名单不许腐烂」通过；三份清单零改动",
+          "如实登记：t8「每个工作区相对写盘点…」用例仍红，但用 HEAD 基线实测同为红（EnsureKnowledgeLayer.ts:169），与本卡无关"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176611256,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-801f25",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "并发窗口回归 + 真错配/声明根不可用用例（含重写失效用例）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-82bbf9"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新增 tests/project-root-concurrency.test.ts：TC-1 A 写 → B 调 reqboard_status（触发单例校正）→ A 再写，两次都成功且 B 目录零新增；TC-2 记录声明 B、调用方根 A → 校正到 B 并返回 B，A 目录零新增；TC-3 声明根不存在/相对写法 → REQBOARD_INVALID_WORKSPACE 且调用方根零写入；TC-5 记录无 workspaceRoot → 回落调用方根并标注、不误拒。重写 tests/project-scope.test.ts:452 那条编码旧契约的失效用例到新契约（等强度断言：校正到声明根 + 调用方根零写入 + 返回值 = 声明根）；414/430/443/448 与 t8 写盘覆盖用例逐字不动。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-1827cb",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-5f5cc5",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791176846658,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 1135,
+              "at": 1791176846658,
+              "totals": {
+                "uncachedInputTokens": 178034,
+                "outputTokens": 153134,
+                "cacheReadTokens": 28995456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 1135,
+                  "totals": {
+                    "uncachedInputTokens": 178034,
+                    "outputTokens": 153134,
+                    "cacheReadTokens": 28995456,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 1147,
+              "at": 1791176852602,
+              "totals": {
+                "uncachedInputTokens": 178684,
+                "outputTokens": 153660,
+                "cacheReadTokens": 29618048,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 1147,
+                  "totals": {
+                    "uncachedInputTokens": 178684,
+                    "outputTokens": 153660,
+                    "cacheReadTokens": 29618048,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 650,
+              "outputTokens": 526,
+              "cacheReadTokens": 622592,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176852602
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5f8a06",
+          "body": "[状态] → in_progress：测试子卡开工：全量对照基线并给出失败数证据（reqboard_task_move）",
+          "createdAt": 1791176846658,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-4113dd",
+          "body": "[状态] → done：测试完成：全量 68 失败 ≤ 基线 69，零新增红；tsc 1 = 基线 1（reqboard_task_move）",
+          "createdAt": 1791176852602,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791176287160,
+      "updatedAt": 1791176852602,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791176287160,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791176846658,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "测试子卡开工：全量对照基线并给出失败数证据"
+        },
+        {
+          "status": "done",
+          "at": 1791176852602,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "测试完成：全量 68 失败 ≤ 基线 69，零新增红；tsc 1 = 基线 1"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791176850490,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "带本次改动的全量：pnpm test → 68 失败 / 5061 通过 / 20 跳过（37 个红文件）",
+          "去掉本次改动的对照（隔离副本，工作树其余在建改动保持不变）：69 失败 / 5054 通过（38 个红文件）→ 失败数 68 ≤ 基线 69",
+          "失败文件集 diff：只有现在红的集合为空（零新增红）；只有基线红的集合恰为我复核阶段复制进副本的新用例文件（旧实现下 4/6 红，属预期，不是实现引入）",
+          "tsc --noEmit：错误数 1 = 基线 1（tests/receive-mark.test.ts 的 readonly sort，与本需求无关，HEAD 即存在）",
+          "既有红如实点名（均为 HEAD 基线既有、与本需求无关）：t8 写盘覆盖 EnsureKnowledgeLayer.ts:169、RandomIdFactory 的 REQ id 格式、layer-boundary 的 domain/http 既存越界等",
+          "共享工作树说明：本仓当前有其它需求的在建改动同时在跑，两次全量的红文件计数（39/40）与尾部摘要（37/38）存在窗口期差异；权威对照是配对失败数（68 vs 69）与空的「只有现在红」集合"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176850490,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2e659a",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "写侧口径落文档：记录声明根为唯一权威、共享单例仅缓存·研发",
+      "description": "子卡阶段：研发",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-ca2fee"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "更新 docs/architecture/gate-read-root.md：补写侧姊妹篇——写入根的唯一权威 = 该 REQ 记录的 workspaceRoot（按需求 id 定位记录）；进程共享根仅作缓存，任何判定不得读其当前值；写侧不降级（声明根不可用即拒，不回落调用方 cwd）。并在 docs/architecture/project-manual.md 对应篇章挂接该页，避免孤儿页。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-a26171",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-29991d",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791176359961,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 1012,
+              "at": 1791176359961,
+              "totals": {
+                "uncachedInputTokens": 171147,
+                "outputTokens": 141808,
+                "cacheReadTokens": 23846400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 1012,
+                  "totals": {
+                    "uncachedInputTokens": 171147,
+                    "outputTokens": 141808,
+                    "cacheReadTokens": 23846400,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 1024,
+              "at": 1791176368407,
+              "totals": {
+                "uncachedInputTokens": 172272,
+                "outputTokens": 142954,
+                "cacheReadTokens": 24436352,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 1024,
+                  "totals": {
+                    "uncachedInputTokens": 172272,
+                    "outputTokens": 142954,
+                    "cacheReadTokens": 24436352,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1125,
+              "outputTokens": 1146,
+              "cacheReadTokens": 589952,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176368407
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-37862f",
+          "body": "[状态] → in_progress：研发子卡开工：gate-read-root 补写侧现行口径 + manual 挂接（reqboard_task_move）",
+          "createdAt": 1791176359961,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-9e7ea1",
+          "body": "[状态] → done：研发完成：写侧现行口径落进 gate-read-root.md（含旧结论推翻标注）并挂接 manual（reqboard_task_move）",
+          "createdAt": 1791176368407,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791176312294,
+      "updatedAt": 1791176368407,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791176312294,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791176359961,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "研发子卡开工：gate-read-root 补写侧现行口径 + manual 挂接"
+        },
+        {
+          "status": "done",
+          "at": 1791176368407,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "研发完成：写侧现行口径落进 gate-read-root.md（含旧结论推翻标注）并挂接 manual"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791176365817,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/architecture/gate-read-root.md",
+          "docs/architecture/project-manual.md"
+        ],
+        "completed": [
+          "gate-read-root.md 新增「写入侧的根解析（现行）」节：唯一权威 / 入口 / 写前动作 / 两条拒绝条件 / 不判情形 / 守卫时机，并附两起现场与时间戳",
+          "旧节「写入侧的收口（REQ-261001203710-0fbf）」头部加「已于 2026-10-05 被推翻」标注，保留为历史决策与 51 目录污染事故的教训",
+          "「已知缺口」表的单例并发行按新口径改写：判定不再依赖共享根，但架构级每窗口一实例仍未做",
+          "来源清单补 REQ-261005123641-3982，并写明它推翻了上一条的「只核验」取舍",
+          "project-manual.md 挂接标签改为「读/写各按哪个根找文件、写文件」，避免孤儿页",
+          "验收：关键词命中（gate-read-root.md:117 含唯一权威 / 只作缓存 / 按 REQ id 取记录）；manual 挂接命中（project-manual.md:15）",
+          "基线对照如实报：kb:check 漂移仍为同一 2 处（code-map.md / code-map.symbols.tsv，后者含本需求新增导出符号与他需求在建改动）；kb:probe 的 4 项失败全部来自他需求新增 scripts 未归类（本需求零新增脚本）",
+          "故意未在施工中重生成 kb 产物：避免把并发窗口的在建源码改动一并固化进 code-map（留待树稳定后跑 pnpm kb:build）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176365817,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b55e86",
+      "requirementId": "REQ-261005123641-3982",
+      "title": "写侧口径落文档：记录声明根为唯一权威、共享单例仅缓存·复核",
+      "description": "子卡阶段：复核",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-2e659a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "更新 docs/architecture/gate-read-root.md：补写侧姊妹篇——写入根的唯一权威 = 该 REQ 记录的 workspaceRoot（按需求 id 定位记录）；进程共享根仅作缓存，任何判定不得读其当前值；写侧不降级（声明根不可用即拒，不回落调用方 cwd）。并在 docs/architecture/project-manual.md 对应篇章挂接该页，避免孤儿页。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-a26171",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f5f58a",
+          "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+          "trigger": "manual",
+          "startedAt": 1791176372440,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 1031,
+              "at": 1791176372440,
+              "totals": {
+                "uncachedInputTokens": 172526,
+                "outputTokens": 143390,
+                "cacheReadTokens": 24732416,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 1031,
+                  "totals": {
+                    "uncachedInputTokens": 172526,
+                    "outputTokens": 143390,
+                    "cacheReadTokens": 24732416,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+              "seq": 1069,
+              "at": 1791176570435,
+              "totals": {
+                "uncachedInputTokens": 174658,
+                "outputTokens": 148688,
+                "cacheReadTokens": 26234624,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f",
+                  "depth": 0,
+                  "seq": 1069,
+                  "totals": {
+                    "uncachedInputTokens": 174658,
+                    "outputTokens": 148688,
+                    "cacheReadTokens": 26234624,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 2132,
+              "outputTokens": 5298,
+              "cacheReadTokens": 1502208,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791176570435
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7aadff",
+          "body": "[状态] → in_progress：复核子卡开工：逐条核对文档口径与代码实现一致（reqboard_task_move）",
+          "createdAt": 1791176372440,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        },
+        {
+          "id": "c-962d67",
+          "body": "[状态] → done：复核完成：文档口径与代码逐条对齐、旧结论显式作废、页面有挂接——无偏离（reqboard_task_move）",
+          "createdAt": 1791176570435,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791176312294,
+      "updatedAt": 1791176570435,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791176312294,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791176372440,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "复核子卡开工：逐条核对文档口径与代码实现一致"
+        },
+        {
+          "status": "done",
+          "at": 1791176570435,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-fe2396d0-cd4e-4724-89fd-16e436222a2f"
+          },
+          "reason": "复核完成：文档口径与代码逐条对齐、旧结论显式作废、页面有挂接——无偏离"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791176567348,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "逐条对照文档与代码：按 REQ id 取记录 ↔ support.ts:421；写前校正 ↔ :381；两条拒绝码 ↔ :310 / :395；回归门文件在场",
+          "历史决策处理到位：旧节「只核验」头部已显式标注「已被推翻（2026-10-05）」，不会与现行口径并存互斥",
+          "挂接与死链：project-manual.md:15 指向本篇；kb:probe 的 4 项失败全部是 scripts/ 未归类，与本文档无关",
+          "遗留如实报：kb 产物未在本卡重生成（避免把并发窗口的在建源码改动一并固化进 code-map），待树稳定后跑 pnpm kb:build"
+        ]
+      },
+      "lastRun": {
+        "at": 1791176567348,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-ca2fee",
+      "to": "t-b40ed3"
+    },
+    {
+      "from": "t-b40ed3",
+      "to": "t-1827cb"
+    },
+    {
+      "from": "t-ca2fee",
+      "to": "t-a26171"
+    },
+    {
+      "from": "t-dc8874",
+      "to": "t-e11a6a"
+    },
+    {
+      "from": "t-ca2fee",
+      "to": "t-c9ef57"
+    },
+    {
+      "from": "t-c9ef57",
+      "to": "t-279e67"
+    },
+    {
+      "from": "t-b40ed3",
+      "to": "t-bbcecc"
+    },
+    {
+      "from": "t-bbcecc",
+      "to": "t-82bbf9"
+    },
+    {
+      "from": "t-82bbf9",
+      "to": "t-801f25"
+    },
+    {
+      "from": "t-ca2fee",
+      "to": "t-2e659a"
+    },
+    {
+      "from": "t-2e659a",
+      "to": "t-b55e86"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-ca2fee",
+        "t-dc8874"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-b40ed3",
+        "t-a26171",
+        "t-c9ef57",
+        "t-2e659a",
+        "t-e11a6a"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-1827cb",
+        "t-bbcecc",
+        "t-279e67",
+        "t-b55e86"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-82bbf9"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-801f25"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-05T05:07:39.672Z"
+}

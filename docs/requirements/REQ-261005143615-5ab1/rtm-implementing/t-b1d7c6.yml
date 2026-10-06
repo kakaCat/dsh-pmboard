@@ -1,0 +1,36 @@
+task:
+  id: t-b1d7c6
+  title: 服务端按需求自身工作区判存在，并给出绝对路径·研发
+  status: done
+  implements: |-
+    src/application/query/QueryDocs.ts：取 req 后调 deps.docRootsOf?(req) 建根表（缺省回旧单根），逐条产物按序命中即定 state 与 absPath=repo.resolve(path)；候选非空而全不命中→file-missing，候选为空→unknown；generatedOf / prototypeRolesOf / unregistered 行同根同类判定。src/http/routers/panels.ts：depsForSession 注入两口（候选序=需求根→会话根→cwd，去空去重 + existsSync 过滤；docsAt=new FileDocRepository({workspaceRoot:root})）。新增 tests/query-docs-roots.test.ts 覆盖 TC-1…TC-4（假根 + 假仓储，不碰真盘）。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-25ebdf
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005143615-5ab1
+    TASK_ID: t-b1d7c6
+    TASK_TITLE: 服务端按需求自身工作区判存在，并给出绝对路径·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T06:48:30.583Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005143615-5ab1
+  generated_at: 2026-10-05T06:48:30.580Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T06:48:41.263Z

@@ -1,0 +1,293 @@
+metadata:
+  stage: design
+  requirement_id: REQ-261005154851-8512
+  generated_at: 2026-10-05T07:50:07.973Z
+  version: 3
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-05T07:52:15.151Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 数据契约补齐（`RequirementFacts` / `factsOf`）
+      source: requirement.md
+      line: 109
+    - id: FR-2
+      title: 系统提示词注入路径带上声明难度
+      source: requirement.md
+      line: 122
+    - id: FR-3
+      title: 其余注入路径口径统一
+      source: requirement.md
+      line: 135
+    - id: FR-4
+      title: 取词依据进留痕
+      source: requirement.md
+      line: 148
+    - id: FR-5
+      title: 可证伪回归
+      source: requirement.md
+      line: 160
+outputs:
+  design_sections:
+    - ref: design/architecture.md#TLDR
+      title: TL;DR `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: TLDR
+    - ref: design/architecture.md#三个取词调用点的现状已核实
+      title: 三个取词调用点的现状（已核实） `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 三个取词调用点的现状已核实
+    - ref: design/architecture.md#分层与职责边界
+      title: 分层与职责边界 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 分层与职责边界
+    - ref: design/architecture.md#决策与取舍
+      title: 决策与取舍 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 决策与取舍
+    - ref: design/architecture.md#不做的架构改造
+      title: 不做的架构改造 `
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: 不做的架构改造
+    - ref: design/architecture.md#风险与对策
+      title: 风险与对策 `
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 风险与对策
+    - ref: design/architecture.md#变更记相对需求文档的补充
+      title: 变更记（相对需求文档的补充） `
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: 变更记相对需求文档的补充
+    - ref: design/backend.md#文件级改动清单
+      title: 文件级改动清单 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/backend.md
+      section: 文件级改动清单
+    - ref: design/backend.md#三处接线的执行时序
+      title: 三处接线的执行时序 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/backend.md
+      section: 三处接线的执行时序
+    - ref: design/backend.md#装配与依赖
+      title: 装配与依赖 `
+      serves:
+        - FR-3
+      file: design/backend.md
+      section: 装配与依赖
+    - ref: design/backend.md#错误处理与可观测
+      title: 错误处理与可观测 `
+      serves:
+        - FR-2
+        - FR-4
+      file: design/backend.md
+      section: 错误处理与可观测
+    - ref: design/backend.md#性能与体量
+      title: 性能与体量 `
+      serves:
+        - FR-1
+      file: design/backend.md
+      section: 性能与体量
+    - ref: design/backend.md#静态门禁与旁路防护
+      title: 静态门禁与旁路防护 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/backend.md
+      section: 静态门禁与旁路防护
+    - ref: design/data-model.md#变更总览
+      title: 变更总览 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 变更总览
+    - ref: design/data-model.md#RequirementFactspromptDifficulty-字段级契约
+      title: "`RequirementFacts.promptDifficulty` 字段级契约 `"
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: RequirementFactspromptDifficulty-字段级契约
+    - ref: design/data-model.md#为什么必须进-RequirementFacts-而不是各处自己读台账
+      title: 为什么必须进 `RequirementFacts` 而不是各处自己读台账 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 为什么必须进-RequirementFacts-而不是各处自己读台账
+    - ref: design/data-model.md#无持久化-无迁移
+      title: 无持久化 / 无迁移 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 无持久化-无迁移
+    - ref: design/data-model.md#兼容与边界
+      title: 兼容与边界 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 兼容与边界
+    - ref: design/interfaces.md#数据契约RequirementFactsdata-modelmd-同步
+      title: 数据契约：`RequirementFacts`（`data-model.md` 同步） `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: 数据契约RequirementFactsdata-modelmd-同步
+    - ref: design/interfaces.md#唯一取词入口既有签名不变
+      title: 唯一取词入口（既有，**签名不变**） `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: 唯一取词入口既有签名不变
+    - ref: design/interfaces.md#三处调用点的入参本需求改的就是这三行
+      title: 三处调用点的入参（本需求改的就是这三行） `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: 三处调用点的入参本需求改的就是这三行
+    - ref: design/interfaces.md#留痕既有通道不新增字段
+      title: 留痕（既有通道，不新增字段） `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: 留痕既有通道不新增字段
+    - ref: design/interfaces.md#错误语义与兼容
+      title: 错误语义与兼容 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: 错误语义与兼容
+    - ref: design/use-cases.md#UC-1-每轮系统提示词选了-expert-就拿到重档
+      title: UC-1 每轮系统提示词：选了 expert 就拿到重档 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/use-cases.md
+      section: UC-1-每轮系统提示词选了-expert-就拿到重档
+    - ref: design/use-cases.md#UC-2-无声明-脏数据行为与改造前逐字相同
+      title: UC-2 无声明 / 脏数据：行为与改造前逐字相同 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/use-cases.md
+      section: UC-2-无声明-脏数据行为与改造前逐字相同
+    - ref: design/use-cases.md#UC-3-另两条注入路径留痕与隔离上下文同口径
+      title: UC-3 另两条注入路径：留痕与隔离上下文同口径 `
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-3-另两条注入路径留痕与隔离上下文同口径
+    - ref: design/use-cases.md#结果观感对照
+      title: 结果观感对照 `
+      serves:
+        - FR-2
+        - FR-4
+      file: design/use-cases.md
+      section: 结果观感对照
+    - ref: design/use-cases.md#用例与条款对照
+      title: 用例与条款对照 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/use-cases.md
+      section: 用例与条款对照
+traceability:
+  fr_to_design:
+    FR-1:
+      - design/architecture.md#分层与职责边界
+      - design/backend.md#文件级改动清单
+      - design/backend.md#性能与体量
+      - design/data-model.md#变更总览
+      - design/data-model.md#RequirementFactspromptDifficulty-字段级契约
+      - design/data-model.md#为什么必须进-RequirementFacts-而不是各处自己读台账
+      - design/data-model.md#无持久化-无迁移
+      - design/data-model.md#兼容与边界
+      - design/interfaces.md#数据契约RequirementFactsdata-modelmd-同步
+      - design/interfaces.md#错误语义与兼容
+      - design/use-cases.md#UC-1-每轮系统提示词选了-expert-就拿到重档
+      - design/use-cases.md#UC-2-无声明-脏数据行为与改造前逐字相同
+      - design/use-cases.md#用例与条款对照
+    FR-2:
+      - design/architecture.md#TLDR
+      - design/architecture.md#三个取词调用点的现状已核实
+      - design/architecture.md#分层与职责边界
+      - design/architecture.md#决策与取舍
+      - design/architecture.md#风险与对策
+      - design/backend.md#文件级改动清单
+      - design/backend.md#三处接线的执行时序
+      - design/backend.md#错误处理与可观测
+      - design/backend.md#静态门禁与旁路防护
+      - design/interfaces.md#唯一取词入口既有签名不变
+      - design/interfaces.md#三处调用点的入参本需求改的就是这三行
+      - design/interfaces.md#错误语义与兼容
+      - design/use-cases.md#UC-1-每轮系统提示词选了-expert-就拿到重档
+      - design/use-cases.md#UC-2-无声明-脏数据行为与改造前逐字相同
+      - design/use-cases.md#结果观感对照
+      - design/use-cases.md#用例与条款对照
+    FR-3:
+      - design/architecture.md#TLDR
+      - design/architecture.md#三个取词调用点的现状已核实
+      - design/architecture.md#分层与职责边界
+      - design/architecture.md#决策与取舍
+      - design/architecture.md#不做的架构改造
+      - design/architecture.md#风险与对策
+      - design/architecture.md#变更记相对需求文档的补充
+      - design/backend.md#文件级改动清单
+      - design/backend.md#三处接线的执行时序
+      - design/backend.md#装配与依赖
+      - design/backend.md#静态门禁与旁路防护
+      - design/interfaces.md#唯一取词入口既有签名不变
+      - design/interfaces.md#三处调用点的入参本需求改的就是这三行
+      - design/interfaces.md#错误语义与兼容
+      - design/use-cases.md#UC-3-另两条注入路径留痕与隔离上下文同口径
+      - design/use-cases.md#用例与条款对照
+    FR-4:
+      - design/architecture.md#风险与对策
+      - design/backend.md#文件级改动清单
+      - design/backend.md#错误处理与可观测
+      - design/interfaces.md#留痕既有通道不新增字段
+      - design/use-cases.md#UC-1-每轮系统提示词选了-expert-就拿到重档
+      - design/use-cases.md#结果观感对照
+      - design/use-cases.md#用例与条款对照
+    FR-5:
+      - design/use-cases.md#用例与条款对照
+coverage:
+  design:
+    total: 5
+    covered: 5
+    uncovered: []
+    rate: 100
+    total_frs: 5
+    covered_frs: 5

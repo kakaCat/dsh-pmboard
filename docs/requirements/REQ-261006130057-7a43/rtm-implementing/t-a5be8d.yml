@@ -1,0 +1,38 @@
+task:
+  id: t-a5be8d
+  title: 服务端契约：verify 端点 + 对话分页游标·复核
+  status: done
+  implements: |-
+    ① src/shared/protocol.ts：tabCounts 加 verify?: string；对话响应加 page?: {hasMore,before,total}。② src/application/query/QueryVerify.ts（新建）：读 req.verification（sheet+history+材料）+ readRTM 读 rtm-accepting.yml 的 acceptance_tracking + 复用 assembleTraceability 推导 coverage（fr_to_design/tasks/tests 三态布尔）+ pendingCount=pending+unverified；两源按 rtmTraceIdOf 对齐；RTM 缺失降级缺省。③ src/http/routers/panels.ts：PanelEndpoint 加 'verify' 接 QueryVerify。④ 对话查询（QueryDialogue）：支持 ?before=<ms>&limit=<n 缺省 40>，返回 page 字段。⑤ 写 tests/query-verify.test.ts（T-20/T-21/T-22）。验证：npx vitest run tests/query-verify 全绿 + curl 两端点各打一次看字段。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-e2d5ef
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006130057-7a43
+    TASK_ID: t-a5be8d
+    TASK_TITLE: 服务端契约：verify 端点 + 对话分页游标·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T08:25:17.717Z
+    - phase: doc
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006130057-7a43
+  generated_at: 2026-10-06T07:45:26.026Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T08:25:17.718Z

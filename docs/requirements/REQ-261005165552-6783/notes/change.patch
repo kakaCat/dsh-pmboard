@@ -1,0 +1,75 @@
+diff --git a/src/gate-wiring.ts b/src/gate-wiring.ts
+index 79c7cd3..82adcd8 100644
+--- a/src/gate-wiring.ts
++++ b/src/gate-wiring.ts
+@@ -173,6 +173,20 @@ export function registerCaptureGuidance(ctx: Context, deps: CaptureGuidanceDeps)
+         deps.disposers.push(spCtx.systemPrompt.section({
+           name: deps.sectionName,
+           order: deps.sectionOrder,
++          // 本段是**字面量**，不是模板：正文全部是自撰文案 + 原文引用（用户消息节选、
++          // 在制任务的说明与验收标准、需求标题），从不使用宿主的提示词变量体系
++          // （全仓没有任何 systemPrompt.variable 注册）。
++          //
++          // 为什么必须显式声明（REQ-261005165552-6783 事故，2026-10-05）：
++          // 宿主对 section 的**缺省语义是模板**——逐字扫描 `{{name}}`，名字非法（如模板里的
++          // 全大写占位符）或未注册即**抛错**。段文本里出现这种占位符时，宿主在**系统提示词装配处**
++          // 抛错 ⇒ 该窗口**每一轮都跑不起来**（模型一次都没执行），且报错文本自身带占位符，
++          // 贴到别的窗口会复现同一故障。实测现场：REQ-261005105032-3b02 的窗口 session-5632659d
++          // 因在制卡验收标准里引用了模板占位符而整轮卡死（台账 interruption.reason 逐字可查）。
++          //
++          // `interpolate: false` = 宿主把本段文本原样拼接进提示词（不再扫描变量）——
++          // 这也是文本侧**不做转义**的前提：用户原话与卡上验收原文必须逐字保真。
++          interpolate: false,
+           text: (assembleContext: unknown) => {
+             // 命中「本窗口待捕获消息」（hook 登记、turn/end 前）→ 注入针对性立项提示；
+             // 否则维持静态引导（bound/有遗留 pending 时两者都返回 ''，零噪音）。
+diff --git a/tests/apply-wiring.test.ts b/tests/apply-wiring.test.ts
+index ac44a75..e1d9f75 100644
+--- a/tests/apply-wiring.test.ts
++++ b/tests/apply-wiring.test.ts
+@@ -6,6 +6,8 @@
+  *   3) webServer 前缀路由（/dashboard/api/reqboard）
+  * 以及 dispose 清理不抛错。这是无需重启 :13080 的最强接线验证
+  * （等价于启动时插件装配路径：inject → effect → section/register）。
++ *
++ * serves: FR-1, FR-4（REQ-261005165552-6783：段必须显式声明插值开关，本段声明为字面量）
+  */
+ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+ import { mkdtempSync, rmSync } from 'node:fs'
+@@ -16,7 +18,7 @@ import { apply } from '../src/index.js'
+ type DisposeFn = () => void
+ 
+ interface StubCtx {
+-  sections: Array<{ name: string; order: number; text: unknown }>
++  sections: Array<{ name: string; order: number; text: unknown; interpolate?: unknown }>
+   tools: Array<{ name: string; execute: unknown }>
+   routes: Array<{ kind: string; path: string }>
+   disposeHooks: DisposeFn[]
+@@ -84,6 +86,27 @@ describe('dsh-pmboard apply() 宿主接线（乙流程装配冒烟）', () => {
+     expect(text).toContain('reqboard_create')
+   })
+ 
++  it('capture section 显式声明为字面量段（interpolate === false）', () => {
++    const ctx = stubCtx()
++    apply(ctx as never, { dshHome: dir })
++    const sec = ctx.sections.find(x => x.name === 'reqboard:capture')
++    expect(sec).toBeDefined()
++    // 宿主对 section 的**缺省**语义是模板：逐字扫描变量组，名字非法或未注册即抛错。
++    // 本段正文含外来原文（用户消息节选、在制任务的说明与验收、需求标题），必须声明为字面量——
++    // 否则一份引用了模板占位符的卡验收标准，会让窗口每一轮都在系统提示词装配处失败（实测事故）。
++    expect(sec!.interpolate).toBe(false)
++  })
++
++  it('本插件注册的每个提示词段都显式声明插值开关（不许依赖宿主缺省）', () => {
++    const ctx = stubCtx()
++    apply(ctx as never, { dshHome: dir })
++    expect(ctx.sections.length).toBeGreaterThan(0)
++    // 未来新增段必须自己回答「这段的文本要不要扫描变量」，不允许靠宿主默认值——
++    // 本次整轮卡死事故的根因形态正是「注册处一个字都没写，默认却决定窗口能不能跑」。
++    const silent = ctx.sections.filter(s => typeof s.interpolate !== 'boolean').map(s => s.name)
++    expect(silent).toEqual([])
++  })
++
+   it('注册全部 agent 工具（REQ-47939a 收敛后 9 个 + REQ-327bdf 2 个 + REQ-e3b6a0 的 reqboard_capture + REQ-de3f 的 reqboard_archive_amend）', () => {
+     const ctx = stubCtx()
+     apply(ctx as never, { dshHome: dir })

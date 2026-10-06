@@ -2,10 +2,10 @@ metadata:
   stage: brainstorming
   requirement_id: REQ-261006123819-3af3
   generated_at: 2026-10-06T05:01:24.245Z
-  version: 3
+  version: 4
   generated_by: dsh-pmboard
   rtm_version: "2.0"
-  last_updated: 2026-10-06T05:09:56.258Z
+  last_updated: 2026-10-06T06:26:14.032Z
 outputs:
   requirements:
     - id: FR-1
@@ -71,5 +71,17 @@ outputs:
         - FR-1
         - FR-6
       criterion: 本文档「边界（不做什么）」6 条均带理由与时机
+    - id: D-7
+      source: 用户在实施阶段弹框选择：「只压缩索引行的结论段，条目文件原样不动（推荐）」
+      verdict: INDEX.md 压回 ≤8000 字符时**只压索引行标签**，`entries/*.md` 与各页正文一字不动；索引头部标明「短标签，完整结论见条目」
+      serves:
+        - FR-4
+      criterion: INDEX 测得 7560 字符 ≤8000；53 条标签最短 26 / 最长 121；kb-0043 / kb-0048 条目正文未改（K6 绿）；无门禁要求索引行标签与条目 one_liner 逐字一致
+    - id: D-8
+      source: 用户在实施阶段弹框选择：「只提交本需求的 hunk，别窗口 hunk 不进本次提交（推荐）」
+      verdict: 收尾提交用 hunk 级暂存：本需求改动进提交，共享文件里别窗口在飞的 hunk **不进**本次提交，且**不动工作树**
+      serves:
+        - FR-5
+      criterion: "`git show --stat` 文件集合 ⊆ 本需求改动清单；暂存内容里不出现其他需求 id；提交后 `git status --porcelain` 仍非 0（别窗口在飞改动原地保留）"
 status:
   artifacts: []

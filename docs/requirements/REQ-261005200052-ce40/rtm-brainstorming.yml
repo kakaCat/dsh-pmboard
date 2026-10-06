@@ -1,0 +1,59 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261005200052-ce40
+  generated_at: 2026-10-05T12:09:16.181Z
+  version: 5
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-05T12:25:21.562Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 原型登记的自动确认不再产生挂起票
+      source: requirement.md
+      line: 70
+    - id: FR-2
+      title: 守卫只拦「确有确认门且有可确认产物」的挂起票
+      source: requirement.md
+      line: 78
+    - id: FR-3
+      title: 拒绝原文与回执只列真实存在的出路
+      source: requirement.md
+      line: 92
+    - id: FR-4
+      title: 产物登记通知不得谎报确认入口
+      source: requirement.md
+      line: 103
+    - id: FR-5
+      title: 不制造答不了的票
+      source: requirement.md
+      line: 110
+    - id: FR-6
+      title: 口径锁与回归
+      source: requirement.md
+      line: 118
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 「拦截是对的，要按照拦截要求修改才是对的，是不是被卡住了没有告诉agent为什么原因」
+      verdict: 拦截口径不得放宽；要改的是「拦的东西必须真的是门、且答得了」与「拦住时必须说清为什么、哪条出路真的通」
+      serves:
+        - FR-2
+        - FR-3
+      criterion: 真门用例仍抛 `REQBOARD_CONFIRM_PENDING`；文案断言不出现不可用路径
+    - id: D-2
+      source: 「是因为把原型添加后产生的bug，你看看是添加什么导致的。」
+      verdict: 根因定为 t10 原型登记编排第 ⑤ 步 `triggerAutoConfirm(kind='prototype')`：用「可选加强」的措辞触发了「硬拦写路径」的挂起票
+      serves:
+        - FR-1
+        - FR-4
+      criterion: 探针 `tests/_probe-prototype-pin.test.ts` 复现（auto_confirm=triggered、票 kind=prototype、后续提交被拒）；修后同探针转为回归断言
+    - id: D-3
+      source: 「同意」（对 A+C 修法的答复）
+      verdict: 采用 A+C：A=原型登记不再产生挂起票；C=守卫侧「无门票不拦写路径」兜底
+      serves:
+        - FR-1
+        - FR-2
+      criterion: FR-1/FR-2 的判据用例
+status:
+  artifacts: []

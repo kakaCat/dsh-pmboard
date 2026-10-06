@@ -1,0 +1,36 @@
+task:
+  id: t-1c8e8d
+  title: 诊断投影与四处文案：拒绝原文/回执/通知/状态只列真实出路
+  status: done
+  implements: ① src/application/internal/pending-guard.ts：新增 pendingConfirmFactsOf(req, rec, now)（requirementStatus / gate / artifactCount / expiresAt = (interruptedAt ?? createdAt) + LIMITS.pendingConfirmTtlMs / usableRecovery[]）与 pendingConfirmRejectMessage(p, facts?)（缺省 facts 时逐字保持旧文案，兼容既有调用点）；usableRecovery 只列真实出路：①取回执恒定；②「看板点确认」仅当 hasConfirmGateOf；③「重新发起覆盖」仅当目标需求是本窗口进行中需求且产物在册；产物数为 0 时附「先登记产物」，目标需求非本窗口/终态时附「agent 侧无法覆盖，请人点看板或等失效」。② src/application/use-cases/ConfirmReceipt.ts 的 receiptNote 接同一 facts。③ src/application/internal/artifact-gates.ts 的 artifactNotifyText 改为门感知（无门产物写「无需人工确认（登记即生效）」）。④ src/tools/StatusTool/StatusTool.ts 的 pending_confirms[] 追加 requirement_status / gate / artifact_count / expires_at / usable_recovery 五键（schema 与投影同改，旧键不动）。
+  serves:
+    - FR-3
+    - FR-4
+  depends_on:
+    - t-97e904
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005200052-ce40
+    TASK_ID: t-1c8e8d
+    TASK_TITLE: 诊断投影与四处文案：拒绝原文/回执/通知/状态只列真实出路
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-05T12:16:59.477Z
+      completed_at: 2026-10-05T12:21:00.541Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005200052-ce40
+  generated_at: 2026-10-05T12:11:36.800Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T12:21:00.663Z

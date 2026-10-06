@@ -1,0 +1,34 @@
+task:
+  id: t-5ce422
+  title: 把原型骨架迁入 brainstorming 并幂等落盘
+  status: canceled
+  implements: '① git mv templates/design/prototype.html templates/brainstorming/prototype.html（旧路径不留，避免两份模板）。② 骨架按 brief 补齐：每个功能点一个 <section id="FR-N"> 区块位、恰好一块 <!-- proto-geometry {"observations":[...]} --> 注释位、prototypes/INDEX.md 四列表格骨架（路径/状态/服务条款/被取代于）、权威版本标记位。③ 新增落盘 helper src/application/internal/prototype-skeleton.ts（≤120 行，IO 走注入端口）：mkdir -p docs/requirements/<REQ>/prototypes/ 并只在目标文件不存在时按模板写 prototypes/<name>.html，永不覆盖已写内容。④ 在进入 brainstorming 的两处调用：src/application/use-cases/CreateRequirement.ts（立项即落）与 src/application/use-cases/MoveRequirement.ts（转移进入时）；落盘失败只 warning、不阻断转移。⑤ 在 src/domain/template/registry.ts 登记该模板引用。⑥ 旧目录 prototype/*.html 的迁移提示由存在门的 how 文案给出（见 t4/t2），本卡只保证识别不再落 notes。依据 design-brief §1 与 §10 #21。'
+  serves:
+    - FR-2
+    - FR-4
+  depends_on:
+    - t-0b2d45
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005105032-3b02
+    TASK_ID: t-5ce422
+    TASK_TITLE: 把原型骨架迁入 brainstorming 并幂等落盘
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 0
+  workflow:
+    - phase: implement
+      status: pending
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005105032-3b02
+  generated_at: 2026-10-05T04:19:31.835Z
+  version: 2
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T04:57:46.319Z

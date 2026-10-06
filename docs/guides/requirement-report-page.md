@@ -90,6 +90,45 @@ curl -s "http://127.0.0.1:<port>/dashboard/api/reqboard/requirements/<REQ>/repor
 看三件事：`available` 不是 false、`documents` 不是全 `file-missing`、任务计数不是 0。
 这三处曾同时踩中「宿主 cwd ≠ 用户工作区」的坑（见领域篇 §会话根解析）。
 
+## 七、外观层：想改「长相」该动哪、改完跑什么（2026-10-05，REQ-261005155003-f32f）
+
+**一句话口径**：详情页是**浅色岛**——`src/client/styles/report.ts` 的 `--pm-*` 全部是页面自持的浅色原值，
+**不引宿主主题变量**（引了就会得到"白底浅字"）。岛内没有 `[data-ds-dark-theme]` 覆盖块，
+宿主两套主题下同一副长相。
+
+| 想改的东西 | 动这里 |
+|---|---|
+| 色板 / 字阶 / 间距 / 圆角 / 发丝线 / 阴影 | `src/client/styles/report.ts` 的令牌块（**只改值，不要在规则里写裸值**） |
+| 焦点环（宽度 / 两档偏移 / halo） | 同上，`--pm-focus-*` 令牌 + 第 ⑫ 节规则 |
+| 动效时长 / 缓动 / reduced-motion | 同上，`--pm-dur-*` / `--pm-ease` + 媒体查询分支 |
+| 图标（Tab 六个 + 缺口严重度圆点） | `src/client/icons.ts`（**唯一图标源**，纯字符串常量，不装图标库） |
+| 目标尺寸下限 | `--pm-target: 24px`（改它一处，全页命中区跟着走） |
+| 状态的非颜色标记（✓/▸、!!/!/·） | `src/client/views/stage-detail.ts`（阶段点）+ `src/client/views/report-band.ts`（缺口条） |
+
+**改完必须跑（四条，都要求退出码 0）**：
+
+```
+npx tsx scripts/req-report-probe.mts              # A1～A13：首屏/滚动/版式 + 可访问性与视觉层级
+npx tsx scripts/req-detail-ui-contrast.mts        # 对比度全表（真文字/非文本/组合背景/反白/豁免）
+npx tsx scripts/req-detail-ui-prototype-shot.mts  # 权威原型出图 + 漂移核对 + 几何回填
+npx tsx scripts/req-detail-ui-grayscale-shot.mts  # 灰度评审图（人眼判读，非门禁）
+```
+
+**一碰就红的地方（都是判据，不是建议）**：
+
+- 真文字 < 4.5:1、有意义的非文本 < 3:1 —— 对比度脚本会点名色值与背景。
+- 出现**阶梯外字号**（不是 11/12/13/15/20/24）或**阶梯外前景色**（不在色板里）——探针 A9/A12 + 出图脚本。
+- 三级色 `#86868b` 被用来承载**看得见的真文字**——它只许非文本。
+- 任一可点/可聚焦目标 < 24×24（**含其它样式分片里的控件**：DAG 工具栏按钮就曾在详情页内只有 45×21.5，
+  修法是本片加 `[data-report-shell]` 前缀的覆盖，**不改别的分片**）。
+- 把状态标记写成 CSS `::before`——伪元素对读屏不可靠，必须是真实文本或 `aria-hidden` 的 SVG。
+- 首屏预算：`tabsTop > 713`、状态带单格 > 220px、操作条整块 > 72px。
+- 用 `?v=current` 当"改前对照"——它不是改前；改前看 `evidence/ui-before-*.png`。
+
+**改原型的正确姿势**：权威原型 `prototypes/detail-ui-v3.html` 内联的是**当前 `buildReportShell` 输出 + 真实 13 片 CSS**
+（防漂移）。改了渲染或样式之后，**不要手改原型**——跑一次出图脚本，它会重新内联、重出图并回填 `proto-geometry`。
+脚本会拒绝"原型被手改过"（除五类已声明偏差外任何差异都响亮失败）。
+
 ## 关联
 
 - 机制与架构：[需求详情页「工作汇报」（L2 领域篇）](../architecture/requirement-detail-report.md)

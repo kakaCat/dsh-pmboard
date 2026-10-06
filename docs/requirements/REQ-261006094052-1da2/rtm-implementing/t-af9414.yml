@@ -1,0 +1,36 @@
+task:
+  id: t-af9414
+  title: 自动确认窄口径预判（UI 缺原型不弹）并改两处调用点 await
+  status: done
+  implements: "src/application/internal/auto-confirm.ts：triggerAutoConfirm 改 async（返回 Promise<AutoConfirmResult>），在 deps.questions.available() 判定之后、任何票登记之前加窄口径预判——input.target === 'artifact' 且需求存在且 advanceTargetFor(req.status) === 'design' 时，先 applyRequirementWorkspaceRoot(deps, req) 再调 checkPrototypePresenceGate(deps.docs, req)，返回失败则 {triggered:false, reason: gate.message}。src/application/use-cases/SubmitArtifact.ts 两处调用点（kind=requirement 与 kind=plan）改 await，并把 reason 拼进回执 note。不动 kind=prototype 的 {triggered:false, reason:'…无需人工确认…'} 既有形状。"
+  serves:
+    - FR-3
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006094052-1da2
+    TASK_ID: t-af9414
+    TASK_TITLE: 自动确认窄口径预判（UI 缺原型不弹）并改两处调用点 await
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-06T01:51:43.883Z
+      completed_at: 2026-10-06T01:52:58.672Z
+    - phase: ui
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006094052-1da2
+  generated_at: 2026-10-06T01:44:08.679Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T01:52:58.672Z

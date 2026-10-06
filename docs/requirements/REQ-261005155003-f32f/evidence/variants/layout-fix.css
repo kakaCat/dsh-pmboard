@@ -1,0 +1,43 @@
+
+/* ══ 布局修复层（人反馈：太靠顶上 / 乱乱的）· 覆盖在 V-A 之上 ══════════════════ */
+/* ① 修根容器内边距 bug：顶部 8px → 28px（原本 8px 顶 / 72px 底，整页贴顶） */
+.dsh-pm-detail[data-report-shell] { padding: 28px 24px 72px; }
+
+/* ② 层次 · 页标题拉到 24px（原 20px，与正文只差 1.54×） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-detail-title {
+  font-size: 24px; font-weight: 600; line-height: 1.25; letter-spacing: -.4px;
+}
+
+/* ③ 动作组移到头部左上（D-7）：靠 order 把它提到头部最前，不再分置两端、不再占一整行灰底 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-rh-bar {
+  order: -1; background: none; border: 0; border-radius: 0;
+  padding: 0; margin: 0 0 14px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-rh-bar .dsh-pm-report-actions {
+  flex: 0 1 auto; flex-wrap: wrap; align-items: center; gap: 8px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-action-grid {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; grid-template-columns: none;
+}
+/* 破坏性动作与其它动作明确分离（≥24px），仍排最后 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-report-action[data-action-rank="danger"] { margin-left: 24px; }
+/* FR-11：原型阶段用隐藏代替"不再渲染"（实施阶段是真删） */
+.dsh-pm-detail[data-report-shell] .dsh-pm-action-bar-label { display: none; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-action-consequence { display: none; }
+
+/* ④ 层次 · 模块改上下结构：标题行（15/600）+ 正文（13/1.6），模块间距 36px，不再"左 150px 标题栏 + 右内容" */
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-item {
+  display: block; grid-template-columns: none; column-gap: 0;
+  margin: 0 0 36px; padding: 0; border-top: 0;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-head { display: block; margin: 0 0 8px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-title {
+  display: block; font-size: 15px; font-weight: 600; letter-spacing: -.1px; line-height: 1.4; margin: 0 0 2px;
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-sub { display: block; font-size: 12px; line-height: 1.5; color: var(--pm-text3); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-head .dsh-pm-trunk-src { margin-top: 4px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-body { font-size: 13px; line-height: 1.6; gap: 6px; }
+.dsh-pm-detail[data-report-shell] .dsh-pm-trunk-line { font-size: 13px; line-height: 1.6; }
+
+/* ⑤ FR-13：详情页不再有评论输入 */
+.dsh-pm-detail[data-report-shell] .dsh-pm-comment-form { display: none; }

@@ -1,0 +1,44 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261006170150-52cc
+  generated_at: 2026-10-06T09:04:39.066Z
+  version: 3
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T09:18:07.305Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 作答即清位，且清位先于推进
+      source: requirement.md
+      line: 90
+    - id: FR-2
+      title: 停手位被清即成驱动事件
+      source: requirement.md
+      line: 104
+    - id: FR-3
+      title: 在途登记的过期对账
+      source: requirement.md
+      line: 118
+    - id: FR-4
+      title: 断链可观测 + 回归锁
+      source: requirement.md
+      line: 137
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 「A+B+在途过期对账（推荐）」（本窗口修复范围弹框的作答）
+      verdict: 修复面取三件：**A 清位先于推进** + **B 清位即请求驱动** + **在途分档过期对账**；同时**否掉**「恢复真实唤醒投递（采集半投）」，唤醒仍唯一经 round 半
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      criterion: 三条 FR 的判据齐全（清位序 / 起轮 / 过期恢复），且实现面不含新增投递路径（回归锁 FR-4 覆盖）
+    - id: D-2
+      source: 「先告诉我原因」
+      verdict: 动手前必须先给出根因与**可复核**证据（台账 / 会话 / 诊断三线），不得跳过诊断直接改代码
+      serves:
+        - FR-4
+      criterion: 本文「现象取证」三条来源各有可跑命令；FR-4 的探针要求能把"本拍为何放弃"读出来
+status:
+  artifacts: []

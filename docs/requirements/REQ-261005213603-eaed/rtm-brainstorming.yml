@@ -1,0 +1,66 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261005213603-eaed
+  generated_at: 2026-10-05T13:40:45.185Z
+  version: 3
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-05T14:04:14.700Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 运行圈判据扩展为「会话回合 ∪ 新鲜推进锁」
+      source: requirement.md
+      line: 74
+    - id: FR-2
+      title: 推进锁新鲜度的口径与降级
+      source: requirement.md
+      line: 96
+    - id: FR-3
+      title: 两种成因共用同一个圈，只区分文案
+      source: requirement.md
+      line: 116
+    - id: FR-4
+      title: run 起圈自亮、run 止圈自灭
+      source: requirement.md
+      line: 136
+    - id: FR-5
+      title: 不误报——无关需求、无绑定、读数不可得都不出圈
+      source: requirement.md
+      line: 156
+    - id: FR-6
+      title: 旧红线标注「已被本需求取代」
+      source: requirement.md
+      line: 174
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 用户原话「运行这个圆圈，agent运行子运行的时候没有算运行，需要添加上」
+      verdict: agent 在后台跑子运行（子卡链 run）时必须点亮运行圈——运行圈不再只认窗口回合
+      serves:
+        - FR-1
+        - FR-4
+        - FR-5
+      criterion: 整体验收第 3 条（跑自动链后卡面出现 `data-running="true"`）
+    - id: D-2
+      source: 弹框选择「推进锁新鲜（advanceLockAt 未过期）」
+      verdict: 判据只用推进锁新鲜；执行记录判据不启用（旧红线中仅撤销 advanceLockAt 这一条）
+      serves:
+        - FR-1
+        - FR-2
+        - FR-6
+      criterion: FR-2 验收第 1 条真值表单测；FR-6 验收第 2 条
+    - id: D-3
+      source: 弹框选择「可以，按此写需求文档」
+      verdict: 方案照准：DOM/class/位置零变化，两种成因只用 title/aria 区分
+      serves:
+        - FR-3
+      criterion: FR-3 验收第 1、2 条
+    - id: D-4
+      source: 弹框选择「写豁免（prototype_exempt）+ 落 D-x」
+      verdict: 本需求零可视变化 ⇒ 原型门走豁免，不交 `prototypes/*.html`
+      serves:
+        - FR-3
+      criterion: front-matter 的 `prototype_exempt` 经人确认后，brainstorming→design 不再报 `prototype_missing`
+status:
+  artifacts: []

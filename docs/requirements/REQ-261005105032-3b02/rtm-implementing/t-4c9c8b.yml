@@ -1,0 +1,36 @@
+task:
+  id: t-4c9c8b
+  title: 加 RTM 触发点 submit:prototype 与健康检查适用性判据·联调
+  status: done
+  implements: |-
+    改 src/application/internal/rtm-yaml.ts：RTMTrigger 增 'submit:prototype'（与既有 6 个触发点同构），载荷 { paths: string[] }（本次登记的原型路径），刷新 rtm-brainstorming.yml 与 rtm-lifecycle.yml；生成器仍以台账为事实源，载荷只用于增量刷新与留痕、不当唯一来源；RTM 失败只记 warning 并结构化返回，不打断登记主流程。改 src/application/internal/rtm-health.ts：expectedRTMFiles() 不变（仍 7 份）；新增适用性判据——只有 sides 含 frontend 且 createdAt >= prototypeRulesSince（插件配置常量，缺省 = 规则上线日）的需求，缺 prototypes 节才判不健康并点名；createdAt < prototypeRulesSince 的一律标 exempted: legacy 并如实报告，不判不健康。依据 design-brief §5 与 §10 #19/#48。
+
+    [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+  serves: []
+  depends_on:
+    - t-8f99f9
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005105032-3b02
+    TASK_ID: t-4c9c8b
+    TASK_TITLE: 加 RTM 触发点 submit:prototype 与健康检查适用性判据·联调
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T05:49:58.275Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005105032-3b02
+  generated_at: 2026-10-05T05:49:57.478Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T11:19:27.481Z

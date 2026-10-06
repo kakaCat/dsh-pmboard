@@ -1,0 +1,36 @@
+task:
+  id: t-ff7d59
+  title: 定义判据契约与客户端类型声明
+  status: done
+  implements: "改 src/client/session-running.ts：新增导出 —— RunningCause('session'|'run')、RunningMark{cause}、RequirementRunShape{advanceLockAt?}、requirementRunInFlight(req, now, staleMs = LIMITS.advanceLockStaleMs)（typeof number + Number.isFinite 守卫，(now - lock) < staleMs，与 host AdvanceChain 同运算符）、requirementRunningMark(req, isRunning, now, staleMs?)（先会话判据返回 {cause:'session'}，再锁判据返回 {cause:'run'}，都不成立返回 undefined）、requirementBusy(...)（薄包装 = mark !== undefined）。阈值只引用 src/domain/limits.ts 的 advanceLockStaleMs，不复制字面量。改 src/client/types.ts：RequirementRecord 补可选键 advanceLockAt?: number（带注释：缺失 = 没有 run 在跑）。旧导出 requirementRunning / runningSessionIds / subscribeSessionRunning / relevantSessionIds / sameRunningSet / runningAmong 完全不动。验证：npx vitest run tests/client-session-running.test.ts 真值表（TC-1～TC-10）；pnpm typecheck。"
+  serves:
+    - FR-1
+    - FR-2
+  depends_on: []
+  phase: implement
+  side: fullstack
+  workflow_params:
+    REQ_ID: REQ-261005213603-eaed
+    TASK_ID: t-ff7d59
+    TASK_TITLE: 定义判据契约与客户端类型声明
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: fullstack
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T15:27:13.318Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005213603-eaed
+  generated_at: 2026-10-05T15:22:06.568Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T15:27:13.319Z

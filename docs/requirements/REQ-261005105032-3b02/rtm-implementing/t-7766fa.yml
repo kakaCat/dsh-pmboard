@@ -1,0 +1,47 @@
+task:
+  id: t-7766fa
+  title: 客户端文档面板原型单列与权威/被取代投影·研发
+  status: done
+  implements: |-
+    ① 改 src/application/query/QueryDocs.ts：交付物白名单增 prototypes/*.html 与 prototypes/INDEX.md（kind 均为 prototype），原型不再落 discovered；读 INDEX 后投影 DocPanelEntry.prototypeRole?: 'authoritative'|'superseded' 与 supersededBy?: string（缺省不注入，旧形状不变，读 INDEX 失败也不伪造角色）；恒等式保持『documents 中来自台账的行数 + Σ discovered.count == artifacts.length』。② 改 src/client/views/panels/docs.ts：原型作为确定交付物在确定文档块内单列（新增 data-doc-group="prototype" 与原型计数），原型行必须保留 data-doc-row="1"（既有 data-doc-row 条数 == documents.length 的断言不许破），可点击打开走既有 [data-open-doc] 委派、不新增弹窗；对本次改动前已登记为 notes 的旧原型行用 prototypeGroupOf(path)（认 prototypes/ 与 prototype/ 两个前缀）在展示侧兜底归组，台账 kind 不回填。③ 改 src/client/styles/report.ts：新增 ≤3 条规则（原型徽标 / 计数 / superseded 弱化），只复用既有令牌并写在 [data-report-shell] 作用域内。依据 design-brief §9 与 §10 #30/#32/#34。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-4d8a57
+  phase: ui
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261005105032-3b02
+    TASK_ID: t-7766fa
+    TASK_TITLE: 客户端文档面板原型单列与权威/被取代投影·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: ui
+  workflow_total: 5
+  workflow_done: 5
+  workflow:
+    - phase: ui
+      status: done
+      completed_at: 2026-10-05T05:21:20.695Z
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T05:21:20.695Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T05:21:20.695Z
+    - phase: commit
+      status: done
+      completed_at: 2026-10-05T05:21:20.695Z
+    - phase: doc
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005105032-3b02
+  generated_at: 2026-10-05T05:21:20.335Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 5
+  last_updated: 2026-10-05T05:21:20.695Z

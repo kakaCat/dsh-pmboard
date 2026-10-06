@@ -1,0 +1,42 @@
+需求详情页 · 文字与关键非文本对比度基线（WCAG 2.x 相对亮度公式）
+需求：REQ-261005155003-f32f　　生成：scripts 侧一次性计算（正式脚本随实施交付）
+口径：详情页是白底浅色岛（页面背景 #ffffff）
+阈值：正文/真文字 >= 4.5:1；有意义的非文本（图标/焦点环/状态标记）>= 3:1
+
+== A. 真文字（阈值 4.5:1）==
+用途/取值                                                      背景                             比值  判定
+正文 --pm-text                                               #1d1d1f on #ffffff         16.83:1  PASS
+次要 --pm-text2                                              #5f6368 on #ffffff          6.05:1  PASS
+三级 --pm-text3（现状=宿主浅色 tertiary #81858c）                    #81858c on #ffffff          3.71:1  FAIL
+三级 --pm-text3（宿主深色 tertiary #adb2b8 落在白岛上）                 #adb2b8 on #ffffff          2.13:1  FAIL
+主色当文字 --pm-accent #4a7dff（选中 Tab/链接/人名）                    #4a7dff on #ffffff          3.70:1  FAIL
+状态芯片文字（主色字 + 12% 主色浅底）                                     #4a7dff on #e9efff          3.22:1  FAIL
+主按钮文字 #ffffff on --pm-accent                               #ffffff on #4a7dff          3.70:1  FAIL
+危险 --pm-danger                                             #dc3545 on #ffffff          4.53:1  PASS
+警告 --pm-warn-text                                          #a86a00 on #ffffff          4.44:1  FAIL
+成功 --pm-ok-text                                            #1e7e34 on #ffffff          5.14:1  PASS
+验收态 --pm-teal-text                                         #0e7c8f on #ffffff          4.89:1  PASS
+agent --pm-agent                                           #8e44ad on #ffffff          5.87:1  PASS
+（本次改为）三级文字 #61666b                                         #61666b on #ffffff          5.80:1  PASS
+（本次改为）文字级主色 #2f5fd0                                        #2f5fd0 on #ffffff          5.72:1  PASS
+（本次改为）状态芯片文字 #2f5fd0 on 12% 浅底                             #2f5fd0 on #e6ecf9          4.83:1  PASS
+（本次改为）警告文字 #8a5a00                                         #8a5a00 on #ffffff          5.93:1  PASS
+
+== B. 有意义的非文本（阈值 3:1）==
+图标（本次 --pm-text4 #81858c）                                  #81858c on #ffffff          3.71:1  PASS
+图标（本次 --pm-text3 #61666b）                                  #61666b on #ffffff          5.80:1  PASS
+进度条「当前/完成」--pm-accent                                      #4a7dff on #ffffff          3.70:1  PASS
+焦点环（本次 --pm-accent-text #2f5fd0）                           #2f5fd0 on #ffffff          5.72:1  PASS
+危险左色条 --pm-danger                                          #dc3545 on #ffffff          4.53:1  PASS
+成功左色条 --pm-ok #28a745                                      #28a745 on #ffffff          3.13:1  PASS
+
+== C. 纯装饰（不承载信息，按 WCAG 1.4.11 的豁免情形列出，仅登记不计判）==
+分隔线 --pm-line = rgba(128,128,128,.20) 合成                   #e6e6e6 on #ffffff          1.25:1
+细边 --pm-line-soft = rgba(128,128,128,.11) 合成               #f1f1f1 on #ffffff          1.13:1
+进度条未开始段 rgba(128,128,128,.18) 合成                           #e8e8e8 on #ffffff          1.23:1
+宿主自身边框口径 --dsw-alias-border-l4 #00000029 合成                #d6d6d6 on #ffffff          1.45:1
+宿主自身最弱边框 --dsw-alias-border-l1 #0000000a 合成                #fafafa on #ffffff          1.04:1
+
+说明：控件（输入框/胶囊/按钮）的边线本身低于 3:1，但控件可识别性另有文字标签与悬停/焦点反馈，
+      属 WCAG 1.4.11「可通过其他方式识别」的情形；且宿主 DSH 自己的边框口径就是 #0000000a~#00000029，
+      本页跟随宿主口径——这条取舍必须写进 design/frontend.md，不得静默。

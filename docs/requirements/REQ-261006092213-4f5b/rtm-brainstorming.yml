@@ -1,0 +1,64 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261006092213-4f5b
+  generated_at: 2026-10-06T01:25:31.151Z
+  version: 7
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T04:02:25.861Z
+outputs:
+  requirements: []
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 用户消息：「我希望是验收项让agent来完成，人就是审核员」
+      verdict: 验收项由 agent 实测完成，人的动作收敛为通过 / 退回
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+      criterion: A1, A2
+    - id: D-2
+      source: 用户消息：「我设计的是验收项是已经测试过的，1种就是我直接通过，2是自动跑验收项的内容，填充图里输入」
+      verdict: 「自动跑」由 agent 在提交材料时逐项执行并落结果；宿主不新增命令执行引擎
+      serves:
+        - FR-1
+        - FR-2
+      criterion: A1, A3
+    - id: D-3
+      source: 设计问答（闭环形状）：「提交材料时一次闭环（推荐）」
+      verdict: 跑与落章都发生在 submit(kind=verification) 那一次调用内，不做出单后二次回填
+      serves:
+        - FR-1
+        - FR-2
+      criterion: A1, A3
+    - id: D-4
+      source: 设计问答（结果的引用键）：「新增结构化 results 参数（推荐）」
+      verdict: 结果按 ref 结构化提交（与验收项 source 同构），对不上即拒，不沿用项 id 文本约定
+      serves:
+        - FR-1
+        - FR-2
+      criterion: A6
+    - id: D-5
+      source: 设计问答（人这一侧的动作）：「零输入通过（推荐）」
+      verdict: 通过不需要人打字；`opinion` 由该项 `result` 兜底
+      serves:
+        - FR-3
+        - FR-4
+        - FR-6
+      criterion: A2, A5
+    - id: D-6
+      source: 设计问答（本次范围）：「含前端看板/详情页（推荐）」
+      verdict: 本次含看板逐项行与详情页核验表改动，sides 含 frontend，按铁律交原型
+      serves:
+        - FR-4
+        - FR-5
+      criterion: A9
+    - id: D-7
+      source: 设计问答（逐项交代的强度）：「硬门：逐项交代，漏项即拒（推荐）」
+      verdict: 可预见项逐项交代，漏项 / 坏 ref / 空结果拒绝并点名；系统项豁免
+      serves:
+        - FR-2
+      criterion: A3, A6
+status:
+  artifacts: []

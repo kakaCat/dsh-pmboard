@@ -8,6 +8,9 @@ src/adapters/ArtifactSync.ts	syncReqArtifacts	function	export async function syn
 src/adapters/ArtifactSync.ts	SyncAllArtifactsResult	interface	export interface SyncAllArtifactsResult
 src/adapters/ArtifactSync.ts	syncAllReqArtifacts	function	export async function syncAllReqArtifacts(
 src/adapters/CaptureRejectionFile.ts	CaptureRejectionFile	class	export class CaptureRejectionFile implements CaptureRejectionPort
+src/adapters/dialog-inflight-expiry.ts	InFlightTtl	interface	export interface InFlightTtl
+src/adapters/dialog-inflight-expiry.ts	inFlightExpired	function	export function inFlightExpired(record: DialogInFlightRecord, now: number, ttl: InFlightTtl): boolean
+src/adapters/dialog-inflight-expiry.ts	sweepInFlightTtl	function	export function sweepInFlightTtl(map: Map<string, DialogInFlightRecord>, now: number, ttl: InFlightTtl): void
 src/adapters/DshJobsAdapter.ts	DshJobsUnavailable	class	export class DshJobsUnavailable extends Error
 src/adapters/DshJobsAdapter.ts	JobStartParams	interface	export interface JobStartParams
 src/adapters/DshJobsAdapter.ts	JobSnapshot	interface	export interface JobSnapshot
@@ -31,6 +34,9 @@ src/adapters/NodeIsolationAdapter.ts	NodeIsolationAdapter	class	export class Nod
 src/adapters/PendingConfirmRegistry.ts	(anonymous)	other	export type
 src/adapters/PendingConfirmRegistry.ts	PendingConfirmRegistryOptions	interface	export interface PendingConfirmRegistryOptions
 src/adapters/PendingConfirmRegistry.ts	PendingConfirmRegistry	class	export class PendingConfirmRegistry implements PendingConfirmPort, DialogInFlightPort
+src/adapters/PythonProbe.ts	PythonProbeOptions	interface	export interface PythonProbeOptions
+src/adapters/PythonProbe.ts	PythonProbe	class	export class PythonProbe implements Pick<SkillInstallPort, 'probePython'>
+src/adapters/PythonProbe.ts	parseVersion	function	export function parseVersion(text: string): string | undefined
 src/adapters/RandomIdFactory.ts	RandomIdFactory	class	export class RandomIdFactory implements IdFactory
 src/adapters/SessionProbeAdapter.ts	(anonymous)	other	export type
 src/adapters/SessionProbeAdapter.ts	SessionProbeAdapterOptions	interface	export interface SessionProbeAdapterOptions
@@ -38,6 +44,11 @@ src/adapters/SessionProbeAdapter.ts	SessionProbeAdapter	class	export class Sessi
 src/adapters/SessionProbeAdapter.ts	readTokenTotals	function	export function readTokenTotals(state: unknown): TokenBuckets | undefined
 src/adapters/SessionProbeAdapter.ts	readContextPressure	function	export function readContextPressure(state: unknown):
 src/adapters/SessionWindowOpener.ts	SessionWindowOpener	class	export class SessionWindowOpener implements WindowOpenerPort
+src/adapters/SkillAssets.ts	SkillAssetsOptions	interface	export interface SkillAssetsOptions
+src/adapters/SkillAssets.ts	SkillAssets	class	export class SkillAssets implements SkillAssetPort
+src/adapters/SkillAssets.ts	sha256Hex	function	export function sha256Hex(buf: Uint8Array): string
+src/adapters/SkillWriter.ts	SkillWriterOptions	interface	export interface SkillWriterOptions
+src/adapters/SkillWriter.ts	SkillWriter	class	export class SkillWriter implements Pick<SkillInstallPort, 'writeTree' | 'readTree' | 'readManifest'>
 src/adapters/storage-action-types.ts	StorageAction	type	export type StorageAction
 src/adapters/storage-action-types.ts	StorageActionStamp	interface	export interface StorageActionStamp
 src/adapters/storage-action-types.ts	StorageActionConfirmation	interface	export interface StorageActionConfirmation
@@ -73,6 +84,8 @@ src/adapters/WorkflowSchemaAdapter.ts	Workflow	interface	export interface Workfl
 src/adapters/WorkflowSchemaAdapter.ts	executeWithSchema	function	export async function executeWithSchema<T
 src/adapters/WorkflowSchemaAdapter.ts	isValidSubtaskOutput	function	export function isValidSubtaskOutput(output: unknown): output is SubtaskOutputSchema
 src/adapters/WorkflowSchemaAdapter.ts	createEmptySubtaskOutput	function	export function createEmptySubtaskOutput(reason
+src/adapters/WorkspaceRegistryProjectPort.ts	WorkspaceRegistryProjectPort	class	export class WorkspaceRegistryProjectPort implements ProjectRegistryPort
+src/adapters/workspaceRegistryRows.ts	toProjectEntries	function	export function toProjectEntries(rows: readonly unknown[]): ProjectEntry[]
 src/application/dive/applyDiveTransition.ts	DiveTransitionDeps	interface	export interface DiveTransitionDeps
 src/application/dive/applyDiveTransition.ts	DiveTransitionOptions	interface	export interface DiveTransitionOptions
 src/application/dive/applyDiveTransition.ts	DiveTransitionOutcome	interface	export interface DiveTransitionOutcome
@@ -158,6 +171,11 @@ src/application/dive/wake-heartbeat.ts	createWakeHeartbeat	function	export funct
 src/application/dive/wake-liveness.ts	WakeLivenessDeps	interface	export interface WakeLivenessDeps
 src/application/dive/wake-liveness.ts	WakeVerdict	interface	export interface WakeVerdict
 src/application/dive/wake-liveness.ts	wakeAcceptance	function	export async function wakeAcceptance(deps: WakeLivenessDeps, requirementId: string): Promise<WakeVerdict>
+src/application/dive/wake-skip-trace.ts	WakeGiveUpReason	type	export type WakeGiveUpReason
+src/application/dive/wake-skip-trace.ts	WAKE_SKIP_COOLDOWN_MS	const	export const WAKE_SKIP_COOLDOWN_MS
+src/application/dive/wake-skip-trace.ts	WakeSkipTracerDeps	interface	export interface WakeSkipTracerDeps
+src/application/dive/wake-skip-trace.ts	WakeSkipTracer	interface	export interface WakeSkipTracer
+src/application/dive/wake-skip-trace.ts	createWakeSkipTracer	function	export function createWakeSkipTracer(deps: WakeSkipTracerDeps): WakeSkipTracer
 src/application/gate/acceptance-gate.ts	GateResult	interface	export interface GateResult
 src/application/gate/acceptance-gate.ts	acceptanceGateCheck	function	export async function acceptanceGateCheck(
 src/application/gate/design-gate.ts	GateResult	interface	export interface GateResult
@@ -226,7 +244,7 @@ src/application/internal/auto-advance-note.ts	AdvanceOutcomeLike	interface	expor
 src/application/internal/auto-advance-note.ts	dispatchNoteOf	function	export function dispatchNoteOf(outcome: AdvanceOutcomeLike): string
 src/application/internal/auto-confirm.ts	AutoConfirmInput	interface	export interface AutoConfirmInput
 src/application/internal/auto-confirm.ts	AutoConfirmResult	interface	export interface AutoConfirmResult
-src/application/internal/auto-confirm.ts	triggerAutoConfirm	function	export function triggerAutoConfirm(deps: UseCaseDeps, input: AutoConfirmInput, exec: unknown): AutoConfirmResult
+src/application/internal/auto-confirm.ts	triggerAutoConfirm	function	export async function triggerAutoConfirm(deps: UseCaseDeps, input: AutoConfirmInput, exec: unknown): Promise<AutoConfir…
 src/application/internal/awaiting-confirm.ts	AWAITING_CONFIRM_PREFIX	const	export const AWAITING_CONFIRM_PREFIX
 src/application/internal/awaiting-confirm.ts	AwaitingExitReason	type	export type AwaitingExitReason
 src/application/internal/awaiting-confirm.ts	AwaitingConfirmDeps	interface	export interface AwaitingConfirmDeps
@@ -234,6 +252,8 @@ src/application/internal/awaiting-confirm.ts	isAwaitingConfirmStop	function	expo
 src/application/internal/awaiting-confirm.ts	awaitingRefOf	function	export function awaitingRefOf(req: RequirementRecord | undefined): string | undefined
 src/application/internal/awaiting-confirm.ts	dialogInFlightFor	function	export function dialogInFlightFor(
 src/application/internal/awaiting-confirm.ts	enterAwaitingConfirm	function	export async function enterAwaitingConfirm(
+src/application/internal/awaiting-confirm.ts	ExitAwaitingInput	interface	export interface ExitAwaitingInput
+src/application/internal/awaiting-confirm.ts	ExitAwaitingResult	interface	export interface ExitAwaitingResult
 src/application/internal/awaiting-confirm.ts	exitAwaitingConfirm	function	export async function exitAwaitingConfirm(
 src/application/internal/backfill-task-refs.ts	BackfillCandidate	interface	export interface BackfillCandidate
 src/application/internal/backfill-task-refs.ts	BackfillNote	interface	export interface BackfillNote
@@ -277,11 +297,14 @@ src/application/internal/capture-section.ts	capturePromptForMessage	function	exp
 src/application/internal/capture-section.ts	captureGuidanceText	function	export function captureGuidanceText(windowKey: string): string
 src/application/internal/category-doc-sets.ts	COMMON_ROOT_SECTIONS	const	export const COMMON_ROOT_SECTIONS: readonly string[]
 src/application/internal/category-doc-sets.ts	ConditionalDesignDoc	interface	export interface ConditionalDesignDoc
+src/application/internal/category-doc-sets.ts	ConditionalStageArtifact	interface	export interface ConditionalStageArtifact
 src/application/internal/category-doc-sets.ts	CategoryDocDelta	interface	export interface CategoryDocDelta
 src/application/internal/category-doc-sets.ts	DesignDocPolicy	interface	export interface DesignDocPolicy
 src/application/internal/category-doc-sets.ts	frontmatterList	function	export function frontmatterList(value: string | undefined): string[]
 src/application/internal/category-doc-sets.ts	designDocPolicyFrom	function	export function designDocPolicyFrom(frontmatter: Readonly<Record<string, string>>): DesignDocPolicy
 src/application/internal/category-doc-sets.ts	effectiveDesignDocs	function	export function effectiveDesignDocs(
+src/application/internal/category-doc-sets.ts	conditionalStageArtifactsFor	function	export function conditionalStageArtifactsFor(
+src/application/internal/category-doc-sets.ts	requiredStageArtifactKinds	function	export function requiredStageArtifactKinds(
 src/application/internal/category-doc-sets.ts	CATEGORY_DELTAS	const	export const CATEGORY_DELTAS: readonly CategoryDocDelta[]
 src/application/internal/category-doc-sets.ts	deltaFor	function	export function deltaFor(category: string | undefined): CategoryDocDelta | undefined
 src/application/internal/category-doc-sets.ts	requiredRootSectionsFor	function	export function requiredRootSectionsFor(
@@ -304,7 +327,17 @@ src/application/internal/confirm-settle.ts	CONFIRM_ADVANCE_REASON	const	export c
 src/application/internal/confirm-settle.ts	PLAN_MERGE_ADVANCE_REASON	const	export const PLAN_MERGE_ADVANCE_REASON
 src/application/internal/confirm-settle.ts	ConfirmDecision	interface	export interface ConfirmDecision
 src/application/internal/confirm-settle.ts	ConfirmDecisionOutcome	interface	export interface ConfirmDecisionOutcome
+src/application/internal/confirm-settle.ts	missingArtifactMessage	function	export function missingArtifactMessage(reqId: string, kind: string): string
+src/application/internal/confirm-settle.ts	missingPlanMessage	function	export function missingPlanMessage(reqId: string): string
 src/application/internal/confirm-settle.ts	recordDeclinedConfirmation	function	export async function recordDeclinedConfirmation(
+src/application/internal/confirm-settle.ts	SettlePrecondition	interface	export interface SettlePrecondition
+src/application/internal/confirm-settle.ts	gateTransitionOf	function	export function gateTransitionOf(kind: string):
+src/application/internal/confirm-settle.ts	gateStaleReason	function	export function gateStaleReason(
+src/application/internal/confirm-settle.ts	StampOnce	interface	export interface StampOnce
+src/application/internal/confirm-settle.ts	stampArtifactOnce	function	export function stampArtifactOnce(art: StageArtifact, at: number, s: StampOnce): boolean
+src/application/internal/confirm-settle.ts	stampPlanOnce	function	export function stampPlanOnce(plan: PlanRecord, at: number, s: StampOnce): boolean
+src/application/internal/confirm-settle.ts	recordStaleAnswer	function	export async function recordStaleAnswer(
+src/application/internal/confirm-settle.ts	applyConfirmedAdvance	function	export async function applyConfirmedAdvance(
 src/application/internal/confirm-settle.ts	applyConfirmDecision	function	export async function applyConfirmDecision(
 src/application/internal/conflict-check.ts	WorkSurfaceTask	interface	export interface WorkSurfaceTask
 src/application/internal/conflict-check.ts	WorkSurfaceConflict	interface	export interface WorkSurfaceConflict
@@ -344,10 +377,13 @@ src/application/internal/content-gate-wiring.ts	assertFullTraceabilityGate	funct
 src/application/internal/content-gate-wiring.ts	overCapacityItemsOf	function	export function overCapacityItemsOf(tasks: readonly PlanTask[], capacity: number): OverCapacityItem[]
 src/application/internal/content-gate-wiring.ts	OverCapacityMarkerReport	interface	export interface OverCapacityMarkerReport
 src/application/internal/content-gate-wiring.ts	checkOverCapacityMarkerGate	function	export async function checkOverCapacityMarkerGate(
+src/application/internal/content-gate-wiring.ts	ContentMoveGateOptions	interface	export interface ContentMoveGateOptions
+src/application/internal/content-gate-wiring.ts	contentGatesForMove	function	export async function contentGatesForMove(
 src/application/internal/content-gates.ts	extractClauseDefinitions	function	export function extractClauseDefinitions(doc: ParsedDoc): string[]
 src/application/internal/content-gates.ts	extractClauseDefinitionOccurrences	function	export function extractClauseDefinitionOccurrences(doc: ParsedDoc): string[]
 src/application/internal/content-gates.ts	SKIP_MARKERS	const	export const SKIP_MARKERS
 src/application/internal/content-gates.ts	extractSkippedClauses	function	export function extractSkippedClauses(doc: ParsedDoc): string[]
+src/application/internal/content-gates.ts	stripPrototypeAnchors	function	export function stripPrototypeAnchors(text: string): string
 src/application/internal/content-gates.ts	extractServes	function	export function extractServes(text: string): string[]
 src/application/internal/content-gates.ts	extractServesFrom	function	export function extractServesFrom(doc: ParsedDoc, opts:
 src/application/internal/content-gates.ts	collectIds	function	export function collectIds(text: string): string[]
@@ -392,6 +428,18 @@ src/application/internal/content-trace.ts	checkImplementationCoverage	function	e
 src/application/internal/cross-card.ts	CrossCardViewTask	interface	export interface CrossCardViewTask
 src/application/internal/cross-card.ts	CrossCardConflict	interface	export interface CrossCardConflict
 src/application/internal/cross-card.ts	detectCrossCardOverwrite	function	export function detectCrossCardOverwrite(
+src/application/internal/decision-gates.ts	DECISION_SECTION_NAME	const	export const DECISION_SECTION_NAME
+src/application/internal/decision-gates.ts	DECISION_VACUUM_MARKER	const	export const DECISION_VACUUM_MARKER
+src/application/internal/decision-gates.ts	DECISION_COLUMNS	const	export const DECISION_COLUMNS
+src/application/internal/decision-gates.ts	DECISION_IMPERATIVE_TOKENS	const	export const DECISION_IMPERATIVE_TOKENS: readonly string[]
+src/application/internal/decision-gates.ts	DecisionSessionReader	interface	export interface DecisionSessionReader
+src/application/internal/decision-gates.ts	DecisionTraceResult	interface	export interface DecisionTraceResult
+src/application/internal/decision-gates.ts	DecisionTraceOptions	interface	export interface DecisionTraceOptions
+src/application/internal/decision-gates.ts	DecisionGateOptions	interface	export interface DecisionGateOptions
+src/application/internal/decision-gates.ts	DEFAULT_DECISION_TRACE_LIMIT	const	export const DEFAULT_DECISION_TRACE_LIMIT
+src/application/internal/decision-gates.ts	validateDecisionEntries	function	export function validateDecisionEntries(table: ParsedTable, realClauses: ReadonlySet<string>): string[]
+src/application/internal/decision-gates.ts	checkDecisionLogGate	function	export async function checkDecisionLogGate(
+src/application/internal/decision-gates.ts	hasDecisionTrace	function	export async function hasDecisionTrace(
 src/application/internal/design-docs.ts	EMPTY_DESIGN_DOC_POLICY	const	export const EMPTY_DESIGN_DOC_POLICY: DesignDocPolicy
 src/application/internal/design-docs.ts	designDocPolicyOf	function	export async function designDocPolicyOf(
 src/application/internal/design-docs.ts	designDocStatus	function	export function designDocStatus(
@@ -427,6 +475,9 @@ src/application/internal/failure-handling.ts	appendRevision	function	export func
 src/application/internal/gate-feedback.ts	GateFeedback	interface	export interface GateFeedback
 src/application/internal/gate-feedback.ts	GATE_HOW_ANCHOR	const	export const GATE_HOW_ANCHOR
 src/application/internal/gate-feedback.ts	envelope	function	export function envelope(f: GateFeedback): string
+src/application/internal/gate-request.ts	GateRequestInput	interface	export interface GateRequestInput
+src/application/internal/gate-request.ts	GateRequestOutcome	type	export type GateRequestOutcome
+src/application/internal/gate-request.ts	requestGate	function	export async function requestGate(
 src/application/internal/handoff-policy.ts	HandoffThresholds	interface	export interface HandoffThresholds
 src/application/internal/handoff-policy.ts	HandoffDecision	type	export type HandoffDecision
 src/application/internal/handoff-policy.ts	decideHandoff	function	export function decideHandoff(
@@ -489,13 +540,17 @@ src/application/internal/migrate-dive-state.ts	MigrationResult	interface	export 
 src/application/internal/migrate-dive-state.ts	migrateOne	function	export function migrateOne(r: RequirementRecord, now: number): string | undefined
 src/application/internal/migrate-dive-state.ts	migrateDiveState	function	export async function migrateDiveState(deps: MigrationDeps): Promise<MigrationResult>
 src/application/internal/node-input-package.ts	LedgerProjection	interface	export interface LedgerProjection
+src/application/internal/node-input-package.ts	NodeInputPrototypeFields	interface	export interface NodeInputPrototypeFields
+src/application/internal/node-input-package.ts	DecisionRow	interface	export interface DecisionRow
+src/application/internal/node-input-package.ts	decisionRowsIn	function	export function decisionRowsIn(requirementDoc: string): DecisionRow[]
+src/application/internal/node-input-package.ts	projectNodeRefs	function	export function projectNodeRefs(
 src/application/internal/node-input-package.ts	projectLedger	function	export function projectLedger(requirement: RequirementRecord | undefined, stage: PromptStage): LedgerProjection
 src/application/internal/node-input-package.ts	CAPACITY_REFERENCE_NOTE	const	export const CAPACITY_REFERENCE_NOTE
 src/application/internal/node-input-package.ts	safeContextPressure	function	export function safeContextPressure(
 src/application/internal/node-input-package.ts	resolveSessionProbe	function	export function resolveSessionProbe(
 src/application/internal/node-input-package.ts	remainingTokensOf	function	export function remainingTokensOf(pressure: ContextPressureSnapshot | undefined): number | undefined
 src/application/internal/node-input-package.ts	roundCapacityText	function	export function roundCapacityText(pressure: ContextPressureSnapshot | undefined): string
-src/application/internal/node-input-package.ts	NodeInputPackageInput	interface	export interface NodeInputPackageInput
+src/application/internal/node-input-package.ts	NodeInputPackageInput	interface	export interface NodeInputPackageInput extends NodeInputPrototypeFields
 src/application/internal/node-input-package.ts	NodeInputPackage	interface	export interface NodeInputPackage
 src/application/internal/node-input-package.ts	buildNodeInputPackage	function	export function buildNodeInputPackage(input: NodeInputPackageInput): NodeInputPackage
 src/application/internal/node-input-package.ts	requirementDocPath	function	export function requirementDocPath(requirement: RequirementRecord | undefined): string
@@ -517,9 +572,14 @@ src/application/internal/pending-confirm.ts	outcomeOf	function	export function o
 src/application/internal/pending-confirm.ts	suspendConfirm	function	export function suspendConfirm(
 src/application/internal/pending-guard.ts	PENDING_CONFIRM_BLOCKED_TOOLS	const	export const PENDING_CONFIRM_BLOCKED_TOOLS: readonly string[]
 src/application/internal/pending-guard.ts	PENDING_CONFIRM_RECOVERY	const	export const PENDING_CONFIRM_RECOVERY
+src/application/internal/pending-guard.ts	isConfirmGateKind	function	export function isConfirmGateKind(kind: string | undefined): boolean
+src/application/internal/pending-guard.ts	hasConfirmGateOf	function	export function hasConfirmGateOf(rec: PendingConfirmation): boolean
+src/application/internal/pending-guard.ts	hasConfirmableArtifactOf	function	export function hasConfirmableArtifactOf(req: RequirementRecord, rec: PendingConfirmation): boolean
 src/application/internal/pending-guard.ts	targetConfirmedInLedger	function	export function targetConfirmedInLedger(req: RequirementRecord, rec: PendingConfirmation): boolean
 src/application/internal/pending-guard.ts	livePendingConfirm	function	export async function livePendingConfirm(deps: UseCaseDeps, windowKey: string): Promise<PendingConfirmation | undefined>
-src/application/internal/pending-guard.ts	pendingConfirmRejectMessage	function	export function pendingConfirmRejectMessage(p: PendingConfirmation): string
+src/application/internal/pending-guard.ts	PendingConfirmFacts	interface	export interface PendingConfirmFacts
+src/application/internal/pending-guard.ts	pendingConfirmFactsOf	function	export function pendingConfirmFactsOf(req: RequirementRecord, rec: PendingConfirmation, now: number): PendingConfirmFac…
+src/application/internal/pending-guard.ts	pendingConfirmRejectMessage	function	export function pendingConfirmRejectMessage(p: PendingConfirmation, facts?: PendingConfirmFacts): string
 src/application/internal/plan-deps-check.ts	docDependencyRefs	function	export function docDependencyRefs(docText: string, keys: ReadonlySet<string>): Map<string, string[]>
 src/application/internal/plan-deps-check.ts	planDependencyWarnings	function	export function planDependencyWarnings(docText: string, tasks: readonly PlanTask[]): string[]
 src/application/internal/plan-landing.ts	PlanTaskDraft	interface	export interface PlanTaskDraft
@@ -527,16 +587,67 @@ src/application/internal/plan-landing.ts	LandedTaskRef	interface	export interfac
 src/application/internal/plan-landing.ts	LandPlanTasksInput	interface	export interface LandPlanTasksInput
 src/application/internal/plan-landing.ts	LandPlanTasksResult	interface	export interface LandPlanTasksResult
 src/application/internal/plan-landing.ts	landPlanTasks	function	export async function landPlanTasks(deps: UseCaseDeps, input: LandPlanTasksInput): Promise<LandPlanTasksResult>
+src/application/internal/plan-prototype-refs.ts	PlanPrototypeAnchor	interface	export interface PlanPrototypeAnchor
+src/application/internal/plan-prototype-refs.ts	PlanPrototypeAnchorParse	interface	export interface PlanPrototypeAnchorParse
+src/application/internal/plan-prototype-refs.ts	planPrototypeAnchorsIn	function	export function planPrototypeAnchorsIn(text: string, reqId: string): PlanPrototypeAnchorParse
+src/application/internal/plan-prototype-refs.ts	prototypeRefsOfTask	function	export function prototypeRefsOfTask(raw: unknown): string[]
+src/application/internal/plan-prototype-refs.ts	PlanTaskAnchorView	interface	export interface PlanTaskAnchorView
+src/application/internal/plan-prototype-refs.ts	planTaskAnchorViews	function	export function planTaskAnchorViews(rawTasks: readonly unknown[]): PlanTaskAnchorView[]
+src/application/internal/plan-prototype-refs.ts	isUiCard	function	export function isUiCard(view: PlanTaskAnchorView): boolean
+src/application/internal/plan-prototype-refs.ts	prototypeRefsFromPlanDoc	function	export function prototypeRefsFromPlanDoc(doc: ParsedDoc): Map<string, string[]>
+src/application/internal/plan-prototype-refs.ts	UiCardAnchorClaim	interface	export interface UiCardAnchorClaim
+src/application/internal/plan-prototype-refs.ts	uiCardAnchorClaims	function	export function uiCardAnchorClaims(
+src/application/internal/plan-prototype-refs.ts	prototypeAnchorGaps	function	export function prototypeAnchorGaps(
 src/application/internal/plan-refs.ts	RefSource	type	export type RefSource
 src/application/internal/plan-refs.ts	RefsForLandingInput	interface	export interface RefsForLandingInput
 src/application/internal/plan-refs.ts	RefsForLandingResult	interface	export interface RefsForLandingResult
 src/application/internal/plan-refs.ts	refsForLanding	function	export async function refsForLanding(input: RefsForLandingInput): Promise<RefsForLandingResult>
 src/application/internal/plan-refs.ts	unrefedKeys	function	export function unrefedKeys(keys: readonly string[], refs: ReadonlyMap<string, string[]>): string[]
+src/application/internal/plan-task-projections.ts	PlanTaskProjection	type	export type PlanTaskProjection
+src/application/internal/plan-task-projections.ts	planTaskProjections	function	export function planTaskProjections(doc: ParsedDoc): PlanTaskProjection[]
+src/application/internal/project-identity.ts	ProjectSource	type	export type ProjectSource
+src/application/internal/project-identity.ts	SameProjectVerdict	interface	export interface SameProjectVerdict
+src/application/internal/project-identity.ts	projectIdOfWindow	function	export function projectIdOfWindow(
+src/application/internal/project-identity.ts	rootOfProject	function	export function rootOfProject(
+src/application/internal/project-identity.ts	sameProjectOf	function	export function sameProjectOf(
+src/application/internal/project-root.ts	normalizeProjectRoot	function	export function normalizeProjectRoot(p: string): string
+src/application/internal/project-root.ts	sameProjectRoot	function	export function sameProjectRoot(a: string, b: string, realpath?: (p: string)
 src/application/internal/prompt-cost.ts	InjectionLogLike	interface	export interface InjectionLogLike
 src/application/internal/prompt-cost.ts	unavailableSystemPromptCost	function	export function unavailableSystemPromptCost(): SystemPromptCost
 src/application/internal/prompt-cost.ts	summarizeSystemPrompt	function	export function summarizeSystemPrompt(assembly: unknown, turns: number): SystemPromptCost
 src/application/internal/prompt-cost.ts	injectionWindowsOf	function	export function injectionWindowsOf(sessionIds: readonly (string | undefined)[]): Set<string>
 src/application/internal/prompt-cost.ts	summarizeInjections	function	export function summarizeInjections(
+src/application/internal/prototype-gates.ts	GeometryUnit	type	export type GeometryUnit
+src/application/internal/prototype-gates.ts	GeometryState	type	export type GeometryState
+src/application/internal/prototype-gates.ts	ProtoAnchor	interface	export interface ProtoAnchor
+src/application/internal/prototype-gates.ts	ProtoObservation	interface	export interface ProtoObservation
+src/application/internal/prototype-gates.ts	PrototypeMetadata	interface	export interface PrototypeMetadata
+src/application/internal/prototype-gates.ts	THRESHOLD_KEYS	const	export const THRESHOLD_KEYS: readonly string[]
+src/application/internal/prototype-gates.ts	parsePrototypeMetadata	function	export function parsePrototypeMetadata(html: string): PrototypeMetadata
+src/application/internal/prototype-gates.ts	PrototypeIndexRow	interface	export interface PrototypeIndexRow
+src/application/internal/prototype-gates.ts	PrototypeIndex	interface	export interface PrototypeIndex
+src/application/internal/prototype-gates.ts	parsePrototypeIndex	function	export function parsePrototypeIndex(doc: ParsedDoc, reqId: string): PrototypeIndex
+src/application/internal/prototype-gates.ts	toReqRelative	function	export function toReqRelative(raw: string, reqId: string): string | undefined
+src/application/internal/prototype-gates.ts	prototypePathsIn	function	export function prototypePathsIn(text: string): string[]
+src/application/internal/prototype-gates.ts	prototypeExemptOf	function	export function prototypeExemptOf(
+src/application/internal/prototype-gates.ts	checkPrototypePresenceGate	function	export async function checkPrototypePresenceGate(docs: DocsReader, req: RequirementRecord): Promise<GateFailure | undef…
+src/application/internal/prototype-gates.ts	checkPrototypeVersionGate	function	export async function checkPrototypeVersionGate(docs: DocsReader, req: RequirementRecord): Promise<GateFailure | undefi…
+src/application/internal/prototype-gates.ts	checkPrototypeAnchorsGate	function	export async function checkPrototypeAnchorsGate(docs: DocsReader, req: RequirementRecord): Promise<GateFailure | undefi…
+src/application/internal/prototype-registration.ts	isRegisteredArtifact	function	export function isRegisteredArtifact(a: StageArtifact): boolean
+src/application/internal/prototype-registration.ts	registeredPrototypesOf	function	export function registeredPrototypesOf(req: RequirementRecord): StageArtifact[]
+src/application/internal/prototype-registration.ts	unregisteredDiscoveredPrototypesOf	function	export function unregisteredDiscoveredPrototypesOf(req: RequirementRecord): StageArtifact[]
+src/application/internal/prototype-registration.ts	prototypePresenceGaps	function	export function prototypePresenceGaps(req: RequirementRecord): string[]
+src/application/internal/prototype-skeleton-template.ts	PROTOTYPE_HTML_SKELETON	const	export const PROTOTYPE_HTML_SKELETON
+src/application/internal/prototype-skeleton-template.ts	prototypeIndexSkeleton	function	export function prototypeIndexSkeleton(name: string): string
+src/application/internal/prototype-skeleton.ts	PROTOTYPE_TEMPLATE_REL	const	export const PROTOTYPE_TEMPLATE_REL
+src/application/internal/prototype-skeleton.ts	PROTOTYPE_DIR	const	export const PROTOTYPE_DIR
+src/application/internal/prototype-skeleton.ts	DEFAULT_PROTOTYPE_NAME	const	export const DEFAULT_PROTOTYPE_NAME
+src/application/internal/prototype-skeleton.ts	PROTOTYPE_INDEX_NAME	const	export const PROTOTYPE_INDEX_NAME
+src/application/internal/prototype-skeleton.ts	CATEGORY_DEFAULT_SIDES	const	export const CATEGORY_DEFAULT_SIDES: Readonly<Record<string, readonly string[]>>
+src/application/internal/prototype-skeleton.ts	PrototypeSkeletonPort	interface	export interface PrototypeSkeletonPort
+src/application/internal/prototype-skeleton.ts	PrototypeSkeletonOptions	interface	export interface PrototypeSkeletonOptions
+src/application/internal/prototype-skeleton.ts	PrototypeSkeletonResult	interface	export interface PrototypeSkeletonResult
+src/application/internal/prototype-skeleton.ts	landPrototypeSkeleton	function	export async function landPrototypeSkeleton(
 src/application/internal/provider-latch.ts	DEFAULT_PROVIDER_LATCH_TTL_MS	const	export const DEFAULT_PROVIDER_LATCH_TTL_MS
 src/application/internal/provider-latch.ts	ProviderLatchSnapshot	interface	export interface ProviderLatchSnapshot
 src/application/internal/provider-latch.ts	ProviderLatch	interface	export interface ProviderLatch
@@ -585,10 +696,19 @@ src/application/internal/rollup.ts	applyPickupReconcile	function	export function
 src/application/internal/rollup.ts	applyTaskRollup	function	export function applyTaskRollup(
 src/application/internal/rollup.ts	applyTaskRollupVia	function	export async function applyTaskRollupVia(
 src/application/internal/rtm-health.ts	RTMFailureRecord	interface	export interface RTMFailureRecord
+src/application/internal/rtm-health.ts	PROTOTYPE_RULES_SINCE	const	export const PROTOTYPE_RULES_SINCE
 src/application/internal/rtm-health.ts	RTMHealthStatus	interface	export interface RTMHealthStatus
+src/application/internal/rtm-health.ts	RTM_TRIGGER_TRACES_FILE	const	export const RTM_TRIGGER_TRACES_FILE
+src/application/internal/rtm-health.ts	RTMTriggerTrace	interface	export interface RTMTriggerTrace
+src/application/internal/rtm-health.ts	readRTMTriggerTraces	function	export function readRTMTriggerTraces(stateDir: string): RTMTriggerTrace[]
+src/application/internal/rtm-health.ts	recordRTMTriggerTrace	function	export function recordRTMTriggerTrace(
 src/application/internal/rtm-health.ts	recordRTMFailure	function	export function recordRTMFailure(
 src/application/internal/rtm-health.ts	clearRTMFailure	function	export function clearRTMFailure(stateDir: string, requirementId: string): void
 src/application/internal/rtm-health.ts	expectedRTMFiles	function	export function expectedRTMFiles(status: string): string[]
+src/application/internal/rtm-health.ts	prototypesSectionPresent	function	export function prototypesSectionPresent(text: string | undefined): boolean | undefined
+src/application/internal/rtm-health.ts	PrototypeSectionVerdict	interface	export interface PrototypeSectionVerdict
+src/application/internal/rtm-health.ts	prototypeSectionVerdict	function	export function prototypeSectionVerdict(input:
+src/application/internal/rtm-health.ts	CheckRTMHealthOptions	interface	export interface CheckRTMHealthOptions
 src/application/internal/rtm-health.ts	checkRTMHealth	function	export function checkRTMHealth(
 src/application/internal/rtm-integration.ts	RTMIntegrationResult	interface	export interface RTMIntegrationResult
 src/application/internal/rtm-integration.ts	generateRTMData	function	export async function generateRTMData(
@@ -612,6 +732,27 @@ src/application/internal/session-message-filter.ts	extractUserMessageText	functi
 src/application/internal/session-message-filter.ts	isIgnoredSession	function	export function isIgnoredSession(sessionId: string, sessionMeta?: unknown): boolean
 src/application/internal/sheet-tasks.ts	SheetTaskInput	interface	export interface SheetTaskInput
 src/application/internal/sheet-tasks.ts	toSheetTasks	function	export function toSheetTasks(tasks: readonly TaskRecord[]): SheetTaskInput[]
+src/application/internal/skill-manifest.ts	SKILL_MANIFEST_SCHEMA	const	export const SKILL_MANIFEST_SCHEMA
+src/application/internal/skill-manifest.ts	SkillProvenanceV1	interface	export interface SkillProvenanceV1
+src/application/internal/skill-manifest.ts	SkillTrimRule	interface	export interface SkillTrimRule
+src/application/internal/skill-manifest.ts	SkillFileFingerprint	interface	export interface SkillFileFingerprint
+src/application/internal/skill-manifest.ts	SkillManifestV1	interface	export interface SkillManifestV1
+src/application/internal/skill-manifest.ts	BuildManifestInput	interface	export interface BuildManifestInput
+src/application/internal/skill-manifest.ts	buildManifest	function	export function buildManifest(input: BuildManifestInput): SkillManifestV1
+src/application/internal/skill-manifest.ts	isSha256Hex	function	export function isSha256Hex(value: unknown): value is string
+src/application/internal/skill-manifest.ts	SkillManifestMismatch	interface	export interface SkillManifestMismatch
+src/application/internal/skill-manifest.ts	SkillManifestMismatchKind	type	export type SkillManifestMismatchKind
+src/application/internal/skill-manifest.ts	verifyManifest	function	export function verifyManifest(
+src/application/internal/skill-manifest.ts	manifestNeedsRebuild	function	export function manifestNeedsRebuild(mismatches: readonly SkillManifestMismatch[]): boolean
+src/application/internal/skill-manifest.ts	parseProvenanceMarkdown	function	export function parseProvenanceMarkdown(text: string): SkillProvenanceV1
+src/application/internal/skill-manifest.ts	verifyProvenance	function	export function verifyProvenance(
+src/application/internal/stage-gate-timeline.ts	StageGateProbes	interface	export interface StageGateProbes
+src/application/internal/stage-gate-timeline.ts	StageGateOverdueReading	interface	export interface StageGateOverdueReading
+src/application/internal/stage-gate-timeline.ts	assertStageGateTimelineGate	function	export async function assertStageGateTimelineGate(
+src/application/internal/stale-rework.ts	STALE_REWORK_REASON	const	export const STALE_REWORK_REASON
+src/application/internal/stale-rework.ts	CancelStaleReworkInput	interface	export interface CancelStaleReworkInput
+src/application/internal/stale-rework.ts	CancelStaleReworkResult	interface	export interface CancelStaleReworkResult
+src/application/internal/stale-rework.ts	cancelStaleReworkCards	function	export async function cancelStaleReworkCards(input: CancelStaleReworkInput): Promise<CancelStaleReworkResult>
 src/application/internal/startup-scan.ts	StartupScanWiring	interface	export interface StartupScanWiring
 src/application/internal/startup-scan.ts	scheduleStartupScan	function	export function scheduleStartupScan(wire: StartupScanWiring): void
 src/application/internal/status-rtm-integration.ts	StatusRTMResult	interface	export interface StatusRTMResult
@@ -631,17 +772,23 @@ src/application/internal/support.ts	agentIdFromExec	function	export function age
 src/application/internal/support.ts	dispatchOwnerOf	function	export function dispatchOwnerOf(exec: unknown): string | undefined
 src/application/internal/support.ts	WorkspaceRootTargets	interface	export interface WorkspaceRootTargets
 src/application/internal/support.ts	resolveWorkspaceRoot	function	export function resolveWorkspaceRoot(exec: unknown, requirement?:
-src/application/internal/support.ts	applyRequirementWorkspaceRoot	function	export function applyRequirementWorkspaceRoot(deps: WorkspaceRootTargets, requirement:
+src/application/internal/support.ts	applyRequirementWorkspaceRoot	function	export function applyRequirementWorkspaceRoot(
+src/application/internal/support.ts	rootOfRequirement	function	export function rootOfRequirement(
+src/application/internal/support.ts	ResolvedRequirementRoot	interface	export interface ResolvedRequirementRoot
+src/application/internal/support.ts	projectIdOfWindowForDeps	function	export function projectIdOfWindowForDeps(
+src/application/internal/support.ts	CROSS_PROJECT_SEAT	const	export const CROSS_PROJECT_SEAT
+src/application/internal/support.ts	SameProjectGuard	interface	export interface SameProjectGuard
+src/application/internal/support.ts	requireSameProject	function	export function requireSameProject(
 src/application/internal/support.ts	syncWorkspaceRootForRequirement	function	export function syncWorkspaceRootForRequirement(deps: UseCaseDeps, _exec: unknown, requirement:
 src/application/internal/support.ts	PROJECT_ROOT_MISMATCH	const	export const PROJECT_ROOT_MISMATCH
 src/application/internal/support.ts	USED_PROJECT_ROOT_FIELD	const	export const USED_PROJECT_ROOT_FIELD
 src/application/internal/support.ts	ProjectRootDecision	interface	export interface ProjectRootDecision
-src/application/internal/support.ts	normalizeProjectRoot	function	export function normalizeProjectRoot(p: string): string
-src/application/internal/support.ts	sameProjectRoot	function	export function sameProjectRoot(a: string, b: string, realpath?: (p: string)
 src/application/internal/support.ts	projectRootOf	function	export function projectRootOf(
 src/application/internal/support.ts	ProjectPartition	interface	export interface ProjectPartition<T>
 src/application/internal/support.ts	partitionByProject	function	export function partitionByProject<T extends
 src/application/internal/support.ts	isAbsoluteRoot	function	export function isAbsoluteRoot(p: string): boolean
+src/application/internal/support.ts	INVALID_WORKSPACE	const	export const INVALID_WORKSPACE
+src/application/internal/support.ts	WriteRootCaller	interface	export interface WriteRootCaller
 src/application/internal/support.ts	ensureWritableProjectRoot	function	export function ensureWritableProjectRoot(
 src/application/internal/support.ts	assertWritableRequirementProject	function	export async function assertWritableRequirementProject(
 src/application/internal/support.ts	requireLiveDriver	function	export function requireLiveDriver(deps: UseCaseDeps, exec: unknown): void
@@ -703,6 +850,13 @@ src/application/internal/verdicts.ts	applyVerdicts	function	export function appl
 src/application/internal/verdicts.ts	materializeReworkFromSheet	function	export function materializeReworkFromSheet(
 src/application/internal/verification-doc-writer.ts	VerificationDocPorts	interface	export interface VerificationDocPorts
 src/application/internal/verification-doc-writer.ts	rewriteVerificationDoc	function	export async function rewriteVerificationDoc(
+src/application/internal/window-inherit.ts	increasedWindowTitle	function	export function increasedWindowTitle(title: string): string
+src/application/internal/window-inherit.ts	normalizeWindowProfile	function	export function normalizeWindowProfile(raw: unknown): WindowSourceProfile
+src/application/internal/window-inherit.ts	windowProfileFromProjectionValues	function	export function windowProfileFromProjectionValues(values: unknown): WindowSourceProfile
+src/application/internal/window-inherit.ts	readWindowProfile	function	export async function readWindowProfile(
+src/application/internal/window-inherit.ts	presetInheritanceOf	function	export function presetInheritanceOf(
+src/application/internal/window-inherit.ts	InheritWindowArgs	interface	export interface InheritWindowArgs
+src/application/internal/window-inherit.ts	applyWindowInheritance	function	export async function applyWindowInheritance(
 src/application/internal/window.ts	seatsOf	function	export function seatsOf(
 src/application/internal/window.ts	SeatAction	type	export type SeatAction
 src/application/internal/window.ts	seatOf	function	export function seatOf(
@@ -768,7 +922,14 @@ src/application/ports.ts	KnowledgeInjectSettings	interface	export interface Know
 src/application/ports.ts	IdFactory	interface	export interface IdFactory
 src/application/ports.ts	SessionProbe	interface	export interface SessionProbe
 src/application/ports.ts	WindowOpenerPort	interface	export interface WindowOpenerPort
+src/application/ports.ts	WindowInheritanceStatus	type	export type WindowInheritanceStatus
+src/application/ports.ts	WindowSourceProfile	interface	export interface WindowSourceProfile
+src/application/ports.ts	WindowProfileRead	interface	export interface WindowProfileRead
+src/application/ports.ts	WindowModelSelection	interface	export interface WindowModelSelection
+src/application/ports.ts	WindowInheritance	interface	export interface WindowInheritance
 src/application/ports.ts	WindowCreateOptions	interface	export interface WindowCreateOptions
+src/application/ports.ts	ProjectEntry	interface	export interface ProjectEntry
+src/application/ports.ts	ProjectRegistryPort	interface	export interface ProjectRegistryPort
 src/application/ports.ts	CrossWindowDeliveryPort	interface	export interface CrossWindowDeliveryPort
 src/application/ports.ts	OpenWindowOutcome	type	export type OpenWindowOutcome
 src/application/ports.ts	UserQuestionPort	interface	export interface UserQuestionPort
@@ -797,6 +958,12 @@ src/application/ports.ts	DialogInFlightPort	interface	export interface DialogInF
 src/application/ports.ts	JobStartSpec	interface	export interface JobStartSpec
 src/application/ports.ts	JobSnapshot	interface	export interface JobSnapshot
 src/application/ports.ts	JobsPort	interface	export interface JobsPort
+src/application/ports.ts	PythonProbeResult	interface	export interface PythonProbeResult
+src/application/ports.ts	SkillWriteFile	interface	export interface SkillWriteFile
+src/application/ports.ts	SkillWriteReceipt	interface	export interface SkillWriteReceipt
+src/application/ports.ts	SkillAssetContent	interface	export interface SkillAssetContent
+src/application/ports.ts	SkillAssetPort	interface	export interface SkillAssetPort
+src/application/ports.ts	SkillInstallPort	interface	export interface SkillInstallPort
 src/application/ports.ts	UseCaseDeps	interface	export interface UseCaseDeps
 src/application/query/contracts.ts	PendingConfirmReadPort	interface	export interface PendingConfirmReadPort
 src/application/query/contracts.ts	PanelQueryDeps	interface	export interface PanelQueryDeps
@@ -808,7 +975,12 @@ src/application/query/contracts.ts	QueryDag	type	export type QueryDag
 src/application/query/contracts.ts	QueryDialogue	type	export type QueryDialogue
 src/application/query/contracts.ts	QueryPrompts	type	export type QueryPrompts
 src/application/query/contracts.ts	QueryTokenExtension	type	export type QueryTokenExtension
+src/application/query/contracts.ts	QueryVerify	type	export type QueryVerify
 src/application/query/contracts.ts	PanelQueries	interface	export interface PanelQueries
+src/application/query/live-artifacts.ts	TASK_CARD_DOC_RE	const	export const TASK_CARD_DOC_RE
+src/application/query/live-artifacts.ts	canceledIdsOf	function	export function canceledIdsOf(tasks: readonly TaskRecord[]): ReadonlySet<string>
+src/application/query/live-artifacts.ts	isArtifactOfCanceledTask	function	export function isArtifactOfCanceledTask(path: string, canceledIds: ReadonlySet<string>): boolean
+src/application/query/live-artifacts.ts	liveArtifactsOf	function	export function liveArtifactsOf<T extends Pick<StageArtifact, 'path'>>(
 src/application/query/QueryDag.ts	buildDagNodes	function	export function buildDagNodes(
 src/application/query/QueryDag.ts	buildDagSteps	function	export function buildDagSteps(tasks: readonly TaskRecord[]): DagStep[]
 src/application/query/QueryDag.ts	buildCriticalPath	function	export function buildCriticalPath(tasks: readonly TaskRecord[]): string[] | undefined
@@ -819,6 +991,7 @@ src/application/query/QueryDialogue.ts	buildDialogue	const	export const buildDia
 src/application/query/QueryDocs.ts	reqDirOf	function	export function reqDirOf(requirementId: string): string
 src/application/query/QueryDocs.ts	isDeliverableDocPath	function	export function isDeliverableDocPath(requirementId: string, path: string): boolean
 src/application/query/QueryDocs.ts	discoveredOf	function	export function discoveredOf(
+src/application/query/QueryDocs.ts	prototypeRolesFromIndexText	function	export function prototypeRolesFromIndexText(
 src/application/query/QueryDocs.ts	buildGateVerdicts	function	export function buildGateVerdicts(req: RequirementRecord, tasks: readonly TaskRecord[]): GateVerdict[]
 src/application/query/QueryDocs.ts	queryDocs	function	export async function queryDocs(
 src/application/query/QueryPrompts.ts	toPromptInjectionRecord	function	export function toPromptInjectionRecord(entry: ReturnType<typeof toInjectionLogView>): PromptInjectionRecord
@@ -872,6 +1045,8 @@ src/application/query/QueryTrunk.ts	buildAchievement	function	export function bu
 src/application/query/QueryTrunk.ts	parseHighlights	function	export function parseHighlights(section: SectionSlice): TrunkHighlight[]
 src/application/query/QueryTrunk.ts	assembleTrunk	function	export function assembleTrunk(input: AssembleTrunkInput): TrunkResponse
 src/application/query/QueryTrunk.ts	queryTrunk	const	export const queryTrunk: QueryTrunk
+src/application/query/QueryVerify.ts	pendingCountOf	function	export function pendingCountOf(sheet: VerificationSheet | undefined): number | undefined
+src/application/query/QueryVerify.ts	queryVerify	const	export const queryVerify: QueryVerify
 src/application/settings/events.ts	SYSTEM_RECORD_SCHEMA_VERSION	const	export const SYSTEM_RECORD_SCHEMA_VERSION
 src/application/settings/events.ts	SYSTEM_HISTORY_MAX	const	export const SYSTEM_HISTORY_MAX
 src/application/settings/events.ts	SYSTEM_RECORD_FILE_REL	const	export const SYSTEM_RECORD_FILE_REL
@@ -958,7 +1133,8 @@ src/application/use-cases/ExecuteTask.ts	SubtaskOutput	interface	export interfac
 src/application/use-cases/ExecuteTask.ts	parseSubtaskOutput	function	export function parseSubtaskOutput(output: unknown): SubtaskOutput
 src/application/use-cases/ExecuteTask.ts	isNonEmptyValue	function	export function isNonEmptyValue(v: unknown): boolean
 src/application/use-cases/ExecuteTask.ts	STAGE_SCOPE_RULE	const	export const STAGE_SCOPE_RULE: Readonly<Record<StageKind, string>>
-src/application/use-cases/ExecuteTask.ts	buildSubtaskPrompt	function	export function buildSubtaskPrompt(parent: TaskRecord, subtask: TaskRecord, label: string, workspaceRoot?: string): str…
+src/application/use-cases/ExecuteTask.ts	SubtaskPromptDocs	interface	export interface SubtaskPromptDocs
+src/application/use-cases/ExecuteTask.ts	buildSubtaskPrompt	function	export function buildSubtaskPrompt(
 src/application/use-cases/ExecuteTask.ts	ExecuteSubtaskInput	interface	export interface ExecuteSubtaskInput
 src/application/use-cases/ExecuteTask.ts	ExecuteSubtaskResult	interface	export interface ExecuteSubtaskResult
 src/application/use-cases/ExecuteTask.ts	executeSubtask	function	export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInput): Promise<ExecuteSubtaskResult>
@@ -972,6 +1148,11 @@ src/application/use-cases/HandoffOwner.ts	HandoffArgs	interface	export interface
 src/application/use-cases/HandoffOwner.ts	HandoffDelivery	interface	export interface HandoffDelivery
 src/application/use-cases/HandoffOwner.ts	HandoffValue	interface	export interface HandoffValue
 src/application/use-cases/HandoffOwner.ts	handoffRequirement	function	export async function handoffRequirement(
+src/application/use-cases/InstallSkills.ts	SKILLS_ROOT_REL	const	export const SKILLS_ROOT_REL
+src/application/use-cases/InstallSkills.ts	SEARCH_SCRIPT_REL	const	export const SEARCH_SCRIPT_REL
+src/application/use-cases/InstallSkills.ts	InstallSkillsArgs	interface	export interface InstallSkillsArgs
+src/application/use-cases/InstallSkills.ts	InstallSkillsResult	interface	export interface InstallSkillsResult
+src/application/use-cases/InstallSkills.ts	executeInstallSkills	function	export async function executeInstallSkills(
 src/application/use-cases/IsolateNodeContext.ts	SurfaceNode	interface	export interface SurfaceNode
 src/application/use-cases/IsolateNodeContext.ts	NodeIsolationPort	interface	export interface NodeIsolationPort
 src/application/use-cases/IsolateNodeContext.ts	IsolationTraceEntry	interface	export interface IsolationTraceEntry
@@ -981,6 +1162,7 @@ src/application/use-cases/IsolateNodeContext.ts	IsolationStatus	type	export type
 src/application/use-cases/IsolateNodeContext.ts	IsolateNodeContextResult	interface	export interface IsolateNodeContextResult
 src/application/use-cases/IsolateNodeContext.ts	IsolateNodeContextDeps	interface	export interface IsolateNodeContextDeps
 src/application/use-cases/IsolateNodeContext.ts	isolateNodeContext	function	export async function isolateNodeContext(
+src/application/use-cases/MoveRequirement.ts	transportCodeOf	function	export function transportCodeOf(internalCode: string): string
 src/application/use-cases/MoveRequirement.ts	executeMoveRequirement	function	export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, exec: unknown): Promise<unknown>
 src/application/use-cases/MoveTask.ts	executeMoveTask	function	export async function executeMoveTask(deps: UseCaseDeps, args: unknown, exec: unknown): Promise<unknown>
 src/application/use-cases/NoteInterruption.ts	NoteInterruptionResult	interface	export interface NoteInterruptionResult
@@ -1016,6 +1198,8 @@ src/application/use-cases/RollbackCleanup.ts	executeRollbackCleanup	function	exp
 src/application/use-cases/SubmitArchive.ts	submitArchive	function	export async function submitArchive(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown>
 src/application/use-cases/SubmitArtifact.ts	submitRequirementArtifact	function	export async function submitRequirementArtifact(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown>
 src/application/use-cases/SubmitArtifact.ts	submitPlanArtifact	function	export async function submitPlanArtifact(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown>
+src/application/use-cases/SubmitArtifact.ts	PrototypeDocStatus	interface	export interface PrototypeDocStatus
+src/application/use-cases/SubmitArtifact.ts	submitPrototypeArtifacts	function	export async function submitPrototypeArtifacts(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown>
 src/application/use-cases/SubmitDesignArtifacts.ts	submitDesignArtifacts	function	export async function submitDesignArtifacts(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown>
 src/application/use-cases/SubmitVerification.ts	submitVerification	function	export async function submitVerification(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown>
 src/application/use-cases/SubtaskTeamRun.ts	SubtaskTeamRunInput	interface	export interface SubtaskTeamRunInput
@@ -1055,6 +1239,8 @@ src/client/api.ts	moveReq	function	export function moveReq(input:
 src/client/api.ts	updateReq	function	export function updateReq(input:
 src/client/api.ts	approvePlan	function	export function approvePlan(input:
 src/client/api.ts	rejectPlan	function	export function rejectPlan(input:
+src/client/api.ts	RollbackCleanupResult	interface	export interface RollbackCleanupResult
+src/client/api.ts	rollbackCleanup	function	export function rollbackCleanup(input:
 src/client/api.ts	verifyPass	function	export function verifyPass(input:
 src/client/api.ts	verifyRework	function	export function verifyRework(input:
 src/client/api.ts	submitVerdicts	function	export function submitVerdicts(input:
@@ -1067,6 +1253,7 @@ src/client/api.ts	fetchReportDocs	const	export const fetchReportDocs
 src/client/api.ts	fetchReportDag	const	export const fetchReportDag
 src/client/api.ts	fetchReportDialogue	const	export const fetchReportDialogue
 src/client/api.ts	fetchReportPrompts	const	export const fetchReportPrompts
+src/client/api.ts	fetchReportVerify	function	export async function fetchReportVerify(id: string, sessionId?: string): Promise<PanelResult<VerifyPanelResponse>>
 src/client/api.ts	TokenPanelPayload	interface	export interface TokenPanelPayload
 src/client/api.ts	fetchReportToken	function	export async function fetchReportToken(id: string): Promise<TokenPanelPayload>
 src/client/api.ts	fetchReportPanel	function	export function fetchReportPanel(
@@ -1265,6 +1452,10 @@ src/client/flow-chart-model.ts	flowState	function	export function flowState(inde
 src/client/flow-chart-model.ts	isStageSkipped	function	export function isStageSkipped(category: string, key: string): boolean
 src/client/flow-chart-model.ts	buildFlowChartModel	function	export function buildFlowChartModel(input: FlowChartInput): FlowChartModel
 src/client/html.ts	esc	function	export function esc(s: unknown): string
+src/client/icons.ts	ICON_VIEW_BOX	const	export const ICON_VIEW_BOX
+src/client/icons.ts	ICON_STROKE_WIDTH	const	export const ICON_STROKE_WIDTH
+src/client/icons.ts	TAB_ICON_SVG	const	export const TAB_ICON_SVG: Record<ReportTabKey, string>
+src/client/icons.ts	GAP_DOT_SVG	const	export const GAP_DOT_SVG: Record<ReportGap['severity'], string>
 src/client/index.ts	name	const	export const name
 src/client/index.ts	inject	const	export const inject: string[]
 src/client/index.ts	apply	function	export function apply(ctx: ApplyContext): void
@@ -1348,7 +1539,7 @@ src/client/render/dom-utils.ts	NO_ARCHIVED	const	export const NO_ARCHIVED: Reado
 src/client/render/dom-utils.ts	isArchived	function	export function isArchived(sid: string, archived: ReadonlySet<string>): boolean
 src/client/render/dom-utils.ts	sessionChipHtml	function	export function sessionChipHtml(opts:
 src/client/render/dom-utils.ts	renderWindowChip	function	export function renderWindowChip(req: RequirementRecord, archived: ReadonlySet<string>
-src/client/render/dom-utils.ts	renderRunningDot	function	export function renderRunningDot(running: boolean): string
+src/client/render/dom-utils.ts	renderRunningDot	function	export function renderRunningDot(mark?: RunningMark): string
 src/client/render/dom-utils.ts	renderSessionChip	function	export function renderSessionChip(tasks: TaskRecord[], archived: ReadonlySet<string>
 src/client/render/dom-utils.ts	renderMarkdown	function	export function renderMarkdown(text: string): string
 src/client/render/dom-utils.ts	commentActorLabel	function	export function commentActorLabel(c: CommentRecord):
@@ -1358,6 +1549,8 @@ src/client/render/dom-utils.ts	buildError	function	export function buildError(me
 src/client/render/dom-utils.ts	fmtDur	function	export function fmtDur(ms: number): string
 src/client/render/dom-utils.ts	isTerminal	function	export function isTerminal(status: string): boolean
 src/client/render/dom-utils.ts	short	function	export function short(text: string, max: number): string
+src/client/render/gate-view.ts	gatesOf	function	export function gatesOf(req: RequirementRecord): readonly GateReading[] | undefined
+src/client/render/gate-view.ts	gateOf	function	export function gateOf(req: RequirementRecord, kind: string): GateReading | undefined
 src/client/render/md-inline.ts	mdInlineEscaped	function	export function mdInlineEscaped(text: string): string
 src/client/render/md-inline.ts	mdInline	function	export function mdInline(text: unknown): string
 src/client/render/md-inline.ts	mdPlain	function	export function mdPlain(text: unknown): string
@@ -1398,6 +1591,12 @@ src/client/session-running.ts	runningSessionIds	function	export function running
 src/client/session-running.ts	subscribeSessionRunning	function	export function subscribeSessionRunning(fn: ()
 src/client/session-running.ts	RequirementSessionShape	interface	export interface RequirementSessionShape
 src/client/session-running.ts	requirementRunning	function	export function requirementRunning(
+src/client/session-running.ts	RunningCause	type	export type RunningCause
+src/client/session-running.ts	RunningMark	interface	export interface RunningMark
+src/client/session-running.ts	RequirementRunShape	interface	export interface RequirementRunShape
+src/client/session-running.ts	requirementRunInFlight	function	export function requirementRunInFlight(
+src/client/session-running.ts	requirementRunningMark	function	export function requirementRunningMark(
+src/client/session-running.ts	requirementBusy	function	export function requirementBusy(
 src/client/session-running.ts	relevantSessionIds	function	export function relevantSessionIds(reqs: readonly RequirementSessionShape[]): ReadonlySet<string>
 src/client/session-running.ts	sameRunningSet	function	export function sameRunningSet(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean
 src/client/session-running.ts	runningAmong	function	export function runningAmong(
@@ -1549,6 +1748,7 @@ src/client/settings/types.ts	MigrationStartResult	interface	export interface Mig
 src/client/settings/types.ts	StorageActionTicket	interface	export interface StorageActionTicket
 src/client/stage-panel.ts	STAGE_LABELS	const	export const STAGE_LABELS: Record<MainStageKey, string>
 src/client/stage-panel.ts	StageRowState	type	export type StageRowState
+src/client/stage-panel.ts	topoLevels	function	export function topoLevels<T extends
 src/client/stage-panel.ts	StageRenderers	const	export const StageRenderers: Record<MainStageKey,
 src/client/stage-panel.ts	stageHeadSummary	function	export function stageHeadSummary(payload: StageDetail): string | undefined
 src/client/stage-panel.ts	StagePanelOptions	interface	export interface StagePanelOptions
@@ -1655,11 +1855,11 @@ src/client/types.ts	TaskRecord	interface	export interface TaskRecord
 src/client/types.ts	RequirementSummary	interface	export interface RequirementSummary
 src/client/types.ts	BoardState	interface	export interface BoardState
 src/client/types.ts	ReqCard	interface	export interface ReqCard
+src/client/types.ts	GateReading	interface	export interface GateReading
 src/client/use-panel-refresh.ts	PanelRefreshView	interface	export interface PanelRefreshView
 src/client/use-panel-refresh.ts	UsePanelRefreshOptions	interface	export interface UsePanelRefreshOptions
 src/client/use-panel-refresh.ts	usePanelRefresh	function	export function usePanelRefresh(opts: UsePanelRefreshOptions): PanelRefreshView
 src/client/view.ts	(anonymous)	other	export type
-src/client/views/artifacts.ts	computeGateStatuses	function	export function computeGateStatuses(req: RequirementRecord): Array<
 src/client/views/artifacts.ts	currentGateKind	function	export function currentGateKind(req: RequirementRecord): ArtifactKind | undefined
 src/client/views/artifacts.ts	renderArtifactChips	function	export function renderArtifactChips(req: RequirementRecord): string
 src/client/views/artifacts.ts	renderConfirmButton	function	export function renderConfirmButton(req: RequirementRecord): string
@@ -1687,7 +1887,7 @@ src/client/views/board.ts	listComparator	function	export function listComparator
 src/client/views/board.ts	ListViewOpts	interface	export interface ListViewOpts
 src/client/views/board.ts	buildListView	function	export function buildListView(
 src/client/views/board.ts	renderListToolbar	function	export function renderListToolbar(
-src/client/views/board.ts	renderListCard	function	export function renderListCard(card: ReqCard, _now: number, archived: ReadonlySet<string>
+src/client/views/board.ts	renderListCard	function	export function renderListCard(card: ReqCard, now: number, archived: ReadonlySet<string>
 src/client/views/dag-view.ts	PANEL_DAG_CONTAINER_ID	const	export const PANEL_DAG_CONTAINER_ID
 src/client/views/dag-view.ts	PANEL_DAG_CANVAS_ID	const	export const PANEL_DAG_CANVAS_ID
 src/client/views/dag-view.ts	DagTaskLike	interface	export interface DagTaskLike
@@ -1707,17 +1907,22 @@ src/client/views/panels/dialogue.ts	DialogueMessage	type	export type DialogueMes
 src/client/views/panels/dialogue.ts	LoadedDialogue	interface	export interface LoadedDialogue
 src/client/views/panels/dialogue.ts	readDialogue	function	export function readDialogue(data: unknown): LoadedDialogue | undefined
 src/client/views/panels/dialogue.ts	orderDialogue	function	export function orderDialogue(items: readonly DialogueMessage[]): DialogueMessage[]
-src/client/views/panels/dialogue.ts	filterDialogueItems	function	export function filterDialogueItems(
-src/client/views/panels/dialogue.ts	highlightDialogueText	function	export function highlightDialogueText(text: string, query: string): string
-src/client/views/panels/dialogue.ts	renderDialogue	function	export function renderDialogue(data: unknown, ctx: ReportTabCtx, query
-src/client/views/panels/dialogue.ts	applyDialogueSearch	function	export function applyDialogueSearch(root: HTMLElement, query: string): number
+src/client/views/panels/dialogue.ts	DIALOGUE_PAGE_SIZE	const	export const DIALOGUE_PAGE_SIZE
+src/client/views/panels/dialogue.ts	isLongDialogueText	const	export const isLongDialogueText
+src/client/views/panels/dialogue.ts	renderDialogue	function	export function renderDialogue(data: unknown, _ctx: ReportTabCtx): string
 src/client/views/panels/dialogue.ts	dialoguePanel	const	export const dialoguePanel: ReportTabDef
+src/client/views/panels/docs.ts	prototypeGroupOf	function	export function prototypeGroupOf(path: string): boolean
 src/client/views/panels/docs.ts	docsPanel	const	export const docsPanel: ReportTabDef
 src/client/views/panels/prompts.ts	renderPromptsPanel	function	export function renderPromptsPanel(data: unknown): string
 src/client/views/panels/prompts.ts	promptsPanel	const	export const promptsPanel: ReportTabDef
 src/client/views/panels/token.ts	tokenPanel	const	export const tokenPanel: ReportTabDef
 src/client/views/panels/trunk.ts	renderTrunkPanel	function	export function renderTrunkPanel(data: unknown): string
 src/client/views/panels/trunk.ts	trunkPanel	const	export const trunkPanel: ReportTabDef
+src/client/views/panels/verify.ts	VERIFY_OLD_SERVER_TEXT	const	export const VERIFY_OLD_SERVER_TEXT
+src/client/views/panels/verify.ts	VerifyView	interface	export interface VerifyView
+src/client/views/panels/verify.ts	readVerify	function	export function readVerify(data: unknown): VerifyView
+src/client/views/panels/verify.ts	renderRtmTable	function	export function renderRtmTable(view: VerifyView, reqId: string): string
+src/client/views/panels/verify.ts	verifyPanel	const	export const verifyPanel: ReportTabDef
 src/client/views/report-band.ts	GAP_HEAD_LIMIT	const	export const GAP_HEAD_LIMIT
 src/client/views/report-band.ts	buildProgressCell	function	export function buildProgressCell(report: ReportResponse): string
 src/client/views/report-band.ts	SHORT_MAX	const	export const SHORT_MAX
@@ -1734,9 +1939,6 @@ src/client/views/report-head.ts	buildReportActionBar	function	export function bu
 src/client/views/report-head.ts	CONSEQUENCE_HINT_MAX	const	export const CONSEQUENCE_HINT_MAX
 src/client/views/report-head.ts	shortConsequence	function	export function shortConsequence(consequence: string): string
 src/client/views/report-head.ts	COMMENT_RENDER_LIMIT	const	export const COMMENT_RENDER_LIMIT
-src/client/views/report-head.ts	COMMENT_BODY_MAX	const	export const COMMENT_BODY_MAX
-src/client/views/report-head.ts	COMMENT_LONG_THRESHOLD	const	export const COMMENT_LONG_THRESHOLD
-src/client/views/report-head.ts	COMMENT_LONG_HEAD_MAX	const	export const COMMENT_LONG_HEAD_MAX
 src/client/views/report-head.ts	commentRenderPlan	function	export function commentRenderPlan(body: string):
 src/client/views/report-head.ts	buildCommentList	function	export function buildCommentList(comments: ReportHead['comments'], total?: number): string
 src/client/views/report-head.ts	ReportHeadOpts	interface	export interface ReportHeadOpts
@@ -1832,6 +2034,13 @@ src/domain/artifact/ArtifactSpec.ts	ArchiveDocRule	interface	export interface Ar
 src/domain/artifact/ArtifactSpec.ts	ARCHIVE_DOC_RULES	const	export const ARCHIVE_DOC_RULES: Readonly<Record<RequirementCategory, ArchiveDocRule>>
 src/domain/artifact/ArtifactSpec.ts	isDesignArtifactKind	function	export function isDesignArtifactKind(kind: string): boolean
 src/domain/artifact/ArtifactSpec.ts	kindForRelPath	function	export function kindForRelPath(rel: string): ArtifactKind
+src/domain/artifact/GateReadings.ts	GateStatus	type	export type GateStatus
+src/domain/artifact/GateReadings.ts	GateReading	interface	export interface GateReading
+src/domain/artifact/GateReadings.ts	GateArtifactFact	interface	export interface GateArtifactFact
+src/domain/artifact/GateReadings.ts	PlanState	type	export type PlanState
+src/domain/artifact/GateReadings.ts	gateReadingsOf	function	export function gateReadingsOf(
+src/domain/artifact/GateReadings.ts	planStateOf	function	export function planStateOf(
+src/domain/artifact/GateReadings.ts	archivePreparedOf	function	export function archivePreparedOf(
 src/domain/card-types.ts	PHASE_COLOR_FAMILIES	const	export const PHASE_COLOR_FAMILIES
 src/domain/card-types.ts	PhaseColorFamily	type	export type PhaseColorFamily
 src/domain/card-types.ts	STAGE_TO_PHASE_COLOR	const	export const STAGE_TO_PHASE_COLOR: Readonly<Record<StageKind, PhaseColorFamily>>
@@ -1865,6 +2074,9 @@ src/domain/errors.ts	ReqboardErrorCode	type	export type ReqboardErrorCode
 src/domain/errors.ts	domainError	function	export function domainError(code: ReqboardErrorCode, message: string): Error
 src/domain/errors.ts	hasErrorCode	function	export function hasErrorCode(err: unknown, code: ReqboardErrorCode): boolean
 src/domain/gate/GateCatalog.ts	GATE_CATALOG	const	export const GATE_CATALOG: readonly GateSpec[]
+src/domain/gate/GateCatalog.ts	StageGateTimeline	const	export const StageGateTimeline: Readonly<Record<string, readonly string[]>>
+src/domain/gate/GateCatalog.ts	StageGateMoment	type	export type StageGateMoment
+src/domain/gate/GateCatalog.ts	stageGateMomentFor	function	export function stageGateMomentFor(from: string, to: string): StageGateMoment | undefined
 src/domain/gate/GateCatalog.ts	gateById	function	export function gateById(id: GateId): GateSpec | undefined
 src/domain/gate/GateCatalog.ts	gateForTransition	function	export function gateForTransition(from: string, to: string): GateSpec | undefined
 src/domain/gate/GateCatalog.ts	gateFromStage	function	export function gateFromStage(from: string): GateSpec | undefined
@@ -2040,6 +2252,7 @@ src/domain/queue/QueueTypes.ts	QueueTask	interface	export interface QueueTask ex
 src/domain/queue/QueueTypes.ts	QueueEdge	interface	export interface QueueEdge
 src/domain/queue/QueueTypes.ts	QueueLayer	interface	export interface QueueLayer
 src/domain/queue/QueueTypes.ts	ValidationRule	type	export type ValidationRule
+src/domain/queue/QueueTypes.ts	ValidationLevel	type	export type ValidationLevel
 src/domain/queue/QueueTypes.ts	ValidationIssue	interface	export interface ValidationIssue
 src/domain/queue/QueueTypes.ts	ValidationResult	interface	export interface ValidationResult
 src/domain/queue/QueueTypes.ts	QueueFile	interface	export interface QueueFile
@@ -2049,6 +2262,8 @@ src/domain/queue/topology.ts	computeLayers	function	export function computeLayer
 src/domain/queue/topology.ts	computeReady	function	export function computeReady(tasks: readonly QueueTask[]): string[]
 src/domain/queue/transitiveReduction.ts	DependencyGraph	type	export type DependencyGraph
 src/domain/queue/transitiveReduction.ts	transitiveReduce	function	export function transitiveReduce(graph: DependencyGraph): Map<string, string[]>
+src/domain/queue/validateQueue.ts	levelOf	function	export function levelOf(issue: ValidationIssue): ValidationLevel
+src/domain/queue/validateQueue.ts	isIssueLevel	function	export function isIssueLevel(issue: ValidationIssue): boolean
 src/domain/queue/validateQueue.ts	validateQueueFile	function	export function validateQueueFile(file: QueueFile): ValidationResult
 src/domain/queue/validateQueue.ts	hasIssue	function	export function hasIssue(result: ValidationResult, rule: ValidationRule): boolean
 src/domain/requirement/archive-exemptions.ts	ArchiveExemptionRule	interface	export interface ArchiveExemptionRule
@@ -2134,6 +2349,8 @@ src/domain/stage/StageActions.ts	isOutOfBounds	function	export function isOutOfB
 src/domain/stage/StageActions.ts	correctiveActionFor	function	export function correctiveActionFor(status: RequirementStatus): string
 src/domain/stage/StagePromptSpec.ts	ALL_STAGE_PROMPT_KEYS	const	export const ALL_STAGE_PROMPT_KEYS
 src/domain/stage/StagePromptSpec.ts	StagePromptKey	type	export type StagePromptKey
+src/domain/status/ArchivedMoment.ts	StatusMomentEvent	type	export type StatusMomentEvent
+src/domain/status/ArchivedMoment.ts	archivedMomentOf	function	export function archivedMomentOf(req:
 src/domain/status/Predicates.ts	isAccepting	function	export function isAccepting(req: HasStatus): boolean
 src/domain/status/Predicates.ts	isImplementing	function	export function isImplementing(req: HasStatus): boolean
 src/domain/status/Predicates.ts	isVerifiableStage	function	export function isVerifiableStage(req: HasStatus): boolean
@@ -2142,6 +2359,17 @@ src/domain/status/Predicates.ts	ClosingGap	type	export type ClosingGap
 src/domain/status/Predicates.ts	closingGapOf	function	export function closingGapOf(req: ClosingShape): ClosingGap | undefined
 src/domain/status/Predicates.ts	isClosed	function	export function isClosed(req: ClosingShape): boolean
 src/domain/status/Predicates.ts	isCanceled	function	export function isCanceled(req: HasStatus): boolean
+src/domain/status/Predicates.ts	isLiveTask	function	export function isLiveTask<T extends HasStatus>(task: T): boolean
+src/domain/status/Predicates.ts	liveTasksOf	function	export function liveTasksOf<T extends HasStatus>(tasks: readonly T[]): T[]
+src/domain/status/Predicates.ts	liveCountOf	function	export function liveCountOf(tasks: readonly HasStatus[]): number
+src/domain/status/Predicates.ts	isDependencySatisfied	function	export function isDependencySatisfied(dep: HasStatus | undefined): boolean
+src/domain/status/Predicates.ts	DependencyBucket	type	export type DependencyBucket
+src/domain/status/Predicates.ts	DependencyEdgeSplit	interface	export interface DependencyEdgeSplit
+src/domain/status/Predicates.ts	splitDependencyEdges	function	export function splitDependencyEdges<T extends HasStatus &
+src/domain/status/Predicates.ts	isReadyTask	function	export function isReadyTask<T extends HasStatus &
+src/domain/status/Predicates.ts	layerInputOf	function	export function layerInputOf<T extends HasStatus &
+src/domain/status/Predicates.ts	liveLayers	function	export function liveLayers<T extends HasStatus &
+src/domain/status/Predicates.ts	liveReadyTasks	function	export function liveReadyTasks<T extends HasStatus &
 src/domain/status/Predicates.ts	isNotArchived	function	export function isNotArchived(req: HasStatus): boolean
 src/domain/status/Predicates.ts	isActiveRequirement	function	export function isActiveRequirement(req: HasStatus): boolean
 src/domain/status/Predicates.ts	isOpenRequirement	function	export function isOpenRequirement(req: HasStatus): boolean
@@ -2194,6 +2422,10 @@ src/domain/task/RequirementRefs.ts	RequirementRefError	class	export class Requir
 src/domain/task/RequirementRefs.ts	refInvalidReason	function	export function refInvalidReason(raw: unknown): string | undefined
 src/domain/task/RequirementRefs.ts	normalizeRequirementRefs	function	export function normalizeRequirementRefs(raw: unknown, where
 src/domain/task/RequirementRefs.ts	compareRefIds	function	export function compareRefIds(a: string, b: string): number
+src/domain/task/ReworkPlaceholder.ts	ReworkLike	interface	export interface ReworkLike
+src/domain/task/ReworkPlaceholder.ts	StatusLike	interface	export interface StatusLike
+src/domain/task/ReworkPlaceholder.ts	isReworkPlaceholder	function	export function isReworkPlaceholder(t: ReworkLike): boolean
+src/domain/task/ReworkPlaceholder.ts	liveRealCards	function	export function liveRealCards<T extends StatusLike & ReworkLike>(tasks: readonly T[]): T[]
 src/domain/task/StageRouting.ts	StageModelRoute	interface	export interface StageModelRoute
 src/domain/task/StageRouting.ts	validateStageRouting	function	export function validateStageRouting(raw: unknown): Record<string, StageModelRoute>
 src/domain/task/StageRouting.ts	resolveStageModel	function	export function resolveStageModel(
@@ -2275,6 +2507,16 @@ src/domain/workflow/AcceptanceSheetSpec.ts	itemResultBindingEnabled	function	exp
 src/domain/workflow/AcceptanceSheetSpec.ts	SheetLike	interface	export interface SheetLike
 src/domain/workflow/AcceptanceSheetSpec.ts	SheetTaskLike	interface	export interface SheetTaskLike
 src/domain/workflow/AcceptanceSheetSpec.ts	REQUIREMENT_LEVEL_CRITERION	const	export const REQUIREMENT_LEVEL_CRITERION
+src/domain/workflow/AcceptanceSheetSpec.ts	PROTOTYPE_COMPARE_CRITERION	const	export const PROTOTYPE_COMPARE_CRITERION
+src/domain/workflow/AcceptanceSheetSpec.ts	PROTOTYPE_COMPARE_HUMAN_REASON	const	export const PROTOTYPE_COMPARE_HUMAN_REASON
+src/domain/workflow/AcceptanceSheetSpec.ts	DECISION_COMPARE_CRITERION	const	export const DECISION_COMPARE_CRITERION
+src/domain/workflow/AcceptanceSheetSpec.ts	PROTOTYPE_EXEMPT_NOTE_PREFIX	const	export const PROTOTYPE_EXEMPT_NOTE_PREFIX
+src/domain/workflow/AcceptanceSheetSpec.ts	prototypeExemptNote	function	export function prototypeExemptNote(reason: string): string
+src/domain/workflow/AcceptanceSheetSpec.ts	REQ_LEVEL_TRACE_ID	const	export const REQ_LEVEL_TRACE_ID
+src/domain/workflow/AcceptanceSheetSpec.ts	PROTOTYPE_COMPARE_TRACE_ID	const	export const PROTOTYPE_COMPARE_TRACE_ID
+src/domain/workflow/AcceptanceSheetSpec.ts	DECISION_COMPARE_TRACE_ID	const	export const DECISION_COMPARE_TRACE_ID
+src/domain/workflow/AcceptanceSheetSpec.ts	rtmTraceIdOf	function	export function rtmTraceIdOf(source: VerificationItemSource): string
+src/domain/workflow/AcceptanceSheetSpec.ts	itemSourceTitle	function	export function itemSourceTitle(
 src/domain/workflow/AcceptanceSheetSpec.ts	ANCHOR_GAP_PREFIX	const	export const ANCHOR_GAP_PREFIX
 src/domain/workflow/AcceptanceSheetSpec.ts	UNVERIFIABLE_PREFIX	const	export const UNVERIFIABLE_PREFIX
 src/domain/workflow/AcceptanceSheetSpec.ts	requirementItemTitle	function	export function requirementItemTitle(
@@ -2330,6 +2572,14 @@ src/domain/workflow/MilestoneSpec.ts	MilestoneReqLike	interface	export interface
 src/domain/workflow/MilestoneSpec.ts	findStaleUnconfirmedArtifact	function	export function findStaleUnconfirmedArtifact(
 src/domain/workflow/MilestoneSpec.ts	shouldRemindConfirm	function	export function shouldRemindConfirm(req: MilestoneReqLike, now: number, reminderAfterMs: number): boolean
 src/domain/workflow/ReadabilityHints.ts	readabilityHints	function	export function readabilityHints(docText: string): string[]
+src/domain/workflow/ResultBinding.ts	RESULT_MAX_CHARS	const	export const RESULT_MAX_CHARS
+src/domain/workflow/ResultBinding.ts	ResultRefInput	interface	export interface ResultRefInput
+src/domain/workflow/ResultBinding.ts	ResultMatchReport	interface	export interface ResultMatchReport
+src/domain/workflow/ResultBinding.ts	isForeseeableItem	function	export function isForeseeableItem(item: Pick<SheetItemLike, 'source' | 'gapKind' | 'criterion'>): boolean
+src/domain/workflow/ResultBinding.ts	refKeyOf	function	export function refKeyOf(ref: VerificationItemSource): string
+src/domain/workflow/ResultBinding.ts	matchStructuredResults	function	export function matchStructuredResults(items: readonly SheetItemLike[], results: unknown): ResultMatchReport
+src/domain/workflow/ResultBinding.ts	splitUnmatched	function	export function splitUnmatched(
+src/domain/workflow/ResultBinding.ts	applyStructuredResults	function	export function applyStructuredResults(items: SheetItemLike[], results: unknown):
 src/domain/workflow/RollupSpec.ts	RollupRule	type	export type RollupRule
 src/domain/workflow/RollupSpec.ts	RollupMove	interface	export interface RollupMove
 src/domain/workflow/RollupSpec.ts	RollupRequirementLike	interface	export interface RollupRequirementLike
@@ -2418,6 +2668,7 @@ src/http/routers/shared.ts	StorageActionStampView	interface	export interface Sto
 src/http/routers/shared.ts	StorageActionPort	interface	export interface StorageActionPort
 src/http/routers/shared.ts	RouterCtx	interface	export interface RouterCtx
 src/http/routers/shared.ts	DocRootSource	type	export type DocRootSource
+src/http/routers/shared.ts	ProjectSource	type	export type ProjectSource
 src/http/routers/shared.ts	DocRoot	interface	export interface DocRoot
 src/http/routers/shared.ts	resolveDocRoot	function	export function resolveDocRoot(deps: RouterCtx['deps'], sessionId: string | undefined): DocRoot
 src/http/routers/stages.ts	createStagesRouter	function	export function createStagesRouter(ctx: RouterCtx)
@@ -2432,6 +2683,8 @@ src/index.ts	CAPTURE_SECTION	const	export const CAPTURE_SECTION
 src/index.ts	CAPTURE_SECTION_ORDER	const	export const CAPTURE_SECTION_ORDER
 src/index.ts	apply	function	export function apply(ctx: Context, config?: PluginConfig): void
 src/plugin-config.ts	PluginConfig	interface	export interface PluginConfig
+src/plugin-config.ts	SkillsSettings	interface	export interface SkillsSettings
+src/plugin-config.ts	skillsSettings	function	export function skillsSettings(config?: PluginConfig): SkillsSettings
 src/plugin-config.ts	resolveRoundCapacity	function	export function resolveRoundCapacity(config?: PluginConfig):
 src/plugin-config.ts	markerGateOf	function	export function markerGateOf(config?: PluginConfig): 'enforce' | 'warn'
 src/plugin-config.ts	panelSettings	function	export function panelSettings(config?: PluginConfig):
@@ -2528,6 +2781,7 @@ src/repositories/sqliteSchema.ts	SQLITE_SCHEMA_VERSION	const	export const SQLITE
 src/repositories/sqliteSchema.ts	SQLITE_PRAGMAS	const	export const SQLITE_PRAGMAS: readonly string[]
 src/repositories/sqliteSchema.ts	SQLITE_DDL	const	export const SQLITE_DDL: readonly string[]
 src/repositories/sqliteSchema.ts	SQLITE_TABLES	const	export const SQLITE_TABLES: readonly string[]
+src/repositories/sqliteSchema.ts	SQLITE_COLUMN_MIGRATIONS	const	export const SQLITE_COLUMN_MIGRATIONS: readonly
 src/repositories/sqliteSchema.ts	SQLITE_META_KEYS	const	export const SQLITE_META_KEYS
 src/repositories/sqliteSchema.ts	SQLITE_SCHEMA_MISMATCH	const	export const SQLITE_SCHEMA_MISMATCH
 src/repositories/sqliteSchema.ts	sqliteSchemaMatches	function	export function sqliteSchemaMatches(stored: unknown): boolean
@@ -2543,6 +2797,10 @@ src/shared/artifact-labels.ts	DOC_FILE_LABELS	const	export const DOC_FILE_LABELS
 src/shared/artifact-labels.ts	artifactKindLabel	function	export function artifactKindLabel(kind: string): string
 src/shared/artifact-labels.ts	docFileLabel	function	export function docFileLabel(path: string, kind?: string): string
 src/shared/artifact-labels.ts	taskCardLabel	function	export function taskCardLabel(path: string, title?: string): string
+src/shared/board-summary.ts	BoardSummaryInput	type	export type BoardSummaryInput
+src/shared/board-summary.ts	confirmGateKindsOf	function	export function confirmGateKindsOf(category: SummarizableRequirement['category']): string[]
+src/shared/board-summary.ts	boardSummaryOf	function	export function boardSummaryOf(record: BoardSummaryInput): RequirementSummary
+src/shared/board-summary.ts	boardSummaryOfAuthoritative	function	export function boardSummaryOfAuthoritative(record: BoardSummaryInput): RequirementSummary
 src/shared/build-stamp.ts	setBuildStamp	function	export function setBuildStamp(value: string): void
 src/shared/build-stamp.ts	getBuildStamp	function	export function getBuildStamp(): string | undefined
 src/shared/protocol.ts	PromptDifficulty	type	export type PromptDifficulty
@@ -2558,6 +2816,8 @@ src/shared/protocol.ts	(anonymous)	other	export type
 src/shared/protocol.ts	(anonymous)	other	export type
 src/shared/protocol.ts	StatusEvent	interface	export interface StatusEvent
 src/shared/protocol.ts	recordStatus	function	export function recordStatus(
+src/shared/protocol.ts	CancelTrailOpts	interface	export interface CancelTrailOpts
+src/shared/protocol.ts	markCanceled	function	export function markCanceled(task: TaskRecord, opts: CancelTrailOpts): void
 src/shared/protocol.ts	milestoneAt	function	export function milestoneAt(record:
 src/shared/protocol.ts	MAIN_REQ_STATUSES	const	export const MAIN_REQ_STATUSES: readonly MainStageKey[]
 src/shared/protocol.ts	ALL_REQ_STATUSES	const	export const ALL_REQ_STATUSES: readonly RequirementStatus[]
@@ -2729,6 +2989,7 @@ src/shared/protocol.ts	TokenStageRow	interface	export interface TokenStageRow
 src/shared/protocol.ts	TokenOptimization	interface	export interface TokenOptimization
 src/shared/protocol.ts	TokenAvailability	type	export type TokenAvailability
 src/shared/protocol.ts	TokenPanelExtension	interface	export interface TokenPanelExtension
+src/shared/protocol.ts	VerifyPanelResponse	interface	export interface VerifyPanelResponse
 src/stage-overview/assembler.ts	AssembleStageOptions	interface	export interface AssembleStageOptions
 src/stage-overview/assembler.ts	contextOf	function	export function contextOf(
 src/stage-overview/assembler.ts	TraceabilityBundle	interface	export interface TraceabilityBundle
@@ -2764,6 +3025,8 @@ src/tools/NoteInterruptionTool/prompt.ts	NOTE_INTERRUPTION_PROMPT	const	export c
 src/tools/OpenWindowTool/OpenWindowTool.ts	defineOpenWindowTool	function	export function defineOpenWindowTool(deps: UseCaseDeps)
 src/tools/OpenWindowTool/prompt.ts	OPEN_WINDOW_PROMPT	const	export const OPEN_WINDOW_PROMPT
 src/tools/RegenerateTool/index.ts	defineRegenerateTool	function	export function defineRegenerateTool(deps: UseCaseDeps)
+src/tools/registry.ts	ToolRegistryEntry	interface	export interface ToolRegistryEntry
+src/tools/registry.ts	TOOL_REGISTRY	const	export const TOOL_REGISTRY: readonly ToolRegistryEntry[]
 src/tools/render-summaries.ts	taskMoveSummary	function	export function taskMoveSummary(v: unknown): string
 src/tools/render-summaries.ts	submitSummary	function	export function submitSummary(v: unknown): string
 src/tools/render-summaries.ts	statusSummary	function	export function statusSummary(v: unknown): string
@@ -2785,6 +3048,8 @@ src/tools/shared.ts	LONG_TEXT_ARG_NOTE	const	export const LONG_TEXT_ARG_NOTE
 src/tools/shared.ts	renderJson	const	export const renderJson
 src/tools/shared.ts	renderSmart	const	export const renderSmart
 src/tools/shared.ts	LONG_TEXT_FIELDS	const	export const LONG_TEXT_FIELDS: readonly
+src/tools/SkillInstallTool/prompt.ts	SKILL_INSTALL_PROMPT	const	export const SKILL_INSTALL_PROMPT
+src/tools/SkillInstallTool/SkillInstallTool.ts	defineSkillInstallTool	function	export function defineSkillInstallTool(deps: UseCaseDeps)
 src/tools/StatusTool/prompt.ts	STATUS_PROMPT	const	export const STATUS_PROMPT
 src/tools/StatusTool/StatusTool.ts	defineStatusTool	function	export function defineStatusTool(deps: UseCaseDeps)
 src/tools/SubmitTool/prompt.ts	SUBMIT_PROMPT	const	export const SUBMIT_PROMPT

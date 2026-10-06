@@ -1,0 +1,4529 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261005151245-54ae",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-05T07:25:23.181Z",
+  "tasks": [
+    {
+      "id": "t-2e4376",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "契约与继承模块（端口三方法 + 标题递增 + 落定编排）",
+      "cardDoc": "docs/requirements/REQ-261005151245-54ae/tasks/t-2e4376.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/open-window-inherit.test.ts -t \"increasedWindowTitle\"` 与 `-t \"applyWindowInheritance\"` 全绿（含「登录重构 (2)」→「登录重构 (3)」、全角「（3）」→「（4）」、源无标题时 skipped、画像读不到时三项 failed、rename 抛错时 model 仍 set）；`npx tsc --noEmit` 对 ports.ts 与 window-inherit.ts 零新增错误。",
+      "implementation": "`src/application/ports.ts` 加 5 个类型（WindowInheritanceStatus / WindowSourceProfile / WindowProfileRead / WindowModelSelection / WindowInheritance）与 WindowCreateOptions.agentPreset、WindowOpenerPort 三个可选方法（readProfile / rename / selectModel）。新增 `src/application/internal/window-inherit.ts`：increasedWindowTitle（半角与全角括号递增、无后缀追加 (1)）、readWindowProfile（端口缺失或抛错收成 reason，永不抛）、presetInheritanceOf（有预设 / 无预设 / 画像读不到三态）、applyWindowInheritance（标题→模式→模型三步不短路，reasons 文案按 interfaces §reasons 规则；零 I/O、文件 ≤400 行）。建立 `tests/open-window-inherit.test.ts`（文件头 20 行内含 serves 头注）覆盖标题三形态与空标题边界、预设三态、画像读不到时三项 failed、rename 与 selectModel 抛错不短路。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "footprint": {
+        "files": 3,
+        "anchors": 6,
+        "chars": 2200
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3",
+        "FR-4",
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-91423d",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791185131286,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 1233,
+              "at": 1791185131286,
+              "totals": {
+                "uncachedInputTokens": 225912,
+                "outputTokens": 134225,
+                "cacheReadTokens": 33674496,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 1233,
+                  "totals": {
+                    "uncachedInputTokens": 225912,
+                    "outputTokens": 134225,
+                    "cacheReadTokens": 33674496,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 1993,
+              "at": 1791185943155,
+              "totals": {
+                "uncachedInputTokens": 291385,
+                "outputTokens": 224344,
+                "cacheReadTokens": 83323648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 1993,
+                  "totals": {
+                    "uncachedInputTokens": 291385,
+                    "outputTokens": 224344,
+                    "cacheReadTokens": 83323648,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 65473,
+              "outputTokens": 90119,
+              "cacheReadTokens": 49649152,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791185943155
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791185123118,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791185131286,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "开始 t1：契约与继承模块（ports 三方法 + window-inherit 四个导出 + 主用例集）。按设计 interfaces.md / architecture.md 落地。"
+        },
+        {
+          "status": "done",
+          "at": 1791185943155,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t1 收口：契约与继承模块落盘，57 条用例全绿、tsc 0 错误、探针退出码 0；研发与复核两个子卡均 done。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d7fd95",
+          "body": "[状态] → in_progress：开始 t1：契约与继承模块（ports 三方法 + window-inherit 四个导出 + 主用例集）。按设计 interfaces.md / architecture.md 落地。（reqboard_task_move）",
+          "createdAt": 1791185131286,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-0d336d",
+          "body": "[状态] → done：t1 收口：契约与继承模块落盘，57 条用例全绿、tsc 0 错误、探针退出码 0；研发与复核两个子卡均 done。（reqboard_task_move）",
+          "createdAt": 1791185943155,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791185123118,
+      "updatedAt": 1791185943155,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791185940419,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/ports.ts",
+          "src/application/internal/window-inherit.ts",
+          "tests/open-window-inherit.test.ts",
+          "docs/requirements/REQ-261005151245-54ae/notes/design-deviations.md"
+        ],
+        "completed": [
+          "契约落地：WindowOpenerPort 三个可选方法 + 五个新类型 + WindowCreateOptions.agentPreset",
+          "继承模块落地：标题递增（与 GUI 逐字同口径）、读画像（永不抛）、模式三态、落定编排（三步不短路）",
+          "主用例集 57 条全绿（纯函数 / 画像归一 / 编排 / 适配器 / 用例级 T-01~T-14 / 兼容）",
+          "独立复核两轮：首轮 1 阻断 + 9 建议 → 修复 → 第二轮判通过",
+          "机器自检：tsc 0 错误、探针退出码 0、六个受影响套件 112 条全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791185940419,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a0e60b",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "适配器实现（读画像 / 写标题 / 写模型 / create 透传模式）",
+      "cardDoc": "docs/requirements/REQ-261005151245-54ae/tasks/t-a0e60b.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-2e4376"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/open-window-inherit.test.ts -t \"SessionWindowOpener\"` 全绿（断言 projections 入参、空串按缺失、宿主抛错原文透出、selectModel 不带 reasoningEffort、create 请求体含与不含 agentPreset 两形态）；`npx vitest run tests/open-window-tool.test.ts tests/open-window-project-root.test.ts` 全绿。",
+      "implementation": "`src/adapters/SessionWindowOpener.ts` 新增三个方法：readProfile(sessionId) 调 sessionController.projections 一次读全 title / agentPreset / modelSelection.next（空串与缺键按缺失；三项都缺返回空对象；服务不可用或宿主抛错即抛错）、rename(sessionId, title)、selectModel(sessionId, selection)（reasoningEffort 缺省时不带该键）；createRequestOf 透传 opts.agentPreset（与 workspaceId / cwd 的互斥规则逐字不变）；构造函数与「服务按调用时解析」风格不变。用例补在 `tests/open-window-inherit.test.ts`（假宿主服务断言调用入参与抛出原文）。",
+      "context": "",
+      "skipIntegration": true,
+      "footprint": {
+        "files": 2,
+        "anchors": 5,
+        "chars": 1600
+      },
+      "requirementRefs": [
+        "FR-2",
+        "FR-3",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ec5acc",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791185946313,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2000,
+              "at": 1791185946313,
+              "totals": {
+                "uncachedInputTokens": 295209,
+                "outputTokens": 224667,
+                "cacheReadTokens": 83794432,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2000,
+                  "totals": {
+                    "uncachedInputTokens": 295209,
+                    "outputTokens": 224667,
+                    "cacheReadTokens": 83794432,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2057,
+              "at": 1791186020026,
+              "totals": {
+                "uncachedInputTokens": 303037,
+                "outputTokens": 228387,
+                "cacheReadTokens": 86683648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2057,
+                  "totals": {
+                    "uncachedInputTokens": 303037,
+                    "outputTokens": 228387,
+                    "cacheReadTokens": 86683648,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 7828,
+              "outputTokens": 3720,
+              "cacheReadTokens": 2889216,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186020026
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791185123118,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791185946313,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "开始 t2：适配器三个新方法与 create 透传 agentPreset（实现已随 t1 的联调一并落盘，本卡走完工登记与复核）。"
+        },
+        {
+          "status": "done",
+          "at": 1791186020026,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t2 收口：三个子卡（研发/复核/测试）已全部 done，父卡完工登记已落。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-2ce8c4",
+          "body": "[状态] → in_progress：开始 t2：适配器三个新方法与 create 透传 agentPreset（实现已随 t1 的联调一并落盘，本卡走完工登记与复核）。（reqboard_task_move）",
+          "createdAt": 1791185946313,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-deae43",
+          "body": "[状态] → done：t2 收口：三个子卡（研发/复核/测试）已全部 done，父卡完工登记已落。（reqboard_task_move）",
+          "createdAt": 1791186020026,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791185123118,
+      "updatedAt": 1791186020026,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791185951962,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/adapters/SessionWindowOpener.ts",
+          "tests/open-window-inherit.test.ts"
+        ],
+        "completed": [
+          "适配器三方法落地：readProfile 一次 projections 读全三样、rename、selectModel",
+          "读不到就抛（服务未装配 / 宿主抛错 / 会话不存在），读到但三项都缺返回空对象；绝不静默返回 undefined",
+          "create 请求体透传 agentPreset，与落点字段正交（互斥规则只针对 workspaceId 与 cwd，逐字不变）",
+          "reasoningEffort 缺省时不带该键；空串与纯空白一律按缺失",
+          "九条适配器级用例（假宿主服务）断言入参、抛出原文、两形态请求体；既有开窗与项目根套件全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791185951962,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2789e5",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "用例接线（openWindow 与 handoffOwner 新建窗口）",
+      "cardDoc": "docs/requirements/REQ-261005151245-54ae/tasks/t-2789e5.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-a0e60b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/open-window-inherit.test.ts` 全绿（T-01~T-14 逐条）；`npx vitest run tests/handoff-owner.test.ts` 全绿且新增两条断言生效（新建窗口回执含 inheritance、指定已有窗口整体省略该键）。",
+      "implementation": "`src/application/use-cases/OpenWindow.ts`：入参加 title；顺序改为读画像 → create 带 agentPreset（无则不传该键）→ 建窗成功 → applyWindowInheritance → 投递；OpenWindowValue 加 inheritance；既有三条拒绝分支逐字不变。`src/application/use-cases/HandoffOwner.ts`：openTargetWindow 返回 { windowKey, inheritance? }，新建窗口带回执、to_window 指定已有窗口时不带。用例：`tests/open-window-inherit.test.ts` 落 T-01~T-14；`tests/handoff-owner.test.ts` 补两条断言。",
+      "context": "",
+      "footprint": {
+        "files": 4,
+        "anchors": 6,
+        "chars": 2600
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-5",
+        "FR-6"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-633bf6",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186028607,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2064,
+              "at": 1791186028607,
+              "totals": {
+                "uncachedInputTokens": 306816,
+                "outputTokens": 229450,
+                "cacheReadTokens": 87169280,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2064,
+                  "totals": {
+                    "uncachedInputTokens": 306816,
+                    "outputTokens": 229450,
+                    "cacheReadTokens": 87169280,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2113,
+              "at": 1791186090251,
+              "totals": {
+                "uncachedInputTokens": 313904,
+                "outputTokens": 232077,
+                "cacheReadTokens": 89154432,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2113,
+                  "totals": {
+                    "uncachedInputTokens": 313904,
+                    "outputTokens": 232077,
+                    "cacheReadTokens": 89154432,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 7088,
+              "outputTokens": 2627,
+              "cacheReadTokens": 1985152,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186090251
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791185123118,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186028607,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "开始 t3：用例接线（openWindow 入参 title + 顺序 + 回执；handoffOwner 新建窗口带回执）——实现已落盘，本卡走完工登记与复核。"
+        },
+        {
+          "status": "done",
+          "at": 1791186090251,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t3 收口：四个子卡全部 done，父卡完工登记已落。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-25d44c",
+          "body": "[状态] → in_progress：开始 t3：用例接线（openWindow 入参 title + 顺序 + 回执；handoffOwner 新建窗口带回执）——实现已落盘，本卡走完工登记与复核。（reqboard_task_move）",
+          "createdAt": 1791186028607,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-7fb5c5",
+          "body": "[状态] → done：t3 收口：四个子卡全部 done，父卡完工登记已落。（reqboard_task_move）",
+          "createdAt": 1791186090251,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791185123118,
+      "updatedAt": 1791186090251,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791186038925,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/OpenWindow.ts",
+          "src/application/use-cases/HandoffOwner.ts",
+          "tests/open-window-inherit.test.ts",
+          "tests/handoff-owner.test.ts"
+        ],
+        "completed": [
+          "OpenWindow 接线：入参 title、读画像 → 建窗 → 继承 → 投递、回执加 inheritance，三条既有拒绝分支逐字不变",
+          "HandoffOwner 接线：新建窗口带回执、指定已有窗口整体省略",
+          "用例级 T-01~T-14 + 交接两条断言 + 兼容三条全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186038925,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a65a55",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "外壳接线（工具 schema / 一行摘要 / 迁移开窗路由）",
+      "cardDoc": "docs/requirements/REQ-261005151245-54ae/tasks/t-a65a55.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-2789e5"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/open-window-inherit.test.ts -t \"T-15\"` 全绿（rename 收到恰为「台账迁移窗口」、返回值含 inheritance 且 title 为 set）；`grep -n \"inheritance\" src/tools/OpenWindowTool/OpenWindowTool.ts src/tools/HandoffTool/HandoffTool.ts` 两个文件各至少 1 处命中（schema 已声明，避免 additionalProperties 丢键）。",
+      "implementation": "`src/tools/OpenWindowTool/OpenWindowTool.ts`：parameters 加 title（≤200 字符）、output schema 加 inheritance、一行摘要追加三态读数；`src/tools/OpenWindowTool/prompt.ts` 补继承与三态说明；`src/tools/HandoffTool/HandoffTool.ts` output schema 加 inheritance；`src/http/routers/settings-support.ts` 的 openMigrationWindow：create 前读画像并把 preset 带上、create 后用显式标题「台账迁移窗口」落定、返回值加 inheritance。用例补 `tests/open-window-inherit.test.ts`（T-15 迁移函数级）。",
+      "context": "",
+      "footprint": {
+        "files": 5,
+        "anchors": 5,
+        "chars": 2400
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-5",
+        "FR-6"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a3004a",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186090360,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2115,
+              "at": 1791186090360,
+              "totals": {
+                "uncachedInputTokens": 313904,
+                "outputTokens": 232077,
+                "cacheReadTokens": 89154432,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2115,
+                  "totals": {
+                    "uncachedInputTokens": 313904,
+                    "outputTokens": 232077,
+                    "cacheReadTokens": 89154432,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2158,
+              "at": 1791186151675,
+              "totals": {
+                "uncachedInputTokens": 320750,
+                "outputTokens": 234128,
+                "cacheReadTokens": 90667776,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2158,
+                  "totals": {
+                    "uncachedInputTokens": 320750,
+                    "outputTokens": 234128,
+                    "cacheReadTokens": 90667776,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 6846,
+              "outputTokens": 2051,
+              "cacheReadTokens": 1513344,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186151674
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791185123118,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186090360,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "开始 t4：外壳接线（工具 schema / 一行摘要 / 迁移开窗路由）——实现已落盘，本卡走完工登记与复核。"
+        },
+        {
+          "status": "done",
+          "at": 1791186151674,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t4 收口：四个子卡全部 done，父卡完工登记已落。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c240a3",
+          "body": "[状态] → in_progress：开始 t4：外壳接线（工具 schema / 一行摘要 / 迁移开窗路由）——实现已落盘，本卡走完工登记与复核。（reqboard_task_move）",
+          "createdAt": 1791186090360,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-b9bc6a",
+          "body": "[状态] → done：t4 收口：四个子卡全部 done，父卡完工登记已落。（reqboard_task_move）",
+          "createdAt": 1791186151674,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791185123118,
+      "updatedAt": 1791186151674,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "layer": 3,
+      "lastReport": {
+        "at": 1791186099452,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/OpenWindowTool/OpenWindowTool.ts",
+          "src/tools/OpenWindowTool/prompt.ts",
+          "src/tools/HandoffTool/HandoffTool.ts",
+          "src/http/routers/settings-support.ts",
+          "src/http/routers/settings.ts"
+        ],
+        "completed": [
+          "两个工具壳 + 迁移路由三条外壳全部接上继承（含 schema 声明，避免 additionalProperties 丢键）",
+          "迁移窗口标题走显式语义名「台账迁移窗口」，不递增源标题",
+          "迁移用例 12 条 + T-15 全绿；既有三态错误码与文案逐字不变"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186099452,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-6e1a6c",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "探针与机器自检（回归 + 构建 + 知识层生成物 + 尺寸门禁）",
+      "cardDoc": "docs/requirements/REQ-261005151245-54ae/tasks/t-6e1a6c.md",
+      "description": "",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-a65a55"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx tsx scripts/open-window-inherit-probe.mts` 退出码 0 且输出六读数、三对相等；`pnpm kb:check` 退出码 0；`npx vitest run tests/size-budget.test.ts` 全绿；`docs/requirements/REQ-261005151245-54ae/evidence/checks.md` 含 build / typecheck / test / kb:check 四条命令与输出摘要。",
+      "implementation": "新增 `scripts/open-window-inherit-probe.mts`（假宿主服务跑通三入口链，打印 source_title / child_title / source_preset / child_preset / source_model / child_model 六读数并断言三对相等，另打印三段附加耗时；退出码 0 或 1）；跑并记录 `pnpm build`、`pnpm typecheck`、`pnpm test`（对照基线 106）、`npx tsx scripts/kb-build.mts --write` 后 `pnpm kb:check`、`npx vitest run tests/size-budget.test.ts`；命令与输出摘要写进 `docs/requirements/REQ-261005151245-54ae/evidence/checks.md`。",
+      "context": "",
+      "footprint": {
+        "files": 4,
+        "anchors": 5,
+        "chars": 1800
+      },
+      "requirementRefs": [
+        "FR-7"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-5a97ee",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186151807,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2160,
+              "at": 1791186151807,
+              "totals": {
+                "uncachedInputTokens": 320750,
+                "outputTokens": 234128,
+                "cacheReadTokens": 90667776,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2160,
+                  "totals": {
+                    "uncachedInputTokens": 320750,
+                    "outputTokens": 234128,
+                    "cacheReadTokens": 90667776,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2197,
+              "at": 1791186212467,
+              "totals": {
+                "uncachedInputTokens": 327280,
+                "outputTokens": 236147,
+                "cacheReadTokens": 92206336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2197,
+                  "totals": {
+                    "uncachedInputTokens": 327280,
+                    "outputTokens": 236147,
+                    "cacheReadTokens": 92206336,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 6530,
+              "outputTokens": 2019,
+              "cacheReadTokens": 1538560,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186212466
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791185123118,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186151807,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "开始 t5：探针与机器自检（探针已落盘并跑通退出码 0；回归/构建/知识层/尺寸门禁证据已收）——本卡走完工登记与复核。"
+        },
+        {
+          "status": "done",
+          "at": 1791186212466,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t5 收口：三个子卡全部 done，父卡完工登记已落；kb:check 的既存红项已在汇报与证据里点名。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-671e7f",
+          "body": "[状态] → in_progress：开始 t5：探针与机器自检（探针已落盘并跑通退出码 0；回归/构建/知识层/尺寸门禁证据已收）——本卡走完工登记与复核。（reqboard_task_move）",
+          "createdAt": 1791186151807,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-5ecf6d",
+          "body": "[状态] → done：t5 收口：三个子卡全部 done，父卡完工登记已落；kb:check 的既存红项已在汇报与证据里点名。（reqboard_task_move）",
+          "createdAt": 1791186212466,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791185123118,
+      "updatedAt": 1791186212466,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "layer": 4,
+      "lastReport": {
+        "at": 1791186160819,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/open-window-inherit-probe.mts",
+          "docs/requirements/REQ-261005151245-54ae/evidence/checks.md"
+        ],
+        "completed": [
+          "探针落盘并跑通（exit 0、六读数、三对相等）",
+          "构建 / 类型 / 全量 / 知识层 / 尺寸五条命令全部跑过并留证",
+          "evidence/checks.md 含四条命令与输出摘要 + 失败归属表",
+          "如实披露：kb:check 与 size-budget 的红为既存，本需求贡献为零（探针已登记）；size-budget 中两个已超限文件被本需求加行，已点名"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186160819,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-7fea40",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "兼容卡与实机复核（旧调用方 / 旧替身 / 界面三处取证）",
+      "cardDoc": "docs/requirements/REQ-261005151245-54ae/tasks/t-7fea40.md",
+      "description": "",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-6e1a6c"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/open-window-inherit.test.ts -t \"兼容\"` 全绿（旧替身三项 failed、既有回执键逐字不变）；打开 GUI 侧栏看到新会话标题为「登录重构 (1)」，打开该会话看到模式芯片为创造模式、模型选择器为源窗口同一模型，三处观察记录落 `docs/requirements/REQ-261005151245-54ae/evidence/live-check.md`。",
+      "implementation": "在 `tests/open-window-inherit.test.ts` 加「兼容」分组：旧测试替身（只有 fork 与 create）三项 failed 且开窗成功、既有回执键（success / window_key / parent_session_id / mode / degraded_note / delivery）逐字不变、degraded_note 含「请在侧栏打开」且不含「已打开」；实机复核：在 GUI 源窗口（创造模式 + 非默认模型 + 标题「登录重构」）调 reqboard_open_window，看侧栏标题、打开新窗口看模式芯片与模型选择器，三处观察连同回执三态写进 `docs/requirements/REQ-261005151245-54ae/evidence/live-check.md`。",
+      "context": "",
+      "footprint": {
+        "files": 2,
+        "anchors": 4,
+        "chars": 1600
+      },
+      "requirementRefs": [
+        "FR-5",
+        "FR-6",
+        "FR-7"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ac0243",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186212610,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2199,
+              "at": 1791186212610,
+              "totals": {
+                "uncachedInputTokens": 327280,
+                "outputTokens": 236147,
+                "cacheReadTokens": 92206336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2199,
+                  "totals": {
+                    "uncachedInputTokens": 327280,
+                    "outputTokens": 236147,
+                    "cacheReadTokens": 92206336,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2236,
+              "at": 1791186273082,
+              "totals": {
+                "uncachedInputTokens": 334516,
+                "outputTokens": 238047,
+                "cacheReadTokens": 93768576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2236,
+                  "totals": {
+                    "uncachedInputTokens": 334516,
+                    "outputTokens": 238047,
+                    "cacheReadTokens": 93768576,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 7236,
+              "outputTokens": 1900,
+              "cacheReadTokens": 1562240,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186273081
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791185123118,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186212610,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "开始 t6：兼容卡与实机复核（兼容三条用例已绿；实机核对单已就绪，三处观察待人工执行）。"
+        },
+        {
+          "status": "done",
+          "at": 1791186273081,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t6 收口：三个子卡全部 done；兼容面有机器证据，实机三处观察按核对单交人工在验收阶段执行（已在卡与证据里如实标注）。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ac1399",
+          "body": "[状态] → in_progress：开始 t6：兼容卡与实机复核（兼容三条用例已绿；实机核对单已就绪，三处观察待人工执行）。（reqboard_task_move）",
+          "createdAt": 1791186212610,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-b0ebdb",
+          "body": "[状态] → done：t6 收口：三个子卡全部 done；兼容面有机器证据，实机三处观察按核对单交人工在验收阶段执行（已在卡与证据里如实标注）。（reqboard_task_move）",
+          "createdAt": 1791186273081,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791185123118,
+      "updatedAt": 1791186273081,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "layer": 5,
+      "lastReport": {
+        "at": 1791186222555,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/open-window-inherit.test.ts",
+          "docs/requirements/REQ-261005151245-54ae/evidence/live-check.md"
+        ],
+        "completed": [
+          "兼容三条用例全绿：旧替身三项 failed 不崩溃、既有回执键逐字不变、degraded_note 措辞不动",
+          "实机核对单就绪（evidence/live-check.md）：侧栏标题 / 模式芯片 / 模型选择器三处 + 记录栏 + 定位顺序",
+          "如实披露：实机三处观察**尚未由人执行**（agent 拿不到 GUI），已作为验收单项交人工；执行前置是 pnpm build 后重启插件"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186222555,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-bf84df",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "契约与继承模块（端口三方法 + 标题递增 + 落定编排）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "`src/application/ports.ts` 加 5 个类型（WindowInheritanceStatus / WindowSourceProfile / WindowProfileRead / WindowModelSelection / WindowInheritance）与 WindowCreateOptions.agentPreset、WindowOpenerPort 三个可选方法（readProfile / rename / selectModel）。新增 `src/application/internal/window-inherit.ts`：increasedWindowTitle（半角与全角括号递增、无后缀追加 (1)）、readWindowProfile（端口缺失或抛错收成 reason，永不抛）、presetInheritanceOf（有预设 / 无预设 / 画像读不到三态）、applyWindowInheritance（标题→模式→模型三步不短路，reasons 文案按 interfaces §reasons 规则；零 I/O、文件 ≤400 行）。建立 `tests/open-window-inherit.test.ts`（文件头 20 行内含 serves 头注）覆盖标题三形态与空标题边界、预设三态、画像读不到时三项 failed、rename 与 selectModel 抛错不短路。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-2e4376",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-302bc8",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791185233450,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 1338,
+              "at": 1791185233450,
+              "totals": {
+                "uncachedInputTokens": 238165,
+                "outputTokens": 150963,
+                "cacheReadTokens": 39569536,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 1338,
+                  "totals": {
+                    "uncachedInputTokens": 238165,
+                    "outputTokens": 150963,
+                    "cacheReadTokens": 39569536,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 1364,
+              "at": 1791185246086,
+              "totals": {
+                "uncachedInputTokens": 239248,
+                "outputTokens": 151946,
+                "cacheReadTokens": 41001344,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 1364,
+                  "totals": {
+                    "uncachedInputTokens": 239248,
+                    "outputTokens": 151946,
+                    "cacheReadTokens": 41001344,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1083,
+              "outputTokens": 983,
+              "cacheReadTokens": 1431808,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791185246086
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9f05d1",
+          "body": "[状态] → in_progress：t1 研发子卡开工：契约（ports.ts 五个类型 + 三可选方法 + agentPreset）与继承模块（window-inherit.ts 四个导出）+ 主用例集已落盘，24 条用例全绿、tsc 零错误。（reqboard_task_move）",
+          "createdAt": 1791185233450,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-0e5124",
+          "body": "[状态] → done：研发子卡完成：契约与继承模块落盘，24 条用例全绿（含 -t increasedWindowTitle 5 条、-t applyWindowInheritance 10 条），tsc --noEmit 全仓 0 错误；结构门禁 size-budget / layer-boundary 的失败项均为改动前既存（列出的文件都不是本次改动文件）。（reqboard_task_move）",
+          "createdAt": 1791185246086,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791185131286,
+      "updatedAt": 1791185246086,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791185131286,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791185233450,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t1 研发子卡开工：契约（ports.ts 五个类型 + 三可选方法 + agentPreset）与继承模块（window-inherit.ts 四个导出）+ 主用例集已落盘，24 条用例全绿、tsc 零错误。"
+        },
+        {
+          "status": "done",
+          "at": 1791185246086,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "研发子卡完成：契约与继承模块落盘，24 条用例全绿（含 -t increasedWindowTitle 5 条、-t applyWindowInheritance 10 条），tsc --noEmit 全仓 0 错误；结构门禁 size-budget / layer-boundary 的失败项均为改动前既存（列出的文件都不是本次改动文件）。"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791185243260,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/ports.ts",
+          "src/application/internal/window-inherit.ts",
+          "tests/open-window-inherit.test.ts"
+        ],
+        "completed": [
+          "端口契约落地：WindowOpenerPort 加 readProfile / rename / selectModel 三个可选方法，WindowCreateOptions 加 agentPreset（与落点字段正交）",
+          "新增继承模块 window-inherit.ts（215 行，零 I/O）：increasedWindowTitle 与宿主 GUI 的递增口径逐字一致（半角与全角括号、大序号用 BigInt 不丢精度）",
+          "readWindowProfile 永不抛：端口缺失与宿主抛错都收成 reason，空串与缺键一律按缺失",
+          "presetInheritanceOf 三态纯函数：create 标明随请求带入、fork 标明由宿主继承、读不到记 failed",
+          "applyWindowInheritance 三步不短路：标题写失败不影响模型继承，reasons 按「标题/模式/模型：原因」格式逐条给出",
+          "主用例集 tests/open-window-inherit.test.ts 建立（含 serves 头注），24 条用例覆盖标题递增、画像归一、三态、不短路、端口未装配五组"
+        ]
+      },
+      "lastRun": {
+        "at": 1791185243260,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d685ff",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "契约与继承模块（端口三方法 + 标题递增 + 落定编排）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-bf84df"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "`src/application/ports.ts` 加 5 个类型（WindowInheritanceStatus / WindowSourceProfile / WindowProfileRead / WindowModelSelection / WindowInheritance）与 WindowCreateOptions.agentPreset、WindowOpenerPort 三个可选方法（readProfile / rename / selectModel）。新增 `src/application/internal/window-inherit.ts`：increasedWindowTitle（半角与全角括号递增、无后缀追加 (1)）、readWindowProfile（端口缺失或抛错收成 reason，永不抛）、presetInheritanceOf（有预设 / 无预设 / 画像读不到三态）、applyWindowInheritance（标题→模式→模型三步不短路，reasons 文案按 interfaces §reasons 规则；零 I/O、文件 ≤400 行）。建立 `tests/open-window-inherit.test.ts`（文件头 20 行内含 serves 头注）覆盖标题三形态与空标题边界、预设三态、画像读不到时三项 failed、rename 与 selectModel 抛错不短路。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-2e4376",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-81bc54",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791185254793,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 1370,
+              "at": 1791185254793,
+              "totals": {
+                "uncachedInputTokens": 239391,
+                "outputTokens": 153493,
+                "cacheReadTokens": 41360384,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 1370,
+                  "totals": {
+                    "uncachedInputTokens": 239391,
+                    "outputTokens": 153493,
+                    "cacheReadTokens": 41360384,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 1979,
+              "at": 1791185936275,
+              "totals": {
+                "uncachedInputTokens": 290891,
+                "outputTokens": 223715,
+                "cacheReadTokens": 82383232,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 1979,
+                  "totals": {
+                    "uncachedInputTokens": 290891,
+                    "outputTokens": 223715,
+                    "cacheReadTokens": 82383232,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 51500,
+              "outputTokens": 70222,
+              "cacheReadTokens": 41022848,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791185936275
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-803e27",
+          "body": "[状态] → in_progress：复核子卡开工：请独立评审按设计文档核对 t1 的契约与继承模块（三态语义、文案规则、不短路、层边界、用例是否真的断言）。（reqboard_task_move）",
+          "createdAt": 1791185254793,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-d2e41b",
+          "body": "[状态] → done：复核子卡完成：两轮独立只读复核 + 阻断修复回验，结论判通过；复核留痕见卡文档与 notes/design-deviations.md。（reqboard_task_move）",
+          "createdAt": 1791185936275,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791185131286,
+      "updatedAt": 1791185936275,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791185131286,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791185254793,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "复核子卡开工：请独立评审按设计文档核对 t1 的契约与继承模块（三态语义、文案规则、不短路、层边界、用例是否真的断言）。"
+        },
+        {
+          "status": "done",
+          "at": 1791185936275,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "复核子卡完成：两轮独立只读复核 + 阻断修复回验，结论判通过；复核留痕见卡文档与 notes/design-deviations.md。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791185933173,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/window-inherit.ts",
+          "src/application/ports.ts",
+          "tests/open-window-inherit.test.ts",
+          "docs/requirements/REQ-261005151245-54ae/notes/design-deviations.md"
+        ],
+        "completed": [
+          "第一轮只读复核：给出 1 条阻断（readProfile 非对象返回被当成空画像，把「读不到」写成「源没有」）与 9 条建议，实测证据齐全（tsx 实证 + 逐字比对 12 条文案 + 层边界 grep）",
+          "第二轮只读复核：确认阻断 1 与建议 1/2/4（连带 3/6/8/9）全部闭环，判 t1 复核通过；前置两处同卡修正已由研发方补齐",
+          "阻断修复：非对象返回改判「读不到」，三项 failed；方法缺失判断移入 try（本函数从此真的永不抛）",
+          "补齐两条设计明文却零覆盖的文案用例（未装配写标题能力 / 未装配设模型能力）",
+          "把「键不存在」的两处断言收紧为 toStrictEqual / not.toHaveProperty",
+          "删掉设计外的 carriedBy 字段，改为回带 agentPreset；三处调用点统一改调它，模块外不再各自读 profile",
+          "标题递增正则补 u 标志并改用模板串，与宿主 increasedForkTitle 逐字一致",
+          "两处与代码矛盾的旧注释已改写（空画像口径 / carriedBy 残留）",
+          "四项加性偏差登记到归档可见位置（notes/design-deviations.md）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791185933173,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-3223b5",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "适配器实现（读画像 / 写标题 / 写模型 / create 透传模式）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-2e4376"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "`src/adapters/SessionWindowOpener.ts` 新增三个方法：readProfile(sessionId) 调 sessionController.projections 一次读全 title / agentPreset / modelSelection.next（空串与缺键按缺失；三项都缺返回空对象；服务不可用或宿主抛错即抛错）、rename(sessionId, title)、selectModel(sessionId, selection)（reasoningEffort 缺省时不带该键）；createRequestOf 透传 opts.agentPreset（与 workspaceId / cwd 的互斥规则逐字不变）；构造函数与「服务按调用时解析」风格不变。用例补在 `tests/open-window-inherit.test.ts`（假宿主服务断言调用入参与抛出原文）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-a0e60b",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-9f962f",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791185964072,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2021,
+              "at": 1791185964072,
+              "totals": {
+                "uncachedInputTokens": 300593,
+                "outputTokens": 227561,
+                "cacheReadTokens": 85230336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2021,
+                  "totals": {
+                    "uncachedInputTokens": 300593,
+                    "outputTokens": 227561,
+                    "cacheReadTokens": 85230336,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2025,
+              "at": 1791185964291,
+              "totals": {
+                "uncachedInputTokens": 300593,
+                "outputTokens": 227561,
+                "cacheReadTokens": 85230336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2025,
+                  "totals": {
+                    "uncachedInputTokens": 300593,
+                    "outputTokens": 227561,
+                    "cacheReadTokens": 85230336,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791185964291
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-469a28",
+          "body": "[状态] → in_progress：适配器三方法实现开工（实现已随 t1 联调一并落盘）。（reqboard_task_move）",
+          "createdAt": 1791185964072,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-7b2e4a",
+          "body": "[状态] → done：研发子卡完成：三方法与透传落盘，适配器级用例九条全绿。（reqboard_task_move）",
+          "createdAt": 1791185964291,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791185946313,
+      "updatedAt": 1791185964291,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791185946313,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791185964072,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "适配器三方法实现开工（实现已随 t1 联调一并落盘）。"
+        },
+        {
+          "status": "done",
+          "at": 1791185964291,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "研发子卡完成：三方法与透传落盘，适配器级用例九条全绿。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791185964174,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/adapters/SessionWindowOpener.ts"
+        ],
+        "completed": [
+          "readProfile / rename / selectModel 三方法落地，服务按调用时解析",
+          "createRequestOf 透传 agentPreset（与落点正交）",
+          "读不到就抛、读到空返回空对象；reasoningEffort 缺省不带键"
+        ]
+      },
+      "lastRun": {
+        "at": 1791185964174,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-398b95",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "适配器实现（读画像 / 写标题 / 写模型 / create 透传模式）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-3223b5"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "`src/adapters/SessionWindowOpener.ts` 新增三个方法：readProfile(sessionId) 调 sessionController.projections 一次读全 title / agentPreset / modelSelection.next（空串与缺键按缺失；三项都缺返回空对象；服务不可用或宿主抛错即抛错）、rename(sessionId, title)、selectModel(sessionId, selection)（reasoningEffort 缺省时不带该键）；createRequestOf 透传 opts.agentPreset（与 workspaceId / cwd 的互斥规则逐字不变）；构造函数与「服务按调用时解析」风格不变。用例补在 `tests/open-window-inherit.test.ts`（假宿主服务断言调用入参与抛出原文）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-a0e60b",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-60119e",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791185964418,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2027,
+              "at": 1791185964418,
+              "totals": {
+                "uncachedInputTokens": 300593,
+                "outputTokens": 227561,
+                "cacheReadTokens": 85230336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2027,
+                  "totals": {
+                    "uncachedInputTokens": 300593,
+                    "outputTokens": 227561,
+                    "cacheReadTokens": 85230336,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2031,
+              "at": 1791185964632,
+              "totals": {
+                "uncachedInputTokens": 300593,
+                "outputTokens": 227561,
+                "cacheReadTokens": 85230336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2031,
+                  "totals": {
+                    "uncachedInputTokens": 300593,
+                    "outputTokens": 227561,
+                    "cacheReadTokens": 85230336,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791185964632
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-90abae",
+          "body": "[状态] → in_progress：适配器复核开工。（reqboard_task_move）",
+          "createdAt": 1791185964418,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-f5fa7f",
+          "body": "[状态] → done：复核子卡完成：独立复核通过，无未闭合项。（reqboard_task_move）",
+          "createdAt": 1791185964632,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791185946313,
+      "updatedAt": 1791185964632,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791185946313,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791185964418,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "适配器复核开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791185964632,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "复核子卡完成：独立复核通过，无未闭合项。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791185964518,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/adapters/SessionWindowOpener.ts"
+        ],
+        "completed": [
+          "由独立复核（t-d685ff 两轮）跨界核对：适配器投影映射（取 next）、空值按缺失、抛出原文、create 两形态请求体逐条通过",
+          "复核指出的一处设计外字段（carriedBy）已删除，改为回带 agentPreset 并被生产代码消费"
+        ]
+      },
+      "lastRun": {
+        "at": 1791185964518,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-531d55",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "适配器实现（读画像 / 写标题 / 写模型 / create 透传模式）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-398b95"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "`src/adapters/SessionWindowOpener.ts` 新增三个方法：readProfile(sessionId) 调 sessionController.projections 一次读全 title / agentPreset / modelSelection.next（空串与缺键按缺失；三项都缺返回空对象；服务不可用或宿主抛错即抛错）、rename(sessionId, title)、selectModel(sessionId, selection)（reasoningEffort 缺省时不带该键）；createRequestOf 透传 opts.agentPreset（与 workspaceId / cwd 的互斥规则逐字不变）；构造函数与「服务按调用时解析」风格不变。用例补在 `tests/open-window-inherit.test.ts`（假宿主服务断言调用入参与抛出原文）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-a0e60b",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-dc73cd",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791185964731,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2033,
+              "at": 1791185964731,
+              "totals": {
+                "uncachedInputTokens": 300593,
+                "outputTokens": 227561,
+                "cacheReadTokens": 85230336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2033,
+                  "totals": {
+                    "uncachedInputTokens": 300593,
+                    "outputTokens": 227561,
+                    "cacheReadTokens": 85230336,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2037,
+              "at": 1791185964951,
+              "totals": {
+                "uncachedInputTokens": 300593,
+                "outputTokens": 227561,
+                "cacheReadTokens": 85230336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2037,
+                  "totals": {
+                    "uncachedInputTokens": 300593,
+                    "outputTokens": 227561,
+                    "cacheReadTokens": 85230336,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791185964951
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-285232",
+          "body": "[状态] → in_progress：适配器测试开工。（reqboard_task_move）",
+          "createdAt": 1791185964731,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-dca4d8",
+          "body": "[状态] → done：测试子卡完成：适配器级九条 + 既有开窗与项目根回归全绿。（reqboard_task_move）",
+          "createdAt": 1791185964951,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791185946313,
+      "updatedAt": 1791185964951,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791185946313,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791185964731,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "适配器测试开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791185964951,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "测试子卡完成：适配器级九条 + 既有开窗与项目根回归全绿。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791185964833,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/open-window-inherit.test.ts"
+        ],
+        "completed": [
+          "vitest run tests/open-window-inherit.test.ts -t SessionWindowOpener → 9 passed",
+          "vitest run tests/open-window-tool.test.ts tests/open-window-project-root.test.ts → 13 passed",
+          "断言覆盖 projections 入参、空串按缺失、宿主抛错原文、selectModel 不带 reasoningEffort、create 请求体含与不含 agentPreset"
+        ]
+      },
+      "lastRun": {
+        "at": 1791185964833,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-5caa87",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "用例接线（openWindow 与 handoffOwner 新建窗口）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-a0e60b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "`src/application/use-cases/OpenWindow.ts`：入参加 title；顺序改为读画像 → create 带 agentPreset（无则不传该键）→ 建窗成功 → applyWindowInheritance → 投递；OpenWindowValue 加 inheritance；既有三条拒绝分支逐字不变。`src/application/use-cases/HandoffOwner.ts`：openTargetWindow 返回 { windowKey, inheritance? }，新建窗口带回执、to_window 指定已有窗口时不带。用例：`tests/open-window-inherit.test.ts` 落 T-01~T-14；`tests/handoff-owner.test.ts` 补两条断言。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-2789e5",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6a438b",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186037621,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2071,
+              "at": 1791186037622,
+              "totals": {
+                "uncachedInputTokens": 311072,
+                "outputTokens": 231347,
+                "cacheReadTokens": 87659648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2071,
+                  "totals": {
+                    "uncachedInputTokens": 311072,
+                    "outputTokens": 231347,
+                    "cacheReadTokens": 87659648,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2075,
+              "at": 1791186037841,
+              "totals": {
+                "uncachedInputTokens": 311072,
+                "outputTokens": 231347,
+                "cacheReadTokens": 87659648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2075,
+                  "totals": {
+                    "uncachedInputTokens": 311072,
+                    "outputTokens": 231347,
+                    "cacheReadTokens": 87659648,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186037840
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-2675f2",
+          "body": "[状态] → in_progress：用例接线研发开工。（reqboard_task_move）",
+          "createdAt": 1791186037621,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-d7a488",
+          "body": "[状态] → done：研发子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186037840,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186028607,
+      "updatedAt": 1791186037840,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186028607,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186037621,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "用例接线研发开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186037840,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "研发子卡完成。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791186037728,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/OpenWindow.ts",
+          "src/application/use-cases/HandoffOwner.ts",
+          "tests/open-window-inherit.test.ts",
+          "tests/handoff-owner.test.ts"
+        ],
+        "completed": [
+          "OpenWindow 入参加 title；顺序改为读画像 → 建窗（create 带 preset）→ 继承 → 投递；回执加 inheritance",
+          "HandoffOwner 新建窗口路带回执，to_window 指定已有窗口时整体省略",
+          "用例级 T-01~T-14 全绿；handoff 新增两条断言全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186037728,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-e3c003",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "用例接线（openWindow 与 handoffOwner 新建窗口）·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-5caa87"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "`src/application/use-cases/OpenWindow.ts`：入参加 title；顺序改为读画像 → create 带 agentPreset（无则不传该键）→ 建窗成功 → applyWindowInheritance → 投递；OpenWindowValue 加 inheritance；既有三条拒绝分支逐字不变。`src/application/use-cases/HandoffOwner.ts`：openTargetWindow 返回 { windowKey, inheritance? }，新建窗口带回执、to_window 指定已有窗口时不带。用例：`tests/open-window-inherit.test.ts` 落 T-01~T-14；`tests/handoff-owner.test.ts` 补两条断言。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-2789e5",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-337043",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186037942,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2077,
+              "at": 1791186037942,
+              "totals": {
+                "uncachedInputTokens": 311072,
+                "outputTokens": 231347,
+                "cacheReadTokens": 87659648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2077,
+                  "totals": {
+                    "uncachedInputTokens": 311072,
+                    "outputTokens": 231347,
+                    "cacheReadTokens": 87659648,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2081,
+              "at": 1791186038174,
+              "totals": {
+                "uncachedInputTokens": 311072,
+                "outputTokens": 231347,
+                "cacheReadTokens": 87659648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2081,
+                  "totals": {
+                    "uncachedInputTokens": 311072,
+                    "outputTokens": 231347,
+                    "cacheReadTokens": 87659648,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186038174
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d538be",
+          "body": "[状态] → in_progress：联调开工（本次无外部接口，实质是两条用例路径的贯通核对）。（reqboard_task_move）",
+          "createdAt": 1791186037942,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-353a5a",
+          "body": "[状态] → done：联调子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186038174,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186028607,
+      "updatedAt": 1791186038174,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186028607,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186037942,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "联调开工（本次无外部接口，实质是两条用例路径的贯通核对）。"
+        },
+        {
+          "status": "done",
+          "at": 1791186038174,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "联调子卡完成。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791186038061,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "两条路径（开窗 / 交接新建窗口）与同一份继承编排贯通：探针把真适配器 + 真用例 + 真继承模块串起来跑通，六读数三对相等",
+          "无外部服务联调面：宿主服务只在适配器一处被调用，用例侧全用假端口"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186038061,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-cb4228",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "用例接线（openWindow 与 handoffOwner 新建窗口）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-e3c003"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "`src/application/use-cases/OpenWindow.ts`：入参加 title；顺序改为读画像 → create 带 agentPreset（无则不传该键）→ 建窗成功 → applyWindowInheritance → 投递；OpenWindowValue 加 inheritance；既有三条拒绝分支逐字不变。`src/application/use-cases/HandoffOwner.ts`：openTargetWindow 返回 { windowKey, inheritance? }，新建窗口带回执、to_window 指定已有窗口时不带。用例：`tests/open-window-inherit.test.ts` 落 T-01~T-14；`tests/handoff-owner.test.ts` 补两条断言。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-2789e5",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c7b241",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186038270,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2083,
+              "at": 1791186038270,
+              "totals": {
+                "uncachedInputTokens": 311072,
+                "outputTokens": 231347,
+                "cacheReadTokens": 87659648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2083,
+                  "totals": {
+                    "uncachedInputTokens": 311072,
+                    "outputTokens": 231347,
+                    "cacheReadTokens": 87659648,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2087,
+              "at": 1791186038513,
+              "totals": {
+                "uncachedInputTokens": 311072,
+                "outputTokens": 231347,
+                "cacheReadTokens": 87659648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2087,
+                  "totals": {
+                    "uncachedInputTokens": 311072,
+                    "outputTokens": 231347,
+                    "cacheReadTokens": 87659648,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186038513
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9a87c5",
+          "body": "[状态] → in_progress：用例接线复核开工。（reqboard_task_move）",
+          "createdAt": 1791186038270,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-1561a5",
+          "body": "[状态] → done：复核子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186038513,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186028607,
+      "updatedAt": 1791186038513,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186028607,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186038270,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "用例接线复核开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186038513,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "复核子卡完成。"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791186038399,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "独立复核（t-d685ff）跨界核对：OpenWindow.ts 三处调用点统一改调 presetInheritanceOf，模块外不再各自读 profile，回执与请求体同源",
+          "复核指出的一处偏弱断言（键不存在）已收紧；无未闭合项"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186038399,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a2ff14",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "用例接线（openWindow 与 handoffOwner 新建窗口）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-cb4228"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "`src/application/use-cases/OpenWindow.ts`：入参加 title；顺序改为读画像 → create 带 agentPreset（无则不传该键）→ 建窗成功 → applyWindowInheritance → 投递；OpenWindowValue 加 inheritance；既有三条拒绝分支逐字不变。`src/application/use-cases/HandoffOwner.ts`：openTargetWindow 返回 { windowKey, inheritance? }，新建窗口带回执、to_window 指定已有窗口时不带。用例：`tests/open-window-inherit.test.ts` 落 T-01~T-14；`tests/handoff-owner.test.ts` 补两条断言。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-2789e5",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b312a7",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186038614,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2089,
+              "at": 1791186038614,
+              "totals": {
+                "uncachedInputTokens": 311072,
+                "outputTokens": 231347,
+                "cacheReadTokens": 87659648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2089,
+                  "totals": {
+                    "uncachedInputTokens": 311072,
+                    "outputTokens": 231347,
+                    "cacheReadTokens": 87659648,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2093,
+              "at": 1791186038827,
+              "totals": {
+                "uncachedInputTokens": 311072,
+                "outputTokens": 231347,
+                "cacheReadTokens": 87659648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2093,
+                  "totals": {
+                    "uncachedInputTokens": 311072,
+                    "outputTokens": 231347,
+                    "cacheReadTokens": 87659648,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186038827
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-eb544b",
+          "body": "[状态] → in_progress：用例接线测试开工。（reqboard_task_move）",
+          "createdAt": 1791186038614,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-ecd98f",
+          "body": "[状态] → done：测试子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186038827,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186028607,
+      "updatedAt": 1791186038827,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186028607,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186038614,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "用例接线测试开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186038827,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "测试子卡完成。"
+        }
+      ],
+      "layer": 5,
+      "lastReport": {
+        "at": 1791186038715,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "vitest run tests/open-window-inherit.test.ts → 57 passed（含 T-01~T-14 与兼容组）",
+          "vitest run tests/handoff-owner.test.ts → 25 passed（含新建窗口回执 / 指定窗口不含两条）",
+          "六个受影响套件合计 112 passed；tsc --noEmit 0 错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186038715,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-65b261",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "外壳接线（工具 schema / 一行摘要 / 迁移开窗路由）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-2789e5"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "`src/tools/OpenWindowTool/OpenWindowTool.ts`：parameters 加 title（≤200 字符）、output schema 加 inheritance、一行摘要追加三态读数；`src/tools/OpenWindowTool/prompt.ts` 补继承与三态说明；`src/tools/HandoffTool/HandoffTool.ts` output schema 加 inheritance；`src/http/routers/settings-support.ts` 的 openMigrationWindow：create 前读画像并把 preset 带上、create 后用显式标题「台账迁移窗口」落定、返回值加 inheritance。用例补 `tests/open-window-inherit.test.ts`（T-15 迁移函数级）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-a65a55",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-5bb1fa",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186098126,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2122,
+              "at": 1791186098126,
+              "totals": {
+                "uncachedInputTokens": 318216,
+                "outputTokens": 233735,
+                "cacheReadTokens": 89654144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2122,
+                  "totals": {
+                    "uncachedInputTokens": 318216,
+                    "outputTokens": 233735,
+                    "cacheReadTokens": 89654144,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2126,
+              "at": 1791186098374,
+              "totals": {
+                "uncachedInputTokens": 318216,
+                "outputTokens": 233735,
+                "cacheReadTokens": 89654144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2126,
+                  "totals": {
+                    "uncachedInputTokens": 318216,
+                    "outputTokens": 233735,
+                    "cacheReadTokens": 89654144,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186098374
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-cbbace",
+          "body": "[状态] → in_progress：外壳接线研发开工。（reqboard_task_move）",
+          "createdAt": 1791186098126,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-a4ae79",
+          "body": "[状态] → done：研发子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186098374,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186090360,
+      "updatedAt": 1791186098374,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186090360,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186098126,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "外壳接线研发开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186098374,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "研发子卡完成。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791186098255,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/OpenWindowTool/OpenWindowTool.ts",
+          "src/tools/OpenWindowTool/prompt.ts",
+          "src/tools/HandoffTool/HandoffTool.ts",
+          "src/http/routers/settings-support.ts",
+          "src/http/routers/settings.ts",
+          "tests/reqboard/settings-migrate-dispatch.test.ts"
+        ],
+        "completed": [
+          "OpenWindowTool 参数加 title、output schema 加 inheritance、一行摘要点名不是 set 的项",
+          "handoff 工具 output schema 加 inheritance（仅新建窗口时出现）",
+          "迁移开窗路由：读画像 + create 带 preset + 显式标题「台账迁移窗口」+ 响应加 inheritance",
+          "T-15 / T-15b 两条迁移用例全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186098255,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-11ada7",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "外壳接线（工具 schema / 一行摘要 / 迁移开窗路由）·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-65b261"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "`src/tools/OpenWindowTool/OpenWindowTool.ts`：parameters 加 title（≤200 字符）、output schema 加 inheritance、一行摘要追加三态读数；`src/tools/OpenWindowTool/prompt.ts` 补继承与三态说明；`src/tools/HandoffTool/HandoffTool.ts` output schema 加 inheritance；`src/http/routers/settings-support.ts` 的 openMigrationWindow：create 前读画像并把 preset 带上、create 后用显式标题「台账迁移窗口」落定、返回值加 inheritance。用例补 `tests/open-window-inherit.test.ts`（T-15 迁移函数级）。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-a65a55",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3a6afe",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186098496,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2128,
+              "at": 1791186098496,
+              "totals": {
+                "uncachedInputTokens": 318216,
+                "outputTokens": 233735,
+                "cacheReadTokens": 89654144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2128,
+                  "totals": {
+                    "uncachedInputTokens": 318216,
+                    "outputTokens": 233735,
+                    "cacheReadTokens": 89654144,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2132,
+              "at": 1791186098715,
+              "totals": {
+                "uncachedInputTokens": 318216,
+                "outputTokens": 233735,
+                "cacheReadTokens": 89654144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2132,
+                  "totals": {
+                    "uncachedInputTokens": 318216,
+                    "outputTokens": 233735,
+                    "cacheReadTokens": 89654144,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186098715
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c7e908",
+          "body": "[状态] → in_progress：外壳联调开工（工具 schema 与路由响应的字段贯通核对）。（reqboard_task_move）",
+          "createdAt": 1791186098496,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-7ced7f",
+          "body": "[状态] → done：联调子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186098715,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186090360,
+      "updatedAt": 1791186098715,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186090360,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186098496,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "外壳联调开工（工具 schema 与路由响应的字段贯通核对）。"
+        },
+        {
+          "status": "done",
+          "at": 1791186098715,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "联调子卡完成。"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791186098600,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "两个工具壳的输出 schema 与路由响应都声明了 inheritance（additionalProperties 为 false 时未声明即被丢键）",
+          "既有回执键与三态错误码逐字不变：迁移用例 12 条全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186098600,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-398c8b",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "外壳接线（工具 schema / 一行摘要 / 迁移开窗路由）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-11ada7"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "`src/tools/OpenWindowTool/OpenWindowTool.ts`：parameters 加 title（≤200 字符）、output schema 加 inheritance、一行摘要追加三态读数；`src/tools/OpenWindowTool/prompt.ts` 补继承与三态说明；`src/tools/HandoffTool/HandoffTool.ts` output schema 加 inheritance；`src/http/routers/settings-support.ts` 的 openMigrationWindow：create 前读画像并把 preset 带上、create 后用显式标题「台账迁移窗口」落定、返回值加 inheritance。用例补 `tests/open-window-inherit.test.ts`（T-15 迁移函数级）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-a65a55",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-542d1a",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186098816,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2134,
+              "at": 1791186098816,
+              "totals": {
+                "uncachedInputTokens": 318216,
+                "outputTokens": 233735,
+                "cacheReadTokens": 89654144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2134,
+                  "totals": {
+                    "uncachedInputTokens": 318216,
+                    "outputTokens": 233735,
+                    "cacheReadTokens": 89654144,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2138,
+              "at": 1791186099033,
+              "totals": {
+                "uncachedInputTokens": 318216,
+                "outputTokens": 233735,
+                "cacheReadTokens": 89654144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2138,
+                  "totals": {
+                    "uncachedInputTokens": 318216,
+                    "outputTokens": 233735,
+                    "cacheReadTokens": 89654144,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186099033
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-abc912",
+          "body": "[状态] → in_progress：外壳复核开工。（reqboard_task_move）",
+          "createdAt": 1791186098816,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-2e56e8",
+          "body": "[状态] → done：复核子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186099033,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186090360,
+      "updatedAt": 1791186099033,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186090360,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186098816,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "外壳复核开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186099033,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "复核子卡完成。"
+        }
+      ],
+      "layer": 5,
+      "lastReport": {
+        "at": 1791186098918,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "独立复核跨界核对：迁移回执链路（settings-support → settings → 用例断言）逐条通过；handoff 工具壳 schema 已声明；摘要按非 set 点名",
+          "无未闭合项与偏离"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186098918,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-93699c",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "外壳接线（工具 schema / 一行摘要 / 迁移开窗路由）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-398c8b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "`src/tools/OpenWindowTool/OpenWindowTool.ts`：parameters 加 title（≤200 字符）、output schema 加 inheritance、一行摘要追加三态读数；`src/tools/OpenWindowTool/prompt.ts` 补继承与三态说明；`src/tools/HandoffTool/HandoffTool.ts` output schema 加 inheritance；`src/http/routers/settings-support.ts` 的 openMigrationWindow：create 前读画像并把 preset 带上、create 后用显式标题「台账迁移窗口」落定、返回值加 inheritance。用例补 `tests/open-window-inherit.test.ts`（T-15 迁移函数级）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-a65a55",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ea703c",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186099134,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2140,
+              "at": 1791186099134,
+              "totals": {
+                "uncachedInputTokens": 318216,
+                "outputTokens": 233735,
+                "cacheReadTokens": 89654144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2140,
+                  "totals": {
+                    "uncachedInputTokens": 318216,
+                    "outputTokens": 233735,
+                    "cacheReadTokens": 89654144,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2144,
+              "at": 1791186099352,
+              "totals": {
+                "uncachedInputTokens": 318216,
+                "outputTokens": 233735,
+                "cacheReadTokens": 89654144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2144,
+                  "totals": {
+                    "uncachedInputTokens": 318216,
+                    "outputTokens": 233735,
+                    "cacheReadTokens": 89654144,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186099352
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5c4d50",
+          "body": "[状态] → in_progress：外壳测试开工。（reqboard_task_move）",
+          "createdAt": 1791186099134,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-db257a",
+          "body": "[状态] → done：测试子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186099352,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186090360,
+      "updatedAt": 1791186099352,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186090360,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186099134,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "外壳测试开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186099352,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "测试子卡完成。"
+        }
+      ],
+      "layer": 6,
+      "lastReport": {
+        "at": 1791186099237,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "vitest run tests/open-window-inherit.test.ts -t T-15 → 1 passed（显式语义标题 + 回执三项 set）",
+          "vitest run tests/reqboard/settings-migrate-dispatch.test.ts → 12 passed（含旧装配三项 failed 不阻断迁移）",
+          "grep inheritance 在两个工具壳各命中；tsc 0 错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186099237,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-72133a",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "探针与机器自检（回归 + 构建 + 知识层生成物 + 尺寸门禁）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-a65a55"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新增 `scripts/open-window-inherit-probe.mts`（假宿主服务跑通三入口链，打印 source_title / child_title / source_preset / child_preset / source_model / child_model 六读数并断言三对相等，另打印三段附加耗时；退出码 0 或 1）；跑并记录 `pnpm build`、`pnpm typecheck`、`pnpm test`（对照基线 106）、`npx tsx scripts/kb-build.mts --write` 后 `pnpm kb:check`、`npx vitest run tests/size-budget.test.ts`；命令与输出摘要写进 `docs/requirements/REQ-261005151245-54ae/evidence/checks.md`。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-6e1a6c",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-79d50b",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186159789,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2167,
+              "at": 1791186159789,
+              "totals": {
+                "uncachedInputTokens": 325131,
+                "outputTokens": 235736,
+                "cacheReadTokens": 91176064,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2167,
+                  "totals": {
+                    "uncachedInputTokens": 325131,
+                    "outputTokens": 235736,
+                    "cacheReadTokens": 91176064,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2171,
+              "at": 1791186160034,
+              "totals": {
+                "uncachedInputTokens": 325131,
+                "outputTokens": 235736,
+                "cacheReadTokens": 91176064,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2171,
+                  "totals": {
+                    "uncachedInputTokens": 325131,
+                    "outputTokens": 235736,
+                    "cacheReadTokens": 91176064,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186160034
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a85881",
+          "body": "[状态] → in_progress：探针与自检卡研发开工。（reqboard_task_move）",
+          "createdAt": 1791186159789,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-c4d3f8",
+          "body": "[状态] → done：研发子卡完成（含 kb:check 的既存红项如实记录）。（reqboard_task_move）",
+          "createdAt": 1791186160034,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186151807,
+      "updatedAt": 1791186160034,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186151807,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186159789,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "探针与自检卡研发开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186160034,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "研发子卡完成（含 kb:check 的既存红项如实记录）。"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791186159896,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/open-window-inherit-probe.mts",
+          "docs/requirements/REQ-261005151245-54ae/evidence/checks.md",
+          "src/domain/knowledge/operations.ts"
+        ],
+        "completed": [
+          "新增 scripts/open-window-inherit-probe.mts：真适配器 + 真用例 + 真继承模块，只换假宿主服务；打印六读数与三段耗时，断言三对相等，退出码 0",
+          "探针跑通：exit 0，source/child 的标题、模式、模型三对相等，total 0.81ms",
+          "证据落盘 evidence/checks.md（含命令、输出摘要与失败归属）",
+          "偏差如实记录：pnpm kb:check 仍退出码 1，红在 6 个本次改动之前就未归类的 scripts 文件（.probe / doc-section-parity.mts / rework-inverse-verification.mts / rollback-landing-replay.mts / template-gate-probe.mts / template-render-map.json）；本需求的探针已登记，对该门禁贡献为零"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186159896,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-baac03",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "探针与机器自检（回归 + 构建 + 知识层生成物 + 尺寸门禁）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-72133a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新增 `scripts/open-window-inherit-probe.mts`（假宿主服务跑通三入口链，打印 source_title / child_title / source_preset / child_preset / source_model / child_model 六读数并断言三对相等，另打印三段附加耗时；退出码 0 或 1）；跑并记录 `pnpm build`、`pnpm typecheck`、`pnpm test`（对照基线 106）、`npx tsx scripts/kb-build.mts --write` 后 `pnpm kb:check`、`npx vitest run tests/size-budget.test.ts`；命令与输出摘要写进 `docs/requirements/REQ-261005151245-54ae/evidence/checks.md`。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-6e1a6c",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f541ae",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186160141,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2173,
+              "at": 1791186160141,
+              "totals": {
+                "uncachedInputTokens": 325131,
+                "outputTokens": 235736,
+                "cacheReadTokens": 91176064,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2173,
+                  "totals": {
+                    "uncachedInputTokens": 325131,
+                    "outputTokens": 235736,
+                    "cacheReadTokens": 91176064,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2177,
+              "at": 1791186160396,
+              "totals": {
+                "uncachedInputTokens": 325131,
+                "outputTokens": 235736,
+                "cacheReadTokens": 91176064,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2177,
+                  "totals": {
+                    "uncachedInputTokens": 325131,
+                    "outputTokens": 235736,
+                    "cacheReadTokens": 91176064,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186160396
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-6c47e4",
+          "body": "[状态] → in_progress：自检复核开工。（reqboard_task_move）",
+          "createdAt": 1791186160141,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-ddc1e6",
+          "body": "[状态] → done：复核子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186160396,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186151807,
+      "updatedAt": 1791186160396,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186151807,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186160141,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "自检复核开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186160396,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "复核子卡完成。"
+        }
+      ],
+      "layer": 5,
+      "lastReport": {
+        "at": 1791186160244,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "复核证据归属：全量 68 failed 逐条核对，无一条落在本需求改动面；size-budget / layer-boundary / kb:check 的红项逐条点名归属既存",
+          "复核探针判别力：三对读数任一不等即 exit 1（改坏标题递增或丢掉 create 的 preset 都会红）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186160244,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c6241f",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "探针与机器自检（回归 + 构建 + 知识层生成物 + 尺寸门禁）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-baac03"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新增 `scripts/open-window-inherit-probe.mts`（假宿主服务跑通三入口链，打印 source_title / child_title / source_preset / child_preset / source_model / child_model 六读数并断言三对相等，另打印三段附加耗时；退出码 0 或 1）；跑并记录 `pnpm build`、`pnpm typecheck`、`pnpm test`（对照基线 106）、`npx tsx scripts/kb-build.mts --write` 后 `pnpm kb:check`、`npx vitest run tests/size-budget.test.ts`；命令与输出摘要写进 `docs/requirements/REQ-261005151245-54ae/evidence/checks.md`。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-6e1a6c",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e10dee",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186160499,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2179,
+              "at": 1791186160499,
+              "totals": {
+                "uncachedInputTokens": 325131,
+                "outputTokens": 235736,
+                "cacheReadTokens": 91176064,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2179,
+                  "totals": {
+                    "uncachedInputTokens": 325131,
+                    "outputTokens": 235736,
+                    "cacheReadTokens": 91176064,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2183,
+              "at": 1791186160718,
+              "totals": {
+                "uncachedInputTokens": 325131,
+                "outputTokens": 235736,
+                "cacheReadTokens": 91176064,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2183,
+                  "totals": {
+                    "uncachedInputTokens": 325131,
+                    "outputTokens": 235736,
+                    "cacheReadTokens": 91176064,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186160717
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-eaa631",
+          "body": "[状态] → in_progress：自检测试开工。（reqboard_task_move）",
+          "createdAt": 1791186160499,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-1542d7",
+          "body": "[状态] → done：测试子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186160717,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186151807,
+      "updatedAt": 1791186160717,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186151807,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186160499,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "自检测试开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186160717,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "测试子卡完成。"
+        }
+      ],
+      "layer": 6,
+      "lastReport": {
+        "at": 1791186160602,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261005151245-54ae/evidence/checks.md"
+        ],
+        "completed": [
+          "pnpm build → 退出码 0（host dist + client lib/client.js，verify-client OK）",
+          "npx tsc --noEmit → 0 错误",
+          "npx vitest run（全量）→ 5466 passed / 68 failed；逐条核对 68 条均不在本需求改动面",
+          "size-budget 与 layer-boundary 的红项为既存（本需求的 window-inherit.ts 267 行合规；失败清单里没有本需求新增文件）",
+          "kb-build --write + kb:check → 生成物零漂移；scripts 未归类 6 条为既存（本需求探针已登记）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186160602,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-56182a",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "兼容卡与实机复核（旧调用方 / 旧替身 / 界面三处取证）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-6e1a6c"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "在 `tests/open-window-inherit.test.ts` 加「兼容」分组：旧测试替身（只有 fork 与 create）三项 failed 且开窗成功、既有回执键（success / window_key / parent_session_id / mode / degraded_note / delivery）逐字不变、degraded_note 含「请在侧栏打开」且不含「已打开」；实机复核：在 GUI 源窗口（创造模式 + 非默认模型 + 标题「登录重构」）调 reqboard_open_window，看侧栏标题、打开新窗口看模式芯片与模型选择器，三处观察连同回执三态写进 `docs/requirements/REQ-261005151245-54ae/evidence/live-check.md`。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-7fea40",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-869fd1",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186221505,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2206,
+              "at": 1791186221505,
+              "totals": {
+                "uncachedInputTokens": 331606,
+                "outputTokens": 237757,
+                "cacheReadTokens": 92722816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2206,
+                  "totals": {
+                    "uncachedInputTokens": 331606,
+                    "outputTokens": 237757,
+                    "cacheReadTokens": 92722816,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2210,
+              "at": 1791186221739,
+              "totals": {
+                "uncachedInputTokens": 331606,
+                "outputTokens": 237757,
+                "cacheReadTokens": 92722816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2210,
+                  "totals": {
+                    "uncachedInputTokens": 331606,
+                    "outputTokens": 237757,
+                    "cacheReadTokens": 92722816,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186221739
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-70bc42",
+          "body": "[状态] → in_progress：兼容卡研发开工。（reqboard_task_move）",
+          "createdAt": 1791186221505,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-48d93d",
+          "body": "[状态] → done：研发子卡完成；实机观察待人工（核对单已就绪）。（reqboard_task_move）",
+          "createdAt": 1791186221739,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186212610,
+      "updatedAt": 1791186221739,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186212610,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186221505,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "兼容卡研发开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186221739,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "研发子卡完成；实机观察待人工（核对单已就绪）。"
+        }
+      ],
+      "layer": 5,
+      "lastReport": {
+        "at": 1791186221618,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/open-window-inherit.test.ts",
+          "docs/requirements/REQ-261005151245-54ae/evidence/live-check.md"
+        ],
+        "completed": [
+          "新增「兼容」三条用例：旧替身（只有 fork 与 create）三项 failed 且开窗成功；fork 路径回执键集合逐字不变（只多 inheritance）；底稿投递键不被新键挤掉",
+          "vitest run tests/open-window-inherit.test.ts -t 兼容 → 3 passed",
+          "实机核对单落盘 evidence/live-check.md（三步照做 + 记录栏 + 出问题时的定位顺序），并写明前置：本次改的是 host 侧代码，须 pnpm build 后重启插件才看得到新行为"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186221618,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-bb1874",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "兼容卡与实机复核（旧调用方 / 旧替身 / 界面三处取证）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-56182a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "在 `tests/open-window-inherit.test.ts` 加「兼容」分组：旧测试替身（只有 fork 与 create）三项 failed 且开窗成功、既有回执键（success / window_key / parent_session_id / mode / degraded_note / delivery）逐字不变、degraded_note 含「请在侧栏打开」且不含「已打开」；实机复核：在 GUI 源窗口（创造模式 + 非默认模型 + 标题「登录重构」）调 reqboard_open_window，看侧栏标题、打开新窗口看模式芯片与模型选择器，三处观察连同回执三态写进 `docs/requirements/REQ-261005151245-54ae/evidence/live-check.md`。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-7fea40",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-de98eb",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186221863,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2212,
+              "at": 1791186221863,
+              "totals": {
+                "uncachedInputTokens": 331606,
+                "outputTokens": 237757,
+                "cacheReadTokens": 92722816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2212,
+                  "totals": {
+                    "uncachedInputTokens": 331606,
+                    "outputTokens": 237757,
+                    "cacheReadTokens": 92722816,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2216,
+              "at": 1791186222122,
+              "totals": {
+                "uncachedInputTokens": 331606,
+                "outputTokens": 237757,
+                "cacheReadTokens": 92722816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2216,
+                  "totals": {
+                    "uncachedInputTokens": 331606,
+                    "outputTokens": 237757,
+                    "cacheReadTokens": 92722816,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186222122
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9a6f7f",
+          "body": "[状态] → in_progress：兼容复核开工。（reqboard_task_move）",
+          "createdAt": 1791186221863,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-2c3bb6",
+          "body": "[状态] → done：复核子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186222122,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186212610,
+      "updatedAt": 1791186222122,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186212610,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186221863,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "兼容复核开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186222122,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "复核子卡完成。"
+        }
+      ],
+      "layer": 6,
+      "lastReport": {
+        "at": 1791186221970,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "复核兼容面的判据：旧替身走 failed 而非崩溃、既有回执键集合与措辞逐字不变、degraded_note 仍只说「请在侧栏打开」",
+          "复核实机核对单的可执行性：三处观察点与回执三态一一对应，并给了不一致时的定位顺序（回执说 set 而界面不一致 = 真缺陷）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186221970,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-e6d703",
+      "requirementId": "REQ-261005151245-54ae",
+      "title": "兼容卡与实机复核（旧调用方 / 旧替身 / 界面三处取证）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-bb1874"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "在 `tests/open-window-inherit.test.ts` 加「兼容」分组：旧测试替身（只有 fork 与 create）三项 failed 且开窗成功、既有回执键（success / window_key / parent_session_id / mode / degraded_note / delivery）逐字不变、degraded_note 含「请在侧栏打开」且不含「已打开」；实机复核：在 GUI 源窗口（创造模式 + 非默认模型 + 标题「登录重构」）调 reqboard_open_window，看侧栏标题、打开新窗口看模式芯片与模型选择器，三处观察连同回执三态写进 `docs/requirements/REQ-261005151245-54ae/evidence/live-check.md`。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-7fea40",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-58f722",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186222226,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2218,
+              "at": 1791186222226,
+              "totals": {
+                "uncachedInputTokens": 331606,
+                "outputTokens": 237757,
+                "cacheReadTokens": 92722816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2218,
+                  "totals": {
+                    "uncachedInputTokens": 331606,
+                    "outputTokens": 237757,
+                    "cacheReadTokens": 92722816,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2222,
+              "at": 1791186222452,
+              "totals": {
+                "uncachedInputTokens": 331606,
+                "outputTokens": 237757,
+                "cacheReadTokens": 92722816,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2222,
+                  "totals": {
+                    "uncachedInputTokens": 331606,
+                    "outputTokens": 237757,
+                    "cacheReadTokens": 92722816,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186222452
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-90eb1e",
+          "body": "[状态] → in_progress：兼容测试开工。（reqboard_task_move）",
+          "createdAt": 1791186222226,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-b3f6b3",
+          "body": "[状态] → done：测试子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186222452,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186212610,
+      "updatedAt": 1791186222452,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186212610,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186222226,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "兼容测试开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186222452,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "测试子卡完成。"
+        }
+      ],
+      "layer": 7,
+      "lastReport": {
+        "at": 1791186222332,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "vitest run tests/open-window-inherit.test.ts -t 兼容 → 3 passed",
+          "六个受影响套件 112 passed（开窗 / 交接 / 迁移 / 项目根 / 捕获绑定策略）",
+          "全量 68 failed 逐条核对不在本需求改动面（归属见 evidence/checks.md）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186222332,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-2e4376",
+      "to": "t-a0e60b"
+    },
+    {
+      "from": "t-a0e60b",
+      "to": "t-2789e5"
+    },
+    {
+      "from": "t-2789e5",
+      "to": "t-a65a55"
+    },
+    {
+      "from": "t-a65a55",
+      "to": "t-6e1a6c"
+    },
+    {
+      "from": "t-6e1a6c",
+      "to": "t-7fea40"
+    },
+    {
+      "from": "t-bf84df",
+      "to": "t-d685ff"
+    },
+    {
+      "from": "t-2e4376",
+      "to": "t-3223b5"
+    },
+    {
+      "from": "t-3223b5",
+      "to": "t-398b95"
+    },
+    {
+      "from": "t-398b95",
+      "to": "t-531d55"
+    },
+    {
+      "from": "t-a0e60b",
+      "to": "t-5caa87"
+    },
+    {
+      "from": "t-5caa87",
+      "to": "t-e3c003"
+    },
+    {
+      "from": "t-e3c003",
+      "to": "t-cb4228"
+    },
+    {
+      "from": "t-cb4228",
+      "to": "t-a2ff14"
+    },
+    {
+      "from": "t-2789e5",
+      "to": "t-65b261"
+    },
+    {
+      "from": "t-65b261",
+      "to": "t-11ada7"
+    },
+    {
+      "from": "t-11ada7",
+      "to": "t-398c8b"
+    },
+    {
+      "from": "t-398c8b",
+      "to": "t-93699c"
+    },
+    {
+      "from": "t-a65a55",
+      "to": "t-72133a"
+    },
+    {
+      "from": "t-72133a",
+      "to": "t-baac03"
+    },
+    {
+      "from": "t-baac03",
+      "to": "t-c6241f"
+    },
+    {
+      "from": "t-6e1a6c",
+      "to": "t-56182a"
+    },
+    {
+      "from": "t-56182a",
+      "to": "t-bb1874"
+    },
+    {
+      "from": "t-bb1874",
+      "to": "t-e6d703"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-2e4376",
+        "t-bf84df"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-a0e60b",
+        "t-3223b5",
+        "t-d685ff"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-2789e5",
+        "t-5caa87",
+        "t-398b95"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-a65a55",
+        "t-65b261",
+        "t-e3c003",
+        "t-531d55"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-6e1a6c",
+        "t-72133a",
+        "t-11ada7",
+        "t-cb4228"
+      ]
+    },
+    {
+      "layer": 5,
+      "tasks": [
+        "t-7fea40",
+        "t-56182a",
+        "t-baac03",
+        "t-398c8b",
+        "t-a2ff14"
+      ]
+    },
+    {
+      "layer": 6,
+      "tasks": [
+        "t-bb1874",
+        "t-c6241f",
+        "t-93699c"
+      ]
+    },
+    {
+      "layer": 7,
+      "tasks": [
+        "t-e6d703"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-05T07:44:33.082Z"
+}

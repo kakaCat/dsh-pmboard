@@ -1,0 +1,36 @@
+task:
+  id: t-e76a72
+  title: 实现原型三门与元数据解析（prototype-gates.ts + 条件必交判定）·联调
+  status: done
+  implements: |-
+    新建 src/application/internal/prototype-gates.ts（≤400 行；只做取数+组装，判定下沉纯函数），导出 checkPrototypePresenceGate(docs, req)→prototype_missing、checkPrototypeVersionGate(docs, req)→prototype_version_conflict、checkPrototypeAnchorsGate(docs, req)→prototype_anchor_missing，以及纯函数 parsePrototypeMetadata(html)（零 IO：正则抽 id="FR-N" 锚点、抽恰好一块 <!-- proto-geometry {json} --> 并返回块数与解析错误；递归扫 JSON 键，命中阈值禁用词表 threshold/max/min/limit/expected/tolerance/upper/lower/range/budget/target/pass/fail 即违规）与 prototypeExemptOf(req, frontmatter)（理由 trim 后非空 且 requirement 产物 confirmedAt 已写，才生效）。INDEX 用既有 parseDocument 读 prototypes/INDEX.md 表格（列：路径/状态/服务条款/被取代于），authoritative 必须恰好一条；路径一律 normalizeArtifactPath 归一为需求目录相对口径；requirement.md 与 design/frontend.md 中出现的原型路径必须等于权威路径，指向 superseded 即拒。改 src/application/internal/category-doc-sets.ts：增 ConditionalStageArtifact 类型与 conditionalStageArtifactsFor(category, sides)，与 effectiveDesignDocs 同源解析 sides，feature/refactor 命中 {stage:'brainstorming', kind:'prototype', side:'frontend'}；阶段必备产物取 STAGE_ARTIFACT_REQUIREMENTS[stage] ∪ 条件命中项。非 UI 需求三件门一律返回 undefined。依据 design-brief §1/§2 与 §10 #2/#4/#5/#8/#9/#19。
+
+    [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+  serves: []
+  depends_on:
+    - t-513472
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005105032-3b02
+    TASK_ID: t-e76a72
+    TASK_TITLE: 实现原型三门与元数据解析（prototype-gates.ts + 条件必交判定）·联调
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T05:34:39.666Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005105032-3b02
+  generated_at: 2026-10-05T05:34:39.470Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T05:34:39.835Z

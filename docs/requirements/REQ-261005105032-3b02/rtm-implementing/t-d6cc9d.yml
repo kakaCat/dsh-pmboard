@@ -1,0 +1,39 @@
+task:
+  id: t-d6cc9d
+  title: 加唯一 async 门禁入口 contentGatesForMove 并接线四条转移路径·测试
+  status: done
+  implements: |-
+    改 src/application/internal/content-gate-wiring.ts：新增唯一的 async helper contentGatesForMove(docs, req, from, to)，内部按 (from,to) 分派——brainstorming→design 依次跑 checkPrototypePresenceGate → checkPrototypeVersionGate → checkPrototypeAnchorsGate → checkDecisionLogGate，短路返回首个 GateFailure；其余转移与非 UI（sides 不含 frontend）或非 feature/refactor 需求返回 undefined。四条路径在同步门之后调用它：① src/application/use-cases/MoveRequirement.ts（assertArtifactGates 之后、G2 判定之前）；② src/application/use-cases/AskConfirm.ts 的推进块（新增接线，失败 → advanced:false + 门消息）；③ src/http/routers/requirements.ts 的 handleReqMove（preGate 之后、g2CompletenessFailure 之前，mutate 内复查）；④ src/application/use-cases/ConfirmArtifact.ts（advanceTargetFor 命中且未显式关闭推进时，失败 → advanceNote 追加门消息、不推进）。不动同步单点 assertArtifactGates 的签名与职责，不合并既有 G2 调用。回归写成一个文件 tests/move-gate-paths.test.ts：对四条入口各断言一次，且同时断言既有 G2 仍生效；逐条注释掉任一调用点该用例必须红。依据 design-brief §2 与 §10 #22/#46。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-faf529
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005105032-3b02
+    TASK_ID: t-d6cc9d
+    TASK_TITLE: 加唯一 async 门禁入口 contentGatesForMove 并接线四条转移路径·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-05T06:03:45.346Z
+      completed_at: 2026-10-05T06:03:47.666Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005105032-3b02
+  generated_at: 2026-10-05T06:03:36.534Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T06:03:47.666Z

@@ -1,0 +1,36 @@
+task:
+  id: t-cd48c5
+  title: 迁移与兼容：存量记录与老 SQLite 库·研发
+  status: done
+  implements: |-
+    src/repositories/sqliteSchema.ts 加幂等 ALTER TABLE … ADD COLUMN project_id（同名列已存在即跳过，不重建表）；src/application/internal/support.ts 的存量回落分支补 attributed=false 标注；新增 docs/requirements/REQ-261005141830-7a3b/notes/rollback.md 写回滚路径（去掉端口装配即回原行为，记录留在盘上无害）。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-54297d
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005141830-7a3b
+    TASK_ID: t-cd48c5
+    TASK_TITLE: 迁移与兼容：存量记录与老 SQLite 库·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T07:25:50.381Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005141830-7a3b
+  generated_at: 2026-10-05T07:25:46.686Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T07:25:53.089Z

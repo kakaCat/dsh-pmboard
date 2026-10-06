@@ -1,0 +1,38 @@
+task:
+  id: t-d49de6
+  title: auto-confirm 改走 requestGate（自动弹不再重复建门）·复核
+  status: done
+  implements: |-
+    改 src/application/internal/auto-confirm.ts::triggerAutoConfirm：先调 requestGate，仅 mode==='opened' 时投递弹框；reused / already-settled 时返回 {triggered:false, reason:'该门已有一个在等的框（ticket=…）'}，不再 fire-and-forget 投递。既有的原型存在门窄口径预判保持在其前、逐字不变（无门产物仍不建门）。弹框通道不可用的探测分支与失败告警端口不变。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-15729f
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006164732-6503
+    TASK_ID: t-d49de6
+    TASK_TITLE: auto-confirm 改走 requestGate（自动弹不再重复建门）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T09:24:42.552Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006164732-6503
+  generated_at: 2026-10-06T09:24:36.360Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T09:24:42.553Z

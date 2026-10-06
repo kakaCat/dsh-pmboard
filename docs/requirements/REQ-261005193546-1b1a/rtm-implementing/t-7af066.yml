@@ -1,0 +1,36 @@
+task:
+  id: t-7af066
+  title: 加 TaskRecord 三个加性可选字段与 markCanceled 写入口，并接四个取消写入点·联调
+  status: done
+  implements: |-
+    ① 改 `src/shared/protocol.ts`：`TaskRecord` 增三个**加性可选**字段 `canceledAt?: number`、`canceledBy?: { kind: 'human'; sessionId?: string }`、`cancelReason?: string`（注释写明：语义=**最近一次取消**（覆盖式）、缺省=**未采集**、不 bump `REQBOARD_SCHEMA_VERSION`（9）与 `QUEUE_VERSION`（1）、**不加进** `REQUIRED_TASK_FIELDS`）；在既有 `recordStatus` 旁新增**唯一写入口** `markCanceled(task: TaskRecord, opts: { at: number; by: ActorRef; reason?: string }): void`——就地写：`task.canceledAt = opts.at`；仅当 `opts.by.kind === 'human'` 才写 `task.canceledBy = { kind: 'human', ...(sessionId !== undefined ? { sessionId } : {}) }`（真非人工路径**整字段不写** + `console.warn`，不写 `kind:'system'` 之类替身值）；`opts.reason` 的 `trim()` 非空才写 `cancelReason`（不设硬上限）；**不做 IO、不返回新对象、不落盘**。② `src/application/internal/task-transition.ts` 的 `transitionTask`：`to === 'canceled'` 时在 `task.status = to` 同一处调 `markCanceled(task, { at: opts.at, by: opts.actor, reason: opts.reason })`（同对象、同一次写事务；`assertTaskTransition` 失败路径不改任何字段）。③ 三个批量直写点同款接线（都在 `copy.status = 'canceled'` 的相邻行）：`src/application/internal/rollback-tasks.ts` 的 `planRollbackTasks`、`src/application/internal/stale-rework.ts` 的 `cancelStaleReworkCards`、`src/application/internal/rollback-cleanup.ts` 的 `planRollbackCleanup`——`at` 取该批动作的 `now`（同批同一值）、`by` 取**触发该批动作的人**、`reason` 取**该批动作的原因**（如「回退重拆」，不是逐卡理由）。**复活（`canceled → todo`）不清空三字段**（本卡不加任何清空逻辑）；`HUMAN_ONLY_TASK_TRANSITIONS` 与 `assertTaskTransition` 一字不改。④ 新增 `tests/canceled-task-trail.test.ts`：写侧四条形态（人工取消 / 非人工不写 / 空白 reason 不写 / 复活不清空）+ 与 `statusHistory` 同源同刻 + 批量取消整批有值。验证：`npx vitest run tests/canceled-task-trail.test.ts`。依据 design/data-model.md §1/§7 与 backend.md §取消留痕写侧。
+
+    [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+  serves: []
+  depends_on:
+    - t-4160d7
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005193546-1b1a
+    TASK_ID: t-7af066
+    TASK_TITLE: 加 TaskRecord 三个加性可选字段与 markCanceled 写入口，并接四个取消写入点·联调
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T17:02:54.841Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005193546-1b1a
+  generated_at: 2026-10-05T17:02:54.840Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T17:02:55.869Z

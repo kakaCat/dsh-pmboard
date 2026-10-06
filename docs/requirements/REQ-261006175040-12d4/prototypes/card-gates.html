@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>REQ-261006175040-12d4 · 泳道卡面「产物门读数」视觉契约原型（card-gates.html）</title>
+<!--
+  ============================================================================
+  这是什么
+  ----------------------------------------------------------------------------
+  REQ-261006175040-12d4 的**唯一 authoritative** 原型（清单见 prototypes/INDEX.md）。
+  它表达的唯一一件事：看板泳道卡面（.dsh-pm-card）的**产物门读数区域**在拿到真实门读数后长什么样 ——
+  四门 chips 三态（✓ 已确认 / ⏳ 待确认可点 / ✗ 缺失）+「门 已确认/生效门总数」派生行 + 确认产物按钮。
+  它**不是**卡面重新设计：布局、配色、字阶、圆角、间距一律沿用现有实现，未新增任何一个设计 token。
+
+  卡面 DOM 的唯一事实源：src/client/views/artifacts.ts 的 renderReqCard（本页严格按其输出顺序拼）
+    .dsh-pm-card-top(id/runningDot/cat/plan+verify+archive chip/ready/autoBadge) → title → progress(bar/pct/token)
+    → substat → artifactChips → artifactDerived → time → window+session chip → confirmBtn → autoControls → actions
+  chip 文案与类名：renderArtifactChips / renderConfirmButton / renderArtifactDerived / planChip（artifacts.ts）、
+  verifyChip / archiveChip（views/verification.ts）；种类中文名：shared/artifact-labels.ts 的 artifactKindLabel。
+
+  本文件同时按原型锚点门（src/application/internal/prototype-gates.ts）的机器判据出：
+    · 5 个 id="FR-N" 锚点（与 INDEX「服务条款」列声明一致：FR-1 / FR-3 / FR-4 / FR-5 / FR-6）
+    · 恰好一块原型几何观测量注释（HTML 注释形态，口径见本文件末尾的块前声明；此处不重复写出该注释的
+      起始标记 —— 写出来会既提前闭合本注释、又被当成第二块几何注释，实测踩过）
+  缺任一项 → brainstorming→design 被 REQBOARD_PROTOTYPE_ANCHOR_MISSING 拒。
+
+  ============================================================================
+  CSS 抄自哪里（**逐字**抄录，未改任何类名 / 数值 / 选择器）
+  ----------------------------------------------------------------------------
+  ① src/client/styles/base.ts
+       :root 设计 token 全块 ........................... 第 11–38 行
+       .dsh-pm-btn / .dsh-pm-btn.primary / .sm .......... 第 58–69 行
+       .dsh-pm-card / :hover / .is-blocked / -top / -id /
+       .dsh-pm-cat(含 data-cat 变体) / .dsh-pm-flag(含
+       blocked/paused/ready) / -title / -progress / -bar /
+       -bar-fill / -pct / .dsh-pm-card-actions ......... 第 153–187 行
+       .dsh-pm-window / .dsh-pm-session ................. 第 189–203 行
+       .dsh-pm-flag.verify-pending / .archive-pending ... 第 397–398 行
+  ② src/client/styles/board.ts
+       .dsh-pm-artifact-chips / .dsh-pm-artifact-chip
+       （含 .confirmed / .pending / .pending:hover / .missing）
+       / .dsh-pm-artifact-derived /
+       .dsh-pm-confirm-artifact ........................ 第 317–365 行
+       .dsh-pm-running 运行点 + keyframes +
+       prefers-reduced-motion 降级 ...................... 第 485–506 行
+  ③ src/client/styles/detail.ts
+       .dsh-pm-flag.plan-pending / .plan-ok /
+       .plan-rejected ................................... 第 45–47 行
+       .dsh-pm-card-time ................................ 第 50 行
+  ④ src/client/styles/subtask.ts
+       .dsh-pm-auto-badge 四态（data-auto）+ .dsh-pm-auto-controls
+       + .dsh-pm-card-substat ........................... 第 7–13 行
+  ⑤ src/client/styles/token.ts
+       .dsh-pm-token-badge .............................. 第 57–58 行
+
+  宿主主题变量（--dsw-*）在本文件里**不定义**：真实 DSH 由宿主注入，此处每条规则自然回落到仓库自己
+  写下的 fallback 值（如 var(--dsw-text-secondary, #999) → #999）——即"现有实现声明的值"，不是新选的颜色。
+
+  ============================================================================
+  评审脚手架
+  ----------------------------------------------------------------------------
+  .pv-* 是本页的评审脚手架（页头 / 区块 / 图例 / 标注 / 对照框），**不属于视觉契约**，
+  也不允许被抄进实现；卡面对照只看 .dsh-pm-* 部分。页面底色 font-family 沿用仓内既有原型模板
+  （templates/brainstorming/prototype.html → prototypes/detail.html）的深色页头 + #f5f6f8 底，
+  同样只是脚手架。
+
+  纪律：无外链、无网络、无字体 CDN、无图片资源；图标为字符（✓ / ⏳ / ✗ / 🪙，与实现逐字一致）或内联 SVG。
+-->
+<style>
+/* ==========================================================================
+   §1 真实实现 CSS（逐字抄录；来源见文件头注释）
+   ========================================================================== */
+
+/* ① base.ts 第 11–38 行：pmboard 设计 token */
+:root {
+  /* 尺寸 */
+  --pm-btn-h: 28px;         /* 按钮/分段控件统一高度（对齐 .dsh-pm-btn） */
+  --pm-btn-h-sm: 24px;      /* 卡面紧凑按钮 */
+  --pm-radius: 10px;
+  --pm-radius-sm: 7px;
+  --pm-radius-pill: 999px;
+  --pm-gap: 8px;
+  --pm-gap-sm: 4px;
+  --pm-gap-lg: 12px;
+  /* 阴影 / 线条 / 底色 */
+  --pm-shadow-card: 0 1px 2px rgba(0,0,0,.06);
+  --pm-shadow-hover: 0 4px 14px rgba(0,0,0,.10);
+  --pm-line: var(--dsw-border, rgba(128,128,128,.18));
+  --pm-line-strong: rgba(128,128,128,.28);
+  --pm-bg-soft: var(--dsw-bg-secondary, rgba(128,128,128,.06));
+  /* 8 类节点状态色（与泳道点/甘特条/阶段面板同源，勿各自另立色值） */
+  --pm-c-draft: #9aa4b2;
+  --pm-c-brainstorming: #f0a020;
+  --pm-c-design: #c2255c;
+  --pm-c-decomposing: #8e44ad;
+  --pm-c-implementing: #4a7dff;
+  --pm-c-accepting: #17a2b8;
+  --pm-c-done: #28a745;
+  --pm-c-archived: #6c757d;
+  --pm-c-danger: #dc3545;
+  --pm-c-warn: #b07800;
+}
+
+/* ① base.ts 第 58–69 行 */
+.dsh-pm-btn {
+  padding: 5px 12px; border-radius: 6px; border: 1px solid var(--dsw-border, rgba(128,128,128,.25));
+  background: transparent; color: var(--dsw-text-primary, #333);
+  font-size: 13px; cursor: pointer;
+}
+.dsh-pm-btn:hover { background: var(--dsw-hover, rgba(128,128,128,.1)); }
+.dsh-pm-btn.primary {
+  background: var(--dsw-accent, #4a7dff); color: #fff; border-color: transparent;
+}
+.dsh-pm-btn.primary:hover { opacity: .88; }
+/* 卡片内紧凑尺寸（同色系/同圆角，只缩尺寸） */
+.dsh-pm-btn.sm { padding: 3px 10px; font-size: 12px; border-radius: 6px; }
+
+/* ① base.ts 第 153–187 行 */
+.dsh-pm-card {
+  background: var(--dsw-bg-primary, #fff);
+  border: 1px solid var(--pm-line);
+  border-radius: 8px; padding: 12px;
+  cursor: pointer; display: flex; flex-direction: column; gap: 8px;
+  transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+}
+.dsh-pm-card:hover {
+  border-color: var(--dsw-accent, #4a7dff);
+  box-shadow: 0 4px 12px rgba(74,125,255,.12); transform: translateY(-2px);
+}
+.dsh-pm-card.is-blocked {
+  border-color: var(--pm-c-danger);
+}
+.dsh-pm-card-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dsh-pm-card-id { font-size: 11px; font-family: ui-monospace, monospace; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-cat {
+  font-size: 10px; padding: 1px 6px; border-radius: 4px;
+  background: rgba(74,125,255,.12); color: #4a7dff;
+}
+.dsh-pm-cat[data-cat="bug"] { background: rgba(220,53,69,.12); color: #dc3545; }
+.dsh-pm-cat[data-cat="doc"] { background: rgba(23,162,184,.12); color: #17a2b8; }
+.dsh-pm-flag { font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+.dsh-pm-flag.blocked { background: rgba(220,53,69,.12); color: #dc3545; }
+.dsh-pm-flag.paused { background: rgba(240,160,32,.15); color: #b07800; }
+.dsh-pm-flag.ready { background: rgba(40,167,69,.12); color: #28a745; }
+.dsh-pm-card-title { font-size: 13px; font-weight: 600; color: var(--dsw-text-primary, #111827); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.dsh-pm-card-progress { display: flex; align-items: center; gap: 8px; }
+.dsh-pm-card-bar { flex: 1; height: 4px; border-radius: 2px; background: rgba(128,128,128,.15); overflow: hidden; }
+.dsh-pm-card-bar-fill { height: 100%; background: linear-gradient(90deg, #4a7dff, #28a745); border-radius: 2px; transition: width .3s; }
+.dsh-pm-card-pct { font-size: 11px; color: var(--dsw-text-secondary, #999); flex: none; }
+/* 卡面操作行：按钮复用全站 .dsh-pm-btn 体系（与页头「刷新/+需求」、详情页闸门同款），
+   只加紧凑尺寸变体，避免看板内出现第二套按钮视觉。 */
+.dsh-pm-card-actions { display: flex; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--pm-line); }
+.dsh-pm-card-actions .dsh-pm-btn { flex: 1; text-align: center; }
+
+/* ① base.ts 第 189–203 行 */
+.dsh-pm-window {
+  display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 9px;
+  border: 1px solid rgba(74,125,255,.35); background: rgba(74,125,255,.08);
+  color: var(--dsw-accent, #4a7dff); font-size: 11px; cursor: pointer;
+  font-family: ui-monospace, monospace;
+}
+.dsh-pm-window:hover { background: rgba(74,125,255,.16); }
+
+.dsh-pm-session {
+  font-size: 11px; padding: 2px 8px; border-radius: 4px;
+  border: 1px solid var(--dsw-border, rgba(128,128,128,.25));
+  background: transparent; color: var(--dsw-accent, #4a7dff);
+  cursor: pointer; align-self: flex-start;
+}
+.dsh-pm-session:hover { background: rgba(74,125,255,.08); }
+
+/* ① base.ts 第 397–398 行 */
+.dsh-pm-flag.verify-pending { background: rgba(23,162,184,.15); color: #17a2b8; }
+.dsh-pm-flag.archive-pending { background: rgba(108,117,125,.15); color: #6c757d; }
+
+/* ② board.ts 第 317–365 行：产物 chips + 派生行 + 确认按钮 */
+.dsh-pm-artifact-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.dsh-pm-artifact-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: none;
+  cursor: default;
+  line-height: 1.4;
+}
+
+.dsh-pm-artifact-chip.confirmed {
+  background: rgba(40, 167, 69, .12);
+  color: #28a745;
+}
+
+.dsh-pm-artifact-chip.pending {
+  background: rgba(240, 160, 32, .15);
+  color: #b07800;
+  cursor: pointer;
+}
+
+.dsh-pm-artifact-chip.pending:hover {
+  background: rgba(240, 160, 32, .25);
+}
+
+.dsh-pm-artifact-chip.missing {
+  background: rgba(220, 53, 69, .12);
+  color: #dc3545;
+}
+
+.dsh-pm-artifact-derived {
+  font-size: 10px;
+  color: var(--dsw-text-secondary, #999);
+  margin-top: 4px;
+}
+
+.dsh-pm-confirm-artifact {
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+/* ② board.ts 第 485–506 行：运行中指示（泳道卡与列表行共用一个渲染单点） */
+.dsh-pm-running {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 13px; height: 13px; flex: none; margin: 0 3px;
+  color: var(--dsw-accent, #4a7dff);
+  vertical-align: -2px;
+}
+.dsh-pm-running-svg { display: block; animation: dsh-pm-running-spin 1.5s linear infinite; transform-origin: center; }
+.dsh-pm-running-track,
+.dsh-pm-running-arc { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.dsh-pm-running-track { opacity: .25; }
+.dsh-pm-running-arc { stroke-dasharray: 12 40; animation: dsh-pm-running-dash 1.5s ease-in-out infinite; }
+@keyframes dsh-pm-running-spin { to { transform: rotate(360deg); } }
+@keyframes dsh-pm-running-dash {
+  0% { stroke-dasharray: 12 40; stroke-dashoffset: 0; }
+  50% { stroke-dasharray: 24 40; stroke-dashoffset: -6; }
+  100% { stroke-dasharray: 12 40; stroke-dashoffset: 0; }
+}
+/* 尊重「减少动态效果」：不旋转，保留静态半环（语义不丢） */
+@media (prefers-reduced-motion: reduce) {
+  .dsh-pm-running-svg, .dsh-pm-running-arc { animation: none; }
+  .dsh-pm-running-arc { stroke-dasharray: 18 40; stroke-dashoffset: -3; }
+}
+
+/* ③ detail.ts 第 45–47 行 */
+.dsh-pm-flag.plan-pending { background: rgba(240,160,32,.15); color: #b07800; }
+.dsh-pm-flag.plan-ok { background: rgba(40,167,69,.12); color: #28a745; }
+.dsh-pm-flag.plan-rejected { background: rgba(220,53,69,.12); color: #dc3545; }
+
+/* ③ detail.ts 第 50 行 */
+.dsh-pm-card-time { font-size: 11px; color: var(--dsw-text-secondary, #999); }
+
+/* ④ subtask.ts 第 7–13 行 */
+.dsh-pm-auto-badge { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.dsh-pm-auto-badge[data-auto="running"] { background: rgba(74,125,255,.14); color: #4a7dff; }
+.dsh-pm-auto-badge[data-auto="paused"] { background: rgba(156,163,175,.18); color: #6b7280; }
+.dsh-pm-auto-badge[data-auto="breaker"] { background: rgba(220,53,69,.14); color: #dc3545; }
+.dsh-pm-auto-badge[data-auto="manual"] { background: rgba(156,163,175,.10); color: #9ca3af; font-weight: 500; }
+.dsh-pm-auto-controls { display: flex; gap: 6px; margin-top: 6px; }
+.dsh-pm-card-substat { font-size: 11px; color: var(--dsw-text-secondary, #666); margin-top: 2px; }
+
+/* ⑤ token.ts 第 57–58 行 */
+.dsh-pm-token-badge { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-size: 9px;
+  padding: 1px 6px; border-radius: 9px; background: rgba(194, 37, 92, .10); color: #c2255c; font-variant-numeric: tabular-nums; }
+
+/* ==========================================================================
+   §2 评审脚手架（.pv-*）——**不是**视觉契约，不得抄进实现
+   ========================================================================== */
+body { margin: 0; background: #f5f6f8; color: #24292f; font-size: 14px; line-height: 1.6;
+  font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif; }
+.pv-head { background: #1f2328; color: #fff; padding: 16px 24px 14px; }
+.pv-head h1 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+.pv-head .pv-req { opacity: .72; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.pv-legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; }
+.pv-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.pv-main { padding: 20px 24px 0; }
+.pv-sec { background: #fff; border: 1px solid #d0d7de; border-radius: 8px; padding: 16px 20px; margin-bottom: 18px; }
+.pv-sec > h2 { margin: 0 0 4px; font-size: 15px; }
+.pv-sub { border-top: 1px dashed #d0d7de; margin-top: 16px; padding-top: 12px; }
+.pv-sub > h3 { margin: 0 0 6px; font-size: 13px; }
+.pv-note { font-size: 12px; color: #57606a; margin: 6px 0 0; }
+.pv-note code, .pv-cls, .pv-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+  background: #f0f2f5; border-radius: 4px; padding: 1px 5px; color: #3b4048; }
+.pv-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; margin-top: 12px; }
+.pv-frame { width: 340px; }
+.pv-caption { font-size: 12px; margin-bottom: 6px; }
+.pv-caption b { font-size: 12px; }
+.pv-tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px;
+  background: #eaeef2; color: #57606a; margin-right: 4px; }
+.pv-tag.bad { background: #ffe3e6; color: #b42318; }
+.pv-tag.ok { background: #dafbe1; color: #1a7f37; }
+.pv-chipcell { display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  padding: 12px; border: 1px dashed #d0d7de; border-radius: 6px; background: #fbfcfd; }
+.pv-chipcell .dsh-pm-flag { font-size: 10px; }
+.pv-warn { font-size: 12px; color: #7d4e00; background: #fff8c5; border: 1px solid #eac54f;
+  border-radius: 6px; padding: 8px 10px; margin: 10px 0 0; }
+.pv-tbl { border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+.pv-tbl th, .pv-tbl td { border: 1px solid #d0d7de; padding: 4px 8px; text-align: left; vertical-align: top; }
+.pv-tbl th { background: #f6f8fa; }
+.pv-foot { padding: 4px 24px 32px; font-size: 12px; color: #57606a; }
+</style>
+</head>
+<body>
+
+<header class="pv-head">
+  <h1>卡面视觉契约：泳道卡面拿到真实门读数后长什么样（三态 chips + 门 N/M + 确认入口）</h1>
+  <div class="pv-req">REQ-261006175040-12d4 · prototypes/card-gates.html · 唯一 authoritative · 2026-10-06</div>
+  <div class="pv-legend">
+    <span><span class="dsh-pm-artifact-chip confirmed">✓ 已确认</span> 已落章（绿）</span>
+    <span><span class="dsh-pm-artifact-chip pending">⏳ 待确认（可点）</span> 已登记未落章，点它即确认（橙）</span>
+    <span><span class="dsh-pm-artifact-chip missing">✗ 缺失</span> 未登记任何该 kind 的产物（红）</span>
+    <span>读不到 → 整块不渲染（既不是 ✓ 也不是 ✗）</span>
+  </div>
+</header>
+
+<main class="pv-main">
+
+<!-- ============================== A + B（FR-1） ============================== -->
+<section class="pv-sec" id="FR-1">
+  <h2>A / B · 四门 chips 三态（对应 FR-1）</h2>
+  <p class="pv-note">
+    A 是**现状**（数据来源被切断：首屏摘要不含 <code>artifacts</code>/<code>plan</code>/<code>verification</code>/<code>archive</code>，
+    卡面仍从这些字段算门状态）；B 是修复后（门读数随摘要下发，卡面只渲染）。A 与 B-3 是**同一条台账事实**
+    的修复前 / 修复后对照 —— 直接对应需求验收标准 1（<code>REQ-261006130057-7a43</code>）。
+  </p>
+
+  <div class="pv-row">
+
+    <!-- ---------- A. 修复前 ---------- -->
+    <div class="pv-caption" style="width:340px">
+      <span class="pv-tag bad">A · 现状</span><b>数据来源被切断</b>
+      <p class="pv-note" style="margin-top:4px">
+        台账事实：需求文档 ✓ / 6 份设计文档 ✓ / 拆分计划 ✓ / 验收材料 未登记。<br>
+        卡面却读作：四门全红 ✗ + <code>产物 0/6</code> + 无「确认产物」按钮 + 计划 chip 沉默
+        （<code>plan</code> 大字段不在摘要里 ⇒ <code>planChip</code> 返回空串）。
+      </p>
+    </div>
+    <div class="pv-frame" style="margin:0 18px 0 0">
+      <div class="dsh-pm-card" data-req="REQ-261006130057-7a43" data-action="open-req">
+        <div class="dsh-pm-card-top">
+          <span class="dsh-pm-card-id">REQ-261006130057-7a43</span><span class="dsh-pm-running" data-running="true" role="img" aria-label="会话进行中" title="会话进行中（该需求绑定窗口正在执行回合）"><svg class="dsh-pm-running-svg" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false"><circle class="dsh-pm-running-track" cx="8" cy="8" r="6" /><circle class="dsh-pm-running-arc" cx="8" cy="8" r="6" /></svg></span>
+          <span class="dsh-pm-cat" data-cat="feature">功能</span><span class="dsh-pm-flag ready">2 ready</span><span class="dsh-pm-auto-badge" data-auto="running" title="自动链运行中：每完成一步自动触发下一步（点「暂停」可随时停）">自动链</span>
+        </div>
+        <div class="dsh-pm-card-title">示例需求：卡面门读数修复（标本）</div>
+        <div class="dsh-pm-card-progress">
+          <div class="dsh-pm-card-bar"><div class="dsh-pm-card-bar-fill" style="width:75%"></div></div>
+          <span class="dsh-pm-card-pct">21/28</span>
+          <span class="dsh-pm-token-badge" title="累计 Token（会话快照差值合计，含子代理；口径见详情 Token tab）">🪙 1.2M</span>
+        </div>
+        <div class="dsh-pm-card-substat" title="父卡按依赖并行；子卡在父卡内串行">父卡 5/8 · 子卡 21/28</div>
+        <div class="dsh-pm-artifact-chips"><span class="dsh-pm-artifact-chip missing" title="需求文档缺失">✗ 需求文档</span><span class="dsh-pm-artifact-chip missing" title="设计文档缺失">✗ 设计文档</span><span class="dsh-pm-artifact-chip missing" title="拆分计划缺失">✗ 拆分计划</span><span class="dsh-pm-artifact-chip missing" title="验收材料缺失">✗ 验收材料</span></div>
+        <div class="dsh-pm-artifact-derived">产物 0/6</div>
+        <div class="dsh-pm-card-time">创建 10-06 14:20 · 实施 10-06 16:05 · 已停留 42 分</div>
+        <button type="button" class="dsh-pm-window" data-action="jump-session" data-sid="session-1cee2467-95f9-4a3e-8b7d-0f1a2b3c4d5e" title="立项来源窗口（点击跳转到该会话）：session-1cee2467-95f9-4a3e-8b7d-0f1a2b3c4d5e">窗口 w-1cee2467</button><button type="button" class="dsh-pm-session" data-action="jump-session" data-sid="session-9f8e7d6c-1234-4a5b-8c9d-0e1f2a3b4c5d" title="执行会话（点击跳转到该会话）：session-9f8e7d6c-1234-4a5b-8c9d-0e1f2a3b4c5d">会话 session-9f8e…</button>
+        <div class="dsh-pm-auto-controls"><button type="button" class="dsh-pm-btn sm" data-action="auto-run-pause" data-id="REQ-261006130057-7a43" title="停止推进下一张牌（已在跑的 run 允许跑完），状态不丢">暂停</button><button type="button" class="dsh-pm-btn sm" data-action="auto-run-stop" data-id="REQ-261006130057-7a43" title="暂停自动链；在跑/待跑的卡需人工取消（取消是人工闸门）">终止</button></div>
+        <div class="dsh-pm-card-actions"><button type="button" class="dsh-pm-btn sm primary" data-action="move-req" data-to="accepting" data-id="REQ-261006130057-7a43" title="进入验收；任务全部完成时系统会自动推进">→ 验收</button><button type="button" class="dsh-pm-btn sm" data-action="move-req" data-to="canceled" data-id="REQ-261006130057-7a43" title="取消该需求（仅人可操作）">取消</button></div>
+      </div>
+    </div>
+
+    <!-- ---------- B-1. 需求分析期 ---------- -->
+    <div style="width:340px">
+      <div class="pv-caption"><span class="pv-tag ok">B-1</span><b>需求分析期</b>
+        <p class="pv-note" style="margin-top:4px">
+          状态 brainstorming：需求文档已登记未落章 ⇒ <code>⏳需求文档</code>（橙、可点）；
+          其余三门未登记 ⇒ <code>✗</code>；派生行 <code>门 0/4</code>；<b>「确认产物」主按钮在场</b>（G1 看板侧入口）。
+          该状态尚无任务卡 ⇒ 真实卡面此处不渲染子卡进度行 / token 徽标 / 会话 chip（进度读作 <code>0/0</code>）。
+        </p>
+      </div>
+      <div class="pv-frame">
+        <div class="dsh-pm-card" data-req="REQ-261006000001-aaaa" data-action="open-req">
+          <div class="dsh-pm-card-top">
+            <span class="dsh-pm-card-id">REQ-261006000001-aaaa</span><span class="dsh-pm-running" data-running="true" role="img" aria-label="会话进行中" title="会话进行中（该需求绑定窗口正在执行回合）"><svg class="dsh-pm-running-svg" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false"><circle class="dsh-pm-running-track" cx="8" cy="8" r="6" /><circle class="dsh-pm-running-arc" cx="8" cy="8" r="6" /></svg></span>
+            <span class="dsh-pm-cat" data-cat="feature">功能</span><span class="dsh-pm-auto-badge" data-auto="running" title="自动链运行中：每完成一步自动触发下一步（点「暂停」可随时停）">自动链</span>
+          </div>
+          <div class="dsh-pm-card-title">示例需求：卡面门读数修复（标本）</div>
+          <div class="dsh-pm-card-progress">
+            <div class="dsh-pm-card-bar"><div class="dsh-pm-card-bar-fill" style="width:0%"></div></div>
+            <span class="dsh-pm-card-pct">0/0</span>
+          </div>
+          <div class="dsh-pm-artifact-chips"><button type="button" class="dsh-pm-artifact-chip pending" data-action="confirm-artifact" data-id="REQ-261006000001-aaaa" data-kind="requirement" title="点击确认需求文档">⏳ 需求文档</button><span class="dsh-pm-artifact-chip missing" title="设计文档缺失">✗ 设计文档</span><span class="dsh-pm-artifact-chip missing" title="拆分计划缺失">✗ 拆分计划</span><span class="dsh-pm-artifact-chip missing" title="验收材料缺失">✗ 验收材料</span></div>
+          <div class="dsh-pm-artifact-derived">门 0/4</div>
+          <div class="dsh-pm-card-time">创建 10-06 14:20 · 需求分析 10-06 14:22 · 已停留 1 小时 12 分</div>
+          <button type="button" class="dsh-pm-window" data-action="jump-session" data-sid="session-1cee2467-95f9-4a3e-8b7d-0f1a2b3c4d5e" title="立项来源窗口（点击跳转到该会话）：session-1cee2467-95f9-4a3e-8b7d-0f1a2b3c4d5e">窗口 w-1cee2467</button>
+          <button type="button" class="dsh-pm-btn sm primary dsh-pm-confirm-artifact" data-action="confirm-artifact" data-id="REQ-261006000001-aaaa" data-kind="requirement" title="一键确认需求文档，放行下一阶段">确认产物</button>
+          <div class="dsh-pm-auto-controls"><button type="button" class="dsh-pm-btn sm" data-action="auto-run-pause" data-id="REQ-261006000001-aaaa" title="停止推进下一张牌（已在跑的 run 允许跑完），状态不丢">暂停</button><button type="button" class="dsh-pm-btn sm" data-action="auto-run-stop" data-id="REQ-261006000001-aaaa" title="暂停自动链；在跑/待跑的卡需人工取消（取消是人工闸门）">终止</button></div>
+          <div class="dsh-pm-card-actions"><button type="button" class="dsh-pm-btn sm primary" data-action="move-req" data-to="design" data-id="REQ-261006000001-aaaa" title="方案谈定 → 进入设计阶段（计划在此阶段提交待人批准）">→ 设计</button><button type="button" class="dsh-pm-btn sm" data-action="move-req" data-to="draft" data-id="REQ-261006000001-aaaa" title="退回立项">退回</button><button type="button" class="dsh-pm-btn sm" data-action="move-req" data-to="canceled" data-id="REQ-261006000001-aaaa" title="取消该需求（仅人可操作）">取消</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- B-2. 设计期 ---------- -->
+    <div style="width:340px">
+      <div class="pv-caption"><span class="pv-tag ok">B-2</span><b>设计期（成组确认）</b>
+        <p class="pv-note" style="margin-top:4px">
+          状态 design：需求文档已落章 ⇒ <code>✓</code>；6 份设计文档中仍有未落章者 ⇒ <code>⏳设计文档</code>（成组语义：
+          任何一份无章即整门待确认）；派生行 <code>门 1/4</code>；按钮文案写明份数
+          <b>「确认产物（全部 6 份）」</b>。同样尚无任务卡 ⇒ 无子卡进度行 / token 徽标 / 会话 chip。
+        </p>
+      </div>
+      <div class="pv-frame">
+        <div class="dsh-pm-card" data-req="REQ-261006000002-bbbb" data-action="open-req">
+          <div class="dsh-pm-card-top">
+            <span class="dsh-pm-card-id">REQ-261006000002-bbbb</span><span class="dsh-pm-running" data-running="true" role="img" aria-label="会话进行中" title="会话进行中（该需求绑定窗口正在执行回合）"><svg class="dsh-pm-running-svg" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false"><circle class="dsh-pm-running-track" cx="8" cy="8" r="6" /><circle class="dsh-pm-running-arc" cx="8" cy="8" r="6" /></svg></span>
+            <span class="dsh-pm-cat" data-cat="feature">功能</span><span class="dsh-pm-auto-badge" data-auto="running" title="自动链运行中：每完成一步自动触发下一步（点「暂停」可随时停）">自动链</span>
+          </div>
+          <div class="dsh-pm-card-title">示例需求：卡面门读数修复（标本）</div>
+          <div class="dsh-pm-card-progress">
+            <div class="dsh-pm-card-bar"><div class="dsh-pm-card-bar-fill" style="width:0%"></div></div>
+            <span class="dsh-pm-card-pct">0/0</span>
+          </div>
+          <div class="dsh-pm-artifact-chips"><span class="dsh-pm-artifact-chip confirmed" title="需求文档已确认">✓ 需求文档</span><button type="button" class="dsh-pm-artifact-chip pending" data-action="confirm-artifact" data-id="REQ-261006000002-bbbb" data-kind="design" title="点击确认设计文档">⏳ 设计文档</button><span class="dsh-pm-artifact-chip missing" title="拆分计划缺失">✗ 拆分计划</span><span class="dsh-pm-artifact-chip missing" title="验收材料缺失">✗ 验收材料</span></div>
+          <div class="dsh-pm-artifact-derived">门 1/4</div>
+          <div class="dsh-pm-card-time">创建 10-06 14:20 · 设计 10-06 15:40 · 已停留 25 分</div>
+          <button type="button" class="dsh-pm-window" data-action="jump-session" data-sid="session-1cee2467-95f9-4a3e-8b7d-0f1a2b3c4d5e" title="立项来源窗口（点击跳转到该会话）：session-1cee2467-95f9-4a3e-8b7d-0f1a2b3c4d5e">窗口 w-1cee2467</button>
+          <button type="button" class="dsh-pm-btn sm primary dsh-pm-confirm-artifact" data-action="confirm-artifact" data-id="REQ-261006000002-bbbb" data-kind="design" title="一键确认全部 6 份设计文档（成组确认），放行下一阶段">确认产物（全部 6 份）</button>
+          <div class="dsh-pm-auto-controls"><button type="button" class="dsh-pm-btn sm" data-action="auto-run-pause" data-id="REQ-261006000002-bbbb" title="停止推进下一张牌（已在跑的 run 允许跑完），状态不丢">暂停</button><button type="button" class="dsh-pm-btn sm" data-action="auto-run-stop" data-id="REQ-261006000002-bbbb" title="暂停自动链；在跑/待跑的卡需人工取消（取消是人工闸门）">终止</button></div>
+          <div class="dsh-pm-card-actions"><button type="button" class="dsh-pm-btn sm primary" data-action="move-req" data-to="decomposing" data-id="REQ-261006000002-bbbb" title="计划获批后落库任务卡；未获批会被代码级拒绝">→ 拆分</button><button type="button" class="dsh-pm-btn sm" data-action="move-req" data-to="brainstorming" data-id="REQ-261006000002-bbbb" title="方案要改 → 退回需求分析">退回重谈</button><button type="button" class="dsh-pm-btn sm" data-action="move-req" data-to="canceled" data-id="REQ-261006000002-bbbb" title="取消该需求（仅人可操作）">取消</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------- B-3. 实施期（= A 的修复后） ---------- -->
+    <div style="width:340px">
+      <div class="pv-caption"><span class="pv-tag ok">B-3</span><b>实施期</b>（= A 同一条台账事实的修复后）
+        <p class="pv-note" style="margin-top:4px">
+          状态 implementing：<code>✓需求文档 ✓设计文档 ✓拆分计划 ✗验收材料</code> + <code>门 3/4</code>；
+          当前无生效门（implementing 不在确认门表里）⇒ <b>不渲染确认按钮</b>，不给点了必被代码级拒绝的假按钮。
+          计划已批 ⇒ 计划 chip 由摘要读数驱动（见 C 区）。
+        </p>
+      </div>
+      <div class="pv-frame">
+        <div class="dsh-pm-card" data-req="REQ-261006130057-7a43" data-action="open-req">
+          <div class="dsh-pm-card-top">
+            <span class="dsh-pm-card-id">REQ-261006130057-7a43</span><span class="dsh-pm-running" data-running="true" role="img" aria-label="会话进行中" title="会话进行中（该需求绑定窗口正在执行回合）"><svg class="dsh-pm-running-svg" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false"><circle class="dsh-pm-running-track" cx="8" cy="8" r="6" /><circle class="dsh-pm-running-arc" cx="8" cy="8" r="6" /></svg></span>
+            <span class="dsh-pm-cat" data-cat="feature">功能</span><span class="dsh-pm-flag plan-ok" title="拆分计划已批准，可拆分落库">计划已批</span><span class="dsh-pm-flag ready">2 ready</span><span class="dsh-pm-auto-badge" data-auto="running" title="自动链运行中：每完成一步自动触发下一步（点「暂停」可随时停）">自动链</span>
+          </div>
+          <div class="dsh-pm-card-title">示例需求：卡面门读数修复（标本）</div>
+          <div class="dsh-pm-card-progress">
+            <div class="dsh-pm-card-bar"><div class="dsh-pm-card-bar-fill" style="width:75%"></div></div>
+            <span class="dsh-pm-card-pct">21/28</span>
+            <span class="dsh-pm-token-badge" title="累计 Token（会话快照差值合计，含子代理；口径见详情 Token tab）">🪙 1.2M</span>
+          </div>
+          <div class="dsh-pm-card-substat" title="父卡按依赖并行；子卡在父卡内串行">父卡 5/8 · 子卡 21/28</div>
+          <div class="dsh-pm-artifact-chips"><span class="dsh-pm-artifact-chip confirmed" title="需求文档已确认">✓ 需求文档</span><span class="dsh-pm-artifact-chip confirmed" title="设计文档已确认">✓ 设计文档</span><span class="dsh-pm-artifact-chip confirmed" title="拆分计划已确认">✓ 拆分计划</span><span class="dsh-pm-artifact-chip missing" title="验收材料缺失">✗ 验收材料</span></div>
+          <div class="dsh-pm-artifact-derived">门 3/4</div>
+          <div class="dsh-pm-card-time">创建 10-06 14:20 · 实施 10-06 16:05 · 已停留 42 分</div>
+          <button type="button" class="dsh-pm-window" data-action="jump-session" data-sid="session-1cee2467-95f9-4a3e-8b7d-0f1a2b3c4d5e" title="立项来源窗口（点击跳转到该会话）：session-1cee2467-95f9-4a3e-8b7d-0f1a2b3c4d5e">窗口 w-1cee2467</button><button type="button" class="dsh-pm-session" data-action="jump-session" data-sid="session-9f8e7d6c-1234-4a5b-8c9d-0e1f2a3b4c5d" title="执行会话（点击跳转到该会话）：session-9f8e7d6c-1234-4a5b-8c9d-0e1f2a3b4c5d">会话 session-9f8e…</button>
+          <div class="dsh-pm-auto-controls"><button type="button" class="dsh-pm-btn sm" data-action="auto-run-pause" data-id="REQ-261006130057-7a43" title="停止推进下一张牌（已在跑的 run 允许跑完），状态不丢">暂停</button><button type="button" class="dsh-pm-btn sm" data-action="auto-run-stop" data-id="REQ-261006130057-7a43" title="暂停自动链；在跑/待跑的卡需人工取消（取消是人工闸门）">终止</button></div>
+          <div class="dsh-pm-card-actions"><button type="button" class="dsh-pm-btn sm primary" data-action="move-req" data-to="accepting" data-id="REQ-261006130057-7a43" title="进入验收；任务全部完成时系统会自动推进">→ 验收</button><button type="button" class="dsh-pm-btn sm" data-action="move-req" data-to="canceled" data-id="REQ-261006130057-7a43" title="取消该需求（仅人可操作）">取消</button></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FR-3 锚点：派生行口径 -->
+  <section class="pv-sub" id="FR-3">
+    <h3>FR-3 · 派生行口径 = 「门 已确认/生效门总数」</h3>
+    <p class="pv-note">
+      上排三张卡分别读作 <code>门 0/4</code>（B-1）、<code>门 1/4</code>（B-2）、<code>门 3/4</code>（B-3），
+      占位符类名 <code>.dsh-pm-artifact-derived</code>；旧口径 <code>产物 N/M</code> 只出现在 A（现状）里，修复后一处不留。
+      分子 = 与 chips **同一份**门读数里 <code>confirmed</code> 的门数，分母 = 生效门总数（feature = 4）；
+      生效门总数为 0（无门分类 / 终态）⇒ 该行整行不渲染，不写 <code>门 0/0</code>。
+    </p>
+    <p class="pv-warn">
+      待定项（请在设计阶段定稿）：既有 <code>renderArtifactDerived</code> 除「产物 N/M」外还有第二段
+      「N 门待确认」。本原型按 FR-3 口径**只画** <code>门 c/total</code>；若设计决定保留该段，
+      B-1 / B-2 将读作「门 0/4 · 1 门待确认」「门 1/4 · 1 门待确认」。这不是视觉问题，是口径取舍。
+    </p>
+  </section>
+
+  <!-- FR-4 锚点：确认入口 -->
+  <section class="pv-sub" id="FR-4">
+    <h3>FR-4 · 卡面「确认产物」入口（G1/G2 看板侧唯一确认入口）</h3>
+    <p class="pv-note">
+      在场的是 <code>.dsh-pm-btn.sm.primary.dsh-pm-confirm-artifact</code>，数据属性与真实实现逐字一致
+      （<code>data-action="confirm-artifact"</code> + <code>data-id</code> + <code>data-kind</code>）：
+      B-1 = <code>确认产物</code>（kind=requirement）；B-2 = <code>确认产物（全部 6 份）</code>（kind=design，成组确认，title 写明份数）。
+      同时 chips 行里 <code>⏳</code> 那一枚本身就是按钮（<code>.dsh-pm-artifact-chip.pending</code>），点它也是同一条
+      <code>confirm-artifact</code> 通道。
+    </p>
+    <p class="pv-note">
+      缺席的是：B-3（当前无生效门）与 A（读数被切断）—— <b>无产物 / 已落章 / 无门，一律不给按钮</b>。
+    </p>
+  </section>
+</section>
+
+<!-- ============================== C（FR-5） ============================== -->
+<section class="pv-sec" id="FR-5">
+  <h2>C · 计划 / 验收 chip 演示（对应 FR-5）</h2>
+  <p class="pv-note">
+    这四枚是 <code>.dsh-pm-flag</code> 家族的既有变体，出现在卡面顶行（<code>.dsh-pm-card-top</code>，紧跟项目 ID / 分类标签）。
+    修复前它们由 <code>plan</code>/<code>verification</code> 大字段驱动 ⇒ 摘要里没有这些字段，计划 chip 恒不出现、
+    accepting 卡恒谎报「待验收材料」；修复后一律由摘要读数驱动。
+  </p>
+  <div class="pv-row">
+    <div class="pv-chipcell">
+      <span class="dsh-pm-flag plan-pending" title="拆分计划已提交，等待人批准后才能拆分">计划待批</span>
+      <span class="pv-cls">.dsh-pm-flag.plan-pending</span>
+      <span class="pv-note">拆分态且计划未批（planChip，artifacts.ts）</span>
+    </div>
+    <div class="pv-chipcell">
+      <span class="dsh-pm-flag plan-ok" title="拆分计划已批准，可拆分落库">计划已批</span>
+      <span class="pv-cls">.dsh-pm-flag.plan-ok</span>
+      <span class="pv-note">计划已批准（B-3 顶行即此枚）</span>
+    </div>
+    <div class="pv-chipcell">
+      <span class="dsh-pm-flag verify-pending" title="验收态但还没提交验收材料">待验收材料</span>
+      <span class="pv-cls">.dsh-pm-flag.verify-pending</span>
+      <span class="pv-note">status=accepting 且 verification 未登记（verifyChip）</span>
+    </div>
+    <div class="pv-chipcell">
+      <span class="dsh-pm-flag verify-pending" title="验收材料已提交，等人工审核">待人工审核</span>
+      <span class="pv-cls">.dsh-pm-flag.verify-pending</span>
+      <span class="pv-note">status=accepting 且验收材料已提交（verifyChip）</span>
+    </div>
+  </div>
+  <p class="pv-note">
+    同一族的其余变体（本区未单独出图，文案与类名照录，供实现对照）：
+    <code>.dsh-pm-flag.plan-rejected</code>「计划被退」（title=拆分计划被退回，待重写）·
+    <code>.dsh-pm-flag.archive-pending</code>「待归档材料」（status=done 且 archive 未登记）·
+    <code>.dsh-pm-flag.archive-pending</code>「待归档」（归档材料已备，等人点归档）。
+  </p>
+</section>
+
+<!-- ============================== D（FR-6） ============================== -->
+<section class="pv-sec" id="FR-6">
+  <h2>D · 读数不可得时的降级态（对应 FR-6）</h2>
+  <p class="pv-note">
+    摘要里**没有**门读数（旧服务端 / 旧记录未回填）：chips 行、派生行、确认按钮**整块不渲染**，其余卡面照常。
+    本卡与 B-3 的其余字段完全一致（单变量对照）。
+  </p>
+  <div class="pv-row">
+    <div style="width:340px">
+      <div class="pv-caption"><span class="pv-tag">D</span><b>读数不可得（键缺省）</b></div>
+      <div class="pv-frame">
+        <div class="dsh-pm-card" data-req="REQ-261006000004-dddd" data-action="open-req">
+          <div class="dsh-pm-card-top">
+            <span class="dsh-pm-card-id">REQ-261006000004-dddd</span><span class="dsh-pm-running" data-running="true" role="img" aria-label="会话进行中" title="会话进行中（该需求绑定窗口正在执行回合）"><svg class="dsh-pm-running-svg" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false"><circle class="dsh-pm-running-track" cx="8" cy="8" r="6" /><circle class="dsh-pm-running-arc" cx="8" cy="8" r="6" /></svg></span>
+            <span class="dsh-pm-cat" data-cat="feature">功能</span><span class="dsh-pm-flag plan-ok" title="拆分计划已批准，可拆分落库">计划已批</span><span class="dsh-pm-flag ready">2 ready</span><span class="dsh-pm-auto-badge" data-auto="running" title="自动链运行中：每完成一步自动触发下一步（点「暂停」可随时停）">自动链</span>
+          </div>
+          <div class="dsh-pm-card-title">示例需求：卡面门读数修复（标本）</div>
+          <div class="dsh-pm-card-progress">
+            <div class="dsh-pm-card-bar"><div class="dsh-pm-card-bar-fill" style="width:75%"></div></div>
+            <span class="dsh-pm-card-pct">21/28</span>
+            <span class="dsh-pm-token-badge" title="累计 Token（会话快照差值合计，含子代理；口径见详情 Token tab）">🪙 1.2M</span>
+          </div>
+          <div class="dsh-pm-card-substat" title="父卡按依赖并行；子卡在父卡内串行">父卡 5/8 · 子卡 21/28</div>
+          <div class="dsh-pm-card-time">创建 10-06 14:20 · 实施 10-06 16:05 · 已停留 42 分</div>
+          <button type="button" class="dsh-pm-window" data-action="jump-session" data-sid="session-1cee2467-95f9-4a3e-8b7d-0f1a2b3c4d5e" title="立项来源窗口（点击跳转到该会话）：session-1cee2467-95f9-4a3e-8b7d-0f1a2b3c4d5e">窗口 w-1cee2467</button><button type="button" class="dsh-pm-session" data-action="jump-session" data-sid="session-9f8e7d6c-1234-4a5b-8c9d-0e1f2a3b4c5d" title="执行会话（点击跳转到该会话）：session-9f8e7d6c-1234-4a5b-8c9d-0e1f2a3b4c5d">会话 session-9f8e…</button>
+          <div class="dsh-pm-auto-controls"><button type="button" class="dsh-pm-btn sm" data-action="auto-run-pause" data-id="REQ-261006000004-dddd" title="停止推进下一张牌（已在跑的 run 允许跑完），状态不丢">暂停</button><button type="button" class="dsh-pm-btn sm" data-action="auto-run-stop" data-id="REQ-261006000004-dddd" title="暂停自动链；在跑/待跑的卡需人工取消（取消是人工闸门）">终止</button></div>
+          <div class="dsh-pm-card-actions"><button type="button" class="dsh-pm-btn sm primary" data-action="move-req" data-to="accepting" data-id="REQ-261006000004-dddd" title="进入验收；任务全部完成时系统会自动推进">→ 验收</button><button type="button" class="dsh-pm-btn sm" data-action="move-req" data-to="canceled" data-id="REQ-261006000004-dddd" title="取消该需求（仅人可操作）">取消</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="pv-warn" style="flex:1;min-width:280px">
+      <b>读不到 ≠ 缺失：这里绝不能显示成红色 ✗ 或 门 0/4。</b><br>
+      这是本次事故的教训 —— 旧实现把「首屏读不到大字段」渲染成了「产物缺失」，于是每条需求都恒红、
+      红灯不再携带信息。降级口径：以「键是否存在」判可得性，不可得即整块不渲染（chips 行 / 派生行 / 按钮**各自独立**判定）；
+      单个门读数缺失（而非整块缺失）视为异常，按不可得处理并只告警，不猜。
+      对照 B-3：门读数**存在**且某门真缺失时，那一门照常显示红色 <code>✗</code>（真缺失与读不到必须可区分）。
+    </div>
+  </div>
+</section>
+
+<!-- ============================== 评审附注 ============================== -->
+<section class="pv-sec">
+  <h2>评审附注（脚手架文字，不是视觉契约）</h2>
+  <table class="pv-tbl">
+    <thead><tr><th>项</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr>
+        <th>标本字段</th>
+        <td>
+          A / B-3 的字段取自需求文档点名的对照条 <code>REQ-261006130057-7a43</code>（需求文档 / 6 份设计文档 / 拆分计划已落章，验收材料未登记），
+          互为修复前 / 修复后对照。B-1（<code>-aaaa</code>）、B-2（<code>-bbbb</code>）、D（<code>-dddd</code>）是**标本 id**（占位段，不对应任何真需求）。
+          标题一律用标本名「示例需求：卡面门读数修复（标本）」，不引用任何真需求标题；进度 / token / 时间 / 会话 id 为自洽的编造值。
+        </td>
+      </tr>
+      <tr>
+        <th>底部操作行</th>
+        <td>
+          按真实 <code>cardActions(req)</code> 的**状态分支**逐字输出，而不是三张卡统一画「→ 验收」：
+          B-1（brainstorming）= <code>→ 设计 / 退回 / 取消</code>；B-2（design）= <code>→ 拆分 / 退回重谈 / 取消</code>；
+          B-3 / A / D（implementing）= <code>→ 验收 / 取消</code>。统一画「→ 验收」会在需求分析期的卡上造出一个点了必被
+          状态机拒绝的假按钮 —— 与本需求 FR-4「不给假按钮」同一条纪律。此行的文案与 title 与 <code>artifacts.ts</code> 逐字一致。
+        </td>
+      </tr>
+      <tr>
+        <th>子卡行 / token / 会话 chip</th>
+        <td>
+          B-1 / B-2 处于需求分析期 / 设计期，**尚无任务卡**：真实卡面此时进度读作 <code>0/0</code>、不渲染
+          <code>.dsh-pm-card-substat</code>（<code>subtasksTotal &gt; 0</code> 才渲染）、不渲染 token 徽标
+          （<code>card.tokenTotal</code> 缺省）、也不渲染会话 chip（<code>renderSessionChip</code> 扫
+          <code>tasks[].executions</code>，空则返回空串）。这是"同构于真实卡面"，不是缺内容 —— 未作编造。
+        </td>
+      </tr>
+      <tr>
+        <th>可达性核对<br>（检索命中判据）</th>
+        <td>
+          ①「不靠颜色单独传达信息」（ux-guidelines · Accessibility · Color Only · High）：三态同时带 <code>✓</code>/<code>⏳</code>/<code>✗</code>
+          字形与中文标签，满足该判据。<br>
+          ②「正文对比度 ≥ 4.5:1」（ux-guidelines · Accessibility · Color Contrast · High）：按 WCAG 相对亮度公式实测既有三态
+          （底色为 8%–15% 半透明色叠加白底）：<b>绿 2.76:1 / 橙 3.39:1 / 红 3.81:1</b>，10px 正文**均未达 4.5:1**。
+          这是**既有实现的原值**，本次不擅自改色（改色 = 引入新视觉语言）；是否调整请人工在视觉裁决时定。
+        </td>
+      </tr>
+      <tr>
+        <th>机器锚点</th>
+        <td>
+          本文件含 <code>id="FR-1"</code> / <code>id="FR-3"</code> / <code>id="FR-4"</code> / <code>id="FR-5"</code> / <code>id="FR-6"</code>
+          五个锚点（与 INDEX「服务条款」列一致）与恰好一块几何观测量注释 —— 原型锚点门
+          （<code>src/application/internal/prototype-gates.ts</code>）要求，缺则 brainstorming→design 被
+          <code>REQBOARD_PROTOTYPE_ANCHOR_MISSING</code> 拒。FR-2（服务端投影）/ FR-7（回归防线）非视觉，不在本原型服务范围内。
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+</main>
+
+<!--
+  唯一一块几何观测量注释（形状见 design/data-model.md §3.1；块数必须恰好 1，§10 #4）。
+  数值口径（**如实声明**）：
+    · count 类 = 对本文件 markup 的字符串计数（可逐条复核），如 gateChipCount / confirmArtifactButtonCount；
+    · px 类   = 所抄 CSS 声明的确定值（见文件头"CSS 抄自哪里"的行号），不含字体度量 ——
+                本机**未运行浏览器渲染**（不装依赖、不开 headless Chrome、不起 server），故没有 getBoundingClientRect 实测像素；
+    · ratio 类 = 按 WCAG 2.x 相对亮度公式，对既有声明色与其有效底色（半透明色叠白底）算出的对比度，同一份计算可复现。
+  只放观测量名 + 值：门限/期望值留给 design/frontend.md（D-10，本块不含任何门限字段）。
+-->
+<!-- proto-geometry {"observations":[{"name":"gateChipCount@1280/inflight","value":4,"unit":"count","at":{"width":1280,"state":"inflight"}},{"name":"gateChipFontSize@1280/inflight","value":10,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"gateChipRadius@1280/inflight","value":4,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"gateChipRowGap@1280/inflight","value":4,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"gateChipRowTopGap@1280/inflight","value":6,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"derivedLineFontSize@1280/inflight","value":10,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"derivedLineTopGap@1280/inflight","value":4,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"confirmArtifactButtonCount@1280/inflight","value":2,"unit":"count","at":{"width":1280,"state":"inflight"}},{"name":"cardFrameWidth@1280/inflight","value":340,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"cardRadius@1280/inflight","value":8,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"cardPadding@1280/inflight","value":12,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"cardRowGap@1280/inflight","value":8,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"confirmedChipTextContrast@1280/inflight","value":2.76,"unit":"ratio","at":{"width":1280,"state":"inflight"}},{"name":"pendingChipTextContrast@1280/inflight","value":3.39,"unit":"ratio","at":{"width":1280,"state":"inflight"}},{"name":"missingChipTextContrast@1280/inflight","value":3.81,"unit":"ratio","at":{"width":1280,"state":"inflight"}}]} -->
+
+<footer class="pv-foot">
+  E · 本原型只表达门读数相关区域的视觉契约；卡面布局、配色、字阶一律沿用现有实现，未做任何重新设计。
+</footer>
+
+</body>
+</html>

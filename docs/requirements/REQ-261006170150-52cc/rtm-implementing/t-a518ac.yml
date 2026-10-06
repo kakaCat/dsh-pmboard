@@ -1,0 +1,39 @@
+task:
+  id: t-a518ac
+  title: 确认收敛点：带 ref 清位先于推进 + 补发条件·复核
+  status: done
+  implements: |-
+    改 src/application/internal/confirm-settle.ts：ConfirmDecision 加 dialogRef；开头带 ref await exitAwaitingConfirm（notify:false）；finally 里 advanced!==true 才 deps.notifyDrivable?.(id)。改 src/application/internal/pending-confirm.ts：ConfirmSubmitted 加 dialogRef 并透传。改 src/application/use-cases/AskConfirm.ts 与 src/application/dive/gate-prompt.ts：把各自 ref（ticket / dlg-gate-…）交给收敛点。新建 tests/confirm-settle-order.test.ts（TC-3~TC-5）。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-a5d71d
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006170150-52cc
+    TASK_ID: t-a518ac
+    TASK_TITLE: 确认收敛点：带 ref 清位先于推进 + 补发条件·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-06T10:40:45.149Z
+      completed_at: 2026-10-06T10:40:48.269Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006170150-52cc
+  generated_at: 2026-10-06T10:40:29.593Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T10:40:48.270Z

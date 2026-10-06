@@ -1,0 +1,38 @@
+task:
+  id: t-e11a6a
+  title: 守卫改为按需求记录声明根判定，并在写前校正共享仓储根·复核
+  status: done
+  implements: |-
+    改 src/application/internal/support.ts：① ensureWritableProjectRoot(deps, record, caller?) 增加可选第 3 参 { callerRoot?: string }；② 判定顺序按 design/interfaces.md 六行表：无 workspaceRoot 探针 → 返回 undefined（不判）；declared 非空时 !isAbsoluteRoot 或 docs.exists(declared)===false → 抛 REQBOARD_INVALID_WORKSPACE；否则 applyWorkspaceRoot(deps, declared) 写前校正 → 复核探针值：相同 → 返回声明根，仍不同 → 抛 REQBOARD_PROJECT_ROOT_MISMATCH（语义收窄为校正失效的最后防线）；③ declared 为空：有 callerRoot → 校正到它并返回，否则 undefined；④ assertWritableRequirementProject(deps, reqId, caller?) 保持按 id 取记录 → 调同一实现。函数名不变（t8 门禁 GUARD_CALL 依赖）；存在性判定用既有 DocRepository.exists（绝对路径直通），不新增端口方法。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-dc8874
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005123641-3982
+    TASK_ID: t-e11a6a
+    TASK_TITLE: 守卫改为按需求记录声明根判定，并在写前校正共享仓储根·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T04:55:06.503Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005123641-3982
+  generated_at: 2026-10-05T04:54:57.901Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T04:55:06.504Z

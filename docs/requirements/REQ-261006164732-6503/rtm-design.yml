@@ -1,0 +1,321 @@
+metadata:
+  stage: design
+  requirement_id: REQ-261006164732-6503
+  generated_at: 2026-10-06T09:03:41.902Z
+  version: 4
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T10:57:17.541Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 建门唯一入口，且同一道门至多一个在等的框
+      source: requirement.md
+      line: 106
+    - id: FR-2
+      title: 门状态三面同源可读
+      source: requirement.md
+      line: 118
+    - id: FR-3
+      title: 阶段指南与回执不再指令 agent 去弹框
+      source: requirement.md
+      line: 126
+    - id: FR-4
+      title: 落章条件写，且首写不可变
+      source: requirement.md
+      line: 139
+    - id: FR-5
+      title: 失效门的迟到作答只留痕
+      source: requirement.md
+      line: 148
+    - id: FR-6
+      title: 不变量探针与回归锁
+      source: requirement.md
+      line: 156
+outputs:
+  design_sections:
+    - ref: design/architecture.md#A-1-现状四个通道各自决定要不要弹
+      title: A-1 现状：四个通道各自决定"要不要弹" <!--
+      serves:
+        - FR-1
+        - FR-4
+      file: design/architecture.md
+      section: A-1-现状四个通道各自决定要不要弹
+    - ref: design/architecture.md#A-2-目标形态建门唯一入口-唯一性不变量
+      title: A-2 目标形态：建门唯一入口 + 唯一性不变量 <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: A-2-目标形态建门唯一入口-唯一性不变量
+    - ref: design/architecture.md#A-3-判定顺序复用-早退-新建不可换序
+      title: A-3 判定顺序：复用 → 早退 → 新建（不可换序） <!--
+      serves:
+        - FR-1
+        - FR-3
+      file: design/architecture.md
+      section: A-3-判定顺序复用-早退-新建不可换序
+    - ref: design/architecture.md#A-4-落章条件写-首写不变
+      title: A-4 落章：条件写 + 首写不变 <!--
+      serves:
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: A-4-落章条件写-首写不变
+    - ref: design/architecture.md#A-5-过程态可见
+      title: A-5 过程态可见 <!--
+      serves:
+        - FR-2
+        - FR-6
+      file: design/architecture.md
+      section: A-5-过程态可见
+    - ref: design/architecture.md#A-6-不做
+      title: A-6 不做 <!--
+      serves:
+        - FR-1
+        - FR-6
+      file: design/architecture.md
+      section: A-6-不做
+    - ref: design/backend.md#B-1-调用顺序不可换序
+      title: B-1 调用顺序（不可换序） <!--
+      serves:
+        - FR-1
+      file: design/backend.md
+      section: B-1-调用顺序不可换序
+    - ref: design/backend.md#B-2-复用路径返回什么不做什么
+      title: B-2 复用路径：返回什么、不做什么 <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/backend.md
+      section: B-2-复用路径返回什么不做什么
+    - ref: design/backend.md#B-3-异门陈旧票为什么仍要清
+      title: B-3 异门陈旧票为什么仍要清 <!--
+      serves:
+        - FR-1
+      file: design/backend.md
+      section: B-3-异门陈旧票为什么仍要清
+    - ref: design/backend.md#B-4-条件写的两个前提与失败表现
+      title: B-4 条件写的两个前提与失败表现 <!--
+      serves:
+        - FR-4
+        - FR-5
+      file: design/backend.md
+      section: B-4-条件写的两个前提与失败表现
+    - ref: design/backend.md#B-5-提示词与文案的落地纪律
+      title: B-5 提示词与文案的落地纪律 <!--
+      serves:
+        - FR-3
+      file: design/backend.md
+      section: B-5-提示词与文案的落地纪律
+    - ref: design/backend.md#B-6-并发多窗口与幂等
+      title: B-6 并发、多窗口与幂等 <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/backend.md
+      section: B-6-并发多窗口与幂等
+    - ref: design/backend.md#B-7-代码落点一句话职责
+      title: B-7 代码落点（一句话职责） <!--
+      serves:
+        - FR-6
+      file: design/backend.md
+      section: B-7-代码落点一句话职责
+    - ref: design/data-model.md#G-1-结论门是运行时结构不落库
+      title: G-1 结论：门是运行时结构，不落库 <!--
+      serves:
+        - FR-4
+        - FR-6
+      file: design/data-model.md
+      section: G-1-结论门是运行时结构不落库
+    - ref: design/data-model.md#G-2-门的形状沿用既有字段语义收紧
+      title: G-2 门的形状（沿用既有字段，语义收紧） <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/data-model.md
+      section: G-2-门的形状沿用既有字段语义收紧
+    - ref: design/data-model.md#G-3-唯一性口径与判定键
+      title: G-3 唯一性口径与判定键 <!--
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: G-3-唯一性口径与判定键
+    - ref: design/data-model.md#G-4-台账写入不变式可断言
+      title: G-4 台账写入不变式（可断言） <!--
+      serves:
+        - FR-4
+        - FR-5
+      file: design/data-model.md
+      section: G-4-台账写入不变式可断言
+    - ref: design/data-model.md#G-5-迁移-回滚
+      title: G-5 迁移 / 回滚 <!--
+      serves:
+        - FR-6
+      file: design/data-model.md
+      section: G-5-迁移-回滚
+    - ref: design/interfaces.md#I-1-requestGate新增-建门唯一入口
+      title: I-1 `requestGate`（新增 · 建门唯一入口） <!--
+      serves:
+        - FR-1
+        - FR-3
+      file: design/interfaces.md
+      section: I-1-requestGate新增-建门唯一入口
+    - ref: design/interfaces.md#I-2-三个建门调用点改
+      title: I-2 三个建门调用点（改） <!--
+      serves:
+        - FR-1
+        - FR-3
+      file: design/interfaces.md
+      section: I-2-三个建门调用点改
+    - ref: design/interfaces.md#I-3-reqboardaskconfirm-对外返回零新增键
+      title: I-3 `reqboard_ask_confirm` 对外返回（零新增键） <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: I-3-reqboardaskconfirm-对外返回零新增键
+    - ref: design/interfaces.md#I-4-PendingConfirmRegistry改-新增只读查询
+      title: I-4 `PendingConfirmRegistry`（改 · 新增只读查询） <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: I-4-PendingConfirmRegistry改-新增只读查询
+    - ref: design/interfaces.md#I-5-AskConfirm-的陈旧票清理改-分门
+      title: I-5 `AskConfirm` 的陈旧票清理（改 · 分门） <!--
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: I-5-AskConfirm-的陈旧票清理改-分门
+    - ref: design/interfaces.md#I-6-落章前提与迟到作答改
+      title: I-6 落章前提与迟到作答（改） <!--
+      serves:
+        - FR-4
+        - FR-5
+      file: design/interfaces.md
+      section: I-6-落章前提与迟到作答改
+    - ref: design/interfaces.md#I-7-文案契约改
+      title: I-7 文案契约（改） <!--
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: I-7-文案契约改
+    - ref: design/interfaces.md#I-8-错误码不新增
+      title: I-8 错误码（不新增） <!--
+      serves:
+        - FR-5
+      file: design/interfaces.md
+      section: I-8-错误码不新增
+    - ref: design/use-cases.md#UC-1-拆分门提交计划-agent-再请求同门本次事故现场
+      title: UC-1 拆分门：提交计划 + agent 再请求同门（本次事故现场） <!--
+      serves:
+        - FR-1
+        - FR-3
+      file: design/use-cases.md
+      section: UC-1-拆分门提交计划-agent-再请求同门本次事故现场
+    - ref: design/use-cases.md#UC-2-需求门人在宽限内作答-vs-宽限外作答
+      title: UC-2 需求门：人在宽限内作答 vs 宽限外作答 <!--
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-2-需求门人在宽限内作答-vs-宽限外作答
+    - ref: design/use-cases.md#UC-3-迟到作答被取代-需求已推进的门
+      title: UC-3 迟到作答：被取代 / 需求已推进的门 <!--
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-3-迟到作答被取代-需求已推进的门
+    - ref: design/use-cases.md#UC-4-真门正常路径零回归对照
+      title: UC-4 真门正常路径（零回归对照） <!--
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: UC-4-真门正常路径零回归对照
+    - ref: design/use-cases.md#UC-5-异门陈旧票窗口不能被钉死
+      title: UC-5 异门陈旧票：窗口不能被钉死 <!--
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-5-异门陈旧票窗口不能被钉死
+    - ref: design/use-cases.md#UC-6-看板作答通道
+      title: UC-6 看板作答通道 <!--
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-6-看板作答通道
+    - ref: design/use-cases.md#UC-7-人的视角同一件事不再被问两次
+      title: UC-7 人的视角：同一件事不再被问两次 <!--
+      serves:
+        - FR-2
+        - FR-6
+      file: design/use-cases.md
+      section: UC-7-人的视角同一件事不再被问两次
+traceability:
+  fr_to_design:
+    FR-1:
+      - design/architecture.md#A-1-现状四个通道各自决定要不要弹
+      - design/architecture.md#A-2-目标形态建门唯一入口-唯一性不变量
+      - design/architecture.md#A-3-判定顺序复用-早退-新建不可换序
+      - design/architecture.md#A-6-不做
+      - design/backend.md#B-1-调用顺序不可换序
+      - design/backend.md#B-2-复用路径返回什么不做什么
+      - design/backend.md#B-3-异门陈旧票为什么仍要清
+      - design/backend.md#B-6-并发多窗口与幂等
+      - design/data-model.md#G-2-门的形状沿用既有字段语义收紧
+      - design/data-model.md#G-3-唯一性口径与判定键
+      - design/interfaces.md#I-1-requestGate新增-建门唯一入口
+      - design/interfaces.md#I-2-三个建门调用点改
+      - design/interfaces.md#I-3-reqboardaskconfirm-对外返回零新增键
+      - design/interfaces.md#I-4-PendingConfirmRegistry改-新增只读查询
+      - design/interfaces.md#I-5-AskConfirm-的陈旧票清理改-分门
+      - design/use-cases.md#UC-1-拆分门提交计划-agent-再请求同门本次事故现场
+      - design/use-cases.md#UC-5-异门陈旧票窗口不能被钉死
+    FR-2:
+      - design/architecture.md#A-2-目标形态建门唯一入口-唯一性不变量
+      - design/architecture.md#A-5-过程态可见
+      - design/backend.md#B-2-复用路径返回什么不做什么
+      - design/backend.md#B-6-并发多窗口与幂等
+      - design/data-model.md#G-2-门的形状沿用既有字段语义收紧
+      - design/interfaces.md#I-3-reqboardaskconfirm-对外返回零新增键
+      - design/interfaces.md#I-4-PendingConfirmRegistry改-新增只读查询
+      - design/use-cases.md#UC-6-看板作答通道
+      - design/use-cases.md#UC-7-人的视角同一件事不再被问两次
+    FR-3:
+      - design/architecture.md#A-3-判定顺序复用-早退-新建不可换序
+      - design/backend.md#B-5-提示词与文案的落地纪律
+      - design/interfaces.md#I-1-requestGate新增-建门唯一入口
+      - design/interfaces.md#I-2-三个建门调用点改
+      - design/interfaces.md#I-7-文案契约改
+      - design/use-cases.md#UC-1-拆分门提交计划-agent-再请求同门本次事故现场
+      - design/use-cases.md#UC-2-需求门人在宽限内作答-vs-宽限外作答
+    FR-4:
+      - design/architecture.md#A-1-现状四个通道各自决定要不要弹
+      - design/architecture.md#A-4-落章条件写-首写不变
+      - design/backend.md#B-4-条件写的两个前提与失败表现
+      - design/data-model.md#G-1-结论门是运行时结构不落库
+      - design/data-model.md#G-4-台账写入不变式可断言
+      - design/interfaces.md#I-6-落章前提与迟到作答改
+      - design/use-cases.md#UC-4-真门正常路径零回归对照
+    FR-5:
+      - design/architecture.md#A-4-落章条件写-首写不变
+      - design/backend.md#B-4-条件写的两个前提与失败表现
+      - design/data-model.md#G-4-台账写入不变式可断言
+      - design/interfaces.md#I-6-落章前提与迟到作答改
+      - design/interfaces.md#I-8-错误码不新增
+      - design/use-cases.md#UC-3-迟到作答被取代-需求已推进的门
+    FR-6:
+      - design/architecture.md#A-5-过程态可见
+      - design/architecture.md#A-6-不做
+      - design/backend.md#B-7-代码落点一句话职责
+      - design/data-model.md#G-1-结论门是运行时结构不落库
+      - design/data-model.md#G-5-迁移-回滚
+      - design/use-cases.md#UC-7-人的视角同一件事不再被问两次
+coverage:
+  design:
+    total: 6
+    covered: 6
+    uncovered: []
+    rate: 100
+    total_frs: 6
+    covered_frs: 6

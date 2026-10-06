@@ -1384,7 +1384,7 @@
       "requirementRefs": [
         "FR-5"
       ],
-      "status": "in_progress",
+      "status": "done",
       "blocked": false,
       "executions": [
         {
@@ -1392,7 +1392,7 @@
           "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
           "trigger": "manual",
           "startedAt": 1791267035623,
-          "outcome": "running",
+          "outcome": "succeeded",
           "tokenUsage": {
             "start": {
               "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
@@ -1419,8 +1419,41 @@
                   }
                 }
               ]
+            },
+            "end": {
+              "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+              "seq": 2785,
+              "at": 1791267442428,
+              "totals": {
+                "uncachedInputTokens": 394447,
+                "outputTokens": 237266,
+                "cacheReadTokens": 144205184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+                  "depth": 0,
+                  "seq": 2785,
+                  "totals": {
+                    "uncachedInputTokens": 394447,
+                    "outputTokens": 237266,
+                    "cacheReadTokens": 144205184,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 29782,
+              "outputTokens": 53563,
+              "cacheReadTokens": 28365056,
+              "cacheWriteTokens": 0
             }
-          }
+          },
+          "endedAt": 1791267442428
         }
       ],
       "statusHistory": [
@@ -1441,6 +1474,15 @@
             "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
           },
           "reason": "依赖 t-ec33f6 / t-ac2770 / t-a9229c / t-80336d 均已 done，开工本卡：提交判据脚本与本需求收尾提交。"
+        },
+        {
+          "status": "done",
+          "at": 1791267442428,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          },
+          "reason": "子卡链三段（研发/复核/测试）全部完成。交付：scripts/commit-check.mts 作为 C-28 可跑判据（两方向实测），收尾提交 917b39d 带需求 id（部分提交，边界与缺口逐条登记）；判据①OK/exit0、②条数1、③越界0、④工作树仍非0。"
         }
       ],
       "comments": [
@@ -1452,11 +1494,20 @@
             "kind": "agent",
             "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
           }
+        },
+        {
+          "id": "c-a8c10c",
+          "body": "[状态] → done：子卡链三段（研发/复核/测试）全部完成。交付：scripts/commit-check.mts 作为 C-28 可跑判据（两方向实测），收尾提交 917b39d 带需求 id（部分提交，边界与缺口逐条登记）；判据①OK/exit0、②条数1、③越界0、④工作树仍非0。（reqboard_task_move）",
+          "createdAt": 1791267442428,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          }
         }
       ],
-      "version": 2,
+      "version": 4,
       "createdAt": 1791263740668,
-      "updatedAt": 1791267035623,
+      "updatedAt": 1791267442428,
       "createdBy": {
         "kind": "agent",
         "sessionId": "session-1032484b-962a-4cc0-b83a-5454c4e2ea80"
@@ -1466,8 +1517,32 @@
         "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
       },
       "layer": 2,
-      "claimedBy": "session-af0ee362-fa98-4396-a5d7-856681a42843",
-      "claimedAt": 1791267035623
+      "lastReport": {
+        "at": 1791267438531,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/commit-check.mts",
+          "src/tools/registry.ts",
+          "src/domain/status/ArchivedMoment.ts",
+          "docs/requirements/REQ-261006123819-3af3/requirement.md"
+        ],
+        "completed": [
+          "新增 scripts/commit-check.mts：C-28 的可跑判据（--req <REQ-id> → OK/exit 0 或 FAIL/exit 1；用法错 exit 2）",
+          "两方向都实测：未提交 FAIL exit 1；提交后 OK exit 0",
+          "收尾提交 917b39d 带需求 id，提交信息显式标注「部分提交」",
+          "提交内容：registry.ts、ArchivedMoment.ts、commit-check.mts 与本需求全部文档（含 D-7/D-8 裁定、FR-6 降级登记）",
+          "判据③：越界文件数 0；判据④：提交后工作树仍 422 个改动（缺口如实保留）",
+          "缺口登记（D-1）：工具契约派生与两处安全网、归档门三态与客户端消费、知识层索引/规范/生成物、模板与 package.json 等改动仍在工作树",
+          "未纳入原因（实测）：与别窗口在飞改动逐文件交织；hunk 级暂存会损坏文件（conventions.md 丢正文、QueryDocs.ts import 错位）；node-panel.ts 整文件提交会带上未提交依赖导致编译不过",
+          "处置依据：人工裁定 D-8「只提交本需求的 hunk」+ 弹框裁定「只提交新文件 + 本需求文档」；不冒充为完整交付"
+        ]
+      },
+      "lastRun": {
+        "at": 1791267438531,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
     },
     {
       "id": "t-e88a19",
@@ -5054,18 +5129,107 @@
       "stageKind": "dev",
       "attempt": 0,
       "revisions": [],
-      "status": "todo",
+      "status": "done",
       "blocked": false,
-      "executions": [],
-      "comments": [],
-      "version": 1,
+      "executions": [
+        {
+          "id": "e-e76d7d",
+          "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+          "trigger": "manual",
+          "startedAt": 1791267393178,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+              "seq": 2705,
+              "at": 1791267393178,
+              "totals": {
+                "uncachedInputTokens": 391089,
+                "outputTokens": 233304,
+                "cacheReadTokens": 136640512,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+                  "depth": 0,
+                  "seq": 2705,
+                  "totals": {
+                    "uncachedInputTokens": 391089,
+                    "outputTokens": 233304,
+                    "cacheReadTokens": 136640512,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+              "seq": 2735,
+              "at": 1791267411351,
+              "totals": {
+                "uncachedInputTokens": 392328,
+                "outputTokens": 234962,
+                "cacheReadTokens": 139541120,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+                  "depth": 0,
+                  "seq": 2735,
+                  "totals": {
+                    "uncachedInputTokens": 392328,
+                    "outputTokens": 234962,
+                    "cacheReadTokens": 139541120,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1239,
+              "outputTokens": 1658,
+              "cacheReadTokens": 2900608,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791267411350
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-814933",
+          "body": "[状态] → in_progress：开工研发段：写提交判据脚本并完成本需求收尾提交。（reqboard_task_move）",
+          "createdAt": 1791267393178,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          }
+        },
+        {
+          "id": "c-ecd0b2",
+          "body": "[状态] → done：研发段完成：提交判据脚本两方向实测通过，收尾提交（部分）已产出，未纳入清单已逐条登记。（reqboard_task_move）",
+          "createdAt": 1791267411350,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          }
+        }
+      ],
+      "version": 6,
       "createdAt": 1791267035623,
-      "updatedAt": 1791267035623,
+      "updatedAt": 1791267411350,
       "createdBy": {
         "kind": "system"
       },
       "updatedBy": {
-        "kind": "system"
+        "kind": "agent",
+        "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
       },
       "statusHistory": [
         {
@@ -5074,9 +5238,48 @@
           "by": {
             "kind": "system"
           }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791267393178,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          },
+          "reason": "开工研发段：写提交判据脚本并完成本需求收尾提交。"
+        },
+        {
+          "status": "done",
+          "at": 1791267411350,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          },
+          "reason": "研发段完成：提交判据脚本两方向实测通过，收尾提交（部分）已产出，未纳入清单已逐条登记。"
         }
       ],
-      "layer": 2
+      "layer": 2,
+      "lastReport": {
+        "at": 1791267408794,
+        "reportIndex": 3,
+        "filesChanged": [
+          "scripts/commit-check.mts",
+          "src/tools/registry.ts",
+          "src/domain/status/ArchivedMoment.ts",
+          "docs/requirements/REQ-261006123819-3af3/requirement.md",
+          "docs/requirements/REQ-261006123819-3af3/tasks/t-f1a4c2.md"
+        ],
+        "completed": [
+          "补记本段改动文件清单（提交判据脚本 + 本次提交涉及的交付物）",
+          "scripts/commit-check.mts 为新增；其余为已提交的本需求新文件与文档"
+        ]
+      },
+      "lastRun": {
+        "at": 1791267398029,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
     },
     {
       "id": "t-b3ea5d",
@@ -5100,18 +5303,107 @@
       "stageKind": "review",
       "attempt": 0,
       "revisions": [],
-      "status": "todo",
+      "status": "done",
       "blocked": false,
-      "executions": [],
-      "comments": [],
-      "version": 1,
+      "executions": [
+        {
+          "id": "e-fcd1fb",
+          "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+          "trigger": "manual",
+          "startedAt": 1791267413651,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+              "seq": 2741,
+              "at": 1791267413651,
+              "totals": {
+                "uncachedInputTokens": 392472,
+                "outputTokens": 235062,
+                "cacheReadTokens": 140122496,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+                  "depth": 0,
+                  "seq": 2741,
+                  "totals": {
+                    "uncachedInputTokens": 392472,
+                    "outputTokens": 235062,
+                    "cacheReadTokens": 140122496,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+              "seq": 2753,
+              "at": 1791267421147,
+              "totals": {
+                "uncachedInputTokens": 393175,
+                "outputTokens": 235716,
+                "cacheReadTokens": 141286400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+                  "depth": 0,
+                  "seq": 2753,
+                  "totals": {
+                    "uncachedInputTokens": 393175,
+                    "outputTokens": 235716,
+                    "cacheReadTokens": 141286400,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 703,
+              "outputTokens": 654,
+              "cacheReadTokens": 1163904,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791267421147
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0acdab",
+          "body": "[状态] → in_progress：开工复核段：对照卡上四条判据与 D-8 裁定逐条核对提交边界。（reqboard_task_move）",
+          "createdAt": 1791267413651,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          }
+        },
+        {
+          "id": "c-1dd45d",
+          "body": "[状态] → done：复核段完成：四条判据逐条通过；两条偏差（提交范围窄于卡面、未纳入项留工作树）已按人工裁定与实测证据留痕。（reqboard_task_move）",
+          "createdAt": 1791267421147,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          }
+        }
+      ],
+      "version": 4,
       "createdAt": 1791267035623,
-      "updatedAt": 1791267035623,
+      "updatedAt": 1791267421147,
       "createdBy": {
         "kind": "system"
       },
       "updatedBy": {
-        "kind": "system"
+        "kind": "agent",
+        "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
       },
       "statusHistory": [
         {
@@ -5120,9 +5412,50 @@
           "by": {
             "kind": "system"
           }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791267413651,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          },
+          "reason": "开工复核段：对照卡上四条判据与 D-8 裁定逐条核对提交边界。"
+        },
+        {
+          "status": "done",
+          "at": 1791267421147,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          },
+          "reason": "复核段完成：四条判据逐条通过；两条偏差（提交范围窄于卡面、未纳入项留工作树）已按人工裁定与实测证据留痕。"
         }
       ],
-      "layer": 3
+      "layer": 3,
+      "lastReport": {
+        "at": 1791267417929,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "判据①两方向复核：未提交 FAIL/exit 1、已提交 OK/exit 0；用法错 exit 2（不与「没提交」混同）",
+          "判据②复核：git log --oneline --grep=REQ-261006123819-3af3 | wc -l = 1",
+          "判据③复核：git show --name-only 越界文件数 0；提交内容全在本需求清单内",
+          "判据④复核：提交后 git status --porcelain = 414（非 0，别窗口在飞改动原地保留）",
+          "提交后工作树门禁复核：kb-probe 12 项全过 exit 0（提交未破坏工作树）",
+          "提交信息带需求 id，且**显式写明是部分提交**（不把子集冒充成完整交付）",
+          "偏差一：提交范围比卡上写的窄（卡说「按本需求改动清单逐个 git add」；实际只提交了零风险子集）",
+          "偏差一依据：人工在弹框中裁定「只提交新文件 + 本需求文档这批零风险交付物」，且实测 hunk 级/整文件提交都会损坏或夹带",
+          "偏差一取证：hunk 级暂存后物化暂存树 → conventions.md 丢 C-14/C-15 正文、QueryDocs.ts import 错位（tsc 报错）；node-panel.ts 整文件提交会带上别窗口未提交的 layerInputof 依赖 → 编译不过",
+          "偏差二：未纳入提交的改动仍**在工作树里**，不在本次提交内——按 D-1/D-8 如实登记，不冒充为已交付"
+        ]
+      },
+      "lastRun": {
+        "at": 1791267417929,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
     },
     {
       "id": "t-dd9aa7",
@@ -5146,18 +5479,107 @@
       "stageKind": "test",
       "attempt": 0,
       "revisions": [],
-      "status": "todo",
+      "status": "done",
       "blocked": false,
-      "executions": [],
-      "comments": [],
-      "version": 1,
+      "executions": [
+        {
+          "id": "e-160bd6",
+          "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+          "trigger": "manual",
+          "startedAt": 1791267425910,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+              "seq": 2759,
+              "at": 1791267425910,
+              "totals": {
+                "uncachedInputTokens": 393364,
+                "outputTokens": 236059,
+                "cacheReadTokens": 141869056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+                  "depth": 0,
+                  "seq": 2759,
+                  "totals": {
+                    "uncachedInputTokens": 393364,
+                    "outputTokens": 236059,
+                    "cacheReadTokens": 141869056,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+              "seq": 2773,
+              "at": 1791267433333,
+              "totals": {
+                "uncachedInputTokens": 394048,
+                "outputTokens": 236578,
+                "cacheReadTokens": 143036160,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843",
+                  "depth": 0,
+                  "seq": 2773,
+                  "totals": {
+                    "uncachedInputTokens": 394048,
+                    "outputTokens": 236578,
+                    "cacheReadTokens": 143036160,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 684,
+              "outputTokens": 519,
+              "cacheReadTokens": 1167104,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791267433333
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7c3b76",
+          "body": "[状态] → in_progress：开工测试段：复跑四条判据并把读数写进证据。（reqboard_task_move）",
+          "createdAt": 1791267425910,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          }
+        },
+        {
+          "id": "c-5d3516",
+          "body": "[状态] → done：测试段完成：四条判据实测通过（OK/exit 0、条数 1、越界 0、工作树仍非 0 已登记），工作树门禁未受影响。（reqboard_task_move）",
+          "createdAt": 1791267433333,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          }
+        }
+      ],
+      "version": 4,
       "createdAt": 1791267035623,
-      "updatedAt": 1791267035623,
+      "updatedAt": 1791267433333,
       "createdBy": {
         "kind": "system"
       },
       "updatedBy": {
-        "kind": "system"
+        "kind": "agent",
+        "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
       },
       "statusHistory": [
         {
@@ -5166,9 +5588,49 @@
           "by": {
             "kind": "system"
           }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791267425910,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          },
+          "reason": "开工测试段：复跑四条判据并把读数写进证据。"
+        },
+        {
+          "status": "done",
+          "at": 1791267433333,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-af0ee362-fa98-4396-a5d7-856681a42843"
+          },
+          "reason": "测试段完成：四条判据实测通过（OK/exit 0、条数 1、越界 0、工作树仍非 0 已登记），工作树门禁未受影响。"
         }
       ],
-      "layer": 4
+      "layer": 4,
+      "lastReport": {
+        "at": 1791267430354,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/commit-check.mts"
+        ],
+        "completed": [
+          "判据①：pnpm commit:check --req REQ-261006123819-3af3 → 打印 OK（1 条提交）exit 0；未提交方向的 FAIL/exit 1 已在研发段实测",
+          "判据②：git log --oneline --grep=REQ-261006123819-3af3 | wc -l = 1",
+          "判据③：git show --name-only 越界文件数 = 0（不含其他需求目录）",
+          "判据④：提交后 git status --porcelain = 422（非 0，缺口如实存在）",
+          "判据④登记：存量未提交文件仍悬空的事实已写入本卡汇报（D-1 已知缺口），验收材料须原样引用",
+          "工作树门禁未受提交影响：kb-probe 12 项全过 exit 0；tsc 0 错（提交前后一致）",
+          "提交短哈希 917b39d，提交信息带需求 id 且显式标注「部分提交」"
+        ]
+      },
+      "lastRun": {
+        "at": 1791267430354,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
     }
   ],
   "edges": [
@@ -5355,8 +5817,6 @@
       ]
     }
   ],
-  "ready": [
-    "t-6610fd"
-  ],
-  "updated_at": "2026-10-06T06:10:35.624Z"
+  "ready": [],
+  "updated_at": "2026-10-06T06:17:22.428Z"
 }

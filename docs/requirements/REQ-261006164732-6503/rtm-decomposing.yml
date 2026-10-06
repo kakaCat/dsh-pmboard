@@ -1,0 +1,1059 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261006164732-6503
+  generated_at: 2026-10-06T09:17:10.657Z
+  version: 118
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T10:35:46.064Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 建门唯一入口，且同一道门至多一个在等的框
+      source: requirement.md
+      line: 106
+    - id: FR-2
+      title: 门状态三面同源可读
+      source: requirement.md
+      line: 118
+    - id: FR-3
+      title: 阶段指南与回执不再指令 agent 去弹框
+      source: requirement.md
+      line: 126
+    - id: FR-4
+      title: 落章条件写，且首写不可变
+      source: requirement.md
+      line: 139
+    - id: FR-5
+      title: 失效门的迟到作答只留痕
+      source: requirement.md
+      line: 148
+    - id: FR-6
+      title: 不变量探针与回归锁
+      source: requirement.md
+      line: 156
+  design_sections:
+    - ref: design/architecture.md#A-1-现状四个通道各自决定要不要弹
+      title: A-1 现状：四个通道各自决定"要不要弹" <!--
+      serves:
+        - FR-1
+        - FR-4
+      file: design/architecture.md
+      section: A-1-现状四个通道各自决定要不要弹
+    - ref: design/architecture.md#A-2-目标形态建门唯一入口-唯一性不变量
+      title: A-2 目标形态：建门唯一入口 + 唯一性不变量 <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: A-2-目标形态建门唯一入口-唯一性不变量
+    - ref: design/architecture.md#A-3-判定顺序复用-早退-新建不可换序
+      title: A-3 判定顺序：复用 → 早退 → 新建（不可换序） <!--
+      serves:
+        - FR-1
+        - FR-3
+      file: design/architecture.md
+      section: A-3-判定顺序复用-早退-新建不可换序
+    - ref: design/architecture.md#A-4-落章条件写-首写不变
+      title: A-4 落章：条件写 + 首写不变 <!--
+      serves:
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: A-4-落章条件写-首写不变
+    - ref: design/architecture.md#A-5-过程态可见
+      title: A-5 过程态可见 <!--
+      serves:
+        - FR-2
+        - FR-6
+      file: design/architecture.md
+      section: A-5-过程态可见
+    - ref: design/architecture.md#A-6-不做
+      title: A-6 不做 <!--
+      serves:
+        - FR-1
+        - FR-6
+      file: design/architecture.md
+      section: A-6-不做
+    - ref: design/backend.md#B-1-调用顺序不可换序
+      title: B-1 调用顺序（不可换序） <!--
+      serves:
+        - FR-1
+      file: design/backend.md
+      section: B-1-调用顺序不可换序
+    - ref: design/backend.md#B-2-复用路径返回什么不做什么
+      title: B-2 复用路径：返回什么、不做什么 <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/backend.md
+      section: B-2-复用路径返回什么不做什么
+    - ref: design/backend.md#B-3-异门陈旧票为什么仍要清
+      title: B-3 异门陈旧票为什么仍要清 <!--
+      serves:
+        - FR-1
+      file: design/backend.md
+      section: B-3-异门陈旧票为什么仍要清
+    - ref: design/backend.md#B-4-条件写的两个前提与失败表现
+      title: B-4 条件写的两个前提与失败表现 <!--
+      serves:
+        - FR-4
+        - FR-5
+      file: design/backend.md
+      section: B-4-条件写的两个前提与失败表现
+    - ref: design/backend.md#B-5-提示词与文案的落地纪律
+      title: B-5 提示词与文案的落地纪律 <!--
+      serves:
+        - FR-3
+      file: design/backend.md
+      section: B-5-提示词与文案的落地纪律
+    - ref: design/backend.md#B-6-并发多窗口与幂等
+      title: B-6 并发、多窗口与幂等 <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/backend.md
+      section: B-6-并发多窗口与幂等
+    - ref: design/backend.md#B-7-代码落点一句话职责
+      title: B-7 代码落点（一句话职责） <!--
+      serves:
+        - FR-6
+      file: design/backend.md
+      section: B-7-代码落点一句话职责
+    - ref: design/data-model.md#G-1-结论门是运行时结构不落库
+      title: G-1 结论：门是运行时结构，不落库 <!--
+      serves:
+        - FR-4
+        - FR-6
+      file: design/data-model.md
+      section: G-1-结论门是运行时结构不落库
+    - ref: design/data-model.md#G-2-门的形状沿用既有字段语义收紧
+      title: G-2 门的形状（沿用既有字段，语义收紧） <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/data-model.md
+      section: G-2-门的形状沿用既有字段语义收紧
+    - ref: design/data-model.md#G-3-唯一性口径与判定键
+      title: G-3 唯一性口径与判定键 <!--
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: G-3-唯一性口径与判定键
+    - ref: design/data-model.md#G-4-台账写入不变式可断言
+      title: G-4 台账写入不变式（可断言） <!--
+      serves:
+        - FR-4
+        - FR-5
+      file: design/data-model.md
+      section: G-4-台账写入不变式可断言
+    - ref: design/data-model.md#G-5-迁移-回滚
+      title: G-5 迁移 / 回滚 <!--
+      serves:
+        - FR-6
+      file: design/data-model.md
+      section: G-5-迁移-回滚
+    - ref: design/interfaces.md#I-1-requestGate新增-建门唯一入口
+      title: I-1 `requestGate`（新增 · 建门唯一入口） <!--
+      serves:
+        - FR-1
+        - FR-3
+      file: design/interfaces.md
+      section: I-1-requestGate新增-建门唯一入口
+    - ref: design/interfaces.md#I-2-三个建门调用点改
+      title: I-2 三个建门调用点（改） <!--
+      serves:
+        - FR-1
+        - FR-3
+      file: design/interfaces.md
+      section: I-2-三个建门调用点改
+    - ref: design/interfaces.md#I-3-reqboardaskconfirm-对外返回零新增键
+      title: I-3 `reqboard_ask_confirm` 对外返回（零新增键） <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: I-3-reqboardaskconfirm-对外返回零新增键
+    - ref: design/interfaces.md#I-4-PendingConfirmRegistry改-新增只读查询
+      title: I-4 `PendingConfirmRegistry`（改 · 新增只读查询） <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: I-4-PendingConfirmRegistry改-新增只读查询
+    - ref: design/interfaces.md#I-5-AskConfirm-的陈旧票清理改-分门
+      title: I-5 `AskConfirm` 的陈旧票清理（改 · 分门） <!--
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: I-5-AskConfirm-的陈旧票清理改-分门
+    - ref: design/interfaces.md#I-6-落章前提与迟到作答改
+      title: I-6 落章前提与迟到作答（改） <!--
+      serves:
+        - FR-4
+        - FR-5
+      file: design/interfaces.md
+      section: I-6-落章前提与迟到作答改
+    - ref: design/interfaces.md#I-7-文案契约改
+      title: I-7 文案契约（改） <!--
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: I-7-文案契约改
+    - ref: design/interfaces.md#I-8-错误码不新增
+      title: I-8 错误码（不新增） <!--
+      serves:
+        - FR-5
+      file: design/interfaces.md
+      section: I-8-错误码不新增
+    - ref: design/use-cases.md#UC-1-拆分门提交计划-agent-再请求同门本次事故现场
+      title: UC-1 拆分门：提交计划 + agent 再请求同门（本次事故现场） <!--
+      serves:
+        - FR-1
+        - FR-3
+      file: design/use-cases.md
+      section: UC-1-拆分门提交计划-agent-再请求同门本次事故现场
+    - ref: design/use-cases.md#UC-2-需求门人在宽限内作答-vs-宽限外作答
+      title: UC-2 需求门：人在宽限内作答 vs 宽限外作答 <!--
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-2-需求门人在宽限内作答-vs-宽限外作答
+    - ref: design/use-cases.md#UC-3-迟到作答被取代-需求已推进的门
+      title: UC-3 迟到作答：被取代 / 需求已推进的门 <!--
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-3-迟到作答被取代-需求已推进的门
+    - ref: design/use-cases.md#UC-4-真门正常路径零回归对照
+      title: UC-4 真门正常路径（零回归对照） <!--
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: UC-4-真门正常路径零回归对照
+    - ref: design/use-cases.md#UC-5-异门陈旧票窗口不能被钉死
+      title: UC-5 异门陈旧票：窗口不能被钉死 <!--
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-5-异门陈旧票窗口不能被钉死
+    - ref: design/use-cases.md#UC-6-看板作答通道
+      title: UC-6 看板作答通道 <!--
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-6-看板作答通道
+    - ref: design/use-cases.md#UC-7-人的视角同一件事不再被问两次
+      title: UC-7 人的视角：同一件事不再被问两次 <!--
+      serves:
+        - FR-2
+        - FR-6
+      file: design/use-cases.md
+      section: UC-7-人的视角同一件事不再被问两次
+outputs:
+  tasks:
+    - id: t-14f9c2
+      title: 给 PendingConfirmRegistry 加只读 findOpen
+      implements: 在 src/adapters/PendingConfirmRegistry.ts 新增只读方法 findOpen(input)：按 (requirementId, target, kind) 查「未作答（outcome === undefined）且未过期」的记录，命中至多返回一条，未命中返回 undefined。判定必须是纯读：体内不得调用 settle / register / markInterrupted，不改任何字段、不续期。kind 缺省时按 target='plan' 的口径匹配。同时新增 tests/pending-confirm-registry-findopen.test.ts，用构造好的注册表实例断言五种情形：同门命中、跨 windowKey 命中、已作答不命中、已过期不命中、target='plan' 且 kind 缺省命中。register / get / pendingForWindow / settle / markInterrupted / TTL / storageActions 系列逐字不动。
+      serves:
+        - FR-1
+        - FR-2
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-073a6a
+      title: 新增 gate-request.ts 建门唯一入口（复用→早退→新建）
+      implements: 新建 src/application/internal/gate-request.ts，导出 GateRequestInput / GateRequestOutcome / requestGate(deps, input, exec)。判定顺序固定为 reused（经 registry.findOpen 命中同门未作答门 ⇒ 返回原 ticket，不弹框不登记不写台账不续期）→ already-settled（同 target+kind 已落章 ⇒ 复用 AskConfirm 既有早退读取口径，返回既有确认态）→ opened（登记门并交给调用通道弹框）。前置校验沿用 AskConfirm 既有错误码（NO_BOUND_REQ / NOT_BOUND_TO_WINDOW / INVALID_INPUT / MISSING_ARTIFACT / MISSING_PLAN），判定阶段零副作用、不抛业务错。同时新增 tests/gate-request-uniqueness.test.ts 的 U1~U5 前身用例（假 deps 直接单测 requestGate 三分支：复用 / 早退 / 新建；含弹框端口计数与票表计数断言）。
+      serves:
+        - FR-1
+        - FR-3
+      depends_on:
+        - t-14f9c2
+      phase: implement
+      side: backend
+    - id: t-989d03
+      title: auto-confirm 改走 requestGate（自动弹不再重复建门）
+      implements: 改 src/application/internal/auto-confirm.ts::triggerAutoConfirm：先调 requestGate，仅 mode==='opened' 时投递弹框；reused / already-settled 时返回 {triggered:false, reason:'该门已有一个在等的框（ticket=…）'}，不再 fire-and-forget 投递。既有的原型存在门窄口径预判保持在其前、逐字不变（无门产物仍不建门）。弹框通道不可用的探测分支与失败告警端口不变。
+      serves:
+        - FR-1
+        - FR-3
+      depends_on:
+        - t-073a6a
+      phase: implement
+      side: backend
+    - id: t-aa311c
+      title: AskConfirm 改走 requestGate 且陈旧票清理分门
+      implements: 改 src/application/use-cases/AskConfirm.ts：① 请求路径改走 requestGate——reused 时返回 {success:true, confirmed:false, advanced:false, pending:true, ticket:<原票>, note:'该确认已有一道门在等…'}（不新增返回键）；already-settled 时沿用既有早退返回体与措辞（含「未重复弹框（FR-9/FR-11）」）；opened 时保持既有登记 + 弹框 + 赛跑逻辑不变。② AskConfirm.ts:242 的「登记新票前把同窗口旧票一律 settle」改为分门：同门（同 requirementId+target+kind）跳过（保留给 requestGate 复用），异门仍 settle（防窗口被钉死）。③ evidence 文字路径保持直接落章，但落章改由 confirm-settle 的前提检查把关（t6 提供）。
+      serves:
+        - FR-1
+        - FR-2
+      depends_on:
+        - t-073a6a
+      phase: implement
+      side: backend
+    - id: t-d35599
+      title: 验收门自动确认改走 requestGate（阻塞形态不变）
+      implements: 改 src/application/use-cases/SubmitVerification.ts 的自动验收确认块：由直接 await askConfirm 改为先经 requestGate，opened 时才弹框；reused / already-settled 时不弹框，回执 note 相应改写（写明已有一道门在等 / 已确认）。保持 await 阻塞形态与 blockers 条件逐字不变（本次不统一 G4 的阻塞形态，见设计 B-7）。
+      serves:
+        - FR-1
+        - FR-3
+      depends_on:
+        - t-073a6a
+      phase: implement
+      side: backend
+    - id: t-ac6dbe
+      title: confirm-settle 落章两前提 + 首写不变 + recordStaleAnswer
+      implements: 改 src/application/internal/confirm-settle.ts：① 新增 SettlePrecondition 计算——gateOpen（该 ref 的运行记录 outcome === undefined）、onSourceStage（req.status === 来源阶段，来源阶段由 src/domain/gate/GateCatalog.ts 的 ARTIFACT_CONFIRM_GATES 反查得到，不另写映射表）；② applyConfirmDecision 入口先算前提，gateOpen===false 或 onSourceStage===false 时返回 {success:true, confirmed:false, advanced:false, note:'该确认已被取代（或需求已推进到 <status>）：本次作答不改变状态'} 并调 recordStaleAnswer 留一条评论，不落章、不推进、不抛；③ 落章写入改为「仅当为空时写」：plan.approvedAt / 产物 confirmedAt / approvedEvidence / confirmedEvidence；④ 新增 recordStaleAnswer（与 recordDeclinedConfirmation 同址），只写评论不碰台账时间戳。
+      serves:
+        - FR-4
+        - FR-5
+      depends_on:
+        - t-aa311c
+      phase: implement
+      side: backend
+    - id: t-34a881
+      title: 迟到作答路由到中性通道（不落章不推进）
+      implements: 改 src/application/internal/pending-confirm.ts::suspendConfirm 的后台续跑：作答到达时先判定该 ref 是否已被 settle（outcome !== undefined）或需求是否已离开该门的来源阶段；命中失效条件时调 recordStaleAnswer 返回中性体（confirmed=false + 说明），不再调 settleAnswers/applyConfirmDecision；否则走原路径逐字不变。同步修正 outcomeOf 回填语义（失效票不写 confirmed=true）。
+      serves:
+        - FR-5
+      depends_on:
+        - t-ac6dbe
+      phase: implement
+      side: backend
+    - id: t-51ccb8
+      title: 指南三处与回执 note 去机制化并重生成产物
+      implements: ① 改 src/application/internal/capture-section.ts 的设计/拆分两处指南为条件式：「若回执已说明有门在等 → 不要重复发起确认；否则发起一次」。② 改三份片段 src/domain/prompt/fragments/decomposing/light.md、src/domain/prompt/fragments/decomposing/heavy.md、src/domain/prompt/fragments/brainstorming/heavy/overrides.md 同样条件式。③ 跑 node scripts/inline-prompt-fragments.mjs 重生成 src/domain/prompt/generated/fragments.ts。④ 改 src/application/use-cases/SubmitArtifact.ts 的回执 note 分支：triggered=true 时写「已有一道门在等（ticket=…）：取回执或看板作答，不要再发起确认」，不再指向 ask_confirm。⑤ 同步 tests/fixtures/stage-prompts-baseline.json 基线。
+      serves:
+        - FR-3
+      depends_on:
+        - t-989d03
+        - t-aa311c
+      phase: implement
+      side: backend
+    - id: t-610324
+      title: recovery 与拒绝文案删掉“覆盖”措辞
+      implements: 改 src/application/internal/pending-guard.ts::pendingConfirmRejectMessage 的 recovery 清单：删掉「③ 重新发起 reqboard_ask_confirm 覆盖旧记录」，改为「已有一道门在等：① 调 reqboard_confirm_receipt 取回执 ② 到项目看板作答」；连带核对 QueryState 投影里同一份文案的来源（共用同一判据，不另写一份）。
+      serves:
+        - FR-3
+      depends_on:
+        - t-aa311c
+      phase: implement
+      side: backend
+    - id: t-33a14b
+      title: 补 U1~U9 用例与“同门唯一”探针
+      implements: 在 tests/gate-request-uniqueness.test.ts 补齐 U1~U9（真 fs + 真工具壳）：U1 同门连调两次、U2 连调三次幂等且不续期、U3 已批准再调早退、U4 异门清理、U5 跨窗口复用、U6 已批准后再落章首写不变、U7 需求已推进后作答、U8 被取代门迟到作答、U9 status 投影读门状态。探针：在 scripts/gate-inflight-probe.mts 输出「当前在等的门」清单（ref / target / createdAt / 谁能答）并断言同门计数 ≤1。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+        - FR-5
+        - FR-6
+      depends_on:
+        - t-989d03
+        - t-34a881
+      phase: test
+      side: backend
+    - id: t-823389
+      title: 四门回归矩阵 + 反向演练 + 基线证据落盘
+      implements: 补 G1 需求 / G2 设计 / G3 拆分 / G4 验收四门各至少一例正例（首次请求照旧弹框、肯定答复照旧落章并推进、否定答复只留痕、看板确认通道照旧可用），落在 tests/gate-request-uniqueness.test.ts；按设计 T-4 做三条「改坏必红」反向演练并逐条还原（记录必红输出与改坏点）；把命令 + 输出摘要落盘 docs/requirements/REQ-261006164732-6503/tests/evidence.md。
+      serves:
+        - FR-6
+      depends_on:
+        - t-33a14b
+      phase: test
+      side: backend
+    - id: t-93db11
+      title: 落盘迁移 / 兼容 / 回滚清单
+      implements: 落盘 docs/requirements/REQ-261006164732-6503/notes/migration-rollback.md：① 零 schema 变更的依据（门是进程内结构，本次不碰数据库，逐条列出对照的设计 G-1/G-5）；② 旧调用方核对结论（对外参数与返回键零变更：以 output-contract 用例与协议文件 diff 为证）；③ 回滚步骤（代码回退 + 提示词产物重生成命令，无数据侧动作）；④ 历史被覆写记录的阅读口径（不追溯修正，只保证此后不再被覆写）。
+      serves:
+        - FR-6
+      depends_on:
+        - t-aa311c
+      phase: doc
+      side: doc
+    - id: t-9ab60f
+      title: 给 PendingConfirmRegistry 加只读 findOpen·研发
+      implements: |-
+        在 src/adapters/PendingConfirmRegistry.ts 新增只读方法 findOpen(input)：按 (requirementId, target, kind) 查「未作答（outcome === undefined）且未过期」的记录，命中至多返回一条，未命中返回 undefined。判定必须是纯读：体内不得调用 settle / register / markInterrupted，不改任何字段、不续期。kind 缺省时按 target='plan' 的口径匹配。同时新增 tests/pending-confirm-registry-findopen.test.ts，用构造好的注册表实例断言五种情形：同门命中、跨 windowKey 命中、已作答不命中、已过期不命中、target='plan' 且 kind 缺省命中。register / get / pendingForWindow / settle / markInterrupted / TTL / storageActions 系列逐字不动。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-e2a84a
+      title: 给 PendingConfirmRegistry 加只读 findOpen·复核
+      implements: |-
+        在 src/adapters/PendingConfirmRegistry.ts 新增只读方法 findOpen(input)：按 (requirementId, target, kind) 查「未作答（outcome === undefined）且未过期」的记录，命中至多返回一条，未命中返回 undefined。判定必须是纯读：体内不得调用 settle / register / markInterrupted，不改任何字段、不续期。kind 缺省时按 target='plan' 的口径匹配。同时新增 tests/pending-confirm-registry-findopen.test.ts，用构造好的注册表实例断言五种情形：同门命中、跨 windowKey 命中、已作答不命中、已过期不命中、target='plan' 且 kind 缺省命中。register / get / pendingForWindow / settle / markInterrupted / TTL / storageActions 系列逐字不动。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-9ab60f
+      phase: implement
+      side: backend
+    - id: t-ca4313
+      title: 新增 gate-request.ts 建门唯一入口（复用→早退→新建）·研发
+      implements: |-
+        新建 src/application/internal/gate-request.ts，导出 GateRequestInput / GateRequestOutcome / requestGate(deps, input, exec)。判定顺序固定为 reused（经 registry.findOpen 命中同门未作答门 ⇒ 返回原 ticket，不弹框不登记不写台账不续期）→ already-settled（同 target+kind 已落章 ⇒ 复用 AskConfirm 既有早退读取口径，返回既有确认态）→ opened（登记门并交给调用通道弹框）。前置校验沿用 AskConfirm 既有错误码（NO_BOUND_REQ / NOT_BOUND_TO_WINDOW / INVALID_INPUT / MISSING_ARTIFACT / MISSING_PLAN），判定阶段零副作用、不抛业务错。同时新增 tests/gate-request-uniqueness.test.ts 的 U1~U5 前身用例（假 deps 直接单测 requestGate 三分支：复用 / 早退 / 新建；含弹框端口计数与票表计数断言）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-14f9c2
+      phase: implement
+      side: backend
+    - id: t-d31b44
+      title: 新增 gate-request.ts 建门唯一入口（复用→早退→新建）·复核
+      implements: |-
+        新建 src/application/internal/gate-request.ts，导出 GateRequestInput / GateRequestOutcome / requestGate(deps, input, exec)。判定顺序固定为 reused（经 registry.findOpen 命中同门未作答门 ⇒ 返回原 ticket，不弹框不登记不写台账不续期）→ already-settled（同 target+kind 已落章 ⇒ 复用 AskConfirm 既有早退读取口径，返回既有确认态）→ opened（登记门并交给调用通道弹框）。前置校验沿用 AskConfirm 既有错误码（NO_BOUND_REQ / NOT_BOUND_TO_WINDOW / INVALID_INPUT / MISSING_ARTIFACT / MISSING_PLAN），判定阶段零副作用、不抛业务错。同时新增 tests/gate-request-uniqueness.test.ts 的 U1~U5 前身用例（假 deps 直接单测 requestGate 三分支：复用 / 早退 / 新建；含弹框端口计数与票表计数断言）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-ca4313
+      phase: implement
+      side: backend
+    - id: t-15729f
+      title: auto-confirm 改走 requestGate（自动弹不再重复建门）·研发
+      implements: |-
+        改 src/application/internal/auto-confirm.ts::triggerAutoConfirm：先调 requestGate，仅 mode==='opened' 时投递弹框；reused / already-settled 时返回 {triggered:false, reason:'该门已有一个在等的框（ticket=…）'}，不再 fire-and-forget 投递。既有的原型存在门窄口径预判保持在其前、逐字不变（无门产物仍不建门）。弹框通道不可用的探测分支与失败告警端口不变。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-073a6a
+      phase: implement
+      side: backend
+    - id: t-d49de6
+      title: auto-confirm 改走 requestGate（自动弹不再重复建门）·复核
+      implements: |-
+        改 src/application/internal/auto-confirm.ts::triggerAutoConfirm：先调 requestGate，仅 mode==='opened' 时投递弹框；reused / already-settled 时返回 {triggered:false, reason:'该门已有一个在等的框（ticket=…）'}，不再 fire-and-forget 投递。既有的原型存在门窄口径预判保持在其前、逐字不变（无门产物仍不建门）。弹框通道不可用的探测分支与失败告警端口不变。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-15729f
+      phase: implement
+      side: backend
+    - id: t-7539a9
+      title: AskConfirm 改走 requestGate 且陈旧票清理分门·研发
+      implements: |-
+        改 src/application/use-cases/AskConfirm.ts：① 请求路径改走 requestGate——reused 时返回 {success:true, confirmed:false, advanced:false, pending:true, ticket:<原票>, note:'该确认已有一道门在等…'}（不新增返回键）；already-settled 时沿用既有早退返回体与措辞（含「未重复弹框（FR-9/FR-11）」）；opened 时保持既有登记 + 弹框 + 赛跑逻辑不变。② AskConfirm.ts:242 的「登记新票前把同窗口旧票一律 settle」改为分门：同门（同 requirementId+target+kind）跳过（保留给 requestGate 复用），异门仍 settle（防窗口被钉死）。③ evidence 文字路径保持直接落章，但落章改由 confirm-settle 的前提检查把关（t6 提供）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-073a6a
+      phase: implement
+      side: backend
+    - id: t-8070c0
+      title: AskConfirm 改走 requestGate 且陈旧票清理分门·联调
+      implements: |-
+        改 src/application/use-cases/AskConfirm.ts：① 请求路径改走 requestGate——reused 时返回 {success:true, confirmed:false, advanced:false, pending:true, ticket:<原票>, note:'该确认已有一道门在等…'}（不新增返回键）；already-settled 时沿用既有早退返回体与措辞（含「未重复弹框（FR-9/FR-11）」）；opened 时保持既有登记 + 弹框 + 赛跑逻辑不变。② AskConfirm.ts:242 的「登记新票前把同窗口旧票一律 settle」改为分门：同门（同 requirementId+target+kind）跳过（保留给 requestGate 复用），异门仍 settle（防窗口被钉死）。③ evidence 文字路径保持直接落章，但落章改由 confirm-settle 的前提检查把关（t6 提供）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-7539a9
+      phase: implement
+      side: backend
+    - id: t-ffa853
+      title: AskConfirm 改走 requestGate 且陈旧票清理分门·复核
+      implements: |-
+        改 src/application/use-cases/AskConfirm.ts：① 请求路径改走 requestGate——reused 时返回 {success:true, confirmed:false, advanced:false, pending:true, ticket:<原票>, note:'该确认已有一道门在等…'}（不新增返回键）；already-settled 时沿用既有早退返回体与措辞（含「未重复弹框（FR-9/FR-11）」）；opened 时保持既有登记 + 弹框 + 赛跑逻辑不变。② AskConfirm.ts:242 的「登记新票前把同窗口旧票一律 settle」改为分门：同门（同 requirementId+target+kind）跳过（保留给 requestGate 复用），异门仍 settle（防窗口被钉死）。③ evidence 文字路径保持直接落章，但落章改由 confirm-settle 的前提检查把关（t6 提供）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-8070c0
+      phase: implement
+      side: backend
+    - id: t-814b48
+      title: 验收门自动确认改走 requestGate（阻塞形态不变）·研发
+      implements: |-
+        改 src/application/use-cases/SubmitVerification.ts 的自动验收确认块：由直接 await askConfirm 改为先经 requestGate，opened 时才弹框；reused / already-settled 时不弹框，回执 note 相应改写（写明已有一道门在等 / 已确认）。保持 await 阻塞形态与 blockers 条件逐字不变（本次不统一 G4 的阻塞形态，见设计 B-7）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-073a6a
+      phase: implement
+      side: backend
+    - id: t-a40956
+      title: 验收门自动确认改走 requestGate（阻塞形态不变）·复核
+      implements: |-
+        改 src/application/use-cases/SubmitVerification.ts 的自动验收确认块：由直接 await askConfirm 改为先经 requestGate，opened 时才弹框；reused / already-settled 时不弹框，回执 note 相应改写（写明已有一道门在等 / 已确认）。保持 await 阻塞形态与 blockers 条件逐字不变（本次不统一 G4 的阻塞形态，见设计 B-7）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-814b48
+      phase: implement
+      side: backend
+    - id: t-1c7ffb
+      title: confirm-settle 落章两前提 + 首写不变 + recordStaleAnswer·研发
+      implements: |-
+        改 src/application/internal/confirm-settle.ts：① 新增 SettlePrecondition 计算——gateOpen（该 ref 的运行记录 outcome === undefined）、onSourceStage（req.status === 来源阶段，来源阶段由 src/domain/gate/GateCatalog.ts 的 ARTIFACT_CONFIRM_GATES 反查得到，不另写映射表）；② applyConfirmDecision 入口先算前提，gateOpen===false 或 onSourceStage===false 时返回 {success:true, confirmed:false, advanced:false, note:'该确认已被取代（或需求已推进到 <status>）：本次作答不改变状态'} 并调 recordStaleAnswer 留一条评论，不落章、不推进、不抛；③ 落章写入改为「仅当为空时写」：plan.approvedAt / 产物 confirmedAt / approvedEvidence / confirmedEvidence；④ 新增 recordStaleAnswer（与 recordDeclinedConfirmation 同址），只写评论不碰台账时间戳。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-aa311c
+      phase: implement
+      side: backend
+    - id: t-d09bda
+      title: confirm-settle 落章两前提 + 首写不变 + recordStaleAnswer·复核
+      implements: |-
+        改 src/application/internal/confirm-settle.ts：① 新增 SettlePrecondition 计算——gateOpen（该 ref 的运行记录 outcome === undefined）、onSourceStage（req.status === 来源阶段，来源阶段由 src/domain/gate/GateCatalog.ts 的 ARTIFACT_CONFIRM_GATES 反查得到，不另写映射表）；② applyConfirmDecision 入口先算前提，gateOpen===false 或 onSourceStage===false 时返回 {success:true, confirmed:false, advanced:false, note:'该确认已被取代（或需求已推进到 <status>）：本次作答不改变状态'} 并调 recordStaleAnswer 留一条评论，不落章、不推进、不抛；③ 落章写入改为「仅当为空时写」：plan.approvedAt / 产物 confirmedAt / approvedEvidence / confirmedEvidence；④ 新增 recordStaleAnswer（与 recordDeclinedConfirmation 同址），只写评论不碰台账时间戳。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-1c7ffb
+      phase: implement
+      side: backend
+    - id: t-5e297f
+      title: 迟到作答路由到中性通道（不落章不推进）·研发
+      implements: |-
+        改 src/application/internal/pending-confirm.ts::suspendConfirm 的后台续跑：作答到达时先判定该 ref 是否已被 settle（outcome !== undefined）或需求是否已离开该门的来源阶段；命中失效条件时调 recordStaleAnswer 返回中性体（confirmed=false + 说明），不再调 settleAnswers/applyConfirmDecision；否则走原路径逐字不变。同步修正 outcomeOf 回填语义（失效票不写 confirmed=true）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-ac6dbe
+      phase: implement
+      side: backend
+    - id: t-ae970a
+      title: 迟到作答路由到中性通道（不落章不推进）·复核
+      implements: |-
+        改 src/application/internal/pending-confirm.ts::suspendConfirm 的后台续跑：作答到达时先判定该 ref 是否已被 settle（outcome !== undefined）或需求是否已离开该门的来源阶段；命中失效条件时调 recordStaleAnswer 返回中性体（confirmed=false + 说明），不再调 settleAnswers/applyConfirmDecision；否则走原路径逐字不变。同步修正 outcomeOf 回填语义（失效票不写 confirmed=true）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-5e297f
+      phase: implement
+      side: backend
+    - id: t-5322b6
+      title: 指南三处与回执 note 去机制化并重生成产物·研发
+      implements: |-
+        ① 改 src/application/internal/capture-section.ts 的设计/拆分两处指南为条件式：「若回执已说明有门在等 → 不要重复发起确认；否则发起一次」。② 改三份片段 src/domain/prompt/fragments/decomposing/light.md、src/domain/prompt/fragments/decomposing/heavy.md、src/domain/prompt/fragments/brainstorming/heavy/overrides.md 同样条件式。③ 跑 node scripts/inline-prompt-fragments.mjs 重生成 src/domain/prompt/generated/fragments.ts。④ 改 src/application/use-cases/SubmitArtifact.ts 的回执 note 分支：triggered=true 时写「已有一道门在等（ticket=…）：取回执或看板作答，不要再发起确认」，不再指向 ask_confirm。⑤ 同步 tests/fixtures/stage-prompts-baseline.json 基线。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-989d03
+        - t-aa311c
+      phase: implement
+      side: backend
+    - id: t-1ffa51
+      title: 指南三处与回执 note 去机制化并重生成产物·复核
+      implements: |-
+        ① 改 src/application/internal/capture-section.ts 的设计/拆分两处指南为条件式：「若回执已说明有门在等 → 不要重复发起确认；否则发起一次」。② 改三份片段 src/domain/prompt/fragments/decomposing/light.md、src/domain/prompt/fragments/decomposing/heavy.md、src/domain/prompt/fragments/brainstorming/heavy/overrides.md 同样条件式。③ 跑 node scripts/inline-prompt-fragments.mjs 重生成 src/domain/prompt/generated/fragments.ts。④ 改 src/application/use-cases/SubmitArtifact.ts 的回执 note 分支：triggered=true 时写「已有一道门在等（ticket=…）：取回执或看板作答，不要再发起确认」，不再指向 ask_confirm。⑤ 同步 tests/fixtures/stage-prompts-baseline.json 基线。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-5322b6
+      phase: implement
+      side: backend
+    - id: t-b9375c
+      title: recovery 与拒绝文案删掉“覆盖”措辞·研发
+      implements: |-
+        改 src/application/internal/pending-guard.ts::pendingConfirmRejectMessage 的 recovery 清单：删掉「③ 重新发起 reqboard_ask_confirm 覆盖旧记录」，改为「已有一道门在等：① 调 reqboard_confirm_receipt 取回执 ② 到项目看板作答」；连带核对 QueryState 投影里同一份文案的来源（共用同一判据，不另写一份）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-aa311c
+      phase: implement
+      side: backend
+    - id: t-13fd40
+      title: recovery 与拒绝文案删掉“覆盖”措辞·复核
+      implements: |-
+        改 src/application/internal/pending-guard.ts::pendingConfirmRejectMessage 的 recovery 清单：删掉「③ 重新发起 reqboard_ask_confirm 覆盖旧记录」，改为「已有一道门在等：① 调 reqboard_confirm_receipt 取回执 ② 到项目看板作答」；连带核对 QueryState 投影里同一份文案的来源（共用同一判据，不另写一份）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-b9375c
+      phase: implement
+      side: backend
+    - id: t-d358cb
+      title: 补 U1~U9 用例与“同门唯一”探针·研发
+      implements: |-
+        在 tests/gate-request-uniqueness.test.ts 补齐 U1~U9（真 fs + 真工具壳）：U1 同门连调两次、U2 连调三次幂等且不续期、U3 已批准再调早退、U4 异门清理、U5 跨窗口复用、U6 已批准后再落章首写不变、U7 需求已推进后作答、U8 被取代门迟到作答、U9 status 投影读门状态。探针：在 scripts/gate-inflight-probe.mts 输出「当前在等的门」清单（ref / target / createdAt / 谁能答）并断言同门计数 ≤1。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-989d03
+        - t-34a881
+      phase: test
+      side: backend
+    - id: t-0c5909
+      title: 补 U1~U9 用例与“同门唯一”探针·复核
+      implements: |-
+        在 tests/gate-request-uniqueness.test.ts 补齐 U1~U9（真 fs + 真工具壳）：U1 同门连调两次、U2 连调三次幂等且不续期、U3 已批准再调早退、U4 异门清理、U5 跨窗口复用、U6 已批准后再落章首写不变、U7 需求已推进后作答、U8 被取代门迟到作答、U9 status 投影读门状态。探针：在 scripts/gate-inflight-probe.mts 输出「当前在等的门」清单（ref / target / createdAt / 谁能答）并断言同门计数 ≤1。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-d358cb
+      phase: test
+      side: backend
+    - id: t-2f6133
+      title: 补 U1~U9 用例与“同门唯一”探针·测试
+      implements: |-
+        在 tests/gate-request-uniqueness.test.ts 补齐 U1~U9（真 fs + 真工具壳）：U1 同门连调两次、U2 连调三次幂等且不续期、U3 已批准再调早退、U4 异门清理、U5 跨窗口复用、U6 已批准后再落章首写不变、U7 需求已推进后作答、U8 被取代门迟到作答、U9 status 投影读门状态。探针：在 scripts/gate-inflight-probe.mts 输出「当前在等的门」清单（ref / target / createdAt / 谁能答）并断言同门计数 ≤1。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-0c5909
+      phase: test
+      side: backend
+    - id: t-be5ec5
+      title: 四门回归矩阵 + 反向演练 + 基线证据落盘·研发
+      implements: |-
+        补 G1 需求 / G2 设计 / G3 拆分 / G4 验收四门各至少一例正例（首次请求照旧弹框、肯定答复照旧落章并推进、否定答复只留痕、看板确认通道照旧可用），落在 tests/gate-request-uniqueness.test.ts；按设计 T-4 做三条「改坏必红」反向演练并逐条还原（记录必红输出与改坏点）；把命令 + 输出摘要落盘 docs/requirements/REQ-261006164732-6503/tests/evidence.md。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-33a14b
+      phase: test
+      side: backend
+    - id: t-be0627
+      title: 四门回归矩阵 + 反向演练 + 基线证据落盘·复核
+      implements: |-
+        补 G1 需求 / G2 设计 / G3 拆分 / G4 验收四门各至少一例正例（首次请求照旧弹框、肯定答复照旧落章并推进、否定答复只留痕、看板确认通道照旧可用），落在 tests/gate-request-uniqueness.test.ts；按设计 T-4 做三条「改坏必红」反向演练并逐条还原（记录必红输出与改坏点）；把命令 + 输出摘要落盘 docs/requirements/REQ-261006164732-6503/tests/evidence.md。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-be5ec5
+      phase: test
+      side: backend
+    - id: t-508349
+      title: 四门回归矩阵 + 反向演练 + 基线证据落盘·测试
+      implements: |-
+        补 G1 需求 / G2 设计 / G3 拆分 / G4 验收四门各至少一例正例（首次请求照旧弹框、肯定答复照旧落章并推进、否定答复只留痕、看板确认通道照旧可用），落在 tests/gate-request-uniqueness.test.ts；按设计 T-4 做三条「改坏必红」反向演练并逐条还原（记录必红输出与改坏点）；把命令 + 输出摘要落盘 docs/requirements/REQ-261006164732-6503/tests/evidence.md。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-be0627
+      phase: test
+      side: backend
+    - id: t-f8a8ce
+      title: 落盘迁移 / 兼容 / 回滚清单·研发
+      implements: |-
+        落盘 docs/requirements/REQ-261006164732-6503/notes/migration-rollback.md：① 零 schema 变更的依据（门是进程内结构，本次不碰数据库，逐条列出对照的设计 G-1/G-5）；② 旧调用方核对结论（对外参数与返回键零变更：以 output-contract 用例与协议文件 diff 为证）；③ 回滚步骤（代码回退 + 提示词产物重生成命令，无数据侧动作）；④ 历史被覆写记录的阅读口径（不追溯修正，只保证此后不再被覆写）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-aa311c
+      phase: doc
+      side: doc
+    - id: t-de5a31
+      title: 落盘迁移 / 兼容 / 回滚清单·复核
+      implements: |-
+        落盘 docs/requirements/REQ-261006164732-6503/notes/migration-rollback.md：① 零 schema 变更的依据（门是进程内结构，本次不碰数据库，逐条列出对照的设计 G-1/G-5）；② 旧调用方核对结论（对外参数与返回键零变更：以 output-contract 用例与协议文件 diff 为证）；③ 回滚步骤（代码回退 + 提示词产物重生成命令，无数据侧动作）；④ 历史被覆写记录的阅读口径（不追溯修正，只保证此后不再被覆写）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-f8a8ce
+      phase: doc
+      side: doc
+task_coverage:
+  - task_id: t-14f9c2
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-073a6a
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-989d03
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-aa311c
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-d35599
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ac6dbe
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-34a881
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-51ccb8
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-610324
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-33a14b
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-823389
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-93db11
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-9ab60f
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-e2a84a
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ca4313
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-d31b44
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-15729f
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-d49de6
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-7539a9
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-8070c0
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ffa853
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-814b48
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-a40956
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-1c7ffb
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-d09bda
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-5e297f
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ae970a
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-5322b6
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-1ffa51
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b9375c
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-13fd40
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-d358cb
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-0c5909
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-2f6133
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-be5ec5
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-be0627
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-508349
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-f8a8ce
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-de5a31
+    covers_prototypes: []
+    covers_decisions: []
+traceability:
+  design_to_tasks:
+    design/architecture.md#A-1-现状四个通道各自决定要不要弹:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-ac6dbe
+      - t-33a14b
+    design/architecture.md#A-2-目标形态建门唯一入口-唯一性不变量:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+    design/architecture.md#A-3-判定顺序复用-早退-新建不可换序:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-51ccb8
+      - t-610324
+      - t-33a14b
+    design/architecture.md#A-4-落章条件写-首写不变:
+      - t-ac6dbe
+      - t-34a881
+      - t-33a14b
+    design/architecture.md#A-5-过程态可见:
+      - t-14f9c2
+      - t-aa311c
+      - t-33a14b
+      - t-823389
+      - t-93db11
+    design/architecture.md#A-6-不做:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+      - t-823389
+      - t-93db11
+    design/backend.md#B-1-调用顺序不可换序:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+    design/backend.md#B-2-复用路径返回什么不做什么:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+    design/backend.md#B-3-异门陈旧票为什么仍要清:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+    design/backend.md#B-4-条件写的两个前提与失败表现:
+      - t-ac6dbe
+      - t-34a881
+      - t-33a14b
+    design/backend.md#B-5-提示词与文案的落地纪律:
+      - t-073a6a
+      - t-989d03
+      - t-d35599
+      - t-51ccb8
+      - t-610324
+    design/backend.md#B-6-并发多窗口与幂等:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+    design/backend.md#B-7-代码落点一句话职责:
+      - t-33a14b
+      - t-823389
+      - t-93db11
+    design/data-model.md#G-1-结论门是运行时结构不落库:
+      - t-ac6dbe
+      - t-33a14b
+      - t-823389
+      - t-93db11
+    design/data-model.md#G-2-门的形状沿用既有字段语义收紧:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+    design/data-model.md#G-3-唯一性口径与判定键:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+    design/data-model.md#G-4-台账写入不变式可断言:
+      - t-ac6dbe
+      - t-34a881
+      - t-33a14b
+    design/data-model.md#G-5-迁移-回滚:
+      - t-33a14b
+      - t-823389
+      - t-93db11
+    design/interfaces.md#I-1-requestGate新增-建门唯一入口:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-51ccb8
+      - t-610324
+      - t-33a14b
+    design/interfaces.md#I-2-三个建门调用点改:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-51ccb8
+      - t-610324
+      - t-33a14b
+    design/interfaces.md#I-3-reqboardaskconfirm-对外返回零新增键:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+    design/interfaces.md#I-4-PendingConfirmRegistry改-新增只读查询:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+    design/interfaces.md#I-5-AskConfirm-的陈旧票清理改-分门:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+    design/interfaces.md#I-6-落章前提与迟到作答改:
+      - t-ac6dbe
+      - t-34a881
+      - t-33a14b
+    design/interfaces.md#I-7-文案契约改:
+      - t-073a6a
+      - t-989d03
+      - t-d35599
+      - t-51ccb8
+      - t-610324
+    design/interfaces.md#I-8-错误码不新增:
+      - t-ac6dbe
+      - t-34a881
+      - t-33a14b
+    design/use-cases.md#UC-1-拆分门提交计划-agent-再请求同门本次事故现场:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-51ccb8
+      - t-610324
+      - t-33a14b
+    design/use-cases.md#UC-2-需求门人在宽限内作答-vs-宽限外作答:
+      - t-073a6a
+      - t-989d03
+      - t-d35599
+      - t-51ccb8
+      - t-610324
+    design/use-cases.md#UC-3-迟到作答被取代-需求已推进的门:
+      - t-ac6dbe
+      - t-34a881
+      - t-33a14b
+    design/use-cases.md#UC-4-真门正常路径零回归对照:
+      - t-ac6dbe
+      - t-33a14b
+    design/use-cases.md#UC-5-异门陈旧票窗口不能被钉死:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+    design/use-cases.md#UC-6-看板作答通道:
+      - t-14f9c2
+      - t-aa311c
+      - t-33a14b
+    design/use-cases.md#UC-7-人的视角同一件事不再被问两次:
+      - t-14f9c2
+      - t-aa311c
+      - t-33a14b
+      - t-823389
+      - t-93db11
+  fr_to_tasks:
+    FR-1:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-ac6dbe
+      - t-33a14b
+      - t-51ccb8
+      - t-610324
+      - t-823389
+      - t-93db11
+    FR-2:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-33a14b
+      - t-823389
+      - t-93db11
+    FR-3:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-51ccb8
+      - t-610324
+      - t-33a14b
+    FR-4:
+      - t-14f9c2
+      - t-073a6a
+      - t-989d03
+      - t-aa311c
+      - t-d35599
+      - t-ac6dbe
+      - t-33a14b
+      - t-34a881
+      - t-823389
+      - t-93db11
+    FR-5:
+      - t-ac6dbe
+      - t-34a881
+      - t-33a14b
+    FR-6:
+      - t-14f9c2
+      - t-aa311c
+      - t-33a14b
+      - t-823389
+      - t-93db11
+      - t-073a6a
+      - t-989d03
+      - t-d35599
+      - t-ac6dbe
+coverage:
+  implementation:
+    total: 33
+    covered: 33
+    uncovered: []
+    rate: 100
+    total_designs: 33
+    covered_designs: 33

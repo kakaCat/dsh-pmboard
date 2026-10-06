@@ -1,0 +1,1007 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261006170150-52cc
+  generated_at: 2026-10-06T09:19:40.511Z
+  version: 133
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T10:54:48.024Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 作答即清位，且清位先于推进
+      source: requirement.md
+      line: 90
+    - id: FR-2
+      title: 停手位被清即成驱动事件
+      source: requirement.md
+      line: 104
+    - id: FR-3
+      title: 在途登记的过期对账
+      source: requirement.md
+      line: 118
+    - id: FR-4
+      title: 断链可观测 + 回归锁
+      source: requirement.md
+      line: 137
+  design_sections:
+    - ref: design/architecture.md#目标与总体方案
+      title: 目标与总体方案 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 目标与总体方案
+    - ref: design/architecture.md#时序修前-修后
+      title: 时序：修前 / 修后 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 时序修前-修后
+    - ref: design/architecture.md#不变量
+      title: 不变量 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 不变量
+    - ref: design/architecture.md#模块改动地图
+      title: 模块改动地图 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 模块改动地图
+    - ref: design/architecture.md#失败与降级
+      title: 失败与降级 `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: 失败与降级
+    - ref: design/architecture.md#与既有契约文档的关系
+      title: 与既有契约文档的关系 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 与既有契约文档的关系
+    - ref: design/architecture.md#关键设计决策与取舍
+      title: 关键设计决策与取舍 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/architecture.md
+      section: 关键设计决策与取舍
+    - ref: design/backend.md#端侧声明与结论
+      title: 端侧声明与结论 `
+      serves:
+        - FR-1
+      file: design/backend.md
+      section: 端侧声明与结论
+    - ref: design/backend.md#后端改动面行为级
+      title: 后端改动面（行为级） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/backend.md
+      section: 后端改动面行为级
+    - ref: design/backend.md#并发幂等与顺序
+      title: 并发、幂等与顺序 `
+      serves:
+        - FR-2
+      file: design/backend.md
+      section: 并发幂等与顺序
+    - ref: design/backend.md#无界面产物声明
+      title: 无界面产物声明 `
+      serves:
+        - FR-1
+      file: design/backend.md
+      section: 无界面产物声明
+    - ref: design/backend.md#观测面与运行前提
+      title: 观测面与运行前提 `
+      serves:
+        - FR-4
+      file: design/backend.md
+      section: 观测面与运行前提
+    - ref: design/data-model.md#结论不动任何持久化结构
+      title: 结论：不动任何持久化结构 `
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: 结论不动任何持久化结构
+    - ref: design/data-model.md#台账字段的读写语义
+      title: 台账字段的读写语义 `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/data-model.md
+      section: 台账字段的读写语义
+    - ref: design/data-model.md#内存登记的生命周期与分档-TTL
+      title: 内存登记的生命周期与分档 TTL `
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: 内存登记的生命周期与分档-TTL
+    - ref: design/data-model.md#迁移与兼容
+      title: 迁移与兼容 `
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: 迁移与兼容
+    - ref: design/data-model.md#回滚路径
+      title: 回滚路径 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/data-model.md
+      section: 回滚路径
+    - ref: design/interfaces.md#端口与签名
+      title: 端口与签名 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: 端口与签名
+    - ref: design/interfaces.md#调用点清单
+      title: 调用点清单 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: 调用点清单
+    - ref: design/interfaces.md#错误与幂等语义
+      title: 错误与幂等语义 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/interfaces.md
+      section: 错误与幂等语义
+    - ref: design/interfaces.md#组合根装配
+      title: 组合根装配 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: 组合根装配
+    - ref: design/interfaces.md#放弃留痕契约
+      title: 放弃留痕契约 `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: 放弃留痕契约
+    - ref: design/interfaces.md#兼容性矩阵
+      title: 兼容性矩阵 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/interfaces.md
+      section: 兼容性矩阵
+    - ref: design/use-cases.md#角色与关注点
+      title: 角色与关注点 `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: 角色与关注点
+    - ref: design/use-cases.md#场景矩阵
+      title: 场景矩阵 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/use-cases.md
+      section: 场景矩阵
+    - ref: design/use-cases.md#关键序列
+      title: 关键序列 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/use-cases.md
+      section: 关键序列
+    - ref: design/use-cases.md#反例与边界场景
+      title: 反例与边界场景 `
+      serves:
+        - FR-2
+        - FR-3
+      file: design/use-cases.md
+      section: 反例与边界场景
+outputs:
+  tasks:
+    - id: t-b85f4e
+      title: 等待位契约：清位回调与 notify 开关
+      implements: 改 src/application/internal/awaiting-confirm.ts：加 AwaitingConfirmDeps.onCleared、ExitAwaitingInput.notify、返回 {cleared,notified}；清位成功处回调（try/catch + logger.warn，永不抛）。改 src/application/ports.ts：加 UseCaseDeps.notifyDrivable? 与 WakeHeartbeatDeps.notifyDrivable?，注释写明组合根接 round 半。新建 tests/awaiting-clear-notice.test.ts（TC-1、TC-2）。
+      serves:
+        - FR-2
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-0c7769
+      title: 确认收敛点：带 ref 清位先于推进 + 补发条件
+      implements: 改 src/application/internal/confirm-settle.ts：ConfirmDecision 加 dialogRef；开头带 ref await exitAwaitingConfirm（notify:false）；finally 里 advanced!==true 才 deps.notifyDrivable?.(id)。改 src/application/internal/pending-confirm.ts：ConfirmSubmitted 加 dialogRef 并透传。改 src/application/use-cases/AskConfirm.ts 与 src/application/dive/gate-prompt.ts：把各自 ref（ticket / dlg-gate-…）交给收敛点。新建 tests/confirm-settle-order.test.ts（TC-3~TC-5）。
+      serves:
+        - FR-1
+        - FR-2
+      depends_on:
+        - t-b85f4e
+      phase: implement
+      side: backend
+    - id: t-74c612
+      title: 在途登记分档过期（挂起 30 分钟 / 阻塞 60 分钟）
+      implements: "改 src/adapters/PendingConfirmRegistry.ts：PendingConfirmRegistryOptions 加 blockingTtlMs（缺省 LIMITS.timeoutInteractiveMs）；inFlightFor 与 list 按 suspend ? ttlMs : blockingTtlMs 惰性过期（读到即摘、返回 false / 不回该条）。新建 tests/awaiting-inflight-ttl.test.ts（TC-6、TC-7，固定时钟）。"
+      serves:
+        - FR-3
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-9bbb25
+      title: 组合根与心跳装配：清位即驱动、过期即恢复
+      implements: 改 src/application/dive/wake-heartbeat.ts：WakeHeartbeatDeps 加 notifyDrivable，对账清位时带 onCleared。改 src/application/dive/ReqboardDiveManager.ts：心跳的 notifyDrivable 接 this.round.onRequirementMoved。改 src/index.ts：useCaseDeps 注入 notifyDrivable = (id) => diveManager.roundDriver().onRequirementMoved(id)。新建 tests/heartbeat-awaiting-resume.test.ts（TC-8、TC-9）。
+      serves:
+        - FR-2
+        - FR-3
+      depends_on:
+        - t-b85f4e
+        - t-74c612
+      phase: implement
+      side: backend
+    - id: t-cc3cee
+      title: 驱动放弃本拍的有界留痕（[WAKE-SKIP]）
+      implements: 改 src/application/dive/round-driver.ts：新增 noteGiveUp(requirementId, reason) —— captureDiag('[WAKE-SKIP] reason=… req=… status=…') + 同 (需求,原因) 60s 冷却；在弹框在途 / 不可驱动 / 人工门三处放弃点调用（不写台账评论）。新建 tests/wake-skip-trace.test.ts（TC-10）。
+      serves:
+        - FR-4
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-b5e9ee
+      title: 端到端回归锁：确认后无需人敲字即起轮
+      implements: 新建 tests/wake-after-confirm.test.ts，照 tests/dive-wake-e2e.test.ts 的边界替换法真装配（createCaptureRuntime + createDiveRoundDriver，假台账/假 agent 句柄）：驱动 UC-1（后台弹框超宽限后作答）与 UC-3（否定作答），观测量 = inbox 收到 source.kind='dive' 的回合消息。反向验证：把 src/application/internal/confirm-settle.ts 的清位改回旧的 void 无 ref 调用，记录该文件变红后还原。
+      serves:
+        - FR-1
+        - FR-2
+      depends_on:
+        - t-0c7769
+        - t-9bbb25
+      phase: test
+      side: backend
+    - id: t-0808ec
+      title: 兼容形态与存量恢复演练（无数据迁移）
+      implements: 新建 tests/awaiting-compat.test.ts：三种装配形态（全缺省 / 只 dialogs / 只 notifyDrivable）断言与旧行为一致且不抛。在真台账副本上跑一趟心跳，把命令、输出摘要、副本 sha256 前后值写进 docs/requirements/REQ-261006170150-52cc/evidence/legacy-recovery-drill.md。
+      serves:
+        - FR-3
+      depends_on:
+        - t-9bbb25
+      phase: test
+      side: backend
+    - id: t-44966a
+      title: 契约文档与排查手册收口
+      implements: 更新 docs/architecture/confirm-gate-advance.md（§1 增「清位先于落章/推进」、§2 自动链行补「清位即驱动」）、docs/architecture/automation-chain-contract.md（§六 停机前置补「弹框在途」一条及其解除条件）、docs/architecture/project-manual.md（本需求的认知增量与新排查顺序）。
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+      depends_on:
+        - t-0c7769
+        - t-74c612
+        - t-cc3cee
+      phase: doc
+      side: doc
+    - id: t-02409e
+      title: 实施自评与偏离登记
+      implements: 写 docs/requirements/REQ-261006170150-52cc/reviews/implementation-review.md：逐条对照 4 条 FR 与 design/interfaces.md、design/architecture.md 的落点，登记差异与理由、反向演练结果、全量回归与类型闸门读数。写 docs/requirements/REQ-261006170150-52cc/evidence/README.md 作证据索引。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      depends_on:
+        - t-b5e9ee
+        - t-0808ec
+        - t-44966a
+      phase: doc
+      side: doc
+    - id: t-0a673c
+      title: 等待位契约：清位回调与 notify 开关·研发
+      implements: |-
+        改 src/application/internal/awaiting-confirm.ts：加 AwaitingConfirmDeps.onCleared、ExitAwaitingInput.notify、返回 {cleared,notified}；清位成功处回调（try/catch + logger.warn，永不抛）。改 src/application/ports.ts：加 UseCaseDeps.notifyDrivable? 与 WakeHeartbeatDeps.notifyDrivable?，注释写明组合根接 round 半。新建 tests/awaiting-clear-notice.test.ts（TC-1、TC-2）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-e6370d
+      title: 等待位契约：清位回调与 notify 开关·联调
+      implements: |-
+        改 src/application/internal/awaiting-confirm.ts：加 AwaitingConfirmDeps.onCleared、ExitAwaitingInput.notify、返回 {cleared,notified}；清位成功处回调（try/catch + logger.warn，永不抛）。改 src/application/ports.ts：加 UseCaseDeps.notifyDrivable? 与 WakeHeartbeatDeps.notifyDrivable?，注释写明组合根接 round 半。新建 tests/awaiting-clear-notice.test.ts（TC-1、TC-2）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-0a673c
+      phase: implement
+      side: backend
+    - id: t-ff75d5
+      title: 等待位契约：清位回调与 notify 开关·复核
+      implements: |-
+        改 src/application/internal/awaiting-confirm.ts：加 AwaitingConfirmDeps.onCleared、ExitAwaitingInput.notify、返回 {cleared,notified}；清位成功处回调（try/catch + logger.warn，永不抛）。改 src/application/ports.ts：加 UseCaseDeps.notifyDrivable? 与 WakeHeartbeatDeps.notifyDrivable?，注释写明组合根接 round 半。新建 tests/awaiting-clear-notice.test.ts（TC-1、TC-2）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-e6370d
+      phase: implement
+      side: backend
+    - id: t-70dccb
+      title: 等待位契约：清位回调与 notify 开关·测试
+      implements: |-
+        改 src/application/internal/awaiting-confirm.ts：加 AwaitingConfirmDeps.onCleared、ExitAwaitingInput.notify、返回 {cleared,notified}；清位成功处回调（try/catch + logger.warn，永不抛）。改 src/application/ports.ts：加 UseCaseDeps.notifyDrivable? 与 WakeHeartbeatDeps.notifyDrivable?，注释写明组合根接 round 半。新建 tests/awaiting-clear-notice.test.ts（TC-1、TC-2）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-ff75d5
+      phase: implement
+      side: backend
+    - id: t-4a7137
+      title: 在途登记分档过期（挂起 30 分钟 / 阻塞 60 分钟）·研发
+      implements: |-
+        改 src/adapters/PendingConfirmRegistry.ts：PendingConfirmRegistryOptions 加 blockingTtlMs（缺省 LIMITS.timeoutInteractiveMs）；inFlightFor 与 list 按 suspend ? ttlMs : blockingTtlMs 惰性过期（读到即摘、返回 false / 不回该条）。新建 tests/awaiting-inflight-ttl.test.ts（TC-6、TC-7，固定时钟）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-550e61
+      title: 在途登记分档过期（挂起 30 分钟 / 阻塞 60 分钟）·联调
+      implements: |-
+        改 src/adapters/PendingConfirmRegistry.ts：PendingConfirmRegistryOptions 加 blockingTtlMs（缺省 LIMITS.timeoutInteractiveMs）；inFlightFor 与 list 按 suspend ? ttlMs : blockingTtlMs 惰性过期（读到即摘、返回 false / 不回该条）。新建 tests/awaiting-inflight-ttl.test.ts（TC-6、TC-7，固定时钟）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-4a7137
+      phase: implement
+      side: backend
+    - id: t-e499f4
+      title: 在途登记分档过期（挂起 30 分钟 / 阻塞 60 分钟）·复核
+      implements: |-
+        改 src/adapters/PendingConfirmRegistry.ts：PendingConfirmRegistryOptions 加 blockingTtlMs（缺省 LIMITS.timeoutInteractiveMs）；inFlightFor 与 list 按 suspend ? ttlMs : blockingTtlMs 惰性过期（读到即摘、返回 false / 不回该条）。新建 tests/awaiting-inflight-ttl.test.ts（TC-6、TC-7，固定时钟）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-550e61
+      phase: implement
+      side: backend
+    - id: t-293ef2
+      title: 在途登记分档过期（挂起 30 分钟 / 阻塞 60 分钟）·测试
+      implements: |-
+        改 src/adapters/PendingConfirmRegistry.ts：PendingConfirmRegistryOptions 加 blockingTtlMs（缺省 LIMITS.timeoutInteractiveMs）；inFlightFor 与 list 按 suspend ? ttlMs : blockingTtlMs 惰性过期（读到即摘、返回 false / 不回该条）。新建 tests/awaiting-inflight-ttl.test.ts（TC-6、TC-7，固定时钟）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-e499f4
+      phase: implement
+      side: backend
+    - id: t-191beb
+      title: 驱动放弃本拍的有界留痕（[WAKE-SKIP]）·研发
+      implements: |-
+        改 src/application/dive/round-driver.ts：新增 noteGiveUp(requirementId, reason) —— captureDiag('[WAKE-SKIP] reason=… req=… status=…') + 同 (需求,原因) 60s 冷却；在弹框在途 / 不可驱动 / 人工门三处放弃点调用（不写台账评论）。新建 tests/wake-skip-trace.test.ts（TC-10）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-29c702
+      title: 驱动放弃本拍的有界留痕（[WAKE-SKIP]）·联调
+      implements: |-
+        改 src/application/dive/round-driver.ts：新增 noteGiveUp(requirementId, reason) —— captureDiag('[WAKE-SKIP] reason=… req=… status=…') + 同 (需求,原因) 60s 冷却；在弹框在途 / 不可驱动 / 人工门三处放弃点调用（不写台账评论）。新建 tests/wake-skip-trace.test.ts（TC-10）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-191beb
+      phase: implement
+      side: backend
+    - id: t-158b79
+      title: 驱动放弃本拍的有界留痕（[WAKE-SKIP]）·复核
+      implements: |-
+        改 src/application/dive/round-driver.ts：新增 noteGiveUp(requirementId, reason) —— captureDiag('[WAKE-SKIP] reason=… req=… status=…') + 同 (需求,原因) 60s 冷却；在弹框在途 / 不可驱动 / 人工门三处放弃点调用（不写台账评论）。新建 tests/wake-skip-trace.test.ts（TC-10）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-29c702
+      phase: implement
+      side: backend
+    - id: t-6c0ccd
+      title: 驱动放弃本拍的有界留痕（[WAKE-SKIP]）·测试
+      implements: |-
+        改 src/application/dive/round-driver.ts：新增 noteGiveUp(requirementId, reason) —— captureDiag('[WAKE-SKIP] reason=… req=… status=…') + 同 (需求,原因) 60s 冷却；在弹框在途 / 不可驱动 / 人工门三处放弃点调用（不写台账评论）。新建 tests/wake-skip-trace.test.ts（TC-10）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-158b79
+      phase: implement
+      side: backend
+    - id: t-eda39d
+      title: 组合根与心跳装配：清位即驱动、过期即恢复·研发
+      implements: |-
+        改 src/application/dive/wake-heartbeat.ts：WakeHeartbeatDeps 加 notifyDrivable，对账清位时带 onCleared。改 src/application/dive/ReqboardDiveManager.ts：心跳的 notifyDrivable 接 this.round.onRequirementMoved。改 src/index.ts：useCaseDeps 注入 notifyDrivable = (id) => diveManager.roundDriver().onRequirementMoved(id)。新建 tests/heartbeat-awaiting-resume.test.ts（TC-8、TC-9）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-b85f4e
+        - t-74c612
+      phase: implement
+      side: backend
+    - id: t-6fd170
+      title: 组合根与心跳装配：清位即驱动、过期即恢复·联调
+      implements: |-
+        改 src/application/dive/wake-heartbeat.ts：WakeHeartbeatDeps 加 notifyDrivable，对账清位时带 onCleared。改 src/application/dive/ReqboardDiveManager.ts：心跳的 notifyDrivable 接 this.round.onRequirementMoved。改 src/index.ts：useCaseDeps 注入 notifyDrivable = (id) => diveManager.roundDriver().onRequirementMoved(id)。新建 tests/heartbeat-awaiting-resume.test.ts（TC-8、TC-9）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-eda39d
+      phase: implement
+      side: backend
+    - id: t-e1d79f
+      title: 组合根与心跳装配：清位即驱动、过期即恢复·复核
+      implements: |-
+        改 src/application/dive/wake-heartbeat.ts：WakeHeartbeatDeps 加 notifyDrivable，对账清位时带 onCleared。改 src/application/dive/ReqboardDiveManager.ts：心跳的 notifyDrivable 接 this.round.onRequirementMoved。改 src/index.ts：useCaseDeps 注入 notifyDrivable = (id) => diveManager.roundDriver().onRequirementMoved(id)。新建 tests/heartbeat-awaiting-resume.test.ts（TC-8、TC-9）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-6fd170
+      phase: implement
+      side: backend
+    - id: t-438996
+      title: 组合根与心跳装配：清位即驱动、过期即恢复·测试
+      implements: |-
+        改 src/application/dive/wake-heartbeat.ts：WakeHeartbeatDeps 加 notifyDrivable，对账清位时带 onCleared。改 src/application/dive/ReqboardDiveManager.ts：心跳的 notifyDrivable 接 this.round.onRequirementMoved。改 src/index.ts：useCaseDeps 注入 notifyDrivable = (id) => diveManager.roundDriver().onRequirementMoved(id)。新建 tests/heartbeat-awaiting-resume.test.ts（TC-8、TC-9）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-e1d79f
+      phase: implement
+      side: backend
+    - id: t-792f6a
+      title: 兼容形态与存量恢复演练（无数据迁移）·研发
+      implements: |-
+        新建 tests/awaiting-compat.test.ts：三种装配形态（全缺省 / 只 dialogs / 只 notifyDrivable）断言与旧行为一致且不抛。在真台账副本上跑一趟心跳，把命令、输出摘要、副本 sha256 前后值写进 docs/requirements/REQ-261006170150-52cc/evidence/legacy-recovery-drill.md。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-9bbb25
+      phase: test
+      side: backend
+    - id: t-b10216
+      title: 兼容形态与存量恢复演练（无数据迁移）·复核
+      implements: |-
+        新建 tests/awaiting-compat.test.ts：三种装配形态（全缺省 / 只 dialogs / 只 notifyDrivable）断言与旧行为一致且不抛。在真台账副本上跑一趟心跳，把命令、输出摘要、副本 sha256 前后值写进 docs/requirements/REQ-261006170150-52cc/evidence/legacy-recovery-drill.md。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-792f6a
+      phase: test
+      side: backend
+    - id: t-6780e4
+      title: 兼容形态与存量恢复演练（无数据迁移）·测试
+      implements: |-
+        新建 tests/awaiting-compat.test.ts：三种装配形态（全缺省 / 只 dialogs / 只 notifyDrivable）断言与旧行为一致且不抛。在真台账副本上跑一趟心跳，把命令、输出摘要、副本 sha256 前后值写进 docs/requirements/REQ-261006170150-52cc/evidence/legacy-recovery-drill.md。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-b10216
+      phase: test
+      side: backend
+    - id: t-6524a2
+      title: 确认收敛点：带 ref 清位先于推进 + 补发条件·研发
+      implements: |-
+        改 src/application/internal/confirm-settle.ts：ConfirmDecision 加 dialogRef；开头带 ref await exitAwaitingConfirm（notify:false）；finally 里 advanced!==true 才 deps.notifyDrivable?.(id)。改 src/application/internal/pending-confirm.ts：ConfirmSubmitted 加 dialogRef 并透传。改 src/application/use-cases/AskConfirm.ts 与 src/application/dive/gate-prompt.ts：把各自 ref（ticket / dlg-gate-…）交给收敛点。新建 tests/confirm-settle-order.test.ts（TC-3~TC-5）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-b85f4e
+      phase: implement
+      side: backend
+    - id: t-a5d71d
+      title: 确认收敛点：带 ref 清位先于推进 + 补发条件·联调
+      implements: |-
+        改 src/application/internal/confirm-settle.ts：ConfirmDecision 加 dialogRef；开头带 ref await exitAwaitingConfirm（notify:false）；finally 里 advanced!==true 才 deps.notifyDrivable?.(id)。改 src/application/internal/pending-confirm.ts：ConfirmSubmitted 加 dialogRef 并透传。改 src/application/use-cases/AskConfirm.ts 与 src/application/dive/gate-prompt.ts：把各自 ref（ticket / dlg-gate-…）交给收敛点。新建 tests/confirm-settle-order.test.ts（TC-3~TC-5）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-6524a2
+      phase: implement
+      side: backend
+    - id: t-a518ac
+      title: 确认收敛点：带 ref 清位先于推进 + 补发条件·复核
+      implements: |-
+        改 src/application/internal/confirm-settle.ts：ConfirmDecision 加 dialogRef；开头带 ref await exitAwaitingConfirm（notify:false）；finally 里 advanced!==true 才 deps.notifyDrivable?.(id)。改 src/application/internal/pending-confirm.ts：ConfirmSubmitted 加 dialogRef 并透传。改 src/application/use-cases/AskConfirm.ts 与 src/application/dive/gate-prompt.ts：把各自 ref（ticket / dlg-gate-…）交给收敛点。新建 tests/confirm-settle-order.test.ts（TC-3~TC-5）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-a5d71d
+      phase: implement
+      side: backend
+    - id: t-faabca
+      title: 确认收敛点：带 ref 清位先于推进 + 补发条件·测试
+      implements: |-
+        改 src/application/internal/confirm-settle.ts：ConfirmDecision 加 dialogRef；开头带 ref await exitAwaitingConfirm（notify:false）；finally 里 advanced!==true 才 deps.notifyDrivable?.(id)。改 src/application/internal/pending-confirm.ts：ConfirmSubmitted 加 dialogRef 并透传。改 src/application/use-cases/AskConfirm.ts 与 src/application/dive/gate-prompt.ts：把各自 ref（ticket / dlg-gate-…）交给收敛点。新建 tests/confirm-settle-order.test.ts（TC-3~TC-5）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-a518ac
+      phase: implement
+      side: backend
+    - id: t-1e7c7c
+      title: 端到端回归锁：确认后无需人敲字即起轮·研发
+      implements: |-
+        新建 tests/wake-after-confirm.test.ts，照 tests/dive-wake-e2e.test.ts 的边界替换法真装配（createCaptureRuntime + createDiveRoundDriver，假台账/假 agent 句柄）：驱动 UC-1（后台弹框超宽限后作答）与 UC-3（否定作答），观测量 = inbox 收到 source.kind='dive' 的回合消息。反向验证：把 src/application/internal/confirm-settle.ts 的清位改回旧的 void 无 ref 调用，记录该文件变红后还原。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-0c7769
+        - t-9bbb25
+      phase: test
+      side: backend
+    - id: t-68b0ac
+      title: 端到端回归锁：确认后无需人敲字即起轮·复核
+      implements: |-
+        新建 tests/wake-after-confirm.test.ts，照 tests/dive-wake-e2e.test.ts 的边界替换法真装配（createCaptureRuntime + createDiveRoundDriver，假台账/假 agent 句柄）：驱动 UC-1（后台弹框超宽限后作答）与 UC-3（否定作答），观测量 = inbox 收到 source.kind='dive' 的回合消息。反向验证：把 src/application/internal/confirm-settle.ts 的清位改回旧的 void 无 ref 调用，记录该文件变红后还原。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-1e7c7c
+      phase: test
+      side: backend
+    - id: t-085b3d
+      title: 端到端回归锁：确认后无需人敲字即起轮·测试
+      implements: |-
+        新建 tests/wake-after-confirm.test.ts，照 tests/dive-wake-e2e.test.ts 的边界替换法真装配（createCaptureRuntime + createDiveRoundDriver，假台账/假 agent 句柄）：驱动 UC-1（后台弹框超宽限后作答）与 UC-3（否定作答），观测量 = inbox 收到 source.kind='dive' 的回合消息。反向验证：把 src/application/internal/confirm-settle.ts 的清位改回旧的 void 无 ref 调用，记录该文件变红后还原。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-68b0ac
+      phase: test
+      side: backend
+    - id: t-2cd3c9
+      title: 契约文档与排查手册收口·研发
+      implements: |-
+        更新 docs/architecture/confirm-gate-advance.md（§1 增「清位先于落章/推进」、§2 自动链行补「清位即驱动」）、docs/architecture/automation-chain-contract.md（§六 停机前置补「弹框在途」一条及其解除条件）、docs/architecture/project-manual.md（本需求的认知增量与新排查顺序）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-0c7769
+        - t-74c612
+        - t-cc3cee
+      phase: doc
+      side: doc
+    - id: t-1b5bd8
+      title: 契约文档与排查手册收口·复核
+      implements: |-
+        更新 docs/architecture/confirm-gate-advance.md（§1 增「清位先于落章/推进」、§2 自动链行补「清位即驱动」）、docs/architecture/automation-chain-contract.md（§六 停机前置补「弹框在途」一条及其解除条件）、docs/architecture/project-manual.md（本需求的认知增量与新排查顺序）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-2cd3c9
+      phase: doc
+      side: doc
+    - id: t-80f05b
+      title: 实施自评与偏离登记·研发
+      implements: |-
+        写 docs/requirements/REQ-261006170150-52cc/reviews/implementation-review.md：逐条对照 4 条 FR 与 design/interfaces.md、design/architecture.md 的落点，登记差异与理由、反向演练结果、全量回归与类型闸门读数。写 docs/requirements/REQ-261006170150-52cc/evidence/README.md 作证据索引。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-b5e9ee
+        - t-0808ec
+        - t-44966a
+      phase: doc
+      side: doc
+    - id: t-96afed
+      title: 实施自评与偏离登记·复核
+      implements: |-
+        写 docs/requirements/REQ-261006170150-52cc/reviews/implementation-review.md：逐条对照 4 条 FR 与 design/interfaces.md、design/architecture.md 的落点，登记差异与理由、反向演练结果、全量回归与类型闸门读数。写 docs/requirements/REQ-261006170150-52cc/evidence/README.md 作证据索引。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-80f05b
+      phase: doc
+      side: doc
+task_coverage:
+  - task_id: t-b85f4e
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-0c7769
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-74c612
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-9bbb25
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-cc3cee
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b5e9ee
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-0808ec
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-44966a
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-02409e
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-0a673c
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-e6370d
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ff75d5
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-70dccb
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-4a7137
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-550e61
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-e499f4
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-293ef2
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-191beb
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-29c702
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-158b79
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-6c0ccd
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-eda39d
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-6fd170
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-e1d79f
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-438996
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-792f6a
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b10216
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-6780e4
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-6524a2
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-a5d71d
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-a518ac
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-faabca
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-1e7c7c
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-68b0ac
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-085b3d
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-2cd3c9
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-1b5bd8
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-80f05b
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-96afed
+    covers_prototypes: []
+    covers_decisions: []
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与总体方案:
+      - t-b85f4e
+      - t-0c7769
+      - t-9bbb25
+      - t-b5e9ee
+      - t-44966a
+      - t-02409e
+    design/architecture.md#时序修前-修后:
+      - t-b85f4e
+      - t-0c7769
+      - t-9bbb25
+      - t-b5e9ee
+      - t-44966a
+      - t-02409e
+    design/architecture.md#不变量:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/architecture.md#模块改动地图:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-cc3cee
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/architecture.md#失败与降级:
+      - t-cc3cee
+      - t-44966a
+      - t-02409e
+    design/architecture.md#与既有契约文档的关系:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/architecture.md#关键设计决策与取舍:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/backend.md#端侧声明与结论:
+      - t-0c7769
+      - t-b5e9ee
+      - t-02409e
+    design/backend.md#后端改动面行为级:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/backend.md#并发幂等与顺序:
+      - t-b85f4e
+      - t-0c7769
+      - t-9bbb25
+      - t-b5e9ee
+      - t-44966a
+      - t-02409e
+    design/backend.md#无界面产物声明:
+      - t-0c7769
+      - t-b5e9ee
+      - t-02409e
+    design/backend.md#观测面与运行前提:
+      - t-cc3cee
+      - t-44966a
+      - t-02409e
+    design/data-model.md#结论不动任何持久化结构:
+      - t-74c612
+      - t-9bbb25
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/data-model.md#台账字段的读写语义:
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/data-model.md#内存登记的生命周期与分档-TTL:
+      - t-74c612
+      - t-9bbb25
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/data-model.md#迁移与兼容:
+      - t-74c612
+      - t-9bbb25
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/data-model.md#回滚路径:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/interfaces.md#端口与签名:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/interfaces.md#调用点清单:
+      - t-b85f4e
+      - t-0c7769
+      - t-9bbb25
+      - t-b5e9ee
+      - t-44966a
+      - t-02409e
+    design/interfaces.md#错误与幂等语义:
+      - t-b85f4e
+      - t-0c7769
+      - t-9bbb25
+      - t-cc3cee
+      - t-b5e9ee
+      - t-44966a
+      - t-02409e
+    design/interfaces.md#组合根装配:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/interfaces.md#放弃留痕契约:
+      - t-cc3cee
+      - t-44966a
+      - t-02409e
+    design/interfaces.md#兼容性矩阵:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/use-cases.md#角色与关注点:
+      - t-0c7769
+      - t-b5e9ee
+      - t-02409e
+    design/use-cases.md#场景矩阵:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-cc3cee
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+    design/use-cases.md#关键序列:
+      - t-b85f4e
+      - t-0c7769
+      - t-9bbb25
+      - t-b5e9ee
+      - t-44966a
+      - t-02409e
+    design/use-cases.md#反例与边界场景:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+  fr_to_tasks:
+    FR-1:
+      - t-b85f4e
+      - t-0c7769
+      - t-9bbb25
+      - t-b5e9ee
+      - t-44966a
+      - t-02409e
+      - t-74c612
+      - t-0808ec
+      - t-cc3cee
+    FR-2:
+      - t-b85f4e
+      - t-0c7769
+      - t-9bbb25
+      - t-b5e9ee
+      - t-44966a
+      - t-02409e
+      - t-74c612
+      - t-0808ec
+      - t-cc3cee
+    FR-3:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+      - t-cc3cee
+    FR-4:
+      - t-b85f4e
+      - t-0c7769
+      - t-74c612
+      - t-9bbb25
+      - t-cc3cee
+      - t-b5e9ee
+      - t-0808ec
+      - t-44966a
+      - t-02409e
+coverage:
+  implementation:
+    total: 27
+    covered: 27
+    uncovered: []
+    rate: 100
+    total_designs: 27
+    covered_designs: 27

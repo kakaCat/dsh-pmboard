@@ -1,0 +1,83 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261006175040-12d4
+  generated_at: 2026-10-06T10:00:17.742Z
+  version: 4
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T10:05:56.569Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 卡面四门 chips 按台账事实渲染三态
+      source: requirement.md
+      line: 66
+    - id: FR-2
+      title: 门读数由服务端计算、随首屏摘要下发
+      source: requirement.md
+      line: 91
+    - id: FR-3
+      title: 派生读数改为「门 已确认/生效门总数」
+      source: requirement.md
+      line: 116
+    - id: FR-4
+      title: 卡面「确认产物」入口恢复可用
+      source: requirement.md
+      line: 138
+    - id: FR-5
+      title: 计划 / 验收 / 归档 chip 同样由摘要读数驱动
+      source: requirement.md
+      line: 160
+    - id: FR-6
+      title: 读数不可得时降级为「不显示」，不冒充「缺失」
+      source: requirement.md
+      line: 179
+    - id: FR-7
+      title: 回归防线（跨缝夹具 + 载荷与读放大上界断言）
+      source: requirement.md
+      line: 196
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 2026-10-06 会话首条（附看板卡截图）：「需求文档这些展示红色和实际不符，这是一个bug吧」
+      verdict: 确认为缺陷并立项修复：卡面门 chips 与派生读数必须反映台账事实
+      serves:
+        - FR-1
+        - FR-3
+      criterion: 截图与 `REQ-261006130057-7a43` 台账对照：需求文档 / 6 份设计文档 / 拆分计划均已登记并落章，卡面却四门全红
+    - id: D-2
+      source: 2026-10-06 会话第 2 问作答：「摘要补「有界门读数」，服务端算、客户端只渲染（推荐）」
+      verdict: 门读数由服务端在摘要投影里算好下发；客户端不再自行从大字段推断门状态；同根因项一次修掉
+      serves:
+        - FR-2
+        - FR-4
+        - FR-5
+      criterion: 客户端推断门状态的唯一入口即本次误报来源（`src/client/views/artifacts.ts` 读 `req.artifacts`）
+    - id: D-3
+      source: 2026-10-06 会话第 3 问作答：「改成「门 已确认/总数」（如 门 4/4）（推荐）」
+      verdict: 删掉「产物 N/6」口径，派生行改为「门 已确认/生效门总数」，与 chips 同源
+      serves:
+        - FR-3
+      criterion: 旧口径分子 = 产物条数（该需求 83 条，含 `task_detail`/`task_output`）与分母 6 不同量纲，必然说谎
+    - id: D-4
+      source: 2026-10-06 会话第 4 问作答：「交原型（三态卡面小样）（推荐）」
+      verdict: 本需求按 UI 需求纪律交原型（三态卡面 + 计划/验收 chip 演示），不申请豁免
+      serves:
+        - FR-1
+        - FR-3
+        - FR-5
+      criterion: "`sides` 含 frontend ⇒ 条件必交阶段产物要求 brainstorming 阶段有 `prototype` 产物"
+    - id: D-5
+      source: 2026-10-06 会话中 agent 报「卡面「确认产物」按钮已彻底不渲染」后，用户以第 2 问作答「服务端算、客户端只渲染」的同一选项确认修复范围含该入口
+      verdict: 修复范围含卡面确认入口（G1/G2 看板侧唯一确认入口），不另立项
+      serves:
+        - FR-4
+      criterion: 全仓渲染 `confirm-artifact` 的只有卡面一处（`src/client/views/artifacts.ts:75,95,100`），该处恒不渲染
+    - id: D-6
+      source: 2026-10-06 会话中 agent 提出「读不到 ≠ 缺失」的降级口径（旧服务端/旧记录）
+      verdict: 读数不可得时卡面不渲染该项，不冒充 `✗ 缺失` / `门 0/N`
+      serves:
+        - FR-6
+      criterion: 本仓一贯口径「缺失 ≠ 0」；本次事故成因即把「读不到」渲染成「缺失」
+status:
+  artifacts: []

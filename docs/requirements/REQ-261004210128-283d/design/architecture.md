@@ -132,6 +132,10 @@ board-mount ──▶ views/board ──▶ views/artifacts ──▶ render/dom
 
 **红线**：不得用 `updatedAt` / `autoRun` / `advanceLockAt` 之类做近似推断（那是伪造运行态）。读数不可得的呈现 = **没有指示**，不是灰点、不是「未知」。
 
+> **取代标注（2026-10-05，REQ-261005213603-eaed）**：上面这行原文把 `advanceLockAt` 也列为禁止的近似推断——该条
+> **已被该需求取代为正式判据**（推进锁 = host 认领 + 30s 心跳续租的「有 run 在跑」证书，
+> 与 host WIP 闸门同阈值 15min、同运算符 `<`）。其余禁止项（`updatedAt` / `autoRun` / 执行记录残留）**不变**。
+
 ## 生命周期（挂载 / HMR / 退订） `serves: FR-8`
 
 - 挂载（`createBoardAttachment`）：订阅一次，保存退订句柄；与 `unsubEvents`、`pollTimer` 同处 `dispose()`。

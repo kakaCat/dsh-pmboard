@@ -1,0 +1,38 @@
+task:
+  id: t-fddda0
+  title: 探针转正 + 六条逆验证 + 全量基线比对·测试
+  status: done
+  implements: |-
+    ① 把诊断探针 tests/_probe-prototype-pin.test.ts 转正为 tests/prototype-registration-no-pin.test.ts：保留真实时序（真 fs + 真工具壳登记原型 → 等 2.4 秒 → 读挂起票），断言从「票存在且被拦」翻转为「无票且写路径可用」；删除探针文件。② 按 docs/requirements/REQ-261005200052-ce40/design/test-cases.md 的 N1~N6 逐条改坏实现、真跑、记录必红输出与改坏点，跑完用副本或 git diff 逐字节还原。③ 跑全量 pnpm test 与改动前基线逐文件比对。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-488288
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005200052-ce40
+    TASK_ID: t-fddda0
+    TASK_TITLE: 探针转正 + 六条逆验证 + 全量基线比对·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T12:24:31.258Z
+    - phase: doc
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005200052-ce40
+  generated_at: 2026-10-05T12:24:08.484Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T12:24:31.258Z

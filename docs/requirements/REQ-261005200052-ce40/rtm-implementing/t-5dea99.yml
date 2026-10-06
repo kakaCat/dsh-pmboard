@@ -1,0 +1,38 @@
+task:
+  id: t-5dea99
+  title: 加守卫两谓词与判定序：无门/无产物的票不拦写路径·复核
+  status: done
+  implements: |-
+    改 src/application/internal/pending-guard.ts：① 新增 hasConfirmGateOf(rec): boolean —— target==='plan' ⇒ true；target==='artifact' ⇒ kind ∈ Object.values(ARTIFACT_CONFIRM_GATES)（值域自 src/shared/protocol.ts 取，禁止另写 kind 名单）；② 新增 hasConfirmableArtifactOf(req, rec): boolean —— plan ⇒ req.plan !== undefined；artifact ⇒ (req.artifacts ?? []).some(a => a.kind === rec.kind)；③ livePendingConfirm 判定序扩展为：注册表过滤 → 台账查不到需求（保守留挂，返回该票）→ targetConfirmedInLedger 落章放行 → 谓词④ 无门放行 → 谓词⑤ 无产物放行 → 拦。零新 I/O（只读已在读的 req），放行不写任何状态。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-de0547
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005200052-ce40
+    TASK_ID: t-5dea99
+    TASK_TITLE: 加守卫两谓词与判定序：无门/无产物的票不拦写路径·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T12:14:44.459Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005200052-ce40
+  generated_at: 2026-10-05T12:14:36.025Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T12:14:44.459Z

@@ -1,0 +1,3291 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261006094052-1da2",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-06T01:44:06.970Z",
+  "tasks": [
+    {
+      "id": "t-32e494",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "抽出推进单点 applyConfirmedAdvance 并让首次确认路径复用",
+      "cardDoc": "docs/requirements/REQ-261006094052-1da2/tasks/t-32e494.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① `grep -n \"export async function applyConfirmedAdvance\" src/application/internal/confirm-settle.ts` 命中 1 行；② `npx vitest run tests/confirm-settle-plan-persist.test.ts tests/auto-chain-approval.test.ts` 失败数不高于基线；③ `npx tsc --noEmit` 错误数不高于 HEAD 基线",
+      "implementation": "在 src/application/internal/confirm-settle.ts 新增导出 applyConfirmedAdvance（签名与语义逐字照 design/interfaces.md I-1：canReqTransition 不过则返回兜底文案；否则 mutateIfPresent 内 status !== from 原样返回，否则 transitionRequirement + [自动推进] 评论 + stampCheckpoint；异常吞进 advanceNote 不抛）。把 applyConfirmDecision 里 try { mutateIfPresent(...) } catch {} 整块换成一次调用，advanced/advanceNote 取返回体。不动 contentGateFailure / designGateFailure 两个分支、兜底文案、第 267 行 applyDiveTransition 的位置与条件、plan 门合并整块。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "footprint": {
+        "files": 1,
+        "anchors": 3,
+        "chars": 1200
+      },
+      "decisionRefs": [
+        "D-1",
+        "D-2"
+      ],
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-cccc64",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251069556,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 356,
+              "at": 1791251069556,
+              "totals": {
+                "uncachedInputTokens": 122400,
+                "outputTokens": 67009,
+                "cacheReadTokens": 4630528,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 356,
+                  "totals": {
+                    "uncachedInputTokens": 122400,
+                    "outputTokens": 67009,
+                    "cacheReadTokens": 4630528,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 663,
+              "at": 1791251353727,
+              "totals": {
+                "uncachedInputTokens": 158023,
+                "outputTokens": 110709,
+                "cacheReadTokens": 14377600,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 663,
+                  "totals": {
+                    "uncachedInputTokens": 158023,
+                    "outputTokens": 110709,
+                    "cacheReadTokens": 14377600,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 35623,
+              "outputTokens": 43700,
+              "cacheReadTokens": 9747072,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251353727
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251046912,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251069556,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "开工 t1：抽出 applyConfirmedAdvance 单点并让 applyConfirmDecision 复用（不改主路径行为）"
+        },
+        {
+          "status": "done",
+          "at": 1791251353727,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "t1 收尾：单点已落（grep 命中 :109）、tsc 退出码 0、定向用例失败数不高于基线，两张子卡已 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-376c90",
+          "body": "[状态] → in_progress：开工 t1：抽出 applyConfirmedAdvance 单点并让 applyConfirmDecision 复用（不改主路径行为）（reqboard_task_move）",
+          "createdAt": 1791251069556,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-c61adf",
+          "body": "[状态] → done：t1 收尾：单点已落（grep 命中 :109）、tsc 退出码 0、定向用例失败数不高于基线，两张子卡已 done（reqboard_task_move）",
+          "createdAt": 1791251353727,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251046912,
+      "updatedAt": 1791251353727,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791251288846,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/confirm-settle.ts"
+        ],
+        "completed": [
+          "新增导出函数 applyConfirmedAdvance（confirm-settle.ts:109）：canReqTransition 不过给兜底文案；否则迁移 + 自动推进评论 + 断点；异常吞进 advanceNote 不抛",
+          "applyConfirmDecision 第 232-255 行的 try/mutate 整块替换为一次调用，advanced/advanceNote 取返回体",
+          "未动的部分：contentGateFailure / designGateFailure 两个分支、兜底文案、applyDiveTransition 的位置与条件、plan 门合并整块",
+          "证据：grep 命中 confirm-settle.ts:109 的导出；npx tsc --noEmit 退出码 0（零错误）；tests/confirm-settle-plan-persist.test.ts + tests/auto-chain-approval.test.ts 2 失败 6 通过，两条失败与基线同名同因（autoRun=false / v9 触发者外部模拟）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251288846,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9aa82b",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "早退分支兑现推进：已落章 + 闸门全过则真推进",
+      "cardDoc": "docs/requirements/REQ-261006094052-1da2/tasks/t-9aa82b.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-32e494"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/confirm-advance-deadlock.test.ts` 中 TC-1~TC-4 全绿；TC-1 必须读回台账（store.get(id).status === 'design'）而非只看返回体；TC-2 断言 gate_failure.code === 'decision_log_missing' 且 status 仍为 brainstorming",
+      "implementation": "改 src/application/use-cases/AskConfirm.ts 的 alreadyConfirmed 早退分支：闸门全过后若 advanceTo !== undefined && advance !== false 则调 applyConfirmedAdvance；advanced === true 时再调 applyDiveTransition(..., 'confirm-advance', {kind:'human',sessionId:windowKey}, {stageChanged:true, status:from})（自 ../dive/applyDiveTransition.js 引入）。返回体补 advanced:true / from / to，note 前缀保留「已确认，未重复弹框（FR-9/FR-11）」并追加「；已自动推进：<from> → <to>」。两处闸门失败返回体（gate_failure + 「未推进」文案 + 「仍有 N 份未登记」）一字不动。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "footprint": {
+        "files": 1,
+        "anchors": 4,
+        "chars": 1400
+      },
+      "decisionRefs": [
+        "D-2",
+        "D-4"
+      ],
+      "requirementRefs": [
+        "FR-1",
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b6e95f",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251491422,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 784,
+              "at": 1791251491422,
+              "totals": {
+                "uncachedInputTokens": 173722,
+                "outputTokens": 129916,
+                "cacheReadTokens": 19322624,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 784,
+                  "totals": {
+                    "uncachedInputTokens": 173722,
+                    "outputTokens": 129916,
+                    "cacheReadTokens": 19322624,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 809,
+              "at": 1791251503532,
+              "totals": {
+                "uncachedInputTokens": 179973,
+                "outputTokens": 131590,
+                "cacheReadTokens": 19906560,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 809,
+                  "totals": {
+                    "uncachedInputTokens": 179973,
+                    "outputTokens": 131590,
+                    "cacheReadTokens": 19906560,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 6251,
+              "outputTokens": 1674,
+              "cacheReadTokens": 583936,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251503531
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251046912,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251491422,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "t2 开工：早退分支兑现推进（已落盘并跑通 TC-1..TC-4/TC-9）"
+        },
+        {
+          "status": "done",
+          "at": 1791251503531,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "t2 收尾：早退分支兑现推进（10 例全绿 + 后门回归），两张子卡已 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-240fd5",
+          "body": "[状态] → in_progress：t2 开工：早退分支兑现推进（已落盘并跑通 TC-1..TC-4/TC-9）（reqboard_task_move）",
+          "createdAt": 1791251491422,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-c4d504",
+          "body": "[状态] → done：t2 收尾：早退分支兑现推进（10 例全绿 + 后门回归），两张子卡已 done（reqboard_task_move）",
+          "createdAt": 1791251503531,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251046912,
+      "updatedAt": 1791251503531,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791251499078,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/AskConfirm.ts",
+          "tests/confirm-advance-deadlock.test.ts",
+          "tests/design-gate-messages.test.ts"
+        ],
+        "completed": [
+          "早退分支闸门全过时调用 applyConfirmedAdvance，返回 advanced:true + from/to",
+          "推进成功后再调 applyDiveTransition（confirm-advance），与首次确认同源",
+          "闸门失败两处返回体保持原样（gate_failure + 未推进文案 + 仍有 N 份未登记）",
+          "补门：设计完整性门的适用条件改为与主路径同一份（kind=design 或 G2）——否则 kind=requirement 在 design 阶段重发确认会绕过 G2",
+          "证据：tests/confirm-advance-deadlock.test.ts 10 例全绿（含 TC-9 后门回归）；design-gate-messages 6 例全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251499078,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-af9414",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "自动确认窄口径预判（UI 缺原型不弹）并改两处调用点 await",
+      "cardDoc": "docs/requirements/REQ-261006094052-1da2/tasks/t-af9414.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① `npx vitest run tests/confirm-advance-deadlock.test.ts` 中 TC-5/TC-7 绿（UI 不弹且 reason 含原型目录与 reqboard_submit(kind=prototype)；非 UI 照弹）；② `npx vitest run tests/output-contract.test.ts tests/submit-prototype.test.ts tests/prototype-registration-no-pin.test.ts` 失败数不高于基线",
+      "implementation": "src/application/internal/auto-confirm.ts：triggerAutoConfirm 改 async（返回 Promise<AutoConfirmResult>），在 deps.questions.available() 判定之后、任何票登记之前加窄口径预判——input.target === 'artifact' 且需求存在且 advanceTargetFor(req.status) === 'design' 时，先 applyRequirementWorkspaceRoot(deps, req) 再调 checkPrototypePresenceGate(deps.docs, req)，返回失败则 {triggered:false, reason: gate.message}。src/application/use-cases/SubmitArtifact.ts 两处调用点（kind=requirement 与 kind=plan）改 await，并把 reason 拼进回执 note。不动 kind=prototype 的 {triggered:false, reason:'…无需人工确认…'} 既有形状。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "footprint": {
+        "files": 2,
+        "anchors": 3,
+        "chars": 1600
+      },
+      "decisionRefs": [
+        "D-3"
+      ],
+      "requirementRefs": [
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-aabbc2",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251503733,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 811,
+              "at": 1791251503733,
+              "totals": {
+                "uncachedInputTokens": 179973,
+                "outputTokens": 131590,
+                "cacheReadTokens": 19906560,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 811,
+                  "totals": {
+                    "uncachedInputTokens": 179973,
+                    "outputTokens": 131590,
+                    "cacheReadTokens": 19906560,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 863,
+              "at": 1791251578576,
+              "totals": {
+                "uncachedInputTokens": 196069,
+                "outputTokens": 134502,
+                "cacheReadTokens": 21434752,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 863,
+                  "totals": {
+                    "uncachedInputTokens": 196069,
+                    "outputTokens": 134502,
+                    "cacheReadTokens": 21434752,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 16096,
+              "outputTokens": 2912,
+              "cacheReadTokens": 1528192,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251578576
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251046912,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251503733,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "t3 开工：自动确认窄口径预判与两处 await（已落盘）"
+        },
+        {
+          "status": "done",
+          "at": 1791251578576,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "t3 收尾：窄口径预判达成（TC-5/TC-7 绿，三个契约文件 4 失败与基线同名同因），两张子卡已 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b06d33",
+          "body": "[状态] → in_progress：t3 开工：自动确认窄口径预判与两处 await（已落盘）（reqboard_task_move）",
+          "createdAt": 1791251503733,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-51273f",
+          "body": "[状态] → done：t3 收尾：窄口径预判达成（TC-5/TC-7 绿，三个契约文件 4 失败与基线同名同因），两张子卡已 done（reqboard_task_move）",
+          "createdAt": 1791251578576,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251046912,
+      "updatedAt": 1791251578576,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791251525631,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/auto-confirm.ts",
+          "src/application/use-cases/SubmitArtifact.ts",
+          "tests/confirm-advance-deadlock.test.ts"
+        ],
+        "completed": [
+          "triggerAutoConfirm 改 async，并在登记任何挂起票之前加窄口径预判",
+          "预判只判原型存在门（checkPrototypePresenceGate），不预判裁定门/内容门",
+          "SubmitArtifact 两处调用点改 await，并把未弹框的 reason 拼进回执 note",
+          "证据：TC-5/TC-7 绿（UI 不弹且 reason 含原型目录与登记命令；非 UI 照弹）",
+          "证据：output-contract + submit-prototype + prototype-registration-no-pin 4 失败 56 通过，4 条与基线同名同因"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251525631,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-13a8ca",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "新增确认门推进回归用例并修正被缺陷行为锁住的既有期望",
+      "cardDoc": "docs/requirements/REQ-261006094052-1da2/tasks/t-13a8ca.md",
+      "description": "",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-9aa82b",
+        "t-af9414"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① `npx vitest run tests/confirm-advance-deadlock.test.ts tests/design-gate-messages.test.ts` 退出码 0；② design/test-cases.md「反向验证」表四条改坏各跑一次必红并打印改坏点，跑完逐字节还原；③ 新测试文件顶部有 serves 头",
+      "implementation": "新建 tests/confirm-advance-deadlock.test.ts（顶部 serves: FR-1, FR-2, FR-3），按 design/test-cases.md 的 TC-1~TC-7 写（标本、断言逐条对应；状态断言一律读回台账）。改 tests/design-gate-messages.test.ts「全部落章且磁盘无新增」例：advanced 期望由 false 改为 true 并补状态前进断言，其余断言逐字保留。",
+      "context": "",
+      "stages": [
+        "test"
+      ],
+      "footprint": {
+        "files": 2,
+        "anchors": 7,
+        "chars": 2200
+      },
+      "decisionRefs": [
+        "D-3",
+        "D-5"
+      ],
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3ec440",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251582680,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 874,
+              "at": 1791251582680,
+              "totals": {
+                "uncachedInputTokens": 200696,
+                "outputTokens": 134954,
+                "cacheReadTokens": 21750016,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 874,
+                  "totals": {
+                    "uncachedInputTokens": 200696,
+                    "outputTokens": 134954,
+                    "cacheReadTokens": 21750016,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 915,
+              "at": 1791251644329,
+              "totals": {
+                "uncachedInputTokens": 216672,
+                "outputTokens": 137863,
+                "cacheReadTokens": 23394048,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 915,
+                  "totals": {
+                    "uncachedInputTokens": 216672,
+                    "outputTokens": 137863,
+                    "cacheReadTokens": 23394048,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 15976,
+              "outputTokens": 2909,
+              "cacheReadTokens": 1644032,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251644329
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251046912,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251582680,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "t4 开工：回归用例文件与既有期望修正已落盘"
+        },
+        {
+          "status": "done",
+          "at": 1791251644329,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "t4 收尾：新增 10 例回归 + 修正既有期望，16 例全绿、四条反向验证必红，子卡已 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a64ff0",
+          "body": "[状态] → in_progress：t4 开工：回归用例文件与既有期望修正已落盘（reqboard_task_move）",
+          "createdAt": 1791251582680,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-18cf91",
+          "body": "[状态] → done：t4 收尾：新增 10 例回归 + 修正既有期望，16 例全绿、四条反向验证必红，子卡已 done（reqboard_task_move）",
+          "createdAt": 1791251644329,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251046912,
+      "updatedAt": 1791251644329,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791251613698,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/confirm-advance-deadlock.test.ts",
+          "tests/design-gate-messages.test.ts"
+        ],
+        "completed": [
+          "新建 tests/confirm-advance-deadlock.test.ts（顶部 serves 头），含 TC-1..TC-7 与 TC-9 后门回归",
+          "状态断言一律读回台账（store.peek），不只看返回体",
+          "改 design-gate-messages TC-4 第 2 例：advanced 由 false 改为 true 并补状态前进断言，其余断言逐字保留",
+          "四条反向验证按 test-cases.md 原文措辞各跑一次必红，跑完逐字节还原（diff 与快照一致）",
+          "证据：npx vitest run 两个文件 16 例全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251613698,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c89be1",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "全量回归与基线对账（零新增失败 + 零 schema 变更）",
+      "cardDoc": "docs/requirements/REQ-261006094052-1da2/tasks/t-c89be1.md",
+      "description": "",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-13a8ca"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① `git diff --stat` 中 src/shared/protocol.ts 无改动；② `pnpm typecheck` 错误数不高于 HEAD 基线；③ `pnpm test` 失败用例数 ≤ 70 且失败文件数 ≤ 39，逐条列出与 .dsh-data/baseline-cases.txt 的差集（新增失败必须为 0）",
+      "implementation": "跑 pnpm typecheck 与 pnpm test，把失败用例清单与 .dsh-data/baseline-cases.txt 求差集逐条对账；新增失败逐条定位到本次改动或如实标注为既有失败（同名同因）。",
+      "context": "",
+      "stages": [
+        "test"
+      ],
+      "footprint": {
+        "files": 1,
+        "anchors": 3,
+        "chars": 600
+      },
+      "decisionRefs": [
+        "D-6",
+        "D-7"
+      ],
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d5e9a0",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251649932,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 922,
+              "at": 1791251649932,
+              "totals": {
+                "uncachedInputTokens": 221139,
+                "outputTokens": 138664,
+                "cacheReadTokens": 23732864,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 922,
+                  "totals": {
+                    "uncachedInputTokens": 221139,
+                    "outputTokens": 138664,
+                    "cacheReadTokens": 23732864,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 947,
+              "at": 1791251706447,
+              "totals": {
+                "uncachedInputTokens": 226845,
+                "outputTokens": 140440,
+                "cacheReadTokens": 24427264,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 947,
+                  "totals": {
+                    "uncachedInputTokens": 226845,
+                    "outputTokens": 140440,
+                    "cacheReadTokens": 24427264,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 5706,
+              "outputTokens": 1776,
+              "cacheReadTokens": 694400,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251706447
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251046912,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251649932,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "t5 开工：全量回归与基线对账（已跑完，取证据落账）"
+        },
+        {
+          "status": "done",
+          "at": 1791251706447,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "t5 收尾：零真实新增失败（69≤70）、tsc 零错误、未改 schema；子卡已 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-18c4e1",
+          "body": "[状态] → in_progress：t5 开工：全量回归与基线对账（已跑完，取证据落账）（reqboard_task_move）",
+          "createdAt": 1791251649932,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-6901cb",
+          "body": "[状态] → done：t5 收尾：零真实新增失败（69≤70）、tsc 零错误、未改 schema；子卡已 done（reqboard_task_move）",
+          "createdAt": 1791251706447,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251046912,
+      "updatedAt": 1791251706447,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "layer": 3,
+      "lastReport": {
+        "at": 1791251657106,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/confirm-settle.ts",
+          "src/application/use-cases/AskConfirm.ts",
+          "src/application/internal/auto-confirm.ts",
+          "src/application/use-cases/SubmitArtifact.ts",
+          "tests/confirm-advance-deadlock.test.ts",
+          "tests/design-gate-messages.test.ts"
+        ],
+        "completed": [
+          "pnpm typecheck：npx tsc --noEmit 退出码 0、零错误（高于基线的 223 错误口径，实测为 0）",
+          "pnpm test：69 failed / 38 files（基线 70 failed / 39 files），逐条差集零真实新增失败",
+          "唯一差集条目 typecheck.test.ts 单跑 2/2 绿、tsc 零错误，报错文件 tests/result-binding.test.ts 不在本次改动集（多窗口并行期的瞬时态）",
+          "schema 零变更：未触碰 src/shared/protocol.ts（mtime 早于本次改动，且改动集只有 4 源文件 + 2 测试文件）",
+          "对照文件：.dsh-data/baseline-cases.txt 与 .dsh-data/post-fix-cases2.txt"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251657106,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-64bf2e",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "抽出推进单点 applyConfirmedAdvance 并让首次确认路径复用·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "在 src/application/internal/confirm-settle.ts 新增导出 applyConfirmedAdvance（签名与语义逐字照 design/interfaces.md I-1：canReqTransition 不过则返回兜底文案；否则 mutateIfPresent 内 status !== from 原样返回，否则 transitionRequirement + [自动推进] 评论 + stampCheckpoint；异常吞进 advanceNote 不抛）。把 applyConfirmDecision 里 try { mutateIfPresent(...) } catch {} 整块换成一次调用，advanced/advanceNote 取返回体。不动 contentGateFailure / designGateFailure 两个分支、兜底文案、第 267 行 applyDiveTransition 的位置与条件、plan 门合并整块。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-32e494",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b5894b",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251347091,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 646,
+              "at": 1791251347091,
+              "totals": {
+                "uncachedInputTokens": 157533,
+                "outputTokens": 110028,
+                "cacheReadTokens": 13868544,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 646,
+                  "totals": {
+                    "uncachedInputTokens": 157533,
+                    "outputTokens": 110028,
+                    "cacheReadTokens": 13868544,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 652,
+              "at": 1791251349068,
+              "totals": {
+                "uncachedInputTokens": 157881,
+                "outputTokens": 110129,
+                "cacheReadTokens": 14122880,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 652,
+                  "totals": {
+                    "uncachedInputTokens": 157881,
+                    "outputTokens": 110129,
+                    "cacheReadTokens": 14122880,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 348,
+              "outputTokens": 101,
+              "cacheReadTokens": 254336,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251349068
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9f0428",
+          "body": "[状态] → in_progress：研发段开工：按单点接口落实现（已落盘）（reqboard_task_move）",
+          "createdAt": 1791251347091,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-904281",
+          "body": "[状态] → done：研发段完成：单点已落盘并与旧实现逐字同形，tsc 退出码 0（reqboard_task_move）",
+          "createdAt": 1791251349068,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251069556,
+      "updatedAt": 1791251349068,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251069556,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251347091,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "研发段开工：按单点接口落实现（已落盘）"
+        },
+        {
+          "status": "done",
+          "at": 1791251349068,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "研发段完成：单点已落盘并与旧实现逐字同形，tsc 退出码 0"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791251340806,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/confirm-settle.ts"
+        ],
+        "completed": [
+          "新增导出 applyConfirmedAdvance：闸门由调用方保证，函数只做迁移（迁移 + 自动推进评论 + 断点）",
+          "applyConfirmDecision 的迁移块改为调用该单点，行为逐字不变",
+          "npx tsc --noEmit 退出码 0"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251340806,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-37c671",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "抽出推进单点 applyConfirmedAdvance 并让首次确认路径复用·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-64bf2e"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "在 src/application/internal/confirm-settle.ts 新增导出 applyConfirmedAdvance（签名与语义逐字照 design/interfaces.md I-1：canReqTransition 不过则返回兜底文案；否则 mutateIfPresent 内 status !== from 原样返回，否则 transitionRequirement + [自动推进] 评论 + stampCheckpoint；异常吞进 advanceNote 不抛）。把 applyConfirmDecision 里 try { mutateIfPresent(...) } catch {} 整块换成一次调用，advanced/advanceNote 取返回体。不动 contentGateFailure / designGateFailure 两个分支、兜底文案、第 267 行 applyDiveTransition 的位置与条件、plan 门合并整块。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-32e494",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c3a22f",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251353507,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 659,
+              "at": 1791251353507,
+              "totals": {
+                "uncachedInputTokens": 158023,
+                "outputTokens": 110709,
+                "cacheReadTokens": 14377600,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 659,
+                  "totals": {
+                    "uncachedInputTokens": 158023,
+                    "outputTokens": 110709,
+                    "cacheReadTokens": 14377600,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 661,
+              "at": 1791251353618,
+              "totals": {
+                "uncachedInputTokens": 158023,
+                "outputTokens": 110709,
+                "cacheReadTokens": 14377600,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 661,
+                  "totals": {
+                    "uncachedInputTokens": 158023,
+                    "outputTokens": 110709,
+                    "cacheReadTokens": 14377600,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251353618
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-bbed83",
+          "body": "[状态] → in_progress：复核段开工：核对单点语义与主路径不变式（reqboard_task_move）",
+          "createdAt": 1791251353507,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-9ee239",
+          "body": "[状态] → done：复核段完成：单点与改造前逐字同形，两道闸门分支与 dive 位置未动，失败数仍为基线既有两条（reqboard_task_move）",
+          "createdAt": 1791251353618,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251069556,
+      "updatedAt": 1791251353618,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251069556,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251353507,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "复核段开工：核对单点语义与主路径不变式"
+        },
+        {
+          "status": "done",
+          "at": 1791251353618,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "复核段完成：单点与改造前逐字同形，两道闸门分支与 dive 位置未动，失败数仍为基线既有两条"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791251340930,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/confirm-settle.ts"
+        ],
+        "completed": [
+          "核对该单点与改造前迁移块逐字同形：actor / reason / 评论文案 / 断点 / status !== from 的空转护栏",
+          "核对未动项：两道闸门分支、兜底文案、applyDiveTransition 位置与条件、plan 门合并",
+          "专项用例 tests/confirm-settle-plan-persist.test.ts 与 tests/auto-chain-approval.test.ts 失败数与基线同名同因"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251340930,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a775c9",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "早退分支兑现推进：已落章 + 闸门全过则真推进·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-32e494"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "改 src/application/use-cases/AskConfirm.ts 的 alreadyConfirmed 早退分支：闸门全过后若 advanceTo !== undefined && advance !== false 则调 applyConfirmedAdvance；advanced === true 时再调 applyDiveTransition(..., 'confirm-advance', {kind:'human',sessionId:windowKey}, {stageChanged:true, status:from})（自 ../dive/applyDiveTransition.js 引入）。返回体补 advanced:true / from / to，note 前缀保留「已确认，未重复弹框（FR-9/FR-11）」并追加「；已自动推进：<from> → <to>」。两处闸门失败返回体（gate_failure + 「未推进」文案 + 「仍有 N 份未登记」）一字不动。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-9aa82b",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8cfb31",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251499779,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 797,
+              "at": 1791251499779,
+              "totals": {
+                "uncachedInputTokens": 178661,
+                "outputTokens": 131397,
+                "cacheReadTokens": 19611392,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 797,
+                  "totals": {
+                    "uncachedInputTokens": 178661,
+                    "outputTokens": 131397,
+                    "cacheReadTokens": 19611392,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 799,
+              "at": 1791251500086,
+              "totals": {
+                "uncachedInputTokens": 178661,
+                "outputTokens": 131397,
+                "cacheReadTokens": 19611392,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 799,
+                  "totals": {
+                    "uncachedInputTokens": 178661,
+                    "outputTokens": 131397,
+                    "cacheReadTokens": 19611392,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251500086
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5ac78c",
+          "body": "[状态] → in_progress：研发段开工（reqboard_task_move）",
+          "createdAt": 1791251499779,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-afc79b",
+          "body": "[状态] → done：研发段完成：早退分支已兑现推进（10 例全绿）（reqboard_task_move）",
+          "createdAt": 1791251500086,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251491422,
+      "updatedAt": 1791251500086,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251491422,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251499779,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "研发段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791251500086,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "研发段完成：早退分支已兑现推进（10 例全绿）"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791251499364,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/use-cases/AskConfirm.ts",
+          "tests/confirm-advance-deadlock.test.ts"
+        ],
+        "completed": [
+          "早退分支改为调用单点 applyConfirmedAdvance",
+          "返回体补 advanced/from/to 与已自动推进文案",
+          "G2 条件与主路径对齐（补后门）",
+          "npx vitest run tests/confirm-advance-deadlock.test.ts 10 例全绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251499364,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b979ca",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "早退分支兑现推进：已落章 + 闸门全过则真推进·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-a775c9"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "改 src/application/use-cases/AskConfirm.ts 的 alreadyConfirmed 早退分支：闸门全过后若 advanceTo !== undefined && advance !== false 则调 applyConfirmedAdvance；advanced === true 时再调 applyDiveTransition(..., 'confirm-advance', {kind:'human',sessionId:windowKey}, {stageChanged:true, status:from})（自 ../dive/applyDiveTransition.js 引入）。返回体补 advanced:true / from / to，note 前缀保留「已确认，未重复弹框（FR-9/FR-11）」并追加「；已自动推进：<from> → <to>」。两处闸门失败返回体（gate_failure + 「未推进」文案 + 「仍有 N 份未登记」）一字不动。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-9aa82b",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d516c1",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251500245,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 801,
+              "at": 1791251500245,
+              "totals": {
+                "uncachedInputTokens": 178661,
+                "outputTokens": 131397,
+                "cacheReadTokens": 19611392,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 801,
+                  "totals": {
+                    "uncachedInputTokens": 178661,
+                    "outputTokens": 131397,
+                    "cacheReadTokens": 19611392,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 803,
+              "at": 1791251500435,
+              "totals": {
+                "uncachedInputTokens": 178661,
+                "outputTokens": 131397,
+                "cacheReadTokens": 19611392,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 803,
+                  "totals": {
+                    "uncachedInputTokens": 178661,
+                    "outputTokens": 131397,
+                    "cacheReadTokens": 19611392,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251500435
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d188f5",
+          "body": "[状态] → in_progress：复核段开工（reqboard_task_move）",
+          "createdAt": 1791251500245,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-b5c50c",
+          "body": "[状态] → done：复核段完成：门禁失败路径逐字一致、后门已封（reqboard_task_move）",
+          "createdAt": 1791251500435,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251491422,
+      "updatedAt": 1791251500435,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251491422,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251500245,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "复核段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791251500435,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "复核段完成：门禁失败路径逐字一致、后门已封"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791251499578,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/confirm-advance-deadlock.test.ts",
+          "tests/design-gate-messages.test.ts"
+        ],
+        "completed": [
+          "核对闸门失败两条路径的返回体与改造前逐字一致（含仍有 N 份未登记）",
+          "核对 note 前缀保留已确认未重复弹框（FR-9/FR-11）",
+          "核对后门：kind=requirement 在 design 阶段重发确认被 G2 拦下（TC-9 断言状态不变 + gate_failure 在场）",
+          "核对 design-gate-messages TC-4 第 2 例修正后与新语义一致"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251499578,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-501599",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "自动确认窄口径预判（UI 缺原型不弹）并改两处调用点 await·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/application/internal/auto-confirm.ts：triggerAutoConfirm 改 async（返回 Promise<AutoConfirmResult>），在 deps.questions.available() 判定之后、任何票登记之前加窄口径预判——input.target === 'artifact' 且需求存在且 advanceTargetFor(req.status) === 'design' 时，先 applyRequirementWorkspaceRoot(deps, req) 再调 checkPrototypePresenceGate(deps.docs, req)，返回失败则 {triggered:false, reason: gate.message}。src/application/use-cases/SubmitArtifact.ts 两处调用点（kind=requirement 与 kind=plan）改 await，并把 reason 拼进回执 note。不动 kind=prototype 的 {triggered:false, reason:'…无需人工确认…'} 既有形状。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-af9414",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e986e2",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251526182,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 839,
+              "at": 1791251526182,
+              "totals": {
+                "uncachedInputTokens": 189775,
+                "outputTokens": 133598,
+                "cacheReadTokens": 20812032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 839,
+                  "totals": {
+                    "uncachedInputTokens": 189775,
+                    "outputTokens": 133598,
+                    "cacheReadTokens": 20812032,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 841,
+              "at": 1791251526383,
+              "totals": {
+                "uncachedInputTokens": 189775,
+                "outputTokens": 133598,
+                "cacheReadTokens": 20812032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 841,
+                  "totals": {
+                    "uncachedInputTokens": 189775,
+                    "outputTokens": 133598,
+                    "cacheReadTokens": 20812032,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251526383
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a145bb",
+          "body": "[状态] → in_progress：研发段开工（reqboard_task_move）",
+          "createdAt": 1791251526182,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-79cd45",
+          "body": "[状态] → done：研发段完成：窄口径预判落盘，TC-5/TC-7 绿（reqboard_task_move）",
+          "createdAt": 1791251526383,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251503733,
+      "updatedAt": 1791251526383,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251503733,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251526182,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "研发段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791251526383,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "研发段完成：窄口径预判落盘，TC-5/TC-7 绿"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791251525798,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/auto-confirm.ts",
+          "src/application/use-cases/SubmitArtifact.ts"
+        ],
+        "completed": [
+          "triggerAutoConfirm 改 async + 窄口径预判（原型存在门）",
+          "SubmitArtifact 两处 await 与 note 带 reason",
+          "npx vitest run tests/confirm-advance-deadlock.test.ts -t 自动确认 绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251525798,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-035788",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "自动确认窄口径预判（UI 缺原型不弹）并改两处调用点 await·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-501599"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/application/internal/auto-confirm.ts：triggerAutoConfirm 改 async（返回 Promise<AutoConfirmResult>），在 deps.questions.available() 判定之后、任何票登记之前加窄口径预判——input.target === 'artifact' 且需求存在且 advanceTargetFor(req.status) === 'design' 时，先 applyRequirementWorkspaceRoot(deps, req) 再调 checkPrototypePresenceGate(deps.docs, req)，返回失败则 {triggered:false, reason: gate.message}。src/application/use-cases/SubmitArtifact.ts 两处调用点（kind=requirement 与 kind=plan）改 await，并把 reason 拼进回执 note。不动 kind=prototype 的 {triggered:false, reason:'…无需人工确认…'} 既有形状。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-af9414",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-eaeb54",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251526542,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 843,
+              "at": 1791251526542,
+              "totals": {
+                "uncachedInputTokens": 189775,
+                "outputTokens": 133598,
+                "cacheReadTokens": 20812032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 843,
+                  "totals": {
+                    "uncachedInputTokens": 189775,
+                    "outputTokens": 133598,
+                    "cacheReadTokens": 20812032,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 845,
+              "at": 1791251526680,
+              "totals": {
+                "uncachedInputTokens": 189775,
+                "outputTokens": 133598,
+                "cacheReadTokens": 20812032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 845,
+                  "totals": {
+                    "uncachedInputTokens": 189775,
+                    "outputTokens": 133598,
+                    "cacheReadTokens": 20812032,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251526680
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-8b3568",
+          "body": "[状态] → in_progress：复核段开工（reqboard_task_move）",
+          "createdAt": 1791251526542,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-3a6e9d",
+          "body": "[状态] → done：复核段完成：回执形状与既有 kind=prototype 形状均无偏离（reqboard_task_move）",
+          "createdAt": 1791251526680,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251503733,
+      "updatedAt": 1791251526680,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251503733,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251526542,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "复核段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791251526680,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "复核段完成：回执形状与既有 kind=prototype 形状均无偏离"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791251525977,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/auto-confirm.ts",
+          "src/application/use-cases/SubmitArtifact.ts"
+        ],
+        "completed": [
+          "核对 auto_confirm 仍是 {triggered, reason?} 形状（output-contract 无新增失败）",
+          "核对 kind=prototype 的无需人工确认形状未被波及（prototype-registration-no-pin 绿）",
+          "核对预判在票登记之前早退（不钉窗口）",
+          "核对 reason 用的是原型存在门原文，未另写文案"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251525977,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d56990",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "新增确认门推进回归用例并修正被缺陷行为锁住的既有期望·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-9aa82b",
+        "t-af9414"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新建 tests/confirm-advance-deadlock.test.ts（顶部 serves: FR-1, FR-2, FR-3），按 design/test-cases.md 的 TC-1~TC-7 写（标本、断言逐条对应；状态断言一律读回台账）。改 tests/design-gate-messages.test.ts「全部落章且磁盘无新增」例：advanced 期望由 false 改为 true 并补状态前进断言，其余断言逐字保留。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-13a8ca",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-0a8f49",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251613948,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 898,
+              "at": 1791251613948,
+              "totals": {
+                "uncachedInputTokens": 211110,
+                "outputTokens": 137383,
+                "cacheReadTokens": 22722688,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 898,
+                  "totals": {
+                    "uncachedInputTokens": 211110,
+                    "outputTokens": 137383,
+                    "cacheReadTokens": 22722688,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 900,
+              "at": 1791251614058,
+              "totals": {
+                "uncachedInputTokens": 211110,
+                "outputTokens": 137383,
+                "cacheReadTokens": 22722688,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 900,
+                  "totals": {
+                    "uncachedInputTokens": 211110,
+                    "outputTokens": 137383,
+                    "cacheReadTokens": 22722688,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251614058
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1b65ec",
+          "body": "[状态] → in_progress：测试段开工（reqboard_task_move）",
+          "createdAt": 1791251613948,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-aa75a0",
+          "body": "[状态] → done：测试段完成：16 例全绿 + 四条反向验证必红（reqboard_task_move）",
+          "createdAt": 1791251614058,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251582680,
+      "updatedAt": 1791251614058,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251582680,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251613948,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "测试段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791251614058,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "测试段完成：16 例全绿 + 四条反向验证必红"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791251613822,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/confirm-advance-deadlock.test.ts",
+          "tests/design-gate-messages.test.ts"
+        ],
+        "completed": [
+          "tests/confirm-advance-deadlock.test.ts 10 例全绿",
+          "design-gate-messages 6 例全绿",
+          "四条反向验证必红后逐字节还原",
+          "文件顶部 serves: FR-1, FR-2, FR-3 在场（非孤儿用例）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251613822,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a8775d",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "全量回归与基线对账（零新增失败 + 零 schema 变更）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-13a8ca"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "跑 pnpm typecheck 与 pnpm test，把失败用例清单与 .dsh-data/baseline-cases.txt 求差集逐条对账；新增失败逐条定位到本次改动或如实标注为既有失败（同名同因）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-c89be1",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-837ea6",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251657367,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 937,
+              "at": 1791251657367,
+              "totals": {
+                "uncachedInputTokens": 226057,
+                "outputTokens": 140064,
+                "cacheReadTokens": 24076928,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 937,
+                  "totals": {
+                    "uncachedInputTokens": 226057,
+                    "outputTokens": 140064,
+                    "cacheReadTokens": 24076928,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 939,
+              "at": 1791251657544,
+              "totals": {
+                "uncachedInputTokens": 226057,
+                "outputTokens": 140064,
+                "cacheReadTokens": 24076928,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 939,
+                  "totals": {
+                    "uncachedInputTokens": 226057,
+                    "outputTokens": 140064,
+                    "cacheReadTokens": 24076928,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251657544
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-01417a",
+          "body": "[状态] → in_progress：测试段开工（reqboard_task_move）",
+          "createdAt": 1791251657367,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-20496c",
+          "body": "[状态] → done：测试段完成：基线对账零新增失败（reqboard_task_move）",
+          "createdAt": 1791251657544,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251649932,
+      "updatedAt": 1791251657544,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251649932,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251657367,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "测试段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791251657544,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "测试段完成：基线对账零新增失败"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791251657230,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/confirm-settle.ts",
+          "src/application/use-cases/AskConfirm.ts",
+          "src/application/internal/auto-confirm.ts",
+          "src/application/use-cases/SubmitArtifact.ts"
+        ],
+        "completed": [
+          "pnpm test 69 失败 ≤ 基线 70；失败文件 38 ≤ 39",
+          "零新增真实失败（差集逐条核对）",
+          "tsc --noEmit 零错误",
+          "未改 protocol.ts（mtime 自证）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251657230,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b40da5",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "返工：与裁定对照（逐条说明如何落实）",
+      "description": "验收不通过项返工（v1 项 v1-7）：与裁定对照（逐条说明如何落实）",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "与裁定对照（逐条说明如何落实）",
+      "implementation": "按验收意见修复：需修改",
+      "context": "承接自 裁定对照验收项（D-1、D-2、D-3、D-4、D-5、D-6、D-7）；验收意见：需修改",
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-cfa6ab",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251865443,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 1085,
+              "at": 1791251865443,
+              "totals": {
+                "uncachedInputTokens": 244769,
+                "outputTokens": 158792,
+                "cacheReadTokens": 31851264,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 1085,
+                  "totals": {
+                    "uncachedInputTokens": 244769,
+                    "outputTokens": 158792,
+                    "cacheReadTokens": 31851264,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 1122,
+              "at": 1791251880680,
+              "totals": {
+                "uncachedInputTokens": 251488,
+                "outputTokens": 161020,
+                "cacheReadTokens": 32630144,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 1122,
+                  "totals": {
+                    "uncachedInputTokens": 251488,
+                    "outputTokens": 161020,
+                    "cacheReadTokens": 32630144,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 6719,
+              "outputTokens": 2228,
+              "cacheReadTokens": 778880,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251880679
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-914872",
+          "body": "[状态] → in_progress：返工开工：按 v1-7 意见补 D-x 逐条对照（reqboard_task_move）",
+          "createdAt": 1791251865443,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-251d81",
+          "body": "[状态] → done：返工完成：D-x 逐条对照已落盘（decision-mapping.md），四段子卡全 done（reqboard_task_move）",
+          "createdAt": 1791251880679,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251816082,
+      "updatedAt": 1791251880679,
+      "createdBy": {
+        "kind": "human",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251816082,
+          "by": {
+            "kind": "human",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "验收不通过 → 自动生成返工任务（W6）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251865443,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "返工开工：按 v1-7 意见补 D-x 逐条对照"
+        },
+        {
+          "status": "done",
+          "at": 1791251880679,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "返工完成：D-x 逐条对照已落盘（decision-mapping.md），四段子卡全 done"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791251865284,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261006094052-1da2/reviews/decision-mapping.md",
+          "docs/requirements/REQ-261006094052-1da2/tests/acceptance-evidence.md"
+        ],
+        "completed": [
+          "按验收意见补齐「与裁定对照（逐条说明如何落实）」",
+          "新增 reviews/decision-mapping.md：D-1~D-7 逐条给原话来源、落实点（文件:行）与可复核证据",
+          "补记实施期派生裁定 D-2′（G2 后门封堵）与 TC-9 证据",
+          "同步 tests/acceptance-evidence.md §5：文档自检复跑缺口 0（rtm-accepting.yml 已生成）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251865284,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-0c5a47",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "返工：与裁定对照（逐条说明如何落实）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "按验收意见修复：需修改\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "承接自 裁定对照验收项（D-1、D-2、D-3、D-4、D-5、D-6、D-7）；验收意见：需修改",
+      "parentId": "t-b40da5",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4e8604",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251876242,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 1102,
+              "at": 1791251876242,
+              "totals": {
+                "uncachedInputTokens": 249740,
+                "outputTokens": 160704,
+                "cacheReadTokens": 32237312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 1102,
+                  "totals": {
+                    "uncachedInputTokens": 249740,
+                    "outputTokens": 160704,
+                    "cacheReadTokens": 32237312,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 1104,
+              "at": 1791251876490,
+              "totals": {
+                "uncachedInputTokens": 249740,
+                "outputTokens": 160704,
+                "cacheReadTokens": 32237312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 1104,
+                  "totals": {
+                    "uncachedInputTokens": 249740,
+                    "outputTokens": 160704,
+                    "cacheReadTokens": 32237312,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251876490
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-5e8d16",
+          "body": "[状态] → in_progress：研发段开工（reqboard_task_move）",
+          "createdAt": 1791251876242,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-cdbc67",
+          "body": "[状态] → done：研发段完成：对照文档落盘（reqboard_task_move）",
+          "createdAt": 1791251876490,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251865443,
+      "updatedAt": 1791251876490,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251865443,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251876242,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "研发段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791251876490,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "研发段完成：对照文档落盘"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791251874928,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261006094052-1da2/reviews/decision-mapping.md"
+        ],
+        "completed": [
+          "新增 reviews/decision-mapping.md，D-1~D-7 逐条给原话、落实点与证据"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251874928,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-5c2b84",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "返工：与裁定对照（逐条说明如何落实）·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-0c5a47"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "按验收意见修复：需修改\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "承接自 裁定对照验收项（D-1、D-2、D-3、D-4、D-5、D-6、D-7）；验收意见：需修改",
+      "parentId": "t-b40da5",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-24b06d",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251876759,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 1106,
+              "at": 1791251876759,
+              "totals": {
+                "uncachedInputTokens": 249740,
+                "outputTokens": 160704,
+                "cacheReadTokens": 32237312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 1106,
+                  "totals": {
+                    "uncachedInputTokens": 249740,
+                    "outputTokens": 160704,
+                    "cacheReadTokens": 32237312,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 1108,
+              "at": 1791251876936,
+              "totals": {
+                "uncachedInputTokens": 249740,
+                "outputTokens": 160704,
+                "cacheReadTokens": 32237312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 1108,
+                  "totals": {
+                    "uncachedInputTokens": 249740,
+                    "outputTokens": 160704,
+                    "cacheReadTokens": 32237312,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251876936
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e3e799",
+          "body": "[状态] → in_progress：联调段开工（reqboard_task_move）",
+          "createdAt": 1791251876759,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-4f3599",
+          "body": "[状态] → done：联调段完成：行号与落点核对无误（reqboard_task_move）",
+          "createdAt": 1791251876936,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251865443,
+      "updatedAt": 1791251876936,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251865443,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251876759,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "联调段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791251876936,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "联调段完成：行号与落点核对无误"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791251875122,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261006094052-1da2/reviews/decision-mapping.md"
+        ],
+        "completed": [
+          "逐条核对落点行号与证据可复核性（confirm-settle.ts:109 / AskConfirm.ts:132-175 / auto-confirm.ts:64-67 / SubmitArtifact.ts:203）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251875122,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-04c085",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "返工：与裁定对照（逐条说明如何落实）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-5c2b84"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "按验收意见修复：需修改\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "承接自 裁定对照验收项（D-1、D-2、D-3、D-4、D-5、D-6、D-7）；验收意见：需修改",
+      "parentId": "t-b40da5",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6a6c27",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251877171,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 1110,
+              "at": 1791251877171,
+              "totals": {
+                "uncachedInputTokens": 249740,
+                "outputTokens": 160704,
+                "cacheReadTokens": 32237312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 1110,
+                  "totals": {
+                    "uncachedInputTokens": 249740,
+                    "outputTokens": 160704,
+                    "cacheReadTokens": 32237312,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 1112,
+              "at": 1791251877352,
+              "totals": {
+                "uncachedInputTokens": 249740,
+                "outputTokens": 160704,
+                "cacheReadTokens": 32237312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 1112,
+                  "totals": {
+                    "uncachedInputTokens": 249740,
+                    "outputTokens": 160704,
+                    "cacheReadTokens": 32237312,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251877352
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a10067",
+          "body": "[状态] → in_progress：复核段开工（reqboard_task_move）",
+          "createdAt": 1791251877171,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-9a2b42",
+          "body": "[状态] → done：复核段完成：口径与独立性声明合规（reqboard_task_move）",
+          "createdAt": 1791251877352,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251865443,
+      "updatedAt": 1791251877352,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251865443,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251877171,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "复核段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791251877352,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "复核段完成：口径与独立性声明合规"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791251875431,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261006094052-1da2/reviews/decision-mapping.md"
+        ],
+        "completed": [
+          "核对每条裁定的证据列均可复核（用例号或文件:行）",
+          "核对未把自评冒充独立复核（文末显式声明）",
+          "核对 D-7 边界：来源需求目录零写入"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251875431,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-6ac15e",
+      "requirementId": "REQ-261006094052-1da2",
+      "title": "返工：与裁定对照（逐条说明如何落实）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-04c085"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "按验收意见修复：需修改\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "承接自 裁定对照验收项（D-1、D-2、D-3、D-4、D-5、D-6、D-7）；验收意见：需修改",
+      "parentId": "t-b40da5",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ffb279",
+          "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+          "trigger": "manual",
+          "startedAt": 1791251877523,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 1114,
+              "at": 1791251877523,
+              "totals": {
+                "uncachedInputTokens": 249740,
+                "outputTokens": 160704,
+                "cacheReadTokens": 32237312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 1114,
+                  "totals": {
+                    "uncachedInputTokens": 249740,
+                    "outputTokens": 160704,
+                    "cacheReadTokens": 32237312,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+              "seq": 1116,
+              "at": 1791251877678,
+              "totals": {
+                "uncachedInputTokens": 249740,
+                "outputTokens": 160704,
+                "cacheReadTokens": 32237312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6",
+                  "depth": 0,
+                  "seq": 1116,
+                  "totals": {
+                    "uncachedInputTokens": 249740,
+                    "outputTokens": 160704,
+                    "cacheReadTokens": 32237312,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791251877678
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-79ea1c",
+          "body": "[状态] → in_progress：测试段开工（reqboard_task_move）",
+          "createdAt": 1791251877523,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        },
+        {
+          "id": "c-199667",
+          "body": "[状态] → done：测试段完成：文档自检缺口 0、证据同步（reqboard_task_move）",
+          "createdAt": 1791251877678,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791251865443,
+      "updatedAt": 1791251877678,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791251865443,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791251877523,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "测试段开工"
+        },
+        {
+          "status": "done",
+          "at": 1791251877678,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-9d5750ad-47dc-4178-b33e-b6531daea6a6"
+          },
+          "reason": "测试段完成：文档自检缺口 0、证据同步"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791251875904,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261006094052-1da2/tests/acceptance-evidence.md",
+          "docs/requirements/REQ-261006094052-1da2/reviews/decision-mapping.md"
+        ],
+        "completed": [
+          "复跑 npx tsx scripts/req-doc-validate.mts --req REQ-261006094052-1da2 → 缺口 0 / exit 0",
+          "同步 tests/acceptance-evidence.md §5 的复跑输出",
+          "确认对照表引用的用例仍在（10 例 + 6 例全绿）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791251875904,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-32e494",
+      "to": "t-9aa82b"
+    },
+    {
+      "from": "t-9aa82b",
+      "to": "t-13a8ca"
+    },
+    {
+      "from": "t-af9414",
+      "to": "t-13a8ca"
+    },
+    {
+      "from": "t-13a8ca",
+      "to": "t-c89be1"
+    },
+    {
+      "from": "t-64bf2e",
+      "to": "t-37c671"
+    },
+    {
+      "from": "t-32e494",
+      "to": "t-a775c9"
+    },
+    {
+      "from": "t-a775c9",
+      "to": "t-b979ca"
+    },
+    {
+      "from": "t-501599",
+      "to": "t-035788"
+    },
+    {
+      "from": "t-9aa82b",
+      "to": "t-d56990"
+    },
+    {
+      "from": "t-af9414",
+      "to": "t-d56990"
+    },
+    {
+      "from": "t-13a8ca",
+      "to": "t-a8775d"
+    },
+    {
+      "from": "t-0c5a47",
+      "to": "t-5c2b84"
+    },
+    {
+      "from": "t-5c2b84",
+      "to": "t-04c085"
+    },
+    {
+      "from": "t-04c085",
+      "to": "t-6ac15e"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-32e494",
+        "t-af9414",
+        "t-64bf2e",
+        "t-501599",
+        "t-b40da5",
+        "t-0c5a47"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-9aa82b",
+        "t-a775c9",
+        "t-37c671",
+        "t-035788",
+        "t-5c2b84"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-13a8ca",
+        "t-d56990",
+        "t-b979ca",
+        "t-04c085"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-c89be1",
+        "t-a8775d",
+        "t-6ac15e"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-06T01:58:00.680Z"
+}

@@ -1,0 +1,39 @@
+task:
+  id: t-f3efb4
+  title: 核验兼容、回滚与交付基线·复核
+  status: done
+  implements: |-
+    兼容核验：用不带 advanceLockAt 的载荷跑两视图渲染断言，确认与改动前输出逐字节一致（旧服务端降级路径）。回滚演练：临时回退 src/client/session-running.ts 与 src/client/views/board.ts 的本次改动，确认 pnpm build:client 仍 [verify-client] OK，且本次不落盘 / 不改 schema（无数据残留）。交付基线：pnpm typecheck、pnpm build:client（规范 C-15 / C-12）、pnpm test 与改动前基线比对（规范 C-14，基线取改动前同一命令输出）。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-a50079
+  phase: test
+  side: fullstack
+  workflow_params:
+    REQ_ID: REQ-261005213603-eaed
+    TASK_ID: t-f3efb4
+    TASK_TITLE: 核验兼容、回滚与交付基线·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: fullstack
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      started_at: 2026-10-05T15:38:39.700Z
+      completed_at: 2026-10-05T15:38:42.494Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005213603-eaed
+  generated_at: 2026-10-05T15:38:35.493Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T15:38:42.494Z

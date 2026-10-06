@@ -1,0 +1,36 @@
+task:
+  id: t-3b01f0
+  title: 同步既有渲染断言（五处改动 + 两条新增）·复核
+  status: done
+  implements: |-
+    改 tests/report-shell.test.ts 与 tests/report-firstscreen-gaps.test.ts：report-shell 的 :219 toContain(均需人工确认) 改为「需人工确认」；:138 的按序子串断言不改（属性追加在既有属性之后）；:212 的 countOf(html, dsh-pm-action-consequence) === 1 保持（保留该 class 作 sr-only 节点，须在实施汇报里显式声明）。firstscreen-gaps 的 :447 countOf(html, 均需人工确认) === 1 改为「需人工确认」；:411 expect(grid).not.toContain(本阶段操作) 不改；:419 的 countOf 与 toContain(通过即归档) 不改；:450 countOf(html, data-human-only=true) === ACTIONS.length 不改；:450-457 的 auto 用例 not.toContain(均需人工确认) 改为「需人工确认」（否则变成永远为真的空断言）。新增两条：① 主操作按钮有 aria-describedby 且指向节点文本 === 服务端 consequence、节点视觉隐藏；② 行尾标文本 ===「需人工确认」且 data-human-only-mark=1 仍在。按 FR-13 把既有相关断言改成不存在（头部无 dsh-pm-comment-form 与头部 add-comment），并新增「对话 Tab 评论框仍存在且可提交」一条。不许删断言。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-fd33fe
+  phase: test
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261005155003-f32f
+    TASK_ID: t-3b01f0
+    TASK_TITLE: 同步既有渲染断言（五处改动 + 两条新增）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T14:27:19.694Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005155003-f32f
+  generated_at: 2026-10-05T14:27:16.164Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T14:27:33.259Z

@@ -1,0 +1,36 @@
+task:
+  id: t-4fcc8b
+  title: 依赖判定四处收敛到单点，且 V-5 判据同批同源（防写路径被自己拒掉）·研发
+  status: done
+  implements: |-
+    ① `src/domain/queue/topology.ts` 的 `computeReady`：删掉 `deps.every(dep => byId.get(dep)?.status === 'done')` 手写式，改走 `isReadyTask` / `isDependencySatisfied`（从 `../status/Predicates.js` import）；**悬空依赖策略保持「未满足」（保守不放行）**，即沿用本函数既有 byId 覆盖全量任务的语义，不得顺手放宽；同文件 `computeLayers` **判据一字不改**（落盘 `layers` 照旧按全量节点算，登记为历史派生值）。② `src/shared/protocol.ts` 的 `readyTasks(tasks, requirementId)`：删除 `doneIds` 手写式，收敛为 `liveReadyTasks` 的薄封装（仍是只让 `status === 'todo'` 的活卡进 ready、**输出顺序=输入顺序**，保住既有 R-3/D8 口径；`shared` 允许 import `domain`，层门禁核对过）。③ `src/application/use-cases/queue-access.ts` 的 `readyTasksOf`：行为逐字不变，改为复用 `isReadyTask`（语义单点），保留「悬空依赖按已满足（`undefined` → 满足）」这条既有口径。④ `src/domain/queue/validateQueue.ts` 的 **V-5 假就绪**判据：`unmet` 由 `byId.get(dep)?.status !== 'done'` 改为 `!isDependencySatisfied(byId.get(dep))`——**必须与 ① 同批**，否则落盘前的强校验会把新语义刚算出的 `ready[]` 判成「假就绪」→ 抛 `QUEUE_VALIDATION_FAILED`、一个字节都不落盘。本卡**不动 V-5 的级别**（此刻假就绪与漏就绪同为一个级别，分级由 t10 承接），也**不动 V-4**（V-4 对取消卡不豁免）。新增 `tests/live-tasks-ready-single-source.test.ts`：同一标本（`t-l`（todo）的唯一前置 `t-c` 已取消）跑三处判定断言逐字相等且都含 `t-l`，并对新语义载荷跑一次写盘校验。验证：`npx vitest run tests/live-tasks-ready-single-source.test.ts`。依据 design/architecture.md §缺陷 1 与 interfaces.md §3.1/§3.2。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-239433
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005193546-1b1a
+    TASK_ID: t-4fcc8b
+    TASK_TITLE: 依赖判定四处收敛到单点，且 V-5 判据同批同源（防写路径被自己拒掉）·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T16:49:03.788Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005193546-1b1a
+  generated_at: 2026-10-05T16:49:03.787Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T16:49:05.118Z

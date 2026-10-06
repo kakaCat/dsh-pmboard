@@ -1,0 +1,36 @@
+task:
+  id: t-801f25
+  title: 并发窗口回归 + 真错配/声明根不可用用例（含重写失效用例）·测试
+  status: done
+  implements: |-
+    新增 tests/project-root-concurrency.test.ts：TC-1 A 写 → B 调 reqboard_status（触发单例校正）→ A 再写，两次都成功且 B 目录零新增；TC-2 记录声明 B、调用方根 A → 校正到 B 并返回 B，A 目录零新增；TC-3 声明根不存在/相对写法 → REQBOARD_INVALID_WORKSPACE 且调用方根零写入；TC-5 记录无 workspaceRoot → 回落调用方根并标注、不误拒。重写 tests/project-scope.test.ts:452 那条编码旧契约的失效用例到新契约（等强度断言：校正到声明根 + 调用方根零写入 + 返回值 = 声明根）；414/430/443/448 与 t8 写盘覆盖用例逐字不动。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-82bbf9
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005123641-3982
+    TASK_ID: t-801f25
+    TASK_TITLE: 并发窗口回归 + 真错配/声明根不可用用例（含重写失效用例）·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T05:07:30.606Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005123641-3982
+  generated_at: 2026-10-05T05:07:26.784Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T05:07:32.674Z

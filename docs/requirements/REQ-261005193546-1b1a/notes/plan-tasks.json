@@ -1,0 +1,163 @@
+[
+  {
+    "key": "t1",
+    "title": "定义活卡判据与依赖判定单点（9 个纯函数落既有 Predicates.ts）",
+    "phase": "implement",
+    "side": "backend",
+    "depends_on": [],
+    "implementation": "落点：`src/domain/status/Predicates.ts`（**既有模块内**、紧邻 `isCanceled` 追加，**不新建模块**；domain 不许 import shared，故入参一律结构化 `{ status: string }`（模块头既有 `HasStatus`）+ 泛型保类型）。追加九个导出纯函数：① `isLiveTask<T extends HasStatus>(task: T): boolean`——复用既有 `isCanceled`（`!isCanceled(task)`），**本文件外全仓不得再写 status 与 canceled 的字面量比较**；② `liveTasksOf<T extends HasStatus>(tasks: readonly T[]): T[]`（返回新数组、顺序=输入顺序、不改入参、元素按引用返回）；③ `liveCountOf(tasks: readonly HasStatus[]): number`（= `liveTasksOf(tasks).length`，堵「过滤用一套、分母另抄一套」）；④ `isDependencySatisfied(dep: HasStatus | undefined): boolean`（`undefined`（悬空）| `done` | `canceled` = 满足；口径逐字等于 application 层 `readyTasksOf` 今天的判定，收编见 t2 ③）；⑤ `splitDependencyEdges<T extends HasStatus & { dependsOn?: readonly string[] }>(task, byId): { satisfied: string[]; pending: string[]; dangling: string[] }`（**唯一约束桶 = pending**；悬空单独成桶留给 V-3 报告，不静默算 satisfied；不改入参、顺序=dependsOn 原顺序）；⑥ `isReadyTask<T extends HasStatus & { id: string; dependsOn?: readonly string[] }>(task, byId): boolean`（自身 `todo` 且 `pending` 桶为空）；⑦ `layerInputOf<T extends HasStatus & { id: string; dependsOn?: readonly string[] }>(tasks): T[]`（活卡集合，且每条 `dependsOn` 只保留指向活卡的边 ⇒ 等价「删掉指向取消卡的边」）；⑧ `liveLayers<T ...>(tasks): ReadonlyMap<string, number>`（在 `layerInputOf` 的输入上算最长路径，只含活卡）；⑨ `liveReadyTasks<T ...>(tasks): string[]`（内部 `byId` 建在**活卡集合**上 ⇒ 指向取消卡的依赖表现为缺席=已满足；返回 id、顺序=输入顺序）。签名以 `design/interfaces.md` §3.2 为唯一一套（`liveReadyTasks` 返回 `string[]`、`layerInputOf` 返回 `T[]`），`design/architecture.md` / `design/frontend.md` 里的两个变体名与变体签名作废。新增 `tests/live-tasks-predicates.test.ts`：7 个 `TaskStatus` 逐一取值只 `canceled` 为假、`isDependencySatisfied` 四态、三桶分类、`isReadyTask` 真值表、`liveLayers` 与「删边重算」等值、`liveCountOf` 与 `liveTasksOf` 同源、入参不被修改。验证：`pnpm typecheck` + `npx vitest run tests/live-tasks-predicates.test.ts`。依据 design/interfaces.md §2/§3.2 与 architecture.md §接口变更。",
+    "acceptance": "`pnpm typecheck` 退出码 0；`npx vitest run tests/live-tasks-predicates.test.ts` 全绿且含断言：遍历 `TASK_STATUS_ORDER` 时 `isLiveTask` 仅对 `'canceled'` 返回 false；`isDependencySatisfied` 对 `undefined`/`done`/`canceled` 返回 true、对 `todo`/`in_progress` 返回 false；`splitDependencyEdges` 把（悬空 / done / canceled / todo）四类依赖分别落 `dangling`/`satisfied`/`satisfied`/`pending`；`isReadyTask({status:'todo',dependsOn:['y']}, byId(y=canceled)) === true` 而同形 `{status:'in_progress'}` 为 false；`liveLayers` 对「x 的唯一前置 y 已取消」标本给出 `get('x') === 0`；`liveCountOf(t) === liveTasksOf(t).length`；调用后入参数组长度不变（不改入参）。逆验证：把 `isLiveTask` 临时改为 `return true` → 本用例必红。",
+    "footprint": { "files": 2, "anchors": 9, "chars": 2900 },
+    "requirement_refs": ["FR-1", "FR-4"],
+    "decisionRefs": ["D-6", "D-8"]
+  },
+  {
+    "key": "t2",
+    "title": "依赖判定四处收敛到单点，且 V-5 判据同批同源（防写路径被自己拒掉）",
+    "phase": "implement",
+    "side": "backend",
+    "depends_on": ["t1"],
+    "implementation": "① `src/domain/queue/topology.ts` 的 `computeReady`：删掉 `deps.every(dep => byId.get(dep)?.status === 'done')` 手写式，改走 `isReadyTask` / `isDependencySatisfied`（从 `../status/Predicates.js` import）；**悬空依赖策略保持「未满足」（保守不放行）**，即沿用本函数既有 byId 覆盖全量任务的语义，不得顺手放宽；同文件 `computeLayers` **判据一字不改**（落盘 `layers` 照旧按全量节点算，登记为历史派生值）。② `src/shared/protocol.ts` 的 `readyTasks(tasks, requirementId)`：删除 `doneIds` 手写式，收敛为 `liveReadyTasks` 的薄封装（仍是只让 `status === 'todo'` 的活卡进 ready、**输出顺序=输入顺序**，保住既有 R-3/D8 口径；`shared` 允许 import `domain`，层门禁核对过）。③ `src/application/use-cases/queue-access.ts` 的 `readyTasksOf`：行为逐字不变，改为复用 `isReadyTask`（语义单点），保留「悬空依赖按已满足（`undefined` → 满足）」这条既有口径。④ `src/domain/queue/validateQueue.ts` 的 **V-5 假就绪**判据：`unmet` 由 `byId.get(dep)?.status !== 'done'` 改为 `!isDependencySatisfied(byId.get(dep))`——**必须与 ① 同批**，否则落盘前的强校验会把新语义刚算出的 `ready[]` 判成「假就绪」→ 抛 `QUEUE_VALIDATION_FAILED`、一个字节都不落盘。本卡**不动 V-5 的级别**（此刻假就绪与漏就绪同为一个级别，分级由 t10 承接），也**不动 V-4**（V-4 对取消卡不豁免）。新增 `tests/live-tasks-ready-single-source.test.ts`：同一标本（`t-l`（todo）的唯一前置 `t-c` 已取消）跑三处判定断言逐字相等且都含 `t-l`，并对新语义载荷跑一次写盘校验。验证：`npx vitest run tests/live-tasks-ready-single-source.test.ts`。依据 design/architecture.md §缺陷 1 与 interfaces.md §3.1/§3.2。",
+    "acceptance": "`npx vitest run tests/live-tasks-ready-single-source.test.ts tests/queue/topology.test.ts tests/queue/validateQueue.test.ts tests/queue-types-integration.test.ts` 全绿；断言：`readyTasksOf(t)`、`readyTasks(t,'REQ-…')`、`computeReady(queue.tasks)` 三个集合逐字相等且都含 `t-l`；新语义载荷 `validateQueueFile(...).passed === true` 且 `issues` 里无 `rule === 'V-5'` 的「假就绪」条目；`await repo.save(reqId, 新语义队列)` 不抛 `QUEUE_VALIDATION_FAILED`，落盘文件 `ready[]` 含 `t-l`；`computeLayers` 的输出与改动前逐字相同（落盘分层判据未动）。逆验证：删掉 `isDependencySatisfied` 的 `canceled` 分支且不恢复 → 上述三条必红。`pnpm typecheck` 退出码 0。",
+    "footprint": { "files": 5, "anchors": 8, "chars": 3100 },
+    "requirement_refs": ["FR-1", "FR-4"],
+    "decisionRefs": ["D-6", "D-8"]
+  },
+  {
+    "key": "t3",
+    "title": "加 TaskRecord 三个加性可选字段与 markCanceled 写入口，并接四个取消写入点",
+    "phase": "implement",
+    "side": "backend",
+    "depends_on": ["t1", "t2"],
+    "implementation": "① 改 `src/shared/protocol.ts`：`TaskRecord` 增三个**加性可选**字段 `canceledAt?: number`、`canceledBy?: { kind: 'human'; sessionId?: string }`、`cancelReason?: string`（注释写明：语义=**最近一次取消**（覆盖式）、缺省=**未采集**、不 bump `REQBOARD_SCHEMA_VERSION`（9）与 `QUEUE_VERSION`（1）、**不加进** `REQUIRED_TASK_FIELDS`）；在既有 `recordStatus` 旁新增**唯一写入口** `markCanceled(task: TaskRecord, opts: { at: number; by: ActorRef; reason?: string }): void`——就地写：`task.canceledAt = opts.at`；仅当 `opts.by.kind === 'human'` 才写 `task.canceledBy = { kind: 'human', ...(sessionId !== undefined ? { sessionId } : {}) }`（真非人工路径**整字段不写** + `console.warn`，不写 `kind:'system'` 之类替身值）；`opts.reason` 的 `trim()` 非空才写 `cancelReason`（不设硬上限）；**不做 IO、不返回新对象、不落盘**。② `src/application/internal/task-transition.ts` 的 `transitionTask`：`to === 'canceled'` 时在 `task.status = to` 同一处调 `markCanceled(task, { at: opts.at, by: opts.actor, reason: opts.reason })`（同对象、同一次写事务；`assertTaskTransition` 失败路径不改任何字段）。③ 三个批量直写点同款接线（都在 `copy.status = 'canceled'` 的相邻行）：`src/application/internal/rollback-tasks.ts` 的 `planRollbackTasks`、`src/application/internal/stale-rework.ts` 的 `cancelStaleReworkCards`、`src/application/internal/rollback-cleanup.ts` 的 `planRollbackCleanup`——`at` 取该批动作的 `now`（同批同一值）、`by` 取**触发该批动作的人**、`reason` 取**该批动作的原因**（如「回退重拆」，不是逐卡理由）。**复活（`canceled → todo`）不清空三字段**（本卡不加任何清空逻辑）；`HUMAN_ONLY_TASK_TRANSITIONS` 与 `assertTaskTransition` 一字不改。④ 新增 `tests/canceled-task-trail.test.ts`：写侧四条形态（人工取消 / 非人工不写 / 空白 reason 不写 / 复活不清空）+ 与 `statusHistory` 同源同刻 + 批量取消整批有值。验证：`npx vitest run tests/canceled-task-trail.test.ts`。依据 design/data-model.md §1/§7 与 backend.md §取消留痕写侧。",
+    "acceptance": "`npx vitest run tests/canceled-task-trail.test.ts tests/task-transition-guard.test.ts tests/rollback-tasks.test.ts tests/rollback-cleanup.test.ts` 全绿；断言：人取消一张卡后 `canceledAt` 为有限数字且 `=== statusHistory` 最近一条 `→canceled` 事件的 `at`、`canceledBy.kind === 'human'`、无会话时 `'sessionId' in canceledBy === false`、`cancelReason` 等于传入原文；真非人工路径取消后 `'canceledBy' in task === false`（且不出现 `kind === 'agent'`）；`reason === '   '` 时不写 `cancelReason`；超长原文逐字写入不被截断；复活后再取消时三字段等于**最新一次**取值；回退一次需求产生的每张取消卡 `canceledAt`/`cancelReason` 都有值；`pnpm typecheck` 退出码 0。",
+    "footprint": { "files": 6, "anchors": 9, "chars": 3300 },
+    "requirement_refs": ["FR-3", "FR-6"],
+    "decisionRefs": ["D-1", "D-5"]
+  },
+  {
+    "key": "t4",
+    "title": "两个 RTM 公开入口各自收敛为活卡（覆盖度分母剔卡）",
+    "phase": "implement",
+    "side": "backend",
+    "depends_on": ["t1"],
+    "implementation": "改 `src/application/internal/rtm-yaml.ts`：`syncRTMYaml` 与 `syncRTMYamlWithSnapshot` **两个公开入口各自函数体顶部第一行**加 `const live = liveTasksOf(tasks)`，其后函数体内**只允许使用 `live`**、不得再引用入参 `tasks`（纯函数、幂等）；函数签名与返回体不变、不新增参数、**不改 18 + 3 个调用点**（看板三条路由直调 `syncRTMYamlWithSnapshot`，绕过前者 ⇒ 两个入口都要接，缺一条就漏三条路径）；`coverageGateOf` **一字不改**（`total <= 0 → undefined` 的不执法边界保留）；`ledgerReaderOf(snapshot, live)` 下游不变。新增 `tests/rtm-yaml-live-tasks.test.ts`：同一标本（132 = 106 + 26）分别走两个入口，断言 `coverage.total === 106`、`covered === 106`、`rate === 100`、`uncovered.length === 0`、`passed === true` 且两入口读数**逐字段相等**；对照改前口径断言 `total === 132`、`rate === 80`（压线通过但 `uncovered.length === 26`，门禁仍点名 26 张）；全取消标本（`total === 0`）断言门**不执法**（`coverageGateOf` 返回 `undefined`）；源码级断言用函数名切区间，两个入口函数体内都含 `liveTasksOf(`。验证：`npx vitest run tests/rtm-yaml-live-tasks.test.ts`。依据 design/interfaces.md §5 与 backend.md §两个 RTM 公开入口。",
+    "acceptance": "`npx vitest run tests/rtm-yaml-live-tasks.test.ts` 全绿；断言：两个入口对同一标本给出的 `coverage` 逐字段相等且 `total === 106`、`rate === 100`、`passed === true`、`uncovered.length === 0`；对照标本（不做活卡过滤）`total === 132`、`rate === 80`、`uncovered.length === 26`；全取消标本 `coverageGateOf('accepting', probe) === undefined`（不执法，不是 0 分也不是通过）；按函数名切区间扫描 `src/application/internal/rtm-yaml.ts`，`syncRTMYaml` 与 `syncRTMYamlWithSnapshot` 两个函数体内 `liveTasksOf(` 命中数各 ≥ 1。逆验证：只给 `syncRTMYaml` 接线而撤掉 `syncRTMYamlWithSnapshot` 的 → 本用例必红。`pnpm typecheck` 退出码 0。",
+    "footprint": { "files": 2, "anchors": 6, "chars": 2500 },
+    "requirement_refs": ["FR-2", "FR-4"],
+    "decisionRefs": ["D-4", "D-6"]
+  },
+  {
+    "key": "t5",
+    "title": "API 边界收敛：/state 的 tasks / ready / 计数全部按活卡下发",
+    "phase": "implement",
+    "side": "backend",
+    "depends_on": ["t1", "t2"],
+    "implementation": "改 `src/http/routers/stages.ts`（**出口清单逐条接线，客户端不再各写过滤**）：① `handleState`：`const live = liveTasksOf(await taskStore.listAll())`，`tasks: live.map(t => ({ ...t }))`（不再下发取消卡）；`ready` 改由 `isReadyTask` / `liveReadyTasks` 派生（**现算、不读落盘 `ready[]`**，保留既有「输出顺序=任务数组顺序」的 R-3/D8 口径与既有注释）；② 同文件需求摘要计数（`tasksTotal` / `percentage` 处）：`tasksTotal = liveCountOf(tasks)`、`percentage` 用同一活卡分母（`done`/`active` 走既有 helper，不新造计量粒度）；③ 同文件会话流程面板：`progress.total` / `byStatus` / `tasks` 全部按活卡算，`byStatus.canceled` 恒 0 且**不新增**「另有 N 张」字段或文案（D-7）；④ 同文件节点详情/总览装配处：传入活卡集合。改 `tests/state-payload-client.test.ts`：补含取消卡标本的断言（出参 tasks / ready / tasksTotal / percentage 四处）。验证命令见 acceptance。依据 design/interfaces.md §4.1 落点 3 与 backend.md §出口清单。",
+    "acceptance": "`npx vitest run tests/state-payload-client.test.ts tests/read-sites-equivalence.test.ts` 全绿；断言：`GET /state` 出参 `tasks` 里 `status === 'canceled'` 条数 `=== 0` 且活卡数 `=== liveCountOf(台账)`；`ready[reqId]` ⊆ 活卡且包含「唯一前置已取消」的 `todo` 卡；需求摘要 `tasksTotal === 活卡数` 且 `percentage === Math.round(done/活卡数*100)`；把队列文件的 `ready[]` 手工改成陈旧值后 `/state` 的 `ready` 仍给出正确现算集合（不读落盘值）；无取消卡夹具下 `/state` 响应体逐字节不变（`tests/read-sites-equivalence.test.ts` 零回归）。逆验证：`handleState` 去掉 `tasks` 收敛只留 `ready`（或反过来）→ 本用例必红。`pnpm typecheck` 退出码 0。",
+    "footprint": { "files": 2, "anchors": 6, "chars": 2900 },
+    "requirement_refs": ["FR-1", "FR-2", "FR-5"],
+    "decisionRefs": ["D-4", "D-7"]
+  },
+  {
+    "key": "t6",
+    "title": "服务端投影收敛：阶段详情基类一次收敛 + DAG 层号现算 + 文档/报告/状态面收编",
+    "phase": "implement",
+    "side": "backend",
+    "depends_on": ["t1", "t2"],
+    "implementation": "① `src/application/query/QueryStageDetail.ts`：在基类 `StageDetailAssembler.assemble()` 里、调 `this.buildBody(...)` **之前**，把传给 body 的 `ledger.tasks` 换成 `liveTasksOf(...)`——**一次收敛覆盖 8 个 body**（拆分/实施两处因此同时正确），**不逐 body 各写一遍**（本次病根正是「某处漏了」，逐 body 补等于把病根留在原地）；`toStageTaskRef` / `toStageTaskExecution` 出参的 `dependsOn` 写**剪边后**的边（`splitDependencyEdges` 的 `satisfied ∪ pending`），否则下层会重新拿到指向取消卡的边、长出幽灵层。② `src/application/query/QueryDag.ts`：`queryDag` 里 `const live = liveTasksOf(tasks)`，`buildDagNodes` / `buildDagSteps` / `buildCriticalPath` 三处同源喂 `live`；节点 `layer` 改由 `liveLayers(live)` **现算**，不再转发落盘 `layer`（落盘值登记为历史派生值，INV-5 ③）；`buildCriticalPath` 里 `const alive = tasks.filter(...)` 的手写式**删掉**（复用单点，其「显式剪边」语义保留）。③ `src/application/query/QueryDocs.ts`：实施门处的手写 filter 收编为 `liveTasksOf`；文档面板按 A3——`req.artifacts` 先剔掉「路径以 `/tasks/<task_id>.md` 结尾且该 `task_id` 属已取消卡」的产物，`documents` 与 `discovered` **两侧同源同改**（**不补偿性**塞进 `discovered`），文件头恒等式改写为活卡口径（`documents` 台账来源行数 + Σ `discovered[].count` == `artifacts.length − 取消卡名下产物条数`）。④ `src/application/query/QueryReport.ts` 的 `progressOf` 与 `src/application/query/QueryState.ts` 的两处手写 filter 收编为 `liveTasksOf` + `liveCountOf`（数值不变，只换判据来源）。改 `tests/stage-detail.test.ts`，新增 `tests/canceled-projection-single-source.test.ts`（含 DAG 层号与文档面板恒等式两条）。验证：`npx vitest run tests/stage-detail.test.ts tests/canceled-projection-single-source.test.ts`。依据 design/architecture.md §消费点清单 ②/③ 与 interfaces.md §4.1。",
+    "acceptance": "`npx vitest run tests/stage-detail.test.ts tests/canceled-projection-single-source.test.ts` 全绿；断言：对 132 = 106 + 26 标本 `assembleStageDetail(...).body.tasks.length === 106` 且其中取消卡条数 `=== 0`（拆分、实施两个 body 各断言一次，并另断言基类出口对任一 stage 都不含取消卡）；`queryDag` 节点数组长度 `=== 106` 且每张活卡 `layer === liveLayers(台账).get(id)`（与「删掉指向取消卡的边后重算」相等，`t-l` 层号 `=== 0` 不是 1）；`QueryDocs` 恒等式 `documents 台账来源行数 + Σ discovered[].count === artifacts.length − 取消卡名下产物条数` 成立，且取消卡名下 `task_detail` 产物在 `documents` 与 `discovered` 两侧都 `=== 0`；`progressOf` 与状态投影两处读数里取消卡条数 `=== 0`。逆验证：把基类 `assemble()` 的 `liveTasksOf` 改回手写 filter → 本用例必红；`buildDagNodes` 退回全量 → 层号与卡数断言必红。`pnpm typecheck` 退出码 0。",
+    "footprint": { "files": 7, "anchors": 9, "chars": 3500 },
+    "requirement_refs": ["FR-1", "FR-2", "FR-5"],
+    "decisionRefs": ["D-3", "D-4", "D-7"]
+  },
+  {
+    "key": "t7",
+    "title": "服务端内部与用例面收编手写活卡 filter（只换判据来源，不改行为）",
+    "phase": "implement",
+    "side": "backend",
+    "depends_on": ["t1"],
+    "implementation": "把下面每一处**手写活卡 filter** 替换为单点调用（**只换判据来源，不改行为、不改计量粒度**）：`src/application/internal/sheet-tasks.ts`（验收单投影）、`src/application/internal/content-trace.ts`（追溯投影）、`src/application/internal/verification-doc-writer.ts`（验收文档渲染）、`src/application/internal/backfill-task-refs.ts`（回填引用）、`src/application/use-cases/SubmitVerification.ts`（四处：探针、跳过守卫、ledger 取数、落盘取数——落盘那处正是「文件写 106」的由来，探针与落盘必须同分母）、`src/domain/workflow/RollupSpec.ts` 的 `activeTasksOf`（domain→domain import 合法）。**不收编**语义不同的守卫/写侧点（`advance-select.ts` / `Decompose.ts` / `AdvanceChain.ts` / `rollback-tasks.ts` 等）：它们属基线，且「已取消就跳过」的 `continue` 守卫要保持行为逐字不变。新增 `tests/canceled-internal-collect.test.ts`：对同一标本断言各收编点输出都不含取消卡，且 `SubmitVerification` 的探针与落盘**同分母**（106）。验证命令见 acceptance。依据 design/backend.md §断言域文件清单与 §出口清单。",
+    "acceptance": "`npx vitest run tests/canceled-internal-collect.test.ts tests/sheet-projection.test.ts tests/rollup.test.ts tests/marks-surfaces.test.ts tests/reqboard/backfill-task-refs.test.ts` 全绿；断言：验收单投影、追溯投影、验收文档渲染、回填引用四处输出里 `status === 'canceled'` 条数 `=== 0`；`SubmitVerification` 的探针读数与落盘读数分母**逐字相等**（都 `=== 106`，不再出现探针 132 / 落盘 106）；`activeTasksOf`、验收文档、追溯三处在活卡 0 张标本上空集不抛错。逆验证：把落盘那一处的复用改回手写 filter（且顺手只改这一处）→ 同分母断言必红。`pnpm typecheck` 退出码 0。",
+    "footprint": { "files": 7, "anchors": 7, "chars": 2700 },
+    "requirement_refs": ["FR-2", "FR-4", "FR-5"],
+    "decisionRefs": ["D-4", "D-6"]
+  },
+  {
+    "key": "t8",
+    "title": "客户端展示面：卡面计数兜底 + 分层剪边落进 topoLevels + 本地 live 收编",
+    "phase": "ui",
+    "side": "frontend",
+    "depends_on": ["t3", "t5", "t6"],
+    "implementation": "① `src/client/views/board.ts` 的 `toCard`：`totalCount` / `doneCount` 改走 `liveTasksOf` / `liveCountOf`（**独立漏点**：只要该函数拿到未过滤数组，读数就会退回 132 ⇒ **不假设「上游 /state 好了这里就自动好」**）；同文件「在途」计数里手写的 `t.status !== 'canceled'` 换成 `isLiveTask(t)`（去掉任务级字面量）。② `src/client/stage-panel.ts` 的 `topoLevels`：**剪边必须落进函数内部**——对不在 `byId` 里的前置边**直接丢弃**，不再当 `lv = 0` 计入 `1 + max(...)`（现实现会造幽灵前置、让活卡凭空多一层）；实现走 `layerInputOf` / `splitDependencyEdges`，层号按活卡压实、不留「第 N 层 · 0 张」空层。③ `src/client/node-panel.ts` 同款 `topoLevels` 照同一口径剪边（会话框节点面板与看板阶段详情两块必须一致），但**不加第二份 filter**（上游基类已剔卡）。④ `src/client/render/subtask-view.ts` 的本地 `live` 辅助删掉，改调 `liveTasksOf`。⑤ **不改** `timeline.ts` / `board-mount.ts` / `panels/dag.ts` 的算法（吃已过滤载荷）；`data-dag-statuses` 因此天然不含 `canceled` 档，**不许**在这里补第二份判定。新增 `tests/canceled-hidden-view.test.ts`（TC-1 + TC-11 + 原型对照判据）。验证：`npx vitest run tests/canceled-hidden-view.test.ts` + `pnpm verify:client`。依据 design/frontend.md §四个取数边界 ①/② 与 §严格不可见。",
+    "acceptance": "`npx vitest run tests/canceled-hidden-view.test.ts tests/card-layer.test.ts tests/dag-panel.test.ts tests/client-subtask-view.test.ts` 全绿；断言：对 132 = 106 + 26 标本渲染后 `canceledRowsShown === 0`（chip / bar / trace / node 四类选择器的 `[data-status=\"canceled\"]` 命中数均为 0）且 `liveCardCount === 106`、`dagRowsShown === 106`（`.dsh-pm-sn-dag-task` 条数 `=== 106`）；把**未过滤**数组直接喂 `toCard` 时 `totalCount === liveCountOf(tasks) === 106`（不靠上游）；`topoLevels` 对「活卡 x 唯一前置 y 已取消」给出 `get(0)` 含 x 且 x 层号 `=== 0`（**不是 1**）——删掉剪边即必红；`data-dag-statuses` 取值里不含 `canceled`；可见文本与 `title` / `aria-label` / `data-*` 里 `已取消` / `canceled` 命中 `=== 0`；源码 `includeCanceled` / `showCanceled` 命中 `=== 0`；**原型对照（可失败）**：权威原型 `prototypes/dag-canceled-hidden.html#FR-1` 声明的观测量 `canceledRowsShown = 0`、`liveCardCount = 106` 与 `#FR-5` 的 `canceledLedgerRows = 26`，必须与本用例从渲染文本数与台账数出的同名观测量逐字相等（界面 0 条 **且** 台账 26 条一起断言）；`#FR-2` 的 `ganttBarsShown = 106`、`traceRowsShown = 106` 与甘特/追溯渲染条数相等。`pnpm verify:client` 与 `pnpm typecheck` 退出码 0。",
+    "footprint": { "files": 5, "anchors": 11, "chars": 3400 },
+    "requirement_refs": ["FR-1", "FR-2", "FR-5"],
+    "decisionRefs": ["D-2", "D-3", "D-7", "D-8"],
+    "prototypeRefs": [
+      "prototypes/dag-canceled-hidden.html#FR-1",
+      "prototypes/dag-canceled-hidden.html#FR-2",
+      "prototypes/dag-canceled-hidden.html#FR-5"
+    ]
+  },
+  {
+    "key": "t9",
+    "title": "字面量基线清单与「新增即红」独立用例（不挂进 layer-boundary）",
+    "phase": "test",
+    "side": "backend",
+    "depends_on": ["t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8"],
+    "implementation": "① 新增基线清单 `tests/fixtures/canceled-literal-baseline.json`：形状 `{ \"collected\": [{file, line}], \"baseline\": [{file, line, reason}] }`，采集口径 = 全仓（**排除 `tests/`**）命中 `/status\\s*(?:!==|===)\\s*['\\\"]canceled['\\\"]/` 的行；`baseline` = **实施后**实测命中集合**减去**收编点出现过的行（收编点原行原文存进 `collected` ⇒ 「把收编点改回手写」必然落进「新增」分支）；每条 `baseline` 必须带 `reason`，取值 ∈ {req-status, write-side-guard, status-label, definition-site}（缺理由即用例红；需求级 `req.status` 比较属 req-status，不得顺手替换）。② 新增**独立**用例 `tests/live-tasks-single-source.test.ts`（**不挂进既有 `layer-boundary` 用例**——它当前本就红，挂进去等于把新网埋在已知失败里）：a) 全仓命中集合 ⊆ `baseline`（新增即红）；b) 对**收编点清单**逐个断言「该符号体内零手写比较 + 含单点调用」——清单 = 清单文件里的 `collected` 去重后的 (file, symbol)，符号名取自 `design/interfaces.md` §4.1/§8 与 `design/backend.md` §断言域文件清单；c) 范围自检（防假绿）：清单每个文件必须读到内容、且该文件 `status` 字样命中数 > 0（路径写错即红）；d) 两个 RTM 入口函数体都含 `liveTasksOf(`、V-5 体内含 `isDependencySatisfied(`；e) `liveCountOf(t) === liveTasksOf(t).length`。验证：`npx vitest run tests/live-tasks-single-source.test.ts`。依据 design/interfaces.md §8 与 architecture.md §防漂移设计。",
+    "acceptance": "`npx vitest run tests/live-tasks-single-source.test.ts` 全绿；断言：全仓命中集合里**基线之外的新增条目 `=== 0`**（不要求全仓零手写）；`collected` 里每个 (file, symbol) 体零手写比较且含单点调用；每个清单文件被读到且 `status` 命中数 > 0（范围自检）；两个 RTM 入口函数体都含 `liveTasksOf(`。逆验证三条各必红：① 在 `src/application/query/QueryStageDetail.ts` 的 `assemble()` 里插一行 `t.status !== 'canceled'`；② 在 `src/shared/protocol.ts` 的 `readyTasks` 里插一行 `doneIds.has(dep)`；③ 从清单文件删掉一条 `baseline` 条目。`npx vitest run tests/layer-boundary.test.ts` **不作本卡门禁**（其基线本就红，如实记录）。`pnpm typecheck` 退出码 0。",
+    "footprint": { "files": 2, "anchors": 8, "chars": 3000 },
+    "requirement_refs": ["FR-4"],
+    "decisionRefs": ["D-6"]
+  },
+  {
+    "key": "t10",
+    "title": "迁移与兼容：零迁移核对 + 旧分片读取 + 读侧宽容 + V-5 分档",
+    "phase": "implement",
+    "side": "backend",
+    "depends_on": ["t1", "t2", "t3"],
+    "implementation": "① `src/domain/queue/QueueTypes.ts`：`ValidationIssue` 增**加性可选** `level?: 'issue' | 'warning'`（**缺省 = issue**，旧形状与旧读方逐字兼容）；`ValidationResult.passed` 的语义改为「无 issue 级条目」，并让 `hasIssue` 只认 issue 级（warning 不算不通过）——这是设计「漏就绪降为 warning」的落地前提。② `src/domain/queue/validateQueue.ts` 的 V-5 **分档**：**漏就绪**（调 `computeReady` 的那半）标记为 `level: 'warning'`（可自愈的陈旧派生值），**假就绪**（ready 里的卡依赖未了结 / 自身非 todo）**仍是 issue**（真写坏）；`rule` 标识仍是 `'V-5'`（**不新增 V-x**）；V-4 不动、对取消卡不豁免。③ `src/repositories/QueueRepository.ts` 的 `load`：校验失败**不再** `return undefined`——降级为 `onWarn` 一条 warning + **继续返回队列**（JSON 解析失败的既有隔离路径不动）；返回对象的派生字段按当前判据**内存重算**（`ready` 用 `liveReadyTasks`、活卡 `layer`/`layers` 用 `liveLayers`/`layerInputOf`），**重算结果只用于本次返回对象与校验输入，一个字节都不写盘**；`save` 保持强校验 fail-closed（假就绪照旧抛 `QUEUE_VALIDATION_FAILED`）。④ 零迁移核对：**不新建任何 `migrate-*` 脚本、不回填三字段、不改写历史分片与 RTM 快照**；`REQBOARD_SCHEMA_VERSION`（9）与 `QUEUE_VERSION`（1）一字不动。新增 `tests/canceled-legacy-read.test.ts`（旧分片读取 + 零写回 + 读宽容 + 两档上报）。验证命令见 acceptance。依据 design/migration.md §兼容期行为与 §风险 ④。",
+    "acceptance": "`npx vitest run tests/canceled-legacy-read.test.ts tests/queue/QueueTaskStore.test.ts tests/t12-queue-readonly-ordering.test.ts` 全绿；断言：旧分片标本（`todo` 卡依赖已取消卡 + 落盘 `ready[]` 为旧口径 + 三字段全缺）`load` 返回**非 undefined**、`listByRequirement` 返回真实卡数（**不是 `[]`、不是 0 张**）、读取路径给出 ≥ 1 条 warning；同一标本 `save` **不抛** `QUEUE_VALIDATION_FAILED`；「漏就绪」标本 `validateQueueFile(...).passed === true` 且该条 `level === 'warning'`，「假就绪」标本 `passed === false` 且 `level` 缺省为 issue、`save` 抛错；读取路径返回的 `ready` 含该 `todo` 卡且来自内存重算（不读落盘 `ready[]`）；旧分片读取前后全量需求目录 `mtimeMs` 与 sha256 **逐份不变**（零写回）；`git status --porcelain docs/requirements | wc -l === 0`；仓库不新增 `migrate-*` 脚本文件。`pnpm typecheck` 退出码 0。",
+    "footprint": { "files": 4, "anchors": 8, "chars": 3100 },
+    "requirement_refs": ["FR-3", "FR-5", "FR-6"],
+    "decisionRefs": ["D-1", "D-5"]
+  },
+  {
+    "key": "t11",
+    "title": "用例矩阵（一）：视图与依赖面 TC-2 / TC-3 / TC-4",
+    "phase": "test",
+    "side": "fullstack",
+    "depends_on": ["t1", "t2", "t6", "t8"],
+    "implementation": "新增三个用例文件（标本 S-1 = 132 张 = 106 活卡 + 26 已取消，其中活卡 `t-l`（`todo`）的唯一前置 `t-c` 已取消；S-2 = 同标本但不过滤，只用于证明差值）：① `tests/canceled-layer-parity.test.ts`（TC-2）——三处层号同台比对：服务端 `liveLayers`、把指向取消卡的边删掉后**手工重算**、以及客户端真正算层的 `topoLevels`；逐卡相等，`t-l` 层号 `=== 0`（不是 1），层号按活卡压实无「第 N 层 · 0 张」空层，`t-l` 仍在活卡集合里（不成孤岛）。② `tests/canceled-ready-unlock.test.ts`（TC-3）——`readyTasks`（shared）/ `computeReady`（写路径）/ `readyTasksOf`（application）/ `isReadyTask`（单点）/ `/state` 的 `ready[reqId]` 五处都含 `t-l` 且前四个集合两两相等，容器内 `[data-status=\"canceled\"]` 条数 `=== 0`（证明「真的能开工」，不是复述「不掉层」）。③ `tests/canceled-four-faces.test.ts`（TC-4）——四个展示面同数：DAG 层级行数、`toCard` 的 `doneCount`/`totalCount`、`.dsh-pm-gantt-bar` 条数、`.dsh-pm-trace-node[data-type=\"task\"]` 条数，四数全等于 `liveCountOf(S-1)`；对照 S-2 同一组读数差 `=== 26`。追溯那一面**只对「上线后新触发过 RTM」的标本断言数值**，存量标本只断言「不出现取消卡行」。验证：`npx vitest run tests/canceled-layer-parity.test.ts tests/canceled-ready-unlock.test.ts tests/canceled-four-faces.test.ts`。依据 design/test-cases.md TC-2/TC-3/TC-4 与 §边界与假红防线。",
+    "acceptance": "`npx vitest run tests/canceled-layer-parity.test.ts tests/canceled-ready-unlock.test.ts tests/canceled-four-faces.test.ts` 全绿；断言：三处层号逐卡相等且 `t-l` 层号 `=== 0`；四处就绪输出都含 `t-l` 且两两相等、`/state` 的 `ready[reqId]` 含 `t-l`；四展示面读数全部 `=== 106` 且 `=== liveCountOf(S-1)`、`doneCount === 100`、比率 `=== 0.94`；对照 S-2 四数 `=== 132`、比率 `=== 0.76`、与 S-1 的差值 `=== 26`（`=== 台账取消卡数`）。三条判据各自可失败：逆验证分别去掉 `topoLevels` 剪边 / 把任一就绪判据改回 `=== 'done'` / 只改 `/state` 而把 `toCard` 留旧口径 → 对应文件必红。`pnpm typecheck` 退出码 0。",
+    "footprint": { "files": 3, "anchors": 8, "chars": 2800 },
+    "requirement_refs": ["FR-1", "FR-2"],
+    "decisionRefs": ["D-2", "D-4", "D-8"]
+  },
+  {
+    "key": "t12",
+    "title": "用例矩阵（二）：统计与审计面 TC-5 / TC-9 / TC-10（覆盖度两入口、台账不消失、文档面板）",
+    "phase": "test",
+    "side": "fullstack",
+    "depends_on": ["t4", "t6", "t9", "t10"],
+    "implementation": "新增三个用例文件（标本一律走**临时工作区**，不写生产需求目录）：① `tests/canceled-coverage-gate.test.ts`（TC-5）——两个 RTM 入口同得分母 106、`rate === 100`、`passed === true` 且逐字段相等；对照 A（标注齐全的改前口径）`total === 132`、`rate === 80` 压线通过但 `uncovered.length === 26`（门禁仍点名 26 张）；对照 B（`covers` 标注为 0，上一条需求真实发生的那次失败）`rate === 0` → `passed === false` + `REQBOARD_TESTING_COVERAGE_GATE`；对照 C 再取消 5 张 → `rate < 80` 被拒；活卡 0 张标本 → 门**不执法**（`undefined`）。② `tests/canceled-audit-holds.test.ts`（TC-9）——全部界面投影里取消卡条数 `=== 0`，**同时**台账 `status === 'canceled'` 记录数 `=== 26` 不变、磁盘卡文档 26 份内容哈希不变、归档材料可引用 `canceled_count: 26`（界面 0 条与台账 26 条必须一起断言，只断言前者时把台账删掉也能过）。③ `tests/canceled-docs-panel.test.ts`（TC-10）——`documents` 与 `discovered` 两侧都不含取消卡的 `task_detail` 产物（不补偿性塞进 `discovered`）、恒等式按活卡口径成立、`data-doc-row` 条数 `=== documents.length`、磁盘 26 份卡文档仍在。验证：`npx vitest run tests/canceled-coverage-gate.test.ts tests/canceled-audit-holds.test.ts tests/canceled-docs-panel.test.ts`。依据 design/test-cases.md TC-5/TC-9/TC-10 与 backend.md §覆盖度分母口径（两段历史别混成一条）。",
+    "acceptance": "`npx vitest run tests/canceled-coverage-gate.test.ts tests/canceled-audit-holds.test.ts tests/canceled-docs-panel.test.ts` 全绿；断言：两个入口读数逐字段相等且 `total === 106`、`rate === 100`；对照 A `rate === 80` 且 `uncovered.length === 26`、对照 B `rate === 0` 且 `passed === false`（两种失败形态**分列**、不混成一条）、对照 C `rate < 80` 被拒、活卡 0 张 `coverageGateOf(...) === undefined`；界面投影取消卡条数 `=== 0` 与台账 26 条**同时**成立；`documents.length + Σ discovered[].count === artifacts.length − 取消卡名下产物条数` 且 `data-doc-row` 条数 `=== documents.length`；跑完 `git status --porcelain docs/requirements` 为空（用例未写生产目录）。`pnpm typecheck` 退出码 0。",
+    "footprint": { "files": 3, "anchors": 8, "chars": 2700 },
+    "requirement_refs": ["FR-2", "FR-5", "FR-6"],
+    "decisionRefs": ["D-1", "D-4", "D-7"]
+  },
+  {
+    "key": "t13",
+    "title": "逆验证矩阵（14 条改坏必红）与端到端证据清单",
+    "phase": "test",
+    "side": "fullstack",
+    "depends_on": ["t9", "t11", "t12"],
+    "implementation": "① 扩 `scripts/reverse-drill-matrix.mts` 加 `canceled` 组，按 `design/architecture.md` §逆验证清单逐条落地 14 条「真改坏 → 真跑判据 → 必红 → 逐字节还原 + sha256 复核」：基类 `assemble()` 收敛改回手写 filter、`QueryStageDetail` 两个 body 各自手写、`buildDagNodes` 退回全量、`handleState` 去掉 `tasks`/`ready` 收敛、`readyTasks` 退回只认 `done`、`computeReady` 退回只认 `done`、V-5 退回只认 `done`、V-5「漏就绪」从 warning 退回 issue、读取路径校验失败退回 `return undefined`、`topoLevels` 去掉剪边、`board-mount` 去掉过滤、`isLiveTask` 改成看三字段而非 `status`、界面重新引入 `canceled` 档位、读取落盘 `ready[]`。沿用既有 `copy`/`file` 两种改坏方式与**并发写入检测**：备份 + sha256 恢复，**禁用 `git checkout --` 还原**（2026-10-04 事故教训）；加范围自检（target 文件不存在即退出 1，防假绿）。② 新增 `tests/canceled-reverse-drill-coverage.test.ts`：断言 `canceled` 组条目数 `=== 14`、每条都有 target 文件与判据命令、脚本内 `git checkout` 命中 `=== 0`。③ 落 `docs/requirements/REQ-261005193546-1b1a/notes/e2e-evidence.md`：命令 + 原始输出摘要 + 判据文件路径，供验收材料直接引用；并写明两条限定语——追溯读数按活卡**只对新触发过 RTM 的需求**成立（存量快照接受陈旧、不回填）；落盘 `layer` 与 `liveLayers` 允许不一致（**刻意差异**，落盘值仅历史派生值）。验证：`npx tsx scripts/reverse-drill-matrix.mts --group canceled`。依据 design/architecture.md §逆验证清单与 migration.md §上线顺序 步骤 3。",
+    "acceptance": "`npx tsx scripts/reverse-drill-matrix.mts --group canceled` 退出码 0 且逐条打印「改坏点 → 判据 → 红 → 已还原（sha256 一致）」；人为把 `canceled` 组任一条的 target 改成不存在的路径 → 脚本退出码 1（范围自检）；`npx tsx scripts/reverse-drill-matrix.mts --group canceled --json` 输出可 `JSON.parse` 且含 14 条；`npx vitest run tests/canceled-reverse-drill-coverage.test.ts` 全绿且断言条目数 `=== 14`；`grep -c 'git checkout' scripts/reverse-drill-matrix.mts` 命中 `=== 0`；`docs/requirements/REQ-261005193546-1b1a/notes/e2e-evidence.md` 存在且含限定语关键词「新触发过 RTM」与「刻意差异」；首轮跑完后工作区 `git status --porcelain src/` 为空（逐字节还原）。`pnpm typecheck` 退出码 0。",
+    "footprint": { "files": 3, "anchors": 7, "chars": 3100 },
+    "requirement_refs": ["FR-1", "FR-2", "FR-4", "FR-5"],
+    "decisionRefs": ["D-6", "D-7"]
+  }
+]

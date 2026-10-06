@@ -1,0 +1,1011 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261005151245-54ae
+  generated_at: 2026-10-05T07:25:23.146Z
+  version: 76
+  generated_by: dsh-pmboard
+  last_updated: 2026-10-05T07:44:33.198Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 新窗口写标题（GUI 递增口径 + 显式覆盖）
+      source: requirement.md
+      line: 125
+    - id: FR-2
+      title: 冷读源会话画像
+      source: requirement.md
+      line: 140
+    - id: FR-3
+      title: 继承模式（agentPreset）
+      source: requirement.md
+      line: 159
+    - id: FR-4
+      title: 继承模型
+      source: requirement.md
+      line: 171
+    - id: FR-5
+      title: 诚实降级与回执
+      source: requirement.md
+      line: 183
+    - id: FR-6
+      title: 三入口统一
+      source: requirement.md
+      line: 206
+    - id: FR-7
+      title: 可证伪回归
+      source: requirement.md
+      line: 224
+  design_sections:
+    - ref: design/architecture.md#TLDR
+      title: TL;DR `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-5
+      file: design/architecture.md
+      section: TLDR
+    - ref: design/architecture.md#分层与职责边界
+      title: 分层与职责边界 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/architecture.md
+      section: 分层与职责边界
+    - ref: design/architecture.md#现状病灶只造会话不写属性
+      title: 现状病灶：只造会话，不写属性 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 现状病灶只造会话不写属性
+    - ref: design/architecture.md#目标架构一次冷读-三步落定
+      title: 目标架构：一次冷读 + 三步落定 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 目标架构一次冷读-三步落定
+    - ref: design/architecture.md#模式继承为什么不用宿主-agentPresetsselect
+      title: 模式继承为什么不用宿主 `agentPresets.select` `
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: 模式继承为什么不用宿主-agentPresetsselect
+    - ref: design/architecture.md#接线表改哪里-明确不改哪里
+      title: 接线表（改哪里 / 明确不改哪里） `
+      serves:
+        - FR-5
+        - FR-6
+      file: design/architecture.md
+      section: 接线表改哪里-明确不改哪里
+    - ref: design/architecture.md#决策与取舍
+      title: 决策与取舍 `
+      serves:
+        - FR-1
+        - FR-5
+        - FR-6
+      file: design/architecture.md
+      section: 决策与取舍
+    - ref: design/architecture.md#风险与对策
+      title: 风险与对策 `
+      serves:
+        - FR-3
+        - FR-5
+      file: design/architecture.md
+      section: 风险与对策
+    - ref: design/architecture.md#不做的架构改造
+      title: 不做的架构改造 `
+      serves:
+        - FR-5
+      file: design/architecture.md
+      section: 不做的架构改造
+    - ref: design/architecture.md#变更记相对需求文档的澄清
+      title: 变更记（相对需求文档的澄清） `
+      serves:
+        - FR-3
+        - FR-5
+      file: design/architecture.md
+      section: 变更记相对需求文档的澄清
+    - ref: design/backend.md#文件级改动清单
+      title: 文件级改动清单 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+      file: design/backend.md
+      section: 文件级改动清单
+    - ref: design/backend.md#宿主依赖与不改宿主的边界
+      title: 宿主依赖与不改宿主的边界 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/backend.md
+      section: 宿主依赖与不改宿主的边界
+    - ref: design/backend.md#适配器实现口径SessionWindowOpener
+      title: 适配器实现口径（`SessionWindowOpener`） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/backend.md
+      section: 适配器实现口径SessionWindowOpener
+    - ref: design/backend.md#readProfilesessionId-PromiseWindowSourceProfile
+      title: "`readProfile(sessionId): Promise<WindowSourceProfile>` `"
+      serves:
+        - FR-2
+      file: design/backend.md
+      section: readProfilesessionId-PromiseWindowSourceProfile
+    - ref: design/backend.md#renamesessionId-title-Promisevoid
+      title: "`rename(sessionId, title): Promise<void>` `"
+      serves:
+        - FR-1
+      file: design/backend.md
+      section: renamesessionId-title-Promisevoid
+    - ref: design/backend.md#selectModelsessionId-selection-Promisevoid
+      title: "`selectModel(sessionId, selection): Promise<void>` `"
+      serves:
+        - FR-4
+      file: design/backend.md
+      section: selectModelsessionId-selection-Promisevoid
+    - ref: design/backend.md#用例接线顺序OpenWindowts
+      title: 用例接线顺序（`OpenWindow.ts`） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/backend.md
+      section: 用例接线顺序OpenWindowts
+    - ref: design/backend.md#create-路径的-agentPreset-来源
+      title: "`create` 路径的 `agentPreset` 来源 `"
+      serves:
+        - FR-3
+      file: design/backend.md
+      section: create-路径的-agentPreset-来源
+    - ref: design/backend.md#装配srcindexts
+      title: 装配（`src/index.ts`） `
+      serves:
+        - FR-3
+        - FR-4
+        - FR-6
+      file: design/backend.md
+      section: 装配srcindexts
+    - ref: design/backend.md#错误处理与可观测
+      title: 错误处理与可观测 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/backend.md
+      section: 错误处理与可观测
+    - ref: design/backend.md#性能与体量
+      title: 性能与体量 `
+      serves:
+        - FR-2
+        - FR-4
+        - FR-7
+      file: design/backend.md
+      section: 性能与体量
+    - ref: design/backend.md#静态门禁与旁路防护
+      title: 静态门禁与旁路防护 `
+      serves:
+        - FR-5
+        - FR-6
+      file: design/backend.md
+      section: 静态门禁与旁路防护
+    - ref: design/data-model.md#新增数据契约总览
+      title: 新增数据契约总览 `
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/data-model.md
+      section: 新增数据契约总览
+    - ref: design/data-model.md#WindowSourceProfile源会话画像
+      title: "`WindowSourceProfile`（源会话画像） `"
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: WindowSourceProfile源会话画像
+    - ref: design/data-model.md#WindowProfileRead读画像的结果
+      title: "`WindowProfileRead`（读画像的结果） `"
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: WindowProfileRead读画像的结果
+    - ref: design/data-model.md#WindowModelSelection模型选择读数
+      title: "`WindowModelSelection`（模型选择读数） `"
+      serves:
+        - FR-4
+      file: design/data-model.md
+      section: WindowModelSelection模型选择读数
+    - ref: design/data-model.md#WindowCreateOptionsagentPreset加性字段
+      title: "`WindowCreateOptions.agentPreset`（加性字段） `"
+      serves:
+        - FR-3
+      file: design/data-model.md
+      section: WindowCreateOptionsagentPreset加性字段
+    - ref: design/data-model.md#WindowInheritance回执字段
+      title: "`WindowInheritance`（回执字段） `"
+      serves:
+        - FR-5
+      file: design/data-model.md
+      section: WindowInheritance回执字段
+    - ref: design/data-model.md#WindowInheritanceStatus-三态语义
+      title: "`WindowInheritanceStatus` 三态语义 `"
+      serves:
+        - FR-5
+      file: design/data-model.md
+      section: WindowInheritanceStatus-三态语义
+    - ref: design/data-model.md#读数出处映射
+      title: 读数出处映射 `
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 读数出处映射
+    - ref: design/data-model.md#reasons-的纪律
+      title: "`reasons` 的纪律 `"
+      serves:
+        - FR-5
+      file: design/data-model.md
+      section: reasons-的纪律
+    - ref: design/data-model.md#无持久化-无迁移
+      title: 无持久化 / 无迁移 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/data-model.md
+      section: 无持久化-无迁移
+    - ref: design/data-model.md#契约兼容表三个入口
+      title: 契约兼容表（三个入口） `
+      serves:
+        - FR-5
+        - FR-6
+      file: design/data-model.md
+      section: 契约兼容表三个入口
+    - ref: design/interfaces.md#端口WindowOpenerPortsrcapplicationportsts
+      title: 端口：`WindowOpenerPort`（`src/application/ports.ts`） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/interfaces.md
+      section: 端口WindowOpenerPortsrcapplicationportsts
+    - ref: design/interfaces.md#内部模块applicationinternalwindow-inheritts新增
+      title: 内部模块：`application/internal/window-inherit.ts`（新增） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/interfaces.md
+      section: 内部模块applicationinternalwindow-inheritts新增
+    - ref: design/interfaces.md#increasedWindowTitle-语义
+      title: "`increasedWindowTitle` 语义 `"
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: increasedWindowTitle-语义
+    - ref: design/interfaces.md#applyWindowInheritance-行为表顺序即语义
+      title: "`applyWindowInheritance` 行为表（顺序即语义） `"
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/interfaces.md
+      section: applyWindowInheritance-行为表顺序即语义
+    - ref: design/interfaces.md#reasons-文案规则唯一出处其他文档引用本节
+      title: "`reasons` 文案规则（唯一出处，其他文档引用本节） `"
+      serves:
+        - FR-5
+      file: design/interfaces.md
+      section: reasons-文案规则唯一出处其他文档引用本节
+    - ref: design/interfaces.md#适配器实现契约srcadaptersSessionWindowOpenerts
+      title: 适配器实现契约（`src/adapters/SessionWindowOpener.ts`） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-4
+      file: design/interfaces.md
+      section: 适配器实现契约srcadaptersSessionWindowOpenerts
+    - ref: design/interfaces.md#工具reqboardopenwindow
+      title: 工具：`reqboard_open_window` `
+      serves:
+        - FR-1
+        - FR-5
+      file: design/interfaces.md
+      section: 工具reqboardopenwindow
+    - ref: design/interfaces.md#工具reqboardhandoff
+      title: 工具：`reqboard_handoff` `
+      serves:
+        - FR-5
+        - FR-6
+      file: design/interfaces.md
+      section: 工具reqboardhandoff
+    - ref: design/interfaces.md#HTTP看板迁移开窗
+      title: HTTP：看板迁移开窗 `
+      serves:
+        - FR-5
+        - FR-6
+      file: design/interfaces.md
+      section: HTTP看板迁移开窗
+    - ref: design/interfaces.md#错误语义总表
+      title: 错误语义总表 `
+      serves:
+        - FR-5
+      file: design/interfaces.md
+      section: 错误语义总表
+    - ref: design/interfaces.md#兼容与默认值
+      title: 兼容与默认值 `
+      serves:
+        - FR-5
+        - FR-6
+      file: design/interfaces.md
+      section: 兼容与默认值
+    - ref: design/use-cases.md#UC-1-reqboardopenwindow源窗口开续作窗口
+      title: UC-1 `reqboard_open_window`：源窗口开续作窗口 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+      file: design/use-cases.md
+      section: UC-1-reqboardopenwindow源窗口开续作窗口
+    - ref: design/use-cases.md#UC-2-reqboardhandoff交出需求并新建接管窗口
+      title: UC-2 `reqboard_handoff`：交出需求并新建接管窗口 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+      file: design/use-cases.md
+      section: UC-2-reqboardhandoff交出需求并新建接管窗口
+    - ref: design/use-cases.md#UC-3-看板迁移开窗存储与数据库页发起迁移
+      title: UC-3 看板迁移开窗：存储与数据库页发起迁移 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+      file: design/use-cases.md
+      section: UC-3-看板迁移开窗存储与数据库页发起迁移
+    - ref: design/use-cases.md#结果三态的用户观感
+      title: 结果三态的用户观感 `
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: 结果三态的用户观感
+    - ref: design/use-cases.md#异常与边界用例
+      title: 异常与边界用例 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/use-cases.md
+      section: 异常与边界用例
+    - ref: design/use-cases.md#端到端旅程图一份图覆盖三条入口
+      title: 端到端旅程图（一份图覆盖三条入口） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+      file: design/use-cases.md
+      section: 端到端旅程图一份图覆盖三条入口
+    - ref: design/use-cases.md#用例与条款对照
+      title: 用例与条款对照 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/use-cases.md
+      section: 用例与条款对照
+outputs:
+  tasks:
+    - id: t-2e4376
+      title: 契约与继承模块（端口三方法 + 标题递增 + 落定编排）
+      implements: "`src/application/ports.ts` 加 5 个类型（WindowInheritanceStatus / WindowSourceProfile / WindowProfileRead / WindowModelSelection / WindowInheritance）与 WindowCreateOptions.agentPreset、WindowOpenerPort 三个可选方法（readProfile / rename / selectModel）。新增 `src/application/internal/window-inherit.ts`：increasedWindowTitle（半角与全角括号递增、无后缀追加 (1)）、readWindowProfile（端口缺失或抛错收成 reason，永不抛）、presetInheritanceOf（有预设 / 无预设 / 画像读不到三态）、applyWindowInheritance（标题→模式→模型三步不短路，reasons 文案按 interfaces §reasons 规则；零 I/O、文件 ≤400 行）。建立 `tests/open-window-inherit.test.ts`（文件头 20 行内含 serves 头注）覆盖标题三形态与空标题边界、预设三态、画像读不到时三项 failed、rename 与 selectModel 抛错不短路。"
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-a0e60b
+      title: 适配器实现（读画像 / 写标题 / 写模型 / create 透传模式）
+      implements: "`src/adapters/SessionWindowOpener.ts` 新增三个方法：readProfile(sessionId) 调 sessionController.projections 一次读全 title / agentPreset / modelSelection.next（空串与缺键按缺失；三项都缺返回空对象；服务不可用或宿主抛错即抛错）、rename(sessionId, title)、selectModel(sessionId, selection)（reasoningEffort 缺省时不带该键）；createRequestOf 透传 opts.agentPreset（与 workspaceId / cwd 的互斥规则逐字不变）；构造函数与「服务按调用时解析」风格不变。用例补在 `tests/open-window-inherit.test.ts`（假宿主服务断言调用入参与抛出原文）。"
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+      depends_on:
+        - t-2e4376
+      phase: implement
+      side: backend
+    - id: t-2789e5
+      title: 用例接线（openWindow 与 handoffOwner 新建窗口）
+      implements: "`src/application/use-cases/OpenWindow.ts`：入参加 title；顺序改为读画像 → create 带 agentPreset（无则不传该键）→ 建窗成功 → applyWindowInheritance → 投递；OpenWindowValue 加 inheritance；既有三条拒绝分支逐字不变。`src/application/use-cases/HandoffOwner.ts`：openTargetWindow 返回 { windowKey, inheritance? }，新建窗口带回执、to_window 指定已有窗口时不带。用例：`tests/open-window-inherit.test.ts` 落 T-01~T-14；`tests/handoff-owner.test.ts` 补两条断言。"
+      serves:
+        - FR-1
+        - FR-5
+        - FR-6
+      depends_on:
+        - t-a0e60b
+      phase: implement
+      side: backend
+    - id: t-a65a55
+      title: 外壳接线（工具 schema / 一行摘要 / 迁移开窗路由）
+      implements: "`src/tools/OpenWindowTool/OpenWindowTool.ts`：parameters 加 title（≤200 字符）、output schema 加 inheritance、一行摘要追加三态读数；`src/tools/OpenWindowTool/prompt.ts` 补继承与三态说明；`src/tools/HandoffTool/HandoffTool.ts` output schema 加 inheritance；`src/http/routers/settings-support.ts` 的 openMigrationWindow：create 前读画像并把 preset 带上、create 后用显式标题「台账迁移窗口」落定、返回值加 inheritance。用例补 `tests/open-window-inherit.test.ts`（T-15 迁移函数级）。"
+      serves:
+        - FR-1
+        - FR-5
+        - FR-6
+      depends_on:
+        - t-2789e5
+      phase: implement
+      side: backend
+    - id: t-6e1a6c
+      title: 探针与机器自检（回归 + 构建 + 知识层生成物 + 尺寸门禁）
+      implements: 新增 `scripts/open-window-inherit-probe.mts`（假宿主服务跑通三入口链，打印 source_title / child_title / source_preset / child_preset / source_model / child_model 六读数并断言三对相等，另打印三段附加耗时；退出码 0 或 1）；跑并记录 `pnpm build`、`pnpm typecheck`、`pnpm test`（对照基线 106）、`npx tsx scripts/kb-build.mts --write` 后 `pnpm kb:check`、`npx vitest run tests/size-budget.test.ts`；命令与输出摘要写进 `docs/requirements/REQ-261005151245-54ae/evidence/checks.md`。
+      serves:
+        - FR-7
+      depends_on:
+        - t-a65a55
+      phase: test
+      side: backend
+    - id: t-7fea40
+      title: 兼容卡与实机复核（旧调用方 / 旧替身 / 界面三处取证）
+      implements: 在 `tests/open-window-inherit.test.ts` 加「兼容」分组：旧测试替身（只有 fork 与 create）三项 failed 且开窗成功、既有回执键（success / window_key / parent_session_id / mode / degraded_note / delivery）逐字不变、degraded_note 含「请在侧栏打开」且不含「已打开」；实机复核：在 GUI 源窗口（创造模式 + 非默认模型 + 标题「登录重构」）调 reqboard_open_window，看侧栏标题、打开新窗口看模式芯片与模型选择器，三处观察连同回执三态写进 `docs/requirements/REQ-261005151245-54ae/evidence/live-check.md`。
+      serves:
+        - FR-5
+        - FR-6
+        - FR-7
+      depends_on:
+        - t-6e1a6c
+      phase: test
+      side: backend
+    - id: t-bf84df
+      title: 契约与继承模块（端口三方法 + 标题递增 + 落定编排）·研发
+      implements: |-
+        `src/application/ports.ts` 加 5 个类型（WindowInheritanceStatus / WindowSourceProfile / WindowProfileRead / WindowModelSelection / WindowInheritance）与 WindowCreateOptions.agentPreset、WindowOpenerPort 三个可选方法（readProfile / rename / selectModel）。新增 `src/application/internal/window-inherit.ts`：increasedWindowTitle（半角与全角括号递增、无后缀追加 (1)）、readWindowProfile（端口缺失或抛错收成 reason，永不抛）、presetInheritanceOf（有预设 / 无预设 / 画像读不到三态）、applyWindowInheritance（标题→模式→模型三步不短路，reasons 文案按 interfaces §reasons 规则；零 I/O、文件 ≤400 行）。建立 `tests/open-window-inherit.test.ts`（文件头 20 行内含 serves 头注）覆盖标题三形态与空标题边界、预设三态、画像读不到时三项 failed、rename 与 selectModel 抛错不短路。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-d685ff
+      title: 契约与继承模块（端口三方法 + 标题递增 + 落定编排）·复核
+      implements: |-
+        `src/application/ports.ts` 加 5 个类型（WindowInheritanceStatus / WindowSourceProfile / WindowProfileRead / WindowModelSelection / WindowInheritance）与 WindowCreateOptions.agentPreset、WindowOpenerPort 三个可选方法（readProfile / rename / selectModel）。新增 `src/application/internal/window-inherit.ts`：increasedWindowTitle（半角与全角括号递增、无后缀追加 (1)）、readWindowProfile（端口缺失或抛错收成 reason，永不抛）、presetInheritanceOf（有预设 / 无预设 / 画像读不到三态）、applyWindowInheritance（标题→模式→模型三步不短路，reasons 文案按 interfaces §reasons 规则；零 I/O、文件 ≤400 行）。建立 `tests/open-window-inherit.test.ts`（文件头 20 行内含 serves 头注）覆盖标题三形态与空标题边界、预设三态、画像读不到时三项 failed、rename 与 selectModel 抛错不短路。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-bf84df
+      phase: implement
+      side: backend
+    - id: t-3223b5
+      title: 适配器实现（读画像 / 写标题 / 写模型 / create 透传模式）·研发
+      implements: |-
+        `src/adapters/SessionWindowOpener.ts` 新增三个方法：readProfile(sessionId) 调 sessionController.projections 一次读全 title / agentPreset / modelSelection.next（空串与缺键按缺失；三项都缺返回空对象；服务不可用或宿主抛错即抛错）、rename(sessionId, title)、selectModel(sessionId, selection)（reasoningEffort 缺省时不带该键）；createRequestOf 透传 opts.agentPreset（与 workspaceId / cwd 的互斥规则逐字不变）；构造函数与「服务按调用时解析」风格不变。用例补在 `tests/open-window-inherit.test.ts`（假宿主服务断言调用入参与抛出原文）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-2e4376
+      phase: implement
+      side: backend
+    - id: t-398b95
+      title: 适配器实现（读画像 / 写标题 / 写模型 / create 透传模式）·复核
+      implements: |-
+        `src/adapters/SessionWindowOpener.ts` 新增三个方法：readProfile(sessionId) 调 sessionController.projections 一次读全 title / agentPreset / modelSelection.next（空串与缺键按缺失；三项都缺返回空对象；服务不可用或宿主抛错即抛错）、rename(sessionId, title)、selectModel(sessionId, selection)（reasoningEffort 缺省时不带该键）；createRequestOf 透传 opts.agentPreset（与 workspaceId / cwd 的互斥规则逐字不变）；构造函数与「服务按调用时解析」风格不变。用例补在 `tests/open-window-inherit.test.ts`（假宿主服务断言调用入参与抛出原文）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-3223b5
+      phase: implement
+      side: backend
+    - id: t-531d55
+      title: 适配器实现（读画像 / 写标题 / 写模型 / create 透传模式）·测试
+      implements: |-
+        `src/adapters/SessionWindowOpener.ts` 新增三个方法：readProfile(sessionId) 调 sessionController.projections 一次读全 title / agentPreset / modelSelection.next（空串与缺键按缺失；三项都缺返回空对象；服务不可用或宿主抛错即抛错）、rename(sessionId, title)、selectModel(sessionId, selection)（reasoningEffort 缺省时不带该键）；createRequestOf 透传 opts.agentPreset（与 workspaceId / cwd 的互斥规则逐字不变）；构造函数与「服务按调用时解析」风格不变。用例补在 `tests/open-window-inherit.test.ts`（假宿主服务断言调用入参与抛出原文）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-398b95
+      phase: implement
+      side: backend
+    - id: t-5caa87
+      title: 用例接线（openWindow 与 handoffOwner 新建窗口）·研发
+      implements: |-
+        `src/application/use-cases/OpenWindow.ts`：入参加 title；顺序改为读画像 → create 带 agentPreset（无则不传该键）→ 建窗成功 → applyWindowInheritance → 投递；OpenWindowValue 加 inheritance；既有三条拒绝分支逐字不变。`src/application/use-cases/HandoffOwner.ts`：openTargetWindow 返回 { windowKey, inheritance? }，新建窗口带回执、to_window 指定已有窗口时不带。用例：`tests/open-window-inherit.test.ts` 落 T-01~T-14；`tests/handoff-owner.test.ts` 补两条断言。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-a0e60b
+      phase: implement
+      side: backend
+    - id: t-e3c003
+      title: 用例接线（openWindow 与 handoffOwner 新建窗口）·联调
+      implements: |-
+        `src/application/use-cases/OpenWindow.ts`：入参加 title；顺序改为读画像 → create 带 agentPreset（无则不传该键）→ 建窗成功 → applyWindowInheritance → 投递；OpenWindowValue 加 inheritance；既有三条拒绝分支逐字不变。`src/application/use-cases/HandoffOwner.ts`：openTargetWindow 返回 { windowKey, inheritance? }，新建窗口带回执、to_window 指定已有窗口时不带。用例：`tests/open-window-inherit.test.ts` 落 T-01~T-14；`tests/handoff-owner.test.ts` 补两条断言。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-5caa87
+      phase: implement
+      side: backend
+    - id: t-cb4228
+      title: 用例接线（openWindow 与 handoffOwner 新建窗口）·复核
+      implements: |-
+        `src/application/use-cases/OpenWindow.ts`：入参加 title；顺序改为读画像 → create 带 agentPreset（无则不传该键）→ 建窗成功 → applyWindowInheritance → 投递；OpenWindowValue 加 inheritance；既有三条拒绝分支逐字不变。`src/application/use-cases/HandoffOwner.ts`：openTargetWindow 返回 { windowKey, inheritance? }，新建窗口带回执、to_window 指定已有窗口时不带。用例：`tests/open-window-inherit.test.ts` 落 T-01~T-14；`tests/handoff-owner.test.ts` 补两条断言。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-e3c003
+      phase: implement
+      side: backend
+    - id: t-a2ff14
+      title: 用例接线（openWindow 与 handoffOwner 新建窗口）·测试
+      implements: |-
+        `src/application/use-cases/OpenWindow.ts`：入参加 title；顺序改为读画像 → create 带 agentPreset（无则不传该键）→ 建窗成功 → applyWindowInheritance → 投递；OpenWindowValue 加 inheritance；既有三条拒绝分支逐字不变。`src/application/use-cases/HandoffOwner.ts`：openTargetWindow 返回 { windowKey, inheritance? }，新建窗口带回执、to_window 指定已有窗口时不带。用例：`tests/open-window-inherit.test.ts` 落 T-01~T-14；`tests/handoff-owner.test.ts` 补两条断言。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-cb4228
+      phase: implement
+      side: backend
+    - id: t-65b261
+      title: 外壳接线（工具 schema / 一行摘要 / 迁移开窗路由）·研发
+      implements: |-
+        `src/tools/OpenWindowTool/OpenWindowTool.ts`：parameters 加 title（≤200 字符）、output schema 加 inheritance、一行摘要追加三态读数；`src/tools/OpenWindowTool/prompt.ts` 补继承与三态说明；`src/tools/HandoffTool/HandoffTool.ts` output schema 加 inheritance；`src/http/routers/settings-support.ts` 的 openMigrationWindow：create 前读画像并把 preset 带上、create 后用显式标题「台账迁移窗口」落定、返回值加 inheritance。用例补 `tests/open-window-inherit.test.ts`（T-15 迁移函数级）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-2789e5
+      phase: implement
+      side: backend
+    - id: t-11ada7
+      title: 外壳接线（工具 schema / 一行摘要 / 迁移开窗路由）·联调
+      implements: |-
+        `src/tools/OpenWindowTool/OpenWindowTool.ts`：parameters 加 title（≤200 字符）、output schema 加 inheritance、一行摘要追加三态读数；`src/tools/OpenWindowTool/prompt.ts` 补继承与三态说明；`src/tools/HandoffTool/HandoffTool.ts` output schema 加 inheritance；`src/http/routers/settings-support.ts` 的 openMigrationWindow：create 前读画像并把 preset 带上、create 后用显式标题「台账迁移窗口」落定、返回值加 inheritance。用例补 `tests/open-window-inherit.test.ts`（T-15 迁移函数级）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-65b261
+      phase: implement
+      side: backend
+    - id: t-398c8b
+      title: 外壳接线（工具 schema / 一行摘要 / 迁移开窗路由）·复核
+      implements: |-
+        `src/tools/OpenWindowTool/OpenWindowTool.ts`：parameters 加 title（≤200 字符）、output schema 加 inheritance、一行摘要追加三态读数；`src/tools/OpenWindowTool/prompt.ts` 补继承与三态说明；`src/tools/HandoffTool/HandoffTool.ts` output schema 加 inheritance；`src/http/routers/settings-support.ts` 的 openMigrationWindow：create 前读画像并把 preset 带上、create 后用显式标题「台账迁移窗口」落定、返回值加 inheritance。用例补 `tests/open-window-inherit.test.ts`（T-15 迁移函数级）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-11ada7
+      phase: implement
+      side: backend
+    - id: t-93699c
+      title: 外壳接线（工具 schema / 一行摘要 / 迁移开窗路由）·测试
+      implements: |-
+        `src/tools/OpenWindowTool/OpenWindowTool.ts`：parameters 加 title（≤200 字符）、output schema 加 inheritance、一行摘要追加三态读数；`src/tools/OpenWindowTool/prompt.ts` 补继承与三态说明；`src/tools/HandoffTool/HandoffTool.ts` output schema 加 inheritance；`src/http/routers/settings-support.ts` 的 openMigrationWindow：create 前读画像并把 preset 带上、create 后用显式标题「台账迁移窗口」落定、返回值加 inheritance。用例补 `tests/open-window-inherit.test.ts`（T-15 迁移函数级）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-398c8b
+      phase: implement
+      side: backend
+    - id: t-72133a
+      title: 探针与机器自检（回归 + 构建 + 知识层生成物 + 尺寸门禁）·研发
+      implements: |-
+        新增 `scripts/open-window-inherit-probe.mts`（假宿主服务跑通三入口链，打印 source_title / child_title / source_preset / child_preset / source_model / child_model 六读数并断言三对相等，另打印三段附加耗时；退出码 0 或 1）；跑并记录 `pnpm build`、`pnpm typecheck`、`pnpm test`（对照基线 106）、`npx tsx scripts/kb-build.mts --write` 后 `pnpm kb:check`、`npx vitest run tests/size-budget.test.ts`；命令与输出摘要写进 `docs/requirements/REQ-261005151245-54ae/evidence/checks.md`。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-a65a55
+      phase: test
+      side: backend
+    - id: t-baac03
+      title: 探针与机器自检（回归 + 构建 + 知识层生成物 + 尺寸门禁）·复核
+      implements: |-
+        新增 `scripts/open-window-inherit-probe.mts`（假宿主服务跑通三入口链，打印 source_title / child_title / source_preset / child_preset / source_model / child_model 六读数并断言三对相等，另打印三段附加耗时；退出码 0 或 1）；跑并记录 `pnpm build`、`pnpm typecheck`、`pnpm test`（对照基线 106）、`npx tsx scripts/kb-build.mts --write` 后 `pnpm kb:check`、`npx vitest run tests/size-budget.test.ts`；命令与输出摘要写进 `docs/requirements/REQ-261005151245-54ae/evidence/checks.md`。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-72133a
+      phase: test
+      side: backend
+    - id: t-c6241f
+      title: 探针与机器自检（回归 + 构建 + 知识层生成物 + 尺寸门禁）·测试
+      implements: |-
+        新增 `scripts/open-window-inherit-probe.mts`（假宿主服务跑通三入口链，打印 source_title / child_title / source_preset / child_preset / source_model / child_model 六读数并断言三对相等，另打印三段附加耗时；退出码 0 或 1）；跑并记录 `pnpm build`、`pnpm typecheck`、`pnpm test`（对照基线 106）、`npx tsx scripts/kb-build.mts --write` 后 `pnpm kb:check`、`npx vitest run tests/size-budget.test.ts`；命令与输出摘要写进 `docs/requirements/REQ-261005151245-54ae/evidence/checks.md`。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-baac03
+      phase: test
+      side: backend
+    - id: t-56182a
+      title: 兼容卡与实机复核（旧调用方 / 旧替身 / 界面三处取证）·研发
+      implements: |-
+        在 `tests/open-window-inherit.test.ts` 加「兼容」分组：旧测试替身（只有 fork 与 create）三项 failed 且开窗成功、既有回执键（success / window_key / parent_session_id / mode / degraded_note / delivery）逐字不变、degraded_note 含「请在侧栏打开」且不含「已打开」；实机复核：在 GUI 源窗口（创造模式 + 非默认模型 + 标题「登录重构」）调 reqboard_open_window，看侧栏标题、打开新窗口看模式芯片与模型选择器，三处观察连同回执三态写进 `docs/requirements/REQ-261005151245-54ae/evidence/live-check.md`。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-6e1a6c
+      phase: test
+      side: backend
+    - id: t-bb1874
+      title: 兼容卡与实机复核（旧调用方 / 旧替身 / 界面三处取证）·复核
+      implements: |-
+        在 `tests/open-window-inherit.test.ts` 加「兼容」分组：旧测试替身（只有 fork 与 create）三项 failed 且开窗成功、既有回执键（success / window_key / parent_session_id / mode / degraded_note / delivery）逐字不变、degraded_note 含「请在侧栏打开」且不含「已打开」；实机复核：在 GUI 源窗口（创造模式 + 非默认模型 + 标题「登录重构」）调 reqboard_open_window，看侧栏标题、打开新窗口看模式芯片与模型选择器，三处观察连同回执三态写进 `docs/requirements/REQ-261005151245-54ae/evidence/live-check.md`。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-56182a
+      phase: test
+      side: backend
+    - id: t-e6d703
+      title: 兼容卡与实机复核（旧调用方 / 旧替身 / 界面三处取证）·测试
+      implements: |-
+        在 `tests/open-window-inherit.test.ts` 加「兼容」分组：旧测试替身（只有 fork 与 create）三项 failed 且开窗成功、既有回执键（success / window_key / parent_session_id / mode / degraded_note / delivery）逐字不变、degraded_note 含「请在侧栏打开」且不含「已打开」；实机复核：在 GUI 源窗口（创造模式 + 非默认模型 + 标题「登录重构」）调 reqboard_open_window，看侧栏标题、打开新窗口看模式芯片与模型选择器，三处观察连同回执三态写进 `docs/requirements/REQ-261005151245-54ae/evidence/live-check.md`。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-bb1874
+      phase: test
+      side: backend
+traceability:
+  design_to_tasks:
+    design/architecture.md#TLDR:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/architecture.md#分层与职责边界:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+    design/architecture.md#现状病灶只造会话不写属性:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+    design/architecture.md#目标架构一次冷读-三步落定:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+    design/architecture.md#模式继承为什么不用宿主-agentPresetsselect:
+      - t-2e4376
+      - t-a0e60b
+    design/architecture.md#接线表改哪里-明确不改哪里:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/architecture.md#决策与取舍:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/architecture.md#风险与对策:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/architecture.md#不做的架构改造:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/architecture.md#变更记相对需求文档的澄清:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/backend.md#文件级改动清单:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/backend.md#宿主依赖与不改宿主的边界:
+      - t-2e4376
+      - t-a0e60b
+    design/backend.md#适配器实现口径SessionWindowOpener:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+    design/backend.md#readProfilesessionId-PromiseWindowSourceProfile:
+      - t-2e4376
+      - t-a0e60b
+    design/backend.md#renamesessionId-title-Promisevoid:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+    design/backend.md#selectModelsessionId-selection-Promisevoid:
+      - t-2e4376
+      - t-a0e60b
+    design/backend.md#用例接线顺序OpenWindowts:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/backend.md#create-路径的-agentPreset-来源:
+      - t-2e4376
+      - t-a0e60b
+    design/backend.md#装配srcindexts:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/backend.md#错误处理与可观测:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/backend.md#性能与体量:
+      - t-2e4376
+      - t-a0e60b
+      - t-6e1a6c
+      - t-7fea40
+    design/backend.md#静态门禁与旁路防护:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/data-model.md#新增数据契约总览:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/data-model.md#WindowSourceProfile源会话画像:
+      - t-2e4376
+      - t-a0e60b
+    design/data-model.md#WindowProfileRead读画像的结果:
+      - t-2e4376
+      - t-a0e60b
+    design/data-model.md#WindowModelSelection模型选择读数:
+      - t-2e4376
+      - t-a0e60b
+    design/data-model.md#WindowCreateOptionsagentPreset加性字段:
+      - t-2e4376
+      - t-a0e60b
+    design/data-model.md#WindowInheritance回执字段:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/data-model.md#WindowInheritanceStatus-三态语义:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/data-model.md#读数出处映射:
+      - t-2e4376
+      - t-a0e60b
+    design/data-model.md#reasons-的纪律:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/data-model.md#无持久化-无迁移:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/data-model.md#契约兼容表三个入口:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/interfaces.md#端口WindowOpenerPortsrcapplicationportsts:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+    design/interfaces.md#内部模块applicationinternalwindow-inheritts新增:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/interfaces.md#increasedWindowTitle-语义:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+    design/interfaces.md#applyWindowInheritance-行为表顺序即语义:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/interfaces.md#reasons-文案规则唯一出处其他文档引用本节:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/interfaces.md#适配器实现契约srcadaptersSessionWindowOpenerts:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+    design/interfaces.md#工具reqboardopenwindow:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/interfaces.md#工具reqboardhandoff:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/interfaces.md#HTTP看板迁移开窗:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/interfaces.md#错误语义总表:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/interfaces.md#兼容与默认值:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/use-cases.md#UC-1-reqboardopenwindow源窗口开续作窗口:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/use-cases.md#UC-2-reqboardhandoff交出需求并新建接管窗口:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/use-cases.md#UC-3-看板迁移开窗存储与数据库页发起迁移:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/use-cases.md#结果三态的用户观感:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/use-cases.md#异常与边界用例:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/use-cases.md#端到端旅程图一份图覆盖三条入口:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+    design/use-cases.md#用例与条款对照:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-6e1a6c
+      - t-7fea40
+  fr_to_tasks:
+    FR-1:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+      - t-6e1a6c
+    FR-2:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+      - t-6e1a6c
+    FR-3:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+      - t-6e1a6c
+    FR-4:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+      - t-6e1a6c
+    FR-5:
+      - t-2e4376
+      - t-a0e60b
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+      - t-6e1a6c
+    FR-6:
+      - t-2e4376
+      - t-2789e5
+      - t-a65a55
+      - t-7fea40
+      - t-a0e60b
+      - t-6e1a6c
+    FR-7:
+      - t-2e4376
+      - t-a0e60b
+      - t-6e1a6c
+      - t-7fea40
+      - t-2789e5
+      - t-a65a55
+coverage:
+  implementation:
+    total: 51
+    covered: 51
+    uncovered: []
+    rate: 100
+    total_designs: 51
+    covered_designs: 51

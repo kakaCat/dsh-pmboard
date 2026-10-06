@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PM 插件需求详情页 UI 优化 · 高保真原型 v1.5（REQ-261006130057-7a43）</title>
+<!--
+  原型说明（非交付物）：
+  · 本文件 = prototypes/INDEX.md「状态」列唯一 authoritative 的路径（prototypes/detail.html）。
+  · 数据与现状标本 scripts/fixtures/req-detail-specimen.mts 同一套虚构数据（REQ-261004222448-292a ·
+    实施中 11/17 · 缺口 6 条 · 最近评论 3 条 · Token 1.84M · 文档 7 · DAG 17），保证 before/after 可比。
+  · 首屏假定视口 1280×800；整页稿在下方「整页视觉稿」区，导览区的 FR-N 区块逐条指出对应部位。
+  · v1.1（2026-10-06）：在 v1.0（首屏 + 汇报 Tab）基础上补齐全 Tab 可视稿（FR-6/FR-7），
+    并新增「验收」Tab（FR-8）；Tab 栏 6 → 7，验收插在「对话」与「Token」之间。
+    标本为 implementing 态（无验收单）：验收面板主视图是解释性空态，下方附「有单时」缩小示意。
+  · v1.2（2026-10-06）：对话 Tab 改聊天 App 形态（D-5：气泡/分页/正序）——气泡消息
+    （人靠右蓝色、窗口/agent 靠左紫色、系统居中灰丸）、顶部聊天式分页（向上加载更早）、
+    正序固定高内滚动 + 底部输入条；其余面板一律不动（proto-geometry 仅 tabsTop 因横幅变更行
+    换行 965 → 1003，headHeight / bandHeight / verifyTabIndex1Based 均不变，已重测）。
+  · v1.3（2026-10-06）：对话面板删掉底部输入条（D-6：对话不需要发送，对话是历史聊天的记录），
+    原位改放一行只读说明（居中灰字 11px，152/40 口径同顶部分页行）；其余一律不动
+    （proto-geometry 仅 tabsTop 因横幅加 v1.3 变更句再多一行 1003 → 1022，其余不变，已重测）。
+  · v1.4（2026-10-06）：对话分页栏醒目化+吸顶（D-7：形态不变）——分页条移进消息滚动容器
+    （.chat-scroll）内部顶部 position:sticky; top:0（不透明浅蓝底，滚动时消息从其下滑过），
+    工具条化（浅蓝底 / 圆角 / 1px 边框 / 整行 padding / 轻投影），「↑ 加载更早消息」改主色实心
+    小按钮，页码「第 2/4 页」加粗等宽深色、「已加载 40/152 条」次级灰；底部只读说明行不动；
+    其余一律不动（proto-geometry 仅 tabsTop 因横幅加 v1.4 变更句再多一行 1022 → 1041，
+    headHeight / bandHeight / verifyTabIndex1Based 均不变，已重测）。
+  · v1.5（2026-10-06）：验收 Tab 主视图从「验收单逐项表」改为 RTM 验收追踪列表（D-8：
+    验收里面应该是 rtm 的列表）——每 FR 一行：覆盖链（设计→任务→测试 三枚文字 chip，
+    ✓/✗ 不靠颜色单一表达）+ 怎么验（一行截断）+ 验收状态 chip（通过/不通过/待裁决/未复核，
+    not_verifiable 单列「无法自验·需人工」）+ 裁决/意见；行可展开看逐项实际结果
+    （原逐项表降级为行详情，FR-2 静态展开示意两条证据）；表头上方汇总行「FR 验收进度
+    5/8 通过 · 2 待裁决 · 1 不通过」+「验收单 v2 · 返工续验只含未过项」版本签；
+    材料摘要+证据清单、历史版本两节保留在示意区下部；Tab 徽标演示口径改为待裁决 2；
+    其余一律不动（验收面板不在首屏；横幅加 v1.5 变更句未再换行，proto-geometry
+    四项全不变——tabsTop 仍 1041，headless Chrome 1280×800 已重测）。
+-->
+<style>
+  :root{
+    --primary:#2563EB; --primary-weak:#EFF4FE; --accent:#EA580C;
+    --bg:#F8FAFC; --card:#FFFFFF; --border:#E2E8F0; --border-strong:#CBD5E1;
+    --fg:#1E293B; --muted:#475569; --faint:#94A3B8;
+    --red:#DC2626; --red-bg:#FEF2F2; --red-border:#FECACA;
+    --amber:#B45309; --amber-bg:#FFFBEB; --amber-border:#FDE68A;
+    --green:#16A34A; --green-bg:#F0FDF4;
+    --violet:#7C3AED; --violet-bg:#F5F3FF;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,"PingFang SC","Helvetica Neue",Inter,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px;line-height:1.55}
+  a{color:var(--primary);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1232px;margin:0 auto;padding:0 24px}
+
+  /* ── 导览区（优化点对照） ─────────────────────────────── */
+  .proto-banner{background:#0F172A;color:#E2E8F0;padding:14px 0}
+  .proto-banner .wrap{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .proto-banner strong{font-size:14px;color:#fff}
+  .proto-banner span{font-size:12px;color:#94A3B8}
+  .proto-banner .v11{color:#FDBA74;font-weight:600}
+  .guide{padding:20px 0 8px}
+  .guide h2{font-size:13px;color:var(--muted);margin:0 0 10px;font-weight:600;letter-spacing:.02em}
+  .guide-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  section.fr{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+  section.fr h3{margin:0 0 6px;font-size:13px;color:var(--primary)}
+  section.fr p{margin:0 0 8px;font-size:12px;color:var(--fg);line-height:1.6}
+  section.fr .go{font-size:12px}
+
+  /* ── 整页稿公共 ─────────────────────────────── */
+  .page-mock{padding:8px 0 48px}
+  .pm-card{background:var(--card);border:1px solid var(--border);border-radius:10px}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-strong);background:#fff;
+    color:var(--fg);border-radius:6px;padding:6px 14px;font-size:13px;font-weight:500;cursor:pointer;line-height:1.2}
+  .btn:hover{border-color:var(--faint)}
+  .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+  .btn.primary:hover{background:#1D4ED8}
+  .btn.danger{color:var(--red);border-color:var(--red-border);background:#fff}
+  .btn.danger:hover{background:var(--red-bg)}
+  .btn.sm{padding:3px 10px;font-size:12px}
+  .chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);border-radius:999px;
+    padding:1px 8px;font-size:11px;color:var(--muted);background:#fff;white-space:nowrap}
+  .pill{display:inline-block;border-radius:4px;padding:1px 7px;font-size:11px;font-weight:600}
+  .pill.status{background:var(--primary-weak);color:var(--primary)}
+  .num{font-family:var(--mono);font-size:11px}
+
+  /* ── FR-1 头部：标识行 / 标题行 / 操作行 三层 ────────── */
+  .head{padding:12px 16px 0;margin-bottom:10px}
+  .head-id{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .head-id .back{color:var(--muted);font-size:13px;white-space:nowrap}
+  .head-id .req{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--fg)}
+  .head-id .meta-inline{font-size:12px;color:var(--muted)}
+  .head-id .seats{margin-left:auto;display:flex;gap:6px}
+  .seat b{font-weight:600;color:var(--fg)}
+  .seat.archived{opacity:.55}
+  .head-title{display:flex;align-items:flex-start;gap:16px;padding:10px 0}
+  .head-title h1{margin:0;font-size:19px;line-height:1.35;font-weight:650;flex:1 1 auto;min-width:0}
+  .head-acts{flex:none;display:flex;gap:8px;align-items:center;padding-top:2px}
+  /* 闸门提示条（需人工确认）：从灰色小字升级为可见条 */
+  .gate{display:flex;align-items:center;gap:10px;margin:0 -16px;padding:8px 16px;
+    background:var(--amber-bg);border-top:1px solid var(--amber-border);border-bottom:1px solid var(--amber-border);
+    border-radius:0 0 10px 10px;font-size:12.5px;color:var(--amber)}
+  .gate .flag{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:4px;
+    background:var(--amber);color:#fff;font-size:11px;font-weight:700;flex:none}
+  .gate a{color:var(--amber);font-weight:600}
+
+  /* ── FR-2 状态带：缺口为焦点，结果弱化折叠 ────────── */
+  .band{display:grid;grid-template-columns:1fr 1.5fr .9fr;gap:10px;margin-bottom:10px}
+  .band-cell{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+  .band-cell h4{margin:0 0 6px;font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.03em;display:flex;align-items:center;gap:6px}
+  .band-cell.focus{border-color:var(--red-border);background:var(--red-bg);box-shadow:inset 3px 0 0 var(--red)}
+  .band-cell.focus h4{color:var(--red)}
+  .gap-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;
+    background:var(--red);color:#fff;font-size:11px;font-weight:700;padding:0 5px}
+  .band-now .stage{font-size:16px;font-weight:650}
+  .band-now .stage small{font-size:12px;color:var(--muted);font-weight:400}
+  .band-now dl{margin:4px 0 0;display:grid;grid-template-columns:auto auto;gap:1px 12px;font-size:12px;color:var(--muted)}
+  .band-now dl b{color:var(--fg);font-weight:600}
+  .gap-line{display:flex;gap:6px;align-items:baseline;font-size:12.5px;padding:2px 0;min-width:0}
+  .gap-line .sev{flex:none;font-weight:700;font-size:11px}
+  .sev.red{color:var(--red)} .sev.yellow{color:var(--amber)} .sev.gray{color:var(--faint)}
+  .gap-line .what{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .gap-line .ref{flex:none;font-family:var(--mono);font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+  .gap-more{font-size:11.5px;color:var(--muted);margin-top:4px}
+  /* 结果与成效：占位态折叠为一行，可展开 */
+  .band-outcome .fold-line{font-size:12px;color:var(--faint);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .band-outcome .fold-body{display:none;font-size:12.5px;color:var(--muted);margin-top:6px}
+  .band-outcome.open .fold-body{display:block}
+  .band-outcome .toggle{border:none;background:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0}
+
+  /* ── FR-3 最近评论：单行截断 + 长日志收纳展开 ────────── */
+  .comments{padding:8px 14px;margin-bottom:10px}
+  .comments .c-head{display:flex;align-items:baseline;gap:8px;font-size:11.5px;color:var(--muted);padding:2px 0 6px}
+  .comments .c-head a{margin-left:auto;font-size:12px}
+  .c-row{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-top:1px solid var(--border);font-size:12.5px;min-width:0}
+  .c-row .c-meta{flex:none;color:var(--muted);font-size:11.5px;white-space:nowrap}
+  .c-row .c-meta b{color:var(--muted);font-weight:600}
+  .c-row .c-body{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+  .c-row .c-flag{flex:none;font-size:11px;color:var(--amber);border:1px solid var(--amber-border);border-radius:4px;padding:0 5px;background:var(--amber-bg)}
+  .c-row .c-expand{flex:none;border:none;background:none;color:var(--primary);font-size:11.5px;cursor:pointer;padding:0}
+  .c-row.open .c-body{white-space:normal;word-break:break-all}
+  .c-row.open{align-items:flex-start}
+
+  /* ── FR-4 进度带 + Tab 栏：紧凑化 ────────── */
+  .progress{display:flex;gap:4px;align-items:flex-end;margin-bottom:8px;padding:0 2px}
+  .p-seg{flex:1;min-width:0;text-align:center}
+  .p-seg .bar{height:4px;border-radius:2px;background:var(--border)}
+  .p-seg.done .bar{background:var(--green)}
+  .p-seg.current .bar{background:var(--primary)}
+  .p-seg .lab{display:block;font-size:10.5px;color:var(--faint);margin-top:3px;white-space:nowrap}
+  .p-seg.done .lab{color:var(--muted)}
+  .p-seg.current .lab{color:var(--primary);font-weight:600}
+  .tabs{display:flex;gap:2px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:3px;margin-bottom:10px}
+  .tab{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:none;background:none;
+    border-radius:6px;padding:6px 8px;font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .tab:hover{background:var(--bg);color:var(--fg)}
+  .tab.active{background:var(--primary-weak);color:var(--primary);font-weight:600}
+  .tab .ico{width:13px;height:13px;display:inline-flex}
+  .tab .ico svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tab .badge{font-family:var(--mono);font-size:10.5px;color:var(--faint);background:var(--bg);border-radius:8px;padding:0 6px;line-height:16px}
+  .tab.active .badge{color:var(--primary);background:#fff}
+  /* FR-8：验收 Tab 有待裁决项时的红色计数徽标（示意样式，主视图无单不显示） */
+  .tab .badge.red, .badge-red{font-family:var(--mono);font-size:10.5px;color:#fff;background:var(--red);
+    border-radius:8px;padding:0 6px;line-height:16px;font-weight:700}
+
+  /* ── FR-5 汇报面板：模块排版密度 ────────── */
+  .panel-note{font-size:11.5px;color:var(--faint);margin:0 0 8px;padding-left:46px}
+  .trunk-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .t-mod{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px}
+  .t-mod.wide{grid-column:1 / -1}
+  .t-head{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  .t-head h5{margin:0;font-size:13px;font-weight:650}
+  .t-head .t-meta{margin-left:auto;font-size:11px;color:var(--faint);white-space:nowrap}
+  .t-head .t-src{font-size:11px;color:var(--muted);white-space:nowrap}
+  .t-mod p{margin:0;font-size:12.5px;color:var(--fg)}
+  .t-mod ul{margin:0;padding-left:16px;font-size:12.5px}
+  .t-mod .srcline{margin-top:4px;font-size:11px;color:var(--faint)}
+  .t-mod .srcline a{font-size:11px}
+  .t-fact{display:inline-flex;gap:6px;font-size:11.5px;color:var(--muted);border:1px dashed var(--border-strong);
+    border-radius:6px;padding:2px 8px;margin-top:6px}
+  .t-fact b{color:var(--fg)}
+  .t-missing{font-size:12px;color:var(--faint);font-style:italic}
+  .hl{display:flex;gap:8px;font-size:12.5px;padding:3px 0;align-items:baseline}
+  .hl .hl-diff{font-weight:600}
+  .hl .hl-why{color:var(--muted)}
+  .hl .hl-ev{font-family:var(--mono);font-size:11px;color:var(--faint);margin-left:auto;white-space:nowrap}
+  .d-none{display:none}
+
+  /* ── FR-6 通用：分节块 / 紧凑表 ────────── */
+  .blk{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:10px}
+  .blk-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  .blk-title{font-size:13px;font-weight:650}
+  .blk-hint{font-size:11px;color:var(--faint)}
+  table.dt{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.dt th{font-size:11px;color:var(--muted);font-weight:600;text-align:left;padding:4px 10px 4px 0;border-bottom:1px solid var(--border);white-space:nowrap}
+  table.dt td{padding:5px 10px 5px 0;border-top:1px solid var(--border);vertical-align:baseline}
+  table.dt tbody tr:first-child td{border-top:none}
+  table.dt td.r, table.dt th.r{text-align:right;font-family:var(--mono);font-size:11.5px;white-space:nowrap}
+  .doc-path{font-family:var(--mono);font-size:11.5px;color:var(--fg)}
+  .open-link{border:none;background:none;color:var(--primary);font-size:12px;cursor:pointer;padding:0;white-space:nowrap}
+  .open-link:hover{text-decoration:underline}
+  .mini-state{font-size:11px;border-radius:4px;padding:0 5px;white-space:nowrap}
+  .mini-state.ok{background:var(--green-bg);color:var(--green)}
+  .mini-state.wait{background:var(--amber-bg);color:var(--amber)}
+  .mini-state.auto{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
+  .move-note{display:flex;align-items:center;gap:8px;background:var(--primary-weak);border:1px solid #BFDBFE;
+    border-radius:8px;padding:6px 12px;margin-bottom:10px;font-size:12px;color:var(--primary)}
+  .move-note button{border:none;background:none;color:var(--primary);font-weight:600;font-size:12px;cursor:pointer;padding:0}
+  .move-note button:hover{text-decoration:underline}
+
+  /* ── FR-6 对话 Tab（v1.2 聊天 App 形态，D-5：气泡 / 分页 / 正序；v1.4 分页条醒目化+吸顶，D-7） ────────── */
+  .chat-panel{padding:10px 14px}
+  /* 吸顶醒目分页条（v1.4 · D-7：形态不变，做醒目 + 吸顶）：移进 .chat-scroll 内部顶部 sticky，
+     不透明浅蓝底 + 圆角 + 1px 边框 + 轻投影，滚动时消息从它下面滑过，滚到哪都看得到 */
+  .chat-pager{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:10px;align-self:stretch;
+    padding:8px 12px;background:var(--primary-weak);border:1px solid #BFDBFE;border-radius:8px;
+    box-shadow:0 1px 3px rgba(15,23,42,.10);font-size:12px;color:var(--muted)}
+  .chat-pager .pg-info{display:inline-flex;align-items:baseline;gap:8px;white-space:nowrap}
+  .chat-pager .pg-page{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--fg)}
+  .chat-pager .pg-loaded{font-size:11.5px;color:var(--muted)}
+  .chat-pager .pg-hint{margin-left:auto;font-size:11px;color:var(--faint)}
+  /* 正序消息流：旧在上新在下，固定高约 460px 内滚动，滚动停留底部看最新；
+     顶部 padding 取 0（v1.4）：吸顶分页条直接顶住滚动口上沿，消息不会在条的上方透出 */
+  .chat-scroll{height:460px;overflow-y:auto;padding:0 4px 12px 2px;display:flex;flex-direction:column;gap:10px}
+  .cmsg{display:flex;gap:8px;align-items:flex-start;max-width:76%}
+  .cmsg.right{align-self:flex-end;flex-direction:row-reverse}
+  .avatar{flex:none;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+    color:#fff;font-size:12px;font-weight:700;line-height:1}
+  .av-human{background:var(--primary)}
+  .av-window{background:var(--violet)}
+  .cmsg-col{min-width:0}
+  .cmsg-meta{display:flex;align-items:baseline;gap:8px;font-size:11px;margin:0 2px 3px}
+  .cmsg.right .cmsg-meta{justify-content:flex-end}
+  .cmsg-meta .who-name{font-weight:600;color:var(--muted)}
+  .cmsg-at{color:var(--faint);font-family:var(--mono);font-size:10.5px;white-space:nowrap}
+  .bubble{border-radius:12px;padding:7px 12px;font-size:12.5px;line-height:1.55;word-break:break-word}
+  .cmsg.right .bubble{border-top-right-radius:4px}
+  .cmsg.left .bubble{border-top-left-radius:4px}
+  .b-human{background:var(--primary);color:#fff}
+  .b-window{background:var(--violet-bg);color:var(--fg);border:1px solid #DDD6FE}
+  .b-flag{display:inline-block;font-size:11px;color:var(--amber);border:1px solid var(--amber-border);
+    border-radius:4px;padding:0 5px;background:var(--amber-bg);margin-right:6px}
+  /* 长日志气泡：默认折叠成一行 + 展开 */
+  .bubble.b-long{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cmsg.open .bubble.b-long{white-space:normal}
+  .b-expand{display:inline-block;border:none;background:none;color:var(--primary);font-size:11.5px;
+    cursor:pointer;padding:3px 2px 0}
+  .b-expand:hover{text-decoration:underline}
+  /* 系统消息：居中灰色小丸 */
+  .chat-sys{text-align:center;font-size:11px;color:var(--faint)}
+  .chat-sys .evt{background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:1px 10px}
+  .chat-sys .inferred{color:var(--amber)}
+  /* 只读说明行（v1.3 · D-6：对话是历史聊天记录，无发送入口） */
+  .chat-ro-note{padding-top:10px;border-top:1px solid var(--border);text-align:center;
+    font-size:11px;color:var(--faint)}
+
+  /* ── FR-6 Token Tab ────────── */
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px}
+  .stat .s-lab{font-size:11px;color:var(--muted);margin-bottom:2px}
+  .stat .s-num{font-family:var(--mono);font-size:19px;font-weight:650;line-height:1.2}
+  .stat .s-sub{font-size:11px;color:var(--faint);margin-top:2px}
+  .stat .s-num small{font-size:12px;color:var(--muted);font-weight:400}
+
+  /* ── FR-6 提示词 Tab ────────── */
+  .info-strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .frag{display:flex;gap:8px;align-items:baseline;padding:5px 0;border-top:1px solid var(--border);font-size:12.5px;min-width:0}
+  .frag .f-id{flex:none;font-family:var(--mono);font-size:11.5px;color:var(--fg);font-weight:600}
+  .frag .f-kind{flex:none;font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:0 5px;background:var(--bg)}
+  .frag .f-chars{flex:none;font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+  .frag .f-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1;color:var(--muted);font-size:12px}
+  .frag.open .f-text{white-space:normal;word-break:break-all}
+  .frag .f-trim{flex:none;font-size:11px;color:var(--amber)}
+  .prompt-text{margin:6px 0 0;padding:12px;font-family:var(--mono);font-size:12px;line-height:1.6;
+    border:1px solid var(--border);border-radius:6px;color:var(--muted);white-space:pre-wrap;word-break:break-all}
+
+  /* ── FR-7 DAG Tab：画布不重做，只做容器/工具行/空态适配 ────────── */
+  .dag-toolbar{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);
+    border-radius:8px 8px 0 0;border-bottom:none;padding:6px 10px;font-size:12px;color:var(--muted)}
+  .dag-toolbar .tbtn{border:1px solid var(--border-strong);background:#fff;border-radius:5px;padding:2px 9px;
+    font-size:12px;color:var(--fg);cursor:pointer;line-height:1.4}
+  .dag-toolbar .zoom-pct{font-family:var(--mono);font-size:11.5px;min-width:44px;text-align:center}
+  .dag-legend{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:11px;color:var(--muted)}
+  .dag-legend .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:3px;vertical-align:-1px}
+  .dag-canvas-ph{background:#F1F5F9;border:1px solid var(--border);border-radius:0 0 8px 8px;min-height:280px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--muted);text-align:center;padding:24px}
+  .dag-canvas-ph .ph-main{font-size:13px;font-weight:600;color:var(--fg)}
+  .dag-canvas-ph .ph-sub{font-size:11.5px;color:var(--faint)}
+  .dag-empty-demo{margin-top:10px}
+  .dag-empty-demo .de-box{border:1px dashed var(--border-strong);border-radius:8px;padding:14px;text-align:center;
+    font-size:12.5px;color:var(--faint);background:var(--card)}
+
+  /* ── FR-8 验收 Tab ────────── */
+  .verify-empty{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin-bottom:10px}
+  .verify-empty h5{margin:0 0 8px;font-size:13px;font-weight:650;display:flex;align-items:center;gap:8px}
+  .verify-empty .ve-rows{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:12.5px;color:var(--muted)}
+  .verify-empty .ve-rows b{color:var(--fg);font-weight:600;white-space:nowrap}
+  .verify-empty code{font-family:var(--mono);font-size:11.5px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:0 4px}
+  .preview-wrap{border:1px dashed var(--border-strong);border-radius:8px;padding:10px 12px 12px;background:#FDFDFE}
+  .preview-cap{font-size:11px;color:var(--faint);margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .preview-cap .cap-tag{background:var(--accent);color:#fff;font-size:10px;font-weight:700;border-radius:4px;padding:0 5px;line-height:16px}
+  .preview-inner{zoom:.78}
+  .verdict{font-size:11px;font-weight:600;border-radius:4px;padding:0 6px;white-space:nowrap;line-height:18px;display:inline-block}
+  .verdict.pass{background:var(--green-bg);color:var(--green)}
+  .verdict.fail{background:var(--red-bg);color:var(--red)}
+  .verdict.pend{background:var(--amber-bg);color:var(--amber)}
+  .nh-flag{font-size:11px;color:var(--amber);border:1px solid var(--amber-border);border-radius:4px;padding:0 5px;background:var(--amber-bg);white-space:nowrap}
+  .src-tag{font-size:11px;color:var(--muted);font-family:var(--mono);white-space:nowrap}
+  .ver-sum{font-size:12.5px;color:var(--fg);margin:0 0 6px}
+  .ver-sum b{font-weight:600}
+  .ev-list{margin:0;padding-left:16px;font-size:12px;color:var(--muted)}
+  .ev-list li{padding:1px 0}
+  .hist-row{display:flex;gap:8px;align-items:baseline;font-size:12px;padding:3px 0;border-top:1px solid var(--border)}
+  .hist-row .h-ver{flex:none;font-family:var(--mono);font-weight:600;font-size:11.5px}
+  .hist-row .h-note{color:var(--muted);min-width:0}
+  /* FR-8 v1.5：RTM 验收追踪列表（D-8）——每 FR 一行，覆盖链 chip 带文字 ✓/✗ 不靠颜色单一表达 */
+  .rtm-progress{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--fg);margin:0 0 6px;flex-wrap:wrap}
+  .rtm-progress b{font-weight:650}
+  .rtm-progress .chip{margin-left:auto}
+  .rtm-fr{font-family:var(--mono);font-size:11.5px;font-weight:700;white-space:nowrap}
+  .rtm-name{white-space:nowrap}
+  .cov{display:inline-flex;align-items:center;border-radius:4px;padding:0 5px;font-size:11px;
+    font-weight:600;white-space:nowrap;line-height:18px;margin-right:2px}
+  .cov.ok{background:var(--green-bg);color:var(--green)}
+  .cov.miss{background:var(--bg);color:var(--faint);border:1px solid var(--border)}
+  .rtm-ver{max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rtm-toggle{border:none;background:none;color:var(--primary);font-size:11px;cursor:pointer;padding:0 3px 0 0}
+  tr.rtm-detail{display:none}
+  tr.rtm-detail.open{display:table-row}
+  tr.rtm-detail td{background:var(--bg);padding:6px 12px 8px 30px;border-top:1px dashed var(--border)}
+  .rtm-ev{font-size:12px;color:var(--muted);padding:2px 0;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .rtm-ev .ev-link{color:var(--primary);white-space:nowrap}
+  .rtm-judge{font-size:11px;color:var(--muted)}
+
+  /* 原型标注钉（指出优化部位，非页面内容） */
+  .pin{display:inline-block;background:var(--accent);color:#fff;font-size:10px;font-weight:700;border-radius:4px;
+    padding:0 5px;line-height:16px;vertical-align:2px;margin-right:6px}
+  .mock-zone{position:relative}
+  .zone-tag{position:absolute;top:-9px;left:14px;z-index:2}
+  .zone-tag.right{left:auto;right:14px}
+  /* 随 Tab 显隐的标注钉：面板藏起时钉也藏起，不在别的面板里漂移 */
+  .zone-tag.tabpin{display:none}
+  .mock-zone.on .zone-tag.tabpin{display:inline-block}
+</style>
+</head>
+<body>
+
+<div class="proto-banner">
+  <div class="wrap">
+    <strong>PM 插件需求详情页 UI 优化 · 高保真原型</strong>
+    <span>REQ-261006130057-7a43 · 原型 v1.5 · 2026-10-06 · 视口 1280×800 · 数据同现状标本（REQ-261004222448-292a）</span>
+    <span class="v11">v1.5 变更：验收 Tab 主视图改 RTM 验收追踪列表（D-8）。v1.4 变更：对话分页栏醒目化+吸顶（D-7）。v1.3 变更：对话面板去发送条、改只读历史记录（D-6）。v1.2 变更：对话 Tab 改聊天 App 形态（D-5：气泡/分页/正序）。v1.1 变更：补齐全 Tab 可视稿（FR-6/7）＋ 新增「验收」Tab（FR-8，空态与有单示意并示），Tab 栏 6 → 7。</span>
+  </div>
+</div>
+
+<!-- ═══════════ 优化点对照导览：每个 FR 一个 section.fr 区块 ═══════════ -->
+<div class="wrap guide">
+  <h2>优化点对照导览（8 条 FR 各一句：优化了什么 → 对应下方整页稿的哪个部位）</h2>
+  <div class="guide-grid">
+    <section class="fr" id="FR-1">
+      <h3>FR-1 头部信息分层与操作区聚类</h3>
+      <p>meta 一行平铺拆成「标识行 / 标题行 / 操作行」三层；主操作聚合固定右侧；「需人工确认」升级为琥珀色闸门提示条并锚到缺口格。</p>
+      <a class="go" href="#p-head">对应部位：整页稿头部 ↓</a>
+    </section>
+    <section class="fr" id="FR-2">
+      <h3>FR-2 状态带三格视觉权重</h3>
+      <p>缺口格强化为视觉焦点（红底 + 左侧色条 + 计数徽标 + 列宽加大），结果与成效占位态折叠为一行可展开。</p>
+      <a class="go" href="#p-band">对应部位：状态带 ↓</a>
+    </section>
+    <section class="fr" id="FR-3">
+      <h3>FR-3 最近评论区紧凑化</h3>
+      <p>评论改单行截断的紧凑列表（meta 与正文同行），长日志默认收纳、点「展开」就地放开，整块纵向占用收敛约 60%。</p>
+      <a class="go" href="#p-comments">对应部位：最近评论区 ↓</a>
+    </section>
+    <section class="fr" id="FR-4">
+      <h3>FR-4 进度带与 Tab 栏紧凑化</h3>
+      <p>8 段进度带收敛为 4px 色条 + 10.5px 标签单行；Tab 间距/字阶收敛，计数徽章等宽数字、激活态蓝底可读（Tab 数 6 → 7 仍单行）。</p>
+      <a class="go" href="#p-progress">对应部位：进度带与 Tab 栏 ↓</a>
+    </section>
+    <section class="fr" id="FR-5">
+      <h3>FR-5 汇报 Tab 模块排版密度</h3>
+      <p>模块标题与来源行并为一行、短模块 2×2 网格、正文 12.5px 紧凑行高，消除标题-正文-来源三段式留白。</p>
+      <a class="go" href="#p-trunk">对应部位：汇报面板 ↓</a>
+    </section>
+    <section class="fr" id="FR-6">
+      <h3>FR-6 文档/对话/Token/提示词 Tab 内容优化</h3>
+      <p>四个面板全部画出可视稿（Tab 栏可点击切换）：文档三分节紧凑行、对话改聊天 App 形态（D-5：气泡消息人靠右蓝 / 窗口·agent 靠左紫 / 系统居中灰丸，吸顶醒目分页条（向上加载更早，D-7），正序固定高滚动，只读历史记录（无发送入口））、Token 汇总卡+等宽右对齐表格、提示词注入信息+片段列表。</p>
+      <a class="go" href="#p-panels">对应部位：文档/对话/Token/提示词面板 ↓</a>
+    </section>
+    <section class="fr" id="FR-7">
+      <h3>FR-7 DAG Tab 沿用画布并适配新版式</h3>
+      <p>画布组件不重做（灰底占位标注节点 17）；只画适配点：通栏容器、顶部工具行（缩放/适应窗口/图例）与无任务空态文案。</p>
+      <a class="go" href="#p-dag">对应部位：DAG 面板 ↓</a>
+    </section>
+    <section class="fr" id="FR-8">
+      <h3>FR-8 新增「验收」Tab</h3>
+      <p>主视图 RTM 验收追踪列表（D-8：每 FR 一行，覆盖链+验收状态+证据，行展开看逐项）+ 材料/历史；空态与有单示意并示；待裁决时 Tab 给红色计数徽标。</p>
+      <a class="go" href="#p-verify">对应部位：Tab 栏第 5 枚 + 验收面板 ↓</a>
+    </section>
+  </div>
+</div>
+
+<!-- ═══════════ 整页视觉稿（优化后 · 在途 implementing 态） ═══════════ -->
+<div class="wrap page-mock" id="p-page">
+
+  <!-- FR-1：常驻头部（标识行 / 标题行+操作行 / 闸门提示条） -->
+  <div class="mock-zone" id="p-head">
+    <span class="pin zone-tag">FR-1</span>
+    <header class="pm-card head" id="proto-head">
+      <div class="head-id">
+        <a class="back" href="#p-head">← 看板</a>
+        <span class="req">REQ-261004222448-292a</span>
+        <span class="pill status">实施</span>
+        <span class="chip">功能</span>
+        <span class="chip">难度 · 专家</span>
+        <span class="meta-inline">停留 4 小时 0 分 · 更新 2 分前 · 创建于 10-04 17:41</span>
+        <span class="seats">
+          <span class="chip seat"><b>主人</b> w-00af6c69</span>
+          <span class="chip seat"><b>协作</b> w-b262610a</span>
+          <span class="chip seat archived"><b>旁观</b> w-9f0c1d77</span>
+        </span>
+      </div>
+      <div class="head-title">
+        <h1>看板验收单支持逐项驳回并自动生成返工卡</h1>
+        <div class="head-acts">
+          <button type="button" class="btn primary">提交验收</button>
+          <button type="button" class="btn danger">取消立项</button>
+        </div>
+      </div>
+      <div class="gate" role="status">
+        <span class="flag">!</span>
+        <span>需人工确认 · <b>1</b> 件缺口等人裁决，裁决前无法提交验收。</span>
+        <a href="#p-band">查看缺口 ↓</a>
+      </div>
+    </header>
+  </div>
+
+  <!-- FR-2：状态带（缺口格为焦点 / 结果与成效折叠占位） -->
+  <div class="mock-zone" id="p-band">
+    <span class="pin zone-tag">FR-2</span>
+    <div class="band" id="proto-band">
+      <div class="band-cell band-now">
+        <h4>做到哪了</h4>
+        <div class="stage">实施 <small>implementing</small></div>
+        <dl>
+          <dt>任务</dt><dd><b>11/17</b>（在跑 2 · 待办 4）</dd>
+          <dt>子卡链</dt><dd><b>31/44</b> 段完成</dd>
+          <dt>节奏</dt><dd>停留 4 小时 · 更新 2 分前</dd>
+        </dl>
+      </div>
+      <div class="band-cell focus">
+        <h4>缺口（该有而没有） <span class="gap-count">6</span></h4>
+        <div class="gap-line"><span class="sev red">!!</span><span class="what">渲染探针尚未跑通</span><span class="ref">t-98684c</span></div>
+        <div class="gap-line"><span class="sev red">!!</span><span class="what">首屏四问缺「缺什么」的落点</span><span class="ref">FR-4</span></div>
+        <div class="gap-line"><span class="sev yellow">!</span><span class="what">文档 Tab 的宽表未核验断词</span><span class="ref">docs/requirements/REQ-261004222448-292a/design/architecture.md</span></div>
+        <div class="gap-line"><span class="sev yellow">!</span><span class="what">终态只读的评论列表尚无回归</span><span class="ref">FR-12</span></div>
+        <div class="gap-line"><span class="sev gray">·</span><span class="what">对话 Tab 分页游标未接</span><span class="ref">pc-261004222448-292a-01</span></div>
+        <div class="gap-more">还有 1 条未列（首屏只列最严重的 5 条）</div>
+      </div>
+      <div class="band-cell band-outcome collapsed" id="outcome-cell">
+        <h4>结果与成效</h4>
+        <div class="fold-line">
+          <span>未到验收段（当前 实施 11/17），暂无结论。</span>
+          <button type="button" class="toggle" id="outcome-toggle">展开说明</button>
+        </div>
+        <div class="fold-body">到验收段后此处给出结论、逐项结果与遗留问题；在途态长期为空，故默认折叠为一行，不再与缺口格等大平权。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FR-3：最近评论（紧凑单行 + 长日志收纳） -->
+  <div class="mock-zone" id="p-comments">
+    <span class="pin zone-tag">FR-3</span>
+    <section class="pm-card comments" id="proto-comments">
+      <div class="c-head">最近评论 3 条（新的在下） <a href="#p-comments">全部对话 →</a></div>
+      <div class="c-row">
+        <span class="c-meta"><b>人</b> · 10-04 23:01</span>
+        <span class="c-body">[文档变更] 设计稿 v3：状态带三格定稿，缺口只列最严重 5 条</span>
+      </div>
+      <div class="c-row" id="c-long">
+        <span class="c-meta"><b>窗口 w-b262610a</b> · 10-04 23:11</span>
+        <span class="c-flag">长日志已收纳</span>
+        <span class="c-body">[产物自动发现] 扫描需求目录：补登 141 个过程产物、回填 0 个过期种类（落进 docs/requirements/REQ-261004222448-292a/queue.json 与 rtm-*.yml）。明细：artifact-0.png、artifact-1.png、artifact-2.png …（共 600 条，此处省略）</span>
+        <button type="button" class="c-expand" data-expand="c-long">展开</button>
+      </div>
+      <div class="c-row">
+        <span class="c-meta"><b>窗口 w-b262610a</b> · 10-04 23:29</span>
+        <span class="c-body">口径勘误：内层滚动判据改为真 DOM 实测，不再 grep CSS 文本（会误伤 DAG 视口）</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- FR-4：进度带 + Tab 栏（FR-8：第 5 枚「验收」Tab） -->
+  <div class="mock-zone" id="p-progress">
+    <span class="pin zone-tag">FR-4</span>
+    <span class="pin zone-tag right">FR-8</span>
+    <div class="progress" id="proto-progress">
+      <div class="p-seg done"><div class="bar"></div><span class="lab">✓ 立项</span></div>
+      <div class="p-seg done"><div class="bar"></div><span class="lab">✓ 需求分析</span></div>
+      <div class="p-seg done"><div class="bar"></div><span class="lab">✓ 设计</span></div>
+      <div class="p-seg done"><div class="bar"></div><span class="lab">✓ 拆分</span></div>
+      <div class="p-seg current"><div class="bar"></div><span class="lab">▸ 实施</span></div>
+      <div class="p-seg"><div class="bar"></div><span class="lab">验收</span></div>
+      <div class="p-seg"><div class="bar"></div><span class="lab">完成</span></div>
+      <div class="p-seg"><div class="bar"></div><span class="lab">归档</span></div>
+    </div>
+    <nav class="tabs" id="proto-tabs">
+      <button type="button" class="tab active" data-tab="trunk"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>汇报</button>
+      <button type="button" class="tab" data-tab="docs"><span class="ico"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7zM14 3v4h4"/></svg></span>文档<span class="badge">7</span></button>
+      <button type="button" class="tab" data-tab="dag"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.5 8 11 15.5M16.5 8 13 15.5M8.5 6h7"/></svg></span>DAG<span class="badge">17</span></button>
+      <button type="button" class="tab" data-tab="dialogue"><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></span>对话</button>
+      <button type="button" class="tab" data-tab="verify" id="tab-verify"><span class="ico"><svg viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/><path d="M4 4h16v16H4z" opacity=".35"/></svg></span>验收</button>
+      <button type="button" class="tab" data-tab="token"><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10h5M9.5 14h5"/></svg></span>Token<span class="badge">1.84M</span></button>
+      <button type="button" class="tab" data-tab="prompts"><span class="ico"><svg viewBox="0 0 24 24"><path d="M7 8l-4 4 4 4M17 8l4 4-4 4M13 5l-2 14"/></svg></span>提示词</button>
+    </nav>
+  </div>
+
+  <!-- FR-5：汇报面板（模块排版密度） -->
+  <div class="mock-zone on" id="p-trunk">
+    <span class="pin zone-tag tabpin">FR-5</span>
+    <div id="panel-trunk">
+      <p class="panel-note">文档最后更新于 10-04 23:36</p>
+      <div class="trunk-grid">
+        <div class="t-mod">
+          <div class="t-head"><h5>为何做</h5><span class="t-meta">由来与触发场景</span><span class="t-src">文档</span></div>
+          <p>旧详情页把十来个区块一次性铺进一屏，读者既读不完也数不清；本需求把它改成「先回答四个问题」。</p>
+          <div class="srcline">来源：requirement.md · <a href="#p-trunk">点开看原文 →</a></div>
+        </div>
+        <div class="t-mod">
+          <div class="t-head"><h5>解决什么</h5><span class="t-meta">问题定义 · 影响面 · 收益预期</span><span class="t-src">文档 台账</span></div>
+          <ul>
+            <li>缺口不可数：没有一处集中回答「卡在哪」。</li>
+            <li>面板不可数：未激活的面板也在 DOM 里，渲染慢且读不完。</li>
+          </ul>
+          <div class="t-fact">旧详情页区块数 <b>11</b> · src/client/views/stage-detail.ts:190</div>
+        </div>
+        <div class="t-mod">
+          <div class="t-head"><h5>怎么做</h5><span class="t-src">文档</span></div>
+          <p>常驻头部 + 状态带三格 + 七个同级 Tab；Tab 切到才请求，同一 revision 内切回命中缓存。</p>
+          <div class="srcline">来源：design/frontend.md · <a href="#p-trunk">点开看原文 →</a></div>
+        </div>
+        <div class="t-mod">
+          <div class="t-head"><h5>边界</h5><span class="t-src">文档</span></div>
+          <p>不做内层滚动：面板一律铺开，长了走页面滚动（内层滚动条会把「有多少」变成不可数）。</p>
+        </div>
+        <div class="t-mod">
+          <div class="t-head"><h5>关键决策</h5><span class="t-src">文档 人工</span></div>
+          <p>否掉「渲染全部再 CSS 隐藏」：那等于把禁止项放进 DOM，querySelector 一查就有。</p>
+        </div>
+        <div class="t-mod">
+          <div class="t-head"><h5>技术方案</h5><span class="t-src">文档</span></div>
+          <p class="t-missing">文档未提供该节（不编、不留白）。</p>
+        </div>
+        <div class="t-mod wide">
+          <div class="t-head"><h5>亮点与成效</h5><span class="t-src">文档 自动</span></div>
+          <div class="hl"><span class="hl-diff">缺口清单把「该有而没有」逐条摊开，并指得回原文</span><span class="hl-why">读者不必自己拼线索</span><span class="hl-ev">scripts/req-report-probe.mts:1</span></div>
+          <div class="hl"><span class="hl-diff">亮点反应付：无证据的差异单独成组</span><span class="hl-why">混在一起就分不出哪条能核验</span></div>
+          <div class="srcline">已达成：四组合渲染探针落地（本卡）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FR-6：文档 / 对话 / Token / 提示词 四个面板（Tab 栏可点击切换） -->
+  <div class="mock-zone" id="p-panels">
+    <span class="pin zone-tag tabpin">FR-6</span>
+
+    <!-- 文档 Tab：验收单节提出后剩 documents / generated / discovered 三分节 -->
+    <div id="panel-docs" class="d-none">
+      <div class="move-note">
+        「核验 · 验收单」已从本 Tab 提出，独立为「验收」Tab（FR-8）。
+        <button type="button" data-goto-tab="verify">去验收 Tab →</button>
+      </div>
+      <div class="blk">
+        <div class="blk-head">
+          <span class="blk-title">确定文档</span>
+          <span class="blk-hint">共 7 份 · 全部铺开 · 正文点开才取 · 只列人写的交付物</span>
+        </div>
+        <table class="dt">
+          <thead><tr><th>类型</th><th>路径</th><th>登记时间</th><th>状态</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>需求</td><td class="doc-path">requirement.md</td><td class="num">10-04 17:42</td><td><span class="mini-state ok">已确认</span></td><td><button type="button" class="open-link">打开</button></td></tr>
+            <tr><td>设计</td><td class="doc-path">design/frontend.md</td><td class="num">10-04 18:20</td><td><span class="mini-state ok">已确认</span></td><td><button type="button" class="open-link">打开</button></td></tr>
+            <tr><td>设计</td><td class="doc-path">design/architecture.md</td><td class="num">10-04 18:31</td><td><span class="mini-state wait">待确认</span></td><td><button type="button" class="open-link">打开</button></td></tr>
+            <tr><td>拆分计划</td><td class="doc-path">decomposition.md</td><td class="num">10-04 19:05</td><td><span class="mini-state ok">已确认</span></td><td><button type="button" class="open-link">打开</button></td></tr>
+            <tr><td>任务卡</td><td class="doc-path">tasks/t-98684c.md</td><td class="num">10-04 21:14</td><td><span class="mini-state ok">已确认</span></td><td><button type="button" class="open-link">打开</button></td></tr>
+            <tr><td>原型</td><td class="doc-path">prototypes/detail.html</td><td class="num">10-04 22:58</td><td><span class="mini-state ok">已确认 · 权威版本</span></td><td><button type="button" class="open-link">打开</button></td></tr>
+            <tr><td>笔记</td><td class="doc-path">notes/probe-log.md</td><td class="num">10-04 23:20</td><td><span class="mini-state wait">待确认</span></td><td><button type="button" class="open-link">打开</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="blk">
+        <div class="blk-head">
+          <span class="blk-title">生成物（工具重建，不是人写的文档）</span>
+          <span class="blk-hint">共 2 项 · 全部铺开</span>
+        </div>
+        <table class="dt">
+          <tbody>
+            <tr><td>需求台账快照</td><td class="doc-path">queue.json</td><td><span class="mini-state auto">自动维护</span></td><td><button type="button" class="open-link">打开</button></td></tr>
+            <tr><td>RTM 追溯矩阵</td><td class="doc-path">rtm-coverage.yml</td><td><span class="mini-state auto">自动维护</span></td><td><button type="button" class="open-link">打开</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="blk">
+        <div class="blk-head">
+          <span class="blk-title">其它发现（自动扫描到的非交付物）</span>
+          <span class="blk-hint">共 20 项 / 3 类 · 按类型分组计数，每类最多 3 个样例</span>
+        </div>
+        <table class="dt">
+          <tbody>
+            <tr>
+              <td style="white-space:nowrap">图片（截图 / 证据图）</td><td class="num">12 个</td>
+              <td class="doc-path">shot-a11y.png · shot-before.png · shot-after.png</td>
+              <td class="blk-hint">其余 9 个同类，去文档目录查看</td>
+            </tr>
+            <tr>
+              <td style="white-space:nowrap">TypeScript 脚本</td><td class="num">5 个</td>
+              <td class="doc-path">req-report-probe.mts · capture-shot.mts</td>
+              <td class="blk-hint">其余 3 个同类，去文档目录查看</td>
+            </tr>
+            <tr>
+              <td style="white-space:nowrap">纯文本（命令输出）</td><td class="num">3 个</td>
+              <td class="doc-path">probe-output.txt</td>
+              <td class="blk-hint">其余 2 个同类，去文档目录查看</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 对话 Tab（v1.4 · D-5 + D-6 + D-7）：聊天 App 形态 —— 气泡消息（人靠右蓝 / 窗口·agent 靠左紫 / 系统居中灰丸）
+         + 吸顶醒目分页条（滚动容器内顶部 sticky：浅蓝工具条 + 主色实心按钮，向上加载更早，D-7）
+         + 正序固定高内滚动 + 底部只读说明行（D-6：历史聊天记录，无发送入口） -->
+    <div id="panel-dialogue" class="d-none">
+      <div class="blk chat-panel">
+        <div class="chat-scroll">
+          <div class="chat-pager">
+            <button type="button" class="btn primary sm">↑ 加载更早消息</button>
+            <span class="pg-info"><b class="pg-page">第 2/4 页</b><span class="pg-loaded">已加载 40/152 条</span></span>
+            <span class="pg-hint">已滚动停留在底部（最新），无「加载更新」</span>
+          </div>
+          <div class="cmsg right">
+            <span class="avatar av-human" title="人">人</span>
+            <div class="cmsg-col">
+              <div class="cmsg-meta"><span class="cmsg-at">10-04 21:40</span><b class="who-name">人</b></div>
+              <div class="bubble b-human">先对一下口径：验收单塞在「文档」Tab 里太挤了，要不要单开一枚 Tab？</div>
+            </div>
+          </div>
+          <div class="cmsg left">
+            <span class="avatar av-window" title="窗口 agent">w</span>
+            <div class="cmsg-col">
+              <div class="cmsg-meta"><b class="who-name">窗口 w-b262610a</b><span class="cmsg-at">10-04 21:58</span></div>
+              <div class="bubble b-window">建议单开「验收」Tab，插在对话和 Token 之间；文档 Tab 只留确定文档 / 生成物 / 其它发现三分节。</div>
+            </div>
+          </div>
+          <div class="chat-sys"><span class="evt">阶段推进：设计 → 拆分</span> <span class="inferred">（回填：按 createdAt 反推，非实时）</span></div>
+          <div class="cmsg left">
+            <span class="avatar av-window" title="窗口 agent（任务 t-98684c）">a</span>
+            <div class="cmsg-col">
+              <div class="cmsg-meta"><b class="who-name">agent t-98684c</b><span class="cmsg-at">10-04 22:05</span></div>
+              <div class="bubble b-window">渲染探针四组合已跑通 2 组；Tab 显隐用 hash 直开，评审截图都走 #tab-*。</div>
+            </div>
+          </div>
+          <div class="cmsg right">
+            <span class="avatar av-human" title="人">人</span>
+            <div class="cmsg-col">
+              <div class="cmsg-meta"><span class="cmsg-at">10-04 22:47</span><b class="who-name">人</b></div>
+              <div class="bubble b-human">状态带三格定稿前，先把缺口只列最严重 5 条的口径写进设计稿。</div>
+            </div>
+          </div>
+          <div class="cmsg left">
+            <span class="avatar av-window" title="窗口 agent">w</span>
+            <div class="cmsg-col">
+              <div class="cmsg-meta"><b class="who-name">窗口 w-b262610a</b><span class="cmsg-at">10-04 22:52</span></div>
+              <div class="bubble b-window">收到，已把「首屏只列 5 条 + 余量计数行」写进 design/frontend.md §状态带。</div>
+            </div>
+          </div>
+          <div class="chat-sys"><span class="evt">验收单 v1 已提交 → 待审核</span></div>
+          <div class="cmsg left">
+            <span class="avatar av-window" title="窗口 agent（任务 t-98684c）">a</span>
+            <div class="cmsg-col">
+              <div class="cmsg-meta"><b class="who-name">agent t-98684c</b><span class="cmsg-at">10-04 23:05</span></div>
+              <div class="bubble b-window">渲染探针四组合已跑通 3 组；「隐藏面板不在 DOM」这组等壳改完再验。</div>
+            </div>
+          </div>
+          <div class="cmsg left" id="dlg-long">
+            <span class="avatar av-window" title="窗口 agent">w</span>
+            <div class="cmsg-col">
+              <div class="cmsg-meta"><b class="who-name">窗口 w-b262610a</b><span class="cmsg-at">10-04 23:11</span></div>
+              <div class="bubble b-window b-long"><span class="b-flag">长日志已收纳</span>[产物自动发现] 扫描需求目录：补登 141 个过程产物、回填 0 个过期种类（落进 docs/requirements/REQ-261004222448-292a/queue.json 与 rtm-*.yml）。明细：artifact-0.png、artifact-1.png、artifact-2.png …（共 600 条，此处省略）</div>
+              <button type="button" class="b-expand c-expand" data-expand="dlg-long">展开</button>
+            </div>
+          </div>
+          <div class="cmsg right">
+            <span class="avatar av-human" title="人">人</span>
+            <div class="cmsg-col">
+              <div class="cmsg-meta"><span class="cmsg-at">10-04 23:30</span><b class="who-name">人</b></div>
+              <div class="bubble b-human">口径可以，继续。验收单记得等缺口清零再交。</div>
+            </div>
+          </div>
+        </div>
+        <div class="chat-ro-note">历史聊天记录 · 只读 —— 会话消息按 createdAt 正序回填，共 152 条，本页 40 条</div>
+      </div>
+    </div>
+
+    <!-- Token Tab：汇总卡 + 按节点等宽右对齐表格 -->
+    <div id="panel-token" class="d-none">
+      <div class="stat-grid">
+        <div class="stat"><div class="s-lab">累计 Token</div><div class="s-num">1.84<small>M</small></div><div class="s-sub">17 个节点合计</div></div>
+        <div class="stat"><div class="s-lab">输入</div><div class="s-num">1.21<small>M</small></div><div class="s-sub">占 66%</div></div>
+        <div class="stat"><div class="s-lab">输出</div><div class="s-num">0.42<small>M</small></div><div class="s-sub">占 23%</div></div>
+        <div class="stat"><div class="s-lab">缓存命中</div><div class="s-num">34<small>%</small></div><div class="s-sub">命中 0.63M · 省费口径同服务端</div></div>
+      </div>
+      <div class="blk">
+        <div class="blk-head">
+          <span class="blk-title">按节点</span>
+          <span class="blk-hint">7 行 · 数字等宽右对齐 · 无快照的节点写「未采集」不写 0</span>
+        </div>
+        <table class="dt">
+          <thead><tr><th>节点</th><th>阶段</th><th class="r">输入</th><th class="r">输出</th><th class="r">缓存命中</th><th class="r">合计</th><th class="r">时长</th></tr></thead>
+          <tbody>
+            <tr><td>n-立项</td><td>draft</td><td class="r">38,210</td><td class="r">9,840</td><td class="r">12%</td><td class="r">48,050</td><td class="r">6 分</td></tr>
+            <tr><td>n-需求分析</td><td>brainstorming</td><td class="r">121,400</td><td class="r">41,220</td><td class="r">28%</td><td class="r">162,620</td><td class="r">22 分</td></tr>
+            <tr><td>n-设计</td><td>design</td><td class="r">204,930</td><td class="r">58,410</td><td class="r">31%</td><td class="r">263,340</td><td class="r">35 分</td></tr>
+            <tr><td>n-拆分</td><td>decomposing</td><td class="r">96,750</td><td class="r">22,080</td><td class="r">40%</td><td class="r">118,830</td><td class="r">14 分</td></tr>
+            <tr><td>n-实施 · t-98684c</td><td>implementing</td><td class="r">342,116</td><td class="r">118,902</td><td class="r">37%</td><td class="r">461,018</td><td class="r">1 小时 12 分</td></tr>
+            <tr><td>n-实施 · t-2be0cd</td><td>implementing</td><td class="r">289,444</td><td class="r">97,335</td><td class="r">33%</td><td class="r">386,779</td><td class="r">58 分</td></tr>
+            <tr><td>n-实施 · t-b9dd2c</td><td>implementing</td><td class="r">117,150</td><td class="r">72,213</td><td class="r">未采集</td><td class="r">189,363</td><td class="r">在跑</td></tr>
+            <tr style="font-weight:600"><td>合计</td><td></td><td class="r">1,210,000</td><td class="r">420,000</td><td class="r">34%</td><td class="r">1,840,000</td><td class="r">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 提示词 Tab：注入信息 + 片段列表 -->
+    <div id="panel-prompts" class="d-none">
+      <div class="blk">
+        <div class="blk-head">
+          <span class="blk-title">它被告知了什么 · 本次注入</span>
+          <span class="blk-hint">装配服务可得 · 数据来自 GET /requirements/:id/prompts</span>
+        </div>
+        <div class="info-strip">
+          <span class="chip">routeKey <b class="num">pm-worker-standard</b></span>
+          <span class="chip">命中 <b>精确命中</b></span>
+          <span class="chip">片段 <b class="num">6</b></span>
+          <span class="chip">字符 <b class="num">8,412</b></span>
+          <span class="chip">本轮估 <b class="num">≈2.1K tok</b></span>
+          <span class="chip">已投递进会话</span>
+        </div>
+        <div class="frag">
+          <span class="f-id">kb-conventions-c-01</span><span class="f-kind">文件</span><span class="f-chars">1,842 字符</span>
+          <span class="f-text"># 约定 · 看板客户端：面板 render 是纯字符串函数；一律铺开，不做内层滚动；空态三种说辞分开……</span>
+        </div>
+        <div class="frag open" id="frag-main">
+          <span class="f-id">kb-map-client</span><span class="f-kind">文件</span><span class="f-chars">2,310 字符</span>
+          <span class="f-text"># 代码地图 · client：report-tabs.ts 注册七个 Tab；panels/*.ts 各自守卫载荷形状……</span>
+          <button type="button" class="c-expand" data-expand="frag-main">收起</button>
+        </div>
+        <div class="prompt-text"># 代码地图 · client（片段正文示意）
+report-tabs.ts …… 注册七个 Tab（汇报/文档/DAG/对话/验收/Token/提示词），
+切到才请求，同一 revision 内切回命中缓存；
+panels/*.ts …… 各自守卫载荷形状，空态三说辞（未采集/不可得/确实没有）。</div>
+        <div class="frag">
+          <span class="f-id">kb-decision-d-10</span><span class="f-kind">文件</span><span class="f-chars">964 字符</span>
+          <span class="f-trim">已截断</span>
+          <span class="f-text"># 决策 D-10：阈值由设计阶段定死，原型只放观测量名与实测值，不摆数字冒充判据……</span>
+        </div>
+        <div class="frag">
+          <span class="f-id">shell-git-status</span><span class="f-kind">shell</span><span class="f-chars">1,208 字符</span>
+          <span class="f-text">$ git status --short（工作区快照，供 agent 对账改动面）……</span>
+        </div>
+        <div class="blk-hint" style="margin-top:6px">另有 2 个片段同形铺列；被裁片段也给正文入口，用来回答「它为什么不知道某个术语」。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FR-7：DAG Tab（画布不重做：灰底占位 + 适配点） -->
+  <div class="mock-zone" id="p-dag">
+    <span class="pin zone-tag tabpin">FR-7</span>
+    <div id="panel-dag" class="d-none">
+      <div class="dag-toolbar">
+        <button type="button" class="tbtn" aria-label="缩小">−</button>
+        <span class="zoom-pct">100%</span>
+        <button type="button" class="tbtn" aria-label="放大">＋</button>
+        <button type="button" class="tbtn">适应窗口</button>
+        <span class="dag-legend">
+          图例：
+          <span><span class="dot" style="background:#CBD5E1"></span>待办</span>
+          <span><span class="dot" style="background:var(--primary)"></span>在跑</span>
+          <span><span class="dot" style="background:var(--green)"></span>完成</span>
+          <span><span class="dot" style="background:var(--red)"></span>阻塞</span>
+        </span>
+      </div>
+      <div class="dag-canvas-ph">
+        <span class="ph-main">此处为现有 DAG 画布组件（不重绘） · 节点 17</span>
+        <span class="ph-sub">画布交互（拖拽 / 缩放 / 命中测试 / 连线布局）沿用 client/dag 现状；本 Tab 只做容器通栏宽度、工具行与空态的新版式适配。</span>
+      </div>
+      <div class="dag-empty-demo">
+        <div class="blk-hint" style="margin-bottom:4px">空态（无任务时）文案：</div>
+        <div class="de-box">暂无任务：这条需求还没有拆分出任务卡。批准拆分计划后，这里画出任务 DAG（层级 / 依赖 / 并行度）。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FR-8：验收 Tab（标本为 implementing 态无验收单 → 主视图空态 + 有单缩小示意） -->
+  <div class="mock-zone" id="p-verify">
+    <span class="pin zone-tag tabpin">FR-8</span>
+    <div id="panel-verify" class="d-none">
+
+      <!-- 主视图：无验收单的解释性空态（当前标本态） -->
+      <div class="verify-empty">
+        <h5>尚无验收单 <span class="mini-state wait">未到验收段</span></h5>
+        <div class="ve-rows">
+          <b>没交</b><span>当前「实施 11/17」，验收材料还未提交——这不是缺失，是流程还没走到。</span>
+          <b>找谁交</b><span>由窗口 agent 用 <code>reqboard_submit(kind=verification)</code> 提交：做了什么 + 怎么验的 + 看到什么结果。</span>
+          <b>交了会看到什么</b><span>这里按 FR 铺开 RTM 验收追踪列表（每 FR 一行：覆盖链 / 怎么验 / 验收状态 / 裁决意见，行展开看逐项实际结果），并给材料摘要、证据清单与历史版本——布局见下方缩小示意；有待裁决项时 Tab 栏给红色计数徽标。</span>
+        </div>
+      </div>
+
+      <!-- 缩小示意：到验收段后的有单布局（虚构示例数据） -->
+      <div class="preview-wrap">
+        <div class="preview-cap">
+          <span class="cap-tag">示意</span>
+          <span>到验收段后长这样（缩小 78%，数据为虚构示例，非本需求真实验收单）</span>
+          <span style="margin-left:auto">Tab 徽标届时显示：验收 <span class="badge-red">2</span>（待裁决 2 项）</span>
+        </div>
+        <div class="preview-inner">
+
+          <!-- ① RTM 验收追踪列表（v1.5 · D-8：每 FR 一行；逐项实际结果降级为行详情，行可展开） -->
+          <div class="blk">
+            <div class="blk-head">
+              <span class="blk-title">RTM 验收追踪 · 每 FR 一行</span>
+              <span class="blk-hint">生成于 10-05 22:40 · 提交人 窗口 w-b262610a · 数据来自 rtm-accepting.yml 的 acceptance_tracking</span>
+            </div>
+            <div class="rtm-progress">
+              <span>FR 验收进度 <b>5/8</b> 通过 · <b>2</b> 待裁决 · <b>1</b> 不通过</span>
+              <span class="chip">验收单 v2 · 返工续验只含未过项</span>
+            </div>
+            <table class="dt">
+              <thead><tr><th>FR</th><th>覆盖链（设计→任务→测试）</th><th>怎么验</th><th>验收状态</th><th>裁决 / 意见</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><button type="button" class="rtm-toggle" data-rtm="rtm-d1" aria-label="展开">▸</button><span class="rtm-fr">FR-1</span> <span class="rtm-name">头部信息分层</span></td>
+                  <td><span class="cov ok">设计 ✓</span><span class="cov ok">任务 ✓</span><span class="cov ok">测试 ✓</span></td>
+                  <td class="rtm-ver" title="headless Chrome 实测头部三层结构（标识行/标题行/操作行）与操作区聚类断言">headless 实测头部三层结构与操作区聚类断言</td>
+                  <td><span class="verdict pass">✅ 通过</span></td>
+                  <td class="rtm-judge">10-05 22:52 人裁决</td>
+                </tr>
+                <tr class="rtm-detail" id="rtm-d1"><td colspan="5">
+                  <div class="rtm-ev"><span class="src-tag">task t-98684c</span><span>pnpm test tests/head-layers → 三层结构 / 操作区聚类断言 9 项通过</span><span class="ev-link">证据：verification/shot-head.png</span></div>
+                </td></tr>
+                <tr>
+                  <td><button type="button" class="rtm-toggle" data-rtm="rtm-d2" aria-label="收起">▾</button><span class="rtm-fr">FR-2</span> <span class="rtm-name">状态带三格视觉权重</span></td>
+                  <td><span class="cov ok">设计 ✓</span><span class="cov ok">任务 ✓</span><span class="cov ok">测试 ✓</span></td>
+                  <td class="rtm-ver" title="缺口格焦点样式断言可自验；首屏视觉层级权重只能人看">缺口格焦点断言可自验；视觉权重需人看</td>
+                  <td><span class="verdict pend">⏳ 待裁决</span> <span class="nh-flag">无法自验·需人工</span></td>
+                  <td><button type="button" class="btn primary sm">通过</button> <button type="button" class="btn danger sm">不通过</button></td>
+                </tr>
+                <tr class="rtm-detail open" id="rtm-d2"><td colspan="5">
+                  <div class="rtm-ev"><span class="src-tag">task t-98684c</span><span>pnpm test tests/band-focus → 缺口格红底 / 色条 / 计数徽标断言 7 项通过</span></div>
+                  <div class="rtm-ev"><span class="src-tag">requirement</span><span class="nh-flag">需人工</span><span>首屏视觉层级只能人看 — humanReason：界面视觉判断 agent 跑不了</span></div>
+                </td></tr>
+                <tr>
+                  <td><button type="button" class="rtm-toggle" data-rtm="rtm-d3" aria-label="展开">▸</button><span class="rtm-fr">FR-3</span> <span class="rtm-name">最近评论区紧凑化</span></td>
+                  <td><span class="cov ok">设计 ✓</span><span class="cov ok">任务 ✓</span><span class="cov ok">测试 ✓</span></td>
+                  <td class="rtm-ver" title="长日志默认收纳为一行、点击就地展开；评论区纵向占用收敛约 60%">长日志默认收纳一行、点击就地展开断言</td>
+                  <td><span class="verdict pass">✅ 通过</span></td>
+                  <td class="rtm-judge">10-05 22:53 人裁决</td>
+                </tr>
+                <tr class="rtm-detail" id="rtm-d3"><td colspan="5">
+                  <div class="rtm-ev"><span class="src-tag">task t-2be0cd</span><span>pnpm test tests/comments-fold → 600 条明细默认收纳 1 行、点击就地展开，通过</span><span class="ev-link">证据：verification/probe-report.md</span></div>
+                </td></tr>
+                <tr>
+                  <td><button type="button" class="rtm-toggle" data-rtm="rtm-d4" aria-label="展开">▸</button><span class="rtm-fr">FR-4</span> <span class="rtm-name">进度带与 Tab 栏紧凑化</span></td>
+                  <td><span class="cov ok">设计 ✓</span><span class="cov ok">任务 ✓</span><span class="cov ok">测试 ✓</span></td>
+                  <td class="rtm-ver" title="1280 视口实测：4px 色条单行、7 枚 Tab 单行不断行、徽标等宽">1280 实测 7 Tab 单行不断行、徽标等宽</td>
+                  <td><span class="verdict pass">✅ 通过</span></td>
+                  <td class="rtm-judge">10-05 22:53 人裁决</td>
+                </tr>
+                <tr class="rtm-detail" id="rtm-d4"><td colspan="5">
+                  <div class="rtm-ev"><span class="src-tag">task t-98684c</span><span>pnpm test tests/tabs-compact → 7 Tab 单行不断行、计数徽标等宽，通过</span></div>
+                </td></tr>
+                <tr>
+                  <td><button type="button" class="rtm-toggle" data-rtm="rtm-d5" aria-label="展开">▸</button><span class="rtm-fr">FR-5</span> <span class="rtm-name">汇报 Tab 模块排版密度</span></td>
+                  <td><span class="cov ok">设计 ✓</span><span class="cov ok">任务 ✓</span><span class="cov miss">测试 ✗</span></td>
+                  <td class="rtm-ver" title="模块标题与来源并一行、短模块 2×2 网格、正文 12.5px 紧凑行高">模块头并一行 / 2×2 网格 / 紧凑行高断言</td>
+                  <td><span class="verdict pend">⏳ 待裁决</span></td>
+                  <td><button type="button" class="btn primary sm">通过</button> <button type="button" class="btn danger sm">不通过</button></td>
+                </tr>
+                <tr class="rtm-detail" id="rtm-d5"><td colspan="5">
+                  <div class="rtm-ev"><span class="src-tag">task t-b9dd2c</span><span>pnpm test tests/trunk-density → 模块头合并、2×2 网格断言通过；测试链 ✗ = rtm-accepting 尚未回填</span></div>
+                </td></tr>
+                <tr>
+                  <td><button type="button" class="rtm-toggle" data-rtm="rtm-d6" aria-label="展开">▸</button><span class="rtm-fr">FR-6</span> <span class="rtm-name">文档/对话/Token/提示词 Tab</span></td>
+                  <td><span class="cov ok">设计 ✓</span><span class="cov ok">任务 ✓</span><span class="cov ok">测试 ✓</span></td>
+                  <td class="rtm-ver" title="原型锚点对照：detail.html 各 FR 部位与实现一致">prototype-compare 锚点 8/8 命中</td>
+                  <td><span class="verdict pass">✅ 通过</span></td>
+                  <td class="rtm-judge">10-05 22:54 人裁决</td>
+                </tr>
+                <tr class="rtm-detail" id="rtm-d6"><td colspan="5">
+                  <div class="rtm-ev"><span class="src-tag">prototype-compare</span><span>锚点 8/8 命中；四面板可切换</span><span class="ev-link">证据：verification/prototype-diff.md</span></div>
+                </td></tr>
+                <tr>
+                  <td><button type="button" class="rtm-toggle" data-rtm="rtm-d7" aria-label="展开">▸</button><span class="rtm-fr">FR-7</span> <span class="rtm-name">DAG Tab 沿用画布适配</span></td>
+                  <td><span class="cov ok">设计 ✓</span><span class="cov ok">任务 ✓</span><span class="cov miss">测试 ✗</span></td>
+                  <td class="rtm-ver" title="裁定对照 D-3：画布组件未重绘；容器通栏 / 工具行 / 空态文案适配">decision-compare：D-3 画布未重绘 ✓ + 适配点截图</td>
+                  <td><span class="verdict pass">✅ 通过</span></td>
+                  <td class="rtm-judge">10-05 22:54 人裁决</td>
+                </tr>
+                <tr class="rtm-detail" id="rtm-d7"><td colspan="5">
+                  <div class="rtm-ev"><span class="src-tag">decision-compare</span><span>D-3 画布未重绘 ✓</span><span class="ev-link">证据：verification/shot-dag.png</span></div>
+                </td></tr>
+                <tr>
+                  <td><button type="button" class="rtm-toggle" data-rtm="rtm-d8" aria-label="展开">▸</button><span class="rtm-fr">FR-8</span> <span class="rtm-name">新增「验收」Tab</span></td>
+                  <td><span class="cov ok">设计 ✓</span><span class="cov ok">任务 ✓</span><span class="cov ok">测试 ✓</span></td>
+                  <td class="rtm-ver" title="裁定对照 D-8：验收 Tab 主视图应为 RTM 验收追踪列表">decision-compare：D-8 主视图应为 RTM 列表</td>
+                  <td><span class="verdict fail">✖ 不通过</span></td>
+                  <td class="rtm-judge">10-06 09:12 人裁决 · 意见：主视图仍是逐项表，未按 D-8 改 RTM 列表 → 退回返工</td>
+                </tr>
+                <tr class="rtm-detail" id="rtm-d8"><td colspan="5">
+                  <div class="rtm-ev"><span class="src-tag">decision-compare</span><span>D-8 ✗ — 实际仍逐项表；返工后重验（本版 v1.5 即按此意见改）</span></div>
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ② 验收材料摘要 + 证据清单 -->
+          <div class="blk">
+            <div class="blk-head"><span class="blk-title">验收材料</span><span class="blk-hint">交付结论 + 证据清单</span></div>
+            <p class="ver-sum"><b>交付结论：</b>首屏四区 + 七个 Tab 全部落地；FR 验收进度 5/8 通过，FR-8 不通过待返工后续验（返工续验只含未过项）。</p>
+            <ul class="ev-list">
+              <li>pnpm test tests/report-tabs → 42 passed（输出摘要见任务卡 t-b9dd2c）</li>
+              <li>报告：docs/requirements/REQ-261004222448-292a/verification/probe-report.md</li>
+              <li>截图：verification/shot-first-screen.png（1280×800 首屏）</li>
+            </ul>
+          </div>
+
+          <!-- ③ 历史版本 -->
+          <div class="blk">
+            <div class="blk-head"><span class="blk-title">历史版本</span><span class="blk-hint">验收单每次提交一个版本，驳回留痕不丢</span></div>
+            <div class="hist-row"><span class="h-ver">v2</span><span class="verdict pend">⏳ 待裁决</span><span class="h-note">10-05 22:40 · 当前版本 · 返工续验（只含未过项 FR-8；FR-2 / FR-5 待人裁决）</span></div>
+            <div class="hist-row"><span class="h-ver">v1</span><span class="verdict fail">✖ 已退回返工</span><span class="h-note">10-05 21:12 · 审核意见：长日志收纳标缺计数，退回 t-2be0cd 返工</span></div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- proto-geometry {"observations":[{"name":"tabsTop","value":1041,"unit":"px","at":{"width":1280,"state":"inflight"},"note":"v1.5 横幅加 v1.5 变更句未再换行，重测仍 1041（v1.4 时 1022 → 1041，v1.3 时 1003 → 1022，v1.2 时 965 → 1003）；验收面板不在首屏"},{"name":"headHeight","value":133,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"bandHeight","value":185,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"verifyTabIndex1Based","value":5,"unit":"count","at":{"width":1280,"state":"inflight"}}]} -->
+
+<div id="diag" style="display:none"></div>
+<script>
+(function () {
+  // Tab 切换演示（vanilla JS，无框架）：7 个 Tab ↔ 7 块面板
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('#proto-tabs .tab'))
+  var panels = {
+    trunk: document.getElementById('panel-trunk'),
+    docs: document.getElementById('panel-docs'),
+    dag: document.getElementById('panel-dag'),
+    dialogue: document.getElementById('panel-dialogue'),
+    verify: document.getElementById('panel-verify'),
+    token: document.getElementById('panel-token'),
+    prompts: document.getElementById('panel-prompts')
+  }
+  // Tab key → 所属 mock-zone（标注钉随面板一起显隐）
+  var zoneOf = {
+    trunk: 'p-trunk', docs: 'p-panels', dialogue: 'p-panels', token: 'p-panels',
+    prompts: 'p-panels', dag: 'p-dag', verify: 'p-verify'
+  }
+  function activate(key) {
+    tabs.forEach(function (x) { x.classList.toggle('active', x.getAttribute('data-tab') === key) })
+    Object.keys(panels).forEach(function (k) {
+      if (panels[k]) panels[k].classList.toggle('d-none', k !== key)
+    })
+    ;['p-trunk', 'p-panels', 'p-dag', 'p-verify'].forEach(function (id) {
+      document.getElementById(id).classList.toggle('on', zoneOf[key] === id)
+    })
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () { activate(t.getAttribute('data-tab')) })
+  })
+  // 面板内「去验收 Tab →」快捷跳转
+  document.querySelectorAll('[data-goto-tab]').forEach(function (b) {
+    b.addEventListener('click', function () { activate(b.getAttribute('data-goto-tab')) })
+  })
+  // 长评论 / 长消息 / 片段 展开收起
+  document.querySelectorAll('.c-expand').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var row = document.getElementById(b.getAttribute('data-expand'))
+      row.classList.toggle('open')
+      b.textContent = row.classList.contains('open') ? '收起' : '展开'
+    })
+  })
+  // 结果与成效占位态展开
+  var oc = document.getElementById('outcome-cell')
+  var ot = document.getElementById('outcome-toggle')
+  ot.addEventListener('click', function () {
+    oc.classList.toggle('open')
+    ot.textContent = oc.classList.contains('open') ? '收起' : '展开说明'
+  })
+  // RTM 验收追踪列表：行展开/收起（逐项实际结果 = 行详情）
+  document.querySelectorAll('.rtm-toggle').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var d = document.getElementById(b.getAttribute('data-rtm'))
+      if (!d) return
+      d.classList.toggle('open')
+      b.textContent = d.classList.contains('open') ? '▾' : '▸'
+      b.setAttribute('aria-label', d.classList.contains('open') ? '收起' : '展开')
+    })
+  })
+  // 几何实测（供 headless Chrome --dump-dom 读取；量的是整页稿内的部位）
+  // 另支持 #tab-<key> 直开某个面板（评审 / 截图用）
+  var hashTab = (location.hash || '').replace(/^#tab-/, '')
+  if (panels[hashTab]) activate(hashTab)
+  function measure() {
+    var tabsTop = Math.round(document.getElementById('proto-tabs').getBoundingClientRect().top + window.scrollY)
+    var headHeight = Math.round(document.getElementById('proto-head').getBoundingClientRect().height)
+    var bandHeight = Math.round(document.getElementById('proto-band').getBoundingClientRect().height)
+    var verifyTabIndex = tabs.indexOf(document.getElementById('tab-verify')) + 1
+    document.getElementById('diag').textContent =
+      'tabsTop=' + tabsTop + ';headHeight=' + headHeight + ';bandHeight=' + bandHeight + ';verifyTabIndex=' + verifyTabIndex
+    document.title = 'diag ' + document.getElementById('diag').textContent
+  }
+  if (document.readyState === 'complete') measure()
+  else window.addEventListener('load', measure)
+})()
+</script>
+</body>
+</html>

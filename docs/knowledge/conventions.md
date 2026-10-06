@@ -95,17 +95,16 @@
 
 ### C-14 提交前必须跑测试并与基线比对 #c-14
 - 时机：提交前
-- 命令：`pnpm test`
-- 期望：`退出码可为 1（仓库既有失败），但失败数 ≤ 基线 106 且新增用例全绿`
-- 基线：`npx vitest run` 先在 HEAD worktree 上跑一次取失败数（当前基线 106 failed / 2807 passed），本次不高于它即算过
-- 失败怎么办：与 HEAD 基线比对（见 docs/requirements/REQ-261001110934-3766/evidence/full-test-comparison.txt）；出现新增失败即本次改动引入
+- 命令：`pnpm baseline:check`
+- 期望：`退出码 0（失败用例集合差为空）`
+- 基线：`docs/reviews/test-baseline.md`（现行基线的唯一数字来源；判据是**失败用例集合差**，不是计数上限）
+- 失败怎么办：差集非空先逐条确认是否本次引入；确认非本次引入才跑 `pnpm baseline:refresh`（= 承认现状）并写明理由；判据脚本见 scripts/test-baseline.mts
 
 ### C-15 改了源码必须跑类型检查 #c-15
 - 时机：改动后
 - 命令：`pnpm typecheck`
-- 期望：`退出码 0（改动文件零错误；index.ts 等历史错误另计）`
-- 基线：`npx tsc --noEmit` 先在 HEAD worktree 上跑一次取错误数（当前 223 个），本次不高于它即算过
-- 失败怎么办：按报错文件路径修（如 src/index.ts）；疑似既有历史错误 → 与 HEAD 基线对比确认非本次引入
+- 期望：`退出码 0（错误数与基线文件里的 tsc 读数一致）`
+- 失败怎么办：按报错文件路径修（如 src/index.ts）；疑似历史存量错误 → 与基线文件里同刻的 tsc 读数比对确认非本次引入
 
 ### C-16 改了提示词片段必须重生成产物 #c-16
 - 时机：改动后
@@ -143,6 +142,52 @@
 - 期望：`[通过] 对账对台账副本零改写` + 退出码 0；输出里"改动/新增/删除"三项全为 0
 - 失败怎么办：三项有非 0 ⇒ 对账真的改动了台账，查 src/application/internal/reconcile-terminal-dive.ts 是否绕过了冷侧守卫；演练只在副本上跑。
 
+### C-22 收录/更新上游 skill 资产必须重算指纹 #c-22
+- 时机：改动后
+- 命令：`node scripts/vendor-skills.mjs && node scripts/vendor-skills.mjs --check`
+- 期望：`退出码 0（28 条 sha256 与磁盘一致、清单 7 项与一级目录一致、体积 ≤ 5MB）`
+- 失败怎么办：指纹不一致 ⇒ 有人手改了包内资产（`--check` 会点名到文件），重跑收录脚本还原；上游换版本 ⇒ 显式 `--from <签出目录>` 替换 + 重跑本命令 + 在需求目录留变更说明（**禁止静默漂移**）；体积超限 ⇒ 检查裁剪清单，`tests/skills-assets.test.ts` 会一并变红。
+
+### C-23 改了提示词片段必须重生成并校验（一条命令） #c-23
+- 时机：提交前
+- 命令：`pnpm prompts:check`
+- 期望：`退出码 0`（两条脚本各打一行 OK；inline 失败即短路，不会跑到 check）
+- 失败怎么办：`inline-prompt-fragments.mjs` 报产物不存在/写入失败 ⇒ 先单独跑 `node scripts/inline-prompt-fragments.mjs`；`check-prompt-fragments.mjs` 报「与 fragments/**.md 不一致」 ⇒ 有人只改了 src/domain/prompt/fragments/** 或只改了 src/domain/prompt/generated/fragments.ts，重生成前不许提交；报「heavy.md ↔ vendor 原文不一致」 ⇒ 把 vendor/superpowers/<skill>/SKILL.md 原样复制为 fragments/<stage>/heavy.md（逐字节）。
+
+### C-24 模板与门禁必须同源（节名与必填节） #c-24
+- 时机：改动后
+- 命令：`pnpm templates:check`
+- 期望：`退出码 0`（R1/R2 两条探针各打一行 OK，缺口 0）
+- 失败怎么办：R1 点名某份模板缺必填节/缺 serves ⇒ 补 templates/**/*.md 正文（不是放宽门禁）；报「未登记占位符」 ⇒ 在 scripts/template-render-map.json 登记取值；R2 报「模板多一节 / 少一节」 ⇒ 对齐 templates/brainstorming/<category>.md 的 H2 与门禁必填节集合（真源 src/application/internal/category-doc-sets.ts），别改探针凑绿。
+
+### C-25 模板探针的标本模式（人为改坏必红） #c-25
+- 时机：改动后
+- 命令：`pnpm templates:probe`
+- 期望：`退出码 0`（每条标本都按预期判红，末尾 specimen OK）
+- 失败怎么办：某条标本「没判红」 ⇒ 探针本身空转，先修探针再谈模板（改的是 scripts/template-gate-probe.mts 与 scripts/doc-section-parity.mts 的 specimen 分支）；标本报 ERROR（退出码 2） ⇒ 前置不可用（模板目录/渲染映射表读不出），先补环境。
+
+### C-26 提示词注入面里的路径指针必须可达 #c-26
+- 时机：改动后
+- 命令：`npx tsx scripts/prompt-path-probe.mts`
+- 期望：`退出码 0` + 输出 `[prompt-path-probe] OK 路径可达…缺口 0`
+- 失败怎么办：FAIL 行逐条点名 `<token> ← 文件:行` ⇒ 该指针指向的文件不存在（多为模板/文档改名或迁移）：把指针改成真实路径；若它确实是「由需求自己生成、当下不存在」的产物名或外部路径，才在 scripts/prompt-path-probe.mts 的 WHITELIST 登记并写清理由。报 ERROR（退出码 2） ⇒ 工作区根或扫描目标缺失，确认在仓库根执行；另外 `--specimen` 必须绿（否则判据空转）。
+
+### C-27 工程操作：pnpm prompts:verify #c-27
+- 时机：改动后
+- 命令：`pnpm prompts:verify`
+- 期望：`退出码 0（命令成功）`
+- 失败怎么办：先看 C-16 / C-17——改了提示词片段却没重生成产物是这条命令最常见的失败；跑 `node scripts/inline-prompt-fragments.mjs` 重生成后再复跑，产物与片段的对应关系见 `scripts/check-prompt-fragments.mjs` 的清单（REQ-261006123819-3af3 FR-4 补齐原骨架占位）
+### C-28 改动后必须提交 #c-28
+- 时机：提交前
+- 命令：`pnpm commit:check --req <REQ-id>`
+- 期望：`退出码 0（打印 OK，且该需求 id 至少有一条提交）`
+- 失败怎么办：按本次改动文件集合 `git add <文件>` 后提交，提交信息含需求 id（如 REQ-261006123819-3af3）；**不要**提交别的窗口的在飞改动；判据脚本见 scripts/commit-check.mts（REQ-261006123819-3af3 FR-5）
+### C-29 全量测试入口 #c-29
+- 时机：提交前
+- 命令：`pnpm test`
+- 期望：`退出码 0 或 1（仓库存量失败），逐条与基线文件比对看新增`
+- 失败怎么办：判据不在这里——按 C-14 的集合差口径逐条确认是否本次引入（REQ-261006123819-3af3 FR-2）
+
 ## 怎么用这份清单 #howto
 
 | 时机 | 动作 |
@@ -151,3 +196,4 @@
 | 改完 | 把这几条的 `校验：` 命令各跑一遍，输出摘要进任务汇报 |
 | 新增纪律 | 在 `#rules` 下加 `### C-NN` 小节 + 一条**真实存在**的校验目标，然后跑 C-09 |
 | 校验失效 | 如果某条命令已经跑不动了，**先修校验再改规则**——没有校验的规则等于没有 |
+

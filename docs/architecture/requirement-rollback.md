@@ -1,7 +1,7 @@
 ---
 title: 需求级回退通道
-updated: 2026-10-04
-source: REQ-261003204149-1e80 / REQ-261004121649-bfa7
+updated: 2026-10-05
+source: REQ-261003204149-1e80 / REQ-261004121649-bfa7 / REQ-261005122915-9f90
 ---
 
 # 需求级回退通道
@@ -60,6 +60,54 @@ reqboard_move(to=<更早阶段>)  或  看板 POST /req/move
   实测 0fbf 的 56 张里仅 17 张两者齐备（另 39 张是子卡膨胀产物、无 `reworkOf`、早已 canceled）。
   序号校验**只管记过序号的记录**——缺 `seq` 的 2 条存量若一律拒绝，兜底路径就永远走不到。
 
+## 回退态重新落库：占位卡不得冒充已落库（REQ-261005122915-9f90）
+
+> 一句话：**占位重做卡是「这些活要重做」的便签，不是「已经落过库的活」**。
+> 把两者混为一谈的代价是整批新卡静默不落库，而状态照常推进。
+
+### 事故形态（2026-10-05 实测 REQ-261005105032-3b02）
+
+```
+回退 implementing → decomposing      → 13 张旧卡 canceled + 13 张占位重做卡（todo）
+重新提交 23 卡计划 → 人批准
+   ├─ landApprovedPlan 幂等判据「有任一未取消任务即已落库」命中 13 张占位卡
+   │     ⇒ alreadyLanded=13、created=[]（23 张新卡一张没落）
+   └─ 两条批准路径仍推进到 implementing
+        ⇒ 状态「实施中」，DAG 上跑的是 13 张**旧计划范围**的卡
+```
+
+当时的绕行手段是「**再回退一次**」——把状态拨回 `decomposing`，好让守卫里那条窄放行条件
+（`rollbackTo === 当前阶段`）成立。本节三条口径就是把这个绕行去掉。
+
+### 三条口径（改动时的红线）
+
+1. **幂等只看真卡**：`landApprovedPlan` 的「已落库」判据 = **未取消且 `reworkOf` 为空**的卡
+   （判据单点在 `domain/task/ReworkPlaceholder.ts`：`isReworkPlaceholder` / `liveRealCards`）。
+   判据不许在别处再写一份（「两份真相必然漂移」）。
+2. **回退态收敛是单一实现、三入口共用**：`application/internal/stale-rework.ts` 的
+   `cancelStaleReworkCards` 必须在**幂等判定之前**调用；入口有三条
+   （手动 `reqboard_decompose`、弹框批准、看板批准），任一入口漏调即回到本事故。
+   **顺序即语义**：先判定会把占位卡算成「真卡已在」而短路。
+3. **落库没真发生就不推进**：两条批准路径都以「本次落了卡 **或** 真卡已在」为推进的充要条件；
+   两者皆 0（例如空计划）时不推进，并把原因如实回给看板。禁止再用「未取消任务数 > 0」当落库证据
+   ——占位卡会让它恒真。
+
+### 两条同族修正
+
+- **再次回退时占位卡随本轮 `canceled`**（`rollback-tasks.ts` 的 `resetTasks` 过滤掉占位卡，
+  并把它显式并进返回体的 `canceled`）：占位卡没有子卡身份，被当子卡「复位回 `todo`」
+  会让它每一轮回退都清不掉、持续污染下一轮的幂等判据。
+- **清场入口接到看板**：需求详情操作条在 `req.rollback` 存在时渲染「清理误物化重做卡」，
+  调同一条 `POST /req/rollback-cleanup` 并逐条展示回执（`matchedBy`/`canceled`/`restoredLinks`/`skipped`）。
+  无回退记录**不渲染**（不给点了必被拒的假按钮）。
+
+### 判别力要求（本节专属）
+
+- 只回退「判据」而不回退「收敛」时测试可能仍绿（收敛先一步把占位卡收掉了）
+  ⇒ 必须有**只有判据能挡**的用例：状态已越过回退（`rollback.to ≠ 当前阶段`）、占位卡还活着的形态。
+- 逆验证脚本 `scripts/rework-inverse-verification.mts` 对四处修复各注入一次旧实现，
+  要求对应用例**变红**、还原后变绿（留档在需求目录 `notes/inverse-verification.md`）。
+
 ## 三条不变量（改动时的红线）
 
 1. **回退放宽的只有方向**：五道人工门的数量与前进语义不得改动；退回去再往上走**必须重新过门**
@@ -80,12 +128,23 @@ reqboard_move(to=<更早阶段>)  或  看板 POST /req/move
 - `http/routers/requirements.ts`——`POST /req/rollback-cleanup` 入口（仅人，无 agent 工具）
 - `application/internal/artifact-gates.ts`——方向性豁免（`isRollback` 一处）
 - `domain/workflow/DecomposeSpec.ts`——回退态放行重建
+- `domain/task/ReworkPlaceholder.ts`——**占位卡判据单点**（`isReworkPlaceholder` / `liveRealCards`）
+- `application/internal/stale-rework.ts`——**回退态收敛的单一实现**（三入口共用）
+- `application/internal/approved-plan-landing.ts`——落库幂等只看真卡（先收敛、后判定）
+- `application/internal/confirm-settle.ts` / `http/routers/requirements.ts`——两条批准路径的推进判据
+- `client/api.ts` / `client/views/stage-detail.ts` / `client/board-mount.ts`——看板清场入口与回执
 
 ## 测试与判别力要求
 
 - `tests/move-rollback.test.ts`（端到端 TC 矩阵 ≥16 例，含双通道对拍）
 - `tests/rollback-materialize.test.ts`（物化边界：只顶层 / 不展开链 / 幂等与上限 / 重复回退两次）
 - `tests/rollback-cleanup.test.ts`（清场边界：精确匹配与幂等 / 不碰 done / 序号校验 / 旧数据兜底 / 父子还原）
+- `tests/rework-placeholder.test.ts` / `tests/decompose-stale-rework.test.ts` /
+  `tests/approved-plan-landing-rework.test.ts` / `tests/rollback-tasks.test.ts` /
+  `tests/client-rollback-cleanup.test.ts` / `tests/reqboard/board-plan-approve.test.ts`
+  （回退态重新落库那一节：判据 / 收敛 / 推进 / 占位卡取消 / 看板入口）
+- 逆验证：`scripts/rework-inverse-verification.mts`（四处注入旧实现必须变红，还原后变绿）
 - 判别力：**撤掉任一处修复，对应用例必须变红**（本仓纪律：只测"能跑"等于没测）
-- 验收材料与逐条证据见 `docs/requirements/REQ-261003204149-1e80/tests/evidence.md`
-  与 `docs/requirements/REQ-261004121649-bfa7/tests/test-evidence.md`
+- 验收材料与逐条证据见 `docs/requirements/REQ-261003204149-1e80/tests/evidence.md`、
+  `docs/requirements/REQ-261004121649-bfa7/tests/test-evidence.md`
+  与 `docs/requirements/REQ-261005122915-9f90/tests/test-evidence.md`

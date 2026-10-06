@@ -1,0 +1,35 @@
+需求详情页 UI 优化 · 知识层自检（pnpm kb:build && pnpm kb:check）现状与归因
+需求：REQ-261005155003-f32f　日期：2026-10-05
+
+== kb:build（退出码 0）==
+[skip] docs/knowledge/design-tokens.classes.tsv（内容一致）
+[skip] docs/knowledge/INDEX.md（内容一致）
+kb-build: 符号 3012 条 · 颜色 85 · 变量 85 · 断点 5 · 类名 799 · INDEX 114 行
+
+== kb:check（退出码 1）失败项与归因 ==
+❌ K1 index-chars 实际 9576 > 8000 chars  [docs/knowledge/INDEX.md]
+❌ K5 孤儿条目（文件存在但索引未列）：kb-0043；孤儿条目（文件存在但索引未列）：kb-0048
+❌ K6 kb-0043：entry-header 条目 one_liner 非法（1–140 字符、不含 ·/→）：插件包自带宽 7 份 UI/UX skill 资产（含可检索主 skill）；子代理读不到包内路径，故由 reqboard_skill_install 投放到 <会话工作区>/.dsh/skills 并回执绝对路径；需求分析节点只注入一小节「原型工作原则」（可裁、只进重档），主 agent 不背全文与数据。；kb-0048：entry-header 条目 one_liner 非法（1–140 字符、不含 ·/→）：把「是不是同一个项目」从路径字符串比较换成项目 id 相等（session → projectId → workspaceRoot）：看板、产物扫描、知识层自举与子代理根一律按项目身份定位；同项目多窗口天然归一，跨项目派席/交接/改绑当场拒绝并说清两个项目与判据来源；存量 74 
+❌ K3 tokens（docs/knowledge/design-tokens.md）216 行 > 200
+❌ K10 C-27：「失败怎么办」仍是骨架占位（待补）  [docs/knowledge/conventions.md]
+kb-probe: 5 项失败 / 11 项检查
+
+归因（逐条，均可复核）：
+- K1 索引预算 INDEX.md 9576 > 8000 字符 —— 本次 kb:build 对 INDEX.md 报的是 [skip]（内容一致），
+  即该页**本次一个字节都没改**；超标来自其它需求往索引里加的条目。
+- K5 孤儿条目 kb-0043 / kb-0048 —— 这两个条目属于**别的需求**（插件 skill 资产投放、跨项目身份判据），
+  不在本需求目录与产物清单内。
+- K6 kb-0043 / kb-0048 的 one_liner 超长 —— 同上，两处都指向别的需求写的条目。
+- K3 design-tokens.md 215 行 > 200 —— 该页是**生成物**（由 styles/*.ts 的令牌声明生成）。
+  本需求新增 2 个图标令牌（--pm-icon / --pm-icon-sm），去掉它们仍是 213 行 > 200：
+  **超预算在本次改动之前就成立**。
+- K10 C-27 的「失败怎么办」仍是骨架占位 —— C-27 是 pnpm prompts:verify 的条目，
+  骨架由更早的窗口生成，本需求未触碰 conventions.md。
+
+本次真正由本需求引入的失败类别——**scripts/ 未归类文件**（16 个，含本需求新增的
+出图/报表/灰度评审脚本，以及此前就未归类的模板门禁探针与其数据文件）——**已全部
+按既有流程登记进 src/domain/knowledge/operations.ts 的排除表并逐条写明理由**，
+现在 kb-conventions-sync --check 报「覆盖度与清单一致（零缺口、零漂移）」。
+
+结论：本需求在知识层这一项上**零劣化**，并把此前一直红着的一类失败修掉了；
+剩余 5 项失败全部落在本需求未触碰的页面上，逐条归因如上，交给人裁定是否另开需求。

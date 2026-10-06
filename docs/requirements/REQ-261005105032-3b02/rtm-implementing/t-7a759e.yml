@@ -1,0 +1,38 @@
+task:
+  id: t-7a759e
+  title: 加文档自检脚本 req-doc-validate.mts（9 项）并并入 R1·测试
+  status: done
+  implements: |-
+    新增 scripts/req-doc-validate.mts：一条命令跑完 9 项文档校验——必填节 / front-matter / 格式门 / 编号链 / 追溯 / RTM 健康 / E2E 覆盖 / serves / dangling；判定函数全部 import 既有实现（content-gates、content-gate-wiring、rtm-health、content-trace），不另写第二份判据；阶段时点清单同源读 StageGateTimeline（t13）。输出默认人类可读逐条 OK/FAIL + 汇总『缺口 n；exit 0|1』，--json 给机器可读结构；退出码 0 通过 / 1 判据失败 / 2 环境不可用。并入 R1：scripts/template-gate-probe.mts 在模板门禁之后调用本脚本的判据集合（或显式 spawn 本脚本并透传退出码），使『模板产物必过门禁』覆盖到文档校验全套。依据 design-brief §6 与 requirement.md FR-11 自检前置。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-5d6dc3
+  phase: test
+  side: doc
+  workflow_params:
+    REQ_ID: REQ-261005105032-3b02
+    TASK_ID: t-7a759e
+    TASK_TITLE: 加文档自检脚本 req-doc-validate.mts（9 项）并并入 R1·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: doc
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T11:04:47.302Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005105032-3b02
+  generated_at: 2026-10-05T11:04:40.440Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T11:04:47.302Z

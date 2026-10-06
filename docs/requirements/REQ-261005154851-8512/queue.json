@@ -1,0 +1,3070 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261005154851-8512",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-05T07:52:41.527Z",
+  "tasks": [
+    {
+      "id": "t-455df9",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "契约先行：同步缝带上难度声明",
+      "cardDoc": "docs/requirements/REQ-261005154851-8512/tasks/t-455df9.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/injection-difficulty.test.ts -t \"T-01\"` 与 `-t \"T-02\"` 全绿：`factsOf({promptDifficulty:'expert'})` 含该键；`factsOf({})` 的结果里 `'promptDifficulty' in facts === false`（不是 undefined 占位）。`npx tsc --noEmit` 0 错误。",
+      "implementation": "`src/domain/requirement/RequirementSummary.ts`：`RequirementFacts` 加可选 `promptDifficulty?: PromptDifficulty`；`factsOf` 按既有可选字段同款写法投影（存在才带键）。建立 `tests/injection-difficulty.test.ts`（文件头 20 行内含 serves 头注），先落 T-01（带声明）与 T-02（不带声明则键不出现）两条投影用例。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "footprint": {
+        "files": 2,
+        "anchors": 3,
+        "chars": 900
+      },
+      "requirementRefs": [
+        "FR-1"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-72dead",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186907712,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2728,
+              "at": 1791186907712,
+              "totals": {
+                "uncachedInputTokens": 940075,
+                "outputTokens": 299814,
+                "cacheReadTokens": 139374208,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2728,
+                  "totals": {
+                    "uncachedInputTokens": 940075,
+                    "outputTokens": 299814,
+                    "cacheReadTokens": 139374208,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2767,
+              "at": 1791186969752,
+              "totals": {
+                "uncachedInputTokens": 945940,
+                "outputTokens": 301150,
+                "cacheReadTokens": 141957120,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2767,
+                  "totals": {
+                    "uncachedInputTokens": 945940,
+                    "outputTokens": 301150,
+                    "cacheReadTokens": 141957120,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 5865,
+              "outputTokens": 1336,
+              "cacheReadTokens": 2582912,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186969752
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186761455,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186907712,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t1 开工：同步缝投影补 promptDifficulty（实现与用例已落盘）。"
+        },
+        {
+          "status": "done",
+          "at": 1791186969752,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t1 收口：两个子卡 done，父卡完工登记已落。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-4a0fbe",
+          "body": "[状态] → in_progress：t1 开工：同步缝投影补 promptDifficulty（实现与用例已落盘）。（reqboard_task_move）",
+          "createdAt": 1791186907712,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-e9f3ab",
+          "body": "[状态] → done：t1 收口：两个子卡 done，父卡完工登记已落。（reqboard_task_move）",
+          "createdAt": 1791186969752,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186761455,
+      "updatedAt": 1791186969752,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791186913298,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/domain/requirement/RequirementSummary.ts",
+          "tests/injection-difficulty.test.ts"
+        ],
+        "completed": [
+          "RequirementFacts 加可选 promptDifficulty；factsOf 同款可选投影（缺省则键不出现）",
+          "T-01 / T-02 两条投影用例落盘；tsc --noEmit 0 错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186913298,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d7efd0",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "三处接线：让声明难度在每条注入路径上算数",
+      "cardDoc": "docs/requirements/REQ-261005154851-8512/tasks/t-d7efd0.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-455df9"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/injection-difficulty.test.ts` 全绿（T-03~T-06、T-09、T-10）：expert/advanced → heavy；simple/standard → light；声明 simple 而文本推断重时取**重**；三处入口对同一需求画面档位一致；有声明时留痕含「声明难度 → 取词档」依据句。`npx vitest run tests/difficulty-mapping.test.ts tests/content-gates.test.ts tests/decision-gates.test.ts` 全绿；`npx tsc --noEmit` 0 错误。",
+      "implementation": "三处取词调用点按 design/interfaces.md 接上声明难度：`src/application/internal/capture-section.ts` 与 `src/application/dive/session-driver.ts` 在调 `resolveStagePrompt` 时传 `difficultyFromDeclaredPrompt(stageReq.promptDifficulty)`（未声明则不传该键；采集半同时补 requirement 文本，仍只留痕不投递）；`src/application/use-cases/IsolateNodeContext.ts` 的 `buildNodeInputPackage({ difficulty })` 改为「调用方显式优先 → 否则用声明映射」。用例补在同文件（T-03~T-06、T-09、T-10）。",
+      "context": "",
+      "footprint": {
+        "files": 4,
+        "anchors": 6,
+        "chars": 2200
+      },
+      "requirementRefs": [
+        "FR-2",
+        "FR-3",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-7ddab5",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186969872,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2769,
+              "at": 1791186969872,
+              "totals": {
+                "uncachedInputTokens": 945940,
+                "outputTokens": 301150,
+                "cacheReadTokens": 141957120,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2769,
+                  "totals": {
+                    "uncachedInputTokens": 945940,
+                    "outputTokens": 301150,
+                    "cacheReadTokens": 141957120,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2812,
+              "at": 1791187035611,
+              "totals": {
+                "uncachedInputTokens": 952941,
+                "outputTokens": 303301,
+                "cacheReadTokens": 143915904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2812,
+                  "totals": {
+                    "uncachedInputTokens": 952941,
+                    "outputTokens": 303301,
+                    "cacheReadTokens": 143915904,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 7001,
+              "outputTokens": 2151,
+              "cacheReadTokens": 1958784,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791187035611
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186761455,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186969872,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t2 开工：三处接线（实现与用例已落盘）。"
+        },
+        {
+          "status": "done",
+          "at": 1791187035611,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t2 收口：四个子卡 done，父卡完工登记已落。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c895e3",
+          "body": "[状态] → in_progress：t2 开工：三处接线（实现与用例已落盘）。（reqboard_task_move）",
+          "createdAt": 1791186969872,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-ce6324",
+          "body": "[状态] → done：t2 收口：四个子卡 done，父卡完工登记已落。（reqboard_task_move）",
+          "createdAt": 1791187035611,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186761455,
+      "updatedAt": 1791187035611,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791186980935,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/capture-section.ts",
+          "src/application/dive/session-driver.ts",
+          "src/application/use-cases/IsolateNodeContext.ts",
+          "tests/injection-difficulty.test.ts"
+        ],
+        "completed": [
+          "三处调用点接线（每轮系统提示词 / dive 采集半 / 节点隔离输入包），统一映射 + 未声明不传键",
+          "T-03~T-06、T-09、T-10 用例落地；既有映射与门禁套件零新增失败",
+          "核实并修掉一处潜伏同病：第三路的 settle.difficulty 全仓无生产者，恒为轻档"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186980935,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-59ba97",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "探针与实机留痕取证",
+      "cardDoc": "docs/requirements/REQ-261005154851-8512/tasks/t-59ba97.md",
+      "description": "",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-d7efd0"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx tsx scripts/injection-difficulty-probe.mts` 退出码 0（带声明的 routeKey 含 heavy、不含声明的 routeKey 含 light 且分片与基线快照全等、reasons 非空）；`docs/requirements/REQ-261005154851-8512/evidence/injection-difficulty.md` 内含实机留痕：`fragmentIds` 含 `brainstorming/heavy` 系分片且 `difficultyReasons` 含「声明难度 → 取词档」。",
+      "implementation": "新增 `scripts/injection-difficulty-probe.mts`（对同一段需求文本各跑一次「带声明 expert」与「不带声明」，打印 `declared_route` / `declared_fragments` / `baseline_route` / `baseline_fragments` / `reasons`，三组断言任一不成立即非零退出）；跑并记录既有语义回归与 `npx tsc --noEmit`；实机取证：本需求自己（expert）下一轮注入留痕的 `fragmentIds` 与 `difficultyReasons`，写进 `docs/requirements/REQ-261005154851-8512/evidence/injection-difficulty.md`（附改造前 light 记录作对照）。",
+      "context": "",
+      "footprint": {
+        "files": 2,
+        "anchors": 4,
+        "chars": 1400
+      },
+      "requirementRefs": [
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f0c951",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791187035750,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2814,
+              "at": 1791187035750,
+              "totals": {
+                "uncachedInputTokens": 952941,
+                "outputTokens": 303301,
+                "cacheReadTokens": 143915904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2814,
+                  "totals": {
+                    "uncachedInputTokens": 952941,
+                    "outputTokens": 303301,
+                    "cacheReadTokens": 143915904,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2889,
+              "at": 1791187123957,
+              "totals": {
+                "uncachedInputTokens": 961980,
+                "outputTokens": 306524,
+                "cacheReadTokens": 147905152,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2889,
+                  "totals": {
+                    "uncachedInputTokens": 961980,
+                    "outputTokens": 306524,
+                    "cacheReadTokens": 147905152,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 9039,
+              "outputTokens": 3223,
+              "cacheReadTokens": 3989248,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791187123957
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186761455,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791187035750,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t3 开工：探针与实机留痕取证（探针已跑通、证据已落盘）。"
+        },
+        {
+          "status": "done",
+          "at": 1791187123957,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t3 收口：三个子卡 done，父卡完工登记已落。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e7894a",
+          "body": "[状态] → in_progress：t3 开工：探针与实机留痕取证（探针已跑通、证据已落盘）。（reqboard_task_move）",
+          "createdAt": 1791187035750,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-7b15e7",
+          "body": "[状态] → done：t3 收口：三个子卡 done，父卡完工登记已落。（reqboard_task_move）",
+          "createdAt": 1791187123957,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186761455,
+      "updatedAt": 1791187123957,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791187044520,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/injection-difficulty-probe.mts",
+          "docs/requirements/REQ-261005154851-8512/evidence/injection-difficulty.md"
+        ],
+        "completed": [
+          "探针落盘并跑通（exit 0）；证据文件含带声明/不带声明的并排读数",
+          "实机留痕改造前快照已存证（light + 无依据句），改造后复跑方式与期望写清",
+          "npm build / tsc / 四套回归读数齐备"
+        ]
+      },
+      "lastRun": {
+        "at": 1791187044520,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b230c5",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "兼容卡：无声明与脏数据行为逐字不变",
+      "cardDoc": "docs/requirements/REQ-261005154851-8512/tasks/t-b230c5.md",
+      "description": "",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-d7efd0"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/injection-difficulty.test.ts -t \"T-07\"` 与 `-t \"T-08\"` 与 `-t \"T-11\"` 全绿：无声明时分片 id 与基线快照**全等**；脏数据（`'EXPERT'`/`' expert '`/`''`/`null`）一律按未声明且**不抛错**；无声明且推断不出时 `difficultyReasons` 允许为空。基线快照与结论落 `docs/requirements/REQ-261005154851-8512/evidence/compat-baseline.md`。",
+      "implementation": "在 `tests/injection-difficulty.test.ts` 加「兼容」分组（T-07 无声明逐字不变、T-08 脏数据容错、T-11 不编造依据）；用改造前的取词结果做基线快照（`routeKey` + `fragmentIds` 全等比较，不只看档位）；把快照与结论写进 `docs/requirements/REQ-261005154851-8512/evidence/compat-baseline.md`。",
+      "context": "",
+      "footprint": {
+        "files": 2,
+        "anchors": 4,
+        "chars": 1300
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-03b06a",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791187044624,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2841,
+              "at": 1791187044624,
+              "totals": {
+                "uncachedInputTokens": 957310,
+                "outputTokens": 304797,
+                "cacheReadTokens": 144572800,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2841,
+                  "totals": {
+                    "uncachedInputTokens": 957310,
+                    "outputTokens": 304797,
+                    "cacheReadTokens": 144572800,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2914,
+              "at": 1791187193456,
+              "totals": {
+                "uncachedInputTokens": 966862,
+                "outputTokens": 307366,
+                "cacheReadTokens": 150592384,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2914,
+                  "totals": {
+                    "uncachedInputTokens": 966862,
+                    "outputTokens": 307366,
+                    "cacheReadTokens": 150592384,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 9552,
+              "outputTokens": 2569,
+              "cacheReadTokens": 6019584,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791187193456
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186761455,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791187044624,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t4 开工：兼容卡（无声明与脏数据行为逐字不变）。"
+        },
+        {
+          "status": "done",
+          "at": 1791187193456,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t4 收口：三个子卡 done，父卡完工登记已落；四张父卡全部完成。"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-fbe798",
+          "body": "[状态] → in_progress：t4 开工：兼容卡（无声明与脏数据行为逐字不变）。（reqboard_task_move）",
+          "createdAt": 1791187044624,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-5d78d9",
+          "body": "[状态] → done：t4 收口：三个子卡 done，父卡完工登记已落；四张父卡全部完成。（reqboard_task_move）",
+          "createdAt": 1791187193456,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186761455,
+      "updatedAt": 1791187193456,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791187054239,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/injection-difficulty.test.ts",
+          "docs/requirements/REQ-261005154851-8512/evidence/compat-baseline.md"
+        ],
+        "completed": [
+          "兼容三条用例 + 基线快照证据落盘",
+          "口径：无声明/脏数据 → 逐字不变；不追溯历史注入；回退构建即回滚"
+        ]
+      },
+      "lastRun": {
+        "at": 1791187054239,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-209f12",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "契约先行：同步缝带上难度声明·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "`src/domain/requirement/RequirementSummary.ts`：`RequirementFacts` 加可选 `promptDifficulty?: PromptDifficulty`；`factsOf` 按既有可选字段同款写法投影（存在才带键）。建立 `tests/injection-difficulty.test.ts`（文件头 20 行内含 serves 头注），先落 T-01（带声明）与 T-02（不带声明则键不出现）两条投影用例。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-455df9",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-bfd9a4",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186912736,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2735,
+              "at": 1791186912736,
+              "totals": {
+                "uncachedInputTokens": 944274,
+                "outputTokens": 300566,
+                "cacheReadTokens": 140015488,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2735,
+                  "totals": {
+                    "uncachedInputTokens": 944274,
+                    "outputTokens": 300566,
+                    "cacheReadTokens": 140015488,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2739,
+              "at": 1791186912955,
+              "totals": {
+                "uncachedInputTokens": 944274,
+                "outputTokens": 300566,
+                "cacheReadTokens": 140015488,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2739,
+                  "totals": {
+                    "uncachedInputTokens": 944274,
+                    "outputTokens": 300566,
+                    "cacheReadTokens": 140015488,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186912954
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-68a434",
+          "body": "[状态] → in_progress：t1 研发开工。（reqboard_task_move）",
+          "createdAt": 1791186912736,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-3ad9f4",
+          "body": "[状态] → done：研发子卡完成：投影与两条用例落盘，tsc 0 错误。（reqboard_task_move）",
+          "createdAt": 1791186912954,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186907712,
+      "updatedAt": 1791186912954,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186907712,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186912736,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t1 研发开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186912954,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "研发子卡完成：投影与两条用例落盘，tsc 0 错误。"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791186912848,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/domain/requirement/RequirementSummary.ts",
+          "tests/injection-difficulty.test.ts"
+        ],
+        "completed": []
+      },
+      "lastRun": {
+        "at": 1791186912848,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-419e05",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "契约先行：同步缝带上难度声明·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-209f12"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "`src/domain/requirement/RequirementSummary.ts`：`RequirementFacts` 加可选 `promptDifficulty?: PromptDifficulty`；`factsOf` 按既有可选字段同款写法投影（存在才带键）。建立 `tests/injection-difficulty.test.ts`（文件头 20 行内含 serves 头注），先落 T-01（带声明）与 T-02（不带声明则键不出现）两条投影用例。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-455df9",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b8cf09",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186913076,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2741,
+              "at": 1791186913076,
+              "totals": {
+                "uncachedInputTokens": 944274,
+                "outputTokens": 300566,
+                "cacheReadTokens": 140015488,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2741,
+                  "totals": {
+                    "uncachedInputTokens": 944274,
+                    "outputTokens": 300566,
+                    "cacheReadTokens": 140015488,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2755,
+              "at": 1791186917528,
+              "totals": {
+                "uncachedInputTokens": 945498,
+                "outputTokens": 300890,
+                "cacheReadTokens": 140661632,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2755,
+                  "totals": {
+                    "uncachedInputTokens": 945498,
+                    "outputTokens": 300890,
+                    "cacheReadTokens": 140661632,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 1224,
+              "outputTokens": 324,
+              "cacheReadTokens": 646144,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186917528
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-adde22",
+          "body": "[状态] → in_progress：t1 复核开工。（reqboard_task_move）",
+          "createdAt": 1791186913076,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-6bc286",
+          "body": "[状态] → done：复核子卡完成（凭证已补）。（reqboard_task_move）",
+          "createdAt": 1791186917528,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 5,
+      "createdAt": 1791186907712,
+      "updatedAt": 1791186917528,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186907712,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186913076,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t1 复核开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186917528,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "复核子卡完成（凭证已补）。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791186917421,
+        "reportIndex": 2,
+        "filesChanged": [],
+        "completed": [
+          "对照 design/data-model.md 逐条核对：字段类型/可选性/缺省即不带键，无偏离",
+          "T-01/T-02 两条用例全绿，且 T-02 用 in 断言（能抓住 undefined 占位这种退化）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186913173,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-4774f3",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "三处接线：让声明难度在每条注入路径上算数·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-455df9"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "三处取词调用点按 design/interfaces.md 接上声明难度：`src/application/internal/capture-section.ts` 与 `src/application/dive/session-driver.ts` 在调 `resolveStagePrompt` 时传 `difficultyFromDeclaredPrompt(stageReq.promptDifficulty)`（未声明则不传该键；采集半同时补 requirement 文本，仍只留痕不投递）；`src/application/use-cases/IsolateNodeContext.ts` 的 `buildNodeInputPackage({ difficulty })` 改为「调用方显式优先 → 否则用声明映射」。用例补在同文件（T-03~T-06、T-09、T-10）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-d7efd0",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4c751b",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186979559,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2776,
+              "at": 1791186979559,
+              "totals": {
+                "uncachedInputTokens": 950356,
+                "outputTokens": 302811,
+                "cacheReadTokens": 142605184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2776,
+                  "totals": {
+                    "uncachedInputTokens": 950356,
+                    "outputTokens": 302811,
+                    "cacheReadTokens": 142605184,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2780,
+              "at": 1791186979769,
+              "totals": {
+                "uncachedInputTokens": 950356,
+                "outputTokens": 302811,
+                "cacheReadTokens": 142605184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2780,
+                  "totals": {
+                    "uncachedInputTokens": 950356,
+                    "outputTokens": 302811,
+                    "cacheReadTokens": 142605184,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186979769
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-d05286",
+          "body": "[状态] → in_progress：t2 研发开工。（reqboard_task_move）",
+          "createdAt": 1791186979559,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-c05ce0",
+          "body": "[状态] → done：研发子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186979769,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186969872,
+      "updatedAt": 1791186979769,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186969872,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186979559,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t2 研发开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186979769,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "研发子卡完成。"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791186979658,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/internal/capture-section.ts",
+          "src/application/dive/session-driver.ts",
+          "src/application/use-cases/IsolateNodeContext.ts",
+          "tests/injection-difficulty.test.ts"
+        ],
+        "completed": [
+          "capture-section 与 session-driver 各补一行映射 + declaredDifficulty 传参（未声明则不传键）",
+          "IsolateNodeContext 改为「调用方显式 ?? 声明兜底」，两者都无则不传（与改造前一致）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186979658,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9320b0",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "三处接线：让声明难度在每条注入路径上算数·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-4774f3"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "三处取词调用点按 design/interfaces.md 接上声明难度：`src/application/internal/capture-section.ts` 与 `src/application/dive/session-driver.ts` 在调 `resolveStagePrompt` 时传 `difficultyFromDeclaredPrompt(stageReq.promptDifficulty)`（未声明则不传该键；采集半同时补 requirement 文本，仍只留痕不投递）；`src/application/use-cases/IsolateNodeContext.ts` 的 `buildNodeInputPackage({ difficulty })` 改为「调用方显式优先 → 否则用声明映射」。用例补在同文件（T-03~T-06、T-09、T-10）。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-d7efd0",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4bd3e9",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186979867,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2782,
+              "at": 1791186979867,
+              "totals": {
+                "uncachedInputTokens": 950356,
+                "outputTokens": 302811,
+                "cacheReadTokens": 142605184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2782,
+                  "totals": {
+                    "uncachedInputTokens": 950356,
+                    "outputTokens": 302811,
+                    "cacheReadTokens": 142605184,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2786,
+              "at": 1791186980156,
+              "totals": {
+                "uncachedInputTokens": 950356,
+                "outputTokens": 302811,
+                "cacheReadTokens": 142605184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2786,
+                  "totals": {
+                    "uncachedInputTokens": 950356,
+                    "outputTokens": 302811,
+                    "cacheReadTokens": 142605184,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186980156
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-776dcb",
+          "body": "[状态] → in_progress：t2 联调开工（三处口径贯通核对）。（reqboard_task_move）",
+          "createdAt": 1791186979867,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-459910",
+          "body": "[状态] → done：联调子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186980156,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186969872,
+      "updatedAt": 1791186980156,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186969872,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186979867,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t2 联调开工（三处口径贯通核对）。"
+        },
+        {
+          "status": "done",
+          "at": 1791186980156,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "联调子卡完成。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791186979988,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/injection-difficulty-probe.mts"
+        ],
+        "completed": [
+          "三处同源核对：两处读 facts.promptDifficulty、第三处读需求记录 promptDifficulty，映射函数同一个",
+          "联调读数：探针并排打印带声明与不带声明两侧，档位与分片符合预期"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186979988,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2552b1",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "三处接线：让声明难度在每条注入路径上算数·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-9320b0"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "三处取词调用点按 design/interfaces.md 接上声明难度：`src/application/internal/capture-section.ts` 与 `src/application/dive/session-driver.ts` 在调 `resolveStagePrompt` 时传 `difficultyFromDeclaredPrompt(stageReq.promptDifficulty)`（未声明则不传该键；采集半同时补 requirement 文本，仍只留痕不投递）；`src/application/use-cases/IsolateNodeContext.ts` 的 `buildNodeInputPackage({ difficulty })` 改为「调用方显式优先 → 否则用声明映射」。用例补在同文件（T-03~T-06、T-09、T-10）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-d7efd0",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-76a57c",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186980256,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2788,
+              "at": 1791186980256,
+              "totals": {
+                "uncachedInputTokens": 950356,
+                "outputTokens": 302811,
+                "cacheReadTokens": 142605184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2788,
+                  "totals": {
+                    "uncachedInputTokens": 950356,
+                    "outputTokens": 302811,
+                    "cacheReadTokens": 142605184,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2792,
+              "at": 1791186980465,
+              "totals": {
+                "uncachedInputTokens": 950356,
+                "outputTokens": 302811,
+                "cacheReadTokens": 142605184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2792,
+                  "totals": {
+                    "uncachedInputTokens": 950356,
+                    "outputTokens": 302811,
+                    "cacheReadTokens": 142605184,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186980465
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-dbddce",
+          "body": "[状态] → in_progress：t2 复核开工。（reqboard_task_move）",
+          "createdAt": 1791186980256,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-d97cdc",
+          "body": "[状态] → done：复核子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186980465,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186969872,
+      "updatedAt": 1791186980465,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186969872,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186980256,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t2 复核开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186980465,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "复核子卡完成。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791186980359,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/injection-difficulty.test.ts"
+        ],
+        "completed": [
+          "对照 design/interfaces.md 逐条核对三处入参：未声明一律不传键（不填 undefined 占位）、第三处显式优先",
+          "T-09 用源码级断言锁住接线（回退即红），不靠记忆"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186980359,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-44ede1",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "三处接线：让声明难度在每条注入路径上算数·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-2552b1"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "三处取词调用点按 design/interfaces.md 接上声明难度：`src/application/internal/capture-section.ts` 与 `src/application/dive/session-driver.ts` 在调 `resolveStagePrompt` 时传 `difficultyFromDeclaredPrompt(stageReq.promptDifficulty)`（未声明则不传该键；采集半同时补 requirement 文本，仍只留痕不投递）；`src/application/use-cases/IsolateNodeContext.ts` 的 `buildNodeInputPackage({ difficulty })` 改为「调用方显式优先 → 否则用声明映射」。用例补在同文件（T-03~T-06、T-09、T-10）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-d7efd0",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-06cebb",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791186980561,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2794,
+              "at": 1791186980561,
+              "totals": {
+                "uncachedInputTokens": 950356,
+                "outputTokens": 302811,
+                "cacheReadTokens": 142605184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2794,
+                  "totals": {
+                    "uncachedInputTokens": 950356,
+                    "outputTokens": 302811,
+                    "cacheReadTokens": 142605184,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2798,
+              "at": 1791186980799,
+              "totals": {
+                "uncachedInputTokens": 950356,
+                "outputTokens": 302811,
+                "cacheReadTokens": 142605184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2798,
+                  "totals": {
+                    "uncachedInputTokens": 950356,
+                    "outputTokens": 302811,
+                    "cacheReadTokens": 142605184,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791186980799
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7315f6",
+          "body": "[状态] → in_progress：t2 测试开工。（reqboard_task_move）",
+          "createdAt": 1791186980561,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-fc5ca9",
+          "body": "[状态] → done：测试子卡完成。（reqboard_task_move）",
+          "createdAt": 1791186980799,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791186969872,
+      "updatedAt": 1791186980799,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791186969872,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791186980561,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t2 测试开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791186980799,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "测试子卡完成。"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791186980657,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/injection-difficulty.test.ts"
+        ],
+        "completed": [
+          "vitest run tests/injection-difficulty.test.ts → 11 passed（T-01~T-11）",
+          "vitest run difficulty-mapping + content-gates + decision-gates → 78 passed / 2 skipped",
+          "npx tsc --noEmit → 0 错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1791186980657,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ad7674",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "探针与实机留痕取证·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-d7efd0"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新增 `scripts/injection-difficulty-probe.mts`（对同一段需求文本各跑一次「带声明 expert」与「不带声明」，打印 `declared_route` / `declared_fragments` / `baseline_route` / `baseline_fragments` / `reasons`，三组断言任一不成立即非零退出）；跑并记录既有语义回归与 `npx tsc --noEmit`；实机取证：本需求自己（expert）下一轮注入留痕的 `fragmentIds` 与 `difficultyReasons`，写进 `docs/requirements/REQ-261005154851-8512/evidence/injection-difficulty.md`（附改造前 light 记录作对照）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-59ba97",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-163aef",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791187043598,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2821,
+              "at": 1791187043598,
+              "totals": {
+                "uncachedInputTokens": 957310,
+                "outputTokens": 304797,
+                "cacheReadTokens": 144572800,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2821,
+                  "totals": {
+                    "uncachedInputTokens": 957310,
+                    "outputTokens": 304797,
+                    "cacheReadTokens": 144572800,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2825,
+              "at": 1791187043817,
+              "totals": {
+                "uncachedInputTokens": 957310,
+                "outputTokens": 304797,
+                "cacheReadTokens": 144572800,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2825,
+                  "totals": {
+                    "uncachedInputTokens": 957310,
+                    "outputTokens": 304797,
+                    "cacheReadTokens": 144572800,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791187043816
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9434ed",
+          "body": "[状态] → in_progress：t3 研发开工。（reqboard_task_move）",
+          "createdAt": 1791187043598,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-1e94a2",
+          "body": "[状态] → done：研发子卡完成。（reqboard_task_move）",
+          "createdAt": 1791187043816,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791187035750,
+      "updatedAt": 1791187043816,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791187035750,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791187043598,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t3 研发开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791187043816,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "研发子卡完成。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791187043706,
+        "reportIndex": 1,
+        "filesChanged": [
+          "scripts/injection-difficulty-probe.mts",
+          "docs/requirements/REQ-261005154851-8512/evidence/injection-difficulty.md"
+        ],
+        "completed": [
+          "新增 scripts/injection-difficulty-probe.mts：同文本「带声明 expert vs 不带声明」并排打印 + 六项断言",
+          "探针跑通 exit 0：declared=brainstorming/heavy/feature、baseline 与快照全等、理由句在场",
+          "证据落盘 evidence/injection-difficulty.md（含改造前实测留痕：light + 无依据句）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791187043706,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-30570e",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "探针与实机留痕取证·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-ad7674"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新增 `scripts/injection-difficulty-probe.mts`（对同一段需求文本各跑一次「带声明 expert」与「不带声明」，打印 `declared_route` / `declared_fragments` / `baseline_route` / `baseline_fragments` / `reasons`，三组断言任一不成立即非零退出）；跑并记录既有语义回归与 `npx tsc --noEmit`；实机取证：本需求自己（expert）下一轮注入留痕的 `fragmentIds` 与 `difficultyReasons`，写进 `docs/requirements/REQ-261005154851-8512/evidence/injection-difficulty.md`（附改造前 light 记录作对照）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-59ba97",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e94281",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791187043912,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2827,
+              "at": 1791187043912,
+              "totals": {
+                "uncachedInputTokens": 957310,
+                "outputTokens": 304797,
+                "cacheReadTokens": 144572800,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2827,
+                  "totals": {
+                    "uncachedInputTokens": 957310,
+                    "outputTokens": 304797,
+                    "cacheReadTokens": 144572800,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2831,
+              "at": 1791187044117,
+              "totals": {
+                "uncachedInputTokens": 957310,
+                "outputTokens": 304797,
+                "cacheReadTokens": 144572800,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2831,
+                  "totals": {
+                    "uncachedInputTokens": 957310,
+                    "outputTokens": 304797,
+                    "cacheReadTokens": 144572800,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791187044117
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e859c8",
+          "body": "[状态] → in_progress：t3 复核开工。（reqboard_task_move）",
+          "createdAt": 1791187043912,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-7c6646",
+          "body": "[状态] → done：复核子卡完成。（reqboard_task_move）",
+          "createdAt": 1791187044117,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791187035750,
+      "updatedAt": 1791187044117,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791187035750,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791187043912,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t3 复核开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791187044117,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "复核子卡完成。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791187044010,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261005154851-8512/evidence/injection-difficulty.md"
+        ],
+        "completed": [
+          "复核探针判别力：任一断言不成立即非零退出；含四档映射与空串边界",
+          "复核证据完整性：改造前留痕带原样字段（difficulty/fragmentIds/difficultyReasons），改造后需重启插件复跑（已作为验收单项标注）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791187044010,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c11fd4",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "探针与实机留痕取证·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-30570e"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新增 `scripts/injection-difficulty-probe.mts`（对同一段需求文本各跑一次「带声明 expert」与「不带声明」，打印 `declared_route` / `declared_fragments` / `baseline_route` / `baseline_fragments` / `reasons`，三组断言任一不成立即非零退出）；跑并记录既有语义回归与 `npx tsc --noEmit`；实机取证：本需求自己（expert）下一轮注入留痕的 `fragmentIds` 与 `difficultyReasons`，写进 `docs/requirements/REQ-261005154851-8512/evidence/injection-difficulty.md`（附改造前 light 记录作对照）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-59ba97",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f1c171",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791187044218,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2833,
+              "at": 1791187044218,
+              "totals": {
+                "uncachedInputTokens": 957310,
+                "outputTokens": 304797,
+                "cacheReadTokens": 144572800,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2833,
+                  "totals": {
+                    "uncachedInputTokens": 957310,
+                    "outputTokens": 304797,
+                    "cacheReadTokens": 144572800,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2837,
+              "at": 1791187044422,
+              "totals": {
+                "uncachedInputTokens": 957310,
+                "outputTokens": 304797,
+                "cacheReadTokens": 144572800,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2837,
+                  "totals": {
+                    "uncachedInputTokens": 957310,
+                    "outputTokens": 304797,
+                    "cacheReadTokens": 144572800,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791187044422
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-48b662",
+          "body": "[状态] → in_progress：t3 测试开工。（reqboard_task_move）",
+          "createdAt": 1791187044218,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-e9b8f2",
+          "body": "[状态] → done：测试子卡完成。（reqboard_task_move）",
+          "createdAt": 1791187044422,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791187035750,
+      "updatedAt": 1791187044422,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791187035750,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791187044218,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t3 测试开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791187044422,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "测试子卡完成。"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791187044314,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261005154851-8512/evidence/injection-difficulty.md"
+        ],
+        "completed": [
+          "npx tsx scripts/injection-difficulty-probe.mts → exit 0",
+          "npx tsc --noEmit → 0 错误；pnpm build → 退出码 0（verify-client OK）",
+          "vitest 四个相关套件 → 78 passed / 2 skipped"
+        ]
+      },
+      "lastRun": {
+        "at": 1791187044314,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a8d32c",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "兼容卡：无声明与脏数据行为逐字不变·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-d7efd0"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "在 `tests/injection-difficulty.test.ts` 加「兼容」分组（T-07 无声明逐字不变、T-08 脏数据容错、T-11 不编造依据）；用改造前的取词结果做基线快照（`routeKey` + `fragmentIds` 全等比较，不只看档位）；把快照与结论写进 `docs/requirements/REQ-261005154851-8512/evidence/compat-baseline.md`。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-b230c5",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-44ff06",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791187053266,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2847,
+              "at": 1791187053266,
+              "totals": {
+                "uncachedInputTokens": 959490,
+                "outputTokens": 306056,
+                "cacheReadTokens": 145235456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2847,
+                  "totals": {
+                    "uncachedInputTokens": 959490,
+                    "outputTokens": 306056,
+                    "cacheReadTokens": 145235456,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2851,
+              "at": 1791187053485,
+              "totals": {
+                "uncachedInputTokens": 959490,
+                "outputTokens": 306056,
+                "cacheReadTokens": 145235456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2851,
+                  "totals": {
+                    "uncachedInputTokens": 959490,
+                    "outputTokens": 306056,
+                    "cacheReadTokens": 145235456,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791187053484
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-de0a2a",
+          "body": "[状态] → in_progress：t4 研发开工。（reqboard_task_move）",
+          "createdAt": 1791187053266,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-8d3902",
+          "body": "[状态] → done：研发子卡完成。（reqboard_task_move）",
+          "createdAt": 1791187053484,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791187044624,
+      "updatedAt": 1791187053484,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791187044624,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791187053266,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t4 研发开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791187053484,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "研发子卡完成。"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791187053369,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/injection-difficulty.test.ts",
+          "docs/requirements/REQ-261005154851-8512/evidence/compat-baseline.md"
+        ],
+        "completed": [
+          "兼容三条用例落盘：T-07 无声明分片与快照全等、T-08 脏数据六种形态按未声明且不抛错、T-11 不编造依据",
+          "基线快照与兼容口径落 evidence/compat-baseline.md（含复跑命令）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791187053369,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-17d8eb",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "兼容卡：无声明与脏数据行为逐字不变·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-a8d32c"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "在 `tests/injection-difficulty.test.ts` 加「兼容」分组（T-07 无声明逐字不变、T-08 脏数据容错、T-11 不编造依据）；用改造前的取词结果做基线快照（`routeKey` + `fragmentIds` 全等比较，不只看档位）；把快照与结论写进 `docs/requirements/REQ-261005154851-8512/evidence/compat-baseline.md`。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-b230c5",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ba8790",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791187053590,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2853,
+              "at": 1791187053590,
+              "totals": {
+                "uncachedInputTokens": 959490,
+                "outputTokens": 306056,
+                "cacheReadTokens": 145235456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2853,
+                  "totals": {
+                    "uncachedInputTokens": 959490,
+                    "outputTokens": 306056,
+                    "cacheReadTokens": 145235456,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2857,
+              "at": 1791187053807,
+              "totals": {
+                "uncachedInputTokens": 959490,
+                "outputTokens": 306056,
+                "cacheReadTokens": 145235456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2857,
+                  "totals": {
+                    "uncachedInputTokens": 959490,
+                    "outputTokens": 306056,
+                    "cacheReadTokens": 145235456,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791187053807
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-6683f3",
+          "body": "[状态] → in_progress：t4 复核开工。（reqboard_task_move）",
+          "createdAt": 1791187053590,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-522115",
+          "body": "[状态] → done：复核子卡完成。（reqboard_task_move）",
+          "createdAt": 1791187053807,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791187044624,
+      "updatedAt": 1791187053807,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791187044624,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791187053590,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t4 复核开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791187053807,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "复核子卡完成。"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791187053690,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261005154851-8512/evidence/compat-baseline.md"
+        ],
+        "completed": [
+          "复核判据强度：用 fragmentIds 数组全等而非只看档位（顺序/集合变了也会红）",
+          "复核边界覆盖：'EXPERT' / ' expert ' / '' / null / 42 / {} 六种脏数据都断言了不抛错"
+        ]
+      },
+      "lastRun": {
+        "at": 1791187053690,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-6eafad",
+      "requirementId": "REQ-261005154851-8512",
+      "title": "兼容卡：无声明与脏数据行为逐字不变·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-17d8eb"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "在 `tests/injection-difficulty.test.ts` 加「兼容」分组（T-07 无声明逐字不变、T-08 脏数据容错、T-11 不编造依据）；用改造前的取词结果做基线快照（`routeKey` + `fragmentIds` 全等比较，不只看档位）；把快照与结论写进 `docs/requirements/REQ-261005154851-8512/evidence/compat-baseline.md`。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-b230c5",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-9d6ad6",
+          "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+          "trigger": "manual",
+          "startedAt": 1791187053909,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2859,
+              "at": 1791187053909,
+              "totals": {
+                "uncachedInputTokens": 959490,
+                "outputTokens": 306056,
+                "cacheReadTokens": 145235456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2859,
+                  "totals": {
+                    "uncachedInputTokens": 959490,
+                    "outputTokens": 306056,
+                    "cacheReadTokens": 145235456,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "end": {
+              "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+              "seq": 2863,
+              "at": 1791187054117,
+              "totals": {
+                "uncachedInputTokens": 959490,
+                "outputTokens": 306056,
+                "cacheReadTokens": 145235456,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546",
+                  "depth": 0,
+                  "seq": 2863,
+                  "totals": {
+                    "uncachedInputTokens": 959490,
+                    "outputTokens": 306056,
+                    "cacheReadTokens": 145235456,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ],
+              "degradedMembers": [
+                "5fd0a8c9-6d49-4de8-9b7c-48452668c559",
+                "b704d26d-1736-405e-b97d-9198cd9fedd4",
+                "c3df5c03-366c-4bb9-b55c-8a25517ff565"
+              ],
+              "degradedReason": "member-unavailable"
+            },
+            "delta": {
+              "uncachedInputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791187054117
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-6dce85",
+          "body": "[状态] → in_progress：t4 测试开工。（reqboard_task_move）",
+          "createdAt": 1791187053909,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        },
+        {
+          "id": "c-fa2d57",
+          "body": "[状态] → done：测试子卡完成。（reqboard_task_move）",
+          "createdAt": 1791187054117,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791187044624,
+      "updatedAt": 1791187054117,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791187044624,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791187053909,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "t4 测试开工。"
+        },
+        {
+          "status": "done",
+          "at": 1791187054117,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-30c79856-639c-4483-aed3-a49d3fc99546"
+          },
+          "reason": "测试子卡完成。"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791187054005,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/injection-difficulty.test.ts"
+        ],
+        "completed": [
+          "vitest run tests/injection-difficulty.test.ts -t T-07 / -t T-08 / -t T-11 → 三条全绿",
+          "整文件 11 条全绿；既有映射与门禁套件零新增失败"
+        ]
+      },
+      "lastRun": {
+        "at": 1791187054005,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-455df9",
+      "to": "t-d7efd0"
+    },
+    {
+      "from": "t-d7efd0",
+      "to": "t-59ba97"
+    },
+    {
+      "from": "t-d7efd0",
+      "to": "t-b230c5"
+    },
+    {
+      "from": "t-209f12",
+      "to": "t-419e05"
+    },
+    {
+      "from": "t-455df9",
+      "to": "t-4774f3"
+    },
+    {
+      "from": "t-4774f3",
+      "to": "t-9320b0"
+    },
+    {
+      "from": "t-9320b0",
+      "to": "t-2552b1"
+    },
+    {
+      "from": "t-2552b1",
+      "to": "t-44ede1"
+    },
+    {
+      "from": "t-d7efd0",
+      "to": "t-ad7674"
+    },
+    {
+      "from": "t-ad7674",
+      "to": "t-30570e"
+    },
+    {
+      "from": "t-30570e",
+      "to": "t-c11fd4"
+    },
+    {
+      "from": "t-d7efd0",
+      "to": "t-a8d32c"
+    },
+    {
+      "from": "t-a8d32c",
+      "to": "t-17d8eb"
+    },
+    {
+      "from": "t-17d8eb",
+      "to": "t-6eafad"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-455df9",
+        "t-209f12"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-d7efd0",
+        "t-4774f3",
+        "t-419e05"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-59ba97",
+        "t-b230c5",
+        "t-ad7674",
+        "t-a8d32c",
+        "t-9320b0"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-30570e",
+        "t-17d8eb",
+        "t-2552b1"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-c11fd4",
+        "t-6eafad",
+        "t-44ede1"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-05T07:59:53.456Z"
+}

@@ -1,0 +1,36 @@
+task:
+  id: t-316478
+  title: 迁移与兼容：零迁移核对 + 旧分片读取 + 读侧宽容 + V-5 分档·研发
+  status: done
+  implements: |-
+    ① `src/domain/queue/QueueTypes.ts`：`ValidationIssue` 增**加性可选** `level?: 'issue' | 'warning'`（**缺省 = issue**，旧形状与旧读方逐字兼容）；`ValidationResult.passed` 的语义改为「无 issue 级条目」，并让 `hasIssue` 只认 issue 级（warning 不算不通过）——这是设计「漏就绪降为 warning」的落地前提。② `src/domain/queue/validateQueue.ts` 的 V-5 **分档**：**漏就绪**（调 `computeReady` 的那半）标记为 `level: 'warning'`（可自愈的陈旧派生值），**假就绪**（ready 里的卡依赖未了结 / 自身非 todo）**仍是 issue**（真写坏）；`rule` 标识仍是 `'V-5'`（**不新增 V-x**）；V-4 不动、对取消卡不豁免。③ `src/repositories/QueueRepository.ts` 的 `load`：校验失败**不再** `return undefined`——降级为 `onWarn` 一条 warning + **继续返回队列**（JSON 解析失败的既有隔离路径不动）；返回对象的派生字段按当前判据**内存重算**（`ready` 用 `liveReadyTasks`、活卡 `layer`/`layers` 用 `liveLayers`/`layerInputOf`），**重算结果只用于本次返回对象与校验输入，一个字节都不写盘**；`save` 保持强校验 fail-closed（假就绪照旧抛 `QUEUE_VALIDATION_FAILED`）。④ 零迁移核对：**不新建任何 `migrate-*` 脚本、不回填三字段、不改写历史分片与 RTM 快照**；`REQBOARD_SCHEMA_VERSION`（9）与 `QUEUE_VERSION`（1）一字不动。新增 `tests/canceled-legacy-read.test.ts`（旧分片读取 + 零写回 + 读宽容 + 两档上报）。验证命令见 acceptance。依据 design/migration.md §兼容期行为与 §风险 ④。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-c7b3da
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005193546-1b1a
+    TASK_ID: t-316478
+    TASK_TITLE: 迁移与兼容：零迁移核对 + 旧分片读取 + 读侧宽容 + V-5 分档·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T17:15:30.860Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005193546-1b1a
+  generated_at: 2026-10-05T17:15:30.859Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T17:15:31.416Z

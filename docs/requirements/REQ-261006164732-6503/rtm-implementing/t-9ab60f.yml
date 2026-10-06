@@ -1,0 +1,37 @@
+task:
+  id: t-9ab60f
+  title: 给 PendingConfirmRegistry 加只读 findOpen·研发
+  status: done
+  implements: |-
+    在 src/adapters/PendingConfirmRegistry.ts 新增只读方法 findOpen(input)：按 (requirementId, target, kind) 查「未作答（outcome === undefined）且未过期」的记录，命中至多返回一条，未命中返回 undefined。判定必须是纯读：体内不得调用 settle / register / markInterrupted，不改任何字段、不续期。kind 缺省时按 target='plan' 的口径匹配。同时新增 tests/pending-confirm-registry-findopen.test.ts，用构造好的注册表实例断言五种情形：同门命中、跨 windowKey 命中、已作答不命中、已过期不命中、target='plan' 且 kind 缺省命中。register / get / pendingForWindow / settle / markInterrupted / TTL / storageActions 系列逐字不动。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006164732-6503
+    TASK_ID: t-9ab60f
+    TASK_TITLE: 给 PendingConfirmRegistry 加只读 findOpen·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T09:18:35.946Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006164732-6503
+  generated_at: 2026-10-06T09:18:21.610Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T09:18:35.946Z

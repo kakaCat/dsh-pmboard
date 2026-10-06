@@ -1,0 +1,837 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261005213603-eaed
+  generated_at: 2026-10-05T15:21:58.576Z
+  version: 61
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-05T15:39:08.809Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 运行圈判据扩展为「会话回合 ∪ 新鲜推进锁」
+      source: requirement.md
+      line: 74
+    - id: FR-2
+      title: 推进锁新鲜度的口径与降级
+      source: requirement.md
+      line: 96
+    - id: FR-3
+      title: 两种成因共用同一个圈，只区分文案
+      source: requirement.md
+      line: 116
+    - id: FR-4
+      title: run 起圈自亮、run 止圈自灭
+      source: requirement.md
+      line: 136
+    - id: FR-5
+      title: 不误报——无关需求、无绑定、读数不可得都不出圈
+      source: requirement.md
+      line: 156
+    - id: FR-6
+      title: 旧红线标注「已被本需求取代」
+      source: requirement.md
+      line: 174
+  design_sections:
+    - ref: design/architecture.md#目标与总体方案
+      title: 目标与总体方案 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 目标与总体方案
+    - ref: design/architecture.md#模块改动地图
+      title: 模块改动地图 `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/architecture.md
+      section: 模块改动地图
+    - ref: design/architecture.md#判据定义与新鲜度口径
+      title: 判据定义与新鲜度口径 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 判据定义与新鲜度口径
+    - ref: design/architecture.md#数据结构变更
+      title: 数据结构变更 `
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: 数据结构变更
+    - ref: design/architecture.md#接口变更
+      title: 接口变更 `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/architecture.md
+      section: 接口变更
+    - ref: design/architecture.md#实时性与重绘路径
+      title: 实时性与重绘路径 `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: 实时性与重绘路径
+    - ref: design/architecture.md#降级与不误报矩阵
+      title: 降级与不误报矩阵 `
+      serves:
+        - FR-5
+        - FR-2
+      file: design/architecture.md
+      section: 降级与不误报矩阵
+    - ref: design/architecture.md#旧红线取代方案
+      title: 旧红线取代方案 `
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: 旧红线取代方案
+    - ref: design/architecture.md#风险与对策
+      title: 风险与对策 `
+      serves:
+        - FR-1
+        - FR-5
+      file: design/architecture.md
+      section: 风险与对策
+    - ref: design/architecture.md#关键决策与取舍
+      title: 关键决策与取舍 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: 关键决策与取舍
+    - ref: design/architecture.md#技术方案与亮点
+      title: 技术方案与亮点 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 技术方案与亮点
+    - ref: design/architecture.md#不做什么架构边界
+      title: 不做什么（架构边界） `
+      serves:
+        - FR-1
+        - FR-5
+      file: design/architecture.md
+      section: 不做什么架构边界
+    - ref: design/data-model.md#新增修改的数据结构
+      title: 新增/修改的数据结构 `
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 新增修改的数据结构
+    - ref: design/data-model.md#RequirementRecordadvanceLockAt客户端读侧补声明
+      title: "`RequirementRecord.advanceLockAt`（客户端读侧补声明） `"
+      serves:
+        - FR-1
+        - FR-2
+      file: design/data-model.md
+      section: RequirementRecordadvanceLockAt客户端读侧补声明
+    - ref: design/data-model.md#RunningMark判据-渲染的内存值类型
+      title: "`RunningMark`（判据 → 渲染的内存值类型） `"
+      serves:
+        - FR-1
+        - FR-3
+      file: design/data-model.md
+      section: RunningMark判据-渲染的内存值类型
+    - ref: design/data-model.md#摘要投影链host-客户端
+      title: 摘要投影链（host → 客户端） `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/data-model.md
+      section: 摘要投影链host-客户端
+    - ref: design/data-model.md#是否改表-迁移-回滚
+      title: 是否改表 / 迁移 / 回滚 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/data-model.md
+      section: 是否改表-迁移-回滚
+    - ref: design/data-model.md#关键决策与取舍
+      title: 关键决策与取舍 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: 关键决策与取舍
+    - ref: design/data-model.md#技术方案与亮点
+      title: 技术方案与亮点 `
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: 技术方案与亮点
+    - ref: design/frontend.md#原型与豁免
+      title: 原型与豁免 `
+      serves:
+        - FR-3
+      file: design/frontend.md
+      section: 原型与豁免
+    - ref: design/frontend.md#目录与文件落点
+      title: 目录与文件落点 `
+      serves:
+        - FR-1
+      file: design/frontend.md
+      section: 目录与文件落点
+    - ref: design/frontend.md#渲染结构与文案
+      title: 渲染结构与文案 `
+      serves:
+        - FR-3
+      file: design/frontend.md
+      section: 渲染结构与文案
+    - ref: design/frontend.md#数据流与状态
+      title: 数据流与状态 `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/frontend.md
+      section: 数据流与状态
+    - ref: design/frontend.md#交互与可访问性
+      title: 交互与可访问性 `
+      serves:
+        - FR-3
+        - FR-5
+      file: design/frontend.md
+      section: 交互与可访问性
+    - ref: design/frontend.md#判据与可失败断言
+      title: 判据与可失败断言 `
+      serves:
+        - FR-3
+        - FR-5
+      file: design/frontend.md
+      section: 判据与可失败断言
+    - ref: design/frontend.md#关键决策与取舍
+      title: 关键决策与取舍 `
+      serves:
+        - FR-1
+      file: design/frontend.md
+      section: 关键决策与取舍
+    - ref: design/frontend.md#技术方案与亮点
+      title: 技术方案与亮点 `
+      serves:
+        - FR-3
+      file: design/frontend.md
+      section: 技术方案与亮点
+    - ref: design/interfaces.md#判据函数requirementRunInFlight
+      title: 判据函数：`requirementRunInFlight` `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: 判据函数requirementRunInFlight
+    - ref: design/interfaces.md#判据函数requirementRunningMark组合入口
+      title: 判据函数：`requirementRunningMark`（组合入口） `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/interfaces.md
+      section: 判据函数requirementRunningMark组合入口
+    - ref: design/interfaces.md#判据函数requirementBusy布尔便捷入口
+      title: 判据函数：`requirementBusy`（布尔便捷入口） `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: 判据函数requirementBusy布尔便捷入口
+    - ref: design/interfaces.md#渲染单点renderRunningDot
+      title: 渲染单点：`renderRunningDot` `
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: 渲染单点renderRunningDot
+    - ref: design/interfaces.md#卡片渲染入参renderReqCard-第-4-参
+      title: 卡片渲染入参：`renderReqCard` 第 4 参 `
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: 卡片渲染入参renderReqCard-第-4-参
+    - ref: design/interfaces.md#列表行renderListCard-buildListView签名不变语义扩展
+      title: 列表行：`renderListCard` / `buildListView`（签名不变，语义扩展） `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/interfaces.md
+      section: 列表行renderListCard-buildListView签名不变语义扩展
+    - ref: design/interfaces.md#读侧载荷契约GET-dashboardapireqboardstate-的-advanceLockAt
+      title: 读侧载荷契约：`GET /dashboard/api/reqboard/state` 的 `advanceLockAt` `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/interfaces.md
+      section: 读侧载荷契约GET-dashboardapireqboardstate-的-advanceLockAt
+    - ref: design/interfaces.md#错误语义总表
+      title: 错误语义总表 `
+      serves:
+        - FR-5
+      file: design/interfaces.md
+      section: 错误语义总表
+    - ref: design/interfaces.md#不新增的接口红线
+      title: 不新增的接口（红线） `
+      serves:
+        - FR-1
+        - FR-6
+      file: design/interfaces.md
+      section: 不新增的接口红线
+    - ref: design/use-cases.md#场景总览
+      title: 场景总览 `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: 场景总览
+    - ref: design/use-cases.md#UC-1-后台跑子卡圆圈亮起
+      title: UC-1 后台跑子卡，圆圈亮起 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+      file: design/use-cases.md
+      section: UC-1-后台跑子卡圆圈亮起
+    - ref: design/use-cases.md#UC-2-run-结束圆圈熄灭
+      title: UC-2 run 结束，圆圈熄灭 `
+      serves:
+        - FR-4
+      file: design/use-cases.md
+      section: UC-2-run-结束圆圈熄灭
+    - ref: design/use-cases.md#UC-3-会话与锁同时成立
+      title: UC-3 会话与锁同时成立 `
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: UC-3-会话与锁同时成立
+    - ref: design/use-cases.md#UC-4-残锁与时钟偏差
+      title: UC-4 残锁与时钟偏差 `
+      serves:
+        - FR-2
+        - FR-5
+      file: design/use-cases.md
+      section: UC-4-残锁与时钟偏差
+    - ref: design/use-cases.md#UC-5-读数不可得
+      title: UC-5 读数不可得 `
+      serves:
+        - FR-5
+      file: design/use-cases.md
+      section: UC-5-读数不可得
+    - ref: design/use-cases.md#UC-6-维护者读旧红线
+      title: UC-6 维护者读旧红线 `
+      serves:
+        - FR-6
+      file: design/use-cases.md
+      section: UC-6-维护者读旧红线
+    - ref: design/use-cases.md#用例-条款对照
+      title: 用例 ↔ 条款对照 `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: 用例-条款对照
+    - ref: design/use-cases.md#关键决策与取舍
+      title: 关键决策与取舍 `
+      serves:
+        - FR-3
+      file: design/use-cases.md
+      section: 关键决策与取舍
+    - ref: design/use-cases.md#技术方案与亮点
+      title: 技术方案与亮点 `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: 技术方案与亮点
+outputs:
+  tasks:
+    - id: t-ff7d59
+      title: 定义判据契约与客户端类型声明
+      implements: "改 src/client/session-running.ts：新增导出 —— RunningCause('session'|'run')、RunningMark{cause}、RequirementRunShape{advanceLockAt?}、requirementRunInFlight(req, now, staleMs = LIMITS.advanceLockStaleMs)（typeof number + Number.isFinite 守卫，(now - lock) < staleMs，与 host AdvanceChain 同运算符）、requirementRunningMark(req, isRunning, now, staleMs?)（先会话判据返回 {cause:'session'}，再锁判据返回 {cause:'run'}，都不成立返回 undefined）、requirementBusy(...)（薄包装 = mark !== undefined）。阈值只引用 src/domain/limits.ts 的 advanceLockStaleMs，不复制字面量。改 src/client/types.ts：RequirementRecord 补可选键 advanceLockAt?: number（带注释：缺失 = 没有 run 在跑）。旧导出 requirementRunning / runningSessionIds / subscribeSessionRunning / relevantSessionIds / sameRunningSet / runningAmong 完全不动。验证：npx vitest run tests/client-session-running.test.ts 真值表（TC-1～TC-10）；pnpm typecheck。"
+      serves:
+        - FR-1
+        - FR-2
+      depends_on: []
+      phase: implement
+      side: fullstack
+    - id: t-787d69
+      title: 把新判据接进渲染单点与两处视图
+      implements: "改 src/client/render/dom-utils.ts：renderRunningDot(mark?: RunningMark) —— undefined 返回空串（不渲染空壳）；cause='session' 时 aria-label/title 保持既有逐字文案，cause='run' 时 aria-label='后台 run 进行中'、title='后台 run 进行中（子卡链在执行，窗口可以已空闲）'；class / data-running / SVG 结构不变。改 src/client/views/artifacts.ts：renderReqCard 第 4 参 running=false → mark?: RunningMark，内部 renderRunningDot(mark)。改 src/client/views/board.ts：泳道卡映射改调 requirementRunningMark(c.req, isRunning, now)；renderListCard 第 2 参 _now → now 并在内部调 requirementRunningMark(req, sid => running.has(sid), now)；buildBoard / buildListView 第 5/4 参签名不变。验证：npx vitest run tests/client-view.test.ts；pnpm build:client。"
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+      depends_on:
+        - t-ff7d59
+      phase: ui
+      side: fullstack
+    - id: t-66ef12
+      title: 补判据真值表与实时增隐测试
+      implements: 扩 tests/client-session-running.test.ts：加 TC-1～TC-10（注入 now 与 staleMs 的纯函数真值表，含恰好 stale / 未来时间 / 非有限值 / 成因优先级 / 两导出恒一致）。扩 tests/client-view.test.ts：加 TC-11～TC-18（锁新鲜出圈、双成因一个圈、过期不出、省略参数逐字节一致、A/B 不串、列表位置契约、样式分片在场）。扩 tests/board-attach.test.ts：加 TC-19～TC-22（state 里锁变新鲜 → 一次状态刷新后出圈；锁清除 → 不出；无关会话 running 抖动不增加重绘次数；dispose 后不重绘不抛错）。验证：npx vitest run tests/client-session-running.test.ts tests/client-view.test.ts tests/board-attach.test.ts。
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      depends_on:
+        - t-787d69
+      phase: test
+      side: fullstack
+    - id: t-d8d6b7
+      title: 在旧红线处标注取代关系
+      implements: 改 docs/architecture/client-running-indicator.md：判据节与红线节各加一条取代标注（advanceLockAt 已由 REQ-261005213603-eaed 取代为正式判据，附判据表达式与阈值出处 src/domain/limits.ts 的 advanceLockStaleMs；executions[].outcome === 'running' 仍禁用）。改 docs/requirements/REQ-261004210128-283d/design/data-model.md 与 docs/requirements/REQ-261004210128-283d/design/architecture.md：同样就地加标注，不修改该需求的验收结论、D-x 表与历史正文。
+      serves:
+        - FR-6
+      depends_on: []
+      phase: doc
+      side: doc
+    - id: t-eea3c3
+      title: 核验兼容、回滚与交付基线
+      implements: 兼容核验：用不带 advanceLockAt 的载荷跑两视图渲染断言，确认与改动前输出逐字节一致（旧服务端降级路径）。回滚演练：临时回退 src/client/session-running.ts 与 src/client/views/board.ts 的本次改动，确认 pnpm build:client 仍 [verify-client] OK，且本次不落盘 / 不改 schema（无数据残留）。交付基线：pnpm typecheck、pnpm build:client（规范 C-15 / C-12）、pnpm test 与改动前基线比对（规范 C-14，基线取改动前同一命令输出）。
+      serves:
+        - FR-2
+        - FR-4
+        - FR-5
+      depends_on:
+        - t-787d69
+      phase: test
+      side: fullstack
+    - id: t-719d80
+      title: 定义判据契约与客户端类型声明·研发
+      implements: |-
+        改 src/client/session-running.ts：新增导出 —— RunningCause('session'|'run')、RunningMark{cause}、RequirementRunShape{advanceLockAt?}、requirementRunInFlight(req, now, staleMs = LIMITS.advanceLockStaleMs)（typeof number + Number.isFinite 守卫，(now - lock) < staleMs，与 host AdvanceChain 同运算符）、requirementRunningMark(req, isRunning, now, staleMs?)（先会话判据返回 {cause:'session'}，再锁判据返回 {cause:'run'}，都不成立返回 undefined）、requirementBusy(...)（薄包装 = mark !== undefined）。阈值只引用 src/domain/limits.ts 的 advanceLockStaleMs，不复制字面量。改 src/client/types.ts：RequirementRecord 补可选键 advanceLockAt?: number（带注释：缺失 = 没有 run 在跑）。旧导出 requirementRunning / runningSessionIds / subscribeSessionRunning / relevantSessionIds / sameRunningSet / runningAmong 完全不动。验证：npx vitest run tests/client-session-running.test.ts 真值表（TC-1～TC-10）；pnpm typecheck。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: fullstack
+    - id: t-11b442
+      title: 定义判据契约与客户端类型声明·复核
+      implements: |-
+        改 src/client/session-running.ts：新增导出 —— RunningCause('session'|'run')、RunningMark{cause}、RequirementRunShape{advanceLockAt?}、requirementRunInFlight(req, now, staleMs = LIMITS.advanceLockStaleMs)（typeof number + Number.isFinite 守卫，(now - lock) < staleMs，与 host AdvanceChain 同运算符）、requirementRunningMark(req, isRunning, now, staleMs?)（先会话判据返回 {cause:'session'}，再锁判据返回 {cause:'run'}，都不成立返回 undefined）、requirementBusy(...)（薄包装 = mark !== undefined）。阈值只引用 src/domain/limits.ts 的 advanceLockStaleMs，不复制字面量。改 src/client/types.ts：RequirementRecord 补可选键 advanceLockAt?: number（带注释：缺失 = 没有 run 在跑）。旧导出 requirementRunning / runningSessionIds / subscribeSessionRunning / relevantSessionIds / sameRunningSet / runningAmong 完全不动。验证：npx vitest run tests/client-session-running.test.ts 真值表（TC-1～TC-10）；pnpm typecheck。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-719d80
+      phase: implement
+      side: fullstack
+    - id: t-630b98
+      title: 定义判据契约与客户端类型声明·测试
+      implements: |-
+        改 src/client/session-running.ts：新增导出 —— RunningCause('session'|'run')、RunningMark{cause}、RequirementRunShape{advanceLockAt?}、requirementRunInFlight(req, now, staleMs = LIMITS.advanceLockStaleMs)（typeof number + Number.isFinite 守卫，(now - lock) < staleMs，与 host AdvanceChain 同运算符）、requirementRunningMark(req, isRunning, now, staleMs?)（先会话判据返回 {cause:'session'}，再锁判据返回 {cause:'run'}，都不成立返回 undefined）、requirementBusy(...)（薄包装 = mark !== undefined）。阈值只引用 src/domain/limits.ts 的 advanceLockStaleMs，不复制字面量。改 src/client/types.ts：RequirementRecord 补可选键 advanceLockAt?: number（带注释：缺失 = 没有 run 在跑）。旧导出 requirementRunning / runningSessionIds / subscribeSessionRunning / relevantSessionIds / sameRunningSet / runningAmong 完全不动。验证：npx vitest run tests/client-session-running.test.ts 真值表（TC-1～TC-10）；pnpm typecheck。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-11b442
+      phase: implement
+      side: fullstack
+    - id: t-5c2c94
+      title: 在旧红线处标注取代关系·研发
+      implements: |-
+        改 docs/architecture/client-running-indicator.md：判据节与红线节各加一条取代标注（advanceLockAt 已由 REQ-261005213603-eaed 取代为正式判据，附判据表达式与阈值出处 src/domain/limits.ts 的 advanceLockStaleMs；executions[].outcome === 'running' 仍禁用）。改 docs/requirements/REQ-261004210128-283d/design/data-model.md 与 docs/requirements/REQ-261004210128-283d/design/architecture.md：同样就地加标注，不修改该需求的验收结论、D-x 表与历史正文。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: doc
+      side: doc
+    - id: t-dd8893
+      title: 在旧红线处标注取代关系·复核
+      implements: |-
+        改 docs/architecture/client-running-indicator.md：判据节与红线节各加一条取代标注（advanceLockAt 已由 REQ-261005213603-eaed 取代为正式判据，附判据表达式与阈值出处 src/domain/limits.ts 的 advanceLockStaleMs；executions[].outcome === 'running' 仍禁用）。改 docs/requirements/REQ-261004210128-283d/design/data-model.md 与 docs/requirements/REQ-261004210128-283d/design/architecture.md：同样就地加标注，不修改该需求的验收结论、D-x 表与历史正文。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-5c2c94
+      phase: doc
+      side: doc
+    - id: t-93a02b
+      title: 把新判据接进渲染单点与两处视图·研发
+      implements: |-
+        改 src/client/render/dom-utils.ts：renderRunningDot(mark?: RunningMark) —— undefined 返回空串（不渲染空壳）；cause='session' 时 aria-label/title 保持既有逐字文案，cause='run' 时 aria-label='后台 run 进行中'、title='后台 run 进行中（子卡链在执行，窗口可以已空闲）'；class / data-running / SVG 结构不变。改 src/client/views/artifacts.ts：renderReqCard 第 4 参 running=false → mark?: RunningMark，内部 renderRunningDot(mark)。改 src/client/views/board.ts：泳道卡映射改调 requirementRunningMark(c.req, isRunning, now)；renderListCard 第 2 参 _now → now 并在内部调 requirementRunningMark(req, sid => running.has(sid), now)；buildBoard / buildListView 第 5/4 参签名不变。验证：npx vitest run tests/client-view.test.ts；pnpm build:client。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-ff7d59
+      phase: ui
+      side: fullstack
+    - id: t-ff655e
+      title: 把新判据接进渲染单点与两处视图·联调
+      implements: |-
+        改 src/client/render/dom-utils.ts：renderRunningDot(mark?: RunningMark) —— undefined 返回空串（不渲染空壳）；cause='session' 时 aria-label/title 保持既有逐字文案，cause='run' 时 aria-label='后台 run 进行中'、title='后台 run 进行中（子卡链在执行，窗口可以已空闲）'；class / data-running / SVG 结构不变。改 src/client/views/artifacts.ts：renderReqCard 第 4 参 running=false → mark?: RunningMark，内部 renderRunningDot(mark)。改 src/client/views/board.ts：泳道卡映射改调 requirementRunningMark(c.req, isRunning, now)；renderListCard 第 2 参 _now → now 并在内部调 requirementRunningMark(req, sid => running.has(sid), now)；buildBoard / buildListView 第 5/4 参签名不变。验证：npx vitest run tests/client-view.test.ts；pnpm build:client。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-93a02b
+      phase: ui
+      side: fullstack
+    - id: t-4f7271
+      title: 把新判据接进渲染单点与两处视图·复核
+      implements: |-
+        改 src/client/render/dom-utils.ts：renderRunningDot(mark?: RunningMark) —— undefined 返回空串（不渲染空壳）；cause='session' 时 aria-label/title 保持既有逐字文案，cause='run' 时 aria-label='后台 run 进行中'、title='后台 run 进行中（子卡链在执行，窗口可以已空闲）'；class / data-running / SVG 结构不变。改 src/client/views/artifacts.ts：renderReqCard 第 4 参 running=false → mark?: RunningMark，内部 renderRunningDot(mark)。改 src/client/views/board.ts：泳道卡映射改调 requirementRunningMark(c.req, isRunning, now)；renderListCard 第 2 参 _now → now 并在内部调 requirementRunningMark(req, sid => running.has(sid), now)；buildBoard / buildListView 第 5/4 参签名不变。验证：npx vitest run tests/client-view.test.ts；pnpm build:client。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-ff655e
+      phase: ui
+      side: fullstack
+    - id: t-6b405f
+      title: 把新判据接进渲染单点与两处视图·测试
+      implements: |-
+        改 src/client/render/dom-utils.ts：renderRunningDot(mark?: RunningMark) —— undefined 返回空串（不渲染空壳）；cause='session' 时 aria-label/title 保持既有逐字文案，cause='run' 时 aria-label='后台 run 进行中'、title='后台 run 进行中（子卡链在执行，窗口可以已空闲）'；class / data-running / SVG 结构不变。改 src/client/views/artifacts.ts：renderReqCard 第 4 参 running=false → mark?: RunningMark，内部 renderRunningDot(mark)。改 src/client/views/board.ts：泳道卡映射改调 requirementRunningMark(c.req, isRunning, now)；renderListCard 第 2 参 _now → now 并在内部调 requirementRunningMark(req, sid => running.has(sid), now)；buildBoard / buildListView 第 5/4 参签名不变。验证：npx vitest run tests/client-view.test.ts；pnpm build:client。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-4f7271
+      phase: ui
+      side: fullstack
+    - id: t-1d2f56
+      title: 补判据真值表与实时增隐测试·研发
+      implements: |-
+        扩 tests/client-session-running.test.ts：加 TC-1～TC-10（注入 now 与 staleMs 的纯函数真值表，含恰好 stale / 未来时间 / 非有限值 / 成因优先级 / 两导出恒一致）。扩 tests/client-view.test.ts：加 TC-11～TC-18（锁新鲜出圈、双成因一个圈、过期不出、省略参数逐字节一致、A/B 不串、列表位置契约、样式分片在场）。扩 tests/board-attach.test.ts：加 TC-19～TC-22（state 里锁变新鲜 → 一次状态刷新后出圈；锁清除 → 不出；无关会话 running 抖动不增加重绘次数；dispose 后不重绘不抛错）。验证：npx vitest run tests/client-session-running.test.ts tests/client-view.test.ts tests/board-attach.test.ts。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-787d69
+      phase: test
+      side: fullstack
+    - id: t-5415a6
+      title: 补判据真值表与实时增隐测试·复核
+      implements: |-
+        扩 tests/client-session-running.test.ts：加 TC-1～TC-10（注入 now 与 staleMs 的纯函数真值表，含恰好 stale / 未来时间 / 非有限值 / 成因优先级 / 两导出恒一致）。扩 tests/client-view.test.ts：加 TC-11～TC-18（锁新鲜出圈、双成因一个圈、过期不出、省略参数逐字节一致、A/B 不串、列表位置契约、样式分片在场）。扩 tests/board-attach.test.ts：加 TC-19～TC-22（state 里锁变新鲜 → 一次状态刷新后出圈；锁清除 → 不出；无关会话 running 抖动不增加重绘次数；dispose 后不重绘不抛错）。验证：npx vitest run tests/client-session-running.test.ts tests/client-view.test.ts tests/board-attach.test.ts。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-1d2f56
+      phase: test
+      side: fullstack
+    - id: t-dbd1e9
+      title: 补判据真值表与实时增隐测试·测试
+      implements: |-
+        扩 tests/client-session-running.test.ts：加 TC-1～TC-10（注入 now 与 staleMs 的纯函数真值表，含恰好 stale / 未来时间 / 非有限值 / 成因优先级 / 两导出恒一致）。扩 tests/client-view.test.ts：加 TC-11～TC-18（锁新鲜出圈、双成因一个圈、过期不出、省略参数逐字节一致、A/B 不串、列表位置契约、样式分片在场）。扩 tests/board-attach.test.ts：加 TC-19～TC-22（state 里锁变新鲜 → 一次状态刷新后出圈；锁清除 → 不出；无关会话 running 抖动不增加重绘次数；dispose 后不重绘不抛错）。验证：npx vitest run tests/client-session-running.test.ts tests/client-view.test.ts tests/board-attach.test.ts。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-5415a6
+      phase: test
+      side: fullstack
+    - id: t-a50079
+      title: 核验兼容、回滚与交付基线·研发
+      implements: |-
+        兼容核验：用不带 advanceLockAt 的载荷跑两视图渲染断言，确认与改动前输出逐字节一致（旧服务端降级路径）。回滚演练：临时回退 src/client/session-running.ts 与 src/client/views/board.ts 的本次改动，确认 pnpm build:client 仍 [verify-client] OK，且本次不落盘 / 不改 schema（无数据残留）。交付基线：pnpm typecheck、pnpm build:client（规范 C-15 / C-12）、pnpm test 与改动前基线比对（规范 C-14，基线取改动前同一命令输出）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-787d69
+      phase: test
+      side: fullstack
+    - id: t-f3efb4
+      title: 核验兼容、回滚与交付基线·复核
+      implements: |-
+        兼容核验：用不带 advanceLockAt 的载荷跑两视图渲染断言，确认与改动前输出逐字节一致（旧服务端降级路径）。回滚演练：临时回退 src/client/session-running.ts 与 src/client/views/board.ts 的本次改动，确认 pnpm build:client 仍 [verify-client] OK，且本次不落盘 / 不改 schema（无数据残留）。交付基线：pnpm typecheck、pnpm build:client（规范 C-15 / C-12）、pnpm test 与改动前基线比对（规范 C-14，基线取改动前同一命令输出）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-a50079
+      phase: test
+      side: fullstack
+    - id: t-a7386b
+      title: 核验兼容、回滚与交付基线·测试
+      implements: |-
+        兼容核验：用不带 advanceLockAt 的载荷跑两视图渲染断言，确认与改动前输出逐字节一致（旧服务端降级路径）。回滚演练：临时回退 src/client/session-running.ts 与 src/client/views/board.ts 的本次改动，确认 pnpm build:client 仍 [verify-client] OK，且本次不落盘 / 不改 schema（无数据残留）。交付基线：pnpm typecheck、pnpm build:client（规范 C-15 / C-12）、pnpm test 与改动前基线比对（规范 C-14，基线取改动前同一命令输出）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-f3efb4
+      phase: test
+      side: fullstack
+task_coverage:
+  - task_id: t-ff7d59
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-787d69
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-66ef12
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-d8d6b7
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-eea3c3
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-719d80
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-11b442
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-630b98
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-5c2c94
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-dd8893
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-93a02b
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ff655e
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-4f7271
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-6b405f
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-1d2f56
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-5415a6
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-dbd1e9
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-a50079
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-f3efb4
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-a7386b
+    covers_prototypes: []
+    covers_decisions: []
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与总体方案:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/architecture.md#模块改动地图:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+    design/architecture.md#判据定义与新鲜度口径:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/architecture.md#数据结构变更:
+      - t-ff7d59
+      - t-66ef12
+      - t-eea3c3
+    design/architecture.md#接口变更:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+    design/architecture.md#实时性与重绘路径:
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/architecture.md#降级与不误报矩阵:
+      - t-ff7d59
+      - t-66ef12
+      - t-eea3c3
+    design/architecture.md#旧红线取代方案:
+      - t-d8d6b7
+    design/architecture.md#风险与对策:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/architecture.md#关键决策与取舍:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+    design/architecture.md#技术方案与亮点:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/architecture.md#不做什么架构边界:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/data-model.md#新增修改的数据结构:
+      - t-ff7d59
+      - t-66ef12
+      - t-eea3c3
+    design/data-model.md#RequirementRecordadvanceLockAt客户端读侧补声明:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/data-model.md#RunningMark判据-渲染的内存值类型:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+    design/data-model.md#摘要投影链host-客户端:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/data-model.md#是否改表-迁移-回滚:
+      - t-ff7d59
+      - t-66ef12
+      - t-eea3c3
+    design/data-model.md#关键决策与取舍:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+    design/data-model.md#技术方案与亮点:
+      - t-ff7d59
+      - t-66ef12
+      - t-eea3c3
+    design/frontend.md#原型与豁免:
+      - t-787d69
+      - t-66ef12
+    design/frontend.md#目录与文件落点:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+    design/frontend.md#渲染结构与文案:
+      - t-787d69
+      - t-66ef12
+    design/frontend.md#数据流与状态:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/frontend.md#交互与可访问性:
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/frontend.md#判据与可失败断言:
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/frontend.md#关键决策与取舍:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+    design/frontend.md#技术方案与亮点:
+      - t-787d69
+      - t-66ef12
+    design/interfaces.md#判据函数requirementRunInFlight:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/interfaces.md#判据函数requirementRunningMark组合入口:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+    design/interfaces.md#判据函数requirementBusy布尔便捷入口:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+    design/interfaces.md#渲染单点renderRunningDot:
+      - t-787d69
+      - t-66ef12
+    design/interfaces.md#卡片渲染入参renderReqCard-第-4-参:
+      - t-787d69
+      - t-66ef12
+    design/interfaces.md#列表行renderListCard-buildListView签名不变语义扩展:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/interfaces.md#读侧载荷契约GET-dashboardapireqboardstate-的-advanceLockAt:
+      - t-ff7d59
+      - t-66ef12
+      - t-eea3c3
+    design/interfaces.md#错误语义总表:
+      - t-66ef12
+      - t-eea3c3
+    design/interfaces.md#不新增的接口红线:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-d8d6b7
+    design/use-cases.md#场景总览:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+    design/use-cases.md#UC-1-后台跑子卡圆圈亮起:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/use-cases.md#UC-2-run-结束圆圈熄灭:
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    design/use-cases.md#UC-3-会话与锁同时成立:
+      - t-787d69
+      - t-66ef12
+    design/use-cases.md#UC-4-残锁与时钟偏差:
+      - t-ff7d59
+      - t-66ef12
+      - t-eea3c3
+    design/use-cases.md#UC-5-读数不可得:
+      - t-66ef12
+      - t-eea3c3
+    design/use-cases.md#UC-6-维护者读旧红线:
+      - t-d8d6b7
+    design/use-cases.md#用例-条款对照:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+    design/use-cases.md#关键决策与取舍:
+      - t-787d69
+      - t-66ef12
+    design/use-cases.md#技术方案与亮点:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+  fr_to_tasks:
+    FR-1:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+      - t-d8d6b7
+    FR-2:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    FR-3:
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+    FR-4:
+      - t-787d69
+      - t-66ef12
+      - t-eea3c3
+      - t-ff7d59
+    FR-5:
+      - t-ff7d59
+      - t-66ef12
+      - t-eea3c3
+      - t-787d69
+    FR-6:
+      - t-d8d6b7
+      - t-ff7d59
+      - t-787d69
+      - t-66ef12
+coverage:
+  implementation:
+    total: 46
+    covered: 46
+    uncovered: []
+    rate: 100
+    total_designs: 46
+    covered_designs: 46

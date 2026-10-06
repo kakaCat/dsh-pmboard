@@ -1,0 +1,39 @@
+task:
+  id: t-68b0ac
+  title: 端到端回归锁：确认后无需人敲字即起轮·复核
+  status: done
+  implements: |-
+    新建 tests/wake-after-confirm.test.ts，照 tests/dive-wake-e2e.test.ts 的边界替换法真装配（createCaptureRuntime + createDiveRoundDriver，假台账/假 agent 句柄）：驱动 UC-1（后台弹框超宽限后作答）与 UC-3（否定作答），观测量 = inbox 收到 source.kind='dive' 的回合消息。反向验证：把 src/application/internal/confirm-settle.ts 的清位改回旧的 void 无 ref 调用，记录该文件变红后还原。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-1e7c7c
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006170150-52cc
+    TASK_ID: t-68b0ac
+    TASK_TITLE: 端到端回归锁：确认后无需人敲字即起轮·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      started_at: 2026-10-06T10:46:37.450Z
+      completed_at: 2026-10-06T10:46:41.262Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006170150-52cc
+  generated_at: 2026-10-06T10:46:23.135Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T10:46:41.262Z

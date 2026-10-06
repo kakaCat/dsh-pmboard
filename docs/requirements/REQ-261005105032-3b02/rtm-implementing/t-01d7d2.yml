@@ -1,0 +1,38 @@
+task:
+  id: t-01d7d2
+  title: 产出端到端证据与六条逆验证（几何量硬判据 / exit 2）·复核
+  status: done
+  implements: |-
+    ① 把探针族只打印的诊断行升为硬判据：改 scripts/req-report-probe.mts（既有 --window-size 与 TABS_TOP_MAX=713 硬上限保留），确保每个几何量都有断言分支、无 Chrome 环境 exit 2（响亮失败、不许静默跳过），并在回读时校验实际视口宽等于期望（--window-size 未生效即报错）。② 新增源码级断言用例 tests/probe-hard-criteria.test.ts：扫 scripts/req-*-probe.mts 中『只 console.log 几何量、无断言分支』的行，命中数必须为 0。③ 用既有 scripts/reverse-drill-matrix.mts 跑 6 条逆验证（人为改坏 → 必红）：R1 模板节标题、R1 渲染映射表项、R2 节名集合、R3 路径指针、R4 未重生成、stripPrototypeAnchors 移除。④ 把本轮四路径门禁回归（t6）、验收单对照项（t18）、文档自检（t21）串成一份端到端证据清单（命令 + 原始输出摘要 + 探针截图路径），供验收材料直接引用。依据 design-brief §6 与 §10 #25 及 requirement.md 验收标准 8/21/22。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-9621a5
+  phase: test
+  side: fullstack
+  workflow_params:
+    REQ_ID: REQ-261005105032-3b02
+    TASK_ID: t-01d7d2
+    TASK_TITLE: 产出端到端证据与六条逆验证（几何量硬判据 / exit 2）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: fullstack
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T11:17:30.870Z
+    - phase: implement
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005105032-3b02
+  generated_at: 2026-10-05T11:17:30.629Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T11:19:28.916Z

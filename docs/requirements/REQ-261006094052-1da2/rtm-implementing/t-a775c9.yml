@@ -1,0 +1,36 @@
+task:
+  id: t-a775c9
+  title: 早退分支兑现推进：已落章 + 闸门全过则真推进·研发
+  status: done
+  implements: |-
+    改 src/application/use-cases/AskConfirm.ts 的 alreadyConfirmed 早退分支：闸门全过后若 advanceTo !== undefined && advance !== false 则调 applyConfirmedAdvance；advanced === true 时再调 applyDiveTransition(..., 'confirm-advance', {kind:'human',sessionId:windowKey}, {stageChanged:true, status:from})（自 ../dive/applyDiveTransition.js 引入）。返回体补 advanced:true / from / to，note 前缀保留「已确认，未重复弹框（FR-9/FR-11）」并追加「；已自动推进：<from> → <to>」。两处闸门失败返回体（gate_failure + 「未推进」文案 + 「仍有 N 份未登记」）一字不动。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-32e494
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006094052-1da2
+    TASK_ID: t-a775c9
+    TASK_TITLE: 早退分支兑现推进：已落章 + 闸门全过则真推进·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T01:51:39.592Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006094052-1da2
+  generated_at: 2026-10-06T01:51:39.591Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T01:51:40.208Z

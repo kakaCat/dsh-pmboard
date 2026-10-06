@@ -1,0 +1,38 @@
+task:
+  id: t-44ede1
+  title: 三处接线：让声明难度在每条注入路径上算数·测试
+  status: done
+  implements: |-
+    三处取词调用点按 design/interfaces.md 接上声明难度：`src/application/internal/capture-section.ts` 与 `src/application/dive/session-driver.ts` 在调 `resolveStagePrompt` 时传 `difficultyFromDeclaredPrompt(stageReq.promptDifficulty)`（未声明则不传该键；采集半同时补 requirement 文本，仍只留痕不投递）；`src/application/use-cases/IsolateNodeContext.ts` 的 `buildNodeInputPackage({ difficulty })` 改为「调用方显式优先 → 否则用声明映射」。用例补在同文件（T-03~T-06、T-09、T-10）。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-2552b1
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005154851-8512
+    TASK_ID: t-44ede1
+    TASK_TITLE: 三处接线：让声明难度在每条注入路径上算数·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T07:56:20.897Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005154851-8512
+  generated_at: 2026-10-05T07:56:20.637Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T07:56:20.898Z

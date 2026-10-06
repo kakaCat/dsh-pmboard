@@ -1,0 +1,37 @@
+task:
+  id: t-5322b6
+  title: 指南三处与回执 note 去机制化并重生成产物·研发
+  status: done
+  implements: |-
+    ① 改 src/application/internal/capture-section.ts 的设计/拆分两处指南为条件式：「若回执已说明有门在等 → 不要重复发起确认；否则发起一次」。② 改三份片段 src/domain/prompt/fragments/decomposing/light.md、src/domain/prompt/fragments/decomposing/heavy.md、src/domain/prompt/fragments/brainstorming/heavy/overrides.md 同样条件式。③ 跑 node scripts/inline-prompt-fragments.mjs 重生成 src/domain/prompt/generated/fragments.ts。④ 改 src/application/use-cases/SubmitArtifact.ts 的回执 note 分支：triggered=true 时写「已有一道门在等（ticket=…）：取回执或看板作答，不要再发起确认」，不再指向 ask_confirm。⑤ 同步 tests/fixtures/stage-prompts-baseline.json 基线。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-989d03
+    - t-aa311c
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006164732-6503
+    TASK_ID: t-5322b6
+    TASK_TITLE: 指南三处与回执 note 去机制化并重生成产物·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T10:01:07.731Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006164732-6503
+  generated_at: 2026-10-06T10:01:02.195Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T10:01:10.809Z

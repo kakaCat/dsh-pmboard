@@ -1,0 +1,36 @@
+task:
+  id: t-847036
+  title: 两个 RTM 公开入口各自收敛为活卡（覆盖度分母剔卡）
+  status: done
+  implements: 改 `src/application/internal/rtm-yaml.ts`：`syncRTMYaml` 与 `syncRTMYamlWithSnapshot` **两个公开入口各自函数体顶部第一行**加 `const live = liveTasksOf(tasks)`，其后函数体内**只允许使用 `live`**、不得再引用入参 `tasks`（纯函数、幂等）；函数签名与返回体不变、不新增参数、**不改 18 + 3 个调用点**（看板三条路由直调 `syncRTMYamlWithSnapshot`，绕过前者 ⇒ 两个入口都要接，缺一条就漏三条路径）；`coverageGateOf` **一字不改**（`total <= 0 → undefined` 的不执法边界保留）；`ledgerReaderOf(snapshot, live)` 下游不变。新增 `tests/rtm-yaml-live-tasks.test.ts`：同一标本（132 = 106 + 26）分别走两个入口，断言 `coverage.total === 106`、`covered === 106`、`rate === 100`、`uncovered.length === 0`、`passed === true` 且两入口读数**逐字段相等**；对照改前口径断言 `total === 132`、`rate === 80`（压线通过但 `uncovered.length === 26`，门禁仍点名 26 张）；全取消标本（`total === 0`）断言门**不执法**（`coverageGateOf` 返回 `undefined`）；源码级断言用函数名切区间，两个入口函数体内都含 `liveTasksOf(`。验证：`npx vitest run tests/rtm-yaml-live-tasks.test.ts`。依据 design/interfaces.md §5 与 backend.md §两个 RTM 公开入口。
+  serves:
+    - FR-2
+    - FR-4
+  depends_on:
+    - t-239433
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005193546-1b1a
+    TASK_ID: t-847036
+    TASK_TITLE: 两个 RTM 公开入口各自收敛为活卡（覆盖度分母剔卡）
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-05T16:41:54.695Z
+      completed_at: 2026-10-05T16:46:25.330Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005193546-1b1a
+  generated_at: 2026-10-05T16:36:04.492Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T16:46:25.446Z

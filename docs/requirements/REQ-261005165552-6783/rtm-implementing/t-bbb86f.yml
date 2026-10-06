@@ -1,0 +1,38 @@
+task:
+  id: t-bbb86f
+  title: 重建产物并留命令级证据·复核
+  status: done
+  implements: |-
+    依次跑 pnpm typecheck / pnpm build / pnpm test，收集三条命令的退出码与 dist/index.mjs 的 sha256 前 12 位，写进 docs/requirements/REQ-261005165552-6783/notes/build-evidence.md（命令原文 + 退出码 + 产物指纹 + 时间戳）。除该证据文件外不改任何源码。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-cec857
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005165552-6783
+    TASK_ID: t-bbb86f
+    TASK_TITLE: 重建产物并留命令级证据·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T09:10:58.404Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005165552-6783
+  generated_at: 2026-10-05T09:10:48.258Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T09:10:58.404Z

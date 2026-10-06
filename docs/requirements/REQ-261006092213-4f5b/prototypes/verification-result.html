@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>验收结果展示与零输入裁决 · 原型（REQ-261006092213-4f5b）</title>
+<!--
+  原型骨架（templates/brainstorming/prototype.html）改写：结构 / 纪律 / 页脚观测块位置照旧，
+  样式从简、只保留结构与交互路径。这是**原型**不是交付物；换正式视觉稿时本文件标 superseded、
+  不删文件（INDEX「被取代于」列写新权威路径）。
+
+  本文件覆盖 FR-3 / FR-4 / FR-5（三块 <section class="fr" id="FR-N"> 与 requirement.md 同号）。
+  FR-1 / FR-2 由既有原型 prototypes/detail.html 服务（状态 superseded），本次不重画。
+
+  真实界面语言来源（类名逐字照抄，勿另立）：
+  - 看板逐项验收行：src/client/stage-panel.ts · renderVerificationSheet
+    （.dsh-pm-vsheet / .dsh-pm-vitem / -head / -badge / -src / -actions / -opinion，徽章文案取 domain/text/labels.ts ITEM_STATUS_BADGE）
+  - 详情页核验表：src/client/views/panels/docs.ts · verifyRow（七列 标准|实际结果|来源|需人工|证据|意见|裁决，
+    类名 .dsh-pm-doc-cell-* / .dsh-pm-src[data-source] / .dsh-pm-flag.verify-pending / .dsh-pm-verify-verdict）
+  - 会话弹框：src/application/use-cases/AcceptSheet.ts（旧：两项问题；新：有 result 的项 slice(0,1) 只留裁决问）
+    与 domain/text/pm-badge.ts（header 一律带「📋 PM · 」标志）
+  - 配色 / 底色 / 状态色：src/client/styles/base.ts（--pm-c-accepting #17a2b8、--pm-c-done #28a745、--pm-c-danger #dc3545）
+
+  ── prototypes/INDEX.md（四列逐字：路径 | 状态 | 服务条款 | 被取代于）──
+     prototypes/verification-result.html | authoritative | FR-3, FR-4, FR-5 |
+     prototypes/detail.html              | superseded    | FR-1            | prototypes/verification-result.html
+  权威版本**恰好一条**（0 条 / 多条 = prototype_version_conflict）；本文件即那条权威版本，
+  被取代时把本行改成 superseded 并同步 INDEX。
+-->
+<style>
+:root{--pm-line:rgba(128,128,128,.18);--pm-line2:rgba(128,128,128,.28);--pm-text2:#6b7280;--pm-accent:#4a7dff;
+      --pm-agent:#17a2b8;--pm-ok:#28a745;--pm-danger:#dc3545;--pm-mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+body{font-family:-apple-system,"PingFang SC",sans-serif;margin:0;background:#f5f6f8;color:#24292f;font-size:13px;line-height:1.6}
+header{background:#1f2328;color:#fff;padding:12px 20px;font-size:14px}
+header .req{opacity:.7;margin-left:8px;font-size:12px}
+.page-note{max-width:860px;margin:12px auto 0;color:#57606a;font-size:12px}
+.fr{background:#fff;margin:16px auto;max-width:860px;border:1px solid #d0d7de;border-radius:8px;padding:20px}
+.fr h2{margin:0 0 4px;font-size:16px}
+.fr h3{font-size:13px;margin:20px 0 8px;padding-top:12px;border-top:1px solid var(--pm-line)}
+.meta{color:#57606a;font-size:12px;margin-bottom:12px}
+.flow{font-size:12px;color:#57606a;margin-top:12px;line-height:1.8}
+.flow b{color:#24292f}
+.mock{border:1px dashed #8c959f;border-radius:6px;padding:12px;background:#fbfcfd}
+.frame{background:#fff;border:1px solid #d0d7de;border-radius:8px;padding:12px;margin:10px 0}
+.frame-head{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--pm-line);padding-bottom:8px;margin-bottom:8px;
+  font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.04em}
+.cap{font-size:11px;color:#6b7280;margin:6px 0 0}
+
+/* ── 看板逐项验收行（类名照抄 renderVerificationSheet，配色取自 base.ts 状态色） ── */
+.dsh-pm-sn-label{display:block;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#aaa;margin:14px 0 4px}
+.dsh-pm-vsheet{display:flex;flex-direction:column;gap:8px}
+.dsh-pm-vitem{border:1px solid var(--pm-line);border-radius:8px;padding:10px}
+.dsh-pm-vitem-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.dsh-pm-vitem-badge{font-size:11px;background:rgba(128,128,128,.12);border-radius:4px;padding:1px 6px;color:#444}
+.dsh-pm-vitem-src{font-size:11px;color:var(--pm-text2);font-family:var(--pm-mono)}
+.dsh-pm-sn-text{color:#333}
+/* 新增（FR-4）：实际结果展示行——"谁跑的验证"在界面上第一次可见 */
+.dsh-pm-vitem-result{margin-top:6px;font-family:var(--pm-mono);font-size:11px;color:#0f6674;
+  background:rgba(23,162,184,.08);border-left:3px solid var(--pm-agent);border-radius:0 4px 4px 0;padding:4px 8px;word-break:break-all}
+.dsh-pm-vitem-actions{display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap}
+.dsh-pm-vitem-actions label{display:inline-flex;align-items:center;gap:4px;font-size:12px;cursor:pointer}
+.dsh-pm-vitem-opinion{flex:1;min-width:260px;padding:5px 10px;border-radius:6px;border:1px solid var(--pm-line2);
+  font-size:12px;font-family:var(--pm-mono);background:#fff;color:#333}
+.dsh-pm-vitem-opinion.is-prefilled{border-style:dashed;border-color:var(--pm-agent);background:rgba(23,162,184,.04)}
+.dsh-pm-vitem-opinion:focus,.dsh-pm-vitem-actions input[type=radio]:focus-visible{outline:2px solid var(--pm-accent);outline-offset:1px}
+.dsh-pm-vitem.is-decided{opacity:.72}
+.dsh-pm-btn{padding:5px 12px;border-radius:6px;border:1px solid var(--pm-line2);background:transparent;font-size:13px;color:#333}
+.dsh-pm-btn.primary{background:var(--pm-accent);color:#fff;border-color:transparent}
+.dsh-pm-flag{font-size:10px;padding:1px 6px;border-radius:4px}
+.dsh-pm-flag.verify-pending{background:rgba(23,162,184,.15);color:#17a2b8}
+.dsh-pm-hint{font-size:12px;color:var(--pm-text2)}
+.dsh-pm-verify-verdict{font-size:11px;font-weight:600}
+
+/* ── 详情页核验表（列与类名照抄 verifyRow；列宽取 report.ts 的 19/12/8/8/30/17/6%） ── */
+.dsh-pm-docs-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+.dsh-pm-docs-table th{text-align:left;font-size:11px;font-weight:600;color:var(--pm-text2);padding:6px 8px;border-bottom:1px solid var(--pm-line)}
+.dsh-pm-docs-table td{padding:6px 8px;border-bottom:1px solid var(--pm-line);vertical-align:top;word-break:break-word}
+.dsh-pm-docs-table th:nth-child(1){width:19%}.dsh-pm-docs-table th:nth-child(2){width:12%}
+.dsh-pm-docs-table th:nth-child(3){width:8%}.dsh-pm-docs-table th:nth-child(4){width:8%}
+.dsh-pm-docs-table th:nth-child(5){width:30%}.dsh-pm-docs-table th:nth-child(6){width:17%}
+.dsh-pm-docs-table th:nth-child(7){width:6%}
+.dsh-pm-src{font-size:11px;color:var(--pm-text2);font-family:var(--pm-mono);white-space:nowrap}
+.dsh-pm-evidence{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.dsh-pm-evidence li{font-family:var(--pm-mono);font-size:11px;background:rgba(128,128,128,.08);padding:3px 6px;border-radius:4px;word-break:break-all}
+
+/* ── 会话弹框对照（FR-3） ── */
+.dlg-pair{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.dlg{flex:1 1 320px;margin:0;border:1px solid #d0d7de;border-radius:8px;background:#fff;overflow:hidden}
+.dlg-head{background:#f6f8fa;border-bottom:1px solid var(--pm-line);padding:8px 12px;font-size:12px;font-weight:600}
+.dlg-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.dlg-q{border:1px solid var(--pm-line);border-radius:6px;padding:8px 10px}
+.dlg-q .q-head{font-size:11px;color:var(--pm-text2);margin-bottom:4px}
+.dlg-q .q-title{font-weight:600;font-size:12px}
+.dlg-q .q-opts{margin-top:6px;display:flex;flex-direction:column;gap:3px;font-size:12px;color:#444}
+.dlg-q .q-custom{margin-top:6px;font-size:11px;color:#8a6d3b;background:rgba(240,160,32,.12);border-radius:4px;padding:3px 6px}
+.dlg.old .dlg-head{color:#b07800}
+.dlg.old .dlg-q.is-forced{border-color:rgba(220,53,69,.35)}
+.dlg.old .dlg-q.is-forced .q-head{color:var(--pm-danger)}
+.dlg.new .dlg-head{color:#0f6674}
+.dlg-q.is-skipped{border-style:dashed;color:#8c959f}
+.dlg figcaption{font-size:11px;color:#57606a;padding:8px 12px;border-top:1px solid var(--pm-line);background:#fafbfc}
+.dlg-arrow{align-self:center;font-size:18px;color:#8c959f;padding:0 2px}
+</style>
+</head>
+<body>
+<header><strong>验收项由 agent 实测完成：人只做审核员</strong><span class="req">REQ-261006092213-4f5b · 原型 verification-result v0.1 · 2026-10-06 · 权威版本</span></header>
+<p class="page-note">
+  本页覆盖 FR-3 / FR-4 / FR-5 三块界面：① 会话弹框（问几问）② 看板逐项验收行 + 详情页核验表（结果从哪来、预填给谁）
+  ③ 无法自动验证的项怎么显式单列。所有数据为示意值，交互路径才是要看的东西。
+</p>
+
+<!-- ══════════════════════════════ FR-3 ══════════════════════════════ -->
+<section class="fr" id="FR-3">
+  <h2>FR-3 · 已有结果的项，会话弹框只问裁决（人零输入）</h2>
+  <div class="meta">优先级 P0 · 锚点 A2 · 状态：草图</div>
+
+  <h3>会话弹框对照：旧 2 问 vs 新 1 问</h3>
+  <div class="mock">
+    <div class="dlg-pair">
+      <figure class="dlg old">
+        <div class="dlg-head">📋 PM · 验收项（旧）</div>
+        <div class="dlg-body">
+          <div class="dlg-q">
+            <div class="q-head">第 1 问</div>
+            <div class="q-title">【需求级】验收材料逐项交代：提交时每项带 result</div>
+            <div class="q-opts">
+              <span>◯ ✅ 通过 —— 请在自定义输入填实际结果（必填）</span>
+              <span>◯ 🛠 改进（需修改）—— 请在自定义输入写意见</span>
+              <span>◯ ❓ 其他 —— 请在自定义输入说明</span>
+            </div>
+          </div>
+          <div class="dlg-q is-forced">
+            <div class="q-head">第 2 问（强制）</div>
+            <div class="q-title">【实际结果】</div>
+            <div class="q-custom">请贴实际结果（命令输出摘要 / 看到的界面 / 数据）；通过必填，留空则记「未复核」，不计入通过</div>
+          </div>
+        </div>
+        <figcaption>旧：<b>2 问</b> —— 第 2 问逼人把 agent 已经跑过的命令输出重抄一遍；不抄就记「未复核」。<br>
+          （agent 跑了 114 个用例，人却在这里当打字员。）</figcaption>
+      </figure>
+
+      <div class="dlg-arrow">⇢</div>
+
+      <figure class="dlg new">
+        <div class="dlg-head">📋 PM · 验收项（新）</div>
+        <div class="dlg-body">
+          <div class="dlg-q">
+            <div class="q-head">第 1 问（也是唯一一问）</div>
+            <div class="q-title">【需求级】验收材料逐项交代：提交时每项带 result</div>
+            <div class="q-opts">
+              <span>◯ ✅ 通过 —— 该验收项通过（实际结果已由 agent 记录，无需填写）</span>
+              <span>◯ 🛠 改进（需修改）—— 请在自定义输入写意见</span>
+              <span>◯ ❓ 其他 —— 请在自定义输入说明</span>
+            </div>
+          </div>
+          <div class="dlg-q is-skipped">
+            <div class="q-head">第 2 问</div>
+            <div class="q-title">（不出现）</div>
+            <div class="q-custom">该项已有 result → 弹框只问裁决（slice(0,1)）</div>
+          </div>
+        </div>
+        <figcaption>新：<b>1 问</b> —— 有 result 的项只回答「通过 / 改进 / 其他」，不打字。<br>
+          例外：<code>needsHuman</code> 项仍保留第 2 问，且题干里写明「为什么必须人看」（见 FR-5）。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="flow">
+    交互路径：<b>1.</b> agent 提交验收材料（每项带 result）→ <b>2.</b> 人调 <code>reqboard_accept_sheet</code> /
+    看板验收面板 → <b>3.</b> 弹框按项出题：该项有 result → 只出裁决问；无 result → 出裁决问 + 实际结果问。
+    <br>分支：若人选「通过」且未打字 → <code>opinion</code> 取该项 <code>result</code>（D-5 零输入通过）；
+    若该项 result 为空且未打字的「通过」→ 记 <code>unverified</code>（不计通过、不许归档）。
+  </div>
+</section>
+
+<!-- ══════════════════════════════ FR-4 ══════════════════════════════ -->
+<section class="fr" id="FR-4">
+  <h2>FR-4 · 看板逐项行与详情页核验表展示实测结果并预填</h2>
+  <div class="meta">优先级 P0 · 锚点 A2、A5 · 状态：草图</div>
+
+  <h3>屏 1 / 看板 · 验收面板逐项验收行</h3>
+  <div class="mock">
+    <div class="frame">
+      <div class="frame-head">看板 · 验收面板（accepting）</div>
+      <div class="dsh-pm-vsheet" data-req="REQ-261006092213-4f5b" data-version="3">
+        <div class="dsh-pm-sn-label">验收单 v3 · 共 4 项</div>
+
+        <!-- 项 1：需求级 · 有 agent 实测结果 · 输入框已预填 -->
+        <div class="dsh-pm-vitem" data-item-id="it-1" data-source="requirement" data-result-source="agent">
+          <div class="dsh-pm-vitem-head">
+            <span class="dsh-pm-vitem-badge">⬜ 待验</span>
+            <span class="dsh-pm-vitem-src">需求级</span>
+          </div>
+          <div class="dsh-pm-sn-text">验收材料逐项交代：提交时每项带 result，漏项 / 坏 ref / 空结果被拒并点名</div>
+          <div class="dsh-pm-vitem-result">实际结果（agent 实测）：npx vitest run … → 114 passed</div>
+          <div class="dsh-pm-vitem-actions">
+            <label><input type="radio" name="verdict-it-1" value="passed"> 通过</label>
+            <label><input type="radio" name="verdict-it-1" value="failed"> 不通过</label>
+            <input type="text" class="dsh-pm-vitem-opinion is-prefilled"
+                   value="npx vitest run … → 114 passed"
+                   placeholder="已预填 agent 实测结果；改动即记为人工填写">
+          </div>
+          <div class="cap">预填语义：不改动直接点「通过」→ <code>opinion</code> 取该项 <code>result</code>（resultSource=agent，零输入）；
+            一旦改动输入框 → 落 <code>resultSource=human</code>（人负责）。占位提示随预填内容一起给出，不留歧义。</div>
+        </div>
+
+        <!-- 项 2：任务 id 来源 · 有 agent 实测结果 · 输入框已预填 -->
+        <div class="dsh-pm-vitem" data-item-id="it-2" data-source="t-7c41a9" data-result-source="agent">
+          <div class="dsh-pm-vitem-head">
+            <span class="dsh-pm-vitem-badge">⬜ 待验</span>
+            <span class="dsh-pm-vitem-src">t-7c41a9</span>
+          </div>
+          <div class="dsh-pm-sn-text">看板逐项行展示「实际结果（agent 实测）」并预填输入框</div>
+          <div class="dsh-pm-vitem-result">实际结果（agent 实测）：npx vitest run test/client/sheet-row.test.ts → 12 passed</div>
+          <div class="dsh-pm-vitem-actions">
+            <label><input type="radio" name="verdict-it-2" value="passed"> 通过</label>
+            <label><input type="radio" name="verdict-it-2" value="failed"> 不通过</label>
+            <input type="text" class="dsh-pm-vitem-opinion is-prefilled"
+                   value="npx vitest run test/client/sheet-row.test.ts → 12 passed"
+                   placeholder="已预填 agent 实测结果；改动即记为人工填写">
+          </div>
+        </div>
+
+        <!-- 项 3：原型对照 · needsHuman（无预填，见 FR-5） -->
+        <div class="dsh-pm-vitem" data-item-id="it-3" data-source="prototype-compare" data-needs-human="1">
+          <div class="dsh-pm-vitem-head">
+            <span class="dsh-pm-vitem-badge">⬜ 待验</span>
+            <span class="dsh-pm-vitem-src">原型对照</span>
+            <span class="dsh-pm-flag verify-pending">需人工确认：界面视觉需人对照权威原型</span>
+          </div>
+          <div class="dsh-pm-sn-text">两屏原型齐备：INDEX 唯一 authoritative + 锚点可对上 FR-4 / FR-5（对照 prototypes/verification-result.html）</div>
+          <div class="dsh-pm-vitem-actions">
+            <label><input type="radio" name="verdict-it-3" value="passed"> 通过</label>
+            <label><input type="radio" name="verdict-it-3" value="failed"> 不通过</label>
+            <input type="text" class="dsh-pm-vitem-opinion"
+                   placeholder="未自动验证：请写你看到的界面事实（通过必填）">
+          </div>
+          <div class="cap">这类项由一个「旗标 + 理由」先声明显式例外：不预填、必填，理由就写在题干旁（FR-5）。</div>
+        </div>
+
+        <!-- 项 4：裁定对照 · 有 agent 实测结果 · 输入框已预填 -->
+        <div class="dsh-pm-vitem" data-item-id="it-4" data-source="decision-compare" data-result-source="agent">
+          <div class="dsh-pm-vitem-head">
+            <span class="dsh-pm-vitem-badge">⬜ 待验</span>
+            <span class="dsh-pm-vitem-src">裁定对照</span>
+          </div>
+          <div class="dsh-pm-sn-text">D-5 零输入通过：不填文本也能记 passed（opinion 取该项 result）</div>
+          <div class="dsh-pm-vitem-result">实际结果（agent 实测）：npx vitest run test/accept-sheet.test.ts → 6 passed</div>
+          <div class="dsh-pm-vitem-actions">
+            <label><input type="radio" name="verdict-it-4" value="passed"> 通过</label>
+            <label><input type="radio" name="verdict-it-4" value="failed"> 不通过</label>
+            <input type="text" class="dsh-pm-vitem-opinion is-prefilled"
+                   value="npx vitest run test/accept-sheet.test.ts → 6 passed"
+                   placeholder="已预填 agent 实测结果；改动即记为人工填写">
+          </div>
+        </div>
+
+        <div><button type="button" class="dsh-pm-btn primary">提交裁决</button></div>
+      </div>
+      <div class="cap">真实结构对照 <code>renderVerificationSheet</code>：<code>.dsh-pm-vitem</code> 内是
+        badge + <code>.dsh-pm-vitem-src</code> + <code>.dsh-pm-sn-text</code>（标准）+ 本需求新增的结果行 + 裁决控件。
+        徽章文案取自 <code>ITEM_STATUS_BADGE</code>（⬜ 待验 / ✅ 通过 / ❌ 不通过）。</div>
+    </div>
+  </div>
+  <div class="flow">
+    交互路径：<b>1.</b> 打开验收面板 → <b>2.</b> 每行先看到 badge + 来源标签 + 标准文本 →
+    <b>3.</b> 有 agent 实测的行多一行「实际结果（agent 实测）：…」且输入框已预填 →
+    <b>4.</b> 人勾「通过 / 不通过」→ <b>5.</b> 提交裁决。
+    <br>分支：留空 + 通过 → 不再被拦（服务端 <code>passed</code> 且 opinion 为空时取该项 <code>result</code>）；
+    无 result 的项留空 + 通过 → 记 <code>unverified</code>，且「全部通过 → 归档」不放行（A5）。
+  </div>
+
+  <h3>屏 2 / 详情页 · 核验表（七列，逐项）</h3>
+  <div class="mock">
+    <div class="frame">
+      <div class="frame-head">详情页 · 核验 · 验收单 v3 · 2026-10-06 09:41</div>
+      <table class="dsh-pm-docs-table" data-verify-table="1">
+        <thead>
+          <tr>
+            <th>标准</th><th>实际结果</th><th>来源</th><th>需人工</th><th>证据</th><th>意见</th><th>裁决</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- agent 实测原文 -->
+          <tr data-verify-row="1" data-verify-id="it-1" data-verify-status="passed" data-verify-source="requirement">
+            <td class="dsh-pm-doc-cell-criterion"><span class="dsh-pm-hint">it-1</span> 验收材料逐项交代：提交时每项带 result</td>
+            <td class="dsh-pm-doc-cell-result">npx vitest run … → 114 passed</td>
+            <td class="dsh-pm-doc-cell-source"><span class="dsh-pm-src" data-source="agent">agent 实测（agent）</span></td>
+            <td class="dsh-pm-doc-cell-human"><span class="dsh-pm-hint">否（agent 可自证）</span></td>
+            <td class="dsh-pm-doc-cell-evidence">
+              <ul class="dsh-pm-evidence">
+                <li>npx vitest run test/verification-results.test.ts → 3 passed</li>
+                <li>docs/requirements/REQ-261006092213-4f5b/verification.md</li>
+              </ul>
+            </td>
+            <td class="dsh-pm-doc-cell-opinion"><span class="dsh-pm-hint">无意见（裁决时未写）</span></td>
+            <td class="dsh-pm-doc-cell-verdict"><span class="dsh-pm-verify-verdict" data-verify-verdict="passed">✅ 通过</span></td>
+          </tr>
+          <!-- 人工填写：人改了预填内容 -->
+          <tr data-verify-row="1" data-verify-id="it-2" data-verify-status="passed" data-verify-source="task">
+            <td class="dsh-pm-doc-cell-criterion"><span class="dsh-pm-hint">it-2</span> 看板逐项行展示实际结果并预填输入框</td>
+            <td class="dsh-pm-doc-cell-result">人工复跑：npx vitest run test/client/sheet-row.test.ts → 12 passed（我改过预填内容，以我的为准）</td>
+            <td class="dsh-pm-doc-cell-source"><span class="dsh-pm-src" data-source="human">人工填写（human）</span></td>
+            <td class="dsh-pm-doc-cell-human"><span class="dsh-pm-hint">否（agent 可自证）</span></td>
+            <td class="dsh-pm-doc-cell-evidence">
+              <ul class="dsh-pm-evidence"><li>npx vitest run test/client/sheet-row.test.ts → 12 passed</li></ul>
+            </td>
+            <td class="dsh-pm-doc-cell-opinion">预填的和实际一致；我手动确认过一遍</td>
+            <td class="dsh-pm-doc-cell-verdict"><span class="dsh-pm-verify-verdict" data-verify-verdict="passed">✅ 通过</span></td>
+          </tr>
+          <!-- 需人工：原型对照 -->
+          <tr data-verify-row="1" data-verify-id="it-3" data-verify-status="pending" data-verify-source="prototype-compare" data-needs-human="1">
+            <td class="dsh-pm-doc-cell-criterion"><span class="dsh-pm-hint">it-3</span> 两屏原型齐备：INDEX 唯一 authoritative + 锚点可对上 FR-4 / FR-5</td>
+            <td class="dsh-pm-doc-cell-result"><span class="dsh-pm-hint">未提供实际结果（agent 未实测 / 未填写）</span></td>
+            <td class="dsh-pm-doc-cell-source"><span class="dsh-pm-hint" data-source="none">未标注来源（台账没有 resultSource）</span></td>
+            <td class="dsh-pm-doc-cell-human"><span class="dsh-pm-flag verify-pending">需人工确认：界面视觉需人对照权威原型</span></td>
+            <td class="dsh-pm-doc-cell-evidence">
+              <ul class="dsh-pm-evidence"><li>prototypes/verification-result.html#FR-4</li></ul>
+            </td>
+            <td class="dsh-pm-doc-cell-opinion"><span class="dsh-pm-hint">无意见（裁决时未写）</span></td>
+            <td class="dsh-pm-doc-cell-verdict"><span class="dsh-pm-verify-verdict" data-verify-verdict="pending">待裁决</span></td>
+          </tr>
+          <!-- 未标注来源：老台账 / 兼容行 -->
+          <tr data-verify-row="1" data-verify-id="it-9" data-verify-status="unverified" data-verify-source="requirement">
+            <td class="dsh-pm-doc-cell-criterion"><span class="dsh-pm-hint">it-9</span> 存量验收单不回写：result 只在提交那一刻写入</td>
+            <td class="dsh-pm-doc-cell-result"><span class="dsh-pm-hint">未提供实际结果（agent 未实测 / 未填写）</span></td>
+            <td class="dsh-pm-doc-cell-source"><span class="dsh-pm-hint" data-source="none">未标注来源（台账没有 resultSource）</span></td>
+            <td class="dsh-pm-doc-cell-human"><span class="dsh-pm-hint">否（agent 可自证）</span></td>
+            <td class="dsh-pm-doc-cell-evidence"><span class="dsh-pm-hint">未提供证据</span></td>
+            <td class="dsh-pm-doc-cell-opinion"><span class="dsh-pm-hint">无意见（裁决时未写）</span></td>
+            <td class="dsh-pm-doc-cell-verdict"><span class="dsh-pm-verify-verdict" data-verify-verdict="unverified">未裁决</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="cap">七列逐列给宽（照抄 <code>report.ts</code> 的 19/12/8/8/30/17/6%）——实际结果列放 agent 实测**原文**，
+        来源列只有三种取值：<code>agent 实测（agent）</code> / <code>人工填写（human）</code> / <code>未标注来源（台账没有 resultSource）</code>。
+        第四行演示底线：没结果 + 点过通过 → <code>unverified</code>（未裁决），不冒充通过。</div>
+    </div>
+  </div>
+  <div class="flow">
+    交互路径：<b>1.</b> 详情页核验块逐项铺开 → <b>2.</b> 读「实际结果 + 来源」判断这条结论是谁给的 →
+    <b>3.</b> 看「需人工」列决定要不要自己动手 → <b>4.</b> 裁决列给出终态（待裁决 / ✅ 通过 / ✖ 不通过 / 未裁决 / 不可验收）。
+  </div>
+</section>
+
+<!-- ══════════════════════════════ FR-5 ══════════════════════════════ -->
+<section class="fr" id="FR-5">
+  <h2>FR-5 · 无法自动验证的项显式单列 + 写明理由（唯一要人填的场景）</h2>
+  <div class="meta">优先级 P0 · 锚点 A4 · 状态：草图</div>
+
+  <div class="mock">
+    <h3 style="margin-top:0;border-top:0;padding-top:0">① 看板逐项行：显式旗标 + 理由（不预填、必填）</h3>
+    <div class="dsh-pm-vitem" data-item-id="it-3" data-source="prototype-compare" data-needs-human="1">
+      <div class="dsh-pm-vitem-head">
+        <span class="dsh-pm-vitem-badge">⬜ 待验</span>
+        <span class="dsh-pm-vitem-src">原型对照</span>
+        <span class="dsh-pm-flag verify-pending">需人工确认：界面视觉需人对照权威原型</span>
+      </div>
+      <div class="dsh-pm-sn-text">两屏原型齐备：INDEX 唯一 authoritative + 锚点可对上 FR-4 / FR-5（对照 prototypes/verification-result.html）</div>
+      <div class="dsh-pm-vitem-actions">
+        <label><input type="radio" name="verdict-it-3b" value="passed"> 通过</label>
+        <label><input type="radio" name="verdict-it-3b" value="failed"> 不通过</label>
+        <input type="text" class="dsh-pm-vitem-opinion" placeholder="未自动验证：请写你看到的界面事实（通过必填）">
+      </div>
+      <div class="cap">旗标文本格式 = <code>需人工确认：{humanReason}</code>；没写理由的 <code>needsHuman</code> 项在提交侧就被拒（FR-2 / 边界 6）。</div>
+    </div>
+
+    <h3>② 详情页核验表「需人工」列：正反两态都要写出来</h3>
+    <table class="dsh-pm-docs-table" data-verify-table="1">
+      <thead><tr><th>标准</th><th>实际结果</th><th>来源</th><th>需人工</th><th>证据</th><th>意见</th><th>裁决</th></tr></thead>
+      <tbody>
+        <tr data-verify-id="it-3" data-needs-human="1">
+          <td><span class="dsh-pm-hint">it-3</span> 两屏原型齐备（对照权威原型）</td>
+          <td><span class="dsh-pm-hint">未提供实际结果（agent 未实测 / 未填写）</span></td>
+          <td><span class="dsh-pm-hint" data-source="none">未标注来源（台账没有 resultSource）</span></td>
+          <td><span class="dsh-pm-flag verify-pending">需人工确认：界面视觉需人对照权威原型</span></td>
+          <td><ul class="dsh-pm-evidence"><li>prototypes/verification-result.html#FR-5</li></ul></td>
+          <td><span class="dsh-pm-hint">无意见（裁决时未写）</span></td>
+          <td><span class="dsh-pm-verify-verdict" data-verify-verdict="pending">待裁决</span></td>
+        </tr>
+        <tr data-verify-id="it-2">
+          <td><span class="dsh-pm-hint">it-2</span> 看板逐项行展示实际结果并预填</td>
+          <td>npx vitest run test/client/sheet-row.test.ts → 12 passed</td>
+          <td><span class="dsh-pm-src" data-source="agent">agent 实测（agent）</span></td>
+          <td><span class="dsh-pm-hint">否（agent 可自证）</span></td>
+          <td><ul class="dsh-pm-evidence"><li>npx vitest run test/client/sheet-row.test.ts → 12 passed</li></ul></td>
+          <td><span class="dsh-pm-hint">无意见（裁决时未写）</span></td>
+          <td><span class="dsh-pm-verify-verdict" data-verify-verdict="pending">待裁决</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="cap">「需人工」列两态逐字取自 <code>verifyRow</code>：有理由是旗标，无理由是「否（agent 可自证）」——
+      两态都写，避免把"没写"读成"不用人看"。</div>
+
+    <h3>③ 弹框里唯一的例外：这类项才保留第 2 问</h3>
+    <div class="dlg-pair">
+      <figure class="dlg new">
+        <div class="dlg-head">📋 PM · 验收项（needsHuman 项）</div>
+        <div class="dlg-body">
+          <div class="dlg-q">
+            <div class="q-head">第 1 问（裁决）</div>
+            <div class="q-title">【原型对照】两屏原型齐备：INDEX 唯一 authoritative + 锚点可对上 FR-4 / FR-5</div>
+            <div class="q-opts">
+              <span>◯ ✅ 通过 —— 该验收项通过（实际结果已由 agent 记录，无需填写）</span>
+              <span>◯ 🛠 改进（需修改）—— 请在自定义输入写意见</span>
+              <span>◯ ❓ 其他 —— 请在自定义输入说明</span>
+            </div>
+          </div>
+          <div class="dlg-q is-forced">
+            <div class="q-head">第 2 问（仅 needsHuman 项保留）</div>
+            <div class="q-title">【实际结果】【it-3】两屏原型齐备…<br>
+              <span class="dsh-pm-flag verify-pending">需人工确认：界面视觉需人对照权威原型</span></div>
+            <div class="q-custom">请贴实际结果（命令输出摘要 / 看到的界面 / 数据）；通过必填，留空则记「未复核」，不计入通过</div>
+          </div>
+        </div>
+        <figcaption>新口径下唯一还问第 2 问的分支：题干里带「为什么必须人看」的理由（A4）。
+          理由由提交方写（<code>humanReason</code>）或由代码自动标（原型对照项）。</figcaption>
+      </figure>
+    </div>
+  </div>
+
+  <div class="flow">
+    交互路径：<b>1.</b> 提交方在 <code>results</code> 里显式声明 <code>needsHuman: true</code> + <code>humanReason</code>
+    （原型对照项由代码自动标）→ <b>2.</b> 验收单该项带旗标与理由 → <b>3.</b> 看板行 / 详情页「需人工」列显式可见 →
+    <b>4.</b> 弹框对这项保留第 2 问，题干里写明理由。
+    <br>分支：<code>needsHuman</code> 但没写理由 → 提交被拒（不静默放行）；其余项一律不出现第 2 问。
+  </div>
+</section>
+
+<!-- 观测块：**恰好一块**（0 块 / 多块 = prototype_anchor_missing）。
+     形状见 design/data-model.md §3.1：只有观测量名 + 实测值 + 测量条件（unit ∈ px | count | ratio；
+     at.state ∈ inflight | terminal；窗口宽显式给，漏传会量错）；不放任何判定性字段。
+     下列值为本页示意稿实测/可数的量：宽 860 为本页 .fr 的实际 max-width；项数 4 / 预填比 3÷4=0.75 按屏 1 数得；
+     弹框问题数按 AcceptSheet.ts 的 slice(0, needsResultInput(it) ? 2 : 1) 数得；核验表列数 7 按 verifyRow 数得。 -->
+<!-- proto-geometry {"observations":[{"name":"mockFrameWidth","value":860,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"sheetItemCount","value":4,"unit":"count","at":{"width":1280,"state":"inflight"}},{"name":"prefilledOpinionRatio","value":0.75,"unit":"ratio","at":{"width":1280,"state":"inflight"}},{"name":"dialogQuestionCountOld","value":2,"unit":"count","at":{"width":1280,"state":"inflight"}},{"name":"dialogQuestionCountNew","value":1,"unit":"count","at":{"width":1280,"state":"terminal"}},{"name":"dialogQuestionCountNeedsHuman","value":2,"unit":"count","at":{"width":1280,"state":"terminal"}},{"name":"verifyTableColumnCount","value":7,"unit":"count","at":{"width":1280,"state":"terminal"}}]} -->
+
+</body>
+</html>

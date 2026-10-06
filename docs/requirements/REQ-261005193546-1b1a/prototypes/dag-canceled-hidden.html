@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="zh-CN" data-proto-state="inflight" data-proto-v="dag-canceled-hidden">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REQ-261005193546-1b1a · 看板 DAG 不再展示已取消卡 · 原型（authoritative）</title>
+<!--
+  ══════════════════════════════════════════════════════════════════════════════════════
+  看板 DAG 不再展示已取消卡 · 需求阶段原型（本需求唯一 authoritative 原型）
+  REQ-261005193546-1b1a ｜ 阶段：brainstorming ｜ 版本 v0.1
+
+  这份 HTML 是什么：
+    · **原型**不是交付物：样式从简，重点是把「改前 / 改后」两个界面状态并排画出来，
+      并让每一条功能点（FR-1 … FR-6）都能对着一个**可判定**的结构看；
+    · 面板 A `#mock-after`  = 改后（权威口径）：132 张卡里 26 张已取消 → 视图只画 106 张；
+    · 面板 B `#mock-before` = 改前（对照口径）：同一需求、同一份台账，把 26 张取消卡算进来 → 132 张；
+    · 页内两态是**同一份数据**的两种口径，差别只在「活卡过滤」这一处（FR-4 的单点判据）。
+
+  实测锚点（可 grep 复核，勿凭肉眼）：
+    grep -c 'data-status="canceled"' 落在 #mock-after 内 = 0；落在 #mock-before 内 = 26；
+    #mock-after 内 chip 总数 = 106；#mock-before 内 = 132；ledger-row = 26。
+    这些数与文末唯一的 proto-geometry 观测量块一一对应（观测量只放名 + 实测值）。
+
+  判据来源（ui-ux-pro-max，本仓 vendored .dsh/skills/ui-ux-pro-max/）：
+    检索 1（本次实际执行）：
+      python3 .dsh/skills/ui-ux-pro-max/scripts/search.py "kanban dag task tree status" \
+        --design-system --variance 2 --density 3
+      → 采用：调色板（primary #0D9488 / destructive #DC2626 / muted #E8F1F4 / border #99F6E4）、
+        风格 Minimalism & Swiss Style（enterprise dashboard / 高对比 / 网格化）、
+        交付前清单（对比度 ≥4.5:1、可见焦点环、无 emoji 当图标、尊重 reduced-motion）。
+      → 未采用（如实声明，本查询偏营销页）：Pattern "Product Demo + Features" 的 Hero/CTA 段落、
+        字体对 Inter + Playfair Display（后台工具页不需要衬线展示体）。
+    检索 2（补搜，改后仍未命中，故回落通用默认）：
+      python3 .dsh/skills/ui-ux-pro-max/scripts/search.py "excluded rows hidden count list" --domain ux
+      → 3 条结果（Overflow Hidden / Z-Index / Contextual Live Badge Updates）与「隐藏行」意图不匹配；
+        未据此改动设计。**本条为「未检索到匹配，使用通用默认」**，不是数据库命中。
+    检索 3（补搜，未采用）：
+      python3 .dsh/skills/ui-ux-pro-max/scripts/search.py "progress completion gantt timeline" --domain chart
+      → 返回 Line / Waffle / Gauge；本原型的甘特只是一条**摘要条带**而非图表，
+        故未套用其图表类型建议，仅沿用其 a11y 提示（不得只靠颜色区分系列 → 取消卡另加删除线）。
+
+  纪律：
+    · 不引任何外部网络资源、不引图标库、无 JS 依赖（两态用静态并排，保证截图可复现）；
+    · 本文件不改 src/ 任何一行；不改需求/任务状态；产出的两个路径只限 prototypes/ 下。
+  ════════════════════════════════════════════════════════════════════════════════════
+-->
+<style>
+:root{
+  --card:#ffffff; --fg:#134e4a; --muted:#e8f1f4; --muted-fg:#475569;
+  --border:#99f6e4; --primary:#0d9488; --accent:#ea580c; --destructive:#dc2626;
+  --line:#d0d7de; --ink:#24292f; --ink2:#57606a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#f5f6f8;color:var(--ink);
+     font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+header{background:#1f2328;color:#fff;padding:12px 20px;font-size:14px}
+header .req{opacity:.7;margin-left:8px}
+header .hint{display:block;opacity:.62;font-size:12px;margin-top:4px}
+.wrap{max-width:1280px;margin:0 auto;padding:0 16px 48px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin:16px 0}
+.panel > h2{margin:0 0 4px;font-size:16px}
+.sub{color:var(--ink2);font-size:12px;margin:0 0 12px}
+.cols{display:flex;gap:16px;align-items:flex-start}
+.col{flex:1 1 0;border:1px solid var(--line);border-radius:6px;padding:12px;background:#fff}
+.col.before{background:#fbfbfb;border-style:dashed}
+.tag{display:inline-block;font-size:11px;font-weight:600;border-radius:4px;padding:1px 8px;margin-bottom:8px}
+.tag.ok{background:#e6fffb;color:#0f5f57;border:1px solid var(--border)}
+.tag.legacy{background:#f6f6f6;color:#6b7280;border:1px solid #e5e5e5}
+.stat{display:flex;gap:16px;flex-wrap:wrap;background:var(--muted);border:1px solid var(--border);
+      border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px}
+.stat b{font-size:18px;color:var(--primary);font-variant-numeric:tabular-nums}
+.col.before .stat b{color:#6b7280}
+.seclabel{font-size:12px;font-weight:600;color:var(--ink2);margin:14px 0 6px}
+.layer{border-top:1px dashed var(--line);padding-top:6px;margin-top:6px}
+.layer-label{font-size:11px;color:var(--ink2);margin-bottom:4px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{display:inline-block;font-size:11px;padding:1px 6px;border:1px solid var(--line);
+      border-radius:4px;background:#fff;white-space:nowrap;
+      font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.chip[data-status="done"]{background:#eafaf7;border-color:var(--border);color:#0f5f57}
+.chip[data-status="testing"],.chip[data-status="in_review"],.chip[data-status="integrating"]{
+      background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+.chip[data-status="canceled"]{background:#f6f6f6;border-color:#e5e5e5;color:#9ca3af;text-decoration:line-through}
+.pbar{height:10px;background:var(--muted);border-radius:6px;overflow:hidden;border:1px solid var(--border)}
+.pfill{display:block;height:100%;background:var(--primary)}
+.col.before .pfill{background:#9ca3af}
+.pmeta{font-size:11px;color:var(--ink2);margin-top:4px}
+.strip{display:flex;flex-wrap:wrap;gap:3px;background:#fff;border:1px solid var(--line);border-radius:4px;padding:6px}
+.bar{display:block;width:10px;height:14px;background:#0d9488;border-radius:2px}
+.bar.live{background:#f59e0b}
+.bar.canceled{background:#e5e7eb;border:1px dashed #cbd5e1}
+.trace{display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;
+      line-height:16px;padding:0 5px;border:1px solid var(--line);border-radius:4px;background:#f6f8fa;color:#3f4a56}
+.trace.canceled{background:#f6f6f6;border-color:#e5e5e5;color:#9ca3af;text-decoration:line-through}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{border:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+th{background:#f6f8fa;font-weight:600}
+td[colspan]{color:var(--ink2)}
+code,kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+pre{background:#0d1117;color:#c9d1d9;padding:12px;border-radius:6px;overflow:auto;font-size:12px;line-height:1.6}
+.fr{background:#fff;border:1px solid var(--line);border-radius:8px;padding:20px;margin:16px 0}
+.fr h2{margin:0 0 4px;font-size:16px}
+.meta{color:var(--ink2);font-size:12px;margin-bottom:12px}
+.fr ul{margin:6px 0 0;padding-left:20px}
+.fr li{margin:2px 0}
+.mock{border:1px dashed #8c959f;border-radius:6px;padding:10px;background:#fcfcfd}
+.flow{font-size:13px;color:var(--ink2);margin-top:12px;border-left:3px solid var(--border);padding-left:10px}
+.anchor{font-size:12px;background:#fff8f1;border:1px solid #fed7aa;border-radius:6px;padding:8px 10px;margin-top:12px}
+.anchor b{color:#9a3412}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+<header>
+  <strong>看板 DAG 不再展示已取消卡：让视图与统计都不再算上退出赛道的卡片</strong>
+  <span class="req">REQ-261005193546-1b1a · 原型 v0.1 · 2026-10-05</span>
+  <span class="hint">本文档 = prototypes/INDEX.md 中唯一那条 authoritative 的路径（权威判定以 INDEX 为准）。改前 / 改后两态并排；实测值见文末观测量块。</span>
+</header>
+
+<div class="wrap">
+
+<!-- ═══════════ 两态对照（本原型的正文） ═══════════ -->
+<section class="panel" id="state-compare">
+  <h2>两态对照：同一需求 · 同一份台账 · 只差「活卡过滤」这一处</h2>
+  <p class="sub">需求状态 <code>implementing</code>；台账共 132 张任务卡，其中 26 张已在需求级回退时被置 <code>canceled</code>。
+     左 = 改后（权威口径，本文档主张的界面）；右 = 改前（对照，仅用于说明「以前是什么样」）。</p>
+
+  <div class="cols">
+
+    <!-- ── 面板 A：改后 ── -->
+    <div class="col" id="mock-after" data-view="after" data-proto-state="inflight">
+      <span class="tag ok">改后 · 默认态（权威口径）</span>
+      <div class="stat">
+        <span>任务卡 <b>106</b> 张</span>
+        <span>已完成 <b>100</b> / 在途 <b>6</b></span>
+        <span>进度 <b>94%</b></span>
+      </div>
+      <div class="pbar"><span class="pfill" style="width:94%"></span></div>
+      <div class="pmeta">看板进度 / 完成度：分母 106（该完成的卡），取消卡不参与</div>
+
+      <div class="seclabel">📊 DAG 层级（阶段详情）</div>
+      <div class="dag"><div class="layer"><div class="layer-label">第 1 层 · 无依赖 · 18 张</div><div class="chips"><span class="chip" data-status="done" data-task="t1">t1 收敛活卡判据</span><span class="chip" data-status="done" data-task="t7">t7 归档计数引用</span><span class="chip" data-status="done" data-task="t13">t13 取消留痕字段</span><span class="chip" data-status="done" data-task="t19">t19 进度分母改造</span><span class="chip" data-status="done" data-task="t31">t31 归档计数引用</span><span class="chip" data-status="done" data-task="t37">t37 取消留痕字段</span><span class="chip" data-status="done" data-task="t43">t43 进度分母改造</span><span class="chip" data-status="done" data-task="t49">t49 收敛活卡判据</span><span class="chip" data-status="done" data-task="t61">t61 取消留痕字段</span><span class="chip" data-status="done" data-task="t67">t67 进度分母改造</span><span class="chip" data-status="done" data-task="t73">t73 收敛活卡判据</span><span class="chip" data-status="done" data-task="t79">t79 归档计数引用</span><span class="chip" data-status="done" data-task="t91">t91 进度分母改造</span><span class="chip" data-status="done" data-task="t97">t97 收敛活卡判据</span><span class="chip" data-status="done" data-task="t103">t103 归档计数引用</span><span class="chip" data-status="done" data-task="t109">t109 取消留痕字段</span><span class="chip" data-status="done" data-task="t121">t121 收敛活卡判据</span><span class="chip" data-status="in_review" data-task="t127">t127 归档计数引用</span></div></div><div class="layer"><div class="layer-label">第 2 层 · 18 个可并行 · 18 张</div><div class="chips"><span class="chip" data-status="done" data-task="t2">t2 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t8">t8 旧数据兼容读</span><span class="chip" data-status="done" data-task="t14">t14 任务文档保留</span><span class="chip" data-status="done" data-task="t26">t26 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t32">t32 旧数据兼容读</span><span class="chip" data-status="done" data-task="t38">t38 任务文档保留</span><span class="chip" data-status="done" data-task="t44">t44 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t56">t56 旧数据兼容读</span><span class="chip" data-status="done" data-task="t62">t62 任务文档保留</span><span class="chip" data-status="done" data-task="t68">t68 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t74">t74 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t86">t86 任务文档保留</span><span class="chip" data-status="done" data-task="t92">t92 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t98">t98 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t104">t104 旧数据兼容读</span><span class="chip" data-status="done" data-task="t116">t116 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t122">t122 DAG 层级过滤</span><span class="chip" data-status="integrating" data-task="t128">t128 旧数据兼容读</span></div></div><div class="layer"><div class="layer-label">第 3 层 · 18 个可并行 · 18 张</div><div class="chips"><span class="chip" data-status="done" data-task="t3">t3 进度分母改造</span><span class="chip" data-status="done" data-task="t9">t9 收敛活卡判据</span><span class="chip" data-status="done" data-task="t21">t21 取消留痕字段</span><span class="chip" data-status="done" data-task="t27">t27 进度分母改造</span><span class="chip" data-status="done" data-task="t33">t33 收敛活卡判据</span><span class="chip" data-status="done" data-task="t39">t39 归档计数引用</span><span class="chip" data-status="done" data-task="t51">t51 进度分母改造</span><span class="chip" data-status="done" data-task="t57">t57 收敛活卡判据</span><span class="chip" data-status="done" data-task="t63">t63 归档计数引用</span><span class="chip" data-status="done" data-task="t69">t69 取消留痕字段</span><span class="chip" data-status="done" data-task="t81">t81 收敛活卡判据</span><span class="chip" data-status="done" data-task="t87">t87 归档计数引用</span><span class="chip" data-status="done" data-task="t93">t93 取消留痕字段</span><span class="chip" data-status="done" data-task="t99">t99 进度分母改造</span><span class="chip" data-status="done" data-task="t111">t111 归档计数引用</span><span class="chip" data-status="done" data-task="t117">t117 取消留痕字段</span><span class="chip" data-status="done" data-task="t123">t123 进度分母改造</span><span class="chip" data-status="testing" data-task="t129">t129 收敛活卡判据</span></div></div><div class="layer"><div class="layer-label">第 4 层 · 17 个可并行 · 17 张</div><div class="chips"><span class="chip" data-status="done" data-task="t4">t4 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t16">t16 旧数据兼容读</span><span class="chip" data-status="done" data-task="t22">t22 任务文档保留</span><span class="chip" data-status="done" data-task="t28">t28 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t34">t34 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t46">t46 任务文档保留</span><span class="chip" data-status="done" data-task="t52">t52 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t58">t58 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t64">t64 旧数据兼容读</span><span class="chip" data-status="done" data-task="t76">t76 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t82">t82 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t88">t88 旧数据兼容读</span><span class="chip" data-status="done" data-task="t94">t94 任务文档保留</span><span class="chip" data-status="done" data-task="t106">t106 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t112">t112 旧数据兼容读</span><span class="chip" data-status="done" data-task="t118">t118 任务文档保留</span><span class="chip" data-status="done" data-task="t124">t124 甘特与追溯对齐</span></div></div><div class="layer"><div class="layer-label">第 5 层 · 17 个可并行 · 17 张</div><div class="chips"><span class="chip" data-status="done" data-task="t11">t11 进度分母改造</span><span class="chip" data-status="done" data-task="t17">t17 收敛活卡判据</span><span class="chip" data-status="done" data-task="t23">t23 归档计数引用</span><span class="chip" data-status="done" data-task="t29">t29 取消留痕字段</span><span class="chip" data-status="done" data-task="t41">t41 收敛活卡判据</span><span class="chip" data-status="done" data-task="t47">t47 归档计数引用</span><span class="chip" data-status="done" data-task="t53">t53 取消留痕字段</span><span class="chip" data-status="done" data-task="t59">t59 进度分母改造</span><span class="chip" data-status="done" data-task="t71">t71 归档计数引用</span><span class="chip" data-status="done" data-task="t77">t77 取消留痕字段</span><span class="chip" data-status="done" data-task="t83">t83 进度分母改造</span><span class="chip" data-status="done" data-task="t89">t89 收敛活卡判据</span><span class="chip" data-status="done" data-task="t101">t101 取消留痕字段</span><span class="chip" data-status="done" data-task="t107">t107 进度分母改造</span><span class="chip" data-status="done" data-task="t113">t113 收敛活卡判据</span><span class="chip" data-status="done" data-task="t119">t119 归档计数引用</span><span class="chip" data-status="in_review" data-task="t131">t131 进度分母改造</span></div></div><div class="layer"><div class="layer-label">第 6 层 · 18 个可并行 · 18 张</div><div class="chips"><span class="chip" data-status="done" data-task="t6">t6 任务文档保留</span><span class="chip" data-status="done" data-task="t12">t12 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t18">t18 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t24">t24 旧数据兼容读</span><span class="chip" data-status="done" data-task="t36">t36 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t42">t42 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t48">t48 旧数据兼容读</span><span class="chip" data-status="done" data-task="t54">t54 任务文档保留</span><span class="chip" data-status="done" data-task="t66">t66 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t72">t72 旧数据兼容读</span><span class="chip" data-status="done" data-task="t78">t78 任务文档保留</span><span class="chip" data-status="done" data-task="t84">t84 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t96">t96 旧数据兼容读</span><span class="chip" data-status="done" data-task="t102">t102 任务文档保留</span><span class="chip" data-status="done" data-task="t108">t108 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t114">t114 DAG 层级过滤</span><span class="chip" data-status="testing" data-task="t126">t126 任务文档保留</span><span class="chip" data-status="integrating" data-task="t132">t132 甘特与追溯对齐</span></div></div></div>
+
+      <div class="seclabel">甘特摘要（只画该做的卡）</div>
+      <div class="strip"><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar live" data-status="testing"></i><i class="bar live" data-status="in_review"></i><i class="bar live" data-status="integrating"></i><i class="bar live" data-status="testing"></i><i class="bar live" data-status="in_review"></i><i class="bar live" data-status="integrating"></i></div>
+
+      <div class="seclabel">追溯 / RTM 行</div>
+      <div class="strip"><span class="trace" data-status="done">t1</span><span class="trace" data-status="done">t2</span><span class="trace" data-status="done">t3</span><span class="trace" data-status="done">t4</span><span class="trace" data-status="done">t6</span><span class="trace" data-status="done">t7</span><span class="trace" data-status="done">t8</span><span class="trace" data-status="done">t9</span><span class="trace" data-status="done">t11</span><span class="trace" data-status="done">t12</span><span class="trace" data-status="done">t13</span><span class="trace" data-status="done">t14</span><span class="trace" data-status="done">t16</span><span class="trace" data-status="done">t17</span><span class="trace" data-status="done">t18</span><span class="trace" data-status="done">t19</span><span class="trace" data-status="done">t21</span><span class="trace" data-status="done">t22</span><span class="trace" data-status="done">t23</span><span class="trace" data-status="done">t24</span><span class="trace" data-status="done">t26</span><span class="trace" data-status="done">t27</span><span class="trace" data-status="done">t28</span><span class="trace" data-status="done">t29</span><span class="trace" data-status="done">t31</span><span class="trace" data-status="done">t32</span><span class="trace" data-status="done">t33</span><span class="trace" data-status="done">t34</span><span class="trace" data-status="done">t36</span><span class="trace" data-status="done">t37</span><span class="trace" data-status="done">t38</span><span class="trace" data-status="done">t39</span><span class="trace" data-status="done">t41</span><span class="trace" data-status="done">t42</span><span class="trace" data-status="done">t43</span><span class="trace" data-status="done">t44</span><span class="trace" data-status="done">t46</span><span class="trace" data-status="done">t47</span><span class="trace" data-status="done">t48</span><span class="trace" data-status="done">t49</span><span class="trace" data-status="done">t51</span><span class="trace" data-status="done">t52</span><span class="trace" data-status="done">t53</span><span class="trace" data-status="done">t54</span><span class="trace" data-status="done">t56</span><span class="trace" data-status="done">t57</span><span class="trace" data-status="done">t58</span><span class="trace" data-status="done">t59</span><span class="trace" data-status="done">t61</span><span class="trace" data-status="done">t62</span><span class="trace" data-status="done">t63</span><span class="trace" data-status="done">t64</span><span class="trace" data-status="done">t66</span><span class="trace" data-status="done">t67</span><span class="trace" data-status="done">t68</span><span class="trace" data-status="done">t69</span><span class="trace" data-status="done">t71</span><span class="trace" data-status="done">t72</span><span class="trace" data-status="done">t73</span><span class="trace" data-status="done">t74</span><span class="trace" data-status="done">t76</span><span class="trace" data-status="done">t77</span><span class="trace" data-status="done">t78</span><span class="trace" data-status="done">t79</span><span class="trace" data-status="done">t81</span><span class="trace" data-status="done">t82</span><span class="trace" data-status="done">t83</span><span class="trace" data-status="done">t84</span><span class="trace" data-status="done">t86</span><span class="trace" data-status="done">t87</span><span class="trace" data-status="done">t88</span><span class="trace" data-status="done">t89</span><span class="trace" data-status="done">t91</span><span class="trace" data-status="done">t92</span><span class="trace" data-status="done">t93</span><span class="trace" data-status="done">t94</span><span class="trace" data-status="done">t96</span><span class="trace" data-status="done">t97</span><span class="trace" data-status="done">t98</span><span class="trace" data-status="done">t99</span><span class="trace" data-status="done">t101</span><span class="trace" data-status="done">t102</span><span class="trace" data-status="done">t103</span><span class="trace" data-status="done">t104</span><span class="trace" data-status="done">t106</span><span class="trace" data-status="done">t107</span><span class="trace" data-status="done">t108</span><span class="trace" data-status="done">t109</span><span class="trace" data-status="done">t111</span><span class="trace" data-status="done">t112</span><span class="trace" data-status="done">t113</span><span class="trace" data-status="done">t114</span><span class="trace" data-status="done">t116</span><span class="trace" data-status="done">t117</span><span class="trace" data-status="done">t118</span><span class="trace" data-status="done">t119</span><span class="trace" data-status="done">t121</span><span class="trace" data-status="done">t122</span><span class="trace" data-status="done">t123</span><span class="trace" data-status="done">t124</span><span class="trace" data-status="testing">t126</span><span class="trace" data-status="in_review">t127</span><span class="trace" data-status="integrating">t128</span><span class="trace" data-status="testing">t129</span><span class="trace" data-status="in_review">t131</span><span class="trace" data-status="integrating">t132</span></div>
+
+      <div class="seclabel">测试覆盖度门（验收前置）</div>
+      <div class="pmeta">已完成的活卡 100 / 该完成的卡 106 = <b>94%</b>（分母已剔除取消卡）</div>
+    </div>
+
+    <!-- ── 面板 B：改前 ── -->
+    <div class="col before" id="mock-before" data-view="before" data-proto-state="inflight">
+      <span class="tag legacy">改前 · 对照态（旧口径，仅供参考）</span>
+      <div class="stat">
+        <span>任务卡 <b>132</b> 张</span>
+        <span>已完成 <b>100</b> / 在途 <b>6</b> / 已取消 <b>26</b></span>
+        <span>进度 <b>76%</b></span>
+      </div>
+      <div class="pbar"><span class="pfill" style="width:76%"></span></div>
+      <div class="pmeta">看板进度 / 完成度：分母 132（把退出赛道的卡也算进「该完成」）</div>
+
+      <div class="seclabel">📊 DAG 层级（阶段详情）</div>
+      <div class="dag"><div class="layer"><div class="layer-label">第 1 层 · 无依赖 · 22 张</div><div class="chips"><span class="chip" data-status="done" data-task="t1">t1 收敛活卡判据</span><span class="chip" data-status="done" data-task="t7">t7 归档计数引用</span><span class="chip" data-status="done" data-task="t13">t13 取消留痕字段</span><span class="chip" data-status="done" data-task="t19">t19 进度分母改造</span><span class="chip canceled" data-status="canceled" data-task="t25">t25 收敛活卡判据</span><span class="chip" data-status="done" data-task="t31">t31 归档计数引用</span><span class="chip" data-status="done" data-task="t37">t37 取消留痕字段</span><span class="chip" data-status="done" data-task="t43">t43 进度分母改造</span><span class="chip" data-status="done" data-task="t49">t49 收敛活卡判据</span><span class="chip canceled" data-status="canceled" data-task="t55">t55 归档计数引用</span><span class="chip" data-status="done" data-task="t61">t61 取消留痕字段</span><span class="chip" data-status="done" data-task="t67">t67 进度分母改造</span><span class="chip" data-status="done" data-task="t73">t73 收敛活卡判据</span><span class="chip" data-status="done" data-task="t79">t79 归档计数引用</span><span class="chip canceled" data-status="canceled" data-task="t85">t85 取消留痕字段</span><span class="chip" data-status="done" data-task="t91">t91 进度分母改造</span><span class="chip" data-status="done" data-task="t97">t97 收敛活卡判据</span><span class="chip" data-status="done" data-task="t103">t103 归档计数引用</span><span class="chip" data-status="done" data-task="t109">t109 取消留痕字段</span><span class="chip canceled" data-status="canceled" data-task="t115">t115 进度分母改造</span><span class="chip" data-status="done" data-task="t121">t121 收敛活卡判据</span><span class="chip" data-status="in_review" data-task="t127">t127 归档计数引用</span></div></div><div class="layer"><div class="layer-label">第 2 层 · 22 个可并行 · 22 张</div><div class="chips"><span class="chip" data-status="done" data-task="t2">t2 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t8">t8 旧数据兼容读</span><span class="chip" data-status="done" data-task="t14">t14 任务文档保留</span><span class="chip canceled" data-status="canceled" data-task="t20">t20 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t26">t26 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t32">t32 旧数据兼容读</span><span class="chip" data-status="done" data-task="t38">t38 任务文档保留</span><span class="chip" data-status="done" data-task="t44">t44 甘特与追溯对齐</span><span class="chip canceled" data-status="canceled" data-task="t50">t50 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t56">t56 旧数据兼容读</span><span class="chip" data-status="done" data-task="t62">t62 任务文档保留</span><span class="chip" data-status="done" data-task="t68">t68 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t74">t74 DAG 层级过滤</span><span class="chip canceled" data-status="canceled" data-task="t80">t80 旧数据兼容读</span><span class="chip" data-status="done" data-task="t86">t86 任务文档保留</span><span class="chip" data-status="done" data-task="t92">t92 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t98">t98 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t104">t104 旧数据兼容读</span><span class="chip canceled" data-status="canceled" data-task="t110">t110 任务文档保留</span><span class="chip" data-status="done" data-task="t116">t116 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t122">t122 DAG 层级过滤</span><span class="chip" data-status="integrating" data-task="t128">t128 旧数据兼容读</span></div></div><div class="layer"><div class="layer-label">第 3 层 · 22 个可并行 · 22 张</div><div class="chips"><span class="chip" data-status="done" data-task="t3">t3 进度分母改造</span><span class="chip" data-status="done" data-task="t9">t9 收敛活卡判据</span><span class="chip canceled" data-status="canceled" data-task="t15">t15 归档计数引用</span><span class="chip" data-status="done" data-task="t21">t21 取消留痕字段</span><span class="chip" data-status="done" data-task="t27">t27 进度分母改造</span><span class="chip" data-status="done" data-task="t33">t33 收敛活卡判据</span><span class="chip" data-status="done" data-task="t39">t39 归档计数引用</span><span class="chip canceled" data-status="canceled" data-task="t45">t45 取消留痕字段</span><span class="chip" data-status="done" data-task="t51">t51 进度分母改造</span><span class="chip" data-status="done" data-task="t57">t57 收敛活卡判据</span><span class="chip" data-status="done" data-task="t63">t63 归档计数引用</span><span class="chip" data-status="done" data-task="t69">t69 取消留痕字段</span><span class="chip canceled" data-status="canceled" data-task="t75">t75 进度分母改造</span><span class="chip" data-status="done" data-task="t81">t81 收敛活卡判据</span><span class="chip" data-status="done" data-task="t87">t87 归档计数引用</span><span class="chip" data-status="done" data-task="t93">t93 取消留痕字段</span><span class="chip" data-status="done" data-task="t99">t99 进度分母改造</span><span class="chip canceled" data-status="canceled" data-task="t105">t105 收敛活卡判据</span><span class="chip" data-status="done" data-task="t111">t111 归档计数引用</span><span class="chip" data-status="done" data-task="t117">t117 取消留痕字段</span><span class="chip" data-status="done" data-task="t123">t123 进度分母改造</span><span class="chip" data-status="testing" data-task="t129">t129 收敛活卡判据</span></div></div><div class="layer"><div class="layer-label">第 4 层 · 22 个可并行 · 22 张</div><div class="chips"><span class="chip" data-status="done" data-task="t4">t4 甘特与追溯对齐</span><span class="chip canceled" data-status="canceled" data-task="t10">t10 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t16">t16 旧数据兼容读</span><span class="chip" data-status="done" data-task="t22">t22 任务文档保留</span><span class="chip" data-status="done" data-task="t28">t28 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t34">t34 DAG 层级过滤</span><span class="chip canceled" data-status="canceled" data-task="t40">t40 旧数据兼容读</span><span class="chip" data-status="done" data-task="t46">t46 任务文档保留</span><span class="chip" data-status="done" data-task="t52">t52 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t58">t58 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t64">t64 旧数据兼容读</span><span class="chip canceled" data-status="canceled" data-task="t70">t70 任务文档保留</span><span class="chip" data-status="done" data-task="t76">t76 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t82">t82 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t88">t88 旧数据兼容读</span><span class="chip" data-status="done" data-task="t94">t94 任务文档保留</span><span class="chip canceled" data-status="canceled" data-task="t100">t100 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t106">t106 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t112">t112 旧数据兼容读</span><span class="chip" data-status="done" data-task="t118">t118 任务文档保留</span><span class="chip" data-status="done" data-task="t124">t124 甘特与追溯对齐</span><span class="chip canceled" data-status="canceled" data-task="t130">t130 DAG 层级过滤</span></div></div><div class="layer"><div class="layer-label">第 5 层 · 22 个可并行 · 22 张</div><div class="chips"><span class="chip canceled" data-status="canceled" data-task="t5">t5 取消留痕字段</span><span class="chip" data-status="done" data-task="t11">t11 进度分母改造</span><span class="chip" data-status="done" data-task="t17">t17 收敛活卡判据</span><span class="chip" data-status="done" data-task="t23">t23 归档计数引用</span><span class="chip" data-status="done" data-task="t29">t29 取消留痕字段</span><span class="chip canceled" data-status="canceled" data-task="t35">t35 进度分母改造</span><span class="chip" data-status="done" data-task="t41">t41 收敛活卡判据</span><span class="chip" data-status="done" data-task="t47">t47 归档计数引用</span><span class="chip" data-status="done" data-task="t53">t53 取消留痕字段</span><span class="chip" data-status="done" data-task="t59">t59 进度分母改造</span><span class="chip canceled" data-status="canceled" data-task="t65">t65 收敛活卡判据</span><span class="chip" data-status="done" data-task="t71">t71 归档计数引用</span><span class="chip" data-status="done" data-task="t77">t77 取消留痕字段</span><span class="chip" data-status="done" data-task="t83">t83 进度分母改造</span><span class="chip" data-status="done" data-task="t89">t89 收敛活卡判据</span><span class="chip canceled" data-status="canceled" data-task="t95">t95 归档计数引用</span><span class="chip" data-status="done" data-task="t101">t101 取消留痕字段</span><span class="chip" data-status="done" data-task="t107">t107 进度分母改造</span><span class="chip" data-status="done" data-task="t113">t113 收敛活卡判据</span><span class="chip" data-status="done" data-task="t119">t119 归档计数引用</span><span class="chip canceled" data-status="canceled" data-task="t125">t125 取消留痕字段</span><span class="chip" data-status="in_review" data-task="t131">t131 进度分母改造</span></div></div><div class="layer"><div class="layer-label">第 6 层 · 22 个可并行 · 22 张</div><div class="chips"><span class="chip" data-status="done" data-task="t6">t6 任务文档保留</span><span class="chip" data-status="done" data-task="t12">t12 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t18">t18 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t24">t24 旧数据兼容读</span><span class="chip canceled" data-status="canceled" data-task="t30">t30 任务文档保留</span><span class="chip" data-status="done" data-task="t36">t36 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t42">t42 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t48">t48 旧数据兼容读</span><span class="chip" data-status="done" data-task="t54">t54 任务文档保留</span><span class="chip canceled" data-status="canceled" data-task="t60">t60 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t66">t66 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t72">t72 旧数据兼容读</span><span class="chip" data-status="done" data-task="t78">t78 任务文档保留</span><span class="chip" data-status="done" data-task="t84">t84 甘特与追溯对齐</span><span class="chip canceled" data-status="canceled" data-task="t90">t90 DAG 层级过滤</span><span class="chip" data-status="done" data-task="t96">t96 旧数据兼容读</span><span class="chip" data-status="done" data-task="t102">t102 任务文档保留</span><span class="chip" data-status="done" data-task="t108">t108 甘特与追溯对齐</span><span class="chip" data-status="done" data-task="t114">t114 DAG 层级过滤</span><span class="chip canceled" data-status="canceled" data-task="t120">t120 旧数据兼容读</span><span class="chip" data-status="testing" data-task="t126">t126 任务文档保留</span><span class="chip" data-status="integrating" data-task="t132">t132 甘特与追溯对齐</span></div></div></div>
+
+      <div class="seclabel">甘特摘要（含取消条）</div>
+      <div class="strip"><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar done" data-status="done"></i><i class="bar canceled" data-status="canceled"></i><i class="bar live" data-status="testing"></i><i class="bar live" data-status="in_review"></i><i class="bar live" data-status="integrating"></i><i class="bar live" data-status="testing"></i><i class="bar canceled" data-status="canceled"></i><i class="bar live" data-status="in_review"></i><i class="bar live" data-status="integrating"></i></div>
+
+      <div class="seclabel">追溯 / RTM 行</div>
+      <div class="strip"><span class="trace" data-status="done">t1</span><span class="trace" data-status="done">t2</span><span class="trace" data-status="done">t3</span><span class="trace" data-status="done">t4</span><span class="trace canceled" data-status="canceled">t5</span><span class="trace" data-status="done">t6</span><span class="trace" data-status="done">t7</span><span class="trace" data-status="done">t8</span><span class="trace" data-status="done">t9</span><span class="trace canceled" data-status="canceled">t10</span><span class="trace" data-status="done">t11</span><span class="trace" data-status="done">t12</span><span class="trace" data-status="done">t13</span><span class="trace" data-status="done">t14</span><span class="trace canceled" data-status="canceled">t15</span><span class="trace" data-status="done">t16</span><span class="trace" data-status="done">t17</span><span class="trace" data-status="done">t18</span><span class="trace" data-status="done">t19</span><span class="trace canceled" data-status="canceled">t20</span><span class="trace" data-status="done">t21</span><span class="trace" data-status="done">t22</span><span class="trace" data-status="done">t23</span><span class="trace" data-status="done">t24</span><span class="trace canceled" data-status="canceled">t25</span><span class="trace" data-status="done">t26</span><span class="trace" data-status="done">t27</span><span class="trace" data-status="done">t28</span><span class="trace" data-status="done">t29</span><span class="trace canceled" data-status="canceled">t30</span><span class="trace" data-status="done">t31</span><span class="trace" data-status="done">t32</span><span class="trace" data-status="done">t33</span><span class="trace" data-status="done">t34</span><span class="trace canceled" data-status="canceled">t35</span><span class="trace" data-status="done">t36</span><span class="trace" data-status="done">t37</span><span class="trace" data-status="done">t38</span><span class="trace" data-status="done">t39</span><span class="trace canceled" data-status="canceled">t40</span><span class="trace" data-status="done">t41</span><span class="trace" data-status="done">t42</span><span class="trace" data-status="done">t43</span><span class="trace" data-status="done">t44</span><span class="trace canceled" data-status="canceled">t45</span><span class="trace" data-status="done">t46</span><span class="trace" data-status="done">t47</span><span class="trace" data-status="done">t48</span><span class="trace" data-status="done">t49</span><span class="trace canceled" data-status="canceled">t50</span><span class="trace" data-status="done">t51</span><span class="trace" data-status="done">t52</span><span class="trace" data-status="done">t53</span><span class="trace" data-status="done">t54</span><span class="trace canceled" data-status="canceled">t55</span><span class="trace" data-status="done">t56</span><span class="trace" data-status="done">t57</span><span class="trace" data-status="done">t58</span><span class="trace" data-status="done">t59</span><span class="trace canceled" data-status="canceled">t60</span><span class="trace" data-status="done">t61</span><span class="trace" data-status="done">t62</span><span class="trace" data-status="done">t63</span><span class="trace" data-status="done">t64</span><span class="trace canceled" data-status="canceled">t65</span><span class="trace" data-status="done">t66</span><span class="trace" data-status="done">t67</span><span class="trace" data-status="done">t68</span><span class="trace" data-status="done">t69</span><span class="trace canceled" data-status="canceled">t70</span><span class="trace" data-status="done">t71</span><span class="trace" data-status="done">t72</span><span class="trace" data-status="done">t73</span><span class="trace" data-status="done">t74</span><span class="trace canceled" data-status="canceled">t75</span><span class="trace" data-status="done">t76</span><span class="trace" data-status="done">t77</span><span class="trace" data-status="done">t78</span><span class="trace" data-status="done">t79</span><span class="trace canceled" data-status="canceled">t80</span><span class="trace" data-status="done">t81</span><span class="trace" data-status="done">t82</span><span class="trace" data-status="done">t83</span><span class="trace" data-status="done">t84</span><span class="trace canceled" data-status="canceled">t85</span><span class="trace" data-status="done">t86</span><span class="trace" data-status="done">t87</span><span class="trace" data-status="done">t88</span><span class="trace" data-status="done">t89</span><span class="trace canceled" data-status="canceled">t90</span><span class="trace" data-status="done">t91</span><span class="trace" data-status="done">t92</span><span class="trace" data-status="done">t93</span><span class="trace" data-status="done">t94</span><span class="trace canceled" data-status="canceled">t95</span><span class="trace" data-status="done">t96</span><span class="trace" data-status="done">t97</span><span class="trace" data-status="done">t98</span><span class="trace" data-status="done">t99</span><span class="trace canceled" data-status="canceled">t100</span><span class="trace" data-status="done">t101</span><span class="trace" data-status="done">t102</span><span class="trace" data-status="done">t103</span><span class="trace" data-status="done">t104</span><span class="trace canceled" data-status="canceled">t105</span><span class="trace" data-status="done">t106</span><span class="trace" data-status="done">t107</span><span class="trace" data-status="done">t108</span><span class="trace" data-status="done">t109</span><span class="trace canceled" data-status="canceled">t110</span><span class="trace" data-status="done">t111</span><span class="trace" data-status="done">t112</span><span class="trace" data-status="done">t113</span><span class="trace" data-status="done">t114</span><span class="trace canceled" data-status="canceled">t115</span><span class="trace" data-status="done">t116</span><span class="trace" data-status="done">t117</span><span class="trace" data-status="done">t118</span><span class="trace" data-status="done">t119</span><span class="trace canceled" data-status="canceled">t120</span><span class="trace" data-status="done">t121</span><span class="trace" data-status="done">t122</span><span class="trace" data-status="done">t123</span><span class="trace" data-status="done">t124</span><span class="trace canceled" data-status="canceled">t125</span><span class="trace" data-status="testing">t126</span><span class="trace" data-status="in_review">t127</span><span class="trace" data-status="integrating">t128</span><span class="trace" data-status="testing">t129</span><span class="trace canceled" data-status="canceled">t130</span><span class="trace" data-status="in_review">t131</span><span class="trace" data-status="integrating">t132</span></div>
+
+      <div class="seclabel">测试覆盖度门（验收前置）</div>
+      <div class="pmeta">已完成的活卡 100 / 全部卡 132 = <b>76%</b>（分母含取消卡 → 门永远过不去）</div>
+    </div>
+
+  </div>
+
+  <div class="anchor">
+    <b>本区可判定锚点</b>：<code>#mock-after</code> 内 <code>[data-status="canceled"]</code> 计数 = <b>0</b>（chip / bar / trace 三处皆无）；
+    <code>#mock-after .chip</code> = <b>106</b>，<code>.bar</code> = <b>106</b>，<code>.trace</code> = <b>106</b>；
+    <code>#mock-before .chip[data-status="canceled"]</code> = <b>26</b>，<code>#mock-before .chip</code> = <b>132</b>。
+    两态的任务卡总数差 = 26 = 台账里的取消卡数（同一份数据，两种口径）。
+  </div>
+</section>
+
+<!-- ═══════════ 台账（界面之外 · 审计可见） ═══════════ -->
+<section class="panel" id="mock-ledger" data-present-in-view="no">
+  <h2>台账与任务文档（界面之外 · 审计可见）</h2>
+  <p class="sub">下面这张表<b>不在看板界面里渲染</b>：界面一处都不出现取消卡，但台账 / 任务文档仍在，归档材料可引用计数。</p>
+  <table>
+    <thead>
+      <tr><th>任务</th><th>原卡</th><th>canceledAt</th><th>canceledBy</th><th>cancelReason</th></tr>
+    </thead>
+    <tbody><tr class="ledger-row" data-kind="canceled" data-task="t5"><td>t5</td><td>取消留痕字段</td><td>2026-10-02 11:21</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t101 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t10"><td>t10</td><td>DAG 层级过滤</td><td>2026-10-03 12:22</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t102 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t15"><td>t15</td><td>归档计数引用</td><td>2026-10-04 13:23</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t103 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t20"><td>t20</td><td>甘特与追溯对齐</td><td>2026-10-05 14:24</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t104 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t25"><td>t25</td><td>收敛活卡判据</td><td>2026-10-06 15:25</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t105 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t30"><td>t30</td><td>任务文档保留</td><td>2026-10-07 16:20</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t106 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t35"><td>t35</td><td>进度分母改造</td><td>2026-10-08 17:21</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t107 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t40"><td>t40</td><td>旧数据兼容读</td><td>2026-10-09 18:22</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t108 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t45"><td>t45</td><td>取消留痕字段</td><td>2026-10-01 10:23</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t109 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t50"><td>t50</td><td>DAG 层级过滤</td><td>2026-10-02 11:24</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t110 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t55"><td>t55</td><td>归档计数引用</td><td>2026-10-03 12:25</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t111 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t60"><td>t60</td><td>甘特与追溯对齐</td><td>2026-10-04 13:20</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t112 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t65"><td>t65</td><td>收敛活卡判据</td><td>2026-10-05 14:21</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t113 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t70"><td>t70</td><td>任务文档保留</td><td>2026-10-06 15:22</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t114 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t75"><td>t75</td><td>进度分母改造</td><td>2026-10-07 16:23</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t115 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t80"><td>t80</td><td>旧数据兼容读</td><td>2026-10-08 17:24</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t116 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t85"><td>t85</td><td>取消留痕字段</td><td>2026-10-09 18:25</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t117 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t90"><td>t90</td><td>DAG 层级过滤</td><td>2026-10-01 10:20</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t118 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t95"><td>t95</td><td>归档计数引用</td><td>2026-10-02 11:21</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t119 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t100"><td>t100</td><td>甘特与追溯对齐</td><td>2026-10-03 12:22</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t120 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t105"><td>t105</td><td>收敛活卡判据</td><td>2026-10-04 13:23</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t121 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t110"><td>t110</td><td>任务文档保留</td><td>2026-10-05 14:24</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t122 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t115"><td>t115</td><td>进度分母改造</td><td>2026-10-06 15:25</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t123 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t120"><td>t120</td><td>旧数据兼容读</td><td>2026-10-07 16:20</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t124 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t125"><td>t125</td><td>取消留痕字段</td><td>2026-10-08 17:21</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t125 取代（需求级回退，旧卡退出赛道）</td></tr><tr class="ledger-row" data-kind="canceled" data-task="t130"><td>t130</td><td>DAG 层级过滤</td><td>2026-10-09 18:22</td><td>reqboard-decompose（回退重拆）</td><td>被新计划 t126 取代（需求级回退，旧卡退出赛道）</td></tr></tbody>
+  </table>
+  <p class="sub" style="margin-top:10px">任务文档仍在：<code>docs/requirements/REQ-261005193546-1b1a/tasks/&lt;task_id&gt;.md</code> × 26（不删除）。
+     归档清单可引用计数：<code>canceled_count: 26</code>（只进归档材料，不进界面）。</p>
+</section>
+
+<!-- ═══════════ 功能点区块 ═══════════ -->
+<section class="fr" id="FR-1">
+  <h2>FR-1 已取消卡退出视图</h2>
+  <div class="meta">优先级 P0 · 状态：草图 · 服务条款：DAG 层级（阶段详情）不再出现已取消卡</div>
+  <div class="mock">
+    上游对照：<b>上方两态面板</b> —— <code>#mock-after</code> 的「📊 DAG 层级」每层只列活卡；
+    <code>#mock-before</code> 的同一位置混着 26 张带删除线的灰卡（改前）。
+    与依赖图、文档面板现有口径一致：这两处本来就已按活卡过滤，本 FR 是把 DAG 层级对齐过去。
+  </div>
+  <div class="flow">交互路径：1. 进入需求详情 → 2. 展开「当前阶段详情 / DAG 层级」 → 3. 只看到该做的卡（106 张）；
+    分支：若某卡在别处被置取消，则它从本视图消失（台账里仍在，见下方台账区）。</div>
+  <div class="anchor"><b>锚点</b>：<code>#mock-after .chip[data-status="canceled"]</code> → 0 个；<code>#mock-after .chip</code> → 106 个。</div>
+</section>
+
+<section class="fr" id="FR-2">
+  <h2>FR-2 一个口径贯穿统计</h2>
+  <div class="meta">优先级 P0 · 状态：草图 · 服务条款：凡「该完成的卡」的分母一律剔除已取消卡</div>
+  <div class="mock">
+    <table>
+      <thead><tr><th>消费点</th><th>改后（本原型主张）</th><th>改前（对照）</th></tr></thead>
+      <tbody>
+        <tr><td>测试覆盖度门（验收前置）</td><td>100 / <b>106</b> = 94%</td><td>100 / 132 = 76%</td></tr>
+        <tr><td>看板进度 / 完成度</td><td><b>94%</b></td><td>76%</td></tr>
+        <tr><td>甘特摘要</td><td><b>106</b> 条</td><td>132 条</td></tr>
+        <tr><td>详情页计数</td><td><b>106</b> 张（100 完成 · 6 在途）</td><td>132 张（100 完成 · 6 在途 · 26 已取消）</td></tr>
+        <tr><td>追溯 / RTM 行</td><td><b>106</b> 行</td><td>132 行</td></tr>
+      </tbody>
+    </table>
+    <p class="sub" style="margin-top:8px">同一份数据、同一个分母口径 —— 上表每一行的「改后」列都等于 <code>#mock-after</code> 里的实测数。</p>
+  </div>
+  <div class="flow">交互路径：1. 取消一张卡 → 2. 回到看板 / 甘特 / 追溯 / 覆盖度门 → 3. 五处数字<b>同时</b>从 132 口径切到 106 口径；
+    分支：若只有一处改了，就是口径分叉（本 FR 要消灭的正是这个）。</div>
+  <div class="anchor"><b>锚点</b>：<code>#mock-after .strip .bar</code> → 106；<code>#mock-after .trace</code> → 106；与 <code>#mock-after .chip</code> 三数一致。</div>
+</section>
+
+<section class="fr" id="FR-3">
+  <h2>FR-3 取消留痕</h2>
+  <div class="meta">优先级 P1 · 状态：草图 · 服务条款：取消动作记下 canceledAt / canceledBy / cancelReason（界面看不到，台账可查）</div>
+  <div class="mock">
+    界面切片（<code>#mock-after</code>）里<b>没有</b>任何留痕字段的渲染位 —— 这是刻意的：
+    <div class="mock" style="margin-top:8px;color:#6b7280">（取消卡在视图里既不出现、也不留「已取消」标记行；界面不解释「少掉的 26 张去哪了」）</div>
+    留痕只落在右侧台账表：<code>canceledAt</code> / <code>canceledBy</code> / <code>cancelReason</code> 三列 × 26 行。
+  </div>
+  <div class="flow">交互路径：1. 需求级回退 → 2. 旧卡置 <code>canceled</code> 并<b>同时</b>写三个字段 → 3. 界面无变化（卡直接消失），台账可查；
+    分支：旧数据没有这三个字段时留空、不追溯补写（见 FR-6）。</div>
+  <div class="anchor"><b>锚点</b>：<code>#mock-ledger .ledger-row</code> → 26 行，且每行三个留痕列非空；<code>#mock-after</code> 内无留痕字段文本。</div>
+</section>
+
+<section class="fr" id="FR-4">
+  <h2>FR-4 单点判据</h2>
+  <div class="meta">优先级 P0 · 状态：草图 · 服务条款：活卡过滤收敛为一个导出纯函数，所有消费点复用</div>
+  <div class="mock">
+<pre>// 唯一判据（导出纯函数；无 IO、无日期、无副作用）
+export function isLiveTask(t: TaskRecord): boolean {
+  return t.status !== 'canceled'
+}
+export function liveTasks(tasks: readonly TaskRecord[]): TaskRecord[] {
+  return tasks.filter(isLiveTask)
+}</pre>
+    <p class="sub" style="margin-top:8px">消费点（全部改为调用它，不许各写各的 <code>filter</code>）：</p>
+    <ul>
+      <li>阶段详情 DAG 层级（本原型面板 A / B 的差别就来自这一处）</li>
+      <li>看板进度 / 完成度 · 甘特摘要 · 详情页计数 · 追溯 RTM</li>
+      <li>测试覆盖度门（验收前置）· 归档计数引用</li>
+      <li>依赖图 / 文档面板（已一致，改造后仍复用同一判据）</li>
+    </ul>
+  </div>
+  <div class="flow">交互路径：1. 两态面板切换（口径切换）→ 2. 差异只在判据出口一处 → 3. 新增消费点时天然继承 106 口径；
+    分支：若某消费点拿不到判据（例如直接读台账原数组），数字会退回 132 —— 本 FR 要求它在 code review 里被拦下。</div>
+  <div class="anchor"><b>锚点</b>：全局只有一个活卡判据定义（导出纯函数）；<code>#mock-after</code> 与 <code>#mock-before</code> 的全部差异可归因到它。</div>
+</section>
+
+<section class="fr" id="FR-5">
+  <h2>FR-5 审计可见性</h2>
+  <div class="meta">优先级 P1 · 状态：草图 · 服务条款：界面不出现取消卡，但台账与任务文档仍在，归档材料可引用计数</div>
+  <div class="mock">
+    <table>
+      <thead><tr><th>对象</th><th>看板界面</th><th>台账 / 文档 / 归档</th></tr></thead>
+      <tbody>
+        <tr><td>任务卡 × 26（已取消）</td><td>不出现（0 行）</td><td>台账 26 行；<code>tasks/&lt;task_id&gt;.md</code> × 26 保留</td></tr>
+        <tr><td>取消计数</td><td>不出现</td><td>归档材料可引用 <code>canceled_count: 26</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="flow">交互路径：1. 审计者想核「为什么少了 26 张」→ 2. 看板答不了（刻意）→ 3. 转台账 / 归档材料取数；
+    分支：若把取消卡当「已删除」处理，则审计链断 —— 本 FR 明确「不删」。</div>
+  <div class="anchor"><b>锚点</b>：<code>#mock-ledger</code> 带 <code>data-present-in-view="no"</code>；<code>#mock-after</code> 内 <code>.ledger-row</code> → 0。</div>
+</section>
+
+<section class="fr" id="FR-6">
+  <h2>FR-6 兼容</h2>
+  <div class="meta">优先级 P0 · 状态：草图 · 服务条款：旧数据无新字段可正常读取；历史追溯 / 文档不删</div>
+  <div class="mock">
+<pre>// 旧数据（本需求上线前被取消的卡）：新字段缺失
+{"id":"t5","status":"canceled","canceledAt":null,"canceledBy":null,"cancelReason":null}
+// 读取结果：仍被 isLiveTask 过滤（判据只看 status），留痕列显示空 —— 不追溯补写</pre>
+    <p class="sub" style="margin-top:8px">面板 B 里那些带删除线的灰卡，就是这批旧数据的<b>改前</b>呈现；改成面板 A 后，它们只是不再出现在界面，历史记录一条不动。</p>
+  </div>
+  <div class="flow">交互路径：1. 打开含旧数据的需求 → 2. 正常渲染（无报错、无「字段缺失」占位） → 3. 追溯 / 文档按原样可读；
+    分支：若旧卡 <code>canceledAt</code> 为空而界面要显示「取消时间」，则退化为空白 —— 本 FR 选择「界面根本不显示」。 </div>
+  <div class="anchor"><b>锚点</b>：留痕三列在旧数据行渲染为空字符串而非「undefined」。</div>
+</section>
+
+</div>
+
+<!-- geometry 观测量块（**恰好一块**）：只放观测量名 + 实测值 + 测量条件；
+     unit 只用 px | count | ratio，at.state 只用 inflight | terminal；不含任何阈值字段（阈值写在 requirement.md 条目里）。
+     下列数值全部由本文件 DOM 实测得出（两态并排、无 JS）。 -->
+<!-- proto-geometry {"observations":[{"name":"canceledRowsShown","value":0,"unit":"count","at":{"width":1280,"state":"inflight"}},{"name":"liveCardCount","value":106,"unit":"count","at":{"width":1280,"state":"inflight"}},{"name":"dagRowsShown","value":106,"unit":"count","at":{"width":1280,"state":"inflight"}},{"name":"progressRatio","value":0.94,"unit":"ratio","at":{"width":1280,"state":"inflight"}},{"name":"coverageRatio","value":0.94,"unit":"ratio","at":{"width":1280,"state":"inflight"}},{"name":"ganttBarsShown","value":106,"unit":"count","at":{"width":1280,"state":"inflight"}},{"name":"traceRowsShown","value":106,"unit":"count","at":{"width":1280,"state":"inflight"}},{"name":"canceledLedgerRows","value":26,"unit":"count","at":{"width":1280,"state":"inflight"}},{"name":"legacyDagRowsShown","value":132,"unit":"count","at":{"width":1280,"state":"inflight"}},{"name":"legacyProgressRatio","value":0.76,"unit":"ratio","at":{"width":1280,"state":"inflight"}}]} -->
+
+</body>
+</html>

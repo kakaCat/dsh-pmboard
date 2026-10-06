@@ -39,6 +39,12 @@ console.log(p.skippedBundles, m.composeEntries([...p.layers.map(l=>l.patches), p
 
 **产品级可见信号**：旧构建生成的验收单会呈现被修复前的形态（跳号、多行同名）——"单据本身"是最直观的对照证据。
 
+**包地址的 `rev` 也会过期（2026-10-06，REQ-261006115829-dafb）**：客户端插件包按 combo 地址分发，地址里带 `rev`
+（宿主按入口产物的 mtime / ctime / size 合成），而宿主**只服务当前 `rev`**——重建后旧地址一律 404，
+页面手里拿的却是**文档装载时**的那批地址。所以「页面一直开着 + 你在外面重建了客户端」会在控制台留下
+一条包地址 404；`plugins/events`（HMR 的 SSE 通道）也会因宿主重启被掐断而记一条 net::ERR_FAILED。
+两者都靠 HMR 重试或刷新页面自愈；判据（含 `rev` 对照实验）与处置见[插件重载排查](../guides/plugin-reload-troubleshooting.md)。
+
 ## 三、源码树与构建产物必须自洽（2026-09-30 三连事故）
 
 | 事故 | 现象 | 判据 |
@@ -149,3 +155,37 @@ console.log(p.skippedBundles, m.composeEntries([...p.layers.map(l=>l.patches), p
 
 回归用例：`tests/reqboard/subtask-evidence-fallback.test.ts`（10 条，修前必红 4 条）。
 来源：REQ-261003191948-e94a。
+
+## 八、UI/UX skill 资产：**包内是源，工作区才是子代理能读到的地方**（2026-10-05）
+
+**是什么**：插件包自带宽 7 份 UI/UX skill 资产（`<pkg>/skills/`，含可检索的主 skill：79 风格 /
+192 配色 / 74 字体配对 / 119 UX 准则 / 22 技术栈）。需求分析节点会注入一小节「原型工作原则」，
+要求做原型时**派 subagent**，主 agent 只拿两个绝对路径（`SKILL.md` 与 `scripts/search.py`）加一条
+命令模板——**全文与 2.7MB 数据不进主 agent 的每轮 system prompt**。
+
+**为什么必须"投放"这一步**：子代理的文件/命令工具**限工作区**，读不到插件包内部。
+故资产在包内是**源**，`reqboard_skill_install` 把它投放到 `<会话工作区>/.dsh/skills/`，
+回执给出 `root` 与 `searchScript` 的绝对路径，主 agent 把这两个路径写进派发 prompt。
+
+| 项 | 约定 |
+|---|---|
+| 投放根 | `<会话工作区>/.dsh/skills/`（隐藏目录；写 `.gitignore(*)` 自忽略） |
+| 幂等 | 逐文件 `sha256` 全等 → `reused=true` 且一个字节都不写；`force=true` 可强制重写 |
+| 事务 | 先写 `<root>.tmp-<id>` → 逐文件校验 → 整体改名；失败清临时目录，**不留半份** |
+| 溯源 | 投放根写 `.manifest.json`（上游 commit、许可、逐文件哈希）；包内 `skills/PROVENANCE.md` 是同一份事实的源 |
+| 防漂移 | `node scripts/vendor-skills.mjs --check` 重算 28 条指纹，手改一个字节即 exit 1 并点名文件 |
+| 回滚 | `rm -rf <root>/.dsh/skills`；或插件配置 `skills.enabled=false`（不注入该节 + 工具返回 disabled） |
+
+**外部前提：检索要 Python 3**（探测顺序 `python3` → `python` → `py -3`，实测 3.8.10 可用）。
+**缺失不是失败**：资产照常投放，回执里 `python.found=false`，主 agent 必须把
+「本轮未做数据库检索，以下为通用默认」如实转达——**禁止**把未检索包装成检索结果
+（与上游 `SKILL.md` 自带的同名纪律一致）。
+
+**注入落点**：新增片段约定 `<stage>/<difficulty>-extra.md`（`priority=10`，**可裁**，只被同难度的
+路由壳 include）。本节落在 `brainstorming/heavy-extra.md`，故**只有重档有**——类型档会同时进轻档，
+而轻档有 2500 字符上限，塞进去会撞破它。命名刻意两段：三段 id 被"路由壳"占用。
+
+**判据**：`node scripts/vendor-skills.mjs --check` exit 0；`node scripts/check-prompt-fragments.mjs` exit 0；
+`npx vitest run tests/skills-assets.test.ts tests/skills-materialize.test.ts tests/skills-provenance.test.ts tests/skills-injection.test.ts`。
+
+来源：REQ-261005122347-e07a（材料见 `docs/requirements/REQ-261005122347-e07a/`，含裁剪与落点两处裁定的依据）。

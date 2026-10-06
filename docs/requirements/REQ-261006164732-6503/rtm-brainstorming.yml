@@ -1,0 +1,62 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261006164732-6503
+  generated_at: 2026-10-06T09:02:21.581Z
+  version: 4
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T10:57:17.532Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 建门唯一入口，且同一道门至多一个在等的框
+      source: requirement.md
+      line: 106
+    - id: FR-2
+      title: 门状态三面同源可读
+      source: requirement.md
+      line: 118
+    - id: FR-3
+      title: 阶段指南与回执不再指令 agent 去弹框
+      source: requirement.md
+      line: 126
+    - id: FR-4
+      title: 落章条件写，且首写不可变
+      source: requirement.md
+      line: 139
+    - id: FR-5
+      title: 失效门的迟到作答只留痕
+      source: requirement.md
+      line: 148
+    - id: FR-6
+      title: 不变量探针与回归锁
+      source: requirement.md
+      line: 156
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 「我感觉都是设计相关的那，和需求门有关系吗，原型应该和需求文档一样在需求分析阶段提交吧，原型不是设计阶段的工作。现在需求分析没有展示原型（会话框右上角的需求分析节点，如何涉及原型的增删改应该有文档）」
+      verdict: 缺陷不是设计/拆分阶段特有：本需求覆盖面必须含 **G1 需求门与 G3 拆分门**（并含 G4 的补弹习惯），不能只修拆分；原型的阶段归属确为需求分析，但"需求分析节点不展示原型 + 原型增删改无文档"**不在本需求范围**（本轮未立项）
+      serves:
+        - FR-1
+        - FR-3
+        - FR-6
+      criterion: 四门对照表全部有对应用例（FR-6）；指南两处副本都改为条件式（FR-3 判据）
+    - id: D-2
+      source: 「复用优先：同门已有未作答票/在途框 → 不新开框，返回 pending + 原 ticket」
+      verdict: 同门重复调用一律**复用原票**；同门旧票**不得**被"登记新票前清理陈旧票"的逻辑误杀（异门陈旧票仍清理，防窗口被旧票钉死）
+      serves:
+        - FR-1
+        - FR-2
+      criterion: 连调两次同门 ⇒ 票表计数不变且 ref 相同；异门场景 ⇒ 旧票被 settle、新票在场
+    - id: D-3
+      source: 「如何根本 解决类似问题」
+      verdict: 按**根治形态**交付：把门的生命周期收敛为单一事实源——建门唯一入口 + 同门唯一在途（注册层强制）+ 过程态可读 + 指南去机制化 + 落章条件写/首写不变；**不只做入口侧止血**
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      criterion: FR-6 的不变量探针与四门回归锁
+status:
+  artifacts: []

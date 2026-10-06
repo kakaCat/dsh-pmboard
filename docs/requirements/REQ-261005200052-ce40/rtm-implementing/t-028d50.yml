@@ -1,0 +1,36 @@
+task:
+  id: t-028d50
+  title: 原型登记不再产生挂起票 + 确认前移校验（不造空票）
+  status: done
+  implements: ① src/application/use-cases/SubmitArtifact.ts：删掉原型登记第 ⑤ 步的 triggerAutoConfirm(kind='prototype') 整段（保留其上方的 notifyArtifactRegistered 通知），使登记原型不再在 ticket 表留记录；② src/application/use-cases/AskConfirm.ts：在 port.register(...) 之前追加两条校验 —— target==='artifact' && kindArts.length === 0 ⇒ 抛 REQBOARD_MISSING_ARTIFACT（文案与 applyConfirmDecision 内同源字符串一致）、target==='plan' && targetReq.plan === undefined ⇒ 抛 REQBOARD_MISSING_PLAN；既有「清理同窗口旧票」循环的位置与语义不变。
+  serves:
+    - FR-1
+    - FR-5
+  depends_on:
+    - t-97e904
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005200052-ce40
+    TASK_ID: t-028d50
+    TASK_TITLE: 原型登记不再产生挂起票 + 确认前移校验（不造空票）
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-05T12:14:48.703Z
+      completed_at: 2026-10-05T12:16:54.776Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005200052-ce40
+  generated_at: 2026-10-05T12:11:36.798Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T12:16:54.909Z

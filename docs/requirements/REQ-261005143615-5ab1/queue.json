@@ -1,0 +1,4151 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261005143615-5ab1",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-05T06:42:58.796Z",
+  "tasks": [
+    {
+      "id": "t-25ebdf",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "定契约：未判定态与 absPath 加性字段 + 多根读取口",
+      "cardDoc": "docs/requirements/REQ-261005143615-5ab1/tasks/t-25ebdf.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/query-docs-contract.test.ts 全绿；pnpm typecheck 退出码 0 且错误数不高于基线 223；既有 tests/query-docs*.test.ts 仍全绿（加性未破坏旧形状）。",
+      "implementation": "src/shared/protocol.ts：DocPanelState 加 'unknown'、DocPanelEntry 加可选 absPath、generated[] 加可选 absPath，各带「为什么是加性」注释。src/application/query/contracts.ts：PanelQueryDeps 加可选 docRootsOf?(req) 与 docsAt?(root)，注释写明缺省 = 旧单根行为。新增 tests/query-docs-contract.test.ts 断言枚举含 unknown、两字段可选、两口存在。",
+      "context": "",
+      "footprint": {
+        "files": 3,
+        "anchors": 3,
+        "chars": 900
+      },
+      "requirementRefs": [
+        "FR-3",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b772d6",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791182594923,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 689,
+              "at": 1791182594923,
+              "totals": {
+                "uncachedInputTokens": 208076,
+                "outputTokens": 72735,
+                "cacheReadTokens": 16743040,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 689,
+                  "totals": {
+                    "uncachedInputTokens": 208076,
+                    "outputTokens": 72735,
+                    "cacheReadTokens": 16743040,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 896,
+              "at": 1791182709031,
+              "totals": {
+                "uncachedInputTokens": 229951,
+                "outputTokens": 84188,
+                "cacheReadTokens": 26009984,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 896,
+                  "totals": {
+                    "uncachedInputTokens": 229951,
+                    "outputTokens": 84188,
+                    "cacheReadTokens": 26009984,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 21875,
+              "outputTokens": 11453,
+              "cacheReadTokens": 9266944,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791182709030
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182578722,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791182594923,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工 t1（契约卡）：先落 protocol 加性字段与 contracts 两个可选端口"
+        },
+        {
+          "status": "done",
+          "at": 1791182709030,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "t1 全链完成：契约落地（unknown 态 + absPath + 两口），typecheck 0 错误，契约与既有消费方用例 52 例全绿"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1ca667",
+          "body": "[状态] → in_progress：开工 t1（契约卡）：先落 protocol 加性字段与 contracts 两个可选端口（reqboard_task_move）",
+          "createdAt": 1791182594923,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-d8320a",
+          "body": "[状态] → done：t1 全链完成：契约落地（unknown 态 + absPath + 两口），typecheck 0 错误，契约与既有消费方用例 52 例全绿（reqboard_task_move）",
+          "createdAt": 1791182709030,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182578722,
+      "updatedAt": 1791182709030,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791182654763,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/shared/protocol.ts",
+          "src/application/query/contracts.ts",
+          "src/client/views/panels/docs.ts",
+          "tests/query-docs-contract.test.ts"
+        ],
+        "completed": [
+          "protocol 的文档状态集合新增 unknown，并写明它与 file-missing 的区别",
+          "DocPanelEntry 与 generated 行新增可选 absPath（读时投影、不落库的原因写进注释）",
+          "PanelQueryDeps 新增两个可选口 docRootsOf / docsAt，缺省即旧单根行为",
+          "客户端状态文案补齐 unknown（未判定）并说明读根不可得",
+          "新增 tests/query-docs-contract.test.ts 四条契约用例",
+          "类型检查从 223 个历史错误降到 0（改动文件零错误）",
+          "既有 tests/query-docs.test.ts 与 tests/docs-panel.test.ts 全绿（加性未破坏旧形状）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791182654763,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ac64a2",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "服务端按需求自身工作区判存在，并给出绝对路径",
+      "cardDoc": "docs/requirements/REQ-261005143615-5ab1/tasks/t-ac64a2.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-25ebdf"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/query-docs-roots.test.ts 全绿，四个用例分别钉住：TC-1 需求根命中（absPath 以需求根开头且 file-missing 计数 0）、TC-2 需求根缺、会话根命中（absPath 以会话根开头）、TC-3 根可用而文件不在→file-missing、TC-4 根全不可用→全 unknown 且无 absPath 键。",
+      "implementation": "src/application/query/QueryDocs.ts：取 req 后调 deps.docRootsOf?(req) 建根表（缺省回旧单根），逐条产物按序命中即定 state 与 absPath=repo.resolve(path)；候选非空而全不命中→file-missing，候选为空→unknown；generatedOf / prototypeRolesOf / unregistered 行同根同类判定。src/http/routers/panels.ts：depsForSession 注入两口（候选序=需求根→会话根→cwd，去空去重 + existsSync 过滤；docsAt=new FileDocRepository({workspaceRoot:root})）。新增 tests/query-docs-roots.test.ts 覆盖 TC-1…TC-4（假根 + 假仓储，不碰真盘）。",
+      "context": "",
+      "footprint": {
+        "files": 3,
+        "anchors": 4,
+        "chars": 1600
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-bcd8d6",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791182712087,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 903,
+              "at": 1791182712087,
+              "totals": {
+                "uncachedInputTokens": 233739,
+                "outputTokens": 84605,
+                "cacheReadTokens": 26310400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 903,
+                  "totals": {
+                    "uncachedInputTokens": 233739,
+                    "outputTokens": 84605,
+                    "cacheReadTokens": 26310400,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1204,
+              "at": 1791182941377,
+              "totals": {
+                "uncachedInputTokens": 256552,
+                "outputTokens": 104832,
+                "cacheReadTokens": 42118272,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1204,
+                  "totals": {
+                    "uncachedInputTokens": 256552,
+                    "outputTokens": 104832,
+                    "cacheReadTokens": 42118272,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 22813,
+              "outputTokens": 20227,
+              "cacheReadTokens": 15807872,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791182941377
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182578722,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791182712087,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工 t2：服务端多候选根判定 + absPath，并在路由层注入两口"
+        },
+        {
+          "status": "done",
+          "at": 1791182941377,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "t2 全链完成：服务端多候选根判定 + absPath + unknown 落地，144 例全绿、tsc 0 错误"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-26bff2",
+          "body": "[状态] → in_progress：开工 t2：服务端多候选根判定 + absPath，并在路由层注入两口（reqboard_task_move）",
+          "createdAt": 1791182712087,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-ab4a8b",
+          "body": "[状态] → done：t2 全链完成：服务端多候选根判定 + absPath + unknown 落地，144 例全绿、tsc 0 错误（reqboard_task_move）",
+          "createdAt": 1791182941377,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182578722,
+      "updatedAt": 1791182941377,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791182939055,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/query/QueryDocs.ts",
+          "src/http/routers/panels.ts",
+          "tests/query-docs-roots.test.ts"
+        ],
+        "completed": [
+          "QueryDocs 多候选根判定落地（命中 / 诚实缺失 / 未判定三分支）",
+          "生成物、原型权威清单、未登记设计文档行统一走命中根",
+          "panels 路由注入候选根与按根建仓储的工厂",
+          "新增 tests/query-docs-roots.test.ts 六例；相关用例集 144 例全绿",
+          "tsc --noEmit 0 错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1791182939055,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-88ecd1",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "详情页路径格显示绝对路径，未判定不划线",
+      "cardDoc": "docs/requirements/REQ-261005143615-5ab1/tasks/t-88ecd1.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-25ebdf"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/docs-panel-states.test.ts 全绿：unknown 行 HTML 不含 line-through 与 dsh-pm-doc-missing，file-missing 行仍含两者，有 absPath 的行 data-open-doc 等于该绝对路径；pnpm build:client 输出 [verify-client] OK。",
+      "implementation": "src/client/views/panels/docs.ts：路径格优先渲染 absPath（data-open-doc=absPath，小字给台账相对路径 data-doc-relpath）；stateText/stateNote 加 unknown（未判定 / 读根不可得…）；unknown 行不套 dsh-pm-doc-missing 内联划线；generated 行同规则。新增 tests/docs-panel-states.test.ts 断言 TC-5/TC-6。",
+      "context": "",
+      "footprint": {
+        "files": 2,
+        "anchors": 3,
+        "chars": 1200
+      },
+      "requirementRefs": [
+        "FR-3",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ed186f",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791182944793,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1211,
+              "at": 1791182944793,
+              "totals": {
+                "uncachedInputTokens": 260373,
+                "outputTokens": 105210,
+                "cacheReadTokens": 42460672,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1211,
+                  "totals": {
+                    "uncachedInputTokens": 260373,
+                    "outputTokens": 105210,
+                    "cacheReadTokens": 42460672,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1364,
+              "at": 1791183038800,
+              "totals": {
+                "uncachedInputTokens": 275639,
+                "outputTokens": 113928,
+                "cacheReadTokens": 51141248,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1364,
+                  "totals": {
+                    "uncachedInputTokens": 275639,
+                    "outputTokens": 113928,
+                    "cacheReadTokens": 51141248,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 15266,
+              "outputTokens": 8718,
+              "cacheReadTokens": 8680576,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183038800
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182578722,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791182944793,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工 t3：路径格显示绝对路径、未判定不划线"
+        },
+        {
+          "status": "done",
+          "at": 1791183038800,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "t3 全链完成：绝对路径显示/打开 + 未判定画法落地，41 例全绿、build:client 过验"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-724006",
+          "body": "[状态] → in_progress：开工 t3：路径格显示绝对路径、未判定不划线（reqboard_task_move）",
+          "createdAt": 1791182944793,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-4f6849",
+          "body": "[状态] → done：t3 全链完成：绝对路径显示/打开 + 未判定画法落地，41 例全绿、build:client 过验（reqboard_task_move）",
+          "createdAt": 1791183038800,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182578722,
+      "updatedAt": 1791183038800,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791183036339,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/panels/docs.ts",
+          "src/client/styles/panel.ts",
+          "tests/docs-panel-states.test.ts"
+        ],
+        "completed": [
+          "路径格显示与打开改走服务端给的绝对路径（附台账相对路径小字）",
+          "新增未判定画法 dsh-pm-doc-unknown：灰虚线、不划线、不可点",
+          "file-missing 画法逐字保持（划线 + dsh-pm-doc-missing）",
+          "生成物行同规则；样式分片补新类",
+          "新增 tests/docs-panel-states.test.ts 六例；面板用例 41 例全绿；build:client 过验；tsc 0 错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183036339,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1b4e66",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "兼容与回滚：两口缺省即回旧行为",
+      "cardDoc": "docs/requirements/REQ-261005143615-5ab1/tasks/t-1b4e66.md",
+      "description": "",
+      "phase": "test",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-ac64a2"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/query-docs-compat.test.ts 全绿，且既有 tests/query-docs*.test.ts 集合全绿（零回归）。",
+      "implementation": "新增 tests/query-docs-compat.test.ts：不注入 docRootsOf/docsAt 时走既有单根判据，断言响应无 absPath、无 unknown（逐字段与旧行为一致）；再断言老形状读侧遇到未知 state 字符串不抛错。不新增 src 改动；若旧行为被破坏，回滚 = 不注入两口。",
+      "context": "",
+      "footprint": {
+        "files": 1,
+        "anchors": 2,
+        "chars": 800
+      },
+      "requirementRefs": [
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8d5290",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791183043116,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1371,
+              "at": 1791183043116,
+              "totals": {
+                "uncachedInputTokens": 279411,
+                "outputTokens": 114339,
+                "cacheReadTokens": 51509504,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1371,
+                  "totals": {
+                    "uncachedInputTokens": 279411,
+                    "outputTokens": 114339,
+                    "cacheReadTokens": 51509504,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1466,
+              "at": 1791183106828,
+              "totals": {
+                "uncachedInputTokens": 287420,
+                "outputTokens": 118473,
+                "cacheReadTokens": 57214720,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1466,
+                  "totals": {
+                    "uncachedInputTokens": 287420,
+                    "outputTokens": 118473,
+                    "cacheReadTokens": 57214720,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 8009,
+              "outputTokens": 4134,
+              "cacheReadTokens": 5705216,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183106828
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182578722,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791183043116,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工 t4：兼容与回滚断言（两口缺省即回旧行为）"
+        },
+        {
+          "status": "done",
+          "at": 1791183106828,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "t4 全链完成：兼容与回滚断言落地，相关用例集全绿"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f4a668",
+          "body": "[状态] → in_progress：开工 t4：兼容与回滚断言（两口缺省即回旧行为）（reqboard_task_move）",
+          "createdAt": 1791183043116,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-fee99e",
+          "body": "[状态] → done：t4 全链完成：兼容与回滚断言落地，相关用例集全绿（reqboard_task_move）",
+          "createdAt": 1791183106828,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182578722,
+      "updatedAt": 1791183106828,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791183087132,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/query-docs-compat.test.ts"
+        ],
+        "completed": [
+          "新增 tests/query-docs-compat.test.ts 三例（旧接线逐字段回旧 / 半装配也回旧 / 老形状读侧不抛错）",
+          "钉住缺失仍报 file-missing、documents 与 generated 两侧都无 absPath",
+          "相关用例集 26 例全绿；tsc 0 错误"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183087132,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9abc65",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "真机对账与全量门禁回归",
+      "cardDoc": "docs/requirements/REQ-261005143615-5ab1/tasks/t-9abc65.md",
+      "description": "",
+      "phase": "test",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-ac64a2",
+        "t-88ecd1"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "跑 `npx tsx docs/requirements/REQ-261005143615-5ab1/evidence/t5-reconcile.mts`，四条输出逐条比对：① 段①（REQ-261005123641-3982，不带会话）打印 `file-missing 计数 = 0`；② 段② 打印 `分歧 = 0` 且 `带 absPath 的行 = 25 / 25`；③ 段③（REQ-260930094139-2d65）state 分布为 `{\"file-missing\":37}`；④ 段④（强制候选根为空）state 分布为 `{\"unknown\":25}` 且 `带 absPath 的行 = 0`。门禁四条：`npx tsc --noEmit` 输出 0 个 `error TS`（退出码 0）；`pnpm build` 退出码 0 且 `grep -c docRootsOf dist/index.mjs` ≥ 1；`pnpm build:client` 输出含 `[verify-client] OK`；`pnpm test` 的 `Tests <N> failed` 中 N ≤ 80（基线 = `/private/tmp/req-baseline` worktree 660973e 的 80 failed）。原始输出贴进 docs/requirements/REQ-261005143615-5ab1/evidence/t5-reconcile.md。",
+      "implementation": "用真实端点跑对账脚本并把原始输出写进 docs/requirements/REQ-261005143615-5ab1/evidence/t5-reconcile.md：① 不带 ?session= 拉 REQ-261005123641-3982/docs 统计 state 分布；② 带 ?session=<本仓会话> 逐条 os.path.exists(absPath) 比对；③ REQ-260930094139-2d65 回归必须仍 file-missing；④ 门禁 pnpm typecheck / pnpm test（与基线比对）/ pnpm build 与 pnpm build:client。",
+      "context": "",
+      "footprint": {
+        "files": 1,
+        "anchors": 4,
+        "chars": 1100
+      },
+      "requirementRefs": [
+        "FR-1",
+        "FR-3",
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ae066a",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791183113614,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1473,
+              "at": 1791183113614,
+              "totals": {
+                "uncachedInputTokens": 291227,
+                "outputTokens": 119548,
+                "cacheReadTokens": 57597952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1473,
+                  "totals": {
+                    "uncachedInputTokens": 291227,
+                    "outputTokens": 119548,
+                    "cacheReadTokens": 57597952,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1604,
+              "at": 1791183417475,
+              "totals": {
+                "uncachedInputTokens": 301804,
+                "outputTokens": 128398,
+                "cacheReadTokens": 65997184,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1604,
+                  "totals": {
+                    "uncachedInputTokens": 301804,
+                    "outputTokens": 128398,
+                    "cacheReadTokens": 65997184,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 10577,
+              "outputTokens": 8850,
+              "cacheReadTokens": 8399232,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183417475
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182578722,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791183113614,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工 t5：真机对账与全量门禁回归"
+        },
+        {
+          "status": "done",
+          "at": 1791183417475,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "t5 全链完成：真机对账四组数达标（file-missing 25→0、0 分歧、真丢失仍缺失、无根全未判定），门禁全绿"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-fd693e",
+          "body": "[状态] → in_progress：开工 t5：真机对账与全量门禁回归（reqboard_task_move）",
+          "createdAt": 1791183113614,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-58efb2",
+          "body": "[状态] → done：t5 全链完成：真机对账四组数达标（file-missing 25→0、0 分歧、真丢失仍缺失、无根全未判定），门禁全绿（reqboard_task_move）",
+          "createdAt": 1791183417475,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182578722,
+      "updatedAt": 1791183455091,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791183393915,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261005143615-5ab1/evidence/t5-reconcile.md",
+          "docs/requirements/REQ-261005143615-5ab1/evidence/t5-reconcile.mts"
+        ],
+        "completed": [
+          "真实台账 + 真实磁盘对账：REQ-261005123641-3982 不带会话时 file-missing 从 25 降到 0",
+          "候选根含会话根时 25/25 行都带 absPath，state 与 os.path.exists 逐条比对 0 分歧",
+          "回归：REQ-260930094139-2d65（文件真丢）仍 37/37 file-missing，未被 unknown 掩盖",
+          "读根全不可用时 25 行全部 unknown 且 0 条 absPath",
+          "门禁：pnpm build 退出码 0 且 dist 含新符号、build:client 过验、tsc 0 错误、全量测试 68 failed ≤ 基线 80",
+          "证据落盘 docs/requirements/REQ-261005143615-5ab1/evidence/t5-reconcile.md（含对账脚本与原始输出）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183393915,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-34ad53",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "定契约：未判定态与 absPath 加性字段 + 多根读取口·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/shared/protocol.ts：DocPanelState 加 'unknown'、DocPanelEntry 加可选 absPath、generated[] 加可选 absPath，各带「为什么是加性」注释。src/application/query/contracts.ts：PanelQueryDeps 加可选 docRootsOf?(req) 与 docsAt?(root)，注释写明缺省 = 旧单根行为。新增 tests/query-docs-contract.test.ts 断言枚举含 unknown、两字段可选、两口存在。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-25ebdf",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-5957c2",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791182693325,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 848,
+              "at": 1791182693326,
+              "totals": {
+                "uncachedInputTokens": 227835,
+                "outputTokens": 83395,
+                "cacheReadTokens": 23616384,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 848,
+                  "totals": {
+                    "uncachedInputTokens": 227835,
+                    "outputTokens": 83395,
+                    "cacheReadTokens": 23616384,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 854,
+              "at": 1791182695239,
+              "totals": {
+                "uncachedInputTokens": 228142,
+                "outputTokens": 83493,
+                "cacheReadTokens": 23914624,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 854,
+                  "totals": {
+                    "uncachedInputTokens": 228142,
+                    "outputTokens": 83493,
+                    "cacheReadTokens": 23914624,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 307,
+              "outputTokens": 98,
+              "cacheReadTokens": 298240,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791182695239
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f8d184",
+          "body": "[状态] → in_progress：开工研发段（reqboard_task_move）",
+          "createdAt": 1791182693325,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-334851",
+          "body": "[状态] → done：研发段完成：契约字段与两口落地，typecheck 0 错误、契约用例 4 passed（reqboard_task_move）",
+          "createdAt": 1791182695239,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182594923,
+      "updatedAt": 1791182695239,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182594923,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791182693325,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工研发段"
+        },
+        {
+          "status": "done",
+          "at": 1791182695239,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "研发段完成：契约字段与两口落地，typecheck 0 错误、契约用例 4 passed"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791182684207,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/shared/protocol.ts",
+          "src/application/query/contracts.ts",
+          "src/client/views/panels/docs.ts",
+          "tests/query-docs-contract.test.ts"
+        ],
+        "completed": [
+          "protocol 的文档状态集合新增 unknown（与 file-missing 的区别写进注释）",
+          "DocPanelEntry 与 generated 行新增可选 absPath（读时投影、不落库）",
+          "PanelQueryDeps 新增 docRootsOf / docsAt 两个可选口（缺省即旧单根行为）",
+          "客户端状态文案补齐 unknown 并说明读根不可得",
+          "新增 tests/query-docs-contract.test.ts 四条契约用例"
+        ]
+      },
+      "lastRun": {
+        "at": 1791182684207,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1f89c1",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "定契约：未判定态与 absPath 加性字段 + 多根读取口·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-34ad53"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "src/shared/protocol.ts：DocPanelState 加 'unknown'、DocPanelEntry 加可选 absPath、generated[] 加可选 absPath，各带「为什么是加性」注释。src/application/query/contracts.ts：PanelQueryDeps 加可选 docRootsOf?(req) 与 docsAt?(root)，注释写明缺省 = 旧单根行为。新增 tests/query-docs-contract.test.ts 断言枚举含 unknown、两字段可选、两口存在。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-25ebdf",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e31dfb",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791182697111,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 860,
+              "at": 1791182697111,
+              "totals": {
+                "uncachedInputTokens": 228366,
+                "outputTokens": 83577,
+                "cacheReadTokens": 24213120,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 860,
+                  "totals": {
+                    "uncachedInputTokens": 228366,
+                    "outputTokens": 83577,
+                    "cacheReadTokens": 24213120,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 866,
+              "at": 1791182699220,
+              "totals": {
+                "uncachedInputTokens": 228702,
+                "outputTokens": 83689,
+                "cacheReadTokens": 24511872,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 866,
+                  "totals": {
+                    "uncachedInputTokens": 228702,
+                    "outputTokens": 83689,
+                    "cacheReadTokens": 24511872,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 336,
+              "outputTokens": 112,
+              "cacheReadTokens": 298752,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791182699220
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-717986",
+          "body": "[状态] → in_progress：开工联调段（reqboard_task_move）",
+          "createdAt": 1791182697111,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-649bac",
+          "body": "[状态] → done：联调段完成：本卡无运行端点，以 typecheck 0 错误 + 既有消费方用例 48 例全绿为联调证据（reqboard_task_move）",
+          "createdAt": 1791182699220,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182594923,
+      "updatedAt": 1791182699220,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182594923,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791182697111,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工联调段"
+        },
+        {
+          "status": "done",
+          "at": 1791182699220,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "联调段完成：本卡无运行端点，以 typecheck 0 错误 + 既有消费方用例 48 例全绿为联调证据"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791182684317,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "本卡只改类型与端口签名，无对外可运行接口：以 typecheck 与既有用例作为联调证据",
+          "npx tsc --noEmit 退出码 0（0 error，HEAD 基线同为 0）",
+          "tests/query-docs.test.ts 13 passed、tests/docs-panel.test.ts 35 passed、tests/query-docs-contract.test.ts 4 passed",
+          "确认 application 新增的是 import type（types-only），未引入 node: 依赖"
+        ]
+      },
+      "lastRun": {
+        "at": 1791182684317,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c09479",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "定契约：未判定态与 absPath 加性字段 + 多根读取口·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-1f89c1"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/shared/protocol.ts：DocPanelState 加 'unknown'、DocPanelEntry 加可选 absPath、generated[] 加可选 absPath，各带「为什么是加性」注释。src/application/query/contracts.ts：PanelQueryDeps 加可选 docRootsOf?(req) 与 docsAt?(root)，注释写明缺省 = 旧单根行为。新增 tests/query-docs-contract.test.ts 断言枚举含 unknown、两字段可选、两口存在。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-25ebdf",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-81cca3",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791182701093,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 872,
+              "at": 1791182701093,
+              "totals": {
+                "uncachedInputTokens": 228845,
+                "outputTokens": 83769,
+                "cacheReadTokens": 24811008,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 872,
+                  "totals": {
+                    "uncachedInputTokens": 228845,
+                    "outputTokens": 83769,
+                    "cacheReadTokens": 24811008,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 878,
+              "at": 1791182702849,
+              "totals": {
+                "uncachedInputTokens": 229231,
+                "outputTokens": 83880,
+                "cacheReadTokens": 25110272,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 878,
+                  "totals": {
+                    "uncachedInputTokens": 229231,
+                    "outputTokens": 83880,
+                    "cacheReadTokens": 25110272,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 386,
+              "outputTokens": 111,
+              "cacheReadTokens": 299264,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791182702849
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9e625f",
+          "body": "[状态] → in_progress：开工复核段（reqboard_task_move）",
+          "createdAt": 1791182701093,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-7bd573",
+          "body": "[状态] → done：复核段完成：逐条对照 design/interfaces.md 与 data-model.md 无偏离；层边界 3 处失败经 HEAD worktree 对照确认为存量（reqboard_task_move）",
+          "createdAt": 1791182702849,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182594923,
+      "updatedAt": 1791182702849,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182594923,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791182701093,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工复核段"
+        },
+        {
+          "status": "done",
+          "at": 1791182702849,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "复核段完成：逐条对照 design/interfaces.md 与 data-model.md 无偏离；层边界 3 处失败经 HEAD worktree 对照确认为存量"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791182688128,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "复核 diff：protocol 三处改动都是加性（新增枚举成员、两个可选字段），无既有取值被改语义",
+          "复核 contracts：新增的是 import type { RequirementRecord }（types-only），未违反 application 层禁 import node: 的边界",
+          "复核客户端：STATE_TEXT / STATE_NOTE 因枚举扩而补齐，运行期读未知状态仍有兜底文案",
+          "对照 HEAD worktree /private/tmp/req-baseline（660973e）跑 tests/layer-boundary.test.ts：同样 3 failed / 6 passed ⇒ 3 处失败为存量、非本卡引入",
+          "未发现把未知状态当缺失渲染的路径（unknown 与 file-missing 文案分列）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791182688128,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-6bdebe",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "定契约：未判定态与 absPath 加性字段 + 多根读取口·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-c09479"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "src/shared/protocol.ts：DocPanelState 加 'unknown'、DocPanelEntry 加可选 absPath、generated[] 加可选 absPath，各带「为什么是加性」注释。src/application/query/contracts.ts：PanelQueryDeps 加可选 docRootsOf?(req) 与 docsAt?(root)，注释写明缺省 = 旧单根行为。新增 tests/query-docs-contract.test.ts 断言枚举含 unknown、两字段可选、两口存在。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-25ebdf",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d8c30a",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791182704987,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 884,
+              "at": 1791182704987,
+              "totals": {
+                "uncachedInputTokens": 229417,
+                "outputTokens": 83962,
+                "cacheReadTokens": 25409920,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 884,
+                  "totals": {
+                    "uncachedInputTokens": 229417,
+                    "outputTokens": 83962,
+                    "cacheReadTokens": 25409920,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 890,
+              "at": 1791182706623,
+              "totals": {
+                "uncachedInputTokens": 229718,
+                "outputTokens": 84073,
+                "cacheReadTokens": 25709824,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 890,
+                  "totals": {
+                    "uncachedInputTokens": 229718,
+                    "outputTokens": 84073,
+                    "cacheReadTokens": 25709824,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 301,
+              "outputTokens": 111,
+              "cacheReadTokens": 299904,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791182706623
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-2a9779",
+          "body": "[状态] → in_progress：开工测试段（reqboard_task_move）",
+          "createdAt": 1791182704987,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-3bfc6e",
+          "body": "[状态] → done：测试段完成：契约 4 例 + 文档聚合 13 例 + 面板渲染 35 例全绿；tsc 0 错误（reqboard_task_move）",
+          "createdAt": 1791182706623,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182594923,
+      "updatedAt": 1791182706623,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182594923,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791182704987,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工测试段"
+        },
+        {
+          "status": "done",
+          "at": 1791182706623,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "测试段完成：契约 4 例 + 文档聚合 13 例 + 面板渲染 35 例全绿；tsc 0 错误"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791182688237,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "npx vitest run tests/query-docs-contract.test.ts → 4 passed",
+          "npx vitest run tests/query-docs.test.ts → 13 passed",
+          "npx vitest run tests/docs-panel.test.ts → 35 passed",
+          "npx tsc --noEmit → 0 error（退出码 0）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791182688237,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b1d7c6",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "服务端按需求自身工作区判存在，并给出绝对路径·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-25ebdf"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/application/query/QueryDocs.ts：取 req 后调 deps.docRootsOf?(req) 建根表（缺省回旧单根），逐条产物按序命中即定 state 与 absPath=repo.resolve(path)；候选非空而全不命中→file-missing，候选为空→unknown；generatedOf / prototypeRolesOf / unregistered 行同根同类判定。src/http/routers/panels.ts：depsForSession 注入两口（候选序=需求根→会话根→cwd，去空去重 + existsSync 过滤；docsAt=new FileDocRepository({workspaceRoot:root})）。新增 tests/query-docs-roots.test.ts 覆盖 TC-1…TC-4（假根 + 假仓储，不碰真盘）。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-ac64a2",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b38921",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791182919246,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1144,
+              "at": 1791182919246,
+              "totals": {
+                "uncachedInputTokens": 253600,
+                "outputTokens": 103664,
+                "cacheReadTokens": 38710656,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1144,
+                  "totals": {
+                    "uncachedInputTokens": 253600,
+                    "outputTokens": 103664,
+                    "cacheReadTokens": 38710656,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1150,
+              "at": 1791182921182,
+              "totals": {
+                "uncachedInputTokens": 254040,
+                "outputTokens": 103768,
+                "cacheReadTokens": 39049984,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1150,
+                  "totals": {
+                    "uncachedInputTokens": 254040,
+                    "outputTokens": 103768,
+                    "cacheReadTokens": 39049984,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 440,
+              "outputTokens": 104,
+              "cacheReadTokens": 339328,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791182921181
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-3229be",
+          "body": "[状态] → in_progress：开工研发段（reqboard_task_move）",
+          "createdAt": 1791182919246,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-fbb5f7",
+          "body": "[状态] → done：研发段完成：多候选根判定 + 路由注入落地，6 例全绿、tsc 0 错误（reqboard_task_move）",
+          "createdAt": 1791182921181,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182712087,
+      "updatedAt": 1791182921181,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182712087,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791182919246,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工研发段"
+        },
+        {
+          "status": "done",
+          "at": 1791182921181,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "研发段完成：多候选根判定 + 路由注入落地，6 例全绿、tsc 0 错误"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791182910367,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/application/query/QueryDocs.ts",
+          "src/http/routers/panels.ts",
+          "tests/query-docs-roots.test.ts"
+        ],
+        "completed": [
+          "QueryDocs 新增读根表解析：两口装配走多候选，缺省即旧单根（无 unknown、无 absPath）",
+          "逐条产物按序命中即定状态与绝对路径；候选根非空而全不命中仍报 file-missing",
+          "候选根集合为空时逐行 unknown，且不注入 absPath",
+          "生成物、原型权威清单、未登记设计文档行统一走同一套命中根判定",
+          "panels 路由层注入候选根（需求声明根 → 会话根 → cwd，去空去重 + 只留存在的根）与按根建仓储的工厂",
+          "新增 tests/query-docs-roots.test.ts 六个用例（TC-1…TC-4 + 未登记行同规则 + 旧接线缺省）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791182910367,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8207ca",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "服务端按需求自身工作区判存在，并给出绝对路径·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-b1d7c6"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "src/application/query/QueryDocs.ts：取 req 后调 deps.docRootsOf?(req) 建根表（缺省回旧单根），逐条产物按序命中即定 state 与 absPath=repo.resolve(path)；候选非空而全不命中→file-missing，候选为空→unknown；generatedOf / prototypeRolesOf / unregistered 行同根同类判定。src/http/routers/panels.ts：depsForSession 注入两口（候选序=需求根→会话根→cwd，去空去重 + existsSync 过滤；docsAt=new FileDocRepository({workspaceRoot:root})）。新增 tests/query-docs-roots.test.ts 覆盖 TC-1…TC-4（假根 + 假仓储，不碰真盘）。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-ac64a2",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-eabeb6",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791182923199,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1156,
+              "at": 1791182923199,
+              "totals": {
+                "uncachedInputTokens": 254279,
+                "outputTokens": 103850,
+                "cacheReadTokens": 39389696,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1156,
+                  "totals": {
+                    "uncachedInputTokens": 254279,
+                    "outputTokens": 103850,
+                    "cacheReadTokens": 39389696,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1162,
+              "at": 1791182925809,
+              "totals": {
+                "uncachedInputTokens": 254686,
+                "outputTokens": 103949,
+                "cacheReadTokens": 39729664,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1162,
+                  "totals": {
+                    "uncachedInputTokens": 254686,
+                    "outputTokens": 103949,
+                    "cacheReadTokens": 39729664,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 407,
+              "outputTokens": 99,
+              "cacheReadTokens": 339968,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791182925809
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-32914f",
+          "body": "[状态] → in_progress：开工联调段（reqboard_task_move）",
+          "createdAt": 1791182923199,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-bd71ad",
+          "body": "[状态] → done：联调段完成：新旧两种装配各自用例全绿（144 例），tsc 0 错误（reqboard_task_move）",
+          "createdAt": 1791182925809,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182712087,
+      "updatedAt": 1791182925809,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182712087,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791182923199,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工联调段"
+        },
+        {
+          "status": "done",
+          "at": 1791182925809,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "联调段完成：新旧两种装配各自用例全绿（144 例），tsc 0 错误"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791182910553,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "npx vitest run tests/query-docs-roots.test.ts → 6 passed",
+          "npx vitest run tests/query-docs.test.ts tests/docs-panel.test.ts → 48 passed（旧消费方零回归）",
+          "npx vitest run tests/query-report.test.ts tests/query-trunk.test.ts tests/reqboard/board-plan-approve.test.ts → 86 passed",
+          "npx tsc --noEmit → 0 error"
+        ]
+      },
+      "lastRun": {
+        "at": 1791182910553,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-40d8cd",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "服务端按需求自身工作区判存在，并给出绝对路径·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-8207ca"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/application/query/QueryDocs.ts：取 req 后调 deps.docRootsOf?(req) 建根表（缺省回旧单根），逐条产物按序命中即定 state 与 absPath=repo.resolve(path)；候选非空而全不命中→file-missing，候选为空→unknown；generatedOf / prototypeRolesOf / unregistered 行同根同类判定。src/http/routers/panels.ts：depsForSession 注入两口（候选序=需求根→会话根→cwd，去空去重 + existsSync 过滤；docsAt=new FileDocRepository({workspaceRoot:root})）。新增 tests/query-docs-roots.test.ts 覆盖 TC-1…TC-4（假根 + 假仓储，不碰真盘）。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-ac64a2",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-825e90",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791182927760,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1168,
+              "at": 1791182927760,
+              "totals": {
+                "uncachedInputTokens": 254883,
+                "outputTokens": 104031,
+                "cacheReadTokens": 40070016,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1168,
+                  "totals": {
+                    "uncachedInputTokens": 254883,
+                    "outputTokens": 104031,
+                    "cacheReadTokens": 40070016,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1174,
+              "at": 1791182929476,
+              "totals": {
+                "uncachedInputTokens": 255267,
+                "outputTokens": 104137,
+                "cacheReadTokens": 40410624,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1174,
+                  "totals": {
+                    "uncachedInputTokens": 255267,
+                    "outputTokens": 104137,
+                    "cacheReadTokens": 40410624,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 384,
+              "outputTokens": 106,
+              "cacheReadTokens": 340608,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791182929475
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-61d78f",
+          "body": "[状态] → in_progress：开工复核段（reqboard_task_move）",
+          "createdAt": 1791182927760,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-fadba0",
+          "body": "[状态] → done：复核段完成：与设计三处口径逐条一致（候选序/命中即止/两分支），层边界无新增越界（reqboard_task_move）",
+          "createdAt": 1791182929475,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182712087,
+      "updatedAt": 1791182929475,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182712087,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791182927760,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工复核段"
+        },
+        {
+          "status": "done",
+          "at": 1791182929475,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "复核段完成：与设计三处口径逐条一致（候选序/命中即止/两分支），层边界无新增越界"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791182914584,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "逐条对照 design/architecture.md 的「读根候选与判定链」：序、命中即止、候选非空/为空两分支均与设计一致，无偏离",
+          "逐条对照 design/interfaces.md 的字段与错误语义：absPath 未命中不注入、unknown 仍 200，均一致",
+          "层边界：新增 existsSync 只出现在 http 层，application 只吃注入的根与端口",
+          "tests/layer-boundary.test.ts 的 3 处失败经 HEAD worktree 对照确认为存量（CreateRequirement/job-spec/stages，均非本卡改动）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791182914584,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ab1cc8",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "服务端按需求自身工作区判存在，并给出绝对路径·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-40d8cd"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "src/application/query/QueryDocs.ts：取 req 后调 deps.docRootsOf?(req) 建根表（缺省回旧单根），逐条产物按序命中即定 state 与 absPath=repo.resolve(path)；候选非空而全不命中→file-missing，候选为空→unknown；generatedOf / prototypeRolesOf / unregistered 行同根同类判定。src/http/routers/panels.ts：depsForSession 注入两口（候选序=需求根→会话根→cwd，去空去重 + existsSync 过滤；docsAt=new FileDocRepository({workspaceRoot:root})）。新增 tests/query-docs-roots.test.ts 覆盖 TC-1…TC-4（假根 + 假仓储，不碰真盘）。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-ac64a2",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a19891",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791182931639,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1180,
+              "at": 1791182931639,
+              "totals": {
+                "uncachedInputTokens": 255578,
+                "outputTokens": 104218,
+                "cacheReadTokens": 40751488,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1180,
+                  "totals": {
+                    "uncachedInputTokens": 255578,
+                    "outputTokens": 104218,
+                    "cacheReadTokens": 40751488,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1186,
+              "at": 1791182933518,
+              "totals": {
+                "uncachedInputTokens": 255936,
+                "outputTokens": 104314,
+                "cacheReadTokens": 41092736,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1186,
+                  "totals": {
+                    "uncachedInputTokens": 255936,
+                    "outputTokens": 104314,
+                    "cacheReadTokens": 41092736,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 358,
+              "outputTokens": 96,
+              "cacheReadTokens": 341248,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791182933518
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-1bed95",
+          "body": "[状态] → in_progress：开工测试段（reqboard_task_move）",
+          "createdAt": 1791182931639,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-79a343",
+          "body": "[状态] → done：测试段完成：本卡相关 144 例全绿、tsc 0 错误（reqboard_task_move）",
+          "createdAt": 1791182933518,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182712087,
+      "updatedAt": 1791182933518,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182712087,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791182931639,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工测试段"
+        },
+        {
+          "status": "done",
+          "at": 1791182933518,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "测试段完成：本卡相关 144 例全绿、tsc 0 错误"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791182914761,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "npx vitest run tests/query-docs-roots.test.ts tests/query-docs.test.ts tests/query-docs-contract.test.ts tests/docs-panel.test.ts tests/query-report.test.ts tests/query-trunk.test.ts tests/reqboard/board-plan-approve.test.ts → 144 passed / 0 failed",
+          "npx tsc --noEmit → 0 error（退出码 0）",
+          "四条验收用例各自可辨认：需求根命中、会话根回退、诚实缺失、未判定且无 absPath"
+        ]
+      },
+      "lastRun": {
+        "at": 1791182914761,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-7acec4",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "详情页路径格显示绝对路径，未判定不划线·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-25ebdf"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "src/client/views/panels/docs.ts：路径格优先渲染 absPath（data-open-doc=absPath，小字给台账相对路径 data-doc-relpath）；stateText/stateNote 加 unknown（未判定 / 读根不可得…）；unknown 行不套 dsh-pm-doc-missing 内联划线；generated 行同规则。新增 tests/docs-panel-states.test.ts 断言 TC-5/TC-6。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-88ecd1",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-459ed2",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791183016758,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1310,
+              "at": 1791183016758,
+              "totals": {
+                "uncachedInputTokens": 273381,
+                "outputTokens": 112861,
+                "cacheReadTokens": 47840384,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1310,
+                  "totals": {
+                    "uncachedInputTokens": 273381,
+                    "outputTokens": 112861,
+                    "cacheReadTokens": 47840384,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1316,
+              "at": 1791183018714,
+              "totals": {
+                "uncachedInputTokens": 273661,
+                "outputTokens": 112960,
+                "cacheReadTokens": 48206080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1316,
+                  "totals": {
+                    "uncachedInputTokens": 273661,
+                    "outputTokens": 112960,
+                    "cacheReadTokens": 48206080,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 280,
+              "outputTokens": 99,
+              "cacheReadTokens": 365696,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183018713
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0bc3f0",
+          "body": "[状态] → in_progress：开工研发段（reqboard_task_move）",
+          "createdAt": 1791183016758,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-47832a",
+          "body": "[状态] → done：研发段完成：绝对路径显示/打开 + 未判定不划线落地，6 例全绿（reqboard_task_move）",
+          "createdAt": 1791183018713,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182944793,
+      "updatedAt": 1791183018713,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182944793,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791183016758,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工研发段"
+        },
+        {
+          "status": "done",
+          "at": 1791183018713,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "研发段完成：绝对路径显示/打开 + 未判定不划线落地，6 例全绿"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791183010197,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/panels/docs.ts",
+          "src/client/styles/panel.ts",
+          "tests/docs-panel-states.test.ts"
+        ],
+        "completed": [
+          "路径格：有 absPath 就显示并打开绝对路径，旁边留台账相对路径小字（data-doc-relpath）",
+          "未判定行新画法 dsh-pm-doc-unknown：不划线、不套 dsh-pm-doc-missing，文案说「未判定 · 读根不可得」",
+          "file-missing 行画法逐字保持（划线 + dsh-pm-doc-missing + 文件缺失）",
+          "生成物行同规则支持 absPath",
+          "样式分片补 .dsh-pm-doc-unknown（虚线边框、不划线）",
+          "新增 tests/docs-panel-states.test.ts 六例（TC-5/TC-6 及同页并存）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183010197,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f9f582",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "详情页路径格显示绝对路径，未判定不划线·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-7acec4"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "implementation": "src/client/views/panels/docs.ts：路径格优先渲染 absPath（data-open-doc=absPath，小字给台账相对路径 data-doc-relpath）；stateText/stateNote 加 unknown（未判定 / 读根不可得…）；unknown 行不套 dsh-pm-doc-missing 内联划线；generated 行同规则。新增 tests/docs-panel-states.test.ts 断言 TC-5/TC-6。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-88ecd1",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b2e605",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791183021201,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1322,
+              "at": 1791183021201,
+              "totals": {
+                "uncachedInputTokens": 273861,
+                "outputTokens": 113042,
+                "cacheReadTokens": 48572032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1322,
+                  "totals": {
+                    "uncachedInputTokens": 273861,
+                    "outputTokens": 113042,
+                    "cacheReadTokens": 48572032,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1328,
+              "at": 1791183023385,
+              "totals": {
+                "uncachedInputTokens": 274154,
+                "outputTokens": 113145,
+                "cacheReadTokens": 48938240,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1328,
+                  "totals": {
+                    "uncachedInputTokens": 274154,
+                    "outputTokens": 113145,
+                    "cacheReadTokens": 48938240,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 293,
+              "outputTokens": 103,
+              "cacheReadTokens": 366208,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183023385
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f2e73d",
+          "body": "[状态] → in_progress：开工联调段（reqboard_task_move）",
+          "createdAt": 1791183021201,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-35d2a4",
+          "body": "[状态] → done：联调段完成：build:client 过验、面板用例 41 例全绿、tsc 0 错误（reqboard_task_move）",
+          "createdAt": 1791183023385,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182944793,
+      "updatedAt": 1791183023385,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182944793,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791183021201,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工联调段"
+        },
+        {
+          "status": "done",
+          "at": 1791183023385,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "联调段完成：build:client 过验、面板用例 41 例全绿、tsc 0 错误"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791183010308,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "pnpm build:client → [verify-client] OK（bundle 591550 bytes，关键符号齐全、CSS 分片完整）",
+          "npx tsc --noEmit → 0 error",
+          "npx vitest run tests/docs-panel-states.test.ts tests/docs-panel.test.ts → 41 passed",
+          "确认新类名 dsh-pm-doc-unknown 与既有 dsh-pm-doc-missing 互不覆盖（样式分片两段独立）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183010308,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ffa053",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "详情页路径格显示绝对路径，未判定不划线·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-f9f582"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "src/client/views/panels/docs.ts：路径格优先渲染 absPath（data-open-doc=absPath，小字给台账相对路径 data-doc-relpath）；stateText/stateNote 加 unknown（未判定 / 读根不可得…）；unknown 行不套 dsh-pm-doc-missing 内联划线；generated 行同规则。新增 tests/docs-panel-states.test.ts 断言 TC-5/TC-6。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-88ecd1",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-32b0a9",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791183025549,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1334,
+              "at": 1791183025549,
+              "totals": {
+                "uncachedInputTokens": 274369,
+                "outputTokens": 113226,
+                "cacheReadTokens": 49304704,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1334,
+                  "totals": {
+                    "uncachedInputTokens": 274369,
+                    "outputTokens": 113226,
+                    "cacheReadTokens": 49304704,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1340,
+              "at": 1791183028311,
+              "totals": {
+                "uncachedInputTokens": 274692,
+                "outputTokens": 113324,
+                "cacheReadTokens": 49671424,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1340,
+                  "totals": {
+                    "uncachedInputTokens": 274692,
+                    "outputTokens": 113324,
+                    "cacheReadTokens": 49671424,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 323,
+              "outputTokens": 98,
+              "cacheReadTokens": 366720,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183028311
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-3524dc",
+          "body": "[状态] → in_progress：开工复核段（reqboard_task_move）",
+          "createdAt": 1791183025549,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-040af6",
+          "body": "[状态] → done：复核段完成：与 frontend.md 呈现项无偏离；未改打开通道与其它区块渲染（reqboard_task_move）",
+          "createdAt": 1791183028311,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182944793,
+      "updatedAt": 1791183028311,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182944793,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791183025549,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工复核段"
+        },
+        {
+          "status": "done",
+          "at": 1791183028311,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "复核段完成：与 frontend.md 呈现项无偏离；未改打开通道与其它区块渲染"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791183014449,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "对照 design/frontend.md 呈现项：三种状态各自的显示与打开口径逐条一致（有 absPath 用绝对、file-missing 划线不可点、unknown 不划线不可点）",
+          "对照 fidelity 要求：没给 absPath 时逐字回旧显示（已有用例钉住）",
+          "确认未越界：未改 open-doc 通道、未改归档块与其它发现块的渲染",
+          "复核断言强度：TC-6 用同页并存用例证明划线只落在缺失那一行"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183014449,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-5463c3",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "详情页路径格显示绝对路径，未判定不划线·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-ffa053"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "src/client/views/panels/docs.ts：路径格优先渲染 absPath（data-open-doc=absPath，小字给台账相对路径 data-doc-relpath）；stateText/stateNote 加 unknown（未判定 / 读根不可得…）；unknown 行不套 dsh-pm-doc-missing 内联划线；generated 行同规则。新增 tests/docs-panel-states.test.ts 断言 TC-5/TC-6。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-88ecd1",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c18108",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791183030188,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1346,
+              "at": 1791183030188,
+              "totals": {
+                "uncachedInputTokens": 274932,
+                "outputTokens": 113406,
+                "cacheReadTokens": 50038400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1346,
+                  "totals": {
+                    "uncachedInputTokens": 274932,
+                    "outputTokens": 113406,
+                    "cacheReadTokens": 50038400,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1352,
+              "at": 1791183032873,
+              "totals": {
+                "uncachedInputTokens": 275276,
+                "outputTokens": 113508,
+                "cacheReadTokens": 50405632,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1352,
+                  "totals": {
+                    "uncachedInputTokens": 275276,
+                    "outputTokens": 113508,
+                    "cacheReadTokens": 50405632,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 344,
+              "outputTokens": 102,
+              "cacheReadTokens": 367232,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183032873
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-bea393",
+          "body": "[状态] → in_progress：开工测试段（reqboard_task_move）",
+          "createdAt": 1791183030188,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-00ec9a",
+          "body": "[状态] → done：测试段完成：面板 41 例全绿、tsc 0 错误、build:client 过验（reqboard_task_move）",
+          "createdAt": 1791183032873,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791182944793,
+      "updatedAt": 1791183032873,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791182944793,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791183030188,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工测试段"
+        },
+        {
+          "status": "done",
+          "at": 1791183032873,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "测试段完成：面板 41 例全绿、tsc 0 错误、build:client 过验"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791183014558,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "npx vitest run tests/docs-panel-states.test.ts → 6 passed",
+          "npx vitest run tests/docs-panel.test.ts → 35 passed（既有渲染零回归）",
+          "npx tsc --noEmit → 0 error",
+          "pnpm build:client → [verify-client] OK"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183014558,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-108748",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "兼容与回滚：两口缺省即回旧行为·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-ac64a2"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新增 tests/query-docs-compat.test.ts：不注入 docRootsOf/docsAt 时走既有单根判据，断言响应无 absPath、无 unknown（逐字段与旧行为一致）；再断言老形状读侧遇到未知 state 字符串不抛错。不新增 src 改动；若旧行为被破坏，回滚 = 不注入两口。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-1b4e66",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-a98d96",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791183074136,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1412,
+              "at": 1791183074136,
+              "totals": {
+                "uncachedInputTokens": 285286,
+                "outputTokens": 117340,
+                "cacheReadTokens": 53777792,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1412,
+                  "totals": {
+                    "uncachedInputTokens": 285286,
+                    "outputTokens": 117340,
+                    "cacheReadTokens": 53777792,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1418,
+              "at": 1791183076178,
+              "totals": {
+                "uncachedInputTokens": 285581,
+                "outputTokens": 117426,
+                "cacheReadTokens": 54158592,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1418,
+                  "totals": {
+                    "uncachedInputTokens": 285581,
+                    "outputTokens": 117426,
+                    "cacheReadTokens": 54158592,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 295,
+              "outputTokens": 86,
+              "cacheReadTokens": 380800,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183076178
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b34883",
+          "body": "[状态] → in_progress：开工研发段（reqboard_task_move）",
+          "createdAt": 1791183074136,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-df9b80",
+          "body": "[状态] → done：研发段完成：兼容三例落地并全绿（reqboard_task_move）",
+          "createdAt": 1791183076178,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791183043116,
+      "updatedAt": 1791183076178,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791183043116,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791183074136,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工研发段"
+        },
+        {
+          "status": "done",
+          "at": 1791183076178,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "研发段完成：兼容三例落地并全绿"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791183069149,
+        "reportIndex": 1,
+        "filesChanged": [
+          "tests/query-docs-compat.test.ts"
+        ],
+        "completed": [
+          "新增 tests/query-docs-compat.test.ts 三例：旧接线逐字段回旧、只装配一半也回旧、老形状读侧不抛错",
+          "钉住「缺失仍缺失」：旧接线下文件不在是 file-missing，不会被写成 unknown",
+          "钉住「无 absPath」：documents 与 generated 两侧都不注入",
+          "npx vitest run tests/query-docs*.test.ts → 26 passed",
+          "npx tsc --noEmit → 0 error"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183069149,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d0993d",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "兼容与回滚：两口缺省即回旧行为·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-108748"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新增 tests/query-docs-compat.test.ts：不注入 docRootsOf/docsAt 时走既有单根判据，断言响应无 absPath、无 unknown（逐字段与旧行为一致）；再断言老形状读侧遇到未知 state 字符串不抛错。不新增 src 改动；若旧行为被破坏，回滚 = 不注入两口。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-1b4e66",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1b2593",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791183078500,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1424,
+              "at": 1791183078500,
+              "totals": {
+                "uncachedInputTokens": 285779,
+                "outputTokens": 117507,
+                "cacheReadTokens": 54539648,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1424,
+                  "totals": {
+                    "uncachedInputTokens": 285779,
+                    "outputTokens": 117507,
+                    "cacheReadTokens": 54539648,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1430,
+              "at": 1791183079996,
+              "totals": {
+                "uncachedInputTokens": 286065,
+                "outputTokens": 117604,
+                "cacheReadTokens": 54920960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1430,
+                  "totals": {
+                    "uncachedInputTokens": 286065,
+                    "outputTokens": 117604,
+                    "cacheReadTokens": 54920960,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 286,
+              "outputTokens": 97,
+              "cacheReadTokens": 381312,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183079996
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-9d8624",
+          "body": "[状态] → in_progress：开工复核段（reqboard_task_move）",
+          "createdAt": 1791183078500,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-cdec78",
+          "body": "[状态] → done：复核段完成：与 interfaces.md 兼容三条逐条对上，半装配分支一致，无偏离（reqboard_task_move）",
+          "createdAt": 1791183079996,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791183043116,
+      "updatedAt": 1791183079996,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791183043116,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791183078500,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工复核段"
+        },
+        {
+          "status": "done",
+          "at": 1791183079996,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "复核段完成：与 interfaces.md 兼容三条逐条对上，半装配分支一致，无偏离"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791183069268,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "对照 design/interfaces.md 的兼容与迁移一节：三条（台账零迁移、加性渲染、回滚=不注入两口）都有对应用例",
+          "核对半装配分支：QueryDocs 里 docRootsOf/docsAt 任一缺省即走单根，与用例②一致",
+          "确认本卡无 src 改动（纯测试卡），若旧行为被破坏只需不注入两口即可回滚"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183069268,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-1e90c6",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "兼容与回滚：两口缺省即回旧行为·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-d0993d"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "新增 tests/query-docs-compat.test.ts：不注入 docRootsOf/docsAt 时走既有单根判据，断言响应无 absPath、无 unknown（逐字段与旧行为一致）；再断言老形状读侧遇到未知 state 字符串不抛错。不新增 src 改动；若旧行为被破坏，回滚 = 不注入两口。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-1b4e66",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c35039",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791183082129,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1436,
+              "at": 1791183082129,
+              "totals": {
+                "uncachedInputTokens": 286267,
+                "outputTokens": 117687,
+                "cacheReadTokens": 55302528,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1436,
+                  "totals": {
+                    "uncachedInputTokens": 286267,
+                    "outputTokens": 117687,
+                    "cacheReadTokens": 55302528,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1442,
+              "at": 1791183084355,
+              "totals": {
+                "uncachedInputTokens": 286557,
+                "outputTokens": 117790,
+                "cacheReadTokens": 55684352,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1442,
+                  "totals": {
+                    "uncachedInputTokens": 286557,
+                    "outputTokens": 117790,
+                    "cacheReadTokens": 55684352,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 290,
+              "outputTokens": 103,
+              "cacheReadTokens": 381824,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183084355
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0af9a3",
+          "body": "[状态] → in_progress：开工测试段（reqboard_task_move）",
+          "createdAt": 1791183082129,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-1548fa",
+          "body": "[状态] → done：测试段完成：兼容 3 例 + 既有 23 例全绿，tsc 0 错误（reqboard_task_move）",
+          "createdAt": 1791183084355,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791183043116,
+      "updatedAt": 1791183084355,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791183043116,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791183082129,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工测试段"
+        },
+        {
+          "status": "done",
+          "at": 1791183084355,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "测试段完成：兼容 3 例 + 既有 23 例全绿，tsc 0 错误"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791183072210,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "npx vitest run tests/query-docs-compat.test.ts → 3 passed",
+          "npx vitest run tests/query-docs.test.ts tests/query-docs-contract.test.ts tests/query-docs-roots.test.ts → 23 passed",
+          "npx tsc --noEmit → 0 error"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183072210,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-3c907a",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "真机对账与全量门禁回归·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-ac64a2",
+        "t-88ecd1"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "用真实端点跑对账脚本并把原始输出写进 docs/requirements/REQ-261005143615-5ab1/evidence/t5-reconcile.md：① 不带 ?session= 拉 REQ-261005123641-3982/docs 统计 state 分布；② 带 ?session=<本仓会话> 逐条 os.path.exists(absPath) 比对；③ REQ-260930094139-2d65 回归必须仍 file-missing；④ 门禁 pnpm typecheck / pnpm test（与基线比对）/ pnpm build 与 pnpm build:client。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-9abc65",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1e1346",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791183403031,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1568,
+              "at": 1791183403031,
+              "totals": {
+                "uncachedInputTokens": 300112,
+                "outputTokens": 127815,
+                "cacheReadTokens": 63570176,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1568,
+                  "totals": {
+                    "uncachedInputTokens": 300112,
+                    "outputTokens": 127815,
+                    "cacheReadTokens": 63570176,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1574,
+              "at": 1791183405997,
+              "totals": {
+                "uncachedInputTokens": 300521,
+                "outputTokens": 127909,
+                "cacheReadTokens": 63973888,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1574,
+                  "totals": {
+                    "uncachedInputTokens": 300521,
+                    "outputTokens": 127909,
+                    "cacheReadTokens": 63973888,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 409,
+              "outputTokens": 94,
+              "cacheReadTokens": 403712,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183405997
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-85eaa6",
+          "body": "[状态] → in_progress：开工研发段（reqboard_task_move）",
+          "createdAt": 1791183403031,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-8e4a9c",
+          "body": "[状态] → done：研发段完成：对账脚本与证据落盘，可一条命令复跑（reqboard_task_move）",
+          "createdAt": 1791183405997,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791183113614,
+      "updatedAt": 1791183405997,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791183113614,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791183403031,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工研发段"
+        },
+        {
+          "status": "done",
+          "at": 1791183405997,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "研发段完成：对账脚本与证据落盘，可一条命令复跑"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791183398152,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261005143615-5ab1/evidence/t5-reconcile.mts"
+        ],
+        "completed": [
+          "对账脚本本身也是一份可复跑的证据：npx tsx docs/requirements/REQ-261005143615-5ab1/evidence/t5-reconcile.mts",
+          "脚本走与路由同一条判定代码（真库 + 真盘），只少了 HTTP 外壳；运行环境说明写进证据文件"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183398152,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-3f9d76",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "真机对账与全量门禁回归·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-3c907a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "用真实端点跑对账脚本并把原始输出写进 docs/requirements/REQ-261005143615-5ab1/evidence/t5-reconcile.md：① 不带 ?session= 拉 REQ-261005123641-3982/docs 统计 state 分布；② 带 ?session=<本仓会话> 逐条 os.path.exists(absPath) 比对；③ REQ-260930094139-2d65 回归必须仍 file-missing；④ 门禁 pnpm typecheck / pnpm test（与基线比对）/ pnpm build 与 pnpm build:client。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-9abc65",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-516937",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791183408324,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1580,
+              "at": 1791183408324,
+              "totals": {
+                "uncachedInputTokens": 300717,
+                "outputTokens": 127992,
+                "cacheReadTokens": 64377984,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1580,
+                  "totals": {
+                    "uncachedInputTokens": 300717,
+                    "outputTokens": 127992,
+                    "cacheReadTokens": 64377984,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1586,
+              "at": 1791183410044,
+              "totals": {
+                "uncachedInputTokens": 301061,
+                "outputTokens": 128092,
+                "cacheReadTokens": 64782336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1586,
+                  "totals": {
+                    "uncachedInputTokens": 301061,
+                    "outputTokens": 128092,
+                    "cacheReadTokens": 64782336,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 344,
+              "outputTokens": 100,
+              "cacheReadTokens": 404352,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183410044
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-3dd88a",
+          "body": "[状态] → in_progress：开工复核段（reqboard_task_move）",
+          "createdAt": 1791183408324,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-6f2617",
+          "body": "[状态] → done：复核段完成：四条锚点与门禁读数与证据逐条一致，差异已写明他因（reqboard_task_move）",
+          "createdAt": 1791183410044,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791183113614,
+      "updatedAt": 1791183410044,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791183113614,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791183408324,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工复核段"
+        },
+        {
+          "status": "done",
+          "at": 1791183410044,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "复核段完成：四条锚点与门禁读数与证据逐条一致，差异已写明他因"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791183398266,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "逐条对照 test-cases.md：TC-7（不带会话 file-missing=0）、TC-8（逐条比对 0 分歧 + 2d65 仍缺失）均命中且原样贴出",
+          "补验了 TC-4 的真机版（强制候选根为空 → 全 unknown 且无 absPath）",
+          "门禁数据与命令输出一致：build 退出码 0、dist 含新符号、build:client OK、tsc 0、全量测试 68 ≤ 基线 80",
+          "如实记录两处与基线不同的失败文件，并给出他因（工具计数 / 设计文档门禁），不掩盖"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183398266,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9f0415",
+      "requirementId": "REQ-261005143615-5ab1",
+      "title": "真机对账与全量门禁回归·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-3f9d76"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "用真实端点跑对账脚本并把原始输出写进 docs/requirements/REQ-261005143615-5ab1/evidence/t5-reconcile.md：① 不带 ?session= 拉 REQ-261005123641-3982/docs 统计 state 分布；② 带 ?session=<本仓会话> 逐条 os.path.exists(absPath) 比对；③ REQ-260930094139-2d65 回归必须仍 file-missing；④ 门禁 pnpm typecheck / pnpm test（与基线比对）/ pnpm build 与 pnpm build:client。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-9abc65",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-13f27f",
+          "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+          "trigger": "manual",
+          "startedAt": 1791183412441,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1592,
+              "at": 1791183412441,
+              "totals": {
+                "uncachedInputTokens": 301200,
+                "outputTokens": 128174,
+                "cacheReadTokens": 65187072,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1592,
+                  "totals": {
+                    "uncachedInputTokens": 301200,
+                    "outputTokens": 128174,
+                    "cacheReadTokens": 65187072,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+              "seq": 1598,
+              "at": 1791183415191,
+              "totals": {
+                "uncachedInputTokens": 301603,
+                "outputTokens": 128279,
+                "cacheReadTokens": 65591936,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2",
+                  "depth": 0,
+                  "seq": 1598,
+                  "totals": {
+                    "uncachedInputTokens": 301603,
+                    "outputTokens": 128279,
+                    "cacheReadTokens": 65591936,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 403,
+              "outputTokens": 105,
+              "cacheReadTokens": 404864,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791183415191
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-cc9e3b",
+          "body": "[状态] → in_progress：开工测试段（reqboard_task_move）",
+          "createdAt": 1791183412441,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        },
+        {
+          "id": "c-813a3c",
+          "body": "[状态] → done：测试段完成：四组对账数复跑一致，相关 67 例全绿，门禁退出码全 0（reqboard_task_move）",
+          "createdAt": 1791183415191,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791183113614,
+      "updatedAt": 1791183415191,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791183113614,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791183412441,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "开工测试段"
+        },
+        {
+          "status": "done",
+          "at": 1791183415191,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-ea620b75-2385-4d9b-8ff0-c02ae4b6d6e2"
+          },
+          "reason": "测试段完成：四组对账数复跑一致，相关 67 例全绿，门禁退出码全 0"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791183400900,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "复跑对账脚本：四组数与证据一致（0 file-missing / 0 分歧 / 37 file-missing / 25 unknown）",
+          "复跑相关用例集：tests/query-docs-*.test.ts 与 tests/docs-panel*.test.ts 共 67 例全绿",
+          "门禁命令退出码：build 0、build:client 0、tsc 0"
+        ]
+      },
+      "lastRun": {
+        "at": 1791183400900,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-25ebdf",
+      "to": "t-ac64a2"
+    },
+    {
+      "from": "t-25ebdf",
+      "to": "t-88ecd1"
+    },
+    {
+      "from": "t-ac64a2",
+      "to": "t-1b4e66"
+    },
+    {
+      "from": "t-ac64a2",
+      "to": "t-9abc65"
+    },
+    {
+      "from": "t-88ecd1",
+      "to": "t-9abc65"
+    },
+    {
+      "from": "t-34ad53",
+      "to": "t-1f89c1"
+    },
+    {
+      "from": "t-1f89c1",
+      "to": "t-c09479"
+    },
+    {
+      "from": "t-c09479",
+      "to": "t-6bdebe"
+    },
+    {
+      "from": "t-25ebdf",
+      "to": "t-b1d7c6"
+    },
+    {
+      "from": "t-b1d7c6",
+      "to": "t-8207ca"
+    },
+    {
+      "from": "t-8207ca",
+      "to": "t-40d8cd"
+    },
+    {
+      "from": "t-40d8cd",
+      "to": "t-ab1cc8"
+    },
+    {
+      "from": "t-25ebdf",
+      "to": "t-7acec4"
+    },
+    {
+      "from": "t-7acec4",
+      "to": "t-f9f582"
+    },
+    {
+      "from": "t-f9f582",
+      "to": "t-ffa053"
+    },
+    {
+      "from": "t-ffa053",
+      "to": "t-5463c3"
+    },
+    {
+      "from": "t-ac64a2",
+      "to": "t-108748"
+    },
+    {
+      "from": "t-108748",
+      "to": "t-d0993d"
+    },
+    {
+      "from": "t-d0993d",
+      "to": "t-1e90c6"
+    },
+    {
+      "from": "t-ac64a2",
+      "to": "t-3c907a"
+    },
+    {
+      "from": "t-88ecd1",
+      "to": "t-3c907a"
+    },
+    {
+      "from": "t-3c907a",
+      "to": "t-3f9d76"
+    },
+    {
+      "from": "t-3f9d76",
+      "to": "t-9f0415"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-25ebdf",
+        "t-34ad53"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-ac64a2",
+        "t-88ecd1",
+        "t-b1d7c6",
+        "t-7acec4",
+        "t-1f89c1"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-1b4e66",
+        "t-108748",
+        "t-9abc65",
+        "t-3c907a",
+        "t-8207ca",
+        "t-f9f582",
+        "t-c09479"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-d0993d",
+        "t-3f9d76",
+        "t-40d8cd",
+        "t-ffa053",
+        "t-6bdebe"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-1e90c6",
+        "t-9f0415",
+        "t-ab1cc8",
+        "t-5463c3"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-05T06:57:35.094Z"
+}

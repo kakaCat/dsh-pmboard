@@ -1,0 +1,133 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261005155003-f32f
+  generated_at: 2026-10-05T08:02:15.724Z
+  version: 5
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-05T12:09:11.204Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 结构图标改内联 SVG
+      source: requirement.md
+      line: 131
+    - id: FR-2
+      title: 键盘焦点可见
+      source: requirement.md
+      line: 162
+    - id: FR-3
+      title: Tab 栏语义与键盘
+      source: requirement.md
+      line: 187
+    - id: FR-4
+      title: 浅色岛的令牌口径与文字对比度达标
+      source: requirement.md
+      line: 211
+    - id: FR-5
+      title: 交互目标尺寸
+      source: requirement.md
+      line: 277
+    - id: FR-6
+      title: 交互反馈与动效令牌
+      source: requirement.md
+      line: 310
+    - id: FR-7
+      title: 排版节奏收敛
+      source: requirement.md
+      line: 330
+    - id: FR-8
+      title: 状态不靠颜色单一表达
+      source: requirement.md
+      line: 363
+    - id: FR-9
+      title: 操作条动作布局（动作独占一行 · 身份行分行 · 窗口靠左）
+      source: requirement.md
+      line: 386
+    - id: FR-10
+      title: 视觉语言（苹果式克制）
+      source: requirement.md
+      line: 448
+    - id: FR-11
+      title: 操作条文案收敛
+      source: requirement.md
+      line: 525
+    - id: FR-12
+      title: 视觉层级（"层次感"做成可测的）
+      source: requirement.md
+      line: 581
+    - id: FR-13
+      title: 详情页移除评论输入入口
+      source: requirement.md
+      line: 622
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 本窗口首条用户消息（2026-10-05，会话 `session-2992d8ef`）：「需求详情页面 ui，需要你优化一下，你可以用 https://github.com/nextlevelbuilder/ui-ux-pro-max-skill 这个skill试试」
+      verdict: 需求详情页做一次 UI 优化；**以 ui-ux-pro-max 的规则作为判据来源**，不以个人审美为准
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      criterion: 每条改动都能指回 `skills/ui-ux-pro-max/references/pro-rules.md` 或 `data/ux-guidelines.csv` 的具体一行；产出物里保留该指针
+    - id: D-2
+      source: 立项弹框作答（2026-10-05 15:50，`REQ-261005155003-f32f` 捕获回执）：需求名称＝「需求详情页 UI 视觉与信息层级优化（ui-ux-pro-max 规范）」、类型＝`feature`、提示词难度＝`expert`、文档位置＝`docs/requirements/<REQ>/`
+      verdict: 按 feature 档交付（含原型与验证），文档落在本需求目录；难度按 expert 执行（判据必须可机器验证）
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      criterion: "捕获回执 `answers` 四键原值（`category: feature` / `difficulty: expert` / `docLocation: docs/requirements/<REQ>/`）；本需求按 feature 门禁交原型与验收材料"
+    - id: D-3
+      source: 本窗口对话（2026-10-05，范围裁定问答）：「发现：详情页（以及整个插件）引用了 6 个**在 DSH 里根本不存在**的主题令牌…本次做到哪一步？」→ 用户选「**A. 本次只做详情页（浅色岛，改动面小，推荐）**」
+      verdict: 本次范围**只到详情页**：把详情页钉成诚实的浅色岛并修对比度；插件级主题接线（页面根 + 10 个其它样式分片共 426 处假令牌）**本次不做**，作为已知问题与后续需求
+      serves:
+        - FR-4
+      criterion: 选项原文「本次只做详情页（浅色岛，改动面小，推荐）」；落地表现为 ① `report.ts` 全部令牌取浅色原值、② 移除 `[data-ds-dark-theme]` 的岛内覆盖、③ 不动其它样式分片、④ requirement.md 新增「已知问题」节逐条记录证据与后续动作
+    - id: D-4
+      source: 本窗口对话（2026-10-05，操作条反馈）：「按钮放置的不对，目前的需求详情页就有问题」→ 追问「操作条上的按钮要怎么摆？」→ 用户选「**A. 动作紧挨排 + 破坏性动作推到行尾（推荐）**」
+      verdict: 操作条动作布局按 A 落地：动作不拉伸、按序紧挨；破坏性动作（`data-action-rank="danger"`）推行尾与「均需人工确认」相邻；位置不随动作数量漂移。**不追求填满空白**（规范要的是分离）
+      serves:
+        - FR-9
+      criterion: 选项原文「动作紧挨排 + 破坏性动作推到行尾（推荐）」；落地表现为 ① `report.ts` 的动作区由等宽栅格改弹性流；② `[data-action-rank="danger"]{margin-left:auto}`；③ 原型实测 1280 主操作 186=动作区左端、破坏性动作右缘 1169 与行尾标相隔 12px；④ 新增 FR-9 锚点区块与三条可跑断言
+    - id: D-5
+      source: 本窗口对话（2026-10-05，整体观感）：「现在整体样式就乱乱的」→ 追问「"乱"按哪个方向收？」→ 用户自定义作答：「**样式参考苹果的样式可以吗**」
+      verdict: 视觉语言定为**苹果式克制**：单色三档 + 一个强调色（系统蓝）、胶囊只留状态与可点两类、字重 400/500/600、圆角 8/999、发丝线一档、内容页无阴影；并以**宿主 DSH 自己的令牌**作为取值依据（它本身就是苹果那一套）
+      serves:
+        - FR-10
+        - FR-4
+        - FR-7
+      criterion: 原话「样式参考苹果的样式可以吗」；落地表现为 ① FR-10 的色板逐值定死并全部按 WCAG 公式核过；② 七项收敛判据（胶囊 17→≤5、字色 9→≤5、底色 12→≤4、字重 5→≤3、字号 10→≤5、圆角 3~4→≤2、边线 5→≤2）；③ 宿主令牌七条证据（`.5px` 发丝线 194 处、`corner-shape` 83 处、`-apple-system`、圆角阶梯、13px/20px、极轻阴影、`#0000001a` 分隔线）
+    - id: D-6
+      source: 人经子窗口转达到本窗口的直接反馈（2026-10-05）：「推进到验收态后由人逐项裁决；未过项自动返工。本阶段操作均需人工确认 这些文字你可以删除没什么意义，为何做」；本窗口逐句答"为何做"并给出 A/B/C/D 四案后，用户选 **A**
+      verdict: 操作条文案收敛：① 删分组标签「本阶段操作」；② 主操作后果**不再常驻**，改走「视觉隐藏文本 + `aria-describedby` + `title`」（**不许只剩 `title`**——那是 hover-only 反模式）；③ 行尾标「均需人工确认」改短为「需人工确认」；机器可读面（`data-human-only*`）逐字不动
+      serves:
+        - FR-11
+        - FR-9
+      criterion: 选项原文「A」；落地判据见 FR-11 的五条验收锚点：产物不含「本阶段操作」与常驻后果节点、`aria-describedby` 指向的文本 === 服务端 `consequence`、行尾标 === 「需人工确认」、两个脚本退出码 0、五个用例由"断言存在"改为"断言不出现"+ 两条新增断言
+    - id: D-7
+      source: 人看三版候选后的直接反馈（2026-10-05）：「**v-A 按钮都放到左上角，这个添加评论删除不需要，核心问题现在没有层次感，每个模块不够有层次**」
+      verdict: ① 以 **V-A 方向**继续（不采纳 V-B/V-C）；② 动作按钮组**移到卡片左上角、全部左对齐**（FR-9 的"破坏性动作推行尾"随之修订为"同组、按序、与前一个动作留 ≥24px 明确空隙"）；③ 详情页**删掉评论输入框**（只留只读的最近评论入口，FR-13）；④ 核心问题定为**视觉层级**：把它做成可测的 H1～H5（FR-12）
+      serves:
+        - FR-9
+        - FR-12
+        - FR-13
+      criterion: 原话逐句可核；落地表现为 ① 动作组左缘 === 卡片内容区左缘、破坏性动作与前一个动作间距 ≥24px、动作仍同一行；② 详情页无 `.dsh-pm-comment-form`/`add-comment`、评论列表保留、对话 Tab 评论链路完好；③ H1 ≥1.8、H2 ≥3、H3 字号与字重双通道、H4 三档差 ≥2px、H5 主色文字 ≤1 类（改前实测 1.54 / 1.25 / 13-13 同号，改后逐项达标）
+    - id: D-8
+      source: 本窗口对话（2026-10-05，owner 交接后首条用户消息，附详情页头部截图）：「**这里行弄错了，按钮和id不应该是一行的，窗口可以放到左边**」；本窗口追问目标摆法（A 按钮独占一行在最上 + 身份行另起一行且窗口靠左 / B 身份行在上 / C 只挪「← 看板」/ D 其它）→ 用户选 **A**
+      verdict: 详情页常驻头部按两行拆开：① **动作行独占第一行**（「← 看板」/「提交验收」/破坏性动作…，左对齐，**不与身份行同排**）；② **身份行独占第二行**（`REQ-id · 阶段 · 分类 · 难度 · 停留/更新时间`），**窗口按钮组靠左**（在「创建于 …」左侧）、不再靠右，「创建于 …」仍在行尾右侧。同时撤销 v3 原型「布局修复层 v2 (1)」（它把身份行与「创建于 + 窗口」并成一行，且动作组与之同排）
+      serves:
+        - FR-9
+      criterion: 用户原话与选项 A 原文逐字可核；落地表现：① `actionRowTop < identityRowTop`；② 两行 `top` 差 ≥8px（真拆开）；③ `windowLeft < createdAtLeft`（窗口靠左）；回归线：动作按钮在**各自行内** `offsetTop` 单一取值、操作条整块高 ≤72px、`tabsTop ≤ 713` 不回退
+status:
+  artifacts: []

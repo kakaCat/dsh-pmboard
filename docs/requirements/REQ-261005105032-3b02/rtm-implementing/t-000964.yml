@@ -1,0 +1,38 @@
+task:
+  id: t-000964
+  title: 定义阶段门时序常量与逾期码接线·复核
+  status: done
+  implements: |-
+    新增常量 StageGateTimeline（放 src/domain/gate/GateCatalog.ts，与既有 gateForTransition 同源、可被脚本 import）：设计交完 → ['必填节','格式门','serves','无 dangling']；拆分落库 → ['覆盖对照（FR→卡）','UI 卡原型锚点']；实施收尾 → ['E2E 覆盖','三级追溯']。新增逾期判据函数，返回 GateFailure{code:'stage_gate_overdue'} 并点名逾期门名。接线：在 src/application/internal/content-gate-wiring.ts 的 contentGatesForMove 内按 (from,to) 为 design→decomposing、decomposing→implementing、implementing→accepting 三个转移各判一次对应时点的门（复用既有 checkNumberChainGate / checkRequirementDocFormatGate / checkDesignServesGate / assertClauseCoverageGate 与三级追溯、E2E 覆盖读数），逾期即拒；brainstorming 期编号链 orphan 与 E2E 覆盖为 false 不算逾期（防假红）。依据 design-brief §6 与 §10 #39。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-ed780a
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005105032-3b02
+    TASK_ID: t-000964
+    TASK_TITLE: 定义阶段门时序常量与逾期码接线·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T10:52:42.412Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005105032-3b02
+  generated_at: 2026-10-05T10:52:41.918Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T10:52:42.412Z

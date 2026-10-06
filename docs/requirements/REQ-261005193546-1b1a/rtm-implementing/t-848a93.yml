@@ -1,0 +1,41 @@
+task:
+  id: t-848a93
+  title: 逆验证矩阵（14 条改坏必红）与端到端证据清单
+  status: done
+  implements: ① 扩 `scripts/reverse-drill-matrix.mts` 加 `canceled` 组，按 `design/architecture.md` §逆验证清单逐条落地 14 条「真改坏 → 真跑判据 → 必红 → 逐字节还原 + sha256 复核」：基类 `assemble()` 收敛改回手写 filter、`QueryStageDetail` 两个 body 各自手写、`buildDagNodes` 退回全量、`handleState` 去掉 `tasks`/`ready` 收敛、`readyTasks` 退回只认 `done`、`computeReady` 退回只认 `done`、V-5 退回只认 `done`、V-5「漏就绪」从 warning 退回 issue、读取路径校验失败退回 `return undefined`、`topoLevels` 去掉剪边、`board-mount` 去掉过滤、`isLiveTask` 改成看三字段而非 `status`、界面重新引入 `canceled` 档位、读取落盘 `ready[]`。沿用既有 `copy`/`file` 两种改坏方式与**并发写入检测**：备份 + sha256 恢复，**禁用 `git checkout --` 还原**（2026-10-04 事故教训）；加范围自检（target 文件不存在即退出 1，防假绿）。② 新增 `tests/canceled-reverse-drill-coverage.test.ts`：断言 `canceled` 组条目数 `=== 14`、每条都有 target 文件与判据命令、脚本内 `git checkout` 命中 `=== 0`。③ 落 `docs/requirements/REQ-261005193546-1b1a/notes/e2e-evidence.md`：命令 + 原始输出摘要 + 判据文件路径，供验收材料直接引用；并写明两条限定语——追溯读数按活卡**只对新触发过 RTM 的需求**成立（存量快照接受陈旧、不回填）；落盘 `layer` 与 `liveLayers` 允许不一致（**刻意差异**，落盘值仅历史派生值）。验证：`npx tsx scripts/reverse-drill-matrix.mts --group canceled`。依据 design/architecture.md §逆验证清单与 migration.md §上线顺序 步骤 3。
+  serves:
+    - FR-1
+    - FR-2
+    - FR-4
+    - FR-5
+  depends_on:
+    - t-74a5bd
+    - t-3ed451
+  phase: test
+  side: fullstack
+  workflow_params:
+    REQ_ID: REQ-261005193546-1b1a
+    TASK_ID: t-848a93
+    TASK_TITLE: 逆验证矩阵（14 条改坏必红）与端到端证据清单
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: fullstack
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      started_at: 2026-10-05T17:28:35.125Z
+      completed_at: 2026-10-05T17:42:38.059Z
+    - phase: implement
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005193546-1b1a
+  generated_at: 2026-10-05T16:36:04.567Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T17:42:38.059Z

@@ -1,0 +1,39 @@
+task:
+  id: t-faabca
+  title: 确认收敛点：带 ref 清位先于推进 + 补发条件·测试
+  status: done
+  implements: |-
+    改 src/application/internal/confirm-settle.ts：ConfirmDecision 加 dialogRef；开头带 ref await exitAwaitingConfirm（notify:false）；finally 里 advanced!==true 才 deps.notifyDrivable?.(id)。改 src/application/internal/pending-confirm.ts：ConfirmSubmitted 加 dialogRef 并透传。改 src/application/use-cases/AskConfirm.ts 与 src/application/dive/gate-prompt.ts：把各自 ref（ticket / dlg-gate-…）交给收敛点。新建 tests/confirm-settle-order.test.ts（TC-3~TC-5）。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-a518ac
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006170150-52cc
+    TASK_ID: t-faabca
+    TASK_TITLE: 确认收敛点：带 ref 清位先于推进 + 补发条件·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-06T10:40:50.892Z
+      completed_at: 2026-10-06T10:43:14.025Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006170150-52cc
+  generated_at: 2026-10-06T10:40:29.761Z
+  version: 5
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T10:43:17.587Z

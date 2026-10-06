@@ -1,0 +1,39 @@
+task:
+  id: t-e1b238
+  title: 用例矩阵（二）：统计与审计面 TC-5 / TC-9 / TC-10（覆盖度两入口、台账不消失、文档面板）·复核
+  status: done
+  implements: |-
+    新增三个用例文件（标本一律走**临时工作区**，不写生产需求目录）：① `tests/canceled-coverage-gate.test.ts`（TC-5）——两个 RTM 入口同得分母 106、`rate === 100`、`passed === true` 且逐字段相等；对照 A（标注齐全的改前口径）`total === 132`、`rate === 80` 压线通过但 `uncovered.length === 26`（门禁仍点名 26 张）；对照 B（`covers` 标注为 0，上一条需求真实发生的那次失败）`rate === 0` → `passed === false` + `REQBOARD_TESTING_COVERAGE_GATE`；对照 C 再取消 5 张 → `rate < 80` 被拒；活卡 0 张标本 → 门**不执法**（`undefined`）。② `tests/canceled-audit-holds.test.ts`（TC-9）——全部界面投影里取消卡条数 `=== 0`，**同时**台账 `status === 'canceled'` 记录数 `=== 26` 不变、磁盘卡文档 26 份内容哈希不变、归档材料可引用 `canceled_count: 26`（界面 0 条与台账 26 条必须一起断言，只断言前者时把台账删掉也能过）。③ `tests/canceled-docs-panel.test.ts`（TC-10）——`documents` 与 `discovered` 两侧都不含取消卡的 `task_detail` 产物（不补偿性塞进 `discovered`）、恒等式按活卡口径成立、`data-doc-row` 条数 `=== documents.length`、磁盘 26 份卡文档仍在。验证：`npx vitest run tests/canceled-coverage-gate.test.ts tests/canceled-audit-holds.test.ts tests/canceled-docs-panel.test.ts`。依据 design/test-cases.md TC-5/TC-9/TC-10 与 backend.md §覆盖度分母口径（两段历史别混成一条）。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-4484ab
+  phase: test
+  side: fullstack
+  workflow_params:
+    REQ_ID: REQ-261005193546-1b1a
+    TASK_ID: t-e1b238
+    TASK_TITLE: 用例矩阵（二）：统计与审计面 TC-5 / TC-9 / TC-10（覆盖度两入口、台账不消失、文档面板）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: fullstack
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      started_at: 2026-10-05T17:28:34.223Z
+      completed_at: 2026-10-05T17:28:34.411Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005193546-1b1a
+  generated_at: 2026-10-05T17:28:22.546Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T17:28:34.411Z

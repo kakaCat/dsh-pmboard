@@ -1,0 +1,49 @@
+task:
+  id: t-e6d1e3
+  title: 写排查条目页并落实判据契约
+  status: done
+  implements: |-
+    新建 docs/guides/plugin-reload-troubleshooting.md，按 design/interfaces.md 的条目页骨架写五段 H2：症状 / 判据 / 机制 / 处置 / 非目标。
+    症状段：照抄两条红字原文形态——一条是插件包地址 404（形如 dsh-app://app/plugins/??<包>/client.js&rev=<rev>），另一条是 dsh-app://app/plugins/events 的 net::ERR_FAILED；写明两条成因不同。
+    判据段：写 design/interfaces.md 的 C-1 / C-2 / C-3 三条命令；端口与 rev 一律写 <host> / <rev> 占位并注明「逐次实测取值」；每条给期望输出与不符时的分诊一句话。
+    机制段：宿主按入口产物的 mtime / ctime / size 合成 rev，重建即让旧 rev 失效（旧地址 404）；/plugins/events 是 @deepseek-ai/dsh-client-hmr 的 SSE 通道，宿主重启或页面卸载即断，EventSource 自动重连；桌面壳只把 / 、/index.html 、/assets/** 、/favicon.svg 、/manifest.webmanifest 当静态文件，其余路径一律转发宿主。
+    处置段：先刷新页面；仍红则取证（DevTools → Network 按状态码筛 404，保留完整 URL）并交回排查。
+    非目标段：非包地址的 404、宿主不可达、无 rev 的地址，各自去哪查。
+  serves:
+    - FR-1
+    - FR-3
+  depends_on: []
+  phase: doc
+  side: doc
+  workflow_params:
+    REQ_ID: REQ-261006115829-dafb
+    TASK_ID: t-e6d1e3
+    TASK_TITLE: 写排查条目页并落实判据契约
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: doc
+    PHASE: doc
+  workflow_total: 4
+  workflow_done: 4
+  workflow:
+    - phase: doc
+      status: done
+      completed_at: 2026-10-06T04:09:48.101Z
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T04:09:45.708Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-06T04:09:48.101Z
+    - phase: commit
+      status: done
+      completed_at: 2026-10-06T04:09:48.101Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006115829-dafb
+  generated_at: 2026-10-06T04:08:38.393Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 4
+  last_updated: 2026-10-06T04:09:48.102Z

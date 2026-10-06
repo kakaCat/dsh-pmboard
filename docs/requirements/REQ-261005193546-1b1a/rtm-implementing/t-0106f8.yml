@@ -1,0 +1,39 @@
+task:
+  id: t-0106f8
+  title: 定义活卡判据与依赖判定单点（9 个纯函数落既有 Predicates.ts）·联调
+  status: done
+  implements: |-
+    落点：`src/domain/status/Predicates.ts`（**既有模块内**、紧邻 `isCanceled` 追加，**不新建模块**；domain 不许 import shared，故入参一律结构化 `{ status: string }`（模块头既有 `HasStatus`）+ 泛型保类型）。追加九个导出纯函数：① `isLiveTask<T extends HasStatus>(task: T): boolean`——复用既有 `isCanceled`（`!isCanceled(task)`），**本文件外全仓不得再写 status 与 canceled 的字面量比较**；② `liveTasksOf<T extends HasStatus>(tasks: readonly T[]): T[]`（返回新数组、顺序=输入顺序、不改入参、元素按引用返回）；③ `liveCountOf(tasks: readonly HasStatus[]): number`（= `liveTasksOf(tasks).length`，堵「过滤用一套、分母另抄一套」）；④ `isDependencySatisfied(dep: HasStatus | undefined): boolean`（`undefined`（悬空）| `done` | `canceled` = 满足；口径逐字等于 application 层 `readyTasksOf` 今天的判定，收编见 t2 ③）；⑤ `splitDependencyEdges<T extends HasStatus & { dependsOn?: readonly string[] }>(task, byId): { satisfied: string[]; pending: string[]; dangling: string[] }`（**唯一约束桶 = pending**；悬空单独成桶留给 V-3 报告，不静默算 satisfied；不改入参、顺序=dependsOn 原顺序）；⑥ `isReadyTask<T extends HasStatus & { id: string; dependsOn?: readonly string[] }>(task, byId): boolean`（自身 `todo` 且 `pending` 桶为空）；⑦ `layerInputOf<T extends HasStatus & { id: string; dependsOn?: readonly string[] }>(tasks): T[]`（活卡集合，且每条 `dependsOn` 只保留指向活卡的边 ⇒ 等价「删掉指向取消卡的边」）；⑧ `liveLayers<T ...>(tasks): ReadonlyMap<string, number>`（在 `layerInputOf` 的输入上算最长路径，只含活卡）；⑨ `liveReadyTasks<T ...>(tasks): string[]`（内部 `byId` 建在**活卡集合**上 ⇒ 指向取消卡的依赖表现为缺席=已满足；返回 id、顺序=输入顺序）。签名以 `design/interfaces.md` §3.2 为唯一一套（`liveReadyTasks` 返回 `string[]`、`layerInputOf` 返回 `T[]`），`design/architecture.md` / `design/frontend.md` 里的两个变体名与变体签名作废。新增 `tests/live-tasks-predicates.test.ts`：7 个 `TaskStatus` 逐一取值只 `canceled` 为假、`isDependencySatisfied` 四态、三桶分类、`isReadyTask` 真值表、`liveLayers` 与「删边重算」等值、`liveCountOf` 与 `liveTasksOf` 同源、入参不被修改。验证：`pnpm typecheck` + `npx vitest run tests/live-tasks-predicates.test.ts`。依据 design/interfaces.md §2/§3.2 与 architecture.md §接口变更。
+
+    [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+  serves: []
+  depends_on:
+    - t-6b8271
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005193546-1b1a
+    TASK_ID: t-0106f8
+    TASK_TITLE: 定义活卡判据与依赖判定单点（9 个纯函数落既有 Predicates.ts）·联调
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-05T16:41:30.335Z
+      completed_at: 2026-10-05T16:41:37.309Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005193546-1b1a
+  generated_at: 2026-10-05T16:41:25.902Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T16:41:37.310Z

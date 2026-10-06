@@ -1,0 +1,2394 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261006115829-dafb",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-06T04:08:26.594Z",
+  "tasks": [
+    {
+      "id": "t-e6d1e3",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "写排查条目页并落实判据契约",
+      "cardDoc": "docs/requirements/REQ-261006115829-dafb/tasks/t-e6d1e3.md",
+      "description": "新建 docs/guides/plugin-reload-troubleshooting.md，按 design/interfaces.md 的骨架写五段",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① F=docs/guides/plugin-reload-troubleshooting.md；for s in 症状 判据 机制 处置 非目标; do grep -c '^## .*'$s $F; done → 五段各输出 1\n② wc -l $F → ≤ 120\n③ grep -c 'text/event-stream' $F → ≥ 1；grep -c 'rev' $F → ≥ 3\n④ grep -cE '应该能|一般会' $F → 0",
+      "implementation": "新建 docs/guides/plugin-reload-troubleshooting.md，按 design/interfaces.md 的条目页骨架写五段 H2：症状 / 判据 / 机制 / 处置 / 非目标。\n症状段：照抄两条红字原文形态——一条是插件包地址 404（形如 dsh-app://app/plugins/??<包>/client.js&rev=<rev>），另一条是 dsh-app://app/plugins/events 的 net::ERR_FAILED；写明两条成因不同。\n判据段：写 design/interfaces.md 的 C-1 / C-2 / C-3 三条命令；端口与 rev 一律写 <host> / <rev> 占位并注明「逐次实测取值」；每条给期望输出与不符时的分诊一句话。\n机制段：宿主按入口产物的 mtime / ctime / size 合成 rev，重建即让旧 rev 失效（旧地址 404）；/plugins/events 是 @deepseek-ai/dsh-client-hmr 的 SSE 通道，宿主重启或页面卸载即断，EventSource 自动重连；桌面壳只把 / 、/index.html 、/assets/** 、/favicon.svg 、/manifest.webmanifest 当静态文件，其余路径一律转发宿主。\n处置段：先刷新页面；仍红则取证（DevTools → Network 按状态码筛 404，保留完整 URL）并交回排查。\n非目标段：非包地址的 404、宿主不可达、无 rev 的地址，各自去哪查。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "skipIntegration": true,
+      "footprint": {
+        "files": 1,
+        "anchors": 5,
+        "chars": 3200
+      },
+      "decisionRefs": [
+        "D-1",
+        "D-2"
+      ],
+      "requirementRefs": [
+        "FR-1",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-766cd9",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791259718302,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 830,
+              "at": 1791259718302,
+              "totals": {
+                "uncachedInputTokens": 171443,
+                "outputTokens": 107154,
+                "cacheReadTokens": 17436416,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 830,
+                  "totals": {
+                    "uncachedInputTokens": 171443,
+                    "outputTokens": 107154,
+                    "cacheReadTokens": 17436416,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 933,
+              "at": 1791259788013,
+              "totals": {
+                "uncachedInputTokens": 182517,
+                "outputTokens": 117378,
+                "cacheReadTokens": 21778432,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 933,
+                  "totals": {
+                    "uncachedInputTokens": 182517,
+                    "outputTokens": 117378,
+                    "cacheReadTokens": 21778432,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 11074,
+              "outputTokens": 10224,
+              "cacheReadTokens": 4342016,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791259788012
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791259706527,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791259718302,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "按批准计划开工 t1：写排查条目页并落实判据契约（只改 docs/）"
+        },
+        {
+          "status": "done",
+          "at": 1791259788012,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "父卡完成：条目页交付，5 条验收全过，两张子卡已 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-384945",
+          "body": "[状态] → in_progress：按批准计划开工 t1：写排查条目页并落实判据契约（只改 docs/）（reqboard_task_move）",
+          "createdAt": 1791259718302,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-49e991",
+          "body": "[状态] → done：父卡完成：条目页交付，5 条验收全过，两张子卡已 done（reqboard_task_move）",
+          "createdAt": 1791259788012,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791259706527,
+      "updatedAt": 1791259788012,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791259785576,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/guides/plugin-reload-troubleshooting.md"
+        ],
+        "completed": [
+          "交付：新建 docs/guides/plugin-reload-troubleshooting.md（61 行）",
+          "五段契约齐：症状 / 判据 / 机制 / 处置 / 非目标",
+          "判据三条命令 C-1 / C-2 / C-3 落地，端口与 rev 写占位并注明逐次实测取值",
+          "父卡验收四条全过：五段各 1、61 行 ≤120、text/event-stream 命中 1、rev 命中 9、禁用语 0",
+          "子卡链两段收口：研发段（t-2b9f5e）与复核段（t-20b429）均 done，复核结论为无偏离",
+          "未改任何运行时代码：本条只新增 docs/ 下一个文件"
+        ]
+      },
+      "lastRun": {
+        "at": 1791259785576,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-4c36ac",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "两处入口回链（说明书索引 + 运行前提页机制一句）",
+      "cardDoc": "docs/requirements/REQ-261006115829-dafb/tasks/t-4c36ac.md",
+      "description": "在 project-manual.md 索引区加一行；在 plugin-runtime-prerequisites.md 的构建产物节末尾追加一句机制 + 回链",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-e6d1e3"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① grep -rn 'plugin-reload-troubleshooting' docs/architecture/ → 命中 ≥ 2 行，且分别落在 project-manual.md 与 plugin-runtime-prerequisites.md\n② plugin-runtime-prerequisites.md 的命中行含 rev\n③ git diff --numstat 两页 → 删除列（第二列）为 0",
+      "implementation": "1. docs/architecture/project-manual.md 的索引区新增一行：现象（控制台出现插件包 404 / plugins/events ERR_FAILED）→ 条目相对链接 ../guides/plugin-reload-troubleshooting.md；只增行。\n2. docs/architecture/plugin-runtime-prerequisites.md 的「二、构建产物 ≠ 已加载模块」节末尾追加一句机制（包地址带 rev，宿主只服务当前 rev，过期即 404）+ 指向条目的链接；不是裸链接，只追加。\n3. 不改两页既有结论、表格结构与标题层级。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "skipIntegration": true,
+      "footprint": {
+        "files": 2,
+        "anchors": 2,
+        "chars": 900
+      },
+      "decisionRefs": [
+        "D-3"
+      ],
+      "requirementRefs": [
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-cddae7",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791259791840,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 940,
+              "at": 1791259791840,
+              "totals": {
+                "uncachedInputTokens": 186952,
+                "outputTokens": 117866,
+                "cacheReadTokens": 22055936,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 940,
+                  "totals": {
+                    "uncachedInputTokens": 186952,
+                    "outputTokens": 117866,
+                    "cacheReadTokens": 22055936,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1041,
+              "at": 1791259850260,
+              "totals": {
+                "uncachedInputTokens": 198932,
+                "outputTokens": 125171,
+                "cacheReadTokens": 26763904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1041,
+                  "totals": {
+                    "uncachedInputTokens": 198932,
+                    "outputTokens": 125171,
+                    "cacheReadTokens": 26763904,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 11980,
+              "outputTokens": 7305,
+              "cacheReadTokens": 4707968,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791259850260
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791259706527,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791259791840,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "按批准计划开工 t2：两处入口回链（只追加，不改既有行）"
+        },
+        {
+          "status": "done",
+          "at": 1791259850260,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "父卡完成：两处入口回链交付，入链与纯追加验收全过，两张子卡已 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-6ff3b2",
+          "body": "[状态] → in_progress：按批准计划开工 t2：两处入口回链（只追加，不改既有行）（reqboard_task_move）",
+          "createdAt": 1791259791840,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-b1d4e0",
+          "body": "[状态] → done：父卡完成：两处入口回链交付，入链与纯追加验收全过，两张子卡已 done（reqboard_task_move）",
+          "createdAt": 1791259850260,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791259706527,
+      "updatedAt": 1791259850260,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791259847911,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/architecture/project-manual.md",
+          "docs/architecture/plugin-runtime-prerequisites.md"
+        ],
+        "completed": [
+          "交付：project-manual.md 索引表 +1 行（现象 → 条目链接）",
+          "交付：plugin-runtime-prerequisites.md 第二节末尾 +6 行机制段（rev 来源、只服务当前 rev、过期即 404）+ 条目链接",
+          "两处均纯追加：hunk 为 @@ -12,0 +14 @@ 与 @@ -41,0 +42,6 @@，零删除",
+          "入链命中 2 行分落两页，运行前提页命中行含 rev",
+          "子卡链两段收口：研发（t-804218）与复核（t-d15f42）均 done，复核结论为无偏离",
+          "验收 ③ 的逐字口径受本工作树既有改动影响，已在复核段用 hunk 级证据点名归属，不作为返工项"
+        ]
+      },
+      "lastRun": {
+        "at": 1791259847911,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-890bc5",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "判据实测定标并把读数回写条目与用例表",
+      "cardDoc": "docs/requirements/REQ-261006115829-dafb/tasks/t-890bc5.md",
+      "description": "交付当日复测 C-1/C-2/C-3，回写期望输出；跑 TC-1/TC-2/TC-4；kb:check 自检",
+      "phase": "test",
+      "side": "doc",
+      "dependsOn": [
+        "t-4c36ac"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① C-1 输出含 200 与 text/event-stream\n② C-2 原样请求当前包地址 → 200\n③ C-3 同一地址把 rev 改错 → 404\n④ 条目里写的 rev 与 C-2 实测值逐字一致（grep 对拍）\n⑤ TC-1 / TC-2 / TC-4 断言全过\n⑥ pnpm kb:check 退出码 0",
+      "implementation": "1. 取交付当日实测值：<host>（本机为桌面宿主端口）与当前 rev（从 /plugins/events 的图帧里抄 dsh-pmboard/client.js&rev=…）。\n2. 依次跑 C-1 / C-2 / C-3，把状态码与响应字节回写两处：docs/guides/plugin-reload-troubleshooting.md 的期望输出、design/test-cases.md 的 TC-3 定标表。\n3. 跑 TC-1 / TC-2 / TC-4 的断言命令并留输出。\n4. 跑 pnpm kb:check；若因新增页面出现漂移，按 C-13 先 pnpm kb:build 再复核。\n5. 把本次交付的文件清单与命令输出写进任务汇报。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review",
+        "test"
+      ],
+      "skipIntegration": true,
+      "footprint": {
+        "files": 2,
+        "anchors": 4,
+        "chars": 1200
+      },
+      "decisionRefs": [
+        "D-1"
+      ],
+      "requirementRefs": [
+        "FR-1",
+        "FR-2",
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8ff4b9",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791259859935,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1048,
+              "at": 1791259859935,
+              "totals": {
+                "uncachedInputTokens": 203401,
+                "outputTokens": 127279,
+                "cacheReadTokens": 27064192,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1048,
+                  "totals": {
+                    "uncachedInputTokens": 203401,
+                    "outputTokens": 127279,
+                    "cacheReadTokens": 27064192,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1177,
+              "at": 1791260097133,
+              "totals": {
+                "uncachedInputTokens": 216191,
+                "outputTokens": 141035,
+                "cacheReadTokens": 33488256,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1177,
+                  "totals": {
+                    "uncachedInputTokens": 216191,
+                    "outputTokens": 141035,
+                    "cacheReadTokens": 33488256,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 12790,
+              "outputTokens": 13756,
+              "cacheReadTokens": 6424064,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791260097133
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791259706527,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791259859935,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "按批准计划开工 t3：交付当日复测 C-1/C-2/C-3 并回写读数"
+        },
+        {
+          "status": "done",
+          "at": 1791260097133,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "父卡完成：判据实测定标 + 两处回写交付，三段子卡全 done"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-56ceaa",
+          "body": "[状态] → in_progress：按批准计划开工 t3：交付当日复测 C-1/C-2/C-3 并回写读数（reqboard_task_move）",
+          "createdAt": 1791259859935,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-333807",
+          "body": "[状态] → done：父卡完成：判据实测定标 + 两处回写交付，三段子卡全 done（reqboard_task_move）",
+          "createdAt": 1791260097133,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791259706527,
+      "updatedAt": 1791260097133,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791260095132,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/guides/plugin-reload-troubleshooting.md",
+          "docs/requirements/REQ-261006115829-dafb/design/test-cases.md"
+        ],
+        "completed": [
+          "交付：条目页补「本次交付实测定标」块；design/test-cases.md 的 TC-3 定标表更新为交付日读数",
+          "实测定标（2026-10-06 12:11）：host=127.0.0.1:19387，rev=30507b9b5434；C-1 = 200 + text/event-stream；C-2 = 200（656260 字节）；C-3 = 404（0 字节）",
+          "rev 对拍通过：现测 rev 与条目里写的逐字一致",
+          "子卡链三段收口：研发（t-fed663）/ 复核（t-55d1a4）/ 测试（t-4dc5f3）均 done",
+          "类型检查：tsc --noEmit 退出 0、零错误",
+          "如实上报两项不可判：全量测试（70 failed / 5932 passed，无开工前基线）与知识层自检（2 处漂移，输入是并行会话正在改的 src）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791260095132,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-2b9f5e",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "写排查条目页并落实判据契约·研发",
+      "description": "子卡阶段：研发",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "新建 docs/guides/plugin-reload-troubleshooting.md，按 design/interfaces.md 的条目页骨架写五段 H2：症状 / 判据 / 机制 / 处置 / 非目标。\n症状段：照抄两条红字原文形态——一条是插件包地址 404（形如 dsh-app://app/plugins/??<包>/client.js&rev=<rev>），另一条是 dsh-app://app/plugins/events 的 net::ERR_FAILED；写明两条成因不同。\n判据段：写 design/interfaces.md 的 C-1 / C-2 / C-3 三条命令；端口与 rev 一律写 <host> / <rev> 占位并注明「逐次实测取值」；每条给期望输出与不符时的分诊一句话。\n机制段：宿主按入口产物的 mtime / ctime / size 合成 rev，重建即让旧 rev 失效（旧地址 404）；/plugins/events 是 @deepseek-ai/dsh-client-hmr 的 SSE 通道，宿主重启或页面卸载即断，EventSource 自动重连；桌面壳只把 / 、/index.html 、/assets/** 、/favicon.svg 、/manifest.webmanifest 当静态文件，其余路径一律转发宿主。\n处置段：先刷新页面；仍红则取证（DevTools → Network 按状态码筛 404，保留完整 URL）并交回排查。\n非目标段：非包地址的 404、宿主不可达、无 rev 的地址，各自去哪查。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-e6d1e3",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e34757",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791259745183,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 859,
+              "at": 1791259745183,
+              "totals": {
+                "uncachedInputTokens": 178622,
+                "outputTokens": 112355,
+                "cacheReadTokens": 18495488,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 859,
+                  "totals": {
+                    "uncachedInputTokens": 178622,
+                    "outputTokens": 112355,
+                    "cacheReadTokens": 18495488,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 901,
+              "at": 1791259768727,
+              "totals": {
+                "uncachedInputTokens": 180861,
+                "outputTokens": 115051,
+                "cacheReadTokens": 20399360,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 901,
+                  "totals": {
+                    "uncachedInputTokens": 180861,
+                    "outputTokens": 115051,
+                    "cacheReadTokens": 20399360,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 2239,
+              "outputTokens": 2696,
+              "cacheReadTokens": 1903872,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791259768726
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-eb53ed",
+          "body": "[状态] → in_progress：t1 研发段开工：条目页按 design/interfaces.md 契约落盘（reqboard_task_move）",
+          "createdAt": 1791259745183,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-989269",
+          "body": "[状态] → done：研发段完成：条目页落盘 61 行，改动文件已汇报，父卡验收四条全过（reqboard_task_move）",
+          "createdAt": 1791259768726,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 6,
+      "createdAt": 1791259718302,
+      "updatedAt": 1791259768726,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791259718302,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791259745183,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "t1 研发段开工：条目页按 design/interfaces.md 契约落盘"
+        },
+        {
+          "status": "done",
+          "at": 1791259768726,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "研发段完成：条目页落盘 61 行，改动文件已汇报，父卡验收四条全过"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791259766129,
+        "reportIndex": 3,
+        "filesChanged": [
+          "docs/guides/plugin-reload-troubleshooting.md"
+        ],
+        "completed": [
+          "补记改动文件清单，供 dev 凭证门核验"
+        ]
+      },
+      "lastRun": {
+        "at": 1791259749580,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-20b429",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "写排查条目页并落实判据契约·复核",
+      "description": "子卡阶段：复核",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-2b9f5e"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "新建 docs/guides/plugin-reload-troubleshooting.md，按 design/interfaces.md 的条目页骨架写五段 H2：症状 / 判据 / 机制 / 处置 / 非目标。\n症状段：照抄两条红字原文形态——一条是插件包地址 404（形如 dsh-app://app/plugins/??<包>/client.js&rev=<rev>），另一条是 dsh-app://app/plugins/events 的 net::ERR_FAILED；写明两条成因不同。\n判据段：写 design/interfaces.md 的 C-1 / C-2 / C-3 三条命令；端口与 rev 一律写 <host> / <rev> 占位并注明「逐次实测取值」；每条给期望输出与不符时的分诊一句话。\n机制段：宿主按入口产物的 mtime / ctime / size 合成 rev，重建即让旧 rev 失效（旧地址 404）；/plugins/events 是 @deepseek-ai/dsh-client-hmr 的 SSE 通道，宿主重启或页面卸载即断，EventSource 自动重连；桌面壳只把 / 、/index.html 、/assets/** 、/favicon.svg 、/manifest.webmanifest 当静态文件，其余路径一律转发宿主。\n处置段：先刷新页面；仍红则取证（DevTools → Network 按状态码筛 404，保留完整 URL）并交回排查。\n非目标段：非包地址的 404、宿主不可达、无 rev 的地址，各自去哪查。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-e6d1e3",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c0fd93",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791259773214,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 907,
+              "at": 1791259773215,
+              "totals": {
+                "uncachedInputTokens": 181098,
+                "outputTokens": 115807,
+                "cacheReadTokens": 20673280,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 907,
+                  "totals": {
+                    "uncachedInputTokens": 181098,
+                    "outputTokens": 115807,
+                    "cacheReadTokens": 20673280,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 921,
+              "at": 1791259782183,
+              "totals": {
+                "uncachedInputTokens": 182070,
+                "outputTokens": 116833,
+                "cacheReadTokens": 21224576,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 921,
+                  "totals": {
+                    "uncachedInputTokens": 182070,
+                    "outputTokens": 116833,
+                    "cacheReadTokens": 21224576,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 972,
+              "outputTokens": 1026,
+              "cacheReadTokens": 551296,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791259782183
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0cb1a6",
+          "body": "[状态] → in_progress：复核段开工：复跑验收命令 + 核对 design/interfaces.md 契约（reqboard_task_move）",
+          "createdAt": 1791259773214,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-0bb069",
+          "body": "[状态] → done：复核段完成：与设计契约逐条相符，6 项检查全过，无偏离（reqboard_task_move）",
+          "createdAt": 1791259782183,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791259718302,
+      "updatedAt": 1791259782183,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791259718302,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791259773214,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "复核段开工：复跑验收命令 + 核对 design/interfaces.md 契约"
+        },
+        {
+          "status": "done",
+          "at": 1791259782183,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "复核段完成：与设计契约逐条相符，6 项检查全过，无偏离"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791259779408,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "无偏离：条目页与 design/interfaces.md 的条目页契约逐条相符",
+          "契约 1：五段 H2 各命中 1 次（症状 / 判据 / 机制 / 处置 / 非目标）",
+          "契约 2：判据命令 C-1 / C-2 / C-3 三条齐全，且给期望输出与不符时的分诊",
+          "契约 3：端口与 rev 全用占位（命中 6 处）并注明逐次实测取值",
+          "契约 4：非目标段覆盖四类（非包地址 / 无 rev / 宿主不可达 / assets）",
+          "事实性断言核对：rev 过期即 404、plugins/events 返回 200 + text/event-stream、桌面壳转发规则——来自本需求实测与装机壳代码，t3 卡负责定标复测",
+          "前向链接 docs/guides -> docs/architecture/plugin-runtime-prerequisites.md 可达（LINK_OK）",
+          "测试面：纯文档卡无对应 vitest 用例，如实报 N/A（不臆造测试）",
+          "禁用语检查 0 处；行数 61 ≤ 120"
+        ]
+      },
+      "lastRun": {
+        "at": 1791259779408,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-804218",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "两处入口回链（说明书索引 + 运行前提页机制一句）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-e6d1e3"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "1. docs/architecture/project-manual.md 的索引区新增一行：现象（控制台出现插件包 404 / plugins/events ERR_FAILED）→ 条目相对链接 ../guides/plugin-reload-troubleshooting.md；只增行。\n2. docs/architecture/plugin-runtime-prerequisites.md 的「二、构建产物 ≠ 已加载模块」节末尾追加一句机制（包地址带 rev，宿主只服务当前 rev，过期即 404）+ 指向条目的链接；不是裸链接，只追加。\n3. 不改两页既有结论、表格结构与标题层级。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-4c36ac",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-61b59e",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791259820393,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 991,
+              "at": 1791259820393,
+              "totals": {
+                "uncachedInputTokens": 196378,
+                "outputTokens": 121835,
+                "cacheReadTokens": 24382592,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 991,
+                  "totals": {
+                    "uncachedInputTokens": 196378,
+                    "outputTokens": 121835,
+                    "cacheReadTokens": 24382592,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1003,
+              "at": 1791259826823,
+              "totals": {
+                "uncachedInputTokens": 197030,
+                "outputTokens": 122533,
+                "cacheReadTokens": 24973312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1003,
+                  "totals": {
+                    "uncachedInputTokens": 197030,
+                    "outputTokens": 122533,
+                    "cacheReadTokens": 24973312,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 652,
+              "outputTokens": 698,
+              "cacheReadTokens": 590720,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791259826823
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-18bdc7",
+          "body": "[状态] → in_progress：t2 研发段开工：两处入口回链（纯追加）（reqboard_task_move）",
+          "createdAt": 1791259820393,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-d4834e",
+          "body": "[状态] → done：研发段完成：两处回链已挂，纯追加，改动文件已汇报（reqboard_task_move）",
+          "createdAt": 1791259826823,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791259791840,
+      "updatedAt": 1791259826823,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791259791840,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791259820393,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "t2 研发段开工：两处入口回链（纯追加）"
+        },
+        {
+          "status": "done",
+          "at": 1791259826823,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "研发段完成：两处回链已挂，纯追加，改动文件已汇报"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791259823801,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/architecture/project-manual.md",
+          "docs/architecture/plugin-runtime-prerequisites.md"
+        ],
+        "completed": [
+          "project-manual.md 索引表新增一行：控制台红字现象 → 条目链接（插在插件运行前提行之后）",
+          "plugin-runtime-prerequisites.md 的「二、构建产物 ≠ 已加载模块」节末尾追加一段机制：包地址带 rev、宿主只服务当前 rev、过期即 404，并带条目链接",
+          "入链验收：docs/architecture/ 下命中 2 行，分别落在两页",
+          "命中行含 rev：运行前提页那一行命中 1 次",
+          "纯追加证据：git diff -U0 显示我的 hunk 是 @@ -12,0 +14 @@（只增不删）",
+          "整页 numstat 显示 3 处删除，逐行核对属本工作树既有改动（gate-read-root / client-running-indicator / kb 去重行），非本卡",
+          "测试面：纯文档卡无对应 vitest 用例，如实报 N/A"
+        ]
+      },
+      "lastRun": {
+        "at": 1791259823801,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d15f42",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "两处入口回链（说明书索引 + 运行前提页机制一句）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-804218"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "1. docs/architecture/project-manual.md 的索引区新增一行：现象（控制台出现插件包 404 / plugins/events ERR_FAILED）→ 条目相对链接 ../guides/plugin-reload-troubleshooting.md；只增行。\n2. docs/architecture/plugin-runtime-prerequisites.md 的「二、构建产物 ≠ 已加载模块」节末尾追加一句机制（包地址带 rev，宿主只服务当前 rev，过期即 404）+ 指向条目的链接；不是裸链接，只追加。\n3. 不改两页既有结论、表格结构与标题层级。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-4c36ac",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b92200",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791259826948,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1005,
+              "at": 1791259826948,
+              "totals": {
+                "uncachedInputTokens": 197030,
+                "outputTokens": 122533,
+                "cacheReadTokens": 24973312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1005,
+                  "totals": {
+                    "uncachedInputTokens": 197030,
+                    "outputTokens": 122533,
+                    "cacheReadTokens": 24973312,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1029,
+              "at": 1791259843972,
+              "totals": {
+                "uncachedInputTokens": 198459,
+                "outputTokens": 124708,
+                "cacheReadTokens": 26164352,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1029,
+                  "totals": {
+                    "uncachedInputTokens": 198459,
+                    "outputTokens": 124708,
+                    "cacheReadTokens": 26164352,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1429,
+              "outputTokens": 2175,
+              "cacheReadTokens": 1191040,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791259843972
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a52c31",
+          "body": "[状态] → in_progress：复核段开工：核对两页纯追加、链接可达、既有结论未改（reqboard_task_move）",
+          "createdAt": 1791259826948,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-1c93f3",
+          "body": "[状态] → done：复核段完成：纯追加、链接可达、命中行含 rev；验收 ③ 用 hunk 级证据替代并说明归属（reqboard_task_move）",
+          "createdAt": 1791259843972,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791259791840,
+      "updatedAt": 1791259843972,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791259791840,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791259826948,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "复核段开工：核对两页纯追加、链接可达、既有结论未改"
+        },
+        {
+          "status": "done",
+          "at": 1791259843972,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "复核段完成：纯追加、链接可达、命中行含 rev；验收 ③ 用 hunk 级证据替代并说明归属"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791259841619,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "无偏离：两处回链与 design/interfaces.md 的入口链接契约逐条相符",
+          "验收 ①：docs/architecture/ 下命中 2 行，分别落在 project-manual.md 与 plugin-runtime-prerequisites.md",
+          "验收 ②：运行前提页命中行含 rev（命中 1 次）",
+          "验收 ③ 逐字口径在脏工作树下不可满足：整页 numstat 显示 project-manual.md 有 3 处删除，逐行核对属既有改动（gate-read-root / client-running-indicator / kb 去重行）",
+          "等价判据：我的 hunk 是 @@ -12,0 +14 @@ 与 @@ -41,0 +42,6 @@，都是纯增——本卡零删除",
+          "另一处 +34 行 hunk（第八节 UI/UX skill 资产）属既有改动，非本卡；本卡未改任何标题层级",
+          "链接可达：../guides/plugin-reload-troubleshooting.md → LINK_OK",
+          "测试面：纯文档卡无对应 vitest 用例，如实报 N/A"
+        ]
+      },
+      "lastRun": {
+        "at": 1791259841619,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-fed663",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "判据实测定标并把读数回写条目与用例表·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "doc",
+      "dependsOn": [
+        "t-4c36ac"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "1. 取交付当日实测值：<host>（本机为桌面宿主端口）与当前 rev（从 /plugins/events 的图帧里抄 dsh-pmboard/client.js&rev=…）。\n2. 依次跑 C-1 / C-2 / C-3，把状态码与响应字节回写两处：docs/guides/plugin-reload-troubleshooting.md 的期望输出、design/test-cases.md 的 TC-3 定标表。\n3. 跑 TC-1 / TC-2 / TC-4 的断言命令并留输出。\n4. 跑 pnpm kb:check；若因新增页面出现漂移，按 C-13 先 pnpm kb:build 再复核。\n5. 把本次交付的文件清单与命令输出写进任务汇报。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-890bc5",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-06c90a",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791259925890,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1099,
+              "at": 1791259925890,
+              "totals": {
+                "uncachedInputTokens": 212272,
+                "outputTokens": 135816,
+                "cacheReadTokens": 29583616,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1099,
+                  "totals": {
+                    "uncachedInputTokens": 212272,
+                    "outputTokens": 135816,
+                    "cacheReadTokens": 29583616,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1111,
+              "at": 1791259932436,
+              "totals": {
+                "uncachedInputTokens": 212878,
+                "outputTokens": 136430,
+                "cacheReadTokens": 30227584,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1111,
+                  "totals": {
+                    "uncachedInputTokens": 212878,
+                    "outputTokens": 136430,
+                    "cacheReadTokens": 30227584,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 606,
+              "outputTokens": 614,
+              "cacheReadTokens": 643968,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791259932436
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7ab1dd",
+          "body": "[状态] → in_progress：t3 研发段开工：跑 C-1/C-2/C-3 并把读数回写条目与用例表（reqboard_task_move）",
+          "createdAt": 1791259925890,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-082c0e",
+          "body": "[状态] → done：研发段完成：读数已回写两处，改动文件已汇报（reqboard_task_move）",
+          "createdAt": 1791259932436,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791259859935,
+      "updatedAt": 1791259932436,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791259859935,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791259925890,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "t3 研发段开工：跑 C-1/C-2/C-3 并把读数回写条目与用例表"
+        },
+        {
+          "status": "done",
+          "at": 1791259932436,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "研发段完成：读数已回写两处，改动文件已汇报"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791259929699,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/guides/plugin-reload-troubleshooting.md",
+          "docs/requirements/REQ-261006115829-dafb/design/test-cases.md"
+        ],
+        "completed": [
+          "交付日实测（2026-10-06 12:11）：host=127.0.0.1:19387，rev=30507b9b5434",
+          "C-1 = 200 + content-type: text/event-stream",
+          "C-2 原样请求当前包地址 = 200（656260 字节）",
+          "C-3 同地址改错 rev = 404（0 字节）",
+          "回写一：条目页判据段新增「本次交付实测定标」块（含 host / rev / 三条读数）",
+          "回写二：design/test-cases.md 的 TC-3 定标表更新为交付日读数，并记入定标值的时效说明",
+          "顺带观测到活例：lib/client.js 于 12:09:49 被重建，构建戳 cfd7e0c0d56c → 33a6b5c8ce65，上一轮 rev 失效——已写进条目与用例表",
+          "测试面：纯文档卡无对应 vitest 用例，如实报 N/A"
+        ]
+      },
+      "lastRun": {
+        "at": 1791259929699,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-55d1a4",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "判据实测定标并把读数回写条目与用例表·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "doc",
+      "dependsOn": [
+        "t-fed663"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "1. 取交付当日实测值：<host>（本机为桌面宿主端口）与当前 rev（从 /plugins/events 的图帧里抄 dsh-pmboard/client.js&rev=…）。\n2. 依次跑 C-1 / C-2 / C-3，把状态码与响应字节回写两处：docs/guides/plugin-reload-troubleshooting.md 的期望输出、design/test-cases.md 的 TC-3 定标表。\n3. 跑 TC-1 / TC-2 / TC-4 的断言命令并留输出。\n4. 跑 pnpm kb:check；若因新增页面出现漂移，按 C-13 先 pnpm kb:build 再复核。\n5. 把本次交付的文件清单与命令输出写进任务汇报。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-890bc5",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-4d3935",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791259932603,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1113,
+              "at": 1791259932603,
+              "totals": {
+                "uncachedInputTokens": 212878,
+                "outputTokens": 136430,
+                "cacheReadTokens": 30227584,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1113,
+                  "totals": {
+                    "uncachedInputTokens": 212878,
+                    "outputTokens": 136430,
+                    "cacheReadTokens": 30227584,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1131,
+              "at": 1791259942447,
+              "totals": {
+                "uncachedInputTokens": 213898,
+                "outputTokens": 137478,
+                "cacheReadTokens": 31197952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1131,
+                  "totals": {
+                    "uncachedInputTokens": 213898,
+                    "outputTokens": 137478,
+                    "cacheReadTokens": 31197952,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1020,
+              "outputTokens": 1048,
+              "cacheReadTokens": 970368,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791259942446
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-83da9b",
+          "body": "[状态] → in_progress：复核段开工：核对回写读数与实际一致、条目未越契约（reqboard_task_move）",
+          "createdAt": 1791259932603,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-d3fdae",
+          "body": "[状态] → done：复核段完成：读数一致、契约未越界、无偏离（reqboard_task_move）",
+          "createdAt": 1791259942446,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791259859935,
+      "updatedAt": 1791259942446,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791259859935,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791259932603,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "复核段开工：核对回写读数与实际一致、条目未越契约"
+        },
+        {
+          "status": "done",
+          "at": 1791259942446,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "复核段完成：读数一致、契约未越界、无偏离"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791259939563,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "无偏离：条目页与 design/interfaces.md 契约仍逐条相符（五段各 1、66 行、占位仍在 7 处、禁用语 0）",
+          "两处读数一致：条目页与 TC-3 定标表都写了 rev=30507b9b5434 与 656260 字节",
+          "对拍通过：现测 rev 与条目里写的 rev 逐字一致（grep 命中 1）",
+          "时效应写在两处：定标值会随任何人重建客户端而失效，已注明复跑时重新取 rev",
+          "活例取证：lib/client.js 12:09:49 被重建（构建戳 cfd7e0c0d56c → 33a6b5c8ce65），证明该时效不是空话",
+          "测试面：纯文档卡无对应 vitest 用例，如实报 N/A"
+        ]
+      },
+      "lastRun": {
+        "at": 1791259939563,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-4dc5f3",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "判据实测定标并把读数回写条目与用例表·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "doc",
+      "dependsOn": [
+        "t-55d1a4"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "1. 取交付当日实测值：<host>（本机为桌面宿主端口）与当前 rev（从 /plugins/events 的图帧里抄 dsh-pmboard/client.js&rev=…）。\n2. 依次跑 C-1 / C-2 / C-3，把状态码与响应字节回写两处：docs/guides/plugin-reload-troubleshooting.md 的期望输出、design/test-cases.md 的 TC-3 定标表。\n3. 跑 TC-1 / TC-2 / TC-4 的断言命令并留输出。\n4. 跑 pnpm kb:check；若因新增页面出现漂移，按 C-13 先 pnpm kb:build 再复核。\n5. 把本次交付的文件清单与命令输出写进任务汇报。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-890bc5",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-fb393e",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791259942657,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1133,
+              "at": 1791259942657,
+              "totals": {
+                "uncachedInputTokens": 213898,
+                "outputTokens": 137478,
+                "cacheReadTokens": 31197952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1133,
+                  "totals": {
+                    "uncachedInputTokens": 213898,
+                    "outputTokens": 137478,
+                    "cacheReadTokens": 31197952,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1165,
+              "at": 1791260091153,
+              "totals": {
+                "uncachedInputTokens": 215771,
+                "outputTokens": 140515,
+                "cacheReadTokens": 32829952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1165,
+                  "totals": {
+                    "uncachedInputTokens": 215771,
+                    "outputTokens": 140515,
+                    "cacheReadTokens": 32829952,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1873,
+              "outputTokens": 3037,
+              "cacheReadTokens": 1632000,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791260091153
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b077ec",
+          "body": "[状态] → in_progress：测试段开工：跑 TC-1 / TC-2 / TC-4 与知识层自检（reqboard_task_move）",
+          "createdAt": 1791259942657,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-1d4b42",
+          "body": "[状态] → done：测试段完成：TC 断言与类型检查全过；测试与知识层自检的不可判项已如实上报并归因（reqboard_task_move）",
+          "createdAt": 1791260091153,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791259859935,
+      "updatedAt": 1791260091153,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791259859935,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791259942657,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "测试段开工：跑 TC-1 / TC-2 / TC-4 与知识层自检"
+        },
+        {
+          "status": "done",
+          "at": 1791260091153,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "测试段完成：TC 断言与类型检查全过；测试与知识层自检的不可判项已如实上报并归因"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791260088665,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "TC-1 通过：五段各 1、66 行 ≤120、text/event-stream 命中 1、禁用语 0",
+          "TC-2 通过：docs/ 下入链 2 条分别落在 project-manual.md 与 plugin-runtime-prerequisites.md（另有需求文档自身的引用）",
+          "TC-3 通过：C-1 = 200 + text/event-stream；C-2 = 200（656260 字节）；C-3 = 404（0 字节）",
+          "TC-4 部分可判：本卡自己的交付面（条目页 + 两处架构页 + TC-3 回写）全部落在 docs/；整树口径不可判（并行会话在写 src）",
+          "类型检查：npx tsc --noEmit 退出 0、零输出（无错误）",
+          "全量测试：70 failed / 5932 passed / 22 skipped（508 文件，39 失败）——未采集开工前基线，按不可判上报",
+          "失败归因证据：本卡零 src 改动；失败样例指向并行会话在飞的 src 改动（REQ-id 格式用例、failure-alert 弹框壳用例）",
+          "知识层自检：pnpm kb:check 退出 1，2 处漂移（code-map / design-tokens）——输入是 src 与客户端样式，本卡零 src 改动且两文件 mtime 11:05 早于本卡，按卡内条件不执行 kb:build，如实上报"
+        ]
+      },
+      "lastRun": {
+        "at": 1791260088665,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-fcd6b0",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "返工：两处入口回链（说明书索引 + 运行前提页机制一句）",
+      "description": "验收不通过项返工（v1 项 v1-2）：【两处入口回链（说明书索引 + 运行前提页机制一句）】验收：① grep -rn 'plugin-reload-troubleshooting' docs/architecture/ → 命中 ≥ 2 行，且分别落在 project-manual.md 与 plugin-runtime-prerequisites.md\n② plugin-runtime-prerequisites.md 的命中行含 rev\n③ git diff --numstat 两页 → 删除列（第二列）为 0",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "【两处入口回链（说明书索引 + 运行前提页机制一句）】验收：① grep -rn 'plugin-reload-troubleshooting' docs/architecture/ → 命中 ≥ 2 行，且分别落在 project-manual.md 与 plugin-runtime-prerequisites.md。② plugin-runtime-prerequisites.md 的命中行含 rev。③ 判据改为 hunk 级（2026-10-06 人裁定修订 v1-2）：git diff -U0 两页 | grep '^@@' → 属于本次交付的 hunk 不含以 - 开头的行（纯增）；整页若出现删除行，须能逐行点名归属到别的会话/别的需求（共享工作树下「整页 numstat 删除列为 0」不可能成立）。",
+      "implementation": "按验收意见修复：需修改",
+      "context": "承接自 任务 t-4c36ac；验收意见：需修改",
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-ed20f3",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791260601533,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1581,
+              "at": 1791260601533,
+              "totals": {
+                "uncachedInputTokens": 256170,
+                "outputTokens": 180911,
+                "cacheReadTokens": 57549952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1581,
+                  "totals": {
+                    "uncachedInputTokens": 256170,
+                    "outputTokens": 180911,
+                    "cacheReadTokens": 57549952,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1645,
+              "at": 1791260643758,
+              "totals": {
+                "uncachedInputTokens": 268980,
+                "outputTokens": 185072,
+                "cacheReadTokens": 61691520,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1645,
+                  "totals": {
+                    "uncachedInputTokens": 268980,
+                    "outputTokens": 185072,
+                    "cacheReadTokens": 61691520,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 12810,
+              "outputTokens": 4161,
+              "cacheReadTokens": 4141568,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791260643757
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-97d6bf",
+          "body": "[状态] → in_progress：返工卡开工：按人裁定把 v1-2 第三条判据改为 hunk 级（reqboard_task_move）",
+          "createdAt": 1791260601533,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-fb261c",
+          "body": "[状态] → done：返工卡完成：判据口径修订落地并复跑通过，两张子卡已 done（reqboard_task_move）",
+          "createdAt": 1791260643757,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791260333955,
+      "updatedAt": 1791260643757,
+      "createdBy": {
+        "kind": "human",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791260333955,
+          "by": {
+            "kind": "human",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "验收不通过 → 自动生成返工任务（W6）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791260601533,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "返工卡开工：按人裁定把 v1-2 第三条判据改为 hunk 级"
+        },
+        {
+          "status": "done",
+          "at": 1791260643757,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "返工卡完成：判据口径修订落地并复跑通过，两张子卡已 done"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791260640979,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261006115829-dafb/design/test-cases.md"
+        ],
+        "completed": [
+          "返工内容：v1-2 第三条判据由「整页 numstat 删除列为 0」改为 hunk 级「本次交付 hunk 纯增 + 删除行点名归属」",
+          "两处同步：卡上 acceptance（台账）与 design/test-cases.md 的 TC-2（文档）",
+          "复跑证据：入链 2 行分落两页；命中行含 rev；我的 hunk 为 @@ -12,0 +15 @@ 与 @@ -41,0 +42,6 @@ 纯增",
+          "归属点名：3 处删除分别落 @@ -15 +18 @@ / @@ -22 +25 @@ / @@ -58 +62 @@，属别的会话",
+          "子卡链两段收口：研发（t-b3071a）与复核（t-f42ec3）均 done",
+          "残留告知：verification 产物上带着上一轮误点的旧章，归档前会重新请人确认"
+        ]
+      },
+      "lastRun": {
+        "at": 1791260640979,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-b3071a",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "返工：两处入口回链（说明书索引 + 运行前提页机制一句）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "按验收意见修复：需修改\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "承接自 任务 t-4c36ac；验收意见：需修改",
+      "parentId": "t-fcd6b0",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-1f40b7",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791260621813,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1607,
+              "at": 1791260621813,
+              "totals": {
+                "uncachedInputTokens": 267498,
+                "outputTokens": 183246,
+                "cacheReadTokens": 59185792,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1607,
+                  "totals": {
+                    "uncachedInputTokens": 267498,
+                    "outputTokens": 183246,
+                    "cacheReadTokens": 59185792,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1619,
+              "at": 1791260629254,
+              "totals": {
+                "uncachedInputTokens": 268031,
+                "outputTokens": 183888,
+                "cacheReadTokens": 60018944,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1619,
+                  "totals": {
+                    "uncachedInputTokens": 268031,
+                    "outputTokens": 183888,
+                    "cacheReadTokens": 60018944,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 533,
+              "outputTokens": 642,
+              "cacheReadTokens": 833152,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791260629253
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-671dc7",
+          "body": "[状态] → in_progress：返工卡研发段开工：落判据口径修订（卡片 acceptance + design/test-cases.md）（reqboard_task_move）",
+          "createdAt": 1791260621813,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-fc1b9d",
+          "body": "[状态] → done：返工研发段完成：判据口径已改为 hunk 级并复跑通过（reqboard_task_move）",
+          "createdAt": 1791260629253,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791260601533,
+      "updatedAt": 1791260629253,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791260601533,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791260621813,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "返工卡研发段开工：落判据口径修订（卡片 acceptance + design/test-cases.md）"
+        },
+        {
+          "status": "done",
+          "at": 1791260629253,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "返工研发段完成：判据口径已改为 hunk 级并复跑通过"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791260626251,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261006115829-dafb/design/test-cases.md"
+        ],
+        "completed": [
+          "判据口径修订落地一：返工卡 t-fcd6b0 的 acceptance 第三条改为 hunk 级（本次交付 hunk 不含 - 行；整页删除行须能点名归属）",
+          "判据口径修订落地二：design/test-cases.md 的 TC-2 写入「判据口径（2026-10-06 人裁定修订 · v1-2）」小节，含理由与可跑命令",
+          "修订后复跑 ① 入链：docs/architecture/ 命中 2 行，分落 project-manual.md:15 与 plugin-runtime-prerequisites.md:46",
+          "复跑 ②：运行前提页命中行含 rev（命中 1）",
+          "复跑 ③（新口径）：我的 hunk 为 @@ -12,0 +15 @@ 与 @@ -41,0 +42,6 @@，纯增零删除",
+          "归属点名：整页 3 处删除分别在 hunk @@ -15 +18 @@ / @@ -22 +25 @@ / @@ -58 +62 @@，均为别的会话的行改写（gate-read-root 行、client-running-indicator 行、kb 去重行）",
+          "测试面：纯文档卡无对应 vitest 用例，如实报 N/A"
+        ]
+      },
+      "lastRun": {
+        "at": 1791260626251,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-f42ec3",
+      "requirementId": "REQ-261006115829-dafb",
+      "title": "返工：两处入口回链（说明书索引 + 运行前提页机制一句）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "doc",
+      "side": "doc",
+      "dependsOn": [
+        "t-b3071a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "按验收意见修复：需修改\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "承接自 任务 t-4c36ac；验收意见：需修改",
+      "parentId": "t-fcd6b0",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-dd53ba",
+          "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+          "trigger": "manual",
+          "startedAt": 1791260629365,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1621,
+              "at": 1791260629365,
+              "totals": {
+                "uncachedInputTokens": 268031,
+                "outputTokens": 183888,
+                "cacheReadTokens": 60018944,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1621,
+                  "totals": {
+                    "uncachedInputTokens": 268031,
+                    "outputTokens": 183888,
+                    "cacheReadTokens": 60018944,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+              "seq": 1633,
+              "at": 1791260637567,
+              "totals": {
+                "uncachedInputTokens": 268517,
+                "outputTokens": 184590,
+                "cacheReadTokens": 60854400,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549",
+                  "depth": 0,
+                  "seq": 1633,
+                  "totals": {
+                    "uncachedInputTokens": 268517,
+                    "outputTokens": 184590,
+                    "cacheReadTokens": 60854400,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 486,
+              "outputTokens": 702,
+              "cacheReadTokens": 835456,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791260637567
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c38b2c",
+          "body": "[状态] → in_progress：返工复核段开工：复核新判据口径与归属点名（reqboard_task_move）",
+          "createdAt": 1791260629365,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        },
+        {
+          "id": "c-8694cf",
+          "body": "[状态] → done：返工复核段完成：口径一致、复跑通过、归属点名完整（reqboard_task_move）",
+          "createdAt": 1791260637567,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791260601533,
+      "updatedAt": 1791260637567,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791260601533,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791260629365,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "返工复核段开工：复核新判据口径与归属点名"
+        },
+        {
+          "status": "done",
+          "at": 1791260637567,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-c9490164-89ba-491f-90ba-824aa5002549"
+          },
+          "reason": "返工复核段完成：口径一致、复跑通过、归属点名完整"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791260634528,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "无偏离：修订后的卡上判据与 design/test-cases.md 的 TC-2 口径一致（同一条 hunk 级判据、同一句理由）",
+          "新口径三项复跑通过：① 入链 2 行分落两页；② 命中行含 rev；③ 本次交付两个 hunk 均为纯增",
+          "归属点名完整：整页 3 处删除逐行落在别的 hunk，可指到别的会话的改写",
+          "原判据为什么不可用已写进 TC-2：共享工作树下整页 numstat 会把别人的删除算到本卡头上",
+          "测试面：纯文档卡无对应 vitest 用例，如实报 N/A",
+          "残留告知：上一轮你点的是「落章」，verification 产物上带了旧章；归档前我会重新请人确认，不拿这张旧章当验收通过依据"
+        ]
+      },
+      "lastRun": {
+        "at": 1791260634528,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-e6d1e3",
+      "to": "t-4c36ac"
+    },
+    {
+      "from": "t-4c36ac",
+      "to": "t-890bc5"
+    },
+    {
+      "from": "t-2b9f5e",
+      "to": "t-20b429"
+    },
+    {
+      "from": "t-e6d1e3",
+      "to": "t-804218"
+    },
+    {
+      "from": "t-804218",
+      "to": "t-d15f42"
+    },
+    {
+      "from": "t-4c36ac",
+      "to": "t-fed663"
+    },
+    {
+      "from": "t-fed663",
+      "to": "t-55d1a4"
+    },
+    {
+      "from": "t-55d1a4",
+      "to": "t-4dc5f3"
+    },
+    {
+      "from": "t-b3071a",
+      "to": "t-f42ec3"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-e6d1e3",
+        "t-2b9f5e",
+        "t-fcd6b0",
+        "t-b3071a"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-4c36ac",
+        "t-804218",
+        "t-20b429",
+        "t-f42ec3"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-890bc5",
+        "t-fed663",
+        "t-d15f42"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-55d1a4"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-4dc5f3"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-06T04:24:03.758Z"
+}

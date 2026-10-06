@@ -30,12 +30,16 @@
 
 ```
 running(req) = (req.seats 有值 ? seats.any(windowKey 在跑) : sourceSessionId 在跑)
+             ∪ (advanceLockAt 新鲜)          ← 2026-10-05 起（REQ-261005213603-eaed FR-1）
 ```
 
 - `seats` **有值即权威**（含显式空数组 → 判不在跑），与 host `seatsOf()` 的折算口径同源；
 - `seats` 缺省（存量需求）→ 折算单 owner `sourceSessionId`；
 - 两者皆无（人工建卡）→ 不在跑，不渲染空壳；
 - **不用**任务执行会话当补充判据：那是同一窗口的历史执行记录，纳入只会把「旧记录残留」误报成「正在跑」。
+- **新增**：`advanceLockAt` 新鲜（`now - advanceLockAt < LIMITS.advanceLockStaleMs`）= 该需求有后台 run 在跑
+  （跑子卡链；投递式 run 期间窗口回合早已结束，这正是旧判据看不见的那一段）。两种成因共用同一个圈，
+  只有 `title`/`aria-label` 不同；成因优先级：会话在跑优先，run 兜底。
 
 呈现位置（2026-10-04 用户裁定，**第二次调整后的最终形态**）：
 
@@ -75,6 +79,12 @@ running(req) = (req.seats 有值 ? seats.any(windowKey 在跑) : sourceSessionId
 
 **禁止的近似推断**（出现即缺陷）：`updatedAt` 距今阈值、`autoRun === true`、`advanceLockAt` 新鲜度、
 `executions[].outcome === 'running'`。读数不可得的呈现 = **没有指示**，不是灰点、不是「未知」。
+
+> **取代标注（2026-10-05，REQ-261005213603-eaed）**：上面这份清单里原有一条 `advanceLockAt` 新鲜度，
+> **已被该需求取代为正式判据**——它不是近似推断，而是 host 认领 + 30s 心跳续租的「有 run 在跑」证书
+> （与 host WIP 闸门 `AdvanceChain.ts` 的 `runningOf` 同阈值 15min、同运算符 `<`）。
+> 完整判据见 `docs/requirements/REQ-261005213603-eaed/design/architecture.md` §判据定义与新鲜度口径。
+> **`executions[].outcome === 'running'` 仍然禁用**（历史执行记录，崩溃残留无上界）——这一条未被撤销。
 
 ## 可复用教训
 

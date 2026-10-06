@@ -1,0 +1,37 @@
+task:
+  id: t-41c506
+  title: 实现裁定记录门与会话留痕判据（decision-gates.ts）·研发
+  status: done
+  implements: |-
+    新建 src/application/internal/decision-gates.ts（≤400 行），导出 checkDecisionLogGate(docs, req) 与 hasDecisionTrace(sessionProbe, req, opts?)。门禁：找节名逐字 '## 讨论与裁定记录（D-x）'（仅 feature 需求要求该节，D-12）；缺节 → decision_log_missing；节内表格按五列 编号|原话来源|裁定|影响 FR|判据 逐行校验，任一列空或『影响 FR』未命中 extractClauseDefinitions 的真实条款 → decision_entry_invalid 且 gaps 逐条点名条目编号（不是修一条报一条）；编号 D-\d+ 连续且唯一（复用 checkClauseSequence 思路，独立命名空间；跳号与重复都拒）；整节只写「本节无裁定」视为真空态、不视为空节、放行。留痕：hasDecisionTrace 复用两条读法（快照事件优先、持久化冷读回落），只取 source.kind==='user'，只扫最近 200 条（opts.limit 可覆写），命中祈使词表 改成/不要/必须/加上/应该是/记得/注意/别/要 即视为存在留痕；该启发式只用于『要求本节非空』，不判条目内容、不承诺召回率可测（召回由 G2 人评审承担）；并断言不新增数据源。依据 design-brief §3 与 §10 #16/#20/#23/#24。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-094e28
+    - t-c6bfa8
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005105032-3b02
+    TASK_ID: t-41c506
+    TASK_TITLE: 实现裁定记录门与会话留痕判据（decision-gates.ts）·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T05:35:10.072Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005105032-3b02
+  generated_at: 2026-10-05T05:35:09.873Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-05T05:35:10.241Z

@@ -1,0 +1,47 @@
+task:
+  id: t-29be55
+  title: 客户端展示面：卡面计数兜底 + 分层剪边落进 topoLevels + 本地 live 收编·复核
+  status: done
+  implements: |-
+    ① `src/client/views/board.ts` 的 `toCard`：`totalCount` / `doneCount` 改走 `liveTasksOf` / `liveCountOf`（**独立漏点**：只要该函数拿到未过滤数组，读数就会退回 132 ⇒ **不假设「上游 /state 好了这里就自动好」**）；同文件「在途」计数里手写的 `t.status !== 'canceled'` 换成 `isLiveTask(t)`（去掉任务级字面量）。② `src/client/stage-panel.ts` 的 `topoLevels`：**剪边必须落进函数内部**——对不在 `byId` 里的前置边**直接丢弃**，不再当 `lv = 0` 计入 `1 + max(...)`（现实现会造幽灵前置、让活卡凭空多一层）；实现走 `layerInputOf` / `splitDependencyEdges`，层号按活卡压实、不留「第 N 层 · 0 张」空层。③ `src/client/node-panel.ts` 同款 `topoLevels` 照同一口径剪边（会话框节点面板与看板阶段详情两块必须一致），但**不加第二份 filter**（上游基类已剔卡）。④ `src/client/render/subtask-view.ts` 的本地 `live` 辅助删掉，改调 `liveTasksOf`。⑤ **不改** `timeline.ts` / `board-mount.ts` / `panels/dag.ts` 的算法（吃已过滤载荷）；`data-dag-statuses` 因此天然不含 `canceled` 档，**不许**在这里补第二份判定。新增 `tests/canceled-hidden-view.test.ts`（TC-1 + TC-11 + 原型对照判据）。验证：`npx vitest run tests/canceled-hidden-view.test.ts` + `pnpm verify:client`。依据 design/frontend.md §四个取数边界 ①/② 与 §严格不可见。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-dfa4e0
+  phase: ui
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261005193546-1b1a
+    TASK_ID: t-29be55
+    TASK_TITLE: 客户端展示面：卡面计数兜底 + 分层剪边落进 topoLevels + 本地 live 收编·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: ui
+  workflow_total: 5
+  workflow_done: 5
+  workflow:
+    - phase: ui
+      status: done
+      completed_at: 2026-10-05T17:13:21.573Z
+    - phase: implement
+      status: done
+      completed_at: 2026-10-05T17:13:21.573Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T17:13:21.573Z
+    - phase: commit
+      status: done
+      completed_at: 2026-10-05T17:13:21.573Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005193546-1b1a
+  generated_at: 2026-10-05T17:13:21.406Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 5
+  last_updated: 2026-10-05T17:13:38.516Z

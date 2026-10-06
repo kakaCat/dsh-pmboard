@@ -1,0 +1,66 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261005193546-1b1a
+  generated_at: 2026-10-05T13:31:03.380Z
+  version: 6
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-05T16:26:37.058Z
+outputs:
+  requirements: []
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 用户：「DAG 层级里不完成的卡片，agent应该处理删除掉，是物理删除比较好还是逻辑删除」
+      verdict: "**逻辑退出，不物理删除**：卡片 id 被依赖/子卡链/追溯/评论引用，且是回退事故的第一手证据"
+      serves:
+        - FR-5
+        - FR-6
+      criterion: 「不做」两条 + FR-5 判据
+    - id: D-2
+      source: 用户：「DAG 层级 不完成的不应该展示，立项来做这个事情吧」
+      verdict: "**立项并让已取消卡退出展示**（不是让 agent 去删卡）"
+      serves:
+        - FR-1
+      criterion: 验收 A1
+    - id: D-3
+      source: 用户选「只隐藏已取消卡，且彻底不可见」
+      verdict: 只藏取消态；**不做「显示已取消」开关**，接口与界面都不返回
+      serves:
+        - FR-1
+        - FR-5
+      criterion: 验收 A1 / A3
+    - id: D-4
+      source: 用户选「全部统计统一剔除已取消卡」
+      verdict: "**一个口径贯穿**：门禁与界面不再两套分母"
+      serves:
+        - FR-2
+      criterion: 验收 B4 / B5
+    - id: D-5
+      source: 用户选「一并做：记录谁 / 何时 / 为什么」
+      verdict: 取消留痕成为需求范围内；**加性可选、零迁移**
+      serves:
+        - FR-3
+        - FR-6
+      criterion: 验收 C7 / C8
+    - id: D-6
+      source: 用户选「A · 取数单点 + 全面接线」
+      verdict: 判据收敛单点并全面接线，顺带收编现有两份手写 filter
+      serves:
+        - FR-4
+      criterion: 验收 B6
+    - id: D-7
+      source: 用户选「完全不交代（严格彻底不可见）」
+      verdict: "**界面连计数都不给**（不出现「另有 N 张已取消」这类行）"
+      serves:
+        - FR-1
+        - FR-5
+      criterion: 验收 A1 / A3
+    - id: D-8
+      source: 原型子代理提请注意（悬空依赖）经父窗口裁定
+      verdict: "**取消卡不构成依赖阻塞**，边按已满足处理"
+      serves:
+        - FR-1
+      criterion: 验收 A2
+status:
+  artifacts: []

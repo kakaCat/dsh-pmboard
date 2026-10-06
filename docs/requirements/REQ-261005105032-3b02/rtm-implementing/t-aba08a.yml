@@ -1,0 +1,38 @@
+task:
+  id: t-aba08a
+  title: 核对存量兼容（加性零迁移 / RTM 缺节 pending / legacy 豁免）·复核
+  status: done
+  implements: |-
+    对本仓存量需求与 8 条 archived 做核对与补齐判据，不加迁移脚本、不改写旧数据：① 断言三个新键（StageArtifact.prototypeMeta?、TaskRecord.prototypeRefs?、decisionRefs?）在旧分片缺键时读取不报错、值为未采集 undefined，只有写侧才带新键（口径 = 加性变更、零迁移）；② 断言 vendor/reqboard/src/rtm/validator.ts 对缺 prototypes/decisions 节与含未知 key 的旧 YAML 读出 pending 且不判损坏；③ 断言 src/application/internal/rtm-health.ts 的适用性判据下存量一律 exempted: legacy、不被判不健康；④ 断言新门对 req.artifacts 为空的存量/直种需求放行（isLegacy 与既有两个门同口径），已归档需求不被追溯拒绝、不回填原型与 frontend.md。跑法固化为 npx vitest run tests/compat-regression.test.ts tests/rtm-health-legacy.test.ts 加一次对存量目录的全量读取（读全部 docs/requirements/*/rtm-*.yml 不抛）。依据 design-brief §5 兼容基线与 §10 #19/#50。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-ac803f
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261005105032-3b02
+    TASK_ID: t-aba08a
+    TASK_TITLE: 核对存量兼容（加性零迁移 / RTM 缺节 pending / legacy 豁免）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-05T10:54:14.225Z
+    - phase: implement
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261005105032-3b02
+  generated_at: 2026-10-05T10:54:13.990Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-05T11:19:28.426Z
