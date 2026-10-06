@@ -75,6 +75,46 @@ export const GATE_CATALOG: readonly GateSpec[] = [
   },
 ]
 
+/**
+ * 阶段门时序（REQ-261005105032-3b02 FR-11 / t13）——**「每道门在该到位的时点必须到位」的唯一时点表**。
+ *
+ * 为什么要有它：门禁此前只有"红了"这一个状态，没有"**何时**必须转绿"（REQ-292a 的门禁丢 9 天无人
+ * 发现，正是这个缺口）。本表把三个时点写死，逾期由对应转移的门禁拒绝（内部码 `stage_gate_overdue`
+ * / 传输码 `REQBOARD_STAGE_GATE_OVERDUE`，design-brief §10 #39）。
+ *
+ * 键 = 时点名（中文人读名，与 architecture.md §⑥ / interfaces.md 的时序表逐字一致）：它进拒绝
+ * 文案与 `gaps` 点名，故不许写成英文枚举值；值 = 该时点**必须已转绿**的门名清单（门名与各门自身报的
+ * gaps 一一对应）。与 `gateForTransition` 同源：时点 → 转移的映射也在本文件（`stageGateMomentFor`），
+ * 门禁与 `scripts/req-doc-validate.mts` 只读这一份，不各写一套时点。
+ */
+export const StageGateTimeline: Readonly<Record<string, readonly string[]>> = {
+  设计交完: ['必填节', '格式门', 'serves', '无 dangling'],
+  拆分落库: ['覆盖对照（FR→卡）', 'UI 卡原型锚点'],
+  实施收尾: ['E2E 覆盖', '三级追溯'],
+}
+
+/** 三个时点名（受控枚举：判据分派、拒绝文案与用例都按它走，避免各处写散字符串）。 */
+export type StageGateMoment = '设计交完' | '拆分落库' | '实施收尾'
+
+/**
+ * 转移 → 时点。为什么用字面表而不是 `gateForTransition` 反查：**「实施收尾」这一档没有人工闸门**
+ * （`implementing → accepting` 不在 GATE_CATALOG 里，G4 是 `accepting → archived`），拿闸门表当唯一
+ * 入口会整档漏判。键法与 `transitionKeyOf` 保持同一个（`from + '>' + to`），免得两处键法不一致。
+ */
+const MOMENT_BY_TRANSITION: Readonly<Record<string, StageGateMoment>> = {
+  'design>decomposing': '设计交完',
+  'decomposing>implementing': '拆分落库',
+  'implementing>accepting': '实施收尾',
+}
+
+/**
+ * 该转移落在哪个阶段门时点上；不在（含回退、canceled、以及 brainstorming 期的转移）→ `undefined`
+ * = **时点未到，不判**（brainstorming 期编号链 orphan / E2E 覆盖为 false 属正常状态，防假红）。
+ */
+export function stageGateMomentFor(from: string, to: string): StageGateMoment | undefined {
+  return MOMENT_BY_TRANSITION[from + '>' + to]
+}
+
 /** 按 id 取闸门。 */
 export function gateById(id: GateId): GateSpec | undefined {
   return GATE_CATALOG.find(g => g.id === id)

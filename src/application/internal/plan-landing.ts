@@ -63,6 +63,17 @@ export interface PlanTaskDraft {
    */
   template?: string
   /**
+   * 本卡的原型锚点（REQ-261005105032-3b02 FR-5 / t12）：如 `["prototypes/detail.html#FR-4"]`。
+   * 计划层（`PlanTask.prototypeRefs`）→ 本结构 → `TaskRecord.prototypeRefs` 这条链**必须整条通**：
+   * 断在任何一站，UI 卡锚点门就没数据可查、子卡提示词永远取不到原型路径。
+   */
+  prototypeRefs?: string[]
+  /**
+   * 本卡关联的 D-x 裁定编号（REQ-261005105032-3b02 FR-9 / t12）：如 `["D-1"]`，同上透传到
+   * `TaskRecord.decisionRefs`（RTM `covers_decisions` 与子卡提示词的取数源）。
+   */
+  decisionRefs?: string[]
+  /**
    * 体量声明（REQ-261002175818-80a8 t2 / FR-7）：协议层已校验过形状与声明下限，
    * 本结构只负责把它送到 `TaskRecord.footprint`——上一站漏传一次，卡上就永远没有体量。
    */
@@ -159,6 +170,10 @@ export async function landPlanTasks(deps: UseCaseDeps, input: LandPlanTasksInput
       ...(d.template !== undefined ? { template: d.template } : {}),
       // 体量声明落库（REQ-261002175818-80a8 t2 / FR-7）：未声明不带键（不冒充 0）。
       ...(d.footprint !== undefined ? { footprint: d.footprint } : {}),
+      // 原型锚点 / 关联 D-x 落库（REQ-261005105032-3b02 FR-5、FR-9 / t12）：未申报不带键
+      // （与 requirementRefs 不同——那两个键的"空数组"是有意义的口径，这两个键缺省 = 未采集）。
+      ...(d.prototypeRefs !== undefined && d.prototypeRefs.length > 0 ? { prototypeRefs: [...d.prototypeRefs] } : {}),
+      ...(d.decisionRefs !== undefined && d.decisionRefs.length > 0 ? { decisionRefs: [...d.decisionRefs] } : {}),
       // 从 refsByKey Map 中获取该任务的 requirement_refs（REQ-260925172227-2d61 RTM 覆盖度追踪）
       requirementRefs: refsByKey.get(d.key) ?? [],
       status: 'todo',

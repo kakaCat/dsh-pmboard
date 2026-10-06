@@ -2,7 +2,7 @@
  * 「文档」Tab 面板（REQ-261004222448-292a · FR-7 / FR-11 #7 / FR-12）——t-b9dd2c 实现 render。
  *
  * 三块合一（FR-7）：**确定文档清单** + **核验表** + **门禁裁决留痕**（外加归档）。
- * 六条纪律（改代码时必须保住）：
+ * 七条纪律（改代码时必须保住）：
  *  ① **一律铺开、不做内层滚动**（FR-11 #7）：documents / generated / discovered / 验收单逐项 /
  *     六道门 / 归档清单全部逐行渲染，一个不省（`data-doc-row` 的条数**恒等于** `documents.length`
  *     ——这是"铺开"的机械判据）。本文件产出的字符串里不得出现 `overflow: auto|scroll`：
@@ -19,10 +19,20 @@
  *     没有验收单时给**解释性空态**而不是空表格；"未采集"绝不写成 `0`。
  *  ④ **生成物与人写的文档分开列**：`generated[]` 是台账/工具重建物（queue.json、rtm-*.yml），
  *     不是人交付的文档——混在一起会让"这份文档谁负责"变得不可回答。
- *  ⑤ 文档类型名走**唯一事实源** `shared/artifact-labels.ts`：面板的 7 个 kind 比产物的 9 个粗，
+ *  ⑤ 文档类型名走**唯一事实源** `shared/artifact-labels.ts`：面板的 8 个 kind 比产物的 10 个粗，
  *     本文件只做「面板 kind → 产物 kind」的**别名**（服务端映射是多对一，逆映射不可避免），
  *     中文名一律问那边要，绝不在这里再写一份中文映射表（那是 artifact-labels 模块头点名的
  *     六处漂移的老路）。
+ *  ⑥ **原型在确定文档块内单列**（REQ-261005105032-3b02 决议 #30/#32/#34）：`kind === 'prototype'`
+ *     的行（以及按路径兜底归组的旧 notes 行）连续排在非原型行之后，中间插一行组标
+ *     （`data-doc-subhead="prototype"` + `data-proto-count`）。单列只是**分组**：原型行仍是
+ *     `data-doc-row="1"` 的文档行（`data-doc-row` 条数 == `documents.length` 的判据不许破），
+ *     点开正文仍走既有 `[data-open-doc]` 委派——不新增弹窗、不新增路由。
+ *     「权威 / 被取代」不做本地判定：`prototypeRole` / `supersededBy` 由服务端读
+ *     `prototypes/INDEX.md` 投影而来（本面板不做文件 IO），没给就如实说"未标权威角色"。
+ *     原型判据只呈现**有/缺锚点**（`prototypeMeta.anchors` 的条数）：只显示存在性、不显示阈值，
+ *     也不显示几何量（阈值由设计阶段定死、原型不自证，D-10 + 决议 #8/#49）；未采集时
+ *     **不渲染这个标**（"未采集"与"采集到 0 条"必须可分辨），且不为此新增列/表。
  *
  * 为什么核验表照抄 `verification.ts` 的列而不是另设计一套：那七列
  * （标准 / 实际结果 / 来源（agent|human）/ 需人工（含原因）/ 证据 / 意见 / 裁决）是既有实现里
@@ -130,6 +140,7 @@ function timeOr(raw: unknown, fallback: string): string {
  * 面板 kind → 产物 kind 的别名（服务端 `QueryDocs.PANEL_KIND` 是多对一的逆映射）：
  * `plan` 面板类同时装 decomposition 与 plan，`task-detail` 装 task_detail 与 task_output，
  * `notes` 是 archive/notes 的兜底类。别名之后中文名一律问 artifactKindLabel 要。
+ * `prototype` 一对一（REQ-261005105032-3b02 决议 #30/#33：映射穷尽，中文名走 KIND_LABELS「原型」）。
  */
 const KIND_ALIAS: Readonly<Record<DocPanelKind, string>> = {
   requirement: 'requirement',
@@ -139,6 +150,7 @@ const KIND_ALIAS: Readonly<Record<DocPanelKind, string>> = {
   verification: 'verification',
   retro: 'retro',
   notes: 'notes',
+  prototype: 'prototype',
 }
 const ALIAS_BY_KIND: ReadonlyMap<string, string> = new Map(Object.entries(KIND_ALIAS))
 
@@ -147,20 +159,23 @@ function kindLabel(kind: string): string {
   return artifactKindLabel(ALIAS_BY_KIND.get(kind) ?? kind)
 }
 
-/** 四种登记态的可读名（FR-12：四态各有说法，一种都不许空着）。 */
+/** 五种登记态的可读名（FR-12：逐态各有说法，一种都不许空着）。 */
 const STATE_TEXT: Readonly<Record<DocPanelState, string>> = {
   confirmed: '已确认',
   pending: '待确认',
   unregistered: '未登记',
   'file-missing': '文件缺失',
+  // REQ-261005143615-5ab1 FR-3：判不了 ≠ 缺失——文案必须能把两者读分开
+  unknown: '未判定',
 }
 
-/** 四种状态各自的解释（"为什么是这个状态"），与 STATE_TEXT 一起进状态格。 */
+/** 五种状态各自的解释（"为什么是这个状态"），与 STATE_TEXT 一起进状态格。 */
 const STATE_NOTE: Readonly<Record<DocPanelState, string>> = {
   confirmed: '人工已确认，可用',
   pending: '台账已登记，等人工确认',
   unregistered: '所属分类要求这份文档，台账里没有登记记录',
   'file-missing': '登记在案，但磁盘上找不到该文件',
+  unknown: '读根不可得：这台机器上找不到该需求声明的工作区，判不了文件在不在',
 }
 
 /** 状态文案读取（运行时可能收到协议之外的新状态：如实写"未知"，不猜、不留白）。 */
@@ -233,52 +248,218 @@ function actorText(by: GateVerdict['by']): string {
  *
  * 为什么**不**带 `data-action="open-doc"`：老链（board-mount 的事件委派）与新壳的委派
  * 只允许一处接（report-tabs.ts 的 attach 注释写明了"两边都接会点一下开两次"）。
+ *
+ * REQ-261005143615-5ab1 FR-4：给了 `absPath` 就**显示并打开绝对路径**（含小字台账相对路径
+ * 供对账）——绝对路径是服务端按需求自己的工作区算出来的，不再依赖"当前阅读会话"拼对。
+ * 没给（旧服务端 / 未命中读根）时逐字回旧显示。
  */
-function openablePath(path: string): string {
+function openablePath(path: string, absPath?: string): string {
+  const shown = typeof absPath === 'string' && absPath.length > 0 ? absPath : path
+  const rel = shown === path
+    ? ''
+    : '<span class="dsh-pm-hint" data-doc-relpath="' + esc(path) + '">台账路径：' + esc(path) + '</span>'
   return '<button type="button" class="dsh-pm-doc-path"'
-    + ' data-open-doc="' + esc(path) + '"'
-    + ' title="点开正文：' + esc(displayDocPath(path)) + '">' + esc(path) + '</button>'
+    + ' data-open-doc="' + esc(shown) + '"'
+    + ' title="点开正文：' + esc(displayDocPath(shown)) + '">' + esc(shown) + '</button>' + rel
+}
+
+/* ── FR-6 紧凑表（REQ-261006130057-7a43 t8）──────────────────────────────
+   蓝本 = 原型 detail.html v1.5 #FR-6 文档面板：路径列是**纯文本**（等宽），
+   打开入口收成独立的「打开」列（链接式小按钮）。两条规则：
+   ① 路径格不再兼职按钮——一个可点入口一行一个（打开列），路径格只做显示与对账；
+   ② 「打开」按钮仍是**同一个** `[data-open-doc]` 委派（壳 attach 唯一接点），
+      不可开的两种状态（file-missing / unknown）给 disabled + 原因 title——
+      不给假出口，也不留空格（FR-12）。 */
+
+/** 台账相对路径小字（有 absPath 时留在路径格供对账）。 */
+function relPathHint(path: string, shown: string): string {
+  return shown === path
+    ? ''
+    : '<span class="dsh-pm-hint" data-doc-relpath="' + esc(path) + '">台账路径：' + esc(path) + '</span>'
+}
+
+/** 纯文本路径格（等宽、可折行）：打开不在这格发生。 */
+function plainDocPath(path: string, absPath?: string): string {
+  const shown = typeof absPath === 'string' && absPath.length > 0 ? absPath : path
+  return '<span class="dsh-pm-doc-filepath">' + esc(shown) + '</span>' + relPathHint(path, shown)
+}
+
+/** 「打开」列的可用按钮（可点开的行专用；不可开行走 openCellDisabled）。 */
+function openDocButton(path: string, absPath?: string): string {
+  const shown = typeof absPath === 'string' && absPath.length > 0 ? absPath : path
+  return '<button type="button" class="dsh-pm-doc-open"'
+    + ' data-open-doc="' + esc(shown) + '"'
+    + ' title="点开正文：' + esc(displayDocPath(shown)) + '">打开</button>'
+}
+
+/**
+ * 「打开」列的禁用占位（file-missing / unknown）：**不给假出口**。
+ * 保留 `data-open-doc` 仅为**行级可断言**（每份文档都有开正文锚点），配合 `disabled`
+ * 在浏览器里不会再产生 click；title 写清为什么不可开（不出现「点开正文」字样——
+ * 报告壳降级套件按"缺失行不许留 点开正文 假出口"断言）。
+ */
+function openCellDisabled(shown: string, title: string): string {
+  return '<button type="button" class="dsh-pm-doc-open" disabled aria-disabled="true"'
+    + ' data-open-doc="' + esc(shown) + '"'
+    + ' title="' + esc(title) + '">打开</button>'
 }
 
 /* ────────────────────────────────────────────────────────────── ① 确定文档 */
 
 /**
- * 文档路径单元格。
- *
- * 文件缺失的行**不给可点的假出口**：既有的运行时约定（board-mount 判为不可打开后
- * 摘掉 `data-action` 并加 `.dsh-pm-doc-missing`）在这里**静态**做到——缺失行连
- * `data-open-doc` 都不该被接走，`disabled` 是保险（即便将来有人误接，缺失行也点不动）。
- * 划线样式双保险：既有 CSS `.dsh-pm-doc-path.dsh-pm-doc-missing` + 内联 `text-decoration`
- * （字符串级断言也能看见"划线"，不依赖样式表是否加载）。
- *
- * 保留 `data-open-doc` 是为了**行级可断言**（每份文档都有开正文锚点），
- * 但配合 `disabled`：它在浏览器里不会再产生 click（没有假出口）。
+ * 文档路径单元格（FR-6 紧凑表）：**纯文本**，三种状态各有各的画法
+ *（REQ-261005143615-5ab1 FR-3/FR-4）：
+ *  - **在盘**（confirmed / pending / unregistered）：等宽纯文本；有 `absPath` 就显示它；
+ *  - **`file-missing`**（根在、文件确实不在）：灰色 + **划线**——划线样式双保险：
+ *    CSS `.dsh-pm-doc-filepath.dsh-pm-doc-missing` + 内联 `text-decoration`
+ *    （字符串级断言也能看见"划线"，不依赖样式表是否加载）；
+ *  - **`unknown`**（一个可用读根都没有）：**不划线**、也不套 `dsh-pm-doc-missing`——
+ *    那不是"文件缺失"，是"这台机器上判不了"。
+ * 打开入口在**「打开」列**（`openCellOf`），本格不再兼职按钮（一行的可点入口只一处）。
  */
 function pathCellOf(entry: DocPanelEntry): string {
   const path = String(entry.path ?? '')
-  if (entry.state === 'file-missing') {
-    return '<button type="button" class="dsh-pm-doc-path dsh-pm-doc-missing" disabled aria-disabled="true"'
-      + ' data-open-doc="' + esc(path) + '"'
-      + ' style="text-decoration: line-through"'
-      + ' title="文件缺失：登记在案但磁盘上找不到该文件，没有正文可读">' + esc(path) + '</button>'
+  const absPath = typeof entry.absPath === 'string' && entry.absPath.length > 0 ? entry.absPath : undefined
+  const shown = absPath ?? path
+  const rel = absPath === undefined
+    ? ''
+    : '<span class="dsh-pm-hint" data-doc-relpath="' + esc(path) + '">台账路径：' + esc(path) + '</span>'
+  if (entry.state === 'unknown') {
+    return '<span class="dsh-pm-doc-filepath dsh-pm-doc-unknown"'
+      + ' title="未判定：这台机器上找不到该需求声明的工作区（读根不可得），无法判断文件在不在">'
+      + esc(shown) + '</span>' + rel
   }
-  return openablePath(path)
+  if (entry.state === 'file-missing') {
+    return '<span class="dsh-pm-doc-filepath dsh-pm-doc-missing"'
+      + ' style="text-decoration: line-through"'
+      + ' title="文件缺失：登记在案但磁盘上找不到该文件，没有正文可读">' + esc(shown) + '</span>' + rel
+  }
+  return '<span class="dsh-pm-doc-filepath">' + esc(shown) + '</span>' + rel
 }
 
-/** 一行文档：**四个字段一个不省**（类型 / 路径 / 登记时间 / 状态），状态格四态各有说辞。 */
+/** 「打开」单元格：可开走真按钮，不可开（缺失 / 未判定）走 disabled 占位 + 原因 title。 */
+function openCellOf(entry: DocPanelEntry): string {
+  const path = String(entry.path ?? '')
+  const absPath = typeof entry.absPath === 'string' && entry.absPath.length > 0 ? entry.absPath : undefined
+  const shown = absPath ?? path
+  if (entry.state === 'unknown') {
+    return openCellDisabled(shown, '未判定：这台机器上找不到该需求声明的工作区（读根不可得），无法判断文件在不在')
+  }
+  if (entry.state === 'file-missing') {
+    return openCellDisabled(shown, '文件缺失：登记在案但磁盘上找不到该文件，没有正文可读')
+  }
+  return openDocButton(path, absPath)
+}
+
+/**
+ * 这条路是不是「原型」（展示侧兜底；REQ-261005105032-3b02 决议 #30 + frontend.md「迁移期兜底」）。
+ *
+ * 为什么要它：归属判据是**产物 kind**，但本次改动前登记的原型行在台账里 kind 写死为 `notes`
+ * （`prototype` 这个 kind 当时还不存在），**不回填**——只认 kind 会让权威清单（`prototypes/INDEX.md`）
+ * 显示成「其他」，读者看不出那是原型。故这里按路径段兜底归组：认 `prototypes/`（权威路径）
+ * 与 `prototype/`（REQ-292a 旧路径）两个前缀。
+ *
+ * 为什么按**路径段**而不是 `path.includes('prototypes')`：段级匹配不会把 `xxx-prototypes/`
+ * 这类目录名或 `prototypes.md` 这类文件名误认成原型。兜底只影响展示分组（台账不动）。
+ */
+export function prototypeGroupOf(path: string): boolean {
+  const segs = String(path ?? '').split('/')
+  return segs.includes('prototypes') || segs.includes('prototype')
+}
+
+/**
+ * 原型角色标（权威 / 被取代）。三种情形的说辞（FR-12：都不许留白）：
+ *  - `authoritative` → 「权威版本」（下游只能引它）；
+ *  - `superseded` → 「被取代」+ `被取代于 <路径>`；INDEX 没写「被取代于」时如实说"没写"，
+ *    **不编一个路径**（服务端在那种情形下也不注入 `supersededBy`）；
+ *  - 没有角色（INDEX 没列这条 / 读不到 INDEX）→ 说清"未标权威角色"，不猜、也不假装有权威版本。
+ */
+function protoRoleBadge(
+  role: DocPanelEntry['prototypeRole'],
+  supersededBy: string | undefined,
+  inProtoGroup: boolean,
+): string {
+  if (role === 'authoritative') {
+    return '<span class="dsh-pm-proto-role" data-proto-role-text="authoritative">权威版本</span>'
+  }
+  if (role === 'superseded') {
+    return '<span class="dsh-pm-proto-role" data-proto-role-text="superseded">被取代'
+      + (supersededBy === undefined
+        ? '（INDEX 未写「被取代于」）'
+        : '：被取代于 ' + esc(supersededBy))
+      + '</span>'
+  }
+  return inProtoGroup
+    ? '<span class="dsh-pm-hint" data-proto-role-none="1">未标权威角色（INDEX 未列 / 未读到）</span>'
+    : ''
+}
+
+/**
+ * 这一行是否属于原型组（kind 判据优先，路径前缀只兜底旧登记——见 `prototypeGroupOf`）。
+ * 抽成一处：分组（`documentsSection`）与行属性（`docRow`）必须同源，
+ * 否则会出现"行没接到组里、却说自己属于原型组"这种自相矛盾。
+ */
+function inPrototypeGroup(entry: DocPanelEntry): boolean {
+  return String(entry.kind ?? '') === 'prototype' || prototypeGroupOf(String(entry.path ?? ''))
+}
+
+/**
+ * 原型判据标：**只说「有锚点 N 条 / 缺锚点」**（frontend.md「呈现项」第 3 行：只显示有/缺，不显示阈值）。
+ *
+ * 三种情形：
+ *  - 服务端投影了 `prototypeMeta.anchors` → `data-proto-anchors="<n>"`（n>0 时）或
+ *    `data-proto-anchors="none"`（采集到但零条锚点——这是**真实的"缺"**）；
+ *  - 没有 `prototypeMeta`（未采集）→ **不渲染这个标、也不加属性**：此刻我们并不知道"缺不缺"，
+ *    把"未采集"画成"缺锚点"就是拿未知冒充结论（本需求最不能出的那类错）。
+ *    故"未采集"与"采集到 0 条"在产物里是可分辨的：前者没有 `data-proto-anchors`，后者是 `none`；
+ *  - 不是原型行 → 不渲染（这一格只对原型说话，也不为此新增列）。
+ *
+ * 为什么**不显示几何量 / 阈值**：阈值由设计阶段按真实数据定死（D-10），原型只放观测量名与实测值
+ * （决议 #8/#49）——页面摆出数字会让原型稿的实测值冒充判据。服务端为此**只投影锚点**。
+ */
+function protoAnchorsBadge(inProtoGroup: boolean, meta: DocPanelEntry['prototypeMeta']): string {
+  if (!inProtoGroup || meta === undefined) return ''
+  const anchors = Array.isArray(meta.anchors) ? meta.anchors : undefined
+  if (anchors === undefined) return ''
+  return anchors.length > 0
+    ? '<span class="dsh-pm-hint" data-proto-anchors="' + String(anchors.length) + '">判据：有锚点 '
+      + String(anchors.length) + ' 条</span>'
+    : '<span class="dsh-pm-hint" data-proto-anchors="none">判据：缺锚点</span>'
+}
+
+/** 一行文档：**五个字段一个不省**（类型 / 路径 / 登记时间 / 状态 / 打开），状态格四态各有说辞。 */
 function docRow(entry: DocPanelEntry): string {
   const state = String(entry.state ?? '')
   const missing = state === 'file-missing'
+  const kind = String(entry.kind ?? '')
   const at = typeof entry.registeredAt === 'number' && Number.isFinite(entry.registeredAt)
     ? entry.registeredAt
     : undefined
+  // 原型归属：**kind 判据优先**，路径前缀只兜底本次改动前登记为 notes 的旧行
+  // （台账 kind 不回填，见 `prototypeGroupOf`）。分组判据与 `documentsSection` 共用一处实现。
+  const protoByKind = kind === 'prototype'
+  const inProto = inPrototypeGroup(entry)
+  // 角色是**服务端投影**（读 INDEX 得出，本面板不做文件 IO）：只认协议里的两个值，
+  // 运行时混进别的字符串时按"没给"处理（不显示看不懂的角色，也不注入 data-proto-role）。
+  const role = entry.prototypeRole === 'authoritative' || entry.prototypeRole === 'superseded'
+    ? entry.prototypeRole
+    : undefined
+  const supersededBy = typeof entry.supersededBy === 'string' && entry.supersededBy.length > 0
+    ? entry.supersededBy
+    : undefined
   return '<tr class="dsh-pm-doc-row' + (missing ? ' is-missing' : '') + '"'
     + ' data-doc-row="1"'
-    + ' data-doc-kind="' + esc(String(entry.kind ?? '')) + '"'
+    + ' data-doc-kind="' + esc(kind) + '"'
     + ' data-doc-state="' + esc(state) + '"'
+    // 原型行单列：**保留 `data-doc-row="1"`**（`data-doc-row` 条数 == documents.length 是
+    // "一律铺开"的机械判据，加分组属性不许动它）。
+    + (inProto ? ' data-doc-group="prototype"' : '')
+    + (role === undefined ? '' : ' data-proto-role="' + esc(role) + '"')
     + (missing ? ' data-file-missing="1"' : '')
     + '>'
-    + '<td class="dsh-pm-doc-cell-kind">' + esc(kindLabel(String(entry.kind ?? ''))) + '</td>'
+    // 类型格：兜底归组的旧行**显示成「原型」**（否则权威清单那一行会被读成「其他」），
+    // 但 `data-doc-kind` 仍是台账原值——展示侧归组不等于改写台账。
+    + '<td class="dsh-pm-doc-cell-kind">' + esc(inProto ? kindLabel('prototype') : kindLabel(kind)) + '</td>'
     + '<td class="dsh-pm-doc-cell-path">' + pathCellOf(entry) + '</td>'
     + '<td class="dsh-pm-doc-cell-time">'
     // 未登记的行本来就没有登记时间：说清"没登记"，不留白（"没有时间"与"没登记"是同一件事）
@@ -286,16 +467,60 @@ function docRow(entry: DocPanelEntry): string {
       ? '<span class="dsh-pm-hint">' + (state === 'unregistered' ? '未登记（无登记时间）' : '台账未记登记时间') + '</span>'
       : esc(fmtTime(at)))
     + '</td>'
+    // 状态格承载原型角色标（权威 / 被取代）：第一列宽度只 84px 且 `white-space: nowrap`，
+    // 把「被取代于 <路径>」这类长文本放进去会把窄列撑爆；状态格 190px 且默认可换行。
     + '<td class="dsh-pm-doc-cell-state">'
+    + protoRoleBadge(role, supersededBy, inProto)
+    // 判据（有/缺锚点）：同样放状态格（不新增列、不新增表），与角色标同处一行
+    + protoAnchorsBadge(inProto, entry.prototypeMeta)
     + '<span class="dsh-pm-doc-state" data-doc-state-text="' + esc(state) + '">' + esc(stateText(state)) + '</span>'
     + '<span class="dsh-pm-hint">（' + esc(stateNote(state)) + '）</span>'
+    + (inProto && !protoByKind
+      ? '<span class="dsh-pm-hint" data-proto-group-fallback="1">'
+        + '台账 kind=' + esc(kind.length > 0 ? kind : '未知')
+        + '（本次改动前登记的原型行：按路径归入原型组，台账 kind 不回填）</span>'
+      : '')
     + '</td>'
+    // 「打开」列（FR-6 紧凑表）：一行一个可点入口；不可开的状态给 disabled 占位（不给假出口）
+    + '<td class="dsh-pm-doc-cell-open">' + openCellOf(entry) + '</td>'
     + '</tr>'
 }
 
-/** 确定文档块：**逐行铺开**（不截断、不折叠、不做内层滚动）。 */
+/**
+ * 原型组头（表内单列的组标）：`data-doc-subhead="prototype"` + 分组计数 `data-proto-count`。
+ *
+ * 为什么是**表内一行**而不是另起一张表：确定文档的列结构（类型/路径/登记时间/状态）对原型
+ * 完全一样，另起一张表要么重复一套表头、要么两张表的列宽各自漂移；表内一行则在同一个
+ * 列宽体系里，读者一眼看出"下面这几行是一组"。它**不是**文档行（不带 `data-doc-row="1"`），
+ * 所以 `data-doc-row` 条数 == `documents.length` 的既有判据不受影响。
+ */
+function protoSubheadRow(protoCount: number, authoritative: number, superseded: number): string {
+  const parts: string[] = []
+  // 只在确实有数时才写这两个数：`0` 在本页面只用于"真实计数为零"，不兼职当"没有"
+  if (authoritative > 0) parts.push('权威 ' + String(authoritative))
+  if (superseded > 0) parts.push('被取代 ' + String(superseded))
+  return '<tr class="dsh-pm-doc-subhead" data-doc-subhead="prototype">'
+    + '<td colspan="5">'
+    + '<span class="dsh-pm-proto-count" data-proto-count="' + String(protoCount) + '">原型 '
+    + String(protoCount) + ' 份</span>'
+    + (parts.length === 0 ? '' : '<span class="dsh-pm-hint">（' + parts.join(' · ') + '）</span>')
+    // 权威版本从哪来必须写在脸上：客户端不做文件 IO，角色是服务端读 INDEX 投影的
+    + '<span class="dsh-pm-hint">权威 / 被取代以 prototypes/INDEX.md 为准（点路径打开正文）</span>'
+    + '</td></tr>'
+}
+
+/**
+ * 确定文档块：**逐行铺开**（不截断、不折叠、不做内层滚动）。
+ *
+ * 原型（`kind === 'prototype'`，以及兜底归组的旧 notes 行）在**同一张表内单列**：非原型行在前、
+ * 原型行连续排在后面，中间插一行组标（`data-doc-subhead="prototype"` + 分组计数）。
+ * 只是**分组**，不是搬走：原型行仍是 `data-doc-row="1"` 的文档行，`documents.length` 与
+ * `data-doc-row` 条数的恒等式原样成立（决议 #30/#34）。
+ */
 function documentsSection(rawDocs: readonly unknown[]): string {
   const docs = coerceAll(rawDocs, asEntry)
+  const protoRows = docs.filter(inPrototypeGroup)
+  const otherRows = docs.filter(d => !inPrototypeGroup(d))
   const head = '<div class="dsh-pm-block-head">'
     + '<span class="dsh-pm-block-title">确定文档</span>'
     + (docs.length === 0
@@ -312,20 +537,28 @@ function documentsSection(rawDocs: readonly unknown[]): string {
       + '也没有「分类要求但未交」的设计文档。窗口 agent 用 reqboard_submit 登记产物后，这里逐行铺开。</div>'
       + '</div>'
   }
+  const protoHead = protoRows.length === 0
+    ? ''
+    : protoSubheadRow(
+      protoRows.length,
+      protoRows.filter(d => d.prototypeRole === 'authoritative').length,
+      protoRows.filter(d => d.prototypeRole === 'superseded').length,
+    )
   return '<div class="dsh-pm-block" data-doc-section="documents">' + head
     + '<table class="dsh-pm-docs-table" data-doc-table="1">'
-    + '<thead><tr><th>类型</th><th>路径</th><th>登记时间</th><th>状态</th></tr></thead>'
-    + '<tbody>' + docs.map(docRow).join('') + '</tbody>'
+    + '<thead><tr><th>类型</th><th>路径</th><th>登记时间</th><th>状态</th><th>打开</th></tr></thead>'
+    + '<tbody>' + otherRows.map(docRow).join('') + protoHead + protoRows.map(docRow).join('') + '</tbody>'
     + '</table></div>'
 }
 
 /* ────────────────────────────────────────────────────────────── ② 生成物 */
 
 /**
- * 生成物块：与人写的文档**分开列**。
+ * 生成物块：与人写的文档**分开列**（FR-6 紧凑表：名称 / 路径 / 状态 / 打开）。
  *
  * 生成物是"工具重建的事实源"（queue.json / rtm-*.yml），没有登记时间、也没有"应当存在"的说法
  * ——所以状态格写「自动维护」而不是「未登记/文件缺失」（那会把"还没生成"误报成"缺了一份文档"）。
+ * 生成物没有缺失/未判定态（服务端只投影在盘的），「打开」列恒为可用按钮。
  */
 function generatedSection(rawGenerated: readonly unknown[]): string {
   const generated = coerceAll(rawGenerated, asGenerated)
@@ -342,13 +575,16 @@ function generatedSection(rawGenerated: readonly unknown[]): string {
       + '</div>'
   }
   const rows = generated.map(g =>
-    '<li class="dsh-pm-doc-generated" data-generated-row="1">'
-    + '<span class="dsh-pm-doc-label">' + esc(String(g.label ?? '')) + '</span>'
-    + openablePath(String(g.path ?? ''))
-    + '<span class="dsh-pm-hint">自动维护（工具重建）</span>'
-    + '</li>').join('')
+    '<tr class="dsh-pm-doc-generated" data-generated-row="1">'
+    + '<td class="dsh-pm-doc-cell-label"><span class="dsh-pm-doc-label">' + esc(String(g.label ?? '')) + '</span></td>'
+    + '<td class="dsh-pm-doc-cell-path">' + plainDocPath(String(g.path ?? ''), typeof g.absPath === 'string' ? g.absPath : undefined) + '</td>'
+    + '<td class="dsh-pm-doc-cell-state"><span class="dsh-pm-hint">自动维护（工具重建）</span></td>'
+    + '<td class="dsh-pm-doc-cell-open">' + openDocButton(String(g.path ?? ''), typeof g.absPath === 'string' ? g.absPath : undefined) + '</td>'
+    + '</tr>').join('')
+  // data-generated-list 沿用旧契约名（断言锚点），元素从 <ul> 换成 <table>（紧凑表化）
   return '<div class="dsh-pm-block" data-doc-section="generated">' + head
-    + '<ul class="dsh-pm-doc-list" data-generated-list="1">' + rows + '</ul>'
+    + '<table class="dsh-pm-docs-table" data-generated-table="1" data-generated-list="1">'
+    + '<tbody>' + rows + '</tbody></table>'
     + '</div>'
 }
 
@@ -411,22 +647,26 @@ function discoveredSection(rawDiscovered: readonly unknown[]): string {
     const count = Number.isFinite(g.count) ? Math.max(0, Math.trunc(g.count)) : 0
     const samples = coerceAll(Array.isArray(g.samples) ? g.samples : [], asString)
     const rest = Math.max(0, count - samples.length)
-    return '<li class="dsh-pm-discovered-group" data-discovered-group="' + esc(g.kind) + '"'
+    // FR-6 紧凑表：一类一行（类型 / 计数 / 样例 / 余量），样例仍是可点开的真实路径
+    return '<tr class="dsh-pm-discovered-group" data-discovered-group="' + esc(g.kind) + '"'
       + ' data-discovered-count="' + String(count) + '">'
-      + '<span class="dsh-pm-doc-kind">' + esc(discoveredKindLabel(g.kind)) + '</span>'
-      + '<span class="dsh-pm-discovered-num">' + String(count) + ' 个</span>'
+      + '<td class="dsh-pm-doc-cell-kind"><span class="dsh-pm-doc-kind">' + esc(discoveredKindLabel(g.kind)) + '</span></td>'
+      + '<td class="dsh-pm-doc-cell-count"><span class="dsh-pm-discovered-num">' + String(count) + ' 个</span></td>'
+      + '<td class="dsh-pm-doc-cell-samples">'
       + (samples.length === 0
         ? '<span class="dsh-pm-hint">未给样例（服务端只给了计数）</span>'
         : '<span class="dsh-pm-hint">样例：</span>' + samples.map(discoveredSample).join(''))
-      + '<span class="dsh-pm-discovered-rest">'
+      + '</td>'
+      + '<td class="dsh-pm-doc-cell-rest"><span class="dsh-pm-discovered-rest">'
       + (rest > 0
         ? '其余 ' + String(rest) + ' 个同类，去文档目录查看'
         : '全部 ' + String(count) + ' 个已列在上面')
-      + '</span>'
-      + '</li>'
+      + '</span></td>'
+      + '</tr>'
   }).join('')
   return '<div class="dsh-pm-block" data-doc-section="discovered">' + head
-    + '<ul class="dsh-pm-doc-list" data-discovered-list="1">' + rows + '</ul>'
+    + '<table class="dsh-pm-docs-table" data-discovered-table="1" data-discovered-list="1">'
+    + '<tbody>' + rows + '</tbody></table>'
     + '</div>'
 }
 
@@ -454,6 +694,17 @@ function evidenceCell(item: VerificationItem): string {
 }
 
 /**
+ * 核验项的来源 kind（REQ-261005105032-3b02 §验收单节表）。
+ *
+ * 为什么防御式取：面板吃的是**服务端 JSON**（`asItem` 只做对象形状守卫），旧台账 / 中间层脏数据
+ * 可能没有 `source`；此处只求"如实标出来源"，不因一个缺失字段把整块渲染炸掉。
+ */
+function verifySourceKind(item: VerificationItem): string {
+  const kind = (item.source as { kind?: unknown } | undefined)?.kind
+  return typeof kind === 'string' && kind.length > 0 ? kind : 'unknown'
+}
+
+/**
  * 一行核验项：列照抄 `verification.ts` 的七列。
  * `needsHuman` 是这张表最该被看见的一列——「这条只能人来判」必须显眼
  * （既有实现用 `.dsh-pm-flag.verify-pending` 旗标，这里照用同一套类名）。
@@ -468,6 +719,9 @@ function verifyRow(item: VerificationItem): string {
   return '<tr data-verify-row="1"'
     + ' data-verify-id="' + esc(item.id) + '"'
     + ' data-verify-status="' + esc(status) + '"'
+    // REQ-261005105032-3b02（§验收单节表）：**只加属性、不动列**——「UI 需求验收单含原型/裁定
+    // 两个对照项」由此成为可字符串断言的判据（否则只能靠肉眼在表格里找中文标题）。
+    + ' data-verify-source="' + esc(verifySourceKind(item)) + '"'
     + (needsHuman ? ' data-needs-human="1"' : '')
     + '>'
     + '<td class="dsh-pm-doc-cell-criterion"><span class="dsh-pm-hint">' + esc(item.id) + '</span> '
@@ -647,11 +901,20 @@ function reconcileBlock(a: ArchiveRecord): string {
     + '清单对账：' + esc(parts.join(' · ')) + '</div>' + detail
 }
 
-/** 归档块：目录 / 清单 / 合并去向 / 索引条目 / 说明书更新点 / 清单对账。 */
-function archiveSection(a: ArchiveRecord): string {
-  const state = a.archivedAt === undefined
+/**
+ * 归档块：目录 / 清单 / 合并去向 / 索引条目 / 说明书更新点 / 清单对账。
+ *
+ * REQ-261006123819-3af3 FR-3（D-2）：判据不再是那个无写入者的归档时间字段（故「已归档」
+ * 分支永远不可达），而是同载荷里服务端已算好的**归档门读数**——客户端另抄一个判据就是第二个
+ * 事实源。`gate` 取不到（端点未接线 / 旧服务端）时**不猜**：按「材料已备」呈现并保持
+ * data-archived="no"（与 gate-read-root 的「未判定」口径同源）。
+ */
+function archiveSection(a: ArchiveRecord, gate: GateVerdict | undefined): string {
+  const archived = gate?.verdict === 'passed'
+  const state = !archived
     ? '<span class="dsh-pm-review" data-state="pending">待归档（材料已备）</span>'
-    : '<span class="dsh-pm-review" data-state="pass">已归档 ' + esc(fmtTime(a.archivedAt)) + '</span>'
+    : '<span class="dsh-pm-review" data-state="pass">已归档'
+      + (gate?.at !== undefined ? ' ' + esc(fmtTime(gate.at)) : '') + '</span>'
   const archiveDocs = coerceAll(Array.isArray(a.docs) ? a.docs : [], asArchiveDoc)
   const docs = archiveDocs.map(d =>
     '<li data-archive-doc="' + esc(d.path) + '">'
@@ -670,7 +933,7 @@ function archiveSection(a: ArchiveRecord): string {
   const dir = String(a.dir ?? '')
   const indexEntry = String(a.indexEntry ?? '')
   return '<div class="dsh-pm-block" data-doc-section="archive" data-archived="'
-    + (a.archivedAt === undefined ? 'no' : 'yes') + '">'
+    + (archived ? 'yes' : 'no') + '">'
     + '<div class="dsh-pm-block-head"><span class="dsh-pm-block-title">归档</span>' + state
     + (dir.length === 0
       ? '<span class="dsh-pm-hint">未写需求目录（dir 为空）</span>'
@@ -712,7 +975,8 @@ function renderDocs(data: unknown): string {
     + discoveredSection(d.discovered ?? [])
     + verificationSection(d.verification)
     + gatesSection(d.gates)
-    + (d.archive === undefined ? '' : archiveSection(d.archive))
+    // REQ-261006123819-3af3 FR-3：归档态判据来自服务端的归档门读数（取不到传 undefined → 保守分支）
+    + (d.archive === undefined ? '' : archiveSection(d.archive, (d.gates ?? []).find(g => g.gate === 'archive')))
     + '</section>'
 }
 

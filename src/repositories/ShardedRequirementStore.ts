@@ -48,7 +48,9 @@ import type {
   SweepResult,
 } from '../application/ports.js'
 import type { ActorRef, TriageRecord } from '../shared/protocol.js'
-import { factsOf, summarize, type RequirementFacts, type RequirementSummary } from '../domain/requirement/RequirementSummary.js'
+import { factsOf, type RequirementFacts, type RequirementSummary } from '../domain/requirement/RequirementSummary.js'
+import { boardSummaryOf, boardSummaryOfAuthoritative, type BoardSummaryInput } from '../shared/board-summary.js'
+import type { ObjectKind } from '../domain/requirement/ReqboardPaths.js'
 import { compareSummaryOrder, decodeSummaryCursor, encodeSummaryCursor } from './shardPaging.js'
 import { RequirementShardRepository } from './RequirementShardRepository.js'
 import { assembleRecord, loadParts } from './shardAssembly.js'
@@ -136,6 +138,64 @@ export class ShardedRequirementStore implements RequirementStore {
   }
 
   /**
+   * 摘要用的**三件外置对象取数**（REQ-261006175040-12d4 t3 / FR-2、FR-6）。
+   *
+   * 索引构建读的是热记录（`record.json`，只有标量与计数），门读数所需的 `artifacts` / `plan` /
+   * `archive` 都在外置对象里 ⇒ 这里补读三件。**一次性成本**：进程内索引建立时每需求合计 2.19 MiB /
+   * 60 条（实测见 `evidence/payload-baseline.md`），索引命中后每请求 0；写路径手上就有整条记录，
+   * 不走这里（`ShardedRequirementWriter` 直接投影）。
+   *
+   * 刻意**不读** `verification.json`（1.95 MiB）：验收 chip 由 `gates` 里的 verification 门读数表达。
+   */
+  private async withGateObjects(record: RequirementRecord, cold = false): Promise<BoardSummaryInput> {
+    const [artifacts, plan, archive] = await Promise.all([
+      this.readObjectForSummary<readonly unknown[]>(record.id, 'artifacts', cold),
+      this.readObjectForSummary<BoardSummaryInput['plan']>(record.id, 'plan', cold),
+      this.readObjectForSummary<unknown>(record.id, 'archive', cold),
+    ])
+    return {
+      ...record,
+      // 文件不存在 = 该需求从未登记该类产物 ⇒ 传空数组（真实缺失：卡面该显示红 ✗）
+      ...(artifacts.known ? { artifacts: artifacts.value ?? [] } : {}),
+      // 计划：不存在 ⇒ 不给键（无计划 = 无 chip；该 chip 本就没有「缺失」态）
+      ...(plan.known && plan.value !== undefined ? { plan: plan.value } : {}),
+      ...(archive.known && archive.value !== undefined ? { archive: archive.value } : {}),
+      // 读不到（损坏被隔离 / IO 异常）⇒ 显式告知装配点：归档读数不可得
+      ...(archive.known ? {} : { archiveReadable: false }),
+    }
+  }
+
+  /**
+   * 读一件外置对象，并回答**「读得到吗」**（而不是「值是什么」）。
+   *
+   * 三种结局分开处置（`design/backend.md` §3）：
+   *   · 读到值 → `known: true` + 值；
+   *   · 文件不存在（真没有）→ `known: true` 无值（调用方按空处理）；
+   *   · 文件在盘上却读不出来 / IO 抛错 → `known: false` + `onWarn`（**不剔除需求**：
+   *     标量与计数仍在，读不到只是"这个读数不可得"）。
+   */
+  private async readObjectForSummary<T>(
+    id: string,
+    kind: ObjectKind,
+    cold: boolean,
+  ): Promise<{ known: boolean; value?: T }> {
+    const opts = cold ? { cold: true } : {}
+    try {
+      const value = await this.repo.readObject<T>(this.root, id, kind, opts)
+      if (value !== undefined) return { known: true, value }
+      const exists = await this.repo.objectExists(this.root, id, kind, opts)
+      if (exists) {
+        this.onWarn(`分片 ${id} 的 ${kind} 对象在盘上却读不出来（可能已隔离）——该读数按不可得处理（卡面不渲染，不冒充缺失）`)
+        return { known: false }
+      }
+      return { known: true }
+    } catch (err) {
+      this.onWarn(`分片 ${id} 的 ${kind} 对象读取失败，该读数按不可得处理：${(err as Error).message}`)
+      return { known: false }
+    }
+  }
+
+  /**
    * 取某热侧需求的摘要（`cache: true` 时补进索引）。
    *
    * 坏分片（解析失败/结构不合规）在这里被**挡住**：告警 + 返回 `undefined`，
@@ -145,7 +205,7 @@ export class ShardedRequirementStore implements RequirementStore {
     try {
       const record = await this.repo.readRecord(this.root, id)
       if (record === undefined) return undefined
-      const summary = summarize(record)
+      const summary = boardSummaryOf(await this.withGateObjects(record))
       if (cache && this.index !== undefined) this.index.set(id, summary)
       // 顺手留下窄投影快照（只有在此处读到整条记录才拿得到它，见 factsCache 的注释）。
       if (cache && this.factsCache !== undefined) this.factsCache.set(id, factsOf(record))
@@ -163,7 +223,7 @@ export class ShardedRequirementStore implements RequirementStore {
     for (const id of ids) {
       try {
         const record = await this.repo.readRecord(this.root, id, { cold: true })
-        if (record !== undefined) out.push(summarize(record))
+        if (record !== undefined) out.push(boardSummaryOf(await this.withGateObjects(record, true)))
       } catch (err) {
         this.onWarn(`冷侧分片 ${id} 读取失败，已跳过：${(err as Error).message}`)
       }
@@ -183,7 +243,8 @@ export class ShardedRequirementStore implements RequirementStore {
     // 再回落冷侧
     try {
       const cold = await this.repo.readRecord(this.root, id, { cold: true })
-      return cold === undefined ? undefined : summarize(cold)
+      // 冷侧也要带门读数（终态行读 archivePrepared；见 design/architecture.md §4）
+      return cold === undefined ? undefined : boardSummaryOfAuthoritative(await this.withGateObjects(cold, true))
     } catch (err) {
       this.onWarn(`冷侧分片 ${id} 读取失败：${(err as Error).message}`)
       return undefined
@@ -207,6 +268,12 @@ export class ShardedRequirementStore implements RequirementStore {
       .filter((s) => {
         if (filter?.ids !== undefined && !filter.ids.includes(s.id)) return false
         if (filter?.status !== undefined && !filter.status.includes(s.status)) return false
+        // t5（FR-8）：`includeUnattributed` 把**未归属**（无 projectId）的存量记录一并带回——
+        // 缺省 false = 只见 projectId 相等者（老行为逐字不变）。
+        if (filter?.projectId !== undefined && s.projectId !== filter.projectId) {
+          const unattributed = !(typeof s.projectId === 'string' && s.projectId.length > 0)
+          if (!(filter.includeUnattributed === true && unattributed)) return false
+        }
         if (filter?.workspaceRoot !== undefined && s.workspaceRoot !== filter.workspaceRoot) return false
         if (filter?.sourceSessionId !== undefined && s.sourceSessionId !== filter.sourceSessionId) return false
         // 席位预筛（FR-3）：只看落盘的 seats，**不做**存量折算——折算唯一处是读端 `seatOfSummary`
@@ -300,7 +367,8 @@ export class ShardedRequirementStore implements RequirementStore {
   async create(input: NewRequirement, actor: ActorRef): Promise<RequirementRecord> {
     const created = await this.writer.create(input, actor)
     // 新建需求先进索引（否则首屏要等一次定点读才看得到它）
-    if (this.index !== undefined) this.index.set(created.id, summarize(created))
+    // 新建时该需求一件产物都没登记 ⇒ 权威口径给"全 missing"（不是"读不到"）
+    if (this.index !== undefined) this.index.set(created.id, boardSummaryOfAuthoritative(created))
     // 新建时整条记录在手 ⇒ 正文快照一并留下（否则该需求的提示词缝只能看到空正文）
     if (this.factsCache !== undefined) this.factsCache.set(created.id, factsOf(created))
     return created

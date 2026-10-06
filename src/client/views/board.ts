@@ -10,10 +10,12 @@ import type { BoardState, ReqCard, RequirementRecord } from '../types.ts'
 import { CATEGORY_LABELS, LANE_STATUSES, NO_ARCHIVED, STATUS_LABELS, fmtTime, renderRunningDot, sessionChipHtml, windowCodeFromSessionId } from '../render/dom-utils.ts'
 import { cardActions, renderReqCard } from './artifacts.ts'
 // REQ-261001154450-b918 FR-6：闭环判据与 domain 同源（此前看板自己手写 archived+archive 判据）
-import { closingGapOf } from '../../domain/status/Predicates.js'
+// REQ-261005193546-1b1a FR-2 / FR-4：卡面计数的活卡兜底同样走 domain 单点（不在本文件手写状态字面量）
+import { isLiveTask, liveCountOf, liveTasksOf } from '../../domain/status/Predicates.js'
 import { fmtTokens } from '../../shared/protocol.ts'
 // REQ-261004210128-283d FR-2/FR-3/FR-4：运行态判定的唯一实现（席位权威 ∪ 来源窗口折算）
-import { NO_RUNNING, requirementRunning } from '../session-running.ts'
+// REQ-261005213603-eaed FR-1：同一处再加上「新鲜推进锁」（后台 run 在跑）——口径仍只有这一个函数
+import { NO_RUNNING, requirementRunningMark } from '../session-running.ts'
 
 /**
  * 卡片投影的**唯一构造点**（私有）：一个需求 + 该需求的任务 → `ReqCard`。
@@ -21,16 +23,23 @@ import { NO_RUNNING, requirementRunning } from '../session-running.ts'
  * 为什么抽出来（REQ-261002105242-a3fb）：进行中投影与终态投影必须逐字段同口径——
  * 历史上"两个投影各写一套 map"正是本仓反复吃过的「两份真相」；抽成单点后，
  * 归档条的 `done/total` 与详情页统计卡不可能对不上。
+ *
+ * 活卡口径（REQ-261005193546-1b1a FR-2）是本函数的**独立漏点**：`/state` 边界收敛不等于
+ * 这里安全——本函数只要拿到未过滤数组（另一条调用路径 / 别处传入），读数立刻退回 132。
+ * 故这里**当场**再兜一道：`tasks` 走 `liveTasksOf`、`totalCount` 走 `liveCountOf`，
+ * **不假设「上游好了这里就自动好」**（design/frontend.md §四个取数边界①）。
  */
 function toCard(state: BoardState, req: RequirementRecord): ReqCard {
-  const tasks = state.tasks.filter(t => t.requirementId === req.id)
+  const reqTasks = state.tasks.filter(t => t.requirementId === req.id)
+  const tasks = liveTasksOf(reqTasks)
   const doneCount = tasks.filter(t => t.status === 'done').length
   const tokenTotal = state.tokenTotals?.[req.id]
   return {
     req,
     tasks,
     doneCount,
-    totalCount: tasks.length,
+    // 分母与上面的过滤**同源但独立求值**（过滤一套、分母另抄一套 = 完成度永久说谎）
+    totalCount: liveCountOf(reqTasks),
     readyIds: state.ready[req.id] ?? [],
     blocked: req.blocked || tasks.some(t => t.blocked),
     ...(tokenTotal !== undefined ? { tokenTotal } : {}),
@@ -112,7 +121,8 @@ export function buildBoard(
   archived: ReadonlySet<string> = NO_ARCHIVED,
   /**
    * 在跑的会话 id 集合（REQ-261004210128-283d FR-3/FR-4）。缺省 = 空集 ⇒ 输出与改动前逐字节一致。
-   * 只传 id 集合（不传布尔），由渲染层按需求映射成布尔——映射口径只有 `requirementRunning` 一处。
+   * 只传 id 集合（不传布尔），由渲染层按需求映射成 mark——映射口径只有 `requirementRunningMark` 一处
+   * （REQ-261005213603-eaed FR-1：会话回合 ∪ 新鲜推进锁）。
    */
   running: ReadonlySet<string> = NO_RUNNING,
 ): string {
@@ -123,7 +133,7 @@ export function buildBoard(
     const inLane = status === 'accepting'
       ? cards.filter(c => c.req.status === 'accepting' || c.req.status === 'done')
       : cards.filter(c => c.req.status === status)
-    const cardsHtml = inLane.map(c => renderReqCard(c, now, archived, requirementRunning(c.req, isRunning))).join('')
+    const cardsHtml = inLane.map(c => renderReqCard(c, now, archived, requirementRunningMark(c.req, isRunning, now))).join('')
     return `
       <div class="dsh-pm-lane" data-lane="${status}">
         <div class="dsh-pm-lane-head">
@@ -325,12 +335,14 @@ export function renderListToolbar(
  * 单条需求卡片（列表视图行）。
  *
  * `running`（REQ-261004210128-283d FR-4）：与泳道卡**同一个渲染单点**（`renderRunningDot`）、
- * 同一映射口径（`requirementRunning`）；缺省空集 = 今天的输出。
+ * 同一映射口径（REQ-261005213603-eaed 起为 `requirementRunningMark`：会话回合 ∪ 新鲜推进锁）；
+ * 缺省空集 = 今天的输出（`now` 用于推进锁新鲜度判定，故本参不再是摆设）。
  */
-export function renderListCard(card: ReqCard, _now: number, archived: ReadonlySet<string> = NO_ARCHIVED, running: ReadonlySet<string> = NO_RUNNING): string {
+export function renderListCard(card: ReqCard, now: number, archived: ReadonlySet<string> = NO_ARCHIVED, running: ReadonlySet<string> = NO_RUNNING): string {
     const { req, tasks, doneCount, totalCount, blocked } = card
     const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
-    const active = tasks.filter(t => t.status !== 'todo' && t.status !== 'done' && t.status !== 'canceled').length
+    // 在途计数（REQ-261005193546-1b1a FR-2）：活卡判据走 domain 单点，不再手写 `!== 'canceled'`
+    const active = tasks.filter(t => t.status !== 'todo' && t.status !== 'done' && isLiveTask(t)).length
     const cat = req.category
       ? `<span class="dsh-pm-cat" data-cat="${req.category}">${CATEGORY_LABELS[req.category] ?? req.category}</span>`
       : ''
@@ -348,9 +360,11 @@ export function renderListCard(card: ReqCard, _now: number, archived: ReadonlySe
       : '<span class="dsh-pm-list-nowindow">人工建卡</span>'
 
     // REQ-9f4a44：验收通过即 archived，材料随后补齐——未提交归档材料时给看板可见标记。
-    // REQ-261001154450-b918 FR-6：判据改为**与 domain 同一谓词**（closingGapOf），
-    // 消灭"看板说补过了、投影说没闭环"这类两套判据打架（8475 的收尾缺尾正出在这里）。
-    const archivePendingChip = closingGapOf(req) === 'archive_missing'
+    // REQ-261006175040-12d4 t6 / FR-5：判据改读摘要里的 `archivePrepared`。
+    // 为什么不再就地调 `closingGapOf`：它读 `req.archive` / `req.artifacts`，而首屏摘要自 B12 起
+    // 不再下发这两个大字段 ⇒ 每一行归档需求都会被判成「归档材料待补」（假红）。
+    // 同源性没丢：`archivePrepared` 由服务端用**同一组输入**（归档记录 ∨ 归档产物）算出。
+    const archivePendingChip = req.archivePrepared === false
       ? '<span class="dsh-pm-chip is-warn">归档材料待补</span>'
       : ''
 
@@ -362,7 +376,7 @@ export function renderListCard(card: ReqCard, _now: number, archived: ReadonlySe
     // 可点的 jump-session 按钮（sessionChipHtml），两者重复，保留 chip。
     return `
       <tr class="${rowCls}" data-req="${esc(req.id)}" data-action="open-req">
-        <td><span class="dsh-pm-card-id">${esc(req.id)}</span>${renderRunningDot(requirementRunning(req, sid => running.has(sid)))}</td>
+        <td><span class="dsh-pm-card-id">${esc(req.id)}</span>${renderRunningDot(requirementRunningMark(req, sid => running.has(sid), now))}</td>
         <td class="dsh-pm-td-title">
           <span class="dsh-pm-list-title" data-action="open-req" data-req="${esc(req.id)}">${esc(req.title)}</span>
           ${card.tokenTotal !== undefined ? `<span class="dsh-pm-token-badge" title="累计 Token（会话快照差值合计，含子代理）">🪙 ${esc(fmtTokens(card.tokenTotal))}</span>` : ''}

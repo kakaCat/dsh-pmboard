@@ -57,6 +57,7 @@ import type { RequirementFacts, RequirementSummary } from '../domain/requirement
 import type { ChainRunSummary } from './gate/GatePostChain.js'
 // 交接水位三档的类型单一源在判据模块（本文件只**引用类型**，不在运行时把它拉进用例）。
 import type { HandoffThresholds } from './internal/handoff-policy.js'
+import type { SkillFileFingerprint } from './internal/skill-manifest.js'
 
 /**
  * 只读台账视图（用例读路径的输入）。
@@ -134,6 +135,18 @@ export interface RequirementFilter {
   readonly scope?: 'active' | 'archived' | 'all'
   readonly ids?: readonly string[]
   readonly status?: readonly RequirementStatus[]
+  /**
+   * 按**项目**筛（REQ-261005141830-7a3b FR-10）："这个项目下有哪些需求"一次问出来。
+   * 不传 = 全量（老行为）；未归属的存量需求不会命中任何 `projectId` 筛（需另走路径口径）。
+   */
+  readonly projectId?: string
+  /**
+   * 与 `projectId` 搭配使用（REQ-261005141830-7a3b t5 · FR-8）：把**未归属**（无 `projectId`）
+   * 的存量记录一并带回，好让「本项目 + 未归属」一次问出（看板据此保证老记录不消失）。
+   *
+   * 缺省 `false` = 只命中 `projectId` 相等的记录（**老行为逐字不变**）；单独给本项不产生任何筛选效果。
+   */
+  readonly includeUnattributed?: boolean
   readonly workspaceRoot?: string
   readonly sourceSessionId?: string
   /**
@@ -225,6 +238,8 @@ export interface NewRequirement {
   readonly category?: RequirementCategory
   readonly promptDifficulty?: PromptDifficulty
   readonly docBasePath?: string
+  /** 项目唯一标识（FR-1）：立项时由会话解析写入；缺省 = 未归属。 */
+  readonly projectId?: string
   readonly workspaceRoot?: string
   readonly sourceSessionId?: string
   /** 缺省 `draft`。 */
@@ -782,6 +797,71 @@ export interface WindowOpenerPort {
    * 可选：测试替身可不实现（调用方按缺省处理）。
    */
   resolveSourceProject?(sourceSessionId: string): WindowCreateOptions | undefined
+  /**
+   * 冷读任一会话画像（REQ-261005151245-54ae FR-2）——新窗口要继承什么，全从这一次读里取。
+   *
+   * **读不到就抛错**（服务未装配 / 宿主抛错 / 会话不存在）；读到但三项都没读数 → 返回 `{}`。
+   * 为什么不让它返回 `undefined`：那会把「读不到」与「源没有」压成同一态，
+   * 上层只能替宿主断言"源窗口没有标题"——编造。原因文案由 `window-inherit.readWindowProfile` 收口。
+   * 可选：测试替身可不实现（调用方按「未装配读画像能力」记 failed）。
+   */
+  readProfile?(sessionId: string): Promise<WindowSourceProfile>
+  /**
+   * 写定会话标题（REQ-261005151245-54ae FR-1）。失败**抛错**（调用方翻成 `failed` + 原因）。
+   * 可选：未实现 → 该项 `failed`（「未装配写标题能力」），**不伪造成功**。
+   */
+  rename?(sessionId: string, title: string): Promise<void>
+  /**
+   * 写定会话模型选择（REQ-261005151245-54ae FR-4）。失败**抛错**。
+   * 可选：未实现 → 该项 `failed`（「未装配设模型能力」）。
+   */
+  selectModel?(sessionId: string, selection: WindowModelSelection): Promise<void>
+}
+
+/**
+ * 继承回执的三态（REQ-261005151245-54ae FR-5）——**并列且独立**，不做「一荣俱荣」的折叠。
+ *
+ * `set` = 已按源窗口写定；`skipped` = 源侧没有这项读数（按纪律不动、不猜默认值）；
+ * `failed` = 想做但没做成（能力缺失 / 宿主抛错 / 画像读不到）。
+ * 「读不到」必须落在 `failed` 而不是 `skipped`：前者是"没拿到"，后者是"本来就没有"。
+ */
+export type WindowInheritanceStatus = 'set' | 'skipped' | 'failed'
+
+/** 源会话画像（REQ-261005151245-54ae FR-2）：三项都可缺省（各自独立缺省、不互相兜底）。 */
+export interface WindowSourceProfile {
+  /** 源会话标题（非空才算；空串按缺失处理，不写空标题）。 */
+  title?: string
+  /** 源会话的 Agent 预设（= 界面上的「模式」）。 */
+  agentPreset?: string
+  /** 源会话的模型选择读数。 */
+  modelSelection?: WindowModelSelection
+}
+
+/**
+ * 读画像的结果（REQ-261005151245-54ae FR-2）：要么拿到画像（可为空对象），
+ * 要么拿到读不到的原因——**没有"静默 undefined"这一态**。
+ */
+export interface WindowProfileRead {
+  /** 读到了：`{}` = 宿主投影里三项都没值（各自按"源无该项"处理）。 */
+  profile?: WindowSourceProfile
+  /** 读不到的原因（`profile` 缺席时必有）：`未装配读画像能力（readProfile）` 或 `读画像失败：<宿主错误原文>`。 */
+  reason?: string
+}
+
+/** 模型选择读数（REQ-261005151245-54ae FR-4）：写进子会话时 `reasoningEffort` 缺省即不带该键。 */
+export interface WindowModelSelection {
+  provider: string
+  model: string
+  reasoningEffort?: string
+}
+
+/** 继承回执（REQ-261005151245-54ae FR-5）：三项状态 + 只记 `skipped` / `failed` 的原因。 */
+export interface WindowInheritance {
+  title: WindowInheritanceStatus
+  preset: WindowInheritanceStatus
+  model: WindowInheritanceStatus
+  /** 条目格式 `<项名>：<一句话原因>`（项名 ∈ 标题/模式/模型），顺序即执行顺序。 */
+  reasons: string[]
 }
 
 /** 开新会话的落点（REQ-261004150249-731e FR-1）。**互斥**：只取其一。 */
@@ -790,6 +870,39 @@ export interface WindowCreateOptions {
   workspaceId?: string
   /** 目标工作目录（无 workspace 归属时的兜底）。 */
   cwd?: string
+  /**
+   * 目标 Agent 预设（模式；REQ-261005151245-54ae FR-3）。
+   *
+   * 与上面两个落点字段**正交**：互斥判定只针对 `workspaceId` / `cwd`，本字段不参与。
+   * 仅 `create` 路径使用；`fork` 路径由宿主按源会话继承，不重复设。
+   */
+  agentPreset?: string
+}
+
+/**
+ * 项目注册表条目（REQ-261005141830-7a3b FR-2/FR-3）——宿主 `workspaceRegistry` 的最小投影。
+ *
+ * 一个条目就是**一个项目**：`id` 是它的身份，`path` 是它的根，`sessionIds` 是它下面的窗口。
+ * 三者同源、同一次查表拿到——所以"项目 id 里带着 workspaceRoot"不是两次映射，而是一条记录的两个字段。
+ */
+export interface ProjectEntry {
+  /** 项目唯一标识（宿主 workspace id；数字型已在适配器归一为字符串）。 */
+  id: string
+  /** 项目的工作区根（= 该项目的 `workspaceRoot`）；空串表示"有 id 无根"（不可用）。 */
+  path: string
+  /** 会话 → 项目 的反查键（该项目的窗口；非数组会被归一为空数组）。 */
+  sessionIds: readonly string[]
+}
+
+/**
+ * 项目注册表端口（REQ-261005141830-7a3b FR-2/FR-3）——"谁在哪个项目里"的只读入口。
+ *
+ * **缺省 = 未装配**：调用方必须走路径兜底并标注（FR-8），不得把"拿不到"当成"没有项目"。
+ * 唯一 I/O 实现见 `adapters/WorkspaceRegistryProjectPort.ts`。
+ */
+export interface ProjectRegistryPort {
+  /** 项目条目快照；未装配 / 服务不可用 → `undefined`（不抛错、不伪装空数组）。 */
+  list(): readonly ProjectEntry[] | undefined
 }
 
 /**
@@ -1111,6 +1224,20 @@ export interface PendingConfirmPort {
   /** 本窗口**未作答**的挂起确认（FR-9 停手守卫）；没有则 undefined。 */
   pendingForWindow(windowKey: string): PendingConfirmation | undefined
   /**
+   * 只读查「同一道门」是否已有人在等（REQ-261006164732-6503 t2 · 设计 I-4 / G-3）。
+   *
+   * 键 = `(requirementId, target, kind)`，**不含 windowKey**——同一需求同一道门，跨窗口只算一道；
+   * 只认「未作答且未过期」，命中至多一条。**纯读**：不 settle、不 register、不 markInterrupted、不续期。
+   *
+   * 为什么是端口的**必选**成员（而不是可选）：建门去重靠它；可选就等于"某些实现可以没有唯一性"，
+   * 而那是最难查的一类静默降级。
+   */
+  findOpen(input: {
+    requirementId: string
+    target: 'artifact' | 'plan'
+    kind?: ArtifactKind
+  }): PendingConfirmation | undefined
+  /**
    * 标记「阻塞等待期间被中止」（REQ-260927123256-196b FR-4）：只写首次 `interruptedAt`（幂等），
    * 未知 ticket → undefined（不抛）。中止记录以 `interruptedAt` 为过期基准，再获一个完整 TTL。
    */
@@ -1149,9 +1276,15 @@ export interface DialogInFlightPort {
   enter(input: { ref: string; windowKey: string; requirementId: string; kind: 'confirm' | 'gate'; suspend: boolean }): void
   /** 解除（幂等；未知 ref 零动作）。 */
   exit(ref: string): void
-  /** 该需求是否有未解除的在途弹框（**同步**）。 */
+  /**
+   * 该需求是否有未解除的在途弹框（**同步**）。
+   *
+   * REQ-261006170150-52cc FR-3：实现侧按 `suspend` **分档惰性过期**
+   * （挂起型 30 分钟 / 阻塞型 60 分钟）——读出过期记录即摘掉并按"无人等待"返回 false。
+   * 故 `true` 的含义是"**此刻真的**有人在等"，而不是"历史上登记过"。
+   */
   inFlightFor(requirementId: string): boolean
-  /** 诊断/对账用快照。 */
+  /** 诊断/对账用快照：只回**未过期**的记录（与 `inFlightFor` 同口径）。 */
   list(): readonly DialogInFlightRecord[]
 }
 
@@ -1203,7 +1336,102 @@ export interface JobsPort {
   available(): boolean
 }
 
+// ---------------------------------------------------------------------------
+// skill 资产端口（REQ-261005122347-e07a FR-1 / FR-2 / FR-5 / FR-6）
+// ---------------------------------------------------------------------------
+
+/**
+ * 解释器探测结果（FR-5）。
+ *
+ * 为什么进回执而不留在插件内部：主 agent 派原型子代理前要**一次拿到**"这台机器能不能检索"，
+ * 否则它只能自己再探一遍，然后就多出第二个探测点（口径必然漂移）。
+ */
+export interface PythonProbeResult {
+  readonly found: boolean
+  /** 探测到的解释器名（python3 / python / py）。found=false 时缺省。 */
+  readonly name?: string
+  /** 版本字符串（如 3.8.10）；拿不到版本时缺省，但不因此判 found=false。 */
+  readonly version?: string
+  /** 解释器绝对路径。 */
+  readonly path?: string
+}
+
+/** 待写文件（内容与指纹一起给：写盘侧再算一遍就会多出第二个口径）。 */
+export interface SkillWriteFile {
+  /** 相对投放根的 POSIX 路径。 */
+  readonly rel: string
+  readonly content: Uint8Array
+  /**
+   * 声明的内容哈希。**给了就必须与实写一致**（写盘侧逐文件校验，不符即整棵树失败）；
+   * 元数据文件（`.manifest.json` / `.gitignore`）没有可预先声明的哈希，故可选。
+   */
+  readonly sha256?: string
+}
+
+/** 投放写盘回执（按实际落盘内容重算，不用调用方传来的值——回执要是"盘上事实"）。 */
+export interface SkillWriteReceipt {
+  readonly files: Readonly<Record<string, SkillFileFingerprint>>
+  readonly bytes: number
+}
+
+/** 读到的资产内容 + 指纹。哈希在适配层算（application 不碰 `node:crypto`）。 */
+export interface SkillAssetContent {
+  readonly content: Uint8Array
+  readonly sha256: string
+}
+
+/**
+ * 包内 skill 资产读端口（FR-1）：唯一实现 = `adapters/SkillAssets`（解 `<pkg>/skills`）。
+ *
+ * 为什么是三个方法：用例必须能枚举「某个 skill 下有哪些文件」才能建待写清单；
+ * 只给 `listSkills()` 就得让用例去猜文件名——那是把目录形状漏进 application。
+ */
+export interface SkillAssetPort {
+  /** 资产根**绝对路径**（诊断/报错用：装机漏打包时要能一眼看出找的是哪）。 */
+  rootDir(): string
+  /** 列包内 skill 名（一级子目录，排序后）。 */
+  listSkills(): readonly string[]
+  /** 列某 skill 下的全部文件（相对 `<pkg>/skills` 的 POSIX 路径，排序后）。 */
+  listFiles(skill: string): readonly string[]
+  /** 读单文件（相对 `<pkg>/skills`）。不存在 → **抛**（响亮，不返回空）。 */
+  readAsset(rel: string): Promise<SkillAssetContent>
+  /**
+   * 读包内 `skills/PROVENANCE.md` 原文（FR-8）。投放清单要据此记下"这批资产来自哪个上游 commit"，
+   * 否则装到用户机器上的那份就断了溯源链。读不到 → **抛**（缺溯源 = 资产不完整）。
+   */
+  readProvenance(): Promise<string>
+}
+
+/**
+ * 投放端口（FR-5 / FR-6）。
+ *
+ * `probePython` 是全插件**唯一**碰 `node:child_process` 的点（落在适配层，与
+ * `adapters/SystemFileOpener` 同层）；application 侧只拿到结果对象。
+ *
+ * `writeTree` 必须**全成功或全不落地**（先写临时目录、逐文件校验、再整体改名）：
+ * 半份资产会让子代理读到混版 skill，那比没有更坏；失败时还要清掉临时目录。
+ * `readTree` 只回**资产文件**，不含 `.manifest.json` / `.gitignore` 两个元数据文件
+ * （否则 `verifyManifest` 会把插件自己写的清单判成 `file-extra`）。
+ */
+export interface SkillInstallPort {
+  /** 顺序探测 python3 → python → py -3；全缺 → `{found:false}`（不抛）。 */
+  probePython(): Promise<PythonProbeResult>
+  /** 写整棵树（事务性）。失败 → 抛，且不留半份与 `.tmp-*` 残留。 */
+  writeTree(root: string, files: readonly SkillWriteFile[]): Promise<SkillWriteReceipt>
+  /** 读整棵树（相对 root 的 POSIX 路径 → 指纹，不含元数据文件）；目录不存在 → 空表。 */
+  readTree(root: string): Promise<Readonly<Record<string, SkillFileFingerprint>>>
+  /** 读投放根里的 `.manifest.json` 原文；不存在 → undefined（缺清单 = 视为未投放）。 */
+  readManifest(root: string): Promise<string | undefined>
+}
+
 export interface UseCaseDeps {
+  /**
+   * 项目注册表端口（REQ-261005141830-7a3b t3 · FR-3）：取根时由 `record.projectId` 查项目条目的 `path`。
+   *
+   * **可选 = 未装配时行为与改造前逐字一致**（一律走路径兜底 + 标注），故本批不改任何既有构造点；
+   * 组合根在 t5 装配真实现。
+   */
+  projectRegistry?: ProjectRegistryPort
   /**
    * 新需求存储端口（REQ-261002161439-277d t8 / B0）。
    *
@@ -1228,8 +1456,27 @@ export interface UseCaseDeps {
   /**
    * 知识层自举通知口（REQ-261004174324-4195 t4）：工作区根被校正后通知一次（即发即忘）。
    * 缺省 = 不自举（老行为）；装配点在组合根（`application/internal/knowledge-bootstrap`）。
+   * 第二参 `projectId`（REQ-261005141830-7a3b t5 · FR-6）：同一项目多窗口只自举一次的去重键。
    */
-  knowledgeBootstrap?: { ensure(root?: string): void }
+  knowledgeBootstrap?: { ensure(root?: string, projectId?: string): void }
+  /**
+   * 包内 skill 资产读端口（REQ-261005122347-e07a FR-1）。**可选**：未装配时
+   * `reqboard_skill_install` 响亮报错，其余链路（注入/推进/归档）一概不受影响——
+   * 保证既有测试夹具不必逐个补桩。
+   */
+  skillAssets?: SkillAssetPort
+  /** 投放端口（FR-5 / FR-6）。未装配 → 工具响亮报错（不静默降级成"没资产"）。 */
+  skillInstall?: SkillInstallPort
+  /**
+   * skills 开关与投放根（FR-7）：由组合根用 `skillsSettings(config)` 注入（非法配置装配期抛错）。
+   * 缺省（未装配）= 开启 + root 落会话工作区，与"不写配置"逐字一致。
+   */
+  skillsSettings?: { readonly enabled: boolean; readonly root?: string }
+  /**
+   * 插件自身身份（name/version/build）：写进 skill 投放清单，让"这份资产是哪一版插件放的"可追溯。
+   * 缺省 = 用 `dsh-pmboard` / `unknown`（不影响投放成功，只影响清单里的溯源字段）。
+   */
+  pluginMeta?: { readonly name: string; readonly version: string; readonly build?: string }
   /**
    * 阶段模型路由表（REQ-261004110201-f253 FR-1）。由组合根用 `stageRoutingSetting(config)` 注入
    * ——**校验发生在装配期**（非法配置在那里就抛，不在执行期才发现）。
@@ -1306,6 +1553,16 @@ export interface UseCaseDeps {
    * 缺省 = 未装配 → 停手判据恒为假，行为与改动前逐字一致（向后兼容）。
    */
   dialogs?: DialogInFlightPort
+  /**
+   * 停手位被清 → 请求一次自动链驱动（REQ-261006170150-52cc FR-2）。
+   *
+   * 组合根实现 = `(id) => diveManager.roundDriver().onRequirementMoved(id)`——
+   * **与 store 桥同一条路**（需求 → sourceSessionId → agents.get → requestDrive，含误停摆重武装），
+   * 因此不新增任何进会话的投递路径（唤醒仍唯一经 round 半的预留 → 投递 → 准入）。
+   *
+   * 缺省 undefined = 未装配 ⇒ 清位只写台账、不请求驱动，行为与改造前逐字一致。
+   */
+  notifyDrivable?: (requirementId: string) => void
   /**
    * 后台任务端口（REQ-260925110957-552d FR-1）。缺省 = 后台任务系统不可用 →
    * advanceRequirement 显式返回 {dispatched:false, reason:'jobs_unavailable'}。

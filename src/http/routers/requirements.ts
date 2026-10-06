@@ -20,9 +20,9 @@ import {
   type RequirementRecord,
 } from '../../shared/protocol.js'
 import { assertArtifactGates, artifactsToConfirm, type GateFailure } from '../../application/internal/artifact-gates.js'
-import { checkDesignCompletenessGate, checkDesignDecompositionGate } from '../../application/internal/content-gate-wiring.js'
+import { checkDesignCompletenessGate, checkDesignDecompositionGate, contentGatesForMove } from '../../application/internal/content-gate-wiring.js'
 // REQ-260930193929-897b FR-1：看板侧无会话上下文，读盘根必须由**需求记录**决定。
-import { applyRequirementWorkspaceRoot } from '../../application/internal/support.js'
+import { applyRequirementWorkspaceRoot, requireSameProject } from '../../application/internal/support.js'
 import { isDesignArtifactKind } from '../../domain/artifact/ArtifactSpec.js'
 // REQ-261002175818-80a8 t6 / FR-6：看板批准路径的披露取**同一份**超容量摘要（不另写措辞）
 import { overCapacitySummary } from '../../domain/task/Footprint.js'
@@ -38,11 +38,16 @@ import { INITIAL_REQ_STATUS, canReqTransition } from '../../domain/requirement/R
 import { isRollback } from '../../domain/requirement/RollbackSpec.js'
 import { applyRequirementRollback, recordRollbackMaterialized, resetInjectionAfterRollback } from '../../application/internal/rollback.js'
 import { executeRollbackCleanup } from '../../application/use-cases/RollbackCleanup.js'
+// REQ-261006164732-6503 t13（serves: FR-4、FR-5）：看板两条落章通道与其余通道共用
+// 落章前提（gateStaleReason）与首写纪律（stampArtifactOnce / stampPlanOnce）——独立复核发现的漏网写点
+import { stampArtifactOnce, stampPlanOnce } from '../../application/internal/confirm-settle.js'
 import { gateForTransition, gateFromStage } from '../../domain/gate/GateCatalog.js'
 import { fmt } from '../../domain/text/fmt.js'
 import type { RouterCtx } from './shared.js'
 import { syncRTMYamlWithSnapshot } from '../../application/internal/rtm-yaml.js'
 import { landApprovedPlan } from '../../application/internal/approved-plan-landing.js'
+// REQ-261005105032-3b02 t11（FR-2）：看板移动进需求阶段时幂等落原型骨架（失败只告警不阻断）。
+import { landPrototypeSkeleton } from '../../application/internal/prototype-skeleton.js'
 
 export function createRequirementsRouter(ctx: RouterCtx) {
   // B12 阶段④-2-③：本文件的读/写已全部迁到 `ctx.requirementStore` ⇒ 旧口不再需要
@@ -61,6 +66,30 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     // 看板 ctx.deps 只有 docs（没有 taskStore.repo），故按最小依赖面传参。
     applyRequirementWorkspaceRoot({ docs, taskStore: ctx.taskStore }, req)
     return checkDesignCompletenessGate(docs, req)
+  }
+
+  /**
+   * 内容门（原型三门 + 裁定门）的看板侧调用（REQ-261005105032-3b02 §10 #46）。
+   *
+   * 看板侧无会话上下文：读盘根只由需求记录决定（与 g2CompletenessFailure 同款纪律），
+   * 裁定留痕探针取既有的 `deps.sessionProbe`（§10 #20：不新增数据源）。
+   *
+   * `docs` 未装配 → **放行**（判不了就不加仪式）：本门是否适用**只能**从 requirement.md 的
+   * front-matter（`sides`）判——没有文档端口时连"这是不是 UI 需求"都无从判定，硬拦等于把
+   * 纯后端 / 文档需求一并拦下（与 g2CompletenessFailure 不同：那个门的判据全在记录里，
+   * 缺端口才是漏洞）。这一支只会在组合根漏装配时命中（生产装配恒传 docs，见 src/index.ts）。
+   */
+  async function contentGateFailure(
+    req: RequirementRecord,
+    from: RequirementRecord['status'],
+    to: RequirementRecord['status'],
+  ): Promise<GateFailure | undefined> {
+    const docs = ctx.deps.docs
+    if (docs === undefined) return undefined
+    applyRequirementWorkspaceRoot({ docs, taskStore: ctx.taskStore }, req)
+    return await contentGatesForMove(docs, req, from, to, {
+      ...(ctx.deps.sessionProbe !== undefined ? { sessionProbe: ctx.deps.sessionProbe } : {}),
+    })
   }
 
   /** 解析在线 agent（未装配 / 不在线 / 查询抛错 → undefined，一律视为离线）。 */
@@ -126,6 +155,13 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     if (current !== undefined) {
       const preGate = assertArtifactGates(current, current.status, to)
       if (preGate !== undefined) throw Object.assign(new Error(preGate.message), { code: preGate.code })
+      // ── REQ-261005105032-3b02 §10 #46：唯一 async 内容门（位置钉死：preGate 之后、
+      // g2CompletenessFailure 之前；G2 **不合并**）。
+      // 与 g2CompletenessFailure 同款：async 门只能在 mutate 之外做**读前预检**（mutate 回调是
+      // 同步契约），故这段是这条路径的 ②；同步的 assertArtifactGates 在 mutate 内仍原样复查
+      // （那半条防并发漂移的锁没有丢，见 mutate 回调里的注释）。
+      const contentGate = await contentGateFailure(current, current.status, to)
+      if (contentGate !== undefined) throw Object.assign(new Error(contentGate.message), { code: contentGate.code })
       const g2 = gateForTransition(current.status, to)
       if (g2?.id === 'G2' && g2.requiredKind !== undefined) {
         const failure = await g2CompletenessFailure(current, g2.requiredKind)
@@ -167,6 +203,12 @@ export function createRequirementsRouter(ctx: RouterCtx) {
             qt.status = c.status
             qt.revisions = c.revisions
             qt.updatedAt = c.updatedAt
+            // 取消留痕（REQ-261005193546-1b1a FR-3）：与工具侧落点同款——计划副本上的三字段
+            // 逐键搬过来，否则看板回退路径「plan 写了、落盘丢了」。逐键判 `!== undefined`：
+            // 本 map 含子卡原地复位副本，复位不清空留痕（INV-D2）。
+            if (c.canceledAt !== undefined) qt.canceledAt = c.canceledAt
+            if (c.canceledBy !== undefined) qt.canceledBy = c.canceledBy
+            if (c.cancelReason !== undefined) qt.cancelReason = c.cancelReason
             touched = true
           }
           return touched ? queueTasks : undefined
@@ -208,6 +250,11 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       }
       return { changed: true }
     })
+    // REQ-261005105032-3b02 t11（FR-2）：看板路径进需求阶段同样幂等落原型骨架（与 reqboard_move
+    // 同一姿势：已存在不覆盖、非 UI 不落、失败只告警）——看板是真实入口，漏它 = 默认流程拿不到骨架。
+    if (to === 'brainstorming' && result?.requirement !== undefined && ctx.deps.docs !== undefined) {
+      await landPrototypeSkeleton(ctx.deps.docs, result.requirement, { nowMs: now() })
+    }
     ok(res, {
       ...(result?.requirement ?? {}),
       ...(rollbackPre !== undefined
@@ -259,9 +306,9 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     const result = await mutateIfPresent(ctx.requirementStore, id, (r) => {
       const plan = r.plan ?? notFound("需求 " + id + " 的拆分计划")
       if (approve) {
-        plan.approvedAt = now()
-        plan.approvedBy = { kind: 'human' }
-        plan.approvedVia = 'board'
+        // REQ-261006164732-6503 t13（serves: FR-4）：看板批准同样「首写即事实」——
+        // 独立复核实测：此处原本无条件赋值，重复点「批准」会把已批准的 approvedAt/证据改写。
+        stampPlanOnce(plan, now(), { by: { kind: 'human' }, via: 'board' })
         delete plan.rejectedAt
         delete plan.rejectedReason
       } else {
@@ -302,28 +349,41 @@ export function createRequirementsRouter(ctx: RouterCtx) {
             source: 'board',
           })
           // 落库成功（或幂等跳过）→ 同一调用内推进到实施（与弹框路径同语义：autoRun 一并置真）
-          await mutateIfPresent(ctx.requirementStore, id, (r) => {
-            if (r.status !== 'decomposing') return undefined
-            transitionRequirement(r, 'implementing', {
-              at: now(),
-              actor: { kind: 'human' },
-              reason: '看板批准计划后自动进入实施（与弹框路径共用同一落库层）',
+          // REQ-261005122915-9f90 t4 / FR-3：**只有真卡在**才推进。`alreadyLanded` 已收窄为真卡数
+          // （占位重做卡不计），故「本次落了卡 或 真卡已在」就是推进的充分且必要条件；
+          // 两者皆 0 说明一张新卡都没落（队列里只剩回退占位卡）——此时推进就是把「没落库」说成成功。
+          const landingEffective = landed.createdCount > 0 || landed.alreadyLanded > 0
+          if (landingEffective) {
+            await mutateIfPresent(ctx.requirementStore, id, (r) => {
+              if (r.status !== 'decomposing') return undefined
+              transitionRequirement(r, 'implementing', {
+                at: now(),
+                actor: { kind: 'human' },
+                reason: '看板批准计划后自动进入实施（与弹框路径共用同一落库层）',
+              })
+              r.autoRun = true
+              r.comments.push({
+                id: ids.comment(),
+                body: fmt('[自动开跑] 看板批准拆分计划 → 落库 {n} 张卡并自动进入实施（autoRun=true）', { n: landed.createdCount }),
+                createdAt: now(),
+                createdBy: { kind: 'human' },
+              })
+              r.updatedAt = now()
+              return { changed: true }
             })
-            r.autoRun = true
-            r.comments.push({
-              id: ids.comment(),
-              body: fmt('[自动开跑] 看板批准拆分计划 → 落库 {n} 张卡并自动进入实施（autoRun=true）', { n: landed.createdCount }),
-              createdAt: now(),
-              createdBy: { kind: 'human' },
-            })
-            r.updatedAt = now()
-            return { changed: true }
-          })
+          }
           landing = {
-            performed: landed.alreadyLanded === 0,
+            performed: landingEffective,
             landed: landed.createdCount,
             already_landed: landed.alreadyLanded,
             unrefed_cards: landed.unrefed,
+            ...(landed.staleReworkCanceled > 0 ? { stale_rework_canceled: landed.staleReworkCanceled } : {}),
+            ...(landingEffective
+              ? {}
+              : {
+                  reason: '本次未落任何任务卡（队列里只有回退物化的占位重做卡）：已拒绝推进到实施——'
+                    + '请先在需求详情点「清理误物化重做卡」，再重新批准或调 reqboard_decompose 落库',
+                }),
             ...(landed.warning === undefined ? {} : { warning: landed.warning }),
           }
         } catch (err) {
@@ -385,20 +445,25 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       }
     }
     const result = await mutateIfPresent(ctx.requirementStore, id, (r) => {
-      // REQ-2d1c74 FR-2：kind=design 成组落章（全部 design 产物一次确认）
+      // REQ-261006164732-6503 t13（serves: FR-4）：看板确认的**首写纪律**——
+      // 独立复核实测：这条路径原本无条件赋值，重复点确认会把已落章产物与证据改写（FR-4 点名「看板重试」）。
+      // 判据只用首写纪律（不按"迁移是否已发生"拒绝）：本通道同样承担**补章**职责。
       const arts = artifactsToConfirm(r, kind as never)
       if (arts.length === 0) badInput("需求 " + id + " 没有 kind=" + kind + " 的产物（须先由工具登记）")
+      let stampedNow = 0
       for (const artifact of arts) {
-        artifact.confirmedAt = now()
-        artifact.confirmedBy = { kind: 'human' }
-        artifact.confirmedVia = 'board'
+        // 首写即事实（共用单点）：已盖过的不覆写
+        if (stampArtifactOnce(artifact, now(), { by: { kind: 'human' }, via: 'board' })) stampedNow += 1
       }
-      r.comments.push({
-        id: ids.comment(),
-        body: '[产物确认] 人已确认产物（kind=' + kind + (arts.length > 1 ? '，成组确认 ' + arts.length + ' 份' : '') + '）：' + arts.map(a => a.path).join('、'),
-        createdAt: now(),
-        createdBy: { kind: 'human' },
-      })
+      // 评论只在真的盖上时才写——否则重复确认会反复留「人已确认」的假记录
+      if (stampedNow > 0) {
+        r.comments.push({
+          id: ids.comment(),
+          body: '[产物确认] 人已确认产物（kind=' + kind + (arts.length > 1 ? '，成组确认 ' + arts.length + ' 份' : '') + '）：' + arts.map(a => a.path).join('、'),
+          createdAt: now(),
+          createdBy: { kind: 'human' },
+        })
+      }
       r.updatedAt = now()
       r.updatedBy = { kind: 'human' }
       return { changed: true }
@@ -429,6 +494,14 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     // 否则二次确认同一产物会顺着新状态的门再推进一次（B 后再点一次 = 连跳两格）。
     const gateMatches = gate !== undefined && gate.requiredKind === kind
     if (gateMatches && gate.autoAdvance && gate.from !== undefined && canReqTransition(gate.from, gate.to)) {
+      // ── REQ-261005105032-3b02 §10 #46：唯一 async 内容门（看板"确认产物即推进"这条路径）──
+      // 落章保留（确认动作有效），只拦推进：返回 advanced:false + gate_failure + 可读消息
+      // （与另三条路径同款，不静默）。
+      const contentGate = await contentGateFailure(confirmed, gate.from, gate.to)
+      if (contentGate !== undefined) {
+        ok(res, { ...confirmed, advanced: false, delivered: false, gate_failure: contentGate, note: '已落章，但 ' + gate.from + ' → ' + gate.to + ' 未推进：' + contentGate.message })
+        return
+      }
       // REQ-2d1c74 FR-2：看板确认后自动推进同样先过 G2 完整性闸门（四路径之一；落章保留，推进可拦）。
       const g2Failure = gate.id === 'G2' && gate.requiredKind !== undefined
         ? await g2CompletenessFailure((await ctx.requirementStore.get(id)) ?? confirmed, gate.requiredKind)
@@ -699,6 +772,11 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       )
     }
     const reason = normalizeText(body.reason, 'reason', 300)
+    // REQ-261005141830-7a3b t6（FR-11）：**跨项目不得改绑**——把别项目的窗口改成本项目需求的 owner，
+    // 与跨项目派席是同一个危险（那个窗口随后就能替本项目写盘）。校验在任何写入之前 ⇒ 被拒时台账零改动。
+    // 未装配 applicationDeps（老装配）→ 不校验，行为与改造前逐字一致（FR-8）。
+    const appDeps = ctx.deps.applicationDeps
+    if (appDeps !== undefined) requireSameProject(appDeps, target, toWindow, '改绑')
     const result = await mutateIfPresent(ctx.requirementStore, id, (r) => {
       const changed = applyRebind(r, {
         toWindow,

@@ -15,9 +15,16 @@
  * 标记载体（同卡）：**逐条状态只存表格行**；front-matter 只放文档级索引——
  * 两处都写必然漂移，故提供 frontmatterStateViolations() 机械探测。
  *
+ * REQ-261005105032-3b02 FR-1/FR-2（conditionalStageArtifacts）：本模块再回答一问——
+ * **「该类型 + 该端侧声明下，某个节点还必交哪些阶段产物」**。原型（kind=prototype）是
+ * 需求阶段的条件必交产物：只有 UI 需求（sides 含 frontend 的 feature / refactor）才要。
+ * 与条件必交设计文档同形同源——同一份 sides 解析、同一套条件命中语义，避免两套判定漂移。
+ *
  * @module dsh-pmboard/application/internal/category-doc-sets
  */
 import { fmt } from '../../domain/text/fmt.js'
+import { STAGE_ARTIFACT_REQUIREMENTS, type ArtifactKind } from '../../domain/artifact/ArtifactSpec.js'
+import type { StageKey } from '../../domain/requirement/RequirementStatus.js'
 
 /** BASE：共同骨架——所有立项类型都必须有的根文档节。**只在这里定义一次**。 */
 export const COMMON_ROOT_SECTIONS: readonly string[] = ['边界']
@@ -34,6 +41,25 @@ export interface ConditionalDesignDoc {
   side: 'frontend' | 'backend'
 }
 
+/**
+ * 条件必交**阶段产物**（REQ-261005105032-3b02 FR-1/FR-2）：需求声明含对应端侧时，
+ * 该节点还必须有这个 kind 的产物。
+ *
+ * 与 ConditionalDesignDoc 的区别只在粒度：设计文档按**文件名**判，阶段产物按
+ * **kind** 判（原型落 `prototypes/*.html`，文件名由 agent 定，判不了名字）。
+ *
+ * 为什么带 stage：条件必交的语义是「**哪个节点**必须交」，阶段必备产物的并集
+ * （见 requiredStageArtifactKinds）要按 stage 取，不能只按 kind。
+ */
+export interface ConditionalStageArtifact {
+  /** 生效的节点（stage） */
+  stage: StageKey
+  /** 该节点必须有的产物 kind */
+  kind: ArtifactKind
+  /** 触发条件：需求声明的端侧 */
+  side: 'frontend' | 'backend'
+}
+
 export interface CategoryDocDelta {
   category: string
   /** 类型专属必填节（不含 BASE） */
@@ -42,6 +68,8 @@ export interface CategoryDocDelta {
   requiredDesignDocs: readonly string[]
   /** 条件必交：需求声明（front-matter sides）含对应端侧时才要求（REQ-2d1c74 FR-1） */
   conditionalDesignDocs?: readonly ConditionalDesignDoc[]
+  /** 条件必交的**阶段产物**（REQ-261005105032-3b02 FR-1/FR-2） */
+  conditionalStageArtifacts?: readonly ConditionalStageArtifact[]
 }
 
 /**
@@ -58,14 +86,44 @@ export interface DesignDocPolicy {
 
 const VALID_SIDES: ReadonlySet<string> = new Set(['frontend', 'backend'])
 
+/**
+ * front-matter 里的「列表值」——**两种写法必须等价**：`a, b` 与 YAML 流式写法 `[a, b]`。
+ *
+ * 为什么必须单独处理（REQ-261004222448-292a 事故）：doc-parse.ts 的 front-matter 解析取的是
+ * `key: value` 的**原样字符串**，不会展开 YAML 数组；此处原先只 `.split(',')`，于是
+ * `[frontend, backend, doc]` 被切成 `"[frontend"` / `"backend"` / `"doc]"`，经 VALID_SIDES 过滤后
+ * **只剩 backend**——frontend 被静默丢弃，条件必交的 `frontend.md` 永远不会被要。
+ * 而插件自己的模板（templates/brainstorming/feature.md）教的正是括号写法 ⇒ 照模板写的需求
+ * 一律拿不到前端设计文档（该需求就是纯 UI 需求却没有 frontend.md）。
+ * 全仓实测：括号写法且声明 frontend 的 6 条需求 0 条有 frontend.md；逗号写法 3 条 3 条都有。
+ */
+export function frontmatterList(value: string | undefined): string[] {
+  const raw = (value ?? '').trim()
+  if (raw === '') return []
+  const inner = raw.startsWith('[') && raw.endsWith(']') ? raw.slice(1, -1) : raw
+  return inner
+    .split(',')
+    .map(s => stripQuotes(s.trim()))
+    .filter(s => s.length > 0)
+}
+
+/** 去掉成对包裹的引号（YAML 允许 `[ "frontend" , backend ]`）。 */
+function stripQuotes(s: string): string {
+  if (s.length >= 2) {
+    const first = s[0]
+    if ((first === '"' || first === "'") && s[s.length - 1] === first) return s.slice(1, -1).trim()
+  }
+  return s
+}
+
 /** 从 requirement.md front-matter 解析端侧声明与豁免声明（纯函数，零 IO）。 */
 export function designDocPolicyFrom(frontmatter: Readonly<Record<string, string>>): DesignDocPolicy {
-  const sides = (frontmatter['sides'] ?? '')
-    .split(',')
-    .map(s => s.trim())
-    .filter(s => VALID_SIDES.has(s))
+  const sides = frontmatterList(frontmatter['sides']).filter(s => VALID_SIDES.has(s))
+  // 豁免表同样容忍括号包裹；条目之间仍按 `;` 分隔——理由里可能含逗号，按逗号切会切坏理由。
+  const exemptRaw = (frontmatter['design_exempt'] ?? '').trim()
+  const exemptText = exemptRaw.startsWith('[') && exemptRaw.endsWith(']') ? exemptRaw.slice(1, -1) : exemptRaw
   const exempt: Record<string, string> = {}
-  for (const pair of (frontmatter['design_exempt'] ?? '').split(';')) {
+  for (const pair of exemptText.split(';')) {
     const trimmed = pair.trim()
     if (trimmed === '') continue
     const eq = trimmed.indexOf('=')
@@ -92,6 +150,46 @@ export function effectiveDesignDocs(
 }
 
 /**
+ * 该类型 + 端侧声明下命中的**条件必交阶段产物**（REQ-261005105032-3b02 FR-1/FR-2）。
+ *
+ * 与 effectiveDesignDocs 同构同口径：同吃一份 sides（由 designDocPolicyFrom 解析，
+ * 括号 / 逗号写法等价），命中 side 才进清单；未知类型 / 未命中 → `[]`（不拦）。
+ *
+ * 为什么返回整个条目而不是 kind 数组：调用方（原型存在门）要判的是
+ * 「**这个节点**是否被要求交 **这个 kind**」，stage + kind 都得在手上。
+ * 判据只有这一处——门禁与看板都从本函数取，避免又长出一份「什么算 UI 需求」的真相。
+ */
+export function conditionalStageArtifactsFor(
+  category: string | undefined,
+  sides: readonly string[] = [],
+): ConditionalStageArtifact[] {
+  const delta = deltaFor(category)
+  if (delta === undefined) return []
+  return (delta.conditionalStageArtifacts ?? []).filter(c => sides.includes(c.side))
+}
+
+/**
+ * 某节点的**必备产物 kind** = `STAGE_ARTIFACT_REQUIREMENTS[stage]` ∪ 条件命中项
+ * （REQ-261005105032-3b02 FR-1/FR-2）。
+ *
+ * 为什么单独成函数：`STAGE_ARTIFACT_REQUIREMENTS` 是**无条件**基线（feature 全流水线），
+ * 条件必交（如 UI 需求的原型）必须叠加在它之上；把叠加规则写在这一处，
+ * 调用方（阶段产物门禁）就不必各自记得"还要并入条件项"——漏并即后门。
+ * 去重是因为同一 kind 可能既在基线又命中条件（当前无此例，但语义上不该重复计数）。
+ */
+export function requiredStageArtifactKinds(
+  stage: StageKey,
+  category: string | undefined,
+  sides: readonly string[] = [],
+): ArtifactKind[] {
+  const base = STAGE_ARTIFACT_REQUIREMENTS[stage] ?? []
+  const conditional = conditionalStageArtifactsFor(category, sides)
+    .filter(c => c.stage === stage)
+    .map(c => c.kind)
+  return [...new Set<ArtifactKind>([...base, ...conditional])]
+}
+
+/**
  * DELTA：类型增量。与规范 §0.3 一一对应——
  *   feature  产品定义/用户/功能点 + 全套设计
  *   bug      **复现步骤** / 期望 vs 实际 / 根因 / 回归（免 PRD 那套用户角色，但不取消追溯）
@@ -102,9 +200,11 @@ export function effectiveDesignDocs(
  */
 export const CATEGORY_DELTAS: readonly CategoryDocDelta[] = [
   // REQ-2d1c74 FR-1：feature 全套 = 五份必交（补 use-cases.md）+ 端侧条件必交（frontend/backend）。
-  { category: 'feature', rootSectionsDelta: ['产品定义', '用户与角色', '功能点'], requiredDesignDocs: ['architecture.md', 'data-model.md', 'interfaces.md', 'test-cases.md', 'use-cases.md'], conditionalDesignDocs: [{ name: 'frontend.md', side: 'frontend' }, { name: 'backend.md', side: 'backend' }] },
+  // REQ-261005105032-3b02 FR-1/FR-2：再加一条**阶段产物**条件必交——UI 需求需求阶段必交原型。
+  { category: 'feature', rootSectionsDelta: ['产品定义', '用户与角色', '功能点'], requiredDesignDocs: ['architecture.md', 'data-model.md', 'interfaces.md', 'test-cases.md', 'use-cases.md'], conditionalDesignDocs: [{ name: 'frontend.md', side: 'frontend' }, { name: 'backend.md', side: 'backend' }], conditionalStageArtifacts: [{ stage: 'brainstorming', kind: 'prototype', side: 'frontend' }] },
   { category: 'bug', rootSectionsDelta: ['复现步骤', '根因', '回归'], requiredDesignDocs: [] },
-  { category: 'refactor', rootSectionsDelta: ['现状', '目标结构', '行为不变式'], requiredDesignDocs: ['architecture.md', 'migration.md'] },
+  // 重构同样常改前端表现（原型是"改成什么样"的唯一可核验载体）：与 feature 同档登记。
+  { category: 'refactor', rootSectionsDelta: ['现状', '目标结构', '行为不变式'], requiredDesignDocs: ['architecture.md', 'migration.md'], conditionalStageArtifacts: [{ stage: 'brainstorming', kind: 'prototype', side: 'frontend' }] },
   { category: 'spike', rootSectionsDelta: ['待答问题', '结论'], requiredDesignDocs: [] },
   { category: 'doc', rootSectionsDelta: ['目标读者', '大纲'], requiredDesignDocs: [] },
   { category: 'chore', rootSectionsDelta: ['完成判据'], requiredDesignDocs: [] },
@@ -147,9 +247,20 @@ function escapeRe(s: string): string {
 /**
  * 根文档里是否存在某**节**。刻意用"标题 + 可选编号"的精确匹配，而不是子串包含——
  * 子串会让 spike 的必填节「待答问题」冒充 BASE 的「问题」，导致节被删掉却判为存在（实测踩过）。
+ *
+ * **标题装饰一律容忍**（REQ-261005105032-3b02 t14 修同族缺陷 D-5）：节名之后允许跟
+ *  ① 全角/半角括号或冒号开头的注解——`## 边界（不做什么）`；
+ *  ② **行尾 HTML 注释**——`## 产品定义 <!-- serves: FR-1 -->`（模板惯例，见 `templates/brainstorming/feature.md`）。
+ * 为什么必须容忍②（实测 D-5）：本仓模板给必填节标题统一追加 `<!-- serves: FR-1 -->`，而本函数原先
+ * 只认①，于是**照模板写出来的 requirement.md 被判"缺必填节「产品定义」「用户与角色」"**（实测
+ * `missingCategoryDocs` 对模板渲染结果返回 2 条缺口）——模板与门禁口径分叉，双方都不报错。
+ * 修法选"门禁容忍装饰"而不是"改模板写法"：装饰容忍本来就是本函数的既有语义（①），
+ * HTML 注释只是同一类装饰；改模板则是给本仓添第四种 serves 写法（已有 反引号 / HTML 注释 / 括号 三种），
+ * 且会让照 `feature-example.md` 等旧版式写的文档继续踩同一个坑。
+ * 收紧的边界保持不变：**节名本身仍须逐字命中标题开头**（`## 功能点清单` 不会冒充「功能点」）。
  */
 export function hasRootSection(rootText: string, name: string): boolean {
-  const re = new RegExp('^#{1,6}\\s*(?:[0-9]+\\s*[.、]\\s*)?' + escapeRe(name) + '\\s*(?:[（(:：].*)?$', 'm')
+  const re = new RegExp('^#{1,6}\\s*(?:[0-9]+\\s*[.、]\\s*)?' + escapeRe(name) + '\\s*(?:[（(:：].*|<!--.*?-->)?\\s*$', 'm')
   return re.test(rootText)
 }
 

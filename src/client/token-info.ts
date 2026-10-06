@@ -364,6 +364,58 @@ function normalizeInjectionCost(raw: unknown): InjectionBlockView | undefined {
   }
 }
 
+/* ──────────────────────────────────────────────────────── 汇总卡（FR-6 · REQ-261006130057-7a43 t8） */
+
+/**
+ * 四张汇总卡（累计 / 输入 / 输出 / 缓存命中）——蓝本 = 原型 v1.5 `#FR-6` Token 面板的
+ * `.stat-grid`：大数字 + 一句小注，让人**不读表**也能答出"这条需求花了多少"。
+ *
+ * 诚实口径（沿用本面板既有纪律）：
+ *  · 数从**有记录的阶段行**现算（与表尾「合计（本条）」同一来源、同一口径——占比分母不分叉）；
+ *  · 某列**不是每个有记录阶段都有**（缺快照阶段缺席）→ 该卡不编数：值写「—」、小注说清
+ *    「未采集」，**绝不补 0**（FR-12：未采集 ≠ 0）；
+ *  · 一个有记录的阶段都没有 → **整块不渲染**（渲染它只会是一排「—」，那是噪声）。
+ */
+function statCard(key: string, label: string, display: string | undefined, raw: number | undefined, sub: string): string {
+  const num = display === undefined
+    ? '<div class="dsh-pm-tok-stat-num">—</div>'
+    : '<div class="dsh-pm-tok-stat-num"'
+      + (raw === undefined ? '' : ' data-tok-stat-value="' + esc(String(raw)) + '"')
+      + '>' + esc(display) + '</div>'
+  return '<div class="dsh-pm-tok-stat" data-tok-stat="' + esc(key) + '">'
+    + '<div class="dsh-pm-tok-stat-label">' + esc(label) + '</div>' + num
+    + '<div class="dsh-pm-tok-stat-sub">' + esc(sub) + '</div></div>'
+}
+
+function renderStatCards(rows: readonly TokenRow[]): string {
+  const known = rows.filter(isDataRow)
+  if (known.length === 0) return ''
+  const total = known.reduce((n, r) => n + r.totalTokens, 0)
+  const share = (part: number): string => total > 0 ? '占 ' + fmtPct(round2((part / total) * 100)) : '占比不可算'
+  const input = known.every(r => r.inputTokens !== undefined)
+    ? known.reduce((n, r) => n + (r.inputTokens ?? 0), 0) : undefined
+  const output = known.every(r => r.outputTokens !== undefined)
+    ? known.reduce((n, r) => n + (r.outputTokens ?? 0), 0) : undefined
+  // 缓存命中率 = 加权口径（Σ缓存读 ÷（Σ缓存读 + Σ未缓存输入）），与表尾 renderTotalRow 同一公式
+  const hasBuckets = known.length > 0 && known.every(r => r.uncachedInputTokens !== undefined && r.cacheReadTokens !== undefined)
+  const uncached = hasBuckets ? known.reduce((n, r) => n + (r.uncachedInputTokens ?? 0), 0) : undefined
+  const cacheRead = hasBuckets ? known.reduce((n, r) => n + (r.cacheReadTokens ?? 0), 0) : undefined
+  const hit = uncached !== undefined && cacheRead !== undefined && uncached + cacheRead > 0
+    ? round2((cacheRead / (uncached + cacheRead)) * 100) : undefined
+  return '<div class="dsh-pm-tok-stats" data-tok-stats="1">'
+    + statCard('total', '累计 Token', fmtTokens(total), total, String(known.length) + ' 个阶段有记录')
+    + statCard('input', '输入', input === undefined ? undefined : fmtTokens(input), input,
+      input === undefined ? '部分阶段未采集输入数（不补 0）' : share(input))
+    + statCard('output', '输出', output === undefined ? undefined : fmtTokens(output), output,
+      output === undefined ? '部分阶段未采集输出数（不补 0）' : share(output))
+    // 缓存命中卡的值是**百分比**（不是 token 数）：raw 记百分比数，小注给命中量
+    + statCard('cache-hit', '缓存命中', hit === undefined ? undefined : fmtPct(hit), hit,
+      hit === undefined
+        ? '缓存快照未采集齐（不补 0）'
+        : '命中 ' + fmtTokens(cacheRead ?? 0) + ' · 加权口径同表尾')
+    + '</div>'
+}
+
 /* ──────────────────────────────────────────────────────── 渲染 */
 
 /** 三态徽标（`none` 时说「无 token 快照」；`partial` 时**必须**列出缺哪段）。 */
@@ -403,12 +455,14 @@ function renderExecutionRows(row: TokenRow): string {
 
 function renderStageRow(row: TokenRow): string {
   const label = esc(stageLabel(row.stage))
+  // 数字列（调用/输入/输出/合计/每次调用均/缓存命中率）带 `dsh-pm-tok-num`：
+  // 等宽 + 右对齐由样式分片按这个类做（FR-6：按节点表数字等宽右对齐）；「占比」列有占比条，不收。
   if (row.kind === 'nosnap') {
     return '<tr class="dsh-pm-tok-node" data-stage-row="1" data-stage="' + esc(row.stage) + '" data-has-data="0">'
       + '<td>' + label + ' <span class="dsh-pm-tok-more">无快照</span></td>'
-      + '<td class="dsh-pm-nosnap">—</td><td class="dsh-pm-nosnap">无快照</td><td class="dsh-pm-nosnap">无快照</td>'
-      + '<td class="dsh-pm-nosnap">无快照</td><td class="dsh-pm-nosnap">—</td>'
-      + '<td class="dsh-pm-nosnap">—</td><td class="dsh-pm-nosnap">—</td></tr>'
+      + '<td class="dsh-pm-nosnap dsh-pm-tok-num">—</td><td class="dsh-pm-nosnap dsh-pm-tok-num">无快照</td><td class="dsh-pm-nosnap dsh-pm-tok-num">无快照</td>'
+      + '<td class="dsh-pm-nosnap dsh-pm-tok-num">无快照</td><td class="dsh-pm-nosnap">—</td>'
+      + '<td class="dsh-pm-nosnap dsh-pm-tok-num">—</td><td class="dsh-pm-nosnap dsh-pm-tok-num">—</td></tr>'
       + renderExecutionRows(row)
   }
   const pct = row.sharePct
@@ -422,13 +476,13 @@ function renderStageRow(row: TokenRow): string {
     + ' data-per-call="' + esc(String(row.perCallTokens ?? '')) + '"'
     + ' data-cache-hit="' + esc(String(row.cacheHitPct ?? '')) + '">'
     + '<td>' + label + '</td>'
-    + '<td>' + esc(String(row.calls)) + '</td>'
-    + '<td>' + fmtTok(row.inputTokens) + '</td>'
-    + '<td>' + fmtTok(row.outputTokens) + '</td>'
-    + '<td>' + fmtTok(row.totalTokens) + '</td>'
+    + '<td class="dsh-pm-tok-num">' + esc(String(row.calls)) + '</td>'
+    + '<td class="dsh-pm-tok-num">' + fmtTok(row.inputTokens) + '</td>'
+    + '<td class="dsh-pm-tok-num">' + fmtTok(row.outputTokens) + '</td>'
+    + '<td class="dsh-pm-tok-num">' + fmtTok(row.totalTokens) + '</td>'
     + '<td>' + shareCell + '</td>'
-    + '<td>' + fmtTok(row.perCallTokens) + '</td>'
-    + '<td>' + (row.cacheHitPct === undefined ? '—' : esc(fmtPct(row.cacheHitPct))) + '</td>'
+    + '<td class="dsh-pm-tok-num">' + fmtTok(row.perCallTokens) + '</td>'
+    + '<td class="dsh-pm-tok-num">' + (row.cacheHitPct === undefined ? '—' : esc(fmtPct(row.cacheHitPct))) + '</td>'
     + '</tr>'
     + renderExecutionRows(row)
 }
@@ -454,13 +508,13 @@ function renderTotalRow(rows: readonly TokenRow[]): string {
     + (known.length === 0 ? '' : ' data-total-tokens="' + esc(String(total)) + '"')
     + (shareSum === undefined ? '' : ' data-share-sum="' + esc(String(round2(shareSum))) + '"') + '>'
     + '<td>合计（本条）</td>'
-    + '<td>' + (known.length === 0 ? '—' : esc(String(calls))) + '</td>'
-    + '<td>' + (known.length === 0 ? '—' : esc(fmtTokens(input))) + '</td>'
-    + '<td>' + (known.length === 0 ? '—' : esc(fmtTokens(output))) + '</td>'
-    + '<td>' + (known.length === 0 ? '—' : esc(fmtTokens(total))) + '</td>'
+    + '<td class="dsh-pm-tok-num">' + (known.length === 0 ? '—' : esc(String(calls))) + '</td>'
+    + '<td class="dsh-pm-tok-num">' + (known.length === 0 ? '—' : esc(fmtTokens(input))) + '</td>'
+    + '<td class="dsh-pm-tok-num">' + (known.length === 0 ? '—' : esc(fmtTokens(output))) + '</td>'
+    + '<td class="dsh-pm-tok-num">' + (known.length === 0 ? '—' : esc(fmtTokens(total))) + '</td>'
     + '<td>' + (shareSum === undefined ? '—' : esc(fmtPct(shareSum))) + '</td>'
-    + '<td>' + (perCall === undefined ? '—' : esc(fmtTokens(perCall))) + '</td>'
-    + '<td>' + (hit === undefined ? '—' : esc(fmtPct(hit))) + '</td>'
+    + '<td class="dsh-pm-tok-num">' + (perCall === undefined ? '—' : esc(fmtTokens(perCall))) + '</td>'
+    + '<td class="dsh-pm-tok-num">' + (hit === undefined ? '—' : esc(fmtPct(hit))) + '</td>'
     + '</tr>'
 }
 
@@ -573,6 +627,8 @@ function renderPanelBody(view: TokenPanelView): string {
     inner.push(renderCallout(view))
   } else {
     inner.push(renderCallout(view))
+    // 四张汇总卡（FR-6）：不读表先答「花了多少」；数与表尾合计同源同口径，未采集的卡写「—」不补 0
+    inner.push(renderStatCards(rows))
     inner.push('<h4 class="dsh-pm-tok-h">📊 按阶段'
       + '<span class="dsh-pm-tok-h-note">每个阶段花了多少：调用 / 输入 / 输出 / 合计 / 占比 / 每次调用均 / 缓存命中率</span></h4>')
     inner.push(renderStageTable(rows))

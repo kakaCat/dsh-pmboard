@@ -67,7 +67,11 @@ export function buildDepositDraft(input: ArchiveDepositInput): {
   return {
     kind,
     title: title.slice(0, 120),
-    oneLiner: input.indexEntry.slice(0, 140),
+    // REQ-261006123819-3af3 FR-4 根因①：**先清洗非法字符再截断**。
+    // 索引行语法禁 `·` / `→` / 换行（isOneLiner）；直接 slice 会把非法字符原样带进条目与
+    // 索引行 → 该条目永远进不了索引（孤儿 kb-0043/kb-0048 就是这么来的）。
+    // 与 operations.ts 的 entryToIndexRow 既有正确口径同源。
+    oneLiner: input.indexEntry.replace(/[·→\n]/g, ' ').slice(0, 140),
     appliesWhen: '同类需求再次出现时',
     pointer,
     updated: input.archivedOn,

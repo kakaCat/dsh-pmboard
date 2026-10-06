@@ -12,6 +12,14 @@ export const PANEL_CSS = `/* 文件不存在的文档按钮（board-mount 运行
   background: rgba(128,128,128,.06); border-color: var(--pm-line);
 }
 
+/* 「未判定」的文档按钮（REQ-261005143615-5ab1 FR-3）：读根不可得 ≠ 文件缺失——
+   与缺失行**同档的灰**、但**不划线**（划线是"登记过却找不到"的画法，用在这里就是另一种谎）。 */
+.dsh-pm-doc-path.dsh-pm-doc-unknown {
+  color: var(--dsw-text-secondary, #999);
+  cursor: not-allowed; border-style: dashed;
+  background: rgba(128,128,128,.03); border-color: var(--pm-line);
+}
+
 /* 产物追溯链：链式胶囊，箭头串联 */
 .dsh-pm-trace-chain {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;

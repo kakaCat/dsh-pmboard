@@ -79,6 +79,10 @@ export default class ReqboardDiveManager extends Service {
       },
       // REQ-261002141430-a5ef FR-4④：停手对账（台账写着等弹框、实际无在途 → 恢复，防静默停摆）
       ...(ports.dialogInFlight === undefined ? {} : { dialogInFlight: ports.dialogInFlight }),
+      // REQ-261006170150-52cc FR-3：过期对账**清位成功即请求一次驱动**——与 `wake` 走同一条路
+      // （`onRequirementMoved` → requestDrive → 预留→投递→准入），故不新增任何进会话的投递路径。
+      // 不接这里的话，对账只会把停手位清掉却没人叫，需求不再"等人"但也不跑起来。
+      notifyDrivable: (id) => this.round.onRequirementMoved(id),
       // REQ-261004065652-5c1c FR-1：全局闩在闸 → 心跳整趟跳过（不叫醒、不刷 lastWakeAt、不碰健康位）
       ...(ports.providerLatch === undefined ? {} : { providerLatchOpen: () => ports.providerLatch!.isOpen() }),
       logger: this.wireLogger,

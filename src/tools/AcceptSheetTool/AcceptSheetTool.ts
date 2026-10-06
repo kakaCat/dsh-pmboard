@@ -35,6 +35,8 @@ export function defineAcceptSheetTool(deps: UseCaseDeps) {
           pending: { type: 'number', description: '剩余待验项数（挂起继续）' },
           passed: { type: 'number' },
           failed: { type: 'number' },
+          // REQ-261006092213-4f5b FR-6：未复核项数（人点了通过却没有结果）——**不计入通过**，不得归档。
+          unverified: { type: 'number', description: '未复核项数（点了通过却没结果）：不计入通过，不得归档' },
           rework_tasks: { type: 'array', items: { type: 'string' } },
           // REQ-260925172227-2d61：用例在「本批已记录」路径回 gate_status（RTM 验收门禁），
           // 此前漏声明 + additionalProperties:false → 宿主以 invalid output 拒收整条返回值

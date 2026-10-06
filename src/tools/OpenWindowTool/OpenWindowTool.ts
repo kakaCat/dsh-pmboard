@@ -14,11 +14,20 @@ import { renderSmart } from '../shared.js'
 /** 造窗方式（受控枚举，与 CreateTool 同款写法：字面量数组经 const 收窄）。 */
 const OPEN_WINDOW_MODES = ['fork', 'create'] as const
 
-/** 回执一句话摘要：窗口码 + 一句"去侧栏打开"（刻意不宣称"已经打开了窗口"）。 */
+/** 回执一句话摘要：窗口码 + 一句"去侧栏打开"（刻意不宣称"已经打开了窗口"）+ 继承三态读数。 */
 const openWindowSummary = (v: unknown): string => {
   const o = (v ?? {}) as Record<string, unknown>
   if (o['success'] === false) return `❌ 开窗被拒：${String(o['message'] ?? '见明细').slice(0, 60)}`
-  return `🪟 新窗口已创建：${String(o['window_key'] ?? '?')}（请在侧栏打开）`
+  const inheritance = (o['inheritance'] ?? {}) as Record<string, unknown>
+  const items: [string, string][] = [
+    ['标题', String(inheritance['title'] ?? '?')],
+    ['模式', String(inheritance['preset'] ?? '?')],
+    ['模型', String(inheritance['model'] ?? '?')],
+  ]
+  // 不是 set 的项在摘要里点名：人一眼看得出少了哪项（继承失败不改变开窗成败）。
+  const missing = items.filter(([, status]) => status !== 'set').map(([name, status]) => `${name}=${status}`)
+  const inheritText = missing.length === 0 ? '继承 3/3' : `继承 3 缺 ${missing.join('、')}`
+  return `🪟 新窗口已创建：${String(o['window_key'] ?? '?')}（请在侧栏打开；${inheritText}）`
 }
 
 export function defineOpenWindowTool(deps: UseCaseDeps) {
@@ -39,6 +48,10 @@ export function defineOpenWindowTool(deps: UseCaseDeps) {
         type: 'string',
         description: '开窗后要投给新窗口的底稿正文（可选）；以自署来源投递，不冒充人类发言。写法：每条短句（建议 ≤60 字）；需引号用「」',
       },
+      title: {
+        type: 'string',
+        description: '新窗口标题（可选，≤200 字符）；不传则按源标题递增（「源标题 (1)」）。写法：每条短句（建议 ≤60 字）；需引号用「」',
+      },
     },
     output: {
       schema: {
@@ -50,6 +63,21 @@ export function defineOpenWindowTool(deps: UseCaseDeps) {
           parent_session_id: { type: 'string', description: 'fork 的源窗口；create 时缺省' },
           mode: { type: 'string', description: '实际使用的造窗方式：fork / create' },
           degraded_note: { type: 'string', description: '诚实降级说明：会话已创建，请在侧栏打开' },
+          inheritance: {
+            type: 'object',
+            additionalProperties: false,
+            description: '继承回执：标题 / 模式 / 模型三态 + 只记 skipped/failed 的原因（开窗成功时恒出现）',
+            properties: {
+              title: { type: 'string', description: '标题是否写定：set | skipped | failed' },
+              preset: { type: 'string', description: '模式（Agent 预设）是否继承：set | skipped | failed' },
+              model: { type: 'string', description: '模型是否继承：set | skipped | failed' },
+              reasons: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'skipped / failed 的可读原因（每条形如「标题：源会话无标题」）',
+              },
+            },
+          },
           delivery: {
             type: 'object',
             additionalProperties: false,
@@ -64,13 +92,17 @@ export function defineOpenWindowTool(deps: UseCaseDeps) {
       },
       render: renderSmart(openWindowSummary),
     },
-    async execute(input: { mode?: 'fork' | 'create'; at_seq?: number; seed_text?: string }, context: ToolRunContext) {
+    async execute(
+      input: { mode?: 'fork' | 'create'; at_seq?: number; seed_text?: string; title?: string },
+      context: ToolRunContext,
+    ) {
       return await openWindow(
         deps,
         {
           ...(input.mode !== undefined ? { mode: input.mode } : {}),
           ...(input.at_seq !== undefined ? { atSeq: input.at_seq } : {}),
           ...(input.seed_text !== undefined ? { seedText: input.seed_text } : {}),
+          ...(input.title !== undefined ? { title: input.title } : {}),
         },
         context,
       )

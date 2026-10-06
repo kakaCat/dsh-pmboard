@@ -9,8 +9,9 @@
  * <what 哪份文档 / 哪一条> —— <why 报错原因>。补齐：<how 可复制的一步>
  * ```
  *
- * 三要素缺一不可；`how` 必须是**可执行锚点**（`reqboard_*` 命令 / `templates/` / `design_exempt`），
- * 不接受「请检查文档」这类无法照做的空话——tests/gate-feedback-envelope.test.ts 逐 code 锁死。
+ * 三要素缺一不可；`how` 必须是**可执行锚点**（`reqboard_*` 命令 / `templates/` / `design_exempt` /
+ * `prototype_exempt` / `decision_*`，见 `GATE_HOW_ANCHOR`），不接受「请检查文档」这类无法照做的空话
+ * ——tests/gate-feedback-envelope.test.ts 逐 code 锁死。
  *
  * 边界（NFR-2）：本模块**不判定**任何闸门——判定逻辑一律不动，只把 `GateFailure.message` 的拼接
  * 收口到这里；`code` 与 `gaps` 结构不变。
@@ -34,8 +35,15 @@ export interface GateFeedback {
 /**
  * `how` 的可执行锚点（TC-21 的机器判据）：`reqboard_*` 命令 / 模板路径 / 豁免写法。
  * 导出为唯一事实源，实现与测试共用同一份正则，避免两边各写一套而漂移。
+ *
+ * REQ-261005105032-3b02 §10 #40/#44：新增两类锚点——
+ *  · `prototype_exempt`：豁免写法。**实测**它单独出现在 `how` 里时旧正则不命中
+ *    （旧式只认 `design_exempt`），于是"写豁免"这条补救路径反而被判成缺锚点；
+ *  · `decision_`：裁定条目编号（`D-x` 的机器可读名，如 `decision_log_missing`），
+ *    裁定门的补齐动作以它为主键。
+ * 门实现落在 prototype-gates / decision-gates，但锚点判据只有这一处——改这里即两条链同时生效。
  */
-export const GATE_HOW_ANCHOR = /reqboard_[a-z_]+|templates\/|design_exempt/
+export const GATE_HOW_ANCHOR = /reqboard_[a-z_]+|templates\/|design_exempt|prototype_exempt|decision_/
 
 /**
  * 三要素统一拼接：`<lead><what> —— <why>。补齐：<how>`。

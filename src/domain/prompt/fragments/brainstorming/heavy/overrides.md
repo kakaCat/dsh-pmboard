@@ -4,6 +4,8 @@
 
 - [ ] **覆盖 1 · 交棒**：上文把交棒写成"调用 writing-plans skill"。本仓不用 skill 自主 load：
       下一步：design —— 用 reqboard_ask_confirm(target=artifact, kind=requirement) 交棒；未获批准不得进入。
+      发起前先看**产物登记回执**：已写明「已自动触发确认弹框 / 已有一道门在等」时**不要再发起**
+      （补发只会复用同一道门，多此一举且容易引出第二个框）；改为读确认态或取回执。
       肯定答复会**自动落章并推进**；本节点不得直接跳到拆分 / 实施。
 - [ ] **覆盖 2 · 落盘路径**：上文把设计文档存到 docs/superpowers/specs/…。本仓一律落
       `docs/requirements/REQ-xxxxxx/requirement.md`（头部带 REQ id），并用

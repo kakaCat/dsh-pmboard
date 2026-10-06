@@ -17,11 +17,59 @@ import { taskCompletenessGap } from '../internal/task-completeness.js'
 import { isRollback } from '../../domain/requirement/RollbackSpec.js'
 import { applyRequirementRollback, recordRollbackMaterialized, resetInjectionAfterRollback } from '../internal/rollback.js'
 import { captureSnapshot, transitionRequirement } from '../internal/token-usage.js'
-import { reject, agentIdFromExec, requireLiveDriver, mapAgentError } from '../internal/support.js'
+import {
+  reject, agentIdFromExec, requireLiveDriver, mapAgentError, gateQuestionCard,
+  // REQ-261005105032-3b02：内容门读盘前按需求工作区校正根（与既有读盘门同款纪律）
+  applyRequirementWorkspaceRoot,
+} from '../internal/support.js'
 import { fmt } from '../../domain/text/fmt.js'
+// REQ-2d1c74 FR-2：design→decomposing 的 G2 文档集完整性闸门（与看板侧 / 弹框侧同一道）。
+import { gateForTransition } from '../../domain/gate/GateCatalog.js'
+import { checkDesignCompletenessGate, contentGatesForMove } from '../internal/content-gate-wiring.js'
 import { requirementStoreOf, taskStoreOf, mutateIfPresent, mutateQueue, createManyQueue } from './queue-access.js'
 // REQ-261004065652-5c1c FR-9：走进终态即收回自动意图（预防半边，两条入口共用一份实现）。
 import { disarmDiveOnTerminal } from '../internal/terminal-disarm.js'
+// REQ-261005105032-3b02 t11（FR-2）：进入需求阶段即幂等落原型骨架（UI 需求才有；失败只告警不阻断）。
+import { landPrototypeSkeleton } from '../internal/prototype-skeleton.js'
+
+/**
+ * 产物闸门的**内部码 → 工具传输码**映射（单一事实源）。
+ *
+ * 为什么需要它：`assertArtifactGates` 返回的是内部码（`artifact_not_confirmed` /
+ * `missing_artifact`），而 agent 工具面对外承诺的是 `REQBOARD_*` 码——两条 e2e 契约
+ * （e2e-design-handoff / design-gate-messages）按后者断言。集中一处映射，避免再次各写各的。
+ *
+ * REQ-261005105032-3b02 §10 #35：由"不是 X 就一律当缺产物"的隐式推导改为**显式映射表**。
+ * 为什么必须改：本需求一次加五个新门（原型三门 + 裁定门），隐式推导会把它们**静默降级**成
+ * `REQBOARD_MISSING_ARTIFACT`——而"补原型 / 写裁定"与"登记产物"是三条不同的补救动作，
+ * agent 按码分支就会去补错东西（这正是 §10 #35 点名不许发生的事）。
+ * 未知内部码**原样透传**：不认识就如实说，不猜一个"看起来合理"的码。
+ */
+const TRANSPORT_CODE_BY_INTERNAL: Readonly<Record<string, string>> = {
+  // 改造前就在此函数里的两条：逐字保住，两条既有 e2e 契约按它们断言（零行为变化）
+  missing_artifact: 'REQBOARD_MISSING_ARTIFACT',
+  artifact_not_confirmed: 'REQBOARD_ARTIFACT_NOT_CONFIRMED',
+  // 原型三门（§10 #35）
+  prototype_missing: 'REQBOARD_MISSING_PROTOTYPE',
+  prototype_version_conflict: 'REQBOARD_PROTOTYPE_VERSION_CONFLICT',
+  prototype_anchor_missing: 'REQBOARD_PROTOTYPE_ANCHOR_MISSING',
+  // 裁定门（§10 #35）
+  decision_log_missing: 'REQBOARD_DECISION_LOG_MISSING',
+  decision_entry_invalid: 'REQBOARD_DECISION_ENTRY_INVALID',
+  // 验收缺对照项 / 阶段门逾期（§10 #38/#39）：门的实现与触发点在 SubmitVerification /
+  // StageGateTimeline，但传输码契约同在一张总表（interfaces.md 错误码总表）——一并登记，
+  // 免得将来接线时又被隐式推导降级成缺产物。
+  verification_prototype_compare_missing: 'REQBOARD_VERIFICATION_INCOMPLETE',
+  stage_gate_overdue: 'REQBOARD_STAGE_GATE_OVERDUE',
+}
+
+/**
+ * 内部码 → 传输码。导出仅为**用例可直接锁这张表**：
+ * 门禁函数在别的卡实现，接线前没有真实触发点能覆盖这些码。
+ */
+export function transportCodeOf(internalCode: string): string {
+  return TRANSPORT_CODE_BY_INTERNAL[internalCode] ?? internalCode
+}
 
 export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, exec: unknown): Promise<unknown> {
   const windowKey = agentIdFromExec(deps, exec)
@@ -62,9 +110,48 @@ export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, e
   const store = taskStoreOf(deps)
   const reqTasks = await store.listByRequirement(req0.id)
 
-  // 只读预检（拒绝次序与会话侧一致：先产物闸门，后任务完整性）
+  // 只读预检（拒绝次序与会话侧一致：先产物闸门，后 G2 完整性门，最后任务完整性）
   const preGate = assertArtifactGates(req0, from, to)
-  if (preGate !== undefined) reject(fmt('reqboard_move 未执行：{msg}', { msg: preGate.message }), preGate.code)
+  if (preGate !== undefined) {
+    // REQ-2d1c74 FR-2：**工具侧错误码带 REQBOARD_ 前缀**（e2e-design-handoff / design-gate-messages
+    // 两条契约如此断言）。09-29 快照同步把这段映射弄丢过，直接透传 gate.code 会让 agent 拿到
+    // `artifact_not_confirmed` 这类内部码、按码分支的调用方与用例全断——故集中一处映射。
+    const hint = preGate.code === 'artifact_not_confirmed'
+      ? '；首选调 reqboard_ask_confirm 弹框请人确认（自动落章+推进），兜底用户看板一键确认'
+        + gateQuestionCard(preGate.kind, from, to)
+      : ''
+    reject(
+      fmt('reqboard_move 未执行：{msg}{hint}', { msg: preGate.message, hint }),
+      transportCodeOf(preGate.code),
+    )
+  }
+  // ── REQ-261005105032-3b02 §10 #46：唯一 async 内容门（原型三门 + 裁定门）──────────
+  // 位置照 interfaces.md 的四路径调用顺序钉死：① 同步 assertArtifactGates → ② 本调用 →
+  // ③ 既有 G2 完整性门（**不合并**：合并会把本需求扩成重构，#46 明令另立项）。
+  // 读盘前按需求工作区校正根（REQ-260930193929-897b 同款纪律）：不校正就会去别的窗口的根下
+  // 找 requirement.md，后果是**误拦**（说文档不存在）或**静默放行**（读不到前端声明）——两个方向都坏。
+  // 探针用既有的 `deps.session`（§10 #20：不新增数据源），它只影响裁定门的真空态豁免那一步。
+  {
+    applyRequirementWorkspaceRoot(deps, req0)
+    const contentGate = await contentGatesForMove(deps.docs, req0, from, to, {
+      ...(deps.session !== undefined ? { sessionProbe: deps.session } : {}),
+    })
+    if (contentGate !== undefined) {
+      reject(fmt('reqboard_move 未执行：{msg}', { msg: contentGate.message }), transportCodeOf(contentGate.code))
+    }
+  }
+  // ── REQ-2d1c74 FR-2：G2 文档集完整性闸门（design→decomposing 四条转移路径之一）──
+  // 09-29 快照同步把本段从本用例弄丢（tests/design-completeness-gate.test.ts「路径①」于是长期红）：
+  // 后果是**会话 reqboard_move 能绕过文档集核验**——REQ-261004222448-292a 就是走这条路径过的
+  // （声明了 frontend 却零前端设计、原型无处落地）。看板侧与弹框侧一直有这道门，此处补齐同一道。
+  // 注意：doc 读取是 async，而 mutate 回调是同步契约 ⇒ 只能做**读前预检**，并发漂移窗口
+  // 与看板侧 preGate 同量级（提交文档是低频人工动作）。
+  if (gateForTransition(from, to)?.id === 'G2') {
+    const completeness = await checkDesignCompletenessGate(deps.docs, req0)
+    if (completeness !== undefined) {
+      reject(fmt('reqboard_move 未执行：{msg}', { msg: completeness.message }), completeness.code)
+    }
+  }
   const preGap = taskCompletenessGap(req0, reqTasks, to)
   if (preGap !== undefined) reject(fmt('reqboard_move 未执行：{msg}', { msg: preGap }), 'REQBOARD_TASK_INCOMPLETE')
 
@@ -97,6 +184,13 @@ export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, e
           qt.status = c.status
           qt.revisions = c.revisions
           qt.updatedAt = c.updatedAt
+          // 取消留痕（REQ-261005193546-1b1a FR-3）：计划副本上的三字段必须**逐键搬过来**，
+          // 否则等于「plan 上写了、落盘时按白名单丢了」（设计 §1.3 的静默不落盘形态）。
+          // 逐键 `!== undefined` 判定（不是无条件赋值）：本 map 同时含「子卡原地复位」副本
+          // ——复位 ≠ 取消，无条件赋值会把该卡**此前保留的**留痕抹成 undefined（违反 INV-D2）。
+          if (c.canceledAt !== undefined) qt.canceledAt = c.canceledAt
+          if (c.canceledBy !== undefined) qt.canceledBy = c.canceledBy
+          if (c.cancelReason !== undefined) qt.cancelReason = c.cancelReason
           touched = true
         }
         return touched ? queueTasks : undefined // 无变更不写盘
@@ -109,7 +203,7 @@ export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, e
     if (req.status !== from) return undefined
     // mutate 内复查（防并发漂移）
     const gate = assertArtifactGates(req, req.status, to)
-    if (gate !== undefined) throw Object.assign(new Error(gate.message), { code: gate.code })
+    if (gate !== undefined) throw Object.assign(new Error(gate.message), { code: transportCodeOf(gate.code) })
     const gap = taskCompletenessGap(req, reqTasks, to)
     if (gap !== undefined) throw Object.assign(new Error(gap), { code: 'REQBOARD_TASK_INCOMPLETE' })
     // ② 需求后写：对**真 req** 重放编排的撤销半边（卡计划已在 ① 落库；此处重算结果幂等、丢弃即可）。
@@ -146,6 +240,12 @@ export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, e
     return { changed: true }
   }).catch(mapAgentError)
   const changed = result?.requirement
+  // REQ-261005105032-3b02 t11（FR-2）：**进入需求阶段**时幂等落原型骨架（UI 需求才有：判据读
+  // requirement.md 的 sides，读不到按类型模板的缺省 sides）。位置放在转移**成功之后**——状态已进
+  // brainstorming 才谈"这个阶段的产物"；已存在不覆盖、失败只告警（骨架是脚手架，不是转移的前置条件）。
+  if (to === 'brainstorming') {
+    await landPrototypeSkeleton(deps.docs, changed ?? req0, { nowMs: deps.clock.now() })
+  }
   return {
     success: true,
     requirement_id: req0.id,

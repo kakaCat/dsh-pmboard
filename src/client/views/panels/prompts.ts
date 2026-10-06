@@ -92,11 +92,16 @@ function readStrings(v: unknown): string[] {
 /** 正文块的统一外壳：**没有 max-height、没有 overflow**——整段铺开（FR-11 #7）。
  *  外观按原型 `pre.prompt-text` 的口径内联（12px 内边距 / 11.5px 等宽 / 1.6 行距 / 极浅底 + 细边 + 6px 圆角）：
  *  这里内联而不只靠分片，是因为**同一份正文块**在非报告页（节点面板）也会出现；
- *  底色与边框一律走变量，暗色主题下不会闪成白底。 */
+ *  底色与边框一律走变量，暗色主题下不会闪成白底。
+ *
+ *  令牌口径（t-5c0373 探针 A13 实测后收口）：原来这里引的 `--pm-line-soft` / `--pm-bg-softer`
+ *  已按 FR-10 删除，内联样式只剩 rgba 兜底值（多出第三种边线色与第三种底色）；
+ *  字号 11.5px 也在 FR-7 点名的"阶梯外字号"里。**本面板从没被量过**，故这三处一直没被发现。
+ *  改为：发丝线一档 `--pm-line`、**不加底色**、等宽走 `--pm-mono`、字号走 `--f-small`（12px）。 */
 const PRE_STYLE = 'white-space:pre-wrap;word-break:break-word;margin:0;padding:12px;'
-  + 'border:1px solid var(--pm-line-soft, rgba(128,128,128,.11));border-radius:6px;'
-  + 'background:var(--pm-bg-softer, rgba(128,128,128,.028));color:inherit;'
-  + 'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.6'
+  + 'border:.5px solid var(--pm-line);border-radius:8px;'
+  + 'background:none;color:inherit;'
+  + 'font-family:var(--pm-mono,ui-monospace,SFMono-Regular,Menlo,monospace);font-size:var(--f-small,12px);line-height:1.6'
 
 function preBlock(text: string, attrs = ''): string {
   return '<pre class="dsh-pm-prompt-pre"' + attrs + ' style="' + PRE_STYLE + '">' + esc(text) + '</pre>'
@@ -272,14 +277,52 @@ function renderTrimmed(item: TrimmedView): string {
   const body = item.text !== undefined && item.text.length > 0
     ? preBlock(item.text)
     : '<div class="dsh-pm-note" data-prompt-empty-body="1">该被裁片段未提供正文（响应里没有 text——不编）。</div>'
+  // FR-6（t8）：被裁片段在片段列表里**显眼标「已截断」**且照常给正文（回答「它为什么不知道某个术语」）
   return '<details class="dsh-pm-prompt" data-prompt-trimmed="' + esc(item.id) + '" open>'
     + '<summary><span class="dsh-pm-prompt-name">被裁：' + esc(item.id) + '</span>'
+    + '<span class="dsh-pm-prompt-trim" data-prompt-trim-mark="1">已截断</span>'
     + '<span class="dsh-pm-prompt-meta">超预算，未进本次装配 · ' + esc(String(item.chars)) + ' 字符</span></summary>'
     + body + '</details>'
 }
 
+/** 命中层级 → 可读词（`exact` 译出；其余原样显示，不编没见过的层级名）。 */
+function hitLevelLabel(level: string): string {
+  return level === 'exact' ? '精确命中（exact）' : level
+}
+
+/**
+ * 注入信息 chips（FR-6 · REQ-261006130057-7a43 t8；蓝本 = 原型 v1.5 #FR-6 的 `.info-strip`）：
+ * routeKey / 命中 / 片段数 / 字符数 / 本轮估算——一眼看完"这次装配是什么、多大"。
+ * 没给的字段**不出 chip**（routeKey / hitLevel / 估算都是服务端可选字段；不留白也不编）。
+ */
+function assemblyChips(view: PromptsView, chars: number): string {
+  const chips: string[] = []
+  if (view.routeKey !== undefined) {
+    chips.push('<span class="dsh-pm-chip" data-prompt-chip="routeKey">routeKey <b>' + esc(view.routeKey) + '</b></span>')
+  }
+  if (view.hitLevel !== undefined) {
+    chips.push('<span class="dsh-pm-chip" data-prompt-chip="hit">命中 <b>' + esc(hitLevelLabel(view.hitLevel)) + '</b></span>')
+  }
+  // 数字 chips 只在有数时出：装配结果为空（0 段 / 0 字符）由下方注释行的白话口径交代，
+  // chip 里摆一个裸 0 会被读成"未采集"（FR-12：数字 chip 的 0 与"没有"不可分辨，故不出）
+  if (view.sections.length > 0) {
+    chips.push('<span class="dsh-pm-chip" data-prompt-chip="sections">片段 <b>' + String(view.sections.length) + '</b></span>')
+  }
+  if (chars > 0) {
+    chips.push('<span class="dsh-pm-chip" data-prompt-chip="chars">字符 <b>' + String(chars) + '</b></span>')
+  }
+  if (view.perTurnEstTokens !== undefined) {
+    chips.push('<span class="dsh-pm-chip" data-prompt-chip="est">本轮估 <b>≈ '
+      + String(view.perTurnEstTokens) + ' tok</b></span>')
+  }
+  if (chips.length === 0) return ''
+  return '<div class="dsh-pm-chips" data-prompt-chips="1">' + chips.join('') + '</div>'
+}
+
 function renderSystemSection(view: PromptsView): string {
-  const head = '<h4 class="dsh-pm-pp-h">🧱 A · 固定系统提示词'
+  // FR-1 收尾（t3）：本节标题原以一枚 emoji 结构图标（砖块）开头——emoji 的跨平台字型不一致、
+  // 不受 currentColor 控制，Tab 栏改内联 SVG 后这里**去掉**（FR-1 允许「一起换或去掉」）。
+  const head = '<h4 class="dsh-pm-pp-h">A · 固定系统提示词'
     + '<span class="dsh-pm-pp-h-note">回答「它到底被告知了什么」</span></h4>'
   if (!view.systemAvailable) {
     return '<section class="dsh-pm-pp-sec">' + head
@@ -310,6 +353,7 @@ function renderSystemSection(view: PromptsView): string {
       + '被裁片段单独标出（它们<b>没有</b>进本次装配）。</div></details>'
     : ''
   return '<section class="dsh-pm-pp-sec">' + head
+    + assemblyChips(view, chars)
     + '<div class="dsh-pm-note">' + esc(metaBits.join(' · ')) + '（字符数与 token 数是读时装配/估算，不是留痕）</div>'
     + sections + trimmed + merged + '</section>'
 }

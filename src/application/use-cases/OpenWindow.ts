@@ -11,8 +11,15 @@
  *
  * @module dsh-pmboard/application/use-cases/OpenWindow
  */
-import type { OpenWindowOutcome, UseCaseDeps, WindowCreateOptions, WindowOpenerPort } from '../ports.js'
+import type {
+  OpenWindowOutcome,
+  UseCaseDeps,
+  WindowCreateOptions,
+  WindowInheritance,
+  WindowOpenerPort,
+} from '../ports.js'
 import { reject } from '../internal/support.js'
+import { applyWindowInheritance, presetInheritanceOf, readWindowProfile } from '../internal/window-inherit.js'
 
 export interface OpenWindowInput {
   /** fork = 带上下文（默认）；create = 全新空会话 */
@@ -24,6 +31,11 @@ export interface OpenWindowInput {
    * 投递走**自署来源**（kind=`reqboard-open-window`）——绝不用会冒充人类的那个入口。
    */
   seedText?: string
+  /**
+   * 新窗口标题（可选；REQ-261005151245-54ae FR-1）。
+   * 给了就用它（不递增、不加后缀）；不给则按源标题递增（「源标题 (1)」）。
+   */
+  title?: string
 }
 
 export interface OpenWindowValue {
@@ -33,6 +45,10 @@ export interface OpenWindowValue {
   /** fork 时的源窗口；create 时缺省 */
   parent_session_id?: string
   mode: 'fork' | 'create'
+  /** 继承回执（REQ-261005151245-54ae FR-5）：标题 / 模式 / 模型三态 + 只记 skipped/failed 的原因。 */
+  inheritance: WindowInheritance
+  /** 底稿投递结果（给了 `seedText` 才有；未给则整体省略）。 */
+  delivery?: { delivered: boolean; kind: string; reason?: string }
   /** 诚实降级说明：**不含**「已经打开了窗口」这类断言，只说会话已创建、要去侧栏打开 */
   degraded_note: string
 }
@@ -97,6 +113,10 @@ export async function openWindow(
     )
   }
 
+  // REQ-261005151245-54ae FR-2：开窗前冷读一次源会话画像——标题 / 模式 / 模型都从这一次读里取。
+  // 读不到**不阻断开窗**（记 reason，落定时如实报 failed）；create 路径还要用它随请求带上模式。
+  const sourceRead = await readWindowProfile(opener, source)
+
   let outcome: OpenWindowOutcome
   if (mode === 'fork') {
     outcome = await opener.fork(source, input.atSeq)
@@ -110,7 +130,9 @@ export async function openWindow(
         'REQBOARD_OPEN_WINDOW_UNAVAILABLE',
       )
     }
-    outcome = await opener.create(target)
+    // 模式（Agent 预设）随建会话请求带入（FR-3）；无读数则不传该键（不填 undefined 占位）。
+    const preset = presetInheritanceOf(sourceRead, 'create').agentPreset
+    outcome = await opener.create(preset === undefined ? target : { ...target, agentPreset: preset })
   }
 
   if (!outcome.ok) {
@@ -133,6 +155,15 @@ export async function openWindow(
     )
   }
 
+  // REQ-261005151245-54ae FR-1/FR-3/FR-4：落定继承三件（标题 → 模式 → 模型），**不短路**。
+  // 放在投递之前：接管方先看到配置、再看到底稿；失败只记状态，绝不回滚会话、不改 success。
+  const inheritance = await applyWindowInheritance(opener, {
+    childKey: outcome.windowKey,
+    mode,
+    sourceRead,
+    ...(input.title !== undefined ? { explicitTitle: input.title } : {}),
+  })
+
   // 可选：把底稿投给新窗口（FR-7）。失败**不影响开窗成功**，但必须如实回报。
   let delivery: { delivered: boolean; kind: string; reason?: string } | undefined
   const seedText = input.seedText
@@ -152,6 +183,7 @@ export async function openWindow(
     window_key: outcome.windowKey,
     ...(outcome.parentSessionId !== undefined ? { parent_session_id: outcome.parentSessionId } : {}),
     mode,
+    inheritance,
     degraded_note: OPEN_WINDOW_DEGRADED_NOTE,
     ...(delivery !== undefined ? { delivery } : {}),
   }

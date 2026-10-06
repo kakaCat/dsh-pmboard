@@ -45,6 +45,7 @@ import {
 import type { PendingCaptureMessage } from '../internal/capture-section.js'
 import type { NodeSettlement } from '../internal/node-settlement.js'
 import { resolveStagePrompt, isPromptStage } from '../../domain/prompt/index.js'
+import { difficultyFromDeclaredPrompt } from '../../domain/prompt/difficulty-mapping.js'
 import {
   injectionLogInputFromResolved,
   type InjectionLogPort,
@@ -280,7 +281,15 @@ export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessio
         // draft/done/canceled 不是可注入节点：先过闸，避免只捞到 ⑤ 铁律而误触发注入。
         if (isPromptStage(stage) && stageEnabledFor(stageReq.category, stage as StageKey)) {
           // INV-1：与 capture-section 同一取词入口（resolveStagePrompt）。
-          const located = resolveStagePrompt({ stage, category: stageReq.category })
+          // REQ-261005154851-8512 FR-3：与系统提示词同口径——留痕必须与真实注入一致，
+          // 否则留痕会被当证据误读（本处仍只留痕、不投递）。
+          const declared = difficultyFromDeclaredPrompt(stageReq.promptDifficulty)
+          const located = resolveStagePrompt({
+            stage,
+            category: stageReq.category,
+            requirement: { title: stageReq.title, description: stageReq.description },
+            ...(declared === undefined ? {} : { declaredDifficulty: declared }),
+          })
           // T-3：与 capture-section/H3/输入包同源折入地址段（第四处注入点）。
           const resolved = addressSectionFor(located, deps.address, tasksSnapshot, stageReq, stage)
           if (resolved.text.length > 0) {

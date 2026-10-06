@@ -67,6 +67,12 @@ export function defineCreateTool(deps: UseCaseDeps) {
             description: '走了默认值的问项 id 清单（缺失回落时不静默猜）',
             items: { type: 'string' },
           },
+          // REQ-261005141830-7a3b t5（随手修 t4 的漏声明）：用例层返回体带这两个键，
+          // 而 schema 是 additionalProperties:false ⇒ 漏声明的后果是**每次立项都被绑定层拒收**
+          // `value.projectId is not a declared property`（与 CaptureTool 2026-10-03 实测同类）。
+          // 名称按用例层实际键（`project_source`）声明，不改回 camelCase 是为了不破坏已锁定的 T-08/T-09。
+          projectId: { type: 'string', description: '本条需求所属项目身份（宿主 workspace id；未归属时整体省略该键）' },
+          project_source: { type: 'string', description: '判据来源：project-id（按项目身份）/ path-fallback（路径兜底）' },
           note: { type: 'string', description: '后续流程说明' },
           board_link: { type: 'string', description: '项目看板链接（点击后在应用内打开看板并定位该需求）' },
         },

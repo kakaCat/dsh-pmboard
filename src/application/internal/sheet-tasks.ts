@@ -13,6 +13,8 @@
  * @module dsh-pmboard/application/internal/sheet-tasks
  */
 import type { TaskRecord } from '../../shared/protocol.js'
+// REQ-261005193546-1b1a FR-1/FR-4：活卡判据单点（本处不再自写取消比较——那正是本需求要冻掉的漂移源）
+import { isLiveTask } from '../../domain/status/Predicates.js'
 
 /** `buildSheet` 的 tasks 入参形状（对齐 domain `SheetTaskLike` 的最小子集）。 */
 export interface SheetTaskInput {
@@ -27,14 +29,14 @@ export interface SheetTaskInput {
  * 队列任务 → 验收单任务投影。
  *
  * - 顺序与输入一致（验收项顺序即人读顺序）；
- * - `status === 'canceled'` 剔除（既有语义）；
+ * - 已取消卡剔除（既有语义；判据走 `domain/status/Predicates` 的活卡单点，本文件不自写比较）；
  * - `parentId` 为空串 / 缺省 → **不写该键**（顶层卡只有一种形态，避免 `''` 与 `undefined` 两态）；
  * - `acceptance` 缺省补空串（domain 侧按「交付完成」兜底文案展示）。
  */
 export function toSheetTasks(tasks: readonly TaskRecord[]): SheetTaskInput[] {
   const out: SheetTaskInput[] = []
   for (const t of tasks) {
-    if (t.status === 'canceled') continue
+    if (!isLiveTask(t)) continue
     // 空串与 undefined 归一：两者都表示"顶层卡"。
     const parentId = typeof t.parentId === 'string' && t.parentId.length > 0 ? t.parentId : undefined
     out.push({

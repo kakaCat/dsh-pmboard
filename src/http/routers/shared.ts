@@ -117,10 +117,22 @@ export interface RouterCtx {
      */
     sessionWorkspace?: (sessionId: string | undefined) => string | undefined
     /**
+     * 会话 → **项目身份 + 根**（REQ-261005141830-7a3b t5 · FR-6）：同一次查项目表拿到两值。
+     *
+     * 为什么要在 `sessionWorkspace` 之外再加一条：`sessionWorkspace` 只回答「这个窗口的 cwd 在哪」，
+     * 答不出「这条需求属于哪个项目」——多项目并行时，看板列表只能靠路径逐条比，跨项目会误判。
+     * 命中（会话在某个 workspace 的 `sessionIds` 里）→ 返回 `{ projectId, root }`
+     * （`root` = 项目条目上的 `path`，即工作区根）；未命中 → `undefined`，路由回落 `sessionWorkspace` /
+     * legacy cwd，并在响应里如实标注（`docsRootSource` / `projectSource`）。
+     *
+     * 保留 `sessionWorkspace` 为兼容字段：未装配本项的装配（老装配 / 老前端）行为逐字不变。
+     */
+    sessionProject?: (sessionId: string | undefined) => { projectId?: string; root?: string } | undefined
+    /**
      * 知识层自举通知口（REQ-261004174324-4195 t4）：`resolveDocRoot` 命中会话根时通知一次。
      * 缺省 → 不自举（老行为；手动 `pnpm kb:build` 仍可用）。
      */
-    knowledgeBootstrap?: { ensure(root?: string): void }
+    knowledgeBootstrap?: { ensure(root?: string, projectId?: string): void }
     /**
      * 推进器（REQ-4842fe FR-12 / t-3be71b）：看板控制面「继续」= 置 autoRun=true **并触发一次推进事件**。
      * 缺省 → 只置开关并如实说明（不伪造"已续跑"）。
@@ -196,6 +208,9 @@ export interface RouterCtx {
 /** 读根来源（进响应体，便于诊断"这次用的是哪个根"）。 */
 export type DocRootSource = 'session' | 'legacy-cwd'
 
+/** 本次判据来源（REQ-261005141830-7a3b t5 · FR-9）：`project-id` = 项目身份给出；其余 = 路径兜底。 */
+export type ProjectSource = 'project-id' | 'path-fallback'
+
 export interface DocRoot {
   /** 实际使用的根（绝对路径）。 */
   root: string
@@ -203,13 +218,25 @@ export interface DocRoot {
   sessionRoot?: string
   /** 本次用的是哪个根。 */
   source: DocRootSource
+  /**
+   * 本次请求解析出的**项目身份**（REQ-261005141830-7a3b t5 · FR-6）：命中项目表才有。
+   * 看板列表据此按项目过滤；缺省 = 未归属 → 不筛（老行为，全量）。
+   */
+  projectId?: string
+  /**
+   * 上面那个 `projectId` / `root` 的**判据来源**（FR-9）：`project-id` = 由项目表一次查表拿到；
+   * `path-fallback` = 回落会话 cwd / legacy cwd（如实标注，不冒充项目身份）。
+   */
+  projectSource: ProjectSource
 }
 
 /**
  * 统一的**读根解析**（REQ-261003215944-9e04 FR-11）——预检与打开、看板与右侧栏共用这一处。
  *
- * 顺序：① 请求里带了会话 id 且能解析出该会话的 header.cwd → 用它；
- *       ② 否则回落 legacy cwd（插件宿主工作目录），并在 `source` 里如实标注。
+ * 顺序（REQ-261005141830-7a3b t5 起优先用项目身份）：
+ *   ① 请求里带了会话 id 且**项目表能一次给出「项目身份 + 根」** → 用它（`projectSource='project-id'`）；
+ *   ② 否则回落会话工作区（`sessionWorkspace`，`projectSource='path-fallback'`，仍带上已解析到的身份）；
+ *   ③ 都没有 → 回落 legacy cwd（插件宿主工作目录），并在 `source` 里如实标注。
  *
  * 刻意**不**在解析不到时编一个绝对路径：编出来的路径必然不存在，
  * 那等于让"文件不存在"变成我们自己制造的假象（诚实降级，R-013）。
@@ -217,13 +244,36 @@ export interface DocRoot {
 export function resolveDocRoot(deps: RouterCtx['deps'], sessionId: string | undefined): DocRoot {
   const trimmed = typeof sessionId === 'string' ? sessionId.trim() : ''
   if (trimmed.length > 0) {
+    // ① 项目身份优先：一次查表同时拿到 id 与根（根挂在项目上，见 design/interfaces.md）。
+    const project = deps.sessionProject?.(trimmed)
+    const projectId = typeof project?.projectId === 'string' && project.projectId.length > 0
+      ? project.projectId
+      : undefined
+    const projectRoot = typeof project?.root === 'string' && project.root.length > 0 ? project.root : undefined
+    if (projectRoot !== undefined) {
+      // REQ-261004174324-4195 t4：根定了就通知一次自举（即发即忘，不阻塞本次请求）。
+      // REQ-261005141830-7a3b t5：带上项目身份 → 同项目多窗口只自举一次。
+      deps.knowledgeBootstrap?.ensure(projectRoot, projectId)
+      return {
+        root: projectRoot,
+        sessionRoot: projectRoot,
+        source: 'session',
+        ...(projectId !== undefined ? { projectId } : {}),
+        projectSource: 'project-id',
+      }
+    }
+    // ② 项目表未命中 / 装配缺项 → 回落会话工作区（老行为），身份拿不到就不筛。
     const sessionRoot = deps.sessionWorkspace?.(trimmed)
     if (typeof sessionRoot === 'string' && sessionRoot.length > 0) {
-      // REQ-261004174324-4195 t4：根定了就通知一次自举（即发即忘，不阻塞本次请求）。
-      // 放在这里而不是各路由分支：本函数是「读根解析」的唯一处，通知点越少越不会漏。
-      deps.knowledgeBootstrap?.ensure(sessionRoot)
-      return { root: sessionRoot, sessionRoot, source: 'session' }
+      deps.knowledgeBootstrap?.ensure(sessionRoot, projectId)
+      return {
+        root: sessionRoot,
+        sessionRoot,
+        source: 'session',
+        ...(projectId !== undefined ? { projectId } : {}),
+        projectSource: 'path-fallback',
+      }
     }
   }
-  return { root: deps.cwd ?? process.cwd(), source: 'legacy-cwd' }
+  return { root: deps.cwd ?? process.cwd(), source: 'legacy-cwd', projectSource: 'path-fallback' }
 }

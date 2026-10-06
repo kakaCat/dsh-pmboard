@@ -20,24 +20,29 @@
  * @module dsh-pmboard/client/views/report-tabs
  */
 import { esc } from '../html.js'
+// 结构图标的**唯一来源**（FR-1）：Tab 栏只查表，不自己带一份 SVG（`icons.ts` 只 import type 本模块，
+// 故这是单向运行时依赖，不构成环）
+import { TAB_ICON_SVG } from '../icons.js'
 import type { Degrade, PanelResult, ReportHead, ReportResponse } from '../../shared/protocol.js'
 import { isDegrade } from '../../shared/protocol.js'
 import { buildReportHead, buildReportHeadPlaceholder, degradeText, type ReportHeadPlaceholder } from './report-head.js'
 import { buildReportBand, buildReportBandPlaceholder } from './report-band.js'
-// 面板的就地交互实现（页内检索）由对话面板导出；这里只做事件委派（面板模块只 import type 本模块，
-// 故不构成运行时环）
-import { applyDialogueSearch } from './panels/dialogue.js'
 import { trunkPanel } from './panels/trunk.js'
 import { docsPanel } from './panels/docs.js'
 import { dagPanel } from './panels/dag.js'
 import { dialoguePanel } from './panels/dialogue.js'
+import { verifyPanel } from './panels/verify.js'
 import { tokenPanel } from './panels/token.js'
 import { promptsPanel } from './panels/prompts.js'
 
 /* ────────────────────────────────────────────────────────────── 注册契约 */
 
-/** 六个同级 Tab 的键。顺序即 `REPORT_TABS` 的顺序（trunk 默认选中）。 */
-export type ReportTabKey = 'trunk' | 'docs' | 'dag' | 'dialogue' | 'token' | 'prompts'
+/**
+ * 七个同级 Tab 的键。顺序即 `REPORT_TABS` 的顺序（trunk 默认选中）。
+ * 第七枚「验收」（REQ-261006130057-7a43 FR-8）插在「对话」与「Token」之间——与权威原型
+ * `docs/requirements/REQ-261006130057-7a43/prototypes/detail.html` v1.5 的 `#FR-4` 同序。
+ */
+export type ReportTabKey = 'trunk' | 'docs' | 'dag' | 'dialogue' | 'verify' | 'token' | 'prompts'
 
 /**
  * 分页/游标参数（FR-11 #6：dialogue / injections 默认 20，可取更早）。
@@ -77,14 +82,21 @@ export interface ReportTabDef {
 /**
  * 图标属于**壳**不属于面板：面板卡只该关心内容，改 render 时不该被迫记得带图标
  * （漏带就少一个图标，而且没人测得到）。
+ *
+ * **这七个 emoji 现在只当属性值活**（FR-1 的例外，逐处列明）：可见图标一律取
+ * {@link TAB_ICON_SVG} 的内联 SVG，emoji 只留在 `data-proto-icon-before` 里——
+ * 它是**原型对照的锚**（`?v=current` 要靠它把结构位图标还原成改前的 emoji，
+ * `scripts/req-detail-ui-prototype-shot.mts` 的漂移核对也按它比对图标的次序与归属）。
+ * 故判据「结构位 emoji 归零」在本文件里的口径是：**没有任何 emoji 作为可见文本渲染**，
+ * 只存在 `data-proto-icon-before="…"` 这一种出现位置（就是下面这张表）。
  */
 const TAB_ICONS: Record<ReportTabKey, string> = {
-  trunk: '📋', docs: '📄', dag: '🕸', dialogue: '💬', token: '🪙', prompts: '🧱',
+  trunk: '📋', docs: '📄', dag: '🕸', dialogue: '💬', verify: '✅', token: '🪙', prompts: '🧱',
 }
 
-/** 六个同级 Tab 的注册表（顺序：trunk 默认选中 → docs → dag → dialogue → token → prompts）。 */
+/** 七个同级 Tab 的注册表（顺序：trunk 默认选中 → docs → dag → dialogue → verify → token → prompts）。 */
 export const REPORT_TABS: ReportTabDef[] = [
-  trunkPanel, docsPanel, dagPanel, dialoguePanel, tokenPanel, promptsPanel,
+  trunkPanel, docsPanel, dagPanel, dialoguePanel, verifyPanel, tokenPanel, promptsPanel,
 ]
 
 /** 取注册项；未知键回落到第一个（不抛：渲染路径上的异常会整块白屏）。 */
@@ -126,17 +138,68 @@ export function isReportResponse(v: unknown): v is ReportResponse {
 
 /* ────────────────────────────────────────────────────────────── 纯渲染 */
 
-/** Tab 栏（角标只在 badge 有值时才渲染——没有数字就不占位，更不显示 "0"）。 */
+/**
+ * 角标该不该渲染（**六个 Tab 共用的单一判据**）。
+ *
+ * 规则（本模块原本只在注释里声明、没落到代码，2026-10-05 按线上实测补上）：
+ *  - `undefined`（服务端没给这个计数：`trunk` / `dialogue` / `prompts` 就是留空）→ 不渲染；
+ *  - 空串 → 不渲染；
+ *  - **零值不渲染**：`0` / `0.0K` / `0.00M` 这类"数出来是 0"的角标没有信息量，却会在 Tab 栏上
+ *    多出两个灰点。线上实测：空需求上会渲染成 `DAG 0` / `Token 0`，**与权威原型不一致**
+ *    （原型的标本是非零值，从来不出现 0 角标）——这正是本模块注释里那句"更不显示 0"。
+ *
+ * 为什么放在渲染层、不改服务端：计数是**事实**，服务端照实给（0 张卡就是 0）；"要不要显示"
+ * 是**呈现决策**，归渲染层。放在这里一处收口，六个 Tab 与将来新增的 Tab 都自动受益。
+ */
+function badgeOf(raw: string | undefined): string | undefined {
+  if (raw === undefined) return undefined
+  const text = raw.trim()
+  if (text.length === 0) return undefined
+  return isZeroCount(text) ? undefined : text
+}
+
+/**
+ * `0` / `0.00` / `0K` / `0.0M` 这类零值计数。
+ *
+ * 只认**纯数字形态**（可带一位 K/M/B 后缀）：非数字串（如 `—` 未知、`不可用`）一律照常显示——
+ * 把"读不到"误判成"零"就等于用 0 冒充未知，那是本仓明令禁止的（FR-12）。
+ */
+function isZeroCount(text: string): boolean {
+  const m = /^([0-9]+(?:\.[0-9]+)?)([KMB])?$/.exec(text)
+  return m !== null && Number(m[1]) === 0
+}
+
+/**
+ * Tab 栏（角标只在 badge 有值时才渲染——没有数字就不占位，更不显示 "0"）。
+ *
+ * **属性顺序是硬约束**（FR-3 点名的已知耦合）：`class` → `data-action` → `data-tab` 是既有写路径的
+ * 入口，新增的可访问性属性（`role` / `id` / `aria-selected` / `aria-controls` / `tabindex`）一律
+ * **追加在既有属性之后**——`tests/report-shell.test.ts` 的「Tab 栏」用例按属性顺序对这三个属性做
+ * 子串匹配（那条断言改前/改后逐字相同），插在中间就会当场断开。
+ * 选择「追加式」而不是「同步改断言」：加法式契约才成立（删掉全部新属性后产物回到能过既有断言的状态）。
+ *
+ * 新属性只**描述**不**驱动**：切 Tab 仍由既有的 `switch-tab` 通道（`data-action` + `data-tab`）决定，
+ * 本文件里没有任何 `[aria-selected="true"]` 驱动的选择器（设计 R3）。
+ * `id="tab-<key>"` / `aria-controls="panel-<key>"` 是**稳定声明**：未激活的面板不在 DOM，
+ * 面板挂载时再带上同 id（懒加载纪律不变）。
+ */
 export function buildTabBar(report: ReportResponse | undefined, active: ReportTabKey): string {
   const tabs = REPORT_TABS.map((def) => {
-    const badge = def.badge(report)
-    return '<button type="button" class="dsh-pm-tab' + (def.key === active ? ' active' : '') + '"'
-      + ' data-action="switch-tab" data-tab="' + def.key + '">'
-      + '<span class="dsh-pm-tab-icon">' + TAB_ICONS[def.key] + '</span>' + esc(def.label)
-      + (badge === undefined ? '' : '<span class="dsh-pm-fold-count" data-badge="' + def.key + '">' + esc(badge) + '</span>')
+    const badge = badgeOf(def.badge(report))
+    const selected = def.key === active
+    return '<button type="button" class="dsh-pm-tab' + (selected ? ' active' : '') + '"'
+      + ' data-action="switch-tab" data-tab="' + def.key + '"'
+      + ' role="tab" id="tab-' + def.key + '"'
+      + ' aria-selected="' + (selected ? 'true' : 'false') + '"'
+      + ' aria-controls="panel-' + def.key + '"'
+      + ' tabindex="' + (selected ? '0' : '-1') + '">'
+      + '<span class="dsh-pm-tab-icon" data-proto-icon-before="' + TAB_ICONS[def.key] + '">'
+      + TAB_ICON_SVG[def.key] + '</span>' + esc(def.label)
+      + (badge === undefined ? '' : '<span class="dsh-pm-fold-count' + (def.key === 'verify' ? ' dsh-pm-badge-alert' : '') + '"'
+        + (def.key === 'verify' ? ' data-badge-verify="1"' : '') + ' data-badge="' + def.key + '">' + esc(badge) + '</span>')
       + '</button>'
   }).join('')
-  return '<div class="dsh-pm-tabs" data-report-tabs="1">' + tabs + '</div>'
+  return '<div class="dsh-pm-tabs" data-report-tabs="1" role="tablist" aria-label="需求详情分区">' + tabs + '</div>'
 }
 
 /** 面板条目四态（判别联合：状态与数据同生共死，不会出现"有 error 又有 data"）。 */
@@ -171,13 +234,18 @@ function panelBody(def: ReportTabDef, entry: PanelEntry | undefined, ctx: Report
 /**
  * 面板段包装（**只含当前这一个面板**；未激活的面板根本不在产物里）。
  *
- * 属性名是 `data-tab-host` 而**不是** `data-panel`：六个面板卡都按约定在自己的根容器上输出
+ * 属性名是 `data-tab-host` 而**不是** `data-panel`：各面板卡都按约定在自己的根容器上输出
  * `data-panel="<key>"`（直接调 `panel.render()` 的断言需要它），包装器再输出一遍就会让
  * "当前有几个面板"这类计数断言（`match(/data-panel=/g).length`）数出两倍。
  * 判据不变：产物里**不出现**未激活 key 的 `data-panel=`。
+ *
+ * 新增的可访问性属性同样**追加在既有属性之后**：`role="tabpanel"` + `id="panel-<key>"` +
+ * `aria-labelledby="tab-<key>"`（与 Tab 项的 `id`/`aria-controls` 成对，其中 `aria-labelledby`
+ * 指向的那一项**一定在 DOM 里**——Tab 栏恒常渲染；反向的 `aria-controls` 则只是稳定声明）。
  */
 function panelWrapper(key: ReportTabKey, body: string): string {
-  return '<div class="dsh-pm-tab-panel" data-tab-host="' + key + '" data-tab-content="' + key + '">' + body + '</div>'
+  return '<div class="dsh-pm-tab-panel" data-tab-host="' + key + '" data-tab-content="' + key + '"'
+    + ' role="tabpanel" id="panel-' + key + '" aria-labelledby="tab-' + key + '">' + body + '</div>'
 }
 
 /** 纯渲染时的空上下文：取数一律拒绝（取数归控制器，渲染不该有副作用）。 */
@@ -361,6 +429,10 @@ export interface ReportTabsController {
    * 为什么挂在**容器**而不是面板节点上：面板段每次台账变更都会被整段替换，挂在面板上等于
    * 每次都要重挂（漏挂一次就是"点了没反应"）。
    * 无 DOM 能力（宿主桩 / 测试桩）时返回空卸载函数，静默跳过。
+   *
+   * 同一次挂载还接两条**组内**交互：`input`（面板就地检索）与 `keydown`（Tab 组方向键，
+   * FR-3 #3/#4 —— `←`/`→` 相邻、`Home`/`End` 首尾，切换点的是既有 `switch-tab` 通道
+   * 那一项（`data-action` + `data-tab`），不新造写路径）。三条委派同一个宿主、同一个卸载函数。
    */
   attach(root: HTMLElement): () => void
   /** 该 Tab 的**取数次数**（测试与诊断用；生产不读） */
@@ -392,24 +464,38 @@ function confirmTextOf(el: HTMLElement): string {
 }
 
 /**
- * 面板内的**就地**交互（当前只有对话 Tab 的页内检索）：只过滤**已加载**的消息，不重新取数
- * （"更早的还没加载"由「加载更早」管，检索栏自己会写明范围）。
- *
- * 为什么由壳接而不是 board-mount：与 `data-open-doc` 同一条理由——面板只返回字符串，
- * DOM 事件总得有人接；接在壳里，面板与事件落的距离最短，board-mount 只管渲染与生命周期。
- * 为什么不是 `ReportTabDef.onInput` 钩子：今天只有一处，提前抽接口反而更难读；
- * 后面面板卡落地后若出现第二个同类需求，再抽成 `def.onInput?.(panel, ev)`。
+ * 取 `data-tab` 的键（属性优先于 dataset：宿主桩可能只实现 getAttribute）。
+ * 非合法键之一 → `undefined`（**不猜**：脏值不许顺着 `defOf` 静默变成 trunk）。
  */
-function handlePanelInput(root: HTMLElement, ev: Event): boolean {
-  const target = ev.target as Element | null
-  if (target === null || typeof target.closest !== 'function') return false
-  const box = target.closest<HTMLInputElement>('[data-dialogue-search]')
-  if (box === null) return false
-  // 作用域 = 该输入框所在的面板（`data-panel` 由面板根提供）；找不到才用壳根
-  const panel = box.closest<HTMLElement>('[data-panel]') ?? root
-  applyDialogueSearch(panel, box.value)
-  return true
+function dataTabOf(el: HTMLElement): ReportTabKey | undefined {
+  const fromDataset = el.dataset === undefined ? undefined : el.dataset.tab
+  const raw = typeof fromDataset === 'string' && fromDataset.length > 0
+    ? fromDataset
+    : (typeof el.getAttribute === 'function' ? el.getAttribute('data-tab') ?? '' : '')
+  return isReportTabKey(raw) ? raw : undefined
 }
+
+/**
+ * 在容器里按**既有**的 `switch-tab` 通道（`data-action` + `data-tab`）找那一项。
+ * 刻意不引新属性、不看 `aria-selected`：新增的 ARIA 只描述、不驱动（设计 R3），
+ * 键盘与鼠标必须落在同一个入口上（否则两套切法迟早各说各话）。
+ */
+function tabButtonIn(scope: HTMLElement | undefined, key: ReportTabKey): HTMLElement | null {
+  if (scope === undefined || typeof scope.querySelector !== 'function') return null
+  return scope.querySelector<HTMLElement>('[data-action="switch-tab"][data-tab="' + key + '"]')
+}
+
+/** 给某一项上焦点（节点已不在树上 / 桩没有 `focus` 能力 → 静默跳过，不抛）。 */
+function focusTabIn(scope: HTMLElement | undefined, key: ReportTabKey): void {
+  const el = tabButtonIn(scope, key)
+  const focus = (el as { focus?: unknown } | null)?.focus
+  if (typeof focus === 'function') (focus as () => void).call(el)
+}
+
+/**
+ * 面板内不再有就地输入交互：REQ-261006130057-7a43（FR-6 · D-6）把对话 Tab 改为**只读**历史记录，
+ * 页内检索框整块删除，`handlePanelInput` 与 `input` 监听随之移除（不留死代码）。
+ */
 
 /**
  * 危险动作的确认（返回 true = 这次点击**已被拦下**）。
@@ -579,12 +665,54 @@ export function createReportTabs(opts: ReportTabsOpts): ReportTabsController {
         if (path.length === 0) return
         ctx.openDoc(path)
       }
-      const onInput = (ev: Event): void => { handlePanelInput(root, ev) }
+      /**
+       * 方向键在 Tab 组内移动（FR-3 #3/#4）——roving tabindex 的另一半：整组在 Tab 顺序里只停一次
+       * （只有选中项 `tabindex="0"`），组内靠 `←`/`→` 走、`Home`/`End` 跳首尾。
+       *
+       * 四条"别做"：
+       *  · **不新造写路径**：移动 = 对目标那一项**点一下**——既有的 `switch-tab` 通道
+       *    （`data-action` + `data-tab`）是唯一入口，鼠标点它走的也是这条委派；本函数不直接调 `select()`，
+       *    键盘与鼠标因此不可能各切各的；
+       *  · **不看 `aria-selected`**：新属性只描述、不驱动（设计 R3）——当前项一律从事件目标的
+       *    `data-tab` 读（合法键守卫兜住脏值）；
+       *  · **不新增 `data-*`**：只用既有两个属性定位（`data-action` / `data-tab`）；
+       *  · **端点不回绕**（TC-6 二选一，此处选"不回绕"）：首项按 `←` / 末项按 `→` 不动作，
+       *    仍 `preventDefault()` 免得页面跟着滚。
+       *
+       * 为什么点完要**重取节点**再 `focus()`：切 Tab 会重绘 Tab 栏段（节点被换掉），而重绘经
+       * `scheduleRender` 排在微任务里——抱着旧节点 `focus()` 会落到一个马上被丢弃的节点上
+       * （真实缺陷：`aria-selected` 前移了、焦点却掉回 body）。故先重取一次给焦点，
+       * 再补一拍微任务兜住"重绘排在这一拍之后"的情形。
+       */
+      const onKeydown = (ev: Event): void => {
+        const ke = ev as { key?: unknown; target?: unknown; preventDefault?: () => void }
+        const key = typeof ke.key === 'string' ? ke.key : ''
+        const step = key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : 0
+        const edge = key === 'Home' ? 0 : key === 'End' ? REPORT_TAB_KEYS.length - 1 : undefined
+        if (step === 0 && edge === undefined) return
+        const target = ke.target as Element | null
+        if (target === null || typeof target.closest !== 'function') return
+        const tab = target.closest<HTMLElement>('[data-action="switch-tab"][data-tab]')
+        if (tab === null) return
+        const from = dataTabOf(tab)
+        if (from === undefined) return
+        const at = REPORT_TAB_KEYS.indexOf(from)
+        const to = edge ?? at + step
+        if (typeof ke.preventDefault === 'function') ke.preventDefault()
+        if (to === at || to < 0 || to >= REPORT_TAB_KEYS.length) return // 端点不回绕 / 原地不动不重绘
+        const nextKey = REPORT_TAB_KEYS[to]
+        const next = tabButtonIn(root, nextKey)
+        const click = (next as { click?: unknown } | null)?.click
+        if (typeof click !== 'function') return
+        ;(click as () => void).call(next) // 既有通道：与鼠标点它同一条 switch-tab 委派
+        focusTabIn(root, nextKey)
+        void Promise.resolve().then(() => { focusTabIn(root, nextKey) })
+      }
       root.addEventListener('click', onClick)
-      root.addEventListener('input', onInput)
+      root.addEventListener('keydown', onKeydown)
       return () => {
         root.removeEventListener('click', onClick)
-        root.removeEventListener('input', onInput)
+        root.removeEventListener('keydown', onKeydown)
       }
     },
     loadCount: (key) => counts.get(key) ?? 0,

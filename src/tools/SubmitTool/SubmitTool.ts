@@ -2,8 +2,8 @@
  * reqboard_submit 工具壳（REQ-47939a t8）——**4 个提交工具合一**，按 kind 表驱动分派，
  * 每个分支体只有一行用例调用（设计 §4.3「禁止大 if」）。
  *
- * kind → 用例：requirement/plan → SubmitArtifact；verification → SubmitVerification；
- * archive → SubmitArchive；design → SubmitDesignArtifacts。返回体为五个用例返回键的并集
+ * kind → 用例：requirement/plan/prototype → SubmitArtifact；verification → SubmitVerification；
+ * archive → SubmitArchive；design → SubmitDesignArtifacts。返回体为各用例返回键的并集
  * （穷尽声明，绑定层不拒收）。
  *
  * @module dsh-pmboard/tools/SubmitTool
@@ -11,7 +11,7 @@
 import { defineTool, type ToolRunContext } from '@deepseek-ai/dsh-tools'
 import { LIMITS } from '../../domain/limits.js'
 import type { UseCaseDeps } from '../../application/ports.js'
-import { submitRequirementArtifact, submitPlanArtifact } from '../../application/use-cases/SubmitArtifact.js'
+import { submitRequirementArtifact, submitPlanArtifact, submitPrototypeArtifacts } from '../../application/use-cases/SubmitArtifact.js'
 import { submitVerification } from '../../application/use-cases/SubmitVerification.js'
 import { submitArchive } from '../../application/use-cases/SubmitArchive.js'
 import { submitDesignArtifacts } from '../../application/use-cases/SubmitDesignArtifacts.js'
@@ -22,7 +22,7 @@ import { renderSmart } from '../shared.js'
 import { submitSummary } from '../render-summaries.js'
 import { SUBMIT_PROMPT } from './prompt.js'
 
-/** 五个 kind（分派表的键集合；错误消息与自检共用）——权威定义在 shared/protocol（适配层不写状态名字面量）。 */
+/** 六个 kind（分派表的键集合；错误消息与自检共用）——权威定义在 shared/protocol（适配层不写状态名字面量）。 */
 export { SUBMIT_KINDS }
 
 /** 分派表：kind → 用例（每项一个独立 use-case，禁止写成一个大 if）。 */
@@ -32,6 +32,7 @@ const SUBMIT_DISPATCH: Readonly<Record<string, (deps: UseCaseDeps, args: unknown
   verification: submitVerification,
   archive: submitArchive,
   design: submitDesignArtifacts,
+  prototype: submitPrototypeArtifacts,
 }
 
 export function defineSubmitTool(deps: UseCaseDeps) {
@@ -41,12 +42,12 @@ export function defineSubmitTool(deps: UseCaseDeps) {
     parameters: {
       kind: {
         type: 'string',
-        description: '提交类型：requirement=需求文档 / plan=拆分计划 / verification=验收材料 / archive=归档材料 / design=设计文档登记（扫 design/ 或单份）',
+        description: '提交类型：requirement=需求文档 / plan=拆分计划 / verification=验收材料 / archive=归档材料 / design=设计文档登记（扫 design/ 或单份） / prototype=原型登记（扫 prototypes/*.html 或单份，抽锚点与几何量写产物元数据）',
         required: true,
         enum: [...SUBMIT_KINDS],
       },
       requirement_id: { type: 'string', description: '需求 id（REQ-xxxxxx）；不传默认本窗口绑定的需求' },
-      path: { type: 'string', description: '文档路径（kind=requirement/plan/design）：工作区相对路径；design 缺省 = 扫 docs/requirements/<REQ>/design/*.md' },
+      path: { type: 'string', description: '文档路径（kind=requirement/plan/design/prototype）：工作区相对路径；design 缺省 = 扫 docs/requirements/<REQ>/design/*.md；prototype 缺省 = 扫 docs/requirements/<REQ>/prototypes/*.html（旧目录 prototype/*.html 仍识别并提示迁移）' },
       summary: { type: 'string', description: '摘要：requirement=一句话摘要；plan=目标+做法；verification=交付结论（≤2000 字符）；写法：每条短句（建议 ≤60 字）；需引号用「」避免半角双引号；文本过大拆成多次调用' },
       change_note: { type: 'string', description: '变更原因（已确认/已批准后重交时必填）：改了什么/为什么，下游标"待同步"' },
       tasks: {
@@ -60,6 +61,11 @@ export function defineSubmitTool(deps: UseCaseDeps) {
           properties: {
             key: { type: 'string', description: '计划内引用键（如 t1；depends_on 用它引用）' },
             requirement_refs: { type: 'array', items: { type: 'string' }, description: '本卡承接的需求条款（如 ["FR-1","FR-2"]）；落库写入 TaskRecord.requirementRefs，供 RTM/覆盖度统计' },
+            // 原型锚点 / 关联 D-x（REQ-261005105032-3b02 FR-5、FR-9 / t12）：**必须**在这里声明——
+            // 本 schema 是 additionalProperties:false，未声明的键被绑定层直接拒收（或按丢失处理），
+            // 于是"计划携带任务表"这条通道的锚点与裁定的引用恒空（requirement_refs 栽过同款）。
+            prototypeRefs: { type: 'array', items: { type: 'string' }, description: '本卡的 UI 卡原型锚点（如 ["prototypes/detail.html#FR-4"]）；UI 卡（side=frontend）在 feature/refactor 需求下必填，落库写入 TaskRecord.prototypeRefs' },
+            decisionRefs: { type: 'array', items: { type: 'string' }, description: '本卡承接的裁定编号（如 ["D-1","D-3"]）；落库写入 TaskRecord.decisionRefs，供 RTM covers_decisions' },
             title: { type: 'string', description: '任务标题（动词开头，≤120 字符）' },
             description: { type: 'string', description: '任务说明（改哪些文件/接口）' },
             phase: { type: 'string', description: 'doc / ui / analysis / implement / test / review / merge', enum: [...ALL_TASK_PHASES] },
@@ -99,6 +105,35 @@ export function defineSubmitTool(deps: UseCaseDeps) {
         type: 'array',
         description: 'kind=verification 的证据清单（1-20 条；命令+结果摘要 / 报告路径 / 截图路径）',
         items: { type: 'string' },
+      },
+      // REQ-261006092213-4f5b FR-1 / D-3 / D-4：**逐项实测结果**（提交那一刻一次闭环落章）。
+      // 为什么必须在这里显式声明：本 schema 是 additionalProperties:false，未声明的键会被绑定层
+      // 直接拒收——`footprint` / `prototypeRefs` 都栽过同一形态（本仓已踩过三次）。
+      results: {
+        type: 'array',
+        description: 'kind=verification：逐项实测结果（可选；传了就必须**逐项交代**——漏项 / 坏 ref / 空结果会被拒并点名）。'
+          + 'ref 与验收项来源同构：{kind:"task",taskId} / {kind:"requirement"} / {kind:"prototype-compare",prototypePath} / {kind:"decision-compare",decisionIds}；'
+          + '每项二选一：给 result（命令+输出摘要，≤500 字符）或标 needsHuman:true + humanReason（界面视觉 / 线下流程这类只能人看的项）。',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            ref: {
+              type: 'object',
+              additionalProperties: false,
+              description: '引用键：与验收项来源同构（不发明第二套键，也不依赖提交后才生成的验收项 id）；kind 必填',
+              properties: {
+                kind: { type: 'string', enum: ['task', 'requirement', 'prototype-compare', 'decision-compare'] },
+                taskId: { type: 'string', description: 'kind=task：顶层父卡任务 id' },
+                prototypePath: { type: 'string', description: 'kind=prototype-compare：原型页面路径（与验收单同值）' },
+                decisionIds: { type: 'array', items: { type: 'string' }, description: 'kind=decision-compare：本轮裁定的 D-x 编号' },
+              },
+            },
+            result: { type: 'string', description: '命令 + 输出摘要（≤500 字符，超长截断）' },
+            needsHuman: { type: 'boolean', description: 'true = 该项只能人看（agent 跑不了）' },
+            humanReason: { type: 'string', description: 'needsHuman=true 时必填：为什么必须人看（无理由即拒）' },
+          },
+        },
       },
       dir: { type: 'string', description: 'kind=archive 的需求目录（工作区相对路径，如 docs/requirements/REQ-xxxxxx）' },
       docs: {
@@ -262,12 +297,39 @@ export function defineSubmitTool(deps: UseCaseDeps) {
               },
             },
           },
-          registered_count: { type: 'number', description: 'kind=design：本次新登记条数（幂等命中不计数）' },
+          registered_count: { type: 'number', description: 'kind=design/prototype：本次新登记条数（幂等命中不计数）' },
+          prototypes: {
+            type: 'array',
+            description: 'kind=prototype：逐份原型登记态（磁盘 / 产物簿 / INDEX / 确认章四源合成，与 design_docs 同构）',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                name: { type: 'string', description: '文件名（如 detail.html）' },
+                path: { type: 'string', description: '工作区相对路径' },
+                on_disk: { type: 'boolean', description: '磁盘上是否真实存在' },
+                registered: { type: 'boolean', description: '产物簿是否有该条（stage=brainstorming + kind=prototype）' },
+                confirmed: { type: 'boolean', description: '是否已落章（confirmedAt !== undefined）；门禁只要求已登记，确认章是可选加强' },
+                exempted: { type: 'string', description: '有效豁免理由（front-matter prototype_exempt，理由非空且 requirement 已落章才注入）' },
+                authoritative: { type: 'boolean', description: 'INDEX「状态」列 === authoritative' },
+                superseded_by: { type: 'string', description: 'INDEX「被取代于」列（仅 superseded 行有）' },
+                serves: { type: 'array', items: { type: 'string' }, description: 'INDEX「服务条款」列声明的 FR' },
+                anchors: { type: 'array', items: { type: 'string' }, description: '抽到的 id="FR-N" 锚点' },
+                geometry: { type: 'array', items: { type: 'string' }, description: 'proto-geometry 的观测量名（不含值/阈值）' },
+              },
+            },
+          },
           status: { type: 'string', description: '提交后的需求状态（accepting / archived 等）' },
           tasks_done: { type: 'number', description: 'kind=verification：已完成任务数' },
           tasks_total: { type: 'number', description: 'kind=verification：任务总数' },
           sheet_version: { type: 'number', description: 'kind=verification：验收单版本（v1/v2…）' },
           sheet_items: { type: 'number', description: 'kind=verification：本轮验收项数' },
+          // REQ-261006092213-4f5b FR-1 / FR-2：逐项交代的回执（`bound` 取 changed、`matched` 作诊断）。
+          results_bound: { type: 'number', description: 'kind=verification：真正写进台账的逐项结果条数（= applyStructuredResults 的 changed；人填过的 result 受保护 → 命中但不计；同值重写仍计入）' },
+          results_matched: { type: 'number', description: 'kind=verification：命中可预见项的 results 条数（诊断「命中但没改动」）' },
+          results_unmatched: { type: 'array', items: { type: 'string' }, description: 'kind=verification：无法归属的键（坏 ref 已被拒；此处为 evidence 里「id :: 结果」老写法的未命中键）——不再静默' },
+          results_out_of_scope: { type: 'array', items: { type: 'string' }, description: 'kind=verification：本版验收单不含但确实存在的 ref（返工续版的正常情形）——如实报告、不拒' },
+          results_coverage: { type: 'string', description: 'kind=verification：complete=已逐项交代；legacy=未传 results（老调用方）或回滚开关 DSH_REQBOARD_NO_ITEM_RESULT 生效' },
           rework_only: { type: 'boolean', description: 'kind=verification：本轮是否只含上版未过项（返工续验）' },
           acceptance_tracking_count: { type: 'number', description: 'kind=verification：验收追踪条目数' },
           doc_sync_pending: {
@@ -279,22 +341,39 @@ export function defineSubmitTool(deps: UseCaseDeps) {
               properties: {
                 source: { type: 'string' },
                 downstream: { type: 'array', items: { type: 'string' } },
+                // 2026-10-06 实测补声明：值里一直带着 reason / at（DocSyncPending 的形状），
+                // 而 schema 只声明了 source/downstream ⇒ 每次「有文档待同步」的 submit 都在**返回体**
+                // 被绑定层判 `value.doc_sync_pending[0].reason is not a declared property`，
+                // 产物其实已落库、agent 却只拿到一条 invalid output（本仓已踩过的同款形态）。
+                reason: { type: 'string', description: '变更原因（人读）' },
+                at: { type: 'number', description: '标记时间（毫秒时间戳）' },
               },
             },
           },
           doc_sync_warning: { type: 'string', description: '下游待同步警告' },
+          // blockers 是**两种形状**，因为两种 kind 说的是两件事：
+          //   · kind=prototype（REQ-261005105032-3b02 §1）：未登记/不可登记的原因 → **字符串清单**
+          //     （人读的补齐指引，如 prototype_missing 点名目录与骨架路径）；
+          //   · kind=verification：rollup 阻塞 → 结构化对象（id/title/status，看板要按 id 跳转）。
+          // 一个 additionalProperties:false 的对象壳装不下两种形状，故用 oneOf 声明（不合并语义、
+          // 不把一方的读数降级成字符串）。
           blockers: {
-            type: 'array',
-            description: 'kind=verification：rollup 阻塞（未完成任务清单，需求未进验收的原因）',
-            items: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                id: { type: 'string' },
-                title: { type: 'string' },
-                status: { type: 'string' },
+            description: 'kind=verification：rollup 阻塞（未完成任务清单，需求未进验收的原因）；kind=prototype：未登记/不可登记的原因字符串清单',
+            oneOf: [
+              { type: 'array', items: { type: 'string' } },
+              {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    id: { type: 'string' },
+                    title: { type: 'string' },
+                    status: { type: 'string' },
+                  },
+                },
               },
-            },
+            ],
           },
           required_docs: { type: 'array', items: { type: 'string' }, description: 'kind=archive：该需求类型的必填文档' },
           unlisted_files: { type: 'array', items: { type: 'string' }, description: 'kind=archive：目录内未列入归档清单的文件（漏登警告）' },

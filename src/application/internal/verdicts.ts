@@ -22,11 +22,15 @@ import {
 import { hasErrorCode, REQBOARD_ERROR_CODES } from '../../domain/errors.js'
 import {
   applyVerdicts as applySheetVerdicts,
+  isSystemItem,
   reworkSpecsFor,
   type ReworkTaskSpec,
 } from '../../domain/workflow/AcceptanceSheetSpec.js'
 import { transitionRequirement } from './token-usage.js'
 import { REWORK_REQ_STATUS } from '../../domain/requirement/RequirementStatus.js'
+// REQ-261006092213-4f5b FR-4：人改结果的截断口径与 agent 侧同源（台账存摘要，不存整屏）。
+import { RESULT_MAX_CHARS } from '../../domain/workflow/ResultBinding.js'
+import { itemResultBindingEnabled } from '../../domain/workflow/AcceptanceSheetSpec.js'
 
 export interface VerdictInput {
   itemId: string
@@ -142,6 +146,31 @@ export function applyVerdicts(
     throw err
   }
   const pending = applied.pending
+  // REQ-261006092213-4f5b FR-6：未复核项也要进裁决留痕——它与 pending 一样"不放行"。
+  const unverifiedCount = sheet.items.filter(i => i.status === 'unverified').length
+  // ── 人改过结果 → 写 result 与来源（REQ-261006092213-4f5b FR-4 / D-5）─────────────
+  // 两条通道（看板 / 会话弹框）共用的**唯一写点**：`resultSource='human'` 从此不再是死分支。
+  // 纪律：
+  //   · **只对「通过」的项**——failed / not_verifiable 的 opinion 是处置意见，不是实际结果，
+  //     不得覆盖该项的实测结果（实际结果列要保住 agent 原文，意见另行留痕）；
+  //   · **系统项（gapKind / 不可照着验）跳过**（复核 S3）：它的 opinion 是"这个缺口怎么处置"，
+  //     同样不是实测结果——写进 `result` 会让 FR-7 的「实际结果」列与看板的「人工填写」徽标
+  //     把处置意见冒充实测结论；
+  //   · 与现值相等则不写（零输入通过时 opinion 就是 result ⇒ 来源保持 `agent`，不被误标成 human）；
+  //   · **回滚开关开启时整段跳过**：旧口径从不写 `result`（`evidence[0]` 兜底出来的文本是"系统回填"，
+  //     不是人写的）——开关承诺"一行配置退回今天行为"，把系统回填标成 `human` 会污染来源可辨性；
+  //   · 截断口径与 agent 侧同源（`RESULT_MAX_CHARS`），台账不存整屏。
+  if (itemResultBindingEnabled(process.env)) {
+    for (const verdict of verdicts) {
+      if (verdict.status !== 'passed') continue
+      const it = sheet.items.find(i => i.id === verdict.itemId)
+      if (it === undefined || isSystemItem(it)) continue
+      const op = (verdict.opinion ?? '').trim()
+      if (op.length === 0 || op === (it.result ?? '').trim()) continue
+      it.result = op.slice(0, RESULT_MAX_CHARS)
+      it.resultSource = 'human'
+    }
+  }
   // REQ-308b9a FR-8（**推翻 REQ-a8d582 FR-2**，用户订正①）：
   // 出现 failed → **同笔 mutate 内**自动回退实施 + 物化返工卡；不再等人点「退回返工」。
   // 原子性（AC-8.3）：物化或状态迁移抛错 → 整笔 mutate 回滚，不出现"状态改了卡没建"。
@@ -163,9 +192,14 @@ export function applyVerdicts(
     id: commentId(),
     body: '[验收单] v' + sheet.version + ' 逐项裁决：通过 ' + applied.passed + ' 项，不通过 ' + applied.failed + ' 项，'
       + '不可验收 ' + applied.notVerifiable + ' 项，待验 ' + pending + ' 项'
+      + '、未复核 ' + unverifiedCount + ' 项'
       + (applied.failed > 0
           ? '（已自动回退实施并生成 ' + reworkTasks.length + ' 张返工任务）'
-          : (pending === 0 ? '（全部已裁决 → 可点「验收通过」归档）' : '（挂起，稍后从断点续验）')),
+          // 放行口径与判据同源（REQ-261006092213-4f5b FR-6）：只数 pending 会让台账写下
+          // 「全部已裁决 → 可点验收通过」，而实际被未复核项拦住——同一件事两处相反的口径。
+          : (pending === 0 && unverifiedCount === 0
+              ? '（全部已裁决 → 可点「验收通过」归档）'
+              : (pending > 0 ? '（挂起，稍后从断点续验）' : '（仍有未复核项：补上实际结果后再归档）'))),
     createdAt: nowTs,
     createdBy: actor,
   })

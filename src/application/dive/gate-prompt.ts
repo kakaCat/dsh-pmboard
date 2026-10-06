@@ -232,6 +232,10 @@ export function createGatePromptPort(deps: GatePromptPortDeps): GatePromptPort {
         ...(uc.dialogs === undefined ? {} : { dialogs: uc.dialogs }),
         now: () => uc.clock.now(),
         ...(uc.alert === undefined ? {} : { alert: uc.alert }),
+        // REQ-261006170150-52cc FR-2：门框自己的清位出口（作答 / 抛错 / 降级三条路）也要请求一次驱动。
+        // 肯定作答时收敛点已按 `advanced !== true` 补发，本回调在那种情形下不会再发一次
+        // （清位发生在收敛点内部且带 `notify:false`，`finally` 那次已被幂等吸收）。
+        ...(uc.notifyDrivable === undefined ? {} : { onCleared: uc.notifyDrivable }),
       }
       void enterAwaitingConfirm(awaiting, {
         requirementId: input.requirementId,
@@ -262,6 +266,9 @@ export function createGatePromptPort(deps: GatePromptPortDeps): GatePromptPort {
             picked,
             nowTs: uc.clock.now(),
             advance: true,
+            // REQ-261006170150-52cc FR-1：Dive 门框把**自己算出的** ref 交给收敛点，
+            // 让它在落章/推进之前带 ref await 清位（清位即驱动的补发在收敛点里）。
+            dialogRef,
           })
         }
         return { answered: picked.length > 0, affirmative }

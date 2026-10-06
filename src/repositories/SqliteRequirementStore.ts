@@ -49,8 +49,9 @@ import {
   type AdvanceJournalLine,
   type StatusJournalLine,
 } from '../domain/requirement/Journal.js'
-import { factsOf, summarize, type RequirementFacts, type RequirementSummary } from '../domain/requirement/RequirementSummary.js'
+import { factsOf, type RequirementFacts, type RequirementSummary } from '../domain/requirement/RequirementSummary.js'
 import {
+  SQLITE_COLUMN_MIGRATIONS,
   SQLITE_DDL,
   SQLITE_META_KEYS,
   SQLITE_PRAGMAS,
@@ -59,6 +60,8 @@ import {
   sqliteSchemaMatches,
 } from './sqliteSchema.js'
 import { compareSummaryOrder, decodeSummaryCursor, encodeSummaryCursor } from './shardPaging.js'
+// REQ-261006175040-12d4 t4：摘要带门读数（SQLite 的轻记录已注入 parts ⇒ 零额外 IO）
+import { boardSummaryOfAuthoritative } from '../shared/board-summary.js'
 import {
   SQL,
   commentLineOfRow,
@@ -107,6 +110,13 @@ export class SqliteRequirementStore implements RequirementStore {
       this.db = new DatabaseSync(options.file)
       for (const pragma of SQLITE_PRAGMAS) this.db.exec(pragma)
       for (const ddl of SQLITE_DDL) this.db.exec(ddl)
+      // 建表补不齐的列在这里补（REQ-261005141830-7a3b FR-8）：老库缺 project_id 会让**所有写入**失败，
+      // 读却照样能读——不补就是"存量库升级后变只读"这种最难查的半死状态。
+      for (const m of SQLITE_COLUMN_MIGRATIONS) {
+        const cols = this.db.prepare('PRAGMA table_info(' + m.table + ')').all() as Row[]
+        if (cols.some((c) => String(c.name) === m.column)) continue
+        this.db.exec(m.ddl)
+      }
     } catch (err) {
       throw mapSqliteError(err)
     }
@@ -196,7 +206,7 @@ export class SqliteRequirementStore implements RequirementStore {
     const row = this.db.prepare(cold ? SQL.selectColdOne : SQL.selectHotOne).get(id) as Row | undefined
     if (row === undefined) return undefined
     try {
-      return summarize(lightRecordOfRow(row, this.partsMap(id)) as unknown as RequirementRecord)
+      return boardSummaryOfAuthoritative(lightRecordOfRow(row, this.partsMap(id)) as unknown as RequirementRecord)
     } catch (err) {
       this.onWarn(`SQLite ${id} 摘要构建失败（已剔除）：${(err as Error).message}`)
       return undefined
@@ -268,7 +278,7 @@ export class SqliteRequirementStore implements RequirementStore {
       const id = String(row.id)
       try {
         const light = lightRecordOfRow(row, partsByReq.get(id) ?? new Map()) as unknown as RequirementRecord
-        index.set(id, summarize(light))
+        index.set(id, boardSummaryOfAuthoritative(light))
         facts.set(id, factsOf(light))
       } catch (err) {
         this.onWarn(`SQLite ${id} 摘要构建失败，已从索引剔除（其余需求不受影响）：${(err as Error).message}`)
@@ -284,7 +294,7 @@ export class SqliteRequirementStore implements RequirementStore {
     for (const row of this.db.prepare(SQL.selectColdAll).all() as Row[]) {
       const id = String(row.id)
       try {
-        out.push(summarize(lightRecordOfRow(row, this.partsMap(id)) as unknown as RequirementRecord))
+        out.push(boardSummaryOfAuthoritative(lightRecordOfRow(row, this.partsMap(id)) as unknown as RequirementRecord))
       } catch (err) {
         this.onWarn(`SQLite 冷侧 ${id} 摘要构建失败（已跳过）：${(err as Error).message}`)
       }
@@ -313,6 +323,12 @@ export class SqliteRequirementStore implements RequirementStore {
       .filter((s) => {
         if (filter?.ids !== undefined && !filter.ids.includes(s.id)) return false
         if (filter?.status !== undefined && !filter.status.includes(s.status)) return false
+        // t5（FR-8）：`includeUnattributed` 把**未归属**（无 projectId）的存量记录一并带回——
+        // 缺省 false = 只见 projectId 相等者（老行为逐字不变）。
+        if (filter?.projectId !== undefined && s.projectId !== filter.projectId) {
+          const unattributed = !(typeof s.projectId === 'string' && s.projectId.length > 0)
+          if (!(filter.includeUnattributed === true && unattributed)) return false
+        }
         if (filter?.workspaceRoot !== undefined && s.workspaceRoot !== filter.workspaceRoot) return false
         if (filter?.sourceSessionId !== undefined && s.sourceSessionId !== filter.sourceSessionId) return false
         if (filter?.seatWindowKey !== undefined
@@ -382,7 +398,8 @@ export class SqliteRequirementStore implements RequirementStore {
 
   /** 提交后刷新投影并广播（订阅者抛错不阻断写，与分片实现同口径）。 */
   private commitNotify(kind: RequirementChange['kind'], id: string, record: RequirementRecord, revision: number): void {
-    const summary = summarize(record)
+    // REQ-261006175040-12d4 t4：写侧记录即权威（parts 就在手上，零额外 IO）
+    const summary = boardSummaryOfAuthoritative(record)
     if (this.index !== undefined) this.index.set(id, summary)
     if (this.factsCache !== undefined) this.factsCache.set(id, factsOf(record))
     const change: RequirementChange = { kind, requirementId: id, revision, summary }

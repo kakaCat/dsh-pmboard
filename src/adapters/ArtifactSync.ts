@@ -153,11 +153,13 @@ export async function syncAllReqArtifacts(
   store: RequirementStore,
   cwd: string = process.cwd(),
   seams?: ArtifactSyncSeams,
+  /** 调用方（看板请求所在会话）的项目身份（REQ-261005141830-7a3b t5）：有它即按 id 分区。 */
+  callerProjectId?: string,
 ): Promise<SyncAllArtifactsResult> {
   // B12：整册快照 ⇒ 摘要查询（partition 只用 id/workspaceRoot/docBasePath ⇒ 摘要足够）
   const requirements = (await store.listSummaries({ scope: 'all' })).items
   // realpath 归一：macOS 上 /var 与 /private/var 是同一目录的两种写法，不归一会被判成「别的项目」
-  const part = partitionByProject(requirements, cwd, cwd, realpathSync)
+  const part = partitionByProject(requirements, cwd, cwd, realpathSync, callerProjectId)
   let scanned = 0
   for (const r of [...part.mine, ...part.unattributed]) {
     const { root } = projectRootOf(r, cwd)

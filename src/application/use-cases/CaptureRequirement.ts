@@ -38,12 +38,15 @@ import {
 import {
   agentIdFromExec,
   createRequirementDirect,
+  projectIdOfWindowForDeps,
   reject,
   requireDirectHuman,
   requireLiveDriver,
   ensureWritableProjectRoot,
 } from '../internal/support.js'
 import { syncRTMYaml } from '../internal/rtm-yaml.js'
+// REQ-261005105032-3b02 t11（FR-2）：弹框立项推进进需求阶段时幂等落原型骨架（失败只告警不阻断）。
+import { landPrototypeSkeleton } from '../internal/prototype-skeleton.js'
 import { taskStoreOf } from './queue-access.js'
 // FR-1（REQ-261004150249-731e）：开窗落点的三级解析与 reqboard_open_window 共用同一条链。
 import { resolveWindowCreateOptions } from './OpenWindow.js'
@@ -96,6 +99,10 @@ async function advanceDraftToBrainstorming(deps: UseCaseDeps, requirementId: str
       })
       return { changed: true }
     })
+    // REQ-261005105032-3b02 t11（FR-2）：弹框立项推进进需求阶段时同样幂等落原型骨架
+    // （只告警不阻断：落盘失败必须把 `true` 如实返回——推进真的发生了）。
+    const advanced = result?.requirement
+    if (advanced !== undefined) await landPrototypeSkeleton(deps.docs, advanced, { nowMs: deps.clock.now() })
     return result !== undefined
   } catch {
     return false
@@ -273,7 +280,16 @@ export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec:
     })
   }
 
+  // ③.7 写盘根守卫（REQ-261005123641-3982 FR-3）：**必须早于 ④ 建档**。
+  // 旧顺序是「④建档 + ⑤推进」之后才守卫，一旦拒绝：记录与状态都已落库，而回执是 Error
+  // （实测：多窗口并行时共享单例根被邻居窗口改走 → 回执 ❌ 立项失败，台账里却已有 REQ 并进了 brainstorming）。
+  // 此处还没有 REQ id，守卫只认「即将写入的根」——拒绝即**台账零写入**，回执与实际一致。
+  const usedProjectRoot = ensureWritableProjectRoot(deps, { workspaceRoot }, { callerRoot: sessionCwd })
+
   // ④ 创建即立项（draft + 入口快照 + 文档位置 + 工作区根；actor 口径与既有 reqboard_create 一致）
+  // 项目身份（REQ-261005141830-7a3b FR-1）：与 create 同口径——按立项窗口解析；
+  // 解析不到则不写该键，由 createRequirementDirect 在评论里标注「未归属」（不猜）。
+  const projectId = projectIdOfWindowForDeps(deps, windowKey)
   const req = await createRequirementDirect(deps, windowKey, {
     // FR-4：已绑定时按上面的选择放行；归属窗口可能是新窗口（handoff）
     ...(ownerWindowKey !== windowKey ? { ownerSessionId: ownerWindowKey } : {}),
@@ -285,6 +301,7 @@ export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec:
     promptDifficulty: mapped.difficulty,
     docBasePath: mapped.docLocation,
     workspaceRoot,
+    ...(projectId !== undefined ? { projectId } : {}),
   })
 
   // ⑤ 原子推进 brainstorming（G0 的 to）
@@ -297,7 +314,9 @@ export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec:
   const captureTasks = await taskStoreOf(deps).listByRequirement(req.id)
   // REQ-261001203710-0fbf t3 / FR-2：RTM 是**工作区相对**落盘（docs/requirements/<REQ>/rtm-*.yml），
   // 写之前先按记录自己的项目校正并核验——立项建档曾把 rtm-lifecycle.yml 写到别的项目去。
-  const usedProjectRoot = ensureWritableProjectRoot(deps, req)
+  // REQ-261005123641-3982 FR-3：建档后再按**记录**核一次，作为护栏（与 ③.7 同口径、按构造必过）；
+  // 生效根仍取 ③.7 那次（拒绝发生在副作用之前，回执与实际一致）。
+  ensureWritableProjectRoot(deps, req)
   syncRTMYaml(deps, captureTasks, req.id, 'create')
 
   // ⑥.5 RTM 触发点 bind（REQ-260927100007-b8ba FR-12）：reqboard_capture 是当前

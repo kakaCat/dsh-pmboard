@@ -1,7 +1,7 @@
 /**
  * RTM YAML 触发点接线（REQ-260926140539-457b FR-2 / FR-9）。
  *
- * 把需求流水线上的六个业务动作接到 RTM YAML 生成器：
+ * 把需求流水线上的业务动作接到 RTM YAML 生成器：
  *   reqboard_create            → create（rtm-lifecycle.yml 骨架）
  *   submit(kind=requirement)   → submit:requirement
  *   ask_confirm / 看板确认产物 → confirm:artifact
@@ -9,6 +9,7 @@
  *   ask_confirm / 看板批准计划 → confirm:plan（拆分 + 实施骨架）
  *   任务状态变更 / task_report → task:status / task:report
  *   submit(kind=verification)  → submit:verification
+ *   submit(kind=prototype)     → submit:prototype（REQ-261005105032-3b02 FR-5）
  *
  * **失败绝不打断主流程**（FR-9）：RTM 是增强层，任何异常只记 warning 并结构化返回，
  * 需求创建/提交/确认/推进的既有行为逐字节不变。
@@ -19,8 +20,11 @@ import type { UseCaseDeps } from '../ports.js'
 import { requirementStoreOf } from '../use-cases/queue-access.js'
 // REQ-261001203710-0fbf t7：RTM 写入前按需求 id 核验写盘根（判定下沉，一处覆盖十处调用点）
 import { assertWritableRequirementProject } from './support.js'
-import { recordRTMFailure, clearRTMFailure } from './rtm-health.js'
+import { recordRTMFailure, clearRTMFailure, recordRTMTriggerTrace } from './rtm-health.js'
 import { flowProfileFor, type RequirementCategory, type RequirementRecord, type TaskRecord } from '../../shared/protocol.js'
+// REQ-261005193546-1b1a FR-2 / design/interfaces.md §5：两个公开入口各自收敛为活卡（覆盖度分母剔卡）。
+// 判据/取数单点住在 domain（`isLiveTask` 的取反复用），此处只调用、不再手写 `!== 'canceled'`。
+import { liveTasksOf } from '../../domain/status/Predicates.js'
 import { stageOfStatus } from '../../../vendor/reqboard/src/rtm/lifecycle-generator.js'
 import { RTMGenerator, runRTMTrigger, type RTMTrigger, type RTMTriggerResult } from '../../../vendor/reqboard/src/rtm/generator.js'
 import type { LedgerReader } from '../../../vendor/reqboard/src/rtm/context.js'
@@ -28,10 +32,21 @@ import type { GateResult, RTMTaskLike, WorkflowPhase } from '../../../vendor/req
 import { rtmValidator } from '../../../vendor/reqboard/src/rtm/validator.js'
 import type { TaskDetailUpdate } from '../../../vendor/reqboard/src/rtm/implementing-generator.js'
 
-/** 触发点附加载荷。 */
+/**
+ * 触发点附加载荷。
+ *
+ * 触发点集合本身**只有一份**：vendor 的 `RTMTrigger`——`submit:prototype` 已收编进
+ * `vendor/reqboard/src/rtm/generator.ts` 的联合类型与 `filesForTrigger` 分派。
+ * 宿主侧刻意**不再自建**触发点联合类型：两处触发点集合就是两份真相，长期必然漂移。
+ */
 export interface RtmYamlPayload {
   taskId?: string
   updates?: TaskDetailUpdate
+  /**
+   * `submit:prototype`（决议 #48）：本次登记的原型路径。**只用于增量刷新与留痕**——
+   * 生成器仍以**台账**为事实源（载荷里多出来的路径不会进 YAML，台账里没有的也不会被补上）。
+   */
+  paths?: string[]
 }
 
 /**
@@ -145,6 +160,10 @@ export async function syncRTMYaml(
   trigger: RTMTrigger,
   payload?: RtmYamlPayload,
 ): Promise<RTMTriggerResult | undefined> {
+  // FR-2（REQ-261005193546-1b1a）：函数体顶部第一行收敛为**活卡**；其后本函数体只用 `live`。
+  // `liveTasksOf` 是纯函数、不抛（design/interfaces.md §5「异常语义」）⇒ 不改变下方
+  // 「取根/取快照都在 try 内」「失败绝不打断主流程」的既有边界。
+  const live = liveTasksOf(tasks)
   // FR-9：本函数的契约是"失败绝不打断主流程"——**连取根/取快照都必须在 try 内**。
   // 此前它们在 try 之外求值，docs/repo 端口缺失时会在进 try 之前抛出去（实测：不注入
   // docs 的工具用例会炸），与"RTM 是增强层"的承诺相反。
@@ -155,7 +174,7 @@ export async function syncRTMYaml(
     // （宿主级单例、会被别的窗口改）。写入前按需求 id 核验即将写的根 = 该需求声明的根；
     // 不一致就抛 PROJECT_ROOT_MISMATCH（由下面的 catch 如实记为 RTM 失败，不写错地方、也不静默）。
     await assertWritableRequirementProject(deps, reqId)
-    return syncRTMYamlWithSnapshot(deps.docs.workspaceRoot(), { requirements: page.items as never }, tasks, reqId, trigger, payload)
+    return syncRTMYamlWithSnapshot(deps.docs.workspaceRoot(), { requirements: page.items as never }, live, reqId, trigger, payload)
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)
     console.warn('[rtm-yaml] ' + trigger + ' ' + reqId + ' 取工作区根/台账快照失败（已忽略，不影响主流程）:', err)
@@ -181,16 +200,22 @@ export function syncRTMYamlWithSnapshot(
   trigger: RTMTrigger,
   payload?: RtmYamlPayload,
 ): RTMTriggerResult | undefined {
+  // FR-2（REQ-261005193546-1b1a）：第二个公开入口同样在函数体顶部第一行收敛为活卡。
+  // 看板三条路由（requirements.ts:404/:464、tasks.ts:174）**直调本入口、绕过前者**，
+  // 缺这一行就漏三条路径（design/backend.md §两个 RTM 公开入口）。
+  const live = liveTasksOf(tasks)
   try {
     const generator = new RTMGenerator({
       workspaceRoot,
-      ledger: ledgerReaderOf(snapshot, tasks),
+      ledger: ledgerReaderOf(snapshot, live),
       generatedBy: 'dsh-pmboard',
       // "这个需求有多少个节点"：取分类流程档案（单一事实源在 shared/protocol）；
       // archived 按 RTM 口径归一到 done（stageOfStatus 是同一归一函数的单点）。
       enabledStagesOf: (category: string | undefined) =>
         flowProfileFor(category as RequirementCategory | undefined).stages.map(stageOfStatus),
     })
+    // 触发点分派只有一处：vendor 的 `runRTMTrigger`（`submit:prototype` 已收编进其联合类型与
+    // filesForTrigger）——宿主不再自建分派表，避免两份触发点真相漂移。
     const result = runRTMTrigger(generator, trigger, reqId, payload)
     if (!result.ok) {
       console.warn('[rtm-yaml] ' + trigger + ' ' + reqId + ' 同步失败：' + (result.error ?? '未知原因'))
@@ -208,6 +233,15 @@ export function syncRTMYamlWithSnapshot(
         clearRTMFailure(stateDir, reqId)
       } catch {
         // 清除失败记录失败时静默
+      }
+      // 留痕（决议 #48）：`submit:prototype` 本次带了哪些原型路径。台账仍是生成器的事实源，
+      // 这条记录只回答"登记动作带了什么"；**写不进去也不能改变同步结果**（增强层纪律）。
+      if (trigger === 'submit:prototype') {
+        try {
+          recordRTMTriggerTrace(workspaceRoot + '/.dsh-data/state', reqId, trigger, payload?.paths ?? [])
+        } catch {
+          // 留痕失败静默：证据丢了是遗憾，把成功的同步改判成失败是错误
+        }
       }
     }
     return result

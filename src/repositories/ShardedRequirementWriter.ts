@@ -53,7 +53,9 @@ import { isColdStatus, isRequirementId } from '../domain/requirement/ReqboardPat
 // 冷侧写豁免（单一判据，与测试替身共用）：domain/requirement/ColdWrite。
 import { isColdWriteExempt } from '../domain/requirement/ColdWrite.js'
 import { toAdvanceLine, toCommentLine, toStatusLine, type JournalLine } from '../domain/requirement/Journal.js'
-import { summarize, factsOf, type RequirementFacts, type RequirementSummary } from '../domain/requirement/RequirementSummary.js'
+import { factsOf, type RequirementFacts, type RequirementSummary } from '../domain/requirement/RequirementSummary.js'
+// REQ-261006175040-12d4 t3：写侧广播的摘要带门读数（写侧记录即权威，见 boardSummaryOfAuthoritative 头注）
+import { boardSummaryOfAuthoritative } from '../shared/board-summary.js'
 import type { RequirementShardRepository } from './RequirementShardRepository.js'
 import { assembleRecord, loadParts, toHotRecord, type RequirementParts } from './shardAssembly.js'
 import { writeWholeShard } from './shardWholeWrite.js'
@@ -138,6 +140,7 @@ export class ShardedRequirementWriter {
         ...(input.category !== undefined ? { category: input.category } : {}),
         ...(input.promptDifficulty !== undefined ? { promptDifficulty: input.promptDifficulty } : {}),
         ...(input.docBasePath !== undefined ? { docBasePath: input.docBasePath } : {}),
+        ...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
         ...(input.workspaceRoot !== undefined ? { workspaceRoot: input.workspaceRoot } : {}),
         ...(input.sourceSessionId !== undefined ? { sourceSessionId: input.sourceSessionId } : {}),
       }
@@ -146,7 +149,7 @@ export class ShardedRequirementWriter {
       const revision = await this.bumpRevision()
       // §7.2 修复（t8/B0b）：订阅帧必须带**真 revision**。此前 `notify` 不带 revision、由 Store
       // 填占位 `0` ⇒ SSE 帧的版本号与"revision 短路"判据一并退化为恒 0（t5 复核已登记"t8 接线时修"）。
-      this.deps.notify('requirement-created', input.id, summarize(record), revision, factsOf(record))
+      this.deps.notify('requirement-created', input.id, boardSummaryOfAuthoritative(record), revision, factsOf(record))
       return record
     })
   }
@@ -218,7 +221,7 @@ export class ShardedRequirementWriter {
         await writeWholeShard(repo, root, record)
         // meta.json（提交点）在循环之后才写；但**将要**写入的全局序就是 `next.revision`，
         // 故广播用它——订阅者拿到的是"这次整册替换归属的版本"，不是占位值。
-        this.deps.notify('ledger-replaced', record.id, summarize(record), next.revision, factsOf(record))
+        this.deps.notify('ledger-replaced', record.id, boardSummaryOfAuthoritative(record), next.revision, factsOf(record))
       }
       await repo.writeMeta(root, {
         schemaVersion: next.schemaVersion,
@@ -328,7 +331,7 @@ export class ShardedRequirementWriter {
     this.warnIfAmplified(id)
     const kind = opts.kindOverride ?? (beforeRecord.status === draft.status ? 'requirement-updated' : 'requirement-moved')
     const finalRecord = { ...merged, ...(draft as unknown as Record<string, unknown>) } as unknown as RequirementRecord
-    this.deps.notify(kind, id, summarize(finalRecord), revision, factsOf(finalRecord))
+    this.deps.notify(kind, id, boardSummaryOfAuthoritative(finalRecord), revision, factsOf(finalRecord))
     return { requirement: finalRecord, version, revision, changed: true }
   }
 

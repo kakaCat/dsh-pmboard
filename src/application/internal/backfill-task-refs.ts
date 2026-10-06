@@ -21,6 +21,8 @@ import { planRefsFromDoc } from './content-gate-wiring.js'
 import { syncRTMYaml } from './rtm-yaml.js'
 import { amendTaskRefs } from '../use-cases/AmendTaskRefs.js'
 import { requirementStoreOf, taskStoreOf, mutateIfPresent } from '../use-cases/queue-access.js'
+// REQ-261005193546-1b1a FR-1/FR-4：活卡判据单点（回填的处置对象不再自写取消比较）
+import { liveTasksOf } from '../../domain/status/Predicates.js'
 
 export interface BackfillCandidate {
   requirement_id: string
@@ -86,7 +88,7 @@ export async function planBackfill(deps: UseCaseDeps): Promise<BackfillReport> {
     }
     for (const d of dupTitles) candidatesByKey.delete(d)
 
-    const tasks = (await store.listByRequirement(req.id)).filter(t => t.status !== 'canceled')
+    const tasks = liveTasksOf(await store.listByRequirement(req.id))
     if (tasks.length === 0) continue
     const frozen = FROZEN_STATUS.has(req.status)
     const docRefs = frozen ? new Map<string, string[]>() : await planRefsFromDoc(deps.docs, req)

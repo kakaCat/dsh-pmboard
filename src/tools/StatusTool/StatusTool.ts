@@ -145,6 +145,12 @@ export function defineStatusTool(deps: UseCaseDeps) {
                   items: { type: 'string' },
                 },
                 recovery: { type: 'string', description: '一句话恢复指引（取回执 / 看板确认）' },
+                // REQ-261005200052-ce40 FR-3：诊断四要素 + 可用出路（追加键；旧键语义逐字未变）
+                requirement_status: { type: 'string', description: '目标需求当前状态（终态时 agent 侧无法覆盖挂起票）' },
+                gate: { type: 'boolean', description: '该产物是否有确认门（门只有 requirement / design / decomposition / verification）' },
+                artifact_count: { type: 'number', description: '该 kind 在册产物数（0 = 没有东西可确认，人也点不了看板）' },
+                expires_at: { type: 'number', description: '本票自动失效时刻（ms；(interruptedAt ?? createdAt) + TTL）' },
+                usable_recovery: { type: 'array', items: { type: 'string' }, description: '真实可用的出路清单（走不通的路不列：无门 / 无产物 / 终态需求都据实裁剪）' },
               },
             },
           },

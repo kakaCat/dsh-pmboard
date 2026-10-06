@@ -84,16 +84,25 @@ export function verifyConfirmCopy(req: RequirementRecord | undefined): VerifyCon
   const passed = items.filter(i => i.status === 'passed').length
   const failedItems = items.filter(i => i.status === 'failed')
   const pending = items.filter(i => i.status === 'pending').length
+  // REQ-261006092213-4f5b FR-6：`unverified`（点了通过却没结果）与 pending 一样**不放行**——
+  // 只看 pending 会让这里显示「全部通过」、且 overrideDetail 为 undefined ⇒ 请求不带覆盖说明，
+  // 被服务端按「不合规通过」拒掉（人白点一次，还得自己去猜为什么）。口径与放行判据同源。
+  const unverified = items.filter(i => i.status === 'unverified').length
   const version = v.sheet?.version ?? 0
-  if (failedItems.length === 0 && pending === 0) {
+  if (failedItems.length === 0 && pending === 0 && unverified === 0) {
     return { message: '验收单 v' + version + '：' + passed + ' 项全部通过。\n验收通过即归档，是否继续？' }
   }
   const samples = failedItems.slice(0, 3).map(i => '✗ ' + i.criterion.slice(0, 60))
   return {
-    message: '验收单 v' + version + '：通过 ' + passed + ' / 不通过 ' + failedItems.length + ' / 未裁决 ' + pending + '。\n'
+    message: '验收单 v' + version + '：通过 ' + passed + ' / 不通过 ' + failedItems.length
+      + ' / 未裁决 ' + pending + ' / 未复核 ' + unverified + '。\n'
       + (samples.length > 0 ? samples.join('\n') + '\n' : '')
+      + (unverified > 0 && failedItems.length === 0 && pending === 0
+          ? '未复核项没有实际结果（点了通过却没留证据）——不计入通过。\n'
+          : '')
       + '确认后按「覆盖通过」归档（会留下覆盖记录），是否继续？',
-    overrideDetail: '看板覆盖通过：验收单 v' + version + '，不通过 ' + failedItems.length + ' 项 / 未裁决 ' + pending + ' 项',
+    overrideDetail: '看板覆盖通过：验收单 v' + version + '，不通过 ' + failedItems.length + ' 项 / 未裁决 ' + pending
+      + ' 项 / 未复核 ' + unverified + ' 项',
   }
 }
 
@@ -268,9 +277,9 @@ export function setDetailTab(detail: HTMLElement, tabName: string): void {
 /**
  * 取「被点的那个发送按钮**所在表单**」里的评论输入框。
  *
- * 为什么不能按"页面里第一个 `[data-role=comment-input]`"取：详情页现在同时有两个以上评论框
- * （常驻头部 + 对话 Tab），按第一个取会让面板里的「发送」读到头部那个（多为空）
- * → 点了没反应、也不报错（静默失败）。这是对话面板卡实测到的真缺陷。
+ * 为什么不能按"页面里第一个 `[data-role=comment-input]`"取：历史上详情页曾有多个评论框
+ * （常驻头部 + 对话 Tab），按第一个取会让「发送」读错框（静默失败）。对话 Tab 回复框已随
+ * REQ-261006130057-7a43 t7 删除（只读历史记录），此处仍按「所在表单」取——防御不改行为。
  * 作用域取不到才回落整页（旧壳只有一个评论框，行为与改造前一致）。
  */
 export function commentInputOf(button: Element, root: HTMLElement | undefined): HTMLInputElement | undefined {
@@ -826,6 +835,12 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         return
       }
       // REQ-6f39b5 t-006：Tab 切换
+      case 'scroll-gap-focus': {
+        // 闸门提示条「查看缺口 ↓」（REQ-261006130057-7a43 t4）：只读导航动作——滚动到状态带
+        // 缺口格。**不走 hash 导航**：宿主 hash 信道是深链路由，同信道点 hash 有被重路由的风险。
+        document.getElementById('dsh-pm-gap-focus')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
       case 'switch-tab': {
         const tab = target.closest<HTMLElement>('.dsh-pm-tab')
         if (!tab) return
@@ -919,6 +934,33 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         }
         return
       }
+      case 'rollback-cleanup': {
+        // REQ-261005122915-9f90 t6 / FR-5：误物化重做卡批量清场（**仅人**——服务端刻意不注册 agent 工具，
+        // 能力只开在这条看板 HTTP 通道上）。先确认后果，再把**可核对回执**逐条摊开：
+        // 匹配方式 / 取消张数 / 父子还原条数 / 逐条跳过原因（不许静默跳过）。
+        const reqId = el.dataset.id ?? (mode.kind === 'req' ? mode.reqId : undefined)
+        const seq = Number(el.dataset.seq ?? '1')
+        if (!reqId || !Number.isFinite(seq) || seq <= 0) return
+        if (!window.confirm(
+          '按第 ' + String(seq) + ' 次回退的物化清单批量取消占位重做卡？\n'
+          + '已完成的卡（done）不会被清掉；清场只动任务队列，不改需求阶段。',
+        )) return
+        void api.rollbackCleanup({ id: reqId, rollbackSeq: seq, reason: '看板需求详情：清理误物化重做卡' })
+          .then((out) => {
+            const skipped = out.skipped ?? []
+            window.alert(
+              '清理完成（第 ' + String(out.rollbackSeq) + ' 次回退）\n'
+              + out.note + '\n'
+              + '已取消 ' + String(out.canceled) + ' 张 · 父子关系还原 ' + String(out.restoredLinks) + ' 条'
+              + (skipped.length === 0
+                ? ''
+                : '\n跳过 ' + String(skipped.length) + ' 张：\n' + skipped.map(s => '· ' + s.taskId + '：' + s.reason).join('\n')),
+            )
+            return fetchAll()
+          })
+          .catch(e => window.alert(String(e)))
+        return
+      }
       case 'submit-verdicts': {
         // 验收单逐项裁决（REQ-2e9473 t14）：从 DOM 收集每项 通过/不通过 + 意见
         const reqId = el.dataset.req
@@ -926,10 +968,17 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         const sheetEl = el.closest<HTMLElement>('.dsh-pm-vsheet')
         if (!reqId || !Number.isFinite(version) || sheetEl === null) return
         const verdicts: { itemId: string; status: 'passed' | 'failed'; opinion?: string }[] = []
-        // REQ-260930183951-eb6c：前端与域门对齐——**通过也必须填实际结果**（2d65 FR-1）。
-        // 此前 placeholder 写「不通过时填意见」、留空就不发送，于是「勾通过 + 留空」必然被服务端
-        // 400（用户只看到一个原始错误）。这里先在本层拦下，点名缺哪几项、并要求填什么。
-        const missingOpinion: string[] = []
+        // REQ-261006092213-4f5b FR-4 / D-5（**删除「通过必填」前端拦截**）：判定权归服务端（一处口径）。
+        // 留空点通过时服务端取该项 `result` 兜底（两者皆空才记 unverified）——前端只负责**预填**，
+        // 不再把"必填"推给人（旧实现在这里拦下并要求手抄实际结果，正是本需求要消灭的形态）。
+        //
+        // 保留的**两条**前端守卫（都是"没有人的输入就无意义"的项，不是"通过必填"的翻版）：
+        //   ① **不通过**必须写意见——且**与预填值相同视为没写**（复核 S3：只勾不通过、不动预填框，
+        //      会把 agent 的"通过原文"当成不通过理由，还会被返工卡承接）；
+        //   ② **needsHuman 项通过**必须写（FR-5 的"唯一要人动手的分支"）——服务端对它不吃
+        //      result 兜底（`applyVerdicts` 同口径），前端点名比让用户收到 unverified 更清楚。
+        const missingFailed: string[] = []
+        const missingHuman: string[] = []
         sheetEl.querySelectorAll<HTMLElement>('.dsh-pm-vitem').forEach((itemEl) => {
           const itemId = itemEl.dataset.itemId
           if (itemId === undefined) return
@@ -937,17 +986,25 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
           if (checked === null) return
           const opinionEl = itemEl.querySelector<HTMLInputElement>('.dsh-pm-vitem-opinion')
           const opinion = opinionEl?.value.trim() ?? ''
-          if (opinion.length === 0) missingOpinion.push(itemId)
+          // 「没改过预填值」的判据：输入框的 defaultValue 就是渲染时的预填原文
+          const prefilled = (opinionEl?.defaultValue ?? '').trim()
+          const untouched = prefilled.length > 0 && opinion === prefilled
+          const status = checked.value === 'passed' ? 'passed' : 'failed'
+          if (status === 'failed' && (opinion.length === 0 || untouched)) missingFailed.push(itemId)
+          if (status === 'passed' && itemEl.dataset.needsHuman === '1' && opinion.length === 0) missingHuman.push(itemId)
           verdicts.push({
             itemId,
-            status: checked.value === 'passed' ? 'passed' : 'failed',
+            status,
             ...(opinion.length > 0 ? { opinion } : {}),
           })
         })
         if (verdicts.length === 0) { window.alert('请先逐项选择 通过/不通过'); return }
-        if (missingOpinion.length > 0) {
-          window.alert('以下验收项还缺「实际结果 / 意见」：' + missingOpinion.join('、') +
-            '\n通过项请填实际结果（例：npx vitest run tests/x.test.ts → 4 passed）；不通过项请填意见。两者都必填。')
+        if (missingFailed.length > 0) {
+          window.alert('以下「不通过」项还没写意见：' + missingFailed.join('、') + '\n不通过项请写清问题（通过项可留空）。')
+          return
+        }
+        if (missingHuman.length > 0) {
+          window.alert('以下项只能人工确认，请先在输入框写下你看到的事实：' + missingHuman.join('、'))
           return
         }
         void api.submitVerdicts({ id: reqId, version, verdicts })

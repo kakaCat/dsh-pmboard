@@ -18,7 +18,7 @@
 /* ------------------------------------------------------------------ 映射表（I-3 终稿） */
 
 /**
- * 种类 → 中文名：7 种 ArtifactKind + 文档区扩展种类（ui/proposal/retro/notes）。
+ * 种类 → 中文名：全部 ArtifactKind（10 种）+ 文档区扩展种类（ui/proposal/retro）。
  * 与 prototype.html 第一层表逐字一致；新增 ArtifactKind 时必须在此配中文名（TC-001 拦截）。
  */
 export const KIND_LABELS: Readonly<Record<string, string>> = {
@@ -31,6 +31,7 @@ export const KIND_LABELS: Readonly<Record<string, string>> = {
   archive: '归档材料',
   notes: '其他',
   task_output: '任务产物',
+  prototype: '原型', // REQ-261005105032-3b02 决议 #33：新增 kind 必须配中文名，否则 TC-001 护栏拦
   // 文档区扩展种类（非 ArtifactKind，docLinks / 归档清单使用）
   ui: 'UI 文档',
   proposal: '设计文档',
@@ -51,6 +52,7 @@ export const KIND_ICONS: Readonly<Record<string, string>> = {
   retro: '🔁',
   notes: '📒',
   task_output: '📤',
+  prototype: '🖼️', // 与 KIND_LABELS 键集保持一致（TC-001：缺图标即红）
 }
 
 /**

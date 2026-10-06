@@ -90,11 +90,28 @@ export function extractSkippedClauses(doc: ParsedDoc): string[] {
   return naturalSort([...out])
 }
 
+/** 锚点抹除后的固定占位符（决议 #6）：固定字面量而非哈希——测试可断言、人可反查。 */
+const PROTO_ANCHOR_TOKEN = '<proto-anchor>'
+
+/**
+ * 抹掉「原型路径#FR-N」形态的锚点引用（REQ-261005105032-3b02 FR-9，决议 #6）。
+ *
+ * 为什么必须有它：实测 `collectIds('prototypes/x.html#FR-4')` → `['FR-4']`——锚点是**页面内某个
+ * 区块的定位符**，不是"本处声明实现/覆盖 FR-4"。混算会让覆盖度虚高（贴个锚点就白刷一条覆盖），
+ * 所以 serves 抽取前先把整段锚点换成固定 token，让 collectIds 认不出它，同时文本里仍留有痕迹。
+ * 只认 `\S+#FR-\d+`（决议 #6 钉死的形态）：裸写 `#FR-4`（前无承载路径）不算锚点，照旧参与收集
+ * ——刻意保守，宁可不抹也不误抹普通引用。
+ */
+export function stripPrototypeAnchors(text: string): string {
+  return text.replace(/\S+#FR-\d+/g, PROTO_ANCHOR_TOKEN)
+}
+
 /** 提取 serves 声明（serves: FR-1, D-ARCH-2）。 */
 export function extractServes(text: string): string[] {
   const m = /serves\s*[:：]\s*([^\n|]*)/i.exec(text)
   if (m === null) return []
-  return naturalSort(collectIds(m[1]))
+  // 前置抹锚点（FR-9）：serves 只认编号引用，锚点走独立的 protoRefs 通道。
+  return naturalSort(collectIds(stripPrototypeAnchors(m[1])))
 }
 
 /**
@@ -112,12 +129,13 @@ export function extractServesFrom(doc: ParsedDoc, opts: { frontmatterKeys?: read
     const i = t.header.findIndex(x => x.trim().toLowerCase() === 'serves')
     if (i < 0) continue
     for (const row of t.rows) {
-      for (const id of collectIds(row[i] ?? '')) out.push(id)
+      // 表格式 serves 与标题式同口径：先抹锚点再收编号（FR-9，堵假引用）。
+      for (const id of collectIds(stripPrototypeAnchors(row[i] ?? ''))) out.push(id)
     }
   }
   for (const k of keys) {
     const v = doc.frontmatter[k]
-    if (v !== undefined) for (const id of collectIds(v)) out.push(id)
+    if (v !== undefined) for (const id of collectIds(stripPrototypeAnchors(v))) out.push(id)
   }
   return naturalSort(out)
 }
@@ -125,8 +143,14 @@ export function extractServesFrom(doc: ParsedDoc, opts: { frontmatterKeys?: read
 /**
  * 编号模式（单一事实源）：根编号按类型前缀；设计编号带「域」段 D-<域>-<n>；
  * 其余下游编号单段。**D-ARCH-2 这类必须认**——只写 D-\d+ 会漏掉全部设计章节编号。
+ *
+ * `D-\d+`（REQ-261005105032-3b02 FR-11，裁定条目 D-x 的编号）是**独立命名空间**，与
+ * `D-[A-Z]+-\d+` 共存且互不冲突：对 `D-ARCH-2`，`D-\d+` 在 `-` 后遇字母 `A` 即失败，交回下一支
+ * 命中；对 `D-1`，`D-[A-Z]+-\d+` 因无字母段失败，由本支命中。缺这一支时实测 `collectIds('D-1')`
+ * 恒为 `[]`——D-x 在编号链上等于不存在。顺序保持"更具体的形态在前"（可读性，正确性不依赖顺序）；
+ * 既有各支（FR/BUG/RF/SP/DOC/CH、T/BE/FE/TC/E、t-xxxxxx）一律不动，避免旧文档编号漂移。
  */
-const ID_PATTERN = '(?:FR|BUG|RF|SP|DOC|CH)-\\d+|D-[A-Z]+-\\d+|(?:T|BE|FE|TC|E)-\\d+|t-[0-9a-f]{6}'
+const ID_PATTERN = '(?:FR|BUG|RF|SP|DOC|CH)-\\d+|D-[A-Z]+-\\d+|D-\\d+|(?:T|BE|FE|TC|E)-\\d+|t-[0-9a-f]{6}'
 
 /** 从任意文本里收集编号（根 + 下游），保持出现顺序。 */
 export function collectIds(text: string): string[] {

@@ -1,9 +1,18 @@
 /**
- * 「对话」Tab 面板（REQ-261004222448-292a · FR-6 / t-2be0cd）——**一条流**渲染（纯函数）。
+ * 「对话」Tab 面板（REQ-261004222448-292a · FR-6 / t-2be0cd；REQ-261006130057-7a43 · FR-6 / t7）——
+ * **聊天 App 形态**渲染（纯函数），蓝本 = 原型 `detail.html` v1.5 的 `#FR-6`（D-5 气泡 / D-6 只读 / D-7 吸顶分页条）。
  *
- * 读者口径：这是**会议记录**，像微信那样**一条连续时间线**（不按窗口分组、不折叠成块）。
- * 因此这里只做三件事：把服务端给的条目按时间排成一条流、把三类消息渲染成三种样子、
- * 给出「加载更早 / 页内检索 / 回复」三个入口。
+ * 读者口径：这是**历史聊天记录（只读）**，像微信那样一条连续时间线（不按窗口分组、不折叠成块）：
+ *  · 「人」靠右蓝实心气泡（白字）+ 右侧圆形头像「人」；
+ *  · 窗口 / agent 靠左浅紫气泡 + 左头像（有窗口码 = 窗口「w」，名字签写全「窗口 w-xxxxxxxx」；
+ *    无窗口码 = 任务 agent「a」，名字签「agent」——载荷里没有任务 id，**不编一个冒充**）；
+ *  · 系统事件居中灰丸不占气泡，`inferred === true` 带 `data-inferred="1"` 琥珀「回填」标；
+ *  · 时间戳 10.5px 等宽放名字签行；长日志气泡默认折叠一行 + 「长日志已收纳」琥珀标 + 「展开」就地放开
+ *    （`<details>/<summary>` 原生折叠，与状态带「展开说明」同一种机制，不需要新接线）；
+ *  · 分页条是 `.chat-scroll`（460px 固定高内滚动容器，`data-chat-scroll="1"`）**内部第一个子元素**，
+ *    `position: sticky; top: 0`（`data-chat-pager="1"`）——`.chat-scroll` 是「无内层滚动」铁律的
+ *    唯一豁免（design/architecture §边界裁决 3）；分页 = 向上加载更早；
+ *  · 底部没有回复框、没有检索框（D-6）：原位一行居中灰字只读说明。
  *
  * 三条不变量（改代码时必须保住）：
  *  ① **不在前端拼工具内容**：过滤在服务端做（`tool/call`、`tool/result`、`reasoning`、
@@ -11,9 +20,8 @@
  *     其余字段一律不看——看了就会把服务端刚滤掉的东西又拼回页面，两处过滤必然漂移。
  *     这条是 FR-6 的机械判据（产物里不得出现工具调用/推理字样），tests/dialogue-panel.test.ts 有反例断言。
  *  ② **系统消息与人类消息同一容器、同一时间序**：机器事件（阶段推进 / 计划退回 / 交接 /
- *     中断 / 裁决）居中灰底小字混排，**不**另起一块、**不**置顶置底。
- *  ③ **不做内层滚动**：列表长了靠页面滚动（内层滚动条会藏住内容，也会让"有多少"变成不可数）。
- *     本模块产物里不出现任何 `overflow: auto|scroll`。
+ *     中断 / 裁决）居中灰丸混排，**不**另起一块、**不**置顶置底。
+ *  ③ **除 `.chat-scroll` 外不做内层滚动**：产物里不出现其它任何 `overflow: auto|scroll`。
  *
  * 关于 `inferred === true`（回填标）：这类系统消息是事后由 `createdAt` + 评论**反推**出来的
  * 既有事件，不是当时实时发生的。不标会被读成"刚刚推进了阶段"——那是错误结论，所以必须显眼标。
@@ -112,89 +120,75 @@ export function readDialogue(data: unknown): LoadedDialogue | undefined {
 }
 
 /**
- * 时间升序（**同一容器**里的唯一顺序）。`Array#sort` 稳定 → 同一时刻的多条消息保持服务端给的相对次序，
- * 不因为排序把「谁先说的」抖乱。
+ * 时间升序（**同一容器**里的唯一顺序；D-5：旧在上新在下）。`Array#sort` 稳定 →
+ * 同一时刻的多条消息保持服务端给的相对次序，不因为排序把「谁先说的」抖乱。
  */
 export function orderDialogue(items: readonly DialogueMessage[]): DialogueMessage[] {
   return [...items].sort((a, b) => a.at - b.at)
 }
 
-/* ────────────────────────────────────────────────────────────── 检索（纯前端） */
-
-/** 页内关键词检索只作用于**已加载**的条目（更早的还没取，搜不到就去点「加载更早」）。 */
-export function filterDialogueItems(
-  items: readonly DialogueMessage[],
-  query: string,
-): DialogueMessage[] {
-  const q = query.trim().toLowerCase()
-  if (q.length === 0) return [...items]
-  return items.filter(it => it.text.toLowerCase().includes(q))
-}
-
-/**
- * 命中高亮（**先转义再包 `<mark>`**：转义在前，插入的标记只可能是我们自己写的）。
- * 用 `indexOf` 逐段切而不是正则：关键词是人手输的，正则元字符（`.`、`(`、`*`）不该被当成语法。
- *
- * 转义之后、返回之前再过一遍 `mdInlineEscaped`：对话正文也是**文档原文**（`**加粗**`、
- * `` `innerHTML` `` 一样会出现），显示的转换必须与页面其它处**同一份实现**；
- * 它接的是"已经转义好、且已经插了 `<mark>`"的串，所以**不能再转义一次**（否则 `<mark>` 变字面量）。
- */
-export function highlightDialogueText(text: string, query: string): string {
-  const needle = query.trim().toLowerCase()
-  return mdInlineEscaped(needle.length === 0 ? esc(text) : markHits(text, needle))
-}
-
-/**
- * 逐段转义 + 包 `<mark>`：**下标切的是原文**、转义的是每一小段（不是在转义后的串上切）。
- *
- * 这条区分是必需的：`&` → `&amp;` 会让"转义后的串"与原文**长度不同**，
- * 拿原文下标去切转义串，命中的位置就会漂到别处（正文越靠后漂得越多）。
- */
-function markHits(text: string, needle: string): string {
-  const hay = text.toLowerCase()
-  let out = ''
-  let i = 0
-  for (;;) {
-    const hit = hay.indexOf(needle, i)
-    if (hit < 0) { out += esc(text.slice(i)); return out }
-    out += esc(text.slice(i, hit))
-      + '<mark class="dsh-pm-dialogue-hit" data-dialogue-hit="1">'
-      + esc(text.slice(hit, hit + needle.length)) + '</mark>'
-    i = hit + needle.length
-  }
-}
-
 /* ────────────────────────────────────────────────────────────── 单条渲染 */
+
+/** 每页条数（页码口径的分母）：与服务端 `QueryDialogue` 的 DEFAULT_LIMIT 同值。 */
+export const DIALOGUE_PAGE_SIZE = 40
+
+/**
+ * 长日志判据（与 FR-3「最近评论」同一口径）：>120 字符或含换行 → 默认折叠一行 +
+ * 「长日志已收纳」琥珀标 + 「展开」就地放开。
+ */
+export const isLongDialogueText = (text: string): boolean => text.length > 120 || text.includes('\n')
 
 /** 时间戳不可得时照实说，不让 `NaN-NaN` 冒充时间。 */
 function timeLabel(at: number): string {
   return Number.isFinite(at) ? fmtTime(at) : '时间不可得'
 }
 
-/** 消息元信息（actor + 窗口码可读标注 + 时间）——每条都要能回答"谁、哪个窗口、什么时候"。 */
-function metaHtml(item: DialogueMessage): string {
-  const time = '<time class="dsh-pm-msg-time">' + esc(timeLabel(item.at)) + '</time>'
-  if (item.kind === 'system') return '<span class="dsh-pm-msg-meta">' + time + '</span>'
-  const actor = '<span class="dsh-pm-msg-actor" data-actor="' + item.kind + '">'
-    + (item.kind === 'human' ? '人' : 'agent') + '</span>'
-  // 窗口码给人看（w-xxxxxxxx）；完整会话 id 留在 title 里，需要精确引用时可用
-  const win = item.windowKey === undefined ? ''
-    : '<span class="dsh-pm-msg-window" title="' + esc(item.windowKey) + '">窗口 '
-      + esc(windowCodeFromSessionId(item.windowKey)) + '</span>'
-  return '<span class="dsh-pm-msg-meta">' + [actor, win, time].filter(p => p.length > 0).join(' · ') + '</span>'
+/** 时间戳（10.5px 等宽，放名字签行）。 */
+function timeHtml(item: DialogueMessage): string {
+  return '<time class="dsh-pm-msg-time">' + esc(timeLabel(item.at)) + '</time>'
+}
+
+/** 名字签 / 头像文案（每条都要能回答"谁、哪个窗口"）。 */
+function whoOf(item: DialogueMessage): { name: string; avatar: string; title: string } {
+  if (item.kind === 'human') return { name: '人', avatar: '人', title: '人' }
+  if (item.kind === 'agent' && item.windowKey !== undefined) {
+    // 窗口码给人看（w-xxxxxxxx）；完整会话 id 留在 title 里，需要精确引用时可用
+    const code = windowCodeFromSessionId(item.windowKey)
+    return { name: '窗口 ' + code, avatar: 'w', title: '窗口 agent（' + item.windowKey + '）' }
+  }
+  // 载荷里没有任务 id（DialogueItem 只带 windowKey）：名字签只写「agent」，不编一个 t-xxxxxx 冒充
+  return { name: 'agent', avatar: 'a', title: '任务 agent' }
 }
 
 /**
- * 一条消息。`data-msg-text-raw` 存**原文**（转义后入属性），供检索在 DOM 上就地重绘高亮——
- * 这样搜索不需要重新取数、也不需要把整份载荷留在内存里。
- *
- * 人 / agent = 气泡（`dsh-pm-msg--human` / `--agent`，两种视觉）；
- * 系统 = 居中灰底小字，**且不含任何回复控件**（FR-6：系统消息不可回复——回复入口只有底部那一个）。
+ * 气泡正文。`long === true` 时用 `<details>/<summary>` 原生折叠：合上 = 一行截断 + 琥珀标 + 「展开」，
+ * 展开 = 完整气泡就地放开（与状态带「展开说明」同机制，样式在 styles/report.ts 的 FR-6 标记块里）。
  */
-function itemHtml(item: DialogueMessage, query: string): string {
+function bubbleHtml(kind: 'human' | 'agent', body: string, long: boolean): string {
+  const cls = 'dsh-pm-bubble dsh-pm-bubble--' + kind
+  if (!long) return '<div class="' + cls + '">' + body + '</div>'
+  const flag = '<span class="dsh-pm-b-flag" data-long-flag="1">长日志已收纳</span>'
+  return '<details class="dsh-pm-long" data-msg-long="1">'
+    + '<summary class="dsh-pm-long-head">'
+    + '<span class="' + cls + ' dsh-pm-bubble--long">' + flag + body + '</span>'
+    + '<span class="dsh-pm-long-toggle">'
+    + '<span class="dsh-pm-long-open">展开</span><span class="dsh-pm-long-close">收起</span>'
+    + '</span></summary>'
+    + '<div class="' + cls + '">' + flag + body + '</div>'
+    + '</details>'
+}
+
+/**
+ * 一条消息。
+ *
+ * 人 = 靠右蓝实心气泡 + 右侧圆形头像「人」（meta 行右对齐：时间在前、名字签在后）；
+ * agent = 靠左浅紫气泡 + 左头像（窗口「w」/ 任务 agent「a」，meta 行：名字签在前、时间在后）；
+ * 系统 = 居中灰丸，**不占气泡**（`inferred` 带 `data-inferred="1"` 琥珀「回填」标）。
+ */
+function itemHtml(item: DialogueMessage): string {
   const attrs = ' data-msg="' + item.kind + '" data-at="' + esc(String(item.at)) + '"'
-    + ' data-msg-text-raw="' + esc(item.text) + '"'
-  const body = highlightDialogueText(item.text, query)
+  // 正文是**文档原文**（`**加粗**`、`` `innerHTML` `` 一样会出现）：先转义，再走与页面其它处同一份 md 内联渲染
+  const body = mdInlineEscaped(esc(item.text))
   if (item.kind === 'system') {
     const evt = item.evt === undefined ? '' : ' data-evt="' + esc(item.evt) + '"'
     const inferred = item.inferred === true
@@ -202,44 +196,51 @@ function itemHtml(item: DialogueMessage, query: string): string {
         + ' title="由台账时间与评论反推的既有事件：不是当时实时发生的">回填</span>'
       : ''
     return '<div class="dsh-pm-msg dsh-pm-msg--system"' + evt + attrs + '>'
-      + '<span class="dsh-pm-msg-system-text" data-msg-text="1">' + body + '</span>'
-      + inferred + metaHtml(item) + '</div>'
+      + '<span class="dsh-pm-msg-system-pill">'
+      + '<span class="dsh-pm-msg-system-text">' + body + '</span>'
+      + inferred + timeHtml(item) + '</span></div>'
   }
+  const who = whoOf(item)
+  const right = item.kind === 'human'
+  const avatar = '<span class="dsh-pm-avatar dsh-pm-avatar--' + item.kind + '"'
+    + ' title="' + esc(who.title) + '">' + esc(who.avatar) + '</span>'
+  const name = '<b class="dsh-pm-who">' + esc(who.name) + '</b>'
+  // 原型口径：右侧（人）meta 行 = 时间 · 名字签；左侧（窗口/agent）= 名字签 · 时间
+  const meta = '<div class="dsh-pm-cmsg-meta">'
+    + (right ? timeHtml(item) + name : name + timeHtml(item)) + '</div>'
+  const col = '<div class="dsh-pm-cmsg-col">' + meta + bubbleHtml(item.kind, body, isLongDialogueText(item.text)) + '</div>'
   const windowAttr = item.windowKey === undefined ? '' : ' data-window="' + esc(item.windowKey) + '"'
-  return '<div class="dsh-pm-msg dsh-pm-msg--' + item.kind + '" data-actor="' + item.kind + '"'
-    + windowAttr + attrs + '>'
-    + '<div class="dsh-pm-msg-head">' + metaHtml(item) + '</div>'
-    + '<div class="dsh-pm-msg-text" data-msg-text="1">' + body + '</div>'
-    + '</div>'
+  return '<div class="dsh-pm-msg dsh-pm-msg--' + item.kind + ' dsh-pm-cmsg dsh-pm-cmsg--'
+    + (right ? 'right' : 'left') + '" data-actor="' + item.kind + '"' + windowAttr + attrs + '>'
+    + (right ? col + avatar : avatar + col) + '</div>'
 }
 
-/* ────────────────────────────────────────────────────────────── 整面板渲染 */
+/* ────────────────────────────────────────────────────────────── 分页条（吸顶） */
 
-/** 检索栏（输入框 + **说清检索范围**的说明 + 命中计数）。 */
-function searchBarHtml(loadedCount: number, total: number | undefined, hits: number): string {
-  const rest = total === undefined ? undefined : total - loadedCount
-  const scope = '只过滤已加载的 ' + String(loadedCount) + ' 条'
-    + (rest !== undefined && rest > 0
-      ? '；服务端还有 ' + String(rest) + ' 条更早的未加载（先点「加载更早」，再搜）'
-      : '')
-  return '<div class="dsh-pm-dialogue-search">'
-    + '<input type="text" class="dsh-pm-input" data-dialogue-search="1"'
-    + ' placeholder="在已加载的对话里搜关键词…" aria-label="在已加载的对话里搜关键词" />'
-    + '<span class="dsh-pm-dialogue-hits" data-dialogue-hits="1">命中 ' + String(hits)
-    + ' / 已加载 ' + String(loadedCount) + '</span>'
-    + '<span class="dsh-pm-dialogue-scope" data-dialogue-search-scope="loaded">' + esc(scope) + '</span>'
-    + '</div>'
+/**
+ * 当前页码 N（页 = 已加载批次，40 条/页；M = ceil(total/40)）。
+ * 「向上加载更早」= 已加载窗口向**更早**生长：N = M − ceil(未加载条数/40)，夹在 [1, M]。
+ */
+function currentPageNo(loadedCount: number, total: number): number {
+  const m = Math.max(1, Math.ceil(total / DIALOGUE_PAGE_SIZE))
+  const earlier = Math.max(0, total - loadedCount)
+  const n = m - Math.ceil(earlier / DIALOGUE_PAGE_SIZE)
+  return Math.min(Math.max(n, 1), m)
 }
 
 /**
- * 分页条。游标优先用服务端给的 `page.before`；服务端省略时退到**已加载最旧一条的 `at`**
+ * 吸顶分页条（D-7）：`.chat-scroll` 内部**第一个子元素**，`position: sticky; top: 0`。
+ * 浅蓝底工具条：实心小按钮「↑ 加载更早消息」+ 加粗「第 N/M 页」+ 次级灰「已加载 x/y 条」。
+ *
+ * 游标优先用服务端给的 `page.before`；服务端省略时退到**已加载最旧一条的 `at`**
  * （`before` 的语义就是时间游标，这不是猜数字，是从已加载窗口推出来的同一个游标）；
  * 两者都没有 = 游标不可得 → 按钮禁用并写明原因（**不留假出口**）。
  *
+ * `pageKnown === false` 时分页条整体降级为不可用态 + 说明（**不猜**「没有更早」）；
  * `hasMore === false` 时按钮仍渲染但禁用 + 写明「已到最早一条」：按钮的**有无**不该随数据变化
  * （CSS/断言都按选择器找它），可点性才是状态。
  */
-function moreBarHtml(loaded: LoadedDialogue, oldestAt: number | undefined): string {
+function chatPagerHtml(loaded: LoadedDialogue, loadedCount: number, oldestAt: number | undefined): string {
   const cursor = loaded.before ?? oldestAt
   const usable = loaded.hasMore && cursor !== undefined
   const why = !loaded.pageKnown
@@ -247,31 +248,42 @@ function moreBarHtml(loaded: LoadedDialogue, oldestAt: number | undefined): stri
     : loaded.hasMore
       ? (cursor === undefined ? '服务端说有更早的，但没给游标（page.before）：加载更早不可用' : '还有更早的消息未加载')
       : '已到最早一条'
-  return '<div class="dsh-pm-dialogue-more">'
-    + '<button type="button" class="dsh-pm-btn" data-action="dialogue-load-earlier" data-load-earlier="1"'
+  // primary：本面板唯一主动作；且 ⑲ 段 :is(.dsh-pm-btn…) 的 surface 复位在源序上压过
+  // chat-earlier 的蓝底规则——不带 primary 会白底白字（联调实测截图抓出）。
+  const btn = '<button type="button" class="dsh-pm-btn primary dsh-pm-chat-earlier"'
+    + ' data-action="dialogue-load-earlier" data-load-earlier="1"'
     // 游标只在**可点**时才写进 DOM：禁用按钮上留一个 data-before 会变成接线方的脚枪
     // （照着 dataset.before 取数，却没人注意按钮是禁用的）
     + (usable && cursor !== undefined ? ' data-before="' + esc(String(cursor)) + '"' : '')
     + (usable ? '' : ' disabled')
-    + ' title="' + esc(why) + '">加载更早</button>'
-    + '<span class="dsh-pm-dialogue-more-note">' + esc(why) + '</span>'
-    + '</div>'
+    + ' title="' + esc(why) + '">↑ 加载更早消息</button>'
+  const pageNo = loaded.pageKnown && loaded.total !== undefined
+    ? '<b class="dsh-pm-chat-page">第 ' + String(currentPageNo(loadedCount, loaded.total)) + '/'
+      + String(Math.max(1, Math.ceil(loaded.total / DIALOGUE_PAGE_SIZE))) + ' 页</b>'
+    : ''
+  const loadedInfo = '<span class="dsh-pm-chat-loaded">已加载 ' + String(loadedCount)
+    + (loaded.pageKnown && loaded.total !== undefined ? '/' + String(loaded.total) : '') + ' 条</span>'
+  return '<div class="dsh-pm-chat-pager" data-chat-pager="1"'
+    + (loaded.pageKnown ? '' : ' data-pager-state="degraded"') + '>'
+    + btn + '<span class="dsh-pm-chat-pg">' + pageNo + loadedInfo + '</span>'
+    + '<span class="dsh-pm-chat-note">' + esc(why) + '</span></div>'
 }
 
-/** 底部回复框：**沿用**既有评论提交链路（`data-role="comment-input"` + `add-comment`），不新造通道。 */
-function replyFormHtml(requirementId: string): string {
-  return '<div class="dsh-pm-comment-form dsh-pm-dialogue-reply" data-actor="human">'
-    + '<input type="text" class="dsh-pm-input" data-role="comment-input"'
-    + ' placeholder="回复（以「人」身份记录，走既有评论通道）…" />'
-    + '<button type="button" class="dsh-pm-btn" data-action="add-comment" data-target="req" data-id="'
-    + esc(requirementId) + '">发送</button></div>'
+/** 只读说明行（D-6）：底部没有回复框/检索框，原位一行居中灰字。 */
+function readonlyNoteHtml(total: number, loadedCount: number): string {
+  return '<div class="dsh-pm-dialogue-ro" data-dialogue-readonly="1">'
+    + '历史聊天记录 · 只读 —— 会话消息按 createdAt 正序回填，共 ' + String(total)
+    + ' 条，本页 ' + String(loadedCount) + ' 条</div>'
 }
+
+/* ────────────────────────────────────────────────────────────── 整面板渲染 */
 
 /**
- * 面板正文（纯函数）。`query` 缺省 = 不过滤（渲染路径上不搜）；
- * 检索生效时的重绘由 `applyDialogueSearch` 在 DOM 上就地完成（不重新取数）。
+ * 面板正文（纯函数）。结构（对照原型 `#FR-6`）：
+ * `.dsh-pm-dialogue` → [丢弃计数行] + `.dsh-pm-chat-scroll`（吸顶分页条 + 消息列表）+ 只读说明行。
+ * `_ctx` 保留在签名里（`ReportTabDef.render` 的契约），只读面板没有要用它的地方。
  */
-export function renderDialogue(data: unknown, ctx: ReportTabCtx, query = ''): string {
+export function renderDialogue(data: unknown, _ctx: ReportTabCtx): string {
   const loaded = readDialogue(data)
   if (loaded === undefined) {
     // **不回显载荷原文**：把不可信载荷原样贴进页面，等于把服务端的过滤白做一遍
@@ -279,60 +291,26 @@ export function renderDialogue(data: unknown, ctx: ReportTabCtx, query = ''): st
       + '对话载荷不是对话形状（缺 items 数组）：不猜、也不回显原文，请重试或查服务端日志</div>'
   }
   const items = orderDialogue(loaded.items)
-  const shown = query.trim().length === 0 ? items : filterDialogueItems(items, query)
   const list = items.length === 0
     ? '<div class="dsh-pm-empty" data-dialogue-empty="1">这条需求还没有对话记录：'
       + '人会以「人」气泡、实施窗口以 agent 气泡出现；阶段推进 / 计划退回 / 交接 / 中断 / 裁决等机器事件'
       + '以居中的系统消息混排在这一条流里（本面板只显示人机文本，工具调用与推理过程不在此列）</div>'
-    : shown.map(it => itemHtml(it, query)).join('')
+    : items.map(it => itemHtml(it)).join('')
   const droppedNote = loaded.dropped === 0 ? ''
     : '<div class="dsh-pm-dialogue-note" data-dialogue-dropped="' + esc(String(loaded.dropped)) + '">有 '
       + esc(String(loaded.dropped)) + ' 条非对话内容已被忽略（面板只渲染人与 agent 的文本消息）</div>'
   const total = loaded.total ?? items.length
   return '<div class="dsh-pm-dialogue" data-panel="dialogue"'
     + ' data-dialogue-total="' + esc(String(total)) + '" data-dialogue-loaded="' + esc(String(items.length)) + '">'
-    + searchBarHtml(items.length, loaded.total, shown.length)
     + droppedNote
+    // `.chat-scroll`：「无内层滚动」铁律的唯一豁免（460px 固定高内滚动）；分页条是其第一个子元素
+    + '<div class="dsh-pm-chat-scroll" data-chat-scroll="1">'
+    + chatPagerHtml(loaded, items.length, items.length === 0 ? undefined : items[0].at)
     // 人机文本与系统消息**同一个容器**：FR-6 的机械判据（不分组、不另起块）
     + '<div class="dsh-pm-dialogue-list" data-dialogue-list="1">' + list + '</div>'
-    + moreBarHtml(loaded, items.length === 0 ? undefined : items[0].at)
-    + replyFormHtml(ctx.requirementId)
     + '</div>'
-}
-
-/* ────────────────────────────────────────────────────────────── 检索接线（DOM 层） */
-
-/**
- * 把「页内检索」落到 DOM 上（由 board-mount 在 `data-dialogue-search` 的 input 事件里调用）。
- *
- * 为什么是就地过滤而不是重新渲染整个面板：面板 HTML 由壳的缓存数据渲染，输入的检索词没有
- * 回传通道（改壳的契约超出本卡范围）；就地过滤也不需要把载荷留在内存里——
- * 原文就在 `data-msg-text-raw` 上。**只过滤已加载的部分**，这一点由检索栏的说明文案讲明白。
- *
- * 返回值 = 命中数（调用方可用于埋点/断言）；根节点没有查询能力时静默返回 0（宿主桩不炸）。
- */
-export function applyDialogueSearch(root: HTMLElement, query: string): number {
-  if (typeof root.querySelectorAll !== 'function') return 0
-  const q = query.trim().toLowerCase()
-  const nodes = root.querySelectorAll<HTMLElement>('[data-msg]')
-  let hits = 0
-  nodes.forEach((el) => {
-    const raw = el.getAttribute('data-msg-text-raw') ?? ''
-    const hit = q.length === 0 || raw.toLowerCase().includes(q)
-    if (hit) hits += 1
-    // hidden 之外再留一个属性：样式里若有 display 规则会盖掉 [hidden]，data-msg-hit 是第二道判据
-    el.hidden = !hit
-    el.setAttribute('data-msg-hit', hit ? '1' : '0')
-    const textEl = el.querySelector<HTMLElement>('[data-msg-text]')
-    if (textEl !== null) textEl.innerHTML = highlightDialogueText(raw, q)
-  })
-  const counter = typeof root.querySelector === 'function'
-    ? root.querySelector<HTMLElement>('[data-dialogue-hits]')
-    : null
-  if (counter !== null) {
-    counter.textContent = '命中 ' + String(hits) + ' / 已加载 ' + String(nodes.length)
-  }
-  return hits
+    + readonlyNoteHtml(total, items.length)
+    + '</div>'
 }
 
 /* ────────────────────────────────────────────────────────────── 注册 */

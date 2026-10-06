@@ -26,7 +26,7 @@ import {
   CONFIRM_ADVANCE_REASON,
   PLAN_MERGE_ADVANCE_REASON,
 } from '../internal/confirm-settle.js'
-import { targetConfirmedInLedger } from '../internal/pending-guard.js'
+import { pendingConfirmFactsOf, targetConfirmedInLedger, type PendingConfirmFacts } from '../internal/pending-guard.js'
 import { reject, agentIdFromExec, requireLiveDriver } from '../internal/support.js'
 import { requirementStoreOf } from './queue-access.js'
 
@@ -60,7 +60,8 @@ export async function confirmReceipt(deps: UseCaseDeps, args: unknown, exec: any
   const outcome = rec.outcome
   // 推进事实以「回填的 outcome」优先；尚未回填时以台账 statusHistory 还原（两处同源，不冲突）。
   const advanced = outcome?.advanced ?? adv.advanced
-  const note = receiptNote(confirmed, advanced, adv, outcome, rec.interruptedAt !== undefined)
+  // REQ-261005200052-ce40 FR-3：未确认时补「为什么 + 真实可用出路」（与拒绝原文同一份 facts，判定单点）
+  const note = receiptNote(confirmed, advanced, adv, outcome, rec.interruptedAt !== undefined, pendingConfirmFactsOf(req, rec, deps.clock.now()))
 
   return {
     success: true,
@@ -99,6 +100,9 @@ function advanceFromHistory(
  *
  * `interrupted`（记录带 interruptedAt）：仅在**尚未作答**时改文案——「等待被中止、弹框可能已消失」，
  * 给出看板确认 / 重新发起两条路。已作答或台账已落章时仍按既有口径（以台账为准）。
+ *
+ * `facts`（REQ-261005200052-ce40 FR-3）：**未确认**时追加「可用出路」（含失效时刻与产物在册事实）；
+ * 已确认时不追加（那时没有出路要指）。facts 缺省（台账读不到）→ 退回旧文案，逐字不变。
  */
 function receiptNote(
   confirmed: boolean,
@@ -106,7 +110,10 @@ function receiptNote(
   adv: { from: string; to: string },
   outcome: PendingConfirmation['outcome'],
   interrupted: boolean,
+  facts?: PendingConfirmFacts,
 ): string {
+  // 已确认 → 不追加（没有出路可指）；未确认且拿到 facts → 追加真实可用出路
+  const paths = confirmed || facts === undefined ? '' : '。可用出路：' + facts.usableRecovery.join('；')
   if (confirmed && advanced) {
     return fmt('回执：已确认并推进 {from} → {to}（以台账为准）', { from: adv.from, to: adv.to })
   }
@@ -115,14 +122,14 @@ function receiptNote(
   }
   if (outcome === undefined && interrupted) {
     return '回执：本次等待已被中止（弹框可能已消失）——尚未作答。请用户走项目看板点确认按钮，'
-      + '或重新发起 reqboard_ask_confirm；收到作答前不得产出下游产物'
+      + '或重新发起 reqboard_ask_confirm；收到作答前不得产出下游产物' + paths
   }
   if (outcome !== undefined) {
     const choice = outcome.userChoice ?? '（未选）'
     const feedback = outcome.userFeedback !== undefined && outcome.userFeedback.length > 0
       ? fmt('；用户意见：{fb}', { fb: outcome.userFeedback })
       : ''
-    return fmt('回执：用户未确认（选择：{c}）——节点未推进{fb}。按意见修改后可重新发起确认', { c: choice, fb: feedback })
+    return fmt('回执：用户未确认（选择：{c}）——节点未推进{fb}。按意见修改后可重新发起确认', { c: choice, fb: feedback }) + paths
   }
-  return '回执：挂起确认尚未作答——人作答后后台自动落章/推进；也可请用户走看板确认'
+  return '回执：挂起确认尚未作答——人作答后后台自动落章/推进；也可请用户走看板确认' + paths
 }

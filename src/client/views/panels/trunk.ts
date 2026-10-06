@@ -259,6 +259,9 @@ function refHint(r: TrunkRef): string {
  * 形态照原型（`<span class="expand">点开看原文 →</span>`，见 detail-report.html 的 `.expand`）：
  * **句尾一个小链接**——accent 色、无边框无底色、hover 才下划线。此前渲成整行胶囊，
  * 被读成"输入框"（变形②）；文档表里的路径按钮是表格单元格内容，**保持不变**。
+ *
+ * FR-5（REQ-261006130057-7a43 t6）：容器从 `<div>` 改 `<span>`——它现在进**模块头一行**
+ * （标题左 + 副题 + 右端「来源标 + 点开看原文 →」，见 itemHtml），块级容器会把头行撑断。
  */
 function openRefNodes(refs: readonly TrunkRef[]): string {
   if (refs.length === 0) return ''
@@ -281,7 +284,7 @@ function openRefNodes(refs: readonly TrunkRef[]): string {
     return '<span class="dsh-pm-trunk-ref"><span class="dsh-pm-trunk-open is-nopath"'
       + ' title="该入口指向留痕 / 台账，没有可打开的原文文件">' + esc(label) + '</span></span>'
   }).join('')
-  return '<div class="dsh-pm-trunk-openrefs" data-open-refs="1">' + nodes + '</div>'
+  return '<span class="dsh-pm-trunk-openrefs" data-open-refs="1">' + nodes + '</span>'
 }
 
 /**
@@ -382,10 +385,14 @@ function itemHtml(item: TrunkItemView): string {
     ? '<div class="dsh-pm-trunk-scope-hint" data-scope-not="1">明确不做什么：以下为文档「边界」节原文</div>'
     : ''
 
+  /* 模块头**一行化**（FR-5 · REQ-261006130057-7a43 t6，视觉基准 = 原型 v1.5 #FR-5 的 .t-head）：
+     标题左（13px 半粗）+ 副题 + 右端「来源标 + 点开看原文 →」（11px 灰）。
+     旧排布是标题行/正文/引用行三段式（标题-正文-来源三段留白）；点开原文入口从正文末
+     挪进头行右端，内容一个不少（label 全文仍在 title 里），只是不再独占一行。 */
   const head = '<div class="dsh-pm-trunk-head">'
     + '<h3 class="dsh-pm-trunk-title">' + esc(meta.label) + '</h3>'
     + (meta.sub.length > 0 ? '<span class="dsh-pm-trunk-sub">' + esc(meta.sub) + '</span>' : '')
-    + sourceTags(item.source)
+    + '<span class="dsh-pm-trunk-head-right">' + sourceTags(item.source) + openRefNodes(item.openRefs) + '</span>'
     + '</div>'
 
   const lines = summaryLines(item.summary)
@@ -399,10 +406,13 @@ function itemHtml(item: TrunkItemView): string {
     : ''
 
   const extras = item.key === 'highlight' ? highlightExtras(item) : ''
-  const body = '<div class="dsh-pm-trunk-body">' + scopeHint + lines + missing + blank + extras
-    + openRefNodes(item.openRefs) + '</div>'
+  const body = '<div class="dsh-pm-trunk-body">' + scopeHint + lines + missing + blank + extras + '</div>'
 
-  return '<section class="dsh-pm-trunk-item" data-trunk-item="' + esc(item.key) + '">' + head + body + '</section>'
+  // 长模块（亮点与成效）通栏：2×2 网格里独占一整行（原型 .t-mod.wide）
+  const wide = item.key === 'highlight'
+  return '<section class="dsh-pm-trunk-item' + (wide ? ' dsh-pm-trunk-item--wide' : '') + '"'
+    + (wide ? ' data-trunk-wide="1"' : '')
+    + ' data-trunk-item="' + esc(item.key) + '">' + head + body + '</section>'
 }
 
 /* ────────────────────────────────────────────────────────────── 整块 */
@@ -426,7 +436,11 @@ export function renderTrunkPanel(data: unknown): string {
     : '<div class="dsh-pm-trunk-docmeta" data-doc-updated="1">文档最后更新于 '
       + esc(fmtTime(view.docLastUpdated)) + '</div>'
 
-  return root(stamp + orderedItems(view.items).map(itemHtml).join(''))
+  /* 短模块 2×2 网格、长模块（亮点与成效）通栏（FR-5 · REQ-261006130057-7a43 t6）：
+     网格只管**排布**（谁跟谁并排、谁独占一行），条目的固定顺序仍由 orderedItems 决定——
+     网格容器不改变 DOM 顺序（七条的叙事序一个不动）。 */
+  return root(stamp + '<div class="dsh-pm-trunk-grid" data-trunk-grid="1">'
+    + orderedItems(view.items).map(itemHtml).join('') + '</div>')
 }
 
 /**

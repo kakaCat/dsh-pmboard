@@ -72,10 +72,15 @@ export interface ReqboardRouteDeps {
    */
   sessionWorkspace?: (sessionId: string | undefined) => string | undefined
   /**
-   * 知识层自举通知口（REQ-261004174324-4195 t4）：读根按会话解析成功时通知一次（即发即忘）。
-   * 缺省 → 不自举（老行为）。
+   * 会话 → 项目身份 + 根（REQ-261005141830-7a3b t5 · FR-6）：看板按项目过滤与取根的**唯一来源**。
+   * 缺省 → 回落 `sessionWorkspace` / legacy cwd 并如实标注（老装配行为不变）。
    */
-  knowledgeBootstrap?: { ensure(root?: string): void }
+  sessionProject?: (sessionId: string | undefined) => { projectId?: string; root?: string } | undefined
+  /**
+   * 知识层自举通知口（REQ-261004174324-4195 t4）：读根按会话解析成功时通知一次（即发即忘）。
+   * 缺省 → 不自举（老行为）。第二参 `projectId`（t5 · FR-6）：同项目多窗口只自举一次的去重键。
+   */
+  knowledgeBootstrap?: { ensure(root?: string, projectId?: string): void }
   /** 文档仓储（REQ-308b9a AC-7.7：看板裁决后回填 verification.md）。 */
   docs?: import('../application/ports.js').DocRepository
   /** 闸门后置链（REQ-e3b6a0 t9 / FR-9）：看板一键确认后触发 Phase B。缺省 → 只落章。 */
@@ -201,6 +206,9 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
       // REQ-261003215944-9e04 FR-11：会话工作区解析器**必须显式转发**——本映射是白名单，
       // 漏一行就等于"组合根传了、路由收不到"。测试里"需求目录外的文档仍判不存在"那条就是它的照妖镜。
       ...(deps.sessionWorkspace !== undefined ? { sessionWorkspace: deps.sessionWorkspace } : {}),
+      // REQ-261005141830-7a3b t5：项目身份解析器同样必须显式转发（白名单照旧：漏一行 = 路由收不到，
+      // 看板就会退回"只按会话 cwd 取根、不按项目筛"，而这正是本次要修的那个 bug 的形态）。
+      ...(deps.sessionProject !== undefined ? { sessionProject: deps.sessionProject } : {}),
       // REQ-261004222448-292a t-497311：对话流要读会话事件（白名单照旧：漏一行 = 组合根传了、路由收不到）
       ...(deps.sessionProbe !== undefined ? { sessionProbe: deps.sessionProbe } : {}),
       // REQ-261004222448-292a t-497311：「几件事等人」读挂起确认（白名单照旧）
@@ -270,7 +278,7 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
       // `report/trunk` 是 design/interfaces.md 承诺的路径（两段），客户端实际用的是单段 `trunk`。
       // 上线冒烟实测：前者 404、后者 200 —— 功能没坏，但**被文档承诺的地址打不开**就是契约违约。
       // 处置：两条都接（别名并进同一处理器），而不是回头改已批准的设计文档。
-      if (method === 'GET' && /^requirements\/[^/]+\/(report\/trunk|report|trunk|docs|dag|dialogue|prompts)$/.test(sub)) {
+      if (method === 'GET' && /^requirements\/[^/]+\/(report\/trunk|report|trunk|docs|dag|dialogue|prompts|verify)$/.test(sub)) {
         await panels.handlePanels(res, sub, url)
         return
       }
@@ -278,7 +286,7 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
       if (method === 'GET' && /^requirements\/[^/]+$/.test(sub)) {
         return await stages.handleRequirementDetail(res, decodeURIComponent(sub.slice('requirements/'.length)))
       }
-      if (method === 'POST' && sub === 'artifacts/scan') return await stages.handleArtifactScan(res)
+      if (method === 'POST' && sub === 'artifacts/scan') return await stages.handleArtifactScan(res, url)
       if (method === 'GET' && /^requirements\/[^/]+\/token$/.test(sub)) {
         const id = decodeURIComponent(sub.split('/')[1] ?? '')
         if (id.length === 0) {

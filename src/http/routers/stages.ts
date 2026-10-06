@@ -11,7 +11,6 @@ import { resolveDocRoot } from './shared.js'
 import { homedir } from 'node:os'
 import {
   asStageKey,
-  readyTasks,
   totalTokens,
   windowCodeFromSessionId,
   type RequirementRecord,
@@ -29,7 +28,15 @@ import {
   summarizeSystemPrompt,
   unavailableSystemPromptCost,
 } from '../../application/internal/prompt-cost.js'
-import { countDoneTasks, countUnfinishedTasks, isActiveRequirement, isOpenRequirement } from '../../domain/status/Predicates.js'
+import {
+  countDoneTasks,
+  countUnfinishedTasks,
+  isActiveRequirement,
+  isOpenRequirement,
+  liveCountOf,
+  liveReadyTasks,
+  liveTasksOf,
+} from '../../domain/status/Predicates.js'
 import { TASK_STATUS_ORDER } from '../../domain/task/TaskStatus.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { clientBuildStamp } from '../client-build.js'
@@ -73,9 +80,21 @@ export function createStagesRouter(ctx: RouterCtx) {
     // FR-11：本次请求的读根（会话优先）。前端把当前会话 id 放进 ?session= 查询参数。
     const docRoot = resolveDocRoot(deps, url.searchParams.get('session') ?? undefined)
     const st = ctx.requirementStore
-    const page = await st.listSummaries({ scope, limit, ...(cursor === undefined ? {} : { cursor }) })
+    // REQ-261005141830-7a3b t5（FR-6 / FR-10）：**看板列表按项目切**——会话能解析出项目身份时只列本项目的
+    // 需求；同时把**未归属**（无 `projectId`）的存量记录一并带回（FR-8：老记录不因缺身份而从看板消失）。
+    // 身份解析不到（未装配项目表 / 未命中）→ 不传筛 = 全量，老行为逐字不变。
+    const callerProjectId = docRoot.projectId
+    const page = await st.listSummaries({
+      scope,
+      limit,
+      ...(cursor === undefined ? {} : { cursor }),
+      ...(callerProjectId === undefined ? {} : { projectId: callerProjectId, includeUnattributed: true }),
+    })
     // 任务来自队列（REQ-260927202051-f6df）：listAll() 顺序 = requirementId 字典序分组 + 组内队列顺序（D2/D8）。
     const tasks = await taskStore.listAll()
+    // REQ-261005193546-1b1a FR-5（出口清单 ①）：**在 API 边界一次收敛**——已取消卡不进任何界面投影，
+    // 客户端不再各写过滤。判据单点在 domain（`liveTasksOf` / `isLiveTask`），此处只调用、不自写比较式。
+    const live = liveTasksOf(tasks)
     const { revision } = await st.head()
     ok(res, {
       revision,
@@ -83,12 +102,15 @@ export function createStagesRouter(ctx: RouterCtx) {
       // 末页时**不发该键**（缺失 = 到底；发 null 会被客户端读成"还有一页"）。
       ...(page.nextCursor === undefined ? {} : { nextCursor: page.nextCursor }),
       requirements: page.items,
-      tasks: tasks.map(t => ({ ...t })),
+      tasks: live.map(t => ({ ...t })),
       // 派生视图：每个需求的 ready 任务（client 调度提示用）。
-      // 仍用 readyTasks(队列任务, rId)：**按任务数组顺序**输出 —— 需求内顺序必须保住（R-3/D8），
-      // 故不用队列文件的 `ready` 字段（其顺序由 computeReady 决定，不保证一致）。
+      // REQ-261005193546-1b1a FR-1 / FR-5：**现算、不读落盘 `ready[]`**——磁盘 `ready[]` 是旧口径快照
+      // （写路径下次事务才重算），且旧判据会把「前置已取消」的活卡漏在门外面。判据单点 = `liveReadyTasks`
+      // （`isReadyTask` 的集合形态：自身 todo ∧ 约束桶为空；指向取消卡的边按已满足）。
+      // 仍保持**输出顺序 = 任务数组顺序** —— 需求内顺序必须保住（R-3/D8），故不用队列文件的 `ready`
+      // 字段（其顺序由 computeReady 决定，不保证一致）。
       ready: Object.fromEntries(
-        page.items.map(r => [r.id, readyTasks(tasks, r.id).map(t => t.id)]),
+        page.items.map(r => [r.id, liveReadyTasks(live.filter(t => t.requirementId === r.id))]),
       ),
       // REQ-a33899：需求卡面累计 token。**无快照的需求不出现该键**（缺失 ≠ 0）。
       // B12 阶段⑥-①：该派生视图要读产物本体才能算，故**只对本页 id 计算**（有界：≤ limit 条，
@@ -108,6 +130,9 @@ export function createStagesRouter(ctx: RouterCtx) {
       workspaceRoot: docRoot.root,
       sessionWorkspaceRoot: docRoot.sessionRoot,
       docsRootSource: docRoot.source,
+      // REQ-261005141830-7a3b t5（FR-9）：判据可观测——本次列表用的是项目身份还是路径兜底，现场就能看出。
+      projectSource: docRoot.projectSource,
+      ...(docRoot.projectId === undefined ? {} : { projectId: docRoot.projectId }),
       homeDir: homedir(),
     })
   }
@@ -118,8 +143,11 @@ export function createStagesRouter(ctx: RouterCtx) {
    * 为什么挪：扫描是"写侧"动作（落盘即产物），放在读接口上等于**每次看板刷新都写一遍台账**，
    * 且随需求目录规模放大。挪成独立端点后：GET 只读、扫描显式发生、可被单独调用与断言。
    */
-  async function handleArtifactScan(res: ServerResponse): Promise<void> {
-    await syncAllReqArtifacts(ctx.requirementStore, deps.cwd)
+  async function handleArtifactScan(res: ServerResponse, url?: URL): Promise<void> {
+    // REQ-261005141830-7a3b t5（FR-6）：扫描也按**项目身份**分区——带 ?session= 时用它解析出的项目 id
+    // 当分区判据（两侧都有身份就比 id，路径同形也拦得住）；不带/解析不到 → 回落路径口径（老行为）。
+    const docRoot = resolveDocRoot(deps, url?.searchParams.get('session') ?? undefined)
+    await syncAllReqArtifacts(ctx.requirementStore, docRoot.root, undefined, docRoot.projectId)
       .then((r) => ok(res, { scanned: r.scanned, skipped: r.skipped }))
       .catch((err: unknown) => fail(res, err))
   }
@@ -211,6 +239,10 @@ export function createStagesRouter(ctx: RouterCtx) {
         const tasks = allTasks.filter(t => t.requirementId === req.id)
         const done = countDoneTasks(tasks)
         const active = countUnfinishedTasks(tasks)
+        // REQ-261005193546-1b1a FR-2 / FR-5（出口清单 ②）：计数分母 = **活卡数**（`liveCountOf` 与
+        // `liveTasksOf` 同源，不新造计量粒度——一卡一行照旧，只剔除已取消）。
+        // done / active 走既有 helper（它们本就不把 canceled 算进去），此处不动其口径。
+        const total = liveCountOf(tasks)
         return {
           id: req.id,
           title: req.title,
@@ -220,8 +252,8 @@ export function createStagesRouter(ctx: RouterCtx) {
           windowCode: req.sourceSessionId !== undefined ? windowCodeFromSessionId(req.sourceSessionId) : null,
           tasksDone: done,
           tasksActive: active,
-          tasksTotal: tasks.length,
-          percentage: tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0,
+          tasksTotal: total,
+          percentage: total > 0 ? Math.round((done / total) * 100) : 0,
           updatedAt: req.updatedAt,
         }
       })
@@ -274,14 +306,21 @@ export function createStagesRouter(ctx: RouterCtx) {
     }
 
     const tasks = allTasks.filter(t => t.requirementId === target.id)
-    const done = countDoneTasks(tasks)
+    // REQ-261005193546-1b1a FR-5（出口清单 ③）：会话流程面板的进度与任务行**只算活卡**。
+    // 判据单点（`liveTasksOf`）；此处不新增「另有 N 张已取消」这类交代字段或文案（D-3 / D-7：彻底不可见）。
+    const live = liveTasksOf(tasks)
+    const done = countDoneTasks(live)
     const byStatus: Record<string, number> = {}
     for (const s of TASK_STATUS_ORDER) byStatus[s] = 0
-    for (const t of tasks) byStatus[t.status] = (byStatus[t.status] ?? 0) + 1
+    for (const t of live) byStatus[t.status] = (byStatus[t.status] ?? 0) + 1
 
     // REQ-261004143941-b2ca FR-1：需求累计 token 与 nodes **同源**——只装配一次视图，两处读数共用。
     // 为什么强调同源：各算一次不仅浪费，还会给「总数 ≠ Σ各节点」留下漂移的口子；
     // 而「Σ节点」正是用户在流程图上能逐个加出来的数（对不上就是错）。
+    // REQ-261005193546-1b1a 边界（**刻意不动**）：token 是**成本读数**（花了就是花了），不是
+    // 「该完成的卡」的分母（FR-2 点名的是覆盖度 / 进度 / 甘特 / 详情计数 / 追溯）。且 `/progress`
+    // 只把 token 转成**数字**下发（`nodes` = key + tokens），不带卡片身份 ⇒ 出参里不会出现取消卡。
+    // 要连 token 一起剔，须与 `GET /requirements/:id/token` 端点同批改（那不在本卡四落点内）。
     const tokenView = assembleRequirementToken(target, { tasks })
     const tokenTotal = totalTokens(tokenView.totals)
 
@@ -308,10 +347,10 @@ export function createStagesRouter(ctx: RouterCtx) {
         ...(tokenTotal > 0 ? { tokenTotal } : {}),
       },
       progress: {
-        total: tasks.length,
+        total: live.length,
         done,
-        active: countUnfinishedTasks(tasks),
-        percentage: tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0,
+        active: countUnfinishedTasks(live),
+        percentage: live.length > 0 ? Math.round((done / live.length) * 100) : 0,
         byStatus,
       },
       // 状态时间线（谁在什么时候推进到哪一步）——折叠展开后的「做了什么」主线
@@ -323,7 +362,8 @@ export function createStagesRouter(ctx: RouterCtx) {
       // 在会话顶部一个数字都不显示（用户实测反馈）。total=0 的节点不输出 tokens（避免一排 0）。
       // REQ-261004143941-b2ca FR-1：入参改为**已装配好的视图**（与上面的 tokenTotal 同一份）。
       nodes: nodeTokensOf(tokenView),
-      tasks: tasks
+      // REQ-261005193546-1b1a FR-5：任务行同样只下发活卡（排序口径不动）。
+      tasks: live
         .slice()
         .sort((a, b) => (TASK_STATUS_ORDER.indexOf(a.status) - TASK_STATUS_ORDER.indexOf(b.status)) || (a.createdAt - b.createdAt))
         .map(t => ({
@@ -361,7 +401,9 @@ export function createStagesRouter(ctx: RouterCtx) {
     const target = await ctx.requirementStore.get(id)
     const policy = target === undefined ? undefined : await designDocPolicyOf(docs, target)
     // 任务来自队列（装配器保持同步：先 await 取队列任务，再以 { tasks } 传入）。
-    const tasks = await taskStore.listByRequirement(id)
+    // REQ-261005193546-1b1a FR-1 / FR-5（出口清单 ④）：只把**活卡**交给装配器——DAG 层级与详情计数
+    // 都直接数这份投影；取消卡不进视图，也不构成依赖阻塞（判据单点在 domain `liveTasksOf`）。
+    const tasks = liveTasksOf(await taskStore.listByRequirement(id))
     const detail = assembleStageDetail(await ctx.requirementStore.get(id), { tasks }, stage, { 
         ...(policy !== undefined ? { designDocPolicy: policy } : {}),
         // REQ-260926140539-457b FR-6：RTM 追溯数据必须读到工作区根。
@@ -385,7 +427,8 @@ export function createStagesRouter(ctx: RouterCtx) {
     const target = await ctx.requirementStore.get(id)
     const policy = target === undefined ? undefined : await designDocPolicyOf(docs, target)
     // 任务来自队列（同 handleStageDetail：装配器保持同步）。
-    const tasks = await taskStore.listByRequirement(id)
+    // REQ-261005193546-1b1a FR-1 / FR-5（出口清单 ④）：同款收敛——总览各节点的任务投影只含活卡。
+    const tasks = liveTasksOf(await taskStore.listByRequirement(id))
     const overview = assembleStageOverview(await ctx.requirementStore.get(id), { tasks }, { 
         ...(policy !== undefined ? { designDocPolicy: policy } : {}),
         // REQ-260926140539-457b FR-6：RTM 追溯数据必须读到工作区根。

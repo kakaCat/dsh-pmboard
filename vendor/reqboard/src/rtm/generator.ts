@@ -71,6 +71,7 @@ export type RTMTrigger =
   | 'task:status'
   | 'task:report'
   | 'bind'
+  | 'submit:prototype'
   | 'submit:verification'
 
 /** 触发结果（失败也必须结构化返回，禁止静默）。 */
@@ -105,6 +106,11 @@ function filesForTrigger(trigger: RTMTrigger): string[] {
     case 'bind':
       // FR-12（REQ-260927100007-b8ba）：窗口绑定建立/变更 → 只刷新生命周期快照的窗口投影
       return ['rtm-lifecycle.yml']
+    case 'submit:prototype':
+      // REQ-261005105032-3b02 FR-5：登记原型产物 → brainstorming（`outputs.prototypes` 节）+ 生命周期快照。
+      // 与 `submit:requirement` **同形**（两文件、无覆盖度产出）：原型是需求阶段的产物，
+      // 覆盖度在 design/decomposing/accepting 三处执法，登记动作本身不判覆盖度。
+      return ['rtm-brainstorming.yml', 'rtm-lifecycle.yml']
     case 'submit:verification':
       return ['rtm-accepting.yml', 'rtm-lifecycle.yml']
     default:
@@ -172,6 +178,14 @@ export function runRTMTrigger(
       }
       case 'bind': {
         // 绑定刷新：重读台账（含最新 sourceSessionId）重写生命周期快照，不做别的节点。
+        generator.generateLifecycle(reqId)
+        break
+      }
+      case 'submit:prototype': {
+        // REQ-261005105032-3b02 FR-5：登记原型即刷新 brainstorming（含 `prototypes` / `decisions` 两节，
+        // 事实源仍是台账）+ 生命周期快照；**无覆盖度产出**（同 `submit:requirement`）。
+        // 载荷（§10 #48 的 `paths`）不参与生成：它只用于调用方留痕，生成器只认台账。
+        generator.generateBrainstorming(reqId)
         generator.generateLifecycle(reqId)
         break
       }

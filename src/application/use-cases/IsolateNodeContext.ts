@@ -58,6 +58,7 @@ import {
 } from '../internal/node-input-package.js'
 import { assembleNodeInput } from '../../../vendor/reqboard/src/dive/node-input.js'
 import type { Category, Difficulty, PromptStage } from '../../domain/prompt/index.js'
+import { difficultyFromDeclaredPrompt } from '../../domain/prompt/difficulty-mapping.js'
 import { fmt } from '../../domain/text/fmt.js'
 import type { RequirementRecord } from '../../shared/protocol.js'
 import type { KnowledgeIndexInput } from '../internal/knowledge-inject.js'
@@ -275,9 +276,14 @@ export async function isolateNodeContext(
   // t7（FR-8）：当轮余量参考（只读）——取不到就不追加该节，绝不阻断节点隔离。
   // 读法与"缺了算什么"的唯一实现在 internal/node-input-package（任务树顶层用同一个口）。
   const contextPressure = safeContextPressure(deps.session, request.windowKey)
+  // REQ-261005154851-8512 FR-3：本路的 `difficulty` 历史上**没有生产者**（settle 侧恒缺省），
+  // 于是恒回落默认轻档——与系统提示词同病。修法：调用方显式优先，否则用需求上的声明难度映射值；
+  // 两者都没有 → 不传（与改造前一致，不阻断节点隔离）。
+  const declared = difficultyFromDeclaredPrompt(requirement?.promptDifficulty)
+  const effectiveDifficulty = request.difficulty ?? declared
   const pkg = buildNodeInputPackage({
     stage,
-    ...(request.difficulty === undefined ? {} : { difficulty: request.difficulty }),
+    ...(effectiveDifficulty === undefined ? {} : { difficulty: effectiveDifficulty }),
     ...(request.category === undefined ? {} : { category: request.category }),
     ...(request.budget === undefined ? {} : { budget: request.budget }),
     ...(requirement === undefined ? {} : { requirement }),

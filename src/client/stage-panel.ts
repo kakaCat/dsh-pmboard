@@ -28,6 +28,7 @@ import {
   type ArtifactKind,
   type MainStageKey,
   type StatusEvent,
+  type VerificationItemSource,
   STAGE_ARTIFACT_REQUIREMENTS,
   CATEGORY_FLOW_PROFILES,
   stageEnabledFor,
@@ -39,6 +40,8 @@ import { esc } from './html.js'
 import { displayDocPath } from './open-doc.ts'
 import { CATEGORY_DELTAS, COMMON_ROOT_SECTIONS } from '../application/internal/category-doc-sets.js'
 import { fmt } from '../domain/text/fmt.js'
+// REQ-261005193546-1b1a FR-1 / FR-4：活卡判据与剪边走 domain 单点（`topoLevels` 内部剪边，见该函数注释）
+import { layerInputOf, splitDependencyEdges } from '../domain/status/Predicates.js'
 import { artifactKindLabel, docFileLabel, taskCardLabel } from '../shared/artifact-labels.js'
 import type { StageTaskRef } from '../shared/protocol.js'
 
@@ -315,21 +318,41 @@ const renderDesignBody: StageBodyRenderer = (payload) => {
   )
 }
 
-/** 拓扑分层：按依赖深度分组（DAG 层级）。 */
-function topoLevels<T extends { id: string; dependsOn?: string[] }>(tasks: T[]): Map<number, T[]> {
-  const byId = new Map(tasks.map(t => [t.id, t]))
+/**
+ * 拓扑分层：按依赖深度分组（DAG 层级）。
+ *
+ * 剪边**落在这个函数内部**（REQ-261005193546-1b1a FR-1，D-8；design/frontend.md §四个取数边界②）：
+ * 指向集合外（已取消 / 悬空）卡的边**直接丢弃**，不参与 `1 + max(...)`。旧的实现把「不在 `byId`
+ * 里的前置」按 `lv = 0` **照样计入** `max`，于是「活卡的唯一前置是已取消卡」会让这张活卡凭空多一层
+ * （`第 2 层` 而不是 `第 1 层`）——服务端投影剪边只算第一道，**真正当场算层的地方是这里**。
+ *
+ * 口径单点：剔卡 + 剪边走 `layerInputOf`，在场判定走 `splitDependencyEdges`（不另写在场判断）。
+ * 层号按活卡压实：无活卡前置 = 第 0 层；层号天然连续（有第 N 层必有第 N-1 层），不留「第 N 层 · 0 张」空层。
+ *
+ * 导出原因：设计 test-cases TC-2 要求「单独走客户端 `stage-panel.topoLevels`（真正算层的地方）再算一遍」，
+ * 与 node-panel 的同款分层同台比对——不导出就只能靠渲染字符串间接验，测不到这一处。
+ */
+export function topoLevels<T extends { id: string; status: string; dependsOn?: string[] }>(tasks: T[]): Map<number, T[]> {
+  const live = layerInputOf(tasks)
+  const byId: ReadonlyMap<string, T> = new Map(live.map(t => [t.id, t]))
   const cache = new Map<string, number>()
   function lv(id: string): number {
     if (cache.has(id)) return cache.get(id)!
     const t = byId.get(id)
-    if (!t || !t.dependsOn || t.dependsOn.length === 0) { cache.set(id, 0); return 0 }
-    const l = 1 + Math.max(...t.dependsOn.map(d => lv(d)))
+    if (t === undefined) { cache.set(id, 0); return 0 }
+    // 层号 = 1 + max(**在场**前置的层号)：satisfied（已了结）与 pending（未了结）都仍在场，
+    // 逐字保留旧口径；dangling（不在 `byId` 里 = 已取消卡 / 悬空引用）一律丢弃——
+    // 这就是「不能当 `lv = 0` 计入 `max`」那一行。
+    const split = splitDependencyEdges(t, byId)
+    const present = split.satisfied.concat(split.pending)
+    if (present.length === 0) { cache.set(id, 0); return 0 }
+    const l = 1 + Math.max(...present.map(d => lv(d)))
     cache.set(id, l)
     return l
   }
-  for (const t of tasks) lv(t.id)
+  for (const t of live) lv(t.id)
   const layers = new Map<number, T[]>()
-  for (const t of tasks) {
+  for (const t of live) {
     const l = cache.get(t.id) ?? 0
     if (!layers.has(l)) layers.set(l, [])
     layers.get(l)!.push(t)
@@ -436,12 +459,35 @@ const renderImplementingBody: StageBodyRenderer = (payload) => {
 }
 
 /**
- * 验收单逐项渲染（REQ-2e9473 t14/W6）：每项 通过/不通过 单选 + 意见输入 +
- * 提交裁决按钮（data-action=submit-verdicts，由 board-mount 事件委派收集提交）。
+ * 验收项来源的稳定 key 与短标签（REQ-261005105032-3b02 §10 #31 的同款连带）。
+ *
+ * 为什么必须显式穷尽：这里原来是 `kind==='requirement' ? … : it.source.taskId`——
+ * source 增了 `prototype-compare` / `decision-compare` 两支后，它会渲染成 `undefined`
+ * （`data-source="undefined"`）。类型改了就让 tsc 拦下来，比人眼在页面上找可靠。
+ */
+function verificationSourceOf(source: VerificationItemSource): { key: string; label: string } {
+  switch (source.kind) {
+    case 'requirement': return { key: 'requirement', label: '需求级' }
+    case 'task': return { key: source.taskId, label: source.taskId }
+    case 'prototype-compare': return { key: 'prototype-compare', label: '原型对照' }
+    case 'decision-compare': return { key: 'decision-compare', label: '裁定对照' }
+  }
+}
+
+/**
+ * 验收单逐项渲染（REQ-2e9473 t14/W6；REQ-261006092213-4f5b FR-4 / FR-5 补实测结果与旗标）：
+ * 每项 徽标 + 来源 + 判据 + **实际结果行（agent 实测 / 人工填写）** + 需人工旗标 + 通过/不通过 单选 +
+ * 意见输入（**预填 `item.result`**）+ 提交裁决按钮（data-action=submit-verdicts，由 board-mount 委派收集提交）。
+ *
+ * 三条界面纪律（照 frontend.md 与权威原型 `prototypes/verification-result.html#FR-4`）：
+ *   · `data-result-src="agent|human|none"` 与预填值都取自**台账的 `result` / `resultSource`**，
+ *     前端不另算一遍（"谁跑的验证"在界面上第一次可见，靠的是把台账读数原样铺开）；
+ *   · 预填 ≠ 必填：`is-prefilled` 只提示"这是 agent 的原文、改动即记为人工填写"，判定权在服务端；
+ *   · `needsHuman` 与结果**分行**（前者是"只能人看"、后者是"有实测结果"，不同性质的信息）。
  */
 function renderVerificationSheet(
   payload: StageDetail,
-  v: { sheet?: { version: number; items: { id: string; source: { kind: 'requirement' } | { kind: 'task'; taskId: string }; criterion: string; status: string; opinion?: string }[]; reworkOnly?: boolean } },
+  v: { sheet?: { version: number; items: { id: string; source: VerificationItemSource; criterion: string; status: string; opinion?: string; result?: string; resultSource?: 'agent' | 'human'; needsHuman?: boolean; humanReason?: string }[]; reworkOnly?: boolean } },
 ): string {
   const sheet = v.sheet
   if (sheet === undefined || sheet.items.length === 0) return ''
@@ -450,19 +496,53 @@ function renderVerificationSheet(
   const badge: Record<string, string> = { ...ITEM_STATUS_BADGE }
   const rows = sheet.items.map((it) => {
     const decided = it.status !== 'pending'
-    const sourceKey = it.source.kind === 'requirement' ? 'requirement' : it.source.taskId
-    return '<div class="dsh-pm-vitem" data-item-id="' + esc(it.id) + '" data-source="' + esc(sourceKey) + '">' +
+    const source = verificationSourceOf(it.source)
+    const result = (it.result ?? '').trim()
+    const needsHuman = it.needsHuman === true
+    // 来源三态：agent 实测 / 人工填写 / 未标注（与详情页核验表 `sourceCell` 同词，文案与三态同源）
+    const resultSrc = it.resultSource === 'agent' ? 'agent' : (it.resultSource === 'human' ? 'human' : 'none')
+    const resultLabel = resultSrc === 'human' ? '人工填写' : (resultSrc === 'agent' ? 'agent 实测' : '未标注来源')
+    // 实际结果行（FR-4）：有值就照原文铺开（**展示**截断到 200 字），无值显式说"尚无"——不留白
+    const resultLine = result.length > 0
+      ? '<div class="dsh-pm-vitem-result">实际结果（' + resultLabel + '）：'
+        + esc(truncate(result, 200)) + '</div>'
+      : '<div class="dsh-pm-vitem-result is-empty"><span class="dsh-pm-hint">尚无实测结果</span></div>'
+    // 需人工旗标（FR-5）：类名与理由都复用既有口径（`.dsh-pm-flag.verify-pending`，base.ts 已定义）
+    const humanFlag = needsHuman
+      ? '<div class="dsh-pm-vitem-human"><span class="dsh-pm-flag verify-pending">'
+        + esc('需人工确认' + ((it.humanReason ?? '').trim().length > 0 ? '：' + truncate((it.humanReason ?? '').trim(), 120) : ''))
+        + '</span></div>'
+      : ''
+    /**
+     * 预填的单点规则（复核 B1 / M1）：
+     *   · `needsHuman` 项**不预填**——判定依据在人眼里，`result` 只是供人参照的材料（与弹框通道
+     *     `AcceptSheet.resultOf` 同序）；预填会让"唯一要人填"的项看起来可以零输入通过；
+     *   · 其余有结果的项预填**原文**（`value` 必须与台账 `item.result` **逐字节相同**）：
+     *     早先这里截断到 200 字，人一个字不改地提交会静默把 500 字的实测原文改成 201 字、
+     *     还把来源标成 `human`（复核 B1 实测复现）。展示行可以截断，`value` 不行。
+     */
+    const opinionInput = needsHuman
+      ? '<input type="text" class="dsh-pm-vitem-opinion" placeholder="未自动验证：请写你看到的界面事实（通过必填）">'
+      : (result.length > 0
+          ? '<input type="text" class="dsh-pm-vitem-opinion is-prefilled" value="' + esc(result) + '"'
+            + ' placeholder="已预填 agent 实测结果；改动即记为人工填写">'
+          : '<input type="text" class="dsh-pm-vitem-opinion" placeholder="通过可留空（无实测结果则记未复核） / 不通过填意见（必填）">')
+    return '<div class="dsh-pm-vitem' + (decided ? ' is-decided' : '') + '" data-item-id="' + esc(it.id) + '"'
+        + ' data-source="' + esc(source.key) + '" data-result-src="' + resultSrc + '"'
+        + (needsHuman ? ' data-needs-human="1"' : '') + '>' +
       '<div class="dsh-pm-vitem-head">' +
         '<span class="dsh-pm-vitem-badge">' + (badge[it.status] ?? esc(it.status)) + '</span>' +
-        '<span class="dsh-pm-vitem-src">' + esc(it.source.kind === 'requirement' ? '需求级' : it.source.taskId) + '</span>' +
+        '<span class="dsh-pm-vitem-src">' + esc(source.label) + '</span>' +
       '</div>' +
       '<div class="dsh-pm-sn-text">' + esc(truncate(it.criterion, 200)) + '</div>' +
+      resultLine +
+      humanFlag +
       (decided
         ? (it.opinion ? '<div class="dsh-pm-sn-warn">意见：' + esc(truncate(it.opinion, 200)) + '</div>' : '')
         : '<div class="dsh-pm-vitem-actions">' +
             '<label><input type="radio" name="verdict-' + esc(it.id) + '" value="passed"> 通过</label>' +
             '<label><input type="radio" name="verdict-' + esc(it.id) + '" value="failed"> 不通过</label>' +
-            '<input type="text" class="dsh-pm-vitem-opinion" placeholder="通过填实际结果 / 不通过填意见（均必填）">' +
+            opinionInput +
           '</div>') +
     '</div>'
   }).join('')

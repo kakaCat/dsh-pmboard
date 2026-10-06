@@ -41,6 +41,8 @@ import {
   type TaskRecord,
 } from '../../shared/protocol.js'
 import { designDocStatus, designDocPolicyOf, EMPTY_DESIGN_DOC_POLICY } from '../internal/design-docs.js'
+import { liveTasksOf, splitDependencyEdges } from '../../domain/status/Predicates.js'
+import { liveArtifactsOf } from './live-artifacts.js'
 import { requirementStoreOf } from '../use-cases/queue-access.js'
 import { assembleTraceability, contextOf, type AssembleStageOptions } from '../../stage-overview/assembler.js'
 import type { DesignDocPolicy } from '../internal/category-doc-sets.js'
@@ -75,19 +77,31 @@ export interface AssembleContext {
 abstract class StageDetailAssembler {
   abstract readonly stage: StageKey
   assemble(ctx: AssembleContext): StageDetail {
-    const { req, ledger } = ctx
+    const { req } = ctx
+    // 活卡收敛（REQ-261005193546-1b1a FR-1/FR-4 · INV-1/INV-4）：**只在这一处**做——
+    // 8 个 body 的任务集合都从 `ledger.tasks` 取（拆分 `DecomposeStageAssembler`、实施
+    // `ImplementStageAssembler` 是仅有的两个消费点），故在此一次收敛覆盖全部 body。
+    // 为什么**不逐 body 各写一遍 filter**：本次病根正是「某处漏了」——逐 body 补等于把病根
+    // 留在原地（下一个新 body 照样会漏），且消费点自写 `status vs 'canceled'` 正是 INV-4 要冻掉的漂移源。
+    // `ctx` 一并带上收敛后的 ledger：将来若有 body 从 `ctx.ledger` 取数，天然继承同一口径。
+    const liveLedger: Pick<TasksView, 'tasks'> = { tasks: liveTasksOf(ctx.ledger.tasks) }
+    const liveCtx: AssembleContext = { ...ctx, ledger: liveLedger }
     const enabled = stageEnabledFor(req.category, this.stage)
     const tokens = req.tokenUsage?.byStage?.[this.stage]
     const base = {
       stage: this.stage,
       enabled,
-      artifacts: artifactsForStage(req, this.stage),
+      // 产物投影也走活卡口径（REQ-261005193546-1b1a FR-5 / A3 的第二处落点）：
+      // 不剔卡时，客户端 `renderStagePanel` 的**追溯链**会把取消卡名下的 `tasks/<id>.md`
+      // 渲染成「任务卡（t-xxxx）」节点（实测 26/238）——标签里没有 canceled/已取消 字样，
+      // 文案扫描抓不到，是真泄漏。判据与文档面板**同一个单点**（`live-artifacts.ts`）。
+      artifacts: liveArtifactsOf(artifactsForStage(req, this.stage), ctx.ledger.tasks),
       pendingConfirmation: pendingConfirmationFor(req, this.stage),
       timeline: timelineForStage(req, this.stage),
       ...(tokens !== undefined ? { tokens } : {}),
     }
     // 分类跳过：body 给空对象（契约要求对应成员存在），UI 标灰不算缺失
-    const body = enabled ? this.buildBody(req, ledger, ctx) : ({} as never)
+    const body = enabled ? this.buildBody(req, liveLedger, liveCtx) : ({} as never)
     return { ...base, body } as StageDetail
   }
   /** 可变步：各节点装配器实现，产出 StageDetail 判别联合对应 body 成员。 */
@@ -194,6 +208,7 @@ class DecomposeStageAssembler extends StageDetailAssembler {
     ctx: AssembleContext,
   ): DecomposeStageBody {
     const tasks = view.tasks.filter(t => t.requirementId === req.id)
+    const liveById = indexById(tasks)
     const decompositionDoc = (req.artifacts ?? []).find(
       a => a.stage === 'decomposing' && a.kind === 'decomposition',
     )?.path
@@ -201,7 +216,7 @@ class DecomposeStageAssembler extends StageDetailAssembler {
     const traceability = ctx.workspaceRoot ? assembleTraceability(ctx.workspaceRoot, req.id) : undefined
     return {
       ...(decompositionDoc !== undefined ? { decompositionDoc } : {}),
-      tasks: tasks.map(t => withCardDoc(toStageTaskRef(t), t, req)),
+      tasks: tasks.map(t => withCardDoc(toStageTaskRef(t, liveById), t, req)),
       planTasks: req.plan?.tasks ?? [],
       ...(traceability?.traceability ? { traceability: traceability.traceability } : {}),
       ...(traceability?.coverage?.implementation ? { coverage: traceability.coverage.implementation } : {}),
@@ -216,9 +231,9 @@ class ImplementStageAssembler extends StageDetailAssembler {
     view: Pick<TasksView, 'tasks'>,
     ctx: AssembleContext,
   ): ImplementStageBody {
-    const tasks = view.tasks
-      .filter(t => t.requirementId === req.id)
-      .map(t => withCardDoc(toStageTaskExecution(t), t, req))
+    const mine = view.tasks.filter(t => t.requirementId === req.id)
+    const liveById = indexById(mine)
+    const tasks = mine.map(t => withCardDoc(toStageTaskExecution(t, liveById), t, req))
     const byWindow: Record<string, string[]> = {}
     for (const t of tasks) {
       // 任务归属窗口：claimedBy（执行窗口）优先；否则按执行记录里的 sessionId 归组；
@@ -293,14 +308,39 @@ function withCardDoc<T extends StageTaskRef>(ref: T, t: TaskRecord, req: Require
   const doc = (req.artifacts ?? []).find(a => a.kind === 'task_detail' && a.path.endsWith(suffix))?.path
   return doc === undefined ? ref : { ...ref, cardDoc: doc }
 }
-function toStageTaskRef(t: TaskRecord): StageTaskRef {
+
+/**
+ * 在场节点索引（= 剪边的 `byId`）：只含**本次投影里的卡**（基类已收敛成活卡）。
+ *
+ * 索引按活卡建，是「指向已取消卡的边表现为缺席 ⇒ 判为 dangling ⇒ 被剪掉」的来源；
+ * 与 `liveLayers` / `layerInputOf` 的 `byId` 同源，故**出参层号与出参边一致**。
+ */
+function indexById(tasks: readonly TaskRecord[]): Map<string, TaskRecord> {
+  return new Map(tasks.map((t): [string, TaskRecord] => [t.id, t]))
+}
+
+/**
+ * 出参剪边（REQ-261005193546-1b1a · design §依赖边语义 ⑤「出参一致性」）：
+ * 任何把 `dependsOn` 交给下层的投影都写**剪边后**的边 = `splitDependencyEdges` 的
+ * `satisfied ∪ pending`（= 只保留在场节点的边；指向已取消卡的边落进 `dangling`、被剔）。
+ *
+ * 为什么必须剪：下游是客户端的 `topoLevels`（看板「DAG 层级」真正的分层处），它对**未知 id**
+ * 取 `lv = 0` 且不抛错 ⇒ 活卡的 `1 + max(...)` 被幽灵前置抬高一层（掉层）。
+ * 单次遍历复用判据单点，不在本文件重写 `status vs 'canceled'`（INV-4 硬禁）。
+ */
+function prunedDependsOn(t: TaskRecord, liveById: ReadonlyMap<string, TaskRecord>): string[] {
+  const split = splitDependencyEdges(t, liveById)
+  return [...split.satisfied, ...split.pending]
+}
+
+function toStageTaskRef(t: TaskRecord, liveById: ReadonlyMap<string, TaskRecord>): StageTaskRef {
   return {
     id: t.id,
     title: t.title,
     status: t.status,
     phase: t.phase,
     side: t.side,
-    dependsOn: t.dependsOn,
+    dependsOn: prunedDependsOn(t, liveById),
     ...(t.dependsSummary !== undefined ? { dependsSummary: t.dependsSummary } : {}),
     acceptance: t.acceptance,
     ...(t.cardDoc !== undefined ? { cardDoc: t.cardDoc } : {}),
@@ -317,9 +357,9 @@ function toStageTaskRef(t: TaskRecord): StageTaskRef {
     ...(t.stages !== undefined ? { stages: t.stages } : {}),
   }
 }
-function toStageTaskExecution(t: TaskRecord): StageTaskExecution {
+function toStageTaskExecution(t: TaskRecord, liveById: ReadonlyMap<string, TaskRecord>): StageTaskExecution {
   return {
-    ...toStageTaskRef(t),
+    ...toStageTaskRef(t, liveById),
     ...(t.claimedBy !== undefined ? { claimedBy: t.claimedBy } : {}),
     executions: t.executions,
   }

@@ -4,51 +4,30 @@
  * @module dsh-pmboard/client/views/artifacts
  */
 import { esc } from '../html.js'
+import type { RunningMark } from '../session-running.ts'
 import type { ReqCard, RequirementRecord, RequirementStatus } from '../types.ts'
-import type { ArtifactKind, StageArtifact, StageKey } from '../../shared/protocol.ts'
-import { ARTIFACT_CONFIRM_GATES, REQ_TRANSITIONS, STAGE_ARTIFACT_REQUIREMENTS, confirmGateKindFor, flowProfileFor, fmtTokens } from '../../shared/protocol.ts'
+import type { ArtifactKind } from '../../shared/protocol.ts'
+import { REQ_TRANSITIONS, confirmGateKindFor, fmtTokens } from '../../shared/protocol.ts'
 import { CATEGORY_LABELS, NO_ARCHIVED, PHASE_LABELS, STATUS_LABELS, fmtDur, fmtTime, isTerminal, progress, renderRunningDot, renderSessionChip, renderWindowChip } from '../render/dom-utils.ts'
 import { eventsOf } from './timeline.ts'
 import { artifactKindLabel } from '../../shared/artifact-labels.ts'
 import { progressText, renderAutoBadge, renderAutoControls, subtaskProgress } from '../render/subtask-view.ts'
 import { archiveChip, verifyChip } from './verification.ts'
+import { gateOf, gatesOf } from '../render/gate-view.ts'
 
 /* ------------------------------------------------------------------ 产物 chips（五道人工确认门，REQ-31e11f t7） */
 
 // REQ-260922182638-0777：种类中文名唯一事实源 = shared/artifact-labels.ts（本文件不再建本地映射表）
-/**
- * 计算需求在当前分类流程下，各确认门的产物状态。
- * 返回每个门的 { kind, status: 'confirmed'|'pending'|'missing', artifact? }。
- */
-export function computeGateStatuses(req: RequirementRecord): Array<{
-  kind: ArtifactKind
-  status: 'confirmed' | 'pending' | 'missing'
-  artifact?: StageArtifact
-}> {
-  const profile = flowProfileFor(req.category)
-  const results: Array<{ kind: ArtifactKind; status: 'confirmed' | 'pending' | 'missing'; artifact?: StageArtifact }> = []
-  for (const gateKey of profile.confirmGates) {
-    const kind = ARTIFACT_CONFIRM_GATES[gateKey]
-    if (kind === undefined) continue
-    const artifact = (req.artifacts ?? []).find(a => a.kind === kind)
-    if (artifact === undefined) {
-      results.push({ kind, status: 'missing' })
-    } else if (kind === 'design') {
-      // REQ-2d1c74 FR-2：成组确认语义——任何一份设计文档无章都算待确认
-      const anyUnconfirmed = (req.artifacts ?? []).some(a => a.kind === 'design' && a.confirmedAt === undefined)
-      results.push(anyUnconfirmed ? { kind, status: 'pending', artifact } : { kind, status: 'confirmed', artifact })
-    } else if (artifact.confirmedAt !== undefined) {
-      results.push({ kind, status: 'confirmed', artifact })
-    } else {
-      results.push({ kind, status: 'pending', artifact })
-    }
-  }
-  return results
-}
+// REQ-261006175040-12d4（t6 / D-2）：门状态的**判定已移到服务端**（shared/board-summary +
+// domain/artifact/GateReadings），这里只渲染读数——本文件原先那份「就地读 artifacts 判门」的实现已删除，
+// 因为它读 `req.artifacts`，而首屏摘要自 B12 起不再下发该字段（卡面四门恒红的根因）。
 
 /**
  * 当前生效的门：从 req.status 找下一态，用 confirmGateKindFor 算出产物 kind。
  * 无门（如 draft/implementing 或分类跳过）→ undefined。
+ *
+ * 只用 `category` + `status` 两个摘要字段 ⇒ 纯函数、与读数无关（读不到读数时它照样可用，
+ * 只是按钮不渲染）。
  */
 export function currentGateKind(req: RequirementRecord): ArtifactKind | undefined {
   const transitions = REQ_TRANSITIONS[req.status]
@@ -61,10 +40,14 @@ export function currentGateKind(req: RequirementRecord): ArtifactKind | undefine
   return undefined
 }
 
-/** 产物 chip 单行：五门各自的状态一览（已确认=绿✓ / 待确认=橙可点 / 缺失=红）。 */
+/**
+ * 产物 chip 单行：各生效门的状态一览（已确认=绿✓ / 待确认=橙可点 / 缺失=红）。
+ *
+ * FR-6：`gates` 缺省（读数不可得）⇒ **整块不渲染**——不是渲染成四个红 ✗。
+ */
 export function renderArtifactChips(req: RequirementRecord): string {
-  const gates = computeGateStatuses(req)
-  if (gates.length === 0) return ''
+  const gates = gatesOf(req)
+  if (gates === undefined || gates.length === 0) return ''
   const chips = gates.map(g => {
     const label = artifactKindLabel(g.kind)
     if (g.status === 'confirmed') {
@@ -80,52 +63,47 @@ export function renderArtifactChips(req: RequirementRecord): string {
 
 /**
  * 卡面「确认产物」主按钮（REQ-31e11f t7 核心：确认入口卡面外置）。
- * 仅当当前生效门有产物且待确认时渲染——一键确认，不用开抽屉。
+ *
+ * 在场条件**只看读数**（FR-4）：当前生效门 `status === 'pending'` 才渲染；
+ * `missing`（无产物）/ `confirmed`（已落章）/ 读数不可得 一律不渲染——
+ * 不给点了必被代码级拒绝的假按钮。
  */
 export function renderConfirmButton(req: RequirementRecord): string {
   const kind = currentGateKind(req)
   if (kind === undefined) return ''
-  // REQ-2d1c74 FR-2：kind=design 是成组确认——任何一份无章即待确认，按钮文案写明「将确认全部 N 份设计文档」
+  const reading = gateOf(req, kind)
+  if (reading === undefined || reading.status !== 'pending') return ''
+  // REQ-2d1c74 FR-2：kind=design 是成组确认——按钮文案写明将确认几份（份数来自读数 count）
   if (kind === 'design') {
-    const designArts = (req.artifacts ?? []).filter(a => a.kind === 'design')
-    if (designArts.length === 0 || designArts.every(a => a.confirmedAt !== undefined)) return ''
-    const title = `一键确认全部 ${designArts.length} 份设计文档（成组确认），放行下一阶段`
-    const text = `确认产物（全部 ${designArts.length} 份）`
+    const title = `一键确认全部 ${reading.count} 份设计文档（成组确认），放行下一阶段`
+    const text = `确认产物（全部 ${reading.count} 份）`
     return '<button type="button" class="dsh-pm-btn sm primary dsh-pm-confirm-artifact" data-action="confirm-artifact" data-id="' + esc(req.id) + '" data-kind="' + esc(kind) + '" title="' + title + '">' + text + '</button>'
   }
-  const artifact = (req.artifacts ?? []).find(a => a.kind === kind)
-  if (artifact === undefined || artifact.confirmedAt !== undefined) return ''
   const label = artifactKindLabel(kind)
   return '<button type="button" class="dsh-pm-btn sm primary dsh-pm-confirm-artifact" data-action="confirm-artifact" data-id="' + esc(req.id) + '" data-kind="' + esc(kind) + '" title="一键确认' + esc(label) + '，放行下一阶段">确认产物</button>'
 }
 
-/** 派生展示：当前阶段产物完成度 + 待确认门数。 */
+/**
+ * 派生行：**已确认门数 / 生效门总数**（FR-3 / D-3）。
+ *
+ * 旧口径 `产物 N/M`（分子 = 产物条数）与第二段「N 门待确认」都已删除：
+ * 前者的分子分母不同量纲（该需求 83 条产物登记 / 必备种类 6），后者与 chips 的 ⏳ 重复。
+ */
 export function renderArtifactDerived(req: RequirementRecord): string {
-  const profile = flowProfileFor(req.category)
-  const allRequired: ArtifactKind[] = []
-  for (const stage of profile.stages) {
-    const kinds = STAGE_ARTIFACT_REQUIREMENTS[stage as StageKey]
-    if (kinds !== undefined) allRequired.push(...kinds)
-  }
-  const present = (req.artifacts ?? []).length
-  const total = allRequired.length
-  const gates = computeGateStatuses(req)
-  const pendingCount = gates.filter(g => g.status === 'pending').length
-  if (total === 0 && pendingCount === 0) return ''
-  const parts: string[] = []
-  if (total > 0) parts.push('产物 ' + present + '/' + total)
-  if (pendingCount > 0) parts.push(pendingCount + ' 门待确认')
-  return '<div class="dsh-pm-artifact-derived">' + parts.join(' · ') + '</div>'
+  const gates = gatesOf(req)
+  if (gates === undefined || gates.length === 0) return ''
+  const confirmed = gates.filter(g => g.status === 'confirmed').length
+  return '<div class="dsh-pm-artifact-derived">门 ' + confirmed + '/' + gates.length + '</div>'
 }
 
 /**
  * 泳道卡片。
  *
- * `running`（REQ-261004210128-283d FR-3）：该需求绑定窗口此刻是否正在跑回合。
- * **只接布尔**（由调用方用 `requirementRunning` 算好）——避免两个视图各自散落映射逻辑；
- * 缺省 `false` = 今天的输出（「省略参数逐字节一致」这条断言靠它成立）。
+ * `mark`（REQ-261004210128-283d FR-3；REQ-261005213603-eaed FR-3）：该需求此刻在不在跑、以及成因。
+ * **只接已算好的 mark**（由调用方用 `requirementRunningMark` 算好）——避免两个视图各自散落映射逻辑；
+ * 缺省 `undefined` = 今天的输出（「省略参数逐字节一致」这条断言靠它成立）。
  */
-export function renderReqCard(card: ReqCard, now: number, archived: ReadonlySet<string> = NO_ARCHIVED, running = false): string {
+export function renderReqCard(card: ReqCard, now: number, archived: ReadonlySet<string> = NO_ARCHIVED, mark?: RunningMark): string {
   const { req, tasks, doneCount, totalCount, readyIds, blocked } = card
   const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
   const cat = req.category ? `<span class="dsh-pm-cat" data-cat="${req.category}">${CATEGORY_LABELS[req.category] ?? req.category}</span>` : ''
@@ -140,7 +118,7 @@ export function renderReqCard(card: ReqCard, now: number, archived: ReadonlySet<
   const timeLine = renderCardTime(req, now)
   // REQ-261004210128-283d FR-3（2026-10-04 用户裁定版，第二次调整）：运行中指示是**项目级**信号，
   // 泳道卡与列表行统一**紧跟项目 ID**——挂在项目标识上最直白，不让读者去别处找。
-  const runningDot = renderRunningDot(running)
+  const runningDot = renderRunningDot(mark)
   const sessionChip = renderWindowChip(req, archived) + renderSessionChip(tasks, archived)
   const actions = cardActions(req)
   const artifactChips = renderArtifactChips(req)
@@ -222,7 +200,6 @@ export function cardActions(req: RequirementRecord): string {
   return actions.length === 0 ? '' : `<div class="dsh-pm-card-actions">${actions}</div>`
 }
 
-
 /** 卡面时间行：创建时间 + 当前状态进入时间 + 当前态停留时长（时间不埋在详情页）。 */
 export function renderCardTime(req: RequirementRecord, now: number): string {
   const events = eventsOf(req, 'draft')
@@ -243,10 +220,11 @@ export function renderCardTime(req: RequirementRecord, now: number): string {
  * 而不是要人点进详情页才发现。
  */
 export function planChip(req: RequirementRecord): string {
-  const plan = req.plan
-  if (plan === undefined) return ''
-  if (plan.approvedAt !== undefined) return '<span class="dsh-pm-flag plan-ok" title="拆分计划已批准，可拆分落库">计划已批</span>'
-  if (plan.rejectedAt !== undefined) return '<span class="dsh-pm-flag plan-rejected" title="拆分计划被退回，待重写">计划被退</span>'
+  // FR-5 / D-2：读服务端下发的 planState（原先读 req.plan，而首屏摘要不带该大字段 ⇒ 该 chip 永不出现）
+  const state = req.planState
+  if (state === undefined) return '' // 无计划记录 或 读数不可得：该 chip 没有「缺失」态
+  if (state === 'approved') return '<span class="dsh-pm-flag plan-ok" title="拆分计划已批准，可拆分落库">计划已批</span>'
+  if (state === 'rejected') return '<span class="dsh-pm-flag plan-rejected" title="拆分计划被退回，待重写">计划被退</span>'
   return '<span class="dsh-pm-flag plan-pending" title="拆分计划已提交，等待人批准后才能拆分">计划待批</span>'
 }
 
@@ -268,9 +246,11 @@ export function renderPlanSection(req: RequirementRecord): string {
     : plan.rejectedAt !== undefined
       ? '<span class="dsh-pm-plan-status" data-state="rejected">已退回 ' + esc(fmtTime(plan.rejectedAt)) + '</span>'
       : '<span class="dsh-pm-plan-status" data-state="pending">待批准</span>'
-  // 审批按钮已外置到详情头常驻操作条（renderActionBar）——折叠区只留状态与内容
+  // 审批按钮已外置到详情头常驻操作条（renderActionBar）——折叠区只留状态与内容。
+  // 文案点名**具体位置**（FR-11 #4）：原先指向操作条上那个分组标签，而该标签已按 FR-11 #1 删除，
+  // 继续留着就是把读者指向一个不存在的东西。
   const actions = plan.approvedAt === undefined
-    ? '<span class="dsh-pm-hint">计划待批：请在详情头「本阶段操作」条点「批准计划」或「退回计划」</span>'
+    ? '<span class="dsh-pm-hint">计划待批：请在详情页头部第一行的动作条（「← 看板」右侧）点「批准计划」或「退回计划」</span>'
     : '<span class="dsh-pm-hint">拆分已解锁：窗口可用 reqboard_decompose 按此计划落库任务卡</span>'
   const tasks = plan.tasks.map(t => {
     const deps = (t.dependsOn ?? []).length > 0 ? ' · 依赖 ' + esc((t.dependsOn ?? []).join(',')) : ''

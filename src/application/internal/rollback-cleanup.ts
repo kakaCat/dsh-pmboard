@@ -24,6 +24,7 @@
  * @module dsh-pmboard/application/internal/rollback-cleanup
  */
 import type { ActorRef, TaskRecord } from '../../shared/protocol.js'
+import { markCanceled } from '../../shared/protocol.js'
 
 /** 清理的匹配方式（回执如实声明；t6 的诚实性要求）。 */
 export type CleanupMatch = 'lastMaterialized' | 'reworkOf+title-prefix'
@@ -114,6 +115,12 @@ export function planRollbackCleanup(
   // 全部卡（含已取消）——还原父子关系时要按 reworkOf 找到**原卡**（原卡已被上一次回退取消）。
   const allById = new Map(tasks.filter((t) => t.requirementId === req.id).map((t) => [t.id, t]))
 
+  // 本批动作的原因（整批同一条，**同源**）：修订留痕与取消留痕 `cancelReason` 用同一个字符串，
+  // 不允许任一处另取值（REQ-261005193546-1b1a FR-3 / design/backend.md「与 statusHistory 的关系」）。
+  // 去掉 `reason` 为空时的尾巴，保证它是非空文本（否则 `cancelReason` 按规则不会写）。
+  const batchReason = '误物化清场（第 ' + rollbackSeq + ' 次回退'
+    + (reason.length > 0 ? '：' + reason : '') + '）'
+
   for (const t of targets) {
     // 不碰已完成：done 的活不能被清场吞掉。
     if (t.status === 'done') {
@@ -122,6 +129,9 @@ export function planRollbackCleanup(
     }
     const copy = structuredClone(t)
     copy.status = 'canceled'
+    // 取消留痕（REQ-261005193546-1b1a FR-3）：与上面那行相邻、同一对象（copy）——之后由调用方
+    // 在同一次 mutateQueue 写事务里落盘。at/by/reason 与本卡那条 rollback 修订同源。
+    markCanceled(copy, { at: now, by: actor, reason: batchReason })
     copy.blocked = false
     delete copy.blockedReason
     copy.revisions = [
@@ -130,7 +140,7 @@ export function planRollbackCleanup(
         at: now,
         by: actor,
         kind: 'rollback',
-        reason: '误物化清场（第 ' + rollbackSeq + ' 次回退' + (reason.length > 0 ? '：' + reason : '') + '）',
+        reason: batchReason,
         changes: ['status: ' + t.status + '→canceled'],
       },
     ]

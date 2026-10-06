@@ -6,6 +6,9 @@ import { CoverageChecker } from '../../../vendor/reqboard/src/rtm/coverage-check
 import { AcceptanceGate } from '../../../vendor/reqboard/src/rtm/acceptance-gate.js'
 import { scanFRDirectory } from '../../../vendor/reqboard/src/rtm/fr-parser.js'
 import type { TaskRecord, VerificationSheet } from '../../shared/protocol.js'
+// 来源 → fr_id 的映射单点在 domain（§10 #31）：此处与 accept-sheet-rtm-integration 同源，
+// 新 source（prototype-compare / decision-compare）不再退化为 fr_id='UNKNOWN'。
+import { rtmTraceIdOf } from '../../domain/workflow/AcceptanceSheetSpec.js'
 
 export interface StatusRTMResult {
   fr_coverage: {
@@ -77,7 +80,7 @@ export function generateStatusRTM(
   if (verificationSheet && verificationSheet.items.length > 0) {
     const acceptanceTracking = verificationSheet.items.map(item => ({
       acceptance_id: item.id,
-      fr_id: item.source.kind === 'requirement' ? 'REQ-LEVEL' : (item.source.taskId ?? 'UNKNOWN'),
+      fr_id: rtmTraceIdOf(item.source),
       description: item.criterion,
       verification: item.howToVerify ?? item.criterion,
       status: item.status,

@@ -161,9 +161,11 @@ function layerDepths(tasks: readonly DagGraphNode[]): Map<string, number> {
  */
 function summaryHtml(tasks: readonly DagGraphNode[]): string {
   if (tasks.length === 0) {
-    return '<div class="dsh-pm-dag-summary" data-dag-summary="1" data-dag-empty="no-tasks">'
-      + '本需求还没有任务卡：图与每步执行结果都为空。'
-      + '拆分计划审批后生成任务卡，这里会列出层级 / 依赖 / 并行度与每步执行结果。'
+    // FR-7（t8）：无任务空态**单独成块**（虚线框，与图摘要的读法分开）——
+    // 文案逐字按原型 v1.5 #FR-7 的空态块；`data-dag-summary`/`data-dag-empty` 两个旧锚点保留。
+    return '<div class="dsh-pm-dag-summary dsh-pm-dag-empty" data-dag-summary="1" data-dag-empty="no-tasks"'
+      + ' data-dag-empty-block="1">'
+      + '暂无任务：这条需求还没有拆分出任务卡。批准拆分计划后，这里画出任务 DAG（层级 / 依赖 / 并行度）。'
       + '</div>'
   }
 
@@ -229,11 +231,47 @@ function summaryHtml(tasks: readonly DagGraphNode[]): string {
  * `data-dag-state-key` 已按 `<canvasId>::<requirementId>` 拼好——这个键形是
  * `dag/view-state.ts` 的约定（键必须含需求 id，否则 A 需求的方向会串到 B 需求）。
  */
+/**
+ * 顶部工具行（FR-7 · REQ-261006130057-7a43 t8；蓝本 = 原型 v1.5 `#FR-7` 的 `.dag-toolbar`）。
+ *
+ * 缩放三件套（− / 100% / ＋）与「适应窗口」：**现有画布没有缩放 API 可接**
+ * （`client/dag/*` 与 `views/dag-view.ts` 只认纵向/横向与关键路径/主线开关），
+ * 所以四个控件一律 disabled 占位 + title 说明「画布缩放沿用拖拽/滚轮」——**不给假按钮**
+ * （本仓纪律：点了没反应的按钮比没有按钮更坏）。将来画布若长出 zoom/fit API，
+ * 把 disabled 摘掉接上即可（标记 `data-dag-zoom` 已就位）。
+ *
+ * 四态图例（待办/在跑/完成/阻塞）：色点带**文字标签**（不只剩颜色，色盲可读）；
+ * 色点颜色由样式分片按 `data-dot` 上色（--pm-* 令牌），这里不写裸色值。
+ * 类名刻意用 `dsh-pm-dag-tbtn`（不是 `dsh-pm-dag-btn`）：挂载入口按后者接
+ * 纵向/横向与开关的点击，缩放占位按钮不该进那条链。
+ */
+function dagToolbarHtml(): string {
+  const zoomBtn = (key: string, text: string): string =>
+    '<button type="button" class="dsh-pm-dag-tbtn" disabled aria-disabled="true"'
+    + ' data-dag-zoom="' + key + '"'
+    + ' title="画布缩放沿用拖拽/滚轮（现有画布组件无缩放 API，本钮为占位）">' + text + '</button>'
+  return '<div class="dsh-pm-dag-toolbar" data-dag-toolbar="1">'
+    + zoomBtn('out', '−')
+    + '<span class="dsh-pm-dag-zoom-pct" data-dag-zoom-pct="1">100%</span>'
+    + zoomBtn('in', '＋')
+    + '<button type="button" class="dsh-pm-dag-tbtn" disabled aria-disabled="true"'
+    + ' data-dag-zoom="fit"'
+    + ' title="画布缩放沿用拖拽/滚轮（现有画布组件无「适应窗口」API，本钮为占位）">适应窗口</button>'
+    + '<span class="dsh-pm-dag-legend4" data-dag-legend4="1">图例：'
+    + '<span><i class="dsh-pm-dag-dot" data-dot="todo"></i>待办</span>'
+    + '<span><i class="dsh-pm-dag-dot" data-dot="running"></i>在跑</span>'
+    + '<span><i class="dsh-pm-dag-dot" data-dot="done"></i>完成</span>'
+    + '<span><i class="dsh-pm-dag-dot" data-dot="blocked"></i>阻塞</span>'
+    + '</span>'
+    + '</div>'
+}
+
 function canvasHostHtml(ctx: ReportTabCtx): string {
   const stateKey = DAG_PANEL_CANVAS_ID + '::' + ctx.requirementId
   return '<div class="dsh-pm-dag-panel" id="' + esc(DAG_PANEL_HOST_ID) + '" data-dag-canvas="1"'
     + ' data-dag-canvas-id="' + esc(DAG_PANEL_CANVAS_ID) + '"'
     + ' data-dag-state-key="' + esc(stateKey) + '">'
+    + dagToolbarHtml()
     + '<div class="dsh-pm-dag-head">'
     + '<span class="dsh-pm-dag-sub">节点 = 顶层卡 · 连线 = 依赖边 · 悬停看上下游 · 单击打开任务卡文档 · 双击打开任务详情（画布与交互沿用现有 DAG 视图）</span>'
     + '<span class="dsh-pm-dag-seg">'
@@ -254,9 +292,13 @@ function canvasHostHtml(ctx: ReportTabCtx): string {
     + '<span><i style="background:rgba(0,0,0,.09)"></i>冗余前置（浅色无箭头）</span>'
     + '<span><i style="background:rgba(0,0,0,.09);height:1px"></i>跨层绕行（虚线）</span>'
     + '<span><i style="background:rgba(0,113,227,.75);height:2px"></i>关键路径</span>'
-    + '<span>🟠 上游（它依赖谁）</span>'
-    + '<span>🔵 下游（谁依赖它）</span>'
-    + '<span>🟢 呼吸点 = 可开工</span>'
+    /* FR-1：结构位不许用 emoji（字形与明度由系统字型决定，不受颜色令牌控制）。
+       这三条原本是 🟠 / 🔵 / 🟢——同一张图例里另外五条早就是 `<i>` 色块，只这三条是 emoji，
+       既与邻居不同源、也无法断言。改成同款色块后图例内部一致，读数也与画布上的边色对齐。
+       （报告壳的 DAG 面板在本需求范围内；老详情页的同一张图例在 `views/dag-view.ts`，属本次边界外，如实登记。） */
+    + '<span><i style="background:rgba(255,159,10,.9)"></i>上游（它依赖谁）</span>'
+    + '<span><i style="background:rgba(10,132,255,.9)"></i>下游（谁依赖它）</span>'
+    + '<span><i style="background:rgba(52,199,89,.9)"></i>呼吸点 = 可开工</span>'
     + '</div>'
     + '</div>'
 }

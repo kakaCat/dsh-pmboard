@@ -17,7 +17,7 @@ import {
 import { fmt } from '../../domain/text/fmt.js'
 import { envelope } from '../internal/gate-feedback.js'
 import { artifactsToConfirm } from '../internal/artifact-gates.js'
-import { checkDesignCompletenessGate, checkDesignDecompositionGate } from '../internal/content-gate-wiring.js'
+import { checkDesignCompletenessGate, checkDesignDecompositionGate, contentGatesForMove } from '../internal/content-gate-wiring.js'
 import { advanceTargetFor, gateFromStage } from '../../domain/gate/GateCatalog.js'
 import { canReqTransition } from '../../domain/requirement/RequirementStatus.js'
 import { captureSnapshot, transitionRequirement } from '../internal/token-usage.js'
@@ -29,6 +29,9 @@ import {
   requireLiveDriver,
   applyRequirementWorkspaceRoot,
 } from '../internal/support.js'
+// REQ-261006164732-6503 t13（serves: FR-4）：文字证据路径与其余通道共用**首写纪律**
+// （独立复核发现的漏网写点之一：原本拿一份文本证据就能覆写已落章的 confirmedAt / 证据原文）
+import { stampArtifactOnce, stampPlanOnce } from '../internal/confirm-settle.js'
 
 export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
       const windowKey = agentIdFromExec(deps, exec)
@@ -109,6 +112,14 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
         if (scan !== undefined) reject(fmt('reqboard_confirm_artifact 未执行：{msg}', { msg: scan.message }), scan.code)
       }
 
+      // ── REQ-261006164732-6503 t13（serves: FR-4）：文字证据路径的落章**首写纪律** ──────────────
+      // 独立复核（reviews/independent-review.md 阻断-2）实测：这条路径原本没有守卫，拿一份文本证据
+      // 就能把已落章产物的 confirmedAt / confirmedEvidence 覆写（实测 9 → 1000、证据原文被换）。
+      //
+      // 判据**只用首写纪律**（下方 stamp*Once），不按"迁移是否已发生"拒绝：本通道还承担**补章**职责
+      // ——历史用例 `confirm-group.test.ts::非 design kind 维持首份落章` 钉着「阶段已推进、产物尚无章」
+      // 时仍可补盖（那是有章可补，不是覆写）。
+
       // ── 门禁预检（FR-2 触发点 5 / FR-5）：实施覆盖度必须 100% 才允许批准计划 ──
       // 覆盖度来自 rtm-decomposing.yml（设计章节 → 台账任务）。⚠️ 本构建里"批准计划"先于
       // "拆分落库"，故此时台账通常还没有任务 → total=0 不拦截（coverageGateOf 的边界语义）；
@@ -142,31 +153,40 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
             )
           }
           stampedPaths = arts.map(x => x.path)
+          let stampedNow = 0
           for (const art of arts) {
-            art.confirmedAt = nowTs
-            art.confirmedBy = { kind: 'human', sessionId: windowKey }
-            art.confirmedVia = 'session'
-            art.confirmedEvidence = evidence
+            // REQ-261006164732-6503 t13：首写即事实（共用单点，不再自写守卫）
+            if (stampArtifactOnce(art, nowTs, {
+              by: { kind: 'human', sessionId: windowKey },
+              via: 'session',
+              evidence,
+            })) stampedNow += 1
           }
-          req.comments.push({
-            id: deps.ids.comment(),
-            body: fmt('[产物确认·会话] 人经 ask_user_question 确认产物（kind={kind}{group}）：{paths}\n答复原文：{ev}', {
-              kind: kindRaw,
-              group: arts.length > 1 ? fmt('，成组确认 {n} 份', { n: arts.length }) : '',
-              paths: arts.map(x => x.path).join('、'),
-              ev: evidence,
-            }),
-            createdAt: nowTs,
-            createdBy: { kind: 'human', sessionId: windowKey },
-          })
+          // REQ-261006164732-6503 t13：评论只在**真的盖上**时才写——否则重复提交证据会反复留
+          // 「人已确认」的假记录（复核阻断-2 的现场就是这么留下第二条批准记录的）
+          if (stampedNow > 0) {
+            req.comments.push({
+              id: deps.ids.comment(),
+              body: fmt('[产物确认·会话] 人经 ask_user_question 确认产物（kind={kind}{group}）：{paths}\n答复原文：{ev}', {
+                kind: kindRaw,
+                group: arts.length > 1 ? fmt('，成组确认 {n} 份', { n: arts.length }) : '',
+                paths: arts.map(x => x.path).join('、'),
+                ev: evidence,
+              }),
+              createdAt: nowTs,
+              createdBy: { kind: 'human', sessionId: windowKey },
+            })
+          }
         } else {
           if (req.plan === undefined) {
             reject('reqboard_confirm_artifact 未执行：需求 ' + req.id + ' 还没有拆分计划', 'REQBOARD_MISSING_PLAN')
           }
-          req.plan.approvedAt = nowTs
-          req.plan.approvedBy = { kind: 'human', sessionId: windowKey }
-          req.plan.approvedVia = 'session'
-          req.plan.approvedEvidence = evidence
+          // REQ-261006164732-6503 t13：首写即事实（计划侧共用单点）——不再无条件赋值
+          stampPlanOnce(req.plan, nowTs, {
+            by: { kind: 'human', sessionId: windowKey },
+            via: 'session',
+            evidence,
+          })
           delete req.plan.rejectedAt
           delete req.plan.rejectedReason
           req.comments.push({
@@ -197,6 +217,8 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
       // 其落库修复见 FR-1，未落实前不得在此单推进计划。
       let advanced = false
       let advanceNote = ''
+      /** 被内容门 / G2 拦下时的结构化缺口（落章保留、推进被拦 → 如实回执，不静默）。 */
+      let gateFailureOut: { message: string; code?: string; gaps?: string[] } | undefined
       if (a.advance !== false && targetKind === 'artifact') {
         const gate = gateFromStage(changed.status)
         const gateMatches = gate !== undefined && gate.requiredKind === kindRaw
@@ -208,14 +230,22 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
         } else if (!canReqTransition(changed.status as never, to as never)) {
           advanceNote = fmt('；未推进：{from} → {to} 不在状态表内', { from: changed.status, to })
         } else {
-          let gateFailure: { message: string } | undefined
-          if (gate.id === 'G2') {
+          // ── REQ-261005105032-3b02 §10 #46：唯一 async 内容门 ─────────────────────
+          // 调用顺序照 interfaces.md 钉死：① 同步门（上面 gateMatches / canReqTransition 已过）
+          // → ② contentGatesForMove → ③ 既有 designGateFailure（G2）兜底。
+          // 失败只**不推进**（落章保留：确认动作本身有效），缺口经 advanceNote + gate_failure 如实告知。
+          let gateFailure: { message: string; code?: string; gaps?: string[] } | undefined =
+            await contentGatesForMove(deps.docs, changed, changed.status, to as never, {
+              ...(deps.session !== undefined ? { sessionProbe: deps.session } : {}),
+            })
+          if (gateFailure === undefined && gate.id === 'G2') {
             // REQ-260930193929-897b FR-1：读盘前按需求工作区校正根
             applyRequirementWorkspaceRoot(deps, changed)
             gateFailure = await checkDesignCompletenessGate(deps.docs, changed)
           }
           if (gateFailure !== undefined) {
             advanceNote = '；' + gateFailure.message
+            gateFailureOut = gateFailure
           } else {
             try {
               await mutateIfPresent(requirementStoreOf(deps), changed.id, (req) => {
@@ -262,6 +292,8 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
         // FR-7 / N-3：落章清单（成组确认时 >1 份；plan 分支无产物 → 省略键，无损 JSON 纪律）
         ...(stampedPaths.length > 0 ? { stamped: stampedPaths } : {}),
         ...(evidenceVerified === true ? { evidence_verified: true } : {}),
+        // §10 #46：门拦下推进时的结构化缺口（advanceNote 已含可读消息；键缺省 = 没被拦）
+        ...(gateFailureOut !== undefined ? { gate_failure: gateFailureOut } : {}),
         note: (targetKind === 'artifact'
           ? '产物已确认（via=session），对应门已放行'
           : '计划已批准（via=session），可用 reqboard_move 推进到 decomposing')

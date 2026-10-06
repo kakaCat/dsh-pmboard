@@ -13,6 +13,7 @@
  * @module dsh-pmboard/application/query/QueryDag
  */
 import { fmt } from '../../domain/text/fmt.js'
+import { liveLayers, liveTasksOf, splitDependencyEdges } from '../../domain/status/Predicates.js'
 import {
   type DagGraphNode,
   type DagResponse,
@@ -62,16 +63,21 @@ export function buildDagNodes(
   tasks: readonly TaskRecord[],
   layerOf?: ReadonlyMap<string, number>,
 ): DagGraphNode[] {
+  // 出参剪边（REQ-261005193546-1b1a · design §依赖边语义 ⑤）：节点数组只写**在场节点**的边
+  // （`satisfied ∪ pending`）。指向已取消卡的边若照原样下发，画布侧的"未知 id 当 0 层"会把它
+  // 算成幽灵前置——与 `layerOf`（= `liveLayers`）同一份 `byId` 口径，两层读数不会再分叉。
+  const liveById = new Map<string, TaskRecord>(tasks.map((t): [string, TaskRecord] => [t.id, t]))
   return tasks.map(t => {
     const kids = tasks.filter(x => x.parentId === t.id)
     const layer = layerOf?.get(t.id)
+    const split = splitDependencyEdges(t, liveById)
     return {
       id: t.id,
       title: t.title,
       ...(t.parentId !== undefined ? { parentId: t.parentId } : {}),
       ...(t.stageKind !== undefined ? { stageKind: t.stageKind } : {}),
       status: t.status,
-      dependsOn: [...t.dependsOn],
+      dependsOn: [...split.satisfied, ...split.pending],
       ...(t.claimedBy !== undefined ? { claimedBy: t.claimedBy } : {}),
       ...(layer !== undefined ? { layer } : {}),
       ...(chainMissingOf(t, kids) ? { chainMissing: true } : {}),
@@ -135,7 +141,9 @@ export function buildDagSteps(tasks: readonly TaskRecord[]): DagStep[] {
  * 空图或有环 → `undefined`（不抛错；有环时最长路径无定义，由页面另行提示）。
  */
 export function buildCriticalPath(tasks: readonly TaskRecord[]): string[] | undefined {
-  const alive = tasks.filter(t => t.status !== 'canceled')
+  // 收编（REQ-261005193546-1b1a FR-4 · INV-4）：此处原是手写的取消比较式（`status` 与取消字面量）——
+  // 判据一律走单点；下方 `preds` 的 `byId.has(d)` 剪边语义逐字保留（design §依赖边语义 ⑤）。
+  const alive = liveTasksOf(tasks)
   if (alive.length === 0) return undefined
   const byId = new Map(alive.map(t => [t.id, t]))
   const preds = new Map<string, string[]>()
@@ -200,13 +208,6 @@ export function buildCriticalPath(tasks: readonly TaskRecord[]): string[] | unde
 // 端点入口
 // ---------------------------------------------------------------------------
 
-/** `layer` 索引（队列派生视图；无队列文件 → 空 Map，节点不给层）。 */
-function layerIndexOf(queue: QueueFile | undefined): Map<string, number> {
-  const map = new Map<string, number>()
-  for (const t of queue?.tasks ?? []) map.set(t.id, t.layer)
-  return map
-}
-
 /** `GET /requirements/:id/dag`：图数据 + 每步执行结果 + 关键路径。 */
 export async function queryDag(
   deps: PanelQueryDeps,
@@ -230,10 +231,16 @@ export async function queryDag(
     return unreadable(err)
   }
 
+  // 活卡收敛（REQ-261005193546-1b1a FR-1/FR-4 · INV-1）：三块投影**同源喂同一份活卡集合**
+  // （`tasks` / `steps` / `criticalPath` 各自过滤的写法会让三处读数分叉）。
+  const live = liveTasksOf(tasks)
   const response: DagResponse = {
-    tasks: buildDagNodes(tasks, layerIndexOf(queue)),
-    steps: buildDagSteps(tasks),
+    // 层号**现算**（INV-5 ③）：`liveLayers(live)` = `computeLayers(layerInputOf(live))`，
+    // 与「删掉指向取消卡的边后重算」等价。队列落盘的 `layer` 是按**全量节点**算的历史派生值
+    // （本需求守零写回：不重写存量队列文件），故**不再转发**它——转发会让掉层重新出现在这层。
+    tasks: buildDagNodes(live, liveLayers(live)),
+    steps: buildDagSteps(live),
   }
-  const criticalPath = buildCriticalPath(tasks)
+  const criticalPath = buildCriticalPath(live)
   return criticalPath !== undefined ? { ...response, criticalPath } : response
 }

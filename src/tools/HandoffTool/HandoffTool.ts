@@ -69,6 +69,10 @@ export function defineHandoffTool(deps: UseCaseDeps, opts?: HandoffToolOptions) 
           old_role: { type: 'string', description: '原窗口交接后的角色：observer（只读，看得见进度）' },
           new_role: { type: 'string', description: '新窗口的角色：owner' },
           self_initiated: { type: 'boolean', description: '是否 agent 自主发起（只有 fork / critical 顶墙档为 true）' },
+          // REQ-261005141830-7a3b t6（FR-11 / FR-9）：交接的项目判据与需求侧身份。
+          // **必须声明**：schema 是 additionalProperties:false，漏声明 = 每次交接都被绑定层拒收。
+          project_source: { type: 'string', description: '本次交接判据：project-id / path-fallback（新建接管窗口时不返回该键）' },
+          project_id: { type: 'string', description: '需求侧项目身份（未归属或缺省时不返回该键）' },
           delivery: {
             type: 'object',
             additionalProperties: false,
@@ -77,6 +81,21 @@ export function defineHandoffTool(deps: UseCaseDeps, opts?: HandoffToolOptions) 
               delivered: { type: 'boolean', description: '是否投递成功' },
               kind: { type: 'string', description: '自署来源（恒为 reqboard-handoff，永不为 user）' },
               reason: { type: 'string', description: '未投成功时的原因' },
+            },
+          },
+          inheritance: {
+            type: 'object',
+            additionalProperties: false,
+            description: '继承回执（REQ-261005151245-54ae FR-5）：仅**新建接管窗口**时出现；to_window 指定已有窗口 → 该键整体省略',
+            properties: {
+              title: { type: 'string', description: '标题是否写定：set | skipped | failed' },
+              preset: { type: 'string', description: '模式（Agent 预设）是否继承：set | skipped | failed' },
+              model: { type: 'string', description: '模型是否继承：set | skipped | failed' },
+              reasons: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'skipped / failed 的可读原因（每条形如「标题：源会话无标题」）',
+              },
             },
           },
           context_pressure: {

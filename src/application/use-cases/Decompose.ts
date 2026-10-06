@@ -21,8 +21,9 @@ import { assertClauseCoverageGate } from '../internal/content-gate-wiring.js'
 import { refsForLanding, unrefedKeys } from '../internal/plan-refs.js'
 import { reject, agentIdFromExec, requireLiveDriver } from '../internal/support.js'
 import { landPlanTasks, type PlanTaskDraft } from '../internal/plan-landing.js'
+import { cancelStaleReworkCards } from '../internal/stale-rework.js'
 import { queueRelativePath } from '../../domain/queue/queuePath.js'
-import { requirementStoreOf, taskStoreOf, mutateQueue } from './queue-access.js'
+import { requirementStoreOf, taskStoreOf } from './queue-access.js'
 
 export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
       const windowKey = agentIdFromExec(deps, exec)
@@ -133,6 +134,10 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
           // 体量声明透传（REQ-261002175818-80a8 t2 / FR-7）：创作型 tasks 这条路径同样要带上，
           // 否则「计划层有、落库卡上没有」，与 stages 踩过的是同一个坑。
           ...(t.footprint !== undefined ? { footprint: t.footprint } : {}),
+          // 原型锚点 / 关联 D-x 透传（REQ-261005105032-3b02 FR-5、FR-9 / t12）：同上，
+          // 未申报不带键（缺省 = 未采集，不冒充空数组）。
+          ...(t.prototypeRefs !== undefined && t.prototypeRefs.length > 0 ? { prototypeRefs: [...t.prototypeRefs] } : {}),
+          ...(t.decisionRefs !== undefined && t.decisionRefs.length > 0 ? { decisionRefs: [...t.decisionRefs] } : {}),
         }))
       } else {
         // 显式传 tasks 时，key 集合必须与批准的计划一致——防止「批了 A、落库 B」
@@ -172,6 +177,10 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
           ...(t.template !== undefined ? { template: t.template } : {}),
           // 体量声明透传（REQ-261002175818-80a8 t2 / FR-7）：计划携带任务表这条路径也要带上。
           ...(t.footprint !== undefined ? { footprint: t.footprint } : {}),
+          // 原型锚点 / 关联 D-x 透传（REQ-261005105032-3b02 FR-5、FR-9 / t12）：计划携带任务表
+          // 这条路径是**主路径**（人批准的就是这张表），漏传等于锚点进不了台账。
+          ...(t.prototypeRefs !== undefined && t.prototypeRefs.length > 0 ? { prototypeRefs: [...t.prototypeRefs] } : {}),
+          ...(t.decisionRefs !== undefined && t.decisionRefs.length > 0 ? { decisionRefs: [...t.decisionRefs] } : {}),
         }))
       }
       // 薄卡检测（REQ-2e9473 t04）：新计划在 plan_submit 已被强制要求 implementation（t03），
@@ -215,27 +224,14 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
       const nowTs = deps.clock.now()
       // REQ-261003204149-1e80 FR-4：回退态下、新计划落库**之前**，先收掉上一轮物化的重做卡。
       // 它们已被新计划取代；留着就是「重做卡 + 新计划卡」双份活卡（幽灵卡的另一种形态）。
-      // 只收敛 `reworkOf` 非空的卡——常规旧卡的取消由回退时的 rollback-tasks 负责，不在本处越权处理。
+      // REQ-261005122915-9f90 t2 / FR-2：判定收成**单一实现**（`internal/stale-rework`）——
+      // 此前这段只写在本路径，两条批准路径都没有 ⇒ 三处漂移，实测「23 卡计划 0 张落库」。
       if (rollbackTo !== undefined) {
-        await mutateQueue(deps, target.id, (queueTasks) => {
-          const stale = queueTasks.filter(t => t.reworkOf !== undefined && t.status !== 'canceled')
-          if (stale.length === 0) return undefined // 无变更不写盘
-          for (const t of stale) {
-            const before = t.status
-            t.status = 'canceled'
-            t.revisions = [
-              ...(t.revisions ?? []),
-              {
-                at: nowTs,
-                by: { kind: 'agent', sessionId: windowKey },
-                kind: 'rollback',
-                reason: '重新拆分：该重做卡已被新计划取代',
-                changes: ['status: ' + before + '→canceled'],
-              },
-            ]
-            t.updatedAt = nowTs
-          }
-          return queueTasks
+        await cancelStaleReworkCards({
+          deps,
+          requirementId: target.id,
+          nowTs,
+          actor: { kind: 'agent', sessionId: windowKey },
         })
       }
       try {

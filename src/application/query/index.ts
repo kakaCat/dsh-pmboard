@@ -17,3 +17,5 @@ export * from './QueryReport.js'
 export * from './QueryDocs.js'
 export * from './QueryDag.js'
 export * from './QueryToken.js'
+// 验收 Tab 查询（REQ-261006130057-7a43 t-a85893 FR-8）。
+export * from './QueryVerify.js'

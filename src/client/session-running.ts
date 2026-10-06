@@ -12,12 +12,15 @@
  *
  * - **不抛错**：服务未注入（旧客户端）、`list` 缺失、行缺失、字段形状异常——一律降级为
  *   「不在跑」/ 空集 / no-op 退订。能力不可得是降级，不是业务失败（与 `archivedSessionIds()` 同款）。
- * - **不伪造**：绝不用 `updatedAt` / `autoRun` / `advanceLockAt` 之类近似推断运行态。
- *   宁可没有指示，也不给一个可能是假的指示。
+ * - **不伪造**：绝不用 `updatedAt` / `autoRun` / 执行记录 `outcome === 'running'` 之类近似推断在跑。
+ *   唯一的例外是**推进锁**（`advanceLockAt`）——它不是近似推断，而是 host 认领 + 30s 心跳续租的
+ *   「有 run 在跑」证书（REQ-261005213603-eaed FR-1/FR-2；旧红线中这一条已被该需求取代，见
+ *   `docs/architecture/client-running-indicator.md`）。
  * - **只读**：不缓存副本、不落盘；每次渲染时实时读（避免第二份真相）。
  *
  * @module dsh-pmboard/client/session-running
  */
+import { LIMITS } from '../domain/limits.js'
 import { windowServiceAccess, type SessionServiceAccess } from './session-jump.ts'
 
 /** 运行态读数只用到服务的这一面（便于测试注入假投影）。 */
@@ -118,6 +121,85 @@ export function requirementRunning(
   }
   const sid = req.sourceSessionId
   return typeof sid === 'string' && sid.length > 0 ? isRunning(sid) : false
+}
+
+/* ------------------------------------------------------------------ 后台 run 在跑（推进锁） */
+
+/**
+ * 在跑**成因**（REQ-261005213603-eaed FR-3）——两种事实共用同一个圈，只有文案区分。
+ *
+ * - `session`：绑定窗口正在跑回合（既有判据）；
+ * - `run`：该需求有**新鲜推进锁**——后台 run（自动链 / `reqboard_task_run`）在跑子卡。
+ */
+export type RunningCause = 'session' | 'run'
+
+/** 在跑标记（FR-1/FR-3）：只有成因一个字段；`undefined` = 不在跑（与空对象严格区分）。 */
+export interface RunningMark {
+  readonly cause: RunningCause
+}
+
+/** 推进锁判据只读摘要里这一个键（FR-2；便于测试注入假对象）。 */
+export interface RequirementRunShape {
+  /** host 推进锁持有时刻（ms）；缺省 = 没有 run 在跑（缺失 ≠ 0）。 */
+  readonly advanceLockAt?: number
+}
+
+/**
+ * 推进锁是否**新鲜** = 该需求此刻有一个后台 run 在跑（FR-1、FR-2）。
+ *
+ * 为什么这是"事实"而不是"近似推断"：`advance` 的 `lockAt` 由 host 在**投递前**认领、
+ * run 在跑期间每 `heartbeatIntervalMs`（30s）心跳续租、`finally` 清锁
+ * （`application/use-cases/AdvanceChain.ts` 的 `startLockHeartbeat` 与收尾块），
+ * host 自己的 WIP 闸门也用同一条判据（`runningOf`）——本函数与它**同阈值、同运算符**。
+ *
+ * 任何非法输入一律 `false`（缺键 / `null` / 字符串 / `NaN` / `Infinity` / 恰好等于阈值 / 已过期）；
+ * 锁时间在未来（`now - lock < 0`）判新鲜——与 host 同一表达式，不另写规则（FR-2）。
+ *
+ * @param now     当前时刻（ms）；注入以便纯函数化
+ * @param staleMs 过期阈值；缺省 = `LIMITS.advanceLockStaleMs`（15min，单一来源，不复制字面量）
+ */
+export function requirementRunInFlight(
+  req: RequirementRunShape,
+  now: number,
+  staleMs: number = LIMITS.advanceLockStaleMs,
+): boolean {
+  try {
+    const lock = req?.advanceLockAt
+    if (typeof lock !== 'number' || !Number.isFinite(lock)) return false
+    return now - lock < staleMs
+  } catch {
+    return false
+  }
+}
+
+/**
+ * 需求此刻的在跑标记（FR-1、FR-3）——**全仓唯一的在跑映射点**（泳道卡与列表行共用）。
+ *
+ * 成因优先级（钉死，FR-3）：两种成因同时成立时取 `session`——「有窗口正在跑回合」是更直接的事实，
+ * `run` 成因兜底。都不成立返回 `undefined`（**不返回空对象**：缺失即无指示）。
+ */
+export function requirementRunningMark(
+  req: RequirementSessionShape & RequirementRunShape,
+  isRunning: (sid: string) => boolean,
+  now: number,
+  staleMs?: number,
+): RunningMark | undefined {
+  if (requirementRunning(req, isRunning)) return { cause: 'session' }
+  if (requirementRunInFlight(req, now, staleMs)) return { cause: 'run' }
+  return undefined
+}
+
+/**
+ * 布尔便捷入口（FR-1）：**实现即 mark 存在**——薄包装，不构成第二份判据。
+ * 需要布尔（或只需要"亮不亮"）的调用方用它；需要成因（文案）的用 `requirementRunningMark`。
+ */
+export function requirementBusy(
+  req: RequirementSessionShape & RequirementRunShape,
+  isRunning: (sid: string) => boolean,
+  now: number,
+  staleMs?: number,
+): boolean {
+  return requirementRunningMark(req, isRunning, now, staleMs) !== undefined
 }
 
 /**

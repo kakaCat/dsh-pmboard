@@ -6,6 +6,7 @@
  * @module dsh-pmboard/client/render/dom-utils
  */
 import { esc } from '../html.js'
+import type { RunningMark } from '../session-running.ts'
 import type { CommentRecord, RequirementRecord, RequirementStatus, TaskRecord, TaskStatus } from '../types.ts'
 
 /* ------------------------------------------------------------------ utils */
@@ -124,18 +125,28 @@ export function renderWindowChip(req: RequirementRecord, archived: ReadonlySet<s
 }
 
 /**
- * 运行中指示（REQ-261004210128-283d FR-3、FR-4、FR-7）——**唯一**渲染单点：泳道卡与列表行共用它。
+ * 运行中指示（REQ-261004210128-283d FR-3/FR-4/FR-7；REQ-261005213603-eaed FR-3）
+ * ——**唯一**渲染单点：泳道卡与列表行共用它。
  *
- * `false` → 返回空串（**不渲染空壳**：这是「省略 running 参数时输出与改动前逐字节一致」的前提）。
- * `true` → 内联 SVG 转圈环，语义与左侧会话列表的运行中圆点一致（1.5s 一圈 + 呼吸弧），
+ * `undefined` → 返回空串（**不渲染空壳**：这是「省略参数时输出与改动前逐字节一致」的前提）。
+ * 有 mark → 内联 SVG 转圈环，语义与左侧会话列表的运行中圆点一致（1.5s 一圈 + 呼吸弧），
  * 并在 `prefers-reduced-motion` 下降级为静态半环（样式在 styles/board.ts）。
  *
- * 为什么带 `role="img"` + `aria-label`：读屏用户看不到转圈，必须能听到「会话进行中」。
+ * **两种成因只差文案**（REQ-261005213603-eaed）：`cause='session'`（绑定窗口在跑回合）保持既有逐字文案；
+ * `cause='run'`（后台 run 在跑子卡链）换成「后台 run 进行中」。class / `data-running` / SVG 结构 / 位置
+ * 一律不变——视觉零变化是本次的硬约束（需求文档 D-3、D-4）。
+ *
+ * 为什么带 `role="img"` + `aria-label`：读屏用户看不到转圈，必须能听到「谁在跑」。
  */
-export function renderRunningDot(running: boolean): string {
-  if (!running) return ''
-  return '<span class="dsh-pm-running" data-running="true" role="img" aria-label="会话进行中"'
-    + ' title="会话进行中（该需求绑定窗口正在执行回合）">'
+export function renderRunningDot(mark?: RunningMark): string {
+  if (mark === undefined) return ''
+  const isRun = mark.cause === 'run'
+  const label = isRun ? '后台 run 进行中' : '会话进行中'
+  const title = isRun
+    ? '后台 run 进行中（子卡链在执行，窗口可以已空闲）'
+    : '会话进行中（该需求绑定窗口正在执行回合）'
+  return '<span class="dsh-pm-running" data-running="true" role="img" aria-label="' + label + '"'
+    + ' title="' + title + '">'
     + '<svg class="dsh-pm-running-svg" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false">'
     + '<circle class="dsh-pm-running-track" cx="8" cy="8" r="6" />'
     + '<circle class="dsh-pm-running-arc" cx="8" cy="8" r="6" />'

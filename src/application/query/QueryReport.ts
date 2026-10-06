@@ -38,8 +38,12 @@ import {
   type VerificationItem,
 } from '../../shared/protocol.js'
 import { PIPELINE_ORDER } from '../../domain/requirement/RollbackSpec.js'
+import { liveCountOf, liveTasksOf } from '../../domain/status/Predicates.js'
 import { assertArtifactGates } from '../internal/artifact-gates.js'
 import { isDeliverableDocPath } from './QueryDocs.js'
+// 待裁决计数的**唯一计数点**（REQ-261006130057-7a43 FR-8）：tabCounts.verify 与
+// verify 端点的 pendingCount 必须同值——两处各写一份 filter 必然漂移。
+import { pendingCountOf } from './QueryVerify.js'
 import { parseDocument, extractClauseDefinitions, extractSkippedClauses } from '../internal/content-gates.js'
 import {
   clauseReceiveStatus,
@@ -47,7 +51,7 @@ import {
   extractAllDesignSections,
   type DesignSection,
 } from '../internal/content-trace.js'
-import { PENDING_CONFIRM_BLOCKED_TOOLS, PENDING_CONFIRM_RECOVERY } from '../internal/pending-guard.js'
+import { PENDING_CONFIRM_BLOCKED_TOOLS, pendingConfirmFactsOf } from '../internal/pending-guard.js'
 import { seatsOf } from '../internal/window.js'
 import { ALL_STAGE_KEYS } from '../../shared/protocol.js'
 // 「需求 token 合计」的**唯一口径**（卡面徽标同源：`/state` 的 card.tokenTotal 也走它）。
@@ -285,14 +289,15 @@ export function buildGaps(
   gaps.push(...artifactGaps(req))
   // ③ 追溯断链
   gaps.push(...traceGaps(tasks, marks, trace))
-  // ④ 挂起确认未作答（黄）——why 里必须带"被拦住的写路径"
+  // ④ 挂起确认未作答（黄）——why 里必须带"被拦住的写路径" + **为什么**与**真实可用出路**（FR-3）
   for (const pending of pendingConfirms) {
+    const facts = pendingConfirmFactsOf(req, pending, Date.now())
     gaps.push({
       severity: 'yellow',
       what: fmt('挂起确认 {ticket} 待作答', { ticket: pending.ticket }),
-      why: fmt('被拦住的写路径：{tools}。{recovery}', {
+      why: fmt('被拦住的写路径：{tools}。收到作答前不得产出下游产物。可用出路：{recovery}', {
         tools: PENDING_CONFIRM_BLOCKED_TOOLS.join(' / '),
-        recovery: PENDING_CONFIRM_RECOVERY,
+        recovery: facts.usableRecovery.join('；'),
       }),
       ref: { kind: 'confirm', id: pending.ticket },
     })
@@ -398,14 +403,17 @@ function progressOf(req: RequirementRecord, tasks: readonly TaskRecord[], now: n
   const history = req.statusHistory ?? []
   // 停留时长按**最近一次**进入当前阶段算（回退后重入是新的一段，不能拿首次进入糊）
   const entered = history.filter(e => e.status === req.status).slice(-1)[0]
-  const live = tasks.filter(t => t.status !== 'canceled')
+  // 活卡判据收编（REQ-261005193546-1b1a FR-4 · INV-4/INV-1）：此处原为手写的取消比较式。
+  // 分母与分子同源——`total` 走 `liveCountOf`（唯一分母 helper），各档计数在同一个活卡数组上数，
+  // 避免"过滤用一套、分母另抄一套"（分母错一位，完成度就永久说谎）。
+  const live = liveTasksOf(tasks)
   const subs = live.filter(t => t.parentId !== undefined)
   const running: readonly string[] = ['in_progress', 'integrating', 'testing', 'in_review']
   return {
     ...(entered !== undefined ? { stageEnteredAt: entered.at, stageStayedMs: Math.max(0, now - entered.at) } : {}),
     sinceUpdateMs: Math.max(0, now - req.updatedAt),
     tasks: {
-      total: live.length,
+      total: liveCountOf(tasks),
       done: live.filter(t => t.status === 'done').length,
       running: live.filter(t => running.includes(t.status)).length,
       todo: live.filter(t => t.status === 'todo').length,
@@ -564,6 +572,10 @@ function tabCountsOf(
     counts.docs = String(req.artifacts.filter(a => isDeliverableDocPath(req.id, a.path)).length)
   }
   counts.dag = String(tasks.length)
+  // 验收角标（REQ-261006130057-7a43 FR-8 / T-5）：待裁决数便宜可得（台账 sheet 已在手），
+  // 口径 = pending + unverified（单点 pendingCountOf）；无验收单 → 字段缺省（禁 '0' 冒充）。
+  const pending = pendingCountOf(req.verification?.sheet)
+  if (pending !== undefined) counts.verify = String(pending)
   const tokens = requirementTotalTokens(req)
   if (tokens !== undefined) counts.token = fmtTokens(tokens)
   return counts

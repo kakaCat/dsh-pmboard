@@ -20,6 +20,9 @@
 import type { AskAnswer, UseCaseDeps } from '../ports.js'
 import type { PendingConfirmationOutcome } from '../../shared/protocol.js'
 import { fmt } from '../../domain/text/fmt.js'
+// REQ-261006164732-6503 t7（serves: FR-5）：失效票的迟到作答只留痕
+// （此边单向：confirm-settle 不反向依赖本模块，无循环）
+import { recordStaleAnswer } from './confirm-settle.js'
 
 /** 一次已投递的确认请求（同步作答与后台续跑共用同一形状）。 */
 export interface ConfirmSubmitted {
@@ -31,6 +34,12 @@ export interface ConfirmSubmitted {
   /** 选项标签（首个 = 肯定项；判定肯定/否定与改造前同源） */
   optionLabels: readonly string[]
   advance: boolean
+  /**
+   * 本次确认对应的**在途弹框 ref**（REQ-261006170150-52cc FR-1）：`ticket ?? 'dlg-confirm-<id>-<ts>'`。
+   * 透传给 `applyConfirmDecision`，供它在落章/推进**之前**带 ref await 清位（同步与挂起两条路共用）。
+   * 缺省 ⇒ 收敛点退回旧行为（不带 ref 的 fire-and-forget 清位）。
+   */
+  dialogRef?: string
 }
 
 /** 赛跑结果：作答 / 弹框抛错 / 超宽限（三分支都有明确去向，不留悬空 promise）。 */
@@ -93,7 +102,29 @@ export function suspendConfirm(
 
   void ask.then(
     (answers) => {
-      void settle(answers)
+      // ── REQ-261006164732-6503 t7（serves: FR-5）：票**已被落定**（取代 / 清理 / 中止）之后到达的作答 ──
+      // 不再走落章路径——它只留痕并给中性回执。现场：门 A 被取代后，人 2.5 秒后又点了它，
+      // 那次作答仍走完整落章路径，把 `plan.approvedAt` 与审批证据原文覆写（16:42:13.402 那一笔）。
+      // 判定是**读时**的（每次作答到达时重算），不引入任何粘滞标记。
+      const settledAlready = port.get(ticket, s.windowKey)?.outcome !== undefined
+      const run: Promise<SettledBody> = settledAlready
+        ? (async () => {
+          await recordStaleAnswer(deps, {
+            requirementId: s.requirementId,
+            windowKey: s.windowKey,
+            question: s.question,
+            reason: '该确认已被取代（票已落定）',
+            nowTs: deps.clock.now(),
+          })
+          return {
+            success: true,
+            confirmed: false,
+            advanced: false,
+            note: '该确认已被取代（票已落定）：本次作答不改变状态，仅留痕。',
+          }
+        })()
+        : settle(answers)
+      void run
         .then((body) => {
           port.settle(ticket, outcomeOf(body))
           wake(deps, s.windowKey, ticket, body)

@@ -69,6 +69,21 @@ const EXPORT_RE =
 const SRC_KINDS = ['function', 'class', 'interface', 'type', 'const', 'enum', 'namespace']
 /** 令牌页类名前缀分组只列 Top N（页面预算 200 行；全量在 TSV 里）。 */
 const GROUP_TOP = 24
+/**
+ * 颜色 / 变量节的**每行条数**（REQ-261006123819-3af3 FR-4 页内压行）。
+ * 两项各 87 条、一行一条 = 174 行，加上头尾会把页面顶到 220 行 > pageMaxLines(200)；
+ * 每行 4 条 → 约 44 行，内容一条不少。
+ */
+const ROWS_PER_LINE = 4
+
+/** 把若干条「一行一条」压成「一行多条」（纯排版；条目内容与顺序不变）。 */
+function packRows(rows: readonly string[]): string[] {
+  const out: string[] = []
+  for (let i = 0; i < rows.length; i += ROWS_PER_LINE) {
+    out.push('- ' + rows.slice(i, i + ROWS_PER_LINE).join('　'))
+  }
+  return out
+}
 /** 样式分片路径口径（与搬迁前脚本逐字一致）。 */
 const STYLE_RE = /^src\/client\/styles?/
 
@@ -190,13 +205,17 @@ export function renderDesignTokens(files: readonly KbSourceFile[]): KbTokensRend
     '',
     `> 生成物：由 \`scripts/kb-build.mts\` 从 ${STYLE_RE.source.replace(/^\^/, '').replace(/\$$/, '')} 确定性抽取，**请勿手改**（改样式后重跑）。`,
     `> 全量类名（${String(classRows.length)} 个）在 \`${KB_PATHS.classes}\`——机器索引、不进上下文，用 \`reqboard_kb(kind='tokens', query='<类名>')\` 检索。`,
+    // REQ-261006123819-3af3 FR-4 页内压行：颜色/变量共 174 条，一行一条会把页面顶到 220 行
+    // （pageMaxLines=200）。改为一行多条：**条数与内容一条不少**，只是排版换行（K3 只数行数）。
+    '> 颜色与变量按每行 ' + String(ROWS_PER_LINE) + ' 条排版（内容不变，只为守住页面行数预算）。',
     '',
     '## 颜色 #colors',
     '',
   ]
-  for (const [c, info] of colorRows) lines.push(`- \`${c}\` · ${String(info.count)} 次 · ${info.shard.replace('src/client/styles/', '')}`)
+  lines.push(...packRows(colorRows.map(([c, info]) =>
+    '`' + c + '` ' + String(info.count) + ' 次 ' + info.shard.replace('src/client/styles/', ''))))
   lines.push('', '## 变量 #vars', '')
-  for (const [v, f] of varRows) lines.push(`- \`${v}\` · ${f.replace('src/client/styles/', '')}`)
+  lines.push(...packRows(varRows.map(([v, f]) => '`' + v + '` ' + f.replace('src/client/styles/', ''))))
   lines.push('', '## 断点 #breakpoints', '')
   for (const b of breakRows) lines.push(`- \`max-width: ${b}\``)
   lines.push('', `## 类名前缀分组 #classes（Top ${String(GROUP_TOP)}，共 ${String(groups.length)} 组）`, '')

@@ -24,9 +24,10 @@ import {
   queryDialogue,
   queryPrompts,
   queryTokenExtension,
+  queryVerify,
 } from './application/query/index.js';
 // REQ-261004103330-005f t5：装配期按设置选存储实现 + 系统记录装配（整条链在 wiring 里）。
-import { assembleStorage } from './wiring/settings-assembly.js';
+import { assembleStorage, pluginStampOf } from './wiring/settings-assembly.js';
 // REQ-261003191948-e94a t1/t4：迁移门是**只读预检**（不抛错），装配方据此分叉出"未就绪"态；
 // REQ-261004103330-005f t5：预检已移入 wiring（`assembleStorage`），组合根只消费判别联合。
 // 抛错版 assertLedgerMigrated 仍导出（工具/脚本用），不再出现在启动路径。
@@ -77,12 +78,20 @@ import {
   defineRegenerateTool,
   defineKnowledgeTool,
   defineHandoffTool,
+  defineSkillInstallTool,
 } from './tools/index.js';
 import { FileDocRepository } from './adapters/FileDocRepository.js'
+// REQ-261005122347-e07a：skill 资产读 / 投放写盘 / 解释器探测（三者都在适配层，
+// application 只拿端口；probePython 是全插件唯一碰 child_process 的点之一）。
+import { SkillAssets } from './adapters/SkillAssets.js'
+import { SkillWriter } from './adapters/SkillWriter.js'
+import { PythonProbe } from './adapters/PythonProbe.js'
 import { KnowledgeRepository } from './adapters/KnowledgeRepository.js'
 // REQ-261004174324-4195 t4：知识层自举协调器（缺层时自动生成，每根一次）
 import { KnowledgeBootstrap } from './application/internal/knowledge-bootstrap.js'
-import { archiveGateSetting, knowledgeSettings, panelSettings } from './plugin-config.js'
+// REQ-261005141830-7a3b t5：看板「会话 → 项目身份 + 根」的取数处（与用例侧同一口径，不各写一套）。
+import { projectIdOfWindowForDeps, rootOfRequirement } from './application/internal/support.js'
+import { archiveGateSetting, knowledgeSettings, panelSettings, skillsSettings } from './plugin-config.js'
 import { InjectionLogFile } from './adapters/InjectionLogFile.js'
 import { IsolationTraceFile } from './adapters/IsolationTraceFile.js'
 import { NodeIsolationAdapter } from './adapters/NodeIsolationAdapter.js'
@@ -104,6 +113,7 @@ import { WorkflowEngineRunner } from './adapters/WorkflowEngineRunner.js';
 import { AgentTeamsAdapter } from './adapters/AgentTeamsAdapter.js';
 // REQ-261003215944-9e04 FR-1（t4）：会话开窗端口实现（DSH 现成 fork/create）
 import { SessionWindowOpener } from './adapters/SessionWindowOpener.js'
+import { WorkspaceRegistryProjectPort } from './adapters/WorkspaceRegistryProjectPort.js'
 import { OsascriptStoragePathPicker } from './adapters/StoragePathPicker.js';
 import { DshJobsAdapter } from './adapters/DshJobsAdapter.js';
 import { createFailureAlert } from './adapters/FailureAlert.js';
@@ -245,12 +255,15 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   const settingsHome = config?.dshHome ?? process.env.DSH_HOME ?? path.join(os.homedir(), '.dsh');
   // 命名沿用 `preflight`：A7 的静态判据锚定这个标识符（分叉只看判别联合的 ok，不散落错误码）。
   // 它现在承载的不只是预检，还包含"门过了才选实现 / 建档"——**失败路径上不会构造任何存储**。
+  // 本模块所在目录（源码态 `<pkg>/src`、构建态 `<pkg>/dist`）：包根资产（templates / skills）
+  // 一律按它的上一级解析，两种形态同解——单点定义，避免多处各写一遍 fileURLToPath。
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
   const preflight = assembleStorage({
     config,
     dshHome: settingsHome,
     dataRoot,
     legacyLedger: legacyLedgerFile,
-    moduleDir: path.dirname(fileURLToPath(import.meta.url)),
+    moduleDir: moduleDir,
     now,
     warn: (message) => logger.warn('reqboard ' + message),
     info: (message) => logger.info('reqboard ' + message),
@@ -590,6 +603,11 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   // 这样"一处撞额度 → 全体停手"才成立；人的恢复不必显式 clear：台账变回可驱动后
   // round-driver.latchBlocks 会自动解锁（TTL 只是兜底，防"闩永远关着"）。
   const providerLatch = createProviderLatch({ now });
+  // REQ-261005141830-7a3b t5：项目表端口的**唯一 I/O 实现**——与开窗落点共用同一个
+  // workspaceRegistry 句柄（不再单独 inject 第二次，免得两个解析器各自漂移）。
+  // 惰性解析：装配期拿不到 ≠ 永远拿不到，故每次调用现取（与 sessionController 同款口径）。
+  // 位置提到 dive 端口之前（t6）：Dive 的归属判定也要用它，而 diveRoundPorts 更早装配。
+  const projectRegistry = new WorkspaceRegistryProjectPort(() => workspaceRegistrySvc)
   const diveRoundPorts: DiveRoundPorts = {
     // t8/B11：把需求存储新端口下传给 dive（B12 起读写都走它）
     store: store,
@@ -626,6 +644,9 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     logger: { info: (m) => logger.info(m), debug: (m) => logger.debug(m), warn: (m, e) => logger.warn(m, e) },
     // 🆕 任务存储（用于实施阶段中断自动恢复检测）
     taskStore: taskStore as unknown as { listByRequirement(requirementId: string): Promise<Array<{ status: string }>> },
+    // REQ-261005141830-7a3b t6（FR-7）：idle 拍的**归属判定**按项目身份——同项目任一窗口都算本项目；
+    // 归属不符 → 不驱动、不投递并留痕。未装配（宿主无注册表）→ 恒放行，行为与改造前逐字一致。
+    projectIdOfWindow: (id: string) => projectIdOfWindowForDeps({ projectRegistry }, id),
     // REQ-261002141430-a5ef FR-1：弹框在途判据（同步内存读）——供起轮前"有人在等吗"这一问。
     dialogInFlight: (requirementId: string) => pendingConfirms.inFlightFor(requirementId),
     // REQ-261004065652-5c1c FR-1：进程级上游闩。**一个窗口撞上额度/鉴权错误 → 所有窗口一起停**——
@@ -711,9 +732,15 @@ export function apply(ctx: Context, config?: PluginConfig): void {
 
   // agent 工具：reqboard_capture（三问弹框 + 创建即立项）/ reqboard_create（手工路径）/
   // reqboard_status（自查）。用例依赖 = 组合根装配 adapters → application 用例。
+  // REQ-261005122347-e07a：skill 三件套（读包内资产 / 事务写盘 / 探解释器）。三个类各自只实现端口的
+  // 一部分，在这里拼成一个 SkillInstallPort——"唯一 child_process 点"因此仍收敛在 PythonProbe 一个文件里。
+  const skillWriter = new SkillWriter()
+  const pythonProbe = new PythonProbe()
   const useCaseDeps: UseCaseDeps = {
     // UseCaseDeps.repo 已在 B12 阶段④-3 摘除；新端口与桥**同一份真相**（桥就是它的适配器）。
     store: store,
+    // 项目身份（FR-2/FR-3）：取根与立项写入都从它查"谁在哪个项目里"。未装配时行为与改造前一致。
+    projectRegistry,
     // 知识层（REQ-261001110934-3766）：与文档库同根——工作区根动态校正后自动跟随。
     knowledge: new KnowledgeRepository(docs),
     // t8 灰度：注入侧三档开关（缺省 = 注入索引节、不瘦身文档；见 plugin-config.knowledgeSettings）
@@ -724,6 +751,19 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     },
     // REQ-261004174324-4195 t4：通知点 ② 的接收口（用例根校正后 ensure）。
     knowledgeBootstrap,
+    // REQ-261005122347-e07a FR-1/FR-5/FR-6：skill 资产读 + 投放（写盘与解释器探测都在 adapters 层）。
+    // 资产根与 templates 同一条包根解析规则（moduleDir 的上一级），两种形态同解。
+    skillAssets: new SkillAssets({ moduleDir }),
+    skillInstall: {
+      probePython: () => pythonProbe.probePython(),
+      writeTree: (root, files) => skillWriter.writeTree(root, files),
+      readTree: (root) => skillWriter.readTree(root),
+      readManifest: (root) => skillWriter.readManifest(root),
+    },
+    // FR-7：开关与投放根（非法值在 skillsSettings 里装配期抛错——与 docsRootSource 同口径）。
+    skillsSettings: skillsSettings(config),
+    // FR-8：清单里的"哪一版插件投放的"，与系统记录同一枚版本戳。
+    pluginMeta: { name: pluginInfo.name, version: pluginInfo.version, build: pluginStampOf(pluginInfo).buildStamp },
     // REQ-261004183621-de3f FR-6：归档清单未列闸门（非法配置在 archiveGateSetting 里装配期抛错）
     archiveUnlistedGate: archiveGateSetting(config),
     // REQ-261004065652-5c1c FR-7：弹框缺省宽限（配置项，缺省 10 分钟；0 = 旧全阻塞）。
@@ -772,6 +812,10 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     pendingConfirms,
     // REQ-261002141430-a5ef FR-1：在途弹框登记（停手判据）——与 ticket 表**同实例**（两种视图一张表）。
     dialogs: pendingConfirms,
+    // REQ-261006170150-52cc FR-2：停手位被清 → 请求一次自动链驱动。
+    // 组合根实现 = round 半的既有入口（onRequirementMoved → requestDrive → 预留→投递→准入），
+    // **与 store 桥同一条路**，故不新增任何进会话的投递路径；唤醒仍唯一经 round 半的准入。
+    notifyDrivable: (id) => diveManager.roundDriver().onRequirementMoved(id),
     // B12 阶段①-a：告警路由只需 `sourceSessionId`——许可区已扩到本处（见 ports.ts 的 peekFacts 注释：
     // 它是"寻址"而非门禁/写判定，读到略旧最坏是该窗口这次没收到告警，不会放过或挡下任何操作）。
     alert: createFailureAlert({ log: (m) => logger.error(m), windowFor: (id) => store.peekFacts().find((x) => x.id === id)?.sourceSessionId }),
@@ -856,10 +900,12 @@ export function apply(ctx: Context, config?: PluginConfig): void {
         // 卡片层契约（2026-09-28）：子卡链再生成（补链）+ 只读诊断。
         disposers.push(toolsCtx.tools.register(defineRegenerateTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineKnowledgeTool(useCaseDeps)));
+        // REQ-261005122347-e07a FR-1/FR-6：投放 UI/UX skill 资产（返回子代理要用的绝对路径）。
+        disposers.push(toolsCtx.tools.register(defineSkillInstallTool(useCaseDeps)));
       }, name + ': tools');
       logger.info(
         'agent tools registered (13): reqboard_create / reqboard_capture / reqboard_status / reqboard_task_run / reqboard_task_execute / reqboard_task_status / '
-        + 'reqboard_task_report / reqboard_submit(kind) / reqboard_ask_confirm / reqboard_confirm_receipt / reqboard_accept_sheet / reqboard_note_interruption / reqboard_clear_pause / reqboard_move / reqboard_task_move / reqboard_task_adopt / reqboard_handoff',
+        + 'reqboard_task_report / reqboard_submit(kind) / reqboard_ask_confirm / reqboard_confirm_receipt / reqboard_accept_sheet / reqboard_note_interruption / reqboard_clear_pause / reqboard_move / reqboard_task_move / reqboard_task_adopt / reqboard_handoff / reqboard_kb / reqboard_skill_install',
       );
     },
   );
@@ -903,6 +949,8 @@ export function apply(ctx: Context, config?: PluginConfig): void {
               dialogue: queryDialogue,
               prompts: queryPrompts,
               token: queryTokenExtension,
+              // REQ-261006130057-7a43 t-a85893（FR-8）：验收 Tab 查询。
+              verify: queryVerify,
             },
             // 对话流要读会话事件：活窗口走同步快照，冷会话回落持久化读（见 SessionProbeAdapter）。
             sessionProbe,
@@ -935,6 +983,16 @@ export function apply(ctx: Context, config?: PluginConfig): void {
                 logger.warn('reqboard: 解析会话工作区失败（读根回落 legacy）:', err);
                 return undefined;
               }
+            } }),
+            // REQ-261005141830-7a3b t5（FR-6）：会话 → **项目身份 + 根**——看板按项目过滤与取根的来源。
+            // 与用例侧同一处取数（`projectIdOfWindowForDeps` / `rootOfRequirement`），复用同一个注册表句柄；
+            // 解析不到（未装配 / 未命中 / 条目缺根）→ 返回 undefined，路由回落 sessionWorkspace / legacy cwd
+            // 并如实标注（不猜、不编身份）。t13 回滚开关同样生效：legacy-cwd 时不装配本项。
+            ...(docsRootSourceSetting(config) === 'legacy-cwd' ? {} : { sessionProject: (sid: string | undefined) => {
+              const projectId = sid === undefined ? undefined : projectIdOfWindowForDeps(useCaseDeps, sid);
+              if (projectId === undefined) return undefined;
+              const root = rootOfRequirement(useCaseDeps, { projectId })?.root;
+              return { projectId, ...(root !== undefined ? { root } : {}) };
             } }),
             // REQ-261001124111-5d36 t4：面板刷新策略随 SSE 的 build 帧下发（refreshMs=0 = 关轮询）
             panelPolicy: panelSettings(config),

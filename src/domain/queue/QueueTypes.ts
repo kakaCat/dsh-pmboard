@@ -63,6 +63,17 @@ export interface QueueLayer {
 export type ValidationRule = 'V-1' | 'V-2' | 'V-3' | 'V-4' | 'V-5' | 'V-6'
 
 /**
+ * 校验条目的**上报级别**（REQ-261005193546-1b1a · t10 / design/backend.md §错误处理）。
+ *
+ * - `issue`：**真问题**。拦住写（`save` 抛 `QUEUE_VALIDATION_FAILED`）、判 `passed === false`。
+ * - `warning`：**可自愈的陈旧派生值**（如存量 `ready[]` 按旧口径写）。只上报，不阻断读写。
+ *
+ * ⚠️ 该字段**加性可选**：`level === undefined` 即 `'issue'`，故旧文件形状与旧读方逐字兼容
+ * （`validateQueue.ts` 只在 warning 上写这个键，issue 条目一个字节都不变）。
+ */
+export type ValidationLevel = 'issue' | 'warning'
+
+/**
  * 单条校验问题。
  *
  * `path` 用 JSON 路径风格定位（如 `tasks[2].dependsOn[0]`），便于人直接跳去改；
@@ -72,14 +83,21 @@ export interface ValidationIssue {
   rule: ValidationRule
   message: string
   path?: string
+  /** 上报级别；**缺省 = `issue`**（旧形状不带此键 ⇒ 旧读方读到的仍是"真问题"） */
+  level?: ValidationLevel
 }
 
 /**
  * 校验结果。
  *
  * `validateQueueFile` **不抛错**：失败也返回对象、只填 issues。
- * 由调用方按场景决定处置（写入前拒绝落盘 / 读取后降级返回空 / 更新前保持旧内容）——
+ * 由调用方按场景决定处置（写入前拒绝落盘 / 读取后降级告警并继续 / 更新前保持旧内容）——
  * 三种处置的差异见 design/interfaces.md「数据校验接口」。
+ *
+ * ⚠️ `passed` 的语义（REQ-261005193546-1b1a · t10 起）：
+ * **「无 issue 级条目」**，而不是「issues 为空」——`level === 'warning'` 的条目
+ * （如 V-5 漏就绪：陈旧派生值，可自愈）**不**让 `passed` 变 false。
+ * 判据单点见 `validateQueue.ts` 的 `levelOf`，`hasIssue` 同口径（只认 issue 级）。
  */
 export interface ValidationResult {
   passed: boolean

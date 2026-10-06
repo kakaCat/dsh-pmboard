@@ -24,8 +24,10 @@ import type {
   PendingConfirmation,
   PromptsResponse,
   ReportResponse,
+  RequirementRecord,
   TokenPanelExtension,
   TrunkResponse,
+  VerifyPanelResponse,
 } from '../../shared/protocol.js'
 
 /**
@@ -93,6 +95,25 @@ export interface PanelQueryDeps {
    * 「挂起确认状态不可知」（**不写 0 条**冒充「没有人在等」）。
    */
   pendingConfirms?: PendingConfirmReadPort
+  /**
+   * **候选读根**（REQ-261005143615-5ab1 FR-1/FR-2）：给定需求，返回按序、去重、
+   * **只含真实存在的根**的绝对路径列表；返回空数组 = 一个可用根都没有（读根不可得）。
+   *
+   * 为什么由调用方给而不是查询自己推：候选序里既有「需求自己声明的工作区」（只有拿到记录才知道），
+   * 也有「阅读会话的工作区」与「组合根 cwd」（只有路由层才知道）；而 `existsSync` 是 `node:`
+   * 依赖，application 层禁止 import（`tests/layer-boundary.test.ts`）。故根由路由层定，
+   * 「用哪个根判存在」由查询层定。
+   *
+   * **缺省 = 旧单根行为**：不装配时文档类查询继续只用 `docs` 那一个端口（无 `unknown`、无 `absPath`）。
+   */
+  docRootsOf?: (req: RequirementRecord) => string[]
+  /**
+   * 按根建文档读端口（REQ-261005143615-5ab1 FR-1）：构造适配器的事留在调用方（http 层已经在
+   * `new FileDocRepository`），application 只调用它——与既有 `docs` 端口同一分工。
+   *
+   * **缺省 = 旧单根行为**（同上）：两个口要么都在，要么都不在。
+   */
+  docsAt?: (root: string) => DocRepository
 }
 
 /** 六查询的公共入参（分页参数只在需要的查询里生效）。 */
@@ -155,7 +176,16 @@ export type QueryTokenExtension = (
   input: PanelQueryInput,
 ) => Promise<PanelResult<TokenPanelExtension>>
 
-/** 六个（连 Token 扩展共七个）查询用例的集合形状——装配与测试用它做一次性注入。 */
+/**
+ * 端点 8 · 验收 Tab（REQ-261006130057-7a43 FR-8）：验收单 + RTM 验收追踪 + 覆盖链 + 材料。
+ * RTM 是增强层：缺失/解析失败时 tracking/coverage 缺省，**绝不抛**（FR-9）。
+ */
+export type QueryVerify = (
+  deps: PanelQueryDeps,
+  input: PanelQueryInput,
+) => Promise<PanelResult<VerifyPanelResponse>>
+
+/** 查询用例的集合形状（七面板 + Token 扩展 + 验收 Tab）——装配与测试用它做一次性注入。 */
 export interface PanelQueries {
   report: QueryReport
   trunk: QueryTrunk
@@ -164,4 +194,6 @@ export interface PanelQueries {
   dialogue: QueryDialogue
   prompts: QueryPrompts
   token: QueryTokenExtension
+  /** 验收 Tab（REQ-261006130057-7a43）；缺省 = 端点降级 port-unavailable */
+  verify: QueryVerify
 }

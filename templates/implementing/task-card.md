@@ -25,6 +25,8 @@
 - 端侧：{{TASK_SIDE}}
 - 需求条款：{{REQUIREMENT_REFS}}
 - 设计落点：{{DESIGN_SERVES}}
+- 原型锚点：{{PROTOTYPE_REFS}}
+- 关联 D-x：{{DECISION_REFS}}
 - 覆盖用例：{{TEST_CASES}}
 
 ## 得到什么结果

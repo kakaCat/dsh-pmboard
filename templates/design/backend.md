@@ -4,7 +4,7 @@ requirement_refs: []
 
 # 后端设计（{{REQ_ID}}）
 
-## 服务与接口实现 <!-- serves: FR-x 需求名称 -->
+## 服务与接口实现 <!-- serves: FR-1（替换为本需求真实条款编号与名称） -->
 
 **表格填写要求**：
 
@@ -44,7 +44,7 @@ requirement_refs: []
 | S-1 | 函数 | functionName | 一句话说明做什么 | param1 (type), param2 (type) | returnType 或 null | 谁调用 | 依赖哪些服务/表/常量 | FR-x |
 | S-2 | 服务 | ServiceName | ... | ... | ... | ... | ... | FR-x |
 
-## 数据流 <!-- serves: FR-x 需求名称 -->
+## 数据流 <!-- serves: FR-1（替换为本需求真实条款编号与名称） -->
 
 **填写要求**：用文字+流程图描述关键业务流程，包含：
 
@@ -80,7 +80,7 @@ requirement_refs: []
 - 通知：发送 WebSocket 事件给前端
 ```
 
-## 关键逻辑 <!-- serves: FR-x 需求名称 -->
+## 关键逻辑 <!-- serves: FR-1（替换为本需求真实条款编号与名称） -->
 
 **填写要求**：对核心算法/复杂逻辑用**纯文字描述**，不写代码。实施阶段再写代码。包含：
 
@@ -92,7 +92,7 @@ requirement_refs: []
 
 **示例格式**：
 
-### S-1 函数名逻辑（functionName 函数）
+### S-1 函数名逻辑（functionName 函数） <!-- serves: FR-1 -->
 
 **功能**：一句话说明这个函数做什么。
 
@@ -116,7 +116,7 @@ requirement_refs: []
 - 时间复杂度：O(1)
 - 预期耗时：< 5ms
 
-## 错误处理 <!-- serves: FR-x 需求名称 -->
+## 错误处理 <!-- serves: FR-1（替换为本需求真实条款编号与名称） -->
 
 | 错误类型 | HTTP 状态码 | 错误码 | 用户提示 | 重试策略 | 降级方案 |
 |---|---|---|---|---|---|
@@ -132,11 +132,11 @@ requirement_refs: []
 - 系统故障（500/503）：降级但不阻塞核心流程
 - 资源缺失（404）：告警但不当错误（可能是新功能）
 
-## 数据库设计 <!-- serves: FR-x 需求名称 -->
+## 数据库设计 <!-- serves: FR-1（替换为本需求真实条款编号与名称） -->
 
 **填写要求**：列出本需求涉及的表、字段、索引、约束
 
-### 新增/修改表
+### 新增/修改表 <!-- serves: FR-1 -->
 
 ```sql
 -- 新增表
@@ -150,27 +150,27 @@ CREATE TABLE table_name (
 ALTER TABLE existing_table ADD COLUMN new_field VARCHAR(50) DEFAULT NULL;
 ```
 
-### 字段说明
+### 字段说明 <!-- serves: FR-1 -->
 
 | 字段 | 类型 | 必填 | 默认值 | 说明 |
 |---|---|---|---|---|
 | id | INT | 是 | AUTO_INCREMENT | 主键 |
 | field1 | VARCHAR(100) | 是 | - | 字段用途说明 |
 
-### 索引设计
+### 索引设计 <!-- serves: FR-1 -->
 
 | 索引名 | 字段 | 类型 | 支撑的查询 | 为什么选这些列 |
 |---|---|---|---|---|
 | idx_xxx | (field1, field2) | BTREE | `SELECT * WHERE field1=? AND field2=?` | field1+field2 组合选择性高（约 1:100） |
 
-### 约束说明
+### 约束说明 <!-- serves: FR-1 -->
 
 | 约束类型 | 字段 | 规则 | 理由 |
 |---|---|---|---|
 | UNIQUE | (field1, field2) | 组合唯一 | 业务上一个 field1 只能有一个 field2 |
 | FOREIGN KEY | field3 | 引用 other_table.id | 保证引用完整性 |
 
-## 性能考量 <!-- serves: FR-x 需求名称 -->
+## 性能考量 <!-- serves: FR-1（替换为本需求真实条款编号与名称） -->
 
 | 指标 | 目标 | 当前实测 | 瓶颈分析 | 优化方案 |
 |---|---|---|---|---|
@@ -181,22 +181,22 @@ ALTER TABLE existing_table ADD COLUMN new_field VARCHAR(50) DEFAULT NULL;
 - 最慢环节：xxx（约 80ms）
 - 优化前/后对比：...
 
-## 安全设计 <!-- serves: FR-x 需求名称 -->
+## 安全设计 <!-- serves: FR-1（替换为本需求真实条款编号与名称） -->
 
-### 鉴权
+### 鉴权 <!-- serves: FR-1 -->
 
 | 接口 | 鉴权要求 | 权限校验规则 | Token 格式 |
 |---|---|---|---|
 | POST /api/xxx | 需登录 + 资源所有权 | `user.id == resource.owner_id` | JWT Bearer |
 
-### 输入校验
+### 输入校验 <!-- serves: FR-1 -->
 
 | 参数 | 校验规则 | 拒绝示例 | 理由 |
 |---|---|---|---|
 | param1 | 白名单 `[a-z0-9]` | `../../../etc/passwd` | 防止路径遍历 |
 | param2 | 正则 `/^[A-Z]{3}$/` | `ABC'; DROP TABLE--` | 防止 SQL 注入 |
 
-### 敏感信息
+### 敏感信息 <!-- serves: FR-1 -->
 
 | 字段 | 是否敏感 | 处理方式 |
 |---|---|---|
@@ -204,7 +204,7 @@ ALTER TABLE existing_table ADD COLUMN new_field VARCHAR(50) DEFAULT NULL;
 | user.email | 是 | 日志脱敏为 u***@example.com |
 | user.id | 否 | 可全量记日志 |
 
-## 关键决策与取舍
+## 关键决策与取舍 <!-- serves: FR-1 -->
 
 （写清这次**做了哪些取舍、否掉了什么、为什么**——需求详情页「关键决策与取舍」按写死的节名抽取本节（FR-2 / FR-13）。
 
@@ -217,7 +217,7 @@ ALTER TABLE existing_table ADD COLUMN new_field VARCHAR(50) DEFAULT NULL;
 |---|---|---|---|
 |  |  |  |  |
 
-## 技术方案与亮点
+## 技术方案与亮点 <!-- serves: FR-1 -->
 
 （写清这次**怎么干的、比常规做法强在哪**——需求详情页「技术方案与亮点」按写死的节名抽取本节（FR-14 / FR-15）。
 

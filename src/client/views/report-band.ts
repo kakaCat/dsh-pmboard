@@ -1,7 +1,10 @@
 /**
  * 需求详情页「状态带」（REQ-261004222448-292a · FR-3 / FR-4 / FR-5 / FR-12）——纯函数返回 HTML 字符串。
  *
- * 三格常驻、**都不折叠**（首屏一屏内读完）：做到哪了 / 缺口清单 / 结果与成效。
+ * 三格常驻（首屏一屏内读完）：做到哪了 / 缺口清单 / 结果与成效。
+ * REQ-261006130057-7a43 FR-2 起三格**不再等大平权**：栅格 1fr : 1.5fr : 0.9fr，
+ * 缺口格是视觉焦点（红浅底 + 左红条 + 计数徽标 = `waitingHuman`），
+ * 结果格在 `outcome === undefined`（未到验收段）时折叠为一行灰字 + 「展开说明」。
  * 为什么独立成段：台账每变一次它就要重算一次，而它跟"当前 Tab 面板"是两件事——
  * 分段之后换面板不必碰它，它变了也不必碰面板（滚动/展开态由此天然保住）。
  *
@@ -17,12 +20,22 @@ import { mdPlain } from '../render/md-inline.js'
 import type { ReportGap, ReportResponse } from '../../shared/protocol.js'
 import { STATUS_LABELS, fmtDur, isTerminal, short } from '../render/dom-utils.js'
 import { degradeText, type ReportHeadPlaceholder } from './report-head.js'
+import { GAP_DOT_SVG } from '../icons.js'
 
 /**
- * 缺口严重度 → 圆点。用 emoji 而不是纯色 class：色值在深/浅两套主题下都可能看不出差别，
- * 而"🔴 阻塞"这层语义是 FR-4 明确要求的（🔴/🟡/⚪），也便于渲染断言。
+ * 缺口严重度 → 标记（FR-8 #2：状态不靠颜色单一表达）。
+ *
+ * 两件事各占一半，**都不靠颜色**：
+ *  - {@link GAP_DOT_SVG}（`client/icons.ts`）= 不依赖系统字型的**内联 SVG 圆**，
+ *    颜色由所在行的 `color`（按 severity 取语义色）通过 `currentColor` 承载；
+ *  - {@link GAP_MARK} = **真实文本节点** `!!` / `!` / `·`，灰度打印或色盲下也能分档。
+ *
+ * 为什么把 emoji 圆点（`🔴`/`🟡`/`⚪`）换成 SVG：emoji 的字形与明度由**系统字型**决定
+ * （正是 FR-1 要除掉的不可控资产），既不受颜色令牌控制，也无法机械断言。
+ * 为什么文本标记不是 CSS `::before`：伪元素内容读屏不保证读到（FR-8 #5 的硬约束）——
+ * 必须落成真内容，`aria-hidden` 只给 SVG（它旁边就有可读的文本标记与正文）。
  */
-const GAP_DOT: Record<ReportGap['severity'], string> = { red: '🔴', yellow: '🟡', gray: '⚪' }
+const GAP_MARK: Record<ReportGap['severity'], string> = { red: '!!', yellow: '!', gray: '·' }
 const GAP_RANK: Record<ReportGap['severity'], number> = { red: 0, yellow: 1, gray: 2 }
 
 /** 首屏只列最严重的 5 条（FR-4：前 3~5 条）；其余**如实说还有几条**，不假装列全了。 */
@@ -31,6 +44,12 @@ export const GAP_HEAD_LIMIT = 5
 /** 一格（标题 + 正文）。 */
 function cell(title: string, body: string, attrs = ''): string {
   return '<div class="dsh-pm-stat"' + attrs + '><div class="dsh-pm-stat-label">' + esc(title) + '</div>'
+    + '<div class="dsh-pm-report-band-body">' + body + '</div></div>'
+}
+
+/** 一格（标题是**已拼好的 HTML**——计数徽标等内联节点用；纯文本标题请走 {@link cell}）。 */
+function cellHtml(titleHtml: string, body: string, attrs = ''): string {
+  return '<div class="dsh-pm-stat"' + attrs + '><div class="dsh-pm-stat-label">' + titleHtml + '</div>'
     + '<div class="dsh-pm-report-band-body">' + body + '</div></div>'
 }
 
@@ -146,14 +165,30 @@ export function buildGapsCell(report: ReportResponse): string {
     const short = gapShort(g)
     return '<div class="dsh-pm-gap-line" data-severity="' + esc(g.severity) + '"'
       + ' title="' + esc(full) + '">'
-      + '<span class="dsh-pm-gap-what">' + esc(GAP_DOT[g.severity] ?? '⚪') + ' '
+      /* 严重度的两条非颜色通道（FR-8 #2）：SVG 圆（装饰性，颜色跟随本行 color）+
+         **真实文本**标记 `!!`/`!`/`·`（读屏读得到；不是 `::before`）。 */
+      + '<span class="dsh-pm-gap-what"><span class="dsh-pm-gap-sev" aria-hidden="true">'
+      + (GAP_DOT_SVG[g.severity] ?? GAP_DOT_SVG.gray) + '</span>'
+      + '<span class="dsh-pm-gap-mark" data-gap-mark="' + esc(g.severity) + '">'
+      + esc(GAP_MARK[g.severity] ?? '·') + '</span> '
       + esc(short.length === 0 ? g.what : short) + '</span>' + ref + '</div>'
   }).join('')
   const more = sorted.length > GAP_HEAD_LIMIT
     ? '<div class="dsh-pm-gap-more">还有 ' + String(sorted.length - GAP_HEAD_LIMIT)
       + ' 条未列（首屏只列最严重的 ' + String(GAP_HEAD_LIMIT) + ' 条）</div>'
     : ''
-  return cell('缺口 ' + String(sorted.length) + ' 条（该有而没有）', rows + more, ' data-band-cell="gaps"')
+  /* FR-2（REQ-261006130057-7a43 t5）：缺口格 = 状态带的**视觉焦点**——
+     红浅底 + 左 3px 红条（样式在 styles/report.ts 的 FR-2 块，`data-gap-focus` 挂钩）+
+     标题里的**红色计数徽标**。徽标值 = `waitingHuman`（「几件事等人」，与头部一句话结论
+     verdictLine 同口径，**不是** gaps 总条数——总条数由旁边的「共 N 条」真文本交代）；
+     数字本身是真文本节点，不靠颜色单一表达（FR-8）。
+     `id="dsh-pm-gap-focus"`（t4 补，纯增量一个属性）：头部闸门提示条锚链「查看缺口 ↓」
+     的 hash 落点——缺口格存在 ⟺ gaps 非空 ⟺ waitingHuman > 0，提示条在时落点恒在。 */
+  const waiting = num(report.waitingHuman)
+  const badge = '<span class="dsh-pm-gap-count-badge" data-gap-count-badge="' + String(waiting)
+    + '">' + String(waiting) + '</span>'
+  const label = esc('缺口（该有而没有）') + ' ' + badge + ' ' + esc('共 ' + String(sorted.length) + ' 条')
+  return cellHtml(label, rows + more, ' data-band-cell="gaps" data-gap-focus="1" id="dsh-pm-gap-focus"')
 }
 
 /**
@@ -224,11 +259,13 @@ function leftoversHtml(o: NonNullable<ReportResponse['outcome']>): string {
 }
 
 /**
- * 第三格：结果与成效（FR-5）。
+ * 第三格：结果与成效（FR-5 + REQ-261006130057-7a43 FR-2）。
  *
  * 两态：
- *  - **有 `outcome`**（台账里有验收单）→ 结论 + 逐项计数 + 遗留问题与后续；
- *  - **没有 `outcome`** → 解释性空态（说清"什么时候会出现"），不画空表格。
+ *  - **有 `outcome`**（台账里有验收单）→ 结论 + 逐项计数 + 遗留问题与后续（完整铺开）；
+ *  - **没有 `outcome`**（未到验收段 / 在途）→ **折叠为一行灰字 + 「展开说明」**（FR-2：
+ *    在途态长期为空，不再与缺口格等大平权）。展开用原生 `<details>`（不靠 JS），
+ *    说明正文进折叠体；折叠/展开两态的切换文案都是真文本节点（FR-8，CSS 按 [open] 换显）。
  *
  * 禁 0 冒充（FR-12）：`通过 0 项` 只在验收单**确实一项都没过**时出现（那是事实）；
  * "还没有验收单"走的是另一句话（"尚未到验收段 / 结论见文档 Tab"），两者绝不混。
@@ -250,15 +287,27 @@ export function buildOutcomeCell(report: ReportResponse): string {
       + esc(OUTCOME_VERDICT[o.verdict] ?? o.verdict) + '</span>'
     return cell('结果与成效', verdict + '<br>' + counts + '<br>' + leftoversHtml(o), ' data-band-cell="outcome"')
   }
-  const body = isTerminal(status)
-    ? (status === 'canceled'
-      ? '<span class="dsh-pm-band-mut">已取消：无验收结论</span>'
-      : '<span class="dsh-pm-band-ok">✅ 已归档</span><br><span class="dsh-pm-band-mut">验收结论与逐项结果见『文档』Tab 的验收单与门禁留痕（首屏摘要不含逐项）</span>')
+  if (status === 'canceled') {
+    return cell('结果与成效', '<span class="dsh-pm-band-mut">已取消：无验收结论</span>', ' data-band-cell="outcome"')
+  }
+  // outcome === undefined：折叠占位（一行灰字 + 展开说明）。一行 = 结论位；折叠体 = 解释。
+  const line = isTerminal(status)
+    ? '<span class="dsh-pm-band-ok">✅ 已归档</span><span class="dsh-pm-band-mut">：结论见『文档』Tab，暂无首屏摘要</span>'
     : status === 'accepting'
-      ? '<span class="dsh-pm-band-mut">验收中：通过 / 退回后在此给出结论与遗留问题；逐项结果见『文档』Tab 的验收单</span>'
+      ? '<span class="dsh-pm-band-mut">⏳ 验收中：人尚未裁决，暂无结论</span>'
       : '<span class="dsh-pm-band-mut">尚未到验收段（当前 ' + esc(STATUS_LABELS[status] ?? status)
         + ' ' + num(report.progress?.tasks?.done) + '/' + num(report.progress?.tasks?.total)
-        + '）。到验收段后此处给出结论、逐项结果与遗留问题。</span>'
+        + '）：暂无结论</span>'
+  const note = isTerminal(status)
+    ? '验收结论与逐项结果见『文档』Tab 的验收单与门禁留痕（首屏摘要不含逐项）。'
+    : status === 'accepting'
+      ? '通过 / 退回后在此给出结论与遗留问题；逐项结果见『文档』Tab 的验收单。'
+      : '到验收段后此处给出结论、逐项结果与遗留问题；在途态长期为空，故默认折叠为一行，不再与缺口格等大平权。'
+  const body = '<details class="dsh-pm-outcome-fold" data-outcome-fold="1">'
+    + '<summary class="dsh-pm-outcome-fold-line">' + line
+    + ' <span class="dsh-pm-outcome-toggle"><span class="dsh-pm-outcome-toggle-open">展开说明</span>'
+    + '<span class="dsh-pm-outcome-toggle-close">收起说明</span></span></summary>'
+    + '<div class="dsh-pm-outcome-fold-body dsh-pm-band-mut">' + esc(note) + '</div></details>'
   return cell('结果与成效', body, ' data-band-cell="outcome"')
 }
 

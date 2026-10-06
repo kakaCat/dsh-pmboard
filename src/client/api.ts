@@ -19,6 +19,7 @@ import type {
   TokenAvailability,
   TokenOptimization,
   TrunkResponse,
+  VerifyPanelResponse,
 } from '../shared/protocol.ts'
 // REQ-261004222448-292a：Tab 键的**唯一定义**在壳模块（report-tabs.ts），这里只 import type
 // （类型引用编译期擦除，运行时不产生 client 内部环）。
@@ -280,6 +281,36 @@ export function rejectPlan(input: { id: string; reason: string }): Promise<unkno
   return post(BASE + '/req/plan/reject', input)
 }
 
+// -- 误物化清场（仅人；REQ-261005122915-9f90 t6 / FR-5）--------------------
+
+/** 清场回执（与服务端 `RollbackCleanupResult` 同形，逐字对齐）。 */
+export interface RollbackCleanupResult {
+  id: string
+  rollbackSeq: number
+  /** 本次真正取消的卡数（幂等重放时为 0）。 */
+  canceled: number
+  /** 父子关系还原条数。 */
+  restoredLinks: number
+  /** 匹配方式：`lastMaterialized`（精确）或 `reworkOf+title-prefix`（旧数据兜底）。 */
+  matchedBy: string
+  /** 被跳过的卡与原因（done 卡等；**不许静默跳过**，看板逐条展示）。 */
+  skipped: { taskId: string; reason: string }[]
+  /** 匹配方式的人话说明。 */
+  note: string
+}
+
+/**
+ * 误物化重做卡批量清场（REQ-261005122915-9f90 t6 / FR-5）。
+ *
+ * **仅人**：服务端刻意**不注册任何 agent 工具**——能力只开在看板 HTTP 通道
+ * （身份在服务端无法辨别，故「仅人」落地为「agent 面无此工具」，见 REQ-261004121649-bfa7 设计）。
+ * 边界 = 该次回退物化的卡清单（台账 `rollback.lastMaterialized`）；旧数据无该字段时走兜底匹配，
+ * 回执里的 `matchedBy` 会如实声明用的是哪条。
+ */
+export function rollbackCleanup(input: { id: string; rollbackSeq: number; reason?: string }): Promise<RollbackCleanupResult> {
+  return post<RollbackCleanupResult>(BASE + '/req/rollback-cleanup', input)
+}
+
 // -- 验收 / 归档（仅人可裁决）----------------------------------------------
 
 /**
@@ -328,16 +359,17 @@ export function fetchRequirementToken(reqId: string): Promise<RequirementTokenVi
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
- * 需求详情页「工作汇报」六个 Tab 的取数（REQ-261004222448-292a t-ab048e）
+ * 需求详情页「工作汇报」各 Tab 的取数（REQ-261004222448-292a t-ab048e；
+ * 「验收」端点由 REQ-261006130057-7a43 FR-8 并入）
  *
- * 七条只读请求，全走既有 `unwrap` 信封（非 2xx 时把服务端原话带上来，见 errorOf）。
+ * 只读请求全走既有 `unwrap` 信封（非 2xx 时把服务端原话带上来，见 errorOf）。
  * **降级不抛错**：端口未装配 / 台账读不到时服务端回 `{available:false, reason, note}`
  * （FR-12），页面按 reason 给不同文案——抛错会把"读不到"与"不存在"混成同一句"加载失败"，
  * 那正是本需求要消灭的不诚实。
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
- * 面板端点的 URL（六个 Tab 一个形状，避免六处各拼一遍路径）。
+ * 面板端点的 URL（各 Tab 一个形状，避免多处各拼一遍路径）。
  *
  * `sessionId` **必须带上**：服务端据它把「文档根」解析成该会话的工作区根
  * （宿主进程 cwd 是插件宿主目录，不带会话时登记文档会被判成 file-missing——
@@ -345,7 +377,7 @@ export function fetchRequirementToken(reqId: string): Promise<RequirementTokenVi
  */
 function panelUrl(
   id: string,
-  endpoint: 'report' | 'trunk' | 'docs' | 'dag' | 'dialogue' | 'prompts',
+  endpoint: 'report' | 'trunk' | 'docs' | 'dag' | 'dialogue' | 'verify' | 'prompts',
   sessionId?: string,
 ): string {
   const base = BASE + '/requirements/' + encodeURIComponent(id) + '/' + endpoint
@@ -399,6 +431,32 @@ export const fetchReportPrompts = (id: string, sessionId?: string): Promise<Pane
   get<PanelResult<PromptsResponse>>(panelUrl(id, 'prompts', sessionId))
 
 /**
+ * 验收面板（REQ-261006130057-7a43 · FR-8）：验收单 + RTM 验收追踪 + 覆盖链 + 材料 + 待裁决计数。
+ * 切到「验收」Tab 才请求（壳的懒加载纪律）；响应 shape = `VerifyPanelResponse`（全字段可选，
+ * 缺省即「无该来源」——前端**不补默认值**，补了就是拿「未知」冒充「没有」）。
+ *
+ * **旧服务端 = 降级，不是失败**：服务端还没有这条端点时 `get` 抛 404——按降级信封返回
+ * （`port-unavailable` + 固定去向文案），页面走 degraded 态而不是"加载失败 + 重试"：
+ * 端点不存在这件事重试一百次也不会好，给重试就是给假象。其余错误（500 / 超时）照样抛，
+ * 那是"接线了但这次没成"，壳的失败态与重试出口照旧。
+ */
+export async function fetchReportVerify(id: string, sessionId?: string): Promise<PanelResult<VerifyPanelResponse>> {
+  try {
+    return await get<PanelResult<VerifyPanelResponse>>(panelUrl(id, 'verify', sessionId))
+  } catch (err) {
+    const status = (err as { status?: unknown } | undefined)?.status
+    if (typeof status === 'number' && status === 404) {
+      return {
+        available: false,
+        reason: 'port-unavailable',
+        note: '服务端版本过旧，验收单暂在『文档』Tab 核验节查看',
+      }
+    }
+    throw err
+  }
+}
+
+/**
  * Token 端点的完整载荷（FR-10）：既有字段（totals/byStage/degraded…）**一个不改**，
  * 扩展段（availability / optimizations / missingStages）由服务端并进同一响应。
  *
@@ -439,10 +497,10 @@ export async function fetchReportToken(id: string): Promise<TokenPanelPayload> {
 }
 
 /**
- * 六个 Tab 取数的**总入口**（Tab 键 → 端点）。
+ * 各 Tab 取数的**总入口**（Tab 键 → 端点）。
  *
  * 为什么集中一个分发函数：面板卡（t9~t14）应当只写 `render` 就能接上取数。
- * 让六张卡各拼一遍 URL 的话，拼错的路径会以"这个 Tab 一直没有数据"的形式**静默**存在
+ * 让各张卡各拼一遍 URL 的话，拼错的路径会以"这个 Tab 一直没有数据"的形式**静默**存在
  * （不报错、也没有哪条用例测得到）。
  */
 export function fetchReportPanel(
@@ -456,6 +514,7 @@ export function fetchReportPanel(
     case 'docs': return fetchReportDocs(id, sessionId)
     case 'dag': return fetchReportDag(id, sessionId)
     case 'dialogue': return fetchReportDialogue(id, params, sessionId)
+    case 'verify': return fetchReportVerify(id, sessionId)
     case 'prompts': return fetchReportPrompts(id, sessionId)
     case 'token':
       // token 的"不可得"写在载荷里的 availability 三态（不走 Degrade 信封）——形状上同样满足

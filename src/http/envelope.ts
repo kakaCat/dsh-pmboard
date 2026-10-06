@@ -54,6 +54,26 @@ const STATUS_BY_CODE: Readonly<Record<string, number>> = {
   verify_override_required: 400, // REQ-a8d582 FR-4：不合规通过缺覆盖说明
   design_doc_incomplete: 400, // REQ-2d1c74：G2 完整性门
   design_contains_decomposition: 400, // REQ-2d1c74：拆分内容硬门
+  // ── REQ-261005105032-3b02 §10 #43（后端实测发现的硬约束）──
+  // 新门（原型三门 / 裁定门 / 验收缺对照项 / 阶段门逾期）逐条登记 = 400。
+  // 为什么逐条而不用前缀兜底：**漏登记会如实落 500**（statusForCode 的兜底就是 500），
+  // 看板于是把"流程没满足、补齐即可重发"显示成"服务器坏了"——用户照着修不了。
+  // 内部码与传输码**成对**登记（interfaces.md 技术方案 #4）：同日两条链各报各的码，
+  // 只登一侧会让另一侧继续落 500（四条转移路径里会话侧报传输码、看板侧报内部码）。
+  prototype_missing: 400,
+  prototype_version_conflict: 400,
+  prototype_anchor_missing: 400,
+  decision_log_missing: 400,
+  decision_entry_invalid: 400,
+  verification_prototype_compare_missing: 400,
+  stage_gate_overdue: 400,
+  REQBOARD_MISSING_PROTOTYPE: 400,
+  REQBOARD_PROTOTYPE_VERSION_CONFLICT: 400,
+  REQBOARD_PROTOTYPE_ANCHOR_MISSING: 400,
+  REQBOARD_DECISION_LOG_MISSING: 400,
+  REQBOARD_DECISION_ENTRY_INVALID: 400,
+  REQBOARD_VERIFICATION_INCOMPLETE: 400,
+  REQBOARD_STAGE_GATE_OVERDUE: 400,
   // 人工/系统门（agent 不得越过）
   human_gate: 403,
   system_gate: 403,
@@ -71,6 +91,8 @@ const STATUS_BY_CODE: Readonly<Record<string, number>> = {
   dispatch_failed: 502,
   // 未就绪：启动装配中 → **503 明确拒服务**，绝不返回空册（空册 = 看板"需求全没了"）
   REQBOARD_BRIDGE_NOT_READY: 503,
+  // REQ-261005141830-7a3b t6 FR-11：跨项目派席 / 交接 / 改绑 → 400（调用方给错了窗口，不是服务端故障）
+  REQBOARD_CROSS_PROJECT_SEAT: 400,
   // REQ-261003191948-e94a FR-2：单册在场而数据根未迁移（人工跑迁移即可恢复）
   REQBOARD_REQUIRES_MIGRATION: 503,
   // REQ-261004103330-005f FR-12：已选 SQLite 而库空、分片非空 → 同一语义的 503 + 可复制指引

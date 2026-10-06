@@ -158,6 +158,32 @@ export class RequirementShardRepository {
     return parsed as RequirementRecord
   }
 
+  // ── 读：外置对象 ─────────────────────────────────────────────────────
+
+  /**
+   * 外置对象**是否存在**（只列目录、不读内容）。
+   *
+   * 为什么需要它（REQ-261006175040-12d4 t3 / FR-6）：`readObject` 对"文件不存在"与"JSON 损坏
+   * 被隔离"都返回 `undefined`，两者的语义却相反——前者 = 真没有（卡面该显示缺失），
+   * 后者 = 读不到（卡面**不得**冒充缺失）。取数点用本探针把两者分开。
+   *
+   * 用 `readdir` 而不是新增 `stat` 能力：`ShardFs` 是多个测试替身实现的公开接口，
+   * 加一个**必需**方法会一次性破坏所有替身（它们只实现了既有能力）；列目录是既有能力，零波及。
+   */
+  async objectExists(root: string, requirementId: string, kind: ObjectKind, opts: { cold?: boolean } = {}): Promise<boolean> {
+    const file = objectPath(root, requirementId, kind, opts)
+    const cut = file.lastIndexOf('/')
+    const dir = file.slice(0, cut)
+    const name = file.slice(cut + 1)
+    try {
+      const entries = await this.fs.readdir(dir, { withFileTypes: true })
+      return entries.some((e) => e.name === name)
+    } catch (err) {
+      if (isNotFound(err)) return false
+      throw this.ioError(file, err)
+    }
+  }
+
   /** 读外置大对象（`artifacts.json` / `plan.json` / `verification.json` / `archive.json`）。 */
   async readObject<T>(root: string, requirementId: string, kind: ObjectKind, opts: { cold?: boolean } = {}): Promise<T | undefined> {
     const file = objectPath(root, requirementId, kind, opts)

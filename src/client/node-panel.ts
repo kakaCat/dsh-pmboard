@@ -27,6 +27,8 @@ import { displayDocPath } from './open-doc.ts'
 import { docFileLabel, KIND_ICONS } from '../shared/artifact-labels.js'
 import { stageHeadSummary, stageRowState, type StageRowState } from './stage-panel.ts'
 import { STAGE_STATE_WORD } from './node-panel-process.ts'
+// REQ-261005193546-1b1a FR-1 / FR-4：分层剪边走 domain 单点（与 stage-panel.topoLevels 同一口径）
+import { layerInputOf, splitDependencyEdges } from '../domain/status/Predicates.js'
 // REQ-260929010300-dbf9 FR-1/FR-2：DAG 展示与需求详情共用同一 Canvas 真图构建函数（常量单一源见 dag-view.ts）
 import { buildDagCanvas, PANEL_DAG_CONTAINER_ID, PANEL_DAG_CANVAS_ID } from './views/dag-view.js'
 // REQ-261001124111-5d36 t2：新鲜度渲染已按尺寸门禁拆到 panel-freshness.ts（模块头有"为什么拆"）
@@ -89,21 +91,34 @@ export function hydrateRelTimes(root: ParentNode, now: number = Date.now()): voi
   }
 }
 
-/** 拓扑分层（DAG 层级）：按依赖深度分组。 */
-function topoLevels<T extends { id: string; dependsOn?: string[] }>(tasks: T[]): Map<number, T[]> {
-  const byId = new Map(tasks.map(t => [t.id, t]))
+/**
+ * 拓扑分层（DAG 层级）：按依赖深度分组。
+ *
+ * 与 `stage-panel.topoLevels` **同一口径**（REQ-261005193546-1b1a FR-1，D-8；两块面板必须一致）：
+ * 剪边落进函数内部——不在 `byId` 里的前置边**直接丢弃**，不当 `lv = 0` 计入 `1 + max(...)`；
+ * 剔卡 + 剪边走 `layerInputOf` / `splitDependencyEdges` 单点。
+ *
+ * ⚠️ 这里**不加第二份 filter**（不自己再 `liveTasksOf(tasks)` 一遍）：上游基类已剔卡，
+ * 本函数只负责「算层时把不在场的边剪掉」这一件事；再加一层过滤就是两处口径（本需求要消灭的正是它）。
+ */
+function topoLevels<T extends { id: string; status: string; dependsOn?: string[] }>(tasks: T[]): Map<number, T[]> {
+  const live = layerInputOf(tasks)
+  const byId: ReadonlyMap<string, T> = new Map(live.map(t => [t.id, t]))
   const cache = new Map<string, number>()
   const lv = (id: string): number => {
     if (cache.has(id)) return cache.get(id)!
     const t = byId.get(id)
-    if (!t || !t.dependsOn || t.dependsOn.length === 0) { cache.set(id, 0); return 0 }
-    const l = 1 + Math.max(...t.dependsOn.map(d => lv(d)))
+    if (t === undefined) { cache.set(id, 0); return 0 }
+    const split = splitDependencyEdges(t, byId)
+    const present = split.satisfied.concat(split.pending)
+    if (present.length === 0) { cache.set(id, 0); return 0 }
+    const l = 1 + Math.max(...present.map(d => lv(d)))
     cache.set(id, l)
     return l
   }
-  for (const t of tasks) lv(t.id)
+  for (const t of live) lv(t.id)
   const layers = new Map<number, T[]>()
-  for (const t of tasks) {
+  for (const t of live) {
     const l = cache.get(t.id) ?? 0
     if (!layers.has(l)) layers.set(l, [])
     layers.get(l)!.push(t)
@@ -304,7 +319,9 @@ function renderArchivedInfo(p: Extract<StageDetail, { stage: 'archived' }>): str
   const a = p.body.archive
   if (!a) return empty('暂无归档材料')
   const parts: string[] = []
-  const at = a.archivedAt ?? a.submittedAt
+  // REQ-261006123819-3af3 FR-3（D-2）：该渲染器只在 stage='archived' 下被调用，
+  // 阶段参数本身就是「已归档」，再判一次是冗余；时刻用材料提交时刻（原归档时间字段无写入者）。
+  const at = a.submittedAt
   parts.push(`<div class="dsh-pm-np-archive-badge">✅ 已归档 · ${relSlot(at)}</div>`)
   if (a.docs.length > 0) {
     parts.push(`<div class="dsh-pm-np-sec-label">📚 归档文档</div><div class="dsh-pm-np-doclist">` +

@@ -16,6 +16,8 @@ import { requirementItemTitle } from '../../domain/workflow/AcceptanceSheetSpec.
 import type { RequirementRecord } from '../../shared/protocol.js'
 // REQ-261001203710-0fbf t7：验收文档写入前核验写盘根（判定下沉到写入器本身）
 import { ensureWritableProjectRoot } from './support.js'
+// REQ-261005193546-1b1a FR-1/FR-4：活卡判据单点（本处不再自写取消比较）
+import { liveTasksOf } from '../../domain/status/Predicates.js'
 
 export interface VerificationDocPorts {
   /** 台账仓储（只读快照；只用来取需求记录与验收单） */
@@ -50,7 +52,7 @@ export async function rewriteVerificationDoc(
   const files = new Set<string>([
     ...collect(''), ...collect('design'), ...collect('tasks'), ...collect('reviews'), ...collect('tests'),
   ])
-  const mine = tasks.filter(t => t.requirementId === reqId && t.status !== 'canceled')
+  const mine = liveTasksOf(tasks.filter(t => t.requirementId === reqId))
   const taskById = new Map(mine.map(t => [t.id, t]))
   const items = sheet.items.map(it => {
     const src = it.source

@@ -14,6 +14,7 @@
  * @module dsh-pmboard/application/use-cases/queue-access
  */
 import type { TaskRecord } from '../../shared/protocol.js'
+import { isReadyTask } from '../../domain/status/Predicates.js'
 import { REQUIREMENT_STORE_ERROR, type MutateResult, type MutationOutcome, type RequirementDraft, type RequirementStore, type TaskStore, type UseCaseDeps } from '../ports.js'
 // 队列写盘收口用（调用时使用，不与本文件形成初始化期依赖）
 import { assertWritableRequirementProject } from '../internal/support.js'
@@ -53,18 +54,19 @@ export function requirementStoreOf(deps: { readonly store?: RequirementStore }):
 /**
  * 就绪任务口径（UC-2 / TC-9.2）：日志与父卡取数共用同一个筛选，避免两处漂移。
  *
- * 语义与 `domain/queue/topology.computeReady` 对齐但不依赖队列文件视图：
- * 「自身 todo 且依赖全部 done（已取消视为已了结）」。
+ * REQ-261005193546-1b1a FR-1 / D-8：**行为逐字不变**，实现改为复用单点 `isReadyTask`
+ * （`domain/status/Predicates`）——本函数只做「按 id 建索引 + 逐条筛」这两步机械动作，
+ * 「什么算就绪」不再写在这里（旧实现在此手写了第三份判据，与 `readyTasks` / `computeReady` 漂移）。
+ *
+ * 既有口径（D-8 语义源，保留）：自身 `todo`；依赖 `done` / `canceled` / **缺席（`undefined`）**
+ * 均视为已满足。注意本函数的 `byId` 覆盖**全量**入参，缺席即"依赖 id 不在本需求任务集里"，
+ * 按已满足放行（脏引用由 `validateQueue` 的 V-3 检出）——与 `computeReady` 的"悬空保守不放行"
+ * 是**两处刻意不同的边界**：那处的 byId 也覆盖全量队列，缺席只能来自脏引用；本函数的调用方
+ * 可能只喂活卡集合。
  */
 export function readyTasksOf(tasks: readonly TaskRecord[]): TaskRecord[] {
   const byId = new Map(tasks.map((t) => [t.id, t]))
-  return tasks.filter((t) => {
-    if (t.status !== 'todo') return false
-    return (t.dependsOn ?? []).every((dep) => {
-      const d = byId.get(dep)
-      return d === undefined || d.status === 'done' || d.status === 'canceled'
-    })
-  })
+  return tasks.filter((t) => isReadyTask(t, byId))
 }
 
 /**

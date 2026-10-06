@@ -20,10 +20,13 @@ import { runSubtaskViaTeam } from './SubtaskTeamRun.js'
 // D14（REQ-260927123256-196b 的模块，此前**未接线**）：看板「继续」/启动恢复入口无 exec.agent 时
 // 按绑定窗口兜底解析在线 agent；解不到给可读原因。它同时是团队分支的前置（TeamService 要 live caller）。
 import { ensureAgentHandle } from '../internal/agent-handle.js'
-import { assertDoneEvidence } from '../internal/support.js'
+import { applyRequirementWorkspaceRoot, assertDoneEvidence, rootOfRequirement } from '../internal/support.js'
 import { normalizeArtifactPath } from '../../domain/artifact/ArtifactPath.js'
 import { detectCrossCardOverwrite } from '../internal/cross-card.js'
-import { isSubtask, type TaskRecord } from '../../shared/protocol.js'
+import { parseDocument } from '../internal/doc-parse.js'
+// #15（FR-10）：D-x 原话表的解析单点在节点输入包模块——提示词与输入包**同源**，不各写一份。
+import { decisionRowsIn, requirementDocPath } from '../internal/node-input-package.js'
+import { isSubtask, type RequirementRecord, type TaskRecord } from '../../shared/protocol.js'
 import { transitionTask } from '../internal/task-transition.js'
 import {
   closeExecutions,
@@ -123,7 +126,100 @@ export const STAGE_SCOPE_RULE: Readonly<Record<StageKind, string>> = {
   capture: '【本步边界】只采集不改动：产物落盘 evidence/ 并给可复核命令。**不要**做结论分析（属分析段）。',
 }
 
-export function buildSubtaskPrompt(parent: TaskRecord, subtask: TaskRecord, label: string, workspaceRoot?: string): string {
+/**
+ * 子卡提示词的**上游只读文档**（REQ-261005105032-3b02 #15 · FR-6/FR-9）：
+ * 原型权威版本与 D-x 原话的事实源。
+ *
+ * 为什么由调用方读好再传、而不是 buildSubtaskPrompt 自己读：application 层禁 `import node:`，
+ * IO 一律走注入端口 `deps.docs`；本函数是**同步纯函数**，不持有端口。读不到 → 该字段缺席，
+ * 对应小节**如实不注入**（不拿"目录里第一个 html"顶替权威版本，也不编造裁定原话）。
+ */
+export interface SubtaskPromptDocs {
+  /** `prototypes/INDEX.md` 正文（权威版本的唯一清单）。 */
+  prototypeIndex?: string
+  /** `requirement.md` 正文（「讨论与裁定记录（D-x）」表的原话来源与裁定原文）。 */
+  requirementDoc?: string
+}
+
+/**
+ * INDEX 表里**唯一一条** `authoritative` 行的路径（需求目录相对口径，原样返回）。
+ * 缺表 / 缺列 / 0 条 / 多条 → `undefined`（**不猜**权威版本，调用方据此不注入原型小节）。
+ */
+function authoritativePrototypePath(indexDoc: string | undefined): string | undefined {
+  if (indexDoc === undefined || indexDoc.length === 0) return undefined
+  const table = parseDocument(indexDoc).tables.find(
+    t => t.header.some(h => h.includes('路径')) && t.header.some(h => h.includes('状态')),
+  )
+  if (table === undefined) return undefined
+  const iPath = table.header.findIndex(h => h.includes('路径'))
+  const iStatus = table.header.findIndex(h => h.includes('状态'))
+  if (iPath < 0 || iStatus < 0) return undefined
+  const auth = table.rows
+    .map(r => ({ path: (r[iPath] ?? '').trim(), status: (r[iStatus] ?? '').trim().toLowerCase() }))
+    .filter(r => r.status === 'authoritative' && r.path.length > 0)
+  return auth.length === 1 ? auth[0]?.path : undefined
+}
+
+/**
+ * 本卡的三个小节（#12：渲染为**小节标题**，不是 JSON 字段）。
+ *
+ * 两条口径不许动摇：
+ *   · **只 UI 卡出原型小节**（`side === 'frontend'`）——非 UI 卡不追加（不给非 UI 需求加仪式）；
+ *   · **原型路径只认 INDEX 的权威版本**（本需求点名的坑：不取"目录里第一个 html"）；INDEX 读不到
+ *     或不是恰好一条 authoritative → 整个原型小节**如实不注入**，绝不编造路径。
+ * D-x 小节按编号从 requirement.md 的原话表取**原话来源 + 裁定原文**——不概括、不重写；
+ * 表里没有该编号时如实注明"未读到这一条"，不揣测裁定内容。
+ */
+function renderCardSections(subtask: TaskRecord, docs: SubtaskPromptDocs | undefined): string[] {
+  const sections: string[] = []
+  const prototypeRefs = subtask.prototypeRefs ?? []
+  const decisionRefs = subtask.decisionRefs ?? []
+  if (subtask.side === 'frontend') {
+    const authoritative = authoritativePrototypePath(docs?.prototypeIndex)
+    if (authoritative !== undefined) {
+      sections.push([
+        '【本卡原型（UI 卡）】',
+        '- 权威原型（取 prototypes/INDEX.md 里状态=authoritative 的那条）：' + authoritative,
+        '- 本卡锚点：' + (prototypeRefs.length > 0
+          ? prototypeRefs.join('、')
+          : '（本卡未登记原型锚点——先回拆分/卡面「设计落点」补上锚点，再动手）'),
+      ].join('\n'))
+    }
+  }
+  if (decisionRefs.length > 0) {
+    const rows = new Map(decisionRowsIn(docs?.requirementDoc ?? '').map(r => [r.id, r]))
+    sections.push([
+      '【本卡裁定（D-x 原话）】',
+      ...decisionRefs.map(id => {
+        const row = rows.get(id)
+        // 原话**逐字**引用（含引号与强调符），不加工——加工过就不再是"原话"，追溯链会断在这里。
+        return row === undefined
+          ? '- ' + id + '：（未读到 requirement.md 的「讨论与裁定记录（D-x）」表里这一条——开工前按文档逐条核对，不许自行揣测裁定内容）'
+          : '- ' + id + '：原话来源「' + row.source + '」；裁定「' + row.verdict + '」'
+      }),
+    ].join('\n'))
+  }
+  sections.push([
+    '【验收判据】',
+    '- 只认可失败判据：每条都要给可复核的命令/断言与输出（"已完成/已实现"这类空话不算过）',
+    // 锚点行同样**只对 UI 卡**：非 UI 卡即使被误填了 prototypeRefs，也不把原型仪式带进验收判据。
+    ...(subtask.side === 'frontend' && prototypeRefs.length > 0
+      ? ['- 原型锚点逐个对照权威原型：' + prototypeRefs.join('、') + '（结构断言 + 几何量都要有实测输出）']
+      : []),
+    ...(decisionRefs.length > 0
+      ? ['- 本卡关联的裁定逐条兑现：' + decisionRefs.join('、') + '（判据取 requirement.md 对应行的「判据」列）']
+      : []),
+  ].join('\n'))
+  return sections
+}
+
+export function buildSubtaskPrompt(
+  parent: TaskRecord,
+  subtask: TaskRecord,
+  label: string,
+  workspaceRoot?: string,
+  docs?: SubtaskPromptDocs,
+): string {
   const root = typeof workspaceRoot === 'string' && workspaceRoot.length > 0 ? workspaceRoot : undefined
   const wsBase = root === undefined ? undefined : root.replace(/\\/g, '/').replace(/\/+$/, '').split('/').filter((s) => s.length > 0).pop()
   const forbidGitRoot = wsBase === undefined ? '' : '；**更禁止**以 `' + wsBase + '/` 开头——那是 git 根、比工作区根多一层（本仓实测 `' + wsBase + '/packages/...` 被判"文件不存在"）'
@@ -148,14 +244,17 @@ export function buildSubtaskPrompt(parent: TaskRecord, subtask: TaskRecord, labe
   const evidenceRule = STAGE_EVIDENCE_KIND[stageKey] === 'verdict'
     ? '【本阶段凭证形态】结论族：本阶段产出是判断/输出（复核意见、测试输出、联调结论），把结论写进 completed 即算完工，不要为凑 filesChanged 编造改动文件。'
     : '【本阶段凭证形态】写入族：本阶段完工必须有落盘产出（代码改动 / 联调记录 / 测试用例等），并把真实存在的路径写进 filesChanged——只交结论会被凭证门退回（REQBOARD_SUBTASK_GATE），链会就此停下。'
+  // #12：三个小节追加在「本卡验收标准」之后（判据与锚点/裁定应在同一处读）。cardSections 空 →
+  // 保留原来的空行，输出与改造前逐字节相同。
+  const cardSections = renderCardSections(subtask, docs)
+  const cardRefs = cardSections.length > 0 ? '\n' + cardSections.join('\n\n') + '\n\n' : '\n'
   return `你是实施子代理，只完成这一张子卡的工作，做完即止（不要扩大范围）。
 
 【父卡】${parent.title}
 【本卡阶段】${String(subtask.stageKind ?? '')}（${label}）
 【本卡验收标准（怎么算做完）】
 ${subtask.acceptance}
-
-【父卡实施方案（上下文）】
+${cardRefs}【父卡实施方案（上下文）】
 ${parent.implementation ?? '（父卡未写实施方案）'}
 
 【父卡需求背景】
@@ -166,6 +265,29 @@ ${pathContract}
 【产出要求】完成后**只输出一个 JSON 对象**，不要额外解释；字段必须与下面的形状**逐字对齐**
 （schema 是 additionalProperties:false：多写字段会被判产出无效、本条白跑）：
 ${outputContract}`
+}
+
+/**
+ * 读子卡提示词的上游只读文档（原型权威清单 + requirement.md 的 D-x 表）。
+ *
+ * 三条纪律：
+ *  · IO 只走注入端口 `deps.docs`（application 层禁 `import node:`）；
+ *  · 读不到 / 读失败 → 对应字段**缺席**：提示词如实不注入该小节（不编造路径与原话）；
+ *  · 一次读、整批复用——团队分支为同队其它子卡现算提示词时共用同一份，不重复读盘。
+ */
+async function loadSubtaskPromptDocs(deps: UseCaseDeps, req: RequirementRecord | undefined): Promise<SubtaskPromptDocs> {
+  try {
+    const reqPath = requirementDocPath(req)
+    if (reqPath.length === 0) return {}
+    // INDEX 与 requirement.md 同属需求目录：从需求文档路径切出目录（不 import node:path）。
+    const indexPath = reqPath.replace(/\/[^/]*$/, '/') + 'prototypes/INDEX.md'
+    const out: SubtaskPromptDocs = {}
+    if (deps.docs.exists(reqPath)) out.requirementDoc = await deps.docs.read(reqPath)
+    if (deps.docs.exists(indexPath)) out.prototypeIndex = await deps.docs.read(indexPath)
+    return out
+  } catch {
+    return {} // 读文档失败不得让子卡执行失败：如实不注入，主链照跑
+  }
 }
 
 export interface ExecuteSubtaskInput {
@@ -277,11 +399,21 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
   // 解析不到退回该需求的绑定窗口（sourceSessionId），再无 → 诚实不写快照（缺失 ≠ 0，禁止编造）。
   const req = await requirementStoreOf(deps).get(task.requirementId)
   const sessionKey = safeWindowKey(deps, input.exec) ?? req?.sourceSessionId
+  // REQ-261005141830-7a3b t5（FR-3 / FR-5）：**子代理的根按「这条需求的项目」定**，不取共享单例当前值。
+  //   ① 取根走唯一取数处（有项目身份 → 项目条目 path；缺身份 → 记录自带路径）；
+  //   ② 把共享根校正到它（写侧唯一收敛点），使凭证门（deps.docs.stat）与路径归一按同一根解析；
+  //   ③ 子代理 run 可能长达数分钟，期间邻居窗口会再次改走单例根 —— 出门（凭证门）前再校正一次。
+  // 记录拿不到（req 缺失）→ 两步都 no-op，行为与改造前一致（存量降级，不猜根）。
+  const requirementRoot = rootOfRequirement(deps, req)?.root ?? deps.docs.workspaceRoot()
+  applyRequirementWorkspaceRoot(deps, req)
 
   const actor = { kind: 'system' as const }
   const label = stageLabel(task.stageKind as never)
+  // #12/#15：原型权威版本与 D-x 原话由用例侧经端口读好（application 层无直接 IO），
+  // 提示词只做纯渲染；读不到 → 对应小节不注入。
+  const promptDocs = await loadSubtaskPromptDocs(deps, req)
   // 提示词只算一次：workflow 分支拼进脚本，团队分支作为 team task 描述（含台账子卡 id）。
-  const prompt = buildSubtaskPrompt(parent, task, label, deps.docs.workspaceRoot())
+  const prompt = buildSubtaskPrompt(parent, task, label, requirementRoot, promptDocs)
   let script: string
   try {
     // FR-1（REQ-261004110201-f253）：按「子卡阶段 × 需求难度」查路由表；未配置/未命中 → 不注入
@@ -314,7 +446,7 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
     const viaTeam = await runSubtaskViaTeam(deps, {
       task, parent, caller: teamCaller, prompt,
       // 一次性建全队任务时，为同队其它子卡现算工作要求（避免 SubtaskTeamRun 反向 import 本文件）。
-      promptFor: (t) => buildSubtaskPrompt(parent, t, stageLabel(t.stageKind as never), deps.docs.workspaceRoot()),
+      promptFor: (t) => buildSubtaskPrompt(parent, t, stageLabel(t.stageKind as never), requirementRoot, promptDocs),
     })
     outcome = viaTeam.ok ? { ok: true } : { ok: false, reason: viaTeam.reason }
     rawOutput = viaTeam.ok
@@ -367,7 +499,7 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
   // （如 agent-dh/packages/...）或绝对路径，而凭证门按 deps.docs.workspaceRoot() 解析——
   // 不归一就会把真实存在的文件判成「不存在」，子卡恒不过门、链必停。这里统一收敛成
   // 工作区相对路径再落 lastReport 与跨卡判定。
-  const wsRoot = deps.docs.workspaceRoot()
+  const wsRoot = requirementRoot
   const parsed: SubtaskOutput = {
     ...parsedRaw,
     filesChanged: parsedRaw.filesChanged
@@ -452,6 +584,10 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
 
   try {
     const doneAt = deps.clock.now()
+    // REQ-261005141830-7a3b t5（FR-3 / FR-5）：子代理 run 期间邻居窗口可能把共享单例根改走——
+    // 出门前再校正一次，保证凭证门（deps.docs.stat 解析 filesChanged）按**本需求项目的根**，
+    // 而不是「最后一个调用的窗口」的根（否则子卡会被误判「文件不存在」而恒不过门）。
+    applyRequirementWorkspaceRoot(deps, req)
     // t8/B11：done 凭证门只需要需求的 createdAt ⇒ 取**摘要**（零文件读）
     const reqCreatedAtForDone = (await requirementStoreOf(deps).getSummary(task.requirementId))?.createdAt
     await mutateQueue(deps, task.requirementId, (tasks) => {

@@ -17,6 +17,9 @@ import { classifyTurnEnd, truncateReason, type TurnEndClassification } from '../
 // FR-1：进程级"上游不可用"闩（多窗口共享额度，只停自己没意义）。
 import type { ProviderLatch } from '../internal/provider-latch.js'
 import { isOpenRequirement } from '../../domain/status/Predicates.js'
+// FR-4：本拍放弃的有界留痕——只进诊断面（不写台账评论），规则见 wake-skip-trace.ts。
+import { captureDiag } from '../internal/diag-log.js'
+import { createWakeSkipTracer } from './wake-skip-trace.js'
 import {
   isDrivableRequirement, roundLimitFor, roundReservationValid, sameQueued, sameRound,
   recordFailure, breakerTripped,
@@ -83,6 +86,13 @@ export interface DiveRoundPorts {
   logger: DiveRoundLogger
   /** 🆕 任务存储（用于实施阶段中断自动恢复检测） */
   taskStore?: { listByRequirement(requirementId: string): Promise<Array<{ status: string }>> }
+  /**
+   * 会话 → 项目身份（REQ-261005141830-7a3b t6 · FR-7）：idle 拍判「这条需求是不是我这个项目的」。
+   *
+   * 缺省 `undefined` = 未装配（老装配 / 宿主没有 workspace 注册表）→ 归属一律放行，
+   * 行为与改造前逐字一致（FR-8：降级不中断；判定结果由调用方如实标注）。
+   */
+  projectIdOfWindow?: (windowKey: string) => string | undefined
 }
 
 export type PreStepDecision =
@@ -119,6 +129,8 @@ export function createDiveRoundDriver(ports: DiveRoundPorts): DiveRoundDriver {
    * 采集半只登记、不投递；round 半在 armed+active 的下一次可驱动 idle 拍消费它作为回合消息正文。
    */
   const pendingReminders = new Map<string, string>()
+  /** FR-4：本拍放弃的有界留痕（同因 60s 冷却；只进诊断面，不写台账评论）。 */
+  const wakeSkip = createWakeSkipTracer({ now: ports.now, emit: captureDiag })
   /** teardown 后全局关闭准入（状态表会被清空，故不能只靠 per-state stopping）。 */
   let stopped = false
 
@@ -141,10 +153,44 @@ export function createDiveRoundDriver(ports: DiveRoundPorts): DiveRoundDriver {
   function requirementById(id: string): RequirementFacts | undefined {
     return ports.peekFacts().find(r => r.id === id)
   }
+  /**
+   * **归属判定**（REQ-261005141830-7a3b t6 · FR-7）：两侧都有项目身份就比 id；任一侧缺身份 → 放行。
+   *
+   * 为什么不在这里做"路径兜底判定"：driver 手里只有项目 id 与事实投影，**没有会话 cwd**——
+   * 拿不到可比的两侧根就不猜、不拦（与 `support.requireSameProject` 的三态同口径）。
+   * 老装配（`projectIdOfWindow` 未装配）⇒ 恒 `path-fallback` 放行，行为与改造前逐字一致。
+   */
+  function ownedByWindow(req: RequirementFacts, windowId: string): { ok: boolean; by: 'project-id' | 'path-fallback'; windowProjectId?: string } {
+    const windowProjectId = ports.projectIdOfWindow?.(windowId)
+    const reqProjectId = typeof req.projectId === 'string' && req.projectId.trim().length > 0 ? req.projectId.trim() : undefined
+    if (windowProjectId !== undefined && reqProjectId !== undefined) {
+      return { ok: windowProjectId === reqProjectId, by: 'project-id', windowProjectId }
+    }
+    return { ok: true, by: 'path-fallback', ...(windowProjectId !== undefined ? { windowProjectId } : {}) }
+  }
+  /**
+   * 「**这个窗口**绑的需求」的唯一取数处（FR-7）：
+   *   ① 按 `sourceSessionId` 取 —— 起轮 / 投递仍是**窗口级**（不放宽：同项目多窗口不重复起轮）；
+   *   ② 再过项目归属 —— 归属不符 → 不驱动、不投递，并留痕（`project=` 行，现场不靠猜）。
+   * 归属「拿不到判据」（任一侧缺身份）→ 放行（老装配零行为变化；存量未归属需求照旧可驱动）。
+   */
+  function requirementBoundTo(id: string | undefined): RequirementFacts | undefined {
+    if (id === undefined) return undefined
+    const req = ports.peekFacts().find(r => r.sourceSessionId === id)
+    if (req === undefined) return undefined
+    const verdict = ownedByWindow(req, id)
+    if (verdict.ok) return req
+    log.warn(
+      'dive: 跳过归属不符的需求（本次零投递）—— 需求=' + req.id
+      + ' project=' + (req.projectId ?? 'unattributed')
+      + ' 窗口=' + id.slice(0, 16) + ' project=' + (verdict.windowProjectId ?? 'unattributed')
+      + ' by=' + verdict.by,
+    )
+    return undefined
+  }
   function requirementFor(state: DriverState): RequirementFacts | undefined {
     if (state.attempt !== undefined) return requirementById(state.attempt.requirementId)
-    const id = agentIdOf(state.agent)
-    return id === undefined ? undefined : ports.peekFacts().find(r => r.sourceSessionId === id)
+    return requirementBoundTo(agentIdOf(state.agent))
   }
   function agentLive(state: DriverState): boolean {
     const id = agentIdOf(state.agent)
@@ -166,7 +212,7 @@ export function createDiveRoundDriver(ports: DiveRoundPorts): DiveRoundDriver {
     if (latch === undefined) return false
     if (ports.providerLatch?.isOpen() === true) return true
     const id = agentIdOf(state.agent)
-    const req = id === undefined ? undefined : ports.peekFacts().find(r => r.sourceSessionId === id)
+    const req = requirementBoundTo(id)
     if (req === undefined) return true
     // 人的意图被改成手动 → 继续闭锁（只有人能 arm 回来）。
     if (req.dive?.activation !== 'armed') return true
@@ -408,10 +454,13 @@ export function createDiveRoundDriver(ports: DiveRoundPorts): DiveRoundDriver {
     if (state.attempt !== undefined) { state.attempt = undefined; state.needsCheckpoint = true; state.requested = true; return }
     const id = agentIdOf(state.agent)
     if (id === undefined) return
-    const bound = (): RequirementFacts | undefined =>
-      ports.peekFacts().find(r => r.sourceSessionId === id)
+    const bound = (): RequirementFacts | undefined => requirementBoundTo(id)
     let req = bound()
-    if (!isDrivableRequirement(req)) return
+    // FR-4：不可驱动是本拍的**正常**收手（停手位 / 未武装），但要能在诊断面回答「为什么没起轮」。
+    if (!isDrivableRequirement(req)) {
+      if (req !== undefined) wakeSkip.noteGiveUp(req.id, req.status, 'not-drivable')
+      return
+    }
     // 终态需求永不被唤醒（2026-10-02 生产实测抓到的缺陷）：`bound()` 只按「哪个需求绑在这个窗口」查找，
     // 不看状态；于是启动迁移把一批**已归档**需求恢复成 armed 之后，只要有 idle 拍就会给它们投一轮
     // （实测：REQ-261001201200-8f8b，archived，被投了第 1 回合）。
@@ -423,7 +472,10 @@ export function createDiveRoundDriver(ports: DiveRoundPorts): DiveRoundDriver {
     try { await ports.checkpoint() } catch (err) { log.warn('dive: 排队点检查点失败 → 解除武装', err); disarm(state, 'checkpoint-failed'); return }
     if (!readyToDrive(state) || state.needsCheckpoint || state.attempt !== undefined) return
     req = bound()
-    if (!isDrivableRequirement(req)) return
+    if (!isDrivableRequirement(req)) {
+      if (req !== undefined) wakeSkip.noteGiveUp(req.id, req.status, 'not-drivable')
+      return
+    }
 
     // 🆕 REQ-261002141430-a5ef FR-1：弹框在途 → 停手等人（不投回合）。
     // 为什么放在 checkpoint 之后、构造 attempt 之前：这是最后一个"还来得及收手"的点；
@@ -431,6 +483,7 @@ export function createDiveRoundDriver(ports: DiveRoundPorts): DiveRoundDriver {
     // （台账上的停手位由 enterAwaitingConfirm 写，作答/过期后由 exit 清）。
     if (ports.dialogInFlight?.(req!.id) === true) {
       log.info('dive: 人工门禁弹框在途 → 本拍不起轮（需求=' + req!.id + '，等作答）')
+      wakeSkip.noteGiveUp(req!.id, req!.status, 'dialog-in-flight')
       return
     }
 
@@ -446,6 +499,7 @@ export function createDiveRoundDriver(ports: DiveRoundPorts): DiveRoundDriver {
       try { gate = await ports.humanGate(req!.id) } catch (err) { log.warn('dive: 人工门判据抛错（本拍按门关处理）', err) }
       if (gate.open) {
         log.info('dive: 人工门开着（' + (gate.reason ?? 'unknown') + '）→ 本拍不起轮，等人裁决（需求=' + req!.id + '）')
+        wakeSkip.noteGiveUp(req!.id, req!.status, 'human-gate')
         return
       }
     }

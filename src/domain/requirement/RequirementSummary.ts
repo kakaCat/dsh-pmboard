@@ -27,6 +27,7 @@ import type {
   RequirementStatus,
   StageKey,
 } from '../../shared/protocol.js'
+import type { GateReading, PlanState } from '../artifact/GateReadings.js'
 
 /**
  * 推进告警的**摘要子集**。
@@ -70,6 +71,11 @@ export interface RequirementSummary {
    * 摘要层带上它是为了授权判定能在摘要粒度上按席位取（此前只看 sourceSessionId 单值）。
    */
   readonly seats?: import('../../shared/protocol.js').WindowSeat[]
+  /**
+   * 项目唯一标识（REQ-261005141830-7a3b FR-1/FR-10）：看板按项目聚合、驱动判归属都要读它，
+   * 而这些判定发生在摘要投影之后 —— 不进摘要就得回读整条需求。
+   */
+  readonly projectId?: string
   readonly workspaceRoot?: string
   readonly docBasePath?: string
   readonly advanceAlert?: AdvanceAlert
@@ -85,6 +91,26 @@ export interface RequirementSummary {
    * 它是**有界标量**（一个时间戳），不违反"摘要不带无上界字段"。
    */
   readonly advanceLockAt?: number
+  /**
+   * 卡面产物门读数（REQ-261006175040-12d4 FR-1/FR-2/FR-3）。
+   *
+   * **有界**：长度 = 该分类生效门数（feature 4 / bug 3 / spike 1，上限 5），每项只有 kind/status/count
+   * 三个标量——这是"摘要不带无上界大字段"（`BIG_FIELD_KEYS`）之下唯一能表达门状态的形态。
+   *
+   * **缺省 = 读数不可得**（旧服务端未下发 / 外置对象读失败）：卡面据此把门相关块**整块不渲染**，
+   * 而不是渲染成「缺失」（FR-6：读不到 ≠ 缺失，本次缺陷的教训）。
+   */
+  readonly gates?: readonly GateReading[]
+  /**
+   * 计划状态（FR-5）：`approved` / `rejected` / `pending`。
+   * 缺省 = 记录里没有计划对象（未提交计划）——计划 chip 没有「缺失」态，故与"读数不可得"在渲染上同形。
+   */
+  readonly planState?: PlanState
+  /**
+   * 归档材料是否已备（FR-5）：判据与领域谓词 `closingGapOf` **同源**
+   * （归档记录在册 ∨ 产物含 `kind='archive'`）。缺省 = 不可得。
+   */
+  readonly archivePrepared?: boolean
 }
 
 /**
@@ -112,6 +138,8 @@ export interface SummarizableRequirement {
   readonly paused?: boolean
   readonly autoRun?: boolean
   readonly sourceSessionId?: string
+  /** 项目唯一标识（FR-1/FR-10）：缺省 = 未归属（存量）。 */
+  readonly projectId?: string
   readonly workspaceRoot?: string
   /** 席位（REQ-261003215944-9e04 FR-2）：摘要层也要能按席位取，缺省 = 存量单 owner。 */
   readonly seats?: import('../../shared/protocol.js').WindowSeat[]
@@ -130,6 +158,16 @@ export interface SummarizableRequirement {
    */
   readonly artifacts?: readonly unknown[]
   readonly artifactCount?: number
+  /**
+   * 门读数 / 计划状态 / 归档材料是否已备（REQ-261006175040-12d4 FR-2）。
+   *
+   * **谁算**：装配点 `shared/board-summary.ts` 的 `boardSummaryOf`（门清单 + domain 纯函数）；
+   * 本层只**透传**，不在这里判定——判定单点在 `domain/artifact/GateReadings.ts`，
+   * 免得"投影层自己算一套"再长出第二份口径。
+   */
+  readonly gates?: readonly GateReading[]
+  readonly planState?: PlanState
+  readonly archivePrepared?: boolean
   readonly advance?: { readonly pausedReason?: string; readonly failureStreak?: number; readonly lockAt?: number }
   /** 驱动判定用的有界子集（`RequirementFacts.dive` 的来源）。 */
   readonly dive?: RequirementDive
@@ -151,7 +189,9 @@ export const SUMMARY_KEYS: readonly string[] = [
   'id', 'title', 'status', 'blocked', 'createdAt', 'updatedAt', 'version',
   'commentCount', 'artifactCount',
   'category', 'promptDifficulty', 'paused', 'autoRun',
-  'sourceSessionId', 'workspaceRoot', 'docBasePath', 'advanceAlert', 'priority', 'advanceLockAt',
+  'sourceSessionId', 'projectId', 'workspaceRoot', 'docBasePath', 'advanceAlert', 'priority', 'advanceLockAt',
+  // REQ-261006175040-12d4：门读数与两枚有界状态（有界：≤5 项 × 3 标量 + 2 布尔/枚举）
+  'gates', 'planState', 'archivePrepared',
 ]
 
 /**
@@ -222,9 +262,14 @@ export function summarize(record: SummarizableRequirement): RequirementSummary {
     ...(record.autoRun !== undefined ? { autoRun: record.autoRun } : {}),
     ...(record.sourceSessionId !== undefined ? { sourceSessionId: record.sourceSessionId } : {}),
     ...(record.seats !== undefined ? { seats: record.seats } : {}),
+    ...(record.projectId !== undefined ? { projectId: record.projectId } : {}),
     ...(record.workspaceRoot !== undefined ? { workspaceRoot: record.workspaceRoot } : {}),
     ...(record.docBasePath !== undefined ? { docBasePath: record.docBasePath } : {}),
     ...(record.priority !== undefined ? { priority: record.priority } : {}),
+    // REQ-261006175040-12d4 FR-2/FR-6：三枚读数原样透传；缺省即无键（"读不到"与"空/缺失"必须可区分）
+    ...(record.gates !== undefined ? { gates: record.gates } : {}),
+    ...(record.planState !== undefined ? { planState: record.planState } : {}),
+    ...(record.archivePrepared !== undefined ? { archivePrepared: record.archivePrepared } : {}),
     ...(lockAt !== undefined ? { advanceLockAt: lockAt } : {}),
     ...(alert !== undefined ? { advanceAlert: alert } : {}),
   }
@@ -263,8 +308,21 @@ export interface RequirementFacts {
   readonly version: number
   readonly category?: RequirementCategory
   readonly sourceSessionId?: string
+  /**
+   * 项目唯一标识（FR-1/FR-4）：驱动在 idle 同步缝里判"这条需求是不是我这个项目的"读的就是它；
+   * 缺省 = 未归属（存量）→ 判定走路径兜底并标注。
+   */
+  readonly projectId?: string
   /** 自动推进开关（round-driver 的"实施阶段中断自动恢复"要读它）。 */
   readonly autoRun?: boolean
+  /**
+   * 立项时人选的提示词难度（四档；REQ-261005154851-8512 FR-1）。
+   *
+   * 为什么必须进同步缝：每轮系统提示词的装配是**同步**的（`capture-section`），拿不到就得回落默认轻档；
+   * 而且三处取词调用点都从这一份投影取值，才不会各自读台账形成第二份真相。
+   * 缺省 = 键不出现（"未知"≠"默认 standard"）——调用点据此回落文本推断 → 默认轻档。
+   */
+  readonly promptDifficulty?: PromptDifficulty
   /** 人显式暂停位（与 `advance.pausedReason` 分属"人意图/运行时告警"两套，见 protocol 注释）。 */
   readonly paused?: boolean
   /** 驱动判定读的有界子集（`dive` 本身只有几个标量 + 一个小的 driverHealth）。 */
@@ -323,7 +381,11 @@ export function factsOf(record: SummarizableRequirement): RequirementFacts {
     version: record.version,
     ...(record.category !== undefined ? { category: record.category } : {}),
     ...(record.sourceSessionId !== undefined ? { sourceSessionId: record.sourceSessionId } : {}),
+    ...(record.projectId !== undefined ? { projectId: record.projectId } : {}),
     ...(record.autoRun !== undefined ? { autoRun: record.autoRun } : {}),
+    // REQ-261005154851-8512 FR-1：难度声明进同步缝（注入组装是同步的，读不到台账）；
+    // 缺省则**键不出现**——"未知"不等于"默认 standard"。
+    ...(record.promptDifficulty !== undefined ? { promptDifficulty: record.promptDifficulty } : {}),
     ...(record.paused !== undefined ? { paused: record.paused } : {}),
     ...(record.dive !== undefined ? { dive: record.dive } : {}),
     // `advance` 只投影 pauseReason：带整条会连 history（append-only、无上界）一起进同步口。

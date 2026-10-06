@@ -5,6 +5,9 @@
 import { AcceptanceGate } from '../../../vendor/reqboard/src/rtm/acceptance-gate.js'
 import type { AcceptanceTracking } from '../../../vendor/reqboard/src/types/rtm.js'
 import type { VerificationSheet } from '../../shared/protocol.js'
+// 来源 → fr_id 的映射单点在 domain（§10 #31）：本文件不再自己写 taskId 分支，
+// 否则新 source 一到就静默落成 fr_id='UNKNOWN'（与 status-rtm-integration 各写一份必然漂移）。
+import { rtmTraceIdOf } from '../../domain/workflow/AcceptanceSheetSpec.js'
 
 export interface AcceptSheetRTMResult {
   gate_check: {
@@ -44,10 +47,14 @@ export function checkAcceptanceGate(
   // 将验收单转换为 AcceptanceTracking 格式
   const acceptanceTracking: AcceptanceTracking[] = sheet.items.map(item => ({
     acceptance_id: item.id,
-    fr_id: item.source.kind === 'requirement' ? 'REQ-LEVEL' : (item.source.taskId ?? 'UNKNOWN'),
+    fr_id: rtmTraceIdOf(item.source),
     description: item.criterion,
     verification: item.howToVerify ?? item.criterion,
-    status: item.status,
+    // REQ-261006092213-4f5b FR-6（D-5）：`unverified`（点了通过却没结果）**不算已裁决**——
+    // 汇报给 vendor 门禁时按 `pending` 计。vendor 的 checkGate 只认 pending/failed/passed 三值，
+    // 不映射的话"全部未复核"会算出 gate_status=passed ⇒ should_archive=true（未复核项冒充放行）。
+    // 与 domain 的 `sheetGateStatus`（同样把 unverified 视为待裁决）保持同一口径。
+    status: item.status === 'unverified' ? 'pending' : item.status,
     evidence: item.evidence ?? null,
     judged_at: item.decidedAt ?? null,
     judged_by: item.decidedBy?.sessionId ?? null,

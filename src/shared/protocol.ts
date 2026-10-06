@@ -22,6 +22,9 @@ import type { RequirementCategory } from '../domain/requirement/Requirement.js'
 import type { ArtifactKind, ArchiveDoc, ArchiveDocRule } from '../domain/artifact/ArtifactSpec.js'
 // 依赖传递归约（零 import 纯函数）：计划任务表的 depends_on 同样只保留**直接前置**。
 import { transitiveReduce } from '../domain/queue/transitiveReduction.js'
+// 就绪集合单点（REQ-261005193546-1b1a FR-1/D-8）：shared 允许 import domain（层门禁核对过），
+// 本文件的 readyTasks 收敛为它的薄封装——依赖判定的口径只在 domain 一份。
+import { liveReadyTasks } from '../domain/status/Predicates.js'
 // RTM 验收追踪的**唯一声明处**在 vendor（type-only 引用：编译期擦除，不进运行时不增依赖）。
 // VerificationSheet.rtmTracking 是 RTM 增强层快照，直接复用该形状，避免在协议层再抄一份造成漂移。
 import type { AcceptanceTracking } from '../../vendor/reqboard/src/types/rtm.js'
@@ -165,6 +168,50 @@ export function recordStatus(
   return event
 }
 
+/** `markCanceled` 的入参（`at` 与该次 `statusHistory` 事件的 `at` 必须同一个数值）。 */
+export interface CancelTrailOpts {
+  /** 取消时刻（epoch ms）——调用方传的**就是**同一次状态事件用的那个时钟值 */
+  at: number
+  /** 触发这次取消的操作者；`kind !== 'human'` → 不写 `canceledBy` */
+  by: ActorRef
+  /** 取消原因（自由文本；`trim()` 后非空才写，**原文保留**——不截断、不 trim 后落盘） */
+  reason?: string
+}
+
+/**
+ * 取消留痕三字段的**唯一写入口**（REQ-261005193546-1b1a FR-3 / design/backend.md §取消留痕写侧）。
+ *
+ * 写什么（逐字）：
+ *  - `task.canceledAt = opts.at`——与那一次 `statusHistory` 的 `→canceled` 事件**同源同刻**
+ *    （同一次调用、同一个时钟值），两处留痕可互相校验；
+ *  - `task.canceledBy` **仅当 `opts.by.kind === 'human'`** 才写（`kind` 收窄为字面量 `'human'`；
+ *    `sessionId` 缺省时**不写该键**、不写空串）；真非人工路径**整字段不写**并 `console.warn`
+ *    ——留痕只记人，绝不用 `kind:'system'` 之类替身值冒充"人取消"；
+ *  - `task.cancelReason` **仅当 `opts.reason` trim 后非空**才写，且写**原文**（不 trim、不截断、无硬上限）。
+ *
+ * 语义 = **最近一次取消（覆盖式）**：再次取消覆盖这三个字段；复活（`canceled → todo`）**不清空**
+ * （审计事实："曾经取消过、谁、何时、为何"）。每次取消的历史在 `statusHistory` / `revisions` 里
+ * ——**首次取消不可追**。缺省 = **未采集**（本需求上线前取消的卡）；不补 `0`、不补 `null`、不补当前时间。
+ *
+ * 纯就地写：无 IO、不落盘、不返回新对象、不新建数组。必须与 `status = 'canceled'` 在**同一对象、
+ * 同一次写事务**内调用（半写态——有 `status` 无留痕——不允许）。
+ */
+export function markCanceled(task: TaskRecord, opts: CancelTrailOpts): void {
+  task.canceledAt = opts.at
+  if (opts.by.kind === 'human') {
+    task.canceledBy = {
+      kind: 'human',
+      ...(opts.by.sessionId !== undefined ? { sessionId: opts.by.sessionId } : {}),
+    }
+  } else {
+    console.warn(
+      '[reqboard] markCanceled：非人工路径（kind=' + opts.by.kind + '）取消任务 ' + task.id
+      + '——不写 canceledBy（取消是人工门动作，留痕只记人）',
+    )
+  }
+  if (opts.reason !== undefined && opts.reason.trim().length > 0) task.cancelReason = opts.reason
+}
+
 /** 某状态首次进入的时间（未进入过 → undefined）。 */
 export function milestoneAt(record: { statusHistory?: StatusEvent[] }, status: string): number | undefined {
   return record.statusHistory?.find(e => e.status === status)?.at
@@ -249,9 +296,12 @@ export const ALL_TASK_SIDES: readonly TaskSide[] = ['frontend', 'backend', 'full
 /**
  * reqboard_submit 的提交类型（工具 kind 入参）。注意 'design' 与需求状态同名但**不是**状态，
  * 不参与状态判定；定义放 shared 层是因为适配层（tools/http）禁止出现状态名字面量（layer-boundary 门禁）。
+ *
+ * 'prototype' 是入参白名单的一部分（REQ-261005105032-3b02 FR-2）：白名单先放行、用例侧再落
+ * 具体登记行为——两件事分开，避免"白名单已改、用例没改"时直接被判成非法入参而看不见缺口。
  */
-export type SubmitKind = 'requirement' | 'plan' | 'verification' | 'archive' | 'design'
-export const SUBMIT_KINDS: readonly SubmitKind[] = ['requirement', 'plan', 'verification', 'archive', 'design']
+export type SubmitKind = 'requirement' | 'plan' | 'verification' | 'archive' | 'design' | 'prototype'
+export const SUBMIT_KINDS: readonly SubmitKind[] = ['requirement', 'plan', 'verification', 'archive', 'design', 'prototype']
 
 /** 该 side 默认是否需要联调（建卡未显式标 skipIntegration 时生效）。 */
 export function defaultNeedsIntegration(side: TaskSide): boolean {
@@ -310,6 +360,30 @@ export interface StageArtifact {
   /** 自动发现时的文件 mtime / 大小（审计与新鲜度展示用）。 */
   fileMtime?: number
   fileSize?: number
+  /**
+   * 原型产物元数据（REQ-261005105032-3b02 FR-2/FR-4，决议 `#41` 是**唯一字段名事实源**）：
+   * 登记 `kind=prototype` 产物时抽取的 FR 锚点与 proto-geometry 观测清单——下游读它，
+   * 不必再重解析原型 HTML。
+   *
+   * **可选**：只有原型产物注入；缺省 = 未采集（旧产物记录与所有非原型产物都缺该键），
+   * 读侧不判坏。**加性（additive）变更、零迁移**（决议 `#50`）：旧记录缺该键不等于数据坏，
+   * **不补齐、不改写、无迁移脚本**，旧读取路径与旧形状一律不变。
+   *
+   * geometry 元素与设计文档 §3 的 `proto-geometry` 块**同源同形状**（`unit` / `at.state`
+   * 为闭值域）；刻意**不含阈值字段**（D-10）——原型只放观测量名与实测值，阈值属设计决策。
+   * `source` 缺省 `'prototype'`（agent 量原型自身渲染所得），人给的量化值标 `'human'`（决议 `#8`）。
+   */
+  prototypeMeta?: {
+    /** FR 锚点清单：`fr` = FR 编号，`selector` = 原型页面内该锚点区块的选择器/定位串。 */
+    anchors: { fr: string; selector: string }[]
+    geometry: {
+      name: string
+      value: number
+      unit: 'px' | 'count' | 'ratio'
+      at: { width: number; state: 'inflight' | 'terminal' }
+      source?: 'prototype' | 'human'
+    }[]
+  }
 }
 
 // STAGE_ARTIFACT_REQUIREMENTS / ARTIFACT_CONFIRM_GATES 迁至 domain/artifact/ArtifactSpec.ts（t2），
@@ -649,6 +723,24 @@ export interface PlanTask {
    */
   requirement_refs?: string[]
   /**
+   * 本卡承接的**原型锚点**（REQ-261005105032-3b02 FR-5 / t12）：如 `["prototypes/detail.html#FR-4"]`。
+   *
+   * 为什么必须在计划层就有这个键：UI 卡的「设计落点」是门禁的判据来源
+   * （`assertClauseCoverageGate` 的锚点维），而它此前**全仓没有写侧**——本接口没有该键、
+   * 工具 schema 未声明、`normalizePlanTasks` 按白名单搬运直接丢，于是门禁没有数据可查、
+   * 落库后 `TaskRecord.prototypeRefs` 恒空、子卡提示词永远取不到原型路径。
+   * 缺省 = 未申报（非 UI 卡合法），不写空数组；加性变更、零迁移（决议 `#50`）。
+   */
+  prototypeRefs?: string[]
+  /**
+   * 本卡承接的 **D-x 裁定**编号（REQ-261005105032-3b02 FR-9 / t12）：如 `["D-1","D-3"]`。
+   *
+   * 与 `TaskRecord.decisionRefs` 同名同义（落库后逐字搬运）：供 RTM `covers_decisions`
+   * 与「每条 D-x 必须被引用」的覆盖度点名——没有写侧时那条覆盖度恒空。
+   * 缺省 = 未申报，不写空数组；加性变更、零迁移（决议 `#50`，同上）。
+   */
+  decisionRefs?: string[]
+  /**
    * 卡片体量声明（REQ-261002175818-80a8 t2 / FR-1、FR-7）：`{ files, anchors, chars }`。
    *
    * 缺省 = **未声明**（存量计划与旧台账都是这个形状）：不判定、不报错、**不冒充 0**。
@@ -888,8 +980,9 @@ export interface ArchiveRecord {
   amendments?: ArchiveAmendment[]
   submittedAt: number
   submittedBy: ActorRef
-  archivedAt?: number
-  archivedBy?: ActorRef
+  // REQ-261006123819-3af3 FR-3（D-2）：原「归档时间 / 归档人」两个字段**从来没有写入者**
+  // （64 条归档记录命中 0），读取分支却让「已归档」永远不可达。已删除；归档时刻改由
+  // `domain/status/ArchivedMoment.archivedMomentOf(req)` 从 statusHistory 取（唯一判定点）。
 }
 
 /** 计划是否已被批准（拆分的代码级前置条件）。 */
@@ -899,6 +992,24 @@ export function planApproved(req: { plan?: PlanRecord }): boolean {
 
 // VACUOUS_ACCEPTANCE / VERIFIABLE_ANCHOR 与可证伪判定迁至
 // domain/task/Acceptability.ts（REQ-47939a t2）：checkAcceptance(key, acceptance)。
+
+/**
+ * 字符串数组字段的**只搬运**规整（REQ-261005105032-3b02 t12）。
+ *
+ * 为什么不做形态校验：`prototypeRefs` 的形态判据属门禁职责（形态不合法要**逐卡点名**，
+ * 而不是让整份计划提交时炸在格式错上）；这里只保证"是字符串数组、去掉空白项、去重"，
+ * 非数组（写成字符串等手滑）按未申报处理——与 `asDependsOn` 一类搬运字段同口径。
+ */
+function stringListOf(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const out: string[] = []
+  for (const item of raw) {
+    if (typeof item !== 'string') continue
+    const t = item.trim()
+    if (t.length > 0 && !out.includes(t)) out.push(t)
+  }
+  return out
+}
 
 /** 计划任务表校验规整（key 唯一；phase/side 合法；标题非空；依赖只能指向**前面已定义**的计划内 key——落库按数组顺序解析，前向引用会在 decompose 时炸（REQ-2e9473 事故 G）；acceptance 可证伪；implementation 必填）。 */
 export function normalizePlanTasks(raw: unknown): PlanTask[] {
@@ -948,6 +1059,12 @@ export function normalizePlanTasks(raw: unknown): PlanTask[] {
     // 与上一个字段同一条教训：白名单搬运不带上它，计划里写了也到不了落库。
     const footprint = normalizeFootprint(o.footprint, '计划任务 ' + key + ' 的 footprint')
     assertFootprintFloor(footprint, implementation, '计划任务 ' + key + ' 的 footprint')
+    // 原型锚点 / 关联 D-x（REQ-261005105032-3b02 FR-5、FR-9 / t12）：**保留**这两个键。
+    // 白名单搬运**不带上它们 = 静默丢弃**，而这正是本卡要堵的洞——门禁（UI 卡锚点维）与
+    // RTM（covers_prototypes / covers_decisions）、子卡提示词都只从落库值取数，丢了就恒空。
+    // 只做搬运与去空，形态判定留在门禁（形态不合法要逐卡点名，而不是让整份计划提交时炸在格式上）。
+    const prototypeRefs = stringListOf(o.prototypeRefs ?? o.prototype_refs)
+    const decisionRefs = stringListOf(o.decisionRefs ?? o.decision_refs)
     out.push({
       key,
       title: normalizeTitle(o.title),
@@ -962,6 +1079,8 @@ export function normalizePlanTasks(raw: unknown): PlanTask[] {
       ...(template !== undefined ? { template } : {}),
       ...(skipIntegration ? { skipIntegration } : {}),
       ...(requirementRefs.length > 0 ? { requirement_refs: requirementRefs } : {}),
+      ...(prototypeRefs.length > 0 ? { prototypeRefs } : {}),
+      ...(decisionRefs.length > 0 ? { decisionRefs } : {}),
       ...(footprint !== undefined ? { footprint } : {}),
     })
   })
@@ -1271,10 +1390,24 @@ export interface RequirementRecord {
   /** 需求文档基础路径（用户在立项时选择，如 docs/requirements/<REQ>/ 或 docs/rfcs/） */
   docBasePath?: string
   /**
+   * 需求所属**项目**的稳定唯一标识（REQ-261005141830-7a3b FR-1/FR-10）——宿主 `workspace.id`。
+   *
+   * 为什么必须有它：改造前"这条需求属于哪个项目"只能靠 `workspaceRoot`（路径）比较，
+   * 而路径是**位置**不是**身份**（软链 / 相对写法 / 移动 / 复制都会裂成两个身份）。
+   * 有了它，「同一项目」= id 相等；根则由 id 从项目条目带出（1 : 1，同一条目上的两个字段）。
+   *
+   * 缺省 = 未归属（存量需求，或立项窗口不属于任何项目）——读端回落 `workspaceRoot` 并**如实标注**，
+   * 不迁移、不拒写（裁定 D-3）。
+   */
+  projectId?: string
+  /**
    * 需求级工作区根（REQ-260929210741-30ae FR-6）：立项时选定，绝对路径。
    * 该需求的所有文件操作（docs/queue/产物登记/任务卡文档）以此根拼接相对路径。
    * undefined = 存量需求 → 解析链落到会话 header.cwd。
    * 一经落库不可变；非法值（非绝对路径/目录已删）读侧降级到会话 cwd + warn。
+   *
+   * REQ-261005141830-7a3b 起**角色降级**：由「判定唯一权威」降为「存量兜底 + 来源标注」——
+   * 有 `projectId` 时根由它带出；本字段只在 id 缺失时兜底（见 `internal/support.rootOf`）。
    */
   workspaceRoot?: string
   /** 文档链接（需求文档/UI/方案），相对工作区路径或 URL */
@@ -1509,6 +1642,22 @@ export interface TaskRecord {
   /** 需求条款引用（RTM 覆盖度追踪：该任务实现/测试了哪些需求编号，如 ["FR-1", "FR-2"]） */
   requirementRefs?: string[]
   /**
+   * 该卡承接的**原型锚点**引用（REQ-261005105032-3b02 FR-9，决议 `#36`）：
+   * 取值 = 锚点引用原文，如 `["prototypes/detail.html#FR-4"]`。
+   *
+   * 为什么与 requirementRefs 分列：锚点是页面内区块的定位符，**不得写进 serves**——
+   * 混算会让覆盖度虚高（serves 侧已由 `stripPrototypeAnchors` 前置抹除，见 content-gates）。
+   * **可选**：缺省 = 未采集（无锚点的卡合法）；加性变更、零迁移（决议 `#50`）——
+   * 旧卡缺该键不补齐、不改写、无迁移脚本，旧读取路径与旧形状不变。
+   */
+  prototypeRefs?: string[]
+  /**
+   * 该卡承接的 **D-x 裁定**编号（REQ-261005105032-3b02 FR-9，决议 `#36`）：如 `["D-1","D-2"]`。
+   * 与 `requirementRefs` 命名对齐；供 RTM `covers_decisions` 与「每条 D-x 必须被引用」的覆盖度点名。
+   * **可选**：缺省 = 未采集；加性变更、零迁移（决议 `#50`，同上）。
+   */
+  decisionRefs?: string[]
+  /**
    * 卡片体量声明（REQ-261002175818-80a8 t2 / FR-7）：与计划层（`PlanTask.footprint`）逐字一致。
    * 旧台账无此字段 = **未声明**（回显「未声明」，不当成 0）；本字段可缺省，故不 bump schemaVersion。
    */
@@ -1522,6 +1671,27 @@ export interface TaskRecord {
   executions: ExecutionRecord[]
   /** 状态事件时间线（创建 + 每次转移一条；甘特图据此按状态分段着色） */
   statusHistory?: StatusEvent[]
+  // ── 取消留痕三字段（REQ-261005193546-1b1a FR-3，design/data-model.md §1）───────────────
+  // 语义 = **本卡最近一次取消**（**覆盖式**：再次取消覆盖，复活（canceled → todo）**不清空**）；
+  // 历史每次取消在 `statusHistory` / `revisions` 里 ⇒ **首次取消不可追**。
+  // **加性可选、零迁移**：不补齐、不改写、无迁移脚本（与 prototypeRefs / decisionRefs / footprint
+  // 同款先例）——故 **不 bump** `REQBOARD_SCHEMA_VERSION`（9）与 `QUEUE_VERSION`（1），
+  // 也**不加进** `validateQueue.ts` 的 `REQUIRED_TASK_FIELDS`。缺省 = **未采集**（本需求上线前
+  // 取消的卡；不补 `0`、不补 `null`、不补当前时间），读端不得据此报错或写回。
+  // 写入一律经唯一写入口 `markCanceled`（本文件）——四处取消写入点共用，不允许任一处另取值。
+  /**
+   * 取消时刻（epoch ms）。值 = 那一次写入的时钟值，与 `statusHistory` 里那条 `→canceled`
+   * 事件的 `at` **同一个数值**（同源同刻）。
+   */
+  canceledAt?: number
+  /**
+   * 取消人。`kind` 恒为字面量 `'human'`（取消是人工门动作，`HUMAN_ONLY_TASK_TRANSITIONS`）；
+   * `sessionId` 缺省 = 人从看板按钮操作（**不写该键**，不写空串，不写 `kind:'system'` 替身值）。
+   * 真非人工路径**整字段不写**。审计用，**不进任何界面投影**。
+   */
+  canceledBy?: { kind: 'human'; sessionId?: string }
+  /** 取消原因（自由文本；`trim()` 后非空才写，**原文保留**、无硬上限）。审计用，不进任何界面投影。 */
+  cancelReason?: string
   comments: CommentRecord[]
   version: number
   createdAt: number
@@ -1711,12 +1881,20 @@ export function assertDagAcyclic(tasks: ReadonlyArray<Pick<TaskRecord, 'id' | 'd
 }
 
 /**
- * 计算 ready 任务：todo 且全部依赖均 done（串行调度器的选择器）。
+ * 计算 ready 任务：todo 且全部依赖**已满足**（串行调度器的选择器）。
+ *
+ * REQ-261005193546-1b1a FR-1 / D-8：本函数是 `domain/status/Predicates.liveReadyTasks` 的
+ * **薄封装**——判据（自身 todo、依赖 `done`/`canceled`/缺席 = 已满足）只在单点一份，
+ * 本处不再写 `doneIds.has(dep)` 这类手写式（那正是与 `readyTasksOf` 漂移的旧病）。
+ *
+ * 两条被保住的既有口径：
+ * - 只让 `status === 'todo'` 的活卡进 ready（`isReadyTask` 内部保证）；
+ * - **输出顺序 = 输入顺序**（按需求过滤后逐条筛，不重排；R-3 / D8）。
  */
 export function readyTasks(tasks: readonly TaskRecord[], requirementId: string): TaskRecord[] {
   const inReq = tasks.filter(t => t.requirementId === requirementId)
-  const doneIds = new Set(inReq.filter(t => t.status === 'done').map(t => t.id))
-  return inReq.filter(t => t.status === 'todo' && t.dependsOn.every(dep => doneIds.has(dep)))
+  const readyIds = new Set(liveReadyTasks(inReq))
+  return inReq.filter(t => readyIds.has(t.id))
 }
 
 // ---------------------------------------------------------------------------
@@ -2400,6 +2578,12 @@ export interface ReportResponse {
     docs?: string
     dag?: string
     dialogue?: string
+    /**
+     * 验收 Tab 角标（REQ-261006130057-7a43 FR-8 / interfaces.md T-5）：
+     * 待裁决项数（`pending + unverified`，与 `outcome.pendingItems` 同口径、服务端数好）。
+     * 无验收单 = 字段缺省（不渲染、禁 `'0'` 冒充）。
+     */
+    verify?: string
     token?: string
     prompts?: string
   }
@@ -2493,19 +2677,64 @@ export type DocPanelKind =
   | 'verification'
   | 'retro'
   | 'notes'
+  // REQ-261005105032-3b02 决议 #30：原型在确定文档块内**单列**，不退化成「其它发现」的 notes
+  | 'prototype'
 
-/** 文档在页面上的状态（file-missing 必须标灰，不许当正常文档列着）。 */
+/**
+ * 文档在页面上的状态（file-missing 必须标灰，不许当正常文档列着）。
+ *
+ * REQ-261005143615-5ab1 FR-3 新增 `'unknown'`：**一个可用读根都没有**（换机器 / 仓被移动 /
+ * 会话工作区与需求声明的工作区都不在）→ 这台机器上判不了。它与 `file-missing` 是两件事：
+ * 后者是「根在、文件确实不在」，前者是「根本判不了」——把未知写成缺失又是一种谎。
+ *
+ * **加性**：新增成员不改既有取值语义；老读侧遇到不认识的取值走兜底文案（不崩、不误报）。
+ */
 export type DocPanelState =
   | 'confirmed'
   | 'pending'
   | 'unregistered'
   | 'file-missing'
+  | 'unknown'
 
 export interface DocPanelEntry {
   kind: DocPanelKind
   path: string
   registeredAt?: number
   state: DocPanelState
+  /**
+   * 命中读根时给出的**绝对路径**（REQ-261005143615-5ab1 FR-4）：页面显示与打开都走它，
+   * 不再依赖「当前阅读会话」把相对路径拼对。
+   *
+   * 三条口径：
+   *  - **读时投影、不落库**：台账仍只存工作区相对路径（`path`），绝对路径随每次响应现算
+   *    ——存进台账会在换机器 / 换 worktree 后全部失效，多窗口还会互相覆盖；
+   *  - **命中哪个根就用哪个根**（需求声明根 → 会话根 → 组合根，见 `PanelQueryDeps.docRootsOf`）；
+   *  - **未命中 / 未判定（`unknown`）时不注入该键**：宁可只说「不知道」，也不给一条必然错的路径。
+   */
+  absPath?: string
+  /**
+   * 原型在 `prototypes/INDEX.md` 里的角色（REQ-261005105032-3b02 决议 #32）：
+   * `authoritative` = 唯一权威版本，`superseded` = 已作废版本。
+   * **缺省不注入**——没读到 INDEX（或读失败）就不伪造角色，旧形状与旧读取路径都不变。
+   */
+  prototypeRole?: 'authoritative' | 'superseded'
+  /** 被取代于（与 INDEX「被取代于」列同值）；仅 superseded 行注入，缺省不注入（决议 #32）。 */
+  supersededBy?: string
+  /**
+   * 原型判据的**存在性**投影（REQ-261005105032-3b02 FR-2/FR-4，frontend.md「呈现项」第 3 行）：
+   * 只带 `StageArtifact.prototypeMeta` 的**锚点清单**，页面据此只说「有锚点 N 条 / 缺锚点」。
+   *
+   * 为什么**只投影锚点、绝不带几何量的值**（更不带任何阈值）：
+   *  - 阈值是设计阶段按真实数据定的（D-10），原型**不自证**阈值——把 `value` 放到页面上，
+   *    等于让原型稿的实测数字冒充判据（决议 #8：观测值来源要可区分；#49：几何量形状另有归属）；
+   *  - 面板只需要回答"这份原型有没有可判的抓手"，几何量属于设计文档与门禁，不是文档 Tab 的信息。
+   *
+   * **可选**：`prototypeMeta` 未采集（旧产物 / 未抽取）→ 不注入该键（读侧不判坏，决议 #50）。
+   */
+  prototypeMeta?: {
+    /** FR 锚点清单（`fr` = 条款号，`selector` = 原型页内该锚点区块的定位串）。 */
+    anchors: { fr: string; selector: string }[]
+  }
 }
 
 /** 门禁裁决留痕（谁批的 / 什么时候 / 用什么方式）。 */
@@ -2539,8 +2768,11 @@ export interface DocsResponse {
    * == 台账产物总数」——分类只许搬家，不许把东西丢掉。
    */
   documents: DocPanelEntry[]
-  /** 生成物（台账 queue.json / RTM 等），与「人写的文档」分开列 */
-  generated: { label: string; path: string }[]
+  /**
+   * 生成物（台账 queue.json / RTM 等），与「人写的文档」分开列。
+   * `absPath` 与 `DocPanelEntry.absPath` 同规则（REQ-261005143615-5ab1 FR-4）：命中读根才注入。
+   */
+  generated: { label: string; path: string; absPath?: string }[]
   /**
    * **其它发现**（加法式可选字段）：自动扫描到的非交付物，按后缀/类型分组计数。
    * 每组最多给 3 个 `samples` 路径（样例），其余靠 `count` 说出来——**不折叠成一行、
@@ -2726,5 +2958,33 @@ export interface TokenPanelExtension {
   availability: TokenAvailability
   missingStages?: string[]
   boundsAreLowerBound?: boolean
+}
+
+/* ── 端点 8：验收 Tab（REQ-261006130057-7a43 FR-8） ─────────────────────── */
+
+/**
+ * 验收面板响应（design/interfaces.md §VerifyPanelResponse）。
+ *
+ * 全部字段可选、缺省即「无该来源」：
+ *  - `sheet` 缺省 = 尚未提交验收材料（页面走「尚未提交」空态，禁 0 冒充）；
+ *  - `tracking` / `coverage` 是 RTM **增强层**（FR-9）：rtm-*.yml 缺失/解析失败时缺省，
+ *    页面降级为逐项平铺 / 覆盖链列整体不渲染——绝不允许因 RTM 缺失让端点报错。
+ *
+ * 两源对齐（前端 FR 行组装）：`tracking` 按 `fr_id` 归组，逐项明细从 `sheet.items` 取，
+ * 对齐键 = `rtmTraceIdOf(source)`（domain/workflow/AcceptanceSheetSpec.ts 既有单点函数）。
+ */
+export interface VerifyPanelResponse {
+  /** 当前验收单：整份照抄 `req.verification.sheet`（与 docs 面板同源，不重排字段） */
+  sheet?: VerificationSheet
+  /** 历史验收单（v1/v2…；`req.verification.sheetHistory`） */
+  history?: VerificationSheet[]
+  /** RTM 验收追踪（读 rtm-accepting.yml 的 acceptance_tracking；形状与 vendor 同源复用） */
+  tracking?: AcceptanceTracking[]
+  /** 覆盖链（每 FR 三态布尔）：design=fr∈fr_to_design、tasks=fr∈fr_to_tasks、tests=fr∈fr_to_tests */
+  coverage?: Record<string, { design: boolean; tasks: boolean; tests: boolean }>
+  /** 材料摘要（交付结论 + 证据清单），来自 `req.verification` 提交材料 */
+  materials?: { summary?: string; evidence: string[] }
+  /** 待裁决项数（pending + unverified；与 `tabCounts.verify` 同源同值） */
+  pendingCount?: number
 }
 

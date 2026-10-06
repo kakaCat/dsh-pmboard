@@ -13,3 +13,8 @@
 - [ ] **覆盖 5 · 附属按需片段（同一次注入最多挂一个）**：仅在需要独立评审时用
       requesting-code-review / receiving-code-review。
 - [ ] **覆盖 6 · 交棒**：下一步：archived —— 用 reqboard_accept_sheet 交棒；验收通过为人工闸门。
+- [ ] **覆盖 7 · 原型与裁定对照**：UI 需求的验收单必含「与原型对照截图（含差异说明）」与
+      「D-x 对照」两项（source `prototype-compare` / `decision-compare`）；缺项提交被拒
+      （verification_prototype_compare_missing）。原型对照必须引用 `prototypes/INDEX.md` 里
+      `authoritative` 的那一条，不是随手挑一个 html。已豁免原型（front-matter `prototype_exempt`
+      理由非空且经人确认）的需求按豁免说明处理，**该项不阻塞**验收材料提交。

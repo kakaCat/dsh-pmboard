@@ -4,7 +4,7 @@
  * 本文件是队列三个**派生字段**（edges / layers / ready）的唯一计算处：
  * - `computeEdges`  → 由 `tasks[].dependsOn` 展开边集
  * - `computeLayers` → Kahn 入度分层（有环抛错），结果即 `QueueTask.layer` 的来源
- * - `computeReady`  → 依赖全 done 且自身 todo 的任务 id
+ * - `computeReady`  → 依赖已满足（`done` / `canceled`）且自身 todo 的任务 id（判据单点在 Predicates）
  *
  * ⚠️ 三条硬约束（违反会静默产生"假就绪/漏就绪"或"写路径两套算法漂移"）：
  *
@@ -23,6 +23,7 @@
  * `validateQueue.ts` 的 V-3 负责检出（职责分离：topology 保证"可算"，validate 保证"合法"）。
  */
 
+import { isReadyTask } from '../status/Predicates.js'
 import type { QueueEdge, QueueLayer, QueueTask } from './QueueTypes.js'
 
 /** 环依赖错误码（design/interfaces.md「错误码」）。 */
@@ -119,13 +120,19 @@ export function computeLayers(tasks: readonly QueueTask[]): QueueLayer[] {
  * 由状态与依赖推导 ready（**唯一实现**，写路径不得另写一份）。
  *
  * 规则（design/data-model.md V-5）：
- * - 假就绪禁止：进入 ready 的任务，其 `dependsOn` 必须**全部 `done`**
- * - 漏就绪禁止：依赖全 done 且自身 `todo` 的任务**必须**出现在 ready 中
+ * - 假就绪禁止：进入 ready 的任务，其 `dependsOn` 必须**已满足**（`done` 或 `canceled`）
+ * - 漏就绪禁止：依赖已满足且自身 `todo` 的任务**必须**出现在 ready 中
  *
  * 因此本函数就是"漏就绪"定义本身，而"假就绪"由 validateQueue 用 `ready ⊆ 本函数结果` 反向校验。
  *
- * 悬空依赖按"未满足"处理（`byId.get(d)?.status === 'done'` 为 false）——保守不放行，
- * 与 V-3 的检出职责互补：校验报错，推导不冒险解锁。
+ * **判据同源（REQ-261005193546-1b1a FR-1 / D-8）**：单卡判据改走单点 `isReadyTask`
+ * （`domain/status/Predicates`，实现 = 自身 `todo` 且约束桶 `pending` 为空），
+ * 与 `queue-access.readyTasksOf` / `shared/protocol.readyTasks` 同一口径——取消卡不再卡死活卡。
+ *
+ * **悬空依赖仍按"未满足"保守不放行**（`byId` 覆盖全量任务 ⇒ 缺席即脏引用）：单点的
+ * `isDependencySatisfied` 把"缺席"也视为已满足（那是给"只喂活卡集合"的调用方用的口径），
+ * 本函数**显式加一道 `byId.has(dep)` 前置守卫**把它收回保守侧——脏引用由 V-3 负责检出，
+ * 推导不冒险解锁（与既有 `tests/queue/topology.test.ts` 的"悬空依赖保守不放行"断言一致）。
  * 返回顺序 = `tasks` 输入顺序（稳定，便于比对与测试）。
  */
 export function computeReady(tasks: readonly QueueTask[]): string[] {
@@ -138,10 +145,9 @@ export function computeReady(tasks: readonly QueueTask[]): string[] {
   const ready: string[] = []
   for (const task of tasks) {
     if (!isTaskLike(task)) continue
-    if (task.status !== 'todo') continue
     const deps = Array.isArray(task.dependsOn) ? task.dependsOn : []
-    const unlocked = deps.every((dep) => byId.get(dep)?.status === 'done')
-    if (unlocked) ready.push(task.id)
+    if (!deps.every((dep) => byId.has(dep))) continue // 悬空依赖：保守不放行（V-3 检出）
+    if (isReadyTask(task, byId)) ready.push(task.id)
   }
   return ready
 }

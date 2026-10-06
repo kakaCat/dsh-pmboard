@@ -13,7 +13,8 @@ import { isAbsolute, join } from 'node:path'
 import { SETTINGS_FILE_REL } from '../../application/settings/resolve-settings.js'
 import { SYSTEM_HISTORY_MAX, SYSTEM_RECORD_FILE_REL } from '../../application/settings/events.js'
 import { getBuildStamp } from '../../shared/build-stamp.js'
-import type { SettingsStore, SystemRecordStore } from '../../application/ports.js'
+import type { SettingsStore, SystemRecordStore, WindowInheritance } from '../../application/ports.js'
+import { applyWindowInheritance, presetInheritanceOf, readWindowProfile } from '../../application/internal/window-inherit.js'
 import type { RouterCtx, StorageActionKind, StorageActionPort } from './shared.js'
 
 /** 确认框的肯定/否定选项（唯一一处定义：文案与判定必须同源，否则"点了确认却判成取消"）。 */
@@ -160,7 +161,7 @@ export async function openMigrationWindow(input: {
   settings: SettingsStore
   systemRecord: SystemRecordStore
   sessionId: string
-}): Promise<{ windowKey: string; task: string }> {
+}): Promise<{ windowKey: string; task: string; inheritance: WindowInheritance }> {
   const deps = input.deps.applicationDeps
   const opener = deps?.windowOpener
   if (opener === undefined || !opener.available()) {
@@ -195,10 +196,23 @@ export async function openMigrationWindow(input: {
     throw coded('window_open_failed', '迁移未发起：拿不到新窗口的项目落点（源会话与工作区都不可得）。**不在宿主目录里静默建窗**，请在带会话上下文的窗口重试')
   }
 
-  const opened = await opener.create(target)
+  // REQ-261005151245-54ae FR-2 / FR-3：先冷读发起页会话的画像——模式（Agent 预设）随建会话请求带入；
+  // 读不到不阻断：迁移窗口该建还得建，继承没成的项在回执里如实标注。
+  const sourceRead = await readWindowProfile(opener, input.sessionId)
+  const preset = presetInheritanceOf(sourceRead, 'create').agentPreset
+  const opened = await opener.create(preset === undefined ? target : { ...target, agentPreset: preset })
   if (!opened.ok) {
     throw coded('window_open_failed', '迁移未发起：建会话失败（' + opened.reason + '）。**窗口没建成、任务没发出**')
   }
+
+  // FR-1 / FR-4 / FR-5：迁移窗口是**新任务**而不是源窗口的续作 ⇒ 标题走显式语义名（不递增源标题）；
+  // 模式与模型照样继承——长任务跑在与发起页同一个模型上，人才不会拿到一个"看起来一样、其实不同"的窗口。
+  const inheritance = await applyWindowInheritance(opener, {
+    childKey: opened.windowKey,
+    mode: 'create',
+    sourceRead,
+    explicitTitle: '台账迁移窗口',
+  })
 
   const { message } = deliver.createMessage({
     text: migrationTaskText({ from, to, windowKey: opened.windowKey }),
@@ -209,7 +223,7 @@ export async function openMigrationWindow(input: {
     throw coded('dispatch_failed', '迁移未发起：**窗口已建成**（' + opened.windowKey + '）但任务底稿**没有送达**（'
       + (sent.reason === undefined ? '原因未知' : sent.reason) + '）。可到该窗口让它手动重跑，或重新发起一次迁移')
   }
-  return { windowKey: opened.windowKey, task: 'migrate-ledger-to-sqlite' }
+  return { windowKey: opened.windowKey, task: 'migrate-ledger-to-sqlite', inheritance }
 }
 
   /**

@@ -38,6 +38,16 @@ export interface AwaitingConfirmDeps {
   now: () => number
   /** 台账写失败时的响亮通道（缺省 = 只留日志）。 */
   alert?: { alert(input: { requirementId: string; title: string; content: string }): void }
+  /**
+   * 停手位**真的被清**（`awaiting-confirm:*` → healthy）之后回调一次（REQ-261006170150-52cc FR-2）。
+   *
+   * 为什么要有它：清位是"等待结束"的唯一事实，但历史上它只写台账、不通知任何人——
+   * 于是"停手位刚刚被清"这件事无法转成一次驱动请求，链路只能等下一个外部触发（本次事故的成因之一）。
+   *
+   * 纪律：**永不抛**——实现抛错只 `logger.warn`，清位结果不回滚（与 enter/exit 既有纪律同源）。
+   * 缺省 undefined = 零行为（与改造前逐字一致）。
+   */
+  onCleared?: (requirementId: string) => void
   logger?: { warn(message: string, err?: unknown): void }
 }
 
@@ -147,10 +157,34 @@ export async function enterAwaitingConfirm(
  * 幂等：重复调用 / 未知 ref 零动作。ref 缺省 = 清该需求**任意** `awaiting-confirm:*` 停手位
  * （心跳对账与重启恢复用这条形态）。
  */
+/** 解除等待的入参（`notify` 见下；其余与改造前逐字一致）。 */
+export interface ExitAwaitingInput {
+  requirementId: string
+  /** 本次这票的 ref；缺省 = 清该需求**任意** `awaiting-confirm:*` 停手位（心跳对账与重启恢复用这条形态） */
+  ref?: string
+  reason: AwaitingExitReason
+  /**
+   * 清位成功后是否回调 `onCleared`，**缺省 true**。
+   *
+   * 只有**确认收敛点**显式传 false：它要求清位先于落章/推进（FR-1），
+   * 而"清位即请求驱动"若发生在推进之前，会投出**旧阶段**的回合文并在推进后被 pre-step 拒绝；
+   * 故它把请求推迟到本次 settle 末尾自己补发（见 design/architecture.md §时序）。
+   */
+  notify?: boolean
+}
+
+/** 解除等待的回执（新增返回形状；既有调用方可继续忽略返回值）。 */
+export interface ExitAwaitingResult {
+  /** 台账停手位**本次真的**从 `awaiting-confirm:*` 清成了 healthy */
+  cleared: boolean
+  /** 是否真的回调了 `onCleared`（`cleared ∧ notify !== false ∧ 端口在场`） */
+  notified: boolean
+}
+
 export async function exitAwaitingConfirm(
   deps: AwaitingConfirmDeps,
-  input: { requirementId: string; ref?: string; reason: AwaitingExitReason },
-): Promise<void> {
+  input: ExitAwaitingInput,
+): Promise<ExitAwaitingResult> {
   const dialogs = deps.dialogs
   const ref = input.ref
   try {
@@ -158,8 +192,9 @@ export async function exitAwaitingConfirm(
   } catch (err) {
     deps.logger?.warn('awaiting-confirm: 在途解除失败', err)
   }
+  let cleared = false
   try {
-    await mutateIfPresent(deps.store, input.requirementId, (r) => {
+    const res = await mutateIfPresent(deps.store, input.requirementId, (r) => {
       if (r.dive === undefined) return undefined
       const current = r.dive.driverHealth?.reason
       if (r.dive.driverHealth?.state !== 'paused') return undefined
@@ -181,7 +216,21 @@ export async function exitAwaitingConfirm(
       r.updatedAt = now
       return { changed: true }
     })
+    cleared = res?.changed === true
   } catch (err) {
     reportWriteFailure(deps, input.requirementId, '（解除等待）', err)
   }
+  // ── 清位即驱动（REQ-261006170150-52cc FR-2）──────────────────────────────────
+  // 只有**真的把停手位清成 healthy**这一件事才回调一次：台账本就不是等弹框态（cleared=false）
+  // 或调用方显式 notify:false ⇒ 零回调（不制造第二个触发源）。
+  const notified = cleared && input.notify !== false && deps.onCleared !== undefined
+  if (notified) {
+    try {
+      deps.onCleared!(input.requirementId)
+    } catch (err) {
+      // 永不抛：回调失败不回滚清位（清位是事实，通知失败只是"没接上"）
+      deps.logger?.warn('awaiting-confirm: onCleared 回调失败（清位已生效，不回滚）', err)
+    }
+  }
+  return { cleared, notified }
 }

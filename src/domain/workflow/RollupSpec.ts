@@ -25,6 +25,8 @@
  */
 
 import { fmt } from '../text/fmt.js'
+// REQ-261005193546-1b1a FR-1/FR-4：活卡判据单点（domain→domain，层门禁允许）
+import { liveTasksOf } from '../status/Predicates.js'
 import type { RequirementStatus } from '../requirement/RequirementStatus.js'
 import type { TaskStatus } from '../task/TaskStatus.js'
 
@@ -61,9 +63,9 @@ export interface RollupView {
   readonly triages: readonly RollupTriageLike[]
 }
 
-/** 需求的未取消任务（canceled 不参与完成度判定）。 */
+/** 需求的未取消任务（canceled 不参与完成度判定；判据走活卡单点）。 */
 function activeTasksOf(view: RollupView, reqId: string): RollupTaskLike[] {
-  return view.tasks.filter(t => t.requirementId === reqId && t.status !== 'canceled')
+  return liveTasksOf(view.tasks.filter(t => t.requirementId === reqId))
 }
 
 /**

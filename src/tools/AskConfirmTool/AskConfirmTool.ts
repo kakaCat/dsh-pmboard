@@ -73,8 +73,16 @@ export function defineAskConfirmTool(deps: UseCaseDeps) {
       render: renderSmart(askConfirmSummary),
     },
     timeoutMs: LIMITS.timeoutInteractiveMs,
-    execute: async (args: unknown, exec: ToolRunContext) => {
-      const evidence = normalizeText(((args ?? {}) as { evidence?: unknown }).evidence, 'evidence', 2000)
+    execute: async (rawArgs: unknown, exec: ToolRunContext) => {
+      // REQ-261006164732-6503 t13（serves: FR-1）：`adopted_ticket` 是**内部**参数（建门方沿用自己那口门），
+      // 绝不能从工具面注入——本工具 parameters 没声明它，而绑定层不设 `additionalProperties:false`
+      // （独立复核 findings-4），于是调用方本可以凭一个 ticket 绕过建门唯一入口、直接弹出第二个框。
+      // 内部调用方（auto-confirm / SubmitVerification）走的是 `askConfirm` 直调，不经本边界。
+      // 注意：就地清洗后仍以 `args` 分派——工具壳的"evidence 非空 → confirmArtifact，否则 askConfirm"
+      // 是被静态断言钉住的规范形状（tests/tools-dispatch.test.ts），改名会撞它。
+      const args = { ...((rawArgs ?? {}) as Record<string, unknown>) }
+      delete args.adopted_ticket
+      const evidence = normalizeText((args as { evidence?: unknown }).evidence, 'evidence', 2000)
       return evidence.length > 0 ? confirmArtifact(deps, args, exec) : askConfirm(deps, args, exec)
     },
   } as any)

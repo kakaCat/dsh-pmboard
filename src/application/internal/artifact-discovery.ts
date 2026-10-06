@@ -29,10 +29,17 @@ export function reqDirRel(reqId: string): string {
   return 'docs/requirements/' + reqId
 }
 
-/** 自动发现产物应归属的阶段（必备产物按其阶段；notes 归当前阶段）。 */
+/**
+ * 自动发现产物应归属的阶段（必备产物按其阶段；notes 归当前阶段）。
+ *
+ * 为什么 `prototype` 必须是**显式 case**（REQ-261005105032-3b02 决议 #3）：原型是需求阶段
+ * 的一等产物，若走 default 就会被归到「发现时的当前阶段」——同一条需求在不同阶段扫描出
+ * 两种归属，阶段面板与门禁读数都会飘。显式钉成 `brainstorming` 才与 STAGE_ARTIFACT 口径一致。
+ */
 export function stageForKind(kind: ArtifactKind, currentStage: StageKeyLike): StageKeyLike {
   switch (kind) {
     case 'requirement': return 'brainstorming'
+    case 'prototype': return 'brainstorming'
     case 'plan': return 'design'
     case 'decomposition': return 'decomposing'
     case 'design': return 'design'

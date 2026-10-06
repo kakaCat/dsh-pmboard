@@ -38,8 +38,8 @@ import type {
 } from '../../shared/protocol.js'
 import type { PanelQueryDeps, PanelQueryInput, QueryDialogue } from './contracts.js'
 
-/** 分页默认 20 条（design/interfaces.md：默认最近 20 条）。 */
-const DEFAULT_LIMIT = 20
+/** 分页默认 40 条（REQ-261006130057-7a43 FR-6：与原型「已加载 40/152 条」口径一致）。 */
+const DEFAULT_LIMIT = 40
 /** 分页上限 50（路由层另有 400 校验；这里再夹一次，任何入参都不至于把响应放大）。 */
 const MAX_LIMIT = 50
 /**
@@ -428,21 +428,24 @@ export const queryDialogue: QueryDialogue = async (deps: PanelQueryDeps, input: 
   collected.sort((a, b) => a.at - b.at || a.rank - b.rank || a.seq - b.seq)
   const timeline = collected.map(entry => entry.item)
 
-  // ⑤ 游标分页：`before` = 已从**最新端**消费掉的条数（缺省 0）。
-  //    为什么用"从新端数的偏移"而不是时间戳：多条消息落在同一毫秒时，时间戳游标会重复或跳条；
-  //    偏移游标对任意时刻都精确，且 `total` 与 `hasMore` 都能一次算清。
+  // ⑤ 游标分页（REQ-261006130057-7a43 t-a85893 / FR-6，design/interfaces.md §对话分页契约）：
+  //    `before` = **ms 时间戳**游标——取 `at < before` 的最后一页；缺省 = 最新一页。
+  //    响应 `page.before` = 本页最早一条的 `at`（还有更早时才给），客户端「加载更早」原样回传。
+  //    items 始终按 `at` 升序（旧→新，最新在末尾/底部，D-5）。
+  //    已知取舍（设计裁定，不二次创作）：同一毫秒内的多条消息共享游标值，
+  //    严格 `at < before` 会让同毫秒里排在页首之前的条目不可达——设计稿选定时间戳游标
+  //    （前端 `mergeEarlier` 按 itemIdentityOf 去重拼接），排序键 (at, rank, seq) 保住页内稳定序。
   const total = timeline.length
   const limit = clampLimit(input.limit)
-  const rawBefore = typeof input.before === 'number' && Number.isFinite(input.before) ? Math.trunc(input.before) : 0
-  const before = Math.min(Math.max(rawBefore, 0), total)
-  const end = Math.max(0, total - before)
-  const start = Math.max(0, end - limit)
-  const items = timeline.slice(start, end)
+  const rawBefore = typeof input.before === 'number' && Number.isFinite(input.before) ? input.before : undefined
+  const pool = rawBefore === undefined ? timeline : timeline.filter(i => i.at < rawBefore)
+  const start = Math.max(0, pool.length - limit)
+  const items = pool.slice(start)
   const hasMore = start > 0
   const page: DialogueResponse['page'] = {
     total,
     hasMore,
-    ...(hasMore ? { before: before + items.length } : {}),
+    ...(hasMore && items.length > 0 ? { before: items[0]!.at } : {}),
   }
 
   return { items, page }

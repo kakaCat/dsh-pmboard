@@ -36,10 +36,16 @@ export function buildProgressDots(currentStatus: RequirementStatus): string {
       const state = order < currentOrder ? 'completed' 
                   : order === currentOrder ? 'current' 
                   : ''
+      /* FR-8 #1（状态不靠颜色单一表达）：完成 / 当前 / 未开始三态除颜色外再给一个**真实文本**标记。
+         为什么是文本节点而不是 CSS `::before`：伪元素的内容读屏不保证读到（原型受「同一份标本、
+         只换 CSS 层」的约束用了 `::before`，那只是预览；FR-8 #5 要求实施阶段落成真内容）。
+         未开始**不带标记**——「没有标记」本身就是第三态的判据，三态都加符号反而分不出主次。 */
+      const mark = state === 'completed' ? '✓ ' : state === 'current' ? '▸ ' : ''
+      const stateKey = state === '' ? 'todo' : state
       return `
-        <div class="dsh-pm-dot-wrapper ${state}">
-          <div class="dsh-pm-dot"></div>
-          <span class="dsh-pm-dot-label">${esc(label)}</span>
+        <div class="dsh-pm-dot-wrapper ${state}" data-stage-state="${stateKey}">
+          <div class="dsh-pm-dot" aria-hidden="true"></div>
+          <span class="dsh-pm-dot-label"><span class="dsh-pm-dot-mark" data-dot-mark="${stateKey}">${mark}</span>${esc(label)}</span>
         </div>`
     }).join('')
   }</div>`
@@ -310,6 +316,17 @@ export function renderActionBar(req: RequirementRecord): string {
     // REQ-a8d582 FR-1/FR-3：只要在验收态就给按钮；有不合格项或未交材料时，点击先弹确认框。
     add('verify-pass', '验收通过', '人工审核通过（有不合格项或未交材料时会先弹确认框）', true)
     add('verify-rework', '退回返工', '退回返工（需填写意见）')
+  }
+  // REQ-261005122915-9f90 t6 / FR-5：误物化重做卡清场入口。
+  // 渲染条件 = **有回退记录**（`rollback` 存在）。没有它就没有「第几次回退」这个边界，
+  // 点了必被服务端拒（REQBOARD_UNKNOWN_ROLLBACK_SEQ）——按本仓既有纪律不给假按钮。
+  // 序号口径与 `currentRollbackSeq` 同源：存量记录无 `seq` 时按 1 计。
+  if (req.rollback !== undefined) {
+    const seq = typeof req.rollback.seq === 'number' && req.rollback.seq > 0 ? req.rollback.seq : 1
+    items.push('<button type="button" class="dsh-pm-btn" data-action="rollback-cleanup"'
+      + ' data-id="' + esc(req.id) + '" data-seq="' + String(seq) + '"'
+      + ' title="' + esc('按第 ' + String(seq) + ' 次回退的物化清单批量取消占位重做卡（不影响已完成卡）') + '">'
+      + '清理误物化重做卡</button>')
   }
   // REQ-261002105242-a3fb FR-4：此前的「done + 材料已备 → 归档按钮」分支已删除。
   // 它渲染的按钮指向 POST /req/archive，而该端点已由 REQ-9f4a44 移除（点了必 404）；

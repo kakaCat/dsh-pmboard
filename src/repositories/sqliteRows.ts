@@ -46,7 +46,7 @@ export type Row = Record<string, unknown>
 export const HOT_COLUMNS: readonly string[] = [
   'id', 'title', 'status', 'category', 'prompt_difficulty', 'version',
   'created_at', 'updated_at', 'source_session_id', 'autorun', 'blocked',
-  'workspace_root', 'doc_base_path', 'comment_count', 'history_count',
+  'project_id', 'workspace_root', 'doc_base_path', 'comment_count', 'history_count',
 ]
 
 /** 列 → 记录键（可空列 ↔ 缺省键：NULL 读回即"没有这个键"，无损）。 */
@@ -54,7 +54,7 @@ const COLUMN_TO_KEY: readonly (readonly [string, string])[] = [
   ['id', 'id'], ['title', 'title'], ['status', 'status'], ['category', 'category'],
   ['prompt_difficulty', 'promptDifficulty'], ['version', 'version'],
   ['created_at', 'createdAt'], ['updated_at', 'updatedAt'],
-  ['source_session_id', 'sourceSessionId'], ['workspace_root', 'workspaceRoot'],
+  ['source_session_id', 'sourceSessionId'], ['project_id', 'projectId'], ['workspace_root', 'workspaceRoot'],
   ['doc_base_path', 'docBasePath'],
 ]
 
@@ -120,6 +120,7 @@ export function rowValues(record: RequirementRecord, counts: { comments: number;
     // 镜像列：只表示"是否显式开启"；保真由 parts 里的 autoRun 负责（见文件头注）。
     autorun: record.autoRun === true ? 1 : 0,
     blocked: record.blocked === true ? 1 : 0,
+    project_id: record.projectId ?? null,
     workspace_root: record.workspaceRoot ?? null,
     doc_base_path: record.docBasePath ?? null,
     comment_count: counts.comments,

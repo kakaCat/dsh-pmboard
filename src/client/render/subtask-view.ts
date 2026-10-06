@@ -16,6 +16,8 @@ import { esc } from '../html.js'
 import type { RequirementRecord, StageKind, TaskRecord } from '../types.ts'
 import { STAGE_LABELS } from '../../domain/task/SubtaskTemplate.js'
 import { fmt } from '../../domain/text/fmt.js'
+// REQ-261005193546-1b1a FR-2 / FR-4：进度分母的活卡过滤走 domain 单点（删掉本文件此前的本地 live 辅助）
+import { liveTasksOf } from '../../domain/status/Predicates.js'
 
 /** 自动链徽标种类（四态；与 design/observability §2 的看板口径一一对应）。 */
 export type AutoBadgeKind = 'running' | 'paused' | 'breaker' | 'manual'
@@ -95,13 +97,16 @@ export interface SubtaskProgress {
 export function subtaskProgress(tasks: readonly TaskRecord[]): SubtaskProgress {
   const subs = tasks.filter(t => t.parentId !== undefined)
   const parents = tasks.filter(t => t.parentId === undefined && subs.some(s => s.parentId === t.id))
-  const live = <T extends { status: string }>(list: readonly T[]): T[] => list.filter(x => x.status !== 'canceled')
+  // REQ-261005193546-1b1a FR-4：本地 `live` 辅助已删——活卡过滤只走 domain 单点 `liveTasksOf`
+  // （此前这里是一份独立的手写 `status !== 'canceled'`，属本需求要消灭的第二处口径）
+  const liveParents = liveTasksOf(parents)
+  const liveSubs = liveTasksOf(subs)
   const done = <T extends { status: string }>(list: readonly T[]) => list.filter(x => x.status === 'done').length
   return {
-    parentsDone: done(live(parents)),
-    parentsTotal: live(parents).length,
-    subtasksDone: done(live(subs)),
-    subtasksTotal: live(subs).length,
+    parentsDone: done(liveParents),
+    parentsTotal: liveParents.length,
+    subtasksDone: done(liveSubs),
+    subtasksTotal: liveSubs.length,
   }
 }
 

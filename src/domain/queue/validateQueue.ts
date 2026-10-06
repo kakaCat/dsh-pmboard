@@ -9,14 +9,14 @@
  * | V-2 | 标识唯一性（`tasks[].id` 两两唯一） |
  * | V-3 | 引用完整性（dependsOn / edges / layers / ready 的 id 都存在；requirementId 与顶层一致） |
  * | V-4 | 层级一致性（layer ≥ 0；层随依赖递增；layer=0 无依赖；layer 号从 0 连续） |
- * | V-5 | ready 双向一致性（假就绪禁止 + 漏就绪禁止） |
+ * | V-5 | ready 双向一致性（假就绪 = issue + 漏就绪 = warning，见下） |
  * | V-6 | 无环性（拓扑排序可完整完成） |
  *
  * ⚠️ 三条硬约束：
  *
  * 1. **不抛错**：任何坏输入都只返回 `{passed:false, issues}`，绝不 throw（TC-2.10）。
- *    调用方按场景决定处置——写前拒绝落盘（抛 QUEUE_VALIDATION_FAILED）、读后降级返回
- *    undefined、更新前保持旧内容。若这里 throw，三种处置就退化成一种（整个调用栈炸掉）。
+ *    调用方按场景决定处置——写前拒绝落盘（抛 QUEUE_VALIDATION_FAILED）、读后降级告警并继续返回、
+ *    更新前保持旧内容。若这里 throw，三种处置就退化成一种（整个调用栈炸掉）。
  * 2. **环检测 import 自 `topology.ts`**，不复制算法。两份环检测必然漂移，而 V-5 的正反例
  *    又依赖同一份推导——复制出来的第二份会让"检查通过但解析崩"变成可能。
  * 3. **纯函数**：不 import 任何 node 内置模块、不碰时钟与随机数。
@@ -26,8 +26,33 @@
  */
 
 import type { TaskRecord } from '../../shared/protocol.js'
-import type { QueueEdge, QueueFile, QueueLayer, QueueTask, ValidationIssue, ValidationResult, ValidationRule } from './QueueTypes.js'
+import { isDependencySatisfied } from '../status/Predicates.js'
+import type {
+  QueueEdge,
+  QueueFile,
+  QueueLayer,
+  QueueTask,
+  ValidationIssue,
+  ValidationLevel,
+  ValidationResult,
+  ValidationRule,
+} from './QueueTypes.js'
 import { computeLayers, computeReady } from './topology.js'
+
+/**
+ * 单条条目的上报级别（**缺省 = `issue`**，单一事实源）。
+ *
+ * 级别判定只此一处：`passed` 与 `hasIssue` 都经它，别处再写一遍"是不是 warning"就是
+ * 本需求要冻掉的口径漂移源。
+ */
+export function levelOf(issue: ValidationIssue): ValidationLevel {
+  return issue.level ?? 'issue'
+}
+
+/** 是否为 issue 级条目（= 让 `passed` 变 false、拦写的那一级）。 */
+export function isIssueLevel(issue: ValidationIssue): boolean {
+  return levelOf(issue) === 'issue'
+}
 
 /**
  * 任务的必填字段（对齐 `TaskRecord` 的**非可选**成员）。
@@ -62,15 +87,23 @@ const REQUIRED_TASK_FIELDS: readonly (keyof TaskRecord)[] = [
 const REQUIRED_TOP_LEVEL_FIELDS = ['version', 'requirement_id', 'schemaVersion', 'generated_at', 'tasks', 'edges', 'layers', 'ready'] as const
 
 /**
- * V-1~V-6 全量校验。**不抛错**：失败只填 `issues`（`passed = issues.length === 0`）。
+ * V-1~V-6 全量校验。**不抛错**：失败只填 `issues`（`passed` = 无 **issue 级**条目）。
  *
  * 入参类型是 `QueueFile`，但实现按"可能来自任意 JSON"的防御口径处理（内部先收窄为
  * `Record<string, unknown>`）——`load()` 拿到的是 `JSON.parse` 的产物，不是构造好的对象。
  */
 export function validateQueueFile(file: QueueFile): ValidationResult {
   const issues: ValidationIssue[] = []
-  const add = (rule: ValidationRule, message: string, path?: string): void => {
-    issues.push(path === undefined ? { rule, message } : { rule, message, path })
+  /**
+   * 追加一条校验条目。
+   *
+   * `level` 缺省时**不写这个键**（issue 条目的形状逐字不变）；只有 warning 才写
+   * `level: 'warning'`——加性可选字段的兼容性就靠这一点（旧读方看到键缺失 = 真问题）。
+   */
+  const add = (rule: ValidationRule, message: string, path?: string, level?: ValidationLevel): void => {
+    const issue: ValidationIssue = path === undefined ? { rule, message } : { rule, message, path }
+    if (level !== undefined) issue.level = level
+    issues.push(issue)
   }
 
   const raw = file as unknown
@@ -108,7 +141,7 @@ export function validateQueueFile(file: QueueFile): ValidationResult {
   const tasks = Array.isArray(f.tasks) ? (f.tasks as unknown[]) : undefined
   if (tasks === undefined) {
     // tasks 不是数组时，下游每条规则都无输入可言——只报 V-1，不做级联噪声。
-    return { passed: issues.length === 0, issues }
+    return { passed: !issues.some(isIssueLevel), issues }
   }
 
   // ── V-1（任务级）+ V-2 ────────────────────────────────────────────────
@@ -236,21 +269,31 @@ export function validateQueueFile(file: QueueFile): ValidationResult {
   }
 
   // ── V-5：ready 双向一致性 ─────────────────────────────────────────────
+  // ⚠️ 判据必须与 `computeReady`（① 同批改）**同源**：`unmet` 走单点 `isDependencySatisfied`
+  // （`done` / `canceled` / 缺席 = 已满足），否则写路径刚按新口径算出的 `ready[]` 会被这里按旧
+  // 口径判成「假就绪」→ `QUEUE_VALIDATION_FAILED`、一个字节都不落盘（缺陷 1 第 4 条）。
   const readyIds = ready.filter((id): id is string => typeof id === 'string')
   const readySet = new Set(readyIds)
+  // ⚠️ **假就绪 = issue（缺省级别，不写 `level` 键）**：ready 里的卡依赖未了结 / 自身非 todo
+  // 是**真写坏**（不是陈旧）⇒ 照旧拦死写路径（`save` 抛 `QUEUE_VALIDATION_FAILED`）。
   readyIds.forEach((id, i) => {
     const t = byId.get(id)
     if (t === undefined) return // V-3 已报
     const deps = Array.isArray(t.dependsOn) ? t.dependsOn : []
-    const unmet = deps.filter((dep) => typeof dep === 'string' && byId.get(dep)?.status !== 'done')
+    const unmet = deps.filter((dep) => typeof dep === 'string' && !isDependencySatisfied(byId.get(dep)))
     if (unmet.length > 0) {
-      add('V-5', `假就绪：ready 中任务 ${id} 的依赖未全部 done [${unmet.map(String).join(', ')}]`, `ready[${i}]`)
+      add('V-5', `假就绪：ready 中任务 ${id} 的依赖未全部了结（done/canceled）[${unmet.map(String).join(', ')}]`, `ready[${i}]`)
     } else if (t.status !== 'todo') {
       add('V-5', `假就绪：ready 中任务 ${id} 自身状态为 ${String(t.status)}（可执行集只应含 todo）`, `ready[${i}]`)
     }
   })
   for (const id of computeReady(taskList)) {
-    if (!readySet.has(id)) add('V-5', `漏就绪：任务 ${id} 依赖已全 done 且自身 todo，却不在 ready 中`, 'ready')
+    // ⚠️ **漏就绪 = warning**（REQ-261005193546-1b1a · t10 / 已裁定）：存量 `ready[]` 是旧口径
+    // 写下的快照（取消卡当依赖时下游被钉死），下次写事务自然归一 ⇒ 它是**可自愈的陈旧派生值**。
+    // 把"陈旧"判成 `passed === false` 会让存量只读需求被读成 0 张任务（看板空白）。
+    if (!readySet.has(id)) {
+      add('V-5', `漏就绪：任务 ${id} 依赖已全部了结（done/canceled）且自身 todo，却不在 ready 中`, 'ready', 'warning')
+    }
   }
 
   // ── V-6：无环性（算法 import 自 topology，不复制） ──────────────────────
@@ -260,10 +303,16 @@ export function validateQueueFile(file: QueueFile): ValidationResult {
     add('V-6', `依赖成环：${(error as Error).message}`, 'tasks')
   }
 
-  return { passed: issues.length === 0, issues }
+  return { passed: !issues.some(isIssueLevel), issues }
 }
 
-/** 便捷断言：某结果是否命中指定规则（调用方/测试用，避免到处写 issues.some）。 */
+/**
+ * 便捷断言：某结果是否命中指定规则的 **issue 级**条目（调用方/测试用，避免到处写 issues.some）。
+ *
+ * ⚠️ 只认 issue 级（REQ-261005193546-1b1a · t10）：`warning` 级条目（如 V-5 漏就绪）
+ * **不算**"命中该规则"——否则"有没有真问题"与"有没有陈旧值"会在这里被混成同一个答案，
+ * 而这正是本需求要分开的两档。
+ */
 export function hasIssue(result: ValidationResult, rule: ValidationRule): boolean {
-  return result.issues.some((issue) => issue.rule === rule)
+  return result.issues.some((issue) => issue.rule === rule && isIssueLevel(issue))
 }

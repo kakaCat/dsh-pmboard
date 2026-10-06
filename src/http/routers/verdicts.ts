@@ -25,11 +25,10 @@ import {
 } from '../../shared/protocol.js'
 import {
   countFailedItems, countPassedItems, countPendingItems, isAccepting, isAcceptingStage,
-  isDecidableItemStatus, isFailedItem, isFullyDecidedItems, isVerifiableStage,
+  isDecidableItemStatus, isFailedItem, isFullyDecidedItems, isUnverifiedItem, isVerifiableStage,
 } from '../../domain/status/Predicates.js'
 import { ACCEPTED_REQ_STATUS, REWORK_REQ_STATUS } from '../../domain/requirement/RequirementStatus.js'
 import { applyVerdicts, materializeReworkFromSheet } from '../../application/internal/verdicts.js'
-import { verdictRequiresOpinion } from '../../domain/workflow/AcceptanceSheetSpec.js'
 import { transitionRequirement } from '../../application/internal/token-usage.js'
 import { rewriteVerificationDoc } from '../../application/internal/verification-doc-writer.js'
 import type { RouterCtx } from './shared.js'
@@ -84,14 +83,18 @@ export function createVerdictsRouter(ctx: RouterCtx) {
       const items = v?.sheet?.items ?? []
       const failed = countFailedItems(items)
       const pending = countPendingItems(items)
+      // REQ-261006092213-4f5b FR-6（D-5）：`unverified`（点了通过却没结果）**不算通过**——
+      // 不放行必须与 domain 的 `sheetGateStatus` / `isFullyDecided` 同口径，否则
+      // "全未复核"能从这个后门直接归档（放行判据的分裂点）。
+      const unverified = items.filter(isUnverifiedItem).length
       const noMaterials = v === undefined
-      const unqualified = noMaterials || failed + pending > 0
+      const unqualified = noMaterials || failed + pending + unverified > 0
       if (pass && unqualified && confirmOverride.length === 0) {
         throw Object.assign(
           new Error('需求 ' + r.id + ' 未执行验收通过：'
             + (noMaterials
                 ? '尚无验收材料（本次通过没有任何验收证据）'
-                : '验收单里不通过 ' + failed + ' 项 / 未裁决 ' + pending + ' 项')
+                : '验收单里不通过 ' + failed + ' 项 / 未裁决 ' + pending + ' 项 / 未复核 ' + unverified + ' 项')
             + '。这属于不合规通过，须由人显式覆盖（带 confirm_override 重发）——覆盖会写入台账留痕'),
           { code: 'verify_override_required' },
         )
@@ -194,9 +197,11 @@ export function createVerdictsRouter(ctx: RouterCtx) {
       if (isFailedItem(status) && opinion.length === 0) badInput('不通过的验收项必须写意见（opinion）')
       // REQ-308b9a FR-9 / AC-9.2：不可验收同样必须写原因——不允许静默消失。
       if (status === 'not_verifiable' && opinion.length === 0) badInput('不可验收的验收项必须写原因（opinion）')
-      // REQ-260930094139-2d65 FR-1：通过同样必须填实际结果（看板通道与弹框通道同口径）。
-      // 状态字面量只在 domain（verdictRequiresOpinion），适配层只调判定函数（层边界纪律）。
-      if (verdictRequiresOpinion(status) && opinion.length === 0) badInput('通过的验收项必须填写实际结果（opinion）')
+      // REQ-261006092213-4f5b FR-4 / FR-6（D-5，**推翻 REQ-260930094139-2d65 FR-1 的「通过必填」**）：
+      // 路由层**不再**对 `passed` 的空 `opinion` 做 400 预校验——判定权统一归 `applyVerdicts`：
+      // 有 `item.result` 即零输入通过（`opinion` 取该项 result），两者皆空记 `unverified`。
+      // 为什么删在路由层：预校验与域层各判一套必然漂移（本仓「两处判定必漂移」的老账），
+      // 且前端已不再把必填推给人（看板留空点通过是合法动作）。
       return { itemId, status, opinion }
     })
     const nowTs = now()

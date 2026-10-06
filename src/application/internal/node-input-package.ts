@@ -19,6 +19,7 @@ import {
   type ResolvedPrompt,
 } from '../../domain/prompt/index.js'
 import { fmt } from '../../domain/text/fmt.js'
+import { parseDocument } from './doc-parse.js'
 import { aggregateUnconfirmedLabels } from './artifact-gates.js'
 import { renderAddressSection } from '../../domain/template/index.js'
 import type { RequirementRecord, StageArtifact, ContextPressureSnapshot } from '../../shared/protocol.js'
@@ -48,6 +49,84 @@ const NONE_UPSTREAM = '（无已确认产物）'
 const NONE_OPEN = '（无）'
 const NONE_EVIDENCE = '（无）'
 const NO_REQUIREMENT = '（无归属需求，台账投影不可用）'
+
+/**
+ * #15：节点输入包的**原型与裁定**注入字段（架构 `NodeInputPrototypeFields`）。
+ *
+ * 为什么做成接口而不是把字段塞进 vendor 的 `NodeInput`：`NodeInput` 是 RTM 快照的装配形状
+ * （vendor 侧，另一条改动线），而本包要投影的是**台账 + 需求文档**两处事实源；两者同名不同源，
+ * 合成一个类型必然出现"谁填的"歧义。
+ */
+export interface NodeInputPrototypeFields {
+  /** 原型产物路径（台账 `kind=prototype`）。缺省 = 从 `requirement.artifacts` 同源投影。 */
+  prototypeRefs?: string[]
+  /** 本需求的 D-x 编号（requirement.md 的「讨论与裁定记录（D-x）」表）。缺省 = 同源投影。 */
+  decisions?: string[]
+}
+
+/** 一条 D-x 裁定的**原文**投影（原话来源 / 裁定两列逐字取自 requirement.md，不概括、不重写）。 */
+export interface DecisionRow {
+  id: string
+  /** 「原话来源（引用）」列原文。 */
+  source: string
+  /** 「裁定」列原文。 */
+  verdict: string
+}
+
+/**
+ * 解析 requirement.md 的「讨论与裁定记录（D-x）」表（纯函数、零 IO）。
+ *
+ * 为什么认列名而不是认节名：节名（`## 讨论与裁定记录（D-x）`）是模板骨架，而表格才是唯一载体
+ * （brief §3）——按列名找表，模板挪动节位置 / 加前后文都不会让解析静默失效。找不到就返回空数组
+ * （调用方据此「如实不注入」，**绝不编造原话**）。
+ */
+export function decisionRowsIn(requirementDoc: string): DecisionRow[] {
+  if (requirementDoc.length === 0) return []
+  const table = parseDocument(requirementDoc).tables.find(
+    t => t.header.some(h => h.includes('编号')) && t.header.some(h => h.includes('裁定')),
+  )
+  if (table === undefined) return []
+  const col = (name: string): number => table.header.findIndex(h => h.includes(name))
+  const iId = col('编号')
+  const iSrc = col('原话来源')
+  const iVerdict = col('裁定')
+  if (iId < 0 || iSrc < 0 || iVerdict < 0) return []
+  const rows: DecisionRow[] = []
+  for (const r of table.rows) {
+    const id = (r[iId] ?? '').trim()
+    if (!/^D-\d+$/.test(id)) continue // 非 D-x 行（表头残留 / 别的编号）不认
+    rows.push({ id, source: (r[iSrc] ?? '').trim(), verdict: (r[iVerdict] ?? '').trim() })
+  }
+  return rows
+}
+
+/**
+ * 原型与裁定的**同源投影**（#15 / FR-10）——节点输入包与交棒底稿共用这一处。
+ *
+ * 为什么必须同源：`IsolateNodeContext` 与 `HandoffOwner` 都经 {@link buildNodeInputPackage} 出包，
+ * 若各自投影一遍，"遗弃上下文后新窗口看到的原型/裁定"就会随入口不同而漂移（本仓「两份真相」老病）。
+ * 事实源只有两处：台账（原型产物路径）+ 需求文档（D-x 编号）——都不是会话内容，故不违反 INV-9。
+ */
+export function projectNodeRefs(
+  requirement: RequirementRecord | undefined,
+  requirementDoc: string,
+): { prototypeRefs: string[]; decisions: string[] } {
+  const prototypes = (requirement?.artifacts ?? [])
+    .filter(a => a.kind === 'prototype')
+    .map(a => a.path)
+  return {
+    prototypeRefs: [...new Set(prototypes)].sort(),
+    decisions: decisionRowsIn(requirementDoc).map(r => r.id),
+  }
+}
+
+/** 「证据指针」节的两行（缺一项则那一行整体不追加，不塞空数组冒充）。 */
+function refLines(prototypeRefs: readonly string[], decisions: readonly string[]): string[] {
+  const lines: string[] = []
+  if (prototypeRefs.length > 0) lines.push('- 原型（prototypeRefs）：' + prototypeRefs.join('、'))
+  if (decisions.length > 0) lines.push('- 裁定（decisions）：' + decisions.join('、'))
+  return lines
+}
 
 function artifactLabel(a: StageArtifact): string {
   return fmt('{kind}（{path}）', { kind: a.kind, path: a.path })
@@ -197,7 +276,7 @@ export function roundCapacityText(pressure: ContextPressureSnapshot | undefined)
   )
 }
 
-export interface NodeInputPackageInput {
+export interface NodeInputPackageInput extends NodeInputPrototypeFields {
   stage: PromptStage
   difficulty?: Difficulty
   category?: Category
@@ -261,6 +340,14 @@ export function buildNodeInputPackage(input: NodeInputPackageInput): NodeInputPa
   const entryLine = STAGE_CHAIN[input.stage].entry.length > 0
     ? fmt('进入本阶段的第一步：{e}', { e: STAGE_CHAIN[input.stage].entry })
     : ''
+  // #15（FR-10）：证据指针节追加「原型 / 裁定」两行——节点边界一遗弃上下文，新窗口只看本包
+  // 也必须知道原型在哪、有哪些裁定在管这条需求。缺省（无原型且无裁定）不追加任何行：
+  // 输出与改造前**逐字节相同**（不塞空数组、不写"（无）"冒充已采集）。
+  const refs = projectNodeRefs(input.requirement, input.requirementDoc)
+  const evidenceText = [
+    projection.evidence,
+    ...refLines(input.prototypeRefs ?? refs.prototypeRefs, input.decisions ?? refs.decisions),
+  ].join('\n')
   const baseText = fmt(
     [
       '# 节点输入包 · {reqId} · {stage}',
@@ -301,7 +388,7 @@ export function buildNodeInputPackage(input: NodeInputPackageInput): NodeInputPa
       upstream: projection.upstream,
       openQuestions: projection.openQuestions,
       next: projection.next,
-      evidence: projection.evidence,
+      evidence: evidenceText,
       routeKey: resolved.routeKey,
       hitLevel: String(resolved.hitLevel),
       routeText: resolved.text,

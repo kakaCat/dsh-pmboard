@@ -20,7 +20,7 @@
  *
  * @module dsh-pmboard/application/use-cases/HandoffOwner
  */
-import type { UseCaseDeps } from '../ports.js'
+import type { UseCaseDeps, WindowInheritance } from '../ports.js'
 import type { ContextPressureSnapshot, RequirementRecord } from '../../shared/protocol.js'
 import { normalizeText } from '../../shared/protocol.js'
 import { difficultyFromDeclaredPrompt } from '../../domain/prompt/difficulty-mapping.js'
@@ -34,10 +34,11 @@ import {
 import { handoffOwner } from '../internal/binding-write.js'
 import { boundSummariesOf } from '../internal/binding-read.js'
 import { buildNodeInputPackage, requirementDocPath } from '../internal/node-input-package.js'
-import { agentIdFromExec, reject, requireLiveDriver } from '../internal/support.js'
+import { agentIdFromExec, reject, requireLiveDriver, requireSameProject } from '../internal/support.js'
 import { canWrite, firstWritableBound, seatOfSummary } from '../internal/window.js'
 import { mutateIfPresent, requirementStoreOf } from './queue-access.js'
 import { resolveWindowCreateOptions } from './OpenWindow.js'
+import { applyWindowInheritance, presetInheritanceOf, readWindowProfile } from '../internal/window-inherit.js'
 
 /** 交接底稿的自署来源（**红线**：永不为 `user`——那等于插件冒充人类）。 */
 export const HANDOFF_SEED_KIND = 'reqboard-handoff'
@@ -90,6 +91,19 @@ export interface HandoffValue {
     source: string
   }
   note: string
+  /**
+   * 本次交接用的**判据来源**（REQ-261005141830-7a3b t6 · FR-9）：`project-id` = 两侧项目身份相等；
+   * `path-fallback` = 任一侧缺身份、走路径口径（要如实标注「未归属」，不静默放行）。
+   * 新建接管窗口那条路不校验（新窗口建在源项目里），故不返回本键。
+   */
+  project_source?: 'project-id' | 'path-fallback'
+  /** 需求侧项目身份（有则给；未归属则缺省）。 */
+  project_id?: string
+  /**
+   * 继承回执（REQ-261005151245-54ae FR-5）：**仅新建接管窗口时出现**；
+   * `to_window` 指向已有窗口时整体省略（没有新建窗口，就没有可继承的对象）。
+   */
+  inheritance?: WindowInheritance
 }
 
 /**
@@ -162,7 +176,17 @@ export async function handoffRequirement(
       'REQBOARD_HANDOFF_TARGET_INVALID',
     )
   }
-  const toWindow = explicitTo ?? await openTargetWindow(deps, args.mode, windowKey, exec)
+  const opened = explicitTo === undefined
+    ? await openTargetWindow(deps, args.mode, windowKey, exec)
+    : undefined
+  const toWindow = explicitTo ?? opened!.windowKey
+
+  // REQ-261005141830-7a3b t6（FR-11）：**跨项目不得交接**——显式指定的接管窗口必须与需求同项目。
+  // 新建窗口那条路落在**源项目**里（`resolveWindowCreateOptions` 按源会话项目落点），天然同项目，故只校验显式路径。
+  // 校验发生在**任何台账写入之前** ⇒ 被拒时台账零改动（T-21）。
+  const guard = explicitTo === undefined
+    ? undefined
+    : requireSameProject(deps, target, explicitTo, '交接')
 
   // ⑤ 交接：一次 mutate 写全（席位升降 + sourceSessionId + 留痕）。
   const at = deps.clock.now()
@@ -198,6 +222,9 @@ export async function handoffRequirement(
       ? '；底稿已以自署 kind（reqboard-handoff）投递，新窗口可直接接续'
       : `；底稿未投递：${delivery.reason ?? '原因未知'}——交接不回滚，${toWindow} 已是 owner（reqboard_status 可见），可按断点 + 文档目录接手`,
     selfInitiated ? '' : '；本次非 agent 自主（水位档未到顶墙，由人明确要求）',
+    guard !== undefined && !guard.attributed
+      ? '；本次目标窗口未归属（判据：路径兜底）——如实标注，不冒充项目身份'
+      : '',
   ].join('')
 
   return {
@@ -211,6 +238,12 @@ export async function handoffRequirement(
     delivery,
     context_pressure: pressureProjection(pressure),
     note,
+    // FR-9：判据说出来（新建窗口路径不校验 ⇒ 缺失，缺失 ≠ 判据为空）。
+    ...(guard === undefined
+      ? {}
+      : { project_source: guard.by, ...(guard.projectId !== undefined ? { project_id: guard.projectId } : {}) }),
+    // REQ-261005151245-54ae FR-5：只有**新建**了窗口才谈得上继承（指定已有窗口 → 该键整体省略）。
+    ...(opened === undefined ? {} : { inheritance: opened.inheritance }),
   }
 }
 
@@ -240,13 +273,16 @@ function normalizeWindowArg(raw: unknown): string | undefined {
 /**
  * 新建接管窗口（缺省路径）：落点复用 `reqboard_open_window` 的同一条解析链（源项目优先）。
  * 任何失败都发生在**写台账之前** ⇒ 台账零改动。
+ *
+ * REQ-261005151245-54ae FR-1/FR-3/FR-4：新窗口建成后落定继承三件（标题 / 模式 / 模型），
+ * 回执随 `inheritance` 一并带出——接管方一眼看得出新窗口像不像源窗口。
  */
 async function openTargetWindow(
   deps: UseCaseDeps,
   mode: 'fork' | 'create' | undefined,
   windowKey: string,
   exec: unknown,
-): Promise<string> {
+): Promise<{ windowKey: string; inheritance: WindowInheritance }> {
   const opener = deps.windowOpener
   if (opener === undefined || !opener.available()) {
     reject(
@@ -258,6 +294,8 @@ async function openTargetWindow(
   if (want !== 'fork' && want !== 'create') {
     reject(`reqboard_handoff 未执行：mode 只能是 fork 或 create（实际 ${JSON.stringify(mode)}）`, 'REQBOARD_INVALID_INPUT')
   }
+  // 源会话画像只读一次（FR-2）：标题与模型从这里取，`create` 的模式也随请求带上（FR-3）。
+  const sourceRead = await readWindowProfile(opener, windowKey)
   if (want === 'fork') {
     const forked = await opener.fork(windowKey)
     if (!forked.ok) {
@@ -266,7 +304,12 @@ async function openTargetWindow(
         'REQBOARD_OPEN_WINDOW_UNAVAILABLE',
       )
     }
-    return forked.windowKey
+    const inheritance = await applyWindowInheritance(opener, {
+      childKey: forked.windowKey,
+      mode: 'fork',
+      sourceRead,
+    })
+    return { windowKey: forked.windowKey, inheritance }
   }
   // create 必须先解析**落点**：解析不出就响亮失败，且不调用 create
   // （绝不让要在原项目里续作的新窗口悄悄落到宿主目录——那正是本需求要根治的病灶）。
@@ -277,11 +320,17 @@ async function openTargetWindow(
       'REQBOARD_OPEN_WINDOW_UNAVAILABLE',
     )
   }
-  const outcome = await opener.create(placement)
+  const preset = presetInheritanceOf(sourceRead, 'create').agentPreset
+  const outcome = await opener.create(preset === undefined ? placement : { ...placement, agentPreset: preset })
   if (!outcome.ok) {
     reject(`reqboard_handoff 未执行：建新窗口失败（${outcome.reason}），台账零改动`, 'REQBOARD_OPEN_WINDOW_UNAVAILABLE')
   }
-  return outcome.windowKey
+  const inheritance = await applyWindowInheritance(opener, {
+    childKey: outcome.windowKey,
+    mode: 'create',
+    sourceRead,
+  })
+  return { windowKey: outcome.windowKey, inheritance }
 }
 
 /** 投递底稿（不动台账）；端口未装配 / 投递失败都如实回报，**绝不谎报已送达**。 */

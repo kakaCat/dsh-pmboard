@@ -84,6 +84,16 @@ export interface RTMMetadata {
   [k: string]: unknown
 }
 
+/**
+ * RTM **schema 版本**（REQ-261005105032-3b02 决议 `#18` / `#42`）。
+ *
+ * 为什么有它：本需求给 RTM 加了 `prototypes` / `decisions` 两节与 `D-x` 引用前缀，属 schema 变更，
+ * 读侧要能一眼分辨"新形状"与"存量旧文件"。**键是 `metadata.rtm_version`**——它与
+ * `metadata.version`（每次写入 +1 的**计数**，见 file-io.writeRTM）**不是同一个键**，
+ * 改 setter 时别改错（data-model.md §6.3 实测记录过这对易混键）。
+ */
+export const RTM_SCHEMA_VERSION = '2.0'
+
 /** 功能需求点（从 requirement.md 解析）。 */
 export interface FR {
   id: string
@@ -92,13 +102,97 @@ export interface FR {
   line: number
 }
 
+/**
+ * 一条原型 FR 锚点（REQ-261005105032-3b02 决议 `#41` / `#49`）。
+ *
+ * **形状与宿主 `StageArtifact.prototypeMeta.anchors` 的元素逐字一致**——决议 `#49` 明令
+ * 「统一用 #41 的字段名，不另立第二套」。本包（vendor/reqboard）是**独立可发布包**，
+ * 不得反向 import dsh-pmboard（模块边界见 context.ts 顶部声明），故按决议 `#49` 允许的
+ * 第二选法：**注释标明同源**；形状漂移由 `tests/rtm-prototype-sections.test.ts` 的同源断言守住。
+ */
+export interface PrototypeAnchor {
+  /** FR 编号（锚点区块的 `id="FR-N"`）。 */
+  fr: string
+  /** 原型页面内该锚点区块的选择器/定位串（如 `#FR-3`）。 */
+  selector: string
+}
+
+/** 几何量单位闭值域（决议 `#5`，与 #41 同源）。 */
+export type PrototypeGeometryUnit = 'px' | 'count' | 'ratio'
+
+/** 观测条件里的页面态闭值域（决议 `#5`，与 #41 同源）。 */
+export type PrototypeGeometryState = 'inflight' | 'terminal'
+
+/**
+ * 一条原型观测量（REQ-261005105032-3b02 决议 `#41` / `#49`）。
+ *
+ * **形状与宿主 `StageArtifact.prototypeMeta.geometry` 的元素逐字一致**（同源声明见 PrototypeAnchor）。
+ * 刻意**不含阈值字段**（D-10）：原型只放观测量名与实测值，阈值属设计决策。
+ */
+export interface PrototypeGeometry {
+  name: string
+  value: number
+  unit: PrototypeGeometryUnit
+  at: { width: number; state: PrototypeGeometryState }
+  /** 缺省 `'prototype'`（agent 量原型自身渲染所得），人给的量化值标 `'human'`（决议 `#8`）。 */
+  source?: 'prototype' | 'human'
+}
+
+/**
+ * rtm-brainstorming.yml `outputs.prototypes[]` 一条（REQ-261005105032-3b02 FR-5，data-model §6.1）。
+ *
+ * 语义：一份原型页面（**不是** `prototypes/INDEX.md`——那是权威清单自身，见决议 `#1`）。
+ * `anchors` / `geometry` 的元素形状一律见上面两个接口（#41/#49），本处不另立字段名。
+ */
+export interface Prototype {
+  /** 原型路径（需求目录相对口径，决议 `#2`），如 `prototypes/detail.html`。 */
+  path: string
+  /** 是否权威版本；同一 `prototypes` 节内**恰好一条** `true`（权威清单 = prototypes/INDEX.md）。 */
+  authoritative: boolean
+  /** 被取代于（指向权威路径）；`authoritative: true` 时省略。 */
+  superseded_by?: string
+  /** 服务的 FR 编号；**只放编号引用，锚点不进这里**（§7.3 禁假引用）。 */
+  serves: string[]
+  /** FR 锚点清单（元素形状见 PrototypeAnchor，#41 同源）。 */
+  anchors: PrototypeAnchor[]
+  /** 观测量清单（元素形状见 PrototypeGeometry，#41 同源；含 `unit` / `at.state` 闭值域）。 */
+  geometry: PrototypeGeometry[]
+}
+
+/**
+ * rtm-brainstorming.yml `outputs.decisions[]` 一条（REQ-261005105032-3b02 FR-9，data-model §6.2）。
+ *
+ * 来源 = `requirement.md`「讨论与裁定记录（D-x）」表的逐行投影（FR-8 定的五要素）。
+ * RTM 是**只读投影**：本结构不判条目是否有效（那是 `decision-gates.ts` 的门禁职责）。
+ */
+export interface Decision {
+  /** 裁定编号 `D-\d+`（节内唯一）。 */
+  id: string
+  /** 原话来源（会话消息 id / 时间戳 + 引用原话）。 */
+  source: string
+  /** 裁定结论。 */
+  verdict: string
+  /** 影响哪些 FR。 */
+  serves: string[]
+  /** 可验证判据。 */
+  criterion: string
+}
+
 /** 设计章节（从 design/*.md 解析）。 */
 export interface DesignSection {
   /** 稳定引用，如 design/architecture.md#1.1 */
   ref: string
   title: string
-  /** 本章节服务哪些 FR。 */
+  /** 本章节服务哪些 FR 与 D-x（编号引用，serves 白名单见 §7.1）。 */
   serves: string[]
+  /**
+   * 本章节引用的**原型锚点原文**（REQ-261005105032-3b02 §7.3，如 `prototypes/x.html#FR-4`）。
+   *
+   * 为什么单列：锚点是页面内区块的定位符，**不是**"本章节覆盖 FR-4"的声明——混进 `serves`
+   * 会让覆盖度虚高（实测 `collectIds('prototypes/x.html#FR-4')` → `['FR-4']`）。
+   * 缺省 = 本章节没引锚点（旧文件同样缺该键 = 未采集，不判坏）。
+   */
+  protoRefs?: string[]
   file: string
   section: string
 }
@@ -174,6 +268,13 @@ export interface RTMTaskLike {
   implements?: string
   /** 服务/覆盖的 FR 列表。 */
   serves?: string[]
+  /**
+   * 该卡承接的**原型锚点**引用原文（REQ-261005105032-3b02 FR-9，台账 `TaskRecord.prototypeRefs`）。
+   * 缺省 = 未采集（无锚点的卡合法，加性零迁移 §10 `#50`）。
+   */
+  prototypeRefs?: string[]
+  /** 该卡承接的 **D-x 裁定**编号（台账 `TaskRecord.decisionRefs`）；缺省 = 未采集。 */
+  decisionRefs?: string[]
 }
 
 /** rtm-lifecycle.yml 里某个阶段的历史记录。 */
@@ -242,6 +343,15 @@ export interface RTMBrainstorming {
   metadata: RTMMetadata
   outputs: {
     requirements: FR[]
+    /**
+     * 原型节（REQ-261005105032-3b02 FR-5 #18）。
+     *
+     * **可选**：生成端恒写；存量 RTM 文件缺该节 = **未采集（pending），不判损坏**（§6.4 宽容度）——
+     * 标成必填会让读侧把"旧文件"当"字段必在"用，一读就崩。
+     */
+    prototypes?: Prototype[]
+    /** 裁定节（REQ-261005105032-3b02 FR-9 #18）：同上，缺节 = pending。 */
+    decisions?: Decision[]
   }
   status?: {
     artifacts: Array<{
@@ -270,6 +380,21 @@ export interface RTMDesign {
   }
 }
 
+/**
+ * rtm-decomposing.yml `task_coverage[]` 一条（REQ-261005105032-3b02 FR-5 / FR-9，data-model §6.4）。
+ *
+ * 与 `types/rtm.ts` 的 `TaskCoverage`（拆分工具返回的 FR 覆盖视图，字段 `covers_frs`）**同名不同物**：
+ * 本条目只承载两维**新编号**——该卡承接的原型锚点与 D-x，来源与 `TaskRecord.prototypeRefs` /
+ * `decisionRefs` 同源（决议 `#36`），不重复 FR 覆盖（那仍在 `traceability` / `coverage` 里）。
+ */
+export interface DecomposingTaskCoverage {
+  task_id: string
+  /** 该卡承接的原型锚点引用原文；字段缺失 = 未采集 ⇒ 空数组（不编造）。 */
+  covers_prototypes: string[]
+  /** 该卡承接的 D-x 编号；字段缺失 = 未采集 ⇒ 空数组（不编造）。 */
+  covers_decisions: string[]
+}
+
 /** rtm-decomposing.yml（拆分节点）。 */
 export interface RTMDecomposing {
   metadata: RTMMetadata
@@ -288,6 +413,11 @@ export interface RTMDecomposing {
       side: string
     }>
   }
+  /**
+   * 每张卡的承接清单（REQ-261005105032-3b02 FR-5 / FR-9，data-model §6.4）。
+   * **可选**：生成端恒写；存量文件缺该节 = pending，不判损坏（同 `prototypes` / `decisions`）。
+   */
+  task_coverage?: DecomposingTaskCoverage[]
   traceability: {
     design_to_tasks: Record<string, string[]>
     fr_to_tasks: Record<string, string[]>
@@ -341,6 +471,26 @@ export interface RTMImplementing {
   tasks: Array<{ id: string; status: string; [k: string]: unknown }>
 }
 
+/**
+ * rtm-accepting.yml `outputs.acceptance_items[]` 一条（REQ-261005105032-3b02 FR-7）。
+ *
+ * 形状照决议 `#37` 的 `VerificationItemSource` 载荷 + interfaces.md「验收单项接口」表：
+ * 判据逐字 =「与原型对照截图（含差异说明）」，`needsHuman` 恒 true，理由 =「界面视觉需人对照权威原型」。
+ * 由 `accepting-generator` 生成；**加性可选字段**（data-model §6.4「加可选字段」/ §10 `#50` 零迁移）
+ * ——旧 `rtm-accepting.yml` 没有该键 = 未采集，读侧不得当"必在"用。
+ */
+export interface AcceptanceEvidenceItem {
+  /** 项 id（同一文件内唯一；对照项多于一条时按序编号）。 */
+  id: string
+  /** 判别联合 source（`#37` 载荷形状；本需求只产 `prototype-compare`）。 */
+  source: { kind: 'prototype-compare'; prototypePath: string }
+  /** 逐字判据（interfaces.md §验收单项接口，禁止改写）。 */
+  criterion: string
+  /** 界面视觉无法自动判 → 恒 true（沿用"无法自动验证的项必须显式标注理由"机制）。 */
+  needsHuman: true
+  humanReason: string
+}
+
 /** rtm-accepting.yml（验收节点）。 */
 export interface RTMAccepting {
   metadata: RTMMetadata
@@ -349,6 +499,14 @@ export interface RTMAccepting {
   }
   outputs: {
     test_cases: TestCase[]
+    /**
+     * 验收「原型对照」证据条目（REQ-261005105032-3b02 FR-7）。
+     *
+     * **可选**：生成端在 UI 需求（feature/refactor）且存在已登记原型时写；无原型 / 已声明
+     * `prototype_exempt` / 非 UI 分类时**不写该键**（缺键 = 未采集，与 `prototypes` / `decisions`
+     * 两节的宽容度同口径 data-model §6.4）。
+     */
+    acceptance_items?: AcceptanceEvidenceItem[]
   }
   traceability: {
     task_to_tests: Record<string, string[]>

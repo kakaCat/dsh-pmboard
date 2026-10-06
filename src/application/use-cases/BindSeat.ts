@@ -29,6 +29,7 @@ import type { ActorRef, CommentRecord, WindowSeat } from '../../shared/protocol.
 import { normalizeText } from '../../shared/protocol.js'
 import { canWrite, firstWritableBound, seatOfSummary, seatsOf } from '../internal/window.js'
 import { boundSummariesOf } from '../internal/binding-read.js'
+import { requireSameProject, type SameProjectGuard } from '../internal/support.js'
 import { requirementStoreOf, mutateIfPresent } from './queue-access.js'
 
 /** 本工具能派的两种角色（owner 由立项/换绑产生，不经本工具）。 */
@@ -52,6 +53,14 @@ export interface BindSeatResult {
   changed: boolean
   /** 变更后的**完整**席位表（与台账逐字一致） */
   seats: WindowSeat[]
+  /**
+   * 本次派席用的**判据来源**（REQ-261005141830-7a3b t6 · FR-9）：`project-id` = 两侧项目身份相等；
+   * `path-fallback` = 任一侧缺身份、走路径口径（此时要如实标注「未归属」，不静默放行）。
+   * `remove=true`（解绑，只做减法）不校验项目，故不返回本键。
+   */
+  project_source?: 'project-id' | 'path-fallback'
+  /** 需求侧项目身份（有则给；未归属则缺省——缺失 ≠ 已确认未归属）。 */
+  project_id?: string
 }
 
 /** 缺省上限，与 `plugin-config.seatsMaxSetting` 的缺省一致（组合根会传真值）。 */
@@ -122,6 +131,15 @@ export async function bindSeat(
   }
   const targetId = target.id
 
+  // REQ-261005141830-7a3b t6（FR-11）：**跨项目不得派席**——目标窗口必须与需求同项目，
+  // 否则那个窗口随后就能替本项目写盘（多窗口不同项目串的一条合法入口）。
+  // 判定发生在**任何写入之前** ⇒ 被拒时台账零改动；`remove=true`（只做减法）刻意不校验。
+  const guard: SameProjectGuard | undefined = remove
+    ? undefined
+    : requireSameProject(deps, target, seatWindow, '派席')
+  // 未归属（缺身份且无路径可比）→ 不静默放行：变更评论里如实标注判据（FR-9）。
+  const unattributedNote = guard !== undefined && !guard.attributed ? '（判据：路径兜底，目标窗口未归属）' : ''
+
   // mutate 回调是同步契约：返回体需要的值在回调里捕获（`mutateIfPresent` 不回传变更器的自定义值）
   let nextSeats: WindowSeat[] | undefined
   let changed = false
@@ -144,7 +162,7 @@ export async function bindSeat(
       const removed = current.splice(idx, 1)[0]!
       nextSeats = current
       changed = true
-      writeBack(req, deps, windowKey, current, `解绑席位：${removed.windowKey}（角色 ${removed.role}）`)
+      writeBack(req, deps, windowKey, current, `解绑席位：${removed.windowKey}（角色 ${removed.role}）` + unattributedNote)
       return { changed: true }
     }
 
@@ -178,7 +196,7 @@ export async function bindSeat(
       current[idx] = { ...existing, role }
       nextSeats = current
       changed = true
-      writeBack(req, deps, windowKey, current, `席位角色变更：${seatWindow} ${existing.role} → ${role}`)
+      writeBack(req, deps, windowKey, current, `席位角色变更：${seatWindow} ${existing.role} → ${role}` + unattributedNote)
       return { changed: true }
     }
 
@@ -196,7 +214,7 @@ export async function bindSeat(
     })
     nextSeats = current
     changed = true
-    writeBack(req, deps, windowKey, current, `新增席位：${seatWindow}（角色 ${role}）`)
+    writeBack(req, deps, windowKey, current, `新增席位：${seatWindow}（角色 ${role}）` + unattributedNote)
     return { changed: true }
   })
 
@@ -216,6 +234,10 @@ export async function bindSeat(
     removed: remove,
     changed,
     seats: nextSeats,
+    // FR-9：判据说出来（解绑不校验项目 ⇒ 不返回本组键，缺失 ≠ 判据为空）。
+    ...(guard === undefined
+      ? {}
+      : { project_source: guard.by, ...(guard.projectId !== undefined ? { project_id: guard.projectId } : {}) }),
   }
 }
 

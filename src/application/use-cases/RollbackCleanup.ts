@@ -98,6 +98,12 @@ export async function executeRollbackCleanup(
         qt.revisions = c.revisions
         if (c.parentId !== undefined) qt.parentId = c.parentId
         qt.updatedAt = c.updatedAt
+        // 取消留痕（REQ-261005193546-1b1a FR-3）：清场计划副本上的三字段逐键搬过来——
+        // 本落点只处置「要取消的卡」（无复位分支），但同样按 `!== undefined` 判定，
+        // 不在缺值时写 `undefined`（避免把「未采集」变成「有键无值」的第二态）。
+        if (c.canceledAt !== undefined) qt.canceledAt = c.canceledAt
+        if (c.canceledBy !== undefined) qt.canceledBy = c.canceledBy
+        if (c.cancelReason !== undefined) qt.cancelReason = c.cancelReason
         touched = true
       }
       return touched ? queueTasks : undefined

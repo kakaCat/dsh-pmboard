@@ -15,6 +15,7 @@
  * @module dsh-pmboard/http/routers/panels
  */
 import type { ServerResponse } from 'node:http'
+import { existsSync } from 'node:fs'
 import { resolveDocRoot, type RouterCtx } from './shared.js'
 import { FileDocRepository } from '../../adapters/FileDocRepository.js'
 import { JsonQueueRepository } from '../../repositories/QueueRepository.js'
@@ -25,6 +26,7 @@ import {
   isDegrade,
   type Degrade,
   type PanelResult,
+  type RequirementRecord,
   type RequirementTokenStageRow,
   type RequirementTokenView,
   type TokenPanelExtension,
@@ -44,7 +46,7 @@ export const PANEL_LIMIT_MAX = 50
  */
 
 /** 六条端点的键（与 PanelQueries 对齐；`token` 是扩展段，挂在既有端点后面）。 */
-export type PanelEndpoint = 'report' | 'trunk' | 'docs' | 'dag' | 'dialogue' | 'prompts' | 'token'
+export type PanelEndpoint = 'report' | 'trunk' | 'docs' | 'dag' | 'dialogue' | 'prompts' | 'token' | 'verify'
 
 /** 一条降级信封（六条共用；`reason` 的四种含义见 protocol.ts 的 DegradeReason）。 */
 export function degradeOf(reason: Degrade['reason'], note: string): Degrade {
@@ -137,7 +139,41 @@ export function createPanelsRouter(ctx: RouterCtx, deps: PanelsRouterDeps) {
       now: ctx.now,
       onWarn: () => {},
     })
-    return { ...panelDeps, docs: new FileDocRepository({ workspaceRoot: root }), tasks }
+
+    /**
+     * 候选读根（REQ-261005143615-5ab1 FR-1/FR-2）：**需求自己声明的工作区 → 阅读会话工作区 →
+     * 组合根 cwd**，去空去重，并**只留真实存在的根**。
+     *
+     * 三条为什么：
+     *  - 需求声明根排第一：它是「这条需求的东西在哪」的唯一权威声明，会话根只说明「谁在看」；
+     *  - 只留存在的根：「根不在」（换机器 / 仓被移动）与「文件不在」是两件事——前者由查询层
+     *    记成 `unknown`，不许谎报缺失；
+     *  - 探测（`existsSync`）留在这里：application 层禁止 `import node:`（layer-boundary）。
+     */
+    const docRootsOf = (req: RequirementRecord): string[] => {
+      const out: string[] = []
+      for (const candidate of [req.workspaceRoot, root, ctx.deps.cwd]) {
+        if (typeof candidate !== 'string' || candidate.length === 0 || out.includes(candidate)) continue
+        try {
+          if (existsSync(candidate)) out.push(candidate)
+        } catch { /* 探测失败 = 这个根不可用（不猜、不编路径） */ }
+      }
+      return out
+    }
+
+    /** 按根建文档读端口（构造适配器的事留在本层，application 只调用）。 */
+    const docsAt = (r: string): FileDocRepository => new FileDocRepository({ workspaceRoot: r })
+
+    return {
+      ...panelDeps,
+      docs: new FileDocRepository({ workspaceRoot: root }),
+      tasks,
+      docRootsOf,
+      docsAt,
+      // verify 端点读 RTM 用的工作区根（REQ-261006130057-7a43）：与会话解析根同源——
+      // 组合根 cwd 是插件宿主目录（见上方事故注释），RTM 在**用户工作区**里。
+      workspaceRoot: root,
+    }
   }
 
   /** `:id` 形状校验（返回 undefined = 400 已写）。 */
@@ -218,6 +254,7 @@ export function createPanelsRouter(ctx: RouterCtx, deps: PanelsRouterDeps) {
     handleDag: (res: ServerResponse, id: string, url: URL) => run(res, 'dag', id, url),
     handleDialogue: (res: ServerResponse, id: string, url: URL) => run(res, 'dialogue', id, url),
     handlePrompts: (res: ServerResponse, id: string, url: URL) => run(res, 'prompts', id, url),
+    handleVerify: (res: ServerResponse, id: string, url: URL) => run(res, 'verify', id, url),
     handlePanels,
     handleTokenExtension,
     idOf,
@@ -229,7 +266,7 @@ export function createPanelsRouter(ctx: RouterCtx, deps: PanelsRouterDeps) {
    * 返回 true = 已处理（调用方不必再往下试）。
    */
   async function handlePanels(res: ServerResponse, sub: string, url: URL): Promise<boolean> {
-    const m = /^requirements\/([^/]+)\/(report\/trunk|report|trunk|docs|dag|dialogue|prompts)$/.exec(sub)
+    const m = /^requirements\/([^/]+)\/(report\/trunk|report|trunk|docs|dag|dialogue|prompts|verify)$/.exec(sub)
     if (m === null) return false
     const rawId = m[1] ?? ''
     // `report/trunk` 归一到 `trunk`：**同一个处理器、同一份校验与降级**，

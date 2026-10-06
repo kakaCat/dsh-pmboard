@@ -10,8 +10,35 @@
  *
  * @module dsh-pmboard/application/internal/content-gate-wiring
  */
-import type { OverCapacityItem, PlanTask, RequirementRecord, TaskRecord } from '../../shared/protocol.js'
+import type { OverCapacityItem, PlanTask, RequirementRecord, RequirementStatus, TaskRecord } from '../../shared/protocol.js'
 import type { GateFailure } from './artifact-gates.js'
+// REQ-261005105032-3b02 §10 #46：原型三门 / 裁定门的**唯一** async 分派入口就在本文件（见文件末
+// `contentGatesForMove`）。门本体各自成模块，本文件只做分派——四条转移路径只调用、不复制判定。
+import {
+  checkPrototypeAnchorsGate,
+  checkPrototypePresenceGate,
+  checkPrototypeVersionGate,
+  parsePrototypeIndex,
+  prototypeExemptOf,
+} from './prototype-gates.js'
+// 「原型已登记」的唯一判据（REQ-261006091755-1c9e FR-1/FR-3）：锚点维判「有没有可锚对象」时
+// 复用它与 presence 门同一条口径——目录里有未登记的骨架**不算**交了原型。
+import { registeredPrototypesOf } from './prototype-registration.js'
+// UI 卡原型锚点维（REQ-261005105032-3b02 FR-5 / t12）：解析与逐卡判定是纯函数（可单独逆验证），
+// 本文件只做取数（读 INDEX）与组装 GateFailure——与 FR 落点门共用同一个判定单点。
+import { prototypeRefsFromPlanDoc, prototypeAnchorGaps, uiCardAnchorClaims } from './plan-prototype-refs.js'
+import {
+  checkDecisionLogGate,
+  hasDecisionTrace,
+  type DecisionSessionReader,
+} from './decision-gates.js'
+// 阶段门时序（FR-11 / t13）：三档时点各判一次「该绿的门」，逾期码 stage_gate_overdue（§10 #39）。
+// 判定本体在该模块（可单测），本文件只做分派 + 把既有门当探针注入（见 STAGE_GATE_PROBES）。
+import {
+  assertStageGateTimelineGate,
+  type StageGateProbes,
+} from './stage-gate-timeline.js'
+import { stageGateMomentFor } from '../../domain/gate/GateCatalog.js'
 import {
   parseDocument,
   extractClauseDefinitions,
@@ -31,6 +58,9 @@ import {
   type ParsedDoc,
 } from './content-gates.js'
 import { collectTaskRefs, planKeysIn, taskRefsFromDecomposition } from './content-trace.js'
+// 「什么算 UI 需求」的唯一判据（feature/refactor 且 sides 含 frontend ⇒ 需求阶段必交原型）：
+// 本文件的前筛与三个原型门同吃这一份，避免两处各判一次而分叉。
+import { conditionalStageArtifactsFor, designDocPolicyFrom, requiredStageArtifactKinds } from './category-doc-sets.js'
 import { judgeFootprint } from '../../domain/task/Footprint.js'
 import { envelope } from './gate-feedback.js'
 import { fmt } from '../../domain/text/fmt.js'
@@ -100,10 +130,19 @@ export function requirementRefsOf(raw: unknown): string[] {
 }
 
 /**
- * 覆盖门禁（FR-1）：拆分提交前，核对**需求里每条根编号都有落点**——
- * 要么被至少一张任务卡用 requirement_refs 接收，要么被显式标「本轮不做」。
+ * 覆盖门禁（FR-1 + FR-5）：拆分提交 / 落库前，核对两件事——
+ *  ① **需求里每条根编号都有落点**：要么被至少一张任务卡用 requirement_refs 接收，
+ *     要么被显式标「本轮不做」（REQ-d3e61a T-3）；
+ *  ② **每张 UI 卡的「设计落点」带原型锚点**（REQ-261005105032-3b02 FR-5 / t12）：
+ *     需求为 feature/refactor 且 sides 含 frontend 时，`side === 'frontend'` 的卡必须写明
+ *     `prototypes/<name>.html#FR-N`，且路径等于 `prototypes/INDEX.md` 的权威行。
  *
- * 放行条件（任一即跳过，避免误拦）：存量需求 / 需求文档不存在 / 文档里没有编号条款。
+ * 为什么两维同处一个函数（不是一个门一个函数）：调用它的三条入口（`Decompose.ts` /
+ * `approved-plan-landing.ts` / `SubmitArtifact.ts` 的 kind=plan）只认这一处判定单点，
+ * 加维只改这里 = 三条入口自动复用，既有调用点签名不变（少一个函数就少一处"漏接线"）。
+ *
+ * 放行条件（任一即跳过，避免误拦）：存量需求 / 需求文档不存在 / 文档里没有编号条款 /
+ * 非 UI 需求 / 本计划没有 UI 卡。
  */
 export async function assertClauseCoverageGate(
   docs: DocsReader,
@@ -129,23 +168,99 @@ export async function assertClauseCoverageGate(
   const covered = [...new Set([...refsFromTasks, ...refsFromRTM])]
   const skipped = extractSkippedClauses(doc)
   const { gaps } = checkClauseCoverage(roots, covered, { skipped })
+  if (gaps.length > 0) {
+    return {
+      code: 'requirement_uncovered',
+      kind: 'decomposition',
+      gaps,
+      message: envelope({
+        lead: 'reqboard_decompose 未执行：',
+        what: fmt('需求条款 {list}', { list: gaps.join('、') }),
+        why: '既没有被任何任务卡接收、也没有标「本轮不做」',
+        how: '恢复路径二选一（都真的能用）：① 在计划文档 ' + decompositionPath + ' 的覆盖对照表补「FR-N ↔ 计划 key」行'
+          + '（表头含「需求条款」与「接收任务」两列即被门禁读取，形如 | FR-1 | … | t4 |）；'
+          + '② 显式调 reqboard_decompose(requirement_id="' + req.id + '", tasks=[{key:"t1",title:"…",implementation:"…",acceptance:"…",requirement_refs:["FR-1"]}, …])，'
+          + '其中 key 必须与已批准计划一致。确需本轮不做的条款，在需求文档该条旁显式写明「本轮不做」并给出理由。'
+          + '注意：不要给任务卡加 requirement_refs——落库前根本没有任务卡可加。',
+      }),
+    }
+  }
+
+  // ── ② UI 卡原型锚点维（FR-5 / t12）：FR 落点齐备后再判，缺锚点即逐卡点名 ──────────
+  return assertUiCardPrototypeAnchors(docs, req, doc, rawTasks, decompositionPath)
+}
+
+/**
+ * UI 卡原型锚点维（REQ-261005105032-3b02 FR-5 / TC-17）——本维的**唯一判定点**。
+ *
+ * 判据三件（缺一即拒，逐卡点名）：
+ *  ① 需求是 UI 需求：feature/refactor 且 `sides` 含 frontend（与三个原型门同吃
+ *     `conditionalStageArtifactsFor` 这一份判据，不另写"什么算 UI 需求"）；
+ *  ② 每张 `side === 'frontend'` 的卡都有锚点：任务对象 `prototypeRefs` 或计划文档
+ *     「原型锚点（UI 卡必填）」列任一非空即可（双源合并，人两种写法都算数）；
+ *  ③ 锚点路径 = `prototypes/INDEX.md` 的权威行（指向被取代版本 = 拒）。
+ *
+ * 降级（不重复报）：INDEX 缺失 / 有解析缺口 / 权威条数 ≠ 1 时只判形态——那三种形态由
+ * `checkPrototypeVersionGate` 单点报一次（同一处坏不该让人在两条消息里对齐）。
+ */
+async function assertUiCardPrototypeAnchors(
+  docs: DocsReader,
+  req: RequirementRecord,
+  doc: ParsedDoc,
+  rawTasks: readonly unknown[],
+  decompositionPath: string,
+): Promise<GateFailure | undefined> {
+  const sides = designDocPolicyFrom(doc.frontmatter).sides
+  const applies = conditionalStageArtifactsFor(req.category, sides).some(c => c.kind === 'prototype')
+  if (!applies) return undefined
+
+  // 豁免生效 ∧ 该需求没有任何**已登记**原型产物 → 没有「可锚」的对象，整维跳过
+  // （REQ-261006091755-1c9e FR-1/FR-3）：豁免的语义是「不强制交原型」，不是「交付物免检」——
+  // 真登记了原型时下面照旧逐卡要求锚点。
+  // 判据全部复用既有单点（什么算豁免 / 有没有原型各只有一处答案），且「有没有原型」只认
+  // 产物簿的登记事实，**不**拿 INDEX 解析失败当「没有原型」——那会是一条静默放行面。
+  if (prototypeExemptOf(req, doc.frontmatter).active && registeredPrototypesOf(req).length === 0) return undefined
+
+  // 计划文档通道（人写在表里的那份）：只在文档存在时读，读不到就是"没有这条通道"。
+  const docRefs = docs.exists(decompositionPath)
+    ? prototypeRefsFromPlanDoc(parseDocument(await docs.read(decompositionPath)))
+    : new Map<string, string[]>()
+  const claims = uiCardAnchorClaims(rawTasks, docRefs)
+  if (claims.length === 0) return undefined
+
+  const gaps = prototypeAnchorGaps(claims, req.id, await authoritativePrototypePath(docs, req.id), decompositionPath)
   if (gaps.length === 0) return undefined
 
   return {
-    code: 'requirement_uncovered',
+    code: 'prototype_anchor_missing',
     kind: 'decomposition',
     gaps,
     message: envelope({
       lead: 'reqboard_decompose 未执行：',
-      what: fmt('需求条款 {list}', { list: gaps.join('、') }),
-      why: '既没有被任何任务卡接收、也没有标「本轮不做」',
-      how: '恢复路径二选一（都真的能用）：① 在计划文档 ' + decompositionPath + ' 的覆盖对照表补「FR-N ↔ 计划 key」行'
-        + '（表头含「需求条款」与「接收任务」两列即被门禁读取，形如 | FR-1 | … | t4 |）；'
-        + '② 显式调 reqboard_decompose(requirement_id="' + req.id + '", tasks=[{key:"t1",title:"…",implementation:"…",acceptance:"…",requirement_refs:["FR-1"]}, …])，'
-        + '其中 key 必须与已批准计划一致。确需本轮不做的条款，在需求文档该条旁显式写明「本轮不做」并给出理由。'
-        + '注意：不要给任务卡加 requirement_refs——落库前根本没有任务卡可加。',
+      what: fmt('UI 卡 {list} 的「设计落点」缺原型锚点', { list: gaps.map(g => g.split('（UI 卡）')[0] ?? g).join('、') }),
+      why: '原型锚点是"这张卡照哪张原型的哪条功能点做"的唯一可核验载体；缺了它，实施只能凭印象画界面（UI 需求：feature/refactor 且 sides 含 frontend）',
+      how: '在 ' + decompositionPath + ' 的任务表「原型锚点（UI 卡必填）」列按 templates/decomposing/decomposition.md 的形态补 prototypes/<name>.html#FR-N'
+        + '（路径必须等于 ' + 'docs/requirements/' + req.id + '/prototypes/INDEX.md 的权威行；被取代版本会被拒），'
+        + '或在 reqboard_submit(kind=plan) / reqboard_decompose 的 tasks[] 里写 prototypeRefs:["prototypes/detail.html#FR-4"]；'
+        + '补完重调本入口（覆盖门禁在落库前跑，拒绝时零副作用）。'
+        + '非 UI 卡请显式声明 side（backend / doc）——本维只判 side === frontend 的卡。',
     }),
   }
+}
+
+/**
+ * INDEX 的权威原型路径（需求目录相对口径）；拿不到 = undefined（本维降级为只判形态）。
+ *
+ * 为什么复用 `parsePrototypeIndex` 而不自己读表：路径归一（`toReqRelative`）与"权威行恰好一条"
+ * 的口径只能有一份实现，否则两处判定迟早分叉（本仓已栽过多次）。
+ */
+async function authoritativePrototypePath(docs: DocsReader, reqId: string): Promise<string | undefined> {
+  const indexPath = 'docs/requirements/' + reqId + '/prototypes/INDEX.md'
+  if (!docs.exists(indexPath)) return undefined
+  const index = parsePrototypeIndex(parseDocument(await docs.read(indexPath)), reqId)
+  if (index.gaps.length > 0) return undefined
+  const auth = index.rows.filter(r => r.status === 'authoritative')
+  return auth.length === 1 ? auth[0]?.path : undefined
 }
 
 // REQ-2d1c74 的闸门独立成模块（尺寸门禁），此处再导出保持既有 import 路径不变
@@ -428,7 +543,16 @@ export async function e2eCoverageOf(docs: DocsReader, req: RequirementRecord): P
   if (!docs.exists(p)) return undefined
   const text = await docs.read(p)
   if (text.trim().length === 0) return undefined
-  return checkE2ECoverage(parseDocument(text)).hasE2E
+  const doc = parseDocument(text)
+  // REQ-261005105032-3b02（实施期裁定）：**没有「测试策略（层级…）」表 = 读数未知，不判**——
+  // 没有判据对象时给 `false` 会把「本需求还没写测试策略」升级成「E2E 未覆盖」，
+  // 进而在实施收尾被时序门判逾期（该门明写 `undefined = 读数未知（不判）`）。
+  // 本仓存量需求与现有模板产物**都没有这张表**，故压成布尔会让新门追溯拦住所有老需求——
+  // 与「未到期不判」「读数未知不追加」是同一条口径：假红比漏报更难查。
+  // 「有表但缺 E2E 行」才是真的没覆盖（仍返回 false，由时序门在实施收尾拦）。
+  const hasLevelTable = doc.tables.some(t => t.header.some(h => h.includes('层级')))
+  if (!hasLevelTable) return undefined
+  return checkE2ECoverage(doc).hasE2E
 }
 
 /** 收集本次需求涉及的全部「带编号条目」：需求条款（根）+ 设计文档各章节（其 serves 指向上游）。 */
@@ -823,4 +947,121 @@ export async function checkOverCapacityMarkerGate(
       }),
     },
   }
+}
+
+// ---------------------------------------------------------------------------
+// REQ-261005105032-3b02 §10 #46：本需求**唯一**的 async 内容门入口
+// ---------------------------------------------------------------------------
+
+/**
+ * `contentGatesForMove` 的可选注入。
+ *
+ * `sessionProbe` 是**唯一**的外部取数（裁定留痕），且刻意从调用方注入**既有**的 `deps.session`——
+ * §10 #20 明令不新增数据源；缺省 = 通道未注入 → 按"未命中留痕"降级（只影响真空态那一步，
+ * 不会把别的判定改成放行）。
+ */
+export interface ContentMoveGateOptions {
+  /** 会话探针（`UseCaseDeps.session` / `RouterCtx.deps.sessionProbe` 结构上即满足）。 */
+  sessionProbe?: DecisionSessionReader
+  /** 留痕扫描深度（透传 `hasDecisionTrace`；缺省 200，§10 #20）。 */
+  traceLimit?: number
+}
+
+/**
+ * 需求转移前的**内容门**（async）——四条转移路径在同步门 `assertArtifactGates` 之后统一调这里。
+ *
+ * 为什么必须只有这一个入口（§10 #22 / #46）：REQ-292a 的事故正是「某条路径漏了门 = 后门」，
+ * 每条路径各写一遍分派必然分叉。故判定本体留在 `prototype-gates.ts` / `decision-gates.ts`
+ * / `stage-gate-timeline.ts`（各模块可单测），**分派只此一处**；同步单点 `assertArtifactGates`
+ * 保持同步、只做产物存在 / 人工确认，职责与签名都不动。
+ *
+ * 分派（逐字照 interfaces.md「门禁函数签名与四条转移路径」）：
+ *   `brainstorming → design`：存在门 → 版本门 → 锚点门 → 裁定门，**短路返回首个失败**；
+ *   `design → decomposing` / `decomposing → implementing` / `implementing → accepting`：
+ *     阶段门时序（FR-11 / t13）——该时点必须已转绿的门逐档判一次，逾期即 `stage_gate_overdue`；
+ *   其余转移无适用门 → `undefined`（放行）。
+ *
+ * **两道门的适用面不同（2026-10-05 裁决，依据 FR-8 本身，不是架构文里那句概括）**：
+ *   · **三个原型门只对 UI 需求**（feature / refactor 且 `sides` 含 frontend）——纯后端需求不该被
+ *     原型门约束（验收标准 1「`sides: [backend]` 标本不受影响」）。判据复用
+ *     `requiredStageArtifactKinds`，与三门同吃一份「什么算 UI 需求」（category-doc-sets），
+ *     不另立第二份真相。
+ *   · **裁定门对所有 feature 需求**——裁定落账（D-x）与界面无关：纯后端 feature 一样会在讨论里
+ *     被祈使 / 纠正 / 补充，收窄成"只有 UI 才判"会让 FR-8 对纯后端需求**完全失效**。
+ *     非 feature 与存量（`artifacts` 空/undefined）由 `checkDecisionLogGate` 自己早退（D-12 / 不追溯）。
+ *     architecture.md 的「只有 UI 需求生效，其余一律放行」是**原型门**那条纪律的概括
+ *     （backend.md：「…⇒ **三个原型门**直接返回 undefined」），不适用于裁定门。
+ *
+ * 裁定门的留痕（`hasDecisionTrace`）由本函数**自取自算**后以 `{ trace }` 传入：门签名只有
+ * `(docs, req)`，而留痕读的是会话侧；探针一律来自调用方注入的既有端口（§10 #20：不新增数据源）。
+ *
+ * @returns `GateFailure` = 拒（含码 / gaps / 可执行 how）；`undefined` = 通过。
+ */
+export async function contentGatesForMove(
+  docs: DocsReader,
+  req: RequirementRecord,
+  from: RequirementStatus,
+  to: RequirementStatus,
+  opts: ContentMoveGateOptions = {},
+): Promise<GateFailure | undefined> {
+  // ① 阶段门时序（FR-11 / t13）：**先于** brainstorming 期那道早退——三档时点都不在
+  //    brainstorming，故顺序不影响行为，但它让"逾期"这一档与"原型/裁定"那一档在代码里分开读。
+  if (stageGateMomentFor(from, to) !== undefined) {
+    const stageGate = await assertStageGateTimelineGate(docs, req, from, to, STAGE_GATE_PROBES)
+    if (stageGate !== undefined) return stageGate
+    // 三个时点转移上没有别的门（原型 / 裁定门只挂在 brainstorming → design），到此即通过。
+    return undefined
+  }
+
+  // ② 只有 brainstorming → design 挂了原型 / 裁定门（§2）；其余转移（含回退、canceled）无适用门。
+  if (from !== 'brainstorming' || to !== 'design') return undefined
+
+  // ②-a 三个原型门（仅 UI 需求）：短路顺序 = 人该补的东西的先后——先说"没有原型"，再说"哪一版算数"，
+  // 再说"原型缺哪块"。每一条都给得出可执行命令，故只报**第一个**。
+  if (await isUiRequirement(docs, req)) {
+    const presence = await checkPrototypePresenceGate(docs, req)
+    if (presence !== undefined) return presence
+    const version = await checkPrototypeVersionGate(docs, req)
+    if (version !== undefined) return version
+    const anchors = await checkPrototypeAnchorsGate(docs, req)
+    if (anchors !== undefined) return anchors
+  }
+
+  // ②-b 裁定门（所有 feature 需求；与界面无关）：原型齐（或非 UI）之后才轮到它。
+  const traceOpts = opts.traceLimit === undefined ? {} : { limit: opts.traceLimit }
+  const trace = (await hasDecisionTrace(opts.sessionProbe, req, traceOpts))?.hit === true
+  return await checkDecisionLogGate(docs, req, { trace })
+}
+
+/**
+ * 阶段门时序判据的**取数入口**（t13）：判据本体在 `stage-gate-timeline.ts`（可单测），这里只把本文件
+ * 既有的五道门当探针传进去——判定**不复制**（复制即成两份真相）。
+ *
+ * 为什么注入而不是让判据模块 import 本文件：本文件要调判据模块，反向 import 就是值环
+ * （ESM 能跑，但初始化顺序一变就是难查的线上毛病）。
+ */
+const STAGE_GATE_PROBES: StageGateProbes = {
+  requirementDocFormat: (docs, req) => checkRequirementDocFormatGate(docs, req),
+  designServes: (docs, req) => checkDesignServesGate(docs, req),
+  numberChain: (docs, req) => checkNumberChainGate(docs, req),
+  clauseCoverage: (docs, req, rawTasks) => assertClauseCoverageGate(docs, req, rawTasks),
+  e2eCoverage: (docs, req) => e2eCoverageOf(docs, req),
+}
+
+/**
+ * 本需求是不是「UI 需求」（= **三个原型门**是否适用）：feature / refactor 且 `sides` 含 frontend。
+ *
+ * 路径口径与原型三门**逐字一致**（`docs/requirements/<REQ>/requirement.md`）：本函数是那三门的
+ * 前筛，读的若不是同一份 front-matter，就会出现"前筛说适用、门说不适用"（或反之）的分叉——
+ * 那正是本需求要消灭的形态。文件不在 / 前端声明读不到 → 按**不适用**处理（判不了就不加仪式，
+ * 与 prototype-gates 的 `contextOf`、rtm-health 的 `sidesOf` 同款口径）。
+ *
+ * 只用于原型门：裁定门的适用面是 `req.category === 'feature'`（在其门内判定），**不要**用本函数
+ * 去收窄裁定门——那会让纯后端 feature 需求彻底绕过 D-x 落账（FR-8 失效）。
+ */
+async function isUiRequirement(docs: DocsReader, req: RequirementRecord): Promise<boolean> {
+  const path = 'docs/requirements/' + req.id + '/requirement.md'
+  if (!docs.exists(path)) return false
+  const sides = designDocPolicyFrom(parseDocument(await docs.read(path)).frontmatter).sides
+  return requiredStageArtifactKinds('brainstorming', req.category, sides).includes('prototype')
 }

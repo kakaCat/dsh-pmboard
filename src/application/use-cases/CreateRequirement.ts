@@ -20,11 +20,14 @@ import {
   normalizeTitle,
 } from '../../shared/protocol.js'
 import { CAPTURE_QUESTION_IDS } from '../internal/capture-mapping.js'
+// REQ-261005105032-3b02 t11（FR-2）：立项即幂等落原型骨架（UI 需求才有；失败只告警不阻断）。
+import { landPrototypeSkeleton } from '../internal/prototype-skeleton.js'
 import {
   agentIdFromExec,
   requireLiveDriver,
   requireDirectHuman,
   createRequirementDirect,
+  projectIdOfWindowForDeps,
   resolveDocBasePath,
   ensureWritableProjectRoot,
 } from '../internal/support.js'
@@ -49,6 +52,12 @@ export async function executeCreateRequirement(deps: UseCaseDeps, args: unknown,
         ?? (typeof effectiveWorkspace === 'string' && effectiveWorkspace.length > 0 ? effectiveWorkspace : undefined)
         ?? process.cwd()
       const workspaceRoot = resolveManualWorkspaceRoot(a.workspace_root, sessionCwd)
+      // REQ-261005123641-3982 FR-3：守卫**前置到建档之前**——拒绝即台账零写入。
+      // 旧顺序（建档之后才守卫）在拒绝时回执说「未立项/未写入」，而台账里已经有这条 REQ（半截失败）。
+      ensureWritableProjectRoot(deps, { workspaceRoot }, { callerRoot: sessionCwd })
+      // 项目身份（REQ-261005141830-7a3b FR-1）：由**本窗口**解析；解析不到就不写该键，
+      // 由 createRequirementDirect 在立项评论里如实标注「未归属」（不猜、不拿当前项目当默认值）。
+      const projectId = projectIdOfWindowForDeps(deps, windowKey)
       const req = await createRequirementDirect(deps, windowKey, {
         title,
         category,
@@ -57,11 +66,18 @@ export async function executeCreateRequirement(deps: UseCaseDeps, args: unknown,
         promptDifficulty,
         docBasePath: doc.docBasePath,
         workspaceRoot,
+        ...(projectId !== undefined ? { projectId } : {}),
       })
       // RTM 触发点 1（REQ-260926140539-457b FR-2）：立项即落 rtm-lifecycle.yml 骨架（失败不阻断立项）
-      // REQ-261001203710-0fbf t3 / FR-2：RTM 按工作区相对路径落盘，写前按记录自己的项目校正并核验
-      ensureWritableProjectRoot(deps, req)
+      // REQ-261001203710-0fbf t3 / FR-2：RTM 的**写盘**由 syncRTMYaml 内部按需求 id 守卫
+      // （rtm-yaml.ts 的 assertWritableRequirementProject）——建档前那次守卫已保证台账零写入，
+      // 故这里不再重复守卫（重复只会多一次探针，且拒绝已不可能发生在副作用之后）。
       await syncRTMYaml(deps, await taskStoreOf(deps).listByRequirement(req.id), req.id, 'create')
+      // REQ-261005105032-3b02 t11（FR-2）：立项即**幂等**落原型骨架——UI 需求在需求阶段就拿到可填的
+      // prototypes/<name>.html + INDEX.md，好让原型门不是"交不上就出不去"的死结。此刻 requirement.md
+      // 还没落盘（它是 brainstorming 的产物），故按**类型模板的缺省 sides** 判（见 CATEGORY_DEFAULT_SIDES
+      // 的为什么）；非 UI 不落、已存在不覆盖、失败只 warning——落不下脚手架不该拦住立项。
+      await landPrototypeSkeleton(deps.docs, req, { nowMs: deps.clock.now() })
       const defaultsUsed: string[] = doc.usedDefault ? [CAPTURE_QUESTION_IDS.doc_location] : []
       if (a.workspace_root === undefined || (typeof a.workspace_root === 'string' && a.workspace_root.length === 0)) {
         defaultsUsed.push(CAPTURE_QUESTION_IDS.workspace)
@@ -75,6 +91,10 @@ export async function executeCreateRequirement(deps: UseCaseDeps, args: unknown,
         // 与台账同源（createRequirementDirect 已把回落值写进记录）：返回值 / 台账 / 输入包三面一致。
         doc_location: req.docBasePath ?? doc.docBasePath,
         workspace_root: req.workspaceRoot ?? sessionCwd,
+        // 判据可观测（FR-9）：说清这条需求有没有项目身份、判据是什么
+        ...(req.projectId !== undefined
+          ? { projectId: req.projectId, project_source: 'project-id' }
+          : { project_source: 'path-fallback' }),
         defaults_used: defaultsUsed,
         note: doc.usedDefault
           ? `已直接立项（创建即立项）：REQ 已在看板 draft 泳道立即可见，本窗口已绑定。未提供 doc_location → 已回落默认文档位置 ${doc.docBasePath}（见 defaults_used，不静默猜）。工作区：${req.workspaceRoot ?? sessionCwd}。`

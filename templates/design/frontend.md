@@ -9,15 +9,33 @@ requirement_refs: [FR-1]
 
 ## 原型页面 <!-- serves: FR-1 -->
 
-（可视化原型：`prototypes/<name>.html`（由 prototype.html 模板生成，每功能点一个锚点区块）；
-截图贴本目录。原型讲结构与交互路径，不求视觉精细；定稿后换正式交互稿。
+（**唯一权威原型**：`prototypes/<name>.html`（由 `templates/brainstorming/prototype.html` 生成，
+每个功能点一个 `<section id="FR-N">` 锚点区块）。原型讲结构与交互路径，不求视觉精细；定稿后换正式交互稿。
+
+**唯一权威版本**记在 `prototypes/INDEX.md` 的四列表格（`路径 | 状态 | 服务条款 | 被取代于`，需求目录相对路径）：
+`authoritative` **恰好一条**，其余写 `superseded` 并给出 `被取代于`。本节出现的原型路径**必须等于**那条权威路径——
+指向 `superseded` 版本会被拒（`prototype_version_conflict`）；没有 `INDEX.md` 同样被拒。
+原型产物登记走 `reqboard_submit(kind=prototype)`；旧路径 `prototype/*.html` 仍被识别，门禁会提示迁移到 `prototypes/`。
 
 **填写要求**：
 - 原型必须**可点击操作**，不是静态截图拼接
 - 标注**交互路径**：点什么 → 发生什么 → 跳转哪里
 - 标注**关键元素**：按钮、表单、弹窗的触发条件
+- **锚点对齐**：每个页面 / 组件都指到它对应的锚点区块，形态 `P-x/C-x ↔ prototypes/<name>.html#FR-N`。
+  锚点是**页面内区块的定位符**，不等于"本处实现/覆盖了 FR-N"——它**不计入 serves**（走独立字段 `protoRefs`），
+  写进 serves 会被抹掉且覆盖度不上升（贴锚点刷覆盖 = 假引用）
+- **引用 D-x**：把影响本页结构与交互的裁定编号写进「关联 D-x」列，原文取自 `requirement.md` 的
+  「讨论与裁定记录（D-x）」——**按编号取原话，不概括、不重写**；确实无影响的写「—」
+- **判据要可失败**：只写"与原型一致"不算判据。可失败的判据 = 结构断言（区块存在 / 顺序 / 层级）+
+  几何量硬判据（关键栏位置、行数或高度上限——量原型自身渲染，显式写明窗口宽与状态）+ 令牌（字号 / 颜色名）
 
-**文件命名**：prototypes/需求简称.html，如 prototypes/template-landing.html）
+| 页面/组件（编号） | 原型锚点（`P-x/C-x ↔ #FR-N`） | 关联 D-x | 该处结构与交互（一句话） |
+|---|---|---|---|
+| P-1 | P-1 ↔ prototypes/template-landing.html#FR-1 | D-1 | 需求详情页骨架：顶部状态带 + 中部文档清单 |
+| C-1 | C-1 ↔ prototypes/template-landing.html#FR-2 | D-1、D-3 | 文档清单：点行打开右侧正文，不弹窗 |
+
+**文件命名**：`prototypes/<需求简称>.html`，如 `prototypes/template-landing.html`；
+截图贴同目录（或 `screenshots/`），并在验收材料里给出路径与差异说明。）
 
 ## 目录与包结构 <!-- serves: FR-1 -->
 
@@ -145,7 +163,7 @@ P-1 页面名（职责）
 - marked@^4.0.0：markdown 渲染，选它因为体积小（50KB）且支持 GFM 语法
 - 不用 markdown-it：体积大（200KB）且我们不需要插件扩展）
 
-## 关键决策与取舍
+## 关键决策与取舍 <!-- serves: FR-1 -->
 
 （写清这次**做了哪些取舍、否掉了什么、为什么**——需求详情页「关键决策与取舍」按写死的节名抽取本节（FR-2 / FR-13）。
 
@@ -158,7 +176,7 @@ P-1 页面名（职责）
 |---|---|---|---|
 |  |  |  |  |
 
-## 技术方案与亮点
+## 技术方案与亮点 <!-- serves: FR-1 -->
 
 （写清这次**怎么干的、比常规做法强在哪**——需求详情页「技术方案与亮点」按写死的节名抽取本节（FR-14 / FR-15）。
 

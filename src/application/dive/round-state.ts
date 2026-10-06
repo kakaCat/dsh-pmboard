@@ -253,13 +253,24 @@ export function renderDiveRoundText(input: { requirementId: string; round: numbe
       instruction = '\n\n**本阶段任务：调研用户意图，写需求文档**' +
         '\n- 参考模板：docs/requirements/' + input.requirementId + '/requirement.md' +
         '\n- 写完后调 reqboard_submit(kind=requirement) 登记产物' +
-        '\n- 然后调 reqboard_ask_confirm(target=artifact, kind=requirement) 请人确认'
+        '\n- 然后调 reqboard_ask_confirm(target=artifact, kind=requirement) 请人确认' +
+        // FR-8 / FR-10（REQ-261005105032-3b02）：讨论里说定的东西不许只留在会话里——逐条落账，
+        // 否则实施与验收阶段看不到，只能口头再重申一遍（D-3 的根因）。
+        '\n- 讨论里说定的补充/纠正/被否方案逐条落账到 requirement.md 的「讨论与裁定记录（D-x）」表' +
+        '（编号、原话来源、裁定、影响 FR、判据五列齐；禁只留概括；疑问句与闲聊不入账）' +
+        // FR-1 / FR-10：UI 需求的需求阶段必交原型；权威版本只认 INDEX，避免"两版并存、引用旧版"（D-6）。
+        '\n- sides 含 frontend 时需求阶段必交原型：把权威原型落到 docs/requirements/' + input.requirementId + '/prototypes/，' +
+        '在 prototypes/INDEX.md 标出唯一一条状态=authoritative（路径按需求目录相对书写，被取代的标 superseded），' +
+        '再调 reqboard_submit(kind=prototype) 登记；确认需求文档前自查这两件事都做了'
       break
     case 'design':
       instruction = '\n\n**本阶段任务：写设计文档**' +
         '\n- 目录：docs/requirements/' + input.requirementId + '/design/' +
         '\n- 写完后调 reqboard_submit(kind=design) 登记' +
-        '\n- 然后调 reqboard_ask_confirm(target=artifact, kind=design) 请人确认'
+        '\n- 然后调 reqboard_ask_confirm(target=artifact, kind=design) 请人确认' +
+        // FR-3 / FR-10：design/frontend.md 必须指向权威原型与页面内锚点，且不得指向 superseded 版本。
+        '\n- 有原型的需求：design/frontend.md 的「原型页面」节指向 prototypes/INDEX.md 里的权威路径与 #FR-N 锚点' +
+        '（不指向 superseded 版本；锚点引用单独记账，不计入 serves），并引用相关 D-x 裁定'
       break
     case 'decomposing':
       instruction = '\n\n**本阶段任务：写拆分计划**' +
@@ -270,7 +281,11 @@ export function renderDiveRoundText(input: { requirementId: string; round: numbe
     case 'implementing':
       instruction = '\n\n**本阶段任务：执行任务卡**' +
         '\n- 用 reqboard_status() 查看当前任务' +
-        '\n- 按任务说明执行，完成后调 reqboard_task_move 推进状态'
+        '\n- 按任务说明执行，完成后调 reqboard_task_move 推进状态' +
+        // FR-6 / FR-9：开工前先看本卡「设计落点」的原型锚点与关联裁定——否则"只做这张卡"会变成
+        // "不看原型就动手"，实施完与原型对不上（返工）。
+        '\n- 本卡「设计落点」有原型锚点时：先按 prototypes/INDEX.md 的权威原型对照锚点区块（#FR-N）再动手；' +
+        '本卡关联的 D-x 裁定逐条兑现（卡上的原型锚点与关联 D-x 经 reqboard_task_tree 可见）'
       break
     case 'accepting':
       instruction = '\n\n**本阶段任务：准备验收材料**' +

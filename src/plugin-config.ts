@@ -132,6 +132,51 @@ export interface PluginConfig {
      */
     markerGate?: 'enforce' | 'warn';
   };
+  /**
+   * UI/UX skill 资产收录与投放（REQ-261005122347-e07a FR-1 / FR-2 / FR-7）。
+   *
+   * - `enabled`（缺省 true）：false = 工具返回 `REQBOARD_SKILLS_DISABLED`、且不注入
+   *   「原型工作原则」节——一键回到改造前（纯增量改造的回退路径）。
+   * - `root`：投放根**绝对路径**；缺省由调用方落「会话工作区下的 `.dsh/skills`」。
+   *
+   * 非法值（非布尔 / 非绝对路径）→ **装配期抛错**：与 `docsRootSource`、`archive.unlistedGate`
+   * 同口径——"我明明关了它却还在跑"是最难查的一类问题。
+   */
+  skills?: {
+    enabled?: boolean;
+    root?: string;
+  };
+}
+
+/** skills 投放的生效设置（FR-7）。`root` 缺省 = 由调用方按会话工作区解析。 */
+export interface SkillsSettings {
+  readonly enabled: boolean;
+  readonly root?: string;
+}
+
+/**
+ * 解析 skills 开关与投放根（FR-7）：缺省 `enabled=true`、`root` 不设（由调用方给会话工作区）。
+ *
+ * 错误码写进 message 而不是只挂 `code` 属性：验收判据是"抛错且 message 含
+ * `REQBOARD_SKILLS_CONFIG_INVALID`"，只挂属性的话人从日志里读不出是哪条配置错了。
+ */
+export function skillsSettings(config?: PluginConfig): SkillsSettings {
+  const raw = config?.skills;
+  const enabled = raw?.enabled;
+  if (enabled !== undefined && typeof enabled !== 'boolean') {
+    throw Object.assign(
+      new Error('skills.enabled 必须是布尔（REQBOARD_SKILLS_CONFIG_INVALID）：实际 ' + String(enabled)),
+      { code: 'REQBOARD_SKILLS_CONFIG_INVALID' },
+    );
+  }
+  const root = raw?.root;
+  if (root !== undefined && (typeof root !== 'string' || root.trim().length === 0 || !path.isAbsolute(root.trim()))) {
+    throw Object.assign(
+      new Error('skills.root 必须是非空绝对路径（REQBOARD_SKILLS_CONFIG_INVALID）：实际 ' + String(root)),
+      { code: 'REQBOARD_SKILLS_CONFIG_INVALID' },
+    );
+  }
+  return { enabled: enabled !== false, ...(root === undefined ? {} : { root: root.trim() }) };
 }
 
 /**

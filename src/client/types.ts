@@ -4,7 +4,7 @@
  *
  * @module dsh-pmboard/client/types
  */
-import type { StageArtifact, StageKind } from '../shared/protocol.ts'
+import type { ArtifactKind, StageArtifact, StageKind } from '../shared/protocol.ts'
 
 // 产物/节点键等跨端共享类型复用 protocol 的单一定义（client 不另抄一份）。
 export type { ArtifactKind, StageArtifact, StageKey, StageKind } from '../shared/protocol.ts'
@@ -92,7 +92,14 @@ export interface VerificationItem {
   source: { kind: 'requirement' } | { kind: 'task'; taskId: string }
   criterion: string
   evidence: string[]
-  status: 'pending' | 'passed' | 'failed'
+  /**
+   * 五项状态（与 `domain/workflow/AcceptanceSheetSpec.ts` 的 `SheetItemLike.status` 同域）：
+   * `not_verifiable`（不可验收，须带原因）自 REQ-308b9a 起、`unverified`（点了通过却没结果）自
+   * REQ-261001154450-b918 起就在台账里——本类型此前只写三值，是**陈旧口径**：
+   * 旧实现有 `evidence[0]` 兜底、`unverified` 几乎不可达，所以一直没暴露；
+   * REQ-261006092213-4f5b FR-6 去掉兜底后它成为常见值，客户端必须能如实判它（未复核＝不放行）。
+   */
+  status: 'pending' | 'passed' | 'failed' | 'not_verifiable' | 'unverified'
   opinion?: string
   decidedAt?: number
 
@@ -134,8 +141,8 @@ export interface ArchiveRecord {
   manualNote?: string
   submittedAt: number
   submittedBy: ActorRef
-  archivedAt?: number
-  archivedBy?: ActorRef
+  // REQ-261006123819-3af3 FR-3（D-2）：客户端镜像字段同步删除（服务端 protocol.ts 已删）。
+  // 归档时刻的判据在服务端（archivedMomentOf + 归档门读数），客户端不再自己判。
   /**
    * 清单对账结果（REQ-261004183621-de3f FR-5）；缺省 = 本功能上线前归档的存量记录
    * （看板显示「未对账」而不是 0——**0 ≠ 未对账**）。
@@ -199,6 +206,14 @@ export interface RequirementRecord {
     /** 最后心跳时间（ms timestamp） */
     heartbeatAt?: number
   }
+  /**
+   * host 推进锁持有时刻（ms）——**扁平键**（不是 `advance.lockAt`）：`/state` 摘要把台账的
+   * `advance.lockAt` 投影成它（REQ-261005213603-eaed FR-2）。**缺省 = 没有 run 在跑**（缺失 ≠ 0）。
+   *
+   * 语义与刷新：run 投递前认领时写入，run 在跑期间每 30s 心跳续租，run 结束 finally 清除；
+   * 看板据此点亮运行圈（新鲜 = `now - advanceLockAt < LIMITS.advanceLockStaleMs`）。
+   */
+  advanceLockAt?: number
   reviewSessionId?: string
   /** 立项来源窗口（agent 会话 id，如 session-<uuid>；人工建卡不填）——窗口↔需求关联锚点 */
   sourceSessionId?: string
@@ -210,6 +225,17 @@ export interface RequirementRecord {
   archivePath?: string
   /** 已登记产物（五道人工确认门的判定输入；缺省=未登记，见 shared/protocol.ts） */
   artifacts?: StageArtifact[]
+  /**
+   * 卡面产物门读数（REQ-261006175040-12d4 FR-1/FR-2/FR-3）：由**服务端**算好随摘要下发。
+   *
+   * 客户端只渲染、不判定（D-2）。**缺省 = 读数不可得**（旧服务端未下发）⇒ 门相关块整块不渲染，
+   * 不得退化成「缺失」（FR-6：本次缺陷就是把读不到渲染成了缺失）。
+   */
+  gates?: GateReading[]
+  /** 计划状态（FR-5）：缺省 = 无计划记录（该 chip 无「缺失」态，故与不可得在渲染上同形）。 */
+  planState?: 'pending' | 'approved' | 'rejected'
+  /** 归档材料是否已备（FR-5）：缺省 = 不可得。 */
+  archivePrepared?: boolean
   /** 拆分计划（plan mode） */
   plan?: PlanRecord
   /** 验收材料（提交+人工审核结论） */
@@ -218,6 +244,20 @@ export interface RequirementRecord {
   acceptanceOverride?: AcceptanceOverride
   /** 归档材料（准备+归档结论） */
   archive?: ArchiveRecord
+  /**
+   * 最近一次回退留痕（REQ-261005122915-9f90 t6 / FR-5）——看板「清理误物化重做卡」入口的
+   * 渲染条件与序号来源：**没有它就没有「第几次回退」这个边界**，不给点了必被拒的假按钮。
+   * 与 host `RollbackMark` 同形的**只读子集**（看板只读这三项，其余字段不在此投影）。
+   */
+  rollback?: {
+    /** 从哪个阶段退回 */
+    from?: RequirementStatus
+    /** 退回到哪个阶段（`to === status` 即「当前处在回退态」） */
+    to?: RequirementStatus
+    /** 第几次回退；缺省 = 存量记录（从未记过次数）→ 读端按 1 计 */
+    seq?: number
+    reason?: string
+  }
   /** 状态事件时间线（创建 + 每次转移） */
   statusHistory?: StatusEvent[]
   comments: CommentRecord[]
@@ -359,4 +399,16 @@ export interface ReqCard {
   blocked: boolean
   /** REQ-a33899：累计 token；undefined = 无快照（不渲染徽章，也不显示 0） */
   tokenTotal?: number
+}
+
+/**
+ * 门读数（REQ-261006175040-12d4 FR-1/FR-2）：与 `shared/board-summary` 的出口逐字同形。
+ *
+ * `count` = 该 kind 的产物条数（design 即份数）——卡面「确认产物（全部 N 份）」的 N 取自它，
+ * 这样客户端就不必为了数份数去读 `artifacts`（那正是本次缺陷的成因）。
+ */
+export interface GateReading {
+  kind: ArtifactKind
+  status: 'confirmed' | 'pending' | 'missing'
+  count: number
 }

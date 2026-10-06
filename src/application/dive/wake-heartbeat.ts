@@ -45,6 +45,16 @@ export interface WakeHeartbeatDeps {
    */
   dialogInFlight?: (requirementId: string) => boolean
   /**
+   * 停手位被清 → 请求一次自动链驱动（REQ-261006170150-52cc FR-3，与 `UseCaseDeps.notifyDrivable` 同义）。
+   *
+   * 为什么心跳也要这一口：过期对账（`reconcileAwaitingStops`）清掉残影走的是它自己这份 deps 面，
+   * 不接这一口就只剩「清位了但没人叫」——需求不再停在「等人」，可也不会重新跑起来。
+   *
+   * 组合根实现 = `(id) => this.round.onRequirementMoved(id)`（**与 store 桥同一条路**，不新增投递路径）。
+   * 缺省 undefined = 清位只写台账、不请求驱动（行为与改造前逐字一致）。
+   */
+  notifyDrivable?: (requirementId: string) => void
+  /**
    * 全局上游闩判据（REQ-261004065652-5c1c FR-1）：闩开着 → 本趟心跳**整趟跳过**。
    * 为什么：额度/鉴权类故障是跨窗口事实，这趟既不该叫醒谁、也不该刷 lastWakeAt 或健康位——
    * 否则心跳会把一个"已知不可用"的上游反复撞（实测死循环期间的无效请求就有这一路）。
@@ -95,7 +105,15 @@ async function reconcileAwaitingStops(deps: WakeHeartbeatDeps, out: WakeTickResu
     if (waiting) { out.skipped.push(req.id); continue }
     try {
       await exitAwaitingConfirm(
-        { store: deps.store, now: () => now, ...(deps.logger === undefined ? {} : { logger: deps.logger }) },
+        {
+          store: deps.store,
+          now: () => now,
+          ...(deps.logger === undefined ? {} : { logger: deps.logger }),
+          // REQ-261006170150-52cc FR-3：清位成功即请求一次驱动（`notifyDrivable` 缺省 = 未装配 →
+          // 只写台账不驱动，行为与改造前逐字一致）。**没有它，"过期后自动恢复"只恢复了一半**：
+          // 停手位清了，却没有人把 agent 叫起来。
+          ...(deps.notifyDrivable === undefined ? {} : { onCleared: deps.notifyDrivable }),
+        },
         { requirementId: req.id, reason: 'expired' },
       )
       out.resumed.push(req.id)

@@ -514,4 +514,35 @@ tr.dsh-pm-list-grouphead td {
 .dsh-pm-card.highlight-flash {
   animation: highlight-flash 2s ease-out;
 }
+
+/* ---- 验收面板逐项行（REQ-261006092213-4f5b FR-4 / FR-5）--------------------------------
+   纯新增区段：类名照抄 renderVerificationSheet（与权威原型 prototypes/verification-result.html
+   同一套），配色复用既有令牌（--pm-line / --dsw-text-secondary）与状态色，不另起体系、
+   不改既有选择器。结果行是"谁跑的验证"在界面上第一次可见，故给左侧状态色条。
+   注意：本区段在模板字符串里，**注释中不得出现反引号**（本仓已有三次同款事故）。 */
+.dsh-pm-vsheet { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.dsh-pm-vitem { border: 1px solid var(--pm-line); border-radius: 8px; padding: 10px; }
+.dsh-pm-vitem.is-decided { opacity: .72; }
+.dsh-pm-vitem-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.dsh-pm-vitem-badge { font-size: 11px; background: rgba(128,128,128,.12); border-radius: 4px; padding: 1px 6px; }
+.dsh-pm-vitem-src { font-size: 11px; color: var(--dsw-text-secondary, #6b7280); }
+.dsh-pm-vitem-result {
+  margin-top: 6px; font-family: ui-monospace, monospace; font-size: 11px; color: #0f6674;
+  background: rgba(23,162,184,.08); border-left: 3px solid #17a2b8;
+  border-radius: 0 4px 4px 0; padding: 4px 8px; word-break: break-all;
+}
+.dsh-pm-vitem-result.is-empty { background: none; border-left-color: rgba(128,128,128,.35); }
+.dsh-pm-vitem-human { margin-top: 6px; }
+.dsh-pm-vitem-actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+.dsh-pm-vitem-actions label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer; }
+.dsh-pm-vitem-opinion {
+  flex: 1; min-width: 260px; padding: 5px 10px; border-radius: 6px;
+  border: 1px solid var(--pm-line); font-size: 12px; font-family: ui-monospace, monospace;
+  background: var(--dsw-bg-primary, #fff); color: var(--dsw-text-primary, #333);
+}
+.dsh-pm-vitem-opinion.is-prefilled { border-style: dashed; border-color: #17a2b8; background: rgba(23,162,184,.04); }
+/* 焦点环（照抄原型的可访问性口径：键盘用户要能看见焦点落在哪个输入框） */
+.dsh-pm-vitem-opinion:focus, .dsh-pm-vitem-actions input[type=radio]:focus-visible {
+  outline: 2px solid var(--dsw-accent, #4a7dff); outline-offset: 1px;
+}
 `

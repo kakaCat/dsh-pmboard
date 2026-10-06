@@ -5,11 +5,14 @@
  */
 import { esc } from '../html.js'
 import type { ArchiveRecord, RequirementRecord } from '../types.ts'
+import { gateOf } from '../render/gate-view.ts'
 import type { StageKey } from '../../shared/protocol.ts'
 import { ALL_STAGE_KEYS } from '../../shared/protocol.ts'
 import { fmtTime } from '../render/dom-utils.ts'
 import { displayDocPath } from '../open-doc.ts'
 import { KIND_ICONS, KIND_LABELS, artifactKindLabel } from '../../shared/artifact-labels.ts'
+// REQ-261006123819-3af3 FR-3（D-2）：归档时刻的唯一判定点（原先读一个没有写入者的字段）
+import { archivedMomentOf } from '../../domain/status/ArchivedMoment.ts'
 
 /* ------------------------------------------------------------------ 文档记录 */
 
@@ -93,20 +96,33 @@ export function renderDocSection(req: RequirementRecord): string {
 
 /* ------------------------------------------------------------------ 验收 / 归档 */
 
-/** 卡面：待人工审核 / 待归档 —— 让"卡在人这里"一眼可见。 */
+/**
+ * 卡面：待人工审核 / 待归档 —— 让"卡在人这里"一眼可见。
+ *
+ * FR-5 / D-2：读 `gates` 里的 verification 门读数（原先读 `req.verification`，而首屏摘要不带该大字段
+ * ⇒ 验收态卡片一律谎报「待验收材料」）。`missing` = 还没交；`pending`/`confirmed` = 已交待人审。
+ * 读数不可得 ⇒ 不渲染（FR-6）。
+ */
 export function verifyChip(req: RequirementRecord): string {
   if (req.status !== 'accepting') return ''
-  const v = req.verification
-  return v === undefined
+  const reading = gateOf(req, 'verification')
+  if (reading === undefined) return ''
+  return reading.status === 'missing'
     ? '<span class="dsh-pm-flag verify-pending" title="验收态但还没提交验收材料">待验收材料</span>'
     : '<span class="dsh-pm-flag verify-pending" title="验收材料已提交，等人工审核">待人工审核</span>'
 }
 
+/**
+ * 归档 chip（FR-5）：读 `req.archivePrepared`（服务端按「归档记录 ∨ 归档产物」判定，与
+ * `domain/status/Predicates.closingGapOf` 同源）。缺省 = 不可得 ⇒ 不渲染。
+ */
 export function archiveChip(req: RequirementRecord): string {
   if (req.status !== 'done') return ''
-  return req.archive === undefined
-    ? '<span class="dsh-pm-flag archive-pending" title="已完成，等窗口准备归档材料">待归档材料</span>'
-    : '<span class="dsh-pm-flag archive-pending" title="归档材料已备，等人点归档">待归档</span>'
+  const prepared = req.archivePrepared
+  if (prepared === undefined) return ''
+  return prepared
+    ? '<span class="dsh-pm-flag archive-pending" title="归档材料已备，等人点归档">待归档</span>'
+    : '<span class="dsh-pm-flag archive-pending" title="已完成，等窗口准备归档材料">待归档材料</span>'
 }
 
 /**
@@ -165,7 +181,11 @@ function renderSheetItems(sheet: {
   if (items.length === 0) return ''
   const rows = items.map((it) => {
     const result = (it.result ?? '').trim()
-    const src = it.resultSource === 'human' ? '人工填写' : it.resultSource === 'agent' ? 'agent 实测' : ''
+    // 来源三态（design/frontend.md）：agent 实测 / 人工填写 / **未标注来源**——缺省不省略，
+    // 否则"没标注"与"agent 实测"在界面上长得一样（结果列用 result，不回落 opinion）。
+    const src = it.resultSource === 'human'
+      ? '人工填写'
+      : (it.resultSource === 'agent' ? 'agent 实测' : '未标注来源')
     const human = it.needsHuman === true
       ? '<span class="dsh-pm-flag verify-pending">需人工确认'
         + (it.humanReason !== undefined && it.humanReason !== '' ? '：' + esc(it.humanReason) : '')
@@ -173,7 +193,7 @@ function renderSheetItems(sheet: {
       : ''
     return '<li><span class="dsh-pm-hint">' + esc(it.id) + '</span> ' + esc(it.criterion)
       + (result !== ''
-        ? '<div class="dsh-pm-block-note">实际结果' + (src !== '' ? '（' + src + '）' : '') + '：' + esc(result) + '</div>'
+        ? '<div class="dsh-pm-block-note">实际结果（' + esc(src) + '）：' + esc(result) + '</div>'
         : '')
       + human + '</li>'
   }).join('')
@@ -200,9 +220,10 @@ export function renderVerifySection(req: RequirementRecord): string {
     : v.decision === 'rework'
       ? '<span class="dsh-pm-review" data-state="rework">已退回返工 ' + esc(v.reviewedAt !== undefined ? fmtTime(v.reviewedAt) : '') + '</span>'
       : '<span class="dsh-pm-review" data-state="pending">待人工审核</span>'
-  // 裁决按钮已外置到详情头常驻操作条（renderActionBar）
+  // 裁决按钮已外置到详情头常驻操作条（renderActionBar）。
+  // 文案点名**具体位置**（FR-11 #4）：原先指向操作条上那个分组标签，而该标签已按 FR-11 #1 删除。
   const actions = req.status === 'accepting'
-    ? '<span class="dsh-pm-hint">请在详情头「本阶段操作」条点「验收通过」或「退回返工」</span>'
+    ? '<span class="dsh-pm-hint">请在详情页头部第一行的动作条（「← 看板」右侧）点「验收通过」或「退回返工」</span>'
     : ''
   const evidence = v.evidence.map(e => '<li>' + esc(e) + '</li>').join('')
   return '<div class="dsh-pm-block">'
@@ -233,13 +254,18 @@ export function renderArchiveSection(req: RequirementRecord): string {
         : '归档在需求完成（done）后进行；不同需求类型的必填文档与合并去向见 agent-dh/docs/architecture/requirement-archive.md。')
       + '</div>'
   }
-  const state = a.archivedAt !== undefined
-    ? '<span class="dsh-pm-review" data-state="pass">已归档 ' + esc(fmtTime(a.archivedAt)) + '</span>'
+  // REQ-261006123819-3af3 FR-3（D-2）：已归档 = 需求状态已是 archived（唯一事实源）；
+  // 时刻取 statusHistory 里 archived 事件的真实时刻（取不到就不显示时刻，不拿 submittedAt 顶替）。
+  const archived = req.status === 'archived'
+  const archivedMoment = archivedMomentOf(req)
+  const state = archived
+    ? '<span class="dsh-pm-review" data-state="pass">已归档'
+      + (archivedMoment !== undefined ? ' ' + esc(fmtTime(archivedMoment)) : '') + '</span>'
     : '<span class="dsh-pm-review" data-state="pending">待归档（材料已备）</span>'
   // REQ-261002105242-a3fb FR-4：这里**不再**指向任何人工按钮。
-  // 原文案「请在详情头『本阶段操作』条点『归档』」指向的按钮已于 REQ-9f4a44 随端点一起消失——
+  // 原文案「请在详情头那条分组标签里点『归档』」指向的按钮已于 REQ-9f4a44 随端点一起消失——
   // 留着就是把历史遗留 done 需求的人往一个不存在的地方引。现在只陈述事实与真正的材料入口。
-  const actions = req.status === 'done' && a.archivedAt === undefined
+  const actions = req.status === 'done' && !archived
     ? '<span class="dsh-pm-hint">历史遗留 done：归档材料由窗口 agent 用 reqboard_submit(kind=archive) 补齐；该端点已在 REQ-9f4a44 移除，无人工按钮</span>'
     : ''
   const docs = a.docs.map(d => '<li><span class="dsh-pm-doc-kind">' + esc(artifactKindLabel(d.kind)) + '</span> <code>' + esc(d.path) + '</code></li>').join('')

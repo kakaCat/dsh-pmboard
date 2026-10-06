@@ -11,6 +11,15 @@ interface NodeTemplateEntry {
   templates: {
     requirement?: TemplateRef;
     designDocs?: TemplateRef[];
+    /**
+     * 需求阶段的**条件必交**原型骨架（REQ-261005105032-3b02 t11 · FR-2 / FR-4）。
+     *
+     * 为什么登记进这张表而不是散在用例里：`templates/` 下每份骨架都该有唯一地址来源，
+     * 「模板有、没人认领」正是 tests/template-address.test.ts 要拦的漂移（原型文件原先只能靠
+     * allowlist 豁免，等于没人对它的存在负责）。只有 feature / refactor 登记——它们才是
+     * `conditionalStageArtifacts` 里「sides 含 frontend 即必交原型」的两类。
+     */
+    prototype?: TemplateRef;
     decomposition?: TemplateRef;
     taskCard?: TemplateRef;
     testEvidence?: TemplateRef;
@@ -26,11 +35,11 @@ interface NodeTemplateEntry {
  * 按节点（stage）组织，每个节点列出启用的类型及其模板
  */
 export const NODE_TEMPLATES: NodeTemplateEntry[] = [
-  // brainstorming - 需求文档
-  { stage: 'brainstorming', category: 'feature', templates: { requirement: { relPath: 'brainstorming/feature.md' } } },
+  // brainstorming - 需求文档 + 原型骨架（feature/refactor 的条件必交产物，见 prototype 字段注释）
+  { stage: 'brainstorming', category: 'feature', templates: { requirement: { relPath: 'brainstorming/feature.md' }, prototype: { relPath: 'brainstorming/prototype.html', description: '原型骨架（UI 需求）' } } },
   { stage: 'brainstorming', category: 'bug', templates: { requirement: { relPath: 'brainstorming/bug.md' } } },
   { stage: 'brainstorming', category: 'doc', templates: { requirement: { relPath: 'brainstorming/doc.md' } } },
-  { stage: 'brainstorming', category: 'refactor', templates: { requirement: { relPath: 'brainstorming/refactor.md' } } },
+  { stage: 'brainstorming', category: 'refactor', templates: { requirement: { relPath: 'brainstorming/refactor.md' }, prototype: { relPath: 'brainstorming/prototype.html', description: '原型骨架（UI 需求）' } } },
   { stage: 'brainstorming', category: 'spike', templates: { requirement: { relPath: 'brainstorming/spike.md' } } },
   { stage: 'brainstorming', category: 'chore', templates: { requirement: { relPath: 'brainstorming/chore.md' } } },
 

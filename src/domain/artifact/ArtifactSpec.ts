@@ -17,9 +17,14 @@ import type { StageKey } from '../requirement/RequirementStatus.js'
  * （REQ-81aabd：设计节点的交付物，按分类模板逐份核对已交/未交；
  *  2026-09-21 用户裁定：design 升格为 G2 闸门产物——设计阶段只写设计文档，拆分计划归拆分阶段）；
  * notes = 过程产物兜底（REQ-2e9473 t11 自动发现：原型 html / 笔记等不属必备门禁的文件）。
+ * prototype = 原型产物（REQ-261005105032-3b02 FR-1/FR-2）：需求阶段的一等产物，
+ * 不再落 notes 兜底——落 notes 会让「原型交没交」这类判据失去可数的抓手。
+ *
+ * 为什么新值一律**追加在末尾**：联合顺序不影响判定，但 `ALL_ARTIFACT_KINDS` 会拼进
+ * 面向人的错误消息（asArtifactKind），末尾追加能让既有消息前缀保持稳定。
  */
-export type ArtifactKind = 'requirement' | 'plan' | 'decomposition' | 'design' | 'task_detail' | 'verification' | 'archive' | 'notes' | 'task_output'
-export const ALL_ARTIFACT_KINDS: readonly ArtifactKind[] = ['requirement', 'plan', 'decomposition', 'design', 'task_detail', 'verification', 'archive', 'notes', 'task_output']
+export type ArtifactKind = 'requirement' | 'plan' | 'decomposition' | 'design' | 'task_detail' | 'verification' | 'archive' | 'notes' | 'task_output' | 'prototype'
+export const ALL_ARTIFACT_KINDS: readonly ArtifactKind[] = ['requirement', 'plan', 'decomposition', 'design', 'task_detail', 'verification', 'archive', 'notes', 'task_output', 'prototype']
 
 /** 每节点必备产物（feature 全流水线基准；分类档案可再裁剪）。 */
 export const STAGE_ARTIFACT_REQUIREMENTS: Readonly<Partial<Record<StageKey, readonly ArtifactKind[]>>> = {
@@ -106,7 +111,12 @@ export const ARCHIVE_DOC_RULES: Readonly<Record<RequirementCategory, ArchiveDocR
   },
 }
 
-/** 文件名 → 必备产物种类映射（未命中 → notes）。 */
+/**
+ * 文件名 → 必备产物种类映射（未命中 → notes）。
+ *
+ * **顺序即优先级**（`kindForRelPath` 取首个命中）：REQ-261005105032-3b02 的三条原型规则
+ * 只能**追加在既有 7 条之后**——插到前面会让既有需求里同名的旧文件分类漂移。
+ */
 const NAME_TO_KIND: ReadonlyArray<readonly [RegExp, ArtifactKind]> = [
   [/^requirement\.md$/, 'requirement'],
   [/^plan\.md$/, 'plan'],
@@ -115,6 +125,10 @@ const NAME_TO_KIND: ReadonlyArray<readonly [RegExp, ArtifactKind]> = [
   [/^verification\.md$/, 'verification'],
   [/^archive\.md$/, 'archive'],
   [/^tasks\/t-[a-z0-9]+\.md$/, 'task_detail'],
+  // 原型（REQ-261005105032-3b02 §1.2）：三条都显式判 prototype，不得回落 notes。
+  [/^prototypes\/.+\.html$/, 'prototype'], // 权威路径：docs/requirements/<REQ>/prototypes/<name>.html
+  [/^prototype\/.+\.html$/, 'prototype'], // 旧路径（REQ-292a 形态）：仍识别，门禁消息提示迁移到 prototypes/
+  [/^prototypes\/INDEX\.md$/, 'prototype'], // 权威清单自身也是原型产物（决议 #1：不落 notes）
 ]
 
 /**

@@ -1,6 +1,17 @@
 /**
  * 需求详情页「常驻头部」（REQ-261004222448-292a · FR-3 / FR-12）——纯函数返回 HTML 字符串。
  *
+ * REQ-261006130057-7a43 · FR-1（t4）起头部前段重组为**三层**（视觉基准 = 该需求原型
+ * `prototypes/detail.html` v1.5 的 `#FR-1` 区块）：
+ *  ① 标识行（← 看板 ｜ REQ-id ｜ 状态药丸 ｜ 分类/难度 ｜ 内联时间；席位 chips 右置）；
+ *  ② 标题行（19px 标题 + 操作按钮聚合**固定右侧**——按钮集合 = buildReportActionBar 现行输出）；
+ *  ③ 闸门提示条（`waitingHuman > 0` 才渲染：琥珀底一行 + 锚链「查看缺口 ↓」）。
+ * 三层取代了 D-8 的「动作行 DOM 第一位 / 身份行第二行」两排布（旧排的注释留在函数体内，
+ * 供回溯）；后段的一句话结论 / 下一步 / 阶段条不在 FR-1 射程内，一字未动。
+ * 评论列表则由同需求 FR-3（t6）单独改造：每条一行（`身份 · 时间 · 正文` 同行省略截断 +
+ * title 全文）、长日志默认折叠（`isLongDialogueText` 判据 + 琥珀标 + 原生 details 就地展开）、
+ * 头部行右放「全部对话 →」——实现与口径见 `buildCommentList` / `commentRenderPlan` 的注释。
+ *
  * 为什么单独一个模块：头部是详情页**唯一常驻不折叠**的一块（身份 + 阶段条 + 一句话结论 +
  * 操作条 + 窗口跳转）。它必须能在任意一次台账变更后**只换自己**（分段局部更新），所以它得是
  * 一个独立的字符串段，而不是混在整页模板里——混在一起就只能整页 `innerHTML` 重绘，
@@ -24,6 +35,10 @@ import {
   CATEGORY_LABELS, STATUS_LABELS, commentActorLabel, fmtDur, fmtTime, isTerminal, windowCodeFromSessionId,
 } from '../render/dom-utils.js'
 import { buildProgressDots } from './stage-detail.js'
+// FR-3（REQ-261006130057-7a43 t6）：长日志判据复用『对话』Tab 导出的同一份函数
+// （>120 字符或含换行）——同口径不另造。dialogue.ts 对 report-tabs 只有 type 级 import
+// （运行时擦除），这里不构成运行环。
+import { isLongDialogueText } from './panels/dialogue.js'
 
 /**
  * 降级文案的**单一事实源**（FR-12）：四种 `reason` 各自一句人话，禁 0、禁留白。
@@ -148,16 +163,23 @@ export function buildWindowJumps(report: ReportResponse): string {
  *
  *  ① **按钮只写动作**（动词 + 宾语，就是服务端给的 `label`），说明绝不挨着按钮
  *     ——VA Design System / Octopus 的按钮内容规范；后果的落点是**按需披露**：
- *     按钮 `title`（悬停）→ 点开后的确认框正文（既有 `board-mount` 分支负责，那里才是说后果的地方）。
+ *     按钮 `title`（悬停）+ `aria-describedby` 指向的视觉隐藏节点（读屏）→ 点开后的确认框正文
+ *     （既有 `board-mount` 分支负责，那里才是说后果的地方）。
  *  ② **动作分级**：一屏最多 1 个 primary（实心=第一个可执行动作），其余 secondary（描边），
  *     危险动作（`cancel`）用 danger（红、弱化）**且排最后**（Pajamas · Destructive actions）。
  *     危险动作还带 `data-confirm`：由壳在**捕获后立即**弹一次确认（见 `report-tabs.ts#attach`），
  *     拒绝就拦下这次点击——它走的是 `move-req`，那条分支自己没有确认框。
- *  ③ **常驻只留一句**：只给主操作下方一行 ≤40 字的灰字短后果（其余全在 `title`）；
- *     截断口径取自「第一个冒号前的那一截」（如「通过即归档：需求进入终态…」→「通过即归档」），
- *     取不到就用前 40 字 + 省略号。**整条操作区只允许这一句**。
- *  ④ 「需人操作」**整条只标一次**：动作行末尾一句 10.5px 灰字（「均需人工确认」）；
+ *  ③ **无分组标签**（FR-11 #1）：不再渲染操作条上的分组标签——动作自己就是动词 + 宾语，
+ *     标签不提供信息。**同名 class 在别处仍在用**（评论列表 / 窗口组），只删这一处。
+ *  ④ **后果不再常驻**（FR-11 #2）：主操作的**完整**后果从可见流里退出
+ *     （`.dsh-pm-action-consequence.dsh-pm-sr-only`：1px 裁切 + `clip-path`，
+ *     文本 === 服务端 `consequence`，一字不省），改由 `title` + `aria-describedby` 两条通道披露。
+ *     为什么两条都要：只留 `title` 是 hover-only 反模式（触屏 / 键盘 / 读屏都拿不到）。
+ *  ⑤ 「需人操作」**整条只标一次**：动作行末尾一句 11px 灰字（「需人工确认」）；
  *     每个动作是否人工门写在 `data-human-only="true"` 上（机器可读，供断言与审计）。
+ *  ⑥ **动作布局**（FR-9 第 1/3/4 项 / D-7）：弹性流、不拉伸、按序紧挨；主操作左缘 =
+ *     动作区左端；破坏性动作恒排最后且与前一个动作留 ≥24px 空隙（**不是** `margin-left:auto`
+ *     推行尾——那是 D-4 时期"动作行以行尾为界"的写法，D-8 之后行尾已属身份行）。
  *
  * 硬判据（`scripts/req-report-probe.mts` A6）：1280 档整条 ≤ 72px 且动作按钮同一行。
  */
@@ -168,14 +190,26 @@ export function buildReportActionBar(report: ReportResponse): string {
   // 危险动作排最后（不信任服务端顺序：顺序是**展示分级**，属渲染层职责）
   const ordered = [...actions.filter(a => !isDanger(a.key)), ...actions.filter(a => isDanger(a.key))]
   const primary = ordered.find(a => !isDanger(a.key))
+  /* 视觉隐藏后果节点的稳定 id（FR-11 #2）：主操作按钮的 `aria-describedby` 指向它。
+     为什么把需求 id 编进 id：① 稳定、可断言（不是随手生成的序号，重渲染后不变）；
+     ② 跨需求不撞名。为什么不叫 `dsh-pm-action-consequence-…`：那会让"数节点"的既有断言
+     （`countOf(html, 'dsh-pm-action-consequence')`）把 id 与 aria-describedby 也算成节点，
+     一个节点数成三份——id 与 class 必须能各自被数清楚。
+     ⚠️ 前提（如实登记）：同一需求的整页头部与档二头部**不会同时挂在 DOM 里**
+     （board-mount 二选一渲染）；若将来两者共存，这个 id 会重复，届时须改成带挂载点的前缀。 */
+  const descId = 'dsh-pm-action-desc-' + report.head.id
   const cells = ordered.map((a) => {
     const channel = ACTION_CHANNEL[a.key]
     const to = a.key === 'cancel' ? 'canceled' : a.to
     const rank = isDanger(a.key) ? 'danger' : (a === primary ? 'primary' : 'secondary')
     const cls = rank === 'primary' ? 'dsh-pm-btn primary' : (rank === 'danger' ? 'dsh-pm-btn danger' : 'dsh-pm-btn')
-    // 常驻短后果：只给主操作，且只一句（其余在 title 里，悬停可读全文）
+    /* 后果的**第二披露通道**（FR-11 #2）：文本 === 服务端 `consequence`（一字不省），
+       视觉隐藏但可访问——常驻可见流里不再有它（那一条与页面自己的纪律冲突，见 D-6）。
+       为什么不是 `display:none`：那会把节点从可访问树里摘掉，读屏就再也读不到后果，
+       正是 FR-11 要防的 hover-only 反模式（`title` 之外必须还有一条读屏可达的通道）。 */
     const hint = a === primary
-      ? '<span class="dsh-pm-action-consequence">' + esc(shortConsequence(a.consequence)) + '</span>'
+      ? '<span class="dsh-pm-action-consequence dsh-pm-sr-only" id="' + esc(descId) + '">'
+        + esc(a.consequence) + '</span>'
       : ''
     return '<div class="dsh-pm-report-action" data-action-key="' + esc(a.key) + '"'
       + ' data-action-rank="' + rank + '"'
@@ -187,18 +221,24 @@ export function buildReportActionBar(report: ReportResponse): string {
       + (rank === 'danger'
         ? ' data-confirm="' + esc('「' + a.label + '」：' + a.consequence + '\n\n确定执行吗？') + '"'
         : '')
-      + ' title="' + esc(a.consequence) + '">' + esc(a.label) + '</button>'
+      + ' title="' + esc(a.consequence) + '"'
+      // 主操作：`aria-describedby` **追加在既有属性之后**（属性顺序耦合：只增不改序，见
+      // design/interfaces.md「已知耦合与实施约束」①），指向上面那个视觉隐藏的完整后果节点。
+      + (a === primary ? ' aria-describedby="' + esc(descId) + '"' : '')
+      + '>' + esc(a.label) + '</button>'
       + hint
       + '</div>'
   }).join('')
   const anyHumanOnly = actions.some(a => a.humanOnly === true)
+  /* 操作条上的分组标签**已删**（FR-11 #1）：动作自己就是动词 + 宾语，标签不提供信息。
+     ⚠️ 同名 class 在别处还在用（评论列表的「最近评论 N 条（新的在下）」与窗口组）——
+     只删这一处，class 本身与另外两处一字不动。 */
   return '<div class="dsh-pm-report-actions" data-report-actions="1">'
-    + '<span class="dsh-pm-action-bar-label">本阶段操作</span>'
     + '<div class="dsh-pm-report-action-grid" data-action-grid="1">' + cells + '</div>'
     + (anyHumanOnly
       ? '<span class="dsh-pm-human-only" data-human-only-mark="1"'
         + ' title="这些动作只有人能发起：agent 调用会被代码级拒绝（每格各自是否人工门见 data-human-only）">'
-        + '均需人工确认</span>'
+        + '需人工确认</span>'
       : '')
     + '</div>'
 }
@@ -208,14 +248,20 @@ function isDanger(key: ReportAction['key']): boolean {
   return key === 'cancel'
 }
 
-/** 常驻短后果的字数上限（人类验收口径：≤40 字）。 */
+/** 短后果的字数上限（人类验收口径：≤40 字）。 */
 export const CONSEQUENCE_HINT_MAX = 40
 
 /**
  * 后果 → 一行短提示（`通过即归档：需求进入终态、不再接受修改；…` → `通过即归档`）。
  *
  * 口径与状态带的 `oneLineLabel` 同源（第一个「：」前的状态/结论词就是那一句），
- * 取不到就截前 40 字 + `…`：常驻只有一行，全文在按钮 `title` 与确认框里。
+ * 取不到就截前 40 字 + `…`。
+ *
+ * **FR-11 #2 之后它不再是页面上的披露通道**：常驻可见的那句短后果已退出可见流，
+ * `aria-describedby` 指向的节点要求文本 === 服务端 `consequence`（一字不省），
+ * 所以披露不能用截断版。本函数保留为**口径实现 + 单测锚点**（`tests/report-firstscreen-gaps.test.ts`
+ * 直接钉它的三档截断口径），也留给将来"需要一句更短的展示"的落点——
+ * 但**不许**再拿它去喂 `aria-describedby` 的节点（那会让读屏丢掉后半句）。
  */
 export function shortConsequence(consequence: string): string {
   const s = (typeof consequence === 'string' ? consequence : String(consequence ?? '')).trim()
@@ -246,40 +292,25 @@ function actorOf(by: ActorRef): { actor: 'human' | 'agent' | 'system'; text: str
  * 值必须与 `QueryReport.REPORT_COMMENT_HEAD_LIMIT` 一致，改一处必须改另一处。）
  */
 export const COMMENT_RENDER_LIMIT = 3
-/** 单条正文的渲染上限（字）。超出截断 + 省略号，全文进 `title`（不新造展开交互）。 */
-export const COMMENT_BODY_MAX = 200
-/** 超长正文的判定阈值（字）：超过它就不是"人写的一句话"，而是机器转储（见 COMMENT_LONG_HEAD_MAX）。 */
-export const COMMENT_LONG_THRESHOLD = 1000
-/** 超长正文只渲染**首行前多少字**（再配「共 N 字」）。 */
-export const COMMENT_LONG_HEAD_MAX = 120
 
 /**
- * 一条评论的正文渲染计划（纯函数，便于单测直接钉住三档口径）。
+ * 一条评论的正文渲染计划（纯函数，便于单测直接钉住两档口径）。
  *
- * 三档（为什么这么分，而不是"统一截 200 字"）：
- *  - **≤ 200 字**：原样（人写的评论通常就这么长）；
- *  - **200 ~ 1000 字**：截 200 字 + `…`，全文进 `title`（读者悬停仍读得到全文）；
- *  - **> 1000 字**：这类是「产物自动发现」之类的**机器转储**（线上实测一条 11,157 字，
- *    10 条合计 13,317 字把 Tab 栏顶到 top=1118、首屏看不到六个 Tab）。它不该把页面顶爆，
- *    也不该假装自己是一句话——只给首行前 120 字 + 「共 N 字」，并打 `data-comment-long="1"`
- *    让页面/断言都能一眼认出"这是被收纳起来的转储"。
+ * 两档（FR-3 · REQ-261006130057-7a43 t6；判据 = `isLongDialogueText`，与『对话』Tab
+ * 同一份函数：>120 字符或含换行）：
+ *  - **短评**：原样一行——`身份 · 时间 · 正文` 同行，单行省略截断由 CSS 承担，
+ *    全文进 `title`（悬停仍读得到）；
+ *  - **长日志**：默认折叠——「长日志已收纳」琥珀标 + 行尾「展开」就地放开
+ *    （原生 `<details>/<summary>`，与状态带「展开说明」同机制，不新造展开交互），
+ *    并打 `data-comment-long="1"` 让页面/断言都能一眼认出"这是被收纳起来的转储"
+ *    （线上实测一条 11,157 字的机器转储曾把 Tab 栏顶出首屏——判据里"含换行"一支
+ *    就是为它：多行日志不到 1000 字也一样不该铺开）。
+ * 旧三档（200 字截断 / 1000 字收纳）已由本两档取代：判据与对话 Tab 同一份函数，
+ * 不另造第二套"什么叫长"的口径。
  */
 export function commentRenderPlan(body: string): { text: string; full: string; long: boolean } {
   const full = typeof body === 'string' ? body : String(body ?? '')
-  if (full.length > COMMENT_LONG_THRESHOLD) {
-    const firstLine = full.split(/\r?\n/, 1)[0] ?? ''
-    const head = firstLine.slice(0, COMMENT_LONG_HEAD_MAX)
-    const cut = firstLine.length > COMMENT_LONG_HEAD_MAX
-    return {
-      text: head + (cut ? '…' : '') + '（首行前 ' + String(COMMENT_LONG_HEAD_MAX) + ' 字 · 共 ' + String(full.length) + ' 字）',
-      full,
-      long: true,
-    }
-  }
-  if (full.length > COMMENT_BODY_MAX) {
-    return { text: full.slice(0, COMMENT_BODY_MAX) + '…', full, long: false }
-  }
-  return { text: full, full, long: false }
+  return { text: full, full, long: isLongDialogueText(full) }
 }
 
 /**
@@ -294,9 +325,16 @@ export function commentRenderPlan(body: string): { text: string; full: string; l
  *    过滤后一条不剩 → **整块不渲染**（写"暂无评论"会是假话：台账里明明有评论，只是机器写的）。
  *  - **不做内层滚动**（FR-11 #7）：列表长了靠页面滚，不进 `overflow` 容器，
  *    也不做"限高 + 滚动"（那会让"有多少条"变成不可数）。所以"不顶爆首屏"靠的是**少渲染几条 +
- *    截断正文 + 压紧行距**，不是砍内容；
+ *    单行省略 + 长日志默认折叠**，不是砍内容（截断只发生在 CSS 上，全文在 `title` / 折叠体里，一字不丢）；
  *  - **限条数必须同时报总数**（`head.commentsTotal`）：只渲染 3 条却不说话，等于把
  *    "还有 7 条"藏起来——那不是内容控制，是丢信息。
+ *
+ * ## 行形态（FR-3 · REQ-261006130057-7a43 t6，视觉基准 = 原型 v1.5 `#FR-3`）
+ *
+ * 每条评论**一行**：`身份 · 时间 · 正文` 同行，正文单行省略截断 + `title` 全文。
+ * 长日志（判据 = `isLongDialogueText`）：meta 后紧跟「长日志已收纳」琥珀标，
+ * 正文进原生 `<details>/<summary>`——合上是截断的一行 + 行尾「展开」，点开就地放开全文。
+ * 头部行右侧放「全部对话 →」（`data-action="switch-tab" data-tab="dialogue"`，既有通道）。
  *
  * ## 过滤为什么在渲染层、不在 `commentsOf`
  *
@@ -324,18 +362,39 @@ export function buildCommentList(comments: ReportHead['comments'], total?: numbe
   const rows = shown.map((c) => {
     const who = actorOf(c.by)
     const plan = commentRenderPlan(c.body)
-    return '<div class="dsh-pm-comment" data-comment-row="1" data-actor="' + who.actor + '"'
-      + (plan.long ? ' data-comment-long="1"' : '') + '>'
-      + '<span class="dsh-pm-comment-meta"><span class="dsh-pm-comment-who" data-actor="' + who.actor + '">'
-      + esc(who.text) + '</span> · ' + esc(fmtTime(c.at))
-      + (plan.long ? ' · <span class="dsh-pm-comment-long-flag">长日志（已收纳）</span>' : '')
-      + '</span>'
-      + '<div class="dsh-pm-comment-body" title="' + esc(plan.full) + '">' + esc(plan.text) + '</div></div>'
+    const meta = '<span class="dsh-pm-comment-meta"><span class="dsh-pm-comment-who" data-actor="' + who.actor + '">'
+      + esc(who.text) + '</span> · ' + esc(fmtTime(c.at)) + '</span>'
+    if (!plan.long) {
+      // 短评：`身份 · 时间 · 正文` 同行一行；单行省略由 CSS 承担，全文进 title
+      return '<div class="dsh-pm-comment" data-comment-row="1" data-actor="' + who.actor + '">'
+        + meta
+        + '<span class="dsh-pm-comment-body" title="' + esc(plan.full) + '">' + esc(plan.text) + '</span>'
+        + '</div>'
+    }
+    /* 长日志：meta + 琥珀标 + 原生 <details>（合上 = 截断一行 + 行尾「展开」；点开就地放开全文）。
+       summary 里的截断行与 details 体内的全文是**同一份原文**（截断只发生在 CSS 上），
+       title 再备一份全文悬停可读——三条通道都不丢字。 */
+    return '<div class="dsh-pm-comment" data-comment-row="1" data-actor="' + who.actor + '" data-comment-long="1">'
+      + meta
+      + '<span class="dsh-pm-comment-long-flag">长日志已收纳</span>'
+      + '<details class="dsh-pm-comment-fold" data-comment-fold="1">'
+      + '<summary class="dsh-pm-comment-fold-head">'
+      + '<span class="dsh-pm-comment-body dsh-pm-comment-body--clip" title="' + esc(plan.full) + '">' + esc(plan.text) + '</span>'
+      + '<span class="dsh-pm-comment-toggle">'
+      + '<span class="dsh-pm-comment-open">展开</span><span class="dsh-pm-comment-close">收起</span>'
+      + '</span></summary>'
+      + '<div class="dsh-pm-comment-body dsh-pm-comment-body--full">' + esc(plan.full) + '</div>'
+      + '</details></div>'
   }).join('')
   const label = '最近评论 ' + String(shown.length) + ' 条（新的在下）' + tailNote(hidden, totalCount, comments.length, shown.length)
   return '<div class="dsh-pm-comments" data-comment-list="1" data-comment-shown="' + String(shown.length) + '"'
     + ' data-comment-total="' + String(totalCount) + '" data-comment-hidden="' + String(hidden) + '">'
+    + '<div class="dsh-pm-comments-head" data-comment-head="1">'
     + '<span class="dsh-pm-action-bar-label">' + esc(label) + '</span>'
+    // 头部行右：「全部对话 →」走既有 switch-tab 通道（不新造写路径）；系统事件与更早评论都在那一页
+    + '<button type="button" class="dsh-pm-comments-all" data-action="switch-tab" data-tab="dialogue"'
+    + ' title="到「对话」Tab 看全部留言与系统事件">全部对话 →</button>'
+    + '</div>'
     + rows + '</div>'
 }
 
@@ -365,7 +424,7 @@ export interface ReportHeadOpts {
 }
 
 /**
- * 常驻头部（结论头 + 操作条 + 一句话结论）。
+ * 常驻头部（三层 + 后段）。
  *
  * `now` 只作缺省兜底（服务端已给 stageStayedMs / sinceUpdateMs 时优先用它——
  * 服务端算过的数与页面时钟无关，测试里也就不用假时钟）。
@@ -375,22 +434,27 @@ export function buildReportHead(report: ReportResponse, now: number = Date.now()
   const p = report.progress
   const terminal = isTerminal(h.status)
 
-  /* ① 身份行（原型 head-top 的那一行）：id · 状态芯片 · 分类 · 难度 · 停留/更新时刻。
-     为什么单起一个行盒：旧底座把这些当**并列的 flex 子项**，各自换行后"谁/什么状态/什么时候"
-     散成三四行；收进一个行盒，它们才回到同一行（换行只发生在行盒之间）。 */
-  const top: string[] = []
-  top.push('<span class="dsh-pm-card-id">' + esc(h.id) + '</span>')
-  top.push('<span class="dsh-pm-status" data-status="' + esc(h.status) + '">' + esc(STATUS_LABELS[h.status] ?? h.status) + '</span>')
+  /* ① **标识行**（FR-1 第一层，原型 .head-id）：← 看板 ｜ REQ-id（等宽）｜ 状态药丸 ｜ 分类/难度 ｜
+     内联时间（停留 / 距上次更新 / 创建于）；**行尾右置席位组**（窗口跳转 chips，已归档置灰）。
+     相对旧排布的两处位移（FR-1 基准取代 D-8）：
+      · `← 看板` 从旧动作行（.dsh-pm-rh-bar）移进标识行行首——三层的第一层就是「导航 + 身份」；
+      · 「创建于 …」从 D-8 的「行尾右推」归回内联时间组——行尾让给席位组（原型 .seats 右置）。
+     终态 / 档二各自真实：终态不渲染席位组（不留假出口），档二不渲染「创建于」（会话里已有）。 */
+  const back = '<button type="button" class="dsh-pm-btn" data-action="back" title="返回看板">← 看板</button>'
+  const ident: string[] = []
+  ident.push(back)
+  ident.push('<span class="dsh-pm-card-id">' + esc(h.id) + '</span>')
+  ident.push('<span class="dsh-pm-status" data-status="' + esc(h.status) + '">' + esc(STATUS_LABELS[h.status] ?? h.status) + '</span>')
   if (h.blocked) {
     const why = typeof h.blockedReason === 'string' && h.blockedReason.length > 0 ? h.blockedReason : ''
-    top.push('<span class="dsh-pm-flag blocked"' + (why.length > 0 ? ' title="' + esc(why) + '"' : '') + '>阻塞</span>')
-    if (why.length > 0) top.push('<span class="dsh-pm-report-meta" data-blocked-reason="1">' + esc(why) + '</span>')
+    ident.push('<span class="dsh-pm-flag blocked"' + (why.length > 0 ? ' title="' + esc(why) + '"' : '') + '>阻塞</span>')
+    if (why.length > 0) ident.push('<span class="dsh-pm-report-meta" data-blocked-reason="1">' + esc(why) + '</span>')
   }
-  top.push('<span class="dsh-pm-report-meta" data-category="' + esc(h.category) + '">分类 '
+  ident.push('<span class="dsh-pm-report-meta" data-category="' + esc(h.category) + '">分类 '
     + esc(CATEGORY_LABELS[h.category] ?? h.category) + '</span>')
   const diff = difficultyLabel(h.promptDifficulty)
   if (diff !== undefined) {
-    top.push('<span class="dsh-pm-report-meta" data-difficulty="' + esc(h.promptDifficulty ?? '') + '">难度 '
+    ident.push('<span class="dsh-pm-report-meta" data-difficulty="' + esc(h.promptDifficulty ?? '') + '">难度 '
       + esc(diff) + '</span>')
   }
   // 停留时长 / 距上次更新：服务端给了就用服务端的，没给才用本地时钟推——**都不给就不说这一句**
@@ -403,24 +467,52 @@ export function buildReportHead(report: ReportResponse, now: number = Date.now()
   const timing = (stayed === undefined ? '' : '停留 ' + fmtDur(stayed))
     + (stayed !== undefined && since !== undefined ? ' · ' : '')
     + (since === undefined ? '' : '距上次更新 ' + fmtDur(since))
-  if (timing.length > 0) top.push('<span class="dsh-pm-detail-updated">' + esc(timing) + '</span>')
+  if (timing.length > 0) ident.push('<span class="dsh-pm-detail-updated">' + esc(timing) + '</span>')
+  // 「创建于 …」并入内联时间组（不再右推）；终态与档二不渲染（各自真实，不编不占位）
+  if (!terminal && opts.compact !== true) {
+    ident.push('<span class="dsh-pm-report-meta" data-created-at="' + String(h.createdAt) + '">创建于 '
+      + esc(fmtTime(h.createdAt)) + '</span>')
+  }
+  // 席位组（窗口跳转 chips）行尾右置；终态不渲染（不留"点了必被拒"的假出口）
+  if (!terminal) ident.push(buildWindowJumps(report))
 
-  /* ② 标题（21px 一行独占；原型的 h1.title 就是整页视觉的重心） */
-  const title = '<h1 class="dsh-pm-detail-title">' + esc(h.title) + '</h1>'
+  /* ② **标题行**（FR-1 第二层，原型 .head-title）：19px 标题 + 操作按钮聚合**固定右侧**。
+     按钮集合 = buildReportActionBar 的现行输出（本阶段合法动作，不增不减、不重复）——
+     函数本身一字未动，变的只是父容器归属（从 D-8 的独立动作行到标题行右端）。
+     终态只读：右端换成那句「终态只读」说明（动作一个不渲染，连窗口跳转都不留）。 */
+  const acts = terminal
+    ? '<div class="dsh-pm-gate" data-readonly="1">终态只读：'
+      + (h.status === 'canceled' ? '已取消' : '已归档') + '，无可执行动作</div>'
+    : buildReportActionBar(report)
+  const titleRow = '<div class="dsh-pm-rh-title" data-head-row="title">'
+    + '<h1 class="dsh-pm-detail-title">' + esc(h.title) + '</h1>' + acts + '</div>'
 
-  /* ③ 次级行（原型标题下面那一行）：创建时刻 + 窗口跳转。
-     终态与档二各自真实：终态不渲染窗口跳转（不留假出口），档二不渲染创建时刻（会话里已有）。 */
-  const created = terminal || opts.compact === true
-    ? ''
-    : '<span class="dsh-pm-report-meta" data-created-at="' + String(h.createdAt) + '">创建于 '
-      + esc(fmtTime(h.createdAt)) + '</span>'
-  const windows = terminal ? '' : buildWindowJumps(report)
-  const sub = created + windows
+  /* ③ **闸门提示条**（FR-1 第三层，原型 .gate）：`waitingHuman > 0` 才渲染——无缺口整条不渲染、
+     不留空壳（与评论列表同一纪律）。琥珀底一行：⚠ + 「需人工确认 · N 件缺口等人裁决，裁决前
+     无法提交验收。」+ 锚链「查看缺口 ↓」。N = `waitingHuman`（与 verdictLine、缺口格计数徽标
+     同口径——服务端 `waitingHuman === gaps.length`，QueryReport 单点）。
+     锚链走 `data-action="scroll-gap-focus"` 委派（board-mount 里 scrollIntoView）——**不用
+     页内 hash 导航**：宿主的 hash 信道是深链路由（/dashboard#pmboard?req=…），同信道点 hash
+     有被宿主 hashchange 重路由的风险（复核 P1-1，不赌未实测行为）。落点 id 在状态带缺口格上
+     （report-band.ts 的 `data-gap-focus="1"` 同格）——缺口格存在 ⟺ gaps 非空 ⟺ waitingHuman > 0。
+     终态豁免（复核 P2-1）：终态没有「待裁决」语义，banner 不渲染（真实查询终态 gaps=[]
+     本就到不了这里，组件层也不对不自洽输入说假话）。 */
+  const waiting = typeof report.waitingHuman === 'number' && Number.isFinite(report.waitingHuman)
+    ? report.waitingHuman
+    : 0
+  const gateBanner = waiting > 0 && !terminal
+    ? '<div class="dsh-pm-gate-banner" data-gate-banner="1" role="status">'
+      + '<span class="dsh-pm-gate-flag" aria-hidden="true">⚠</span>'
+      + '<span class="dsh-pm-gate-text">需人工确认 · <b>' + String(waiting) + '</b> 件缺口等人裁决，裁决前无法提交验收。</span>'
+      + '<button type="button" class="dsh-pm-gate-link" data-action="scroll-gap-focus" data-gap-anchor="1">查看缺口 ↓</button>'
+      + '</div>'
+    : ''
 
   const parts: string[] = []
-  parts.push('<div class="dsh-pm-rh-top" data-head-row="top">' + top.join('') + '</div>')
-  parts.push(title)
-  if (sub.length > 0) parts.push('<div class="dsh-pm-rh-sub" data-head-row="sub">' + sub + '</div>')
+  parts.push('<div class="dsh-pm-rh-top" data-head-row="ident">' + ident.join('') + '</div>')
+  parts.push(titleRow)
+  parts.push(gateBanner)
+  /* 后段（不在 FR-1 射程内，沿用旧排布一字未动）： */
   // 一句话结论（在跑什么 / 谁在跑 / 几件事等人 / 下一步谁动手）
   parts.push('<div class="dsh-pm-report-verdict" data-report-verdict="1"'
     + ' data-waiting-human="' + String(typeof report.waitingHuman === 'number' ? report.waitingHuman : 0) + '">'
@@ -432,32 +524,14 @@ export function buildReportHead(report: ReportResponse, now: number = Date.now()
   // 8 态阶段条复用既有实现（同一份阶段表/同一个外观），不另画一套
   parts.push(buildProgressDots(h.status))
 
-  /* ④ 操作条（原型 .actions 那个浅底横条）：`← 看板` + 本阶段合法动作。
-     为什么把返回键收进这条：原型里它就是操作条的第一个按钮；散在头部顶行会多出一行。 */
-  const back = '<button type="button" class="dsh-pm-btn" data-action="back" title="返回看板">← 看板</button>'
-  if (terminal) {
-    // 终态只读：只留 ← 看板（不渲染操作条 / 窗口跳转 / 评论框——不留任何假出口）。
-    // 评论**列表**仍渲染：它是台账已记下的事实（审计要看"谁批的、说了什么"），只读不等于看不见。
-    parts.push('<div class="dsh-pm-rh-bar" data-report-actionbar="1">' + back
-      + '<div class="dsh-pm-gate" data-readonly="1">终态只读：'
-      + (h.status === 'canceled' ? '已取消' : '已归档') + '，无可执行动作</div></div>')
-    parts.push(buildCommentList(h.comments, h.commentsTotal))
-  } else {
-    parts.push('<div class="dsh-pm-rh-bar" data-report-actionbar="1">' + back + buildReportActionBar(report) + '</div>')
-    // 评论列表在评论框**附近**（列表在上、输入框在下，与时间线"新的在下"同向）。
-    // 档二（compact）不渲染输入框，但列表照渲染：评论是内容，不是"写入口"。
-    parts.push(buildCommentList(h.comments, h.commentsTotal))
-    // 评论框：既有能力的**唯一落点**（写入通道与旧页同一条）。
-    // 草稿的保住靠 board-mount 的分段替换 + capture/restore（见 board-mount §applyReportSegments）。
-    if (opts.compact !== true) {
-      // `data-draft-key`：本页**不止一个**评论框（对话 Tab 也有一个），草稿要按表单分开存，
-      // 否则两个框共用一个槽位、打字互踩（board-mount 的 capture/restore 按这个属性分槽）。
-      parts.push('<div class="dsh-pm-comment-form" data-actor="human" data-draft-key="head">'
-        + '<input type="text" class="dsh-pm-input" data-role="comment-input" placeholder="写评论（以「人」身份记录）…" />'
-        + '<button type="button" class="dsh-pm-btn" data-action="add-comment" data-target="req" data-id="'
-        + esc(h.id) + '">发送</button></div>')
-    }
-  }
+  /* 评论**列表**：终态与在途都渲染——它是台账已记下的事实（审计要看"谁批的、说了什么"），
+     只读不等于看不见。它排在阶段条之后（头部最后一段）。
+     **评论输入框已按 FR-13 / D-7 真删**（这里不再渲染 `.dsh-pm-comment-form`、不再有
+     `[data-role=comment-input]` 与头部的 `data-action="add-comment"`）：详情页是**汇报**（读），
+     发评论是『对话』Tab / 会话窗口的事（那条链路一字未动，见 `panels/dialogue.ts`）。
+     为什么整个分支删掉而不是 `compact` 隐藏：`board-mount` 的草稿槽与 `commentInputOf` 是
+     按作用域找输入框的，留着"看不见的第二个框"只会让作用域查找多一个歧义点。 */
+  parts.push(buildCommentList(h.comments, h.commentsTotal))
 
   return '<div class="dsh-pm-detail-head dsh-pm-rh" data-report-head="1" data-head-state="'
     + (terminal ? 'terminal' : 'inflight') + '">' + parts.join('') + '</div>'

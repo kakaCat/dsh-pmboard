@@ -30,6 +30,21 @@ export interface PlanTask {
   side?: string
   requirement_refs?: string[]
   depends_on?: string[]
+  /**
+   * 该卡承接的**原型锚点**引用原文（REQ-261005105032-3b02 FR-9，如
+   * `["prototypes/detail.html#FR-4"]`）。与台账 `TaskRecord.prototypeRefs` **同名同义**
+   * （协议层 `src/shared/protocol.ts`，决议 `#36`）——模板占位符 `{{PROTOTYPE_REFS}}`
+   * 因此有值可填，不再出现"模板里有、落库却是空"（`{{DESIGN_SERVES}}` 的教训）。
+   * 两种拼法都认（snake 为主、camel 兼容历史写法）。
+   */
+  prototype_refs?: string[]
+  prototypeRefs?: string[]
+  /**
+   * 该卡承接的 **D-x 裁定**编号（如 `["D-1","D-3"]`），与台账 `TaskRecord.decisionRefs`
+   * 同名同义（决议 `#36`），对应模板占位符 `{{DECISION_REFS}}`。
+   */
+  decision_refs?: string[]
+  decisionRefs?: string[]
 }
 
 /**
@@ -47,6 +62,10 @@ export interface TaskCardPlaceholders {
   TASK_SIDE: string
   REQUIREMENT_REFS: string
   DESIGN_SERVES: string
+  /** 本卡原型锚点（`prototypes/<name>.html#FR-N`）；占位符名 = 台账键 `TaskRecord.prototypeRefs` 的大写形。 */
+  PROTOTYPE_REFS: string
+  /** 本卡关联的 D-x 编号；占位符名 = 台账键 `TaskRecord.decisionRefs` 的大写形。 */
+  DECISION_REFS: string
   TEST_CASES: string
   ACCEPTANCE_CRITERIA: string
   IMPLEMENTATION_PLAN: string
@@ -83,6 +102,18 @@ function extractRequirementClause(
 function extractSectionSummary(content: string, maxLines: number = 5): string {
   const lines = content.split('\n').filter(l => l.trim().length > 0)
   return lines.slice(0, maxLines).join('\n')
+}
+
+/**
+ * 编号引用列表 → 卡片上的可读文本（REQ-261005105032-3b02 t14 / FR-6、FR-9）。
+ *
+ * 为什么不是简单的 `.join(', ')`：这两个字段（原型锚点 / 关联 D-x）在旧计划里**缺键 = 未采集**，
+ * 而卡片模板的占位符必须被替换掉——留 `{{PROTOTYPE_REFS}}` 字面量或空串都会让人读成"这项不存在"。
+ * 故缺省给**显式待补充文案**（与 `TEST_CASES` 的「（待补充：TC-x）」同款处置）。
+ */
+function refsOf(value: readonly string[] | undefined, fallback: string): string {
+  const refs = (Array.isArray(value) ? value : []).filter(v => typeof v === 'string' && v.trim().length > 0)
+  return refs.length > 0 ? refs.join('、') : fallback
 }
 
 /**
@@ -178,6 +209,16 @@ export async function generateTaskCardPlaceholders(
     TASK_SIDE: planTask.side || 'fullstack',
     REQUIREMENT_REFS: frRefs.join(', '),
     DESIGN_SERVES: designServes,
+    // 原型锚点 / 关联 D-x（REQ-261005105032-3b02 FR-6/FR-9）：值源 = 计划任务上与台账
+    // `TaskRecord.prototypeRefs` / `decisionRefs` 同名同义的键（决议 `#36`）。
+    // 缺省给**显式待补充**而不是空串：空串在卡上等于"没这一项"，人会以为不适用；
+    // UI 卡缺锚点本就该在拆分覆盖门被拒（t12），这里只保证模板占位符一定被替换掉。
+    PROTOTYPE_REFS: refsOf(
+      planTask.prototype_refs ?? planTask.prototypeRefs,
+      '（未采集：UI 卡填 prototypes/<name>.html#FR-N；非 UI 卡写「—」）'),
+    DECISION_REFS: refsOf(
+      planTask.decision_refs ?? planTask.decisionRefs,
+      '（未采集：本卡承接的 D-x 编号，如 D-1、D-3；无则写「—」）'),
     TEST_CASES: '（待补充：TC-x）',
     ACCEPTANCE_CRITERIA: planTask.acceptance || '（待补充验收标准）',
     IMPLEMENTATION_PLAN: planTask.implementation || '（待补充实施方案）',

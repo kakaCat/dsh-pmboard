@@ -47,6 +47,7 @@ export const SQLITE_DDL: readonly string[] = [
      source_session_id TEXT,
      autorun INTEGER NOT NULL DEFAULT 0,
      blocked INTEGER NOT NULL DEFAULT 0,
+     project_id TEXT,
      workspace_root TEXT,
      doc_base_path TEXT,
      comment_count INTEGER NOT NULL DEFAULT 0,
@@ -100,6 +101,7 @@ export const SQLITE_DDL: readonly string[] = [
      source_session_id TEXT,
      autorun INTEGER NOT NULL DEFAULT 0,
      blocked INTEGER NOT NULL DEFAULT 0,
+     project_id TEXT,
      workspace_root TEXT,
      doc_base_path TEXT,
      comment_count INTEGER NOT NULL DEFAULT 0,
@@ -114,6 +116,23 @@ export const SQLITE_DDL: readonly string[] = [
 
 /** 表名清单（测试与体检用；与上面的 DDL 一一对应）。 */
 export const SQLITE_TABLES: readonly string[] = ['requirements', 'parts', 'comments', 'history', 'meta', 'archived']
+
+/**
+ * **增量补列**（REQ-261005141830-7a3b t2 · FR-8）：`CREATE TABLE IF NOT EXISTS` 只建新表，
+ * **不会**给已存在的表加列——而插入语句是按 `HOT_COLUMNS` **显式列名**写的。
+ *
+ * 后果实测（2026-10-05，本需求复核用的破坏性探针）：老库（建表时没有 `project_id`）配本次代码，
+ * **读得到**（缺列读回"没有这个键" = 未归属），但**任何写入都失败**：
+ * `table requirements has no column named project_id` —— 不补列 = 存量库升级后变只读。
+ *
+ * 故打开库时逐条补，判据是 `PRAGMA table_info`（列已存在即跳过，**不靠捕获错误**：
+ * 捕获 "duplicate column" 会把真正的建表错误一并吞掉）。
+ * 表名与列名都是本文件里的常量（不来自外部输入），拼进 PRAGMA/DDL 是安全的。
+ */
+export const SQLITE_COLUMN_MIGRATIONS: readonly { table: string; column: string; ddl: string }[] = [
+  { table: 'requirements', column: 'project_id', ddl: 'ALTER TABLE requirements ADD COLUMN project_id TEXT' },
+  { table: 'archived', column: 'project_id', ddl: 'ALTER TABLE archived ADD COLUMN project_id TEXT' },
+]
 
 /** `meta` 表里的保留键（键名写错会静默读到 undefined，故具名）。 */
 export const SQLITE_META_KEYS = {

@@ -7,7 +7,8 @@
       （key / title / phase / side / depends_on / implementation / acceptance），
       写进 docs/requirements/REQ-xxxxxx/decomposition.md。
 - [ ] **提交**：`reqboard_submit(kind=plan)`（path=decomposition.md，summary=目标+做法，tasks=任务表）。
-- [ ] **批准闸门**：调 `reqboard_ask_confirm(target=plan)` 弹框请人批准——
+- [ ] **批准闸门**：提交后先看回执——已写明「已有一道门在等 / 已自动触发批准弹框」时
+      **不要重复发起**；只有回执说没弹框时，才调一次 `reqboard_ask_confirm(target=plan)`。
       批准后自动落库任务卡并进入实施（看板「批准计划」同样有效）；未获批准不得落库。
 - [ ] **卡内必给验收**：每张卡写可证伪的 acceptance（跑什么、看到什么算过），不放空话。
 - [ ] **容量纪律**：容量缺省 16 DU，`detailUnits = files×1 + anchors×0.5 + chars/2000`
@@ -18,3 +19,4 @@
       `⚠️超容量(建议N批)`，N = 算出的批数（写错会被 `plan_overcapacity_marker_missing` 拒）。
 - [ ] **批准清单照抄**：超容量清单自带「超容量 N 张：…」标签，别再拼一遍。
 - [ ] 下一步：implementing —— 用 reqboard_ask_confirm(target=plan) 交棒；未获批准不得进入。
+      （发起前先看回执：已有门在等就不要再发起。）

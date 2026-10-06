@@ -17,6 +17,7 @@ import { captureDiag } from './diag-log.js'
 import { stageEnabledFor } from '../../shared/protocol.js'
 import type { StageKey } from '../../domain/requirement/RequirementStatus.js'
 import { resolveStagePrompt, isPromptStage } from '../../domain/prompt/index.js'
+import { difficultyFromDeclaredPrompt } from '../../domain/prompt/difficulty-mapping.js'
 import {
   injectionLogInputFromResolved,
   type InjectionLogPort,
@@ -212,10 +213,14 @@ export function boundSectionTextFrom(
       // INV-1：取词唯一入口（分片库 + 回退链 + 预算）；不再直取常量表。
       // FR-16：带上需求实质，让唯一取词入口按它推断难度（动架构 / 跨子系统 / 改数据模型 → heavy），
       // 不再静默回落缺省 light——REQ-c9f899 被注入轻档提示词的根因就在这一行。
+      // REQ-261005154851-8512 FR-2：把**声明难度**带上——注入组装是同步缝，读不到台账，
+      // 故它必须由 facts 投影带进来（FR-1）。未声明 → 不传该键，回落文本推断（与改造前逐字相同）。
+      const declared = difficultyFromDeclaredPrompt(stageReq.promptDifficulty)
       const resolved = resolveStagePrompt({
         stage,
         category: stageReq.category,
         requirement: { title: stageReq.title, description: stageReq.description },
+        ...(declared === undefined ? {} : { declaredDifficulty: declared }),
       })
       if (resolved.text.length > 0) {
         lines.push('')
@@ -241,14 +246,17 @@ export function boundSectionTextFrom(
     '设计阶段（2026-09-21 用户裁定：只写设计文档，不写计划）：',
     '- 把设计写进 docs/requirements/<REQ>/design/ 目录（按类型模板：架构/接口/数据模型等）；',
     '- 写完先调 reqboard_submit(kind=design) 登记设计文档（缺省扫全目录，也可指定单份 path）；',
-    '- 登记后调 reqboard_ask_confirm（target=artifact, kind=design）弹框请人确认设计——确认后进入拆分；',
+    '- 由你发起确认：**先看登记回执**——若它已写明「已有一道门在等 / 已自动触发确认弹框」，'
+      + '就**不要再调 reqboard_ask_confirm**（那会开出第二个框）；改为读确认态或取回执'
+      + '（reqboard_status / reqboard_confirm_receipt）。确认后自动进入拆分；',
     '',
     '拆分阶段（拆分计划在这里写 · 唯一需要人点头的地方）：',
     '- 把设计落成拆分计划 → reqboard_submit(kind=plan)（path = docs/requirements/<REQ>/decomposition.md，',
     '  summary = 一段人能读懂的目标+做法，tasks = 将来要落库的任务表：',
     '  key/title/phase/side/depends_on/acceptance，粒度与依赖在这里定死）；',
-    '- 提交后调 reqboard_ask_confirm（target=plan）弹框请人批准（看板「批准计划」同样有效）',
-    '  ——未批准时 reqboard_decompose 被代码级拒绝；',
+    '- 提交后**先看回执**：已写明「已有一道门在等 / 已自动触发批准弹框」时**不要重复发起**'
+      + '（reqboard_ask_confirm 会复用同一道门，但没必要再发一次）；只有回执说没弹框时才调一次；',
+    '  ——未批准时 reqboard_decompose 被代码级拒绝（看板「批准计划」同样有效）；',
     '- 批准后自动落库任务卡并进入实施（不传 tasks = 直接落库批准的计划；',
     '  传了 tasks 则必须与计划 key 一致，防止「批了 A 落库 B」）；',
     '- 计划要改 → 重新 reqboard_submit(kind=plan)（旧批准自动作废，需重新批准）。',

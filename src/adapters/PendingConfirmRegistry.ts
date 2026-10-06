@@ -22,6 +22,8 @@
 import { randomInt } from 'node:crypto'
 import type { DialogInFlightPort, DialogInFlightRecord, PendingConfirmPort } from '../application/ports.js'
 import { LIMITS } from '../domain/limits.js'
+// 分档过期规则独立成小模块（本文件要守 400 行尺寸门禁，且不能靠删注释腾地方）。
+import { sweepInFlightTtl } from './dialog-inflight-expiry.js'
 import {
   PENDING_CONFIRM_TICKET_PREFIX,
   type ArtifactKind,
@@ -83,6 +85,12 @@ export interface PendingConfirmRegistryOptions {
    * （REQ-261001154450-b918 FR-5）。
    */
   ttlMs?: number
+  /**
+   * **阻塞型在途登记**的有效期（毫秒；缺省 `LIMITS.timeoutInteractiveMs` = 60 分钟）——
+   * REQ-261006170150-52cc FR-3 的分档 TTL；分档理由与反面代价见 `dialog-inflight-expiry.ts`。
+   * 票 TTL（`ttlMs`）语义**不受本项影响**。
+   */
+  blockingTtlMs?: number
   /** ticket 生成器（测试注入固定值；默认 `pc-` + 6 位 hex）。 */
   newTicket?: () => string
 }
@@ -103,11 +111,14 @@ export class PendingConfirmRegistry implements PendingConfirmPort, DialogInFligh
   private readonly storageActions = new Map<string, StorageActionConfirmation>()
   private readonly now: () => number
   private readonly ttlMs: number
+  /** 阻塞型在途登记的有效期（`suspend:false`）；挂起型仍走 `ttlMs`——见 options 注释。 */
+  private readonly blockingTtlMs: number
   private readonly newTicket: () => string
 
   constructor(options: PendingConfirmRegistryOptions = {}) {
     this.now = options.now ?? ((): number => Date.now())
     this.ttlMs = options.ttlMs ?? LIMITS.pendingConfirmTtlMs
+    this.blockingTtlMs = options.blockingTtlMs ?? LIMITS.timeoutInteractiveMs
     this.newTicket = options.newTicket ?? ((): string =>
       PENDING_CONFIRM_TICKET_PREFIX + randomInt(0, 0xffffff).toString(16).padStart(6, '0'))
   }
@@ -138,15 +149,30 @@ export class PendingConfirmRegistry implements PendingConfirmPort, DialogInFligh
     this.inFlight.delete(ref)
   }
 
+  /**
+   * 该需求是否有**未过期**的在途弹框（同步）。
+   * FR-3：读时惰性摘除过期记录 ⇒ `true` 的含义是「此刻真的有人在等」。
+   */
   inFlightFor(requirementId: string): boolean {
+    this.sweepInFlight()
     for (const record of this.inFlight.values()) {
       if (record.requirementId === requirementId) return true
     }
     return false
   }
 
+  /** 诊断/对账用快照：**只回未过期**的记录（与 `inFlightFor` 同口径，含惰性摘除）。 */
   list(): readonly DialogInFlightRecord[] {
+    this.sweepInFlight()
     return [...this.inFlight.values()].map(r => ({ ...r }))
+  }
+
+  /**
+   * 惰性摘除过期在途登记（FR-3）：`now - since > 该形态的 TTL` 即从表里删掉。
+   * 分档规则与「为什么分两档」在 `dialog-inflight-expiry.ts`；本处只给当前两档 TTL。
+   */
+  private sweepInFlight(): void {
+    sweepInFlightTtl(this.inFlight, this.now(), { suspend: this.ttlMs, blocking: this.blockingTtlMs })
   }
 
   /**
@@ -300,6 +326,37 @@ export class PendingConfirmRegistry implements PendingConfirmPort, DialogInFligh
   pendingForWindow(windowKey: string): PendingConfirmation | undefined {
     for (const record of this.records.values()) {
       if (record.windowKey !== windowKey) continue
+      if (record.outcome !== undefined) continue
+      if (this.expired(record)) continue
+      return this.copy(record)
+    }
+    return undefined
+  }
+
+  /**
+   * 只读查「同一道门」是否已有人在等（REQ-261006164732-6503 t1 · 设计 I-4 / G-3）。
+   *
+   * 判定键 = `(requirementId, target, kind)`，**刻意不含 `windowKey`**：同一需求的同一道门，
+   * 不管从哪个窗口请求（含 worker 席位），人都只该被问一次——跨窗口命中也算命中。
+   *
+   * 命中条件（三条同时成立）：键相同 ∧ `outcome === undefined`（未作答）∧ 未过期。
+   * 命中数恒为 0 或 1（不变式，"还没有门"是合法状态，故不断言必定命中）。
+   *
+   * **纯读**：不 settle、不 register、不 markInterrupted，不改任何字段、不续期（`createdAt` 不动）——
+   * 复用不得延长门的老化时间，否则反复请求会把门续成永不过期。返回的是副本，调用方改不动内部记录。
+   *
+   * `kind` 缺省 = 查「无 kind 的门」（即 `target:'plan'` 的口径）。**不做"缺省即通配"**：
+   * 通配会让 plan 请求误命中一道 artifact 门，把两种门混成一种。
+   */
+  findOpen(input: {
+    requirementId: string
+    target: 'artifact' | 'plan'
+    kind?: ArtifactKind
+  }): PendingConfirmation | undefined {
+    for (const record of this.records.values()) {
+      if (record.requirementId !== input.requirementId) continue
+      if (record.target !== input.target) continue
+      if (record.kind !== input.kind) continue
       if (record.outcome !== undefined) continue
       if (this.expired(record)) continue
       return this.copy(record)

@@ -364,7 +364,8 @@ export function createSettingsRouter(ctx: RouterCtx) {
     assertStorageTicket(registry, ticket, 'migrate', '迁移未发起')
     const sessionId = typeof body.sessionId === 'string' ? body.sessionId : ''
     const out = await openMigrationWindow({ deps: ctx.deps, settings, systemRecord, sessionId })
-    ok(res, { windowKey: out.windowKey, sessionId: out.windowKey, task: out.task })
+    // REQ-261005151245-54ae FR-5：回执带继承三态（前端不读也不报错；只增不改）。
+    ok(res, { windowKey: out.windowKey, sessionId: out.windowKey, task: out.task, inheritance: out.inheritance })
   }
 
   /** `POST /settings/storage/pick-path`：弹**宿主操作系统**的选择窗口取路径（浏览器拿不到真实绝对路径）。三态：选中 / 取消（不是错误）/ 不可用 → 501。 */

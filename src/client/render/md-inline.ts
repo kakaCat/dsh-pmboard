@@ -157,7 +157,7 @@ export function mdInlineEscaped(text: string): string {
  * 任意文本 → 显示层 HTML（**先转义，再替换**；这是页面铺原文的默认入口）。
  *
  * 没有任何标记时输出与 `esc(text)` **逐字节相同**——这条性质被测试与既有断言依赖
- * （对话检索的高亮用例断言 `highlightDialogueText('<i>', '') === '&lt;i&gt;'`）。
+ * （对话检索已随 REQ-261006130057-7a43 t7 移除；零改写性质由 tests/md-inline.test.ts 钉住）。
  */
 export function mdInline(text: unknown): string {
   return mdInlineEscaped(esc(text))

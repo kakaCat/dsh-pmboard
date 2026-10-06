@@ -8,7 +8,7 @@
  * @module dsh-pmboard/application/internal/task-transition
  */
 import { assertTaskTransition, type TaskRole, type TaskStatus } from '../../domain/task/TaskStatus.js'
-import { recordStatus, type ActorRef, type TaskRecord } from '../../shared/protocol.js'
+import { markCanceled, recordStatus, type ActorRef, type TaskRecord } from '../../shared/protocol.js'
 
 export interface TaskTransitionOpts {
   /** 迁移时刻 */
@@ -27,6 +27,10 @@ export interface TaskTransitionOpts {
  * 唯一任务状态迁移助手：校验收敛 + 迁移状态 + 记录状态事件。
  * 成功 = 就地改 status/version/updatedAt/updatedBy + 追加 statusHistory；
  * 失败 = 抛错且**不改动任何字段**（禁止半迁移态）。
+ *
+ * 取消留痕（REQ-261005193546-1b1a FR-3）：`to === 'canceled'` 时在 `task.status = to` 的**同一处**
+ * 调 `markCanceled`（同对象、同一次写事务、同 `at`/`by`/`reason`）——取消卡的三字段与状态事件
+ * 同源同刻。复活（`canceled → todo`）**不清空**三字段（覆盖式语义：三字段 = 最近一次取消）。
  */
 export function transitionTask(task: TaskRecord, to: TaskStatus, opts: TaskTransitionOpts): void {
   const from = task.status
@@ -34,6 +38,10 @@ export function transitionTask(task: TaskRecord, to: TaskStatus, opts: TaskTrans
     assertTaskTransition(from, to, opts.actor.kind, opts.role ?? 'legacy')
   }
   task.status = to
+  // 与 status 同一处、同一对象：取消留痕三字段（人工门已在上面把住；非人路径不写 canceledBy）
+  if (to === 'canceled') {
+    markCanceled(task, { at: opts.at, by: opts.actor, reason: opts.reason })
+  }
   task.version += 1
   task.updatedAt = opts.at
   task.updatedBy = opts.actor

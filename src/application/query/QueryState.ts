@@ -13,6 +13,7 @@ import {
   agentNextActions,
   type TaskRecord,
 } from '../../shared/protocol.js'
+import { liveTasksOf } from '../../domain/status/Predicates.js'
 import { openRequirementsForVia, seatOf, seatsOf } from '../internal/window.js'
 import {
   agentIdFromExec,
@@ -28,6 +29,7 @@ import {
   PENDING_CONFIRM_BLOCKED_TOOLS,
   PENDING_CONFIRM_RECOVERY,
   livePendingConfirm,
+  pendingConfirmFactsOf,
 } from '../internal/pending-guard.js'
 
 export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): Promise<unknown> {
@@ -43,18 +45,32 @@ export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): 
       // 挂起确认投影（REQ-260927123256-196b FR-4 / I-2）：本窗口**仍然有意义**的未作答确认
       // （已 settle / 已过期 / 台账已落章的陈旧记录不列）——agent 不打开弹框也能看出「在等谁」。
       const livePending = await livePendingConfirm(deps, windowKey)
-      const pending_confirms = livePending === undefined
-        ? []
-        : [{
-            ticket: livePending.ticket,
-            requirement_id: livePending.requirementId,
-            target: livePending.target,
-            ...(livePending.kind === undefined ? {} : { kind: livePending.kind }),
-            created_at: livePending.createdAt,
-            interrupted: livePending.interruptedAt !== undefined,
-            blocked_tools: [...PENDING_CONFIRM_BLOCKED_TOOLS],
-            recovery: PENDING_CONFIRM_RECOVERY,
-          }]
+      // REQ-261005200052-ce40 FR-3：投影补**诊断四要素 + 可用出路**（只追加键，旧键逐字不动）——
+      // 被拦的人/agent 一眼能看出「为什么挂着、卡在哪份产物、什么时候自动失效、哪条路真的通」。
+      let pending_confirms: unknown[] = []
+      if (livePending !== undefined) {
+        const pendingReq = await requirementStoreOf(deps).get(livePending.requirementId)
+        const facts = pendingReq === undefined ? undefined : pendingConfirmFactsOf(pendingReq, livePending, deps.clock.now())
+        pending_confirms = [{
+          ticket: livePending.ticket,
+          requirement_id: livePending.requirementId,
+          target: livePending.target,
+          ...(livePending.kind === undefined ? {} : { kind: livePending.kind }),
+          created_at: livePending.createdAt,
+          interrupted: livePending.interruptedAt !== undefined,
+          blocked_tools: [...PENDING_CONFIRM_BLOCKED_TOOLS],
+          recovery: facts === undefined
+            ? PENDING_CONFIRM_RECOVERY
+            : '收到作答前不得产出下游产物。可用出路：' + facts.usableRecovery.join('；'),
+          ...(facts === undefined ? {} : {
+            requirement_status: facts.requirementStatus,
+            gate: facts.gate,
+            artifact_count: facts.artifactCount,
+            expires_at: facts.expiresAt,
+            usable_recovery: [...facts.usableRecovery],
+          }),
+        }]
+      }
       // 需求侧接收标记（FR-3 / T-5）：逐条功能点显示"谁接了 / 还没人接"。
       // R9 的形态就是"未被接收"，必须在**每次 status 调用**里显眼可见，而不是靠人记得去查。
       let clause_receive_status: unknown[] = []
@@ -90,7 +106,8 @@ export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): 
         try {
           const boundReq = open[0]
           const reqDir = 'docs/requirements/' + boundReq.id
-          const reqTasks = (await tasksOf(boundReq.id)).filter(t => t.status !== 'canceled')
+          // 活卡判据收编（REQ-261005193546-1b1a FR-4 · INV-4）：此处原为手写的取消比较式。
+          const reqTasks = liveTasksOf(await tasksOf(boundReq.id))
           // FR-2：阶段遥测取自同一批任务（子卡执行记录）——投影而非新桶，零额外读盘
           stageTelemetry = stageTelemetryOf(reqTasks)
           const verificationSheet = boundReq.verification?.sheet
@@ -118,7 +135,8 @@ export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): 
       if (open.length > 0) {
         try {
           const boundReq = open[0]
-          const reqTasks = (await tasksOf(boundReq.id)).filter(t => t.status !== 'canceled')
+          // 同上一处（收编；两处口径必须一致——同一份读数不能有两个活卡集合）。
+          const reqTasks = liveTasksOf(await tasksOf(boundReq.id))
           const coverage = await checkFullTraceability(deps.docs, boundReq, reqTasks)
           
           traceability_chain = {

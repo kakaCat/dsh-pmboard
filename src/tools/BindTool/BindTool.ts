@@ -55,6 +55,10 @@ export function defineBindTool(deps: UseCaseDeps, opts?: { seatsMax?: number }) 
           role: { type: 'string', description: '席位角色（worker / observer）' },
           removed: { type: 'boolean', description: '本次是否为解绑' },
           changed: { type: 'boolean', description: '席位表是否真的变了（false = 幂等）' },
+          // REQ-261005141830-7a3b t6（FR-11 / FR-9）：派席的项目判据与需求侧身份。
+          // **必须声明**：schema 是 additionalProperties:false，漏声明 = 每次派席都被绑定层拒收。
+          project_source: { type: 'string', description: '本次派席判据：project-id / path-fallback（解绑时不返回该键）' },
+          project_id: { type: 'string', description: '需求侧项目身份（未归属或缺省时不返回该键）' },
           seats: {
             type: 'array',
             description: '变更后的完整席位表（与台账逐字一致）',

@@ -26,7 +26,7 @@ import {
   requireLiveDriver,
 } from '../internal/support.js'
 import { checkAcceptanceGate } from '../internal/accept-sheet-rtm-integration.js'
-import { requirementItemTitle , needsResultInput, humanNotice } from '../../domain/workflow/AcceptanceSheetSpec.js'
+import { needsResultInput, humanNotice, itemSourceTitle, itemResultBindingEnabled, type SheetItemLike } from '../../domain/workflow/AcceptanceSheetSpec.js'
 import { requirementStoreOf, taskStoreOf, mutateIfPresent, createManyQueue } from './queue-access.js'
 
 export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
@@ -63,8 +63,9 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
         const cur = await requirementStoreOf(deps).get(targetReq.id)
         if (cur === undefined || cur.status !== 'accepting') return undefined
         const curSheet = cur.verification?.sheet
-        // REQ-308b9a FR-9 / AC-9.3：放行判据 = 无 pending（not_verifiable 算已裁决）。
-        if (curSheet !== undefined && curSheet.items.some(i => i.status === 'pending')) return undefined
+        // REQ-308b9a FR-9 / AC-9.3 + REQ-261006092213-4f5b FR-6（D-5）：放行判据 = **无 pending 且无 unverified**
+        // （not_verifiable 算已裁决）。此前只看 pending ⇒「全部 unverified 也报全通过并归档」——底线形同不存在。
+        if (curSheet !== undefined && curSheet.items.some(i => i.status === 'pending' || i.status === 'unverified')) return undefined
         if (!deps.questions.available()) {
           return { success: false, fallback: 'board', note: '全部 ' + passed + ' 项通过，但弹框通道不可用：请在看板点「验收通过」归档' }
         }
@@ -137,15 +138,21 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
         }
       }
 
-      const pendingItems = sheet.items.filter(i => i.status === 'pending').slice(0, batchSize)
+      // 本批要问的项：**pending + unverified**（复核 C1）。unverified 是"点了通过却没留下结果"，
+      // 必须能**被重新问一次**（人在第 2 问补上实际结果即转 passed）；否则提示语让人"补齐结果"
+      // 却没有任何入口，弹框通道就形成一个状态永不动、反复调用无效的死结。
+      const pendingItems = sheet.items
+        .filter(i => i.status === 'pending' || i.status === 'unverified')
+        .slice(0, batchSize)
       if (pendingItems.length === 0) {
         const passedN = sheet.items.filter(i => i.status === 'passed').length
         const failedN = sheet.items.filter(i => i.status === 'failed').length
+        const unverifiedN = sheet.items.filter(i => i.status === 'unverified').length
         const fin = await finalizeIfAllPassed(passedN, failedN)
         if (fin !== undefined) return fin as never
         return {
           success: true, requirement_id: targetReq.id, sheet_version: sheet.version,
-          recorded: 0, pending: 0, passed: passedN, failed: failedN,
+          recorded: 0, pending: 0, passed: passedN, failed: failedN, unverified: unverifiedN,
           note: failedN > 0
             ? '有 ' + failedN + ' 项不通过：已自动回退实施并生成返工卡（REQ-308b9a FR-8）'
             : '全部已裁决（含不可验收项）→ 可点「验收通过」归档',
@@ -167,9 +174,9 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
         answers = [...await deps.questions.ask(pendingItems.flatMap(it => ([{
             id: it.id,
             // REQ-260930183951-eb6c FR-4：弹框 header 也走 domain 单点（否则弹框里分不清是哪类缺口项）。
-            header: pmHeader(it.source.kind === 'requirement'
-              ? requirementItemTitle(it.criterion, it.gapKind)
-              : fmt('验收项 {taskId}', { taskId: it.source.taskId })),
+            // REQ-261005105032-3b02 §10 #31：来源→标题的判别同样收口到单一函数——原来此处内联写
+            // `kind==='requirement' ? … : 验收项 {taskId}`，新增带载荷的来源后会渲染「验收项 undefined」。
+            header: pmHeader(itemSourceTitle(it.source, it.criterion, it.gapKind)),
             // 题干长度纪律（LIMITS.popupCriterionMax/EvidenceMax）：宁可少给证据，也不能把选项挤出可视区
             question: clip(it.criterion, LIMITS.popupCriterionMax) + (it.evidence.length > 0
               ? fmt('\n（证据：{evidence}）', { evidence: clip(it.evidence[0] ?? '', LIMITS.popupEvidenceMax) })
@@ -222,21 +229,32 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
       }
 
       const byId = new Map(answers.map(ans => [ans.id ?? '', ans]))
+      // 回滚开关（REQ-261006092213-4f5b FR-8）：关闭 = 不结构化绑定 + 恢复 `evidence[0]` 兜底（今天的行为）。
+      const bindingEnabled = itemResultBindingEnabled(process.env)
       const verdicts: { itemId: string; status: 'passed' | 'failed' | 'unverified'; opinion?: string }[] = []
       /**
-       * 实际结果的取值单点（FR-1）：优先第二问（<id>#result）；该问缺席/为空时回退到
-       * 裁决问自身的自定义输入——本机弹框实测是"选项 **或** 自定义输入"二选一，
-       * 单问回执仍可能出现。两处都空 = 未复核（unverified），不再写占位文案。
+       * 实际结果的取值单点（REQ-261006092213-4f5b FR-3 / FR-6 · D-5，顺序固定）：
+       *   **第 2 问自填 → 第 1 问自填 →（非 needsHuman 时）该项 `result`**；三者皆空 ⇒ `unverified`。
+       *
+       * - 第 2 问只在 `needsResultInput` 为真时出现（无结果 / needsHuman），故有结果的项人零输入也能通过；
+       * - **`needsHuman` 项不吃 `item.result` 兜底**（复核 B1）：`result` 只是"供人参照"的材料
+       *   （data-model.md：needsHuman 与 result 可并存），判定依据在人眼里——FR-5 / UC-3 明写这类项是
+       *   **唯一要人动手的分支**，否则「形式合规冒充实质合规」会在最该拦住的地方重演；
+       * - **删掉 `evidence[0]` 兜底**（它是"未复核不可达"的直接原因：整单证据被当成每一项的实测结果）；
+       * - 回滚开关 `DSH_REQBOARD_NO_ITEM_RESULT=1` 生效时**整段回到今天的行为**（复核 S1）：
+       *   只走 第2问 → 第1问 → `evidence[0]`，不看 `item.result`。
        */
-      const resultOf = (it: { id: string; evidence: readonly string[] }): string => {
+      const resultOf = (it: SheetItemLike): string => {
         const fromSecond = (byId.get(it.id + '#result')?.custom ?? '').trim()
         if (fromSecond.length > 0) return fromSecond
         const fromFirst = (byId.get(it.id)?.custom ?? '').trim()
         if (fromFirst.length > 0) return fromFirst
-        // REQ-261001170807-06fd FR-5（用户裁定）：**验证是 agent 的活，人只做裁决**。
-        // 验收项若已带 agent 记录的实际结果（提交验收材料时给的证据），选"通过"即视为已复核——
-        // 不再逼用户把证据重抄一遍，也不再因留空而误记「未复核」。
-        return (it.evidence[0] ?? '').trim()
+        // 旧口径（回滚开关开启）：恢复 `evidence[0]` 兜底——开关承诺"一行配置退回今天行为"。
+        if (!bindingEnabled) return (it.evidence[0] ?? '').trim()
+        // agent 提交时落章的实测结果就是「结果」——人点通过即视为已复核（D-1 / D-5）。
+        // 但 needsHuman 项例外：它的判定依据在人眼里，agent 的 result 只是参照材料。
+        if (it.needsHuman === true) return ''
+        return (it.result ?? '').trim()
       }
       for (const it of pendingItems) {
         const ans = byId.get(it.id)
@@ -308,9 +326,12 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
       const s = after?.verification?.sheet
       const pending = s?.items.filter(i => i.status === 'pending').length ?? 0
       const failed = s?.items.filter(i => i.status === 'failed').length ?? 0
+      // REQ-261006092213-4f5b FR-6：未复核项（人点了通过却没有结果）——**不计入通过**，也不许归档。
+      const unverified = s?.items.filter(i => i.status === 'unverified').length ?? 0
       const reworkIds = applied.reworkTasks.map(t => t.id)
-      // 本批记录后若已全过 → 直接接着弹最终「验收通过并归档」确认（闭环）
-      if (pending === 0 && failed === 0 && reworkIds.length === 0) {
+      // 本批记录后若已全过（且无未复核）→ 直接接着弹最终「验收通过并归档」确认（闭环）。
+      // `finalizeIfAllPassed` 自己也守这条底线（无 pending 且无 unverified 才弹），这里是第一道闸。
+      if (pending === 0 && failed === 0 && unverified === 0 && reworkIds.length === 0) {
         const fin2 = await finalizeIfAllPassed(s?.items.filter(i => i.status === 'passed').length ?? 0, 0)
         if (fin2 !== undefined) return fin2 as never
       }
@@ -325,14 +346,17 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
         pending,
         passed: s?.items.filter(i => i.status === 'passed').length ?? 0,
         failed,
+        unverified,
         // REQ-308b9a FR-8：裁决含 failed 时返回真实生成的返工卡 id 列表。
         rework_tasks: reworkIds,
         gate_status: rtmResult.gate_check.gate_status,
         archived: rtmResult.should_archive,
         note: failed > 0
           ? '有 ' + failed + ' 项不通过：已自动回退实施并生成 ' + reworkIds.length + ' 张返工卡（REQ-308b9a FR-8）'
-          : (pending > 0
-              ? '本批已记录（剩 ' + pending + ' 项待验）：再次调 reqboard_accept_sheet 从断点继续'
-              : '全部已裁决 → 请点「验收通过」归档（人工门）'),
+          : (unverified > 0
+              ? '本批已记录，但有 ' + unverified + ' 项未复核（点了通过却没结果）：不计入通过；再次调 reqboard_accept_sheet 会把这些项重新问一遍（补上实际结果即转通过）'
+              : (pending > 0
+                  ? '本批已记录（剩 ' + pending + ' 项待验）：再次调 reqboard_accept_sheet 从断点继续'
+                  : '全部已裁决 → 请点「验收通过」归档（人工门）')),
       } as never
     }

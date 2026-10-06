@@ -149,6 +149,7 @@ export class SqliteRequirementWriter {
       ...(input.category !== undefined ? { category: input.category } : {}),
       ...(input.promptDifficulty !== undefined ? { promptDifficulty: input.promptDifficulty } : {}),
       ...(input.docBasePath !== undefined ? { docBasePath: input.docBasePath } : {}),
+      ...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
       ...(input.workspaceRoot !== undefined ? { workspaceRoot: input.workspaceRoot } : {}),
       ...(input.sourceSessionId !== undefined ? { sourceSessionId: input.sourceSessionId } : {}),
     }

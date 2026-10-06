@@ -173,6 +173,20 @@ export function registerCaptureGuidance(ctx: Context, deps: CaptureGuidanceDeps)
         deps.disposers.push(spCtx.systemPrompt.section({
           name: deps.sectionName,
           order: deps.sectionOrder,
+          // 本段是**字面量**，不是模板：正文全部是自撰文案 + 原文引用（用户消息节选、
+          // 在制任务的说明与验收标准、需求标题），从不使用宿主的提示词变量体系
+          // （全仓没有任何 systemPrompt.variable 注册）。
+          //
+          // 为什么必须显式声明（REQ-261005165552-6783 事故，2026-10-05）：
+          // 宿主对 section 的**缺省语义是模板**——逐字扫描 `{{name}}`，名字非法（如模板里的
+          // 全大写占位符）或未注册即**抛错**。段文本里出现这种占位符时，宿主在**系统提示词装配处**
+          // 抛错 ⇒ 该窗口**每一轮都跑不起来**（模型一次都没执行），且报错文本自身带占位符，
+          // 贴到别的窗口会复现同一故障。实测现场：REQ-261005105032-3b02 的窗口 session-5632659d
+          // 因在制卡验收标准里引用了模板占位符而整轮卡死（台账 interruption.reason 逐字可查）。
+          //
+          // `interpolate: false` = 宿主把本段文本原样拼接进提示词（不再扫描变量）——
+          // 这也是文本侧**不做转义**的前提：用户原话与卡上验收原文必须逐字保真。
+          interpolate: false,
           text: (assembleContext: unknown) => {
             // 命中「本窗口待捕获消息」（hook 登记、turn/end 前）→ 注入针对性立项提示；
             // 否则维持静态引导（bound/有遗留 pending 时两者都返回 ''，零噪音）。

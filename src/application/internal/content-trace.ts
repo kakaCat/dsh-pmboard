@@ -12,11 +12,14 @@
 import {
   parseDocument,
   collectIds,
+  stripPrototypeAnchors,
   type DocsReader,
   type NumberedItem,
   type ParsedDoc,
 } from './content-gates.js'
 import { fmt } from '../../domain/text/fmt.js'
+// REQ-261005193546-1b1a FR-1/FR-4：活卡判据单点（接收判据里的"已取消不算交付"不再自写比较）
+import { isLiveTask } from '../../domain/status/Predicates.js'
 
 export const ROOT_PREFIXES_LIKE = ['FR', 'BUG', 'RF', 'SP', 'DOC', 'CH'] as const
 
@@ -205,8 +208,11 @@ export function taskRefsFromDecomposition(doc: ParsedDoc): ConsistencyTaskLike[]
       // 识别 **serves: FR-1, FR-2** 或 **requirement_refs**: ["FR-1"]
       const servesMatch = nextLine.match(/^\*\*(?:serves|requirement_refs)\*\*\s*[:：]\s*(.+)$/i)
       if (servesMatch) {
-        // 使用 collectIds 提取所有 FR/BUG/RF/SP/DOC/CH 编号
-        const allIds = collectIds(servesMatch[1])
+        // 使用 collectIds 提取所有 FR/BUG/RF/SP/DOC/CH 编号。
+        // REQ-261005105032-3b02 FR-9：**先抹原型锚点**再抽编号——`prototypes/x.html#FR-4`
+        // 是「打开哪张原型」的指针，不是「接收了 FR-4」的声明。本处此前直接 collectIds，
+        // 是同一缺陷（贴锚点刷覆盖度）的最后一条残留通路（决议 #6 / §10 #49）。
+        const allIds = collectIds(stripPrototypeAnchors(servesMatch[1]))
         const rootIds = allIds.filter(isRootKind)
         
         if (rootIds.length > 0) {
@@ -345,12 +351,16 @@ export function clauseReceiveStatus(
     return ref.id
   }
   // 已取消的卡**不再算"交付了这条"**（T-5 验收场景原话：取消某张卡对某条的交付 → 该条回落为
-  // 未被接收）。只在"台账里确实存在且已取消"时剔除：台账未覆盖该 id 时维持原判定，
-  // 否则只传相关卡的调用方会被误判成"无人接收"。
+  // 未被接收）。判据走活卡单点（`isLiveTask`）；只在"台账里确实存在且已取消"时剔除：台账未
+  // 覆盖该 id 时维持原判定（`undefined` = 不在册 ≠ 已取消），否则只传相关卡的调用方会被误判成
+  // "无人接收"。行为与改前逐字一致（缺席仍保留）。
   return roots.map(clause => {
     const receivers = [...new Set(
       taskRefs.filter(t => refsOf(t).includes(clause)).map(resolve),
-    )].filter(id => byId.get(id)?.status !== 'canceled')
+    )].filter((id) => {
+      const t = byId.get(id)
+      return t === undefined || isLiveTask(t)
+    })
     if (receivers.length === 0) {
       return skipped.includes(clause)
         ? { clause, state: 'skipped' as const, by: [] }

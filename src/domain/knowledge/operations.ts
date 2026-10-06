@@ -25,6 +25,14 @@ export const SCRIPT_TRIGGERS: Record<string, OperationTrigger> = {
   'kb:probe': '改动后',
   'kb:check': '改动后',
   'kb:conventions': '改动后',
+  // REQ-261006123819-3af3 FR-2/FR-5：基线判据与提交判据都只在**提交前**才有意义
+  // （缺省会落成「改动后」，那"进提交前清单"就只是口头承诺，页面上查不到）。
+  'baseline:check': '提交前',
+  'commit:check': '提交前',
+  // REQ-261005105032-3b02（R4）：它守的是"改了片段却没重生成"这条**静默**失效——
+  // 失败信号只在提交前后才有意义，故显式登记为「提交前」（缺省会落成「改动后」，
+  // 那样"进提交前清单"就只是口头承诺，页面上查不到）。
+  'prompts:check': '提交前',
   test: '提交前',
   build: '发版前',
   prepublishOnly: '发版前',
@@ -51,6 +59,11 @@ export const EXTRA_ENTRIES: readonly ExtraEntry[] = [
     reason: '重生成后必须校验产物与片段一致（不一致会是静默失效）',
   },
   {
+    command: 'npx tsx scripts/prompt-path-probe.mts',
+    trigger: '改动后',
+    reason: '改了提示词片段或回合指令必须跑：注入面里的路径指针必须可达，否则模板迁移后片段会继续教旧路径且无人报错',
+  },
+  {
     command: 'npx tsx scripts/reverse-drill-matrix.mts',
     trigger: '改动后',
     reason: '改了任何停机护栏必须跑：拿掉修复 → 判据必须变红，且源码逐字节还原（唯一能证明"护栏没空转"的入口）',
@@ -59,6 +72,11 @@ export const EXTRA_ENTRIES: readonly ExtraEntry[] = [
     command: 'npx tsx scripts/reconcile-terminal-drill.mts',
     trigger: '改动后',
     reason: '改了启动对账或冷侧写规则必须跑：在真台账副本上跑对账，逐文件 sha256 证明"零改写"',
+  },
+  {
+    command: 'node scripts/vendor-skills.mjs',
+    trigger: '改动后',
+    reason: '收录/更新 UI/UX skill 资产必须重算指纹：手改包内资产、或上游换版被静默带进来，都要能被一条命令揪出来',
   },
   {
     command: 'bash scripts/sync-to-github.sh',
@@ -80,7 +98,22 @@ export const EXCLUDED: readonly ExcludedEntry[] = [
   { name: 'kb:probe', reason: '已由 kb:check 内含' },
   { name: 'kb:conventions', reason: '已由 kb:check 内含（覆盖度比对）' },
   { name: 'kb-probe.mts', reason: '已由 kb:check 内含（自检脚本）' },
+  // REQ-261006123819-3af3 FR-2：刷基线是**确认差集非本次引入之后**的例外动作，不是日常步骤；
+  // 它在 C-14 的「失败怎么办」里被要求，不另立条目（否则同一件事会有两个入口）。
+  { name: 'baseline:refresh', reason: '已由 C-14 的「失败怎么办」要求（确认差集非本次引入后的例外动作），不另立条目' },
+  // REQ-261006123819-3af3 FR-2：`pnpm test` **保留在覆盖清单里**（它仍是"全量跑一遍"的入口，
+  // kb-operations 的覆盖度规格也钉着它），对应条目是 C-29——C-14 只负责"跑测试并与基线比对"，
+  // 两者不是一个操作：C-14 判集合差，C-29 是原始入口。
   { name: 'kb-build.mts', reason: '已由 kb:check 内含（生成物比对）' },
+  // REQ-261006123819-3af3 FR-2：集合差基线的实体脚本。**判据入口是 `pnpm baseline:check`**（挂 C-14），
+  // 故脚本本体不另立规范条目——与 kb-probe.mts「已由 kb:check 内含」同款先例。
+  // 为什么不进 EXTRA_ENTRIES：那会让它成为覆盖项，而匹配它的规范条目随 package.json 脚本同批落，
+  // 之间会造成 kb:conventions 的覆盖缺口 + 清单漂移（实测各红一次）。
+  { name: 'test-baseline.mts', reason: '已由 C-14 经 pnpm baseline:check 入口挂载（集合差基线判据），脚本本体不另立条目' },
+  // REQ-261006123819-3af3 FR-5：提交判据脚本由 C-28 经 pnpm commit:check 入口挂载。
+  // 与 test-baseline.mts 同款处置（挂入口、不另立条目）——若改成 EXTRA_ENTRIES，
+  // 会多出一条 coverage 项、还要求它自己的 C-NN 条目，等于把同一件事记两遍。
+  { name: 'commit-check.mts', reason: '已由 C-28 经 pnpm commit:check 入口挂载（提交判据），脚本本体不另立条目' },
   { name: 'kb-conventions-sync.mts', reason: '已由 kb:conventions 内含（覆盖度比对）' },
   { name: 'prepublishOnly', reason: 'npm 生命周期自动触发（= build + typecheck），不是手动作' },
   { name: 'prepare', reason: 'npm install 时自动触发（= build），不是手动作' },
@@ -97,6 +130,14 @@ export const EXCLUDED: readonly ExcludedEntry[] = [
   { name: 'verify-t4-rounds.mts', reason: '专项回归脚本（t4 轮次），非每次必跑' },
   { name: 'dump-stage-prompts.mjs', reason: '调试用（打印阶段提示词）' },
   { name: 'clean-test-cache.sh', reason: '本地清理缓存，与正确性无关' },
+  // REQ-261005151245-54ae（开窗继承）：把真适配器 + 真用例 + 真继承模块串起来、只换假宿主服务，
+  // 打印六读数并断言三对相等；属专项验收探针，非每次必跑（与 handoff-probe 同款）。
+  { name: 'open-window-inherit-probe.mts', reason: '专项验收脚本（开窗继承：六读数 + 三对相等），非每次必跑' },
+  // REQ-261005154851-8512（难度声明接进取词）：同文本「带声明 vs 不带声明」的取词对比，专项验收探针。
+  { name: 'injection-difficulty-probe.mts', reason: '专项验收脚本（难度注入：声明算数 + 无声明与基线逐字相同），非每次必跑' },
+  // REQ-261006092213-4f5b（验收项由 agent 实测）：出「看板逐项行」证据图（真渲染器 + 全量真实 CSS）。
+  // 与 req-detail-ui-*-shot.mts 同款：证据图按需重出，不属每次必跑的门禁命令。
+  { name: 'req-verification-sheet-shot.mts', reason: '专项出图脚本（验收面板逐项行证据图），按需重出' },
   // REQ-261002161439-277d（台账分片）：三个一次性数据搬运脚本，非每次必跑
   { name: 'migrate-ledger-v10.ts', reason: '一次性迁移：v9 单册 → v10 分片（按需运行，已在验收④覆盖）' },
   { name: 'rollback-ledger-v10.ts', reason: '一次性回滚：v10 分片 → v9 单册（退路脚本，按需运行）' },
@@ -113,8 +154,33 @@ export const EXCLUDED: readonly ExcludedEntry[] = [
   { name: 'archive-reconcile-drill.mts', reason: '专项演练脚本（归档对账回滚演练），按需运行' },
   { name: 'req-detail-current-specimen.mts', reason: '验收取标本（当前详情页数据快照），非每次必跑' },
   { name: 'migrate-ledger-to-sqlite.ts', reason: '一次性迁移辅助（分片台账 → SQLite，由设置流程驱动），非手工操作' },
-  { name: 'migrate-support.ts', reason: '迁移辅助模块（被迁移脚本 import，非入口脚本）' },
+  { name: 'migrate-support.ts', reason: '迁移辅助模块（被迁移脚本 import，非入口脚本）' },  // REQ-261005155003-f32f(详情页 UI 优化):本需求新增的出图/报表/评审脚本,
+  // 与 req-report-probe.mts 同款(按需跑,不进"每次必跑"清单);同批把**此前就未归类**的
+  // 模板门禁探针与其数据文件一并登记——不登记掉 C-13 这道门永远过不去。
+  { name: 'req-detail-ui-contrast.mts', reason: '按需对比度报表（FR-4 判据：三类关系 + 豁免登记），非每次必跑' },
+  { name: 'req-detail-design-conformance.mts', reason: '按需设计契约一致性判据（原型改造层叠回实现逐元素比对 + 原型内联 CSS 同源校验），改这一页时必跑' },
+  { name: 'req-detail-ui-grayscale-shot.mts', reason: '按需灰度评审出图（FR-8 #3：颜色抽掉后三态仍可辨），非每次必跑' },
+  { name: 'req-detail-ui-prototype-shot.mts', reason: '按需原型出图 + 几何回填（验收材料），非每次必跑' },
+  { name: 'req-detail-ui-shot.mts', reason: '按需 before 基线出图（对照材料），非每次必跑' },
+  { name: 'req-detail-ui-variants-shot.mts', reason: '按需候选版出图（设计阶段一次），非每次必跑' },
+  { name: 'req-detail-ui-variants-a2-shot.mts', reason: '按需候选版出图（设计阶段一次），非每次必跑' },
+  { name: 'req-doc-validate.mts', reason: '按需校验需求文档门禁，非每次必跑' },
+  { name: 'rework-inverse-verification.mts', reason: '专项反向验证脚本（返工链），非每次必跑' },
+  { name: 'rollback-landing-replay.mts', reason: '专项演练脚本（回滚落点重放），非每次必跑' },
+  { name: 'self-gate-dogfood.mts', reason: '按需演练（自门禁自食），非每次必跑' },
+  { name: 'template-gate-probe.mts', reason: '已由 templates:check 内含（模板与门禁同源探针）' },
+  { name: 'doc-section-parity.mts', reason: '已由 templates:check 内含（节名与必填节一致性）' },
+  { name: 'template-render-map.json', reason: '数据文件（模板渲染映射表），非入口脚本' },
+  { name: 'fixtures', reason: '目录（标本载荷），非入口脚本；由探针/出图脚本 import' },
+  // REQ-261006175040-12d4 t9：卡面门读数的三态+降级出图脚本（真渲染 + 真 CSS + headless Chrome），
+  // 属验收对照材料，改卡面渲染时按需跑，非每次必跑。
+  { name: 'card-gates-ui-shot.mts', reason: '按需出图（卡面门读数三态 + 降级对照材料，验收用），非每次必跑' },
+  // REQ-261006170150-52cc：确认门唯一性探针（gate-request 在制判定），改确认门时按需跑。
+  { name: 'gate-inflight-probe.mts', reason: '按需探针（确认门唯一性/在制判定），非每次必跑' },
+  { name: '.probe', reason: '临时探针产物目录，非入口脚本' },
 ]
+
+
 
 export interface CoverageItem {
   readonly command: string

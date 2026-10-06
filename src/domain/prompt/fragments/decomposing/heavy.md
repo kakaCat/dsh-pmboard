@@ -47,10 +47,14 @@
 ## 6. 提交与批准门（2026-09-21：拆分计划在拆分阶段写）
 
 - [ ] `reqboard_submit(kind=plan)` 提交拆分计划（path=decomposition.md、summary、tasks=任务表）。
-- [ ] `reqboard_ask_confirm(target=plan)` 弹框请人批准——**批准后自动落库任务卡并进入实施**
+- [ ] **批准门**：提交后先看回执——已写明「已有一道门在等 / 已自动触发批准弹框」时
+      **不要重复发起**（同一道门只会复用，不会开第二个框）；只有回执说没弹框时才调一次
+      `reqboard_ask_confirm(target=plan)`——**批准后自动落库任务卡并进入实施**
       （中途不再打断）；未获批准 reqboard_decompose 被代码级拒绝。
 - [ ] 兜底：计划未含任务表时，`reqboard_decompose` **必须传 tasks**——本工具即任务卡创作口。
 
 ## 7. 交棒
 
 - [ ] 下一步：implementing —— 用 reqboard_ask_confirm(target=plan) 交棒；未获批准不得进入。
+      发起前先看回执：已写明「已有一道门在等 / 已自动触发批准弹框」时**不要再发起**
+      （有门就取回执 reqboard_confirm_receipt 或到看板作答——同一道门只会复用，不会开第二个框）。

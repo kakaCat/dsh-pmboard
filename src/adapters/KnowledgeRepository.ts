@@ -120,7 +120,10 @@ export class KnowledgeRepository implements KnowledgePort {
       ...(draft.req === undefined ? {} : { req: draft.req }),
       ...(draft.supersedes === undefined ? {} : { supersedes: draft.supersedes }),
     }
-    await this.docs.write(entryPath(id), renderEntryDoc(meta, draft.body))
+    // REQ-261006123819-3af3 FR-4 根因②：**先把索引行算出来（renderIndexLine 会校验 one_liner
+    // 与指针语法），再写条目文件**。原顺序是先落 entries/<id>.md、再算索引行——一条非法
+    // one_liner（含 `·`/`→` 或超 140）会让索引那一步抛错，留下「条目已落盘、索引没写」的孤儿
+    // （kb-0043 / kb-0048 正是这么产生的：K5 报孤儿时，条目文件已是既成事实）。
     // 只有 active 才进索引（I-7）；非 active → 若既有行存在则移除（幂等：可反复回填）
     const next = status === 'active'
       ? upsertIndexRow(indexText, {
@@ -130,6 +133,7 @@ export class KnowledgeRepository implements KnowledgePort {
           pointer: 'entries/' + id + '.md',
         })
       : removeIndexRow(indexText, id)
+    await this.docs.write(entryPath(id), renderEntryDoc(meta, draft.body))
     await this.docs.write(KB_PATHS.index, next)
     return { id, indexPath: KB_PATHS.index }
   }
