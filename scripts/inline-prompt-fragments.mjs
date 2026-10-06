@@ -14,6 +14,11 @@
  *   <stage>/light.md                  → (stage, light, *)  priority=floor（节点轻档，不可裁）
  *   <stage>/heavy.md                  → (stage, heavy, *)  priority=floor（heavy 主 skill 原文，不裁）
  *   <stage>/<difficulty>/overrides.md → (stage, 难度, *)   priority=floor（overrides 附加片段，不可裁）
+ *   <stage>/<difficulty>-extra.md     → (stage, 难度, *)   priority=10（**可裁**的难度档追加节；只被
+ *                                        同难度的路由壳 include，故 heavy 专属可以只挂 heavy。
+ *                                        REQ-261005122347-e07a t-ebb03c 新增：类型档同时进 light 与
+ *                                        heavy，而 light 有 2500 字符上限，新内容塞类型档会撞破它。
+ *                                        命名刻意两段——三段 id 被"壳（text 空+include）"占用）
  *   <stage>/<category>.md             → (stage, *, 类型)   priority=10（P2 类型档，可裁）
  *   <stage>/<difficulty>/<cat>.md     → (stage, 难度, 类型) priority=10（P2 类型档精确档；本仓由
  *                                        生成器自 <stage>/<category>.md **合成 include-only 路由壳**，
@@ -93,6 +98,15 @@ export function parseFragmentId(id) {
     const leaf = segs[1]
     if (leaf === 'default') return { id, stage, difficulty: '*', category: '*', priority: 'floor' }
     if (DIFFICULTIES.includes(leaf)) return { id, stage, difficulty: leaf, category: '*', priority: 'floor' }
+    // <stage>/<difficulty>-extra.md → (stage, 难度, *) priority=10（**可裁**的难度档追加节）。
+    // 为什么要这个槽（REQ-261005122347-e07a t-ebb03c）：类型档（<stage>/<category>.md）同时进 light
+    // 与 heavy，而 light 有 2500 字符上限——把新内容塞进类型档会直接撞破它（实测 light(feature)
+    // 只剩 556 字符余量）。本槽只被**同难度**的路由壳 include，故 heavy 专属；priority=10 保证
+    // 预算紧张时能被裁掉，与 floor 的 heavy.md / overrides 明确区分。
+    // 命名刻意是**两段**：三段 id 在本仓已被"路由壳（text 空 + include）"占用，
+    // `resolveFragmentRef` 会把任何三段非 overrides 的 id 判成壳（tests/node-panel-process-map.test.ts 守着）。
+    const extra = /^(light|heavy)-extra$/.exec(leaf)
+    if (extra !== null) return { id, stage, difficulty: extra[1], category: '*', priority: 10 }
     if (CATEGORIES.includes(leaf)) return { id, stage, difficulty: '*', category: leaf, priority: 10 }
     throw new Error('未知分片叶子名：' + id)
   }
@@ -127,6 +141,11 @@ export function typeRouteShells(stage, difficulty, category) {
   // （tests/prompt-gates.test.ts 门禁 4「每个分片至少被一条路由命中」会红）。
   if (existsSync(join(FRAGMENTS_DIR, stage, difficulty, 'overrides.md'))) {
     include.push(stage + '/' + difficulty + '/overrides')
+  }
+  // <stage>/<difficulty>-extra.md（priority=10，可裁）只挂给**同难度**的壳：
+  // 这样 light 与 heavy 各自的追加节互不串门（light 的 2500 上限正是被这条保护的）。
+  if (existsSync(join(FRAGMENTS_DIR, stage, difficulty + '-extra.md'))) {
+    include.push(stage + '/' + difficulty + '-extra')
   }
   include.push(stage + '/' + category)
   return { id: stage + '/' + difficulty + '/' + category, stage, difficulty, category, priority: 10, text: '', include }

@@ -1,0 +1,361 @@
+#!/usr/bin/env node
+/**
+ * R3 —— 提示词路径可达探针（REQ-261005105032-3b02 t20 · FR-10 · design-brief §6 · 决议 #17/#47）。
+ *
+ * 解决什么问题：注入面（提示词片段 + 回合指令）里写的**路径指针**与仓库真实布局是两处写法。
+ * 指针指向一个不存在文件的后果是**静默**的——模板改名/迁移之后（如 `templates/design/prototype.html`
+ * 迁到 `templates/brainstorming/prototype.html`），片段会继续教 agent 去读旧路径，没有任何东西报错，
+ * 直到人肉发现。本探针把「片段里写了什么路径」与「磁盘上有什么」拉到同一条命令上。
+ *
+ * 判据（一条）：`src/domain/prompt/fragments/**` + `round-state.ts` 文本里抽出的每个路径 token，
+ *   必须**真实存在**（相对工作区根）**或**命中已知产物名白名单（下方 `WHITELIST`，每条都写清理由）。
+ *   否则 = 缺口 → exit 1 并**逐条点名**（token + 文件:行 + 修复提示）。
+ *
+ * 为什么白名单必须显式且带理由（而不是"看起来像占位的就放过"）：
+ *   ① 有些 token 是**由需求自己生成、当下必然不存在**的合法产物名（`prototypes/INDEX.md`、
+ *      `prototypes/<name>.html`）——它们不是错，是"还没写"；
+ *   ② 有些 token 属于**旧目录的兼容期**（`docs/requirements/<REQ>/prototype/`，brief §1：旧路径仍识别为
+ *      原型、门禁只提示迁移）——本探针**显式承认兼容期**（卡面选项 a），不悄悄改别人卡面的文案；
+ *   ③ 有些 token 从来就不在本仓（上游 superpowers SKILL.md 原文里的**目标项目**路径
+ *      `docs/superpowers/specs/…`、宿主 monorepo 布局 `packages/pages/<pkg>/src`）——而 `heavy.md`
+ *      与 vendor 原文**逐字节锁定**（`check-prompt-fragments.mjs` 的第二条判据），想"改掉"都改不掉；
+ *   一律登记 + 写理由，是为了让"为什么这个不存在的路径可以放过"可审计；而不是让新指针默默溜过。
+ *
+ * 判据边界（如实声明，不含糊）：
+ *   · 只扫**指定的路径根**（`SCAN_ROOTS`）——不是"所有含斜杠的 token"。理由：片段里的 `I/O`、`A/B/C`、
+ *     上游原文的 `main/master`、git 的 `refs/heads/<branch>` 不是仓库路径，无差别扫会引入大量噪声与白名单；
+ *   · 带占位段的 token（`<...>` / `*`）**不自动放行**——必须显式登记（与 #26「未登记的占位符 → exit 1
+ *     并点名」同款口径），代价是 `docs/requirements/<REQ>/…` 这类形态只能按**前缀**登记（见规则 4），
+ *     因此前缀下的具体文件名拼错当前抓不到；这是有意接受的近似（动态段无法静态判定）；
+ *   · 只判"路径可达"，不判内容对不对（那是模板门禁 R1 / 节名一致 R2 的事）。
+ *
+ * 退出码（决议 #47）：0 = 判据全过；1 = 有缺口（点名）；2 = 前置/用法错误（工作区根不可解析、扫描目标缺失、
+ *   参数非法）——2 与 1 分开是因为处置不同（补环境 vs 改指针）。
+ *
+ * 用法：
+ *   npx tsx scripts/prompt-path-probe.mts            # 人读；退出码 0/1/2
+ *   npx tsx scripts/prompt-path-probe.mts --json     # stdout 只输出可 JSON.parse 的结构（CI / 自检脚本消费）
+ *   npx tsx scripts/prompt-path-probe.mts --specimen # 内置反例：判据必须真的会红（防"探针空转"）
+ */
+
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { join, relative } from 'node:path'
+
+const SCRIPT = 'prompt-path-probe'
+
+/** 扫描对象：注入面的两处文本源——片段目录（递归 `*.md`）与回合指令模块。 */
+const SCAN_DIRS = ['src/domain/prompt/fragments'] as const
+const SCAN_FILES = ['src/application/dive/round-state.ts'] as const
+
+/**
+ * 参与扫描的路径根（**为什么是这些**：它们都是"仓库内真实存在的目录"或"需求目录相对的产物名"，
+ * 是注入面会教 agent 去读/去写的位置）。不在表内的前缀（如 `refs/heads/`、`main/master`、`I/O`）
+ * 不是仓库路径，不扫（见头部「判据边界」）。
+ */
+const SCAN_ROOTS = [
+  'templates',
+  'prototypes',
+  'prototype',
+  'design',
+  'tasks',
+  'notes',
+  'docs/requirements',
+  'docs/superpowers',
+  'docs/architecture',
+  'docs/knowledge',
+  'docs/adr',
+  'docs/rfcs',
+  'docs/guides',
+  'docs/work-logs',
+  'src',
+  'scripts',
+  'tests',
+  'vendor',
+  'skills',
+  'packages',
+] as const
+
+interface WhitelistRule {
+  /** 全串匹配该 token 的形态。 */
+  readonly match: RegExp
+  /** 为什么这个"不存在"的 token 是合法的（必须写清；这是白名单唯一的准入条件）。 */
+  readonly reason: string
+}
+
+/**
+ * 已知产物名 / 外部路径白名单。**顺序即优先级**（先命中的规则赢）。
+ *
+ * 每条都必须是"这个人不存在也合理"的**可审计**理由——禁止为了过检查而加白：
+ * 若某个 token 既不在磁盘上、又说不清为什么该存在，那它就是缺口（探针的全部价值）。
+ */
+const WHITELIST: readonly WhitelistRule[] = [
+  {
+    // 兼容期（卡面选项 a）：brief §1 明确旧目录 `docs/requirements/<REQ>/prototype/*.html` 仍识别为
+    // prototype（门禁只提示迁移到 prototypes/）。登记在**通用占位规则之前**，是为了让它显式可见——
+    // 若被 `docs/requirements/<REQ>/…` 前缀规则顺带放过，这条兼容期就没有任何地方被承认。
+    match: /^docs\/requirements\/(?:<REQ>|REQ-[\dx]+)\/prototype\//,
+    reason: '旧原型目录兼容期（brief §1：仍识别为 prototype，门禁只提示迁移）；fragments/brainstorming/heavy-extra.md 仍在教旧目录，未改文案（change 面属片段卡）',
+  },
+  {
+    match: /^prototypes\/INDEX\.md$/,
+    reason: '原型权威清单由需求自己在需求阶段生成（brief §1），登记前必然不存在',
+  },
+  {
+    // `#FR-N` 是片段里的**占位锚点**写法（真实文档里是 `#FR-4`），故锚点段两种形态都收
+    match: /^prototypes\/[^/]+\.html(?:#FR-(?:\d+|N))?$/,
+    reason: '原型页由需求自己生成（brief §1 权威路径 docs/requirements/<REQ>/prototypes/<name>.html）；#FR-N 是页内锚点不是路径',
+  },
+  {
+    match: /^docs\/requirements\/(?:<REQ>|REQ-[\dx]+)\//,
+    reason: '需求目录的占位形态（片段里写的是"按需求号生成"的模板；真实目录 docs/requirements/<REQ>/ 随需求创建）',
+  },
+  {
+    match: /^(?:design|tasks|notes)\//,
+    reason: '需求目录相对的产物名（docs/requirements/<REQ>/design/、tasks/、notes/），片段里按相对口径书写（决议 #2）',
+  },
+  {
+    match: /^docs\/superpowers\//,
+    reason: '上游 superpowers SKILL.md 原文里的**目标项目**路径（本仓不存在；heavy.md 与 vendor 原文逐字节锁定，改不掉）',
+  },
+  {
+    match: /^skills\//,
+    reason: '上游 skill 的提供物路径（由 superpowers 插件投放到目标项目，本仓不持有）',
+  },
+  {
+    match: /^packages\//,
+    reason: '宿主 monorepo 布局（本包位于 packages/web/dsh-pmboard），本仓根下不存在 packages/',
+  },
+]
+
+/** 抽取用的 token 正则：`<根>/…`，根表见 `SCAN_ROOTS`（长根优先，避免 `prototype` 抢先匹配 `prototypes`）。 */
+const TOKEN_RE = new RegExp(
+  '(?:^|[^A-Za-z0-9_./-])((?:'
+  + [...SCAN_ROOTS].sort((a, b) => b.length - a.length).map((r) => r.replace(/\//g, '\\/')).join('|')
+  + ')\\/[A-Za-z0-9_<>{}*@$+~#.\\/=-]*)',
+  'g',
+)
+
+/** 行尾标点（句号/逗号/右括号/引号等）不是路径的一部分，抽出来即剥掉；**保留**结尾的 `/`（目录形态）。 */
+const TRAILING_PUNCT_RE = /[.,;:!?)\]}>”"’'`、。，；：）】》]+$/u
+
+interface Occurrence {
+  readonly file: string
+  readonly line: number
+}
+
+/** 同一 token 最多留几条出处（报告可读性；超出只影响出处列表，不影响判据）。 */
+const MAX_OCCURRENCES = 5
+
+interface TokenVerdict {
+  readonly token: string
+  /** exists = 磁盘上真实存在；whitelist = 命中已知产物名 / 外部路径白名单。 */
+  readonly verdict: 'exists' | 'whitelist'
+  readonly reason?: string
+  readonly occurrences: readonly Occurrence[]
+}
+
+interface Gap {
+  readonly token: string
+  readonly file: string
+  readonly line: number
+}
+
+interface ClassifyResult {
+  readonly verdicts: readonly TokenVerdict[]
+  readonly gaps: readonly Gap[]
+  readonly tokens: readonly { readonly token: string; readonly occurrences: readonly Occurrence[] }[]
+}
+
+/** 参数解析：只认三个开关；非法参数 = 用法错误（exit 2，不静默忽略）。 */
+function parseArgs(argv: readonly string[]): { json: boolean; specimen: boolean; help: boolean } | string {
+  let json = false
+  let specimen = false
+  let help = false
+  for (const a of argv) {
+    if (a === '--json') json = true
+    else if (a === '--specimen') specimen = true
+    else if (a === '--help' || a === '-h') help = true
+    else return '未知参数：' + a
+  }
+  return { json, specimen, help }
+}
+
+function walkMarkdown(dir: string, out: string[]): void {
+  for (const ent of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, ent.name)
+    if (ent.isDirectory()) walkMarkdown(p, out)
+    else if (ent.name.endsWith('.md')) out.push(p)
+  }
+}
+
+/** 抽出文本里的候选 token（带 文件:行），同一 token 多处出现只算一个对象、但保留全部出处。 */
+function extractTokens(
+  entries: readonly { readonly file: string; readonly text: string }[],
+): readonly { readonly token: string; readonly occurrences: readonly Occurrence[] }[] {
+  const seen = new Map<string, Occurrence[]>()
+  for (const entry of entries) {
+    entry.text.split('\n').forEach((line, i) => {
+      for (const m of line.matchAll(TOKEN_RE)) {
+        const token = m[1]!.replace(TRAILING_PUNCT_RE, '')
+        if (token.length === 0) continue
+        const list = seen.get(token) ?? []
+        if (list.length < MAX_OCCURRENCES) list.push({ file: entry.file, line: i + 1 })
+        seen.set(token, list)
+      }
+    })
+  }
+  return [...seen].map(([token, occurrences]) => ({ token, occurrences }))
+}
+
+/** token 在磁盘上是否真实存在（页内锚点 `#FR-N` 与结尾 `/` 不属于路径本体）。 */
+function existsInRepo(root: string, token: string): boolean {
+  const clean = token.replace(/#.*$/, '').replace(/\/+$/, '')
+  if (clean.length === 0) return false
+  return existsSync(join(root, clean))
+}
+
+/** 分类：存在 → 白名单 → 缺口。纯函数（`--specimen` 直接喂合成 token 复用它，判据不空转）。 */
+function classify(
+  root: string,
+  tokens: readonly { readonly token: string; readonly occurrences: readonly Occurrence[] }[],
+): ClassifyResult {
+  const verdicts: TokenVerdict[] = []
+  const gaps: Gap[] = []
+  for (const t of tokens) {
+    if (existsInRepo(root, t.token)) {
+      verdicts.push({ token: t.token, verdict: 'exists', occurrences: t.occurrences })
+      continue
+    }
+    const rule = WHITELIST.find((r) => r.match.test(t.token))
+    if (rule !== undefined) {
+      verdicts.push({ token: t.token, verdict: 'whitelist', reason: rule.reason, occurrences: t.occurrences })
+      continue
+    }
+    for (const occ of t.occurrences) gaps.push({ token: t.token, file: occ.file, line: occ.line })
+  }
+  return { verdicts, gaps, tokens }
+}
+
+interface Report {
+  readonly script: string
+  readonly criterion: { readonly name: string; readonly ok: boolean; readonly objects: number; readonly gaps: number }
+  readonly ok: boolean
+  readonly exitCode: number
+  readonly root: string
+  readonly scanned: { readonly fragments: number; readonly files: number; readonly tokens: number }
+  readonly counts: { readonly exists: number; readonly whitelist: number }
+  readonly tokens: readonly {
+    readonly token: string
+    readonly verdict: 'exists' | 'whitelist'
+    readonly reason?: string
+    readonly occurrences: readonly string[]
+  }[]
+  readonly gaps: readonly { readonly token: string; readonly at: string; readonly reason: string }[]
+}
+
+function buildReport(root: string, fragments: number, res: ClassifyResult): Report {
+  const exists = res.verdicts.filter((v) => v.verdict === 'exists').length
+  const whitelist = res.verdicts.filter((v) => v.verdict === 'whitelist').length
+  return {
+    script: SCRIPT,
+    criterion: { name: '路径可达', ok: res.gaps.length === 0, objects: res.tokens.length, gaps: res.gaps.length },
+    ok: res.gaps.length === 0,
+    exitCode: res.gaps.length === 0 ? 0 : 1,
+    root,
+    scanned: { fragments, files: fragments + SCAN_FILES.length, tokens: res.tokens.length },
+    counts: { exists, whitelist },
+    tokens: res.verdicts.map((v) => ({
+      token: v.token,
+      verdict: v.verdict,
+      ...(v.reason === undefined ? {} : { reason: v.reason }),
+      occurrences: v.occurrences.map((o) => relative(root, o.file) + ':' + String(o.line)),
+    })),
+    gaps: res.gaps.map((g) => ({
+      token: g.token,
+      at: relative(root, g.file) + ':' + String(g.line),
+      reason: '既不在磁盘上，也不在已知产物名白名单里',
+    })),
+  }
+}
+
+function printHuman(report: Report): void {
+  const head = report.scanned.fragments + ' 份片段 + ' + SCAN_FILES.join('、')
+  if (report.ok) {
+    console.log(
+      '[' + SCRIPT + '] OK 路径可达（' + head + '）：token ' + String(report.scanned.tokens)
+      + ' 个（真实存在 ' + String(report.counts.exists) + ' / 产物名白名单 ' + String(report.counts.whitelist) + '）',
+    )
+  } else {
+    for (const g of report.gaps) {
+      console.log('[' + SCRIPT + '] FAIL 路径可达 ' + g.token + ' ← ' + g.at + '（' + g.reason + '）')
+    }
+  }
+  console.log('[' + SCRIPT + '] 缺口 ' + String(report.criterion.gaps) + '；exit ' + String(report.exitCode))
+  if (!report.ok) {
+    console.log('  修复：把指针改成真实路径，或在 ' + 'scripts/prompt-path-probe.mts 的 WHITELIST 登记并写清理由')
+  }
+}
+
+function fail(root: string, message: string, json: boolean): never {
+  if (json) {
+    console.log(JSON.stringify({ script: SCRIPT, ok: false, exitCode: 2, root, error: message }, null, 2))
+  } else {
+    console.error('[' + SCRIPT + '] ERROR（用法或环境，退出码 2）：' + message)
+    console.error('  修复：在仓库根跑 `npx tsx scripts/prompt-path-probe.mts`（片段目录与 round-state.ts 必须存在）')
+  }
+  process.exit(2)
+}
+
+const args = parseArgs(process.argv.slice(2))
+if (typeof args === 'string') fail(process.cwd(), args, false)
+const root = process.cwd()
+
+if (args.help) {
+  console.log('用法：npx tsx scripts/prompt-path-probe.mts [--json] [--specimen]')
+  process.exit(0)
+}
+
+// ── 前置：工作区根与扫描目标必须可解析（不可解析 = exit 2，不许静默跳过）─────────
+const pkgPath = join(root, 'package.json')
+if (!existsSync(pkgPath)) fail(root, '工作区根不可解析：' + pkgPath + ' 不存在', args.json)
+if (!existsSync(join(root, SCAN_FILES[0]!))) fail(root, '扫描目标缺失：' + SCAN_FILES[0], args.json)
+for (const d of SCAN_DIRS) {
+  if (!existsSync(join(root, d))) fail(root, '扫描目标缺失：' + d, args.json)
+}
+
+const fragmentFiles: string[] = []
+for (const d of SCAN_DIRS) walkMarkdown(join(root, d), fragmentFiles)
+fragmentFiles.sort()
+if (fragmentFiles.length === 0) fail(root, '片段目录为空：' + SCAN_DIRS.join('、'), args.json)
+
+const entries = [
+  ...fragmentFiles.map((f) => ({ file: f, text: readFileSync(f, 'utf8') })),
+  ...SCAN_FILES.map((f) => ({ file: join(root, f), text: readFileSync(join(root, f), 'utf8') })),
+]
+const tokens = extractTokens(entries)
+const result = classify(root, tokens)
+const report = buildReport(root, fragmentFiles.length, result)
+
+// ── --specimen：内置反例。判据必须真的会红——否则"探针绿"没有意义（与 R1 的 specimen 同款）──
+if (args.specimen) {
+  const okCase = result.gaps.length === 0
+  // 注入一个指向不存在文件的指针：分类器必须把它判成缺口并点名
+  const injected = classify(root, [{ token: 'templates/nope.md', occurrences: [{ file: '<specimen>', line: 1 }] }])
+  const redCase = injected.gaps.length === 1 && injected.gaps[0]!.token === 'templates/nope.md'
+  // 注入一个白名单内的产物名：必须不判缺口（否则白名单形同虚设，探针会在合法产物上恒红）
+  const whiteCase = classify(root, [{ token: 'prototypes/INDEX.md', occurrences: [{ file: '<specimen>', line: 1 }] }])
+  const whiteOk = whiteCase.gaps.length === 0
+  if (args.json) {
+    console.log(JSON.stringify({ script: SCRIPT, specimen: { ok: okCase, redOnInjected: redCase, whitePasses: whiteOk }, exitCode: okCase && redCase && whiteOk ? 0 : 1 }, null, 2))
+  } else {
+    console.log('[' + SCRIPT + '] specimen ① 真实扫描：缺口 ' + String(result.gaps.length) + (okCase ? ' ✔' : ' ✘（真实扫描本来就红，先修它）'))
+    console.log('[' + SCRIPT + '] specimen ② 注入 templates/nope.md：' + (redCase ? '判红且点名 ✔' : '没判红 ✘（判据空转）'))
+    console.log('[' + SCRIPT + '] specimen ③ 白名单 token prototypes/INDEX.md：' + (whiteOk ? '不判缺口 ✔' : '误判 ✘（白名单失效）'))
+    console.log('[' + SCRIPT + '] specimen ' + (okCase && redCase && whiteOk ? 'OK（判据不空转）；exit 0' : 'FAIL；exit 1'))
+  }
+  process.exit(okCase && redCase && whiteOk ? 0 : 1)
+}
+
+if (args.json) console.log(JSON.stringify(report, null, 2))
+else printHuman(report)
+process.exit(report.exitCode)

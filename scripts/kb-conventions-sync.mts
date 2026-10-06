@@ -42,6 +42,12 @@ const TITLES: Record<string, string> = {
   'pnpm build': '发版前必须构建（host + client）',
   'node scripts/inline-prompt-fragments.mjs': '改了提示词片段必须重生成产物',
   'node scripts/check-prompt-fragments.mjs': '重生成后必须校验片段与产物一致',
+  // REQ-261005105032-3b02（R3/R4）：注入面的两条新入口
+  'pnpm prompts:check': '改了提示词片段必须重生成并校验（一条命令）',
+  'npx tsx scripts/prompt-path-probe.mts': '提示词注入面里的路径指针必须可达',
+  // REQ-261005105032-3b02（R1/R2，t19）：模板与门禁同源的两条探针
+  'pnpm templates:check': '模板与门禁必须同源（节名与必填节）',
+  'pnpm templates:probe': '模板探针的标本模式（人为改坏必红）',
   'bash scripts/sync-to-github.sh': '发版前必须同步镜像仓库',
 }
 

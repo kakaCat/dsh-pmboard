@@ -1,12 +1,13 @@
 /**
  * 知识层自检（REQ-261001110934-3766 t9 / design/interfaces.md「自检 CLI」）。
  *
- * 九项防腐（任一失败 → 退出码 1，并指出 id / 行号 / 文件）：
+ * 十二项防腐（任一失败 → 退出码 1，并指出 id / 行号 / 文件）：
  *   K1 索引预算（≤8000 字符、≤200 行）        K6 条目过期（expires < 今天）
  *   K2 行语法 / 分节顺序 / 缺节                K7 生成物漂移（kb-build --check）
  *   K3 页面预算（每页 ≤200 行）                K8 规范条目挂的校验目标必须存在
  *   K4 死链（指针文件 / 锚点不存在）            K9 机器索引与源码口径一致（符号数 / 类名数）
  *   K5 孤儿（条目文件不在索引 / 索引指向缺失）
+ *   K10 工程操作覆盖度  K11 规范期望可判定  K12 页面小节 ↔ 索引行完整性
  *
  * 跑法：
  *   npx tsx scripts/kb-probe.mts            # 人读输出
@@ -306,6 +307,35 @@ if (!existsSync(abs(KB_PAGE_PATHS.conventions))) {
     bad11.length === 0
       ? String(checked) + ' 条规范期望可判定、豁免均带基线'
       : bad11.join('；'),
+    KB_PAGE_PATHS.conventions,
+  )
+}
+
+// ── K12：页面小节 ↔ 索引行完整性（REQ-261006123819-3af3 FR-4）────────────
+// 此前**没有任何门禁**校验这件事：K5 只枚举 `entries/*.md`，不覆盖 `kb-conventions-c-*`，
+// 于是 C-22 漏行长期无人发现（索引 26 行、规范页 27 个小节）。
+// 口径：conventions.md 的每个 `### C-NN` 小节都必须在 INDEX.md 有对应行；锚点可达性由 K4 兜底，
+// 本条只回答「哪条小节没登记」。
+if (!existsSync(abs(KB_PAGE_PATHS.conventions))) {
+  add('K12', false, '规范页不存在：' + KB_PAGE_PATHS.conventions)
+} else if (!existsSync(abs(KB_PATHS.index))) {
+  add('K12', false, '索引不存在，无法校验「页面小节 ↔ 索引行」完整性')
+} else {
+  const convText = read(KB_PAGE_PATHS.conventions)
+  const codes = [...convText.matchAll(/^###\s+(C-\d+)\s+\S/gm)].map((m) => m[1]!)
+  const { rows } = parseIndexDoc(read(KB_PATHS.index))
+  // id 后缀归一（去连字符）：既有索引里 C-01..C-10 写 `c01`、C-11 起写 `c-11`，两种形态都算命中
+  const norm = (s: string): string => s.toLowerCase().replace(/-/g, '')
+  const indexed = new Set(
+    rows.filter((r) => r.id.startsWith('kb-conventions-')).map((r) => norm(r.id.slice('kb-conventions-'.length))),
+  )
+  const missing = codes.filter((c) => !indexed.has(norm(c)))
+  add(
+    'K12',
+    missing.length === 0,
+    missing.length === 0
+      ? String(codes.length) + ' 个规范小节全部在索引里有对应行'
+      : '以下规范小节缺索引行（补 `- kb-conventions-<锚点> · standard · <标题> · → conventions.md#<锚点>`）：' + missing.join('、'),
     KB_PAGE_PATHS.conventions,
   )
 }
