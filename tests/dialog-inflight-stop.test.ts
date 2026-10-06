@@ -327,8 +327,10 @@ describe('TC-9 幂等与失败响亮（FR-3）', () => {
     const revisions = (await h.store.head()).revision
     const comments = first.comments.length
 
-    await expect(exitAwaitingConfirm(awaitingDeps(h, registry), { requirementId: REQ_ID, ref: 'pc-test-1', reason: 'answered' })).resolves.toBeUndefined()
-    await expect(exitAwaitingConfirm(awaitingDeps(h, registry), { requirementId: REQ_ID, ref: 'pc-test-1', reason: 'answered' })).resolves.toBeUndefined()
+    // REQ-261006170150-52cc t1（interfaces.md「返回值扩展」）：exitAwaitingConfirm 现在回
+    // `{cleared, notified}`（清零写入时两者皆 false），本用例的意图不变——**幂等、零写入、不抛**。
+    await expect(exitAwaitingConfirm(awaitingDeps(h, registry), { requirementId: REQ_ID, ref: 'pc-test-1', reason: 'answered' })).resolves.toEqual({ cleared: false, notified: false })
+    await expect(exitAwaitingConfirm(awaitingDeps(h, registry), { requirementId: REQ_ID, ref: 'pc-test-1', reason: 'answered' })).resolves.toEqual({ cleared: false, notified: false })
 
     const after = (await h.store.get(REQ_ID))!
     expect(after.comments.length).toBe(comments)

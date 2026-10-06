@@ -14,9 +14,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { ReportAction, ReportGap, ReportHead, ReportResponse, RequirementStatus } from '../src/shared/protocol.ts'
 import {
-  REPORT_TABS, buildReportCompact, buildReportShell, buildTabBar, createReportShell,
-  isReportTabKey, type ReportTabCtx, type ReportTabKey,
+  REPORT_TABS, REPORT_TAB_KEYS, buildReportCompact, buildReportShell, buildTabBar, createReportShell,
+  createReportTabs, isReportTabKey, type ReportTabCtx, type ReportTabKey,
 } from '../src/client/views/report-tabs.ts'
+import { GAP_DOT_SVG, ICON_STROKE_WIDTH, ICON_VIEW_BOX, TAB_ICON_SVG } from '../src/client/icons.ts'
 import { buildReportBand } from '../src/client/views/report-band.ts'
 import { buildReportHead } from '../src/client/views/report-head.ts'
 import { applyReportSegments, captureDetailDraft, commentInputOf, draftKeyOf, panelIntentOf, restoreDetailDraft } from '../src/client/board-mount.ts'
@@ -110,7 +111,7 @@ describe('report-shell · 渲染产物（未激活面板不入 DOM）', () => {
     expect(html).toContain('data-detail-req="' + REQ_ID + '"') // 详情容器根（草稿 capture/restore 依赖它）
     // 壳的面板包装器用 `data-tab-host`（`data-panel` 归**面板根**，见 report-tabs.ts 的 panelWrapper 注释）
     expect(countOf(html, 'data-tab-host="trunk"')).toBe(1)
-    for (const key of ['docs', 'dag', 'dialogue', 'token', 'prompts'] as const) {
+    for (const key of ['docs', 'dag', 'dialogue', 'verify', 'token', 'prompts'] as const) {
       expect(html, key).not.toContain('data-tab-host="' + key + '"')
       expect(html, key).not.toContain('data-panel="' + key + '"')
     }
@@ -123,22 +124,88 @@ describe('report-shell · 渲染产物（未激活面板不入 DOM）', () => {
   })
 
   it('四条不变量之④：产物里不出现内层滚动容器（overflow: auto|scroll）', () => {
-    for (const key of ['trunk', 'docs', 'dag', 'dialogue', 'token', 'prompts'] as const) {
+    for (const key of ['trunk', 'docs', 'dag', 'dialogue', 'verify', 'token', 'prompts'] as const) {
       const html = buildReportShell(makeReport(), key, { data: panelStub(key) })
       expect(html, key).not.toMatch(/overflow:\s*(auto|scroll)/)
     }
   })
 
-  it('Tab 栏：六个同级 Tab、顺序正确、默认选中 trunk', () => {
-    expect(REPORT_TABS.map(d => d.key)).toEqual(['trunk', 'docs', 'dag', 'dialogue', 'token', 'prompts'])
+  it('Tab 栏：七个同级 Tab、顺序正确（验收插在「对话」与「Token」之间）、默认选中 trunk', () => {
+    expect(REPORT_TABS.map(d => d.key)).toEqual(['trunk', 'docs', 'dag', 'dialogue', 'verify', 'token', 'prompts'])
     const html = buildTabBar(makeReport(), 'trunk')
-    for (const key of ['trunk', 'docs', 'dag', 'dialogue', 'token', 'prompts'] as const) {
+    for (const key of ['trunk', 'docs', 'dag', 'dialogue', 'verify', 'token', 'prompts'] as const) {
       expect(html).toContain('data-tab="' + key + '"')
     }
+    // 次序锚（REQ-261006130057-7a43 FR-8；原型 proto-geometry verifyTabIndex1Based=5）
+    expect(html.indexOf('data-tab="dialogue"')).toBeLessThan(html.indexOf('data-tab="verify"'))
+    expect(html.indexOf('data-tab="verify"')).toBeLessThan(html.indexOf('data-tab="token"'))
     expect(html).toContain('class="dsh-pm-tab active" data-action="switch-tab" data-tab="trunk"')
   })
 
-  it('面板注册契约：六个键各就位，render 恒返回非空字符串（仍是桩的自证"待实现"，已落地的渲染真内容）', () => {
+  /**
+   * FR-3（TC-5）：Tab 语义四件套 + 选中恰 1 个。
+   *
+   * 逐项读**开标签**（而不是对整串 `toContain`）：这样"哪个属性落在哪一项上"是真被断言的——
+   * 只断言整串含 `aria-selected="true"` 的话，把 `true` 挂到错误的那一项上也会绿。
+   */
+  it('Tab 栏语义：1 个 tablist（带 aria-label）、七项 role=tab + aria-selected + aria-controls + roving tabindex', () => {
+    for (const active of REPORT_TAB_KEYS) {
+      const html = buildTabBar(makeReport(), active)
+      expect(countOf(html, 'role="tablist"'), active).toBe(1)
+      expect(html, active).toContain('aria-label="需求详情分区"')
+      // 选中恰 1 个，且等于当前键
+      expect(countOf(html, 'aria-selected="true"'), active).toBe(1)
+      expect(countOf(html, 'aria-selected="false"'), active).toBe(6)
+      const tags = [...html.matchAll(/<button[^>]*>/g)].map(m => m[0])
+      expect(tags, active).toHaveLength(REPORT_TAB_KEYS.length)
+      tags.forEach((tag, i) => {
+        const key = REPORT_TAB_KEYS[i]
+        const on = key === active
+        expect(tag, key).toContain('role="tab"')
+        expect(tag, key).toContain('id="tab-' + key + '"')
+        expect(tag, key).toContain('aria-controls="panel-' + key + '"')
+        expect(tag, key).toContain('aria-selected="' + (on ? 'true' : 'false') + '"')
+        // roving tabindex：选中 0、其余 -1
+        expect(tag, key).toContain('tabindex="' + (on ? '0' : '-1') + '"')
+        // 追加式（硬耦合：既有断言按属性顺序做子串匹配）：新属性一律在既有三个属性之后
+        expect(tag.indexOf('data-action="switch-tab"'), key).toBeLessThan(tag.indexOf(' role="tab"'))
+        expect(tag.indexOf('data-tab="'), key).toBeLessThan(tag.indexOf(' id="tab-'))
+      })
+      // id 形态只允许 tab-<key>（不许自增 id）
+      expect([...html.matchAll(/ id="([^"]+)"/g)].map(m => m[1]), active).toEqual(REPORT_TAB_KEYS.map(k => 'tab-' + k))
+    }
+  })
+
+  /** FR-1（TC-1/TC-2）：图标取唯一来源 `icons.ts`；emoji 只作为 `data-proto-icon-before` 的属性值留存。 */
+  it('Tab 栏图标：七项各恰 1 个内联 SVG（逐字取 icons.ts），emoji 只活在 data-proto-icon-before', () => {
+    const html = buildTabBar(makeReport(), 'trunk')
+    const icons = [...html.matchAll(/<span class="dsh-pm-tab-icon"([^>]*)>([\s\S]*?)<\/span>/g)]
+    expect(icons).toHaveLength(REPORT_TAB_KEYS.length)
+    icons.forEach((m, i) => {
+      const key = REPORT_TAB_KEYS[i]
+      expect(m[2], key).toBe(TAB_ICON_SVG[key])
+      expect(countOf(m[2], '<svg'), key).toBe(1)
+      expect(m[2], key).toContain('aria-hidden="true"')
+      expect(m[1], key).toMatch(/^ data-proto-icon-before="[^"]+"$/)
+    })
+    // 结构位无 emoji 文本：把属性值抹掉后，七个 emoji 一个都不该剩下
+    expect(html.replace(/data-proto-icon-before="[^"]*"/g, '')).not.toMatch(/[📋📄🕸💬✅🪙🧱]/u)
+  })
+
+  /** FR-3（TC-8）：面板包装器带 tabpanel 语义，但未激活面板**仍不入 DOM**（`aria-controls` 只是稳定声明）。 */
+  it('面板段：包装器 role=tabpanel + id=panel-<key> + aria-labelledby=tab-<key>；未激活面板仍不在产物里', () => {
+    const html = buildReportShell(makeReport(), 'docs', { data: panelStub('docs') })
+    expect(countOf(html, 'role="tabpanel"')).toBe(1)
+    expect(html).toContain('role="tabpanel" id="panel-docs" aria-labelledby="tab-docs"')
+    expect(html).toContain('id="tab-docs"') // labelledby 指向的那一项一定在场（Tab 栏恒常渲染）
+    // 反向：aria-controls 指向未激活面板的 id，但那个面板并不在 DOM 里
+    expect(html).toContain('aria-controls="panel-token"')
+    expect(html).not.toContain('id="panel-token"')
+    expect(html).not.toContain('data-panel="token"')
+    expect(countOf(html, 'data-tab-host=')).toBe(1)
+  })
+
+  it('面板注册契约：七个键各就位，render 恒返回非空字符串（仍是桩的自证"待实现"，已落地的渲染真内容）', () => {
     const ctx: ReportTabCtx = { requirementId: REQ_ID, load: () => Promise.resolve(panelStub('trunk')), openDoc: () => {} }
     for (const def of REPORT_TABS) {
       const html = def.render({}, ctx)
@@ -155,7 +222,7 @@ describe('report-shell · 渲染产物（未激活面板不入 DOM）', () => {
     }
   })
 
-  it('角标机制：badge 有值才渲染；六个内置 def 当前都不编数字（ReportResponse 无按 Tab 计数）', () => {
+  it('角标机制：badge 有值才渲染；七个内置 def 只读服务端计数（ReportResponse 无按 Tab 计数时不编）', () => {
     const token = REPORT_TABS.find(d => d.key === 'token')
     expect(token).toBeDefined()
     const before = token!.badge
@@ -214,9 +281,41 @@ describe('report-head · 结论头与操作条（FR-3）', () => {
     expect(countOf(html, 'data-action-rank="primary"')).toBe(1)
     expect(html.indexOf('data-action-rank="danger"')).toBeGreaterThan(html.indexOf('data-action-rank="primary"'))
     expect(html).toContain('data-confirm="')
-    // 人工门整条只标一次（不再是逐按钮的粉色实心块）
+    // 人工门整条只标一次（不再是逐按钮的粉色实心块）；文案按 FR-11 #3 收短
     expect(countOf(html, 'dsh-pm-human-only')).toBe(1)
-    expect(html).toContain('均需人工确认')
+    expect(html).toContain('需人工确认')
+    expect(html).not.toContain('均需人工确认')
+  })
+
+  /** FR-11 #2（t-bce26d 新增断言①）：后果的**第二披露通道**必须真在，且一字不省。 */
+  it('主操作的后果走 aria-describedby 指向的视觉隐藏节点（不是 hover-only）', () => {
+    const html = buildReportHead(makeReport())
+    const m = /aria-describedby="([^"]+)"/.exec(html)
+    expect(m).not.toBeNull()
+    const id = m![1]!
+    expect(html).toContain('id="' + id + '"')
+    const node = new RegExp('<span class="dsh-pm-action-consequence dsh-pm-sr-only" id="' + id + '">([^<]*)</span>').exec(html)
+    expect(node).not.toBeNull()
+    // 文本 === 服务端 consequence（不是截断过的短提示）
+    expect(node![1]).toBe('提交验收；任务全部完成时系统会自动推进')
+    // 视觉隐藏但**可访问**：不许用 display:none / visibility:hidden 把节点摘出可访问树
+    expect(html).not.toContain('display:none')
+    expect(html).not.toContain('visibility:hidden')
+  })
+
+  /** FR-13（t-bce26d 新增断言②）：详情页头部**不再有**评论输入框——删过头与没删都判红。 */
+  it('详情页头部不渲染评论输入框（FR-13）；只读的最近评论入口仍在', () => {
+    const base = makeReport()
+    const html = buildReportHead({
+      ...base,
+      head: { ...base.head, comments: [{ at: T0, body: '人写过一句', by: { kind: 'human' } }] },
+    })
+    expect(html).not.toContain('dsh-pm-comment-form')
+    expect(html).not.toContain('data-role="comment-input"')
+    expect(html).not.toContain('data-action="add-comment"')
+    // 删过头同样判红：只读的「最近评论」列表仍渲染
+    expect(html).toContain('data-comment-list="1"')
+    expect(html).toContain('人写过一句')
   })
 
   it('窗口跳转：每个席位一个按钮（data-jump-session + 角色标注），已归档仍可点', () => {
@@ -267,9 +366,9 @@ describe('report-head · 结论头与操作条（FR-3）', () => {
       expect(head, status).not.toContain('data-report-windows="1"')
       expect(head, status).toContain('终态只读')
 
-      // 整壳里除返回与 6 个 Tab 切换（**导航**，不是动作）之外不再有别的 data-action
+      // 整壳里除返回与 7 个 Tab 切换（**导航**，不是动作）之外不再有别的 data-action
       const shell = buildReportShell(report, 'trunk')
-      expect(countOf(shell, 'data-action="'), status).toBe(7)
+      expect(countOf(shell, 'data-action="'), status).toBe(8)
       expect(shell, status).not.toContain('data-action="move-req"')
       expect(shell, status).not.toContain('data-action="add-comment"')
       expect(shell, status).not.toContain('data-report-actions="1"')
@@ -284,6 +383,91 @@ describe('report-head · 结论头与操作条（FR-3）', () => {
   })
 })
 
+/** T-12（REQ-261006130057-7a43 · FR-1）：头部三层 + 闸门提示条（视觉基准 = 原型 v1.5 #FR-1）。 */
+describe('report-head · 头部三层 + 闸门提示条（REQ-261006130057-7a43 · T-12）', () => {
+  it('三层结构：标识行 → 标题行 → 闸门提示条，按序各一', () => {
+    const html = buildReportHead(makeReport())
+    const ident = html.indexOf('data-head-row="ident"')
+    const title = html.indexOf('data-head-row="title"')
+    const gate = html.indexOf('data-gate-banner="1"')
+    expect(ident).toBeGreaterThan(-1)
+    expect(title).toBeGreaterThan(ident)
+    expect(gate).toBeGreaterThan(title)
+    // 一句话结论 / 阶段条 / 评论列表仍在三层之后（后段不在 FR-1 射程内）
+    expect(html.indexOf('data-report-verdict="1"')).toBeGreaterThan(gate)
+  })
+
+  it('标识行：← 看板行首 + REQ-id + 状态/分类/难度 + 内联时间（含创建于）；席位组在其后（右置）', () => {
+    const html = buildReportHead(makeReport())
+    const row = html.slice(html.indexOf('data-head-row="ident"'), html.indexOf('data-head-row="title"'))
+    // ← 看板在标识行内、且排在 REQ-id 之前（FR-1 把导航从旧动作行移进标识行行首）
+    expect(row).toContain('data-action="back"')
+    expect(row.indexOf('data-action="back"')).toBeLessThan(row.indexOf('dsh-pm-card-id'))
+    expect(row).toContain('dsh-pm-card-id')
+    expect(row).toContain('dsh-pm-status')
+    expect(row).toContain('data-category="feature"')
+    expect(row).toContain('data-difficulty="standard"')
+    // 内联时间：停留/更新/创建于 同行（创建于从 D-8 的行尾右推归回时间组）
+    expect(row).toContain('停留 28 分')
+    expect(row).toContain('距上次更新 2 分')
+    expect(row).toContain('data-created-at')
+    // 席位组（窗口跳转 chips）在标识行内、落在「创建于 …」之后（行尾右置，样式层 margin-left:auto）
+    expect(row).toContain('data-report-windows="1"')
+    expect(row.indexOf('data-report-windows="1"')).toBeGreaterThan(row.indexOf('data-created-at'))
+  })
+
+  it('标题行：标题在前、操作按钮聚合其后（固定右侧）；按钮集合 = 现行操作条输出（不增不减）', () => {
+    const html = buildReportHead(makeReport())
+    const gateAt = html.indexOf('data-gate-banner="1"')
+    const row = html.slice(html.indexOf('data-head-row="title"'), gateAt)
+    expect(row).toContain('dsh-pm-detail-title')
+    expect(row).toContain('需求详情页重构：从证据面改为工作汇报')
+    // 操作区在标题节点之后（DOM 序 = 读屏序：先标题后动作）
+    expect(row.indexOf('dsh-pm-detail-title')).toBeLessThan(row.indexOf('data-report-actions="1"'))
+    // 按钮集合不增不减：fixture 两个动作（move + cancel），一格不多一格不少
+    expect(countOf(row, 'data-action-key=')).toBe(2)
+    expect(row).toContain('data-action="move-req"')
+    expect(row).toContain('data-action-key="cancel"')
+  })
+
+  it('闸门提示条：waitingHuman>0 → 琥珀条含 N 与锚链「查看缺口 ↓」；锚链落点 id 在状态带缺口格', () => {
+    const head = buildReportHead(makeReport()) // fixture waitingHuman = 2
+    expect(head).toContain('data-gate-banner="1"')
+    expect(head).toContain('需人工确认 · <b>2</b> 件缺口等人裁决，裁决前无法提交验收。')
+    expect(head).toContain('data-gap-anchor="1"')
+    expect(head).toContain('查看缺口 ↓')
+    // 锚链 = 只读导航动作（data-action 委派 scrollIntoView；**不用 hash**——宿主 hash 信道
+    // 是深链路由，同信道点 hash 有被重路由的风险，复核 P1-1）
+    expect(head).toContain('data-action="scroll-gap-focus"')
+    expect(head).not.toContain('href="#dsh-pm-gap-focus"')
+    // 整壳里锚链两端同时成立：提示条（头部）↔ 落点 id（状态带缺口格，data-gap-focus 同格）
+    const shell = buildReportShell(makeReport(), 'trunk')
+    expect(shell).toContain('data-gap-anchor="1"')
+    expect(shell).toContain('data-band-cell="gaps" data-gap-focus="1" id="dsh-pm-gap-focus"')
+  })
+
+  it('无缺口（waitingHuman=0 / 缺省）→ 闸门提示条整条不渲染（不留空壳）', () => {
+    const zero = buildReportHead({ ...makeReport(), waitingHuman: 0, gaps: [] })
+    expect(zero).not.toContain('data-gate-banner')
+    expect(zero).not.toContain('查看缺口')
+    const missing = buildReportHead({ ...makeReport(), waitingHuman: undefined as unknown as number })
+    expect(missing).not.toContain('data-gate-banner')
+  })
+
+  it('终态：三层仍在（标识行只读化）；右端是「终态只读」说明而非动作；闸门提示条终态豁免（复核 P2-1）', () => {
+    const html = buildReportHead(makeReport({ status: 'archived', actions: [] }))
+    expect(html).toContain('data-head-row="ident"')
+    expect(html).toContain('data-head-row="title"')
+    const row = html.slice(html.indexOf('data-head-row="title"'))
+    expect(row).toContain('终态只读')
+    expect(row).not.toContain('data-report-actions="1"')
+    // 终态无「待裁决」语义：fixture waitingHuman=2 也不渲染提示条（组件不对不自洽输入说假话）
+    expect(html).not.toContain('data-gate-banner')
+    // 终态「只剩 ← 看板一个 data-action」的旧判据成立（提示条不渲染，锚链按钮随之不在）
+    expect(countOf(html, 'data-action="')).toBe(1)
+  })
+})
+
 describe('report-band · 状态带三格（FR-3 / FR-4 / FR-5）', () => {
   it('做到哪了：阶段 + 停留 + 任务计数 + 子卡链', () => {
     const html = buildReportBand(makeReport())
@@ -295,7 +479,7 @@ describe('report-band · 状态带三格（FR-3 / FR-4 / FR-5）', () => {
     expect(html).toContain('子卡链 5/8')
   })
 
-  it('缺口清单：🔴🟡⚪ 按严重度 + what/why + 只列前 5 条且如实说还有几条', () => {
+  it('缺口清单：严重度标记（SVG 圆 + 真实文本 !! / ! / ·）按严重度 + what/why + 只列前 5 条且如实说还有几条', () => {
     const gaps: ReportGap[] = [
       { severity: 'gray', what: '灰-观察项', why: '只是观察' },
       { severity: 'yellow', what: '黄-待处理项', why: '待处理' },
@@ -305,15 +489,27 @@ describe('report-band · 状态带三格（FR-3 / FR-4 / FR-5）', () => {
       { severity: 'gray', what: '灰-2', why: '观察' },
     ]
     const html = buildReportBand(makeReport({ gaps }))
-    expect(html).toContain('缺口 6 条（该有而没有）')
-    expect(html).toContain('🔴')
-    expect(html).toContain('🟡')
-    expect(html).toContain('⚪')
+    // FR-2（REQ-261006130057-7a43 · T-13）：缺口格 = 视觉焦点——data-gap-focus 挂钩 +
+    // 标题里的红色计数徽标；徽标值 = waitingHuman（fixture = 2，与 verdictLine「2 件事等人」
+    // 同口径，**不是** gaps 总条数 6；总条数由「共 6 条」真文本交代）
+    expect(html).toContain('data-band-cell="gaps" data-gap-focus="1"')
+    expect(html).toContain('缺口（该有而没有）')
+    expect(html).toContain('data-gap-count-badge="2"')
+    expect(html).toContain('共 6 条')
+    // FR-8 #2：严重度不再用 emoji（字形/明度由系统字型决定）——内联 SVG 圆 + **真实文本**标记
+    expect(html).not.toContain('🔴')
+    expect(html).not.toContain('🟡')
+    expect(html).not.toContain('⚪')
+    expect(countOf(html, 'dsh-pm-gap-sev')).toBe(5)
+    expect(countOf(html, 'data-gap-mark=')).toBe(5)
+    expect(html).toContain('data-gap-mark="red">!!<')
+    expect(html).toContain('data-gap-mark="yellow">!<')
+    expect(html).toContain('data-gap-mark="gray">·<')
     expect(html).toContain('红-阻塞项')
     expect(countOf(html, 'dsh-pm-gap-line')).toBe(5) // 前 5 条
     expect(html).toContain('还有 1 条未列')
-    // 严重度排序：🔴 必须在 🟡 之前（顺序错了最该看的会掉出前 5 条）
-    expect(html.indexOf('🔴')).toBeLessThan(html.indexOf('🟡'))
+    // 严重度排序：red 必须在 yellow 之前（顺序错了最该看的会掉出前 5 条）
+    expect(html.indexOf('data-severity="red"')).toBeLessThan(html.indexOf('data-severity="yellow"'))
     expect(html).toContain('data-ref-kind="clause"')
   })
 
@@ -325,16 +521,28 @@ describe('report-band · 状态带三格（FR-3 / FR-4 / FR-5）', () => {
     expect(html).not.toContain('<table')
   })
 
-  it('结果与成效：未到验收段给解释性空态；终态指向验收单而不编结论', () => {
+  it('结果与成效：outcome 缺省 → 折叠一行 + 「展开说明」（T-13）；终态指向验收单而不编结论', () => {
     const inflight = buildReportBand(makeReport({ status: 'implementing' }))
     expect(inflight).toContain('尚未到验收段')
     expect(inflight).toContain('到验收段后此处给出结论')
+    // T-13：未到验收段（outcome===undefined）结果格折叠为一行，不出现逐项计数
+    expect(inflight).toContain('data-outcome-fold="1"')
+    expect(inflight).toContain('展开说明')
+    expect(inflight).toContain('收起说明')
+    expect(inflight).not.toContain('data-outcome-passed')
+    expect(inflight).not.toContain('data-outcome-failed')
     const accepting = buildReportBand(makeReport({ status: 'accepting' }))
     expect(accepting).toContain('验收中')
+    expect(accepting).toContain('data-outcome-fold="1"')
     const archived = buildReportBand(makeReport({ status: 'archived' }))
     expect(archived).toContain('已归档')
     expect(archived).toContain('验收单')
+    expect(archived).toContain('data-outcome-fold="1"')
     expect(archived).not.toContain('尚未到验收段')
+    // 取消态：没有验收结论可给，也没有更多说明可展开——不渲染折叠
+    const canceled = buildReportBand(makeReport({ status: 'canceled' }))
+    expect(canceled).toContain('已取消：无验收结论')
+    expect(canceled).not.toContain('data-outcome-fold')
   })
 })
 
@@ -437,13 +645,13 @@ describe('report-shell 控制器 · 首屏与懒加载（①②）', () => {
     const h = harness()
     h.shell.ensure()
     await tick()
-    for (const key of ['docs', 'dag', 'dialogue', 'token', 'prompts'] as const) {
+    for (const key of ['docs', 'dag', 'dialogue', 'verify', 'token', 'prompts'] as const) {
       expect(h.shell.loadCount(key), key).toBe(0)
     }
     h.shell.select('token')
     await tick()
     expect(h.shell.loadCount('token')).toBe(1)
-    for (const key of ['docs', 'dag', 'dialogue', 'prompts'] as const) {
+    for (const key of ['docs', 'dag', 'dialogue', 'verify', 'prompts'] as const) {
       expect(h.shell.loadCount(key), key).toBe(0)
     }
     expect(h.shell.html()).toContain('data-tab-host="token"')
@@ -668,8 +876,8 @@ describe('report-shell 控制器 · 「加载更早」分页合并（FR-11 #6）
     await tick()
     shell.loadEarlier(10)
     await tick()
-    // 去重按 (at, kind, text)：同一条消息只渲染一份（`data-msg-text-raw` 每条一次）
-    expect(countOf(shell.html(), 'data-msg-text-raw="重复条目"')).toBe(1)
+    // 去重按 (at, kind, text)：同一条消息只渲染一份（「重复条目」正文只出现一次）
+    expect(countOf(shell.html(), '重复条目')).toBe(1)
     expect(shell.html()).toContain('更早')
 
     // 再取一次失败：内容**不清空**，只在上面留一行原因
@@ -702,8 +910,9 @@ describe('report-shell · 点开正文的委派（只由壳接一处）', () => 
     })
     expect(() => shell.attach({} as unknown as HTMLElement)).not.toThrow() // 无 addEventListener：静默
     const detach = shell.attach(root)
-    // 两个委派：点开正文（click）+ 面板内就地检索（input）
-    expect([...handlers.keys()].sort()).toEqual(['click', 'input'])
+    // 两个委派：点开正文（click）+ Tab 组方向键（keydown，FR-3 #3/#4）；
+    // input 委派已随对话检索框一并删除（REQ-261006130057-7a43 · D-6 只读）
+    expect([...handlers.keys()].sort()).toEqual(['click', 'keydown'])
     const click = handlers.get('click')!
     const openBtn = { dataset: { openDoc: 'docs/requirements/REQ-x/requirement.md' }, getAttribute: () => null }
     click({ target: { closest: (sel: string) => (sel === '[data-open-doc]' ? openBtn : null) } } as unknown as Event)
@@ -716,7 +925,135 @@ describe('report-shell · 点开正文的委派（只由壳接一处）', () => 
     click({ target: { closest: () => null, dataset: legacyOpenBtn.dataset } } as unknown as Event)
     expect(opened).toHaveLength(1)
     detach()
-    expect(removed.sort()).toEqual(['click', 'input'])
+    expect(removed.sort()).toEqual(['click', 'keydown'])
+  })
+
+  /**
+   * FR-3 #3/#4（TC-6）：roving tabindex 的另一半——组内方向键。
+   *
+   * 桩刻意只实现 `addEventListener` / `querySelector`：键盘分支必须能在**没有真 DOM** 的环境里
+   * 断言，且它只能按既有 `data-action="switch-tab"` + `data-tab` 定位（新增的 `aria-*` 不许驱动行为）。
+   */
+  it('Tab 组方向键：←/→ 相邻、Home/End 首尾、端点不回绕；切换点的是既有 switch-tab 那一项', async () => {
+    const handlers = new Map<string, (ev: Event) => void>()
+    const clicked: string[] = []
+    const focused: string[] = []
+    const selectors: string[] = []
+    type Stub = { click: () => void; focus: () => void }
+    const stubOf = (k: ReportTabKey): Stub => ({ click: () => { clicked.push(k) }, focus: () => { focused.push(k) } })
+    const root = {
+      addEventListener: (t: string, h: (ev: Event) => void) => { handlers.set(t, h) },
+      removeEventListener: () => {},
+      querySelector: (sel: string) => {
+        selectors.push(sel)
+        const m = /data-tab="([^"]+)"/.exec(sel)
+        return m === null || !isReportTabKey(m[1]) ? null : stubOf(m[1])
+      },
+    } as unknown as HTMLElement
+    const shell = createReportShell({
+      requirementId: REQ_ID,
+      loadReport: () => Promise.resolve(makeReport()),
+      load: (key) => Promise.resolve(panelStub(key)),
+      openDoc: () => {},
+      revision: 1,
+    })
+    shell.attach(root)
+    const keydown = handlers.get('keydown')!
+    expect(typeof keydown).toBe('function')
+    let prevented = 0
+    const press = (key: string, from: ReportTabKey, onTab = true): Event => ({
+      key,
+      target: onTab ? { closest: (sel: string) => (sel === '[data-action="switch-tab"][data-tab]' ? { dataset: { tab: from }, getAttribute: () => null } : null) } : { closest: () => null },
+      preventDefault: () => { prevented += 1 },
+    } as unknown as Event)
+
+    keydown(press('ArrowRight', 'trunk'))
+    expect(clicked).toEqual(['docs'])
+    expect(focused).toEqual(['docs']) // 切完立刻把焦点交给新项（roving tabindex）
+    await tick()
+    expect(focused).toEqual(['docs', 'docs']) // 段重绘是微任务：再补一拍，焦点不丢
+
+    keydown(press('End', 'trunk'))
+    expect(clicked).toEqual(['docs', 'prompts'])
+    keydown(press('Home', 'prompts'))
+    expect(clicked).toEqual(['docs', 'prompts', 'trunk'])
+
+    // 端点不回绕：首项按 ← / 末项按 → 不动（但仍吃掉默认行为，免得页面跟着滚）
+    const before = clicked.length
+    const p0 = prevented
+    keydown(press('ArrowLeft', 'trunk'))
+    keydown(press('ArrowRight', 'prompts'))
+    expect(clicked).toHaveLength(before)
+    expect(prevented).toBe(p0 + 2)
+    // 与"原地不动"同款：Home 已在首项时不重绘
+    keydown(press('Home', 'trunk'))
+    expect(clicked).toHaveLength(before)
+
+    // 与本组无关的按键 / 不在 Tab 上的按键：一律不碰
+    keydown(press('ArrowDown', 'trunk'))
+    keydown(press('a', 'trunk'))
+    keydown(press('ArrowRight', 'trunk', false))
+    expect(clicked).toHaveLength(before)
+    // 写路径没新造：定位只用既有两个属性（data-action + data-tab），不看任何新增 aria-*
+    expect(selectors.length).toBeGreaterThan(0)
+    expect(selectors.every(s => /^\[data-action="switch-tab"\]\[data-tab="[a-z]+"\]$/.test(s))).toBe(true)
+  })
+
+  /**
+   * 方向键 × 段重绘：真实链路里最容易悄悄坏掉的一跳。
+   *
+   * 切 Tab 会让控制器 `notify()` → `board-mount` 排一个**微任务**重绘，Tab 栏整段 innerHTML 被换掉
+   * （旧节点连焦点一起丢，`document.activeElement` 掉回 body）。桩因此按"节点会被整代换掉"来建：
+   * `querySelector` 每次取**当前一代**的节点，并对每代记名（`docs#1` / `docs#2`）。
+   * 判据 = 最后一次焦点落在**重绘后**那一代上——这正是"按键后焦点与 selected 同时前移"的前提。
+   */
+  it('Tab 组方向键 × 段重绘：节点被换掉后焦点仍落在新一代选中项上（微任务补焦）', async () => {
+    const handlers = new Map<string, (ev: Event) => void>()
+    const clicked: string[] = []
+    const focused: string[] = []
+    let ctl: { select: (k: ReportTabKey) => void } | undefined
+    let gen = 0
+    let live: Array<{ key: ReportTabKey; click: () => void; focus: () => void }> = []
+    const render = (): void => {
+      gen += 1
+      const at = gen
+      live = REPORT_TAB_KEYS.map(k => ({
+        key: k,
+        // 等价于 board-mount 的 `case 'switch-tab'`：读 data-tab → 交给控制器（既有唯一写路径）
+        click: () => { clicked.push(k); ctl?.select(k) },
+        focus: () => { focused.push(k + '#' + String(at)) },
+      }))
+    }
+    render()
+    const root = {
+      addEventListener: (t: string, h: (ev: Event) => void) => { handlers.set(t, h) },
+      removeEventListener: () => {},
+      querySelector: (sel: string) => live.find(t => sel.includes('data-tab="' + t.key + '"')) ?? null,
+    } as unknown as HTMLElement
+    const tabs = createReportTabs({
+      requirementId: REQ_ID,
+      load: (key) => Promise.resolve(panelStub(key)),
+      openDoc: () => {},
+      // 真宿主是 `scheduleRender()`（微任务）；这里同款，才能复现"重绘排在按键处理之后"
+      onChange: () => { void Promise.resolve().then(render) },
+    })
+    ctl = tabs
+    tabs.attach(root)
+    const keydown = handlers.get('keydown')!
+    keydown({
+      key: 'ArrowRight',
+      target: { closest: (sel: string) => (sel === '[data-action="switch-tab"][data-tab]' ? { dataset: { tab: 'trunk' }, getAttribute: () => null } : null) },
+      preventDefault: () => {},
+    } as unknown as Event)
+    expect(clicked).toEqual(['docs']) // 一次按键 = 一次既有通道调用（不额外造第二条写路径）
+    expect(focused).toEqual(['docs#1']) // 当场给焦点（旧节点还在）
+    await tick()
+    // 重绘后**再补一拍**：最后一次焦点必须落在重绘后那一代节点上（第几代由宿主的 scheduleRender 决定，
+    // 这里只钉"不是第 1 代"——钉死代数会把"宿主合并了几拍重绘"变成断言，那是实现细节不是判据）
+    const last = focused[focused.length - 1] ?? ''
+    expect(last).toMatch(/^docs#[2-9]\d*$/)
+    expect(focused.filter(f => f === 'docs#1')).toHaveLength(1)
+    expect(tabs.active()).toBe('docs')
   })
 
   it('壳的 attach：危险动作（data-confirm）先弹确认；拒绝就拦下点击（preventDefault + stopPropagation）', () => {
@@ -766,7 +1103,7 @@ describe('report-shell · 点开正文的委派（只由壳接一处）', () => 
     expect(opened).toBe(0) // 这条链子只管确认，不替通道开正文
   })
 
-  it('壳的 attach：页内检索（[data-dialogue-search]）就地过滤，不重新取数', () => {
+  it('壳的 attach：对话检索已删（REQ-261006130057-7a43 · D-6 只读），不再挂 input 监听', () => {
     const handlers = new Map<string, (ev: Event) => void>()
     const root = {
       addEventListener: (t: string, h: (ev: Event) => void) => { handlers.set(t, h) },
@@ -780,22 +1117,10 @@ describe('report-shell · 点开正文的委派（只由壳接一处）', () => 
       revision: 1,
     })
     shell.attach(root)
-    const msg = {
-      hidden: false, setAttribute: () => {}, querySelector: () => null,
-      getAttribute: (name: string) => (name === 'data-msg-text-raw' ? '窗口 w-owner1：先说结论' : ''),
-    }
-    const counter = { textContent: '' }
-    const panel = {
-      querySelectorAll: (sel: string) => (sel === '[data-msg]' ? [msg] : []),
-      querySelector: (sel: string) => (sel === '[data-dialogue-hits]' ? counter : null),
-    }
-    const box: { value: string; closest: (sel: string) => unknown } = {
-      value: '窗口',
-      closest: (sel: string) => (sel === '[data-dialogue-search]' ? box : sel === '[data-panel]' ? panel : null),
-    }
-    handlers.get('input')!({ target: box } as unknown as Event)
-    expect(counter.textContent).toBe('命中 1 / 已加载 1')
-    expect(shell.loadCount('dialogue')).toBe(0) // 就地过滤：一个请求都不发
+    // 只读历史记录：面板内没有输入控件，壳不再接 input 就地过滤（不留死代码）
+    expect(handlers.has('input')).toBe(false)
+    expect(handlers.has('click')).toBe(true) // data-open-doc 委派仍在
+    expect(handlers.has('keydown')).toBe(true) // Tab 方向键仍在
   })
 
   it('board-mount 不再接 [data-open-doc]（否则点一下开两次）', () => {
@@ -1072,5 +1397,75 @@ describe('board-mount 接线 · 进详情走新壳（①②③④）', () => {
     expect(calls.filter(c => c.endsWith('/docs'))).toHaveLength(0)
     expect(el.innerHTML).toContain('data-report-shell="1"')
     att.dispose()
+  })
+})
+
+/* --------------------------------------------------------------- 图标族（FR-1 / FR-8） */
+
+/**
+ * 图标族断言（任务卡 t-efb505 · 计划 key t2）。
+ *
+ * 本卡**只建单一图标源**（`src/client/icons.ts`），**不接调用方**——接线在 t3（Tab 栏）与
+ * t12（缺口严重度圆点）。故本组一律对**模块导出的字符串**下断言；接线卡落地后，"渲染产物里
+ * 每个 Tab 恰 1 个装饰性 SVG"那类断言（TC-1）归 t3，本组不重复、也不依赖任何渲染产物。
+ *
+ * 为什么这些断言值得写：图标是**结构语义**。一旦谁把尺寸写回字符串（`width="14"`）或塞一个
+ * 色值字面量，emoji 时代那套老毛病（跨平台字型不一致、选中态图标不跟着变色）就会原样回来，
+ * 而肉眼看图往往看不出来——只有机械判据拦得住。
+ */
+describe('图标族：单一图标源 src/client/icons.ts（FR-1 / FR-8）', () => {
+  /** 十键 = 七个 Tab（键即既有 ReportTabKey）+ 三个缺口严重度；带名字便于失败时定位到具体键。 */
+  const allIcons: Array<[string, string]> = [
+    ...Object.entries(TAB_ICON_SVG).map(([k, v]): [string, string] => ['TAB_ICON_SVG.' + k, v]),
+    ...Object.entries(GAP_DOT_SVG).map(([k, v]): [string, string] => ['GAP_DOT_SVG.' + k, v]),
+  ]
+
+  it('十键齐全：七个 Tab 键与注册表同集同序，三个严重度键取自 ReportGap', () => {
+    // 与既有 ReportTabKey / REPORT_TABS 同集同序（不另抄一份键表——抄一份就有一份会漂）
+    expect(Object.keys(TAB_ICON_SVG)).toEqual([...REPORT_TAB_KEYS])
+    expect(Object.keys(GAP_DOT_SVG).sort()).toEqual(['gray', 'red', 'yellow'])
+    expect(allIcons).toHaveLength(10)
+  })
+
+  it('每个值恰 1 个 <svg>，且全族常量逐字一致（16 网格 / 线宽 1.5 / 描边取文字色 / 面 none / 圆角端点）', () => {
+    for (const [name, svg] of allIcons) {
+      expect(countOf(svg, '<svg'), name).toBe(1)
+      expect(countOf(svg, '</svg>'), name).toBe(1)
+      expect(countOf(svg, 'viewBox='), name).toBe(1)
+      expect(svg.startsWith('<svg '), name).toBe(true)
+      expect(svg.endsWith('</svg>'), name).toBe(true)
+      expect(svg, name).toContain(`viewBox="${ICON_VIEW_BOX}"`)
+      expect(svg, name).toContain(`stroke-width="${ICON_STROKE_WIDTH}"`)
+      expect(svg, name).toContain('fill="none"')
+      expect(svg, name).toContain('stroke="currentColor"')
+      expect(svg, name).toContain('stroke-linecap="round"')
+      expect(svg, name).toContain('stroke-linejoin="round"')
+    }
+  })
+
+  it('不带尺寸与颜色字面量：尺寸只许来自 --pm-icon / --pm-icon-sm 两档令牌', () => {
+    // 按**属性边界**匹配：`stroke-width=` 是线宽（FR-1 #1 点名的全族常量），不是"尺寸属性"
+    const SIZE_ATTR = /(?:^|[\s"'<])(?:width|height|style|class)=/
+    for (const [name, svg] of allIcons) {
+      expect(SIZE_ATTR.test(svg), name).toBe(false)
+      expect(svg, name).not.toMatch(/#[0-9a-fA-F]{3,8}/) // 十六进制色值
+      expect(svg, name).not.toMatch(/\b(?:rgb|rgba|hsl|hsla)\(/) // 函数式色值
+      expect(svg, name).not.toMatch(/\d+(?:\.\d+)?px/) // 任何 px 裸值
+      expect(svg, name).not.toMatch(/fill="(?!none")/) // 面一律 none，不出现第二种填充
+      expect(svg, name).not.toContain('data-proto') // 原型自用的比对标注不得进真实产物
+    }
+  })
+
+  it('装饰性：值里带 aria-hidden，且不产可访问名（名字由旁边可见文字承担）', () => {
+    for (const [name, svg] of allIcons) {
+      expect(svg, name).toContain('aria-hidden="true"')
+      expect(svg, name).not.toContain('role=')
+      expect(svg, name).not.toContain('aria-label')
+      expect(svg, name).not.toContain('<title')
+    }
+  })
+
+  it('七个 Tab 图标互不相同（不是同一形状复制七份）', () => {
+    expect(new Set(Object.values(TAB_ICON_SVG)).size).toBe(7)
   })
 })

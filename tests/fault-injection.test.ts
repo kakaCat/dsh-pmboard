@@ -69,6 +69,10 @@ async function approvePlan(): Promise<void> {
 describe('A 弹框确认后节点不推进 → ask_confirm 原子完成', () => {
   it('肯定答复 → 落章 + 推进一次调用完成', async () => {
     await seed('brainstorming')
+    // REQ-261005105032-3b02：feature 需求出需求阶段必须有需求文档（裁定门读「讨论与裁定记录（D-x）」节）。
+    // 本夹具原先只登记了产物；补一份含真空态的最小文档，断言一行不改。
+    stubDocFile('docs/requirements/' + REQ + '/requirement.md', root,
+      '# 需求\n\n## 讨论与裁定记录（D-x）\n\n本节无裁定\n')
     await store.mutate(REQ, (r) => {
       r.artifacts = [{
         stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/' + REQ + '/requirement.md',
@@ -78,6 +82,9 @@ describe('A 弹框确认后节点不推进 → ask_confirm 原子完成', () => 
     })
     const deps = {
       store, now: () => Date.now(),
+      // REQ-261005105032-3b02：文档根必须指向本用例的 root（缺省会落到 tool-deps 的兜底临时根，
+      // 于是上面 stub 的 requirement.md 读不到、裁定门会报"需求文档不存在"）。夹具补一行，断言不改。
+      workspaceRoot: root,
       userQuestions: () => ({ ask: async () => ({ answers: [{ id: 'confirm', selected: ['确认，推进到下一阶段 (Recommended)'] }] }) }),
     } as never
     const tool = defineAskConfirmTool(deps) as never as { execute: (a: unknown, e: unknown) => Promise<any> }

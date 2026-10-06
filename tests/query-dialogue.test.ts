@@ -4,7 +4,7 @@
  * 覆盖任务卡的四条验收（逐条对应 describe 标题）：
  *   ① 产出不含 `tool/call` / `tool/result` / `reasoning` / `run_code` 字样（反例标本喂进去，产物一字不许有）；
  *   ② 时间序单调递增（跨窗口 + 台账系统消息混排后仍递增）；
- *   ③ `limit=20` 返回 ≤ 20 条且 `hasMore` 与 `total` 一致，游标 `page.before` 能取更早（且不重不漏）；
+ *   ③ `limit=20` 返回 ≤ 20 条且 `hasMore` 与 `total` 一致，游标 `page.before`（**ms 时间戳**）能取更早（且不重不漏）；
  *   ④ 会话不可得（端口未装配 / 会话读不到）→ `available:false`（**不返回空数组冒充「没有对话」**）。
  * 另加：系统消息取台账原文（交接 / 中断 / 计划退回 / 挂起确认 / 验收裁决 / 回填标）与
  * 插件自署来源的 user/message **不得**被当成人类发言。
@@ -217,26 +217,27 @@ describe('② 时间序单调递增（跨窗口 + 系统消息混排）', () => 
   })
 })
 
-describe('③ 游标分页：limit / hasMore / total / page.before', () => {
+describe('③ 游标分页：limit / hasMore / total / page.before（ms 时间戳游标）', () => {
   it('45 条 · limit=20 → 三页不重不漏，hasMore 与 total 一致', async () => {
     const texts = Array.from({ length: 45 }, (_, i) => 'msg-' + String(i).padStart(2, '0'))
     const events = texts.map((text, i) => humanEvent(1000 + i, i, text))
     const { deps } = setup({}, new FakeDialogueSession(new Map([[WINDOW_A, events]])))
 
+    // 缺省 = 最新一页；page.before = 本页最早一条的 at（ms 时间戳游标）
     const page1 = asOk(await buildDialogue(deps, { requirementId: REQ_ID, limit: 20 }))
     expect(page1.items.length).toBe(20)
     expect(page1.page.total).toBe(45)
     expect(page1.page.hasMore).toBe(true)
-    expect(page1.page.before).toBe(20) // 取更早的游标
+    expect(page1.page.before).toBe(1025) // 本页最早一条的 at
     expect(page1.items.map(i => i.text)).toEqual(texts.slice(25))
 
     const page2 = asOk(await buildDialogue(deps, { requirementId: REQ_ID, limit: 20, before: page1.page.before }))
     expect(page2.items.length).toBe(20)
     expect(page2.page.total).toBe(45)
     expect(page2.page.hasMore).toBe(true)
-    expect(page2.page.before).toBe(40)
+    expect(page2.page.before).toBe(1005)
     expect(page2.items.map(i => i.text)).toEqual(texts.slice(5, 25))
-    // hasMore 与 total 一致：还有更早的条数 = total − 本页条数 − 之前已消费条数
+    // hasMore 与 total 一致：取 at < before 的池子，池子比 limit 长就是还有更早
     expect(page2.page.hasMore).toBe(page2.page.total - page2.items.length - 20 > 0)
 
     const page3 = asOk(await buildDialogue(deps, { requirementId: REQ_ID, limit: 20, before: page2.page.before }))
@@ -251,17 +252,17 @@ describe('③ 游标分页：limit / hasMore / total / page.before', () => {
     expect([...all].sort()).toEqual([...texts].sort()) // 不漏
   })
 
-  it('缺省 limit=20；limit 超上限夹到 50（路由层另有 400 校验，这里不放大响应）', async () => {
+  it('缺省 limit=40（与原型「已加载 40/152 条」口径一致）；limit 超上限夹到 50（路由层另有 400 校验）', async () => {
     const events = Array.from({ length: 60 }, (_, i) => humanEvent(1000 + i, i, 'm' + i))
     const { deps } = setup({}, new FakeDialogueSession(new Map([[WINDOW_A, events]])))
     const dflt = asOk(await buildDialogue(deps, { requirementId: REQ_ID }))
-    expect(dflt.items.length).toBe(20)
+    expect(dflt.items.length).toBe(40)
     expect(dflt.page.total).toBe(60)
     const capped = asOk(await buildDialogue(deps, { requirementId: REQ_ID, limit: 999 }))
     expect(capped.items.length).toBe(50)
     expect(capped.page.total).toBe(60)
     expect(capped.page.hasMore).toBe(true)
-    expect(capped.page.before).toBe(50)
+    expect(capped.page.before).toBe(1010) // 本页最早一条的 at = 1000 + (60 − 50)
   })
 })
 

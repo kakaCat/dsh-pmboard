@@ -16,6 +16,12 @@ import {
   summarize,
   type SummarizableRequirement,
 } from '../../src/domain/requirement/RequirementSummary.js'
+import {
+  boardSummaryOf,
+  boardSummaryOfAuthoritative,
+  confirmGateKindsOf,
+  type BoardSummaryInput,
+} from '../../src/shared/board-summary.js'
 
 /** 最小记录：只给必填字段，其余一概不给（用来断言"可选字段不下发该键"）。 */
 const MINIMAL: SummarizableRequirement = {
@@ -46,10 +52,17 @@ describe('summarize：键集边界', () => {
       paused: true,
       autoRun: true,
       sourceSessionId: 'session-abc',
+      // REQ-261005141830-7a3b t2：摘要新增 projectId，本用例的"全字段"夹具随之补齐
+      // （断言是"键集恰好等于 SUMMARY_KEYS"，漏一个字段就会漏一个键）。
+      projectId: 'w-1',
       workspaceRoot: '/ws',
       docBasePath: 'docs/requirements/<REQ>/',
       comments: [{ id: 'c-1' }],
       artifacts: [{ kind: 'design' }, { kind: 'plan' }],
+      // REQ-261006175040-12d4 t2：摘要新增三枚读数（有界），"全字段"夹具随之补齐
+      gates: [{ kind: 'design', status: 'pending', count: 2 }],
+      planState: 'approved',
+      archivePrepared: false,
       priority: 7,
       advance: { pausedReason: 'fail', failureStreak: 2, lockAt: 1_700_000_000_000 },
     })
@@ -155,5 +168,126 @@ describe('summarize：透传与缺省', () => {
   it('摘要可 JSON 序列化且往返不丢键（客户端载荷的真实路径）', () => {
     const s = summarize({ ...MINIMAL, category: 'feature', advance: { failureStreak: 1 } })
     expect(JSON.parse(JSON.stringify(s))).toEqual(s)
+  })
+})
+
+/**
+ * 装配单点（REQ-261006175040-12d4 · t2 / FR-2、FR-3、FR-5、FR-6 · D-2）。
+ *
+ * 钉住的性质：门读数由**服务端**算好（客户端不再自己推断）；`artifacts === undefined`（读不到）
+ * 与 `artifacts === []`（真没有）**必须产生不同的摘要**——前者不下发键，后者全 `missing`。
+ * 这两条一旦被写得一样，卡面就会回到「读不到 ⇒ 显示成缺失」的老路（本次缺陷的成因）。
+ */
+describe('boardSummaryOf：门读数与两枚有界状态', () => {
+  const featureReq = (over: Partial<BoardSummaryInput> = {}): BoardSummaryInput => ({
+    ...MINIMAL,
+    category: 'feature',
+    ...over,
+  })
+
+  it('生效门清单 = 分类生效门顺序（feature 四门；bug 三门；spike 一门）', () => {
+    expect(confirmGateKindsOf('feature')).toEqual(['requirement', 'design', 'decomposition', 'verification'])
+    expect(confirmGateKindsOf('bug')).toEqual(['design', 'decomposition', 'verification'])
+    expect(confirmGateKindsOf('spike')).toEqual(['verification'])
+  })
+
+  it('四门三态 + count：需求/设计已落章、计划待确认、验收未登记', () => {
+    const s = boardSummaryOf(featureReq({
+      artifacts: [
+        { kind: 'requirement', confirmedAt: 1 },
+        { kind: 'design', confirmedAt: 2 },
+        { kind: 'design', confirmedAt: 3 },
+        { kind: 'decomposition' },
+      ],
+    }))
+    expect(s.gates).toEqual([
+      { kind: 'requirement', status: 'confirmed', count: 1 },
+      { kind: 'design', status: 'confirmed', count: 2 },
+      { kind: 'decomposition', status: 'pending', count: 1 },
+      { kind: 'verification', status: 'missing', count: 0 },
+    ])
+  })
+
+  it('design 成组确认：多份里一份未落章 ⇒ 整门 pending 且 count 为份数', () => {
+    const s = boardSummaryOf(featureReq({
+      artifacts: [
+        { kind: 'design', confirmedAt: 1 },
+        { kind: 'design', confirmedAt: 2 },
+        { kind: 'design' },
+      ],
+    }))
+    const design = (s.gates ?? []).find(g => g.kind === 'design')
+    expect(design).toEqual({ kind: 'design', status: 'pending', count: 3 })
+  })
+
+  it('结构不全的产物条目丢弃，不补默认值（不把"没落章"伪造成"已落章"）', () => {
+    const s = boardSummaryOf(featureReq({
+      artifacts: [{ kind: 'requirement', confirmedAt: 9 }, null, 'x', { kind: '' }, {}],
+    }))
+    expect((s.gates ?? []).find(g => g.kind === 'requirement')).toEqual({ kind: 'requirement', status: 'confirmed', count: 1 })
+  })
+
+  it('artifacts === undefined（读不到）⇒ 不下发 gates / archivePrepared（不是 missing）', () => {
+    const s = boardSummaryOf(featureReq()) as unknown as Record<string, unknown>
+    expect('gates' in s).toBe(false)
+    expect('archivePrepared' in s).toBe(false)
+  })
+
+  it('artifacts === []（真没有）⇒ 四门 missing + archivePrepared=false（真实缺失）', () => {
+    const s = boardSummaryOf(featureReq({ artifacts: [] }))
+    expect((s.gates ?? []).map(g => g.status)).toEqual(['missing', 'missing', 'missing', 'missing'])
+    expect(s.archivePrepared).toBe(false)
+  })
+
+  it('planState：已批 / 被退 / 待批 / 无计划（键不出现）', () => {
+    expect(boardSummaryOf(featureReq({ plan: { approvedAt: 1 } })).planState).toBe('approved')
+    expect(boardSummaryOf(featureReq({ plan: { rejectedAt: 2 } })).planState).toBe('rejected')
+    expect(boardSummaryOf(featureReq({ plan: {} })).planState).toBe('pending')
+    expect('planState' in (boardSummaryOf(featureReq()) as unknown as Record<string, unknown>)).toBe(false)
+  })
+
+  it('archivePrepared：归档记录在册 ∨ 归档产物在册（与 closingGapOf 同源）', () => {
+    expect(boardSummaryOf(featureReq({ artifacts: [], archive: { docs: [] } })).archivePrepared).toBe(true)
+    expect(boardSummaryOf(featureReq({ artifacts: [{ kind: 'archive', confirmedAt: 1 }] })).archivePrepared).toBe(true)
+    expect(boardSummaryOf(featureReq({ artifacts: [{ kind: 'archive' }], archive: null })).archivePrepared).toBe(true)
+    expect(boardSummaryOf(featureReq({ artifacts: [] })).archivePrepared).toBe(false)
+  })
+
+  it('装配出口的键集恰好等于 SUMMARY_KEYS 且不含大字段', () => {
+    const s = boardSummaryOf(featureReq({
+      // 全字段夹具：可选字段一个不漏（键集断言只认"一个不多一个不少"）
+      promptDifficulty: 'expert',
+      paused: false,
+      autoRun: true,
+      sourceSessionId: 'session-abc',
+      projectId: 'w-1',
+      workspaceRoot: '/ws',
+      docBasePath: 'docs/requirements/<REQ>/',
+      priority: 3,
+      advance: { pausedReason: 'fail', failureStreak: 2, lockAt: 1_700_000_000_000 },
+      comments: [{}],
+      artifacts: [{ kind: 'design', confirmedAt: 1 }],
+      plan: { approvedAt: 1 },
+      archive: {},
+    })) as unknown as Record<string, unknown>
+    for (const key of BIG_FIELD_KEYS) expect(key in s).toBe(false)
+    expect(Object.keys(s).sort()).toEqual([...SUMMARY_KEYS].sort())
+  })
+
+  it('装配结果可 JSON 往返（客户端载荷的真实路径）', () => {
+    const s = boardSummaryOf(featureReq({ artifacts: [{ kind: 'requirement' }], plan: {} }))
+    expect(JSON.parse(JSON.stringify(s))).toEqual(s)
+  })
+
+  it('写侧装配（记录即权威）：没有 artifacts 键 ⇒ 按「一件都没登记」给读数，而不是不可得', () => {
+    const written = boardSummaryOfAuthoritative(featureReq()) // 无 artifacts 键 = 写侧确认零产物
+    expect((written.gates ?? []).map(g => g.status)).toEqual(['missing', 'missing', 'missing', 'missing'])
+    expect(written.archivePrepared).toBe(false)
+  })
+
+  it('读侧装配：归档对象读不到（archiveReadable=false）⇒ 不下发 archivePrepared，但门读数照给', () => {
+    const s = boardSummaryOf(featureReq({ artifacts: [], archiveReadable: false })) as unknown as Record<string, unknown>
+    expect('archivePrepared' in s).toBe(false)
+    expect((s.gates as unknown[]).length).toBe(4)
   })
 })

@@ -11,7 +11,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createReqboardHandler } from '../../src/http/routes.js'
-import { makeHarness, req } from '../application/harness.js'
+import { makeHarness, req, task } from '../application/harness.js'
 
 const REQ_ID = 'REQ-0000e1'
 const WINDOW = 'session-w-001'
@@ -51,7 +51,7 @@ const tempDirs: string[] = []
 afterEach(() => { for (const d of tempDirs.splice(0)) rmSync(d, { recursive: true, force: true }) })
 
 /** 造一个「计划已提交待批准」的需求 + 真路由（applicationDeps 决定看板通道能不能落库）。 */
-async function seed(withAppDeps = true) {
+async function seed(withAppDeps = true, rollback?: Record<string, unknown>) {
   const h = makeHarness()
   const root = mkdtempSync(join(tmpdir(), 'pmboard-board-'))
   tempDirs.push(root)
@@ -62,6 +62,7 @@ async function seed(withAppDeps = true) {
     status: 'decomposing',
     category: 'feature',
     sourceSessionId: WINDOW,
+    ...(rollback === undefined ? {} : { rollback: rollback as never }),
     artifacts: [{
       stage: 'decomposing', kind: 'decomposition',
       path: 'docs/requirements/' + REQ_ID + '/decomposition.md',
@@ -151,5 +152,79 @@ describe('看板「批准计划」· 装配缺失与门禁拒绝都如实回话�
     expect(String(landing['reason'])).toContain('FR-2')
     expect(await h.tasksOf(REQ_ID)).toHaveLength(0)
     expect(data['status']).toBe('decomposing')
+  })
+})
+
+/**
+ * REQ-261005122915-9f90 t4 / FR-3：看板批准路径的推进判据。
+ *
+ * 现场形态（REQ-261005105032-3b02）：队列里只剩回退物化的**占位重做卡**。
+ * 修前 `landing.performed` 用「alreadyLanded === 0」算，而占位卡会把 alreadyLanded 撑大；
+ * 更糟的是无论落没落库都照样推进到 implementing —— 需求因此带着「0 张新卡」进实施。
+ */
+describe('看板「批准计划」· 落库没真发生就不推进（REQ-261005122915-9f90 t4 / FR-3）', () => {
+  /** 把队列换成「只剩上一轮回退的占位卡」。 */
+  async function seedPlaceholders(h: Awaited<ReturnType<typeof seed>>['h'], n: number) {
+    const list = Array.from({ length: n }, (_, i) => task({
+      id: 't-ph' + (i + 1), requirementId: REQ_ID, title: '[重做] 占位' + (i + 1),
+      status: 'todo', reworkOf: 't-old' + (i + 1),
+    }))
+    await h.setTasks(REQ_ID, list)
+    return list
+  }
+
+  it('只剩占位卡：先收占位卡再真的落库，然后才推进', async () => {
+    // 回退态（`rollback.to === 当前阶段`）是「回退后重新批准」的判据，缺它就不是本场景。
+    const { h, post } = await seed(true, {
+      from: 'implementing', to: 'decomposing', at: 1, by: { kind: 'human' },
+      reason: '回退重修', seq: 1, lastMaterialized: ['t-ph1', 't-ph2', 't-ph3'],
+    })
+    await seedPlaceholders(h, 3)
+
+    const res = await post('/req/plan/approve', { id: REQ_ID })
+    const data = res.payload?.data as Record<string, unknown>
+    const landing = data['landing'] as Record<string, unknown>
+
+    expect(landing['performed']).toBe(true)
+    expect(landing['landed'], '修复前这里是 0（占位卡冒充已落库）').toBe(2)
+    expect(landing['stale_rework_canceled']).toBe(3)
+    expect(data['status']).toBe('implementing')
+    const tasks = await h.tasksOf(REQ_ID)
+    expect(tasks).toHaveLength(5)
+    for (const p of tasks.filter(t => (t.reworkOf ?? '') !== '')) expect(p.status).toBe('canceled')
+  })
+
+  it('只剩占位卡 + 覆盖缺口：落库真没发生 → 不推进、不落卡、占位卡不被误收', async () => {
+    const { h, post } = await seed()
+    await seedPlaceholders(h, 3)
+    h.docs.put('docs/requirements/' + REQ_ID + '/requirement.md', ['- **FR-1: 甲条**：A', '- **FR-2: 乙条**：B', ''].join('\n'))
+
+    const res = await post('/req/plan/approve', { id: REQ_ID })
+    const data = res.payload?.data as Record<string, unknown>
+    const landing = data['landing'] as Record<string, unknown>
+
+    expect(landing['performed']).toBe(false)
+    expect(landing['failed']).toBe(true)
+    expect(data['status'], '落库没发生就绝不能推进').toBe('decomposing')
+    const tasks = await h.tasksOf(REQ_ID)
+    expect(tasks, '队列未被改动（占位卡仍是 todo）').toHaveLength(3)
+    expect(tasks.every(t => t.status === 'todo')).toBe(true)
+  })
+
+  it('空计划（本次新落 0 张）→ 拒绝推进，并把原因如实回给看板', async () => {
+    const { h, post } = await seed()
+    const before = h.store.peek(REQ_ID)!.plan!
+    await h.setRequirementFields(REQ_ID, { plan: { ...before, tasks: [] } })
+
+    const res = await post('/req/plan/approve', { id: REQ_ID })
+    const data = res.payload?.data as Record<string, unknown>
+    const landing = data['landing'] as Record<string, unknown>
+
+    expect(landing['landed']).toBe(0)
+    expect(landing['already_landed']).toBe(0)
+    expect(landing['performed'], '一张都没落 → performed 必须是 false').toBe(false)
+    expect(String(landing['reason'])).toContain('未落任何任务卡')
+    expect(data['status'], '「本次新落 0 张」不得被说成成功并推进').toBe('decomposing')
+    expect(await h.tasksOf(REQ_ID)).toHaveLength(0)
   })
 })

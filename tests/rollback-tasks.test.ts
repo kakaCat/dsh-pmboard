@@ -106,3 +106,31 @@ describe('planRollbackTasks · 重做卡物化（FR-4 ②）', () => {
     expect(plan).toEqual({ canceled: [], reworkDrafts: [], resetTasks: [] })
   })
 })
+
+describe('planRollbackTasks · 占位重做卡不得被复位（REQ-261005122915-9f90 t5 / FR-4）', () => {
+  /** 上一轮回退留下的占位卡：`reworkOf` 非空、无 parentId（顶层）。 */
+  const placeholder = (id: string) => task(id, 'todo', { title: '[重做] 卡 ' + id, reworkOf: 't-old' + id })
+
+  it('第二轮回退：占位卡保持 canceled，不得回到 todo', () => {
+    const tasks = [placeholder('t-p1'), placeholder('t-p2')]
+    const plan = planRollbackTasks(req, tasks, 'decomposing', 200, HUMAN, ids(), '再来一次')
+
+    // 未修复前：它们落进 resetTasks 被改回 todo ⇒ 每一轮回退都清不掉，持续污染落库幂等判据
+    expect(plan.resetTasks.map(t => t.id), '占位卡没有子卡身份，不该走「子卡复位」').toEqual([])
+    expect(plan.canceled.map(t => t.id).sort()).toEqual(['t-p1', 't-p2'])
+    for (const c of plan.canceled) expect(c.status, c.id).toBe('canceled')
+  })
+
+  it('占位卡不产生「重做卡的重做卡」', () => {
+    const plan = planRollbackTasks(req, [placeholder('t-p1')], 'decomposing', 200, HUMAN, ids(), 'r')
+    expect(plan.reworkDrafts).toEqual([])
+  })
+
+  it('真子卡（有 parentId）仍按既有规则复位为 todo —— 本改动不得误伤', () => {
+    const sub = task('t-sub', 'in_progress', { parentId: 't-parent', stageKind: 'dev' })
+    const plan = planRollbackTasks(req, [sub], 'decomposing', 200, HUMAN, ids(), 'r')
+    expect(plan.resetTasks.map(t => t.id)).toEqual(['t-sub'])
+    expect(plan.resetTasks[0]!.status).toBe('todo')
+    expect(plan.resetTasks[0]!.parentId).toBe('t-parent')
+  })
+})

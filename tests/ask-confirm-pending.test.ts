@@ -273,3 +273,38 @@ describe('T-6 防重弹（回归）', () => {
     expect(String(out.note)).toContain('已确认')
   })
 })
+
+describe('不造答不了的票（REQ-261005200052-ce40 FR-5）', () => {
+  /** 与 seed() 同形状，但**不带任何产物**：模拟「产物还没登记就想请人确认」。 */
+  async function seedNoArtifact(): Promise<void> {
+    const r = {
+      id: 'REQ-abc123', title: '无产物', description: '', status: 'brainstorming', blocked: false,
+      sourceSessionId: W, comments: [], version: 2, createdAt: 1, updatedAt: 2,
+      createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
+      statusHistory: [
+        { status: 'draft', at: 1, by: { kind: 'human' } },
+        { status: 'brainstorming', at: 2, by: { kind: 'human' } },
+      ],
+      artifacts: [],
+    } as RequirementRecord
+    await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
+  }
+
+  it('台账无该 kind 产物 → 在登记挂起票之前就拒，票表保持为空（不把窗口钉死）', async () => {
+    await seedNoArtifact()
+    const deps = makeDeps(async () => ({ answers: [{ id: 'confirm', selected: [AFFIRM] }] }), { pending: true })
+    const tool = defineAskConfirmTool(deps) as any
+    await expect(tool.execute(ARGS, exec)).rejects.toThrow(/REQBOARD_MISSING_ARTIFACT/)
+    expect(deps.pendingConfirms?.pendingForWindow(W)).toBeUndefined()
+    expect(first().artifacts ?? []).toHaveLength(0)
+    expect(first().status).toBe('brainstorming')
+  })
+
+  it('无计划时 target=plan → 同样在登记票之前拒（REQBOARD_MISSING_PLAN）', async () => {
+    await seedNoArtifact()
+    const deps = makeDeps(async () => ({ answers: [{ id: 'confirm', selected: [AFFIRM] }] }), { pending: true })
+    const tool = defineAskConfirmTool(deps) as any
+    await expect(tool.execute({ ...ARGS, target: 'plan' }, exec)).rejects.toThrow(/REQBOARD_MISSING_PLAN/)
+    expect(deps.pendingConfirms?.pendingForWindow(W)).toBeUndefined()
+  })
+})

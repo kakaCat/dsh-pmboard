@@ -18,6 +18,7 @@ import { KnowledgeRepository } from '../src/adapters/KnowledgeRepository.js'
 import { defineSubmitTool } from '../src/tools/index.js'
 import { toUseCaseDeps } from './helpers/tool-deps.js'
 import { KB_PATHS, entryPath } from '../src/domain/knowledge/types.js'
+import { parseEntryDoc } from '../src/domain/knowledge/entry.js'
 import { buildDepositDraft, depositArchiveKnowledge } from '../src/application/use-cases/DepositKnowledge.js'
 import type { RequirementRecord } from '../src/shared/protocol.js'
 
@@ -165,5 +166,38 @@ describe('内容组装与直调（纯函数 + 用例）', () => {
     })
     expect(r.deposited).toBe(false)
     expect(r.reason ?? '').toMatch(/知识索引不存在/)
+  })
+
+  // REQ-261006123819-3af3 FR-4 根因①：沉淀路径必须**先清洗非法字符再截断**
+  // （与 operations.ts 的 entryToIndexRow 同源）。原来直接 slice，`·`/`→` 原样进 one_liner，
+  // 索引行语法校验当场失败 → 条目落盘、索引没写 → K5 孤儿（kb-0043/kb-0048 的成因）。
+  it('根因①：indexEntry 含 · / → 或超 140 字符 → oneLiner 先清洗再截断', () => {
+    const d = buildDepositDraft({
+      requirementId: 'REQ-x', requirementTitle: '标题',
+      indexEntry: '把 → 换成 · 的结论'.repeat(20), // 含两种非法字符，且远超 140
+      mergedInto: [], dir: 'docs/requirements/REQ-x', docKinds: [], archivedOn: '2026-10-01', hasRetro: false,
+    })
+    expect(d.oneLiner.length).toBeLessThanOrEqual(140)
+    expect(d.oneLiner).not.toMatch(/[·→\n]/)
+    expect(d.oneLiner.trim().length).toBeGreaterThan(0)
+  })
+
+  it('根因①端到端：非法字符的 index_entry → 条目与索引行同刻写上（不是孤儿）', async () => {
+    mkdirSync(join(dir, 'docs/knowledge'), { recursive: true })
+    writeFileSync(join(dir, KB_PATHS.index), indexSkeleton(), 'utf8')
+    const tool = defineSubmitTool(deps(true))
+    const out = await tool.execute(
+      { kind: 'archive', ...archiveArgs({ index_entry: '含 · 与 → 的一句话'.repeat(12) }) },
+      { agent: { id: W } } as never,
+    ) as never as Record<string, unknown>
+    expect(String(out['error'] ?? '')).toBe('')
+    const entry = readFileSync(join(dir, entryPath('kb-0001')), 'utf8')
+    // 用解析器取回真实值（YAML 对首尾空白会加引号，别拿原始行数长度当判据）
+    const oneLiner = parseEntryDoc(entry).meta.oneLiner
+    expect(oneLiner.length).toBeLessThanOrEqual(140)
+    expect(oneLiner).not.toMatch(/[·→]/)
+    // 关键：索引里必须有这一行——条目落盘而索引没有，就是本次要根除的孤儿
+    expect(readFileSync(join(dir, KB_PATHS.index), 'utf8'))
+      .toContain('- kb-0001 · decision · ' + oneLiner + ' · → entries/kb-0001.md')
   })
 })

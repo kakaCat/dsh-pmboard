@@ -449,23 +449,21 @@ describe('写盘前守卫：错配即拒，绝不静默写别处（t3）', () =>
     expect(ensureWritableProjectRoot({ docs: {} }, { workspaceRoot: '/w/my' })).toBeUndefined()
   })
 
-  it('零写入：错配时拒绝落盘，另一个项目零新增（守卫只核验、**不代为重定向**）', async () => {
+  it('声明根是权威：当前根 A、记录声明 B → 校正到 B 并返回 B，A 目录零新增（新契约）', async () => {
     const dirA = mkdtempSync(join(tmpdir(), 'pmboard-guard-A-'))
     const dirB = mkdtempSync(join(tmpdir(), 'pmboard-guard-B-'))
     try {
-      // 当前根 = A（别的项目），记录声明属于 B → 必须拒，而不是"顺手搬到 B"
+      // 变更记（REQ-261005123641-3982）：旧契约在「当前根 = A、记录声明 = B」时**拒绝**。
+      // 新契约下**记录是权威**——当前根 A 只是别的窗口留下的缓存值（多窗口并行下必现），校正到 B 才对；
+      // 本用例保持等强度断言：产物**只能**落在声明根下，调用方当前根目录零新增。
       const docs = new FileDocRepository({ workspaceRoot: dirA })
-      let err: { code?: string } | undefined
-      try {
-        ensureWritableProjectRoot({ docs }, { workspaceRoot: dirB })
-      } catch (e) {
-        err = e as { code?: string }
-      }
-      expect(err?.code).toBe('REQBOARD_PROJECT_ROOT_MISMATCH')
-      // 拒绝之后：根没被搬动，且两边都没有文件被写出去
-      expect(docs.workspaceRoot()).toBe(resolve(dirA))
-      expect(existsSync(join(dirA, 'docs/requirements/REQ-x/rtm-lifecycle.yml')), '不得写进当前根').toBe(false)
-      expect(existsSync(join(dirB, 'docs/requirements/REQ-x/rtm-lifecycle.yml')), '也不得擅自搬去声明根').toBe(false)
+      const got = ensureWritableProjectRoot({ docs }, { workspaceRoot: dirB })
+      expect(got).toBe(resolve(dirB))
+      expect(docs.workspaceRoot()).toBe(resolve(dirB))
+      await docs.write('docs/requirements/REQ-x/rtm-lifecycle.yml', 'x')
+      expect(existsSync(join(dirB, 'docs/requirements/REQ-x/rtm-lifecycle.yml')), '必须写进记录声明的根').toBe(true)
+      expect(existsSync(join(dirA, 'docs/requirements/REQ-x/rtm-lifecycle.yml')), '不得留在当前根').toBe(false)
+      expect(readdirSync(dirA), '调用方当前根目录零新增').toEqual([])
     } finally {
       rmSync(dirA, { recursive: true, force: true })
       rmSync(dirB, { recursive: true, force: true })

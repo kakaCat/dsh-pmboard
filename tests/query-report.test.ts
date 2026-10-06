@@ -817,18 +817,45 @@ describe('queryDocs：文档 + 生成物 + 核验表 + 六道门', () => {
     expect(reworkGate).toMatchObject({ verdict: 'rejected', at: 20, reason: '窄屏溢出' })
   })
 
-  it('archive：有归档时透传（目录/清单/合并去向/索引）', async () => {
+  it('archive：有归档时透传（目录/清单/合并去向/索引），门禁按真实 archived 事件判 passed', async () => {
     const archive = {
       dir: 'docs/requirements/' + REQ_ID,
       docs: [{ kind: 'requirement' as const, path: 'docs/requirements/' + REQ_ID + '/requirement.md' }],
       mergedInto: ['docs/architecture/project-manual.md'],
       indexEntry: '详情页聚合落地',
-      submittedAt: 30, submittedBy: HUMAN, archivedAt: 40, archivedBy: HUMAN,
+      // REQ-261006123819-3af3 FR-3（D-2）：原归档时间 / 归档人字段已删——归档时刻不再来自字段，
+      // 而来自下面 statusHistory 里真实的 archived 事件（走真实状态路径，不用夹具造字段）。
+      submittedAt: 30, submittedBy: HUMAN,
     }
-    const h = makeHarness({ requirements: [makeReq({ status: 'archived', archive })] })
+    const h = makeHarness({ requirements: [makeReq({ status: 'archived', statusHistory: [event('archived', 40)], archive })] })
     const res = ok(await queryDocs(makeDeps(h), { requirementId: REQ_ID }))
     expect(res.archive).toEqual(archive)
+    // at 必须**等于 statusHistory 里 archived 事件的时刻**（唯一事实源），而不是某个字段值
     expect(res.gates.find(g => g.gate === 'archive')).toMatchObject({ verdict: 'passed', at: 40 })
+  })
+
+  // REQ-261006123819-3af3 FR-3（D-2）反证 RV-4 的服务端侧：判据若改回「字段/材料有无」就退回 pending
+  it('archive：材料已备但状态未到 archived → 仍是 pending（不许提前报已归档）', async () => {
+    const archive = {
+      dir: 'docs/requirements/' + REQ_ID,
+      docs: [{ kind: 'requirement' as const, path: 'docs/requirements/' + REQ_ID + '/requirement.md' }],
+      mergedInto: ['docs/architecture/project-manual.md'],
+      indexEntry: '详情页聚合落地',
+      submittedAt: 30, submittedBy: HUMAN,
+    }
+    const h = makeHarness({ requirements: [makeReq({ status: 'accepting', archive })] })
+    const res = ok(await queryDocs(makeDeps(h), { requirementId: REQ_ID }))
+    expect(res.gates.find(g => g.gate === 'archive')).toMatchObject({
+      verdict: 'pending', at: 30, reason: '归档材料已提交，待归档确认',
+    })
+  })
+
+  it('archive：status=archived 但事件表拿不到时刻 → passed 且**整体省略 at 键**（不发 undefined）', async () => {
+    const h = makeHarness({ requirements: [makeReq({ status: 'archived', statusHistory: [event('draft', 1000)] })] })
+    const res = ok(await queryDocs(makeDeps(h), { requirementId: REQ_ID }))
+    const gate = res.gates.find(g => g.gate === 'archive')!
+    expect(gate.verdict).toBe('passed')
+    expect('at' in gate, 'at 必须整体省略，不能是 undefined').toBe(false)
   })
 
   it('文档端口未装配 → 整块降级 port-unavailable（不把未知标成 file-missing）', async () => {

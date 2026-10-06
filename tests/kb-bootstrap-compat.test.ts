@@ -120,6 +120,45 @@ describe('两种读根：各作用于自己的根，不跨根写', () => {
   })
 })
 
+describe('去重键按项目身份（REQ-261005141830-7a3b t5 · FR-6）：同一项目多窗口只自举一次', () => {
+  it('同一 projectId、两个窗口各自解析出的根 → 只自举一次；另一个 projectId → 各一次', async () => {
+    const host = emptyProject()
+    const rootA = emptyProject()
+    const rootA2 = emptyProject() // 同项目的另一个窗口解析出的根（写法不同，身份相同）
+    const rootB = emptyProject()
+    const made: string[] = []
+    const bootstrap = new KnowledgeBootstrap({
+      docs: new FileDocRepository({ workspaceRoot: host }),
+      docsFor: (r) => { made.push(r); return new FileDocRepository({ workspaceRoot: r }) },
+      enabled: true,
+    })
+
+    // 窗口 1 与窗口 2 同属 w-1：第二次必须命中同一条（**按身份去重，不按路径**——按路径这里会跑两遍）
+    await bootstrap.run(rootA, { projectId: 'w-1' })
+    await bootstrap.run(rootA2, { projectId: 'w-1' })
+    expect(made.filter((r) => r === rootA).length).toBe(1)
+    expect(made.filter((r) => r === rootA2).length, '同项目的第二个窗口不该再自举一次').toBe(0)
+
+    // 另一个项目：独立一次
+    await bootstrap.run(rootB, { projectId: 'w-2' })
+    expect(made.filter((r) => r === rootB).length).toBe(1)
+  })
+
+  it('不给 projectId（存量未归属）→ 回落按归一路径去重，老行为不变', async () => {
+    const host = emptyProject()
+    const root = emptyProject()
+    const made: string[] = []
+    const bootstrap = new KnowledgeBootstrap({
+      docs: new FileDocRepository({ workspaceRoot: host }),
+      docsFor: (r) => { made.push(r); return new FileDocRepository({ workspaceRoot: r }) },
+      enabled: true,
+    })
+    await bootstrap.run(root)
+    await bootstrap.run(root + '/') // 尾斜杠：归一后同一根
+    expect(made.filter((r) => r === root).length).toBe(1)
+  })
+})
+
 describe('回退路径：关掉自举后手动命令仍可用', () => {
   it('autoBootstrap=false 的项目，直接调用用例（= pnpm kb:build 的路径）照样能生成', async () => {
     const settings = knowledgeSettings({ knowledge: { autoBootstrap: false } })

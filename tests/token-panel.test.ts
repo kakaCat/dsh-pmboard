@@ -234,6 +234,64 @@ describe('Token 面板 · 可得性三态（FR-10 判定③ / FR-12）', () => {
   })
 })
 
+describe('Token 面板 · 汇总卡与等宽右对齐（FR-6 · REQ-261006130057-7a43 t8）', () => {
+  it('四张汇总卡在场：累计 / 输入 / 输出 / 缓存命中，数值与按阶段表同源同口径', () => {
+    const html = renderTokenPanel(fullPayload())
+    expect(html).toContain('data-tok-stats="1"')
+    for (const key of ['total', 'input', 'output', 'cache-hit']) {
+      expect(html).toContain('data-tok-stat="' + key + '"')
+    }
+    // 累计 = 四段有记录阶段合计（120000+190000+540000+150000 = 1000000），与表尾同一来源
+    expect(html).toContain('data-tok-stat="total"')
+    expect(html).toContain('data-tok-stat-value="1000000"')
+    expect(html).toContain('4 个阶段有记录')
+    // 输入/输出卡：占合计的份额写进小注（输入含缓存写、合计含缓存读，份额可超 100%——
+    // 口径与表尾逐列一致；这里只断言"有值且未补 0"）
+    expect(html).toContain('data-tok-stat-value="1320000"') // 输入 200000+240000+700000+180000
+    expect(html).toContain('data-tok-stat-value="160000"')  // 输出 20000+28000+90000+22000
+    // 缓存命中 = 加权（Σ缓存读 2420000 ÷（Σ缓存读 + Σ未缓存输入 1320000）≈ 64.71%）
+    expect(html).toContain('data-tok-stat-value="64.71"')
+    expect(html).toContain('缓存命中')
+  })
+
+  it('某列不是每个有记录阶段都有 → 该卡写「—」并说清未采集（不补 0）', () => {
+    const html = renderTokenPanel({
+      availability: 'partial',
+      byStage: [
+        { stage: 'design', totalTokens: 100, buckets: buckets(80, 20, 0) }, // 缺平铺 input/output 列但有 buckets
+        { stage: 'draft', calls: 1, totalTokens: 50 }, // 连 buckets 都没有
+      ],
+    })
+    // input/output 可由 buckets 现算的行有、另一行没有 → 输入/输出卡「—」+ 不补 0 说辞
+    const inputCard = html.slice(html.indexOf('data-tok-stat="input"'), html.indexOf('data-tok-stat="output"'))
+    expect(inputCard).toContain('—')
+    expect(inputCard).toContain('不补 0')
+    expect(inputCard).not.toContain('data-tok-stat-value')
+    // 缓存命中同理（draft 行无 buckets）
+    const hitCard = html.slice(html.indexOf('data-tok-stat="cache-hit"'))
+    expect(hitCard).toContain('—')
+    expect(hitCard).not.toContain('data-tok-stat-value')
+    // 累计卡仍可算（totalTokens 都有）→ 照常给数
+    expect(html).toContain('data-tok-stat-value="150"')
+  })
+
+  it('没有一个有记录的阶段 → 汇总卡整块不渲染（一排「—」是噪声）', () => {
+    const html = renderTokenPanel({ availability: 'partial', byStage: [{ stage: 'design', executions: [] }] })
+    expect(html).not.toContain('data-tok-stats')
+  })
+
+  it('数字列带等宽右对齐标记（dsh-pm-tok-num），无快照行同列同标', () => {
+    const html = renderTokenPanel(fullPayload())
+    expect(html).toContain('dsh-pm-tok-num')
+    const row = html.split('<tr').find(r => r.includes('data-stage="implementing"')) ?? ''
+    expect((row.match(/dsh-pm-tok-num/g) ?? []).length).toBe(6) // 调用/输入/输出/合计/每次调用均/缓存命中率
+    const nosnap = html.split('<tr').find(r => r.includes('data-stage="archived"')) ?? ''
+    expect(nosnap).toContain('dsh-pm-nosnap dsh-pm-tok-num')
+    const total = html.split('<tr').find(r => r.includes('data-total-row')) ?? ''
+    expect(total).toContain('dsh-pm-tok-num')
+  })
+})
+
 describe('Token 面板 · 与提示词 Tab 的分工与滚动纪律', () => {
   it('提示词块不得出现在本面板（正文归提示词 Tab）', () => {
     const html = renderTokenPanel(fullPayload())

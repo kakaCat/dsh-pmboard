@@ -66,6 +66,11 @@ export function harness(opts: {
   chainBudget?: (candidateId: string) => { allowed: boolean; reason?: string; detail?: { name: string; current: number; limit: number } }
   /** 里程碑/诊断日志收集（可选，供用例断言"响亮"）。 */
   infos?: string[]
+  /**
+   * 会话 → 项目身份（REQ-261005141830-7a3b t6 · FR-7）：传了才装配端口——
+   * 缺省 = 未装配（老装配口径：归属一律放行，行为与改造前逐字一致）。
+   */
+  projectIdOfWindow?: (windowKey: string) => string | undefined
 } = {}): LoopHarness {
   const requirements = opts.reqs ?? [makeReq('REQ-a', 'agent-1')]
   const ledger = { schemaVersion: 10, revision: 1, requirements, tasks: [], triages: [] } as {
@@ -138,6 +143,7 @@ export function harness(opts: {
     ...(providerLatch === undefined ? {} : { providerLatch }),
     ...(opts.humanGate === undefined ? {} : { humanGate: opts.humanGate }),
     ...(opts.chainBudget === undefined ? {} : { chainBudget: opts.chainBudget }),
+    ...(opts.projectIdOfWindow === undefined ? {} : { projectIdOfWindow: opts.projectIdOfWindow }),
   }
 
   const driver = createDiveRoundDriver(ports)

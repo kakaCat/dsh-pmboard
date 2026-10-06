@@ -9,6 +9,8 @@ import {
   buildListView, toReqCards, LANE_STATUSES,
 } from '../src/client/view.ts'
 import type { BoardState, RequirementRecord, RequirementStatus, TaskRecord } from '../src/client/types.ts'
+import { LIMITS } from '../src/domain/limits.ts'
+import { fmtTime } from '../src/client/render/dom-utils.ts'
 
 // -- 测试数据构造 ---------------------------------------------------------
 
@@ -586,9 +588,16 @@ describe('验收区与归档区', () => {
     expect(detail).not.toContain('data-action="archive-req"')
     expect(buildBoard(makeState({ requirements: [ready] }), T0)).toContain('待归档')
 
-    const archived = makeReq({ status: 'archived', archive: { ...archive, archivedAt: T0 + HOUR, archivedBy: { kind: 'human' as const } } })
+    // REQ-261006123819-3af3 FR-3（D-2）：已归档判据 = 需求状态 + statusHistory 的 archived 事件。
+    // 原夹具用**没有写入者**的归档时间字段"证明"已归档态——正是本次要修的无覆盖形态。
+    const archived = makeReq({
+      status: 'archived',
+      statusHistory: [{ status: 'archived', at: T0 + HOUR, by: { kind: 'human' as const } }],
+      archive,
+    })
     const doneHtml = buildReqDetail(archived, [], T0 + 2 * HOUR)
     expect(doneHtml).toContain('已归档')
+    expect(doneHtml).toContain('已归档 ' + fmtTime(T0 + HOUR))
     expect(doneHtml).not.toContain('data-action="archive-req"')
   })
 
@@ -791,5 +800,79 @@ describe('运行中指示的位置（泳道卡与列表行都紧跟项目 ID）'
     // 标题列不再有圆圈
     const titleCell = html.slice(html.indexOf('dsh-pm-td-title'), html.indexOf('dsh-pm-col-cat'))
     expect(titleCell).not.toContain('data-running="true"')
+  })
+})
+
+// ── 后台 run 在跑（推进锁）· REQ-261005213603-eaed t2 · TC-11～TC-18 ──────────
+// serves: FR-1, FR-3, FR-4, FR-5
+describe('推进锁接进渲染（锁新鲜也点亮，两种成因只差文案）', () => {
+  const NOW = 1_800_000_000_000
+  const STALE = LIMITS.advanceLockStaleMs
+  const noSessions = new Set<string>()
+
+  /** 该需求的锁新鲜（后台 run 在跑），但没有任何会话在跑回合。 */
+  const lockedReq = (over: Partial<RequirementRecord> = {}) =>
+    makeReq({ id: 'REQ-000001', status: 'implementing', sourceSessionId: 's-a', advanceLockAt: NOW - 60_000, ...over })
+
+  it('TC-11 仅锁新鲜 → 泳道卡出圈，且文案是后台 run 成因', () => {
+    const html = buildBoard(makeState({ requirements: [lockedReq()] }), NOW, 'lanes', {}, undefined, noSessions)
+    expect(html).toContain('data-running="true"')
+    expect(html).toContain('aria-label="后台 run 进行中"')
+    expect(html).toContain('title="后台 run 进行中（子卡链在执行，窗口可以已空闲）"')
+  })
+
+  it('TC-12 会话在跑 + 锁也新鲜 → 恰好一个圈，且报会话成因（成因优先级）', () => {
+    const html = buildBoard(makeState({ requirements: [lockedReq()] }), NOW, 'lanes', {}, undefined, new Set(['s-a']))
+    expect(html.split('data-running="true"').length - 1).toBe(1)
+    expect(html).toContain('aria-label="会话进行中"')
+    expect(html).not.toContain('aria-label="后台 run 进行中"')
+  })
+
+  it('TC-13 锁恰好过期（now-15min）→ 不出圈', () => {
+    const html = buildBoard(makeState({ requirements: [lockedReq({ advanceLockAt: NOW - STALE })] }), NOW, 'lanes', {}, undefined, noSessions)
+    expect(html).not.toContain('data-running')
+  })
+
+  it('TC-14 无 advanceLockAt 且省略 running 参数 → 与空集版本逐字节一致（旧调用点零回归）', () => {
+    const req = makeReq({ id: 'REQ-000001', status: 'implementing', sourceSessionId: 's-a' })
+    const state = makeState({ requirements: [req] })
+    expect(buildBoard(state, NOW)).toBe(buildBoard(state, NOW, 'lanes', {}, undefined, new Set()))
+    expect(buildBoard(state, NOW)).not.toContain('data-running')
+  })
+
+  it('TC-15 同页 A 持锁、B 不持锁 → 只有 A 出圈（判据不串需求）', () => {
+    const a = lockedReq({ id: 'REQ-000001' })
+    const b = makeReq({ id: 'REQ-000002', status: 'implementing', sourceSessionId: 's-b' })
+    const html = buildBoard(makeState({ requirements: [a, b] }), NOW, 'lanes', {}, undefined, noSessions)
+    const cardA = html.slice(html.indexOf('data-req="REQ-000001"'), html.indexOf('data-req="REQ-000002"'))
+    const cardB = html.slice(html.indexOf('data-req="REQ-000002"'))
+    expect(cardA).toContain('data-running="true"')
+    expect(cardB).not.toContain('data-running')
+  })
+
+  it('TC-16 列表行同款指示：ID 单元格内出圈、标题列不出', () => {
+    const html = buildBoard(makeState({ requirements: [lockedReq()] }), NOW, 'list', {}, undefined, noSessions)
+    expect(html).toContain('<span class="dsh-pm-card-id">REQ-000001</span><span class="dsh-pm-running"')
+    expect(html).toContain('aria-label="后台 run 进行中"')
+    const titleCell = html.slice(html.indexOf('dsh-pm-td-title'), html.indexOf('dsh-pm-col-cat'))
+    expect(titleCell).not.toContain('data-running="true"')
+  })
+
+  it('TC-17 位置契约不回归：圆圈仍紧跟项目 ID（泳道卡）', () => {
+    const html = buildBoard(makeState({ requirements: [lockedReq()] }), NOW, 'lanes', {}, undefined, noSessions)
+    expect(html).toContain('<span class="dsh-pm-card-id">REQ-000001</span><span class="dsh-pm-running"')
+    const iDot = html.indexOf('data-running="true"')
+    expect(iDot).toBeGreaterThan(-1)
+    expect(iDot).toBeLessThan(html.indexOf('dsh-pm-card-title'))
+  })
+
+  it('TC-18 样式分片未被本次改动波及（DOM 形状与动效规则仍在）', async () => {
+    const { BOARD_CSS } = await import('../src/client/styles/board.ts')
+    expect(BOARD_CSS).toContain('.dsh-pm-running')
+    expect(BOARD_CSS).toContain('@keyframes dsh-pm-running-spin')
+    const html = buildBoard(makeState({ requirements: [lockedReq()] }), NOW, 'lanes', {}, undefined, noSessions)
+    // 两种成因共用同一棵树：只有文案不同，SVG 与 class 一字不动
+    expect(html).toContain('<circle class="dsh-pm-running-track" cx="8" cy="8" r="6" />')
+    expect(html).toContain('<circle class="dsh-pm-running-arc" cx="8" cy="8" r="6" />')
   })
 })

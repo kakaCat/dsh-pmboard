@@ -236,6 +236,11 @@ describe('五门两级校验', () => {
 
   it('确认后放行：artifact/confirm 后转移成功', async () => {
     await seed('brainstorming', 'feature')
+    // REQ-261005105032-3b02：feature 需求出需求阶段必须有需求文档——裁定门读它的
+    // 「讨论与裁定记录（D-x）」节（本夹具原先没有 requirement.md）。补一份含真空态的最小文档，
+    // 不改任何断言：判据是"文档在且该节非空节"，本用例要验的仍是"确认后放行"。
+    stubDocFile('docs/requirements/REQ-abc123/requirement.md', dir,
+      '# 需求\n\n## 讨论与裁定记录（D-x）\n\n本节无裁定\n')
     await store.mutate(store.peekAll()[0]!.id, (r) => {
       r.artifacts = [{ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
       return { changed: true }

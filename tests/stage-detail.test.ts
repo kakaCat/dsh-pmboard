@@ -18,7 +18,7 @@ import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createReqboardHandler } from '../src/http/routes.js'
-import { assembleStageDetail } from '../src/application/query/index.js'
+import { assembleStageDetail, assembleStageOverview } from '../src/application/query/index.js'
 import type {
   ActorRef,
   RequirementRecord,
@@ -270,13 +270,70 @@ describe('assembleStageDetail：7 节点装配', () => {
         mergedInto: ['docs/architecture/project-manual.md'],
         indexEntry: '节点详情接口落地',
         submittedAt: 2000, submittedBy: HUMAN,
-        archivedAt: 2100, archivedBy: HUMAN,
+        // REQ-261006123819-3af3 FR-3（D-2）：原归档时间 / 归档人字段已删（无写入者）
       },
     })
     const detail = assembleStageDetail(req, LEDGER, 'archived')
     if (detail.stage !== 'archived') throw new Error('narrow')
     expect(detail.body.archive?.dir).toBe('docs/requirements/REQ-a1b2c3')
     expect(detail.body.archive?.indexEntry).toBe('节点详情接口落地')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 活卡收敛：取消卡不进任何 body（REQ-261005193546-1b1a t6 · FR-1/FR-4 · INV-1/INV-4）
+// ---------------------------------------------------------------------------
+
+describe('assembleStageDetail：取消卡不进 body（基类一次收敛）', () => {
+  /**
+   * 三张卡：活卡 A（唯一前置是**已取消卡**）、已取消卡、活卡 B（前置 = 活卡 A）。
+   * 覆盖两种漏法：只按需求过滤（取消卡漏进数组）与只剔卡不剪边（出参仍带指向取消卡的边）。
+   */
+  const LIVE_A = makeTask({ id: 't-live-a', title: '活卡 A', status: 'todo', dependsOn: ['t-gone-1'] })
+  const LIVE_B = makeTask({ id: 't-live-b', title: '活卡 B', status: 'done', dependsOn: ['t-live-a'] })
+  const GONE = makeTask({ id: 't-gone-1', title: '已取消卡', status: 'canceled' })
+  const LEDGER_WITH_CANCELED = { tasks: [LIVE_A, GONE, LIVE_B] }
+
+  it('拆分 body：3 张 → 2 张（取消卡被基类收敛剔掉）', () => {
+    const detail = assembleStageDetail(makeReq(), LEDGER_WITH_CANCELED, 'decomposing')
+    if (detail.stage !== 'decomposing') throw new Error('narrow')
+    expect(detail.body.tasks.map(t => t.id)).toEqual(['t-live-a', 't-live-b'])
+    expect(detail.body.tasks.filter(t => t.status === 'canceled')).toHaveLength(0)
+    // 只读：基类收敛不改入参
+    expect(LEDGER_WITH_CANCELED.tasks).toHaveLength(3)
+  })
+
+  it('实施 body：取消卡不进 tasks，也不进 byWindow 分组', () => {
+    const detail = assembleStageDetail(makeReq(), LEDGER_WITH_CANCELED, 'implementing')
+    if (detail.stage !== 'implementing') throw new Error('narrow')
+    expect(detail.body.tasks.map(t => t.id)).toEqual(['t-live-a', 't-live-b'])
+    const grouped = Object.values(detail.body.byWindow).flat()
+    expect(grouped).toEqual(['t-live-a', 't-live-b'])
+    expect(grouped).not.toContain('t-gone-1')
+  })
+
+  it('装配器出口全节点巡检：任何带 tasks 的 body 里取消卡条数 === 0', () => {
+    const overview = assembleStageOverview(makeReq(), LEDGER_WITH_CANCELED)
+    const withTasks = overview.stages.filter(s => Array.isArray((s.body as { tasks?: unknown }).tasks))
+    // 巡检必须真的扫到东西（否则是本用例自己假绿）
+    expect(withTasks.map(s => s.stage)).toEqual(['decomposing', 'implementing'])
+    for (const stage of withTasks) {
+      const tasks = (stage.body as { tasks: { status: string }[] }).tasks
+      expect(tasks).toHaveLength(2)
+      expect(tasks.filter(t => t.status === 'canceled')).toHaveLength(0)
+    }
+  })
+
+  it('出参 dependsOn 剪边：指向取消卡的边被剔、指向活卡的边保留（否则下层长出幽灵层）', () => {
+    const d1 = assembleStageDetail(makeReq(), LEDGER_WITH_CANCELED, 'decomposing')
+    if (d1.stage !== 'decomposing') throw new Error('narrow')
+    const byId = new Map(d1.body.tasks.map(t => [t.id, t]))
+    expect(byId.get('t-live-a')?.dependsOn).toEqual([])
+    expect(byId.get('t-live-b')?.dependsOn).toEqual(['t-live-a'])
+    // 实施 body 同源（同一份映射函数）
+    const d2 = assembleStageDetail(makeReq(), LEDGER_WITH_CANCELED, 'implementing')
+    if (d2.stage !== 'implementing') throw new Error('narrow')
+    expect(d2.body.tasks.find(t => t.id === 't-live-a')?.dependsOn).toEqual([])
   })
 })
 

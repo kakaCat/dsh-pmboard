@@ -478,7 +478,7 @@ describe('T-12 · 对话过滤：工具与推理不进页面（反例②）', ()
 
   it('T-12 · 系统消息与人类消息**同一个容器**、时间序单调、回填标在场', () => {
     const html = renderDialogue(contaminatedPayload(), ctx)
-    const list = sliceBetween(html, 'data-dialogue-list="1"', '<div class="dsh-pm-dialogue-more">')
+    const list = sliceBetween(html, 'data-dialogue-list="1"', 'data-dialogue-readonly="1"')
     expect(countOf(list, 'data-msg="')).toBe(3) // human + system + agent，工具条一律不进
     expect(countOf(html, 'data-msg="')).toBe(3) // 容器外一条都没有（不另起一块）
     const ats = [...list.matchAll(/data-at="(\d+)"/g)].map(m => Number(m[1]))

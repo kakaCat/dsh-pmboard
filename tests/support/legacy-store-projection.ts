@@ -27,7 +27,8 @@
  */
 import { REQUIREMENT_STORE_ERROR, type LedgerMutateResult, type LedgerChange, type LedgerView, type MutationOutcome, type MutateResult, type MutableLedger, type NewComment, type NewRequirement, type RequirementChange, type RequirementDraft, type RequirementFilter, type RequirementHistoryEntry, type RequirementStore, type RequirementSummaryPage, type SweepResult, type ImportedLedger } from '../../src/application/ports.js'
 import type { ActorRef, CommentRecord, RequirementRecord } from '../../src/shared/protocol.js'
-import { factsOf, summarize, type RequirementFacts } from '../../src/domain/requirement/RequirementSummary.js'
+import { factsOf, type RequirementFacts } from '../../src/domain/requirement/RequirementSummary.js'
+import { boardSummaryOfAuthoritative } from '../../src/shared/board-summary.js'
 import { compareSummaryOrder } from '../../src/repositories/shardPaging.js'
 
 function coded(code: string, message: string, extra: Record<string, unknown> = {}): Error {
@@ -60,9 +61,9 @@ export class LegacyStoreProjection implements RequirementStore {
     return recordsOf(this.repo.snapshot()).find((r) => r.id === id)
   }
 
-  async getSummary(id: string): Promise<ReturnType<typeof summarize> | undefined> {
+  async getSummary(id: string): Promise<ReturnType<typeof boardSummaryOfAuthoritative> | undefined> {
     const rec = await this.get(id)
-    return rec === undefined ? undefined : summarize(rec)
+    return rec === undefined ? undefined : boardSummaryOfAuthoritative(rec)
   }
 
   async listSummaries(filter?: RequirementFilter): Promise<RequirementSummaryPage> {
@@ -81,14 +82,14 @@ export class LegacyStoreProjection implements RequirementStore {
       return true
     })
     const items = picked
-      .map((r) => summarize(r))
+      .map((r) => boardSummaryOfAuthoritative(r))
       .sort(compareSummaryOrder)
       .slice(0, filter?.limit ?? 200)
     return { items }
   }
 
-  peekSummaries(): readonly ReturnType<typeof summarize>[] {
-    return recordsOf(this.repo.snapshot()).map((r) => summarize(r))
+  peekSummaries(): readonly ReturnType<typeof boardSummaryOfAuthoritative>[] {
+    return recordsOf(this.repo.snapshot()).map((r) => boardSummaryOfAuthoritative(r))
   }
 
   /** 同步提示词窄投影（B12 阶段①-a）：过渡口，随删桥一并删除（见 §四.3）。 */
@@ -231,7 +232,7 @@ export class LegacyStoreProjection implements RequirementStore {
           kind: (recs.length > 1 ? 'ledger-replaced' : 'requirement-updated') as RequirementChange['kind'],
           requirementId: rec.id,
           revision: 0,
-          summary: summarize(rec),
+          summary: boardSummaryOfAuthoritative(rec),
         })
       }
     })

@@ -1,15 +1,18 @@
 /**
- * 「对话」Tab 面板单测（REQ-261004222448-292a · FR-6 / t-2be0cd）。
+ * 「对话」Tab 面板单测（REQ-261004222448-292a · FR-6 / t-2be0cd；
+ * REQ-261006130057-7a43 · FR-6 / t7 聊天 App 形态改造）。
  *
  * 本包**没有 jsdom**：渲染是纯函数返回 HTML 字符串，所以这里全部对字符串断言。
- * 三组断言对应 FR-6 的三条机械判据：
- *  ① 三类消息（人 / agent / 系统）在**同一容器**内按时间排序；
- *  ② 产物里**不出现**工具调用 / 推理类字样（哪怕载荷里带着它们）；
- *  ③ 分页入口、检索入口、回复框选择器逐字存在，且**不做内层滚动**。
+ * 断言组对应 FR-6 的机械判据（t7 口径 T-7 ~ T-11）：
+ *  T-7  气泡三态类名（人靠右蓝 + 右头像 / agent 靠左浅紫 + 左头像 w/a / 系统居中灰丸 + 回填标）；
+ *  T-8  产物**不含** comment-input 与 dialogue-search（回复框、检索框已删），**含**只读说明行；
+ *  T-9  吸顶分页条 = `.chat-scroll` 第一个子元素；`pageKnown=false` 降级不可用态（不猜「没有更早」）；
+ *  T-10 正序（items at 升序渲染，旧上新下）；
+ *  T-11 服务端过滤不变量保留（产物里不出现工具调用 / 推理字样）。
  */
 import { describe, it, expect } from 'vitest'
 import {
-  applyDialogueSearch, dialoguePanel, filterDialogueItems, highlightDialogueText,
+  DIALOGUE_PAGE_SIZE, dialoguePanel, isLongDialogueText,
   orderDialogue, readDialogue, renderDialogue, type DialogueMessage,
 } from '../src/client/views/panels/dialogue.ts'
 import type { ReportTabCtx } from '../src/client/views/report-tabs.ts'
@@ -32,7 +35,7 @@ const kindsOf = (html: string): string[] => [...html.matchAll(/data-msg="([a-z]+
 /** 产物里 `data-at` 的数值序列（时间序断言的原始输入）。 */
 const atsOf = (html: string): number[] => [...html.matchAll(/data-at="(\d+)"/g)].map(m => Number(m[1]))
 
-describe('FR-6 · 一条流：三类消息同容器 + 时间序', () => {
+describe('T-10 · 一条流：三类消息同容器 + 正序（旧上新下）', () => {
   it('人 / agent / 系统按时间排在同一条流里（喂乱序也要排好）', () => {
     const html = renderDialogue({
       items: [system(300, '阶段推进：设计 → 拆分', { evt: 'stage-advance' }), human(100, '先看接口'), agent(200, '收到，我来拆')],
@@ -47,26 +50,10 @@ describe('FR-6 · 一条流：三类消息同容器 + 时间序', () => {
       items: [human(1, '甲'), agent(2, '乙'), system(3, '丙', { evt: 'handoff' })],
       page: { hasMore: false, total: 3 },
     }, ctx())
-    const list = html.slice(html.indexOf('data-dialogue-list="1"'), html.indexOf('<div class="dsh-pm-dialogue-more">'))
+    const list = html.slice(html.indexOf('data-dialogue-list="1"'), html.indexOf('data-dialogue-readonly="1"'))
     expect(kindsOf(list)).toEqual(['human', 'agent', 'system'])
     // 容器外一条消息都不该有（否则就是"又分了一块"）
     expect(kindsOf(html)).toHaveLength(3)
-  })
-
-  it('消息条数 = 载荷条数；每条都带时间与 actor（agent 带可读窗口码）', () => {
-    const html = renderDialogue({
-      items: [human(1, '甲', 'session-1f2d438d-7a94'), agent(2, '乙', 'session-1f2d438d-7a94')],
-      page: { hasMore: false, total: 2 },
-    }, ctx())
-    expect(html).toContain('data-msg="human"')
-    expect(html).toContain('data-msg="agent"')
-    expect(html).toContain('data-window="session-1f2d438d-7a94"')
-    expect(html).toContain('窗口 w-1f2d438d')
-    expect(html).toContain('>人</span>')
-    expect(html).toContain('>agent</span>')
-    // 无窗口码的人消息不渲染 data-window（不编一个空窗口）
-    const bare = renderDialogue({ items: [human(1, '甲')], page: { hasMore: false, total: 1 } }, ctx())
-    expect(bare).not.toContain('data-window=')
   })
 
   it('orderDialogue 稳定且不改原数组', () => {
@@ -76,15 +63,54 @@ describe('FR-6 · 一条流：三类消息同容器 + 时间序', () => {
   })
 })
 
-describe('FR-6 · 系统消息：回填标 + 不可回复', () => {
-  it('inferred=true 显眼标「回填」并带 data-inferred="1"', () => {
+describe('T-7 · 气泡三态：人靠右蓝 + 右头像 / agent 靠左浅紫 + 左头像 / 系统居中灰丸', () => {
+  it('人消息：右侧气泡（cmsg--right + bubble--human）+ 右头像「人」，名字签行含等宽时间戳', () => {
+    const html = renderDialogue({ items: [human(1, '甲')], page: { hasMore: false, total: 1 } }, ctx())
+    expect(html).toContain('dsh-pm-cmsg--right')
+    expect(html).toContain('dsh-pm-bubble--human')
+    expect(html).toContain('dsh-pm-avatar--human')
+    expect(html).toContain('>人</span>')
+    // 头像在列**之后**（右侧）：产物里 avatar 出现在 bubble 之后
+    expect(html.indexOf('dsh-pm-bubble--human')).toBeLessThan(html.indexOf('dsh-pm-avatar--human'))
+    expect(html).toContain('dsh-pm-msg-time')
+    expect(html).toContain('<b class="dsh-pm-who">人</b>')
+  })
+
+  it('窗口 agent：左侧气泡（cmsg--left + bubble--agent）+ 左头像「w」，名字签写全「窗口 w-xxxxxxxx」', () => {
+    const html = renderDialogue({
+      items: [agent(2, '乙', 'session-1f2d438d-7a94')],
+      page: { hasMore: false, total: 1 },
+    }, ctx())
+    expect(html).toContain('dsh-pm-cmsg--left')
+    expect(html).toContain('dsh-pm-bubble--agent')
+    expect(html).toContain('dsh-pm-avatar--agent')
+    expect(html).toContain('title="窗口 agent（session-1f2d438d-7a94）">w</span>')
+    expect(html).toContain('<b class="dsh-pm-who">窗口 w-1f2d438d</b>')
+    expect(html).toContain('data-window="session-1f2d438d-7a94"')
+    // 头像在列**之前**（左侧）
+    expect(html.indexOf('dsh-pm-avatar--agent')).toBeLessThan(html.indexOf('dsh-pm-bubble--agent'))
+  })
+
+  it('任务 agent（无窗口码）：左头像「a」，名字签「agent」——不编一个任务 id 冒充', () => {
+    const html = renderDialogue({ items: [agent(1, '乙')], page: { hasMore: false, total: 1 } }, ctx())
+    expect(html).toContain('title="任务 agent">a</span>')
+    expect(html).toContain('<b class="dsh-pm-who">agent</b>')
+    expect(html).not.toContain('data-window=')
+  })
+
+  it('系统消息：居中灰丸（不占气泡、没有头像），inferred 带 data-inferred="1" 琥珀「回填」标', () => {
     const html = renderDialogue({
       items: [system(1, '计划已退回（台账原文）', { evt: 'plan-rejected', inferred: true })],
       page: { hasMore: false, total: 1 },
     }, ctx())
+    expect(html).toContain('dsh-pm-msg--system')
+    expect(html).toContain('dsh-pm-msg-system-pill')
     expect(html).toContain('data-inferred="1"')
     expect(html).toContain('回填')
     expect(html).toContain('不是当时实时发生的')
+    const sys = html.slice(html.indexOf('dsh-pm-msg--system'), html.indexOf('data-dialogue-readonly="1"'))
+    expect(sys).not.toContain('dsh-pm-bubble')
+    expect(sys).not.toContain('dsh-pm-avatar')
   })
 
   it('非回填的系统消息不带回填标（标错了比不标更糟）', () => {
@@ -93,17 +119,8 @@ describe('FR-6 · 系统消息：回填标 + 不可回复', () => {
       page: { hasMore: false, total: 1 },
     }, ctx())
     expect(html).not.toContain('data-inferred')
-    expect(html).not.toContain('回填')
-  })
-
-  it('系统消息里没有任何回复控件（只有底部那一个回复框）', () => {
-    const html = renderDialogue({
-      items: [system(1, '中断已恢复', { evt: 'interrupt' })],
-      page: { hasMore: false, total: 1 },
-    }, ctx())
-    const list = html.slice(html.indexOf('data-dialogue-list="1"'), html.indexOf('<div class="dsh-pm-dialogue-more">'))
-    expect(list).not.toContain('data-role="comment-input"')
-    expect(list).not.toContain('data-action="add-comment"')
+    // 只读说明行固定文案里有「正序回填」四字，故这里钉的是**回填标本身**不出现
+    expect(html).not.toContain('>回填</span>')
   })
 
   it('evt 缺字段时不编枚举值冒充（只是不渲染 data-evt）', () => {
@@ -114,9 +131,126 @@ describe('FR-6 · 系统消息：回填标 + 不可回复', () => {
     expect(html).toContain('data-msg="system"')
     expect(html).not.toContain('data-evt=')
   })
+
+  it('长日志气泡：默认折叠一行（details + bubble--long）+ 「长日志已收纳」琥珀标 + 「展开」', () => {
+    const longText = '扫描需求目录：' + '补登过程产物、'.repeat(20)
+    const html = renderDialogue({
+      items: [agent(1, longText, 'session-1f2d438d-7a94'), human(2, '短消息')],
+      page: { hasMore: false, total: 2 },
+    }, ctx())
+    expect(html).toContain('data-msg-long="1"')
+    expect(html).toContain('dsh-pm-bubble--long')
+    expect(html).toContain('长日志已收纳')
+    expect(html).toContain('>展开</span>')
+    expect(html).toContain('>收起</span>')
+    // 短消息不折叠
+    expect(isLongDialogueText('短消息')).toBe(false)
+    expect(isLongDialogueText(longText)).toBe(true)
+    expect(isLongDialogueText('第一行\n第二行')).toBe(true)
+  })
 })
 
-describe('FR-6 · 反例：产物里不得出现工具调用 / 推理字样', () => {
+describe('T-8 · 只读（D-6）：产物不含回复框与检索框，原位是只读说明行', () => {
+  it('产物不含 comment-input / add-comment / dialogue-search / dialogue-hits（删干净）', () => {
+    const html = renderDialogue({
+      items: [human(1, '甲'), system(2, '中断已恢复', { evt: 'interrupt' })],
+      page: { hasMore: false, total: 2 },
+    }, ctx('REQ-261004222448-292a'))
+    expect(html).not.toContain('data-role="comment-input"')
+    expect(html).not.toContain('add-comment')
+    expect(html).not.toContain('dialogue-search')
+    expect(html).not.toContain('dialogue-hits')
+    expect(html).not.toContain('dsh-pm-comment-form')
+    // 检索就地重绘用的原文属性一并移除（没有检索就没有它的存根）
+    expect(html).not.toContain('data-msg-text-raw')
+  })
+
+  it('原位放只读说明行（居中灰）：「历史聊天记录 · 只读 —— 共 N 条，本页 M 条」', () => {
+    const html = renderDialogue({
+      items: [human(1, '甲'), agent(2, '乙')],
+      page: { hasMore: true, total: 90 },
+    }, ctx())
+    expect(html).toContain('data-dialogue-readonly="1"')
+    expect(html).toContain('历史聊天记录 · 只读')
+    expect(html).toContain('共 90 条，本页 2 条')
+    // 只读行在滚动容器**之外**（面板原位底部）
+    expect(html.indexOf('data-dialogue-readonly="1"')).toBeGreaterThan(html.indexOf('data-chat-scroll="1"'))
+  })
+
+  it('空态也给只读行（空的时候也要说清这是只读历史）', () => {
+    const empty = renderDialogue({ items: [], page: { hasMore: false, total: 0 } }, ctx())
+    expect(empty).toContain('data-dialogue-empty="1"')
+    expect(empty).toContain('还没有对话记录')
+    expect(empty).toContain('data-dialogue-readonly="1"')
+    expect(empty).toContain('共 0 条，本页 0 条')
+    expect(empty).not.toContain('data-role="comment-input"')
+  })
+})
+
+describe('T-9 · 吸顶分页条：chat-scroll 第一个子元素 + pageKnown=false 降级', () => {
+  it('分页条是 .chat-scroll 内部第一个子元素（sticky top:0；在消息列表之前）', () => {
+    const html = renderDialogue({
+      items: [human(100, '甲')], page: { before: 50, hasMore: true, total: 90 },
+    }, ctx())
+    expect(html).toMatch(/data-chat-scroll="1">\s*<div class="dsh-pm-chat-pager" data-chat-pager="1"/)
+    expect(html.indexOf('data-chat-pager="1"')).toBeLessThan(html.indexOf('data-dialogue-list="1"'))
+    // 浅蓝底工具条三件套：实心小按钮 + 加粗页码 + 次级灰计数
+    expect(html).toContain('↑ 加载更早消息')
+    expect(html).toContain('data-load-earlier="1"')
+    expect(html).toContain('data-before="50"')
+    expect(html).not.toMatch(/data-load-earlier="1"[^>]*disabled/)
+    // 页码口径：页 = 已加载批次（40/页），M = ceil(90/40) = 3；已加载 1 条 = 还有 2 页更早 → 第 1/3 页
+    expect(html).toContain('<b class="dsh-pm-chat-page">第 1/3 页</b>')
+    expect(html).toContain('已加载 1/90 条')
+    expect(html).toContain('还有更早的消息未加载')
+  })
+
+  it('页码随「向上加载更早」前进：已加载 80/90（两个批次）→ 第 2/3 页', () => {
+    const items = Array.from({ length: 80 }, (_v, i) => human(i + 1, '第 ' + String(i + 1) + ' 条'))
+    const html = renderDialogue({ items, page: { before: 1, hasMore: true, total: 90 } }, ctx())
+    expect(html).toContain('<b class="dsh-pm-chat-page">第 2/3 页</b>')
+    expect(html).toContain('已加载 80/90 条')
+  })
+
+  it('服务端省略 before 时用已加载最旧一条的 at 作游标（语义相同的同一个时间游标）', () => {
+    const html = renderDialogue({
+      items: [agent(200, '乙'), human(100, '甲')], page: { hasMore: true, total: 9 },
+    }, ctx())
+    expect(html).toContain('data-before="100"')
+  })
+
+  it('没有更早的：按钮在但禁用 + 写明「已到最早一条」（不留假出口）', () => {
+    const html = renderDialogue({
+      items: [human(100, '甲')], page: { hasMore: false, total: 1 },
+    }, ctx())
+    expect(html).toContain('data-load-earlier="1"')
+    expect(html).toMatch(/data-load-earlier="1"[^>]*disabled/)
+    expect(html).toContain('已到最早一条')
+    expect(html).not.toContain('data-before=')
+    // 到底 = 最后一页
+    expect(html).toContain('<b class="dsh-pm-chat-page">第 1/1 页</b>')
+  })
+
+  it('pageKnown=false：分页条降级不可用态 + 说明（不猜「没有更早」），页码不编', () => {
+    const html = renderDialogue({ items: [human(1, '甲')] }, ctx())
+    expect(html).toContain('data-pager-state="degraded"')
+    expect(html).toMatch(/data-load-earlier="1"[^>]*disabled/)
+    expect(html).toContain('分页信息不可得')
+    // 页码不编（注意断言带 `<b` 前缀：容器类名 dsh-pm-chat-pg 是 dsh-pm-chat-page 的前缀）
+    expect(html).not.toContain('<b class="dsh-pm-chat-page"')
+    expect(html).toContain('已加载 1 条')
+    // 有 hasMore 但拿不到游标：同样禁用并写明原因（不猜）
+    const noCursor = renderDialogue({ items: [], page: { hasMore: true, total: 5 } }, ctx())
+    expect(noCursor).toMatch(/data-load-earlier="1"[^>]*disabled/)
+    expect(noCursor).toContain('没给游标')
+  })
+
+  it('页码口径常数 = 服务端 DEFAULT_LIMIT（40 条/页）', () => {
+    expect(DIALOGUE_PAGE_SIZE).toBe(40)
+  })
+})
+
+describe('T-11 · 过滤不变量保留：产物里不得出现工具调用 / 推理字样', () => {
   /**
    * 服务端已过滤干净，但本断言防的是**将来有人在渲染层把它们加回来**：
    * 喂一份"过滤没生效"的标本（工具块字段 + 非对话 kind + 整份原始事件），产物里必须没有那些字样。
@@ -166,132 +300,8 @@ describe('FR-6 · 反例：产物里不得出现工具调用 / 推理字样', ()
   })
 })
 
-describe('FR-6 · 分页：默认最近 N 条 + 加载更早', () => {
-  it('hasMore=true：按钮可点，游标取服务端 page.before', () => {
-    const html = renderDialogue({
-      items: [human(100, '甲')], page: { before: 50, hasMore: true, total: 9 },
-    }, ctx())
-    expect(html).toContain('data-load-earlier="1"')
-    expect(html).toContain('data-before="50"')
-    expect(html).not.toMatch(/data-load-earlier="1"[^>]*disabled/)
-    expect(html).toContain('还有更早的消息未加载')
-  })
-
-  it('服务端省略 before 时用已加载最旧一条的 at 作游标（语义相同的同一个时间游标）', () => {
-    const html = renderDialogue({
-      items: [agent(200, '乙'), human(100, '甲')], page: { hasMore: true, total: 9 },
-    }, ctx())
-    expect(html).toContain('data-before="100"')
-  })
-
-  it('没有更早的：按钮在但禁用 + 写明「已到最早一条」（不留假出口）', () => {
-    const html = renderDialogue({
-      items: [human(100, '甲')], page: { hasMore: false, total: 1 },
-    }, ctx())
-    expect(html).toContain('data-load-earlier="1"')
-    expect(html).toMatch(/data-load-earlier="1"[^>]*disabled/)
-    expect(html).toContain('已到最早一条')
-    expect(html).not.toContain('data-before=')
-  })
-
-  it('有 hasMore 但拿不到游标 / 没有 page：禁用并写明原因（不猜）', () => {
-    const noCursor = renderDialogue({ items: [], page: { hasMore: true, total: 5 } }, ctx())
-    expect(noCursor).toMatch(/data-load-earlier="1"[^>]*disabled/)
-    expect(noCursor).toContain('没给游标')
-    const noPage = renderDialogue({ items: [human(1, '甲')] }, ctx())
-    expect(noPage).toMatch(/data-load-earlier="1"[^>]*disabled/)
-    expect(noPage).toContain('分页信息不可得')
-  })
-})
-
-describe('FR-6 · 页内关键词检索（只过滤已加载的部分）', () => {
-  it('检索框存在，且说明书写清「只过滤已加载的 N 条 / 还有多少未加载」', () => {
-    const html = renderDialogue({
-      items: [human(1, '甲'), agent(2, '乙')], page: { hasMore: true, total: 5 },
-    }, ctx())
-    expect(html).toContain('data-dialogue-search="1"')
-    expect(html).toContain('只过滤已加载的 2 条')
-    expect(html).toContain('还有 3 条更早的未加载')
-    expect(html).toContain('data-dialogue-hits="1"')
-    expect(html).toContain('命中 2 / 已加载 2')
-  })
-
-  it('filterDialogueItems：大小写无关的子串匹配；空词 = 全都要', () => {
-    const items = [human(1, '窗口 A 已接手'), agent(2, 'OK')]
-    expect(filterDialogueItems(items, '窗口').map(i => i.at)).toEqual([1])
-    expect(filterDialogueItems(items, 'ok').map(i => i.at)).toEqual([2])
-    expect(filterDialogueItems(items, '  ').map(i => i.at)).toEqual([1, 2])
-    expect(filterDialogueItems(items, '不存在').length).toBe(0)
-  })
-
-  it('highlightDialogueText：命中包 mark，且先转义（标签不复活）', () => {
-    const html = highlightDialogueText('买 <b>入</b> 前确认', '入')
-    expect(html).toContain('data-dialogue-hit="1"')
-    expect(html).toContain('<mark')
-    expect(html).toContain('&lt;b&gt;')
-    expect(html).not.toContain('<b>')
-    // 正则元字符按字面处理（`.` 不该匹配任意字符）
-    expect(highlightDialogueText('a.b', '.')).toContain('<mark class="dsh-pm-dialogue-hit"')
-    expect(highlightDialogueText('axb', '.')).not.toContain('<mark')
-    // 空词 = 不高亮、只转义
-    expect(highlightDialogueText('<i>', '')).toBe('&lt;i&gt;')
-  })
-
-  it('applyDialogueSearch：就地过滤 + 高亮 + 更新命中计数', () => {
-    const textElA = { innerHTML: '' }
-    const textElB = { innerHTML: '' }
-    const nodeA = {
-      hidden: false, attrs: {} as Record<string, string>, textEl: textElA,
-      getAttribute(name: string): string | null {
-        return name === 'data-msg-text-raw' ? '窗口 A 已接手' : (this.attrs[name] ?? null)
-      },
-      setAttribute(name: string, value: string): void { this.attrs[name] = value },
-      querySelector(sel: string): { innerHTML: string } | null {
-        return sel === '[data-msg-text]' ? this.textEl : null
-      },
-    }
-    const nodeB = {
-      hidden: false, attrs: {} as Record<string, string>, textEl: textElB,
-      getAttribute(name: string): string | null {
-        return name === 'data-msg-text-raw' ? 'OK' : (this.attrs[name] ?? null)
-      },
-      setAttribute(name: string, value: string): void { this.attrs[name] = value },
-      querySelector(sel: string): { innerHTML: string } | null {
-        return sel === '[data-msg-text]' ? this.textEl : null
-      },
-    }
-    const counter = { textContent: '' }
-    const root = {
-      querySelectorAll: (_sel: string) => [nodeA, nodeB],
-      querySelector: (sel: string) => (sel === '[data-dialogue-hits]' ? counter : null),
-    }
-    const hits = applyDialogueSearch(root as unknown as HTMLElement, '窗口')
-    expect(hits).toBe(1)
-    expect(nodeA.hidden).toBe(false)
-    expect(nodeA.attrs['data-msg-hit']).toBe('1')
-    expect(textElA.innerHTML).toContain('<mark')
-    expect(nodeB.hidden).toBe(true)
-    expect(nodeB.attrs['data-msg-hit']).toBe('0')
-    expect(counter.textContent).toBe('命中 1 / 已加载 2')
-    // 清空检索词 = 全部复原（不许留下上一次的高亮）
-    expect(applyDialogueSearch(root as unknown as HTMLElement, '')).toBe(2)
-    expect(nodeB.hidden).toBe(false)
-    expect(textElA.innerHTML).toBe('窗口 A 已接手')
-    // 宿主桩（没有查询能力）不炸
-    expect(applyDialogueSearch({} as unknown as HTMLElement, 'x')).toBe(0)
-  })
-})
-
-describe('FR-6 · 回复框与渲染纪律', () => {
-  it('底部回复框沿用既有评论提交链路（选择器逐字在）', () => {
-    const html = renderDialogue({ items: [human(1, '甲')], page: { hasMore: false, total: 1 } }, ctx('REQ-261004222448-292a'))
-    expect(html).toContain('data-role="comment-input"')
-    expect(html).toContain('data-action="add-comment"')
-    expect(html).toContain('data-target="req"')
-    expect(html).toContain('data-id="REQ-261004222448-292a"')
-  })
-
-  it('根容器 data-panel="dialogue"；列表长了靠页面滚动（产物里没有 overflow: auto|scroll）', () => {
+describe('渲染纪律与注册', () => {
+  it('根容器 data-panel="dialogue"；除 .chat-scroll 豁免外产物里没有 overflow: auto|scroll', () => {
     const html = renderDialogue({
       items: Array.from({ length: 40 }, (_v, i) => human(i + 1, '第 ' + String(i + 1) + ' 条')),
       page: { hasMore: true, total: 90 },
@@ -299,17 +309,8 @@ describe('FR-6 · 回复框与渲染纪律', () => {
     expect(html).toContain('data-panel="dialogue"')
     expect(html).toContain('data-dialogue-loaded="40"')
     expect(html).toContain('data-dialogue-total="90"')
+    expect(html).toContain('data-chat-scroll="1"')
     expect(html).not.toMatch(/overflow:\s*(auto|scroll)/)
-  })
-
-  it('空载荷给说辞（不是白板），且与「形状不对」是两种文案', () => {
-    const empty = renderDialogue({ items: [], page: { hasMore: false, total: 0 } }, ctx())
-    expect(empty).toContain('data-dialogue-empty="1"')
-    expect(empty).toContain('还没有对话记录')
-    expect(empty).toContain('系统消息混排')
-    expect(empty).not.toContain('data-dialogue-shape')
-    // 空态下回复框仍在（本来就是空的时候最需要说话）
-    expect(empty).toContain('data-role="comment-input"')
   })
 
   it('注册项不变：key / label / badge', () => {

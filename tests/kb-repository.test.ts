@@ -10,7 +10,7 @@
  * @module dsh-pmboard/tests/kb-repository
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
@@ -175,6 +175,23 @@ describe('写入：幂等与分节落位', () => {
     await expect(r.appendEntry({ ...draft, kind: 'map' })).rejects.toThrowError(/生成器/)
     rmSync(join(root, KB_PATHS.index))
     await expect(r.appendEntry(draft)).rejects.toThrowError(/kb-build\.mts --write/)
+  })
+
+  // REQ-261006123819-3af3 FR-4 根因②：坏 one_liner 必须在**写条目文件之前**被拦下。
+  // 修前顺序是「先落 entries/<id>.md、再算索引行」→ 索引那步抛错时条目文件已落盘，
+  // 留下「条目在、索引没有」的孤儿（kb-0043/kb-0048 就是这么长出来的）。
+  it('one_liner 非法 → 抛错，且**条目文件不落盘**（不再产生孤儿）', async () => {
+    const r = repo()
+    await expect(r.appendEntry({ ...draft, oneLiner: '含 → 或 · 的结论' })).rejects.toThrowError(/一句话结论非法/)
+    expect(existsSync(join(root, entryPath('kb-0002')))).toBe(false)
+    const text = readFileSync(join(root, KB_PATHS.index), 'utf8')
+    expect(text).not.toContain('kb-0002')
+  })
+
+  it('one_liner 超 140 字符 → 同样在落盘前被拦下', async () => {
+    const r = repo()
+    await expect(r.appendEntry({ ...draft, oneLiner: '长'.repeat(141) })).rejects.toThrowError(/一句话结论非法/)
+    expect(existsSync(join(root, entryPath('kb-0002')))).toBe(false)
   })
 })
 

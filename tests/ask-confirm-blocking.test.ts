@@ -126,7 +126,13 @@ describe('缺省阻塞（FR-1）', () => {
     await expect(assertNoPendingConfirm(deps, W)).resolves.toBeUndefined()
   })
 
-  it('TC-10 重新发起覆盖旧记录：旧记录 settle 为未确认，新确认正常落章', async () => {
+  /**
+   * REQ-261006164732-6503 t4 口径修正（旧名「TC-10 重新发起覆盖旧记录」）：
+   * 修前同门重发 = 把旧票 settle 成未确认、再登记一张新的（"覆盖"）；而人在 GUI 上仍点得到旧框，
+   * 于是它的迟到作答把台账覆写（拆分门事故的第二个成因）。裁定 D-2/D-3 改为**复用优先**：
+   * 同门已有未作答票 ⇒ 直接复用，既不弹第二个框，也不动那张票。
+   */
+  it('TC-10 同门重发 ⇒ 复用原票：不弹第二个框、旧票不被 settle、不新增记录', async () => {
     await seed()
     const deps = makeDeps(async () => ({ answers: [{ id: 'confirm', selected: [AFFIRM] }] }))
     const oldTicket = deps.pendingConfirms.register({
@@ -134,8 +140,27 @@ describe('缺省阻塞（FR-1）', () => {
     }).ticket
     const tool = defineAskConfirmTool(deps) as any
     const out = await tool.execute(ARGS, exec)
+
+    expect(out.confirmed).toBe(false)
+    expect(out.pending).toBe(true)
+    expect(out.ticket).toBe(oldTicket)
+    expect(String(out.note)).toContain('已有一道门在等')
+    // 旧票原样保留（未作答），窗口仍被它拦着——语义是"等人答那一张"，不是"覆盖"
+    expect(deps.pendingConfirms.get(oldTicket, W)?.outcome).toBeUndefined()
+    expect(deps.pendingConfirms.pendingForWindow(W)?.ticket).toBe(oldTicket)
+  })
+
+  it('TC-10b 异门重发 ⇒ 旧票仍被清理（窗口不被上一步的门钉死）', async () => {
+    await seed()
+    const deps = makeDeps(async () => ({ answers: [{ id: 'confirm', selected: [AFFIRM] }] }))
+    const otherTicket = deps.pendingConfirms.register({
+      windowKey: W, requirementId: 'REQ-abc123', target: 'artifact', kind: 'design',
+    }).ticket
+    const tool = defineAskConfirmTool(deps) as any
+    const out = await tool.execute(ARGS, exec)
+
     expect(out.confirmed).toBe(true)
-    expect(deps.pendingConfirms.get(oldTicket, W)?.outcome?.confirmed).toBe(false)
+    expect(deps.pendingConfirms.get(otherTicket, W)?.outcome?.confirmed).toBe(false)
     expect(deps.pendingConfirms.pendingForWindow(W)).toBeUndefined()
   })
 })
@@ -185,5 +210,18 @@ describe('中止 / 取消（FR-4）', () => {
     await expect(assertNoPendingConfirm(deps, W)).resolves.toBeUndefined()
     expect(first().artifacts?.[0]?.confirmedAt).toBeUndefined()
     expect(first().status).toBe('brainstorming')
+  })
+
+  it('工具面注入 adopted_ticket 无效：不能凭一个 ticket 绕过建门唯一入口', async () => {
+    // REQ-261006164732-6503 t13（serves: FR-1 · review findings-4）：本工具 parameters 未声明它，
+    // 而绑定层不设 additionalProperties:false ⇒ 复核判定它本可从工具面注入、直接弹出第二个框。
+    // 现在工具边界显式剔除该键（内部调用方走 askConfirm 直调，不受影响）。
+    await seed()
+    const deps = makeDeps(async () => ({ answers: [{ id: 'confirm', selected: [AFFIRM] }] }))
+    const tool = defineAskConfirmTool(deps) as any
+    const out = await tool.execute({ ...ARGS, adopted_ticket: 'pc-forged' }, exec)
+
+    expect(out.confirmed).toBe(true)                                   // 正常路径照走
+    expect(deps.pendingConfirms.get('pc-forged', W)).toBeUndefined()    // 伪造的票从未被使用
   })
 })

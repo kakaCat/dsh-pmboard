@@ -458,3 +458,168 @@ describe('运行态订阅与重绘门控（REQ-261004210128-283d FR-5/FR-8）', 
     expect(renders()).toBe(before)
   })
 })
+
+// ── 推进锁在跑：随载荷刷新实时增隐 · REQ-261005213603-eaed t3 · TC-19～TC-22 ──
+// serves: FR-4, FR-5
+describe('推进锁实时增隐（REQ-261005213603-eaed FR-4/FR-5）', () => {
+  interface ReqRow { id: string; advanceLockAt?: number; [k: string]: unknown }
+
+  const baseReq = (): ReqRow => ({
+    id: 'REQ-000001', title: '需求', description: '', status: 'implementing',
+    blocked: false, commentCount: 0, artifactCount: 0, version: 1,
+    createdAt: 1, updatedAt: 1, sourceSessionId: 's-a',
+  })
+
+  /** SSE 桩：把实例留住，用例可以直接投一帧（模拟台账 revision 变更）。 */
+  const sources: Array<{ onmessage: ((ev: MessageEvent) => void) | null; close: () => void }> = []
+
+  /** 计数容器：innerHTML 赋值次数 = 重绘次数。 */
+  function countingContainer(): { el: HTMLElement; renders: () => number } {
+    let renders = 0
+    let html = ''
+    const el = {
+      get innerHTML(): string { return html },
+      set innerHTML(v: string) { html = v; renders += 1 },
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      querySelectorAll: () => [],
+      querySelector: () => null,
+    }
+    return { el: el as unknown as HTMLElement, renders: () => renders }
+  }
+
+  /** 可变的 /state 载荷：用例改它再投一帧，模拟服务端推进锁变更。 */
+  function installState(rows: ReqRow[]): { bump: (rev: number) => void } {
+    let revision = 1
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(
+      JSON.stringify({ success: true, data: { revision, requirements: rows, tasks: [], ready: {} } }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    ))))
+    return { bump: (rev: number) => { revision = rev } }
+  }
+
+  function installSessions(initial: Record<string, unknown>): { set: (v: Record<string, unknown>) => void; fire: () => void; captured: Array<() => void> } {
+    let byId = initial
+    const listeners: Array<() => void> = []
+    ;(globalThis as unknown as { __dshPmSessions: unknown }).__dshPmSessions = {
+      list: {
+        getSnapshot: () => ({ byId }),
+        subscribe: (fn: () => void): (() => void) => {
+          listeners.push(fn)
+          return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1) }
+        },
+      },
+    }
+    return {
+      set: (v) => { byId = v },
+      fire: () => { for (const fn of [...listeners]) fn() },
+      captured: listeners,
+    }
+  }
+
+  const flush = async (): Promise<void> => {
+    for (let i = 0; i < 6; i++) await Promise.resolve()
+  }
+
+  const frame = (rev: number): void => {
+    const es = sources[sources.length - 1]
+    es?.onmessage?.({ data: JSON.stringify({ revision: rev, kind: 'requirement' }) } as MessageEvent)
+  }
+
+  beforeEach(() => {
+    sources.length = 0
+    class CapturingEventSource {
+      onmessage: ((ev: MessageEvent) => void) | null = null
+      constructor(readonly url: string) { sources.push(this) }
+      close(): void { /* 记录即可 */ }
+    }
+    vi.stubGlobal('EventSource', CapturingEventSource)
+  })
+
+  afterEach(() => {
+    delete (globalThis as unknown as { __dshPmSessions?: unknown }).__dshPmSessions
+  })
+
+  it('TC-19 锁写入 → 一帧状态刷新后出圈，文案是后台 run 成因（不刷新页面）', async () => {
+    const sessions = installSessions({ 's-a': { running: false } })
+    const rows = [baseReq()]
+    const st = installState(rows)
+    const { el } = countingContainer()
+    const dispose = attachBoard(el, { poll: false })
+    await flush()
+    expect(el.innerHTML).not.toContain('data-running')
+
+    rows[0]!.advanceLockAt = Date.now() - 60_000   // 后台 run 认领推进锁
+    st.bump(2)
+    frame(2)
+    await flush()
+
+    expect(el.innerHTML).toContain('data-running="true"')
+    expect(el.innerHTML).toContain('aria-label="后台 run 进行中"')
+    sessions.fire() // 会话侧没动，不该影响结论
+    await flush()
+    expect(el.innerHTML).toContain('data-running="true"')
+    dispose()
+  })
+
+  it('TC-20 锁清除 / 过期 → 下一次状态刷新后圈灭', async () => {
+    const installSessions2 = installSessions({ 's-a': { running: false } })
+    const rows: ReqRow[] = [{ ...baseReq(), advanceLockAt: Date.now() - 60_000 }]
+    const st = installState(rows)
+    const { el } = countingContainer()
+    const dispose = attachBoard(el, { poll: false })
+    await flush()
+    expect(el.innerHTML).toContain('data-running="true"')
+
+    delete rows[0]!.advanceLockAt                        // run 收尾清锁
+    st.bump(3)
+    frame(3)
+    await flush()
+    expect(el.innerHTML).not.toContain('data-running')
+
+    rows[0]!.advanceLockAt = Date.now() - 15 * 60_000    // 残锁恰好过期
+    st.bump(4)
+    frame(4)
+    await flush()
+    expect(el.innerHTML).not.toContain('data-running')
+    installSessions2.fire()
+    dispose()
+  })
+
+  it('TC-21 无关会话的 running 抖动：锁不变时不额外重绘（门控不被新判据破坏）', async () => {
+    const sessions = installSessions({ 's-other': { running: false } })
+    const rows: ReqRow[] = [{ ...baseReq(), advanceLockAt: Date.now() - 60_000 }]
+    installState(rows)
+    const { el, renders } = countingContainer()
+    const dispose = attachBoard(el, { poll: false })
+    await flush()
+    const before = renders()
+    expect(before).toBeGreaterThan(0)
+
+    sessions.set({ 's-other': { running: true } })
+    sessions.fire()
+    await flush()
+
+    expect(renders()).toBe(before)
+    expect(el.innerHTML).toContain('data-running="true"')   // 圈仍在（锁没变）
+    dispose()
+  })
+
+  it('TC-22 dispose 之后：迟到的状态帧既不重绘也不抛错', async () => {
+    const rows: ReqRow[] = [baseReq()]
+    const st = installState(rows)
+    const { el, renders } = countingContainer()
+    const dispose = attachBoard(el, { poll: false })
+    await flush()
+    const before = renders()
+
+    dispose()
+    rows[0]!.advanceLockAt = Date.now() - 60_000
+    st.bump(9)
+    expect(() => frame(9)).not.toThrow()
+    await flush()
+
+    expect(renders()).toBe(before)
+    expect(el.innerHTML).not.toContain('data-running')
+  })
+})

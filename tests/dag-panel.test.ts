@@ -84,6 +84,35 @@ describe('FR-8 DAG Tab：画布挂载点与图数据摘要', () => {
     expect((html.match(/<canvas\b/g) ?? []).length).toBe(1)
   })
 
+  // T-16（REQ-261006130057-7a43 · FR-7 · t8）：DAG 适配——顶部工具行 + 四态图例；
+  // 画布容器结构与挂载点标记原样（画布组件零改动回归由上方用例钉住）
+  it('T-16 顶部工具行：−/100%/＋/适应窗口（disabled 占位 + title 说缘由）+ 四态图例（色点带文字标签）', () => {
+    const html = render({ tasks: [node({ id: 't-1', title: '画布' })], steps: [] })
+    expect(html).toContain('data-dag-toolbar="1"')
+    const bar = html.slice(html.indexOf('data-dag-toolbar="1"'), html.indexOf('class="dsh-pm-dag-head"'))
+    // 缩放四件：现有画布无缩放 API → 一律 disabled 占位（不给假按钮），title 写明缘由
+    for (const key of ['out', 'in', 'fit']) {
+      expect(bar).toContain('data-dag-zoom="' + key + '"')
+    }
+    expect(bar).toContain('data-dag-zoom-pct="1"')
+    expect(bar).toContain('>100%</span>')
+    expect(bar).toContain('>−</button>')
+    expect(bar).toContain('>＋</button>')
+    expect(bar).toContain('>适应窗口</button>')
+    expect((bar.match(/disabled/g) ?? []).length).toBe(6) // 3 钮 ×（disabled + aria-disabled）
+    expect(bar).toContain('画布缩放沿用拖拽/滚轮')
+    // 占位钮**不**混进挂载入口的 dsh-pm-dag-btn 链（那条链只认纵向/横向与开关）
+    expect(bar).not.toContain('dsh-pm-dag-btn')
+    // 四态图例：色点 + 文字标签（不只剩颜色）
+    expect(bar).toContain('data-dag-legend4="1"')
+    for (const dot of ['todo', 'running', 'done', 'blocked']) {
+      expect(bar).toContain('data-dot="' + dot + '"')
+    }
+    for (const label of ['待办', '在跑', '完成', '阻塞']) {
+      expect(bar).toContain(label)
+    }
+  })
+
   it('图数据摘要：层级 / 卡片数 / 依赖边 / 最大并行度 / 分层明细 / 状态分布', () => {
     const tasks: DagGraphNode[] = [
       node({ id: 't-a', title: 'A', status: 'done' }),
@@ -273,7 +302,10 @@ describe('FR-8 DAG Tab：铺开纪律与空态', () => {
   it('无任务 + 无执行记录：两处都有说辞，表头仍在八列', () => {
     const html = render({ tasks: [], steps: [] })
     expect(html).toContain('data-dag-empty="no-tasks"')
-    expect(html).toContain('还没有任务卡')
+    // FR-7（REQ-261006130057-7a43 t8）：无任务空态**单独成块**，文案逐字按原型 v1.5 #FR-7
+    expect(html).toContain('data-dag-empty-block="1"')
+    expect(html).toContain('暂无任务：这条需求还没有拆分出任务卡。批准拆分计划后，这里画出任务 DAG（层级 / 依赖 / 并行度）。')
+    expect(html).toContain('dsh-pm-dag-empty')
     expect(html).toContain('data-steps-empty="1"')
     expect(html).toContain('还没有执行记录')
     expect((html.match(/<th\b/g) ?? []).length).toBe(8)

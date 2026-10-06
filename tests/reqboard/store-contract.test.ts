@@ -38,7 +38,9 @@ import {
   type SweepResult,
 } from '../../src/application/ports.js'
 import { BIG_FIELD_KEYS } from '../../src/domain/requirement/RequirementSummary.js'
-import { factsOf, summarize, type RequirementFacts, type RequirementSummary } from '../../src/domain/requirement/RequirementSummary.js'
+import { factsOf, type RequirementFacts, type RequirementSummary } from '../../src/domain/requirement/RequirementSummary.js'
+// REQ-261006175040-12d4 t5：假 SQL 只读替身也要走装配单点（同形断言当场抓出它原先直调 summarize）
+import { boardSummaryOfAuthoritative } from '../../src/shared/board-summary.js'
 import { isColdStatus } from '../../src/domain/requirement/ReqboardPaths.js'
 import { compareSummaryOrder, decodeSummaryCursor, encodeSummaryCursor } from '../../src/repositories/shardPaging.js'
 import type { CommentRecord, RequirementRecord } from '../../src/shared/protocol.js'
@@ -89,7 +91,7 @@ class FakeSqlReadOnlyStore implements RequirementStore {
   async get(id: string): Promise<RequirementRecord | undefined> { return this.row(id) }
   async getSummary(id: string): Promise<RequirementSummary | undefined> {
     const rec = this.rows.find((r) => r.id === id)
-    return rec === undefined ? undefined : summarize(rec)
+    return rec === undefined ? undefined : boardSummaryOfAuthoritative(rec)
   }
 
   async listSummaries(filter?: RequirementFilter): Promise<RequirementSummaryPage> {
@@ -102,19 +104,24 @@ class FakeSqlReadOnlyStore implements RequirementStore {
         if (scope === 'archived' && !isColdStatus(r.status)) return false
         if (filter?.ids !== undefined && !filter.ids.includes(r.id)) return false
         if (filter?.status !== undefined && !filter.status.includes(r.status)) return false
+        // 项目筛（REQ-261005141830-7a3b FR-10）：三个实现同口径，替身也不例外
+        if (filter?.projectId !== undefined && r.projectId !== filter.projectId) {
+          const unattributed = !(typeof r.projectId === 'string' && r.projectId.length > 0)
+          if (!(filter.includeUnattributed === true && unattributed)) return false
+        }
         if (filter?.workspaceRoot !== undefined && r.workspaceRoot !== filter.workspaceRoot) return false
         if (filter?.sourceSessionId !== undefined && r.sourceSessionId !== filter.sourceSessionId) return false
         return true
       })
       .sort(compareSummaryOrder)
     const limit = Math.min(Math.max(filter?.limit ?? 200, 1), 1000)
-    const items = matched.slice(offset, offset + limit).map(summarize)
+    const items = matched.slice(offset, offset + limit).map((r) => boardSummaryOfAuthoritative(r))
     const nextOffset = offset + items.length
     return nextOffset < matched.length ? { items, nextCursor: encodeSummaryCursor(nextOffset) } : { items }
   }
 
   peekSummaries(): readonly RequirementSummary[] {
-    return this.rows.filter((r) => !isColdStatus(r.status)).map(summarize)
+    return this.rows.filter((r) => !isColdStatus(r.status)).map((r) => boardSummaryOfAuthoritative(r))
   }
 
   peekFacts(): readonly RequirementFacts[] {
@@ -301,13 +308,28 @@ function defineReadContract(label: string, make: ContractFactory): void {
       expect(cold.items.map((i) => i.id)).toEqual([REQ_COLD])
     })
 
-    it('listSummaries()：条件过滤（ids / status / workspaceRoot / sourceSessionId）', async () => {
+    it('listSummaries()：条件过滤（ids / status / projectId / workspaceRoot / sourceSessionId）', async () => {
       const { store } = await make([
-        req(REQ_A, { workspaceRoot: '/ws/1', sourceSessionId: 'session-1', status: 'implementing' }),
-        req(REQ_B, { workspaceRoot: '/ws/2', sourceSessionId: 'session-2', status: 'design' }),
+        req(REQ_A, { projectId: 'w-1', workspaceRoot: '/ws/1', sourceSessionId: 'session-1', status: 'implementing' }),
+        req(REQ_B, { projectId: 'w-2', workspaceRoot: '/ws/2', sourceSessionId: 'session-2', status: 'design' }),
+        req(REQ_COLD, { status: 'implementing', updatedAt: 50 }), // 未归属：不命中任何项目筛
       ])
       expect((await store.listSummaries({ ids: [REQ_B] })).items.map((i) => i.id)).toEqual([REQ_B])
       expect((await store.listSummaries({ status: ['design'] })).items.map((i) => i.id)).toEqual([REQ_B])
+      expect((await store.listSummaries({ projectId: 'w-1' })).items.map((i) => i.id)).toEqual([REQ_A])
+      expect((await store.listSummaries({ projectId: 'w-2' })).items.map((i) => i.id)).toEqual([REQ_B])
+      // 未归属的存量记录**不会**被任何项目筛捞出来（"缺失 ≠ 当前项目"，本仓一贯口径）
+      expect((await store.listSummaries({ projectId: 'w-1' })).items.some((i) => i.id === REQ_COLD)).toBe(false)
+      // 显式要求「本项目 + 未归属」时才把它带回来（t5 · FR-8：看板老记录不消失）；缺省行为不变。
+      expect(
+        (await store.listSummaries({ projectId: 'w-1', includeUnattributed: true })).items.map((i) => i.id).sort(),
+      ).toEqual([REQ_A, REQ_COLD].sort())
+      // 单独给 includeUnattributed（不给 projectId）不产生任何筛选效果 —— 仍是全量，
+      // 防止「忘了带 projectId 却以为自己按项目筛了」这种静默失效。
+      expect(
+        (await store.listSummaries({ includeUnattributed: true })).items.map((i) => i.id).sort(),
+      ).toEqual([REQ_A, REQ_B, REQ_COLD].sort())
+      expect((await store.listSummaries({ projectId: 'w-none' })).items).toEqual([])
       expect((await store.listSummaries({ workspaceRoot: '/ws/1' })).items.map((i) => i.id)).toEqual([REQ_A])
       expect((await store.listSummaries({ sourceSessionId: 'session-2' })).items.map((i) => i.id)).toEqual([REQ_B])
       expect((await store.listSummaries({ status: ['canceled'] })).items).toEqual([])
@@ -668,5 +690,62 @@ describe('InMemoryRequirementStore 专有行为（告警通道；分片实现的
     const store = new InMemoryRequirementStore({ requirements: [req(REQ_A)] }, { onWarn: (m) => warns.push(m) })
     await store.sweep('对账', () => [REQ_A, 'REQ-000000'])
     expect(warns.some((w) => w.includes('REQ-000000'))).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 门读数同形（REQ-261006175040-12d4 t5 / FR-2、FR-7）
+// ---------------------------------------------------------------------------
+
+/**
+ * 为什么单列这一节：门读数由**服务端装配单点**产出（`shared/board-summary` → `domain/artifact/GateReadings`），
+ * 而看板摘要有四条产出路径（InMemory / 分片 / SQLite / 假 SQL 只读）。只要有一条忘了装配读数，
+ * 同一份台账就会在不同实现下给出不同的门状态——这正是本仓「两份真相必然漂移」的形态。
+ *
+ * 本节的夹具刻意覆盖三种判定形态：**已落章**（requirement）/ **成组确认待确认**（design 两份里一份未落章）/
+ * **缺失**（verification 未登记），外加 planState 与 archivePrepared 两枚读数。
+ */
+describe('门读数同形：四条实现给出相同的 gates / planState / archivePrepared', () => {
+  const rich = req(REQ_A, {
+    category: 'feature',
+    artifacts: [
+      { stage: 'brainstorming', kind: 'requirement', path: 'r.md', registeredAt: 1, confirmedAt: 2, registeredBy: { kind: 'agent' } },
+      { stage: 'design', kind: 'design', path: 'd1.md', registeredAt: 3, confirmedAt: 4, registeredBy: { kind: 'agent' } },
+      { stage: 'design', kind: 'design', path: 'd2.md', registeredAt: 5, registeredBy: { kind: 'agent' } },
+      { stage: 'decomposing', kind: 'decomposition', path: 'p.md', registeredAt: 6, confirmedAt: 7, registeredBy: { kind: 'agent' } },
+    ],
+    plan: { path: 'p.md', summary: 's', tasks: [], submittedAt: 6, submittedBy: { kind: 'agent' }, approvedAt: 7 },
+    archive: { docs: [], preparedAt: 8, preparedBy: { kind: 'agent' } },
+    updatedAt: 100,
+  } as never)
+
+  /** 期望读数（写成字面量，不从被测实现反推——否则同形断言会变成"两处都错得一样"）。 */
+  const EXPECTED_GATES = [
+    { kind: 'requirement', status: 'confirmed', count: 1 },
+    { kind: 'design', status: 'pending', count: 2 },
+    { kind: 'decomposition', status: 'confirmed', count: 1 },
+    { kind: 'verification', status: 'missing', count: 0 },
+  ]
+
+  for (const impl of IMPLEMENTATIONS) {
+    it(`${impl.name}：读数与期望逐字段一致`, async () => {
+      const { store } = await impl.make([rich])
+      const s = await store.getSummary(REQ_A)
+      expect(s?.gates).toEqual(EXPECTED_GATES)
+      expect(s?.planState).toBe('approved')
+      expect(s?.archivePrepared).toBe(true)
+    })
+  }
+
+  it('四条实现的读数彼此相等（同一条需求、同一批夹具）', async () => {
+    // 只比读数（name 是实现名，不参与同形比较——那不是"同形"的一部分）
+    const seen: Array<{ gates: unknown; planState: unknown; archivePrepared: unknown }> = []
+    for (const impl of IMPLEMENTATIONS) {
+      const { store } = await impl.make([rich])
+      const s = await store.getSummary(REQ_A)
+      seen.push({ gates: s?.gates, planState: s?.planState, archivePrepared: s?.archivePrepared })
+    }
+    expect(seen.length).toBe(IMPLEMENTATIONS.length)
+    for (const row of seen) expect(row).toEqual(seen[0])
   })
 })

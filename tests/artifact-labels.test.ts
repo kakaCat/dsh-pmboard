@@ -9,6 +9,7 @@
  *   TC-004 taskCardLabel：有 title →「任务卡 · 名称」；无 title →「任务卡（t-xxx）」；
  *   TC-005 防漂移护栏：effectiveDesignDocs(各类型) 产出的全部规范文件名 ∈ DOC_FILE_LABELS 键集
  *         ——新增规范文件名未配中文名即红。
+ *   TC-006 prototype 中文名「原型」+ 图标（REQ-261005105032-3b02 决议 #33，新增 kinds 的护栏延伸）。
  */
 import { describe, expect, it } from 'vitest'
 import {
@@ -127,5 +128,20 @@ describe('TC-005 · 防漂移护栏：规范文件名必须全部配中文名', 
   })
   it('DOC_FILE_LABELS 表行数与设计终稿一致（10 行，新增须同步评审）', () => {
     expect(Object.keys(DOC_FILE_LABELS)).toHaveLength(10)
+  })
+})
+
+describe('TC-006 · prototype 中文名（REQ-261005105032-3b02 决议 #33）', () => {
+  it("KIND_LABELS.prototype === '原型'（新增 kind 未配中文名会被 TC-001 护栏拦）", () => {
+    expect(KIND_LABELS['prototype']).toBe('原型')
+  })
+  it('artifactKindLabel("prototype") → 「原型」（不落「产物（prototype）」兜底文案）', () => {
+    expect(artifactKindLabel('prototype')).toBe('原型')
+  })
+  it('KIND_ICONS.prototype 存在（TC-001 键集一致性护栏：KIND_LABELS 有键、图标不能缺）', () => {
+    expect(KIND_ICONS['prototype']).toBeDefined()
+  })
+  it('prototype 已进 ALL_ARTIFACT_KINDS（中文名护栏遍历的就是这份清单）', () => {
+    expect([...ALL_ARTIFACT_KINDS]).toContain('prototype')
   })
 })

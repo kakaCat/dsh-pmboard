@@ -4,8 +4,9 @@
  *
  * 这份用例钉的是**一条容易静默失效的链**：模板里写了节 → 抽取端认得那个节名 → 页面才有内容。
  * 三处任何一处断掉都不会报错，只会让"实现思路 / 关键技术方案"永远少一半：
- *   ① `templates/design/*.md` 与 `templates/brainstorming/*.md` 必须**逐字节**含
- *      `## 关键决策与取舍` 与 `## 技术方案与亮点`（FR-13 写的两个节名）；
+ *   ① `templates/design/*.md` 与 `templates/brainstorming/*.md` 必须含
+ *      `## 关键决策与取舍` 与 `## 技术方案与亮点`（FR-13 写的两个节名；REQ-261005105032-3b02 t14 起
+ *      允许节名带行尾 serves 装饰——线上设计门禁要求每个 H2 都带 serves，模板必须照它写得出合规文档）；
  *   ② **真实形状**的标题必须能被写死的节名命中——设计模板那一节的标题是
  *      ``## 目标与总体方案 `serves: FR-1` ``，而抽取端写死的节名是「架构」：
  *      靠的是 `TRUNK_SECTION_ALIASES` 的别名表。这条是防"有人把别名表删了"的机械钉子；
@@ -29,7 +30,7 @@ import {
 import { renderTrunkPanel } from '../src/client/views/panels/trunk.js'
 import type { TrunkResponse } from '../src/shared/protocol.js'
 
-/** 卡上写死的两个节名（逐字节；模板与断言共用同一份字面量）。 */
+/** 卡上写死的两个节名（字面量与抽取端共用同一份；比对前剥 serves 装饰，节名本身仍逐字相等）。 */
 const DECISION_HEADING = '关键决策与取舍'
 const HIGHLIGHT_HEADING = '技术方案与亮点'
 
@@ -38,9 +39,26 @@ const BRAINSTORMING_DIR_URL = new URL('../templates/brainstorming/', import.meta
 
 const tmpl = (dirUrl: URL, name: string): string => readFileSync(new URL(name, dirUrl), 'utf8')
 
-/** 模板里所有二级标题的**原文**（不含 `## ` 前缀、不做 trim：逐字节比对）。 */
+/**
+ * 模板里所有二级标题的**节名**（剥掉行尾 serves 装饰后再比）。
+ *
+ * 为什么不再逐字节比整行（REQ-261005105032-3b02 t14 / FR-10）：模板的职责是「照它写出来的文档
+ * 能过线上门禁」，而线上设计门禁要求**每个 H2 及以上章节都带 serves**——8 份 `templates/design/*.md`
+ * 因此都补上了 serves 尾巴（模板与门禁口径分叉正是 D-5 家族，本需求要消灭的就是它）。
+ * 断言的**意图不变**：仍然断言「关键决策与取舍」「技术方案与亮点」这两个 H2 真在模板里，
+ * 只是允许它带 serves 装饰。
+ */
 function h2Headings(md: string): string[] {
-  return md.split(/\r?\n/).filter(l => l.startsWith('## ')).map(l => l.slice(3))
+  return md.split(/\r?\n/).filter(l => l.startsWith('## ')).map(l => stripServesDecoration(l.slice(3)))
+}
+
+/** 剥掉行尾 serves 装饰（仓里既有的三种写法：HTML 注释 / 反引号 / 括号）。 */
+function stripServesDecoration(raw: string): string {
+  return raw
+    .replace(/(?:\s*<!--[\s\S]*?-->)+$/g, '')
+    .replace(/\s*`\s*serves\s*[:：][^`]*`\s*$/i, '')
+    .replace(/\s*[（(]\s*serves\s*[:：][^）)]*[）)]\s*$/i, '')
+    .trim()
 }
 
 const mdFiles = (dirUrl: URL): string[] => readdirSync(dirUrl).filter(n => n.endsWith('.md')).sort()
@@ -53,7 +71,7 @@ const countOf = (hay: string, needle: string): number => hay.split(needle).lengt
 /* ══════════════════════════════════════════════ T-22 两节在模板里 */
 
 describe('T-22 · 模板两节（FR-13）', () => {
-  it('T-22 · design/*.md 与 brainstorming/*.md 都逐字节含「关键决策与取舍」「技术方案与亮点」', () => {
+  it('T-22 · design/*.md 与 brainstorming/*.md 都含「关键决策与取舍」「技术方案与亮点」两个 H2（允许行尾 serves 装饰）', () => {
     const designFiles = mdFiles(DESIGN_DIR_URL)
     const brainstormingFiles = mdFiles(BRAINSTORMING_DIR_URL)
     // 防空断言：两个目录都得有模板可比（目录改名 / 清空时这条要红，而不是跳过）

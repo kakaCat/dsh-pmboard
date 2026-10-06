@@ -62,6 +62,25 @@ async function seedArtifact(confirmedAt?: number): Promise<void> {
   await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
+/** 同上，但台账里**有计划**——用于「可作答的 plan 票」投影（REQ-261005200052-ce40 FR-2 之后）。 */
+async function seedPlan(): Promise<void> {
+  mkdirSync(join(dir, 'docs/requirements/REQ-st01'), { recursive: true })
+  writeFileSync(join(dir, 'docs/requirements/REQ-st01/decomposition.md'), '# 拆分计划\n')
+  const r = {
+    id: 'REQ-st01', title: '挂起投影', description: '', status: 'decomposing', blocked: false,
+    sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
+    createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
+    artifacts: [{
+      stage: 'decomposing', kind: 'decomposition',
+      path: 'docs/requirements/REQ-st01/decomposition.md', registeredAt: 1,
+    } as StageArtifact],
+    plan: {
+      path: 'docs/requirements/REQ-st01/decomposition.md', summary: '投影用计划', tasks: [], submittedAt: 1,
+    } as never,
+  } as RequirementRecord
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
+}
+
 const exec = { agent: { id: W } }
 
 describe('reqboard_status.pending_confirms（FR-4 / I-2）', () => {
@@ -94,6 +113,9 @@ describe('reqboard_status.pending_confirms（FR-4 / I-2）', () => {
   it('被中止记录 → interrupted=true', async () => {
     await seedArtifact()
     const deps = makeDeps()
+    // REQ-261005200052-ce40 FR-2：无计划的 plan 票属于「答不了的空票」，会被守卫放行——
+    // 本用例要投影的是**可作答**的中止票，故台账里必须有计划（与真实批准流程一致）。
+    await seedPlan()
     const rec = deps.pendingConfirms.register({ windowKey: W, requirementId: 'REQ-st01', target: 'plan' })
     deps.pendingConfirms.markInterrupted(rec.ticket)
     const out = await (defineStatusTool(deps) as any).execute({}, exec)

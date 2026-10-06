@@ -13,6 +13,7 @@ import { describe, it, expect } from 'vitest'
 import {
   applyVerdicts,
   isAllPassed,
+  isFullyDecided,
   isSystemItem,
   sheetGateStatus,
   unverifiedItemsOf,
@@ -54,6 +55,16 @@ describe('① unverified 第三态（FR-1）', () => {
   it('有 failed → blocked（优先级高于 pending）', () => {
     const s = sheet([item({ id: 'v1-1', status: 'failed' }), item({ id: 'v1-2', status: 'unverified' })])
     expect(sheetGateStatus(s)).toBe('blocked')
+  })
+
+  it('FR-6：全 unverified 不算「已全部裁决」（两条放行判据必须同口径）', () => {
+    // 此前 isFullyDecided 只看 pending ⇒ 对"全未复核"回答"已裁决"，与 sheetGateStatus（pending）相反。
+    const s = sheet([item({ id: 'v1-1', status: 'unverified' }), item({ id: 'v1-2', status: 'unverified' })])
+    expect(sheetGateStatus(s)).toBe('pending')
+    expect(isFullyDecided(s)).toBe(false)
+    // pending 同样不放行；not_verifiable 算已裁决（既有语义不变）
+    expect(isFullyDecided(sheet([item({ id: 'v1-3', status: 'pending' })]))).toBe(false)
+    expect(isFullyDecided(sheet([item({ id: 'v1-4', status: 'passed' }), item({ id: 'v1-5', status: 'not_verifiable' })]))).toBe(true)
   })
 })
 
@@ -124,13 +135,37 @@ describe('⑤ 系统项通过必须带处置（FR-2：整批硬拒，且先验�
     expect(s1.items[0]!.status).toBe('pending')
   })
 
-  it('写了处置即放行；普通项通过但缺实际结果仍被拒（两种拒绝互不替代）', () => {
+  it('写了处置即放行；普通项通过但两者皆空 → 记 unverified（REQ-261006092213-4f5b FR-6 放宽，不再抛错）', () => {
     const s1 = sheet([item({ id: 'v1-1', status: 'pending', gapKind: 'e2e' })])
     expect(() => applyVerdicts(s1, [{ itemId: 'v1-1', status: 'passed', opinion: '确认无需 E2E：纯函数模块，无外部接口' }], { kind: 'human' }, 1, []))
       .not.toThrow()
     const s2 = sheet([item({ id: 'v1-2', status: 'pending', criterion: '普通项' })])
+    // REQ-261006092213-4f5b FR-6 / D-5（**推翻 b918 FR-1 的「通过必填」**）：底线从「有人打字」
+    // 改成「**有结果**」——普通项 `opinion` 与 `item.result` 皆空时不再整批拒，改记 `unverified`
+    // （不冒充通过；而 agent 已落章的项由 `item.result` 支起零输入通过，见下一条）。
     expect(() => applyVerdicts(s2, [{ itemId: 'v1-2', status: 'passed' }], { kind: 'human' }, 1, []))
-      .toThrowError(/必须填写实际结果/)
+      .not.toThrow()
+    expect(s2.items[0]!.status).toBe('unverified')
+  })
+
+  it('有 result 无意见 → passed 且 opinion 取该项 result（零输入通过，FR-6）', () => {
+    const s = sheet([item({ id: 'v1-3', status: 'pending', result: 'npx vitest run → 6 passed' })])
+    applyVerdicts(s, [{ itemId: 'v1-3', status: 'passed' }], { kind: 'human' }, 1, [])
+    expect(s.items[0]!.status).toBe('passed')
+    expect(s.items[0]!.opinion).toBe('npx vitest run → 6 passed')
+  })
+
+  it('needsHuman 项不吃 result 兜底：有 result 但零输入点通过 → unverified（复核 M1）', () => {
+    // 判定依据只在人眼里（result 只是供参照的材料）；不吃兜底才能与弹框通道同口径。
+    const s = sheet([item({ id: 'v1-9', status: 'pending', needsHuman: true, humanReason: '界面视觉', result: 'agent 参照：截图已出' })])
+    applyVerdicts(s, [{ itemId: 'v1-9', status: 'passed' }], { kind: 'human' }, 1, [])
+    expect(s.items[0]!.status).toBe('unverified')
+    expect(s.items[0]!.opinion).toBeUndefined()
+    // 写了人的事实 → passed（且不覆盖 result：internal/verdicts 的 human 写入是另一处，这里只管判定）
+    const s2 = sheet([item({ id: 'v1-10', status: 'pending', needsHuman: true, humanReason: '界面视觉', result: 'agent 参照' })])
+    applyVerdicts(s2, [{ itemId: 'v1-10', status: 'passed', opinion: '我对照原型看过：一致' }], { kind: 'human' }, 1, [])
+    expect(s2.items[0]!.status).toBe('passed')
+    expect(s2.items[0]!.opinion).toBe('我对照原型看过：一致')
   })
 
   it('unverified 不需要意见（未复核本身就是它的语义）', () => {

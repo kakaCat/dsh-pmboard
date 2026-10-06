@@ -126,7 +126,7 @@ describe('台账 requirementRefs ∪ 拆分文档 RTM 表', () => {
       [{ id: 't-1', requirement_refs: ['FR-1'] }],
       [{ id: 't-1', requirementRefs: ['FR-4'] }, { id: 't-2', requirementRefs: ['FR-9'] }],
     )
-    expect(refs.find(r => r.id === 't-1')?.requirementRefs?.sort()).toEqual(['FR-1', 'FR-4'])
+    expect([...(refs.find(r => r.id === 't-1')?.requirementRefs ?? [])].sort()).toEqual(['FR-1', 'FR-4'])
     const s = clauseReceiveStatus(ROOTS, refs, [
       { id: 't-1', status: 'in_progress' }, { id: 't-2', status: 'in_progress' },
     ])

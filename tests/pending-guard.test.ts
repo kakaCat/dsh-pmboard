@@ -10,10 +10,15 @@
 import { makeTestStore } from './application/harness.js'
 import { describe, it, expect } from 'vitest'
 import { PendingConfirmRegistry } from '../src/adapters/PendingConfirmRegistry.js'
+import { artifactNotifyText } from '../src/application/internal/artifact-gates.js'
 import {
   PENDING_CONFIRM_BLOCKED_TOOLS,
   PENDING_CONFIRM_RECOVERY,
+  hasConfirmGateOf,
+  hasConfirmableArtifactOf,
+  isConfirmGateKind,
   livePendingConfirm,
+  pendingConfirmFactsOf,
   pendingConfirmRejectMessage,
   targetConfirmedInLedger,
 } from '../src/application/internal/pending-guard.js'
@@ -114,7 +119,53 @@ describe('livePendingConfirm：过滤已 settle / 已过期 / 台账已落章（
     expect(await livePendingConfirm({} as UseCaseDeps, W)).toBeUndefined()
   })
 
-  it('文案常量：blocked_tools 四条写路径；recovery 含取回执与看板两条路径', () => {
+  // ── REQ-261005200052-ce40 FR-2：无门 / 无产物的票不拦（谓词④⑤）───────────────────
+  it('无门的票（kind=prototype）→ 放行（拦的东西不是门）', async () => {
+    const registry = new PendingConfirmRegistry({ now: () => 0, ttlMs: 1000 })
+    registry.register({ windowKey: W, requirementId: 'REQ-x', target: 'artifact', kind: 'prototype' })
+    expect((await livePendingConfirm(depsOf(registry, [reqOf('REQ-x', { artifacts: [{ kind: 'prototype' }] as never })]), W))).toBeUndefined()
+    // 门值域里没有 prototype——这张票连"有门"都不成立，产物在不在册都一样放行
+    expect(isConfirmGateKind('prototype')).toBe(false)
+    expect(isConfirmGateKind('verification')).toBe(true)
+    expect(hasConfirmGateOf(rec({ kind: 'prototype' }))).toBe(false)
+    expect(hasConfirmGateOf(rec({ target: 'plan' }))).toBe(true)
+    expect(hasConfirmableArtifactOf(reqOf('REQ-x'), rec({ kind: 'requirement' }))).toBe(false)
+    expect(hasConfirmableArtifactOf(reqOf('REQ-x', { artifacts: [{ kind: 'requirement' }] as never }), rec({ kind: 'requirement' }))).toBe(true)
+  })
+
+  it('有门且产物在册未落章 → 仍拦（真门不放宽）', async () => {
+    const registry = new PendingConfirmRegistry({ now: () => 0, ttlMs: 1000 })
+    const p = registry.register({ windowKey: W, requirementId: 'REQ-x', target: 'artifact', kind: 'verification' })
+    const live = await livePendingConfirm(depsOf(registry, [reqOf('REQ-x', { artifacts: [{ kind: 'verification' }] as never })]), W)
+    expect(live?.ticket).toBe(p.ticket)
+  })
+
+  it('有门但台账无该 kind 产物 → 放行（没东西可落章，人点看板也答不了）', async () => {
+    const registry = new PendingConfirmRegistry({ now: () => 0, ttlMs: 1000 })
+    registry.register({ windowKey: W, requirementId: 'REQ-x', target: 'artifact', kind: 'requirement' })
+    expect(await livePendingConfirm(depsOf(registry, [reqOf('REQ-x', { artifacts: [] as never })]), W)).toBeUndefined()
+    expect(await livePendingConfirm(depsOf(registry, [reqOf('REQ-x')]), W)).toBeUndefined()
+  })
+
+  it('读时谓词：产物登记后同一张票恢复拦截（不是一次性作废）', async () => {
+    const registry = new PendingConfirmRegistry({ now: () => 0, ttlMs: 1000 })
+    const p = registry.register({ windowKey: W, requirementId: 'REQ-x', target: 'artifact', kind: 'requirement' })
+    // 产物尚未登记 → 放行
+    expect(await livePendingConfirm(depsOf(registry, [reqOf('REQ-x')]), W)).toBeUndefined()
+    // 产物被登记/自动发现之后 → 同一张票立刻恢复拦截
+    const live = await livePendingConfirm(depsOf(registry, [reqOf('REQ-x', { artifacts: [{ kind: 'requirement' }] as never })]), W)
+    expect(live?.ticket).toBe(p.ticket)
+  })
+
+  it('target=plan：无计划放行 / 有计划仍拦', async () => {
+    const registry = new PendingConfirmRegistry({ now: () => 0, ttlMs: 1000 })
+    const p = registry.register({ windowKey: W, requirementId: 'REQ-x', target: 'plan' })
+    expect(await livePendingConfirm(depsOf(registry, [reqOf('REQ-x')]), W)).toBeUndefined()
+    const live = await livePendingConfirm(depsOf(registry, [reqOf('REQ-x', { plan: {} as never })]), W)
+    expect(live?.ticket).toBe(p.ticket)
+  })
+
+  it('文案常量：blocked_tools 四条写路径；recovery 只列取回执与看板两条（不再列「重新发起覆盖」）', () => {
     expect([...PENDING_CONFIRM_BLOCKED_TOOLS]).toEqual(['reqboard_submit', 'reqboard_decompose', 'reqboard_move', 'reqboard_task_move'])
     expect(PENDING_CONFIRM_RECOVERY).toContain('收到作答前不得产出下游产物')
     expect(PENDING_CONFIRM_RECOVERY).toContain('reqboard_confirm_receipt')
@@ -125,6 +176,78 @@ describe('livePendingConfirm：过滤已 settle / 已过期 / 台账已落章（
     expect(msg).toContain('收到作答前不得产出下游产物')
     expect(msg).toContain('reqboard_confirm_receipt(ticket="pc-abc123")')
     expect(msg).toContain('看板')
-    expect(msg).toContain('reqboard_ask_confirm')
+    // REQ-261006164732-6503 t9 口径修正：删掉「重新发起 … 覆盖旧记录」——那句是双框事故里
+    // agent 照做的第三条文案源，而"覆盖"的真实行为就是再开一个框（与同门唯一直接冲突）。
+    expect(msg).not.toContain('覆盖旧记录')
+    expect(msg).not.toContain('reqboard_ask_confirm')
+  })
+})
+
+describe('诊断投影与文案只列真实出路（REQ-261005200052-ce40 FR-3 / FR-4）', () => {
+  /** 固定时刻：让「失效时刻 / 剩余分钟」可断言（facts 是纯函数，时间由入参决定）。 */
+  const NOW = 0
+
+  it('无门的票（prototype）：facts.gate=false，原文不列看板与覆盖（它们都走不通）', () => {
+    const req = reqOf('REQ-x', { status: 'brainstorming', artifacts: [{ kind: 'prototype' }] as never })
+    const p = rec({ kind: 'prototype' })
+    const facts = pendingConfirmFactsOf(req, p, NOW)
+    const msg = pendingConfirmRejectMessage(p, facts)
+    expect(facts.gate).toBe(false)
+    expect(msg).not.toContain('看板点确认')
+    expect(msg).not.toContain('重新发起')
+    expect(msg).toContain('不是确认门')
+    expect(msg).toContain('可用出路')
+  })
+
+  it('有门但无产物：原文指向「先登记产物」，不列看板（人点也答不了）', () => {
+    const req = reqOf('REQ-x', { status: 'brainstorming' })
+    const p = rec({ kind: 'requirement' })
+    const facts = pendingConfirmFactsOf(req, p, NOW)
+    const msg = pendingConfirmRejectMessage(p, facts)
+    expect(facts.gate).toBe(true)
+    expect(facts.artifactCount).toBe(0)
+    expect(msg).not.toContain('看板点确认')
+    expect(msg).toContain('先登记产物')
+  })
+
+  it('真门票（verification，产物在册）：原文含看板出路与失效时刻', () => {
+    const req = reqOf('REQ-x', { status: 'design', artifacts: [{ kind: 'verification' }] as never })
+    const p = rec({ kind: 'verification' })
+    const facts = pendingConfirmFactsOf(req, p, NOW)
+    const msg = pendingConfirmRejectMessage(p, facts)
+    expect(facts.gate).toBe(true)
+    expect(facts.artifactCount).toBe(1)
+    expect(facts.expiresAt).toBe(NOW + 30 * 60 * 1000)
+    expect(msg).toContain('看板点确认')
+    expect(msg).toContain('自动失效')
+    expect(msg).toContain('需求状态 design')
+  })
+
+  it('目标需求已归档：不列「重新发起覆盖」（必失败），并写明 agent 侧无解', () => {
+    const req = reqOf('REQ-x', { status: 'archived', artifacts: [{ kind: 'verification' }] as never })
+    const p = rec({ kind: 'verification' })
+    const facts = pendingConfirmFactsOf(req, p, NOW)
+    const msg = pendingConfirmRejectMessage(p, facts)
+    expect(msg).not.toContain('重新发起')
+    expect(msg).toContain('终态')
+    expect(msg).toContain('无法覆盖')
+  })
+
+  it('facts 缺省时拒绝原文保持旧文案骨架（REQ-261006164732-6503 t9 口径修正：末条出路已删）', () => {
+    const msg = pendingConfirmRejectMessage(rec({ ticket: 'pc-legacy', requirementId: 'REQ-x' }))
+    expect(msg).toContain('解除挂起：①')
+    // 口径修正：③「重新发起 … 覆盖旧记录」被删除（它指向的动作就是再开一个框）
+    expect(msg).not.toContain('③ 或重新发起 reqboard_ask_confirm')
+    expect(msg).toContain('② 或在项目看板点确认按钮。')
+  })
+
+  it('登记通知门感知：无门产物不写「确认入口」，有门产物照旧写（FR-4）', () => {
+    const req = { id: 'REQ-x', title: '通知' } as unknown as RequirementRecord
+    const proto = artifactNotifyText(req, { stage: 'brainstorming', kind: 'prototype', path: 'p/detail.html' } as never)
+    expect(proto).not.toContain('一键确认')
+    expect(proto).toContain('无需人工确认')
+    const requirement = artifactNotifyText(req, { stage: 'brainstorming', kind: 'requirement', path: 'r/requirement.md' } as never)
+    expect(requirement).toContain('确认入口')
+    expect(requirement).toContain('一键确认')
   })
 })

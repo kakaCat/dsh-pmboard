@@ -144,7 +144,7 @@ describe('QueueRepository 读（TC-3.2 / TC-3.3）', () => {
     expect(warnings.some((w) => w.includes('隔离'))).toBe(true)
   })
 
-  it('load 校验失败：返回 undefined **但不隔离**（内容不合规 ≠ 文件损坏），原件仍在', async () => {
+  it('load 校验失败：**读侧宽容**——告警但不隔离，仍返回队列（REQ-261005193546-1b1a t10 裁定）', async () => {
     await mkdir(dirOf(), { recursive: true })
     const path = repo.pathOf(REQ)
     const invalid = clone(queueOf(REQ, [mkTask('t-000001')]))
@@ -153,8 +153,11 @@ describe('QueueRepository 读（TC-3.2 / TC-3.3）', () => {
 
     const loaded = await repo.load(REQ)
 
-    expect(loaded).toBeUndefined()
-    expect(existsSync(path)).toBe(true) // 不隔离：用户还能手工修
+    // 读侧宽容（design/migration.md §风险 ④ 对策 1）：不再把整条队列判成不可用——
+    // 否则上层 `listByRequirement` 把 `undefined` 摊成 `[]`（存量需求读作 0 张、看板空白）。
+    expect(loaded).not.toBeUndefined()
+    expect(loaded!.tasks.map((t) => t.id)).toEqual(['t-000001'])
+    expect(existsSync(path)).toBe(true) // 不隔离：内容不合规 ≠ 文件损坏，用户还能手工修
     expect((await filesIn(dirOf())).filter((n) => n.includes('.corrupt-'))).toEqual([])
     expect(warnings.some((w) => w.includes('未通过校验'))).toBe(true)
   })

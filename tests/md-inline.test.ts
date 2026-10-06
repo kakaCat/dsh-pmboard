@@ -7,7 +7,7 @@
  *  ② **先转义再替换**——原文里的 `<script>` 只能是字面量，不能变成标签（XSS 防线在这一层）。
  *
  * 另有一条"零改写"性质：没有标记时输出与 `esc()` **逐字节相同**——既有断言
- * （`highlightDialogueText('<i>', '') === '&lt;i&gt;'`）和"渲染不改写原文"的用例都靠它。
+ * 和"渲染不改写原文"的用例都靠它（对话检索的 highlightDialogueText 已随 t7 删除）。
  *
  * @module dsh-pmboard/tests/md-inline
  */

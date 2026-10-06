@@ -85,6 +85,57 @@ describe('designDocPolicyFrom（front-matter 解析）', () => {
   })
 })
 
+/**
+ * REQ-261004222448-292a 事故回归：模板教的是 YAML 括号写法（templates/brainstorming/feature.md
+ * 首行就是 `sides: [frontend, backend]`），而门禁原先只认逗号写法 —— `[frontend, backend, doc]`
+ * 解析后只剩 backend，条件必交的 frontend.md 永远不被要。本组用例把「两种写法等价」钉死。
+ */
+describe('front-matter 列表写法：括号写法必须与逗号写法等价', () => {
+  it('[frontend, backend] → 两份条件必交都被要求（含 frontend.md）', () => {
+    const policy = designDocPolicyFrom({ sides: '[frontend, backend]' })
+    expect(policy.sides).toEqual(['frontend', 'backend'])
+    const names = effectiveDesignDocs('feature', policy.sides).map(d => d.name)
+    expect(names).toContain('frontend.md')
+    expect(names).toContain('backend.md')
+  })
+
+  it('单元素 [frontend] → 要求 frontend.md', () => {
+    expect(designDocPolicyFrom({ sides: '[frontend]' }).sides).toEqual(['frontend'])
+  })
+
+  it('顺序无关：[backend, frontend] 同样两份都要', () => {
+    expect(designDocPolicyFrom({ sides: '[backend, frontend]' }).sides).toEqual(['backend', 'frontend'])
+  })
+
+  it('[frontend, backend, doc] → 未知端侧 doc 被忽略，frontend 不丢（事故原样标本）', () => {
+    expect(designDocPolicyFrom({ sides: '[frontend, backend, doc]' }).sides).toEqual(['frontend', 'backend'])
+  })
+
+  it('容忍空格与引号：[ "frontend" , backend ]', () => {
+    expect(designDocPolicyFrom({ sides: '[ "frontend" , backend ]' }).sides).toEqual(['frontend', 'backend'])
+  })
+
+  it('括号写法的 sides + 缺 frontend.md → 缺失清单点名（端到端口径）', () => {
+    const policy = designDocPolicyFrom({ sides: '[frontend, backend]' })
+    const missing = missingCategoryDocs({
+      category: 'feature', rootExists: true, rootText: FEATURE_ROOT,
+      designNames: [...FEATURE_REQUIRED, 'backend.md'], sides: policy.sides,
+    })
+    expect(missing.join(' ')).toContain('design/frontend.md 未交')
+  })
+
+  it('豁免表也容忍括号包裹：[use-cases.md=理由]', () => {
+    expect(designDocPolicyFrom({ design_exempt: '[use-cases.md=纯内部工具无用户场景]' }).exempt)
+      .toEqual({ 'use-cases.md': '纯内部工具无用户场景' })
+  })
+
+  it('回归：逗号写法与单值写法逐字不变', () => {
+    expect(designDocPolicyFrom({ sides: 'frontend, backend , nonsense' }).sides).toEqual(['frontend', 'backend'])
+    expect(designDocPolicyFrom({ sides: 'backend' }).sides).toEqual(['backend'])
+    expect(designDocPolicyFrom({ sides: '[frontend' }).sides).toEqual([])
+  })
+})
+
 describe('豁免有效性（未知键/空理由 = 豁免无效）', () => {
   it('有效豁免 → 缺失消失', () => {
     expect(missingCategoryDocs({

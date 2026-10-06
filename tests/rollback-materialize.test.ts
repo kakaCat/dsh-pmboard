@@ -188,9 +188,14 @@ describe('回退物化：幂等与上限（t2）', () => {
     const second = run(afterFirst).taskPlan
     expect(second.reworkDrafts.length, '第二次：物化 0 张（幂等——重做卡已在队列里）').toBe(0)
 
-    // 队列张数不变：第二次跑完没有净增卡片（物化 0 张即结构上不新增）。
-    const countAfterSecond = afterFirst.length + second.reworkDrafts.length - second.canceled.length
-    expect(second.reworkDrafts.length + countAfterSecond - afterFirst.length, '净增必须为 0').toBe(0)
+    // 队列张数不变：第二次跑完没有净增卡片。
+    // REQ-261005122915-9f90 t5 / FR-4 起，第二轮回退会**把占位卡一并置 canceled**（此前它们被
+    // 当子卡复位回 todo），故「取消张数」不再是净增的代理量——净增的唯一来源是物化。
+    expect(second.reworkDrafts.length, '净增必须为 0：唯一的新增来源是物化，而物化 0 张').toBe(0)
+    expect(
+      second.canceled.filter(c => (c.reworkOf ?? '') !== '').length,
+      '第二轮回退把上一轮的占位卡一并取消（不再复位回 todo）',
+    ).toBe(6)
     expect(afterFirst.length, '第一次的队列确实比原始夹具多（证明这条测的是真路径）').toBeGreaterThan(countBefore)
   })
 })

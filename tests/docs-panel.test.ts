@@ -14,7 +14,7 @@
  * @module dsh-pmboard/tests/docs-panel
  */
 import { describe, it, expect } from 'vitest'
-import { docsPanel } from '../src/client/views/panels/docs.js'
+import { docsPanel, prototypeGroupOf } from '../src/client/views/panels/docs.js'
 import { fmtTime } from '../src/client/render/dom-utils.js'
 import type { ReportTabCtx } from '../src/client/views/report-tabs.js'
 import type {
@@ -63,7 +63,18 @@ const GATES: GateVerdict[] = [
   { gate: 'plan', verdict: 'rejected', via: 'evidence-text', at: T0 + 2000, by: { kind: 'human' }, reason: '粒度太细，请按子卡链模板重拆' },
   { gate: 'implementation', verdict: 'passed', at: T0 + 3000, by: { kind: 'agent', sessionId: 'session-9f8e7d6c-1111' } },
   { gate: 'verification', verdict: 'pending' },
+  // 默认夹具停在「材料已备、尚未归档」：归档门 not-reached 同时充当门禁表中的 not-reached 样例。
+  // 已归档态由 GATES_ARCHIVED 提供（见下），两态各有覆盖。
   { gate: 'archive', verdict: 'not-reached' },
+]
+
+/**
+ * REQ-261006123819-3af3 FR-3（D-2）：已归档态 = 服务端归档门 `passed`（判据不再是某个字段）。
+ * 只有这条读数能让归档块显示「已归档」，故单列一份夹具，不污染门禁表的 not-reached 样例。
+ */
+const GATES_ARCHIVED: GateVerdict[] = [
+  ...GATES.filter(g => g.gate !== 'archive'),
+  { gate: 'archive', verdict: 'passed', at: T0 + 7000 },
 ]
 
 const ITEMS: VerificationItem[] = [
@@ -112,8 +123,8 @@ const ARCHIVE: ArchiveRecord = {
   ],
   submittedAt: T0 + 6000,
   submittedBy: { kind: 'agent', sessionId: 'session-1a2b3c4d-0000' },
-  archivedAt: T0 + 7000,
-  archivedBy: { kind: 'human' },
+  // REQ-261006123819-3af3 FR-3（D-2）：原归档时间 / 归档人字段已删（无写入者）；
+  // 归档态判据改由载荷里的归档门读数（见 GATES 的 archive 条）。
   reconcile: {
     gate: 'enforce',
     listed: [DIR + '/requirement.md', DIR + '/verification.md'],
@@ -169,9 +180,9 @@ describe('文档清单 · 一律铺开（FR-11 #7）', () => {
     expect(html).toContain('data-doc-table="1"')
   })
 
-  it('四列在场：类型 / 路径 / 登记时间 / 状态', () => {
+  it('五列在场：类型 / 路径 / 登记时间 / 状态 / 打开（FR-6 紧凑表，REQ-261006130057-7a43 t8）', () => {
     const html = render(makeDocs())
-    for (const th of ['<th>类型</th>', '<th>路径</th>', '<th>登记时间</th>', '<th>状态</th>']) {
+    for (const th of ['<th>类型</th>', '<th>路径</th>', '<th>登记时间</th>', '<th>状态</th>', '<th>打开</th>']) {
       expect(html).toContain(th)
     }
     // 类型走唯一事实源的中文名（不是裸 kind）
@@ -209,15 +220,19 @@ describe('文件缺失行（T-16）', () => {
     expect(row).toContain('data-doc-row="1"')
     expect(row).toContain('data-file-missing="1"')
     expect(row).toContain('data-doc-state="file-missing"')
-    expect(row).toContain('class="dsh-pm-doc-path dsh-pm-doc-missing"')
+    // FR-6 紧凑表（t8）：路径格是纯文本 <span>（不再兼职按钮），划线与缺失类名照钉
+    expect(row).toContain('class="dsh-pm-doc-filepath dsh-pm-doc-missing"')
     expect(row).toContain('line-through') // 可见划线（字符串级也能断言，不依赖样式表）
     expect(row).toContain('>文件缺失</span>')
     expect(row).toContain('（登记在案，但磁盘上找不到该文件）')
     expect(row).toContain('is-missing')
     // 缺失文件点开必读不到 → 不给 data-action（与 board-mount 的运行时约定一致）
     expect(row).not.toContain('data-action="open-doc"')
-    // 但锚点仍在（面板契约）：缺失行也带 data-open-doc
+    // 但锚点仍在（面板契约）：缺失行的「打开」按钮也带 data-open-doc，只是 disabled（不给假出口）
     expect(row).toContain('data-open-doc="' + DIR + '/tasks/t-003.md"')
+    const openCell = row.slice(row.indexOf('dsh-pm-doc-cell-open'))
+    expect(openCell).toContain('disabled')
+    expect(openCell).not.toContain('点开正文') // 没有正文可读 → 不留"点了没反应"的假出口
   })
 
   it('非缺失行都给 data-open-doc（且**故意不带** data-action="open-doc"：只能有一处接委派）', () => {
@@ -237,15 +252,19 @@ describe('生成物与人写的文档分开列', () => {
     const html = render(makeDocs())
     expect(countOf(html, 'data-generated-row="1"')).toBe(GENERATED.length)
     expect(countOf(html, 'data-doc-row="1"')).toBe(DOCS.length) // 生成物**不**混进文档行
-    // 生成物在 <li> 里（不是文档表的 <tr>）：取该 <li> 做段级断言
+    // FR-6 紧凑表（t8）：生成物在 <tr> 里（名称/路径/状态/打开四列）：取该 <tr> 做段级断言
     const at = html.indexOf('data-generated-row="1"')
-    const gen = html.slice(html.lastIndexOf('<li', at), html.indexOf('</li>', at))
+    const gen = html.slice(html.lastIndexOf('<tr', at), html.indexOf('</tr>', at))
     expect(gen).toContain('任务队列（DAG 派生视图）')
     expect(gen).toContain('data-open-doc="' + DIR + '/queue.json"')
     expect(gen).toContain('自动维护（工具重建）')
+    // 打开列独立成格（可点，非 disabled——生成物没有缺失/未判定态）
+    expect(gen).toContain('dsh-pm-doc-cell-open')
+    expect(gen).not.toContain('disabled')
     const section = html.slice(html.indexOf('data-doc-section="generated"'), html.indexOf('data-doc-section="verification"'))
     expect(section).toContain('不是人写的文档')
     expect(section).toContain('rtm-implementing.yml')
+    expect(section).toContain('data-generated-table="1"')
   })
 })
 
@@ -361,7 +380,33 @@ describe('归档块（FR-7 第三部分的归档面）', () => {
     expect(section).toContain('前端 · 详情页')
     expect(section).toContain('清单对账：已列 2 · 豁免 1 · 未列 1 · 闸门=enforce')
     expect(section).toContain('已声明不收：临时草稿，不进清单')
-    expect(section).toContain('已归档 ' + fmtTime(ARCHIVE.archivedAt ?? 0))
+  })
+
+  // REQ-261006123819-3af3 FR-3（D-2）：已归档 = 服务端归档门 passed（时刻取门读数的 at）
+  it('归档门 passed → 已归档 + 真实时刻 + data-archived="yes"', () => {
+    const html = render(makeDocs({ gates: GATES_ARCHIVED }))
+    const section = html.slice(html.indexOf('data-doc-section="archive"'))
+    expect(section).toContain('已归档 ' + fmtTime(T0 + 7000))
+    expect(section).toContain('data-archived="yes"')
+    expect(section).toContain('data-state="pass"')
+  })
+
+  // 材料已备但归档门不是 passed（默认夹具 not-reached）→ 待归档，不许谎报已归档
+  it('材料已备但归档门未 passed → 待归档（材料已备），不谎报已归档', () => {
+    const html = render(makeDocs())
+    const section = html.slice(html.indexOf('data-doc-section="archive"'))
+    expect(section).toContain('待归档（材料已备）')
+    expect(section).toContain('data-archived="no"')
+    expect(section).not.toContain('已归档')
+  })
+
+  // REQ-261006123819-3af3 FR-3：归档门读数取不到时不猜（保守分支：材料已备 + data-archived="no"）
+  it('归档门读数缺席（旧服务端/端点未接线）→ 不猜已归档，按材料已备呈现', () => {
+    const html = render(makeDocs({ gates: GATES.filter(g => g.gate !== 'archive') }))
+    const section = html.slice(html.indexOf('data-doc-section="archive"'))
+    expect(section).toContain('待归档（材料已备）')
+    expect(section).toContain('data-archived="no"')
+    expect(section).not.toContain('data-state="pass"')
   })
 
   it('无 manualUpdates 也无 manualNote → 说明书更新点也要有说辞（不留白）', () => {
@@ -399,10 +444,10 @@ describe('其它发现 · 按类型分组的计数行（不混进确定文档）
     for (const g of DISCOVERED) {
       expect(html).toContain('data-discovered-group="' + g.kind + '"')
       expect(html).toContain('data-discovered-count="' + String(g.count) + '"')
-      // 组内样例条数 == samples.length 且 ≤ 3
+      // 组内样例条数 == samples.length 且 ≤ 3（FR-6 紧凑表化后分组行是 <tr>）
       const at = html.indexOf('data-discovered-group="' + g.kind + '"')
-      const li = html.slice(at, html.indexOf('</li>', at))
-      expect(countOf(li, 'data-discovered-sample="1"'), g.kind).toBe(g.samples.length)
+      const tr = html.slice(at, html.indexOf('</tr>', at))
+      expect(countOf(tr, 'data-discovered-sample="1"'), g.kind).toBe(g.samples.length)
       expect(g.samples.length).toBeLessThanOrEqual(3)
     }
     // 余量必须**可数**：90-3=87、3-3=0、1-1=0
@@ -485,5 +530,173 @@ describe('两条硬纪律', () => {
     expect(loads).toBe(0)
     for (const d of DOCS) expect(html, d.path).toContain('data-open-doc="' + d.path + '"')
     for (const g of GENERATED) expect(html, g.path).toContain('data-open-doc="' + g.path + '"')
+  })
+})
+
+/* --------------------------------------------------------------- ⑨ 原型单列 */
+
+/**
+ * 原型在确定文档块内**单列**（REQ-261005105032-3b02 决议 #30 / #32 / #34）。
+ *
+ * 机械判据：
+ *   ① 原型行带 `data-doc-group="prototype"`，组前一行为组标（`data-doc-subhead="prototype"` +
+ *      分组计数 `data-proto-count`）；原型行**仍是** `data-doc-row="1"` 的文档行
+ *      （`data-doc-row` 条数 == `documents.length` 的既有判据不许破）；
+ *   ② 「权威 / 被取代」是服务端投影（`prototypeRole` / `supersededBy`）：行上给
+ *      `data-proto-role`，**没有角色时不注入该属性**，并如实说"未标权威角色"；
+ *   ③ 本次改动前登记为 `notes` 的旧原型行：展示侧按路径兜底归组（`prototypeGroupOf`），
+ *      `data-doc-kind` 仍是台账原值（**不回填**）；
+ *   ④ 原型行点开走既有 `[data-open-doc]` 委派：不新增弹窗、不新增路由。
+ */
+describe('原型单列（决议 #30/#32/#34）', () => {
+  const PROTO_DIR = DIR + '/prototypes'
+  const PROTO_V2 = PROTO_DIR + '/detail-v2.html'
+  const PROTO_V1 = PROTO_DIR + '/detail.html'
+  const PROTO_INDEX = PROTO_DIR + '/INDEX.md'
+  const PROTO_LEGACY = PROTO_DIR + '/legacy.html'
+
+  /** 四条原型行（两版 + 权威清单自身 + 旧 notes 登记行）+ 一条普通交付物。 */
+  const PROTO_DOCS: DocPanelEntry[] = [
+    { kind: 'prototype', path: PROTO_V2, registeredAt: T0, state: 'confirmed', prototypeRole: 'authoritative' },
+    { kind: 'prototype', path: PROTO_V1, registeredAt: T0, state: 'confirmed', prototypeRole: 'superseded', supersededBy: 'prototypes/detail-v2.html' },
+    // INDEX 没列到它 → 服务端不注入角色（缺省不注入，旧形状不变）
+    { kind: 'prototype', path: PROTO_INDEX, registeredAt: T0, state: 'pending' },
+    // 本次改动前登记的原型行：台账 kind 写死 notes，展示侧按路径兜底归组
+    { kind: 'notes', path: PROTO_LEGACY, registeredAt: T0, state: 'confirmed' },
+    { kind: 'requirement', path: DIR + '/requirement.md', registeredAt: T0, state: 'confirmed' },
+  ]
+
+  it('① 原型行单列：组标 + 分组计数，且仍是 data-doc-row（条数 == documents.length）', () => {
+    const html = render(makeDocs({ documents: PROTO_DOCS }))
+    expect(countOf(html, 'data-doc-row="1"')).toBe(PROTO_DOCS.length)
+    // 普通交付物不进组：组属性只落在原型行上
+    expect(countOf(html, 'data-doc-group="prototype"')).toBe(PROTO_DOCS.length - 1)
+    expect(html).toContain('data-doc-subhead="prototype"')
+    expect(html).toContain('data-proto-count="4"')
+    expect(html).toContain('>原型 4 份</span>')
+    expect(rowOf(html, DIR + '/requirement.md')).not.toContain('data-doc-group="prototype"')
+    // 组标行**不是**文档行（否则 data-doc-row 条数就对不上 documents.length）
+    const sub = html.slice(html.indexOf('data-doc-subhead="prototype"'))
+    expect(sub.slice(0, sub.indexOf('</tr>'))).not.toContain('data-doc-row="1"')
+  })
+
+  it('② 权威 / 被取代都在行上；没角色不注入属性、也不留白', () => {
+    const html = render(makeDocs({ documents: PROTO_DOCS }))
+    const auth = rowOf(html, PROTO_V2)
+    expect(auth).toContain('data-proto-role="authoritative"')
+    expect(auth).toContain('权威版本')
+    expect(auth).not.toContain('superseded')
+    const sup = rowOf(html, PROTO_V1)
+    expect(sup).toContain('data-proto-role="superseded"')
+    expect(sup).toContain('被取代于 prototypes/detail-v2.html')
+    // INDEX 没列这条 → 服务端不注入角色 → 行上也不许出现 data-proto-role，但要有说辞
+    const noRole = rowOf(html, PROTO_INDEX)
+    expect(noRole).not.toContain('data-proto-role=')
+    expect(noRole).toContain('未标权威角色')
+  })
+
+  it('②b 服务端读不到 INDEX（载荷里没有角色）→ 行上不出现 data-proto-role，但各有说辞', () => {
+    // 只留四个必需字段：等价于「INDEX 读不到 / 没这条路径」时服务端的载荷（两键都不注入）
+    const noRoles: DocPanelEntry[] = PROTO_DOCS.map(d => ({
+      kind: d.kind, path: d.path, registeredAt: d.registeredAt, state: d.state,
+    }))
+    const html = render(makeDocs({ documents: noRoles }))
+    expect(html).not.toContain('data-proto-role=') // 缺省不注入 → 行上连属性都没有
+    expect(html).not.toContain('权威版本')
+    expect(html).not.toContain('被取代于')
+    // 但**不留白**：四条原型行各自说清"未标权威角色"
+    expect(countOf(html, '未标权威角色')).toBe(4)
+    expect(countOf(html, 'data-doc-row="1"')).toBe(noRoles.length)
+  })
+
+  it('③ 旧 notes 登记的原型行：展示侧兜底归组，台账 kind 不回填', () => {
+    const html = render(makeDocs({ documents: PROTO_DOCS }))
+    const legacy = rowOf(html, PROTO_LEGACY)
+    expect(legacy).toContain('data-doc-kind="notes"') // 台账原值（不回填）
+    expect(legacy).toContain('data-doc-group="prototype"') // 展示侧归组
+    expect(legacy).toContain('data-proto-group-fallback="1"')
+    expect(legacy).toContain('原型') // 类型格显示「原型」，不是「其他」
+    expect(legacy).not.toContain('其他')
+  })
+
+  it('④ 原型行点开走既有 data-open-doc 委派：无新增弹窗 / 路由，渲染零副作用', () => {
+    const opened: string[] = []
+    const ctx: ReportTabCtx = {
+      requirementId: REQ,
+      load: () => Promise.reject(new Error('渲染不该取数')),
+      openDoc: (p) => { opened.push(p) },
+    }
+    const html = docsPanel.render(makeDocs({ documents: PROTO_DOCS }), ctx)
+    for (const p of [PROTO_V2, PROTO_V1, PROTO_INDEX, PROTO_LEGACY]) {
+      expect(rowOf(html, p), p).toContain('data-open-doc="' + p + '"')
+    }
+    expect(opened).toEqual([])
+    // 委派只许有一处接（两边都接会点一下开两次）；也不许长出路由 / 弹窗
+    expect(html).not.toContain('data-action="open-doc"')
+    expect(html).not.toContain('href=')
+    expect(html).not.toContain('<dialog')
+  })
+
+  it('⑤ prototypeGroupOf：认 prototypes/ 与旧 prototype/ 两个前缀，不误伤像原型的名字', () => {
+    expect(prototypeGroupOf(PROTO_DIR + '/detail.html')).toBe(true)
+    expect(prototypeGroupOf(DIR + '/prototype/detail-report.html')).toBe(true)
+    expect(prototypeGroupOf('prototypes/INDEX.md')).toBe(true)
+    // 反例：段级匹配（`xxx-prototypes/` 与 `prototypes.md` 都不是原型目录）
+    expect(prototypeGroupOf(DIR + '/design/prototypes.md')).toBe(false)
+    expect(prototypeGroupOf(DIR + '/prototypes-old/x.html')).toBe(false)
+    expect(prototypeGroupOf('')).toBe(false)
+  })
+
+  it('⑥ 全是原型（没有别的交付物）时照常单列，且不落进"尚未登记任何文档"空态', () => {
+    const only = PROTO_DOCS.filter(d => d.kind === 'prototype')
+    const html = render(makeDocs({ documents: only }))
+    expect(countOf(html, 'data-doc-row="1"')).toBe(3)
+    expect(html).toContain('共 3 份')
+    expect(html).toContain('data-proto-count="3"')
+    expect(html).not.toContain('data-doc-empty="1"')
+  })
+
+  it('⑦ 旧路径 prototype/*.html 的旧 notes 行：prototype/ 兜底分支真的把它归进原型组', () => {
+    const legacyOld: DocPanelEntry = {
+      kind: 'notes', path: DIR + '/prototype/detail-report.html', registeredAt: T0, state: 'confirmed',
+    }
+    const html = render(makeDocs({ documents: [legacyOld, DOCS[0]!] }))
+    const row = rowOf(html, DIR + '/prototype/detail-report.html')
+    expect(row).toContain('data-doc-kind="notes"') // 台账原值（不回填）
+    expect(row).toContain('data-doc-group="prototype"') // 旧路径分支归组生效
+    expect(row).toContain('data-proto-group-fallback="1"')
+    expect(html).toContain('data-proto-count="1"')
+    expect(countOf(html, 'data-doc-row="1"')).toBe(2)
+  })
+
+  it('⑧ 原型判据：有 prototypeMeta 显示锚点数、采集到零条显示「缺锚点」，且不出现阈值类字样', () => {
+    const withAnchors: DocPanelEntry[] = [
+      {
+        kind: 'prototype', path: PROTO_V2, registeredAt: T0, state: 'confirmed', prototypeRole: 'authoritative',
+        prototypeMeta: { anchors: [{ fr: 'FR-3', selector: '#FR-3' }, { fr: 'FR-4', selector: '#FR-4' }] },
+      },
+      // 采集到了元数据、但一条锚点都没有 → 这是**真实的"缺"**（与"未采集"不同）
+      { kind: 'prototype', path: PROTO_V1, registeredAt: T0, state: 'confirmed', prototypeMeta: { anchors: [] } },
+    ]
+    const html = render(makeDocs({ documents: withAnchors }))
+    expect(rowOf(html, PROTO_V2)).toContain('data-proto-anchors="2"')
+    expect(rowOf(html, PROTO_V2)).toContain('判据：有锚点 2 条')
+    expect(rowOf(html, PROTO_V1)).toContain('data-proto-anchors="none"')
+    expect(rowOf(html, PROTO_V1)).toContain('判据：缺锚点')
+    // 阈值红线（D-10 / 决议 #8、#49）：原型不自证阈值，页面也不许出现阈值类字样
+    expect(html).not.toMatch(/threshold|阈值|上限|下限|tolerance|expected|budget/i)
+    // 载荷里只带锚点：几何量的值一个字都不许出现在产物里
+    expect(html).not.toMatch(/tabsTop|geometry|576/)
+  })
+
+  it('⑨ 没有 prototypeMeta（未采集）或不是原型行：不渲染判据标、也不报错', () => {
+    // PROTO_DOCS[0] 有角色但没 prototypeMeta；PROTO_DOCS[2] 是原型行；DOCS[0] 是普通交付物
+    const html = render(makeDocs({ documents: [PROTO_DOCS[0]!, PROTO_DOCS[2]!, DOCS[0]!] }))
+    // 未采集 ≠ 缺锚点：连属性都没有（不然「不知道」会被读成「判定为缺」）
+    expect(html).not.toContain('data-proto-anchors')
+    expect(html).not.toContain('缺锚点')
+    expect(countOf(html, 'data-doc-row="1"')).toBe(3)
+    // 普通交付物那一行也没有任何原型判据标
+    expect(rowOf(html, DIR + '/requirement.md')).not.toContain('判据：')
   })
 })

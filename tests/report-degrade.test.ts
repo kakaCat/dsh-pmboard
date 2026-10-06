@@ -33,7 +33,7 @@ import {
 const REQ_ID = 'REQ-261004222448-292a'
 const T0 = 1_700_000_000_000
 
-/** 六个同级 Tab（顺序即壳的注册序；不手抄一份，避免哪天注册表改了这里悄悄脱节）。 */
+/** 七个同级 Tab（顺序即壳的注册序；不手抄一份，避免哪天注册表改了这里悄悄脱节）。 */
 const TABS: readonly ReportTabKey[] = REPORT_TAB_KEYS
 
 /** 计数出现次数（"恰好一条"比 `toContain` 更能抓住重复渲染）。 */
@@ -156,6 +156,7 @@ function panelPayload(key: ReportTabKey): Payload {
     case 'docs': return docsPayload([docEntry('docs/requirements/' + REQ_ID + '/requirement.md', 'confirmed')])
     case 'dag': return dagPayload()
     case 'dialogue': return dialoguePayload(['一条人消息'])
+    case 'verify': return {}
     case 'token': return tokenPayload()
     case 'prompts': return promptsPayload()
   }
@@ -247,7 +248,7 @@ describe('取数架构 · 首屏与懒加载（FR-11 · T-1 / T-2 / T-3）', () 
     expect(h.shell.loadCount('dialogue')).toBe(1)
   })
 
-  it('T-3 未激活面板不在产物里：六个 Tab 轮转，产物里只有当前那一个面板 host', () => {
+  it('T-3 未激活面板不在产物里：七个 Tab 轮转，产物里只有当前那一个面板 host', () => {
     for (const active of TABS) {
       const html = buildReportShell(makeReport(), active, { data: panelPayload(active) })
       expect(html, active).toContain('data-tab-host="' + active + '"')
@@ -263,7 +264,7 @@ describe('取数架构 · 首屏与懒加载（FR-11 · T-1 / T-2 / T-3）', () 
 })
 
 describe('渲染纪律 · 无内层滚动（FR-11 #7 · T-4）', () => {
-  it('T-4 整壳产物不出现 overflow: auto|scroll，也不出现 max-height（六个 Tab 全扫）', () => {
+  it('T-4 整壳产物不出现 overflow: auto|scroll，也不出现 max-height（七个 Tab 全扫）', () => {
     for (const active of TABS) {
       const html = buildReportShell(makeReport(), active, { data: panelPayload(active) })
       expect(html, active).not.toMatch(/overflow:\s*(auto|scroll)/i)
@@ -313,7 +314,8 @@ describe('分页与角标（FR-11 #4 / #6 · T-7 / T-8）', () => {
     expect(html).toContain('data-dialogue-loaded="20"')
     expect(html).toContain('data-load-earlier="1"')
     expect(html).toContain('data-before="1234"')
-    expect(html).toContain('还有 22 条') // 服务端总数与服务端游标同源，页面照说
+    expect(html).toContain('还有更早的消息未加载') // 服务端说有更早的，页面照说
+    expect(html).toContain('已加载 20/42 条') // 服务端总数与服务端计数同源，页面照说
   })
 
   it('T-8 角标 == 响应里的服务端计数；反例：不拿面板数据条数冒充（也不给 0 角标）', () => {
@@ -332,6 +334,21 @@ describe('分页与角标（FR-11 #4 / #6 · T-7 / T-8）', () => {
     const none = buildReportShell(makeReport(), 'trunk', { data: trunkPayload() })
     expect(none).not.toContain('data-badge=')
     expect(zeroLies(none)).toEqual([])
+    // 服务端**给了**计数但数出来是 0（空需求的 DAG / Token）：也不渲染角标。
+    // 线上实测过这一支：渲染成「DAG 0」「Token 0」，与权威原型不一致（原型标本是非零值，
+    // 从来不出现 0 角标）——这正是本模块注释里那句「更不显示 0」。
+    const zeros = buildReportShell(
+      makeReport({ tabCounts: { docs: '1', dag: '0', token: '0', trunk: '0.0M' } }),
+      'trunk', { data: trunkPayload() },
+    )
+    expect(zeros).toContain('data-badge="docs">1<')   // 非零照常显示
+    expect(zeros).not.toContain('data-badge="dag"')
+    expect(zeros).not.toContain('data-badge="token"')
+    expect(zeros).not.toContain('data-badge="trunk"')
+    expect(zeroLies(zeros)).toEqual([])
+    // 非数字串（读不到 / 未知）**不当作零**：照常显示，不用 0 冒充未知。
+    const unknown = buildReportShell(makeReport({ tabCounts: { dag: '—' } }), 'trunk', { data: trunkPayload() })
+    expect(unknown).toContain('data-badge="dag">—<')
   })
 })
 
@@ -497,16 +514,18 @@ describe('终态只读与缺口口径（FR-3 / FR-4）', () => {
       expect(html, status).not.toContain('data-report-windows="1"')
       expect(html, status).toContain('data-action="back"')
       expect(html, status).toContain('← 看板')
-      // 剩下的 `data-action` 只有「返回 1 + 六个 Tab 切换」= 7（导航，不是动作）
-      expect(countOf(html, 'data-action="'), status).toBe(7)
+      // 剩下的 `data-action` 只有「返回 1 + 七个 Tab 切换」= 8（导航，不是动作）
+      expect(countOf(html, 'data-action="'), status).toBe(8)
     }
     // 阳性对照：在途态**有**写动作 → 上面的"零"是终态判出来的，不是全局都没有
+    // （FR-13 之后头部的评论输入框已真删，故这条对照改用同属在途写通道的窗口跳转）
     const inflight = buildReportShell(makeReport({ status: 'implementing' }), 'trunk', { data: trunkPayload() })
     expect(inflight).toContain('data-action="move-req"')
-    expect(inflight).toContain('data-action="add-comment"')
+    expect(inflight).toContain('data-action="jump-session"')
+    expect(inflight).not.toContain('data-action="add-comment"')
   })
 
-  it('FR-4 「几件事等人」与缺口条数口径一致：waitingHuman 渲染数字 == 缺口条数 == gaps.length', () => {
+  it('FR-4 「几件事等人」与缺口条数口径一致：计数徽标 == waitingHuman；「共 N 条」 == gaps.length', () => {
     const gaps: ReportGap[] = [
       { severity: 'red', what: 'A', why: 'a' },
       { severity: 'red', what: 'B', why: 'b' },
@@ -518,13 +537,17 @@ describe('终态只读与缺口口径（FR-3 / FR-4）', () => {
     expect(report.gaps.length).toBe(gapCount)
     const html = buildReportShell(report, 'trunk', { data: trunkPayload() })
     const waiting = /data-waiting-human="(\d+)"/.exec(html)
-    const bandCount = /缺口 (\d+) 条（该有而没有）/.exec(html)
+    // REQ-261006130057-7a43 FR-2 / T-13：状态带缺口格的计数徽标**直接渲染 waitingHuman**
+    // （与头部一句话结论同一字段，不再据 gaps 另数一遍）——两个数同源，口径不可能漂；
+    // gaps 总条数另由「共 N 条」真文本交代。
+    const badge = /data-gap-count-badge="(\d+)"/.exec(html)
+    const total = /共 (\d+) 条/.exec(html)
     expect(waiting).not.toBeNull()
-    expect(bandCount).not.toBeNull()
-    // 头部的数（服务端给的）与状态带的数（据 gaps 数的）指同一件事——口径漂了这里就红
+    expect(badge).not.toBeNull()
+    expect(total).not.toBeNull()
     expect(Number(waiting![1])).toBe(gapCount)
-    expect(Number(bandCount![1])).toBe(gapCount)
-    expect(Number(waiting![1])).toBe(Number(bandCount![1]))
+    expect(Number(badge![1])).toBe(Number(waiting![1]))
+    expect(Number(total![1])).toBe(gapCount)
     expect(zeroLies(html)).toEqual([])
   })
 })

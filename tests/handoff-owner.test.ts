@@ -544,3 +544,59 @@ describe('反向演练：假成功防线（显式 seats 记录经看板改绑 �
     expect(r.comments).toHaveLength(1)
   })
 })
+
+// ---------------------------------------------------------------------------
+// REQ-261005151245-54ae FR-5/FR-6：新建接管窗口带回继承回执；指定已有窗口则整体省略
+// ---------------------------------------------------------------------------
+
+describe('REQ-261005151245-54ae 新建窗口的继承回执', () => {
+  /** 假开窗能力：记录标题与模型写入；画像给出「源窗口有标题、有模式、有模型」。 */
+  function openerWithInheritance(calls: { rename: { sessionId: string; title: string }[] }) {
+    return {
+      available: () => true,
+      fork: async () => ({ ok: true, windowKey: W_NEW, parentSessionId: W_OWNER }),
+      resolveSourceProject: () => ({ workspaceId: 'ws-ho' }),
+      create: async () => ({ ok: true, windowKey: W_NEW }),
+      readProfile: async () => ({
+        title: '交接用例 (2)',
+        agentPreset: 'cordis',
+        modelSelection: { provider: 'deepseek', model: 'deepseek-chat' },
+      }),
+      rename: async (sessionId: string, title: string) => {
+        calls.rename.push({ sessionId, title })
+      },
+      selectModel: async () => undefined,
+    }
+  }
+
+  it('新建窗口：回执含 inheritance，且标题按源标题递增写到新窗口上', async () => {
+    const calls = { rename: [] as { sessionId: string; title: string }[] }
+    const h = atTopWall(makeHarness({ requirements: [seated()] }))
+    h.deps.windowOpener = openerWithInheritance(calls) as never
+
+    const out = await handoffRequirement(h.deps, { reason: '顶墙交接' }, execOf(W_OWNER))
+
+    expect(out.to_window).toBe(W_NEW)
+    expect(out.inheritance).toEqual({ title: 'set', preset: 'set', model: 'set', reasons: [] })
+    expect(calls.rename).toEqual([{ sessionId: W_NEW, title: '交接用例 (3)' }])
+  })
+
+  it('指定已有窗口：回执不含 inheritance，且不动那个窗口的任何属性', async () => {
+    const calls = { rename: [] as { sessionId: string; title: string }[] }
+    const h = makeHarness({
+      requirements: [seated({
+        seats: [
+          { windowKey: W_OWNER, role: 'owner', joinedAt: 1 },
+          { windowKey: W_NEW, role: 'worker', joinedAt: 2 },
+        ],
+      })],
+    })
+    h.deps.windowOpener = openerWithInheritance(calls) as never
+
+    const out = await handoffRequirement(h.deps, { to_window: W_NEW, reason: '人明确指定接管窗口' }, execOf(W_OWNER))
+
+    expect(out.to_window).toBe(W_NEW)
+    expect(out).not.toHaveProperty('inheritance')
+    expect(calls.rename).toEqual([])
+  })
+})

@@ -27,9 +27,10 @@ import {
 } from '../src/shared/protocol.js'
 import { REPORT_COMMENT_HEAD_LIMIT, queryReport, type ReportQueryDeps } from '../src/application/query/QueryReport.js'
 import {
-  COMMENT_BODY_MAX, COMMENT_LONG_HEAD_MAX, COMMENT_RENDER_LIMIT, CONSEQUENCE_HINT_MAX,
+  COMMENT_RENDER_LIMIT, CONSEQUENCE_HINT_MAX,
   buildCommentList, buildReportHead, commentRenderPlan, shortConsequence,
 } from '../src/client/views/report-head.ts'
+import { isLongDialogueText } from '../src/client/views/panels/dialogue.ts'
 import { SHORT_MAX, buildGapsCell, buildOutcomeCell, buildReportBand, oneLineLabel } from '../src/client/views/report-band.ts'
 import { REPORT_TABS, buildTabBar } from '../src/client/views/report-tabs.ts'
 import { fmtTime } from '../src/client/render/dom-utils.ts'
@@ -256,23 +257,19 @@ describe('② 评论列表（能力回退：旧页能看评论，新页只剩输
     expect(report.head.commentsTotal).toBe(many.length)
   })
 
-  it('正文截断与长日志收纳（渲染层三档口径，不新造展开交互）', () => {
+  it('正文截断与长日志收纳（渲染层两档口径，FR-3 t6：判据与对话 Tab 同一份 isLongDialogueText）', () => {
     const long = 'x'.repeat(5_000)
     const plan = (body: string) => commentRenderPlan(body)
-    // ≤200 字：原样
+    // 判据同口径：>120 字符或含换行 → 长日志（与『对话』Tab 同一个函数，不另造）
     expect(plan('短评').text).toBe('短评')
     expect(plan('短评').long).toBe(false)
-    // 200~1000 字：截 200 + 省略号；全文进 title（读者悬停仍读得到）
-    const mid = plan('y'.repeat(300))
-    expect(mid.text).toBe('y'.repeat(COMMENT_BODY_MAX) + '…')
-    expect(mid.long).toBe(false)
-    expect(mid.full).toHaveLength(300)
-    // >1000 字（机器转储）：只给首行前 120 字 + 「共 N 字」，并打 long 标
-    const big = plan(long)
-    expect(big.long).toBe(true)
-    expect(big.text).toContain('x'.repeat(COMMENT_LONG_HEAD_MAX))
-    expect(big.text).toContain('共 5000 字')
-    expect(big.text.length).toBeLessThan(COMMENT_LONG_HEAD_MAX + 40)
+    expect(plan('y'.repeat(300)).long).toBe(true) // >120 字符
+    expect(plan('第一行\n第二行').long).toBe(true) // 含换行
+    expect(plan('z'.repeat(120)).long).toBe(false) // 恰 120 且单行：仍是短评
+    expect(plan('短评').long).toBe(isLongDialogueText('短评'))
+    // 全文一字不丢：text === full === 原文（截断只发生在 CSS 上，不发生在这份计划里）
+    expect(plan(long).text).toBe(long)
+    expect(plan(long).full).toBe(long)
 
     const html = buildCommentList([
       { at: 1_700_000_000_000, body: '正常短评', by: HUMAN },
@@ -282,8 +279,9 @@ describe('② 评论列表（能力回退：旧页能看评论，新页只剩输
       { at: 1_700_000_000_002, body: long, by: AGENT },
     ])
     expect(countOf(html, 'data-comment-row="1"')).toBe(3)
-    expect(countOf(html, 'data-comment-long="1"')).toBe(1)
-    expect(html).toContain('长日志（已收纳）')
+    // 两条长评论（300 字符 / 5000 字符）都被收纳
+    expect(countOf(html, 'data-comment-long="1"')).toBe(2)
+    expect(countOf(html, '长日志已收纳')).toBe(2)
     // 全文在 title 里（截断只发生在可见正文上；不可信输入照样转义）
     expect(html).toContain('title="' + 'z'.repeat(300) + '"')
     // 渲染层兜底：即使服务端给了 10 条（旧服务端/缓存快照），也只渲染最近 3 条
@@ -364,17 +362,79 @@ describe('② 评论列表（能力回退：旧页能看评论，新页只剩输
     expect(buildReportHead({ ...report, head: { ...report.head, comments: [] } })).toContain('暂无评论')
   })
 
-  it('列表在评论框附近、随头部一起渲染（终态只读也看得见评论）', () => {
+  it('列表随头部一起渲染（终态只读也看得见评论）；详情页**不再有**评论输入框（FR-13）', () => {
     const report = makeReportResponse()
     const inflight = buildReportHead(report)
     expect(inflight).toContain('data-comment-row="1"')
-    expect(inflight).toContain('data-action="add-comment"')
-    // 列表在输入框之前（列表在上、输入框在下，与"新的在下"同向）
-    expect(inflight.indexOf('data-comment-row="1"')).toBeLessThan(inflight.indexOf('data-action="add-comment"'))
+    // FR-13 / D-7：详情页是「汇报」（读），发评论走『对话』Tab / 会话窗口——
+    // 头部那一处输入框已真删（不是 CSS 隐藏）。
+    expect(inflight).not.toContain('data-action="add-comment"')
+    expect(inflight).not.toContain('data-role="comment-input"')
+    expect(inflight).not.toContain('dsh-pm-comment-form')
+    // 只读的「最近评论」入口仍在（删过头同样判红）
+    expect(inflight).toContain('data-comment-list="1"')
     // 终态：没有假出口，但已记下的评论仍读得到
     const terminal = buildReportHead({ ...report, head: { ...report.head, status: 'archived' } })
     expect(terminal).toContain('data-comment-row="1"')
     expect(terminal).not.toContain('data-action="add-comment"')
+  })
+})
+
+/* --------------------------------------------------- T-14 评论紧凑（FR-3 · REQ-261006130057-7a43 t6） */
+
+/**
+ * T-14（REQ-261006130057-7a43 · FR-3 · t6）：最近评论紧凑化——
+ * 短评论每条一行（`身份 · 时间 · 正文` 同行）；长评论（>120 字符或含换行）有
+ * 「长日志已收纳」收纳标 + 行尾「展开」（原生 details，与状态带「展开说明」同机制）；
+ * 头部行右放「全部对话 →」。视觉基准 = 原型 v1.5 `#FR-3`。
+ */
+describe('T-14 · 评论紧凑（FR-3：短评单行 / 长评收纳标 + 展开钮 / 全部对话入口）', () => {
+  const SHORT = { at: 1_700_000_000_000, body: '设计稿 v3：状态带三格定稿', by: HUMAN }
+  const LONG = { at: 1_700_000_060_000, body: '[产物自动发现] ' + 'a'.repeat(200), by: AGENT }
+  const MULTILINE = { at: 1_700_000_120_000, body: '第一行\n第二行', by: HUMAN }
+
+  it('短评论单行：身份 · 时间 · 正文同行（行内 span），全文进 title，无收纳标、无展开钮', () => {
+    const html = buildCommentList([SHORT])
+    expect(countOf(html, 'data-comment-row="1"')).toBe(1)
+    expect(html).not.toContain('data-comment-long="1"')
+    expect(html).not.toContain('长日志已收纳')
+    expect(html).not.toContain('data-comment-fold=')
+    // meta 与正文是同一行盒里的相邻行内节点（短评不再有块级正文 div）
+    expect(html).toContain('</span><span class="dsh-pm-comment-body" title="' + SHORT.body + '">' + SHORT.body + '</span></div>')
+    expect(html).not.toContain('<div class="dsh-pm-comment-body"')
+  })
+
+  it('长评论（>120 字符）：琥珀收纳标 + 原生 details 折叠 + 行尾「展开/收起」，全文一字不丢', () => {
+    const html = buildCommentList([LONG])
+    expect(countOf(html, 'data-comment-long="1"')).toBe(1)
+    expect(html).toContain('长日志已收纳')
+    // 原生 details/summary（JS 缺席也开合正常）：截断行在 summary，全文在折叠体
+    expect(html).toContain('<details class="dsh-pm-comment-fold" data-comment-fold="1">')
+    expect(html).toContain('<summary class="dsh-pm-comment-fold-head">')
+    expect(html).toContain('dsh-pm-comment-body--clip')
+    expect(html).toContain('>展开</span>')
+    expect(html).toContain('>收起</span>')
+    // 截断只是 CSS：summary 行 / 折叠体 / title 三处都是同一份原文
+    expect(countOf(html, LONG.body)).toBeGreaterThanOrEqual(2)
+  })
+
+  it('长评论（含换行，不足 120 字符也算）：同样折叠收纳——判据与对话 Tab 同一份函数', () => {
+    expect(isLongDialogueText(MULTILINE.body)).toBe(true)
+    const html = buildCommentList([MULTILINE])
+    expect(countOf(html, 'data-comment-long="1"')).toBe(1)
+    expect(html).toContain('data-comment-fold="1"')
+    expect(html).toContain('长日志已收纳')
+  })
+
+  it('头部行右放「全部对话 →」（既有 switch-tab 通道，data-tab=dialogue），标签与尾注纪律不变', () => {
+    const html = buildCommentList([SHORT])
+    expect(html).toContain('data-comment-head="1"')
+    expect(html).toContain('data-action="switch-tab" data-tab="dialogue"')
+    expect(html).toContain('全部对话 →')
+    // 入口在头部行里、排在评论行之前
+    expect(html.indexOf('全部对话 →')).toBeLessThan(html.indexOf('data-comment-row="1"'))
+    // 列表标签仍在（「限条数必须同时报总数」的纪律不受紧凑化影响）
+    expect(html).toContain('最近评论 1 条（新的在下）')
   })
 })
 
@@ -413,16 +473,19 @@ describe('②b 操作条版式（一行按钮 / 说明不挨着按钮 / 分级�
     expect(html.indexOf('本阶段操作')).toBeLessThan(open)
   })
 
-  it('说明不挨着按钮：常驻区只有主操作下方一句 ≤40 字短提示，后果全文进 title', () => {
+  it('说明不挨着按钮：后果退出可见流（sr-only 节点 + title 双通道，FR-11 #2）', () => {
     const html = head()
-    // 整条操作区只允许一句常驻提示（其余全在 title / 确认框）
+    // 后果节点仍在场（读屏拿得到全文），但**视觉隐藏**——不再是常驻可见的那一行
     expect(countOf(html, 'dsh-pm-action-consequence')).toBe(1)
-    expect(html).toContain('>通过即归档<') // 冒号前那一截就是那一句
+    expect(html).toContain('dsh-pm-action-consequence dsh-pm-sr-only')
+    expect(html).toContain('>通过即归档：需求进入终态、不再接受修改；验收单结论一并落章<')
     for (const a of ACTIONS) {
       // 后果全文一个字不丢（悬停可读），且**没有** inline 跟在按钮后面的「后果：…」
       expect(html).toContain('title="' + a.consequence + '"')
     }
     expect(countOf(html, '后果：')).toBe(0)
+    // 可见流里不再有那句短后果（短后果已不是披露通道，句号处没有被截断）
+    expect(html).not.toContain('>通过即归档<')
   })
 
   it('分级：1 个 primary + 其余 secondary + 危险动作（取消）红、排最后、带 data-confirm', () => {
@@ -441,18 +504,19 @@ describe('②b 操作条版式（一行按钮 / 说明不挨着按钮 / 分级�
     expect(reordered.indexOf('data-action-rank="danger"')).toBeGreaterThan(reordered.indexOf('data-action-rank="primary"'))
   })
 
-  it('「均需人工确认」整条只标一次（不是三个粉色实心块）；每格的人工门写在 data-human-only 上', () => {
+  it('「需人工确认」整条只标一次（不是三个粉色实心块）；每格的人工门写在 data-human-only 上', () => {
     const html = head()
     expect(countOf(html, 'dsh-pm-human-only')).toBe(1)
-    expect(countOf(html, '均需人工确认')).toBe(1)
+    expect(countOf(html, '需人工确认')).toBe(1)
+    expect(html).not.toContain('均需人工确认')
     expect(countOf(html, 'data-human-only="true"')).toBe(ACTIONS.length)
     expect(countOf(html, 'data-human-only-mark="1"')).toBe(1)
-    // 没有人工门动作时，行尾标**不渲染**（不留一句无指代的"均需人工确认"）
+    // 没有人工门动作时，行尾标**不渲染**（不留一句无指代的"需人工确认"）
     const auto = buildReportHead(makeReportResponse({
       actions: [{ key: 'move', to: 'accepting', label: '提交验收', consequence: '推进到验收态由人逐项裁决', humanOnly: false }],
     }))
     expect(auto).not.toContain('dsh-pm-human-only')
-    expect(auto).not.toContain('均需人工确认')
+    expect(auto).not.toContain('需人工确认')
   })
 
   it('短后果口径：取「：」前那一截，取不到就截 40 字 + 省略号（同类信息同一套截断口径）', () => {
@@ -495,7 +559,9 @@ describe('②c 状态带一行口径（项名 · 状态；全文进 title）', (
       }],
     }))
     // 一行短标：术语前缀与条款号被剥掉（条款号由旁边芯片显示，不在同一行重复两遍）
-    expect(html).toContain('<span class="dsh-pm-gap-what">🔴 没人接</span>')
+    expect(html).toContain('data-gap-mark="red">!!</span>')
+    expect(html).toContain('没人接</span>')
+    expect(html).not.toContain('🔴')
     expect(html).toContain('data-ref-id="FR-2"')
     // 全文（what ｜ why ｜ 出处）在 title：截断必须给出路
     const title = /title="([^"]*)"/.exec(html)?.[1] ?? ''
@@ -639,6 +705,12 @@ describe('③ 结果与成效（FR-5）', () => {
     expect(inflightHtml).toContain('尚未到验收段')
     expect(inflightHtml).not.toContain('data-outcome=')
     expect(inflightHtml).not.toContain('data-outcome-passed')
+    // T-13（REQ-261006130057-7a43 FR-2）：outcome===undefined → 结果格折叠一行
+    // （原生 details + 「展开说明」），逐项计数一个不渲染
+    expect(inflightHtml).toContain('data-outcome-fold="1"')
+    expect(inflightHtml).toContain('展开说明')
+    expect(inflightHtml).not.toContain('data-outcome-failed')
+    expect(inflightHtml).not.toContain('data-outcome-pending')
 
     // 终态但台账里没有验收单 → 指向文档 Tab，**不编**结论
     const archived = await reportOf({ status: 'archived' })

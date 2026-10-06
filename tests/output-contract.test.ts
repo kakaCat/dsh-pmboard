@@ -29,6 +29,8 @@ import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
 import { SessionProbeAdapter } from '../src/adapters/SessionProbeAdapter.js'
 import { UserQuestionsAdapter } from '../src/adapters/UserQuestionsAdapter.js'
 import * as toolModules from '../src/tools/index.js'
+// REQ-261006123819-3af3 FR-1：工具登记面（唯一手写清单，本文件只做派生与交叉校验）
+import { TOOL_REGISTRY } from '../src/tools/registry.js'
 import { defineSubmitTool, defineAskConfirmTool, defineCaptureTool, defineMoveTool } from '../src/tools/index.js'
 import { CAPTURE_QUESTION_IDS, WORKSPACE_SENTINELS } from '../src/application/internal/capture-mapping.js'
 import type { RequirementRecord } from '../src/shared/protocol.js'
@@ -390,6 +392,12 @@ describe('输出契约：返回字段 ⊆ output.schema 声明', () => {
     await seed('brainstorming', {
       artifacts: [{ kind: 'requirement', path: 'docs/requirements/' + REQ + '/requirement.md' }],
     })
+    // REQ-261005105032-3b02：feature 需求出需求阶段必须有需求文档（裁定门读「讨论与裁定记录（D-x）」节）。
+    // 夹具原先只登记产物、没落文档；补一份含真空态的最小文档——schema 声明与断言都不动
+    // （本用例本就断言 advanced===true，补文档后自然恢复）。
+    const askReqDir = join(root, 'docs/requirements', REQ)
+    mkdirSync(askReqDir, { recursive: true })
+    writeFileSync(join(askReqDir, 'requirement.md'), '# 需求\n\n## 讨论与裁定记录（D-x）\n\n本节无裁定\n')
     const uq = { ask: async () => ({ answers: [{ id: 'confirm', selected: ['好'] }] }) }
     const tool = defineAskConfirmTool(depsWith({ userQuestions: uq }))
     const out = await run(tool, { target: 'artifact', kind: 'requirement', question: '确认？', options: ['好', '不'] })
@@ -585,58 +593,41 @@ function listTs(dir: string): string[] {
 }
 
 /**
- * 工具工厂 → 其响应体所在源文件（t8 起工具壳只委托用例，响应字面量在 application 用例里）。
- * 新增工具必须在此补映射，否则该工具的契约检查会因缺映射而红。
+ * 工具登记面（REQ-261006123819-3af3 FR-1）：响应源映射不再是本文件里的手写表，
+ * 而是 `src/tools/registry.ts` 这一份登记面——加工具只改那里，这里只做派生与交叉校验。
  */
-const RESPONSE_SOURCES: Record<string, string[]> = {
-  Create: ['application/use-cases/CreateRequirement.ts'],
-  Status: ['application/query/QueryState.ts'],
-  Move: ['application/use-cases/MoveRequirement.ts'],
-  Decompose: ['application/use-cases/Decompose.ts'],
-  TaskMove: ['application/use-cases/MoveTask.ts'],
-  TaskReport: ['application/use-cases/ReportTask.ts'],
-  // REQ-261004183621-de3f t3：归档清单受控补录（返回体 appended/skipped 来自该用例）
-  ArchiveAmend: ['application/use-cases/AmendArchiveManifest.ts'],
-  Submit: [
-    'application/use-cases/SubmitArtifact.ts',
-    'application/use-cases/SubmitVerification.ts',
-    'application/use-cases/SubmitArchive.ts',
-    // REQ-260924213231-b1c4 T-3：kind=design 登记用例（返回体 design_docs / registered_count）
-    'application/use-cases/SubmitDesignArtifacts.ts',
-  ],
-  AskConfirm: ['application/use-cases/AskConfirm.ts', 'application/use-cases/ConfirmArtifact.ts'],
-  // REQ-260924213231-b1c4 T-6：挂起确认回执（返回体在回执用例里）
-  ConfirmReceipt: ['application/use-cases/ConfirmReceipt.ts'],
-  // REQ-260924213231-b1c4 T-9：断点补写（返回体在 NoteInterruption 用例里）
-  NoteInterruption: ['application/use-cases/NoteInterruption.ts'],
-  AcceptSheet: ['application/use-cases/AcceptSheet.ts'],
-  // REQ-261002164800-d8f2 t5：条款引用补写（返回体在用例里，与看板路由共用）
-  TaskRefs: ['application/use-cases/AmendTaskRefs.ts'],
-  // REQ-e3b6a0 t8：立项三问 pm 专有弹框（响应体在抓化用例里）
-  Capture: ['application/use-cases/CaptureRequirement.ts'],
-  // REQ-4842fe t10：事件链对外入口（响应体在工具文件内组装，同 TaskExecute 口径）
-  Advance: ['tools/AdvanceTool/AdvanceTool.ts'],
-  // REQ-260927144541-0481 FR-1：task_execute 改为**真委托**（同一 factory），已无自有返回分支——
-  // 响应体与声明都在 AdvanceTool，映射随之指向那里（否则该源扫到 0 个键，门禁形同失效）。
-  TaskExecute: ['tools/AdvanceTool/AdvanceTool.ts'],
-  // REQ-f0579a t4：任务状态工具暂无独立用例层（响应体在工具文件内），映射指向自身——
-  // 后续若抽出用例（t8 收敛方向），把此处改成 application/use-cases/* 路径即可。
-  TaskStatus: ['tools/TaskStatusTool/TaskStatusTool.ts'],
-  // REQ-260927144541-0481 FR-3：新增只读父子结构视图（响应体在 TaskTree 用例，含绑定/错误分支）
-  TaskTree: ['application/use-cases/TaskTree.ts'],
-  // REQ-260927144541-0481 FR-7（全工具覆盖）：既有两工具此前**缺映射**，扫描器根本看不到它们——
-  // 门禁"绿灯"只是因为它没看。补上映射即纳入全工具检查（返回键均在各自 schema 中）。
-  RunStatus: ['tools/RunStatusTool/RunStatusTool.ts'],
-  ClearPause: ['application/use-cases/ClearPause.ts'],
-  // REQ-261003215944-9e04 t4：开一个新窗口（DSH 会话分支）——响应体字面量在用例层。
-  OpenWindow: ['application/use-cases/OpenWindow.ts'],
+/**
+ * 响应源扫描的**已知假阳性**登记表（REQ-261006123819-3af3 FR-1）。
+ *
+ * 扫描口径是「文件里每一处非回调 `return {...}` 的顶层键都算响应键」。对**响应体只在导出入口
+ * 函数里**的用例文件成立；但下面三个用例文件同时含**内部辅助函数**的 return 字面量，那些键
+ * 不是工具响应字段：Knowledge 的 `list` 来自参数解析 helper；Handoff 的 `windowKey` 等来自
+ * 开窗 / 投递 / 压力读数三个 helper；SkillInstall 的 `commit` 等来自 `manifestDigest`。
+ *
+ * 处置（**不是**放宽扫描器，也**不是**删断言）：
+ *  - 就地登记「工具 → 假阳性键」，逐条写明来源；登记项**必须仍然被扫到**（消失了就变红，逼摘牌）。
+ *  - 收窄扫描口径（如"只扫导出入口函数"）会**静默漏掉**"响应字面量写在私有 helper 里"的工具——
+ *    那是本仓最怕的失效形态（门禁看得见才拦得住），故不动扫描器。
+ *  - 不把这些键补进 `output.schema`：它们是内部 helper 的返回形状，声明成顶层响应字段等于说假话
+ *    （schema 是 additionalProperties:false 的对外契约，多声明一个永不出现的字段只会误导调用方）。
+ */
+const SCAN_FALSE_POSITIVES: Record<string, readonly string[]> = {
+  // parseKbQueryArgs 的归一化结果（QueryKnowledge.ts:102），不是 kb 回执的顶层字段。
+  Knowledge: ['list'],
+  // openHandoffWindow / deliverSeed / pressureProjection 的返回（HandoffOwner.ts:312,333,346,352,361）；
+  // 回执里它们是**嵌套**在 delivery / context_pressure / 无 windowKey 顶层的形状。
+  Handoff: ['windowKey', 'delivered', 'kind', 'reason', 'contextWindow', 'pressureTokens', 'projectedTokens', 'source'],
+  // manifestDigest 的清单摘要（InstallSkills.ts:193），回执里嵌在 manifest 对象内。
+  SkillInstall: ['commit', 'version', 'trimmed', 'sha256Count'],
 }
 
 describe('输出契约·静态扫描：每个工具的全部 return 分支键都必须已声明', () => {
   const ROOT = fileURLToPath(new URL('../src', import.meta.url))
   const toolFiles = listTs(join(ROOT, 'tools'))
-  // 工具工厂：export function define<Name>Tool(deps: UseCaseDeps)
-  const re = /export function define(\w+)Tool\(deps: UseCaseDeps\)/g
+  // 工具工厂：export function define<Name>Tool(deps: UseCaseDeps[, 第二参数...])
+  // REQ-261006123819-3af3 FR-1 第二步：原正则要求「恰好一个 deps 参数」，于是带 ops 的
+  // Bind / Handoff 两个工厂对安全网**完全失明**（改动前只扫到 25/27）。容许第二参数后补齐。
+  const re = /export function define(\w+)Tool\(deps: UseCaseDeps(?:\s*,[^)]*)?\)/g
   const sites: { name: string; file: string; at: number }[] = []
   for (const f of toolFiles) {
     const text = readFileSync(f, 'utf8')
@@ -644,27 +635,53 @@ describe('输出契约·静态扫描：每个工具的全部 return 分支键都
     while ((mm = re.exec(text)) !== null) sites.push({ name: mm[1]!, file: f, at: mm.index })
   }
 
-  it('扫描器覆盖全部工具文件，且至少发现 9 个工具工厂（少一个即红——防退化为只覆盖部分）', () => {
+  it('扫描器覆盖全部工具文件，且扫到的工厂数不低于登记面条数（少一个即红——防退化为只覆盖部分）', () => {
     // 遍历 src/tools/**/*.ts：覆盖下限 9；t9 删除 host/agent-tools.ts 后本扫描不受影响
     expect(toolFiles.length).toBeGreaterThanOrEqual(9)
-    expect(sites.length).toBeGreaterThanOrEqual(9)
+    // 断言随 TOOL_REGISTRY.length 走：登记面加一条，这里自动抬高下限（不再写死 9 或 27）。
+    expect(sites.length, '工厂扫描数少于登记面条数：漏扫 Bind/Handoff 这类带第二参数的工厂').toBeGreaterThanOrEqual(TOOL_REGISTRY.length)
     // 工厂名唯一（同名的第二个工具会静默覆盖第一个）
     expect(new Set(sites.map(s => s.name)).size).toBe(sites.length)
   })
 
-  for (const site of sites) {
-    it('define' + site.name + 'Tool：所有 return 分支键均已声明', () => {
-      const srcs = RESPONSE_SOURCES[site.name]
-      expect(srcs, 'define' + site.name + 'Tool 缺少响应源映射（新增工具必须补 RESPONSE_SOURCES）').toBeDefined()
-      const keys: string[] = [...returnKeys(readFileSync(site.file, 'utf8'))]
-      for (const rel of srcs ?? []) keys.push(...returnKeys(readFileSync(join(ROOT, rel), 'utf8')))
+  // 驱动源 = TOOL_REGISTRY（唯一手写登记面）；正则扫描降级为**安全网**（见下方两条用例）。
+  for (const entry of TOOL_REGISTRY) {
+    it('define' + entry.key + 'Tool：所有 return 分支键均已声明', () => {
+      const keys: string[] = [...returnKeys(readFileSync(join(ROOT, entry.factoryFile), 'utf8'))]
+      for (const rel of entry.responseSources) {
+        expect(existsSync(join(ROOT, rel)), '响应源文件不存在：' + entry.key + ' → ' + rel).toBe(true)
+        keys.push(...returnKeys(readFileSync(join(ROOT, rel), 'utf8')))
+      }
       // 扫描器可信度：每个工具体至少应抓到一个键
-      expect(keys.length, 'define' + site.name + 'Tool 未扫到任何 return 键，扫描器可能失效').toBeGreaterThan(0)
-      const factory = (toolModules as unknown as Record<string, (d: unknown) => any>)['define' + site.name + 'Tool']
-      expect(typeof factory, 'define' + site.name + 'Tool 未导出').toBe('function')
+      expect(keys.length, 'define' + entry.key + 'Tool 未扫到任何 return 键，扫描器可能失效').toBeGreaterThan(0)
+      const factory = (toolModules as unknown as Record<string, (d: unknown) => any>)['define' + entry.key + 'Tool']
+      expect(typeof factory, 'define' + entry.key + 'Tool 未导出').toBe('function')
       const declared = declaredKeys(factory({} as never))
-      const missing = [...new Set(keys)].filter(k => !declared.has(k))
-      expect(missing, 'define' + site.name + 'Tool 的 return 含未声明字段：' + missing.join(', ')).toEqual([])
+      const fp = new Set(SCAN_FALSE_POSITIVES[entry.key] ?? [])
+      const missing = [...new Set(keys)].filter(k => !declared.has(k) && !fp.has(k))
+      expect(missing, 'define' + entry.key + 'Tool 的 return 含未声明字段：' + missing.join(', ')).toEqual([])
+      // 假阳性登记必须**仍然存在**：扫描器或源码变了导致某项消失 → 这里变红，逼着摘牌（不许留过期豁免）。
+      for (const k of fp) {
+        expect(keys, entry.key + ' 的假阳性登记 ' + k + ' 已消失——请从 SCAN_FALSE_POSITIVES 摘牌').toContain(k)
+      }
     })
   }
+
+  it('安全网：正则扫到的工厂全部已登记（未登记即红并点名）', () => {
+    const known = new Set(TOOL_REGISTRY.map(e => e.key))
+    // 差集非空 = 有人加了工厂但没在 registry.ts 登记。正则已放宽到覆盖带第二参数的工厂
+    // （REQ-261006123819-3af3 FR-1 第二步），故 Bind / Handoff 也在这张网里。
+    expect(sites.map(s => s.name).filter(k => !known.has(k))).toEqual([])
+  })
+
+  it('registry 逐条可构造（工厂文件存在且导出 define<key>Tool）', () => {
+    for (const e of TOOL_REGISTRY) {
+      const f = join(ROOT, e.factoryFile)
+      expect(existsSync(f), 'registry 条目指向不存在的工厂文件：' + e.key + ' → ' + e.factoryFile).toBe(true)
+      expect(
+        typeof (toolModules as unknown as Record<string, unknown>)['define' + e.key + 'Tool'],
+        'registry 条目对应的工厂未导出：define' + e.key + 'Tool',
+      ).toBe('function')
+    }
+  })
 })

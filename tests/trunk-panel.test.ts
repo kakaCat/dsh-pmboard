@@ -394,6 +394,79 @@ describe('形态纪律（FR-11 #7：一律铺开，不做内层滚动）', () =>
   })
 })
 
+/* ────────────────────────────────────────────────────────────── T-15 汇报网格（FR-5 · REQ-261006130057-7a43 t6） */
+
+/**
+ * T-15（REQ-261006130057-7a43 · FR-5 · t6）：汇报面板模块排版密度——
+ * 模块头一行化（标题左 + 副题 + 右端「来源标 + 点开看原文 →」）、短模块 2×2 网格、
+ * 长模块（亮点与成效）通栏、空节「文档未提供该节（不编、不留白）」文案保留。
+ * 视觉基准 = 原型 v1.5 `#FR-5`（.trunk-grid / .t-mod.wide / .t-head）。
+ */
+describe('T-15 · 汇报网格与模块头一行化（FR-5 · REQ-261006130057-7a43 t6）', () => {
+  /** 切模块头（头内只有行内节点，第一个 </div> 即头尾）。 */
+  const headOf = (html: string, key: string): string => {
+    const block = sliceEl(html, 'data-trunk-item="' + key + '"', 'section')
+    const at = block.indexOf('<div class="dsh-pm-trunk-head">')
+    expect(at, key + ' 缺模块头').toBeGreaterThan(-1)
+    return block.slice(at, block.indexOf('</div>', at))
+  }
+
+  it('七条进 2×2 网格容器；长模块（亮点与成效）通栏且恰好一条通栏', () => {
+    expect(countOf(FULL_HTML, 'data-trunk-grid="1"')).toBe(1)
+    // 通栏 = 只有 highlight 一条（原型 .t-mod.wide）
+    expect(countOf(FULL_HTML, 'data-trunk-wide="1"')).toBe(1)
+    expect(countOf(FULL_HTML, 'dsh-pm-trunk-item--wide')).toBe(1)
+    const wideAt = FULL_HTML.indexOf('dsh-pm-trunk-item--wide')
+    const highlightAt = FULL_HTML.indexOf('data-trunk-item="highlight"')
+    // 通栏标与 highlight 在同一 section 标签上（class 在 data-trunk-item 之前）
+    expect(wideAt).toBeGreaterThan(-1)
+    expect(wideAt).toBeLessThan(highlightAt)
+    expect(highlightAt - wideAt).toBeLessThan(120)
+    // 网格不改动七条的 DOM 叙事序（排布是 CSS 的事）
+    const keys: TrunkKey[] = ['why', 'problem', 'approach', 'scope', 'decision', 'tech', 'highlight']
+    const positions = keys.map(k => FULL_HTML.indexOf('data-trunk-item="' + k + '"'))
+    expect([...positions].sort((a, b) => a - b)).toEqual(positions)
+  })
+
+  it('模块头一行化：标题左 + 副题 + 右端「来源标 + 点开看原文 →」同在头行', () => {
+    const head = headOf(FULL_HTML, 'why')
+    expect(head).toContain('<h3 class="dsh-pm-trunk-title">为何做</h3>')
+    expect(head).toContain('由来与触发场景') // 副题
+    expect(head).toContain('dsh-pm-trunk-head-right') // 右端组
+    expect(head).toContain('data-source="doc"') // 来源标
+    // 「点开看原文 →」从头行里就能点（不再独占正文末一行）
+    expect(head).toContain('点开看原文 →')
+    expect(head).toContain('data-open-doc="docs/requirements/REQ-trunk01/requirement.md"')
+    // 出处短标（来源：requirement.md § 产品定义）随迁，一个字不丢
+    expect(head).toContain('来源：')
+    expect(head).toContain('产品定义')
+  })
+
+  it('无 path 的入口随头行渲染成不可点说明（不画按钮、不发 data-open-doc）', () => {
+    const head = headOf(FULL_HTML, 'decision')
+    expect(head).toContain('人工门往返留痕（台账评论）')
+    expect(head).toContain('is-nopath')
+  })
+
+  it('空节文案保留：「文档未提供该节（不编、不留白）」，且补写入口仍在（随迁头行）', () => {
+    const missing = renderTrunkPanel(resp([
+      item('tech', { missing: 'doc-section-missing', summary: [] }),
+    ]))
+    const block = sliceEl(missing, 'data-trunk-item="tech"', 'section')
+    expect(block).toContain('data-missing="doc-section-missing"')
+    expect(block).toContain('文档未提供该节（不编、不留白）')
+    // 缺节标本（带 openRefs 的那条）：入口仍指出去哪补写
+    const missingWhy = renderTrunkPanel(resp([
+      item('why', {
+        missing: 'doc-section-missing',
+        summary: [],
+        openRefs: [{ label: '需求文档缺「产品定义」节', path: 'docs/requirements/REQ-trunk01/requirement.md' }],
+      }),
+    ]))
+    expect(headOf(missingWhy, 'why')).toContain('data-open-doc="docs/requirements/REQ-trunk01/requirement.md"')
+  })
+})
+
 /* ────────────────────────────────────────────────────────────── 文档版本 */
 
 describe('文档最后更新时间（让人知道读到的是哪一版）', () => {

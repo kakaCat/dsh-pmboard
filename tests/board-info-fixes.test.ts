@@ -201,7 +201,8 @@ describe('审批入口外置到常驻操作条（#8）', () => {
 // -- REQ-a8d582 FR-1/FR-4：「验收通过」确认文案装配 ---------------------------
 
 describe('「验收通过」二次确认文案（REQ-a8d582 FR-1/FR-4）', () => {
-  const sheetWith = (items: { id: string; status: 'passed' | 'failed' | 'pending' }[]): any => ({
+  // 状态域与 client/types.ts 的 VerificationItem.status 同行（含 not_verifiable / unverified）
+  const sheetWith = (items: { id: string; status: 'passed' | 'failed' | 'pending' | 'not_verifiable' | 'unverified' }[]): any => ({
     version: 3, generatedAt: T0,
     items: items.map(i => ({
       id: i.id, source: { kind: 'requirement' as const },
@@ -241,6 +242,27 @@ describe('「验收通过」二次确认文案（REQ-a8d582 FR-1/FR-4）', () =>
     expect(copy.overrideDetail).toBeUndefined()
     expect(copy.message).not.toContain('不合格')
     expect(copy.message).not.toContain('覆盖')
+  })
+
+  it('REQ-261006092213-4f5b FR-6：**未复核**项也要进确认文案与覆盖说明（否则点了必被服务端拒）', () => {
+    const req = makeReq({
+      id: 'REQ-vc4', status: 'accepting',
+      verification: {
+        summary: '交付', evidence: ['npx vitest run 全绿'], submittedAt: T0, submittedBy: { kind: 'agent' },
+        sheet: sheetWith([
+          { id: 'v4-1', status: 'passed' },
+          { id: 'v4-2', status: 'unverified' },
+          { id: 'v4-3', status: 'unverified' },
+        ]),
+      },
+    })
+    const copy = verifyConfirmCopy(req)
+    // 不能再说「全部通过」：未复核不计入通过
+    expect(copy.message).not.toContain('全部通过')
+    expect(copy.message).toContain('未复核 2')
+    expect(copy.message).toContain('不计入通过')
+    // 必须给出覆盖说明——否则请求不带 confirm_override，被服务端按不合规通过拒掉
+    expect(copy.overrideDetail).toContain('未复核 2 项')
   })
 
   it('没有验收材料：文案讲清"没有验收证据"，并给出覆盖说明', () => {

@@ -234,6 +234,54 @@ describe('提示词面板 · C 段：上下文（FR-9 / FR-12）', () => {
   })
 })
 
+describe('提示词面板 · 注入信息 chips 与已截断标（FR-6 · REQ-261006130057-7a43 t8）', () => {
+  it('注入信息 chips：routeKey / 命中 / 片段数 / 字符数 / 本轮估算（没给的字段不出 chip）', () => {
+    const html = renderPromptsPanel(fullPayload())
+    expect(html).toContain('data-prompt-chips="1"')
+    const strip = html.slice(html.indexOf('data-prompt-chips="1"'), html.indexOf('</div>', html.indexOf('data-prompt-chips="1"')))
+    expect(strip).toContain('data-prompt-chip="routeKey"')
+    expect(strip).toContain('routeKey <b>implementing/expert/v3</b>')
+    expect(strip).toContain('data-prompt-chip="hit"')
+    expect(strip).toContain('精确命中（exact）')
+    expect(strip).toContain('data-prompt-chip="sections"')
+    expect(strip).toContain('片段 <b>3</b>')
+    expect(strip).toContain('data-prompt-chip="chars"')
+    expect(strip).toContain('字符 <b>6240</b>') // perTurnChars 优先
+    expect(strip).toContain('data-prompt-chip="est"')
+    expect(strip).toContain('≈ 1560 tok')
+  })
+
+  it('routeKey / hitLevel / 估算缺省时对应 chip 不出现（不留白、不编值）', () => {
+    const payload = fullPayload()
+    const sys = payload.system as Record<string, unknown>
+    delete sys.routeKey
+    delete sys.hitLevel
+    delete sys.perTurnEstTokens
+    const html = renderPromptsPanel(payload)
+    expect(html).toContain('data-prompt-chips="1"') // 片段数/字符数 chips 仍在
+    expect(html).toContain('data-prompt-chip="sections"')
+    expect(html).not.toContain('data-prompt-chip="routeKey"')
+    expect(html).not.toContain('data-prompt-chip="hit"')
+    expect(html).not.toContain('data-prompt-chip="est"')
+  })
+
+  it('被裁片段标「已截断」（且正文照常铺开）', () => {
+    const html = renderPromptsPanel(fullPayload())
+    const block = detailsBlockOf(html, 'data-prompt-trimmed="common/glossary"')
+    expect(block).toContain('data-prompt-trim-mark="1"')
+    expect(block).toContain('已截断')
+    // 正文仍在（标的是"没进装配"，不是"没有内容"）
+    expect(preTextOf(block)).toContain('术语表')
+  })
+
+  it('未见过的命中层级原样显示（不编层级名）', () => {
+    const payload = fullPayload()
+    ;(payload.system as Record<string, unknown>).hitLevel = '③'
+    const html = renderPromptsPanel(payload)
+    expect(html).toContain('命中 <b>③</b>')
+  })
+})
+
 describe('提示词面板 · 形状守卫与滚动纪律', () => {
   it('三段都没有（需求页壳的桩载荷）→ data-panel-placeholder，不把空说成「零条留痕」', () => {
     const html = renderPromptsPanel({ available: true, marker: 'prompts' })

@@ -1,0 +1,367 @@
+{
+  "_note": "REQ-261005193546-1b1a / t-e827bd 反面断言清单（design/interfaces.md §8 · architecture.md §防漂移设计）。\nscan 口径 = 全仓 src/（排除 tests/）命中 /status\\s*(?:!==|===)\\s*['\"]canceled['\"]/ 的行；匹配键 =「文件 + 去首尾空白后的行原文」（抗行号漂移）。\ncollected = 本需求收编点（§4.1 八处 + §3/§8 依赖判定四处，去重后共 18 个 (file, symbol)）；line = **改前**那一行的原文（实施后已删），\n  因此「把收编点改回手写」会让该行原文重新出现在命中集合里 ⇒ 落进「新增」分支必红。\nbaseline = 实施后实测命中集合里、不属于收编点的行（39 行 / 25 文件），逐条带 reason（+ line_kind 区分 code/comment）；\n  reason ∈ {req-status, write-side-guard, status-label, definition-site}。\n断言方向：hits ⊆ baseline（新增即红）+ baseline ⊆ hits ∪ collected（删条目 / 漏判据即红，双向钉死）。",
+  "collected": [
+    {
+      "file": "src/application/query/QueryStageDetail.ts",
+      "symbol": "StageDetailAssembler.assemble",
+      "line": "const liveLedger: Pick<TasksView, 'tasks'> = { tasks: ctx.ledger.tasks.filter(t => t.status !== 'canceled') }",
+      "current": "const liveLedger: Pick<TasksView, 'tasks'> = { tasks: liveTasksOf(ctx.ledger.tasks) }",
+      "marker": "liveTasksOf("
+    },
+    {
+      "file": "src/application/query/QueryDag.ts",
+      "symbol": "queryDag",
+      "line": "const live = tasks.filter(t => t.status !== 'canceled')",
+      "current": "const live = liveTasksOf(tasks)",
+      "marker": "liveTasksOf("
+    },
+    {
+      "file": "src/application/query/QueryDocs.ts",
+      "symbol": "buildGateVerdicts",
+      "line": "const liveCount = tasks.filter(t => t.status !== 'canceled').length",
+      "current": "const liveCount = liveCountOf(tasks)",
+      "marker": "liveCountOf("
+    },
+    {
+      "file": "src/application/query/QueryReport.ts",
+      "symbol": "progressOf",
+      "line": "const live = tasks.filter(t => t.status !== 'canceled')",
+      "current": "const live = liveTasksOf(tasks)",
+      "marker": "liveTasksOf("
+    },
+    {
+      "file": "src/application/query/QueryState.ts",
+      "symbol": "queryState",
+      "line": "const reqTasks = (await tasksOf(boundReq.id)).filter(t => t.status !== 'canceled')",
+      "current": "const reqTasks = liveTasksOf(await tasksOf(boundReq.id))",
+      "marker": "liveTasksOf("
+    },
+    {
+      "file": "src/application/use-cases/SubmitVerification.ts",
+      "symbol": "submitVerification",
+      "line": "const liveTargetTasks = targetTasks.filter(t => t.status !== 'canceled')",
+      "current": "const liveTargetTasks = liveTasksOf(targetTasks)",
+      "marker": "liveTasksOf("
+    },
+    {
+      "file": "src/application/internal/sheet-tasks.ts",
+      "symbol": "toSheetTasks",
+      "line": "if (t.status === 'canceled') continue",
+      "current": "if (!isLiveTask(t)) continue",
+      "marker": "isLiveTask("
+    },
+    {
+      "file": "src/application/internal/content-trace.ts",
+      "symbol": "clauseReceiveStatus",
+      "line": "return t === undefined || t.status !== 'canceled'",
+      "current": "return t === undefined || isLiveTask(t)",
+      "marker": "isLiveTask("
+    },
+    {
+      "file": "src/application/internal/verification-doc-writer.ts",
+      "symbol": "rewriteVerificationDoc",
+      "line": "const mine = tasks.filter(t => t.requirementId === reqId && t.status !== 'canceled')",
+      "current": "const mine = liveTasksOf(tasks.filter(t => t.requirementId === reqId))",
+      "marker": "liveTasksOf("
+    },
+    {
+      "file": "src/application/internal/backfill-task-refs.ts",
+      "symbol": "planBackfill",
+      "line": "const tasks = (await store.listByRequirement(req.id)).filter(t => t.status !== 'canceled')",
+      "current": "const tasks = liveTasksOf(await store.listByRequirement(req.id))",
+      "marker": "liveTasksOf("
+    },
+    {
+      "file": "src/domain/workflow/RollupSpec.ts",
+      "symbol": "activeTasksOf",
+      "line": "return view.tasks.filter(t => t.requirementId === reqId && t.status !== 'canceled')",
+      "current": "return liveTasksOf(view.tasks.filter(t => t.requirementId === reqId))",
+      "marker": "liveTasksOf("
+    },
+    {
+      "file": "src/client/views/board.ts",
+      "symbol": "toCard",
+      "line": "const tasks = liveTasksOf(reqTasks) /* 兜底改回手写：reqTasks.filter(t => t.status !== 'canceled') */",
+      "current": "const tasks = liveTasksOf(reqTasks)",
+      "marker": "liveTasksOf("
+    },
+    {
+      "file": "src/client/render/subtask-view.ts",
+      "symbol": "subtaskProgress",
+      "line": "const live = <T extends { status: string }>(list: T[]) => list.filter((x) => x.status !== 'canceled')",
+      "current": "const liveParents = liveTasksOf(parents)",
+      "marker": "liveTasksOf("
+    },
+    {
+      "file": "src/client/stage-panel.ts",
+      "symbol": "topoLevels",
+      "line": "const lv = (id: string): number => (byId.get(id)?.status !== 'canceled' ? (layerOf.get(id) ?? 0) : 0)",
+      "current": "const live = layerInputOf(tasks)",
+      "marker": "layerInputOf("
+    },
+    {
+      "file": "src/application/use-cases/queue-access.ts",
+      "symbol": "readyTasksOf",
+      "line": "return tasks.filter((t) => t.status === 'todo' && (t.dependsOn ?? []).every((d) => byId.get(d)?.status === 'done' || byId.get(d)?.status === 'canceled'))",
+      "current": "return tasks.filter((t) => isReadyTask(t, byId))",
+      "marker": "isReadyTask("
+    },
+    {
+      "file": "src/shared/protocol.ts",
+      "symbol": "readyTasks",
+      "line": "const doneIds = new Set(tasks.filter(t => t.status === 'done' || t.status === 'canceled').map(t => t.id))",
+      "current": "const readyIds = new Set(liveReadyTasks(inReq))",
+      "marker": "liveReadyTasks("
+    },
+    {
+      "file": "src/domain/queue/topology.ts",
+      "symbol": "computeReady",
+      "line": "if (task.status === 'todo' && deps.every((dep) => { const d = byId.get(dep); return d === undefined || d.status === 'done' || d.status === 'canceled' })) ready.push(task.id)",
+      "current": "if (isReadyTask(task, byId)) ready.push(task.id)",
+      "marker": "isReadyTask("
+    },
+    {
+      "file": "src/domain/queue/validateQueue.ts",
+      "symbol": "validateQueueFile",
+      "line": "const unmet = deps.filter((dep) => { const d = byId.get(dep); return typeof dep === 'string' && !(d === undefined || d.status === 'done' || d.status === 'canceled') })",
+      "current": "const unmet = deps.filter((dep) => typeof dep === 'string' && !isDependencySatisfied(byId.get(dep)))",
+      "marker": "isDependencySatisfied("
+    }
+  ],
+  "baseline": [
+    {
+      "file": "src/application/dive/round-driver.ts",
+      "line": "const hasOpenWork = tasks.some(t => t.status !== 'done' && t.status !== 'canceled')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/advance-select.ts",
+      "line": "return view.tasks.filter((t) => t.requirementId === requirementId && t.parentId === undefined && t.status !== 'canceled')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/advance-select.ts",
+      "line": "return view.tasks.filter((t) => t.requirementId === requirementId && t.parentId !== undefined && t.status !== 'canceled')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/advance-select.ts",
+      "line": "if (subs.length > 0 && subs.every((s) => s.status === 'done' || s.status === 'canceled')) {",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/advance-select.ts",
+      "line": "return view.tasks.some((t) => t.requirementId === requirementId && t.status !== 'done' && t.status !== 'canceled')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/content-gate-wiring.ts",
+      "line": "if (t.status === 'canceled') continue",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/rework-update.ts",
+      "line": "(t) => t.requirementId === requirementId && t.parentId === undefined && t.status !== 'canceled' && t.title === plan.title,",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/rollback-cleanup.ts",
+      "line": "return tasks.filter((t) => t.requirementId === requirementId && t.status !== 'canceled')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/rollback-tasks.ts",
+      "line": "const live = tasks.filter(t => t.requirementId === req.id && t.status !== 'canceled')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/rollback-tasks.ts",
+      "line": "tasks.filter(t => (t.reworkOf ?? '') !== '' && t.status !== 'canceled').map(t => t.reworkOf as string),",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/stale-rework.ts",
+      "line": "const stale = tasks.filter((t) => isReworkPlaceholder(t) && t.status !== 'canceled')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/subtask-evidence.ts",
+      "line": "const open = subtasks.filter((s) => s.status !== 'done' && s.status !== 'canceled')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/support.ts",
+      "line": "const open = tasks.filter(t => t.requirementId === reqId && t.status !== 'canceled' && t.status !== 'done')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/internal/task-completeness.ts",
+      "line": "const live = tasks.filter(t => t.requirementId === req.id && t.status !== 'canceled')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/query/QueryReport.ts",
+      "line": "return status === 'archived' || status === 'canceled' || status === 'done'",
+      "reason": "req-status",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/query/live-artifacts.ts",
+      "line": "* 已取消集由**活卡判据的补集**推导（`liveTasksOf`），本模块不新写任何 `status === 'canceled'`",
+      "reason": "status-label",
+      "line_kind": "comment"
+    },
+    {
+      "file": "src/application/use-cases/AdvanceChain.ts",
+      "line": "if (subs.length === 0 || !subs.every((s) => s.status === 'done' || s.status === 'canceled')) return undefined",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/use-cases/AdvanceChain.ts",
+      "line": "const parents = view.tasks.filter((t) => t.requirementId === requirementId && t.parentId === undefined && t.status !== 'canceled')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/use-cases/AdvanceChain.ts",
+      "line": "const subs = view.tasks.filter((t) => t.requirementId === requirementId && t.parentId !== undefined && t.status !== 'canceled')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/use-cases/Decompose.ts",
+      "line": "if (target.status === 'done' || target.status === 'archived' || target.status === 'canceled') {",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/use-cases/Decompose.ts",
+      "line": "const existingTasks = (await taskStoreOf(deps).listByRequirement(target.id)).filter(t => t.status !== 'canceled')",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/use-cases/ExecuteTask.ts",
+      "line": "if (task.status === 'canceled') return fail(task.id, '子卡已取消', 'REQBOARD_SUBTASK_GATE', base)",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/application/use-cases/SubtaskTeamRun.ts",
+      "line": "if (s.status === 'done' || s.status === 'canceled') {",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/client/render/dom-utils.ts",
+      "line": "return status === 'done' || status === 'archived' || status === 'canceled'",
+      "reason": "status-label",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/client/render/subtask-view.ts",
+      "line": "// （此前这里是一份独立的手写 `status !== 'canceled'`，属本需求要消灭的第二处口径）",
+      "reason": "status-label",
+      "line_kind": "comment"
+    },
+    {
+      "file": "src/client/views/board.ts",
+      "line": ".filter(r => r.status !== 'archived' && r.status !== 'canceled')",
+      "reason": "status-label",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/client/views/board.ts",
+      "line": ".filter(r => r.status === 'archived' || r.status === 'canceled')",
+      "reason": "status-label",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/client/views/report-band.ts",
+      "line": "if (status !== 'canceled' && o !== undefined) {",
+      "reason": "status-label",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/client/views/report-band.ts",
+      "line": "? (status === 'canceled'",
+      "reason": "status-label",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/client/views/report-head.ts",
+      "line": "+ (h.status === 'canceled' ? '已取消' : '已归档') + '，无可执行动作</div></div>'",
+      "reason": "status-label",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/client/views/stage-detail.ts",
+      "line": "if (req.status === 'archived' || req.status === 'canceled' || req.status === 'done') return ''",
+      "reason": "status-label",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/domain/status/Predicates.ts",
+      "line": "return req.status === 'canceled'",
+      "reason": "definition-site",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/domain/status/Predicates.ts",
+      "line": "* 全仓的「活卡」判断只允许走这里；消费点再写 `status !== 'canceled'` 就是本需求要冻掉的",
+      "reason": "definition-site",
+      "line_kind": "comment"
+    },
+    {
+      "file": "src/domain/status/Predicates.ts",
+      "line": "return req.status !== 'archived' && req.status !== 'canceled'",
+      "reason": "req-status",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/domain/status/Predicates.ts",
+      "line": "return req.status !== 'done' && req.status !== 'archived' && req.status !== 'canceled'",
+      "reason": "req-status",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/domain/status/Predicates.ts",
+      "line": "return task.status !== 'todo' && task.status !== 'done' && task.status !== 'canceled'",
+      "reason": "definition-site",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/domain/task/ReworkPlaceholder.ts",
+      "line": "* 注意与既有「活卡」口径（`status !== 'canceled'`）的区别：**活卡口径语义不变**，",
+      "reason": "definition-site",
+      "line_kind": "comment"
+    },
+    {
+      "file": "src/domain/task/ReworkPlaceholder.ts",
+      "line": "return tasks.filter((t) => t.status !== 'canceled' && !isReworkPlaceholder(t))",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    },
+    {
+      "file": "src/http/routers/requirements.ts",
+      "line": "const liveCount = rollbackTasks.filter(t => t.status !== 'canceled').length",
+      "reason": "write-side-guard",
+      "line_kind": "code"
+    }
+  ]
+}

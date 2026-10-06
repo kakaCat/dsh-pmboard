@@ -254,6 +254,27 @@ describe('front-matter 策略参与①（UC-2）', () => {
     await seed({ registered: DESIGN4 })
     await expect(run(moveTool(), { to: 'decomposing' })).rejects.toThrow(/豁免无效：理由为空/)
   })
+
+  // REQ-261004222448-292a 事故回归：模板教的括号写法必须同样触发条件必交，
+  // 否则照模板写的 UI 需求会静默跳过 frontend.md（该需求实测就是零前端设计）。
+  it('sides 用括号写法 [frontend, backend] → frontend.md 仍是必交，缺则拒', async () => {
+    writeDocset(DESIGN5, 'sides: [frontend, backend]')
+    await seed({ registered: DESIGN5 })
+    await expect(run(moveTool(), { to: 'decomposing' })).rejects.toThrow(/design\/frontend\.md 未交/)
+  })
+
+  it('sides 用括号写法 [frontend, backend, doc] → 未知端侧被忽略，frontend.md 仍必交', async () => {
+    writeDocset(DESIGN5, 'sides: [frontend, backend, doc]')
+    await seed({ registered: DESIGN5 })
+    await expect(run(moveTool(), { to: 'decomposing' })).rejects.toThrow(/design\/frontend\.md 未交/)
+  })
+
+  it('sides 用括号写法且两份端侧文档交齐 → 放行', async () => {
+    writeDocset([...DESIGN5, 'frontend.md', 'backend.md'], 'sides: [frontend, backend]')
+    await seed({ registered: [...DESIGN5, 'frontend.md', 'backend.md'] })
+    const out = await run(moveTool(), { to: 'decomposing' })
+    expect(out.success).toBe(true)
+  })
 })
 
 describe('isLegacy 存量需求 → 全部新闸门放行（FR-6）', () => {

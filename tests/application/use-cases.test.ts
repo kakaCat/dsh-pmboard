@@ -116,6 +116,10 @@ describe('t6 · ConfirmArtifact / AskConfirm', () => {
   it('ask_confirm：弹框不可用 → fallback=board；肯定项 → 落章 + 自动推进', async () => {
     const seedArtifact = { stage: 'brainstorming' as const, kind: 'requirement' as const, path: 'p', registeredAt: 1, registeredBy: { kind: 'agent' as const } }
     const h = makeHarness({ requirements: [req({ status: 'brainstorming', artifacts: [seedArtifact] })] })
+    // REQ-261005105032-3b02：feature 需求出需求阶段必须有需求文档（裁定门读「讨论与裁定记录（D-x）」节）。
+    // 夹具原先没落盘这份文档；补一份含真空态的最小文档，断言一行不改。
+    h.docs.put('docs/requirements/REQ-000001/requirement.md',
+      '# 需求\n\n## 讨论与裁定记录（D-x）\n\n本节无裁定\n')
     h.questions.availableFlag = false
     const fb: any = await askConfirm(h.deps, { target: 'artifact', kind: 'requirement', question: '确认？' }, EXEC)
     expect(fb.fallback).toBe('board')

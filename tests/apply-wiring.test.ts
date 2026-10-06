@@ -6,17 +6,21 @@
  *   3) webServer 前缀路由（/dashboard/api/reqboard）
  * 以及 dispose 清理不抛错。这是无需重启 :13080 的最强接线验证
  * （等价于启动时插件装配路径：inject → effect → section/register）。
+ *
+ * serves: FR-1, FR-4（REQ-261005165552-6783：段必须显式声明插值开关，本段声明为字面量）
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { apply } from '../src/index.js'
+// REQ-261006123819-3af3 FR-1：注册名单从登记面派生（见下方「注册全部 agent 工具」用例）
+import { TOOL_REGISTRY } from '../src/tools/registry.js'
 
 type DisposeFn = () => void
 
 interface StubCtx {
-  sections: Array<{ name: string; order: number; text: unknown }>
+  sections: Array<{ name: string; order: number; text: unknown; interpolate?: unknown }>
   tools: Array<{ name: string; execute: unknown }>
   routes: Array<{ kind: string; path: string }>
   disposeHooks: DisposeFn[]
@@ -84,56 +88,36 @@ describe('dsh-pmboard apply() 宿主接线（乙流程装配冒烟）', () => {
     expect(text).toContain('reqboard_create')
   })
 
-  it('注册全部 agent 工具（REQ-47939a 收敛后 9 个 + REQ-327bdf 2 个 + REQ-e3b6a0 的 reqboard_capture + REQ-de3f 的 reqboard_archive_amend）', () => {
+  it('capture section 显式声明为字面量段（interpolate === false）', () => {
+    const ctx = stubCtx()
+    apply(ctx as never, { dshHome: dir })
+    const sec = ctx.sections.find(x => x.name === 'reqboard:capture')
+    expect(sec).toBeDefined()
+    // 宿主对 section 的**缺省**语义是模板：逐字扫描变量组，名字非法或未注册即抛错。
+    // 本段正文含外来原文（用户消息节选、在制任务的说明与验收、需求标题），必须声明为字面量——
+    // 否则一份引用了模板占位符的卡验收标准，会让窗口每一轮都在系统提示词装配处失败（实测事故）。
+    expect(sec!.interpolate).toBe(false)
+  })
+
+  it('本插件注册的每个提示词段都显式声明插值开关（不许依赖宿主缺省）', () => {
+    const ctx = stubCtx()
+    apply(ctx as never, { dshHome: dir })
+    expect(ctx.sections.length).toBeGreaterThan(0)
+    // 未来新增段必须自己回答「这段的文本要不要扫描变量」，不允许靠宿主默认值——
+    // 本次整轮卡死事故的根因形态正是「注册处一个字都没写，默认却决定窗口能不能跑」。
+    const silent = ctx.sections.filter(s => typeof s.interpolate !== 'boolean').map(s => s.name)
+    expect(silent).toEqual([])
+  })
+
+  it('注册全部 agent 工具（清单从 TOOL_REGISTRY 派生：左 = 实际注册名，右 = 登记面）', () => {
     const ctx = stubCtx()
     apply(ctx as never, { dshHome: dir })
     const names = ctx.tools.map(t => t.name).sort()
-    expect(names).toEqual([
-      'reqboard_accept_sheet',
-      // REQ-261004183621-de3f t3：归档清单受控补录（发现漏列时追加条目 + 留痕）
-      'reqboard_archive_amend',
-      // CONFIRM：ask_confirm + confirm_artifact 合并（evidence 路径自动分派）
-      'reqboard_ask_confirm',
-      // REQ-261003215944-9e04 FR-2：席位派发（把另一个窗口派成 worker/observer）
-      'reqboard_bind',
-      // CAPTURE：立项三问 pm 专有弹框（REQ-e3b6a0 t8）
-      'reqboard_capture',
-      // REQ-260924213231-b1c4 T-9 / FR-6：断点补写的配套解除挂起
-      'reqboard_clear_pause',
-      // RECEIPT：挂起确认回执（REQ-260924213231-b1c4 T-6 / FR-3）
-      'reqboard_confirm_receipt',
-      'reqboard_create',
-      'reqboard_decompose',
-      // REQ-261004150249-731e FR-5：上下文将满时的续作交接（开窗 + owner 交接 + 接续投递）
-      'reqboard_handoff',
-      // 知识层检索（REQ-261003204149-1e80 起）
-      'reqboard_kb',
-      // REQ-260927100007-b8ba FR-7：agent 侧需求/任务流转工具（此前只在 HTTP 层，agent 调不动）
-      'reqboard_move',
-      'reqboard_note_interruption',
-      // REQ-261003215944-9e04 FR-1：用 DSH 现成的会话分支开一个新窗口
-      'reqboard_open_window',
-      // REQ-260925110957-552d：投递式实施链的运行态查询
-      'reqboard_run_status',
-      'reqboard_status',
-      // SUBMIT：requirement_submit / plan_submit / verify_submit / archive_submit 合并（kind 分派）
-      'reqboard_submit',
-      // 归属补救：把缺父卡归属的任务卡挂回父卡下（2026-09-28）
-      'reqboard_task_adopt',
-      'reqboard_task_execute',
-      'reqboard_task_move',
-      // 卡片层契约（2026-09-28）：条款引用的补写
-      'reqboard_task_refs',
-      // 卡片层契约（2026-09-28）：子卡链再生成（补链）
-      'reqboard_task_regenerate',
-      'reqboard_task_report',
-      // REQ-4842fe t10：事件链执行入口
-      'reqboard_task_run',
-      'reqboard_task_status',
-      // REQ-260927144541-0481 FR-3：只读父子结构视图
-      'reqboard_task_tree',
-    ])
-    expect(names).toHaveLength(26)
+    // REQ-261006123819-3af3 FR-1：此前这里是 26 条手写名单 + toHaveLength(26)，
+    // 新增 reqboard_skill_install 后门禁红着没人管。现在两边都从登记面派生：
+    // 不相等即点名差集，漏登记当场被抓（不再靠手抄名单跟上）。
+    expect(names).toEqual(TOOL_REGISTRY.map(e => e.toolName).sort())
+    expect(names).toHaveLength(TOOL_REGISTRY.length)
   })
 
   it('注册看板路由：/dashboard/api/reqboard 前缀', () => {

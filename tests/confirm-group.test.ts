@@ -148,4 +148,23 @@ describe('成组确认（三通道同语义：全部 design 产物一次落章�
     await expect(run(askTool(), { target: 'artifact', kind: 'design', evidence: '用户确认' }))
       .rejects.toThrow(/REQBOARD_MISSING_ARTIFACT/)
   })
+
+  it('已落章的产物再走文字证据 ⇒ 时间戳与证据原文逐字不变、不再多写一条「人已确认」评论', async () => {
+    // REQ-261006164732-6503 t13（serves: FR-4）：独立复核的**阻断-2** 现场——
+    // 文字证据路径原本没有守卫，第二次提交证据就能把 confirmedAt 与证据原文覆写。
+    await seed(true)
+    const first = await run(askTool(), { target: 'artifact', kind: 'requirement', evidence: '第一次确认的原话' })
+    expect(first.success).toBe(true)
+    const arts0 = (store.peekAll()[0].artifacts ?? []).filter(a => a.kind === 'requirement')
+    const stamp0 = { at: arts0[0]!.confirmedAt, ev: arts0[0]!.confirmedEvidence }
+    const comments0 = store.peekAll()[0].comments.length
+    expect(stamp0.at).toBeDefined()
+
+    const second = await run(askTool(), { target: 'artifact', kind: 'requirement', evidence: '迟到的第二次文字确认' })
+    expect(second.success).toBe(true)
+    const arts1 = (store.peekAll()[0].artifacts ?? []).filter(a => a.kind === 'requirement')
+    expect(arts1[0]!.confirmedAt).toBe(stamp0.at)              // 首写即事实
+    expect(arts1[0]!.confirmedEvidence).toBe(stamp0.ev)
+    expect(store.peekAll()[0].comments.length).toBe(comments0) // 不再重复留「人已确认」
+  })
 })

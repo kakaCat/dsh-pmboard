@@ -60,7 +60,8 @@ import { REQUIREMENT_STORE_ERROR } from '../../src/application/ports.js'
 import { isColdStatus, isRequirementId } from '../../src/domain/requirement/ReqboardPaths.js'
 // 冷侧写豁免（与生产实现**同源**，不写第二份判据）：domain/requirement/ColdWrite。
 import { isColdWriteExempt } from '../../src/domain/requirement/ColdWrite.js'
-import { factsOf, summarize, type RequirementFacts, type RequirementSummary } from '../../src/domain/requirement/RequirementSummary.js'
+import { factsOf, type RequirementFacts, type RequirementSummary } from '../../src/domain/requirement/RequirementSummary.js'
+import { boardSummaryOfAuthoritative } from '../../src/shared/board-summary.js'
 // 分页/排序助手与分片实现**同源**（REQ-261002161439-277d t4）：排序键是端口契约，
 // 两处各写一份必然漂移，而漂移的症状是"分页偶尔跳页"，最难查。
 import { compareSummaryOrder, decodeSummaryCursor, encodeSummaryCursor } from '../../src/repositories/shardPaging.js'
@@ -321,7 +322,7 @@ export class InMemoryRequirementStore implements RequirementStore {
   async getSummary(id: string): Promise<RequirementSummary | undefined> {
     this.throwIfFaulted(id)
     const rec = this.records.get(id)
-    return rec === undefined ? undefined : summarize(rec)
+    return rec === undefined ? undefined : boardSummaryOfAuthoritative(rec)
   }
 
   async listSummaries(filter?: RequirementFilter): Promise<RequirementSummaryPage> {
@@ -334,6 +335,12 @@ export class InMemoryRequirementStore implements RequirementStore {
         if (scope === 'archived' && !isColdStatus(r.status)) return false
         if (filter?.ids !== undefined && !filter.ids.includes(r.id)) return false
         if (filter?.status !== undefined && !filter.status.includes(r.status)) return false
+        // 项目筛（REQ-261005141830-7a3b FR-10）：与两个真实存储同口径——"这个项目下有哪些需求"。
+        // t5（FR-8）：`includeUnattributed` 把未归属（无 projectId）的存量记录一并带回；缺省 false = 老行为。
+        if (filter?.projectId !== undefined && r.projectId !== filter.projectId) {
+          const unattributed = !(typeof r.projectId === 'string' && r.projectId.length > 0)
+          if (!(filter.includeUnattributed === true && unattributed)) return false
+        }
         if (filter?.workspaceRoot !== undefined && r.workspaceRoot !== filter.workspaceRoot) return false
         if (filter?.sourceSessionId !== undefined && r.sourceSessionId !== filter.sourceSessionId) return false
         // 席位预筛（FR-3）：与分片实现同口径——只看落盘 seats、不折算（折算唯一处在读端 seatOfSummary）。
@@ -343,14 +350,14 @@ export class InMemoryRequirementStore implements RequirementStore {
       })
       .sort(compareSummaryOrder)
     const limit = Math.min(Math.max(filter?.limit ?? 200, 1), 1000)
-    const items = matched.slice(offset, offset + limit).map(summarize)
+    const items = matched.slice(offset, offset + limit).map((r) => boardSummaryOfAuthoritative(r))
     const nextOffset = offset + items.length
     return nextOffset < matched.length ? { items, nextCursor: encodeSummaryCursor(nextOffset) } : { items }
   }
 
   /** 同步投影：本地缓存视图，**可能略旧**——只许用于提示词/引导组装。 */
   peekSummaries(): readonly RequirementSummary[] {
-    return [...this.records.values()].filter((r) => !isColdStatus(r.status)).map(summarize)
+    return [...this.records.values()].filter((r) => !isColdStatus(r.status)).map((r) => boardSummaryOfAuthoritative(r))
   }
 
   /** 同步提示词窄投影（B12 阶段①-a）：同 `peekSummaries()` 的许可区，多带 `description`。 */
@@ -414,6 +421,9 @@ export class InMemoryRequirementStore implements RequirementStore {
       ...(input.category !== undefined ? { category: input.category } : {}),
       ...(input.promptDifficulty !== undefined ? { promptDifficulty: input.promptDifficulty } : {}),
       ...(input.docBasePath !== undefined ? { docBasePath: input.docBasePath } : {}),
+      // 项目身份（REQ-261005141830-7a3b FR-1）：替身必须与两个真实存储同源，否则"按项目筛"的用例
+      // 会在替身上假装通过（本仓教训：替身不同源 = 用例空过）。
+      ...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
       ...(input.workspaceRoot !== undefined ? { workspaceRoot: input.workspaceRoot } : {}),
       ...(input.sourceSessionId !== undefined ? { sourceSessionId: input.sourceSessionId } : {}),
     }
@@ -536,7 +546,7 @@ export class InMemoryRequirementStore implements RequirementStore {
   private emit(kind: RequirementChange['kind'], id: string): void {
     const rec = this.records.get(id)
     if (rec === undefined) return
-    const change: RequirementChange = { kind, requirementId: id, revision: this.revision, summary: summarize(rec) }
+    const change: RequirementChange = { kind, requirementId: id, revision: this.revision, summary: boardSummaryOfAuthoritative(rec) }
     for (const fn of this.subscribers) {
       try {
         fn(change)

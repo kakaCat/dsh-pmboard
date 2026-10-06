@@ -12,6 +12,7 @@ import { describe, expect, it } from 'vitest'
 import {
   checkClauseSequence,
   checkClauseDuplicates,
+  collectIds,
   extractClauseDefinitions,
   extractClauseDefinitionOccurrences,
   parseDocument,
@@ -109,5 +110,44 @@ describe('提交门禁端到端（requirement 格式门）', () => {
     const legacy = { id: 'REQ-t', artifacts: [] } as any
     const f = await checkRequirementDocFormatGate(fakeDocs(bodyOf('**FR-1 甲**：x。', '', '**FR-3 丙**：z。')), legacy)
     expect(f).toBeUndefined()
+  })
+})
+
+/**
+ * REQ-261005105032-3b02 FR-11：编号白名单增 `D-\d+`（D-x 裁定条目）。
+ *
+ * 缺陷形态（修复前实测）：`collectIds('D-1')` === `[]`——白名单只认带域段的 `D-ARCH-2`，
+ * 于是 D-x 裁定条目在编号链上等于不存在（覆盖度、连续性、追溯全都看不见它）。
+ * 新增一支必须**与既有 `D-[A-Z]+-\d+` 共存**：两支互不抢食（`D-1` 无字母段、`D-ARCH-2` 有），
+ * 且 `\b` 包裹保证不误伤 `D-1abc` 这类"编号后面直接粘字母"的文本。
+ */
+describe('编号白名单增 D-\\d+（D-x 裁定条目，不挤掉 D-<域>-<n>）', () => {
+  it('collectIds(D-1) 深等于 [D-1]（修复前恒为 []）', () => {
+    expect(collectIds('D-1')).toEqual(['D-1'])
+  })
+
+  it('collectIds(D-ARCH-2) 深等于 [D-ARCH-2]（既有域段形态不被挤掉）', () => {
+    expect(collectIds('D-ARCH-2')).toEqual(['D-ARCH-2'])
+  })
+
+  it('collectIds(D-1 D-ARCH-2) 同一次扫描同时收下两项（交替共存、不互相抢食）', () => {
+    const ids = collectIds('D-1 D-ARCH-2')
+    expect(ids).toContain('D-1')
+    expect(ids).toContain('D-ARCH-2')
+    expect(ids).toEqual(['D-1', 'D-ARCH-2'])
+  })
+
+  it('collectIds(D-1abc) 为空数组（\\b 兜底：1 与 a 之间无边界 → 不误伤）', () => {
+    expect(collectIds('D-1abc')).toEqual([])
+  })
+
+  it('回归锁：既有各支（FR/BUG/RF/SP/DOC/CH、T/BE/FE/TC/E、t-xxxxxx）取值不变', () => {
+    expect(collectIds('`serves: FR-12, D-ARCH-2, TC-007`')).toEqual(['FR-12', 'D-ARCH-2', 'TC-007'])
+    expect(collectIds('t-0a1b2c')).toEqual(['t-0a1b2c'])
+  })
+
+  it('D 前缀自成一组：checkClauseSequence 在 D-x 上同样查跳号（供裁定门复用）', () => {
+    expect(checkClauseSequence(['D-1', 'D-3'])).toEqual(['D-2'])
+    expect(checkClauseSequence(['D-1', 'D-2'])).toEqual([])
   })
 })

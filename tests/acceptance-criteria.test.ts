@@ -31,6 +31,7 @@ import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { assembleStageDetail } from '../src/application/query/index.js'
 import { renderStagePanel } from '../src/client/stage-panel.js'
+import { docsPanel } from '../src/client/views/panels/docs.js'
 import {
   definePlanSubmitTool,
   defineDecomposeTool,
@@ -50,6 +51,8 @@ import {
   type StageKey,
   type StageDetail,
   type StageArtifact,
+  type DocsResponse,
+  type VerificationItem,
 } from '../src/shared/protocol.js'
 
 const W = 'session-acc-123'
@@ -134,14 +137,18 @@ function reqWithFullArtifacts(): RequirementRecord {
     id: 'REQ-acc001', title: '全产物需求', description: '', status: 'archived', blocked: false,
     category: 'feature', artifacts, comments: [], version: 1, createdAt: 1, updatedAt: 1,
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
-    statusHistory: [{ status: 'draft', at: 1, by: { kind: 'human' } }],
+    // REQ-261006123819-3af3 FR-3（D-2）：这条**走真实状态路径**——需求 status=archived 且
+    // statusHistory 里有真实的 archived 事件，归档时刻由它承载（原夹具用无写入者的归档时间字段）
+    statusHistory: [
+      { status: 'draft', at: 1, by: { kind: 'human' } },
+      { status: 'archived', at: now, by: { kind: 'human' } },
+    ],
     archive: {
       dir: 'docs/requirements/REQ-acc001',
       docs: [{ kind: 'requirement', path: 'docs/requirements/REQ-acc001/requirement.md' }],
       mergedInto: ['docs/architecture/project-manual.md'],
       indexEntry: '测试归档',
       submittedAt: now, submittedBy: { kind: 'agent' },
-      archivedAt: now, archivedBy: { kind: 'human' },
     },
   }
 }
@@ -559,6 +566,14 @@ describe('验收 10：四道人工确认门', () => {
         return { changed: true }
       })
     } else {
+      // REQ-261005105032-3b02：feature 需求出需求阶段必须有需求文档（裁定门读「讨论与裁定记录（D-x）」节）。
+      // 本夹具原先只在 design>decomposing 那条分支落 requirement.md；这里补上最小的一份（含真空态），
+      // 判据与断言都不动——本用例验的仍是"产物确认后放行"。
+      if (from === 'brainstorming') {
+        mkdirSync(join(dir, 'docs/requirements/REQ-acc001'), { recursive: true })
+        writeFileSync(join(dir, 'docs/requirements/REQ-acc001/requirement.md'),
+          '# 需求\n\n## 讨论与裁定记录（D-x）\n\n本节无裁定\n')
+      }
       await store.mutate(store.peekAll()[0]!.id, (r) => {
         r.artifacts = [{
           stage: from as StageKey, kind: kind as StageArtifact['kind'],
@@ -682,5 +697,82 @@ describe('全流程一览接口 /requirements/:id/stages', () => {
   it('需求不存在 → 404', async () => {
     const res = await get('/requirements/REQ-nope999/stages')
     expect(res.statusCode).toBe(404)
+  })
+})
+
+/* ------------------------------------------------------------------------- */
+/* REQ-261005105032-3b02 t18：验收单两个对照项 — 面板只加属性、不动列        */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * 面板核验表是**纯字符串渲染**（本包没有 jsdom），故判据落在字符串上：
+ *   · 两个对照项各有 `data-verify-source="<source.kind>"`（可 greps 断言"单里到底有没有这两项"）；
+ *   · 列结构不动（七列，`data-verify-row` 条数 == items 条数）。
+ * 之所以要这个属性：原先"UI 需求验收单含两个对照项"只能靠肉眼在表格里找中文标题。
+ */
+describe('验收单对照项的面板渲染（REQ-261005105032-3b02 FR-7 / FR-9）', () => {
+  const ITEMS: VerificationItem[] = [
+    {
+      id: 'v1-1',
+      source: { kind: 'prototype-compare', prototypePath: 'prototypes/detail.html' },
+      criterion: '与原型对照截图（含差异说明）',
+      evidence: ['docs/x.png'],
+      status: 'pending',
+      needsHuman: true,
+      humanReason: '界面视觉需人对照权威原型',
+    },
+    {
+      id: 'v1-2',
+      source: { kind: 'decision-compare', decisionIds: ['D-3', 'D-5'] },
+      criterion: '与裁定对照（逐条说明如何落实）',
+      evidence: ['D-3：见 design/frontend.md'],
+      status: 'pending',
+    },
+    {
+      id: 'v1-3',
+      source: { kind: 'task', taskId: 't-acc001' },
+      criterion: '任务项',
+      evidence: [],
+      status: 'pending',
+    },
+    {
+      id: 'v1-4',
+      source: { kind: 'requirement' },
+      criterion: '需求级：交付结论可复核',
+      evidence: [],
+      status: 'pending',
+    },
+  ]
+
+  const html = (): string => docsPanel.render({
+    documents: [],
+    generated: [],
+    discovered: [],
+    gates: [],
+    verification: {
+      version: 1,
+      items: ITEMS,
+      generatedAt: Date.UTC(2026, 9, 5),
+      generatedBy: { kind: 'agent', sessionId: W },
+    },
+  } as unknown as DocsResponse, {
+    requirementId: 'REQ-261005105032-3b02',
+    load: () => Promise.reject(new Error('渲染路径不该取数')),
+    openDoc: () => { throw new Error('渲染路径不该开正文') },
+  })
+
+  it('两个对照项各带 data-verify-source；任务项仍是 task（属性只增不改）', () => {
+    const out = html()
+    expect(out).toContain('data-verify-source="prototype-compare"')
+    expect(out).toContain('data-verify-source="decision-compare"')
+    expect(out).toContain('data-verify-source="task"')
+    expect(out).toContain('data-verify-source="requirement"')
+  })
+
+  it('列结构不动：仍七列、逐项一行（属性没把行或列挤变形）', () => {
+    const out = html()
+    expect(out.split('data-verify-row="1"').length - 1).toBe(ITEMS.length)
+    const head = out.slice(out.indexOf('<thead>'), out.indexOf('</thead>'))
+    expect(head.split('<th>').length - 1).toBe(7)
   })
 })

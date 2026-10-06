@@ -40,6 +40,13 @@ interface Calls {
   created: number
   delivered: number
   texts: string[]
+  /** REQ-261005151245-54ae：继承三件的调用痕迹（仅 `inherit: true` 时被填）。 */
+  inherit: {
+    profiles: number
+    create: { cwd?: string; workspaceId?: string; agentPreset?: string }[]
+    rename: { sessionId: string; title: string }[]
+    selectModel: { sessionId: string; selection: { provider: string; model: string } }[]
+  }
 }
 
 function fakeReq(method: string, url: string, body?: unknown): any {
@@ -70,10 +77,17 @@ function fakeRes(): any {
 function bootstrap(opts: {
   opener?: 'ok' | 'unavailable' | 'create-fail'
   deliver?: 'ok' | 'fail' | 'missing'
+  /** REQ-261005151245-54ae：给假开窗口装上「读画像 / 写标题 / 写模型」三个新方法。 */
+  inherit?: boolean
 } = {}): Calls {
   clock = 1_000_000
   const h = makeHarness()
-  const calls: Calls = { created: 0, delivered: 0, texts: [] }
+  const calls: Calls = {
+    created: 0,
+    delivered: 0,
+    texts: [],
+    inherit: { profiles: 0, create: [], rename: [], selectModel: [] },
+  }
   settings = new FileSettingsStore({ dshHome: base, env: {}, currentBackend: 'json', now: () => clock })
   systemRecord = new SystemRecordFile({
     file: systemFile,
@@ -94,13 +108,32 @@ function bootstrap(opts: {
   const kind = opts.opener ?? 'ok'
   const windowOpener = {
     available: () => kind !== 'unavailable',
-    create: async () => {
+    create: async (request?: { cwd?: string; workspaceId?: string; agentPreset?: string }) => {
       calls.created += 1
+      calls.inherit.create.push(request ?? {})
       return kind === 'create-fail'
         ? { ok: false as const, code: 'open_failed' as const, reason: '宿主拒绝建会话' }
         : { ok: true as const, windowKey: 'session-mig-1' }
     },
     resolveSourceProject: () => ({ cwd: base }),
+    ...(opts.inherit === true
+      ? {
+          readProfile: async () => {
+            calls.inherit.profiles += 1
+            return {
+              title: '源窗口标题 (2)',
+              agentPreset: 'cordis',
+              modelSelection: { provider: 'deepseek', model: 'deepseek-chat' },
+            }
+          },
+          rename: async (sessionId: string, title: string) => {
+            calls.inherit.rename.push({ sessionId, title })
+          },
+          selectModel: async (sessionId: string, selection: { provider: string; model: string }) => {
+            calls.inherit.selectModel.push({ sessionId, selection })
+          },
+        }
+      : {}),
   }
   const dkind = opts.deliver ?? 'ok'
   const crossWindowDeliver = {
@@ -316,5 +349,46 @@ describe('成功路径', () => {
     expect(second.statusCode).toBe(403)
     expect(second.payload.error).toContain('已被消费')
     expect(calls.created).toBe(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// REQ-261005151245-54ae FR-5 / FR-6：迁移窗口也继承（标题走显式语义名，模式与模型照样继承）
+// ---------------------------------------------------------------------------
+
+describe('REQ-261005151245-54ae 迁移窗口的继承回执', () => {
+  /** 走完票据门槛的成功路径（迁移发起需要人工确认票）。 */
+  async function migrateWithTicket() {
+    const t = await migrateTicket(true)
+    return await post('/settings/storage/migrate', { ticket: t, sessionId: 'session-x' })
+  }
+
+  it('T-15 显式语义标题 + 模式随建会话请求带入 + 回执含 inheritance（三项 set）', async () => {
+    const calls = bootstrap({ inherit: true })
+    const res = await migrateWithTicket()
+
+    expect(res.statusCode).toBe(200)
+    expect(res.payload.data.windowKey).toBe('session-mig-1')
+    expect(res.payload.data.inheritance).toEqual({ title: 'set', preset: 'set', model: 'set', reasons: [] })
+    // 标题走显式语义名（迁移窗口不是续作，不递增源标题）
+    expect(calls.inherit.rename).toEqual([{ sessionId: 'session-mig-1', title: '台账迁移窗口' }])
+    // 模式随 create 请求体带入；模型单独写一次
+    expect(calls.inherit.create).toEqual([{ cwd: base, agentPreset: 'cordis' }])
+    expect(calls.inherit.selectModel).toEqual([
+      { sessionId: 'session-mig-1', selection: { provider: 'deepseek', model: 'deepseek-chat' } },
+    ])
+  })
+
+  it('T-15b 旧装配（无 readProfile）→ 窗口照建、任务照投，inheritance 三项 failed 且不阻断迁移发起', async () => {
+    const calls = bootstrap()
+    const res = await migrateWithTicket()
+
+    expect(res.statusCode).toBe(200)
+    expect(res.payload.data.inheritance.title).toBe('failed')
+    expect(res.payload.data.inheritance.preset).toBe('failed')
+    expect(res.payload.data.inheritance.model).toBe('failed')
+    expect(res.payload.data.inheritance.reasons.join(' ')).toContain('未装配读画像能力')
+    expect(calls.created).toBe(1)
+    expect(calls.delivered).toBe(1)
   })
 })

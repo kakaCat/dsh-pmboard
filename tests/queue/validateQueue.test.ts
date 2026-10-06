@@ -11,7 +11,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { hasIssue, validateQueueFile } from '../../src/domain/queue/validateQueue.js'
-import type { QueueFile, ValidationIssue, ValidationRule } from '../../src/domain/queue/QueueTypes.js'
+import type { QueueFile, ValidationIssue, ValidationLevel, ValidationRule } from '../../src/domain/queue/QueueTypes.js'
 import { REQ, clone, mkTask, queueOf, rawQueue } from './fixtures.js'
 
 const ALL_RULES: readonly ValidationRule[] = ['V-1', 'V-2', 'V-3', 'V-4', 'V-5', 'V-6']
@@ -27,7 +27,7 @@ function validQueue(): QueueFile {
 }
 
 /** 各规则的反例样本（TC-2.11 的汇总依据）。 */
-function badSamples(): { name: string; file: QueueFile; rule: ValidationRule }[] {
+function badSamples(): { name: string; file: QueueFile; rule: ValidationRule; level?: ValidationLevel }[] {
   // V-1：缺 schemaVersion + ready 类型错误
   const v1 = clone(validQueue()) as unknown as Record<string, unknown>
   delete v1.schemaVersion
@@ -70,7 +70,9 @@ function badSamples(): { name: string; file: QueueFile; rule: ValidationRule }[]
     { name: 'V-4 层号未随依赖递增', file: v4a, rule: 'V-4' },
     { name: 'V-4 layer=0 却有依赖', file: v4b, rule: 'V-4' },
     { name: 'V-5 假就绪', file: v5a, rule: 'V-5' },
-    { name: 'V-5 漏就绪', file: v5b, rule: 'V-5' },
+    // 漏就绪自 REQ-261005193546-1b1a t10 起 = **warning 级**（可自愈的陈旧派生值）：
+    // 它仍是"反例"（issues 非空），但**不再**让 passed 变 false、也不再拦写。
+    { name: 'V-5 漏就绪', file: v5b, rule: 'V-5', level: 'warning' },
     { name: 'V-6 三任务成环', file: v6, rule: 'V-6' },
   ]
 }
@@ -187,11 +189,16 @@ describe('validateQueueFile 反例逐条（TC-2.1~TC-2.8）', () => {
     expect(hasIssue(validateQueueFile(file), 'V-5')).toBe(true)
   })
 
-  it('TC-2.7 V-5 漏就绪（依赖全 done 却不在 ready）', () => {
+  it('TC-2.7 V-5 漏就绪（依赖全 done 却不在 ready）——**warning 级**，不让 passed 变 false', () => {
     const result = validateQueueFile(badSamples().find((s) => s.name === 'V-5 漏就绪')!.file)
 
-    expect(result.passed).toBe(false)
-    expect(result.issues.some((i) => i.rule === 'V-5' && i.message.includes('漏就绪'))).toBe(true)
+    // REQ-261005193546-1b1a t10：漏就绪 = 陈旧派生值（可自愈）⇒ warning；
+    // `passed` 的语义 = 「无 issue 级条目」⇒ 这一档不判失败（否则存量需求会被读成 0 张）。
+    const missed = result.issues.filter((i) => i.rule === 'V-5' && i.message.includes('漏就绪'))
+    expect(missed).toHaveLength(1)
+    expect(missed[0]!.level).toBe('warning')
+    expect(result.passed).toBe(true)
+    expect(hasIssue(result, 'V-5')).toBe(false) // hasIssue 只认 issue 级
   })
 
   it('TC-2.8 V-6 三任务成环', () => {
@@ -204,13 +211,15 @@ describe('validateQueueFile 反例逐条（TC-2.1~TC-2.8）', () => {
 })
 
 describe('validateQueueFile 契约（TC-2.10 / TC-2.11）', () => {
-  it('TC-2.10 全部反例：passed=false 且**未 throw**', () => {
+  it('TC-2.10 全部反例：**issue 级**样本 passed=false（warning 级样本只上报、不判失败）且都**未 throw**', () => {
     for (const sample of badSamples()) {
       let result: ReturnType<typeof validateQueueFile> | undefined
       expect(() => {
         result = validateQueueFile(sample.file)
       }, `样本「${sample.name}」不得抛错`).not.toThrow()
-      expect(result!.passed, `样本「${sample.name}」应判失败`).toBe(false)
+      // `passed` = 无 issue 级条目（REQ-261005193546-1b1a t10）：warning 级样本照旧"应判失败"是旧口径。
+      const expectPassed = sample.level === 'warning'
+      expect(result!.passed, `样本「${sample.name}」的 passed 与级别不符`).toBe(expectPassed)
       expect(result!.issues.length, `样本「${sample.name}」应至少报一条问题`).toBeGreaterThan(0)
     }
   })

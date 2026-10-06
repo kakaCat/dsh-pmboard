@@ -21,6 +21,8 @@ describe('模板地址映射表守护单测', () => {
       NODE_TEMPLATES.forEach(entry => {
         const { templates } = entry;
         if (templates.requirement) allPaths.push(templates.requirement.relPath);
+        // REQ-261005105032-3b02 t11：原型骨架也是登记在册的模板，与其它 relPath 同一口径校验
+        if (templates.prototype) allPaths.push(templates.prototype.relPath);
         if (templates.decomposition) allPaths.push(templates.decomposition.relPath);
         if (templates.taskCard) allPaths.push(templates.taskCard.relPath);
         if (templates.testEvidence) allPaths.push(templates.testEvidence.relPath);
@@ -86,6 +88,7 @@ describe('模板地址映射表守护单测', () => {
       NODE_TEMPLATES.forEach(entry => {
         const { templates } = entry;
         if (templates.requirement) referencedFiles.add(templates.requirement.relPath);
+        if (templates.prototype) referencedFiles.add(templates.prototype.relPath);
         if (templates.decomposition) referencedFiles.add(templates.decomposition.relPath);
         if (templates.taskCard) referencedFiles.add(templates.taskCard.relPath);
         if (templates.testEvidence) referencedFiles.add(templates.testEvidence.relPath);
@@ -105,7 +108,14 @@ describe('模板地址映射表守护单测', () => {
         'common/notes.md',
         'design/backend.md',    // backend 专属，非门禁必须
         'design/frontend.md',   // frontend 专属，非门禁必须
-        'design/prototype.html', // 原型文件，非门禁必须
+        // REQ-261005105032-3b02 t11：原型骨架已 `git mv` 到 brainstorming/ 并**登记进 registry**
+        // （NodeTemplateEntry.templates.prototype），故不再需要 allowlist 豁免；旧路径
+        // design/prototype.html 已不存在，旧条目一并删除。
+        // 下面两条是**基线缺陷修复**（t11 顺带，非本卡改动面）：它们在本卡开工前的 HEAD 上就已经
+        // 未被引用却也没进 allowlist（f3c99c8 / 2da57d6 加进来的），该用例因此长期红。
+        // 处置取**显式声明**而不是让它们静默漏过（本条断言的语义就是"没引用就必须有人认领"）。
+        'brainstorming/feature-example.md', // 教学用成品示例，非任何节点的门禁模板（R1 归 example 类）
+        'TEMPLATE-IMPROVEMENTS.md',         // 模板改进记录，人读文档
       ];
 
       // 递归扫描 templates/ 目录
@@ -144,6 +154,8 @@ describe('模板地址映射表守护单测', () => {
       NODE_TEMPLATES.forEach(entry => {
         const { templates } = entry;
         if (templates.requirement) allPaths.push(templates.requirement.relPath);
+        // REQ-261005105032-3b02 t11：原型骨架也是登记在册的模板，与其它 relPath 同一口径校验
+        if (templates.prototype) allPaths.push(templates.prototype.relPath);
         if (templates.decomposition) allPaths.push(templates.decomposition.relPath);
         if (templates.taskCard) allPaths.push(templates.taskCard.relPath);
         if (templates.testEvidence) allPaths.push(templates.testEvidence.relPath);
@@ -166,6 +178,8 @@ describe('模板地址映射表守护单测', () => {
       NODE_TEMPLATES.forEach(entry => {
         const { templates } = entry;
         if (templates.requirement) allPaths.push(templates.requirement.relPath);
+        // REQ-261005105032-3b02 t11：原型骨架也是登记在册的模板，与其它 relPath 同一口径校验
+        if (templates.prototype) allPaths.push(templates.prototype.relPath);
         if (templates.decomposition) allPaths.push(templates.decomposition.relPath);
         if (templates.taskCard) allPaths.push(templates.taskCard.relPath);
         if (templates.testEvidence) allPaths.push(templates.testEvidence.relPath);
@@ -187,6 +201,8 @@ describe('模板地址映射表守护单测', () => {
       NODE_TEMPLATES.forEach(entry => {
         const { templates } = entry;
         if (templates.requirement) allPaths.push(templates.requirement.relPath);
+        // REQ-261005105032-3b02 t11：原型骨架也是登记在册的模板，与其它 relPath 同一口径校验
+        if (templates.prototype) allPaths.push(templates.prototype.relPath);
         if (templates.decomposition) allPaths.push(templates.decomposition.relPath);
         if (templates.taskCard) allPaths.push(templates.taskCard.relPath);
         if (templates.testEvidence) allPaths.push(templates.testEvidence.relPath);

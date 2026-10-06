@@ -159,12 +159,18 @@ describe('TC-4 ask_confirm 早返回补 G2 缺口（不再与 move 互相矛盾�
     expect(out.note).toContain('仍有 1 份未登记')
   })
 
-  it('全部落章且磁盘无新增 → 早返回不带 gate_failure（不制造噪声）', async () => {
+  it('全部落章且磁盘无新增 → 早返回不带 gate_failure，且闸门全过**真的推进**', async () => {
     writeDocset(DESIGN5)
     await seed({ registered: DESIGN5 })
     const out = await run(askTool(), ASK_ARGS)
     expect(out.confirmed).toBe(true)
-    expect(out.advanced).toBe(false)
+    // ── REQ-261006094052-1da2（2026-10-06 修正）────────────────────────────────────
+    // 原期望 `advanced === false` 把**缺陷行为**锁成了正确行为：早退分支只跑闸门、从不推进，
+    // 于是「产物已落章 + 闸门补齐」之后 agent 无路可走（move 被人门拒）。闸门全过 ⇒ 兑现推进
+    // （判据 A1）；本用例本来的目的（不制造 gate_failure 噪声）两条断言**逐字保留**。
+    expect(out.advanced).toBe(true)
+    expect(out.to).toBe('decomposing')
+    expect(store.peekAll()[0]?.status).toBe('decomposing')
     expect(out.gate_failure).toBeUndefined()
     expect(out.note).not.toContain('未登记')
   })

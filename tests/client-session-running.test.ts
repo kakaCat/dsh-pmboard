@@ -13,11 +13,15 @@
  * serves: FR-1, FR-2, FR-5, FR-6
  */
 import { describe, it, expect } from 'vitest'
+import { LIMITS } from '../src/domain/limits.ts'
 import {
   NO_RUNNING,
   isSessionRunning,
   relevantSessionIds,
+  requirementBusy,
+  requirementRunInFlight,
   requirementRunning,
+  requirementRunningMark,
   runningAmong,
   runningSessionIds,
   sameRunningSet,
@@ -198,5 +202,85 @@ describe('重绘门控辅助（FR-5）', () => {
     expect([...runningAmong(new Set(['a', 'b']), new Set(['a', 'b', 'q']))].sort()).toEqual(['a', 'b'])
     expect(runningAmong(new Set(['q']), new Set(['a']))).toBe(NO_RUNNING)
     expect(runningAmong(new Set(), new Set(['a']))).toBe(NO_RUNNING)
+  })
+})
+
+// ── 后台 run 在跑（推进锁）· REQ-261005213603-eaed t1 · TC-1～TC-10 ──────────────
+// serves: FR-1, FR-2, FR-5
+describe('TC-1～TC-10 推进锁新鲜度真值表（requirementRunInFlight）', () => {
+  /** 固定时刻：判据是纯函数，注入 now 与阈值即可穷举边界（不依赖真实时钟）。 */
+  const NOW = 1_800_000_000_000
+  const STALE = LIMITS.advanceLockStaleMs
+
+  it('TC-1 新鲜锁（60s 前）→ 在跑', () => {
+    expect(requirementRunInFlight({ advanceLockAt: NOW - 60_000 }, NOW)).toBe(true)
+  })
+
+  it('TC-2 键缺失 → 不在跑（缺失 ≠ 0）', () => {
+    expect(requirementRunInFlight({}, NOW)).toBe(false)
+    expect(requirementRunInFlight({ advanceLockAt: undefined }, NOW)).toBe(false)
+  })
+
+  it('TC-3 非有限值 / 类型不符 → 不在跑，且不抛', () => {
+    expect(requirementRunInFlight({ advanceLockAt: null as unknown as number }, NOW)).toBe(false)
+    expect(requirementRunInFlight({ advanceLockAt: '123' as unknown as number }, NOW)).toBe(false)
+    expect(requirementRunInFlight({ advanceLockAt: Number.NaN }, NOW)).toBe(false)
+    expect(requirementRunInFlight({ advanceLockAt: Number.POSITIVE_INFINITY }, NOW)).toBe(false)
+    expect(requirementRunInFlight({ advanceLockAt: NOW - 60_000 }, Number.NaN)).toBe(false)
+  })
+
+  it('TC-4 恰好等于阈值 → 不在跑（与 host 同运算符 <）', () => {
+    expect(requirementRunInFlight({ advanceLockAt: NOW - STALE }, NOW)).toBe(false)
+    expect(requirementRunInFlight({ advanceLockAt: NOW - STALE + 1 }, NOW)).toBe(true)
+  })
+
+  it('TC-5 锁时间在未来 → 在跑（与 host 同一表达式，不另写规则）', () => {
+    expect(requirementRunInFlight({ advanceLockAt: NOW + 60_000 }, NOW)).toBe(true)
+  })
+
+  it('TC-6 显式 staleMs 生效（不用缺省也是唯一阈值来源）', () => {
+    expect(requirementRunInFlight({ advanceLockAt: NOW - 5_000 }, NOW, 1_000)).toBe(false)
+    expect(requirementRunInFlight({ advanceLockAt: NOW - 5_000 }, NOW, 10_000)).toBe(true)
+  })
+
+  it('阈值来源单一：缺省阈值 = LIMITS.advanceLockStaleMs（15min）', () => {
+    expect(STALE).toBe(15 * 60_000)
+    expect(requirementRunInFlight({ advanceLockAt: NOW - 14 * 60_000 }, NOW)).toBe(true)
+  })
+})
+
+describe('TC-7～TC-10 在跑标记与成因优先级（requirementRunningMark / requirementBusy）', () => {
+  const NOW = 1_800_000_000_000
+  const noSession = (): boolean => false
+  const withSession = (sid: string) => (s: string): boolean => s === sid
+
+  it('TC-7 会话在跑 + 锁也新鲜 → 报会话成因（会话优先）', () => {
+    const req = { sourceSessionId: 's-a', advanceLockAt: NOW - 60_000 }
+    expect(requirementRunningMark(req, withSession('s-a'), NOW)).toEqual({ cause: 'session' })
+  })
+
+  it('TC-8 仅锁新鲜 → 报 run 成因（本次新增能力）', () => {
+    const req = { sourceSessionId: 's-a', advanceLockAt: NOW - 60_000 }
+    expect(requirementRunningMark(req, noSession, NOW)).toEqual({ cause: 'run' })
+  })
+
+  it('TC-9 都不成立 → undefined（不是空对象）', () => {
+    expect(requirementRunningMark({ sourceSessionId: 's-a' }, noSession, NOW)).toBeUndefined()
+    expect(requirementRunningMark({ sourceSessionId: 's-a', advanceLockAt: NOW - 15 * 60_000 }, noSession, NOW)).toBeUndefined()
+    expect(requirementRunningMark({}, noSession, NOW)).toBeUndefined()
+  })
+
+  it('TC-10 requirementBusy 与 requirementRunningMark 恒一致（四组输入）', () => {
+    const cases = [
+      { req: { sourceSessionId: 's-a', advanceLockAt: NOW - 60_000 }, on: true },
+      { req: { sourceSessionId: 's-z', advanceLockAt: NOW - 60_000 }, on: true },
+      { req: { sourceSessionId: 's-a' }, on: true },
+      { req: {}, on: false },
+    ]
+    for (const c of cases) {
+      const mark = requirementRunningMark(c.req, withSession('s-a'), NOW)
+      expect(requirementBusy(c.req, withSession('s-a'), NOW)).toBe(mark !== undefined)
+      expect(requirementBusy(c.req, withSession('s-a'), NOW)).toBe(c.on)
+    }
   })
 })

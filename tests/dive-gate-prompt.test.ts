@@ -85,6 +85,10 @@ function makeUc(artifactConfirmed: boolean, behavior: RecordingQuestions['behavi
     sourceSessionId: W,
     artifacts: [stageArtifact(artifactConfirmed)],
   }))
+  // REQ-261005105032-3b02：需求文档要真的在盘上（裁定门读它的「讨论与裁定记录（D-x）」节）——
+  // 本夹具原先只登记产物；补一份含真空态的最小文档，断言一行不改。
+  h.docs.put('docs/requirements/REQ-9a7e01/requirement.md',
+    '# 需求\n\n## 讨论与裁定记录（D-x）\n\n本节无裁定\n')
   return { h, questions }
 }
 

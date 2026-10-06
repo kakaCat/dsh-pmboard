@@ -81,7 +81,9 @@ describe('确认门挂起期间的停手守卫（FR-9）', async () => {
       expect(e.message).toContain('reqboard_confirm_receipt(ticket="' + rec.ticket + '")')
       expect(e.message).toContain('收到作答前不得产出下游产物')
       expect(e.message).toContain('看板')
-      expect(e.message).toContain('reqboard_ask_confirm')
+      // REQ-261006164732-6503 t9 口径修正：第三条出路「重新发起 … 覆盖旧记录」已删——
+      // 它指向的动作就是再开一个框（双框事故的第三条文案源），与「同门唯一」直接冲突。
+      expect(e.message).not.toContain('reqboard_ask_confirm')
     }
     registry.settle(rec.ticket, { confirmed: true, advanced: true })
     await assertNoPendingConfirm(deps, W)

@@ -37,7 +37,7 @@ function makeOverview(currentStage: StageKey = 'implementing', over: Partial<Rec
       { id: 'i2', source: { kind: 'requirement' }, criterion: 'b', status: 'failed' },
       { id: 'i3', source: { kind: 'requirement' }, criterion: 'c', status: 'pending' },
     ] } } },
-    archived: { archive: { dir: 'docs/requirements/REQ-test', docs: [{ kind: 'requirement', path: 'docs/requirements/REQ-test/requirement.md' }], mergedInto: ['docs/architecture/project-manual.md'], indexEntry: '实现了节点面板', submittedAt: 1693000000000, submittedBy: { kind: 'agent' }, archivedAt: 1693100000000 } },
+    archived: { archive: { dir: 'docs/requirements/REQ-test', docs: [{ kind: 'requirement', path: 'docs/requirements/REQ-test/requirement.md' }], mergedInto: ['docs/architecture/project-manual.md'], indexEntry: '实现了节点面板', submittedAt: 1693000000000, submittedBy: { kind: 'agent' } } },
   }
   return {
     requirementId: 'REQ-test', category: 'feature', currentStage,

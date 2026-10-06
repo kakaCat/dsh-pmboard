@@ -27,7 +27,8 @@ import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
 import { UserQuestionsAdapter } from '../src/adapters/UserQuestionsAdapter.js'
 import { PendingConfirmRegistry } from '../src/adapters/PendingConfirmRegistry.js'
 import { defineConfirmReceiptTool } from '../src/tools/index.js'
-import { livePendingConfirm, targetConfirmedInLedger } from '../src/application/internal/pending-guard.js'
+import { livePendingConfirm, pendingConfirmFactsOf, targetConfirmedInLedger } from '../src/application/internal/pending-guard.js'
+import { defineStatusTool } from '../src/tools/index.js'
 import type { UseCaseDeps } from '../src/application/ports.js'
 import type { RequirementRecord, StageArtifact } from '../src/shared/protocol.js'
 
@@ -51,12 +52,12 @@ beforeEach(() => {
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
-/** 真适配器 + 可控注册表；`now` 由用例注入以驱动 TTL。 */
-function makeDeps(registry: PendingConfirmRegistry): UseCaseDeps {
+/** 真适配器 + 可控注册表；`now` 由用例注入以驱动 TTL（时钟可注入，便于对账「可用出路」里的失效时刻）。 */
+function makeDeps(registry: PendingConfirmRegistry, now: () => number = () => Date.now()): UseCaseDeps {
   return {
     store: store,
     docs: new FileDocRepository({ workspaceRoot: dir }),
-    clock: { now: () => Date.now() },
+    clock: { now },
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({}),
     questions: new UserQuestionsAdapter(() => ({ ask: () => new Promise(() => {}) })),
@@ -83,6 +84,17 @@ async function seed(): Promise<void> {
   await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
+/**
+ * 期望后缀的**单点**算法（REQ-261005200052-ce40 FR-3）：与实现共用 `pendingConfirmFactsOf`，
+ * 时钟与注册表同拍（1_000）——锁的是「回执确实带上了可用出路」，前缀文案仍由上面的独立常量锁死。
+ */
+function factsOf(ticket: string): ReturnType<typeof pendingConfirmFactsOf> {
+  const registry = new PendingConfirmRegistry({ now: () => 1_000, newTicket: () => ticket })
+  const rec = registry.register({ windowKey: W, requirementId: REQUIREMENT_ID, target: 'artifact', kind: 'requirement' })
+  const req = store.peekAll()[0] as RequirementRecord
+  return pendingConfirmFactsOf(req, rec, 1_000)
+}
+
 const receiptTool = (deps: UseCaseDeps) =>
   defineConfirmReceiptTool(deps) as unknown as { execute: (a: unknown, e: unknown) => Promise<Record<string, unknown>> }
 
@@ -90,7 +102,7 @@ describe('联调 ① adapter(interruptedAt) → 回执（I-4 → I-6）', () => 
   it('请求 reqboard_confirm_receipt({ticket})｜被中止且未作答 → 返回体全键等于期望（含被中止文案）', async () => {
     await seed()
     const registry = new PendingConfirmRegistry({ now: () => 1_000, newTicket: () => 'pc-int001' })
-    const deps = makeDeps(registry)
+    const deps = makeDeps(registry, () => 1_000)
     // 前置：阻塞等待期间被中止（t2 的中止分支将调用的同一接缝）
     const ticket = registry.register({ windowKey: W, requirementId: REQUIREMENT_ID, target: 'artifact', kind: 'requirement' }).ticket
     expect(registry.markInterrupted(ticket)?.interruptedAt).toBe(1_000)
@@ -106,22 +118,22 @@ describe('联调 ① adapter(interruptedAt) → 回执（I-4 → I-6）', () => 
       from: 'brainstorming',
       to: 'brainstorming',
       requirement_id: REQUIREMENT_ID,
-      note: INTERRUPTED_NOTE,
+      note: INTERRUPTED_NOTE + '。可用出路：' + factsOf('pc-int001').usableRecovery.join('；'),
     })
   })
 
   it('联动回归：未调 markInterrupted 时文案逐字不变（FR-6 兼容性）', async () => {
     await seed()
     const registry = new PendingConfirmRegistry({ now: () => 1_000, newTicket: () => 'pc-int002' })
-    const deps = makeDeps(registry)
+    const deps = makeDeps(registry, () => 1_000)
     const ticket = registry.register({ windowKey: W, requirementId: REQUIREMENT_ID, target: 'artifact', kind: 'requirement' }).ticket
 
     const out = await receiptTool(deps).execute({ ticket }, exec)
-    expect(out.note).toBe(PLAIN_PENDING_NOTE)
+    expect(out.note).toBe(PLAIN_PENDING_NOTE + '。可用出路：' + factsOf('pc-int002').usableRecovery.join('；'))
     expect(out).toEqual({
       success: true, confirmed: false, advanced: false,
       from: 'brainstorming', to: 'brainstorming', requirement_id: REQUIREMENT_ID,
-      note: PLAIN_PENDING_NOTE,
+      note: expect.stringContaining(PLAIN_PENDING_NOTE),
     })
   })
 })
@@ -180,7 +192,10 @@ describe('联调 ③ 过期基准 (interruptedAt ?? createdAt)+ttl 经真实工�
 
     now = 2_500 // createdAt+ttl=2000 已过；interruptedAt+ttl=2900 未到
     const out = await receiptTool(deps).execute({ ticket }, exec)
-    expect(out.note).toBe(INTERRUPTED_NOTE)
+    // 可用出路后缀带墙钟失效时刻（本用例时钟是真 Date.now），故前缀精确断言 + 新内容在场
+    expect(out.note).toContain(INTERRUPTED_NOTE)
+    expect(out.note).toContain('可用出路')
+    expect(out.note).toContain('自动失效')
 
     now = 2_901 // interruptedAt + ttl 越界
     expect(registry.get(ticket, W)).toBeUndefined()
@@ -201,5 +216,35 @@ describe('联调 ④ 组合根接缝：adapter 实现 application 端口（I-4�
     for (const method of ['register', 'get', 'settle', 'pendingForWindow', 'markInterrupted']) {
       expect(typeof registry[method], method).toBe('function')
     }
+  })
+})
+
+describe('联调 ④ reqboard_status 的挂起确认投影（FR-3 追加键）', () => {
+  it('pending_confirms[] 带 requirement_status / gate / artifact_count / expires_at / usable_recovery，旧键逐字未变', async () => {
+    await seed()
+    const registry = new PendingConfirmRegistry({ now: () => 1_000, newTicket: () => 'pc-int003' })
+    const deps = makeDeps(registry, () => 1_000)
+    registry.register({ windowKey: W, requirementId: REQUIREMENT_ID, target: 'artifact', kind: 'requirement' })
+
+    const out = await (defineStatusTool(deps) as unknown as { execute: (a: unknown, e: unknown) => Promise<Record<string, unknown>> })
+      .execute({}, exec)
+    const rows = out.pending_confirms as Array<Record<string, unknown>>
+    expect(rows).toHaveLength(1)
+    const row = rows[0]!
+    // 旧键逐字未变
+    expect(row.ticket).toBe('pc-int003')
+    expect(row.requirement_id).toBe(REQUIREMENT_ID)
+    expect(row.target).toBe('artifact')
+    expect(row.kind).toBe('requirement')
+    expect(row.created_at).toBe(1_000)
+    expect(row.interrupted).toBe(false)
+    expect(row.blocked_tools).toEqual(['reqboard_submit', 'reqboard_decompose', 'reqboard_move', 'reqboard_task_move'])
+    // 新键在场且同源
+    expect(row.requirement_status).toBe('brainstorming')
+    expect(row.gate).toBe(true)
+    expect(row.artifact_count).toBe(1)
+    expect(row.expires_at).toBe(1_000 + 30 * 60 * 1000)
+    expect(Array.isArray(row.usable_recovery)).toBe(true)
+    expect(String(row.recovery)).toContain('可用出路')
   })
 })

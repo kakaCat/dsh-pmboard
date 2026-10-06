@@ -8,35 +8,51 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
+// REQ-261006123819-3af3 FR-1：目录清单从登记面派生（手工清单与磁盘漂移过多次，不再手写）。
+import { TOOL_REGISTRY } from '../src/tools/registry.js'
 
 const TOOLS = fileURLToPath(new URL('../src/tools', import.meta.url))
 
 describe('t8 · 工具面 13→9 收敛', () => {
-  it('src/tools/ 下的工具目录清单固定，各含 XxxTool.ts + prompt.ts + index.ts（三段式）', () => {
+  it('src/tools/ 下的工具目录集合与登记面一致，各含 XxxTool.ts + prompt.ts + index.ts（缺件须显式登记留债）', () => {
     const dirs = readdirSync(TOOLS, { withFileTypes: true })
       .filter(e => e.isDirectory())
       .map(e => e.name)
       .sort()
-    // REQ-47939a t8 收敛后 9 个；REQ-327bdf 增 TaskExecuteTool / TaskStatusTool；REQ-e3b6a0 t8 增 CaptureTool；
-    // REQ-260924213231-b1c4 T-6 增 ConfirmReceiptTool（挂起确认回执，三段式齐全）；
-    // T-9 增 NoteInterruptionTool（断点补写，三段式齐全）；
-    // REQ-260925212722-96e7 增 ClearPauseTool；REQ-260925110957-552d 增 RunStatusTool（两者三段式齐全——
-    // 此前清单没跟上，门禁红了两天没人管：门禁清单本身也是要维护的产物）；
-    // REQ-260927144541-0481 FR-3 增 TaskTreeTool（只读父子结构视图，三段式齐全）。
-    expect(dirs).toEqual([
-      'AcceptSheetTool', 'AdvanceTool', 'AskConfirmTool', 'CaptureTool', 'ClearPauseTool', 'ConfirmReceiptTool',
-      'CreateTool', 'DecomposeTool', 'MoveTool', 'NoteInterruptionTool', 'RunStatusTool', 'StatusTool',
-      'SubmitTool', 'TaskExecuteTool', 'TaskMoveTool', 'TaskReportTool', 'TaskStatusTool', 'TaskTreeTool',
-    ])
-    // 三段式的例外（显式留债，不是"从门禁里悄悄漏掉"）：以下 5 个目录缺 prompt.ts（其中 2 个还缺 index.ts），
-    // 都是 REQ-47939a t8 / REQ-327bdf 时代的既存形态，收口属工具面清理，不在本需求范围。
-    // 2026-09-27（REQ-260927144541-0481）实测：此前只列了 2 个名字，其余 3 个不是"没有债"，
+    // 左 = 磁盘机器事实，右 = 唯一手写登记面；两边相等才说明"登记表与磁盘没漂移"。
+    // 此前这里是手写数组（停在 18），新增工具目录后门禁红了两天没人管——
+    // 手写清单本身也是要维护的产物，故改为派生（REQ-261006123819-3af3 FR-1）。
+    expect(dirs).toEqual(TOOL_REGISTRY.map(e => e.dir).sort())
+    // 三段式留债（显式登记，不是"从门禁里悄悄漏掉"）：dir → **缺的件**。只列缺的，
+    // 没列到的件仍然逐个断言存在（口径比"整目录跳过"严）。收口属工具面清理，不在本需求范围。
+    // 2026-09-27（REQ-260927144541-0481）教训：此前只列了 2 个名字，其余 3 个不是"没有债"，
     // 而是被「目录清单少了三个目录」那条红**遮蔽**了——红要逐个解释，不能停在第一条。
-    const NON_THREE_PIECE = ['DecomposeTool', 'MoveTool', 'TaskExecuteTool', 'TaskMoveTool', 'TaskStatusTool']
-    for (const d of dirs.filter(x => !NON_THREE_PIECE.includes(x))) {
-      expect(existsSync(join(TOOLS, d, d + '.ts')), d + '/' + d + '.ts 缺失').toBe(true)
-      expect(existsSync(join(TOOLS, d, 'prompt.ts')), d + '/prompt.ts 缺失').toBe(true)
-      expect(existsSync(join(TOOLS, d, 'index.ts')), d + '/index.ts 缺失').toBe(true)
+    // 2026-10-06（REQ-261006123819-3af3 FR-1）同一现场第二次：目录清单改为派生后，又有 5 个目录
+    // 的缺件被暴露出来（此前停在 18 的手写清单把它们整块遮住了）。
+    const THREE_PIECE_DEBT: Record<string, readonly string[]> = {
+      DecomposeTool: ['prompt.ts'],
+      MoveTool: ['prompt.ts'],
+      TaskMoveTool: ['prompt.ts'],
+      ArchiveAmendTool: ['prompt.ts'], // 描述内联在 ArchiveAmendTool.ts，未拆 prompt.ts
+      TaskRefsTool: ['prompt.ts'],
+      HandoffTool: ['index.ts'], // 导出面直接指向 HandoffTool.ts
+      TaskExecuteTool: ['prompt.ts', 'index.ts'],
+      TaskStatusTool: ['prompt.ts', 'index.ts'],
+      AdoptTaskTool: ['AdoptTaskTool.ts', 'prompt.ts'], // 工厂在 TaskAdoptTool.ts（文件名不带目录前缀）
+      RegenerateTool: ['RegenerateTool.ts', 'prompt.ts'], // 工厂在 index.ts
+    }
+    for (const d of dirs) {
+      for (const piece of [d + '.ts', 'prompt.ts', 'index.ts']) {
+        if ((THREE_PIECE_DEBT[d] ?? []).includes(piece)) continue
+        expect(existsSync(join(TOOLS, d, piece)), d + '/' + piece + ' 缺失').toBe(true)
+      }
+    }
+    // 留债表不许过期：目录消失、或缺件已补齐 → 这里变红，逼摘牌。
+    for (const [d, pieces] of Object.entries(THREE_PIECE_DEBT)) {
+      expect(dirs, '留债登记 ' + d + ' 已不在磁盘上——请从 THREE_PIECE_DEBT 摘牌').toContain(d)
+      for (const p of pieces) {
+        expect(existsSync(join(TOOLS, d, p)), d + ' 的 ' + p + ' 已补齐——请从 THREE_PIECE_DEBT 摘牌').toBe(false)
+      }
     }
   })
 

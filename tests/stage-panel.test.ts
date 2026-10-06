@@ -14,6 +14,7 @@
  *   9. 健壮性：body 字段缺失不抛错
  */
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
 import {
   renderStagePanel,
   renderStageNode,
@@ -225,9 +226,18 @@ describe('各节点专属内容', () => {
   })
 
   it('decomposing：任务 + 依赖链', () => {
+    // REQ-261005193546-1b1a（t8）：层要由**在场的活卡**前置产生。原用例的前置 `t-aaa000`
+    // 不在任务清单里，靠「不在集合里的前置按 lv = 0 计入 1 + max(...)」的**幽灵边**凑出第 2 层——
+    // 那正是本需求删掉的半成品口径（现在会落在第 1 层）。这里把前置补成一张真卡。
     const html = renderStagePanel(makeStageDetail({
       stage: 'decomposing',
-      body: { tasks: [makeTask({ dependsOn: ['t-aaa000'] })], planTasks: [] },
+      body: {
+        tasks: [
+          makeTask({ id: 't-aaa000', title: '前置任务' }),
+          makeTask({ dependsOn: ['t-aaa000'] }),
+        ],
+        planTasks: [],
+      },
     }))
     expect(html).toContain('data-stage="decomposing"')
     expect(html).toContain('t-aaa001')
@@ -686,37 +696,33 @@ describe('健壮性', () => {
 
 describe('renderConfirmButton：kind=design 成组确认文案', () => {
   it('任一 design 产物无章 → 按钮写明「全部 N 份」；全有章 → 不渲染', async () => {
+    // REQ-261006175040-12d4 t6：卡面改读**服务端门读数**（`gates`），不再读 `req.artifacts`
+    // ——首屏摘要自 B12 起不带 artifacts，就地读它正是"四门恒红 + 按钮永不出现"的根因。
+    // 故本用例的夹具改为摘要形状：design 门 pending ⇒ 待确认；confirmed ⇒ 不渲染。
     const { renderConfirmButton } = await import('../src/client/views/artifacts.js')
-    const designArts = ['architecture.md', 'data-model.md', 'interfaces.md', 'test-cases.md', 'use-cases.md']
-      .map((n, i) => ({
-        stage: 'design', kind: 'design', path: 'docs/requirements/REQ-x/design/' + n,
-        registeredAt: 1,
-        ...(i === 0 ? {} : { confirmedAt: 1, confirmedBy: { kind: 'human' } }),
-      }))
-    const req = {
+    const base = {
       id: 'REQ-x', title: 'x', description: '', category: 'feature', status: 'design',
       blocked: false, comments: [], version: 1, createdAt: 1, updatedAt: 1,
       createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
-      artifacts: designArts,
-    } as unknown as import('../src/client/types.js').RequirementRecord
+    }
+    const gates = (design: 'pending' | 'confirmed' | 'missing', count = 5) => ([
+      { kind: 'requirement', status: 'confirmed' as const, count: 1 },
+      { kind: 'design', status: design, count },
+      { kind: 'decomposition', status: 'missing' as const, count: 0 },
+      { kind: 'verification', status: 'missing' as const, count: 0 },
+    ])
+    const req = { ...base, gates: gates('pending') } as unknown as import('../src/client/types.js').RequirementRecord
     const html = renderConfirmButton(req)
     expect(html).toContain('确认产物（全部 5 份）')
     expect(html).toContain('一键确认全部 5 份设计文档（成组确认）')
-    // 全有章 → 不渲染
-    const done = {
-      ...req,
-      artifacts: designArts.map(a => ({ ...a, confirmedAt: 1, confirmedBy: { kind: 'human' } })),
-    } as unknown as import('../src/client/types.js').RequirementRecord
+    // 全有章（该门 confirmed）→ 不渲染
+    const done = { ...base, gates: gates('confirmed') } as unknown as import('../src/client/types.js').RequirementRecord
     expect(renderConfirmButton(done)).toBe('')
-    // 首份有章但其余无章 → 仍然待确认（成组语义：第一份有章不算完）
-    const partial = {
-      ...req,
-      artifacts: designArts.map((a, i) => ({
-        stage: a.stage, kind: a.kind, path: a.path, registeredAt: 1,
-        ...(i === 0 ? { confirmedAt: 1, confirmedBy: { kind: 'human' } } : {}),
-      })),
-    } as unknown as import('../src/client/types.js').RequirementRecord
-    expect(renderConfirmButton(partial)).toContain('全部 5 份')
+    // 该门缺失（无产物）→ 同样不渲染（不给点了必被代码级拒绝的假按钮）
+    const missing = { ...base, gates: gates('missing', 0) } as unknown as import('../src/client/types.js').RequirementRecord
+    expect(renderConfirmButton(missing)).toBe('')
+    // 读数缺省（旧服务端）→ 不渲染（FR-6：读不到 ≠ 待确认）
+    expect(renderConfirmButton(base as unknown as import('../src/client/types.js').RequirementRecord)).toBe('')
   })
 })
 
@@ -734,5 +740,93 @@ describe('分类流程辅助', () => {
     expect(getStagesForCategory('feature')).toEqual(ALL_STAGE_KEYS)
     expect(getStagesForCategory('bug')).not.toContain('brainstorming')
     expect(getStagesForCategory(undefined)).toEqual(ALL_STAGE_KEYS)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 测试：验收面板逐项行（REQ-261006092213-4f5b FR-4 / FR-5）
+// 判据照 design/frontend.md 与权威原型 prototypes/verification-result.html#FR-4 / #FR-5
+// ---------------------------------------------------------------------------
+
+describe('验收面板逐项行：实测结果行 / 预填 / 旗标', () => {
+  const sheetDetail = (items: unknown[]): StageDetail => makeStageDetail({
+    stage: 'accepting',
+    body: { verification: { summary: '交付', evidence: [], sheet: { version: 2, items } } } as never,
+  })
+
+  it('有 agent 实测结果：带 data-result-src=agent、结果行照原文、输入框预填该项 result', () => {
+    const html = renderStagePanel(sheetDetail([{
+      id: 'v2-1', source: { kind: 'task', taskId: 't-1' }, criterion: '甲项验收', evidence: [],
+      status: 'pending', result: 'npx vitest run tests/x.test.ts → 6 passed', resultSource: 'agent',
+    }]))
+    expect(html).toContain('data-result-src="agent"')
+    expect(html).toContain('实际结果（agent 实测）：npx vitest run tests/x.test.ts → 6 passed')
+    expect(html).toContain('class="dsh-pm-vitem-opinion is-prefilled"')
+    expect(html).toContain('value="npx vitest run tests/x.test.ts → 6 passed"')
+    expect(html).toContain('placeholder="已预填 agent 实测结果；改动即记为人工填写"')
+  })
+
+  it('人改过的结果：来源标「人工填写」；无结果项显式说「尚无实测结果」', () => {
+    const html = renderStagePanel(sheetDetail([
+      {
+        id: 'v2-2', source: { kind: 'task', taskId: 't-2' }, criterion: '乙项验收', evidence: [],
+        status: 'pending', result: '人工复跑：12 passed', resultSource: 'human',
+      },
+      { id: 'v2-3', source: { kind: 'requirement' }, criterion: '需求级', evidence: [], status: 'pending' },
+    ]))
+    expect(html).toContain('data-result-src="human"')
+    expect(html).toContain('实际结果（人工填写）：人工复跑：12 passed')
+    expect(html).toContain('data-result-src="none"')
+    expect(html).toContain('尚无实测结果')
+  })
+
+  it('needsHuman 行：复用 .dsh-pm-flag.verify-pending 并写清理由（不新造类名）', () => {
+    const html = renderStagePanel(sheetDetail([{
+      id: 'v2-4', source: { kind: 'prototype-compare', prototypePath: 'p.html' },
+      criterion: '与原型对照截图（含差异说明）', evidence: [], status: 'pending',
+      needsHuman: true, humanReason: '界面视觉需人对照权威原型',
+    }]))
+    expect(html).toContain('class="dsh-pm-flag verify-pending"')
+    expect(html).toContain('需人工确认：界面视觉需人对照权威原型')
+  })
+
+  it('needsHuman 行**不预填** + 带 data-needs-human（唯一要人动手的分支，复核 M1/S1）', () => {
+    const html = renderStagePanel(sheetDetail([{
+      id: 'v2-6', source: { kind: 'prototype-compare', prototypePath: 'p.html' },
+      criterion: '与原型对照截图（含差异说明）', evidence: [], status: 'pending',
+      needsHuman: true, humanReason: '界面视觉需人对照权威原型',
+      // 两者都给：data-model 明确允许（needsHuman 优先，result 只供参照）
+      result: 'agent 参照材料：截图已出', resultSource: 'agent',
+    }]))
+    expect(html).toContain('data-needs-human="1"')
+    expect(html).not.toContain('is-prefilled') // 不预填：否则看起来能零输入通过
+    expect(html).toContain('placeholder="未自动验证：请写你看到的界面事实（通过必填）"')
+  })
+
+  it('超长 result：展示行可截断，但预填 value 必须与台账 result 逐字节相同（复核 B1）', () => {
+    const long = 'x'.repeat(260)
+    const html = renderStagePanel(sheetDetail([{
+      id: 'v2-7', source: { kind: 'task', taskId: 't-7' }, criterion: '丙项验收', evidence: [],
+      status: 'pending', result: long, resultSource: 'agent',
+    }]))
+    // value 用原文（截断过的 value 会在"人没改过"时把台账改短，并把来源误标 human）
+    expect(html).toContain('value="' + long + '"')
+    // 展示行仍截断到 200 字 + 省略号
+    expect(html).toContain('实际结果（agent 实测）：' + 'x'.repeat(200) + '…')
+  })
+
+  it('零输入通过：输入框提示写明「通过可留空」，不再宣称「均必填」', () => {
+    const html = renderStagePanel(sheetDetail([
+      { id: 'v2-5', source: { kind: 'requirement' }, criterion: '需求级', evidence: [], status: 'pending' },
+    ]))
+    expect(html).toContain('通过可留空')
+    expect(html).not.toContain('均必填')
+  })
+
+  it('前端不再拦「通过 + 留空」：missingOpinion 分支已删除，只留「不通过必须写意见」', () => {
+    // 这条是客户端事件处理分支（`board-mount.ts` 里读 DOM 的那段），渲染不到字符串里 ⇒ 源码级断言。
+    const src = readFileSync(new URL('../src/client/board-mount.ts', import.meta.url), 'utf8')
+    expect(src).not.toContain('missingOpinion')
+    expect(src).toContain('missingFailed')
   })
 })

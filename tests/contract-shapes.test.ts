@@ -113,16 +113,18 @@ describe('T-4 挂起确认（FR-3 / I-3 I-4）', () => {
     }>()
   })
 
-  it('端口面为 register/get/settle/pendingForWindow/markInterrupted；UseCaseDeps 允许缺省（未装配=非阻塞不可用）', () => {
+  it('端口面为 register/get/settle/pendingForWindow/findOpen/markInterrupted；UseCaseDeps 允许缺省（未装配=非阻塞不可用）', () => {
     const fake: PendingConfirmPort = {
       register: () => PENDING,
       get: () => undefined,
       settle: () => undefined,
       pendingForWindow: () => undefined,
+      // REQ-261006164732-6503 t2：建门去重靠它，故是**必选**成员（可选 = 允许实现没有唯一性）
+      findOpen: () => undefined,
       markInterrupted: () => undefined,
     }
-    expect(Object.keys(fake).sort()).toEqual(['get', 'markInterrupted', 'pendingForWindow', 'register', 'settle'])
-    expectTypeOf<keyof PendingConfirmPort>().toEqualTypeOf<'register' | 'get' | 'settle' | 'pendingForWindow' | 'markInterrupted'>()
+    expect(Object.keys(fake).sort()).toEqual(['findOpen', 'get', 'markInterrupted', 'pendingForWindow', 'register', 'settle'])
+    expectTypeOf<keyof PendingConfirmPort>().toEqualTypeOf<'register' | 'get' | 'settle' | 'pendingForWindow' | 'findOpen' | 'markInterrupted'>()
     expectTypeOf<UseCaseDeps['pendingConfirms']>().toEqualTypeOf<PendingConfirmPort | undefined>()
   })
 })
