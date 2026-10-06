@@ -1,0 +1,35 @@
+task:
+  id: t-ddf731
+  title: 工具登记面单点化并补齐 4 条缺失映射·研发
+  status: done
+  implements: |-
+    新建 src/tools/registry.ts 导出 ToolRegistryEntry 与 TOOL_REGISTRY（27 条：key / factoryFile / dir / toolName / responseSources）。tests/output-contract.test.ts 删手写 RESPONSE_SOURCES（:597 起）改为按 TOOL_REGISTRY 遍历，并加两条安全网断言：正则扫到的工厂 ⊆ registry.key、registry 逐条可构造；tests/tools-dispatch.test.ts 的目录清单（:26）改由 map(e=>e.dir) 派生；tests/apply-wiring.test.ts 的注册名清单（:114 与 :159 的 toHaveLength(26)）改由 map(e=>e.toolName) 派生（顺带补上漏登记的 reqboard_skill_install）。四条映射：TaskAdopt→application/use-cases/AdoptTask.ts；Knowledge→application/use-cases/QueryKnowledge.ts；Regenerate→application/use-cases/RegenerateChain.ts；SkillInstall→application/use-cases/InstallSkills.ts + tools/SkillInstallTool/SkillInstallTool.ts（catch 内联 return）。本卡不动工厂扫描正则（那属 t3）。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006123819-3af3
+    TASK_ID: t-ddf731
+    TASK_TITLE: 工具登记面单点化并补齐 4 条缺失映射·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T05:40:36.883Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006123819-3af3
+  generated_at: 2026-10-06T05:40:33.228Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T05:40:38.651Z

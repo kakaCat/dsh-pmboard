@@ -1,0 +1,33 @@
+task:
+  id: t-ac2770
+  title: 删除无写入者的归档时间字段与读取分支
+  status: done
+  implements: 新增 src/domain/status/ArchivedMoment.ts（archivedMomentOf(req)：取 statusHistory 中最后一条 status='archived' 的 at，取不到返回 undefined）；src/shared/protocol.ts:983-984 与 src/client/types.ts:144-145 各删两行；src/application/query/QueryDocs.ts:669-690 的 case 'archive' 改为三态判定（status=archived → passed + at；archive.submittedAt 存在 → pending 待归档确认；已到 accepting → pending 尚未提交归档材料）；src/client/views/panels/docs.ts 的 archiveSection 增第二参数 gate 并改用载荷里 d.gates 的归档门读数（:847/:849/:868 与调用点 :910）；src/client/views/verification.ts:241/:242/:247 改用 archivedMomentOf(req) 与 req.status；src/client/node-panel.ts:322 改为 at = a.submittedAt；6 个测试文件的夹具去字段并至少一条改走真实归档状态。side=fullstack 的依据：本卡同时改服务端 QueryDocs 与 4 个客户端文件；原型维按 D-5 豁免（需求阶段已裁定，无已登记原型）。
+  serves:
+    - FR-3
+  depends_on: []
+  phase: implement
+  side: fullstack
+  workflow_params:
+    REQ_ID: REQ-261006123819-3af3
+    TASK_ID: t-ac2770
+    TASK_TITLE: 删除无写入者的归档时间字段与读取分支
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: fullstack
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T05:56:11.674Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006123819-3af3
+  generated_at: 2026-10-06T05:48:36.790Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T05:56:14.571Z

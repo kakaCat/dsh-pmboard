@@ -1,0 +1,39 @@
+task:
+  id: t-8c33a3
+  title: 工具登记面单点化并补齐 4 条缺失映射·复核
+  status: done
+  implements: |-
+    新建 src/tools/registry.ts 导出 ToolRegistryEntry 与 TOOL_REGISTRY（27 条：key / factoryFile / dir / toolName / responseSources）。tests/output-contract.test.ts 删手写 RESPONSE_SOURCES（:597 起）改为按 TOOL_REGISTRY 遍历，并加两条安全网断言：正则扫到的工厂 ⊆ registry.key、registry 逐条可构造；tests/tools-dispatch.test.ts 的目录清单（:26）改由 map(e=>e.dir) 派生；tests/apply-wiring.test.ts 的注册名清单（:114 与 :159 的 toHaveLength(26)）改由 map(e=>e.toolName) 派生（顺带补上漏登记的 reqboard_skill_install）。四条映射：TaskAdopt→application/use-cases/AdoptTask.ts；Knowledge→application/use-cases/QueryKnowledge.ts；Regenerate→application/use-cases/RegenerateChain.ts；SkillInstall→application/use-cases/InstallSkills.ts + tools/SkillInstallTool/SkillInstallTool.ts（catch 内联 return）。本卡不动工厂扫描正则（那属 t3）。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-ddf731
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006123819-3af3
+    TASK_ID: t-8c33a3
+    TASK_TITLE: 工具登记面单点化并补齐 4 条缺失映射·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T05:40:59.663Z
+    - phase: review
+      status: done
+      completed_at: 2026-10-06T05:40:57.720Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006123819-3af3
+  generated_at: 2026-10-06T05:40:50.698Z
+  version: 5
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T05:40:59.663Z

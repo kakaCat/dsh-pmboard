@@ -1,0 +1,36 @@
+task:
+  id: t-1b6959
+  title: 放宽工厂扫描并把 bind/handoff 纳入契约覆盖·研发
+  status: done
+  implements: |-
+    tests/output-contract.test.ts:672 的工厂正则由 /export function define(\w+)Tool\(deps: UseCaseDeps\)/g 放宽为容许第二参数（/export function define(\w+)Tool\(deps: UseCaseDeps(?:\s*,[^)]*)?\)/g）；src/tools/registry.ts 增 Bind（responseSources: application/use-cases/BindSeat.ts）与 Handoff（application/use-cases/HandoffOwner.ts）两条。处置规则（design/backend.md「FR-1 的两步实施规则」）：若报出未声明键，纯声明对齐就地补 output.schema.properties；若属真实契约问题，登记进 tests/output-contract.test.ts 既有的「已知留债登记表」并在验收材料写明留待独立需求——不许删断言。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-0d442a
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006123819-3af3
+    TASK_ID: t-1b6959
+    TASK_TITLE: 放宽工厂扫描并把 bind/handoff 纳入契约覆盖·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T05:45:56.171Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006123819-3af3
+  generated_at: 2026-10-06T05:45:40.539Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T05:46:00.035Z

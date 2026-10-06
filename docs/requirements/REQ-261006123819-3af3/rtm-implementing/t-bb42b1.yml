@@ -1,0 +1,38 @@
+task:
+  id: t-bb42b1
+  title: 建立集合差基线判据与指纹采集·测试
+  status: done
+  implements: |-
+    新建 scripts/test-baseline.mts：--refresh 跑 npx vitest run --reporter=json --outputFile 与 npx tsc --noEmit，采集 HEAD 短哈希 + git diff --stat 摘要，写 docs/reviews/test-baseline.md（口径 + 现行基线 + 刷新历史表）与 docs/reviews/test-baseline.failures.txt（一行一条 文件 :: 用例名，已排序）；--check 采集当前读数与基线算集合差，空 exit 0、非空分两栏打印新增/消失并 exit 1，基线文件缺失时报「没有基线，先 refresh」并 exit 1。package.json 的 scripts 一次加齐 baseline:refresh / baseline:check / commit:check 三条。契约细节见 design/interfaces.md「回归基线契约」。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-8d2f69
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006123819-3af3
+    TASK_ID: t-bb42b1
+    TASK_TITLE: 建立集合差基线判据与指纹采集·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T05:31:05.472Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006123819-3af3
+  generated_at: 2026-10-06T05:30:54.851Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T05:31:05.473Z

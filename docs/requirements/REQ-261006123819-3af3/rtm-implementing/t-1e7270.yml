@@ -1,0 +1,35 @@
+task:
+  id: t-1e7270
+  title: 知识层条目/索引/根因修复与生成页压行·研发
+  status: done
+  implements: |-
+    docs/knowledge/entries/kb-0043.md 的 one_liner 由 154 字符改到 ≤140；kb-0048.md 的 one_liner 去掉两个 →（换成 /）；docs/knowledge/INDEX.md 补 4 行（c-22、c-28、kb-0043、kb-0048，内容见 design/interfaces.md「本次要补的 4 行」）并把全文压回 ≤8000 字符（含这 4 行）。根因①：src/application/use-cases/DepositKnowledge.ts:70 的 input.indexEntry.slice(0,140) 改为先 replace(/[·→\n]/g,' ') 再截断（与 src/domain/knowledge/operations.ts:350 既有正确口径同源）。根因②：src/adapters/KnowledgeRepository.ts 的 appendEntry 在写 entries/<id>.md（:123）之前先校验 one_liner（试 renderIndexLine），杜绝条目落盘而索引没写。页内压行：src/domain/knowledge/generate.ts 的 renderDesignTokens（:158-211）把颜色/变量节由一行一条改为一行多条，使内容行 ≤199，节名与数据完整性不变。scripts/kb-probe.mts 新增一条检查：conventions.md 的每个 ### C-NN 小节在 INDEX.md 都有对应行且锚点可达。重生成 docs/knowledge/design-tokens.md。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006123819-3af3
+    TASK_ID: t-1e7270
+    TASK_TITLE: 知识层条目/索引/根因修复与生成页压行·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T06:03:14.849Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006123819-3af3
+  generated_at: 2026-10-06T06:03:09.986Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T06:03:18.482Z

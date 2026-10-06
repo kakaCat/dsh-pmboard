@@ -1,0 +1,75 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261006123819-3af3
+  generated_at: 2026-10-06T05:01:24.245Z
+  version: 3
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T05:09:56.258Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 补齐工具响应源映射并从注册面派生清单
+      source: requirement.md
+      line: 91
+    - id: FR-2
+      title: 回归基线单点化（规范写口径，数字只住一处）
+      source: requirement.md
+      line: 116
+    - id: FR-3
+      title: 清除无写入者的归档时间字段与读取分支
+      source: requirement.md
+      line: 142
+    - id: FR-4
+      title: 知识层自检转绿
+      source: requirement.md
+      line: 169
+    - id: FR-5
+      title: 提交纪律落地（本需求自提交）
+      source: requirement.md
+      line: 196
+    - id: FR-6
+      title: 回归与审计证据必须带工作树指纹
+      source: requirement.md
+      line: 223
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 用户在需求分析弹框选择：「只提交本需求改动（推荐）」
+      verdict: 本需求只提交自己的改动；存量 250 个未提交文件不在本需求关闭，作为已知缺口如实登记
+      serves:
+        - FR-5
+      criterion: 验收标准 1 与 2；`git show --stat` 文件集合 ⊆ 本需求清单
+    - id: D-2
+      source: 用户选择：「删字段 + 删读取分支（推荐）」
+      verdict: "`archivedAt` / `archivedBy` 两个字段与其三个读取分支一并删除；已归档判据改为需求状态"
+      serves:
+        - FR-3
+      criterion: 验收标准 1（全仓 grep 无输出）与 2（门禁探针 passed）
+    - id: D-3
+      source: 用户选择：「conventions 写口径，数字单点落基线文件（推荐）」
+      verdict: 规范只写口径与指针，基线数字单点落一份基线文件；全仓其余引用改指针
+      serves:
+        - FR-2
+      criterion: 验收标准 1（过期阈值 grep 为 0）与 2（C-14/C-15 内无绝对数字）
+    - id: D-4
+      source: 用户选择：「只纳入「证据带指纹」这一条（推荐）」
+      verdict: O-14 只取"证据带工作树指纹"，不做行校验、不做 worktree 隔离
+      serves:
+        - FR-6
+      criterion: 验收标准 1 与 2；边界条件 1
+    - id: D-5
+      source: 用户选择：「声明 frontend + 不交原型，用豁免写明理由（推荐）」
+      verdict: "`sides: [frontend, backend]` + `prototype_exempt`（理由非空，经人确认）；时间取值契约落设计文档 `interfaces.md`"
+      serves:
+        - FR-3
+      criterion: front-matter 的 `prototype_exempt` 非空；FR-3 验收标准 3 要求真实状态路径用例
+    - id: D-6
+      source: 用户原话：「立项开始优化」
+      verdict: 以审计报告的优化清单立项，范围＝前 5 条 + 证据指纹一条；不做项逐条登记在「边界」
+      serves:
+        - FR-1
+        - FR-6
+      criterion: 本文档「边界（不做什么）」6 条均带理由与时机
+status:
+  artifacts: []
