@@ -39,6 +39,9 @@
 - kb-conventions-c-27 · standard · 工程操作：pnpm prompts:verify · → conventions.md#c-27
 - kb-conventions-c-28 · standard · 改动后必须提交 · → conventions.md#c-28
 - kb-conventions-c-29 · standard · 提交前必须跑测试并与基线比对 · → conventions.md#c-29
+- kb-conventions-c-30 · standard · 改了详情页外观必须比对逐组件快照 · → conventions.md#c-30
+- kb-conventions-c-31 · standard · 组件样式只许住自己的分片 · → conventions.md#c-31
+- kb-conventions-c-32 · standard · 工程操作：pnpm cost:report · → conventions.md#c-32
 
 ## 前端令牌
 
@@ -49,6 +52,11 @@
 ## 决策
 
 （暂无）
+- kb-0066 · decision · 三面文档判据加固：需求条款须有可核验判据（软提示）、设计坐标须可达且源码类落点回写模块改动地图（按需硬判）、feature/refactor 的 sides 与新需求的「失败与并发路径」节（硬门）、拆分引用单口径（只认卡上 requirement_refs）与文档所见=批准所见— · → entries/kb-0066.md
+- kb-0068 · decision · 路径抽取口径扩根：PATH_RE 补 src 与 mts，让冲突门与零交集建议真正生效（可抽取率 56.6% 升到 99.6%）；代价是文件级冲突门命中 7 升到 57，两个待决问题已登记 · → entries/kb-0068.md
+- kb-0069 · decision · 四条确认通道统一走「落章 + 推进 + 收尾」单点：推进与收尾各收敛到一处，看板推进与窗口在线解耦，门禁回执改指 reqboard_ask_confirm。 · → entries/kb-0069.md
+- kb-0070 · decision · 拆分粒度从"凭经验"锁到接口级/组件级：设计文档交出接口清单/组件树（硬门）  拆分计划对照表逐条覆盖（硬门）  一卡多接口拒、files>5 与多锚点只警告；RTM 一对多为原生能力不改模型。 · → entries/kb-0070.md
+- kb-0071 · decision · 给测试立判据：错误码口径由脚本生成（零覆盖 23   5）、红基线分诊让 refresh 再也洗不绿、测试进程由内核级沙箱拦住仓内写入；src 零改动。 · → entries/kb-0071.md
 - kb-0001 · decision · PM 插件工具可视化增强：会话内卡片带 📋 徽标/状态流转/下一步指引/错误分类提示… · → entries/kb-0001.md
 - kb-0002 · decision · 实施链队列调度重新设计：凭证门修复（lastReport 替代 lastRun）+ 并行调度… · → entries/kb-0002.md
 - kb-0005 · decision · 验收单自证失败修复：验收单只收顶层父卡（parentId 投影为真双保险）… · → entries/kb-0005.md
@@ -89,10 +97,12 @@
 - kb-0058 · decision · 桌面端控制台「插件包地址 404 / plugins/events ERR_FAILED」= 重… · → entries/kb-0058.md
 - kb-0059 · decision · 判定面整治：工具登记面单点化 + 基线改集合差口径 + 归档门按状态判 + 知识层自检 12 项全过 + C-28 提交判据与证据指纹 · → entries/kb-0059.md
 - kb-0060 · decision · 同一道人工确认门从此至多一个在途框（建门唯一入口 + 复用优先），台账首写即事实（五处落章写点共用首写纪律）——迟到或被取代的作答只留痕，不再覆写审批时间与证据原文。 · → entries/kb-0060.md
+- kb-0063 · decision · 工具清单从四处手写收敛为一处事实源（registry.ts 27 条）：README 工具表 27 行六组、四处计数校准到 27、装配日志改为从 TOOL_REGISTRY 派生，并配两条守卫用例（8 用例）与三条故障注入；零工具行为变更。 · → entries/kb-0063.md
 
 ## 坑
 
 （暂无）
+- kb-0072 · pitfall · reqboard 插件工具面体检：主流程健康，3 个高危边界 bug（H1 人工门否定路径、H2 HTTP 绕门、H3 跨进程无锁），27 工具可精简至 21/19，136 错误码待注册表化；待裁决是否立项整治 · → entries/kb-0072.md
 - kb-0006 · pitfall · 收尾门两处错位已修：节流不再把「关完自己的子卡再关父卡」当成滥用（兄弟卡与跨卡仍拦）… · → entries/kb-0006.md
 - kb-0007 · pitfall · 验收不再要人填结果：agent 提交材料时逐项落实际结果，弹框/看板只问裁决… · → entries/kb-0007.md
 - kb-0012 · pitfall · PM 插件 agent 测评套件：调研业界方法（Langfuse 四维度/τ-bench 终态比… · → entries/kb-0012.md
@@ -110,6 +120,8 @@
 - kb-0053 · pitfall · 已取消的卡退出视图与统计：判据收敛为单点（live* 家族），层号现算、覆盖度分母剔卡… · → entries/kb-0053.md
 - kb-0061 · pitfall · 确认作答后先清位再推进、并让「清位」本身成为一次驱动请求：修复人工门确认后 agent 静默停摆（含过期在途自动恢复与放弃留痕）。 · → entries/kb-0061.md
 - kb-0062 · pitfall · 看板卡面门读数改由服务端算、客户端只渲染：修掉「四门恒红 + 产物 0/6 + 确认入口全死」，机制落 docs/architecture/project-manual.md · → entries/kb-0062.md
+- kb-0064 · pitfall · 原型门补两问：非骨架判据（占位标记 + 与模板行重合率 > 0.90）与几何量证据校验（截图 + sha256）挂在锚点门；对照项由可选改硬判据并改读 INDEX 权威行；对齐判据参数化为通用判据。实测：9 条需求的权威原型曾是 0.957 与模板重合的空骨架且 100% 通过锚 · → entries/kb-0064.md
+- kb-0065 · pitfall · 验收判据的三层加固：计划期拒「命令操作数仍是占位符」并在子卡落库唯一构造点按声明式闭集回填；裁决期三类项分开判（普通项无锚点记未复核 / 人工项禁收无事实短句 / 系统缺口项处置须命中两义模板）；覆盖 agent 实测原文成为原子四元组（缺理由即拒且台账零改动）；处置无效真的不放 · → entries/kb-0065.md
 
 ## 契约
 

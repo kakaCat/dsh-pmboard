@@ -52,7 +52,7 @@
 
 - **一句话**：任务卡的验收标准必须含可执行锚点（命令/断言），空话会被打回。
 - **校验**：`npx vitest run tests/acceptance-criteria.test.ts`
-- **违反症状**：测试红；线上表现为拆分计划提交被拒。
+- **违反症状**：测试红；线上表现为拆分计划提交被拒。（**条款层同族判据（2026-10-06 加固，只提示不拦）**：需求文档每条条款的定义行块内也要有可核验判据（命令 / 断言 / 可读数 / 明确取值）——判据质量人定，机械层只判「有没有」，故缺了不拒：进 `clause_criteria_warnings`（校验 `tests/clause-criteria.test.ts`，含「删掉锚点必须报警」的反向演练）。同批加固另有两条硬门：feature / refactor 的 `sides` 必须显式且值域合法（`tests/sides-declaration.test.ts`）、新需求必须有「失败与并发路径」节（`tests/doc-quality-gate.test.ts`；**刻意不进 CATEGORY_DELTAS**——进去会追溯存量需求）。）
 
 ### C-09 知识层自检 #c-09
 
@@ -187,6 +187,29 @@
 - 命令：`pnpm test`
 - 期望：`退出码 0 或 1（仓库存量失败），逐条与基线文件比对看新增`
 - 失败怎么办：判据不在这里——按 C-14 的集合差口径逐条确认是否本次引入（REQ-261006123819-3af3 FR-2）
+
+### C-30 改了详情页外观必须比对逐组件快照 #c-30
+- 时机：改动后
+- 命令：`npx tsx scripts/report-style-snapshot.mts --check`
+- 期望：`退出码 0；报告逐组件给「键数 / 不同键数」，不同键数全 0（28 个采样条件）`
+- 失败怎么办：差异会点名 `组件 · 选择器 · 属性 · 基线值 → 现值`。是**有意的**外观改动 → 跑一次 `--write` 显式更新基线并在提交说明写清；是漏改/改到别处 → 回滚那一处（分片见 `src/client/styles/report/manifest.ts` 的 `shard`）。**不许**用 `--write` 把差异盖掉（那等于关掉判据）。先确认门禁真的会红：同脚本加 `--self-test`
+
+### C-31 组件样式只许住自己的分片 #c-31
+- 时机：改动后
+- 命令：`npx tsx scripts/report-style-ownership.mts`
+- 期望：`退出码 0；组件越界 0 处 / 公共层含具体组件取值 0 处 / 未登记 0 处`（另附 10 个 DOM 根实检与清单完整性）
+- 失败怎么办：输出会点名「它属于谁」。组件专属规则搬回它的分片（谁住哪看 `src/client/styles/report/manifest.ts`）；跨 ≥2 组件的成组规则留公共层；跨组件零件要写进 `scripts/report-style-ownership.mts` 的**逐条带理由**白名单。改分片文本时注意：分片结尾是一段悬挂的段落头注释，追加内容要插在它**之前**（否则整批规则落进注释里失效）。先确认门禁真的会红：同脚本加 `--self-test`
+
+### C-32 要看 token 花在哪儿就出报表 #c-32
+- 时机：改动后
+- 命令：`pnpm cost:report`
+- 期望：`退出码 0；按阶段 / 按轮的 token 与费用读数（数字来源同「Token」Tab 的汇总口径）`
+- 失败怎么办：读数与页面不符 → 先跑 C-31 的同源门禁；脚本本身见 `scripts/token-cost-report.mts`（改动它要同步 `docs/knowledge/operations.tsv`）
+
+
+
+
+
 
 ## 怎么用这份清单 #howto
 
