@@ -26,6 +26,7 @@
 | **需求详情页怎么写成「工作汇报」（常驻头部 + 六个同级 Tab 的懒加载、六条只读端点与降级信封、会话根解析、缺口判据要合并两个来源、渲染层剥标记、探针硬判据）** | [需求详情页「工作汇报」](requirement-detail-report.md)；改代码上手看[使用与维护指南](../guides/requirement-report-page.md) |
 | **这个项目分几层、有哪些硬纪律、改 UI 去哪取颜色、历史结论在哪** | **[项目知识层](../knowledge/INDEX.md)**（入口 ≤8K 字符；`pnpm run kb:check` 九项自检） |
 | **确认门走完之后为什么该动的状态没动（两条路径一份推进实现、门必须同源、自动确认的窄口径预判）** | [确认门的推进契约](confirm-gate-advance.md) |
+| **reqboard 插件工具面有哪些已知问题（3 高危 bug / 27 工具精简方案 / 136 个错误码无注册表 / 文案漂移清单）与待裁决项** | [reqboard 插件工具面体检（2026-10-07）](../strategy-research/reqboard-plugin-audit-2026-10-07.md) |
 
 ## 全局约定
 
@@ -338,6 +339,34 @@
 - **改完立刻跑检查**：把反引号写进 CSS 注释会提前闭合模板字符串（样式表后半段失效），
   **构建照样通过**；那次因为没跑 `tsc`/测试，是后续卡才发现的。
 
+## 机制备忘：工具清单的唯一事实源与两条派生校验（2026-10-06，REQ-261006201508-5cb6）
+
+> 一句话：**「工具面有几个、叫什么」只允许有一处手写答案**（`src/tools/registry.ts` 的 `TOOL_REGISTRY`）；
+> 其余呈现（README 表 / README 正文计数 / `package.json` 描述 / 装配日志）要么与它对账，要么从它派生。
+
+| 问题 | 结论 | 判据 |
+|------|------|------|
+| 工具清单此前手写在哪几处？ | 四处，且**互不校验**：README 正文「13 个」、表头「21 个」、表内 23 行、`src/index.ts` 注册日志「(13)」只列 19 个名——三套数并存还多一个源码里不存在的 `reqboard_advance` | 本次梳理实测（`README.md` 表头/正文/目录树注释 + `src/index.ts` 注册日志） |
+| 事实源在哪？ | `src/tools/registry.ts` 的 `TOOL_REGISTRY`（27 条）。三条机器不变量把它与磁盘目录 / 宿主注册名 / 工厂导出绑在一起 | `tests/tools-dispatch.test.ts`（目录集合）、`tests/apply-wiring.test.ts`（注册名单） |
+| 装配日志怎么写？ | **从登记面派生**：`'agent tools registered (' + TOOL_REGISTRY.length + '): ' + TOOL_REGISTRY.map(e => e.toolName).join(' / ')`——数字与名单同源，「改了数字忘了改名单」在结构上不可能 | `tests/registry-log.test.ts`（**真跑 `apply()`** 捕获日志行再对账，不是静态扫源码） |
+| README 工具表怎么防漂移？ | 与登记面绑成断言：全文名字集合双向差集为空 + 表头计数 == 表内行数 == 登记面条数 + **行级点名**（删一行报「表内缺行：xxx」，而不是只报行数差） | `tests/readme-tool-face.test.ts`（5 用例） |
+| 期望值能不能写死？ | 不能。断言全部从 `TOOL_REGISTRY` 派生；用例自带一条反向自检（拿派生出的数字回本文件里找，找到即红） | 同上第 5 条用例 |
+| 反向验证够不够？ | 三条故障注入都**实测到红**并逐字节还原：删 README 一行、加幽灵名 `reqboard_advance`、把日志改回字面量 `(13)` | `docs/requirements/REQ-261006201508-5cb6/tests/test-evidence.md`「故障注入」节 |
+
+**两条可复用教训**：
+
+- **修一次数 ≠ 消灭漂移**：把 `13` 改成 `27` 只修好这一刻；把**名单改成派生表达式**之后，
+  不一致才不可能发生。自检口径：问「下次新增一个工具，哪几处必须手改」——答案是只有一处（登记面），
+  呈现面（README 表）有断言兜底。
+- **文档也要有会红的断言**：README 这类"人读产物"长期只靠人眼，漂移不报错；给它配一条从代码事实源
+  派生的断言后，文档与代码分叉会当场点名（本次第一版断言只报行数不点名，逆验证当场暴露 → 补行级点名）。
+
+**已知遗留**（不在本需求范围，需另立）：
+
+- `reqboard_capture` 的**提问数**口径三套并存：实际弹 5 问（`CAPTURE_QUESTION_IDS` 五问，含工作区落点），
+  工具自述写「四问」，注入文案与 README 正文写「三问」。修它要动工具自述提示词与注入文案，
+  须先裁定事实源。
+
 ## 变更记录
 
 | 日期 | 变更 | 来源 |
@@ -368,6 +397,9 @@
 | 2026-10-04 | 「刷新不得打断读图」补**第三例：看板泳道**——位置保活用独立内存模块 `src/client/board-scroll.ts`（单条快照、按 `data-lane` 记列内位置、不落盘、与 DAG 记忆靠**模块边界**隔离），接线在唯一重绘点 `render()` 的 `innerHTML` 赋值前后（顺序是硬契约）；列高改「拉伸铺满」——行 `align-items: stretch` + 删掉写死的视口减常数上限 + `min-height: 0` 链，列内卡片区成为唯一滚动处（列头固定）。附两条新教训：**测试桩必须复现真实重建**（桩若无条件重建泳道，列表视图分支根本没走到 = 绿着骗人）、**机械锚点别被注释污染**（注释里写原样代码会把 `grep -c … = 0` 顶成 1） | REQ-261004184822-9881（看板泳道自动刷新导致浏览位置丢失 + 列高不铺满） |
 | 2026-10-05 | 领域篇《看板运行态指示》判据扩展：**「在跑」= 绑定窗口会话回合 ∪ 新鲜推进锁**（`advanceLockAt` 未过期，与 host WIP 闸门同阈值 15min、同运算符 `<`）——投递式后台 run 跑子卡链时窗口早已空闲，旧判据看不见；两种成因共用一个圈、只差 `title`/`aria-label`（视觉零变化）。同次**取代**该篇红线中 `advanceLockAt` 一条（原文保留 + 就地标注取代），`executions` 判据仍禁用。附三条可复用教训：签名字段变更必须重生成知识层符号表（否则 `kb-generate` 红）、覆盖度门禁的 `covers:` 取数口是**需求根 `test-cases.md`**（不是 `tests/*.md`）、同需求非子卡任务 60s 内连关第二张会被批量关闸拦（子卡不受限） | REQ-261005213603-eaed（看板运行圈补「后台 run 在跑」判据） |
 | 2026-10-06 | 原型豁免（`prototype_exempt`）的**消费点补齐**：拆分覆盖门的 UI 卡原型锚点维也消费豁免——豁免生效 ∧ 无已登记原型产物 ⇒ 整维跳过；未生效照旧拒、已交原型照旧要求锚点。判据复用既有单点（`prototypeExemptOf` / `registeredPrototypesOf`），不拿 INDEX 解析失败当「没有原型」；此前只有存在门消费豁免，导致「人已裁定不要原型」的需求只能把端侧谎报成 `fullstack` 绕行 | REQ-261006091755-1c9e（拆分覆盖门补豁免） |
+| 2026-10-06 | 新增机制备忘「工具清单的唯一事实源与两条派生校验」：登记面 27 条不动，README 表 / README 正文计数 / `package.json` 描述向它对账，装配日志改为**从登记面派生**；新增两条守卫用例（`tests/readme-tool-face.test.ts` / `tests/registry-log.test.ts`）与三条故障注入。附两条教训：**修一次数 ≠ 消灭漂移**（名单改成派生才结构性消灭）、**文档也要有会红的断言**。遗留：`reqboard_capture` 提问数口径三套并存（另立需求） | REQ-261006201508-5cb6（pm 插件工具面梳理与文档计数校准） |
+| 2026-10-07 | 领域篇[确认门的推进契约](confirm-gate-advance.md)新增第 7 节「四通道收敛」：看板与文字证据的推进改走唯一实现 `applyConfirmedAdvance`，收尾（清停手位 + 复位运行时健康）收敛到 `finishConfirmAdvance` 一处由推进单点内部触发；看板推进与「窗口在线」解耦；门禁回执改指 `reqboard_ask_confirm`。附四通道×五件事矩阵、三条纪律与「新增通道必须调单点」自检 | REQ-261007135258-331a（确认通道接线收敛） |
+| 2026-10-07 | 新增机制备忘「测试判据的三层自证」：错误码口径由脚本生成（读数不写死、双形态 + 假阴性率、豁免白名单双向相等 + 棘轮双锁）；红基线**分诊**成 reverse/other 两份独立文件让 refresh 洗不绿；hermetic 沙箱的**最小开关集**必须是 `--allow-child-process` + `--allow-worker` + `--allow-net` + `NODE_NO_WARNINGS=1`（少了会打红 26 条既有用例；Node 25 起权限模型也管网络），并记录 `--allow-child-process` 的**残留洞**（非 Node 子进程不继承，已用守卫用例钉住）；方法论教训：全局配置的 A/B 批必须覆盖**能力全部维度**（「看起来相关」不是覆盖面）；附两条读数失效警告（反向占比在共享树失效、基线差集必须先 A/B 再归因）与「软失败回执无码不许凑数断言」。同次把指南 [验收单怎么用](../guides/acceptance-sheet-workflow.md) 的「有结果就点通过」补成精确判据（`RESULT_ANCHOR` 只认五类，`19/19` 不算）并写明修法是 agent 重交 v2 而不是让人手打 | REQ-261006201814-ac4f（测试反向与异常覆盖补强） |
 
 ## 机制备忘：自动链能不能自己跑（owner 契约 / 失败不留锁 / 人的显式接回）
 
@@ -727,8 +759,8 @@
 
 | 不变量 | 唯一实现 | 说明 |
 |---|---|---|
-| 取数单点 | `src/application/internal/plan-refs.ts` 的 `refsForLanding` | 显式 `requirement_refs` 优先 → 计划文档「覆盖对照表」兜底 → 两处皆无给 `sources='none'` |
-| 门禁单点 | `assertClauseCoverageGate`（FR 覆盖硬门） | **只有**「每个 FR 必须有落点」一道硬门；「某张卡没有 FR」一律降为警告（纯文档卡天然不接条款） |
+| 取数单点 | `src/application/internal/plan-refs.ts` 的 `refsForLanding` | 显式 `requirement_refs` 优先 → 计划文档「覆盖对照表」兜底（**2026-10-06 起这条兜底只服务存量 / 回填**，见下） → 两处皆无给 `sources='none'` |
+| 门禁单点 | `assertClauseCoverageGate`（FR 覆盖硬门） | **只有**「每个 FR 必须有落点」一道硬门；「某张卡没有 FR」一律降为警告（纯文档卡天然不接条款）。**2026-10-06 收敛**：`covered` 只来自**卡上** `requirement_refs`，计划文档覆盖对照表**不再是门禁依据**（详见《文档质量判据门禁》§2.4） |
 | 写入单点 | 建卡时 `plan-landing.ts`；事后 `use-cases/AmendTaskRefs.ts` | 没有第三处；补写入口工具 `reqboard_task_refs` 与看板改卡路由共用同一用例 |
 
 落库编排层是 `src/application/internal/approved-plan-landing.ts`（`landApprovedPlan`）——弹框批准与看板批准都调它，
@@ -1544,3 +1576,377 @@ FR-3 的「回执文案断言」缺用例。两者都记在该需求 `notes/exec
 **改这条缝时要跑的四条**：`tests/card-face-summary-shape.test.ts`（跨缝：夹具**只喂摘要字段**）、
 `tests/state-no-bigfield-read.test.ts`（读放大上界）、`tests/reqboard/store-contract.test.ts`（四实现同形）、
 `npx tsx scripts/card-gates-ui-shot.mts`（真渲染出图，对照权威原型）。
+
+## 机制备忘：判据要与它判的对象**同源**吗——不，判据的**基线**不能是它要判的东西（2026-10-06，REQ-261006201649-cc89）
+
+**症状**：原型门绿了很久，但人验收时反复说「实现的和原型不一致」。体检发现：**9 条需求的权威原型
+是与模板行重合率 0.957 的空骨架，100% 通过锚点门**。
+
+**机制（本仓第二次踩同一类坑）**：模板自带的示例区块用的是**通用的 `id="FR-1"`**，
+而 `prototypes/INDEX.md` 骨架给「服务条款」列填的也正是 `FR-1`——任何"只声明了 FR-1"的需求
+都能靠**模板自带的示例区块**通过锚点门。**模板自己给自己发了合格证。**
+（第一次是"产物自动发现把落盘骨架补登为已交"，当时的补救只修了**登记口径**，没修**内容口径**。）
+
+**为什么"多一道门"救不了它**：门只回答它被写下的那个问题。三道门分别问"有没有交 / 哪一版算数 /
+锚点齐不齐"——**没有一道问"交的内容是不是空的"**。加判据的正确位置是**已有的那道门里**
+（锚点门的第一问：它回答的仍是"权威那一份合格吗"），而不是另起第四道门：
+另开一道会让"同一份文件的不合格"分散到两个码上，违反「同一处坏只报一次」。
+
+**实测标定口径（可复用）**：判"是不是空模板"用「与模板**去重后非空行**的覆盖率」——
+本仓 21 份原型呈**双峰**（骨架 0.957 / 真稿 0.217–0.391，中间无样本），阈值 0.90 落在峰谷，
+**不靠调参**。两条独立判据（占位标记 + 覆盖率）优于一条加权分：两条坏法的补法不同。
+
+**可复用的四条**：
+① **判据的基线不能是被判对象自身**（模板发合格证、实现反推原型，是同一个错误的两副面孔）；
+② **"只落骨架也全绿"不是 agent 偷懒，是判据缺一问**——修判据，不要加仪式；
+③ **阈值要给实测分布**（双峰 + 峰谷），不要给"看着合适"的数字；
+④ **已知边界要写成断言**（本次：全换字面可低至 0.870 漏过）——
+让边界在阈值被改动时**先红**，而不是悄悄漂走。
+
+**另记一条元判据纪律**：判据类改动的验收必须**双向**跑——「改坏 → 必红 → 还原 → 必绿」。
+只跑绿的那一向等于没跑（它只证明"没红"，不证明"判据在量东西"）。
+本次两条演练的负向读数：摘掉判据 4 failed / 10 passed；取数退回旧行为 2 failed / 7 passed。
+
+**改这条缝时要跑的四条**：`tests/prototype-placeholder.test.ts`（判据与边界）、
+`tests/prototype-placeholder-gate.test.ts`（门的顺序与早退）、
+`tests/verification-prototype-compare-required.test.ts`（对照项硬判据）、
+`npx vitest run tests/prototype-*.test.ts tests/plan-prototype-anchor-gate.test.ts`（全量）。
+
+## 机制备忘：判据的兑现点在「构造点」，不在计数快照（2026-10-06，REQ-261006201920-2adc）
+
+**实测现象**：一条需求把「子卡验收标准不得带未替换占位符」修好并交付后，**占位符计数不降反升**——
+会话开始时 `docs/requirements/**/tasks/*.md` 里 2005 张卡有 944 张带占位符，交付时 2138 张里有 1020 张。
+
+**根因**（是上面那条「宿主按启动时的 dist 跑」的**第二个实例**）：运行中的插件加载的是宿主**启动那一刻**的 bundle。
+本会话里改 `src/`、甚至重跑 `pnpm build` 都不会让当前进程换代码，于是**本会话新落的卡仍由旧代码产生**——
+这条需求自己的子卡也带着 `` `npx vitest run <本卡改动涉及的测试文件>` ``。同时段别的窗口在落卡，计数于是上升。
+
+| 问题 | 结论 |
+|---|---|
+| 计数快照能不能当「修好了」的证据 | **不能**。分母里混着"别人的新卡"与"旧代码产出的新卡"，它既可能不降反升，也可能因别人停手而虚降 |
+| 那该拿什么当证据 | ① **构造点**：子卡落库的唯一构造点产出零尖括号（全 20 阶段展开一遍）；② **闭集不变量**：模板里没有词表外的 token（新增即抛）；③ **双向演练**：「关掉回填 ⇒ 残留断言当场变红 ⇒ 还原即绿」 |
+| 存量有没有被追溯改写 | 用 `git diff --name-only -- 'docs/requirements/*/tasks' \| wc -l` = 0 证；**新卡**会以"未跟踪文件"出现，不是改写 |
+| 还有谁受这条影响 | 运行期**自动填写**的东西都算：本次验收单的「与原型对照」项被填成了**已被取代的骨架**（权威路径取数还没随新 bundle 生效），需要人按 INDEX 的权威行对照 |
+
+**三种证据的强度**（写验收材料时要说清自己给的是哪一种）：
+
+| 强度 | 形态 | 会被什么搅坏 |
+|---|---|---|
+| 最弱 | 计数快照 / 目录扫描 | 别人的在飞改动、运行进程的旧 bundle |
+| 中 | 构造点用例（唯一入口 + 闭集不变量） | 只证明"入口对"，不证明"判据在量东西" |
+| 最强 | 双向演练（关掉判据必红 → 还原必绿） | 需要真的改一次代码并留两次输出 |
+
+**一句话**：判据类交付要指到**那个唯一的构造点**，并用双向演练证明它在量东西；把"计数降了"当证据，
+下次会因为别人的动作而得出相反结论。
+
+## 机制备忘：归档声明必须按「需求自己的根 + 真实存在的锚点」判，且读数不许假绿（2026-10-06，REQ-261006201841-944d）
+
+**症状**：归档是需求生命周期的**最后一个可信承诺**——「这批结论并进了项目文档」。但这一步原先只比
+字符串前缀（`target.startsWith(prefix)`，`SubmitArchive` 里 `existsSync` 零命中）⇒ 申报的合并去向
+**哪怕从未落盘也能提交成功**。只读复跑实测：23 条已交材料里 **2 条真失效**，其中一条是
+「代码在（`src/application/internal/advance-select.ts`）、架构文档从未落盘」；42 条说明书更新点里，
+按「任意级标题精确匹配」口径 **22 条**锚不到目标文档标题（按「像章节引用」口径 14 条）。
+
+**为什么"按当前工作区直接比"是错的**：归档记录分属不同项目（27 本仓 / 6 `dsh-notice-webhook` /
+1 `quantsys-v2` / 3 无根）。按当前工作区直接比会判 **15 条**失效，按**每条需求自己的根**解析只有
+**2 条**——**根错了，读数就是假的**。取根唯一走 `rootOfRequirement`（`projectId` → 项目条目 `path`；
+无 id 回落记录自带 `workspaceRoot`，并如实标 `by='path-fallback'`）。
+
+**收紧后的三处判据**：
+① 合并去向按该需求自己的根判**存在且非空**（0 字节也算不合格），拒绝消息必须点名
+「路径 + 生效根 + 判据来源」——三者缺一即不可诊断；
+② 说明书更新点收敛为 **`path#anchor`**：白名单与 `merged_into` **同源**（不新增第二份规则），
+锚点复用 `src/domain/knowledge/slug.ts` 的 `listHeadingAnchors`（旧形态读侧仍渲染，存量不追溯）；
+③ 知识层**自证覆盖度**：`K13`（有归档材料的需求必须有 `req:` 条目，按**基线集合差**判新增）+
+`K14`（失效条件必须含可判定锚点）。
+
+**"基线豁免 ≠ 已沉淀"（本仓新一类假绿）**：K13 曾有基线豁免时把「无新增缺口」写成
+「冷侧 23 条归档需求**全部有** `req:` 知识条目」，而事实是 **6 条零沉淀**。判决没错、**判词骗人**。
+修法：判词按缺口数分支——0 条才说"全部有"，否则逐字列 id。**凡是"有基线豁免"的读数，
+都不许用"全部通过"这类总量词。**
+
+**三条可复跑的证伪通道**：`npx tsx scripts/reverse-drill-matrix.mts --group archive`
+（改坏即红 + **逐字节还原**：RV-1 拒并点名三要素 / RV-2 删 K13 分支即红且还原后复绿 /
+RV-3 只读契约 + 两棵树 sha256 未变）、`npx tsx scripts/archive-ledger-audit.mts --json`
+（存量只读读数：真失效 2、漂移 22 与 14、path 缺失 1、归属未知 3、误判对照 15）、
+`pnpm kb:check` 的 K13/K14。
+
+**存量读数是时点快照**：台账随时被别的窗口写入（本次 3 分钟内真台账树 sha256 变了 3 次，读数没变）。
+演练对不上时先分因（真漂移 / 判据坏了），**禁止为让演练变绿改期望数字**——那正是本脚本存在的理由。
+
+**改这条缝时要跑的四条**：`npx vitest run tests/archive-targets-gate.test.ts tests/archive-materials-shape.test.ts`
+（闸 1/闸 2 与形态）、`npx vitest run tests/archive-manifest-render.test.ts tests/archive-manifest-write.test.ts`
+（渲染物与幂等）、`npx vitest run tests/kb-coverage-probe.test.ts tests/kb-index-rank.test.ts`（覆盖度与降权）、
+`npx tsx scripts/reverse-drill-matrix.mts --group archive`（三条负向演练）。
+
+## 机制备忘：三面文档判据门禁——条款 / 设计坐标 / 拆分落库（2026-10-06，REQ-261006211623-9dc1）
+
+**这条备忘要回答的问题**：为什么"文档写得齐"仍然可能"什么都没法验"？——因为**形状门禁不给判据**。
+领域篇《[文档质量判据门禁](doc-quality-gates.md)》列了八条判据的完整契约与边界；这里只记三条**最容易踩**的。
+
+### 一、软硬的分界：能证伪的才硬拦，判质量的只提示
+
+| 类型 | 例子 | 处置 |
+|---|---|---|
+| 判据**有没有**（机械可判） | `sides` 缺 / 值非法；新需求缺「失败与并发路径」节；计划文档任务表覆盖不了 `tasks[].key` | **硬拦**（提交即拒，点名叫修复路径） |
+| 判据**好不好**（只有人能定） | 条款判据是"覆盖率 ≥ 90%"还是"界面不闪" | **只提示**（进回执的 `clause_criteria_warnings`，不阻断） |
+
+硬拦静默失效的形态（实测）：`sides: [doc]` 被解析处过滤后与"没写"后果完全相同——条件必交设计文档永不触发、
+门禁全绿、无人报错。**静默失效比拒绝贵得多**：拒绝有修复路径，静默只有时间流逝。
+
+### 二、存量不追溯的判据点是"需求创建时间"，不是"改了哪份文档"
+
+`DOC_QUALITY_RULES_SINCE`（2026-10-06T12:00:00Z）是唯一判据点。为什么不能靠"只对新文档生效"：
+需求文档一旦确认就**不能在后续阶段重交**（`submitRequirementArtifact` 要求 `brainstorming`），
+任何"事后对齐"都会把系统债转嫁给当时的人。同理，新必填节**刻意不进 `CATEGORY_DELTAS`**——
+DELTA 会被拆分提交 / 设计门 / 文档自检复用到存量需求上，等于追溯。
+
+### 三、按需判据要如实登记"为什么不进必跑清单"
+
+设计坐标探针全仓跑必红（存量设计文档的历史失效坐标不追溯），故它登记在 `operations.ts` 的 `EXCLUDED`、
+不加 script、不上 CI，只在改动/复核某需求时 `--req` 跑。**登记时把理由写清**，否则下一个人会以为是漏挂。
+
+### 四、可复核入口
+
+- 领域篇（八条判据 + 边界）：[文档质量判据门禁](doc-quality-gates.md)
+- 复核材料（含独立评审 C1–C6 逐条处置）：`docs/reviews/doc-quality-gates-2026-10-06.md`
+- 逐卡证据与读数：`docs/requirements/REQ-261006211623-9dc1/tests/t1..t5-*.md`
+- 独立评审报告：`docs/requirements/REQ-261006211623-9dc1/reviews/independent-review.md`
+
+## 机制备忘：路径抽取口径扩根（src 与 .mts）——判据看得见它声称要判的东西（2026-10-06，REQ-261007095750-9f48）
+
+**这条备忘要回答的问题**：为什么"判据存在"不等于"判据在判"？——因为**取数口径**可能把大多数落点挡在外面。
+
+### 一、口径变更（一处改动，两处判据同时生效）
+
+```
+改前：PATH_RE 四根 = packages|scripts|tests|docs    扩展名表无 mts
+改后：PATH_RE 五根 = src|packages|scripts|tests|docs  扩展名表含 mts
+```
+
+`src/application/internal/conflict-check.ts` 的 `declaredFiles` 是**冲突族判据的唯一取数口**，
+两个消费者自动跟随：文件冲突门（硬拒 `REQBOARD_FILE_CONFLICT`）与零交集依赖边建议（软提示）。
+（**口径澄清**：`src/domain/task/Footprint.ts` 另有一套更宽的 `PATH_RE` 服务"体量下限"这一第三类消费者，
+已含 `src` 但不含 `packages`——两者用途不同，不是分叉；后者的 `packages` 缺口登记为待办。）
+
+### 二、真实读数（台账 67 份 `plan.json` / 508 张卡；复跑见 `docs/requirements/REQ-261007095750-9f48/tests/real-data-readings.md`）
+
+| 指标 | 改前（忠实旧口径复算） | 改后 |
+|---|---|---|
+| 含 `src/` 的卡 | 251 | 251 |
+| 其中抽得出至少一条路径 | 142（**56.6%**） | 250（**99.6%**） |
+| 零交集依赖边建议 | 165 | **331** |
+| 文件冲突门命中 | 7 | **57**（新命中 50；"两端点名" 50/50，但已知 ≥2 条属过严/截断误报） |
+| 依赖边残余盲区 | 65.5% 不判 | **33.7% 仍不判**（至少一端没写路径） |
+
+### 三、代价与待决问题（不要只记住"修好了"）
+
+口径扩根后冲突门命中从 7 涨到 57（涉及 68 份需求里的 7 份）。原因是冲突门是**文件级**判据：
+多张卡都往 `src/index.ts` 加一行注册、或都改同一个样式文件，就会命中。处置：**不回溯**（只对新提交生效）、
+**不放宽口径**（把 `src` 去掉或把门降级都属违反不变量）。两个待决问题记在
+`docs/requirements/REQ-261007095750-9f48/tests/real-data-readings.md` §4：
+① 是否做**区域级**口径（按函数/锚点分区）——只读引用与纯文档卡都会命中；
+② 是否给 `PATH_RE` 加**左边界断言**——现在 `vendor/reqboard/src/**` 会被截成 `src/**`（跨目录同名会误判冲突）。
+另：主路径不回溯，但**回退重拆**会把存量计划重新过门（有意）。
+
+### 四、可复核入口
+
+- 领域篇（八条判据 + 边界表已更新）：[文档质量判据门禁](doc-quality-gates.md)
+- 逐卡证据与真实读数：`docs/requirements/REQ-261007095750-9f48/tests/real-data-readings.md`
+- 用例：`npx vitest run tests/path-extraction-scope.test.ts tests/concurrency-limits.test.ts tests/plan-depends-e2e.test.ts`
+
+## 机制备忘：确认通道的接线收敛——「确认了就该动」要成为结构性质（2026-10-07，REQ-261007135258-331a）
+
+> 来源：REQ-261007135258-331a。事故现场：REQ-261007101318-c392 在 brainstorming
+> **静默停摆 2.5 小时**（台账有 `awaiting-enter`、无 `awaiting-exit`，期间零唤醒）。
+> 领域篇契约见 [确认门的推进契约](confirm-gate-advance.md) §7。
+
+**病灶不是"少写一行"，而是同一件事散在四条通道里各写一套。** 「人确认产物」之后要发生五件事：
+落章 / 推进 / 清停手位 / 复位运行时健康 / 链投递。改造前：落章四处已共享，推进有**三份**实现
+（单点 + 看板内联 + 文字证据内联），收尾缺**两处**（文字证据与看板完全不碰停手位）。
+
+| 问题 | 结论 | 判据 |
+|------|------|------|
+| 推进该有几份实现？ | **一份**：`applyConfirmedAdvance`。看板与文字证据的内联 `transitionRequirement` 归零（门仍在调用方前置，只拦推进不吞落章） | `grep -rn "transitionRequirement(" src/application/use-cases/ConfirmArtifact.ts` 空输出 |
+| 收尾该在哪做？ | **在推进单点内部做**（`finishConfirmAdvance`）＝清停手位 + 复位健康。通道只要走单点就自动获得，不再靠四处约定 | 对拍用例 `tests/confirm-channel-parity.test.ts`（跳过收尾即 3 例红并点名通道） |
+| 「窗口不在线」能不能拦住推进？ | **不能**。推进是台账动作；在线只决定 `delivered` 与 note（离线：`advanced:true` / `delivered:false` / note 如实说未投递） | `tests/artifact-confirm-board.test.ts` 离线用例 |
+| 门禁回执该指哪条路？ | **`reqboard_ask_confirm`**（产物已落章 ⇒ 走"已确认未推进"分支）。**不许**指 `reqboard_move`——人工门 humanOnly，agent 调必被拒，是条死路 | `grep -rn "reqboard_move(requirement_id" src/application/internal/decision-gates.ts src/application/internal/stage-gate-timeline.ts` 空输出 |
+
+**三条可复用的教训**（比结论本身更值钱）：
+
+1. **散在多处的同一件事，不会因为"大家都记得"而不漏**——本次把收尾收进推进单点，使"漏接"从
+   "没人发现"变成"用例立刻点名"。
+2. **门禁文案也是接线**：一条把人（或 agent）指向做不到的动作的 `how`，等于把死路写进产品
+   （agent 照文案走 → `REQBOARD_HUMAN_GATE`，然后无路可走、静默停摆）。**指路必须指到当前角色能执行的命令**。
+3. **静态断言要按精确判据写**：要求 `requirements.ts` 全文件零 `transitionRequirement(` 会连带要求
+   删掉人工 move 与批准计划落库两条合法路由（破坏计划外调用方）。正确判据是"**确认即推进分支**零命中"。
+
+**已知缺口（登记，不阻塞）**：`vitest.config.ts` 的 Node 权限模型未放行 `child_process`，导致仓库内
+依赖 `execSync` 的用例被内核拒（实测 53 处），全量 `pnpm test` 因此非绿；归在 REQ-261006201814-ac4f 线上。
+
+## 机制备忘：拆分粒度三件套与两条实测词法坑（2026-10-07，REQ-261007125552-32cb）
+
+**这条备忘要回答的问题**：为什么"拆分太粗"不是 agent 不听话，而是**没有判据、也没有拆分输入**？
+领域篇《[拆分粒度门禁](decomposition-granularity-gates.md)》列了三层口径与词法契约；这里只记最容易踩的。
+
+### 一、给"输入"加门，比给"输出"加限制更有效
+
+粗卡（一张功能卡覆盖多个接口、一张页面卡覆盖整页）的根因是**拆分时没有清单可对照**：
+提示词只有容量**上限**（16 DU），设计文档里没有机器可扫的接口/组件清单。三步棋按此顺序落地：
+
+1. **设计先行**：feature 的 `design/interfaces.md` 必含「接口清单」表（表头 `接口 id`）、
+   `sides` 含 frontend 时 `frontend.md` 必含「组件树」节（缺节在 design 提交即拒）；
+2. **拆分对照**：`decomposition.md` 的对照表逐条覆盖清单（缺行点名 `IF-N`、右列 key 悬空点名）；
+3. **粒度门禁**：一卡声明 >1 接口即拒（`plan_card_multi_interface`），`footprint.files > 5` 与 UI 卡多锚点只警告。
+
+### 二、两条实测词法坑（都值一条纪律）
+
+| 坑 | 现象 | 纪律 |
+|---|---|---|
+| 表头判据是**全局命名空间** | 对照表 key 列最初叫「计划 key」，被 `readPlanDocTaskTable`（取第一张含「计划 key」的表）误认成任务表，门禁报"任务表没收录这些卡" | 新增表必须挑**不冲突的列名**（本次定名「接收卡 key」），并把避让写进模板注释与设计契约 |
+| **解析器不吃的东西** | `covers: t-xxx` 写在 TC 标题行 / 写加粗（`**covers**:`）都读不到——标题行被 `continue` 跳过、加粗断了 `covers\s*[:：]` 匹配（实测覆盖度 8%） | 标注必须**独立行 + 裸写**；改标注形态后立刻用覆盖度门禁验一遍 |
+
+### 三、提示词 light 档的 2500 字符预算是硬约束
+
+规则全文只能住 heavy 档；实测 `decomposing` light 档加规则前已 2493 字符（上限 2500）。
+"顺手多写两句"必然推红 `tests/prompt-tiers.test.ts`——压缩后 design 2481 / decomposing 2493。
+改档前后跑：`pnpm prompts:check` + `npx vitest run tests/prompt-tiers.test.ts tests/prompt-baseline.test.ts`
+（P1 基线由 `node scripts/dump-stage-prompts.mjs` 重刷）。
+
+### 四、验收单"点通过却不计数"的真相（验收方法论）
+
+人工点「通过」被记成 `unverified` 不是弹框坏了：`AcceptanceSheetSpec` 要求通过项的**结果文本含可复核锚点**
+（命令名 / 文件扩展名 / 退出码 / `N passed`）。agent 预填的「4/4 绿」不含锚点 → 降级未复核。
+**给验收单写逐项结果时，一律带命令或计数锚点**（如 `` `npx vitest run tests/x.test.ts` → 47 passed ``），
+人才能真正"零输入点通过"。
+
+**补精确（2026-10-07，REQ-261006201814-ac4f 实测）**：判据是 `RESULT_ANCHOR` 正则，**只认五类**——
+文件扩展名 · 命令词（`npx/npm/pnpm/node/tsx/vitest/git/tsc/python3/…`）· `退出码` 或 `exit N` ·
+**`N 条|项|个|通过|失败`**（注意：`19/19`、`3/3` **不算**，要写 `19 条通过` 或 `→ 19`）· `→ 数字`。
+`effectiveText` 取 `opinion` 优先，否则取 `item.result`（`needsHuman` 项不吃 result 兜底）。
+**修法不是让人反复点、更不是让人手打**：agent 重交一次
+`reqboard_submit(kind=verification, results=[…带锚点的文本…])` → 验收单升版 v2、值全带锚点、
+人**零输入点通过**即可（本需求实测 5/5 → 14/14 一次过）。
+
+### 五、可复核入口
+
+- 领域篇（三层结构 + 词法契约表 + 三条教训）：[拆分粒度门禁](decomposition-granularity-gates.md)
+- 门禁与回归：`npx vitest run tests/plan-granularity.test.ts`（47 passed）
+- RTM 一对多：`npx vitest run tests/decompose-rtm-integration.test.ts`（4 passed）
+- 模板探针：`npx tsx scripts/template-gate-probe.mts`（25 份模板 FAIL 0）
+- 证据与评审：`docs/requirements/REQ-261007125552-32cb/tests/evidence.md`、`.../reviews/final-review.md`
+
+## 机制备忘：测试判据的三层自证（错误码口径 / 红基线分诊 / hermetic 沙箱）（2026-10-07，REQ-261006201814-ac4f）
+
+本需求治的是**假绿**（判据自己失守），交付全部落在 `tests/`，`src/` 零改动。四条可复用的机制知识：
+
+### 一、口径要由脚本生成，读数不写死数字
+
+错误码清单会**随别的窗口漂移**（实施期实测 127 → 132 码），所以：
+- 守卫按清单生成读数、**写死数字就会过期**；缺新码时给**可跑的自助命令**
+  （`npx tsx tests/drill/refresh-error-code-inventory.mts`，幂等：第二次零写盘）；
+- 覆盖率必须**双形态**统计（字面量 + 引定义处常量），并报假阴性率——只按字面量统计会把
+  7 个"其实已断言"的码记成零覆盖，拿 7 条不存在的工作量去凑数；
+- 豁免白名单与清单 `covered=false` 集合**双向相等**，且必须有**棘轮**：
+  条目数 ≤ `frozenCount` ≤ **测试里的硬上界常量**（单改 JSON 数字会红）。
+  只写「≤ frozenCount」不够——删一条不会被发现，必须靠"双向相等"兜住。
+
+### 二、红基线要**分诊**，refresh 才不能洗绿
+
+把基线失败拆成 `reverse` / `other` 两份**独立文件**（不是写进 `failures.txt` 里）：
+`baseline:refresh` 只覆盖基线文件，**分类冲不掉**，于是「刷新引入的新失败既不在 reverse 也不在 other」
+立刻变红。守卫对账三条：并集恒等、互斥、notes 用例列双向相等；`unknown` 类只减不增。
+
+### 三、hermetic 沙箱的**最小开关集**（本需求最贵的一条实战教训）
+
+`--permission` 只放行 fs 权限会**打红 26 条既有用例**（D-9「既有用例零语义变更」直接违规）：
+需要起 `tsc` 的、跑迁移 CLI 的、跑 kb CLI 的、解析 `jq` 的、探 `python3` 的、起真 server 的，全部阵亡。
+实测最小集是**四类放行 + 一类抑制**：
+
+| 开关 | 为什么必须 |
+|---|---|
+| `--allow-fs-read=*` + `--allow-fs-write=<临时目录>` | 读全放、写只放临时目录（仓内仍被拒） |
+| `--allow-child-process` | 否则 spawn 全被拒（tsc / CLI / jq / python 全红） |
+| `--allow-worker` | `tsx` 的 transform 走 worker 线程，不放行直接抛 `Use --allow-worker` |
+| `--allow-net` | **Node 25 起权限模型也管网络**，不放行则本地 `server.listen` 被拒 → 用例 5s 超时 |
+| `NODE_NO_WARNINGS=1` | `--allow-child-process` 的 SecurityWarning 打到 stderr，会污染**按行解析子进程输出**的用例（kb 探针族整片误红） |
+
+**残留洞（记录在案，不是遗忘）**：放行 spawn 后**非 Node 子进程**（`sh`）不继承权限模型，能写进仓库
+（实测；Node 子进程会继承、被拒）。已由 `tests/hermetic-guard.test.ts` 的一条用例**显式钉住**——
+洞若被堵上该用例会红并提醒同步文档。权衡：历史泄漏形态是**进程内 `writeFileSync`**（RTM 写盘），
+那条仍被内核拒绝。
+
+**方法论教训（比机制更值钱）**：改**全局配置**（`vitest.config.ts`）的 A/B 批必须**覆盖能力的全部维度**
+（fs / 子进程 / worker / 网络）。上一版只跑了 5 个"看起来相关"、且都不起子进程的文件 → 全绿放行，
+收口期把批扩到 12 个文件才现形（26 条）。**"看起来相关"不是覆盖面。**
+
+### 四、判据必须能被反证，反向演练要能复跑
+
+- 每条判据自带反例且**在 CI 里断言"必须变红"**：合成坏输入试纯函数、加枚举项试计数断言、
+  删条目试棘轮；
+- 反向演练脚本（`tests/drill/reverse-drill-error-codes.mts`）把「改坏 → 判据必红 → **点名** →
+  逐字节还原」做成一条命令：快照 + sha256 复核还原、**禁用按路径检出还原**、检测到并发写入就
+  **放弃还原并响亮报错**、跑前做目标存在性自检；
+- 演练必须在**能 spawn 的地方**跑（worker 里 `git` 等子进程被权限模型拦，若代码"抛了就返回空串"，
+  判据会**恒真**——本需求初版踩过：`expect(x).toBeLessThanOrEqual(105)` 在空串上永远通过）。
+
+### 五、两条读数口径的失效警告
+
+- **`反向断言占比`（`toThrow/rejects` 计数 ÷ 断言总数）在共享工作树下会失效**：
+  别的窗口同期加了 2168 条正向断言，占比反被稀释（3.82% → 3.54%），而反向绝对数其实在涨。
+  要判"反向密度"应看**断码断言数**或"无断码伴随的站点数"。
+- **共享工作树的基线差集不能直接归因本次改动**：本需求收口期 `baseline:check` 报 35 条新增，
+  逐条归因后 28 条是**我们自己**的沙箱开关集缺项、其余 7 条在「带沙箱 / 去沙箱」两侧逐条相同
+  （⇒ 别的窗口的）。**先做 A/B，再谈归因。**
+
+### 六、软失败回执不能被"断码断言"覆盖（如实上报，不许凑数）
+
+41 处 `expect(...success).toBe(false)` 里有 **12 处回执根本没有码载体**（capture 的 `notCreated`、
+`accept_sheet` 的弹框失败、`submit(kind=design)` 的空目录），只带中文 `note`。
+加码必须改 `src/`（撞红线），故处置是**上报 + 留一行注释**，
+**不写 `toBeUndefined()` 之类凑数断言**——那会把"没测"伪装成"测了"。
+
+### 七、可复核入口
+
+- 验收单"点通过却不计数"的真相与修法：本手册「机制备忘：拆分粒度门禁」第四节的**补精确**段
+- 口径与守卫：`npx vitest run tests/error-code-inventory.test.ts tests/error-code-exempt.test.ts`（11 + 3 passed）
+- 码矩阵与读数：`npx vitest run tests/error-code-matrix.test.ts`（22 passed；零覆盖 5）
+- 反向演练：`npx tsx tests/drill/reverse-drill-error-codes.mts`（退出码 0）
+- A/B 归因：`npx tsx tests/drill/ab-attribution.mts`（introduced=0）
+- 交付读数与偏差清单：`docs/reviews/REQ-261006201814-ac4f-readings.md`
+
+## 机制备忘：提示词上下文的头尾分层与子卡预算软门禁（2026-10-07，REQ-261007100513-6749）
+
+两条新机制各有领域篇，这里只记**认知增量**与**反例**（照抄机制请读领域篇）。
+
+### A. 提示词上下文分层 —— [领域篇](prompt-context-layering.md)
+
+- 头部只留「随窗口绑定关系变化」的常量；**状态行 / 当前任务块 / 阶段纪律正文 / 待捕获提示**改从
+  **会话尾部增量投递**（`inbox.prepend('next-step', …)`，自署来源，禁用 `followup`/`deliver`）。
+- 三条以前没有的口径：① 让位**一次性永久**，且只在 `agent/inbox/claimed` **到达确认**后上闩
+  （投出去 ≠ 到达；`discarded` 要忘掉那次送出并补投）；② 覆盖靠**协调层状态比对**
+  （写路径 / 装配缝 / 回合末三处触发），不再假设「谁改的谁通知」——rollup、看板路由、confirm、verdicts
+  都没有窗口可通知；③ **空态不单独投递**（「无在制任务」是收尾与开工之间的瞬态，正是
+  `13,338 ↔ 13,897` 来回翻版的根因），并按 kind 分化窗口：`capture`/`stage` 立即、`task`/`status` 30 秒。
+- **反例（须记住）**：注入消息若带 `revision`/`round`，会成为回合准入判据的合法来源、被 pre-step 栅栏
+  判 reject；`agent/pre-step` 是 **dispatch 型**事件（返回值决定整步放行/reject），**不许**在上面挂监听器。
+
+### B. 子卡请求预算软门禁 —— [领域篇](subtask-request-budget.md)
+
+- 默认 `LIMITS.subtaskRequestBudget = 60` 次/子会话的**软**上限：到顶**先停后报**，续跑须 owner
+  调 `reqboard_task_move({task_id, budget:{release:true, expectedWindowIndex?}, reason})` 显式放行（幂等 + CAS）。
+- **两个实测换来的反例**：① 归属**不能**按 `executions[].sessionId`——实测 2202/2202 条是 `session-*`
+  窗口码而子会话是 UUID，精确查表永不命中 ⇒ 执法改为**按子会话**、归属只决定汇报去向（三级不猜）；
+  ② 子会话判据**不能**反向用 `isIgnoredSession`——fork 窗口 `origin=undefined | parentSession 有 | depth=0`
+  会被误当子会话计数。正路是 `origin==='subagent' || delegationDepth>0`。
+- 停手位必须**独立**：复用人工门 in-flight 会让**一张卡到顶就停发同需求所有可开工卡**。
+
+### C. 度量口径 —— [指南](../guides/cost-report.md)
+
+- `pnpm cost:report --req <REQ>`：按会话 `createdAt` 过滤**自身请求**、按 `parentSession` 建树，
+  因此**改造前后可比**；缓存失效点逐条标注「前 60 秒有没有 `system/message`」。
+- 读数纪律：失效点要按**前一条请求的时间间隔**判因，不能只看那个布尔（实测 24 条里 19 有、5 无）。
+- **最重要的一条认知**：「头部重写 ⇒ 前缀缓存整段作废」是**供应商相关**的——`kimi-coding/k3` 上实测
+  每次重写都废掉整段（16 次 = 3.9M 全价），而 `deepseek-flash` 上 9 次重写**全部保住缓存**
+  （该窗口唯一一次全量重算是其前 163.6 分钟空档后的 TTL 过期）。⇒ 任何「改造后成本下降」的结论
+  都必须**同 provider** 对照，否则是在读供应商差异。

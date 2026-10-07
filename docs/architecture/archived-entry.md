@@ -56,6 +56,34 @@ state.requirements（全量，含终态）
 | 真实数据端到端（归档条 → 点开 → DAG + 任务表 + 零操作条） | `npx tsx docs/requirements/REQ-261002105242-a3fb/evidence/probe-archive-entry.mts` | exit 0 |
 | 僵尸归档入口零残留 | `grep -rn "archiveReq\|archive-req" src` | 无输出 |
 
+## 归档条的来源标注：三态与「在别处」（2026-10-06，REQ-261006201841-944d）
+
+**根因**：归档条原先只显示 `id + 标题 + done/total`。归档记录分属不同项目（本仓 / `dsh-notice-webhook` /
+`quantsys-v2` / 少数无根），**根不在本仓的那些条目点开是一片空白**——人第一反应是"文件丢了"。
+
+**三态判据**（服务端**一处**派生，`src/application/internal/requirement-origins.ts`；取根与同项目判定
+都走既有单点 `rootOfRequirement` + `sameProjectRoot`，不新造项目身份判定）：
+
+| 态 | 判据 | 呈现 |
+|----|------|------|
+| `local` | 解析出的根 == 当前工作区根 | 极轻纯文字「本仓」（信息量为零，不抢眼） |
+| `elsewhere` | 根解析成功、但不是当前项目 | 「别处·<项目名>」+ `data-project`（身份感来自**名字**，不是颜色） |
+| `unknown` | 记录既无 `projectId` 也无 `workspaceRoot` | 「归属未知」+ 警示令牌 + 虚线边框（**不冒充本仓**） |
+
+**取数与降级**：`/state` payload 带 `origins`（**只算本页** `page.items`，不整册扫）；
+客户端 `renderArchivedBar(cards, limit, origins?)`；`origins` 缺键或缺整参（旧服务端 / 旧 bundle）
+→ **不渲染标注**，输出与改动前**逐字节相同**。`elsewhere` 缺项目名时写「未命名项目」——**不编造名字**。
+
+**不越界**：只把「在别处」**说清楚**，**不去读别的项目工作区**（跨项目读文件涉及权限与一致性，另立需求）。
+
+**判据（可跑）**：
+
+| 断言 | 命令 | 通过条件 |
+|------|------|----------|
+| 服务端三态 + 客户端渲染 + 缺参降级 | `npx vitest run tests/board-archived-origins.test.ts` | 28 例全绿 |
+| 构建新鲜度（新增选择器**恰好 4 条**，只用既有令牌） | `pnpm build:client && node scripts/verify-client-build.mjs` | OK（bundle 含新 class） |
+| 视觉对照（**人看**） | 打开 `docs/requirements/REQ-261006201841-944d/prototypes/archive-source-label.html` 的 §1～§3，与本仓归档条逐态比对 | 无差异，或差异已写明 |
+
 ## 已知次优
 
 1. **归档条不分页**：超 100 条只渲染前 100 条 + 「另有 N 条未显示」（当前台账 21 条归档，离上限尚远）。

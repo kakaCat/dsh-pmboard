@@ -37,10 +37,31 @@
 | 你想改结果（复跑过、以你的为准） | 改输入框即可：写 `result = 你的文本`、`resultSource = 'human'` |
 | `needsHuman: true`（界面视觉 / 线下流程） | **唯一要你动笔的项**：写你看到的事实（不写就记未复核） |
 | 点通过但两者皆空 | 记 **`unverified`（未复核）**：不计入通过，也**不放行归档** |
+| **`result` 非空但文本里没有「可复核锚点」** | **照样记 `unverified`**（见下）——人点「通过」也没用 |
 | 要退回 | 点不通过 + 写意见（预填值原样不算意见） |
 
-「全部通过 → 归档」的放行判据是**无 `pending` 且无 `unverified`**；有未复核项时不会弹归档确认，
-强行点「验收通过」会被按「不合规通过」要求写覆盖说明（覆盖会进 `acceptanceOverride` + 评论 + 状态事件三处留痕）。
+### 「有结果」的真正底线是「**有据**」，不是「有字」（2026-10-07，REQ-261006201814-ac4f 实测）
+
+`applyVerdicts` 的判据（`domain/workflow/AcceptanceSheetSpec.ts`）：
+
+```
+effectiveText = opinion非空 ? opinion : (needsHuman ? '' : item.result)
+passed 成立 ⟺ 非 needsHuman ∧ 非系统项 ∧ effectiveText 命中 RESULT_ANCHOR
+否则（blankPass 或 anchorMiss）→ unverified
+```
+
+`RESULT_ANCHOR` 认五类锚点：**文件扩展名**（`.ts/.md/.json/.png/…`）· **命令词**
+（`npx/npm/pnpm/node/tsx/vitest/git/tsc/python3/…`）· **`退出码`** 或 `exit N` ·
+**`N 条|项|个|通过|失败`** · **`→ 数字`**。
+
+**实测踩的坑**：agent 把结果写成「矩阵 19/19；每格三件套 + 计数断言」「豁免用例 3/3；
+双向相等」——人点「通过」却全记成 `unverified`。原因是 `19/19`、`3/3` **不在词表里**
+（要写成 `19 条通过` 或 `→ 19`），而「A/B 产物 introduced=0 · fixed=3」也没有任何锚点。
+**给 agent 的写法**：每条结果至少给一个锚点，最稳的是 **`npx vitest run <文件> 退出码 0（N/N 通过）`**。
+
+**遇到 5 项以上 `unverified` 怎么办**：不要让人反复点。agent 重交一次
+`reqboard_submit(kind=verification, results=[…带锚点的文本…])` 即可——验收单升版（v2），
+新单的值全部带锚点，人**只需零输入点通过**。别让人手打（那是把 agent 的活推给人）。
 
 ## 三、维护者：改哪里会连带红
 
@@ -49,6 +70,9 @@
   不合规通过判定（含前端 `verifyConfirmCopy` 的确认文案）。漏一处，「未复核」就从那条路悄悄放行。
 - **`needsHuman` 项不吃 `result` 兜底**：域层 `applyVerdicts` 与弹框 `resultOf` 同口径；
   看板该行**不预填**并带 `data-needs-human="1"`。
+- **`RESULT_ANCHOR` 是 `passed` 的进入条件**（不是提示）：改这个词表 = 改「什么样算通过」，
+  会连带红 `tests/result-binding.test.ts` 与 `tests/accept-sheet-zero-input.test.ts`。
+  收紧它会让**存量已通过项**在新裁决下变未复核；放宽它会放行无据通过。两边都要在需求里说清。
 - **预填 `value` 必须是台账 `item.result` 原文**（可截断的只有展示行）：截断过的 `value` 会在
   "人一个字没改"时把台账改短、还把来源误标成 `human`（实测踩过，见需求 `evidence/prototype-conformance.md`）。
 - **回滚**：`DSH_REQBOARD_NO_ITEM_RESULT=1` → 提交侧不结构化绑定（`results_coverage='legacy'`）、

@@ -96,3 +96,55 @@ const designGateApplies = (targetKind === 'artifact' && kindRaw === 'design')
 
 **改这一片时的三条自检**：① 早退分支的门与主路径是否同源；② 单点是否被两条路径共用（不得长出第二份迁移逻辑）；
 ③ 动了导出符号后跑 `pnpm kb:build`（否则 `tests/kb-generate.test.ts` 会红，与功能无关）。
+
+## 7. 四通道收敛：落章 + 推进 + 收尾，四处接线同一单点（2026-10-07，REQ-261007135258-331a）
+
+> 来源：**REQ-261007135258-331a**（2026-10-07）。前情事故：REQ-261007101318-c392 在 brainstorming
+> **静默停摆 2.5 小时**——台账有 `awaiting-enter`、无 `awaiting-exit`，期间零唤醒。
+> 根因不是"少写一行"，而是**收尾这件事散在四条通道里**：弹框与 Dive 门框各做一半，文字证据与看板两条完全不碰。
+
+### 7.1 四条通道 × 五件事（改造前）
+
+| 通道 | 入口 | 落章 | 推进 | 清停手位 | 复位运行时健康 |
+|---|---|---|---|---|---|
+| 会话弹框（含超宽限挂起） | `reqboard_ask_confirm` → `settleAnswers` | 共享 `stampArtifactOnce`/`stampPlanOnce` | `applyConfirmDecision` | 有 | 有 |
+| Dive 门框 | `createGatePromptPort` | 共享 | `applyConfirmDecision` | 有 | 有 |
+| 文字证据 | `ConfirmArtifact` | 共享 | **自己内联 `transitionRequirement`** | **无** | 有 |
+| 看板一键 | `POST /req/artifact/confirm` | 共享 | **自己内联 `transitionRequirement`** | **无** | **无** |
+
+### 7.2 收敛后的契约
+
+1. **推进单点唯一**：看板（`src/http/routers/requirements.ts` 确认即推进分支）与文字证据
+   （`src/application/use-cases/ConfirmArtifact.ts`）都改调 `applyConfirmedAdvance`；两处内联迁移归零。
+   内容门 / G2 完整性门仍在**调用方前置**（门不过只拦推进、不吞落章）。
+2. **收尾单点唯一**：`src/application/internal/confirm-advance-finish.ts` 的 `finishConfirmAdvance`
+   ＝① `exitAwaitingConfirm`（清 `awaiting-confirm:*` 停手位）→ ② `applyDiveTransition('confirm-advance')`
+   （复位 `driverHealth`、按需归零 `roundsInStage`；**绝不改写 `activation`**）。顺序是硬契约：
+   先清位再复位——`confirm-advance` 被"弹框在途"守卫拦住会零写入。
+   由推进单点内部触发 ⇒ **任一通道只要走了单点，就自动获得收尾**，不再靠四处约定。
+3. **看板推进与「窗口在线」解耦**：推进是台账动作，窗口在线只决定 `delivered` 与 note。
+   窗口离线时 `advanced:true` / `delivered:false`，note 如实说"已推进；窗口不在线未投递"。
+4. **门禁回执指路改指统一入口**：`decision-gates.ts` 与 `stage-gate-timeline.ts` 的 `how`
+   指 `reqboard_ask_confirm`（产物已落章 ⇒ 走"已确认未推进"分支，闸门全过即自动推进），
+   **不再指** `reqboard_move`——那是人工门（humanOnly），agent 调必被 `REQBOARD_HUMAN_GATE` 拒，是条死路。
+
+### 7.3 三条纪律（改这一片时照抄）
+
+- **失败要响亮但不回滚**：收尾两步各自 `try/catch`、永不抛；收尾失败只降级读数、**不回滚已完成的推进**。
+- **幂等**：`applyConfirmedAdvance` 内 `req.status !== input.from` ⇒ 原样返回（乐观护栏）；
+  落章首写即事实；`exitAwaitingConfirm` 重复调用零动作。
+- **新增通道的自检**：任何新确认路径必须调 `applyConfirmedAdvance`（推进 + 收尾一次拿到），
+  不得自己写 `transitionRequirement`，也不得自己调 `applyDiveTransition('confirm-advance')`。
+
+### 7.4 可复核锚点
+
+| 面 | 位置 |
+|---|---|
+| 推进单点 | `src/application/internal/confirm-settle.ts` · `applyConfirmedAdvance` |
+| 收尾单点 | `src/application/internal/confirm-advance-finish.ts` · `finishConfirmAdvance` |
+| 看板通道 | `src/http/routers/requirements.ts`（确认即推进分支，只调单点；236 人工 move / 359 批准计划落库为其它路由的合法调用） |
+| 文字证据通道 | `src/application/use-cases/ConfirmArtifact.ts`（推进块只调单点；FR-10 未推进补收尾保留 `stageChanged:false`） |
+| 门禁指路 | `src/application/internal/decision-gates.ts`、`src/application/internal/stage-gate-timeline.ts` |
+| 对拍用例 | `tests/confirm-channel-parity.test.ts`（四通道四元组逐项相等；跳过收尾必红） |
+| 需求材料 | `docs/requirements/REQ-261007135258-331a/`（requirement / design / reviews / tests） |
+
