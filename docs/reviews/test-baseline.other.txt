@@ -1,0 +1,50 @@
+tests/adapters/failure-alert.test.ts :: createFailureAlert：两条通道 + 永不抛 投递文本 = 弹框指令壳（§8 #18）：含弹框指令与三处置选项；宿主日志仍是原始正文
+tests/adapters/failure-alert.test.ts :: createFailureAlert：两条通道 + 永不抛 日志与来源会话各写一次，正文含告警内容
+tests/application/repository.test.ts :: SystemClock / RandomIdFactory RandomIdFactory：前缀与 6 位 hex 格式（与 protocol new*Id 同形）
+tests/apply-wiring.test.ts :: dsh-pmboard apply() 宿主接线（乙流程装配冒烟） 注册全部 agent 工具（REQ-47939a 收敛后 9 个 + REQ-327bdf 2 个 + REQ-e3b6a0 的 reqboard_capture + REQ-de3f 的 reqboard_archive_amend）
+tests/auto-chain-approval.test.ts :: 批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7.1） 批准后自动拆分类跑完 → 需求 accepting（v9：触发者由外部模拟，生产为看板继续/会话唤醒）
+tests/capture.test.ts :: captureSectionText pending 注入（确定性消息 hook 命中） 硬化语在场（t-3e11bf E2E 走查返工）：强制先弹 / 不立项要显式表态 / 不许沉默
+tests/confirm-settle-plan-persist.test.ts :: 批准计划 → 同步落库任务卡（FR-1/FR-2） 成功路径：同一调用返回时队列任务数 = 计划卡数，且进入 implementing
+tests/create-doc-location.test.ts :: reqboard_create · 文档位置（FR-7 降级路径补第四问） TC-12 传 docs/rfcs/ → 台账 docBasePath 与产物路径按它生成
+tests/decompose-tools.test.ts :: reqboard_task_move 边界 开工自动开执行段，离开 in_progress 自动结算；全部完成后需求进验收
+tests/decompose-tools.test.ts :: 实施卡透传与开工送达（REQ-2e9473 t04） task_move→in_progress 返回任务卡全文（开工说明书送达）
+tests/design-registration.test.ts :: I-1 path 语义：单份登记 + 可打开性校验 给了 path 只登记该份
+tests/design-registration.test.ts :: TC-1 正向：扫 design/ 登记 5 份，二次幂等 部分新增：已登记 5 份后再落盘第 6 份，registered_count 只数本次新增（=1）
+tests/design-registration.test.ts :: TC-1 正向：扫 design/ 登记 5 份，二次幂等 首次 registered_count=5 且 5 条 kind=design 入簿；二次 registered_count=0
+tests/dive-session-driver-wiring.test.ts :: REQ-260927100007-b8ba FR-11：采集半零投递 / 里程碑只登记 (2) armed+active 的里程碑催办 → 转 round 半 queueReminder（采集半仍零直投）
+tests/e2e-triad-gate.test.ts :: 全链路：需求文档 → 计划批准 → 拆分 → 出口门禁 骨架产出的卡直接过出口门禁（需求 → 计划 → 拆分 → 推进 implementing）
+tests/handoff.test.ts :: 接力实测：handoff 契约——新窗口不读历史对话即可续作 完整链路：A 拆 → A 做 t1 → B 读卡做 t2 → B 汇报 → 产物链完整
+tests/handoff.test.ts :: 接力实测：task_report 追加后文件仍结构化 窗口 B 可推进任务（task_move 绑定新 sessionId）+ 汇报
+tests/interruption-checkpoint.test.ts :: 断点常驻 · 写入器 A（交棒即写 checkpoint） reqboard_move 交棒 → 台账 interruption.reason=checkpoint 且 pendingAction 非空
+tests/interruption-checkpoint.test.ts :: 断点常驻 · 写入器 A（交棒即写 checkpoint） 幂等：同一 stage + 同一 pendingAction 再交棒不重写、不 bump version
+tests/interruption-checkpoint.test.ts :: 断点常驻 · 写入器 B（turn/end 异常原因补新） 事件路径：checkpoint → 异常原因覆盖（保留按状态重算的 pendingAction）
+tests/kb-archive-deposit.test.ts :: 落地：归档 → 条目 + 索引行 同源重复提交幂等：id 复用、索引行不重复
+tests/layer-boundary.test.ts :: 层边界：依赖方向（architecture.md §2） application/ 不得 import 禁止项（application 只依赖 domain 与 shared 的**类型**；一切 I/O 走端口）
+tests/layer-boundary.test.ts :: 层边界：依赖方向（architecture.md §2） domain/ 内不得使用 Date.now() / Math.random()（时间与 ID 一律注入，保证用例可复现）
+tests/layer-boundary.test.ts :: 层边界：依赖方向（architecture.md §2） tools/ 与 http/ 内不得出现状态字面量（比较式与判定器实参都不行——状态判断只在 domain）
+tests/message-hygiene.test.ts :: 文案卫生：用户可见选项/徽章单点 弹框选项与徽章文案只允许定义在 domain/text/labels.ts
+tests/message-hygiene.test.ts :: 消息卫生：拼接式消息 其余层按棘轮约束：不得超过基线，且整体只降不升
+tests/message-hygiene.test.ts :: 消息卫生：拼接式消息 规则层 src/domain/** 必须为 0（fmt 抽象已覆盖）
+tests/node-panel-styles.test.ts :: TC-11 node-panel 样式作用域 设计令牌：720px 宽度上限 + 68vh 高度上限 + 10px 圆角
+tests/output-contract.test.ts :: 输出契约·静态扫描：每个工具的全部 return 分支键都必须已声明 defineKnowledgeTool：所有 return 分支键均已声明
+tests/output-contract.test.ts :: 输出契约·静态扫描：每个工具的全部 return 分支键都必须已声明 defineRegenerateTool：所有 return 分支键均已声明
+tests/output-contract.test.ts :: 输出契约·静态扫描：每个工具的全部 return 分支键都必须已声明 defineSkillInstallTool：所有 return 分支键均已声明
+tests/output-contract.test.ts :: 输出契约·静态扫描：每个工具的全部 return 分支键都必须已声明 defineTaskAdoptTool：所有 return 分支键均已声明
+tests/plan-mode.test.ts :: 批准后的执行链（计划 → 任务卡 → 自动验收） 任务按计划逐项 done 后，需求自动进验收
+tests/probe-hard-criteria.test.ts :: 探针族几何量硬判据（源码级） req-report-probe.mts：每个几何量都有断言分支（只打印不判 = 命中 0）
+tests/project-scope.test.ts :: 写盘覆盖：工作区相对写盘点必须受保护或显式豁免（t8） 每个工作区相对写盘点都在受保护文件列表、豁免清单或待偿清单里
+tests/size-budget.test.ts :: 尺寸门禁（REQ-47939a A2：宿主单文件 ≤400 行） src 下所有 .ts 单文件 ≤ 400 行（白名单见 WHITELIST，逐条带理由）
+tests/skills-assets.test.ts :: TC-3 · 体积上限（裁剪失效即红） 不该进包的东西确实不在（上游自测 / 字体二进制 / 两个大 JSON / 字节码缓存）
+tests/t11-decompose-queue-write.test.ts :: t11 · 两条落库路径共用唯一写路径 + 台账零任务 Decompose.ts 与 confirm-settle.ts 都经 landPlanTasks 落库；写域内无 ledger.tasks 残留
+tests/t17-queue-e2e.test.ts :: t17 端到端：新建需求 → 拆分落队列 → 台账零新增 → 推进 → ready 更新 一条真实连续链跑到底（真实仓储 + 临时工作区）
+tests/task-status-integration.test.ts :: reqboard_task_status 接口联调（真台账 + 真工具壳） TC-I1 写→读闭环：真 report 工具落盘 lastReport，真 status 工具原样读回
+tests/template-address-injection.test.ts :: TC-10 非肯定项不注入下一节点纪律（FR-10） H4 affirmative：仍附纪律全文（防"修反"）
+tests/template-address-injection.test.ts :: TC-11 压缩路径（节点输入包）与未压缩路径地址段一致 输入包含「本节点文档」且与系统段逐字一致，位于「需求文档」之后
+tests/template-address-injection.test.ts :: TC-9 地址段在三处注入点逐字一致 design/feature：系统段与 H3 的地址段相同，且含同一组绝对地址
+tests/tools-dispatch.test.ts :: t8 · 工具面 13→9 收敛 src/tools/ 下的工具目录清单固定，各含 XxxTool.ts + prompt.ts + index.ts（三段式）
+tests/tools-dispatch.test.ts :: t8 · 工具面 13→9 收敛 工具壳不含状态字面量比较（状态判断只在 domain——与 layer-boundary 同源）
+tests/triad-gate.test.ts :: 端到端：门真的挂上了（reqboard_move / reqboard_task_move） 拆分出口：三节齐备 → 放行
+tests/zero-arg-binding.test.ts :: 零参绑定守护：dsh-ptc-runtime-node 补丁 patch 文件仍把绑定工厂改成 (args = {})
+tests/zero-arg-binding.test.ts :: 零参绑定守护：dsh-ptc-runtime-node 补丁 已安装产物 lib/process.js 带上了默认参数（patch 未生效即红）
+tests/zero-arg-binding.test.ts :: 零参绑定守护：dsh-ptc-runtime-node 补丁 根 package.json 仍登记该包的 patchedDependencies
+tests/zero-arg-binding.test.ts :: 零参绑定守护：dsh-ptc-runtime-node 补丁 零参调用跨进程生效：call 帧 args 编码为 {} 且能拿到回包

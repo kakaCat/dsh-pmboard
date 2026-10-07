@@ -1,0 +1,18 @@
+tests/create-doc-location.test.ts :: reqboard_create · 文档位置（FR-7 降级路径补第四问） TC-11 不传 doc_location → 显式回落默认值 + defaults_used 留痕，台账 docBasePath 同值
+tests/decompose-tools.test.ts :: reqboard_decompose 边界 幂等守卫：implementing/accepting 状态一律拒绝重复拆分
+tests/decompose-tools.test.ts :: reqboard_task_move 边界 越权/不存在/人工闸门一律拒绝
+tests/decompose-tools.test.ts :: rollup 阻塞 blockers 显式化（REQ-2e9473 t02） task_move：任务 a 完成但 b 仍 todo（幽灵场景）→ 返回 blockers + warning
+tests/dive-gate-prompt.test.ts :: TC-15 Dive 在人工门主动弹框（有边界重弹） 到顶 → 组合根写台账 comment 并停手（响亮不静默）
+tests/dive-gate-prompt.test.ts :: TC-15 Dive 在人工门主动弹框（有边界重弹） 弹框通道不可用 → 降级为提醒消息，绝不替代人推进
+tests/dive-session-driver-wiring.test.ts :: REQ-260927100007-b8ba FR-11：采集半零投递 / 里程碑只登记 (3) 非 armed+active 的里程碑催办 → 只写台账 comment，不投递会话
+tests/dive-session-driver-wiring.test.ts :: REQ-260927100007-b8ba FR-11：采集半零投递 / 里程碑只登记 armed+active 但 round 半未装配 → 响亮 warn（不静默丢）
+tests/doc-sync.test.ts :: 文档演进留痕（t19） 有待同步标记时推进返回 doc_sync_warning
+tests/e2e-triad-gate.test.ts :: 全链路：需求文档 → 计划批准 → 拆分 → 出口门禁 卡被改坏（删掉一节）→ 出口门禁拦下 task_card_incomplete
+tests/failure-handling.test.ts :: 失败暂停与回退（5.1/5.2/5.5） 子卡失败 → 退回 todo + attempt+1 + revisions(rollback) + 失败评论；autoRun=false；高优告警发出
+tests/gate-aware-questions.test.ts :: 立项拒绝路径不进链（REQ-260924002956-f37c BUG-2） 肯定路径对照：两段合计 4 问，且 G0 恰好入队 1 次（防"修反"）
+tests/move-rollback.test.ts :: 回退编排 · 双通道一致性（t9 验收：FR-5 单点） TC-7: 回程受门——设计章是落点（未改仍有效），但计划批准已收回，再进实施必须重新拿钥匙
+tests/t7-legacy-tolerance.test.ts :: T-7 legacy tolerance 阶段名相位（旧数据）不被驱动
+tests/template-address-injection.test.ts :: TC-10 非肯定项不注入下一节点纪律（FR-10） H4 negative：只发作答摘要 + 用户意见，不含任何纪律块
+tests/triad-gate.test.ts :: 端到端：门真的挂上了（reqboard_move / reqboard_task_move） 单卡结单：卡缺三要素 → 拒绝 task_card_incomplete
+tests/triad-gate.test.ts :: 端到端：门真的挂上了（reqboard_move / reqboard_task_move） 拆分出口：卡文件不存在 → 不判（放行）
+tests/triad-gate.test.ts :: 端到端：门真的挂上了（reqboard_move / reqboard_task_move） 拆分出口：卡缺三要素 → 拒绝 task_card_incomplete，且消息含卡 id 与节名
