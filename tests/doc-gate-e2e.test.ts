@@ -56,7 +56,11 @@ const REQ_MD = doc(
 
 const planTask = (key: string, title: string) => ({
   key, title, phase: 'implement', side: 'backend', dependsOn: [],
-  acceptance: 'npx vitest run tests/x.test.ts 通过', implementation: '改 src/x.ts',
+  acceptance: 'npx vitest run tests/x.test.ts 通过',
+  // 每张卡改**不同**文件：本文件测的是"条款覆盖门"，不是"冲突门"。
+  // （REQ-261007095750-9f48 口径扩根后 `src/**` 也参与冲突判定，若两张卡共用同一路径，
+  //  冲突门会先于条款门拦下，用例就测不到它本来要测的东西了。）
+  implementation: '改 src/' + key + '.ts',
 })
 
 const seededReq = (over: Record<string, unknown> = {}, keys: [string, string][] = [['T-1', '覆盖门禁'], ['T-2', '三段可追溯']]) => req({

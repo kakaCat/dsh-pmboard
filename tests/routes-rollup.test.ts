@@ -103,7 +103,15 @@ describe('路由层自动推进（R2 实施完成 → 验收）', () => {
     const planTool = definePlanSubmitTool({ store, now: () => Date.now() } as never)
     const decomposeTool = defineDecomposeTool({ store, now: () => Date.now() } as never)
     // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘
-    stubDocFile('docs/requirements/' + reqId + '/decomposition.md')
+    // 2026-10-06 缺口 4 之四：落盘内容必须带任务表且收录 tasks[] 的 key（plan_doc_task_table_incomplete）
+    stubDocFile('docs/requirements/' + reqId + '/decomposition.md', undefined, [
+      '# 拆分计划（夹具）',
+      '',
+      '| 计划 key | 标题 | 依赖 | 工作量 | 验收标准 |',
+      '|---|---|---|---|---|',
+      '| a | 任务A | — | M | 跑 npx vitest run 全绿 |',
+      '',
+    ].join('\n'))
     await planTool.execute({
       path: 'docs/requirements/' + reqId + '/decomposition.md', summary: 's',
       tasks: [{ key: 'a', title: '任务A', phase: 'implement', side: 'backend', acceptance: '单测通过', implementation: '改 a.ts' }],

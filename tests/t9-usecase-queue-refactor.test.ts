@@ -21,6 +21,7 @@ import { applyTaskRollup } from '../src/application/internal/rollup.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import type { ReqboardLedger } from '../src/shared/protocol.js'
+import { expectCode } from './helpers/code-assert.js'
 
 const REQ_ID = 'REQ-000001'
 const WINDOW = 'session-w-001'
@@ -63,6 +64,8 @@ describe('t9 · TC-8.10 用例层父子树改经 TaskStore', () => {
     h.deps.taskStore = store
     const res = await executeTaskTree(h.deps, { requirement_id: REQ_ID, parent_id: 't-none' }, {}) as { success: boolean; error?: string }
     expect(res.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码（码以文案形态内嵌在 error 里）
+    expectCode(res, 'REQBOARD_TASK_NOT_FOUND')
     expect(res.error ?? '').toContain('REQBOARD_TASK_NOT_FOUND')
   })
 })

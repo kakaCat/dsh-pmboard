@@ -137,7 +137,9 @@ async function fullResults(): Promise<any[]> {
   return [
     ...tasks.filter(t => t.parentId === undefined)
       .map(t => ({ ref: { kind: 'task', taskId: t.id }, result: 'agent 实测：npx vitest run tests/x.test.ts → 全绿' })),
-    { ref: { kind: 'requirement' }, result: '交付结论：证据齐全' },
+    // 需求级项也是**普通项**：结果同样要给可核验锚点（否则会被 REQBOARD_RESULT_UNANCHORED 拒，
+    // 见 REQ-261007160829-1991 FR-1 / design S-3——提交侧硬门就要求「有据」而不只是「有字」）。
+    { ref: { kind: 'requirement' }, result: '交付结论：npx vitest run 全量回归 → 27 passed（证据齐全）' },
   ]
 }
 

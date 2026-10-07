@@ -20,6 +20,20 @@ import type { RequirementRecord, RequirementStatus } from '../src/shared/protoco
 const W = 'session-abc-123'
 /** 本文件通篇只操作这一个需求；任务断言一律从**队列**取（v9：台账无 tasks 通道）。 */
 const REQ_ID = 'REQ-abc123'
+/**
+ * 计划文档夹具：任务表必须收录 tasks[] 的 key（2026-10-06 缺口 4 之四的
+ * `plan_doc_task_table_incomplete` 硬门）。本文件提交过的计划 key 只有 a / b
+ * （TWO_TASKS 与 plan_submit 三重校验的 GOOD 都是这两个）。
+ */
+const PLAN_DOC = [
+  '# 拆分计划（夹具）',
+  '',
+  '| 计划 key | 标题 | 依赖 | 工作量 | 验收标准 |',
+  '|---|---|---|---|---|',
+  '| a | 协议层改 | — | M | 跑 npx vitest run tests/reqboard.test.ts 全绿 |',
+  '| b | 客户端改 | a | M | 跑 npx vitest run tests/client-view.test.ts 全绿 |',
+  '',
+].join('\n')
 let dir: string
 let store: ReturnType<typeof makeTestStore>
 let planTool: { execute: (a: unknown, e: unknown) => Promise<any> }
@@ -43,7 +57,9 @@ beforeEach(() => {
   verifySubmit = defineVerifySubmitTool(deps) as never
   reportTool = defineTaskReportTool(deps) as never
   // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘——本文件的占位路径统一在文档根落桩
-  for (const p of ['p.md', 'docs/requirements/REQ-abc123/plan.md', 'docs/requirements/REQ-abc123/decomposition.md']) stubDocFile(p)
+  for (const p of ['p.md', 'docs/requirements/REQ-abc123/plan.md', 'docs/requirements/REQ-abc123/decomposition.md']) {
+    stubDocFile(p, undefined, PLAN_DOC)
+  }
 })
 
 let depsRef: { doneThrottleMs?: number }
@@ -464,7 +480,12 @@ describe('done 凭证门（REQ-2e9473 t06/W2，事故 C/D 故障注入）', () =
     for (const to of ['in_progress', 'testing', 'in_review']) await run(taskMove, { task_id: b, to })
     recordToolTrace(trace, W, 'edit', Date.now())
     await run(reportTool, { task_id: b, summary: '完成', completed: ['改动落地'] })
-    await expect(run(taskMove, { task_id: b, to: 'done' })).rejects.toThrow(/REQBOARD_BULK_CLOSE/)
+    // 契约迁移（REQ-261007100513-6749 t4 / R3）：用例层仍是抛错（see tests/done-throttle-guidance.test.ts），
+    // 工具层把同一个码的节流拒绝转成**结构化失败回执**返回——断言同一件事：第二次收尾被 REQBOARD_BULK_CLOSE 拒。
+    const throttled: any = await run(taskMove, { task_id: b, to: 'done' })
+    expect(throttled.code).toBe('REQBOARD_BULK_CLOSE')
+    expect(throttled.throttleRemainingMs).toBeGreaterThan(0)
+    expect(String(throttled.guidance)).toContain('确定等待')
   })
 
   it('页面插件任务未构建 → REQBOARD_STALE_BUILD（事故 D）', async () => {

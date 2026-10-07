@@ -13,6 +13,7 @@ import { join } from 'node:path'
 import { defineArchiveSubmitTool, stubDocFile, toUseCaseDeps } from './helpers/tool-deps.js'
 import { amendArchiveManifest } from '../src/application/use-cases/AmendArchiveManifest.js'
 import { archiveReconcileLine, renderArchiveSection } from '../src/client/views/verification.ts'
+import { listHeadingAnchors } from '../src/domain/knowledge/slug.js'
 import type { RequirementRecord, RequirementStatus } from '../src/shared/protocol.js'
 // 看板渲染器吃的是**客户端视图类型**（`src/client/types.ts`），与协议类型同形但非同一份声明
 // （当前只在 VerificationItem.status 的枚举宽度上有差）——渲染断言按视图类型声明。
@@ -20,6 +21,13 @@ import type { RequirementRecord as ClientRequirementRecord } from '../src/client
 
 const W = 'session-abc-123'
 const DIR = 'docs/requirements/REQ-abc123'
+/**
+ * 合并去向 + 说明书更新点目标（REQ-261006201841-944d FR-1/FR-2）：目标文档必须**真实落盘且非空**，
+ * 锚点必须命中该文档真实标题。锚点由 `listHeadingAnchors`（写入端/读侧同一实现）算出，不手写 slug。
+ */
+const MANUAL_DOC = 'docs/architecture/project-manual.md'
+const MANUAL_MD = '# 项目说明书\n\n## 收尾门\n\n收尾门三条硬约束：对账三分类与闸门。\n'
+const MANUAL_ANCHOR = listHeadingAnchors(MANUAL_MD).map(h => h.anchor)[listHeadingAnchors(MANUAL_MD).length - 1]!
 let root: string
 let store: ReturnType<typeof makeTestStore>
 
@@ -60,15 +68,17 @@ const baseArchive = {
     { kind: 'plan', path: DIR + '/decomposition.md' },
     { kind: 'verification', path: DIR + '/verification.md' },
   ],
-  merged_into: ['docs/architecture/project-manual.md'],
+  merged_into: [MANUAL_DOC],
   index_entry: 'x',
-  manual_updates: [{ path: 'docs/architecture/project-manual.md', section: '收尾门', summary: '对账口径' }],
+  manual_updates: [{ path: MANUAL_DOC + '#' + MANUAL_ANCHOR, summary: '对账口径' }],
 }
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'pm-archive-compat-'))
   store = makeTestStore()
   for (const p of ['requirement.md', 'decomposition.md', 'verification.md', 'tasks/t-1.md']) stubDocFile(DIR + '/' + p, root)
+  // FR-1/FR-2：合并去向与说明书更新点的目标必须存在且非空，锚点必须真实存在
+  stubDocFile(MANUAL_DOC, root, MANUAL_MD)
 })
 afterEach(() => { rmSync(root, { recursive: true, force: true }) })
 
@@ -87,6 +97,27 @@ describe('存量记录（无新字段）', () => {
     } as unknown as ClientRequirementRecord
     expect(archiveReconcileLine(legacy)).toContain('未对账')
     expect(renderArchiveSection(legacy)).toContain('未对账（本功能上线前归档）')
+  })
+
+  /**
+   * 向后兼容**不得回退**（REQ-261006201841-944d FR-2）：新契约把 `manual_updates[].path` 收紧为
+   * `路径#锚点`、废弃 `section`，但**旧形态的存量台账**（path 无 `#`、有 section）必须仍渲染出
+   * section 文本——存量不追溯，读侧信息只多不少。这条断言钉住读侧回落，禁止被顺手删掉。
+   */
+  it('旧形态 manual_updates（path 无 #、有 section）→ 读侧仍渲染出 section 文本', () => {
+    const legacy = {
+      id: 'REQ-abc123', title: '需求', description: '', status: 'archived', category: 'feature',
+      comments: [], version: 1, createdAt: 1, updatedAt: 1,
+      createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
+      archive: {
+        dir: DIR, docs: [], mergedInto: [], indexEntry: '存量', submittedAt: 1,
+        submittedBy: { kind: 'agent', sessionId: W },
+        manualUpdates: [{ path: MANUAL_DOC, section: '收尾门', summary: '旧形态台账的更新点' }],
+      },
+    } as unknown as ClientRequirementRecord
+    const html = renderArchiveSection(legacy)
+    expect(html).toContain('（旧：收尾门）')
+    expect(html).toContain('旧形态台账的更新点')
   })
 
   it('对存量记录补录：追加成功，且**不伪造**对账结果（reconcile 仍缺省）', async () => {

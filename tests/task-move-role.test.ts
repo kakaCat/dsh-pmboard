@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import { makeHarness, req, task } from './application/harness.js'
 import { defineTaskMoveTool } from '../src/tools/index.js'
+import { expectCode } from './helpers/code-assert.js'
 
 const W = 'session-w-001'
 const run = (t: unknown, args: unknown): Promise<Record<string, any>> =>
@@ -72,6 +73,8 @@ describe('reqboard_task_move（FR-5）', () => {
     await h.seedSettled()
     const out = await run(defineTaskMoveTool(h.deps), { task_id: 't-p' })
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码（既无 to 也无 acceptance = REQBOARD_INVALID_INPUT）
+    expectCode(out, 'REQBOARD_INVALID_INPUT')
     expect(String(out.error)).toContain('acceptance')
   })
 

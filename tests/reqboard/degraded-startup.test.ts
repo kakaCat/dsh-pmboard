@@ -17,6 +17,7 @@ import { createNotReadyHandler } from '../../src/http/not-ready.js'
 import { enterNotReadyMode, NOT_READY_ROUTE_PATH } from '../../src/wiring/not-ready.js'
 import { initCaptureDiag } from '../../src/application/internal/diag-log.js'
 import { REQUIRES_MIGRATION, type MigrationFailure } from '../../src/repositories/migrationGate.js'
+import { expectCode } from '../helpers/code-assert.js'
 
 interface Captured {
   status: number
@@ -68,6 +69,8 @@ describe('未就绪启动 t2 · 迁移门的 HTTP 映射与 hint 透出', () => 
     expect(captured.status).toBe(503)
     const body = parsed(captured)
     expect(body.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码（未迁移 → 503 且 code 原样带出）
+    expectCode(body, 'REQBOARD_REQUIRES_MIGRATION')
     expect(body.code).toBe('REQBOARD_REQUIRES_MIGRATION')
     expect(body.error).toBe('台账未迁移')
     expect(body.hint).toBe(hint) // 逐字相等：三形状等价性（data-model.md）

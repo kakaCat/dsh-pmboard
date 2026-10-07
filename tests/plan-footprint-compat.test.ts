@@ -39,6 +39,20 @@ const W = 'session-fpc-001'
 const REQ = 'REQ-fpc001'
 const PLAN_PATH = 'docs/requirements/' + REQ + '/decomposition.md'
 
+/**
+ * 计划文档夹具：任务表必须收录 tasks[] 的 key（2026-10-06 缺口 4 之四的
+ * `plan_doc_task_table_incomplete` 硬门）。本文件只提交 key = legacy-p1。
+ * 其余各行刻意**不含 footprint / 体量列**——本文件锁的就是「旧形状的计划照旧进门」。
+ */
+const PLAN_DOC = [
+  '# 拆分计划（旧形状夹具）',
+  '',
+  '| 计划 key | 标题 | 依赖 | 验收标准 |',
+  '|---|---|---|---|',
+  '| legacy-p1 | 旧计划卡 | — | 跑 npx vitest run tests/plan-footprint-compat.test.ts 全绿 |',
+  '',
+].join('\n')
+
 let store: ReturnType<typeof makeTestStore>
 let root: string
 let deps: ReqboardToolDeps
@@ -55,7 +69,7 @@ beforeEach(() => {
     workspaceRoot: root,
   } as never
   tree = defineTaskTreeTool(toUseCaseDeps(deps)) as never
-  stubDocFile(PLAN_PATH, root)
+  stubDocFile(PLAN_PATH, root, PLAN_DOC)
 })
 
 afterEach(() => { rmSync(root, { recursive: true, force: true }) })

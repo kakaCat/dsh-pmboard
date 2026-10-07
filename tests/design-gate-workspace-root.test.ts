@@ -16,7 +16,7 @@
  * `setWorkspaceRoot`**，根校正走鸭子探测会被静默跳过 → 断言会「空过」（测试全绿但什么都没验证）。
  * 故本文件一律用**真实 `FileDocRepository`** 指向两个临时目录，并显式断言校正后的根。
  */
-import { makeTestStore } from './application/harness.js'
+import { makeHarness, makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -277,6 +277,8 @@ describe('E2E：错根下的完整链路（真实 HTTP → 仓储 → 状态机�
     await seed({ workspaceRoot: dirB })
     const handler = createReqboardHandler({ requirementStore: store,
       taskStore: taskStoreAt(dirA),
+    // t2（REQ-261007135258-331a）：看板「确认即推进」改走单点 ⇒ 需完整用例依赖
+    applicationDeps: { ...makeHarness().deps, store } as never,
 
       now: () => 1000,
       // 错根：A 下没有该需求的任何文档（下方前置断言把它钉死，证明这一跑确实是「错根」场景）
@@ -309,6 +311,8 @@ describe('E2E：错根下的完整链路（真实 HTTP → 仓储 → 状态机�
     await seed({ workspaceRoot: dirB })
     const handler = createReqboardHandler({ requirementStore: store,
       taskStore: taskStoreAt(dirA),
+    // t2（REQ-261007135258-331a）：看板「确认即推进」改走单点 ⇒ 需完整用例依赖
+    applicationDeps: { ...makeHarness().deps, store } as never,
 
       now: () => 1000,
       docs: new FileDocRepository({ workspaceRoot: dirA }),

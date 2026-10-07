@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import { makeHarness, req, task } from './application/harness.js'
 import { defineTaskStatusTool } from '../src/tools/index.js'
+import { expectNoCode } from './helpers/code-assert.js'
 
 const W = 'session-w-001'
 const run = (t: unknown, args: unknown): Promise<Record<string, any>> =>
@@ -50,6 +51,10 @@ describe('reqboard_task_status（FR-4：改读台账 lastRun/lastReport）', () 
     const h = makeHarness()
     const out = await run(defineTaskStatusTool(h.deps), { task_id: 't-nope' })
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码——该分支契约上**不带码**（判别位是 status=not_found），
+    // 故钉判别位 + 「不携带码」，而不是编一个码出来。
+    expect(out.status).toBe('not_found')
+    expectNoCode(out)
     expect(String(out.error)).toContain('t-nope')
   })
 })

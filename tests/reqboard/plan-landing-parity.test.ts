@@ -25,7 +25,12 @@ const REQUIREMENT_MD = [
   '',
 ].join('\n')
 
-/** 计划文档的覆盖对照表：FR-1 接 t1..t6、FR-2 接 t8..t11；**t7 故意不写**（纯文档卡）。 */
+/**
+ * 计划文档的覆盖对照表：FR-1 接 t1..t6、FR-2 接 t8..t11；**t7 故意不写**（纯文档卡）。
+ *
+ * 2026-10-06 收敛后它**不再是覆盖门禁的依据**（门禁只认卡上 requirement_refs），保留它是为了
+ * 钉住「人读的汇总仍在」——卡上 refs 见 `planTasks()`。
+ */
 const DECOMPOSITION_MD = [
   '# 拆分计划',
   '',
@@ -36,10 +41,15 @@ const DECOMPOSITION_MD = [
   '',
 ].join('\n')
 
-/** 11 张卡：t7 是文档/维护卡（无人给它 FR），其余由覆盖表给出引用。 */
-function planTasks(): PlanTask[] {
+/**
+ * 11 张卡：t7 是文档/维护卡（无人给它 FR），其余**在卡上**声明 refs
+ * （t1..t6 → FR-1、t8..t11 → FR-2）。`stripFr2` 用来造「FR-2 无人接」的覆盖缺口形态。
+ */
+function planTasks(opts: { stripFr2?: boolean } = {}): PlanTask[] {
   return Array.from({ length: 11 }, (_, i) => {
     const key = 't' + (i + 1)
+    const n = i + 1
+    const refs = key === 't7' || (opts.stripFr2 === true && n >= 8) ? [] : [n <= 6 ? 'FR-1' : 'FR-2']
     return {
       key,
       title: key === 't7' ? '文档同步（无 FR 落点）' : '实现 ' + key,
@@ -48,11 +58,12 @@ function planTasks(): PlanTask[] {
       dependsOn: key === 't1' ? [] : ['t1'],
       acceptance: 'npx vitest run 全绿',
       implementation: '改 src/domain/x.ts',
+      ...(refs.length > 0 ? { requirement_refs: refs } : {}),
     }
   })
 }
 
-function seed() {
+function seed(opts: { stripFr2?: boolean } = {}) {
   const h = makeHarness()
   h.seedRequirementSync(req({
     id: REQ_ID,
@@ -67,7 +78,7 @@ function seed() {
     plan: {
       path: 'docs/requirements/' + REQ_ID + '/decomposition.md',
       summary: '把活拆成 11 张卡',
-      tasks: planTasks(),
+      tasks: planTasks(opts),
       submittedAt: h.clock.t,
       submittedBy: { kind: 'agent', sessionId: WINDOW },
       approvedAt: h.clock.t,
@@ -112,8 +123,8 @@ describe('批准即落库 · 无落点卡不再拖垮整批（FR-1 / FR-6）', (
   })
 })
 
-describe('批准即落库 · 引用来自文档覆盖表（FR-3）', () => {
-  it('文档表写过的 key 都拿到引用，没写的保持为空', async () => {
+describe('批准即落库 · 引用取数单口径 = 卡上 requirement_refs（FR-3）', () => {
+  it('卡上写过的 key 都拿到引用，没写的保持为空（t7 = 无落点卡）', async () => {
     const h = seed()
     await h.seedSettled()
     await landApprovedPlan(h.deps, { requirementId: REQ_ID, windowKey: WINDOW, nowTs: h.clock.t, source: 'confirm' })
@@ -126,13 +137,13 @@ describe('批准即落库 · 引用来自文档覆盖表（FR-3）', () => {
     expect(refsByTitle.get('文档同步（无 FR 落点）')).toEqual([])
   })
 
-  it('来源可观测：文档兜底记 doc，没来源记 none', async () => {
+  it('来源可观测：卡上显式记 explicit，没来源记 none（文档兜底只服务存量 / 回填）', async () => {
     const h = seed()
     await h.seedSettled()
     const out = await landApprovedPlan(h.deps, {
       requirementId: REQ_ID, windowKey: WINDOW, nowTs: h.clock.t, source: 'confirm',
     })
-    expect(out.sources.get('t1')).toBe('doc')
+    expect(out.sources.get('t1')).toBe('explicit')
     expect(out.sources.get('t7')).toBe('none')
   })
 })
@@ -158,15 +169,10 @@ describe('批准即落库 · 覆盖度读数取自真实记录（FR-7）', () =>
 
 describe('批准即落库 · 硬门仍在（每个 FR 必须有落点）', () => {
   it('需求里有 FR 没人接 → 抛覆盖缺口，一张卡都不落', async () => {
-    const h = seed()
+    // FR-2 在 t8..t11 的卡上被撤掉 → FR-2 无人接（硬门仍在，不因"卡级放行"而松）。
+    // 注意：文档覆盖对照表已不是门禁依据，改它造不出这个缺口（这正是本次收敛要的效果）。
+    const h = seed({ stripFr2: true })
     await h.seedSettled()
-    // 覆盖表只写 FR-1 → FR-2 无人接收（硬门仍在，不因"卡级放行"而松）
-    h.docs.put('docs/requirements/' + REQ_ID + '/decomposition.md', [
-      '| 需求条款 | 条款内容 | 接收任务 |',
-      '|---------|---------|---------|',
-      '| FR-1 | 甲条 | t1 |',
-      '',
-    ].join('\n'))
     await expect(landApprovedPlan(h.deps, {
       requirementId: REQ_ID, windowKey: WINDOW, nowTs: h.clock.t, source: 'confirm',
     })).rejects.toThrow(/FR-2/)

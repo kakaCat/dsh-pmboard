@@ -108,18 +108,20 @@ describe('验收 Tab 注册（FR-8）', () => {
 
 /* --------------------------------------------------------------- ③ 占位与面板桩 */
 
-describe('验收面板占位（面板实体归 t3）', () => {
+describe('验收面板实体（t3 已填实：占位 render 换成 RTM 面板）', () => {
   it('未取数时渲染「验收加载中…」（壳的通用 loading 占位）', () => {
     const html = buildReportShell(makeReport(), 'verify')
     expect(html).toContain('验收加载中…')
   })
 
-  it('占位 render 自报家门：data-panel + data-panel-placeholder 都是自己的 key', () => {
+  it('实体 render 自报家门：data-panel="verify"；空载荷走「尚未提交」空态（不再是占位桩）', () => {
     const html = verifyPanel.render({}, {
       requirementId: 'REQ-x', load: () => Promise.reject(new Error('不取数')), openDoc: () => {},
     })
     expect(html).toContain('data-panel="verify"')
-    expect(html).toContain('data-panel-placeholder="verify"')
+    expect(html).not.toContain('data-panel-placeholder')
+    expect(html).toContain('data-verify-empty="1"') // t3 实体：无 sheet → 解释性空态
+    expect(html).toContain('尚未提交验收材料')
     expect(html.length).toBeGreaterThan(0)
   })
 })
@@ -172,7 +174,7 @@ describe('验收取数接线（切到才取 · 缓存键 reqId::verify::revision
     shell.detach()
   })
 
-  it('三态：loading 占位 → ready 占位（不空白、不拿 0 冒充）', async () => {
+  it('三态：loading 占位 → ready 实体面板（不空白、不拿 0 冒充）', async () => {
     const shell = createReportShell({
       requirementId: 'REQ-261006130057-7a43',
       loadReport: () => Promise.resolve(makeReport()),
@@ -186,7 +188,10 @@ describe('验收取数接线（切到才取 · 缓存键 reqId::verify::revision
     expect(shell.html()).toContain('验收加载中…') // 在途 = loading 占位
     await tick()
     const html = shell.html()
-    expect(html).toContain('data-panel-placeholder="verify"') // ready = 占位（t3 换实体）
+    // ready = t3 实体面板（载荷无 sheet 段 → 实体的「尚未提交」空态），不再是占位桩
+    expect(html).toContain('data-panel="verify"')
+    expect(html).toContain('data-verify-empty="1"')
+    expect(html).not.toContain('data-panel-placeholder')
     expect(html).not.toContain('验收加载中…')
     shell.detach()
   })
@@ -267,21 +272,28 @@ describe('FR-4 样式收敛（report.ts 带标记块）', () => {
       nextBox > from ? nextBox : Number.POSITIVE_INFINITY,
     )
     const block = REPORT_CSS.slice(at, Number.isFinite(next) ? next : undefined)
-    // Tab 栏：padding 6×8 / 图标 13px / 徽章 mono 10.5px / 激活态浅蓝底+主色文字+2px 指示条
-    expect(block).toContain('--pm-tab-pad-y: 6px')
-    expect(block).toContain('--pm-tab-pad-x: 8px')
-    expect(block).toContain('--pm-tab-icon-fr4: 13px')
-    expect(block).toContain('--pm-tab-badge-fs: 10.5px')
-    expect(block).toContain('--pm-tab-indicator: 2px')
-    expect(block).toContain('font-family: var(--pm-mono)')
-    expect(block).toContain('background: var(--pm-tab-active-bg)')
-    expect(block).toContain('color: var(--pm-accent)')
-    expect(block).toContain('border-bottom-color: var(--pm-accent)')
-    // 进度带：10.5px 单行标签（4px 色条在 ④ 段已是）
-    expect(block).toContain('--pm-prog-label-fs: 10.5px')
-    // 900 窄档：Tab 栏横滚不换行
-    expect(block).toContain('flex-wrap: nowrap')
-    // 本块不写裸色值（浅蓝底由 color-mix 从 --pm-accent 推导）与裸毫秒
+    // 「收敛项在场」按**全量 CSS** 查，不按文本位置查：t4（REQ-261007133149-0716）把片尾覆盖层
+    // 按组件归位后，FR-4 的令牌与规则都搬进 `styles/report/tabs.ts`（Tab 栏自己的分片），
+    // 中间会被块注释切开——位置变了，外观没变（判据一：逐组件计算样式快照全等）。
+    // 文本位置的纪律留给下面的「不写裸值」那两条（它们仍只看 FR-4 这一段）。
+    const items = [
+      // Tab 栏：padding 6×8 / 图标 13px / 徽章 mono 10.5px / 激活态浅蓝底+主色文字+2px 指示条
+      '--pm-tab-pad-y: 6px',
+      '--pm-tab-pad-x: 8px',
+      '--pm-tab-icon-fr4: 13px',
+      '--pm-tab-badge-fs: 10.5px',
+      '--pm-tab-indicator: 2px',
+      'font-family: var(--pm-mono)',
+      'background: var(--pm-tab-active-bg)',
+      'color: var(--pm-accent)',
+      'border-bottom-color: var(--pm-accent)',
+      // 进度带：10.5px 单行标签（4px 色条在 ④ 段已是）
+      '--pm-prog-label-fs: 10.5px',
+      // 900 窄档：Tab 栏横滚不换行
+      'flex-wrap: nowrap',
+    ]
+    for (const item of items) expect(REPORT_CSS).toContain(item)
+    // 本块不写裸色值（浅蓝底由 color-mix 从 --pm-accent 推导）与裸毫秒——只看 FR-4 这一段
     expect(block).not.toMatch(/#[0-9a-fA-F]{3,8}\b/)
     expect(block).not.toMatch(/\d+(?:\.\d+)?ms\b/)
   })

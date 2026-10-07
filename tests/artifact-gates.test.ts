@@ -10,7 +10,7 @@
  *   - 分类过滤（bug 免 requirement 门）；
  *   - human-only confirm 路由。
  */
-import { makeTestStore } from './application/harness.js'
+import { makeHarness, makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -28,8 +28,15 @@ import {
 } from './helpers/tool-deps.js'
 import type { RequirementRecord, RequirementStatus } from '../src/shared/protocol.js'
 import { assertArtifactGates } from '../src/application/internal/artifact-gates.js'
+// REQ-261006201841-944d FR-2：锚点必须命中目标文档真实标题——夹具用**同一实现**算锚点，
+// 不手写 slug 规则（中文/全角标点会让手写串静默失配）。
+import { listHeadingAnchors } from '../src/domain/knowledge/slug.js'
 
 const W = 'session-abc-123'
+/** 归档目标文档（合并去向 + 说明书更新点同一份；feature 白名单内的 architecture 文档）。 */
+const MANUAL_DOC = 'docs/architecture/project-manual.md'
+const MANUAL_MD = '# 项目说明书\n\n## 测试\n\n归档产物登记的测试章节。\n'
+const MANUAL_ANCHOR = listHeadingAnchors(MANUAL_MD).map(h => h.anchor)[listHeadingAnchors(MANUAL_MD).length - 1]!
 let dir: string
 let prevCwd: string
 let store: ReturnType<typeof makeTestStore>
@@ -54,10 +61,16 @@ beforeEach(() => {
   verifyTool = defineVerifySubmitTool(deps) as never
   archiveTool = defineArchiveSubmitTool(deps) as never
   // REQ-2d1c74 FR-2：G2 完整性闸门要求 docs 端口（缺省 = fail-closed 拦截），看板侧必须接
-  handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now(), docs: new FileDocRepository({ workspaceRoot: dir }) })
+  handler = createReqboardHandler({
+    requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now(),
+    docs: new FileDocRepository({ workspaceRoot: dir }),
+    // t2（REQ-261007135258-331a）：看板「确认即推进」改走单点 ⇒ 需完整用例依赖
+    applicationDeps: { ...makeHarness().deps, store } as never,
+  })
   // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘（chdir 后 stub 落进本测试临时目录）。
   // decomposition.md 不在此落桩——decompose 用例要验证它由拆分动作**生成**。
-  stubDocFile('docs/requirements/REQ-abc123/plan.md')
+  // 2026-10-06 缺口 4 之四：落盘内容必须带任务表且收录 tasks[] 的 key（plan_doc_task_table_incomplete）
+  stubDocFile('docs/requirements/REQ-abc123/plan.md', undefined, PLAN_DOC)
 })
 afterEach(() => {
   process.chdir(prevCwd)
@@ -88,6 +101,21 @@ const TWO_TASKS = [
   { key: 'a', title: '协议层加时间线', phase: 'implement', side: 'backend', acceptance: '单测绿', implementation: 'protocol.ts 加时间线字段' },
   { key: 'b', title: '客户端渲染甘特图', phase: 'ui', side: 'frontend', depends_on: ['a'], acceptance: '截图可见', implementation: 'view.ts 加 buildGantt 渲染' },
 ]
+
+/**
+ * 计划文档夹具：任务表必须收录 tasks[] 的 key（2026-10-06 缺口 4 之四的
+ * `plan_doc_task_table_incomplete` 硬门）。本文件提交过的计划 key 只有 a / b。
+ * `decomposition.md` 在部分用例里单独落桩（见第 129 行附近），同样用这份内容。
+ */
+const PLAN_DOC = [
+  '# 拆分计划（夹具）',
+  '',
+  '| 计划 key | 标题 | 依赖 | 工作量 | 验收标准 |',
+  '|---|---|---|---|---|',
+  '| a | 协议层加时间线 | — | M | 跑 npx vitest run 全绿 |',
+  '| b | 客户端渲染甘特图 | a | M | 页面截图可见甘特图 |',
+  '',
+].join('\n')
 
 async function planAndApprove(tasks: unknown = TWO_TASKS): Promise<void> {
   await run(planTool, { path: 'docs/requirements/REQ-abc123/plan.md', summary: '摘要', tasks })
@@ -126,7 +154,7 @@ async function post(url: string, body: unknown) {
 describe('产物登记钩子', () => {
   it('plan_submit 成功时登记 kind=decomposition 产物（stage=decomposing；2026-09-21 裁定）', async () => {
     await seed('decomposing')
-    stubDocFile('docs/requirements/REQ-abc123/decomposition.md') // FR-5：提交路径须落盘
+    stubDocFile('docs/requirements/REQ-abc123/decomposition.md', undefined, PLAN_DOC) // FR-5：提交路径须落盘
     await run(planTool, { path: 'docs/requirements/REQ-abc123/decomposition.md', summary: 's', tasks: TWO_TASKS })
     const req = snapOf().requirements[0]
     expect(req.artifacts).toHaveLength(1)
@@ -138,7 +166,7 @@ describe('产物登记钩子', () => {
 
   it('plan_submit 幂等：重复提交不重复登记', async () => {
     await seed('decomposing')
-    stubDocFile('docs/requirements/REQ-abc123/decomposition.md') // FR-5：提交路径须落盘
+    stubDocFile('docs/requirements/REQ-abc123/decomposition.md', undefined, PLAN_DOC) // FR-5：提交路径须落盘
     await run(planTool, { path: 'docs/requirements/REQ-abc123/decomposition.md', summary: 's', tasks: TWO_TASKS })
     await run(planTool, { path: 'docs/requirements/REQ-abc123/decomposition.md', summary: 's2', tasks: TWO_TASKS })
     const req = snapOf().requirements[0]
@@ -189,6 +217,8 @@ describe('产物登记钩子', () => {
     await seed('done')
     // REQ-2d1c74 FR-5：archive 目录与清单内文档须真实落盘
     for (const p of ['requirement.md', 'plan.md', 'verification.md']) stubDocFile('docs/requirements/REQ-abc123/' + p)
+    // REQ-261006201841-944d FR-1/FR-2：合并去向与说明书更新点的目标必须存在且非空，锚点必须真实存在
+    stubDocFile(MANUAL_DOC, undefined, MANUAL_MD)
     await run(archiveTool, {
       dir: 'docs/requirements/REQ-abc123',
       docs: [
@@ -196,9 +226,9 @@ describe('产物登记钩子', () => {
         { kind: 'plan', path: 'docs/requirements/REQ-abc123/plan.md' },
         { kind: 'verification', path: 'docs/requirements/REQ-abc123/verification.md' },
       ],
-      merged_into: ['docs/architecture/project-manual.md'],
+      merged_into: [MANUAL_DOC],
       index_entry: '测试归档',
-      manual_updates: [{ path: 'docs/architecture/project-manual.md', section: '测试', summary: '新增测试章节' }],
+      manual_updates: [{ path: MANUAL_DOC + '#' + MANUAL_ANCHOR, summary: '新增测试章节' }],
     })
     const req = snapOf().requirements[0]
     expect(req.artifacts!.some(a => a.kind === 'archive' && a.path === 'docs/requirements/REQ-abc123')).toBe(true)
@@ -245,15 +275,17 @@ describe('五门两级校验', () => {
       r.artifacts = [{ stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1, registeredBy: { kind: 'agent' } }]
       return { changed: true }
     })
-    // 确认
+    // 确认 → 放行**并推进**（t2 / REQ-261007135258-331a FR-1、FR-4：
+    // 看板确认的推进改走唯一实现；且"窗口在线"不再是推进的前置——本夹具没有装配 agents）
     const confirmRes = await post('/req/artifact/confirm', { id: 'REQ-abc123', kind: 'requirement' })
     expect(confirmRes.statusCode).toBe(200)
     expect(confirmRes.payload.data.artifacts![0].confirmedAt).toBeDefined()
     expect(confirmRes.payload.data.artifacts![0].confirmedBy).toEqual({ kind: 'human' })
-    // 转移成功
-    const moveRes = await post('/req/move', { id: 'REQ-abc123', to: 'design', actor: 'human' })
-    expect(moveRes.statusCode).toBe(200)
-    expect(moveRes.payload.data.status).toBe('design')
+    expect(confirmRes.payload.data.advanced).toBe(true)
+    expect(confirmRes.payload.data.status).toBe('design')
+    // 已推进 ⇒ 再点同一个门不可能"再跳一格"（护栏语义不变）
+    const again = await post('/req/move', { id: 'REQ-abc123', to: 'design', actor: 'human' })
+    expect(again.statusCode).toBe(400)
   })
 
   it('存量需求（无 artifacts 字段）不硬拦', async () => {
@@ -302,8 +334,9 @@ describe('五门两级校验', () => {
     expect(ok.statusCode).toBe(200)
     const stamped = snapOf().requirements[0]
     expect((stamped.artifacts ?? []).filter(a => a.kind === 'design').every(a => a.confirmedAt !== undefined)).toBe(true)
-    const moved = await post('/req/move', { id: 'REQ-abc123', to: 'decomposing', actor: 'human' })
-    expect(moved.statusCode).toBe(200)
+    // 文档集齐 + 章全落 ⇒ 确认即推进（t2：推进走单点；门禁不过时回执带 gate_failure + advanced:false）
+    expect(ok.payload.data.advanced).toBe(true)
+    expect(snapOf().requirements[0].status).toBe('decomposing')
   })
 })
 

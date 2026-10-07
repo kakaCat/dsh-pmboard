@@ -71,8 +71,8 @@ describe('reqboard_accept_sheet', () => {
     const sheet = await sheetOf()
     const ids = sheet.items.map(i => i.id)
     const out = await run(sheetTool([
-      { id: ids[0], selected: ['✅ 通过'], custom: '实际结果：测试全绿' },
-      { id: ids[1], selected: ['✅ 通过'], custom: '实际结果：测试全绿' },
+      { id: ids[0], selected: ['✅ 通过'], custom: '实际结果：测试全绿（npx vitest run tests/a.test.ts → 12 passed）' },
+      { id: ids[1], selected: ['✅ 通过'], custom: '实际结果：测试全绿（npx vitest run tests/a.test.ts → 12 passed）' },
     ]), { batch_size: 2 })
     expect(out.recorded).toBe(2)
     expect(out.pending).toBe(2)
@@ -99,7 +99,7 @@ describe('reqboard_accept_sheet', () => {
   it('选"改进"+自定义意见 → 记 failed，并**自动回退实施 + 建返工卡**（REQ-308b9a FR-8，推翻 REQ-a8d582 FR-2）', async () => {
     const ids = (await sheetOf()).items.map(i => i.id)
     const out = await run(sheetTool([
-      { id: ids[0], selected: ['✅ 通过'], custom: '实际结果：符合预期' },
+      { id: ids[0], selected: ['✅ 通过'], custom: '实际结果：符合预期（npx vitest run tests/a.test.ts → 12 passed）' },
       { id: ids[1], selected: ['🛠 改进（需修改）'], custom: '边界没覆盖' },
       { id: ids[2], selected: ['❓ 其他'], custom: '需补充文档' },
     ]), { batch_size: 5 })
@@ -118,7 +118,7 @@ describe('reqboard_accept_sheet', () => {
 
   it('未作答的项保持 pending（挂起点）', async () => {
     const ids = (await sheetOf()).items.map(i => i.id)
-    await run(sheetTool([{ id: ids[0], selected: ['✅ 通过'], custom: '实际结果：符合预期' }]), { batch_size: 3 })
+    await run(sheetTool([{ id: ids[0], selected: ['✅ 通过'], custom: '实际结果：符合预期（npx vitest run tests/a.test.ts → 12 passed）' }]), { batch_size: 3 })
     const s = await sheetOf()
     expect(s.items).toHaveLength(4) // 3 任务 + 1 需求级
     expect(s.items.filter(i => i.status === 'pending')).toHaveLength(3)
@@ -129,7 +129,7 @@ describe('reqboard_accept_sheet', () => {
   it('闭环返回值字段均在输出 schema 声明内（防 additionalProperties:false 拒收）', async () => {
     const ids = (await sheetOf()).items.map(i => i.id)
     const out = await run(sheetTool([
-      ids.map(id => ({ id, selected: ['✅ 通过'], custom: '实际结果：全部符合' })),
+      ids.map(id => ({ id, selected: ['✅ 通过'], custom: '实际结果：全部符合（npx vitest run tests/a.test.ts → 12 passed）' })),
       [{ id: 'final-pass', selected: ['✅ 验收通过并归档'] }],
     ]), { batch_size: 10 })
     const declared = new Set(['success', 'requirement_id', 'sheet_version', 'recorded', 'pending', 'passed', 'failed', 'unverified', 'rework_tasks', 'archived', 'status', 'fallback', 'note', 'gate_status'])
@@ -146,6 +146,7 @@ describe('reqboard_accept_sheet', () => {
   it('用户取消 → 中性返回不记录', async () => {
     const out = await run(sheetTool('abort'), {})
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：无码可断——弹框被中断的回执只带 note（实测 code=undefined），实现缺口只上报。
     expect((await sheetOf()).items.every(i => i.status === 'pending')).toBe(true)
   })
 
@@ -153,7 +154,7 @@ describe('reqboard_accept_sheet', () => {
     const ids = (await sheetOf()).items.map(i => i.id)
     const out = await run(sheetTool([
       // 第一批：逐项全过（通过必填实际结果，REQ-260930094139-2d65 FR-1）
-      ids.map(id => ({ id, selected: ['✅ 通过'], custom: '实际结果：全部符合' })),
+      ids.map(id => ({ id, selected: ['✅ 通过'], custom: '实际结果：全部符合（npx vitest run tests/a.test.ts → 12 passed）' })),
       // 第二批：最终确认
       [{ id: 'final-pass', selected: ['✅ 验收通过并归档'] }],
     ]), { batch_size: 10 })
@@ -169,7 +170,7 @@ describe('reqboard_accept_sheet', () => {
   it('最终确认选「暂不归档」→ 保持验收态', async () => {
     const ids = (await sheetOf()).items.map(i => i.id)
     const out = await run(sheetTool([
-      ids.map(id => ({ id, selected: ['✅ 通过'], custom: '实际结果：全部符合' })),
+      ids.map(id => ({ id, selected: ['✅ 通过'], custom: '实际结果：全部符合（npx vitest run tests/a.test.ts → 12 passed）' })),
       [{ id: 'final-pass', selected: ['暂不归档'] }],
     ]), { batch_size: 10 })
     expect(out.archived).toBeUndefined()
@@ -180,6 +181,7 @@ describe('reqboard_accept_sheet', () => {
     deps.userQuestions = () => ({ ask: async () => { throw new Error('render failed: popup mount ENOENT') } })
     const out = await run(defineAcceptSheetTool(deps) as never as { execute: (a: unknown, e: unknown) => Promise<any> }, { batch_size: 2 })
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：无码可断——工具故障回执只带 note（实测 code=undefined），实现缺口只上报。
     expect(String(out.note)).not.toContain('用户未作答')
     expect(String(out.note)).toContain('render failed')
     expect(String(out.note)).toContain('工具故障')
@@ -351,6 +353,7 @@ describe('REQ-261005105032-3b02 t18：验收单两个对照项', () => {
     expect(headers.join('\n')).not.toContain('undefined')
     // 未作答 → 挂起，不写任何裁决
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：无码可断——未选择任何项的回执只带 note（实测 code=undefined），实现缺口只上报。
   })
 })
 
@@ -358,13 +361,15 @@ describe('REQ-261005105032-3b02 t18：验收单两个对照项', () => {
 /* REQ-261006092213-4f5b t2：结构化逐项结果（results）+ 逐项交代硬门           */
 /* ------------------------------------------------------------------------- */
 
-/** REQ-as0001 的可预见项全覆盖（3 张顶层卡 + 1 条需求级）。 */
+/** REQ-as0001 的可预见项全覆盖（3 张顶层卡 + 1 条需求级）。
+ *  需求级项同样是**普通项**：结果要给可核验锚点，否则会被 REQBOARD_RESULT_UNANCHORED 拒
+ *  （REQ-261007160829-1991 FR-1 / design S-3：提交侧硬门要的是「有据」，不只是「有字」）。 */
 async function fullResultsForAs(): Promise<any[]> {
   const tasks = await queueTasksOf(deps, REQ_ID)
   const tops = tasks.filter(t => t.parentId === undefined)
   return [
     ...tops.map(t => ({ ref: { kind: 'task', taskId: t.id }, result: 'npx vitest run tests/x.test.ts → 全绿' })),
-    { ref: { kind: 'requirement' }, result: '交付结论：证据齐全、与设计一致、无范围蔓延' },
+    { ref: { kind: 'requirement' }, result: '交付结论：npx vitest run 全量回归 → 27 passed（证据齐全、与设计一致、无范围蔓延）' },
   ]
 }
 

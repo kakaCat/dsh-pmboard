@@ -24,13 +24,19 @@
  *
  * | 组 | 来源 | 内容 |
  * |---|---|---|
- * | `hard`（**默认**） | REQ-261005105032-3b02 · t-ed8a64 | 六条必备逆验证：R1 模板节标题 / R1 渲染映射表项 / R2 节名集合 / R3 路径指针 / R4 未重生成 / `stripPrototypeAnchors` 移除；**附**一条几何量硬上限改坏 |
+ * | `hard`（**默认**） | REQ-261005105032-3b02 · t-ed8a64 | 六条必备逆验证：R1 模板节标题 / R1 渲染映射表项 / R2 节名集合 / R3 路径指针 / R4 未重生成 / `stripPrototypeAnchors` 移除；**附**一条几何量硬上限改坏；**再附**一条缺口 2 的设计坐标改坏（`design-coord-probe --req`） |
  * | `legacy` | REQ-261004065652-5c1c · t9 | 该需求原来的 6 条（拿掉修复 → vitest 判据必红），**判据与锚点一字未改** |
  * | `canceled` | REQ-261005193546-1b1a · t-848a93 | 已取消卡退出视图与分母的 **14 条**（design/architecture.md §逆验证清单逐条落地） |
+ * | `archive` | REQ-261006201841-944d · t-02fa7f | 归档加固的三条：**RV-1** 桩工作区提交 `merged_into` 指向不存在的文档 → 必被拒并点名（材料逐字节还原后同一次提交通过）；**RV-2** 把 `kb-probe` 的 K13 分支整段注释掉 → 指定用例必红、还原后复绿；**RV-3** 台账**副本**上跑只读核对 → 七项读数逐条对得上且两棵树 sha256 未变（详见 `ARCHIVE_DRILLS`） |
  *
  * 默认从"全跑"改为 `hard`：`hard` 是本卡的交付物、也是验收要跑的那六条（`legacy` 属另一条已归档
  * 需求，其六条会临时改 `src/application/dive/**`，在并行窗口同时改这些文件时有冲突风险）。
  * 需要复跑历史六条时显式 `--group legacy`，两组都要 `--group all`。
+ *
+ * `archive` 组**单独取**（`ARCHIVE_DRILLS`），既不在 `DRILL_GROUPS` 里、也不并进 `--group all`：
+ * 它的 RV-3 要拷用户本机真台账、RV-2 要 spawn 一次 vitest ⇒ 并进 `all` 会让"三组都跑"这条既有口径
+ * 多出对**真台账内容**的依赖（别人归档一条就让 `all` 变色）。理由与既有用例的断言边界写在
+ * `DRILL_GROUPS` 上方与 `main()` 的用法行旁边。
  *
  * ## `canceled` 组的两条特殊纪律（与 `hard` 组的差异，改这个组前先读）
  *
@@ -52,20 +58,22 @@
  *   npx tsx scripts/reverse-drill-matrix.mts                    # 默认 hard（本需求六条 + 附一条）
  *   npx tsx scripts/reverse-drill-matrix.mts --group legacy     # REQ-261004065652-5c1c 的六条
  *   npx tsx scripts/reverse-drill-matrix.mts --group canceled   # REQ-261005193546-1b1a 的 14 条
- *   npx tsx scripts/reverse-drill-matrix.mts --group all        # 三组都跑
+ *   npx tsx scripts/reverse-drill-matrix.mts --group archive    # REQ-261006201841-944d 的 RV-1/2/3
+ *   npx tsx scripts/reverse-drill-matrix.mts --group all        # 三组（hard + legacy + canceled）都跑
  *   npx tsx scripts/reverse-drill-matrix.mts --json             # 机器可读（含 criterion / count）
  *
- * 退出码：0 = 所选组的演练全部如预期变红且源码已逐字节还原；1 = 有演练没变红 / 没点名 / 还原失败 /
- * 目标路径不存在（范围自检）。
+ * 退出码：0 = 所选组的演练全部如预期（`hard`/`legacy`/`canceled` = 判据**红**；`archive` 的
+ * RV-1/RV-3 是内联执行器的判据**成立**，故其 `expectExit` 为 0）且源码已逐字节还原；
+ * 1 = 有演练没变红 / 没点名 / 还原失败 / 目标路径不存在（范围自检）。
  *
  * @module dsh-pmboard/scripts/reverse-drill-matrix
  */
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import {
-  cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync,
+  cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -187,8 +195,52 @@ interface DrillEdit {
   to: string
 }
 
+/**
+ * 执行器真正需要的**结构最小面**（`Drill` 与 `ArchiveDrill` 都满足它）。
+ *
+ * 为什么要这一层：`archive` 组（REQ-261006201841-944d · t-02fa7f）里 RV-1 / RV-3 两条
+ * **不是"改一处源码"型**演练（改坏点分别在桩工作区的提交材料、以及"台账副本上的读数"），
+ * 它们没有 `target`/`from`/`to`；RV-2 有，且要与既有 `file` 执行器**逐字复用**同一套
+ * 备份 + sha256 + 并发写入检测。与其把 `Drill` 的必填字段改成可选（那会削弱既有三组的类型约束），
+ * 不如把执行器的入参收窄成这个最小面：`Drill` 原样传入，`ArchiveDrill` 由 `mutateSpecOf()` 显式收敛。
+ */
+interface MutateSpec {
+  group: string
+  ref: string
+  name: string
+  required?: boolean
+  criterion?: 'behavior' | 'source-anchor'
+  note?: string
+  breakPoint: string
+  target: string
+  copySources?: string[]
+  from: string
+  to: string
+  extraEdits?: readonly DrillEdit[]
+  mutateRel?: string
+  cmd: string[]
+  expectExit: number
+  expectNamed: string[]
+  minRed?: number
+  /**
+   * **还原后**再跑一次判据（可选，只有 `archive` 组的 RV-2 用）：
+   * "删掉即红"只证明判据有覆盖力，"还原后复绿"才排除"红是因为工作区被永久改坏"。
+   * 只对 `file` 模式生效（`copy` 模式的改坏点在临时副本里，工作区本来就没动过，不需要复跑）。
+   * 复跑不绿 → 本条 `restored=false`（并触发主流程中止），**不新增 Result 字段**（--json 形状不变）。
+   */
+  restoreCheckCmd?: string[]
+}
+
+/** 范围自检要看的最小面（`target` 可缺省：定制执行器自己核它的前置件）。 */
+interface RangeSpec {
+  ref: string
+  target?: string
+  copySources?: string[]
+  mutateRel?: string
+}
+
 /** 把 Drill 的第一处改坏点与附加改坏点合成一个列表。 */
-function editsOf(d: Drill): DrillEdit[] {
+function editsOf(d: MutateSpec): DrillEdit[] {
   const first: DrillEdit = { from: d.from, to: d.to }
   return d.extraEdits === undefined ? [first] : [first, ...d.extraEdits]
 }
@@ -216,11 +268,15 @@ function applyEdits(text: string, edits: readonly DrillEdit[]): { ok: true; text
 
 
 /**
- * 本卡（REQ-261005105032-3b02）的六条 + 附一条。
+ * 本卡（REQ-261005105032-3b02）的六条 + 附一条，外加缺口 2（设计坐标）的一条。
  *
  * 六条的两两对照：R1/R2 在**临时副本**上改坏（模板目录支持 `--templates-dir`，
  * 所以工作区 `templates/**` 一个字节都不用碰）；R3/R4/`stripPrototypeAnchors` 在真实文件上改坏
  * （它们没有"指到别处"的入口），靠备份 + sha256 + 并发写入检测保安全。
+ *
+ * 末条（设计坐标）是为 `scripts/design-coord-probe.mts` 加的：它改的是一份**真实设计文档**里的
+ * 路径 token（设计文档没有"指到别处"的入口，只能 file 模式），同样靠备份 + sha256 保安全。
+ * 选 `REQ-260930182521-4fee` 的理由写在该条目注释里（它当前全绿 ⇒ exit 1 的因果干净）。
  */
 const HARD_DRILLS: readonly Drill[] = [
   {
@@ -302,6 +358,23 @@ const HARD_DRILLS: readonly Drill[] = [
     cmd: ['npx', 'tsx', 'scripts/req-report-probe.mts'],
     expectExit: 1,
     expectNamed: ['Tab 栏不在首屏内', '上限 1'],
+  },
+  {
+    /* 缺口 2（设计坐标实施后失效且无回写）：设计文档点名的路径必须能在盘上解析。
+       为什么挑 `REQ-260930182521-4fee`：它当前对 `design-coord-probe` 是**全绿**的
+       （6 个路径 token 全部存在、通报落点 0 条），所以此处的 exit 1 只可能来自本次改坏——
+       判据的因果是干净的，不靠"本来就有别的缺口顺带红"。
+       改坏点在 `design/architecture.md` 的模块改动地图里出现**恰好一次**（已核），
+       还原仍走文件级备份 + sha256 + 并发写入检测。 */
+    group: 'hard', ref: '缺口 2 · 设计坐标',
+    name: '设计文档里的路径 token 改成不存在的文件（设计坐标探针必红并点名）',
+    breakPoint: 'docs/requirements/REQ-260930182521-4fee/design/architecture.md：'
+      + '`src/client/styles/node-panel.ts` → `src/client/styles/node-panel-typo.ts`（不存在）',
+    mode: 'file', target: 'docs/requirements/REQ-260930182521-4fee/design/architecture.md',
+    from: 'src/client/styles/node-panel.ts', to: 'src/client/styles/node-panel-typo.ts',
+    cmd: ['npx', 'tsx', 'scripts/design-coord-probe.mts', '--req', 'REQ-260930182521-4fee'],
+    expectExit: 1,
+    expectNamed: ['src/client/styles/node-panel-typo.ts'],
   },
 ]
 
@@ -595,7 +668,120 @@ export const CANCELED_DRILLS: readonly Drill[] = [
   },
 ]
 
-/** 三个组的取数表（`--group all` 之外一律从这张表按名取，不再用 filter 串联）。 */
+/* ── archive 组（REQ-261006201841-944d · t-02fa7f：RV-1 / RV-2 / RV-3）─────────── */
+
+/** RV-1 的改坏路径（盘上不存在）：拒绝消息必须**点名**它。单一常量，条目与执行器共用。 */
+const RV1_BAD_TARGET = 'docs/architecture/__no_such_doc__.md'
+
+/**
+ * RV-3 的期望读数：台账**副本**上跑 `archive-ledger-audit --json` 的 `totals`。
+ *
+ * 键名**逐字取自脚本自己发出的 JSON**（不是这里另起的名字，跑一次 `--json` 就能对上）。
+ * ⚠️ 这是**时点快照**：台账 revision 与各项目工作区的说明书都会变，读数对不上时本演练判红。
+ * 判红先分因：是"别的窗口又归档了一条 / 改了 project-manual 的标题"（真漂移，读数该更新
+ * ——但那要人来裁定，不归演练改）还是"审计脚本的判据真的坏了"。**禁止**为了让演练变绿改这里的数字：
+ * 改数字 = 把判据本身改成空气，正是本脚本存在的理由。
+ */
+const RV3_EXPECTED_TOTALS: readonly (readonly [string, number])[] = [
+  ['realMissingTargets', 2], // 真失效（按每条需求自己的根解析）
+  ['missingTargetsOnFallbackRoot', 2], // 其中落在「归属未知 → 当前工作区兜底」档的条数
+  ['sectionDriftStrict', 22], // 说明书锚点漂移（严格口径）
+  ['sectionDriftLooksLikeSection', 14], // 说明书锚点漂移（像章节引用口径）
+  ['missingManualPath', 1], // manual_updates[].path 本身不存在
+  ['unknownRoot', 3], // 归属未知（记录无 workspaceRoot）
+  ['naiveMissing', 15], // 对照读数：按当前工作区直接比会误判的条数
+]
+
+/**
+ * `archive` 组的三条（REQ-261006201841-944d · t-02fa7f 的验收判据 RV-1/2/3）。
+ *
+ * 与 `Drill` 的差别（为什么另立一个类型而不改 `Drill`）：RV-1 / RV-3 的"改坏点"不在工作区源码里
+ * ——RV-1 改的是**桩工作区的提交材料**、RV-3 是**台账副本上的读数核对**，两者都没有
+ * `target`/`from`/`to` 可填；把它们塞进 `Drill` 只能填假值或把必填字段改成可选（后者会削弱既有三组）。
+ * 故：`mode` 取值 `file`（RV-2，走既有执行器）/ `rv1` / `rv3`（走定制执行器 `runArchiveCustomDrill`）。
+ */
+interface ArchiveDrill {
+  group: 'archive'
+  /** 判据编号（人读；与 design/test-cases.md 的 TC-51/52/53 一一对应） */
+  ref: string
+  name: string
+  /** 这条演练考的是什么（沿用 `canceled` 组的口径：behavior / source-anchor） */
+  criterion?: 'behavior' | 'source-anchor'
+  note?: string
+  /** 改坏点的人读描述（与执行器实际做的事一致） */
+  breakPoint: string
+  /** file = 既有"工作区改坏 + sha256 还原"；rv1 / rv3 = 定制执行器 */
+  mode: 'file' | 'rv1' | 'rv3'
+  target?: string
+  from?: string
+  to?: string
+  /** `file` 条的附加改坏点（RV-2：K13 段首开块注释、K14 段首闭块注释，共两处） */
+  extraEdits?: readonly DrillEdit[]
+  cmd: string[]
+  /** 定制执行器的判据成立 → 0（与既有条目"判据红 → 1"的语义分开，见各执行器注释） */
+  expectExit: number
+  expectNamed: string[]
+  minRed?: number
+  /** 还原后复跑判据（可选，只有 RV-2 用；语义与 `MutateSpec.restoreCheckCmd` 同） */
+  restoreCheckCmd?: string[]
+}
+
+export const ARCHIVE_DRILLS: readonly ArchiveDrill[] = [
+  {
+    group: 'archive', ref: 'RV-1', criterion: 'behavior',
+    name: '合并去向指向不存在的文档 → 归档提交必被拒且点名路径 / 生效根 / 判据来源；材料逐字节还原后同一次提交通过',
+    breakPoint: '桩工作区（mktemp）的提交材料文件 `submit-materials.json`：'
+      + '`merged_into` 由桩说明书 → `' + RV1_BAD_TARGET + '`（盘上不存在的路径）',
+    mode: 'rv1',
+    cmd: ['（内联执行器 RV-1）桩工作区 + 内存 store → 真 SubmitArchive 闸（kind=archive）'],
+    expectExit: 0,
+    expectNamed: [RV1_BAD_TARGET, 'by=path-fallback', 'REQBOARD_FILE_MISSING'],
+  },
+  {
+    group: 'archive', ref: 'RV-2', criterion: 'behavior',
+    name: '把 kb-probe 的 K13 分支整段注释掉 → 指定用例「① 冷侧有归档材料但无 req 条目 → K13 红」必变红（不是"无覆盖"）',
+    breakPoint: 'scripts/kb-probe.mts：K13 分支（`// ── K13：归档沉淀覆盖度 …` 到 '
+      + '`// ── K14：失效条件可判定 …` 之前）用 `/* … */` 整段注释掉 ⇒ `add(\'K13\', …)` 不再执行',
+    mode: 'file', target: 'scripts/kb-probe.mts',
+    from: '// ── K13：归档沉淀覆盖度 = 冷侧',
+    to: '/* RV-2 逆验证：K13 分支整段注释掉（add(\'K13\', …) 不再执行；用例① 必须变红，'
+      + '且必须是"断言失败"不是"没有覆盖"）\n  // ── K13：归档沉淀覆盖度 = 冷侧',
+    extraEdits: [
+      {
+        from: '// ── K14：失效条件可判定',
+        to: '*/\n  // ── K14：失效条件可判定',
+      },
+    ],
+    cmd: ['npx', 'vitest', 'run', 'tests/kb-coverage-probe.test.ts',
+      '-t', '冷侧有归档材料但无 req', '--reporter=dot'],
+    expectExit: 1,
+    expectNamed: ['冷侧有归档材料但无 req'],
+    minRed: 1,
+    // 同一条命令再跑一次：还原后必须复绿（"变红"可能来自"永久改坏"，复跑才排除这种解释）。
+    restoreCheckCmd: ['npx', 'vitest', 'run', 'tests/kb-coverage-probe.test.ts',
+      '-t', '冷侧有归档材料但无 req', '--reporter=dot'],
+  },
+  {
+    group: 'archive', ref: 'RV-3', criterion: 'behavior',
+    name: '台账副本上跑只读核对 → 7 项读数逐条对得上，且副本树与真台账树 sha256 均逐字节未变',
+    breakPoint: '不改任何文件：把真台账（<DSH_HOME|~/.dsh>/reqboard）拷成副本，'
+      + '在副本上跑 `archive-ledger-audit --json`，核对 totals 七项读数 + 两棵树的 sha256 + 副本之外零新增文件',
+    mode: 'rv3',
+    cmd: ['npx', 'tsx', 'scripts/archive-ledger-audit.mts', '--ledger-root', '<副本>', '--json'],
+    expectExit: 0,
+    expectNamed: RV3_EXPECTED_TOTALS.map(e => e[0] + '=' + String(e[1])),
+  },
+]
+
+/**
+ * 三个**既有**组的取数表（`--group all` 之外一律从这张表按名取，不再用 filter 串联）。
+ *
+ * `archive` 组**不进这张表、也不进 `all`**（`ARCHIVE_DRILLS` 单独取）：它是本需求
+ * （REQ-261006201841-944d）自己的验收命令 `--group archive`，且 RV-3 会**拷真台账**、
+ * RV-2 会 spawn 一次 vitest——把它并进 `all` 会让"三组都跑"这条既有口径悄悄多出对
+ * 「用户本机真台账内容」的依赖。既有用例只逐字断言 `'canceled', 'all'` 这一段相邻关系
+ * （tests/canceled-reverse-drill-coverage.test.ts ⑦），没有对 `all` 的条数断言，故此处保守不动。
+ */
 const DRILL_GROUPS: Record<'hard' | 'legacy' | 'canceled', readonly Drill[]> = {
   hard: HARD_DRILLS,
   legacy: LEGACY_DRILLS,
@@ -608,10 +794,10 @@ const DRILL_GROUPS: Record<'hard' | 'legacy' | 'canceled', readonly Drill[]> = {
  * 防的假绿形态：`target` 写成不存在的路径 → 备份/改坏都落在空气上，判据当然也不会红，
  * 报告却可能被读成"演练通过"。任一缺失 → 调用方退出 1（**不进入演练阶段，不改任何文件**）。
  */
-function missingTargets(drills: readonly Drill[]): string[] {
+function missingTargets(drills: readonly RangeSpec[]): string[] {
   const missing: string[] = []
   for (const d of drills) {
-    const paths = [d.target, ...(d.copySources ?? [])]
+    const paths = [...(d.target === undefined ? [] : [d.target]), ...(d.copySources ?? [])]
     for (const p of paths) {
       try {
         statSync(join(REPO_ROOT, p))
@@ -655,7 +841,7 @@ interface Result {
 }
 
 /** 临时根里执行改坏 + 跑判据；工作区文件**只读**，跑完删掉整个临时根。 */
-function runCopyDrill(d: Drill, work: string): Omit<Result, 'ok'> {
+function runCopyDrill(d: MutateSpec, work: string): Omit<Result, 'ok'> {
   const root = join(work, 'copy-' + String(Math.random()).slice(2, 8))
   const sources = d.copySources ?? [d.target]
   const before = sources.map(s => fingerprint(join(REPO_ROOT, s)))
@@ -702,7 +888,7 @@ function runCopyDrill(d: Drill, work: string): Omit<Result, 'ok'> {
 }
 
 /** 工作区文件上改坏：备份 → 改坏 → 跑判据 → 还原 + sha256 复核（并发写入则放弃还原）。 */
-function runFileDrill(d: Drill): Omit<Result, 'ok'> {
+function runFileDrill(d: MutateSpec): Omit<Result, 'ok'> {
   const abs = join(REPO_ROOT, d.target)
   const before = readFileSync(abs)
   const beforeHash = sha(abs)
@@ -731,7 +917,22 @@ function runFileDrill(d: Drill): Omit<Result, 'ok'> {
       writeFileSync(abs, before)
     }
   }
-  const restored = !conflict && sha(abs) === beforeHash
+  const bytesBack = !conflict && sha(abs) === beforeHash
+  // 还原后复跑（可选）：证明「红」来自改坏、`还原` 之后判据真的复绿（RV-2 的"还原后复绿"判据）。
+  let recheckNote = ''
+  let recheckEvidence = ''
+  let restored = bytesBack
+  if (bytesBack && d.restoreCheckCmd !== undefined) {
+    const rr = runCommand(d.restoreCheckCmd)
+    const red = redCountOf(rr.out)
+    const green = rr.exit === 0 && red === 0
+    recheckNote = green
+      ? '；还原后复跑判据：**复绿**（退出码 0 / 红例 0）'
+      : '；**还原后复跑判据仍不绿**（退出码 ' + String(rr.exit) + ' / 红例 ' + String(red) + '）'
+    recheckEvidence = ' ｜ 还原后复跑：退出码 ' + String(rr.exit) + '、红例 ' + String(red)
+      + '（命令 ' + d.restoreCheckCmd.join(' ') + '）'
+    if (!green) restored = false
+  }
   return {
     group: d.group, ref: d.ref, name: d.name, required: d.required === true,
     ...criterionOf(d),
@@ -741,13 +942,13 @@ function runFileDrill(d: Drill): Omit<Result, 'ok'> {
     restored, anchorMiss: false,
     restoreNote: conflict
       ? '**检测到并发写入**：演练期间该文件被别的窗口改写 → 已放弃还原（不覆盖他人改动），请人工核查'
-      : (restored ? '已逐字节还原，sha256 复核一致（' + beforeHash.slice(0, 12) + '…）' : '**还原失败**：sha256 与备份不一致'),
-    evidence: evidenceLine(r.out, d.expectNamed),
+      : (bytesBack ? '已逐字节还原，sha256 复核一致（' + beforeHash.slice(0, 12) + '…）' + recheckNote : '**还原失败**：sha256 与备份不一致'),
+    evidence: evidenceLine(r.out, d.expectNamed) + recheckEvidence,
   }
 }
 
 /** `criterion` / `note` 的规范化（未标 = `unspecified`，由覆盖度用例拦住新条目漏标）。 */
-function criterionOf(d: Drill): { criterion: Result['criterion']; note?: string } {
+function criterionOf(d: { criterion?: 'behavior' | 'source-anchor'; note?: string }): { criterion: Result['criterion']; note?: string } {
   return {
     criterion: d.criterion ?? 'unspecified',
     ...(d.note !== undefined ? { note: d.note } : {}),
@@ -761,18 +962,279 @@ function judge(r: Omit<Result, 'ok'>): Result {
   return { ...r, ok: exited && redOk && namedOk && r.restored }
 }
 
-function main(): void {
+/* ── archive 组的定制执行器（RV-1 桩提交 / RV-3 台账副本只读核对）─────────────── */
+
+/** 真台账根单点：`<DSH_HOME|~/.dsh>/reqboard`（与 kb-probe / archive-ledger-audit 同款口径）。 */
+function ledgerRootPath(): string {
+  const home = process.env['DSH_HOME']
+  return join(home !== undefined && home.length > 0 ? home : join(homedir(), '.dsh'), 'reqboard')
+}
+
+/** 定制执行器的产出（由 `runArchiveCustomDrill` 收敛成 `Result` 的公共面）。 */
+interface CustomOutcome {
+  /** 0 = 判据成立（与既有条目"判据红 → 1"的语义相反，见各执行器注释） */
+  exit: number
+  restored: boolean
+  missingNamed: string[]
+  restoreNote: string
+  evidence: string
+  cmd: string
+  /** 逐步读数（人读；会并进 `evidence`，**不新增 Result 字段**，--json 形状不变） */
+  transcript: string[]
+}
+
+/** `ArchiveDrill` 的 `file` 条目 → 执行器最小面（缺 target/from/to 直接抛：宁可响亮报错，不静默跳过）。 */
+function mutateSpecOf(d: ArchiveDrill): MutateSpec {
+  const { target, from, to } = d
+  if (target === undefined || from === undefined || to === undefined) {
+    throw new Error('[' + d.ref + '] mode=file 的 archive 条目缺 target/from/to')
+  }
+  return { ...d, target, from, to }
+}
+
+/**
+ * RV-1：桩工作区 + 内存 store 上跑**真的** `SubmitArchive` 闸
+ * （与 `tests/archive-targets-gate.test.ts` ①③ 同源场景，但不进 vitest：验收要一条命令跑完）。
+ *
+ * 为什么是"桩工作区 + 内存 store"而不是真台账：本演练要证的是「不存在的 `merged_into` 必被拒」，
+ * 与被拒对象无关；用内存 store + mktemp 桩工作区 ⇒ **真台账 / 真工作区一个字节都不参与**，
+ * 演练可反复跑、**不依赖真台账可写**（F-1 那类"写成功却报失败"的存量缺陷也不会被本演练触发）。
+ * "被改坏的文件" = 桩工作区里的提交材料 `submit-materials.json`：
+ * 改坏（`merged_into` → 不存在的路径）→ 提交被拒且点名三要素 → 从字节备份还原 → sha256 比对 →
+ * **同一次提交通过**（=`还原`不是口头声明）。
+ */
+async function runRv1(d: ArchiveDrill, work: string): Promise<CustomOutcome> {
+  const stub = join(work, 'rv1-stub-workspace')
+  const transcript: string[] = []
+  const missing: string[] = []
+  const W = 'drill-archive-rv1'
+  // 目录/需求 id 必须过 `REQUIREMENT_DIR_PATTERN`（`REQ-` + 6 位小写 hex），否则会在"需求目录约定"
+  // 这一层就被拒——那样测到的是目录形态，不是本演练要考的合并去向闸（实测踩过：REQ-rv1drill 被拒）。
+  const REQ_ID = 'REQ-d1a001'
+  const DIR = 'docs/requirements/' + REQ_ID
+  const MANUAL = 'docs/architecture/project-manual.md'
+  const MANUAL_MD = '# 项目说明书\n\n## 收尾门\n\n收尾门三条硬约束。\n'
+  const materialsPath = join(stub, 'submit-materials.json')
+  let restored = false
+  let restoreNote = '**未走到还原**（前面任一步抛错）'
+  let evidence = '（未跑）'
+  try {
+    mkdirSync(stub, { recursive: true })
+    const [{ makeTestStore }, { defineArchiveSubmitTool, stubDocFile }, { listHeadingAnchors }] =
+      await Promise.all([
+        import('../tests/application/harness.js'),
+        import('../tests/helpers/tool-deps.js'),
+        import('../src/domain/knowledge/slug.js'),
+      ])
+    // 锚点由**同一实现**算出（不手写 slug 规则，与既有用例同源）。
+    const anchors = listHeadingAnchors(MANUAL_MD)
+    const anchor = anchors[anchors.length - 1]!.anchor
+    for (const p of ['requirement.md', 'decomposition.md', 'verification.md']) {
+      stubDocFile(DIR + '/' + p, stub)
+    }
+    stubDocFile(MANUAL, stub, MANUAL_MD)
+    const store = makeTestStore()
+    await store.replaceAll('rv1-drill-seed', {
+      schemaVersion: 9, revision: 0, triages: [],
+      requirements: [{
+        id: REQ_ID, title: 'RV-1 桩需求', description: '', status: 'archived', blocked: false,
+        category: 'feature', sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
+        createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
+        statusHistory: [{ status: 'archived', at: 1, by: { kind: 'human' } }],
+        workspaceRoot: stub,
+      }],
+    } as never)
+
+    const tool = defineArchiveSubmitTool(
+      { store, now: () => Date.now(), workspaceRoot: stub } as never,
+    ) as { execute: (a: unknown, e: unknown) => Promise<Record<string, unknown>> }
+    /** 每次提交都**从盘上重读**材料文件：还原只有落在盘上才算数（内存里另留一份不算）。 */
+    const submitFromFile = async (): Promise<{ ok: boolean; message: string; out?: Record<string, unknown> }> => {
+      const args = JSON.parse(readFileSync(materialsPath, 'utf8')) as Record<string, unknown>
+      try {
+        return { ok: true, message: '', out: await tool.execute(args, { agent: { id: W } }) }
+      } catch (err) {
+        return { ok: false, message: (err as Error).message }
+      }
+    }
+
+    const good = {
+      dir: DIR,
+      docs: [
+        { kind: 'requirement', path: DIR + '/requirement.md' },
+        { kind: 'plan', path: DIR + '/decomposition.md' },
+        { kind: 'verification', path: DIR + '/verification.md' },
+      ],
+      merged_into: [MANUAL],
+      index_entry: 'RV-1 桩提交：逐字节还原后同一次提交必须通过',
+      manual_updates: [{ path: MANUAL + '#' + anchor, summary: 'RV-1 桩材料' }],
+    }
+    const goodBytes = Buffer.from(JSON.stringify(good, null, 2) + '\n', 'utf8')
+    writeFileSync(materialsPath, goodBytes)
+    const goodHash = sha(materialsPath)
+    // 改坏点：仅把合并去向换成盘上不存在的路径（其余材料一字不动 ⇒ 拒绝只可能来自这一处）。
+    writeFileSync(materialsPath, JSON.stringify({ ...good, merged_into: [RV1_BAD_TARGET] }, null, 2) + '\n')
+    const badHash = sha(materialsPath)
+    transcript.push('桩工作区（mktemp，跑完删除）：' + stub)
+    transcript.push('被改坏的文件：' + materialsPath)
+    transcript.push('改坏前 sha256：' + goodHash)
+    transcript.push('改坏后 sha256：' + badHash)
+
+    const rejected = await submitFromFile()
+    transcript.push('【改坏态】提交：' + (rejected.ok ? '**意外通过**（应为拒绝）' : '被拒（预期）'))
+    transcript.push('【改坏态】拒绝消息：' + rejected.message)
+    evidence = '拒绝消息：' + rejected.message.slice(0, 300)
+    if (rejected.ok) missing.push('期望被拒，实际通过：merged_into=' + RV1_BAD_TARGET + ' 未被拦')
+    for (const frag of d.expectNamed) if (!rejected.message.includes(frag)) missing.push(frag)
+    // 生效根是**动态**的（mktemp 路径），不能写进 expectNamed ⇒ 这里显式核，核不到就是没点名。
+    if (!rejected.message.includes(stub)) {
+      missing.push('生效根（桩工作区 ' + stub + '）未出现在拒绝消息里')
+    }
+
+    writeFileSync(materialsPath, goodBytes)
+    const restoredHash = sha(materialsPath)
+    restored = restoredHash === goodHash
+    transcript.push('还原后 sha256：' + restoredHash + (restored ? '（与改坏前一致 ✅）' : '（**不一致** ❌）'))
+    restoreNote = restored
+      ? '已逐字节还原 ' + materialsPath + '（sha256 ' + goodHash.slice(0, 12) + '… 与改坏前一致）'
+      : '**还原失败**：还原后 sha256 ' + restoredHash.slice(0, 12) + '… ≠ 备份 ' + goodHash.slice(0, 12) + '…'
+
+    if (restored) {
+      const passed = await submitFromFile()
+      const ok = passed.ok && passed.out?.['success'] === true
+      transcript.push('【还原态】同一次提交：' + (ok ? '通过（success=true）' : '未通过'))
+      evidence += ' ｜ 逐字节还原后同一次提交：' + (ok ? '通过' : '未通过（' + passed.message.slice(0, 120) + '）')
+      if (!ok) missing.push('逐字节还原后同一次提交未通过：' + (passed.message.slice(0, 120) || 'success != true'))
+    }
+    transcript.push('真台账未被使用：store = 内存 store（tests/application/harness.ts 的 makeTestStore），'
+      + '桩工作区在 mktemp 下、跑完删除 ⇒ 本演练不依赖真台账可写')
+  } finally {
+    rmSync(stub, { recursive: true, force: true })
+  }
+  return {
+    exit: missing.length === 0 ? 0 : 1,
+    restored, missingNamed: missing, restoreNote, evidence,
+    cmd: d.cmd.join(' '), transcript,
+  }
+}
+
+/**
+ * RV-3：真台账**副本**上跑只读核对，逐条核对七项读数 + 两棵树的 sha256 + "副本之外零新增文件"。
+ *
+ * 只读契约怎么证：① 副本树 sha256 前后一致（审计脚本除 `--out` 外不写任何路径，本演练**不传** `--out`）；
+ * ② 真台账树 sha256 前后一致（演练只读真台账、只写副本）；③ 副本所在临时目录里除副本外零新增文件。
+ * 读数对不上 = 判红：那是时点漂移（别的窗口又归档一条 / 改了说明书）或判据真坏了，
+ * **由人分因**并走裁定——演练绝不为了让读数对上而改 `RV3_EXPECTED_TOTALS`。
+ */
+function runRv3(d: ArchiveDrill, work: string): CustomOutcome {
+  const transcript: string[] = []
+  const missing: string[] = []
+  const src = ledgerRootPath()
+  const cmdLine = d.cmd.join(' ')
+  if (!existsSync(src)) {
+    return {
+      exit: 1, restored: false,
+      missingNamed: ['台账不可达 ' + src + '（RV-3 取不到读数，不判绿——"没有数据"≠"没问题"）'],
+      restoreNote: '未拷贝（台账不可达）',
+      evidence: '台账不可达：' + src,
+      cmd: cmdLine, transcript,
+    }
+  }
+  const rv3Work = join(work, 'rv3-work')
+  mkdirSync(rv3Work, { recursive: true })
+  const copy = join(rv3Work, 'ledger-copy')
+  cpSync(src, copy, { recursive: true })
+  const srcBefore = fingerprint(src)
+  const copyBefore = fingerprint(copy)
+
+  const r = runCommand(['npx', 'tsx', 'scripts/archive-ledger-audit.mts', '--ledger-root', copy, '--json'])
+  const cmd = cmdLine.replace('<副本>', copy)
+  if (r.exit !== 0) missing.push('审计脚本退出码 ' + String(r.exit) + '（期望 0 = 报告完成；2 = 台账不可达）')
+  const start = r.out.indexOf('{')
+  const end = r.out.lastIndexOf('}')
+  let totals: Record<string, unknown> = {}
+  if (start < 0 || end <= start) {
+    missing.push('审计输出里没有 JSON 对象（前 200 字符：' + r.out.slice(0, 200) + '）')
+  } else {
+    try {
+      totals = ((JSON.parse(r.out.slice(start, end + 1)) as { totals?: Record<string, unknown> }).totals) ?? {}
+    } catch (err) {
+      missing.push('审计输出 JSON 解析失败：' + (err as Error).message)
+    }
+  }
+  for (const [key, expected] of RV3_EXPECTED_TOTALS) {
+    const actual = totals[key]
+    const ok = actual === expected
+    transcript.push('读数 ' + key + ' = ' + String(actual) + '（期望 ' + String(expected) + '）' + (ok ? ' ✅' : ' ❌'))
+    if (!ok) missing.push('读数 ' + key + ' 期望 ' + String(expected) + '、实测 ' + String(actual))
+  }
+
+  const copyAfter = fingerprint(copy)
+  const srcAfter = fingerprint(src)
+  const copyUnchanged = copyAfter === copyBefore
+  const srcUnchanged = srcAfter === srcBefore
+  const strays = readdirSync(rv3Work).filter(n => n !== 'ledger-copy')
+  if (!copyUnchanged) missing.push('副本树 sha256 变了（只读契约被破坏）')
+  if (!srcUnchanged) missing.push('真台账树 sha256 变了（本演练绝不写真台账；先查是不是别的窗口在写）')
+  if (strays.length > 0) missing.push('副本之外出现新写入：' + strays.join('、'))
+  transcript.push('副本树 sha256：' + copyBefore + ' → ' + copyAfter + (copyUnchanged ? '（未变 ✅）' : '（**变了** ❌）'))
+  transcript.push('真台账树 sha256：' + srcBefore + ' → ' + srcAfter + (srcUnchanged ? '（未变 ✅）' : '（**变了** ❌）'))
+  transcript.push('副本之外的新增文件：' + (strays.length === 0 ? '无 ✅' : strays.join('、') + ' ❌'))
+  transcript.push('台账根：' + src + '；副本：' + copy + '（跑完随临时根删除）')
+
+  const restored = copyUnchanged && srcUnchanged
+  return {
+    exit: missing.length === 0 ? 0 : 1,
+    restored, missingNamed: missing,
+    restoreNote: restored
+      ? '副本与真台账两棵树 sha256 前后逐字节一致 ⇒ 只读契约成立（本演练不传 `--out`，除副本外零写入）'
+      : '**有树被改写**：副本或真台账的 sha256 前后不一致，请人工核查',
+    evidence: RV3_EXPECTED_TOTALS.map(([k]) => k + '=' + String(totals[k])).join(' / ')
+      + ' ｜ 真台账树 sha256 ' + srcBefore.slice(0, 12) + '…（前后未变）'
+      + ' ｜ 时点 ' + new Date().toISOString(),
+    cmd, transcript,
+  }
+}
+
+/** 定制执行器的分发 + 收敛成 `Result`（`transcript` 并进 `evidence`，不新增字段）。 */
+async function runArchiveCustomDrill(d: ArchiveDrill, work: string): Promise<Omit<Result, 'ok'>> {
+  const out = d.mode === 'rv1' ? await runRv1(d, work) : runRv3(d, work)
+  return {
+    group: d.group, ref: d.ref, name: d.name, required: false,
+    ...criterionOf(d),
+    breakPoint: d.breakPoint, cmd: out.cmd, exit: out.exit, expectExit: d.expectExit,
+    red: 0, minRed: d.minRed ?? 0,
+    missingNamed: out.missingNamed, restored: out.restored, anchorMiss: false,
+    restoreNote: out.restoreNote,
+    evidence: out.evidence
+      + (out.transcript.length === 0 ? '' : '\n' + out.transcript.map(l => '       · ' + l).join('\n')),
+  }
+}
+
+/** 一条演练的执行分发：`archive` 组的 RV-1/RV-3 走定制执行器，其余一律走既有两个执行器。 */
+async function runDrill(d: Drill | ArchiveDrill, work: string): Promise<Omit<Result, 'ok'>> {
+  if (d.group === 'archive') {
+    return d.mode === 'file' ? runFileDrill(mutateSpecOf(d)) : await runArchiveCustomDrill(d, work)
+  }
+  return d.mode === 'copy' ? runCopyDrill(d, work) : runFileDrill(d)
+}
+
+async function main(): Promise<void> {
   const argv = process.argv.slice(2)
   const asJson = argv.includes('--json')
   const gi = argv.indexOf('--group')
   const group = gi >= 0 ? (argv[gi + 1] ?? '') : 'hard'
-  if (!['hard', 'legacy', 'canceled', 'all'].includes(group)) {
-    console.error('用法：npx tsx scripts/reverse-drill-matrix.mts [--json] [--group hard|legacy|canceled|all]')
+  // 组名表：`'canceled', 'all'` 必须**保持相邻**（tests/canceled-reverse-drill-coverage.test.ts ⑦ 逐字断言）。
+  if (!['hard', 'legacy', 'archive', 'canceled', 'all'].includes(group)) {
+    console.error('用法：npx tsx scripts/reverse-drill-matrix.mts [--json] '
+      + '[--group hard|legacy|archive|canceled|all]')
     process.exit(2)
   }
-  const drills = group === 'all'
+  const drills: readonly (Drill | ArchiveDrill)[] = group === 'all'
     ? [...HARD_DRILLS, ...LEGACY_DRILLS, ...CANCELED_DRILLS]
-    : DRILL_GROUPS[group as 'hard' | 'legacy' | 'canceled']
+    : group === 'archive'
+      ? ARCHIVE_DRILLS
+      : DRILL_GROUPS[group as 'hard' | 'legacy' | 'canceled']
 
   // 范围自检（防假绿）：目标不在盘上就退出 1 —— 此时**一个字节都没改**。
   const missing = missingTargets(drills)
@@ -786,13 +1248,13 @@ function main(): void {
   const results: Result[] = []
   try {
     for (const d of drills) {
-      const raw = d.mode === 'copy' ? runCopyDrill(d, work) : runFileDrill(d)
+      const raw = await runDrill(d, work)
       const r = judge(raw)
       results.push(r)
       // 锚点未命中 = 演练无效（没写盘），继续把余下条目跑完，别让一条错锚点掩住其余问题；
       // 还原失败 / 并发写入才是**立刻中止**（绝不带着半改状态继续跑下一项）。
       if (!r.restored && !r.anchorMiss) {
-        console.error('[中止] ' + d.target + ' ' + r.restoreNote + '，停止后续演练。')
+        console.error('[中止] ' + String(d.target ?? d.ref) + ' ' + r.restoreNote + '，停止后续演练。')
         break
       }
     }
@@ -815,8 +1277,9 @@ function main(): void {
   }
 
   console.log('== 反向演练矩阵（改坏 → 判据必须红 → 逐字节还原）==')
-  console.log('组：' + group + '（hard = REQ-261005105032-3b02 六条必备 + 附一条；'
-    + 'legacy = REQ-261004065652-5c1c 六条；canceled = REQ-261005193546-1b1a 十四条）')
+  console.log('组：' + group + '（hard = REQ-261005105032-3b02 六条必备 + 附一条 + 缺口 2 设计坐标一条；'
+    + 'legacy = REQ-261004065652-5c1c 六条；canceled = REQ-261005193546-1b1a 十四条；'
+    + 'archive = REQ-261006201841-944d 三条 RV-1/RV-2/RV-3）')
   for (const r of results) {
     console.log((r.ok ? '✅' : '❌') + ' [' + r.ref + '] ' + r.name + (r.required === true ? '（必备）' : ''))
     // 判据类型只对**标了**的条目打印（`canceled` 组）：hard / legacy 两组的输出格式保持原样，
@@ -843,8 +1306,18 @@ function main(): void {
     console.log('\ncanceled 组：' + String(results.length) + ' 条（其中源码锚点 ' + String(anchorOnly)
       + ' 条——行为等价、只有源码锚点会红，引用时不得当成行为断言的覆盖力）')
   }
+  if (group === 'archive') {
+    console.log('\narchive 组：' + String(results.length)
+      + ' 条（RV-1 桩提交被拒 + 材料逐字节还原后同一次提交通过 / RV-2 删 K13 分支即时红 + 还原后复绿 / '
+      + 'RV-3 台账副本七项读数 + 副本与真台账两棵树 sha256 未变）')
+    console.log('（本组**不进** `--group all`：RV-3 会拷真台账、RV-2 会 spawn vitest，'
+      + '并进 all 会让"三组都跑"多出对用户本机真台账内容的依赖）')
+  }
   console.log(allOk
-    ? '\n[通过] 所选组全部演练如预期变红，且每一处的还原都过了 sha256 核对。'
+    ? (group === 'archive'
+      ? '\n[通过] archive 组三条判据全部成立（RV-1 被拒并点名三要素 + 材料逐字节还原后同一次提交通过；'
+        + 'RV-2 删 K13 分支即时红、还原后复绿；RV-3 台账副本七项读数对上 + 两棵树 sha256 未变）。'
+      : '\n[通过] 所选组全部演练如预期变红，且每一处的还原都过了 sha256 核对。')
     : '\n[失败] 有演练没变红 / 没点名 / 锚点未命中 / 还原失败——不得宣称判据有效。')
   if (!allOk) process.exitCode = 1
 }

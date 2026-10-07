@@ -109,16 +109,52 @@ describe('FR-4：已绑定时按 onWindowBound 选择分支', () => {
     await expect(capture(failing, { onWindowBound: 'handoff' })).rejects.toThrow(/REQBOARD_OPEN_WINDOW_UNAVAILABLE/)
   })
 
-  it('未绑定时两条分支都不受影响（回归保护：老行为不变）', async () => {
+  it('⑤ 未绑定 + handoff → 也真开新窗口，需求记在**新窗口**名下（委派立项）', async () => {
+    // 修复前这里被静默忽略：不开窗、需求落回本窗口，回执照报 bound_policy=handoff。
+    // 现场后果：开窗委派的窗口以为需求派出去了，实际三条工作面一条都没立起来。
+    const NEW = 'session-delegated'
     const h = makeHarness({ requirements: [] })
     const q = new FakeQuestions()
     q.answers = ANSWERS
     h.deps.questions = q
     h.deps.ids = { requirement: () => SECOND, task: () => 't-ffffff', comment: () => 'c-1' } as never
+    h.deps.windowOpener = opener(NEW)
     const out = await capture(h, { onWindowBound: 'handoff' })
     expect(out.success).toBe(true)
-    expect(out.window_key).toBeUndefined()               // 没绑定就无需开窗
+    expect(out.bound_policy).toBe('handoff')
+    expect(out.window_key).toBe(NEW)                    // 真的换了窗
+    expect(String(out.note)).toContain(NEW)
+    const created = (await h.store.get(String(out.requirement_id)))!
+    expect(created.sourceSessionId).toBe(NEW)           // 不在本窗口名下
+  })
+
+  it('⑥ 未绑定 + 缺省（或不传）→ 仍记本窗口（回归保护：老行为不变）', async () => {
+    const h = makeHarness({ requirements: [] })
+    const q = new FakeQuestions()
+    q.answers = ANSWERS
+    h.deps.questions = q
+    h.deps.ids = { requirement: () => SECOND, task: () => 't-ffffff', comment: () => 'c-1' } as never
+    const out = await capture(h, { onWindowBound: 'second' })
+    expect(out.success).toBe(true)
+    expect(out.window_key).toBeUndefined()
     const created = (await h.store.get(String(out.requirement_id)))!
     expect(created.sourceSessionId).toBe(W)
+  })
+
+  it('⑦ 未绑定 + handoff 但开窗能力缺失/开窗失败 → 如实拒绝，不静默降级成 second', async () => {
+    const bare = makeHarness({ requirements: [] })
+    const q = new FakeQuestions()
+    q.answers = ANSWERS
+    bare.deps.questions = q
+    bare.deps.ids = { requirement: () => SECOND, task: () => 't-ffffff', comment: () => 'c-1' } as never
+    await expect(capture(bare, { onWindowBound: 'handoff' })).rejects.toThrow(/REQBOARD_OPEN_WINDOW_UNAVAILABLE/)
+
+    const failing = makeHarness({ requirements: [] })
+    const q2 = new FakeQuestions()
+    q2.answers = ANSWERS
+    failing.deps.questions = q2
+    failing.deps.ids = { requirement: () => SECOND, task: () => 't-ffffff', comment: () => 'c-1' } as never
+    failing.deps.windowOpener = opener(undefined)
+    await expect(capture(failing, { onWindowBound: 'handoff' })).rejects.toThrow(/REQBOARD_OPEN_WINDOW_UNAVAILABLE/)
   })
 })

@@ -74,7 +74,15 @@ describe('全链路：需求文档 → 计划批准 → 拆分 → 出口门禁'
     await store.replaceAll('requirement-created', { schemaVersion: 9, revision: 0, requirements: [r as never], triages: [] })
 
     // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘
-    writeFileSync(join(dir, 'docs/requirements', REQ, 'plan.md'), '# 拆分计划\n')
+    // 2026-10-06 缺口 4 之四：落盘内容必须带任务表且收录 tasks[] 的 key（plan_doc_task_table_incomplete）
+    writeFileSync(join(dir, 'docs/requirements', REQ, 'plan.md'), [
+      '# 拆分计划',
+      '',
+      '| 计划 key | 标题 | 依赖 | 工作量 | 验收标准 |',
+      '|---|---|---|---|---|',
+      '| k1 | 把甲做完 | — | M | 跑 npx vitest run tests/a.test.ts 全绿 |',
+      '',
+    ].join('\n'))
     await plan.execute({ path: 'docs/requirements/' + REQ + '/plan.md', summary: '把甲做出来', tasks: PLAN_TASKS }, exec)
     await store.mutate(REQ, (req0) => {      if (req0.plan !== undefined) { req0.plan.approvedAt = 1000; req0.plan.approvedBy = { kind: 'human' } }
       return { changed: true }

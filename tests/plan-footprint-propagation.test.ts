@@ -24,6 +24,7 @@ import { submitPlanArtifact } from '../src/application/use-cases/SubmitArtifact.
 import {
   defineDecomposeTool,
   stubDocFile,
+  resolveWorkspaceRoot,
   taskStoreOf,
   toUseCaseDeps,
   type ReqboardToolDeps,
@@ -33,6 +34,19 @@ import type { RequirementRecord, RequirementStatus } from '../src/shared/protoco
 const W = 'session-fp-001'
 const REQ = 'REQ-fp0001'
 const PLAN_PATH = 'docs/requirements/' + REQ + '/decomposition.md'
+
+/**
+ * 计划文档夹具：任务表必须收录 tasks[] 的 key（2026-10-06 缺口 4 之四的
+ * `plan_doc_task_table_incomplete` 硬门）。本文件只提交 key = fp1。
+ */
+const PLAN_DOC = [
+  '# 拆分计划（夹具）',
+  '',
+  '| 计划 key | 标题 | 依赖 | 工作量 | 验收标准 |',
+  '|---|---|---|---|---|',
+  '| fp1 | 体量算术落地 | — | M | 跑 npx vitest run tests/round-capacity.test.ts 全绿 |',
+  '',
+].join('\n')
 
 let store: ReturnType<typeof makeTestStore>
 let decompose: { execute: (a: unknown, e: unknown) => Promise<any> }
@@ -49,12 +63,14 @@ beforeEach(() => {
     taskStore: taskStoreOf(deps),
     now: () => Date.now(),
   })
-  stubDocFile(PLAN_PATH)
+  stubDocFile(PLAN_PATH, undefined, PLAN_DOC)
 })
 
 afterEach(() => {
-  // 夹具按既有惯例落盘到工作区根（见 stubDocFile 注释）；这里只清自己那个**合成 id** 的目录，不留垃圾。
-  rmSync(join(process.cwd(), 'docs/requirements', REQ), { recursive: true, force: true })
+  // REQ-261006201814-ac4f u3：`stubDocFile` 落到**临时根**（见其注释），故这里也清临时根。
+  // 改前清的是 join(process.cwd(), 'docs/requirements', REQ) = 真实工作树路径——
+  // 既清不掉真正写下的文件，又会在沙箱下被 ERR_ACCESS_DENIED 拒。
+  rmSync(join(resolveWorkspaceRoot(), 'docs/requirements', REQ), { recursive: true, force: true })
 })
 
 async function seed(

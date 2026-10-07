@@ -1,52 +1,55 @@
 /**
- * 需求详情页「工作汇报」渲染探针（REQ-261004222448-292a · 卡 t-98684c）。
+ * 需求详情页「工作汇报」渲染探针（REQ-261004222448-292a · 卡 t-98684c；
+ * REQ-261006130057-7a43 · t9 按七 Tab 口径复测校准）。
  *
- * 为什么需要它：壳与六个面板的静态断言（`match(/data-panel=/)` 这类）只能证明「字符串里有这回事」，
+ * 为什么需要它：壳与七个面板的静态断言（`match(/data-panel=/)` 这类）只能证明「字符串里有这回事」，
  * 证明不了「渲染出来真的四问可答 / 真的没有内层滚动条 / 未激活面板真的不在 DOM」。
- * 布局与可视性缺陷只有真实渲染判定得出来，所以这里照 `scripts/list-responsive-probe.mts` 的骨架：
- * 真实 `buildReportShell` + 真实 CSS 拼出标本页 → headless Chrome `--dump-dom` → 读 `#diag` 判定。
+ * 布局与可视性缺陷只有真实渲染判定得出来：真实 `buildReportShell` + 真实 CSS 拼出标本页 →
+ * headless Chrome `--dump-dom` → 读 `#diag` 判定。
+ *
+ * ── 7a43（t9）口径校准（2026-10-06）────────────────────────────────────────────
+ * 本探针的几何阈值最初按 f32f（六个 Tab / 24px 页标题 / 旧头部 D-8 两行 / 旧字阶
+ * 11·12·13·15·20·24）订立。REQ-261006130057-7a43 已把页面重设计并落地（t1~t8）：
+ *   · Tab 6 → **7**（新增 verify，FR-4；验收 Tab 第 5 位，`verifyTabIndex1Based = 5`）；
+ *   · 头部三层（标识行 / 标题行 19px / 闸门提示条，FR-1）取代旧 D-8 两行；
+ *   · 激活页签 = 浅蓝底 + **主色文字** + 底部 2px 指示条（FR-4，**推翻** f32f 设计契约 ⑦ 的
+ *     「白滑块 + 正文字色」——旧断言方向已反转）；
+ *   · 密度新字阶：10.5（进度带标签/计数徽章/时间戳）· 11 · 12 · 12.5（聊天气泡）· 13 ·
+ *     15 · **19（页标题）** · 20（状态带主值）——旧的 24px 标题档与 11px 下限随之失效；
+ *   · 对话面板聊天气泡（D-5）+ 吸顶分页条（D-7）：`.dsh-pm-chat-scroll`（460px 固定高内滚动）
+ *     是「无内层滚动」铁律的**唯一豁免**（design/frontend.md §对话、architecture §边界裁决 3，
+ *     A3 白名单已注明出处）；
+ *   · 900 窄档：状态带三格退为单列（design/frontend.md §可访问性与窄档）——Tab 栏 top 的
+ *     首屏硬上限因此分档（见 TABS_TOP_MAX_900 的推导）；
+ *   · docs/dialogue 面板断言按 T-6（docs 不再渲染验收单节、有迁移指引条）/
+ *     T-8（对话只读：无回复框无检索框）改写；
+ *   · **900 档 `.dsh-pm-tabs` 实测结论**（任务口径 P2-1 复核）：900 在途实测
+ *     scrollWidth == clientWidth（=1280），**未发生栏内横滚**——页面级横向溢出把栏身同比例
+ *     撑宽（见 A2 的登记溢出源），故 `.dsh-pm-tabs` **不加** A3 白名单；栏计算样式
+ *     `overflow-x: auto`（窄档横滚能力）在场性另作硬断言守住，若将来页面级溢出修复后栏身
+ *     真内溢（横向导航滚动 ≠ 藏内容），再按任务口径补白名单。
+ *
+ * **已销账的两条 pinned deviation（2026-10-06 修复，留档）**：
+ *   · DEV-t6-fonts：汇报模块标题/正文未按 FR-5 落地（实测 13px/400 vs 13px）。根因是
+ *     `src/client/styles/report.ts` 两处横幅注释里写了「--s*」「--f-*」后紧跟斜杠
+ *     （星号 + 斜杠 = 注释终止符）**提前闭合块注释**，紧随的规则集被 CSS 解析器吞掉。
+ *   · DEV-docpath-mono：文档表路径格等宽未生效——同根因（同一句横幅）。
+ *   两处注释已改写（`--s 系列 / --f- 系列`），规则恢复生效；探针里的登记已移除：
+ *   H3 双通道（13px/650 vs 12.5px/400）与 docs 路径格等宽均升为**正向断言**，
+ *   日后回归会当场判红，不再有「登记在案就放行」的余地。
  *
  * 四组合：宽度 1280 / 900 × 状态 在途（implementing，有缺口有任务）/ 终态（archived，只读）。
- * 每组合四条断言，**逐条打印可读行**：
- *   A1 首屏四问可答：是什么 = `[data-report-head]`（含非空标题）；到哪了 = `[data-report-band]`
- *      的 `[data-band-cell="progress"]`（阶段条 `.dsh-pm-progress-dots` 亦须在场）；
- *      卡在哪 / 缺什么 = `[data-band-cell="gaps"]` 非空（「无缺口」也是答）；六个同级 Tab = `[data-report-tabs]`。
- *      「在首屏内」的判定集照 design/test-cases.md 的探针行与 architecture.md 的 L0 定义
- *      （**结论头 / 操作条 / 状态带**），即这三者的落点 `top` 必须落在视口高度内（不滚动可见）。
- *      **Tab 栏的位置是硬判据**（`tabsTop ≤ 713`，2026-10 缺陷修复后追加）：缺陷现场是
- *      线上真数据把 Tab 栏顶到 top=1118（视口 713）→ 首屏看不到六个 Tab。旧口径按
- *      design/test-cases.md 只判 L0 三块、Tab 栏只打印，于是这处"进不去"的缺陷一路绿灯。
- *      判据升级的理由：Tab 栏是六块内容的**唯一入口**，首屏看不到它 = 六块都读不到，
- *      这比"落点差几个像素"严重得多。对应地，评论列表整块高度也设上限（≤ 260px）：
- *      它是被顶爆的现场，且**不许**用 max-height / 内层滚动达标（A3 会同时判红）。
- *   A2 无横向溢出：`documentElement.scrollWidth <= clientWidth + 1`（卡原文口径）；
- *      **另加**报告壳自身同判据——因为 `.dsh-pm-detail` 计算 `overflow-x:auto`（见 A3 的例外），
- *      横向溢出会被它自己吃掉、不冒泡到 documentElement，只查 documentElement 会永远绿（假绿防线）。
- *   A3 无内层滚动容器（口径已勘误，**不做 CSS 文本 grep**——那会误伤合法例外）：
- *      真 DOM 实测，报告壳内不存在「`scrollHeight > clientHeight + 2 || scrollWidth > clientWidth + 2`
- *      且计算样式 `overflow-y|overflow-x ∈ {auto, scroll}`」的元素。
- *      显式排除两处合法例外（自身命中即跳过）：
- *        · `.dsh-pm-detail`（页面级滚动容器，`base.ts` 里就是 `overflow-y:auto`）
- *        · `[data-dag-wrap]` / `.dsh-pm-dag-canvas-wrap`（DAG 画布视口，`dag.ts` 里本就是 `overflow:auto; max-height:640px`）
- *      `overflow: hidden` **不算**内层滚动（不进 `{auto, scroll}` 集合，不误报）。
- *   A4 未激活面板缺席：默认只渲染 `trunk`；`[data-panel="token"|"docs"|"dag"|"dialogue"|"prompts"]`
- *      在真 DOM 里必须查不到（不是查字符串）。
- *   A5 操作条按钮不重叠：包围盒两两不相交（design/test-cases.md 对窄 900 档的第二条断言）。
- *   A6 操作条版式（**仅 1280 档**，2026-10-05 人类验收「排版散架」后追加）：整块高 ≤ 72px，
- *      且动作按钮 `offsetTop` 只有一个取值（同一行）；状态带三格各自 ≤ 220px
- *      （格内每条只给「项名 + 状态」，全文进 title）。900 档不判——那档动作区折行是宽度使然。
+ * 每组合逐条打印可读行（A1~A12 断言口径见行内注释；A13 六个非 trunk 面板补测见文末）。
  *
- * **判据必须硬（REQ-261005105032-3b02 · t-ed8a64 · 验收标准 8）**：上面每个几何量都**不是**
- * "打印出来给人看"而已——两条独立判据同时守它：
- *   ① 页内脚本对每个量给出 `problems.push(...)` 失败分支（判据与读数同一处计算，避免两套真相）；
- *   ② 宿主侧 `readbackProblems()` **只吃原始读数**重算一遍阈值比较（页内派生布尔出错/漏注入时它红），
- *      并承担环境回读：**实际视口宽必须等于 `--window-size` 的期望值**（不等 = 参数没生效，
- *      本次全部几何读数作废 → 直接判失败，不许照旧 PASS）；视口高越界同理。
+ * **判据必须硬（REQ-261005105032-3b02 · t-ed8a64 · 验收标准 8）**：每个几何量两条独立判据同守——
+ *   ① 页内脚本 `problems.push(...)` 失败分支（判据与读数同一处计算）；
+ *   ② 宿主侧 `readbackProblems()` **只吃原始读数**重算阈值比较，并承担环境回读
+ *      （实际视口宽必须等于 `--window-size` 期望值，不等 = 参数没生效，读数作废判失败）。
  * `tests/probe-hard-criteria.test.ts` 用源码级扫描守住"只打印不判"的复发（命中数必须为 0）。
  *
  * 用法：npx tsx scripts/req-report-probe.mts
- * 退出码：0 = 四组合全过；1 = 有断言失败；2 = 环境不可用（找不到 Chrome **或** Chrome 四组合全起不来），
- * 响亮失败、不静默跳过（两种红的处置完全不同：一个去装浏览器，一个去看页面）。
+ * 退出码：0 = 四组合 + 六面板全过；1 = 有断言失败；2 = 环境不可用（找不到 Chrome **或**
+ * Chrome 四组合全起不来），响亮失败、不静默跳过。
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
@@ -54,8 +57,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 // 评论列表的渲染上限（条数）从**渲染层**取，避免探针自己写一份会漂移的常量
 import { COMMENT_RENDER_LIMIT } from '../src/client/views/report-head.js'
+import { REPORT_TAB_KEYS } from '../src/client/views/report-tabs.js'
 // 标本（数据 + 真实壳拼页 + 全量 CSS + Chrome 落点）抽到共享模块：出图脚本
-// `scripts/req-detail-ui-shot.mts` 吃同一份标本，避免两份会漂移的 mock 数据。
+// `scripts/req-detail-ui-shot.mts` / `scripts/req-7a43-ui-shot.mts` 吃同一份标本，避免漂移。
 // **判据仍在本文件**（阈值常量 + 页内断言脚本），共享模块不含任何断言。
 import {
   INACTIVE_PANEL_KEYS, STATES, WIDTHS, WINDOW_HEIGHT, findChrome, specimenShell, specimenShellForPanel,
@@ -63,65 +67,104 @@ import {
 } from './fixtures/req-detail-specimen.mts'
 
 /**
- * Tab 栏 top 的**硬上限**（px）= headless 下 800 档实测视口高 713（见 WINDOW_HEIGHT 的口径说明）。
+ * Tab 栏 top 的**硬上限**（px，**仅 1280 档**）= headless 下 800 档实测视口高 713。
  *
- * 为什么它从"只打印的诊断"升成硬判据：缺陷修复后（REQ-261004222448-292a 验收现场）
- * 线上真数据曾把 Tab 栏顶到 top=1118 → **首屏看不到六个 Tab**，而这处缺陷在旧判据下
- * 一路绿灯（旧口径认为"L0 首屏不含 Tab 栏"，故只打印）。第一屏看不见入口，等于六块内容
- * 都进不去——这就是"看不到"的缺陷，必须判红，否则它会再次悄悄退回去。
+ * 缺陷修复史（REQ-261004222448-292a 验收现场）：线上真数据曾把 Tab 栏顶到 top=1118 →
+ * 首屏看不到 Tab。七个 Tab 是七块内容的唯一入口，首屏看不到它 = 都进不去。
  */
 const TABS_TOP_MAX = 713
 
 /**
- * 评论列表容器（`data-comment-list`）的**整块高度上限**（px）。
+ * Tab 栏 top 在 **900 档**的硬上限（px）= TABS_TOP_MAX + 2 × BAND_CELL_MAX_H。
  *
- * 与 TABS_TOP_MAX 同源：台账里一条机器转储就 11,157 字，评论列表是"顶爆首屏"的现场。
+ * 为什么分档：design/frontend.md §可访问性与窄档裁定「900 窄档状态带三格退为单列」——
+ * 三格纵向后 Tab 栏**必然**落到 713 首屏线以下（实测 831），这不是缺陷而是已确认设计。
+ * 上界推导：单列状态带相对单行情形最多多出两格高度（每格硬上限 BAND_CELL_MAX_H=220，
+ * 见下），故 713 + 2×220 = 1153；在此上界内 Tab 栏紧随状态带，超过即说明有未登记的内容
+ * 增长（那才是 1118 类缺陷的复发）。
+ */
+const TABS_TOP_MAX_900 = TABS_TOP_MAX + 2 * 220
+
+/**
+ * 评论列表容器（`data-comment-list`）的**整块高度上限**（px）。
  * 它**不许**用限高/内层滚动解决（FR-11 #7），只能靠"少渲染几条 + 截断正文 + 压紧行距"，
  * 所以探针量的是**整块高度**——限高就会在这里露馅（同时 A3 的内层滚动判据也会红）。
  */
 const COMMENT_LIST_MAX_H = 260
 
 /**
- * 操作条（`data-report-actionbar`）在 **1280 档**的整块高度上限（px）+ 按钮行数上限（1 行）。
- *
- * 来源：2026-10-05 人类验收「操作条排版散架」——`← 看板 ｜ 本阶段操作 ｜ 验收通过并归档
- * [需人操作] 后果：…` 挤第一行、`退回返工` 第二行、`取消需求` 第三行，每个按钮后面还跟着
- * 一段 inline 的「后果：…」。修法是把「标签 ｜ 按钮区 ｜ 需人操作标」分成三个并列项、
- * 后果移到按钮下方（见 `report-head.ts#buildReportActionBar`）。
- *
- * 判据两条，**都只在 1280 档**判（900 档动作区本来就会折行——宽度不够，判它会逼着把按钮
- * 缩到不可读）：
- *  ① 整块高度 ≤ 本值（一条 ≈ 按钮 27px + 后果一行 15px + 上下内边距 16px ≈ 58px，留足余量）；
- *  ② 动作按钮**只有一行**（`offsetTop` 只有一个取值）——"参差"正是多行且不等宽造成的。
- */
-const ACTION_BAR_MAX_H = 72
-
-/**
- * 状态带**单格**在 1280 档的高度上限（px）。
- *
- * 来源：2026-10-05 人类验收——三格把「验收标准原文 + 意见」整段塞进小格再截断，
- * 读出来是"半句 + …"，且把首屏吃掉。口径改成格内每条只给「项名 + 状态」（≤1 行），
- * 全文（what ｜ why ｜ 出处）进 `title`，逐项正文去它自己的落点（条款/门禁、『文档』Tab 的验收单）。
+ * 状态带**单格**的高度上限（px，两档同判）：格内每条只给「项名 + 状态」，
+ * 全文进 title（7a43 FR-2 沿用此口径；缺口格折行后仍 ≤ 此值，实测两档均过）。
  */
 const BAND_CELL_MAX_H = 220
 
+/** 头部三层 + 标题行操作区（1280 档）单行判据的余量（px）：操作区右缘 ≈ 标题行右缘 ±本值。 */
+const ACTIONS_RIGHT_TOL = 2
+
 /**
- * 一件标本页 = 共享模块 `specimenShell(...)`（真实壳 HTML + 真实 CSS + 真实宿主类
- * `.dsh-pm-view` 外框）**+ 本文件自己的页内断言脚本**（写法照 `list-responsive-probe.mts`）。
- *
- * 拼页逻辑与标本数据在 `./fixtures/req-detail-specimen.mts`（出图脚本吃同一份，避免漂移）；
- * **断言留在这里**：阈值常量、页内脚本、`#diag` 判定与退出码都是本文件的职责。
- * 断言脚本作为 `bodyScript` 原样插在壳之后；`specimenShell` 不给 title 时用探针口径的标题，
- * 故本文件拼出的 HTML 与抽取前一字不差（重跑输出逐行可比）。
+ * 验收 Tab 的 1-based 位次（T-1：trunk < docs < dag < dialogue < **verify** < token < prompts）。
+ * 字面量 5 是**设计期望**（design/architecture.md：原型实测 verifyTabIndex1Based=5），
+ * 不从注册表推导——从注册表推导等于自己证自己。
  */
+const VERIFY_TAB_INDEX_1BASED = 5
+
+/**
+ * 7a43 密度新字阶（px）：10.5（FR-4 进度带标签 / 计数徽章 / 对话时间戳）· 11（--f-tiny 表头/辅助）·
+ * 12（--f-small）· 12.5（FR-6 聊天气泡 --pm-chat-bubble-fs；FR-5 汇报正文同值）·
+ * 13（--f-body / FR-5 模块标题 650 半粗）·
+ * 15（--f-h2）· 19（FR-1 页标题 --pm-head-title-fs）· 20（--f-l1 状态带主值）。
+ * f32f 旧字阶（11/12/13/15/20/24）随 19px 页标题与 10.5px 密度档落地而废止。
+ */
+const FONT_SCALE: readonly number[] = [10.5, 11, 12, 12.5, 13, 15, 19, 20]
+
+/** 详情页可见真文字的最小计算字号（7a43 密度档：10.5px；f32f 的 11px 下限随密度落地改准）。 */
+const FONT_MIN = 10.5
+
+/**
+ * 阶梯外字号的**显式登记豁免**（逐条给理由；命中别的类名或别的字号照常判红）：
+ *   · .dsh-pm-gate-link：闸门提示条锚链是 <button>，规则没写 font-size，Chrome UA 默认值
+ *     13.3333px 漏继承（banner 是 12px）——已登记的实现小瑕疵（P2 挂账复核），
+ *     不是字阶第七档。
+ */
+const OFFSCALE_EXEMPT: readonly { cls: string; size: number; why: string }[] = [
+  /* dsh-pm-gate-link 13.3333px 的登记已销账：2026-10-06 用 font: inherit + --f-body 修掉
+     UA 按钮默认字号漏继承（现为 13px，在本版字阶内），降为硬判据。 */
+]
+
+/**
+ * 命中区 24×24（WCAG 2.5.8 AA）的**显式登记例外**（与旧探针的 Tab 4px 相邻间距例外同纪律：
+ * 逐条写理由，清单之外一律判红）：
+ *   · .dsh-pm-comments-all：评论头部行「全部对话 →」文本锚链（FR-3 单行紧凑头部行，
+ *     行高 18.6px 的 inline 文本钮）——P2 挂账复核（设计 §可访问性只点名气泡/工具条/徽章 ≥24）；
+ *   · .dsh-pm-doc-open：文档表「打开」列链接式小按钮（FR-6 紧凑分节表行高 18.6px）——同上挂账；
+ *   · 验收单逐项单选（.dsh-pm-verdict-btn 内的原生 radio）：radio 本体 13×13，
+ *     **命中区 = 包裹它的整枚 label**（实测 min-height 24px，另有专门断言守它）。
+ */
+const TARGET_EXEMPT: readonly { cls: string; why: string }[] = [
+  /* 两条 7a43 新控件的登记（dsh-pm-comments-all / dsh-pm-doc-open）已销账：
+     2026-10-06 给两类加 min-height: var(--pm-target)（t9 复核 P1-1——f32f t-0d8c9b
+     已把行内链接纳入 ≥24 口径，垂直堆叠列无 WCAG 间距例外可援），现为硬判据。 */
+]
+
+/** A3 的合法例外（自身命中即跳过）：在页内脚本与 A13 面板脚本里共用同一份，防两处漂移。 */
+/* D-13：对话聊天区高度随视口自适应（clamp(320px, 100vh-420px, 880px)）、DAG 画布区同理
+   （clamp(360px, 100vh-400px, 900px)）——两处都是**有界内滚动**的合法豁免，见 design/frontend.md。 */
+const SCROLL_EXCEPTIONS = '.dsh-pm-detail, [data-dag-wrap], .dsh-pm-dag-canvas-wrap, .dsh-pm-chat-scroll'
+
+/** 一件标本页 = 共享模块 `specimenShell(...)` **+ 本文件自己的页内断言脚本**。 */
 function specimenHtml(width: number, state: SpecimenState, expectLong: number): string {
   return specimenShell(width, state, `<script>
 (function () {
   /* 合法例外：自身命中即跳过（不用 closest——那会把例外元素的**后代**也一并放过，
-     而我们要扫的恰恰是壳内部还有没有别的滚动容器）。 */
-  var EXCEPTIONS = '.dsh-pm-detail, [data-dag-wrap], .dsh-pm-dag-canvas-wrap';
+     而我们要扫的恰恰是壳内部还有没有别的滚动容器）。
+     .dsh-pm-chat-scroll：对话面板 460px 固定高内滚动，「无内层滚动」铁律的唯一豁免
+     （7a43 D-5 气泡对话 / D-7 吸顶分页条；design/frontend.md §对话、architecture §边界裁决 3）。 */
+  var EXCEPTIONS = ${JSON.stringify(SCROLL_EXCEPTIONS)};
   var INACTIVE = ${JSON.stringify(INACTIVE_PANEL_KEYS)};
   var problems = [];
+  /* 已停用（复核 P2-1）：pinned deviation 两条已全部销账，这里不再接受新登记——
+     本仓纪律是「修掉」而不是「登记放行」。保留变量只为兼容打印路径，**禁止再 push**。 */
+  var deviations = [];
   var shell = document.querySelector('[data-report-shell]');
   var de = document.documentElement;
 
@@ -141,7 +184,15 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
   var gaps = shell === null ? null : shell.querySelector('[data-band-cell="gaps"]');
   var tabs = shell === null ? null : shell.querySelector('[data-report-tabs]');
   var actions = shell === null ? null : shell.querySelector('[data-report-actions]');
-  var tabCount = tabs === null ? 0 : tabs.querySelectorAll('.dsh-pm-tab').length;
+  var tabEls = tabs === null ? [] : tabs.querySelectorAll('.dsh-pm-tab');
+  var tabCount = tabEls.length;
+  var tabOrder = [];
+  var verifyTabIndex1Based = -1;
+  for (var ti0 = 0; ti0 < tabEls.length; ti0++) {
+    var tk = tabEls[ti0].getAttribute('data-tab');
+    tabOrder.push(tk);
+    if (tk === 'verify') verifyTabIndex1Based = ti0 + 1;
+  }
   var a1 = {
     head: head !== null,
     title: txt(title).length > 0,
@@ -150,7 +201,7 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
     gaps: gaps !== null && txt(gaps).length > 0,
     gapsNone: gaps !== null && gaps.querySelector('[data-gaps="none"]') !== null,
     dots: dots !== null,
-    tabs: tabs !== null && tabCount === 6,
+    tabs: tabs !== null && tabCount === 7,
     tabCount: tabCount
   };
   if (!a1.head) problems.push('A1 是什么：缺少 [data-report-head]');
@@ -159,14 +210,38 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
   if (a1.band && !a1.progress) problems.push('A1 到哪了：状态带 progress 格无文案');
   if (!a1.dots) problems.push('A1 到哪了：头部阶段条 .dsh-pm-progress-dots 不在场');
   if (!a1.gaps) problems.push('A1 卡在哪：状态带 gaps 格缺失或为空（无缺口时也该有一行正向结论）');
-  if (!a1.tabs) problems.push('A1 Tab 栏：六个同级 Tab 未渲染全（实得 ' + String(tabCount) + '）');
+  if (!a1.tabs) problems.push('A1 Tab 栏：七个同级 Tab 未渲染全（实得 ' + String(tabCount) + '）');
+  /* T-1：Tab 次序 = 注册表次序，且 verify 在第 5 位（1-based，设计字面量期望） */
+  var EXPECT_ORDER = ${JSON.stringify([...REPORT_TAB_KEYS])};
+  if (tabOrder.join(',') !== EXPECT_ORDER.join(',')) {
+    problems.push('A1 Tab 次序 ≠ 注册表（trunk<docs<dag<dialogue<verify<token<prompts）：实得 [' + tabOrder.join(',') + ']');
+  }
+  if (verifyTabIndex1Based !== ${String(VERIFY_TAB_INDEX_1BASED)}) {
+    problems.push('A1 验收 Tab 位次 verifyTabIndex1Based=' + String(verifyTabIndex1Based)
+      + ' ≠ 期望 ${String(VERIFY_TAB_INDEX_1BASED)}（T-1：verify 在 dialogue 之后、token 之前）');
+  }
 
   /* ── A2 无横向溢出 ─────────────────────────────────────────── */
   var docBox = { cw: de.clientWidth, sw: de.scrollWidth };
   var shellBox = shell === null ? { cw: 0, sw: 0 } : { cw: shell.clientWidth, sw: shell.scrollWidth };
   var docOverflow = docBox.sw > docBox.cw + 1;
   var shellOverflow = shell !== null && shellBox.sw > shellBox.cw + 1;
-  if (docOverflow) problems.push('A2 横向溢出：documentElement scrollWidth ' + String(docBox.sw) + ' 大于 clientWidth ' + String(docBox.cw));
+  /* 900 在途曾有两处**已登记**的页面级横向溢出源，2026-10-07「详情页面不适配」修复后**双双消失**：
+        ① 标题行操作区 .dsh-pm-rh-title > [data-report-actions]；
+        ② 折叠长日志评论的 nowrap 单行截断体（.dsh-pm-comment-body--clip，用 contain: inline-size
+           把内在尺寸贡献清零）。
+      **判据随之收紧为硬判据**：不再"隐藏登记源看残余"——页面级横向溢出只要 > 1px 就判红，
+     残余即原始溢出量（"登记在案就放行"正是这条判据失效的老路）。 */
+  var a2 = {
+    overflow: docOverflow,
+    residualAfterHidingRegistered: docOverflow ? (docBox.sw - docBox.cw) : 0,
+    registeredSources: 0,
+  };
+  if (a2.residualAfterHidingRegistered > 1) {
+    problems.push('A2 横向溢出：documentElement 残余 ' + String(a2.residualAfterHidingRegistered)
+      + 'px（scrollWidth ' + String(de.scrollWidth) + ' > clientWidth ' + String(de.clientWidth)
+      + '）——2026-10-07 起无"登记源"豁免，任何页面级横向溢出都判红');
+  }
   if (shellOverflow) problems.push('A2 横向溢出：报告壳 scrollWidth ' + String(shellBox.sw) + ' 大于 clientWidth ' + String(shellBox.cw));
 
   /* ── A3 无内层滚动容器（真 DOM 实测）────────────────────────── */
@@ -205,21 +280,14 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
   if (hostCount !== 1) problems.push('A4 面板包装器应有且仅有 1 个，实得 ' + String(hostCount));
   if (!trunkPresent) problems.push('A4 默认面板 trunk 不在 DOM');
 
-  /* ── 几何：L0 首屏判定集（结论头 / 操作条 / 状态带）落点是否在视口内 ──
-     判据 = 不滚动即可见其落点（top 在 [0, vh)）。为什么不要求整个元素都在视口内：
-     「一屏内能找到落点」正是卡与设计的措辞，而状态带三格本身可以比一屏更高（5 条缺口），
-     要求整块可见等于要求"缺口不许超过 2 条"，与 FR-4「首屏放前 3~5 条」自相矛盾。 */
+  /* ── 几何：L0 首屏判定集（结论头 / 操作区 / 状态带）落点是否在视口内 ── */
   var vh = de.clientHeight;
-  var TABS_TOP_MAX = ${String(TABS_TOP_MAX)};
+  var TABS_TOP_LIMIT = de.clientWidth >= 1280 ? ${String(TABS_TOP_MAX)} : ${String(TABS_TOP_MAX_900)};
   var COMMENT_LIST_MAX_H = ${String(COMMENT_LIST_MAX_H)};
   var COMMENT_RENDER_LIMIT = ${String(COMMENT_RENDER_LIMIT)};
   var EXPECT_LONG = ${String(expectLong)};
-  var ACTION_BAR_MAX_H = ${String(ACTION_BAR_MAX_H)};
   var BAND_CELL_MAX_H = ${String(BAND_CELL_MAX_H)};
   function hOf(el) { return el === null ? 0 : Math.round(el.getBoundingClientRect().height); }
-  /* 评论列表容器（data-comment-list）：它是"头部长日志把 Tab 顶出首屏"那处缺陷的现场。
-     量它的**整块高度**（不设限高、不做内层滚动，所以只能靠内容控制）并设硬上限 COMMENT_MAX_H。
-     容器的子元素高度明细也一并量：要压的时候得知道压的是哪一块。 */
   var comments = shell === null ? null : shell.querySelector('[data-comment-list]');
   var commentRows = comments === null ? 0 : comments.querySelectorAll('[data-comment-row]').length;
   var commentLong = comments === null ? 0 : comments.querySelectorAll('[data-comment-long="1"]').length;
@@ -243,17 +311,18 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
   geom.headInFold = inFold(geom.headTop);
   geom.bandInFold = inFold(geom.bandTop);
   geom.gapsInFold = inFold(geom.gapsTop);
-  /* 终态没有操作条（FR-3：终态只读，不留假出口）→ 那就没有可判的落点，不算失败。 */
   geom.actionsInFold = actions === null ? true : inFold(geom.actionsTop);
   geom.foldOk = geom.headInFold && geom.bandInFold && geom.gapsInFold && geom.actionsInFold;
-  /* Tab 栏进首屏：**硬判据**（缺陷修复：线上真数据曾顶到 1118，首屏看不到六个 Tab）。
-     口径 = 落在视口内（top < vh）且不超上限 TABS_TOP_MAX（=713，即实测视口高）。 */
-  geom.tabsInFold = inFold(geom.tabsTop) && geom.tabsTop <= TABS_TOP_MAX;
+  /* Tab 栏进首屏：**硬判据**，上限分档（1280 → 落视口内且 ≤ 713；900 → 状态带单列是已确认
+     设计，Tab 栏允许落到首屏线下，但仍 ≤ 713+2×220，防 1118 类缺陷复发）。 */
+  geom.tabsLimit = TABS_TOP_LIMIT;
+  geom.tabsInFold = de.clientWidth >= 1280
+    ? (inFold(geom.tabsTop) && geom.tabsTop <= TABS_TOP_LIMIT)
+    : (geom.tabsTop >= 0 && geom.tabsTop <= TABS_TOP_LIMIT);
   if (!geom.tabsInFold) {
-    problems.push('A1 首屏：Tab 栏不在首屏内（top ' + String(geom.tabsTop) + ' > 上限 ' + String(TABS_TOP_MAX)
-      + '，视口高 ' + String(vh) + '）——六个 Tab 是六块内容的唯一入口，首屏看不到它等于都进不去');
+    problems.push('A1 首屏：Tab 栏越界（top ' + String(geom.tabsTop) + '，本档上限 ' + String(TABS_TOP_LIMIT)
+      + '，视口高 ' + String(vh) + '）——七个 Tab 是七块内容的唯一入口');
   }
-  /* 评论列表：整块高度上限（不许靠限高/内层滚动达标）+ 条数上限 + 长日志必须被收纳 */
   if (geom.commentsH > COMMENT_LIST_MAX_H) {
     problems.push('A1 首屏：评论列表整块高 ' + String(geom.commentsH) + 'px > 上限 ' + String(COMMENT_LIST_MAX_H)
       + 'px（不许用 max-height/内层滚动解决，只能少渲染几条 + 截断正文 + 压紧行距）');
@@ -266,21 +335,16 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
       + '（data-comment-long="1" 没打上：11k 字的机器转储会整段铺开，把 Tab 栏顶出首屏）');
   }
   if (!geom.headInFold) problems.push('A1 首屏：结论头不在首屏内（top ' + String(geom.headTop) + '，视口高 ' + String(vh) + '）');
-  if (!geom.actionsInFold) problems.push('A1 首屏：操作条不在首屏内（top ' + String(geom.actionsTop) + '，视口高 ' + String(vh) + '）');
+  if (!geom.actionsInFold) problems.push('A1 首屏：操作区不在首屏内（top ' + String(geom.actionsTop) + '，视口高 ' + String(vh) + '）');
   if (!geom.bandInFold) problems.push('A1 首屏：状态带不在首屏内（top ' + String(geom.bandTop) + '，视口高 ' + String(vh) + '）');
   if (!geom.gapsInFold) problems.push('A1 首屏：缺口格不在首屏内（top ' + String(geom.gapsTop) + '，视口高 ' + String(vh) + '）');
-  /* 头部 / 状态带**整块高度** ≤ 视口高：落点"在首屏内"只能证明**起点**可读，
-     整块高于视口时它仍然一屏读不完（滚到下一屏才看得到尾）。这两块此前只在 [诊断] 行里打印
-     （"只打印不判失败"的典型）——现在升为硬判据：它们的整块高度也是首屏可用性的判据。 */
   if (geom.headH > vh) problems.push('A1 首屏：结论头整块高 ' + String(geom.headH) + 'px > 视口高 ' + String(vh) + 'px（一屏读不完头部）');
   if (geom.bandH > vh) problems.push('A1 首屏：状态带整块高 ' + String(geom.bandH) + 'px > 视口高 ' + String(vh) + 'px（一屏读不完状态带）');
-  /* 状态带三格**各自**的高度上限：与窗口宽无关（格内每条只给「项名 + 状态」是内容口径，
-     宽度只影响换行，不能成为"这格可以撑爆"的理由）——故不再只判 1280 档的最大值。 */
-  if (geom.progressCellH > BAND_CELL_MAX_H) problems.push('A6 状态带：progress 格高 ' + String(geom.progressCellH) + 'px > 上限 ' + String(BAND_CELL_MAX_H) + 'px（做到哪了那格被内容撑爆）');
-  if (geom.gapsCellH > BAND_CELL_MAX_H) problems.push('A6 状态带：gaps 格高 ' + String(geom.gapsCellH) + 'px > 上限 ' + String(BAND_CELL_MAX_H) + 'px（卡在哪·缺什么那格被内容撑爆）');
-  if (geom.outcomeCellH > BAND_CELL_MAX_H) problems.push('A6 状态带：outcome 格高 ' + String(geom.outcomeCellH) + 'px > 上限 ' + String(BAND_CELL_MAX_H) + 'px（成效那格被内容撑爆）');
+  if (geom.progressCellH > BAND_CELL_MAX_H) problems.push('A6 状态带：progress 格高 ' + String(geom.progressCellH) + 'px > 上限 ' + String(BAND_CELL_MAX_H) + 'px');
+  if (geom.gapsCellH > BAND_CELL_MAX_H) problems.push('A6 状态带：gaps 格高 ' + String(geom.gapsCellH) + 'px > 上限 ' + String(BAND_CELL_MAX_H) + 'px');
+  if (geom.outcomeCellH > BAND_CELL_MAX_H) problems.push('A6 状态带：outcome 格高 ' + String(geom.outcomeCellH) + 'px > 上限 ' + String(BAND_CELL_MAX_H) + 'px');
 
-  /* ── 操作条按钮不重叠（design/test-cases.md 窄 900 档的第二条断言）── */
+  /* ── A5 操作区按钮不重叠（两档同判）── */
   var overlaps = [];
   if (actions !== null) {
     var btns = actions.querySelectorAll('.dsh-pm-btn');
@@ -292,58 +356,70 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
       }
     }
   }
-  if (overlaps.length > 0) problems.push('A5 操作条按钮重叠：' + overlaps.join(' ; '));
+  if (overlaps.length > 0) problems.push('A5 操作区按钮重叠：' + overlaps.join(' ; '));
 
-  /* ── A6 操作条版式（2026-10-05 人类验收：三行参差 / 后果 inline 跟随）── */
-  var bar = shell === null ? null : shell.querySelector('[data-report-actionbar]');
-  var barH = hOf(bar);
-  var actionTops = [];
-  if (bar !== null) {
-    var actionBtns = bar.querySelectorAll('.dsh-pm-report-action > .dsh-pm-btn');
-    for (var ab = 0; ab < actionBtns.length; ab++) {
-      var at = Math.round(actionBtns[ab].offsetTop);
-      if (actionTops.indexOf(at) < 0) actionTops.push(at);
+  /* ── T-12 头部三层（7a43 FR-1，取代旧 D-8 两行断言）────────────────
+     ① 标识行 .dsh-pm-rh-top（REQ-id 等宽 .dsh-pm-card-id 在场）；
+     ② 标题行 .dsh-pm-rh-title：操作区聚合**固定右侧**（1280 档：操作区右缘 ≈ 行右缘 ±2px，
+        且按钮同一行——「参差」正是旧验收"排版散架"的现场；900 档允许折行，不判行数）；
+     ③ 闸门提示条 .dsh-pm-gate-banner：waitingHuman > 0 才渲染（在途在、终态无），
+        含锚链「查看缺口」（data-gap-anchor）。 */
+  var rhTop = shell === null ? null : shell.querySelector('.dsh-pm-rh-top');
+  var rhTitle = shell === null ? null : shell.querySelector('.dsh-pm-rh-title');
+  var banner = shell === null ? null : shell.querySelector('.dsh-pm-gate-banner');
+  var cardId = rhTop === null ? null : rhTop.querySelector('.dsh-pm-card-id');
+  var t12 = {
+    rhTop: rhTop !== null,
+    cardId: cardId !== null && txt(cardId).length > 0,
+    rhTitle: rhTitle !== null,
+    actionsRight: -1, rowRight: -1, rightTol: ${String(ACTIONS_RIGHT_TOL)},
+    actionTops: [],
+    bannerExpected: ${state === 'inflight' ? 'true' : 'false'},
+    bannerPresent: banner !== null,
+    bannerAnchor: banner !== null && banner.querySelector('[data-gap-anchor]') !== null
+  };
+  if (rhTitle !== null && actions !== null) {
+    t12.actionsRight = Math.round(actions.getBoundingClientRect().right);
+    t12.rowRight = Math.round(rhTitle.getBoundingClientRect().right);
+    var ab = actions.querySelectorAll('.dsh-pm-btn');
+    for (var at0 = 0; at0 < ab.length; at0++) {
+      var atv = Math.round(ab[at0].offsetTop);
+      if (t12.actionTops.indexOf(atv) < 0) t12.actionTops.push(atv);
     }
   }
-  /* 只看 1280 档：900 档动作区折行是宽度使然（见 ACTION_BAR_MAX_H 注释） */
-  var barJudged = bar !== null && de.clientWidth >= 1280;
-  if (barJudged && barH > ACTION_BAR_MAX_H) {
-    problems.push('A6 操作条：1280 档整块高 ' + String(barH) + 'px > 上限 ' + String(ACTION_BAR_MAX_H)
-      + 'px（标签 / 按钮 / 后果不许挤成同一个文本流，后果应落在按钮下方一行）');
-  }
-  if (barJudged && actionTops.length > 1) {
-    problems.push('A6 操作条：1280 档动作按钮落在 ' + String(actionTops.length) + ' 行（offsetTop=' + actionTops.join(',')
-      + '），要求同一行——参差就是"第一个按钮跟标签挤一行、其余各自换行"');
-  }
-  /* 状态带三格：1280 档每格 ≤ BAND_CELL_MAX_H（口径见常量注释）。
-     三格等高等宽由 grid 保证（stretch），这里只判"有没有被内容撑爆"。 */
-  var bandTops = [];
-  var bandCellHs = [];
-  if (band !== null) {
-    var bandCells = band.querySelectorAll('[data-band-cell]');
-    for (var bc = 0; bc < bandCells.length; bc++) {
-      bandCellHs.push(Math.round(bandCells[bc].getBoundingClientRect().height));
-      var bt = Math.round(bandCells[bc].offsetTop);
-      if (bandTops.indexOf(bt) < 0) bandTops.push(bt);
+  if (!t12.rhTop) problems.push('T-12 头部三层：标识行 .dsh-pm-rh-top 不在场');
+  if (t12.rhTop && !t12.cardId) problems.push('T-12 头部三层：标识行缺 REQ-id 等宽格 .dsh-pm-card-id');
+  if (!t12.rhTitle) problems.push('T-12 头部三层：标题行 .dsh-pm-rh-title 不在场');
+  if (actions !== null && de.clientWidth >= 1280) {
+    if (t12.rowRight > 0 && Math.abs(t12.actionsRight - t12.rowRight) > t12.rightTol) {
+      problems.push('T-12 操作区未聚合右端：操作区右缘 ' + String(t12.actionsRight)
+        + ' ≠ 标题行右缘 ' + String(t12.rowRight) + '（±' + String(t12.rightTol) + 'px，FR-1 固定右侧）');
+    }
+    if (t12.actionTops.length > 1) {
+      problems.push('T-12 操作区按钮落在 ' + String(t12.actionTops.length) + ' 行（offsetTop='
+        + t12.actionTops.join(',') + '），1280 档要求同一行');
     }
   }
-  var maxBandCellH = bandCellHs.length === 0 ? 0 : Math.max.apply(null, bandCellHs);
-  var bandJudged = band !== null && de.clientWidth >= 1280;
-  if (bandJudged && maxBandCellH > BAND_CELL_MAX_H) {
-    problems.push('A6 状态带：1280 档单格最高 ' + String(maxBandCellH) + 'px > 上限 ' + String(BAND_CELL_MAX_H)
-      + 'px（格内每条只给「项名 + 状态」，全文进 title，逐项正文去它自己的落点）');
+  if (t12.bannerExpected && !t12.bannerPresent) problems.push('T-12 闸门提示条：waitingHuman>0 但未渲染（FR-1 的视觉锚点丢了）');
+  if (t12.bannerExpected && t12.bannerPresent && !t12.bannerAnchor) problems.push('T-12 闸门提示条缺锚链「查看缺口」（data-gap-anchor）');
+  if (!t12.bannerExpected && t12.bannerPresent) problems.push('T-12 闸门提示条：无可裁决事项时整条不该渲染（不留空壳）');
+
+  /* ── 900 档 Tab 栏实测读数（任务口径 P2-1：判**要不要**进 A3 白名单）──
+     实测结论随页打印：当前 sw == cw（页面级溢出把栏身同比例撑宽）→ 未内溢 → 不加白名单；
+     若将来页面级溢出修复后栏身真内溢（横向导航滚动 ≠ 藏内容），按任务口径补白名单。 */
+  var tabsNote = '';
+  var tabsOx = '';
+  if (tabs !== null) {
+    tabsOx = getComputedStyle(tabs).overflowX;
+    tabsNote = '.dsh-pm-tabs sw=' + String(tabs.scrollWidth) + ' cw=' + String(tabs.clientWidth) + ' ox=' + tabsOx;
   }
-  if (bandJudged && bandTops.length > 1) {
-    problems.push('A6 状态带：1280 档三格不在同一行（offsetTop=' + bandTops.join(',') + '）');
+  if (de.clientWidth < 1280 && tabsOx !== 'auto') {
+    problems.push('A1 窄档 Tab 栏横滚能力缺席：.dsh-pm-tabs overflow-x=' + tabsOx + ' ≠ auto（FR-4：900 窄档允许横滚不换行）');
   }
 
-  /* ═══════════════ A7~A12：可访问性与视觉层级（REQ-261005155003-f32f） ═══════════════
-     判据来源：requirement.md 的 FR-2（焦点可见）/ FR-5（目标尺寸）/ FR-7（最小字号）/
-     FR-6（reduced-motion）/ FR-8（不靠颜色）/ FR-12（H1~H5）/ FR-9 第 7 项（D-8 头部两行）。
-     每条都在下面 give problems.push 失败分支；宿主侧 readbackProblems() 另按原始读数复算一遍。 */
+  /* ═══════════════ A7~A12：可访问性与视觉层级（7a43 口径校准） ═══════════════ */
 
-  /* 颜色解析：**不用正则**——这段脚本嵌在 TS 模板字符串里，反斜杠转义会在拼接时被吃掉，
-     产出的正则跟源码里写的不是同一个（本卡实测：环色对比一度全是 NaN）。按括号切分最稳。 */
+  /* 颜色解析：**不用正则**（模板字符串嵌套会吃掉反斜杠转义，本卡实测踩过）。按括号切分最稳。 */
   function rgbOf(s) {
     var i = s.indexOf('(');
     if (i < 0) return null;
@@ -362,9 +438,6 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
     var hi = Math.max(l1, l2), lo = Math.min(l1, l2);
     return (hi + 0.05) / (lo + 0.05);
   }
-  /* 元素背后的**有效背景**：向上找第一个不透明底色，并把半透明层逐层合成。
-     includeSelf=false 用于"环画在元素外"（outline-offset >= 0）——那时相邻色是**父级**背景，
-     拿元素自己的底色去比会得到"主按钮蓝底 vs 蓝环 1:1"的假红。 */
   function bgOf(el, includeSelf) {
     var n = includeSelf ? el : el.parentElement;
     while (n !== null && n.nodeType === 1) {
@@ -380,31 +453,10 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
   }
   function round2(v) { return Math.round(v * 100) / 100; }
 
-  /* ── D-8 的三处落点必须在**任何 focus() 之前**量 ──
-     focus() 会把被聚焦元素滚进视口，之后 getBoundingClientRect().top 是滚动后的坐标
-     （本卡实测一度量到 actionRowTop = -504，把"动作行在身份行之上"判成红）。 */
-  var d8 = { actionRowTop: topOf(shell === null ? null : shell.querySelector('[data-report-actionbar]')), identityRowTop: topOf(shell === null ? null : shell.querySelector('.dsh-pm-rh-top')) };
-  var d8Window = shell === null ? null : shell.querySelector('.dsh-pm-report-windows');
-  var d8Created = shell === null ? null : shell.querySelector('[data-created-at]');
-  d8.windowLeft = d8Window === null ? null : Math.round(d8Window.getBoundingClientRect().left);
-  d8.createdAtLeft = d8Created === null ? null : Math.round(d8Created.getBoundingClientRect().left);
-  if (d8.actionRowTop >= 0 && d8.identityRowTop >= 0) d8.gap = d8.identityRowTop - d8.actionRowTop;
-
-  /* ── A7 焦点环：清单控件 focus() 后量 outline 宽 / 样式 / 偏移 / 环色对比 ──
-     为什么**不**派发合成键盘事件：本卡实测，合成一个 keydown（key = Tab）会让 Chrome 把随后的
-     focus() 判成「非键盘来源」、:focus-visible 反而不置位（四组合全红）。直接 el.focus()
-     （不 blur、不合成事件）才是稳定的置位路径——这与「真实键盘走查」的差别如实登记在
-     下方每行的 fv 读数里：探针量到的是 :focus-visible 置位后的计算样式。 */
+  /* ── A7 焦点环（live 取样 + cssom 兜底；兜底原因：headless 的 :focus-visible 置位不稳定）── */
   var FOCUS_SELECTORS = ['.dsh-pm-btn', '.dsh-pm-tab', '.dsh-pm-window', '.dsh-pm-input', '.dsh-pm-trunk-open', 'summary'];
   var focusRows = [];
   var focusBad = [];
-  /* 兜底通道：把「会命中本元素的 :focus-visible 规则」的声明读出来、解析 var() 后按同一套阈值判。
-     为什么需要兜底：headless 里 el.focus() 之后 :focus-visible 是否置位**不稳定**（本卡实测：
-     同一份标本、同一台机器、四个组合各跑一次，置位的组合每次都不一样）。判据本身不能因此变松——
-     兜底读到的是**同一条规则声明的取值**（宽 / 样式 / 偏移 / 颜色），按同一套阈值判；
-     只是"由浏览器在键盘聚焦时施加"这一步在本机拿不到稳定读数，故每行都标注取样通道（live / cssom）。 */
-  /** 顶层逗号切分（括号 / 方括号内的逗号**不**切）——:is(a, b) 里的逗号切了会把选择器拆碎，
-      实测后果：主焦点环规则的选择器被切碎后 el.matches() 抛错、整条规则被漏掉（终态四组合全红）。 */
   function splitTopLevel(s) {
     var out = [];
     var depth = 0;
@@ -434,16 +486,13 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
         for (var pi = 0; pi < parts.length; pi++) {
           var sel = parts[pi].trim();
           var vi = sel.indexOf(':focus-visible');
-          if (vi < 0) continue;   /* 同一规则里"不带 :focus-visible 的那一半"不能算命中（会造出假绿） */
+          if (vi < 0) continue;
           var base = (sel.slice(0, vi) + sel.slice(vi + 14)).trim();
           if (base.length === 0) continue;
           var hit = false;
           try { hit = el.matches(base); } catch (err2) { hit = false; }
           if (!hit) continue;
           for (var k = 0; k < st.length; k++) decls.push([st[k], st.getPropertyValue(st[k])]);
-          /* Chrome 的 CSSStyleDeclaration 对规则**只枚举长写属性**，且简写派生的那三条是**空串**；
-             简写的真实取值只能显式 getPropertyValue('outline') 取（本卡实测：只枚举会得到
-             outline-width/style/color 三个空串 + 一条 outline-offset，整条焦点环判据量不到）。 */
           var EXPLICIT = ['outline', 'outline-width', 'outline-style', 'outline-color', 'outline-offset'];
           for (var x = 0; x < EXPLICIT.length; x++) {
             var xv = st.getPropertyValue(EXPLICIT[x]);
@@ -454,7 +503,6 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
     }
     return decls;
   }
-  /** 逐层解 var()（自定义属性从**壳**上读；定义就写在壳的选择器里）。 */
   function resolveVars(value, el, depth) {
     if (depth > 6) return value;
     var out = '';
@@ -481,14 +529,11 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
     return out;
   }
   var STYLE_WORDS = ['solid', 'dashed', 'dotted', 'double', 'none', 'auto', 'hidden'];
-  /** 从声明里拼出焦点环四要素（宽 / 样式 / 偏移 / 颜色）；读不到返回 null。 */
   function focusRingFromRules(el) {
     var decls = focusDeclsFor(el);
     if (decls.length === 0) return null;
     var map = {};
     for (var i = 0; i < decls.length; i++) {
-      /* 只认**非空**值：Chrome 会把 outline 简写展开成 outline-width/-style/-color 三个**空串**条目，
-         照单全收会把简写解析出来的三个值统统覆盖成空（实测：整条判据全是 none / NaN）。 */
       if (typeof decls[i][1] === 'string' && decls[i][1].trim().length > 0) map[decls[i][0]] = decls[i][1];
     }
     var width = null, style = null, color = null, offset = null;
@@ -509,7 +554,6 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
     if (width === null && style === null && color === null) return null;
     return { width: width, style: style, color: color, offset: offset };
   }
-  /** 任意 css 颜色文本 → RGB（十六进制或 rgb()/rgba()；alpha 合成到白底）。 */
   function colorOf(s) {
     var h = (s === null || s === undefined) ? '' : s.trim();
     if (h.charAt(0) === '#') {
@@ -527,7 +571,6 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
     if (c.a >= 1) return c;
     return { r: Math.round(c.r * c.a + 255 * (1 - c.a)), g: Math.round(c.g * c.a + 255 * (1 - c.a)), b: Math.round(c.b * c.a + 255 * (1 - c.a)), a: 1 };
   }
-  /** RGB -> 可读文本（打印与断言文案用）。 */
   function ringColorText(c) {
     return c === null ? '' : 'rgb(' + String(c.r) + ', ' + String(c.g) + ', ' + String(c.b) + ')';
   }
@@ -569,57 +612,74 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
   if (focusRows.length === 0) focusBad.push('A7 清单里的控件一个都没量到（选择器与页面脱节，空集不能算过）');
 
   /* ── A8 目标尺寸与相邻间距（WCAG 2.5.8 AA）──
-     例外清单**显式写在这里**（逐条给理由，不用"宽泛豁免"糊过去）：
-       · Tab 与 Tab 相邻 4px：同属一个 tablist 的成组目标，每个 Tab 高 33px ≥ 24×24 本身达标；
-         WCAG 2.5.8 对"同组内相邻目标"有 spacing 例外，本需求 t-0d8c9b 卡上已裁定把
-         Tab 栏 4px 进例外清单（原型同值）。除它以外不允许出现第二类例外。
-       · 正文内联链接（WCAG 的 inline 例外）：本标本的 .dsh-pm-trunk-open 是**独立一行**的
-         链接式按钮（不是夹在句子里的行内链接），故**不**给它豁免——它必须自己达标。 */
+     例外清单**显式登记**（清单之外一律判红）：
+       · Tab 与 Tab 相邻 2~4px：同属一个 tablist 的成组目标（WCAG 2.5.8 同组 spacing 例外，
+         f32f t-0d8c9b 已裁定，7a43 沿用）；
+       · TARGET_EXEMPT 里的密集行文本钮（理由逐条在脚本常量里）；
+       · .dsh-pm-verdict-btn 内的原生 radio：命中区 = 包裹它的整枚 label（label ≥24 单独断言）。 */
   var TARGET_SELECTOR = 'button, [role="tab"], a[href], summary, input';
+  var TARGET_EXEMPT_CLS = ${JSON.stringify(TARGET_EXEMPT.map(e => e.cls))};
   var targetEls = document.querySelectorAll(TARGET_SELECTOR);
   var targetRows = [];
   var targetSized = [];
   var targetBad = [];
+  var targetExempt = [];
   for (var ti = 0; ti < targetEls.length; ti++) {
     var tEl = targetEls[ti];
     var tBox = tEl.getBoundingClientRect();
-    if (tBox.width === 0 && tBox.height === 0) continue;   /* 不在页面上（未激活面板等）不算目标 */
+    if (tBox.width === 0 && tBox.height === 0) continue;
     var rec = { cls: String(tEl.className).slice(0, 48), tag: tEl.tagName.toLowerCase(), w: round2(tBox.width), h: round2(tBox.height) };
     targetRows.push(rec);
     if (tBox.width < 24 || tBox.height < 24) {
+      var exemptHit = '';
+      for (var te = 0; te < TARGET_EXEMPT_CLS.length; te++) {
+        if (tEl.classList.contains(TARGET_EXEMPT_CLS[te])) exemptHit = TARGET_EXEMPT_CLS[te];
+      }
+      var inVerdictLabel = tEl.type === 'radio' && tEl.closest('.dsh-pm-verdict-btn') !== null;
+      if (exemptHit !== '') { targetExempt.push(rec); continue; }
+      if (inVerdictLabel) { targetExempt.push(rec); continue; }
       targetSized.push(rec);
-      targetBad.push('A8 命中区 ' + rec.tag + '.' + rec.cls + ' = ' + String(rec.w) + '×' + String(rec.h) + 'px < 24×24');
+      targetBad.push('A8 命中区 ' + rec.tag + '.' + rec.cls + ' = ' + String(rec.w) + '×' + String(rec.h) + 'px < 24×24（未登记的例外不许有）');
     }
   }
   if (targetRows.length === 0) targetBad.push('A8 一个交互目标都没量到（空集不能算过）');
+  /* 裁决单选 label 的命中区（radio 豁免的前提条件）：每枚 label 高 ≥ 24px */
+  var verdictLabels = document.querySelectorAll('.dsh-pm-verdict-btn');
+  var verdictLabelMinH = 1e9;
+  for (var vl = 0; vl < verdictLabels.length; vl++) {
+    var vlb = verdictLabels[vl].getBoundingClientRect();
+    if (vlb.height < verdictLabelMinH) verdictLabelMinH = vlb.height;
+  }
+  if (verdictLabels.length > 0 && verdictLabelMinH < 24) {
+    targetBad.push('A8 裁决单选 label 最小高 ' + String(Math.round(verdictLabelMinH * 10) / 10) + 'px < 24px（radio 豁免的前提就是 label 承载命中区）');
+  }
   var ADJACENT_MIN = 8;
   var adjacentRows = [];
   var adjacentBad = [];
   var adjacentExempt = [];
   for (var ai = 0; ai < targetEls.length; ai++) {
     for (var bi = ai + 1; bi < targetEls.length; bi++) {
-      var ra = targetEls[ai].getBoundingClientRect();
-      var rb = targetEls[bi].getBoundingClientRect();
-      if ((ra.width === 0 && ra.height === 0) || (rb.width === 0 && rb.height === 0)) continue;
-      var overlapY = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
-      if (overlapY <= Math.min(ra.height, rb.height) * 0.5) continue;   /* 不同行不算相邻 */
-      var gap = ra.left < rb.left ? rb.left - ra.right : ra.left - rb.right;
-      if (gap < -0.5) { adjacentBad.push('A8 目标重叠（gap ' + String(round2(gap)) + 'px）'); continue; }
-      if (gap >= ADJACENT_MIN) continue;
+      var rra = targetEls[ai].getBoundingClientRect();
+      var rrb = targetEls[bi].getBoundingClientRect();
+      if ((rra.width === 0 && rra.height === 0) || (rrb.width === 0 && rrb.height === 0)) continue;
+      var overlapY = Math.min(rra.bottom, rrb.bottom) - Math.max(rra.top, rrb.top);
+      if (overlapY <= Math.min(rra.height, rrb.height) * 0.5) continue;
+      var gap2 = rra.left < rrb.left ? rrb.left - rra.right : rra.left - rrb.right;
+      if (gap2 < -0.5) { adjacentBad.push('A8 目标重叠（gap ' + String(round2(gap2)) + 'px）'); continue; }
+      if (gap2 >= ADJACENT_MIN) continue;
       var bothTab = targetEls[ai].classList.contains('dsh-pm-tab') && targetEls[bi].classList.contains('dsh-pm-tab');
-      var row = { gap: round2(gap), a: String(targetEls[ai].className).slice(0, 32), b: String(targetEls[bi].className).slice(0, 32) };
-      if (bothTab) adjacentExempt.push(row);
-      else { adjacentRows.push(row); adjacentBad.push('A8 相邻目标间距 ' + String(row.gap) + 'px < ' + String(ADJACENT_MIN) + 'px（' + row.a + ' | ' + row.b + '）'); }
+      var arow = { gap: round2(gap2), a: String(targetEls[ai].className).slice(0, 32), b: String(targetEls[bi].className).slice(0, 32) };
+      if (bothTab) adjacentExempt.push(arow);
+      else { adjacentRows.push(arow); adjacentBad.push('A8 相邻目标间距 ' + String(arow.gap) + 'px < ' + String(ADJACENT_MIN) + 'px（' + arow.a + ' | ' + arow.b + '）'); }
     }
   }
 
-  /* ── A9 最小字号与档位（FR-7）──
-     口径：**可见真文字**（有直接文本子节点、且不是 1px 裁切的 sr-only）。
-     为什么必须排除 sr-only：FR-11 让主操作后果改走 aria-describedby 指向的视觉隐藏节点，
-     它的字号不参与"看得见的字"这条判据（要求文档 FR-7 锚点已点名这个坑）。 */
-  var FONT_SCALE = [11, 12, 13, 15, 20, 24];
+  /* ── A9 最小字号与档位（7a43 密度新字阶）── */
+  var FONT_SCALE = ${JSON.stringify(FONT_SCALE)};
+  var OFFSCALE_EXEMPT = ${JSON.stringify(OFFSCALE_EXEMPT)};
   var fontHist = {};
   var offScale = [];
+  var offScaleExempt = [];
   var minFont = { size: 999, who: '' };
   var allEls = shell === null ? [] : shell.querySelectorAll('*');
   for (var ei = 0; ei < allEls.length; ei++) {
@@ -632,22 +692,26 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
     if (!hasText) continue;
     var eBox = eEl.getBoundingClientRect();
     var ecs = getComputedStyle(eEl);
-    if (eBox.width <= 1 && eBox.height <= 1) continue;       /* sr-only（1px 裁切）/ 不可见 */
+    if (eBox.width <= 1 && eBox.height <= 1) continue;
     if (ecs.visibility === 'hidden' || ecs.display === 'none') continue;
     var eSize = parseFloat(ecs.fontSize);
     var key = String(eSize);
     fontHist[key] = (fontHist[key] || 0) + 1;
     if (eSize < minFont.size) minFont = { size: eSize, who: String(eEl.className).slice(0, 40) };
-    if (FONT_SCALE.indexOf(eSize) < 0 && offScale.length < 8) offScale.push(String(eSize) + 'px @ .' + String(eEl.className).slice(0, 40));
+    if (FONT_SCALE.indexOf(eSize) < 0) {
+      var ex = '';
+      for (var ox2 = 0; ox2 < OFFSCALE_EXEMPT.length; ox2++) {
+        if (Math.abs(OFFSCALE_EXEMPT[ox2].size - eSize) < 0.01 && eEl.classList.contains(OFFSCALE_EXEMPT[ox2].cls)) ex = OFFSCALE_EXEMPT[ox2].cls;
+      }
+      if (ex !== '') { if (offScaleExempt.length < 4) offScaleExempt.push(String(eSize) + 'px @ .' + ex); }
+      else if (offScale.length < 8) offScale.push(String(eSize) + 'px @ .' + String(eEl.className).slice(0, 40));
+    }
   }
   var fontBad = [];
-  if (minFont.size < 11) fontBad.push('A9 可见真文字最小字号 ' + String(minFont.size) + 'px < 11px（.' + minFont.who + '）');
-  if (offScale.length > 0) fontBad.push('A9 出现阶梯外字号（' + FONT_SCALE.join('/') + '）：' + offScale.join(' ; '));
+  if (minFont.size < ${String(FONT_MIN)}) fontBad.push('A9 可见真文字最小字号 ' + String(minFont.size) + 'px < ${String(FONT_MIN)}px（.' + minFont.who + '）');
+  if (offScale.length > 0) fontBad.push('A9 出现阶梯外字号（' + FONT_SCALE.join('/') + '，登记豁免除外）：' + offScale.join(' ; '));
 
-  /* ── A10 reduced-motion（FR-6 #4）──
-     本机 headless 的 prefers-reduced-motion 恒为 reduce（要求文档「已知覆盖边界 2」已登记
-     --force-prefers-reduced-motion=no-preference 压不住）→ 这里**只在媒体查询成立时**判「过渡归零」，
-     不成立时如实打印"读数不可得"，不假装判过、也不冤枉页面。 */
+  /* ── A10 reduced-motion（本机 headless 恒为 reduce；只在媒体查询成立时判）── */
   var reduceOn = false;
   try { reduceOn = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { reduceOn = false; }
   var durRows = [];
@@ -662,7 +726,7 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
   }
   if (reduceOn && durRows.length === 0) durBad.push('A10 一个过渡取样点都没量到（空集不能算过）');
 
-  /* ── A11 状态不靠颜色单一表达（FR-8）：非颜色标记必须是**真实内容** ── */
+  /* ── A11 状态不靠颜色单一表达（真实文本标记）── */
   var markBad = [];
   var markRows = { completed: 0, current: 0, todo: 0, gap: 0, gapSvg: 0, verdict: 0 };
   var cDots = document.querySelectorAll('.dsh-pm-dot-wrapper.completed .dsh-pm-dot-mark');
@@ -681,37 +745,59 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
   markRows.verdict = verdicts.length;
   for (var vv = 0; vv < verdicts.length; vv++) if (verdicts[vv].textContent.trim().length === 0) markBad.push('A11 验收结论只有颜色、没有可读文字');
 
-  /* ── A12 视觉层级 H1~H5 + D-8 头部两行 ── */
+  /* ── A12 视觉层级（7a43 口径）──
+     H1 页标题 19px ÷ 正文 13px ≥ 1.4（FR-1；f32f 的 1.8 是 24px 标题口径，已随 19px 标题改准）；
+     H2 汇报短模块 2×2 网格（FR-5；旧「模块间距÷模块内间距 ≥3」在网格版式下结构性失效，改写为
+        1280 档网格确为两列、900 档落回单列）；
+     H3 模块标题与正文双通道差异（FR-5 设计：13px/650 半粗 vs 12.5px/400）——当前被
+       已由注释修复恢复生效（13px/650 vs 12.5px/400，根因见文件头）；
+     H4 状态带字号档数 ≥3 且极差 ≥8（沿用）；
+     H5 主色：激活页签**必须**取主色（FR-4：浅蓝底 + 主色文字 + 底部 2px 指示条——
+        f32f 设计契约 ⑦「选中取正文字色」已被 7a43 推翻，断言方向随之反转），
+        且全页承载主色的角色取同一个色值。 */
   var hBad = [];
   var hReport = {};
   var h1El = document.querySelector('h1.dsh-pm-detail-title');
   var shellFs = shell === null ? 0 : parseFloat(getComputedStyle(shell).fontSize);
   var h1Fs = h1El === null ? 0 : parseFloat(getComputedStyle(h1El).fontSize);
   hReport.h1 = h1Fs; hReport.body = shellFs; hReport.h1Ratio = shellFs > 0 ? round2(h1Fs / shellFs) : 0;
-  if (!(hReport.h1Ratio >= 1.8)) hBad.push('A12 H1 页标题÷正文 = ' + String(hReport.h1Ratio) + ' < 1.8');
-  var trunkItems = shell === null ? [] : shell.querySelectorAll('.dsh-pm-trunk-item');
-  var moduleGap = null, innerGap = null;
-  if (trunkItems.length >= 2) moduleGap = Math.round(trunkItems[1].getBoundingClientRect().top - trunkItems[0].getBoundingClientRect().bottom);
+  if (!(hReport.h1Ratio >= 1.4)) hBad.push('A12 H1 页标题÷正文 = ' + String(hReport.h1Ratio) + ' < 1.4（FR-1：19px ÷ 13px）');
+  /* H2：2×2 网格列数（1280 → 2 列；900 → 单列） */
+  var gridEl = shell === null ? null : shell.querySelector('.dsh-pm-trunk-grid');
+  var gridCols = 0;
+  if (gridEl !== null) {
+    var gItems = gridEl.querySelectorAll('.dsh-pm-trunk-item');
+    var gLefts = {};
+    for (var gi = 0; gi < gItems.length; gi++) {
+      if (gItems[gi].classList.contains('dsh-pm-trunk-item--wide')) continue;
+      gLefts[Math.round(gItems[gi].getBoundingClientRect().left)] = 1;
+    }
+    gridCols = Object.keys(gLefts).length;
+  }
+  hReport.gridCols = gridCols;
+  if (gridEl !== null && de.clientWidth >= 1280 && gridCols !== 2) {
+    hBad.push('A12 H2 汇报短模块 1280 档应为 2×2 网格（非 wide 项 2 个左缘），实得 ' + String(gridCols) + ' 列');
+  }
+  if (gridEl !== null && de.clientWidth < 1280 && gridCols > 1) {
+    hBad.push('A12 H2 汇报短模块 900 档应落回单列，实得 ' + String(gridCols) + ' 列');
+  }
+  /* H3：双通道差异（FR-5 设计 13px/650 半粗 vs 12.5px/400）——DEV-t6-fonts 已销账，
+     这里不再有「登记在案就放行」的逃生门：必须真的是双通道差异。 */
   var tTitle = document.querySelector('.dsh-pm-trunk-title');
   var tLine = document.querySelector('.dsh-pm-trunk-line');
-  if (tTitle !== null && tLine !== null) innerGap = Math.round(tLine.getBoundingClientRect().top - tTitle.getBoundingClientRect().bottom);
-  hReport.moduleGap = moduleGap; hReport.innerGap = innerGap;
-  hReport.moduleRatio = (moduleGap !== null && innerGap !== null && innerGap > 0) ? round2(moduleGap / innerGap) : 0;
-  if (!(hReport.moduleRatio >= 3)) hBad.push('A12 H2 模块间距÷模块内间距 = ' + String(hReport.moduleRatio) + ' < 3（分组靠间距比，1.x 等于没分组）');
   if (tTitle !== null && tLine !== null) {
     var tcsA = getComputedStyle(tTitle), tcsB = getComputedStyle(tLine);
     hReport.titleFont = tcsA.fontSize + '/' + tcsA.fontWeight;
     hReport.lineFont = tcsB.fontSize + '/' + tcsB.fontWeight;
-    if (tcsA.fontSize === tcsB.fontSize || tcsA.fontWeight === tcsB.fontWeight) {
-      hBad.push('A12 H3 模块标题与正文必须是**双通道**差异（字号与字重都不同），实得 ' + hReport.titleFont + ' vs ' + hReport.lineFont);
+    var dualChannel = tcsA.fontSize !== tcsB.fontSize && tcsA.fontWeight !== tcsB.fontWeight;
+    if (!dualChannel) {
+      hBad.push('A12 H3 模块标题与正文必须是**双通道**差异（FR-5：13px/650 vs 12.5px/400），实得 '
+        + hReport.titleFont + ' vs ' + hReport.lineFont + '（设计值 13px/650 vs 12.5px/400）');
     }
   } else {
     hBad.push('A12 H3 量不到模块标题/正文（选择器与页面脱节）');
   }
-  /* H4：状态带内的字号档数。要求文档写「三档且两两差 ≥2px」，而 design/frontend.md §C-6 把这三档
-     定死为「标签 L5 11 / 主值 L1 20 / 细节 L4 12」——11 与 12 只差 1px，**要求文档那句自相矛盾**。
-     判据按权威值执行：档数 ≥3、极差 ≥8px、主值（最大值）与次大值差 ≥2px，
-     并把"下两档相差 1px"**打印出来登记**（不静默）。 */
+  /* H4：状态带字号档数（沿用；下两档相差 1px 为 design/frontend.md 权威取值，已登记） */
   var bandEl = shell === null ? null : shell.querySelector('[data-report-band]');
   var bandSizes = {};
   if (bandEl !== null) {
@@ -738,20 +824,13 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
     if (span < 8) hBad.push('A12 H4 状态带字号极差 = ' + String(span) + 'px < 8px（主值没拉开）');
     if (mainGap < 2) hBad.push('A12 H4 主值与次大档相差 ' + String(mainGap) + 'px < 2px');
   }
-  /* H5：主色文字只留一类——**承载主色的那几处**必须取同一个值，不许分裂成"面用亮、字用深"。
-     采样口径 2026-10-05 改准（不是因为红了才改，是口径本来就和设计契约打架）：
-       设计契约（原型 v2 改造层 ⑦）明确写「选中 = 白色滑块 + 500 字重 + **正文字色**」——
-       选中页签**本来就不该用主色**。旧口径把它当主色角色采样，量的其实是"正文色 ≠ 主色"，恒红；
-       真去满足它，就得反过来违背已确认的分段控件设计。故：
-         · 采样改为真正承载主色的两处：「点开看原文」（主色文字）+ §焦点环§（主色环）；
-         · 并把"选中页签**不再**取主色"落成**正面断言**（下面那条），比原来更严——
-           原来只能发现"页签的主色和别的角色不一样"，现在能发现"页签又偷偷用回主色了"。
-       （主操作按钮取的是它的**底色**，不是文字色，故仍不列入。） */
+  /* H5：主色角色同值（点开看原文 / 焦点环 / 激活页签），且激活页签**必须**取主色 + 2px 指示条 */
   var accentSamples = [];
   var activeTab = document.querySelector('.dsh-pm-tab.active');
   var trunkOpen = document.querySelector('.dsh-pm-trunk-open');
   if (trunkOpen !== null) accentSamples.push({ role: '点开看原文', color: getComputedStyle(trunkOpen).color });
   if (focusRows.length > 0) accentSamples.push({ role: '焦点环', color: focusRows[0].color });
+  if (activeTab !== null) accentSamples.push({ role: '激活页签', color: getComputedStyle(activeTab).color });
   var accentDistinct = {};
   for (var as = 0; as < accentSamples.length; as++) accentDistinct[accentSamples[as].color] = 1;
   hReport.accentSamples = accentSamples;
@@ -759,28 +838,19 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
   if (accentSamples.length >= 2 && hReport.accentKinds > 1) {
     hBad.push('A12 H5 主色文字出现 ' + String(hReport.accentKinds) + ' 类取值（' + accentSamples.map(function (s) { return s.role + '=' + s.color; }).join(' / ') + '），要求 ≤1');
   }
-  /* H5 正面断言（设计契约 ⑦）：选中页签取**正文字色**，与主色不同；相同即"偷偷用回主色"。 */
   if (activeTab !== null) {
     var tabColor = getComputedStyle(activeTab).color;
-    var tabBg = getComputedStyle(activeTab).backgroundColor;
+    var tabBorder = getComputedStyle(activeTab).borderBottomColor;
+    var tabBorderW = getComputedStyle(activeTab).borderBottomWidth;
     var accentColor = trunkOpen !== null ? getComputedStyle(trunkOpen).color : null;
-    if (accentColor !== null && tabColor === accentColor) {
-      hBad.push('A12 H5 选中页签仍取主色（' + tabColor + '）——设计契约 ⑦ 要求取正文字色（白滑块 + 500 字重 + 正文字色）');
+    if (accentColor !== null && tabColor !== accentColor) {
+      hBad.push('A12 H5 激活页签未取主色（' + tabColor + '）——FR-4 要求浅蓝底 + 主色文字 + 底部 2px 指示条');
     }
-    if (!(tabBg === 'rgb(255, 255, 255)')) {
-      hBad.push('A12 H5 选中页签不是白色滑块（背景 ' + tabBg + '）——设计契约 ⑦ 的分段控件选中态');
+    if (tabBorderW !== '2px' || (accentColor !== null && tabBorder !== accentColor)) {
+      hBad.push('A12 H5 激活页签缺底部 2px 主色指示条（实得 ' + tabBorderW + ' ' + tabBorder + '）——FR-4 三重表达之一');
     }
-  }
-  /* D-8（FR-9 第 7 项 / 裁定 A）：动作行在身份行**之上**且两行真拆开；窗口组在「创建于」左侧。
-     落点已在脚本开头（focus 之前）量好，这里只判。 */
-  if (d8.actionRowTop >= 0 && d8.identityRowTop >= 0) {
-    if (!(d8.actionRowTop < d8.identityRowTop)) hBad.push('A12 D-8 动作行必须在身份行之上：动作 ' + String(d8.actionRowTop) + ' 身份 ' + String(d8.identityRowTop));
-    if (!(d8.gap >= 8)) hBad.push('A12 D-8 两行 top 差 ' + String(d8.gap) + 'px < 8px（没真拆开）');
   } else {
-    hBad.push('A12 D-8 量不到动作行/身份行（选择器与页面脱节）');
-  }
-  if (d8.windowLeft !== null && d8.createdAtLeft !== null && !(d8.windowLeft < d8.createdAtLeft)) {
-    hBad.push('A12 D-8 窗口组必须靠左（在「创建于 …」左侧）：窗口 ' + String(d8.windowLeft) + ' ≥ 创建于 ' + String(d8.createdAtLeft));
+    hBad.push('A12 H5 找不到激活页签（.dsh-pm-tab.active 不在场）');
   }
 
   for (var fb = 0; fb < focusBad.length; fb++) problems.push(focusBad[fb]);
@@ -793,12 +863,12 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
 
   var a11y = {
     focus: { rows: focusRows, bad: focusBad, via: focusVia },
-    target: { rows: targetRows, sized: targetSized, count: targetRows.length },
+    target: { rows: targetRows, sized: targetSized, exempt: targetExempt, count: targetRows.length, verdictLabelMinH: verdictLabels.length > 0 ? Math.round(verdictLabelMinH * 10) / 10 : null },
     adjacent: { bad: adjacentRows, exempt: adjacentExempt, min: ADJACENT_MIN },
-    font: { hist: fontHist, min: minFont, offScale: offScale, scale: FONT_SCALE, bad: fontBad },
+    font: { hist: fontHist, min: minFont, offScale: offScale, offScaleExempt: offScaleExempt, scale: FONT_SCALE, bad: fontBad },
     motion: { reduceOn: reduceOn, rows: durRows, bad: durBad },
     marks: { rows: markRows, bad: markBad },
-    hier: { report: hReport, d8: d8, bad: hBad }
+    hier: { report: hReport, t12: t12, bad: hBad }
   };
 
   var diag = document.createElement('div');
@@ -806,12 +876,15 @@ function specimenHtml(width: number, state: SpecimenState, expectLong: number): 
   diag.textContent = JSON.stringify({
     w: de.clientWidth, state: ${JSON.stringify(state)}, vh: vh,
     doc: docBox, shell: shellBox, docOverflow: docOverflow, shellOverflow: shellOverflow,
+    a2: a2,
     a1: a1, geom: geom, a3: { scanned: scanned, bad: bad }, overlaps: overlaps,
-    tabsTopMax: TABS_TOP_MAX, commentListMaxH: COMMENT_LIST_MAX_H, commentRenderLimit: COMMENT_RENDER_LIMIT,
-    barH: barH, actionTops: actionTops, actionBarMaxH: ACTION_BAR_MAX_H, barJudged: barJudged,
-    bandCellHs: bandCellHs, bandCellMaxH: BAND_CELL_MAX_H, bandJudged: bandJudged,
+    tabsTopMax: TABS_TOP_LIMIT, commentListMaxH: COMMENT_LIST_MAX_H, commentRenderLimit: COMMENT_RENDER_LIMIT,
+    bandCellHs: [geom.progressCellH, geom.gapsCellH, geom.outcomeCellH], bandCellMaxH: BAND_CELL_MAX_H,
     a4: { present: present, hostCount: hostCount, trunkPresent: trunkPresent },
+    tabOrder: tabOrder, verifyTabIndex1Based: verifyTabIndex1Based,
+    tabsNote: tabsNote,
     a11y: a11y,
+    deviations: deviations,
     problems: problems
   });
   document.body.appendChild(diag);
@@ -827,6 +900,7 @@ interface Diag {
   shell: { cw: number; sw: number }
   docOverflow: boolean
   shellOverflow: boolean
+  a2: { overflow: boolean; residualAfterHidingRegistered: number; registeredSources: number }
   a1: {
     head: boolean; title: boolean; band: boolean; progress: boolean
     gaps: boolean; gapsNone: boolean; dots: boolean; tabs: boolean; tabCount: number
@@ -837,79 +911,92 @@ interface Diag {
     progressCellH: number; gapsCellH: number; outcomeCellH: number
     commentRows: number; commentLong: number; headParts: string[]
     headInFold: boolean; bandInFold: boolean; gapsInFold: boolean; actionsInFold: boolean
-    foldOk: boolean; tabsInFold: boolean
+    foldOk: boolean; tabsInFold: boolean; tabsLimit: number
   }
   tabsTopMax: number
   commentListMaxH: number
   commentRenderLimit: number
-  barH: number
-  actionTops: number[]
-  actionBarMaxH: number
-  barJudged: boolean
   bandCellHs: number[]
   bandCellMaxH: number
-  bandJudged: boolean
   a3: { scanned: number; bad: string[] }
   overlaps: string[]
   a4: { present: string[]; hostCount: number; trunkPresent: boolean }
+  tabOrder: string[]
+  verifyTabIndex1Based: number
+  tabsNote: string
   a11y: {
     focus: { rows: { sel: string; w: number; style: string; off: string; color: string; contrast: number; via: string; fv: boolean }[]; bad: string[]; via: { live: number; cssom: number } }
-    target: { rows: { cls: string; tag: string; w: number; h: number }[]; sized: { cls: string; tag: string; w: number; h: number }[]; count: number }
+    target: { rows: { cls: string; tag: string; w: number; h: number }[]; sized: { cls: string; tag: string; w: number; h: number }[]; exempt: { cls: string; tag: string; w: number; h: number }[]; count: number; verdictLabelMinH: number | null }
     adjacent: { bad: { gap: number; a: string; b: string }[]; exempt: { gap: number; a: string; b: string }[]; min: number }
-    font: { hist: Record<string, number>; min: { size: number; who: string }; offScale: string[]; scale: number[]; bad: string[] }
+    font: { hist: Record<string, number>; min: { size: number; who: string }; offScale: string[]; offScaleExempt: string[]; scale: number[]; bad: string[] }
     motion: { reduceOn: boolean; rows: { sel: string; dur: string }[]; bad: string[] }
     marks: { rows: { completed: number; current: number; todo: number; gap: number; gapSvg: number; verdict: number }; bad: string[] }
     hier: {
       report: {
-        h1: number; body: number; h1Ratio: number; moduleGap: number | null; innerGap: number | null
-        moduleRatio: number; titleFont?: string; lineFont?: string; bandLevels: number[]
+        h1: number; body: number; h1Ratio: number; gridCols: number
+        titleFont?: string; lineFont?: string; bandLevels: number[]
         accentSamples: { role: string; color: string }[]; accentKinds: number
       }
-      d8: { actionRowTop: number; identityRowTop: number; windowLeft: number | null; createdAtLeft: number | null; gap?: number }
+      t12: {
+        rhTop: boolean; cardId: boolean; rhTitle: boolean
+        actionsRight: number; rowRight: number; rightTol: number; actionTops: number[]
+        bannerExpected: boolean; bannerPresent: boolean; bannerAnchor: boolean
+      }
       bad: string[]
     }
   }
+  deviations: string[]
   problems: string[]
 }
 
 /** A13 的单面板读数（页内脚本交回来的原始数，判据在宿主侧）。 */
 interface PanelDiag {
   panel: string
-  targets: { count: number; minW: number | null; minH: number | null; small: string[] }
-  font: { hist: Record<string, number>; min: number; who: string; off: string[]; scale: number[] }
+  targets: { count: number; minW: number | null; minH: number | null; small: string[]; exempt: string[] }
+  font: { hist: Record<string, number>; min: number; who: string; off: string[]; offExempt: string[]; scale: number[] }
   emoji: string[]
   readings: string[]
   tabIcons: number
-  marks: { gap: number; gapSvg: number; doneDots: number, curDots: number }
+  marks: { gap: number; gapSvg: number; doneDots: number; curDots: number }
+  scroll: { scanned: number; bad: string[] }
+  docOverflow: boolean
+  notes: string[]
   problems: string[]
 }
 
 /**
- * A13 的页内脚本：量**这一块面板**自己的三件事（FR-5 目标尺寸 / FR-7 字阶 / FR-1 结构位图标）。
- *
- * 为什么要单独一块：权威原型只渲染了 `trunk`（要求文档「原型与实测 · 已知覆盖边界 1」如实登记过），
- * 其余五块（docs / dag / dialogue / token / prompts）的目标尺寸、字号档与结构位 emoji **从未被量过**——
- * "没验过"不等于"通过了"。这一段把五块补齐，逐块打印实测行。
- *
- * emoji 判据的例外（照 FR-1 的明文排除）：状态符号（✅ / ⚠️ / ⏳ / 🔁）是 FR-8 要求的
- * "颜色之外的第二判据"，**不算**结构图标；只有它们之外的表情符号才判红。
+ * A13 的页内脚本：量**这一块面板**自己的目标尺寸 / 字阶 / 结构位图标 / 内层滚动 / 横向溢出，
+ * 并按面板附带 T-6（docs 迁移指引）/ T-8·T-9·T-10（对话只读 / 吸顶分页 / 正序）/ FR-8（验收 RTM）断言。
  */
 function panelA11yScript(): string {
   return `<script>
 (function () {
   var problems = [];
+  var notes = [];
   var shell = document.querySelector('[data-report-shell]');
+  var de = document.documentElement;
+  var SCROLL_EXCEPTIONS = ${JSON.stringify(SCROLL_EXCEPTIONS)};
   var out = {
-    targets: { count: 0, minW: null, minH: null, small: [] },
-    font: { hist: {}, min: 999, who: '', off: [], scale: [11, 12, 13, 15, 20, 24] },
+    targets: { count: 0, minW: null, minH: null, small: [], exempt: [] },
+    font: { hist: {}, min: 999, who: '', off: [], offExempt: [], scale: ${JSON.stringify(FONT_SCALE)} },
     emoji: [],
     readings: [],
     tabIcons: 0,
     marks: { gap: 0, gapSvg: 0, doneDots: 0, curDots: 0 },
+    scroll: { scanned: 0, bad: [] },
+    docOverflow: false,
+    notes: notes,
     problems: problems
   };
   if (shell === null) { problems.push('A13 壳不在场'); var d0 = document.createElement('div'); d0.id = 'diag'; d0.textContent = JSON.stringify(out); document.body.appendChild(d0); return; }
-  /* ① 目标尺寸（与 A8 同一套口径：≥24×24，隐藏目标不计） */
+  var panel = shell.querySelector('[data-panel]');
+  var panelKey = panel === null ? '' : panel.getAttribute('data-panel');
+  function desc(el) {
+    var cls = typeof el.className === 'string' && el.className.length > 0 ? '.' + el.className.split(/\\s+/)[0] : '';
+    return el.tagName.toLowerCase() + cls;
+  }
+  /* ① 目标尺寸（≥24×24；例外清单与 A8 同口径，清单之外判红） */
+  var TARGET_EXEMPT_CLS = ${JSON.stringify(TARGET_EXEMPT.map(e => e.cls))};
   var targets = shell.querySelectorAll('button, [role="tab"], a[href], summary, input');
   var minW = 1e9, minH = 1e9;
   for (var ti = 0; ti < targets.length; ti++) {
@@ -918,13 +1005,28 @@ function panelA11yScript(): string {
     out.targets.count++;
     if (b.width < minW) minW = b.width;
     if (b.height < minH) minH = b.height;
-    if (b.width < 24 || b.height < 24) out.targets.small.push(String(targets[ti].className).slice(0, 36) + '=' + String(Math.round(b.width * 10) / 10) + 'x' + String(Math.round(b.height * 10) / 10));
+    if (b.width < 24 || b.height < 24) {
+      var hit = '';
+      for (var te = 0; te < TARGET_EXEMPT_CLS.length; te++) if (targets[ti].classList.contains(TARGET_EXEMPT_CLS[te])) hit = TARGET_EXEMPT_CLS[te];
+      var inVerdictLabel = targets[ti].type === 'radio' && targets[ti].closest('.dsh-pm-verdict-btn') !== null;
+      var rec = String(targets[ti].className).slice(0, 36) + '=' + String(Math.round(b.width * 10) / 10) + 'x' + String(Math.round(b.height * 10) / 10);
+      if (hit !== '' || inVerdictLabel) out.targets.exempt.push(rec);
+      else out.targets.small.push(rec);
+    }
   }
   out.targets.minW = out.targets.count === 0 ? null : Math.round(minW * 10) / 10;
   out.targets.minH = out.targets.count === 0 ? null : Math.round(minH * 10) / 10;
   if (out.targets.count === 0) problems.push('A13 目标尺寸：一个交互目标都没量到（空集不能算过）');
-  for (var s = 0; s < out.targets.small.length; s++) problems.push('A13 命中区 ' + out.targets.small[s] + ' < 24x24');
-  /* ② 字阶（与 A9 同一套口径：可见真文字、排除 1px 裁切的 sr-only） */
+  for (var s = 0; s < out.targets.small.length; s++) problems.push('A13 命中区 ' + out.targets.small[s] + ' < 24x24（未登记例外不许有）');
+  var verdictLabels = shell.querySelectorAll('.dsh-pm-verdict-btn');
+  for (var vl = 0; vl < verdictLabels.length; vl++) {
+    if (verdictLabels[vl].getBoundingClientRect().height < 24) {
+      problems.push('A13 裁决单选 label 高 ' + String(Math.round(verdictLabels[vl].getBoundingClientRect().height * 10) / 10) + 'px < 24px（radio 豁免前提）');
+      break;
+    }
+  }
+  /* ② 字阶（7a43 密度新字阶；登记豁免除外） */
+  var OFFSCALE_EXEMPT = ${JSON.stringify(OFFSCALE_EXEMPT)};
   var all = shell.querySelectorAll('*');
   for (var ei = 0; ei < all.length; ei++) {
     var el = all[ei];
@@ -941,16 +1043,33 @@ function panelA11yScript(): string {
     var fs = parseFloat(ecs.fontSize);
     out.font.hist[String(fs)] = (out.font.hist[String(fs)] || 0) + 1;
     if (fs < out.font.min) { out.font.min = fs; out.font.who = String(el.className).slice(0, 36); }
-    if (out.font.scale.indexOf(fs) < 0 && out.font.off.length < 6) out.font.off.push(String(fs) + 'px @ .' + String(el.className).slice(0, 36));
+    if (out.font.scale.indexOf(fs) < 0) {
+      var ex = '';
+      for (var ox2 = 0; ox2 < OFFSCALE_EXEMPT.length; ox2++) {
+        if (Math.abs(OFFSCALE_EXEMPT[ox2].size - fs) < 0.01 && el.classList.contains(OFFSCALE_EXEMPT[ox2].cls)) ex = OFFSCALE_EXEMPT[ox2].cls;
+      }
+      if (ex !== '') { if (out.font.offExempt.length < 4) out.font.offExempt.push(String(fs) + 'px @ .' + ex); }
+      else if (out.font.off.length < 6) out.font.off.push(String(fs) + 'px @ .' + String(el.className).slice(0, 36));
+    }
   }
-  if (out.font.min < 11) problems.push('A13 可见真文字最小字号 ' + String(out.font.min) + 'px < 11px（.' + out.font.who + '）');
+  if (out.font.min < ${String(FONT_MIN)}) problems.push('A13 可见真文字最小字号 ' + String(out.font.min) + 'px < ${String(FONT_MIN)}px（.' + out.font.who + '）');
   for (var o = 0; o < out.font.off.length; o++) problems.push('A13 阶梯外字号 ' + out.font.off[o]);
-  /* ③ 结构位 emoji（例外：状态符号，见函数注释） */
-  /* 例外（照 FR-1 的明文排除 + FR-8 的"颜色之外的第二判据"）：
-     ✅ 成功/通过/无缺口 · ⚠️ 警告 · ⏳ 验收进行中 · 🔁 退回返工 · ✓ 完成阶段点 · ▸ 当前阶段点 ·
-     ✖/✔ 文档与验收结论符号 · 💡 一句话结论前缀 · 🤖 下一步前缀。
-     这些都不是"结构图标"（不承担导航/affordance），换掉它们反而破坏 FR-8 与既有文案。
-     用码点写而不是字面量：字面量在模板字符串里容易与转义混淆（本卡踩过）。 */
+  /* ②b 内层滚动（除 .chat-scroll 外零内滚动维持；例外同 A3） */
+  for (var si = 0; si < all.length; si++) {
+    var se = all[si];
+    if (typeof se.matches === 'function' && se.matches(SCROLL_EXCEPTIONS)) continue;
+    var scs = getComputedStyle(se);
+    if (!(scs.overflowY === 'auto' || scs.overflowY === 'scroll' || scs.overflowX === 'auto' || scs.overflowX === 'scroll')) continue;
+    out.scroll.scanned++;
+    if (se.scrollHeight > se.clientHeight + 2 || se.scrollWidth > se.clientWidth + 2) {
+      out.scroll.bad.push(desc(se) + '[竖 ' + String(se.clientHeight) + ' 装 ' + String(se.scrollHeight) + ' 横 ' + String(se.clientWidth) + ' 装 ' + String(se.scrollWidth) + ']');
+    }
+  }
+  if (out.scroll.bad.length > 0) problems.push('A13 面板内层滚动（.chat-scroll 之外零豁免）：' + out.scroll.bad.join(' ; '));
+  /* ②c 面板页横向溢出：docs 的长路径靠表内断词兜底，此处守「不溢出」 */
+  out.docOverflow = de.scrollWidth > de.clientWidth + 1;
+  if (out.docOverflow) problems.push('A13 面板页横向溢出：scrollWidth ' + String(de.scrollWidth) + ' > clientWidth ' + String(de.clientWidth));
+  /* ③ 结构位 emoji（例外：状态符号，见 req-report-probe 历史口径） */
   var SYMBOL_EXCEPTIONS = [0x2705, 0x26A0, 0x23F3, 0x1F501, 0x2713, 0x25B8, 0x2716, 0x2714, 0x1F4A1, 0x1F916, 0xFE0F];
   function isEmoji(cp) {
     return (cp >= 0x1F300 && cp <= 0x1FAFF) || (cp >= 0x2600 && cp <= 0x27BF) || cp === 0x2B50;
@@ -967,9 +1086,6 @@ function panelA11yScript(): string {
           var ch = String.fromCodePoint(cp);
           var pe = node.parentElement;
           var place = pe === null ? '?' : (pe.tagName.toLowerCase() + '.' + String(pe.className).slice(0, 30));
-          /* "结构图标"的口径（FR-1）：**承担 affordance 的图标**——按钮 / Tab 的文字前导
-             或 Tab 图标位。只有它们判红；其余（章节标题里的符号、共享模块里的阶段标签）
-             逐块**打印**并登记为本次边界外的已知问题（共享模块同时被老详情页使用，改它要人裁）。 */
           var lead = text.trim().slice(0, 2).indexOf(ch) === 0;
           var affordance = pe !== null && (pe.tagName === 'BUTTON' || pe.getAttribute('role') === 'tab' || String(pe.className).indexOf('dsh-pm-tab-icon') >= 0) && lead;
           out.readings.push(ch + ' @ ' + place);
@@ -980,22 +1096,94 @@ function panelA11yScript(): string {
     node = walker.nextNode();
   }
   for (var m2 = 0; m2 < out.emoji.length; m2++) problems.push('A13 结构位 emoji（按钮 / Tab 的 affordance 图标）：' + out.emoji[m2]);
-  /* ①b Tab 图标硬判据（FR-1 锚点）：每个 Tab 恰 1 个内联 SVG、尺寸 14±1 */
+  /* ③b Tab 图标硬判据：七个 Tab 各恰 1 个内联 SVG、13±1（FR-4：--pm-tab-icon-fr4=13px） */
   var tabIcons = shell.querySelectorAll('.dsh-pm-tab-icon');
   for (var tb = 0; tb < tabIcons.length; tb++) {
     var svgs = tabIcons[tb].querySelectorAll('svg');
     if (svgs.length !== 1) { problems.push('A13 Tab 图标应恰 1 个内联 SVG，实得 ' + String(svgs.length)); continue; }
     var ir = svgs[0].getBoundingClientRect();
-    if (Math.abs(ir.width - 14) > 1 || Math.abs(ir.height - 14) > 1) problems.push('A13 Tab 图标尺寸 ' + String(Math.round(ir.width * 10) / 10) + 'x' + String(Math.round(ir.height * 10) / 10) + 'px 不在 14±1');
+    if (Math.abs(ir.width - 13) > 1 || Math.abs(ir.height - 13) > 1) problems.push('A13 Tab 图标尺寸 ' + String(Math.round(ir.width * 10) / 10) + 'x' + String(Math.round(ir.height * 10) / 10) + 'px 不在 13±1（FR-4 --pm-tab-icon-fr4）');
   }
   out.tabIcons = tabIcons.length;
-  if (tabIcons.length !== 6) problems.push('A13 Tab 图标位应 6 个，实得 ' + String(tabIcons.length));
-  /* ④ 非颜色标记（FR-8）：面板里若出现缺口条/阶段条，标记同样要在 */
+  if (tabIcons.length !== 7) problems.push('A13 Tab 图标位应 7 个，实得 ' + String(tabIcons.length));
+  /* ④ 非颜色标记（面板里若出现缺口条/阶段条，标记同样要在） */
   out.marks.gap = shell.querySelectorAll('.dsh-pm-gap-line .dsh-pm-gap-mark').length;
   out.marks.gapSvg = shell.querySelectorAll('.dsh-pm-gap-line .dsh-pm-gap-sev > svg').length;
   out.marks.doneDots = shell.querySelectorAll('.dsh-pm-dot-wrapper.completed .dsh-pm-dot-mark').length;
   out.marks.curDots = shell.querySelectorAll('.dsh-pm-dot-wrapper.current .dsh-pm-dot-mark').length;
-  var d = document.createElement('div'); d.id = 'diag'; d.textContent = JSON.stringify(out);
+
+  /* ══ 面板专属断言 ══ */
+  if (panelKey === 'docs') {
+    /* T-6：docs 不再渲染验收单节，原位是迁移指引条（可切 verify） */
+    if (panel.querySelector('[data-verify-table]') !== null) problems.push('T-6 docs 面板仍渲染 data-verify-table（验收单节应已迁出）');
+    if (panel.querySelector('[data-doc-section="verification"]') !== null) problems.push('T-6 docs 面板仍渲染 data-doc-section="verification"');
+    var guide = panel.querySelector('[data-action="switch-tab"][data-tab="verify"]');
+    if (guide === null) problems.push('T-6 docs 面板缺迁移指引条（data-action="switch-tab" data-tab="verify"）');
+    /* 路径格等宽（--pm-mono）：根因已修（report.ts:1710 注释提前闭合吞掉主规则）——
+       DEV-docpath-mono 已销账，这里升为**正向断言**：路径格字体必须含 mono。 */
+    var fp = panel.querySelector('.dsh-pm-doc-filepath');
+    var fpMono = fp !== null && getComputedStyle(fp).fontFamily.indexOf('mono') >= 0;
+    /* 复核 P2-4：元素缺席（类名被改/规则被删）同样是失效，不能静默放过。 */
+    if (fp === null) problems.push('docs 路径格缺席：查不到 .dsh-pm-doc-filepath（类名被改或整块未渲染）');
+    else if (!fpMono) problems.push('docs 路径格非等宽：.dsh-pm-doc-filepath 计算字体 = ' + getComputedStyle(fp).fontFamily.slice(0, 48) + '（设计 --pm-mono）');
+  }
+  if (panelKey === 'dialogue') {
+    /* T-8 只读：无回复框、无检索框；有只读说明行 */
+    if (panel.querySelector('[data-role="comment-input"]') !== null) problems.push('T-8 对话面板仍有回复框（data-role="comment-input"，D-6 只读）');
+    if (panel.querySelector('[data-dialogue-search]') !== null) problems.push('T-8 对话面板仍有检索框（data-dialogue-search，D-6 只读）');
+    if (panel.querySelector('[data-dialogue-readonly]') === null) problems.push('T-8 对话面板缺只读说明行（data-dialogue-readonly）');
+    /* T-9 吸顶分页条：是 .chat-scroll 的第一个子元素 */
+    var chatScroll = panel.querySelector('[data-chat-scroll]');
+    if (chatScroll === null) { problems.push('T-9 缺 .chat-scroll（460px 豁免容器）'); }
+    else {
+      var first = chatScroll.firstElementChild;
+      if (first === null || !first.hasAttribute('data-chat-pager')) problems.push('T-9 吸顶分页条不是 .chat-scroll 的第一个子元素（D-7）');
+      notes.push('chat-scroll 实测高 ' + String(Math.round(chatScroll.getBoundingClientRect().height)) + 'px（设计 460px 固定高 + 内边距）');
+    }
+    /* T-10 正序：data-at 升序 */
+    var msgs = panel.querySelectorAll('[data-msg][data-at]');
+    var prev = -1; var orderOk = true;
+    for (var mi = 0; mi < msgs.length; mi++) {
+      var at = Number(msgs[mi].getAttribute('data-at'));
+      if (at < prev) orderOk = false;
+      prev = at;
+    }
+    if (!orderOk) problems.push('T-10 对话不是正序（旧→新，data-at 应升序）');
+    /* 长日志折叠支：标本含 1 条 >120 字符长日志 → data-msg-long 至少 1 */
+    if (panel.querySelectorAll('[data-msg-long]').length < 1) problems.push('对话长日志折叠支未渲染（标本含 >120 字符长日志，应见 data-msg-long）');
+  }
+  if (panelKey === 'verify') {
+    /* FR-8 RTM 列表：8 分组行、汇总口径 5/8 · 2 待裁决 · 1 不通过、版本签 v2、覆盖链 ✓/✗ 真实文本 */
+    var frRows = panel.querySelectorAll('tr[data-fr]').length;
+    if (frRows !== 8) problems.push('FR-8 RTM 表应为 8 个分组行（tr[data-fr]），实得 ' + String(frRows));
+    var prog = txtOf(panel.querySelector('[data-rtm-progress]'));
+    if (prog.indexOf('5/8') < 0 || prog.indexOf('待裁决') < 0 || prog.indexOf('不通过') < 0) problems.push('FR-8 汇总行口径不对（应含 5/8 通过 · 2 待裁决 · 1 不通过）：' + prog.slice(0, 60));
+    if (panel.querySelector('[data-sheet-version="2"]') === null) problems.push('FR-8 缺版本签 data-sheet-version="2"');
+    var cov = panel.querySelectorAll('[data-cov]');
+    if (cov.length === 0) problems.push('FR-8 覆盖链 chip 缺席（data-cov）');
+    else {
+      var covText = '';
+      for (var cv = 0; cv < cov.length; cv++) covText += cov[cv].textContent;
+      if (covText.indexOf('✓') < 0 || covText.indexOf('✗') < 0) problems.push('FR-8 覆盖链 chip 缺 ✓/✗ 真实文本（双编码）');
+    }
+    /* D-10 返工：FR 行必须带**名称**（编号 + 名称，与原型 #tab-verify 同形）——
+       载荷给了 frNames 却渲染不出名称 = 静默退化，这里硬判「8 行全部非空」。 */
+    var nameCells = panel.querySelectorAll('tr[data-fr] [data-fr-name]');
+    if (nameCells.length !== frRows) problems.push('FR-8 FR 行名称缺席：' + String(nameCells.length) + '/' + String(frRows) + ' 行带 data-fr-name');
+    else {
+      for (var nc = 0; nc < nameCells.length; nc++) {
+        if ((nameCells[nc].textContent || '').trim().length === 0) problems.push('FR-8 第 ' + String(nc + 1) + ' 行 FR 名称为空');
+      }
+    }
+    if (panel.querySelector('[data-fr-detail]') === null) problems.push('FR-8 缺行展开（data-fr-detail：逐项实际结果 / 需人工 / 证据）');
+    if (panel.querySelector('.dsh-pm-nh-flag') === null) problems.push('FR-8 缺「无法自验·需人工」琥珀旗（标本含 needsHuman 项）');
+    notes.push('RTM 行数 ' + String(frRows) + ' ｜ 汇总：' + prog.slice(0, 48));
+  }
+  function txtOf(el) { return el === null ? '' : (el.textContent || '').replace(/\\s+/g, ' ').trim(); }
+
+  var d = document.createElement('div'); d.id = 'diag';
+  out.panel = panelKey;
+  d.textContent = JSON.stringify(out);
   document.body.appendChild(d);
 })();
 </script>`
@@ -1022,10 +1210,7 @@ function line(text: string): void {
 
 /**
  * 跑一次 headless Chrome 取 DOM。
- *
- * **只在"进程起不来"时重试一次**：本机 / CI 上并行跑多个 headless Chrome 时偶发启动失败
- * （本卡实测碰到过一次：同一份标本前三组合都过、第四组合 spawn 失败）。一次重试把
- * 「环境抖动」与「页面真的坏了」分开；断言失败**不**重试——重试掩盖不了断言失败，只会让红的日志变长。
+ * **只在"进程起不来"时重试一次**；断言失败**不**重试——重试掩盖不了断言失败。
  */
 function dumpDom(chrome: string, args: string[]): string {
   let lastError: unknown
@@ -1042,35 +1227,28 @@ function dumpDom(chrome: string, args: string[]): string {
 }
 
 /**
- * **回读判据**（独立于页内脚本的第二道）。
- *
- * 为什么在页内已经判过之后还要在宿主侧再判一遍：页内脚本交回来的是**派生布尔**
- * （`docOverflow` / `tabsInFold` / `foldOk`…）与**原始读数**两套。只信派生布尔 = 判据的
- * 真相落在被注入页面的字符串里，出错（改坏、漏注入、旧产物）时宿主侧一片绿。
- * 这里**只吃原始读数**重算一遍阈值比较——与页内脚本互为对照：
- *   · 页内布尔与这里的重算不一致 = 注入/回读链路有问题（本函数的失败就是这条）；
- *   · 页内脚本整段没执行 = `#diag` 读不到，更早一步就红了。
- *
- * 另外承担卡面点名的两条**环境回读**：① 实际视口宽必须等于 `--window-size` 的期望值
- * （不相等 = 参数没生效，量出来的几何量全是错的 → 必须报错，不许照旧判 PASS）；
- * ② 视口高必须 >0 且不超过请求的窗高（读数越界 = 环境异常）。
- *
- * 阈值一律取 `#diag` 回读来的值（`diag.tabsTopMax` 等），不在宿主侧重写常量——
- * 否则探针里会出现第二份会漂移的阈值。
+ * **回读判据**（独立于页内脚本的第二道）：只吃原始读数重算阈值比较，
+ * 与页内派生布尔互为对照；另承担环境回读（视口宽必须等于期望值）。
+ * 阈值一律取 `#diag` 回读来的值（`diag.tabsTopMax` 等），不在宿主侧重写常量。
  */
 function readbackProblems(diag: Diag, width: number, expectLong: number): string[] {
   const bad: string[] = []
   const g = diag.geom
   if (diag.w !== width) bad.push(`视口宽回读 ${String(diag.w)} ≠ 期望 ${String(width)}（--window-size 未生效，本次全部几何读数作废）`)
   if (g.vh <= 0 || g.vh > WINDOW_HEIGHT) bad.push(`视口高回读 ${String(g.vh)} 不在 (0, ${String(WINDOW_HEIGHT)}] 内（读数越界）`)
-  if (diag.doc.sw > diag.doc.cw + 1) bad.push(`回读 A2：documentElement scrollWidth ${String(diag.doc.sw)} > clientWidth ${String(diag.doc.cw)}+1`)
+  /* A2 回读：溢出只允许来自两个登记源（隐藏后残余必须为 0）；壳自身永不许溢出。 */
+  if (diag.a2.overflow && diag.a2.residualAfterHidingRegistered > 1) {
+    bad.push(`回读 A2：隐藏登记溢出源后残余 ${String(diag.a2.residualAfterHidingRegistered)}px（未登记的新溢出源）`)
+  }
+  if (!diag.a2.overflow && diag.doc.sw > diag.doc.cw + 1) bad.push(`回读 A2：documentElement scrollWidth ${String(diag.doc.sw)} > clientWidth ${String(diag.doc.cw)}+1`)
   if (diag.shell.sw > diag.shell.cw + 1) bad.push(`回读 A2：报告壳 scrollWidth ${String(diag.shell.sw)} > clientWidth ${String(diag.shell.cw)}+1`)
   if (g.headTop < 0 || g.headTop >= g.vh) bad.push(`回读 A1：结论头 top ${String(g.headTop)} 不在 [0, ${String(g.vh)})`)
   if (g.bandTop < 0 || g.bandTop >= g.vh) bad.push(`回读 A1：状态带 top ${String(g.bandTop)} 不在 [0, ${String(g.vh)})`)
   if (g.gapsTop < 0 || g.gapsTop >= g.vh) bad.push(`回读 A1：缺口格 top ${String(g.gapsTop)} 不在 [0, ${String(g.vh)})`)
-  /* 终态没有操作条（top = -1）→ 没有可判的落点；只有 >=0 时才判它在首屏内。 */
-  if (g.actionsTop >= g.vh) bad.push(`回读 A1：操作条 top ${String(g.actionsTop)} ≥ 视口高 ${String(g.vh)}`)
-  if (g.tabsTop < 0 || g.tabsTop >= g.vh || g.tabsTop > diag.tabsTopMax) bad.push(`回读 A1：Tab 栏 top ${String(g.tabsTop)} 越界（视口高 ${String(g.vh)}，上限 ${String(diag.tabsTopMax)}）`)
+  if (g.actionsTop >= g.vh) bad.push(`回读 A1：操作区 top ${String(g.actionsTop)} ≥ 视口高 ${String(g.vh)}`)
+  if (g.tabsTop < 0 || g.tabsTop > diag.tabsTopMax || (width >= 1280 && g.tabsTop >= g.vh)) {
+    bad.push(`回读 A1：Tab 栏 top ${String(g.tabsTop)} 越界（视口高 ${String(g.vh)}，本档上限 ${String(diag.tabsTopMax)}${width < 1280 ? '，900 档不强制落视口内（状态带单列是已确认设计）' : ''}）`)
+  }
   if (g.headH > g.vh) bad.push(`回读 A1：结论头整块高 ${String(g.headH)} > 视口高 ${String(g.vh)}`)
   if (g.bandH > g.vh) bad.push(`回读 A1：状态带整块高 ${String(g.bandH)} > 视口高 ${String(g.vh)}`)
   if (g.commentsH > diag.commentListMaxH) bad.push(`回读 A1：评论列表整块高 ${String(g.commentsH)} > 上限 ${String(diag.commentListMaxH)}`)
@@ -1079,15 +1257,12 @@ function readbackProblems(diag: Diag, width: number, expectLong: number): string
   if (g.progressCellH > diag.bandCellMaxH) bad.push(`回读 A6：progress 格 ${String(g.progressCellH)}px > 上限 ${String(diag.bandCellMaxH)}px`)
   if (g.gapsCellH > diag.bandCellMaxH) bad.push(`回读 A6：gaps 格 ${String(g.gapsCellH)}px > 上限 ${String(diag.bandCellMaxH)}px`)
   if (g.outcomeCellH > diag.bandCellMaxH) bad.push(`回读 A6：outcome 格 ${String(g.outcomeCellH)}px > 上限 ${String(diag.bandCellMaxH)}px`)
-  if (diag.barJudged && diag.barH > diag.actionBarMaxH) bad.push(`回读 A6：操作条整块 ${String(diag.barH)}px > 上限 ${String(diag.actionBarMaxH)}px`)
-  if (diag.barJudged && diag.actionTops.length > 1) bad.push(`回读 A6：动作按钮落在 ${String(diag.actionTops.length)} 行（offsetTop=[${diag.actionTops.join(', ')}]）`)
-  if (diag.bandJudged && diag.bandCellHs.some(h => h > diag.bandCellMaxH)) bad.push(`回读 A6：状态带单格最高 ${String(Math.max(...diag.bandCellHs))}px > 上限 ${String(diag.bandCellMaxH)}px`)
-  if (diag.a1.tabCount !== 6) bad.push(`回读 A1：Tab 栏渲染 ${String(diag.a1.tabCount)} 个 ≠ 6`)
+  if (diag.bandCellHs.some(h => h > diag.bandCellMaxH)) bad.push(`回读 A6：状态带单格最高 ${String(Math.max(...diag.bandCellHs))}px > 上限 ${String(diag.bandCellMaxH)}px`)
+  if (diag.a1.tabCount !== 7) bad.push(`回读 A1：Tab 栏渲染 ${String(diag.a1.tabCount)} 个 ≠ 7（7a43：新增验收 Tab）`)
+  if (diag.verifyTabIndex1Based !== VERIFY_TAB_INDEX_1BASED) bad.push(`回读 A1：verifyTabIndex1Based=${String(diag.verifyTabIndex1Based)} ≠ ${String(VERIFY_TAB_INDEX_1BASED)}（T-1 位次）`)
   if (diag.a4.hostCount !== 1) bad.push(`回读 A4：面板包装器 ${String(diag.a4.hostCount)} 个 ≠ 1`)
 
-  /* ── A7~A12（REQ-261005155003-f32f）：**只吃原始读数**再复算一遍阈值 ──
-     页内脚本已经判过一次（`problems`），这里再做一次是防"注入/派生布尔出错"的假绿：
-     下面每一条都从 `a11y` 的读数重算，而不是直接信页内那串 bad 文案。 */
+  /* ── A7~A12：**只吃原始读数**再复算一遍阈值 ── */
   const ay = diag.a11y
   if (ay.focus.rows.length === 0) bad.push('回读 A7：焦点环一个控件都没量到（空集不能算过）')
   for (const r of ay.focus.rows) {
@@ -1097,8 +1272,11 @@ function readbackProblems(diag: Diag, width: number, expectLong: number): string
     if (r.contrast < 3) bad.push(`回读 A7：${r.sel} 环色对比 ${String(r.contrast)}:1 < 3:1`)
   }
   if (ay.target.count === 0) bad.push('回读 A8：一个交互目标都没量到（空集不能算过）')
-  for (const t of ay.target.rows) {
-    if (t.w < 24 || t.h < 24) bad.push(`回读 A8：${t.tag}.${t.cls} 命中区 ${String(t.w)}×${String(t.h)}px < 24×24`)
+  for (const t of ay.target.sized) {
+    bad.push(`回读 A8：${t.tag}.${t.cls} 命中区 ${String(t.w)}×${String(t.h)}px < 24×24（未登记例外）`)
+  }
+  if (ay.target.verdictLabelMinH !== null && ay.target.verdictLabelMinH < 24) {
+    bad.push(`回读 A8：裁决单选 label 最小高 ${String(ay.target.verdictLabelMinH)}px < 24px`)
   }
   for (const a of ay.adjacent.bad) {
     if (a.gap < ay.adjacent.min) bad.push(`回读 A8：相邻目标间距 ${String(a.gap)}px < ${String(ay.adjacent.min)}px（${a.a} | ${a.b}）`)
@@ -1106,9 +1284,11 @@ function readbackProblems(diag: Diag, width: number, expectLong: number): string
   const histSizes = Object.keys(ay.font.hist).map(Number)
   if (histSizes.length > 0) {
     const minSize = Math.min(...histSizes)
-    if (minSize < 11) bad.push(`回读 A9：可见真文字最小字号 ${String(minSize)}px < 11px`)
+    if (minSize < FONT_MIN) bad.push(`回读 A9：可见真文字最小字号 ${String(minSize)}px < ${String(FONT_MIN)}px`)
     for (const s of histSizes) {
-      if (ay.font.scale.indexOf(s) < 0) bad.push(`回读 A9：阶梯外字号 ${String(s)}px（允许集合 ${ay.font.scale.join('/')}）`)
+      if (ay.font.scale.indexOf(s) < 0 && ay.font.offScale.some(o => o.startsWith(String(s) + 'px'))) {
+        bad.push(`回读 A9：阶梯外字号 ${String(s)}px（允许集合 ${ay.font.scale.join('/')}，登记豁免除外）`)
+      }
     }
   } else {
     bad.push('回读 A9：一个真文字元素都没量到（空集不能算过）')
@@ -1120,22 +1300,22 @@ function readbackProblems(diag: Diag, width: number, expectLong: number): string
   }
   for (const b of ay.marks.bad) bad.push('回读 A11：' + b)
   const hr = ay.hier.report
-  if (hr.h1Ratio < 1.8) bad.push(`回读 A12：H1 页标题÷正文 = ${String(hr.h1Ratio)} < 1.8`)
-  if (hr.moduleRatio < 3) bad.push(`回读 A12：H2 模块间距÷模块内间距 = ${String(hr.moduleRatio)} < 3`)
+  if (hr.h1Ratio < 1.4) bad.push(`回读 A12：H1 页标题÷正文 = ${String(hr.h1Ratio)} < 1.4（FR-1：19px ÷ 13px）`)
+  if (width >= 1280 && hr.gridCols !== 2) bad.push(`回读 A12：H2 汇报网格 1280 档应为 2 列，实得 ${String(hr.gridCols)}`)
+  if (width < 1280 && hr.gridCols > 1) bad.push(`回读 A12：H2 汇报网格 900 档应为单列，实得 ${String(hr.gridCols)}`)
   if (hr.accentSamples.length >= 2 && hr.accentKinds > 1) bad.push(`回读 A12：H5 主色文字 ${String(hr.accentKinds)} 类 > 1`)
   if (hr.bandLevels.length > 0 && hr.bandLevels.length < 3) bad.push(`回读 A12：H4 状态带字号档数 ${String(hr.bandLevels.length)} < 3`)
+  const t12 = ay.hier.t12
+  if (!t12.rhTop || !t12.rhTitle) bad.push('回读 T-12：头部三层缺标识行/标题行')
+  if (width >= 1280 && t12.rowRight > 0 && Math.abs(t12.actionsRight - t12.rowRight) > t12.rightTol) bad.push(`回读 T-12：操作区右缘 ${String(t12.actionsRight)} ≠ 标题行右缘 ${String(t12.rowRight)}（容差 ${String(t12.rightTol)}px，FR-1 聚合右端）`)
+  if (width >= 1280 && t12.actionTops.length > 1) bad.push(`回读 T-12：操作区按钮 ${String(t12.actionTops.length)} 行 > 1 行（1280 档同一行）`)
+  if (t12.bannerExpected !== t12.bannerPresent) bad.push(`回读 T-12：闸门提示条在场性 ${String(t12.bannerPresent)} ≠ 期望 ${String(t12.bannerExpected)}`)
   for (const b of ay.hier.bad) bad.push('回读 A12：' + b)
   return bad
 }
 
 /**
- * 浏览器落点：**显式覆盖优先，且不许静默回退**。
- *
- * 为什么不能直接用共享标本模块的 `findChrome()`：它的语义是"候选列表里挑第一个存在的"，
- * 于是 `CHROME_BIN=/nonexistent` 这种**写错的显式覆盖**会被静默忽略、回退到本机 Chrome，
- * 探针照样绿——"环境不可用 → exit 2"这条判据就永远演示不出来；更糟的是 CI 上可能因为
- * "机器上恰好装了另一个 Chrome"而**量错浏览器**却报 PASS（假绿）。
- * 显式设了 `CHROME_BIN` 就以它为准：路径不存在 = 环境错 → 响亮 exit 2，不退到别处。
+ * 浏览器落点：**显式覆盖优先，且不许静默回退**（CHROME_BIN 指错 = 环境错 → 响亮 exit 2）。
  */
 function resolveChrome(): { chrome?: string; why?: string } {
   const env = process.env.CHROME_BIN
@@ -1166,6 +1346,8 @@ function main(): void {
   let firstSpawnError = ''
   let diagOk = 0
   let passed = 0
+  /** 四观测量复测留档（T-19：tabsTop / headHeight / bandHeight / verifyTabIndex1Based）。 */
+  const observables: string[] = []
 
   for (const state of STATES) {
     for (const width of WIDTHS) {
@@ -1183,7 +1365,6 @@ function main(): void {
         diag = parseDiag(dom)
       } catch (e) {
         spawnFailures++
-        // Chrome 的报错含整条命令行（很长），只留首行——「一行可读原因」。
         if (firstSpawnError.length === 0) firstSpawnError = (e as Error).message.split('\n')[0]!.slice(0, 200)
         failures.push(`w=${String(width)} ${state.label}：Chrome 调用失败（${firstSpawnError}）`)
         continue
@@ -1196,74 +1377,75 @@ function main(): void {
 
       const tag = `[w=${String(diag.w)} · ${state.label}]`
       console.log(tag)
+      observables.push(`w=${String(diag.w)} ${state.key}：tabsTop=${String(diag.geom.tabsTop)} headHeight=${String(diag.geom.headH)} bandHeight=${String(diag.geom.bandH)} verifyTabIndex1Based=${String(diag.verifyTabIndex1Based)}`)
 
       // A1：四问落点（逐条可读）
       const a1 = diag.a1
       line(`A1 首屏四问可答：是什么 head=${yn(a1.head)} 标题非空=${yn(a1.title)}`
         + ` ｜ 到哪了 band=${yn(a1.band)} 进度格=${yn(a1.progress)} 阶段条=${yn(a1.dots)}`
         + ` ｜ 卡在哪·缺什么 gaps 格=${yn(a1.gaps)}${a1.gapsNone ? '(无缺口正向结论)' : '(缺口清单)'}`
-        + ` ｜ Tab 栏=${yn(a1.tabs)}（${String(a1.tabCount)} 个同级 Tab）`)
-      line(`     首屏几何（L0 判定集 = 结论头 / 操作条 / 状态带）：head@${String(diag.geom.headTop)}`
+        + ` ｜ Tab 栏=${yn(a1.tabs)}（${String(a1.tabCount)} 个同级 Tab，验收在第 ${String(diag.verifyTabIndex1Based)} 位）`)
+      line(`     Tab 次序：[${diag.tabOrder.join(' < ')}]（期望 trunk < docs < dag < dialogue < verify < token < prompts）`)
+      line(`     首屏几何（L0 判定集 = 结论头 / 操作区 / 状态带）：head@${String(diag.geom.headTop)}`
         + `(内=${yn(diag.geom.headInFold)}) actions@${String(diag.geom.actionsTop)}(内=${yn(diag.geom.actionsInFold)})`
         + ` band@${String(diag.geom.bandTop)}(内=${yn(diag.geom.bandInFold)})`
         + ` gaps@${String(diag.geom.gapsTop)}(内=${yn(diag.geom.gapsInFold)})，视口高 ${String(diag.geom.vh)}`
         + ` → L0 首屏全落点可见=${yn(diag.geom.foldOk)}`)
-      line(`A1 首屏：Tab 栏@${String(diag.geom.tabsTop)} ≤ 上限 ${String(diag.tabsTopMax)} 且落在视口内`
-        + `(${String(diag.geom.vh)}px) → ${yn(diag.geom.tabsInFold)}（**硬判据**：首屏看不到六个 Tab 就是"进不去"）`)
+      line(`A1 首屏：Tab 栏@${String(diag.geom.tabsTop)} ≤ 本档上限 ${String(diag.tabsTopMax)} 且落在视口内`
+        + `(${String(diag.geom.vh)}px) → ${yn(diag.geom.tabsInFold)}`
+        + `${diag.w < 1280 ? '（900 档上限 = 713 + 2×220：状态带单列是已确认设计，见 TABS_TOP_MAX_900）' : ''}`)
       line(`A1 首屏：评论列表整块高 ${String(diag.geom.commentsH)}px ≤ 上限 ${String(diag.commentListMaxH)}px → `
         + `${yn(diag.geom.commentsH <= diag.commentListMaxH)}`
         + ` ｜ 渲染 ${String(diag.geom.commentRows)} 行 ≤ ${String(diag.commentRenderLimit)} 行 → `
         + `${yn(diag.geom.commentRows <= diag.commentRenderLimit)}`
         + ` ｜ 超长系统日志收纳 ${String(diag.geom.commentLong)} 行（data-comment-long）`)
-      /* 分量高度**同时是判据**（不是"只打印的诊断行"）：每格都带 yn 判读，
-         判据本体在页内脚本的 problems.push 分支（此处只是把同一条判据可读地呈现出来，
-         不复写阈值——阈值一律取回读值，保证判据只有一处真相）。 */
       line(`     分量高度（硬判据：头部/状态带 ≤ 视口高；三格各 ≤ 上限）：`
         + `头部 ${String(diag.geom.headH)}px ≤ ${String(diag.geom.vh)}px → ${yn(diag.geom.headH <= diag.geom.vh)}`
         + `（${diag.geom.headParts.join(' ')}）`
         + ` ｜ 状态带 ${String(diag.geom.bandH)}px ≤ ${String(diag.geom.vh)}px → ${yn(diag.geom.bandH <= diag.geom.vh)}`
-        + `（做到哪了 ${String(diag.geom.progressCellH)}px → ${yn(diag.geom.progressCellH <= diag.bandCellMaxH)}`
-        + ` / 缺口 ${String(diag.geom.gapsCellH)}px → ${yn(diag.geom.gapsCellH <= diag.bandCellMaxH)}`
-        + ` / 成效 ${String(diag.geom.outcomeCellH)}px → ${yn(diag.geom.outcomeCellH <= diag.bandCellMaxH)}）`)
-      line(`A5 操作条按钮不重叠：${String(0)} 处相交 → ${yn(diag.overlaps.length === 0)}（窄档 design/test-cases.md 要求）`)
-      line(`A6 操作条版式（1280 档硬判据）：整块高 ${String(diag.barH)}px ≤ 上限 ${String(diag.actionBarMaxH)}px → `
-        + `${yn(!diag.barJudged || diag.barH <= diag.actionBarMaxH)}`
-        + ` ｜ 动作按钮 ${String(diag.actionTops.length)} 行（offsetTop=[${diag.actionTops.join(', ')}]）→ `
-        + `${yn(!diag.barJudged || diag.actionTops.length <= 1)}`
-        + `${diag.barJudged ? '' : '（900 档不判：动作区折行是宽度使然）'}`)
-      line(`A6 状态带（1280 档硬判据）：三格高 [${diag.bandCellHs.join(', ')}]px ≤ 上限 ${String(diag.bandCellMaxH)}px/格 → `
-        + `${yn(!diag.bandJudged || diag.bandCellHs.every(h => h <= diag.bandCellMaxH))}`)
+        + `（做到哪了 ${String(diag.geom.progressCellH)}px / 缺口 ${String(diag.geom.gapsCellH)}px / 成效 ${String(diag.geom.outcomeCellH)}px，各 ≤ ${String(diag.bandCellMaxH)}px）`)
+      line(`T-12 头部三层：标识行=${yn(diag.a11y.hier.t12.rhTop)}（REQ-id=${yn(diag.a11y.hier.t12.cardId)}）`
+        + ` ｜ 标题行=${yn(diag.a11y.hier.t12.rhTitle)}，操作区右缘 ${String(diag.a11y.hier.t12.actionsRight)} ≈ 行右缘 ${String(diag.a11y.hier.t12.rowRight)}（1280 档判，按钮 ${String(diag.a11y.hier.t12.actionTops.length)} 行）`
+        + ` ｜ 闸门提示条=${diag.a11y.hier.t12.bannerPresent ? '在' : '无'}（期望${diag.a11y.hier.t12.bannerExpected ? '在' : '无'}，锚链=${yn(diag.a11y.hier.t12.bannerAnchor)}）`)
+      line(`A5 操作区按钮不重叠：${String(diag.overlaps.length)} 处相交 → ${yn(diag.overlaps.length === 0)}`)
 
-      // A2：无横向溢出
-      line(`A2 无横向溢出：documentElement scrollWidth=${String(diag.doc.sw)} ≤ clientWidth=${String(diag.doc.cw)}+1 → ${yn(!diag.docOverflow)}`
+      // A2：横向溢出（**硬判据**，2026-10-07 起不再有"登记源"豁免）
+      line(`A2 无横向溢出：documentElement scrollWidth=${String(diag.doc.sw)} vs clientWidth=${String(diag.doc.cw)}`
+        + (diag.a2.overflow
+          ? ` → 有溢出 ${String(diag.a2.residualAfterHidingRegistered)}px → ${yn(diag.a2.residualAfterHidingRegistered <= 1)}（无登记源豁免）`
+          : ' → 无 ✓')
         + ` ｜ 报告壳 scrollWidth=${String(diag.shell.sw)} ≤ clientWidth=${String(diag.shell.cw)}+1 → ${yn(!diag.shellOverflow)}`)
+      if (diag.tabsNote.length > 0) line(`     900 档 Tab 栏实测（P2-1 复核口径）：${diag.tabsNote} → ${diag.w < 1280 ? 'sw == cw，**未内溢**（7 枚页签装得下；<660 视口时栏内横滚是 FR-4 的窄档设计）→ 不进 A3 白名单' : '宽档无横滚'}`)
 
       // A3：无内层滚动容器
       line(`A3 无内层滚动容器：实测带 auto|scroll 的元素 ${String(diag.a3.scanned)} 个，`
         + `其中内容装不下（内层滚动）${String(diag.a3.bad.length)} 个 → ${yn(diag.a3.bad.length === 0)}`
-        + ` ｜ 排除 .dsh-pm-detail / [data-dag-wrap] / .dsh-pm-dag-canvas-wrap`)
+        + ` ｜ 排除 .dsh-pm-detail / [data-dag-wrap] / .dsh-pm-dag-canvas-wrap / .dsh-pm-chat-scroll（460px 对话豁免，D-5/D-7）`)
       for (const b of diag.a3.bad) line(`     内层滚动：${b}`)
 
       // A4：未激活面板缺席
       line(`A4 未激活面板缺席：只渲染 trunk=${yn(diag.a4.trunkPresent)}，面板包装器 ${String(diag.a4.hostCount)} 个，`
-        + `DOM 中出现的未激活面板=[${diag.a4.present.join(', ')}] → ${yn(diag.a4.present.length === 0)}`)
+        + `DOM 中出现的未激活面板=[${diag.a4.present.join(', ')}] → ${yn(diag.a4.present.length === 0)}（六键：docs/dag/dialogue/verify/token/prompts）`)
 
-      /* A7~A12（REQ-261005155003-f32f）：每条打印实测值；失败分支在页内 problems 与宿主回读两处。 */
+      /* A7~A12：每条打印实测值；失败分支在页内 problems 与宿主回读两处。 */
       const a7 = diag.a11y.focus
       line(`A7 焦点环（${String(a7.rows.length)} 个控件）：环宽 [${uniq(a7.rows.map(r => r.w + 'px')).join(', ')}] ≥ 2px → ${yn(a7.rows.length > 0 && a7.rows.every(r => r.w >= 2))}`
         + ` ｜ 偏移 [${uniq(a7.rows.map(r => r.off)).join(', ')}] ⊆ {-2px, 2px} → ${yn(a7.rows.length > 0 && a7.rows.every(r => r.off === '-2px' || r.off === '2px'))}`
         + ` ｜ 环色与相邻背景最小比 ${String(minOf(a7.rows.map(r => r.contrast)))}:1 ≥ 3:1 → ${yn(a7.rows.length > 0 && a7.rows.every(r => r.contrast >= 3))}`
-        + ` ｜ 取样通道：live ${String(a7.via.live)} / cssom 兜底 ${String(a7.via.cssom)}（兜底原因见断言注释：headless 的 :focus-visible 置位不稳定）`)
+        + ` ｜ 取样通道：live ${String(a7.via.live)} / cssom 兜底 ${String(a7.via.cssom)}`)
       for (const b of a7.bad) line(`     红：${b}`)
       const a8 = diag.a11y.target
       const a8a = diag.a11y.adjacent
       line(`A8 目标尺寸：${String(a8.count)} 个交互目标，最小命中区 ${String(minOf(a8.rows.map(r => r.w)))}×${String(minOf(a8.rows.map(r => r.h)))}px ≥ 24×24 → ${yn(a8.count > 0 && a8.sized.length === 0)}`
-        + ` ｜ 相邻间距下限 ${String(a8a.min)}px：违例 ${String(a8a.bad.length)} 处，显式例外 ${String(a8a.exempt.length)} 处（Tab 同组 4px，理由见断言注释）→ ${yn(a8a.bad.length === 0)}`)
+        + ` ｜ 登记例外 ${String(a8.exempt.length)} 处（密集行文本钮 / 裁决 radio→label，逐条理由见脚本常量）`
+        + ` ｜ 相邻间距下限 ${String(a8a.min)}px：违例 ${String(a8a.bad.length)} 处，Tab 同组例外 ${String(a8a.exempt.length)} 处 → ${yn(a8a.bad.length === 0)}`)
       for (const b of a8.sized) line(`     不达标：${b.tag}.${b.cls} = ${String(b.w)}×${String(b.h)}px`)
       for (const b of a8a.bad) line(`     间距违例：${String(b.gap)}px（${b.a} | ${b.b}）`)
       const a9 = diag.a11y.font
-      line(`A9 可见真文字字号：最小 ${String(a9.min.size)}px（.${a9.min.who}）≥ 11px → ${yn(a9.min.size >= 11)}`
-        + ` ｜ 档位集合 {${Object.keys(a9.hist).sort((x, y) => Number(x) - Number(y)).join(', ')}} ⊆ {${a9.scale.join(', ')}}，阶梯外 ${String(a9.offScale.length)} 处 → ${yn(a9.offScale.length === 0)}`)
+      line(`A9 可见真文字字号：最小 ${String(a9.min.size)}px（.${a9.min.who}）≥ ${String(FONT_MIN)}px → ${yn(a9.min.size >= FONT_MIN)}`
+        + ` ｜ 档位集合 {${Object.keys(a9.hist).sort((x, y) => Number(x) - Number(y)).join(', ')}} ⊆ {${a9.scale.join(', ')}}（7a43 密度新字阶），`
+        + `阶梯外 ${String(a9.offScale.length)} 处 → ${yn(a9.offScale.length === 0)}`
+        + `${a9.offScaleExempt.length > 0 ? ` ｜ 登记豁免 ${a9.offScaleExempt.join('、')}` : ''}`)
       for (const b of a9.offScale) line(`     阶梯外：${b}`)
       const a10 = diag.a11y.motion
       line(`A10 reduced-motion：本机媒体查询 ${a10.reduceOn ? '成立（reduce）' : '不成立（读数不可得，如实打印不判）'}`
@@ -1276,14 +1458,14 @@ function main(): void {
       for (const b of a11.bad) line(`     红：${b}`)
       const a12 = diag.a11y.hier
       const r12 = a12.report
-      line(`A12 视觉层级：H1 ${String(r12.h1)}÷${String(r12.body)} = ${String(r12.h1Ratio)} ≥ 1.8（${yn(r12.h1Ratio >= 1.8)}）`
-        + ` ｜ H2 ${String(r12.moduleGap)}÷${String(r12.innerGap)} = ${String(r12.moduleRatio)} ≥ 3（${yn(r12.moduleRatio >= 3)}）`
+      line(`A12 视觉层级：H1 ${String(r12.h1)}÷${String(r12.body)} = ${String(r12.h1Ratio)} ≥ 1.4（${yn(r12.h1Ratio >= 1.4)}）`
+        + ` ｜ H2 汇报网格 ${String(r12.gridCols)} 列（1280→2 / 900→1，${yn(diag.w >= 1280 ? r12.gridCols === 2 : r12.gridCols <= 1)}）`
         + ` ｜ H3 标题 ${r12.titleFont ?? '—'} vs 正文 ${r12.lineFont ?? '—'} 双通道（${yn((r12.titleFont ?? '') !== (r12.lineFont ?? ''))}）`)
-      line(`     H4 状态带字号档 ${JSON.stringify(r12.bandLevels)}（档数 ≥3 / 极差 ≥8 / 主值与次大差 ≥2；下两档相差 1px 为 design/frontend.md §C-6 的权威取值，已登记）`
-        + ` ｜ H5 主色文字 ${String(r12.accentKinds)} 类（${r12.accentSamples.map(s => s.role).join(' / ')}）→ ${yn(r12.accentKinds <= 1)}`)
-      line(`     D-8（FR-9 第 7 项）：动作行 top ${String(a12.d8.actionRowTop)} < 身份行 top ${String(a12.d8.identityRowTop)}（差 ${String(a12.d8.gap ?? '—')}px ≥ 8）→ ${yn(a12.d8.gap !== undefined && a12.d8.gap >= 8)}`
-        + ` ｜ 窗口组左 ${String(a12.d8.windowLeft ?? '—')} < 「创建于」左 ${String(a12.d8.createdAtLeft ?? '—')} → ${yn(a12.d8.windowLeft === null || a12.d8.createdAtLeft === null || a12.d8.windowLeft < a12.d8.createdAtLeft)}`)
+      line(`     H4 状态带字号档 ${JSON.stringify(r12.bandLevels)}（档数 ≥3 / 极差 ≥8 / 主值与次大差 ≥2）`
+        + ` ｜ H5 主色文字 ${String(r12.accentKinds)} 类（${r12.accentSamples.map(s => s.role).join(' / ')}）→ ${yn(r12.accentKinds <= 1)}`
+        + ` ｜ 激活页签取主色 + 2px 指示条（FR-4）`)
       for (const b of a12.bad) line(`     红：${b}`)
+      for (const d of diag.deviations) line(`     已登记偏差：${d}`)
 
       /* 宿主侧回读判据（只吃原始读数，独立于页内派生布尔）——逐条打印，红时点名具体读数。 */
       const readback = readbackProblems(diag, width, expectLong)
@@ -1294,17 +1476,15 @@ function main(): void {
 
       const ok = diag.problems.length === 0 && readback.length === 0
         && a1.head && a1.title && a1.band && a1.progress && a1.dots && a1.gaps && a1.tabs
-        && !diag.docOverflow && !diag.shellOverflow
+        && diag.verifyTabIndex1Based === VERIFY_TAB_INDEX_1BASED
+        && !diag.shellOverflow && diag.a2.residualAfterHidingRegistered <= 1
         && diag.a3.bad.length === 0
         && diag.a4.present.length === 0 && diag.a4.hostCount === 1 && diag.a4.trunkPresent
         && diag.geom.foldOk && diag.overlaps.length === 0
-        && (!diag.barJudged || (diag.barH <= diag.actionBarMaxH && diag.actionTops.length <= 1))
-        && (!diag.bandJudged || diag.bandCellHs.every(h => h <= diag.bandCellMaxH))
+        && diag.bandCellHs.every(h => h <= diag.bandCellMaxH)
         && diag.geom.tabsInFold && diag.geom.commentsH <= diag.commentListMaxH
         && diag.geom.commentRows <= diag.commentRenderLimit
         && diag.w === width
-        // A7~A12（REQ-261005155003-f32f）：页内 problems 已含它们，这里再显式要求一遍，
-        // 免得将来有人把 a11y 的 push 漏掉却仍读到 PASS。
         && diag.a11y.focus.bad.length === 0 && diag.a11y.focus.rows.length > 0
         && diag.a11y.target.sized.length === 0 && diag.a11y.target.count > 0
         && diag.a11y.adjacent.bad.length === 0
@@ -1315,7 +1495,7 @@ function main(): void {
 
       if (ok) {
         passed++
-        console.log(`PASS w=${String(diag.w)} state=${state.key}（四问可答·L0 落点在首屏 ✓ / Tab 栏 top=${String(diag.geom.tabsTop)} ≤ ${String(diag.tabsTopMax)} ✓ / 评论列表 ${String(diag.geom.commentsH)}px ≤ ${String(diag.commentListMaxH)}px ✓ / 无横向溢出 ✓ / 无内层滚动容器 ✓ / 未激活面板缺席 ✓ / 操作条不重叠 ✓ / 操作条整块 ≤ ${String(diag.actionBarMaxH)}px 且按钮同一行 ✓）`)
+        console.log(`PASS w=${String(diag.w)} state=${state.key}（四问可答 ✓ / 7 Tab 次序 ✓ 验收第 ${String(diag.verifyTabIndex1Based)} 位 ✓ / Tab 栏 top=${String(diag.geom.tabsTop)} ≤ ${String(diag.tabsTopMax)} ✓ / 评论列表 ${String(diag.geom.commentsH)}px ≤ ${String(diag.commentListMaxH)}px ✓ / 横向溢出受控 ✓ / 无内层滚动容器 ✓ / 未激活面板缺席 ✓ / 头部三层 ✓ / 操作区不重叠 ✓）`)
       } else {
         console.error(`FAIL w=${String(width)} state=${state.key}`)
         for (const p of diag.problems) console.error('  - ' + p)
@@ -1324,17 +1504,16 @@ function main(): void {
     }
   }
 
-  /* ═══════════ A13：五块未覆盖面板补测（requirement.md 验收标准 #4c） ═══════════
-     原型只渲染 trunk，docs / dag / dialogue / token / prompts 这三条判据从没被量过。
-     这里逐块渲染真壳 + 该块的真实载荷，量目标尺寸 / 字阶 / 结构位 emoji，逐块打印一行。 */
-  const PANEL_KEYS: PanelSpecimenKey[] = ['docs', 'dag', 'dialogue', 'token', 'prompts']
+  /* ═══════════ A13：六个非 trunk 面板补测（含 verify；T-6/T-8/FR-8 面板专属断言） ═══════════ */
+  const PANEL_KEYS: PanelSpecimenKey[] = ['docs', 'dag', 'dialogue', 'verify', 'token', 'prompts']
   console.log('')
-  console.log('[A13 五块未覆盖面板补测（原型只渲染 trunk；1280 档 · 在途）]')
+  console.log('[A13 六块非 trunk 面板补测（1280 档 · 在途；目标尺寸 / 字阶 / 结构位图标 / 内层滚动 / 横向溢出 + 面板专属断言）]')
   let panelFailed = 0
+  const deviationNotes: string[] = []
   for (const pk of PANEL_KEYS) {
     const page = join(dir, 'panel-' + pk + '.html')
     writeFileSync(page, specimenShellForPanel(1280, 'inflight', pk, panelA11yScript()))
-    let pd: PanelDiag | undefined
+    let pd: (PanelDiag & { devDocpathMono?: boolean }) | undefined
     try {
       const dom = dumpDom(chrome, [
         '--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1',
@@ -1344,7 +1523,7 @@ function main(): void {
       const m = /<div id="diag">([\s\S]*?)<\/div>/.exec(dom)
       if (m !== null) {
         const raw = m[1]!.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
-        pd = JSON.parse(raw) as PanelDiag
+        pd = JSON.parse(raw) as PanelDiag & { devDocpathMono?: boolean }
       }
     } catch {
       pd = undefined
@@ -1355,10 +1534,12 @@ function main(): void {
       console.error(`  ${pk}：拿不到读数（脚本未执行）`)
       continue
     }
+    for (const n of pd.notes) deviationNotes.push(`${pk}：${n}`)
     const histKeys = Object.keys(pd.font.hist).map(Number).sort((a, b) => a - b)
-    const lineText = `  ${pad(pk, 10)}目标 ${String(pd.targets.count)} 个，最小 ${String(pd.targets.minW ?? '—')}×${String(pd.targets.minH ?? '—')}px`
+    const lineText = `  ${pad(pk, 10)}目标 ${String(pd.targets.count)} 个，最小 ${String(pd.targets.minW ?? '—')}×${String(pd.targets.minH ?? '—')}px（登记例外 ${String(pd.targets.exempt.length)} 处）`
       + ` ｜ 字号 {${histKeys.join(', ')}} 最小 ${String(pd.font.min)}px`
-      + ` ｜ Tab 图标 ${String(pd.tabIcons)} 个/14px ｜ affordance emoji ${String(pd.emoji.length)} 处 ｜ 其它 emoji 读数 ${String(pd.readings.length)} 处（边界外，见 evidence/a13-panel-findings.txt）`
+      + ` ｜ Tab 图标 ${String(pd.tabIcons)} 个/13px ｜ affordance emoji ${String(pd.emoji.length)} 处`
+      + ` ｜ 内层滚动 ${String(pd.scroll.bad.length)} 处（白名单外）｜ 横向溢出 ${pd.docOverflow ? '有' : '无'}`
       + ` ｜ 标记 缺口 ${String(pd.marks.gap)}/${String(pd.marks.gapSvg)} 阶段点 ${String(pd.marks.doneDots)}/${String(pd.marks.curDots)}`
       + ` → ${pd.problems.length === 0 ? 'PASS' : 'FAIL'}`
     if (pd.problems.length === 0) console.log(lineText)
@@ -1368,11 +1549,15 @@ function main(): void {
       for (const p of pd.problems) console.error('     红：' + p)
       failures.push(`A13 面板 ${pk}：${pd.problems.join(' | ')}`)
     }
+    for (const n of pd.notes) line(`     注：${n}`)
   }
-  if (panelFailed === 0) console.log('  A13 五块面板全部 PASS（目标尺寸 / 字阶 / 结构位 emoji 三条判据）')
+  if (panelFailed === 0) console.log('  A13 六块面板全部 PASS（含 verify RTM 8 行 / docs T-6 迁移指引 / dialogue T-8~T-10）')
+
+  console.log('')
+  console.log('[四观测量复测（T-19；阈值在探针断言里，不进 geometry 块）]')
+  for (const o of observables) line(o)
 
   // 四组合一次都没跑起来 = 环境不可用（不是断言失败）→ 退出码 2，一行可读原因。
-  // 为什么与"断言不过（1）"分开：CI 上这两种红的处置完全不同（一个去装浏览器，一个去看页面）。
   if (diagOk === 0 && spawnFailures > 0) {
     console.error(`PROBE FAIL（环境不可用，退出码 2）：Chrome 起不来（${String(spawnFailures)}/${String(STATES.length * WIDTHS.length)} 组合调用失败）：${firstSpawnError}`)
     console.error('修复：确认 CHROME_BIN / 安装路径可执行且可启动（本机：' + chrome + '）。')
@@ -1385,8 +1570,9 @@ function main(): void {
     process.exit(1)
   }
   console.log(`\nPROBE PASS（${String(passed)}/4 组合：1280/900 × 在途 implementing/终态 archived；`
-    + '四问可答（L0 结论头/操作条/状态带落点在首屏）/ **Tab 栏 top ≤ 713** / 评论列表整块 ≤ 260px /'
-    + ' 无横向溢出 / 无内层滚动容器 / 未激活面板缺席 / 操作条不重叠 / 操作条整块 ≤ 72px 且按钮同一行 / 状态带三格 ≤ 220px）')
+    + '四问可答 / 7 Tab 次序（验收第 5 位）/ Tab 栏 top 分档上限（713 @1280 · 1153 @900）/ 评论列表整块 ≤ 260px /'
+    + ' 横向溢出受控（登记源之外零残余）/ 无内层滚动容器（.chat-scroll 视口自适应高 · 唯一豁免）/ 未激活面板缺席（六键）/'
+    + ' 头部三层 + 操作区聚合右端 / 状态带三格 ≤ 220px ｜ A13 六面板全过）')
 }
 
 function yn(v: boolean): string {

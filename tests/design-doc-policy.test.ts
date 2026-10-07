@@ -13,7 +13,8 @@ import {
   missingCategoryDocs,
 } from '../src/application/internal/category-doc-sets.js'
 
-const FEATURE_ROOT = '# 需求\n\n## 边界\n\n## 产品定义\n\n## 用户与角色\n\n## 功能点\n'
+// 2026-10-06 加固：feature / refactor 必填节多一节「失败与并发路径」（夹具代表齐活的文档）。
+const FEATURE_ROOT = '# 需求\n\n## 边界\n\n## 产品定义\n\n## 用户与角色\n\n## 功能点\n\n## 失败与并发路径\n'
 const FEATURE_REQUIRED = ['architecture.md', 'data-model.md', 'interfaces.md', 'test-cases.md', 'use-cases.md']
 const BUG_ROOT = '# 缺陷\n\n## 边界\n\n## 复现步骤\n\n## 根因\n\n## 回归\n'
 

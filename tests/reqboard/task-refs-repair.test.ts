@@ -19,7 +19,12 @@ const OTHER_REQ = 'REQ-0000b2'
 const WINDOW = 'session-w-001'
 
 const REQUIREMENT_MD = ['# 需求', '', '- **FR-1: 甲条**：第一件事', ''].join('\n')
-/** 覆盖表只把 FR-1 给 t1 —— t2 落库时引用为空，正好用来演示"补写"。 */
+/**
+ * 覆盖表只把 FR-1 给 t1（人读汇总）。
+ *
+ * 2026-10-06 收敛后它**不再是覆盖门禁的依据**——「t1 有引用、t2 空」这个形态由**卡上**
+ * requirement_refs 造（见下面 plan.tasks），正好用来演示"补写"。
+ */
 const DECOMPOSITION_MD = [
   '| 需求条款 | 条款内容 | 接收任务 |',
   '|---------|---------|---------|',
@@ -42,7 +47,8 @@ function seed() {
       plan: {
         path: 'docs/requirements/' + REQ_ID + '/decomposition.md',
         summary: '两张卡', tasks: [
-          { key: 't1', title: '甲卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: [], acceptance: 'npx vitest run 全绿', implementation: '改 src/a.ts' },
+          // t1 在**卡上**声明 FR-1（门禁唯一依据）；t2 故意为空 = 待补写的空引用卡
+          { key: 't1', title: '甲卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: [], acceptance: 'npx vitest run 全绿', implementation: '改 src/a.ts', requirement_refs: ['FR-1'] },
           { key: 't2', title: '乙卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: ['t1'], acceptance: 'npx vitest run 全绿', implementation: '改 src/b.ts' },
         ],
         submittedAt: h.clock.t, submittedBy: { kind: 'agent', sessionId: WINDOW },
@@ -70,7 +76,7 @@ describe('补写入口 · 全量替换与幂等（FR-4）', () => {
     const { h, root } = seed()
     await h.seedSettled()
     const { t2 } = await landAndPick(h)
-    expect(t2.requirementRefs ?? []).toEqual([]) // 落库时覆盖表没给它引用
+    expect(t2.requirementRefs ?? []).toEqual([]) // 落库时卡上就没写引用（待补写）
 
     const out = await executeTaskRefs(h.deps, { task_id: t2.id, requirement_refs: ['FR-1'], reason: '覆盖表漏写，补上' }, exec) as Record<string, unknown>
     expect(out['changed']).toBe(true)

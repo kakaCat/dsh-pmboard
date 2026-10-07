@@ -16,6 +16,8 @@ import {
   orderDialogue, readDialogue, renderDialogue, type DialogueMessage,
 } from '../src/client/views/panels/dialogue.ts'
 import type { ReportTabCtx } from '../src/client/views/report-tabs.ts'
+// 样式判据（折叠块"合上必须藏"由本片自己钉死）：只读常量，不引入渲染依赖
+import { REPORT_CSS } from '../src/client/styles/report.ts'
 
 const ctx = (requirementId = 'REQ-1'): ReportTabCtx => ({
   requirementId,
@@ -311,6 +313,20 @@ describe('渲染纪律与注册', () => {
     expect(html).toContain('data-dialogue-total="90"')
     expect(html).toContain('data-chat-scroll="1"')
     expect(html).not.toMatch(/overflow:\s*(auto|scroll)/)
+  })
+
+  it('折叠块合上时非 summary 内容由本片显式藏起来（不依赖引擎 UA）', () => {
+    // 事故出处（2026-10-07）：同一条长日志气泡在 Chrome 154（开发机）正常、在 Electron/Chromium 152
+    // （DSH 桌面端）把收纳行与全文**同时**渲染出来——Chromium 131 起原生隐藏变成了**可被作者样式覆盖**
+    // 的 UA 规则，跨引擎版本不可靠。判据：report.ts 必须自己钉死"合上 → display: none"。
+    expect(REPORT_CSS).toMatch(/details:not\(\[open\]\)\s*>\s*:not\(summary\)\s*\{\s*display:\s*none/)
+  })
+
+  it('长日志那条消息占满气泡栏（contain 清零 max-content 后不许把气泡压成一条缝）', () => {
+    // contain: inline-size 让这一格的内联尺寸与内容解耦（适配窄窗的前提），代价是 max-content 归零；
+    // 消息行/气泡栏若仍按内容收缩，收纳行只剩「标记 + 展开」宽（实测 130px）。判据：两者必须补宽度规则。
+    expect(REPORT_CSS).toMatch(/\.dsh-pm-cmsg:has\(\.dsh-pm-long\)\s*\{[^}]*width:\s*100%/)
+    expect(REPORT_CSS).toMatch(/\.dsh-pm-cmsg:has\(\.dsh-pm-long\)\s*>\s*\.dsh-pm-cmsg-col\s*\{[^}]*flex:\s*1 1 auto/)
   })
 
   it('注册项不变：key / label / badge', () => {

@@ -24,8 +24,20 @@ import {
   type RequirementRecord,
   type RequirementStatus,
 } from '../src/shared/protocol.js'
+// REQ-261006201841-944d FR-2：锚点必须命中目标文档**真实存在**的标题——夹具用同一实现算锚点，
+// 不硬编码 slug 规则（「关键概念（术语表）」的全角括号会被 slugify 掉，手写串必然失配）。
+import { listHeadingAnchors } from '../src/domain/knowledge/slug.js'
 
 const W = 'session-abc-123'
+/**
+ * 归档目标文档：合并去向（`MERGED_DOC`）与说明书更新点（`MANUAL_DOC`）两份都要**真实落盘且非空**
+ * ——REQ-261006201841-944d FR-1/FR-2 起，归档材料要逐条过事实判定（存在 / 非空 / 锚点可达）。
+ */
+const MERGED_DOC = 'agent-dh/docs/architecture/requirement-board.md'
+const MERGED_MD = '# 需求看板\n\n## 状态时间线\n\n时间线 / 计划模式 / 甘特图。\n'
+const MANUAL_DOC = 'docs/architecture/project-manual.md'
+const MANUAL_MD = '# 项目说明书\n\n## 关键概念（术语表）\n\n需求看板 / 计划模式两个术语的指针。\n'
+const MANUAL_ANCHOR = listHeadingAnchors(MANUAL_MD).map(h => h.anchor)[listHeadingAnchors(MANUAL_MD).length - 1]!
 let dir: string
 let store: ReturnType<typeof makeTestStore>
 let verifyTool: { execute: (a: unknown, e: unknown) => Promise<any> }
@@ -42,6 +54,9 @@ beforeEach(() => {
     applicationDeps: { store: store } as never, taskStore: taskStoreAt(dir), now: () => Date.now() })
   // REQ-2d1c74 FR-5：archive 目录与清单内文档须真实落盘（agent-dh/ 前缀为仓库根相对形态）
   for (const p of ['requirement.md', 'plan.md', 'verification.md']) stubDocFile('agent-dh/docs/requirements/REQ-abc123/' + p)
+  // REQ-261006201841-944d FR-1/FR-2：合并去向与说明书更新点的目标必须存在且非空
+  stubDocFile(MERGED_DOC, undefined, MERGED_MD)
+  stubDocFile(MANUAL_DOC, undefined, MANUAL_MD)
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -111,7 +126,7 @@ describe('验收：人工审核 + 证据闸', () => {
     const sheet = store.peekAll()[0]!.verification!.sheet!
     const verdicts = await post('/req/verdicts', {
       id: 'REQ-abc123', version: sheet.version,
-      verdicts: sheet.items.map(i => ({ itemId: i.id, status: 'passed', opinion: '实际结果：全部符合' })),
+      verdicts: sheet.items.map(i => ({ itemId: i.id, status: 'passed', opinion: '实际结果：全部符合（npx vitest run tests/a.test.ts → 12 passed）' })),
     })
     expect(verdicts.statusCode).toBe(200)
 
@@ -159,10 +174,10 @@ describe('归档：文档合并规范 + 人工拍板', () => {
       { kind: 'plan', path: 'agent-dh/docs/requirements/REQ-abc123/plan.md' },
       { kind: 'verification', path: 'agent-dh/docs/requirements/REQ-abc123/verification.md' },
     ],
-    merged_into: ['agent-dh/docs/architecture/requirement-board.md'],
+    merged_into: [MERGED_DOC],
     index_entry: '需求看板加状态时间线/计划模式/甘特图，拆分为落库已批准计划',
     manual_updates: [
-      { path: 'docs/architecture/project-manual.md', section: '关键概念（术语表）', summary: '新增"需求看板/计划模式"两个术语的指针' },
+      { path: MANUAL_DOC + '#' + MANUAL_ANCHOR, summary: '新增"需求看板/计划模式"两个术语的指针' },
     ],
   }
 
@@ -235,10 +250,10 @@ describe('文档金字塔：归档让项目认知向上生长', () => {
       { kind: 'plan', path: 'agent-dh/docs/requirements/REQ-abc123/plan.md' },
       { kind: 'verification', path: 'agent-dh/docs/requirements/REQ-abc123/verification.md' },
     ],
-    merged_into: ['agent-dh/docs/architecture/requirement-board.md'],
+    merged_into: [MERGED_DOC],
     index_entry: '一句话结论',
     manual_updates: [
-      { path: 'docs/architecture/project-manual.md', section: '关键概念（术语表）', summary: '新增两个术语指针' },
+      { path: MANUAL_DOC + '#' + MANUAL_ANCHOR, summary: '新增两个术语指针' },
     ],
   }
 
@@ -256,13 +271,18 @@ describe('文档金字塔：归档让项目认知向上生长', () => {
     expect(() => assertArchiveMaterials('feature', base)).toThrow(/缺少项目说明书更新点/)
     expect(() => assertArchiveMaterials('feature', {
       ...base,
-      manualUpdates: [{ path: 'docs/architecture/project-manual.md', section: '术语表', summary: '多了 X 认知' }],
+      manualUpdates: [{ path: MANUAL_DOC + '#' + MANUAL_ANCHOR, summary: '多了 X 认知' }],
     })).not.toThrow()
-    // 更新点必须写全 path/section/summary
+    // 更新点必须写全 path（`路径#锚点` 形态）/ summary；`section` 已废弃（FR-2）
     expect(() => assertArchiveMaterials('feature', {
       ...base,
-      manualUpdates: [{ path: '', section: 's', summary: 'x' }],
-    })).toThrow(/必须写全 path \/ section \/ summary/)
+      manualUpdates: [{ path: '', summary: 'x' }],
+    })).toThrow(/必须写全 path（「路径#锚点」形态）与 summary/)
+    // 旧形态（path 无 `#`）在新契约下**形态即被拒**（事实判定之外的第一道）
+    expect(() => assertArchiveMaterials('feature', {
+      ...base,
+      manualUpdates: [{ path: MANUAL_DOC, section: '术语表', summary: 'x' }],
+    })).toThrow(/路径#锚点/)
     // 不改变认知的类型：不强制申报
     expect(() => assertArchiveMaterials('chore', {
       requiredForChore: true, dir: base.dir, docs: [{ kind: 'requirement', path: 'a' }, { kind: 'verification', path: 'c' }],
@@ -283,7 +303,9 @@ describe('文档金字塔：归档让项目认知向上生长', () => {
     const out = await run(archiveTool, goodArchive)
     expect(out.success).toBe(true)
     const req = store.peekAll()[0]
-    expect(req.archive?.manualUpdates?.[0]?.section).toBe('关键概念（术语表）')
-    expect(req.comments.at(-1)?.body).toContain('说明书更新：docs/architecture/project-manual.md#关键概念（术语表）')
+    // FR-2：锚点收敛进 path；`section` 已废弃——不传就不落库（旧形态的读侧兼容由 archive-compat 用例钉住）
+    expect(req.archive?.manualUpdates?.[0]?.path).toBe(MANUAL_DOC + '#' + MANUAL_ANCHOR)
+    expect(req.archive?.manualUpdates?.[0]?.section).toBeUndefined()
+    expect(req.comments.at(-1)?.body).toContain('说明书更新：' + MANUAL_DOC + '#' + MANUAL_ANCHOR)
   })
 })

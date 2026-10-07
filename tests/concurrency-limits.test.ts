@@ -12,6 +12,7 @@ import { executeMoveTask } from '../src/application/use-cases/MoveTask.js'
 import { advanceRequirement } from '../src/application/use-cases/AdvanceChain.js'
 import { executeSubtask } from '../src/application/use-cases/ExecuteTask.js'
 import { findWorkSurfaceConflicts, declaredFiles } from '../src/application/internal/conflict-check.js'
+import { executeDecompose } from '../src/application/use-cases/Decompose.js'
 import { detectCrossCardOverwrite } from '../src/application/internal/cross-card.js'
 import { checkSubtaskInvariants } from '../src/shared/protocol.js'
 import { LIMITS } from '../src/domain/limits.js'
@@ -96,6 +97,59 @@ describe('拆分期冲突拦截（6.4）', () => {
     expect(findWorkSurfaceConflicts([a, bDep])).toEqual([])
     const c = { key: 't3', implementation: '改 packages/x/src/c.ts', dependsOn: [] }
     expect(findWorkSurfaceConflicts([a, c])).toEqual([])
+  })
+
+  // REQ-261007095750-9f48 FR-2：口径扩根前，`src/**` 落点一条都抽不到 ⇒ 这两条用例恒为空/恒绿。
+  // 用例写在这里的意义就是**可证伪**：把 PATH_RE 的 `src` 根去掉，它必须红。
+  it('src 落点也在冲突门视线内：互无依赖 + 同一 src 文件 → 冲突；同链串行 → 不冲突', () => {
+    const a = { key: 't1', implementation: '改 src/application/internal/conflict-check.ts', dependsOn: [] }
+    const b = { key: 't2', implementation: '改 src/application/internal/conflict-check.ts', dependsOn: [] }
+    expect(findWorkSurfaceConflicts([a, b])).toEqual([
+      { file: 'src/application/internal/conflict-check.ts', keys: ['t1', 't2'] },
+    ])
+    const bDep = { key: 't2', implementation: '改 src/application/internal/conflict-check.ts', dependsOn: ['t1'] }
+    expect(findWorkSurfaceConflicts([a, bDep])).toEqual([])
+    // .mts 与深层目录同样认（扩展名表扩根的旁证）
+    const c = { key: 't3', implementation: '改 src/tools/local.mts', dependsOn: [] }
+    const d = { key: 't4', implementation: '改 src/tools/local.mts', dependsOn: [] }
+    expect(findWorkSurfaceConflicts([c, d])).toEqual([{ file: 'src/tools/local.mts', keys: ['t3', 't4'] }])
+  })
+
+  it('端到端：两卡声明同一 src 文件且互无依赖 → 拆分被拒 REQBOARD_FILE_CONFLICT（零副作用）', async () => {
+    const h = makeHarness()
+    const impl = '改 src/application/internal/conflict-check.ts'
+    h.seedRequirementSync(req({
+      id: 'REQ-000001', status: 'decomposing', category: 'feature', sourceSessionId: 'session-w-c',
+      artifacts: [{
+        stage: 'design', kind: 'plan', path: 'docs/requirements/REQ-000001/plan.md',
+        registeredAt: 1, registeredBy: { kind: 'agent', sessionId: 'session-w-c' },
+      }],
+      plan: {
+        path: 'docs/requirements/REQ-000001/plan.md', summary: '计划', submittedAt: 1,
+        submittedBy: { kind: 'agent', sessionId: 'session-w-c' },
+        tasks: [
+          { key: 't1', title: '改冲突门', phase: 'implement', side: 'backend', dependsOn: [], acceptance: 'npx vitest run tests/a.test.ts 通过', implementation: impl },
+          { key: 't2', title: '也改冲突门', phase: 'implement', side: 'backend', dependsOn: [], acceptance: 'npx vitest run tests/b.test.ts 通过', implementation: impl },
+        ],
+        approvedAt: 2, approvedBy: { kind: 'human' },
+      },
+    }))
+    h.docs.put('docs/requirements/REQ-000001/requirement.md', [
+      '# 需求', '', '## 边界', '', '## 成功标准', '', '## 产品定义', '', '## 用户与角色', '', '## 功能点', '',
+      '**FR-1 口径扩根**：抽取器要看得见 src。',
+    ].join('\n'))
+    await h.seedSettled()
+    let code: string | undefined
+    try {
+      await executeDecompose(h.deps, {
+        tasks: [
+          { key: 't1', title: '改冲突门', acceptance: 'npx vitest run tests/a.test.ts 通过', implementation: impl, requirement_refs: ['FR-1'] },
+          { key: 't2', title: '也改冲突门', acceptance: 'npx vitest run tests/b.test.ts 通过', implementation: impl, requirement_refs: ['FR-1'] },
+        ],
+      }, { agent: { id: 'session-w-c' } })
+    } catch (err) { code = (err as { code?: string }).code }
+    expect(code).toBe('REQBOARD_FILE_CONFLICT')
+    expect(await h.tasksOf('REQ-000001')).toHaveLength(0)
   })
 })
 

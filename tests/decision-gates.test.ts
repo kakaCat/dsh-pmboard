@@ -130,6 +130,10 @@ describe('checkDecisionLogGate：缺节 / 空节（decision_log_missing）', () 
     expect(fail?.gaps?.join('')).toContain('缺「' + DECISION_SECTION_NAME + '」节')
     expect(GATE_HOW_ANCHOR.test(fail?.message ?? '')).toBe(true)
     expect(fail?.message).toContain('templates/brainstorming/feature.md')
+    // t4（REQ-261007135258-331a FR-5）：指路指向 agent 可执行的统一入口，
+    // 不再指人工门命令 reqboard_move(requirement_id ...)（agent 调必被 REQBOARD_HUMAN_GATE 拒）。
+    expect(fail?.message).toContain('reqboard_ask_confirm')
+    expect(fail?.message).not.toContain('reqboard_move(requirement_id')
   })
 
   it('缺节不拿留痕当条件：无留痕也拒（留痕只决定真空态那一步）', async () => {
@@ -174,6 +178,9 @@ describe('checkDecisionLogGate：条目校验（decision_entry_invalid）', () =
     expect(joined).not.toContain('D-1')
     expect(joined).not.toContain('D-2')
     expect(joined).not.toContain('D-4')
+    // t4（REQ-261007135258-331a FR-5）：同一条指路纪律——统一入口而非人工门命令
+    expect(fail?.message).toContain('reqboard_ask_confirm')
+    expect(fail?.message).not.toContain('reqboard_move(requirement_id')
   })
 
   it('影响 FR 写成「全 FR」这类非编号写法 → 也判未命中真实条款', async () => {

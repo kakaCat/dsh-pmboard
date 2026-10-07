@@ -23,6 +23,9 @@ import { STAGE_ARTIFACT_REQUIREMENTS } from '../src/domain/artifact/ArtifactSpec
 
 // REQ-2d1c74 FR-1：feature 必交扩为五份（补 use-cases.md）；条件必交 frontend/backend 由 design-doc-policy.test.ts 覆盖
 const FEATURE_DESIGN = ['architecture.md', 'data-model.md', 'interfaces.md', 'test-cases.md', 'use-cases.md']
+// 2026-10-06 加固：feature / refactor 的必填节多一节「失败与并发路径」——
+// 夹具代表「齐活」的文档，必须含全部必填节（改夹具，不放宽门禁）。
+const FEATURE_TEXT = '## 边界\n\n## 产品定义\n\n## 用户与角色\n\n## 功能点\n\n## 失败与并发路径\n'
 const BASE_TEXT = '## 边界\n'
 
 describe('deltaFor / requiredRootSectionsFor（六类齐全，未知类型不拦）', () => {
@@ -45,7 +48,7 @@ describe('missingCategoryDocs', () => {
   })
 
   it('feature 齐活 → 无缺失', () => {
-    const root = '# 需求\n\n' + BASE_TEXT + '\n## 产品定义\n\n## 用户与角色\n\n## 功能点\n'
+    const root = '# 需求\n\n' + FEATURE_TEXT
     expect(missingCategoryDocs({ category: 'feature', rootExists: true, rootText: root, designNames: FEATURE_DESIGN })).toEqual([])
   })
 

@@ -29,6 +29,24 @@ const PLAN_PATH = 'docs/requirements/' + REQ + '/decomposition.md'
 /** implementation 里点到的三个路径（去重计数 = 3，即 FR-2 的声明下限）。 */
 const THREE_PATHS = '改 src/domain/task/Footprint.ts、src/domain/limits.ts 与 tests/plan-footprint.test.ts'
 
+/**
+ * 计划文档夹具：**任务表必须收录 tasks[] 的 key**（2026-10-06 缺口 4 之四的
+ * `plan_doc_task_table_incomplete` 硬门——文档里没这张卡 = 批准人没看见它）。
+ * 本文件出现过的计划 key 都在表里。
+ */
+const PLAN_DOC = [
+  '# 拆分计划（' + REQ + '）',
+  '',
+  '## 任务表',
+  '',
+  '| 计划 key | 标题 | 依赖 | 工作量 | 验收标准 |',
+  '|---|---|---|---|---|',
+  ...['shrunk', 'malformed', 'undeclared', 'roomy'].map(
+    k => `| ${k} | 夹具占位标题 | — | M | 跑 npx vitest run tests/plan-footprint.test.ts 全绿 |`,
+  ),
+  '',
+].join('\n')
+
 let store: ReturnType<typeof makeTestStore>
 let root: string
 let deps: ReqboardToolDeps
@@ -43,7 +61,7 @@ beforeEach(() => {
     doneThrottleMs: 0,
     workspaceRoot: root,
   } as never
-  stubDocFile(PLAN_PATH, root)
+  stubDocFile(PLAN_PATH, root, PLAN_DOC)
 })
 
 afterEach(() => { rmSync(root, { recursive: true, force: true }) })

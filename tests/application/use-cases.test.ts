@@ -213,6 +213,11 @@ describe('t6 · SubmitVerification / SubmitArchive / AcceptSheet', () => {
     h.docs.put('docs/requirements/REQ-000001/requirement.md')
     h.docs.put('docs/requirements/REQ-000001/plan.md')
     h.docs.put('docs/requirements/REQ-000001/verification.md')
+    // REQ-261006201841-944d FR-1 / FR-2 契约升级（与 t11 那 7 个文件同一类旧形态夹具）：
+    // 合并去向必须真实存在且非空、说明书更新点收敛为 路径#锚点 —— 目标文档真 stub 出来，
+    // 锚点 workflow 由二级标题 `## workflow stages` 派生（ASCII 首词 → slugify）。
+    // 判据不放宽：本用例要钉的仍是「未列未豁免 → 拒绝」，只是让它先别死在形态闸上。
+    h.docs.put('docs/architecture/workflow-stages.md', '# 工作流阶段\n\n## workflow stages\n\n正文。\n')
     const args = {
       dir: 'docs/requirements/REQ-000001',
       docs: [
@@ -222,7 +227,7 @@ describe('t6 · SubmitVerification / SubmitArchive / AcceptSheet', () => {
       ],
       merged_into: ['docs/architecture/workflow-stages.md'],
       index_entry: '结论',
-      manual_updates: [{ path: 'docs/architecture/workflow-stages.md', section: 'x', summary: 'y' }],
+      manual_updates: [{ path: 'docs/architecture/workflow-stages.md#workflow', summary: 'y' }],
     }
     // 行为变更（本需求 FR-2）：未列未豁免且未声明 → 拒绝（旧行为是"只警告"）
     await expect(submitArchive(h.deps, args, EXEC))

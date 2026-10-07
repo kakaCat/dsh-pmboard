@@ -199,6 +199,20 @@ const TINT_CHECKS: TintCheck[] = [
   { label: '危险芯片文字（备而未用）', token: '--pm-danger-text', baseToken: '--pm-danger', bg: 'rgba(220,53,69,.12)', bgWhy: '旧「阻塞 / 取消」芯片底色' },
 ]
 
+/**
+ * D3. 语义文字压**语义浅底**（REQ-261006130057-7a43 · t9 补判，复核挂账 P2-1）——
+ * t5 缺口格（--pm-danger-tint #fdf2f3 红浅底 + 3px 红条）与 t4 闸门提示条
+ * （--pm-warn-tint #fffbeb 琥珀底）是 7a43 新增的两处**组合背景**；只算"深字压白底"
+ * 会漏掉它们（本需求 t5 的 P1 对比度失守就是这么漏的：tint 改 #fdf2f3 后才达标，
+ * 此处补的四对判据是它的回归保护）。全部 ≥4.5:1 硬断言。
+ */
+const SEMANTIC_TINT_CHECKS: { label: string; token: string; onToken: string }[] = [
+  { label: '危险文字压缺口格红浅底（t5）', token: '--pm-danger', onToken: '--pm-danger-tint' },
+  { label: '警告文字压缺口格红浅底（t5）', token: '--pm-warn-text', onToken: '--pm-danger-tint' },
+  { label: '次要文字压缺口格红浅底（t5）', token: '--pm-text2', onToken: '--pm-danger-tint' },
+  { label: '警告文字压闸门条琥珀底（t4）', token: '--pm-warn-text', onToken: '--pm-warn-tint' },
+]
+
 /** 浅色岛不许出现的宿主令牌（FR-4 #5 / 验收锚点：grep 断言）。 */
 const FORBIDDEN_HOST_TOKENS = [
   '--dsw-alias-label-tertiary',
@@ -283,6 +297,18 @@ function main(): void {
     const fg = colorOf(c.token, tokens)
     const bg = tintOf(colorOf(c.baseToken, tokens).rgb, 0.12)
     lines.push(pad('   ' + c.label, 44) + pad(hex(fg.rgb) + ' on ' + hex(bg), 26) + pad(contrast(fg.rgb, bg).toFixed(2) + ':1', 10) + 'INFO')
+  }
+  lines.push('')
+
+  /* D3（7a43 · t9）：语义文字压语义浅底四对（缺口格红浅底 × 3 + 闸门条琥珀底 × 1），全硬断言。 */
+  lines.push('== D3. 语义文字压语义浅底（7a43 · t5 缺口格 / t4 闸门条；阈值 ' + TEXT_MIN.toFixed(1) + ':1，硬断言）==')
+  for (const c of SEMANTIC_TINT_CHECKS) {
+    const fg = colorOf(c.token, tokens)
+    const bg = colorOf(c.onToken, tokens).rgb
+    const ratio = contrast(fg.rgb, bg)
+    const ok = ratio >= TEXT_MIN
+    if (!ok) problems.push('D3 组合背景不达标：' + c.label + ' ' + hex(fg.rgb) + ' on ' + hex(bg) + ' = ' + ratio.toFixed(2) + ':1 < ' + TEXT_MIN.toFixed(1) + ':1')
+    lines.push(pad(c.label, 44) + pad(hex(fg.rgb) + ' on ' + hex(bg), 26) + pad(ratio.toFixed(2) + ':1', 10) + (ok ? 'PASS' : 'FAIL'))
   }
   lines.push('')
 

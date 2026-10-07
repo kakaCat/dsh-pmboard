@@ -110,8 +110,8 @@ describe('TC-14 四处 pm 弹框 header 均带标志', () => {
       requirements: [req({ id: REQ_ID, status: 'accepting', sourceSessionId: W, verification: { sheet } as never })],
     })
     h.questions.answers = [
-      { id: 'v1-1', selected: [ACCEPT_ITEM_OPTIONS.pass], custom: '实际结果：符合判据' },
-      { id: 'v1-2', selected: [ACCEPT_ITEM_OPTIONS.pass], custom: '实际结果：符合判据' },
+      { id: 'v1-1', selected: [ACCEPT_ITEM_OPTIONS.pass], custom: '实际结果：符合判据（npx vitest run tests/a.test.ts → 12 passed）' },
+      { id: 'v1-2', selected: [ACCEPT_ITEM_OPTIONS.pass], custom: '实际结果：符合判据（npx vitest run tests/a.test.ts → 12 passed）' },
       { id: 'final-pass', selected: [FINAL_PASS_LABEL] },
     ]
     const rec = recordingQuestions()

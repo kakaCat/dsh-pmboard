@@ -96,6 +96,11 @@ const REGISTRY: Readonly<Record<Category, readonly SectionDecl[]>> = {
     { name: '产品定义', level: 'required', gatedBy: 'DELTA' },
     { name: '用户与角色', level: 'required', gatedBy: 'DELTA' },
     { name: '功能点', level: 'required', gatedBy: 'DELTA' },
+    // 2026-10-06 加固：**故意登记为 optional**——它不在 CATEGORY_DELTAS 里（进 DELTA 会让
+    // missingCategoryDocs 对存量需求一起判 = 追溯），而是由提交门 `docSectionGateFailure`
+    // 按需求创建时间（docQualityRulesApply）对新需求硬拦。登记在这里是为了满足不变量②
+    // 「模板多一节必须显式登记」，并让「模板有、门禁判」两侧可核。
+    { name: '失败与并发路径', level: 'optional', whyOptional: '条件必填：由提交门 docSectionGateFailure 只对新需求（createdAt ≥ DOC_QUALITY_RULES_SINCE）硬拦，存量不追溯；模板里必有一节（feature/refactor）' },
     { name: DECISION_SECTION, level: 'required', gatedBy: 'DECISION_GATE', featureOnly: true },
     { name: 'TL;DR', level: 'optional', whyOptional: '人读三件套之一（有提示词软门禁 readabilityHints，不属必填节门禁）' },
     { name: '业务流程图', level: 'optional', whyOptional: '人读三件套之一（同上，提示词层要求）' },
@@ -127,6 +132,8 @@ const REGISTRY: Readonly<Record<Category, readonly SectionDecl[]>> = {
     { name: '现状', level: 'required', gatedBy: 'DELTA' },
     { name: '目标结构', level: 'required', gatedBy: 'DELTA' },
     { name: '行为不变式', level: 'required', gatedBy: 'DELTA' },
+    // 同上（feature 那条的镜像）：optional + 提交门按创建时间硬拦。
+    { name: '失败与并发路径', level: 'optional', whyOptional: '条件必填：由提交门 docSectionGateFailure 只对新需求（createdAt ≥ DOC_QUALITY_RULES_SINCE）硬拦，存量不追溯；模板里必有一节（feature/refactor）' },
     { name: '项目背景与动机', level: 'optional', whyOptional: '通用叙述节' },
     { name: '产品目标', level: 'optional', whyOptional: '通用叙述节' },
     { name: '非目标', level: 'optional', whyOptional: '通用叙述节' },

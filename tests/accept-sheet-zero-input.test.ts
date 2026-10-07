@@ -47,13 +47,15 @@ const verifyTool = () => defineVerifySubmitTool(deps) as never as { execute: (a:
 const run = (tool: any, args: unknown) => tool.execute(args, { agent: { id: W } })
 const sheetOf = async () => (await store.get(REQ_ID))!.verification!.sheet!
 
-/** 可预见项全覆盖（3 张顶层卡 + 1 条需求级）——用于让项带上 agent 实测结果。 */
+/** 可预见项全覆盖（3 张顶层卡 + 1 条需求级）——用于让项带上 agent 实测结果。
+ *  需求级项同样是**普通项**：结果要给可核验锚点，否则会被 REQBOARD_RESULT_UNANCHORED 拒
+ *  （REQ-261007160829-1991 FR-1 / design S-3：提交侧硬门要的是「有据」，不只是「有字」）。 */
 async function fullResults(): Promise<any[]> {
   const tasks = await queueTasksOf(deps, REQ_ID)
   return [
     ...tasks.filter(t => t.parentId === undefined)
       .map(t => ({ ref: { kind: 'task', taskId: t.id }, result: 'npx vitest run tests/x.test.ts → 全绿' })),
-    { ref: { kind: 'requirement' }, result: '交付结论：证据齐全、与设计一致' },
+    { ref: { kind: 'requirement' }, result: '交付结论：npx vitest run 全量回归 → 27 passed（证据齐全、与设计一致）' },
   ]
 }
 
@@ -99,18 +101,46 @@ describe('REQ-261006092213-4f5b 零输入裁决与底线', () => {
     expect(item.decidedBy?.kind).toBe('human')
   })
 
-  it('FR-4：人改了输入框 → result 更新为人的文本且 resultSource=human', async () => {
+  it('FR-4：人改了输入框（并补答变更理由）→ 覆盖四元组写全（REQ-261006201920-2adc FR-3）', async () => {
     await run(verifyTool(), { summary: '交付', evidence: ['npx vitest run 全绿'], results: await fullResults() })
     const target = (await sheetOf()).items.find(i => (i.result ?? '').length > 0)!
+    const original = target.result!
     const edited = '我复跑了一遍：npx vitest run tests/x.test.ts → 12 passed'
 
-    await run(sheetTool([{ id: target.id, selected: [PASS], custom: edited }]), { batch_size: 10 })
+    // 弹框现在两批：第一批逐项裁决，第二批只问「为什么覆盖 agent 原文」
+    await run(sheetTool([
+      [{ id: target.id, selected: [PASS], custom: edited }],
+      [{ id: target.id + '#change-reason', custom: 'agent 跑的是旧分支' }],
+    ]), { batch_size: 10 })
 
     const item = (await sheetOf()).items.find(i => i.id === target.id)!
     expect(item.status).toBe('passed')
     expect(item.result).toBe(edited)
     expect(item.resultSource).toBe('human')
     expect(item.opinion).toBe(edited)
+    // 口径更新（本需求 FR-3）：覆盖必须留档——原文不丢、理由在场
+    expect(item.resultSuperseded).toBe(original)
+    expect(item.resultChangeReason).toBe('agent 跑的是旧分支')
+  })
+
+  it('FR-3：改了输入框却没答变更理由 → **不采纳这次修改**（原文与来源原样保留，裁决照常）', async () => {
+    await run(verifyTool(), { summary: '交付', evidence: ['npx vitest run 全绿'], results: await fullResults() })
+    const target = (await sheetOf()).items.find(i => (i.result ?? '').length > 0)!
+    const original = target.result!
+    const edited = '我复跑了一遍：npx vitest run tests/x.test.ts → 12 passed'
+
+    // 补问那一轮**没作答**（空批）
+    await run(sheetTool([
+      [{ id: target.id, selected: [PASS], custom: edited }],
+      [],
+    ]), { batch_size: 10 })
+
+    const item = (await sheetOf()).items.find(i => i.id === target.id)!
+    expect(item.status).toBe('passed')       // 人点的是通过、文本也有锚点，不因缺理由罚它
+    expect(item.result).toBe(original)       // 不采纳：agent 原文原样
+    expect(item.resultSource).toBe('agent')  // 来源不被翻成 human
+    expect(item.resultSuperseded).toBeUndefined()
+    expect(item.resultChangeReason).toBeUndefined()
   })
 
   it('A5：无结果的项零输入点通过 → unverified（不计入通过），且不弹「验收通过并归档」', async () => {
@@ -143,14 +173,16 @@ describe('REQ-261006092213-4f5b 零输入裁决与底线', () => {
   it('B1：needsHuman 项零输入点通过 → unverified（不吃 result 兜底，FR-5 唯一要人动手的分支）', async () => {
     // `result` 对 needsHuman 项只是"供人参照"的材料（data-model.md：两者可并存），
     // 判定依据在人眼里——否则「形式合规冒充实质合规」会在最该拦住的地方重演。
+    // 注意：这里交的是**普通项**（单上这一项还没标 needsHuman），故参照材料同样要给可核验锚点；
+    // needsHuman 不吃锚点判据的口径见 tests/result-anchor-submit.test.ts 的端到端用例。
     const all = await fullResults()
     all[0] = {
-      ref: all[0].ref, result: 'agent 参照结果：需人对照原型',
+      ref: all[0].ref, result: 'agent 参照结果：npx vitest run tests/x.test.ts → 全绿（供人对照原型）',
       needsHuman: true, humanReason: '界面视觉需人对照权威原型',
     }
     await run(verifyTool(), { summary: '交付', evidence: ['npx vitest run 全绿'], results: all })
     const target = (await sheetOf()).items.find(i => i.needsHuman === true)!
-    expect(target.result).toBe('agent 参照结果：需人对照原型')
+    expect(target.result).toBe('agent 参照结果：npx vitest run tests/x.test.ts → 全绿（供人对照原型）')
 
     const out = await run(sheetTool([{ id: target.id, selected: [PASS] }]), { batch_size: 10 })
     expect(out.recorded).toBe(1)

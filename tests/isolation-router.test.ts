@@ -17,6 +17,7 @@ import { join } from 'node:path'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { taskStoreAt } from './queue/route-deps.js'
 import type { IsolationTraceEntry } from '../src/application/use-cases/IsolateNodeContext.js'
+import { expectCode } from './helpers/code-assert.js'
 
 let dir: string
 let store: ReturnType<typeof makeTestStore>
@@ -71,6 +72,8 @@ describe('GET /isolation-log', () => {
       const res = await get(handler, `/isolation-log?${bad}`)
       expect(res.statusCode, bad).toBe(400)
       expect(res.payload.success).toBe(false)
+      // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码（k 非法 = badInput → invalid_input）
+      expectCode(res.payload, 'invalid_input')
     }
   })
 

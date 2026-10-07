@@ -36,7 +36,8 @@ beforeEach(() => {
   decompose = defineDecomposeTool(deps) as never
   planTool = definePlanSubmitTool(deps) as never
   // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘（chdir 后 stub 落进本测试临时目录）
-  stubDocFile('docs/requirements/REQ-abc123/plan.md')
+  // 2026-10-06 缺口 4 之四：落盘内容必须带任务表且收录 tasks[] 的 key（plan_doc_task_table_incomplete）
+  stubDocFile('docs/requirements/REQ-abc123/plan.md', undefined, PLAN_DOC)
 })
 afterEach(() => {
   process.chdir(prevCwd)
@@ -62,6 +63,17 @@ const TWO_TASKS = [
   { key: 'a', title: '协议层加时间线', phase: 'implement', side: 'backend', acceptance: '单测绿', implementation: 'protocol.ts 加时间线字段' },
   { key: 'b', title: '客户端渲染甘特图', phase: 'ui', side: 'frontend', depends_on: ['a'], acceptance: '截图可见', implementation: 'view.ts 加 buildGantt 渲染' },
 ]
+
+/** 计划文档夹具：任务表必须收录 tasks[] 的 key（2026-10-06 缺口 4 之四的 `plan_doc_task_table_incomplete` 硬门）。 */
+const PLAN_DOC = [
+  '# 拆分计划（夹具）',
+  '',
+  '| 计划 key | 标题 | 依赖 | 工作量 | 验收标准 |',
+  '|---|---|---|---|---|',
+  '| a | 协议层加时间线 | — | M | 跑 npx vitest run 全绿 |',
+  '| b | 客户端渲染甘特图 | a | M | 页面截图可见甘特图 |',
+  '',
+].join('\n')
 
 async function planAndApprove(tasks: unknown = TWO_TASKS): Promise<void> {
   await run(planTool, { path: 'docs/requirements/REQ-abc123/plan.md', summary: '摘要', tasks })

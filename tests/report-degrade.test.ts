@@ -291,7 +291,7 @@ describe('渲染纪律 · 无内层滚动（FR-11 #7 · T-4）', () => {
     expect(html).not.toContain('data-doc-truncated')
   })
 
-  it('T-5 列表铺开：文档行数 == 台账文档数（15），核验行数 == 验收项数（12）', () => {
+  it('T-5 列表铺开：文档行数 == 台账文档数（15）；核验逐项已迁「验收」Tab（T-6，REQ-261006130057-7a43 FR-8）', () => {
     const documents = Array.from({ length: 15 }, (_, i) =>
       docEntry('docs/requirements/' + REQ_ID + '/design/d' + String(i) + '.md', i === 14 ? 'file-missing' : 'confirmed'))
     const items = Array.from({ length: 12 }, (_, i) => ({
@@ -300,7 +300,14 @@ describe('渲染纪律 · 无内层滚动（FR-11 #7 · T-4）', () => {
     }))
     const html = buildReportShell(makeReport(), 'docs', { data: docsWithVerification(documents, items) })
     expect(countOf(html, 'data-doc-row="1"')).toBe(15)
-    expect(countOf(html, 'data-verify-row="1"')).toBe(12)
+    // 核验节独立为「验收」Tab：docs 面板带验收单载荷也不渲染逐项，原位是迁移指引条
+    expect(countOf(html, 'data-verify-row="1"')).toBe(0)
+    expect(html).toContain('data-verify-moved="1"')
+    expect(html).toContain('data-action="switch-tab" data-tab="verify"')
+    // 阳性对照（防"因为根本没有所以通过"的假绿）：同一份逐项在「验收」Tab 的 RTM 表里全铺
+    const verify = buildReportShell(makeReport(), 'verify', { data: rawPayload({ sheet: { version: 1, items } }) })
+    expect(verify).toContain('data-rtm-table="1"')
+    for (const id of ['v1-1', 'v1-6', 'v1-12']) expect(verify, id).toContain('data-item-id="' + id + '"')
   })
 })
 
@@ -553,9 +560,9 @@ describe('终态只读与缺口口径（FR-3 / FR-4）', () => {
 })
 
 describe('档二（会话内面板）· 结构性不含重活（FR-3 密度分档）', () => {
-  /** 禁用选择器：文档表 / 核验表 / 成本与 Token 表 / 提示词正文。 */
+  /** 禁用选择器：文档表 / 验收 RTM 表 / 成本与 Token 表 / 提示词正文。 */
   const HEAVY_SELECTORS = [
-    'data-doc-table="1"', 'dsh-pm-docs-table', 'data-verify-table="1"',
+    'data-doc-table="1"', 'dsh-pm-docs-table', 'data-rtm-table="1"',
     'data-stage-table="1"', 'dsh-pm-tok-table', 'data-availability-badge', '费用估算',
     'data-prompt-section=', 'data-prompt-merged="1"', '<pre',
   ] as const
@@ -574,7 +581,13 @@ describe('档二（会话内面板）· 结构性不含重活（FR-3 密度分�
         [{ id: 'v1', source: { kind: 'requirement' }, criterion: 'c', evidence: [], status: 'pending' }]),
     })
     expect(docs).toContain('data-doc-table="1"')
-    expect(docs).toContain('data-verify-table="1"')
+    // 核验表已迁「验收」Tab（T-6）：docs 面板只剩迁移指引条；RTM 表的阳性对照在 verify 壳里做
+    expect(docs).not.toContain('data-rtm-table="1"')
+    expect(docs).toContain('data-verify-moved="1"')
+    const verify = buildReportShell(makeReport(), 'verify', {
+      data: rawPayload({ sheet: { version: 1, items: [{ id: 'v1', source: { kind: 'requirement' }, criterion: 'c', evidence: [], status: 'pending' }] } }),
+    })
+    expect(verify).toContain('data-rtm-table="1"')
     const token = buildReportShell(makeReport(), 'token', { data: tokenPayload({ costEstimateCny: 12.5 }) })
     expect(token).toContain('data-stage-table="1"')
     expect(token).toContain('费用估算')

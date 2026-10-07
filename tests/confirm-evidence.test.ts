@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { defineConfirmArtifactTool } from './helpers/tool-deps.js'
 import { recordRecentUserMsg, CONFIRM_EVIDENCE_WINDOW_MS, type RecentUserMsg } from '../src/adapters/SessionProbeAdapter.js'
+import { awaitingRefOf } from '../src/application/internal/awaiting-confirm.js'
 import type { RequirementRecord } from '../src/shared/protocol.js'
 
 const W = 'session-abc-123'
@@ -121,5 +122,27 @@ describe('confirm_artifact 文字确认核验', () => {
     expect(out.advanced).toBe(false)
     expect(String(out.note)).toMatch(/未推进/)
     expect(store.peekAll()[0].status).toBe('brainstorming')
+  })
+
+  // t-1eded6（REQ-261007135258-331a FR-3）：证据路径此前只做"自己的 dive 复位"、完全不碰停手位——
+  // 弹框留下的 awaiting-confirm:* 残影没人清 ⇒ isDrivableRequirement 恒 false（2.5 小时静默停摆的成因之一）。
+  it('FR-3：证据确认推进后停手位被清（awaiting-confirm → healthy）且留「等待结束」痕', async () => {
+    await seed()
+    await store.mutate('REQ-abc123', (r) => {
+      r.dive = {
+        phase: 'active',
+        activation: 'armed',
+        roundsInStage: 2,
+        driverHealth: { state: 'paused', reason: 'awaiting-confirm:ticket-1', since: 1, attempts: 1 },
+      } as never
+      return { changed: true }
+    })
+    recordRecentUserMsg(buf, W, '开始推进到设计吧', nowTs - 60_000)
+    const out = await run(makeTool(), ARGS('开始推进到设计吧'))
+    expect(out.advanced).toBe(true)
+    const rec = store.peekAll()[0]!
+    expect(awaitingRefOf(rec)).toBeUndefined()
+    expect(rec.dive?.driverHealth?.state).not.toBe('paused')
+    expect((rec.comments ?? []).map((c) => c.body).join('\n')).toContain('[Dive 恢复] 等待结束')
   })
 })

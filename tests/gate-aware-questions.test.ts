@@ -20,6 +20,7 @@ import { acceptSheet } from '../src/application/use-cases/AcceptSheet.js'
 import { captureRequirement } from '../src/application/use-cases/CaptureRequirement.js'
 import { DEFAULT_CONFIRM_OPTIONS, ACCEPT_ITEM_OPTIONS, FINAL_PASS_LABEL } from '../src/domain/text/labels.js'
 import type { AskAnswer, AskQuestion, UserQuestionPort } from '../src/application/ports.js'
+import { expectNoCode } from './helpers/code-assert.js'
 
 const W = 'session-w-001'
 const REQ_ID = 'REQ-000001'
@@ -144,7 +145,7 @@ describe('三条 pm 弹框路径各触发一次链', () => {
       requirements: [req({ id: REQ_ID, status: 'accepting', sourceSessionId: W, verification: { sheet } as never })],
     })
     const { port, seenOpts } = queueUI([
-      [{ id: 'v1-1', selected: [ACCEPT_ITEM_OPTIONS.pass], custom: '实际结果：符合判据' }],
+      [{ id: 'v1-1', selected: [ACCEPT_ITEM_OPTIONS.pass], custom: '实际结果：符合判据（npx vitest run tests/a.test.ts → 12 passed）' }],
       [{ id: 'final-pass', selected: [FINAL_PASS_LABEL] }],
     ])
     const { chain, pending } = chainWithStore()
@@ -177,6 +178,10 @@ describe('立项拒绝路径不进链（REQ-260924002956-f37c BUG-2）', () => {
     // 用例签名是 `Promise<unknown>`（用例返回体无导出类型）：按本用例断言到的形状就地收窄。
     const out = (await captureRequirement(h.deps, {}, { agent: { id: W } })) as { success: boolean }
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码——该回执契约上**不带码**（拒绝立项不是错误路径），
+    // 故钉「不携带码」+「不伪造 requirement_id」（未立项的如实形状），而不是编一个码出来。
+    expectNoCode(out)
+    expect((out as { success: boolean; requirement_id?: string }).requirement_id).toBe('')
     // 拒绝不是"闸门作答"：不入队、不给窗口发"闸门待改进"
     expect(chain.stats().enqueued).toBe(0)
     expect(pending.size()).toBe(0)

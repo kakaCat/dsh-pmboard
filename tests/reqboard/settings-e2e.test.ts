@@ -38,6 +38,7 @@ import { factsOf } from '../../src/domain/requirement/RequirementSummary.js'
 import { emptyLedger, type RequirementRecord } from '../../src/shared/protocol.js'
 import { assembleStorage } from '../../src/wiring/settings-assembly.js'
 import { migrateLedgerToSqlite, MIGRATE_EXIT } from '../../scripts/migrate-ledger-to-sqlite.js'
+import { expectCode } from '../helpers/code-assert.js'
 
 const require_ = createRequire(import.meta.url)
 
@@ -263,6 +264,8 @@ describe('E2E-3 未迁移拒绝服务：选了 sqlite 而库是空的', () => {
     fail(res, Object.assign(new Error(assembled.failure.message), { code: assembled.failure.code, hint: assembled.failure.hint }))
     expect(res.statusCode).toBe(503)
     expect(res.payload.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码（同一条失败经信封 → 503 且码原样）
+    expectCode(res.payload, 'REQBOARD_REQUIRES_SQLITE_MIGRATION')
     expect(res.payload.code).toBe('REQBOARD_REQUIRES_SQLITE_MIGRATION')
     expect(res.payload.hint).toContain('migrate-ledger-to-sqlite.ts')
     expect(res.payload.data).toBeUndefined()

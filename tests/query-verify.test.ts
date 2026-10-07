@@ -18,12 +18,13 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
-import { queryVerify, pendingCountOf } from '../src/application/query/QueryVerify.js'
+import { queryVerify, pendingCountOf, parseFrNames, frNamesOf } from '../src/application/query/QueryVerify.js'
 import { queryDialogue, type DialogueSessionEventsPort } from '../src/application/query/QueryDialogue.js'
 import { queryDocs } from '../src/application/query/QueryDocs.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { rtmTraceIdOf } from '../src/domain/workflow/AcceptanceSheetSpec.js'
 import type { PanelQueryDeps } from '../src/application/query/contracts.js'
+import type { DocRepository } from '../src/application/ports.js'
 import type {
   DialogueResponse,
   PanelResult,
@@ -174,6 +175,13 @@ describe('T-20 · QueryVerify 装配六段一致', () => {
       'FR-2': { design: true, tasks: false, tests: false },
       'FR-3': { design: false, tasks: true, tests: false },
     })
+    // ④b frMap（D-10 返工）：三张映射**原样透出**——不 join、不裁剪、不补位，
+    //     逐键与三份 rtm-*.yml 的 traceability 段落相同（FR-2 没有任务就照实没有）
+    expect(res.frMap).toEqual({
+      fr_to_design: { 'FR-1': ['§1'], 'FR-2': ['§2'] },
+      fr_to_tasks: { 'FR-1': ['t-aaa'], 'FR-3': ['t-bbb'] },
+      fr_to_tests: { 'FR-1': ['TC-1'] },
+    })
     // ⑤ materials = 提交材料
     expect(res.materials).toEqual({
       summary: '交付完成：verify 端点 + 对话游标',
@@ -191,15 +199,37 @@ describe('T-20 · QueryVerify 装配六段一致', () => {
     }
   })
 
-  it('RTM 文件缺失 → tracking/coverage 缺省不抛（增强层降级），其余四段照常', async () => {
+  it('RTM 文件缺失 → tracking/coverage/frMap 缺省不抛（增强层降级），其余四段照常', async () => {
     const root = tmpWorkspace() // 空工作区：没有任何 rtm-*.yml
     const h = makeHarness({ requirements: [verifyReq()] })
     const res = asOk(await queryVerify(panelDeps(h, root), { requirementId: REQ_ID }))
     expect(res.tracking).toBeUndefined()
     expect(res.coverage).toBeUndefined()
+    expect(res.frMap).toBeUndefined()
     expect(res.sheet).toEqual(sheetV2())
     expect(res.pendingCount).toBe(2)
     expect(res.materials?.evidence).toHaveLength(2)
+  })
+
+  it('frMap 只搬不 join：RTM 里没有的键不许被补齐，空映射段整段缺省（不与 coverage 互相顶替）', async () => {
+    const root = tmpWorkspace()
+    const dir = join(root, 'docs', 'requirements', REQ_ID)
+    mkdirSync(dir, { recursive: true })
+    // 只有 design 一段：另两段照实缺省（禁「补一页空映射」冒充有数据）
+    writeFileSync(join(dir, 'rtm-design.yml'), [
+      'traceability:',
+      '  fr_to_design:',
+      '    FR-1: [design/frontend.md#原型页面]',
+      '    FR-2: []',
+      '',
+    ].join('\n'))
+    const h = makeHarness({ requirements: [verifyReq()] })
+    const res = asOk(await queryVerify(panelDeps(h, root), { requirementId: REQ_ID }))
+    expect(res.frMap).toEqual({ fr_to_design: { 'FR-1': ['design/frontend.md#原型页面'], 'FR-2': [] } })
+    expect(Object.hasOwn(res.frMap!, 'fr_to_tasks')).toBe(false)
+    expect(Object.hasOwn(res.frMap!, 'fr_to_tests')).toBe(false)
+    // 覆盖链仍按 FR 并集给出（FR-2「设计 ✓」= 键在，即使它挂了零个成员）
+    expect(res.coverage).toEqual({ 'FR-1': { design: true, tasks: false, tests: false }, 'FR-2': { design: true, tasks: false, tests: false } })
   })
 
   it('取根候选序（复核 P1-1）：需求声明根排第一——req.workspaceRoot 有 RTM、deps 根为空时仍出 tracking/coverage', async () => {
@@ -210,6 +240,7 @@ describe('T-20 · QueryVerify 装配六段一致', () => {
     const res = asOk(await queryVerify(panelDeps(h, sessionRoot), { requirementId: REQ_ID }))
     expect(res.tracking?.map(t => t.fr_id)).toEqual(['t-aaa', 'REQ-LEVEL', 't-bbb'])
     expect(res.coverage?.['FR-1']).toEqual({ design: true, tasks: true, tests: true })
+    expect(res.frMap?.fr_to_tasks).toEqual({ 'FR-1': ['t-aaa'], 'FR-3': ['t-bbb'] })
   })
 
   it('rtm-accepting.yml 解析失败（坏 YAML）→ tracking 缺省不抛；coverage 仍从其它 RTM 推导', async () => {
@@ -225,13 +256,17 @@ describe('T-20 · QueryVerify 装配六段一致', () => {
       'FR-2': { design: true, tasks: false, tests: false },
       'FR-3': { design: false, tasks: true, tests: false },
     })
+    // frMap 同理：坏掉那一段整段缺省，另外两段照常透出（不因一段坏把三层追溯全抹掉）
+    expect(Object.hasOwn(res.frMap!, 'fr_to_tests')).toBe(false)
+    expect(res.frMap?.fr_to_design).toEqual({ 'FR-1': ['§1'], 'FR-2': ['§2'] })
   })
 
-  it('workspaceRoot 未装配 → tracking/coverage 缺省（不猜路径），sheet 段不受影响', async () => {
+  it('workspaceRoot 未装配 → tracking/coverage/frMap 缺省（不猜路径），sheet 段不受影响', async () => {
     const h = makeHarness({ requirements: [verifyReq()] })
     const res = asOk(await queryVerify(panelDeps(h), { requirementId: REQ_ID }))
     expect(res.tracking).toBeUndefined()
     expect(res.coverage).toBeUndefined()
+    expect(res.frMap).toBeUndefined()
     expect(res.sheet).toEqual(sheetV2())
   })
 
@@ -246,6 +281,7 @@ describe('T-20 · QueryVerify 装配六段一致', () => {
     expect(res.pendingCount).toBeUndefined()
     expect(res.tracking).toHaveLength(3)
     expect(res.coverage).toBeDefined()
+    expect(res.frMap).toBeDefined()
   })
 
   it('需求不存在 → 抛 code=not_found（路由层转 404，与 queryDocs 同款）', async () => {
@@ -261,6 +297,133 @@ describe('T-20 · QueryVerify 装配六段一致', () => {
     expect(res.available).toBe(false)
     if (res.available !== false) throw new Error('unreachable')
     expect(res.reason).toBe('ledger-unreadable')
+  })
+})
+
+/* ------------------------------------------------- T-20b FR 名称（D-10 返工） */
+
+/**
+ * FR 名称用例（D-10 返工）：FR 列要渲染「编号 + 名称」，名称这一半来自需求文档正文。
+ *
+ * 判据四条（缺一条这个功能就可能悄悄变成"编名称"或"抛 500"）：
+ *  ① 有文档端口 → 抽出的名称**与文档逐字一致**，且**只含解析得到的 FR**（不给别的 FR 补名称）；
+ *  ② 无端口 / 读不到（抛错）/ 文档里没有标题行 → **缺省**（不是空对象、更不是编一个名称）；
+ *  ③ 名称里的 `——` 尾巴（说明）被截干净；
+ *  ④ 候选根逐个试（需求声明根排第一，读不到才落下一个）。
+ */
+const FR_MD = [
+  '# 需求说明（REQ-261006130057-7a43）',
+  '',
+  '## 功能点',
+  '',
+  '- **FR-1: 头部信息分层与操作区聚类**——标识行（REQ-id / 状态 / 分类 / 难度）、标题、',
+  '  meta（停留/更新/创建）、席位 chips、操作按钮分区。',
+  '- **FR-2: 状态带三格视觉权重**——缺口强化为视觉焦点。',
+  '- **FR-3: 最近评论区紧凑化**',
+  '',
+  '（边界里的 `FR-4 进度带` 这种引用**不是**标题行，不许被当成名称）',
+  '',
+].join('\n')
+
+/** 带文档端口的依赖（其余各段与 `panelDeps` 同）。 */
+function depsWithDocs(h: ReturnType<typeof makeHarness>, docs: DocRepository): PanelQueryDeps {
+  return { ...panelDeps(h), docs }
+}
+
+/** 一份**内容写好**的内存文档端口（真实需求的 requirement.md 就在这个相对路径上）。 */
+function docsWithRequirement(text: string, relPath = 'docs/requirements/' + REQ_ID + '/requirement.md'): FakeDocs {
+  const docs = new FakeDocs()
+  docs.put(relPath, text)
+  return docs
+}
+
+/** 只会抛的读端口（"读不动"那一支：文件权限 / 磁盘异常这类）。 */
+const THROWING_DOCS = {
+  read: async (): Promise<string> => { throw new Error('EACCES: 读不动') },
+} as unknown as DocRepository
+
+describe('T-20b · FR 名称（D-10 返工）：从 requirement.md 抽 FR-N 名称，读不到即缺省', () => {
+  it('有文档端口 → frNames 抽出的名称与文档逐字一致，且只含解析得到的 FR', async () => {
+    const h = makeHarness({ requirements: [verifyReq()] })
+    const res = asOk(await queryVerify(depsWithDocs(h, docsWithRequirement(FR_MD)), { requirementId: REQ_ID }))
+    expect(res.frNames).toEqual({
+      'FR-1': '头部信息分层与操作区聚类',
+      'FR-2': '状态带三格视觉权重',
+      'FR-3': '最近评论区紧凑化',
+    })
+    // 文档里被提到的 FR-4（边界引用，不是标题行）**不许**凭空长出名称
+    expect(Object.hasOwn(res.frNames!, 'FR-4')).toBe(false)
+    // 其余六段不受影响（多读一份文档不改已有口径）
+    expect(res.sheet).toEqual(sheetV2())
+    expect(res.pendingCount).toBe(2)
+  })
+
+  it('文档位置按台账 `docBasePath` 解析（换过位置的需求照样读得到名称）', async () => {
+    const h = makeHarness({ requirements: [verifyReq({ docBasePath: 'docs/rfcs/<REQ>/' })] })
+    const docs = docsWithRequirement('- **FR-1: 头部信息分层与操作区聚类**——说明\n', 'docs/rfcs/' + REQ_ID + '/requirement.md')
+    const res = asOk(await queryVerify(depsWithDocs(h, docs), { requirementId: REQ_ID }))
+    expect(res.frNames).toEqual({ 'FR-1': '头部信息分层与操作区聚类' })
+  })
+
+  it('无文档端口 → frNames 缺省（不编名称、不抛）；其余段照常', async () => {
+    const h = makeHarness({ requirements: [verifyReq()] })
+    const res = asOk(await queryVerify(panelDeps(h), { requirementId: REQ_ID }))
+    expect(res.frNames).toBeUndefined()
+    expect(Object.hasOwn(res, 'frNames')).toBe(false)
+    expect(res.sheet).toEqual(sheetV2())
+  })
+
+  it('文档读不到（read 抛错 / 文件不在 / 没有标题行）→ 缺省不抛（三支同一个结果）', async () => {
+    const h = makeHarness({ requirements: [verifyReq()] })
+    // ① read 抛错（权限 / 磁盘）
+    const thrown = asOk(await queryVerify(depsWithDocs(h, THROWING_DOCS), { requirementId: REQ_ID }))
+    expect(thrown.frNames).toBeUndefined()
+    // ② 端口在、文件不在（FakeDocs 读不到给空串）
+    const missing = asOk(await queryVerify(depsWithDocs(h, new FakeDocs()), { requirementId: REQ_ID }))
+    expect(missing.frNames).toBeUndefined()
+    // ③ 文件在、但没有可解析的 FR 标题行
+    const noTitles = asOk(await queryVerify(
+      depsWithDocs(h, docsWithRequirement('# 需求说明\n\n- **普通加粗**——不是 FR 标题\n')),
+      { requirementId: REQ_ID },
+    ))
+    expect(noTitles.frNames).toBeUndefined()
+  })
+
+  it('候选根逐个试：首个根读不动 → 落到下一个根（需求声明根排第一）', async () => {
+    const h = makeHarness({ requirements: [verifyReq()] })
+    const hit = docsWithRequirement('- **FR-1: 头部信息分层与操作区聚类**——说明\n')
+    const deps: PanelQueryDeps = {
+      ...panelDeps(h),
+      docs: new FakeDocs(), // 会话根那一份：空
+      docRootsOf: () => ['/root-broken', '/root-good'],
+      docsAt: (root) => (root === '/root-good' ? hit : THROWING_DOCS),
+    }
+    const res = asOk(await queryVerify(deps, { requirementId: REQ_ID }))
+    expect(res.frNames).toEqual({ 'FR-1': '头部信息分层与操作区聚类' })
+  })
+
+  it('parseFrNames 纯函数边界：`——` 尾巴截干净 / 全角冒号 / 无列表符 / 空名称不收 / 重复首次为准', () => {
+    // ① `——` 之后是说明不是名称
+    expect(parseFrNames('- **FR-1: 头部信息分层与操作区聚类**——标识行、标题、meta'))
+      .toEqual({ 'FR-1': '头部信息分层与操作区聚类' })
+    // ② 名称与 `——` 都在粗体里（说明误写进粗体也不许带进名称）
+    expect(parseFrNames('- **FR-2: 状态带三格视觉权重——缺口强化**')).toEqual({ 'FR-2': '状态带三格视觉权重' })
+    // ③ 全角冒号 / 无列表符的写法都认
+    expect(parseFrNames('**FR-3：最近评论区紧凑化**')).toEqual({ 'FR-3': '最近评论区紧凑化' })
+    // ④ 空名称不收（`FR-4: **` 这种空壳不许长出一条空名称）
+    expect(parseFrNames('- **FR-4: **——空名称')).toBeUndefined()
+    // ⑤ 同一个 FR 出现两次 → 首次为准（重复标题不改写前面那条）
+    expect(parseFrNames('- **FR-1: 甲**\n- **FR-1: 乙**')).toEqual({ 'FR-1': '甲' })
+    // ⑥ 一条都没有 / 空串 → undefined（不是空对象）
+    expect(parseFrNames('')).toBeUndefined()
+    expect(parseFrNames('# 需求说明\n\n没有 FR 标题行\n')).toBeUndefined()
+  })
+
+  it('frNamesOf 对脏台账（docBasePath 不是字符串）也绝不抛', async () => {
+    const h = makeHarness({ requirements: [verifyReq()] })
+    const dirty = verifyReq({ docBasePath: 42 as unknown as string })
+    const res = await frNamesOf(depsWithDocs(h, docsWithRequirement(FR_MD)), dirty)
+    expect(res).toBeUndefined()
   })
 })
 

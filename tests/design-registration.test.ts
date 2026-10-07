@@ -130,6 +130,7 @@ describe('TC-19 前半 · 边界：空目录返回 0 且不谎报成功', () => 
     const out = await run({ kind: 'design' })
     expect(out.registered_count).toBe(0)
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：无码可断——design 软失败回执只带 note/registered_count（实测 code=undefined），实现缺口只上报。
     expect(out.note).toContain('未发现可登记的设计文档')
     expect(await designArtifacts()).toHaveLength(0)
     // 必交清单仍逐份回报（on_disk=false），让 agent 知道还差哪份
@@ -144,6 +145,7 @@ describe('TC-19 前半 · 边界：空目录返回 0 且不谎报成功', () => 
     const out = await run({ kind: 'design' })
     expect(out.registered_count).toBe(0)
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：无码可断——design 软失败回执只带 note/registered_count（实测 code=undefined），实现缺口只上报。
     expect(await designArtifacts()).toHaveLength(0)
   })
 })

@@ -17,7 +17,12 @@ const REQ_ID = 'REQ-0000e1'
 const WINDOW = 'session-w-001'
 
 const REQUIREMENT_MD = ['# 需求', '', '- **FR-1: 甲条**：第一件事', ''].join('\n')
-/** 覆盖对照表：FR-1 由 t1、t2 接收（两条都被覆盖 → 不应有 unrefed）。 */
+/**
+ * 覆盖对照表：FR-1 由 t1、t2 接收。
+ *
+ * 2026-10-06 收敛后它**不再是覆盖门禁的依据**（门禁只认卡上 requirement_refs），保留它是为了
+ * 钉住「人读的汇总仍在」——真正的落库引用见下面 plan.tasks 里的 requirement_refs。
+ */
 const DECOMPOSITION_MD = [
   '| 需求条款 | 条款内容 | 接收任务 |',
   '|---------|---------|---------|',
@@ -72,8 +77,10 @@ async function seed(withAppDeps = true, rollback?: Record<string, unknown>) {
       path: 'docs/requirements/' + REQ_ID + '/decomposition.md',
       summary: '把活拆成 2 张卡',
       tasks: [
-        { key: 't1', title: '甲卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: [], acceptance: 'npx vitest run 全绿', implementation: '改 src/domain/x.ts' },
-        { key: 't2', title: '乙卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: ['t1'], acceptance: 'npx vitest run 全绿', implementation: '改 src/index.ts' },
+        // requirement_refs 写在卡上（2026-10-06 收敛：覆盖门禁的唯一依据是卡上 refs，
+        // 计划文档的覆盖对照表只作人读汇总——「门禁绿、卡上全空」的静默缺口正是它堵的）
+        { key: 't1', title: '甲卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: [], acceptance: 'npx vitest run 全绿', implementation: '改 src/domain/x.ts', requirement_refs: ['FR-1'] },
+        { key: 't2', title: '乙卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: ['t1'], acceptance: 'npx vitest run 全绿', implementation: '改 src/index.ts', requirement_refs: ['FR-1'] },
       ],
       submittedAt: h.clock.t,
       submittedBy: { kind: 'agent', sessionId: WINDOW },
@@ -112,7 +119,7 @@ describe('看板「批准计划」· 批准即落库并推进（FR-1）', () => 
     expect(landing['unrefed_cards']).toEqual([])
   })
 
-  it('卡上的引用来自覆盖对照表（与弹框路径同一取数）', async () => {
+  it('卡上的引用落到卡上（唯一取数 = 卡上 requirement_refs；文档覆盖表只作人读汇总）', async () => {
     const { h, post } = await seed()
     await post('/req/plan/approve', { id: REQ_ID })
     for (const t of await h.tasksOf(REQ_ID)) expect(t.requirementRefs).toEqual(['FR-1'])
@@ -213,6 +220,9 @@ describe('看板「批准计划」· 落库没真发生就不推进（REQ-261005
 
   it('空计划（本次新落 0 张）→ 拒绝推进，并把原因如实回给看板', async () => {
     const { h, post } = await seed()
+    // 本用例锁的是**落库判据**（本次新落 0 张 ≠ 成功），不是覆盖维——故把需求文档换成无编号条款，
+    // 让覆盖门禁按其放行条件（文档里没有编号条款 → 不拦）让路，否则报的会是覆盖缺口而不是本条判据。
+    h.docs.put('docs/requirements/' + REQ_ID + '/requirement.md', ['# 需求', '', '（本需求无编号条款）', ''].join('\n'))
     const before = h.store.peek(REQ_ID)!.plan!
     await h.setRequirementFields(REQ_ID, { plan: { ...before, tasks: [] } })
 

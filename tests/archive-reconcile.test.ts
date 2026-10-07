@@ -3,6 +3,11 @@
  *
  * 锁死四件事：① 三分类集合不交；② 未列未豁免**未被声明** → 拒绝且零写入；
  * ③ 声明的合法性（覆盖不全 / 路径不在未列集合 / 空理由分别拒）；④ warn 闸门回到旧语义。
+ *
+ * REQ-261006201841-944d（FR-1/FR-2）契约升级：归档目标改判**事实**——`merged_into` 与
+ * `manual_updates[].path` 的 `#` 前路径都必须**真实落盘且非空**，锚点必须命中该文档真实标题。
+ * 夹具据此把两份目标文档真 stub 出来，锚点**由 `listHeadingAnchors` 从同一份正文算出**
+ * （不硬编码 slug 规则——中文与全角标点会让手写 slug 静默失配）。
  */
 import { makeTestStore } from './application/harness.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -10,10 +15,16 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { defineArchiveSubmitTool, stubDocFile } from './helpers/tool-deps.js'
+import { listHeadingAnchors } from '../src/domain/knowledge/slug.js'
 import type { RequirementRecord, RequirementStatus } from '../src/shared/protocol.js'
 
 const W = 'session-abc-123'
 const DIR = 'docs/requirements/REQ-abc123'
+/** 合并去向 + 说明书更新点目标（同一份：feature 类白名单内的 architecture 文档）。 */
+const MANUAL_DOC = 'docs/architecture/project-manual.md'
+const MANUAL_MD = '# 项目说明书\n\n## 收尾门\n\n收尾门三条硬约束：对账三分类与闸门。\n'
+/** 锚点由写入端/读侧同一实现算出（`headingAnchor` 经过 `listHeadingAnchors`）。 */
+const MANUAL_ANCHOR = listHeadingAnchors(MANUAL_MD).map(h => h.anchor)[listHeadingAnchors(MANUAL_MD).length - 1]!
 let root: string
 let store: ReturnType<typeof makeTestStore>
 
@@ -35,11 +46,13 @@ async function seed(status: RequirementStatus = 'archived'): Promise<void> {
   await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
 }
 
-/** 造 fixture 目录：3 份必列 + 4 份豁免 + 2 份未列。 */
+/** 造 fixture 目录：3 份必列 + 4 份豁免 + 2 份未列；另把归档目标文档真落盘。 */
 function plantFixture(): void {
   for (const p of ['requirement.md', 'decomposition.md', 'verification.md']) stubDocFile(DIR + '/' + p, root)
   for (const p of ['rtm-design.yml', 'rtm-implementing/t-1.yml', 'queue.json', 'state/x.json']) stubDocFile(DIR + '/' + p, root)
   for (const p of ['tasks/t-1.md', 'evidence/x.txt']) stubDocFile(DIR + '/' + p, root)
+  // FR-1/FR-2：合并去向与说明书更新点的目标必须存在且非空，锚点必须真实存在
+  stubDocFile(MANUAL_DOC, root, MANUAL_MD)
 }
 
 const baseArchive = {
@@ -49,9 +62,9 @@ const baseArchive = {
     { kind: 'plan', path: DIR + '/decomposition.md' },
     { kind: 'verification', path: DIR + '/verification.md' },
   ],
-  merged_into: ['docs/architecture/project-manual.md'],
+  merged_into: [MANUAL_DOC],
   index_entry: '归档清单改为对账口径',
-  manual_updates: [{ path: 'docs/architecture/project-manual.md', section: '收尾门', summary: '对账三分类与闸门' }],
+  manual_updates: [{ path: MANUAL_DOC + '#' + MANUAL_ANCHOR, summary: '对账三分类与闸门' }],
 }
 
 beforeEach(() => {
@@ -73,7 +86,11 @@ describe('T1 三分类', () => {
       ],
     })
     const rec = out.reconcile
-    expect(rec.listed.length).toBe(3)
+    // REQ-261006201841-944d t4（归档渲染物落盘，与本卡同一需求链的上游产出）：
+    // 本次归档的结论文件 `archive.md` 由用例**自己补登**进清单（不命中豁免表，不补登就会
+    // "自己渲染的文件把自己挡住"），故「已列」= 调用方 docs 3 份 + archive.md 1 份 = 4。
+    expect(rec.listed.length).toBe(4)
+    expect(rec.listed).toContain(DIR + '/archive.md')
     expect(rec.exempted.map((e: { rule: string }) => e.rule).sort()).toEqual(['ledger-mirror', 'rtm-dir', 'rtm-reports', 'runtime-state'])
     expect(rec.unlisted.length).toBe(2)
     expect(rec.acknowledged.length).toBe(2)
@@ -81,8 +98,9 @@ describe('T1 三分类', () => {
     const listed = new Set(rec.listed)
     for (const e of rec.exempted) expect(listed.has(e.path)).toBe(false)
     for (const u of rec.unlisted) expect(listed.has(u)).toBe(false)
-    // 并集 = 9 份文件
-    expect(listed.size + rec.exempted.length + rec.unlisted.length).toBe(9)
+    // 并集 = 目录内 9 份文件 + 补登的 archive.md（t4 的集合口径：listed ∪ exempted ∪ unlisted
+    // = 遍历全集 ∪ {archive.md}——archive.md 两个方向都不落「未列」）
+    expect(listed.size + rec.exempted.length + rec.unlisted.length).toBe(10)
   })
 })
 
@@ -154,7 +172,8 @@ describe('T7 声明齐 → 通过并留痕', () => {
     expect(rec.archive?.reconcile?.gate).toBe('enforce')
     expect(rec.archive?.reconcile?.acknowledged.map(a => a.reason)).toContain('任务卡由台账渲染')
     const body = rec.comments.map(c => c.body).join('\n')
-    expect(body).toContain('清单对账：已列 3 · 豁免 4 · 未列 2（闸门=enforce）')
+    // 已列 4 = 调用方 3 份 + 补登的结论文件 archive.md（REQ-261006201841-944d t4）
+    expect(body).toContain('清单对账：已列 4 · 豁免 4 · 未列 2（闸门=enforce）')
     expect(body).toContain('已声明不收：')
   })
 })

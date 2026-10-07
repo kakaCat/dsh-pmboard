@@ -41,7 +41,10 @@ beforeEach(() => {
   reportTool = defineTaskReportTool(deps) as never
   handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreOf(deps), now: () => Date.now() })
   // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘
-  for (const p of ['p.md', 'docs/requirements/REQ-abc123/decomposition.md']) stubDocFile(p)
+  // 2026-10-06 缺口 4 之四：文档必须真的带任务表且收录 tasks[] 的 key（plan_doc_task_table_incomplete
+  // 硬门——「批准所见 ≠ 文档所见」正是这条门要堵的），故夹具内容不再是占位标题。
+  stubDocFile('p.md')
+  stubDocFile('docs/requirements/REQ-abc123/decomposition.md', undefined, PLAN_DOC)
 })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
@@ -58,6 +61,24 @@ async function seed(status: RequirementStatus = 'decomposing'): Promise<Requirem
 
 const run = (tool: { execute: (a: unknown, e: unknown) => Promise<any> }, args: unknown, agent = W) =>
   tool.execute(args, { agent: { id: agent } })
+
+/**
+ * 计划文档夹具：**任务表必须真的收录 tasks[] 的 key**（2026-10-06 缺口 4 之四的硬门）。
+ * 本文件出现过的计划 key 都在表里（proto/ui/doc/impl/copy/feat/solo）。
+ * 「依赖」列一律写 — ：本表同时被人读，写假依赖会触发 doc↔tasks 一致性点名。
+ */
+const PLAN_DOC = [
+  '# 拆分计划（REQ-abc123）',
+  '',
+  '## 任务表',
+  '',
+  '| 计划 key | 标题 | 覆盖条款 | 依赖 | 工作量 | 验收标准 |',
+  '|---|---|---|---|---|---|',
+  ...['proto', 'ui', 'doc', 'impl', 'copy', 'feat', 'solo'].map(
+    k => `| ${k} | 夹具占位标题 | FR-1 | — | M | 跑命令看到预期输出 |`,
+  ),
+  '',
+].join('\n')
 
 const PLAN_TASKS = [
   { key: 'proto', title: '协议层加计划字段', phase: 'implement', side: 'backend', acceptance: 'protocol.ts 单测绿', implementation: 'protocol.ts 加 PlanRecord + 单测验证' },
@@ -138,7 +159,7 @@ describe('计划闸门（拆分前必须先有计划且获批）', () => {
     await seed('decomposing')
     await submitPlan([
       { key: 'doc', title: '写迁移清单', phase: 'doc', side: 'doc', acceptance: '跑 cat migration.md 看到 4 行表格', implementation: '写 docs/requirements/REQ-abc123/migration.md', stages: ['dev', 'review'] },
-      { key: 'impl', title: '新增 helper', phase: 'implement', side: 'frontend', depends_on: ['doc'], acceptance: '跑 npx vitest run tests/helper.test.ts 全绿', implementation: '加 packages/web/dsh-pmboard/src/helper.ts', skipIntegration: true },
+      { key: 'impl', title: '新增 helper', phase: 'implement', side: 'frontend', depends_on: ['doc'], acceptance: '跑 npx vitest run tests/helper.test.ts 全绿', implementation: '加 packages/web/dsh-pmboard/src/helper.ts', skipIntegration: true, skip_integration_reason: '本卡只加内部 helper，没有调用方，无接口面可联调' },
     ])
 
     // ① 计划落库时字段还在（未被 normalizePlanTasks 丢）
@@ -218,7 +239,7 @@ describe('计划闸门（拆分前必须先有计划且获批）', () => {
   it('TC-9 template + skipIntegration 合法叠加（先取模板链，展开时再裁联调）', async () => {
     await seed('decomposing')
     await submitPlan([
-      { key: 'feat', title: '有模板但裁联调', phase: 'implement', side: 'backend', acceptance: '跑 npx vitest run tests/x.test.ts 全绿', implementation: '改 src/x.ts', template: 'feature', skipIntegration: true },
+      { key: 'feat', title: '有模板但裁联调', phase: 'implement', side: 'backend', acceptance: '跑 npx vitest run tests/x.test.ts 全绿', implementation: '改 src/x.ts', template: 'feature', skipIntegration: true, skip_integration_reason: '本卡只改内部函数签名，没有调用方，无接口面可联调' },
     ])
     const plan = ((await store.get((await store.listSummaries({ scope: 'all' })).items[0]!.id)))!?.plan
     expect(plan?.tasks.find(t => t.key === 'feat')?.stages).toEqual(['dev', 'integrate', 'review', 'test'])

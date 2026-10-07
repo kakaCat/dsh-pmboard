@@ -38,6 +38,20 @@
  * 原型里**没有任何 `[data-proto-v]` CSS 门控**：`?v=current` 与 `?v=next` 的矩形与七项多样性
  * 逐项相同（只差 Tab 栏 emoji ↔ SVG）。所以本脚本**不再**拿 `?v=current` 当"改前基线"复现
  * （那段断言在 v3 上不可能成立），改前那一列是**人给的历史快照**，对照图是 `ui-before-*.png`。
+ *
+ * ── 7a43 冻结声明（REQ-261006130057-7a43 · t9，2026-10-06）────────────────────────────
+ * 本脚本的断言对象是 **f32f 已归档的权威原型 v3（六 Tab 基线）**。7a43 已把详情页重设计为
+ * **七 Tab**（新增「验收」）并重排头部/字阶，当前 `buildReportShell` 的输出与 v3 内联壳
+ * **有意分叉**——「原型内联壳 == 当前壳」的漂移核对（K7 的逐段字节比对与 emoji 归属比对）
+ * 在新基线下**不可能成立**，故按任务口径标明指向旧原型并**显式豁免**：
+ *   · 豁免的：与**当前壳**比对的四段字节核对 + emoji 次序归属比对（FROZEN_BASELINE 门控，
+ *     每次运行响亮打印 EXEMPT 与去向，不静默跳过）；
+ *   · 保留的：对**旧原型文件本身**的一切断言——六 Tab/六图标的 DOM 硬断言、FR-3 ARIA、
+ *     FR-11/FR-13 逐节点断言、D-8 窗口组归属（文件内结构）、动效令牌静态核对、
+ *     出图 + 几何实测 + FR-10 七项收敛。它们钉住的是「归档基线不被改动」：旧原型被改坏
+ *     照样判红。
+ * 七 Tab 口径的活比对在 `scripts/req-report-probe.mts`（A1 次序 / verifyTabIndex1Based=5）
+ * 与 `scripts/req-7a43-ui-shot.mts`（before/after 对照图）。
  */
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -51,6 +65,13 @@ import {
 } from './fixtures/req-detail-specimen.mts'
 
 /* ───────────────────────────────────────────────────── 常量（阈值只在脚本里） */
+
+/**
+ * 7a43 冻结开关：true = 本脚本钉住的是 **f32f 已归档的六 Tab 基线**，
+ * 「内联壳 == 当前 buildReportShell 输出」的比对显式豁免（当前壳已七 Tab，比对不可能成立——
+ * 豁免逐次响亮打印，见 driftCheck）；false = 恢复 K7 的活比对（仅当原型被重新内联成当前壳时）。
+ */
+const FROZEN_BASELINE = true
 
 /** 仓库根（本脚本在 `<root>/scripts/` 下），产物路径相对它解析——不依赖调用时的 cwd。 */
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -437,44 +458,52 @@ function driftCheck(proto: string): { problems: string[]; notes: string[] } {
   const problems: string[] = []
   const notes: string[] = []
   for (const state of ['inflight', 'terminal'] as const) {
-    const report = reportOf(state)
-    const fresh = buildReportShell(report, 'trunk', {
-      data: asPanelPayload(TRUNK_SPECIMEN), revision: revisionOf(state),
-    })
     const embed = embeddedShell(proto, state)
     if (embed === undefined) {
       problems.push('漂移：原型里找不到 ' + state + ' 态的内联壳（proto-shell:' + state + ':start/end 标记）')
       continue
     }
-    let f: ReturnType<typeof segs>, e: ReturnType<typeof segs>
-    try {
-      f = segs(fresh); e = segs(embed)
-    } catch (err) {
-      problems.push('漂移：' + state + ' 态分段失败（' + (err as Error).message + '）')
-      continue
-    }
-    // ① 四段全比：head / band / panel / tabs —— **一段都不许少**（少了就是"把判据删了"）
-    const hitTotal: Record<string, number> = {}
-    for (const name of ['head', 'band', 'panel', 'tabs'] as const) {
-      const a = neutralize(e[name]), b = neutralize(f[name])
-      for (const k of Object.keys(a.hits)) hitTotal[k] = (hitTotal[k] ?? 0) + (a.hits[k] ?? 0)
-      if (a.text !== b.text) {
-        problems.push('漂移：' + state + ' 态的 ' + name + ' 段（抹平五类已声明偏差后）与真实壳不一致：'
-          + firstDiff(a.text, b.text))
+    if (!FROZEN_BASELINE) {
+      const report = reportOf(state)
+      const fresh = buildReportShell(report, 'trunk', {
+        data: asPanelPayload(TRUNK_SPECIMEN), revision: revisionOf(state),
+      })
+      let f: ReturnType<typeof segs>, e: ReturnType<typeof segs>
+      try {
+        f = segs(fresh); e = segs(embed)
+      } catch (err) {
+        problems.push('漂移：' + state + ' 态分段失败（' + (err as Error).message + '）')
+        continue
       }
+      // ① 四段全比：head / band / panel / tabs —— **一段都不许少**（少了就是"把判据删了"）
+      const hitTotal: Record<string, number> = {}
+      for (const name of ['head', 'band', 'panel', 'tabs'] as const) {
+        const a = neutralize(e[name]), b = neutralize(f[name])
+        for (const k of Object.keys(a.hits)) hitTotal[k] = (hitTotal[k] ?? 0) + (a.hits[k] ?? 0)
+        if (a.text !== b.text) {
+          problems.push('漂移：' + state + ' 态的 ' + name + ' 段（抹平五类已声明偏差后）与真实壳不一致：'
+            + firstDiff(a.text, b.text))
+        }
+      }
+      notes.push(state + ' 态已抹平的已声明偏差：'
+        + Object.entries(hitTotal).map(([k, v]) => k + '×' + String(v)).join(' · '))
+      // ② 六个 emoji 的**次序与归属**必须原样留存（emoji 活在 data-proto-icon-before 属性里）
+      const emojiOf = (s: string): string[] => [...s.matchAll(/data-proto-icon-before="([^"]*)"/g)].map(m => m[1]!)
+      const freshEmoji = emojiOf(f.tabs), embedEmoji = emojiOf(e.tabs)
+      if (freshEmoji.length !== TAB_KEYS.length || embedEmoji.length !== TAB_KEYS.length) {
+        problems.push('漂移：' + state + ' 态图标位数量不对（真实壳 ' + String(freshEmoji.length)
+          + ' 个 / 原型 ' + String(embedEmoji.length) + ' 个，期望 6）')
+      } else if (freshEmoji.join('') !== embedEmoji.join('')) {
+        problems.push('漂移：' + state + ' 态结构位图标 emoji 与真实壳不一致（真实壳 [' + freshEmoji.join(' ')
+          + '] / 原型 [' + embedEmoji.join(' ') + ']）')
+      }
+    } else {
+      notes.push('EXEMPT（7a43 冻结，' + state + ' 态）：「内联壳 == 当前 buildReportShell 输出」的四段字节核对'
+        + '与 emoji 归属比对已豁免——当前壳是七 Tab（新增「验收」），f32f v3 是已归档的六 Tab 基线，'
+        + '比对不可能成立；七 Tab 活比对在 scripts/req-report-probe.mts（A1 / verifyTabIndex1Based=5）。'
+        + '以下断言全部只钉**旧原型文件本身**。')
     }
-    notes.push(state + ' 态已抹平的已声明偏差：'
-      + Object.entries(hitTotal).map(([k, v]) => k + '×' + String(v)).join(' · '))
-    // ② 六个 emoji 的**次序与归属**必须原样留存（emoji 活在 data-proto-icon-before 属性里）
-    const emojiOf = (s: string): string[] => [...s.matchAll(/data-proto-icon-before="([^"]*)"/g)].map(m => m[1]!)
-    const freshEmoji = emojiOf(f.tabs), embedEmoji = emojiOf(e.tabs)
-    if (freshEmoji.length !== TAB_KEYS.length || embedEmoji.length !== TAB_KEYS.length) {
-      problems.push('漂移：' + state + ' 态图标位数量不对（真实壳 ' + String(freshEmoji.length)
-        + ' 个 / 原型 ' + String(embedEmoji.length) + ' 个，期望 6）')
-    } else if (freshEmoji.join('') !== embedEmoji.join('')) {
-      problems.push('漂移：' + state + ' 态结构位图标 emoji 与真实壳不一致（真实壳 [' + freshEmoji.join(' ')
-        + '] / 原型 [' + embedEmoji.join(' ') + ']）')
-    }
+    const e = segs(embed)
     // ③ 六个图标：各自恰 1 个内联 SVG，且属性齐（FR-1 的机械判据）
     const svgs = [...e.tabs.matchAll(/<svg\b[^>]*>/g)].map(m => m[0])
     if (svgs.length !== TAB_KEYS.length) {
@@ -562,17 +591,12 @@ function driftCheck(proto: string): { problems: string[]; notes: string[] } {
     notes.push(state + ' 态 FR-13 逐节点：评论输入入口 0 处（form/comment-input/add-comment 全 0）· '
       + '只读评论行保留 ' + String(rows) + ' 条')
     /* ── D-8 逐节点断言：窗口组在身份行里（而不是在动作行里）──────────────────────────
-       终态标本的 `sessionJump` 只有 1 个窗口 → 真实壳**不渲染**窗口组，此时这一条按"不适用"处理
-       （判一个不存在的节点等于把标本形状当缺陷）；真实壳有、原型没有才是漂移。 */
+       7a43 冻结后只做**文件内**结构断言（窗口组必须在身份行 .dsh-pm-rh-top 内）；
+       「真实壳有、原型没有」的活比对随 FROZEN_BASELINE 一并豁免（旧基线不与当前壳比）。 */
     const top = blockAt(e.head, 'class="dsh-pm-rh-top"')
     const win = blockAt(e.head, 'class="dsh-pm-report-windows"')
-    const freshWin = blockAt(f.head, 'class="dsh-pm-report-windows"')
     if (win === undefined) {
-      if (freshWin === undefined) {
-        notes.push(state + ' 态 D-8 逐节点：真实壳与原型都没有窗口组（该态无多窗口可跳）→ 不适用')
-      } else {
-        problems.push('漂移 D-8：' + state + ' 态找不到 `.dsh-pm-report-windows` 窗口组（真实壳有，原型没有）')
-      }
+      notes.push(state + ' 态 D-8 逐节点：原型没有窗口组（该态无多窗口可跳）→ 不适用')
     } else if (top === undefined || win.start < top.start || win.end > top.end) {
       problems.push('漂移 D-8：' + state + ' 态的窗口组不在身份行 `.dsh-pm-rh-top` 内（D-8 要求移进身份行）')
     } else {
@@ -1115,6 +1139,13 @@ function main(): void {
   if (driftAll.length > 0) {
     for (const d of driftAll) console.error('  ' + d)
     failures.push(...driftAll)
+  } else if (FROZEN_BASELINE) {
+    line('基线冻结（7a43）：与当前壳的四段字节比对 + emoji 归属比对**显式豁免**（当前壳七 Tab，见上 EXEMPT 行）')
+    line('旧原型文件本体断言 ✓：六个结构位图标 emoji 的次序与归属留存；每个 Tab 恰 1 个 svg[aria-hidden=true] ✓')
+    line('FR-11 逐节点断言 ✓（见上两行）；FR-13 评论入口 0 处且只读评论行保留 ✓；D-8 窗口组在身份行内 ✓')
+    line('动效令牌静态核对 ✓：--pm-dur-fast/--pm-dur/--pm-dur-slow = 80/120/150ms 三个都在 80–150ms 内；'
+      + 'transition 全部取 var(--pm-dur*)（无裸 ms）；只动颜色类属性（无 width/height/margin/transform…）；'
+      + 'reduced-motion 分支把三个时长归零')
   } else {
     line('head / band / panel / tabs **四段**各自在抹平五类已声明偏差后与真实壳逐字节相同 ✓')
     line('六个结构位图标 emoji 的次序与归属与真实壳一致 ✓；每个 Tab 恰 1 个 svg[aria-hidden=true] ✓')

@@ -53,7 +53,8 @@ beforeEach(() => {
   taskMove = defineTaskMoveTool(deps) as never
   taskReport = defineTaskReportTool(deps) as never
   // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘（chdir 后 stub 落进本测试临时目录）
-  stubDocFile('docs/requirements/REQ-hand1/decomposition.md')
+  // 2026-10-06 缺口 4 之四：落盘内容必须带任务表且收录 tasks[] 的 key（plan_doc_task_table_incomplete）
+  stubDocFile('docs/requirements/REQ-hand1/decomposition.md', undefined, PLAN_DOC)
 })
 afterEach(() => {
   process.chdir(prevCwd)
@@ -81,6 +82,18 @@ const CHAIN_TASKS = [
   { key: 'ui', title: '客户端渲染甘特图', phase: 'ui', side: 'frontend', depends_on: ['proto'], acceptance: '截图可见甘特图', implementation: 'view.ts 加甘特图渲染' },
   { key: 'test', title: '端到端回归测试', phase: 'test', side: 'backend', depends_on: ['ui'], acceptance: 'npx vitest run 全绿', implementation: 'tests/ 加回归用例并跑 npx vitest run' },
 ]
+
+/** 计划文档夹具：任务表必须收录 tasks[] 的 key（2026-10-06 缺口 4 之四的 `plan_doc_task_table_incomplete` 硬门）。 */
+const PLAN_DOC = [
+  '# 拆分计划（夹具）',
+  '',
+  '| 计划 key | 标题 | 依赖 | 工作量 | 验收标准 |',
+  '|---|---|---|---|---|',
+  '| proto | 协议层加时间线字段 | — | M | 跑 npx vitest run 全绿 |',
+  '| ui | 客户端渲染甘特图 | proto | M | 页面截图可见甘特图 |',
+  '| test | 端到端回归测试 | ui | M | 跑 npx vitest run 全绿 |',
+  '',
+].join('\n')
 
 /** 窗口 A：完整走完需求分析 → 设计 → 拆分，返回任务 id 列表。
  *  2026-09-21：拆分计划在拆分阶段提交（设计阶段只写设计文档）。 */

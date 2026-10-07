@@ -20,6 +20,7 @@ import { KnowledgeRepository } from '../src/adapters/KnowledgeRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { taskStoreAt } from './queue/route-deps.js'
 import { KB_PATHS, entryPath } from '../src/domain/knowledge/types.js'
+import { expectCode } from './helpers/code-assert.js'
 
 const SECTIONS = ['架构', '规范', '前端令牌', '决策', '坑', '契约', '术语', '代码地图', '待写']
 
@@ -125,6 +126,8 @@ describe('GET /kb', () => {
     const res = await get(handler(true), '/kb?budget_chars=0&kind=decision')
     expect(res.statusCode).toBe(400)
     expect(res.payload.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码（budget_chars 非法 = 领域码 invalid_input）
+    expectCode(res.payload, 'invalid_input')
   })
 
   it('未装配知识层 → 200 + 空集 + hint（看板不红）', async () => {

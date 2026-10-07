@@ -31,7 +31,7 @@ import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { createReqboardHandler } from '../src/http/routes.js'
 import { assembleStageDetail } from '../src/application/query/index.js'
 import { renderStagePanel } from '../src/client/stage-panel.js'
-import { docsPanel } from '../src/client/views/panels/docs.js'
+import { verifyPanel } from '../src/client/views/panels/verify.js'
 import {
   definePlanSubmitTool,
   defineDecomposeTool,
@@ -51,7 +51,6 @@ import {
   type StageKey,
   type StageDetail,
   type StageArtifact,
-  type DocsResponse,
   type VerificationItem,
 } from '../src/shared/protocol.js'
 
@@ -421,7 +420,15 @@ describe('验收 8：task_report 汇报 = 实施产物文档', () => {
 
     // 走完整链路：提交计划 → 批准 → 拆分 → 汇报
     // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘（本文件 chdir 到临时目录）
-    stubDocFile('docs/requirements/REQ-acc001/plan.md')
+    // 2026-10-06 缺口 4 之四：落盘内容必须带任务表且收录 tasks[] 的 key（plan_doc_task_table_incomplete）
+    stubDocFile('docs/requirements/REQ-acc001/plan.md', undefined, [
+      '# 拆分计划（夹具）',
+      '',
+      '| 计划 key | 标题 | 依赖 | 工作量 | 验收标准 |',
+      '|---|---|---|---|---|',
+      '| a | 任务A | — | M | 跑 npx vitest run 全绿 |',
+      '',
+    ].join('\n'))
     await planTool.execute({
       path: 'docs/requirements/REQ-acc001/plan.md', summary: 's',
       tasks: [{ key: 'a', title: '任务A', phase: 'implement', side: 'backend', acceptance: '单测通过', implementation: '改 a.ts' }],
@@ -701,14 +708,17 @@ describe('全流程一览接口 /requirements/:id/stages', () => {
 })
 
 /* ------------------------------------------------------------------------- */
-/* REQ-261005105032-3b02 t18：验收单两个对照项 — 面板只加属性、不动列        */
+/* REQ-261005105032-3b02 t18：验收单两个对照项 — 面板可字符串断言             */
 /* ------------------------------------------------------------------------- */
 
 /**
- * 面板核验表是**纯字符串渲染**（本包没有 jsdom），故判据落在字符串上：
+ * 验收面板是**纯字符串渲染**（本包没有 jsdom），故判据落在字符串上：
  *   · 两个对照项各有 `data-verify-source="<source.kind>"`（可 greps 断言"单里到底有没有这两项"）；
- *   · 列结构不动（七列，`data-verify-row` 条数 == items 条数）。
+ *   · 逐项一个不少（行展开里每条 `dsh-pm-rtm-item` 带 `data-item-id`）。
  * 之所以要这个属性：原先"UI 需求验收单含两个对照项"只能靠肉眼在表格里找中文标题。
+ * 渲染载体迁移（REQ-261006130057-7a43 FR-8 / D-8）：原 docs 面板七列核验表已独立为
+ * 「验收」Tab 的 RTM 验收追踪列表——`data-verify-source` 属性与逐项断言原样保留（只加属性
+ * 的契约不破），判据从"七列一行"换成"每 FR 一行主行 + 行展开逐项"。
  */
 describe('验收单对照项的面板渲染（REQ-261005105032-3b02 FR-7 / FR-9）', () => {
   const ITEMS: VerificationItem[] = [
@@ -744,18 +754,14 @@ describe('验收单对照项的面板渲染（REQ-261005105032-3b02 FR-7 / FR-9�
     },
   ]
 
-  const html = (): string => docsPanel.render({
-    documents: [],
-    generated: [],
-    discovered: [],
-    gates: [],
-    verification: {
+  const html = (): string => verifyPanel.render({
+    sheet: {
       version: 1,
       items: ITEMS,
       generatedAt: Date.UTC(2026, 9, 5),
       generatedBy: { kind: 'agent', sessionId: W },
     },
-  } as unknown as DocsResponse, {
+  }, {
     requirementId: 'REQ-261005105032-3b02',
     load: () => Promise.reject(new Error('渲染路径不该取数')),
     openDoc: () => { throw new Error('渲染路径不该开正文') },
@@ -769,10 +775,15 @@ describe('验收单对照项的面板渲染（REQ-261005105032-3b02 FR-7 / FR-9�
     expect(out).toContain('data-verify-source="requirement"')
   })
 
-  it('列结构不动：仍七列、逐项一行（属性没把行或列挤变形）', () => {
+  it('结构：每 FR 一行主行 + 行展开逐项（RTM 列表替代原七列表，逐项一个不少）', () => {
     const out = html()
-    expect(out.split('data-verify-row="1"').length - 1).toBe(ITEMS.length)
-    const head = out.slice(out.indexOf('<thead>'), out.indexOf('</thead>'))
-    expect(head.split('<th>').length - 1).toBe(7)
+    // 四个来源四种对齐键 → 四个 FR 组：主行与展开行各恰好 4 条
+    expect(out.split('<tr data-fr="').length - 1).toBe(4)
+    expect(out.split('data-fr-detail="').length - 1).toBe(4)
+    // 逐项全在行展开里（data-item-id 逐项可断言），且来源枚举跟着项走
+    expect(out.split('class="dsh-pm-rtm-item"').length - 1).toBe(ITEMS.length)
+    for (const it of ITEMS) expect(out, it.id).toContain('data-item-id="' + it.id + '"')
+    // 对照项的需人工原因在行展开里可见（原型对照项只能人判）
+    expect(out).toContain('界面视觉需人对照权威原型')
   })
 })

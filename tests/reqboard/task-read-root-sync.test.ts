@@ -24,6 +24,7 @@ import { makeHarness, req, task } from '../application/harness.js'
 import { executeTaskTree } from '../../src/application/use-cases/TaskTree.js'
 import { JsonQueueRepository } from '../../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../../src/repositories/QueueTaskStore.js'
+import { expectCode } from '../helpers/code-assert.js'
 
 const REQ_ID = 'REQ-000001'
 const WINDOW = 'session-w-root-sync'
@@ -92,6 +93,8 @@ describe('任务读取入口的工作区根校正（REQ-261003191948-e94a）', (
 
     // 根无法校正 → 读的是空目录 → 找不到父卡（响亮失败，不静默返回空树当成功）
     expect(res.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码（根校正失败 ⇒ 父卡找不到 → REQBOARD_TASK_NOT_FOUND）
+    expectCode(res, 'REQBOARD_TASK_NOT_FOUND')
     expect(res.parents).toEqual([])
   })
 })

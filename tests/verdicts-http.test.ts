@@ -134,12 +134,14 @@ describe('看板 HTTP 逐项裁决：空 opinion 与来源写入（REQ-261006092
     expect(after.opinion).toBeUndefined()
   })
 
-  it('人改了文本（≠ result）→ result 更新为人的文本且 resultSource=human', async () => {
+  it('人改了文本（≠ result）→ 覆盖：四元组一次写全（REQ-261006201920-2adc FR-3）', async () => {
     const sheet = await seedAccepting(true)
     const item = sheet.items.find(i => i.source.kind === 'task')!
+    const original = item.result!
     const edited = '我复跑了一遍：12 passed'
     const res = await post('/req/verdicts', {
-      id: REQ, version: sheet.version, verdicts: [{ itemId: item.id, status: 'passed', opinion: edited }],
+      id: REQ, version: sheet.version,
+      verdicts: [{ itemId: item.id, status: 'passed', opinion: edited, changeReason: 'agent 跑的是旧分支' }],
     })
     expect(res.statusCode).toBe(200)
     const after = sheetNow().items.find(i => i.id === item.id)!
@@ -147,6 +149,23 @@ describe('看板 HTTP 逐项裁决：空 opinion 与来源写入（REQ-261006092
     expect(after.result).toBe(edited)
     expect(after.resultSource).toBe('human')
     expect(after.opinion).toBe(edited)
+    // 口径更新（本需求 FR-3）：覆盖必须留档——原文不丢、理由在场
+    expect(after.resultSuperseded).toBe(original)
+    expect(after.resultChangeReason).toBe('agent 跑的是旧分支')
+  })
+
+  it('改文本却不给变更理由 → 400 且台账零改动（FR-3 缺理由即拒）', async () => {
+    const sheet = await seedAccepting(true)
+    const item = sheet.items.find(i => i.source.kind === 'task')!
+    const before = JSON.stringify(item)
+    const res = await post('/req/verdicts', {
+      id: REQ, version: sheet.version,
+      verdicts: [{ itemId: item.id, status: 'passed', opinion: '我复跑了一遍：12 passed' }],
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.payload.code).toBe('result_change_reason_required')
+    expect(String(res.payload.error)).toContain('不覆盖')
+    expect(JSON.stringify(sheetNow().items.find(i => i.id === item.id))).toBe(before)
   })
 
   it('FR-6 放行判据：存在未复核项时「验收通过」被拦（不带覆盖说明）', async () => {

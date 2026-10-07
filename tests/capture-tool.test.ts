@@ -183,6 +183,7 @@ describe('reqboard_capture · 一次调用一把梭（AC-7.2）', () => {
   it('弹框通道不可用 → fallback=board，且**不创建任何需求**', async () => {
     const out = await run(makeTool({}), {})
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：无码可断——notCreated 软失败回执只带 note/fallback（无 code/error），实现缺口只上报。
     expect(out.requirement_id).toBe('')
     expect(out.fallback).toBe('board')
     expect(store.peekAll()).toHaveLength(0)
@@ -191,6 +192,7 @@ describe('reqboard_capture · 一次调用一把梭（AC-7.2）', () => {
   it('用户取消（ASK_ABORTED）→ 中性失败，不创建需求', async () => {
     const out = await run(makeTool({ svc: makeSvc('abort') }), {})
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：无码可断——notCreated 软失败回执只带 note（无 code/error），实现缺口只上报。
     expect(out.fallback).toBeUndefined()
     expect(out.note).toContain('未作答')
     expect(store.peekAll()).toHaveLength(0)
@@ -200,6 +202,7 @@ describe('reqboard_capture · 一次调用一把梭（AC-7.2）', () => {
     const svc = makeSvc([{ id: 'category', selected: ['bug'] }, { id: 'difficulty', selected: ['expert'] }])
     const out = await run(makeTool({ svc }), {})
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：无码可断——notCreated 软失败回执只带 note（无 code/error），实现缺口只上报。
     expect(out.note).toContain('需求名称')
     expect(store.peekAll()).toHaveLength(0)
   })
@@ -234,6 +237,7 @@ describe('reqboard_capture · 拒绝即终端（REQ-260924002956-f37c BUG-1）',
     const out = await run(makeTool({ svc, rejections }), {})
 
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：无码可断——拒绝即终端的软失败回执只带 note（无 code/error），实现缺口只上报。
     expect(out.requirement_id).toBe('')
     // 只发一段：后续问题根本没有机会被问到（BUG-1 的现象就是"还继续问类型"）
     expect(svc.seen.calls).toHaveLength(1)
@@ -249,6 +253,7 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     const svc = makeSvc([{ id: 'name', selected: ['✖️ 不需要立项'] }])
     const out = await run(makeTool({ svc, rejections }), {})
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：无码可断——拒绝留痕分支的软失败回执只带 note（无 code/error），实现缺口只上报。
     expect(out.requirement_id).toBe('')
     expect(out.note).toContain('不立项')
     expect(recorded).toEqual([{ windowKey: W, at: NOW }])
@@ -260,6 +265,7 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     const svc = makeSvc([{ id: 'name', selected: ['✖️ 不需要立项'] }])
     const out = await run(makeTool({ svc, rejections }), {})
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：无码可断——留痕写失败降级分支只带 note（无 code/error），实现缺口只上报。
     expect(out.note).toContain('不立项')
     expect(store.peekAll()).toHaveLength(0)
   })
@@ -269,6 +275,7 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     const svc = makeSvc(FOUR)
     const out = await run(makeTool({ svc, rejections }), {})
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：无码可断——拒绝粘滞分支只带 note（无 code/error），实现缺口只上报。
     expect(out.note).toContain('30 分钟')
     expect(svc.seen.questions).toHaveLength(0) // 弹框根本没发生
     expect(store.peekAll()).toHaveLength(0)

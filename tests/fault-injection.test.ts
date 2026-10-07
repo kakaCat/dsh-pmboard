@@ -40,11 +40,22 @@ beforeEach(() => {
   taskMove = defineTaskMoveTool(deps)
   report = defineTaskReportTool(deps)
   // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘
-  stubDocFile('p.md', root)
+  // 2026-10-06 缺口 4 之四：落盘内容必须带任务表且收录 tasks[] 的 key（plan_doc_task_table_incomplete）
+  stubDocFile('p.md', root, PLAN_DOC)
 })
 afterEach(() => { rmSync(root, { recursive: true, force: true }) })
 
 const REQ = 'REQ-fi0001'
+/** 计划文档夹具（任务表收录本文件提交过的计划 key：a / b）。 */
+const PLAN_DOC = [
+  '# 拆分计划（夹具）',
+  '',
+  '| 计划 key | 标题 | 依赖 | 工作量 | 验收标准 |',
+  '|---|---|---|---|---|',
+  '| a | 任务A | — | M | 跑 npx vitest run 全绿 |',
+  '| b | 任务B | a | M | 页面截图可见 |',
+  '',
+].join('\n')
 const GOOD_TASKS = [
   { key: 'a', title: '任务A', acceptance: 'protocol.ts 单测绿', implementation: 'protocol.ts 加字段' },
   { key: 'b', title: '任务B', depends_on: ['a'], acceptance: '截图可见', implementation: 'view.ts 加渲染' },

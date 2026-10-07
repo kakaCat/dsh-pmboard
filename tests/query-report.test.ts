@@ -891,10 +891,13 @@ describe('queryDag：图数据 + 每步执行结果 + 关键路径', () => {
   }
 
   it('tasks：形状对齐 DagGraphNode（parentId/stageKind/status/dependsOn/claimedBy/layer/chainMissing）', async () => {
+    // 2026-10-06 缺口 4 之二：判据按状态**不对称**——in_progress 未声明 stages 也算期望有链（旧行为），
+    // done 只在**显式声明非空 stages** 时才算。为不动 dagTasks()（steps / criticalPath 共用），
+    // 这里另起一份输入锁 done 那两侧。
     const h = makeHarness({ requirements: [makeReq({ status: 'implementing' })], tasks: dagTasks() })
     const res = ok(await queryDag(makeDeps(h), { requirementId: REQ_ID }))
     const byId = new Map(res.tasks.map(t => [t.id, t]))
-    // 「该有链却没生成」：正在跑 + 没有子卡 + 未显式声明 stages: []
+    // t-aaaaaa 是 in_progress + 无子卡 + 未声明 stages → **缺链**（默认链按 phase/side 推出）
     expect(byId.get('t-aaaaaa')?.chainMissing).toBe(true)
     // 有子卡的父卡、已 done 的子卡都不打该标
     expect(byId.get('t-bbbbbb')?.chainMissing).toBeUndefined()
@@ -905,6 +908,22 @@ describe('queryDag：图数据 + 每步执行结果 + 关键路径', () => {
     // layer 来自队列派生视图（TaskStore 的三个读口都不给 layer）
     expect(byId.get('t-cccccc')?.layer).toBe(0)
     expect(byId.get('t-dddddd')?.layer).toBe(1)
+
+    const h2 = makeHarness({
+      requirements: [makeReq({ status: 'implementing' })],
+      tasks: [
+        makeTask({ id: 't-aaaaaa', status: 'in_progress' }), // 未声明 stages → 仍标（旧行为）
+        makeTask({ id: 't-eeeeee', status: 'done', stages: ['dev', 'review'] }), // 声明过要链却 0 子卡 → 标
+        makeTask({ id: 't-ffffff', status: 'done' }), // 存量 done、未声明 → 不标（不噪声）
+        makeTask({ id: 't-gggggg', status: 'in_progress', stages: [] }), // 显式 solo → 不标
+      ],
+    })
+    const res2 = ok(await queryDag(makeDeps(h2), { requirementId: REQ_ID }))
+    const byId2 = new Map(res2.tasks.map(t => [t.id, t]))
+    expect(byId2.get('t-aaaaaa')?.chainMissing).toBe(true)
+    expect(byId2.get('t-eeeeee')?.chainMissing).toBe(true)
+    expect(byId2.get('t-ffffff')?.chainMissing).toBeUndefined()
+    expect(byId2.get('t-gggggg')?.chainMissing).toBeUndefined()
   })
 
   it('steps：照抄执行记录（trigger/outcome/evidence/attempt/outputCount）+ 卡级汇报四要素', async () => {

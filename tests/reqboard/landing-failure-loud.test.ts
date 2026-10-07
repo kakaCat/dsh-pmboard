@@ -23,26 +23,32 @@ const exec = { agent: { id: WINDOW } }
 const tempDirs: string[] = []
 afterEach(() => { for (const d of tempDirs.splice(0)) rmSync(d, { recursive: true, force: true }) })
 
-/** FR-1 有落点、FR-2 无人接 —— 用来触发覆盖门禁拒绝；也用来造"无落点卡"。 */
-function seed(opts: { refsForT2: boolean } = { refsForT2: false }) {
+/**
+ * FR-1 有落点、FR-2 无人接 —— 用来触发覆盖门禁拒绝；也用来造「无落点卡」。
+ *
+ * 2026-10-06 收敛：refs 的**唯一取数 = 卡上 requirement_refs**（文档覆盖对照表不再是门禁依据），
+ * 故「谁接了哪条」由 `t1Refs` / `refsForT2` 直接写在计划卡上；文档覆盖表仍写（人读汇总）。
+ */
+function seed(opts: { refsForT2?: boolean; t1Refs?: string[] } = {}) {
   const h = makeHarness()
   const root = mkdtempSync(join(tmpdir(), 'pmboard-loud-'))
   tempDirs.push(root)
   h.docs.workspaceRoot = () => root
+  const t1Refs = opts.t1Refs ?? ['FR-1']
   h.seedRequirementSync(req({
     id: REQ_ID, status: 'decomposing', category: 'feature', sourceSessionId: WINDOW,
     artifacts: [{ stage: 'decomposing', kind: 'decomposition', path: 'docs/requirements/' + REQ_ID + '/decomposition.md', registeredAt: 1, registeredBy: { kind: 'agent', sessionId: WINDOW } } as never],
     plan: {
       path: 'docs/requirements/' + REQ_ID + '/decomposition.md', summary: '两张卡',
       tasks: [
-        { key: 't1', title: '甲卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: [], acceptance: 'npx vitest run 全绿', implementation: '改 src/a.ts' },
-        { key: 't2', title: '乙卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: ['t1'], acceptance: 'npx vitest run 全绿', implementation: '改 src/b.ts' },
+        { key: 't1', title: '甲卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: [], acceptance: 'npx vitest run 全绿', implementation: '改 src/a.ts', requirement_refs: t1Refs },
+        { key: 't2', title: '乙卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: ['t1'], acceptance: 'npx vitest run 全绿', implementation: '改 src/b.ts', ...(opts.refsForT2 === true ? { requirement_refs: ['FR-2'] } : {}) },
       ],
       submittedAt: h.clock.t, submittedBy: { kind: 'agent', sessionId: WINDOW },
     },
   }))
   h.docs.put('docs/requirements/' + REQ_ID + '/requirement.md', ['- **FR-1: 甲条**：A', '- **FR-2: 乙条**：B', ''].join('\n'))
-  // 覆盖表：FR-1 → t1（FR-2 没人接 = 覆盖缺口；t2 缺引用 = 无落点卡）
+  // 覆盖表（人读汇总）：FR-1 → t1（FR-2 没人接 = 覆盖缺口；t2 缺引用 = 无落点卡）
   h.docs.put('docs/requirements/' + REQ_ID + '/decomposition.md', [
     '| 需求条款 | 条款内容 | 接收任务 |',
     '|---------|---------|---------|',
@@ -120,17 +126,10 @@ describe('② 落库成功但收尾失败 → 照常推进并留痕（不留半�
 
 describe('③ 卡级无落点 → 不拒批，但回执与需求评论各点名一次', () => {
   it('warning 在回执里出现一次，且需求评论里也有一条', async () => {
-    const h = seed({ refsForT2: true })
+    // 让 t2 成为「无落点卡」：FR-1、FR-2 都由 **t1 的 requirement_refs** 接（覆盖门禁放行），
+    // t2 不接任何条款 → 这就是"无落点卡"。文档覆盖表已不是门禁依据，改它不再能造出这个形态。
+    const h = seed({ t1Refs: ['FR-1', 'FR-2'] })
     await h.seedSettled()
-    // 让 t2 成为"无落点卡"：覆盖表把 FR-2 撤掉（此时 FR-1 仍有人接 → 覆盖门禁放行）
-    // FR-1、FR-2 都由 t1 接（覆盖门禁放行）；t2 没有任何条款 → 这就是"无落点卡"
-    h.docs.put('docs/requirements/' + REQ_ID + '/decomposition.md', [
-      '| 需求条款 | 条款内容 | 接收任务 |',
-      '|---------|---------|---------|',
-      '| FR-1 | 甲条 | t1 |',
-      '| FR-2 | 乙条 | t1 |',
-      '',
-    ].join('\n'))
 
     const out = await approve(h)
     expect(String(out.note)).toContain('没有需求条款落点')

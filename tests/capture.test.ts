@@ -98,6 +98,18 @@ describe('captureSectionText 三分支', () => {
     expect(text).not.toContain('{{')
     expect(captureGuidanceText(W)).toContain(W.slice(0, 16))
   })
+  it('非人工回合的出路在场（2026-10-06 修复）：禁止立项 + 未立项不许落盘 + 两条正路', () => {
+    // 现场：开窗委派的底稿触发的是**自主回合**，而自主回合代码级禁止立项
+    // （requireDirectHuman 只认 source.kind==='user'）。缺这段出路说明时，窗口 agent 会照
+    // 上半段去试 reqboard_capture，必被 REQBOARD_DIRECT_HUMAN_REQUIRED 拒；实测有一条委派窗口
+    // 索性在没有立项的情况下落了 50 处改动、把 54 条门禁用例改红且无人认领。
+    const text = captureGuidanceText(W)
+    expect(text).toContain('不是**由用户直接消息触发')
+    expect(text).toContain('代码级禁止立项')
+    expect(text).toContain('只做只读勘察，不要落盘改动')
+    expect(text).toContain('野改动')
+    expect(text).toContain('on_window_bound=handoff')
+  })
 })
 
 describe('captureSectionText pending 注入（确定性消息 hook 命中）', () => {

@@ -51,6 +51,8 @@ const REQ_DOC = [
   '## 功能点', '',
   '### FR-1: 甲', 'x', '',
   '### FR-4: 丁', 'x', '',
+  // 2026-10-06 加固：feature 必填节多一节（夹具代表齐活的需求文档）。
+  '## 失败与并发路径', '- 判据：`npx vitest run tests/x.test.ts` 全绿。', '',
 ].join('\n')
 
 const live = {

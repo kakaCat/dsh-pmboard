@@ -25,6 +25,7 @@ import { defineAskConfirmTool, defineStatusTool, defineMoveTool } from '../src/t
 import { assertNoPendingConfirm } from '../src/application/internal/support.js'
 import type { AskAnswer, UseCaseDeps } from '../src/application/ports.js'
 import type { RequirementRecord, StageArtifact } from '../src/shared/protocol.js'
+import { expectNoCode } from './helpers/code-assert.js'
 
 const W = 'session-blocking-001'
 const AFFIRM = '确认，推进到下一阶段 (Recommended)'
@@ -173,6 +174,9 @@ describe('中止 / 取消（FR-4）', () => {
     const out = await tool.execute(ARGS, { agent: { id: W }, signal: { aborted: true } })
 
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码——中止回执（interruptedBody）契约上**不带码**，
+    // 判别位是 pending/ticket/interrupted，故钉「不携带码」，而不是编一个码出来。
+    expectNoCode(out)
     expect(out.confirmed).toBe(false)
     expect(out.advanced).toBe(false)
     expect(out.pending).toBe(true)
@@ -202,6 +206,9 @@ describe('中止 / 取消（FR-4）', () => {
     const out = await tool.execute(ARGS, exec)
 
     expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码——取消（ASK_CANCELLED）走中性降级回执
+    // （degradedAnswer），契约上**不带码**；判别位是「无 pending / 无 ticket」，故钉「不携带码」。
+    expectNoCode(out)
     expect(out.confirmed).toBe(false)
     expect(out.advanced).toBe(false)
     expect('pending' in out).toBe(false)

@@ -112,7 +112,7 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
   it('全部通过 → 留在 accepting，note 提示可点「验收通过」归档', async () => {
     await seedAcceptingWithSheet()
     const sheet = snapOf().requirements[0].verification!.sheet!
-    const verdicts = sheet.items.map(i => ({ itemId: i.id, status: 'passed', opinion: '实际结果：全部符合' }))
+    const verdicts = sheet.items.map(i => ({ itemId: i.id, status: 'passed', opinion: '实际结果：全部符合（npx vitest run tests/a.test.ts → 12 passed）' }))
     const res = await post('/req/verdicts', { id: 'REQ-vd1234', version: sheet.version, verdicts })
     expect(res.statusCode).toBe(200)
     expect(res.payload.data.passed).toBe(3)
@@ -130,7 +130,7 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
     const res = await post('/req/verdicts', {
       id: 'REQ-vd1234', version: sheet.version,
       verdicts: [
-        { itemId: sheet.items[0].id, status: 'passed', opinion: '实际结果：符合预期' },
+        { itemId: sheet.items[0].id, status: 'passed', opinion: '实际结果：符合预期（npx vitest run tests/a.test.ts → 12 passed）' },
         { itemId: target.id, status: 'failed', opinion: '截图不清晰，请补高清图' },
       ],
     })
@@ -210,6 +210,8 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
     // 再走「退回返工」端点 → 已不在验收态，被拒绝，不二次建卡
     const res = await post('/req/verify/rework', { id: 'REQ-vd1234', note: '再来一次' })
     expect(res.payload.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：由中文文案兜底升级为断码（badInput → 小写码 invalid_input）
+    expect(res.payload.code).toBe('invalid_input')
     expect(await queueTasks()).toHaveLength(cards)
   })
 
@@ -218,10 +220,13 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
     const sheet = snapOf().requirements[0].verification!.sheet!
     const res = await post('/req/verdicts', {
       id: 'REQ-vd1234', version: sheet.version,
-      verdicts: [{ itemId: sheet.items[0].id, status: 'passed', opinion: '实际结果：符合预期' }],
+      verdicts: [{ itemId: sheet.items[0].id, status: 'passed', opinion: '实际结果：符合预期（npx vitest run tests/a.test.ts → 12 passed）' }],
     })
     expect(res.payload.data.pending).toBe(2)
-    expect(res.payload.data.note).toMatch(/挂起|断点/)
+    // 期望值随文案更新（REQ-261007160829-1991 · I-9）：旧句「裁决已记录（挂起中，或仍有未处置的
+    // 缺口项…）」已删——「挂起」语义由上面的 pending=2 与下面的「状态仍 accepting」锁住；
+    // note 现在按真因分派，本情形（无未复核项、只剩余待裁决项）= 「仍有 N 项待裁决」。
+    expect(res.payload.data.note).toMatch(/仍有 2 项待裁决/)
     expect(snapOf().requirements[0].status).toBe('accepting')
   })
 
@@ -232,7 +237,7 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
     const sheet = snapOf().requirements[0].verification!.sheet!
     const res = fakeRes()
     await handler2(
-      fakeReq({ id: 'REQ-vd1234', version: sheet.version, verdicts: [{ itemId: sheet.items[0].id, status: 'passed', opinion: '实际结果：符合预期' }] }, '/dashboard/api/reqboard/req/verdicts'),
+      fakeReq({ id: 'REQ-vd1234', version: sheet.version, verdicts: [{ itemId: sheet.items[0].id, status: 'passed', opinion: '实际结果：符合预期（npx vitest run tests/a.test.ts → 12 passed）' }] }, '/dashboard/api/reqboard/req/verdicts'),
       res,
     )
     expect(res.statusCode).toBe(200)
@@ -246,9 +251,11 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
     await seedAcceptingWithSheet()
     const res = await post('/req/verdicts', {
       id: 'REQ-vd1234', version: 99,
-      verdicts: [{ itemId: 'v99-1', status: 'passed', opinion: '实际结果：符合预期' }],
+      verdicts: [{ itemId: 'v99-1', status: 'passed', opinion: '实际结果：符合预期（npx vitest run tests/a.test.ts → 12 passed）' }],
     })
     expect(res.payload.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：由中文文案兜底升级为断码（验收单版本不匹配 → badInput/invalid_input）
+    expect(res.payload.code).toBe('invalid_input')
     expect(res.payload.error).toMatch(/版本不匹配/)
   })
 
@@ -260,6 +267,8 @@ describe('验收单逐项裁决（t14 / REQ-a8d582 FR-2）', () => {
       verdicts: [{ itemId: sheet.items[0].id, status: 'failed' }],
     })
     expect(res.payload.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f)：由中文文案兜底升级为断码（不通过项缺意见 → badInput/invalid_input）
+    expect(res.payload.code).toBe('invalid_input')
     expect(res.payload.error).toMatch(/意见/)
   })
 })

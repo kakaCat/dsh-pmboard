@@ -127,8 +127,9 @@ describe('assertClauseCoverageGate（TC-009）', () => {
     expect(r?.gaps).toEqual(['FR-1', 'FR-4', 'FR-7'])
   })
 
-  // FR-4（REQ-260927100007-b8ba）：计划任务对象不携带 requirement_refs 是常态（PlanTask 无该字段），
-  // 覆盖必须能从 decomposition.md 的「覆盖对照表」读到——否则门禁的「双源」退化成单源，硬拦正常计划。
+  // 2026-10-06 收敛（缺口 4 之一）：covered 只认**卡上** requirement_refs——下游（RTM / 结单证据
+  // 锚定 / 条款接收状态）也只读卡上 refs，谁都不读文档表。故这里锁的正是**新行为**：
+  // 只写文档覆盖对照表 = 门禁依旧红（此前这条用例锁的是"文档表能单独满足门禁"）。
   const DEC_PATH = 'docs/requirements/REQ-t/decomposition.md'
   const DEC_COVERAGE = doc(
     '## 覆盖对照',
@@ -140,21 +141,34 @@ describe('assertClauseCoverageGate（TC-009）', () => {
     '| FR-7 | I-2 | c.ts | TC-3 | t2, t3 | ✅ |',
   )
 
-  it('FR-4 路径①：任务对象无 refs，但 decomposition.md 覆盖对照表写了 FR↔计划 key → 放行', async () => {
+  it('refs 单口径：卡上无 refs、只有文档覆盖对照表 → **仍被拒**（文档表不再是门禁依据）', async () => {
     const r = await assertClauseCoverageGate(
       fakeDocs({ [PATH]: REQ_BODY, [DEC_PATH]: DEC_COVERAGE }),
       live,
       [{ key: 't1' }, { key: 't2' }, { key: 't3' }],
     )
+    expect(r?.code).toBe('requirement_uncovered')
+    expect(r?.gaps).toEqual(['FR-1', 'FR-4', 'FR-7'])
+  })
+
+  it('卡上写了 refs → 放行（文档表写不写都不影响判定）', async () => {
+    const r = await assertClauseCoverageGate(
+      fakeDocs({ [PATH]: REQ_BODY }),
+      live,
+      [
+        { key: 't1', requirement_refs: ['FR-1', 'FR-4'] },
+        { key: 't2', requirement_refs: ['FR-7'] },
+      ],
+    )
     expect(r).toBeUndefined()
   })
 
-  it('FR-4：拒绝信息的 how 给出两条**真的能用**的路径（含参数示例），不再指路不可执行的操作', async () => {
+  it('拒绝信息的 how 是可执行的单一路径：在 tasks[] 里写 requirement_refs，并说明文档表不再是门禁依据', async () => {
     const r = await assertClauseCoverageGate(fakeDocs({ [PATH]: REQ_BODY }), live, [])
-    expect(r?.message).toContain('覆盖对照表')
-    expect(r?.message).toContain('接收任务')
-    expect(r?.message).toContain('reqboard_decompose(requirement_id=')
     expect(r?.message).toContain('requirement_refs')
-    expect(r?.message).toContain('落库前根本没有任务卡可加')
+    expect(r?.message).toContain('reqboard_submit(kind=plan)')
+    expect(r?.message).toContain('不再是门禁依据')
+    // 旧口径的两条「路径」文案必须消失——留着会让人照做一条已经不通的路
+    expect(r?.message).not.toContain('恢复路径二选一')
   })
 })

@@ -126,8 +126,10 @@ describe('标本①：设计已交完而编号链 dangling 未绿 → design →
     const gaps = (failure?.gaps ?? []).join('\n')
     expect(gaps).toContain('设计交完：门「无 dangling」未转绿')
     expect(gaps).toContain('BE-2→FR-9')
-    // 门消息给得出可执行补齐路径（GATE_HOW_ANCHOR 认 reqboard_*）
-    expect(failure?.message).toContain('reqboard_move')
+    // 门消息给得出**agent 可执行**的补齐路径（t4 / FR-5）：指统一入口 reqboard_ask_confirm，
+    // 不再指人工门命令 reqboard_move（agent 调它必被 REQBOARD_HUMAN_GATE 拒）。
+    expect(failure?.message).toContain('reqboard_ask_confirm')
+    expect(failure?.message).not.toContain('reqboard_move(requirement_id')
     expect(failure?.message).toContain('scripts/req-doc-validate.mts')
   })
 

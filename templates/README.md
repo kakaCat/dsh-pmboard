@@ -137,6 +137,16 @@ templates/
 | doc | requirement.doc.md（implementing/）| 目标读者 / 大纲 | DOC-x |
 | chore | requirement.chore.md（implementing/）| 完成判据 | CH-x |
 
+> **门禁必填节以代码为准**（`src/application/internal/category-doc-sets.ts` 的 BASE + DELTA，本表是它的人读副本）。
+> 2026-10-06 加固后 feature / refactor 多两件事：① 新需求（`createdAt ≥ DOC_QUALITY_RULES_SINCE`）的
+> requirement.md 必须带 **失败与并发路径** 节（顺利路径之外怎么表现；确实不适用的需求在节内写
+> 「不适用：<理由>」，**保留节**才能被机械判定；这一节**刻意不进 DELTA**——进去会让
+> `missingCategoryDocs` 追溯存量需求）；② front-matter **`sides` 必填**
+> （值只有 frontend / backend，`[]` = 明确声明无端侧改动；缺声明或写非法值会被提交门当场拒——
+> 它原先在解析处被静默过滤，条件必交设计文档因此永不触发）。
+> 另：条款级判据是**软门禁**——每条 FR 的定义行块内要有命令 / 读数 / 明确取值，缺了进提交回执的
+> `clause_criteria_warnings`（只提示不拦）。
+
 注入映射：`templates/<首个启用节点>/requirement.<category>.md` → 需求目录 `requirement.md`（节点映射见上表）。
 
 **防漂移约定**：六份的通用区（front-matter / 状态头 / 背景与动机 / 目标 / 非目标 /

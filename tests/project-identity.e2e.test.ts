@@ -25,6 +25,7 @@ import { toProjectEntries } from '../src/adapters/workspaceRegistryRows.js'
 import { projectIdOfWindow, rootOfProject } from '../src/application/internal/project-identity.js'
 import { applyRequirementWorkspaceRoot, ensureWritableProjectRoot } from '../src/application/internal/support.js'
 import type { RequirementRecord } from '../src/shared/protocol.js'
+import { expectCode } from './helpers/code-assert.js'
 
 const SESSION_X = 'session-x'
 const SESSION_Y = 'session-y'
@@ -296,6 +297,8 @@ describe('E-04 跨项目改绑：HTTP 层返回跨项目码，台账席位表不
     const res = await call(handler, 'POST', '/req/rebind', { id: REQ_X, windowKey: SESSION_Z, reason: '跨项目用例' })
 
     expect(res.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码（跨项目改绑 = REQBOARD_CROSS_PROJECT_SEAT）
+    expectCode(res, 'REQBOARD_CROSS_PROJECT_SEAT')
     expect(res.code).toBe('REQBOARD_CROSS_PROJECT_SEAT')
     // 台账零改动：sourceSessionId 与席位表都没被写出半份
     expect(JSON.stringify(store.peek(REQ_X))).toBe(before)

@@ -113,6 +113,24 @@ describe('注入文本里的工具名必须都在注册集合内', () => {
     }
     expect(bad, '捕获引导段引用了不存在的工具：\n' + bad.join('\n')).toEqual([])
   })
+
+  // REQ-261007100513-6749 t3（验收 ⑩）：t2 起易变段正文（状态行 / 任务块 / 待捕获提示）搬进了
+  // `volatile-notice.ts`，投递编排又新增了 `notice-delivery.ts`——**同一道门禁必须跟着扫描面走**，
+  // 否则新家的文案提到不存在的工具时没人报（本门禁存在的理由就是"文档同步了、注入文本漏了"）。
+  it('易变段源码里的工具名同样只指向已注册工具（t3 补扫描面）', () => {
+    const registered = registeredNames()
+    const targets = ['application/internal/volatile-notice.ts', 'application/internal/notice-delivery.ts']
+    const bad: string[] = []
+    for (const rel of targets) {
+      const text = readFileSync(join(SRC, rel), 'utf8')
+      for (const line of text.split('\n')) {
+        const t = line.trim()
+        if (t.startsWith('*') || t.startsWith('//')) continue
+        for (const name of referenced(line)) if (!registered.has(name)) bad.push(rel + ' → ' + name + '  ← ' + t.slice(0, 60))
+      }
+    }
+    expect(bad, '易变段/投递编排引用了不存在的工具：\n' + bad.join('\n')).toEqual([])
+  })
 })
 
 describe('六节点 light/heavy 要素（REQ-422af1 t7）', () => {

@@ -46,7 +46,20 @@ const FAILURE_MARKERS = [
  */
 const NON_GEOMETRY: Readonly<Record<string, string>> = {
   scanned: 'A3 的扫描计数：判据落在 bad 清单长度上（diag.a3.bad.length === 0）',
-  tabCount: 'A1 的 Tab 计数：判据落在派生布尔 a1.tabs（tabCount === 6）上，且页内脚本逐条点名实得个数',
+  tabCount: 'A1 的 Tab 计数：判据落在派生布尔 a1.tabs（tabCount === 7，7a43 起七 Tab）上，且页内脚本逐条点名实得个数',
+  /* ── a11y 子结构的原始读数（REQ-261006130057-7a43 · t9 登记）：判据全部落在
+     各自派生的 bad 清单 / 派生比值上（focus.bad / marks.bad / hier.bad 与 h1Ratio），
+     宿主侧 readbackProblems 对派生读数另有逐条复算 ── */
+  live: 'A7 取样通道计数（live 直读）：判据落在 focus.rows 逐行的环宽/样式/偏移/对比阈值复算上',
+  cssom: 'A7 取样通道计数（cssom 兜底）：同上，通道本身不是几何量',
+  size: 'A9 最小字号的读数载体（font.min.size）：判据落在 FONT_MIN 阈值比较与阶梯外清单上',
+  completed: 'A11 完成态阶段点计数：判据落在「✓ 标记缺失」派生清单（marks.bad）上',
+  current: 'A11 当前态阶段点计数：判据落在「▸ 标记缺失」派生清单（marks.bad）上',
+  todo: 'A11 未开始阶段点计数：判据落在「不该带标记」派生清单（marks.bad）上',
+  gapSvg: 'A11 缺口条 SVG 圆计数：判据落在与文本标记计数的一致性比较（marks.bad）上',
+  verdict: 'A11 验收结论计数：判据落在「只有颜色没有文字」派生清单（marks.bad）上',
+  h1: 'A12 H1 页标题字号读数：判据落在派生比值 h1Ratio（≥1.4，7a43 的 19px 标题口径）上',
+  registeredSources: 'A2 登记溢出源计数（常量 2）：判据落在隐藏后残余量 residualAfterHidingRegistered 上',
 }
 
 interface Inspection {
@@ -146,7 +159,9 @@ describe('探针族几何量硬判据（源码级）', () => {
     it(`${file}：既有硬上限 TABS_TOP_MAX = 713 保留`, () => {
       expect(src).toMatch(/const TABS_TOP_MAX = 713/)
       expect(src).toMatch(/tabsTop > diag\.tabsTopMax/)
-      expect(src).toMatch(/tabsTop <= TABS_TOP_MAX/)
+      /* 7a43（t9）起判据分档：页内按档取上限常量 TABS_TOP_LIMIT（1280 → TABS_TOP_MAX=713；
+         900 → TABS_TOP_MAX + 2×220，状态带单列是已确认设计）——713 本体与回读判据不变。 */
+      expect(src).toMatch(/tabsTop <= TABS_TOP_LIMIT/)
     })
   }
 })

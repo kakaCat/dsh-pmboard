@@ -23,6 +23,7 @@ import { describe, it, expect } from 'vitest'
 import { assembleTrunk } from '../src/application/query/QueryTrunk.js'
 import { renderTrunkPanel } from '../src/client/views/panels/trunk.js'
 import { docsPanel } from '../src/client/views/panels/docs.js'
+import { verifyPanel } from '../src/client/views/panels/verify.js'
 import { renderDialogue } from '../src/client/views/panels/dialogue.js'
 import { renderTokenPanel } from '../src/client/token-info.js'
 import { esc } from '../src/client/html.js'
@@ -350,7 +351,7 @@ function makeDocsResponse(over: Partial<DocsResponse> = {}): DocsResponse {
 
 const renderDocs = (data: unknown): string => docsPanel.render(data, ctx)
 
-describe('T-5 / T-13 / T-16 · 文档铺开、核验七列、门禁六道（FR-7 / FR-11 #7）', () => {
+describe('T-5 / T-6 / T-16 · 文档铺开、核验节迁移、门禁六道（FR-7 / FR-11 #7）', () => {
   it('T-5 · 文档行数 == 台账文档数（15 == 15；不截断、不折叠成一行）', () => {
     const html = renderDocs(makeDocsResponse())
     expect(DOCS).toHaveLength(15)
@@ -364,25 +365,33 @@ describe('T-5 / T-13 / T-16 · 文档铺开、核验七列、门禁六道（FR-7
     for (const d of DOCS) expect(html).toContain('data-open-doc="' + d.path + '"')
   })
 
-  it('T-13 · 核验表七列在场：标准 / 实际结果 / 来源 / 需人工 / 证据 / 意见 / 裁决', () => {
+  it('T-6 · 核验节已独立为「验收」Tab（REQ-261006130057-7a43 FR-8）：docs 无核验表，原位是迁移指引条', () => {
     const html = renderDocs(makeDocsResponse())
-    const head = sliceBetween(html, 'data-verify-table="1"', '</thead>')
-    const cols = [...head.matchAll(/<th>([^<]*)<\/th>/g)].map(m => m[1])
-    expect(cols).toEqual(['标准', '实际结果', '来源', '需人工', '证据', '意见', '裁决'])
-    // 列头在场还不够：逐项铺开（行数 == 验收项数），否则"七列"只是空壳
-    expect(countOf(html, 'data-verify-row="1"')).toBe(VERIFY_ITEMS.length)
+    expect(html).not.toContain('data-verify-table')
+    expect(html).not.toContain('data-doc-section="verification"')
+    expect(countOf(html, 'data-verify-row="1"')).toBe(0)
+    expect(html).toContain('data-verify-moved="1"')
+    expect(html).toContain('已独立为「验收」Tab')
+    expect(html).toContain('data-action="switch-tab" data-tab="verify"')
   })
 
-  it('T-13 · 来源格给原始枚举（agent|human）；需人工格带原因；未给结果/意见各有说辞', () => {
-    const html = renderDocs(makeDocsResponse())
-    expect(html).toContain('data-source="agent"')
-    expect(html).toContain('data-source="human"')
+  it('T-13 · 逐项明细迁到「验收」Tab 行展开：来源枚举 / 需人工+原因 / 缺结果与缺意见各有说辞', () => {
+    // 原七列核验表的口径承载者换成 verify 面板（D-8：主视图 = RTM 列表，逐项降级为行详情）
+    const html = verifyPanel.render({
+      sheet: { version: 2, items: VERIFY_ITEMS, generatedAt: 1700000000000, generatedBy: { kind: 'agent', sessionId: 'session-1a2b3c4d-0000' } },
+    }, ctx)
+    expect(html).toContain('data-rtm-table="1"')
+    // 逐项一个不少（行展开里 data-item-id 逐项在）
+    for (const it of VERIFY_ITEMS) expect(html, it.id).toContain('data-item-id="' + it.id + '"')
+    // 需人工：旗标 + 原因原文
     expect(html).toContain('data-needs-human="1"')
-    expect(html).toContain('需人工确认：界面视觉无独立证据')
-    // 第三项没给 result/opinion：不许留白
-    const lastRow = html.slice(html.lastIndexOf('data-verify-row="1"'))
-    expect(lastRow).toContain('未提供实际结果')
-    expect(lastRow).toContain('无意见（裁决时未写）')
+    expect(html).toContain('界面视觉无独立证据')
+    // 结果来源标注（agent 实测 / 人工填写）；第三项没给 result → 明说，不留白
+    expect(html).toContain('agent 实测')
+    expect(html).toContain('人工填写')
+    expect(html).toContain('尚无实测结果')
+    // 已裁决但未写意见的项（v1-1 无 opinion）→ 留痕行明说"无意见"
+    expect(html).toContain('无意见（裁决时未写）')
   })
 
   it('T-16 · file-missing 行：可见划线 + 「文件缺失」+ 不给可点的假出口', () => {

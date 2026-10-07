@@ -19,10 +19,18 @@ import { defineSubmitTool } from '../src/tools/index.js'
 import { toUseCaseDeps } from './helpers/tool-deps.js'
 import { KB_PATHS, entryPath } from '../src/domain/knowledge/types.js'
 import { parseEntryDoc } from '../src/domain/knowledge/entry.js'
+import { listHeadingAnchors } from '../src/domain/knowledge/slug.js'
 import { buildDepositDraft, depositArchiveKnowledge } from '../src/application/use-cases/DepositKnowledge.js'
 import type { RequirementRecord } from '../src/shared/protocol.js'
 
 const W = 'session-kb-001'
+/**
+ * 合并去向 + 说明书更新点目标（REQ-261006201841-944d FR-1/FR-2）：目标文档必须**真实落盘且非空**，
+ * 锚点必须命中该文档真实标题。锚点由 `listHeadingAnchors`（写入端/读侧同一实现）算出，不手写 slug。
+ */
+const MANUAL_DOC = 'docs/architecture/project-manual.md'
+const MANUAL_MD = '# 项目说明书\n\n## 知识层\n\n知识层入口与沉淀口径。\n'
+const MANUAL_ANCHOR = listHeadingAnchors(MANUAL_MD).map(h => h.anchor)[listHeadingAnchors(MANUAL_MD).length - 1]!
 const SECTIONS = ['架构', '规范', '前端令牌', '决策', '坑', '契约', '术语', '代码地图', '待写']
 
 function indexSkeleton(): string {
@@ -44,6 +52,9 @@ beforeEach(async () => {
   for (const f of ['requirement.md', 'plan.md', 'verification.md', 'retro.md']) {
     writeFileSync(join(dir, 'docs/requirements/REQ-abc123', f), '# ' + f + '\n内容\n', 'utf8')
   }
+  // FR-1/FR-2：合并去向与说明书更新点的目标必须存在且非空，锚点必须真实存在
+  mkdirSync(join(dir, 'docs/architecture'), { recursive: true })
+  writeFileSync(join(dir, MANUAL_DOC), MANUAL_MD, 'utf8')
   const r = {
     id: 'REQ-abc123', title: '知识层需求', description: '', status: 'archived', blocked: false, category: 'feature',
     sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
@@ -68,9 +79,9 @@ const archiveArgs = (over: Record<string, unknown> = {}) => ({
     { kind: 'plan', path: 'docs/requirements/REQ-abc123/plan.md' },
     { kind: 'verification', path: 'docs/requirements/REQ-abc123/verification.md' },
   ],
-  merged_into: ['docs/architecture/project-manual.md'],
+  merged_into: [MANUAL_DOC],
   index_entry: '知识层让新窗口少花一个数量级的 token 就能认识项目',
-  manual_updates: [{ path: 'docs/architecture/project-manual.md', section: '知识层', summary: '多了知识层入口' }],
+  manual_updates: [{ path: MANUAL_DOC + '#' + MANUAL_ANCHOR, summary: '多了知识层入口' }],
   // REQ-261004183621-de3f FR-2：目录内有 retro.md 但清单只收三件 → 显式声明不收
   // （这条用例考的是归档沉淀，不是清单闸门；闸门本身另有 archive-reconcile 用例专测）
   unlisted_ack: [{ path: 'docs/requirements/REQ-abc123/retro.md', reason: '本用例无复盘，夹具有意不收' }],

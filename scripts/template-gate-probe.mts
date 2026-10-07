@@ -52,11 +52,12 @@ import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { designDocPolicyFrom, missingCategoryDocs } from '../src/application/internal/category-doc-sets.js'
+import { designDocPolicyFrom, hasRootSection, missingCategoryDocs, sidesDeclarationGap } from '../src/application/internal/category-doc-sets.js'
 import {
   checkDesignSectionsHaveServes, checkTaskCardTriad, extractClauseDefinitions, parseDocument,
 } from '../src/application/internal/content-gates.js'
-import { checkRequirementDocFormatGate } from '../src/application/internal/content-gate-wiring.js'
+import { clauseCriteriaGaps } from '../src/application/internal/clause-criteria.js'
+import { checkRequirementDocFormatGate, FAILURE_CONCURRENCY_SECTION } from '../src/application/internal/content-gate-wiring.js'
 import type { DocsEntry, DocsReader } from '../src/application/internal/doc-parse.js'
 import type { RequirementRecord } from '../src/shared/protocol.js'
 // 文档自检判据集（t21）：**脚本导出、R1 调用**——两条口径同源，R1 不重写一份判据（FR-10 同源要求）。
@@ -355,6 +356,33 @@ async function evaluateTemplate(rel: string, raw: string, map: RenderMap): Promi
       gate: 'checkRequirementDocFormatGate',
       gaps: failure === undefined ? [] : [failure.code + '：' + (failure.gaps ?? []).join('；')],
     })
+    // ③ 端侧声明（2026-10-06 加固）：模板必须自带合法 `sides`——同源判定 = 线上提交门用的
+    //    那同一个纯函数（sidesDeclarationGap）。为什么模板层要判：sides 是条件必交设计文档与
+    //    原型门的触发器，模板里写错/漏写会让**照模板写出来的每一份需求**都触发不了（实测
+    //    refactor.md 原先没有 sides，于是 refactor 的原型条件必交永不触发）。
+    if (category === 'feature' || category === 'refactor') {
+      const gap = sidesDeclarationGap(category, doc.frontmatter)
+      gates.push({
+        gate: 'sides-declaration',
+        gaps: gap === undefined ? [] : [gap],
+      })
+      // 「失败与并发路径」：提交门（docSectionGateFailure）只对**新需求**硬拦，DELTA 里刻意没有它
+      // （进 DELTA 会追溯存量）。故这里显式点名模板必须自带——模板删了节，照模板写的新需求会被拒，
+      // 而 R2 的 optional 登记不会替它报警（optional 是"允许存在"不是"必须存在"）。
+      gates.push({
+        gate: 'failure-concurrency-section',
+        gaps: hasRootSection(rendered.text, FAILURE_CONCURRENCY_SECTION)
+          ? []
+          : ['模板缺必填节「' + FAILURE_CONCURRENCY_SECTION + '」（提交门对新需求的 feature/refactor 硬拦，模板必须自带这一节）'],
+      })
+    }
+    // 观察（不计入判据）：条款级判据软门禁——模板渲染后是占位文案，必然缺判据，故只登记读数，
+    // 提醒"模板骨架里已写明每条 FR 要自带判据"，不当作模板缺陷。
+    const criteriaGaps = clauseCriteriaGaps(doc)
+    if (criteriaGaps.length > 0) {
+      observations.push('渲染后 ' + criteriaGaps.length + ' 条条款无可核验判据（模板是占位文案，属预期；'
+        + '线上提交只作软提示 clause_criteria_warnings，不阻断）')
+    }
     // 观察（不计入判据）：零定义行 → 格式门的「必须有根编号」那一道对本文档恒真空转（见模块头注释）
     if (extractClauseDefinitions(doc).length === 0) {
       observations.push('模板渲染后没有一条门禁可解析的根条款定义行（' + category + ' 可补一行形如 `- **'
@@ -366,6 +394,10 @@ async function evaluateTemplate(rel: string, raw: string, map: RenderMap): Promi
       gate: 'checkDesignSectionsHaveServes',
       gaps: checkDesignSectionsHaveServes(parseDocument(rendered.text)).missing.map(s => `H2/H3 章节缺 serves 标注：「${s}」`),
     })
+    // REQ-261007125552-32cb FR-1：接口清单/组件树节的模板判据——词表与门禁
+    // （content-gate-wiring 的 designSectionMissing）同口径，模板缺节 = 照模板写必被门拦。
+    const designGranularity = designGranularitySectionGaps(rel, rendered.text)
+    if (designGranularity.length > 0) gates.push({ gate: 'design-granularity-sections', gaps: designGranularity })
   } else if (docClass === 'task-card') {
     gates.push({
       gate: 'checkTaskCardTriad',
@@ -439,7 +471,37 @@ function decompositionColumnGaps(text: string): string[] {
   for (const col of ['原型锚点', '关联 D-x']) {
     if (!header.includes(col)) gaps.push(`拆分模板任务表缺列「${col}」`)
   }
+  // REQ-261007125552-32cb FR-2：对照表节（词表与 plan-granularity.readMapTable 同口径——
+  // 表头含「接口」+「接收卡 key」；「计划 key」是任务表判据的词法，对照表**不得**复用）。
+  const mapTable = parseDocument(text).tables.find(t =>
+    t.header.some(h => h.includes('接口')) && t.header.some(h => h.includes('接收卡 key')),
+  )
+  if (mapTable === undefined) {
+    gaps.push('拆分模板缺「接口清单 ↔ 接收卡 key」对照表（表头应含「接口」与「接收卡 key」两列；对照表门 plan_interface_map_missing 的模板侧依据）')
+  }
   return gaps
+}
+
+/**
+ * 设计模板的粒度必备节判据（REQ-261007125552-32cb FR-1）：词表与线上门禁
+ * `designSectionMissing`（content-gate-wiring.ts）**同口径**——section 关键字与表头列名
+ * 两处逐字一致，模板缺节 = 照模板写必被 REQBOARD_DESIGN_CONTENT_GATE 拦（假红反向）。
+ */
+function designGranularitySectionGaps(rel: string, text: string): string[] {
+  const doc = parseDocument(text)
+  const hasH2 = (kw: string) => doc.headings.some(h => h.level === 2 && h.text.includes(kw))
+  if (rel.endsWith('templates/design/interfaces.md')) {
+    const gaps: string[] = []
+    if (!hasH2('接口清单')) gaps.push('interfaces.md 模板缺「接口清单」节（门禁 designSectionMissing 的模板侧依据）')
+    else if (!doc.tables.some(t => t.header.some(h => h.includes('接口 id')))) {
+      gaps.push('interfaces.md 模板的「接口清单」节缺表头含「接口 id」的清单表')
+    }
+    return gaps
+  }
+  if (rel.endsWith('templates/design/frontend.md')) {
+    return hasH2('组件树') ? [] : ['frontend.md 模板缺「组件树」节（门禁 designSectionMissing 的模板侧依据）']
+  }
+  return []
 }
 
 /* ── 文档自检（t21 · FR-11）：把判据集跑在**渲染产物**上 ─────────────────────── */

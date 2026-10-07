@@ -82,6 +82,11 @@ import {
   type ContextPressureSnapshot,
   type SessionLineageEntry,
 } from '../../src/shared/protocol.js'
+// REQ-261006201814-ac4f t2：FakeDocs 的文档根改走**进程级临时根**（单一事实源）。
+// 改前这里恒返回 '.'，而 RTM 写入绕过 docs 端口直接拼 <root>/docs/requirements/<REQ>/rtm-*.yml，
+// 且本 harness 的合成需求默认 id 恰好是 REQ-000001（撞上仓里真实跟踪的同名目录）——
+// 于是每个窗口跑测试都会改写那批 tracked 文件。这条链是 Tier A 全部泄漏的唯一出口。
+import { testWorkspaceRoot } from '../helpers/workspace-root.js'
 
 /** 队列文件的 schemaVersion（v9：台账已无 tasks）。 */
 const QUEUE_SCHEMA_VERSION = 9
@@ -560,15 +565,46 @@ export class InMemoryRequirementStore implements RequirementStore {
 export class FakeDocs implements DocRepository {
   files = new Map<string, { content: string; mtimeMs: number }>()
   private now: () => number
-  constructor(now: () => number = () => 0) { this.now = now }
+  /** 文档根（绝对路径）。见 `workspaceRoot()` 的注释：改前是 `'.'`。 */
+  private root: string
+  constructor(now: () => number = () => 0, root: string = testWorkspaceRoot()) {
+    this.now = now
+    this.root = root
+  }
+  /**
+   * 把「可能是绝对路径」的入参归一为 FakeDocs 的相对键。
+   *
+   * 为什么必须归一（REQ-261006201814-ac4f t2 返工）：`workspaceRoot()` 由 `'.'` 改为绝对临时根后，
+   * `ensureWritableProjectRoot`（`src/application/internal/support.ts:541-546`）会调
+   * `docs.exists(声明的绝对根)` 核验——改前 `'.'` 走「非绝对 → 不判」的宽容旁路**根本不走这一步**。
+   * 若 FakeDocs 只认相对键，任何绝对根都会查不到而被判 `INVALID_WORKSPACE`，
+   * 于是一批**立项/捕获**用例整片变红（A/B 实测 10 条）。
+   * 故本替身必须遵守与生产同一条契约：**根下的绝对路径 ≡ 对应的相对路径**。
+   */
+  private keyOf(p: string): string {
+    const strip = (s: string): string => s.replace(/\\/g, '/').replace(/\/+$/, '')
+    const norm = strip(p)
+    const root = strip(this.root)
+    if (norm === root) return ''
+    return norm.startsWith(root + '/') ? norm.slice(root.length + 1) : p
+  }
   put(relPath: string, content = 'x', mtimeMs?: number): void {
     this.files.set(relPath, { content, mtimeMs: mtimeMs ?? this.now() })
   }
-  exists(relPath: string): boolean { return this.files.has(relPath) }
-  async read(relPath: string): Promise<string> { return this.files.get(relPath)?.content ?? '' }
-  async write(relPath: string, content: string): Promise<void> { this.files.set(relPath, { content, mtimeMs: this.now() }) }
+  exists(relPath: string): boolean {
+    const key = this.keyOf(relPath)
+    // 根自身＝一个存在的目录（生产 `exists(workspaceRoot)` 为真）；空串仍按原语义查表
+    if (key === '' && relPath.trim().length > 0) return true
+    return this.files.has(key)
+  }
+  async read(relPath: string): Promise<string> { return this.files.get(this.keyOf(relPath))?.content ?? '' }
+  async write(relPath: string, content: string): Promise<void> {
+    const key = this.keyOf(relPath)
+    this.files.set(key.length > 0 ? key : relPath, { content, mtimeMs: this.now() })
+  }
   list(relDir: string): readonly DocEntry[] {
-    const prefix = relDir.length > 0 ? relDir.replace(/\/+$/, '') + '/' : ''
+    const dir = this.keyOf(relDir)
+    const prefix = dir.length > 0 ? dir.replace(/\/+$/, '') + '/' : ''
     const seen = new Set<string>()
     const out: DocEntry[] = []
     for (const [p, v] of this.files) {
@@ -582,10 +618,22 @@ export class FakeDocs implements DocRepository {
     }
     return out
   }
+  /** 保持 identity（既有语义，不动）：本替身的键就是相对路径。 */
   resolve(relPath: string): string { return relPath }
-  workspaceRoot(): string { return '.' }
+  /**
+   * 文档根：**进程级临时根**（REQ-261006201814-ac4f t2 / FR-5）。
+   *
+   * 改前恒返回 `'.'`，于是被测代码的 RTM 写入（绕过 docs 端口、直接拼
+   * `<root>/docs/requirements/<REQ>/rtm-*.yml`）落进**真实工作树**；而本 harness 的合成需求
+   * 默认 id 是 `REQ-000001`，与仓里真实存在的同名目录撞车。实测代价：15 个 tracked 文件
+   * 每次 `pnpm test` 被改写（version 计数器 + 时间戳），并污染同工作树的其它窗口。
+   *
+   * 注意：改成本值**必须同时**让本替身认绝对路径（见 `keyOf`），否则会打红立项用例——
+   * 那是 A/B 对照实测出来的（10 条），不是推测。
+   */
+  workspaceRoot(): string { return this.root }
   stat(relPath: string): { mtimeMs: number; size: number } | undefined {
-    const f = this.files.get(relPath)
+    const f = this.files.get(this.keyOf(relPath))
     return f === undefined ? undefined : { mtimeMs: f.mtimeMs, size: f.content.length }
   }
 }

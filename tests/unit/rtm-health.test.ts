@@ -11,9 +11,13 @@ import {
   expectedRTMFiles 
 } from '../../src/application/internal/rtm-health.js'
 import type { RequirementRecord } from '../../src/shared/protocol.js'
+// REQ-261006201814-ac4f u3：测试根改走单一事实源（临时目录）。
+// 改前是 join(process.cwd(), '.test-rtm-health')——**写进真实工作树**，
+// 沙箱（FR-5⑤-a）上线后这类写入会被内核直接拒绝（ERR_ACCESS_DENIED）。
+import { testWorkspaceRoot } from '../helpers/workspace-root.js'
 
 describe('RTM 健康检查', () => {
-  const testDir = join(process.cwd(), '.test-rtm-health')
+  const testDir = join(testWorkspaceRoot(), '.test-rtm-health')
   const stateDir = join(testDir, '.dsh-data', 'state')
   const reqDir = join(testDir, 'docs', 'requirements', 'REQ-test-001')
 

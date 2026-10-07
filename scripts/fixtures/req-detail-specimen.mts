@@ -13,7 +13,9 @@
  * 标本页拼装 `specimenShell(...)` / `specimenShellForPanel(...)`、浏览器落点查找 `findChrome()`。
  *
  * REQ-261005155003-f32f FR-5 / FR-7 起：另外**五个面板**（docs / dag / dialogue / token / prompts）
- * 也各有标本载荷 `PANEL_SPECIMENS`，配 `specimenShellForPanel(...)` 逐个渲染。
+ * 也各有标本载荷 `PANEL_SPECIMENS`，配 `specimenShellForPanel(...)` 逐个渲染；
+ * REQ-261006130057-7a43（t9）起第六个面板 **verify**（验收 RTM 列表）入列，
+ * `INACTIVE_PANEL_KEYS` 随之含 verify 共六键。
  * 为什么必须有它们：原型只画了 trunk，出图与探针也只渲染过 trunk——那五个 Tab 的
  * 「最小可点尺寸 / 字阶 / 结构图标（emoji 归零点）」**从未被渲染过**；没渲染过就没量过，
  * 没量过就不是验过（未验 ≠ 通过）。载荷形状写错即编译错误（FR-1 的静态面），
@@ -33,6 +35,7 @@ import type {
   RequirementTokenStageRow,
   TokenStageRow,
   TrunkResponse,
+  VerifyPanelResponse,
 } from '../../src/shared/protocol.js'
 // token 面板的载荷形状（服务端同响应并进扩展段）声明在 client/api.ts：那里是六个 Tab 的取数契约，
 // 本模块只**读类型**（`import type` 编译期擦除，不把客户端取数代码拖进 node 脚本）。
@@ -79,8 +82,9 @@ export const STATES: readonly { key: SpecimenState; label: string }[] = [
   { key: 'terminal', label: '终态 archived' },
 ]
 
-/** 未激活的面板 key（A4：这些 key 的 `data-panel` 不得出现在 DOM 里）。 */
-export const INACTIVE_PANEL_KEYS: readonly string[] = ['docs', 'dag', 'dialogue', 'token', 'prompts']
+/** 未激活的面板 key（A4：这些 key 的 `data-panel` 不得出现在 DOM 里）。
+ *  REQ-261006130057-7a43（t9）：Tab 6 → 7（新增 verify），未激活集随之含 verify 共六键。 */
+export const INACTIVE_PANEL_KEYS: readonly string[] = ['docs', 'dag', 'dialogue', 'verify', 'token', 'prompts']
 
 export const REQ_ID = 'REQ-261004222448-292a'
 export const T0 = Date.parse('2026-10-04T23:41:00+08:00')
@@ -153,7 +157,7 @@ export function reportOf(state: SpecimenState): ReportResponse {
         { key: 'cancel', label: '取消立项', consequence: '需求转为已取消，只读保留；此动作需人工确认。', humanOnly: true },
       ],
       nextStepForAgent: '补齐 t-98684c 渲染探针并跑通四组合（1280/900 × 在途/终态）。',
-      tabCounts: { docs: '7', dag: '17', token: '1.84M' },
+      tabCounts: { docs: '7', dag: '17', token: '1.84M', verify: '2' },
     }
   }
   return {
@@ -431,21 +435,35 @@ export const DAG_SPECIMEN: DagResponse = {
  *
  * 为什么要**同时**给人与 agent：两种气泡是两套视觉（左右 / 头像位 / 宽度），只给一种，
  * 另一种的换行与最小可点尺寸就量不到；再加一条 `inferred` 系统消息覆盖「回填」标。
+ *
+ * REQ-261006130057-7a43（t7 聊天化 / t9 复核）：10 条消息（三态齐），其中 1 条 agent
+ * 长日志 **>120 字符**——气泡渲染对长日志默认折叠一行 + 「长日志已收纳」琥珀标 +
+ * 「展开」就地放开（`isLongDialogueText`：>120 字符或含换行）；不喂长日志，折叠支
+ * （`data-msg-long` / `data-long-flag`）在截图与探针里就永远量不到。
  */
 export const DIALOGUE_SPECIMEN: DialogueResponse = {
   items: [
-    { kind: 'human', at: T0 - 52 * M, text: '这版要把六个 Tab 都渲染出来再量：最小可点尺寸、字阶、结构图标，三样都要机械证据。' },
+    { kind: 'human', at: T0 - 52 * M, text: '这版要把七个 Tab 都渲染出来再量：最小可点尺寸、字阶、结构图标，三样都要机械证据。' },
     {
       kind: 'agent', at: T0 - 48 * M, windowKey: 'session-w-b262610a',
-      text: '收到。先补五个面板的标本载荷，再让探针逐个渲染并读 `#diag`——**不靠肉眼**。',
+      text: '收到。先补六个面板的标本载荷，再让探针逐个渲染并读 `#diag`——**不靠肉眼**。',
     },
     { kind: 'system', at: T0 - 44 * M, evt: 'stage-advance', text: '阶段推进：design → decomposing（人工在板上一键确认）' },
+    { kind: 'human', at: T0 - 38 * M, text: '缺口格的红条再强一点：现在和闸门条的琥珀太近了。' },
+    {
+      // 长日志气泡（>120 字符）：默认折叠一行 + 「长日志已收纳」标 + 「展开」就地放开那一支
+      kind: 'agent', at: T0 - 34 * M, windowKey: 'session-w-b262610a',
+      text: '[实施汇报] 头部三层落地：标识行（REQ-id / 状态药丸 / 分类难度 / 内联时间 + 席位右置）、'
+        + '标题行（19px 标题 + 操作按钮聚合右置）、闸门提示条（waitingHuman>0 才渲染，锚链「查看缺口 ↓」）；'
+        + '进度带收敛为 4px 色条 + 10.5px 单行标签；验证 npx vitest run tests/head-layers → 9 项通过。',
+    },
     { kind: 'human', at: T0 - 30 * M, text: '注意 monospace 长路径：那是唯一一类会把容器撑破的内容，标本里必须有。' },
     { kind: 'agent', at: T0 - 26 * M, windowKey: 'session-w-b262610a', text: '已按 64 位哈希 + 时间戳造了一条无空格长路径。' },
     {
       kind: 'system', at: T0 - 20 * M, evt: 'handoff', inferred: true,
       text: '交接：session-00af6c69 → session-w-b262610a（由台账时间与评论反推，非实时发生）',
     },
+    { kind: 'system', at: T0 - 16 * M, evt: 'verify', text: '验收单 v2 提交：8 项（5 通过 / 2 待裁决 / 1 不通过）' },
     { kind: 'system', at: T0 - 8 * M, evt: 'confirm-pending', text: '弹框确认挂起中：验收单 v3 第 3 项等人裁决' },
   ],
   page: { before: T0 - 52 * M, hasMore: true, total: 42 },
@@ -489,19 +507,19 @@ export const TOKEN_SPECIMEN: TokenSpecimen = {
     {
       stage: 'brainstorming', executions: [],
       calls: 6, inputTokens: 200_000, outputTokens: 20_000, cacheReadTokens: 620_000,
-      totalTokens: 120_000, sharePct: 8, perCallTokens: 20_000, cacheHitPct: 77,
+      totalTokens: 220_000, sharePct: 15, perCallTokens: 36_667, cacheHitPct: 77,   // 合计 = 输入+输出（原型口径）
       buckets: tokenBuckets(200_000, 20_000, 620_000),
     },
     {
       stage: 'design', executions: [],
       calls: 9, inputTokens: 240_000, outputTokens: 28_000, cacheReadTokens: 480_000,
-      totalTokens: 190_000, sharePct: 19, perCallTokens: 21_111, cacheHitPct: 68,
+      totalTokens: 268_000, sharePct: 18, perCallTokens: 29_778, cacheHitPct: 68,
       buckets: tokenBuckets(240_000, 28_000, 480_000),
     },
     {
       stage: 'implementing',
       calls: 14, inputTokens: 700_000, outputTokens: 90_000, cacheReadTokens: 900_000,
-      totalTokens: 540_000, sharePct: 58, perCallTokens: 38_571, cacheHitPct: 59,
+      totalTokens: 790_000, sharePct: 53, perCallTokens: 56_429, cacheHitPct: 59,
       buckets: tokenBuckets(700_000, 90_000, 900_000),
       // 执行下钻：一条有差值（算得出本次消耗）、一条两端快照不可得（**不补 0**）
       executions: [
@@ -517,7 +535,7 @@ export const TOKEN_SPECIMEN: TokenSpecimen = {
     {
       stage: 'accepting', executions: [],
       calls: 5, inputTokens: 180_000, outputTokens: 22_000, cacheReadTokens: 420_000,
-      totalTokens: 150_000, sharePct: 15, perCallTokens: 30_000, cacheHitPct: 70,
+      totalTokens: 202_000, sharePct: 14, perCallTokens: 40_400, cacheHitPct: 70,
       buckets: tokenBuckets(180_000, 22_000, 420_000),
     },
     // 无任何 token 记录（**不等于花了 0**）：扩展段没这一行，基础行原样保留
@@ -597,7 +615,218 @@ export const PROMPTS_SPECIMEN: PromptsResponse = {
   },
 }
 
-/** 除 trunk 外的五个面板键（与 `INACTIVE_PANEL_KEYS` 同集；trunk 走 `specimenShell`）。 */
+/**
+ * 验收面板载荷（`VerifyPanelResponse`，REQ-261006130057-7a43 · FR-8 / t9；D-10 返工补 `frMap` / `frNames`）。
+ *
+ * 口径与原型 `docs/requirements/REQ-261006130057-7a43/prototypes/detail.html` v1.5 的
+ * `#tab-verify` 同：**8 个分组行 = 每 FR 一行（FR-1…FR-8）= 5 通过 / 2 待裁决（含 1 需人工）/
+ * 1 不通过带意见**，验收单 v2 · 返工续验只含未过项，待裁决 2 项（与
+ * `reportOf('inflight').tabCounts.verify` 的徽标 '2' 同值——T-5 徽标口径）。
+ *
+ * **两源对齐纪律**（`src/client/views/panels/verify.ts` 纪律②）：D-10 起行键 = FR 号，
+ * `frMap` 给出每 FR 的 `fr_to_tasks / fr_to_tests`（归属链）与 `fr_to_design`（覆盖链 chip）；
+ * sheet 逐项按 `rtmTraceIdOf(source)` 归进 FR 名下，故本标本的归属链与 sheet 项的 source
+ * 严格对应——task 源 = 其 `taskId`、requirement 源 = `REQ-LEVEL`、prototype-compare 源 =
+ * `PROTOTYPE`、decision-compare 源 = `DECISION`（domain/workflow/AcceptanceSheetSpec.ts 的单点
+ * 函数；标本若写错对齐键，面板会把一项铺成两行或掉进对照项组，探针/截图立刻看得见）。
+ */
+export const VERIFY_SPECIMEN: VerifyPanelResponse = {
+  sheet: {
+    version: 2,
+    reworkOnly: true,
+    generatedAt: T0 - 2 * H,
+    generatedBy: { kind: 'agent', sessionId: 'session-w-b262610a' },
+    items: [
+      {
+        // ① 通过（task 源 → fr_id 't-98684c'）
+        id: 'v2-1', source: { kind: 'task', taskId: 't-98684c' },
+        criterion: '头部三层结构（标识行 / 标题行 / 操作区聚合右置）断言全过',
+        howToVerify: 'headless Chrome 实测头部三层结构与操作区聚类断言',
+        evidence: ['npx vitest run tests/head-layers → 三层结构 / 操作区聚类断言 9 项通过'],
+        status: 'passed', result: '9 项断言通过', resultSource: 'agent',
+        opinion: '三层结构与操作区聚类实测通过', decidedAt: T0 - 100 * M, decidedBy: { kind: 'human' },
+      },
+      {
+        // ② 待裁决 + 需人工（task 源 → fr_id 't-98684c' 不重复：改挂 REQ-LEVEL 需求级项）
+        id: 'v2-2', source: { kind: 'requirement' },
+        criterion: '首屏视觉层级权重：缺口格一眼可分（界面视觉判断）',
+        howToVerify: '缺口格焦点样式断言可自验；首屏视觉层级权重只能人看',
+        evidence: ['npx vitest run tests/band-focus → 缺口格红底 / 色条 / 计数徽标断言 7 项通过'],
+        status: 'pending', needsHuman: true,
+        humanReason: '界面视觉判断 agent 跑不了：缺口格的视觉权重要人眼在真实页面上确认',
+      },
+      {
+        // ③ 通过（task 源 → fr_id 't-2be0cd'）
+        id: 'v2-3', source: { kind: 'task', taskId: 't-2be0cd' },
+        criterion: '长日志默认收纳为一行、点击就地展开；评论区纵向占用收敛',
+        howToVerify: '长日志默认收纳一行、点击就地展开断言',
+        evidence: ['npx vitest run tests/comments-fold → 600 条明细默认收纳 1 行、点击就地展开，通过'],
+        status: 'passed', result: '收纳 / 展开断言通过', resultSource: 'agent',
+        opinion: '收纳与就地展开行为符合原型', decidedAt: T0 - 99 * M, decidedBy: { kind: 'human' },
+      },
+      {
+        // ④ 通过（task 源 → fr_id 't-5c0373'）
+        id: 'v2-4', source: { kind: 'task', taskId: 't-5c0373' },
+        criterion: '1280 视口实测：4px 色条单行、7 枚 Tab 单行不断行、徽标等宽',
+        howToVerify: '1280 实测 7 Tab 单行不断行、徽标等宽',
+        evidence: ['npx tsx scripts/req-report-probe.mts → 7 Tab 单行不断行、计数徽标等宽，通过'],
+        status: 'passed', result: '7 Tab 单行 / 徽标等宽实测通过', resultSource: 'agent',
+        opinion: '几何实测与原型一致', decidedAt: T0 - 98 * M, decidedBy: { kind: 'human' },
+      },
+      {
+        // ⑤ 待裁决（task 源 → fr_id 't-b9dd2c'；有 result → 预填支）
+        id: 'v2-5', source: { kind: 'task', taskId: 't-b9dd2c' },
+        criterion: '模块标题与来源并一行、短模块 2×2 网格、正文紧凑行高',
+        howToVerify: '模块头并一行 / 2×2 网格 / 紧凑行高断言',
+        evidence: ['npx vitest run tests/trunk-density → 模块头合并、2×2 网格断言通过；测试链 ✗ = rtm-accepting 尚未回填'],
+        status: 'pending', result: '模块头合并、2×2 网格断言通过', resultSource: 'agent',
+      },
+      {
+        // ⑥ 通过（task 源 → fr_id 't-8d7820'）
+        id: 'v2-6', source: { kind: 'task', taskId: 't-8d7820' },
+        criterion: '文档 / Token / 提示词面板紧凑分节与表格密度',
+        howToVerify: '分节表紧凑渲染 + 数字等宽右对齐断言',
+        evidence: ['npx vitest run tests/panel-density → 分节 / 表格密度断言通过'],
+        status: 'passed', result: '密度断言通过', resultSource: 'agent',
+        opinion: '四面板的密度语言一致', decidedAt: T0 - 97 * M, decidedBy: { kind: 'human' },
+      },
+      {
+        // ⑦ 通过（prototype-compare 源 → fr_id 'PROTOTYPE'）
+        id: 'v2-7', source: { kind: 'prototype-compare', prototypePath: DIR + '/prototypes/detail.html' },
+        criterion: '原型锚点对照：detail.html 各 FR 部位与实现一致',
+        howToVerify: 'prototype-compare 锚点 8/8 命中',
+        evidence: ['锚点 8/8 命中；四面板可切换（verification/prototype-diff.md）'],
+        status: 'passed', result: '锚点 8/8 命中', resultSource: 'agent',
+        opinion: '锚点全命中', decidedAt: T0 - 96 * M, decidedBy: { kind: 'human' },
+      },
+      {
+        // ⑧ 不通过带意见（decision-compare 源 → fr_id 'DECISION'；退回返工那一支）
+        id: 'v2-8', source: { kind: 'decision-compare', decisionIds: ['D-8'] },
+        criterion: '裁定对照 D-8：验收 Tab 主视图应为 RTM 验收追踪列表',
+        howToVerify: 'decision-compare：D-8 主视图应为 RTM 列表',
+        evidence: ['D-8 ✗ — 实际仍逐项表；返工后重验'],
+        status: 'failed', result: '主视图仍是逐项表', resultSource: 'agent',
+        opinion: '主视图仍是逐项表，未按 D-8 改 RTM 列表 → 退回返工',
+        decidedAt: T0 - 90 * M, decidedBy: { kind: 'human' },
+      },
+    ],
+  },
+  history: [
+    {
+      version: 1,
+      generatedAt: T0 - 26 * H,
+      generatedBy: { kind: 'agent', sessionId: 'session-w-b262610a' },
+      items: [
+        {
+          id: 'v1-1', source: { kind: 'task', taskId: 't-98684c' },
+          criterion: '头部三层结构断言', evidence: ['tests/head-layers → 2 项未过'],
+          status: 'failed', result: '2 项断言未过', resultSource: 'agent',
+          opinion: '操作区未聚合右置，退回返工', decidedAt: T0 - 25 * H, decidedBy: { kind: 'human' },
+        },
+      ],
+    },
+  ],
+  // RTM 验收追踪（fr_id 与 sheet 项 source 的对齐键**逐一对应**，见上方纪律注）
+  tracking: [
+    { acceptance_id: 'ac-1', fr_id: 't-98684c', description: '头部三层结构', verification: 'headless 实测三层结构与操作区聚类', status: 'passed', evidence: ['tests/head-layers → 9 项通过'], judged_at: T0 - 100 * M, judged_by: 'human' },
+    { acceptance_id: 'ac-2', fr_id: 'REQ-LEVEL', description: '首屏视觉层级权重', verification: '界面视觉只能人看', status: 'pending', evidence: ['tests/band-focus → 7 项通过'] },
+    { acceptance_id: 'ac-3', fr_id: 't-2be0cd', description: '评论区紧凑化', verification: '长日志收纳一行 / 就地展开', status: 'passed', evidence: ['tests/comments-fold → 通过'], judged_at: T0 - 99 * M, judged_by: 'human' },
+    { acceptance_id: 'ac-4', fr_id: 't-5c0373', description: '进度带与 Tab 栏紧凑化', verification: '7 Tab 单行不断行、徽标等宽', status: 'passed', evidence: ['req-report-probe → 通过'], judged_at: T0 - 98 * M, judged_by: 'human' },
+    { acceptance_id: 'ac-5', fr_id: 't-b9dd2c', description: '汇报模块排版密度', verification: '模块头并一行 / 2×2 网格', status: 'pending', evidence: ['tests/trunk-density → 通过'] },
+    { acceptance_id: 'ac-6', fr_id: 't-8d7820', description: '文档/Token/提示词密度', verification: '分节表紧凑渲染断言', status: 'passed', evidence: ['tests/panel-density → 通过'], judged_at: T0 - 97 * M, judged_by: 'human' },
+    { acceptance_id: 'ac-7', fr_id: 'PROTOTYPE', description: '原型锚点对照', verification: '锚点 8/8 命中', status: 'passed', evidence: ['verification/prototype-diff.md'], judged_at: T0 - 96 * M, judged_by: 'human' },
+    { acceptance_id: 'ac-8', fr_id: 'DECISION', description: 'D-8 验收主视图 RTM 列表', verification: 'decision-compare', status: 'failed', evidence: ['D-8 ✗ 实际仍逐项表'], judged_at: T0 - 90 * M, judged_by: 'human', user_feedback: '主视图仍是逐项表，未按 D-8 改 RTM 列表 → 退回返工' },
+  ],
+  // 覆盖链（每 FR 三态；t-b9dd2c 与 DECISION 的「测试 ✗」= 原型同口径的两行灰底描边 chip）
+  coverage: {
+    't-98684c': { design: true, tasks: true, tests: true },
+    'REQ-LEVEL': { design: true, tasks: true, tests: true },
+    't-2be0cd': { design: true, tasks: true, tests: true },
+    't-5c0373': { design: true, tasks: true, tests: true },
+    't-b9dd2c': { design: true, tasks: true, tests: false },
+    't-8d7820': { design: true, tasks: true, tests: true },
+    'PROTOTYPE': { design: true, tasks: true, tests: true },
+    'DECISION': { design: true, tasks: true, tests: false },
+  },
+  /**
+   * 追溯三映射（D-10 返工：主表按 FR 成行）——**8 条 FR ↔ 8 条逐项一一对上**，
+   * 与原型 `#tab-verify` 的 8 行同口径：FR-1 通过 · FR-2 待裁决（含需人工）· FR-3/4 通过 ·
+   * FR-5 待裁决 · FR-6/7 通过 · FR-8 不通过；FR-5 / FR-7 的 `fr_to_tests` 缺席 = 原型的
+   * 「测试 ✗」两枚灰底描边 chip。探针（`scripts/req-report-probe.mts` A13）按这个口径断言
+   * `tr[data-fr]` 恰 8 行、汇总 `5/8 通过 · 2 待裁决 · 1 不通过`。
+   *
+   * **标本口径两处提醒**（真实 RTM 里不会这么写）：
+   *   ① FR-2 名下同时挂 task（`t-98684c`）与需求级项（`REQ-LEVEL`）——原型 FR-2 的行详情
+   *      正是「task 项 + requirement 项」两条；逐项归属取 `fr_to_tasks ∪ fr_to_tests`；
+   *   ② prototype-compare / decision-compare 两条对照项的追溯键（`PROTOTYPE` / `DECISION`）
+   *      也写进映射，好让本标本还原原型的 8 行 / 5·2·1 口径。**真实 `fr_to_tasks` 只装任务 id**，
+   *      那时这两类对照项与需求级项都归不进任何 FR，客户端会把它们铺成「需求级 / 对照项」行
+   *      （该支路由 tests/verify-panel.test.ts 单独钉住，不靠本标本代言）。
+   */
+  frMap: {
+    fr_to_design: {
+      'FR-1': ['design/frontend.md#头部三层蓝本-FR-1'],
+      'FR-2': ['design/frontend.md#状态带三格权重蓝本-FR-2'],
+      'FR-3': ['design/frontend.md#最近评论紧凑化蓝本-FR-3'],
+      'FR-4': ['design/frontend.md#进度带与-Tab-栏蓝本-FR-4'],
+      'FR-5': ['design/frontend.md#汇报模块排版密度蓝本-FR-5'],
+      'FR-6': ['design/frontend.md#四面板数据源映射-FR-6'],
+      'FR-7': ['design/frontend.md#DAG-画布适配蓝本-FR-7'],
+      'FR-8': ['design/frontend.md#验收面板蓝本-FR-8'],
+    },
+    fr_to_tasks: {
+      'FR-1': ['t-98684c'],
+      'FR-2': ['t-98684c', 'REQ-LEVEL'],
+      'FR-3': ['t-2be0cd'],
+      'FR-4': ['t-5c0373'],
+      'FR-5': ['t-b9dd2c'],
+      'FR-6': ['t-8d7820'],
+      'FR-7': ['PROTOTYPE'],
+      'FR-8': ['DECISION'],
+    },
+    // FR-5 / FR-7 不在 fr_to_tests 里 = 覆盖链「测试 ✗」（原型同口径的灰底描边 chip）
+    fr_to_tests: {
+      'FR-1': ['TC-1'],
+      'FR-2': ['TC-1'],
+      'FR-3': ['TC-1'],
+      'FR-4': ['TC-1'],
+      'FR-6': ['TC-2'],
+      'FR-8': ['TC-2'],
+    },
+  },
+  /**
+   * FR 名称表（D-10 返工：FR 列从「只编号」改成「编号 + 名称」）——**8 条 FR 全有名称**，
+   * 取值 = 本需求 `requirement.md` 里 `- **FR-N: 名称**——…` 的标题（服务端
+   * `frNamesOf` 解析出来的就是这些串，标本与真实产物同形，不另造一套写法）。
+   *
+   * 两处如实记：
+   *  ① 名称与原型 `detail.html#tab-verify` 的 `.rtm-name` **FR-2~FR-5 / FR-8 逐字相同**；
+   *     FR-1（原型写 `头部信息分层`）是本名的前缀截断，FR-6 / FR-7 是原型自己的简写
+   *     （原型 `文档/对话/Token/提示词 Tab` / `DAG Tab 沿用画布适配`）——本标本按**文档全称**走，
+   *     因为这是真实端点会发出来的串（前端不编名称，名称的正确性只在文档那一处）。
+   *  ② 名称只对 **FR 行**渲染（对照项行的行键是追溯 id，不是 FR 号，不给它挂名称）。
+   */
+  frNames: {
+    'FR-1': '头部信息分层与操作区聚类',
+    'FR-2': '状态带三格视觉权重',
+    'FR-3': '最近评论区紧凑化',
+    'FR-4': '进度带与 Tab 栏紧凑化',
+    'FR-5': '汇报 Tab 模块排版密度',
+    'FR-6': '文档 / 对话 / Token / 提示词 Tab 内容优化',
+    'FR-7': 'DAG Tab 沿用现有画布并适配新版式',
+    'FR-8': '新增「验收」Tab',
+  },
+  materials: {
+    summary: '七个 Tab 全部落地：头部三层 + 状态带权重 + 对话聊天化 + 验收 RTM 列表；返工续验只含未过项。',
+    evidence: [
+      'npx vitest run tests/verify-panel tests/dialogue-panel → 44 项通过',
+      'docs/requirements/REQ-261006130057-7a43/evidence/ui-after-1280-inflight.png',
+    ],
+  },
+  pendingCount: 2,
+}
+
+/** 除 trunk 外的面板键（与 `INACTIVE_PANEL_KEYS` 同集；trunk 走 `specimenShell`）。 */
 export type PanelSpecimenKey = Exclude<ReportTabKey, 'trunk'>
 
 /**
@@ -611,17 +840,18 @@ export function asPanelPayload(v: object): PanelResult<unknown> {
 }
 
 /**
- * 五个面板的标本载荷（键 = 面板键，值 = 喂给壳的 `PanelResult<unknown>`）。
+ * 六个非 trunk 面板的标本载荷（键 = 面板键，值 = 喂给壳的 `PanelResult<unknown>`）。
  *
- * 为什么在这里放宽：五个常量各自受**具体响应类型**约束（`DocsResponse` / `DagResponse` /
- * `DialogueResponse` / token 面板载荷 / `PromptsResponse`），而壳的正常支是全属性可选的
- * `{ available?: true }`——放宽只发生在这一处交接点上，常量本身写错字段仍是编译错误
- * （与 `TRUNK_SPECIMEN` 同款，FR-1 的静态面）。
+ * 为什么在这里放宽：六个常量各自受**具体响应类型**约束（`DocsResponse` / `DagResponse` /
+ * `DialogueResponse` / `VerifyPanelResponse` / token 面板载荷 / `PromptsResponse`），
+ * 而壳的正常支是全属性可选的 `{ available?: true }`——放宽只发生在这一处交接点上，
+ * 常量本身写错字段仍是编译错误（与 `TRUNK_SPECIMEN` 同款，FR-1 的静态面）。
  */
 export const PANEL_SPECIMENS: Record<PanelSpecimenKey, PanelResult<unknown>> = {
   docs: asPanelPayload(DOCS_SPECIMEN),
   dag: asPanelPayload(DAG_SPECIMEN),
   dialogue: asPanelPayload(DIALOGUE_SPECIMEN),
+  verify: asPanelPayload(VERIFY_SPECIMEN),
   token: asPanelPayload(TOKEN_SPECIMEN),
   prompts: asPanelPayload(PROMPTS_SPECIMEN),
 }

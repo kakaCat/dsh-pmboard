@@ -1,0 +1,46 @@
+{
+  "_note": "不可触发码的豁免白名单（REQ-261006201814-ac4f FR-3）。谁能进：口径清单里 covered=false 的码——不多不少（双向相等）。谁必须出：一旦某码在矩阵里有了真触发用例，covered 转为 true，本名单必须同步删除该条，否则 tests/error-code-exempt.test.ts 变红。棘轮：frozenCount 只减不增（测试里另有一条硬上界常量，单改本文件的数字会红）。reason/plan 必须非空；blocker 命中受控枚举；blocker=no-production-point 只许给真正没有产生点的死码。",
+  "frozenCount": 5,
+  "entries": [
+    {
+      "code": "REQBOARD_NOT_AUTORUN",
+      "tier": "fault",
+      "reason": "工具入口 reqboard_task_run 在调 advanceRequirement 之前会先把需求的 autoRun 置为 true，故 stopped=not_autorun 这条分支在该入口不可达；而码字面量只存在于工具壳的映射表里，AdvanceChain 只产出 stopped 取值本身。",
+      "evidence": "src/tools/AdvanceTool/AdvanceTool.ts:135",
+      "blocker": "tool-layer-unreachable",
+      "plan": "把码映射从工具壳下移到 AdvanceChain（或给工具壳的自置行为加可注入开关），使 stopped=not_autorun 能从真实入口走到；届时在测试矩阵里加一条 fault 用例并删除本条。"
+    },
+    {
+      "code": "REQBOARD_REQ_NOT_FOUND",
+      "tier": "fault",
+      "reason": "同一处映射表：要在 advanceRequirement 里拿到 stopped=not_found，需求必须在工具壳完成绑定校验之后凭空消失（绑定读与权威读之间无写入点），故该分支在工具入口不可达，只有并发删除才能撞上。",
+      "evidence": "src/tools/AdvanceTool/AdvanceTool.ts:133",
+      "blocker": "tool-layer-unreachable",
+      "plan": "把绑定读与权威读收敛成一次读（或让 AdvanceChain 直接持有目标需求），使「已绑定但取不到」成为可构造状态；届时加 fault 用例（读端口按调用次数返回不同结果）并删除本条。"
+    },
+    {
+      "code": "REQBOARD_AWAITING_MANUAL",
+      "tier": "fixture",
+      "reason": "要走到 stopped=awaiting-manual，必须先造出一条含 manual 阶段的子卡链并让 driveChain 真的跑到该步；本需求的 src 红线内不可达（造链依赖生产装配，测试侧无等价的链驱动入口）。",
+      "evidence": "src/tools/AdvanceTool/AdvanceTool.ts:141",
+      "blocker": "needs-chain-setup",
+      "plan": "在测试里用队列夹具播一条 stageKind=manual 的 ready 子卡并驱动 AdvanceChain 的同步兼容路径；跑通后加 fixture 用例并删除本条。"
+    },
+    {
+      "code": "REQBOARD_DESIGN_COVERAGE_GATE",
+      "tier": "fixture",
+      "reason": "该门要求非存量需求（产物簿非空）且 syncRTMYaml 的 design 覆盖度探针给出未过结论；探针读真实文件系统与 RTM 生成链，构造「有覆盖度数据且不足」的夹具成本高，且与 FR-5 的 hermetic 约束相抵。",
+      "evidence": "src/application/use-cases/SubmitDesignArtifacts.ts:115",
+      "blocker": "needs-chain-setup",
+      "plan": "复用 tests/doc-gate-e2e.test.ts 的真实临时工作区夹具（docs 落盘 + 任务队列），造一份缺 serves 标注的设计文档使覆盖度不足；跑通后加 fixture 用例并删除本条。"
+    },
+    {
+      "code": "REQBOARD_IMPLEMENTATION_COVERAGE_GATE",
+      "tier": "fixture",
+      "reason": "该门只在 confirm_artifact(target=plan) 且需求非存量、且 rtm-decomposing 探针给出未过结论时才执法；本构建里「批准计划」先于「拆分落库」，通常任务尚未落库（total=0 不拦截），要构造执法态需先落任务再补设计章节映射。",
+      "evidence": "src/application/use-cases/ConfirmArtifact.ts:137",
+      "blocker": "needs-chain-setup",
+      "plan": "用 harness 落一条需求 + 已落库任务 + 一份 serves 指向未被任务覆盖的设计章节，先走真实 decompose 再调 confirm_artifact(target=plan)；跑通后加 fixture 用例并删除本条。"
+    }
+  ]
+}

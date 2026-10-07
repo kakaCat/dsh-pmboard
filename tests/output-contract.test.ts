@@ -33,7 +33,16 @@ import * as toolModules from '../src/tools/index.js'
 import { TOOL_REGISTRY } from '../src/tools/registry.js'
 import { defineSubmitTool, defineAskConfirmTool, defineCaptureTool, defineMoveTool } from '../src/tools/index.js'
 import { CAPTURE_QUESTION_IDS, WORKSPACE_SENTINELS } from '../src/application/internal/capture-mapping.js'
+// REQ-261006201841-944d FR-1/FR-2：归档目标改判**事实**（存在 / 非空 / 锚点可达）——夹具把目标文档
+// 真落盘，锚点用 `listHeadingAnchors`（写入端/读侧同一实现）算出，不手写 slug 规则。
+import { stubDocFile } from './helpers/tool-deps.js'
+import { listHeadingAnchors } from '../src/domain/knowledge/slug.js'
 import type { RequirementRecord } from '../src/shared/protocol.js'
+
+/** 归档目标文档（合并去向 + 说明书更新点同一份；feature 白名单内的 architecture 文档）。 */
+const ARCH_DOC = 'docs/architecture/workflow-stages.md'
+const ARCH_DOC_MD = '# 工作流阶段\n\n## 输出契约\n\n归档回执字段的声明面。\n'
+const ARCH_ANCHOR = listHeadingAnchors(ARCH_DOC_MD).map(h => h.anchor)[listHeadingAnchors(ARCH_DOC_MD).length - 1]!
 
 const W = 'session-oc-001'
 let root: string
@@ -356,6 +365,8 @@ describe('输出契约：返回字段 ⊆ output.schema 声明', () => {
     writeFileSync(join(reqDir, 'plan.md'), 'x')
     writeFileSync(join(reqDir, 'verification.md'), 'x')
     writeFileSync(join(reqDir, 'prototype.html'), 'x') // 未列入清单 → warning 路径
+    // REQ-261006201841-944d FR-1/FR-2：合并去向与说明书更新点的目标必须存在且非空，锚点必须真实存在
+    stubDocFile(ARCH_DOC, root, ARCH_DOC_MD)
     const tool = defineSubmitTool(depsWith())
     let out: any
     try {
@@ -367,9 +378,9 @@ describe('输出契约：返回字段 ⊆ output.schema 声明', () => {
           { kind: 'plan', path: 'docs/requirements/' + REQ + '/plan.md' },
           { kind: 'verification', path: 'docs/requirements/' + REQ + '/verification.md' },
         ],
-        merged_into: ['docs/architecture/workflow-stages.md'],
+        merged_into: [ARCH_DOC],
         index_entry: '输出契约测试',
-        manual_updates: [{ path: 'docs/architecture/workflow-stages.md', section: 'x', summary: 'y' }],
+        manual_updates: [{ path: ARCH_DOC + '#' + ARCH_ANCHOR, summary: 'y' }],
         // REQ-261004183621-de3f FR-2：未列文件默认拒绝 → 显式声明不收（这条用例考的是输出契约，不是闸门）
         unlisted_ack: [{ path: 'docs/requirements/' + REQ + '/prototype.html', reason: '输出契约测试夹具：有意不收' }],
       })

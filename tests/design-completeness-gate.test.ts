@@ -8,7 +8,7 @@
  *  - 全交齐且全确认 → 四路径放行；isLegacy 存量需求 → 放行（FR-6）；
  *  - sides/design_exempt front-matter 策略参与①（UC-2）；assertArtifactGates 成组判定（UC-4）。
  */
-import { makeTestStore } from './application/harness.js'
+import { makeHarness, makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -37,7 +37,7 @@ beforeEach(() => {
 afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
 
 function reqDoc(fmLine?: string): string {
-  return '---\nreq: ' + REQ + '\n' + (fmLine === undefined ? '' : fmLine + '\n') + '---\n\n# 需求\n\n## 边界\n不做范围外的事。\n\n## 产品定义\nx\n\n## 用户与角色\nx\n\n## 功能点\n\n### FR-1: 甲\nx\n'
+  return '---\nreq: ' + REQ + '\n' + (fmLine === undefined ? '' : fmLine + '\n') + '---\n\n# 需求\n\n## 边界\n不做范围外的事。\n\n## 产品定义\nx\n\n## 用户与角色\nx\n\n## 功能点\n\n### FR-1: 甲\nx\n\n## 失败与并发路径\n- 判据：`npx vitest run tests/x.test.ts` 全绿；并发提交由幂等键收敛。\n'
 }
 
 function writeDocset(designNames: readonly string[], fmLine?: string): void {
@@ -106,7 +106,8 @@ function fakeRes(): any {
 function board() {
   return createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir),
 
-    applicationDeps: { store: store },
+    // t2（REQ-261007135258-331a）：看板确认推进走单点 ⇒ 需要完整用例依赖（只给 store 会让 ids 缺失）
+    applicationDeps: { ...makeHarness().deps, store } as never,
     now: () => 1000,
     docs: new FileDocRepository({ workspaceRoot: dir }),
     agents: () => ({ get: () => ({ id: W, session: {} }) }),

@@ -22,6 +22,7 @@ import { makeTestStore } from './application/harness.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import { createReqboardHandler } from '../src/http/routes.js'
+import { expectCode } from './helpers/code-assert.js'
 
 const SESSION = 'session-278681bb-b160-4067-8740-3d5a0f2c7426'
 const README = '# 项目说明\n\n这是工作区根下的 README 正文。\n'
@@ -126,6 +127,8 @@ describe('FR-11：文档读根与会话同源', () => {
 
     const miss = await call(makeHandler(), 'GET', '/file?path=README.md')
     expect(miss.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码（文件不存在 = notFound → not_found）
+    expectCode(miss, 'not_found')
     expect(String(miss.error)).toContain('文件不存在')
   })
 

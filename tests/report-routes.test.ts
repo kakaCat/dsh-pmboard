@@ -28,6 +28,7 @@ import type {
   TokenPanelExtension,
   TokenStageRow,
 } from '../src/shared/protocol.js'
+import { expectCode } from './helpers/code-assert.js'
 
 const REQ = 'REQ-261004222448-292a'
 
@@ -128,6 +129,8 @@ describe('先校验再触盘（路径遍历样本不许走到查询）', () => {
     await h.handler(fakeReq('/requirements/..%2F..%2Fetc%2Fpasswd/report'), res)
     expect(res.statusCode).toBe(400)
     expect(res.payload.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码（需求 id 形状非法 = invalid_input）
+    expectCode(res.payload, 'invalid_input')
     expect(h.calls).toHaveLength(0)
     rmSync(h.dir, { recursive: true, force: true })
   })

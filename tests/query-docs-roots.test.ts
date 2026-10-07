@@ -34,16 +34,17 @@ const HUMAN: ActorRef = { kind: 'human' }
 
 /** 带可辨识根的文档仓储：`resolve` 把根拼在相对路径前（真实现就是 `join(root, rel)`）。 */
 class RootDocs extends FakeDocs {
-  private readonly root: string
+  // 字段名避开 `FakeDocs` 的 private `root`（TS 不允许子类重声明基类私有字段）。
+  private readonly docRoot: string
   constructor(root: string) {
     super()
-    this.root = root
+    this.docRoot = root
   }
   override resolve(relPath: string): string {
-    return this.root + '/' + relPath
+    return this.docRoot + '/' + relPath
   }
   override workspaceRoot(): string {
-    return this.root
+    return this.docRoot
   }
 }
 

@@ -12,6 +12,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ServerResponse } from 'node:http'
 import { fail } from '../src/http/envelope.js'
+import { expectCode } from './helpers/code-assert.js'
 
 interface Captured {
   status: number
@@ -42,6 +43,8 @@ function dispatch(code: string): { status: number; code?: string } {
   fail(res, Object.assign(new Error('REQ-261005105032-3b02 门禁拒绝'), { code }))
   const body = JSON.parse(captured.body) as { success: boolean; code?: string; error: string }
   expect(body.success).toBe(false)
+  // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码（信封 code 逐字透出，不吞不改）
+  expectCode(body, code)
   return { status: captured.status, code: body.code }
 }
 

@@ -13,8 +13,7 @@
  * @module dsh-pmboard/tests/helpers/tool-deps
  */
 import { legacyStoreProjection } from '../support/legacy-store-projection.js'
-import { mkdtempSync, realpathSync, mkdirSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { ToolTraceEntry, RecentUserMsg } from '../../src/adapters/SessionProbeAdapter.js'
 import { SessionProbeAdapter } from '../../src/adapters/SessionProbeAdapter.js'
@@ -124,36 +123,20 @@ export function queueTasksOf(deps: ReqboardToolDeps, requirementId: string): Pro
   return taskStoreOf(deps).listByRequirement(requirementId)
 }
 
-/**
- * 测试用的默认文档根（惰性创建，一个 worker 进程一份）。
- * 存在的唯一目的：让"忘了传 workspaceRoot"的用例写到 /tmp，而不是写进仓库。
- */
-let wsRootCache: string | undefined
-function testWorkspaceRoot(): string {
-  if (wsRootCache === undefined) wsRootCache = mkdtempSync(join(tmpdir(), 'pmboard-ws-'))
-  return wsRootCache
-}
+// ⚠️ 一行修复（非本次改动的范围，但它是并发窗口在制状态里的**漏网 import**）：
+// 下面第 132 行的 `export {…} from` 只做转出、**不建立本地绑定**，而本文件的
+// `stubDocFile`（第 141 行）与 `toUseCaseDeps`（第 173 行）直接调用 `resolveWorkspaceRoot` ⇒
+// `ReferenceError: resolveWorkspaceRoot is not defined`，所有用 `stubDocFile` 的测试整文件红。
+// 补一条本地 import（转出保留，既有 import 路径不变）；若该窗口随后自行修好，以它的版本为准。
+import { resolveWorkspaceRoot } from './workspace-root.js'
 
 /**
- * 解析本次测试的文档根（安全兜底）：
- *   - 显式传了 workspaceRoot → 用它；
- *   - cwd 是**包目录**（= 没隔离）→ 用进程级临时目录兜底，绝不写进仓库；
- *   - 其余 cwd（测试自己 chdir 到了临时目录）→ 照旧用 cwd，保持既有语义。
+ * 测试用的默认文档根与解析兜底（REQ-261006201814-ac4f t2）：
+ * 实现已收敛到 `tests/helpers/workspace-root.ts` 单一事实源，本文件只**再导出**保持既有
+ * import 路径可用。改前的两套策略（本文件兜底 vs harness 恒返回 `.`）是泄漏的根因，
+ * 合并后仓库内任何目录一律落到临时根。
  */
-function resolveWorkspaceRoot(explicit: string | undefined): string {
-  if (explicit !== undefined) return explicit
-  // 必须用 realpath 比较：macOS 上 tmpdir() 给 /var/...，而 chdir 后 process.cwd() 是
-  // /private/var/...（/var 是软链）——直接字符串比较会判成"不在临时目录"而误兜底。
-  const real = (p: string): string => {
-    try { return realpathSync(p).replace(/\\/g, '/') } catch { return p.replace(/\\/g, '/') }
-  }
-  const cwd = real(process.cwd())
-  const tmp = real(tmpdir()).replace(/\/+$/, '')
-  // 只有"测试自己 chdir 到的临时目录"才沿用 cwd；**仓库内任何目录一律兜底到临时根**。
-  // 只判"是不是包目录"不够：从 agent-dh 目录跑测试时，产物会写进真实的 agent-dh/docs/requirements/
-  // （实测：一次误从仓库根跑，污染了 120+ 个文件）。
-  return cwd === tmp || cwd.startsWith(tmp + '/') ? process.cwd() : testWorkspaceRoot()
-}
+export { testWorkspaceRoot, resolveWorkspaceRoot } from './workspace-root.js'
 
 /**
  * 在当前解析出的测试文档根写占位文件（REQ-2d1c74 FR-5：plan/archive 提交起要求

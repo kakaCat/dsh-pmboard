@@ -6,15 +6,16 @@
  * 机械判据（可数、可 grep）如下：
  *   ① `data-doc-row="1"` 的**条数恒等于** `documents.length`（这是"铺开、不压成 4 份 + 滚动"的判据）；
  *   ② `file-missing` 行：`data-file-missing="1"` + 类名 `dsh-pm-doc-missing` + 可见划线 + 「文件缺失」；
- * ③ 核验表七列在场（标准 / 实际结果 / 来源（agent|human）/ 需人工 / 证据 / 意见 / 裁决）；
+ * ③ 核验节已独立为「验收」Tab（REQ-261006130057-7a43 FR-8 / T-6）：docs 面板**无**
+ *   `data-verify-table` / `data-doc-section="verification"`，原位是迁移指引条（可切 verify）；
  *   ④ 六道门全列，裁决 / 方式 / 时间 / 确认人 / 理由四件事都在；
- *   ⑤ 没有验收单 → **解释性空态**（`data-verify-empty`），产物里**没有**核验表格；
  *   ⑥ 产物里不出现 `overflow: auto|scroll`（FR-11 #7：内层滚动一律不要）。
  *
  * @module dsh-pmboard/tests/docs-panel
  */
 import { describe, it, expect } from 'vitest'
-import { docsPanel, prototypeGroupOf } from '../src/client/views/panels/docs.js'
+import { docsPanel, kindShortLabel, prototypeGroupOf, shortDocPath } from '../src/client/views/panels/docs.js'
+import { REPORT_CSS } from '../src/client/styles/report.js'
 import { fmtTime } from '../src/client/render/dom-utils.js'
 import type { ReportTabCtx } from '../src/client/views/report-tabs.js'
 import type {
@@ -168,6 +169,11 @@ function rowOf(html: string, needle: string): string {
   return html.slice(start, end)
 }
 
+/** 切出一行里的各 `<td>` 内容（按列断言：类型 / 路径 / 登记时间 / 状态 / 打开）。 */
+function cellsOf(row: string): string[] {
+  return [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(m => m[1] ?? '')
+}
+
 /* --------------------------------------------------------------- ① 文档逐行铺开 */
 
 describe('文档清单 · 一律铺开（FR-11 #7）', () => {
@@ -185,27 +191,60 @@ describe('文档清单 · 一律铺开（FR-11 #7）', () => {
     for (const th of ['<th>类型</th>', '<th>路径</th>', '<th>登记时间</th>', '<th>状态</th>', '<th>打开</th>']) {
       expect(html).toContain(th)
     }
-    // 类型走唯一事实源的中文名（不是裸 kind）
-    expect(rowOf(html, DIR + '/requirement.md')).toContain('需求文档')
-    expect(rowOf(html, DIR + '/tasks/t-001.md')).toContain('任务卡')
-    expect(rowOf(html, DIR + '/decomposition.md')).toContain('拆分计划')
+    // 类型列走**短标签**（D-12 原型口径：需求 / 设计 / 拆分计划 / 任务卡 / 原型 / 笔记）；
+    // 名字仍只由唯一事实源（artifact-labels）定义，本面板只决定"印多短"。
+    expect(cellsOf(rowOf(html, DIR + '/requirement.md'))[0]).toBe('需求')
+    expect(cellsOf(rowOf(html, DIR + '/tasks/t-001.md'))[0]).toBe('任务卡')
+    expect(cellsOf(rowOf(html, DIR + '/decomposition.md'))[0]).toBe('拆分计划')
+    expect(cellsOf(rowOf(html, DIR + '/retro.md'))[0]).toBe('复盘')
+    expect(cellsOf(rowOf(html, DIR + '/notes.md'))[0]).toBe('笔记')
+  })
+
+  it('类型短标签与唯一事实源同源：8 个面板 kind 全覆盖，表外 kind 回落长名（不新造名字）', async () => {
+    const { KIND_LABELS } = await import('../src/shared/artifact-labels.js')
+    // 面板 kind → 产物 kind（服务端 PANEL_KIND 的别名，多对一逆映射）；与 docs.ts 的 KIND_ALIAS 同口径
+    const ALIAS: ReadonlyArray<readonly [string, string]> = [
+      ['requirement', 'requirement'], ['design', 'design'], ['plan', 'decomposition'],
+      ['task-detail', 'task_detail'], ['verification', 'verification'], ['retro', 'retro'],
+      ['notes', 'notes'], ['prototype', 'prototype'],
+    ]
+    for (const [panelKind, artifactKind] of ALIAS) {
+      // 短标签必须是**短词**（原型是"短名列表"），且非空
+      const short = kindShortLabel(panelKind)
+      expect(short.length, panelKind).toBeGreaterThan(0)
+      expect(short.length, panelKind).toBeLessThanOrEqual(4)
+      // 长名仍由唯一事实源持有（本面板没有第二份中文名表）：产物 kind 在那边有登记
+      expect(KIND_LABELS[artifactKind], artifactKind).toBeDefined()
+      // 除 notes 外，短形必须能在长名里读出来（两处各写各的名字当场红）
+      if (artifactKind !== 'notes') expect(KIND_LABELS[artifactKind], panelKind).toContain(short)
+    }
+    // notes 的短形是原型口径的「笔记」（长名「其他」要兼顾归档/兜底语境，两者不冲突）
+    expect(kindShortLabel('notes')).toBe('笔记')
+    // 表外 kind：回落唯一事实源的长名（「产物（x）」），不猜、不留白、也不裸显英文
+    expect(kindShortLabel('weird-new-kind')).toBe('产物（weird-new-kind）')
+    expect(kindShortLabel('')).toBe('产物')
+    // 反例（阳性对照）：表外 kind 真的走渲染路径时，类型格显示的是长名而不是空串
+    const html = render(makeDocs({
+      documents: [{ kind: 'weird-new-kind' as never, path: DIR + '/x.md', state: 'confirmed' }],
+    }))
+    expect(cellsOf(rowOf(html, DIR + '/x.md'))[0]).toBe('产物（weird-new-kind）')
   })
 
   it('四种状态各有说辞（FR-12 禁留白）：已确认 / 待确认 / 未登记 / 文件缺失', () => {
     const html = render(makeDocs())
-    // 状态名与解释是两个 span（状态名单独可断言、解释另起）——两处都不许空着
+    // D-12：状态格只放**短词 chip**，长解释进 chip 的 title——两处都不许空着
     const confirmed = rowOf(html, DIR + '/requirement.md')
     expect(confirmed).toContain('data-doc-state="confirmed"')
     expect(confirmed).toContain('>已确认</span>')
-    expect(confirmed).toContain('（人工已确认，可用）')
+    expect(confirmed).toContain('title="人工已确认，可用"')
     const pending = rowOf(html, DIR + '/design/frontend.md')
     expect(pending).toContain('data-doc-state="pending"')
     expect(pending).toContain('>待确认</span>')
-    expect(pending).toContain('（台账已登记，等人工确认）')
+    expect(pending).toContain('title="台账已登记，等人工确认"')
     const unregistered = rowOf(html, DIR + '/design/backend.md')
     expect(unregistered).toContain('data-doc-state="unregistered"')
     expect(unregistered).toContain('>未登记</span>')
-    expect(unregistered).toContain('（所属分类要求这份文档，台账里没有登记记录）')
+    expect(unregistered).toContain('title="所属分类要求这份文档，台账里没有登记记录"')
     // 未登记的行没有登记时间：说清"未登记"，不留白
     expect(unregistered).toContain('未登记（无登记时间）')
   })
@@ -224,7 +263,9 @@ describe('文件缺失行（T-16）', () => {
     expect(row).toContain('class="dsh-pm-doc-filepath dsh-pm-doc-missing"')
     expect(row).toContain('line-through') // 可见划线（字符串级也能断言，不依赖样式表）
     expect(row).toContain('>文件缺失</span>')
-    expect(row).toContain('（登记在案，但磁盘上找不到该文件）')
+    // 原因说明**不在路径格**（D-12：路径格只说"这是哪份文件"），在状态 chip 的 title 里
+    expect(row).toContain('title="登记在案，但磁盘上找不到该文件"')
+    expect(cellsOf(row)[1]).toContain('title="' + DIR + '/tasks/t-003.md"')
     expect(row).toContain('is-missing')
     // 缺失文件点开必读不到 → 不给 data-action（与 board-mount 的运行时约定一致）
     expect(row).not.toContain('data-action="open-doc"')
@@ -245,6 +286,118 @@ describe('文件缺失行（T-16）', () => {
   })
 })
 
+/* --------------------------------------------------------------- ②c 短名 / 短状态 / 打开列（D-10 · D-12） */
+
+/**
+ * 验收期返工（REQ-261006130057-7a43 · D-10 / D-12）：文档 Tab 逐列对齐权威原型
+ * `prototypes/detail.html#panel-docs`——
+ *  · **路径列** = 需求目录起算的**短名**（`requirement.md` / `design/frontend.md`）；
+ *    完整路径进 `title`（悬停可查）、台账路径进 `data-doc-relpath`（对账锚）；
+ *    需求目录外的文件压成 `…/` 前缀形式；「长路径 + 台账路径：…」那套附加说明不再出现；
+ *  · **状态列** = 短词 chip（长解释进 chip 的 `title`）；
+ *  · **打开列** = 灰字「打开」（hover 才下划线；样式在 report.ts 的 FR-6 块内），
+ *    不可开的两态给 disabled + 原因 title（不给假出口）。
+ */
+describe('路径短名 / 状态短词 / 打开列（D-12 原型口径）', () => {
+  it('路径列显示需求目录内的相对短名，完整路径进 title，台账路径进 data-doc-relpath', () => {
+    const html = render(makeDocs())
+    // 短名与原型逐条同形：requirement.md / design/frontend.md / tasks/t-xxx.md
+    expect(html).toContain('>requirement.md</span>')
+    expect(html).toContain('>design/frontend.md</span>')
+    expect(html).toContain('>tasks/t-001.md</span>')
+    // 「台账路径：…」附加说明退役（短名格不再兼职三件事）
+    expect(html).not.toContain('台账路径：')
+    // 每一行：短名可见 + 完整路径 title + 台账路径锚——能力一条没丢、显示不撑行
+    for (const d of DOCS) {
+      const cell = cellsOf(rowOf(html, d.path))[1]
+      expect(cell, d.path).toContain('data-doc-relpath="' + d.path + '"')
+      expect(cell, d.path).toContain('title="' + d.path + '"')
+      expect(cell, d.path).not.toContain('>' + d.path + '</span>') // 显示的不是整条台账路径
+    }
+  })
+
+  it('有 absPath 的行：显示短名、title 给绝对路径、打开仍走绝对路径（FR-4 不丢）', () => {
+    const abs = '/Users/mac/repo/' + DIR + '/design/frontend.md'
+    const html = render(makeDocs({
+      documents: [{ kind: 'design', path: DIR + '/design/frontend.md', state: 'confirmed', absPath: abs }],
+    }))
+    const row = rowOf(html, DIR + '/design/frontend.md')
+    const path = cellsOf(row)[1]
+    expect(path).toContain('>design/frontend.md</span>')
+    expect(path).toContain('title="' + abs + '"')
+    expect(path).toContain('data-doc-relpath="' + DIR + '/design/frontend.md"')
+    expect(row).toContain('data-open-doc="' + abs + '"')
+  })
+
+  it('需求目录外的文件压成 …/ 前缀形式（完整值仍在 title 与 data-doc-relpath）', () => {
+    const outside = 'agent-dh/docs/architecture/project-manual.md'
+    const html = render(makeDocs({
+      documents: [{ kind: 'notes', path: outside, state: 'confirmed' }],
+    }))
+    const path = cellsOf(rowOf(html, outside))[1]
+    expect(path).toContain('>…/architecture/project-manual.md</span>')
+    expect(path).toContain('title="' + outside + '"')
+    expect(path).toContain('data-doc-relpath="' + outside + '"')
+    expect(path).not.toContain('台账路径：')
+  })
+
+  it('shortDocPath：需求目录内→相对短名；目录外→…/ 压缩；裸文件名→原样', () => {
+    expect(shortDocPath(DIR + '/requirement.md', REQ)).toBe('requirement.md')
+    expect(shortDocPath(DIR + '/design/frontend.md', REQ)).toBe('design/frontend.md')
+    expect(shortDocPath(DIR + '/tasks/t-98684c.md', REQ)).toBe('tasks/t-98684c.md')
+    expect(shortDocPath(DIR + '/prototypes/detail.html', REQ)).toBe('prototypes/detail.html')
+    // 界桩兜底：reqId 缺省 / 对不上时按 `REQ-…` 段形状认（旧台账、跨需求行、绝对路径都能读短）
+    expect(shortDocPath(DIR + '/prototypes/detail.html')).toBe('prototypes/detail.html')
+    expect(shortDocPath('/Users/mac/repo/' + DIR + '/design/backend.md')).toBe('design/backend.md')
+    expect(shortDocPath('docs/requirements/REQ-260101000000-aaaa/notes.md', REQ)).toBe('notes.md')
+    // 需求目录外：…/ 前缀 + 尾部两段（仓内别处的文件也有可读显示，且一眼看出"不在本需求目录里"）
+    expect(shortDocPath('/Users/mac/repo/evidence/probe-report.md', REQ)).toBe('…/evidence/probe-report.md')
+    expect(shortDocPath('scripts/req-report-probe.mts', REQ)).toBe('…/scripts/req-report-probe.mts')
+    // 裸文件名 / 空串：原样 / 空串（不造 "…/" 噪声）
+    expect(shortDocPath('queue.json', REQ)).toBe('queue.json')
+    expect(shortDocPath('', REQ)).toBe('')
+  })
+
+  it('打开列：可开行给真按钮、不可开的两态给 disabled（原因在 title，不留"点开正文"假出口）', () => {
+    const open = cellsOf(rowOf(render(makeDocs()), DIR + '/requirement.md'))[4]
+    expect(open).toContain('class="dsh-pm-doc-open"')
+    expect(open).not.toContain('disabled')
+    expect(open).toContain('>打开</button>')
+    for (const [path, state, why] of [
+      [DIR + '/tasks/t-003.md', 'file-missing', '文件缺失'],
+      [DIR + '/design/none.md', 'unknown', '未判定'],
+    ] as const) {
+      const html = render(makeDocs({ documents: [{ kind: 'design', path, state }] }))
+      const cell = cellsOf(rowOf(html, path))[4]
+      expect(cell, path).toContain('disabled')
+      expect(cell, path).toContain('aria-disabled="true"')
+      expect(cell, path).toContain(why)
+      expect(cell, path).not.toContain('点开正文')
+    }
+  })
+
+  /**
+   * 样式口径（放在**样式**用例里，而不是靠人眼）：三列的画法都落在 report.ts 的 FR-6 标记块内，
+   * 且只引 `--pm-*` 令牌——灰字「打开」+ hover 下划线（不是蓝字下划线链接）、
+   * 状态 chip 四色取语义前景令牌（不写裸色值、不加浅底）。
+   */
+  it('样式在 FR-6 块内且只引 --pm-* 令牌：打开列灰字 hover 下划线，状态 chip 四色', () => {
+    const at = REPORT_CSS.indexOf('── FR-6/FR-7 文档Token提示词密度与 DAG 适配')
+    expect(at, 'FR-6 样式块不见了（样式被写到别处 = 与并行卡互相覆盖的典型症状）').toBeGreaterThan(-1)
+    const end = REPORT_CSS.indexOf('/* ═══', at)
+    const block = REPORT_CSS.slice(at, end === -1 ? undefined : end).replace(/\s+/g, ' ')
+    expect(block).toContain('.dsh-pm-doc-open {')
+    expect(block).toContain('color: var(--pm-text2);')
+    expect(block).not.toContain('.dsh-pm-doc-open { font: inherit; font-size: var(--f-small); padding: 0; margin: 0; cursor: pointer; border: 0; background: none; color: var(--pm-accent-text)')
+    expect(block).toContain('.dsh-pm-doc-open:hover:not([disabled]) { text-decoration: underline; }')
+    expect(block).toContain('.dsh-pm-docs .dsh-pm-doc-state[data-doc-state-text="confirmed"] { color: var(--pm-ok-text); }')
+    expect(block).toContain('[data-doc-state-text="pending"] { color: var(--pm-warn-text); }')
+    expect(block).toContain('[data-doc-state-text="file-missing"] { color: var(--pm-danger); }')
+    // 令牌纪律：本块不写裸色值（#rrggbb / rgb( / hsl(）
+    expect(block).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i)
+  })
+})
+
 /* --------------------------------------------------------------- ③ 生成物分开列 */
 
 describe('生成物与人写的文档分开列', () => {
@@ -257,65 +410,62 @@ describe('生成物与人写的文档分开列', () => {
     const gen = html.slice(html.lastIndexOf('<tr', at), html.indexOf('</tr>', at))
     expect(gen).toContain('任务队列（DAG 派生视图）')
     expect(gen).toContain('data-open-doc="' + DIR + '/queue.json"')
-    expect(gen).toContain('自动维护（工具重建）')
+    // 状态格与文档行同画法（D-12）：短词「自动维护」+ 长解释（工具重建）进 title；
+    // 锚点用 data-generated-state（data-doc-state-text 只装 DocPanelState 枚举值）
+    expect(cellsOf(gen)[2]).toContain('>自动维护</span>')
+    expect(cellsOf(gen)[2]).toContain('title="自动维护（工具重建）"')
+    expect(cellsOf(gen)[2]).toContain('data-generated-state="auto"')
+    expect(cellsOf(gen)[2]).not.toContain('data-doc-state-text')
     // 打开列独立成格（可点，非 disabled——生成物没有缺失/未判定态）
     expect(gen).toContain('dsh-pm-doc-cell-open')
     expect(gen).not.toContain('disabled')
-    const section = html.slice(html.indexOf('data-doc-section="generated"'), html.indexOf('data-doc-section="verification"'))
+    const section = html.slice(html.indexOf('data-doc-section="generated"'), html.indexOf('data-verify-moved="1"'))
     expect(section).toContain('不是人写的文档')
     expect(section).toContain('rtm-implementing.yml')
     expect(section).toContain('data-generated-table="1"')
   })
 })
 
-/* --------------------------------------------------------------- ④ 核验表 */
+/* --------------------------------------------------------------- ④ 核验节迁移指引（T-6） */
 
-describe('核验表（T-13：列照抄 verification.ts）', () => {
-  it('七列在场：标准 / 实际结果 / 来源 / 需人工 / 证据 / 意见 / 裁决', () => {
+describe('核验节迁移指引（T-6：「核验 · 验收单」已独立为「验收」Tab，REQ-261006130057-7a43 FR-8）', () => {
+  it('docs 面板不再渲染逐项核验表：无 data-verify-table / data-doc-section="verification" / data-verify-row', () => {
+    // 默认夹具**带** verification 载荷（T-22 兼容：字段保留）——带载荷也不许画表
     const html = render(makeDocs())
-    for (const th of ['<th>标准</th>', '<th>实际结果</th>', '<th>来源</th>', '<th>需人工</th>', '<th>证据</th>', '<th>意见</th>', '<th>裁决</th>']) {
-      expect(html).toContain(th)
-    }
-    expect(countOf(html, 'data-verify-row="1"')).toBe(ITEMS.length)
+    expect(html).not.toContain('data-verify-table')
+    expect(html).not.toContain('data-doc-section="verification"')
+    expect(countOf(html, 'data-verify-row="1"')).toBe(0)
+    // 七列旧表头一个都不许再出现（标准/实际结果/来源/需人工/证据/意见/裁决 那套已迁走）
+    expect(html).not.toContain('<th>需人工</th>')
+    expect(html).not.toContain('<th>实际结果</th>')
   })
 
-  it('实际结果 + 来源（agent|human 原文都在）+ 需人工（含原因）+ 意见 + 裁决逐项铺开', () => {
+  it('原位是迁移指引条：文案 + 既有 switch-tab 通道可切「验收」', () => {
     const html = render(makeDocs())
-    const agentRow = rowOf(html, 'v1-1')
-    expect(agentRow).toContain('15 行，与台账一致')
-    expect(agentRow).toContain('agent 实测（agent）')
-    expect(agentRow).toContain('data-source="agent"')
-    expect(agentRow).toContain('否（agent 可自证）')
-    expect(agentRow).toContain('data-verify-status="passed"')
-    expect(agentRow).toContain('✅ 通过')
-
-    const humanRow = rowOf(html, 'v1-2')
-    expect(humanRow).toContain('data-needs-human="1"') // 「需人工」显眼标出
-    expect(humanRow).toContain('需人工确认：界面视觉无独立证据')
-    expect(humanRow).toContain('人工填写（human）')
-    expect(humanRow).toContain('data-source="human"')
-    expect(humanRow).toContain('首轮未通过：意见已挂回原卡') // 意见
-    expect(humanRow).toContain('✖ 不通过') // 裁决
-    // 证据为空 → 明说"未提供证据"，不留白
-    expect(humanRow).toContain('未提供证据')
+    expect(html).toContain('data-verify-moved="1"')
+    expect(html).toContain('已独立为「验收」Tab')
+    const bar = html.slice(html.indexOf('data-verify-moved="1"'), html.indexOf('data-doc-section="gates"'))
+    expect(bar).toContain('data-action="switch-tab" data-tab="verify"')
   })
 
-  it('没有验收单 → 解释性空态，**不画空表格**（FR-12）', () => {
+  it('没有验收单载荷时同样是指引条（不画空表格、不留白）', () => {
     const html = render(makeDocs({ verification: undefined }))
-    expect(html).toContain('data-verify-empty="1"')
-    expect(html).toContain('尚未提交验收材料')
-    expect(html).toContain('reqboard_submit(kind=verification)')
+    expect(html).toContain('data-verify-moved="1"')
     expect(html).not.toContain('data-verify-table')
     expect(countOf(html, 'data-verify-row="1"')).toBe(0)
   })
 
-  it('验收单存在但 items 为空 → 同样不画空表格', () => {
-    const html = render(makeDocs({
-      verification: { version: 1, items: [], generatedAt: T0, generatedBy: { kind: 'agent' } },
-    }))
-    expect(html).toContain('data-verify-empty="1"')
-    expect(html).toContain('没有逐项记录')
-    expect(html).not.toContain('data-verify-table')
+  it('验收单逐项的实际渲染归「验收」Tab：同一份逐项在 verify 面板的 RTM 行展开里', async () => {
+    // 阳性对照（防"因为根本没有所以通过"的假绿）：ITEMS 没丢——它们在 verify 面板可断言
+    const { verifyPanel } = await import('../src/client/views/panels/verify.js')
+    const html = verifyPanel.render({ sheet: { version: 2, items: ITEMS, generatedAt: T0 } }, {
+      requirementId: REQ,
+      load: () => Promise.reject(new Error('渲染路径不该取数')),
+      openDoc: () => { throw new Error('渲染路径不该开正文') },
+    })
+    expect(html).toContain('data-rtm-table="1"')
+    expect(html).toContain('data-item-id="v1-2"')
+    expect(html).toContain('界面视觉无独立证据') // needsHuman + humanReason 在行展开里
   })
 })
 

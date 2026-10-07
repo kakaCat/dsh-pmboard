@@ -17,6 +17,13 @@ import {
   resolvePlanStages,
   buildSubtaskSpecs,
   stageLabel,
+  ACCEPTANCE_PLACEHOLDERS,
+  unknownPlaceholders,
+  testFilesOf,
+  scriptFilesOf,
+  fillStageAcceptance,
+  TEST_TARGET_FALLBACK,
+  SCRIPT_TARGET_FALLBACK,
 } from '../../src/domain/task/SubtaskTemplate.js'
 import { STAGE_TO_PHASE_COLOR } from '../../src/domain/card-types.js'
 
@@ -230,5 +237,63 @@ describe('四段登记完整性（TC-3/TC-4 · FR-1/FR-2/FR-3/FR-6/FR-7）', () 
     expect(STAGE_ACCEPTANCE.capture).toMatch(/可复核命令/)
     // 中文标签齐全
     for (const s of NEW_STAGES) expect(STAGE_LABELS[s].length).toBeGreaterThan(0)
+  })
+})
+
+// ── REQ-261006201920-2adc FR-1：占位符声明式闭集与回填器（TC-5）──────────────
+describe('验收模板占位符（FR-1 · TC-5）', () => {
+  const ctx = { requirementId: 'REQ-spec01', taskId: 't-abc123', parentAcceptance: 'npx vitest run tests/x.test.ts 全绿' }
+
+  it('模板里没有词表外的尖括号 token（闭集不变量——「残留为 0」据此可证）', () => {
+    for (const kind of STAGE_KINDS) {
+      expect(unknownPlaceholders(STAGE_ACCEPTANCE[kind]), kind).toEqual([])
+    }
+  })
+
+  it('每个声明式 token 都有取值规则（回填后无尖括号残留）', () => {
+    for (const kind of STAGE_KINDS) {
+      const filled = fillStageAcceptance(STAGE_ACCEPTANCE[kind], ctx)
+      expect(filled, kind).not.toMatch(/<[^>]{2,40}>/)
+      expect(unknownPlaceholders(filled), kind).toEqual([])
+    }
+  })
+
+  it('词表声明的 token 确实都是模板里出现过的（防止词表腐烂）', () => {
+    const all = STAGE_KINDS.map(k => STAGE_ACCEPTANCE[k]).join('\n')
+    for (const token of ACCEPTANCE_PLACEHOLDERS) expect(all.includes(token), token).toBe(true)
+  })
+
+  it('父卡点名的测试文件被搬进来；一个都没有时落声明的兜底（仍是一条可跑命令）', () => {
+    const hit = fillStageAcceptance(STAGE_ACCEPTANCE.dev, ctx)
+    expect(hit).toContain('tests/x.test.ts')
+    const miss = fillStageAcceptance(STAGE_ACCEPTANCE.dev, { ...ctx, parentAcceptance: '改完自证' })
+    expect(miss).toContain(`npx vitest run ${TEST_TARGET_FALLBACK}`)
+    expect(miss).not.toMatch(/<[^>]{2,40}>/)
+  })
+
+  it('REQ 与 taskId 被替换成真实值（manual 段的清单落点）', () => {
+    const manual = fillStageAcceptance(STAGE_ACCEPTANCE.manual, ctx)
+    expect(manual).toContain('docs/requirements/REQ-spec01/manual/t-abc123.md')
+    expect(manual).not.toContain('<REQ>')
+    expect(manual).not.toContain('<taskId>')
+  })
+
+  it('脚本占位符：父卡点名脚本则搬进来，否则落 *.mts（保住可跑的 npx tsx 命令）', () => {
+    const withScript = fillStageAcceptance(STAGE_ACCEPTANCE.collect, { ...ctx, parentAcceptance: 'npx tsx scripts/kb-probe.mts → 0 死链' })
+    expect(withScript).toContain('scripts/kb-probe.mts')
+    const withoutScript = fillStageAcceptance(STAGE_ACCEPTANCE.collect, ctx)
+    expect(withoutScript).toContain(`scripts/${SCRIPT_TARGET_FALLBACK}`)
+  })
+
+  it('词表外的 token → 响亮抛错（不静默把模板残渣写进卡里）', () => {
+    expect(unknownPlaceholders('跑 <野token> 全绿')).toEqual(['<野token>'])
+    expect(() => fillStageAcceptance('跑 <野token> 全绿', ctx)).toThrow(/残留占位符/)
+  })
+
+  it('提取器只认真实路径（不把裸占位符当成文件）', () => {
+    expect(testFilesOf('npx vitest run <相关测试文件> 全绿')).toEqual([])
+    expect(testFilesOf('npx vitest run tests/a.test.ts tests/b.spec.ts tests/a.test.ts')).toEqual(['tests/a.test.ts', 'tests/b.spec.ts'])
+    expect(scriptFilesOf('npx tsx scripts/x.mts')).toEqual(['scripts/x.mts'])
+    expect(scriptFilesOf('npx tsx scripts/<脚本>.mts')).toEqual([])
   })
 })

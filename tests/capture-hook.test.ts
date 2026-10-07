@@ -13,6 +13,8 @@ import { describe, it, expect } from 'vitest'
 import { emptyLedger, type ReqboardLedger } from '../src/shared/protocol.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
+// REQ-261006201814-ac4f u3：队列根改走临时目录（原为 process.cwd() = 真实工作树）。
+import { testWorkspaceRoot } from './helpers/workspace-root.js'
 import { createDiveSessionDriver, type DiveSessionDriver, type DiveSessionDriverDeps } from '../src/application/dive/session-driver.js'
 import { shouldCaptureWindow } from '../src/application/internal/window.js'
 import {
@@ -41,7 +43,7 @@ function deps(): {
     deps: {
       // 任务队列端口（REQ-260927202051-f6df）：DiveSessionDriverDeps.taskStore 为**必填**（D11 口径）。
       // 本用例不涉任务，给一个落在仓库根下的真实 store 即可（不落盘则不创建文件）。
-      taskStore: new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: process.cwd() }), now: () => 1000 }),
+      taskStore: new QueueTaskStore({ repo: new JsonQueueRepository({ workspaceRoot: testWorkspaceRoot() }), now: () => 1000 }),
       facts: () => ledger.requirements.map(factsOf),
       pending,
       now: () => 1000,

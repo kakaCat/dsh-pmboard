@@ -146,7 +146,7 @@ describe('applyVerdicts：逐项裁决 + 返工规格', () => {
     const r = applyVerdicts(
       mkSheet(),
       [
-        { itemId: 'v1-1', status: 'passed', opinion: '实际结果：单测绿' },
+        { itemId: 'v1-1', status: 'passed', opinion: '实际结果：单测绿（npx vitest run tests/a.test.ts → 12 passed）' },
         { itemId: 'v1-2', status: 'failed', opinion: '截图不清晰，请补高清图' },
       ],
       actor, 100, tasks,
@@ -175,7 +175,7 @@ describe('applyVerdicts：逐项裁决 + 返工规格', () => {
   it('isAllPassed：有 pending/failed → false；全过 → true', () => {
     const s = mkSheet()
     expect(isAllPassed(s)).toBe(false)
-    applyVerdicts(s, s.items.map(i => ({ itemId: i.id, status: 'passed' as const, opinion: '实际结果：全部符合' })), actor, 100, tasks)
+    applyVerdicts(s, s.items.map(i => ({ itemId: i.id, status: 'passed' as const, opinion: '实际结果：全部符合（npx vitest run tests/a.test.ts → 12 passed）' })), actor, 100, tasks)
     expect(isAllPassed(s)).toBe(true)
   })
 })
@@ -219,7 +219,7 @@ describe('T-U1~T-U4：不可验收项与「全部已裁决」放行判据（REQ-
   it('T-U3: passed + not_verifiable（无 pending）→ isFullyDecided=true，且不生成返工（AC-9.3/AC-8.5）', () => {
     const s = mkSheet2()
     const r = applyVerdicts(s, [
-      { itemId: 'v1-1', status: 'passed', opinion: '实际结果：单测绿' },
+      { itemId: 'v1-1', status: 'passed', opinion: '实际结果：单测绿（npx vitest run tests/a.test.ts → 12 passed）' },
       { itemId: 'v1-2', status: 'not_verifiable', opinion: '本机无该运行环境' },
     ], actor2, 100, tasks2)
     expect(r.notVerifiable).toBe(1)
@@ -230,7 +230,7 @@ describe('T-U1~T-U4：不可验收项与「全部已裁决」放行判据（REQ-
 
   it('T-U4: 仍有 pending → isFullyDecided=false（AC-9.5）', () => {
     const s = mkSheet2()
-    applyVerdicts(s, [{ itemId: 'v1-1', status: 'passed', opinion: '实际结果：单测绿' }], actor2, 100, tasks2)
+    applyVerdicts(s, [{ itemId: 'v1-1', status: 'passed', opinion: '实际结果：单测绿（npx vitest run tests/a.test.ts → 12 passed）' }], actor2, 100, tasks2)
     expect(isFullyDecided(s)).toBe(false)
   })
 })

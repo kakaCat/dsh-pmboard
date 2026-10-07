@@ -16,7 +16,7 @@
  * **逆验证（本卡的机械保证）**：逐条注释掉任一路径的 `contentGatesForMove` 调用 → 对应用例必须红。
  * 实测记录见任务卡汇报（四条各一次）。
  */
-import { makeTestStore } from './application/harness.js'
+import { makeHarness, makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
@@ -181,6 +181,8 @@ function fakeRes(): any {
 function board() {
   return createReqboardHandler({
     requirementStore: store, taskStore: taskStoreAt(dir),
+    // t2（REQ-261007135258-331a）：看板「确认即推进」改走单点 ⇒ 需完整用例依赖
+    applicationDeps: { ...makeHarness().deps, store } as never,
     now: () => 1000,
     docs: new FileDocRepository({ workspaceRoot: dir }),
     // 看板确认路径以「绑定窗口在线」为前提（否则只落章、不推进，门禁无从触发）

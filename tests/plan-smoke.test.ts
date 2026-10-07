@@ -105,12 +105,15 @@ afterEach(() => { rmSync(root, { recursive: true, force: true }) })
 /**
  * 计划文档（decomposition.md）：FR-5 的标记就是「超容量标记」那一格。
  * 三张卡各占一行——门禁按行认 key + 「建议N批」，一行一卡是这条规则的前提。
+ *
+ * 首列名必须是「计划 key」（2026-10-06 缺口 4 之四的 `plan_doc_task_table_incomplete` 硬门
+ * 按这个表头认任务表；标记门禁是**按行**认的，与列名无关，故改名不影响它）。
  */
 function planDoc(heavyMarker: string): string {
   return [
     '# 冒烟计划（夹具）',
     '',
-    '| 顺序 | key | 业务标题 | 超容量标记 |',
+    '| 顺序 | 计划 key | 业务标题 | 超容量标记 |',
     '|---|---|---|---|',
     '| 1 | heavy | 一张 100 文件的卡 | ' + heavyMarker + ' |',
     '| 2 | light | 轻量卡 | — |',

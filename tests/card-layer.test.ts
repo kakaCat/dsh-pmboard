@@ -38,17 +38,27 @@ describe('laneOf：泳道列 = 卡所处环节', () => {
   })
 })
 
-describe('chainMissing：链未生成 vs 显式 solo', () => {
-  it('in_progress + 无子卡 + 未声明无链 → 缺链', () => {
+describe('chainMissing：期望有链却没链 vs 显式 solo（2026-10-06 缺口 4 之二，判据按状态不对称）', () => {
+  it('in_progress + 无子卡 → 缺链（**未声明 stages 也算**：默认链按 phase/side 推出，与旧行为逐字一致）', () => {
     expect(chainMissing({ status: 'in_progress' }, [])).toBe(true)
     expect(chainMissing({ status: 'in_progress', stages: ['dev', 'review'] }, [])).toBe(true)
+    expect(chainMissing({ status: 'in_progress', stages: ['dev', 'integrate', 'review', 'test'] }, [])).toBe(true)
+  })
+  it('done + 无子卡：**只有显式声明了非空 stages** 才缺链（未声明的存量卡不噪声）', () => {
+    expect(chainMissing({ status: 'done', stages: ['dev', 'review'] }, [])).toBe(true)
+    // 这条是防误报的一半：存量 done 卡没有"声明过要链"的证据，不打标
+    expect(chainMissing({ status: 'done' }, [])).toBe(false)
   })
   it('显式 stages: []（solo）→ 不缺链（这就是「不需子卡」）', () => {
     expect(chainMissing({ status: 'in_progress', stages: [] }, [])).toBe(false)
+    expect(chainMissing({ status: 'done', stages: [] }, [])).toBe(false)
   })
-  it('todo（未开工，懒展开是正常态）/ 有子卡 → 不缺链', () => {
+  it('todo（未开工，懒展开是正常态）/ canceled / 有子卡 → 不缺链', () => {
+    expect(chainMissing({ status: 'todo', stages: ['dev'] }, [])).toBe(false)
     expect(chainMissing({ status: 'todo' }, [])).toBe(false)
-    expect(chainMissing({ status: 'in_progress' }, [kid('dev', 'todo')])).toBe(false)
+    expect(chainMissing({ status: 'canceled', stages: ['dev'] }, [])).toBe(false)
+    expect(chainMissing({ status: 'in_progress', stages: ['dev'] }, [kid('dev', 'todo')])).toBe(false)
+    expect(chainMissing({ status: 'done', stages: ['dev'] }, [kid('dev', 'done')])).toBe(false)
   })
 })
 
@@ -122,12 +132,25 @@ describe('泳道渲染：联调中/测试中列不再结构性为空（D1）', (
     expect(col(html, 'integrating')).not.toContain('card-chain') // 2026-09-29 裁定 E：不再展示链进度
     expect(col(html, 'in_progress')).not.toContain('t-p1')
   })
-  it('缺链的 chain 卡打「链未生成」标；显式 solo（stages: []）不打标', () => {
+  it('缺链的卡打「链未生成」标；显式 solo（stages: []）不打标', () => {
+    // in_progress + 未声明 stages 仍打标（默认链按 phase/side 推出——旧行为，防腐烂回归）
     const missing = renderNodePanel({
       overview: makeOverview([makeTask({ id: 't-m1', title: '缺链卡', status: 'in_progress' })]),
       stage: 'implementing', requirement: REQ,
     } as never)
     expect(missing).toContain('链未生成')
+    // done + **显式声明** stages 却 0 子卡 → 也打标（计划写了链、autoRun=false 时从没展开）
+    const doneMissing = renderNodePanel({
+      overview: makeOverview([makeTask({ id: 't-m2', title: '做完但没链', status: 'done', stages: ['dev', 'review'] })]),
+      stage: 'implementing', requirement: REQ,
+    } as never)
+    expect(doneMissing).toContain('链未生成')
+    // done + 未声明 stages 的存量卡 → 不打标（没有"声明过要链"的证据，不噪声）
+    const legacyDone = renderNodePanel({
+      overview: makeOverview([makeTask({ id: 't-m3', title: '存量已完成卡', status: 'done' })]),
+      stage: 'implementing', requirement: REQ,
+    } as never)
+    expect(legacyDone).not.toContain('链未生成')
     const solo = renderNodePanel({
       overview: makeOverview([makeTask({ id: 't-s1', title: '单卡', status: 'in_progress', stages: [] })]),
       stage: 'implementing', requirement: REQ,
