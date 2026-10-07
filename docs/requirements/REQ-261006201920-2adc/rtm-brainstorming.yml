@@ -1,0 +1,51 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261006201920-2adc
+  generated_at: 2026-10-06T12:21:02.700Z
+  version: 4
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T12:29:31.437Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 未替换占位符不得进验收标准
+      source: requirement.md
+      line: 83
+    - id: FR-2
+      title: 返工卡与其它卡同门
+      source: requirement.md
+      line: 113
+    - id: FR-3
+      title: 裁决结果必须可复核
+      source: requirement.md
+      line: 126
+    - id: FR-4
+      title: 系统缺口项通过必须写处置
+      source: requirement.md
+      line: 153
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 委派底稿（另一窗口只读审计，经人投递本窗口）：「只动验收/卡片质量这一片文件域，不要碰原型门、归档校验、测试基线（那三块有别的窗口在做）」
+      verdict: 改动面**锁定**在验收标准与卡片质量一片；原型门、归档校验、测试基线一律不动
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      criterion: 本文「边界」逐条列出不做项；改动文件清单不得包含原型门 / 归档校验 / 基线脚本三处
+    - id: D-2
+      source: 委派底稿：「反向演练：把「占位符分支」注释掉 → 必须有测试当场变红，还原 → 绿」
+      verdict: 占位符判据必须有**反向演练**用例，不是只有正向用例
+      serves:
+        - FR-1
+      criterion: 反向演练命令与两次输出（红/绿）进验收材料
+    - id: D-3
+      source: 本窗口弹框作答原文：「A. 结构化 changeReason 全链路（推荐）」
+      verdict: 人覆盖 agent 实测结果走**结构化变更理由**：域层结果契约 + 两条通道透传 + agent 原文保留进 `resultSuperseded`，缺理由即拒；**接受**因此要改客户端并跑客户端构建
+      serves:
+        - FR-3
+      criterion: 变更理由字段在域层 / 工具通道 / 看板通道三处可见；agent 原文可查；缺理由的用例变红
+status:
+  artifacts: []

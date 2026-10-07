@@ -1,0 +1,33 @@
+task:
+  id: t-4a918b
+  title: 域层契约：占位符判据与声明式回填器
+  status: done
+  implements: 改 src/domain/task/Acceptability.ts：新增 PLACEHOLDER_OPERAND 常量（命令位置=行首/空白/反引号/管道/&&/;/左括号之后且命令字后跟空白，其后 40 字符内出现尖括号 token 即命中），并在 checkAcceptance 里接入分支——顺序为 空话 → 占位符 → 无锚点，拒绝文案必须含占位符原文与「换成真实路径/编号」的修法。改 src/domain/task/SubtaskTemplate.ts：新增 ACCEPTANCE_PLACEHOLDERS 声明式闭集、unknownPlaceholders(text)、fillStageAcceptance(template, ctx)（ctx={requirementId,taskId,parentAcceptance}；从父卡验收标准提取测试路径与脚本路径，测试文件取不到落 tests/、脚本取不到落 *.mts，回填产物自检不得再有尖括号 token，有则抛）。新增 tests/acceptance-placeholder.test.ts（TC-1 命中即拒 + TC-2 四类合法反例放行）；扩 tests/domain/subtask-template.test.ts（TC-5 词表闭集不变量）。验证：npx vitest run tests/acceptance-placeholder.test.ts tests/domain/subtask-template.test.ts；反向演练 RV-1：注释掉占位符分支该文件必红，还原后绿，两次输出留档。
+  serves:
+    - FR-1
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201920-2adc
+    TASK_ID: t-4a918b
+    TASK_TITLE: 域层契约：占位符判据与声明式回填器
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T12:36:54.432Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201920-2adc
+  generated_at: 2026-10-06T12:32:59.941Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T12:41:55.258Z

@@ -1,0 +1,36 @@
+task:
+  id: t-b6c809
+  title: 新增注册日志派生校验用例·测试
+  status: done
+  implements: |-
+    新建 tests/registry-log.test.ts：复用 tests/apply-wiring.test.ts 的 stub ctx 与日志捕获手法（该文件的 stubCtx 立即派发 inject、effect 立即执行），执行 apply() 后取注册日志行；正则抽 'agent tools registered (\d+):' 的 N 与 ' / ' 分隔的名单，断言 N === TOOL_REGISTRY.length 且名单集合 == TOOL_REGISTRY.map(e => e.toolName)；日志行不存在时失败并提示「注册日志未打印」，不静默跳过。契约见 design/interfaces.md 第 3 节。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-b33784
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201508-5cb6
+    TASK_ID: t-b6c809
+    TASK_TITLE: 新增注册日志派生校验用例·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-06T12:51:52.530Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201508-5cb6
+  generated_at: 2026-10-06T12:51:09.565Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T12:51:55.092Z

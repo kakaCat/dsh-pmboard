@@ -1,0 +1,36 @@
+task:
+  id: t-5b3e2a
+  title: 领域裁决判据：返工过检 + 结果锚点 + 人工项事实 + 处置模板·研发
+  status: done
+  implements: |-
+    改 src/domain/workflow/AcceptanceSheetSpec.ts，四件事：① reworkSpecFor 三级取值——item.criterion 过 checkAcceptance+checkHowToVerify 则直接用，否则取来源卡 acceptance，仍不过则合成「修复对象 + 可跑命令 + 期望读数」三段式标准，每级都必须过两道判据；ReworkTaskSpec 增 requirementRefs/prototypeRefs/decisionRefs/footprint/acceptanceSource 并从来源卡逐字继承（prototypeRefs 也必须继承，否则 UI 卡返工卡会被 UI 卡原型锚点门禁钉死）。② 新增 RESULT_ANCHOR（命令/代码文档路径/明确计数/证据介质 .png .jpg .webp .log 等，文件头写明与 domain/workflow/EvidenceAnchor.ts 的分工与差集）与 HUMAN_FACT（现象词/截图/证据路径）；applyVerdicts 前置校验增：needsHuman 项文本去空白长度 ≤6 或无可辨识事实即拒。③ 新增 DISPOSITION_TEMPLATE（已处置：补了/已补/补上/新增/加了/修了/已覆盖；确认无需：确认无需/无需/不需要/不适用/暂不/不做；两义均要求去空白长度 >6），系统项通过未命中即拒（替换既有「非空即可」口径）。④ dispositionMissingItems 语义收紧为「未写或未命中模板」，并接入 isFullyDecided 与 sheetGateStatus，使处置为空真的不放行归档。新增 tests/rework-gate.test.ts、tests/verdict-result-anchor.test.ts、tests/system-item-disposition.test.ts。验证：npx vitest run 五个用例文件；反向演练 RV-3 与 RV-5 各两次输出留档。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-4a918b
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201920-2adc
+    TASK_ID: t-5b3e2a
+    TASK_TITLE: 领域裁决判据：返工过检 + 结果锚点 + 人工项事实 + 处置模板·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T12:58:52.830Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201920-2adc
+  generated_at: 2026-10-06T12:58:41.684Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T12:58:57.029Z

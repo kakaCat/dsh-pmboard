@@ -1,0 +1,36 @@
+task:
+  id: t-a762a1
+  title: archive.md 写盘、幂等与清单补登（渲染失败即整体拒绝、台账零写入）·研发
+  status: done
+  implements: |-
+    改 src/application/use-cases/SubmitArchive.ts：① 新次序 = 形态校验 → 根校正 → 目录/文档可打开 → 闸 1/闸 2 → 渲染 archive.md 并写盘 → 补登 docs（若已有同路径条目不重复加）→ reconcileArchiveDir 对账 → depositArchiveKnowledge → 写台账；② 幂等：读现有 archive.md，逐行剔除「渲染时刻：」行后与新文本比对，相同则不写且回执 written=false；③ 写盘用 deps.docs.write；异常 → reject（消息含落点路径与原因），保证不进入 mutateIfPresent；④ 返回体加 resolved_targets（root/by/attributed/merged_into/manual_anchors）与 archive_manifest；⑤ 新建 tests/archive-manifest-write.test.ts：用过 stubDocFile 的桩目录跑两次提交，断言 written 先 true 后 false 且内容不变；再造只读/失败场景断言台账零写入。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-f1e145
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201841-944d
+    TASK_ID: t-a762a1
+    TASK_TITLE: archive.md 写盘、幂等与清单补登（渲染失败即整体拒绝、台账零写入）·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T13:20:40.099Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201841-944d
+  generated_at: 2026-10-06T13:20:40.098Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T13:20:40.422Z

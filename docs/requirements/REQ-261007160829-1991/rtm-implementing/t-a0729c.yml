@@ -1,0 +1,39 @@
+task:
+  id: t-a0729c
+  title: 落「未复核原因」字段与降级判定单点·联调
+  status: done
+  implements: |-
+    在 src/shared/protocol.ts 的 VerificationItem 与 src/domain/workflow/AcceptanceSheetSpec.ts 的 SheetItemLike 成对新增可选字段 unverifiedReason（'blank_pass' | 'anchor_missing'）；抽出纯函数 judgePassedVerdict({item, opinion}) 返回 {status, reason?}，按 design/backend.md S-1 的六条顺序实现（人工项不吃锚点判据）；在 tests/verdict-downgrade-reason.test.ts 钉死四类输入。不改 hasResultAnchor 词表。
+
+    [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/verdict-downgrade-reason.test.ts` → 全绿（请求样例与期望响应一致）
+  serves: []
+  depends_on:
+    - t-8c6d01
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007160829-1991
+    TASK_ID: t-a0729c
+    TASK_TITLE: 落「未复核原因」字段与降级判定单点·联调
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-07T08:43:16.737Z
+      completed_at: 2026-10-07T08:43:25.386Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007160829-1991
+  generated_at: 2026-10-07T08:42:46.027Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T08:43:25.387Z

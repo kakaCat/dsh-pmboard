@@ -1,0 +1,37 @@
+task:
+  id: t-8f5cce
+  title: design 提交门聚合清单节校验·研发
+  status: done
+  implements: |-
+    src/application/internal/content-gate-wiring.ts 的 checkDesignContentGate 聚合循环加一维（复用既有信封一次报全，code 仍为 REQBOARD_DESIGN_CONTENT_GATE）：① docQualityRulesApply(req.createdAt) 判 false → 整维跳过；② req.category==='feature' 且 design/interfaces.md 存在且未被 design_exempt 豁免 → 必含标题含「接口清单」的 H2，且节内有表（表头含「接口 id」）或「不适用：」豁免行；③ sides 含 frontend 且 design/frontend.md 存在 → 必含标题含「组件树」的 H2（同款豁免行）；④ 缺失 → gaps 加一行，文案指向 templates/design/ 对应模板。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/plan-granularity.test.ts` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007125552-32cb
+    TASK_ID: t-8f5cce
+    TASK_TITLE: design 提交门聚合清单节校验·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T05:36:31.997Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007125552-32cb
+  generated_at: 2026-10-07T05:32:14.176Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T05:36:31.997Z

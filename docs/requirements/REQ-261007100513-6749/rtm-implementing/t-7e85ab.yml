@@ -1,0 +1,37 @@
+task:
+  id: t-7e85ab
+  title: 定死接口与数据契约（端口 / 可选字段 / 逐项结果类型）·研发
+  status: done
+  implements: |-
+    按 interfaces.md 的 I-1~I-5 与 data-model.md 落类型：① src/application/ports.ts 加 VolatileNoticePort（notify 永不抛）与运行态存储端口方法；② src/shared/protocol.ts 加 TaskRecord.budgetRequests?: number、VolatileNoticeKind、TaskMoveItemResult、TaskTreeSummary、SubtasksBudgetState；③ 客户端镜像 src/client/types.ts 同步；④ 四处手工投影补字段透传：src/application/query/QueryStageDetail.ts、src/application/internal/sheet-tasks.ts、src/application/query/QueryDag.ts、src/http/routers/stages.ts；⑤ 新增 tests/contract-types.test.ts 断言端口与字段存在、且 budgetRequests 不进 REQUIRED_TASK_FIELDS。不动状态机、不 bump REQBOARD_SCHEMA_VERSION / QUEUE_VERSION。验证：pnpm typecheck 零错 + pnpm build:client 退出码 0。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007100513-6749
+    TASK_ID: t-7e85ab
+    TASK_TITLE: 定死接口与数据契约（端口 / 可选字段 / 逐项结果类型）·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T02:25:30.239Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007100513-6749
+  generated_at: 2026-10-07T02:17:41.315Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T02:25:30.240Z

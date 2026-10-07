@@ -1,0 +1,38 @@
+task:
+  id: t-ab83a1
+  title: 两处判据接线并各自补可证伪用例·复核
+  status: done
+  implements: |-
+    在 tests/concurrency-limits.test.ts 补冲突门 src 用例（两卡 implementation 各写同一个 src/.../a.ts 且 dependsOn 互不包含 → findWorkSurfaceConflicts 返回 1 条、提交被拒 REQBOARD_FILE_CONFLICT；补上依赖后不再冲突）；在 tests/plan-depends-e2e.test.ts 补零交集建议用例（两卡分别声明 src/.../a.ts 与 src/.../b.ts、无依赖、无理由 → dependency_warnings 非空）。验证：npx vitest run 两个文件全绿；再把 src 根去掉重跑 → 新用例必须红。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-7d58de
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007095750-9f48
+    TASK_ID: t-ab83a1
+    TASK_TITLE: 两处判据接线并各自补可证伪用例·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T02:07:06.914Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007095750-9f48
+  generated_at: 2026-10-07T02:06:53.786Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T02:07:06.915Z

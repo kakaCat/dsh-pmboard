@@ -1,0 +1,52 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261007160829-1991
+  generated_at: 2026-10-07T08:31:36.699Z
+  version: 3
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T08:35:11.935Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 提交侧拒绝无锚点实测结果
+      source: requirement.md
+      line: 64
+    - id: FR-2
+      title: 降级原因落账并按真实原因措辞
+      source: requirement.md
+      line: 94
+    - id: FR-3
+      title: 人工自填文本无锚点当场拒绝
+      source: requirement.md
+      line: 123
+    - id: FR-4
+      title: 弹框第 2 问题干写明可核验形态
+      source: requirement.md
+      line: 153
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 用户 2026-10-07 本窗口：「A（推荐）· 就地续作」
+      verdict: 需求归属维持本窗口，不换 owner、不加 observer；在本窗口就地推进 brainstorming
+      serves:
+        - FR-1
+      criterion: 本窗口 `reqboard_status` 的 `seats` 仍只有本窗口 owner 一条（无新增席位）
+    - id: D-2
+      source: 用户 2026-10-07 本窗口：「你查看一下原因」
+      verdict: 采纳实测根因、废弃立项描述里的旧诊断：真因是**无锚点结果被判据静默降级** + 回执把原因归错，而非「多问只渲染第一问」
+      serves:
+        - FR-1
+        - FR-2
+      criterion: 台账 `REQ-261007100513-6749` 的 `v1-9`：`hasResultAnchor=false` 且 `status=unverified`；同批 8 项文本含 `npx`/`pnpm` 者全部 `passed`
+    - id: D-3
+      source: 用户 2026-10-07 本窗口：「继续」
+      verdict: "范围按提案落地（①降级原因可见 + ②提交侧前置拦截，并补齐题干指引）；台账类型维持现值 `feature`；改动限定服务端（`sides: [backend]`），看板渲染新字段列入「边界」不做"
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      criterion: FR-1 验收第 1 条（无锚点 `result` 提交被拒并点名）与 FR-3 验收第 2 条（零输入通过不误伤）
+status:
+  artifacts: []

@@ -1,0 +1,38 @@
+task:
+  id: t-d413a8
+  title: 看板确认推进改走单点并与窗口在线解耦·研发
+  status: done
+  implements: |-
+    src/http/routers/requirements.ts：确认即推进分支删掉内联 transitionRequirement 与自写 [自动推进] 评论，改调 applyConfirmedAdvance({ requirementId, windowKey, from: gate.from, to: gate.to, nowTs, reason:'看板确认即推进', sourceLabel:'board' })（内容门 / G2 完整性门仍在调用方前置，一字不改）；把 onlineAgent(windowKey) 判定从流程前置改为只决定 delivered 与 note（窗口离线时 advanced 仍为 true）。tests/artifact-confirm-board.test.ts 补窗口离线用例（advanced===true、delivered===false、note 含「窗口不在线」）。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/artifact-confirm-board.test.ts` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-cd1673
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007135258-331a
+    TASK_ID: t-d413a8
+    TASK_TITLE: 看板确认推进改走单点并与窗口在线解耦·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T06:16:04.567Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007135258-331a
+  generated_at: 2026-10-07T06:15:45.867Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T06:16:04.567Z

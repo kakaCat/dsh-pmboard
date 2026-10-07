@@ -1,0 +1,35 @@
+task:
+  id: t-b7ab80
+  title: "[重做] 不可触发码的豁免白名单与棘轮守卫"
+  status: todo
+  implements: |-
+    新增 tests/fixtures/error-code-exempt.json：按 design/data-model.md 落 entries（每条含 code / tier / reason / evidence / blocker / plan）与 frozenCount；至少收录 REQBOARD_BRIDGE_NOT_READY（blocker=no-production-point）与 t4 实测仍不可触发的码。
+    新增 tests/error-code-exempt.test.ts：双向钉死（entries 集合与 inventory 的 covered=false 集合必须逐字相等）+ 棘轮（entries.length 不大于 frozenCount，上调即红）+ 有效性（reason 与 plan 非空、blocker 命中受控枚举、no-production-point 只许给死码）。
+    验证：npx vitest run tests/error-code-exempt.test.ts 全绿；破坏验证见 acceptance。
+  serves:
+    - FR-3
+  depends_on: []
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201814-ac4f
+    TASK_ID: t-b7ab80
+    TASK_TITLE: "[重做] 不可触发码的豁免白名单与棘轮守卫"
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 0
+  workflow:
+    - phase: test
+      status: pending
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201814-ac4f
+  generated_at: 2026-10-06T13:19:17.510Z
+  version: 1
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T13:19:17.510Z

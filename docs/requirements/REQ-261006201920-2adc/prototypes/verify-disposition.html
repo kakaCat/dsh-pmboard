@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>验收单裁决控件（verify panel）· 原型 authoritative · REQ-261006201920-2adc</title>
+<!--
+  本页 = 唯一 authoritative 原型（判定以 prototypes/INDEX.md 为准）。
+  服务条款：FR-3（裁决结果必须可复核）、FR-4（系统缺口项通过必须写处置）。
+  被取代时：把 INDEX.md 里本行状态改成 superseded，并在「被取代于」列写新权威路径。
+
+  取材口径（不凭空发明结构）：本页复刻 src/client/views/panels/verify.ts 的待裁决控件
+  （.dsh-pm-vitem / data-item-id / .dsh-pm-verdict-btn / .dsh-pm-vitem-opinion，含 is-prefilled 预填态）与
+  ITEM_STATUS_TEXT（passed 通过 / failed 不通过 / pending 待裁决 / unverified 未复核）、来源标签
+  （任务 / 需求级验收 · E2E 覆盖 · 孤儿用例 · 追溯断链 / 原型对照 · <path>）、实际结果来源三态
+  （agent 实测 / 人工填写 / 未标注来源）、placeholder 原文（「未自动验证：请写你看到的界面事实（通过必填）」/
+  「已预填 agent 实测结果；改动即记为人工填写」）。
+  本需求新增的形态：未复核落成、变更理由必填 + 原实测结果保留展示、处置模板校验、归档被拦。
+
+  原型纪律：本页是**原型**不是交付物——不接服务端、不落台账；少量内联 JS 只做纯展示的展开与校验复现。
+  离线自包含：不引任何外部 CDN / 外部字体（字体走系统栈，等宽走 ui-monospace）。
+  视觉来源：ui-ux-pro-max --design-system「internal dashboard data table status workflow」
+  （variance 2 / density 8：Swiss 极简 + dense dashboard，深色科技 + 状态绿）；浅色模式为本页同源推导。
+  图标纪律：不用 emoji 当图标，状态用文字标记 ✓ / ✕ / ○ / ⏳ / ⛔（真实文本，非彩色 emoji）。
+
+  状态图例（与页内徽标同词）：
+    ⏳ 待裁决 / ✓ 通过 / ✕ 不通过 / ○ 未复核 / ⛔ 已拒收（本次提交被拒，项仍待裁决）
+  「未复核」与「已通过」的区别：徽标文字不同 + 左侧 4px 竖色条不同（未复核=琥珀、通过=绿），
+  两态都不靠颜色单独表意（徽标文字本身即判据）。
+
+  geometry 口径说明（⚠️ 未做浏览器实测，如实声明）：本页未启动 server、未开浏览器，故**没有 px 观测量**；
+  下面那块观测块只放**结构性计数**（读本文件即可复核，与窗口宽无关，at.width 仅作口径必填字段）。
+  若门禁/设计确需像素观测量，须由能起真实渲染器的一方补测后替换。
+
+  JS 与静态态的关系（评审要点）：每行的**预置态**（六种状态）在无 JS 时也完整可见——静态文案写在
+  [data-role="static"] 块里；内联 JS 只在**用户开始交互后**接管该行（更新徽标 + 在字段旁的
+  [data-role="dyn"] 块给出实时拒绝/提示），不会抹掉预置文案。
+-->
+<style>
+  :root{
+    --bg:#f6f8fa; --card:#ffffff; --fg:#0f172a; --muted:#eef1f5; --muted-fg:#57606a;
+    --border:#d0d7de; --border-strong:#8c959f;
+    --pass:#15803d; --pass-bg:rgba(21,128,61,.10);
+    --fail:#b91c1c; --fail-bg:rgba(185,28,28,.10);
+    --hold:#b45309; --hold-bg:rgba(180,83,9,.12);
+    --unver:#b45309; --unver-bg:rgba(180,83,9,.10);
+    --agent:#0e7490; --agent-bg:rgba(14,116,144,.08);
+    --focus:#0891b2;
+    --fs-body:14px; --fs-meta:12px;
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0f172a; --card:#1b2336; --fg:#f8fafc; --muted:#272f42; --muted-fg:#94a3b8;
+      --border:#475569; --border-strong:#64748b;
+      --pass:#22c55e; --pass-bg:rgba(34,197,94,.14);
+      --fail:#ef4444; --fail-bg:rgba(239,68,68,.14);
+      --hold:#fbbf24; --hold-bg:rgba(251,191,36,.14);
+      --unver:#fbbf24; --unver-bg:rgba(251,191,36,.12);
+      --agent:#22d3ee; --agent-bg:rgba(34,211,238,.12);
+      --focus:#22d3ee;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--fg); font-size:var(--fs-body); line-height:1.5;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  }
+  code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;font-size:.92em;
+    overflow-wrap:anywhere}
+  header.page{background:var(--card);border-bottom:1px solid var(--border);padding:var(--sp-3) var(--sp-4)}
+  header.page h1{margin:0 0 var(--sp-1);font-size:16px;font-weight:650}
+  header.page .req{color:var(--muted-fg);font-size:var(--fs-meta)}
+  .auth{display:inline-block;margin-left:var(--sp-2);padding:1px var(--sp-2);border-radius:999px;
+    background:var(--agent-bg);color:var(--agent);border:1px solid var(--border);font-size:var(--fs-meta);font-weight:600}
+  main{max-width:1180px;margin:0 auto;padding:var(--sp-4) var(--sp-4) 48px}
+  h2.group-title{font-size:15px;font-weight:650;margin:var(--sp-4) 0 var(--sp-2)}
+  h2.group-title .fr{color:var(--muted-fg);font-weight:600;margin-right:var(--sp-2)}
+  .group-note{color:var(--muted-fg);font-size:var(--fs-meta);margin:0 0 var(--sp-3)}
+
+  .gate{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);align-items:baseline;
+    border:1px solid var(--border);border-left:4px solid var(--fail);background:var(--card);
+    border-radius:6px;padding:var(--sp-3);margin:var(--sp-3) 0}
+  .gate[data-state="clear"]{border-left-color:var(--pass)}
+  .gate .gate-title{font-weight:650}
+  .gate .gate-ids{font-size:var(--fs-meta);color:var(--muted-fg)}
+  .counts{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin:var(--sp-3) 0}
+  .counts .chip{border:1px solid var(--border);background:var(--card);border-radius:999px;
+    padding:2px var(--sp-3);font-size:var(--fs-meta);white-space:nowrap}
+  .counts .chip b{font-variant-numeric:tabular-nums}
+
+  .vitem{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:var(--sp-3);
+    background:var(--card);border:1px solid var(--border);border-radius:6px;padding:var(--sp-3);margin:0 0 var(--sp-2)}
+  .vitem[data-flag="unverified"]{border-left:4px solid var(--unver)}
+  .vitem[data-flag="rejected"]{border-left:4px solid var(--fail)}
+  .vitem[data-flag="passed"]{border-left:4px solid var(--pass)}
+  .vitem[data-flag="pending"]{border-left:4px solid var(--border-strong)}
+  .head{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-2)}
+  .vid{font-weight:650;background:var(--muted);border-radius:4px;padding:1px 6px;white-space:nowrap}
+  .tag{font-size:var(--fs-meta);border:1px solid var(--border);border-radius:999px;padding:1px var(--sp-2);
+    white-space:nowrap;max-width:30ch;overflow:hidden;text-overflow:ellipsis;color:var(--muted-fg)}
+  .tag[data-kind="task"]{color:var(--fg)}
+  .tag[data-kind="gap"]{border-color:var(--hold);color:var(--hold)}
+  .badge{font-size:var(--fs-meta);font-weight:650;border-radius:999px;padding:1px var(--sp-2);
+    white-space:nowrap;border:1px solid transparent}
+  .badge[data-b="pending"]{background:var(--muted);color:var(--muted-fg);border-color:var(--border)}
+  .badge[data-b="passed"]{background:var(--pass-bg);color:var(--pass);border-color:var(--pass)}
+  .badge[data-b="failed"]{background:var(--fail-bg);color:var(--fail);border-color:var(--fail)}
+  .badge[data-b="unverified"]{background:var(--unver-bg);color:var(--unver);border-color:var(--unver)}
+  .badge[data-b="rejected"]{background:var(--fail-bg);color:var(--fail);border-color:var(--fail)}
+  .srcres{font-size:var(--fs-meta);color:var(--muted-fg);border-bottom:1px dashed var(--border-strong);white-space:nowrap}
+  .srcres[data-src="agent"]{color:var(--agent);border-bottom-color:var(--agent)}
+  .nhflag{font-size:var(--fs-meta);font-weight:650;color:var(--hold);border:1px solid var(--hold);
+    background:var(--hold-bg);border-radius:4px;padding:0 var(--sp-1);white-space:nowrap}
+  .line{margin:0 0 var(--sp-1)}
+  .line .k{color:var(--muted-fg);font-size:var(--fs-meta)}
+  .anchor{font-size:var(--fs-meta);color:var(--pass);margin:var(--sp-1) 0 0}
+  .anchor[data-ok="no"]{color:var(--unver)}
+  .overridden{margin:var(--sp-2) 0 0;padding:var(--sp-2);border:1px dashed var(--border-strong);border-radius:4px;
+    background:var(--muted);font-size:var(--fs-meta)}
+  .overridden .k{color:var(--muted-fg)}
+
+  .verdict{display:flex;flex-direction:column;gap:var(--sp-2)}
+  .radios{display:flex;gap:var(--sp-3)}
+  .radios label{display:inline-flex;align-items:center;gap:var(--sp-1);min-height:32px;cursor:pointer}
+  input[type=radio]{width:16px;height:16px;margin:0;accent-color:var(--focus)}
+  .opinion,.reason{width:100%;font:inherit;font-size:var(--fs-body);color:var(--fg);
+    background:var(--card);border:1px solid var(--border);border-radius:4px;padding:var(--sp-2);min-height:34px}
+  .opinion.is-prefilled{border-style:dashed;border-color:var(--agent);background:var(--agent-bg)}
+  .opinion:focus-visible,.reason:focus-visible,input[type=radio]:focus-visible{
+    outline:2px solid var(--focus);outline-offset:1px}
+  .fld-label{font-size:var(--fs-meta);color:var(--muted-fg);display:block;margin-bottom:2px}
+  .reason-wrap[hidden]{display:none}
+  .req-mark{color:var(--fail);font-weight:650}
+
+  .notice{margin:var(--sp-2) 0 0;border-radius:4px;padding:var(--sp-2) var(--sp-3);font-size:var(--fs-meta);
+    border:1px solid var(--border);background:var(--muted);color:var(--fg)}
+  .notice[data-kind="reject"]{border-color:var(--fail);background:var(--fail-bg)}
+  .notice[data-kind="hint"]{border-color:var(--unver);background:var(--unver-bg)}
+  .notice[data-kind="ok"]{border-color:var(--pass);background:var(--pass-bg)}
+  .notice[hidden]{display:none}
+  .notice .n-title{font-weight:650;display:block;margin-bottom:2px}
+  .notice[data-kind="reject"] .n-title{color:var(--fail)}
+  .notice[data-kind="hint"] .n-title{color:var(--unver)}
+  .notice[data-kind="ok"] .n-title{color:var(--pass)}
+  .notice ul{margin:var(--sp-1) 0 0;padding-left:18px}
+  .notice li{margin:1px 0}
+  .tpl{display:block;margin-top:2px}
+  .tpl code{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:0 4px}
+  .blocked-by{font-size:var(--fs-meta);color:var(--fail);font-weight:650;margin:var(--sp-1) 0 0}
+  footer.page{max-width:1180px;margin:0 auto;padding:0 var(--sp-4) 40px;color:var(--muted-fg);font-size:var(--fs-meta)}
+  @media (max-width:900px){ .vitem{grid-template-columns:minmax(0,1fr)} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+</style>
+</head>
+<body>
+
+<header class="page">
+  <h1>验收单裁决控件（verify panel）<span class="auth">authoritative</span></h1>
+  <div class="req">
+    需求 <code>REQ-261006201920-2adc</code> · 让验收不再形式合规：堵住占位符验收与空事实裁决 ·
+    验收单 v2 · 本页是验收单裁决控件（verify panel）的交互原型，authoritative（权威清单见 <code>prototypes/INDEX.md</code>）
+  </div>
+</header>
+
+<main>
+
+  <div class="counts" id="counts" aria-live="polite" aria-atomic="true">
+    <span class="chip">共 <b id="c-total">9</b> 项</span>
+    <span class="chip">待裁决 <b id="c-pending">0</b></span>
+    <span class="chip">通过 <b id="c-passed">0</b></span>
+    <span class="chip">未复核 <b id="c-unverified">0</b></span>
+    <span class="chip">已拒收 <b id="c-rejected">0</b></span>
+    <span class="chip">不通过 <b id="c-failed">0</b></span>
+  </div>
+
+  <div class="gate" id="gate" data-state="blocked">
+    <span class="gate-title" id="gate-title">归档门：被拦住（不得归档）——5 项</span>
+    <span class="gate-ids" id="gate-ids">拦住项：v2-07、v2-11、v2-15、v2-27、v2-31（未复核项不计入通过；系统缺口项处置为空）</span>
+  </div>
+
+  <!-- ══════════════════════════════ FR-3 ══════════════════════════════ -->
+  <section id="FR-3" class="group">
+    <h2 class="group-title"><span class="fr">FR-3</span>裁决结果必须可复核</h2>
+    <p class="group-note">
+      这一组画三个新形态：① 实际结果无可复核锚点的「通过」→ 落成 <b>未复核</b>（与「已通过」在徽标文字与左侧色条上都不同）；
+      ② needsHuman 项 ≤6 字无事实文本（典型「通过」两个字）→ 当场拒收，并给出「该写什么」；
+      ③ 人覆盖 agent 实测原文 → 该行展开必填「变更理由」，且 agent 原文以「原实测结果（已被覆盖）」保留展示。
+    </p>
+
+    <!-- 1. agent 结果有锚点 → 正常可裁决（默认待裁决；点「通过」即落成通过） -->
+    <article class="vitem" data-item-id="v2-03" data-source="task" data-flag="pending"
+             data-result-source="agent" data-needs-human="0" data-gap="0" data-preset="pending"
+             data-agent-result="pnpm vitest run tests/verify-item-result.test.ts → 12 passed（0 failed）">
+      <div class="col-main">
+        <div class="head">
+          <code class="vid">v2-03</code>
+          <span class="tag" data-kind="task">任务 · t-3a769a</span>
+          <span class="badge" data-b="pending">⏳ 待裁决</span>
+          <span class="srcres" data-src="agent">agent 实测</span>
+        </div>
+        <div class="line"><span class="k">标准：</span>裁决通过时必须能复核到实际结果；无可复核锚点不得落成「通过」。</div>
+        <div class="line"><span class="k">实际结果（agent 实测）：</span><code>pnpm vitest run tests/verify-item-result.test.ts</code> → 12 passed（0 failed）</div>
+        <p class="anchor" data-ok="yes">✓ 含可复核锚点：命令 + 明确计数（12 passed）</p>
+        <div class="notice" data-role="static" data-kind="ok">
+          <span class="n-title">正常可裁决：锚点在，通过不会落成「未复核」</span>
+          点「通过」后本行落成立台账的「通过」；点「不通过」必须写意见。
+        </div>
+      </div>
+      <div class="verdict">
+        <div class="radios">
+          <label><input type="radio" name="verdict-v2-03" value="passed"> 通过</label>
+          <label><input type="radio" name="verdict-v2-03" value="failed"> 不通过</label>
+        </div>
+        <div>
+          <span class="fld-label" id="lb-v2-03">意见</span>
+          <input type="text" class="opinion is-prefilled" aria-labelledby="lb-v2-03" aria-describedby="nt-v2-03"
+                 value="pnpm vitest run tests/verify-item-result.test.ts → 12 passed（0 failed）"
+                 placeholder="已预填 agent 实测结果；改动即记为人工填写">
+        </div>
+        <div class="reason-wrap" data-role="reason-wrap" hidden>
+          <span class="fld-label" id="lb-v2-03-r">变更理由（<span class="req-mark">必填</span>：为什么覆盖 agent 原文）</span>
+          <input type="text" class="reason" aria-labelledby="lb-v2-03-r"
+                 placeholder="你改了 agent 的实测原文，写清为什么改">
+        </div>
+        <div class="notice" id="nt-v2-03" data-role="dyn" data-kind="reject" role="alert" hidden>
+          <span class="n-title" data-slot="dyn-title">—</span><span data-slot="dyn-text"></span>
+        </div>
+      </div>
+    </article>
+
+    <!-- 2. agent 结果显示为「通过」两个字（无锚点）→ 落成「未复核」+ 补什么才算数 -->
+    <article class="vitem" data-item-id="v2-07" data-source="task" data-flag="unverified"
+             data-result-source="agent" data-needs-human="0" data-gap="0" data-preset="unverified"
+             data-agent-result="通过">
+      <div class="col-main">
+        <div class="head">
+          <code class="vid">v2-07</code>
+          <span class="tag" data-kind="task">任务 · t-b54e40</span>
+          <span class="badge" data-b="unverified">○ 未复核</span>
+          <span class="srcres" data-src="agent">agent 实测</span>
+        </div>
+        <div class="line"><span class="k">标准：</span>看板裁决链路可用；点通过即落台账。</div>
+        <div class="line"><span class="k">实际结果（agent 实测）：</span><code>通过</code></div>
+        <p class="anchor" data-ok="no">○ 无可复核锚点：既无命令、也无文件路径或明确计数</p>
+        <div class="notice" data-role="static" data-kind="hint">
+          <span class="n-title">落成「未复核」，不冒充通过（不计入通过数、拦住归档）</span>
+          「通过」两个字不是实测结果。补什么才算数：把<b>命令 + 输出摘要</b>写进实际结果，例如
+          <span class="tpl"><code>pnpm vitest run tests/accept-sheet-tool.test.ts → 18 passed</code></span>
+          <span class="tpl">或写清改了哪个文件、看到什么明确计数，例如 <code>src/domain/workflow/AcceptanceSheetSpec.ts 新增 2 条分支，tests/ 下 2 例覆盖</code></span>
+        </div>
+      </div>
+      <div class="verdict">
+        <div class="radios">
+          <label><input type="radio" name="verdict-v2-07" value="passed" checked> 通过</label>
+          <label><input type="radio" name="verdict-v2-07" value="failed"> 不通过</label>
+        </div>
+        <div>
+          <span class="fld-label" id="lb-v2-07">意见（改动即记为人工填写）</span>
+          <input type="text" class="opinion is-prefilled" aria-labelledby="lb-v2-07" aria-describedby="nt-v2-07"
+                 value="通过" placeholder="已预填 agent 实测结果；改动即记为人工填写">
+        </div>
+        <div class="reason-wrap" data-role="reason-wrap" hidden>
+          <span class="fld-label" id="lb-v2-07-r">变更理由（<span class="req-mark">必填</span>：为什么覆盖 agent 原文）</span>
+          <input type="text" class="reason" aria-labelledby="lb-v2-07-r"
+                 placeholder="你改了 agent 的实测原文，写清为什么改">
+        </div>
+        <div class="notice" id="nt-v2-07" data-role="dyn" data-kind="reject" role="alert" hidden>
+          <span class="n-title" data-slot="dyn-title">—</span><span data-slot="dyn-text"></span>
+        </div>
+      </div>
+    </article>
+
+    <!-- 3. needsHuman（原型对照）→ 输入「通过」被拒的现场 -->
+    <article class="vitem" data-item-id="v2-11" data-source="prototype-compare" data-flag="rejected"
+             data-result-source="none" data-needs-human="1" data-gap="0" data-preset="rejected"
+             data-agent-result="">
+      <div class="col-main">
+        <div class="head">
+          <code class="vid">v2-11</code>
+          <span class="tag" data-kind="prototype-compare">原型对照 · prototypes/verify-disposition.html</span>
+          <span class="badge" data-b="rejected">⛔ 已拒收</span>
+          <span class="nhflag">无法自验·需人工</span>
+          <span class="srcres" data-src="none">未标注来源</span>
+        </div>
+        <div class="line"><span class="k">标准：</span>深色 / 浅色下「未复核」与「已通过」两态一眼可分。</div>
+        <div class="line"><span class="k">实际结果：</span>尚无实测结果（界面视觉类，agent 不预填）</div>
+        <div class="line"><span class="k">需人工：</span>判定依据只在人眼里：两种配色下徽标的可分辨性</div>
+        <div class="notice" data-role="static" data-kind="reject" role="alert">
+          <span class="n-title">本次提交被拒：这条判定只能人看，而「通过」两个字没有可核对的界面事实</span>
+          <b>拒收原因：</b>needsHuman 项不吃 agent 的 result 兜底，通过必须有人写下的事实；≤6 字的无事实文本（「通过」「OK」「没问题」）一律拒收。
+          <span class="tpl"><b>该写什么：现象 + 证据路径</b>（截图路径 / 锚点区块）。例：</span>
+          <span class="tpl">「浅色下 v2-07 的「未复核」琥珀徽标与卡片底色对比够；深色下同一徽标偏暗、需贴近屏幕才分得清；见 <code>prototypes/verify-disposition.html#FR-3</code>，截图 <code>docs/requirements/REQ-261006201920-2adc/tests/shot-v2-11-dark.png</code>」</span>
+        </div>
+      </div>
+      <div class="verdict">
+        <div class="radios">
+          <label><input type="radio" name="verdict-v2-11" value="passed" checked> 通过</label>
+          <label><input type="radio" name="verdict-v2-11" value="failed"> 不通过</label>
+        </div>
+        <div>
+          <span class="fld-label" id="lb-v2-11">意见（<span class="req-mark">通过必填</span>：写界面事实）</span>
+          <input type="text" class="opinion" aria-labelledby="lb-v2-11" aria-describedby="nt-v2-11"
+                 value="通过" placeholder="未自动验证：请写你看到的界面事实（通过必填）">
+        </div>
+        <div class="notice" id="nt-v2-11" data-role="dyn" data-kind="reject" role="alert" hidden>
+          <span class="n-title" data-slot="dyn-title">—</span><span data-slot="dyn-text"></span>
+        </div>
+      </div>
+    </article>
+
+    <!-- 4. 人覆盖 agent 实测原文 → 变更理由展开（缺理由 → 当场拒收）+ 原实测结果保留 -->
+    <article class="vitem" data-item-id="v2-15" data-source="requirement" data-flag="rejected"
+             data-result-source="agent" data-needs-human="0" data-gap="0" data-preset="override-rejected"
+             data-agent-result="pnpm vitest run tests/verify-item-result.test.ts → 12 passed">
+      <div class="col-main">
+        <div class="head">
+          <code class="vid">v2-15</code>
+          <span class="tag" data-kind="requirement">需求级验收</span>
+          <span class="badge" data-b="rejected">⛔ 已拒收</span>
+          <span class="srcres" data-src="agent">agent 实测（原文已被覆盖）</span>
+        </div>
+        <div class="line"><span class="k">标准：</span>无可复核锚点的「通过」落成「未复核」，不冒充通过。</div>
+        <div class="line"><span class="k">实际结果（人工填写）：</span><code>pnpm vitest run tests/verify-item-result.test.ts → 12 passed; 另跑 tests/accept-sheet-zero-input.test.ts → 9 passed</code></div>
+        <div class="overridden" data-role="overridden">
+          <span class="k">原实测结果（已被覆盖，不丢弃、留痕可比对）：</span>
+          <code>pnpm vitest run tests/verify-item-result.test.ts → 12 passed</code>
+        </div>
+        <div class="notice" data-role="static" data-kind="reject" role="alert">
+          <span class="n-title">本次提交被拒：你改动了 agent 的实测原文，必须写清为什么改</span>
+          <b>拒收原因：</b>覆盖是影响留痕的动作，缺「变更理由」时通过不落章。
+          <span class="tpl">请在右侧「变更理由」里写清动机，例：「agent 只跑了单文件，我补跑零输入用例，原实测结果不完整」。</span>
+          <span class="tpl">agent 原文不被丢弃：上方「原实测结果（已被覆盖）」与理由一并入台账，事后可比对谁改了什么。</span>
+        </div>
+      </div>
+      <div class="verdict">
+        <div class="radios">
+          <label><input type="radio" name="verdict-v2-15" value="passed" checked> 通过</label>
+          <label><input type="radio" name="verdict-v2-15" value="failed"> 不通过</label>
+        </div>
+        <div>
+          <span class="fld-label" id="lb-v2-15">意见（已覆盖 agent 原文，改动即记为人工填写）</span>
+          <input type="text" class="opinion" aria-labelledby="lb-v2-15"
+                 value="pnpm vitest run tests/verify-item-result.test.ts → 12 passed; 另跑 tests/accept-sheet-zero-input.test.ts → 9 passed">
+        </div>
+        <div class="reason-wrap" data-role="reason-wrap">
+          <span class="fld-label" id="lb-v2-15-r">变更理由（<span class="req-mark">必填</span>：为什么覆盖 agent 原文）</span>
+          <input type="text" class="reason" aria-labelledby="lb-v2-15-r"
+                 placeholder="例：agent 只跑了单文件，我补跑零输入用例，原实测结果不完整">
+        </div>
+        <div class="notice" id="nt-v2-15" data-role="dyn" data-kind="reject" role="alert" hidden>
+          <span class="n-title" data-slot="dyn-title">—</span><span data-slot="dyn-text"></span>
+        </div>
+      </div>
+    </article>
+
+    <!-- 5. 同形态的通过终态：变更理由已填 → 通过（原实测结果仍保留展示） -->
+    <article class="vitem" data-item-id="v2-16" data-source="requirement" data-flag="passed"
+             data-result-source="agent" data-needs-human="0" data-gap="0" data-preset="override-passed"
+             data-agent-result="git diff --stat 显示 3 个文件改动，未附用例输出">
+      <div class="col-main">
+        <div class="head">
+          <code class="vid">v2-16</code>
+          <span class="tag" data-kind="requirement">需求级验收</span>
+          <span class="badge" data-b="passed">✓ 通过</span>
+          <span class="srcres" data-src="agent">agent 实测（原文已被覆盖）</span>
+        </div>
+        <div class="line"><span class="k">标准：</span>验收材料里逐项交代结果，缺项被点名。</div>
+        <div class="line"><span class="k">实际结果（人工填写）：</span><code>pnpm vitest run tests/verify-item-result.test.ts → 12 passed；漏项 0</code></div>
+        <div class="overridden" data-role="overridden">
+          <span class="k">原实测结果（已被覆盖）：</span>
+          <code>git diff --stat 显示 3 个文件改动，未附用例输出</code>
+        </div>
+        <div class="line"><span class="k">变更理由：</span>agent 只给了 diff 统计，我补跑用例并记漏项数，原文不足以复核</div>
+        <div class="notice" data-role="static" data-kind="ok">
+          <span class="n-title">已落成「通过」（人工覆盖，理由已留痕）</span>
+          覆盖留痕完整：原实测结果保留在上方，变更理由与裁决人一并入台账。
+        </div>
+      </div>
+      <div class="verdict">
+        <div class="radios">
+          <label><input type="radio" name="verdict-v2-16" value="passed" checked> 通过</label>
+          <label><input type="radio" name="verdict-v2-16" value="failed"> 不通过</label>
+        </div>
+        <div>
+          <span class="fld-label" id="lb-v2-16">意见</span>
+          <input type="text" class="opinion" aria-labelledby="lb-v2-16"
+                 value="pnpm vitest run tests/verify-item-result.test.ts → 12 passed；漏项 0">
+        </div>
+        <div class="reason-wrap" data-role="reason-wrap">
+          <span class="fld-label" id="lb-v2-16-r">变更理由（已填）</span>
+          <input type="text" class="reason" aria-labelledby="lb-v2-16-r"
+                 value="agent 只给了 diff 统计，我补跑用例并记漏项数，原文不足以复核">
+        </div>
+        <div class="notice" id="nt-v2-16" data-role="dyn" data-kind="reject" role="alert" hidden>
+          <span class="n-title" data-slot="dyn-title">—</span><span data-slot="dyn-text"></span>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ══════════════════════════════ FR-4 ══════════════════════════════ -->
+  <section id="FR-4" class="group">
+    <h2 class="group-title"><span class="fr">FR-4</span>系统缺口项通过必须写处置</h2>
+    <p class="group-note">
+      gapKind 项（E2E 覆盖缺口 / 孤儿用例 / 三方一致性 / 追溯断链）点通过时，处置必须命中
+      <code>补了 X</code> 或 <code>确认无需，因为 Y</code>；不命中当场拒收并提示两种合法写法；
+      处置为空 = 归档被这一项拦住（页面上可见）。
+    </p>
+
+    <!-- 6. gapKind=e2e，处置命中「补了 X」 -->
+    <article class="vitem" data-item-id="v2-21" data-source="requirement" data-flag="passed"
+             data-result-source="agent" data-needs-human="0" data-gap="1" data-gap-kind="e2e"
+             data-preset="passed"
+             data-agent-result="E2E 覆盖缺口：tests/e2e/ 下无本需求用例（RTM 覆盖率 0/1）">
+      <div class="col-main">
+        <div class="head">
+          <code class="vid">v2-21</code>
+          <span class="tag" data-kind="gap">需求级验收 · E2E 覆盖</span>
+          <span class="badge" data-b="passed">✓ 通过</span>
+          <span class="srcres" data-src="agent">agent 实测</span>
+        </div>
+        <div class="line"><span class="k">标准：</span>系统报出的缺口点通过时必须写处置，处置须命中处置模板。</div>
+        <div class="line"><span class="k">实际结果（agent 实测）：</span><code>E2E 覆盖缺口：tests/e2e/ 下无本需求用例（RTM 覆盖率 0/1）</code></div>
+        <div class="line"><span class="k">处置：</span>补了 <code>tests/e2e/verify-disposition.spec.ts</code>，3 条用例全绿</div>
+        <div class="notice" data-role="static" data-kind="ok">
+          <span class="n-title">处置命中模板「补了 X」，通过成立（合法写法 1 / 2）</span>
+          缺口有书面去向，归档门不再因本项拦住。
+        </div>
+      </div>
+      <div class="verdict">
+        <div class="radios">
+          <label><input type="radio" name="verdict-v2-21" value="passed" checked> 通过</label>
+          <label><input type="radio" name="verdict-v2-21" value="failed"> 不通过</label>
+        </div>
+        <div>
+          <span class="fld-label" id="lb-v2-21">处置（<span class="req-mark">通过必填</span>：补了 X / 确认无需，因为 Y）</span>
+          <input type="text" class="opinion" aria-labelledby="lb-v2-21" aria-describedby="nt-v2-21"
+                 value="补了 tests/e2e/verify-disposition.spec.ts，3 条用例全绿"
+                 placeholder="系统项处置：补了 X / 确认无需，因为 Y">
+        </div>
+        <div class="notice" id="nt-v2-21" data-role="dyn" data-kind="reject" role="alert" hidden>
+          <span class="n-title" data-slot="dyn-title">—</span><span data-slot="dyn-text"></span>
+        </div>
+      </div>
+    </article>
+
+    <!-- 7. gapKind=orphan，处置命中「确认无需，因为 Y」 -->
+    <article class="vitem" data-item-id="v2-23" data-source="requirement" data-flag="passed"
+             data-result-source="agent" data-needs-human="0" data-gap="1" data-gap-kind="orphan"
+             data-preset="passed"
+             data-agent-result="孤儿用例：tests/helpers/fixture.ts 未被 design/tests.md 点名（1 个文件）">
+      <div class="col-main">
+        <div class="head">
+          <code class="vid">v2-23</code>
+          <span class="tag" data-kind="gap">需求级验收 · 孤儿用例</span>
+          <span class="badge" data-b="passed">✓ 通过</span>
+          <span class="srcres" data-src="agent">agent 实测</span>
+        </div>
+        <div class="line"><span class="k">标准：</span>孤儿用例点通过时处置须命中处置模板。</div>
+        <div class="line"><span class="k">实际结果（agent 实测）：</span><code>孤儿用例：tests/helpers/fixture.ts 未被 design/tests.md 点名（1 个文件）</code></div>
+        <div class="line"><span class="k">处置：</span>确认无需，因为 <code>tests/helpers/fixture.ts</code> 是夹具不是用例文件，不进入覆盖口径</div>
+        <div class="notice" data-role="static" data-kind="ok">
+          <span class="n-title">处置命中模板「确认无需，因为 Y」，通过成立（合法写法 2 / 2）</span>
+          理由写清了「为什么这个缺口不用补」，而不是一句「已处理」。
+        </div>
+      </div>
+      <div class="verdict">
+        <div class="radios">
+          <label><input type="radio" name="verdict-v2-23" value="passed" checked> 通过</label>
+          <label><input type="radio" name="verdict-v2-23" value="failed"> 不通过</label>
+        </div>
+        <div>
+          <span class="fld-label" id="lb-v2-23">处置（<span class="req-mark">通过必填</span>：补了 X / 确认无需，因为 Y）</span>
+          <input type="text" class="opinion" aria-labelledby="lb-v2-23" aria-describedby="nt-v2-23"
+                 value="确认无需，因为 tests/helpers/fixture.ts 是夹具不是用例文件，不进入覆盖口径"
+                 placeholder="系统项处置：补了 X / 确认无需，因为 Y">
+        </div>
+        <div class="notice" id="nt-v2-23" data-role="dyn" data-kind="reject" role="alert" hidden>
+          <span class="n-title" data-slot="dyn-title">—</span><span data-slot="dyn-text"></span>
+        </div>
+      </div>
+    </article>
+
+    <!-- 8. gapKind=consistency，处置不命中模板 → 当场拒收 + 两种合法写法 -->
+    <article class="vitem" data-item-id="v2-27" data-source="requirement" data-flag="rejected"
+             data-result-source="agent" data-needs-human="0" data-gap="1" data-gap-kind="consistency"
+             data-preset="disposition-invalid"
+             data-agent-result="三方一致性：design/interfaces.md 声明 3 条接口，实现 2 条，验收单 3 条">
+      <div class="col-main">
+        <div class="head">
+          <code class="vid">v2-27</code>
+          <span class="tag" data-kind="gap">需求级验收 · 三方一致性</span>
+          <span class="badge" data-b="rejected">⛔ 已拒收</span>
+          <span class="srcres" data-src="agent">agent 实测</span>
+        </div>
+        <div class="line"><span class="k">标准：</span>系统项处置必须命中处置模板，否则通过不成立。</div>
+        <div class="line"><span class="k">实际结果（agent 实测）：</span><code>三方一致性：design/interfaces.md 声明 3 条接口，实现 2 条，验收单 3 条</code></div>
+        <div class="line"><span class="k">处置（本次输入）：</span><code>已处理</code></div>
+        <div class="notice" data-role="static" data-kind="reject" role="alert">
+          <span class="n-title">本次提交被拒：处置没命中模板——「已处理」不说明缺口去哪了</span>
+          系统项点通过等于宣布「这个缺口有去向」，所以只认两种合法写法：
+          <span class="tpl">① <code>补了 X</code> —— 例：<code>补了 design/interfaces.md 缺失的 sendVerdicts 条目</code></span>
+          <span class="tpl">② <code>确认无需，因为 Y</code> —— 例：<code>确认无需，因为第 3 条接口属下一需求，已记入 RTM 待办</code></span>
+          <span class="tpl">其他写法（「已处理」「知道了」「OK」）一律拒收；不通过则不需要处置模板，但要写不通过意见。</span>
+        </div>
+      </div>
+      <div class="verdict">
+        <div class="radios">
+          <label><input type="radio" name="verdict-v2-27" value="passed" checked> 通过</label>
+          <label><input type="radio" name="verdict-v2-27" value="failed"> 不通过</label>
+        </div>
+        <div>
+          <span class="fld-label" id="lb-v2-27">处置（<span class="req-mark">通过必填</span>：补了 X / 确认无需，因为 Y）</span>
+          <input type="text" class="opinion" aria-labelledby="lb-v2-27" aria-describedby="nt-v2-27"
+                 value="已处理" placeholder="系统项处置：补了 X / 确认无需，因为 Y">
+        </div>
+        <div class="notice" id="nt-v2-27" data-role="dyn" data-kind="reject" role="alert" hidden>
+          <span class="n-title" data-slot="dyn-title">—</span><span data-slot="dyn-text"></span>
+        </div>
+      </div>
+    </article>
+
+    <!-- 9. gapKind=traceability，处置为空 → 归档被这一项拦住（可见） -->
+    <article class="vitem" data-item-id="v2-31" data-source="requirement" data-flag="pending"
+             data-result-source="agent" data-needs-human="0" data-gap="1" data-gap-kind="traceability"
+             data-preset="disposition-empty"
+             data-agent-result="追溯断链：t-d00097 未被任何验收项承接（1 张卡）">
+      <div class="col-main">
+        <div class="head">
+          <code class="vid">v2-31</code>
+          <span class="tag" data-kind="gap">需求级验收 · 追溯断链</span>
+          <span class="badge" data-b="pending">⏳ 待裁决</span>
+          <span class="srcres" data-src="agent">agent 实测</span>
+        </div>
+        <div class="line"><span class="k">标准：</span>处置为空的系统项不得归档；页面上必须看得见「归档被它拦住」。</div>
+        <div class="line"><span class="k">实际结果（agent 实测）：</span><code>追溯断链：t-d00097 未被任何验收项承接（1 张卡）</code></div>
+        <div class="line"><span class="k">处置：</span>空（未写）</div>
+        <p class="blocked-by" data-role="blocked-by">⛔ 归档被这一项拦住：系统缺口项无处置 = 缺口被静默吞掉</p>
+        <div class="notice" data-role="static" data-kind="reject" role="alert">
+          <span class="n-title">归档被拦住：本项处置为空，这一版验收单不得归档</span>
+          点通过必须同时写处置，否则 sheetGateStatus 停在 pending（与「未复核」一起拦住归档）。
+          <span class="tpl">合法写法：① <code>补了 X</code>（例：<code>补了 t-d00097 的验收项引用 requirementRefs=["FR-4"]</code>）</span>
+          <span class="tpl">② <code>确认无需，因为 Y</code>（例：<code>确认无需，因为 t-d00097 已被 v2-33 承接，RTM 认定等价</code>）</span>
+        </div>
+      </div>
+      <div class="verdict">
+        <div class="radios">
+          <label><input type="radio" name="verdict-v2-31" value="passed"> 通过</label>
+          <label><input type="radio" name="verdict-v2-31" value="failed"> 不通过</label>
+        </div>
+        <div>
+          <span class="fld-label" id="lb-v2-31">处置（<span class="req-mark">通过必填</span>：补了 X / 确认无需，因为 Y）</span>
+          <input type="text" class="opinion" aria-labelledby="lb-v2-31" aria-describedby="nt-v2-31"
+                 value="" placeholder="系统项处置：补了 X / 确认无需，因为 Y">
+        </div>
+        <div class="notice" id="nt-v2-31" data-role="dyn" data-kind="reject" role="alert" hidden>
+          <span class="n-title" data-slot="dyn-title">—</span><span data-slot="dyn-text"></span>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <footer class="page">
+    <p>
+      原型自检：离线自包含（无外部 CDN / 无外部字体）；每行预置态在无 JS 时也完整可见。
+      内联 JS 只在**你开始交互后**接管该行：重算徽标、在字段旁给出实时拒绝/提示、并重算顶部归档门——
+      不连服务端、不写台账、不落任何数据。真实判定与留痕在服务端
+      （<code>src/domain/workflow/AcceptanceSheetSpec.ts</code> 的 applyVerdicts / dispositionMissingItems /
+      unverifiedItemsOf 与 <code>src/client/views/panels/verify.ts</code> 的待裁决控件）。
+    </p>
+  </footer>
+</main>
+
+<script>
+/* 纯展示复现：不连服务端、不落数据。判定口径按需求措辞，不是真实实现。 */
+(function () {
+  var ANCHOR = /(pnpm|npm|node|python3|git|tsc|vitest)\s|tests\/|docs\/|src\/|\d+\s*(passed|failed|条|个|项|例)/i;
+  var DISPO = /^(补了|确认无需[，,]\s*因为)\s*[:：]?\s*\S/;
+  var rows = [].slice.call(document.querySelectorAll('.vitem'));
+  var q = function (root, sel) { return root.querySelector(sel); };
+
+  function setBadge(row, kind, text) {
+    var b = q(row, '.badge');
+    if (!b) return;
+    b.setAttribute('data-b', kind);
+    b.textContent = text;
+  }
+  function dyn(row, title, text) {
+    var n = q(row, '[data-role="dyn"]');
+    if (!n) return;
+    if (title === null) { n.hidden = true; return; }
+    n.hidden = false;
+    var t = q(n, '[data-slot="dyn-title"]');
+    var s = q(n, '[data-slot="dyn-text"]');
+    if (t) t.textContent = title;
+    if (s) s.textContent = text;
+  }
+  function hideStatic(row) {
+    var s = q(row, '[data-role="static"]');
+    if (s) s.hidden = true;
+  }
+  var LEGAL = '只认两种合法写法：① 补了 X ② 确认无需，因为 Y（其他写法一律拒收）。';
+  /* 实时拒收 = 「已拒收」态：徽标与左侧色条都要跟着变，不能嘴上说拒收、徽标还写待裁决 */
+  function reject(row, title, text) {
+    row.setAttribute('data-flag', 'rejected');
+    setBadge(row, 'rejected', '⛔ 已拒收');
+    dyn(row, title, text);
+    return 'rejected';
+  }
+  /* 预置态名 → 计票用的状态名（两套名字分开，避免"预置名"泄漏成"状态"） */
+  var PRESET_STATE = {
+    'pending': 'pending',
+    'passed': 'passed',
+    'unverified': 'unverified',
+    'rejected': 'rejected',
+    'override-rejected': 'rejected',
+    'override-passed': 'passed',
+    'disposition-invalid': 'rejected',
+    'disposition-empty': 'blocked'
+  };
+
+  /* 返回该行当前状态：pending | passed | failed | unverified | rejected | blocked */
+  function evaluate(row, touched) {
+    var needsHuman = row.getAttribute('data-needs-human') === '1';
+    var isGap = row.getAttribute('data-gap') === '1';
+    var agentOriginal = row.getAttribute('data-agent-result') || '';
+    var preset = row.getAttribute('data-preset') || '';
+    var picked = q(row, 'input[type=radio]:checked');
+    var opinionEl = q(row, '.opinion');
+    var reasonWrap = q(row, '[data-role="reason-wrap"]');
+    var reasonEl = q(row, '.reason');
+    var opinion = ((opinionEl && opinionEl.value) || '').trim();
+    var overridden = !needsHuman && agentOriginal.length > 0 && opinion !== agentOriginal;
+
+    /* 覆盖态：展开必填的「变更理由」（agent 原文不丢弃，行内由静态块保留展示） */
+    if (reasonWrap) reasonWrap.hidden = !overridden;
+
+    /* 未交互的行：保持静态预置态（不抹掉预置文案），只按预置名回报状态用于计票 */
+    if (!touched) return PRESET_STATE[preset] || 'pending';
+
+    hideStatic(row);
+    dyn(row, null);
+    row.setAttribute('data-flag', 'pending');
+    setBadge(row, 'pending', '⏳ 待裁决');
+
+    if (!picked) return 'pending';
+
+    if (picked.value === 'failed') {
+      if (opinion.length === 0) {
+        return reject(row, '本次提交被拒：不通过必须写意见', '写清哪里不过（现象 + 位置），否则退回返工没有依据。');
+      }
+      row.setAttribute('data-flag', 'failed');
+      setBadge(row, 'failed', '✕ 不通过');
+      return 'failed';
+    }
+
+    if (isGap) {
+      if (opinion.length === 0) {
+        var bb = q(row, '[data-role="blocked-by"]');
+        if (bb) bb.hidden = false; /* 「归档被这一项拦住」的可见状态要跟着回来 */
+        dyn(row, '归档被拦住：系统缺口项处置为空',
+          '系统项报的是缺口，点通过却不写处置等于把缺口静默吞掉——本版验收单不得归档。' + LEGAL);
+        return 'blocked';
+      }
+      var bb2 = q(row, '[data-role="blocked-by"]');
+      if (bb2) bb2.hidden = true;
+      if (!DISPO.test(opinion)) {
+        return reject(row, '本次提交被拒：处置没命中模板', '「' + opinion + '」不说明缺口去哪了。' + LEGAL);
+      }
+      row.setAttribute('data-flag', 'passed');
+      setBadge(row, 'passed', '✓ 通过');
+      dyn(row, '处置命中模板，通过成立', '缺口有书面去向，归档门不再因本项拦住。');
+      return 'passed';
+    }
+
+    if (needsHuman) {
+      if (opinion.length === 0 || (opinion.length <= 6 && !ANCHOR.test(opinion))) {
+        return reject(row, '本次提交被拒：这条判定只能人看，而「' + (opinion || '（空）') + '」没有可核对的界面事实',
+          '该写什么：现象 + 证据路径，例「深色下「未复核」徽标偏暗、需贴近屏幕才分得清；截图 docs/.../shot-v2-11-dark.png」。' +
+          '≤6 字的无事实文本（通过 / OK / 没问题）一律拒收。');
+      }
+      row.setAttribute('data-flag', 'passed');
+      setBadge(row, 'passed', '✓ 通过');
+      dyn(row, '已落成「通过」（人给的事实）', '判定依据在人眼里，台账记的是你写下的现象与证据路径。');
+      return 'passed';
+    }
+
+    if (overridden && (!reasonEl || reasonEl.value.trim().length === 0)) {
+      return reject(row, '本次提交被拒：你改动了 agent 的实测原文，必须写清为什么改',
+        '覆盖留痕要能自证：缺「变更理由」时通过不落章；agent 原文不丢弃，已在上方「原实测结果（已被覆盖）」保留展示。');
+    }
+
+    if (!ANCHOR.test(opinion)) {
+      row.setAttribute('data-flag', 'unverified');
+      setBadge(row, 'unverified', '○ 未复核');
+      dyn(row, '落成「未复核」，不冒充通过',
+        '实际结果里没有可复核锚点（命令 / 文件路径 / 明确计数）。补什么才算数：把命令 + 输出摘要写进实际结果，' +
+        '如 pnpm vitest run tests/x.test.ts → 12 passed。');
+      return 'unverified';
+    }
+
+    row.setAttribute('data-flag', 'passed');
+    setBadge(row, 'passed', '✓ 通过');
+    dyn(row, '已落成「通过」（可复核）',
+      overridden ? '人工覆盖留痕：原实测结果 + 变更理由一并入台账。' : '实际结果含可复核锚点（命令 / 路径 / 明确计数）。');
+    return 'passed';
+  }
+
+  var touched = {};
+  rows.forEach(function (row) {
+    var id = row.getAttribute('data-item-id');
+    touched[id] = false;
+    [].slice.call(row.querySelectorAll('input')).forEach(function (el) {
+      var mark = function () { touched[id] = true; refresh(); };
+      el.addEventListener('change', mark);
+      el.addEventListener('input', mark);
+      el.addEventListener('blur', mark);
+    });
+  });
+
+  function refresh() {
+    var tally = { total: rows.length, pending: 0, passed: 0, failed: 0, unverified: 0, rejected: 0, blocked: 0 };
+    var blockers = [];
+    rows.forEach(function (row) {
+      var id = row.getAttribute('data-item-id');
+      var state = evaluate(row, touched[id]);
+      /* 处置为空 = 该行仍「待裁决」，只是额外拦住归档：两个计数都要记，否则徽标与计数对不上 */
+      if (state === 'blocked') { tally.blocked++; tally.pending++; }
+      else if (tally[state] !== undefined) tally[state]++;
+      if (state === 'blocked') blockers.push(id);
+      if (state === 'unverified') blockers.push(id);
+      if (state === 'rejected') blockers.push(id);
+    });
+    ['total', 'pending', 'passed', 'failed', 'unverified', 'rejected'].forEach(function (k) {
+      var el = document.getElementById('c-' + k);
+      if (el) el.textContent = String(tally[k]);
+    });
+    var gate = document.getElementById('gate');
+    var title = document.getElementById('gate-title');
+    var ids = document.getElementById('gate-ids');
+    var uniq = blockers.filter(function (v, i) { return blockers.indexOf(v) === i; });
+    if (uniq.length === 0) {
+      gate.setAttribute('data-state', 'clear');
+      title.textContent = '归档门：可归档（全部项已通过且可复核）';
+      ids.textContent = '拦住项：无';
+    } else {
+      gate.setAttribute('data-state', 'blocked');
+      title.textContent = '归档门：被拦住（不得归档）——' + String(uniq.length) + ' 项';
+      ids.textContent = '拦住项：' + uniq.join('、') + '（未复核 / 已拒收不计入通过；系统缺口项处置为空亦拦住归档）';
+    }
+  }
+
+  refresh(); /* 首屏按预置态计票；未交互的行保持静态文案不动 */
+})();
+</script>
+
+<!-- geometry 观测量口径说明（**真正的观测注释块只有下面那一条**，本注释不算块；此写法是刻意的：
+     门禁按 `<!--` + 紧邻的 proto-geometry 识别块，所以说明文字不能顶在 `<!--` 后面，否则会被数成第二块）。
+     本页未起浏览器 → 无 px 观测量，只放结构性计数（读本文件即可复核）。
+     形状见 design/data-model.md §3.1；只放观测量名 + 实测值 + 测量条件，不放阈值（D-10）。
+     at.width = 口径必填字段（记录测量时假定的参考视口宽 1280）；这三个计数与窗口宽无关。 -->
+<!-- proto-geometry {"observations":[{"name":"verifyItems","value":9,"unit":"count","at":{"width":1280,"state":"terminal"}},{"name":"legalDispositionSamples","value":2,"unit":"count","at":{"width":1280,"state":"terminal"}},{"name":"presetRejectionSites","value":4,"unit":"count","at":{"width":1280,"state":"terminal"}}]} -->
+
+</body>
+</html>

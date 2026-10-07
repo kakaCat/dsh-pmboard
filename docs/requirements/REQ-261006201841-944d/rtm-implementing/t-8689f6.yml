@@ -1,0 +1,36 @@
+task:
+  id: t-8689f6
+  title: renderArchiveManifest 纯渲染器（人读三件套 + 机器产物分区 + queue.json 摘要）·联调
+  status: done
+  implements: |-
+    ① 新建 src/domain/requirement/archive-manifest.ts，导出 ArchiveManifestInput / MachineArtifactGroup / QueueSummary / renderArchiveManifest（类型逐字用 design/data-model.md §3）；② 机器产物分类复用 src/domain/requirement/archive-exemptions.ts 的 matchArchiveExemption，不新写分类规则；③ queue.json 摘要只取 tasks.length / edges.length / ready.length / generated_at / 字节数，JSON.parse 失败 → 只报体积 + 「无法解析」，不抛错；④ 输出分节顺序即契约：一句话结论 → 合并去向 → 人读材料 → 机器产物（可重建，折叠）→ 说明书更新点 → 相关；旧形态 section 渲染为 `path（旧：section）`；⑤ 新建 tests/archive-manifest-render.test.ts 按节断言（含 queue.json 合法/损坏两态）。
+
+    [子卡阶段·联调] 只做本阶段；验收：`npx vitest run <本卡接口/契约对应的测试文件>` → 全绿（请求样例与期望响应一致）
+  serves: []
+  depends_on:
+    - t-a074b3
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201841-944d
+    TASK_ID: t-8689f6
+    TASK_TITLE: renderArchiveManifest 纯渲染器（人读三件套 + 机器产物分区 + queue.json 摘要）·联调
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T13:19:57.964Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201841-944d
+  generated_at: 2026-10-06T13:19:57.963Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T13:20:01.731Z

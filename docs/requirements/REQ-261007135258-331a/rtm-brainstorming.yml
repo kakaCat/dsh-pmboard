@@ -1,0 +1,78 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261007135258-331a
+  generated_at: 2026-10-07T05:54:32.669Z
+  version: 4
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T06:21:54.348Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 看板确认的推进走统一实现
+      source: requirement.md
+      line: 126
+    - id: FR-2
+      title: 文字证据确认的推进走同一实现
+      source: requirement.md
+      line: 138
+    - id: FR-3
+      title: 推进后的收尾收敛为一处
+      source: requirement.md
+      line: 150
+    - id: FR-4
+      title: 看板推进与「窗口在线」解耦
+      source: requirement.md
+      line: 162
+    - id: FR-5
+      title: 门禁回执的指路指向统一入口
+      source: requirement.md
+      line: 174
+    - id: FR-6
+      title: 逐通道对拍用例与回归锁
+      source: requirement.md
+      line: 186
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 本窗口用户消息（2026-10-07 13:52）：「你梳理一下把线对齐了」
+      verdict: 本需求范围 = 四通道接线对齐与收敛；不新增门、不动 UI
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      criterion: 接线矩阵表四通道五件事逐项无缺口
+    - id: D-2
+      source: 本窗口用户消息（2026-10-07 13:50）：「确认我记得让实现一个统一的方法提供给确认按钮哪里不能连接代码吗？」
+      verdict: 统一方法沿用既有 `applyConfirmDecision` / `applyConfirmedAdvance`，不另立第二套；缺口按通道补齐
+      serves:
+        - FR-1
+        - FR-2
+      criterion: 两处内联推进归零（grep 0 命中）
+    - id: D-3
+      source: 本窗口用户消息（2026-10-07 13:47）：「所有改skip 就会自动唤醒agent了」
+      verdict: 唤醒与否由停手位与窗口在线决定、不由闸门链 skip 决定；本需求不改 skip 语义
+      serves:
+        - FR-3
+      criterion: 清位后不注入用户消息仍起轮一次
+    - id: D-4
+      source: 本窗口用户消息（2026-10-07 13:44）：「什么设置把skip了」
+      verdict: 不改 `NODE_ISOLATION` 默认值与语义（压缩与唤醒解耦）
+      serves:
+        - FR-3
+      criterion: 压缩开关关闭时 FR-3 判据仍全绿
+    - id: D-5
+      source: 本窗口用户消息（2026-10-07 13:34）：「需求分析到设计直接没有实现agent自动唤醒原因」
+      verdict: 病灶定性为"停手位未清 + 指路到人工门"；不把"提交即推进"纳入（G1 保持 humanOnly）
+      serves:
+        - FR-3
+        - FR-5
+      criterion: G1 `humanOnly` 断言不变（既有用例保持绿）
+    - id: D-6
+      source: 本窗口用户消息（2026-10-07 13:48）：「是提交文档的时候没有改状态对吗」
+      verdict: 提交只登记产物、不改状态是设计而非缺陷；只在回执/文档口径上减少误解
+      serves:
+        - FR-5
+      criterion: 提交回执与文档均写明"推进由人工门确认后自动完成"
+status:
+  artifacts: []

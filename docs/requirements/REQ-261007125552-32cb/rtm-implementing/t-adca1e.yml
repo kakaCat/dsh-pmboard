@@ -1,0 +1,38 @@
+task:
+  id: t-adca1e
+  title: 粒度门禁 wiring 与三入口挂载·复核
+  status: done
+  implements: |-
+    ① 新建 src/application/internal/plan-granularity.ts：assertGranularityGates(docs, req, rawTasks, planPath) → { failure?: GateFailure; warnings: string[] }。三维：a) 对照表门（enforce）：docQualityRulesApply(req.createdAt) 门控；读 design/interfaces.md 接口清单条目（无清单节/「不适用：」→ 降级 warn 并记降级原因）；读 planPath（透传实际提交路径，不硬编码 decomposition.md）找表头含「接口」+「接收卡 key」的对照表（不用「计划 key」——与 readPlanDocTaskTable 任务表词法避让）——清单条目无对照行拒 plan_interface_map_missing 点名 IF-N，对照行 key ∉ tasks[].key 拒并点名悬空 key；sides 含 frontend 时组件段同款（plan_component_map_missing）。b) 接口数门（enforce）：逐卡 countInterfaceDeclarations(implementation) > LIMITS.maxInterfacesPerCard 且 granularity_exempt 空 → 拒 plan_card_multi_interface，envelope 点名卡 key+识别到的接口清单+拆法建议；有豁免理由 → 放行且理由进 warnings。c) 形态软门（恒 warn）：granularityWarningsOf 结果进 warnings。② 挂载：SubmitArtifact.ts（assertClauseCoverageGate 之后、超容量门之前，failure 非空即 reject）；Decompose.ts（mutate 之前）；approved-plan-landing.ts（与既有覆盖门同序）。③ 两处返回体 +granularity_warnings（非空才给键）。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007125552-32cb/design/` 逐条核对；`npx vitest run tests/plan-granularity.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-47dfda
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007125552-32cb
+    TASK_ID: t-adca1e
+    TASK_TITLE: 粒度门禁 wiring 与三入口挂载·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T05:55:48.683Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007125552-32cb
+  generated_at: 2026-10-07T05:55:15.008Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T05:55:48.683Z

@@ -1,0 +1,51 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261007095750-9f48
+  generated_at: 2026-10-07T01:59:18.565Z
+  version: 5
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T02:23:00.502Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: "路径抽取口径统一扩根 <!-- serves: FR-1 -->"
+      source: requirement.md
+      line: 69
+    - id: FR-2
+      title: "两处判据同时生效 <!-- serves: FR-2 -->"
+      source: requirement.md
+      line: 86
+    - id: FR-3
+      title: "误报可控 + 真实读数 <!-- serves: FR-3 -->"
+      source: requirement.md
+      line: 101
+    - id: FR-4
+      title: "边界与认知同步 <!-- serves: FR-4 -->"
+      source: requirement.md
+      line: 116
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 用户在本窗口的立项弹框作答（2026-10-06，原话：「A：单口径扩根（两处判据同时生效）」）
+      verdict: 抽取口径**只扩一处**：`PATH_RE` 加 `src` 与 `.mts`，零交集建议与文件冲突门共用；不做两套口径
+      serves:
+        - FR-1
+        - FR-2
+      criterion: '`declaredFiles` 仍是唯一抽取器（`grep -rn "declaredFiles" src/` 只有一处定义）；`tests/concurrency-limits.test.ts` 全绿'
+    - id: D-2
+      source: 用户在本窗口的立项弹框作答（2026-10-06，原话：「拆分依赖判据的 src/ 盲区修复（PATH_RE 扩根）」）
+      verdict: 该工作单独立项（不塞回已归档的 REQ-261006211623-9dc1），类型 feature / 难度 expert
+      serves:
+        - FR-1
+        - FR-3
+      criterion: 台账：REQ-261007095750-9f48 处于 brainstorming；已归档需求保持不动
+    - id: D-3
+      source: 独立评审报告（2026-10-06，原话：「FR-7 零交集判据**在真实数据上大面积空转**…含 `src/` 的 530 行中 429 行（81%）一条都抽不到」）
+      verdict: 把它从"已知边界"升格为**待修缺陷**，并要求修复后附扩根前后的真实读数
+      serves:
+        - FR-2
+        - FR-3
+      criterion: 证据文件里给出扩根前后对照（可抽取比例 / 零交集命中数）
+status:
+  artifacts: []

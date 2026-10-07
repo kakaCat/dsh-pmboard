@@ -1,0 +1,36 @@
+task:
+  id: t-100945
+  title: 子卡预算软门禁：计数、到顶先停后报、幂等放行·研发
+  status: done
+  implements: |-
+    ① 新增 src/application/internal/subtask-budget.ts（纯判定 openBudgetWindow / chargeRequest / releaseBudget，窗口开时定格 limit，放行幂等）；② 新增 src/application/internal/request-counter.ts（只读订阅 session/event 的 assistant/message，按子会话归属；**不套 isIgnoredSession**；计数落 state/subtask-budget.json，缺失即「计数不可得」）；③ 新增 src/application/internal/task-comment.ts（appendTaskComment 内部 helper，写 TaskRecord.comments，**非工具**）；④ 改 src/application/use-cases/ExecuteTask.ts：executeSubtask 开窗（workflow 与 team 两条路线共同入口）；⑤ 到顶处置复用 src/application/internal/awaiting-confirm.ts 的 enterAwaitingConfirm/exitAwaitingConfirm（先停 → 卡评论 + owner 通知 → 等放行）；owner 通知走 inbox（活跃 next-step / 空闲 next-turn），**禁用 deliver/followup**；⑥ src/domain/limits.ts 加 subtaskRequestBudget=60；⑦ 新增 tests/subtask-budget.test.ts。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-ef4b17
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007100513-6749
+    TASK_ID: t-100945
+    TASK_TITLE: 子卡预算软门禁：计数、到顶先停后报、幂等放行·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T04:19:37.575Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007100513-6749
+  generated_at: 2026-10-07T03:49:39.707Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-07T04:19:41.111Z

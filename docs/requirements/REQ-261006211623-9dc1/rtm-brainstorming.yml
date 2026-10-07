@@ -1,0 +1,90 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261006211623-9dc1
+  generated_at: 2026-10-06T13:20:36.402Z
+  version: 5
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T14:31:18.938Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: "条款级判据软门禁 <!-- serves: FR-1 -->"
+      source: requirement.md
+      line: 88
+    - id: FR-2
+      title: "设计坐标探针 <!-- serves: FR-2 -->"
+      source: requirement.md
+      line: 106
+    - id: FR-3
+      title: "`sides` 硬门 <!-- serves: FR-3 -->"
+      source: requirement.md
+      line: 128
+    - id: FR-4
+      title: "「失败与并发路径」必填节 <!-- serves: FR-4 -->"
+      source: requirement.md
+      line: 147
+    - id: FR-5
+      title: "拆分引用单口径 <!-- serves: FR-5 -->"
+      source: requirement.md
+      line: 165
+    - id: FR-6
+      title: "子卡链静默失效看板标红 <!-- serves: FR-6 -->"
+      source: requirement.md
+      line: 183
+    - id: FR-7
+      title: "依赖与联调的理由必填 <!-- serves: FR-7 -->"
+      source: requirement.md
+      line: 204
+    - id: FR-8
+      title: "文档所见 = 批准所见 <!-- serves: FR-8 -->"
+      source: requirement.md
+      line: 221
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 用户在本窗口立项弹框作答（2026-10-06 20:16 UTC，原话：「按底稿开工」）
+      verdict: 按委派底稿开工，四面缺口一次做完；不另开分支需求
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      criterion: 本需求 8 条 FR 全部落地并各有反向演练（见各 FR 的验收标准）
+    - id: D-2
+      source: 用户消息（2026-10-06 20:16 UTC，原话：「继续」）
+      verdict: 立项（feature / expert）并把已完成的改动台账化；文档落 `docs/requirements/REQ-261006211623-9dc1/`
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      criterion: "`reqboard_status` 显示本窗口绑定本需求，本文档落盘并经 `reqboard_submit(kind=requirement)` 登记"
+    - id: D-3
+      source: 委派底稿（产物质量体检窗口投递，2026-10-06，原话：「refs 门禁收敛为单口径（「文档对照表满足」与「卡上必须有 refs」只能留一个，并说明理由）」）
+      verdict: 留「卡上必须有 refs」：删掉覆盖门禁的文档对照表通道，文档表降级为人读汇总 + 存量回填通道
+      serves:
+        - FR-5
+      criterion: "`tests/clause-coverage-gate.test.ts` 的「只补文档表 → 仍被拒」用例；`plan-landing-parity` 断言 refs 来源为 explicit"
+    - id: D-4
+      source: 委派底稿（同上，原话：「模板加「失败与并发路径」节（状态机/写路径类需求必填）」）
+      verdict: 实现形态改为**按需求创建时间的提交期硬门**，**刻意不进 `CATEGORY_DELTAS`**（进去会让 `missingCategoryDocs` 追溯存量）
+      serves:
+        - FR-4
+      criterion: "`tests/doc-quality-gate.test.ts`：新需求缺节拒、存量需求放行；`pnpm templates:check` 双向锁模板"
+    - id: D-5
+      source: 委派底稿（同上，原话：「存量需求不追溯、不改写」）
+      verdict: 两条硬门一律按 `DOC_QUALITY_RULES_SINCE` 判定；探针只在 `--req` 时按需跑，不批量扫存量
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+      criterion: 存量实测：78 个有 design/ 的需求 18 绿 / 60 红，**未改任何存量文档**（`git status -- short docs/requirements/` 除本需求目录外无改动）
+    - id: D-6
+      source: agent 复核子代理实现（2026-10-06 20:4x，委派底稿要求「反向演练必须自己跑」）
+      verdict: 打回 `chainMissing` 的一处静默放松：`in_progress` 且未声明 `stages` 的卡原本会标红，新写法会放过 → 改回分状态不对称判据
+      serves:
+        - FR-6
+      criterion: "`tests/card-layer.test.ts` 新增「`in_progress` 未声明仍标红」防腐烂回归用例 + 「`done` 未声明不标」用例"
+status:
+  artifacts: []

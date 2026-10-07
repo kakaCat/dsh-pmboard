@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>原型门拒人文案 · 原型（REQ-261006201649-cc89）</title>
+<!--
+  本原型服务 REQ-261006201649-cc89。它的职责是把「原型门拒人时，人看到什么」画死，
+  并用一张「几何量读数卡」把 FR-4 的读数契约（实测值 + 截图 + 截图 sha256）画出来。
+
+  为什么本需求要自交原型（而不是走 prototype_exempt）：
+  它要立的正是「非空骨架不得占权威位」这道门——一个自己靠模板骨架全绿的需求没有资格立这道门。
+  故本文件必须过它自己要立的判据：与 templates/brainstorming/prototype.html 的相似度远低于 90%，
+  且不含任何骨架占位符。
+
+  与实现的对照面（验收时逐项核）：
+    · 错误码与信封：src/application/internal/prototype-gates.ts（anchorFailure / versionFailure）
+    · 信封三要素拼接：src/application/internal/gate-feedback.ts（envelope：what —— why。补齐：how）
+    · 码 → 中文类别名：src/client/toolviews/shared.ts 的 ERROR_CATEGORY（本需求新增两个码的映射）
+    · 卡面渲染块：src/client/toolviews/biz-row.ts（dsh-pm-tv-err-detail / dsh-pm-tv-err-hint /
+      dsh-pm-tv-kv / dsh-pm-tv-k / dsh-pm-tv-v）与 src/client/toolviews/rows/*.ts
+      （统一文案「错误类别：<类别名>。请检查参数后重试。」）
+    · DOM 顺序：卡头 → 正文行 → 错误详情 → 错误提示（与 biz-row.ts 的渲染顺序一致）
+-->
+<style>
+body{font-family:-apple-system,"PingFang SC",sans-serif;margin:0;background:#f5f6f8;color:#24292f}
+header{background:#1f2328;color:#fff;padding:12px 20px;font-size:14px}header .req{opacity:.7;margin-left:8px}
+.page{max-width:900px;margin:0 auto;padding:16px}
+.fr{background:#fff;margin:16px auto;border:1px solid #d0d7de;border-radius:8px;padding:20px}
+.fr h2{margin:0 0 4px;font-size:16px}
+.meta{color:#57606a;font-size:12px;margin-bottom:12px}
+.mock{border:1px dashed #8c959f;border-radius:6px;padding:14px;background:#fbfcfd}
+.flow{font-size:13px;color:#57606a;margin-top:12px}
+
+/* 以下类名与 src/client/toolviews 的实现同源（见文件头「与实现的对照面」） */
+.dsh-pm-tv{font-family:-apple-system,"PingFang SC",sans-serif;font-size:13px;border:1px solid #d0d7de;
+  border-radius:6px;overflow:hidden;background:#fff;max-width:640px}
+.dsh-pm-tv-row{display:flex;gap:8px;align-items:center;padding:8px 10px;border-bottom:1px solid #eaeef2}
+.dsh-pm-tv-badge{flex:0 0 auto;font-size:11px;background:#ddf4ff;color:#0969da;border-radius:4px;padding:1px 6px}
+.dsh-pm-tv-title{font-weight:600}
+.dsh-pm-tv-body{padding:8px 10px}
+.dsh-pm-tv-kv{display:flex;gap:8px;padding:2px 0}
+.dsh-pm-tv-k{color:#57606a;flex:0 0 84px}
+.dsh-pm-tv-v{flex:1 1 auto;word-break:break-all}
+.dsh-pm-tv-err-detail{margin-top:4px;padding:4px 8px;border-left:2px solid #c00;background:#fff5f5;white-space:pre-wrap}
+.dsh-pm-tv-err-hint{margin-top:2px;font-size:11px;color:#8c959f}
+
+/* 真稿与骨架的并排对照（本需求 FR-1 的判据可视化） */
+.cmp{display:flex;gap:12px;flex-wrap:wrap}
+.cmp>div{flex:1 1 260px;border:1px solid #d0d7de;border-radius:6px;padding:10px;background:#fff}
+.cmp h3{margin:0 0 6px;font-size:13px}
+.tag{display:inline-block;font-size:11px;border-radius:4px;padding:1px 6px;margin-left:6px}
+.tag.reject{background:#ffebe9;color:#cf222e}
+.tag.pass{background:#dafbe1;color:#1a7f37}
+pre{margin:6px 0 0;font-size:11px;background:#f6f8fa;border-radius:4px;padding:8px;overflow:auto}
+</style>
+</head>
+<body>
+<header><strong>原型门拒人文案</strong><span class="req">REQ-261006201649-cc89 · 原型 v0.1 · 2026-10-06</span></header>
+
+<div class="page">
+
+<!-- 权威版本标记位（页内对照；权威判定以 prototypes/INDEX.md 为准）：本文件 = INDEX「状态」列唯一那条 authoritative 的路径。 -->
+
+<section class="fr" id="FR-1">
+  <h2>FR-1 空骨架/占位原型不得占权威位</h2>
+  <div class="meta">优先级 P0 · 状态：设计稿</div>
+  <div class="mock">
+    <div class="cmp">
+      <div>
+        <h3>真稿（放行）<span class="tag pass">pass</span></h3>
+        <pre>与模板行重合率 &lt; 90%
+占位符「（功能点<span>&#8203;</span>名）」：无
+每个 FR 区块有自己的界面结构</pre>
+      </div>
+      <div>
+        <h3>模板骨架（拒）<span class="tag reject">prototype_placeholder</span></h3>
+        <pre>与模板行重合率 &gt; 90%
+占位符「（功能点<span>&#8203;</span>名）」：有
+界面草图区仍是占位符</pre>
+      </div>
+    </div>
+    <div class="flow">交互路径：agent 落原型 → 登记（reqboard_submit kind=prototype）→ 门读权威那一份 →
+      命中占位标记<b>或</b>重合率 &gt; 90% → 拒并指名「哪条判据命中、读数是多少」；两条都不命中 → 放行。</div>
+  </div>
+</section>
+
+<section class="fr" id="FR-2">
+  <h2>FR-2 存在门与锚点门认这份判据</h2>
+  <div class="meta">优先级 P0 · 状态：设计稿</div>
+  <div class="mock">
+    <p style="margin:0 0 10px;font-size:13px;color:#57606a">
+      四种拒绝的<b>卡面必须能分辨</b>：看一眼类别名就知道该「补交」「改 INDEX」「补锚点」还是「填内容」。
+      下面四张卡就是实现应渲染出的 DOM（顺序：卡头 → 正文行 → 错误详情 → 错误提示）。
+    </p>
+
+    <!-- 卡 1：存在门 -->
+    <div class="dsh-pm-tv">
+      <div class="dsh-pm-tv-row"><span class="dsh-pm-tv-badge">📋 PM</span><span class="dsh-pm-tv-title">reqboard_move</span></div>
+      <div class="dsh-pm-tv-body">
+        <div class="dsh-pm-tv-kv"><span class="dsh-pm-tv-k">错误码</span><span class="dsh-pm-tv-v">prototype_missing</span></div>
+        <div class="dsh-pm-tv-kv"><span class="dsh-pm-tv-k">阶段</span><span class="dsh-pm-tv-v">brainstorming → design</span></div>
+        <div class="dsh-pm-tv-err-detail">需求 REQ-xxx 声明了 frontend 端侧，但产物簿没有已登记的 kind=prototype 产物 —— UI 需求的需求阶段必交原型（决定前端实现长什么样），且没有生效的 prototype_exempt 豁免。补齐：把原型落到 docs/requirements/REQ-xxx/prototypes/（骨架见 templates/brainstorming/prototype.html），在 prototypes/INDEX.md 标出唯一权威版本，再调 reqboard_submit(kind=prototype)（requirement_id="REQ-xxx"）登记</div>
+        <div class="dsh-pm-tv-err-hint">💡 错误类别：缺少原型。请检查参数后重试。</div>
+      </div>
+    </div>
+
+    <!-- 卡 2：版本门 -->
+    <div class="dsh-pm-tv" style="margin-top:12px">
+      <div class="dsh-pm-tv-row"><span class="dsh-pm-tv-badge">📋 PM</span><span class="dsh-pm-tv-title">reqboard_submit · kind=prototype</span></div>
+      <div class="dsh-pm-tv-body">
+        <div class="dsh-pm-tv-kv"><span class="dsh-pm-tv-k">错误码</span><span class="dsh-pm-tv-v">prototype_version_conflict</span></div>
+        <div class="dsh-pm-tv-kv"><span class="dsh-pm-tv-k">缺口</span><span class="dsh-pm-tv-v">authoritative ×2：prototypes/a.html、prototypes/b.html（必须恰好一条权威版本）</span></div>
+        <div class="dsh-pm-tv-err-detail">需求 REQ-xxx 的原型权威清单：authoritative ×2 —— INDEX 必须恰好一条 authoritative，且文档只许引用这条权威路径。补齐：改 prototypes/INDEX.md 只留一条「状态=authoritative」……再调 reqboard_submit(kind=prototype)（requirement_id="REQ-xxx"）复核</div>
+        <div class="dsh-pm-tv-err-hint">💡 错误类别：原型版本冲突。请检查参数后重试。</div>
+      </div>
+    </div>
+
+    <!-- 卡 3：锚点门（既有） -->
+    <div class="dsh-pm-tv" style="margin-top:12px">
+      <div class="dsh-pm-tv-row"><span class="dsh-pm-tv-badge">📋 PM</span><span class="dsh-pm-tv-title">reqboard_submit · kind=prototype</span></div>
+      <div class="dsh-pm-tv-body">
+        <div class="dsh-pm-tv-kv"><span class="dsh-pm-tv-k">错误码</span><span class="dsh-pm-tv-v">prototype_anchor_missing</span></div>
+        <div class="dsh-pm-tv-kv"><span class="dsh-pm-tv-k">缺口</span><span class="dsh-pm-tv-v">prototypes/detail.html 缺 id="FR-4" 区块（INDEX「服务条款」列声明了它）</span></div>
+        <div class="dsh-pm-tv-err-detail">权威原型 prototypes/detail.html：缺 id="FR-4" 区块 —— 权威原型缺机器可判读的 FR 锚点 / 唯一一块 proto-geometry。补齐：按 templates/brainstorming/prototype.html 补每个「服务条款」声明 FR 的 &lt;section id="FR-N"&gt;……</div>
+        <div class="dsh-pm-tv-err-hint">💡 错误类别：原型缺锚点。请检查参数后重试。</div>
+      </div>
+    </div>
+
+    <!-- 卡 4：本需求新增的非骨架判据（与卡 3 必须可分辨） -->
+    <div class="dsh-pm-tv" style="margin-top:12px">
+      <div class="dsh-pm-tv-row"><span class="dsh-pm-tv-badge">📋 PM</span><span class="dsh-pm-tv-title">reqboard_submit · kind=prototype</span></div>
+      <div class="dsh-pm-tv-body">
+        <div class="dsh-pm-tv-kv"><span class="dsh-pm-tv-k">错误码</span><span class="dsh-pm-tv-v">prototype_placeholder</span></div>
+        <div class="dsh-pm-tv-kv"><span class="dsh-pm-tv-k">命中判据</span><span class="dsh-pm-tv-v">占位标记「（功能点<span>&#8203;</span>名）」；与模板行重合率 96%（&gt; 90% 即命中）</span></div>
+        <div class="dsh-pm-tv-err-detail">权威原型 prototypes/detail.html 仍是模板骨架（没有填过内容）—— 它不是设计结论，占权威位等于「照模板实现」。补齐：把每个 FR 区块的界面结构 / 关键控件 / 交互路径填成真实设计，或换一份填过的原型并把 INDEX 的 authoritative 指过去，再调 reqboard_submit(kind=prototype)（requirement_id="REQ-xxx"）重新登记</div>
+        <div class="dsh-pm-tv-err-hint">💡 错误类别：原型仍是空骨架。请检查参数后重试。</div>
+      </div>
+    </div>
+
+    <div class="flow">交互路径：三门各自早退（同一处坏只报一次）→ 权威那一份先判非骨架（本需求新增）→ 再判锚点与几何量块。
+      判据读不到模板基线时<b>不判</b>（放行），绝不发明结论。</div>
+  </div>
+</section>
+
+<section class="fr" id="FR-3">
+  <h2>FR-3 对照项由「可选」改「硬判据」</h2>
+  <div class="meta">优先级 P0 · 状态：设计稿</div>
+  <div class="mock">
+    <table style="border-collapse:collapse;font-size:12px;width:100%">
+      <tr style="background:#f6f8fa">
+        <th style="text-align:left;padding:6px;border:1px solid #d0d7de">验收单上的情形</th>
+        <th style="text-align:left;padding:6px;border:1px solid #d0d7de">改动前</th>
+        <th style="text-align:left;padding:6px;border:1px solid #d0d7de">改动后</th>
+      </tr>
+      <tr>
+        <td style="padding:6px;border:1px solid #d0d7de">没交原型（UI 需求）</td>
+        <td style="padding:6px;border:1px solid #d0d7de">少一项（与下一种长得一样）</td>
+        <td style="padding:6px;border:1px solid #d0d7de">提交被拒（存在门先拦）</td>
+      </tr>
+      <tr>
+        <td style="padding:6px;border:1px solid #d0d7de">交了原型但没对照</td>
+        <td style="padding:6px;border:1px solid #d0d7de">少一项（静默放过）</td>
+        <td style="padding:6px;border:1px solid #d0d7de"><b>必出「原型对照 · &lt;权威路径&gt;」项</b></td>
+      </tr>
+      <tr>
+        <td style="padding:6px;border:1px solid #d0d7de">已批准 prototype_exempt</td>
+        <td style="padding:6px;border:1px solid #d0d7de">豁免说明行，不阻塞</td>
+        <td style="padding:6px;border:1px solid #d0d7de">豁免说明行，不阻塞（<b>一字不动</b>）</td>
+      </tr>
+    </table>
+    <div class="flow">交互路径：提交验收材料 → 读 INDEX 权威行 → 有权威原型 ⇒ 组装对照项 →
+      人逐项打勾（通过 / 不通过 + 意见）→ 缺项时提交被拒并点名缺哪一项。</div>
+  </div>
+</section>
+
+<section class="fr" id="FR-4">
+  <h2>FR-4 对照记录绑机器读数（实测值 + 截图 + 截图 sha256）</h2>
+  <div class="meta">优先级 P0 · 状态：设计稿</div>
+  <div class="mock">
+    <p style="margin:0 0 10px;font-size:13px;color:#57606a">
+      每条几何量读数要么<b>可复核</b>（路径在、sha256 对得上），要么<b>如实标未采集</b>——
+      不接受「填了但编的」。下面这张表的观测量名与数值就是本原型自己的 geometry 块（见页脚注释）。
+    </p>
+    <table style="border-collapse:collapse;font-size:12px;width:100%">
+      <tr style="background:#f6f8fa">
+        <th style="text-align:left;padding:6px;border:1px solid #d0d7de">观测量</th>
+        <th style="text-align:left;padding:6px;border:1px solid #d0d7de">实测值</th>
+        <th style="text-align:left;padding:6px;border:1px solid #d0d7de">测量条件</th>
+        <th style="text-align:left;padding:6px;border:1px solid #d0d7de">截图 + sha256</th>
+      </tr>
+      <tr>
+        <td style="padding:6px;border:1px solid #d0d7de">cardWidth</td>
+        <td style="padding:6px;border:1px solid #d0d7de">642 px</td>
+        <td style="padding:6px;border:1px solid #d0d7de">宽 1280 · inflight</td>
+        <td style="padding:6px;border:1px solid #d0d7de">evidence/gate-feedback-1280.png + 64 位摘要</td>
+      </tr>
+      <tr>
+        <td style="padding:6px;border:1px solid #d0d7de">gateCardCount</td>
+        <td style="padding:6px;border:1px solid #d0d7de">4 count</td>
+        <td style="padding:6px;border:1px solid #d0d7de">宽 1280 · terminal</td>
+        <td style="padding:6px;border:1px solid #d0d7de">同一张截图（四张卡同屏）</td>
+      </tr>
+    </table>
+    <div class="flow">交互路径：观测量缺 shot / shotSha256 两键 → 放行但记 unverified（存量口径）；
+      给了任一键 → 两键都要对，否则 prototype_geometry_unverified 拒并点名该观测量。
+      needsHuman 项的理由必须是事实性文本（含路径 / 截图名 / 命令 / 界面位置之一）。</div>
+  </div>
+</section>
+
+<section class="fr" id="FR-5">
+  <h2>FR-5 对齐判据可参数化</h2>
+  <div class="meta">优先级 P1 · 状态：设计稿</div>
+  <div class="mock">
+    <pre>// 被检需求自己的配置（三个字段）
+{
+  prototype: 'docs/requirements/REQ-xxx/prototypes/detail.html',
+  render:    () =&gt; buildXxxHtml(state),      // 实现侧渲染入口
+  contracts: { classes: [...], dataAttrs: [...], order: [...] }
+}
+
+// 通用判据读配置执行；失败时点名「原型路径 + 锚点 + 期望/实际」
+✓ class 契约：原型 54/54 命中
+✓ data-* 契约：data-result-src（原型与实现同名）
+✗ DOM 顺序：期望 .dsh-pm-tv-err-detail 在 .dsh-pm-tv-err-hint 之前，实际相反
+  原型：prototypes/detail.html#FR-2</pre>
+    <div class="flow">交互路径：新需求填三个字段 → 跑通用判据 → 红的逐条点名原型锚点 → 改实现（<b>不是改原型</b>）→ 复跑。</div>
+  </div>
+</section>
+
+<section class="fr" id="FR-6">
+  <h2>FR-6 根因与判据单点</h2>
+  <div class="meta">优先级 P0 · 状态：设计稿</div>
+  <div class="mock">
+    <pre>判据数据  prototype-skeleton-template.ts（骨架正文 = 唯一比对基线）
+   │
+纯函数    prototypePlaceholderOf(html, template) → 命中与否 + 读数
+   │
+门        存在门（登记口径） │ 版本门（权威恰一条） │ 锚点门（非骨架 → 锚点 → 几何量块）
+   │
+验收      有权威原型 ⇒ prototype-compare 项必出（豁免口径不动）
+   │
+信封      prototype_placeholder / prototype_geometry_unverified（HTTP 400 + 中文类别名，三处齐）</pre>
+    <div class="flow">交互路径：改判据只改纯函数与门组装；模板改一个字，判据同源跟着改——不存在第二份真相。</div>
+  </div>
+</section>
+
+<section class="fr" id="FR-7">
+  <h2>FR-7 反向演练与零回归</h2>
+  <div class="meta">优先级 P0 · 状态：设计稿</div>
+  <div class="mock">
+    <pre>演练 A（必红 → 必绿）
+  骨架占 authoritative  →  期望 prototype_placeholder + 点名路径
+  还原真稿              →  期望三门全过
+演练 B（对照项）
+  删掉对照项生成分支    →  期望有测试变红
+  恢复                  →  期望全绿
+回归
+  npx vitest run tests/prototype-*.test.ts tests/plan-prototype-anchor-gate.test.ts
+  存量需求（createdAt 早于原型规则生效日）行为与改动前逐字一致</pre>
+    <div class="flow">交互路径：改坏 → 必红 → 还原 → 必绿。只跑一向等于没跑。</div>
+  </div>
+</section>
+
+</div>
+
+<!-- geometry 观测量块（proto-geometry）：恰好一块。观测量名 + 实测值 + 测量条件 + 可复核截图证据（shot / shotSha256）。
+     截图由 evidence/ 下的实测文件给出；shotSha256 = 该文件内容的 sha256（64 位小写十六进制）。 -->
+<!-- proto-geometry {"observations":[{"name":"cardWidth","value":642,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261006201649-cc89/evidence/gate-feedback-1280.png","shotSha256":"9d9ba17c95dfa8c843e8aab3a8aafecf732004b63cde1355512d9001959c91a9"},{"name":"gateCardCount","value":4,"unit":"count","at":{"width":1280,"state":"terminal"},"shot":"docs/requirements/REQ-261006201649-cc89/evidence/gate-feedback-1280.png","shotSha256":"9d9ba17c95dfa8c843e8aab3a8aafecf732004b63cde1355512d9001959c91a9"}]} -->
+
+</body>
+</html>

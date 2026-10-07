@@ -1,0 +1,37 @@
+task:
+  id: t-a4da76
+  title: 新增 README 工具面校验用例
+  status: done
+  implements: 新建 tests/readme-tool-face.test.ts：读 README.md 与 package.json 文本；抽名字集合（正则 /`(reqboard_[a-z_]+)`/g 全文扫）、表头计数（/## 提供的工具（(\d+) 个）/）、表内行数（行匹配 /^\| `reqboard_/ 计数）；期望值全部从 TOOL_REGISTRY 派生（names = map(toolName)、count = length），禁止出现字面量 27 参与比较；断言双向差集为空、declared === rows === count、无「13 个」「21 个」残留、`${count} 个` 在 README 出现 ≥3 次且在 package.json description 出现 ≥1 次；失败消息逐条点名（README 缺：… / README 多：… / 登记面 N 条 / README 写 M 个 / 表内 K 行）。读文件用 node:fs + node:url，手法参照 tests/apply-wiring.test.ts。契约与失败消息形态见 design/interfaces.md 第 4 节。
+  serves:
+    - FR-1
+    - FR-4
+  depends_on:
+    - t-2cf2af
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201508-5cb6
+    TASK_ID: t-a4da76
+    TASK_TITLE: 新增 README 工具面校验用例
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-06T12:47:16.478Z
+    - phase: doc
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201508-5cb6
+  generated_at: 2026-10-06T12:39:44.425Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T12:47:16.478Z

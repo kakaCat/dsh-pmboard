@@ -1,0 +1,42 @@
+task:
+  id: t-b729f1
+  title: 冻结错误码口径：扫描器 + 清单 + 漂移守卫·复核
+  status: done
+  implements: |-
+    新增 tests/helpers/error-code-scan.ts：实现 scanErrorCodes / collectConstAliases / collectTestCoverage 三个导出（签名见 design/interfaces.md），口径 = src 下作为独立字符串字面量或对象键出现的 REQBOARD_X，排除注释行与 prompt 文案文件；根不存在时抛 TEST_SCAN_ROOT_MISSING，其余情况返回可能为空的结果、不替调用方判红。
+    新增 tests/fixtures/error-code-inventory.json：按 design/data-model.md 的字段契约落盘 125 个大写码 + 小写码 + excluded（5 个噪声字样 + REQBOARD_BRIDGE_NOT_READY 死码），site 用「file + anchor 行原文」抗行号漂移。
+    新增 tests/error-code-inventory.test.ts：三条守卫（口径内新码未进清单即红；excluded 条目数少于 6 即红；site.file 不存在或 anchor 未逐字出现即红）+ 假阴性自检（打印 literal/const 双形态覆盖数与假阴性率）。
+    新增 tests/drill/refresh-error-code-inventory.mts：重扫并合并，保留人工字段，新码以 tier=unclassified 追加，幂等（连跑两次第二次不写盘）。
+    验证：npx vitest run tests/error-code-inventory.test.ts 全绿；npx tsx tests/drill/refresh-error-code-inventory.mts 连跑两次第二次零写入。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-f4d774
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201814-ac4f
+    TASK_ID: t-b729f1
+    TASK_TITLE: 冻结错误码口径：扫描器 + 清单 + 漂移守卫·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-06T12:44:52.567Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201814-ac4f
+  generated_at: 2026-10-06T12:44:39.903Z
+  version: 8
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T07:48:39.684Z

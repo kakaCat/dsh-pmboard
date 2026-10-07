@@ -1,0 +1,39 @@
+task:
+  id: t-fc4732
+  title: 抽统一收尾 finishConfirmAdvance 并接进推进单点·复核
+  status: done
+  implements: |-
+    新建 src/application/internal/confirm-advance-finish.ts：导出 finishConfirmAdvance(deps, input)，内部顺序固定 —— ① exitAwaitingConfirm（带可选 dialogRef，清 awaiting-confirm:*，成功清位时 onCleared→notifyDrivable）② applyDiveTransition('confirm-advance', …, { stageChanged, status: from })（复位健康位 / 跨阶段归零，绝不改 activation）③ 后置读产出 { stopPositionCleared, clearedNow, healthReset, stageChanged }；两步各自 try/catch，永不抛。改 src/application/internal/confirm-settle.ts 的 applyConfirmedAdvance：增可选 reason / sourceLabel / clearStopPosition（缺省 = 既有行为），推进成功后调用 finishConfirmAdvance，返回体带 finish（未推进时省略该键）。新增 tests/confirm-advance-finish.test.ts（含抛错替身不抛、后置读数语义、wake-undeliverable 不被顺手清三条）。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007135258-331a/design/` 逐条核对；`npx vitest run tests/confirm-advance-finish.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-f677ce
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007135258-331a
+    TASK_ID: t-fc4732
+    TASK_TITLE: 抽统一收尾 finishConfirmAdvance 并接进推进单点·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-07T06:07:20.311Z
+      completed_at: 2026-10-07T06:07:25.236Z
+    - phase: doc
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007135258-331a
+  generated_at: 2026-10-07T06:05:02.230Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T06:07:25.237Z

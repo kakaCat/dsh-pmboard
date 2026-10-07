@@ -1,0 +1,1257 @@
+metadata:
+  stage: design
+  requirement_id: REQ-261006201841-944d
+  generated_at: 2026-10-06T12:24:49.877Z
+  version: 4
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T12:43:49.800Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 合并去向必须在该需求自己的工作区根下真实存在且非空
+      source: requirement.md
+      line: 118
+    - id: FR-2
+      title: 说明书更新点收敛为 `path#anchor`，锚点必须存在，`path` 纳入白名单
+      source: requirement.md
+      line: 147
+    - id: FR-3
+      title: 知识层自检新增「归档沉淀覆盖度」检查
+      source: requirement.md
+      line: 174
+    - id: FR-4
+      title: 知识条目「失效条件」必须可判定
+      source: requirement.md
+      line: 202
+    - id: FR-5
+      title: 归档时渲染 `archive.md` 进需求目录
+      source: requirement.md
+      line: 228
+    - id: FR-6
+      title: 归档材料把机器产物折叠呈现、`queue.json` 裁成摘要
+      source: requirement.md
+      line: 255
+    - id: FR-7
+      title: 看板归档条按项目身份标注来源，不在本仓时显示「在别处」
+      source: requirement.md
+      line: 281
+    - id: FR-8
+      title: 存量 37 条归档的只读核对报告
+      source: requirement.md
+      line: 308
+outputs:
+  design_sections:
+    - ref: design/architecture.md#TLDR
+      title: TL;DR `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/architecture.md
+      section: TLDR
+    - ref: design/architecture.md#分层与职责边界
+      title: 分层与职责边界 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/architecture.md
+      section: 分层与职责边界
+    - ref: design/architecture.md#现状病灶
+      title: 现状病灶 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-8
+      file: design/architecture.md
+      section: 现状病灶
+    - ref: design/architecture.md#目标架构三道闸-一份渲染物-两条读数-一处派生视图
+      title: 目标架构：三道闸 + 一份渲染物 + 两条读数 + 一处派生视图 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/architecture.md
+      section: 目标架构三道闸-一份渲染物-两条读数-一处派生视图
+    - ref: design/architecture.md#闸-1-合并去向FR-1
+      title: 闸 1 · 合并去向（FR-1）`
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: 闸-1-合并去向FR-1
+    - ref: design/architecture.md#闸-2-说明书更新点FR-2
+      title: 闸 2 · 说明书更新点（FR-2）`
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: 闸-2-说明书更新点FR-2
+    - ref: design/architecture.md#渲染物-archivemdFR-5-FR-6
+      title: 渲染物 · `archive.md`（FR-5 / FR-6）`
+      serves:
+        - FR-5
+        - FR-6
+      file: design/architecture.md
+      section: 渲染物-archivemdFR-5-FR-6
+    - ref: design/architecture.md#读数-K13-K14FR-3-FR-4
+      title: 读数 · K13 / K14（FR-3 / FR-4）`
+      serves:
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 读数-K13-K14FR-3-FR-4
+    - ref: design/architecture.md#派生视图-归档条来源FR-7
+      title: 派生视图 · 归档条来源（FR-7）`
+      serves:
+        - FR-7
+      file: design/architecture.md
+      section: 派生视图-归档条来源FR-7
+    - ref: design/architecture.md#接线表改哪里-明确不改哪里
+      title: 接线表（改哪里 / 明确不改哪里） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/architecture.md
+      section: 接线表改哪里-明确不改哪里
+    - ref: design/architecture.md#根解析唯一取数处跨项目判据不许自造
+      title: 根解析（唯一取数处，跨项目判据不许自造） `
+      serves:
+        - FR-1
+        - FR-7
+        - FR-8
+      file: design/architecture.md
+      section: 根解析唯一取数处跨项目判据不许自造
+    - ref: design/architecture.md#落地顺序各自可验证可回滚
+      title: 落地顺序（各自可验证、可回滚） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/architecture.md
+      section: 落地顺序各自可验证可回滚
+    - ref: design/architecture.md#不做的架构改造
+      title: 不做的架构改造 `
+      serves:
+        - FR-1
+        - FR-6
+        - FR-7
+      file: design/architecture.md
+      section: 不做的架构改造
+    - ref: design/architecture.md#风险与对策
+      title: 风险与对策 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: 风险与对策
+    - ref: design/architecture.md#变更记相对需求文档的更正
+      title: 变更记（相对需求文档的更正） `
+      serves:
+        - FR-3
+        - FR-8
+      file: design/architecture.md
+      section: 变更记相对需求文档的更正
+    - ref: design/architecture.md#关键决策与取舍
+      title: 关键决策与取舍 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/architecture.md
+      section: 关键决策与取舍
+    - ref: design/architecture.md#技术方案与亮点
+      title: 技术方案与亮点 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+        - FR-8
+      file: design/architecture.md
+      section: 技术方案与亮点
+    - ref: design/backend.md#TLDR
+      title: TL;DR `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/backend.md
+      section: TLDR
+    - ref: design/backend.md#服务与接口实现
+      title: 服务与接口实现 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/backend.md
+      section: 服务与接口实现
+    - ref: design/backend.md#I-1I-9-的落点对照签名逐字照用本文只指落点
+      title: I-1～I-9 的落点对照（签名逐字照用，本文只指落点） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/backend.md
+      section: I-1I-9-的落点对照签名逐字照用本文只指落点
+    - ref: design/backend.md#数据流
+      title: 数据流 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/backend.md
+      section: 数据流
+    - ref: design/backend.md#流程-1-归档提交reqboardsubmitkindarchive
+      title: 流程 1 · 归档提交（`reqboard_submit(kind=archive)`） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-5
+        - FR-6
+      file: design/backend.md
+      section: 流程-1-归档提交reqboardsubmitkindarchive
+    - ref: design/backend.md#流程-2-知识层自检-K13-K14
+      title: 流程 2 · 知识层自检 K13 / K14 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/backend.md
+      section: 流程-2-知识层自检-K13-K14
+    - ref: design/backend.md#流程-3-归档条来源三态state-的-origins
+      title: 流程 3 · 归档条来源三态（`/state` 的 `origins`） `
+      serves:
+        - FR-7
+      file: design/backend.md
+      section: 流程-3-归档条来源三态state-的-origins
+    - ref: design/backend.md#关键逻辑
+      title: 关键逻辑 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/backend.md
+      section: 关键逻辑
+    - ref: design/backend.md#S-5-submitArchive-的新判定顺序次序即语义
+      title: S-5 `submitArchive` 的新判定顺序（次序即语义） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-5
+        - FR-6
+      file: design/backend.md
+      section: S-5-submitArchive-的新判定顺序次序即语义
+    - ref: design/backend.md#根解析与跨项目rootOfRequirement-是唯一取数处
+      title: 根解析与跨项目（`rootOfRequirement` 是唯一取数处） `
+      serves:
+        - FR-1
+        - FR-7
+        - FR-8
+      file: design/backend.md
+      section: 根解析与跨项目rootOfRequirement-是唯一取数处
+    - ref: design/backend.md#K13-归档沉淀覆盖度S-7
+      title: K13 归档沉淀覆盖度（S-7） `
+      serves:
+        - FR-3
+      file: design/backend.md
+      section: K13-归档沉淀覆盖度S-7
+    - ref: design/backend.md#K14-失效条件可判定-INDEX-降权S-4-S-10
+      title: K14 失效条件可判定 + INDEX 降权（S-4 / S-10） `
+      serves:
+        - FR-4
+      file: design/backend.md
+      section: K14-失效条件可判定-INDEX-降权S-4-S-10
+    - ref: design/backend.md#S-3-archivemd-渲染与机器产物分区
+      title: S-3 `archive.md` 渲染与机器产物分区 `
+      serves:
+        - FR-5
+        - FR-6
+      file: design/backend.md
+      section: S-3-archivemd-渲染与机器产物分区
+    - ref: design/backend.md#S-8-FR-8-只读核对脚本
+      title: S-8 FR-8 只读核对脚本 `
+      serves:
+        - FR-8
+      file: design/backend.md
+      section: S-8-FR-8-只读核对脚本
+    - ref: design/backend.md#错误处理
+      title: 错误处理 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-8
+      file: design/backend.md
+      section: 错误处理
+    - ref: design/backend.md#拒绝消息要素表逐条可-grep-验收
+      title: 拒绝消息要素表（逐条可 grep 验收） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-8
+      file: design/backend.md
+      section: 拒绝消息要素表逐条可-grep-验收
+    - ref: design/backend.md#既有用例被打红契约升级不是回归
+      title: 既有用例被打红：契约升级，不是回归 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-8
+      file: design/backend.md
+      section: 既有用例被打红契约升级不是回归
+    - ref: design/backend.md#数据库设计
+      title: 数据库设计 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/backend.md
+      section: 数据库设计
+    - ref: design/backend.md#台账-schema-与表零变更
+      title: 台账 schema 与表（零变更） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/backend.md
+      section: 台账-schema-与表零变更
+    - ref: design/backend.md#索引-约束-不变量
+      title: 索引 / 约束 / 不变量 `
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+      file: design/backend.md
+      section: 索引-约束-不变量
+    - ref: design/backend.md#兼容性与迁移
+      title: 兼容性与迁移 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-7
+      file: design/backend.md
+      section: 兼容性与迁移
+    - ref: design/backend.md#性能考量
+      title: 性能考量 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+        - FR-7
+        - FR-8
+      file: design/backend.md
+      section: 性能考量
+    - ref: design/backend.md#安全设计
+      title: 安全设计 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-8
+      file: design/backend.md
+      section: 安全设计
+    - ref: design/backend.md#输入校验与路径越界
+      title: 输入校验与路径越界 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/backend.md
+      section: 输入校验与路径越界
+    - ref: design/backend.md#只读与最小权限
+      title: 只读与最小权限 `
+      serves:
+        - FR-3
+        - FR-4
+        - FR-8
+      file: design/backend.md
+      section: 只读与最小权限
+    - ref: design/backend.md#拒绝消息的信息面
+      title: 拒绝消息的信息面 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-8
+      file: design/backend.md
+      section: 拒绝消息的信息面
+    - ref: design/backend.md#关键决策与取舍
+      title: 关键决策与取舍 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/backend.md
+      section: 关键决策与取舍
+    - ref: design/backend.md#技术方案与亮点
+      title: 技术方案与亮点 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/backend.md
+      section: 技术方案与亮点
+    - ref: design/data-model.md#TLDR
+      title: TL;DR `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-5
+        - FR-7
+      file: design/data-model.md
+      section: TLDR
+    - ref: design/data-model.md#新增修改的数据结构
+      title: 新增/修改的数据结构 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/data-model.md
+      section: 新增修改的数据结构
+    - ref: design/data-model.md#1
+      title: "`manual_updates[].path` 的取值形态（不新增字段） `"
+      serves:
+        - FR-2
+      file: design/data-model.md
+      section: "1"
+    - ref: design/data-model.md#2
+      title: "`ResolvedMergeTarget`（闸 1 的逐条读数，不落盘） `"
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: "2"
+    - ref: design/data-model.md#3
+      title: "`ArchiveManifestInput` / `MachineArtifactGroup`（渲染输入，不落盘） `"
+      serves:
+        - FR-5
+        - FR-6
+      file: design/data-model.md
+      section: "3"
+    - ref: design/data-model.md#4
+      title: "`RequirementOrigin`（`/state` 推送视图） `"
+      serves:
+        - FR-7
+      file: design/data-model.md
+      section: "4"
+    - ref: design/data-model.md#5
+      title: 基线文件两式（纯文本，非台账） `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/data-model.md
+      section: "5"
+    - ref: design/data-model.md#6
+      title: K13 / K14 读数（检查输出，不落盘） `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/data-model.md
+      section: "6"
+    - ref: design/data-model.md#7
+      title: 存量只读核对的报告行（不落盘于台账） `
+      serves:
+        - FR-8
+      file: design/data-model.md
+      section: "7"
+    - ref: design/data-model.md#兼容性分析与迁移
+      title: 兼容性分析与迁移 `
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-7
+      file: design/data-model.md
+      section: 兼容性分析与迁移
+    - ref: design/data-model.md#关键决策与取舍
+      title: 关键决策与取舍 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/data-model.md
+      section: 关键决策与取舍
+    - ref: design/data-model.md#技术方案与亮点
+      title: 技术方案与亮点 `
+      serves:
+        - FR-3
+        - FR-4
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/data-model.md
+      section: 技术方案与亮点
+    - ref: design/frontend.md#原型页面
+      title: 原型页面 `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 原型页面
+      protoRefs:
+        - "**锚点**：`prototypes/archive-source-label.html#FR-7"
+        - prototypes/archive-source-label.html#FR-7
+    - ref: design/frontend.md#原型观测量只记名与实测值
+      title: 原型观测量（只记名与实测值） `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 原型观测量只记名与实测值
+    - ref: design/frontend.md#阈值本文定案阈值属设计决策不写回原型
+      title: 阈值（本文定案——阈值属设计决策，不写回原型） `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 阈值本文定案阈值属设计决策不写回原型
+    - ref: design/frontend.md#目录与包结构
+      title: 目录与包结构 `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 目录与包结构
+    - ref: design/frontend.md#组件结构
+      title: 组件结构 `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 组件结构
+    - ref: design/frontend.md#页面与组件编号表
+      title: 页面与组件（编号表） `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 页面与组件编号表
+    - ref: design/frontend.md#状态与降级矩阵
+      title: 状态与降级矩阵 `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 状态与降级矩阵
+    - ref: design/frontend.md#样式与主题
+      title: 样式与主题 `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 样式与主题
+    - ref: design/frontend.md#状态管理
+      title: 状态管理 `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 状态管理
+    - ref: design/frontend.md#路由与导航
+      title: 路由与导航 `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 路由与导航
+    - ref: design/frontend.md#可访问性
+      title: 可访问性 `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 可访问性
+    - ref: design/frontend.md#前端边界不做的事
+      title: 前端边界（不做的事） `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 前端边界不做的事
+    - ref: design/frontend.md#前端用例与判据
+      title: 前端用例与判据 `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 前端用例与判据
+    - ref: design/frontend.md#依赖与第三方库
+      title: 依赖与第三方库 `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 依赖与第三方库
+    - ref: design/frontend.md#关键决策与取舍
+      title: 关键决策与取舍 `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 关键决策与取舍
+    - ref: design/frontend.md#技术方案与亮点
+      title: 技术方案与亮点 `
+      serves:
+        - FR-7
+      file: design/frontend.md
+      section: 技术方案与亮点
+    - ref: design/interfaces.md#TLDR
+      title: TL;DR `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/interfaces.md
+      section: TLDR
+    - ref: design/interfaces.md#新增修改的工具接口
+      title: 新增/修改的工具接口 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: 新增修改的工具接口
+    - ref: design/interfaces.md#I-1-assertArchiveMaterials改仍零-IO
+      title: I-1 `assertArchiveMaterials`（改：仍零 IO） `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: I-1-assertArchiveMaterials改仍零-IO
+    - ref: design/interfaces.md#I-2-assertArchiveTargetsOpenable新建
+      title: I-2 `assertArchiveTargetsOpenable`（新建） `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: I-2-assertArchiveTargetsOpenable新建
+    - ref: design/interfaces.md#新增的纯函数接口
+      title: 新增的纯函数接口 `
+      serves:
+        - FR-5
+        - FR-6
+        - FR-4
+      file: design/interfaces.md
+      section: 新增的纯函数接口
+    - ref: design/interfaces.md#I-3-renderArchiveManifest新建domain-纯函数
+      title: I-3 `renderArchiveManifest`（新建，domain 纯函数） `
+      serves:
+        - FR-5
+        - FR-6
+      file: design/interfaces.md
+      section: I-3-renderArchiveManifest新建domain-纯函数
+    - ref: design/interfaces.md#I-4-isDecidableInvalidation新建domain-纯函数
+      title: I-4 `isDecidableInvalidation`（新建，domain 纯函数） `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: I-4-isDecidableInvalidation新建domain-纯函数
+    - ref: design/interfaces.md#工具返回体与自检-CLI
+      title: 工具返回体与自检 CLI `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-5
+        - FR-6
+        - FR-3
+        - FR-4
+      file: design/interfaces.md
+      section: 工具返回体与自检-CLI
+    - ref: design/interfaces.md#I-5-reqboardsubmitkindarchive-返回体增键
+      title: I-5 `reqboard_submit(kind=archive)` 返回体（增键） `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-5
+        - FR-6
+      file: design/interfaces.md
+      section: I-5-reqboardsubmitkindarchive-返回体增键
+    - ref: design/interfaces.md#I-6-kb-probe-新增两项检查与两个刷新-flag
+      title: I-6 `kb-probe` 新增两项检查与两个刷新 flag `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/interfaces.md
+      section: I-6-kb-probe-新增两项检查与两个刷新-flag
+    - ref: design/interfaces.md#I-7-scriptsarchive-ledger-auditmts新建-CLI
+      title: I-7 `scripts/archive-ledger-audit.mts`（新建 CLI） `
+      serves:
+        - FR-8
+      file: design/interfaces.md
+      section: I-7-scriptsarchive-ledger-auditmts新建-CLI
+    - ref: design/interfaces.md#HTTP-API-变更
+      title: HTTP API 变更 `
+      serves:
+        - FR-7
+      file: design/interfaces.md
+      section: HTTP-API-变更
+    - ref: design/interfaces.md#I-8-GET-看板-statepayload-增-origins
+      title: I-8 `GET /`（看板 `/state`）payload 增 `origins` `
+      serves:
+        - FR-7
+      file: design/interfaces.md
+      section: I-8-GET-看板-statepayload-增-origins
+    - ref: design/interfaces.md#客户端接口
+      title: 客户端接口 `
+      serves:
+        - FR-7
+      file: design/interfaces.md
+      section: 客户端接口
+    - ref: design/interfaces.md#I-9-renderArchivedBar改增第三参向后兼容
+      title: I-9 `renderArchivedBar`（改：增第三参，向后兼容） `
+      serves:
+        - FR-7
+      file: design/interfaces.md
+      section: I-9-renderArchivedBar改增第三参向后兼容
+      protoRefs:
+        - "[archive-source-label.html](../../../prototypes/archive-source-label.html#FR-7"
+    - ref: design/interfaces.md#删除的接口
+      title: 删除的接口 `
+      serves:
+        - FR-2
+      file: design/interfaces.md
+      section: 删除的接口
+    - ref: design/interfaces.md#关键决策与取舍
+      title: 关键决策与取舍 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/interfaces.md
+      section: 关键决策与取舍
+    - ref: design/interfaces.md#技术方案与亮点
+      title: 技术方案与亮点 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-5
+        - FR-7
+      file: design/interfaces.md
+      section: 技术方案与亮点
+    - ref: design/use-cases.md#场景总览
+      title: 场景总览 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/use-cases.md
+      section: 场景总览
+    - ref: design/use-cases.md#UC-1-提交归档材料时申报了一个从未落盘的合并去向
+      title: UC-1 提交归档材料时申报了一个从未落盘的合并去向 `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: UC-1-提交归档材料时申报了一个从未落盘的合并去向
+    - ref: design/use-cases.md#UC-2-提交的说明书更新点指向-CLAUDEmd-或已改名的章节
+      title: UC-2 提交的说明书更新点指向 `CLAUDE.md` 或已改名的章节 `
+      serves:
+        - FR-2
+      file: design/use-cases.md
+      section: UC-2-提交的说明书更新点指向-CLAUDEmd-或已改名的章节
+    - ref: design/use-cases.md#UC-3-跨项目需求另一个工作区提交归档材料
+      title: UC-3 跨项目需求（另一个工作区）提交归档材料 `
+      serves:
+        - FR-1
+        - FR-8
+      file: design/use-cases.md
+      section: UC-3-跨项目需求另一个工作区提交归档材料
+    - ref: design/use-cases.md#UC-4-存量-3-条无-workspaceRoot-记录
+      title: UC-4 存量 3 条无 `workspaceRoot` 记录 `
+      serves:
+        - FR-7
+        - FR-8
+      file: design/use-cases.md
+      section: UC-4-存量-3-条无-workspaceRoot-记录
+    - ref: design/use-cases.md#UC-5-人打开一条已归档需求的目录想知道结论去哪了
+      title: UC-5 人打开一条已归档需求的目录想知道「结论去哪了」 `
+      serves:
+        - FR-5
+        - FR-6
+      file: design/use-cases.md
+      section: UC-5-人打开一条已归档需求的目录想知道结论去哪了
+    - ref: design/use-cases.md#UC-6-维护知识层的人跑-pnpm-kbcheck
+      title: UC-6 维护知识层的人跑 `pnpm kb:check` `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/use-cases.md
+      section: UC-6-维护知识层的人跑-pnpm-kbcheck
+    - ref: design/use-cases.md#UC-7-后续需求的-agent-取前例
+      title: UC-7 后续需求的 agent 取前例 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/use-cases.md
+      section: UC-7-后续需求的-agent-取前例
+    - ref: design/use-cases.md#UC-8-人看本仓看板回看归档条
+      title: UC-8 人看本仓看板回看归档条 `
+      serves:
+        - FR-7
+      file: design/use-cases.md
+      section: UC-8-人看本仓看板回看归档条
+    - ref: design/use-cases.md#UC-9-做横向审计的人要一份可复现的存量读数
+      title: UC-9 做横向审计的人要一份可复现的存量读数 `
+      serves:
+        - FR-8
+      file: design/use-cases.md
+      section: UC-9-做横向审计的人要一份可复现的存量读数
+    - ref: design/use-cases.md#用例与条款对照
+      title: 用例与条款对照 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      file: design/use-cases.md
+      section: 用例与条款对照
+traceability:
+  fr_to_design:
+    FR-1:
+      - design/architecture.md#TLDR
+      - design/architecture.md#分层与职责边界
+      - design/architecture.md#现状病灶
+      - design/architecture.md#目标架构三道闸-一份渲染物-两条读数-一处派生视图
+      - design/architecture.md#闸-1-合并去向FR-1
+      - design/architecture.md#接线表改哪里-明确不改哪里
+      - design/architecture.md#根解析唯一取数处跨项目判据不许自造
+      - design/architecture.md#落地顺序各自可验证可回滚
+      - design/architecture.md#不做的架构改造
+      - design/architecture.md#风险与对策
+      - design/architecture.md#关键决策与取舍
+      - design/architecture.md#技术方案与亮点
+      - design/backend.md#TLDR
+      - design/backend.md#服务与接口实现
+      - design/backend.md#I-1I-9-的落点对照签名逐字照用本文只指落点
+      - design/backend.md#数据流
+      - design/backend.md#流程-1-归档提交reqboardsubmitkindarchive
+      - design/backend.md#关键逻辑
+      - design/backend.md#S-5-submitArchive-的新判定顺序次序即语义
+      - design/backend.md#根解析与跨项目rootOfRequirement-是唯一取数处
+      - design/backend.md#错误处理
+      - design/backend.md#拒绝消息要素表逐条可-grep-验收
+      - design/backend.md#既有用例被打红契约升级不是回归
+      - design/backend.md#数据库设计
+      - design/backend.md#台账-schema-与表零变更
+      - design/backend.md#兼容性与迁移
+      - design/backend.md#性能考量
+      - design/backend.md#安全设计
+      - design/backend.md#输入校验与路径越界
+      - design/backend.md#拒绝消息的信息面
+      - design/backend.md#关键决策与取舍
+      - design/backend.md#技术方案与亮点
+      - design/data-model.md#TLDR
+      - design/data-model.md#新增修改的数据结构
+      - design/data-model.md#2
+      - design/data-model.md#关键决策与取舍
+      - design/interfaces.md#TLDR
+      - design/interfaces.md#新增修改的工具接口
+      - design/interfaces.md#I-1-assertArchiveMaterials改仍零-IO
+      - design/interfaces.md#I-2-assertArchiveTargetsOpenable新建
+      - design/interfaces.md#工具返回体与自检-CLI
+      - design/interfaces.md#I-5-reqboardsubmitkindarchive-返回体增键
+      - design/interfaces.md#关键决策与取舍
+      - design/interfaces.md#技术方案与亮点
+      - design/use-cases.md#场景总览
+      - design/use-cases.md#UC-1-提交归档材料时申报了一个从未落盘的合并去向
+      - design/use-cases.md#UC-3-跨项目需求另一个工作区提交归档材料
+      - design/use-cases.md#用例与条款对照
+    FR-2:
+      - design/architecture.md#TLDR
+      - design/architecture.md#分层与职责边界
+      - design/architecture.md#现状病灶
+      - design/architecture.md#目标架构三道闸-一份渲染物-两条读数-一处派生视图
+      - design/architecture.md#闸-2-说明书更新点FR-2
+      - design/architecture.md#接线表改哪里-明确不改哪里
+      - design/architecture.md#落地顺序各自可验证可回滚
+      - design/architecture.md#关键决策与取舍
+      - design/backend.md#TLDR
+      - design/backend.md#服务与接口实现
+      - design/backend.md#I-1I-9-的落点对照签名逐字照用本文只指落点
+      - design/backend.md#数据流
+      - design/backend.md#流程-1-归档提交reqboardsubmitkindarchive
+      - design/backend.md#关键逻辑
+      - design/backend.md#S-5-submitArchive-的新判定顺序次序即语义
+      - design/backend.md#错误处理
+      - design/backend.md#拒绝消息要素表逐条可-grep-验收
+      - design/backend.md#既有用例被打红契约升级不是回归
+      - design/backend.md#数据库设计
+      - design/backend.md#台账-schema-与表零变更
+      - design/backend.md#索引-约束-不变量
+      - design/backend.md#兼容性与迁移
+      - design/backend.md#安全设计
+      - design/backend.md#输入校验与路径越界
+      - design/backend.md#拒绝消息的信息面
+      - design/backend.md#关键决策与取舍
+      - design/backend.md#技术方案与亮点
+      - design/data-model.md#TLDR
+      - design/data-model.md#新增修改的数据结构
+      - design/data-model.md#1
+      - design/data-model.md#兼容性分析与迁移
+      - design/data-model.md#关键决策与取舍
+      - design/interfaces.md#TLDR
+      - design/interfaces.md#新增修改的工具接口
+      - design/interfaces.md#I-1-assertArchiveMaterials改仍零-IO
+      - design/interfaces.md#I-2-assertArchiveTargetsOpenable新建
+      - design/interfaces.md#工具返回体与自检-CLI
+      - design/interfaces.md#I-5-reqboardsubmitkindarchive-返回体增键
+      - design/interfaces.md#删除的接口
+      - design/interfaces.md#关键决策与取舍
+      - design/interfaces.md#技术方案与亮点
+      - design/use-cases.md#场景总览
+      - design/use-cases.md#UC-2-提交的说明书更新点指向-CLAUDEmd-或已改名的章节
+      - design/use-cases.md#用例与条款对照
+    FR-3:
+      - design/architecture.md#TLDR
+      - design/architecture.md#分层与职责边界
+      - design/architecture.md#目标架构三道闸-一份渲染物-两条读数-一处派生视图
+      - design/architecture.md#读数-K13-K14FR-3-FR-4
+      - design/architecture.md#接线表改哪里-明确不改哪里
+      - design/architecture.md#落地顺序各自可验证可回滚
+      - design/architecture.md#风险与对策
+      - design/architecture.md#变更记相对需求文档的更正
+      - design/architecture.md#关键决策与取舍
+      - design/architecture.md#技术方案与亮点
+      - design/backend.md#TLDR
+      - design/backend.md#服务与接口实现
+      - design/backend.md#I-1I-9-的落点对照签名逐字照用本文只指落点
+      - design/backend.md#数据流
+      - design/backend.md#流程-2-知识层自检-K13-K14
+      - design/backend.md#关键逻辑
+      - design/backend.md#K13-归档沉淀覆盖度S-7
+      - design/backend.md#错误处理
+      - design/backend.md#既有用例被打红契约升级不是回归
+      - design/backend.md#数据库设计
+      - design/backend.md#台账-schema-与表零变更
+      - design/backend.md#索引-约束-不变量
+      - design/backend.md#兼容性与迁移
+      - design/backend.md#性能考量
+      - design/backend.md#只读与最小权限
+      - design/backend.md#关键决策与取舍
+      - design/backend.md#技术方案与亮点
+      - design/data-model.md#新增修改的数据结构
+      - design/data-model.md#5
+      - design/data-model.md#6
+      - design/data-model.md#兼容性分析与迁移
+      - design/data-model.md#关键决策与取舍
+      - design/data-model.md#技术方案与亮点
+      - design/interfaces.md#TLDR
+      - design/interfaces.md#工具返回体与自检-CLI
+      - design/interfaces.md#I-6-kb-probe-新增两项检查与两个刷新-flag
+      - design/interfaces.md#关键决策与取舍
+      - design/use-cases.md#场景总览
+      - design/use-cases.md#UC-6-维护知识层的人跑-pnpm-kbcheck
+      - design/use-cases.md#UC-7-后续需求的-agent-取前例
+      - design/use-cases.md#用例与条款对照
+    FR-4:
+      - design/architecture.md#TLDR
+      - design/architecture.md#分层与职责边界
+      - design/architecture.md#目标架构三道闸-一份渲染物-两条读数-一处派生视图
+      - design/architecture.md#读数-K13-K14FR-3-FR-4
+      - design/architecture.md#接线表改哪里-明确不改哪里
+      - design/architecture.md#落地顺序各自可验证可回滚
+      - design/architecture.md#风险与对策
+      - design/architecture.md#关键决策与取舍
+      - design/architecture.md#技术方案与亮点
+      - design/backend.md#TLDR
+      - design/backend.md#服务与接口实现
+      - design/backend.md#I-1I-9-的落点对照签名逐字照用本文只指落点
+      - design/backend.md#数据流
+      - design/backend.md#流程-2-知识层自检-K13-K14
+      - design/backend.md#关键逻辑
+      - design/backend.md#K14-失效条件可判定-INDEX-降权S-4-S-10
+      - design/backend.md#错误处理
+      - design/backend.md#既有用例被打红契约升级不是回归
+      - design/backend.md#数据库设计
+      - design/backend.md#台账-schema-与表零变更
+      - design/backend.md#索引-约束-不变量
+      - design/backend.md#兼容性与迁移
+      - design/backend.md#性能考量
+      - design/backend.md#只读与最小权限
+      - design/backend.md#关键决策与取舍
+      - design/backend.md#技术方案与亮点
+      - design/data-model.md#新增修改的数据结构
+      - design/data-model.md#5
+      - design/data-model.md#6
+      - design/data-model.md#兼容性分析与迁移
+      - design/data-model.md#关键决策与取舍
+      - design/data-model.md#技术方案与亮点
+      - design/interfaces.md#TLDR
+      - design/interfaces.md#新增的纯函数接口
+      - design/interfaces.md#I-4-isDecidableInvalidation新建domain-纯函数
+      - design/interfaces.md#工具返回体与自检-CLI
+      - design/interfaces.md#I-6-kb-probe-新增两项检查与两个刷新-flag
+      - design/interfaces.md#关键决策与取舍
+      - design/use-cases.md#场景总览
+      - design/use-cases.md#UC-6-维护知识层的人跑-pnpm-kbcheck
+      - design/use-cases.md#UC-7-后续需求的-agent-取前例
+      - design/use-cases.md#用例与条款对照
+    FR-5:
+      - design/architecture.md#TLDR
+      - design/architecture.md#分层与职责边界
+      - design/architecture.md#目标架构三道闸-一份渲染物-两条读数-一处派生视图
+      - design/architecture.md#渲染物-archivemdFR-5-FR-6
+      - design/architecture.md#接线表改哪里-明确不改哪里
+      - design/architecture.md#落地顺序各自可验证可回滚
+      - design/architecture.md#风险与对策
+      - design/architecture.md#关键决策与取舍
+      - design/backend.md#TLDR
+      - design/backend.md#服务与接口实现
+      - design/backend.md#I-1I-9-的落点对照签名逐字照用本文只指落点
+      - design/backend.md#数据流
+      - design/backend.md#流程-1-归档提交reqboardsubmitkindarchive
+      - design/backend.md#关键逻辑
+      - design/backend.md#S-5-submitArchive-的新判定顺序次序即语义
+      - design/backend.md#S-3-archivemd-渲染与机器产物分区
+      - design/backend.md#错误处理
+      - design/backend.md#既有用例被打红契约升级不是回归
+      - design/backend.md#数据库设计
+      - design/backend.md#台账-schema-与表零变更
+      - design/backend.md#索引-约束-不变量
+      - design/backend.md#兼容性与迁移
+      - design/backend.md#关键决策与取舍
+      - design/backend.md#技术方案与亮点
+      - design/data-model.md#TLDR
+      - design/data-model.md#新增修改的数据结构
+      - design/data-model.md#3
+      - design/data-model.md#关键决策与取舍
+      - design/interfaces.md#TLDR
+      - design/interfaces.md#新增的纯函数接口
+      - design/interfaces.md#I-3-renderArchiveManifest新建domain-纯函数
+      - design/interfaces.md#工具返回体与自检-CLI
+      - design/interfaces.md#I-5-reqboardsubmitkindarchive-返回体增键
+      - design/interfaces.md#关键决策与取舍
+      - design/interfaces.md#技术方案与亮点
+      - design/use-cases.md#场景总览
+      - design/use-cases.md#UC-5-人打开一条已归档需求的目录想知道结论去哪了
+      - design/use-cases.md#用例与条款对照
+    FR-6:
+      - design/architecture.md#TLDR
+      - design/architecture.md#分层与职责边界
+      - design/architecture.md#目标架构三道闸-一份渲染物-两条读数-一处派生视图
+      - design/architecture.md#渲染物-archivemdFR-5-FR-6
+      - design/architecture.md#接线表改哪里-明确不改哪里
+      - design/architecture.md#落地顺序各自可验证可回滚
+      - design/architecture.md#不做的架构改造
+      - design/architecture.md#关键决策与取舍
+      - design/backend.md#TLDR
+      - design/backend.md#服务与接口实现
+      - design/backend.md#I-1I-9-的落点对照签名逐字照用本文只指落点
+      - design/backend.md#数据流
+      - design/backend.md#流程-1-归档提交reqboardsubmitkindarchive
+      - design/backend.md#关键逻辑
+      - design/backend.md#S-5-submitArchive-的新判定顺序次序即语义
+      - design/backend.md#S-3-archivemd-渲染与机器产物分区
+      - design/backend.md#数据库设计
+      - design/backend.md#台账-schema-与表零变更
+      - design/backend.md#索引-约束-不变量
+      - design/backend.md#关键决策与取舍
+      - design/backend.md#技术方案与亮点
+      - design/data-model.md#新增修改的数据结构
+      - design/data-model.md#3
+      - design/data-model.md#关键决策与取舍
+      - design/data-model.md#技术方案与亮点
+      - design/interfaces.md#TLDR
+      - design/interfaces.md#新增的纯函数接口
+      - design/interfaces.md#I-3-renderArchiveManifest新建domain-纯函数
+      - design/interfaces.md#工具返回体与自检-CLI
+      - design/interfaces.md#I-5-reqboardsubmitkindarchive-返回体增键
+      - design/interfaces.md#关键决策与取舍
+      - design/use-cases.md#场景总览
+      - design/use-cases.md#UC-5-人打开一条已归档需求的目录想知道结论去哪了
+      - design/use-cases.md#用例与条款对照
+    FR-7:
+      - design/architecture.md#TLDR
+      - design/architecture.md#分层与职责边界
+      - design/architecture.md#目标架构三道闸-一份渲染物-两条读数-一处派生视图
+      - design/architecture.md#派生视图-归档条来源FR-7
+      - design/architecture.md#接线表改哪里-明确不改哪里
+      - design/architecture.md#根解析唯一取数处跨项目判据不许自造
+      - design/architecture.md#落地顺序各自可验证可回滚
+      - design/architecture.md#不做的架构改造
+      - design/architecture.md#关键决策与取舍
+      - design/backend.md#TLDR
+      - design/backend.md#服务与接口实现
+      - design/backend.md#I-1I-9-的落点对照签名逐字照用本文只指落点
+      - design/backend.md#数据流
+      - design/backend.md#流程-3-归档条来源三态state-的-origins
+      - design/backend.md#关键逻辑
+      - design/backend.md#根解析与跨项目rootOfRequirement-是唯一取数处
+      - design/backend.md#数据库设计
+      - design/backend.md#台账-schema-与表零变更
+      - design/backend.md#兼容性与迁移
+      - design/backend.md#性能考量
+      - design/backend.md#关键决策与取舍
+      - design/backend.md#技术方案与亮点
+      - design/data-model.md#TLDR
+      - design/data-model.md#新增修改的数据结构
+      - design/data-model.md#4
+      - design/data-model.md#兼容性分析与迁移
+      - design/data-model.md#关键决策与取舍
+      - design/data-model.md#技术方案与亮点
+      - design/frontend.md#原型页面
+      - design/frontend.md#原型观测量只记名与实测值
+      - design/frontend.md#阈值本文定案阈值属设计决策不写回原型
+      - design/frontend.md#目录与包结构
+      - design/frontend.md#组件结构
+      - design/frontend.md#页面与组件编号表
+      - design/frontend.md#状态与降级矩阵
+      - design/frontend.md#样式与主题
+      - design/frontend.md#状态管理
+      - design/frontend.md#路由与导航
+      - design/frontend.md#可访问性
+      - design/frontend.md#前端边界不做的事
+      - design/frontend.md#前端用例与判据
+      - design/frontend.md#依赖与第三方库
+      - design/frontend.md#关键决策与取舍
+      - design/frontend.md#技术方案与亮点
+      - design/interfaces.md#TLDR
+      - design/interfaces.md#HTTP-API-变更
+      - design/interfaces.md#I-8-GET-看板-statepayload-增-origins
+      - design/interfaces.md#客户端接口
+      - design/interfaces.md#I-9-renderArchivedBar改增第三参向后兼容
+      - design/interfaces.md#关键决策与取舍
+      - design/interfaces.md#技术方案与亮点
+      - design/use-cases.md#场景总览
+      - design/use-cases.md#UC-4-存量-3-条无-workspaceRoot-记录
+      - design/use-cases.md#UC-8-人看本仓看板回看归档条
+      - design/use-cases.md#用例与条款对照
+    FR-8:
+      - design/architecture.md#TLDR
+      - design/architecture.md#分层与职责边界
+      - design/architecture.md#现状病灶
+      - design/architecture.md#接线表改哪里-明确不改哪里
+      - design/architecture.md#根解析唯一取数处跨项目判据不许自造
+      - design/architecture.md#落地顺序各自可验证可回滚
+      - design/architecture.md#变更记相对需求文档的更正
+      - design/architecture.md#关键决策与取舍
+      - design/architecture.md#技术方案与亮点
+      - design/backend.md#TLDR
+      - design/backend.md#服务与接口实现
+      - design/backend.md#I-1I-9-的落点对照签名逐字照用本文只指落点
+      - design/backend.md#数据流
+      - design/backend.md#关键逻辑
+      - design/backend.md#根解析与跨项目rootOfRequirement-是唯一取数处
+      - design/backend.md#S-8-FR-8-只读核对脚本
+      - design/backend.md#错误处理
+      - design/backend.md#拒绝消息要素表逐条可-grep-验收
+      - design/backend.md#既有用例被打红契约升级不是回归
+      - design/backend.md#数据库设计
+      - design/backend.md#台账-schema-与表零变更
+      - design/backend.md#性能考量
+      - design/backend.md#安全设计
+      - design/backend.md#只读与最小权限
+      - design/backend.md#拒绝消息的信息面
+      - design/backend.md#关键决策与取舍
+      - design/backend.md#技术方案与亮点
+      - design/data-model.md#7
+      - design/data-model.md#关键决策与取舍
+      - design/data-model.md#技术方案与亮点
+      - design/interfaces.md#TLDR
+      - design/interfaces.md#I-7-scriptsarchive-ledger-auditmts新建-CLI
+      - design/interfaces.md#关键决策与取舍
+      - design/use-cases.md#场景总览
+      - design/use-cases.md#UC-3-跨项目需求另一个工作区提交归档材料
+      - design/use-cases.md#UC-4-存量-3-条无-workspaceRoot-记录
+      - design/use-cases.md#UC-9-做横向审计的人要一份可复现的存量读数
+      - design/use-cases.md#用例与条款对照
+coverage:
+  design:
+    total: 8
+    covered: 8
+    uncovered: []
+    rate: 100
+    total_frs: 8
+    covered_frs: 8

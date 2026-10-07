@@ -1,0 +1,111 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261006201814-ac4f
+  generated_at: 2026-10-06T12:22:08.424Z
+  version: 9
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T07:57:37.727Z
+outputs:
+  requirements: []
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 2026-10-06 20:18 前 · 另窗口委派底稿（用户原话）：「测试用例写的太少，没有异常场景测试和反向场景测试」
+      verdict: 工作面 = 测试的异常/反向覆盖；「太少」不成立，要扩的是**反向密度**
+      serves:
+        - FR-2
+        - FR-7
+      criterion: R5 反向占比 3.82% → 改后上升；用例总数不设下限
+    - id: D-2
+      source: 2026-10-06 20:18:14（REQ id 内嵌时间戳）· 用户答立项弹框：「立项（推荐）」
+      verdict: 立项为 feature / expert
+      serves:
+        - FR-1
+        - FR-10
+      criterion: 需求文档存在且经人确认
+    - id: D-3
+      source: 2026-10-06 20:2x · 用户答红线裁决：「A · src 一档不动（最贴合底稿红线）」
+      verdict: "**src 零改动**；矩阵靠 tests 侧扫源码对账；红因只登记不清零"
+      serves:
+        - FR-1
+        - FR-4
+        - FR-5
+      criterion: 交付 diff 中 `src/` 改动数 = 0
+    - id: D-4
+      source: 2026-10-06 20:20:57 · 本窗实测：只跑只读测试文件期间，`REQ-000001` 的 6 个 `rtm-*.yml` 仍变化
+      verdict: 判据不得用「全工作树哈希」；改用 A/B 与隔离副本
+      serves:
+        - FR-5
+        - FR-10
+      criterion: 判据 6 / FR-10 的 A/B 流程
+    - id: D-5
+      source: 2026-10-06 20:18 · 本窗实测：底稿「129 码」未排噪
+      verdict: 冻结码的口径；读数带工作树指纹
+      serves:
+        - FR-1
+      criterion: R6/R7 与清单逐条一致
+    - id: D-6
+      source: 2026-10-06 20:20 · 本窗实测：时序实验被并发窗口污染
+      verdict: 归因走**静态写链**与 A/B 对照，不走时间先后
+      serves:
+        - FR-5
+        - FR-10
+      criterion: 写链每跳有 `文件:行` 证据
+    - id: D-7
+      source: 2026-10-06 20:2x · 子代理静态勘察：`REQ-000001`（18 跟踪文件）与 `REQ-000002`（3 个）是被 commit 进来的测试残留，与 harness 合成 id 撞名
+      verdict: 本需求**只出处置结论、不动手**（避免波及别的窗口）
+      serves:
+        - FR-5
+        - FR-9
+      criterion: 交付材料给出二选一结论与影响面
+    - id: D-8
+      source: 2026-10-06 20:30 · 子代理逐码勘定 + 本窗复核：31 个零覆盖里 7 个已断言；9 个门内部小写码从未进过大写集合
+      verdict: 零覆盖目标 31 → **25**；口径扩为**大小写两侧 + 映射守卫**；读数双形态
+      serves:
+        - FR-1
+        - FR-2
+      criterion: 判据 1 报双形态读数 + 假阴性率
+    - id: D-9
+      source: 2026-10-06 20:31 · **用户补充要求（原话）：「要做到兼容功能」**
+      verdict: 落 FR-9 三条：存量零语义变更 / 契约覆盖双层码 / 守卫给多窗口自助路径
+      serves:
+        - FR-9
+        - FR-8
+        - FR-4
+      criterion: 判据 8 三条各给证据
+    - id: D-10
+      source: 2026-10-06 21:1x · **用户指令（原话）：「回退到需求分析重新写需求文档和设计」**
+      verdict: implementing → brainstorming；已完成的 t1/t2 代码保持现状，待新版定稿后重新评估去留；旧计划批准作废、13 张卡取消
+      serves:
+        - FR-1
+        - FR-10
+      criterion: 需求状态回 brainstorming 且本文件被重写并经人确认
+    - id: D-11
+      source: 2026-10-06 21:2x · **用户裁决（原话）：「A+B · 权限模型（真拦）+ 契约锚点守卫（推荐）」**
+      verdict: FR-5⑤ 用**权限模型真拦**作主判据，契约锚点作快速回归；「改写 fs 导出」与「全工作树哈希」两种机制**永久作废**
+      serves:
+        - FR-5
+      criterion: 判据 6：写仓被 `ERR_ACCESS_DENIED` 拒；改回 `'.'` 时锚点守卫必红
+    - id: D-12
+      source: 2026-10-06 21:0x · 本窗实测（agent）：第一版 `data-model.md` 同时要求排除项 6 条与死码进豁免，二者互斥
+      verdict: 排除项定 **5** 条；`REQBOARD_BRIDGE_NOT_READY` 作为码留在清单并归上报缺口
+      serves:
+        - FR-1
+        - FR-3
+      criterion: 判据 4：排除项恰 5 条且死码在码清单内
+    - id: D-13
+      source: 2026-10-06 21:0x · 本窗实测（agent）：t2 首版改动被 A/B 抓到 **10 条真回归**，而单跑 2 个文件的验收全绿
+      verdict: 新增 FR-10：共享夹具/测试根/全局配置的改动，验收必须附 A/B 对照 + 同配置复跑
+      serves:
+        - FR-10
+        - FR-9
+      criterion: 判据 9：附两侧失败集合逐条比对与复跑记录
+    - id: D-14
+      source: 2026-10-06 21:0x · 本窗实测（agent）：`--permission` 下写仓库被 `ERR_ACCESS_DENIED` 拒、写 `/tmp` 放行且仓库零残留；Node 25 不接受逗号分隔 flag
+      verdict: FR-5⑤-a 机制成立；版本差异（Node 20 为 `--experimental-permission`）必须在设计中处理
+      serves:
+        - FR-5
+      criterion: 判据 6：权限模型下仓内写入被拒
+status:
+  artifacts: []

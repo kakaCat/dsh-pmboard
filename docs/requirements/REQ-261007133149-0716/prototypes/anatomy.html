@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>详情页组件解剖图 · 10 个组件谁拥有哪块界面 · REQ-261007133149-0716</title>
+<!--
+  本文件 = REQ-261007133149-0716 的原型：**组件解剖图**（不是新版 UI）。
+  为什么是解剖图而不是视觉稿：本次需求是**零外观变更**的组件化改造
+  （样式按组件分片 + 面板契约类型钉住），要回答的是「哪个组件拥有哪块界面、
+  改它时该动哪一段、不必读什么」——画一张更好看的详情页对本次需求没有信息量。
+
+  事实来源（只读，未改动）：
+    · src/client/styles/report.ts（2387 行，行号即本页引用的行号）
+    · src/client/views/report-tabs.ts（buildReportShell / wrapShell / panelWrapper）
+    · src/client/views/{report-head,report-band,report-tabs}.ts 与 views/panels/*
+    · 几何量：headless Chrome 打开 scripts/fixtures/req-detail-specimen.mts 的
+      specimenShell(1280,'inflight',…) + specimenShellForPanel(1280,'inflight',<6 面板>,…)，
+      共 7 件标本页实测；测法与 scripts/req-report-probe.mts 同款（见页脚「量测条件」）。
+
+  设计系统检索（ui-ux-pro-max，命令与结果如实记录在页脚）：
+    风格 Minimalism & Swiss Style；调参 variance 3 / motion 1 / density 2（居中·克制·宽松）。
+    字体检索给出 Outfit / Work Sans —— 本原型禁引外部网络资源，故回落系统字体栈，
+    只用检索给出的**字号层级与间距刻度**，不外链字体文件。
+-->
+<style>
+/* ── 设计令牌（取自 ui-ux-pro-max --design-system 的配色；density 2 = 宽松刻度） ── */
+:root{
+  --primary:#2563EB; --primary-soft:#EFF4FE;
+  --accent:#EA580C; --destructive:#DC2626;
+  --bg:#F8FAFC; --fg:#1E293B; --card:#FFFFFF; --surface:#F8FAFC;
+  --muted:#E9EFF8; --muted-fg:#475569; --border:#E2E8F0; --border-strong:#CBD5E1;
+  --ok:#15803D; --ok-soft:#F0FDF4;
+  --s1:8px; --s2:16px; --s3:24px; --s4:32px; --s5:48px; --s6:64px; --s7:96px;
+  --r1:8px; --r2:12px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue","Segoe UI",Roboto,sans-serif;
+  --dur:220ms; --ease:cubic-bezier(.2,.6,.3,1);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
+  font-size:15px;line-height:1.62;
+}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.2px;line-height:1.3}
+p{margin:0}
+code,kbd{font-family:var(--mono);font-size:.86em}
+.page{max-width:1120px;margin:0 auto;padding:0 var(--s3) var(--s7)}
+
+/* ── 页头 ── */
+.top{background:var(--card);border-bottom:1px solid var(--border);padding:var(--s6) 0 var(--s5)}
+.top .inner{max-width:1120px;margin:0 auto;padding:0 var(--s3)}
+.top .req{font-family:var(--mono);font-size:12px;color:var(--muted-fg);letter-spacing:.02em}
+.top h1{font-size:30px;margin:var(--s1) 0 var(--s2)}
+.top .sub{color:var(--muted-fg);max-width:74ch}
+.badges{display:flex;flex-wrap:wrap;gap:var(--s1);margin-top:var(--s3)}
+.badge{
+  font-size:12px;line-height:1;padding:6px 10px;border-radius:999px;
+  background:var(--muted);color:var(--muted-fg);border:1px solid var(--border);
+}
+.badge.p{background:var(--primary-soft);color:var(--primary);border-color:#D3E0FB}
+
+/* ── 通用区块 ── */
+section{margin-top:var(--s6)}
+.h2{display:flex;align-items:baseline;gap:var(--s2);flex-wrap:wrap}
+.h2 h2{font-size:20px}
+.h2 .n{font-family:var(--mono);font-size:12px;color:var(--muted-fg)}
+.lead{color:var(--muted-fg);margin-top:var(--s2);max-width:82ch}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:var(--s4)}
+
+/* ── TL;DR ── */
+.tldr{
+  background:var(--card);border:1px solid var(--border);border-left:3px solid var(--primary);
+  border-radius:var(--r2);padding:var(--s4);margin-top:var(--s5);
+}
+.tldr .k{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);font-weight:600}
+.tldr p{font-size:18px;line-height:1.55;margin-top:var(--s2)}
+.tldr b{color:var(--primary)}
+
+/* ── 封面/范围图（CSS 盒模型，比例 = 实测 px × 0.45） ── */
+.scope{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:var(--s4)}
+.scope-grid{display:grid;grid-template-columns:118px 1fr 200px;gap:var(--s3) var(--s2);align-items:center}
+.scope-grid .axis{text-align:right;font-family:var(--mono);font-size:12px;color:var(--muted-fg);line-height:1.5}
+.seg{position:relative;border-radius:var(--r1);border:1px solid var(--border-strong);background:var(--surface);
+  display:flex;align-items:center;gap:var(--s2);padding:0 var(--s2);overflow:hidden;transition:border-color var(--dur) var(--ease),background var(--dur) var(--ease)}
+.seg .lab{font-size:13px;font-weight:600}
+.seg .rt{font-family:var(--mono);font-size:11px;color:var(--muted-fg)}
+.seg[data-own="head"]{height:160px;border-left:4px solid var(--primary)}
+.seg[data-own="band"]{height:86px;border-left:4px solid var(--accent)}
+.seg[data-own="tabs"]{height:27px;border-left:4px solid #7C3AED}
+.seg[data-own="panel"]{height:120px;border-left:4px solid var(--border-strong);background:repeating-linear-gradient(135deg,#fff,#fff 9px,#F3F6FB 9px,#F3F6FB 18px)}
+.seg.dim{opacity:.45}
+.seg.hot{border-color:var(--primary);background:var(--primary-soft)}
+.seg[data-own="panel"].hot{background:var(--primary-soft)}
+.scope-note{display:flex;gap:var(--s2);flex-wrap:wrap;margin-top:var(--s3);font-size:12px;color:var(--muted-fg)}
+.scope-note span{display:inline-flex;align-items:center;gap:6px}
+.swatch{width:10px;height:10px;border-radius:2px;display:inline-block}
+.readout{font-family:var(--mono);font-size:12px;color:var(--muted-fg);line-height:1.9;
+  border-left:2px solid var(--border);padding-left:var(--s2)}
+.readout b{color:var(--fg);font-weight:600}
+.hint{font-size:12px;color:var(--muted-fg);margin-top:var(--s2)}
+
+/* ── 组件卡 ── */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:var(--s3)}
+.comp{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:var(--s3);
+  display:flex;flex-direction:column;gap:var(--s2);transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)
+}
+.comp.hot{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.comp-head{display:flex;align-items:flex-start;gap:var(--s2)}
+.comp-no{flex:none;width:26px;height:26px;border-radius:var(--r1);background:var(--fg);color:#fff;
+  font-family:var(--mono);font-size:12px;display:flex;align-items:center;justify-content:center}
+.comp h3{font-size:15px;flex:1}
+.comp .who{font-size:12px;color:var(--muted-fg);line-height:1.5}
+.row{display:grid;grid-template-columns:74px 1fr;gap:var(--s2);font-size:13px;align-items:start}
+.row .k{font-size:11px;letter-spacing:.04em;color:var(--muted-fg);text-transform:uppercase;padding-top:2px}
+.row .v{min-width:0}
+.sel{font-family:var(--mono);font-size:12px;background:var(--muted);border:1px solid var(--border);
+  border-radius:6px;padding:2px 6px;display:inline-block;margin:0 4px 4px 0;word-break:break-all}
+.sel.root{background:var(--primary-soft);border-color:#D3E0FB;color:#1B4FC4;font-weight:600}
+.chip{display:inline-block;font-family:var(--mono);font-size:11px;border:1px solid var(--border-strong);
+  border-radius:999px;padding:1px 7px;margin:0 4px 4px 0;color:var(--muted-fg);background:#fff}
+.chip.own{background:var(--ok-soft);border-color:#BBF7D0;color:var(--ok)}
+.chip.over{background:#FFF7ED;border-color:#FED7AA;color:#9A3412}
+.noread{font-size:12px;color:var(--muted-fg)}
+.noread .num{font-family:var(--mono);color:var(--fg);font-weight:600}
+.bar{height:6px;border-radius:999px;background:var(--muted);overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--primary)}
+
+/* ── 表格 ── */
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card)}
+th,td{text-align:left;padding:10px var(--s2);border-bottom:1px solid var(--border);vertical-align:top}
+th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted-fg);font-weight:600;background:var(--surface)}
+tr:last-child td{border-bottom:0}
+.tbl-wrap{border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.nowrap{white-space:nowrap}
+.mono{font-family:var(--mono);font-size:12px}
+
+/* ── 公共层单列块 ── */
+.pub{border:1px dashed var(--border-strong);background:#FCFDFF;border-radius:var(--r2);padding:var(--s4)}
+.pub .rule{display:flex;gap:var(--s2);align-items:flex-start;margin-top:var(--s2)}
+.pub .rule .tick{flex:none;width:16px;height:16px;border-radius:4px;border:2px solid var(--destructive);margin-top:4px}
+.pub .allowed{border:1px solid #BBF7D0;background:var(--ok-soft);border-radius:var(--r1);padding:var(--s2) var(--s3);margin-top:var(--s3)}
+.pub .denied{border:1px solid #FECACA;background:#FEF2F2;border-radius:var(--r1);padding:var(--s2) var(--s3);margin-top:var(--s2)}
+
+/* ── 覆盖层证据 ── */
+.ev{border:1px solid var(--border);border-radius:var(--r1);overflow:hidden;margin-top:var(--s3)}
+.ev .ev-h{background:var(--surface);padding:8px var(--s2);font-size:12px;color:var(--muted-fg);border-bottom:1px solid var(--border)}
+.ev pre{margin:0;padding:var(--s2);overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.7;background:#fff}
+.ev pre .hit{background:#FFF7ED;border-radius:3px;padding:0 2px}
+
+/* ── FR 锚点块 ── */
+.fr{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:var(--s4);margin-top:var(--s3)}
+.fr h3{font-size:17px}
+.fr .meta{font-family:var(--mono);font-size:12px;color:var(--muted-fg);margin-top:4px}
+.fr .say{margin-top:var(--s2);max-width:84ch}
+.fr .fig{margin-top:var(--s3);border:1px solid var(--border);border-radius:var(--r1);padding:var(--s3);background:var(--surface)}
+.fig-cap{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:var(--s2)}
+.grid-mini{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.mini{border:1px solid var(--border-strong);border-radius:var(--r1);background:#fff;padding:var(--s2);
+  font-family:var(--mono);font-size:11px;min-width:132px;line-height:1.5}
+.mini b{display:block;font-family:var(--sans);font-size:12px;color:var(--fg);font-weight:600;margin-bottom:2px}
+.mini.page{border-style:solid;border-color:var(--primary);background:var(--primary-soft)}
+.arrowline{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;margin-top:var(--s2);font-size:13px}
+.pill{font-family:var(--mono);font-size:12px;background:#fff;border:1px solid var(--border-strong);border-radius:999px;padding:3px 10px}
+.pill.red{border-color:#FCA5A5;background:#FEF2F2;color:#991B1B}
+.pill.green{border-color:#86EFAC;background:var(--ok-soft);color:#166534}
+.arrow{color:var(--muted-fg);font-family:var(--mono)}
+.matrix{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px;margin-top:var(--s1)}
+.matrix-tbl td{text-align:center;font-family:var(--mono);font-size:12px;color:#166534;background:var(--ok-soft)}
+.matrix-tbl td:first-child{text-align:left;color:var(--fg);background:#fff}
+.matrix-tbl th{text-align:center}
+.matrix-tbl th:first-child{text-align:left}
+.cell{border:1px solid #BBF7D0;background:var(--ok-soft);border-radius:6px;padding:6px 8px;font-size:11px;
+  font-family:var(--mono);color:#166534}
+.cell.hd{background:var(--muted);border-color:var(--border-strong);color:var(--muted-fg)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--s3)}
+.box{border:1px solid var(--border);border-radius:var(--r1);padding:var(--s3);background:#fff}
+.box h4{margin:0 0 var(--s2);font-size:13px}
+.box ul{margin:0;padding-left:18px}
+.box li{margin-bottom:6px}
+.shardline{display:flex;flex-wrap:wrap;gap:5px;margin-top:var(--s2)}
+.shard{font-family:var(--mono);font-size:11px;border:1px solid var(--border-strong);background:#fff;border-radius:6px;padding:4px 8px}
+.shard.rp{border-color:var(--primary);background:var(--primary-soft);color:#1B4FC4;font-weight:600}
+.shard.no{border-style:dashed;color:var(--muted-fg)}
+
+/* ── 边界说明 ── */
+.boundary{border:1px solid var(--border);border-radius:var(--r2);background:var(--card);padding:var(--s4)}
+.boundary .no{display:flex;gap:var(--s2);padding:var(--s2) 0;border-bottom:1px dashed var(--border)}
+.boundary .no:last-child{border-bottom:0}
+.boundary .x{flex:none;width:18px;height:18px;border-radius:50%;border:2px solid var(--destructive);margin-top:3px;position:relative}
+.boundary .x::after{content:"";position:absolute;left:3px;right:3px;top:6px;height:2px;background:var(--destructive);transform:rotate(-45deg)}
+.boundary .no b{display:block;font-size:14px}
+.boundary .no span{font-size:13px;color:var(--muted-fg)}
+
+/* ── 页脚 ── */
+footer{margin-top:var(--s6);border-top:1px solid var(--border);padding-top:var(--s4);color:var(--muted-fg);font-size:12px}
+footer .kv{display:grid;grid-template-columns:150px 1fr;gap:4px var(--s2);margin-top:var(--s2)}
+footer .kv .k{font-family:var(--mono)}
+footer pre{background:var(--surface);border:1px solid var(--border);border-radius:var(--r1);padding:var(--s2);
+  overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.65;margin:var(--s2) 0 0}
+
+@media (max-width:900px){
+  .scope-grid{grid-template-columns:1fr;}
+  .scope-grid .axis{text-align:left}
+  .readout{border-left:0;border-top:2px solid var(--border);padding:var(--s2) 0 0}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition-duration:0s !important;animation-duration:0s !important}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="inner">
+    <div class="req">REQ-261007133149-0716 · prototypes/anatomy.html · 原型 v1</div>
+    <h1>需求详情页组件解剖图</h1>
+    <p class="sub">把详情页切成 10 个组件后，谁拥有哪块界面、改它时该动哪一段、以及<strong>不必读什么</strong>。这是一张地图，不是一张新版 UI。</p>
+    <div class="badges">
+      <span class="badge p">零外观变更</span>
+      <span class="badge">10 个组件</span>
+      <span class="badge">样式按组件分片</span>
+      <span class="badge">面板契约类型钉住</span>
+      <span class="badge">服务条款 FR-1 ~ FR-6</span>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+
+  <!-- ══════════ TL;DR ══════════ -->
+  <section class="tldr" id="tldr">
+    <div class="k">TL;DR</div>
+    <p>本页是把需求详情页切成 <b>10 个组件</b>后的解剖图：每个组件有自己的 DOM 根、自己的一页外观、以及一个「改它时<b>不必读</b>」的清单——页面外观一个字都不变。</p>
+  </section>
+
+  <!-- ══════════ 封面 / 范围图 ══════════ -->
+  <section id="scope">
+    <div class="h2"><h2>封面图：首屏自上而下，每一段属于谁</h2><span class="n">1280 × 视口内高 713 · 在途态 · 实测</span></div>
+    <p class="lead">首屏是 3 段常驻（head / band / tabs）+ 面板区。三段常驻是<strong>并行</strong>的：它们不互相嵌套，页面滚动、分段局部更新都以段为单位（<code>wrapShell</code> 的四段 <code>data-report-seg</code>）。面板区<strong>一次只挂一个</strong>面板——未激活的 Tab 根本不在产物里。</p>
+
+    <div class="card scope" style="margin-top:var(--s3)">
+      <div class="scope-grid">
+        <div class="axis">head<br>8 – 363</div>
+        <div class="seg" data-own="head" data-card="c1">
+          <span class="lab">head 常驻头部</span>
+          <span class="rt">[data-report-seg="head"] · 355px</span>
+        </div>
+        <div class="readout">
+          top <b>8</b> · h <b>355</b><br>
+          标识行 / 标题行 / 闸门条<br>结论行 / 下一步 / 阶段条 / 最近评论
+        </div>
+
+        <div class="axis">band<br>363 – 554</div>
+        <div class="seg" data-own="band" data-card="c2">
+          <span class="lab">band 状态带三格</span>
+          <span class="rt">[data-report-seg="band"] · 191px</span>
+        </div>
+        <div class="readout">
+          top <b>363</b> · h <b>191</b><br>
+          三格：进度 / 缺口 / 结果
+        </div>
+
+        <div class="axis">tabs<br>554 – 614</div>
+        <div class="seg" data-own="tabs" data-card="c3">
+          <span class="lab">tabs 进度带 + Tab 栏</span>
+          <span class="rt">[data-report-seg="tabs"] · 60px</span>
+        </div>
+        <div class="readout">
+          top <b>554</b> · h <b>60</b><br>
+          4px 进度带 + 7 个 Tab
+        </div>
+
+        <div class="axis">panel<br>614 – 713+</div>
+        <div class="seg" data-own="panel" data-card="c4">
+          <span class="lab">面板区（一次只挂一个）</span>
+          <span class="rt">[data-report-seg="panel"] &gt; [data-tab-host] &gt; 面板根</span>
+        </div>
+        <div class="readout">
+          top <b>614</b> · 首屏只露出 <b>99</b>px<br>
+          内部是 7 个互斥组件之一：<br>trunk / docs / dag / dialogue / verify / token / prompts
+        </div>
+      </div>
+
+      <div class="scope-note">
+        <span><i class="swatch" style="background:#2563EB"></i>head</span>
+        <span><i class="swatch" style="background:#EA580C"></i>band</span>
+        <span><i class="swatch" style="background:#7C3AED"></i>tabs</span>
+        <span><i class="swatch" style="background:#CBD5E1"></i>panel（当前激活的那一个）</span>
+      </div>
+      <p class="hint">比例 = 实测 px × 0.45。容器宽 1240（视口 1280 − 左右各 20 内边距）。把鼠标移到某一段上，下面属于它的卡片会亮起来。</p>
+    </div>
+  </section>
+
+  <!-- ══════════ 10 个组件 ══════════ -->
+  <section id="components">
+    <div class="h2"><h2>10 个组件：DOM 根 · 拥有的外观 · 改它时不必读</h2><span class="n">report.ts = 2387 行</span></div>
+    <p class="lead">「拥有的外观」给的是 <code>src/client/styles/report.ts</code> 的章节号与<strong>实测行号</strong>。「改它时不必读」是本次需求要交付的<strong>读面缩小</strong>：改这个组件时，下面点名的行段可以整段跳过，只看它自己那一片 + 尾部会命中它的那几条。</p>
+
+    <div class="cards" style="margin-top:var(--s3)">
+
+      <!-- 1 head -->
+      <article class="comp" id="c1">
+        <div class="comp-head"><span class="comp-no">1</span><h3>head 常驻头部</h3></div>
+        <div class="who">标识行 / 标题行 / 闸门条 / 结论行 / 下一步 / 阶段条 / 最近评论</div>
+        <div class="row"><div class="k">DOM 根</div><div class="v">
+          <span class="sel root">[data-report-seg="head"]</span>
+          <span class="sel">.dsh-pm-detail-head</span>
+        </div></div>
+        <div class="row"><div class="k">拥有外观</div><div class="v">
+          <span class="chip own">② 常驻头部 L173–411</span>
+          <span class="chip own">片尾「头部灰卡连带修正」L1600–1618</span>
+          <div class="sel">.dsh-pm-detail-head[data-report-head]</div>
+          <div class="sel">.dsh-pm-rh-top</div>
+          <div class="sel">.dsh-pm-rh-title</div>
+          <div class="sel">.dsh-pm-gate-banner</div>
+          <div class="sel">.dsh-pm-status</div>
+        </div></div>
+        <div class="row"><div class="k">尾部仍命中</div><div class="v">
+          <span class="chip over">片尾「FR-1 头部三层」L1685–1757（head 的排布正主）</span>
+          <span class="chip over">⑲ 契约落地层 L1501+（.dsh-pm-status / .dsh-pm-card-id）</span>
+          <span class="chip over">⑰ L1488（「·」分隔）</span>
+          <span class="chip over">㉑⑥ L2381–2386（与 band / tabs 同一条规则）</span>
+        </div></div>
+        <div class="row"><div class="k">不必读</div><div class="v noread">
+          ③ 状态带 L412–533 · ④ Tab 栏 L534–591 · ⑤ 公共件 L592–731 · ⑥–⑪ 六个面板 L732–1248 · ⑬ 窄档 L1338–1353 · ⑭ 目标尺寸 L1354–1397 · ⑮ 动效 L1398–1460 · ⑯ 字阶 L1461–1479 · ⑱ DAG 收口 L1305–1337
+          <div>合计 <span class="num">1012</span> / 2387 行（<span class="num">42%</span>）与 head 无关</div>
+          <div class="bar"><i style="width:42%"></i></div>
+        </div></div>
+      </article>
+
+      <!-- 2 band -->
+      <article class="comp" id="c2">
+        <div class="comp-head"><span class="comp-no">2</span><h3>band 状态带三格</h3></div>
+        <div class="who">进度格 / 缺口格 / 结果格（含缺口折叠与红色计数徽标）</div>
+        <div class="row"><div class="k">DOM 根</div><div class="v">
+          <span class="sel root">[data-report-seg="band"]</span>
+          <span class="sel">.dsh-pm-stats</span>
+        </div></div>
+        <div class="row"><div class="k">拥有外观</div><div class="v">
+          <span class="chip own">③ 状态带三格 L412–533</span>
+          <span class="chip own">其中 L489–533 = 段尾「FR-2 状态带权重」块</span>
+          <div class="sel">.dsh-pm-stats[data-report-band]</div>
+          <div class="sel">.dsh-pm-stat[data-band-cell]</div>
+          <div class="sel">.dsh-pm-gap-line</div>
+          <div class="sel">.dsh-pm-outcome-verdict</div>
+        </div></div>
+        <div class="row"><div class="k">尾部仍命中</div><div class="v">
+          <span class="chip over">⑲ L1542–1543（与 head / trunk 同一条 :is 规则）</span>
+          <span class="chip over">⑯ L1473（状态带主值 L1 20/600）</span>
+          <span class="chip over">⑰ L1496–1498（.dsh-pm-stat 去阴影，与 trunk / token / prompts 同一条）</span>
+          <span class="chip over">㉑⑥ L2381–2386</span>
+        </div></div>
+        <div class="row"><div class="k">不必读</div><div class="v noread">
+          ④ Tab 栏 L534–591 · ⑤ 公共件 L592–731 · ⑥–⑪ 六个面板 L732–1248 · ⑫ 焦点环 L1249–1304 · ⑱ DAG 收口 L1305–1337 · ⑬ 窄档 L1338–1353 · ⑭ 目标尺寸 L1354–1397 · ⑮ 动效 L1398–1460
+          <div>合计 <span class="num">927</span> / 2387 行（<span class="num">39%</span>）与 band 无关</div>
+          <div class="bar"><i style="width:39%"></i></div>
+        </div></div>
+      </article>
+
+      <!-- 3 tabs -->
+      <article class="comp" id="c3">
+        <div class="comp-head"><span class="comp-no">3</span><h3>tabs 进度带 + Tab 栏</h3></div>
+        <div class="who">4px 阶段进度带（含 10.5px 单行标签）+ 7 个 Tab 项与计数徽标</div>
+        <div class="row"><div class="k">DOM 根</div><div class="v">
+          <span class="sel root">[data-report-seg="tabs"]</span>
+          <span class="sel">.dsh-pm-tabs</span>
+        </div></div>
+        <div class="row"><div class="k">拥有外观</div><div class="v">
+          <span class="chip own">④ Tab 栏 L534–591</span>
+          <span class="chip own">片尾「FR-4 进度带与 Tab 栏」L1619–1684</span>
+          <div class="sel">.dsh-pm-tabs[data-report-tabs]</div>
+          <div class="sel">.dsh-pm-tab.active</div>
+          <div class="sel">.dsh-pm-progress-dots .dsh-pm-dot-label</div>
+        </div></div>
+        <div class="row"><div class="k">尾部仍命中</div><div class="v">
+          <span class="chip over">⑲ L1513（.dsh-pm-tab 一类）</span>
+          <span class="chip over">⑫ L1249+ 焦点环（面状控件内偏移）</span>
+          <span class="chip over">⑮ L1398+ reduced-motion 归零</span>
+          <span class="chip over">㉑⑥ L2381–2386</span>
+        </div></div>
+        <div class="row"><div class="k">不必读</div><div class="v noread">
+          ③ 状态带 L412–533 · ⑤ 公共件 L592–731 · ⑥–⑪ 六个面板 L732–1248 · ⑱ DAG 收口 L1305–1337 · ⑬ 窄档 L1338–1353 · ⑭ 目标尺寸 L1354–1397 · ⑯ 字阶 L1461–1479
+          <div>合计 <span class="num">891</span> / 2387 行（<span class="num">37%</span>）与 tabs 无关</div>
+          <div class="bar"><i style="width:37%"></i></div>
+        </div></div>
+      </article>
+
+      <!-- 4 trunk -->
+      <article class="comp" id="c4">
+        <div class="comp-head"><span class="comp-no">4</span><h3>panel / trunk 汇报</h3></div>
+        <div class="who">一个模块一条：标题行 + 正文 + 可选引用行；缺件态与折叠</div>
+        <div class="row"><div class="k">DOM 根</div><div class="v">
+          <span class="sel root">.dsh-pm-trunk</span>
+          <span class="sel">[data-panel="trunk"]</span>
+        </div></div>
+        <div class="row"><div class="k">拥有外观</div><div class="v">
+          <span class="chip own">⑥ 汇报 Tab L732–834</span>
+          <div class="sel">.dsh-pm-trunk-item</div>
+          <div class="sel">.dsh-pm-trunk-head</div>
+          <div class="sel">.dsh-pm-trunk-missing</div>
+          <div class="sel">.dsh-pm-trunk-openrefs</div>
+        </div></div>
+        <div class="row"><div class="k">尾部仍命中</div><div class="v">
+          <span class="chip over">⑲ L1540–1542（.dsh-pm-trunk-item 与 head / band 同一条）</span>
+          <span class="chip over">⑰ L1496–1498（去阴影）</span>
+          <span class="chip over">⑭ L1354+ 目标尺寸（.dsh-pm-trunk-open）</span>
+          <span class="chip over">片尾「FR-3/FR-5 评论紧凑与汇报网格」L1983–2112</span>
+        </div></div>
+        <div class="row"><div class="k">不必读</div><div class="v noread">
+          ② 常驻头部 L173–411 · ③ 状态带 L412–533 · ④ Tab 栏 L534–591 · ⑦–⑪ 其余五个面板 L835–1248 · ⑬ 窄档 L1338–1353 · ⑯ 字阶 L1461–1479 · ⑱ DAG 收口 L1305–1337
+          <div>合计 <span class="num">901</span> / 2387 行（<span class="num">38%</span>）与 trunk 无关</div>
+          <div class="bar"><i style="width:38%"></i></div>
+        </div></div>
+      </article>
+
+      <!-- 5 docs -->
+      <article class="comp" id="c5">
+        <div class="comp-head"><span class="comp-no">5</span><h3>panel / docs 文档</h3></div>
+        <div class="who">清单 / 生成物 / 其它发现 / 核验 / 门禁 / 归档 六分节 + 紧凑表</div>
+        <div class="row"><div class="k">DOM 根</div><div class="v">
+          <span class="sel root">[data-panel="docs"]</span>
+          <span class="sel">.dsh-pm-docs</span>
+        </div></div>
+        <div class="row"><div class="k">拥有外观</div><div class="v">
+          <span class="chip own">⑦ 文档 Tab L835–895</span>
+          <span class="chip own">片尾文档三分节紧凑表 L1775+</span>
+          <div class="sel">.dsh-pm-doc-path</div>
+          <div class="sel">.dsh-pm-docs-table</div>
+          <div class="sel">.dsh-pm-discovered-group</div>
+        </div></div>
+        <div class="row"><div class="k">尾部仍命中</div><div class="v">
+          <span class="chip over">⑤ 公共件（表 / 芯片 / 空态）L592–731</span>
+          <span class="chip over">⑲ L1501+（表头底色 / 描边色）</span>
+          <span class="chip over">⑫ L1249+ 焦点环 · ⑭ 目标尺寸 L1354+</span>
+          <span class="chip over">㉑① L2320–2339（面板板块成卡：.dsh-pm-block）</span>
+          <span class="chip over">⚠ L851–858 本分片里住着验收面板的 <code>.dsh-pm-verify-verdict</code>（FR-2 要归位）</span>
+        </div></div>
+        <div class="row"><div class="k">不必读</div><div class="v noread">
+          ② 常驻头部 L173–411 · ③ 状态带 L412–533 · ④ Tab 栏 L534–591 · ⑥ 汇报 L732–834 · ⑧–⑪ 其余四个面板 L896–1248 · ⑬ 窄档 L1338–1353 · ⑮ 动效 L1398–1460 · ⑯ 字阶 L1461–1479 · ⑱ DAG 收口 L1305–1337
+          <div>合计 <span class="num">1006</span> / 2387 行（<span class="num">42%</span>）与 docs 无关</div>
+          <div class="bar"><i style="width:42%"></i></div>
+        </div></div>
+      </article>
+
+      <!-- 6 dag -->
+      <article class="comp" id="c6">
+        <div class="comp-head"><span class="comp-no">6</span><h3>panel / dag DAG</h3></div>
+        <div class="who">链摘要 + 每步执行结果表（画布本体沿用既有 dag 分片）</div>
+        <div class="row"><div class="k">DOM 根</div><div class="v">
+          <span class="sel root">[data-panel="dag"]</span>
+          <span class="sel">.dsh-pm-report-dag</span>
+        </div></div>
+        <div class="row"><div class="k">拥有外观</div><div class="v">
+          <span class="chip own">⑪ DAG Tab L1194–1248</span>
+          <span class="chip own">⑱ DAG 面板在详情页内的收口 L1305–1337</span>
+          <div class="sel">.dsh-pm-dag-summary</div>
+          <div class="sel">.dsh-pm-report-step-error</div>
+          <div class="sel">.dsh-pm-dag-btn</div>
+        </div></div>
+        <div class="row"><div class="k">尾部仍命中</div><div class="v">
+          <span class="chip over">⑫ L1249+ 焦点环</span>
+          <span class="chip over">㉑④ L2352–2358（画布合成一张卡）</span>
+          <span class="chip over">（画布本体 <code>src/client/dag/</code> 与 <code>styles/dag.ts</code> <strong>不在本次范围</strong>）</span>
+        </div></div>
+        <div class="row"><div class="k">不必读</div><div class="v noread">
+          ② 常驻头部 L173–411 · ③ 状态带 L412–533 · ④ Tab 栏 L534–591 · ⑥–⑩ 其余面板 L732–1193 · ⑬ 窄档 L1338–1353 · ⑭ 目标尺寸 L1354–1397 · ⑮ 动效 L1398–1460 · ⑯ 字阶 L1461–1479
+          <div>合计 <span class="num">1023</span> / 2387 行（<span class="num">43%</span>）与 dag 面板无关</div>
+          <div class="bar"><i style="width:43%"></i></div>
+        </div></div>
+      </article>
+
+      <!-- 7 dialogue -->
+      <article class="comp" id="c7">
+        <div class="comp-head"><span class="comp-no">7</span><h3>panel / dialogue 对话</h3></div>
+        <div class="who">聊天气泡 + 吸顶分页条 + 折叠全文（唯一允许内滚动的面板）</div>
+        <div class="row"><div class="k">DOM 根</div><div class="v">
+          <span class="sel root">[data-panel="dialogue"]</span>
+          <span class="sel">.dsh-pm-dialogue</span>
+        </div></div>
+        <div class="row"><div class="k">拥有外观</div><div class="v">
+          <span class="chip own">⑧ 对话 Tab L896–1032</span>
+          <div class="sel">.dsh-pm-chat-scroll</div>
+          <div class="sel">.dsh-pm-chat-pager</div>
+          <div class="sel">.dsh-pm-msg</div>
+          <div class="sel">.dsh-pm-bubble--long</div>
+        </div></div>
+        <div class="row"><div class="k">尾部仍命中</div><div class="v">
+          <span class="chip over">⓪ 基底 L45–72（.dsh-pm-msg[hidden] 必须真隐藏 —— 本面板专属契约）</span>
+          <span class="chip over">㉑① L2320–2339（.dsh-pm-dialogue 成卡）</span>
+          <span class="chip over">⑲ L1501+（少量）</span>
+        </div></div>
+        <div class="row"><div class="k">不必读</div><div class="v noread">
+          ② 常驻头部 L173–411 · ③ 状态带 L412–533 · ④ Tab 栏 L534–591 · ⑥⑦⑨⑩⑪ 其余面板 L732–895 与 L1033–1248 · ⑬ 窄档 L1338–1353 · ⑭ 目标尺寸 L1354–1397 · ⑯ 字阶 L1461–1479 · ⑱ DAG 收口 L1305–1337
+          <div>合计 <span class="num">911</span> / 2387 行（<span class="num">38%</span>）与对话面板无关</div>
+          <div class="bar"><i style="width:38%"></i></div>
+        </div></div>
+      </article>
+
+      <!-- 8 verify -->
+      <article class="comp" id="c8">
+        <div class="comp-head"><span class="comp-no">8</span><h3>panel / verify 验收</h3></div>
+        <div class="who">验收单逐项 + RTM 列表（FR 覆盖矩阵 / 可折叠分组）</div>
+        <div class="row"><div class="k">DOM 根</div><div class="v">
+          <span class="sel root">[data-panel="verify"]</span>
+          <span class="sel">.dsh-pm-verify</span>
+        </div></div>
+        <div class="row"><div class="k">拥有外观</div><div class="v">
+          <span class="chip own">片尾「FR-8 验收面板 RTM 列表」L2113–2294</span>
+          <div class="sel">.dsh-pm-rtm-progress</div>
+          <div class="sel">.dsh-pm-rtm-table</div>
+          <div class="sel">.dsh-pm-rtm-toggle</div>
+          <div class="sel">.dsh-pm-cov</div>
+        </div></div>
+        <div class="row"><div class="k">尾部仍命中</div><div class="v">
+          <span class="chip over">⑦ L835+（RTM 表沿用的表语汇）</span>
+          <span class="chip over">⑲ L1501+（表头底色 / 描边）</span>
+          <span class="chip over">㉑⑤ L2360–2370（≤760 窄档表头折行，与 docs / token 表同一条）</span>
+          <span class="chip over">⚠ 本组件有 5 条规则（<code>.dsh-pm-verify-verdict</code> L851–858）住在 ⑦ 文档分片里（FR-2 要归位）</span>
+        </div></div>
+        <div class="row"><div class="k">不必读</div><div class="v noread">
+          ② 常驻头部 L173–411 · ③ 状态带 L412–533 · ④ Tab 栏 L534–591 · ⑥ 汇报 L732–834 · ⑧⑨⑩⑪ 其余面板 L896–1248 · 公共收口 L1249–1500（⑫ 焦点环 / ⑱ DAG 收口 / ⑬ 窄档 / ⑭ 目标尺寸 / ⑮ 动效 / ⑯ 字阶 / ⑰ 视觉收敛）
+          <div>合计 <span class="num">1127</span> / 2387 行（<span class="num">47%</span>）与验收面板无关</div>
+          <div class="bar"><i style="width:47%"></i></div>
+        </div></div>
+      </article>
+
+      <!-- 9 token -->
+      <article class="comp" id="c9">
+        <div class="comp-head"><span class="comp-no">9</span><h3>panel / token Token</h3></div>
+        <div class="who">四张汇总卡 + 按节点表 + 注入信息 chips</div>
+        <div class="row"><div class="k">DOM 根</div><div class="v">
+          <span class="sel root">[data-panel="token"]</span>
+          <span class="sel">.dsh-pm-token-panel</span>
+        </div></div>
+        <div class="row"><div class="k">拥有外观</div><div class="v">
+          <span class="chip own">⑨ Token Tab L1033–1107</span>
+          <span class="chip own">片尾 Token 汇总卡 / 按节点表 L1836+</span>
+          <div class="sel">.dsh-pm-tok-stat</div>
+          <div class="sel">.dsh-pm-tok-table</div>
+          <div class="sel">.dsh-pm-opt</div>
+          <div class="sel">.dsh-pm-inj</div>
+        </div></div>
+        <div class="row"><div class="k">尾部仍命中</div><div class="v">
+          <span class="chip over">⑤ 公共件 L592–731</span>
+          <span class="chip over">⑰ L1496–1498（.dsh-pm-tok-sub 去阴影）</span>
+          <span class="chip over">⑲ L1501+（表格底色）</span>
+          <span class="chip over">㉑③ L2349–2350（汇总卡描边 1px）</span>
+        </div></div>
+        <div class="row"><div class="k">不必读</div><div class="v noread">
+          ② 常驻头部 L173–411 · ③ 状态带 L412–533 · ④ Tab 栏 L534–591 · ⑥⑦⑧⑪ 其余面板 L732–1032 与 L1194–1248 · ⑬ 窄档 L1338–1353 · ⑭ 目标尺寸 L1354–1397 · ⑯ 字阶 L1461–1479 · ⑱ DAG 收口 L1305–1337
+          <div>合计 <span class="num">887</span> / 2387 行（<span class="num">37%</span>）与 Token 面板无关</div>
+          <div class="bar"><i style="width:37%"></i></div>
+        </div></div>
+      </article>
+
+      <!-- 10 prompts -->
+      <article class="comp" id="c10">
+        <div class="comp-head"><span class="comp-no">10</span><h3>panel / prompts 提示词</h3></div>
+        <div class="who">提示词正文（pre）+ 规格对照 + 上下文行 + 注入串</div>
+        <div class="row"><div class="k">DOM 根</div><div class="v">
+          <span class="sel root">[data-panel="prompts"]</span>
+          <span class="sel">.dsh-pm-prompts</span>
+        </div></div>
+        <div class="row"><div class="k">拥有外观</div><div class="v">
+          <span class="chip own">⑩ 提示词 Tab L1108–1193</span>
+          <span class="chip own">片尾提示词卡与注入 chips L1886+</span>
+          <div class="sel">details.dsh-pm-prompt</div>
+          <div class="sel">.dsh-pm-sv-col</div>
+          <div class="sel">.dsh-pm-ctx-line</div>
+        </div></div>
+        <div class="row"><div class="k">尾部仍命中</div><div class="v">
+          <span class="chip over">⑤ 公共件 L592–731</span>
+          <span class="chip over">⑰ L1496–1498（details.dsh-pm-prompt 去阴影）</span>
+          <span class="chip over">㉑① L2328–2339（.dsh-pm-pp-sec 成卡）</span>
+          <span class="chip over">⑫ L1249+ 焦点环 · ⑮ 动效 L1398+</span>
+        </div></div>
+        <div class="row"><div class="k">不必读</div><div class="v noread">
+          ② 常驻头部 L173–411 · ③ 状态带 L412–533 · ④ Tab 栏 L534–591 · ⑥⑦⑧⑪ 其余面板 L732–1032 与 L1194–1248 · ⑬ 窄档 L1338–1353 · ⑭ 目标尺寸 L1354–1397 · ⑯ 字阶 L1461–1479 · ⑱ DAG 收口 L1305–1337
+          <div>合计 <span class="num">887</span> / 2387 行（<span class="num">37%</span>）与提示词面板无关</div>
+          <div class="bar"><i style="width:37%"></i></div>
+        </div></div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ══════════ 公共层 ══════════ -->
+  <section id="common">
+    <div class="h2"><h2>公共层（不属于任何单一组件）</h2><span class="n">⓪ ① ⑤ ⑫–⑱</span></div>
+    <p class="lead">这四块<strong>刻意不属于任何组件</strong>：它们的规则要么管所有组件的共同前提（基底 / 令牌 / 焦点 / 目标尺寸 / 动效 / 字阶），要么是多个面板都会用的零件。把它们算进某个组件，就等于让那个组件替别人背外观。</p>
+
+    <div class="pub" style="margin-top:var(--s3)">
+      <div class="two">
+        <div>
+          <h3 style="font-size:14px">公共层清单（⓪ ① ⑤ + ⑫–⑱ 收口组）</h3>
+          <div class="shardline">
+            <span class="shard">⓪ 基底 L45–72</span>
+            <span class="shard">① 壳体与设计令牌 L73–172</span>
+            <span class="shard">⑤ 公共件 L592–731</span>
+            <span class="shard">⑫ 焦点环 L1249–1304</span>
+            <span class="shard">⑬ 窄档 L1338–1353</span>
+            <span class="shard">⑭ 目标尺寸 L1354–1397</span>
+            <span class="shard">⑮ 动效 L1398–1460</span>
+            <span class="shard">⑯ 字阶收口 L1461–1479</span>
+            <span class="shard">⑰ 视觉语言收敛 L1480–1500</span>
+            <span class="shard">⑱ DAG 收口 L1305–1337</span>
+          </div>
+          <p class="hint">⑱ 特殊：它的射程是 DAG 面板，但口径是「详情页内的公共收口」，故列在公共层并注明归属 dag 面板。</p>
+        </div>
+        <div>
+          <div class="allowed">
+            <strong>只允许写「每处都一样的口径」</strong>
+            <div style="font-size:13px;color:var(--muted-fg);margin-top:6px">
+              例如：<code>:focus-visible</code> 的双偏移与 halo、<code>--pm-target: 24px</code> 这条命中区下限、reduced-motion 归零、<code>b/strong</code> 的 400/500/600 三档字重收口、窄档断点。
+            </div>
+          </div>
+          <div class="denied">
+            <strong>不许写具体组件取值</strong>
+            <div style="font-size:13px;color:var(--muted-fg);margin-top:6px">
+              例如：在 ⑤ 里给 <code>.dsh-pm-rtm-table</code> 定列宽、在 ⑫ 里给 Tab 项定 2px 指示条、在 ⑯ 里给头部标题定 19px。出现了就是<strong>分片归属门禁</strong>要拦的（FR-5 ②）。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ 覆盖层横跨证据（FR-2 要归位的东西） ══════════ -->
+  <section id="overlay">
+    <div class="h2"><h2>为什么必须做 FR-2：外观今天不在「它的」分片里</h2><span class="n">report.ts 逐字摘录</span></div>
+    <p class="lead">下面四条都是<strong>文件里原样存在的规则</strong>（只摘录，未改动）。前三条证明：今天「某组件的外观」并不都在它的分片里，而是散在片尾的覆盖层里，一条规则横跨好几个组件；第四条更直接——<strong>验收面板的选择器住在文档分片里</strong>。换任何一个组件的外观，都会被这几条从别处拽住。</p>
+
+    <div class="ev">
+      <div class="ev-h">⑰ 视觉语言收敛 L1496–1498 · 一条规则同时命中 band + trunk + token + prompts（+ head 的 rh-bar）</div>
+      <pre>.dsh-pm-detail[data-report-shell] :is(.dsh-pm-stat, .dsh-pm-block, .dsh-pm-trunk-item, .dsh-pm-fact,
+  .dsh-pm-hl, .dsh-pm-opt, .dsh-pm-inj, .dsh-pm-iso, .dsh-pm-tok-sub, .dsh-pm-rh-bar,
+  details.dsh-pm-fold, details.dsh-pm-prompt) { box-shadow: none; }</pre>
+    </div>
+
+    <div class="ev">
+      <div class="ev-h">⑲ 设计契约落地层 L1541–1542 · 一条规则同时命中 head + band + trunk</div>
+      <pre>.dsh-pm-detail[data-report-shell]
+  :is(.dsh-pm-detail-head[data-report-head], [data-report-seg="band"], .dsh-pm-trunk-item, .dsh-pm-comment, .dsh-pm-comments &gt; .dsh-pm-action-bar-label) { border-width: var(--pm-hair); }</pre>
+    </div>
+
+    <div class="ev">
+      <div class="ev-h">㉑ 卡片语汇 ⑥ L2381–2386 · 一条规则同时命中 head + band + tabs 三张壳牌卡</div>
+      <pre>.dsh-pm-detail[data-report-shell] .dsh-pm-detail-head[data-report-head],
+.dsh-pm-detail[data-report-shell] .dsh-pm-stat[data-band-cell],
+.dsh-pm-detail[data-report-shell] .dsh-pm-tabs[data-report-tabs] {
+  background: var(--pm-surface);
+  border: var(--pm-card-line) solid var(--pm-line);
+}</pre>
+    </div>
+
+    <div class="ev">
+      <div class="ev-h">⑦ 文档 Tab 分片 L851–858 · 验收面板的选择器住在 <strong>docs</strong> 的分片里（分片归属门禁要拦的正是这种）</div>
+      <pre>.dsh-pm-detail[data-report-shell] .dsh-pm-verify-verdict {
+  ...
+}
+.dsh-pm-detail[data-report-shell] .dsh-pm-verify-verdict[data-verify-verdict="passed"] { background: none; color: var(--pm-ok-text); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-verify-verdict[data-verify-verdict="failed"] { background: none; color: var(--pm-danger); }
+.dsh-pm-detail[data-report-shell] .dsh-pm-verify-verdict[data-verify-verdict="pending"] { background: none; color: var(--pm-warn-text); }</pre>
+    </div>
+
+    <p class="hint">FR-2 就是把这些横跨的、以及<strong>住错分片</strong>的规则各自送回它该属于的组件分片里，<strong>拼接出口与对外名字不变</strong>（仍是 <code>REPORT_CSS</code>，仍由 <code>styles.ts</code> 拼进全量 CSS），所以页面外观不需要跟着动。</p>
+  </section>
+
+  <!-- ══════════ FR 锚点 ══════════ -->
+  <section id="clauses">
+    <div class="h2"><h2>服务条款：每条的验收形态</h2><span class="n">FR-1 ~ FR-6</span></div>
+
+    <section class="fr" id="FR-1">
+      <h3>FR-1 组件边界落定并成文</h3>
+      <div class="meta">每组件 = DOM 根 + 拥有的选择器 + 依赖谁 · 一页地图</div>
+      <p class="say">10 个组件各有明确边界，且这份地图是 agent 改代码时<strong>唯一需要先读的一页</strong>。验收形态：本页的 10 张卡就是那份地图，每张卡给出 DOM 根、拥有的选择器、依赖的公共层。</p>
+      <div class="fig">
+        <div class="fig-cap">一张详情页同一时刻只有 4 个根；7 张标本页并集 = 10 个根</div>
+        <div class="grid-mini">
+          <div class="mini page"><b>标本页 ×1</b>[data-report-seg="head"]<br>[data-report-seg="band"]<br>[data-report-seg="tabs"]<br>+ 当前激活的那个面板根</div>
+          <div class="mini"><b>7 张并集</b>head / band / tabs<br>trunk / docs / dag<br>dialogue / verify<br>token / prompts = <b style="display:inline">10</b></div>
+          <div class="mini"><b>为什么是并集</b>未激活 Tab 不在产物里，<br>根数断言按 data-panel 计数，<br>7 张各 3+1、互异集合 10。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="fr" id="FR-2">
+      <h3>FR-2 样式按组件分片且覆盖层归位</h3>
+      <div class="meta">每个组件的外观（含今天散在片尾的覆盖层）只出现在它自己的分片里</div>
+      <p class="say">验收形态：按组件拆出分片后，逐组件分片里能找到它全部外观；片尾那些横跨规则（见上一节的三条摘录）被拆开送回各自组件。<strong>拼接出口与对外名字不变</strong>——仍是 <code>REPORT_CSS</code>，仍由 <code>styles.ts</code> 按同一顺序拼成全量 CSS。</p>
+      <div class="fig">
+        <div class="fig-cap">出口不变，里面从「一大片 + 片尾覆盖」变成「10 片 + 公共层」</div>
+        <div class="shardline">
+          <span class="shard no">⓪基底</span><span class="shard no">①令牌</span>
+          <span class="shard">②head</span><span class="shard">③band</span><span class="shard">④tabs</span>
+          <span class="shard no">⑤公共件</span>
+          <span class="shard">⑥trunk</span><span class="shard">⑦docs</span><span class="shard">⑧dialogue</span><span class="shard">⑨token</span><span class="shard">⑩prompts</span><span class="shard">⑪dag</span>
+          <span class="shard no">⑫–⑱公共收口</span>
+          <span class="shard rp">REPORT_CSS</span>
+        </div>
+        <div class="arrowline">
+          <span class="pill">片尾覆盖层（横跨 2–5 个组件）</span>
+          <span class="arrow">→ 拆开 →</span>
+          <span class="pill green">各归其组件分片</span>
+          <span class="arrow">· 拼接出口</span>
+          <span class="pill rp" style="font-family:var(--mono)">REPORT_CSS</span>
+          <span class="arrow">名字与顺序不变</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="fr" id="FR-3">
+      <h3>FR-3 现有外观零变更（可机械证明）</h3>
+      <div class="meta">逐组件「计算样式 + 几何」快照逐键相同</div>
+      <p class="say">验收形态：分片与归位前后各出一份快照，逐键比对必须完全相同。覆盖范围 = 七个面板 × 1280/900 × 在途/终态 + 首屏。</p>
+      <div class="fig">
+        <div class="fig-cap">快照矩阵：7 面板 × 2 宽度 × 2 状态 = 28 格，另加首屏</div>
+        <div class="tbl-wrap">
+          <table class="matrix-tbl">
+            <thead><tr><th>面板</th><th>1280 在途</th><th>1280 终态</th><th>900 在途</th><th>900 终态</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">trunk</td><td>同</td><td>同</td><td>同</td><td>同</td></tr>
+              <tr><td class="mono">docs</td><td>同</td><td>同</td><td>同</td><td>同</td></tr>
+              <tr><td class="mono">dag</td><td>同</td><td>同</td><td>同</td><td>同</td></tr>
+              <tr><td class="mono">dialogue</td><td>同</td><td>同</td><td>同</td><td>同</td></tr>
+              <tr><td class="mono">verify</td><td>同</td><td>同</td><td>同</td><td>同</td></tr>
+              <tr><td class="mono">token</td><td>同</td><td>同</td><td>同</td><td>同</td></tr>
+              <tr><td class="mono">prompts</td><td>同</td><td>同</td><td>同</td><td>同</td></tr>
+              <tr><td class="mono">+ 首屏（head / band / tabs）</td><td>同</td><td>同</td><td>同</td><td>同</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="hint">本页的几何量读数是这套快照的<strong>同款手法</strong>先跑了一遍（headless Chrome + 真实壳 + 真实 CSS），所以「1280 在途」这一列的 4 个根位置有了实测值：top 8 / 363 / 554 / 614。</p>
+      </div>
+    </section>
+
+    <section class="fr" id="FR-4">
+      <h3>FR-4 面板契约类型钉住</h3>
+      <div class="meta">显式 Panel 接口 + 从注册表单点推导 Tab 键与取数端点</div>
+      <p class="say">验收形态：面板注册表是<strong>单点真相</strong>，Tab 键与取数端点都从它推导；漏实现 / 键重复 / 顺序漂移在类型或契约用例上即红。</p>
+      <div class="fig">
+        <div class="fig-cap">注册表是单点，下游三样全部推导而来</div>
+        <div class="arrowline">
+          <span class="pill">显式 Panel 接口<br><span style="font-family:var(--sans);font-size:11px">key / label / render / 取数端点</span></span>
+          <span class="arrow">→ 注册表（单点）→</span>
+          <span class="pill">Tab 键与顺序</span>
+          <span class="pill">取数端点</span>
+          <span class="pill">面板渲染</span>
+        </div>
+        <div class="arrowline" style="margin-top:var(--s3)">
+          <span class="pill red">漏实现 → 类型红</span>
+          <span class="pill red">键重复 → 契约用例红</span>
+          <span class="pill red">顺序漂移 → 契约用例红</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="fr" id="FR-5">
+      <h3>FR-5 防复发门禁</h3>
+      <div class="meta">① 外观快照基线 ② 分片归属门禁</div>
+      <p class="say">验收形态：两道门各自会红。① 改外观必须更新快照，diff 里能看到<strong>组件粒度</strong>；② 组件选择器不许出现在别的分片，公共层不许写具体组件取值。</p>
+      <div class="fig">
+        <div class="two">
+          <div class="box">
+            <h4>① 外观快照基线</h4>
+            <ul>
+              <li>快照按 <strong>组件</strong> 分文件，不是整页一张图</li>
+              <li>改外观 ⇒ 快照变 ⇒ 必须一起更新</li>
+              <li>diff 直接指出「谁的外观变了」</li>
+            </ul>
+          </div>
+          <div class="box">
+            <h4>② 分片归属门禁</h4>
+            <ul>
+              <li>组件 <code>X</code> 的选择器出现在非 <code>X</code> 分片 ⇒ 红</li>
+              <li>公共层写具体组件取值 ⇒ 红（例：⑤ 里定 RTM 表列宽）</li>
+              <li>判定对象是<strong>分片来源</strong>，不是拼接后的产物</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="fr" id="FR-6">
+      <h3>FR-6 可逆与兼容</h3>
+      <div class="meta">分片可退回单文件（拼接后与今天逐字节相同）· 不改协议 / 路径 / 其它页面</div>
+      <p class="say">验收形态：把所有分片按今天的顺序拼回去，与现在的单文件<strong>逐字节相同</strong>；同时不改取数协议、不改写路径、不动其它页面。</p>
+      <div class="fig">
+        <div class="fig-cap">可逆：拼回去 == 今天</div>
+        <div class="arrowline">
+          <span class="pill">10 片 + 公共层</span>
+          <span class="arrow">— 按今日顺序 concat —▶</span>
+          <span class="pill green">字节相同</span>
+          <span class="arrow">↔</span>
+          <span class="pill">今天的 report.ts（2387 行）</span>
+        </div>
+        <div class="arrowline" style="margin-top:var(--s3)">
+          <span class="pill red">不改取数协议（src/client/api.ts）</span>
+          <span class="pill red">不改写路径</span>
+          <span class="pill red">不动其它页面</span>
+        </div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ══════════ 边界说明 ══════════ -->
+  <section id="boundary">
+    <div class="h2"><h2>边界说明</h2><span class="n">不在本次范围</span></div>
+    <p class="lead">下面这些经常和「详情页」一起被提起，但<strong>本次不碰</strong>。列出来是为了让改代码的人知道：这些文件的 diff 为空是<strong>预期</strong>，不是漏做。</p>
+    <div class="boundary" style="margin-top:var(--s3)">
+      <div class="no"><span class="x"></span><div><b>取数协议</b><span><code>src/client/api.ts</code> 的 URL 与响应形状一个字不改。面板契约类型钉住的是「谁能被注册、端点怎么推导」，不是「端点什么形状」。</span></div></div>
+      <div class="no"><span class="x"></span><div><b>后端</b><span>host 侧的 reqboard API、台账、存储一概不动。本次是纯前端分片与类型。</span></div></div>
+      <div class="no"><span class="x"></span><div><b>看板其它页面</b><span>看板列表 / 卡片 / 焦点 / 滚动等页面不动。详情页是浅色岛，改动不外溢。</span></div></div>
+      <div class="no"><span class="x"></span><div><b>旧详情页</b><span><code>src/client/views/stage-detail.ts</code> 不动——它是另一条路径的长相，不是本次的组件化对象。</span></div></div>
+      <div class="no"><span class="x"></span><div><b>DAG 画布本体</b><span><code>src/client/dag/</code>（含 <code>styles/dag.ts</code>）不动。本次只钉「DAG 面板在详情页内」的收口（report.ts ⑪ 与 ⑱），画布自己的分片沿用既有。</span></div></div>
+    </div>
+  </section>
+
+  <footer>
+    <strong>量测条件（本页几何量的出处）</strong>
+    <div class="kv">
+      <div class="k">标本来源</div><div>scripts/fixtures/req-detail-specimen.mts 的 <code>specimenShell</code> / <code>specimenShellForPanel</code>（真实 <code>buildReportShell</code> + 真实全量 CSS）</div>
+      <div class="k">页数</div><div>7 件：trunk 走 <code>specimenShell</code>；docs / dag / dialogue / verify / token / prompts 走 <code>specimenShellForPanel</code></div>
+      <div class="k">浏览器</div><div><code>findChrome()</code> 命中的 Chrome，<code>--headless=new --dump-dom</code>，<code>--window-size=1280,800</code>（实测 window.innerHeight = 713）</div>
+      <div class="k">态</div><div>inflight（在途）</div>
+      <div class="k">读数</div><div>head top 8 / h 355 · band top 363 / h 191 · tabs top 554 / h 60 · panel top 614 · 壳宽 1240</div>
+      <div class="k">互异根数</div><div>7 件标本页的 DOM 根并集 = 10（单页恒为 4）</div>
+    </div>
+
+    <strong style="display:block;margin-top:var(--s4)">设计系统检索（ui-ux-pro-max · 如实记录）</strong>
+    <div class="kv">
+      <div class="k">主查询</div><div><code>python3 .dsh/skills/ui-ux-pro-max/scripts/search.py "annotated diagram" --design-system --variance 3 --motion 1 --density 2</code></div>
+      <div class="k">命中</div><div>Pattern = Hero + Features + CTA；Style = Minimalism &amp; Swiss Style；托盘 = #2563EB / #F8FAFC / #1E293B / #E2E8F0 / #EA580C；Typography = Outfit / Work Sans；Motion = Scroll Reveal (Subtle) 300–400ms</div>
+      <div class="k">0 结果的两次</div><div><code>"layer map" --domain ux</code> 与 <code>"callout annotation" --domain ux</code> 均返回 <strong>0 条</strong>（数据库无匹配，最近词分别为 layering / animation）——本页的标注与图层表达<strong>不是</strong>检索结论，按仓库既有原型语言自行组织。</div>
+      <div class="k">字体回落</div><div>检索给的 Outfit / Work Sans 需外链 Google Fonts；本原型禁引外部网络资源，故回落系统字体栈，只沿用检索的间距刻度与字号层级。</div>
+      <div class="k">动效</div><div>只保留 hover / 高亮两类 220ms 过渡，并在 <code>prefers-reduced-motion: reduce</code> 下归零（motion 1 = 克制档）。</div>
+    </div>
+  </footer>
+
+</main>
+
+<!-- proto-geometry {"observations":[{"name":"componentRootCount","value":10,"unit":"count","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"headTop","value":8,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"bandTop","value":363,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"tabsTop","value":554,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"panelTop","value":614,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"headHeight","value":355,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"bandHeight","value":191,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"tabsHeight","value":60,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"shellWidth","value":1240,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"trunkPanelHeight","value":678,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"docsPanelHeight","value":2320,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"dagPanelHeight","value":1015,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"dialoguePanelHeight","value":388,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"verifyPanelHeight","value":1287,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"tokenPanelHeight","value":698,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"},{"name":"promptsPanelHeight","value":1536,"unit":"px","at":{"width":1280,"state":"inflight"},"shot":"docs/requirements/REQ-261007133149-0716/evidence/prototype-anatomy-1280.png","shotSha256":"04f18dc4af00f998ab8a31ddf7a55706666e60f720263b5de6179569aaad3f0b"}]} -->
+
+<script>
+/* 唯一的交互：把「封面图里的段」和「组件卡」连起来。
+   motion 1（克制档）：只有描边/底色变化，220ms；reduced-motion 下由 CSS 归零。
+   零依赖、无网络、无可访问性风险（纯装饰性高亮，不承载信息）。 */
+(function () {
+  var segs = Array.prototype.slice.call(document.querySelectorAll('.seg[data-card]'));
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.comp[id]'));
+  function byId(id) {
+    for (var i = 0; i < cards.length; i++) if (cards[i].id === id) return cards[i];
+    return null;
+  }
+  function clear() {
+    segs.forEach(function (s) { s.classList.remove('hot'); s.classList.remove('dim'); });
+    cards.forEach(function (c) { c.classList.remove('hot'); });
+  }
+  function focusCard(cardId) {
+    var card = byId(cardId);
+    if (card === null) return;
+    clear();
+    segs.forEach(function (s) { if (s.getAttribute('data-card') === cardId) s.classList.add('hot'); else s.classList.add('dim'); });
+    card.classList.add('hot');
+  }
+  segs.forEach(function (s) {
+    s.style.cursor = 'pointer';
+    s.addEventListener('mouseenter', function () { focusCard(s.getAttribute('data-card')); });
+    s.addEventListener('click', function () {
+      var card = byId(s.getAttribute('data-card'));
+      if (card !== null && card.scrollIntoView) card.scrollIntoView({ block: 'center' });
+    });
+  });
+  cards.forEach(function (c) {
+    c.addEventListener('mouseenter', function () { focusCard(c.id); });
+  });
+  document.addEventListener('mouseleave', clear);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261006201841-944d
+  generated_at: 2026-10-06T12:20:48.690Z
+  version: 7
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T12:43:49.753Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 合并去向必须在该需求自己的工作区根下真实存在且非空
+      source: requirement.md
+      line: 118
+    - id: FR-2
+      title: 说明书更新点收敛为 `path#anchor`，锚点必须存在，`path` 纳入白名单
+      source: requirement.md
+      line: 147
+    - id: FR-3
+      title: 知识层自检新增「归档沉淀覆盖度」检查
+      source: requirement.md
+      line: 174
+    - id: FR-4
+      title: 知识条目「失效条件」必须可判定
+      source: requirement.md
+      line: 202
+    - id: FR-5
+      title: 归档时渲染 `archive.md` 进需求目录
+      source: requirement.md
+      line: 228
+    - id: FR-6
+      title: 归档材料把机器产物折叠呈现、`queue.json` 裁成摘要
+      source: requirement.md
+      line: 255
+    - id: FR-7
+      title: 看板归档条按项目身份标注来源，不在本仓时显示「在别处」
+      source: requirement.md
+      line: 281
+    - id: FR-8
+      title: 存量 37 条归档的只读核对报告
+      source: requirement.md
+      line: 308
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 用户原话：「继续」（回应本窗提出的「K12 已被占用，建议新增 K13 承载覆盖度语义」方案）
+      verdict: 授权立项并按委派底稿执行；覆盖度检查落为 **K13**，既有 K12（页面小节 ↔ 索引行）不改名、不改语义
+      serves:
+        - FR-3
+      criterion: 本文档「边界」第 6 条；交付物中出现 `add('K13', …)` 且既有 `add('K12', …)` 逐字未改
+    - id: D-2
+      source: 用户原话：「继续」（同上，回应「FR-6 折叠 = 呈现层折叠，不搬迁既有文件」的建议）
+      verdict: 机器产物**只做呈现层折叠**（`archive.md` 分区 + `queue.json` 摘要），不物理搬迁、不删除
+      serves:
+        - FR-6
+      criterion: FR-6 验收标准 1（原文件位置与数量不变）；边界第 3 条
+    - id: D-3
+      source: 委派底稿（另一窗口只读审计）「验收判据」节
+      verdict: 三条可证伪判据为准：① 不存在的 `merged_into` 必被拒并点名；② 删覆盖度分支必有用例变红；③ 存量 37 条只读核对如实报数
+      serves:
+        - FR-1
+        - FR-3
+        - FR-8
+      criterion: 三条验收标准逐条可复跑，读数写进验收材料
+    - id: D-4
+      source: 委派底稿（另一窗口只读审计）「红线」节
+      verdict: 只动归档提交 / 知识层 / 归档目录呈现三片；跨项目一律按 `projectId`/`workspaceRoot` 定位，不退回路径字符串比较
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+        - FR-8
+      criterion: diff 文件集合 ⊆ 三片；代码中无新增 `startsWith` 形态的项目判定
+    - id: D-5
+      source: 本窗只读复跑（2026-10-06，未写盘）
+      verdict: 底稿的「6 条章节漂移」**在本窗两种口径下都复现不出**：按「归一化精确匹配任意级标题」实测 **22 条**，按「section 形如章节引用（一、/第 N/数字序号/全文·全篇）」实测 **14 条**（其中 1 条 `path` 本身不存在）。**不采用未经复现的 6 作为基线**，报告与验收一律写 22 与 14 两个读数并注明口径
+      serves:
+        - FR-8
+      criterion: FR-8 验收标准 1（判据写清）；报告同时含 22 与 14 两个读数、口径说明与「6 不可复现」的如实标注
+    - id: D-6
+      source: 本窗只读复跑（同上）
+      verdict: 台账里 3 条归档记录**无 `workspaceRoot` 字段**，报告与看板一律标「归属未知」，**不冒充本仓**
+      serves:
+        - FR-7
+        - FR-8
+      criterion: FR-7 验收标准 1 的第三态；报告含「归属未知 3 条」
+status:
+  artifacts: []

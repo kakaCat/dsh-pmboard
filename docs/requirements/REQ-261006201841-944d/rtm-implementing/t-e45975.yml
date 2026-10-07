@@ -1,0 +1,39 @@
+task:
+  id: t-e45975
+  title: INDEX 降权排序：可判定条目在前、unverifiable 沉底（零字符增量）·复核
+  status: done
+  implements: |-
+    改 src/adapters/KnowledgeRepository.ts 的 INDEX 条目行组装处（renderIndexLine 调用点附近）：读取条目正文的「## 失效条件」节，调 domain 的 isDecidableInvalidation 取布尔，排序键 = (decidable ? 0 : 1, id)；不改 renderIndexLine、不改索引行语法、不新增节；同步跑 npx tsx scripts/kb-build.mts --write 重生成 INDEX（属 C-13 预期动作）。新建 tests/kb-index-rank.test.ts：构造两条条目（可判定 + 模板句）断言 INDEX 行序。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-af10d1
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201841-944d
+    TASK_ID: t-e45975
+    TASK_TITLE: INDEX 降权排序：可判定条目在前、unverifiable 沉底（零字符增量）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-06T13:21:58.720Z
+      completed_at: 2026-10-06T13:21:58.978Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201841-944d
+  generated_at: 2026-10-06T13:21:58.539Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T13:21:58.979Z

@@ -1,0 +1,36 @@
+task:
+  id: t-a1dcc3
+  title: 越权、并发、空输入三张矩阵：每一格都钉死·研发
+  status: done
+  implements: |-
+    新增 tests/helpers/ledger-probe.ts：读台账 revision 与队列文件 mtime 的「零写入」探针，以及「状态不变」的字段快照比对助手。新增 tests/authorization-matrix.test.ts（owner/worker/observer/无席位 × 6 写动作）、tests/concurrency-matrix.test.ts（并行父卡上限、重复拆分、单飞锁、批量关闭节流）、tests/empty-input-matrix.test.ts（空串/仅空白/缺字段/空集合）。每格断言三件套（错误码 + 零写入 + 状态不变），末尾计数断言 cells 等于角色数乘动作数。范式照抄 tests/seat-authorization.test.ts。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/authorization-matrix.test.ts tests/concurrency-matrix.test.ts tests/empty-input-matrix.test.ts` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-e965b8
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201814-ac4f
+    TASK_ID: t-a1dcc3
+    TASK_TITLE: 越权、并发、空输入三张矩阵：每一格都钉死·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-07T07:23:19.089Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201814-ac4f
+  generated_at: 2026-10-07T07:23:19.086Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-07T07:23:50.109Z

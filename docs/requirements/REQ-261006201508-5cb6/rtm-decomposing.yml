@@ -1,0 +1,673 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261006201508-5cb6
+  generated_at: 2026-10-06T12:32:39.507Z
+  version: 43
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-06T12:52:06.044Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: README 工具表与登记面逐条对齐
+      source: requirement.md
+      line: 66
+    - id: FR-2
+      title: README 其余计数与 package.json 描述改为真实口径
+      source: requirement.md
+      line: 94
+    - id: FR-3
+      title: 源码内日志与注释的计数、名单对齐
+      source: requirement.md
+      line: 116
+    - id: FR-4
+      title: 机器校验（README 表 ↔ 登记面）
+      source: requirement.md
+      line: 140
+  design_sections:
+    - ref: design/architecture.md#1
+      title: 目标与总体方案 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: "1"
+    - ref: design/architecture.md#2
+      title: 模块改动地图 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: "2"
+    - ref: design/architecture.md#3
+      title: 数据结构变更 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: "3"
+    - ref: design/architecture.md#4
+      title: 接口变更 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: "4"
+    - ref: design/architecture.md#对外工具接口
+      title: 对外工具接口 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: 对外工具接口
+    - ref: design/architecture.md#内部模块接口srctoolsindexts-再导出
+      title: 内部模块接口：`src/tools/index.ts` 再导出 `
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: 内部模块接口srctoolsindexts-再导出
+    - ref: design/architecture.md#内部契约README-工具表机器可读口径
+      title: 内部契约：README 工具表（机器可读口径）`
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: 内部契约README-工具表机器可读口径
+    - ref: design/architecture.md#内部契约注册日志
+      title: 内部契约：注册日志 `
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: 内部契约注册日志
+    - ref: design/architecture.md#5
+      title: 依赖关系 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: "5"
+    - ref: design/architecture.md#6
+      title: 目录结构 `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: "6"
+    - ref: design/architecture.md#7
+      title: 关键算法/流程 `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: "7"
+    - ref: design/architecture.md#校验流程
+      title: 校验流程 `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: 校验流程
+    - ref: design/architecture.md#关键决策点
+      title: 关键决策点 `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/architecture.md
+      section: 关键决策点
+    - ref: design/architecture.md#8
+      title: 安全/性能考虑 `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: "8"
+    - ref: design/architecture.md#9
+      title: 测试策略 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: "9"
+    - ref: design/architecture.md#10
+      title: 错误处理 `
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: "10"
+    - ref: design/architecture.md#11
+      title: 配置项 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: "11"
+    - ref: design/architecture.md#12
+      title: 文档更新清单 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: "12"
+    - ref: design/architecture.md#13
+      title: 遗留问题 `
+      serves:
+        - FR-1
+      file: design/architecture.md
+      section: "13"
+    - ref: design/architecture.md#14
+      title: 关键决策与取舍 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: "14"
+    - ref: design/architecture.md#15
+      title: 技术方案与亮点 `
+      serves:
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: "15"
+    - ref: design/data-model.md#1
+      title: 结论：无数据结构变更 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: "1"
+    - ref: design/data-model.md#2
+      title: 只读引用的既有结构 `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/data-model.md
+      section: "2"
+    - ref: design/data-model.md#ToolRegistryEntrysrctoolsregistryts只读不改
+      title: ToolRegistryEntry（`src/tools/registry.ts`，**只读、不改**）`
+      serves:
+        - FR-1
+        - FR-4
+      file: design/data-model.md
+      section: ToolRegistryEntrysrctoolsregistryts只读不改
+    - ref: design/data-model.md#校验用例的期望值形状
+      title: 校验用例的期望值形状 `
+      serves:
+        - FR-4
+      file: design/data-model.md
+      section: 校验用例的期望值形状
+    - ref: design/data-model.md#3
+      title: 兼容性分析 `
+      serves:
+        - FR-1
+      file: design/data-model.md
+      section: "3"
+    - ref: design/data-model.md#4
+      title: 关键决策与取舍 `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/data-model.md
+      section: "4"
+    - ref: design/data-model.md#5
+      title: 技术方案与亮点 `
+      serves:
+        - FR-4
+      file: design/data-model.md
+      section: "5"
+    - ref: design/interfaces.md#1
+      title: 对外工具接口：零变更 `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: "1"
+    - ref: design/interfaces.md#2
+      title: 内部契约：README 工具表 `
+      serves:
+        - FR-1
+        - FR-2
+      file: design/interfaces.md
+      section: "2"
+    - ref: design/interfaces.md#3
+      title: 内部契约：注册日志 `
+      serves:
+        - FR-3
+      file: design/interfaces.md
+      section: "3"
+    - ref: design/interfaces.md#4
+      title: 内部契约：校验用例输入输出 `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: "4"
+    - ref: design/interfaces.md#5
+      title: 删除的接口 `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: "5"
+    - ref: design/interfaces.md#6
+      title: HTTP API 变更 `
+      serves:
+        - FR-1
+      file: design/interfaces.md
+      section: "6"
+    - ref: design/interfaces.md#7
+      title: 关键决策与取舍 `
+      serves:
+        - FR-1
+        - FR-3
+        - FR-4
+      file: design/interfaces.md
+      section: "7"
+    - ref: design/interfaces.md#8
+      title: 技术方案与亮点 `
+      serves:
+        - FR-4
+      file: design/interfaces.md
+      section: "8"
+    - ref: design/use-cases.md#1
+      title: 场景总览 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/use-cases.md
+      section: "1"
+    - ref: design/use-cases.md#2
+      title: UC-1 维护者加一个工具后同步 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/use-cases.md
+      section: "2"
+    - ref: design/use-cases.md#3
+      title: UC-2 新窗口 agent 照 README 找工具 `
+      serves:
+        - FR-1
+      file: design/use-cases.md
+      section: "3"
+    - ref: design/use-cases.md#4
+      title: UC-3 漂移被门禁拦下 `
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/use-cases.md
+      section: "4"
+    - ref: design/use-cases.md#5
+      title: 关键决策与取舍 `
+      serves:
+        - FR-1
+        - FR-4
+      file: design/use-cases.md
+      section: "5"
+    - ref: design/use-cases.md#6
+      title: 技术方案与亮点 `
+      serves:
+        - FR-1
+        - FR-3
+      file: design/use-cases.md
+      section: "6"
+outputs:
+  tasks:
+    - id: t-2cf2af
+      title: 按登记面重写 README 工具表并校准计数
+      implements: "改 README.md：把「提供的工具」一节重写为 27 行、按 6 组分类（立项与自查 / 阶段推进与人工门 / 拆分与任务 / 自动实施链 / 归档 / 协作与环境）的表；补 archive_amend、handoff、skill_install、task_refs 四行；删幽灵行 reqboard_advance；reqboard_task_execute 描述改为「已弃用别名：等价 reqboard_task_run」；reqboard_submit 描述补 design / prototype 两种 kind；reqboard_capture 行的描述不写提问数（口径三套并存，见 design/architecture.md 第 13 节遗留问题）；第 13 行与第 107 行的计数、第 42 行表头计数改为与登记面一致。另改 package.json 的 description 计数。格式契约逐字见 design/interfaces.md 第 2 节：节标题形态「## 提供的工具（N 个）」，每行首列为反引号包裹的工具名，分组用 ### 标题且不参与断言。"
+      serves:
+        - FR-1
+        - FR-2
+      depends_on: []
+      phase: doc
+      side: doc
+    - id: t-185fe6
+      title: 让注册日志从登记面派生
+      implements: "① 在 src/tools/index.ts 增补 export { TOOL_REGISTRY, type ToolRegistryEntry } from './registry.js'，并把文件头注释改为当前 27 个工具壳、指向 registry.ts（删掉「13 → 9 收敛后的 9 个工具壳」的过期表述）；② 在 src/index.ts 把注册日志的字符串字面量改为派生表达式：'agent tools registered (' + TOOL_REGISTRY.length + '): ' + TOOL_REGISTRY.map(e => e.toolName).join(' / ')，TOOL_REGISTRY 从既有的 './tools/index.js' import 块取得。日志级别（logger.info）与打印时机（仍在 toolsCtx.effect 内、注册循环之后）不变。契约见 design/interfaces.md 第 3 节。"
+      serves:
+        - FR-3
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-a4da76
+      title: 新增 README 工具面校验用例
+      implements: 新建 tests/readme-tool-face.test.ts：读 README.md 与 package.json 文本；抽名字集合（正则 /`(reqboard_[a-z_]+)`/g 全文扫）、表头计数（/## 提供的工具（(\d+) 个）/）、表内行数（行匹配 /^\| `reqboard_/ 计数）；期望值全部从 TOOL_REGISTRY 派生（names = map(toolName)、count = length），禁止出现字面量 27 参与比较；断言双向差集为空、declared === rows === count、无「13 个」「21 个」残留、`${count} 个` 在 README 出现 ≥3 次且在 package.json description 出现 ≥1 次；失败消息逐条点名（README 缺：… / README 多：… / 登记面 N 条 / README 写 M 个 / 表内 K 行）。读文件用 node:fs + node:url，手法参照 tests/apply-wiring.test.ts。契约与失败消息形态见 design/interfaces.md 第 4 节。
+      serves:
+        - FR-1
+        - FR-4
+      depends_on:
+        - t-2cf2af
+      phase: test
+      side: backend
+    - id: t-256bec
+      title: 新增注册日志派生校验用例
+      implements: 新建 tests/registry-log.test.ts：复用 tests/apply-wiring.test.ts 的 stub ctx 与日志捕获手法（该文件的 stubCtx 立即派发 inject、effect 立即执行），执行 apply() 后取注册日志行；正则抽 'agent tools registered (\d+):' 的 N 与 ' / ' 分隔的名单，断言 N === TOOL_REGISTRY.length 且名单集合 == TOOL_REGISTRY.map(e => e.toolName)；日志行不存在时失败并提示「注册日志未打印」，不静默跳过。契约见 design/interfaces.md 第 3 节。
+      serves:
+        - FR-3
+      depends_on:
+        - t-185fe6
+      phase: test
+      side: backend
+    - id: t-609b14
+      title: 按登记面重写 README 工具表并校准计数·研发
+      implements: |-
+        改 README.md：把「提供的工具」一节重写为 27 行、按 6 组分类（立项与自查 / 阶段推进与人工门 / 拆分与任务 / 自动实施链 / 归档 / 协作与环境）的表；补 archive_amend、handoff、skill_install、task_refs 四行；删幽灵行 reqboard_advance；reqboard_task_execute 描述改为「已弃用别名：等价 reqboard_task_run」；reqboard_submit 描述补 design / prototype 两种 kind；reqboard_capture 行的描述不写提问数（口径三套并存，见 design/architecture.md 第 13 节遗留问题）；第 13 行与第 107 行的计数、第 42 行表头计数改为与登记面一致。另改 package.json 的 description 计数。格式契约逐字见 design/interfaces.md 第 2 节：节标题形态「## 提供的工具（N 个）」，每行首列为反引号包裹的工具名，分组用 ### 标题且不参与断言。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: doc
+      side: doc
+    - id: t-69202f
+      title: 按登记面重写 README 工具表并校准计数·复核
+      implements: |-
+        改 README.md：把「提供的工具」一节重写为 27 行、按 6 组分类（立项与自查 / 阶段推进与人工门 / 拆分与任务 / 自动实施链 / 归档 / 协作与环境）的表；补 archive_amend、handoff、skill_install、task_refs 四行；删幽灵行 reqboard_advance；reqboard_task_execute 描述改为「已弃用别名：等价 reqboard_task_run」；reqboard_submit 描述补 design / prototype 两种 kind；reqboard_capture 行的描述不写提问数（口径三套并存，见 design/architecture.md 第 13 节遗留问题）；第 13 行与第 107 行的计数、第 42 行表头计数改为与登记面一致。另改 package.json 的 description 计数。格式契约逐字见 design/interfaces.md 第 2 节：节标题形态「## 提供的工具（N 个）」，每行首列为反引号包裹的工具名，分组用 ### 标题且不参与断言。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-609b14
+      phase: doc
+      side: doc
+    - id: t-4494d0
+      title: 让注册日志从登记面派生·研发
+      implements: |-
+        ① 在 src/tools/index.ts 增补 export { TOOL_REGISTRY, type ToolRegistryEntry } from './registry.js'，并把文件头注释改为当前 27 个工具壳、指向 registry.ts（删掉「13 → 9 收敛后的 9 个工具壳」的过期表述）；② 在 src/index.ts 把注册日志的字符串字面量改为派生表达式：'agent tools registered (' + TOOL_REGISTRY.length + '): ' + TOOL_REGISTRY.map(e => e.toolName).join(' / ')，TOOL_REGISTRY 从既有的 './tools/index.js' import 块取得。日志级别（logger.info）与打印时机（仍在 toolsCtx.effect 内、注册循环之后）不变。契约见 design/interfaces.md 第 3 节。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-1a20d3
+      title: 让注册日志从登记面派生·复核
+      implements: |-
+        ① 在 src/tools/index.ts 增补 export { TOOL_REGISTRY, type ToolRegistryEntry } from './registry.js'，并把文件头注释改为当前 27 个工具壳、指向 registry.ts（删掉「13 → 9 收敛后的 9 个工具壳」的过期表述）；② 在 src/index.ts 把注册日志的字符串字面量改为派生表达式：'agent tools registered (' + TOOL_REGISTRY.length + '): ' + TOOL_REGISTRY.map(e => e.toolName).join(' / ')，TOOL_REGISTRY 从既有的 './tools/index.js' import 块取得。日志级别（logger.info）与打印时机（仍在 toolsCtx.effect 内、注册循环之后）不变。契约见 design/interfaces.md 第 3 节。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-4494d0
+      phase: implement
+      side: backend
+    - id: t-545020
+      title: 新增 README 工具面校验用例·研发
+      implements: |-
+        新建 tests/readme-tool-face.test.ts：读 README.md 与 package.json 文本；抽名字集合（正则 /`(reqboard_[a-z_]+)`/g 全文扫）、表头计数（/## 提供的工具（(\d+) 个）/）、表内行数（行匹配 /^\| `reqboard_/ 计数）；期望值全部从 TOOL_REGISTRY 派生（names = map(toolName)、count = length），禁止出现字面量 27 参与比较；断言双向差集为空、declared === rows === count、无「13 个」「21 个」残留、`${count} 个` 在 README 出现 ≥3 次且在 package.json description 出现 ≥1 次；失败消息逐条点名（README 缺：… / README 多：… / 登记面 N 条 / README 写 M 个 / 表内 K 行）。读文件用 node:fs + node:url，手法参照 tests/apply-wiring.test.ts。契约与失败消息形态见 design/interfaces.md 第 4 节。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-2cf2af
+      phase: test
+      side: backend
+    - id: t-ffd628
+      title: 新增 README 工具面校验用例·复核
+      implements: |-
+        新建 tests/readme-tool-face.test.ts：读 README.md 与 package.json 文本；抽名字集合（正则 /`(reqboard_[a-z_]+)`/g 全文扫）、表头计数（/## 提供的工具（(\d+) 个）/）、表内行数（行匹配 /^\| `reqboard_/ 计数）；期望值全部从 TOOL_REGISTRY 派生（names = map(toolName)、count = length），禁止出现字面量 27 参与比较；断言双向差集为空、declared === rows === count、无「13 个」「21 个」残留、`${count} 个` 在 README 出现 ≥3 次且在 package.json description 出现 ≥1 次；失败消息逐条点名（README 缺：… / README 多：… / 登记面 N 条 / README 写 M 个 / 表内 K 行）。读文件用 node:fs + node:url，手法参照 tests/apply-wiring.test.ts。契约与失败消息形态见 design/interfaces.md 第 4 节。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-545020
+      phase: test
+      side: backend
+    - id: t-ea8989
+      title: 新增 README 工具面校验用例·测试
+      implements: |-
+        新建 tests/readme-tool-face.test.ts：读 README.md 与 package.json 文本；抽名字集合（正则 /`(reqboard_[a-z_]+)`/g 全文扫）、表头计数（/## 提供的工具（(\d+) 个）/）、表内行数（行匹配 /^\| `reqboard_/ 计数）；期望值全部从 TOOL_REGISTRY 派生（names = map(toolName)、count = length），禁止出现字面量 27 参与比较；断言双向差集为空、declared === rows === count、无「13 个」「21 个」残留、`${count} 个` 在 README 出现 ≥3 次且在 package.json description 出现 ≥1 次；失败消息逐条点名（README 缺：… / README 多：… / 登记面 N 条 / README 写 M 个 / 表内 K 行）。读文件用 node:fs + node:url，手法参照 tests/apply-wiring.test.ts。契约与失败消息形态见 design/interfaces.md 第 4 节。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-ffd628
+      phase: test
+      side: backend
+    - id: t-12da46
+      title: 新增注册日志派生校验用例·研发
+      implements: |-
+        新建 tests/registry-log.test.ts：复用 tests/apply-wiring.test.ts 的 stub ctx 与日志捕获手法（该文件的 stubCtx 立即派发 inject、effect 立即执行），执行 apply() 后取注册日志行；正则抽 'agent tools registered (\d+):' 的 N 与 ' / ' 分隔的名单，断言 N === TOOL_REGISTRY.length 且名单集合 == TOOL_REGISTRY.map(e => e.toolName)；日志行不存在时失败并提示「注册日志未打印」，不静默跳过。契约见 design/interfaces.md 第 3 节。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-185fe6
+      phase: test
+      side: backend
+    - id: t-b33784
+      title: 新增注册日志派生校验用例·复核
+      implements: |-
+        新建 tests/registry-log.test.ts：复用 tests/apply-wiring.test.ts 的 stub ctx 与日志捕获手法（该文件的 stubCtx 立即派发 inject、effect 立即执行），执行 apply() 后取注册日志行；正则抽 'agent tools registered (\d+):' 的 N 与 ' / ' 分隔的名单，断言 N === TOOL_REGISTRY.length 且名单集合 == TOOL_REGISTRY.map(e => e.toolName)；日志行不存在时失败并提示「注册日志未打印」，不静默跳过。契约见 design/interfaces.md 第 3 节。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-12da46
+      phase: test
+      side: backend
+    - id: t-b6c809
+      title: 新增注册日志派生校验用例·测试
+      implements: |-
+        新建 tests/registry-log.test.ts：复用 tests/apply-wiring.test.ts 的 stub ctx 与日志捕获手法（该文件的 stubCtx 立即派发 inject、effect 立即执行），执行 apply() 后取注册日志行；正则抽 'agent tools registered (\d+):' 的 N 与 ' / ' 分隔的名单，断言 N === TOOL_REGISTRY.length 且名单集合 == TOOL_REGISTRY.map(e => e.toolName)；日志行不存在时失败并提示「注册日志未打印」，不静默跳过。契约见 design/interfaces.md 第 3 节。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-b33784
+      phase: test
+      side: backend
+task_coverage:
+  - task_id: t-2cf2af
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-185fe6
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-a4da76
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-256bec
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-609b14
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-69202f
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-4494d0
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-1a20d3
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-545020
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ffd628
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ea8989
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-12da46
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b33784
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b6c809
+    covers_prototypes: []
+    covers_decisions: []
+traceability:
+  design_to_tasks:
+    design/architecture.md#1:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    design/architecture.md#2:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    design/architecture.md#3:
+      - t-2cf2af
+      - t-a4da76
+    design/architecture.md#4:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    design/architecture.md#对外工具接口:
+      - t-2cf2af
+      - t-a4da76
+    design/architecture.md#内部模块接口srctoolsindexts-再导出:
+      - t-185fe6
+      - t-256bec
+    design/architecture.md#内部契约README-工具表机器可读口径:
+      - t-2cf2af
+      - t-a4da76
+    design/architecture.md#内部契约注册日志:
+      - t-185fe6
+      - t-256bec
+    design/architecture.md#5:
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    design/architecture.md#6:
+      - t-a4da76
+    design/architecture.md#7:
+      - t-a4da76
+    design/architecture.md#校验流程:
+      - t-a4da76
+    design/architecture.md#关键决策点:
+      - t-2cf2af
+      - t-a4da76
+    design/architecture.md#8:
+      - t-a4da76
+    design/architecture.md#9:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    design/architecture.md#10:
+      - t-a4da76
+    design/architecture.md#11:
+      - t-2cf2af
+      - t-a4da76
+    design/architecture.md#12:
+      - t-2cf2af
+      - t-a4da76
+    design/architecture.md#13:
+      - t-2cf2af
+      - t-a4da76
+    design/architecture.md#14:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    design/architecture.md#15:
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    design/data-model.md#1:
+      - t-2cf2af
+      - t-a4da76
+    design/data-model.md#2:
+      - t-2cf2af
+      - t-a4da76
+    design/data-model.md#ToolRegistryEntrysrctoolsregistryts只读不改:
+      - t-2cf2af
+      - t-a4da76
+    design/data-model.md#校验用例的期望值形状:
+      - t-a4da76
+    design/data-model.md#3:
+      - t-2cf2af
+      - t-a4da76
+    design/data-model.md#4:
+      - t-2cf2af
+      - t-a4da76
+    design/data-model.md#5:
+      - t-a4da76
+    design/interfaces.md#1:
+      - t-2cf2af
+      - t-a4da76
+    design/interfaces.md#2:
+      - t-2cf2af
+      - t-a4da76
+    design/interfaces.md#3:
+      - t-185fe6
+      - t-256bec
+    design/interfaces.md#4:
+      - t-a4da76
+    design/interfaces.md#5:
+      - t-2cf2af
+      - t-a4da76
+    design/interfaces.md#6:
+      - t-2cf2af
+      - t-a4da76
+    design/interfaces.md#7:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    design/interfaces.md#8:
+      - t-a4da76
+    design/use-cases.md#1:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    design/use-cases.md#2:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    design/use-cases.md#3:
+      - t-2cf2af
+      - t-a4da76
+    design/use-cases.md#4:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    design/use-cases.md#5:
+      - t-2cf2af
+      - t-a4da76
+    design/use-cases.md#6:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+  fr_to_tasks:
+    FR-1:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    FR-2:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    FR-3:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+    FR-4:
+      - t-2cf2af
+      - t-185fe6
+      - t-a4da76
+      - t-256bec
+coverage:
+  implementation:
+    total: 42
+    covered: 42
+    uncovered: []
+    rate: 100
+    total_designs: 42
+    covered_designs: 42

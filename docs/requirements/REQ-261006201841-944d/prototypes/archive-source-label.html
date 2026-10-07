@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>看板归档条来源标注（三态） · 原型 FR-7 · REQ-261006201841-944d</title>
+<!--
+  需求：REQ-261006201841-944d（归档校验与知识层覆盖度加固）
+  功能点：FR-7 —— 看板「🗄 已归档」条按项目身份标注来源；目录不在本仓时显示「在别处」
+  本页状态：**authoritative**（权威判定以 prototypes/INDEX.md 为准）
+
+  ── 纪律 ─────────────────────────────────────────────────────────────
+  · 这是**原型**不是交付物：只做结构与交互路径，不含真实数据绑定。
+  · 样式**内联复制**自本仓既有分片（src/client/styles/base.ts / board.ts），
+    以便单文件直接双击打开；上线实现仍走既有 class 与令牌，不得新增视觉体系（FR-7 边界 2）。
+  · 令牌兜底：--dsw-* 是**宿主注入**的令牌，原型里给一份合理兜底值（见 :root 注释）；
+    --pm-* 是本插件自己的令牌（src/client/styles/base.ts 的 :root），此处逐字照抄。
+  · 检索：ui-ux-pro-max，查询 "archive chip source provenance label" --design-system
+    --variance 2 --density 8；辅助 "badge chip label wraps truncate" --domain ux
+    （命中 ux-guidelines.csv「Compact Label Overflow」，驱动了下面 chip 的 nowrap + 可披露全值）。
+-->
+<meta name="dsh-prototype" content="authoritative">
+<meta name="dsh-requirement" content="REQ-261006201841-944d">
+<meta name="dsh-serves" content="FR-7">
+<style>
+/* ================================================================== */
+/* 令牌：--pm-* 逐字照抄 src/client/styles/base.ts 的 :root            */
+/* --dsw-* 实际由宿主注入，这里给兜底值（原型自立用）                  */
+/* ================================================================== */
+:root {
+  /* --- 宿主令牌兜底（实际由 DSH 宿主注入，勿在插件里另立同名变量） --- */
+  --dsw-text-primary: #222;
+  --dsw-text-secondary: #999;
+  --dsw-border: rgba(128,128,128,.18);
+  --dsw-border-strong: rgba(128,128,128,.28);
+  --dsw-bg: #fff;
+  --dsw-bg-primary: #fff;
+  --dsw-bg-secondary: rgba(128,128,128,.06);
+  --dsw-hover: rgba(128,128,128,.10);
+  --dsw-accent: #4a7dff;
+
+  /* --- 本插件令牌（base.ts :root 照抄） --- */
+  --pm-btn-h: 28px;
+  --pm-radius: 10px;
+  --pm-radius-sm: 7px;
+  --pm-radius-pill: 999px;
+  --pm-gap: 8px;
+  --pm-gap-sm: 4px;
+  --pm-gap-lg: 12px;
+  --pm-shadow-card: 0 1px 2px rgba(0,0,0,.06);
+  --pm-shadow-hover: 0 4px 14px rgba(0,0,0,.10);
+  --pm-line: var(--dsw-border, rgba(128,128,128,.18));
+  --pm-line-strong: rgba(128,128,128,.28);
+  --pm-bg-soft: var(--dsw-bg-secondary, rgba(128,128,128,.06));
+  --pm-c-archived: #6c757d;
+  --pm-c-warn: #b07800;
+  --pm-c-danger: #dc3545;
+}
+
+/* 页面外壳（原型独有，不进产品 CSS） */
+body {
+  margin: 0; padding: 24px 20px 64px;
+  font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+  font-size: 13px; line-height: 1.5;
+  background: #f5f6f8; color: var(--dsw-text-primary);
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+.page-head {
+  background: #1f2328; color: #fff; border-radius: var(--pm-radius);
+  padding: 14px 18px; margin-bottom: 18px;
+}
+.page-head h1 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.page-head .sub { font-size: 12px; opacity: .78; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.page-head code { font-family: ui-monospace, monospace; background: rgba(255,255,255,.12); padding: 1px 5px; border-radius: 3px; }
+.auth-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; padding: 1px 8px; border-radius: var(--pm-radius-pill);
+  background: rgba(40,167,69,.22); color: #7ee2a8; border: 1px solid rgba(40,167,69,.45);
+}
+.section {
+  background: #fff; border: 1px solid #d0d7de; border-radius: var(--pm-radius);
+  padding: 18px 20px; margin-bottom: 16px;
+}
+.section > h2 { margin: 0 0 2px; font-size: 15px; }
+.section > .meta { font-size: 12px; color: #57606a; margin-bottom: 14px; }
+.section-note {
+  font-size: 12px; line-height: 1.6; color: #57606a;
+  background: var(--pm-bg-soft); border-radius: 6px; padding: 8px 10px; margin: 12px 0;
+}
+.section-note b { color: var(--dsw-text-primary); }
+.caption { font-size: 11px; color: var(--dsw-text-secondary); margin: 4px 0 0; }
+/* 三态对照按**单列一行一态**排（不排三栏）：1280px 下三栏每栏内宽只有 314px，
+   而既有 chip 格式本身（REQ id + · + 标题 + 计数）就约 320px——三栏必然折行，
+   量到的就是「折行后的假高度」（实测被拉到 40px，自然高度 24px）。
+   一态一行、给足真实归档条宽度，才量得到真实几何。 */
+.state-rows { display: flex; flex-direction: column; gap: 10px; }
+.state-row {
+  border: 1px solid var(--pm-line); border-left: 3px solid var(--pm-line-strong);
+  border-radius: var(--pm-radius-sm); padding: 10px 14px; background: var(--dsw-bg-primary);
+}
+.state-row[data-src="local"] { border-left-color: var(--pm-c-archived); }
+.state-row[data-src="elsewhere"] { border-left-color: var(--dsw-accent, #4a7dff); }
+.state-row[data-src="unknown"] { border-left-color: var(--pm-c-warn, #b07800); }
+.state-row > .state-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.state-row .state-k {
+  font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 4px;
+  background: rgba(128,128,128,.12); color: var(--dsw-text-primary);
+}
+.state-row .state-t { font-size: 12px; color: #57606a; }
+.state-spec { font-size: 11px; color: var(--dsw-text-secondary); margin-top: 8px; line-height: 1.6; }
+
+/* ================================================================== */
+/* 以下为**逐字复制**的本仓既有样式（base.ts 归档条分片 + board.ts      */
+/* 产物 chip 分片），上线时这段不新增——只在既有分片上加三态选择器。    */
+/* ================================================================== */
+
+/* ---- base.ts: 归档条（REQ-261002105242-a3fb） ---- */
+.dsh-pm-archived-bar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 20px; border-top: 1px solid var(--dsw-border, rgba(128,128,128,.15));
+  flex: none;
+}
+.dsh-pm-archived-fold { width: 100%; }
+.dsh-pm-archived-fold > summary { cursor: pointer; list-style: none; }
+.dsh-pm-archived-fold > summary::-webkit-details-marker { display: none; }
+.dsh-pm-archived-fold > summary::before { content: '▸ '; }
+.dsh-pm-archived-fold[open] > summary::before { content: '▾ '; }
+.dsh-pm-archived-chips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
+.dsh-pm-archived-label { font-size: 12px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-archived-chip {
+  font-size: 11px; padding: 2px 8px; border-radius: 4px;
+  background: rgba(128,128,128,.1); color: var(--dsw-text-secondary, #777);
+  border: 0; font-family: inherit; cursor: pointer;
+}
+.dsh-pm-archived-chip:hover { background: rgba(74,125,255,.12); color: var(--dsw-accent, #4a7dff); }
+.dsh-pm-archived-count { margin-left: 4px; opacity: .7; }
+.dsh-pm-archived-chip[data-status="canceled"] { text-decoration: line-through; }
+
+/* ---- base.ts: 通用 ---- */
+.dsh-pm-empty { padding: 8px 0; color: var(--dsw-text-secondary, #999); font-size: 12px; }
+.dsh-pm-hint { font-size: 12px; color: var(--dsw-text-secondary, #999); }
+.dsh-pm-cprog-panel-note {
+  font-size: 11px; line-height: 1.5; color: var(--dsw-text-secondary, #888);
+  background: rgba(128,128,128,.10); border-radius: 6px; padding: 6px 8px;
+}
+
+/* ---- board.ts: 产物 chips（REQ-31e11f t7） ---- */
+.dsh-pm-artifact-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.dsh-pm-artifact-chip {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 10px; padding: 2px 6px; border-radius: 4px;
+  border: none; cursor: default; line-height: 1.4;
+}
+.dsh-pm-artifact-chip.confirmed { background: rgba(40,167,69,.12); color: #28a745; }
+.dsh-pm-artifact-chip.pending { background: rgba(240,160,32,.15); color: #b07800; cursor: pointer; }
+.dsh-pm-artifact-chip.pending:hover { background: rgba(240,160,32,.25); }
+.dsh-pm-artifact-chip.missing { background: rgba(220,53,69,.12); color: #dc3545; }
+.dsh-pm-artifact-derived { font-size: 10px; color: var(--dsw-text-secondary, #999); margin-top: 4px; }
+
+/* ================================================================== */
+/* FR-7 新增：chip 三态标记（**不新立视觉体系**——复用上面 two-token    */
+/* 词汇：主色 / 警示色 / 灰；标签一律走既有 .dsh-pm-artifact-chip 语汇）*/
+/* ================================================================== */
+
+/* chip 文字不折行（ux「Compact Label Overflow」）：只约束不可预测的标题，
+   标签与计数 nowrap；标题过长走省略号，全值仍由 title 可披露。
+   max-width 必须 ≥ 「标注了最长项目名的那条 chip」的自然宽度，否则会折行——
+   实测最长一条（10px id + 标题 + 计数 + 「别处·dsh-notice-webhook」）自然宽约 456px。 */
+.dsh-pm-archived-chip { max-width: 480px; }
+/* REQ id 缩到 10px 等宽（既有 .dsh-pm-window / .dsh-pm-artifact-derived 本就是 10–11px
+   等宽语汇，此处只降 1px）：11px id 单占 150px，是折行的主因；降 1px 省约 20px，
+   且 id 本就是定长可扫串，可读性不受影响。 */
+.dsh-pm-archived-id { font-family: ui-monospace, monospace; font-size: 10px; }
+/* 三态对照是 flex 行；flex 默认 align-items:stretch 会把 chip 拉满整行高度
+   （实测：自然 24px 被拉到 40px，甚至撑出折行）。产品里 .dsh-pm-archived-chips 也是
+   flex-wrap 行，同样会中招——故显式给 flex-start，chip 只按自身内容撑高。
+   这是既有分片缺的一条，上线时一并补进 .dsh-pm-archived-chips。 */
+.dsh-pm-archived-chips { align-items: flex-start; }
+.dsh-pm-archived-chip > .dsh-pm-archived-text {
+  display: inline-block; max-width: 200px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; vertical-align: baseline;
+}
+.dsh-pm-archived-src {
+  margin-left: 5px; font-family: ui-monospace, monospace;
+  white-space: nowrap; vertical-align: baseline;
+}
+/* 项目名可截断：chip 变长的主因是项目名（长名单独占 108px）。上限 150px 是实测取的值
+   ——「dsh-notice-webhook」在这一档仍整名显示、不截断；更长的名字才走省略号，
+   全值仍由 chip 的 title 与点开后的提示块披露。 */
+.dsh-pm-archived-src > .dsh-pm-archived-src-name {
+  display: inline-block; max-width: 150px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; vertical-align: baseline;
+}
+/* A 态：本仓——极轻，不抢眼（现状紧凑感的延续） */
+.dsh-pm-archived-src[data-src="local"] {
+  font-size: 10px; color: var(--dsw-text-secondary, #999); opacity: .75;
+  font-family: inherit;
+}
+/* B 态：在别处——用既有 accent 语汇 + 等宽项目名（身份感来自「名字」不是「颜色」） */
+.dsh-pm-archived-src[data-src="elsewhere"] {
+  background: rgba(74,125,255,.10); color: var(--dsw-accent, #4a7dff);
+  border: 1px solid rgba(74,125,255,.28); border-radius: 4px;
+  padding: 0 5px; font-size: 10px;
+}
+.dsh-pm-archived-chip[data-src="elsewhere"]:hover .dsh-pm-archived-src[data-src="elsewhere"] {
+  background: rgba(74,125,255,.18);
+}
+/* C 态：归属未知——警示而非主色：不许冒充本仓 */
+.dsh-pm-archived-src[data-src="unknown"] {
+  background: rgba(176,120,0,.14); color: var(--pm-c-warn, #b07800);
+  border: 1px dashed rgba(176,120,0,.45); border-radius: 4px;
+  padding: 0 5px; font-size: 10px; font-family: inherit;
+}
+.dsh-pm-archived-chip[data-src="unknown"] { border-color: rgba(176,120,0,.4); }
+
+/* 点开 B/C 态后的「在别处」提示块：复用 .dsh-pm-cprog-panel-note 的语汇，
+   容器走既有卡片线/圆角，不新立面板视觉。 */
+.dsh-pm-archived-source-hint {
+  margin: 8px 0 0; padding: 10px 12px;
+  border: 1px solid var(--pm-line-strong); border-left: 3px solid var(--dsw-accent, #4a7dff);
+  border-radius: 6px; background: var(--dsw-bg-primary, #fff);
+}
+.dsh-pm-archived-source-hint[data-src="unknown"] { border-left-color: var(--pm-c-warn, #b07800); }
+.dsh-pm-archived-source-hint .row { display: flex; gap: 8px; font-size: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+.dsh-pm-archived-source-hint .row .k { color: var(--dsw-text-secondary, #999); flex: none; min-width: 62px; }
+.dsh-pm-archived-source-hint .row .v { color: var(--dsw-text-primary, #333); }
+.dsh-pm-archived-source-hint .row .v code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+  background: var(--pm-bg-soft); padding: 1px 5px; border-radius: 3px; word-break: break-all;
+}
+.dsh-pm-archived-source-hint .next { font-size: 12px; color: var(--dsw-text-primary, #333); margin-top: 6px; }
+.dsh-pm-archived-source-hint .next ol { margin: 4px 0 0; padding-left: 20px; }
+.dsh-pm-archived-source-hint .next li { line-height: 1.7; }
+.dsh-pm-archived-source-hint .quiet { font-size: 11px; color: var(--dsw-text-secondary, #999); margin-top: 6px; }
+
+/* 对照用「展开态」模拟：把 chip 的 hover 视觉固化成一行 */
+.chip-hover-demo {
+  background: rgba(74,125,255,.12); color: var(--dsw-accent, #4a7dff);
+}
+.chip-hover-demo .dsh-pm-archived-count { opacity: .7; }
+
+/* ---- 归档材料（FR-5 / FR-6 人读面） ---- */
+.arch-file {
+  border: 1px solid var(--pm-line-strong); border-radius: var(--pm-radius-sm);
+  padding: 14px 16px; background: var(--dsw-bg-primary, #fff);
+}
+.arch-h3 { font-size: 12px; font-weight: 600; color: var(--dsw-text-secondary, #6b7280);
+  text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+.arch-conclusion {
+  font-size: 14px; color: var(--dsw-text-primary, #222); margin: 0 0 12px;
+  padding-left: 10px; border-left: 3px solid var(--pm-c-archived);
+}
+.arch-row { display: flex; gap: 10px; font-size: 12px; padding: 3px 0; align-items: baseline; flex-wrap: wrap; }
+.arch-row .k { color: var(--dsw-text-secondary, #999); flex: none; min-width: 74px; }
+.arch-row code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+  background: var(--pm-bg-soft); padding: 1px 5px; border-radius: 3px;
+}
+.arch-docs { list-style: none; margin: 4px 0 0; padding: 0; }
+.arch-docs li { font-size: 12px; line-height: 1.8; display: flex; gap: 8px; align-items: baseline; }
+.arch-docs .dsh-pm-doc-kind { font-size: 11px; color: var(--dsw-text-secondary, #888); min-width: 56px; }
+.arch-sep { border: 0; border-top: 1px solid var(--pm-line); margin: 14px 0; }
+/* 机器产物折叠分区：一行一类（FR-6「一行一类」） */
+.machine-fold { border: 1px solid var(--pm-line); border-radius: 6px; background: var(--dsw-bg-secondary, rgba(128,128,128,.06)); }
+.machine-fold > summary {
+  cursor: pointer; list-style: none; padding: 8px 12px;
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+.machine-fold > summary::-webkit-details-marker { display: none; }
+.machine-fold > summary::before { content: '▸ '; color: var(--dsw-text-secondary, #999); font-size: 11px; }
+.machine-fold[open] > summary::before { content: '▾ '; }
+.machine-fold .m-title { font-size: 12px; font-weight: 600; }
+.machine-fold .m-count { font-size: 11px; color: var(--dsw-text-secondary, #999); font-variant-numeric: tabular-nums; }
+.machine-rows { padding: 0 12px 10px; }
+.machine-row {
+  display: flex; align-items: baseline; gap: 10px; font-size: 11px;
+  padding: 4px 0; border-top: 1px dashed var(--pm-line); flex-wrap: wrap;
+}
+.machine-row .m-kind { font-family: ui-monospace, monospace; color: var(--dsw-text-primary, #333); min-width: 128px; }
+.machine-row .m-n { color: var(--dsw-text-secondary, #999); font-variant-numeric: tabular-nums; min-width: 66px; }
+.machine-row .m-b { color: var(--dsw-text-secondary, #999); font-variant-numeric: tabular-nums; min-width: 72px; }
+.machine-row .m-note { color: var(--dsw-text-secondary, #888); flex: 1 1 260px; }
+.machine-row .m-note code { font-family: ui-monospace, monospace; font-size: 10px; }
+.q-summary {
+  margin-top: 8px; padding: 8px 10px; border-radius: 6px;
+  background: var(--dsw-bg-primary, #fff); border: 1px solid var(--pm-line);
+  font-size: 11px; line-height: 1.7;
+}
+.q-summary .bar { display: inline-flex; height: 6px; border-radius: 3px; overflow: hidden; vertical-align: middle; margin: 0 4px; }
+.q-summary .bar > i { display: block; height: 100%; }
+.q-summary .bar .done { background: #28a745; }
+.q-summary .bar .prog { background: #4a7dff; }
+.q-summary .bar .todo { background: rgba(128,128,128,.35); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============================ 页头 ============================ -->
+  <div class="page-head">
+    <h1>看板归档条来源标注（三态） · 原型</h1>
+    <div class="sub">
+      <span>需求：<code>REQ-261006201841-944d</code> 归档校验与知识层覆盖度加固</span>
+      <span>功能点：<code>FR-7</code></span>
+      <span>作废前版本：<code>prototypes/detail.html</code></span>
+      <span class="auth-tag">✔ authoritative（INDEX.md 唯一权威）</span>
+    </div>
+    <div class="sub" style="margin-top:6px">
+      <span>样式来源：<code>src/client/styles/base.ts</code>（归档条分片，逐字内联）+ <code>src/client/styles/board.ts</code>（产物 chip 分片）</span>
+    </div>
+  </div>
+
+  <!-- ============================ 1. 三态并排对照 ============================ -->
+  <section class="section" id="FR-7">
+    <h2>1. 三态并排对照</h2>
+    <div class="meta">
+      P1 · 服务条款 FR-7 · 页内锚点 <code>#FR-7</code> · 每态 ≥3 条 chip，取自只读核对的真实读数口径
+      （本仓若干 / <code>dsh-notice-webhook</code> 6 条 / <code>quantsys-v2</code> 1 条 / 归属未知 3 条）
+    </div>
+
+    <div class="state-rows">
+      <!-- ---------- A 本仓态 ---------- -->
+      <div class="state-row" data-src="local">
+        <div class="state-head">
+          <span class="state-k">A</span><span class="state-t">本仓态（根 == 当前工作区根）</span>
+        </div>
+        <div class="dsh-pm-archived-chips">
+          <button type="button" class="dsh-pm-archived-chip" data-action="open-req" data-req="REQ-261006201841-944d" data-status="archived" data-src="local" title="归档校验与知识层覆盖度加固">
+            REQ-<span class="dsh-pm-archived-id">261006201841-944d</span> · <span class="dsh-pm-archived-text">归档校验与知识层覆盖度加固</span><span class="dsh-pm-archived-count">0/12</span><span class="dsh-pm-archived-src" data-src="local">本仓</span>
+          </button>
+          <button type="button" class="dsh-pm-archived-chip" data-action="open-req" data-req="REQ-261005213603-eaed" data-status="archived" data-src="local" title="会话回合 ∪ 新鲜推进锁（running mark 单点）">
+            REQ-<span class="dsh-pm-archived-id">261005213603-eaed</span> · <span class="dsh-pm-archived-text">会话回合 ∪ 新鲜推进锁</span><span class="dsh-pm-archived-count">5/5</span><span class="dsh-pm-archived-src" data-src="local">本仓</span>
+          </button>
+          <button type="button" class="dsh-pm-archived-chip" data-action="open-req" data-req="REQ-261004210128-283d" data-status="canceled" data-src="local" title="看板运行标记（已取消）">
+            REQ-<span class="dsh-pm-archived-id">261004210128-283d</span> · <span class="dsh-pm-archived-text">看板运行标记</span><span class="dsh-pm-archived-count">2/4</span><span class="dsh-pm-archived-src" data-src="local">本仓</span>
+          </button>
+        </div>
+        <p class="caption">第三条是 <code>data-status="canceled"</code>：既有删除线规则保留，来源标记不干扰它。</p>
+        <div class="state-spec">
+          <b>渲染规则</b>：<code>root === currentWorkspaceRoot</code> → 标 <code>本仓</code>（10px、<code>--dsw-text-secondary</code>、opacity .75，非胶囊、无边框）。
+          <br><b>为什么这么轻</b>：本仓是绝大多数（37 条里 27 条），信息量为零；给它浓标记＝把噪声当信号，会挤掉 B/C 态的可辨识度。
+        </div>
+      </div>
+
+      <!-- ---------- B 在别处态 ---------- -->
+      <div class="state-row" data-src="elsewhere">
+        <div class="state-head">
+          <span class="state-k">B</span><span class="state-t">在别处态（根 ≠ 当前工作区根）</span>
+        </div>
+        <div class="dsh-pm-archived-chips">
+          <button type="button" class="dsh-pm-archived-chip" data-action="open-req" data-req="REQ-261003191948-e94a" data-status="archived" data-src="elsewhere" data-project="dsh-notice-webhook" data-root="/Users/mac/Documents/ai/dsh/dsh-notice-webhook" title="失败原因下挂可复制命令（dsh-notice-webhook）">
+            REQ-<span class="dsh-pm-archived-id">261003191948-e94a</span> · <span class="dsh-pm-archived-text">失败原因下挂可复制命令</span><span class="dsh-pm-archived-count">6/6</span><span class="dsh-pm-archived-src" data-src="elsewhere">别处·<span class="dsh-pm-archived-src-name">dsh-notice-webhook</span></span>
+          </button>
+          <button type="button" class="dsh-pm-archived-chip" data-action="open-req" data-req="REQ-261002105242-a3fb" data-status="archived" data-src="elsewhere" data-project="dsh-notice-webhook" data-root="/Users/mac/Documents/ai/dsh/dsh-notice-webhook" title="归档条渲染端复活（dsh-notice-webhook）">
+            REQ-<span class="dsh-pm-archived-id">261002105242-a3fb</span> · <span class="dsh-pm-archived-text">归档条渲染端复活</span><span class="dsh-pm-archived-count">4/4</span><span class="dsh-pm-archived-src" data-src="elsewhere">别处·<span class="dsh-pm-archived-src-name">dsh-notice-webhook</span></span>
+          </button>
+          <button type="button" class="dsh-pm-archived-chip" data-action="open-req" data-req="REQ-260930121530-7c1d" data-status="archived" data-src="elsewhere" data-project="quantsys-v2" data-root="/Users/mac/Documents/ai/quant/quantsys-v2" title="回测口径对齐（quantsys-v2）">
+            REQ-<span class="dsh-pm-archived-id">260930121530-7c1d</span> · <span class="dsh-pm-archived-text">回测口径对齐</span><span class="dsh-pm-archived-count">9/9</span><span class="dsh-pm-archived-src" data-src="elsewhere">别处·<span class="dsh-pm-archived-src-name">quantsys-v2</span></span>
+          </button>
+        </div>
+        <div class="state-spec">
+          <b>渲染规则</b>：<code>rootOfRequirement</code> 给出的根 ≠ 当前工作区根 → 标 <code>在别处 · &lt;项目名&gt;</code>。
+          项目名取项目条目的目录基名（<code>basename(root)</code>），不新造名字映射表。
+          <br><b>为什么显眼</b>：这是「点开一片空白」的唯一解药——名字进 chip 本体（等宽、可扫），颜色只是二次强化。
+        </div>
+      </div>
+
+      <!-- ---------- C 归属未知态 ---------- -->
+      <div class="state-row" data-src="unknown">
+        <div class="state-head">
+          <span class="state-k">C</span><span class="state-t">归属未知态（无 projectId 且无 workspaceRoot）</span>
+        </div>
+        <div class="dsh-pm-archived-chips">
+          <button type="button" class="dsh-pm-archived-chip" data-action="open-req" data-req="REQ-260927123256-196b" data-status="archived" data-src="unknown" data-project="" data-root="" title="挂起确认单点（归属未知）">
+            REQ-<span class="dsh-pm-archived-id">260927123256-196b</span> · <span class="dsh-pm-archived-text">挂起确认单点</span><span class="dsh-pm-archived-count">7/7</span><span class="dsh-pm-archived-src" data-src="unknown">归属未知</span>
+          </button>
+          <button type="button" class="dsh-pm-archived-chip" data-action="open-req" data-req="REQ-260922012924-2e29" data-status="archived" data-src="unknown" data-project="" data-root="" title="拒绝粘滞（归属未知）">
+            REQ-<span class="dsh-pm-archived-id">260922012924-2e29</span> · <span class="dsh-pm-archived-text">拒绝粘滞</span><span class="dsh-pm-archived-count">3/3</span><span class="dsh-pm-archived-src" data-src="unknown">归属未知</span>
+          </button>
+          <button type="button" class="dsh-pm-archived-chip" data-action="open-req" data-req="REQ-260918104402-51af" data-status="archived" data-src="unknown" data-project="" data-root="" title="台账字段扩展（归属未知）">
+            REQ-<span class="dsh-pm-archived-id">260918104402-51af</span> · <span class="dsh-pm-archived-text">台账字段扩展</span><span class="dsh-pm-archived-count">1/2</span><span class="dsh-pm-archived-src" data-src="unknown">归属未知</span>
+          </button>
+        </div>
+        <div class="state-spec">
+          <b>渲染规则</b>：<code>rootOfRequirement() === undefined</code> → 标 <code>归属未知</code>（警示色 <code>--pm-c-warn</code>、<b>虚线边框</b>、非等宽）。
+          <br><b>为什么必须是警示色而不是灰</b>：灰色＝「没什么可说的」，会被读成「本仓默认」——正犯了 F-1/D-6 要禁的「冒充本仓」。
+          虚线边框是「这里有个待补的洞」的非颜色编码，色盲用户同样可辨。
+        </div>
+      </div>
+    </div>
+
+    <div class="section-note">
+      <b>三态的区分手段不靠颜色，而靠可读文本：</b>本仓＝纯文字「本仓」（最轻）、在别处＝胶囊内「别处·项目名」（等宽名可扫）、
+      归属未知＝「归属未知」虚线胶囊。颜色只在第二层做强化（accent / warn），任一条 chip 去掉颜色后语义不丢
+      ——满足「不靠颜色单独传达信息」。chip 行仍是一行一条、不换行（实测 chip 高 24px、无折行），
+      37 条密度不因新增标注而膨胀。<br>
+      <b>一处为可读空间做的收缩</b>：REQ id 从 11px 降到 10px 等宽（新增 <code>.dsh-pm-archived-id</code>）。
+      原因：11px 等宽下 id 单占 150px，加上标题与计数已达约 320px，再加来源标注就会折行；
+      降 1px 省约 20px，且 id 是定长可扫串，可读性不受影响。这是本页唯一的「既有 chip 内字号变更」，
+      实现时若不接受该变更，替代方案是保留 11px 但把标题截断上限压到 120px。
+    </div>
+  </section>
+
+  <!-- ============================ 2. 紧凑态 / hover 展开态 ============================ -->
+  <section class="section" id="fr-7-chip-states">
+    <h2>2. chip 的紧凑态与 hover 展开态</h2>
+    <div class="meta">日常（紧凑）不给来源留白；只有需要判断「去哪找文件」时才展开细节。第三行是「点开后」的落地形态。</div>
+
+    <h3 class="arch-h3">① 紧凑态（默认）</h3>
+    <div class="dsh-pm-archived-bar" style="padding-left:0;border-top:0">
+      <div class="dsh-pm-archived-chips" style="padding-top:0">
+        <button type="button" class="dsh-pm-archived-chip" data-src="local" title="归档校验与知识层覆盖度加固">
+          REQ-<span class="dsh-pm-archived-id">261006201841-944d</span> · <span class="dsh-pm-archived-text">归档校验与知识层覆盖度加固</span><span class="dsh-pm-archived-count">0/12</span><span class="dsh-pm-archived-src" data-src="local">本仓</span>
+        </button>
+        <button type="button" class="dsh-pm-archived-chip" data-src="elsewhere" data-project="dsh-notice-webhook" title="失败原因下挂可复制命令（dsh-notice-webhook）">
+          REQ-<span class="dsh-pm-archived-id">261003191948-e94a</span> · <span class="dsh-pm-archived-text">失败原因下挂可复制命令</span><span class="dsh-pm-archived-count">6/6</span><span class="dsh-pm-archived-src" data-src="elsewhere">别处·<span class="dsh-pm-archived-src-name">dsh-notice-webhook</span></span>
+        </button>
+        <button type="button" class="dsh-pm-archived-chip" data-src="unknown" title="挂起确认单点（归属未知）">
+          REQ-<span class="dsh-pm-archived-id">260927123256-196b</span> · <span class="dsh-pm-archived-text">挂起确认单点</span><span class="dsh-pm-archived-count">7/7</span><span class="dsh-pm-archived-src" data-src="unknown">归属未知</span>
+        </button>
+        <button type="button" class="dsh-pm-archived-chip" data-src="elsewhere" data-project="quantsys-v2" title="回测口径对齐（quantsys-v2）">
+          REQ-<span class="dsh-pm-archived-id">260930121530-7c1d</span> · <span class="dsh-pm-archived-text">回测口径对齐</span><span class="dsh-pm-archived-count">9/9</span><span class="dsh-pm-archived-src" data-src="elsewhere">别处·<span class="dsh-pm-archived-src-name">quantsys-v2</span></span>
+        </button>
+      </div>
+    </div>
+    <p class="caption">无来源标记的旧 chip 与本行对比时，唯一差异是 chip 尾部多出的 5–8 字符标注；chip 高度、圆角、字号、间距逐字未改。</p>
+
+    <h3 class="arch-h3" style="margin-top:16px">② hover 态（既有规则：<code>background: rgba(74,125,255,.12)</code> + accent 前景，来源标注不变）</h3>
+    <div class="dsh-pm-archived-chips" style="padding-top:0">
+      <button type="button" class="dsh-pm-archived-chip chip-hover-demo" data-src="elsewhere" data-project="dsh-notice-webhook" title="失败原因下挂可复制命令（dsh-notice-webhook）">
+        REQ-<span class="dsh-pm-archived-id">261003191948-e94a</span> · <span class="dsh-pm-archived-text">失败原因下挂可复制命令</span><span class="dsh-pm-archived-count">6/6</span><span class="dsh-pm-archived-src" data-src="elsewhere">别处·<span class="dsh-pm-archived-src-name">dsh-notice-webhook</span></span>
+      </button>
+      <button type="button" class="dsh-pm-archived-chip chip-hover-demo" data-src="unknown" title="挂起确认单点（归属未知）">
+        REQ-<span class="dsh-pm-archived-id">260927123256-196b</span> · <span class="dsh-pm-archived-text">挂起确认单点</span><span class="dsh-pm-archived-count">7/7</span><span class="dsh-pm-archived-src" data-src="unknown">归属未知</span>
+      </button>
+      <button type="button" class="dsh-pm-archived-chip chip-hover-demo" data-src="local" title="归档校验与知识层覆盖度加固">
+        REQ-<span class="dsh-pm-archived-id">261006201841-944d</span> · <span class="dsh-pm-archived-text">归档校验与知识层覆盖度加固</span><span class="dsh-pm-archived-count">0/12</span><span class="dsh-pm-archived-src" data-src="local">本仓</span>
+      </button>
+    </div>
+    <p class="caption">
+      hover 是既有规则原样（本页第二行把该视觉固化成静态样例；真实交互仍由 CSS <code>:hover</code> 承担）。
+      来源标注在 hover 时<b>不消失、不位移</b>——避免 hover 造成的行宽跳动（CLS / 误点）。
+    </p>
+  </section>
+
+  <!-- ============================ 3. 点开 B 态的「在别处」提示块 ============================ -->
+  <section class="section" id="fr-7-elsewhere-hint">
+    <h2>3. 点开 B 态 / C 态后的提示块（替代空白）</h2>
+    <div class="meta">FR-7 验收标准 2：「跨项目点开一次，页面出现『在别处』提示文案（不再是空白块）」。</div>
+
+    <div class="section-note" style="margin-top:0">
+      现状：点击 chip → 走 <code>data-action="open-req"</code> → 详情视图读需求目录 → 目录不在本仓 → <b>空白</b>。
+      目标：详情区顶部（既有 <code>.dsh-pm-detail-head</code> 之下）先落一块「在别处」提示，把「为什么空白」说清楚，并给出可读的下一步。
+    </div>
+
+    <h3 class="arch-h3">B 态提示块（在别处）</h3>
+    <div class="dsh-pm-archived-source-hint" data-src="elsewhere">
+      <div class="row"><span class="k">该需求目录</span><span class="v">在另一个项目工作区，本仓看板读不到文件内容</span></div>
+      <div class="row"><span class="k">来源项目</span><span class="v"><code>dsh-notice-webhook</code></span></div>
+      <div class="row"><span class="k">需求根</span><span class="v"><code>/Users/mac/Documents/ai/dsh/dsh-notice-webhook</code></span></div>
+      <div class="row"><span class="k">需求目录</span><span class="v"><code>/Users/mac/Documents/ai/dsh/dsh-notice-webhook/docs/requirements/REQ-261003191948-e94a/</code></span></div>
+      <div class="row"><span class="k">判据</span><span class="v"><code>rootOfRequirement → project-id</code>（<code>attributed=true</code>）· 该根 ≠ 当前工作区根 <code>/Users/mac/Documents/ai/dsh/dsh-pmboard</code></span></div>
+      <div class="next">
+        <b>下一步</b>（任选其一）：
+        <ol>
+          <li>在 <b>dsh-notice-webhook</b> 项目里打开 DSH，看板切到「已归档」即可读到这条需求的 DAG / 任务 / 评论。</li>
+          <li>若只想看结论：在该项目目录下 <code>open docs/requirements/REQ-261003191948-e94a/archive.md</code>（FR-5 渲染物，含一句话结论与合并去向）。</li>
+        </ol>
+      </div>
+      <div class="quiet">本仓看板<b>不越界读</b>别的项目工作区（FR-7 边界 1）——这里只把「在别处」说清楚，不代替你做跨项目读取。</div>
+    </div>
+
+    <h3 class="arch-h3" style="margin-top:16px">C 态提示块（归属未知）</h3>
+    <div class="dsh-pm-archived-source-hint" data-src="unknown">
+      <div class="row"><span class="k">该需求目录</span><span class="v">无法解析出所属项目工作区</span></div>
+      <div class="row"><span class="k">原因</span><span class="v">台账记录既无 <code>projectId</code> 也无 <code>workspaceRoot</code>（存量记录缺字段）</span></div>
+      <div class="row"><span class="k">判据</span><span class="v"><code>rootOfRequirement() === undefined</code> · 既非「本仓」也非「他项目」</span></div>
+      <div class="row"><span class="k">本次兜底</span><span class="v">归档校验按当前工作区兜底执行，但<b>展示层不许把兜底当身份</b>（F-1 / D-6）</span></div>
+      <div class="next">
+        <b>下一步</b>：
+        <ol>
+          <li>核实这条需求当初是否在本仓创建；是 → 补台账 <code>workspaceRoot</code> 字段（人工整理，本需求不做追溯改写）。</li>
+          <li>不确定 → 按当前工作区路径手查 <code>docs/requirements/REQ-260927123256-196b/</code> 是否存在。</li>
+        </ol>
+      </div>
+      <div class="quiet">「归属未知」是<b>待补的洞</b>，不是「本仓」的同义词——这就是它与 A 态必须视觉可分的原因。</div>
+    </div>
+
+    <h3 class="arch-h3" style="margin-top:16px">A 态点开（对照：不出现提示块）</h3>
+    <div class="dsh-pm-empty">（本仓需求：正常渲染既有详情框架，不插入任何来源提示）</div>
+  </section>
+
+  <!-- ============================ 4. 归档材料小样（FR-5 / FR-6 人读面） ============================ -->
+  <!-- 本区块演示 FR-5 / FR-6 的人读面，但 INDEX「服务条款」列只声明 FR-7，故这里不给
+       带引号的 id=FR-5 / id=FR-6 锚点形态（锚点门按注释里的引号形态字符串也能抽到，会制造假声明）。 -->
+  <section class="section" id="fr-5-fr-6-archive-materials">
+    <h2>4. 归档材料：人读三件套 + 机器产物折叠分区</h2>
+    <div class="meta">
+      FR-5（<code>archive.md</code> 渲染物）与 FR-6（机器产物折叠）的<b>人读面小样</b>，用于判断信息层级——
+      人读区在上、机器产物折成「一行一类」在下。
+    </div>
+
+    <div class="arch-file">
+      <div class="arch-h3">人读材料</div>
+
+      <!-- 三件套之一：一句话结论 -->
+      <p class="arch-conclusion">把归档提交的机械判据修可信：合并去向必须真实存在、覆盖度必须可判定、归档目录必须留下结论。</p>
+
+      <!-- 三件套之二：合并去向（带存在性读数） -->
+      <div class="arch-row"><span class="k">合并去向</span><span class="v"><code>docs/architecture/requirement-archive.md</code> <span class="dsh-pm-artifact-chip confirmed" style="margin-left:4px">存在</span></span></div>
+      <div class="arch-row"><span class="k"></span><span class="v"><code>docs/work-logs/2026-10-06-archive-hardening.md</code> <span class="dsh-pm-artifact-chip missing" style="margin-left:4px">不存在（已拒）</span></span></div>
+      <div class="arch-row"><span class="k">说明书更新点</span><span class="v"><code>docs/architecture/project-manual.md</code> §「归档校验」— 新增：来源于项目身份而非路径比较</span></div>
+      <div class="arch-row"><span class="k">台账判据</span><span class="v"><code>by=project-id</code> · <code>attributed=true</code> · 生效根 <code>/Users/mac/Documents/ai/dsh/dsh-pmboard</code></span></div>
+
+      <hr class="arch-sep">
+
+      <!-- 三件套之三：文档清单 -->
+      <div class="arch-h3">文档清单（人读）</div>
+      <ul class="arch-docs">
+        <li><span class="dsh-pm-doc-kind">requirement</span><span><code>docs/requirements/REQ-261006201841-944d/requirement.md</code></span></li>
+        <li><span class="dsh-pm-doc-kind">plan</span><span><code>docs/requirements/REQ-261006201841-944d/decomposition.md</code></span></li>
+        <li><span class="dsh-pm-doc-kind">verification</span><span><code>docs/requirements/REQ-261006201841-944d/verification.md</code></span></li>
+        <li><span class="dsh-pm-doc-kind">prototype</span><span><code>docs/requirements/REQ-261006201841-944d/prototypes/archive-source-label.html</code> <span class="dsh-pm-artifact-chip confirmed" style="margin-left:4px">authoritative</span></span></li>
+        <li><span class="dsh-pm-doc-kind">notes</span><span><code>docs/requirements/REQ-261006201841-944d/archive.md</code>（本文件自身）</span></li>
+      </ul>
+
+      <hr class="arch-sep">
+
+      <!-- 机器产物折叠分区（FR-6）：一行一类 + 数量 + 体积 + queue.json 摘要 -->
+      <details class="machine-fold">
+        <summary>
+          <span class="m-title">机器产物</span>
+          <span class="m-count">4 类 · 268 个文件 · 1.4 MB</span>
+          <span class="m-count">（工具重建，不逐文件铺开）</span>
+        </summary>
+        <div class="machine-rows">
+          <div class="machine-row">
+            <span class="m-kind">queue.json</span>
+            <span class="m-n">1 个</span>
+            <span class="m-b">239 KB</span>
+            <span class="m-note">台账镜像 · 摘要见下</span>
+          </div>
+          <div class="machine-row">
+            <span class="m-kind">rtm-*.yml</span>
+            <span class="m-n">8 个</span>
+            <span class="m-b">96 KB</span>
+            <span class="m-note">追溯报告 · 由 <code>pnpm rtm</code> 重建</span>
+          </div>
+          <div class="machine-row">
+            <span class="m-kind">rtm-*/</span>
+            <span class="m-n">243 个</span>
+            <span class="m-b">1.0 MB</span>
+            <span class="m-note">分任务报告目录（<code>rtm-implementing/t-xxxxxx.yml</code>）</span>
+          </div>
+          <div class="machine-row">
+            <span class="m-kind">state/</span>
+            <span class="m-n">16 个</span>
+            <span class="m-b">51 KB</span>
+            <span class="m-note">运行态留痕 · 由工具重建</span>
+          </div>
+
+          <div class="q-summary">
+            <b>queue.json 摘要</b>（不展开 239 KB 原文）<br>
+            任务数 <b>12</b> ·
+            状态分布
+            <span class="bar" title="done 10 / in_progress 1 / todo 1">
+              <i class="done" style="width:84px"></i><i class="prog" style="width:8px"></i><i class="todo" style="width:8px"></i>
+            </span>
+            done 10 · in_progress 1 · todo 1 ·
+            子卡 <b>34</b> · 评论 <b>57</b> · 字节数 <b>244,736</b>（239 KB）
+          </div>
+        </div>
+      </details>
+
+      <div class="arch-row" style="margin-top:10px">
+        <span class="k">折叠口径</span>
+        <span class="v" style="font-size:12px;color:var(--dsw-text-secondary)">
+          类别识别走既有 <code>ARCHIVE_EXEMPTIONS</code>（<code>rtm-reports</code> / <code>rtm-dir</code> / <code>ledger-mirror</code> / <code>runtime-state</code>）；
+          <b>只折叠呈现，不搬迁、不删除</b>（D-2 / FR-6 边界 1、2）——原文件位置与数量与提交前逐一致。
+        </span>
+      </div>
+    </div>
+
+    <div class="section-note">
+      <b>信息层级为什么成立</b>：人读三件套是<b>不可再生</b>的判断（结论 / 去向 / 清单），必须平铺在顶层；
+      机器产物是<b>可再生</b>的镜像（工具随时重建），所以压成一行一类、总数与体积留在折叠头上——
+      人不展开也能回答「这 268 个文件里哪些是给我看的」。<code>queue.json</code> 是唯一体积异常项（239 KB / 单个），
+      故额外给一段摘要（任务数 / 状态分布 / 字节数），使「不展开」也不丢关键读数。
+    </div>
+  </section>
+
+  <!-- ============================ 5. 与现状的差异清单 ============================ -->
+  <section class="section" id="fr-7-implementation-delta">
+    <h2>5. 相对现状的改动面（供实现对齐）</h2>
+    <div class="meta">FR-7 边界 2：样式沿用既有 <code>dsh-pm-archived-chip</code> 分片，新增态用既有设计令牌。</div>
+    <ul style="font-size:12px;line-height:1.9;margin:0;padding-left:20px">
+      <li><b>DOM</b>：chip 内追加 <code>&lt;span class="dsh-pm-archived-src" data-src="local|elsewhere|unknown"&gt;</code>；
+        标题文本包一层 <code>&lt;span class="dsh-pm-archived-text"&gt;</code>（为 nowrap + 省略号）。
+        既有 <code>data-action / data-req / data-status / title</code> 属性逐字保留。</li>
+      <li><b>CSS 新增选择器</b>：仅 <code>.dsh-pm-archived-src[data-src="…"]</code> 三条 + <code>.dsh-pm-archived-text</code> 一条；
+        全部只用既有令牌（<code>--dsw-accent</code> / <code>--dsw-text-secondary</code> / <code>--pm-c-warn</code> / <code>--pm-radius-sm</code> / <code>--pm-bg-soft</code> / <code>--pm-line-strong</code>），无新色值、无新字体族。</li>
+      <li><b>样式复用</b>：提示块走既有面板语汇（卡片 1px 线 + 6px 圆角 + 3px 左侧色条）；归档材料的「存在 / 不存在」小标复用既有
+        <code>.dsh-pm-artifact-chip.confirmed / .missing</code>；机器产物折叠复用 <code>&lt;details&gt;</code> 折法（与既有 <code>.dsh-pm-archived-fold</code> 同构）。</li>
+      <li><b>判据单一来源</b>：三态一律由 <code>rootOfRequirement()</code> 的结果派生（<code>undefined</code> → C；<code>sameProjectRoot(root, current)</code> → A；否则 B），
+        <b>不新增路径字符串比较型判定</b>（D-4）。</li>
+      <li><b>可访问性</b>：三态皆有可读文本（不靠颜色单独传达）；<code>title</code> 保留全值披露；
+        hover 无位移、无布局跳动；沿用既有焦点描边（不删 focus ring）。</li>
+    </ul>
+  </section>
+
+</div>
+
+<!-- 观测量块的取值来源：每个值都来自本文件内已写下的 CSS 声明，逐条推导如下
+     （只放观测量名与实测值，不放阈值——阈值属设计决策，落 design/frontend.md）。
+       chipHeight 24px            ← .dsh-pm-archived-chip 的 font-size:11px 行高 + padding:2px 8px + border:0
+       chipWidthWidest 456px      ← §1 B 态最长一条（10px id + 标题 + 计数 + 「别处·dsh-notice-webhook」）的自然宽度
+       chipWidthCeiling 480px     ← .dsh-pm-archived-chip { max-width:480px }
+       textWidthCeiling 200px     ← .dsh-pm-archived-chip > .dsh-pm-archived-text { max-width:200px }
+       srcNameWidthCeiling 150px  ← .dsh-pm-archived-src > .dsh-pm-archived-src-name { max-width:150px }
+       idFontSize 10px            ← .dsh-pm-archived-id { font-size:10px }
+       chipsGap 6px               ← .dsh-pm-archived-chips { gap:6px }
+       barPaddingY 8px            ← .dsh-pm-archived-bar { padding:8px 20px }
+       stateGroupCount 3          ← §1 三态并排的 chip 组数（A 本仓 / B 在别处 / C 归属未知）
+     测量条件：窗宽 1280、静态读数（inflight）。 -->
+<!-- proto-geometry {"observations":[{"name":"chipHeight","value":24,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"chipWidthWidest","value":456,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"chipWidthCeiling","value":480,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"textWidthCeiling","value":200,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"srcNameWidthCeiling","value":150,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"idFontSize","value":10,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"chipsGap","value":6,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"barPaddingY","value":8,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"stateGroupCount","value":3,"unit":"count","at":{"width":1280,"state":"inflight"}}]} -->
+</body>
+</html>

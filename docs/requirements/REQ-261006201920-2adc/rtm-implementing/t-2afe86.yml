@@ -1,0 +1,38 @@
+task:
+  id: t-2afe86
+  title: 覆盖原子写入与两通道透传·复核
+  status: done
+  implements: |-
+    改 src/application/internal/verdicts.ts：VerdictInput 增可选 changeReason；在既有「人改结果」写入块里判定覆盖（该次裁决带文本 且 与该项现有 result 不同 且 resultSource==='agent'），覆盖生效时一次性写全 result / resultSource='human' / resultSuperseded（首次覆盖写入，重复覆盖不覆盖该字段）/ resultChangeReason；缺理由时抛 VerdictError code='result_change_reason_required'，文案给「可不覆盖 / 或补理由」两条路，且台账零改动（保持 agent 原文与 agent 来源）；回滚开关 DSH_REQBOARD_NO_ITEM_RESULT 生效时整段跳过；materializeReworkTask 把规格里的 requirementRefs/prototypeRefs/decisionRefs/footprint/acceptanceSource 搬到 TaskRecord。改 src/http/routers/verdicts.ts：从 body.verdicts[] 解析 changeReason（normalizeText 上限 1000）并透传，不构成覆盖时缺字段不报错。改 src/application/use-cases/AcceptSheet.ts：第一轮问答后对会被判为覆盖的项补一轮问答（问题 id 形如 <itemId>#change-reason），未作答即不执行覆盖并按未覆盖记录裁决，不拒绝整批。新增 tests/result-override-reason.test.ts（TC-13/TC-14/TC-15）。验证：npx vitest run tests/result-override-reason.test.ts tests/verdicts-http.test.ts tests/verdicts-and-rework.test.ts tests/accept-sheet-tool.test.ts；反向演练 RV-4：把覆盖理由校验改成恒真 ⇒ 「缺理由即拒」变红，还原后绿。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-c2610f
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201920-2adc
+    TASK_ID: t-2afe86
+    TASK_TITLE: 覆盖原子写入与两通道透传·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T13:10:08.744Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201920-2adc
+  generated_at: 2026-10-06T13:09:52.968Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T13:10:08.745Z

@@ -1,0 +1,38 @@
+task:
+  id: t-c74546
+  title: "[重做] 收敛测试根为单一事实源，并单点修复 harness 泄漏"
+  status: todo
+  implements: |-
+    新增 tests/helpers/workspace-root.ts：导出 REPO_ROOT / testWorkspaceRoot / perFileWorkspaceRoot / resolveWorkspaceRoot，语义与既有 tests/helpers/tool-deps.ts 内的实现逐字一致（含 macOS realpath 软链比较）。
+    修改 tests/helpers/tool-deps.ts：删除本文件内的测试根实现，改为从 tests/helpers/workspace-root.ts 导入并再导出，行为零变更。
+    修改 tests/application/harness.ts：把 :586 的 FakeDocs.workspaceRoot() 返回值由 '.' 改为进程级临时根（复用 testWorkspaceRoot），这是 Tier A 全部泄漏的唯一出口。
+    新增 tests/workspace-root.test.ts：断言两条策略不再分叉（tool-deps 与 harness 得到的根都在系统临时目录下、且不等于仓库内路径）。
+    验证：npx vitest run tests/workspace-root.test.ts 与 tests/rtm-validator-tolerance.test.ts 全绿。
+  serves:
+    - FR-5
+    - FR-9
+  depends_on: []
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201814-ac4f
+    TASK_ID: t-c74546
+    TASK_TITLE: "[重做] 收敛测试根为单一事实源，并单点修复 harness 泄漏"
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 0
+  workflow:
+    - phase: test
+      status: pending
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201814-ac4f
+  generated_at: 2026-10-06T13:19:17.504Z
+  version: 1
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T13:19:17.504Z

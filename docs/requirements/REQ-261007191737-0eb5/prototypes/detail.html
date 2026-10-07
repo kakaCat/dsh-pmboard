@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人工项允许 agent 代写事实：人只做通过/退回裁决 · 原型（REQ-261007191737-0eb5）</title>
+<!--
+  权威版本标记位：本文件 = prototypes/INDEX.md「状态」列唯一那条 authoritative 的路径。
+  被取代时把本行改成 superseded，并在 INDEX「被取代于」列写权威路径（不删文件）。
+  本页只画结构与交互路径：两条通道（项目看板 · 验收单 / 会话验收弹框），处处带改前·改后对照。
+-->
+<style>
+*{box-sizing:border-box}
+body{font-family:-apple-system,"PingFang SC",sans-serif;margin:0;background:#f5f6f8;color:#24292f;font-size:13px;line-height:20px}
+header{background:#1f2328;color:#fff;padding:12px 20px;font-size:14px}
+header .req{opacity:.7;margin-left:8px}
+.intro,.fr{background:#fff;margin:16px auto;max-width:1000px;border:1px solid #d0d7de;border-radius:8px;padding:20px}
+.intro h2{margin:0 0 4px;font-size:16px;line-height:22px}
+.fr h2{margin:0 0 4px;font-size:16px;line-height:22px}
+.meta{color:#57606a;font-size:12px;line-height:18px;margin-bottom:12px}
+h3.sec{margin:16px 0 8px;font-size:13px;line-height:20px}
+h3.sec:first-child{margin-top:0}
+.mock{border:1px dashed #8c959f;border-radius:6px;padding:14px;min-height:160px}
+.flow{font-size:13px;line-height:20px;color:#57606a;margin-top:12px}
+.note{font-size:12px;line-height:18px;color:#57606a;margin-top:10px}
+.two-col{display:flex;gap:16px}
+.col{flex:1 1 0;min-width:0;border:1px solid #d0d7de;border-radius:6px;padding:12px}
+.col h3{margin:0 0 8px;font-size:13px;line-height:20px}
+.pill{display:inline-block;height:18px;line-height:16px;font-size:11px;padding:0 6px;border-radius:9px;border:1px solid #8c959f;background:#f6f8fa;color:#57606a;font-weight:600}
+.pill.before{border-color:#cf222e;background:#ffebe9;color:#cf222e}
+.pill.after{border-color:#1a7f37;background:#dafbe1;color:#1a7f37}
+.ok{color:#1a7f37;font-weight:600}
+.bad{color:#cf222e;font-weight:600}
+.warn{color:#9a6700;font-weight:600}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+pre.ascii{margin:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;line-height:16px;background:#f6f8fa;border:1px solid #d0d7de;border-radius:4px;padding:8px 10px;overflow-x:auto;white-space:pre;color:#24292f}
+table.kv{width:100%;border-collapse:collapse;font-size:12px;line-height:18px;margin-top:8px}
+table.kv th,table.kv td{border:1px solid #d0d7de;padding:6px 8px;text-align:left;vertical-align:top}
+table.kv th{background:#f6f8fa;font-weight:600}
+/* 验收单（看板通道） */
+.sheet{border:1px solid #d0d7de;border-radius:6px;overflow:hidden;background:#fff}
+.sheet-head{height:28px;line-height:28px;padding:0 12px;background:#f6f8fa;border-bottom:1px solid #d0d7de;font-size:12px;color:#57606a}
+.sheet-viewport{height:360px;overflow:auto}
+.sheet-row{height:72px;padding:10px 12px;border-top:1px solid #d0d7de}
+.sheet-row:first-child{border-top:0}
+.r-label{height:20px;line-height:20px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px}
+.r-label .id{font-family:ui-monospace,Menlo,Consolas,monospace;color:#0969da}
+.r-value{height:24px;margin-top:4px}
+.fact-input{width:100%;height:24px;line-height:22px;font-size:12px;padding:0 6px;border:1px solid #d0d7de;border-radius:4px;background:#fff;color:#24292f;font-family:inherit}
+.fact-input.prefilled{background:#f6f8fa}
+.fact-new{width:100%;height:24px;line-height:22px;font-size:12px;padding:0 6px;border:1px solid #1f883d;border-radius:4px;background:#fff;color:#24292f;font-family:inherit}
+.badge{display:inline-block;height:18px;line-height:16px;font-size:11px;padding:0 6px;border-radius:9px;border:1px solid #8c959f;background:#f6f8fa;color:#57606a;white-space:nowrap;vertical-align:middle}
+.badge.need{border-color:#cf222e;background:#ffebe9;color:#cf222e}
+.badge.proxy{box-sizing:border-box;width:152px;text-align:center;overflow:hidden;border-color:#9a6700;background:#fff8c5;color:#7d4e00;font-weight:600}
+.badge.human{border-color:#0969da;background:#ddf4ff;color:#0969da}
+.badge.plain{border-color:#8c959f;background:#f6f8fa;color:#57606a}
+/* 会话弹框（一问一屏） */
+.dlg{border:1px solid #8c959f;border-radius:8px;background:#fff;overflow:hidden;max-width:640px}
+.dlg-head{height:40px;line-height:39px;padding:0 16px;border-bottom:1px solid #d0d7de;background:#f6f8fa;font-weight:600;font-size:13px}
+.dlg-body{padding:14px 16px}
+.dlg-q{font-size:12px;line-height:18px;color:#57606a;margin-bottom:10px}
+.dlg-q b{color:#24292f}
+.dlg-opts{display:flex;gap:8px}
+.opt{height:30px;line-height:28px;padding:0 14px;border:1px solid #d0d7de;border-radius:6px;font-size:12px;background:#fff}
+.opt.on{border-color:#1a7f37;background:#dafbe1;color:#1a7f37;font-weight:600}
+textarea.q2{display:block;width:100%;height:96px;margin-top:10px;font-family:inherit;font-size:12px;line-height:18px;padding:6px 8px;border:1px solid #d0d7de;border-radius:4px;resize:none;background:#fff;color:#24292f}
+.dlg-foot{height:44px;padding:8px 16px;border-top:1px solid #d0d7de;text-align:right;background:#f6f8fa}
+.btn{display:inline-block;height:28px;line-height:26px;padding:0 14px;border:1px solid #d0d7de;border-radius:6px;background:#fff;font-size:12px}
+.btn.primary{border-color:#1f883d;background:#1f883d;color:#fff;font-weight:600}
+/* 提交前就地补问弹框（FR-4） */
+.refill{width:560px;border:1px solid #8c959f;border-radius:8px;background:#fff;overflow:hidden}
+.refill-head{height:44px;line-height:42px;padding:0 16px;border-bottom:1px solid #d0d7de;background:#f6f8fa;font-weight:600;font-size:13px}
+.refill-body{padding:14px 16px}
+.refill-q{height:40px;line-height:20px;font-size:12px}
+.refill-sample{height:54px;line-height:18px;margin-top:10px;padding:0 10px;border-left:3px solid #9a6700;background:#fff8c5;color:#7d4e00;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;overflow:hidden;white-space:pre}
+textarea.refill-field{display:block;width:100%;height:72px;margin-top:10px;font-family:inherit;font-size:12px;line-height:18px;padding:6px 8px;border:1px solid #d0d7de;border-radius:4px;resize:none;background:#fff;color:#24292f}
+.refill-foot{height:48px;padding:10px 16px;border-top:1px solid #d0d7de;background:#f6f8fa;text-align:right}
+</style>
+</head>
+<body>
+<header><strong>人工项允许 agent 代写事实：人只做通过/退回裁决</strong><span class="req">REQ-261007191737-0eb5 · 原型 v0.1 · 2026-10-07</span></header>
+
+<div class="intro">
+  <h2>全景 · 改前 / 改后（两条通道：项目看板 · 验收单 / 会话验收弹框）</h2>
+  <div class="meta">窗口宽 1280 · 页面态 inflight · 本页只画结构与交互路径，不含最终视觉</div>
+  <div class="two-col">
+    <div class="col">
+      <h3><span class="pill before">改前</span>一项不合格 → 整批白点</h3>
+      <pre class="ascii">人 · 弹框第 1 问 ✅ 通过
+    第 2 问「实际结果」= 通过      ← 只填了两个字
+        │
+        ▼
+applyVerdicts · 人工项门
+  hasHumanFact("通过") → false
+        │
+        ▼
+✗ 人工核对项 v2-18 的结论太薄（"通过"）
+  …（opinion_required）
+✗ 本批 10 项零落库
+  连点 3 次 = 3 次白点
+  19:11:32 / 19:12:05 / 19:12:22</pre>
+    </div>
+    <div class="col">
+      <h3><span class="pill after">改后</span>零输入确认，本批其余照常落库</h3>
+      <pre class="ascii">人 · 弹框第 1 问 ✅ 通过
+    第 2 问「实际结果」= 留空     ← 题干已说：留空将采纳
+                                    agent 记录的事实
+        │
+        ▼
+该项自带 agent result（含观察事实）
+        │
+        ▼
+opinion := result（原文）
+opinionSource := "agent"
+status := passed
+        │
+        ▼
+✓ v2-18 通过 · agent 代写（人已确认）
+✓ 本批其余 9 项照常落库</pre>
+    </div>
+  </div>
+  <div class="flow">两条通道同口径：人只做「✅ 通过 / 🛠 改进（需修改）/ ❓ 其他」的裁决；事实文本可以由 agent 先写、人确认。人写的自己不达事实形态照样拒（FR-3），谁都没写就当场补问（FR-4）。</div>
+</div>
+
+<section class="fr" id="FR-1">
+  <h2>FR-1 人工项采纳 agent 事实文本</h2>
+  <div class="meta">优先级 P0 · 状态：草图 · 通道：项目看板 · 验收单（逐行勾选）</div>
+  <div class="mock">
+    <h3 class="sec"><span class="pill before">改前</span>看板验收单 · 人工项空着点通过 → 前端拦下</h3>
+    <div class="sheet">
+      <div class="sheet-head">验收单 v2 · REQ-261007183621-9ebb · 本批 10 项 · 窗口宽 1280</div>
+      <div class="sheet-row">
+        <div class="r-label"><span class="id">v2-18</span> 与原型对照截图（含差异说明） <span class="badge need">needsHuman</span> 界面视觉需人对照权威原型</div>
+        <div class="r-value"><input class="fact-input" value="" placeholder="请先在输入框写下你看到的事实"></div>
+      </div>
+    </div>
+    <div class="note bad">点「✅ 通过」被拦：以下项只能人工确认，请先在输入框写下你看到的事实</div>
+    <div class="note">难点：agent 已经把对照结论写进了该项的 result（现象 / 差异 / 证据路径），却对判定毫无作用——人只能重抄。</div>
+
+    <h3 class="sec"><span class="pill after">改后</span>整张验收单 · 输入框预填 agent 记录，人工项带来源标注</h3>
+    <div class="sheet">
+      <div class="sheet-head">验收单 v2 · REQ-261007183621-9ebb · 本批 10 项 · 滚动区 360px 高（一屏整行可见 5 条）</div>
+      <div class="sheet-viewport">
+        <div class="sheet-row">
+          <div class="r-label"><span class="id">v2-13</span> 单元用例 · 零输入裁决 <span class="badge plain">普通项</span></div>
+          <div class="r-value"><input class="fact-input prefilled" value="npx vitest run tests/accept-sheet-zero-input.test.ts → 退出码 0，14 passed" readonly></div>
+        </div>
+        <div class="sheet-row">
+          <div class="r-label"><span class="id">v2-14</span> 判据单点 · opinionSource <span class="badge plain">普通项</span></div>
+          <div class="r-value"><input class="fact-input prefilled" value="grep -c opinionSource src/ → 1 处（AcceptanceSheetSpec.ts:212）" readonly></div>
+        </div>
+        <div class="sheet-row">
+          <div class="r-label"><span class="id">v2-18</span> 与原型对照截图（含差异说明） <span class="badge need">needsHuman</span> 界面视觉需人对照权威原型</div>
+          <div class="r-value"><input class="fact-new" value="" placeholder="可留空 —— 留空即采纳 agent 记录的事实"></div>
+        </div>
+        <div class="sheet-row">
+          <div class="r-label"><span class="id">v2-18</span> 该项结论来源 <span class="badge proxy">agent 代写（人已确认）</span></div>
+          <div class="r-value"><span class="note" style="margin:0">与原型一致；差异：格子尺寸 208×n vs 234px；证据 prototypes/detail.html#FR-1（人零输入勾「✅ 通过」即采纳）</span></div>
+        </div>
+        <div class="sheet-row">
+          <div class="r-label"><span class="id">v2-19</span> 视觉细节 · 标题截断 <span class="badge need">needsHuman</span> 无 agent 事实文本</div>
+          <div class="r-value"><input class="fact-input" value="" placeholder="必须手写：差什么 + 证据路径（否则 FR-4 当场补问）"></div>
+        </div>
+        <div class="sheet-row">
+          <div class="r-label"><span class="id">v2-20</span> 回滚开关读数 <span class="badge plain">普通项</span></div>
+          <div class="r-value"><input class="fact-input prefilled" value="DSH_REQBOARD_NO_HUMAN_PROXY=1 → unverified(blank_pass)，与今天逐字一致" readonly></div>
+        </div>
+      </div>
+    </div>
+    <div class="note"><span class="ok">✓</span> 人自己写的行（v2-19 若人填写）<b>不标</b>来源；只有 agent 代写的行才渲染来源徽标。</div>
+    <div class="note">人写了字 → 以人写的为准（`opinionSource` 记 <span class="mono">human</span>）；人留空 + 该项有 agent 事实 → 采纳并标 <span class="badge proxy">agent 代写（人已确认）</span>。</div>
+  </div>
+  <div class="flow">交互路径：1. 人打开看板验收单（每行 = 项标题 + 该行「实际结果（agent 记录）」输入框预填）。2. 对人工项行（needsHuman）：若该项带 agent 事实文本 → 输入框留空 + 勾「✅ 通过」→ 零输入通过。3. 反馈：本行出现来源徽标「agent 代写（人已确认）」，本批其余项照常落库。<br>分支：① 字留空且该项<b>无</b> agent 事实 → 不通过，落 unverified(blank_pass)，回执说补什么（FR-3）；② 人写了两字「通过」→ 前端仍拦，但提示升级为「差什么 + 样例」，并在提交前就地补问（FR-4）；③ 人自填事实 → 以人写的为准，不标代写（FR-2）。</div>
+</section>
+
+<section class="fr" id="FR-2">
+  <h2>FR-2 代写留痕可辨</h2>
+  <div class="meta">优先级 P0 · 状态：草图 · 通道：台账字段 + 看板渲染 + verification.md 回填</div>
+  <div class="mock">
+    <h3 class="sec"><span class="pill before">改前</span>台账只有一段文本，两种来源不可分</h3>
+    <pre class="ascii">// verification.json（改前）
+{"itemId":"v2-18","status":"passed",
+ "opinion":"与原型一致；差异：格子尺寸 208×n vs 234px；证据 prototypes/detail.html#FR-1"}
+                 ↑ 这段是 agent 写的还是人抄的？读不出来</pre>
+
+    <h3 class="sec"><span class="pill after">改后</span>新增可选字段 opinionSource，如实标注</h3>
+    <div class="two-col">
+      <div class="col">
+        <h3>路径 A · agent 代写</h3>
+        <pre class="ascii">{"itemId":"v2-18","status":"passed",
+ "opinion":"与原型一致；差异：格子尺寸 208×n vs 234px",
+ "opinionSource":"agent"}</pre>
+        <div class="note">看板 / 文档渲染：<span class="badge proxy">agent 代写（人已确认）</span></div>
+      </div>
+      <div class="col">
+        <h3>路径 B · 人自己写</h3>
+        <pre class="ascii">{"itemId":"v2-19","status":"passed",
+ "opinion":"真机第 3 屏标题被右边缘截断，见 evidence/s3.png",
+ "opinionSource":"human"}</pre>
+        <div class="note">看板 / 文档渲染：<span class="badge human">人写</span>（或不标）</div>
+      </div>
+    </div>
+
+    <h3 class="sec">verification.md 回填形态（同一条验收单里两种来源并列）</h3>
+    <pre class="ascii">- [x] v2-18 与原型对照截图（含差异说明）  needsHuman  通过
+      结论：与原型一致；差异：格子尺寸 208×n vs 234px；证据 prototypes/detail.html#FR-1
+      来源：agent 代写（人已确认）        ← FR-2 新增标注
+- [x] v2-19 视觉细节 · 标题截断        needsHuman  通过
+      结论：真机第 3 屏标题被右边缘截断，见 evidence/s3.png
+      来源：人写                          ← 人自己写的不标代写</pre>
+
+    <h3 class="sec">向后兼容：老台账无该字段时不报错</h3>
+    <table class="kv">
+      <tr><th>台账读数</th><th>渲染</th><th>读取路径</th></tr>
+      <tr><td><span class="mono">opinionSource: "agent"</span></td><td><span class="badge proxy">agent 代写（人已确认）</span></td><td>正常</td></tr>
+      <tr><td><span class="mono">opinionSource: "human"</span></td><td><span class="badge human">人写</span></td><td>正常</td></tr>
+      <tr><td><span class="mono">（字段缺失 · 老台账）</span></td><td><span class="badge plain">人写 / 未知</span></td><td>不报错，按旧口径渲染</td></tr>
+    </table>
+
+    <h3 class="sec">徽标规格（来源标注唯一形态，两种来源只差文案）</h3>
+    <div class="note">同一个 <span class="mono">.badge</span> 基类：高 18px、圆角 9px、字号 11px；代写态固定宽 <b>152px</b>（同一列对齐，不随文案抖动）。<span class="badge proxy">agent 代写（人已确认）</span> <span class="badge human">人写</span> <span class="badge plain">人写 / 未知</span></div>
+  </div>
+  <div class="flow">交互路径：1. FR-1 采纳路径写 <span class="mono">opinion</span> 的<b>同一次 mutate</b> 内写 <span class="mono">opinionSource="agent"</span>。2. 看板验收单与 verification.md 读该字段渲染标注；人自填路径写 <span class="mono">human</span>（或不写）。3. 反馈：复盘时一眼分辨「这条结论是谁写的」。<br>分支：① 写字段失败 → 整体回滚，不留「状态已通过、来源缺失」的半成品；② verification.md 回填失败不阻断裁决落库；③ 字段缺失（老台账）→ 按「人写 / 未知」渲染，不报错。</div>
+</section>
+
+<section class="fr" id="FR-3">
+  <h2>FR-3 不达标仍拦住</h2>
+  <div class="meta">优先级 P0 · 状态：草图 · 通道：同一处事实形态判据（hasHumanFact），不另立第二份词表</div>
+  <div class="mock">
+    <h3 class="sec">三种不达标：一律不放行（与今天逐字一致）</h3>
+    <table class="kv">
+      <tr><th>场景</th><th>人的输入</th><th>系统回应</th><th>台账</th></tr>
+      <tr>
+        <td>该项<b>没有</b> agent result</td>
+        <td>输入框留空 + 勾通过</td>
+        <td><span class="bad">unverified</span>　回执：v2-19 缺事实——请写你看到的现象 + 证据路径</td>
+        <td><span class="mono">unverifiedReason: "blank_pass"</span></td>
+      </tr>
+      <tr>
+        <td>该项 result = <span class="mono">"PASS"</span>（无观察词）</td>
+        <td>输入框留空 + 勾通过</td>
+        <td><span class="bad">unverified</span>　采纳路径不成立（事实形态判据不过）</td>
+        <td><span class="mono">unverifiedReason: "blank_pass"</span></td>
+      </tr>
+      <tr>
+        <td>该项无事实文本</td>
+        <td>人原样手打 <span class="mono">通过</span></td>
+        <td><span class="bad">当场拒</span>：人工核对项 v2-19 的结论太薄（"通过"）…（<span class="mono">opinion_required</span>）</td>
+        <td>状态不变（零改动）</td>
+      </tr>
+    </table>
+
+    <h3 class="sec">状态机（人发起 = 唯一的 passed 来源）</h3>
+    <pre class="ascii">pending ──通过 + 有事实文本 + 人留空──▶ passed  opinionSource=agent     [FR-1]
+pending ──通过 + 人自填事实文本──────▶ passed  opinionSource=human     [FR-2]
+pending ──通过 + 谁都没写事实────────▶ unverified(blank_pass)          [FR-3]
+pending ──通过 + 人自填太薄──────────▶ ✗ 拒（opinion_required）· 台账不变 [FR-3]
+unverified ──补写事实后重交──────────▶ passed，清 unverifiedReason</pre>
+
+    <div class="note"><b>D-2 红线</b>：任何路径下 <span class="mono">passed</span> 都由<b>人发起</b>的裁决产生；agent 侧没有把状态改成 passed 的通路。本需求取消的是「重抄」，不是「人工门」。</div>
+    <div class="note"><b>单点纪律</b>：事实形态判据沿用同一处 <span class="mono">hasHumanFact</span>；来源判定、开关读取各只允许一处。畸形 agent 文本（超长 / 纯空白 / 只 emoji / 纯命令无观察词）→ 判不过，落回「要人写」，不崩、不静默通过。</div>
+  </div>
+  <div class="flow">交互路径：1. 人点通过。2. 系统判「该项是否带 agent 事实文本」——判据单点。3. 反馈：合格 → 采纳（FR-1）；不合格 → <span class="mono">unverified(blank_pass)</span> 或当场拒绝并点名。<br>分支：① 人写了但太薄 → 拒绝文案给可照抄样例（不看 agent 有没有写）；② 人写了合格事实 → 以人写的为准，即使 agent 也写了。</div>
+</section>
+
+<section class="fr" id="FR-4">
+  <h2>FR-4 提交前就地补问</h2>
+  <div class="meta">优先级 P1 · 状态：草图 · 通道：会话验收弹框（一问一屏）+ 看板前端点名</div>
+  <div class="mock">
+    <h3 class="sec">会话弹框 · 逐项裁决（一问一屏）· 第 1 问</h3>
+    <div class="dlg">
+      <div class="dlg-head">第 1 问 / 共 2 问 · v2-18 与原型对照截图（含差异说明）</div>
+      <div class="dlg-body">
+        <div class="dlg-q"><b>需人工确认：</b>界面视觉需人对照权威原型</div>
+        <div class="dlg-opts"><span class="opt on">✅ 通过</span><span class="opt">🛠 改进（需修改）</span><span class="opt">❓ 其他</span></div>
+      </div>
+    </div>
+
+    <h3 class="sec">会话弹框 · 第 2 问 <span class="pill before">改前</span> 题干只给引导，人被迫重抄</h3>
+    <div class="dlg">
+      <div class="dlg-head">第 2 问 / 共 2 问 · 实际结果</div>
+      <div class="dlg-body">
+        <div class="dlg-q"><b>需人工确认：</b>界面视觉需人对照权威原型</div>
+        <div class="note" style="margin-top:0">已有证据：与原型一致；差异：格子尺寸 208×n vs 234px；证据 prototypes/detail.html#FR-1</div>
+        <textarea class="q2" placeholder="请贴实际结果…可核验形态：一条命令 + 读数 / 一个文件路径 / 一个明确计数"></textarea>
+      </div>
+      <div class="dlg-foot"><span class="btn">跳过本项</span> <span class="btn primary">提交本批（10 项）</span></div>
+    </div>
+
+    <h3 class="sec">会话弹框 · 第 2 问 <span class="pill after">改后</span> 题干明说可留空，留空即采纳 agent 记录的事实</h3>
+    <div class="dlg">
+      <div class="dlg-head">第 2 问 / 共 2 问 · 实际结果</div>
+      <div class="dlg-body">
+        <div class="dlg-q"><b>需人工确认：</b>界面视觉需人对照权威原型　<span class="ok">本项已有 agent 记录的事实：留空将采纳 agent 记录的事实。</span></div>
+        <div class="note" style="margin-top:0">已有证据（agent 记录）：与原型一致；差异：格子尺寸 208×n vs 234px；证据 prototypes/detail.html#FR-1</div>
+        <textarea class="q2" placeholder="留空 = 采纳 agent 记录的事实（人零输入）；要覆盖就写下你自己的：请贴实际结果…可核验形态：一条命令 + 读数 / 一个文件路径 / 一个明确计数"></textarea>
+      </div>
+      <div class="dlg-foot"><span class="btn">跳过本项</span> <span class="btn primary">提交本批（10 项）</span></div>
+    </div>
+
+    <h3 class="sec">提交前就地补问弹框（本批含「既无 agent 事实、人也留空」的人工项时弹出）</h3>
+    <div class="refill">
+      <div class="refill-head">提交前就地补问 · 本批有 1 项既无 agent 事实、你也留空了</div>
+      <div class="refill-body">
+        <div class="refill-q">还差 <b>v2-19</b>（视觉细节 · needsHuman）：该项无 agent 事实文本，你的「实际结果」也是空的。<br>只补这一项即可提交整批，不必重来。</div>
+        <div class="refill-sample">样例 v2-19：看到什么＝真机第 3 屏标题被右边缘截断
+差在哪＝原型标题单行完整，真机折行；证据＝evidence/s3.png
+（照抄这句改数字即可；itemId 与读数要出现在栏内）</div>
+        <textarea class="refill-field" placeholder="v2-19 实际结果：现象 + 差异 + 证据路径"></textarea>
+      </div>
+      <div class="refill-foot"><span class="btn">取消（本批零落库）</span> <span class="btn primary">补写并提交整批（10 项）</span></div>
+    </div>
+
+    <h3 class="sec">改前 / 改后：错误在哪一刻被报出来</h3>
+    <pre class="ascii">改前 ── 人填完本批 10 项 → 点提交 → applyVerdicts 才发现 v2-19 不合格
+        → ✗ 整批零落库（人不知错在哪）→ agent 重弹同一批 → 再白点一次
+        实测：连点 3 次，19:11:32 / 19:12:05 / 19:12:22，批批零落库
+
+改后 ── 人填完本批 10 项 → 点提交前【就地补问】v2-19（含 itemId + 样例）
+        ├─ 人补写 → 整批照常落库（passed）
+        └─ 人取消 → 本批零落库，回执点名是哪几项、差什么
+        ※ applyVerdicts 的整批原子性一字不动（拒绝 = 台账零改动）</pre>
+    <div class="note">看板通道同理：前端点名从「请写你看到的事实」升级为「差什么 + 样例」（FR-4 第 3 条）。弹框通道不可用时回落看板（<span class="mono">fallback=board</span>），与今天一致。</div>
+  </div>
+  <div class="flow">交互路径：1. 弹框收完本批作答，<b>调用应用层之前</b>预校验。2. 检出「既无 agent 事实文本、人也留空」的人工项。3. 就这些项就地补问一轮，题干给 itemId + 可照抄样例。4. 人补写后整批落库；人未补写 → 台账零改动，回执点名。<br>分支：① 本批无待补项 → 不弹补问，直接提交；② 补写内容仍太薄 → 同一轮再点名（仍不改台账）；③ 多处同时裁决同一张单 → 乐观锁收敛，后到者 <span class="mono">REQBOARD_STORE_INCONSISTENT</span>。</div>
+</section>
+
+<section class="fr" id="FR-5">
+  <h2>FR-5 一行回滚开关</h2>
+  <div class="meta">优先级 P1 · 状态：草图 · 通道：环境变量（开关读取单点，与 itemResultBindingEnabled 同款式）</div>
+  <div class="mock">
+    <h3 class="sec">同一张验收单 · 同一个动作 · 两种读数</h3>
+    <pre class="ascii">DSH_REQBOARD_NO_HUMAN_PROXY 未设 / =0 / =false
+  v2-18（有 agent 事实）人零输入点通过
+    → passed   opinion = agent 原文   opinionSource = "agent"     [FR-1 生效]
+
+DSH_REQBOARD_NO_HUMAN_PROXY=1
+  v2-18（有 agent 事实）人零输入点通过
+    → unverified   unverifiedReason = "blank_pass"                [今天的行为，逐字一致]</pre>
+
+    <table class="kv">
+      <tr><th>开关取值</th><th>人工项是否吃 agent result 兜底</th><th>报错文案</th><th>受影响的路径</th></tr>
+      <tr><td><span class="mono">（未设）</span></td><td>吃（FR-1 采纳路径）</td><td>与今天一致（仅不达标时出现）</td><td>本需求新增的两条路径</td></tr>
+      <tr><td><span class="mono">=0</span> / <span class="mono">=false</span></td><td>吃</td><td>同上</td><td>同上</td></tr>
+      <tr><td><span class="mono">=1</span>（非空且非 0/false）</td><td>不吃 → 落 <span class="bad">unverified(blank_pass)</span></td><td>逐字退回上线前（含「结论太薄」原文）</td><td>同上</td></tr>
+    </table>
+
+    <h3 class="sec">纪律：只动本需求新增的两条路径</h3>
+    <div class="note">① 开关读取<b>单点</b>：调用方只读一次、把布尔值往下传（与既有 <span class="mono">itemResultBindingEnabled</span> 同款式）。② 不动既有 <span class="mono">DSH_REQBOARD_NO_ITEM_RESULT</span> 语义。③ 两个开关互不覆盖：一个管「普通项的 result 绑定」，一个管「人工项的代写兜底」。</div>
+    <div class="note"><span class="mono">grep -rn "DSH_REQBOARD_NO_HUMAN_PROXY" src/</span> 只命中开关判据<b>一处</b>定义；<span class="mono">grep -rn "opinionSource" src/</span> 只命中判据/写入实现<b>一处</b>。</div>
+  </div>
+  <div class="flow">交互路径：1. 设 <span class="mono">DSH_REQBOARD_NO_HUMAN_PROXY=1</span>。2. 重跑同一条验收路径（不必回滚版本）。3. 反馈：人工项一律不吃 agent result 兜底，行为与上线前逐字一致。<br>分支：① 未设该开关 → 断言 <span class="mono">passed</span> + <span class="mono">opinionSource="agent"</span>（与开关态互斥）；② 取消开关（去掉环境变量）→ 立即恢复代写口径。</div>
+</section>
+
+<!-- geometry 观测量块：恰好一块。只放观测量名 + 实测值 + 测量条件（unit ∈ px | count | ratio；
+     at.state ∈ inflight | terminal；窗口宽须显式写）。取值口径见 INDEX.md「这一版画了什么」。 -->
+<!-- proto-geometry {"observations":[{"name":"proxyBadgeWidth","value":152,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"sheetRowHeight","value":72,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"dialogQ2InputHeight","value":96,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"refillModalHeight","value":308,"unit":"px","at":{"width":1280,"state":"inflight"}},{"name":"sheetRowsVisible","value":5,"unit":"count","at":{"width":1280,"state":"inflight"}}]} -->
+
+</body>
+</html>

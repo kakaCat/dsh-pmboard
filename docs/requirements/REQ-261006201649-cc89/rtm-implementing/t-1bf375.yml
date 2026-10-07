@@ -1,0 +1,39 @@
+task:
+  id: t-1bf375
+  title: 把非骨架判据接进锚点门并在它之后接几何量证据校验·复核
+  status: done
+  implements: |-
+    在 src/application/ports.ts 新增 PrototypeEvidencePort（exists / sha256Of，窄面），生产实现挂到 src/adapters/FileDocRepository.ts（exists 已有，新增 sha256Of）；在 prototype-gates.ts 新增 observationEvidenceOf(o, deps) 与 humanReasonHasFact(reason)，并给 ProtoObservation 加 shot / shotSha256 两个加性可选键（observationsOf 解析它们，不影响既有六字段）。改 checkPrototypeAnchorsGate：权威原型存在后先判 prototypePlaceholderOf（命中 → code prototype_placeholder，gaps 点名路径与命中判据），未命中或基线不可得再走既有锚点/geometry 块/阈值判定，最后逐条 observationEvidenceOf，invalid → code prototype_geometry_unverified 并点名观测量名与理由；早退纪律不变（INDEX 缺失/缺列/authoritative ≠ 1 时全部返回 undefined）。存量豁免：createdAt < DOC_QUALITY_RULES_SINCE 时新判据整段不判（复用 docQualityRulesApply，不另立日期）。新建 tests/prototype-placeholder-gate.test.ts 与 tests/prototype-geometry-evidence.test.ts。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-35d832
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201649-cc89
+    TASK_ID: t-1bf375
+    TASK_TITLE: 把非骨架判据接进锚点门并在它之后接几何量证据校验·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-06T12:46:24.924Z
+      completed_at: 2026-10-06T12:46:29.941Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201649-cc89
+  generated_at: 2026-10-06T12:46:20.190Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T12:46:29.941Z

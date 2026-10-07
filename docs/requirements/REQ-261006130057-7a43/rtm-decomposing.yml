@@ -2,10 +2,10 @@ metadata:
   stage: decomposing
   requirement_id: REQ-261006130057-7a43
   generated_at: 2026-10-06T06:45:16.925Z
-  version: 95
+  version: 127
   generated_by: dsh-pmboard
   rtm_version: "2.0"
-  last_updated: 2026-10-06T09:55:23.199Z
+  last_updated: 2026-10-06T17:06:23.213Z
 inputs:
   requirements: []
   design_sections:
@@ -710,6 +710,55 @@ outputs:
         - t-4a56a7
       phase: implement
       side: frontend
+    - id: t-544b9d
+      title: 视觉对照与几何探针 + 测试同步·研发
+      implements: |-
+        ① scripts/fixtures/req-detail-specimen.mts：标本加 verify 面板（RTM 8 行 mock 同原型）与对话气泡 mock（10 条含长日志）。② 截图脚本系（req-detail-ui-shot.mts 等）：出 1280/900×在途/终态 + #tab-verify/#tab-dialogue 各一张，落 docs/requirements/REQ-261006130057-7a43/evidence/。③ 几何探针：tabsTop/headHeight/bandHeight/verifyTabIndex1Based 复测，阈值断言写在探针脚本（不进 geometry 块）；内层滚动判据白名单豁免 .chat-scroll（其余面板零内滚动维持）。④ dialogue/docs 旧断言按 T-6/T-8 改写（不删测试凑绿）。验证：跑截图脚本出图人评审 + 探针脚本退出码 0 + pnpm test 全绿。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-2bb923
+        - t-e804cb
+        - t-4ec806
+        - t-3525b5
+        - t-3cd4ac
+        - t-8d7820
+      phase: test
+      side: frontend
+    - id: t-9d655a
+      title: 视觉对照与几何探针 + 测试同步·复核
+      implements: |-
+        ① scripts/fixtures/req-detail-specimen.mts：标本加 verify 面板（RTM 8 行 mock 同原型）与对话气泡 mock（10 条含长日志）。② 截图脚本系（req-detail-ui-shot.mts 等）：出 1280/900×在途/终态 + #tab-verify/#tab-dialogue 各一张，落 docs/requirements/REQ-261006130057-7a43/evidence/。③ 几何探针：tabsTop/headHeight/bandHeight/verifyTabIndex1Based 复测，阈值断言写在探针脚本（不进 geometry 块）；内层滚动判据白名单豁免 .chat-scroll（其余面板零内滚动维持）。④ dialogue/docs 旧断言按 T-6/T-8 改写（不删测试凑绿）。验证：跑截图脚本出图人评审 + 探针脚本退出码 0 + pnpm test 全绿。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-544b9d
+      phase: test
+      side: frontend
+    - id: t-05f770
+      title: 视觉对照与几何探针 + 测试同步·测试
+      implements: |-
+        ① scripts/fixtures/req-detail-specimen.mts：标本加 verify 面板（RTM 8 行 mock 同原型）与对话气泡 mock（10 条含长日志）。② 截图脚本系（req-detail-ui-shot.mts 等）：出 1280/900×在途/终态 + #tab-verify/#tab-dialogue 各一张，落 docs/requirements/REQ-261006130057-7a43/evidence/。③ 几何探针：tabsTop/headHeight/bandHeight/verifyTabIndex1Based 复测，阈值断言写在探针脚本（不进 geometry 块）；内层滚动判据白名单豁免 .chat-scroll（其余面板零内滚动维持）。④ dialogue/docs 旧断言按 T-6/T-8 改写（不删测试凑绿）。验证：跑截图脚本出图人评审 + 探针脚本退出码 0 + pnpm test 全绿。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-9d655a
+      phase: test
+      side: frontend
+    - id: t-6f4123
+      title: 兼容回归收尾（降级走查/全量测试/构建）·复核
+      implements: |-
+        ① 按 design/use-cases.md UC-1~UC-6 逐条走查（1280/900 两档、有/无 RTM、新前端+旧服务端降级），结果落 evidence/。② pnpm test 全量与基线比对（C-14）。③ pnpm exec tsc --noEmit（C-15）。④ pnpm build:client（C-12：关键符号齐全/样式归属章/CSS 分片完整）+ pnpm build（C-11）。验证：四条命令退出码全 0 + 走查记录落盘。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-748369
+      phase: review
+      side: fullstack
 task_coverage:
   - task_id: t-a85893
     covers_prototypes: []
@@ -823,6 +872,18 @@ task_coverage:
     covers_prototypes: []
     covers_decisions: []
   - task_id: t-0ebc99
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-544b9d
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-9d655a
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-05f770
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-6f4123
     covers_prototypes: []
     covers_decisions: []
 traceability:

@@ -1,0 +1,35 @@
+task:
+  id: t-415665
+  title: 归档材料形态契约：manual_updates 收敛为 path#anchor 并纳入 mergeTargets 白名单·研发
+  status: done
+  implements: |-
+    改 src/shared/protocol.ts 的 assertArchiveMaterials（约 2060-2105 行）：① 逐条 manualUpdates 解析 path，split('#') 长度必须为 2 且两段 trim 后非空，否则 bad() 写清「必须是 路径#锚点 形态」+ 原值；② 用 rule.mergeTargets.some(p => beforeHash.startsWith(p)) 判白名单（复用同一份规则，不新增第二份白名单），未过则消息含白名单前缀清单 + 原值 + rule.note；③ 保留既有 dir/requiredDocs/mergedInto 前缀判定不动。新建 tests/archive-materials-shape.test.ts：从 tests/application/harness.ts 与 tests/helpers/tool-deps.ts 取夹具，直接调 assertArchiveMaterials 断言四种形态（合法 / 无 # / 多 # / 白名单外）。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201841-944d
+    TASK_ID: t-415665
+    TASK_TITLE: 归档材料形态契约：manual_updates 收敛为 path#anchor 并纳入 mergeTargets 白名单·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T12:50:20.945Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201841-944d
+  generated_at: 2026-10-06T12:50:12.173Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T12:50:28.614Z

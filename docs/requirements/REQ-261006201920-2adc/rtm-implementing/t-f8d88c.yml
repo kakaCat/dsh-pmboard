@@ -1,0 +1,36 @@
+task:
+  id: t-f8d88c
+  title: 子卡落库回填接线（懒展开）·研发
+  status: done
+  implements: |-
+    改 src/application/internal/lazy-expand.ts 的 makeChild：先生成子卡 id（ids.task()），再以 {requirementId: parent.requirementId, taskId: 子卡 id, parentAcceptance: parent.acceptance} 调 fillStageAcceptance；回填结果同时用于 acceptance 与 implementation 里嵌入的那段验收描述（两处必须同源，不许一处回填一处原样）；回填抛错即中止落库，不留半成品。expandSubtasks 与 regenerateChain 共用 makeChild，故补链路径自动同口径。新增 tests/lazy-expand-backfill.test.ts（TC-3 / TC-4 / TC-6）；回归 tests/lazy-expand.test.ts 与 tests/regenerate-chain.test.ts。验证：npx vitest run tests/lazy-expand-backfill.test.ts tests/lazy-expand.test.ts tests/regenerate-chain.test.ts；反向演练 RV-2：注释掉回填调用 ⇒ 「残留为 0」断言变红，还原后绿，两次输出留档。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run <本卡改动涉及的测试文件>` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-4a918b
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201920-2adc
+    TASK_ID: t-f8d88c
+    TASK_TITLE: 子卡落库回填接线（懒展开）·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T12:43:35.905Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201920-2adc
+  generated_at: 2026-10-06T12:43:22.949Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T12:43:39.575Z

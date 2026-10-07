@@ -1,0 +1,71 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261007133149-0716
+  generated_at: 2026-10-07T05:41:41.409Z
+  version: 6
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T11:00:36.083Z
+outputs:
+  requirements: []
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 2026-10-07 会话：「我发现详情页没有按照组件的方式开发，tab的内容应该是一个组件，详情页面上面部分也可以是一个组件，你觉得那」
+      verdict: 组件边界 = 每个 Tab 面板各一个 + 页面上半部分（头部/状态带/Tab 栏）各一个；共 10 个外观组件
+      serves:
+        - FR-1
+        - FR-2
+      criterion: 原话直引；与现状 `report.ts` 的 ①–⑪ 节划分基本吻合，故按现状边界落定，不另造切法
+    - id: D-2
+      source: 2026-10-07 会话：「我的意思组件化减少agent犯错几率，agent也不用读太多代码」
+      verdict: 判定标准 = **agent 读面与出错率**，不是框架偏好、不是视觉改版
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      criterion: 原话直引；据此把「可机械证明的零行为变更」设为硬约束，并把门禁（FR-5）列为本期 P0
+    - id: D-3
+      source: 2026-10-07 弹框作答（第一步打哪个）选：「先做两件『可证明零行为变更』的事：样式按组件分片 + 面板契约类型钉住」
+      verdict: 本期只做这两件：样式分片 + 契约类型钉住，且必须零行为变更
+      serves:
+        - FR-2
+        - FR-4
+        - FR-3
+      criterion: 弹框选项原样；「判据同目录」「引入框架」两项**明确不在本期**（后续可另立需求）
+    - id: D-4
+      source: 2026-10-07 弹框作答（样式分片档位）选：「切分 + 覆盖层按组件归位，用『逐组件计算样式快照』证明零变更」
+      verdict: 片尾跨组件覆盖规则按组件归位；零变更用计算样式 + 几何快照证明
+      serves:
+        - FR-2
+        - FR-3
+      criterion: 弹框选项原样；比「纯物理切分」多做归位，比「顺带清死规则」少做清理
+    - id: D-5
+      source: 2026-10-07 弹框作答（契约档位）选：「类型化 + 单点推导」
+      verdict: 契约做中档：显式接口 + Tab 键/取数端点单点推导 + 契约用例；**不做**目录自包含
+      serves:
+        - FR-4
+      criterion: 弹框选项原样；目录自包含会牵连探针与共享标本，留作后续
+    - id: D-6
+      source: 2026-10-07 会话：「继续」
+      verdict: 按已定三档继续走需求分析：落本文件 → 交人确认 → 进 design
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+      criterion: 用户放行；未获确认不得进入设计（门禁 order：确认章先在，推进随后）
+    - id: D-7
+      source: 2026-10-07 会话（t3 验收顺序张力，二选一）选：「判据先行（推荐）：t3 交清单 + 门禁，公共层那条以逐条登记的待归位清单为基线」
+      verdict: t3 只交判据（清单 + 门禁两条检查）；公共层「含具体组件取值」以**逐条登记的待归位清单**为基线（未登记的新违规仍会红），待 t4 归位后该数字归 0；**不**把 t4 的归位并进 t3
+      serves:
+        - FR-1
+        - FR-2
+        - FR-5
+      criterion: 弹框选项原样；实测 `shared.ts` 现住 103 条单组件归属规则（head 36 / trunk 18 / token 16 / docs 14 / band 8 / tabs 5 / dag 3 / dialogue 2 / prompts 1），另 verify 无分片（34 条引用在 shared）——t3 无法凭自身达到「0 处」，故 t3 的验收文本按本裁定修订（见任务卡 t-c43525）
+status:
+  artifacts: []

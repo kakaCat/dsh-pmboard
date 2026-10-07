@@ -1,0 +1,47 @@
+task:
+  id: t-23d80f
+  title: 裁决行新控件：理由输入、原文保留、归档门可见（UI）·复核
+  status: done
+  implements: |-
+    改 src/client/views/panels/verify.ts 与 src/client/stage-panel.ts：新增共用的同一段渲染（禁止复制粘贴），为 resultSource==='agent' 且非 needsHuman 的项渲染 .dsh-pm-vitem-change-reason 理由输入（编辑预填值时才要求必填），被覆盖项渲染 data-superseded="1" 的「原实测结果（已被覆盖）」留存展示；needsHuman 项与 gapKind 项的就地拒收提示复用同一文案源。改 src/client/board-mount.ts：在 case 'submit-verdicts' 里收集 changeReason（判据=输入框当前值 ≠ defaultValue）并在缺理由时就地拦下点名该项；保留既有 missingFailed/missingHuman 两条守卫不动。改 src/client/styles/board.ts：新控件样式复用既有令牌（不新增色板），未复核 与 已通过 的区分不得只靠颜色（徽标文字必须不同）。新增 tests/client-verify-disposition.test.ts。验证：npx vitest run tests/client-verify-disposition.test.ts tests/client-view.test.ts tests/stage-detail.test.ts；pnpm build:client 必须含 [verify-client] OK。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-a20757
+  phase: ui
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261006201920-2adc
+    TASK_ID: t-23d80f
+    TASK_TITLE: 裁决行新控件：理由输入、原文保留、归档门可见（UI）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: ui
+  workflow_total: 5
+  workflow_done: 5
+  workflow:
+    - phase: ui
+      status: done
+      completed_at: 2026-10-06T13:16:56.465Z
+    - phase: implement
+      status: done
+      completed_at: 2026-10-06T13:16:56.465Z
+    - phase: test
+      status: done
+      completed_at: 2026-10-06T13:16:56.465Z
+    - phase: commit
+      status: done
+      completed_at: 2026-10-06T13:16:56.465Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201920-2adc
+  generated_at: 2026-10-06T13:15:55.822Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 5
+  last_updated: 2026-10-06T13:16:56.466Z

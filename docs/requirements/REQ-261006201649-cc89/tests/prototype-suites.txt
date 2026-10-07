@@ -1,0 +1,32 @@
+ ✓ tests/prototype-placeholder.test.ts  (15 tests) 7ms
+ ✓ tests/prototype-geometry-evidence.test.ts  (29 tests) 9ms
+ ✓ tests/prototype-gates.test.ts  (28 tests) 9ms
+ ✓ tests/prototype-parity.test.ts  (24 tests) 20ms
+ ✓ tests/prototype-placeholder-gate.test.ts  (14 tests) 8ms
+ ✓ tests/prototype-parity-contracts.test.ts  (19 tests) 9ms
+ ✓ tests/prototype-new-codes.test.ts  (13 tests) 6ms
+ ✓ tests/prototype-metadata-parse.test.ts  (17 tests) 4ms
+ ✓ tests/plan-prototype-anchor-gate.test.ts  (29 tests) 21ms
+ ✓ tests/verification-prototype-compare-required.test.ts  (9 tests) 104ms
+ ✓ tests/prototype-skeleton.test.ts  (21 tests) 67ms
+ ✓ tests/prototype-registration-no-pin.test.ts  (2 tests) 2426ms
+ Test Files  12 passed (12)
+      Tests  220 passed (220)
+
+# 反向演练（改坏看变红；还原后复绿）——命令与实测
+# 演练 A 负向：摘掉锚点门里的非骨架判据调用
+#   → tests/prototype-placeholder-gate.test.ts  4 failed | 10 passed
+# 演练 A 还原：14 passed
+# 演练 B 负向：把对照项取数退回「台账按字典序取首项」
+#   → tests/verification-prototype-compare-required.test.ts  2 failed | 7 passed
+# 演练 B 还原：9 passed
+# 两个被演练改动的文件均已 diff -q 逐字节还原
+
+# 类型与构建
+# npx tsc --noEmit | grep 本需求改动的九个文件 → 无输出（零错误）
+# pnpm build:client → [verify-client] OK  bundle=721645 bytes
+# pnpm build → Build complete
+
+# 非骨架判据的实测标定（21 份原型逐份比对）
+# 骨架档 0.957 | 真稿档 0.217–0.391 | 中间无样本 | 阈值 0.90 落在峰谷
+# 已知边界：全部占位标记字面换掉且行数照抄 → 0.870（阈值之下，漏过）——用例锁死该读数

@@ -1,0 +1,38 @@
+task:
+  id: t-7606a5
+  title: 兼容与迁移回归：旧调用方、旧台账、豁免口径·复核
+  status: done
+  implements: |-
+    新增 tests/legacy-compat.test.ts：① 无 budgetRequests 的旧卡（手工构造 queue.json）按默认 60 起算；② 旧单卡 task_move 调用的返回体键集合与改造前逐字一致（11 键，不含 results/tree）；③ 子卡 done 仍豁免 60s 节流、父卡仍受节流约束；④ 旧台账（无新字段、无运行态文件）读取不报错并按缺省行为工作。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007100513-6749/design/` 逐条核对；`npx vitest run tests/legacy-compat.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-6c1af5
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007100513-6749
+    TASK_ID: t-7606a5
+    TASK_TITLE: 兼容与迁移回归：旧调用方、旧台账、豁免口径·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-07T07:52:49.902Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007100513-6749
+  generated_at: 2026-10-07T07:39:06.398Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T07:52:49.902Z

@@ -1,0 +1,39 @@
+task:
+  id: t-242d3d
+  title: 裁决侧写降级原因并在人工自填无锚点时拒绝·复核
+  status: done
+  implements: |-
+    在 src/domain/workflow/AcceptanceSheetSpec.ts 的 applyVerdicts 接上 judgePassedVerdict：降级时写 unverifiedReason、status 变 passed/failed 时清空；新增纯函数 isHumanAuthored(item, opinion)（文本非空且与 item.result 不同）；命中无锚点且人工自填时抛 REQBOARD_VERDICT_ANCHOR_MISSING（写盘之前抛，保证台账零改动）。在 tests/verdict-human-anchor-reject.test.ts 覆盖拒绝路径与零输入通过不误伤。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007160829-1991/design/` 逐条核对；`npx vitest run tests/verdict-human-anchor-reject.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-e3ebb1
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007160829-1991
+    TASK_ID: t-242d3d
+    TASK_TITLE: 裁决侧写降级原因并在人工自填无锚点时拒绝·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-07T08:56:25.326Z
+      completed_at: 2026-10-07T08:56:28.414Z
+    - phase: doc
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007160829-1991
+  generated_at: 2026-10-07T08:51:31.990Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T08:56:28.415Z

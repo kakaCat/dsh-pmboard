@@ -1,0 +1,38 @@
+task:
+  id: t-35323b
+  title: "[重做] 红基线分诊：反向子集单列 + 逐条红因 + 只减不增"
+  status: todo
+  implements: |-
+    新增 docs/reviews/test-baseline.reverse.txt：从现行 docs/reviews/test-baseline.failures.txt 的 68 条里挑出反向/异常路径子集，逐行「文件 :: 用例全名」，与 failures.txt 逐字同格式。
+    新增 docs/reviews/test-baseline.other.txt：其余条目，同格式。
+    新增 docs/reviews/test-baseline.reverse.notes.md：front-matter 记 reverse_count 与 other_count，正文表逐条给「红因类别 / 红线内可达性 / 证据」，红因类别用受控枚举（src-debt / assertion-shape / fixture-drift / order-dependent / unknown）。
+    新增 tests/baseline-triage.test.ts：断言 reverse 与 other 的并集等于 failures（双向）、两集合互斥、notes 的用例列等于 reverse.txt、表头计数等于两文件实际行数、红因类别命中枚举、两集合计数与 unknown 条数只减不增。
+    新增 tests/drill/triage-baseline.mts：输出差集报告（新增/消失各几条并点名），只报告不落盘。
+    验证：npx vitest run tests/baseline-triage.test.ts 全绿；npx tsx tests/drill/triage-baseline.mts 报告差集为空。
+  serves:
+    - FR-4
+  depends_on: []
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201814-ac4f
+    TASK_ID: t-35323b
+    TASK_TITLE: "[重做] 红基线分诊：反向子集单列 + 逐条红因 + 只减不增"
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 0
+  workflow:
+    - phase: test
+      status: pending
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201814-ac4f
+  generated_at: 2026-10-06T13:19:17.513Z
+  version: 1
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-06T13:19:17.513Z

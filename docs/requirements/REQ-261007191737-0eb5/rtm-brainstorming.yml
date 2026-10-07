@@ -1,0 +1,58 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261007191737-0eb5
+  generated_at: 2026-10-07T11:18:54.201Z
+  version: 2
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T11:21:59.380Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 人工项采纳 agent 事实文本
+      source: requirement.md
+      line: 77
+    - id: FR-2
+      title: 代写留痕可辨
+      source: requirement.md
+      line: 101
+    - id: FR-3
+      title: 不达标仍拦住
+      source: requirement.md
+      line: 123
+    - id: FR-4
+      title: 提交前就地补问
+      source: requirement.md
+      line: 146
+    - id: FR-5
+      title: 一行回滚开关
+      source: requirement.md
+      line: 170
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 用户 2026-10-07 本窗口：「我感觉 agent 自己可以做」
+      verdict: 采纳：agent 已写的事实文本可作为人工项结论，人零输入确认即成立
+      serves:
+        - FR-1
+      criterion: FR-1 验收第 1 条（零输入 `passed`）
+    - id: D-2
+      source: 同前（用户原话）
+      verdict: 人的动作不可省：`passed` 仍必须由人发起的裁决产生，不做 agent 自动通过
+      serves:
+        - FR-3
+      criterion: FR-3 验收第 1、2 条（无文本仍 `unverified` / 太薄仍拒）
+    - id: D-3
+      source: 本次实测：v2-18 连点 3 次、批批零落库
+      verdict: 不为省事破坏整批原子性，改为提交前就地补问
+      serves:
+        - FR-4
+      criterion: FR-4 验收第 2 条（人未补写则零改动）
+    - id: D-4
+      source: 立项描述原话「不得冒充人写的」
+      verdict: 新增**可选**来源字段 `opinionSource`，看板与 `verification.md` 如实标注「agent 代写（人已确认）」
+      serves:
+        - FR-2
+      criterion: FR-2 验收第 1、2 条
+status:
+  artifacts: []

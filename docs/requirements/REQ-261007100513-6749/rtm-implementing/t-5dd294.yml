@@ -1,0 +1,38 @@
+task:
+  id: t-5dd294
+  title: 尾部增量投递：内容哈希去重、去抖与降级兜底·复核
+  status: done
+  implements: |-
+    ① 新增 src/application/internal/notice-delivery.ts（编排：hash 比对 → 去抖 → 投递 → 更新哈希表 → 留痕；实现 VolatileNoticePort，永不抛）；② 新增 src/adapters/VolatileNoticeAdapter.ts：agents.get(windowKey) → inboxOf(agent).prepend('next-step', msg)，msg 自署 source（kind:'dive'，禁止冒充 user）；失败分支退回头部并留痕；③ 改 src/application/internal/injection-log.ts 加 origin 取值 'system-notice'（只增，读端容忍未知）；④ src/domain/limits.ts 加 noticeDebounceMs=1000；⑤ src/index.ts 装配端口；⑥ 新增 tests/volatile-notice.test.ts。禁用 agent.followup（会新起回合）。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-9a1d24
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007100513-6749
+    TASK_ID: t-5dd294
+    TASK_TITLE: 尾部增量投递：内容哈希去重、去抖与降级兜底·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T03:49:18.508Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007100513-6749
+  generated_at: 2026-10-07T03:27:42.885Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T03:49:18.509Z

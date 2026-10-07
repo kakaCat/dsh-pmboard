@@ -1,0 +1,39 @@
+task:
+  id: t-66cb80
+  title: 闸 1/闸 2 事实判定与 SubmitArchive 接线（按需求自身 workspaceRoot 判在不在）·复核
+  status: done
+  implements: |-
+    ① 新建 src/application/internal/archive-targets.ts，导出 RootJudgement / ResolvedMergeTarget / ResolvedManualAnchor / ArchiveTargetsReport / assertArchiveTargetsOpenable（签名逐字用 design/interfaces.md I-2）；② 复用 src/application/internal/design-gates.ts 的 assertArtifactOpenable 做形态+存在，第二道用 deps.docs.stat(path)?.size === 0 判空文件（REQBOARD_INVALID_INPUT，消息区分 不存在/空文件 与 路径/生效根/判据来源三要素）；③ 锚点校验复用 src/domain/knowledge/slug.ts 的 listHeadingAnchors(read(path))，消息必须能区分「锚点不存在」与「路径不在白名单」两种原因；④ 改 src/application/use-cases/SubmitArchive.ts：在 assertArchiveMaterials 之前调 applyRequirementWorkspaceRoot(deps, actual)（import 自 src/application/internal/support.ts），再调 assertArchiveTargetsOpenable，把 report 存局部变量供返回体与后续渲染使用；⑤ 新建 tests/archive-targets-gate.test.ts，用 tests/helpers/tool-deps.ts 的 stubDocFile 造桩文档，并造「另一个项目的目录」断言零访问。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-55d1a1
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201841-944d
+    TASK_ID: t-66cb80
+    TASK_TITLE: 闸 1/闸 2 事实判定与 SubmitArchive 接线（按需求自身 workspaceRoot 判在不在）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-06T13:04:17.754Z
+      completed_at: 2026-10-06T13:04:21.454Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201841-944d
+  generated_at: 2026-10-06T13:04:13.760Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-06T13:04:21.455Z

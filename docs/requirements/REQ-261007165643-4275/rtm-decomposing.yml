@@ -1,0 +1,470 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261007165643-4275
+  generated_at: 2026-10-07T10:29:00.357Z
+  version: 19
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T10:41:15.316Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 工具面重复/职责重叠清单
+      source: requirement.md
+      line: 76
+    - id: FR-2
+      title: 状态机/幂等/并发/降级路径潜在问题清单
+      source: requirement.md
+      line: 101
+    - id: FR-3
+      title: 文案与契约一致性清单
+      source: requirement.md
+      line: 124
+    - id: FR-4
+      title: 优化方案
+      source: requirement.md
+      line: 145
+  design_sections:
+    - ref: design/research-report.md#目录
+      title: 目录 <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: 目录
+    - ref: design/research-report.md#FR-1-工具面重复职责重叠清单
+      title: FR-1 工具面重复/职责重叠清单 <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: FR-1-工具面重复职责重叠清单
+    - ref: design/research-report.md#1.0
+      title: 口径说明 <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: "1.0"
+    - ref: design/research-report.md#1.1
+      title: 工具职责总表（27 个） <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: "1.1"
+    - ref: design/research-report.md#1.2
+      title: 重叠对清单（按严重程度排序） <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: "1.2"
+    - ref: design/research-report.md#1.2.1
+      title: task_execute vs task_run —— 完全重复（冗余度 100%） <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: 1.2.1
+    - ref: design/research-report.md#1.2.2
+      title: capture vs create —— 双立项路径（重叠度 ~80%，建议保留双工具、收敛文案） <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: 1.2.2
+    - ref: design/research-report.md#1.2.3
+      title: 四个查询面 status / task_tree / run_status / task_status（信息重叠 30~50%） <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: 1.2.3
+    - ref: design/research-report.md#1.2.4
+      title: move vs task_move vs task_run —— 不算重复，但 task_move 是下一个过载候选 <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: 1.2.4
+    - ref: design/research-report.md#1.2.5
+      title: ask_confirm 双路径 + confirm_receipt —— 增强非重复，但 confirm_receipt 可并入 <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: 1.2.5
+    - ref: design/research-report.md#1.2.6
+      title: 开窗能力散布 4 处：open_window / handoff / capture(handoff) / create(owner_window) <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: 1.2.6
+    - ref: design/research-report.md#1.2.7
+      title: submit(kind=archive) vs archive_amend —— 时间窗不重叠，不建议合并 <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: 1.2.7
+    - ref: design/research-report.md#1.2.8
+      title: 五个修缮工具（adopt / regenerate / refs / archive_amend / note_interruption） <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: 1.2.8
+    - ref: design/research-report.md#1.2.9
+      title: kb vs 直接读文件 —— 互补，非重复 <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: 1.2.9
+    - ref: design/research-report.md#1.3
+      title: 双字段兼容统计 <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: "1.3"
+    - ref: design/research-report.md#1.4
+      title: prompt/schema 漂移（本路发现的契约问题，详见 FR-3） <!--
+      serves:
+        - FR-1
+      file: design/research-report.md
+      section: "1.4"
+    - ref: design/research-report.md#FR-2-状态机幂等并发降级路径问题清单
+      title: FR-2 状态机/幂等/并发/降级路径问题清单 <!--
+      serves:
+        - FR-2
+      file: design/research-report.md
+      section: FR-2-状态机幂等并发降级路径问题清单
+    - ref: design/research-report.md#2.1
+      title: 高危（H） <!--
+      serves:
+        - FR-2
+      file: design/research-report.md
+      section: "2.1"
+    - ref: design/research-report.md#H1-确认弹框否定作答无反馈路径必抛硬错误-已修事故的漏网孪生
+      title: H1 确认弹框「否定作答无反馈」路径必抛硬错误 —— 已修事故的漏网孪生 <!--
+      serves:
+        - FR-2
+      file: design/research-report.md
+      section: H1-确认弹框否定作答无反馈路径必抛硬错误-已修事故的漏网孪生
+    - ref: design/research-report.md#H2-HTTP-路由完整绕过人工门-看板可推子卡进非法态
+      title: H2 HTTP 路由完整绕过人工门 + 看板可推子卡进非法态 <!--
+      serves:
+        - FR-2
+      file: design/research-report.md
+      section: H2-HTTP-路由完整绕过人工门-看板可推子卡进非法态
+    - ref: design/research-report.md#H3-跨进程写无锁lost-update-分片日志误收编-双链并跑
+      title: H3 跨进程写无锁：lost update / 分片日志误收编 / 双链并跑 <!--
+      serves:
+        - FR-2
+      file: design/research-report.md
+      section: H3-跨进程写无锁lost-update-分片日志误收编-双链并跑
+    - ref: design/research-report.md#2.2
+      title: 中危（M） <!--
+      serves:
+        - FR-2
+      file: design/research-report.md
+      section: "2.2"
+    - ref: design/research-report.md#2.3
+      title: 低危（L） <!--
+      serves:
+        - FR-2
+      file: design/research-report.md
+      section: "2.3"
+    - ref: design/research-report.md#2.4
+      title: 正面结论（排查过但健康的面） <!--
+      serves:
+        - FR-2
+      file: design/research-report.md
+      section: "2.4"
+    - ref: design/research-report.md#FR-3-文案与契约一致性清单
+      title: FR-3 文案与契约一致性清单 <!--
+      serves:
+        - FR-3
+      file: design/research-report.md
+      section: FR-3-文案与契约一致性清单
+    - ref: design/research-report.md#3.1
+      title: 高优先级不一致（文案会误导 agent 行为） <!--
+      serves:
+        - FR-3
+      file: design/research-report.md
+      section: "3.1"
+    - ref: design/research-report.md#3.2
+      title: 错误码统计 <!--
+      serves:
+        - FR-3
+      file: design/research-report.md
+      section: "3.2"
+    - ref: design/research-report.md#3.3
+      title: 描述长度排名（实测：description + 参数描述字符数） <!--
+      serves:
+        - FR-3
+      file: design/research-report.md
+      section: "3.3"
+    - ref: design/research-report.md#3.4
+      title: prompt 内嵌历史叙事清单 <!--
+      serves:
+        - FR-3
+      file: design/research-report.md
+      section: "3.4"
+    - ref: design/research-report.md#3.5
+      title: README / CHANGELOG / docs / client 同步 <!--
+      serves:
+        - FR-3
+      file: design/research-report.md
+      section: "3.5"
+    - ref: design/research-report.md#3.6
+      title: 流程指引 vs 回执字段 —— 总体健康 ✅ <!--
+      serves:
+        - FR-3
+      file: design/research-report.md
+      section: "3.6"
+    - ref: design/research-report.md#3.7
+      title: 危险指引：长文本注记误用 <!--
+      serves:
+        - FR-3
+      file: design/research-report.md
+      section: "3.7"
+    - ref: design/research-report.md#FR-4-优化方案
+      title: FR-4 优化方案 <!--
+      serves:
+        - FR-4
+      file: design/research-report.md
+      section: FR-4-优化方案
+    - ref: design/research-report.md#4.0
+      title: 问题修复优先级（建议的后续立项顺序） <!--
+      serves:
+        - FR-4
+      file: design/research-report.md
+      section: "4.0"
+    - ref: design/research-report.md#4.1
+      title: 工具面精简路径（27 → 21 保守 / → 19 激进） <!--
+      serves:
+        - FR-4
+      file: design/research-report.md
+      section: "4.1"
+    - ref: design/research-report.md#4.2
+      title: 不建议动的 <!--
+      serves:
+        - FR-4
+      file: design/research-report.md
+      section: "4.2"
+    - ref: design/research-report.md#4.3
+      title: 治理建议 <!--
+      serves:
+        - FR-4
+      file: design/research-report.md
+      section: "4.3"
+outputs:
+  tasks:
+    - id: t-ab3e06
+      title: 定稿调研报告并回填需求结论
+      implements: 编辑 requirement.md 结论节；通读 design/research-report.md 核口径（27 工具 / 136 错误码 / 21,588 字符）；跑 scripts/req-doc-validate.mts 自检
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      depends_on: []
+      phase: doc
+      side: doc
+    - id: t-535c52
+      title: 提交验收材料
+      implements: 汇总 evidence（注册数读数 / 错误码读数 / prompt 字符数读数 / 报告路径），调 reqboard_submit(kind=verification)
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      depends_on:
+        - t-ab3e06
+      phase: doc
+      side: doc
+    - id: t-8d3e55
+      title: 定稿调研报告并回填需求结论·研发
+      implements: |-
+        编辑 requirement.md 结论节；通读 design/research-report.md 核口径（27 工具 / 136 错误码 / 21,588 字符）；跑 scripts/req-doc-validate.mts 自检
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: doc
+      side: doc
+    - id: t-552e68
+      title: 定稿调研报告并回填需求结论·复核
+      implements: |-
+        编辑 requirement.md 结论节；通读 design/research-report.md 核口径（27 工具 / 136 错误码 / 21,588 字符）；跑 scripts/req-doc-validate.mts 自检
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007165643-4275/design/` 逐条核对；`npx vitest run tests/` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-8d3e55
+      phase: doc
+      side: doc
+    - id: t-02e50f
+      title: 提交验收材料·研发
+      implements: |-
+        汇总 evidence（注册数读数 / 错误码读数 / prompt 字符数读数 / 报告路径），调 reqboard_submit(kind=verification)
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-ab3e06
+      phase: doc
+      side: doc
+    - id: t-9d7b6f
+      title: 提交验收材料·复核
+      implements: |-
+        汇总 evidence（注册数读数 / 错误码读数 / prompt 字符数读数 / 报告路径），调 reqboard_submit(kind=verification)
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007165643-4275/design/` 逐条核对；`npx vitest run tests/` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-02e50f
+      phase: doc
+      side: doc
+task_coverage:
+  - task_id: t-ab3e06
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-535c52
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-8d3e55
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-552e68
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-02e50f
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-9d7b6f
+    covers_prototypes: []
+    covers_decisions: []
+traceability:
+  design_to_tasks:
+    design/research-report.md#目录:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#FR-1-工具面重复职责重叠清单:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.0:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.1:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.2:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.2.1:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.2.2:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.2.3:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.2.4:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.2.5:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.2.6:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.2.7:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.2.8:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.2.9:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.3:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#1.4:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#FR-2-状态机幂等并发降级路径问题清单:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#2.1:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#H1-确认弹框否定作答无反馈路径必抛硬错误-已修事故的漏网孪生:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#H2-HTTP-路由完整绕过人工门-看板可推子卡进非法态:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#H3-跨进程写无锁lost-update-分片日志误收编-双链并跑:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#2.2:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#2.3:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#2.4:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#FR-3-文案与契约一致性清单:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#3.1:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#3.2:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#3.3:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#3.4:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#3.5:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#3.6:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#3.7:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#FR-4-优化方案:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#4.0:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#4.1:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#4.2:
+      - t-ab3e06
+      - t-535c52
+    design/research-report.md#4.3:
+      - t-ab3e06
+      - t-535c52
+  fr_to_tasks:
+    FR-1:
+      - t-ab3e06
+      - t-535c52
+    FR-2:
+      - t-ab3e06
+      - t-535c52
+    FR-3:
+      - t-ab3e06
+      - t-535c52
+    FR-4:
+      - t-ab3e06
+      - t-535c52
+coverage:
+  implementation:
+    total: 37
+    covered: 37
+    uncovered: []
+    rate: 100
+    total_designs: 37
+    covered_designs: 37

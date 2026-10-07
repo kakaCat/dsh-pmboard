@@ -1,0 +1,37 @@
+task:
+  id: t-95086b
+  title: 记账批量推进：逐项结果、回执树摘要、节流结构化
+  status: done
+  implements: ① 改 src/application/use-cases/MoveTask.ts：拆 planMoveTasks（只读校验产计划：席位/绑定/合法边/依赖门/父卡上限/done 凭证门逐卡/节流）与 applyMovePlans（一次 mutateQueue 落全部合法项，随后需求 rollup 与 RTM 同步）；单卡路径成为批量特例，旧 11 键返回逐字保留。② 改 src/tools/TaskMoveTool/TaskMoveTool.ts：加 tasks[]（1–20）与 budget 子对象；回执加 results[] / partial / tree / tree_note / throttleRemainingMs / guidance。③ 改 src/application/use-cases/TaskTree.ts 抽出可复用的树摘要 helper（复用 TaskTreeNodeView，只取一层）。④ 改 src/domain/workflow/DoneEvidenceSpec.ts 的节流判定入参：同批提交的卡互不触发（跨批仍触发），判据本身不改。⑤ 新增 tests/task-move-batch.test.ts 与 tests/done-throttle-guidance.test.ts。
+  serves:
+    - FR-4
+    - FR-5
+  depends_on:
+    - t-74eb0c
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007100513-6749
+    TASK_ID: t-95086b
+    TASK_TITLE: 记账批量推进：逐项结果、回执树摘要、节流结构化
+    DESIGN_FILES: design/architecture.md
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T03:04:43.936Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007100513-6749
+  generated_at: 2026-10-07T02:32:52.124Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T03:04:43.937Z

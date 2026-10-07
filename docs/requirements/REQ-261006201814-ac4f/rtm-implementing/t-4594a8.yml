@@ -1,0 +1,39 @@
+task:
+  id: t-4594a8
+  title: hermetic 进程内写入守卫 + 一次性泄漏点位修复·复核
+  status: todo
+  implements: |-
+    新增 tests/setup/hermetic-guard.ts：零依赖（只 import node:fs / node:path / node:url），包装 writeFileSync / appendFileSync / mkdirSync / rmSync / renameSync / copyFileSync / createWriteStream 与 promises 同名方法，解析后落在仓库内的写入抛 TEST_HERMETIC_WRITE，系统临时目录与 node_modules/.vite、.vitest 放行；导出 isRepoPath / installHermeticGuard / hermeticViolations。
+    修改 vitest.config.ts：新增 setupFiles 指向该守护文件（本仓此前零 setup 钩子）。
+    新增 tests/hermetic-guard.test.ts：元测试——在临时目录装载守卫后故意写一次仓库内探针路径，断言抛 TEST_HERMETIC_WRITE 且 hermeticViolations 记到一条；再写一次 /tmp 路径断言不抛；用例末尾清理探针文件。
+    修改一次性泄漏点位：tests/unit/rtm-health.test.ts 的 <cwd>/.test-rtm-health 改临时根；tests/capture-hook.test.ts 的 JsonQueueRepository 根由 process.cwd() 改临时根；tests/plan-footprint-propagation.test.ts 与 tests/plan-footprint-tool-schema.test.ts 的 rmSync 目标由仓库路径改为临时根内删除。
+    验证：npx vitest run tests/hermetic-guard.test.ts 全绿。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/<REQ>/design/` 逐条核对；`npx vitest run <相关测试文件>` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-549fd6
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261006201814-ac4f
+    TASK_ID: t-4594a8
+    TASK_TITLE: hermetic 进程内写入守卫 + 一次性泄漏点位修复·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 1
+  workflow_done: 0
+  workflow:
+    - phase: test
+      status: pending
+metadata:
+  stage: implementing
+  requirement_id: REQ-261006201814-ac4f
+  generated_at: 2026-10-06T13:19:17.500Z
+  version: 2
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-07T04:48:48.952Z
