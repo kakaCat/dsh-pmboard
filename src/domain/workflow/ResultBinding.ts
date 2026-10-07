@@ -31,6 +31,8 @@
 import { fmt } from '../text/fmt.js'
 import {
   REQUIREMENT_LEVEL_CRITERION,
+  hasResultAnchor,
+  isSystemItem,
   type SheetItemLike,
   type VerificationItemSource,
 } from './AcceptanceSheetSpec.js'
@@ -67,7 +69,11 @@ export interface ResultRefInput {
  * | `duplicate` | 同一 ref 出现多次 | `REQBOARD_RESULT_REF_DUPLICATE` |
  * | `invalid` | 形状非法（含 `results` 不是数组、ref 结构坏） | `REQBOARD_INVALID_INPUT` |
  * | `empty` | 交代不完整（既无 result 又无 needsHuman；needsHuman 缺理由） | `REQBOARD_RESULT_EMPTY` |
+ * | `unanchored` | 命中了项、也有 result 文本，但文本没有可核验锚点（非人工项才判） | `REQBOARD_RESULT_UNANCHORED` |
  * | `conflict` | 验收单自身异常：两个可预见项共用同一引用键（防御性不变量） | 按 `REQBOARD_STORE_INCONSISTENT` 处理 |
+ *
+ * `unanchored` 排在最后：既有口径是「结构性优先」（`missing` = 覆盖面没交齐，
+ * `unanchored` = 交上来的质量不够，两者互斥），先报结构、避免同一批错误来回两次往返。
  */
 export interface ResultMatchReport {
   /** 命中可预见项的条数（体检口径）。 */
@@ -82,6 +88,14 @@ export interface ResultMatchReport {
   invalid: readonly string[]
   /** 交代不完整：既无 result 又无 needsHuman，或 needsHuman 缺（或空白）理由。 */
   empty: readonly string[]
+  /**
+   * 命中了项、也有 result 文本，但文本**没有可核验锚点**（命令 + 读数 / 文件路径 / 明确计数）。
+   *
+   * 判据只有一处：`AcceptanceSheetSpec.hasResultAnchor`（本模块不另写正则——两处必然漂移）。
+   * 人工项（`needsHuman`）与系统项（`isSystemItem`）**明确排除**：它们的判据分别是事实形态
+   * 与处置两义，套锚点判据等于逼人编命令。
+   */
+  unanchored: readonly string[]
   /** 验收单里两个可预见项共用同一引用键（不应发生；发生必须响亮）。 */
   conflict: readonly string[]
 }
@@ -180,6 +194,7 @@ export function matchStructuredResults(items: readonly SheetItemLike[], results:
       duplicate: [],
       invalid: [fmt('results 必须是数组（收到 {type}）——逐项交代的载体就是它', { type: typeof results })],
       empty: [],
+      unanchored: [],
       conflict,
     }
   }
@@ -188,6 +203,7 @@ export function matchStructuredResults(items: readonly SheetItemLike[], results:
   const duplicate: string[] = []
   const invalid: string[] = []
   const empty: string[] = []
+  const unanchored: string[] = []
   const covered = new Set<string>()
   let matched = 0
 
@@ -224,10 +240,16 @@ export function matchStructuredResults(items: readonly SheetItemLike[], results:
     }
     covered.add(label)
     matched++
+    // S-3 提交侧锚点体检（只入桶，不拒绝——拒绝是调用方的事）：命中的**项**自身决定是否判锚点。
+    // 人工项走事实形态、系统项走处置两义，都明确排除；空文本已在上面的 empty 判定里截住。
+    const hit = byKey.get(label)!
+    if (hit.needsHuman !== true && !isSystemItem(hit) && text.length > 0 && !hasResultAnchor(text)) {
+      unanchored.push(fmt('{label}（结果没有可核验锚点：需要一条命令 + 读数 / 一个文件路径 / 一个明确计数）', { label }))
+    }
   })
 
   const missing = keys.filter(label => !covered.has(label))
-  return { matched, unmatched, missing, duplicate, invalid, empty, conflict }
+  return { matched, unmatched, missing, duplicate, invalid, empty, unanchored, conflict }
 }
 
 /**

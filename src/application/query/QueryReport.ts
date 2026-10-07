@@ -45,6 +45,8 @@ import { isDeliverableDocPath } from './QueryDocs.js'
 // verify 端点的 pendingCount 必须同值——两处各写一份 filter 必然漂移。
 import { pendingCountOf } from './QueryVerify.js'
 import { parseDocument, extractClauseDefinitions, extractSkippedClauses } from '../internal/content-gates.js'
+// 需求文档位置唯一解析点（2026-10-06）：与 QueryDocs / QueryTrunk / 门禁同一口径。
+import { requirementDocPathOf } from '../../domain/requirement/DocLocation.js'
 import {
   clauseReceiveStatus,
   collectReceiveRefs,
@@ -668,7 +670,9 @@ export async function queryReport(
   if (deps.docs !== undefined) {
     const docs = deps.docs
     try {
-      const requirementDoc = 'docs/requirements/' + req.id + '/requirement.md'
+      // 需求文档位置按台账 docBasePath 解析（唯一解析点，2026-10-06）：写死默认目录会让
+      // 换过文档位置的需求在汇报页判「读不到需求文档」——条款接收状态整块假空。
+      const requirementDoc = requirementDocPathOf(req)
       if (docs.exists(requirementDoc)) {
         const doc = parseDocument(await docs.read(requirementDoc))
         const roots = extractClauseDefinitions(doc)

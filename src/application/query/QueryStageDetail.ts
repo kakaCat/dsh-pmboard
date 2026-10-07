@@ -355,6 +355,9 @@ function toStageTaskRef(t: TaskRecord, liveById: ReadonlyMap<string, TaskRecord>
     // 卡片层契约（2026-09-28）：意图字段同样必须投影——泳道要靠它区分
     // 「solo（不需链）」与「chain 未生成」，否则视图只能看"有没有子卡"这个结果。
     ...(t.stages !== undefined ? { stages: t.stages } : {}),
+    // REQ-261007100513-6749 t1 / FR-6：本卡预算覆盖值透传。本投影是**手工挑字段**的——漏一处就
+    // 静默丢字段（见 design/backend.md §改动点清单第 3 条）。可选：缺省 = 不写该键（不冒充 0）。
+    ...(t.budgetRequests !== undefined ? { budgetRequests: t.budgetRequests } : {}),
   }
 }
 function toStageTaskExecution(t: TaskRecord, liveById: ReadonlyMap<string, TaskRecord>): StageTaskExecution {

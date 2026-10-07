@@ -23,7 +23,7 @@
  */
 import { esc } from '../../html.js'
 import { mdInline, mdPlain } from '../../render/md-inline.js'
-import type { ReportTabCtx, ReportTabDef } from '../report-tabs.js'
+import type { PanelShape, ReportTabCtx } from '../report-tabs.js'
 import type { TrunkKey, TrunkSource } from '../../../shared/protocol.js'
 import { fmtTime } from '../../render/dom-utils.js'
 
@@ -38,13 +38,17 @@ import { fmtTime } from '../../render/dom-utils.js'
 const TRUNK_ORDER: readonly TrunkKey[] = ['why', 'problem', 'approach', 'scope', 'decision', 'tech', 'highlight']
 
 const TRUNK_META: Record<TrunkKey, { label: string; sub: string }> = {
+  /* 模块标题 = 权威原型 v1.5 #tab-trunk 的用词（REQ-261006130057-7a43 D-10 返工：
+     原型是 为何做 / 解决什么 / 怎么做 / 边界 / 关键决策 / 技术方案 / 亮点与成效，
+     本表此前用 实现思路 / 范围边界 / 关键决策与取舍 / 亮点与差异——改为原型用词，
+     sub 副题保留（原型右端也会显示副题 chips）。 */
   why: { label: '为何做', sub: '由来与触发场景' },
   problem: { label: '解决什么', sub: '问题定义 · 影响面 · 收益预期' },
-  approach: { label: '实现思路', sub: '方案主线 + 关键模块划分' },
-  scope: { label: '范围边界', sub: '明确不做什么（防"以为没做"）' },
-  decision: { label: '关键决策与取舍', sub: '否掉了什么、为什么' },
+  approach: { label: '怎么做', sub: '方案主线 + 关键模块划分' },
+  scope: { label: '边界', sub: '明确不做什么（防"以为没做"）' },
+  decision: { label: '关键决策', sub: '否掉了什么、为什么' },
   tech: { label: '技术方案', sub: '技术栈 / 模块划分 / 设计模式 / 关键实现手法' },
-  highlight: { label: '亮点与差异', sub: '每条差异必须带证据指针' },
+  highlight: { label: '亮点与成效', sub: '每条差异必须带证据指针' },
 }
 
 /* ────────────────────────────────────────────────────────────── 来源标 */
@@ -447,7 +451,7 @@ export function renderTrunkPanel(data: unknown): string {
  * 汇报 Tab 的注册项。**导出名 / key / label 是壳体契约的一部分，不得改**——
  * 改了 `report-tabs.ts` 的 import 会静默失配（tsdown 不做类型检查，名字错也照样出包）。
  */
-export const trunkPanel: ReportTabDef = {
+export const trunkPanel: PanelShape & { key: 'trunk' } = {
   key: 'trunk',
   label: '汇报',
   // 角标数字必须来自首屏 report 快照里的**服务端计数**（T-8）。

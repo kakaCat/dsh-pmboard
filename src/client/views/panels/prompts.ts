@@ -13,8 +13,12 @@
  * 载荷是 `unknown`，逐字段判型——服务端换了形状也不会把页面渲染成「零」。
  *
  * 纪律：
- *   · 正文一律**整段铺开**：产物里不写 `overflow: auto|scroll`（限高滚动条会把"到底说了什么"藏起来，
- *     FR-11 #7）；长了由外层 `<details>` 收起，用页面滚动读。
+ *   · 正文不写 `overflow: auto|scroll`（限高滚动条会把"到底说了什么"藏起来，FR-11 #7）：
+ *     展不展开由外层 `<details>` 决定，展开后整段铺开、用页面滚动读。
+ *   · **默认视图 = 原型的那一行**（D-10/D-11，验收期返工）：片段行默认收起（段名 + 类型标 +
+ *     字符数 + 一行摘要 + 「展开」），正文在**同一行就地展开**；多出来的「完整系统提示词合并段」
+ *     与其分隔行说明、以及原先摆在 chips 下那行「口径说明」都压进折叠（默认收起），不占默认视图
+ *     ——能力一处不删，只是默认看不见。
  *   · 缺失语义三分：未采集 / 不可得 / 确实没有——各有各的说辞，禁 0 冒充、禁留白。
  *
  * 为什么「规定 vs 实际」在这里只做**清单对照**、不做 ✅/⬜ 判定：那套判定（`renderProcessFold` +
@@ -28,8 +32,8 @@ import { esc } from '../../html.js'
 import { mdInline } from '../../render/md-inline.js'
 import { fmtTime } from '../../render/dom-utils.js'
 import { displayDocPath } from '../../open-doc.js'
+import type { PanelShape } from '../report-tabs.js'
 import { resolveFragmentRef } from '../../node-panel-process.js'
-import type { ReportTabDef } from '../report-tabs.js'
 
 /* ──────────────────────────────────────────────────────── 宽形状（载荷是 unknown） */
 
@@ -38,7 +42,12 @@ interface TrimmedView { id: string; chars: number; text?: string }
 interface InjectionView {
   at?: number
   windowKey?: string
-  origin: 'gate-h3' | 'dive-node' | 'dive-round' | 'system-prompt' | 'unknown'
+  /**
+   * 记录点；**未知值回落 `'unknown'`**（容忍性不许退化——老日志/将来新增取值都要能读）。
+   * `system-notice` = REQ-261007100513-6749 t3 的**尾部注入**（易变段经 `inbox.prepend('next-step')`
+   * 进会话），与 `system-prompt`（进了头部段）是两件事，页面必须分得开。
+   */
+  origin: 'gate-h3' | 'dive-node' | 'dive-round' | 'system-prompt' | 'system-notice' | 'unknown'
   /** 三值：true=真投递 / false=只留痕 / unknown=旧条目不可知 */
   delivered: 'true' | 'false' | 'unknown'
   routeKey?: string
@@ -117,18 +126,21 @@ function fragmentDocPath(id: string): string {
   return 'packages/web/dsh-pmboard/src/domain/prompt/fragments/' + id + '.md'
 }
 
-/** 来源词（`unknown` = 旧条目缺字段，页面必须说「来源未知」而不是猜一个来源）。 */
+/** 来源词（`unknown` = 旧条目缺字段 / 认不出的新取值，页面必须说「来源未知」而不是猜一个来源）。 */
 const ORIGIN_LABEL: Record<string, string> = {
   'gate-h3': '闸门 H3',
   'dive-node': 'Dive 节点结算',
   'dive-round': 'Dive 轮次投递',
   'system-prompt': '系统提示词装配',
+  'system-notice': '尾部注入',
   'unknown': '来源未知',
 }
 
 function readOrigin(v: unknown): InjectionView['origin'] {
   const s = readStr(v)
-  return s === 'gate-h3' || s === 'dive-node' || s === 'dive-round' || s === 'system-prompt' ? s : 'unknown'
+  return s === 'gate-h3' || s === 'dive-node' || s === 'dive-round' || s === 'system-prompt' || s === 'system-notice'
+    ? s
+    : 'unknown' // 认不出的取值（含旧条目缺字段）一律「来源未知」——不猜、也不把它当已知来源渲染
 }
 
 /**
@@ -258,31 +270,94 @@ function toView(data: unknown): PromptsView | undefined {
   }
 }
 
-/* ──────────────────────────────────────────────────────── A · 固定系统提示词 */
+/* ──────────────────────────────────────────────────────── A · 它被告知了什么 · 本次注入 */
 
+/** 一行摘要的字数上限（原型 `.f-text` 是一行省略；超长在这里再切一刀，别把整段正文塞进摘要）。 */
+const SUMMARY_CHARS = 120
+
+/** 正文首个非空行（摘要与 title 悬停都取它：截断只发生在显示上，字不丢）。 */
+function firstLineOf(text: string | undefined): string {
+  if (text === undefined) return ''
+  return text.split('\n').map(s => s.trim()).find(s => s.length > 0) ?? ''
+}
+
+/** 默认视图里的一行摘要。 */
+function summaryLine(text: string | undefined): string {
+  const line = firstLineOf(text)
+  return line.length > SUMMARY_CHARS ? line.slice(0, SUMMARY_CHARS) + '…' : line
+}
+
+/** 片段类型标（原型 `.f-kind`：`文件` / `shell`）；响应没给形状就说没给，不猜。 */
+function kindLabel(kind: SectionView['kind']): string {
+  if (kind === 'file') return '文件'
+  if (kind === 'shell') return 'shell'
+  return '来源未标'
+}
+
+/** 类型标的悬停说法（默认视图只有两个字，含义放 title——能力不让位给版面）。 */
+function kindTitle(kind: SectionView['kind']): string {
+  if (kind === 'file') return '有独立源文件'
+  if (kind === 'shell') return '路由壳：按难度/类型拼装的合成片段，无独立文件'
+  return '来源形状未标（响应里没给 kind）——不猜文件还是壳'
+}
+
+/** 字符数格（原型 `.f-chars`：等宽、右对齐；没给就说没给，不摆 0）。 */
+function charsCell(chars: number | undefined): string {
+  return '<span class="dsh-pm-frag-chars">'
+    + (chars === undefined ? '字符数未给' : String(chars) + ' 字符') + '</span>'
+}
+
+/** 行尾「展开 / 收起」双态词：两态都在 DOM 里，显哪个由原生 `details[open]` 交给 CSS
+ *  （与最近评论的长日志收纳 `.dsh-pm-comment-open/-close` 同一套机制、同一个写法）。 */
+function expandToggle(): string {
+  return '<span class="dsh-pm-frag-toggle" data-prompt-expand-toggle="1">'
+    + '<span class="dsh-pm-frag-open">展开</span><span class="dsh-pm-frag-close">收起</span></span>'
+}
+
+/** 行内 summary 的公共骨架：段名（等宽）/ 类型标 / 字符数 / [额外标] / 一行摘要 / 展开词。 */
+function fragSummary(
+  id: string, kind: SectionView['kind'], chars: number | undefined, text: string | undefined, extraMark = '',
+): string {
+  const line = firstLineOf(text)
+  const body = line.length > 0
+    ? '<span class="dsh-pm-frag-text" title="' + esc(line) + '">' + esc(summaryLine(text)) + '</span>'
+    : '<span class="dsh-pm-frag-text">（响应里没有正文）</span>'
+  return '<summary><span class="dsh-pm-frag-id">' + esc(id) + '</span>'
+    + '<span class="dsh-pm-frag-kind" title="' + esc(kindTitle(kind)) + '">' + esc(kindLabel(kind)) + '</span>'
+    + charsCell(chars) + extraMark + body + expandToggle() + '</summary>'
+}
+
+/**
+ * 一段（原型 `.frag` 的一行 + 就地展开）：**默认收起**，正文在同一个 `<details>` 里展开。
+ *
+ * 为什么改（D-10/D-11）：旧实现每段默认铺开正文，一屏全是 code block，与原型的一行摘要不符；
+ * 收起不等于藏起来——点一下就地铺开全文，且**不设内层滚动**（FR-11 #7 照旧）。
+ */
 function renderSection(section: SectionView): string {
-  const meta = [
-    section.kind === 'file' ? '有独立源文件' : (section.kind === 'shell' ? '路由壳（多片合成）' : '来源形状未标'),
-    section.chars === undefined ? '字符数未给' : section.chars + ' 字符',
-  ].join(' · ')
   const body = section.text !== undefined && section.text.length > 0
     ? preBlock(section.text)
     : '<div class="dsh-pm-note" data-prompt-empty-body="1">该段未提供正文（响应里没有 text——不编）。</div>'
-  return '<details class="dsh-pm-prompt" data-prompt-section="' + esc(section.id) + '" open>'
-    + '<summary><span class="dsh-pm-prompt-name">' + esc(section.id) + '</span>'
-    + '<span class="dsh-pm-prompt-meta">' + esc(meta) + '</span></summary>' + body + '</details>'
+  return '<details class="dsh-pm-frag" data-prompt-section="' + esc(section.id) + '">'
+    + fragSummary(section.id, section.kind, section.chars, section.text) + body + '</details>'
 }
 
+/**
+ * 被预算裁掉的片段（原型里带「已截断」琥珀标的那些行）——**同样给正文入口**，
+ * 用来回答「它为什么不知道某个术语」（FR-9）。
+ *
+ * 响应里的被裁片段没有 `kind` 字段：按本仓「片段 id → 文件/壳」的既有规则
+ * （`resolveFragmentRef`，与留痕芯片同一条）标类型，不再另立第二套判断。
+ * 「超预算、未进本次装配」这句说辞收进展开体（默认视图只留原型那枚「已截断」标）。
+ */
 function renderTrimmed(item: TrimmedView): string {
+  const kind = resolveFragmentRef(item.id).kind
+  const mark = '<span class="dsh-pm-prompt-trim" data-prompt-trim-mark="1">已截断</span>'
   const body = item.text !== undefined && item.text.length > 0
-    ? preBlock(item.text)
+    ? '<div class="dsh-pm-note" data-prompt-trimmed-note="1">超预算，<b>未进本次装配</b>；正文照给，'
+      + '用来回答「它为什么不知道某个术语」。</div>' + preBlock(item.text)
     : '<div class="dsh-pm-note" data-prompt-empty-body="1">该被裁片段未提供正文（响应里没有 text——不编）。</div>'
-  // FR-6（t8）：被裁片段在片段列表里**显眼标「已截断」**且照常给正文（回答「它为什么不知道某个术语」）
-  return '<details class="dsh-pm-prompt" data-prompt-trimmed="' + esc(item.id) + '" open>'
-    + '<summary><span class="dsh-pm-prompt-name">被裁：' + esc(item.id) + '</span>'
-    + '<span class="dsh-pm-prompt-trim" data-prompt-trim-mark="1">已截断</span>'
-    + '<span class="dsh-pm-prompt-meta">超预算，未进本次装配 · ' + esc(String(item.chars)) + ' 字符</span></summary>'
-    + body + '</details>'
+  return '<details class="dsh-pm-frag" data-prompt-trimmed="' + esc(item.id) + '">'
+    + fragSummary(item.id, kind, item.chars, item.text, mark) + body + '</details>'
 }
 
 /** 命中层级 → 可读词（`exact` 译出；其余原样显示，不编没见过的层级名）。 */
@@ -292,8 +367,13 @@ function hitLevelLabel(level: string): string {
 
 /**
  * 注入信息 chips（FR-6 · REQ-261006130057-7a43 t8；蓝本 = 原型 v1.5 #FR-6 的 `.info-strip`）：
- * routeKey / 命中 / 片段数 / 字符数 / 本轮估算——一眼看完"这次装配是什么、多大"。
+ * routeKey / 命中 / 片段数 / 字符数 / 本轮估算 / 投递后果——一眼看完"这次装配是什么、多大、
+ * 有没有真的进会话"。
  * 没给的字段**不出 chip**（routeKey / hitLevel / 估算都是服务端可选字段；不留白也不编）。
+ *
+ * 「已投递进会话」（D-10 补的缺口）：只有**最近一条留痕明确 `delivered=true`** 时才出。
+ * 只留痕未投递 / 投递不可知 / 压根没有留痕段——三种都不在这里说：前两种由 B 段逐条如实交代，
+ * 在 chips 里写「已投递」就是把"不可知"读成"投递成功"（FR-9 反例③；FR-12 zeroLies）。
  */
 function assemblyChips(view: PromptsView, chars: number): string {
   const chips: string[] = []
@@ -315,6 +395,10 @@ function assemblyChips(view: PromptsView, chars: number): string {
     chips.push('<span class="dsh-pm-chip" data-prompt-chip="est">本轮估 <b>≈ '
       + String(view.perTurnEstTokens) + ' tok</b></span>')
   }
+  const latest = view.injections.slice().sort((a, b) => (b.at ?? 0) - (a.at ?? 0))[0]
+  if (latest !== undefined && latest.delivered === 'true') {
+    chips.push('<span class="dsh-pm-chip" data-prompt-chip="delivered" data-delivered="true">已投递进会话</span>')
+  }
   if (chips.length === 0) return ''
   return '<div class="dsh-pm-chips" data-prompt-chips="1">' + chips.join('') + '</div>'
 }
@@ -322,13 +406,17 @@ function assemblyChips(view: PromptsView, chars: number): string {
 function renderSystemSection(view: PromptsView): string {
   // FR-1 收尾（t3）：本节标题原以一枚 emoji 结构图标（砖块）开头——emoji 的跨平台字型不一致、
   // 不受 currentColor 控制，Tab 栏改内联 SVG 后这里**去掉**（FR-1 允许「一起换或去掉」）。
-  const head = '<h4 class="dsh-pm-pp-h">A · 固定系统提示词'
-    + '<span class="dsh-pm-pp-h-note">回答「它到底被告知了什么」</span></h4>'
+  // 标题与副题按原型 #FR-6 的 `.blk-head` 口径（「它被告知了什么 · 本次注入」+ 数据来源）：
+  // 副题只在**装配真可得**时才有「装配服务可得」这半句——不可得时它就是在撒谎。
+  const title = '它被告知了什么 · 本次注入'
   if (!view.systemAvailable) {
-    return '<section class="dsh-pm-pp-sec">' + head
+    return '<section class="dsh-pm-pp-sec">'
+      + '<h4 class="dsh-pm-pp-h">' + title + '</h4>'
       + '<div class="dsh-pm-empty" data-system-unavailable="1">装配服务不可得：本次没有取到系统提示词'
       + '（不是「零段」——读不到与确实没有是两件事）。</div></section>'
   }
+  const head = '<h4 class="dsh-pm-pp-h">' + title
+    + '<span class="dsh-pm-pp-h-note" data-prompt-hint="1">装配服务可得 · 数据来自 GET /requirements/:id/prompts</span></h4>'
   const chars = view.perTurnChars ?? view.sections.reduce((n, s) => n + (s.chars ?? 0), 0)
   const metaBits = [
     '本次装配 ' + String(view.sections.length) + ' 段',
@@ -338,24 +426,41 @@ function renderSystemSection(view: PromptsView): string {
   if (view.perTurnEstTokens !== undefined) metaBits.push('≈ ' + String(view.perTurnEstTokens) + ' tokens（估算）')
   if (view.routeKey !== undefined) metaBits.push('routeKey ' + view.routeKey)
   if (view.hitLevel !== undefined) metaBits.push('命中层级 ' + view.hitLevel)
-  const sections = view.sections.map(renderSection).join('')
-  const trimmed = view.trimmed.map(renderTrimmed).join('')
+  const rows = view.sections.map(renderSection).join('') + view.trimmed.map(renderTrimmed).join('')
+  const total = view.sections.length + view.trimmed.length
+  // 底部一行小字（原型 `.blk-hint` 的那句）：原型只铺了 6 个里的 4 个，故写「另有 2 个」；
+  // 本页**一个不省**全铺列，所以照实说「共 N 个」——不抄原型那句会变成谎话的计数。
+  const foot = total === 0 ? ''
+    : '<div class="dsh-pm-note" data-prompt-frag-foot="1">共 ' + String(total) + ' 个片段同形铺列'
+      + (view.trimmed.length > 0
+        ? '；被截片段也给正文入口，用来回答「它为什么不知道某个术语」。'
+        : '。')
+      + '</div>'
   const mergedText = [
     ...view.sections.filter(s => (s.text ?? '').length > 0).map(s => '── ' + s.id + ' ──\n' + (s.text ?? '')),
     ...view.trimmed.filter(t => (t.text ?? '').length > 0).map(t => '── ' + t.id + '（被裁，不在本次装配里）──\n' + (t.text ?? '')),
   ].join('\n\n')
+  // D-11：整段大 code block **压缩成折叠**（默认收起，标题一行说清是什么 + 「展开」），能力不删。
+  // 「── 段名 ──」分隔行的说明同一折叠体内——那句解释本来就不该占默认视图。
   const merged = mergedText.length > 0
-    ? '<details class="dsh-pm-prompt" data-prompt-merged="1" open>'
+    ? '<details class="dsh-pm-prompt" data-prompt-merged="1">'
       + '<summary><span class="dsh-pm-prompt-name">本次完整系统提示词（' + String(view.sections.length) + ' 段合并）</span>'
-      + '<span class="dsh-pm-prompt-meta">' + esc(String(chars)) + ' 字符 · 整段铺开</span></summary>'
+      + '<span class="dsh-pm-prompt-meta">' + esc(String(chars)) + ' 字符 · 点开看全文</span>'
+      + expandToggle()
+      + '</summary>'
       + preBlock(mergedText)
       + '<div class="dsh-pm-note">「── 段名 ──」的分隔行是<b>本页加的</b>，不在提示词正文里；'
       + '被裁片段单独标出（它们<b>没有</b>进本次装配）。</div></details>'
     : ''
   return '<section class="dsh-pm-pp-sec">' + head
     + assemblyChips(view, chars)
-    + '<div class="dsh-pm-note">' + esc(metaBits.join(' · ')) + '（字符数与 token 数是读时装配/估算，不是留痕）</div>'
-    + sections + trimmed + merged + '</section>'
+    /* D-11 压缩：口径说明默认收起（内容一字不删），默认视图与原型一致。
+       折叠体走房子里的 `.dsh-pm-fold-body`（与 Token 面板的口径说明折叠同一个壳）：
+       少了它，展开后的说明行会**贴着折叠框左边框**（`.dsh-pm-note` 自己没有内边距）。 */
+    + '<details class="dsh-pm-fold" data-prompt-caliber="1"><summary class="dsh-pm-note">口径说明 · 展开</summary>'
+    + '<div class="dsh-pm-fold-body"><div class="dsh-pm-note" data-prompt-caliber-note="1">'
+    + esc(metaBits.join(' · ')) + '（字符数与 token 数是读时装配/估算，不是留痕）</div></div></details>'
+    + rows + foot + merged + '</section>'
 }
 
 /* ──────────────────────────────────────────────────────── 规定 vs 实际（清单对照） */
@@ -532,7 +637,7 @@ export function renderPromptsPanel(data: unknown): string {
     + renderBody(view) + '</div>'
 }
 
-export const promptsPanel: ReportTabDef = {
+export const promptsPanel: PanelShape & { key: 'prompts' } = {
   key: 'prompts',
   label: '提示词',
   // 同上：计数只认首屏快照里的服务端值；留空就不显示角标（提示词段数需要额外读留痕，首屏不为此加读）

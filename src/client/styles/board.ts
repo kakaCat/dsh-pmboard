@@ -545,4 +545,19 @@ tr.dsh-pm-list-grouphead td {
 .dsh-pm-vitem-opinion:focus, .dsh-pm-vitem-actions input[type=radio]:focus-visible {
   outline: 2px solid var(--dsw-accent, #4a7dff); outline-offset: 1px;
 }
+/* ── 覆盖控件（REQ-261006201920-2adc FR-3）：变更理由输入 + 被取代原文留存 ── */
+/* 复用既有令牌与意见输入框的尺寸口径，不新增色板 */
+.dsh-pm-vitem-reason { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.dsh-pm-vitem-reason[hidden] { display: none; }
+.dsh-pm-vitem-change-reason {
+  width: 100%; box-sizing: border-box; padding: 5px 10px; border-radius: 6px;
+  border: 1px dashed var(--pm-line); font-size: 12px; font-family: ui-monospace, monospace;
+  background: var(--dsw-bg-primary, #fff); color: var(--dsw-text-primary, #333);
+}
+.dsh-pm-vitem-change-reason:focus { outline: 2px solid var(--dsw-accent, #4a7dff); outline-offset: 1px; }
+/* 被取代的 agent 原文：左侧留一道细边 + 弱化，但**保持可读**（它是证据，不是被划掉的字） */
+.dsh-pm-vitem-superseded {
+  margin-top: 6px; padding: 3px 0 3px 8px; border-left: 2px solid var(--pm-line);
+  font-size: 12px; font-family: ui-monospace, monospace; opacity: .78; word-break: break-all;
+}
 `

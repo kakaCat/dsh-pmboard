@@ -81,7 +81,32 @@ export function defineSubmitTool(deps: UseCaseDeps) {
               description: '引用子卡链模板键（可选，与 stages 二选一）：' + Object.keys(SUBTASK_TEMPLATES).join('/')
                 + '——如 change-only=研发+复核（文案契约类）、acceptance=校验单段（链尾总验收卡）、ops=运维五段；可与 skipIntegration 叠加',
             },
-            skipIntegration: { type: 'boolean', description: '本卡无接口可联调时设 true → 不落联调子卡（可选）' },
+            skipIntegration: { type: 'boolean', description: '本卡无接口可联调时设 true → 不落联调子卡（可选）；**设 true 必须同时给 skip_integration_reason**' },
+            // 理由载体（2026-10-06）：砍联调段是减法，批的人要能复核依据。两种拼法都声明——
+            // 本 schema 是 additionalProperties:false，只声明一种 = 另一种写法被绑定层**拒收**
+            // （比静默丢弃更难查：agent 会以为是参数名写错而不是被门禁拦）。
+            skip_integration_reason: { type: 'string', description: '为什么这张卡没有接口面、靠什么判断（skipIntegration=true 时必填，一句话，如「纯文档卡，无运行时接口」）' },
+            skipIntegrationReason: { type: 'string', description: '同上（camel 拼法，与 skip_integration_reason 等价；两者都认）' },
+            // 粒度豁免（REQ-261007125552-32cb FR-4）：一卡多接口确属合理（契约卡/聚合卡）时必填理由——
+            // 本 schema 是 additionalProperties:false，不声明 = 绑定层直接拒收（footprint 栽过同款）。
+            granularity_exempt: { type: 'string', description: '粒度豁免理由（可选）：本卡确需声明多个接口时必填（≤300 字符）；生效时理由进 granularity_warnings 供批准人复核（豁免不静默）' },
+            granularityExempt: { type: 'string', description: '同上（camel 拼法，与 granularity_exempt 等价；两者都认）' },
+            dep_reasons: {
+              type: 'array',
+              items: { type: 'string' },
+              description: '依赖理由（可选，零交集边才要）：每条形如 "t2=一句话语义理由"。'
+                + '仅当这条依赖边两端 implementation 声明的文件零交集时被要求——伪依赖会让本可并行的卡串成链（软门禁只点名不拒）。'
+                // 为什么不是 map（如 {"t2":"…"}）：dsh-tools 的参数 schema DSL **不接受未显式声明值的 map**
+                // （`additionalProperties must be explicitly true or false`），写成 map 会让整个
+                // defineSubmitTool 直接抛 JsonSchemaError（2026-10-06 实测）。字符串数组是本 DSL 能表达的形态，
+                // 归一在 normalizePlanTasks 里做（`key=理由` / `key：理由` 都认）。
+                + '写法：key=理由，用半角等号或冒号分隔（如 "t4=上游建队列文件，本卡读它，虽无同名文件但有时序约束"）',
+            },
+            depReasons: {
+              type: 'array',
+              items: { type: 'string' },
+              description: '同上（camel 拼法，与 dep_reasons 等价；两者都认，合并取并集）',
+            },
             depends_on: { type: 'array', description: '依赖的计划内 key', items: { type: 'string' } },
             acceptance: { type: 'string', description: '验收标准（可验证：跑什么、看到什么算过；空话/缺锚点打回）' },
             implementation: { type: 'string', description: '实施方案（必填：改哪些文件、步骤、验证方式——拆分卡≠实施卡）' },
@@ -201,6 +226,14 @@ export function defineSubmitTool(deps: UseCaseDeps) {
             },
           },
           readability_warnings: { type: 'array', items: { type: 'string' }, description: '可读性告警' },
+          // 2026-10-06 文档质量门禁加固：条款级判据软门禁（只提示不拦）——每条条款的定义行块内
+          // 找不到可核验判据（命令 / 断言 / 可读数 / 明确取值）时逐条点名。
+          // 与 readability_warnings 同口径：非空才出键（缺省 = 整体省略）。
+          clause_criteria_warnings: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'kind=requirement：无可执行判据的条款逐条点名（软提示，不阻断提交）',
+          },
           // REQ-261003222428-3556 FR-3：doc↔tasks 依赖一致性警告——计划文档依赖表声明了依赖
           // 而 tasks 数组对应 key 全空（agent 漏传 depends_on 的形态），点名不拒。
           // 仅在有时出现；缺省 = 整体省略键（无损 JSON 纪律）。
@@ -216,6 +249,22 @@ export function defineSubmitTool(deps: UseCaseDeps) {
             type: 'array',
             items: { type: 'string' },
             description: 'kind=plan：markerGate=warn 时，计划文档缺/错「⚠️超容量(建议N批)」标记的卡（只披露不拒绝）',
+          },
+          // 任务表列齐全（2026-10-06）：硬判（文档里有没有任务表、表里的 key 覆不覆盖 tasks[].key）
+          // 走 GateFailure（不通过就没有返回体）；**软判**（表头缺「验收标准」/「工作量(S/M/L)」这类
+          // 该有的列）不拒，只在这里点名——列是给批准人读的，缺列会让「批准所见 ≠ 文档所见」。
+          plan_doc_warnings: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'kind=plan：提交的那份计划文档里任务表的**缺列**点名（软提示，不阻断提交）',
+          },
+          // 粒度门禁（REQ-261007125552-32cb FR-2/FR-4/FR-5）：软门与豁免/降级披露——
+          // 硬门（对照表缺失 / 一卡多接口无豁免）走 GateFailure 没有返回体；
+          // 这里只承载「放行但必须让人看见」的部分（与 marker_warnings 同口径）。
+          granularity_warnings: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'kind=plan：粒度门禁的警告（files 超形态软上限 / UI 卡一卡多锚点 / granularity_exempt 豁免生效理由 / 对照表门降级原因）——只披露不拒绝',
           },
           success: { type: 'boolean', description: '是否成功' },
           requirement_id: { type: 'string', description: '需求 id' },
@@ -404,6 +453,48 @@ export function defineSubmitTool(deps: UseCaseDeps) {
             },
           },
           warning: { type: 'string', description: '漏洞/阻塞等非阻断警告' },
+          resolved_targets: {
+            type: 'object',
+            additionalProperties: false,
+            description: 'kind=archive：本次判据的生效根与逐条读数（REQ-261006201841-944d FR-1/FR-2）——'
+              + 'merged_into 的存在性与字节数、manual_anchors 的锚点可达性。用途：复核「在哪个根上判的」。',
+            properties: {
+              root: { type: 'string', description: '实际用于探测的工作区根（绝对路径）' },
+              by: { type: 'string', description: '根判定来源：project-id / path-fallback / unknown' },
+              attributed: { type: 'boolean', description: 'true = 根来自项目身份（权威值）；false = 路径兜底（须如实标注）' },
+              merged_into: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: {
+                    path: { type: 'string' },
+                    ok: { type: 'boolean' },
+                    bytes: { type: 'number', description: '实测字节数（缺失 ≠ 0）' },
+                  },
+                },
+              },
+              manual_anchors: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: { path: { type: 'string' }, anchor: { type: 'string' }, ok: { type: 'boolean' } },
+                },
+              },
+            },
+          },
+          archive_manifest: {
+            type: 'object',
+            additionalProperties: false,
+            description: 'kind=archive：归档渲染物 <dir>/archive.md 的落点与本次是否写盘（REQ-261006201841-944d FR-5/FR-6）——'
+              + 'written=false 表示内容与盘上一致、未重写（幂等命中，保留盘上首次的「渲染时刻」）。',
+            properties: {
+              path: { type: 'string', description: '渲染物工作区相对路径（= <dir>/archive.md）' },
+              written: { type: 'boolean', description: 'true = 本次写了盘；false = 剔除「渲染时刻」行后逐字节相同、未重写' },
+              bytes: { type: 'number', description: '渲染文本的 UTF-8 字节数' },
+            },
+          },
           note: { type: 'string', description: '下一步指引' },
         },
       },

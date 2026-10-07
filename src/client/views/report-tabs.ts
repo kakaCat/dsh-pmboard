@@ -34,15 +34,12 @@ import { dialoguePanel } from './panels/dialogue.js'
 import { verifyPanel } from './panels/verify.js'
 import { tokenPanel } from './panels/token.js'
 import { promptsPanel } from './panels/prompts.js'
+// REQ-261006201841-944d t9（FR-7）：来源提示块与归档条同源同一套语汇（单点渲染在 views/board.ts；
+// 依赖方向 views/report-tabs → views/board 单向，board.ts 不反向依赖本模块）
+import { renderArchivedSourceHint } from './board.js'
+import type { RequirementOrigin } from '../types.ts'
 
 /* ────────────────────────────────────────────────────────────── 注册契约 */
-
-/**
- * 七个同级 Tab 的键。顺序即 `REPORT_TABS` 的顺序（trunk 默认选中）。
- * 第七枚「验收」（REQ-261006130057-7a43 FR-8）插在「对话」与「Token」之间——与权威原型
- * `docs/requirements/REQ-261006130057-7a43/prototypes/detail.html` v1.5 的 `#FR-4` 同序。
- */
-export type ReportTabKey = 'trunk' | 'docs' | 'dag' | 'dialogue' | 'verify' | 'token' | 'prompts'
 
 /**
  * 分页/游标参数（FR-11 #6：dialogue / injections 默认 20，可取更早）。
@@ -62,8 +59,34 @@ export interface ReportTabCtx {
   openDoc: (path: string) => void
 }
 
-/** 一个 Tab 的注册项。t9~t14 **只改 render 实现**，导出名与类型不得变。 */
-export interface ReportTabDef {
+/**
+ * 面板对象的**注册前形状**（键先当 string）。
+ *
+ * 面板文件按 `xPanel: PanelShape = { key: 'trunk' as const, … }` 写：
+ * 标注给出上下文类型（否则 `render(data, ctx)` 的参数会 implicit any），
+ * 而键上的 `as const` 抵消上下文类型带来的**字面量拓宽**——键必须保持字面量，
+ * 否则推导出的 `ReportTabKey` 会退化成 string，各处 `switch (key)` 不再穷尽。
+ */
+export interface PanelShape {
+  readonly key: string
+  readonly label: string
+  readonly badge: (report: ReportResponse | undefined) => string | undefined
+  readonly render: (data: unknown, ctx: ReportTabCtx) => string
+  readonly degraded?: (d: Degrade) => string
+}
+
+/**
+ * 面板契约（消费者视角）：注册即装配——实现它就算接上壳，**漏任何必需成员 = 编译期红**。
+ *
+ * `key` 是推导出来的联合（见 `ReportTabKey`），不再是手写清单：加一个 Tab 只改注册表一处。
+ *
+ * 为什么面板对象**不逐文件标注**这个契约：标注（`x: Panel` 或 `satisfies PanelShape`）会给
+ * 对象字面量一个上下文类型，把 `key: 'trunk'` 这种字面量**拓宽成 string**——推导出的键联合
+ * 随之退化成 string，各处的 `switch (key)` 就不再穷尽（实测：typecheck 立刻红）。
+ * 故契约在这一处校验：`REPORT_TABS: readonly Panel[]` 要求每个注册项都实现全接口、
+ * 且键落在推导出的联合里——漏成员 / 键写错都在这里编译期红（R-3 的反向验证就是删一个成员看它红）。
+ */
+export interface Panel {
   key: ReportTabKey
   label: string
   /**
@@ -76,8 +99,11 @@ export interface ReportTabDef {
   /** 渲染**本面板**（纯字符串；只渲染自己，不碰其它 Tab） */
   render: (data: unknown, ctx: ReportTabCtx) => string
   /** 该 Tab 的降级文案（FR-12 三态之一）；缺省走 `degradeText` 的通用四句 */
-  degraded?: (d: Degrade) => string
+  readonly degraded?: (d: Degrade) => string
 }
+
+/** @deprecated 旧名（= {@link Panel}）；新代码用 `Panel` / 面板实现用 `PanelShape`。 */
+export type ReportTabDef = Panel
 
 /**
  * 图标属于**壳**不属于面板：面板卡只该关心内容，改 render 时不该被迫记得带图标
@@ -94,13 +120,32 @@ const TAB_ICONS: Record<ReportTabKey, string> = {
   trunk: '📋', docs: '📄', dag: '🕸', dialogue: '💬', verify: '✅', token: '🪙', prompts: '🧱',
 }
 
-/** 七个同级 Tab 的注册表（顺序：trunk 默认选中 → docs → dag → dialogue → verify → token → prompts）。 */
-export const REPORT_TABS: ReportTabDef[] = [
+/**
+ * 注册表的**唯一清单**（顺序即展示顺序）：trunk 默认选中 → docs → dag → dialogue → verify → token → prompts。
+ * 第七枚「验收」（REQ-261006130057-7a43 FR-8）插在「对话」与「Token」之间——与权威原型
+ * `docs/requirements/REQ-261006130057-7a43/prototypes/detail.html` v1.5 的 `#FR-4` 同序。
+ *
+ * `as const` 保住每个键的**字面量类型**：`ReportTabKey` / `REPORT_TAB_KEYS` 都从这一份推出来。
+ */
+const PANEL_TUPLES = [
   trunkPanel, docsPanel, dagPanel, dialoguePanel, verifyPanel, tokenPanel, promptsPanel,
-]
+] as const
+
+/**
+ * 七个同级 Tab 的键（**推导**：`(typeof PANEL_TUPLES)[number]['key']`）。
+ *
+ * 手写的第二份联合已删除——它正是「加 Tab 漏改清单、脏值静默回落」的根因（D-5 / IF-3）。
+ */
+export type ReportTabKey = (typeof PANEL_TUPLES)[number]['key']
+
+/**
+ * 注册表（对外类型是**面板契约数组**）：每一次注册都要过 `Panel` 这一关——
+ * 漏实现成员、键不在推导出的联合里，都在这里编译期红。
+ */
+export const REPORT_TABS: readonly Panel[] = PANEL_TUPLES
 
 /** 取注册项；未知键回落到第一个（不抛：渲染路径上的异常会整块白屏）。 */
-function defOf(key: ReportTabKey): ReportTabDef {
+function defOf(key: ReportTabKey): Panel {
   return REPORT_TABS.find(d => d.key === key) ?? REPORT_TABS[0]
 }
 
@@ -214,7 +259,7 @@ type PanelEntry =
  * 面板正文（四态各有字符串，**绝不空白**）：
  * 加载中 / 降级（按 reason 说人话）/ 失败（给"重试"这条真的能走的路）/ 就绪（面板自己渲染）。
  */
-function panelBody(def: ReportTabDef, entry: PanelEntry | undefined, ctx: ReportTabCtx): string {
+function panelBody(def: Panel, entry: PanelEntry | undefined, ctx: ReportTabCtx): string {
   if (entry === undefined || entry.phase === 'loading') {
     return '<div class="dsh-pm-empty">' + esc(def.label) + '加载中…</div>'
   }
@@ -272,11 +317,20 @@ export interface ReportShellRenderOpts {
   ctx?: ReportTabCtx
   /** 台账 revision（写进 `data-report-revision`，便于断言与审计） */
   revision?: number
+  /**
+   * 该需求的来源三态（REQ-261006201841-944d t9 · FR-7，由 `board-mount` 按 `state.origins[reqId]` 下传）。
+   * 缺省 / `kind === 'local'` → head 段**逐字节不变**（不渲染来源提示块，U-12）。
+   */
+  origin?: RequirementOrigin
 }
 
 /**
  * 详情页整壳：**常驻头部 + 状态带 + Tab 栏 + 只含当前面板**。
  * 未激活的 Tab **不在产物里**（`querySelector('[data-panel="token"]')` 在未激活时为 null）。
+ *
+ * REQ-261006201841-944d t9（FR-7）：`opts.origin` 为 B/C 态时，提示块落在 **head 段内**
+ * （头部之后、状态带之前——与旧详情路径同位置语义），由 `renderArchivedSourceHint` 单点产出；
+ * 缺省时该表达式为空串、head 段拼接结果与改动前逐字一致。
  */
 export function buildReportShell(
   report: ReportResponse,
@@ -291,7 +345,7 @@ export function buildReportShell(
     ? undefined
     : (isDegrade(opts.data) ? { phase: 'degraded', degrade: opts.data } : { phase: 'ready', data: opts.data })
   return wrapShell(report.head.id, opts.revision ?? 0, {
-    head: buildReportHead(report),
+    head: buildReportHead(report) + renderArchivedSourceHint(report.head.id, opts.origin),
     band: buildReportBand(report),
     tabs: buildTabBar(report, active),
     panel: panelWrapper(active, panelBody(def, entry, ctx)),
@@ -741,6 +795,11 @@ export interface ReportShellOpts {
   active?: ReportTabKey
   revision?: number
   onChange?: () => void
+  /**
+   * 该需求的来源三态（REQ-261006201841-944d t9 · FR-7）：只用于 head 段的来源提示块，
+   * 缺省 = 不渲染（旧服务端 / 本仓需求）——不影响取数与缓存口径。
+   */
+  origin?: RequirementOrigin
 }
 
 export interface ReportShellController {
@@ -844,8 +903,11 @@ export function createReportShell(opts: ReportShellOpts): ReportShellController 
 
   const segments = (): ReportShellSegments => {
     const p = placeholder()
+    // REQ-261006201841-944d t9（FR-7）：B/C 态时提示块落在 head 段内（空串 ⇒ 与本需求之前逐字一致）。
+    // 头部降到 loading / degraded 时**同样显示**——「点开一片空白」时最需要这句话。
+    const headBase = report === undefined ? buildReportHeadPlaceholder(p) : buildReportHead(report)
     return {
-      head: report === undefined ? buildReportHeadPlaceholder(p) : buildReportHead(report),
+      head: headBase + renderArchivedSourceHint(opts.requirementId, opts.origin),
       band: report === undefined ? buildReportBandPlaceholder(p) : buildReportBand(report),
       tabs: buildTabBar(report, tabs.active()),
       panel: panelWrapper(tabs.active(), tabs.panelHtml()),

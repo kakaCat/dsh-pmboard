@@ -890,6 +890,16 @@ export async function createRequirementDirect(
      * 这里只认它传进来的显式决定——不猜、不静默放行。
      */
     allowWindowBound?: boolean
+    /**
+     * 立项来源（**如实留痕**，2026-10-06）：缺省 `'capture-dialog'` = 人经弹框答三问
+     * （actor=human，评论写「[会话捕获] 用户经五问弹框确认立项」）；
+     * `'agent-delegated'` = agent 受**本窗口直接人工指令**代为取值并立项（actor=agent，
+     * 评论写清授权来源与"未经弹框逐问确认"）。
+     *
+     * 为什么必须分开：这两条路的**事实不同**——一条有人逐问确认过名称/分类/难度，另一条没有。
+     * 混用会让"人确认过三问"变成一句无法证伪的谎，事后复盘时两条路完全同形。
+     */
+    provenance?: 'capture-dialog' | 'agent-delegated'
   },
 ): Promise<RequirementRecord> {
   const nowTs = deps.clock.now()
@@ -903,7 +913,11 @@ export async function createRequirementDirect(
   if (input.allowWindowBound !== true && (await boundSummariesOf(store, windowKey)).length > 0) {
     reject('reqboard_create 未写入：本窗口已绑定进行中需求，勿重复立项', 'REQBOARD_WINDOW_BOUND')
   }
-  const actor = { kind: 'human' } as const
+  // 立项来源决定"谁建的"——代理立项必须记成 agent（见 provenance 的注释：两条路的事实不同）。
+  const delegated = input.provenance === 'agent-delegated'
+  const actor = delegated
+    ? ({ kind: 'agent', sessionId: windowKey } as const)
+    : ({ kind: 'human' } as const)
   {
     const req: RequirementRecord = {
       id: deps.ids.requirement(),
@@ -931,15 +945,25 @@ export async function createRequirementDirect(
       comments: [
         {
           id: deps.ids.comment(),
-          body: [
-            `[会话捕获] 用户经五问弹框确认立项（会话 ${windowKey}）`,
-            `名称/分类/难度为用户确认值：${input.title}（${input.category}，提示词难度：${input.promptDifficulty ?? 'standard'}）`,
-            ...(input.reason ? [`依据：${input.reason}`] : []),
+          body: (delegated
+            ? [
+              `[代理立项] agent 受本窗口直接人工指令创建（授权会话 ${windowKey}）`,
+              `三问取值由 agent 给出，**未经弹框逐问确认**：${input.title}（${input.category}，提示词难度：${input.promptDifficulty ?? 'standard'}）`,
+              ...(input.reason ? [`依据：${input.reason}`] : []),
+              ...(input.ownerSessionId !== undefined && input.ownerSessionId !== windowKey
+                ? [`归属窗口：${input.ownerSessionId}（不在本窗口名下，由它接手推进）`]
+                : []),
+            ]
+            : [
+              `[会话捕获] 用户经五问弹框确认立项（会话 ${windowKey}）`,
+              `名称/分类/难度为用户确认值：${input.title}（${input.category}，提示词难度：${input.promptDifficulty ?? 'standard'}）`,
+              ...(input.reason ? [`依据：${input.reason}`] : []),
+            ])
             // FR-1：没有项目身份就**明说**，不留「看起来正常其实没归属」的记录（本仓最忌静默）
-            ...(input.projectId === undefined || input.projectId.length === 0
+            .concat(input.projectId === undefined || input.projectId.length === 0
               ? ['未归属项目（按路径兜底）：本窗口不在任何项目的窗口列表里，故未写项目身份。']
-              : []),
-          ].join('\n'),
+              : [])
+            .join('\n'),
           createdAt: nowTs,
           createdBy: actor,
         },

@@ -38,6 +38,13 @@ export interface ProtoObservation {
   /** 测量条件：窗口宽 + 页面态（须显式传入，避免量错）、来源（缺省 prototype，人给标 human） */
   at: { width: number; state: GeometryState }
   source?: 'prototype' | 'human'
+  /**
+   * 截图路径（**工作区相对**，REQ-261006201649-cc89 FR-4）——读数可复核的证据之一。
+   * 与 `shotSha256` 是**加性可选键**：两键都缺 = 未采集（历史读数），放行并记 unverified。
+   */
+  shot?: string
+  /** 该截图文件内容的 sha256（64 位小写十六进制）；给了 `shot` 就必须给且要对 */
+  shotSha256?: string
 }
 
 /** parsePrototypeMetadata 的结果。 */
@@ -147,9 +154,22 @@ function observationsOf(value: unknown, violations: string[]): ProtoObservation[
     const src = o['source']
     const source = src === undefined || src === 'prototype' || src === 'human' ? src : undefined
     if (src !== undefined && source === undefined) violations.push(at + ' 的 source 值域外：' + String(src) + '（只认 prototype | human）')
+    // 证据两键（REQ-261006201649-cc89 FR-4）：**加性可选**，只做形态归一，值域校验在
+    // observationEvidenceOf（那是"能不能复核"的判据，与本处"形状对不对"分层）。
+    const shotRaw = o['shot']
+    const shot = typeof shotRaw === 'string' && shotRaw.trim() !== '' ? shotRaw.trim() : undefined
+    if (shotRaw !== undefined && typeof shotRaw !== 'string') violations.push(at + ' 的 shot 必须是字符串（截图路径，工作区相对）')
+    const shaRaw = o['shotSha256']
+    const shotSha256 = typeof shaRaw === 'string' && shaRaw.trim() !== '' ? shaRaw.trim() : undefined
+    if (shaRaw !== undefined && typeof shaRaw !== 'string') violations.push(at + ' 的 shotSha256 必须是字符串（64 位小写十六进制）')
     if (name === '' || typeof value !== 'number' || !Number.isFinite(value)
       || unit === undefined || typeof width !== 'number' || state === undefined) return
-    out.push({ name, value, unit, at: { width, state }, ...(source === undefined ? {} : { source }) })
+    out.push({
+      name, value, unit, at: { width, state },
+      ...(source === undefined ? {} : { source }),
+      ...(shot === undefined ? {} : { shot }),
+      ...(shotSha256 === undefined ? {} : { shotSha256 }),
+    })
   })
   return out
 }
@@ -352,49 +372,18 @@ function versionFailure(req: RequirementRecord, gaps: readonly string[]): GateFa
 }
 
 /**
- * 锚点门：权威原型缺 id="FR-N" 覆盖 / proto-geometry 块不是恰好一块 / geometry 含阈值字段 →
- * prototype_anchor_missing。早退（属版本门职责）：INDEX 缺失、缺列、authoritative ≠ 1 条时返回
- * undefined——同一处坏由单点报一次，否则人要在两条消息里对齐。
+ * 锚点门**已迁出**本模块（REQ-261006201649-cc89 FR-1/FR-4）：见 `prototype-anchor-gate.ts`。
+ *
+ * 为什么搬走：本文件是尺寸门禁盯着的文件（≤400 行），而本需求要往锚点门里加两问；
+ * 且锚点门是本需求**唯一**改动的门——单独放一层，"改了什么"在目录结构上就看得见。
+ * 这里以再导出保住既有调用点（`content-gate-wiring.ts`）一行不改。
  */
-export async function checkPrototypeAnchorsGate(docs: DocsReader, req: RequirementRecord): Promise<GateFailure | undefined> {
-  const ctx = await contextOf(docs, req)
-  if (ctx === undefined || !ctx.applies) return undefined
-  const indexPath = reqDir(req.id) + '/prototypes/INDEX.md'
-  if (!docs.exists(indexPath)) return undefined // 版本门职责
-  const index = parsePrototypeIndex(parseDocument(await docs.read(indexPath)), req.id)
-  if (index.gaps.length > 0) return undefined // 版本门职责（缺列 / 路径口径坏）
-  const auth = index.rows.filter(r => r.status === 'authoritative')
-  const row = auth.length === 1 ? auth[0] : undefined
-  if (row === undefined) return undefined // 版本门职责
-  const htmlPath = reqDir(req.id) + '/' + row.path
-  if (!docs.exists(htmlPath)) {
-    return anchorFailure(req, [fmt('权威原型 {path} 不在需求目录内（磁盘上找不到 {abs}）', { path: row.path, abs: htmlPath })], row.path)
-  }
-  const meta = parsePrototypeMetadata(await docs.read(htmlPath))
-  const gaps: string[] = []
-  if (meta.blocks !== 1) {
-    gaps.push(meta.blocks === 0
-      ? fmt('{path} 缺 proto-geometry 块（须有恰好一块 <!-- proto-geometry … --> 观测注释）', { path: row.path })
-      : fmt('geometry 块 ×{n}（必须恰好一块，§10 #4）', { n: meta.blocks }))
-  }
-  if (meta.parseError !== undefined) gaps.push(fmt('proto-geometry 块内 JSON 解析失败（按缺块处理）：{err}', { err: meta.parseError }))
-  for (const fr of row.serves) {
-    if (!meta.anchors.some(a => a.fr === fr)) gaps.push(fmt('{path} 缺 id="{fr}" 区块（INDEX「服务条款」列声明了它）', { path: row.path, fr }))
-  }
-  gaps.push(...meta.violations)
-  return gaps.length === 0 ? undefined : anchorFailure(req, sorted(gaps), row.path)
-}
-
-function anchorFailure(req: RequirementRecord, gaps: readonly string[], path: string): GateFailure {
-  return {
-    code: 'prototype_anchor_missing',
-    kind: 'prototype',
-    gaps: [...gaps],
-    message: envelope({
-      lead: LEAD,
-      what: fmt('权威原型 {path}：{list}', { path, list: gaps.join('；') }),
-      why: '权威原型缺机器可判读的 FR 锚点 / 唯一一块 proto-geometry，或几何量里出现阈值字段（阈值属设计决策，D-10）',
-      how: '按 ' + HOW_PROTOTYPE + ' 补每个「服务条款」声明 FR 的 <section id="FR-N"> 与**恰好一块** <!-- proto-geometry {"observations":[{"name":"tabsTop","value":576,"unit":"px","at":{"width":1280,"state":"inflight"}}]} -->，只留观测量名与实测值（阈值移到 design/frontend.md），再调 reqboard_submit(kind=prototype)（requirement_id="' + req.id + '"）重新登记',
-    }),
-  }
-}
+export {
+  checkPrototypeAnchorsGate,
+  observationEvidenceOf,
+  humanReasonHasFact,
+  type AnchorGateDeps,
+  type ObservationEvidence,
+  type PrototypeEvidencePort,
+  type PrototypeSkeletonPort,
+} from './prototype-anchor-gate.js'

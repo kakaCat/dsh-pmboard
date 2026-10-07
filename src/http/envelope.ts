@@ -52,6 +52,13 @@ const STATUS_BY_CODE: Readonly<Record<string, number>> = {
   missing_artifact: 400,
   artifact_not_confirmed: 400,
   verify_override_required: 400, // REQ-a8d582 FR-4：不合规通过缺覆盖说明
+  // REQ-261006201920-2adc FR-3：覆盖 agent 实测结果却没写变更理由 → 400（流程没满足、补齐即可重发）。
+  // 该码由**应用层**抛出（判定权归域/应用层，路由不抢先判），漏登记会如实落 500——
+  // 看板于是把「补一句为什么改就行」显示成「服务器坏了」，用户照着修不了。
+  result_change_reason_required: 400,
+  // REQ-261006201920-2adc FR-4：系统缺口项通过却没写出有效处置 → 400。
+  // 它此前只被域层抛出、从未登记（既有缺口：经看板通道裁决会落 500）；本需求把它接入放行判据时一并补上。
+  system_item_disposition_required: 400,
   design_doc_incomplete: 400, // REQ-2d1c74：G2 完整性门
   design_contains_decomposition: 400, // REQ-2d1c74：拆分内容硬门
   // ── REQ-261005105032-3b02 §10 #43（后端实测发现的硬约束）──
@@ -63,6 +70,11 @@ const STATUS_BY_CODE: Readonly<Record<string, number>> = {
   prototype_missing: 400,
   prototype_version_conflict: 400,
   prototype_anchor_missing: 400,
+  // REQ-261006201649-cc89：锚点门新增两问——① 权威原型仍是模板骨架；② 几何量读数无法复核。
+  // 逐条显式登记（本表没有前缀兜底）：漏登记会**如实落 500**，看板于是把"流程没满足、
+  // 补齐即可重发"显示成"服务器坏了"——用户照着修不了。
+  prototype_placeholder: 400,
+  prototype_geometry_unverified: 400,
   decision_log_missing: 400,
   decision_entry_invalid: 400,
   verification_prototype_compare_missing: 400,

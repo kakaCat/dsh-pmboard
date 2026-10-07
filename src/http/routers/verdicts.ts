@@ -25,9 +25,11 @@ import {
 } from '../../shared/protocol.js'
 import {
   countFailedItems, countPassedItems, countPendingItems, isAccepting, isAcceptingStage,
-  isDecidableItemStatus, isFailedItem, isFullyDecidedItems, isUnverifiedItem, isVerifiableStage,
+  isDecidableItemStatus, isFailedItem, isUnverifiedItem, isVerifiableStage,
 } from '../../domain/status/Predicates.js'
 import { ACCEPTED_REQ_STATUS, REWORK_REQ_STATUS } from '../../domain/requirement/RequirementStatus.js'
+import { isFullyDecided } from '../../domain/workflow/AcceptanceSheetSpec.js'
+import { unverifiedAdviceOf, unverifiedSummaryOf } from '../../domain/workflow/VerdictNotices.js'
 import { applyVerdicts, materializeReworkFromSheet } from '../../application/internal/verdicts.js'
 import { transitionRequirement } from '../../application/internal/token-usage.js'
 import { rewriteVerificationDoc } from '../../application/internal/verification-doc-writer.js'
@@ -194,6 +196,9 @@ export function createVerdictsRouter(ctx: RouterCtx) {
       if (itemId.length === 0) badInput('verdicts[].itemId 不能为空')
       if (!isDecidableItemStatus(status)) badInput('verdicts[].status 只能是 passed / failed / not_verifiable')
       const opinion = normalizeText(o.opinion, 'verdicts[].opinion', 1000)
+      // REQ-261006201920-2adc FR-3 / D-3：覆盖 agent 实测结果时的**变更理由**。此处只做形态归一，
+      // **判定权归应用层**（缺理由的拒绝在 `applyVerdicts` 的前置校验里，看板与弹框两通道同源）。
+      const changeReason = normalizeText(o.changeReason, 'verdicts[].changeReason', 1000)
       if (isFailedItem(status) && opinion.length === 0) badInput('不通过的验收项必须写意见（opinion）')
       // REQ-308b9a FR-9 / AC-9.2：不可验收同样必须写原因——不允许静默消失。
       if (status === 'not_verifiable' && opinion.length === 0) badInput('不可验收的验收项必须写原因（opinion）')
@@ -202,7 +207,7 @@ export function createVerdictsRouter(ctx: RouterCtx) {
       // 有 `item.result` 即零输入通过（`opinion` 取该项 result），两者皆空记 `unverified`。
       // 为什么删在路由层：预校验与域层各判一套必然漂移（本仓「两处判定必漂移」的老账），
       // 且前端已不再把必填推给人（看板留空点通过是合法动作）。
-      return { itemId, status, opinion }
+      return { itemId, status, opinion, ...(changeReason.length > 0 ? { changeReason } : {}) }
     })
     const nowTs = now()
     // ── 两存储顺序契约（REQ-260927202051-f6df / design/interfaces I-11）：**任务先、需求后** ──
@@ -264,6 +269,21 @@ export function createVerdictsRouter(ctx: RouterCtx) {
     const sheet = r.verification?.sheet
     const failed = sheet === undefined ? 0 : countFailedItems(sheet.items)
     const pending = sheet === undefined ? 0 : countPendingItems(sheet.items)
+    // ── 未复核回执（REQ-261007160829-1991 FR-2 / FR-4 · design/interfaces.md I-7 / I-9、backend.md S-4）──
+    // 看板通道与弹框通道（AcceptSheet）必须取**同一处**文案：原先这里写死一句「挂起中，或仍有未处置的
+    // 缺口项——补上实际结果/处置后即可归档」，说不清为什么没过（没写结果 vs 写了但没锚点）、该补什么。
+    //
+    // 原因取值与弹框通道同口径：未复核项的 `unverifiedReason` **集合只有一个取值**才把它当唯一真因；
+    // 混合、或全是老数据（字段缺席 ⇒ `undefined`）一律传 `undefined`——中性措辞恰好同时覆盖两类，
+    // 不把老数据猜成某一类（猜错正是实测的返工来源）。
+    const unverifiedItems = sheet === undefined ? [] : sheet.items.filter(isUnverifiedItem)
+    const unverifiedReasons = new Set(unverifiedItems.map(i => i.unverifiedReason))
+    // 无未复核项时 `unverifiedSummaryOf` 返回空串——先守空串，不留多余空格、不留孤立的补法句。
+    const unverifiedNote = unverifiedItems.length === 0
+      ? ''
+      : unverifiedSummaryOf(unverifiedItems)
+        + ' '
+        + unverifiedAdviceOf(unverifiedReasons.size === 1 ? unverifiedItems[0]?.unverifiedReason : undefined)
     return ok(res, {
       requirement_id: r.id,
       status: r.status,
@@ -275,9 +295,21 @@ export function createVerdictsRouter(ctx: RouterCtx) {
       rework_tasks: reworkTasks.map(t => t.id),
       note: failed > 0
         ? '有 ' + failed + ' 项不通过：已自动回退实施并生成 ' + reworkTasks.length + ' 张返工任务'
-        : ((sheet !== undefined && isFullyDecidedItems(sheet.items))
+        // REQ-261006201920-2adc FR-4：回执文案必须与**放行判据同源**——原先读 `isFullyDecidedItems`，
+        // 而它的签名里没有 opinion/gapKind，**判不出「系统缺口项处置无效」**；于是 FR-4 上线后会出现
+        // 「文案说可以归档、门禁却拦下」的两处相反口径。改读 domain 的 `isFullyDecided`（那才是放行判据）。
+        : ((sheet !== undefined && isFullyDecided(sheet as never))
             ? '全部已裁决 → 请点「验收通过」归档（人工门）'
-            : '裁决已记录（挂起中，可稍后从断点续验）'),
+            // REQ-261007160829-1991 FR-2 / FR-4（design/interfaces.md I-9、backend.md S-4）：未复核项在
+            // 场时按**真实原因**分派——「分类计数 + 该补什么」由 domain/workflow/VerdictNotices.ts 单点拼出
+            // （与弹框通道同一处文案，禁在本文件再写死一句）。此处先守空串：无未复核项时不留孤立补法句。
+            : (unverifiedNote.length > 0
+                ? unverifiedNote
+                // 无未复核项 ⇒ 剩下两类真因：仍有待裁决项 / 系统缺口项处置无效。文案与它们各自对齐，
+                // 不再用一句话含糊盖过（旧句「挂起中，或仍有未处置的缺口项」已删）。
+                : (pending > 0
+                    ? '裁决已记录（仍有 ' + pending + ' 项待裁决）：裁决完即可点「验收通过」归档（人工门）'
+                    : '裁决已记录（尚有未处置的缺口项）：补齐处置后即可归档（人工门）'))),
     })
   }
 

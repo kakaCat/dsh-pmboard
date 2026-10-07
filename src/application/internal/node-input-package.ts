@@ -19,6 +19,8 @@ import {
   type ResolvedPrompt,
 } from '../../domain/prompt/index.js'
 import { fmt } from '../../domain/text/fmt.js'
+// 需求文档位置唯一解析点（2026-10-06）：host 与 client 共用同一条 <REQ> 契约，见模块头。
+import { requirementDocPathOf } from '../../domain/requirement/DocLocation.js'
 import { parseDocument } from './doc-parse.js'
 import { aggregateUnconfirmedLabels } from './artifact-gates.js'
 import { renderAddressSection } from '../../domain/template/index.js'
@@ -449,21 +451,13 @@ function renderAddressFor(input: NodeInputPackageInput): string {
 /**
  * 需求文档相对路径（REQ-260922012924-2e29 FR-2）。
  *
- * 解析优先级：`docLinks.requirement`（显式链接，最高）→ `docBasePath` 拼接 → 缺省
- * `docs/requirements/<REQ>/`。docBasePath 拼接契约（design/interfaces.md）：
- *  ① `<REQ>` 占位符全部替换为需求 id；
- *  ② docBasePath **无** `<REQ>` 时追加 `<id>/` 子目录（防多需求撞同一 requirement.md）；
- *  ③ 尾部斜杠归一；④文件名恒 `requirement.md`。
- * 兼容：无 docBasePath 的老记录走缺省分支，输出与改造前逐字节一致。
+ * **口径已上移到 `domain/requirement/DocLocation`（唯一解析点）**：本函数只做转发，
+ * 保留既有导出名与签名（十几个调用方的 `requirementDocPath(req)` 一字不改）。
+ * 为什么上移：client 半（会话流程面板要显示"文件到底在哪"）也要用同一条 `<REQ>` 契约，
+ * 而 application/internal 不能被 client import——留在这里就等于逼客户端再写一份拼法。
  */
 export function requirementDocPath(requirement: RequirementRecord | undefined): string {
-  if (requirement === undefined) return ''
-  if (requirement.docLinks?.requirement !== undefined) return requirement.docLinks.requirement
-  const raw = requirement.docBasePath ?? 'docs/requirements/<REQ>/'
-  const hasPlaceholder = raw.includes('<REQ>')
-  const base = raw.replaceAll('<REQ>', requirement.id)
-  const withId = hasPlaceholder ? base : base.replace(/\/?$/, '/') + requirement.id + '/'
-  return withId.replace(/\/?$/, '/') + 'requirement.md'
+  return requirementDocPathOf(requirement)
 }
 
 /** D-12 ②：给人可操作的等价路径（开新窗口 + 粘贴输入包）。 */

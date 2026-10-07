@@ -25,8 +25,13 @@ export const INJECTION_LOG_REL = 'state/prompt-injection-log.json'
  *
  * 三个值对应 design/data-model.md 的三个写入点；`system-prompt` 是实施时补的第四处
  * （`capture-section` 装配每轮系统提示词时也记留痕，设计稿只列了三处——见 t-cc7233 汇报）。
+ *
+ * `system-notice` 是第五处（REQ-261007100513-6749 t3）：**易变段的尾部投递**
+ * （`application/internal/notice-delivery.ts` → `inbox.prepend('next-step')`）。
+ * 它与 `system-prompt` 的区别正是本需求要能分开读的那件事：一个是"进了头部段"，
+ * 一个是"进了尾部通道"。**只增取值**：老日志没有这个值，读端照旧容忍未知。
  */
-export type InjectionLogOrigin = 'gate-h3' | 'dive-node' | 'dive-round' | 'system-prompt'
+export type InjectionLogOrigin = 'gate-h3' | 'dive-node' | 'dive-round' | 'system-prompt' | 'system-notice'
 
 /** 单条正文上限（design/data-model.md §注入留痕）：超出截断并置 `truncated`。 */
 export const INJECTION_LOG_TEXT_MAX = 8000
@@ -103,7 +108,12 @@ export const INJECTION_LOG_V2_FIELDS: readonly (keyof InjectionLogEntry)[] = [
   'origin', 'delivered', 'text', 'truncated',
 ]
 
-const ORIGINS: readonly InjectionLogOrigin[] = ['gate-h3', 'dive-node', 'dive-round', 'system-prompt']
+const ORIGINS: readonly InjectionLogOrigin[] = [
+  'gate-h3', 'dive-node', 'dive-round', 'system-prompt',
+  // REQ-261007100513-6749 t3（**只增**）：漏了它，`isInjectionLogEntry` 会把尾部投递的留痕判成
+  // 残缺记录整条丢掉——门禁变红是轻的，重的是"投了却说没投"（读端只剩 unknown）。
+  'system-notice',
+]
 
 /** 截断长正文（FR-9）：**不许静默丢弃**——截断必须留下 `truncated` 标，页面才能说「已截断」。 */
 export function capInjectionText(
@@ -181,6 +191,38 @@ export function injectionLogInputForRound(params: {
     charCount: params.text.length,
     trimmed: [],
     origin: 'dive-round',
+    delivered: params.delivered,
+    text: capped.text,
+    ...(capped.truncated ? { truncated: true } : {}),
+  }
+}
+
+/**
+ * 由**易变段投递**组装留痕入参（REQ-261007100513-6749 t3：origin='system-notice' = 真进尾部通道；
+ * origin='system-prompt' = 通道不可得时退回头部）。
+ *
+ * 与 `injectionLogInputForRound` 同款：尾部投递不是「按路由取词」的产物，故十字段里属于取词的
+ * 四项留空（**不填假 routeKey**）；`text` 就是**投出去的那份正文**（不改写、不加前缀——
+ * 页面据它回答「窗口到底收到了什么」）。
+ */
+export function injectionLogInputForNotice(params: {
+  windowKey: string
+  text: string
+  delivered: boolean
+  origin: 'system-notice' | 'system-prompt'
+}): InjectionLogInput {
+  const capped = capInjectionText(params.text)
+  return {
+    windowKey: params.windowKey,
+    stage: '',
+    difficulty: '',
+    category: '',
+    routeKey: '',
+    hitLevel: '',
+    fragmentIds: [],
+    charCount: params.text.length,
+    trimmed: [],
+    origin: params.origin,
     delivered: params.delivered,
     text: capped.text,
     ...(capped.truncated ? { truncated: true } : {}),

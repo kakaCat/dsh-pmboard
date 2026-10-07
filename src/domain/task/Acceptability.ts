@@ -22,6 +22,37 @@ import { fmt } from '../text/fmt.js'
 /** 可验证锚点：文件路径 / 命令 / 断言关键词——验收标准必须至少含一个，否则无法证伪。 */
 export const VERIFIABLE_ANCHOR = /\.(ts|tsx|js|mjs|cjs|md|html|json|py|go|css)\b|\b(npx|npm|pnpm|vitest|node|curl|grep|python3?|bash)\b|通过|拒绝|报错|可见|显示|包含|返回|等于|失败|成功|截图|输出|存在|被拒|拦截|告警|提示|落库|推进|不变|一致|单测|全绿|绿/
 
+/**
+ * 未替换占位符的**操作数位置**判据（REQ-261006201920-2adc FR-1 / D-2）。
+ *
+ * ## 为什么不是裸 `/<[^>]{2,40}>/`
+ *
+ * 审计给的原始口径是「含未替换尖括号即拒」。实测该口径会误伤四类**合法**验收标准：
+ *
+ * | 反例 | 为什么合法 |
+ * |---|---|
+ * | `Record<StageKind,string>`、`Map<realKey, Promise>` | TypeScript 泛型实参 |
+ * | 「每个值恰 1 个 `<svg>`」、`data-dsh-pm-rel="<ts>"` | 描述产品自身的字面量 |
+ * | `prototypes/<name>.html#FR-1`、`rtm-implementing/<id>.yml` | 路径**形态**模板（带真实后缀） |
+ * | 「断言 hint 不含子串 `<单册>`」 | 断言某串**不出现** |
+ *
+ * 真正有害的形态只有一个：**命令的操作数还是占位符**——`npx vitest run <相关测试文件>`。
+ * 读者照着跑必然失败，而门禁原先只认「含命令字样」故判绿（本需求要堵的就是这条）。
+ *
+ * ## 口径
+ *
+ * 命令字必须落在**命令位置**（行首 / 空白 / 反引号 / 管道 / `&&` / `;` / 左括号之后）且其后跟空白，
+ * 再在其后 40 字符内出现尖括号 token 即命中；不跨行匹配。
+ *
+ * 实测（全量 2013 张任务卡）：裸正则命中 948 张，本口径命中 **923 张（召回 97.4%）**，
+ * 且命中的 token 全是真模板占位符（`<相关测试文件>` / `<本卡改动涉及的测试文件>` / `<脚本>` …），
+ * 上表四类合法反例**全部放过**。
+ */
+export const PLACEHOLDER_OPERAND = /(?:^|[\s`|&;(])(?:npx|pnpm|npm|yarn|node|tsx|ts-node|python3?|bash|sh|vitest|jest|pytest)\s[^\n]{0,40}?<[^>]{2,40}>/i
+
+/** 任意尖括号 token（与回填词表同宽：内容 2..40 字符）。 */
+export const ANGLE_TOKEN = /<[^>]{2,40}>/
+
 /** 验收标准可证伪校验（REQ-2e9473 t03）：空话打回。key 用于拼拒绝消息。 */
 export function checkAcceptance(key: string, acceptance: string): AcceptanceVerdict {
   if (acceptance.length === 0) {
@@ -29,6 +60,13 @@ export function checkAcceptance(key: string, acceptance: string): AcceptanceVerd
   }
   if (VACUOUS_ACCEPTANCE.test(acceptance)) {
     return { ok: false, code: 'invalid_input', reason: fmt('计划任务 {key} 的验收标准是空话（"{acceptance}"）——必须可证伪：写清跑什么命令、看到什么算过（如"npx vitest run 全绿"、"详情页含 8 个进度点"）', { key, acceptance }) }
+  }
+  // 占位符排在锚点**之前**：`npx vitest run <相关测试文件>` 是含命令字样的，先判锚点会让它侥幸过关
+  // （这正是本需求要堵的形态——"可执行"被形式化成"含命令字样"）。
+  const placeholderHit = PLACEHOLDER_OPERAND.exec(acceptance)
+  if (placeholderHit !== null) {
+    const token = ANGLE_TOKEN.exec(placeholderHit[0])?.[0] ?? placeholderHit[0]
+    return { ok: false, code: 'invalid_input', reason: fmt('计划任务 {key} 的验收标准里，命令的操作数还是**未替换的占位符**（{token}）——照它跑必然失败。请把 {token} 换成真实路径/编号（如 `npx vitest run tests/x.test.ts`），或删掉这条命令、只留能证伪的断言', { key, token }) }
   }
   if (!VERIFIABLE_ANCHOR.test(acceptance)) {
     return { ok: false, code: 'invalid_input', reason: fmt('计划任务 {key} 的验收标准缺少可验证锚点（"{acceptance}"）——至少含一项：文件路径（.ts/.md/…）、命令（npx/vitest/curl/…）或断言（通过/拒绝/可见/包含/返回/一致/不变…）', { key, acceptance }) }

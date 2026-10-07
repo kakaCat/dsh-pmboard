@@ -356,7 +356,9 @@ function overdueFailure(moment: StageGateMoment, readings: MomentReadings): Gate
         moment, list: gateNames, expected,
       }),
       why: '每道门在该到位的时点必须到位——逾期状态不许被带进下一阶段（REQ-292a 的门禁丢 9 天无人发现，正是"红了也没人看"）',
-      how: '按上面点名的门逐项补齐（每条的「→」后面就是具体缺口与补法；各门自身的 how 里另有该门的补法），本地自检跑 npx tsx scripts/req-doc-validate.mts（9 项判据逐条给缺口），补完调 reqboard_move(requirement_id="<REQ>", to="<下一阶段>") 重试',
+      // t4（REQ-261007135258-331a FR-5）：指路改成 agent 可执行的统一入口——
+      // `reqboard_move` 走的是人工门（humanOnly），agent 调必被 REQBOARD_HUMAN_GATE 拒。
+      how: '按上面点名的门逐项补齐（每条的「→」后面就是具体缺口与补法；各门自身的 how 里另有该门的补法），本地自检跑 npx tsx scripts/req-doc-validate.mts（9 项判据逐条给缺口），补完重新调 reqboard_ask_confirm(target=artifact, kind=<该门要求的产物 kind>) —— 产物已落章 ⇒ 走「已确认未推进」分支，闸门全过即自动推进',
     }),
   }
 }

@@ -19,15 +19,13 @@
  * @module dsh-pmboard/application/use-cases/CaptureRequirement
  */
 import type { AskAnswer, AskQuestion, CaptureRejection, UseCaseDeps } from '../ports.js'
-import { mutateIfPresent, requirementStoreOf } from './queue-access.js'
-import { openRequirementsForVia } from '../internal/window.js'
-import { canReqTransition, normalizeText, normalizeTitle } from '../../shared/protocol.js'
+import { normalizeText, normalizeTitle } from '../../shared/protocol.js'
 import { LIMITS } from '../../domain/limits.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { isAbsolute } from 'node:path'
 import { statSync } from 'node:fs'
-import { captureSnapshot, transitionRequirement } from '../internal/token-usage.js'
 import { recentCaptureRejection } from '../internal/capture-rejections.js'
+import { advanceDraftToBrainstorming } from '../internal/advance-draft.js'
 import {
   buildCaptureIntentQuestions,
   buildCaptureDetailQuestions,
@@ -45,8 +43,11 @@ import {
   ensureWritableProjectRoot,
 } from '../internal/support.js'
 import { syncRTMYaml } from '../internal/rtm-yaml.js'
+// 需求文档位置唯一解析点（2026-10-06）：回执里那条"文档将存放在…"原先自己 `replace('<REQ>', id)`
+// ——只替第一个占位符、且 docBasePath 无占位符时**不追加 id 子目录**，于是回执给的相对路径
+// 与实际落点不是同一个目录（`docs/requirements/` → 少一层 `REQ-x/`）。
+import { requirementDocDirOf } from '../../domain/requirement/DocLocation.js'
 // REQ-261005105032-3b02 t11（FR-2）：弹框立项推进进需求阶段时幂等落原型骨架（失败只告警不阻断）。
-import { landPrototypeSkeleton } from '../internal/prototype-skeleton.js'
 import { taskStoreOf } from './queue-access.js'
 // FR-1（REQ-261004150249-731e）：开窗落点的三级解析与 reqboard_open_window 共用同一条链。
 import { resolveWindowCreateOptions } from './OpenWindow.js'
@@ -84,30 +85,7 @@ function resolveWorkspaceAnswer(answer: string, sessionCwd: string): string | un
 }
 
 /** 立项后原子推进 draft → brainstorming（G0 的 to）。失败只如实说明，不抛。 */
-async function advanceDraftToBrainstorming(deps: UseCaseDeps, requirementId: string, windowKey: string): Promise<boolean> {
-  if (!canReqTransition('draft', 'brainstorming')) return false
-  try {
-    const result = await mutateIfPresent(requirementStoreOf(deps), requirementId, (req) => {
-      if (req.status !== 'draft') return undefined
-      const at = deps.clock.now()
-      // REQ-b545fe t1：唯一迁移助手（结算离开节点 + 记入口快照，缺失不补 0）。
-      transitionRequirement(req, 'brainstorming', {
-        at,
-        actor: { kind: 'agent', sessionId: windowKey },
-        reason: '立项四问作答即立项（reqboard_capture 原子推进 draft → brainstorming）',
-        snap: captureSnapshot(deps, windowKey),
-      })
-      return { changed: true }
-    })
-    // REQ-261005105032-3b02 t11（FR-2）：弹框立项推进进需求阶段时同样幂等落原型骨架
-    // （只告警不阻断：落盘失败必须把 `true` 如实返回——推进真的发生了）。
-    const advanced = result?.requirement
-    if (advanced !== undefined) await landPrototypeSkeleton(deps.docs, advanced, { nowMs: deps.clock.now() })
-    return result !== undefined
-  } catch {
-    return false
-  }
-}
+// 实现已抽到 internal/advance-draft.ts：代理立项（reqboard_create + owner_window）走同一段编排。
 
 /**
  * 立项四问弹框用例（`reqboard_capture`）：四问作答 → 创建即立项 → 绑定本窗口 → 推进 brainstorming。
@@ -120,9 +98,10 @@ export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec:
   const a = (args ?? {}) as { title_options?: unknown; summary?: unknown; reason?: unknown; onWindowBound?: unknown; on_window_bound?: unknown }
   // 工具入参走 snake_case（on_window_bound），用例内部/测试用 camelCase——两个都认，取其一。
   const rawOnWindowBound = a.onWindowBound ?? a.on_window_bound
-  // FR-4（REQ-261003215944-9e04）：本窗口已绑定在飞需求时的分支。
+  // FR-4（REQ-261003215944-9e04）：一个窗口可以接多个项目，也可以把项目交出去。
   //   second（缺省） = 本窗口接第二个项目（本窗口当 owner）
   //   handoff        = 开一个新窗口，需求记在**它**名下（原窗口只留指针）
+  // handoff 与「本窗口是否已绑定」无关——未绑定时同样换窗（见 ① 的修复说明）。
   const boundPolicy: 'second' | 'handoff' = rawOnWindowBound === 'handoff' ? 'handoff' : 'second'
   if (rawOnWindowBound !== undefined && rawOnWindowBound !== 'second' && rawOnWindowBound !== 'handoff') {
     reject("reqboard_capture 未执行：onWindowBound 只能是 'second' 或 'handoff'", 'REQBOARD_INVALID_INPUT')
@@ -136,40 +115,44 @@ export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec:
   const reason = normalizeText(a.reason, 'reason')
 
   // ① 前置：白弹一次框是最贵的浪费（用户要等一次点击）。与 reqboard_create 的拒绝语义对齐。
-  // FR-4 起这里不再是"一律拒绝"：已绑定时按 onWindowBound 选择"本窗口接第二条"或"交给新窗口"。
+  // FR-4（REQ-261003215944-9e04）：已绑定时不再"一律拒绝"，而是按 onWindowBound 选
+  //   「本窗口接第二个项目（second）」或「交给新窗口（handoff）」。
+  //
+  // **修复：handoff 在未绑定时也曾被静默忽略**（委派立项失效，2026-10-06 实测）。
+  // 原实现把整段 handoff 关在 `if (本窗口已有在飞需求)` 里，于是**本窗口空闲、显式要求把需求
+  // 交给新窗口**这一最需要它的场合：不开窗、需求落回本窗口，而回执照报 bound_policy=handoff
+  // ——调用方以为派了出去，实际没有，也没有任何一处报错。
+  // handoff 的语义是「这条需求记在哪个窗口名下」，与「本窗口是否已经绑定」是两件事；
+  // 调用方显式要求 handoff 就必须真的换窗，换不了就如实拒绝（不静默降级成 second）。
   let ownerWindowKey = windowKey
   let handedOffTo: string | undefined
-  if ((await openRequirementsForVia(requirementStoreOf(deps), windowKey)).length > 0) {
-    if (boundPolicy === 'second') {
-      // 本窗口接第二个项目：继续走完弹框与建档，只是不再拒绝。
-    } else {
-      // handoff：先开一个新窗口，再把这个项目记在它名下。
-      const opener = deps.windowOpener
-      if (opener === undefined || !opener.available()) {
-        reject(
-          'reqboard_capture 未执行：本窗口已绑定在飞需求，且会话开窗能力不可用（无法 handoff）；请改用 onWindowBound=second',
-          'REQBOARD_OPEN_WINDOW_UNAVAILABLE',
-        )
-      }
-      // REQ-261004150249-731e FR-1：开窗前先解析源项目落点（与 OpenWindow 同一条三级链）；
-      // 解析不出就响亮失败，且**不调用** create——绝不在宿主目录里静默建窗。
-      const target = resolveWindowCreateOptions(opener, windowKey, exec)
-      if (target === undefined) {
-        reject(
-          'reqboard_capture 未执行：拿不到源会话的项目落点（workspace 与 cwd 都不可得），不在宿主目录里静默建窗；请改用 onWindowBound=second',
-          'REQBOARD_OPEN_WINDOW_UNAVAILABLE',
-        )
-      }
-      const opened = await opener.create(target)
-      if (!opened.ok) {
-        reject(
-          `reqboard_capture 未执行：handoff 开窗失败（${opened.reason}）；请改用 onWindowBound=second`,
-          'REQBOARD_OPEN_WINDOW_UNAVAILABLE',
-        )
-      }
-      ownerWindowKey = opened.windowKey
-      handedOffTo = opened.windowKey
+  if (boundPolicy === 'handoff') {
+    // handoff：先开一个新窗口，再把这个项目记在它名下。
+    const opener = deps.windowOpener
+    if (opener === undefined || !opener.available()) {
+      reject(
+        'reqboard_capture 未执行：会话开窗能力不可用（无法 handoff）；请改用 onWindowBound=second',
+        'REQBOARD_OPEN_WINDOW_UNAVAILABLE',
+      )
     }
+    // REQ-261004150249-731e FR-1：开窗前先解析源项目落点（与 OpenWindow 同一条三级链）；
+    // 解析不出就响亮失败，且**不调用** create——绝不在宿主目录里静默建窗。
+    const target = resolveWindowCreateOptions(opener, windowKey, exec)
+    if (target === undefined) {
+      reject(
+        'reqboard_capture 未执行：拿不到源会话的项目落点（workspace 与 cwd 都不可得），不在宿主目录里静默建窗；请改用 onWindowBound=second',
+        'REQBOARD_OPEN_WINDOW_UNAVAILABLE',
+      )
+    }
+    const opened = await opener.create(target)
+    if (!opened.ok) {
+      reject(
+        `reqboard_capture 未执行：handoff 开窗失败（${opened.reason}）；请改用 onWindowBound=second`,
+        'REQBOARD_OPEN_WINDOW_UNAVAILABLE',
+      )
+    }
+    ownerWindowKey = opened.windowKey
+    handedOffTo = opened.windowKey
   }
   // ①.5 拒绝粘滞（REQ-260922012924-2e29 FR-5）：同窗口 30 分钟内已在弹框选择"不需要立项"
   // → 不再弹框。场景：上次 capture 调用超时/中断，用户答复随死掉的调用丢失，agent 不知
@@ -305,7 +288,10 @@ export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec:
   })
 
   // ⑤ 原子推进 brainstorming（G0 的 to）
-  const advanced = await advanceDraftToBrainstorming(deps, req.id, windowKey)
+  const advanced = await advanceDraftToBrainstorming(
+    deps, req.id, windowKey,
+    '立项四问作答即立项（reqboard_capture 原子推进 draft → brainstorming）',
+  )
 
   // ⑥ RTM 触发点 1（REQ-260926140539-457b FR-2）：**窗口已绑定**（createRequirementDirect 已写
   // sourceSessionId）+ 阶段已落定 → 生成 rtm-lifecycle.yml，并带上绑定窗口（source_session）。
@@ -353,8 +339,9 @@ export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec:
         category: mapped.category,
         difficulty: mapped.difficulty,
         // FR-4：回执直接给绝对路径（用户反馈"不知道绝对路径是哪里"）；相对路径口径不变。
-        docPath: deps.docs.resolve(mapped.docLocation.replace('<REQ>', req.id)),
-        relPath: mapped.docLocation.replace('<REQ>', req.id),
+        // 2026-10-06：目录由**台账已落库的 docBasePath** 解析（唯一解析点），不再自己 replace 占位符。
+        docPath: deps.docs.resolve(requirementDocDirOf(req) + '/'),
+        relPath: requirementDocDirOf(req) + '/',
         workspaceRoot,
         advanced: advanced ? '' : '注意：draft → brainstorming 未推进成功，链会如实记为未推进。',
       },

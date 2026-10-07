@@ -12,6 +12,7 @@
  * @module dsh-pmboard/application/internal/plan-deps-check
  */
 import type { PlanTask } from '../../shared/protocol.js'
+import { declaredFiles } from './conflict-check.js'
 
 /**
  * 从计划文档提取「key → 文档声明的依赖 key 集」。
@@ -57,6 +58,48 @@ export function planDependencyWarnings(docText: string, tasks: readonly PlanTask
       + '——疑似漏传 depends_on 字段（落库后该卡会与上游并行开工、顺序语义丢失）；'
       + '如确有依赖请重交计划补上，如无依赖请把文档依赖表改成「-」',
     )
+  }
+  return warnings
+}
+
+/**
+ * 零交集依赖边的点名（2026-10-06 缺口 4 之三）——**只点名、不拒**，与上面同构。
+ *
+ * 为什么需要：`depends_on` 是自由文本的语义声明，落库后就是**硬串行**（上游没完下游不动）。
+ * 而计划里的依赖边有一类很贵的手滑——把本可并行的卡串成链（"顺手都依赖一下 t1"），
+ * 成本是整轮 wall-clock，且没有任何判据会红。本函数用唯一可得的客观量（两端 implementation
+ * 里声明的文件路径，`declaredFiles`）做交集：**零交集 = 这条边在文件面上没有任何证据**，
+ * 于是点名要理由（写进 `tasks[].dep_reasons` = 作者已复核过这条边），而不是替作者判它错。
+ *
+ * 诚实的边界（为什么**两端都得有声明的路径**才点名）：`declaredFiles` 是文本抽取器，抽不到
+ * 就等于"没有证据"——一端抽空时交集必空，此时点名会把「implementation 没写路径」误报成
+ * 「伪依赖」。与 conflict-check 的诚实边界同口径：**没依据就不说话**。代价如实登记：
+ * 路径没写进 implementation 的计划，本判据查不出（想让它查得出，先把落点写进 implementation）。
+ *
+ * 理由的读法：`PlanTask.dep_reasons`（`{ 上游 key: 一句话 }`，主拼 snake、兼容 camel `depReasons`）。
+ * 有理由 = 不点名（不再判理由写得好不好——那是复核人读文档时的判断，机器再判一次只会逼人写套话）。
+ */
+export function zeroOverlapDependencyWarnings(tasks: readonly PlanTask[]): string[] {
+  if (tasks.length === 0) return []
+  const byKey = new Map(tasks.map((t) => [t.key, t]))
+  const filesOf = new Map(tasks.map((t) => [t.key, declaredFiles(t.implementation ?? '')]))
+  const warnings: string[] = []
+  for (const t of tasks) {
+    const mine = filesOf.get(t.key) ?? []
+    if (mine.length === 0) continue
+    for (const dep of t.dependsOn ?? []) {
+      const up = byKey.get(dep)
+      if (up === undefined) continue // 悬空依赖另有判据（checkPlanTaskReferences），这里不抢报
+      const theirs = filesOf.get(dep) ?? []
+      if (theirs.length === 0) continue // 上游没声明路径 → 没有证据，不误报（见上「诚实的边界」）
+      if (mine.some((f) => theirs.includes(f))) continue // 有交集 = 这条边在文件面上站得住
+      if ((t.dep_reasons ?? {})[dep] !== undefined) continue // 已给语义理由 → 作者复核过，放行
+      warnings.push(
+        `${t.key} → ${dep}：两端声明文件零交集（${t.key}: ${mine.join(',')} / ${dep}: ${theirs.join(',')}）`
+        + '——疑似伪依赖（可并行的卡被串成链，落库后是硬串行）；确需串行请在 tasks[] 的 dep_reasons 里'
+        + `给 ${dep} 写一句语义理由（例：「${dep} 重建队列文件，${t.key} 读它，虽无同名文件但有时序约束」）`,
+      )
+    }
   }
   return warnings
 }

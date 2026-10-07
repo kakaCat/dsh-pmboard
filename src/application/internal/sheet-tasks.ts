@@ -23,6 +23,11 @@ export interface SheetTaskInput {
   acceptance: string
   /** 有值 = 子卡：buildSheet 只收顶层父卡，子卡验收由父卡项覆盖。 */
   parentId?: string
+  /**
+   * 本卡请求预算覆盖值（REQ-261007100513-6749 t1 / FR-6）：与 `TaskRecord.budgetRequests` 同名。
+   * **可选**：缺省 = 不写该键 = 未覆盖（读端按 `LIMITS.subtaskRequestBudget` 起算），不冒充 0。
+   */
+  budgetRequests?: number
 }
 
 /**
@@ -44,6 +49,8 @@ export function toSheetTasks(tasks: readonly TaskRecord[]): SheetTaskInput[] {
       title: t.title,
       acceptance: t.acceptance ?? '',
       ...(parentId !== undefined ? { parentId } : {}),
+      // REQ-261007100513-6749 t1 / FR-6：预算覆盖值同样透传（可选；缺省 = 键缺席，不补 0）。
+      ...(t.budgetRequests !== undefined ? { budgetRequests: t.budgetRequests } : {}),
     })
   }
   return out

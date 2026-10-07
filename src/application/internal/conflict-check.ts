@@ -22,7 +22,12 @@ export interface WorkSurfaceConflict {
 
 import { fmt } from '../../domain/text/fmt.js'
 
-const PATH_RE = /(?:agent-dh\/)?(?:packages|scripts|tests|docs)\/(?:[\w@-]+\/)*[\w@.-]+\.(?:tsx|json|mjs|cjs|ts|js|md|css|html|yaml|yml)/g
+// REQ-261007095750-9f48 FR-1：口径扩根——根补 `src`（本仓绝大多数落点在 src，原四根看不见它），
+// 扩展名补 `mts`。**只改这一处**：declaredFiles 是**冲突族判据**的唯一抽取器（文件冲突门与零交集依赖建议共用它）；
+// 给其中一处另配口径必然分叉（本仓反复踩过「门禁读 A、下游读 B」）。
+// 口径澄清：`src/domain/task/Footprint.ts` 另有一套更宽的 PATH_RE 服务「体量下限」这一第三类消费者
+// （已含 src、不含 packages、不要求扩展名），两者用途不同，不是分叉。
+const PATH_RE = /(?:agent-dh\/)?(?:src|packages|scripts|tests|docs)\/(?:[\w@-]+\/)*[\w@.-]+\.(?:tsx|mts|json|mjs|cjs|ts|js|md|css|html|yaml|yml)/g
 
 /** 抽取 implementation 声明的工作区文件路径（去重）。 */
 export function declaredFiles(implementation: string): string[] {

@@ -31,6 +31,8 @@
 import { fmt } from '../../domain/text/fmt.js'
 import { extractClauseDefinitions, markCodeFences, parseDocument } from '../internal/content-gates.js'
 import { designDocNamesOf } from '../internal/design-docs.js'
+// 需求文档位置唯一解析点（2026-10-06）：本文件原先是第三个写死副本。
+import { requirementDocDirOf, requirementDocPathOf } from '../../domain/requirement/DocLocation.js'
 import type { PanelQueryDeps, PanelQueryInput, QueryTrunk } from './contracts.js'
 import type {
   RequirementRecord,
@@ -660,12 +662,18 @@ export function assembleTrunk(input: AssembleTrunkInput): TrunkResponse {
 
 /* ── 端口版入口（IO 只在这里） ───────────────────────────────────────────────── */
 
-/** 设计文档 / 需求文档都按仓内既有约定定位（与 QueryRequirementMarks、design-docs 同源）。 */
-function requirementDocPath(reqId: string): string {
-  return 'docs/requirements/' + reqId + '/requirement.md'
+/**
+ * 设计文档 / 需求文档都按**唯一解析点**定位（2026-10-06）。
+ *
+ * 原先是本文件自己拼 `docs/requirements/<id>/…`——第三个副本。于是立项时选了别的
+ * 文档位置的需求，在汇报页读到的是另一个目录：主干七条全判「文档未提供该节」，
+ * 而文件明明在盘上（与 REQ-261005143615-5ab1 修过的那类"页面撒谎"同源）。
+ */
+function requirementDocPath(req: RequirementRecord): string {
+  return requirementDocPathOf(req)
 }
-function designDirOf(reqId: string): string {
-  return 'docs/requirements/' + reqId + '/design'
+function designDirOf(req: RequirementRecord): string {
+  return requirementDocDirOf(req) + '/design'
 }
 
 /** 文档最后更新时间（取需求文档 + 设计文档的最大 mtime；一份都取不到 → undefined，不编）。 */
@@ -711,8 +719,8 @@ export const queryTrunk: QueryTrunk = async (deps: PanelQueryDeps, input: PanelQ
     }
   }
 
-  const requirementPath = requirementDocPath(req.id)
-  const designDir = designDirOf(req.id)
+  const requirementPath = requirementDocPath(req)
+  const designDir = designDirOf(req)
   let requirementText: string | undefined
   const designDocs: TrunkDocInput[] = []
   const docs = deps.docs
@@ -727,7 +735,7 @@ export const queryTrunk: QueryTrunk = async (deps: PanelQueryDeps, input: PanelQ
     }
     let names: string[] = []
     try {
-      names = designDocNamesOf(docs, req.id)
+      names = designDocNamesOf(docs, req)
     } catch {
       names = []
     }

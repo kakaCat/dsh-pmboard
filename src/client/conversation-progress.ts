@@ -28,6 +28,9 @@ import { PANEL_DAG_CANVAS_ID } from './views/dag-view.js'
 import { readDagViewState, writeDagViewState, clearDagViewState } from './dag/view-state.js'
 import { hydrateNodePanel } from './panel-hydrate.js'
 import { fetchState } from './api.ts'
+// 需求文档位置（2026-10-06）：面板的「📂 文档位置」必须显示**台账里那条**（立项四问选的），
+// 不再是本组件/渲染器自己拼的 docs/requirements/<id>/。
+import { fetchDocLocation, type DocLocationView } from './req-doc-location.ts'
 import type { StageKey } from '../shared/protocol.ts'
 import { fmtTokens } from '../shared/protocol.ts'
 // REQ-260930230225-71be FR-1/FR-3：流程图的节点口径（七节点 / 四态 / 分类跳过 / token / 计数）
@@ -105,6 +108,12 @@ export function RequirementProgressAction(props: RequirementProgressProps): Reac
   const [selectedStage, setSelectedStage] = useState<string | null>(null)
   // REQ-260928222643-4d34 FR-3：入口失败就地提示（面板内可见，不静默）
   const [entryError, setEntryError] = useState<string>('')
+  /**
+   * 需求文档位置（2026-10-06 用户现场：面板的「📂 文档位置」写死相对路径，与实际落盘的
+   * 绝对路径对不上）。取值来自台账 `docBasePath`（立项四问里用户选的那个），
+   * 渲染与绝对化见 `req-doc-location`。取不到 → undefined，渲染方走旧口径。
+   */
+  const [docDir, setDocDir] = useState<DocLocationView | undefined>(undefined)
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const lastSid = useRef<string | undefined>(undefined)
 
@@ -173,6 +182,19 @@ export function RequirementProgressAction(props: RequirementProgressProps): Reac
   const stageOverviewErr = panelView.error
   const freshness = panelView.freshness
   const buildNotice = panelView.buildNotice
+
+  /**
+   * 取该需求的真实文档位置（台账 docBasePath）。**换需求先清空**（不串档，与 FR-4 同款纪律）：
+   * 清空后渲染回落旧口径，取到再换真实值——绝不把上一个需求的位置留在屏上。
+   * 只在需求 id 变化时取一次（`req-doc-location` 内按 id 缓存），不跟着 5s 轮询重取。
+   */
+  useEffect(() => {
+    setDocDir(undefined)
+    if (reqIdForStage === undefined) return
+    let alive = true
+    void fetchDocLocation(reqIdForStage).then((loc) => { if (alive) setDocDir(loc) })
+    return () => { alive = false }
+  }, [reqIdForStage])
 
   // ---- REQ-261001210304-0dfb：视图状态记忆键 + 面板补丁（全部必须在下面 `if (data === null…) return null`
   // 早退之前声明——hooks 不能排在条件返回之后）----
@@ -415,7 +437,7 @@ export function RequirementProgressAction(props: RequirementProgressProps): Reac
         __html: renderNodePanel({
           overview: stageOverview,
           stage: (selectedStage ?? stageOverview.currentStage) as StageKey,
-          requirement: { id: req.id ?? '', title, promptDifficulty: req.promptDifficulty ?? null, category: req.category ?? undefined },
+          requirement: { id: req.id ?? '', title, promptDifficulty: req.promptDifficulty ?? null, category: req.category ?? undefined, ...(docDir !== undefined ? { docDir } : {}) },
           // FR-2/FR-3/FR-5：数据时间、失败红条、插件已更新——有旧数据时也照出（不再被"有数据"吞掉）
           ...(panelFreshness !== undefined ? { freshness: panelFreshness } : {}),
           ...(buildNotice !== null ? { buildNotice } : {}),

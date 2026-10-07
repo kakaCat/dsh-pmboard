@@ -326,11 +326,17 @@ export function verifyRework(input: { id: string; note: string }): Promise<unkno
   return post(BASE + '/req/verify/rework', input)
 }
 
-/** 验收单逐项裁决（REQ-2e9473 t14/W6）：逐项 passed/failed + 意见。 */
+/**
+ * 验收单逐项裁决（REQ-2e9473 t14/W6）：逐项 passed/failed + 意见。
+ *
+ * `changeReason`（REQ-261006201920-2adc FR-3 / D-3）：人**覆盖** agent 实测原文时的变更理由，
+ * 缺失会被服务端拒绝（`result_change_reason_required`）。这里必须显式声明——不声明时
+ * 传变量能绕过 TS 的多余属性检查、字段没有契约，将来谁把它"顺手删掉"也不会有人发现。
+ */
 export function submitVerdicts(input: {
   id: string
   version: number
-  verdicts: { itemId: string; status: 'passed' | 'failed'; opinion?: string }[]
+  verdicts: { itemId: string; status: 'passed' | 'failed'; opinion?: string; changeReason?: string }[]
 }): Promise<unknown> {
   return post(BASE + '/req/verdicts', input)
 }
@@ -369,6 +375,15 @@ export function fetchRequirementToken(reqId: string): Promise<RequirementTokenVi
  * ────────────────────────────────────────────────────────────────────────── */
 
 /**
+ * 面板端点的名字 = **Tab 键**（`ReportTabKey` 由注册表推导，见 IF-4）。
+ *
+ * 首屏摘要端点 `report` 是唯一例外：它不对应任何 Tab（head/band/actions 那一段）。
+ * 这就是「同源推导」——端点名不再手写第二份清单，加一个 Tab 时取数端点自动跟上；
+ * **只收敛类型，不改形状**（URL / 参数 / 响应形状一字不动，FR-6）。
+ */
+type PanelEndpoint = ReportTabKey
+
+/**
  * 面板端点的 URL（各 Tab 一个形状，避免多处各拼一遍路径）。
  *
  * `sessionId` **必须带上**：服务端据它把「文档根」解析成该会话的工作区根
@@ -377,7 +392,7 @@ export function fetchRequirementToken(reqId: string): Promise<RequirementTokenVi
  */
 function panelUrl(
   id: string,
-  endpoint: 'report' | 'trunk' | 'docs' | 'dag' | 'dialogue' | 'verify' | 'prompts',
+  endpoint: 'report' | PanelEndpoint,
   sessionId?: string,
 ): string {
   const base = BASE + '/requirements/' + encodeURIComponent(id) + '/' + endpoint

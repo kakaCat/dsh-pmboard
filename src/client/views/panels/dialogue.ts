@@ -32,7 +32,7 @@ import { esc } from '../../html.js'
 import { mdInlineEscaped } from '../../render/md-inline.js'
 import { fmtTime, windowCodeFromSessionId } from '../../render/dom-utils.ts'
 import type { DialogueSystemEvt } from '../../../shared/protocol.js'
-import type { ReportTabCtx, ReportTabDef } from '../report-tabs.js'
+import type { PanelShape, ReportTabCtx } from '../report-tabs.js'
 
 /* ────────────────────────────────────────────────────────────── 载荷形状 */
 
@@ -315,7 +315,7 @@ export function renderDialogue(data: unknown, _ctx: ReportTabCtx): string {
 
 /* ────────────────────────────────────────────────────────────── 注册 */
 
-export const dialoguePanel: ReportTabDef = {
+export const dialoguePanel: PanelShape & { key: 'dialogue' } = {
   key: 'dialogue',
   label: '对话',
   // 角标数字只能来自首屏 report 快照里的**服务端计数**（T-8）。

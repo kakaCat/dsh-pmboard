@@ -16,6 +16,8 @@ import {
 import { esc } from './html.js'
 import { displayDocPath } from './open-doc.ts'
 import type { InjectionInfoEntry } from './injection-info.ts'
+// 文档位置唯一渲染（2026-10-06）：与 📂 行共用，避免同一地址两处各拼一遍
+import { docLocationHtml, type DocLocationView } from './req-doc-location.ts'
 
 /** 隔离留痕的 client 只读投影（不 import host 模块，与 InjectionInfoEntry 同款纪律）。 */
 export interface IsolationLogEntry {
@@ -292,7 +294,14 @@ function fragmentDocPath(id: string): string {
 // ---------------------------------------------------------------------------
 
 export interface ProcessFoldContext {
-  requirement: { id: string; title: string; promptDifficulty?: string | null; category?: string }
+  requirement: {
+    id: string
+    title: string
+    promptDifficulty?: string | null
+    category?: string
+    /** 需求文档位置（台账 docBasePath 解析；缺省 = 未取到 → 旧口径回落）。见 `req-doc-location`。 */
+    docDir?: DocLocationView
+  }
   injection: InjectionInfoEntry[]
   isolation: IsolationLogEntry[]
 }
@@ -352,9 +361,12 @@ function renderActionsSec(payload: StageDetail, ctx: ProcessFoldContext): string
     if (typeof ctx.requirement.promptDifficulty === 'string' && ctx.requirement.promptDifficulty.length > 0) {
       lines.push(`提示词难度：${ctx.requirement.promptDifficulty}`)
     }
-    lines.push(`文档位置：docs/requirements/${ctx.requirement.id}/`)
+    // 2026-10-06：与「📂 文档位置」同一份渲染（同一件事不许两处各拼一遍路径）。
+    // 这一行是**用户立项时选的**文档位置，必须显示解析后的真实目录，不是拼死值。
+    lines.push(`文档位置：${docLocationHtml(ctx.requirement.docDir, ctx.requirement.id)}`)
     choices = `<div class="dsh-pm-np-sec"><div class="dsh-pm-np-sec-title">👤 用户选择（立项五问）</div>` +
-      lines.map(l => '<div class="dsh-pm-np-policy">' + esc(l) + '</div>').join('') + '</div>'
+      // lines 现已是 HTML 片段（文档位置那行带小字/绝对路径）→ 不再整体 esc，逐行由产出方负责转义
+      lines.map(l => '<div class="dsh-pm-np-policy">' + l + '</div>').join('') + '</div>'
   }
 
   return `<div class="dsh-pm-np-sec"><div class="dsh-pm-np-sec-title">⚙️ 执行动作（规定 vs 实际）</div>${rows}</div>` + choices

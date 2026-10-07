@@ -138,6 +138,12 @@ export const NODE_PANEL_CSS = `
 .dsh-pm-np-info-label { flex: 0 0 auto; min-width: 96px; font-size: 12.5px; color: var(--dsh-pm-np-text2); white-space: nowrap; }
 .dsh-pm-np-info-value { flex: 1 1 auto; min-width: 0; font-size: 13.5px; color: var(--dsh-pm-np-text); }
 .dsh-pm-np-info-value.is-desc { white-space: pre-wrap; line-height: 1.5; }
+/* 文档位置（2026-10-06）：绝对路径可能很长 → 等宽 + 可在任意处折行，不撑破面板；
+   台账相对路径小字用全局 .dsh-pm-hint（base.ts），这里只管长路径本身。 */
+.dsh-pm-np-info-value .dsh-pm-doc-filepath {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px; word-break: break-all;
+}
 .dsh-pm-np-tag {
   display: inline-block; background: rgba(0,113,227,.1); color: var(--dsh-pm-np-blue);
   border-radius: 980px; padding: 2px 10px; font-size: 12px; font-weight: 500;
@@ -266,8 +272,13 @@ ${LANE_HEAD_CSS}
    2026-09-24 用户裁定：DAG 节点与泳道卡片共用同一套六状态色（原 DAG 只有 done 绿 / 其余一律蓝两档，与泳道不一致）。 */
 /* 六阶段卡片底色由 STAGE_COLORS 插值（REQ-260930182521-4fee FR-1，色值唯一源见 dag/card-types.ts） */
 ${LANE_CARD_BG_CSS}
-/* 链未生成（卡片层契约 2026-09-28）：chain 卡缺链必须与 solo 卡视觉可分，否则"没子卡"两种含义又混回去。 */
-.dsh-pm-np-chain-missing { display: inline-block; margin-top: 2px; padding: 0 5px; border-radius: 4px; font-size: 10px; background: rgba(240,160,32,.16); color: #a86a00; }
+/* 链未生成（卡片层契约 2026-09-28）：chain 卡缺链必须与 solo 卡视觉可分，否则"没子卡"两种含义又混回去。
+   色值定稿（REQ-261006211623-9dc1 FR-6，design/frontend.md §六）：深红 #991b1b on rgba(220,38,38,.10)
+   ≈ 6:1 —— 原琥珀 #a86a00 on rgba(240,160,32,.16) ≈ 3.9:1 不达 WCAG AA 4.5:1。
+   红标不只靠颜色：文字「链未生成」是主载体，颜色只是加强。 */
+.dsh-pm-np-chain-missing { display: inline-block; margin-top: 2px; padding: 0 5px; border-radius: 4px; font-size: 10px; background: rgba(220,38,38,.10); color: #991b1b; border: 1px solid rgba(220,38,38,.4); }
+/* 圆点（原型 .badge .dot，dag-chain-missing.html:108）：纯装饰，aria-hidden 不参与可访问名 */
+.dsh-pm-np-chain-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #dc2626; margin-right: 4px; vertical-align: 1px; }
 
 /* ===== 执行流程三段 ===== */
 .dsh-pm-np-sec { display: flex; flex-direction: column; gap: 6px; }

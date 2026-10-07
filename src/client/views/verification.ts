@@ -294,7 +294,20 @@ export function renderManualUpdates(a: ArchiveRecord): string {
       : ''
   }
   const items = updates.map(u =>
-    '<li><code>' + esc(u.path) + '</code><span class="dsh-pm-doc-kind">' + esc(u.section) + '</span><span>' + esc(u.summary) + '</span></li>').join('')
+    '<li><code>' + esc(u.path) + '</code><span class="dsh-pm-doc-kind">' + esc(manualUpdateLabel(u)) + '</span><span>' + esc(u.summary) + '</span></li>').join('')
   return '<div class="dsh-pm-doc-group"><span class="dsh-pm-hint">项目说明书更新（金字塔向上生长）</span>'
     + '<ul class="dsh-pm-doc-list">' + items + '</ul></div>'
+}
+
+/**
+ * 说明书更新点的人读标签（REQ-261006201841-944d FR-2）。
+ *
+ * 新形态：锚点已在 `path` 里（`路径#锚点`）——直接用，不重复拼。
+ * 旧形态（历史台账，path 无 `#`）：把废弃的 `section` 回落呈现为 `路径（旧：章节名）`，
+ * 两边都不得丢信息（存量不追溯，但必须仍读得懂）。
+ */
+export function manualUpdateLabel(u: { path: string; section?: string }): string {
+  if (u.path.includes('#')) return u.path
+  const legacy = typeof u.section === 'string' ? u.section.trim() : ''
+  return legacy.length > 0 ? u.path + '（旧：' + legacy + '）' : u.path
 }

@@ -20,9 +20,10 @@ import { artifactsToConfirm } from '../internal/artifact-gates.js'
 import { checkDesignCompletenessGate, checkDesignDecompositionGate, contentGatesForMove } from '../internal/content-gate-wiring.js'
 import { advanceTargetFor, gateFromStage } from '../../domain/gate/GateCatalog.js'
 import { canReqTransition } from '../../domain/requirement/RequirementStatus.js'
-import { captureSnapshot, transitionRequirement } from '../internal/token-usage.js'
+import type { RequirementStatus } from '../../shared/protocol.js'
+
 // FR-10：确认推进后的 dive 复位（唯一写入口）
-import { applyDiveTransition } from '../dive/applyDiveTransition.js'
+
 import {
   reject,
   agentIdFromExec,
@@ -31,7 +32,8 @@ import {
 } from '../internal/support.js'
 // REQ-261006164732-6503 t13（serves: FR-4）：文字证据路径与其余通道共用**首写纪律**
 // （独立复核发现的漏网写点之一：原本拿一份文本证据就能覆写已落章的 confirmedAt / 证据原文）
-import { stampArtifactOnce, stampPlanOnce } from '../internal/confirm-settle.js'
+import { applyConfirmedAdvance, stampArtifactOnce, stampPlanOnce } from '../internal/confirm-settle.js'
+import { finishConfirmAdvance } from '../internal/confirm-advance-finish.js'
 
 export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
       const windowKey = agentIdFromExec(deps, exec)
@@ -247,41 +249,39 @@ export async function confirmArtifact(deps: UseCaseDeps, args: unknown, exec: an
             advanceNote = '；' + gateFailure.message
             gateFailureOut = gateFailure
           } else {
-            try {
-              await mutateIfPresent(requirementStoreOf(deps), changed.id, (req) => {
-                if (req.status !== changed.status) return undefined
-                transitionRequirement(req, to as never, {
-                  at: deps.clock.now(),
-                  actor: { kind: 'human', sessionId: windowKey },
-                  reason: fmt('会话确认产物（kind={kind}，evidence 已核验）即推进', { kind: kindRaw }),
-                  snap: captureSnapshot(deps, windowKey),
-                })
-                req.comments.push({
-                  id: deps.ids.comment(),
-                  body: fmt('[自动推进] {from} → {to}：会话确认产物（kind={kind}，evidence 已核验）', { from: changed.status, to, kind: kindRaw }),
-                  createdAt: deps.clock.now(),
-                  createdBy: { kind: 'human', sessionId: windowKey },
-                })
-                return { changed: true }
-              })
-              advanced = true
-            } catch (err) {
-              advanceNote = '；推进失败：' + ((err as Error).message ?? String(err))
-            }
+            // t3（REQ-261007135258-331a FR-2）：推进改调**唯一实现** `applyConfirmedAdvance`
+            // —— 它内含统一收尾（清停手位 + 复位运行时健康）。本路径此前只有"自己的 dive 复位"、
+            // 完全不碰停手位：人在弹框里确认过（留下 awaiting-confirm:*）之后再走证据路径，
+            // 台账停手位没人清 ⇒ 链永远不动（这正是 2026-10-07 那次 2.5 小时静默停摆的一半成因）。
+            const advanceOut = await applyConfirmedAdvance(deps, {
+              requirementId: changed.id,
+              windowKey,
+              from: changed.status as RequirementStatus,
+              to: to as RequirementStatus,
+              nowTs: deps.clock.now(),
+              reason: fmt('会话确认产物（kind={kind}，evidence 已核验）即推进', { kind: kindRaw }),
+              commentBody: fmt('会话确认产物（kind={kind}，evidence 已核验）', { kind: kindRaw }),
+              sourceLabel: 'evidence',
+            })
+            advanced = advanceOut.advanced
+            advanceNote = advanceOut.advanceNote
           }
         }
       }
-      // ── FR-10（REQ-261003215944-9e04）：与弹框路径同口径置一次 dive 复位 ──────
-      // 落章+推进之后，运行时暂停位应当复位（否则"确认了、链却不动"）。
-      // 本块与 confirm-settle 是**同一条语义的两条入口**，故都走同一个 `confirm-advance` 事件；
-      // `stageChanged` 只在真的跨了阶段时为真（幂等，重放不会重复归零）。
-      await applyDiveTransition(
-        { store: requirementStoreOf(deps), now: () => deps.clock.now() },
-        changed.id,
-        'confirm-advance',
-        { kind: 'human', sessionId: windowKey },
-        { stageChanged: advanced, status: changed.status },
-      )
+      // ── FR-10（REQ-261003215944-9e04）：未推进时补一次收尾 ────────────────────
+      // 已推进 ⇒ 单点内部已收尾（含清停手位），本处不重复；未推进（门拦下 / kind 不符 /
+      // 无可推进目标）⇒ 由本处补一次收尾，`stageChanged:false`（域规则只复位健康位、
+      // 不归零 roundsInStage——FR-10 既有语义逐字保留）。
+      if (!advanced) {
+        await finishConfirmAdvance(deps, {
+          requirementId: changed.id,
+          windowKey,
+          from: changed.status as RequirementStatus,
+          to: (advanceTargetFor(changed.status) ?? changed.status) as RequirementStatus,
+          nowTs: deps.clock.now(),
+          stageChanged: false,
+        })
+      }
       return {
         success: true,
         requirement_id: changed.id,

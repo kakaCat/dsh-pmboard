@@ -17,6 +17,133 @@
 import type { ActorRef } from '../actor.js'
 import { REQBOARD_ERROR_CODES, domainError } from '../errors.js'
 import { fmt } from '../text/fmt.js'
+import { checkAcceptance, checkHowToVerify } from '../task/Acceptability.js'
+import type { CardFootprint } from '../task/Footprint.js'
+
+// ── 裁决判据词表（REQ-261006201920-2adc FR-3 / FR-4）────────────────────────────
+/**
+ * 裁决结果的**可复核锚点**（普通项）：命令 / 代码与文档路径 / 证据介质 / 明确计数。
+ *
+ * 为什么要它：此前 `passed` 只判「有没有文字」，于是「通过」两个字也算实测结果——
+ * 台账实测 886 个普通项通过里有 131 个（14.8%）文本不含任何可复核锚点，其中 102 个
+ * 甚至是 agent 自己写的「（未附实际结果…待补复核）」。本判据把「通过」的进入条件从
+ * **有字**改成**有据**。
+ *
+ * 与 `domain/workflow/EvidenceAnchor.ts`（另一处「可核验锚点」词表）的分工与差集：
+ *   · 那份服务**条款级判据**与**结单证据**；本份服务**裁决 result**——同族不同面。
+ *   · 本份**多认证据介质**（`.png`/`.jpg`/`.webp`/`.log` 等）：只能人看的项，其证据就是截图。
+ *   · 共享核心（命令词 / 路径 / 明确计数）语义一致，收尾时可并到一处而不需重判。
+ */
+export const RESULT_ANCHOR = /\.(ts|tsx|js|mjs|cjs|md|html|json|yml|yaml|py|go|css|sh|sql|png|jpe?g|webp|gif|log|txt|csv)\b|\b(npx|npm|pnpm|yarn|node|tsx|ts-node|vitest|jest|pytest|curl|grep|rg|git|tsc|python3?|bash|sh|docker|sqlite3)\b|退出码|\bexit\s*\d|\d+\s*(passed|failed|通过|失败|项|个|条)|→\s*\d/i
+
+/**
+ * 「只能人看」项（`needsHuman`）的**事实形态**：现象词 / 截图 / 证据路径。
+ *
+ * 为什么不与 `RESULT_ANCHOR` 同判据：界面视觉**给不出命令**——强求命令锚点等于逼人编命令。
+ * 这类项的判据是「有没有可复核的**观察事实**」，而不是「有没有命令」。
+ */
+export const HUMAN_FACT = /一致|不一致|相同|不同|可见|不可见|显示|未显示|出现|未出现|缺失|错位|正常|异常|对齐|截图|如图|现象|观测|对比|对照|\.(png|jpe?g|webp|gif)\b/i
+
+/**
+ * 系统缺口项处置的**两义模板**（FR-4）：已处置（补了 / 已补 / …）或 确认无需（无需 / 不适用 / …）。
+ *
+ * 为什么不锁死措辞、只锁「有没有给出结论」：实测台账 106 条系统项通过里，命中「补了 X」/
+ * 「确认无需，因为 Y」措辞的是 **0 条**——现状是把证据原文粘进处置栏、或干脆空着。
+ * 本判据不要求特定句式，只要求**说清是补了还是不用补**，并给出对象或理由（见 `isValidDisposition`）。
+ */
+export const DISPOSITION_TEMPLATE = /(补了|已补|补上|新增|加了|修了|已覆盖)|(确认无需|无需|不需要|不适用|暂不|不做)/
+
+/** 处置是否**有效**：命中两义模板 + 给出了对象或理由（去空白长度 > 6）。 */
+export function isValidDisposition(text: string | undefined): boolean {
+  const t = (text ?? '').trim()
+  return t.length > 6 && DISPOSITION_TEMPLATE.test(t)
+}
+
+/**
+ * 系统缺口项在弹框第 2 问里的**处置提示**（REQ-261007160829-1991 验收期修正）。
+ *
+ * 为什么必须与「实际结果」分开问：系统缺口项要通过，域要的是**处置**（命中两义模板 + 给出对象或
+ * 理由，见 `isValidDisposition`）；而弹框第 2 问题干原先一律按「请贴实际结果（命令输出摘要 / 看到的
+ * 界面 / 数据）」写，本需求 FR-4 又在后面追加了「可核验形态：命令 + 读数 / 路径 / 计数」——
+ * **照着题干写必然被判无效**（`npx vitest run … → 21 passed` 这类文本过不了处置判据）。
+ *
+ * 实测出处：验收本需求自身时，人按题干写下内容 → `system_item_disposition_required` 整批被拒，
+ * 而报错只说「点通过却不写处置」（把「写了不认」说成「没写」），人无从知道该改什么。
+ *
+ * 与判据同址（而不是放进回执文案模块）：它就是「什么算有效处置」的说明书，与 `DISPOSITION_TEMPLATE`
+ * 必须同改同验，放别处必然漂移。示例与判据自带报错里的那两句同源。
+ *
+ * 用词纪律：弹框题干按**纯文本**渲染（不是 markdown），故强调一律用「」，不要写 `**…**`。
+ */
+export const SYSTEM_ITEM_DISPOSITION_HINT =
+  '请写「处置」而不是实测结果：命中两义之一并给出对象或理由——① 已处置（如「补了 E2E 用例：tests/e2e-x.test.ts」）；'
+  + '② 确认无需（如「确认无需 E2E：纯函数模块，无外部接口」）。通过必填，留空则记「未复核」，不计入通过'
+
+/** 人工项的事实是否**够**：长度 > 6（挡掉「通过」两个字）且含事实形态。 */
+export function hasHumanFact(text: string | undefined): boolean {
+  const t = (text ?? '').trim()
+  return t.length > 6 && HUMAN_FACT.test(t)
+}
+
+/** 结果文本是否**可复核**（普通项）。 */
+export function hasResultAnchor(text: string | undefined): boolean {
+  return RESULT_ANCHOR.test((text ?? '').trim())
+}
+
+/**
+ * 该次裁决是否构成对**已有实测结果**的覆盖（REQ-261006201920-2adc FR-3 / D-3）。
+ *
+ * **唯一的覆盖判据**：三个调用侧（看板收集 / 弹框补问 / 应用层写入）必须同构——各写一份必漂移，
+ * 而漂移的代价是「UI 不问、服务端要」（人在提交那一刻撞上 400 却不知道为什么）或「UI 白问一遭」。
+ *
+ * 三条排除：
+ *   · 「只能人看」项（`needsHuman`）：它的 `result` 只是**供人参照的材料**，人的判断记在 `opinion`；
+ *   · 系统缺口项：它写的是**处置**，不是实测结果；
+ *   · 本无实测结果：人首次填写，没有东西被覆盖。
+ * 另加两条必要条件：本次有文本（否则无从比较），且与既有文本**不同**（没改预填值不算覆盖）。
+ */
+export function isResultOverride(
+  item: Pick<SheetItemLike, 'result' | 'needsHuman' | 'gapKind' | 'criterion'>,
+  opinion: string | undefined,
+): boolean {
+  if (item.needsHuman === true) return false
+  if (isSystemItem(item)) return false
+  const op = (opinion ?? '').trim()
+  const existing = (item.result ?? '').trim()
+  return op.length > 0 && existing.length > 0 && op !== existing
+}
+
+/**
+ * 该文本是不是**人真的动手写的**（REQ-261007160829-1991 FR-3 / design/interfaces.md I-2）。
+ *
+ * 判据与 `isResultOverride` 的「与原文不同」**同口径**：两侧都有文本、且不一样，才算「人动了原文」。
+ * 「本无实测结果时人首次填写」**不算**「动原文」——没有原文可动，那条路由 FR-1 在提交源头治理。
+ *
+ * 为什么用「与原文不同」而不是「结果来源标 human」：来源字段只在写路径被翻（看板 / 应用层），
+ * 判定路径读不到它；`opinion !== result` 就地可判，不必让客户端多传一份真相
+ * （design/interfaces.md「为什么不加线上字段区分人工自填」）。
+ *
+ * 用途**唯一**：`applyVerdicts` 判定「人自填的无锚点文本」时据它**拒绝**（可当场改），
+ * 而取自 agent `result` 的文本仍走降级 + 留原因（不把历史欠账转嫁给点通过的人）。
+ */
+export function isHumanAuthored(
+  item: Pick<SheetItemLike, 'result'>,
+  opinion: string | undefined,
+): boolean {
+  const op = (opinion ?? '').trim()
+  const existing = (item.result ?? '').trim()
+  return op.length > 0 && existing.length > 0 && op !== existing
+}
+
+/**
+ * 降级原因（REQ-261007160829-1991 FR-2）：一次「通过」裁决为什么没算通过。
+ *
+ * 受控两值（而非自由文本）：回执要**按原因分派不同补法**（FR-2 的验收标准依赖它），
+ * 自由文本会让「分派」退化成字符串匹配。
+ *   · `blank_pass`    —— 点了通过但没有结果文本（人工项无文本，或该项本无 `result`）；
+ *   · `anchor_missing`—— 有文本但没有可核验锚点（非人工项、非系统项那条路）。
+ */
+export type UnverifiedReason = 'blank_pass' | 'anchor_missing'
 
 /**
  * 验收项来源（v5 判别联合）。
@@ -62,6 +189,23 @@ export interface SheetItemLike {
   resultSource?: 'agent' | 'human'
   needsHuman?: boolean
   humanReason?: string
+  /**
+   * 被人**覆盖**掉的 agent 实测原文（REQ-261006201920-2adc FR-3 / D-3）。
+   *
+   * 为什么必须留档：覆盖原先只把 `result` 改成人的文本并把来源翻成 `human`——agent 的原始证据
+   * **被静默抹掉**，「谁改的、改之前是什么」同时不可考。重复覆盖时本字段保留**最初那次**的原文。
+   */
+  resultSuperseded?: string
+  /** 人覆盖 agent 实测结果时给出的**变更理由**（FR-3 / D-3）——与 `result` 同生共死。 */
+  resultChangeReason?: string
+  /**
+   * REQ-261007160829-1991 FR-2：`unverified` 的**降级原因**。
+   *
+   * 与 `src/shared/protocol.ts` 的 `VerificationItem.unverifiedReason` 是**成对镜像**
+   * （字段名与取值域逐字一致；协议层禁止被 domain import，故按既有镜像口径声明两处）。
+   * 语义（唯一）：只在降级时写、`status` 变 `passed`/`failed` 时清空、老数据缺席（`undefined`）。
+   */
+  unverifiedReason?: UnverifiedReason
 }
 
 /**
@@ -335,7 +479,7 @@ export interface SheetBuildInput {
    * 适用性（feature/refactor + `sides` 含 frontend + 有无已登记原型）由调用方判定后传进来：
    * `sides` 只存在于需求文档 front-matter，本模块保持**纯函数、零 IO**。
    */
-  prototypeCompare?: { path: string } | { exempt: true; reason: string }
+  prototypeCompare?: { path: string; degradedNote?: string } | { exempt: true; reason: string }
   /**
    * 该需求的 D-x 裁定编号（§10 #14 / #37）：非空 → 组装 `decision-compare` 项（载荷带 decisionIds）。
    * 裁定是需求级产物，故非 UI 需求（sides 不含 frontend）同样出现；非 feature/refactor 由调用方过滤。
@@ -453,7 +597,11 @@ export function buildSheet(input: SheetBuildInput): SheetBuildResult {
         }
       : {
           source: { kind: 'prototype-compare', prototypePath: prototypeCompare.path } as VerificationItemSource,
-          criterion: PROTOTYPE_COMPARE_CRITERION,
+          // 降级读数（REQ-261006201649-cc89 FR-3）：权威路径取不到而退回台账排序首项时**如实写在项上**
+          // ——"对照的是哪一版"如果连判断依据都说不清，人就无法判断这一项该不该信。
+          criterion: prototypeCompare.degradedNote === undefined
+            ? PROTOTYPE_COMPARE_CRITERION
+            : PROTOTYPE_COMPARE_CRITERION + '\n' + prototypeCompare.degradedNote,
           evidence: [...input.evidence],
           status: 'pending' as const,
           // §10 #37 / frontend.md：界面视觉**无法自动验证**——必须显式写清为什么叫人来看，
@@ -529,15 +677,30 @@ export interface SheetVerdictInput {
   itemId: string
   status: 'passed' | 'failed' | 'not_verifiable' | 'unverified'
   opinion?: string
+  /**
+   * 仅在本次裁决构成「覆盖 agent 实测结果」时被读取（REQ-261006201920-2adc FR-3 / D-3）。
+   * 覆盖**必须**带它；缺理由时该次覆盖被拒（不写任何字段，保留 agent 原文）。
+   */
+  changeReason?: string
 }
 
-/** 返工任务的原任务投影（承接 phase/side/scope）。 */
+/** 返工任务的原任务投影（承接 phase/side/scope + 验收标准/引用/体量）。 */
 export interface ReworkSourceTaskLike {
   id: string
   title: string
   phase: string
   side: string
   scope?: unknown
+  /** 来源卡的验收标准——「本项判据原文不可照着验」时的**承接对象**（FR-2 二级取值）。 */
+  acceptance?: string
+  /** 来源卡的条款引用：不继承的话返工卡在 RTM 上会**丢掉它服务哪条 FR**（FR-2）。 */
+  requirementRefs?: string[]
+  /** 来源卡的原型锚点：不继承会让 UI 卡的返工卡被 UI 卡原型锚点门禁拒绝，等于生成即死路（FR-2）。 */
+  prototypeRefs?: string[]
+  /** 来源卡的裁定引用（RTM `covers_decisions` 的输入）。 */
+  decisionRefs?: string[]
+  /** 来源卡的体量声明（超容量软门禁的输入）。 */
+  footprint?: CardFootprint
 }
 
 /** 返工任务规格（host 据此 materialize 成 TaskRecord：id / 时间戳 / 状态事件由 host 负责）。 */
@@ -552,6 +715,12 @@ export interface ReworkTaskSpec {
   context: string
   /** 原验收意见（''=未写；评论留痕用，与 implementation 的兜底文案不同）。 */
   opinion: string
+  /** 本卡标准的**取值来源**（可追溯，供验收核对是原判据、来源卡还是合成）。 */
+  acceptanceSource: 'criterion' | 'origin' | 'synthesized'
+  requirementRefs?: string[]
+  prototypeRefs?: string[]
+  decisionRefs?: string[]
+  footprint?: CardFootprint
 }
 
 export interface ApplySheetVerdictsResult {
@@ -566,11 +735,28 @@ export interface ApplySheetVerdictsResult {
 }
 
 /**
- * 单个"不通过"验收项 → 返工任务规格（承接原任务 phase/side/scope 与验收意见）。
+ * 本项既没有可照着验的判据原文、也没有来源卡标准可承接 → **合成**一条可证伪的标准（三段式：
+ * 修复对象 + 可跑命令 + 期望读数 + 要交的证据）。
+ *
+ * 为什么合成而不是拒绝（REQ-261006201920-2adc FR-2）：返工卡由人点「退回返工」、或 failed 裁决时
+ * **自动**物化——判据不过就拒绝，等于把人工门变成死路（本仓纪律：硬拦必须配修复路径）。
+ * 合成标准本身仍要过两道判据，所以它绝不是「零锚点卡」。
+ */
+function synthesizedAcceptance(item: SheetItemLike, orig: ReworkSourceTaskLike | undefined): string {
+  const what = (orig?.title ?? item.criterion).replace(/\s+/g, ' ').trim().slice(0, 60)
+  return fmt('修复「{what}」：`pnpm test` → 失败数不超过修复前基线（贴汇总输出），并在验收材料里逐条说明如何落实', { what })
+}
+
+/**
+ * 单个"不通过"验收项 → 返工任务规格（承接原任务 phase/side/scope + 引用 + 体量与验收意见）。
  *
  * REQ-a8d582 FR-2：本函数从 applyVerdicts 内部**抽出来成为单点**——因为"返工任务何时生成"
  * 从"裁决时"搬到了"人点退回返工时"，两条路径（裁决批次 / 退回返工）必须用同一套规格，
  * 各写一份必然漂移。
+ *
+ * REQ-261006201920-2adc FR-2：标准取值三级（判据原文 → 来源卡标准 → 合成标准），
+ * **每一级都过同一套判据**（`checkAcceptance` + `checkHowToVerify`）——返工卡与普通卡同门；
+ * 并继承来源卡的引用与体量（不继承 prototypeRefs 会让 UI 卡返工卡生成即被门禁拒绝）。
  */
 export function reworkSpecFor(
   item: SheetItemLike,
@@ -579,14 +765,40 @@ export function reworkSpecFor(
 ): ReworkTaskSpec {
   const src = item.source
   const orig = src.kind === 'task' ? tasks.find(t => t.id === src.taskId) : undefined
+  const opinion = item.opinion ?? ''
+  /** 一道阈值：非空 + 计划期可证伪 + 验收期能照着动手。 */
+  const passes = (t: string | undefined): t is string =>
+    typeof t === 'string' && t.trim().length > 0 && checkAcceptance(item.id, t).ok && checkHowToVerify(item.id, t).ok
+  let acceptance: string
+  let acceptanceSource: ReworkTaskSpec['acceptanceSource']
+  if (passes(item.criterion)) {
+    acceptance = item.criterion
+    acceptanceSource = 'criterion'
+  } else if (passes(orig?.acceptance)) {
+    acceptance = orig.acceptance
+    acceptanceSource = 'origin'
+  } else {
+    acceptance = synthesizedAcceptance(item, orig)
+    acceptanceSource = 'synthesized'
+  }
+  const sourceNote = acceptanceSource === 'criterion'
+    ? ''
+    : acceptanceSource === 'origin'
+      ? '（本项判据原文不可照着验，已承接**来源卡**的验收标准作为本卡标准）'
+      : '（本项判据原文不可照着验、来源卡也没有可执行标准，已**合成**一条可证伪标准）'
   return {
     title: fmt('返工：{title}', { title: (orig?.title ?? item.criterion).slice(0, 60) }),
     description: fmt('验收不通过项返工（v{version} 项 {itemId}）：{criterion}', { version: sheet.version, itemId: item.id, criterion: item.criterion }),
     phase: orig?.phase ?? 'implement',
     side: orig?.side ?? 'fullstack',
     scope: orig?.scope ?? { apis: [], tables: [], files: [] },
-    acceptance: item.criterion,
-    implementation: fmt('按验收意见修复：{opinion}', { opinion: item.opinion ?? '（见验收单）' }),
+    acceptance,
+    acceptanceSource,
+    implementation: fmt('按验收意见修复本项：{criterion}{sourceNote}。验收意见：{opinion}。修复后请把本条标准跑出结果（命令 + 输出摘要），不要只写结论。', {
+      criterion: item.criterion,
+      sourceNote,
+      opinion: opinion.length > 0 ? opinion : '（验收单未写意见）',
+    }),
     context: fmt('承接自 {origin}；验收意见：{opinion}', {
       // §10 #31 同款连带：来源四值后不能再写「非 requirement 就当任务」——
       // 对照项（原型/裁定）本就没有任务可承接，返工要如实说它承接自哪个验收项。
@@ -597,9 +809,13 @@ export function reworkSpecFor(
           : src.kind === 'prototype-compare'
             ? fmt('原型对照验收项（{path}）', { path: src.prototypePath })
             : fmt('裁定对照验收项（{ids}）', { ids: src.decisionIds.join('、') }),
-      opinion: item.opinion ?? '',
+      opinion,
     }),
-    opinion: item.opinion ?? '',
+    opinion,
+    ...(orig?.requirementRefs !== undefined ? { requirementRefs: [...orig.requirementRefs] } : {}),
+    ...(orig?.prototypeRefs !== undefined ? { prototypeRefs: [...orig.prototypeRefs] } : {}),
+    ...(orig?.decisionRefs !== undefined ? { decisionRefs: [...orig.decisionRefs] } : {}),
+    ...(orig?.footprint !== undefined ? { footprint: orig.footprint } : {}),
   }
 }
 
@@ -630,11 +846,38 @@ export function applyVerdicts(
     if (item === undefined) {
       throw domainError(REQBOARD_ERROR_CODES.invalidInput, fmt('验收项 {itemId} 不存在', { itemId: verdict.itemId }))
     }
-    if (verdict.status === 'passed' && isSystemItem(item) && (verdict.opinion ?? '').trim().length === 0) {
+    const preOpinion = (verdict.opinion ?? '').trim()
+    // REQ-261006201920-2adc FR-4：判据由「写了处置」收紧为「处置**有效**」——必须命中两义模板
+    // （已处置 / 确认无需）并给出对象或理由。实测台账 106 条系统项通过里命中模板的是 0 条
+    // （现状把证据原文粘进处置栏或干脆空着），故这是**行为变更**：写法变严，历史不追溯。
+    if (verdict.status === 'passed' && isSystemItem(item) && !isValidDisposition(preOpinion)) {
       throw domainError(
         'system_item_disposition_required',
-        fmt('系统项通过必须写明处置（{itemId}）——它报的是缺口，点通过却不写处置等于把缺口静默吞掉', { itemId: item.id }),
+        fmt('系统项通过必须写明处置（{itemId}）——它报的是缺口，点通过却不写处置等于把缺口静默吞掉。处置须命中两义之一并给出对象或理由：① 已处置（如「补了 E2E 用例：tests/e2e-x.test.ts」）；② 确认无需（如「确认无需 E2E：纯函数模块，无外部接口」）', { itemId: item.id }),
       )
+    }
+    // REQ-261006201920-2adc FR-3：「只能人看」的项禁收**无事实的短句**（典型是「通过」两个字）。
+    // 这类项不吃 agent 结果兜底，它的文本就是判定依据本身——允许两个字通过，等于在最该拦住的地方形式合规。
+    if (verdict.status === 'passed' && item.needsHuman === true && preOpinion.length > 0 && !hasHumanFact(preOpinion)) {
+      throw domainError(
+        REQBOARD_ERROR_CODES.invalidInput,
+        fmt('人工核对项 {itemId} 的结论太薄（"{opinion}"）——它只能由人看，请写清**你看到的现象 + 证据路径**（如「按钮在无材料时仍不显示；截图 docs/requirements/xxx/evidence/a.png」）', { itemId: item.id, opinion: preOpinion }),
+      )
+    }
+    // REQ-261007160829-1991 FR-3 / design/backend.md S-2：**人自填的**无锚点结论当场拒绝。
+    //
+    // 为什么在**前置校验**里判而不是在下面的落状态循环里：抛错必须发生在写任何字段之前
+    // （调用方据此承诺「拒绝 = 台账零改动」）；本循环是既有「整批先验证、后落状态」的位置。
+    // 为什么只拒「人真的动了原文」：零输入通过（文本取自 agent 的 `result`）时拒绝，等于把 agent
+    // 的历史欠账转嫁给点通过的人——那条路由 FR-1 在提交源头治理 + FR-2 留原因（见 isHumanAuthored）。
+    if (verdict.status === 'passed') {
+      const judged = judgePassedVerdict({ item, ...(verdict.opinion !== undefined ? { opinion: verdict.opinion } : {}) })
+      if (judged.status === 'unverified' && judged.reason === 'anchor_missing' && isHumanAuthored(item, verdict.opinion)) {
+        throw domainError(
+          REQBOARD_ERROR_CODES.invalidInput,
+          fmt('验收项 {itemId} 你写的结论没有可核验锚点（"{sample}"）——请补一条命令 + 读数 / 一个证据路径 / 一个明确计数后重交；原 agent 实测结果未被改动。', { itemId: item.id, sample: (verdict.opinion ?? '').trim().slice(0, 40) }),
+        )
+      }
     }
   }
   for (const verdict of verdicts) {
@@ -662,8 +905,23 @@ export function applyVerdicts(
     // 不留这条的话，看板通道"留空点通过"会把 agent 的参照材料当成人的结论记 passed，
     // 与弹框通道（记 unverified）同日裁决同一项会得出相反结论。
     const needsHumanNeedsText = item.needsHuman === true
-    const blankPass = verdict.status === 'passed' && !hasOpinion && (needsHumanNeedsText || !hasResult)
-    item.status = blankPass ? 'unverified' : verdict.status
+    // ── 判定单点（REQ-261007160829-1991 FR-2 / design/backend.md S-1、I-4）──────────────────
+    // 落点与降级原因**都从 `judgePassedVerdict` 拿**：原先内联的 `anchorMiss` / `blankPass` 已删，
+    // 同一判据只允许一处实现（本仓教训：两处判定必漂移）。锚点判据的松紧、人工项不吃锚点、
+    // 系统项判处置、`needsHuman` 不吃 `result` 兜底——全部由那条纯函数表达，此处只落状态。
+    // 等价性：替换前后同一输入得到同一 `status`（既有回归用例 + 穷举探针）。
+    const judged = verdict.status === 'passed'
+      ? judgePassedVerdict({ item, ...(verdict.opinion !== undefined ? { opinion: verdict.opinion } : {}) })
+      : undefined
+    if (judged !== undefined && judged.status === 'unverified') {
+      // 降级：状态与**原因**一起落账——降级本身是对的，「降级得说不出为什么」才是缺陷。
+      item.status = 'unverified'
+      if (judged.reason !== undefined) item.unverifiedReason = judged.reason
+    } else {
+      item.status = verdict.status
+      // 通过 / 不通过都不该残留降级原因（否则会出现「已通过却写着未复核」的自相矛盾记录）。
+      if (verdict.status === 'passed' || verdict.status === 'failed') delete item.unverifiedReason
+    }
     // 写回口径与判定口径**同源**（都按 trim 判非空）：否则"纯空白意见 + 有 result"会落成
     // status=passed 而 opinion 存成空白，把下面"opinion 取 result"的留痕分支跳过（复核 A1）。
     if (hasOpinion) item.opinion = verdict.opinion
@@ -697,27 +955,90 @@ export function isSystemItem(i: Pick<SheetItemLike, 'gapKind' | 'criterion'>): b
   return i.gapKind !== undefined || i.criterion.startsWith(UNVERIFIABLE_PREFIX)
 }
 
+/**
+ * 一次「通过」裁决的**落点判定**（REQ-261007160829-1991 FR-2 / design/backend.md S-1，I-1）。
+ *
+ * 纯函数、零 IO、**不写任何状态**：把「状态 + 降级原因」一起给全，让调用方一次拿够落库所需。
+ * 为什么单独立这条判据：降级本身是对的，**降级得说不出为什么**才是缺陷——验收通道里人点「通过」
+ * 后停在 `unverified` 却看不到缘由，正是因为内联判定只翻状态、不留原因。
+ *
+ * 判定按**固定顺序**（与 `applyVerdicts` 既有内联判定同口径，逐条等价）：
+ *   1. 人工项（`needsHuman === true`）无文本 → `unverified(blank_pass)`；有文本 → `passed`
+ *      （人工项走事实形态判据，**不吃**锚点判据——界面视觉给不出命令，强求命令等于逼人编命令）；
+ *   2. 待判文本为空（无 `opinion`，且该项无 `result`；人工项不吃 `result` 兜底）→ `unverified(blank_pass)`；
+ *   3. 文本非空、是系统项 → `passed`（系统项判**处置**，不吃锚点）；
+ *   4. 文本非空、`hasResultAnchor(文本)` 为真 → `passed`；
+ *   5. 其余（文本非空、无锚点）→ `unverified(anchor_missing)`。
+ *
+ * 「待判文本」的取值与 `applyVerdicts` 的 `effectiveText` **逐字同源**：有 `opinion` 用它，否则用
+ * `item.result`（人工项除外——判定依据只在人眼里，`result` 只是供人参照的材料）。
+ *
+ * ⚠️ 与 design/backend.md S-1 第 3 条的偏差（已落实，理由如下）：S-1 写「无文本、但该项有 `result`
+ * → `passed`（零输入通过）」，而**既有实现从不让 `result` 免疫锚点判据**——`effectiveText` 取到
+ * `result` 后照样过 `hasResultAnchor`，无锚点的 agent 结果记 `unverified`。若照 S-1 字面实现，
+ * 「人留空点通过 + agent 的 result 是无锚点散文」会**从 `unverified` 变成 `passed`**——那正是本需求
+ * 要消灭的「静默放行无锚点结论」（存量 131 个无锚点通过项的形态），即本卡「不改任何现有行为」的红线。
+ * 故本条按**既有行为**实现：零输入通过仍需 `result` 带锚点才算通过。等价性由穷举探针钉住：
+ * 90 组可比输入下 `judgePassedVerdict().status` 与 `applyVerdicts` 落点零不一致。
+ *
+ * **错误语义**：不抛错——拒绝（人工自填无锚点）属 I-4 `applyVerdicts` 的裁决入口，不在本函数。
+ */
+export function judgePassedVerdict(input: {
+  item: Pick<SheetItemLike, 'result' | 'needsHuman' | 'gapKind' | 'criterion'>
+  /** 裁决文本（人写的或从 `item.result` 取的），未给 = 无文本 */
+  opinion?: string
+}): { status: 'passed' | 'unverified'; reason?: UnverifiedReason } {
+  const { item } = input
+  const opinion = (input.opinion ?? '').trim()
+  const hasOpinion = opinion.length > 0
+  const needsHuman = item.needsHuman === true
+  // ① 人工项：有文本 → 走事实形态判据（`hasHumanFact` 在 applyVerdicts 前置校验硬拦），不吃锚点判据；
+  //    无文本 → 白点（不吃 `result` 兜底，否则看板「留空点通过」会把参照材料当成人的结论）。
+  if (needsHuman) return hasOpinion ? { status: 'passed' } : { status: 'unverified', reason: 'blank_pass' }
+  // ② 待判文本与 `applyVerdicts.effectiveText` 同源：有 opinion 用它，否则用 result。
+  const effectiveText = hasOpinion ? opinion : (item.result ?? '').trim()
+  // ③ 无文本且无 result：agent 也没交过实测，无从复核。
+  if (effectiveText.length === 0) return { status: 'unverified', reason: 'blank_pass' }
+  // ④ 系统项：它写的是**处置**（已处置 / 确认无需）而不是实测，套锚点判据等于误伤。
+  if (isSystemItem(item)) return { status: 'passed' }
+  // ⑤/⑥ 普通项：`passed` 的真正底线是「结果**可复核**」而不是「有文字」——零输入通过同样要锚点。
+  // 判据只允许一处——复用既有 `hasResultAnchor`，禁止在此另写正则（两处判定必漂移）。
+  if (hasResultAnchor(effectiveText)) return { status: 'passed' }
+  return { status: 'unverified', reason: 'anchor_missing' }
+}
+
 /** 未复核项 id 列表（通过但没留实际结果）——不计入通过（FR-1）。 */
 export function unverifiedItemsOf(sheet: SheetLike): string[] {
   return sheet.items.filter(i => i.status === 'unverified').map(i => i.id)
 }
 
 /**
- * 系统项通过了、却没写书面处置的 id 列表（FR-2）。
+ * 系统项通过了、处置却**无效**的 id 列表（FR-2；REQ-261006201920-2adc FR-4 收紧）。
  *
  * 为什么单独一条规则：系统项本身就是"机器报出来的缺口"（缺 E2E / 追溯断链 / 不可照着验），
  * 让人点一下"通过"而不写处置，等于把缺口静默吞掉——REQ-8475 实测 3 条系统项零处置通过。
+ *
+ * 口径收紧（FR-4）：原先只判「非空」，于是把证据原文粘进处置栏、或写「好的」都算数；
+ * 现在要求处置**有效**（命中两义模板 + 给出对象或理由，见 `isValidDisposition`）。
+ * 本函数从「只被用例调用」升级为 `isFullyDecided` / `sheetGateStatus` 的输入 —— 于是
+ * 「处置为空」不只是登记一条读数，而是真的**不放行归档**。
  */
 export function dispositionMissingItems(sheet: SheetLike): string[] {
   return sheet.items
-    .filter(i => i.status === 'passed' && isSystemItem(i) && (i.opinion ?? '').trim().length === 0)
+    .filter(i => i.status === 'passed' && isSystemItem(i) && !isValidDisposition(i.opinion))
     .map(i => i.id)
 }
 
-/** 验收门状态（FR-1）：全通过→passed；有未复核→pending（不得归档）；有失败→blocked。 */
+/**
+ * 验收门状态（FR-1）：全通过→passed；有未复核/未处置→pending（不得归档）；有失败→blocked。
+ *
+ * REQ-261006201920-2adc FR-4：**有未处置的系统缺口项也算 pending**——与 `isFullyDecided`
+ * 同口径（同一份验收单不能两个相反结论）。
+ */
 export function sheetGateStatus(sheet: SheetLike): 'passed' | 'pending' | 'blocked' {
   if (sheet.items.some(i => i.status === 'failed')) return 'blocked'
   if (sheet.items.some(i => i.status === 'pending' || i.status === 'unverified')) return 'pending'
+  if (dispositionMissingItems(sheet).length > 0) return 'pending'
   return 'passed'
 }
 
@@ -744,5 +1065,8 @@ export function verdictRequiresOpinion(status: string): boolean {
  * failed 项由 FR-8 自动回退处理，正常到不了这里。
  */
 export function isFullyDecided(sheet: SheetLike): boolean {
-  return sheet.items.every(i => i.status !== 'pending' && i.status !== 'unverified')
+  if (sheet.items.some(i => i.status === 'pending' || i.status === 'unverified')) return false
+  // REQ-261006201920-2adc FR-4：**已通过但处置无效**的系统缺口项同样不算已裁决——
+  // 归档门读这条判据，「处置为空即不可归档」由此成立（并入 `dispositionMissingItems` 单一实现）。
+  return dispositionMissingItems(sheet).length === 0
 }

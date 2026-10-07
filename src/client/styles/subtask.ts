@@ -25,7 +25,8 @@ export const SUBTASK_CSS = `
 .dsh-pm-subtask-status[data-status="in_progress"] { color: #4a7dff; }
 .dsh-pm-subcount { font-size: 10px; color: var(--dsw-text-secondary, #666); }
 .dsh-pm-manual-chip { margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 10px; background: rgba(156,163,175,.14); color: #9ca3af; }
-/* 链未生成（卡片层契约 2026-09-28）：意图=chain 且缺链时打标——与 [手动] 的灰不同色，必须一眼可分。 */
-.dsh-pm-chain-missing { margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 10px; background: rgba(240,160,32,.16); color: #a86a00; }
+/* 链未生成（卡片层契约 2026-09-28）：意图=chain 且缺链时打标——与 [手动] 的灰不同色，必须一眼可分。
+   色值定稿（REQ-261006211623-9dc1 FR-6）：与卡片角标同源，深红 #991b1b on rgba(220,38,38,.10)（≈6:1）。 */
+.dsh-pm-chain-missing { margin-left: 6px; padding: 0 5px; border-radius: 4px; font-size: 10px; background: rgba(220,38,38,.10); color: #991b1b; border: 1px solid rgba(220,38,38,.4); }
 .dsh-pm-task.is-parent { border-left: 2px solid rgba(74,125,255,.45); }
 `;

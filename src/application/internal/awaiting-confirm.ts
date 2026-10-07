@@ -18,7 +18,7 @@
  * @module dsh-pmboard/application/internal/awaiting-confirm
  */
 import { mutateIfPresent } from '../use-cases/queue-access.js'
-import type { DialogInFlightPort, RequirementStore } from '../ports.js'
+import type { DialogInFlightPort, RequirementStore, UseCaseDeps } from '../ports.js'
 import type { RequirementRecord } from '../../shared/protocol.js'
 
 /**
@@ -51,11 +51,53 @@ export interface AwaitingConfirmDeps {
   logger?: { warn(message: string, err?: unknown): void }
 }
 
+/**
+ * 从用例 deps 装出停手位依赖（REQ-261007100513-6749 t5 · FR-6 放行路径新增）。
+ *
+ * 为什么放在本模块：`store` / `dialogs` / `now` / `alert` / `onCleared` 这五项的**取用口径**
+ * 只该有一处（谁漏接 `onCleared`，清位就没人叫醒自动链——那是静默停摆）。本函数只做**装配**：
+ * 不读不写、不改 `enter` / `exit` 的任何既有语义，也不新增判据。
+ */
+export function awaitingConfirmDepsFrom(deps: UseCaseDeps): AwaitingConfirmDeps {
+  return {
+    store: deps.store,
+    ...(deps.dialogs === undefined ? {} : { dialogs: deps.dialogs }),
+    now: () => deps.clock.now(),
+    ...(deps.alert === undefined ? {} : { alert: deps.alert }),
+    ...(deps.notifyDrivable === undefined ? {} : { onCleared: deps.notifyDrivable }),
+  }
+}
+
 /** 该需求是否处于「等弹框」停手态（台账侧谓词，心跳对账用）。 */
 export function isAwaitingConfirmStop(req: RequirementRecord | undefined): boolean {
   const health = req?.dive?.driverHealth
   if (health?.state !== 'paused') return false
   return awaitingRefOf(req) !== undefined
+}
+
+/**
+ * 请求一次自动链驱动（REQ-261007100513-6749 t5 返工 P2：**预算放行**这类「清位」后的续跑入口）。
+ *
+ * 为什么要有它：人工门那条路的续跑靠 `exitAwaitingConfirm` 的 `onCleared`；预算是**独立停手位**
+ * （不经人工门 in-flight、也不写 `dive.driverHealth` ⇒ 不连带停发同需求其它可开工卡），
+ * 所以它清位后必须自己请求一次驱动，且走**同一条**入口（`deps.notifyDrivable`），
+ * 不新造第二条进会话的投递路径。
+ *
+ * 纪律：**永不抛**；返回 true = 真的请求出去了，false = 未装配（调用方据此在回执里如实说明）。
+ */
+export function requestDriveQuietly(
+  deps: Pick<UseCaseDeps, 'notifyDrivable'>,
+  requirementId: string,
+): boolean {
+  const drive = deps.notifyDrivable
+  if (drive === undefined) return false
+  try {
+    drive(requirementId)
+    return true
+  } catch {
+    // 永不抛：驱动请求失败不回滚清位（清位是事实，通知失败只是"没接上"）
+    return false
+  }
 }
 
 /** 从台账停手位里取回 ref（不认识该形态 → undefined）。 */

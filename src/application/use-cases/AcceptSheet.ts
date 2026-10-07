@@ -26,7 +26,10 @@ import {
   requireLiveDriver,
 } from '../internal/support.js'
 import { checkAcceptanceGate } from '../internal/accept-sheet-rtm-integration.js'
-import { needsResultInput, humanNotice, itemSourceTitle, itemResultBindingEnabled, type SheetItemLike } from '../../domain/workflow/AcceptanceSheetSpec.js'
+import { needsResultInput, humanNotice, itemSourceTitle, itemResultBindingEnabled, isResultOverride, type SheetItemLike } from '../../domain/workflow/AcceptanceSheetSpec.js'
+// 回执文案单点（REQ-261007160829-1991 FR-2 / FR-4 · design/interfaces.md I-7 / I-8）：
+// 第 2 问题干与未复核回执取**同一处**文案——两处各写一份必然漂移。
+import { resultQuestionTailOf, unverifiedSummaryOf, unverifiedAdviceOf } from '../../domain/workflow/VerdictNotices.js'
 import { requirementStoreOf, taskStoreOf, mutateIfPresent, createManyQueue } from './queue-access.js'
 
 export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
@@ -201,7 +204,10 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
             question: fmt('【{id}】{criterion}', { id: it.id, criterion: clip(it.criterion, LIMITS.popupEvidenceMax) })
               + (it.evidence.length > 0 ? fmt('\n已有证据：{ev}', { ev: clip(it.evidence[0] ?? '', LIMITS.popupEvidenceMax) }) : '')
               + (humanNotice(it) !== '' ? '\n' + humanNotice(it) : '')
-              + '\n请贴实际结果（命令输出摘要 / 看到的界面 / 数据）；通过必填，留空则记「未复核」，不计入通过',
+              // REQ-261007160829-1991 验收期修正：**结尾引导按项类型分派**（系统缺口项问「处置」、
+              // 其余问「实测结果 + 可核验形态」），单点在 domain 的 `resultQuestionTailOf`。
+              // 原先一律按实测结果写、FR-4 又追加了形态提示，照着写必然被处置判据拒绝。
+              + '\n' + resultQuestionTailOf(it),
           },
         // REQ-261001184609-cecb FR-2：**验证是执行方的活，裁决是人的活**——
         // 该项已带结果时不抛第二问，人只点通过/退回（零输入即可完成裁决）。
@@ -280,6 +286,68 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
         return { success: false, note: '用户未选择任何项：未记录裁决（挂起）' } as never
       }
 
+      // ── 覆盖项补问变更理由（REQ-261006201920-2adc FR-3 / D-3）────────────────────
+      // 第一轮问「通过/改进/其他 + 实际结果」；若人的文本与该项 **agent 实测结果不同**，那就是一次
+      // **覆盖**——必须补一轮问「为什么改」，且 agent 原文会被留档（不静默抹掉）。
+      //
+      // 两条纪律（都有用例钉着）：
+      //   ① **回滚开关生效时不补问**：`itemResultBindingEnabled=false` 时应用层整段跳过覆盖写入
+      //      （旧口径 `evidence[0]` 兜底会被当成"新结果"，那是系统回填不是人写的）——此时补问
+      //      等于让通道与开关自相矛盾。
+      //   ② 未作答时**不降级为未复核**（那过严：人点的是通过、文本也可能有锚点），改为
+      //      "不采纳这次修改"——把 `opinion` 收回 agent 的原文，于是应用层看不到差异、不触发覆盖，
+      //      该项照常按 agent 的实测结果裁决；人没答理由这件事如实进回执 note。
+      const overrideItems = bindingEnabled
+        ? pendingItems.filter((it) => {
+            const v = verdicts.find(x => x.itemId === it.id)
+            if (v === undefined || v.status !== 'passed') return false
+            // 判据单点在 domain：与看板收集侧、应用层写入侧**同一函数**（各写一份必漂移）
+            return isResultOverride(it, v.opinion)
+          })
+        : []
+      const overrideReasons = new Map<string, string>()
+      const unansweredOverrides: string[] = []
+      if (overrideItems.length > 0) {
+        if (deps.questions.available()) {
+          let reasonAnswers: { id?: string; custom?: string }[] = []
+          try {
+            reasonAnswers = [...await deps.questions.ask(
+              overrideItems.map(it => ({
+                id: it.id + '#change-reason',
+                header: pmHeader('变更理由'),
+                question: fmt('【{id}】你写的实际结果与 agent 记录的**不同**——请说明为什么改（原记录：{old}）', {
+                  id: it.id,
+                  old: clip(it.result ?? '', LIMITS.popupEvidenceMax),
+                }),
+              })),
+              {
+                ...(exec.agent !== undefined ? { agent: exec.agent } : {}),
+                signal: (exec as { signal?: unknown }).signal,
+                gate: 'G4',
+              },
+            )]
+          } catch {
+            reasonAnswers = []
+          }
+          for (const a of reasonAnswers) {
+            const id = (a.id ?? '').replace(/#change-reason$/, '')
+            const reason = (a.custom ?? '').trim()
+            if (id.length > 0 && reason.length > 0) overrideReasons.set(id, reason)
+          }
+        }
+        for (const it of overrideItems) {
+          if (overrideReasons.has(it.id)) continue
+          unansweredOverrides.push(it.id)
+          const v = verdicts.find(x => x.itemId === it.id)
+          // 不采纳这次修改：opinion 收回 agent 原文 ⇒ 应用层看不到差异 ⇒ 不写覆盖、原文不丢
+          if (v !== undefined) v.opinion = (it.result ?? '').trim()
+        }
+        for (const v of verdicts) {
+          const reason = overrideReasons.get(v.itemId)
+          if (reason !== undefined) (v as { changeReason?: string }).changeReason = reason
+        }
+      }
+
       const nowTs = deps.clock.now()
       const store = taskStoreOf(deps)
       const verdictTasks = await store.listByRequirement(targetReq.id)
@@ -328,6 +396,21 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
       const failed = s?.items.filter(i => i.status === 'failed').length ?? 0
       // REQ-261006092213-4f5b FR-6：未复核项（人点了通过却没有结果）——**不计入通过**，也不许归档。
       const unverified = s?.items.filter(i => i.status === 'unverified').length ?? 0
+      // ── 未复核回执（REQ-261007160829-1991 FR-2 / FR-4 · design/interfaces.md I-7 / I-8、backend.md S-4）──
+      // 不再写死「点了通过却没结果」：真因常常是「**有结果、却没有可核验锚点**」，两类的补法完全不同
+      // （补结果 vs 补锚点），一句话会把人在错误方向上反复支使。文案单点于 domain/workflow/VerdictNotices.ts。
+      //
+      // 原因取值：裁决后该单里未复核项的**原因集合只有一个取值**才把它当唯一真因；混合、或全是老数据
+      // （字段缺席 = `undefined`）⇒ 传 `undefined`——中性措辞恰好同时覆盖「补结果」与「补锚点」，
+      // 不把老数据猜成某一类（猜错正是本项目实测的返工来源）。
+      const unverifiedItems = s?.items.filter(i => i.status === 'unverified') ?? []
+      const unverifiedReasons = new Set(unverifiedItems.map(i => i.unverifiedReason))
+      // 无未复核项时 `unverifiedSummaryOf` 返回空串，故这里先守住空串：不留多余空格、不留孤立的补法句。
+      const unverifiedNote = unverifiedItems.length === 0
+        ? ''
+        : unverifiedSummaryOf(unverifiedItems)
+          + ' '
+          + unverifiedAdviceOf(unverifiedReasons.size === 1 ? unverifiedItems[0]?.unverifiedReason : undefined)
       const reworkIds = applied.reworkTasks.map(t => t.id)
       // 本批记录后若已全过（且无未复核）→ 直接接着弹最终「验收通过并归档」确认（闭环）。
       // `finalizeIfAllPassed` 自己也守这条底线（无 pending 且无 unverified 才弹），这里是第一道闸。
@@ -354,7 +437,10 @@ export async function acceptSheet(deps: UseCaseDeps, args: unknown, exec: any): 
         note: failed > 0
           ? '有 ' + failed + ' 项不通过：已自动回退实施并生成 ' + reworkIds.length + ' 张返工卡（REQ-308b9a FR-8）'
           : (unverified > 0
-              ? '本批已记录，但有 ' + unverified + ' 项未复核（点了通过却没结果）：不计入通过；再次调 reqboard_accept_sheet 会把这些项重新问一遍（补上实际结果即转通过）'
+              /* REQ-261007160829-1991 FR-2：按**真实原因**分派（无锚点 N / 未写结果 M + 该补什么），
+                 不再一律说「点了通过却没结果」。此处守卫 `unverified > 0`：无未复核项时不能留下
+                 多余空格或孤立的补法句——今天的两条分支文案（failed / pending）一句未动。 */
+              ? unverifiedNote
               : (pending > 0
                   ? '本批已记录（剩 ' + pending + ' 项待验）：再次调 reqboard_accept_sheet 从断点继续'
                   : '全部已裁决 → 请点「验收通过」归档（人工门）')),

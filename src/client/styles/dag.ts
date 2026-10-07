@@ -45,8 +45,13 @@ export const DAG_CSS = `
 .dsh-pm-dag-btn:hover { border-color: var(--dsh-pm-np-blue); color: var(--dsh-pm-np-blue); }
 .dsh-pm-dag-btn.is-on { background: var(--dsh-pm-np-blue); border-color: var(--dsh-pm-np-blue); color: #fff; }
 
-/* ---- 画布滚动区（高度上限内滚动；宽度自适应由 canvas 自己按容器重排） ---- */
-.dsh-pm-dag-canvas-wrap { padding: 0 13px 6px; overflow: auto; max-height: 640px; }
+/* ---- 画布滚动区（高度随视口自适应内滚动；宽度自适应由 canvas 自己按容器重排） ----
+   D-13 页面适配：高度从固定 max-height 640px 改为随视口走（占满 Tab 栏以下可用高度），
+   下夹 360px（矮屏仍可用）、上夹 900px（超长屏不拉成空窗）；宽度铺满面板。 */
+.dsh-pm-dag-canvas-wrap {
+  padding: 0 13px 6px; overflow: auto; width: 100%;
+  height: clamp(360px, calc(100vh - 400px), 900px);
+}
 .dsh-pm-dag-canvas-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
 .dsh-pm-dag-canvas-wrap::-webkit-scrollbar-track { background: var(--dsh-pm-np-bg); border-radius: 4px; }
 .dsh-pm-dag-canvas-wrap::-webkit-scrollbar-thumb { background: var(--dsh-pm-np-line); border-radius: 4px; }

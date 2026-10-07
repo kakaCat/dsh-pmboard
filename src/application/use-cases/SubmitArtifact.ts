@@ -35,12 +35,20 @@ import { boundSummariesOf } from '../internal/binding-read.js'
 import { registerArtifact } from '../internal/artifact-gates.js'
 import { isRegisteredArtifact, registeredPrototypesOf } from '../internal/prototype-registration.js'
 import { stampCheckpoint } from '../internal/interruption.js'
-import { checkNumberChainGate, checkDesignServesGate, checkRequirementDocFormatGate, assertArtifactOpenable, assertClauseCoverageGate, checkOverCapacityMarkerGate, overCapacityItemsOf } from '../internal/content-gate-wiring.js'
+import { checkNumberChainGate, checkDesignServesGate, checkRequirementDocFormatGate, sidesGateFailure, docSectionGateFailure, assertArtifactOpenable, assertClauseCoverageGate, checkOverCapacityMarkerGate, overCapacityItemsOf } from '../internal/content-gate-wiring.js'
+import { assertGranularityGates } from '../internal/plan-granularity.js'
 import { markerGateOf, resolveRoundCapacity } from '../../plugin-config.js'
 import { triggerAutoConfirm } from '../internal/auto-confirm.js'
-import { planDependencyWarnings } from '../internal/plan-deps-check.js'
+import { planDependencyWarnings, zeroOverlapDependencyWarnings } from '../internal/plan-deps-check.js'
+import {
+  planDocColumnWarnings,
+  planDocTaskTableMissing,
+  planDocUncoveredKeys,
+  readPlanDocTaskTable,
+} from '../internal/plan-doc-table.js'
 import { missingCategoryDocs } from '../internal/category-doc-sets.js'
 import { readabilityHints } from '../../domain/workflow/ReadabilityHints.js'
+import { clauseCriteriaHints } from '../internal/clause-criteria.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { envelope } from '../internal/gate-feedback.js'
 import {
@@ -103,7 +111,30 @@ export async function submitRequirementArtifact(deps: UseCaseDeps, args: unknown
       }
 
       // 人读性软门禁（人读纪律机械兜底）：缺 TL;DR / ASCII 图 / 表格 → 提示进响应，不阻断提交。
-      const readability = readabilityHints(await deps.docs.read(path))
+      const docText = await deps.docs.read(path)
+
+      // ── 端侧声明门（2026-10-06 文档质量门禁加固）──────────────────────────
+      // feature / refactor 的 front-matter `sides` 必须显式且值域合法——它是条件必交设计文档
+      // （frontend.md / backend.md）与 UI 原型门的**唯一触发器**，而非法值原先在解析处被静默
+      // 过滤（实测 sides: [doc] 与「没写 sides」后果完全相同：该交的设计文档永不触发）。
+      // 独立成门而不并进格式门：格式门有 isLegacy 早退（首次提交正是 artifacts 为空那一次）。
+      const sidesFailure = sidesGateFailure(target.category, parseDocument(docText).frontmatter, target.createdAt)
+      if (sidesFailure !== undefined) {
+        reject(sidesFailure.message, sidesFailure.code)
+      }
+      // ── 「失败与并发路径」必填节门（2026-10-06 加固）──────────────────────
+      // 同上只对新需求（docQualityRulesApply）生效：存量需求不追溯。为什么不在 CATEGORY_DELTAS 里：
+      // DELTA 会被拆分提交 / 设计门 / 文档自检复用到存量需求上（注释见 category-doc-sets 的 DELTA）。
+      const sectionFailure = docSectionGateFailure(target.category, docText, target.createdAt)
+      if (sectionFailure !== undefined) {
+        reject(sectionFailure.message, sectionFailure.code)
+      }
+
+      // 条款级判据软门禁（2026-10-06 加固）：每条条款的定义行块内有没有可核验判据
+      // （命令 / 断言 / 可读数 / 明确取值）——7/73 条条款曾实测无任何判据，而形状门禁全绿。
+      // 与 readability 同口径：只提示不拦（判据的质量人定，机械层只判"有没有可核验的东西"）。
+      const readability = readabilityHints(docText)
+      const clauseCriteria = clauseCriteriaHints(parseDocument(docText))
 
       const nowTs = deps.clock.now()
       const artifact: StageArtifact = {
@@ -193,6 +224,7 @@ export async function submitRequirementArtifact(deps: UseCaseDeps, args: unknown
         registered,
         ...(autoConfirm !== undefined ? { auto_confirm: autoConfirm } : {}),
         ...(readability.length > 0 ? { readability_warnings: readability } : {}),
+        ...(clauseCriteria.length > 0 ? { clause_criteria_warnings: clauseCriteria } : {}),
         note: (registered
           ? '需求文档产物已登记。' + (autoConfirm?.triggered === true
               // REQ-261006164732-6503 t8（serves: FR-3）：已自动弹框时**不再指向 ask_confirm**——
@@ -208,6 +240,9 @@ export async function submitRequirementArtifact(deps: UseCaseDeps, args: unknown
           : '该需求文档此前已登记（幂等命中，未重复登记）')
           + (readability.length > 0
               ? fmt(' 人读性提示（不阻断）：{hints}', { hints: readability.join('；') })
+              : '')
+          + (clauseCriteria.length > 0
+              ? fmt(' 条款判据提示（不阻断）：{hints}', { hints: clauseCriteria.join('；') })
               : ''),
       }
     }
@@ -318,6 +353,62 @@ export async function submitPlanArtifact(deps: UseCaseDeps, args: unknown, exec:
         }
       }
 
+      // ── 粒度门禁（REQ-261007125552-32cb FR-2/FR-4/FR-5）：对照表 / 接口数 / 形态软门 ──
+      // 判定单点在 plan-granularity.ts（三条入口共用，这里只调用）；读**实际提交的那份计划**
+      // （path 是 agent 可传的，硬编码 decomposition.md 会造静默放行面——超容量门同款教训）。
+      const granularity = await assertGranularityGates(deps.docs, target, rawTasks, openPath)
+      if (granularity.failure !== undefined) {
+        reject(granularity.failure.message, granularity.failure.code)
+      }
+
+      // ── 任务表列齐全（2026-10-06 缺口 4 之四）：批准所见 = 文档所见 ────────────
+      // 为什么是硬门：批准人点「批准计划」时读的是**这份文档**，落库读的却是 tasks[] 数组——
+      // 两者此前零一致性判据。实测有需求 decomposition.md 只有 41 行、**没有任务表**，而 plan.json
+      // 有 10 张完整卡：门禁全绿、人批的是一份空文档、落的是另一批卡。硬判只要求「有任务表 +
+      // 表里的 key 覆盖 tasks[].key 全集」（只判有没有落点，不逐字比对内容）；缺列这类**披露**问题
+      // 走软判（plan_doc_warnings，不拒）——硬拒会把「先批后补文档」这条正常路径整条堵死。
+      let planDocText = ''
+      let planDocWarnings: string[] = []
+      if (tasks.length > 0) {
+        try {
+          planDocText = await deps.docs.read(openPath)
+        } catch {
+          // 读不到文档 → 本门不判（不把 IO 故障伪装成「文档缺任务表」；路径存在性已由上面把关）
+          planDocText = ''
+        }
+        if (planDocText.length > 0) {
+          const table = readPlanDocTaskTable(planDocText)
+          if (planDocTaskTableMissing(table)) {
+            reject(
+              envelope({
+                lead: 'reqboard_plan_submit 未执行：',
+                what: '计划文档 ' + openPath + ' 里找不到任务表（表头应含「计划 key」列）',
+                why: '批准人读的就是这份文档——文档里没有任务表 = 人没看见这批卡，而落库会按 tasks[]（'
+                  + tasks.length + ' 张）落，「批准所见 ≠ 文档所见」',
+                how: '照 templates/decomposing/decomposition.md 的「## 任务表」补行（列名逐字照抄，'
+                  + '每张卡一行，第一列「计划 key」与 tasks[].key 一致），补完重调 reqboard_submit(kind=plan)',
+              }),
+              'plan_doc_task_table_incomplete',
+            )
+          }
+          const uncovered = planDocUncoveredKeys(table, tasks.map(t => t.key))
+          if (uncovered.length > 0) {
+            reject(
+              envelope({
+                lead: 'reqboard_plan_submit 未执行：',
+                what: '计划文档 ' + openPath + ' 的任务表没收录这些卡：' + uncovered.join('、'),
+                why: '这些卡不在文档里 = 批准人没看见它们，落库却会落它们（文档任务表覆盖 '
+                  + table.keys.length + ' 张 / tasks[] 共 ' + tasks.length + ' 张）',
+                how: '照 templates/decomposing/decomposition.md 的任务表给它们补行（计划 key 与 tasks[].key 一致），'
+                  + '或从 tasks[] 里删掉不打算做的卡；补完重调 reqboard_submit(kind=plan)',
+              }),
+              'plan_doc_task_table_incomplete',
+            )
+          }
+          planDocWarnings = planDocColumnWarnings(table)
+        }
+      }
+
       // ── 超容量软门禁（REQ-261002175818-80a8 t5 / FR-4、FR-5）──────────────────
       // 判定是纯计算、**不落库**（声明会随重交而变，落库的判定立刻过期）。
       // 容量与门禁强度单点在 plugin-config 解析（缺省 = 常量 16 DU + enforce）；
@@ -394,12 +485,17 @@ export async function submitPlanArtifact(deps: UseCaseDeps, args: unknown, exec:
       }, exec)
       // REQ-261003222428-3556 FR-3：doc↔tasks 依赖一致性警告——文档依赖表声明了依赖而
       // tasks 数组对应 key 全空（agent 漏传 depends_on 的形态）→ 回执点名（不拒，纯文档卡天然无依赖）。
+      // 2026-10-06 缺口 4 之三追加**反方向**的一条：tasks[] 里有依赖边、但两端 implementation
+      // 声明的文件零交集（且没写 dep_reasons 理由）→ 追进同一个键（不新开键：调用方只该有一个
+      // "依赖面不对劲"的读数口，两处点名会让人以为是两件事）。
       let dependencyWarnings: string[] = []
       if (tasks.length > 0) {
-        try {
-          const planDocText = await deps.docs.read(openPath)
-          dependencyWarnings = planDependencyWarnings(planDocText, tasks)
-        } catch { /* 文档读不到 → 没依据就不说话（不误报） */ }
+        if (planDocText.length > 0) {
+          try {
+            dependencyWarnings = planDependencyWarnings(planDocText, tasks)
+          } catch { /* 文档解析异常 → 没依据就不说话（不误报） */ }
+        }
+        dependencyWarnings = [...dependencyWarnings, ...zeroOverlapDependencyWarnings(tasks)]
       }
       return {
         success: true,
@@ -414,6 +510,10 @@ export async function submitPlanArtifact(deps: UseCaseDeps, args: unknown, exec:
         capacityNote: { source: capacity.source, value: capacity.value, calibrated: false },
         ...(marker.gaps.length > 0 ? { marker_warnings: marker.gaps } : {}),
         ...(dependencyWarnings.length > 0 ? { dependency_warnings: dependencyWarnings } : {}),
+        // 任务表缺列的软提示（非空才出键，与 marker_warnings 同口径）
+        ...(planDocWarnings.length > 0 ? { plan_doc_warnings: planDocWarnings } : {}),
+        // 粒度门禁警告（REQ-261007125552-32cb FR-5 + 豁免/降级披露）：非空才给键
+        ...(granularity.warnings.length > 0 ? { granularity_warnings: granularity.warnings } : {}),
         auto_confirm: planAutoConfirm,
         note: '拆分计划已提交' + (tasks.length === 0 ? '（未含任务表——落库时由 reqboard_decompose 传 tasks 创作）' : '（含 ' + tasks.length + ' 张任务卡）')
           + (planAutoConfirm.triggered

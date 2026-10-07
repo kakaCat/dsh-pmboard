@@ -23,6 +23,8 @@ import {
   applyRequirementWorkspaceRoot,
 } from '../internal/support.js'
 import { fmt } from '../../domain/text/fmt.js'
+// REQ-261007100513-6749 t3（FR-2/FR-3）：易变段尾部投递的**写路径生产者**（即发即忘、永不抛）。
+import { notifyVolatileQuietly } from '../internal/notice-delivery.js'
 // REQ-2d1c74 FR-2：design→decomposing 的 G2 文档集完整性闸门（与看板侧 / 弹框侧同一道）。
 import { gateForTransition } from '../../domain/gate/GateCatalog.js'
 import { checkDesignCompletenessGate, contentGatesForMove } from '../internal/content-gate-wiring.js'
@@ -53,6 +55,11 @@ const TRANSPORT_CODE_BY_INTERNAL: Readonly<Record<string, string>> = {
   prototype_missing: 'REQBOARD_MISSING_PROTOTYPE',
   prototype_version_conflict: 'REQBOARD_PROTOTYPE_VERSION_CONFLICT',
   prototype_anchor_missing: 'REQBOARD_PROTOTYPE_ANCHOR_MISSING',
+  // REQ-261006201649-cc89：**同一道门（锚点门）**的两个新问，成对登记——
+  // 只登内部码会让会话侧路径走"未知内部码原样透传"，人看到的是英文码而不是可读类别；
+  // 只登传输码则看板侧继续落 500。两侧各报各的码，缺一侧就是半条链。
+  prototype_placeholder: 'REQBOARD_PROTOTYPE_PLACEHOLDER',
+  prototype_geometry_unverified: 'REQBOARD_PROTOTYPE_GEOMETRY_UNVERIFIED',
   // 裁定门（§10 #35）
   decision_log_missing: 'REQBOARD_DECISION_LOG_MISSING',
   decision_entry_invalid: 'REQBOARD_DECISION_ENTRY_INVALID',
@@ -61,6 +68,11 @@ const TRANSPORT_CODE_BY_INTERNAL: Readonly<Record<string, string>> = {
   // 免得将来接线时又被隐式推导降级成缺产物。
   verification_prototype_compare_missing: 'REQBOARD_VERIFICATION_INCOMPLETE',
   stage_gate_overdue: 'REQBOARD_STAGE_GATE_OVERDUE',
+  // 粒度门禁（REQ-261007125552-32cb FR-2 / FR-4）：与原型门同款理由——两侧各报各的码，
+  // 缺一侧就是半条链（会话侧透传内部码、看板侧落 500）。
+  plan_interface_map_missing: 'REQBOARD_PLAN_INTERFACE_MAP_MISSING',
+  plan_component_map_missing: 'REQBOARD_PLAN_COMPONENT_MAP_MISSING',
+  plan_card_multi_interface: 'REQBOARD_PLAN_CARD_MULTI_INTERFACE',
 }
 
 /**
@@ -240,6 +252,12 @@ export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, e
     return { changed: true }
   }).catch(mapAgentError)
   const changed = result?.requirement
+  // REQ-261007100513-6749 t3（FR-2）：阶段**已落账** → 通知尾部通道刷新易变段。
+  // 这里**不传 kind**（= 状态行 / 当前任务块 / 阶段纪律三态全量刷新），两个理由：
+  //   ① 阶段推进同时改变「看板状态行」（`- REQ-x 当前状态：…`），而状态行**没有别的生产者**；
+  //      只通知 stage 会让状态行在通道可用后再也到不了会话（静默丢失，正是本需求要防的那类事故）；
+  //   ② 三态刷新是幂等的（内容哈希去重），多算两段正文的代价远小于"漏一段"。
+  if (changed !== undefined) notifyVolatileQuietly(deps.volatileNotice, windowKey)
   // REQ-261005105032-3b02 t11（FR-2）：**进入需求阶段**时幂等落原型骨架（UI 需求才有：判据读
   // requirement.md 的 sides，读不到按类型模板的缺省 sides）。位置放在转移**成功之后**——状态已进
   // brainstorming 才谈"这个阶段的产物"；已存在不覆盖、失败只告警（骨架是脚手架，不是转移的前置条件）。

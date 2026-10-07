@@ -79,6 +79,8 @@ import {
   defineKnowledgeTool,
   defineHandoffTool,
   defineSkillInstallTool,
+  // REQ-261006201508-5cb6 FR-3：注册日志从登记面派生（数字与名单不再手写）
+  TOOL_REGISTRY,
 } from './tools/index.js';
 import { FileDocRepository } from './adapters/FileDocRepository.js'
 // REQ-261005122347-e07a：skill 资产读 / 投放写盘 / 解释器探测（三者都在适配层，
@@ -101,6 +103,14 @@ import { CAPTURE_DIAG_REL, captureDiag, initCaptureDiag } from './application/in
 import { CaptureRejectionFile } from './adapters/CaptureRejectionFile.js';
 import { PendingConfirmRegistry } from './adapters/PendingConfirmRegistry.js';
 import { CAPTURE_REJECTION_REL } from './application/internal/capture-rejections.js';
+// REQ-261007100513-6749 t5（FR-6）：子卡请求预算 = 纯判定（subtask-budget）+ 计数订阅器与投递器
+// （request-counter）+ 卡评论 helper（task-comment）。运行态落点由 SUBTASK_BUDGET_REL 单点给出。
+import { SUBTASK_BUDGET_REL } from './application/internal/subtask-budget.js';
+import { createRequestCounter } from './application/internal/request-counter.js';
+import { createSubtaskRuntime } from './application/internal/subtask-runtime.js';
+import { appendRequirementComment, appendTaskComment, createInboxNotify } from './application/internal/task-comment.js';
+import { persistAtomic } from './repositories/atomicWrite.js';
+import { readFile } from 'node:fs/promises';
 import { createNodeSettlementDispatcher } from './application/internal/node-settlement.js';
 import { SystemClock } from './adapters/SystemClock.js';
 import { RandomIdFactory } from './adapters/RandomIdFactory.js';
@@ -119,7 +129,7 @@ import { DshJobsAdapter } from './adapters/DshJobsAdapter.js';
 import { createFailureAlert } from './adapters/FailureAlert.js';
 import { scheduleStartupScan } from './application/internal/startup-scan.js';
 import { migrateDiveState } from './application/internal/migrate-dive-state.js';
-import type { UseCaseDeps } from './application/ports.js';
+import type { SubtaskBudgetPort, UseCaseDeps } from './application/ports.js';
 import ReqboardDiveManager from './application/dive/ReqboardDiveManager.js';
 import { renderDiveRoundText } from './application/dive/round-state.js';
 import type { DiveRoundPorts } from './application/dive/round-driver.js';
@@ -131,6 +141,21 @@ import { maxInFlightRequirementsSetting } from './plugin-config.js';
 import { seatsMaxSetting, handoffSettings } from './plugin-config.js';
 import { reconcileTerminalDive } from './application/internal/reconcile-terminal-dive.js';
 import { humanGateOf } from './application/internal/human-gate.js';
+// REQ-261007100513-6749 t3（FR-2/FR-3）：易变段**尾部通道**（投递编排 + 适配器 + 同步内容投影）。
+import { createNoticeDelivery } from './application/internal/notice-delivery.js';
+import { createNoticeReconciler, type NoticeReconciler } from './application/internal/notice-reconciler.js';
+import {
+  buildVolatileNotice,
+  emptyTaskNoticeText,
+  type VolatileNotice,
+  type VolatileNoticeKind,
+} from './application/internal/volatile-notice.js';
+import { resolveStageNotice } from './application/internal/capture-section.js';
+import { openPromptFactsFor } from './application/internal/window.js';
+import { VolatileNoticeAdapter } from './adapters/VolatileNoticeAdapter.js';
+import { agentIdOf, messageIdOf } from './application/dive/round-state.js';
+import { isImplementing, isInProgressTask } from './domain/status/Predicates.js';
+import type { SubtaskBudgetState, TaskRecord } from './shared/protocol.js';
 import { checkChainBudget, DEFAULT_CHAIN_BUDGET_LIMITS } from './application/internal/chain-budget.js';
 
 /**
@@ -542,6 +567,8 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   // 惰性 getter `() => sessionProbe`，读实例的时机 = 各自的执行期（那时下面的赋值早已完成）。
   // 读不到（含尚未赋值）→ 输入包不追加「一轮余量（参考）」节，与本改动前逐字节相同。
   let sessionProbe: SessionProbeAdapter | undefined;
+  // 易变段协调层句柄（装配在下面；turn/end 回调与送出回执经它惰性取用——装配期还没建）。
+  let noticeReconcilerRef: NoticeReconciler | undefined;
   const settlement = createNodeSettlementDispatcher({
     enabled: nodeIsolation,
     // 任务队列端口（REQ-260927202051-f6df）：节点隔离取"当前在制任务卡"经它（v9 台账无 tasks）。
@@ -699,12 +726,150 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     taskStore,
     onNodeSettled: (settle, session) => settlement.onSettle(settle, session),
     useCaseDeps: () => useCaseDeps,
+    // REQ-261007100513-6749 t3（复核 P1-A）：回合末扫一次易变段差异（钩子驱动；每回合一次额度）。
+    // 为什么不用 agent/pre-step：那是 **dispatch 型**事件，round 驱动已把它的返回值当整步放行/reject
+    // 的决定——再挂一个监听器会插进那条决策链（详见 notice-reconciler 文件头 ①）。
+    onTurnEnded: (windowKey) => { noticeReconcilerRef?.noteTurnEnded(windowKey) },
     logger, plugin: name,
     round: diveManager.roundDriver(),
     attachSessionDriver: (handler) => diveManager.attachSessionDriver(handler),
     attachAgentStatus: (handler) => diveManager.attachAgentStatus(handler),
   });
   if (unsubscribeSessionEvents) disposers.push(unsubscribeSessionEvents);
+
+  // ── 易变段尾部通道装配（REQ-261007100513-6749 t3 · FR-2/FR-3 ← design/backend.md §S-1）──
+  // 三层：**传输**（notice-delivery：去重/去抖/到期冲刷/降级）+ **协调**（notice-reconciler：差异覆盖、
+  // 到达确认、头部一次性永久让位 + 迟滞回收）+ **适配**（VolatileNoticeAdapter：inbox.prepend）。
+  // 为什么都在组合根：需要只有这里才拿得到的东西——agent 句柄、同步窄投影、待捕获登记表。
+  //
+  // 内容投影**必须同步**（装配缝与写路径都不 await）：任务快照因此维护一份同步缓存
+  // （与 gate-wiring 的缓存同款：首帧拉一次 + `taskStore.subscribe` 刷新，最多滞后一次事件；
+  // 它只用于"给人看的指引"，不是门禁判据）。
+  let noticeTasks: readonly TaskRecord[] | undefined
+  const refreshNoticeTasks = (): void => {
+    void taskStore.listAll().then((tasks) => { noticeTasks = tasks }).catch((err) => {
+      logger.warn('reqboard 易变段：任务快照刷新失败（保留上次快照，最多滞后一次事件）', err)
+    })
+  }
+  refreshNoticeTasks()
+  disposers.push(taskStore.subscribe(() => { refreshNoticeTasks() }))
+
+  /** 同步内容投影（传输层"冲刷前重投影"与协调层"差异扫描"**共用同一个函数**：口径只有一份）。 */
+  const noticeContentFor = (windowKey: string, kind: VolatileNoticeKind): VolatileNotice | undefined => {
+    try {
+      const facts = store.peekFacts()
+      const open = openPromptFactsFor(facts, windowKey)
+      // 阶段纪律的**取词**留在 capture-section（要按需求实质与声明难度选档，FR-16）：
+      // 与回落路径**同一个入口**，两处正文才可能逐字一致。
+      const stage = kind === 'stage' ? resolveStageNotice(open) : undefined
+      return buildVolatileNotice({
+        windowKey,
+        open,
+        tasks: noticeTasks,
+        pending: pendingCapture.get(windowKey),
+        stageText: stage?.resolved.text,
+      }, kind)
+    } catch (err) {
+      captureDiag('reqboard-capture [NODE-6]: 易变段内容投影失败（按无内容处理）: ' + String(err))
+      return undefined
+    }
+  }
+
+  /**
+   * 空态补投正文（**阶段判据**，复核 P2-5）：只有「该窗口正在 implementing 且当前无在制任务」才有话说。
+   * 任务快照**未加载**（三态第一态）→ 不当成"没有任务"（那会谎报空态）→ 不产。
+   */
+  const noticeEmptyFor = (windowKey: string): VolatileNotice | undefined => {
+    try {
+      const open = openPromptFactsFor(store.peekFacts(), windowKey)
+      const impl = open.find(isImplementing)
+      if (impl === undefined || noticeTasks === undefined) return undefined
+      if (noticeTasks.some((t) => t.requirementId === impl.id && isInProgressTask(t))) return undefined
+      const text = emptyTaskNoticeText(impl.status)
+      return text === undefined ? undefined : { kind: 'task', text }
+    } catch { return undefined }
+  }
+
+  // 复核 P2-4：摘要从 FNV-1a 32 位换成 **sha1**（32 位碰撞 = 静默吞一段纪律）。
+  // node:crypto 只能在 host 侧用（application 层禁 node: 与 I/O），故经端口注入；规范化仍在
+  // volatile-notice.normalizeNoticeText 一份里做（本函数拿到的是规范化后的正文）。
+  const noticeDelivery = createNoticeDelivery({
+    sink: new VolatileNoticeAdapter({
+      agents: () => agentsSvc,
+      plugin: name,
+      // 归属需求只用于自署 source.requirementId（适配器**刻意不带** revision/round——见其文件头 ③）。
+      contextFor: (windowKey: string) => {
+        try {
+          const hit = store.peekFacts().find((r) => r.sourceSessionId === windowKey)
+          return hit === undefined ? undefined : { requirementId: hit.id }
+        } catch { return undefined }
+      },
+    }),
+    contentFor: noticeContentFor,
+    now,
+    hashOf: (canonical: string) => createHash('sha1').update(canonical).digest('hex'),
+    injectionLog,
+    // 送出回执 → 协调层记在途（**到达**由 host 的 agent/inbox/claimed 确认，复核 P1-B）。
+    onOutcome: (outcome) => { noticeReconcilerRef?.noteSent(outcome) },
+    diagnose: (message: string) => captureDiag('reqboard-capture [NODE-6]: ' + message),
+  })
+  const noticeReconciler = createNoticeReconciler({
+    delivery: noticeDelivery,
+    contentFor: noticeContentFor,
+    emptyNoticeFor: noticeEmptyFor,
+    now,
+    diagnose: (message: string) => captureDiag('reqboard-capture [NODE-6]: ' + message),
+  })
+  noticeReconcilerRef = noticeReconciler
+  disposers.push(() => { noticeReconciler.dispose(); noticeDelivery.dispose() })
+
+  // ── per-agent 到达确认（复核 P1-B）────────────────────────────────────────────
+  // agent 主题事件必须在 **agent 自己的作用域**里注册（见 round-subscriptions 头注：挂在插件 ctx 上
+  // 会被作用域过滤器**静默**丢弃）⇒ 先挂根事件 `agent/created` 拿句柄，再在 `agent.ctx` 上挂
+  // claimed / discarded 两路。`claimed` = 消息真的进了某一步（**到达确认** → 头部让位）；
+  // `discarded` = 用户 stop/cancel 清空 inbox（**忘掉那次送出** → 下一次协调补投）。
+  const noticeAgentOffs: Array<() => void> = []
+  try {
+    const bus = ctx as unknown as { on?: (event: string, cb: (...a: unknown[]) => unknown) => (() => void) | void }
+    const off = bus.on?.('agent/created', (payload: unknown) => {
+      const agent = (payload as { agent?: unknown } | undefined)?.agent
+      const windowKey = agentIdOf(agent)
+      const agentCtx = (agent as { ctx?: { on?: (e: string, cb: (...a: unknown[]) => unknown) => (() => void) | void } } | undefined)?.ctx
+      if (windowKey === undefined || typeof agentCtx?.on !== 'function') return
+      const sub = (event: string, fn: (p: unknown) => void): void => {
+        try {
+          const off2 = agentCtx.on?.(event, fn)
+          if (typeof off2 === 'function') {
+            noticeAgentOffs.push(off2)
+            logger.debug(`reqboard 易变段：订阅 ${event} ok（${windowKey.slice(0, 16)}）`)
+          } else {
+            logger.warn(`reqboard 易变段：订阅 ${event} 未返回解绑函数（到达确认可能失效）`)
+          }
+        } catch (err) {
+          logger.warn(`reqboard 易变段：订阅 ${event} 抛错——该路径静默停摆`, err)
+        }
+      }
+      sub('agent/inbox/claimed', (p2) => {
+        const mid = messageIdOf((p2 as { message?: unknown } | undefined)?.message)
+        if (mid !== undefined) noticeReconciler.noteClaimed(windowKey, mid)
+      })
+      sub('agent/inbox/discarded', (p2) => {
+        const mid = messageIdOf((p2 as { message?: unknown } | undefined)?.message)
+        if (mid !== undefined) noticeReconciler.noteDiscarded(windowKey, mid)
+      })
+      // 窗口销毁 → 清该窗口的协调状态与定时器（不留无人回收的定时器）。
+      sub('agent/disposed', () => { noticeReconciler.forget(windowKey) })
+    })
+    if (typeof off === 'function') disposers.push(off)
+    else logger.warn('reqboard 易变段：agent/created 订阅未成立 → 到达确认缺失（头部让位将永不发生；安全侧）')
+  } catch (err) {
+    logger.warn('reqboard 易变段：agent/created 订阅抛错 → 到达确认缺失（安全侧）', err)
+  }
+  disposers.push(() => {
+    for (const off of noticeAgentOffs) {
+      try { off() } catch { /* 解绑失败不抛 */ }
+    }
+  })
 
   // 捕获引导段装配（按窗口条件注入）：抽到 ./gate-wiring.js（REQ-f0579a t5 尺寸门禁）。
   registerCaptureGuidance(ctx, {
@@ -713,6 +878,11 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     // 任务队列端口（REQ-260927202051-f6df D17）：引导段用它的**同步缓存**渲染「当前任务执行中」。
     taskStore,
     sectionName: CAPTURE_SECTION, sectionOrder: CAPTURE_SECTION_ORDER,
+    // ★ 尾部通道（t2 留的注入点）：`available()` = **到达确认过**（host 的 claimed）才为 true，
+    // 且**一次性永久**（每窗口只此一次头部重写，P1-A）。它同时是**装配前补投点**：先扫差异把
+    // 任何来源（rollup / 看板 / confirm）造成的变更送进尾部，再回答头部能不能让位
+    // （复核 P1-A：不靠"谁改的谁通知"）。未确认 / 失败 / 抛错 → false → `section.text` 回落整段。
+    volatileChannel: { available: (windowKey: string) => noticeReconciler.available(windowKey) },
     onSystemPrompt: (svc) => { systemPromptSvc = svc; },
   });
 
@@ -736,6 +906,47 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   // 一部分，在这里拼成一个 SkillInstallPort——"唯一 child_process 点"因此仍收敛在 PythonProbe 一个文件里。
   const skillWriter = new SkillWriter()
   const pythonProbe = new PythonProbe()
+
+  // ── 子卡请求预算的运行态文件（REQ-261007100513-6749 t5 · FR-6 ← design/data-model.md）─────
+  // 落 `<dshHome>/state/subtask-budget.json`（与 `state/prompt-injection-log.json` /
+  // `state/capture-rejections.json` 同级：**运行态、可删可重建**，不进台账）。
+  // 为什么是运行态文件而不是台账字段：`used` 是**每请求自增**的热数据，写进 `queue.json` 会让每次
+  // 请求都触发一次台账原子写与缓存 revision 抖动；台账只承载**结论**（到顶汇报 / 放行），落在卡评论。
+  // 本对象就是 `SubtaskBudgetPort` 的**唯一实现**（窄端口只有 read/write；"幂等放行 = 比较并写入在同一
+  // 把锁内"由这里的串行队列保证）。失败语义：read 缺失/损坏 → `undefined`（调用方按「计数不可得」
+  // 显式降级并留痕，**不按 0 通过**）；write 抛错 → 由调用方告警 + 留痕 + **不阻断开工**。
+  const budgetFile = dshHomePath(config, SUBTASK_BUDGET_REL)
+  let budgetState: SubtaskBudgetState | undefined
+  let budgetLoaded = false
+  let budgetQueue: Promise<void> = Promise.resolve()
+  const budgetPort: SubtaskBudgetPort = {
+    async read(): Promise<SubtaskBudgetState | undefined> {
+      if (!budgetLoaded) {
+        budgetLoaded = true
+        try {
+          const parsed = JSON.parse(await readFile(budgetFile, 'utf8')) as SubtaskBudgetState
+          budgetState = parsed?.v === 1 && typeof parsed.tasks === 'object' && parsed.tasks !== null ? parsed : undefined
+        } catch (err) {
+          if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+            logger.warn('reqboard 子卡预算：运行态文件读取失败（按「计数不可得」处理，不按 0 通过）:', err)
+          }
+          budgetState = undefined
+        }
+      }
+      return budgetState
+    },
+    async write(next: SubtaskBudgetState): Promise<void> {
+      const run = async (): Promise<void> => {
+        await persistAtomic(budgetFile, JSON.stringify(next, null, 2))
+        budgetState = next
+        budgetLoaded = true
+      }
+      const queued = budgetQueue.then(run, run)
+      budgetQueue = queued.then(() => undefined, () => undefined)
+      return queued
+    },
+  }
+
   const useCaseDeps: UseCaseDeps = {
     // UseCaseDeps.repo 已在 B12 阶段④-3 摘除；新端口与桥**同一份真相**（桥就是它的适配器）。
     store: store,
@@ -821,7 +1032,77 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     alert: createFailureAlert({ log: (m) => logger.error(m), windowFor: (id) => store.peekFacts().find((x) => x.id === id)?.sourceSessionId }),
     // D14 修复：链的子卡派发需要 agent 句柄；看板「继续」/启动恢复按绑定窗口兜底解析（惰性读取）。
     agents: () => agentsSvc as { get?: (id: string) => unknown } | undefined,
+    // REQ-261007100513-6749 t3（FR-2/FR-3）：易变段尾部投递端口（写路径只表达"这一段变了"）。
+    // 与上面 `volatileChannel` **同一实例**（协调层）：送出回执 + 到达确认一起决定头部让位。
+    volatileNotice: noticeReconciler,
+    // REQ-261007100513-6749 t5（FR-6）：子卡请求预算的运行态端口（state/subtask-budget.json）。
+    // 「每请求自增」的热数据走这里（不写台账），台账只承载结论（到顶汇报 / 放行 = 卡评论）。
+    subtaskBudget: budgetPort,
   };
+
+  // ── 子卡请求预算：计数订阅器（REQ-261007100513-6749 t5 · FR-6 ← design/backend.md §S-3）────
+  // 只读订阅 `session/event` 的 `assistant/message`（一条 = 一次 LLM 请求），按子会话归属到卡，
+  // 计数落运行态文件；到顶**先停后报**（投停止指令 → 卡评论 + owner 通知 → enterAwaiting 等放行）。
+  // 为什么必须惰性开窗：本 profile 的子卡执行引擎不可达（subtask_engine_unreachable），现实路径是
+  // owner 手调宿主 `subagent`——那条路**没有派发事件**可挂，只能在首次事件到达时按归属开窗。
+  // 为什么自己订阅而不是复用 `session-driver`：那套对 tool/call 等套了 `isIgnoredSession` 过滤，
+  // 会把子会话整体排除掉；本订阅器要的恰恰是**被它忽略的那些会话**。
+  const ownerWindowOf = (requirementId: string): string | undefined => {
+    try {
+      return store.peekFacts().find((r) => r.id === requirementId)?.sourceSessionId
+    } catch { return undefined }
+  }
+  const budgetNotify = createInboxNotify({ agents: () => agentsSvc, plugin: name })
+  // 子卡预算的**运行时状态**（t5 返工 P1/P2）：一个实例、两处引用——计数订阅器（按会话计数 +
+  // 独立停手位）与放行路径（`releaseSubtaskBudget` 经 `useCaseDeps.subtaskRuntime` 清停手位、
+  // 按卡换窗）必须是**同一个**，否则放行清不到计数器手里的停手位（放行看起来成功、实际没续跑）。
+  const subtaskRuntime = createSubtaskRuntime()
+  useCaseDeps.subtaskRuntime = subtaskRuntime
+  const requestCounter = createRequestCounter({
+    port: budgetPort,
+    runtime: subtaskRuntime,
+    // 同步任务快照：与易变段**同一份缓存**（`taskStore.subscribe` 刷新，最多滞后一次事件）。
+    // 它只决定「汇报写到哪张卡」，不是执法判据；未就绪 → 落未归属（汇报走需求级评论，**执法照常**）。
+    tasks: () => noticeTasks,
+    tasksOf: (requirementId) => taskStore.listByRequirement(requirementId),
+    requirementForWindow: (windowKey) => {
+      try {
+        return store.peekFacts().find((r) => r.sourceSessionId === windowKey)?.id
+      } catch { return undefined }
+    },
+    appendComment: ({ taskId, body, at }) =>
+      appendTaskComment(useCaseDeps, taskId, body, { kind: 'system' }, at).then(() => undefined),
+    // 归属未定时的汇报去向：**需求级**评论（落 `comments.jsonl`；绝不把计数挂到某张卡上）。
+    appendRequirementComment: ({ requirementId, body, at }) =>
+      appendRequirementComment(useCaseDeps, requirementId, body, { kind: 'system' }, at).then(() => undefined),
+    // ① 先停：投给**子会话**（自署来源，禁止冒充人类；只 prepend，不起新回合）。
+    stopSubagent: ({ sessionId, requirementId, text }) =>
+      budgetNotify.stopSubagent({ sessionId, requirementId, text }).ok,
+    // ② 再报：owner 窗口（活跃 next-step / 空闲 next-turn）；窗口不可得 → 响亮留痕（不谎报送达）。
+    notifyOwner: ({ requirementId, text }) => {
+      const ownerWindow = ownerWindowOf(requirementId)
+      if (ownerWindow === undefined) {
+        captureDiag('reqboard-capture [NODE-7]: 子卡预算到顶通知未送出——需求 ' + requirementId + ' 无 sourceSessionId（owner 窗口未知）')
+        return false
+      }
+      const res = budgetNotify.notifyOwner({ windowKey: ownerWindow, requirementId, text })
+      if (!res.ok) captureDiag('reqboard-capture [NODE-7]: 子卡预算到顶通知未送达（' + res.channel + '）：' + String(res.reason ?? ''))
+      return res.ok
+    },
+    now,
+    diagnose: (message) => captureDiag('reqboard-capture [NODE-7]: ' + message),
+    logger: { warn: (m, e) => logger.warn(m, e) },
+  })
+  try {
+    const bus = ctx as unknown as { on?: (event: string, cb: (s: unknown, ev: unknown) => void) => (() => void) | void }
+    const off = bus.on?.('session/event', (session, event) => requestCounter.onSessionEvent(session, event))
+    if (typeof off === 'function') disposers.push(off)
+    else logger.warn('reqboard 子卡预算：session/event 订阅未成立 → 请求计数不生效（预算软门禁失效，如实留痕）')
+  } catch (err) {
+    logger.warn('reqboard 子卡预算：session/event 订阅抛错 → 请求计数不生效（预算软门禁失效）', err)
+  }
+  disposers.push(() => requestCounter.dispose())
+
 
   // REQ-260927144541-0481 根因修复（D-1 的落地点）：**装配 JobsPort**。
   // 此前 useCaseDeps.jobs 恒为 undefined（'JobsPort 未装配'被三处当既成事实写进注释）→
@@ -903,9 +1184,11 @@ export function apply(ctx: Context, config?: PluginConfig): void {
         // REQ-261005122347-e07a FR-1/FR-6：投放 UI/UX skill 资产（返回子代理要用的绝对路径）。
         disposers.push(toolsCtx.tools.register(defineSkillInstallTool(useCaseDeps)));
       }, name + ': tools');
+      // REQ-261006201508-5cb6 FR-3：数字与名单都从登记面派生——不再手写，
+      // 因此「改了数字忘了改名单」这一类漂移在结构上不可能发生（契约见 design/interfaces.md 第 3 节）。
       logger.info(
-        'agent tools registered (13): reqboard_create / reqboard_capture / reqboard_status / reqboard_task_run / reqboard_task_execute / reqboard_task_status / '
-        + 'reqboard_task_report / reqboard_submit(kind) / reqboard_ask_confirm / reqboard_confirm_receipt / reqboard_accept_sheet / reqboard_note_interruption / reqboard_clear_pause / reqboard_move / reqboard_task_move / reqboard_task_adopt / reqboard_handoff / reqboard_kb / reqboard_skill_install',
+        'agent tools registered (' + TOOL_REGISTRY.length + '): '
+        + TOOL_REGISTRY.map((e) => e.toolName).join(' / '),
       );
     },
   );

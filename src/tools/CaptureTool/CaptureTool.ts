@@ -47,7 +47,7 @@ export function defineCaptureTool(deps: UseCaseDeps) {
       },
       on_window_bound: {
         type: 'string',
-        description: "本窗口已绑定在飞需求时的分支：second（默认）= 本窗口接第二个项目；handoff = 开一个新窗口并把它交给新窗口当 owner",
+        description: "需求归属哪条线上：second（默认）= 本窗口接第二个项目；handoff = 开一个新窗口并把它交给新窗口当 owner。handoff 在**本窗口是否已绑定都适用**（未绑定时也真的换窗）——要把这条需求派给新窗口就用它",
         enum: ['second', 'handoff'],
       },
       reason: {

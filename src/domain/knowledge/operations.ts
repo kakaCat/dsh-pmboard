@@ -78,6 +78,17 @@ export const EXTRA_ENTRIES: readonly ExtraEntry[] = [
     trigger: '改动后',
     reason: '收录/更新 UI/UX skill 资产必须重算指纹：手改包内资产、或上游换版被静默带进来，都要能被一条命令揪出来',
   },
+  // REQ-261007133149-0716（详情页组件化）：外观归属与零变更的两条门禁
+  {
+    command: 'npx tsx scripts/report-style-snapshot.mts',
+    trigger: '改动后',
+    reason: '改了详情页外观必须逐组件比对「计算样式 + 几何」快照（判据一：零外观变更）',
+  },
+  {
+    command: 'npx tsx scripts/report-style-ownership.mts',
+    trigger: '改动后',
+    reason: '组件专属样式只许住自己的分片（判据二：分片归属；公共层禁写具体组件取值）',
+  },
   {
     command: 'bash scripts/sync-to-github.sh',
     trigger: '发版前',
@@ -93,6 +104,10 @@ export interface ExcludedEntry {
 
 /** 排除表：不进规范页的脚本/入口，逐条写清理由。 */
 export const EXCLUDED: readonly ExcludedEntry[] = [
+  // 归到「命令入口」而不是脚本文件本身的项：脚本要在这张表里点名，才不会算未归类
+  { name: 'token-cost-report.mts', reason: '命令入口是 pnpm cost:report（见 C-32）；脚本本身不再单立条目' },
+  { name: 'req-7a43-tab-parity.mts', reason: 'REQ-7a43 的落地对照探针：该需求自己的文档持有使用时机，本文不重复立条目' },
+  { name: 'req-7a43-ui-shot.mts', reason: 'REQ-7a43 的界面出图脚本：同上，使用时机归该需求' },
   { name: 'verify:client', reason: '已由 build:client 内含（同一条校验，不重复立条目）' },
   { name: 'kb:build', reason: '已由 kb:check 内含（check = 生成物比对 + 自检）' },
   { name: 'kb:probe', reason: '已由 kb:check 内含' },
@@ -152,6 +167,10 @@ export const EXCLUDED: readonly ExcludedEntry[] = [
   // 不登记掉，C-13 这道门就永远过不去。
   { name: 'req-report-probe.mts', reason: '按需几何验证（详情页 1280/900 两档 × 在途/终态），非每次必跑' },
   { name: 'archive-reconcile-drill.mts', reason: '专项演练脚本（归档对账回滚演练），按需运行' },
+  // REQ-261006201841-944d t10（FR-8）：存量归档**只读核对**脚本。为什么走 EXCLUDED 而不是
+  // EXTRA_ENTRIES：它是"什么时候想核对历史欠债就什么时候跑"的专项入口，不是每次改动必跑；
+  // 挂成覆盖项会连带要求它自己的 C-NN 规范条目 + INDEX 行，而 INDEX 已超字符预算（K1 红）。
+  { name: 'archive-ledger-audit.mts', reason: '专项只读核对脚本（存量归档对账，报告用），按需运行' },
   { name: 'req-detail-current-specimen.mts', reason: '验收取标本（当前详情页数据快照），非每次必跑' },
   { name: 'migrate-ledger-to-sqlite.ts', reason: '一次性迁移辅助（分片台账 → SQLite，由设置流程驱动），非手工操作' },
   { name: 'migrate-support.ts', reason: '迁移辅助模块（被迁移脚本 import，非入口脚本）' },  // REQ-261005155003-f32f(详情页 UI 优化):本需求新增的出图/报表/评审脚本,
@@ -177,6 +196,15 @@ export const EXCLUDED: readonly ExcludedEntry[] = [
   { name: 'card-gates-ui-shot.mts', reason: '按需出图（卡面门读数三态 + 降级对照材料，验收用），非每次必跑' },
   // REQ-261006170150-52cc：确认门唯一性探针（gate-request 在制判定），改确认门时按需跑。
   { name: 'gate-inflight-probe.mts', reason: '按需探针（确认门唯一性/在制判定），非每次必跑' },
+  // 缺口 2（设计坐标实施后失效且无回写）：设计坐标系探针（design/*.md 的路径可达 + 实施落点回写）。
+  // 为什么**不能**进「提交前必须跑」清单：存量 design/*.md 本来就带着一批历史失效坐标（改名/迁移留下），
+  // 全仓跑会红一大批——那是「存量需求不追溯」的既定口径，不是本次改动引入的问题；门禁若挂上它，
+  // 只会逼人把白名单灌水。故只在改动/复核某个需求时按 `--req` 手动跑（同 req-detail-design-conformance.mts
+  // 的处置：按需判据、不进必跑清单），也因此不新增 package.json script（加 script 就得同步 C-NN 条目）。
+  {
+    name: 'design-coord-probe.mts',
+    reason: '按需判据（设计坐标：路径可达 + 实施落点回写）；只在改动/复核时按 --req 手动跑，存量设计文档不追溯，不做提交前清单',
+  },
   { name: '.probe', reason: '临时探针产物目录，非入口脚本' },
 ]
 

@@ -9,7 +9,7 @@
  * @module dsh-pmboard/application/internal/confirm-settle
  */
 import type { UseCaseDeps } from '../ports.js'
-import { canReqTransition, type RequirementStatus, type RequirementRecord, type StageArtifact, type PlanRecord } from '../../shared/protocol.js'
+import { canReqTransition, type RequirementStatus, type RequirementRecord, type StageArtifact, type PlanRecord, type TokenSnapshot } from '../../shared/protocol.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { liveRealCards } from '../../domain/task/ReworkPlaceholder.js'
 import { advanceTargetFor, gateForTransition, ARTIFACT_CONFIRM_GATES } from '../../domain/gate/GateCatalog.js'
@@ -32,8 +32,8 @@ export const PLAN_MERGE_ADVANCE_REASON = '批准拆分计划后自动进入实�
 import { syncRTMYaml } from './rtm-yaml.js'
 import { requirementStoreOf, taskStoreOf, mutateIfPresent } from '../use-cases/queue-access.js'
 import { advanceRequirement } from '../use-cases/AdvanceChain.js'
-// FR-10：确认推进后的 dive 复位（唯一写入口）
-import { applyDiveTransition } from '../dive/applyDiveTransition.js'
+// FR-10 起：确认推进后的 dive 复位（唯一写入口）；t1 起改由**统一收尾**调用（本文件不再直调）
+import { finishConfirmAdvance } from './confirm-advance-finish.js'
 import { dispatchNoteOf } from './auto-advance-note.js'
 // REQ-261002141430-a5ef FR-3：三条确认通道的唯一收敛点上解除等待（人已作答）
 import { exitAwaitingConfirm } from './awaiting-confirm.js'
@@ -225,6 +225,48 @@ export async function recordStaleAnswer(
   })
 }
 
+/** 通道来源标签（只进留痕，不改行为；t1 起四通道共用同一实现时用它区分"谁确认的"）。 */
+export type ConfirmedAdvanceSource = 'prompt' | 'gate-prompt' | 'evidence' | 'board'
+
+/** 默认留痕正文（弹框路径逐字沿用；其余通道用 `commentBody` 覆盖，避免改既有文案）。 */
+export const DEFAULT_ADVANCE_COMMENT = '确认弹框肯定答复（reqboard_ask_confirm 原子推进）'
+
+/** `applyConfirmedAdvance` 入参（新增键全部可选 ⇒ 不传 = 改造前行为）。 */
+export interface ConfirmedAdvanceInput {
+  requirementId: string
+  windowKey: string
+  /** 调用方读到的当前状态（乐观并发护栏的期望值） */
+  from: RequirementStatus
+  to: RequirementStatus
+  nowTs: number
+  /** 留痕原因（**状态迁移记录**用）；缺省 = 既有 {@link CONFIRM_ADVANCE_REASON} */
+  reason?: string
+  /** 台账评论正文（`[自动推进] from → to：<这里>`）；缺省 = 既有默认句 */
+  commentBody?: string
+  /** 通道来源标签（可选）：写进评论尾部，便于事后判断"谁确认的" */
+  sourceLabel?: ConfirmedAdvanceSource
+  /** 缺省 true = 推进成功后做统一收尾（清停手位 + 复位健康）；false 只推进 */
+  clearStopPosition?: boolean
+  /**
+   * 写时进度快照（可选）。缺省 = 自行经 `captureSnapshot(deps, windowKey)` 取会话快照
+   * （工具侧三条通道的既有行为）；**看板侧**没有会话探针，由调用方从
+   * `ctx.deps.tokenSnapshot` 取好传进来 —— 两种来源写进台账的是同一个 `snap` 键。
+   */
+  snap?: TokenSnapshot
+}
+
+/** 推进 + 收尾的结果（`finish` 未推进时整体省略——无损 JSON 纪律，不发 null）。 */
+export interface ConfirmedAdvanceResult {
+  advanced: boolean
+  advanceNote: string
+  finish?: {
+    stopPositionCleared: boolean
+    clearedNow: boolean
+    healthReset: boolean
+    stageChanged: boolean
+  }
+}
+
 /**
  * 确认后的**唯一**状态迁移实现（REQ-261006094052-1da2 t1 · serves: FR-1、FR-2、FR-4）。
  *
@@ -233,49 +275,60 @@ export async function recordStaleAnswer(
  * 可执行出口（`reqboard_move` 被人门拒），只能请人去面板点「→ 设计」。推进的唯一实现只长在
  * `applyConfirmDecision` 里，两条路径必然漂移；本函数就是那份实现，两条路径共用。
  *
+ * **REQ-261007135258-331a t1（本次扩面）**：推进成功后调**统一收尾**
+ * （{@link finishConfirmAdvance}：清停手位 + 复位运行时健康）。此前这段只长在 `applyConfirmDecision`
+ * 里，文字证据与看板两条通道各自没有 —— 漏接不会被任何门禁发现（实测 2.5 小时静默停摆）。
+ *
  * 调用纪律：**调用方必须先过闸门**（门不过不得调本函数——那正是 FR-2 的「状态不变」）。
  * 本函数只做迁移，异常吞进 `advanceNote` **不抛**（与改造前 :253-255 逐字一致：失败要留下可见的一句话）。
  */
 export async function applyConfirmedAdvance(
   deps: UseCaseDeps,
-  input: {
-    requirementId: string
-    windowKey: string
-    /** 调用方读到的当前状态（乐观并发护栏的期望值） */
-    from: RequirementStatus
-    to: RequirementStatus
-    nowTs: number
-  },
-): Promise<{ advanced: boolean; advanceNote: string }> {
+  input: ConfirmedAdvanceInput,
+): Promise<ConfirmedAdvanceResult> {
   if (!canReqTransition(input.from, input.to)) {
     return {
       advanced: false,
       advanceNote: '；当前状态 ' + input.from + ' 无可自动推进的下一阶段（验收/归档走验收单流程）',
     }
   }
+  const reason = input.reason ?? CONFIRM_ADVANCE_REASON
+  const commentBody = input.commentBody ?? DEFAULT_ADVANCE_COMMENT
   try {
     await mutateIfPresent(requirementStoreOf(deps), input.requirementId, (req) => {
       if (req.status !== input.from) return undefined
       // REQ-b545fe t3：使用唯一迁移助手
       transitionRequirement(req, input.to as never, {
         at: input.nowTs,
-        actor: { kind: 'human', sessionId: input.windowKey },
-        reason: CONFIRM_ADVANCE_REASON,
-        snap: captureSnapshot(deps, input.windowKey),
+        actor: { kind: 'human', ...(input.windowKey.length > 0 ? { sessionId: input.windowKey } : {}) },
+        reason,
+        snap: input.snap ?? captureSnapshot(deps, input.windowKey),
       })
       req.comments.push({
         id: deps.ids.comment(),
-        body: '[自动推进] ' + input.from + ' → ' + input.to + '：确认弹框肯定答复（reqboard_ask_confirm 原子推进）',
+        body: '[自动推进] ' + input.from + ' → ' + input.to + '：' + commentBody
+          + (input.sourceLabel === undefined ? '' : '（来源=' + input.sourceLabel + '）'),
         createdAt: input.nowTs,
         createdBy: { kind: 'human', sessionId: input.windowKey },
       })
       stampCheckpoint(req, input.nowTs, 'reqboard_ask_confirm')
       return { changed: true }
     })
-    return { advanced: true, advanceNote: '' }
   } catch (err) {
     return { advanced: false, advanceNote: '；推进失败：' + ((err as Error).message ?? String(err)) }
   }
+  // ── 收尾（REQ-261007135258-331a t1）：清停手位 + 复位运行时健康 ──────────────────
+  // 为什么在这里而不是各通道：通道各调 = 又一处"漏接不会被发现"；放单点内由一处保证。
+  // 为什么失败不回滚推进：推进是事实，收尾是补偿动作（收尾内部各自 try/catch、永不抛）。
+  if (input.clearStopPosition === false) return { advanced: true, advanceNote: '' }
+  const finish = await finishConfirmAdvance(deps, {
+    requirementId: input.requirementId,
+    windowKey: input.windowKey,
+    from: input.from,
+    to: input.to,
+    nowTs: input.nowTs,
+  })
+  return { advanced: true, advanceNote: '', finish }
 }
 
 /**
@@ -532,15 +585,20 @@ async function settleConfirmDecisionBody(
   //   · 跨阶段：阶段推进已把回合计数归零（transitionRequirement 里的 advance-stage），
   //     但**运行时暂停位（driverHealth=paused）没人复位** → 链仍停着；
   //   · 同阶段：什么都没发生 → 达上限停下后，人确认了也照样不动。
-  // 这里统一走 `confirm-advance` 事件（规则在 domain/dive/transition.ts）：复位健康位、
-  // 按需归零，**绝不改写 activation**——确认这道门不等于同意自动跑（那是看板「继续」的事）。
-  await applyDiveTransition(
-    { store: requirementStoreOf(deps), now: () => deps.clock.now() },
-    d.requirementId,
-    'confirm-advance',
-    { kind: 'human', sessionId: d.windowKey },
-    { stageChanged: advanced && to !== undefined && to !== from, status: from },
-  )
+  // t1（REQ-261007135258-331a）起改走**统一收尾**（同一实现，四条通道共用）：
+  //   · 已推进 ⇒ `applyConfirmedAdvance` 内部已收尾过（含清停手位），本处**不重复**；
+  //   · 未推进（门拦下 / 无可推进目标）⇒ 由本处补一次收尾，`stageChanged:false`
+  //     —— 域规则只复位健康位、不归零 roundsInStage（FR-10 的既有语义逐字保留）。
+  if (!advanced) {
+    await finishConfirmAdvance(deps, {
+      requirementId: d.requirementId,
+      windowKey: d.windowKey,
+      from: from as RequirementStatus,
+      to: (to ?? from) as RequirementStatus,
+      nowTs,
+      stageChanged: false,
+    })
+  }
 
   // ── REQ-4842fe t10：批准拆分计划 = 落章 + 拆分落库 + 开跑（门合并，FR-16）────
   // 2026-09-21 用户裁定（w-2105d331 代录）：拆分计划挪到**拆分阶段**提交与批准——

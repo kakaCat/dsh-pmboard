@@ -46,6 +46,10 @@ export function buildDepositDraft(input: ArchiveDepositInput): {
   const kind: KbKind = input.hasRetro ? 'pitfall' : 'decision'
   const pointer = input.mergedInto[0] ?? (input.dir.length > 0 ? input.dir + '/verification.md' : '')
   const title = input.requirementTitle.length > 0 ? input.requirementTitle : input.requirementId
+  // REQ-261006201841-944d t5 / FR-4：失效条件**由 pointer 与 req id 派生**，不再写死模板句——
+  // 旧模板「相关实现被重构、或该结论被新条目 supersede 时」既无指针也无具体 id，人读不出
+  // "这条还算不算数"（K14 的 60/60 全是它）。派生锚点：指针（缺省 → 源需求 id）可被判存在性。
+  const invalidationAnchor = pointer.length > 0 ? pointer : input.requirementId
   const body = [
     '## 结论',
     input.indexEntry,
@@ -59,7 +63,7 @@ export function buildDepositDraft(input: ArchiveDepositInput): {
     '原始需求：' + input.requirementId,
     '',
     '## 失效条件',
-    '相关实现被重构、或该结论被新条目 supersede 时',
+    '`' + invalidationAnchor + '` 被删除或改名，或该结论被 `kb-XXXX` supersede（源需求 ' + input.requirementId + '）',
     '',
     '## 相关',
     pointer.length > 0 ? pointer : '（无合并去向）',

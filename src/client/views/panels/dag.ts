@@ -35,7 +35,7 @@
 import { esc } from '../../html.js'
 import { mdInline } from '../../render/md-inline.js'
 import type { DagGraphNode, DagResponse, DagStep } from '../../../shared/protocol.js'
-import type { ReportTabCtx, ReportTabDef } from '../report-tabs.js'
+import type { PanelShape, ReportTabCtx } from '../report-tabs.js'
 
 /**
  * 本面板的画布 id（**面板专用**，勿改成 `dag-canvas`）。
@@ -444,7 +444,7 @@ function renderDagPanel(data: unknown, ctx: ReportTabCtx): string {
     + '</section>'
 }
 
-export const dagPanel: ReportTabDef = {
+export const dagPanel: PanelShape & { key: 'dag' } = {
   key: 'dag',
   label: 'DAG',
   // 角标数字来自服务端计数（T-8）：`tabCounts.dag` = 任务卡数（与 DAG 图的节点数同源）。

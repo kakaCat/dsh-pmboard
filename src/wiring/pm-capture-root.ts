@@ -110,6 +110,12 @@ export interface DiveDriverAssemblyDeps {
    */
   useCaseDeps: () => UseCaseDeps;
   /**
+   * 回合末回调（REQ-261007100513-6749 t3 · 复核 P1-A）：转交易变段**协调层**做一次差异扫描。
+   * 覆盖"没有生产者"的状态变化（rollup / 看板 / confirm-settle / verdicts）。
+   * 缺省 = 不回调（行为与改造前逐字一致）。
+   */
+  onTurnEnded?: (windowKey: string) => void;
+  /**
    * 任务队列端口（REQ-260927202051-f6df）：驱动注入「当前任务」需从队列取（v9 台账已无 tasks）。
    * 直接传**实例**（非 `useCaseDeps()`——那个 getter 约定只在异步边界调用，而本函数是构造期）。
    */
@@ -244,6 +250,11 @@ export function assembleDiveSessionDriver(deps: DiveDriverAssemblyDeps): (() => 
     toolTrace,
     recentUserMsgs,
     injectionLog: deps.injectionLog,
+    // REQ-261007100513-6749 t3（FR-2）：待捕获候选**登记命中**时的尾部投递生产者（kind='capture'）。
+    // 惰性 getter：`useCaseDeps()` 只在 idle 拍（异步边界）取用，与上面 `snapshotProviderFor` 同款时序。
+    volatileNotice: () => deps.useCaseDeps().volatileNotice,
+    // REQ-261007100513-6749 t3（复核 P1-A）：回合末差异扫描（协调层；未装配 = 零行为）。
+    ...(deps.onTurnEnded === undefined ? {} : { onTurnEnded: deps.onTurnEnded }),
     // REQ-422af1 t10：节点结算信号 → 隔离分发（开关关时 dispatcher 一次都不执行）。
     onNodeSettled: deps.onNodeSettled,
     // REQ-e3b6a0 t7：**闸门后置链 Phase B 的唯一时机**。闸门作答不一定伴随用户消息，

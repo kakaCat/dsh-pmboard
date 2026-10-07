@@ -19,7 +19,7 @@ import type { IsolationTraceFile } from './adapters/IsolationTraceFile.js';
 import type { InjectionLogFile } from './adapters/InjectionLogFile.js';
 import type { SystemClock } from './adapters/SystemClock.js';
 import type { AgentDeliverer } from './adapters/AgentDeliverer.js';
-import { captureSectionTextFrom, boundSectionTextFrom } from './application/internal/capture-section.js';
+import { headSectionTextFrom, fallbackSectionTextFrom } from './application/internal/capture-section.js';
 import { windowKeyFromContext } from './application/internal/window.js';
 import { captureDiag } from './application/internal/diag-log.js';
 import type { SessionProbe, TaskStore } from './application/ports.js';
@@ -125,14 +125,53 @@ export interface CaptureGuidanceDeps {
   /** 捕获引导段名（systemPrompt 全局唯一）与放置序位（identity 5 / genome 10-40 之后）。 */
   sectionName: string;
   sectionOrder: number;
+  /**
+   * 易变段尾部通道（REQ-261007100513-6749 t2 · FR-1/FR-2 ← design/backend.md §S-1）。
+   *
+   * **可选、缺省 = 未装配 = 通道不可用**（照 `UseCaseDeps` 的可选端口范式：未装配时行为与改造前
+   * 一致）。语义：
+   *   · 可用（`available(windowKey) === true`）→ `section.text` **只回头部**（逐字节稳定），
+   *     状态行/当前任务/阶段纪律/待捕获提示由尾部通道投递（投递编排 = t3；本卡只留注入点）；
+   *   · 不可用/未装配 → `section.text` 回落整段（清单 + 易变段 + 常量块；未绑定窗口 = 引导或命中提示
+   *     二者取一），与改造前的会话内容等价（纪律一条不丢——这条回落是**安全底线**：通道挂了不许丢纪律）。
+   *
+   * **`available` 的契约（t3 必须遵守）**：它只表示**投递通道就绪**，不是"易变段已有人生产"：
+   *   · t3 未就绪前必须返回 `false`（缺省/抛错同样按 `false` 处理，见 `volatileChannelAvailable`）；
+   *   · `kind='capture'` 段的**生产者归 t3**（本卡只有读路径产出，写路径尚无生产者）——t3 若在
+   *     生产者就位前返回 `true`，未绑定窗口的待捕获提示会**静默消失**（头部让位给了它，尾部又没投）。
+   *
+   * 为什么做成可注入而不是直接读一个布尔：t3 的通道有真实就绪态（agents 句柄、inbox 可用性），
+   * 且本卡要求"落地后行为与改造前逐字等价"——缺省不可用才能保证这一条可被机械断言。
+   */
+  volatileChannel?: { available: (windowKey: string) => boolean };
   /** systemPrompt 服务就绪回调（调用侧存起供 tokenSnapshot/路由使用）。 */
   onSystemPrompt: (svc: unknown) => void;
 }
 
 /**
- * 捕获引导段（B：按窗口条件注入）：为每个 agent 窗口的 systemPrompt 组装求值，
- * 仅 unbound 的窗口返回引导文本，其余返回 ''（renderPrompt
- * 滤空段 → 零噪音）。text 为函数式：每次组装读取 store.台账快照读（已删除）（同步）判定当前窗口状态。
+ * 尾部通道本回合是否可用。
+ *
+ * **抛错按不可用处理**（评审 P2-2）：这一缝是每轮系统提示词的装配，抛错会让该窗口**每一轮都跑不起来**
+ * （本文件 `interpolate` 那段事故即同型）；同缝的 `peekFacts()` 也有同款兜底。方向必须是**安全侧**：
+ * 回落头部 = 纪律照投（只是多占头部），绝不因通道抖动而丢纪律或炸装配。
+ */
+function volatileChannelAvailable(deps: CaptureGuidanceDeps, windowKey: string): boolean {
+  if (deps.volatileChannel === undefined) return false;
+  try {
+    return deps.volatileChannel.available(windowKey) === true;
+  } catch (err) {
+    captureDiag(`reqboard-capture [NODE-4c]: 易变段通道可用性判定抛错 → 按不可用处理（回落整段）: ${(err as Error).message}`);
+    return false;
+  }
+}
+
+/**
+ * 捕获引导段（B：按窗口条件注入）：为每个 agent 窗口的 systemPrompt 组装求值。
+ *
+ * 未绑定窗口 → 静态引导（命中待捕获时改为命中提示，二者不同屏）；已绑定窗口 → 稳定头部
+ * （清单 + 常量块）；尾部通道可用时 `section.text` 只回头部，易变段由通道投递——见 `volatileChannel`；
+ * 判不出窗口键 → ''（renderPrompt 滤空段 → 零噪音）。text 为函数式：每次组装读取 store 的
+ * **同步窄投影**（`peekFacts()`）判定当前窗口状态。
  */
 export function registerCaptureGuidance(ctx: Context, deps: CaptureGuidanceDeps): void {
   ;(ctx as unknown as { inject?: (services: string[], cb: (c: any) => void) => void }).inject?.(
@@ -188,8 +227,8 @@ export function registerCaptureGuidance(ctx: Context, deps: CaptureGuidanceDeps)
           // 这也是文本侧**不做转义**的前提：用户原话与卡上验收原文必须逐字保真。
           interpolate: false,
           text: (assembleContext: unknown) => {
-            // 命中「本窗口待捕获消息」（hook 登记、turn/end 前）→ 注入针对性立项提示；
-            // 否则维持静态引导（bound/有遗留 pending 时两者都返回 ''，零噪音）。
+            // 本窗口待捕获消息（hook 登记、turn/end 前）→ 作为**易变段**（kind=capture）注入；
+            // 未命中时未绑定窗口走静态引导（头部）、已绑定窗口走「推进纪律」（头部 + 易变段）。
             const windowKey = windowKeyFromContext(
               assembleContext as { agent?: { id?: unknown }; scope?: unknown } | undefined,
             );
@@ -213,11 +252,21 @@ export function registerCaptureGuidance(ctx: Context, deps: CaptureGuidanceDeps)
               captureDiag(`reqboard-capture [NODE-4b]: 提示词窄投影不可用 → 引导段按空集求值（${(err as Error).message}）`);
               facts = [];
             }
-            const sectionText = captureSectionTextFrom(facts, assembleContext, pending);
-            if (sectionText.length > 0) return sectionText;
-            // 已绑定窗口：注入「推进纪律」（状态由窗口自己维护，不必等人点按钮）。
-            // 任务快照以**同步缓存**传入（`undefined` = 尚未加载 → 段内整体略过任务块）。
-            return boundSectionTextFrom(facts, tasksSnapshot, assembleContext, deps.injectionLog);
+            // t2（REQ-261007100513-6749）：本段拆成**头部 + 易变段**两半。
+            //   · 头部（`headSectionTextFrom`）= 绑定关系 + 常量块 —— 逐字节稳定，只随窗口绑定关系变；
+            //     需求状态、当前任务、阶段纪律、待捕获提示**不再进头部**（它们此前是头部被重写
+            //     16 个版本、每次让整段前缀缓存作废的来源）。
+            //   · 回落整段（`fallbackSectionTextFrom`）= 清单 + 易变段 + 常量块；未绑定窗口则在
+            //     「静态引导」与「待捕获命中提示」间**二选一**（改造前的替换语义，二者不同屏）。
+            //   · 通道可用性：`deps.volatileChannel` 未装配/抛错 = **不可用** → 走回落整段，
+            //     与改造前的会话内容等价（纪律一条不丢）；t3 接入真实通道后，此处只回头部。
+            if (windowKey !== undefined && volatileChannelAvailable(deps, windowKey)) {
+              return headSectionTextFrom(facts, assembleContext);
+            }
+            return fallbackSectionTextFrom(facts, tasksSnapshot, assembleContext, {
+              pending,
+              injectionLog: deps.injectionLog,
+            });
           },
         }));
       }, deps.plugin + ': capture');

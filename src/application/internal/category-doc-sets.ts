@@ -135,6 +135,41 @@ export function designDocPolicyFrom(frontmatter: Readonly<Record<string, string>
   return { sides, exempt }
 }
 
+/**
+ * 端侧声明的**合法性缺口**（0 条 = 合规）——`sides` 是条件必交的**唯一触发器**，
+ * 缺声明或写非法值原本都被静默过滤（见 frontmatterList 上方的事故注释）：
+ * 过滤发生在判定之前，于是「没写」与「写了 doc」长得一模一样，条件必交文档永不触发且无人报错。
+ *
+ * 口径（只对 front-matter 里真的存在 key 的类型判）：
+ *   ① **key 必须存在**——缺 `sides` = 无从区分"忘了写"与"确实没有端侧改动"；
+ *   ② **值域合法**——每个列出的值必须 ∈ {frontend, backend}，出现 `doc` 这类值即点名；
+ *   ③ **显式空列表合法**（`sides: []` = 「本需求无端侧改动」的明确声明）——
+ *      空列表是自洽的声明，不是遗漏；要求非空会逼纯工具/纯文档类需求写假话。
+ *
+ * 为什么放在本模块：VALID_SIDES 与 frontmatterList 是端侧语义的唯一事实源，
+ * 合法性判定必须与解析同源，否则两处值域迟早分叉（本仓「两份真相」教训）。
+ */
+export function sidesDeclarationGap(
+  category: string | undefined,
+  frontmatter: Readonly<Record<string, string>>,
+): string | undefined {
+  // 只有依赖 sides 做条件必交判定的类型才强制声明；bug/spike/doc/chore 没有条件必交文档。
+  if (category !== 'feature' && category !== 'refactor') return undefined
+  const raw = frontmatter['sides']
+  if (raw === undefined) {
+    return fmt('缺 front-matter `sides` 声明——{category} 类型的条件必交设计文档（frontend.md / backend.md）由它触发，不写就永远判不出该不该交', { category })
+  }
+  if (raw.trim() === '') {
+    return 'front-matter `sides` 声明为空串——要么写 sides: []（明确声明无端侧改动），要么写出实际端侧'
+  }
+  const declared = frontmatterList(raw)
+  const illegal = declared.filter(s => !VALID_SIDES.has(s))
+  if (illegal.length > 0) {
+    return fmt('front-matter `sides` 含非法值 {list}（合法值只有 frontend / backend）', { list: illegal.join('、') })
+  }
+  return undefined
+}
+
 /** 该类型 + 端侧声明下的有效设计文档清单（必交 ∪ sides 命中的条件必交），供闸门与呈现投影共用。 */
 export function effectiveDesignDocs(
   category: string | undefined,
@@ -201,6 +236,12 @@ export function requiredStageArtifactKinds(
 export const CATEGORY_DELTAS: readonly CategoryDocDelta[] = [
   // REQ-2d1c74 FR-1：feature 全套 = 五份必交（补 use-cases.md）+ 端侧条件必交（frontend/backend）。
   // REQ-261005105032-3b02 FR-1/FR-2：再加一条**阶段产物**条件必交——UI 需求需求阶段必交原型。
+  //
+  // 「失败与并发路径」（2026-10-06 文档质量门禁加固）**刻意不放进 DELTA**：DELTA 是
+  // 「所有该类型需求都必须有」的口径，而 `missingCategoryDocs` 会在**拆分提交 / 设计门 / 自检**
+  // 上对**存量需求**一起判——放进来就等于追溯存量（与「存量不追溯」冲突，实测会让在飞的老需求
+  // 提交拆分计划时被新节拦住）。它改为**按需求创建时间的提交期门**（`docQualityRulesApply`）：
+  // 见 content-gate-wiring 的 `docSectionGateFailure`；模板里照旧有这一节（照模板写的需求天然满足）。
   { category: 'feature', rootSectionsDelta: ['产品定义', '用户与角色', '功能点'], requiredDesignDocs: ['architecture.md', 'data-model.md', 'interfaces.md', 'test-cases.md', 'use-cases.md'], conditionalDesignDocs: [{ name: 'frontend.md', side: 'frontend' }, { name: 'backend.md', side: 'backend' }], conditionalStageArtifacts: [{ stage: 'brainstorming', kind: 'prototype', side: 'frontend' }] },
   { category: 'bug', rootSectionsDelta: ['复现步骤', '根因', '回归'], requiredDesignDocs: [] },
   // 重构同样常改前端表现（原型是"改成什么样"的唯一可核验载体）：与 feature 同档登记。

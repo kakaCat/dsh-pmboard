@@ -29,6 +29,8 @@ import { stageHeadSummary, stageRowState, type StageRowState } from './stage-pan
 import { STAGE_STATE_WORD } from './node-panel-process.ts'
 // REQ-261005193546-1b1a FR-1 / FR-4：分层剪边走 domain 单点（与 stage-panel.topoLevels 同一口径）
 import { layerInputOf, splitDependencyEdges } from '../domain/status/Predicates.js'
+// 2026-10-06：文档位置不再在本文件拼路径——统一走 req-doc-location（台账 docBasePath → 目录 → 绝对化）
+import { docLocationHtml, type DocLocationView } from './req-doc-location.ts'
 // REQ-260929010300-dbf9 FR-1/FR-2：DAG 展示与需求详情共用同一 Canvas 真图构建函数（常量单一源见 dag-view.ts）
 import { buildDagCanvas, PANEL_DAG_CONTAINER_ID, PANEL_DAG_CANVAS_ID } from './views/dag-view.js'
 // REQ-261001124111-5d36 t2：新鲜度渲染已按尺寸门禁拆到 panel-freshness.ts（模块头有"为什么拆"）
@@ -44,7 +46,18 @@ export type { NodePanelFreshness, BuildNotice } from './panel-freshness.js'
 export interface NodePanelInput {
   overview: StageOverview
   stage: StageKey
-  requirement: { id: string; title: string; promptDifficulty?: string | null; category?: string }
+  requirement: {
+    id: string
+    title: string
+    promptDifficulty?: string | null
+    category?: string
+    /**
+     * 需求文档位置（2026-10-06）：由台账 `docBasePath` 解析出来的**真实**目录（+绝对路径）。
+     * 缺省 = 还没取到（渲染走旧口径 `docs/requirements/<id>/`，并尽量绝对化）——
+     * **不许**在这里再拼一份自己的路径（那正是本次修的缺陷）。
+     */
+    docDir?: DocLocationView
+  }
   /** 数据新鲜度（可选）：缺省不渲染「数据时间 / 刷新失败」两块 */
   freshness?: NodePanelFreshness
   /** 客户端版本落后于服务端最新构建时的提示（可选；两戳相等或缺一即不渲染） */
@@ -146,12 +159,14 @@ function empty(text: string): string { return '<div class="dsh-pm-np-empty">' + 
 // 各节点基础信息体
 // ---------------------------------------------------------------------------
 
-function renderDraftInfo(p: Extract<StageDetail, { stage: 'draft' }>, reqId: string): string {
+function renderDraftInfo(p: Extract<StageDetail, { stage: 'draft' }>, reqId: string, docDir?: DocLocationView): string {
   const b = p.body
   const parts: string[] = []
   if (b.description) parts.push(infoItem('📝 需求描述', esc(b.description), 'is-desc'))
   if (b.category) parts.push(infoItem('🏷️ 分类', '<span class="dsh-pm-np-tag">' + esc(b.category) + '</span>'))
-  parts.push(infoItem('📂 文档位置', esc('docs/requirements/' + reqId + '/')))
+  // 2026-10-06：显示需求**真实**文档目录（台账 docBasePath 解析 → 绝对路径 + 台账相对路径小字），
+  // 不再拼死 `docs/requirements/<id>/`——面板地址要与文件实际落点一致。
+  parts.push(infoItem('📂 文档位置', docLocationHtml(docDir, reqId)))
   if (b.sourceWindow) parts.push(infoItem('👤 来源窗口', esc(b.sourceWindow)))
   if (b.createdAt) parts.push(infoItem('📅 创建时间', relSlot(b.createdAt)))
   return parts.join('')
@@ -264,7 +279,9 @@ function renderSwimlane(tasks: StageTaskRef[]): string {
       // 2026-09-29 用户裁定 E：卡底不再展示子卡链进度（4 段色条 + n/N）。
       // 意图=chain 且正在跑却没有子卡 → 必须显式标出；否则它与 solo 卡长得一模一样（本次困惑的根源）。
       const missing = chainMissing(t, kids)
-        ? '<span class="dsh-pm-np-chain-missing" title="该卡应落子卡链，链尚未生成——待再生成补链">链未生成</span>'
+        // 圆点 + 文字（REQ-261006211623-9dc1 FR-6，原型 prototypes/dag-chain-missing.html:218）：
+        // 圆点 aria-hidden 不参与可访问名，文字「链未生成」是主载体——颜色只是加强。
+        ? '<span class="dsh-pm-np-chain-missing" title="该卡应落子卡链，链尚未生成——待再生成补链"><span class="dsh-pm-np-chain-dot" aria-hidden="true"></span>链未生成</span>'
         : ''
       // REQ-260930182521-4fee FR-2：着色阶段 = 该卡所在列（同一次 laneOf 推导），
       // 否则卡会「站在测试中列、显示开发中的蓝」。
@@ -339,10 +356,10 @@ function renderArchivedInfo(p: Extract<StageDetail, { stage: 'archived' }>): str
 // 基础信息折叠（实施节点无此块）
 // ---------------------------------------------------------------------------
 
-function renderInfoFold(payload: StageDetail, reqId: string): string {
+function renderInfoFold(payload: StageDetail, reqId: string, docDir?: DocLocationView): string {
   let inner = ''
   switch (payload.stage) {
-    case 'draft': inner = renderDraftInfo(payload as Extract<StageDetail, { stage: 'draft' }>, reqId); break
+    case 'draft': inner = renderDraftInfo(payload as Extract<StageDetail, { stage: 'draft' }>, reqId, docDir); break
     case 'brainstorming': inner = renderBrainstormInfo(payload as Extract<StageDetail, { stage: 'brainstorming' }>); break
     case 'design': inner = renderDesignInfo(payload as Extract<StageDetail, { stage: 'design' }>); break
     case 'decomposing': inner = renderDecomposingInfo(payload as Extract<StageDetail, { stage: 'decomposing' }>); break
@@ -408,7 +425,7 @@ export function renderNodePanel(input: NodePanelInput): string {
   }
 
   const implViews = stage === 'implementing' ? renderImplViews(payload as Extract<StageDetail, { stage: 'implementing' }>) : ''
-  const infoFold = stage === 'implementing' ? '' : renderInfoFold(payload, input.requirement.id)
+  const infoFold = stage === 'implementing' ? '' : renderInfoFold(payload, input.requirement.id, input.requirement.docDir)
 
   return '<div class="dsh-pm-np" data-stage="' + esc(stage) + '" data-state="' + esc(state) + '">' +
     renderHead(payload, input.requirement, state, input.freshness) +

@@ -28,6 +28,10 @@ import type {
   TokenSnapshot,
   SessionLineageEntry,
   ContextPressureSnapshot,
+  // REQ-261007100513-6749 t1：本段新增端口引用的契约类型（I-2 投递结果 / FR-6 预算运行态）。
+  NoticeDeliveryResult,
+  SubtaskBudgetState,
+  VolatileNoticeKind,
 } from '../shared/protocol.js'
 import type { ConfirmContext, GateId } from '../domain/gate/GateSpec.js'
 import type {
@@ -1200,6 +1204,154 @@ export interface CaptureRejectionPort {
   readAll(): Promise<readonly CaptureRejection[]>
 }
 
+// ---------------------------------------------------------------------------
+// REQ-261007100513-6749 t1（定死接口与数据契约）：I-2 投递意图 + FR-6 预算运行态
+// ---------------------------------------------------------------------------
+
+/**
+ * 易变段投递端口（I-2，REQ-261007100513-6749 FR-2/FR-3）。
+ *
+ * **意图 / 实现分离**：写路径用例只调 `notify()`（意图），去重（内容哈希）、去抖、投递
+ * （`inbox.prepend('next-step')`）、降级兜底全在适配器里（实现）——用例可单测（fake port），
+ * 投递可单测（fake agent）。
+ *
+ * **契约（唯一一条硬纪律）：永不抛。** 投递失败**不是**写路径的失败——状态已经落账了，
+ * 因通知失败回滚会制造状态倒退。故一切失败（通道不可得 / 实现内部异常）都以返回值
+ * `NoticeDeliveryResult` 回报：调用方据此决定是否退回头部，而**不回滚**已落的写入。
+ */
+export interface VolatileNoticePort {
+  /**
+   * 请求把该窗口的易变段同步到会话尾部。
+   *
+   * 实现侧负责：内容哈希去重 → 去抖 → `inbox.prepend('next-step')` → 失败退回头部 + 留痕。
+   * `kind` 缺省 = 由实现按本次意图推导要投哪一段。
+   * **永不抛**（失败以 `NoticeDeliveryResult` 回报），调用方用例不因投递失败而回滚写路径。
+   */
+  notify(windowKey: string, kind?: VolatileNoticeKind): Promise<NoticeDeliveryResult>
+}
+
+/**
+ * 预算窗口运行态端口（FR-6，design/data-model.md §运行态文件 1）。
+ *
+ * 落点 = `state/subtask-budget.json`（与本仓既有 `state/prompt-injection-log.json` /
+ * `state/capture-rejections.json` 同级：**运行态、可删可重建**，不进台账）。
+ * 两个方法就是该文件的读写面——**窄端口**：窗口与计数的**判定**是
+ * `application/internal/subtask-budget.ts` 的纯函数，端口只负责搬运，用例不直接碰文件系统。
+ *
+ * 失败语义：
+ *  · `read()` 文件缺失 / 损坏 → `undefined`：调用方按「计数不可得」**显式降级并留痕**，
+ *    **不按 0 静默通过**（缺文件不等于没花钱）；
+ *  · `write()` 原子写（temp → fsync → rename，与队列同法）；实现侧**自持串行锁**。
+ *
+ * 并发口径（t5 返工 P2②，注释与实现对齐）：本端口**故意不给** read-modify-write 组合方法，
+ * 因为放行的原子性**不由端口提供**——它由调用方显式给出的 `expectedWindowIndex`（CAS）保证：
+ * `releaseSubtaskBudget` 把「我看到的窗口号」与当前窗口号比较，**不等即拒并回报当前窗口号**，
+ * 于是不存在「两个放行者各读到 #0、各自 +1、丢一次放行」的读改写竞态（端口仍是窄读写面）。
+ */
+export interface SubtaskBudgetPort {
+  /** 读全量窗口态（缺失/损坏 → undefined，见上）。 */
+  read(): Promise<SubtaskBudgetState | undefined>
+  /** 覆盖式写回全量窗口态（原子写；失败不静默吞，按实现口径告警 + 留痕）。 */
+  write(state: SubtaskBudgetState): Promise<void>
+}
+
+/**
+ * 预算**停手位**的一条记录（REQ-261007100513-6749 t5 返工 · P2）。
+ *
+ * 为什么另立类型而不复用人工门 in-flight（`DialogInFlightRecord`）：两者语义**不同**——
+ * 人工门 = 「有人在等一个弹框」（按**需求**登记；借它记预算会把同需求所有可开工卡一起停发，
+ * D-3 要的是「该卡停」不是「整需求停」）；预算 = 「这张卡 / 这个子会话这一窗用满了」，
+ * 按**卡或会话**登记、过期后可重新进入。
+ */
+export interface SubtaskHaltRecord {
+  /** 停手位引用（`budget-<作用域标识>-w<窗口号>`；单一构造点 = `budgetAwaitingRef`）。 */
+  readonly ref: string
+  /** 作用域键：已归属 = 卡 id；未归属 = `sess:<子会话 id>`（**不是**需求 id）。 */
+  readonly scope: string
+  readonly sessionId: string
+  readonly taskId?: string
+  readonly requirementId?: string
+  /** 到顶那一窗的窗口号（换窗 = 新停手位；同窗重复到顶 = 幂等命中）。 */
+  readonly windowIndex: number
+  readonly since: number
+  /** 失效时刻（`budgetHaltTtlMs`）；失效后同一作用域**可重新进停手位**（不是一次性闸）。 */
+  readonly expiresAt: number
+  /** 本作用域第几次进入停手位（≥1；过期或被清后再次到顶 ⇒ 递增）。 */
+  readonly reentries: number
+}
+
+/** 进入停手位的回执。 */
+export interface SubtaskHaltOutcome {
+  /** true = 本次**新进入**（含过期/被清后重新进入）；false = 已在同一窗口的停手位上（幂等）。 */
+  readonly entered: boolean
+  readonly halt: SubtaskHaltRecord
+}
+
+/**
+ * 预算**运行时状态**端口（REQ-261007100513-6749 t5 返工 · P1/P2）——计数与停手位的唯一落点。
+ *
+ * 为什么需要它（返工要解决的第一性问题）：**执法单位是子会话，汇报去向才看卡片归属**。
+ * 这两件事必须拆开，而「按子会话计数」**不能**落在 `SubtaskBudgetPort` 里——
+ * 那份运行态是**按卡**的（`tasks[taskId]`，形状由契约测试逐字钉住）：多卡并行时归属不可判，
+ * 按卡的键根本不存在，旧实现于是整条链落「未归属 ⇒ 零计数、零效力」。
+ *
+ * 口径：
+ *  · 计数窗口 = **进程内按会话**（`windowOfSession` / `chargeSession`）；子会话只活在进程生命周期里，
+ *    跨重启无意义，故**不落盘**；`SubtaskBudgetPort` 仍按卡落盘，承载放行与审计所需的结论；
+ *  · 归属只影响**汇报去向**：`chargeSession({taskId})` 的 `taskId` 只被记下来（首次归属即钉住），
+ *    **不参与**「是否到顶」的判定；
+ *  · 停手位按 `scope`（卡 id / `sess:<会话 id>`）**独立**登记，与人工门 in-flight 零耦合，
+ *    过期后**可重新进入**。实现 = `application/internal/subtask-runtime.ts`（纯内存，零 IO）。
+ */
+export interface SubtaskRuntimePort {
+  /** 该会话的计数窗口（undefined = 本会话还没计入过）。 */
+  windowOfSession(sessionId: string): SubtaskBudgetState['tasks'][string] | undefined
+  /** 该会话**首次**归属到的卡 id（钉住不漂移；未归属 → undefined）。 */
+  taskOfSession(sessionId: string): string | undefined
+  /**
+   * 记一次请求（**会话为单位**，不依赖卡片归属）：窗口推进 1 次。
+   *
+   * `limit` 只在**首次**开窗时生效（上限开窗定格，事后改台账不影响已开窗口）；
+   * `inherit` = 该会话归属卡在运行态文件里的窗口（有则继承其 `used`/`windowIndex`/`limit`，
+   * 使「同一张卡换了一个子会话」不会凭空拿到一份归零的额度）。
+   */
+  chargeSession(input: {
+    sessionId: string
+    taskId?: string
+    limit: number
+    at: number
+    inherit?: SubtaskBudgetState['tasks'][string]
+  }): {
+    window: SubtaskBudgetState['tasks'][string]
+    exceeded: boolean
+    accepted: boolean
+    overBy: number
+    /** true = 本会话的窗口是本次新开的。 */
+    created: boolean
+  }
+  /**
+   * 放行：把该卡名下的**所有会话**窗口切到新窗口（续跑起点）——不切就等于没放行，
+   * 被叫停的子会话会在下一个请求上立刻再次到顶。返回受影响的会话数。
+   */
+  applyRelease(taskId: string, next: SubtaskBudgetState['tasks'][string]): number
+  /** 进停手位（同作用域同窗口幂等；过期/被清后再次调用 = 重新进入，`reentries` 递增）。 */
+  enterHalt(input: {
+    ref: string
+    scope: string
+    sessionId: string
+    taskId?: string
+    requirementId?: string
+    windowIndex: number
+    at: number
+  }): SubtaskHaltOutcome
+  /** 该作用域当前**有效**的停手位（过期的就地摘除 → undefined）。 */
+  activeHalt(scope: string, at: number): SubtaskHaltRecord | undefined
+  /** 按卡清停手位（放行主路）；返回清掉的条数。 */
+  clearHaltsForTask(taskId: string, at: number): number
+  /** 诊断/对账用快照（只回未过期的）。 */
+  listHalts(at: number): readonly SubtaskHaltRecord[]
+}
+
 /**
  * 挂起确认端口（T-4，REQ-260924213231-b1c4 / FR-3 / I-3/I-4）。
  *
@@ -1596,4 +1748,35 @@ export interface UseCaseDeps {
    * 组合根把 `handoffSettings(config)` 注进来是另一张卡（本卡只加这一个字段）。
    */
   handoff?: HandoffThresholds
+  /**
+   * 易变段尾部投递端口（REQ-261007100513-6749 t3 · FR-2/FR-3 ← I-2）。
+   *
+   * **可选 = 未装配时行为与改造前逐字一致**：写路径（`MoveTask` / `MoveRequirement` /
+   * 待捕获登记）只调 `notify()` 表达"这一段变了"这一**意图**，去重/去抖/投递/降级全在实现里
+   * （`application/internal/notice-delivery.ts`，装配见组合根）。未装配时三个调用点直接返回
+   * （`notifyVolatileQuietly` 的缺省分支）——不排定时器、不留痕、不改任何正文。
+   *
+   * 纪律：**永不抛、不 await 成功语义**（状态已落账，因通知失败回滚 = 状态倒退）。
+   */
+  volatileNotice?: VolatileNoticePort
+  /**
+   * 子卡**请求预算**的运行态端口（REQ-261007100513-6749 t5 · FR-6 ← design/data-model.md）。
+   *
+   * **可选 = 未装配时行为与改造前逐字一致**：整条预算链（计数订阅器 / 到顶先停后报 / 幂等放行）
+   * 在 `deps.subtaskBudget === undefined` 时**整体零行为**——不订阅会话事件、不读写运行态文件、
+   * 不拦也不放；`reqboard_task_move({budget})` 响亮回 `REQBOARD_STORE_INCONSISTENT`（不假成功；不新造码）。
+   *
+   * 端口自身的失败语义见 `SubtaskBudgetPort`：`read()` 缺失/损坏 → `undefined` = **计数不可得**
+   * （调用方显式降级并留痕，**不按 0 通过**）；`write()` 失败 → 告警 + 留痕 + **不阻断开工**。
+   */
+  subtaskBudget?: SubtaskBudgetPort
+  /**
+   * 子卡预算的**运行时状态**（按会话计数 + 独立停手位；REQ-261007100513-6749 t5 返工 · P1/P2）。
+   *
+   * **可选 = 未装配时降级**：计数订阅器会自持一份进程内实例（执法照样生效），只是
+   * `reqboard_task_move({budget:{release:true}})` 的放行**清不到**那些会话窗口与停手位
+   * （它们与计数器不同实例）——故组合根**必须**注入与计数器**同一个**实例
+   * （见 `index.ts`：一个实例，两处引用）。契约与语义见 `SubtaskRuntimePort`。
+   */
+  subtaskRuntime?: SubtaskRuntimePort
 }

@@ -179,7 +179,11 @@ function logMissingFailure(path: string, reqId: string, gaps: string[], why: str
     message: envelope({
       what: fmt('{path} 的「{name}」节未就位：{list}', { path, name: DECISION_SECTION_NAME, list: gaps.join('；') }),
       why,
-      how: fmt('按 templates/brainstorming/feature.md 补该节并逐条落五要素（编号 / 原话来源 / 裁定 / 影响 FR / 判据）；确实无裁定就写「本节无裁定」，再调 reqboard_move(requirement_id="{req}", to="design")', { req: reqId }),
+      // t4（REQ-261007135258-331a FR-5）：指路必须给**agent 能执行**的命令——
+      // `reqboard_move(brainstorming → design)` 是人工门（humanOnly），agent 调必被
+      // REQBOARD_HUMAN_GATE 拒（实测：REQ-261007101318-c392 10:27:34 照文案走 → 死路）。
+      // 正确出口 = 重新 `reqboard_ask_confirm`：产物已落章 ⇒ 走"已确认未推进"分支，闸门全过即自动推进。
+      how: fmt('按 templates/brainstorming/feature.md 补该节并逐条落五要素（编号 / 原话来源 / 裁定 / 影响 FR / 判据）；确实无裁定就写「本节无裁定」；补齐后重新调 reqboard_ask_confirm(target=artifact, kind="requirement") —— 产物已落章 ⇒ 走「已确认未推进」分支，闸门全过即自动推进', { req: reqId }),
     }),
   }
 }
@@ -192,7 +196,8 @@ function entryInvalidFailure(path: string, reqId: string, gaps: string[]): GateF
     message: envelope({
       what: fmt('{path} 的「{name}」有 {n} 处无效：{list}', { path, name: DECISION_SECTION_NAME, n: gaps.length, list: gaps.join('；') }),
       why: '裁定条目五要素缺一即无效；只有概括句、无可核验来源、或「影响 FR」没命中真实条款的条目一律视为无效',
-      how: fmt('按上面逐条补齐（原话来源写会话消息 id 或时间戳 + 原话；影响 FR 须命中 requirement.md 里真实存在的条款编号），再调 reqboard_move(requirement_id="{req}", to="design")', { req: reqId }),
+      // t4（同上）：不再指 `reqboard_move`（人工门）——那条路 agent 走不通。
+      how: fmt('按上面逐条补齐（原话来源写会话消息 id 或时间戳 + 原话；影响 FR 须命中 requirement.md 里真实存在的条款编号）；补齐后重新调 reqboard_ask_confirm(target=artifact, kind="requirement") —— 产物已落章 ⇒ 走「已确认未推进」分支，闸门全过即自动推进', { req: reqId }),
     }),
   }
 }

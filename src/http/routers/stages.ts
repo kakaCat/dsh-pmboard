@@ -19,6 +19,8 @@ import {
 import { syncAllReqArtifacts, syncReqArtifacts } from '../../adapters/ArtifactSync.js'
 import { assembleStageDetail, assembleStageOverview } from '../../application/query/QueryStageDetail.js'
 import { designDocPolicyOf } from '../../application/internal/design-docs.js'
+// REQ-261006201841-944d t8（FR-7）：来源三态派生的**唯一实现**（纯函数，判据不落在路由里）。
+import { requirementOriginsOf } from '../../application/internal/requirement-origins.js'
 import { assembleRequirementToken, requirementTotalTokens } from '../../application/query/QueryRequirementToken.js'
 import { assembleRequirementMarks } from '../../application/query/QueryRequirementMarks.js'
 import { FileDocRepository } from '../../adapters/FileDocRepository.js'
@@ -130,6 +132,18 @@ export function createStagesRouter(ctx: RouterCtx) {
       workspaceRoot: docRoot.root,
       sessionWorkspaceRoot: docRoot.sessionRoot,
       docsRootSource: docRoot.source,
+      // REQ-261006201841-944d t8（FR-7）：归档条来源三态——需求 id → local / elsewhere / unknown。
+      // **判据单点**在 application/internal/requirement-origins.ts（`rootOfRequirement` + `sameProjectRoot`）；
+      // 本路由只做协议转换，不写任何路径比较。**只对本页 requirements 计算**（≤ limit，零额外读盘：
+      // 摘要自带 projectId / workspaceRoot）。项目表取自应用层依赖包（路由白名单未转发 projectRegistry）；
+      // 未装配 → 判据一律走路径兜底（by='path-fallback'），行为如实标注、不冒充项目身份。
+      origins: requirementOriginsOf(
+        // 项目表优先取应用层依赖包（组合根把 useCaseDeps 整体传进来了，里面有真项目表）；
+        // 路由自己的 deps 未转发 projectRegistry，故它只作兜底（并补齐派生要读的 `docs` 形状）。
+        ctx.deps.applicationDeps ?? { ...deps, docs: deps.docs ?? {} },
+        page.items,
+        docRoot.root,
+      ),
       // REQ-261005141830-7a3b t5（FR-9）：判据可观测——本次列表用的是项目身份还是路径兜底，现场就能看出。
       projectSource: docRoot.projectSource,
       ...(docRoot.projectId === undefined ? {} : { projectId: docRoot.projectId }),
@@ -380,6 +394,9 @@ export function createStagesRouter(ctx: RouterCtx) {
           ...(t.parentId !== undefined ? { parentId: t.parentId } : {}),
           ...(t.stageKind !== undefined ? { stageKind: t.stageKind } : {}),
           ...(t.attempt !== undefined ? { attempt: t.attempt } : {}),
+          // REQ-261007100513-6749 t1 / FR-6：预算覆盖值透传到会话流程面板的任务行
+          //（手工挑字段的投影，漏一处就丢字段）。可选：缺省 = 键缺席（不冒充 0）。
+          ...(t.budgetRequests !== undefined ? { budgetRequests: t.budgetRequests } : {}),
         })),
     })
   }

@@ -20,6 +20,10 @@ import { runSubtaskViaTeam } from './SubtaskTeamRun.js'
 // D14（REQ-260927123256-196b 的模块，此前**未接线**）：看板「继续」/启动恢复入口无 exec.agent 时
 // 按绑定窗口兜底解析在线 agent；解不到给可读原因。它同时是团队分支的前置（TeamService 要 live caller）。
 import { ensureAgentHandle } from '../internal/agent-handle.js'
+// REQ-261007100513-6749 t5（FR-6）：子卡请求预算的显式开窗（幂等、永不抛、不阻断开工）。
+import { openSubtaskBudgetWindow } from '../internal/subtask-budget.js'
+// t7/R4：非法 budgetRequests 的「按缺省起算」诊断要有可见落点（既有 diag 通道，不新造码）。
+import { captureDiag } from '../internal/diag-log.js'
 import { applyRequirementWorkspaceRoot, assertDoneEvidence, rootOfRequirement } from '../internal/support.js'
 import { normalizeArtifactPath } from '../../domain/artifact/ArtifactPath.js'
 import { detectCrossCardOverwrite } from '../internal/cross-card.js'
@@ -427,6 +431,24 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
     })
   } catch (err) {
     return fail(task.id, (err as Error).message, (err as { code?: string }).code ?? 'workflow_script_contract', base)
+  }
+
+  // ── 子卡请求预算：开窗（REQ-261007100513-6749 t5 / FR-6）──────────────────────────
+  // 这里是引擎可达 profile 的**显式开窗**接线（workflow 与团队两条派发路线的共同入口）：
+  // 窗口的 `limit` 在开工那一刻定格（事后改台账/改 budgetRequests 不影响已开窗口）。
+  // 本 profile 的现实主路（owner 手调宿主 `subagent`）没有派发事件可挂 ⇒ 由计数订阅器
+  // **惰性开窗**兜住（见 application/internal/request-counter.ts 文件头）。
+  // 幂等 + **永不抛**：写失败只告警 + 卡评论留痕，**不阻断开工**（计数丢失不等于卡不能干）。
+  const budgetWindow = await openSubtaskBudgetWindow(deps, { task, at: deps.clock.now() })
+  // t7/R4（FR-6 读侧口径，design/data-model.md §运行态文件 1）：卡上 `budgetRequests` 非法
+  // （≤0 / 非整数）时**按缺省起算并留一条诊断**（不阻断开工）。此前这里把返回值的 `note` 丢了，
+  // 于是「非法覆盖值」在生产里**完全没有可见落点**（静默按 60 起算）。
+  // 只在 `opened=true` 时报这一条：失败场景的 note 已由 openSubtaskBudgetWindow 内部
+  // 告警 + 卡评论承载，不在这里重复刷同一条。
+  if (budgetWindow.opened && budgetWindow.note !== undefined) {
+    captureDiag(fmt('reqboard-capture [NODE-7]: 子卡 {id} 请求预算按缺省起算（{note}）', {
+      id: task.id, note: budgetWindow.note,
+    }))
   }
 
   // run 产出解包（REQ-260927100007-b8ba t-8bce7d）：WorkflowRunOutcome 是 {ok, value:{output}} **两层信封**，

@@ -43,6 +43,9 @@ import { fmt } from '../domain/text/fmt.js'
 // REQ-261005193546-1b1a FR-1 / FR-4：活卡判据与剪边走 domain 单点（`topoLevels` 内部剪边，见该函数注释）
 import { layerInputOf, splitDependencyEdges } from '../domain/status/Predicates.js'
 import { artifactKindLabel, docFileLabel, taskCardLabel } from '../shared/artifact-labels.js'
+// REQ-261006201920-2adc FR-3：覆盖控件在 verify.ts 里是唯一实现——本处**导入复用**，不复制粘贴
+// （两处渲染各写一份必然漂移：本仓已有「两处各写一份」的老账）。
+import { changeReasonControl, supersededLine } from './views/panels/verify.js'
 import type { StageTaskRef } from '../shared/protocol.js'
 
 // ---------------------------------------------------------------------------
@@ -539,11 +542,13 @@ function renderVerificationSheet(
       humanFlag +
       (decided
         ? (it.opinion ? '<div class="dsh-pm-sn-warn">意见：' + esc(truncate(it.opinion, 200)) + '</div>' : '')
+          + supersededLine(it as never)
         : '<div class="dsh-pm-vitem-actions">' +
             '<label><input type="radio" name="verdict-' + esc(it.id) + '" value="passed"> 通过</label>' +
             '<label><input type="radio" name="verdict-' + esc(it.id) + '" value="failed"> 不通过</label>' +
             opinionInput +
-          '</div>') +
+            changeReasonControl(it as never) +
+          '</div>' + supersededLine(it as never)) +
     '</div>'
   }).join('')
   const allDecided = sheet.items.every(i => i.status !== 'pending')

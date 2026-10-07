@@ -72,6 +72,11 @@ export async function refsForLanding(input: RefsForLandingInput): Promise<RefsFo
   for (const raw of planTasks) absorb(raw)
 
   // ② 文档通道：只在①为空时补齐（显式优先；两处都有时不让文档覆盖显式）
+  // 2026-10-06 如实标注：这是**存量 / 回填通道**——覆盖门禁（`assertClauseCoverageGate`）已收敛成
+  // 「只认卡上 requirement_refs」的单口径，新计划走不到这条（卡上没 refs 在门禁那一关就被拒了）。
+  // 保留它是为了规则生效前已批准的老计划：那些计划的卡上恒空，只能靠文档表把引用补回落库值。
+  // 它被 `refsByKey.size > 0` 门住（没有显式 refs 的计划不进这条）——这正是实测 28% 落库率的来源，
+  // 修法在门禁侧（要求显式），不在取数侧（把文档表升格成依据 = 又造一份会漂移的真相）。
   if (refsByKey.size > 0) {
     for (const [key, refs] of await planRefsFromDoc(input.docs, input.req)) {
       if (!refsByKey.has(key)) continue // 文档里提到、但不在本次计划里的 key 不进结果（避免噪声）

@@ -14,6 +14,9 @@ import { assembleRequirementMarks } from '../query/QueryRequirementMarks.js'
 import { renderMarksBlock, upsertMarksBlock } from '../internal/requirement-marks-doc.js'
 // REQ-261001203710-0fbf t7：需求文档接收标记写入前核验写盘根
 import { ensureWritableProjectRoot } from '../internal/support.js'
+// 需求文档位置唯一解析点（2026-10-06）：回写目标必须是**这条需求自己的**文档，
+// 原先拼死 `docs/requirements/<id>/requirement.md`——换过位置的需求回写会落在无人读的目录。
+import { requirementDocPathOf } from '../../domain/requirement/DocLocation.js'
 
 /** 回写结果：synced=false 表示"文档不存在 / 内容未变"，两种都属正常，不是错误。 */
 export interface SyncMarksResult {
@@ -23,17 +26,13 @@ export interface SyncMarksResult {
   readonly unreceived: readonly string[]
 }
 
-function requirementDocPath(reqId: string): string {
-  return 'docs/requirements/' + reqId + '/requirement.md'
-}
-
 /** 把接收状态写回 `docs/requirements/<req>/requirement.md`（文档不存在 → 静默跳过）。 */
 export async function syncRequirementMarks(
   deps: Pick<UseCaseDeps, 'docs'>,
   req: RequirementRecord,
   tasks: readonly { id: string; status: string; lastReport?: { completed?: readonly string[]; filesChanged?: readonly string[] } | undefined }[],
 ): Promise<SyncMarksResult> {
-  const path = requirementDocPath(req.id)
+  const path = requirementDocPathOf(req)
   if (!deps.docs.exists(path)) return { synced: false, path, unreceived: [] }
   const before = await deps.docs.read(path).catch(() => undefined)
   if (before === undefined) return { synced: false, path, unreceived: [] }

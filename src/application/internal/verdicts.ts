@@ -23,6 +23,7 @@ import { hasErrorCode, REQBOARD_ERROR_CODES } from '../../domain/errors.js'
 import {
   applyVerdicts as applySheetVerdicts,
   isSystemItem,
+  isResultOverride,
   reworkSpecsFor,
   type ReworkTaskSpec,
 } from '../../domain/workflow/AcceptanceSheetSpec.js'
@@ -36,6 +37,11 @@ export interface VerdictInput {
   itemId: string
   status: 'passed' | 'failed' | 'unverified'
   opinion?: string
+  /**
+   * 覆盖 agent 实测结果时必须给出的**变更理由**（REQ-261006201920-2adc FR-3 / D-3）。
+   * 不构成覆盖时不读取；构成覆盖而缺失 → 该批被拒（`result_change_reason_required`）。
+   */
+  changeReason?: string
 }
 
 export interface ApplyVerdictsResult {
@@ -81,6 +87,12 @@ function materializeReworkTask(
     acceptance: spec.acceptance,
     implementation: spec.implementation,
     context: spec.context,
+    // REQ-261006201920-2adc FR-2：把规格里从来源卡继承的四类字段逐字搬到卡上。
+    // 不继承 `prototypeRefs` 会让 UI 卡的返工卡被 UI 卡原型锚点门禁拒绝——生成即死路。
+    ...(spec.requirementRefs !== undefined ? { requirementRefs: [...spec.requirementRefs] } : {}),
+    ...(spec.prototypeRefs !== undefined ? { prototypeRefs: [...spec.prototypeRefs] } : {}),
+    ...(spec.decisionRefs !== undefined ? { decisionRefs: [...spec.decisionRefs] } : {}),
+    ...(spec.footprint !== undefined ? { footprint: spec.footprint } : {}),
     status: 'todo',
     blocked: false,
     executions: [],
@@ -136,6 +148,46 @@ export function applyVerdicts(
     }
   }
   let applied: ReturnType<typeof applySheetVerdicts>
+  // ── 「人写结果」的**前置**校验：（REQ-261006201920-2adc FR-3 / D-3）先整批验证、后落状态 ──
+  // 判定与写入必须分开：写入发生在 `applySheetVerdicts` 之后（那时项状态已变），但**校验**必须
+  // 在此之前——否则「缺理由」会在半批已改之后才发现，破坏本函数既有的原子性承诺。
+  //
+  // 两条路径，判据不同（混为一谈会要出两种错）：
+  //   · **首次填写**（该项本来没有实测结果）→ 人的文本就是结果，写 `result` + 来源 `human`；
+  //   · **覆盖**（该项已有实测结果且与人的文本不同）→ 除上述外还要**变更理由** + 原文留档。
+  // 未改动预填值（文本 === 既有 result）两条都不走，老老实实跳过（TC-15）。
+  interface ResultWritePlan { id: string; op: string; reason: string; superseded?: string }
+  const writePlans: ResultWritePlan[] = []
+  if (itemResultBindingEnabled(process.env)) {
+    for (const v of verdicts) {
+      if (v.status !== 'passed') continue
+      const it = sheet.items.find(i => i.id === v.itemId)
+      // 「只能人看」的项也排除（REQ-261006201920-2adc FR-3）：它的 `result` 只是**供人参照的材料**
+      // （与 domain `needsHumanNeedsText` 同口径），人的判断记在 `opinion` 里——覆盖参照材料既没有
+      // 语义，也会逼人在「唯一要人动手」的项上多答一问。
+      if (it === undefined || isSystemItem(it) || it.needsHuman === true) continue
+      const op = (v.opinion ?? '').trim()
+      const existing = (it.result ?? '').trim()
+      // 两条写路径的**分流判据**：与既有实测结果不同=覆盖（要理由+留档）；本无结果=首次填写。
+      if (op.length === 0 || op === existing) continue
+      const override = isResultOverride(it, op)
+      writePlans.push({
+        id: v.itemId,
+        op,
+        reason: (v.changeReason ?? '').trim(),
+        ...(override ? { superseded: existing } : {}),
+      })
+    }
+  }
+  for (const p of writePlans) {
+    if (p.superseded === undefined || p.reason.length > 0) continue
+    throw new VerdictError(
+      '验收项 ' + p.id + ' 的实测结果由 agent 记录，**覆盖它必须写变更理由**（changeReason）——'
+      + '两条路：① 不覆盖（清空输入框，保留 agent 原文）；② 补一句为什么改'
+      + '（如「agent 跑的是旧分支，重跑后输出不同」）',
+      'result_change_reason_required',
+    )
+  }
   try {
     applied = applySheetVerdicts(sheet, verdicts, actor, nowTs, tasks)
   } catch (err) {
@@ -159,15 +211,22 @@ export function applyVerdicts(
   //   · 与现值相等则不写（零输入通过时 opinion 就是 result ⇒ 来源保持 `agent`，不被误标成 human）；
   //   · **回滚开关开启时整段跳过**：旧口径从不写 `result`（`evidence[0]` 兜底出来的文本是"系统回填"，
   //     不是人写的）——开关承诺"一行配置退回今天行为"，把系统回填标成 `human` 会污染来源可辨性；
-  //   · 截断口径与 agent 侧同源（`RESULT_MAX_CHARS`），台账不存整屏。
+  //   · 截断口径与 agent 侧同源（`RESULT_MAX_CHARS`），台账不存整屏；
+  //   · **覆盖是原子四元组**（REQ-261006201920-2adc FR-3 / D-3）：`result` + `resultSource='human'`
+  //     + `resultSuperseded`（被取代的 agent 原文）+ `resultChangeReason`（变更理由）**一起写**。
+  //     半截写入（翻了来源却没留原文）会让「谁填的」与「改之前是什么」同时不可考；
+  //     重复覆盖时 `resultSuperseded` 保留**最初那次**的 agent 原文，不被中间值冲掉。
+  //     缺理由的情况已在上面**前置校验**里整批拦下（先验后改）。
   if (itemResultBindingEnabled(process.env)) {
-    for (const verdict of verdicts) {
-      if (verdict.status !== 'passed') continue
-      const it = sheet.items.find(i => i.id === verdict.itemId)
-      if (it === undefined || isSystemItem(it)) continue
-      const op = (verdict.opinion ?? '').trim()
-      if (op.length === 0 || op === (it.result ?? '').trim()) continue
-      it.result = op.slice(0, RESULT_MAX_CHARS)
+    for (const p of writePlans) {
+      const it = sheet.items.find(i => i.id === p.id)
+      if (it === undefined) continue
+      // 覆盖才写留档：原文保留**最初那次**的 agent 文本（重复覆盖不冲掉），理由与之一并落库。
+      if (p.superseded !== undefined) {
+        if (it.resultSuperseded === undefined) it.resultSuperseded = p.superseded.slice(0, RESULT_MAX_CHARS)
+        it.resultChangeReason = p.reason.slice(0, RESULT_MAX_CHARS)
+      }
+      it.result = p.op.slice(0, RESULT_MAX_CHARS)
       it.resultSource = 'human'
     }
   }

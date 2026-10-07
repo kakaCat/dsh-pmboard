@@ -496,6 +496,12 @@ export interface StageTaskRef {
    * 视图靠它区分「不需子卡」与「需要但未生成」——没有它就只剩"有没有子卡"这一结果判据。
    */
   stages?: StageKind[]
+  /**
+   * 本卡请求预算覆盖值（REQ-261007100513-6749 t1 / FR-6）：与 `TaskRecord.budgetRequests` 同名字段。
+   * **可选**：缺省 = 不写该键 = 该卡未覆盖（读端按 `LIMITS.subtaskRequestBudget` 起算），
+   * 与「覆盖成 0」区分（后者非法，读侧按缺省处理并留诊断）。看板只读展示，不参与任何判据。
+   */
+  budgetRequests?: number
 }
 
 export interface StageTaskExecution extends StageTaskRef {
@@ -708,6 +714,33 @@ export interface PlanTask {
    */
   skipIntegration?: boolean
   /**
+   * 为什么本卡没有接口面（随 `skipIntegration: true` 必填，缺则整份计划被拒）。
+   *
+   * 为什么把「理由」做成硬门：`skipIntegration` 是**减法**——砍掉的是联调段（真实成本，实测
+   * 6 张联调卡 19.2 min 零产出 ≈ 该需求有效执行时间的 34%）。此前它是个无理由的布尔开关，
+   * 批准人看到「这张卡不联调」却看不到**凭什么判断**，于是只能盲批；而判断依据
+   * （这卡没有调用方 / 没有 HTTP 边界 / 纯文档）恰恰是能复核的那部分。要求写一句
+   * 「靠什么判断」把盲批变成可复核的判定。
+   */
+  skipIntegrationReason?: string
+  /**
+   * 零交集依赖边的**语义理由**：`{ 上游计划 key: 一句话 }`，如
+   * `{ t2: 't2 重建队列文件，t4 读它——虽无同名文件但有时序约束' }`。
+   *
+   * 为什么需要它：`declaredFiles`（conflict-check）能从 implementation 抽出两端声明的文件路径，
+   * 但**抽不出时序语义**——「t4 依赖 t2」而两端零文件交集时，可能是伪依赖（本可并行的卡被串成链），
+   * 也可能是真的时序约束（上游建文件、下游读它，路径写法不同）。判定单点（`plan-deps-check`）
+   * 对零交集边**点名但不拒**，本字段就是那张免点名的凭据：写了一句语义理由 = 作者已复核过这条边。
+   *
+   * 主拼 snake（`dep_reasons`），兼容 camel（`depReasons`）——与 requirement_refs / skip_integration
+   * 同口径（两种写法本仓都认，避免写法差异造成静默漏判）；两个拼法同时给时**取并集**。
+   *
+   * 入参形态（归一后本字段恒为 map，归一在 `depReasonsOf`）：工具 schema 只表达得了**字符串数组**
+   * （`["t2=一句话"]`，本仓的 schema DSL 不接受未声明值的 map，写 map 会让工具定义整个抛
+   * JsonSchemaError），另兼容对象数组 `[{key,reason}]` 与纯 map（HTTP / 台账直写）。
+   */
+  dep_reasons?: Record<string, string>
+  /**
    * 引用的子卡链模板键（REQ-261003203909-55f2 FR-4）：如 `change-only` / `acceptance` / `ops`。
    * 与 stages 二选一（同给 = REQBOARD_TEMPLATE_CONFLICT）；normalizePlanTasks 解析时
    * 已把模板链写进 stages（批准所见 = 落库所得），本字段冗余记录引用键供统计/审计。
@@ -749,6 +782,18 @@ export interface PlanTask {
    * 本仓已在 `stages` 与 `requirement_refs` 上各栽过一次。
    */
   footprint?: CardFootprint
+  /**
+   * 粒度豁免理由（REQ-261007125552-32cb FR-4）：一卡声明多个接口确属合理
+   * （契约卡 / 聚合组装卡）时必填的理由——非空才生效，空串 / 未填 = 未豁免。
+   *
+   * 为什么必填理由（与 `skipIntegrationReason` 同一模式）：豁免是**减法**——砍掉的是
+   * 「一接口一卡」的粒度约束，批准人要能复核「凭什么这张卡可以粗」。豁免不静默：
+   * 生效时理由进提交/落库返回体的 `granularity_warnings`。
+   *
+   * 主拼 snake（`granularity_exempt`），兼容 camel（`granularityExempt`）——同仓双拼法惯例。
+   * 只在提交/落库判定那一刻生效，**不落库**（豁免是提交时的声明，不是卡的长期属性）。
+   */
+  granularity_exempt?: string
 }
 
 /**
@@ -829,6 +874,32 @@ export interface VerificationItem {
    * 旧账本/存量记录缺省 undefined = 无该字段，读侧回落 criterion——纯声明，读侧零迁移。
    */
   howToVerify?: string
+  /**
+   * REQ-261006201920-2adc FR-3 / D-3：人**覆盖** agent 实测结果时的留档。
+   *
+   * `resultSuperseded` = 被取代的 agent 原文（重复覆盖时保留**最初那次**）；
+   * `resultChangeReason` = 人给出的变更理由。两者与 `result`/`resultSource='human'` 构成
+   * **原子四元组**：要么一起写、要么一个都不写——半截写入会让「谁填的」与「改之前是什么」同时不可考。
+   * 加性可选、零迁移：旧账本缺省 undefined = 从未发生过覆盖。
+   */
+  resultSuperseded?: string
+  resultChangeReason?: string
+  /**
+   * REQ-261007160829-1991 FR-2：`unverified` 的**降级原因**（为什么点了通过却没算通过）。
+   *
+   * 为什么另立字段而不写进 `opinion`：`opinion` 是**人的话**（也是覆盖留档的比对基准），
+   * 拿它承载系统判定会污染看板展示与 `isResultOverride` 比对两处语义。
+   *
+   * 「与 status 同生共死」的三条写读纪律：
+   *   · **只在降级时写**——`status` 落成 `unverified` 的那一次赋值里写；
+   *   · `status` 变 `passed` / `failed` 时**清空**（不存在「passed 却残留 anchor_missing」）；
+   *   · **老数据缺席**（`undefined`）= 不是降级产物（含全部存量数据），读侧按
+   *     「未复核、无原因」呈现，不做 `!value` 判定（前向兼容：将来加第三类原因不必改读侧）。
+   *
+   * 域层镜像见 `domain/workflow/AcceptanceSheetSpec.ts` 的 `SheetItemLike`（协议层禁止被 domain import，
+   * 故按既有镜像口径成对声明——字段名与取值域逐字一致）。
+   */
+  unverifiedReason?: 'blank_pass' | 'anchor_missing'
 }
 
 /**
@@ -920,10 +991,22 @@ export interface DocSyncPending {
  * 改变了项目级认知的需求，必须在归档材料里申报它更新了说明书的哪一节。
  */
 export interface ManualUpdate {
-  /** 被更新的说明书/领域篇路径（L1 或 L2） */
+  /**
+   * 被更新的说明书/领域篇路径，**取值形态 = `<mergeTargets 白名单内的相对路径>#<该文档的标题锚点>`**
+   * （REQ-261006201841-944d FR-2）。
+   *
+   * 为什么锚点必须写进 path：`section` 那种自由文本**机器复核不了**——文档一改名，它就静默漂移
+   * （实测 42 条 manualUpdates 里 22 条锚不到目标文档的任何标题）。锚点写进 path 之后，
+   * 提交时就能逐条判「那份文档在不在、那一节还在不在」，归档声明第一次可证伪。
+   */
   path: string
-  /** 章节标题 */
-  section: string
+  /**
+   * **废弃字段**（保留仅为读侧兼容历史台账）：旧形态下的自由文本章节名。
+   *
+   * 新提交一律**不写**（锚点在 `path` 里）；历史记录里它仍在，读侧渲染成 `path（旧：section）`。
+   * 不删字段的理由：删了会让历史 `archive.json` 反序列化丢信息（存量不可追溯）。
+   */
+  section?: string
   /** 一句话：这一节现在多了什么认知 */
   summary: string
 }
@@ -1011,6 +1094,49 @@ function stringListOf(raw: unknown): string[] {
   return out
 }
 
+/**
+ * 零交集依赖边的语义理由表（归一成 `{ 上游 key: 一句话 }`）搬运。
+ *
+ * 为什么入参要认**三种写法**（不是过度设计，每一种都有真实来源）：
+ *  · 字符串数组 `["t2=一句话", "t4：一句话"]` —— 工具 schema 的形态（`dep_reasons` / `depReasons`）。
+ *    dsh-tools 的参数 schema DSL **不接受未显式声明值的 map**（`additionalProperties must be
+ *    explicitly true or false`），写成 map 会让 `defineSubmitTool` 整个抛 JsonSchemaError
+ *    （2026-10-06 实测）；故入参只能是数组，语义理由的"键→值"在归一里还原。
+ *  · 对象数组 `[{ key, reason }]` —— 结构化写法（agent 更愿意写两栏时），键名容 `key/dep/up`。
+ *  · 纯对象 map —— 兼容非工具入口（HTTP / 台账直写 / 历史数据）与 PlanTask 自身的存储形态。
+ *
+ * 形状不合法（既不是数组也不是对象）按**未申报**处理，不炸整份计划——与 `stringListOf` 同口径：
+ * 这里的键是"凭据"，凭据格式手滑不该让人丢掉整张任务表；真正的硬判据只有一条
+ * （skipIntegration 的理由必填），其余都是"有没有写"的软判定。
+ */
+function depReasonsOf(raw: unknown): Record<string, string> | undefined {
+  if (raw === undefined || raw === null) return undefined
+  const out: Record<string, string> = {}
+  const put = (rawKey: unknown, rawVal: unknown): void => {
+    const key = typeof rawKey === 'string' ? rawKey.trim().slice(0, 40) : ''
+    const text = typeof rawVal === 'string' ? rawVal.trim().slice(0, 300) : ''
+    if (key.length === 0 || text.length === 0) return
+    out[key] = text
+  }
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      if (typeof item === 'string') {
+        // `"t2=一句话"` / `"t2：一句话"`：按**第一个**分隔符切分（理由正文里还可以出现等号 / 冒号）
+        const m = /^([^=：:]{1,40})[=：:]\s*(.+)$/.exec(item.trim())
+        if (m !== null) put(m[1], m[2])
+        continue
+      }
+      if (typeof item === 'object' && item !== null) {
+        const o = item as Record<string, unknown>
+        put(o.key ?? o.dep ?? o.up, o.reason ?? o.why)
+      }
+    }
+  } else if (typeof raw === 'object') {
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) put(k, v)
+  }
+  return Object.keys(out).length > 0 ? out : undefined
+}
+
 /** 计划任务表校验规整（key 唯一；phase/side 合法；标题非空；依赖只能指向**前面已定义**的计划内 key——落库按数组顺序解析，前向引用会在 decompose 时炸（REQ-2e9473 事故 G）；acceptance 可证伪；implementation 必填）。 */
 export function normalizePlanTasks(raw: unknown): PlanTask[] {
   if (!Array.isArray(raw) || raw.length === 0) bad('计划必须包含至少 1 个任务（tasks 非空数组）')
@@ -1047,6 +1173,30 @@ export function normalizePlanTasks(raw: unknown): PlanTask[] {
       : undefined
     // 无接口可联调（REQ-260928185112-e20d）：计划表可显式声明，避免"零调用方"的卡也挂联调段。
     const skipIntegration = (o.skipIntegration ?? o.skip_integration) === true
+    // 为什么本卡没有接口面（与 skipIntegration 同批）：砍联调段是**减法**，必须说清依据
+    // （这卡没有调用方 / 没有 HTTP 边界 / 纯文档），否则批准人只能盲批一个布尔开关。
+    // 硬拒用带 code 的抛错（与 resolvePlanStages 的 REQBOARD_TEMPLATE_CONFLICT 同一形态）：
+    // 调用方要能把「缺理由」与「格式错」分开处置，bad() 只有一个通用 code 做不到。
+    const skipIntegrationReason = o.skipIntegrationReason === undefined && o.skip_integration_reason === undefined
+      ? ''
+      : String(o.skipIntegrationReason ?? o.skip_integration_reason).trim().slice(0, 300)
+    if (skipIntegration && skipIntegrationReason.length === 0) {
+      throw Object.assign(
+        new Error(
+          '计划任务 ' + key + '：skipIntegration=true 必须同时给 skip_integration_reason（一句话：'
+          + '为什么这张卡没有接口面、靠什么判断，例：「纯文档卡，无运行时接口」「本卡只加内部函数，'
+          + '没有调用方」「只改 CI 脚本，不进 HTTP 边界」）——砍掉联调段是减法，人要能复核依据'
+          + '（REQBOARD_SKIP_INTEGRATION_REASON_REQUIRED）',
+        ),
+        { code: 'REQBOARD_SKIP_INTEGRATION_REASON_REQUIRED' },
+      )
+    }
+    // 零交集依赖边的语义理由（与 normalizeRequirementRefs 同一课：白名单搬运不带上它 = 静默丢弃，
+    // 于是判定单点永远看不见理由、每条真时序边都被点名）。
+    // 两个拼法**取并集**（同一条边在两种写法里各写一遍不该互相覆盖）。
+    const depReasonsMerged: Record<string, string> = { ...(depReasonsOf(o.dep_reasons) ?? {}) }
+    Object.assign(depReasonsMerged, depReasonsOf(o.depReasons) ?? {})
+    const depReasons = Object.keys(depReasonsMerged).length > 0 ? depReasonsMerged : undefined
     // 需求条款引用（REQ-261002164800-d8f2 FR-2）：**保留**并当场校验——此前被白名单静默丢弃，
     // 于是计划里写了 refs 也到不了落库，卡上恒空。校验单点在 domain（编号形态与文档条款定义位同源）。
     // 两个拼法都认（snake 为主、camel 兼容人/历史写法），非法即抛 REQBOARD_BAD_REQUIREMENT_REF。
@@ -1065,6 +1215,9 @@ export function normalizePlanTasks(raw: unknown): PlanTask[] {
     // 只做搬运与去空，形态判定留在门禁（形态不合法要逐卡点名，而不是让整份计划提交时炸在格式上）。
     const prototypeRefs = stringListOf(o.prototypeRefs ?? o.prototype_refs)
     const decisionRefs = stringListOf(o.decisionRefs ?? o.decision_refs)
+    // 粒度豁免理由（REQ-261007125552-32cb FR-4）：snake 为主、camel 兼容（同 dep_reasons 惯例）；
+    // trim + ≤300 截断 + 去空——空串/未填 = 键不出现（不冒充豁免），判定在 plan-granularity 单点。
+    const granularityExempt = String(o.granularity_exempt ?? o.granularityExempt ?? '').trim().slice(0, 300)
     out.push({
       key,
       title: normalizeTitle(o.title),
@@ -1078,9 +1231,12 @@ export function normalizePlanTasks(raw: unknown): PlanTask[] {
       ...(stages !== undefined ? { stages: [...stages] } : {}),
       ...(template !== undefined ? { template } : {}),
       ...(skipIntegration ? { skipIntegration } : {}),
+      ...(skipIntegrationReason.length > 0 ? { skipIntegrationReason } : {}),
+      ...(depReasons !== undefined ? { dep_reasons: depReasons } : {}),
       ...(requirementRefs.length > 0 ? { requirement_refs: requirementRefs } : {}),
       ...(prototypeRefs.length > 0 ? { prototypeRefs } : {}),
       ...(decisionRefs.length > 0 ? { decisionRefs } : {}),
+      ...(granularityExempt.length > 0 ? { granularity_exempt: granularityExempt } : {}),
       ...(footprint !== undefined ? { footprint } : {}),
     })
   })
@@ -1663,6 +1819,17 @@ export interface TaskRecord {
    */
   footprint?: CardFootprint
   skipIntegration?: boolean
+  /**
+   * 本卡**请求预算覆盖值**（REQ-261007100513-6749 t1 / FR-6，design/data-model.md §新增数据结构）。
+   *
+   * **可选**：缺省 = `LIMITS.subtaskRequestBudget`（60，常量由 FR-6 实现卡落在 `domain/limits.ts`）。
+   * 仅作**覆盖**用——不参与状态机、不参与任何门禁判据、不参与依赖解析（本需求一条判据都不改）。
+   * 读侧口径：非正整数（`<= 0` 或非整数）按缺省处理并留一条诊断，**不阻断开工**。
+   * **加性可选、零迁移**：不补齐、不改写、无迁移脚本（与 `prototypeRefs` / `decisionRefs` /
+   * `footprint` 同款先例）——故**不 bump** `REQBOARD_SCHEMA_VERSION`（9）与 `QUEUE_VERSION`（1），
+   * 也**不加进** `validateQueue.ts` 的 `REQUIRED_TASK_FIELDS`。缺省 = 现行为。
+   */
+  budgetRequests?: number
   status: TaskStatus
   blocked: boolean
   blockedReason?: string
@@ -2097,8 +2264,25 @@ export function assertArchiveMaterials(
       + '或对应领域篇（L2）的哪一节；确实没有认知变化时改用不需要申报的类型，或先在手册里补一节')
   }
   for (const u of manual) {
-    if (u.path.trim().length === 0 || u.section.trim().length === 0 || u.summary.trim().length === 0) {
-      bad('说明书更新点必须写全 path / section / summary（哪一份文档、哪一节、多了什么认知）')
+    // REQ-261006201841-944d FR-2：说明书更新点收敛为 `路径#锚点`。
+    // 这里只判**形态**（零 IO）——「那份文档在不在、那一节还在不在」是事实判定，
+    // 归 application（`assertArchiveTargetsOpenable`）；两处分工不得互相顶替。
+    const raw = u.path.trim()
+    if (raw.length === 0 || u.summary.trim().length === 0) {
+      bad('说明书更新点必须写全 path（「路径#锚点」形态）与 summary（哪一份文档的哪一节、多了什么认知）')
+      continue
+    }
+    const parts = raw.split('#')
+    if (parts.length !== 2 || parts[0]!.trim().length === 0 || parts[1]!.trim().length === 0) {
+      bad('说明书更新点的 path 必须是「路径#锚点」形态（路径与锚点都非空，且只能有一个 #），当前是 ' + raw
+        + '；旧写法 section（自由文本章节名）已废弃——锚点写进 path 才能被逐个复核')
+      continue
+    }
+    // 白名单与 mergedInto **同一份规则**（ARCHIVE_DOC_RULES[category].mergeTargets）——
+    // 不新造第二份白名单，否则两处必然漂移。
+    const docPath = parts[0]!.trim()
+    if (!rule.mergeTargets.some(prefix => docPath.startsWith(prefix))) {
+      bad('说明书更新点 ' + docPath + ' 不在本类型允许的位置（应为 ' + rule.mergeTargets.join(' / ') + ' 之下）：' + rule.note)
     }
   }
 }
@@ -2800,6 +2984,11 @@ export interface DagGraphNode {
   layer?: number
   /** 该卡的子卡链没生成（与「手动建卡」区分开） */
   chainMissing?: boolean
+  /**
+   * 本卡请求预算覆盖值（REQ-261007100513-6749 t1 / FR-6）：与 `TaskRecord.budgetRequests` 同名字段。
+   * **可选**：缺省 = 不写该键 = 未覆盖（读端按 `LIMITS.subtaskRequestBudget` 起算），不冒充 0。
+   */
+  budgetRequests?: number
 }
 
 /**
@@ -2886,8 +3075,11 @@ export interface PromptInjectionRecord {
    * `system-prompt` 是 t-cc7233 实施期**加法式**补的第四个值：`capture-section` 装配每轮
    * 系统提示词时同样写留痕（设计稿只列了三个写入点）。加一个联合成员是向后兼容的扩项——
    * 前端对未知值本就回落「来源未知」，而少了它，这一处的留痕就只能撒谎说自己是别的来源。
+   *
+   * `system-notice` 是 REQ-261007100513-6749 t3 补的第五个值：**易变段的尾部投递**
+   * （`inbox.prepend('next-step')`，与"进了头部段"是两件事，页面必须分得开）。
    */
-  origin: 'gate-h3' | 'dive-node' | 'dive-round' | 'system-prompt' | 'unknown'
+  origin: 'gate-h3' | 'dive-node' | 'dive-round' | 'system-prompt' | 'system-notice' | 'unknown'
   /** null = 旧条目不可知（不许当 true 渲染） */
   delivered: boolean | null
   routeKey?: string
@@ -2970,8 +3162,9 @@ export interface TokenPanelExtension {
  *  - `tracking` / `coverage` 是 RTM **增强层**（FR-9）：rtm-*.yml 缺失/解析失败时缺省，
  *    页面降级为逐项平铺 / 覆盖链列整体不渲染——绝不允许因 RTM 缺失让端点报错。
  *
- * 两源对齐（前端 FR 行组装）：`tracking` 按 `fr_id` 归组，逐项明细从 `sheet.items` 取，
- * 对齐键 = `rtmTraceIdOf(source)`（domain/workflow/AcceptanceSheetSpec.ts 既有单点函数）。
+ * 两源对齐（前端 FR 行组装）：`frMap` 给出每 FR 的追溯链，逐项明细从 `sheet.items` 取，
+ * 对齐键 = `rtmTraceIdOf(source)`（domain/workflow/AcceptanceSheetSpec.ts 既有单点函数）；
+ * `frMap` 缺省时按 `tracking` 的 `fr_id` 归组（降级路径）。
  */
 export interface VerifyPanelResponse {
   /** 当前验收单：整份照抄 `req.verification.sheet`（与 docs 面板同源，不重排字段） */
@@ -2982,9 +3175,164 @@ export interface VerifyPanelResponse {
   tracking?: AcceptanceTracking[]
   /** 覆盖链（每 FR 三态布尔）：design=fr∈fr_to_design、tasks=fr∈fr_to_tasks、tests=fr∈fr_to_tests */
   coverage?: Record<string, { design: boolean; tasks: boolean; tests: boolean }>
+  /**
+   * 追溯三映射**原样透出**（REQ-261006130057-7a43 · D-10 返工）：`assembleTraceability()`
+   * 的 `TraceabilityProjection` 里 `fr_to_design / fr_to_tasks / fr_to_tests` 三段照抄，
+   * **服务端不做 join**——前端据此把验收单逐项归到「每 FR 一行」（行键 = FR 号，
+   * 覆盖链 chip 也由"该 FR 出现在哪张映射里"直接得出，见 `client/views/panels/verify.ts`）。
+   *
+   * 缺省 = 无 RTM 数据（与 `coverage` / `tracking` 同一次降级）：前端退回逐项平铺的老路径。
+   * 形状与 stage-overview 投影一致（`TraceabilityProjection` 的这三个键，不另造一套）。
+   */
+  frMap?: {
+    fr_to_design?: Record<string, string[]>
+    fr_to_tasks?: Record<string, string[]>
+    fr_to_tests?: Record<string, string[]>
+  }
+  /**
+   * FR 名称表（**FR 号 → 名称**，如 `'FR-1' → '头部信息分层与操作区聚类'`）——D-10 返工：
+   * 原型 `#tab-verify` 的 FR 列是「编号 + 名称」，服务端按需补上名称这一半。
+   *
+   * 来源与降级（`application/query/QueryVerify.ts` 的 `frNamesOf`）：读**需求文档**
+   * （`docs/requirements/<REQ>/requirement.md`，位置走 `requirementDocPathOf`）里
+   * `- **FR-N: 名称**——…` 的标题行，只取冒号后到 `**` 之间的名称（`——` 之后的内容是说明，不算名称）。
+   *
+   * 三条纪律：
+   *  - **缺省 = 没解析出**（文档读不到 / 文档读端口未装配 / 文档里没有这种标题行）；
+   *  - **只包含能解析出的 FR**——不许为没解析到的 FR 编一个名称，也不许用 FR 号兜底；
+   *  - 绝不抛：文档读失败在这里与"没有名称"是同一个结果（前端退回「只渲染编号」）。
+   */
+  frNames?: Record<string, string>
   /** 材料摘要（交付结论 + 证据清单），来自 `req.verification` 提交材料 */
   materials?: { summary?: string; evidence: string[] }
   /** 待裁决项数（pending + unverified；与 `tabCounts.verify` 同源同值） */
   pendingCount?: number
 }
 
+/* ── REQ-261007100513-6749（PM 插件 token 与耗时治理）新增契约 ─────────────────
+ *
+ * 本段只落**类型**（t1「定死接口与数据契约」）：I-1 的逐项结果与树摘要、I-2 的投递结果、
+ * FR-6 的预算运行态。三条纪律写在这里，免得后面的实现卡各自发挥：
+ *   ① 只增不减——旧字段语义与取值逐字不变，旧调用方零改动；
+ *   ② **不 bump** `REQBOARD_SCHEMA_VERSION`（9）与 `QUEUE_VERSION`（1）：新增的都是运行态结构
+ *      或可选字段，零迁移；
+ *   ③ 本文件**不得** import `application/use-cases/**`（反向依赖会成环），故树节点在此
+ *      **镜像**一份（见 `TaskTreeNodeView` 的注释）。
+ */
+
+/**
+ * 易变段分类（I-2/I-3；design/architecture.md §数据结构变更）。
+ *
+ * 四类 = 「随写路径变化」的四段内容：需求状态行 / 阶段纪律正文 / 当前任务最小块 /
+ * 待捕获提示（含用户消息节选）。分类的**唯一用途**是去重表的键
+ * （`state/volatile-notice.json` 的 `lastDelivered[kind]`）：同类内容未变则不重复投递。
+ */
+export type VolatileNoticeKind = 'status' | 'stage' | 'task' | 'capture'
+
+/**
+ * 易变段投递结果（I-2；与既有 `DeliveryResult` 同形，便于测试与降级分支逐字对齐）。
+ *
+ * 三态都要可判（design/interfaces.md §端口失败语义）：
+ *  · 通道可用     → `{delivered:true, channel:'inbox-next-step'}`
+ *  · 通道不可得   → `{delivered:true, channel:'system-prompt-fallback', reason}`（退回头部 + 留痕）
+ *  · 内容未变(去重) → `{delivered:false, channel:'inbox-next-step', reason:'内容未变'}`
+ *
+ * **不新增错误码字段**：投递失败不是异常，是第三种正常结果——端口契约是**永不抛**
+ * （写路径已落账，因通知失败回滚会制造状态倒退）。
+ */
+export interface NoticeDeliveryResult {
+  /** 是否真的投递了（去重命中 = false，且不写留痕，避免日志噪声）。 */
+  delivered: boolean
+  /** 实际走的通道：尾部注入 / 头部兜底。 */
+  channel: 'inbox-next-step' | 'system-prompt-fallback'
+  /** 未投递或降级的原因原文（成功走尾部通道时可缺省）。 */
+  reason?: string
+}
+
+/**
+ * 批量推进的逐项结果（I-1，design/data-model.md §逐项结果与树摘要类型）。
+ *
+ * 字段名新建但**码名不新造**：`code` 逐字透传既有拒绝码
+ * （`invalid_transition` / `REQBOARD_*` 系列），让看板与排障口径不分叉。
+ * 顺序契约 = 与入参 `tasks[]` 一致（调用方按下标对账，不必自己按 id 找）。
+ */
+export interface TaskMoveItemResult {
+  task_id: string
+  ok: boolean
+  from?: TaskStatus
+  to?: TaskStatus
+  status?: TaskStatus
+  version?: number
+  /** 失败时：既有拒绝码（逐字透传，不新造码）。 */
+  code?: string
+  error?: string
+  /** 该项撞节流时（ok=false）：剩余毫秒，调用方据此等待或改做他事（不靠 sleep 试探）。 */
+  throttleRemainingMs?: number
+}
+
+/**
+ * 树节点投影（I-1 回执 `tree.parents[].parent` / `.subtasks[]`）。
+ *
+ * **为什么在协议层再声明一份**：`TaskTreeSummary` 必须复用 `TaskTree` 的节点形状
+ * （两套渲染口径必然分叉），而本文件**禁止** import `application/use-cases/**`
+ * （use-cases 反向 import 本文件，会成环）。故这里按
+ * `src/application/use-cases/TaskTree.ts` 的 `TaskTreeNodeView` **逐字镜像**：
+ * 字段名、可选性、字面量取值一字不差。
+ *
+ * **防漂移**：`tests/contract-types.test.ts` 拿 `TaskTreeView['parent']` 做
+ * `toEqualTypeOf` 双向断言——任何一侧改字段/改可选性，测试当场编译报错。
+ */
+export interface TaskTreeNodeView {
+  id: string
+  title: string
+  status: string
+  role: 'parent' | 'subtask' | 'legacy'
+  stageKind?: string
+  dependsOn: string[]
+  attempt?: number
+  lastRunOk?: boolean
+  reportSummary?: string
+  cardDoc: string
+  /** 卡片体量声明；**未声明 = 缺键**（不硬造、不冒充 0）。 */
+  footprint?: CardFootprint
+  /** 声明状态——**恒在场**的派生字段（`footprint` 有没有）。 */
+  footprintState: 'declared' | 'undeclared'
+}
+
+/** 树摘要（I-1）：只取**一层**（父卡 + 其子卡链）；节点逐字复用 `TaskTreeNodeView`。 */
+export interface TaskTreeSummary {
+  parents: Array<{
+    parent: TaskTreeNodeView
+    subtasks: TaskTreeNodeView[]
+    note: string
+  }>
+}
+
+/**
+ * 预算窗口运行态（FR-6；落 `state/subtask-budget.json`，与 `state/prompt-injection-log.json`、
+ * `state/capture-rejections.json` 同级）。
+ *
+ * **为什么落运行态而不是台账**：`used` 是**每请求自增**的热数据；写进 `queue.json` 会让每次请求
+ * 都触发一次台账原子写（temp → fsync → rename）与缓存 revision 抖动。台账只承载**结论**
+ * （到顶汇报 / 放行留痕），落在**卡评论**里。
+ *
+ * **可删可重建**：文件缺失/损坏 → 所有卡从窗口 0 起算，并在卡评论标注「计数不可得」，
+ * **不按 0 静默通过**（本仓「失败要响亮」铁律在数据层的落点）。
+ */
+export interface SubtaskBudgetState {
+  /** 版本号：结构变更时自增；旧读端读到未知版本按「重置」处理并留痕。 */
+  v: 1
+  /** key = taskId */
+  tasks: Record<string, {
+    /** 已放行次数（0 起）。窗口 = windowIndex + 1 */
+    windowIndex: number
+    /** 本窗口内已用请求次数 */
+    used: number
+    /** 本窗口生效的上限（**落盘时定格**，避免事后改台账导致同一窗口前后两次判定不同） */
+    limit: number
+    /** 本窗口开始时间（ms） */
+    windowStartAt: number
+    /** 到顶后是否已汇报（幂等：同一窗口只报一次） */
+    reportedAt?: number
+  }>
+}

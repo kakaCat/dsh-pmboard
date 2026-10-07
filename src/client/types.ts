@@ -127,8 +127,10 @@ export interface ArchiveDoc {
 /** 归档材料（agent 准备）+ 归档结论（人） */
 /** 归档对项目说明书（金字塔 L1/L2）的更新点 */
 export interface ManualUpdate {
+  /** REQ-261006201841-944d FR-2：形态 = `<白名单内路径>#<标题锚点>`（锚点写进 path 才可复核）。 */
   path: string
-  section: string
+  /** **废弃字段**（只在历史台账里存在）：旧形态的自由文本章节名；读侧渲染成 `path（旧：section）`。 */
+  section?: string
   summary: string
 }
 
@@ -180,6 +182,12 @@ export interface RequirementRecord {
   category?: RequirementCategory
   /** 需求级工作区根（REQ-260929210741-30ae FR-6，与 shared/protocol.ts 同形）：产物相对此根落盘 */
   workspaceRoot?: string
+  /**
+   * 立项四问里选的「需求文档位置」（台账字段；服务端一直有下发，本类型此前漏了它——
+   * 于是客户端要显示"文档在哪"时只能自己拼 `docs/requirements/<id>/`，2026-10-06 用户现场：
+   * 面板显示与实际落盘对不上）。解析口径见 `domain/requirement/DocLocation`。
+   */
+  docBasePath?: string
   docLinks?: { requirement?: string; ui?: string; proposal?: string; extras?: Array<{ label: string; path: string }> }
   status: RequirementStatus
   blocked: boolean
@@ -311,6 +319,13 @@ export interface TaskRecord {
   stages?: StageKind[]
   /** 计划改动的文件路径列表（写集；用于并行调度冲突检测） */
   filesPlanned?: string[]
+  /**
+   * 本卡**请求预算覆盖值**（REQ-261007100513-6749 t1 / FR-6）：宿主 `TaskRecord.budgetRequests` 的
+   * 客户端镜像，**同名字段逐字一致**（缺一处即投影丢字段，见 design/data-model.md §兼容性分析）。
+   * **可选**：缺省 = 不写该键 = 未覆盖（读端按 `LIMITS.subtaskRequestBudget` 起算），不冒充 0。
+   * 看板只读展示，不参与任何判据。
+   */
+  budgetRequests?: number
   status: TaskStatus
   blocked: boolean
   blockedReason?: string
@@ -355,6 +370,25 @@ export interface RequirementSummary {
   docBasePath?: string
 }
 
+/**
+ * 归档条来源三态（REQ-261006201841-944d t8 · FR-7，形状逐字对齐 `design/interfaces.md` I-8）。
+ *
+ * `kind` 由**服务端**派生（判据单点在 host：`rootOfRequirement` + `sameProjectRoot`），
+ * 客户端**不得**自行比较路径字符串派生它（D-4）。`unknown` = 既无 `projectId` 也无
+ * `workspaceRoot` 的存量记录——必须与 `local` 有**可读文本**上的区别，不许冒充本仓。
+ */
+export interface RequirementOrigin {
+  kind: 'local' | 'elsewhere' | 'unknown'
+  /** 目标项目 id（项目表命中时才有）。 */
+  projectId?: string
+  /** 目标项目名（= 该需求生效根的目录末段名；`elsewhere` 时必填，供人扫读）。 */
+  projectName?: string
+  /** 判据来源，进诊断（与 `RootJudgement` 同源同值）。 */
+  by?: 'project-id' | 'path-fallback' | 'unknown'
+  /** 该需求的生效根（服务端派生的绝对路径；`unknown` 不发该键）。 */
+  root?: string
+}
+
 export interface BoardState {
   revision: number
   /**
@@ -382,6 +416,11 @@ export interface BoardState {
    * 前端不判分支，只用于诊断与"为什么打不开"的解释。
    */
   docsRootSource?: 'session' | 'legacy-cwd'
+  /**
+   * 需求 id → 来源三态（REQ-261006201841-944d t8 · I-8）：服务端只对**本页** requirements 计算。
+   * 缺该字段 = 旧服务端 → 客户端逐字降级（不渲染来源标注）；缺**该 req 键** = 该条不渲染标注。
+   */
+  origins?: Record<string, RequirementOrigin>
 }
 
 /** 需求卡片在泳道列上的紧凑投影（视图层用，避免全量渲染） */

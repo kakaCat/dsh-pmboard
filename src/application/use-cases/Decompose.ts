@@ -18,6 +18,7 @@ import { checkDecomposeIdempotency } from '../../domain/workflow/DecomposeSpec.j
 import { fmt } from '../../domain/text/fmt.js'
 import { describeConflicts, findWorkSurfaceConflicts } from '../internal/conflict-check.js'
 import { assertClauseCoverageGate } from '../internal/content-gate-wiring.js'
+import { assertGranularityGates } from '../internal/plan-granularity.js'
 import { refsForLanding, unrefedKeys } from '../internal/plan-refs.js'
 import { reject, agentIdFromExec, requireLiveDriver } from '../internal/support.js'
 import { landPlanTasks, type PlanTaskDraft } from '../internal/plan-landing.js'
@@ -211,6 +212,13 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
       if (coverageFailure !== undefined) {
         reject(coverageFailure.message, coverageFailure.code)
       }
+      // ── 粒度门禁（REQ-261007125552-32cb FR-2/FR-4/FR-5）：与 submit 同一判定单点 ──
+      // 刻意放在 mutate 之前：拒绝时不留任何副作用（与覆盖门同位置）。读**批准的那份计划**
+      // （target.plan.path），创作型 tasks 也过同一道（本工具即任务卡创作口）。
+      const granularity = await assertGranularityGates(deps.docs, target, (a.tasks as unknown[] | undefined) ?? planTasks, target.plan?.path ?? '')
+      if (granularity.failure !== undefined) {
+        reject(granularity.failure.message, granularity.failure.code)
+      }
       // refs 取数**单点**（FR-3）：显式优先 → 文档覆盖表兜底 → 两处皆无则点名。
       // 此前本路径自己拼 refs 且不读文档表，与批准路径落出的卡引用不一致（实测 277d 全空）。
       const { refsByKey } = await refsForLanding({
@@ -282,6 +290,8 @@ export async function executeDecompose(deps: UseCaseDeps, args: unknown, exec: a
                   + '但 RTM 的 serves 会缺这几条；补法：在计划文档覆盖对照表补「FR-N ↔ 计划 key」，或用补写入口给卡补 requirement_refs',
               }
             : {}),
+          // 粒度门禁警告（REQ-261007125552-32cb FR-5 + 豁免/降级披露）：非空才给键
+          ...(granularity.warnings.length > 0 ? { granularity_warnings: granularity.warnings } : {}),
           note: '已落库 ' + created.length + ' 个任务。拆分计划已获批准（decomposition 产物已落章）——需求可推进到 implementing（reqboard_move；经批准弹框路径会自动推进）；任务开工/完成用 reqboard_task_move（任务全部完成后需求自动进入验收）',
         }
       } catch (err) {

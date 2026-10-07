@@ -45,17 +45,32 @@ function unreadable(err: unknown): Degrade {
 // ---------------------------------------------------------------------------
 
 /**
- * 「意图=chain 但链未生成」——**与客户端 `[链未生成]` 判定同源**。
+ * 「期望有链、链却没生成」——**与客户端 `[链未生成]` 判定同源**。
+ *
+ * 判据（2026-10-06 收紧，缺口 4 之二）**按状态分两半，刻意不对称**：
+ *  · `kids.length > 0` → false（链在）；
+ *  · **显式 solo**（`stages: []`）→ false（`lazy-expand` 里只有它表示"本卡不要子卡"，永不打标）；
+ *  · `in_progress` → **true**：未声明 `stages` 也算"期望有链"——默认链由 `resolveSubtaskStages`
+ *    按卡 phase / side 推出（`lazy-expand.ts:46-54`），所以"没写 stages"绝不等于"不要链"。
+ *    这一半与旧行为**逐字一致**（旧版：`in_progress && !(stages 是显式空数组)`），不许放松：
+ *    它覆盖的正是最常见的形态（多数卡不会显式写 stages），放松 = 漏报默认链没生成。
+ *  · `done` → **仅当显式声明非空 `stages`** 才 true：计划里白纸黑字写了 dev/review 却 0 子卡
+ *    （`autoRun=false` 时手动开工从不展开、`expandSubtasks` 幂等且只一次机会，卡走完流程也无人发现）。
+ *    不声明 `stages` 的存量 done 卡**不打标**——它们没有"声明过要链"的证据，大面积打标只会变噪声。
+ *  · 其它状态（todo / canceled…）→ false：todo 还没到懒展开，没链是正常态。
  *
  * 为什么在这里重写一遍而不是 import：判定本来在 `client/dag/progress-bar.ts`，
  * 而 application 层**禁止** import client（`tests/layer-boundary.test.ts` 机械检查）。
- * 逐字保留同一条判据（正在跑 + 没有子卡 + 未显式声明 `stages: []`）；两处若漂移，
+ * 逐字保留同一条判据（与 progress-bar.ts 的 `chainMissing` **逐字同源**）；两处若漂移，
  * 症状是"看板标了链未生成、详情页没标"，故注释里点明来源，改一处必须改两处。
  */
 function chainMissingOf(task: TaskRecord, kids: readonly TaskRecord[]): boolean {
   if (kids.length > 0) return false
-  if (task.status !== 'in_progress') return false
-  return !(Array.isArray(task.stages) && task.stages.length === 0)
+  const stages = task.stages
+  if (Array.isArray(stages) && stages.length === 0) return false // 显式 solo
+  if (task.status === 'in_progress') return true // 未声明也算期望有链（与旧行为逐字一致）
+  if (task.status === 'done') return Array.isArray(stages) && stages.length > 0
+  return false
 }
 
 /** 图数据：任务 + 父子/阶段/依赖/领取人/层级 + 缺链标记。 */
@@ -81,6 +96,8 @@ export function buildDagNodes(
       ...(t.claimedBy !== undefined ? { claimedBy: t.claimedBy } : {}),
       ...(layer !== undefined ? { layer } : {}),
       ...(chainMissingOf(t, kids) ? { chainMissing: true } : {}),
+      // REQ-261007100513-6749 t1 / FR-6：预算覆盖值透传（可选；缺省 = 键缺席，读端按默认预算起算）。
+      ...(t.budgetRequests !== undefined ? { budgetRequests: t.budgetRequests } : {}),
     }
   })
 }

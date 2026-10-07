@@ -146,11 +146,26 @@ export interface GateFailure {
     | 'requirement_missing_clauses'
     | 'requirement_clause_sequence_gap'
     | 'requirement_clause_duplicates'
+    // 端侧声明门（2026-10-06 文档质量门禁加固）：feature/refactor 的 front-matter `sides`
+    // 必须显式且值域合法——缺声明或写非法值原先都被静默过滤，条件必交设计文档永不触发。
+    | 'requirement_sides_invalid'
+    // 「失败与并发路径」必填节门（2026-10-06）：新需求的 requirement.md 缺该节即拒（存量不追溯）。
+    | 'requirement_section_missing'
     // ── 设计阶段规范化（REQ-2d1c74）：G2 完整性门 + 拆分内容硬门 ──
     | 'design_doc_incomplete'
     | 'design_contains_decomposition'
     // ── 超容量标记在场（REQ-261002175818-80a8 t5 / FR-5）──
     | 'plan_overcapacity_marker_missing'
+    // 计划文档任务表缺失 / 覆盖不了 tasks[].key（2026-10-06 缺口 4 之四）：批准人读的是**文档**、
+    // 落库读的是**数组**，两者此前没有任何一致性判据——实测有需求 decomposition.md 只有 41 行、
+    // 无任务表，而 plan.json 有 10 张完整卡（门禁全绿、批空文档、落另一批卡）。
+    | 'plan_doc_task_table_incomplete'
+    // ── 粒度门禁（REQ-261007125552-32cb FR-2 / FR-4）：判定单点 plan-granularity.ts ──
+    // 清单条目无卡接 / 对照行 key 悬空（接口段与组件段分码，免得人靠读 gaps 猜是哪段）；
+    // 一卡多接口且无 granularity_exempt 豁免。
+    | 'plan_interface_map_missing'
+    | 'plan_component_map_missing'
+    | 'plan_card_multi_interface'
     // ── 既有实现已在返回的码（此前漏在联合里，被 tsc 拒收；补声明，零行为变化）──
     // 设计文档内容门（content-gate-wiring:checkDesignContentGate）
     | 'REQBOARD_DESIGN_CONTENT_GATE'
@@ -164,6 +179,11 @@ export interface GateFailure {
     | 'prototype_missing'
     | 'prototype_version_conflict'
     | 'prototype_anchor_missing'
+    // REQ-261006201649-cc89：锚点门新增两问——① 权威原型仍是模板骨架（"填过没有"）；
+    // ② 几何量读数无法复核（截图路径 + sha256 对不上）。两码与既有三码**并列不替代**：
+    // 骨架自带示例 FR-1 与示例 geometry 块，天然"锚点齐"，共码会让人靠读 gaps 猜病因。
+    | 'prototype_placeholder'
+    | 'prototype_geometry_unverified'
     | 'decision_log_missing'
     | 'decision_entry_invalid'
     // 验收材料缺「与原型对照截图（含差异说明）」项（SubmitVerification，#38）

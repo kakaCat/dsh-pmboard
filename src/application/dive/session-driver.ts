@@ -62,7 +62,9 @@ import { addressSectionFor, milestoneReminderFor } from './idle-capture-actions.
 import type { RequirementFacts } from '../../domain/requirement/RequirementSummary.js'
 import { guardToolCall } from './boundary-guard.js'
 import { createGatePromptLoop, type GatePromptExhausted } from './gate-prompt.js'
-import type { GatePromptPort, TaskStore } from '../ports.js'
+import type { GatePromptPort, TaskStore, VolatileNoticePort } from '../ports.js'
+// REQ-261007100513-6749 t3（FR-2）：易变段尾部投递的写路径生产者（即发即忘、永不抛）。
+import { notifyVolatileQuietly } from '../internal/notice-delivery.js'
 import type { DiveRoundDriver } from './round-driver.js'
 
 export interface DiveSessionDriverLogger {
@@ -165,6 +167,28 @@ export interface DiveSessionDriverDeps {
   gatePrompt?: GatePromptPort
   /** FR-14 弹框到上限时的一次性回调（组合根据此写台账 comment，响亮不静默）。 */
   onGatePromptExhausted?: (info: GatePromptExhausted) => void
+  /**
+   * 易变段尾部投递端口（REQ-261007100513-6749 t3 · FR-2）：**待捕获候选登记命中**时经它投递
+   * 「待捕获提示」（`kind='capture'`）。
+   *
+   * 为什么生产者必须在这里（写路径）而不只在读路径（`capture-section` 取词）：通道可用时头部只留
+   * 静态引导，命中提示**只由尾部投递**到达——写路径没有生产者，未绑定窗口的立项提示就会静默消失
+   * （t2 复核点名的缺口）。
+   *
+   * **惰性 getter**：组合根在 hook 装配之后才建 `useCaseDeps`，本回调只在 idle 拍取用。
+   *
+   * **契约（缺省 = 未装配）**：getter 返回 `undefined`（或字段整体未注入）＝ **不投递**，且因为
+   * 该通道没有交付回执，`gate-wiring` 侧 `available()` 恒为 false ⇒ **头部兜底照投整段**——
+   * 纪律与待捕获提示一条不丢（这正是"未装配时行为与改造前逐字一致"的含义，绝**不是**静默丢弃）。
+   * 取用一律经 `notifyVolatileQuietly`：它对 `undefined` 直接返回，不 NPE、不抛。
+   */
+  volatileNotice?: () => VolatileNoticePort | undefined
+  /**
+   * 回合末回调（REQ-261007100513-6749 t3 · 复核 P1-A）：转交易变段**协调层**做一次差异扫描——
+   * 覆盖"**没有生产者**"的状态变化（rollup 自动推进 / 看板路由 / confirm-settle / verdicts）。
+   * 缺省 = 不回调（行为与改造前逐字一致）。
+   */
+  onTurnEnded?: (windowKey: string) => void
   logger?: DiveSessionDriverLogger
 }
 
@@ -265,6 +289,14 @@ export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessio
         logger?.info(
           `reqboard-capture: idle 登记待立项评估（len=${human.text.length}）——下一回合 systemPrompt 取词时注入针对性立项提示`,
         )
+        // REQ-261007100513-6749 t3（FR-2）：命中即经**尾部通道**投递该提示——这是 `kind='capture'`
+        // 在**写路径**的唯一生产者（通道可用时头部只留静态引导，命中提示只能由尾部到达）。即发即忘、
+        // 永不抛（端口契约），未装配端口 = 零行为（与改造前逐字一致）。
+        try {
+          notifyVolatileQuietly(deps.volatileNotice?.(), windowKey, 'capture')
+        } catch {
+          // 连取端口都抛（组合根时序问题）：写路径与登记照走，不因通知失败中断。
+        }
       }
       return
     }
@@ -383,6 +415,8 @@ export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessio
       // REQ-e3b6a0 t7：无论有没有节点结算，都问一次「该窗口有没有待处理闸门」——
       // 闸门作答不一定伴随用户消息，故不能只靠 idle 跑批。
       deps.onTurnEnd?.(windowKey, session)
+      // REQ-261007100513-6749 t3（复核 P1-A）：回合末扫一次易变段差异（即发即忘、永不抛）。
+      try { deps.onTurnEnded?.(windowKey) } catch { /* 协调失败不许影响事件派发 */ }
       // REQ-260924213231-b1c4 T-9 / FR-6（写入器 B）：回合异常收尾（aborted/error/
       // interrupted）时补写断点原因；此处只发信号，写台账走组合根异步边界（D-17）。
       // 形态不认识 → turnEndOutcome 返回 undefined → 不发信号（A 的 checkpoint 仍在）。

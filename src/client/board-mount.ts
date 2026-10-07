@@ -533,6 +533,8 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
     unsubShellDom = undefined
     mountedReportDag = undefined
     reportShellFor = reqId
+    // REQ-261006201841-944d t9（FR-7）：来源三态随装配点下传（服务端派生，前端只读；缺省 = 不渲染提示块）
+    const origin = state?.origins?.[reqId]
     reportShell = createReportShell({
       requirementId: reqId,
       loadReport: () => api.fetchReport(reqId),
@@ -540,6 +542,7 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
       // 点开正文复用既有链路（open-doc → 官方右侧栏），不新造通道
       openDoc: (path) => { openDocInSidebar(window.__dshPmCtx, path, resolveCurrentSessionId()) },
       revision: state?.revision ?? 0,
+      ...(origin === undefined ? {} : { origin }),
       onChange: () => { if (mode.kind === 'req') scheduleRender() },
     })
     // 委派挂在**容器**上（面板段每次都被整段替换，挂面板上等于每次都要重挂）
@@ -650,7 +653,8 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
             const reqTasks = state.tasks.filter(t => t.requirementId === ready.id)
             const reqReady = state.ready?.[ready.id]
             lastRenderedDetail.set(cur.reqId, ready)
-            viewEl.innerHTML = buildReqDetail(ready, state.tasks, Date.now(), archivedSids())
+            // REQ-261006201841-944d t9（FR-7）：旧详情回落路径同样下传来源三态（缺省 = 逐字节不变）
+            viewEl.innerHTML = buildReqDetail(ready, state.tasks, Date.now(), archivedSids(), state.origins?.[ready.id])
             setStageNavActive(activeStage)
             void verifyDocExistence()
             // REQ-6f39b5：节点导航已删除，概览 Tab「当前阶段详情」进入即自动加载当前阶段
@@ -967,7 +971,7 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         const version = Number(el.dataset.version)
         const sheetEl = el.closest<HTMLElement>('.dsh-pm-vsheet')
         if (!reqId || !Number.isFinite(version) || sheetEl === null) return
-        const verdicts: { itemId: string; status: 'passed' | 'failed'; opinion?: string }[] = []
+        const verdicts: { itemId: string; status: 'passed' | 'failed'; opinion?: string; changeReason?: string }[] = []
         // REQ-261006092213-4f5b FR-4 / D-5（**删除「通过必填」前端拦截**）：判定权归服务端（一处口径）。
         // 留空点通过时服务端取该项 `result` 兜底（两者皆空才记 unverified）——前端只负责**预填**，
         // 不再把"必填"推给人（旧实现在这里拦下并要求手抄实际结果，正是本需求要消灭的形态）。
@@ -979,6 +983,11 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         //      result 兜底（`applyVerdicts` 同口径），前端点名比让用户收到 unverified 更清楚。
         const missingFailed: string[] = []
         const missingHuman: string[] = []
+        // 第三条前端守卫（REQ-261006201920-2adc FR-3）：**覆盖 agent 实测原文必须写变更理由**。
+        // 判据与服务端**同构**（渲染侧打了 `data-override-candidate="1"` 才可能是覆盖）：
+        //   候选行 + 人真的改动了预填值 = 覆盖 ⇒ 理由必填。两边同构是刻意的——
+        //   若这里不问而服务端要，人会在提交那一刻撞上 400 却不知道为什么。
+        const missingReason: string[] = []
         sheetEl.querySelectorAll<HTMLElement>('.dsh-pm-vitem').forEach((itemEl) => {
           const itemId = itemEl.dataset.itemId
           if (itemId === undefined) return
@@ -990,12 +999,22 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
           const prefilled = (opinionEl?.defaultValue ?? '').trim()
           const untouched = prefilled.length > 0 && opinion === prefilled
           const status = checked.value === 'passed' ? 'passed' : 'failed'
+          const reasonEl = itemEl.querySelector<HTMLInputElement>('.dsh-pm-vitem-change-reason')
+          const reason = reasonEl?.value.trim() ?? ''
+          const override = status === 'passed' && itemEl.dataset.overrideCandidate === '1' && !untouched
+          if (override) {
+            // 人一旦真的进入覆盖路径，就把理由输入摆出来（初始 hidden 是为了不给"没改也算覆盖"的错觉）
+            const wrap = itemEl.querySelector<HTMLElement>('[data-role="reason-wrap"]')
+            if (wrap !== null) wrap.hidden = false
+            if (reason.length === 0) missingReason.push(itemId)
+          }
           if (status === 'failed' && (opinion.length === 0 || untouched)) missingFailed.push(itemId)
           if (status === 'passed' && itemEl.dataset.needsHuman === '1' && opinion.length === 0) missingHuman.push(itemId)
           verdicts.push({
             itemId,
             status,
             ...(opinion.length > 0 ? { opinion } : {}),
+            ...(override && reason.length > 0 ? { changeReason: reason } : {}),
           })
         })
         if (verdicts.length === 0) { window.alert('请先逐项选择 通过/不通过'); return }
@@ -1005,6 +1024,11 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         }
         if (missingHuman.length > 0) {
           window.alert('以下项只能人工确认，请先在输入框写下你看到的事实：' + missingHuman.join('、'))
+          return
+        }
+        if (missingReason.length > 0) {
+          window.alert('以下项你改了 agent 记录的实测原文，请补一句变更理由（或清空输入框保留原文）：'
+            + missingReason.join('、'))
           return
         }
         void api.submitVerdicts({ id: reqId, version, verdicts })

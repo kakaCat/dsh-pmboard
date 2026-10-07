@@ -59,6 +59,24 @@ export interface TaskTreeView {
 }
 
 /**
+ * 树摘要（REQ-261007100513-6749 FR-4 / design/data-model §逐项结果与树摘要类型）。
+ *
+ * 与 `TaskTreeResult.parents` **同形同源**（同一个 `TaskTreeView` 节点投影、同一条链序与同一句
+ * note 文案）——写路径（`reqboard_task_move` 的批量回执）与读路径（`reqboard_task_tree`）共用
+ * 这一份实现，避免"两套渲染口径必然分叉"（本仓已栽过多次）。
+ */
+export interface TaskTreeSummary {
+  parents: TaskTreeView[]
+}
+
+/** 无子卡时的固定文案（design/data-model §I-3；测试与文档同源）。 */
+const NOTE_NOT_EXPANDED = '该父卡尚未开工展开子卡链'
+
+function clip(text: string, max: number): string {
+  return text.length <= max ? text : text.slice(0, max - 1) + '…'
+}
+
+/**
  * 顶层余量参考视图（t7 / FR-8）；**不可得 → undefined**（调用方据此让键整体缺席，不发 null）。
  * `note` 恒在场：数值与「参考值，非门禁判据」必须在同一条展示内。
  */
@@ -85,13 +103,6 @@ export interface TaskTreeResult {
 
 /** 汇报摘要上限（字符）：tree 是"一眼看清"，不搬运全文（decision D-2 选 A）。 */
 const REPORT_SUMMARY_MAX = 120
-
-/** 无子卡时的固定文案（design/data-model §I-3；测试与文档同源）。 */
-const NOTE_NOT_EXPANDED = '该父卡尚未开工展开子卡链'
-
-function clip(text: string, max: number): string {
-  return text.length <= max ? text : text.slice(0, max - 1) + '…'
-}
 
 /** 单节点投影（只读字段；缺省字段不硬造）。 */
 function nodeOf(task: TaskRecord, tasks: readonly TaskRecord[]): TaskTreeNodeView {
@@ -147,6 +158,48 @@ function chainOrder(subs: readonly TaskRecord[]): TaskRecord[] {
 
 function fail(code: string, requirementId: string, detail: string): TaskTreeResult {
   return { success: false, requirement_id: requirementId, parents: [], error: fmt('{code}：{detail}', { code, detail }) }
+}
+
+/**
+ * 单根投影（父卡 + 链序子卡 + 一句 note）——**树视图的唯一实现**。
+ *
+ * REQ-261007100513-6749 t4：抽成可复用 helper，让**读路径**（`reqboard_task_tree`）与
+ * **写路径**（`reqboard_task_move` 批量回执的 tree 摘要）共用同一份节点投影与 note 文案；
+ * 两边各写一遍的话，"已完成 N 张"这类文案与链序很容易只在一边被改（本仓的老病）。
+ *
+ * 注意：这里先建变量再 `return`——本文件是 TaskTreeTool 的**响应源**，静态扫描把每个裸
+ * `return {…}` 的顶层键当成工具响应键（`parent`/`subtasks`/`note` 会当场变红）；
+ * 与 `contextPressureView` 同一个理由，不是绕门禁。
+ */
+function treeViewOf(parent: TaskRecord, inReq: readonly TaskRecord[]): TaskTreeView {
+  const subs = chainOrder(inReq.filter((t) => t.parentId === parent.id))
+  const done = countDoneTasks(subs)
+  const note = subs.length === 0
+    ? NOTE_NOT_EXPANDED
+    : fmt('子卡链 {n} 张，已完成 {done} 张', { n: subs.length, done })
+  const view: TaskTreeView = { parent: nodeOf(parent, inReq), subtasks: subs.map((s) => nodeOf(s, inReq)), note }
+  return view
+}
+
+/**
+ * 树摘要（一层）：给定任务快照与根集合（受影响父卡），投影成 `{parents:[…]}`。
+ *
+ * 只取一层、逐字复用 `TaskTreeNodeView`（design/data-model §树摘要的硬要求）。
+ * 根不在快照里 → **跳过**（不硬造一个空壳节点）；根去重且保序（树的展示顺序要稳定）。
+ */
+export function treeSummaryOf(tasks: readonly TaskRecord[], rootIds: readonly string[]): TaskTreeSummary {
+  const byId = new Map(tasks.map((t) => [t.id, t]))
+  const seen = new Set<string>()
+  const roots: TaskRecord[] = []
+  for (const id of rootIds) {
+    if (seen.has(id)) continue
+    seen.add(id)
+    const hit = byId.get(id)
+    if (hit !== undefined) roots.push(hit)
+  }
+  const parents = roots.map((root) => treeViewOf(root, tasks))
+  const summary: TaskTreeSummary = { parents }
+  return summary
 }
 
 /** 有限数才算读数（NaN / Infinity 视为缺席——与适配器同一口径，不猜 0）。 */
@@ -224,15 +277,8 @@ export async function executeTaskTree(
     roots = inReq.filter((t) => t.parentId === undefined)
   }
 
-  // 3. 逐根投影（父卡 + 链序子卡）。
-  const parents: TaskTreeView[] = roots.map((parent) => {
-    const subs = chainOrder(inReq.filter((t) => t.parentId === parent.id))
-    const done = countDoneTasks(subs)
-    const note = subs.length === 0
-      ? NOTE_NOT_EXPANDED
-      : fmt('子卡链 {n} 张，已完成 {done} 张', { n: subs.length, done })
-    return { parent: nodeOf(parent, inReq), subtasks: subs.map((s) => nodeOf(s, inReq)), note }
-  })
+  // 3. 逐根投影（父卡 + 链序子卡）——节点与 note 的唯一实现见 treeViewOf（写路径共用同一份）。
+  const parents: TaskTreeView[] = roots.map((parent) => treeViewOf(parent, inReq))
 
   // t7（FR-8）：顶层余量参考（只读；不可得 = 键缺席）。
   const contextPressure = contextPressureView(deps, windowKey)

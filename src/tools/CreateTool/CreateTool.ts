@@ -49,6 +49,14 @@ export function defineCreateTool(deps: UseCaseDeps) {
         description:
           '需求文档存放位置（工作区相对目录，如 docs/requirements/<REQ>/ 或 docs/rfcs/）；不传 / 空串 → 回落 docs/requirements/<REQ>/ 并在 defaults_used 标注（降级路径的第四问）',
       },
+      owner_window: {
+        type: 'string',
+        description:
+          '把这条需求登记到哪个窗口名下（**代理立项**：agent 受本窗口直接人工指令，替人把需求派给别的会话）。'
+          + '缺省 = 本窗口（老行为）。给窗口码（session-xxxx）= 记到那个窗口名下，并由它接手推进——'
+          + '目标窗口必须**在线**，否则 REQBOARD_OWNER_WINDOW_NOT_LIVE（记到死窗口名下没人接手，等于派了个空）。'
+          + '典型用法：先用 reqboard_open_window 开窗并投底稿，再对本工具传它的窗口码，一次调用即可完成「立项 + 派活」。',
+      },
     },
     output: {
       schema: {
@@ -73,6 +81,7 @@ export function defineCreateTool(deps: UseCaseDeps) {
           // 名称按用例层实际键（`project_source`）声明，不改回 camelCase 是为了不破坏已锁定的 T-08/T-09。
           projectId: { type: 'string', description: '本条需求所属项目身份（宿主 workspace id；未归属时整体省略该键）' },
           project_source: { type: 'string', description: '判据来源：project-id（按项目身份）/ path-fallback（路径兜底）' },
+          owner_window: { type: 'string', description: '代理立项时的归属窗口码（缺省不传 = 需求记在本窗口名下，该键整体省略）' },
           note: { type: 'string', description: '后续流程说明' },
           board_link: { type: 'string', description: '项目看板链接（点击后在应用内打开看板并定位该需求）' },
         },

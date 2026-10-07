@@ -213,16 +213,44 @@ export const BASE_CSS = `
 .dsh-pm-archived-fold > summary::-webkit-details-marker { display: none; }
 .dsh-pm-archived-fold > summary::before { content: '▸ '; }
 .dsh-pm-archived-fold[open] > summary::before { content: '▾ '; }
-.dsh-pm-archived-chips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
+.dsh-pm-archived-chips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; align-items: flex-start; }
 .dsh-pm-archived-label { font-size: 12px; color: var(--dsw-text-secondary, #999); }
 .dsh-pm-archived-chip {
   font-size: 11px; padding: 2px 8px; border-radius: 4px;
   background: rgba(128,128,128,.1); color: var(--dsw-text-secondary, #777);
   border: 0; font-family: inherit; cursor: pointer;
+  /* 加来源标注后 chip 的单行预算（阈值表：max-width 480px / 不折行 / 高度保持 24px）：
+     超长标题与项目名**截断**而不是换行——省下第五、第六条新选择器（I-9 硬预算 = 4 条）。 */
+  max-width: min(480px, 100%);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .dsh-pm-archived-chip:hover { background: rgba(74,125,255,.12); color: var(--dsw-accent, #4a7dff); }
 .dsh-pm-archived-count { margin-left: 4px; opacity: .7; }
 .dsh-pm-archived-chip[data-status="canceled"] { text-decoration: line-through; }
+
+/* ---- 归档条来源三态（REQ-261006201841-944d t9 · FR-7）----
+   新增选择器**恰好 4 条**（I-9 硬预算）：.dsh-pm-archived-text + .dsh-pm-archived-src[data-src] 三态。
+   令牌只用既有 --dsw-* / --pm-*（无新色值、无新字体族）；三态的区分**不靠颜色**：
+   本仓＝纯文字（最轻）、在别处＝胶囊内等宽项目名、归属未知＝警示色 + **虚线边框**（非颜色编码，色盲可辨）。
+   为什么不给「归属未知」用灰：灰＝「没什么可说的」，会被读成「本仓默认」，那正是 D-6 要禁的「冒充本仓」。 */
+.dsh-pm-archived-text {
+  display: inline-block; max-width: 200px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; vertical-align: baseline;
+}
+.dsh-pm-archived-src[data-src="local"] {
+  margin-left: 5px; font-size: 10px; color: var(--dsw-text-secondary, #999);
+  opacity: .75; font-family: inherit; white-space: nowrap;
+}
+.dsh-pm-archived-src[data-src="elsewhere"] {
+  margin-left: 5px; background: rgba(74,125,255,.10); color: var(--dsw-accent, #4a7dff);
+  border: 1px solid rgba(74,125,255,.28); border-radius: 4px;
+  padding: 0 5px; font-size: 10px; font-family: ui-monospace, monospace; white-space: nowrap;
+}
+.dsh-pm-archived-src[data-src="unknown"] {
+  margin-left: 5px; background: rgba(176,120,0,.14); color: var(--pm-c-warn, #b07800);
+  border: 1px dashed rgba(176,120,0,.45); border-radius: 4px;
+  padding: 0 5px; font-size: 10px; font-family: inherit; white-space: nowrap;
+}
 
 /* ---- 详情 ---- */
 .dsh-pm-detail { display: flex; flex-direction: column; height: 100%; overflow-y: auto; padding: 16px 24px; gap: 16px; }

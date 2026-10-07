@@ -52,6 +52,9 @@ import { liveCountOf } from '../../domain/status/Predicates.js'
 import { archivedMomentOf } from '../../domain/status/ArchivedMoment.js'
 import { liveArtifactsOf } from './live-artifacts.js'
 import { normalizeArtifactPath } from '../../domain/artifact/ArtifactPath.js'
+// 需求文档位置唯一解析点（2026-10-06）：生成物（queue.json / rtm-*.yml）也落在同一个目录，
+// 写死 `docs/requirements/<id>` 会让它们从「生成物」列表里整批消失。
+import { requirementDocDirOf, requirementDocPathOf } from '../../domain/requirement/DocLocation.js'
 import { parseDocument } from '../internal/doc-parse.js'
 import { designDocPolicyOf, designDocStatus, EMPTY_DESIGN_DOC_POLICY } from '../internal/design-docs.js'
 import type { DocRepository } from '../ports.js'
@@ -404,7 +407,9 @@ async function entriesOfMissingDesignDocs(
   // 策略来自 requirement.md 的 front-matter：命中哪个根就从哪个根读；一个根都没有 → 空策略。
   // 读失败 → 退回空策略（只有必交、无豁免）+ 留 warn，不因为一份文档读不动就让整个文档面板 500
   // （与 S-5 的"文档不可读 ≠ 500"同款纪律）。
-  const reqPath = 'docs/requirements/' + req.id + '/requirement.md'
+  // 需求文档位置按台账 `docBasePath` 解析（唯一解析点）——写死 `docs/requirements/<id>/`
+  // 会让换过文档位置的需求在这里读不到策略（front-matter 读空 → 豁免全部失效）。
+  const reqPath = requirementDocPathOf(req)
   const primary = hitOf(repos, reqPath)?.docs ?? repos[0]?.docs
   let policy = EMPTY_DESIGN_DOC_POLICY
   if (primary !== undefined) {
@@ -443,7 +448,7 @@ async function entriesOfMissingDesignDocs(
  * 的 `absPath`。一个可用根都没有 → 无从枚举，如实给空表（"列不出"不等于"没有"，故这里不造行）。
  */
 function generatedOf(repos: readonly DocRootRepo[], req: RequirementRecord, wired: boolean): { label: string; path: string; absPath?: string }[] {
-  const dir = 'docs/requirements/' + req.id
+  const dir = requirementDocDirOf(req)
   const out: { label: string; path: string; absPath?: string }[] = []
   const seen = new Set<string>()
   const push = (label: string, path: string, repo: DocRootRepo): void => {

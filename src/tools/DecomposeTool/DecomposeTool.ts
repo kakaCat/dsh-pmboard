@@ -58,6 +58,8 @@ export function defineDecomposeTool(deps: UseCaseDeps) {
           // ② 值级校验（未声明键会被判 returned invalid output）。
           queue_file: { type: 'string', description: '本次拆分写入的队列文件路径（docs/requirements/<REQ>/queue.json）' },
           tasks_created: { type: 'number', description: '本次真正新增的任务数（幂等跳过的不计）' },
+          // REQ-261007125552-32cb FR-5：粒度门禁的软警告与豁免/降级披露（静态扫描要求逐键声明）。
+          granularity_warnings: { type: 'array', items: { type: 'string' }, description: '粒度门禁警告（软门/豁免理由/降级原因）——只披露不拒绝' },
         },
       },
       render: renderSmart(decomposeSummary),

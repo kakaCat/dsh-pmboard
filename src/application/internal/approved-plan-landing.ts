@@ -17,6 +17,7 @@ import { fmt } from '../../domain/text/fmt.js'
 import { liveRealCards } from '../../domain/task/ReworkPlaceholder.js'
 import { checkDecomposeIdempotency } from '../../domain/workflow/DecomposeSpec.js'
 import { assertClauseCoverageGate } from './content-gate-wiring.js'
+import { assertGranularityGates } from './plan-granularity.js'
 import { refsForLanding, unrefedKeys, type RefSource } from './plan-refs.js'
 import { landPlanTasks, type LandedTaskRef, type PlanTaskDraft } from './plan-landing.js'
 import { cancelStaleReworkCards } from './stale-rework.js'
@@ -105,17 +106,28 @@ export async function landApprovedPlan(deps: UseCaseDeps, input: LandApprovedPla
   if (coverageFailure !== undefined) {
     throw Object.assign(new Error(coverageFailure.message), { code: coverageFailure.code })
   }
+  // 粒度门禁（REQ-261007125552-32cb FR-2/FR-4/FR-5）：与 submit/decompose 同一判定单点，
+  // 批准直落路径绝不能成为绕过粒度的后门（三入口同码同点名由 TC-10 锁死）。
+  const granularity = await assertGranularityGates(deps.docs, fresh, planTasks as readonly unknown[], fresh.plan?.path ?? '')
+  if (granularity.failure !== undefined) {
+    throw Object.assign(new Error(granularity.failure.message), { code: granularity.failure.code })
+  }
 
   // 取数单点：显式优先 → 文档覆盖表兜底 → 来源 none（由 unrefed 点名）
   const { refsByKey, sources } = await refsForLanding({ req: fresh, plan: fresh.plan, docs: deps.docs })
   const draft = draftOf(planTasks)
   const unrefed = unrefedKeys(draft.map(d => d.key), refsByKey)
-  const warning = unrefed.length > 0
-    ? fmt('⚠️ {n} 张卡没有需求条款落点（{keys}）——卡已落库，但 RTM 的 serves 会缺这几条；补法：在计划文档覆盖对照表补「FR-N ↔ 计划 key」，或用补写入口给卡补 requirement_refs', {
-        n: unrefed.length,
-        keys: unrefed.join('、'),
-      })
-    : undefined
+  const warning = [
+    ...(unrefed.length > 0
+      ? [fmt('⚠️ {n} 张卡没有需求条款落点（{keys}）——卡已落库，但 RTM 的 serves 会缺这几条；补法：在计划文档覆盖对照表补「FR-N ↔ 计划 key」，或用补写入口给卡补 requirement_refs', {
+          n: unrefed.length,
+          keys: unrefed.join('、'),
+        })]
+      : []),
+    // 粒度门禁的软警告与豁免/降级披露（REQ-261007125552-32cb FR-5）：批准直落路径同样不静默
+    ...granularity.warnings,
+  ]
+  const warningText = warning.length > 0 ? warning.join('；') : undefined
 
   // ── 回退态：先收掉上一轮物化的占位重做卡（REQ-261005122915-9f90 t3 / FR-2）──────────
   // 顺序即语义：必须在幂等判定**之前**。先判定会把占位卡算成「真卡已在」而短路，
@@ -150,7 +162,7 @@ export async function landApprovedPlan(deps: UseCaseDeps, input: LandApprovedPla
     return {
       created: [], createdCount: 0, unrefed, sources, alreadyLanded: landedReal.length,
       staleReworkCanceled,
-      ...(warning === undefined ? {} : { warning }),
+      ...(warningText === undefined ? {} : { warning: warningText }),
     }
   }
 
@@ -169,7 +181,7 @@ export async function landApprovedPlan(deps: UseCaseDeps, input: LandApprovedPla
     sources,
     alreadyLanded: 0,
     staleReworkCanceled,
-    ...(warning === undefined ? {} : { warning }),
+    ...(warningText === undefined ? {} : { warning: warningText }),
     ...(landed.rtm === undefined ? {} : { rtm: landed.rtm }),
   }
 }

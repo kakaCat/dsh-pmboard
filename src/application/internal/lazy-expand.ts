@@ -16,6 +16,7 @@ import {
   stagesForPhase,
   stagesForSide,
   validateExplicitStages,
+  fillStageAcceptance,
   type StageKind,
 } from '../../domain/task/SubtaskTemplate.js'
 import type { IdFactory } from '../ports.js'
@@ -69,8 +70,20 @@ function childImplementation(parent: TaskRecord, label: string, acceptance: stri
  */
 function makeChild(parent: TaskRecord, spec: SubtaskSpec, dependsOn: string[], now: number, ids: IdFactory): TaskRecord {
   const actor = { kind: 'system' as const }
+  const id = ids.task()
+  // REQ-261006201920-2adc FR-1 / D-2：落库前把模板占位符换成**具体值**——父卡验收标准里真实点名
+  // 的测试文件与脚本、需求 id、本卡 id；取不到落声明的兜底（`tests/` / `*.mts`，仍是可跑命令）。
+  //
+  // 不这么做的话，`STAGE_ACCEPTANCE` 的模板字面量（如 `npx vitest run <相关测试文件>`）会**原样写进卡里**：
+  // 实测历史上有 944/2005 张卡带着这种「没填完的模板」，读者照着跑必然失败，而门禁因为含 `npx`/`vitest`
+  // 字样判绿——「可执行」被形式化成「含命令字样」。回填抛错即中止落库，不留半成品。
+  const acceptance = fillStageAcceptance(spec.acceptance, {
+    requirementId: parent.requirementId,
+    taskId: id,
+    parentAcceptance: parent.acceptance ?? '',
+  })
   const child: TaskRecord = {
-    id: ids.task(),
+    id,
     requirementId: parent.requirementId,
     title: fmt('{parent}·{stage}', { parent: parent.title, stage: spec.title }).slice(0, 120),
     description: fmt('子卡阶段：{label}', { label: spec.title }),
@@ -78,8 +91,8 @@ function makeChild(parent: TaskRecord, spec: SubtaskSpec, dependsOn: string[], n
     side: parent.side,
     dependsOn,
     scope: { apis: [...parent.scope.apis], tables: [...parent.scope.tables], files: [...parent.scope.files] },
-    acceptance: spec.acceptance,
-    implementation: childImplementation(parent, spec.title, spec.acceptance),
+    acceptance,
+    implementation: childImplementation(parent, spec.title, acceptance),
     context: parent.context,
     parentId: parent.id,
     stageKind: spec.stageKind,

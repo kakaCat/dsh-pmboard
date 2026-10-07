@@ -8,40 +8,46 @@
  * 搬迁口径（t9）：文本逐字保持（含全部中文字面量），既有 capture.test.ts /
  * stage-prompts.test.ts / acceptance-criteria.test.ts 的断言语义不变，仅 import 路径改到本模块。
  *
+ * ── 头部/尾部分层（REQ-261007100513-6749 t2 ← design/architecture.md §头部/尾部分层判据）──
+ *
+ * 分界线 = "这一段会不会因为阶段/任务切换而变化"：
+ *   · **头部**（`headSectionTextFrom`）：需求清单（id + 标题）+ 常量块 / 未绑定静态引导——逐字节稳定。
+ *   · **易变**（`volatileSectionTextFrom`）：状态行 / 任务块 / 阶段纪律 / 待捕获提示，组装与分类在
+ *     `internal/volatile-notice.ts`（纯函数、无 I/O），由尾部通道投递（t3 落地）。
+ * 回落口径：通道未装配/抛错 = 不可用 → `fallbackSectionTextFrom` 整段（清单 + 易变 + 常量块；
+ * 未绑定窗口 = 引导与命中提示二选一），与改造前会话内容等价；通道可用时才"只回头部"。
+ *
  * @module dsh-pmboard/application/internal/capture-section
  */
 
 import { PM_BADGE_PREFIX } from '../../domain/text/pm-badge.js'
 import type { ReqboardLedger, TaskRecord } from '../../shared/protocol.js'
-import { captureDiag } from './diag-log.js'
 import { stageEnabledFor } from '../../shared/protocol.js'
-import type { StageKey } from '../../domain/requirement/RequirementStatus.js'
-import { resolveStagePrompt, isPromptStage } from '../../domain/prompt/index.js'
-import { difficultyFromDeclaredPrompt } from '../../domain/prompt/difficulty-mapping.js'
+import { captureDiag } from './diag-log.js'
 import {
   injectionLogInputFromResolved,
   type InjectionLogPort,
 } from './injection-log.js'
-import { isImplementing } from '../../domain/status/Predicates.js'
-import { isInProgressTask } from '../../domain/status/Predicates.js'
 import { factsOf, type RequirementFacts } from '../../domain/requirement/RequirementSummary.js'
+import type { StageKey } from '../../domain/requirement/RequirementStatus.js'
+import { resolveStagePrompt, isPromptStage, type ResolvedPrompt } from '../../domain/prompt/index.js'
+import { difficultyFromDeclaredPrompt } from '../../domain/prompt/difficulty-mapping.js'
 import {
   windowKeyFromContext,
   isWindowBoundFromFacts,
   openPromptFactsFor,
 } from './window.js'
+import {
+  buildVolatileNotice,
+  capturePromptForMessage,
+  type PendingCaptureMessage,
+  type VolatileNotice,
+} from './volatile-notice.js'
 
-/**
- * 待捕获消息登记（确定性消息 hook 写入、capture section 消费的瞬态信号）。
- * 不进台账——它是「用户消息刚到达、窗口需要走立项评估」的一次性触发信号，
- * turn/end 后由 hook 清除（消费完毕）。
- */
-export interface PendingCaptureMessage {
-  windowKey: string
-  /** 清洗后的用户消息文本（供注入引用；纯系统块/噪声消息不会登记）。 */
-  text: string
-  capturedAt: number
-}
+// t2：待捕获消息类型与待捕获提示已随易变段搬进 volatile-notice.ts；此处**转出**同名符号，
+// 既有 import 点（`application/dive/session-driver.ts`、测试）逐字不变。
+export { capturePromptForMessage }
+export type { PendingCaptureMessage }
 
 /**
  * 该窗口的捕获引导 section 文本（乙：提示 agent 识别新工作 → 调 reqboard_capture
@@ -52,6 +58,9 @@ export interface PendingCaptureMessage {
  * 引用该用户消息原文的针对性立项提示（用户裁定：消息到达 → hook 检查窗口是否
  * 需要立项捕获 → 注入提示词让 LLM 调 reqboard_capture 弹三问 → 直接建 REQ），未命中维持静态引导。
  * 向后兼容：不传 pending 时行为与旧版完全一致（capture.test.ts 三分支不变）。
+ *
+ * t2 起本函数是**兼容壳**：`gate-wiring.ts` 改走 head / fallback 两段（见同名函数）；本壳只为
+ * 既有测试保留，勿改其分支语义（尤其未绑定时"命中提示替换静态引导"）。
  */
 export function captureSectionText(
   ledger: ReqboardLedger,
@@ -99,6 +108,215 @@ export function captureSectionTextFrom(
 }
 
 /**
+ * 头部常量块（流水线纪律 / 归档规范）：**从不变化**（判据表：变化频率 = 从不），故属头部；
+ * 逐字搬自改造前末尾的 `lines.push(...)` 尾块，一个字没改。
+ */
+const BOUND_CONSTANT_BLOCKS: readonly string[] = [
+  '流水线（状态就是阶段，从立项一路走到交付）：',
+  '- draft 立项 → brainstorming 需求分析（探边界/方案）→ design 设计（只写设计文档）→',
+  '  decomposing 拆分（写拆分计划 → 人批准 → 落库任务 DAG）→ implementing 执行 → accepting 验收 → done 完成；',
+  '- 方案谈定 → reqboard_move 到 design（设计属于这个阶段）；',
+  '',
+  '设计阶段（2026-09-21 用户裁定：只写设计文档，不写计划）：',
+  '- 把设计写进 docs/requirements/<REQ>/design/ 目录（按类型模板：架构/接口/数据模型等）；',
+  '- 写完先调 reqboard_submit(kind=design) 登记设计文档（缺省扫全目录，也可指定单份 path）；',
+  '- 由你发起确认：**先看登记回执**——若它已写明「已有一道门在等 / 已自动触发确认弹框」，'
+    + '就**不要再调 reqboard_ask_confirm**（那会开出第二个框）；改为读确认态或取回执'
+    + '（reqboard_status / reqboard_confirm_receipt）。确认后自动进入拆分；',
+  '',
+  '拆分阶段（拆分计划在这里写 · 唯一需要人点头的地方）：',
+  '- 把设计落成拆分计划 → reqboard_submit(kind=plan)（path = docs/requirements/<REQ>/decomposition.md，',
+  '  summary = 一段人能读懂的目标+做法，tasks = 将来要落库的任务表：',
+  '  key/title/phase/side/depends_on/acceptance，粒度与依赖在这里定死）；',
+  '- 提交后**先看回执**：已写明「已有一道门在等 / 已自动触发批准弹框」时**不要重复发起**'
+    + '（reqboard_ask_confirm 会复用同一道门，但没必要再发一次）；只有回执说没弹框时才调一次；',
+  '  ——未批准时 reqboard_decompose 被代码级拒绝（看板「批准计划」同样有效）；',
+  '- 批准后自动落库任务卡并进入实施（不传 tasks = 直接落库批准的计划；',
+  '  传了 tasks 则必须与计划 key 一致，防止「批了 A 落库 B」）；',
+  '- 计划要改 → 重新 reqboard_submit(kind=plan)（旧批准自动作废，需重新批准）。',
+  '',
+  '状态推进纪律（计划批准之后，其余都由窗口自己维护，不需要用户手动点按钮）：',
+  '- 方案敲定 → reqboard_decompose 把需求拆成任务 DAG 落库（真拆分：写台账任务卡，',
+  '  看板「任务」页与甘特图据此渲染；depends_on 用批次内 key 引用同批任务）；',
+  '- 拆分后需求会自动进入拆分态；任务开工/完成用 reqboard_task_move 推进',
+  '  （父卡/子卡：todo → in_progress → done；存量卡：todo → in_progress → testing → in_review → done；',
+  '  开工时会自动记一段执行时间）；',
+  '- 任务全部 done 时系统自动把需求推进到 accepting（验收）；交付并自检通过后',
+  '  用 reqboard_move 自行推进到 done。',
+  '- 只有「取消需求/归档/取消任务」必须人操作（agent 调用会被代码级拒绝）。',
+  '- 推进时用 reason 写清做了什么（进需求留痕，供复盘与验收）。',
+  '',
+  '验收阶段（人工审核，agent 不自己判过）：',
+  '- 交付完成 → reqboard_submit(kind=verification) 提交验收材料',
+  '  （summary = 交付结论；evidence = 可复核证据：命令+输出摘要/报告路径/截图路径）；',
+  '- 提交后需求进入 accepting 态，等待人工逐项验收（看板验收单页面）；',
+  '- 验收通过 → 准备归档材料；被退回 → 按人的意见返工后重新提交验收。',
+  '',
+  '归档阶段（先提交材料，人工归档）：',
+  '- 验收通过后 → reqboard_submit(kind=archive) 提交归档材料',
+  '  （需求目录、目录内文档清单、合并去向 merged_into、一句话索引条目）；',
+  '- 提交后在看板归档页面等待人工最终归档确认。',
+  '- 合并去向与必填文档按需求类型限定（feature→architecture/guides，bug→known-issues，',
+  '  spike→research，refactor→architecture/work-logs，chore→work-logs），规范见',
+  '  agent-dh/docs/architecture/requirement-archive.md；缺项会被代码级拒绝；',
+  '- 归档材料里写了的合并去向，必须真的把那部分结论写进对应的项目文档；',
+  '- 金字塔生长：feature/refactor/spike 必须在材料里申报 manual_updates（更新了哪份文档的哪一节、',
+  '  多了什么认知），说明书是 docs/architecture/project-manual.md；bug/doc/chore 写 manual_note 说明即可；',
+  '- docs 按 wiki 维护：新页面要有 front-matter 并挂进首页/上层页，未写的主题进首页「待写页」；',
+  '  收工前可跑 python3 agent-dh/scripts/wiki_probe.py 自检死链/孤儿页。',
+]
+
+/**
+ * **头部**（design/backend.md §S-1：返回值只由窗口绑定关系决定）：未绑定 → 静态引导；已绑定 →
+ * 需求 id + 标题 + 常量块；判不出 windowKey → ''。状态/任务/阶段纪律/待捕获提示一律不在这里
+ * （它们就是头部被重写 16 个版本的来源）；本函数对同一绑定关系必须**逐字节稳定**。
+ */
+export function headSectionTextFrom(
+  facts: readonly RequirementFacts[],
+  context: unknown,
+): string {
+  const windowKey = windowKeyFromContext(context as { agent?: { id?: unknown }; scope?: unknown })
+  if (windowKey === undefined) {
+    captureDiag(`reqboard-capture [NODE-5]: headSectionText returns '' (reason: windowKey=undefined)`);
+    return ''
+  }
+  const open = openPromptFactsFor(facts, windowKey)
+  if (open.length === 0) {
+    // 未绑定窗口：头部 = 静态引导（design 判据表「未绑定引导文案（静态版）→ 头部」，每会话 0–1 次）。
+    const guidance = captureGuidanceText(windowKey)
+    captureDiag(`reqboard-capture [NODE-5]: headSectionText returns STATIC GUIDANCE (head, windowKey=${windowKey.slice(0, 16)}, text.length=${guidance.length})`);
+    return guidance
+  }
+  captureDiag(`reqboard-capture [NODE-5]: headSectionText returns BOUND HEAD (binding + constants, windowKey=${windowKey.slice(0, 16)}, open=${open.length})`);
+  return boundHeadText(open, windowKey)
+}
+
+/** 需求清单（绑定关系，**不含状态**——状态是易变段）；《》包裹逐字保留。 */
+function boundPrefixText(open: readonly RequirementFacts[], windowKey: string): string {
+  return [
+    `${PM_BADGE_PREFIX}项目看板（reqboard · 本窗口 ${windowKey.slice(0, 16)} 已绑定需求）`,
+    '',
+    '本窗口名下有进行中的需求：',
+    ...open.map(r => `- ${r.id}《${r.title}》`),
+  ].join('\n')
+}
+
+/** 常量块：从不变化，故属头部；回落路径里它排在**末位**（改造前的位置）。 */
+function boundConstantText(): string {
+  return BOUND_CONSTANT_BLOCKS.join('\n')
+}
+
+/** 已绑定窗口的**稳定头部**（清单 + 常量块）——尾部通道可用时进会话的就是这一份。 */
+function boundHeadText(open: readonly RequirementFacts[], windowKey: string): string {
+  return [boundPrefixText(open, windowKey), '', boundConstantText()].join('\n')
+}
+
+/**
+ * 阶段纪律的**取词**（本模块保留的取词职责，见 `injection-difficulty.test.ts` 的静态接线闸）：返回
+ * `resolved` 供 INV-6 留痕，正文交 `volatile-notice.ts` 归入 kind='stage'。跳过的阶段不注入；多个
+ * open 需求时取**最近更新**的那条（改造前口径）。
+ */
+export function resolveStageNotice(
+  open: readonly RequirementFacts[],
+): { readonly resolved: ResolvedPrompt } | undefined {
+  const stageReq = [...open].sort((a, b) => b.updatedAt - a.updatedAt)[0]
+  if (stageReq === undefined) return undefined
+  const stage = stageReq.status
+  // draft/done/canceled 不是可注入节点（types.ts）：先过闸，避免只捞到 ⑤ 铁律而被当成有提示词。
+  if (!isPromptStage(stage) || !stageEnabledFor(stageReq.category, stage as StageKey)) return undefined
+  // INV-1：取词唯一入口（分片库 + 回退链 + 预算）；不再直取常量表。
+  // FR-16：带上需求实质，让唯一取词入口按它推断难度（动架构 / 跨子系统 / 改数据模型 → heavy），
+  // 不再静默回落缺省 light——REQ-c9f899 被注入轻档提示词的根因就在这一行。
+  // REQ-261005154851-8512 FR-2：把**声明难度**带上——注入组装是同步缝，读不到台账，
+  // 故它必须由 facts 投影带进来（FR-1）。未声明 → 不传该键，回落文本推断（与改造前逐字相同）。
+  const declared = difficultyFromDeclaredPrompt(stageReq.promptDifficulty)
+  const resolved = resolveStagePrompt({
+    stage,
+    category: stageReq.category,
+    requirement: { title: stageReq.title, description: stageReq.description },
+    ...(declared === undefined ? {} : { declaredDifficulty: declared }),
+  })
+  if (resolved.text.length === 0) return undefined
+  return { resolved }
+}
+
+/** 易变段组装的附加依赖：纯组装在 volatile-notice.ts，这里只挂留痕口（INV-6）。 */
+export interface VolatileSectionOptions {
+  /** 本窗口待捕获候选（确定性消息 hook 登记）。 */
+  pending?: PendingCaptureMessage | undefined
+  /** 注入留痕口：阶段纪律正文确实进了会话 → `origin='system-prompt'` / `delivered=true`。缺省 = 不记。 */
+  injectionLog?: InjectionLogPort
+}
+
+/**
+ * **易变段**正文（分类见 `volatile-notice.ts` 的 `VolatileNoticeKind`）：状态行 → 当前任务块 →
+ * 阶段纪律正文 → 待捕获提示，块间空行分隔。未绑定窗口只产"待捕获提示"（未命中 → ''）。
+ */
+export function volatileSectionTextFrom(
+  facts: readonly RequirementFacts[],
+  tasks: readonly TaskRecord[] | undefined,
+  context: unknown,
+  options: VolatileSectionOptions = {},
+): string {
+  const windowKey = windowKeyFromContext(context as { agent?: { id?: unknown }; scope?: unknown })
+  if (windowKey === undefined) return ''
+  const open = openPromptFactsFor(facts, windowKey)
+
+  // 阶段纪律的**取词**留在本模块：取词要按需求实质与**声明难度**选档（FR-16 / REQ-261005154851-8512
+  // FR-2），`resolved` 还要做 INV-6 留痕。分类与归属（kind='stage'）在 volatile-notice.ts。
+  const stage = resolveStageNotice(open)
+  const input = { windowKey, open, tasks, pending: options.pending, stageText: stage?.resolved.text }
+
+  // 顺序即正文顺序（VOLATILE_NOTICE_ORDER）。这里不调 buildVolatileNotices()：它拿不到上面那份
+  // `resolved`，留痕就得再解析一次。
+  const parts: string[] = []
+  const push = (notice: VolatileNotice | undefined): void => { if (notice !== undefined) parts.push(notice.text) }
+  push(buildVolatileNotice(input, 'status'))
+  push(buildVolatileNotice(input, 'task'))
+  push(buildVolatileNotice(input, 'stage'))
+  if (stage !== undefined) {
+    // INV-6：注入即留痕（本次到底注入了什么，可被看板/人核查）。
+    // FR-9（t-cc7233）：这一处是**每轮系统提示词的装配**——正文确实进了会话，
+    // 故 delivered=true、origin='system-prompt'（设计稿只列了三个写入点，这是实施发现的第四处）。
+    //
+    // t2 保留这条留痕的原因：通道不可用时本段仍进会话 ⇒ 留痕口径与改造前逐字相同；t3 接入后由投递点记。
+    options.injectionLog?.record(injectionLogInputFromResolved(stage.resolved, windowKey, {
+      origin: 'system-prompt',
+      delivered: true,
+    }))
+  }
+  push(buildVolatileNotice(input, 'capture'))
+
+  captureDiag(`reqboard-capture [NODE-5]: volatileSectionText (windowKey=${windowKey.slice(0, 16)}, blocks=${parts.length}, text.length=${parts.join('\n\n').length})`);
+  return parts.join('\n\n')
+}
+
+/**
+ * 回落路径整段（通道不可用时 `section.text` 的返回值）：
+ *   · 未绑定：本回合命中 → **只回针对性命中提示**，未命中 → 静态引导；二者**不同屏**（改造前的替换
+ *     语义：叠加会互相稀释，且每条用户消息多约 220 token——评审 P2-1）。
+ *   · 已绑定：清单 + 易变段 + 常量块；常量块留**末位**（改造前位置），故状态行紧跟清单（评审 P2-3）。
+ */
+export function fallbackSectionTextFrom(
+  facts: readonly RequirementFacts[],
+  tasks: readonly TaskRecord[] | undefined,
+  context: unknown,
+  options: VolatileSectionOptions = {},
+): string {
+  const windowKey = windowKeyFromContext(context as { agent?: { id?: unknown }; scope?: unknown })
+  if (windowKey === undefined) return ''
+  const open = openPromptFactsFor(facts, windowKey)
+  const volatile = volatileSectionTextFrom(facts, tasks, context, options)
+  if (open.length === 0) return volatile.length > 0 ? volatile : captureGuidanceText(windowKey)
+  return joinBlocks([boundPrefixText(open, windowKey), volatile, boundConstantText()])
+}
+
+/** 块拼接：非空块之间空一行（与改造前 `lines.push('')` 的观感一致）。 */
+function joinBlocks(blocks: readonly string[]): string {
+  return blocks.filter(b => b.length > 0).join('\n\n')
+}
+
+/**
  * 绑定窗口的「推进纪律」段 —— 本窗口已绑定进行中需求时注入；未绑定 → ''。
  *
  * 为什么需要：此前 bound 窗口的 section 返回 ''（零噪音），窗口 agent 根本不知道
@@ -132,6 +350,9 @@ export function boundSectionText(
  *
  * 本段比捕获段多要一个字段：`description`（`resolveStagePrompt` 用它推断提示词难度，FR-16）。
  * 这也是"看板摘要（`RequirementSummary`）不能直接拿来用"的原因——见 `RequirementFacts` 的注释。
+ *
+ * t2 起 = 回落路径整段（见 `fallbackSectionTextFrom`）：清单 + 易变段 + 常量块，内容与改造前等价。
+ * 未绑定窗口仍返回 ''（零噪音，既有断言语义不变）。
  */
 export function boundSectionTextFrom(
   facts: readonly RequirementFacts[],
@@ -141,231 +362,8 @@ export function boundSectionTextFrom(
 ): string {
   const windowKey = windowKeyFromContext(context as { agent?: { id?: unknown }; scope?: unknown })
   if (windowKey === undefined) return ''
-  const open = openPromptFactsFor(facts, windowKey)
-  if (open.length === 0) return ''
-  // 基础需求列表
-  const lines: string[] = [
-    `${PM_BADGE_PREFIX}项目看板（reqboard · 本窗口 ${windowKey.slice(0, 16)} 已绑定需求）`,
-    '',
-    '本窗口名下有进行中的需求：',
-    ...open.map(r => `- ${r.id}《${r.title}》当前状态：${r.status}`),
-    '',
-  ]
-  
-  // ========== implementing 阶段注入当前任务执行指引 ==========
-  const implementingReq = open.find(isImplementing)
-  // 三态契约（Lead D17 硬要求）：`tasks === undefined` = 队列任务**尚未加载**（缓存首帧）→
-  // **整体略过**本块。绝不能把它当成"当前没有任务"来渲染 —— 那是**错误断言**（未加载 ≠ 已加载且为空）。
-  // `[]` = 已加载且确无任务（略过即可，同样不产生错误文字）。
-  if (implementingReq && tasks !== undefined) {
-    const inProgressTasks = tasks.filter(
-      t => t.requirementId === implementingReq.id && isInProgressTask(t)
-    )
-    
-    if (inProgressTasks.length > 0) {
-      const task = inProgressTasks[0]
-      lines.push('## 【当前任务执行中】')
-      lines.push('')
-      lines.push(`任务：${task.title}`)
-      lines.push('')
-      lines.push('**任务说明**：')
-      lines.push(task.description || '（无）')
-      lines.push('')
-      lines.push('**需求背景**：')
-      lines.push(task.context || '（无）')
-      lines.push('')
-      lines.push('**验收标准**：')
-      lines.push(task.acceptance || '（无）')
-      lines.push('')
-      lines.push(`**阶段**：${task.phase} | **端侧**：${task.side}`)
-      lines.push('')
-      lines.push('---')
-      // 卡片层契约（2026-09-28）：合法边由**卡片角色**决定——父卡（有子卡）与子卡只有
-      // todo→in_progress→done（TaskStatus 的 PARENT_/SUBTASK_TRANSITIONS 对 integrating/
-      // testing/in_review 无出边），照旧文案推进必吃 invalid_transition；只有存量卡走五段。
-      const hasKids = (tasks ?? []).some(t => t.parentId === task.id)
-      const isSubtask = task.parentId !== undefined
-      lines.push('请按照任务说明执行。完成后推进任务状态：')
-      if (hasKids || isSubtask) {
-        lines.push(`- 完成 → reqboard_task_move({ task_id: '${task.id}', to: 'done', reason: '...' })`)
-        lines.push('  （本卡是父卡/子卡：合法边只有 todo → in_progress → done；联调/复核/测试由子卡链各阶段承载）')
-      } else {
-        lines.push(`- 开发完成 → reqboard_task_move({ task_id: '${task.id}', to: 'integrating', reason: '...' })`)
-        lines.push(`- 联调完成 → reqboard_task_move({ task_id: '${task.id}', to: 'testing', reason: '...' })`)
-        lines.push(`- 测试通过 → reqboard_task_move({ task_id: '${task.id}', to: 'in_review', reason: '...' })`)
-        lines.push('  （本卡是存量卡：无子卡链，走五段状态机）')
-      }
-      lines.push('')
-      lines.push('查看所有任务：reqboard_status()')
-      lines.push('')
-    }
-  }
-  // ========== 任务执行指引结束 ==========
-  
-  // ========== 阶段提示词注入（REQ-31e11f t5：按当前阶段注入纪律提示词）==========
-  // 被分类档案跳过的阶段（stageEnabledFor=false）不注入——跳过阶段不产生物、不设门、
-  // 不注入提示词。同一窗口多个 open 需求时，取最近更新的那条。
-  const stageReq = [...open].sort((a, b) => b.updatedAt - a.updatedAt)[0]
-  if (stageReq !== undefined) {
-    const stage = stageReq.status
-    // draft/done/canceled 不是可注入节点（types.ts）：先过闸，避免只捞到 ⑤ 铁律而被当成有提示词。
-    if (isPromptStage(stage) && stageEnabledFor(stageReq.category, stage as StageKey)) {
-      // INV-1：取词唯一入口（分片库 + 回退链 + 预算）；不再直取常量表。
-      // FR-16：带上需求实质，让唯一取词入口按它推断难度（动架构 / 跨子系统 / 改数据模型 → heavy），
-      // 不再静默回落缺省 light——REQ-c9f899 被注入轻档提示词的根因就在这一行。
-      // REQ-261005154851-8512 FR-2：把**声明难度**带上——注入组装是同步缝，读不到台账，
-      // 故它必须由 facts 投影带进来（FR-1）。未声明 → 不传该键，回落文本推断（与改造前逐字相同）。
-      const declared = difficultyFromDeclaredPrompt(stageReq.promptDifficulty)
-      const resolved = resolveStagePrompt({
-        stage,
-        category: stageReq.category,
-        requirement: { title: stageReq.title, description: stageReq.description },
-        ...(declared === undefined ? {} : { declaredDifficulty: declared }),
-      })
-      if (resolved.text.length > 0) {
-        lines.push('')
-        lines.push(resolved.text)
-        // INV-6：注入即留痕（本次到底注入了什么，可被看板/人核查）。
-        // FR-9（t-cc7233）：这一处是**每轮系统提示词的装配**——正文确实进了会话，
-        // 故 delivered=true、origin='system-prompt'（设计稿只列了三个写入点，这是实施发现的第四处）。
-        injectionLog?.record(injectionLogInputFromResolved(resolved, windowKey, {
-          origin: 'system-prompt',
-          delivered: true,
-        }))
-      }
-    }
-  }
-  // ========== 阶段提示词注入结束 ==========
-
-  lines.push(
-    '流水线（状态就是阶段，从立项一路走到交付）：',
-    '- draft 立项 → brainstorming 需求分析（探边界/方案）→ design 设计（只写设计文档）→',
-    '  decomposing 拆分（写拆分计划 → 人批准 → 落库任务 DAG）→ implementing 执行 → accepting 验收 → done 完成；',
-    '- 方案谈定 → reqboard_move 到 design（设计属于这个阶段）；',
-    '',
-    '设计阶段（2026-09-21 用户裁定：只写设计文档，不写计划）：',
-    '- 把设计写进 docs/requirements/<REQ>/design/ 目录（按类型模板：架构/接口/数据模型等）；',
-    '- 写完先调 reqboard_submit(kind=design) 登记设计文档（缺省扫全目录，也可指定单份 path）；',
-    '- 由你发起确认：**先看登记回执**——若它已写明「已有一道门在等 / 已自动触发确认弹框」，'
-      + '就**不要再调 reqboard_ask_confirm**（那会开出第二个框）；改为读确认态或取回执'
-      + '（reqboard_status / reqboard_confirm_receipt）。确认后自动进入拆分；',
-    '',
-    '拆分阶段（拆分计划在这里写 · 唯一需要人点头的地方）：',
-    '- 把设计落成拆分计划 → reqboard_submit(kind=plan)（path = docs/requirements/<REQ>/decomposition.md，',
-    '  summary = 一段人能读懂的目标+做法，tasks = 将来要落库的任务表：',
-    '  key/title/phase/side/depends_on/acceptance，粒度与依赖在这里定死）；',
-    '- 提交后**先看回执**：已写明「已有一道门在等 / 已自动触发批准弹框」时**不要重复发起**'
-      + '（reqboard_ask_confirm 会复用同一道门，但没必要再发一次）；只有回执说没弹框时才调一次；',
-    '  ——未批准时 reqboard_decompose 被代码级拒绝（看板「批准计划」同样有效）；',
-    '- 批准后自动落库任务卡并进入实施（不传 tasks = 直接落库批准的计划；',
-    '  传了 tasks 则必须与计划 key 一致，防止「批了 A 落库 B」）；',
-    '- 计划要改 → 重新 reqboard_submit(kind=plan)（旧批准自动作废，需重新批准）。',
-    '',
-    '状态推进纪律（计划批准之后，其余都由窗口自己维护，不需要用户手动点按钮）：',
-    '- 方案敲定 → reqboard_decompose 把需求拆成任务 DAG 落库（真拆分：写台账任务卡，',
-    '  看板「任务」页与甘特图据此渲染；depends_on 用批次内 key 引用同批任务）；',
-    '- 拆分后需求会自动进入拆分态；任务开工/完成用 reqboard_task_move 推进',
-    '  （父卡/子卡：todo → in_progress → done；存量卡：todo → in_progress → testing → in_review → done；',
-    '  开工时会自动记一段执行时间）；',
-    '- 任务全部 done 时系统自动把需求推进到 accepting（验收）；交付并自检通过后',
-    '  用 reqboard_move 自行推进到 done。',
-    '- 只有「取消需求/归档/取消任务」必须人操作（agent 调用会被代码级拒绝）。',
-    '- 推进时用 reason 写清做了什么（进需求留痕，供复盘与验收）。',
-    '',
-    '验收阶段（人工审核，agent 不自己判过）：',
-    '- 交付完成 → reqboard_submit(kind=verification) 提交验收材料',
-    '  （summary = 交付结论；evidence = 可复核证据：命令+输出摘要/报告路径/截图路径）；',
-    '- 提交后需求进入 accepting 态，等待人工逐项验收（看板验收单页面）；',
-    '- 验收通过 → 准备归档材料；被退回 → 按人的意见返工后重新提交验收。',
-    '',
-    '归档阶段（先提交材料，人工归档）：',
-    '- 验收通过后 → reqboard_submit(kind=archive) 提交归档材料',
-    '  （需求目录、目录内文档清单、合并去向 merged_into、一句话索引条目）；',
-    '- 提交后在看板归档页面等待人工最终归档确认。',
-    '- 合并去向与必填文档按需求类型限定（feature→architecture/guides，bug→known-issues，',
-    '  spike→research，refactor→architecture/work-logs，chore→work-logs），规范见',
-    '  agent-dh/docs/architecture/requirement-archive.md；缺项会被代码级拒绝；',
-    '- 归档材料里写了的合并去向，必须真的把那部分结论写进对应的项目文档；',
-    '- 金字塔生长：feature/refactor/spike 必须在材料里申报 manual_updates（更新了哪份文档的哪一节、',
-    '  多了什么认知），说明书是 docs/architecture/project-manual.md；bug/doc/chore 写 manual_note 说明即可；',
-    '- docs 按 wiki 维护：新页面要有 front-matter 并挂进首页/上层页，未写的主题进首页「待写页」；',
-    '  收工前可跑 python3 agent-dh/scripts/wiki_probe.py 自检死链/孤儿页。',
-  )
-  
-  return lines.join('\n')
-}
-
-/**
- * 针对性立项提示（消息事件 hook 命中时注入）：引用刚到达的用户消息原文，
- * 指示 LLM 判断该输入是否值得立项——值得则【调 reqboard_capture（pm 专有立项弹框）
- * 一次完成「立项三问 + 创建 + 绑定」】：三问为「需求名称」（候选由本条消息上下文
- * 推导、最贴切一项置首推荐、允许自定义输入）「需求类型」（feature/bug/doc/refactor/
- * spike/chore）「提示词难度」（simple/standard/advanced/expert）；**用户作答即立项确认**，
- * 工具在同一次调用内创建 REQ 并绑定本窗口（创建即立项，无待归类/建议卡中间态，看板
- * 立即可见）。
- *
- * **措辞已硬化（2026-09-20 t-3e11bf E2E 走查后的返工）**：走查实测（窗口 session-361c2879，
- * 15:23–15:30 四个回合）——hook 登记、pending 命中、本段注入**全部正常**，但窗口内 35 次
- * PTC 子调用只有 read/grep，**零次 reqboard_capture**；其中"修复 FR-6 任务状态机"这种
- * 明确工作意图也被模型判成"对当前审查的追问"而跳过。根因：原文案是"请先判断**可能**包含
- * 值得立项的意图 / 只是闲聊则正常回复"——二元裁量 + 零后果，模型默认选"先答问题"。
- * 故改为：①必须显式裁定（判不准按值得立项处理）②值得立项时**本回合第一个工具调用**即
- * reqboard_capture ③不立项时必须在回复首行写明理由（把沉默变成可审计表态）。
- * 判定仍留给 LLM（窗口 agent 自身回合），hook 只保证确定性触发。全部字面量。
- */
-export function capturePromptForMessage(windowKey: string, text: string): string {
-  const trimmed = text.trim().replace(/\s+/g, ' ')
-  const snippet = trimmed.slice(0, 300)
-  return [
-    `${PM_BADGE_PREFIX}项目捕获（reqboard · 本窗口 ${windowKey.slice(0, 16)} 检测到用户新输入）`,
-    '',
-    '用户刚发来一条消息。**本回合你必须先做一次显式裁定、再回答用户**——沉默跳过等于',
-    '本回合未完成（会被留痕，走查时按失败计）。',
-    '',
-    '**第一步：判断消息类型**',
-    '',
-    'A. **直接执行**——用户已给出精确修改值 + 执行指令，如：',
-    '   - "改成 500"、"设为 200"、"提高到 1000"',
-    '   - "修改"、"执行"、"apply"、"直接改"',
-    '   - 改动范围单一明确（一个文件/一个配置项）',
-    '   → **立即执行 edit/write，不弹框、不立项**',
-    '',
-    'B. **值得立项**——用户提出新工作意图，但未给出精确值，如：',
-    '   - "帮我做个功能"、"修复这个 bug"、"重构某模块"',
-    '   - 需要拆解的复杂需求、需要追踪的改动',
-    '   → **本回合第一个工具调用必须是 reqboard_capture**',
-    '',
-    'C. **不立项**——纯提问、咨询、闲聊，如：',
-    '   - "dsh 支持吗"、"进度如何"、"谢谢"',
-    '   → **回复第一行写明「本条不立项：<理由>」**',
-    '',
-    '**第二步：执行对应动作**',
-    '',
-    'A. 直接执行时：',
-    '   - 立即调 edit/write 修改代码',
-    '   - 回复用户执行结果',
-    '   - 绝对禁止调 reqboard_capture（这不是立项，是干活）',
-    '',
-    'B. 值得立项时：',
-    '   - 本回合第一个工具调用必须是 reqboard_capture',
-    '   - 问题一「需求名称」：候选标题经 title_options 传入（最多 3 个），最贴切的置首',
-    '   - 问题二「需求类型」：feature / bug / doc / refactor / spike / chore',
-    '   - 问题三「提示词难度」：simple / standard / advanced / expert',
-    '   - 用户作答后同一次调用内创建并绑定本窗口',
-    '',
-    'C. 不立项时：',
-    '   - 回复第一行写明「本条不立项：<一句话理由>」',
-    '   - 然后正常回答用户',
-    '',
-    '**绝对禁止（违反 = 逻辑错误）**：',
-    '- 写了「本条不立项」后又调 reqboard_capture',
-    '- 调了 reqboard_capture 又写「本条不立项」',
-    '- 用户已给出精确值仍弹框立项',
-    '',
-    '本次待裁定的用户消息（节选，最多 300 字）：',
-    '',
-    `> ${snippet}${trimmed.length > 300 ? '…' : ''}`,
-  ].join('\n')
+  if (openPromptFactsFor(facts, windowKey).length === 0) return ''
+  return fallbackSectionTextFrom(facts, tasks, context, { injectionLog })
 }
 
 /** 引导文本（纯字面量）。窗口已完成/取消/归档全部需求后重新变为 unbound → 引导复现。 */
@@ -386,5 +384,15 @@ export function captureGuidanceText(windowKey: string): string {
     '',
     '判不准是否值得立项时按"值得"处理——直接调 reqboard_capture 弹框问用户（框里可以选"不需要"，',
     '比沉默跳过安全）；仅闲聊或询问已有需求进度时无需弹框、无需立项。',
+    '',
+    // 修复（2026-10-06）：本段也会被注入到**自主回合**（开窗底稿 / 交接底稿 / 子代理回报触发的
+    // 一整轮），而这类回合代码级禁止立项（requireDirectHuman 只认 source.kind==='user'）。
+    // 缺这段出路时，窗口 agent 会照上半段去试立项、必被拒；实测一条委派窗口因此在**没有立项**的
+    // 情况下落了 50 处改动、把 54 条门禁用例改红且无人认领——故"不许落盘"必须一起写明。
+    '若本回合**不是**由用户直接消息触发的（例如开窗底稿、交接底稿、子代理回报这类自署消息），',
+    '则代码级禁止立项：不要调 reqboard_capture / reqboard_create（必被 REQBOARD_DIRECT_HUMAN_REQUIRED 拒）。',
+    '此时**只做只读勘察，不要落盘改动**——没有立项的改动没有台账、没有阶段门、没有验收，',
+    '一律算野改动；确要开工，先请用户在本窗口发一句话（随后即可立项），',
+    '或由委派方用 reqboard_capture（on_window_bound=handoff）把需求直接登记到你名下。',
   ].join('\n')
 }

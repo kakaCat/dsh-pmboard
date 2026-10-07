@@ -17,6 +17,9 @@
  */
 import { designDocPolicyFrom, effectiveDesignDocs, type DesignDocPolicy } from './category-doc-sets.js'
 import { parseDocument } from './doc-parse.js'
+// 需求文档位置唯一解析点（2026-10-06）：本模块原先把 `docs/requirements/<id>/…` 拼死，
+// 于是换过文档位置（立项四问选了 docs/rfcs/ 之类）的需求在这里读到/列出的是**另一个目录**。
+import { requirementDocDirOf, requirementDocPathOf, type DocLocationInput } from '../../domain/requirement/DocLocation.js'
 import type { DesignDocRegistration, DesignDocStatus, RequirementRecord } from '../../shared/protocol.js'
 
 /** 空策略（无 front-matter 声明时的默认：只有必交、无豁免）。 */
@@ -27,7 +30,7 @@ export async function designDocPolicyOf(
   docs: { exists(relPath: string): boolean; read(relPath: string): Promise<string> },
   req: RequirementRecord,
 ): Promise<DesignDocPolicy> {
-  const path = 'docs/requirements/' + req.id + '/requirement.md'
+  const path = requirementDocPathOf(req)
   if (!docs.exists(path)) return EMPTY_DESIGN_DOC_POLICY
   return designDocPolicyFrom(parseDocument(await docs.read(path)).frontmatter)
 }
@@ -46,7 +49,7 @@ export function designDocStatus(
     const suffix = '/design/' + name
     const entry: DesignDocStatus = {
       name,
-      path: 'docs/requirements/' + req.id + suffix,
+      path: requirementDocDirOf(req) + suffix,
       submitted: artifacts.some(a => a.path.endsWith(suffix)),
       ...(conditional !== undefined ? { conditional } : {}),
     }
@@ -79,7 +82,7 @@ export function designDocRegistration(
   policy: DesignDocPolicy = EMPTY_DESIGN_DOC_POLICY,
   onDisk: readonly string[] = [],
 ): DesignDocRegistration[] {
-  const dir = 'docs/requirements/' + req.id + '/design'
+  const dir = requirementDocDirOf(req) + '/design'
   const disk = new Set(onDisk)
   const artifacts = req.artifacts ?? []
   const rows: DesignDocRegistration[] = []
@@ -115,9 +118,14 @@ export interface DesignDocScanPort {
   list(relDir: string): readonly { name?: string; isFile?: boolean }[]
 }
 
-/** design/ 目录下已落盘的设计文档文件名（只认 .md；口径与 reqboard_submit(kind=design) 的扫描一致）。 */
-export function designDocNamesOf(scan: Pick<DesignDocScanPort, 'list'>, reqId: string): string[] {
-  const dir = 'docs/requirements/' + reqId + '/design'
+/**
+ * design/ 目录下已落盘的设计文档文件名（只认 .md；口径与 reqboard_submit(kind=design) 的扫描一致）。
+ *
+ * 入参从 `reqId` 改为需求记录（2026-10-06）：目录必须由 `docBasePath` 解析出来，
+ * 否则换过文档位置的需求在这里扫的是个空目录（"一份都没交"）——而文件其实在别处。
+ */
+export function designDocNamesOf(scan: Pick<DesignDocScanPort, 'list'>, req: DocLocationInput): string[] {
+  const dir = requirementDocDirOf(req) + '/design'
   return scan.list(dir)
     .filter(e => e.isFile !== false && (e.name ?? '').endsWith('.md'))
     .map(e => e.name ?? '')
@@ -136,5 +144,5 @@ export async function designDocRegistrationOf(
   req: RequirementRecord,
 ): Promise<DesignDocRegistration[]> {
   const policy = await designDocPolicyOf(scan, req)
-  return designDocRegistration(req, req.category, policy, designDocNamesOf(scan, req.id))
+  return designDocRegistration(req, req.category, policy, designDocNamesOf(scan, req))
 }

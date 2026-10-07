@@ -159,6 +159,11 @@ export const ERROR_CATEGORY: Readonly<Record<string, string>> = {
   artifact_not_confirmed: '产物未确认',
   requirement_uncovered: '需求条款未覆盖',
   design_orphan: '设计章节未标注 serves',
+  // REQ-261006201649-cc89：锚点门新增两问的中文类别名。
+  // 缺这两键的降级后果**不是崩，而是沉默**：面板会显示英文码原文，
+  // 人得自己猜"prototype_placeholder 是什么类的问题"——类别名的全部价值就在这里。
+  prototype_placeholder: '原型仍是空骨架',
+  prototype_geometry_unverified: '几何量读数无法复核',
 }
 
 /** timeline 单条记录（复用 conversation-progress.ts 的数据结构）。 */

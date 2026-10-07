@@ -40,7 +40,7 @@ import { applyRequirementRollback, recordRollbackMaterialized, resetInjectionAft
 import { executeRollbackCleanup } from '../../application/use-cases/RollbackCleanup.js'
 // REQ-261006164732-6503 t13（serves: FR-4、FR-5）：看板两条落章通道与其余通道共用
 // 落章前提（gateStaleReason）与首写纪律（stampArtifactOnce / stampPlanOnce）——独立复核发现的漏网写点
-import { stampArtifactOnce, stampPlanOnce } from '../../application/internal/confirm-settle.js'
+import { applyConfirmedAdvance, stampArtifactOnce, stampPlanOnce } from '../../application/internal/confirm-settle.js'
 import { gateForTransition, gateFromStage } from '../../domain/gate/GateCatalog.js'
 import { fmt } from '../../domain/text/fmt.js'
 import type { RouterCtx } from './shared.js'
@@ -479,17 +479,18 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       }
     }
 
-    // ── 确认即推进 + 链侧投递（REQ-e3b6a0 t9 / FR-9）────────────────────────
-    // 两者都以「绑定窗口在线」为前提：窗口不在线就只落章，并如实说明——不伪造推进成功。
+    // ── 确认即推进 + 链侧投递（REQ-e3b6a0 t9 / FR-9；t2 起推进走单点）──────────────
+    // t2（REQ-261007135258-331a FR-1、FR-4）两处变更：
+    //   ① 推进不再自己 `transitionRequirement`，改调**唯一实现** `applyConfirmedAdvance`
+    //      （它内含统一收尾：清停手位 + 复位运行时健康）——此前本路径漏了收尾两件事；
+    //   ② 「绑定窗口在线」**不再**是推进的前置：推进是台账动作，窗口在线只决定"能否投递"。
+    //      改造前窗口离线 ⇒ advanced:false + "请回会话推进"（状态没动、人以为点过了）。
     const windowKey = confirmed.sourceSessionId
     const agent = onlineAgent(windowKey)
-    if (agent === undefined) {
-      ok(res, { ...confirmed, advanced: false, delivered: false, note: '窗口不在线，请回会话推进（本次仅落章）' })
-      return
-    }
 
     const gate = gateFromStage(confirmed.status)
     let advanced = false
+    let advanceNote = ''
     // 护栏：确认的产物必须**正是该门要求的产物**（gate.requiredKind === kind）。
     // 否则二次确认同一产物会顺着新状态的门再推进一次（B 后再点一次 = 连跳两格）。
     const gateMatches = gate !== undefined && gate.requiredKind === kind
@@ -512,32 +513,53 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       }
       // REQ-260927121324-abde FR-2：确认即推进带写时快照，actor 带会话 id（窗口码 = sourceSessionId）
       const confirmSnap = windowKey !== undefined && windowKey.length > 0 ? ctx.deps.tokenSnapshot?.(windowKey) : undefined
-      await mutateIfPresent(ctx.requirementStore, id, (r) => {
-        if (r.status !== gate.from) return undefined // 并发下已推进过 → 幂等，不重复推进
-        transitionRequirement(r, gate.to, {
-          at: now(),
-          actor: { kind: 'human', ...(windowKey !== undefined ? { sessionId: windowKey } : {}) },
+      // t2：单点需要完整用例依赖（组合根经 ctx.deps.applicationDeps 传入；缺装配即响亮失败，
+      // 不静默退回"自己再写一遍推进"——那正是本需求要消灭的第二份实现）。
+      const app = ctx.deps.applicationDeps
+      if (app === undefined) {
+        throw Object.assign(new Error('看板确认入口未装配：applicationDeps 缺失（组合根未传用例依赖）'), { code: 'invalid_input' })
+      }
+      const advancedBy = await applyConfirmedAdvance(
+        {
+          ...app,
+          // 看板没有"当前发起回合"，但不影响本调用（推进 + 收尾都不读会话轮次）。
+          store: ctx.requirementStore,
+          clock: { now },
+        },
+        {
+          requirementId: id,
+          windowKey: windowKey ?? '',
+          from: gate.from,
+          to: gate.to,
+          nowTs: now(),
           reason: fmt('看板确认即推进（{from} → {to}）', { from: gate.from, to: gate.to }),
-          ...(confirmSnap !== undefined ? { snap: confirmSnap } : {}),
-        })
-        r.comments.push({
-          id: ids.comment(),
-          body: fmt('[自动推进] {from} → {to}：看板一键确认产物（kind={kind}）', { from: gate.from, to: gate.to, kind }),
-          createdAt: now(),
-          createdBy: { kind: 'human' },
-        })
-        return { changed: true }
-      })
-      advanced = true
+          commentBody: fmt('看板一键确认产物（kind={kind}）', { kind }),
+          sourceLabel: 'board',
+          // 快照由看板侧提供（ctx.deps.tokenSnapshot）；单点不自行取会话快照。
+          ...(confirmSnap === undefined ? {} : { snap: confirmSnap }),
+        },
+      )
+      advanced = advancedBy.advanced
+      advanceNote = advancedBy.advanceNote
     }
 
     let delivered = false
     let note: string | undefined
     const chain = ctx.deps.gateChain
+    if (!advanced && advanceNote.length > 0) {
+      // 未推进时把单点给的说明**如实**带出（与另三条通道同款：不静默、不假装成功）
+      note = advanceNote.replace(/^；/, '')
+    }
     if (chain === undefined) {
-      note = '闸门后置链未装配：本次仅落章与推进，未触发压缩/注入/唤醒'
+      note = (note === undefined ? '' : note + '；') + '闸门后置链未装配：本次仅落章与推进，未触发压缩/注入/唤醒'
     } else if (!gateMatches || windowKey === undefined) {
-      note = fmt('当前状态 {s} 与已确认产物 kind={kind} 不构成闸门，未触发后置链', { s: confirmed.status, kind })
+      const why = windowKey === undefined
+        ? '需求未绑定窗口（无投递对象）'
+        : fmt('当前状态 {s} 与已确认产物 kind={kind} 不构成闸门', { s: confirmed.status, kind })
+      note = (note === undefined ? '' : note + '；') + why + '，未触发后置链'
+    } else if (agent === undefined) {
+      // t2（FR-4）：推进已完成（台账动作），只是没有投递对象——如实说明，不把"没投递"说成"没推进"。
+      note = (note === undefined ? '' : note + '；') + '已推进；窗口不在线未投递（回会话或等窗口上线后由心跳续跑）'
     } else {
       chain.enqueue({
         windowKey,

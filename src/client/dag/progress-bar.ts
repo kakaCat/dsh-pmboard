@@ -182,16 +182,28 @@ export function laneOf(card: { status: string }, kids: KidLike[]): string {
 }
 
 /**
- * 是否「意图=chain 但链未生成」——只在卡**正在跑**、没有子卡、且未显式声明无链时成立。
+ * 是否「期望有链、链却没生成」——判据**按状态分两半，刻意不对称**（2026-10-06 收紧，缺口 4 之二）：
+ *  · 有子卡 → false；
+ *  · **显式 solo**（`stages: []`）→ false（`lazy-expand` 里只有它表示"本卡不要子卡"，永不打标）；
+ *  · `in_progress` → **true**：未声明 `stages` 也算期望有链——默认链由 `resolveSubtaskStages` 按卡
+ *    phase / side 推出，"没写 stages"绝不等于"不要链"。这一半与旧行为**逐字一致**，不许放松：
+ *    它覆盖最常见的形态（多数卡不会显式写 stages）；放松 = 漏报默认链没生成。
+ *  · `done` → **仅当显式声明非空 `stages`** 才 true：计划里白纸黑字写了 dev/review 却 0 子卡
+ *    （`autoRun=false` 时手动开工从不展开、`expandSubtasks` 幂等且只一次机会，卡走完流程也无人发现）。
+ *    不声明 `stages` 的存量 done 卡不打标——没有"声明过要链"的证据，大面积打标只会变噪声。
+ *  · 其它状态（todo / canceled…）→ false：todo 还没到懒展开，没链是正常态。
  *
- * 为什么限定 in_progress：todo 卡开工时才懒展开，"还没链"是正常态；done 的存量卡属历史，
- * 大面积打标只会变噪声。`stages: []` = 显式 solo，永不打标 —— 这正是"不需子卡"与
- * "需要但未生成"必须分开的那条线。
+ * ⚠️ 本函数与 `application/query/QueryDag.ts` 的 `chainMissingOf` 是**逐字同源的两份实现**
+ * （application 禁止 import client，`tests/layer-boundary.test.ts` 机械检查），必须同步改：
+ * 漂移的症状是「看板标了链未生成、详情页没标」这种最费人的不一致。
  */
 export function chainMissing(card: { status: string; stages?: readonly unknown[] }, kids: readonly unknown[]): boolean {
   if (kids.length > 0) return false;
-  if (card.status !== 'in_progress') return false;
-  return !(Array.isArray(card.stages) && card.stages.length === 0);
+  const stages = card.stages;
+  if (Array.isArray(stages) && stages.length === 0) return false; // 显式 solo
+  if (card.status === 'in_progress') return true; // 未声明也算期望有链（与旧行为逐字一致）
+  if (card.status === 'done') return Array.isArray(stages) && stages.length > 0;
+  return false;
 }
 
 /** 折叠到卡片层的最小输入形状。 */

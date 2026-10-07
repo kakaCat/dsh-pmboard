@@ -60,7 +60,9 @@ import {
 import { collectTaskRefs, planKeysIn, taskRefsFromDecomposition } from './content-trace.js'
 // 「什么算 UI 需求」的唯一判据（feature/refactor 且 sides 含 frontend ⇒ 需求阶段必交原型）：
 // 本文件的前筛与三个原型门同吃这一份，避免两处各判一次而分叉。
-import { conditionalStageArtifactsFor, designDocPolicyFrom, requiredStageArtifactKinds } from './category-doc-sets.js'
+import { conditionalStageArtifactsFor, designDocPolicyFrom, hasRootSection, requiredStageArtifactKinds, sidesDeclarationGap } from './category-doc-sets.js'
+import { docQualityRulesApply } from '../../domain/workflow/DocQualityRules.js'
+import { EVIDENCE_ANCHOR } from '../../domain/workflow/EvidenceAnchor.js'
 import { judgeFootprint } from '../../domain/task/Footprint.js'
 import { envelope } from './gate-feedback.js'
 import { fmt } from '../../domain/text/fmt.js'
@@ -92,6 +94,12 @@ export type { DocsEntry, DocsReader } from './content-gates.js'
 
 /**
  * FR-7 第二通道：从计划文档（decomposition.md）的覆盖对照表读「计划 key → FR 引用」。
+ *
+ * ⚠️ 本通道**不再是覆盖门禁的依据**（2026-10-06 收敛，见 `assertClauseCoverageGate` 的模块注释）：
+ * 卡上 refs 是覆盖门禁的**唯一**取数口，文档表当门禁依据会造出「门禁绿、卡上全空」的静默缺口
+ * （实测落库率 28%）。它现在只服务 `refsForLanding` 的**存量 / 回填通道**——规则生效前提交、
+ * 卡上没 refs 的老计划，靠它把文档表的引用补回落库值；新计划已被门禁要求显式 refs，走不到这条。
+ *
  * 与 requirementRefsOf（任务对象通道）互为补充：显式优先、文档兜底，两处都没有才算缺。
  */
 export async function planRefsFromDoc(docs: DocsReader, req: { id: string }): Promise<Map<string, string[]>> {
@@ -141,6 +149,14 @@ export function requirementRefsOf(raw: unknown): string[] {
  * `approved-plan-landing.ts` / `SubmitArtifact.ts` 的 kind=plan）只认这一处判定单点，
  * 加维只改这里 = 三条入口自动复用，既有调用点签名不变（少一个函数就少一处"漏接线"）。
  *
+ * **refs 单口径（2026-10-06 收敛，本函数的第一维）**：covered **只**来自
+ * `rawTasks.flatMap(requirementRefsOf)`——任务对象上的 `requirement_refs`。
+ * 三句话理由：① 卡上 refs 是**下游唯一读点**（RTM `generateRTMData`、结单证据锚定
+ * `doneEvidenceAnchorFailure`、条款接收状态 `syncRequirementMarks` 都只读 TaskRecord.requirementRefs，
+ * 没有一处读计划文档的覆盖对照表）；② 把文档表当门禁依据 = 门禁读 A、下游读 B，于是造出
+ * 「门禁绿、卡上全空」的静默缺口（实测落库率 28%）；③ 门禁要收的是**落库那一刻的事实**，
+ * 而文档表只是人读的汇总。
+ *
  * 放行条件（任一即跳过，避免误拦）：存量需求 / 需求文档不存在 / 文档里没有编号条款 /
  * 非 UI 需求 / 本计划没有 UI 卡。
  */
@@ -159,15 +175,13 @@ export async function assertClauseCoverageGate(
   const roots = extractClauseDefinitions(doc)
   if (roots.length === 0) return undefined
 
-  // FR-1（REQ-84bea5）：从"任务对象 ∪ decomposition.md RTM"读取 refs（双源合并）
-  const refsFromTasks = rawTasks.flatMap(requirementRefsOf)
-  const decompositionPath = 'docs/requirements/' + req.id + '/decomposition.md'
-  const refsFromRTM = docs.exists(decompositionPath)
-    ? taskRefsFromDecomposition(parseDocument(await docs.read(decompositionPath))).flatMap(t => t.requirement_refs ?? [])
-    : []
-  const covered = [...new Set([...refsFromTasks, ...refsFromRTM])]
+  // FR-1（REQ-84bea5）：covered 的唯一来源 = 任务对象的 requirement_refs。
+  // 2026-10-06 收敛：此前还合并 decomposition.md 的覆盖对照表（refsFromRTM），于是「门禁绿、
+  // 卡上全空」成为可能——下游（RTM / 结单证据锚定 / 条款接收状态）只读卡上 refs，谁都不读文档表。
+  const covered = [...new Set(rawTasks.flatMap(requirementRefsOf))]
   const skipped = extractSkippedClauses(doc)
   const { gaps } = checkClauseCoverage(roots, covered, { skipped })
+  const decompositionPath = 'docs/requirements/' + req.id + '/decomposition.md'
   if (gaps.length > 0) {
     return {
       code: 'requirement_uncovered',
@@ -177,11 +191,12 @@ export async function assertClauseCoverageGate(
         lead: 'reqboard_decompose 未执行：',
         what: fmt('需求条款 {list}', { list: gaps.join('、') }),
         why: '既没有被任何任务卡接收、也没有标「本轮不做」',
-        how: '恢复路径二选一（都真的能用）：① 在计划文档 ' + decompositionPath + ' 的覆盖对照表补「FR-N ↔ 计划 key」行'
-          + '（表头含「需求条款」与「接收任务」两列即被门禁读取，形如 | FR-1 | … | t4 |）；'
-          + '② 显式调 reqboard_decompose(requirement_id="' + req.id + '", tasks=[{key:"t1",title:"…",implementation:"…",acceptance:"…",requirement_refs:["FR-1"]}, …])，'
-          + '其中 key 必须与已批准计划一致。确需本轮不做的条款，在需求文档该条旁显式写明「本轮不做」并给出理由。'
-          + '注意：不要给任务卡加 requirement_refs——落库前根本没有任务卡可加。',
+        how: '唯一可执行的路径：在 reqboard_submit(kind=plan) 的 tasks[] / reqboard_decompose 的 tasks[] 里，'
+          + '给每张卡写 requirement_refs:["FR-N"]（其中 key 必须与已批准计划一致）——例如 '
+          + 'tasks=[{key:"t1",title:"…",implementation:"…",acceptance:"…",requirement_refs:["' + gaps[0] + '"]}, …]。'
+          + '计划文档 ' + decompositionPath + ' 的覆盖对照表仍建议写（人读的汇总、也是 RTM 表的样子），'
+          + '但它**不再是门禁依据**：门禁与下游（RTM / 结单证据锚定 / 条款接收状态）都只读卡上的 requirement_refs，'
+          + '只补文档表 = 门禁依旧红。确需本轮不做的条款，在需求文档该条旁显式写明「本轮不做」并给出理由。',
       }),
     }
   }
@@ -305,6 +320,42 @@ export async function checkDesignServesGate(docs: DocsReader, req: RequirementRe
 }
 
 /**
+ * 设计文档必备节缺口（REQ-261007125552-32cb FR-1）：`fileName` 必须含标题带 `sectionKeyword`
+ * 的 H2；给了 `tableHeader` 时还要求节内有对应表头的表。豁免出口两条（同「失败与并发路径」口径）：
+ * front-matter `design_exempt` 豁免该文件；或文档内写「不适用：」豁免行（保留节能被机械判定，删节不能）。
+ *
+ * 文件本身缺失 / 不在磁盘 → 返回 undefined（那是 missingCategoryDocs 门的判事，这里不重复报）。
+ */
+async function designSectionMissing(
+  docs: DocsReader,
+  designDir: string,
+  names: readonly string[],
+  fileName: string,
+  exempt: Readonly<Record<string, string>>,
+  sectionKeyword: string,
+  tableHeader: string | undefined,
+): Promise<string | undefined> {
+  if (!names.includes(fileName)) return undefined
+  if ((exempt[fileName] ?? '').trim().length > 0) return undefined
+  const p = designDir + '/' + fileName
+  if (!docs.exists(p)) return undefined
+  const text = await docs.read(p)
+  if (text.includes('不适用：')) return undefined
+  const doc = parseDocument(text)
+  const hasSection = doc.headings.some(h => h.level === 2 && h.text.includes(sectionKeyword))
+  if (!hasSection) {
+    return fmt('{file}（缺「{sec}」节：按 templates/design/{file} 补该节；确实无此界面/接口面时在节内写「不适用：<理由>」保留节，或在 front-matter 写 design_exempt={file}=理由）', { file: fileName, sec: sectionKeyword })
+  }
+  if (tableHeader !== undefined) {
+    const hasTable = doc.tables.some(t => t.header.some(h => h.includes(tableHeader)))
+    if (!hasTable) {
+      return fmt('{file}（「{sec}」节里没有表头含「{col}」的清单表——清单要机器可扫，散文列举不算）', { file: fileName, sec: sectionKeyword, col: tableHeader })
+    }
+  }
+  return undefined
+}
+
+/**
  * 设计文档内容校验门禁（REQ-260929210741-30ae FR-2 / t3）——`submit(kind=design)` 登记前调用。
  *
  * 与 checkDesignServesGate（plan 提交时的 design_orphan 门禁）的区别：
@@ -333,9 +384,11 @@ export async function checkDesignContentGate(
   // 需求文档里真实存在的条款 id（悬空引用判定的查找表）
   const reqPath = 'docs/requirements/' + req.id + '/requirement.md'
   const realClauses = new Set<string>()
+  let reqFrontmatter: Readonly<Record<string, string>> = {}
   if (docs.exists(reqPath)) {
     const reqDoc = parseDocument(await docs.read(reqPath))
     for (const id of extractClauseDefinitions(reqDoc)) realClauses.add(id)
+    reqFrontmatter = reqDoc.frontmatter
   }
 
   const docLevelMissing: string[] = [] // 文档级 serves 缺失（H1/frontmatter 都没有）
@@ -369,7 +422,24 @@ export async function checkDesignContentGate(
     }
   }
 
+  // ④ 接口清单 / 组件树节（REQ-261007125552-32cb FR-1）：feature 需求的 interfaces.md
+  // 必含「接口清单」节（节内有接口表或「不适用：」豁免行）；sides 含 frontend 时 frontend.md
+  // 必含「组件树」节。生效口径 docQualityRulesApply——存量需求不追溯（与 sidesGateFailure 同款）。
+  // 判据刻意做到文档级（H2 在场 + 表/豁免行在该文档内），不做节级作用域解析——
+  // 粒度足够拦住「没写清单」，又不逼机器理解 markdown 节边界。
+  const sectionListMissing: string[] = []
+  if (docQualityRulesApply(req.createdAt) && req.category === 'feature') {
+    const policy = designDocPolicyFrom(reqFrontmatter)
+    const interfaceListMissing = await designSectionMissing(docs, designDir, names, 'interfaces.md', policy.exempt, '接口清单', '接口 id')
+    if (interfaceListMissing !== undefined) sectionListMissing.push(interfaceListMissing)
+    if (policy.sides.includes('frontend')) {
+      const componentTreeMissing = await designSectionMissing(docs, designDir, names, 'frontend.md', policy.exempt, '组件树', undefined)
+      if (componentTreeMissing !== undefined) sectionListMissing.push(componentTreeMissing)
+    }
+  }
+
   const all: string[] = [
+    ...sectionListMissing,
     ...docLevelMissing.map(n => n + '（文档级 serves 缺失：H1 或 front-matter 补 serves: FR-x）'),
     ...sectionMissing.map(s => s + '（H2 缺 serves 标注）'),
     ...dangling.map(d => d + '（引用了 requirement.md 中不存在的条款）'),
@@ -460,6 +530,75 @@ export async function checkRequirementDocFormatGate(
   }
 
   return undefined
+}
+
+/**
+ * 端侧声明门（2026-10-06 文档质量门禁加固）——**独立成门**，不塞进
+ * `checkRequirementDocFormatGate`，两条理由都是实测结论：
+ *
+ *   ① 格式门有 `isLegacy`（`artifacts` 空即早退）——**首次提交正是 artifacts 为空的那一次**，
+ *      塞进去等于"最该管的那次不管"；
+ *   ② 格式门被 `STAGE_GATE_PROBES` 当时点探针复用（`stage-gate-timeline` 的「格式门」档），
+ *      塞进去会把"端侧声明"的语义外溢到别的时点读数上。
+ *
+ * 存量豁免走 `docQualityRulesApply(createdAt)`（与 rtm-health 的 `PROTOTYPE_RULES_SINCE`
+ * 同构）：规则生效前立项的需求不追溯，读数不可得（无 createdAt）也不判。
+ */
+export function sidesGateFailure(
+  category: string | undefined,
+  frontmatter: Readonly<Record<string, string>>,
+  createdAt: number | undefined,
+): GateFailure | undefined {
+  if (!docQualityRulesApply(createdAt)) return undefined
+  const gap = sidesDeclarationGap(category, frontmatter)
+  if (gap === undefined) return undefined
+  return {
+    code: 'requirement_sides_invalid',
+    kind: 'requirement',
+    message: envelope({
+      lead: 'reqboard_requirement_submit 未执行：',
+      what: gap,
+      why: '条件必交设计文档按 sides 触发：缺声明或值非法时判定被静默过滤，该交的设计文档永远不会被要求（等文档盖完章才发现缺，只能走变更流程）',
+      how: '在 requirement.md front-matter 写 sides（括号或逗号写法都认，两种等价）：sides: [frontend]（有界面改动）/ [backend]（有服务端改动）/ [frontend, backend]（两端都改）/ []（明确声明本需求无端侧改动）——值只能是 frontend 或 backend，再调 reqboard_submit(kind=requirement)',
+    }),
+  }
+}
+
+/** 「失败与并发路径」节名（模板、门禁、探针三处同名同源；改一处必须改三处）。 */
+export const FAILURE_CONCURRENCY_SECTION = '失败与并发路径'
+
+/**
+ * 「失败与并发路径」必填节门（2026-10-06 文档质量门禁加固）——**按需求创建时间**生效，存量不追溯。
+ *
+ * 为什么是独立门而不是进 `CATEGORY_DELTAS`：DELTA 会经 `missingCategoryDocs` 在**拆分提交 /
+ * 设计门 / 文档自检**上对存量需求一起判——那等于追溯（实测会让在飞的老需求提交拆分计划时被新节
+ * 拦住）。本节只在新需求的**需求文档提交**那一次判，存量豁免同样走 `docQualityRulesApply`。
+ * 模板里这一节照旧存在（`templates/brainstorming/{feature,refactor}.md`），照模板写的需求天然满足；
+ * `scripts/doc-section-parity.mts` 把它登记为 optional 并在理由里指向本门，保证「模板有、门禁判」
+ * 两侧可核；`scripts/template-gate-probe.mts` 的 requirement 分支也显式点名缺节。
+ *
+ * 判据为什么值得硬拦：实测条款块里「错误路径」出现 100 次、「并发」只有 7 次（12 份需求仅 5 份
+ * 提及），而失败/并发路径的缺口要到实施期才暴露——那时改的是代码，不是文档。确实不适用的需求写
+ * 「不适用：<理由>」即可：**保留节能被机械判定，删节不能**（这正是要它存在的原因）。
+ */
+export function docSectionGateFailure(
+  category: string | undefined,
+  rootText: string,
+  createdAt: number | undefined,
+): GateFailure | undefined {
+  if (!docQualityRulesApply(createdAt)) return undefined
+  if (category !== 'feature' && category !== 'refactor') return undefined
+  if (hasRootSection(rootText, FAILURE_CONCURRENCY_SECTION)) return undefined
+  return {
+    code: 'requirement_section_missing',
+    kind: 'requirement',
+    message: envelope({
+      lead: 'reqboard_requirement_submit 未执行：',
+      what: 'requirement.md 缺必填节「' + FAILURE_CONCURRENCY_SECTION + '」',
+      why: '只在顺利路径上写需求，失败路径 / 并发重复 / 状态机非法迁移的缺口要到实施期才暴露——那时改的是代码不是文档（实测 12 份需求里只有 5 份提过并发）',
+      how: '按 templates/brainstorming/' + category + '.md 的同名节补上：失败路径（依赖失败 / 超时 / 数据畸形时看到什么）、并发与重复（幂等键 / 锁 / 状态机拒绝）、状态机非法迁移的响应、写路径半成品谁清理；确实不适用的需求写一句「不适用：<理由>」保留节，不要删节',
+    }),
+  }
 }
 
 /**
@@ -589,8 +728,14 @@ export async function collectNumberedItems(docs: DocsReader, req: RequirementRec
 // 结单证据锚定（FR-4 / T-6）：证据不是"我做了"，而是"这条需求因此被满足了"
 // ---------------------------------------------------------------------------
 
-/** 可核验锚点（比计划期的断言词更严）：路径 / 命令 / 数据查询 / 明确的通过计数。 */
-export const EVIDENCE_ANCHOR = /\.(ts|tsx|js|mjs|cjs|md|html|json|py|go|css|sh)\b|\b(npx|npm|pnpm|vitest|node|curl|grep|python3?|bash|pytest|sql)\b|SELECT\s|diff\s|\d+\s*(passed|通过)/i
+/**
+ * 可核验锚点（比计划期的断言词更严）：路径 / 命令 / 数据查询 / 明确的通过计数。
+ *
+ * **已移到 domain**（`domain/workflow/EvidenceAnchor.ts`）：条款级判据（需求文档每条 FR）与
+ * 结单级证据用的是同一份词汇表，两处必须同源；此处再导出，既有 import 路径不变。
+ * 注意：re-export **不会**在本模块建立本地绑定，故下面另有一条 import（本模块自身要用它判结单证据）。
+ */
+export { EVIDENCE_ANCHOR } from '../../domain/workflow/EvidenceAnchor.js'
 
 /**
  * 结单证据锚定缺口（FR-4）：证据必须**可定位**——含本卡交付的条款编号，或含可核验锚点

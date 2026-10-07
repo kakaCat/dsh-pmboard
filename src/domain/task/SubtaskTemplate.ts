@@ -122,6 +122,117 @@ export const STAGE_ACCEPTANCE: Readonly<Record<StageKind, string>> = {
   capture: '采集产物路径列表（`docs/requirements/<REQ>/evidence/` 下）+ 每项一句话内容摘要 + 一条可复核命令（`ls -la` / `head` / `sha256sum`）',
 }
 
+// ── 验收模板占位符：声明式闭集 + 回填器（REQ-261006201920-2adc FR-1 / D-2）──────────
+/**
+ * `STAGE_ACCEPTANCE` 里允许出现的**全部**尖括号 token（声明式闭集）。
+ *
+ * 为什么必须是闭集：子卡落库时承诺「产物里尖括号残留为 0」——只有把词表枚举出来，这条承诺才**可证**
+ * （`tests/domain/subtask-template.test.ts` 断言模板里没有词表外的 token）。新增模板占位符必须
+ * **同时**登记到本表与 `FILL_RULES`，否则子卡落库会响亮抛错，而不是把模板残渣写进卡里。
+ */
+export const ACCEPTANCE_PLACEHOLDERS: readonly string[] = [
+  '<REQ>',
+  '<taskId>',
+  '<本卡改动涉及的测试文件>',
+  '<本卡接口/契约对应的测试文件>',
+  '<相关测试文件>',
+  '<新增回归用例>',
+  '<回归用例>',
+  '<探针用例>',
+  '<自检用例>',
+  '<校验用例>',
+  '<e2e用例>',
+  '<脚本>',
+  '<执行脚本>',
+]
+
+/** 回填上下文：子卡落库那一刻能拿到的全部事实（不猜、不读盘）。 */
+export interface AcceptanceFillContext {
+  /** 本需求 id（替换 `<REQ>`）。 */
+  requirementId: string
+  /** 本子卡 id（替换 `<taskId>`）。 */
+  taskId: string
+  /** 父卡验收标准原文——测试文件与脚本名**只从这里搬运**，不凭空猜。 */
+  parentAcceptance: string
+}
+
+/** 词表外的尖括号 token（非空 = 模板坏了；调用方据此响亮失败，不静默放行）。 */
+export function unknownPlaceholders(text: string): string[] {
+  const out: string[] = []
+  for (const token of text.match(/<[^>]{2,40}>/g) ?? []) {
+    if (!ACCEPTANCE_PLACEHOLDERS.includes(token)) out.push(token)
+  }
+  return out
+}
+
+/** 从父卡验收标准里提取**真实**测试文件路径（去重、保序；一个都取不到 → 空数组）。 */
+export function testFilesOf(parentAcceptance: string): string[] {
+  const re = /(?:[A-Za-z0-9_.@-]+\/)*[A-Za-z0-9_.@-]*\.(?:test|spec)\.(?:ts|tsx|js|mjs|cjs)\b/g
+  return [...new Set(parentAcceptance.match(re) ?? [])]
+}
+
+/** 从父卡验收标准里提取**真实**脚本路径（去重、保序；取不到 → 空数组）。 */
+export function scriptFilesOf(parentAcceptance: string): string[] {
+  const re = /(?:[A-Za-z0-9_.@-]+\/)*scripts\/[A-Za-z0-9_.@-]+\.(?:mts|ts|mjs|cjs|js|py|sh)\b/g
+  return [...new Set(parentAcceptance.match(re) ?? [])]
+}
+
+/** 测试文件兜底（一条都取不到时用）：`npx vitest run tests/` 仍可跑，只是跑全量。 */
+export const TEST_TARGET_FALLBACK = 'tests/'
+
+/** 脚本兜底（一条都取不到时用）：保住 `npx tsx scripts/*.mts` 这条可跑命令。 */
+export const SCRIPT_TARGET_FALLBACK = '*.mts'
+
+/**
+ * 各占位符的取值口径（**与 ACCEPTANCE_PLACEHOLDERS 一一对应**）。取不到真值时落声明的兜底——
+ * 不留空、不留占位符：留空会让「有标准」退化成「没有标准」。
+ */
+const FILL_RULES: Readonly<Record<string, (p: { requirementId: string; taskId: string; tests: string; scripts: string }) => string>> = {
+  '<REQ>': p => p.requirementId,
+  '<taskId>': p => p.taskId,
+  '<本卡改动涉及的测试文件>': p => p.tests,
+  '<本卡接口/契约对应的测试文件>': p => p.tests,
+  '<相关测试文件>': p => p.tests,
+  '<新增回归用例>': p => p.tests,
+  '<回归用例>': p => p.tests,
+  '<探针用例>': p => p.tests,
+  '<自检用例>': p => p.tests,
+  '<校验用例>': p => p.tests,
+  '<e2e用例>': p => p.tests,
+  '<脚本>': p => p.scripts,
+  '<执行脚本>': p => p.scripts,
+}
+
+/**
+ * 回填一份验收模板（纯函数）。
+ *
+ * 纪律：① 只替换**词表内**的 token；② 产物里不得再有尖括号 token——有则**抛错**
+ * （`code=REQBOARD_STAGES_INVALID` 并点名残留 token），绝不把模板残渣写进卡里。
+ */
+export function fillStageAcceptance(template: string, ctx: AcceptanceFillContext): string {
+  const tests = testFilesOf(ctx.parentAcceptance)
+  const scripts = scriptFilesOf(ctx.parentAcceptance)
+  const prep = {
+    requirementId: ctx.requirementId,
+    taskId: ctx.taskId,
+    tests: tests.length > 0 ? tests.join(' ') : TEST_TARGET_FALLBACK,
+    scripts: scripts.length > 0 ? scripts.join(' ') : SCRIPT_TARGET_FALLBACK,
+  }
+  let out = template
+  for (const token of ACCEPTANCE_PLACEHOLDERS) {
+    if (!out.includes(token)) continue
+    out = out.split(token).join(FILL_RULES[token](prep))
+  }
+  const left = unknownPlaceholders(out)
+  if (left.length > 0) {
+    throw Object.assign(
+      new Error(fmt('子卡验收标准回填后仍残留占位符：{list}（声明式词表见 ACCEPTANCE_PLACEHOLDERS）', { list: left.join('、') })),
+      { code: 'REQBOARD_STAGES_INVALID' },
+    )
+  }
+  return out
+}
+
 /**
  * 阶段证据形态（子卡完工凭证 L2，D17 结构性死路收口）——**与 STAGE_KINDS 同处的唯一事实源**。
  *

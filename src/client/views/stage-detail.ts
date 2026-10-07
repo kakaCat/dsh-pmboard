@@ -4,7 +4,7 @@
  * @module dsh-pmboard/client/views/stage-detail
  */
 import { esc } from '../html.js'
-import type { RequirementRecord, RequirementStatus, TaskRecord, TaskStatus } from '../types.ts'
+import type { RequirementOrigin, RequirementRecord, RequirementStatus, TaskRecord, TaskStatus } from '../types.ts'
 import { PROGRESS_DOT_STAGES, WORKFLOW_STAGES, getStageOrder } from '../workflow-constants.ts'
 import { NO_ARCHIVED, PHASE_LABELS, STATUS_LABELS, TASK_STATUS_LABELS, fmtTime, renderComments, renderMarkdown, renderWindowChip, windowCodeFromSessionId } from '../render/dom-utils.ts'
 import { renderReqTimeline } from './timeline.ts'
@@ -17,6 +17,8 @@ import { buildDagCanvas } from './dag-view.js'
 import { renderTokenPlaceholder } from '../token-info.ts'
 import { renderMarksPlaceholder } from '../marks-info.ts'
 import { renderTraceabilityView } from './traceability-view.js'
+// REQ-261006201841-944d t9（FR-7）：来源提示块与归档条同源同一套语汇（单点渲染，见 board.ts）
+import { renderArchivedSourceHint } from './board.ts'
 
 // ---------------------------------------------------------------------------
 // 需求详情页：8 态进度点 + 6 Tab 分组（REQ-6f39b5）
@@ -184,13 +186,19 @@ export function buildTabContents(
  *  - **兜底不等于允许**：即便有人传了摘要（旧调用方 / 半残记录），本函数也必须不抛异常、
  *    把缺的字段按空态渲染（`renderComments` 与 `buildTabContents` 各自兜底）。
  *    2026-10-04 的 `TypeError: reading 'length'` 就发生在这条链上。
+ *
+ * REQ-261006201841-944d t9（FR-7）：可选尾参 `origin`（服务端派生的来源三态）——B/C 态在头部段
+ * **之后**插一块「在别处 / 归属未知」提示，说清「为什么点开读不到文件」。**缺省时 hint 为空串**，
+ * 拼接处不新增任何字符 ⇒ 产物与改动前逐字节一致（U-12）；A 态同样不插块（FR-7 流程 2）。
  */
-export function buildReqDetail(req: RequirementRecord, tasks: TaskRecord[], now: number = Date.now(), archived: ReadonlySet<string> = NO_ARCHIVED): string {
+export function buildReqDetail(req: RequirementRecord, tasks: TaskRecord[], now: number = Date.now(), archived: ReadonlySet<string> = NO_ARCHIVED, origin?: RequirementOrigin): string {
   const reqTasks = tasks.filter(t => t.requirementId === req.id)
   const dag = buildDag(reqTasks)
   const comments = renderComments(req.comments)
   const gateHint = gateHintFor(req.status)
   const actionBar = renderActionBar(req)
+  // 空串时与「没有这一项」逐字等价（紧贴 </div> 拼接，不占行、不占位——U-11 / U-12）
+  const sourceHint = renderArchivedSourceHint(req.id, origin)
 
   return `
     <div class="dsh-pm-detail" data-detail-req="${esc(req.id)}">
@@ -203,7 +211,7 @@ export function buildReqDetail(req: RequirementRecord, tasks: TaskRecord[], now:
         <span class="dsh-pm-detail-updated">${fmtTime(req.updatedAt)}</span>
         <h1 class="dsh-pm-detail-title">${esc(req.title)}</h1>
         ${buildProgressDots(req.status)}
-      </div>
+      </div>${sourceHint}
       ${actionBar}
       ${gateHint}
       ${buildTabs()}

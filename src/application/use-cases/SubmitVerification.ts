@@ -18,6 +18,9 @@ import { buildSheet, requirementItemTitle, PROTOTYPE_COMPARE_CRITERION, type She
 import { bindItemResults, itemResultBindingEnabled } from '../../domain/workflow/AcceptanceSheetSpec.js'
 // REQ-261006092213-4f5b FR-1 / FR-2（D-3 / D-4 / D-7）：结构化逐项结果 —— 匹配与体检单点在 domain。
 import { applyStructuredResults, matchStructuredResults, refKeyOf, splitUnmatched } from '../../domain/workflow/ResultBinding.js'
+// REQ-261007160829-1991 FR-1 / design S-4：锚点形态提示是**单点常量**——弹框题干与拒绝回执的
+// `how` 共用同一句（两处各写一份必然漂移，且漂移的正是"什么算可核验"这条判据的说明）。
+import { ACCEPT_RESULT_FORM_HINT } from '../../domain/workflow/VerdictNotices.js'
 import { checkDocCompleteness } from '../../domain/workflow/DocCompleteness.js'
 import { renderVerificationDoc } from '../../domain/workflow/VerificationDoc.js'
 import { docSyncSummary } from '../../domain/workflow/DocSyncSpec.js'
@@ -39,7 +42,8 @@ import { toSheetTasks } from '../internal/sheet-tasks.js'
 import { parseDocument } from '../internal/content-gates.js'
 import { DECISION_SECTION_NAME } from '../internal/decision-gates.js'
 import { designDocPolicyFrom } from '../internal/category-doc-sets.js'
-import { prototypeExemptOf } from '../internal/prototype-gates.js'
+import { parsePrototypeIndex, prototypeExemptOf } from '../internal/prototype-gates.js'
+import { docQualityRulesApply } from '../../domain/workflow/DocQualityRules.js'
 import { envelope } from '../internal/gate-feedback.js'
 import { checkHowToVerify, checkAcceptance } from '../../domain/task/Acceptability.js'
 // REQ-261005193546-1b1a FR-1/FR-2/FR-4：活卡判据单点——本用例四处手写 filter 收编（探针/守卫/ledger/落盘）
@@ -560,6 +564,25 @@ function bindStructuredResults(
       report.missing.join('；'),
       '可预见项 = 顶层父卡任务 + 需求级 + 对照项（原型/裁定）：按上面点名的 ref 逐项补 result（或 needsHuman+humanReason），再调 reqboard_submit(kind=verification) 重交')
   }
+  // ── 提交侧锚点体检 → 拒绝（REQ-261007160829-1991 FR-1 · design S-3 / interfaces I-6）────
+  // 位置刻意排在 `missing`（漏项）**之后**：`missing` 是「覆盖面没交齐」的结构问题，本桶是
+  // 「交上来的质量不够」，两者互斥（漏项根本不在 `unanchored` 里）；本仓既有口径是结构性优先，
+  // 先报结构让 agent 一次往返补齐，避免同一批错误来回两次（I-6「为什么排在这」的取舍原话）。
+  //
+  // 体检（哪些项要判锚点）单点在 domain：人工项走事实形态、系统项走处置两义，都已在
+  // `matchStructuredResults` 里排除；用例层只做「桶 → 工具面错误码」的映射，不复制逐项判定。
+  // 拒绝发生在 `applyStructuredResults` 之前 ⇒ 台账零改动（与上面各分支同址，revision 都不动）。
+  if (report.unanchored.length > 0) {
+    refuse('REQBOARD_RESULT_UNANCHORED',
+      fmt('以下结果没有可核验锚点（{n} 条）：{list}', {
+        n: String(report.unanchored.length),
+        list: report.unanchored.join('；'),
+      }),
+      '结果必须可复核：一条命令 + 读数 / 一个文件路径 / 一个明确计数都没有时，人只能凭印象点通过，'
+        + '无锚点的「跑过了，没问题」会被静默降级成未复核——那正是本门要消灭的形态',
+      '给点名的每条 result 补一个可核验锚点——' + ACCEPT_RESULT_FORM_HINT
+        + '；补齐后调 reqboard_submit(kind=verification) 重交')
+  }
   // 前置条件（conflict 为空）已由上面的拒绝保证；apply 自己也守（非空则一个字段都不写）。
   const applied = applyStructuredResults(items, raw)
   const out: StructuredResultsOutcome = { matched: applied.matched, changed: applied.changed, outOfScope }
@@ -599,8 +622,12 @@ function knownResultKeysOf(liveTasks: readonly TaskRecord[], compare: CompareInp
  * 既有代码同类处理见 return 之外的 `blockerBlock`：不改门禁，改写法。
  */
 interface CompareInputs {
-  /** 原型对照项输入；`{ exempt: true, reason }` = 已批准豁免，改渲染豁免说明行 */
-  prototypeCompare?: { path: string } | { exempt: true; reason: string }
+  /**
+   * 原型对照项输入；`{ exempt: true, reason }` = 已批准豁免，改渲染豁免说明行。
+   * `degradedNote` = 权威路径取不到而退回台账时的**如实标注**（REQ-261006201649-cc89 FR-3），
+   * 会拼进该项的 criterion——评审人必须知道这个路径不是从权威清单来的。
+   */
+  prototypeCompare?: { path: string; degradedNote?: string } | { exempt: true; reason: string }
   /** 该需求的 D-x 裁定编号（非空才组装裁定对照项） */
   decisionIds: string[]
   /** UI 需求且既无已登记原型、豁免也未生效 → 缺项即拒（内部码见调用点） */
@@ -648,13 +675,61 @@ async function compareInputsOf(
     out.prototypeCompare = { exempt: true, reason: exempt.reason }
     return out
   }
-  const path = prototypeHtmlPathOf(req)
-  if (path === undefined) {
+  // ── 取数（REQ-261006201649-cc89 FR-3）───────────────────────────────────────
+  // 「有没有可对照的对象」与「对照的是哪一版」是**两问**，顺序不能反：
+  //
+  //   ① 先问"能不能产出这一项"：权威路径 ∪ 台账路径**都**为空 ⇒ `needsPrototype`，
+  //      维持既有语义（#38 的拒绝判据落在输入条件上，修复路径是"交原型 / 走豁免"）；
+  //   ② 再问"取哪一版"：新规则适用 ⇒ 读 INDEX 权威行；取不到 ⇒ 退回台账并如实标降级。
+  //
+  // ⚠️ 为什么必须**先并集、后取数**（这条是被既有用例逼出来的，不是设计出来的）：
+  // 旧实现的顺序是「台账没有产物 ⇒ needsPrototype = true」在前。若把 INDEX 判定提到它前面，
+  // 那些**既没有 requirement.md、也没有台账原型产物**的既有标本（accept-sheet 一族用例就是这样）
+  // 会从「缺项即拒」变成「组装一项对照」——把 #38 的拒绝面悄悄改宽，30 条既有用例当红。
+  // 迁移纪律：新增取数只能**替换已有取数**，不得越过"有没有"这一问。
+  const ledgerPath = prototypeHtmlPathOf(req)
+  const authoritative = docQualityRulesApply(req.createdAt)
+    ? await authoritativePrototypePathIn(deps, req.id)
+    : undefined
+  if (ledgerPath === undefined && authoritative === undefined) {
     out.needsPrototype = true
     return out
   }
-  out.prototypeCompare = { path }
+  if (authoritative !== undefined) {
+    // 消费版本门的结论：INDEX 唯一 authoritative 行才是"对照的是哪一版"的权威答案。
+    out.prototypeCompare = { path: authoritative }
+    return out
+  }
+  if (!docQualityRulesApply(req.createdAt)) {
+    // 存量需求：走**原路**（台账排序首项）、**不标降级**——迁移承诺是行为逐字不变，
+    // 而"降级"这个标注本身就是新增行为。
+    out.prototypeCompare = { path: ledgerPath as string }
+    return out
+  }
+  out.prototypeCompare = {
+    path: ledgerPath as string,
+    // 降级**如实写在验收项上**：INDEX 读不出（或缺权威行）时退回台账排序首项，
+    // 评审人必须知道"这个路径不是从权威清单来的"。
+    degradedNote: fmt('⚠️ 降级读数：未能从 {index} 取到唯一 authoritative 行，本项路径取自台账登记产物（排序首项）{path}',
+      { index: reqDir + '/prototypes/INDEX.md', path: ledgerPath as string }),
+  }
   return out
+}
+
+/**
+ * `prototypes/INDEX.md` 里**唯一 `authoritative` 行**的路径（需求目录相对）；取不到 → undefined。
+ *
+ * 与锚点门/版本门**同源**：复用 `parsePrototypeIndex`（路径归一与"权威恰一条"的口径只有一份实现）。
+ * 任何取不到的情形都返回 undefined（文件不在 / 解析缺口 / 权威条数 ≠ 1）——调用方据此降级并如实标注，
+ * **不在这里抢报错误码**：那是三个原型门的职责，且它们跑在阶段转移上，本用例是验收材料提交，两处报码会让人对齐两条消息。
+ */
+async function authoritativePrototypePathIn(deps: UseCaseDeps, reqId: string): Promise<string | undefined> {
+  const indexPath = 'docs/requirements/' + reqId + '/prototypes/INDEX.md'
+  if (!deps.docs.exists(indexPath)) return undefined
+  const index = parsePrototypeIndex(parseDocument(await deps.docs.read(indexPath)), reqId)
+  if (index.gaps.length > 0) return undefined
+  const auth = index.rows.filter(r => r.status === 'authoritative')
+  return auth.length === 1 ? auth[0]?.path : undefined
 }
 
 /**

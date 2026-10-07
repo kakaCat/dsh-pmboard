@@ -15,6 +15,7 @@ import {
 } from '../domain/knowledge/budget.js'
 import { defaultExpires, parseEntryDoc, renderEntryDoc } from '../domain/knowledge/entry.js'
 import { isEntryId, parseIndexDoc, renderIndexLine, sectionId, splitSectionId } from '../domain/knowledge/index-line.js'
+import { isDecidableInvalidation } from '../domain/knowledge/invalidation.js'
 import { sliceSection } from '../domain/knowledge/slug.js'
 import {
   KB_INDEX_SECTIONS,
@@ -45,6 +46,20 @@ function entrySeq(id: string): number {
 function entryIdOf(seq: number): string {
   return 'kb-' + String(seq).padStart(4, '0')
 }
+
+/** 「失效条件」小节锚点（与 K14 同口径：**只判这一小节**）。 */
+const INVALIDATION_ANCHOR = '失效条件'
+
+/** 条目正文的「## 失效条件」是否可判定（读不到该小节 → 不可判定，宁可沉底不装可判定）。 */
+function isDecidableEntryText(text: string): boolean {
+  const section = sliceSection(text, INVALIDATION_ANCHOR)
+  if (section === undefined) return false
+  // sliceSection 含标题行（供读者知道"这是什么节"）；判定只该看正文。
+  return isDecidableInvalidation(section.split('\n').slice(1).join('\n'))
+}
+
+/** 索引里的归档条目行（`- kb-NNNN · …`）；页面小节行 `kb-conventions-*` 不在此列。 */
+const ENTRY_ROW_RE = /^- (kb-\d{4}) ·/
 
 export class KnowledgeRepository implements KnowledgePort {
   private readonly docs: DocRepository
@@ -125,14 +140,19 @@ export class KnowledgeRepository implements KnowledgePort {
     // one_liner（含 `·`/`→` 或超 140）会让索引那一步抛错，留下「条目已落盘、索引没写」的孤儿
     // （kb-0043 / kb-0048 正是这么产生的：K5 报孤儿时，条目文件已是既成事实）。
     // 只有 active 才进索引（I-7）；非 active → 若既有行存在则移除（幂等：可反复回填）
-    const next = status === 'active'
-      ? upsertIndexRow(indexText, {
-          id,
-          kind: draft.kind,
-          oneLiner: meta.oneLiner,
-          pointer: 'entries/' + id + '.md',
-        })
-      : removeIndexRow(indexText, id)
+    // t7 / FR-4：同一节内按「可判定 ? 0 : 1, id」降权排序——可判定的结论在前、模板句沉底。
+    // 排序键要读条目正文，故先把**本节全部条目**的可判定性算出来（新条目正文尚未落盘 → 用 draft.body）。
+    let next: string
+    if (status === 'active') {
+      const decidable = await this.decidabilityMap(draft, rows, id)
+      next = this.rankIndexRowsByDecidability(
+        upsertIndexRow(indexText, { id, kind: draft.kind, oneLiner: meta.oneLiner, pointer: 'entries/' + id + '.md' }),
+        sectionTitleFor(draft.kind),
+        (rowId) => decidable.get(rowId) ?? false,
+      )
+    } else {
+      next = removeIndexRow(indexText, id)
+    }
     await this.docs.write(entryPath(id), renderEntryDoc(meta, draft.body))
     await this.docs.write(KB_PATHS.index, next)
     return { id, indexPath: KB_PATHS.index }
@@ -160,6 +180,42 @@ export class KnowledgeRepository implements KnowledgePort {
       .filter((e) => e.isFile && isEntryId(e.name.replace(/\.md$/, '')))
       .map((e) => e.name.replace(/\.md$/, ''))
       .sort()
+  }
+
+  /**
+   * 同 kind 分节内每个条目 id 的可判定性（索引降权排序的排序键，REQ-261006201841-944d t7 / FR-4）。
+   *
+   * 为什么在适配器里读：判定必须与 K14 同源（`isDecidableInvalidation` + 只读「## 失效条件」小节），
+   * 而小节要从条目正文里取——正文只能经 `DocRepository` 读。
+   * 读不到（文件不存在 / 坏条目）一律按**不可判定**处理：宁可沉底，也不假装它可判定。
+   */
+  private async decidabilityMap(
+    draft: KbEntryDraft,
+    rows: readonly KbIndexRow[],
+    newId: string,
+  ): Promise<Map<string, boolean>> {
+    const out = new Map<string, boolean>()
+    for (const row of rows) {
+      if (row.kind !== draft.kind || !isEntryId(row.id)) continue
+      const path = entryPath(row.id)
+      out.set(row.id, this.docs.exists(path) ? isDecidableEntryText(await this.docs.read(path)) : false)
+    }
+    out.set(newId, isDecidableEntryText(draft.body))
+    return out
+  }
+
+  /**
+   * 索引降权排序（REQ-261006201841-944d t7 / FR-4）：**同一节内**按 `(可判定 ? 0 : 1, id)` 重排——
+   * 可判定的结论在前、不可判定的模板句沉底。
+   *
+   * 为什么是类里的私有一步而不是 `upsertIndexRow` 的参数：排序键要读条目正文（只有适配器能经
+   * `DocRepository` 读），而改一个**已登记导出符号**的签名会让机器索引（`code-map.symbols.tsv` / K9）
+   * 在未重生成时被判成"口径分歧"。排序只换行、不改行内容，故零字符增量、索引行文法不变。
+   */
+  private rankIndexRowsByDecidability(text: string, title: string, decidableOf: (id: string) => boolean): string {
+    const lines = text.split('\n')
+    sortEntryRowsInSection(lines, title, decidableOf)
+    return lines.join('\n')
   }
 
   /** 同源条目（req + kind 相同）→ 复用其 id（幂等）。 */
@@ -192,6 +248,10 @@ export class KnowledgeRepository implements KnowledgePort {
 /**
  * 索引行的原位替换 / 分节追加（导出以便单测直接锁住边界行为）。
  * 规则：同 id 已存在 → 替换该行；否则插到该 kind 分节的**生成区之后、下一个 `##` 之前**。
+ *
+ * 降权重排（t7 / FR-4）**不在本函数的签名里**：排序键要读条目正文，而改一个已登记导出符号的
+ * 签名会让机器索引（`code-map.symbols.tsv` / K9）在未重生成时被判成"口径分歧"。
+ * 排序是写入路径的一步，见 `KnowledgeRepository.rankIndexRowsByDecidability`。
  */
 export function upsertIndexRow(text: string, row: KbIndexRow): string {
   const line = renderIndexLine(row)
@@ -223,6 +283,34 @@ export function upsertIndexRow(text: string, row: KbIndexRow): string {
   else while (insertAt > start + 1 && lines[insertAt - 1]!.trim() === '') insertAt -= 1
   lines.splice(insertAt, 0, line)
   return lines.join('\n')
+}
+
+/** 分节内的条目行按 `(可判定 ? 0 : 1, id)` 降权重排（原位换行：不改内容、不改行数）。 */
+function sortEntryRowsInSection(lines: string[], title: string, decidableOf: (id: string) => boolean): void {
+  const start = lines.findIndex((l) => /^##\s+/.test(l) && l.replace(/^##\s+/, '').replace(/`/g, '').trim() === title)
+  if (start < 0) return
+  let end = lines.length
+  for (let i = start + 1; i < lines.length; i += 1) {
+    if (/^##\s+/.test(lines[i]!)) {
+      end = i
+      break
+    }
+  }
+  const slots: number[] = []
+  const rows: Array<{ id: string; line: string }> = []
+  for (let i = start + 1; i < end; i += 1) {
+    const m = ENTRY_ROW_RE.exec(lines[i]!)
+    if (m === null) continue
+    slots.push(i)
+    rows.push({ id: m[1]!, line: lines[i]! })
+  }
+  if (rows.length < 2) return
+  rows.sort((a, b) => {
+    const d = (decidableOf(a.id) ? 0 : 1) - (decidableOf(b.id) ? 0 : 1)
+    if (d !== 0) return d
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+  })
+  for (let k = 0; k < slots.length; k += 1) lines[slots[k]!] = rows[k]!.line
 }
 
 /** 从索引里移除某 id 的行（非 active 条目不该留在索引里）。 */
