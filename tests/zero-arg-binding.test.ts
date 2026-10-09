@@ -1,54 +1,65 @@
 /**
- * 零参绑定守护测试：@deepseek-ai/dsh-ptc-runtime-node 的零参绑定补丁。
+ * 零参绑定守护测试（**已退休**）：`@deepseek-ai/dsh-ptc-runtime-node` 的零参绑定补丁。
  *
- * 【为什么要有这道门】
- * PTC 运行时把宿主声明的绑定暴露成程序里的全局函数（如 'tools.foo()'）。
- * Node 版实现在 'lib/process.js' 的 makeNamespaces 里把每个绑定写成：
+ * ## 依据与时点
+ *
+ * 本站点：REQ-261008004324-81df「reqboard 红测试收口」BUG-7（环境依赖与探针锚点）。
+ * 实测时点：2026-10-07，工作树 HEAD `c49fd5e`。本仓 57 个 commit 的历史里，
+ * 根 `package.json` **从未**出现 `pnpm.patchedDependencies`、`patches/` 目录**从未**进过树
+ * （`git log --all -S 'patchedDependencies' -- package.json` 与 `git log --all -- patches` 均无输出）。
+ *
+ * 【历史：这条守护当时在守什么】
+ * PTC 运行时把宿主声明的绑定暴露成程序里的全局函数（如 `tools.foo()`）。
+ * Node 版实现在 `lib/process.js` 的 makeNamespaces 里把每个绑定写成：
  *     value: (args) => { ... snapshotPtcJsonValue(args) ... }
- * 程序**零参调用**（'tools.foo()'，DSH 里绝大多数工具调用都走零参/全默认）时
- * 'args === undefined'，快照判非法 JSON → 在发出控制帧之前就 reject，宿主根本
- * 收不到这一帧：工具调用表现为"什么都没发生"的静默失败。
+ * 程序**零参调用**（`tools.foo()`，DSH 里绝大多数工具调用都走零参/全默认）时 `args === undefined`，
+ * 快照判非法 JSON → 在发出控制帧之前就 reject，宿主根本收不到这一帧：工具调用表现为
+ * 「什么都没发生」的静默失败。当时的修复是
+ * `patches/@deepseek-ai__dsh-ptc-runtime-node@0.1.6-alpha.2.patch`（只改一行：
+ * `value: (args) => {` → `value: (args = {}) => {`），由根 package.json 的
+ * `pnpm.patchedDependencies` 登记。原文件有四层守护：① 登记仍在；② patch 文件内容；
+ * ③ 已安装产物 `lib/process.js` 带默认参数；④ 跨进程零参调用 call 帧 args 编码为 `{}`。
  *
- * 【修复】
- * 'patches/@deepseek-ai__dsh-ptc-runtime-node@0.1.6-alpha.2.patch' 只改一行：
- *     value: (args) => {   →   value: (args = {}) => {
- * 让零参等同于空对象。根 package.json 的 'pnpm.patchedDependencies' 负责登记该补丁。
+ * 【为什么四条守护整体退休：守护对象已整体消失，不是「补丁被回退」】
+ *   1. `patches/` 目录不存在（`existsSync('<repo>/patches') === false`）；
+ *   2. 根 `package.json` 连 `pnpm` 字段都没有 ⇒ 没有任何 patchedDependencies 登记；
+ *   3. `@deepseek-ai/dsh-ptc-runtime-node` 已不在安装树里（`node_modules/.pnpm` 无该条目）；
+ *   4. 现行依赖 `@deepseek-ai/dsh-ptc-runtime@0.2.0-rc.1`（`@deepseek-ai/dsh-tools@0.2.0-rc.1`
+ *      的 peer/传递依赖）的 `lib/` 只有 `index.js` 与 `types/`，**没有被守护的 `lib/process.js`**。
+ * 对象消失后，原来的四条断言只会红在「找不到补丁登记」的探针锚点上（报的是环境漂移，
+ * 不是真实回退，本仓长期如此）⇒ 按「守护对象已消失」退休，改为**一条显式声明式断言**，
+ * 把「该补丁已随上游升级移除」这件事本身钉住（同时把③的现状作为依据核对）。
  *
- * 【四层守护（任一层被回退即红）】
- *   1. 根 package.json 仍登记该 patch（登记被摘 = pnpm install 后补丁静默失效）；
- *   2. patch 文件本身仍把绑定工厂改成 '(args = {})'；
- *   3. **已安装产物** 'lib/process.js' 真的带上了默认参数（patch 没生效即红）；
- *   4. 跨进程行为：零参调用的 call 帧 args 编码为 '{}'，且能拿到宿主回包。
- * 常见回退场景：pnpm install 重置 node_modules、上游发版后忘记重打补丁，
- * 都会在这里显形。
+ * 【若要恢复补丁】不要在断言里放宽：恢复 `pnpm.patchedDependencies` + `patches/`
+ * 属**生产依赖配置改动**（设计文档「BUG-7」备选 B，需人批准）。批准后按新版 patch
+ * 与新版包的 `lib/` 形态重写本文件的守护，而不是把本断言改宽。
+ *
+ * @module dsh-pmboard/tests/zero-arg-binding
  */
 import { describe, it, expect } from 'vitest'
-import { spawn, type StdioOptions } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import type { Duplex } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-ptc-runtime-node'
-const SOURCE_RELATIVE_PATH = join('lib', 'process.js')
-const PATCHED_BINDING = 'value: (args = {}) => {'
-const ORIGINAL_BINDING = 'value: (args) => {'
+/** 本仓根 package.json 的 name（用于向上定位仓库根；替代已消失的 patchedDependencies 锚点）。 */
+const ROOT_PACKAGE_NAME = 'dsh-pmboard'
+/** 已退休的被守护包（历史补丁目标）。 */
+const RETIRED_PACKAGE = '@deepseek-ai/dsh-ptc-runtime-node'
+/** 已退休包在 pnpm 虚拟店里的条目前缀。 */
+const RETIRED_STORE_PREFIX = '@deepseek-ai+dsh-ptc-runtime-node@'
+/** 现行依赖包（`@deepseek-ai/dsh-tools` 的 peer/传递依赖）。 */
+const CURRENT_PACKAGE = '@deepseek-ai/dsh-ptc-runtime'
+/** 现行依赖版本读数（上游升级后若本条红，请先核对新包是否仍无被守护文件，再更新该读数）。 */
+const CURRENT_VERSION = '0.2.0-rc.1'
+/** 被守护文件（历史）：包内 `lib/process.js`。 */
+const GUARDED_SOURCE = join('lib', 'process.js')
 
 interface RootManifest {
+  name?: string
   pnpm?: { patchedDependencies?: Record<string, string> }
 }
 
-interface PatchEnvironment {
-  root: string
-  patchKey: string
-  patchPath: string
-  patchText: string
-  installedDir: string
-  installedSource: string
-  installedProcessEntry: string
-}
-
-/** 从本测试文件向上找到仓库根（以 package.json 的 pnpm.patchedDependencies 为锚）。 */
+/** 从本测试文件向上找到仓库根（锚 = package.json 的 name === dsh-pmboard）。 */
 function findRepoRoot(start: string): string {
   let dir = resolve(start)
   for (;;) {
@@ -56,193 +67,69 @@ function findRepoRoot(start: string): string {
     if (existsSync(manifestPath)) {
       try {
         const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as RootManifest
-        if (manifest.pnpm?.patchedDependencies !== undefined) return dir
+        if (manifest.name === ROOT_PACKAGE_NAME) return dir
       } catch {
         // 不是我们要找的清单，继续向上
       }
     }
     const parent = dirname(dir)
-    if (parent === dir) throw new Error('向上未找到含 pnpm.patchedDependencies 的仓库根 package.json')
+    if (parent === dir) throw new Error('向上未找到 name === ' + ROOT_PACKAGE_NAME + ' 的仓库根 package.json')
     dir = parent
   }
 }
 
-/** 找到 pnpm 实际安装的该包目录（先看 .pnpm 提升层，再回退虚拟店扫描）。 */
-function findInstalledPackageDir(root: string): string {
-  const candidates: string[] = [
-    join(root, 'node_modules', '.pnpm', 'node_modules', '@deepseek-ai', 'dsh-ptc-runtime-node'),
-  ]
-  const pnpmStore = join(root, 'node_modules', '.pnpm')
-  if (existsSync(pnpmStore)) {
-    for (const entry of readdirSync(pnpmStore)) {
-      if (!entry.startsWith('@deepseek-ai+dsh-ptc-runtime-node@')) continue
-      candidates.push(join(pnpmStore, entry, 'node_modules', '@deepseek-ai', 'dsh-ptc-runtime-node'))
-    }
-  }
-  const found = candidates.find((dir) => existsSync(join(dir, SOURCE_RELATIVE_PATH)))
-  if (found === undefined) {
-    throw new Error('未找到已安装的 ' + PACKAGE_NAME + '（先执行 pnpm install）；候选路径：' + candidates.join(' | '))
-  }
-  return found
+/** pnpm 虚拟店条目名（缺 node_modules 时返回空表，交由断言给出可读失败）。 */
+function pnpmStoreEntries(root: string): string[] {
+  const store = join(root, 'node_modules', '.pnpm')
+  return existsSync(store) ? readdirSync(store) : []
 }
 
-let cachedEnvironment: PatchEnvironment | null = null
-
-function environment(): PatchEnvironment {
-  if (cachedEnvironment !== null) return cachedEnvironment
-  const root = findRepoRoot(dirname(fileURLToPath(import.meta.url)))
-  const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as RootManifest
-  const patched = manifest.pnpm?.patchedDependencies ?? {}
-  const patchKey = Object.keys(patched).find((key) => key.startsWith(PACKAGE_NAME + '@'))
-  if (patchKey === undefined) throw new Error('根 package.json 未登记 ' + PACKAGE_NAME + ' 的 patchedDependencies')
-  const patchPath = join(root, patched[patchKey])
-  const installedDir = findInstalledPackageDir(root)
-  const installedProcessEntry = join(installedDir, SOURCE_RELATIVE_PATH)
-  cachedEnvironment = {
-    root,
-    patchKey,
-    patchPath,
-    patchText: readFileSync(patchPath, 'utf8'),
-    installedDir,
-    installedSource: readFileSync(installedProcessEntry, 'utf8'),
-    installedProcessEntry,
+/** 现行依赖在 pnpm 虚拟店里的安装目录 + 版本（找不到则抛，并点名期望的候选前缀）。 */
+function findInstalledRuntime(root: string): { dir: string; version: string } {
+  const prefix = '@deepseek-ai+dsh-ptc-runtime@'
+  const entries = pnpmStoreEntries(root).filter((entry) => entry.startsWith(prefix)).sort()
+  for (const entry of entries) {
+    const dir = join(root, 'node_modules', '.pnpm', entry, 'node_modules', '@deepseek-ai', 'dsh-ptc-runtime')
+    const manifestPath = join(dir, 'package.json')
+    if (!existsSync(manifestPath)) continue
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { version?: string }
+    return { dir, version: manifest.version ?? '(清单无 version)' }
   }
-  return cachedEnvironment
+  throw new Error(
+    '未在 pnpm 虚拟店找到 ' + CURRENT_PACKAGE + '（候选前缀 ' + prefix + '，先执行 pnpm install）；'
+    + '实际条目：' + entries.join(' | '),
+  )
 }
 
-interface WireMessage {
-  type?: string
-  id?: number
-  ok?: boolean
-  global?: string
-  name?: string
-  args?: unknown
-  data?: unknown
-  value?: unknown
-  error?: unknown
-}
+describe('零参绑定守护（已退休：守护对象随上游升级消失）', () => {
+  it('声明式断言：根 package.json 无 pnpm.patchedDependencies 且 patches/ 不存在，现依赖 dsh-ptc-runtime@0.2.0-rc.1 已无被守护的 lib/process.js', () => {
+    const root = findRepoRoot(dirname(fileURLToPath(import.meta.url)))
+    const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as RootManifest
 
-/** 控制通道帧：uint32BE 长度前缀 + UTF-8 JSON 体（与进程内 JsonChannel 同协议）。 */
-class FrameChannel {
-  private buffer: Buffer = Buffer.alloc(0)
-  private readonly queue: WireMessage[] = []
-  private readonly waiters: Array<(message: WireMessage) => void> = []
-
-  constructor(private readonly stream: Duplex) {
-    stream.on('data', (chunk: Buffer) => {
-      this.push(chunk)
-    })
-  }
-
-  private push(chunk: Buffer): void {
-    this.buffer = Buffer.concat([this.buffer, chunk])
-    while (this.buffer.length >= 4) {
-      const length = this.buffer.readUInt32BE(0)
-      if (this.buffer.length < 4 + length) return
-      const body = this.buffer.subarray(4, 4 + length).toString('utf8')
-      this.buffer = this.buffer.subarray(4 + length)
-      const message = JSON.parse(body) as WireMessage
-      const waiter = this.waiters.shift()
-      if (waiter === undefined) this.queue.push(message)
-      else waiter(message)
-    }
-  }
-
-  next(timeoutMs = 10_000): Promise<WireMessage> {
-    const queued = this.queue.shift()
-    if (queued !== undefined) return Promise.resolve(queued)
-    return new Promise<WireMessage>((resolvePromise, rejectPromise) => {
-      let timer: ReturnType<typeof setTimeout>
-      const waiter = (message: WireMessage): void => {
-        clearTimeout(timer)
-        resolvePromise(message)
-      }
-      timer = setTimeout(() => {
-        const index = this.waiters.indexOf(waiter)
-        if (index >= 0) this.waiters.splice(index, 1)
-        rejectPromise(new Error('等待子进程控制帧超时（' + String(timeoutMs) + 'ms）'))
-      }, timeoutMs)
-      this.waiters.push(waiter)
-    })
-  }
-
-  send(message: WireMessage): void {
-    const body = Buffer.from(JSON.stringify(message), 'utf8')
-    const header = Buffer.alloc(4)
-    header.writeUInt32BE(body.length, 0)
-    this.stream.write(Buffer.concat([header, body]))
-  }
-
-  close(): void {
-    this.stream.end()
-  }
-}
-
-describe('零参绑定守护：dsh-ptc-runtime-node 补丁', () => {
-  it('根 package.json 仍登记该包的 patchedDependencies', () => {
-    const env = environment()
-    expect(env.patchKey).toBe(PACKAGE_NAME + '@0.1.6-alpha.2')
-    expect(existsSync(env.patchPath)).toBe(true)
+    // ① 没有补丁登记（连 pnpm 字段都没有）
+    expect(
+      manifest.pnpm?.patchedDependencies,
+      '根 package.json 重新出现 pnpm.patchedDependencies：若确要恢复零参绑定补丁'
+      + '（设计「BUG-7」备选 B，需人批准），请按新版 patch 与新版包的 lib/ 形态重写本文件的守护，'
+      + '而不是放宽本条断言',
+    ).toBeUndefined()
+    // ② 没有 patches 目录
+    expect(
+      existsSync(join(root, 'patches')),
+      'patches/ 目录重新出现：与①同判——要么是补丁真的回来了（重写守护），要么是本仓多出一份无登记的补丁',
+    ).toBe(false)
+    // ③ 被守护包已不在安装树（守护对象整体消失）
+    expect(
+      pnpmStoreEntries(root).filter((entry) => entry.startsWith(RETIRED_STORE_PREFIX)),
+      RETIRED_PACKAGE + ' 重新出现在安装树里：该补丁的对象回来了，请按新版锚点重建守护',
+    ).toEqual([])
+    // ④ 现状依据：现行依赖已无被守护的 lib/process.js
+    const current = findInstalledRuntime(root)
+    expect(current.version, CURRENT_PACKAGE + ' 版本读数变化：先核对新包 lib/ 形态再更新读数').toBe(CURRENT_VERSION)
+    expect(
+      existsSync(join(current.dir, GUARDED_SOURCE)),
+      CURRENT_PACKAGE + '@' + current.version + ' 已无被守护的 ' + GUARDED_SOURCE
+      + '（零参绑定补丁随上游升级移除的依据）',
+    ).toBe(false)
   })
-
-  it('patch 文件仍把绑定工厂改成 (args = {})', () => {
-    const env = environment()
-    expect(env.patchText).toContain(ORIGINAL_BINDING)
-    expect(env.patchText).toContain(PATCHED_BINDING)
-  })
-
-  it('已安装产物 lib/process.js 带上了默认参数（patch 未生效即红）', () => {
-    const env = environment()
-    expect(env.installedSource).toContain(PATCHED_BINDING)
-  })
-
-  it('零参调用跨进程生效：call 帧 args 编码为 {} 且能拿到回包', async () => {
-    const env = environment()
-    // 额外管道挂在 fd 7：与 @deepseek-ai/dsh-ptc-runtime-node 的 openInheritedControlChannel 约定一致。
-    const stdio: StdioOptions = ['ignore', 'pipe', 'pipe', 'ignore', 'ignore', 'ignore', 'ignore', 'pipe']
-    const child = spawn(process.execPath, [env.installedProcessEntry, String(1024 * 1024)], {
-      env: { PATH: process.env.PATH ?? '', DSH_SUBPROCESS_CONTROL: 'pipe' },
-      stdio,
-    })
-    let channel: FrameChannel | null = null
-    let stderr = ''
-    child.stderr?.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString('utf8')
-    })
-    try {
-      const controlStream = (child.stdio as unknown as ReadonlyArray<Duplex | null | undefined>)[7]
-      expect(controlStream, 'fd 7 控制管道未建立').toBeDefined()
-      channel = new FrameChannel(controlStream as Duplex)
-
-      const ready = await channel.next()
-      expect(ready.type).toBe('ready')
-
-      channel.send({
-        type: 'boot',
-        data: {
-          namespaces: [{ global: 'tools', names: ['ping'] }],
-          code: 'const value = await tools.ping(); return { got: value };',
-          maxOutputBytes: 1024 * 1024,
-        },
-      })
-
-      // 未打补丁时程序会在发出 call 帧之前 reject，这里先收到 done(exception) → 直接红。
-      const call = await channel.next()
-      expect(call.type, '期望先收到 call 帧，实际收到：' + JSON.stringify(call) + ' stderr=' + stderr).toBe('call')
-      expect(call.global).toBe('tools')
-      expect(call.name).toBe('ping')
-      // 零参 = 空对象快照 → wire 预序编码恰为 [{kind:'object',keys:[]}]
-      expect(call.args).toEqual([{ kind: 'object', keys: [] }])
-
-      channel.send({ id: call.id, ok: true, value: ['pong'] })
-
-      const done = await channel.next()
-      expect(done.type, '期望 done 帧，实际：' + JSON.stringify(done) + ' stderr=' + stderr).toBe('done')
-      expect(done.error).toBeUndefined()
-      expect(done.value).toEqual([{ kind: 'object', keys: ['got'] }, 'pong'])
-    } finally {
-      channel?.close()
-      child.kill()
-    }
-  }, 30_000)
 })

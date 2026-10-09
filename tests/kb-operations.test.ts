@@ -48,7 +48,7 @@ const GOOD_ENTRY = [
 ].join('\n')
 
 describe('覆盖清单', () => {
-  it('package.json scripts 去排除 + 白名单 → 12 项必跑', () => {
+  it('package.json scripts 去排除 + 白名单 → 14 项必跑', () => {
     const list = buildCoverage(PKG)
     const commands = list.map((c) => c.command)
     expect(commands).toContain('pnpm typecheck')
@@ -65,12 +65,15 @@ describe('覆盖清单', () => {
     // 白名单后续新增（每加一条都要在下面同步长度：这个断言就是"新必跑项必须被看见"的锁）
     expect(commands).toContain('node scripts/vendor-skills.mjs') // REQ-261005122347-e07a
     expect(commands).toContain('npx tsx scripts/prompt-path-probe.mts') // REQ-261005105032-3b02（R3）
+    // REQ-261007133149-0716：详情页外观归属的两条门禁（判据一 零外观变更 / 判据二 分片归属）
+    expect(commands).toContain('npx tsx scripts/report-style-snapshot.mts')
+    expect(commands).toContain('npx tsx scripts/report-style-ownership.mts')
     // 排除项不得出现
     expect(commands).not.toContain('pnpm verify:client')
     expect(commands).not.toContain('pnpm kb:build')
     expect(commands).not.toContain('pnpm prepublishOnly')
     expect(commands).not.toContain('pnpm prepare')
-    expect(list).toHaveLength(12)
+    expect(list).toHaveLength(14)
   })
 
   it('时机按映射表分配，未知 script 缺省「改动后」', () => {

@@ -33,13 +33,7 @@ describe('t8 · 工具面 13→9 收敛', () => {
       DecomposeTool: ['prompt.ts'],
       MoveTool: ['prompt.ts'],
       TaskMoveTool: ['prompt.ts'],
-      ArchiveAmendTool: ['prompt.ts'], // 描述内联在 ArchiveAmendTool.ts，未拆 prompt.ts
-      TaskRefsTool: ['prompt.ts'],
       HandoffTool: ['index.ts'], // 导出面直接指向 HandoffTool.ts
-      TaskExecuteTool: ['prompt.ts', 'index.ts'],
-      TaskStatusTool: ['prompt.ts', 'index.ts'],
-      AdoptTaskTool: ['AdoptTaskTool.ts', 'prompt.ts'], // 工厂在 TaskAdoptTool.ts（文件名不带目录前缀）
-      RegenerateTool: ['RegenerateTool.ts', 'prompt.ts'], // 工厂在 index.ts
     }
     for (const d of dirs) {
       for (const piece of [d + '.ts', 'prompt.ts', 'index.ts']) {
@@ -73,11 +67,15 @@ describe('t8 · 工具面 13→9 收敛', () => {
     expect(execBody).not.toMatch(/if\s*\(\s*kind\s*===/)
   })
 
-  it('reqboard_ask_confirm：evidence 路径与弹框路径自动分派（confirm_artifact 并入）', () => {
+  it('reqboard_ask_confirm：evidence / ticket 取回执 / 弹框 三条路径自动分派（confirm_artifact + confirm_receipt 并入）', () => {
     const src = readFileSync(join(TOOLS, 'AskConfirmTool', 'AskConfirmTool.ts'), 'utf8')
     expect(src).toContain('confirmArtifact')
+    expect(src).toContain('confirmReceipt')
     expect(src).toContain('askConfirm')
-    expect(src).toMatch(/evidence\.length > 0 \? confirmArtifact\(deps, args, exec\) : askConfirm\(deps, args, exec\)/)
+    // FR-2（REQ-261007220012-bd29）：分派仍是「有值就分流」的规范形状——evidence 优先，
+    // 其次 ticket（取回执），都没有才弹框。
+    expect(src).toMatch(/evidence\.length > 0\) return confirmArtifact\(deps, args, exec\)/)
+    expect(src).toMatch(/ticket\.length > 0 \? confirmReceipt\(deps, args, exec\) : askConfirm\(deps, args, exec\)/)
   })
 
   it('工具壳不含状态字面量比较（状态判断只在 domain——与 layer-boundary 同源）', () => {

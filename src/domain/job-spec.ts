@@ -43,23 +43,28 @@ export interface JobSpec {
 
 /**
  * 创建新的 Job 规格
+ *
+ * 时刻由调用方注入（domain 内不得读时钟、不得用随机数——时间与 ID 一律注入，
+ * 见 tests/layer-boundary.test.ts 的「domain/ 内不得使用非确定性来源」一条）。
  */
-export function createJobSpec(jobId: string, runId: string): JobSpec {
+export function createJobSpec(jobId: string, runId: string, now: number): JobSpec {
   return {
     jobId,
     runId,
     status: 'pending',
-    startedAt: Date.now()
+    startedAt: now
   };
 }
 
 /**
  * 更新心跳
+ *
+ * 同上：时刻注入，不在 domain 里读时钟。
  */
-export function updateHeartbeat(spec: JobSpec): JobSpec {
+export function updateHeartbeat(spec: JobSpec, now: number): JobSpec {
   return {
     ...spec,
-    lastHeartbeat: Date.now()
+    lastHeartbeat: now
   };
 }
 

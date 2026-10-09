@@ -12,7 +12,7 @@
  * ## 五条判据
  *   ① 归属：`sourceSessionId == owner_window`（不再记在本窗口）；
  *   ② 如实留痕：`createdBy.kind === 'agent'`，评论写 `[代理立项]` 与「未经弹框逐问确认」——
- *      不能冒充"用户经弹框确认了三问"（那是无法证伪的谎）；
+ *      不能冒充"用户经弹框逐问确认过"（那是无法证伪的谎）；
  *   ③ 推进：立项后到 `brainstorming`（draft 阶段 `autoExecute=false`，留着它等于派了没人动）；
  *   ④ 形态非法 → `REQBOARD_INVALID_INPUT`（不是窗口码）；
  *   ⑤ 目标窗口不在线 → `REQBOARD_OWNER_WINDOW_NOT_LIVE`（记到没人接手的窗口名下 = 静默停摆）；
@@ -62,7 +62,7 @@ describe('代理立项：把需求登记到别的窗口名下', () => {
     expect(body).toContain('[代理立项]')
     expect(body).toContain('未经弹框逐问确认')
     expect(body).toContain(TARGET)
-    expect(body).not.toContain('用户经五问弹框确认立项')   // 不许冒充人确认过三问
+    expect(body).not.toContain('用户经立项弹框逐问确认立项')   // 不许冒充人经弹框逐问确认过
   })
 
   it('④ 不是窗口码 → REQBOARD_INVALID_INPUT（不静默当成本窗口）', async () => {

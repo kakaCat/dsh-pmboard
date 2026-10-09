@@ -122,7 +122,7 @@ describe('T-5 · 七路回合订阅', () => {
 
 describe('T-5 · 服务不再直接 followup', () => {
   it('ReqboardDiveManager.ts 里 0 处 followup（续跑不再由事件直投）', () => {
-    const p = fileURLToPath(new URL('../src/application/dive/ReqboardDiveManager.ts', import.meta.url))
+    const p = fileURLToPath(new URL('../src/adapters/ReqboardDiveManager.ts', import.meta.url))
     const text = readFileSync(p, 'utf8')
     expect((text.match(/followup/g) ?? []).length).toBe(0)
   })

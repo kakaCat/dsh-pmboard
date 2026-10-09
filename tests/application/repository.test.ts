@@ -78,7 +78,10 @@ describe('SystemClock / RandomIdFactory', () => {
   it('RandomIdFactory：前缀与 6 位 hex 格式（与 protocol new*Id 同形）', () => {
     const ids = new RandomIdFactory()
     for (let i = 0; i < 20; i++) {
-      expect(ids.requirement()).toMatch(/^REQ-[0-9a-f]{6}$/)
+      // REQ-261008004324-81df BUG-6：需求 ID 已迁到「时间戳形」（REQ-YYMMDDHHmmss-xxxx，
+      // 见 CHANGELOG-req-id-timestamp.md；旧格式仍兼容），断言跟上现形态；
+      // t-/e-/c- 保持 6 位 hex 不变。
+      expect(ids.requirement()).toMatch(/^REQ-\d{12}-[0-9a-f]{4}$/)
       expect(ids.task()).toMatch(/^t-[0-9a-f]{6}$/)
       expect(ids.execution()).toMatch(/^e-[0-9a-f]{6}$/)
       expect(ids.comment()).toMatch(/^c-[0-9a-f]{6}$/)

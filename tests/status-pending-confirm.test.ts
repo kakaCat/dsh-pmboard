@@ -9,6 +9,7 @@
  */
 import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -36,6 +37,8 @@ function makeDeps(): UseCaseDeps & { pendingConfirms: PendingConfirmRegistry } {
   return {
     store: store,
     docs: new FileDocRepository({ workspaceRoot: dir }),
+    // REQ-261008020617-088f RF-3：hostFs 必填；缺它 /state 的 rtm_health 会静默缺失
+    hostFs: new FileHostFs(),
     clock: { now },
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({}),
@@ -106,7 +109,7 @@ describe('reqboard_status.pending_confirms（FR-4 / I-2）', () => {
     expect(typeof p.created_at).toBe('number')
     expect(p.interrupted).toBe(false)
     expect(p.blocked_tools).toEqual(['reqboard_submit', 'reqboard_decompose', 'reqboard_move', 'reqboard_task_move'])
-    expect(p.recovery).toContain('reqboard_confirm_receipt')
+    expect(p.recovery).toContain('reqboard_ask_confirm(ticket=')
     expect(p.recovery).toContain('看板')
   })
 

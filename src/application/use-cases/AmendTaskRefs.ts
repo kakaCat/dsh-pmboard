@@ -4,7 +4,7 @@
  * 为什么需要：卡一旦落库，`requirementRefs` **没有任何写入口**——
  *   重交计划 + 重批 → 撞「已落库」幂等；重跑拆分 → 撞幂等守卫；看板改卡路由不收这个字段。
  * 实测代价：修好生成链之前落下的 531 张空引用卡，谁也补不回来（全仓 590 卡里 90% 为空）。
- * 本用例是**唯一**写入口：工具 `reqboard_task_refs` 与看板改卡路由共用它。
+ * 本用例是**唯一**写入口：工具 `reqboard_task_amend(op=refs)` 与看板改卡路由共用它。
  *
  * 语义（三条硬口径）：
  *   ① **全量替换**（不是追加）——空数组合法，用于"这条引用本来就不该有"；
@@ -61,18 +61,18 @@ export interface AmendTaskRefsResult {
 export async function amendTaskRefs(deps: UseCaseDeps, input: AmendTaskRefsInput): Promise<AmendTaskRefsResult> {
   const taskId = normalizeText(input.taskId, 'task_id', 64)
   if (taskId.length === 0) {
-    reject('reqboard_task_refs 未执行：task_id 不能为空', 'REQBOARD_INVALID_INPUT')
+    reject('reqboard_task_amend(op=refs) 未执行：task_id 不能为空', 'REQBOARD_INVALID_INPUT')
   }
   const reason = normalizeText(input.reason, 'reason', 500)
   if (reason.length === 0) {
-    reject('reqboard_task_refs 未执行：reason 不能为空（谁改的、为什么改必须留痕）', 'REQBOARD_INVALID_INPUT')
+    reject('reqboard_task_amend(op=refs) 未执行：reason 不能为空（谁改的、为什么改必须留痕）', 'REQBOARD_INVALID_INPUT')
   }
   let next: string[]
   try {
     next = normalizeRequirementRefs(input.requirementRefs, 'requirement_refs')
   } catch (err) {
     if (err instanceof RequirementRefError) {
-      reject('reqboard_task_refs 未执行：' + err.message, err.code)
+      reject('reqboard_task_amend(op=refs) 未执行：' + err.message, err.code)
     }
     throw err
   }
@@ -80,11 +80,11 @@ export async function amendTaskRefs(deps: UseCaseDeps, input: AmendTaskRefsInput
   const store = taskStoreOf(deps)
   const task = await store.get(taskId)
   if (task === undefined) {
-    reject(fmt('reqboard_task_refs 未执行：任务 {id} 不存在', { id: taskId }), 'REQBOARD_TASK_NOT_FOUND')
+    reject(fmt('reqboard_task_amend(op=refs) 未执行：任务 {id} 不存在', { id: taskId }), 'REQBOARD_TASK_NOT_FOUND')
   }
   if (input.boundRequirementIds !== undefined && !input.boundRequirementIds.includes(task.requirementId)) {
     reject(
-      fmt('reqboard_task_refs 未执行：任务 {id} 属于需求 {rid}，不在本窗口绑定的需求里（只能补自己的需求）', {
+      fmt('reqboard_task_amend(op=refs) 未执行：任务 {id} 属于需求 {rid}，不在本窗口绑定的需求里（只能补自己的需求）', {
         id: taskId,
         rid: task.requirementId,
       }),

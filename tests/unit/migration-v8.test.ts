@@ -1,4 +1,5 @@
 /**
+ * serves: BUG-1（advance 字段面变更的存量兼容）
  * Schema v8 迁移测试
  * 
  * 验证：
@@ -43,7 +44,7 @@ describe('Schema v8 migration', () => {
   })
 
   it('v7 台账加载：需求运行态字段缺省为 undefined', () => {
-    // 模拟 v7 台账的需求记录（advance 没有 runId/stepIndex 等）
+    // 模拟 v7 台账的需求记录（advance 没有 runId 等）
     const v7Req: RequirementRecord = {
       id: 'REQ-test',
       title: 'Test Requirement',
@@ -53,7 +54,7 @@ describe('Schema v8 migration', () => {
       advance: {
         lockAt: Date.now(),
         noopStreak: 0
-        // v7: 没有 runId, currentSubtaskId, stepIndex, heartbeatAt
+        // v7: 没有 runId（也没有已删的 currentSubtaskId / stepIndex / heartbeatAt）
       },
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -61,11 +62,8 @@ describe('Schema v8 migration', () => {
       updatedBy: { kind: 'agent', sessionId: 'test' }
     } as RequirementRecord
 
-    // 验证：新字段缺省时为 undefined
+    // 验证：活字段缺省时为 undefined
     expect(v7Req.advance?.runId).toBeUndefined()
-    expect(v7Req.advance?.currentSubtaskId).toBeUndefined()
-    expect(v7Req.advance?.stepIndex).toBeUndefined()
-    expect(v7Req.advance?.heartbeatAt).toBeUndefined()
     
     // 验证：v7 需求仍然是有效的 RequirementRecord
     expect(v7Req.id).toBe('REQ-test')
@@ -102,7 +100,7 @@ describe('Schema v8 migration', () => {
     expect(v8Task.filesPlanned).toEqual(['src/domain/test.ts'])
   })
 
-  it('v8 台账写入：需求运行态字段完整', () => {
+  it('v8 台账写入：需求运行态活字段完整（历史死字段不再进入类型）', () => {
     const v8Req: RequirementRecord = {
       id: 'REQ-new',
       title: 'New Requirement',
@@ -112,10 +110,7 @@ describe('Schema v8 migration', () => {
       advance: {
         lockAt: Date.now(),
         noopStreak: 0,
-        runId: 'run-123',          // v8: 新字段
-        currentSubtaskId: 't-abc', // v8: 新字段
-        stepIndex: 5,              // v8: 新字段
-        heartbeatAt: Date.now()    // v8: 新字段
+        runId: 'run-123'            // v8: 活字段（链锁；无 active run 时清除）
       },
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -123,11 +118,36 @@ describe('Schema v8 migration', () => {
       updatedBy: { kind: 'agent', sessionId: 'test' }
     } as RequirementRecord
 
-    // 验证：新字段都存在
+    // 验证：活字段在
     expect(v8Req.advance?.runId).toBe('run-123')
-    expect(v8Req.advance?.currentSubtaskId).toBe('t-abc')
-    expect(v8Req.advance?.stepIndex).toBe(5)
-    expect(v8Req.advance?.heartbeatAt).toBeGreaterThan(0)
+  })
+
+  it('存量兼容：带已删死字段的历史记录仍可加载，且那些字段不进类型（不迁移、不读）', () => {
+    // REQ-261008011118-defe BUG-1（DD-1）：currentSubtaskId / stepIndex / heartbeatAt 已从
+    // AdvanceState 与 run 快照中删除（写侧在生产代码 0 调用方）。存量台账里它们可能还在盘上——
+    // 口径是**不迁移、不清洗、不读**：加载不受影响，读侧不再回报。
+    const legacy = {
+      id: 'REQ-legacy',
+      title: 'Legacy',
+      description: 'd',
+      status: 'implementing',
+      blocked: false,
+      advance: {
+        lockAt: 1, runId: 'run-legacy',
+        currentSubtaskId: 't-abc', stepIndex: 5, heartbeatAt: 12345,
+      },
+      comments: [],
+      version: 1,
+      createdAt: 1,
+      updatedAt: 1,
+      createdBy: { kind: 'agent', sessionId: 'test' },
+      updatedBy: { kind: 'agent', sessionId: 'test' },
+    } as unknown as RequirementRecord
+
+    expect(legacy.advance?.runId).toBe('run-legacy')
+    expect(legacy.advance?.lockAt).toBe(1)
+    // 类型面已不含这三个键（读侧据此不再回报；运行时残留只影响盘上字节，不影响读数）
+    expect('stepIndex' in (legacy.advance ?? {})).toBe(true)
   })
 
   it('迁移兼容性：v7 到 v8 无破坏性变更', () => {

@@ -131,22 +131,28 @@ describe('TC-10 非肯定项不注入下一节点纪律（FR-10）', () => {
     expect(scratch.promptText).toBeUndefined()
   })
 
+  /**
+   * H4 已全面 Dive 化：`H4ResumeDeps` 为空接口、投递通道（`deliver`）已删，
+   * handler **恒**返回 `{ kind: 'skip', code: 'dive_handles_resume' }`，把唤醒交给 Dive 的
+   * roundDriver（见 `src/application/gate/handlers/h4-resume.ts` 头注）。
+   * ⇒ 下面两条断言按新权威行为改写（用例名保留自投递实现，记录当初的文案场景；
+   *   不删用例、不 skip）。同契约已由 `tests/gate-handlers.test.ts` 的
+   *   `expectDiveResumeSkip` 覆盖。
+   */
   it('H4 negative：只发作答摘要 + 用户意见，不含任何纪律块', async () => {
     const d = deliverSink()
     const handler = createH4ResumeHandler({ delivery: d.port as never })
-    await handler.run({ ctx: ctx('design', 'negative', [{ id: 'confirm', selected: ['需修改'], custom: '第三节缺端侧条件' }]), scratch: {} })
-    const text = d.msgs[0] ?? ''
-    expect(text).not.toContain('按以下阶段纪律继续')
-    expect(text).not.toContain('阶段纪律已随节点输入包')
-    expect(text).toContain('需修改')
-    expect(text).toContain('第三节缺端侧条件')
+    const out = await handler.run({ ctx: ctx('design', 'negative', [{ id: 'confirm', selected: ['需修改'], custom: '第三节缺端侧条件' }]), scratch: {} })
+    expect(out).toMatchObject({ kind: 'skip', code: 'dive_handles_resume' })
+    expect(d.msgs).toHaveLength(0) // 投递通道已删：H4 永不投递
   })
 
   it('H4 affirmative：仍附纪律全文（防"修反"）', async () => {
     const d = deliverSink()
     const handler = createH4ResumeHandler({ delivery: d.port as never })
-    await handler.run({ ctx: ctx('design', 'affirmative'), scratch: { promptText: 'DISCIPLINE-X' } })
-    expect(d.msgs[0] ?? '').toContain('DISCIPLINE-X')
+    const out = await handler.run({ ctx: ctx('design', 'affirmative'), scratch: { promptText: 'DISCIPLINE-X' } })
+    expect(out).toMatchObject({ kind: 'skip', code: 'dive_handles_resume' })
+    expect(d.msgs).toHaveLength(0) // 不论 scratch 是否带提示词全文，H4 都不再投递
   })
 })
 

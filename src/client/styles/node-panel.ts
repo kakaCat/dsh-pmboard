@@ -139,10 +139,18 @@ export const NODE_PANEL_CSS = `
 .dsh-pm-np-info-value { flex: 1 1 auto; min-width: 0; font-size: 13.5px; color: var(--dsh-pm-np-text); }
 .dsh-pm-np-info-value.is-desc { white-space: pre-wrap; line-height: 1.5; }
 /* 文档位置（2026-10-06）：绝对路径可能很长 → 等宽 + 可在任意处折行，不撑破面板；
-   台账相对路径小字用全局 .dsh-pm-hint（base.ts），这里只管长路径本身。 */
+   台账相对路径小字用全局 .dsh-pm-hint（base.ts），这里只管长路径本身。
+   修改（2026-10-08）：改为可点击按钮（button 元素），点击后在右侧栏打开该目录。 */
 .dsh-pm-np-info-value .dsh-pm-doc-filepath {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px; word-break: break-all;
+  /* 按钮样式：去除默认按钮外观，添加可点击提示 */
+  border: none; background: none; padding: 0; margin: 0;
+  color: var(--dsh-pm-np-link, #0071e3); text-align: left; cursor: pointer;
+  text-decoration: none; display: inline;
+}
+.dsh-pm-np-info-value .dsh-pm-doc-filepath:hover {
+  text-decoration: underline;
 }
 .dsh-pm-np-tag {
   display: inline-block; background: rgba(0,113,227,.1); color: var(--dsh-pm-np-blue);

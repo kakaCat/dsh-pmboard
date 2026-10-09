@@ -32,6 +32,7 @@
  * ⇒ 本文件第 ② 组必红（卡面读数退回 132）。已实跑并逐字节还原（见任务汇报）。
  */
 import { describe, expect, it, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -189,7 +190,7 @@ function freshTraceData(all: readonly TaskRecord[]): TraceabilityData {
   const snapshot: RTMLedgerSnapshot = {
     requirements: [specimenRequirement({ status: 'accepting' })],
   }
-  const result = syncRTMYamlWithSnapshot(root, snapshot, all, REQ_ID, 'submit:verification')
+  const result = syncRTMYamlWithSnapshot(new FileHostFs(), root, snapshot, all, REQ_ID, 'submit:verification')
   expect(result?.ok, 'RTM 入口本次没有成功产出（追溯面数值断言将失去意义）').toBe(true)
 
   const bundle = assembleTraceability(root, REQ_ID)

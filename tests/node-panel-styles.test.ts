@@ -44,8 +44,10 @@ describe('TC-11 node-panel 样式作用域', () => {
     }
   })
   it('设计令牌：720px 宽度上限 + 68vh 高度上限 + 10px 圆角', () => {
-    expect(NODE_PANEL_CSS).toContain('min(720px, calc(100vw - 130px))')
-    expect(NODE_PANEL_CSS).toContain('max-height: 68vh')
+    // 宽度基准由视口让位改为会话框（node-panel.ts 单点）；与姊妹用例
+    // tests/header-progress-responsive.test.ts 逐字同串，防宽度口径两处分叉。
+    expect(NODE_PANEL_CSS).toContain('width: min(720px, calc(100% - 32px))')
+    expect(NODE_PANEL_CSS).toContain('max-height: min(68vh, calc(100vh - 120px))')
     expect(NODE_PANEL_CSS).toContain('border-radius: 10px')
   })
   it('泳道 6 列看板（设计稿 task-columns）：列体纵向滚动不裁切', () => {

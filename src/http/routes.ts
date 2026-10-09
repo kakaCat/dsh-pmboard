@@ -345,6 +345,8 @@ export function createReqboardHandler(deps: ReqboardRouteDeps) {
       // REQ-261004121649-bfa7 t3/t6 · FR-4：误物化批量清场（仅人——刻意不注册 agent 工具，与 rebind 同款）
       if (method === 'POST' && sub === 'req/rollback-cleanup') return await requirements.handleRollbackCleanup(req, res)
       if (method === 'POST' && sub === 'req/artifact/confirm') return await requirements.handleArtifactConfirm(req, res)
+      // REQ-261007223647-da5d t4（FR-1）：挂起确认重投查询（票还在等 / 已失效，如实回报）
+      if (method === 'POST' && sub === 'confirm/repost') return await requirements.handleConfirmRepost(req, res)
       if (method === 'POST' && sub === 'task/create') return await tasks.handleTaskCreate(req, res)
       if (method === 'POST' && sub === 'task/move') return await tasks.handleTaskMove(req, res)
       if (method === 'POST' && sub === 'task/update') return await tasks.handleTaskUpdate(req, res)

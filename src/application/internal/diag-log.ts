@@ -6,43 +6,36 @@
 // ③当前进程 stdout 指向已无读者的管道（start.sh | tail -5），所有 console/logger 输出蒸发。
 // 教训：诊断日志必须落文件，禁止只依赖 stdout。
 //
-// 形状：append-only 文本，超 512KB 轮转为 .1（只保留一代，够用且零依赖）。
+// REQ-261008020617-088f RF-4：本文件**只留门面**——时间戳与「控制台 + 文件双写」的策略在这里，
+// 文件的轮转 / 追加 / 容错全部下沉到 `adapters/FileDiagSink`（application 不再 import node:fs）。
+// 六个 application 调用点 `captureDiag(...)` **一字未改**：这正是留门面的价值（换实现不动调用方）。
+//
+// 形状不变（设计 INV-4）：append-only 文本，超 512KB 轮转为 .1（只保留一代，够用且零依赖）；
 // 任何失败静默吞掉——诊断通道绝不能反过来影响主流程（对齐 isolation-trace 的容错设计）。
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import type { DiagSinkPort } from '../ports.js';
 
+/** 诊断日志的相对落点（组合根用 `dshHomePath(config, CAPTURE_DIAG_REL)` 解析成绝对路径）。 */
 export const CAPTURE_DIAG_REL = 'state/reqboard-capture-diag.log';
 
-const MAX_BYTES = 512 * 1024;
+/**
+ * 当前 sink。**未装配 = 只进控制台**——与搬迁前 `diagFile === undefined` 的行为逐字一致
+ * （那时也只 `console.log`），故"未装配"这条分支没有引入新语义。
+ */
+let diagSink: DiagSinkPort | undefined;
 
-let diagFile: string | undefined;
-
-/** 组合根（index.ts apply）启动时调用一次，传入 dshHome 解析后的绝对路径。 */
-export function initCaptureDiag(absPath: string): void {
-  diagFile = absPath;
-  try {
-    fs.mkdirSync(path.dirname(absPath), { recursive: true });
-  } catch {
-    /* 目录创建失败不致命，写时会再试 */
-  }
+/** 组合根（index.ts apply）启动时调用一次，装上文件 sink（实现见 `adapters/FileDiagSink`）。 */
+export function initCaptureDiag(sink: DiagSinkPort): void {
+  diagSink = sink;
 }
 
-/** 写一条诊断：控制台 + 文件双写。控制台可能进死管道，文件才是可靠观测面。 */
+/** 写一条诊断：控制台 + sink 双写。控制台可能进死管道，文件才是可靠观测面。 */
 export function captureDiag(message: string): void {
   const line = '[' + new Date().toISOString() + '] ' + message + '\n';
-  // 文件优先（可靠面）
-  if (diagFile !== undefined) {
+  // 文件优先（可靠面）。sink 实现本身也必须永不抛；这里再兜一层，双保险。
+  if (diagSink !== undefined) {
     try {
-      const st = fs.statSync(diagFile);
-      if (st.size > MAX_BYTES) {
-        fs.renameSync(diagFile, diagFile + '.1');
-      }
-    } catch {
-      /* 不存在或 stat 失败 → 直接 append */
-    }
-    try {
-      fs.appendFileSync(diagFile, line);
+      diagSink.write(line);
     } catch {
       /* 写失败静默——诊断不挡主流程 */
     }

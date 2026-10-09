@@ -24,7 +24,7 @@ export type GateChannel = 'session' | 'board'
  * 答案语义族——决定"答案怎么解读"，而不是"怎么显示"：
  *  - affirmative：单问，首个选项 = 肯定项（其余为修改/补充/澄清/暂停）
  *  - per-item：多问，每问独立通过/不通过 + 意见（验收单逐项裁决）
- *  - form：多问取值（立项三问：名称/类型/难度），非判定
+ *  - form：多问取值（立项弹框：名称/类型/难度/文档位置/工作区），非判定
  */
 export type VerdictShape = 'affirmative' | 'per-item' | 'form'
 

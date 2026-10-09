@@ -14,7 +14,8 @@
  *
  * @module dsh-pmboard/adapters/GateAwareQuestions
  */
-import type { AskAnswer, AskQuestion, GatePostChainPort, UserQuestionPort } from '../application/ports.js'
+import type { AskAnswer, AskQuestion, AskTimedResult, GatePostChainPort, UserQuestionPort } from '../application/ports.js'
+import { racePortAsk } from '../application/internal/ask-timed.js'
 import type { ConfirmContext, GateId } from '../domain/gate/GateSpec.js'
 import { GATE_CATALOG } from '../domain/gate/GateCatalog.js'
 
@@ -42,19 +43,55 @@ export class GateAwareQuestions implements UserQuestionPort {
   }
 
   available(): boolean {
-    return this.inner.available()
+    const result = this.inner.available()
+    console.log('[reqboard DEBUG] GateAwareQuestions.available():', result)
+    return result
   }
 
   async ask(
     questions: readonly AskQuestion[],
     opts: { agent?: unknown; signal?: unknown; gate?: GateId },
   ): Promise<readonly AskAnswer[]> {
+    console.log('[reqboard DEBUG] GateAwareQuestions.ask() 被调用:', {
+      questionsCount: questions.length,
+      hasGate: opts.gate !== undefined,
+      gate: opts.gate,
+      questionsPreview: questions.map(q => ({ id: q.id, header: q.header, optionsCount: q.options?.length }))
+    })
     const answers = await this.inner.ask(questions, opts)
-    if (opts.gate === undefined || answers.length === 0) return answers
+    console.log('[reqboard DEBUG] GateAwareQuestions.ask() 收到答案:', {
+      answersCount: answers.length,
+      answersPreview: answers.map(a => ({ id: a.id, hasCustom: !!a.custom, selectedCount: a.selected?.length ?? 0 }))
+    })
+    this.enqueueGateIfAny(opts, answers)
+    return answers
+  }
 
+  /**
+   * 限时等待（REQ-261007223647-da5d t3）：委托 + **只在真拿到作答时**登记闸门。
+   * 为什么 pending 不登记：链登记的含义是「人已作答」——超时只是"还没答"，把它当作答
+   * 会把压缩/注入/唤醒链提前触发（第一段弹框不带 gate 的同款理由，BUG-2 教训）。
+   */
+  async askTimed(
+    questions: readonly AskQuestion[],
+    opts: { agent?: unknown; signal?: unknown; gate?: GateId; timeoutMs: number },
+  ): Promise<AskTimedResult> {
+    const result = typeof this.inner.askTimed === 'function'
+      ? await this.inner.askTimed(questions, opts)
+      : await racePortAsk(this.inner, questions, opts, opts.timeoutMs)
+    if (result.kind === 'answered') this.enqueueGateIfAny(opts, result.answers)
+    return result
+  }
+
+  /** 有 gate 声明且确拿到作答 → 登记一次闸门作答（临时上下文，verdict 留空给 H1 刷新）。 */
+  private enqueueGateIfAny(
+    opts: { agent?: unknown; gate?: GateId },
+    answers: readonly AskAnswer[],
+  ): void {
+    if (opts.gate === undefined || answers.length === 0) return
     const windowKey = windowKeyOf(opts.agent)
     const gate = GATE_CATALOG.find(g => g.id === opts.gate)
-    if (windowKey === undefined || gate === undefined) return answers
+    if (windowKey === undefined || gate === undefined) return
 
     const ctx: ConfirmContext = {
       windowKey,
@@ -65,6 +102,5 @@ export class GateAwareQuestions implements UserQuestionPort {
       decidedAt: this.now(),
     }
     this.chain.enqueue(ctx)
-    return answers
   }
 }

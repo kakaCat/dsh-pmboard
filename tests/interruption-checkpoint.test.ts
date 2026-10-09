@@ -20,7 +20,7 @@ import { noteInterruption, noteInterruptionForWindow } from '../src/application/
 import { nextActionFor, turnEndOutcome } from '../src/application/internal/interruption.js'
 import { buildNodeInputPackage } from '../src/application/internal/node-input-package.js'
 import { createDiveSessionDriver, type DiveSessionDriverDeps } from '../src/application/dive/session-driver.js'
-import { defineNoteInterruptionTool } from '../src/tools/NoteInterruptionTool/NoteInterruptionTool.js'
+import { defineTaskAmendTool } from '../src/tools/TaskAmendTool/TaskAmendTool.js'
 import type { ReqboardLedger, RequirementRecord } from '../src/shared/protocol.js'
 
 const W = 'session-w-001'
@@ -149,16 +149,17 @@ describe('断点常驻 · 写入器 B（turn/end 异常原因补新）', () => {
   })
 })
 
-describe('断点常驻 · 写入器 B′（reqboard_note_interruption 显式兜底）', () => {
+describe('断点常驻 · 写入器 B′（reqboard_task_amend op=interruption 显式兜底，REQ-261008020552-4aa0 FR-2 收编）', () => {
   it('工具壳名字/必填 reason 正确（defineTool 构造即编译 schema）', () => {
     const h = makeHarness()
-    const tool = defineNoteInterruptionTool(h.deps) as unknown as {
+    const tool = defineTaskAmendTool(h.deps) as unknown as {
       name: string
       parameters: { type: string; required?: string[]; additionalProperties?: boolean; properties?: Record<string, unknown> }
     }
-    expect(tool.name).toBe('reqboard_note_interruption')
+    expect(tool.name).toBe('reqboard_task_amend')
     expect(tool.parameters.type).toBe('object')
-    expect(tool.parameters.required).toContain('reason')
+    // 收编后 op 是唯一的 schema 级必填；reason 由壳层按 op 点名（op=interruption 必填）
+    expect(tool.parameters.required).toEqual(['op'])
     expect(Object.keys(tool.parameters.properties ?? {})).toContain('reason')
     // 根 object 为封闭形状（defineTool 规范化：未显式 additionalProperties=true 即封闭）
     expect(tool.parameters.additionalProperties).not.toBe(true)
@@ -172,7 +173,7 @@ describe('断点常驻 · 写入器 B′（reqboard_note_interruption 显式兜�
     const bp = out.interruption as Record<string, unknown>
     expect(bp.reason).toBe('upstream stream idle 3m ×5')
     expect(bp.pendingAction).toBe('reqboard_task_run')
-    expect(bp.tool).toBe('reqboard_note_interruption')
+    expect(bp.tool).toBe('reqboard_task_amend')
     const r = ((await h.store.get((await h.store.listSummaries({ scope: 'all' })).items[0]!.id)))!
     expect(r.comments.some(c => c.body.includes('[断点]'))).toBe(true)
   })

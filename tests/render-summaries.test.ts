@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest'
 import {
   taskMoveSummary, submitSummary, statusSummary, captureSummary, createSummary,
   askConfirmSummary, decomposeSummary, moveSummary, taskReportSummary,
-  acceptSheetSummary, taskStatusSummary, taskRunSummary, taskExecuteSummary,
+  acceptSheetSummary, taskStatusSummary, taskRunSummary,
 } from '../src/tools/render-summaries.js'
 import { renderSmart } from '../src/tools/shared.js'
 
@@ -74,8 +74,5 @@ describe('renderSmart 接线（FR-5 端到端形态）', () => {
     expect(head.startsWith('{')).toBe(false)
     expect(text).toContain('\n\n')
     expect(text).toContain('"open_count": 1')
-  })
-  it('taskExecuteSummary 是 taskRunSummary 别名', () => {
-    expect(taskExecuteSummary).toBe(taskRunSummary)
   })
 })

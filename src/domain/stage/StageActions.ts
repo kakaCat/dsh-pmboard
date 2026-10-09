@@ -16,11 +16,7 @@ import type { RequirementStatus } from '../requirement/RequirementStatus.js'
 const TOOL_STAGE_MAP: Readonly<Record<string, readonly RequirementStatus[] | undefined>> = {
   'reqboard_status': undefined,
   'reqboard_task_tree': undefined,
-  'reqboard_task_status': undefined,
-  'reqboard_run_status': undefined,
-  'reqboard_confirm_receipt': undefined,
   'reqboard_accept_sheet': undefined,
-  'reqboard_note_interruption': undefined,
   'reqboard_clear_pause': undefined,
   'reqboard_capture': ['draft', 'brainstorming'],
   'reqboard_create': ['draft', 'brainstorming'],
@@ -29,10 +25,8 @@ const TOOL_STAGE_MAP: Readonly<Record<string, readonly RequirementStatus[] | und
   'reqboard_decompose': ['decomposing'],
   'reqboard_task_move': ['implementing', 'accepting'],
   'reqboard_task_run': ['implementing', 'accepting'],
-  'reqboard_task_execute': ['implementing', 'accepting'],
   'reqboard_task_report': ['implementing', 'accepting'],
-  'reqboard_task_adopt': ['implementing', 'accepting'],
-  'reqboard_task_regenerate': ['implementing', 'accepting'],
+  'reqboard_task_amend': ['implementing', 'accepting'],
   'reqboard_move': ['brainstorming', 'design', 'decomposing', 'implementing', 'accepting'],
 }
 

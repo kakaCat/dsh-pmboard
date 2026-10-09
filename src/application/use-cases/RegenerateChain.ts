@@ -45,33 +45,33 @@ export async function executeRegenerateChain(deps: UseCaseDeps, args: unknown, e
   // 安全默认：缺省与显式 true 都判只读；只有显式 false 才写（dsh-tools 不注入 schema default）。
   const dryRun = a.dry_run !== false
   if (!dryRun && reason.length === 0) {
-    reject('reqboard_task_regenerate 未执行：dry_run:false（真补链）必须传 reason——写台账要留痕', 'REQBOARD_INVALID_INPUT')
+    reject('reqboard_task_amend(op=chain) 未执行：dry_run:false（真补链）必须传 reason——写台账要留痕', 'REQBOARD_INVALID_INPUT')
   }
   if (!dryRun && taskId.length === 0) {
-    reject('reqboard_task_regenerate 未执行：真补链必须指定 task_id（不提供批量写路径）', 'REQBOARD_INVALID_INPUT')
+    reject('reqboard_task_amend(op=chain) 未执行：真补链必须指定 task_id（不提供批量写路径）', 'REQBOARD_INVALID_INPUT')
   }
   // t8/B11：绑定读走新端口（只读摘要）
   const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
-  if (bound.length === 0) reject('reqboard_task_regenerate 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
+  if (bound.length === 0) reject('reqboard_task_amend(op=chain) 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
   const store = taskStoreOf(deps)
 
   // 目标需求：显式 requirement_id → 由 task_id 反查 → 绑定需求里的第一个。
   let reqId = reqIdArg
   if (reqId.length === 0 && taskId.length > 0) {
     const t = await store.get(taskId)
-    if (t === undefined) reject(fmt('reqboard_task_regenerate 未执行：任务 {id} 不存在', { id: taskId }), 'REQBOARD_TASK_NOT_FOUND')
+    if (t === undefined) reject(fmt('reqboard_task_amend(op=chain) 未执行：任务 {id} 不存在', { id: taskId }), 'REQBOARD_TASK_NOT_FOUND')
     reqId = t.requirementId
   }
   if (reqId.length === 0) {
     // FR-3：按席位取第一条**可写**的绑定需求；一条都没有 → 与"没有绑定需求"同义地拒绝
     const first = firstWritableBound(bound, windowKey)
     if (first === undefined) {
-      reject('reqboard_task_regenerate 未执行：本窗口没有可写的绑定需求', 'REQBOARD_NOT_BOUND_TO_WINDOW')
+      reject('reqboard_task_amend(op=chain) 未执行：本窗口没有可写的绑定需求', 'REQBOARD_NOT_BOUND_TO_WINDOW')
     }
     reqId = first.id
   }
   if (!bound.some((r) => r.id === reqId)) {
-    reject(fmt('reqboard_task_regenerate 未执行：需求 {id} 不属于本窗口绑定的需求（只能动自己的卡）', { id: reqId }), 'REQBOARD_NOT_BOUND_TO_WINDOW')
+    reject(fmt('reqboard_task_amend(op=chain) 未执行：需求 {id} 不属于本窗口绑定的需求（只能动自己的卡）', { id: reqId }), 'REQBOARD_NOT_BOUND_TO_WINDOW')
   }
   // t8/B11：单条查找 → 新端口 get（原为整册 find）
   const req = await requirementStoreOf(deps).get(reqId)
@@ -120,7 +120,7 @@ export async function executeRegenerateChain(deps: UseCaseDeps, args: unknown, e
       // 留痕：补链是写台账的动作，父卡必须有可回溯记录（含原因与新建 id）。
       parent.comments.push({
         id: deps.ids.comment(),
-        body: fmt('[再生成] 补子卡 {n} 张（{ids}）：{why}（reqboard_task_regenerate）', {
+        body: fmt('[再生成] 补子卡 {n} 张（{ids}）：{why}（reqboard_task_amend(op=chain)）', {
           n: created.length, ids: createdIds.join('、') || '-', why: reason,
         }),
         createdAt: at,

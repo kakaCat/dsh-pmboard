@@ -30,7 +30,7 @@ import { amendTaskAcceptanceIfRequested } from '../../application/use-cases/Amen
 import { assertNoPendingConfirm } from '../../application/internal/support.js'
 import { readSubtaskBudgetArg, releaseSubtaskBudget } from '../../application/internal/subtask-budget.js'
 import { fmt } from '../../domain/text/fmt.js'
-import { renderSmart } from '../shared.js'
+import { LONG_TEXT_STYLE_NOTE, renderSmart } from '../shared.js'
 
 /**
  * 撞 60s 节流时的**结构化失败回执**（REQ-261007100513-6749 t4 / FR-5，R3）。
@@ -84,36 +84,30 @@ const batchItemSchema = {
   type: 'object',
   additionalProperties: false,
   properties: {
-    task_id: { type: 'string', description: '任务 id（t-xxxxxx）；批内一项一卡（同一张卡重复出现会被拒）' },
-    to: { type: 'string', description: '目标状态（todo/in_progress/integrating/testing/in_review/done/canceled）；与 acceptance 至少给一个' },
-    reason: { type: 'string', description: '理由（进台账留痕）；每条短句（建议 ≤60 字）；需引号用「」' },
-    acceptance: { type: 'string', description: '修订该卡验收标准（≤2000 字符，须含命令/断言锚点）；只给它 = 该项仅修订、不改状态' },
+    task_id: { type: 'string', description: '任务 id（t-xxxxxx）；批内一项一卡' },
+    to: { type: 'string', description: '目标状态（取值同扁平 to）；与 acceptance 至少给一个' },
+    reason: { type: 'string', description: '理由（进台账留痕）；需引号用「」' },
+    acceptance: { type: 'string', description: '修订该卡验收标准（须含锚点）；只给它 = 仅修订不改状态' },
   },
 } as const
 
 export function defineTaskMoveTool(deps: UseCaseDeps) {
   return defineTool({
     name: 'reqboard_task_move',
-    description: [
-      '用于：推进任务状态（todo → in_progress → integrating → testing → in_review → done）。',
-      '支持一次批量推进多张卡（tasks[]，1–20 项）：逐项给结果（results[]），坏项不拖累好项（台账无回滚）；',
-      '同批提交的卡互不触发 60 秒节流，跨批仍触发（撞节流时回执给确定剩余毫秒与可做之事的指引）。',
-      '非法转移的报错会说明**当前角色**（父卡/子卡/存量卡）与**该角色的全部合法边**。',
-      '可选 acceptance：修订该任务的验收标准（≤2000 字符，须含可执行锚点）并同步卡文档；',
-      '只传 acceptance 不传 to = 仅修订、不改状态（用于开工时发现验收标准不可执行）。',
-      '可选 budget：owner 放行一张跑到请求预算上限（默认 60 次/窗口）的子卡——{release:true, add?}，须带 reason；',
-      '重复放行幂等（released:false，不叠加窗口）；放行只写卡评论与运行态窗口，不改任务状态机。',
-      '人工门越权（取消/复活/重开已完成卡）代码级拒绝；任务必须属于本窗口绑定的需求。',
-    ].join(''),
+    // REQ-261008020552-4aa0 FR-3：描述结构减负（基线 1265 → ≤630，task-move-prompt-budget 门禁钉住）。
+    // 撤下的细则（节流节奏 / CAS / 幂等）都有回执之家：throttleGuidance、REQBOARD_CONFLICT 与
+    // readSubtaskBudgetArg 的拒绝回执——参数形状与行为逐字不动。
+    description: '用于：推进任务状态（含批量 tasks[]、仅修订验收标准 acceptance、owner 预算放行 budget）。'
+      + '非法转移报错说明当前角色（父卡/子卡/存量卡）与全部合法边；节流/放行细则见拒绝回执。'
+      + '人工门越权（取消/复活/重开已完成卡）代码级拒绝；任务须属于本窗口绑定需求。',
     parameters: {
       task_id: { type: 'string', description: '任务 id（t-xxxxxx）' },
       to: { type: 'string', description: '目标状态（todo/in_progress/integrating/testing/in_review/done/canceled）；与 acceptance 至少给一个' },
-      reason: { type: 'string', description: '理由（进台账留痕）；写法：每条短句（建议 ≤60 字）；需引号用「」避免半角双引号；文本过大拆成多次调用' },
+      reason: { type: 'string', description: '理由（进台账留痕）；' + LONG_TEXT_STYLE_NOTE },
       acceptance: { type: 'string', description: '修订验收标准（≤2000 字符，须含命令/断言锚点）；只传它 = 仅修订不改状态' },
       tasks: {
         type: 'array',
-        description: fmt('批量推进（1–{max} 项，每项同扁平四参语义：task_id 必填，to/acceptance 至少给一个）；'
-          + '与扁平四参二选一，同传时以 tasks 为准；同批的卡互不触发 60 秒节流，坏项只废该项（台账无回滚）', { max: String(MOVE_BATCH_MAX) }),
+        description: fmt('批量推进（1–{max} 项，每项同扁平四参语义）；与扁平四参二选一，同传以 tasks 为准；坏项只废该项', { max: String(MOVE_BATCH_MAX) }),
         items: batchItemSchema,
       },
       // ── 新增（REQ-261007100513-6749 t5 / FR-6；键名由 TaskMoveOutput 类型钉死，只增不减）──
@@ -121,13 +115,13 @@ export function defineTaskMoveTool(deps: UseCaseDeps) {
       budget: {
         type: 'object',
         additionalProperties: false,
-        description: '子卡请求预算放行（owner 专属；与 to/acceptance 可同时给）：到顶的子卡经此显式放行一个窗口后续跑',
+        description: '子卡预算放行（owner 专属；与 to/acceptance 可同时给）；细则见拒绝回执',
         properties: {
-          release: { type: 'boolean', description: '显式放行一次：窗口 +1、已用次数归零、写卡评论留痕（幂等：重复放行不叠加窗口）' },
-          add: { type: 'number', description: '本次放行的追加额度（正整数；缺省 = 卡上 budgetRequests ?? 60）' },
+          release: { type: 'boolean', description: '显式放行一次（幂等：不叠加窗口）' },
+          add: { type: 'number', description: '追加额度（正整数；缺省 = budgetRequests ?? 60）' },
           expectedWindowIndex: {
             type: 'number',
-            description: '你看到的窗口号（CAS）：与当前窗口号不一致 → 拒绝（code=REQBOARD_CONFLICT，回执给出当前窗口号），请按当前号重试；一致才换窗',
+            description: '你看到的窗口号（CAS）：不一致即拒并回当前号',
           },
         },
       },

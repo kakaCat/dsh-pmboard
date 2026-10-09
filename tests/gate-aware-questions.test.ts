@@ -198,7 +198,8 @@ describe('立项拒绝路径不进链（REQ-260924002956-f37c BUG-2）', () => {
       [
         { id: 'category', selected: ['bug'] },
         { id: 'difficulty', selected: ['standard'] },
-        { id: 'doc_location', selected: ['docs/requirements/<REQ>/'] },
+        // t1（REQ-261007223647-da5d）：文件落点合为一问，id = location
+        { id: 'location', selected: ['docs/requirements/<REQ>/'] },
       ],
     ]
     const port: UserQuestionPort = {
@@ -215,7 +216,7 @@ describe('立项拒绝路径不进链（REQ-260924002956-f37c BUG-2）', () => {
 
     const out = (await captureRequirement(h.deps, {}, { agent: { id: W } })) as { success: boolean }
     expect(out.success).toBe(true)
-    expect(askedIds).toEqual(['name', 'category', 'difficulty', 'doc_location'])
+    expect(askedIds).toEqual(['name', 'category', 'difficulty', 'location'])
     expect(gateSeen).toEqual([undefined, 'G0']) // 第一段不带 gate；G0 只登记在肯定分支
     expect(chain.stats().enqueued).toBe(1)
     expect(pending.peek(W)!.gate).toBe('G0')

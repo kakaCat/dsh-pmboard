@@ -73,7 +73,7 @@ describe('会话框流程节点 /session/:id/progress', () => {
     expect(res.payload.data.requirement?.id ?? res.payload.data.requirementId).toBe(id)
   })
 
-  // TC-10（REQ-260923134706-e72f / FR-2）：progress 透出立项四问之一的 promptDifficulty
+  // TC-10（REQ-260923134706-e72f / FR-2）：progress 透出立项弹框中的 promptDifficulty
   it('有 promptDifficulty 的记录透出值，老记录透出 null', async () => {
     const handler = createReqboardHandler({ requirementStore: store, taskStore: taskStoreAt(dir), now: () => Date.now() })
     // 有难度的记录

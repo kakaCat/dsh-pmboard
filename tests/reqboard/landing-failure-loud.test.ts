@@ -148,7 +148,7 @@ describe('④ 文案纪律：不得再指向做不到的动作', () => {
     const { execSync } = await import('node:child_process')
     const hits = execSync('grep -rn "REQBOARD_PLAN_REFS_MISSING" src || true', { cwd: process.cwd() }).toString().trim()
     expect(hits).toBe('')
-    // 恢复指引只允许指向真能跑的入口（reqboard_decompose / 看板拆分 / reqboard_task_refs）
+    // 恢复指引只允许指向真能跑的入口（reqboard_decompose / 看板拆分 / reqboard_task_amend）
     const wiring = execSync('grep -rn "恢复路径\|恢复入口" src/application/internal/content-gate-wiring.ts || true', { cwd: process.cwd() }).toString()
     if (wiring.trim().length > 0) expect(wiring).toContain('reqboard_')
   })

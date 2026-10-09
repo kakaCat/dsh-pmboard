@@ -1,64 +1,79 @@
----
-name: executing-plans
-description: Use when you have a written implementation plan to execute in a separate session with review checkpoints
----
+# 实施（implementing）· 本仓自写完整档
 
-# Executing Plans
+> 本档是**本仓自写完整档**，不是 vendor 原文的镜像（2026-10-08 裁定）。上游同名 skill 原文只留档、
+> 不注入：`src/domain/prompt/vendor/superpowers/executing-plans/SKILL.md`。换底理由：上游 v6.4.2 把它
+> 改成了 inline 执行专版，开篇明说「不派子代理、不派复核」——而本仓实施走的是**任务卡 + 子代理**，
+> 照那份原文执行等于把「别用子代理」的纪律注进实施阶段。本档只写本仓实际怎么实施。
 
-## Overview
+## 本仓实施模式
 
-Load plan, review critically, execute all tasks, report when complete.
+- **卡就是 brief**：不读 plan 文件、不凭记忆——开工时 `reqboard_task_move(to=in_progress)` 返回卡全文
+  （title / description / acceptance / implementation / context），照卡执行。
+- **一张父卡 = 一条子卡链**：父卡开工时自动展开子卡段（研发 → 联调 → 复核 → 测试，按卡的类型与阶段）。
+  你可能是父卡执行者，也可能是被派发的子代理；两种角色的动作一样：照卡做、自证、汇报。
+- **派发与段机制**：见 `docs/architecture/subtask-stage-template.md`（段怎么来、加一段要登记哪几处、
+  manual 段为什么能停链）。
+- **预算与停链**：见 `docs/architecture/subtask-request-budget.md`（子卡请求软上限、到顶先停再汇报）。
+  本档只引用**不复述**：机制漂移时以那两份领域篇为准。
 
-**Announce at start:** "I'm using the executing-plans skill to implement this plan."
+## 开工：取卡与前置
 
-**Note:** Tell your human partner that Superpowers works much better with access to subagents (Claude Code, Codex CLI, Codex App, Copilot CLI, and Gemini CLI all qualify; see the per-platform tool refs in `../using-superpowers/references/`). If subagents are available, use superpowers:subagent-driven-development instead of this skill.
+1. `reqboard_task_move(to=in_progress)` 取卡全文；卡上的 `acceptance` 是**完工判据**、`implementation`
+   是**做法**——两者都要照做，不许只挑好做的那个。
+2. 先查规范再动手：`reqboard_kb(kind='standard')` 拿本仓硬纪律与可跑校验；需要项目认知时用
+   `reqboard_kb(query=...)` 按需检索，别通读全仓。
+3. 卡的三要素要能被人复述——在做什么 / 解决什么问题 / 得到什么结果。读不出就**先问**（见「遇门」），
+   别猜着做：卡写不清是卡的缺口，不是你自由发挥的许可。
 
-## The Process
+## The Task Loop
 
-### Step 1: Load and Review Plan
-1. Ensure an isolated workspace: use superpowers:using-git-worktrees to create one or verify the existing one
-2. Read plan file
-3. Review critically - identify any questions or concerns about the plan
-4. If concerns: Raise them with your human partner before starting
-5. If no concerns: Create todos for the plan items and proceed
+一张卡一个循环，三步，不跳步：
 
-### Step 2: Execute Tasks
+1. **照卡执行**：只改卡上「实施方案」点到的文件；一次只干一件事（一卡多事 = 卡切粗了，退回拆分阶段）。
+   改了前端资源要按本仓构建纪律重建产物，否则关任务会被构建新鲜度门拒绝（STALE_BUILD）。
+2. **自证**：跑卡上「验收标准」写的命令，**读输出**再下结论。没跑过的通过 = 没通过；读不到的读数
+   （环境缺依赖、命令不存在）如实报出来，不用「应该没问题」收尾。
+3. **汇报**：`reqboard_task_report`（见下一节）。它是 done 凭证门的前置——无汇报、无真实工具动作、
+   60 秒内连环关任务都会被代码级拒绝。
 
-For each task:
-1. Mark as in_progress
-2. Follow each step exactly (plan has bite-sized steps)
-3. Run verifications as specified
-4. Mark as completed
+**上下文纪律**：长输出重定向到文件只读尾部；一次读一张卡，不把整份计划灌进上下文。
 
-### Step 3: Complete Development
+## 子代理：派发与复核
 
-After all tasks complete and verified:
-- Announce: "I'm using the finishing-a-development-branch skill to complete this work."
-- **REQUIRED SUB-SKILL:** Use superpowers:finishing-a-development-branch
-- Follow that skill to verify tests, present options, execute choice
+- **派发**：父卡开工即展开子卡链（已有子卡则幂等跳过）。子代理拿到的是**自包含的卡**、不共享主窗口
+  上下文——所以卡上必须写全：改哪些文件、怎么验、什么算过。
+- **复核不是自查**：复核由 `review` 段子卡承担、测试由 `test` 段承担；作者自己看一遍不算复核。
+- **预算**：子卡有软上限（缺省 60 次请求）；到顶**先停下、再汇报**，由 owner 放行后继续，不得自行续跑。
+- **失败要响亮**：卡做不动（依赖缺失、验收跑不通、指令互相矛盾）→ 停手并结构化报出原因，
+  交人/owner 处置；连续失败不得靠重试掩盖。
 
-## When to Stop and Ask for Help
+## 完工汇报
 
-**STOP executing immediately when:**
-- Hit a blocker (missing dependency, test fails, instruction unclear)
-- Plan has critical gaps preventing starting
-- You don't understand an instruction
-- Verification fails repeatedly
+调 `reqboard_task_report`，四件事：`summary`（这一步做完什么变了）、`completed`（完成项）、
+`files_changed`（改动文件）、`next_step`（下一步）。
 
-**Ask for clarification rather than guessing.**
+**汇报自检**（漏了会整轮报废）：正文不出现半角双引号（要引用用「」）；`completed` 每条短句；
+文本过长就拆成多次调用（幂等追加，不重复登记产物）。
 
-## When to Revisit Earlier Steps
+## 遇门：弹框与征询
 
-**Return to Review (Step 1) when:**
-- Partner updates the plan based on your feedback
-- Fundamental approach needs rethinking
+- **范围变更 / 方案取舍 / 需要人裁决** → `reqboard_ask_confirm`（本仓确认门；肯定答复自动落章并推进）。
+- **普通信息征询**（问一句就有答案的事实）→ `ask_user_question`（宿主工具，不是 `reqboard_*`）。
+- 两者都**不许**拿「我猜」代替：等不到答复就停下等人，不推进下游产物。
 
-**Don't force through blockers** - stop and ask.
+## Common Rationalizations
 
-## Remember
-- Review plan critically first
-- Follow plan steps exactly
-- Don't skip verifications
-- Reference skills when plan says to
-- Stop when blocked, don't guess
-- Never start implementation on main/master branch without explicit user consent
+| 借口 | 现实 |
+|---|---|
+| 我记得卡里写了什么 | 你记得的是摘要。卡全文里有确切路径、命令与判据——取卡再动手。 |
+| 验收命令肯定能过 | 「肯定」不是证据。跑它、读输出，再把读数写进汇报。 |
+| 卡里没说清，我先按经验做 | 那是卡的缺口。问（见上节）或停手报出；猜出来的实现是返工源头。 |
+| 汇报省了，最后一起写 | 汇报是 done 凭证门的前置，不是收尾装饰；一张卡一段。 |
+| 上一张卡的测试跑过了，这张不必再跑 | 每张卡有自己的验收命令；上一张卡的证据不覆盖这一张。 |
+| 顺手把旁边那张卡也改了 | 一张卡一件事；越界改动会让复核与结单证据同时失效——退回去按卡做。 |
+| 子卡预算到顶了，我一口气做完 | 到顶先停下再汇报是纪律；续跑要 owner 放行。 |
+| 这步的失败是环境问题，重试就好 | 重试掩盖的是原因。结构化报出（命令+输出+判断），交人处置。 |
+
+## 交棒：下一步 accepting
+
+实施全部完成 → 下一步：accepting —— 用 reqboard_submit(kind=verification) 交棒；未获批准不得进入。

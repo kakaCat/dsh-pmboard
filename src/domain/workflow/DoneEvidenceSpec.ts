@@ -75,7 +75,10 @@ export function doneThrottleRemainingMs(
     if (t.parentId === taskId) continue // FR-1：父子链收尾不上弦（与 findRecentAgentDoneTask 同口径）
     for (const h of t.statusHistory ?? []) {
       if (h.status !== 'done' || h.by.kind !== 'agent') continue
-      const left = throttleMs - (now - h.at)
+      // M6（REQ-261007193530-3133 FR-4）：h.at 落在未来（时钟回拨/漂移/跨机写入）时
+      // `throttleMs - (now - h.at)` 会超过 throttleMs。读数契约是 [0, throttleMs]——
+      // 上界必须钳住，否则拒绝文案会告诉 agent「还要等 90 秒」这类不可能读数。
+      const left = Math.max(0, Math.min(throttleMs, throttleMs - (now - h.at)))
       if (left > remaining) remaining = left
     }
   }

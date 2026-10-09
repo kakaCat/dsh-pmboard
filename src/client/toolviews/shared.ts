@@ -11,6 +11,9 @@
  * @module dsh-pmboard/client/toolviews/shared
  */
 
+// 错误码注册表（REQ-261007230908-5ccb FR-1 / IF-5）：纯数据模块，client 打包安全。
+import { REQBOARD_CODE_REGISTRY } from '../../shared/error-code-registry.js'
+
 // ---------------------------------------------------------------------------
 // block 数据形态（会话事件投影，只读）
 // ---------------------------------------------------------------------------
@@ -139,19 +142,20 @@ export const REQ_FLOW: ReadonlyArray<{ key: string; label: string }> = [
   { key: 'archived', label: '归档' },
 ]
 
-/** 错误类别映射表（FR-4）：工具返回的错误码 → 中文类别名。 */
+/**
+ * 错误类别映射表（FR-4）：工具返回的错误码 → 中文类别名。
+ *
+ * **大写码部分从注册表单源派生**（REQ-261007230908-5ccb FR-1 / IF-5 · 体检报告 G4）：
+ * 此前这里自持一份 10 个码的中文映射，与 src 侧 130+ 个码的产生点各说各话——
+ * 注册表落地后改为派生，映射不再可能漂移（tests/error-code-registry.test.ts ④ 守住「无回流」）。
+ * 小写码（invalid_transition 等）不在注册表口径内（D-1），继续在这里就地维护。
+ */
+const UPPER_ERROR_CATEGORY: Readonly<Record<string, string>> = Object.fromEntries(
+  REQBOARD_CODE_REGISTRY.map(e => [e.code, e.message]),
+)
+
 export const ERROR_CATEGORY: Readonly<Record<string, string>> = {
-  REQBOARD_INVALID_INPUT: '参数校验失败',
-  REQBOARD_BAD_STATUS: '状态不允许',
-  REQBOARD_DRIVER_REQUIRED: '需要驱动回合',
-  REQBOARD_DIRECT_HUMAN_REQUIRED: '需要直接人工回合',
-  REQBOARD_NO_BOUND_REQ: '窗口未绑定需求',
-  REQBOARD_UNKNOWN_TICKET: '未知票据',
-  REQBOARD_EVIDENCE_FAKE: '证据不合法',
-  REQBOARD_CONFIRM_PENDING: '确认阻塞',
-  // REQ-261003215944-9e04 FR-1：开窗通道不可用 / 无完成回合（可改用 create）/ 建会话失败
-  REQBOARD_OPEN_WINDOW_UNAVAILABLE: '开窗能力不可用',
-  REQBOARD_OPEN_WINDOW_FAILED: '建会话失败',
+  ...UPPER_ERROR_CATEGORY,
   invalid_transition: '状态机不允许',
   human_gate: '人工闸门',
   system_gate: '系统闸门',

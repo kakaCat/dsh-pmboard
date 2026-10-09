@@ -75,7 +75,7 @@ describe('① G0 立项门：自主回合不许立项（开新窗口也不行）
       { id: 'name', selected: ['人被问了所以能立项'] },
       { id: 'category', selected: ['feature'] },
       { id: 'difficulty', selected: ['standard'] },
-      { id: 'doc_location', selected: ['docs/requirements/<REQ>/'] },
+      { id: 'location', selected: ['docs/requirements/<REQ>/'] },
     ] as never
     h.deps.questions = q
     const out = await captureRequirement(h.deps, {}, exec) as { success?: boolean }

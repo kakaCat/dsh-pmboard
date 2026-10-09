@@ -183,7 +183,7 @@ export interface RequirementRecord {
   /** 需求级工作区根（REQ-260929210741-30ae FR-6，与 shared/protocol.ts 同形）：产物相对此根落盘 */
   workspaceRoot?: string
   /**
-   * 立项四问里选的「需求文档位置」（台账字段；服务端一直有下发，本类型此前漏了它——
+   * 立项弹框里选的「需求文档位置」（台账字段；服务端一直有下发，本类型此前漏了它——
    * 于是客户端要显示"文档在哪"时只能自己拼 `docs/requirements/<id>/`，2026-10-06 用户现场：
    * 面板显示与实际落盘对不上）。解析口径见 `domain/requirement/DocLocation`。
    */
@@ -207,12 +207,9 @@ export interface RequirementRecord {
     pausedReason?: string
     /** 当前运行 ID（后台任务标识） */
     runId?: string
-    /** 当前正在执行的子卡 ID */
-    currentSubtaskId?: string
-    /** 当前步骤索引（checkpoint） */
-    stepIndex?: number
-    /** 最后心跳时间（ms timestamp） */
-    heartbeatAt?: number
+    // REQ-261008011118-defe BUG-1（DD-1）：`currentSubtaskId`/`stepIndex`/`heartbeatAt` 已删。
+    // 它们的写侧（CheckpointManager.writeCheckpoint）在生产代码 0 调用方 ⇒ 读侧恒报默认值
+    // （恒第 0 步 / 无当前子卡）。进度真值在任务台账（reqboard_task_tree），此处不再留第二份。
   }
   /**
    * host 推进锁持有时刻（ms）——**扁平键**（不是 `advance.lockAt`）：`/state` 摘要把台账的
@@ -421,6 +418,34 @@ export interface BoardState {
    * 缺该字段 = 旧服务端 → 客户端逐字降级（不渲染来源标注）；缺**该 req 键** = 该条不渲染标注。
    */
   origins?: Record<string, RequirementOrigin>
+  /**
+   * 挂起确认票（REQ-261007223647-da5d t6/t10 · serves: FR-5 / 设计 IF-5）：
+   * 看板首屏据此渲染「有人在你门口等着」横带。
+   *
+   * 缺该键 = **旧服务端**（按 `[]` 处理：不渲染横带，不报错）；空数组 = 确实没有票等在门口。
+   * 服务器端只下发**仍然有意义**的票（已落章 / 不是门 / 无可落章产物的不列）。
+   */
+  pending_confirms?: BoardPendingConfirm[]
+}
+
+/**
+ * 看板 pending 票（IF-5 的六键 + 派生剩余时间所需字段）。
+ *
+ * 六个契约键：`ticket` / `requirement_id` / `target` / `kind?` / `created_at` / `interrupted`；
+ * `interrupted_at` 与 `expires_at` 是加法式补入——没有它们客户端算不出「还剩几分钟」
+ * （公式基准是 `interrupted_at ?? created_at`）。
+ */
+export interface BoardPendingConfirm {
+  ticket: string
+  requirement_id: string
+  target: 'artifact' | 'plan'
+  kind?: ArtifactKind
+  created_at: number
+  interrupted_at?: number
+  interrupted: boolean
+  expires_at?: number
+  /** 服务端读时算好的剩余毫秒（不落库）；缺省 = 旧服务端 → 客户端按 expires_at/created_at 自算 */
+  remaining_ms?: number
 }
 
 /** 需求卡片在泳道列上的紧凑投影（视图层用，避免全量渲染） */

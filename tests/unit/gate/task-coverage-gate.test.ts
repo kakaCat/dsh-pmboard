@@ -3,7 +3,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { taskCoverageGateCheck } from '../../../src/application/gate/task-coverage-gate.js'
+// REQ-261008020617-088f RF-2：三份同构门已合并为 gate/rtm-gates.ts 单点；
+// 读盘改走 DocRepository（构造需求自己的根），断言一字未改。
+import { taskCoverageGateCheck } from '../../../src/application/gate/rtm-gates.js'
+import { FileDocRepository } from '../../../src/adapters/FileDocRepository.js'
 import type { RequirementRecord } from '../../../src/shared/protocol.js'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
@@ -56,7 +59,7 @@ describe('taskCoverageGateCheck', () => {
       updatedBy: { kind: 'human', sessionId: 'test' }
     }
 
-    const result = await taskCoverageGateCheck(req, tmpDir)
+    const result = await taskCoverageGateCheck(req, new FileDocRepository({ workspaceRoot: tmpDir }))
 
     expect(result.passed).toBe(true)
     expect(result.message).toContain('所有功能需求都有任务引用')
@@ -91,7 +94,7 @@ describe('taskCoverageGateCheck', () => {
       updatedBy: { kind: 'human', sessionId: 'test' }
     }
 
-    const result = await taskCoverageGateCheck(req, tmpDir)
+    const result = await taskCoverageGateCheck(req, new FileDocRepository({ workspaceRoot: tmpDir }))
 
     expect(result.passed).toBe(false)
     expect(result.code).toBe('task_coverage_incomplete')
@@ -115,7 +118,7 @@ describe('taskCoverageGateCheck', () => {
       updatedBy: { kind: 'human', sessionId: 'test' }
     }
 
-    const result = await taskCoverageGateCheck(req, tmpDir)
+    const result = await taskCoverageGateCheck(req, new FileDocRepository({ workspaceRoot: tmpDir }))
 
     expect(result.passed).toBe(false)
     expect(result.code).toBe('rtm_not_found')

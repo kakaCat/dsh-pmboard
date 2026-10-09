@@ -44,6 +44,21 @@ const SUBMIT_KIND_STAGES: Readonly<Record<string, readonly RequirementStatus[] |
 }
 
 /**
+ * task_amend op → 合法阶段集（参数级判定；**未列的 op = 回落工具级判定**）。
+ *
+ * 为什么需要（REQ-261008020552-4aa0 FR-1）：archive_amend 收编为 op=archive 后，
+ * 工具级表把 reqboard_task_amend 限在 implementing/accepting——但归档补录的合法窗口
+ * 是 archived/done（且原工具不在表内 = 全阶段放行，由用例自身守卫状态）。
+ * 不做 op 化会在归档态需求上误注「越界纠偏提示」——本表恢复的是「提示等价」。
+ */
+const TASK_AMEND_OP_STAGES: Readonly<Record<string, readonly RequirementStatus[] | undefined>> = {
+  archive: undefined,
+  // REQ-261008020552-4aa0 FR-2：断点补写（op=interruption）收编前在工具级表里的取值就是
+  // undefined（全阶段放行）——收编后按 op 恢复同一口径。
+  interruption: undefined,
+}
+
+/**
  * 处理一次 tool/call 事件：判定越界 → 限流 → 注入。
  *
  * 参数级判定（submit 按 kind、move 按 to）在工具名粗判通过后追加——
@@ -72,6 +87,19 @@ export function guardToolCall(
       return injectOnce(deps, windowKey, status, fmt('{tool}(kind={kind})', { tool: toolName, kind }))
     }
     return false
+  }
+
+  if (toolName === 'reqboard_task_amend') {
+    const op = typeof args?.op === 'string' ? args.op : ''
+    // 表内命中的 op 按参数级判定（undefined = 全阶段放行）；未命中（refs/adopt/chain/缺省/未知）
+    // 回落工具级判定（TOOL_STAGE_MAP 的 reqboard_task_amend 行，现状不动）。
+    if (op in TASK_AMEND_OP_STAGES) {
+      const opStages = TASK_AMEND_OP_STAGES[op]
+      if (opStages !== undefined && !opStages.includes(status)) {
+        return injectOnce(deps, windowKey, status, fmt('{tool}(op={op})', { tool: toolName, op }))
+      }
+      return false
+    }
   }
 
   if (toolName === 'reqboard_move') {

@@ -23,9 +23,19 @@
  *
  * 本卡的核心推论（写在最显眼处，因为它就是 FR-5 的全部内容）：
  * **所有门禁都在写入前判完**，故同批提交的卡天然看不到彼此的 done 事件
- * ⇒ 同批卡互不触发 60s 节流，跨批仍触发。判据本身**一条未改**（`DoneEvidenceSpec`），
+ * ⇒ 同批的**非子卡在 `MOVE_BATCH_DONE_MAX` 张以内**互不触发 60s 节流（上限见下一条），
+ * 跨批仍触发。判据本身**一条未改**（`DoneEvidenceSpec`），
  * 事故 C 的防线由**逐卡 done 凭证门**继续承载：一次调用关 4 张没汇报的卡，仍会逐张被
  * `REQBOARD_NO_REPORT` / `REQBOARD_NO_EVIDENCE` 拒。
+ *
+ * REQ-261008011118-defe BUG-2（DD-2，2026-10-08）——上一条推论留下了**绕过额度**：
+ * 「同批互不可见」使 60s 节流在整个批内失效，单次调用可关满 `MOVE_BATCH_MAX = 20` 张顶层卡
+ * （实测读数：20 张一次全落）。修法 = 给「同批互不触发」加**批内条数上限**
+ * `MOVE_BATCH_DONE_MAX = 3`（同批非子卡 done 最多 3 张，超出项按既有
+ * `REQBOARD_BULK_CLOSE` 结构拒 + 确定等待指引），把单次调用的绕过额度从 20 压到 3；
+ * 判据（`DoneEvidenceSpec`）仍**一行不改**，跨批节流与子卡豁免口径不变。
+ * 为什么是"限条数"而不是"批内计节流"：后者等于"一批只能关 1 张"，会推翻上一版
+ * 「同批 ≤N 互不触发」的小批可用性与既有断言（见 `design/fix-design.md` DD-2 取舍表）。
  *
  * 错误码在用例边界映射：domain 的 human_gate → REQBOARD_HUMAN_GATE（agent 工具传输契约）。
  *
@@ -75,6 +85,20 @@ import { treeSummaryOf, type TaskTreeSummary } from './TaskTree.js'
 
 /** 批量上限（1–20）：工具参数校验与本用例共用同一个数（两处各写一份必然漂移）。 */
 export const MOVE_BATCH_MAX = 20
+
+/**
+ * 批内**非子卡** done 条数上限（REQ-261008011118-defe BUG-2 / DD-2）。
+ *
+ * 为什么需要它：同批判定用**冻结快照**（同批互不可见）⇒ 60s 节流在批内整批失效，
+ * 单次调用可关满 `MOVE_BATCH_MAX = 20` 张顶层卡（实测 20 张全落）。
+ * 上限把单次调用的绕过额度压到 3，同时保住「同批 ≤N 张不触发节流」的既有小批可用性
+ * （既有断言正是 3 张，故 N=3 不引入额外的口径改写）。
+ *
+ * 口径：只数 `to === 'done'` 且**非子卡**且已通过 done 凭证门的项（子卡链豁免节流，
+ * 也就不该吃这个额度）；超出项按既有 `REQBOARD_BULK_CLOSE` 结构拒并给确定等待指引。
+ * 按**需求**分别计数（节流本身是"同需求 60s"口径），入参顺序先到先得。
+ */
+export const MOVE_BATCH_DONE_MAX = 3
 
 /** 批量默认节流窗口（与 deps.doneThrottleMs 的缺省同源：60s，判据在 DoneEvidenceSpec）。 */
 const DEFAULT_DONE_THROTTLE_MS = 60_000
@@ -226,6 +250,12 @@ interface GateContext {
   req: RequirementRecord | undefined
   /** 批内已计划开工的父卡数——防止批量绕过既有父卡并发上限。 */
   parentStarts: Map<string, number>
+  /**
+   * 批内已判定通过的**非子卡** done 项数（按需求计数）——防止「同批互不可见」
+   * 把 60s 节流在批内整批绕过（REQ-261008011118-defe BUG-2 / DD-2）。
+   * 与 `parentStarts` 同一手法：不是改判据，是让判据在批量语义下仍然成立。
+   */
+  batchDoneCount: Map<string, number>
 }
 
 /** 角色判定：子卡（有 parentId）/ 父卡（有子卡）/ 存量卡。 */
@@ -564,8 +594,11 @@ type GateResult = { kind: 'gate'; gate: MoveGateOk } | { kind: 'reject'; plan: M
  *
  * 可见性口径（本卡 FR-5 的全部内容）：`snapshot` 是回调入口处的冻结快照，**全部项的判定都先跑完**
  * 再落笔 ⇒ 同批提交的卡看不到彼此的 done 事件 ⇒ 同批互不触发 60s 节流；跨批仍触发（判据未改）。
- * 唯一的例外是**父卡并发上限**：那里的"同批不可见"等于**放宽**既有上限（一次调用开 10 张父卡），
- * 故按批内已判定通过的开工数**叠加**——这不是改判据，是让判据在批量语义下仍然成立。
+ * 两处例外都是"让判据在批量语义下仍然成立"，都不是改判据：
+ *   · **父卡并发上限**：同批不可见等于放宽上限（一次调用开 10 张父卡）→ 按批内已判定通过的开工数叠加；
+ *   · **批内 done 条数上限**（REQ-261008011118-defe BUG-2 / DD-2）：同上，等于把 60s 节流在批内
+ *     整批绕过（实测单次可关 20 张顶层卡）→ 按批内已判定通过的**非子卡** done 数叠加，达
+ *     `MOVE_BATCH_DONE_MAX` 后按既有 `REQBOARD_BULK_CLOSE` 结构拒。
  */
 function gateOne(deps: UseCaseDeps, snapshot: readonly TaskRecord[], plan: MovePlanOk, ctx: GateContext): GateResult {
   const taskId = plan.task_id
@@ -653,6 +686,36 @@ function gateOne(deps: UseCaseDeps, snapshot: readonly TaskRecord[], plan: MoveP
     }
   }
 
+  // 批内 **非子卡** done 条数上限（REQ-261008011118-defe BUG-2 / DD-2）。
+  // 位置在 done 凭证门**之后**：不合规的项先按自己的门禁被拒（不占额度，回执也更有用）；
+  // 子卡豁免（子卡链本就不吃 60s 节流，也不该吃这个额度）。达上限的项复用既有
+  // `REQBOARD_BULK_CLOSE` 结构 + 确定的等待读数，故顶层 `throttleRemainingMs`/`guidance`
+  // 由既有装配（executeMoveTasks 末尾）自动产出，回执键集零变化。
+  if (to === 'done' && role !== 'subtask') {
+    const used = ctx.batchDoneCount.get(snapTask.requirementId) ?? 0
+    if (used >= MOVE_BATCH_DONE_MAX) {
+      const throttleMs = deps.doneThrottleMs ?? DEFAULT_DONE_THROTTLE_MS
+      const over: MovePlanReject = rejectPlan(
+        plan.index, plan.windowKey, taskId, 'REQBOARD_BULK_CLOSE',
+        fmt(
+          'reqboard_task_move 未执行：本批已收尾 {used} 张非子卡（单批上限 {max} 张，事故 C 的批量防线）——'
+          + '还需等待约 {sec} 秒再关下一张，或把其余收尾交给自动链逐张关闭。'
+          + '合规路径：① 等待后重试（设计内节流，不是故障）；② 子卡链不受此限（可先推进子卡）；'
+          + '③ 批量收口交给自动链，由链逐张关闭',
+          {
+            used: String(used),
+            max: String(MOVE_BATCH_DONE_MAX),
+            sec: String(Math.ceil(throttleMs / 1000)),
+          },
+        ),
+        throttleMs,
+      )
+      const miss: GateResult = { kind: 'reject', plan, reject: over }
+      return miss
+    }
+    ctx.batchDoneCount.set(snapTask.requirementId, used + 1)
+  }
+
   // 累计本批已判定通过的父卡开工（供同批后续项的上限判定；**通过全部门禁后**才计数）。
   if (starting && role !== 'subtask') {
     ctx.parentStarts.set(snapTask.requirementId, (ctx.parentStarts.get(snapTask.requirementId) ?? 0) + 1)
@@ -732,7 +795,7 @@ export async function applyMovePlans(deps: UseCaseDeps, plans: readonly MovePlan
       await mutateQueue(deps, reqId, (tasks) => {
         // ① 冻结快照：拿 mutate 强制重读的那一份（批内全部判定的唯一依据 = 同批互不可见）
         const snapshot: readonly TaskRecord[] = [...tasks]
-        const gateCtx: GateContext = { windowKey, req: reqBeforeMutate, parentStarts: new Map() }
+        const gateCtx: GateContext = { windowKey, req: reqBeforeMutate, parentStarts: new Map(), batchDoneCount: new Map() }
         // ② 全批判定先跑完（写前完成）——坏项在这里定型，不拖累同批其它项
         const verdicts = group.map(plan => gateOneSafe(deps, snapshot, plan, gateCtx))
         // ③ 再落笔合法项（同一次 mutate，一次原子写）

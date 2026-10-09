@@ -61,9 +61,16 @@ export const VENDOR_DIR = join(PKG_ROOT, 'src/domain/prompt/vendor/superpowers')
  */
 // 2026-09-21 用户裁定：设计阶段只写设计文档、不写计划——design 自本表移除，
 // 其 heavy 改为自写档（writing-plans 的写计划纪律迁往 decomposing 档），不再镜像 vendor。
+// 2026-10-08 用户裁定：vendor brainstorming 的主流程（澄清→提方案→分段呈现设计→写 spec）
+// 与本仓阶段边界冲突（设计属 design 节点，需求阶段只做需求定义）——brainstorming 自本表
+// 移除，其 heavy 改为本仓自写完整档；vendor 原文留档不注入（实测：agent 照 vendor 流程
+// 在需求阶段连写类设计代码，被人打断返工）。
+// 2026-10-08 用户裁定（REQ-261008190515-5212）：vendor 的实施阶段主 skill 于 v6.4.2 重写为
+// inline 专版，开篇明说「no implementer subagent per task, no reviewer per task」——与本仓
+// 「任务卡 + 子代理」的实施模式相冲（等于把「别用子代理」的纪律注进实施阶段）。
+// implementing 自本表移除，heavy 改本仓自写完整档；vendor 原文留档不注入。
+// 原镜像的是哪份 skill、留档在哪：见 vendor/superpowers/ATTRIBUTION.md §2 角色列与 §3 镜像清单。
 export const VENDOR_MAIN_SKILLS = {
-  brainstorming: 'brainstorming',
-  implementing: 'executing-plans',
   accepting: 'verification-before-completion',
   archived: 'finishing-a-development-branch',
 }
@@ -216,8 +223,10 @@ export function buildFragmentsSource() {
   lines.push(' * 门槛 tests/prompt-gates.test.ts 第 6 条（源/产物同步）会在不一致时变红。')
   lines.push(' * md 正文逐字节内联（不 trim、不做逐行变换）。')
   lines.push(' *')
-  lines.push(' * P1 说明：六节点各有 light/heavy（heavy 主 skill 原文不裁；overrides 与 common/iron-rules 为 floor）；')
-  lines.push(' * fragments/<stage>/heavy.md 是 vendor/ 原文的逐字节镜像，由同步门禁与 tests/prompt-tiers.test.ts 双保险。')
+  lines.push(' * P1 说明：六节点各有 light/heavy（heavy 主档不裁；overrides 与 common/iron-rules 为 floor）；')
+  lines.push(' * VENDOR_MAIN_SKILLS 映射内的 fragments/<stage>/heavy.md 是 vendor/ 原文的逐字节镜像')
+  lines.push(' * （同步门禁 + tests/prompt-tiers.test.ts 双保险）；brainstorming / design / decomposing')
+  lines.push(' * 的 heavy 为本仓自写完整档（2026-10-08 / 2026-09-21 / REQ-422af1 裁定），不在镜像映射内。')
   lines.push(' *')
   lines.push(' * P2 说明：六节点各有 <category> 类型档（(stage,*,category) ③），并由生成器按难度合成 include-only')
   lines.push(' * 路由壳（(stage,难度,category) ①）——壳无正文，只把节点内容与类型档串起来（见 typeRouteShells）。')

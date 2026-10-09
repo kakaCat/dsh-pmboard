@@ -51,12 +51,12 @@ export type { PendingCaptureMessage }
 
 /**
  * 该窗口的捕获引导 section 文本（乙：提示 agent 识别新工作 → 调 reqboard_capture
- * 弹立项三问（名称/类型/难度）并在同一次调用内创建即立项）。bound / 已有遗留 pending / 无法取 windowKey →
+ * 弹立项框（名称/类型/算力档位/文件落点）并在同一次调用内创建即立项）。bound / 已有遗留 pending / 无法取 windowKey →
  * 返回 ''（零噪音）。永不返回 undefined。
  *
  * 第三参 pending 为确定性消息 hook 登记的本窗口「待捕获候选」：命中时返回
  * 引用该用户消息原文的针对性立项提示（用户裁定：消息到达 → hook 检查窗口是否
- * 需要立项捕获 → 注入提示词让 LLM 调 reqboard_capture 弹三问 → 直接建 REQ），未命中维持静态引导。
+ * 需要立项捕获 → 注入提示词让 LLM 调 reqboard_capture 弹立项框 → 直接建 REQ），未命中维持静态引导。
  * 向后兼容：不传 pending 时行为与旧版完全一致（capture.test.ts 三分支不变）。
  *
  * t2 起本函数是**兼容壳**：`gate-wiring.ts` 改走 head / fallback 两段（见同名函数）；本壳只为
@@ -122,7 +122,7 @@ const BOUND_CONSTANT_BLOCKS: readonly string[] = [
   '- 写完先调 reqboard_submit(kind=design) 登记设计文档（缺省扫全目录，也可指定单份 path）；',
   '- 由你发起确认：**先看登记回执**——若它已写明「已有一道门在等 / 已自动触发确认弹框」，'
     + '就**不要再调 reqboard_ask_confirm**（那会开出第二个框）；改为读确认态或取回执'
-    + '（reqboard_status / reqboard_confirm_receipt）。确认后自动进入拆分；',
+    + '（reqboard_status，或调 reqboard_ask_confirm(ticket=…) 取回执）。确认后自动进入拆分；',
   '',
   '拆分阶段（拆分计划在这里写 · 唯一需要人点头的地方）：',
   '- 把设计落成拆分计划 → reqboard_submit(kind=plan)（path = docs/requirements/<REQ>/decomposition.md，',
@@ -158,12 +158,12 @@ const BOUND_CONSTANT_BLOCKS: readonly string[] = [
   '- 提交后在看板归档页面等待人工最终归档确认。',
   '- 合并去向与必填文档按需求类型限定（feature→architecture/guides，bug→known-issues，',
   '  spike→research，refactor→architecture/work-logs，chore→work-logs），规范见',
-  '  agent-dh/docs/architecture/requirement-archive.md；缺项会被代码级拒绝；',
+  '  docs/architecture/archived-entry.md；缺项会被代码级拒绝；',
   '- 归档材料里写了的合并去向，必须真的把那部分结论写进对应的项目文档；',
   '- 金字塔生长：feature/refactor/spike 必须在材料里申报 manual_updates（更新了哪份文档的哪一节、',
   '  多了什么认知），说明书是 docs/architecture/project-manual.md；bug/doc/chore 写 manual_note 说明即可；',
   '- docs 按 wiki 维护：新页面要有 front-matter 并挂进首页/上层页，未写的主题进首页「待写页」；',
-  '  收工前可跑 python3 agent-dh/scripts/wiki_probe.py 自检死链/孤儿页。',
+  '  收工前自查：新页挂进索引、无死链/孤儿页（知识层可跑 pnpm kb:check 自检）。',
 ]
 
 /**
@@ -374,10 +374,11 @@ export function captureGuidanceText(windowKey: string): string {
     '',
     '本窗口当前没有进行中的需求记录。若用户在本窗口提出了新的工作意图',
     '（新功能 / 缺陷修复 / 文档 / 重构 / 技术调研 / 维护事项），且该工作值得立项，',
-    '直接调 reqboard_capture（pm 专有立项弹框）——一次调用弹出「立项三问」并在同一次调用内',
+    '直接调 reqboard_capture（pm 专有立项弹框）——一次调用弹出「立项弹框」并在同一次调用内',
     '完成创建与窗口绑定：问题一「需求名称」（可经 title_options 传候选，最贴切一项推荐置首，',
     '允许自定义输入）；问题二「需求类型」（feature / bug / doc / refactor / spike / chore）；',
-    '问题三「提示词难度」（simple / standard / advanced / expert）。用户作答即立项确认',
+    '问题三「算力档位」（simple / standard / advanced / expert，直接决定 agent 投入多少 LLM 算力）；',
+    '问题四「文件落点」（选项即拼好的绝对路径预览，作答即见文件落在哪）。用户作答即立项确认',
     '（创建即立项，无待归类/建议卡中间态），**不需要**再补调 reqboard_create。',
     '弹框通道不可用时该工具返回 fallback=board：此时改为文字向用户取值后再调 reqboard_create',
     '（title / category / prompt_difficulty / summary / reason）。',

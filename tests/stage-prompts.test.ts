@@ -38,10 +38,10 @@ function req(over: Partial<RequirementRecord>): RequirementRecord {
 
 /** 每节点 heavy 必须命中的"heavy 独有要素"关键词（逐字来自 vendor 原文 / 自写完整档）。 */
 const HEAVY_ELEMENTS: Readonly<Record<PromptStage, readonly string[]>> = {
-  brainstorming: ['Three Paths', 'YAGNI', 'Red Flags', 'Spike', 'Bounded', 'Architectural'],
+  brainstorming: ['Three Paths', 'YAGNI', 'Red Flags', 'Spike', 'Bounded', 'Architectural'], // 2026-10-08：brainstorming 改本仓自写完整档（纪律骨架关键词保留）
   design: ['设计文档集', '接口与数据契约先定死', '不写任务表'], // 2026-09-21：design 改自写档（只写设计文档）
   decomposing: ['变更盘点', '批次与依赖', '边界校验'],
-  implementing: ['Load plan, review critically', 'When to Stop and Ask for Help'],
+  implementing: ['The Task Loop', 'Common Rationalizations'],
   accepting: ['The Iron Law', 'Rationalization Prevention'],
   archived: ['Present Options', 'Common Rationalizations'],
 }

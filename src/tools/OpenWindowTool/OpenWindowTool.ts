@@ -9,10 +9,10 @@ import { defineTool, type ToolRunContext } from '@deepseek-ai/dsh-tools'
 import type { UseCaseDeps } from '../../application/ports.js'
 import { openWindow } from '../../application/use-cases/OpenWindow.js'
 import { OPEN_WINDOW_PROMPT } from './prompt.js'
-import { renderSmart } from '../shared.js'
+import { renderSmart, WINDOW_MODES, windowInheritanceSchema } from '../shared.js'
 
 /** 造窗方式（受控枚举，与 CreateTool 同款写法：字面量数组经 const 收窄）。 */
-const OPEN_WINDOW_MODES = ['fork', 'create'] as const
+// REQ-261007220012-bd29 FR-6：枚举单源在 tools/shared.ts（WINDOW_MODES）
 
 /** 回执一句话摘要：窗口码 + 一句"去侧栏打开"（刻意不宣称"已经打开了窗口"）+ 继承三态读数。 */
 const openWindowSummary = (v: unknown): string => {
@@ -37,7 +37,7 @@ export function defineOpenWindowTool(deps: UseCaseDeps) {
     parameters: {
       mode: {
         type: 'string',
-        enum: [...OPEN_WINDOW_MODES],
+        enum: [...WINDOW_MODES],
         description: 'fork = 带上下文（默认）；create = 全新空会话',
       },
       at_seq: {
@@ -63,21 +63,7 @@ export function defineOpenWindowTool(deps: UseCaseDeps) {
           parent_session_id: { type: 'string', description: 'fork 的源窗口；create 时缺省' },
           mode: { type: 'string', description: '实际使用的造窗方式：fork / create' },
           degraded_note: { type: 'string', description: '诚实降级说明：会话已创建，请在侧栏打开' },
-          inheritance: {
-            type: 'object',
-            additionalProperties: false,
-            description: '继承回执：标题 / 模式 / 模型三态 + 只记 skipped/failed 的原因（开窗成功时恒出现）',
-            properties: {
-              title: { type: 'string', description: '标题是否写定：set | skipped | failed' },
-              preset: { type: 'string', description: '模式（Agent 预设）是否继承：set | skipped | failed' },
-              model: { type: 'string', description: '模型是否继承：set | skipped | failed' },
-              reasons: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'skipped / failed 的可读原因（每条形如「标题：源会话无标题」）',
-              },
-            },
-          },
+          inheritance: windowInheritanceSchema('继承回执：标题 / 模式 / 模型三态 + 只记 skipped/failed 的原因（开窗成功时恒出现）'),
           delivery: {
             type: 'object',
             additionalProperties: false,

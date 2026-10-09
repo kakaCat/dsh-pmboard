@@ -497,13 +497,15 @@ describe('拆分计划卡面徽章（plan mode；REQ-6f39b5：详情页计划卡
   }
 
   it('卡面徽章：待批 / 已批 / 被退 三态可见', () => {
-    const pending = makeReq({ id: 'REQ-abc123', status: 'brainstorming', plan: basePlan })
+    // FR-5 / D-2：chip 读**服务端下发**的摘要读数 planState（首屏摘要不带 req.plan 大字段）——
+    // 夹具必须按摘要形态喂读数，否则该 chip 永不出现（正是本次缺陷现场）。
+    const pending = makeReq({ id: 'REQ-abc123', status: 'brainstorming', plan: basePlan, planState: 'pending' })
     expect(buildBoard(makeState({ requirements: [pending] }), T0)).toContain('计划待批')
 
-    const approved = makeReq({ id: 'REQ-abc123', status: 'decomposing', plan: { ...basePlan, approvedAt: T0 + HOUR, approvedBy: { kind: 'human' as const } } })
+    const approved = makeReq({ id: 'REQ-abc123', status: 'decomposing', plan: { ...basePlan, approvedAt: T0 + HOUR, approvedBy: { kind: 'human' as const } }, planState: 'approved' })
     expect(buildBoard(makeState({ requirements: [approved] }), T0)).toContain('计划已批')
 
-    const rejected = makeReq({ id: 'REQ-abc123', status: 'brainstorming', plan: { ...basePlan, rejectedAt: T0 + HOUR, rejectedReason: '验收标准太虚，重写' } })
+    const rejected = makeReq({ id: 'REQ-abc123', status: 'brainstorming', plan: { ...basePlan, rejectedAt: T0 + HOUR, rejectedReason: '验收标准太虚，重写' }, planState: 'rejected' })
     expect(buildBoard(makeState({ requirements: [rejected] }), T0)).toContain('计划被退')
   })
 })
@@ -523,6 +525,8 @@ describe('验收区与归档区', () => {
   it('待人工审核：证据逐条展示 + 通过/退回按钮 + 卡面「待人工审核」', () => {
     const req = makeReq({
       status: 'accepting',
+      // FR-5 / D-2：卡面 chip 读服务端门读数 gates（摘要不带上游 artifacts 大字段）
+      gates: [{ kind: 'verification', status: 'pending', count: 1 }],
       verification: {
         summary: '时间线/甘特图已上线',
         evidence: ['pnpm vitest run → 178 passed / 14 files', '截图 /tmp/board.png'],
@@ -577,7 +581,8 @@ describe('验收区与归档区', () => {
       submittedAt: T0,
       submittedBy: { kind: 'agent' as const },
     }
-    const ready = makeReq({ status: 'done', archive })
+    // FR-5：归档 chip 读服务端读数 archivePrepared（判据 = 归档记录 ∨ 归档产物）
+    const ready = makeReq({ status: 'done', archive, archivePrepared: true })
     const detail = buildReqDetail(ready, [], T0 + HOUR)
     expect(detail).toContain('agent-dh/docs/requirements/REQ-abc123')
     // REQ-260922182638-0777 FR-2：归档清单 requirement 由漂移的「需求说明」统一为「需求文档」
@@ -604,7 +609,7 @@ describe('验收区与归档区', () => {
   it('未备材料时指向规范文档（人要知道去哪儿看规则）', () => {
     const detail = buildReqDetail(makeReq({ status: 'done' }), [], T0)
     expect(detail).toContain('reqboard_archive_submit')
-    expect(detail).toContain('agent-dh/docs/architecture/requirement-archive.md')
+    expect(detail).toContain('docs/architecture/archived-entry.md')
   })
 
   it('归档区展示说明书更新点（金字塔向上生长）；无更新时显示理由', () => {

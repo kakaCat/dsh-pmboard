@@ -326,9 +326,10 @@ export function pickDebounced(
 /**
  * 针对性立项提示（消息事件 hook 命中时注入）：引用刚到达的用户消息原文，
  * 指示 LLM 判断该输入是否值得立项——值得则【调 reqboard_capture（pm 专有立项弹框）
- * 一次完成「立项三问 + 创建 + 绑定」】：三问为「需求名称」（候选由本条消息上下文
+ * 一次完成「立项弹框 + 创建 + 绑定」】：弹框逐问为「需求名称」（候选由本条消息上下文
  * 推导、最贴切一项置首推荐、允许自定义输入）「需求类型」（feature/bug/doc/refactor/
- * spike/chore）「提示词难度」（simple/standard/advanced/expert）；**用户作答即立项确认**，
+ * spike/chore）「算力档位」（simple/standard/advanced/expert）「文件落点」（选项即拼好的
+ * 绝对路径预览）；**用户作答即立项确认**，
  * 工具在同一次调用内创建 REQ 并绑定本窗口（创建即立项，无待归类/建议卡中间态，看板
  * 立即可见）。
  *
@@ -381,7 +382,8 @@ export function capturePromptForMessage(windowKey: string, text: string): string
     '   - 本回合第一个工具调用必须是 reqboard_capture',
     '   - 问题一「需求名称」：候选标题经 title_options 传入（最多 3 个），最贴切的置首',
     '   - 问题二「需求类型」：feature / bug / doc / refactor / spike / chore',
-    '   - 问题三「提示词难度」：simple / standard / advanced / expert',
+    '   - 问题三「算力档位」：simple / standard / advanced / expert（决定 agent 投入多少 LLM 算力）',
+    '   - 问题四「文件落点」：选项即拼好的绝对路径预览（当前工作区 / 宿主默认 / 自定义）',
     '   - 用户作答后同一次调用内创建并绑定本窗口',
     '',
     'C. 不立项时：',

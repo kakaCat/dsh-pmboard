@@ -33,6 +33,9 @@ import {
   reject,
   agentIdFromExec,
   requireLiveDriver,
+  // 归档清单是**工作区相对落盘**：写前核验写盘根（根错配即拒，写侧不降级）
+  // —— tests/project-scope.test.ts「工作区相对写盘点必须受保护」要求的保护点。
+  ensureWritableProjectRoot,
 } from '../internal/support.js'
 
 export async function submitArchive(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
@@ -210,6 +213,8 @@ export async function submitArchive(deps: UseCaseDeps, args: unknown, exec: any)
         // 不许拿整篇字节相等当判据——那样每次提交都因时刻不同而重写，`written=false` 永远拿不到。
         const existing = deps.docs.exists(manifestPath) ? await deps.docs.read(manifestPath) : undefined
         if (existing === undefined || stripRenderedAtLines(existing) !== stripRenderedAtLines(manifestText)) {
+          // 写前核验工作区根：错配即拒（异常由本 try 捕获 → 整体拒绝、台账零写入）
+          ensureWritableProjectRoot({ docs: deps.docs }, actual)
           await deps.docs.write(manifestPath, manifestText)
           manifestWritten = true
         }

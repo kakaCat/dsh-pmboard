@@ -1,7 +1,7 @@
 /**
  * TaskTree 用例（REQ-260927144541-0481 FR-3 / design I-3）——父子结构**只读**视图。
  *
- * 为什么需要：需求级 reqboard_status 只给计数（看不到链上是谁），单卡级 reqboard_task_status
+ * 为什么需要：需求级 reqboard_status 只给计数（看不到链上是谁），单卡级单卡查询工具
  * 又要求先知道卡 id——"链上有哪几张卡、各自到哪一步"此前只能靠人脑拼。本用例把台账里
  * parentId + dependsOn 已经表达的结构，投影成一次调用可读的树。
  *
@@ -19,6 +19,7 @@ import type { CardFootprint } from '../../domain/task/Footprint.js'
 import type { TaskRecord } from '../../shared/protocol.js'
 import { normalizeText, taskRoleIn } from '../../shared/protocol.js'
 import { countDoneTasks } from '../../domain/status/Predicates.js'
+import { TASK_STATUS_PROGRESS } from '../../domain/task/TaskStatus.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { requirementStoreOf, taskStoreOf } from './queue-access.js'
 // t7（FR-8）：余量的**读取口、唯一算法与固定标注**都在输入包模块（两处展示共用一份口径），
@@ -161,6 +162,88 @@ function fail(code: string, requirementId: string, detail: string): TaskTreeResu
 }
 
 /**
+ * 单卡展开模式的返回体（REQ-261007220012-bd29 FR-3）——**与原单卡查询工具 逐字同形**，
+ * 只是把原本平铺的 status/progress/run/report/workflow 收进 `task` 键下（父卡树模式下 `parents` 才是主体）。
+ */
+export interface SingleCardResult {
+  success: boolean
+  task_id: string
+  requirement_id?: string
+  /** 台账单卡视图（旧 task_status 的返回体，挂在 task 键下）。 */
+  task?: Record<string, unknown>
+  error?: string
+  code?: string
+}
+
+function failSingle(code: string, taskId: string, detail: string): SingleCardResult {
+  const out: SingleCardResult = { success: false, task_id: taskId, error: fmt('{code}：{detail}', { code, detail }), code }
+  return out
+}
+
+/**
+ * 单卡展开（FR-3）：读台账 lastRun / lastReport 与状态进度映射——
+ * 判定逻辑逐字沿用被合并的 旧的单卡查询工具（对照 domain/task/TaskStatus 的 TASK_STATUS_PROGRESS，
+ * 状态→进度映射仍是 domain 单点）。
+ *
+ * 注意（与 treeViewOf 同款纪律）：本文件是 TaskTreeTool 的响应源，静态扫描把裸 `return {…}` 的
+ * 顶层键当响应键 ⇒ 一律先建变量再 return。
+ */
+async function singleCardOf(deps: UseCaseDeps, taskId: string): Promise<SingleCardResult> {
+  const store = deps.taskStore
+  if (store === undefined) {
+    // 未装配 = 组合根配置错误：显式失败，不谎报「任务不存在」（原单卡查询工具口径）。
+    const notReady: SingleCardResult = {
+      success: false,
+      task_id: taskId,
+      task: { task_id: taskId, status: 'error', progress: 0 },
+      error: '任务存储（TaskStore）未装配，无法读取任务',
+    }
+    return notReady
+  }
+  const task = await store.get(taskId)
+  if (task === undefined) {
+    // 判别位仍是 `task.status = 'not_found'`（旧契约），且**不编错误码**——维持既有消费者契约。
+    const missing: SingleCardResult = {
+      success: false,
+      task_id: taskId,
+      task: { task_id: taskId, status: 'not_found', progress: 0 },
+      error: fmt('任务不存在：{id}', { id: taskId }),
+    }
+    return missing
+  }
+  const rawProgress = (TASK_STATUS_PROGRESS as Record<string, number>)[task.status] ?? 0
+  const card: Record<string, unknown> = {
+    task_id: task.id,
+    status: task.status,
+    progress: Math.min(100, Math.max(0, rawProgress)),
+  }
+  const run = task.lastRun
+  const report = task.lastReport
+  if (run !== undefined) {
+    const runView: Record<string, unknown> = {
+      ok: run.ok,
+      stopReason: run.stopReason,
+      valueNonEmpty: run.valueNonEmpty,
+    }
+    if (run.reason !== undefined) runView.reason = run.reason
+    card.run = runView
+  }
+  if (report !== undefined) {
+    card.report = {
+      summary: report.completed.length > 0 ? report.completed.join('；') : '无完成项',
+      completedCount: report.completed.length,
+      filesChangedCount: report.filesChanged.length,
+    }
+  }
+  if (run !== undefined) {
+    // 键保留（既有消费者契约）：内容 = 真实 run 摘要。
+    card.workflow = { at: run.at, ok: run.ok, stopReason: run.stopReason, valueNonEmpty: run.valueNonEmpty }
+  }
+  const ok: SingleCardResult = { success: true, task_id: task.id, requirement_id: task.requirementId, task: card }
+  return ok
+}
+
+/**
  * 单根投影（父卡 + 链序子卡 + 一句 note）——**树视图的唯一实现**。
  *
  * REQ-261007100513-6749 t4：抽成可复用 helper，让**读路径**（`reqboard_task_tree`）与
@@ -239,9 +322,43 @@ export async function executeTaskTree(
   deps: UseCaseDeps,
   args: unknown,
   exec: unknown,
-): Promise<TaskTreeResult> {
+): Promise<TaskTreeResult>
+/** 单卡展开模式（FR-3 并入单卡查询）返回体：与旧单卡查询工具 逐字同形。 */
+export async function executeTaskTree(
+  deps: UseCaseDeps,
+  args: unknown,
+  exec: unknown,
+  single: true,
+): Promise<SingleCardResult>
+export async function executeTaskTree(
+  deps: UseCaseDeps,
+  args: unknown,
+  exec: unknown,
+  single?: true,
+): Promise<TaskTreeResult | SingleCardResult> {
   const windowKey = agentIdFromExec(deps, exec)
   const a = (args ?? {}) as Record<string, unknown>
+  // FR-3（REQ-261007220012-bd29）：task_id 入参 = 单卡展开模式（等价原单卡查询工具）。
+  // 与 parent_id 互斥——两个都传说明调用方想同时做两件事，宁可拒绝也不猜。
+  const taskId = normalizeText(a.task_id, 'task_id', 64)
+  if (taskId.length > 0) {
+    if (normalizeText(a.parent_id, 'parent_id', 64).length > 0) {
+      return failSingle('REQBOARD_INVALID_INPUT', taskId, 'task_id（单卡展开）与 parent_id（父子结构）互斥：一次只查一样')
+    }
+    return singleCardOf(deps, taskId)
+  }
+  if (single === true) {
+    return failSingle('REQBOARD_INVALID_INPUT', '', '单卡展开模式需要 task_id')
+  }
+  return executeTree(deps, a, windowKey)
+}
+
+/** 父子结构模式（原路径，逐字保留）。 */
+async function executeTree(
+  deps: UseCaseDeps,
+  a: Record<string, unknown>,
+  windowKey: string,
+): Promise<TaskTreeResult> {
   // t8/B11：绑定读走新端口（只读摘要）
   const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
 

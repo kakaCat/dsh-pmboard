@@ -12,7 +12,12 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { definePlanSubmitTool, defineDecomposeTool, defineMoveTool } from './helpers/tool-deps.js'
+import { EventEmitter } from 'node:events'
+import { definePlanSubmitTool, defineDecomposeTool, defineMoveTool, taskStoreOf } from './helpers/tool-deps.js'
+// 「放行」类断言改走**看板人路径**（design/fix-design.md BUG-2）：decomposing → implementing 是人工闸门，
+// 工具路径的 actor 硬编码 'agent' ⇒ 结构上不可达。形状照抄 tests/artifact-gates.test.ts:417。
+import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
+import { createReqboardHandler } from '../src/http/routes.js'
 
 const W = 'session-e2e-0001'
 const REQ = 'REQ-e2e1'
@@ -30,6 +35,24 @@ const PLAN_TASKS = [{
   description: '做甲', acceptance: 'npx vitest run tests/a.test.ts 全绿', implementation: '改 src/a.ts 加甲 + 单测',
 }]
 
+/** 看板 HTTP 请求替身（与 tests/artifact-gates.test.ts 的 fakeReq/fakeRes 同款形状）。 */
+function fakeReq(body: unknown, url: string): any {
+  const req = new EventEmitter() as any
+  req.url = url
+  req.method = 'POST'
+  req[Symbol.asyncIterator] = async function* () {
+    if (body !== undefined) yield Buffer.from(JSON.stringify(body), 'utf8')
+  }
+  return req
+}
+function fakeRes(): any {
+  const res: any = new EventEmitter()
+  res.statusCode = 0
+  res.writeHead = (code: number) => { res.statusCode = code; return res }
+  res.end = (text?: string) => { res.payload = text === undefined ? undefined : JSON.parse(text); return res }
+  return res
+}
+
 describe('全链路：需求文档 → 计划批准 → 拆分 → 出口门禁', () => {
   let dir: string
   let prevCwd: string
@@ -37,6 +60,8 @@ describe('全链路：需求文档 → 计划批准 → 拆分 → 出口门禁'
   let plan: { execute: (a: unknown, e: unknown) => Promise<any> }
   let decompose: { execute: (a: unknown, e: unknown) => Promise<any> }
   let move: { execute: (a: unknown, e: unknown) => Promise<any> }
+  /** 看板 HTTP 入口：「放行」类断言走它（人工闸门只认人）。 */
+  let board: ReturnType<typeof createReqboardHandler>
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), 'pmboard-triad-e2e-'))
@@ -47,11 +72,23 @@ describe('全链路：需求文档 → 计划批准 → 拆分 → 出口门禁'
     plan = definePlanSubmitTool(deps) as never
     decompose = defineDecomposeTool(deps) as never
     move = defineMoveTool(deps) as never
+    // 队列用 taskStoreOf(deps) 的同一实例（记忆化）：工具播种的卡，看板入口必须看得见。
+    board = createReqboardHandler({
+      requirementStore: store, taskStore: taskStoreOf(deps), now: () => Date.now(),
+      docs: new FileDocRepository({ workspaceRoot: dir }),
+    })
   })
   afterEach(() => {
     process.chdir(prevCwd)
     rmSync(dir, { recursive: true, force: true })
   })
+
+  /** 看板人路径的一次 POST。 */
+  async function post(url: string, body: unknown) {
+    const res = fakeRes()
+    await board(fakeReq(body, '/dashboard/api/reqboard' + url), res)
+    return res
+  }
 
   const exec = { agent: { id: W } }
 
@@ -114,8 +151,9 @@ describe('全链路：需求文档 → 计划批准 → 拆分 → 出口门禁'
       const stop = rest.indexOf('\n## ')
       expect((stop >= 0 ? rest.slice(0, stop) : rest).trim().length, h + ' 正文为空').toBeGreaterThan(0)
     }
-    const out = await move.execute({ to: 'implementing' }, exec)
-    expect((out as { to?: string }).to).toBe('implementing')
+    const out = await post('/req/move', { id: REQ, to: 'implementing', actor: 'human' })
+    expect(out.statusCode).toBe(200)
+    expect(out.payload.data.status).toBe('implementing')
   })
 
   it('卡被改坏（删掉一节）→ 出口门禁拦下 task_card_incomplete', async () => {

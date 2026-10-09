@@ -1,14 +1,14 @@
 /**
- * task_run / task_execute 契约（REQ-260927144541-0481 FR-1/FR-2）。
+ * task_run 契约（REQ-260927144541-0481 FR-1/FR-2；REQ-261007220012-bd29 FR-1 删别名后只余主入口）。
  * serves: FR-1, FR-2
  *
  * 口径：① 参数与副作用显式（task_id 与 requirement_id 两种调用同形，且调用即写 autoRun）；
  * ② 返回体与 output.schema 逐键对齐（additionalProperties:false 下未声明键会被绑定层拒收）；
- * ③ 别名是真委托（同一实现，不再各跑一套）。
+ * ③ 旧 task_execute 别名已物理删除（本批 FR-1），不再有"别名等价"用例。
  */
 import { describe, expect, it } from 'vitest'
 import { makeHarness, req, task } from './application/harness.js'
-import { defineAdvanceTool, defineTaskExecuteTool } from '../src/tools/index.js'
+import { defineTaskRunTool } from '../src/tools/index.js'
 
 const W = 'session-w-001'
 const run = (t: unknown, args: unknown): Promise<Record<string, unknown>> =>
@@ -36,7 +36,7 @@ describe('reqboard_task_run（FR-1/FR-2）', () => {
     const h = seed()
     await h.seedSettled()
     h.deps.jobs = jobsPort() as never
-    const out = await run(defineAdvanceTool(h.deps), { task_id: 't-p' })
+    const out = await run(defineTaskRunTool(h.deps), { task_id: 't-p' })
     expect(out.success).toBe(true)
     expect(out.status).toBe('dispatched')
     expect(typeof out.job_id).toBe('string')
@@ -48,12 +48,12 @@ describe('reqboard_task_run（FR-1/FR-2）', () => {
     const a = seed()
     await a.seedSettled()
     a.deps.jobs = jobsPort() as never
-    const outA = await run(defineAdvanceTool(a.deps), { task_id: 't-p' })
+    const outA = await run(defineTaskRunTool(a.deps), { task_id: 't-p' })
 
     const b = seed()
     await b.seedSettled()
     b.deps.jobs = jobsPort() as never
-    const outB = await run(defineAdvanceTool(b.deps), { requirement_id: 'REQ-000001' })
+    const outB = await run(defineTaskRunTool(b.deps), { requirement_id: 'REQ-000001' })
 
     expect(Object.keys(outB).sort()).toEqual(Object.keys(outA).sort())
     expect(outB.requirement_id).toBe('REQ-000001')
@@ -62,7 +62,7 @@ describe('reqboard_task_run（FR-1/FR-2）', () => {
 
   it('TC-2 不传任何 id 且未绑定 → REQBOARD_NO_BOUND_REQ（不静默当成功）', async () => {
     const h = makeHarness()
-    const out = await run(defineAdvanceTool(h.deps), {})
+    const out = await run(defineTaskRunTool(h.deps), {})
     expect(out.success).toBe(false)
     expect(out.code).toBe('REQBOARD_NO_BOUND_REQ')
   })
@@ -71,7 +71,7 @@ describe('reqboard_task_run（FR-1/FR-2）', () => {
     const h = makeHarness()
     h.seedRequirementSync(req({ status: 'implementing', sourceSessionId: 'session-other' }))
     await h.seedSettled()
-    const out = await run(defineAdvanceTool(h.deps), { requirement_id: 'REQ-000001' })
+    const out = await run(defineTaskRunTool(h.deps), { requirement_id: 'REQ-000001' })
     expect(out.success).toBe(false)
     expect(out.code).toBe('REQBOARD_NOT_BOUND_TO_WINDOW')
   })
@@ -80,7 +80,7 @@ describe('reqboard_task_run（FR-1/FR-2）', () => {
     const h = seed()
     await h.seedSettled()
     h.deps.jobs = jobsPort() as never
-    const tool = defineAdvanceTool(h.deps) as unknown as { output?: { schema?: { properties?: Record<string, unknown> } } }
+    const tool = defineTaskRunTool(h.deps) as unknown as { output?: { schema?: { properties?: Record<string, unknown> } } }
     const declared = new Set(Object.keys(tool.output?.schema?.properties ?? {}))
     const out = await run(tool, { task_id: 't-p' })
     expect(Object.keys(out).filter((k) => !declared.has(k))).toEqual([])
@@ -105,7 +105,7 @@ describe('reqboard_task_run（FR-1/FR-2）', () => {
     h.seedRequirementSync(locked)
     await h.seedSettled()
 
-    const out = await run(defineAdvanceTool(h.deps), { task_id: 't-p' })
+    const out = await run(defineTaskRunTool(h.deps), { task_id: 't-p' })
     expect(out.success).toBe(false)
     expect(out.status).toBe('error')
     expect(out.code).toBe('REQBOARD_ADVANCE_LOCKED')
@@ -113,19 +113,5 @@ describe('reqboard_task_run（FR-1/FR-2）', () => {
     expect(String(out.error)).toContain('run-inflight')
     // 关键回归：绑定层要求 lossless JSON——含 undefined 的对象 JSON 往返后不再相等。
     expect(JSON.parse(JSON.stringify(out))).toEqual(out)
-  })
-})
-
-describe('reqboard_task_execute（FR-1：兼容别名是真委托）', () => {
-  it('TC-3 返回体与 task_run 同形，且同样写 autoRun', async () => {
-    const h = seed()
-    await h.seedSettled()
-    h.deps.jobs = jobsPort() as never
-    const out = await run(defineTaskExecuteTool(h.deps), { task_id: 't-p' })
-    expect(out.success).toBe(true)
-    expect(out.status).toBe('dispatched')
-    expect(out.job_id).toBe('job-1')
-    expect(typeof out.run_id).toBe('string')
-    expect((await h.store.get('REQ-000001'))!.autoRun).toBe(true)
   })
 })

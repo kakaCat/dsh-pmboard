@@ -966,9 +966,44 @@ export interface UserQuestionPort {
       gate?: GateId
     },
   ): Promise<readonly AskAnswer[]>
+
+  /**
+   * 限时等待（REQ-261007223647-da5d t3 · FR-1）：窗口内作答 → `answered`；
+   * 到期 → `pending`（**不是错误**：宿主卡片仍可作答，票也不该因此丢）。
+   *
+   * 可选实现：装了宿主 `askTimed` 的适配器直接透传；未装的走 `askWithBudget` 的本地竞速兜底。
+   * 未实现时调用方一律经 `application/internal/ask-timed.ts` 的 `askWithBudget`，不直接碰它。
+   */
+  askTimed?(
+    questions: readonly AskQuestion[],
+    opts: { agent?: unknown; signal?: unknown; gate?: GateId; timeoutMs: number },
+  ): Promise<AskTimedResult>
 }
 
-/** 单个弹框问题（题干与选项都要短——长文本会把选项挤出可视区）。 */
+/**
+ * 限时等待结果（见 `UserQuestionPort.askTimed`）。三态**必须分开**：
+ *  - `answered` 人答了；
+ *  - `pending` 到点还没答（**不是错误**，票留着、卡片还能答）；
+ *  - `rejected` 等待本身失败/被取消（ASK_ABORTED、权限不足…）——**不能并进 pending**，
+ *    否则"用户取消"会被记成"超时"（t5 留痕按类型分账，合并即失真）。
+ */
+export type AskTimedResult =
+  | { kind: 'answered'; answers: readonly AskAnswer[] }
+  | { kind: 'pending' }
+  | { kind: 'rejected'; error: unknown }
+
+/**
+ * 单个弹框问题（题干与选项都要短——长文本会把选项挤出可视区）。
+ *
+ * ⚠️ **字段值不得为 `undefined`**（REQ-261008103718-f1ea FR-1，2026-10-08 事故）：
+ * 弹框请求要走 host→client 的 remote 事件，宿主网关要求**无损 JSON**——值为 `undefined`
+ * 的键（含 `{ description: undefined }` 这种"键在值为 undefined"的写法）会让**整条请求**
+ * 被拒收（`api gateway: Remote event request is not lossless JSON data`），弹框根本不出现。
+ * 写可选字段请用**条件展开**：
+ *   `...(hasDesc ? { description: '…' } : {})`   ✅
+ *   `description: hasDesc ? '…' : undefined`     ❌
+ * 适配器（UserQuestionsAdapter）会在出口兜底清洗，但上游写对才是正解。
+ */
 export interface AskQuestion {
   id: string
   header?: string
@@ -1189,16 +1224,26 @@ export interface FailureAlertPort {
 }
 
 /**
- * 立项拒绝留痕（REQ-260922012924-2e29 FR-5）：「用户在立项弹框选择不立项」的事实。
- * 用途：capture 调用超时/中断导致答复丢失后，重试仍能看见"用户刚拒绝过"，不再重弹。
+ * 立项弹框交互留痕（REQ-260922012924-2e29 FR-5；REQ-261007223647-da5d t5 起扩为三类）。
+ *
+ * 答什么：这个窗口最近在立项弹框上做过什么——点了 ✖️（reject）、还是直接取消/暂离（cancel）、
+ * 还是等到点没作答（timeout）。**取消与超时原先一律不留痕**，于是"用户明明取消了、agent 还弹"
+ * 只能靠人抱怨才发现（2026-10-07 现场）。
+ *
+ * 用途三条：① reject 仍在 TTL 内 → 不再弹框（原粘滞语义）；② cancel 在 TTL 内累计到阈值 →
+ * 不再弹框并提议走看板（FR-2）；③ 回执与复盘可查"到底发生了什么"。
  */
+export type CaptureInteractionKind = 'reject' | 'cancel' | 'timeout'
+
 export interface CaptureRejection {
   windowKey: string
   at: number
   title?: string
+  /** 交互类型；缺省（旧记录）按 `reject` 处理——旧文件读取零迁移。 */
+  kind?: CaptureInteractionKind
 }
 
-/** 拒绝留痕端口：record 同步受理异步落盘（失败只告警不抛）；readAll 缺文件 → []，损坏由调用方降级。 */
+/** 交互留痕端口：record 同步受理异步落盘（失败只告警不抛）；readAll 缺文件 → []，损坏由调用方降级。 */
 export interface CaptureRejectionPort {
   record(entry: CaptureRejection): void
   readAll(): Promise<readonly CaptureRejection[]>
@@ -1576,6 +1621,80 @@ export interface SkillInstallPort {
   readManifest(root: string): Promise<string | undefined>
 }
 
+// ---------------------------------------------------------------------------
+// 宿主文件面端口（REQ-261008020617-088f RF-3 / RF-5）
+// ---------------------------------------------------------------------------
+
+/**
+ * 宿主文件面端口（**同步**）——application 不得 `node:fs` / `node:path`，一切宿主文件读写经它。
+ *
+ * ## 为什么每个方法都要传根（而不是构造期绑定一个根）
+ *
+ * 同一进程里每条需求有自己的根：`deps.docs` / `deps.taskStore` 是**宿主级单例**，根会被别的窗口
+ * （另一个会话工作区）改掉。`docs/architecture/gate-read-root.md` 记着两次真实事故：读盘前不按
+ * 被核验需求的根再校正一次，完整性门会**误拦**（报「文件不存在」而文件就在盘上），其余读类门会
+ * **静默放行**。把根绑进构造期 = 把那条事故重新种进类型里，故本端口要求调用方**逐次**给出
+ * 「这次读/写的根」——用哪个根写在调用点上，看得见、可评审。
+ *
+ * ## 为什么是同步
+ *
+ * 既有调用点分布在同步路径上（`syncRTMYamlWithSnapshot` 及其 HTTP 调用方、`QueryState`），改成
+ * 异步的爆炸半径远大于一个新开的窄同步口；这与 `DocRepository` 的 `exists` / `list` / `stat`
+ * 同步口径一致。需要**异步**读文档请用 `DocRepository.read`（分工：这里只做「同步宿主文件面」）。
+ */
+export interface HostFsPort {
+  /**
+   * 宿主进程 cwd（`process.cwd()`）。
+   *
+   * 用途单一：capture 弹框「宿主默认工作区」哨兵的解析源。**它不是任何需求的根**，也不要拿它当
+   * `workspaceRoot`（那是 `DocRepository.workspaceRoot()` 的事）——实测两者在 DSH Web 模式下不同：
+   * 前者是宿主启动目录，后者是会话工作区。
+   */
+  cwd(): string
+  /** 绝对路径是否为**存在的目录**（不存在 / 不可读 / 非目录 → `false`，不抛）。 */
+  isDirectory(absPath: string): boolean
+  /**
+   * 绝对路径**是否存在**（文件或目录都算；不存在 / 不可读 → `false`，不抛）。
+   *
+   * 为什么单列一条：`reqboard_create` 的落点校验对「路径不存在」与「路径存在但不可读/不是目录」
+   * **给的是两句不同文案**（`目录不存在` / `目录不存在或不可读`）。只有 `isDirectory` 时两者会被
+   * 压成同一句——那是对用户可观察的行为变化，故保留这条只回答"在不在"的探针。
+   */
+  existsAbs(absPath: string): boolean
+  /** `<root>/<relPath>` 是否存在。 */
+  exists(root: string, relPath: string): boolean
+  /** 读 `<root>/<relPath>` 文本；不存在 / 读失败 → `undefined`（不抛，调用方按「判不了」处理）。 */
+  readText(root: string, relPath: string): string | undefined
+  /**
+   * 读 `<root>/.dsh-data/state/<name>` 的 JSON；不存在 / 坏文件 → `undefined`（不抛）。
+   *
+   * 为什么不给「任意路径的 JSON 读」：state 目录布局（`.dsh-data/state`）此前硬编码在 3 处
+   * application 调用点；收进端口 = 把这条布局收敛成**一处**可改契约。
+   */
+  readStateJson(root: string, name: string): unknown | undefined
+  /**
+   * 原子写 `<root>/.dsh-data/state/<name>`（临时文件 + rename；目录按需创建；失败**抛**）。
+   *
+   * 写失败必须抛：调用方（RTM 失败留痕 / 触发留痕）自己决定降级口径，端口不替它决定。
+   * 缩进口径固定 2 空格（与既有 state 文件逐字节一致）。
+   */
+  writeStateJsonAtomic(root: string, name: string, data: unknown): void
+}
+
+/**
+ * 诊断日志 sink 端口（REQ-261008020617-088f RF-4）——`application/internal/diag-log` 的注入面。
+ *
+ * 为什么是 sink 而不是「宿主态端口」：诊断日志的落点由组合根决定（`dshHomePath(config, …)`），
+ * 与任何工作区根无关，给它造一个通用宿主态端口是空转。门面（`captureDiag` / `initCaptureDiag`）
+ * 留在 application 且**零 I/O**，文件实现落 `adapters/FileDiagSink`。
+ *
+ * **实现必须永不抛**：诊断通道绝不能反过来影响主流程（REQ-f6307c 的既有纪律）。
+ */
+export interface DiagSinkPort {
+  /** 追加一行（含换行；时间戳由门面拼进 `line`）。任何失败静默。 */
+  write(line: string): void
+}
+
 export interface UseCaseDeps {
   /**
    * 项目注册表端口（REQ-261005141830-7a3b t3 · FR-3）：取根时由 `record.projectId` 查项目条目的 `path`。
@@ -1598,6 +1717,14 @@ export interface UseCaseDeps {
    */
   store: RequirementStore
   docs: DocRepository
+  /**
+   * 宿主文件面端口（REQ-261008020617-088f RF-3 / RF-5）：RTM 健康检查的 state 读写与
+   * 「绝对路径 → 目录存在性 / 宿主 cwd」判定都经它，application 侧不再 `node:fs` / `node:path`。
+   *
+   * **必填、不给未装配降级**：可选 + 运行期兜底会把装配遗漏从编译期挪到运行期（本仓老教训），
+   * 故漏装配 ⇒ 编译报错。全仓装配点只有 5 处（组合根 + 4 个测试 harness）。
+   */
+  hostFs: HostFsPort
   /**
    * 知识层端口（REQ-261001110934-3766 t4）。**可选**：未装配时 reqboard_kb 响亮报错，
    * 其余链路（注入/归档）各自按需判断——保证既有测试夹具与老行为不受影响。

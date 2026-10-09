@@ -12,8 +12,9 @@
  * 
  * @module dsh-pmboard/application/internal/rtm-health
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+// REQ-261008020617-088f RF-3：本模块的宿主 I/O **全部**经 HostFsPort（state 读写 + 文档/RTM 读取），
+// application 侧不再 import node:fs / node:path —— 层门的 application/ 越界在这条链上归零。
+import type { HostFsPort } from '../ports.js'
 import { parse as parseYaml } from 'yaml'
 import type { RequirementRecord } from '../../shared/protocol.js'
 // RTMTrigger 的定义在 vendor 生成器（rtm-yaml 只是 import 它、并未再导出），故从源头取类型。
@@ -67,10 +68,13 @@ export interface RTMHealthStatus {
   retry_available: boolean
 }
 
-/** 失败记录文件路径 */
-function failuresFilePath(stateDir: string): string {
-  return join(stateDir, 'rtm-failures.json')
-}
+/**
+ * 失败记录文件名（state 目录内）。
+ *
+ * **落点不由本模块拼**：`<root>/.dsh-data/state/<name>` 由 `HostFsPort` 决定——这条布局此前
+ * 硬编码在 3 处 application 调用点，收进端口后才有一处可改契约（REQ-261008020617-088f RF-3）。
+ */
+export const RTM_FAILURES_FILE = 'rtm-failures.json'
 
 /** 触发留痕文件名（`state/rtm-trigger-traces.json`）。 */
 export const RTM_TRIGGER_TRACES_FILE = 'rtm-trigger-traces.json'
@@ -87,64 +91,26 @@ export interface RTMTriggerTrace {
   timestamp: number
 }
 
-/** 读取失败记录 */
-function readFailures(stateDir: string): RTMFailureRecord[] {
-  const path = failuresFilePath(stateDir)
-  if (!existsSync(path)) return []
-  try {
-    const content = readFileSync(path, 'utf-8')
-    const data = JSON.parse(content)
-    return Array.isArray(data) ? data : []
-  } catch {
-    return []
-  }
-}
-
-/** 写入失败记录（原子写入） */
-function writeFailures(stateDir: string, records: RTMFailureRecord[]): void {
-  const path = failuresFilePath(stateDir)
-  const tmp = path + '.tmp-' + process.pid + '-' + Date.now()
-  try {
-    writeFileSync(tmp, JSON.stringify(records, null, 2), 'utf-8')
-    writeFileSync(path, readFileSync(tmp))
-  } finally {
-    if (existsSync(tmp)) {
-      try { 
-        const fs = require('fs')
-        fs.unlinkSync(tmp) 
-      } catch {}
-    }
-  }
-}
-
 /**
- * 原子写 JSON 状态文件（临时文件 + rename）。与 `writeFailures` 的差别：这里**按需建目录**——
- * 留痕是旁路写入，不该因为 state 目录还没被别的写者建出来而丢掉证据。
+ * 读取失败记录（不存在 / 坏文件 / 非数组 → 空数组：读不回来不是主流程的事）。
+ *
+ * **刻意的行为变更（REQ-261008020617-088f RF-3，设计里已申报）**：搬迁前这里是
+ * 「`writeFailures`：写临时文件 + 复制到正式文件（**不建目录**）」与
+ * 「`writeJsonAtomic`：建目录 + 临时文件 + rename」两套原子写；合并到端口后统一为
+ * 「按需建目录 + rename」一套。差异只落在两条边：① state 目录不存在时改前抛错（被调用方
+ * try/catch 吞掉、证据丢失），改后正常落盘；② 改前 finally 里用 `require('fs')` 清临时文件
+ * （ESM 下必抛）⇒ 残留 `.tmp-*`，改后由适配器用 unlinkSync 真清掉。键、文件名、2 空格缩进、
+ * 「只保留最近 100 条」一律不变。
  */
-function writeJsonAtomic(filePath: string, data: unknown): void {
-  mkdirSync(dirname(filePath), { recursive: true })
-  const tmp = filePath + '.tmp-' + process.pid + '-' + Date.now()
-  try {
-    writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf-8')
-    renameSync(tmp, filePath)
-  } catch (err) {
-    if (existsSync(tmp)) {
-      try { unlinkSync(tmp) } catch { /* 清理失败不覆盖主错误 */ }
-    }
-    throw err
-  }
+function readFailures(host: HostFsPort, root: string): RTMFailureRecord[] {
+  const data = host.readStateJson(root, RTM_FAILURES_FILE)
+  return Array.isArray(data) ? (data as RTMFailureRecord[]) : []
 }
 
-/** 读取触发留痕（不存在 / 坏文件 → 空数组：留痕读不回来不是主流程的事）。 */
-export function readRTMTriggerTraces(stateDir: string): RTMTriggerTrace[] {
-  const path = join(stateDir, RTM_TRIGGER_TRACES_FILE)
-  if (!existsSync(path)) return []
-  try {
-    const data = JSON.parse(readFileSync(path, 'utf-8'))
-    return Array.isArray(data) ? data as RTMTriggerTrace[] : []
-  } catch {
-    return []
-  }
+/** 读取触发留痕（不存在 / 坏文件 / 非数组 → 空数组：留痕读不回来不是主流程的事）。 */
+export function readRTMTriggerTraces(host: HostFsPort, root: string): RTMTriggerTrace[] {
+  const data = host.readStateJson(root, RTM_TRIGGER_TRACES_FILE)
+  return Array.isArray(data) ? (data as RTMTriggerTrace[]) : []
 }
 
 /**
@@ -152,12 +118,13 @@ export function readRTMTriggerTraces(stateDir: string): RTMTriggerTrace[] {
  * "记不上留痕"绝不能改变 RTM 同步的结果（增强层纪律）。
  */
 export function recordRTMTriggerTrace(
-  stateDir: string,
+  host: HostFsPort,
+  root: string,
   requirementId: string,
   trigger: RTMTrigger,
   paths: readonly string[],
 ): void {
-  const traces = readRTMTriggerTraces(stateDir)
+  const traces = readRTMTriggerTraces(host, root)
   traces.push({
     requirement_id: requirementId,
     trigger,
@@ -166,19 +133,20 @@ export function recordRTMTriggerTrace(
   })
   // 只保留最近 100 条（与失败记录同口径，避免状态文件无限增长）
   const sorted = traces.sort((a, b) => b.timestamp - a.timestamp)
-  writeJsonAtomic(join(stateDir, RTM_TRIGGER_TRACES_FILE), sorted.slice(0, 100))
+  host.writeStateJsonAtomic(root, RTM_TRIGGER_TRACES_FILE, sorted.slice(0, 100))
 }
 
 /**
  * 记录一次 RTM 生成失败
  */
 export function recordRTMFailure(
-  stateDir: string,
+  host: HostFsPort,
+  root: string,
   requirementId: string,
   trigger: RTMTrigger,
   error: string,
 ): void {
-  const records = readFailures(stateDir)
+  const records = readFailures(host, root)
   const existing = records.find(r => r.requirement_id === requirementId)
   
   if (existing) {
@@ -200,17 +168,17 @@ export function recordRTMFailure(
   
   // 只保留最近 100 条
   const sorted = records.sort((a, b) => b.timestamp - a.timestamp)
-  writeFailures(stateDir, sorted.slice(0, 100))
+  host.writeStateJsonAtomic(root, RTM_FAILURES_FILE, sorted.slice(0, 100))
 }
 
 /**
  * 清除某个需求的失败记录（生成成功后调用）
  */
-export function clearRTMFailure(stateDir: string, requirementId: string): void {
-  const records = readFailures(stateDir)
+export function clearRTMFailure(host: HostFsPort, root: string, requirementId: string): void {
+  const records = readFailures(host, root)
   const filtered = records.filter(r => r.requirement_id !== requirementId)
   if (filtered.length !== records.length) {
-    writeFailures(stateDir, filtered)
+    host.writeStateJsonAtomic(root, RTM_FAILURES_FILE, filtered)
   }
 }
 
@@ -315,6 +283,14 @@ export function prototypeSectionVerdict(input: {
 export interface CheckRTMHealthOptions {
   /** 原型规则上线日（毫秒，§10 #19）；缺省 = {@link PROTOTYPE_RULES_SINCE}。 */
   prototypeRulesSince?: number
+  /**
+   * state 文件的根（缺省 = 传入的 `workspaceRoot`）。
+   *
+   * 为什么留这个口：**生产调用点一律同根**（state 与 docs 同属一个工作区），但既有测试里
+   * 有把 state 隔离到临时目录、而 docs 指向仓库夹具的写法（`tests/compat-regression.test.ts`）。
+   * 给它们一个显式的隔离出口，好过让端口悄悄去读真实工作区的 state。
+   */
+  stateRoot?: string
 }
 
 /**
@@ -323,39 +299,33 @@ export interface CheckRTMHealthOptions {
  * `designDocPolicyFrom`——「什么算 UI 需求」全仓只此一份判据。读不回 / 畸形 → `[]`（不适用，
  * 宁可少报，不可把存量误报成不健康）。
  */
-function sidesOf(workspaceRoot: string, reqId: string): readonly string[] {
-  const path = join(workspaceRoot, 'docs', 'requirements', reqId, 'requirement.md')
+function sidesOf(host: HostFsPort, root: string, reqId: string): readonly string[] {
+  const text = host.readText(root, reqRelPath(reqId, 'requirement.md'))
+  if (text === undefined) return []
   try {
-    if (!existsSync(path)) return []
-    return designDocPolicyFrom(parseDocument(readFileSync(path, 'utf-8')).frontmatter).sides
+    return designDocPolicyFrom(parseDocument(text).frontmatter).sides
   } catch {
     return []
   }
 }
 
-/** 读文本；文件不在 / 读失败 → `undefined`（调用方按"判不了"处理，不按"缺"处理）。 */
-function readTextIfExists(path: string): string | undefined {
-  try {
-    return existsSync(path) ? readFileSync(path, 'utf-8') : undefined
-  } catch {
-    return undefined
-  }
+/** 需求目录内某个文件的**工作区相对**路径（根由端口的 root 参数给）。 */
+function reqRelPath(reqId: string, file: string): string {
+  return 'docs/requirements/' + reqId + '/' + file
 }
 
 /** 检查 RTM 文件健康状态。 */
 export function checkRTMHealth(
+  host: HostFsPort,
   workspaceRoot: string,
-  stateDir: string,
   req: RequirementRecord,
   opts: CheckRTMHealthOptions = {},
 ): RTMHealthStatus {
-  const reqDir = join(workspaceRoot, 'docs', 'requirements', req.id)
   const expected = expectedRTMFiles(req.status)
   const missing: string[] = []
-  
+
   for (const file of expected) {
-    const path = join(reqDir, file)
-    if (!existsSync(path)) {
+    if (!host.exists(workspaceRoot, reqRelPath(req.id, file))) {
       missing.push(file)
     }
   }
@@ -364,12 +334,12 @@ export function checkRTMHealth(
   const verdict = prototypeSectionVerdict({
     reqId: req.id,
     createdAt: req.createdAt,
-    sides: sidesOf(workspaceRoot, req.id),
-    brainstormingText: readTextIfExists(join(reqDir, 'rtm-brainstorming.yml')),
+    sides: sidesOf(host, workspaceRoot, req.id),
+    brainstormingText: host.readText(workspaceRoot, reqRelPath(req.id, 'rtm-brainstorming.yml')),
     ...(opts.prototypeRulesSince !== undefined ? { rulesSince: opts.prototypeRulesSince } : {}),
   })
 
-  const records = readFailures(stateDir)
+  const records = readFailures(host, opts.stateRoot ?? workspaceRoot)
   const lastFailure = records.find(r => r.requirement_id === req.id)
   
   // FR-10（REQ-260927100007-b8ba）：无失败记录时**省略**该键，不能写 last_failure: undefined——

@@ -1,5 +1,5 @@
 /**
- * reqboard_task_adopt 归属补救（2026-09-28，用户现场需求）。
+ * reqboard_task_amend 归属补救（2026-09-28，用户现场需求）。
  * serves: 归属补救
  *
  * 口径：补 parentId + stageKind 后角色由「存量卡」翻成「子卡」（合法边随之收紧为三态）；
@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { makeHarness, req, task } from './application/harness.js'
-import { defineTaskAdoptTool, defineTaskMoveTool } from '../src/tools/index.js'
+import { defineTaskAmendTool, defineTaskMoveTool } from '../src/tools/index.js'
 
 const W = 'session-w-001'
 const run = (t: unknown, args: unknown): Promise<Record<string, any>> =>
@@ -28,11 +28,11 @@ function base(extra: Record<string, unknown>[] = []) {
   return h
 }
 
-describe('reqboard_task_adopt（归属补救）', () => {
+describe('reqboard_task_amend（归属补救）', () => {
   it('缺归属的卡挂到父卡下 → parentId/stageKind 落库 + 角色翻成子卡 + 双侧留痕', async () => {
     const h = base([{ id: 't-x', requirementId: 'REQ-000001', status: 'todo', title: '无归属卡' }])
     await h.seedSettled()
-    const out = await run(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-p', stage_kind: 'dev', reason: '拆分时漏写归属' })
+    const out = await run(defineTaskAmendTool(h.deps), { op: 'adopt',  task_id: 't-x', parent_id: 't-p', stage_kind: 'dev', reason: '拆分时漏写归属' })
     expect(out.success).toBe(true)
     expect(out.role).toBe('subtask')
     expect(out.previous_parent_id).toBe('')
@@ -58,7 +58,7 @@ describe('reqboard_task_adopt（归属补救）', () => {
       { id: 't-p2', requirementId: 'REQ-000001', status: 'todo', title: '另一父卡' },
     ])
     await h.seedSettled()
-    const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-s', parent_id: 't-p2', stage_kind: 'dev' })
+    const err = await executor(defineTaskAmendTool(h.deps), { op: 'adopt',  task_id: 't-s', parent_id: 't-p2', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_ADOPT_ALREADY')
     expect(err.msg).toContain('force=true')
     expect((await h.tasksOf('REQ-000001')).find((t) => t.id === 't-s')!.parentId).toBe('t-p')
@@ -70,7 +70,7 @@ describe('reqboard_task_adopt（归属补救）', () => {
       { id: 't-p2', requirementId: 'REQ-000001', status: 'todo', title: '另一父卡' },
     ])
     await h.seedSettled()
-    const out = await run(defineTaskAdoptTool(h.deps), { task_id: 't-s', parent_id: 't-p2', stage_kind: 'dev', force: true, reason: '挂错父卡' })
+    const out = await run(defineTaskAmendTool(h.deps), { op: 'adopt',  task_id: 't-s', parent_id: 't-p2', stage_kind: 'dev', force: true, reason: '挂错父卡' })
     expect(out.previous_parent_id).toBe('t-p')
     expect((await h.tasksOf('REQ-000001')).find((t) => t.id === 't-s')!.parentId).toBe('t-p2')
   })
@@ -81,7 +81,7 @@ describe('reqboard_task_adopt（归属补救）', () => {
       { id: 't-x', requirementId: 'REQ-000001', status: 'todo', title: '无归属卡' },
     ])
     await h.seedSettled()
-    const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-s', stage_kind: 'dev' })
+    const err = await executor(defineTaskAmendTool(h.deps), { op: 'adopt',  task_id: 't-x', parent_id: 't-s', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_ADOPT_PARENT_IS_SUBTASK')
   })
 
@@ -91,21 +91,21 @@ describe('reqboard_task_adopt（归属补救）', () => {
       { id: 't-c', requirementId: 'REQ-000001', status: 'todo', parentId: 't-x', stageKind: 'dev', title: '子卡' },
     ])
     await h.seedSettled()
-    const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-p', stage_kind: 'dev' })
+    const err = await executor(defineTaskAmendTool(h.deps), { op: 'adopt',  task_id: 't-x', parent_id: 't-p', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_ADOPT_HAS_CHILDREN')
   })
 
   it('自指依赖（该卡 dependsOn 含目标父卡）→ 拒', async () => {
     const h = base([{ id: 't-x', requirementId: 'REQ-000001', status: 'todo', title: '无归属卡', dependsOn: ['t-p'] }])
     await h.seedSettled()
-    const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-p', stage_kind: 'dev' })
+    const err = await executor(defineTaskAmendTool(h.deps), { op: 'adopt',  task_id: 't-x', parent_id: 't-p', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_ADOPT_DEPENDENCY')
   })
 
   it('状态不在子卡生命周期（in_review）→ 拒', async () => {
     const h = base([{ id: 't-x', requirementId: 'REQ-000001', status: 'in_review', title: '待复核卡' }])
     await h.seedSettled()
-    const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-p', stage_kind: 'dev' })
+    const err = await executor(defineTaskAmendTool(h.deps), { op: 'adopt',  task_id: 't-x', parent_id: 't-p', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_ADOPT_STATUS')
     expect(err.msg).toContain('in_progress')
   })
@@ -113,7 +113,7 @@ describe('reqboard_task_adopt（归属补救）', () => {
   it('stageKind 缺省且卡上没有 → 拒（INV-2）', async () => {
     const h = base([{ id: 't-x', requirementId: 'REQ-000001', status: 'todo', title: '无归属卡' }])
     await h.seedSettled()
-    const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-p' })
+    const err = await executor(defineTaskAmendTool(h.deps), { op: 'adopt',  task_id: 't-x', parent_id: 't-p' })
     expect(err.code).toBe('REQBOARD_INVALID_INPUT')
     expect(err.msg).toContain('stage_kind')
   })
@@ -124,7 +124,7 @@ describe('reqboard_task_adopt（归属补救）', () => {
       { id: 't-x', requirementId: 'REQ-000001', status: 'todo', title: '无归属卡' },
     ])
     await h.seedSettled()
-    const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-p', stage_kind: 'dev' })
+    const err = await executor(defineTaskAmendTool(h.deps), { op: 'adopt',  task_id: 't-x', parent_id: 't-p', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_ADOPT_INVARIANT')
     // 零副作用：没有落库
     expect((await h.tasksOf('REQ-000001')).find((t) => t.id === 't-x')!.parentId).toBeUndefined()
@@ -140,7 +140,7 @@ describe('reqboard_task_adopt（归属补救）', () => {
     h.seedRequirementSync(req({ status: 'implementing' }))
     h.seedRequirementSync(req({ id: 'REQ-000002', status: 'implementing' }))
     await h.seedSettled()
-    const err = await executor(defineTaskAdoptTool(h.deps), { task_id: 't-x', parent_id: 't-other', stage_kind: 'dev' })
+    const err = await executor(defineTaskAmendTool(h.deps), { op: 'adopt',  task_id: 't-x', parent_id: 't-other', stage_kind: 'dev' })
     expect(err.code).toBe('REQBOARD_INVALID_INPUT')
   })
 })

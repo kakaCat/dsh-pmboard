@@ -21,6 +21,7 @@ import { requirementStoreOf } from '../use-cases/queue-access.js'
 // REQ-261001203710-0fbf t7：RTM 写入前按需求 id 核验写盘根（判定下沉，一处覆盖十处调用点）
 import { assertWritableRequirementProject } from './support.js'
 import { recordRTMFailure, clearRTMFailure, recordRTMTriggerTrace } from './rtm-health.js'
+import type { HostFsPort } from '../ports.js'
 import { flowProfileFor, type RequirementCategory, type RequirementRecord, type TaskRecord } from '../../shared/protocol.js'
 // REQ-261005193546-1b1a FR-2 / design/interfaces.md §5：两个公开入口各自收敛为活卡（覆盖度分母剔卡）。
 // 判据/取数单点住在 domain（`isLiveTask` 的取反复用），此处只调用、不再手写 `!== 'canceled'`。
@@ -174,14 +175,13 @@ export async function syncRTMYaml(
     // （宿主级单例、会被别的窗口改）。写入前按需求 id 核验即将写的根 = 该需求声明的根；
     // 不一致就抛 PROJECT_ROOT_MISMATCH（由下面的 catch 如实记为 RTM 失败，不写错地方、也不静默）。
     await assertWritableRequirementProject(deps, reqId)
-    return syncRTMYamlWithSnapshot(deps.docs.workspaceRoot(), { requirements: page.items as never }, live, reqId, trigger, payload)
+    return syncRTMYamlWithSnapshot(deps.hostFs, deps.docs.workspaceRoot(), { requirements: page.items as never }, live, reqId, trigger, payload)
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)
     console.warn('[rtm-yaml] ' + trigger + ' ' + reqId + ' 取工作区根/台账快照失败（已忽略，不影响主流程）:', err)
     // 记录失败到 state/rtm-failures.json（修复：yaml 生成失败，下一次校验时提醒）
     try {
-      const stateDir = deps.docs.workspaceRoot() + '/.dsh-data/state'
-      recordRTMFailure(stateDir, reqId, trigger, errMsg)
+      recordRTMFailure(deps.hostFs, deps.docs.workspaceRoot(), reqId, trigger, errMsg)
     } catch {
       // 记录失败本身也失败时静默（不能因为记录失败而影响主流程）
     }
@@ -193,6 +193,7 @@ export async function syncRTMYaml(
  * HTTP 路由（只拿到 store/deps.cwd，不是完整 UseCaseDeps）用的入口。
  */
 export function syncRTMYamlWithSnapshot(
+  host: HostFsPort,
   workspaceRoot: string,
   snapshot: RTMLedgerSnapshot,
   tasks: readonly TaskRecord[],
@@ -221,16 +222,15 @@ export function syncRTMYamlWithSnapshot(
       console.warn('[rtm-yaml] ' + trigger + ' ' + reqId + ' 同步失败：' + (result.error ?? '未知原因'))
       // 记录失败
       try {
-        const stateDir = workspaceRoot + '/.dsh-data/state'
-        recordRTMFailure(stateDir, reqId, trigger, result.error ?? '未知原因')
+        // REQ-261008020617-088f RF-3：state 落点由 HostFsPort 决定（不再自己拼 stateDir）
+        recordRTMFailure(host, workspaceRoot, reqId, trigger, result.error ?? '未知原因')
       } catch {
         // 记录失败本身也失败时静默
       }
     } else {
       // 成功时清除失败记录
       try {
-        const stateDir = workspaceRoot + '/.dsh-data/state'
-        clearRTMFailure(stateDir, reqId)
+        clearRTMFailure(host, workspaceRoot, reqId)
       } catch {
         // 清除失败记录失败时静默
       }
@@ -238,7 +238,7 @@ export function syncRTMYamlWithSnapshot(
       // 这条记录只回答"登记动作带了什么"；**写不进去也不能改变同步结果**（增强层纪律）。
       if (trigger === 'submit:prototype') {
         try {
-          recordRTMTriggerTrace(workspaceRoot + '/.dsh-data/state', reqId, trigger, payload?.paths ?? [])
+          recordRTMTriggerTrace(host, workspaceRoot, reqId, trigger, payload?.paths ?? [])
         } catch {
           // 留痕失败静默：证据丢了是遗憾，把成功的同步改判成失败是错误
         }
@@ -248,10 +248,9 @@ export function syncRTMYamlWithSnapshot(
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)
     console.warn('[rtm-yaml] ' + trigger + ' ' + reqId + ' 接线异常（已忽略，不影响主流程）:', err)
-    // 记录失败（注意：这里只有 workspaceRoot，需要手动拼接 stateDir）
+    // 记录失败（state 落点由端口决定）
     try {
-      const stateDir = workspaceRoot + '/.dsh-data/state'
-      recordRTMFailure(stateDir, reqId, trigger, errMsg)
+      recordRTMFailure(host, workspaceRoot, reqId, trigger, errMsg)
     } catch {
       // 记录失败本身也失败时静默
     }

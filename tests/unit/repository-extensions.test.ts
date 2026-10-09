@@ -61,90 +61,29 @@ describe('RequirementRepository', () => {
     repo = new InMemoryRequirementRepository()
   })
   
-  describe('updateRunState', () => {
-    it('更新运行状态', async () => {
-      const req = createRequirement('REQ-1')
-      repo.seed(req)
-      
-      await repo.updateRunState('REQ-1', {
-        runId: 'run-123',
-        stepIndex: 5,
-        currentSubtaskId: 't-abc',
-        heartbeatAt: Date.now()
-      })
-      
-      const updated = await repo.getRequirement('REQ-1')
-      expect(updated?.advance?.runId).toBe('run-123')
-      expect(updated?.advance?.stepIndex).toBe(5)
-      expect(updated?.advance?.currentSubtaskId).toBe('t-abc')
-    })
+  // REQ-261008011118-defe BUG-1（DD-1）：原 updateRunState / readCheckpoint / clearCheckpoint
+  // 三组用例随「死字段 + 死代码」一并删除——那三个方法在生产代码零调用方（写侧从没被链调用过），
+  // 用例测的是"自己种、自己读"的闭环，因而放过了「读一个没人写的字段」这个真缺陷。
+
+  it('取记录：存在返回记录，缺省返回 null', async () => {
+    const req = createRequirement('REQ-1')
+    repo.seed(req)
     
-    it('需求不存在：抛出错误', async () => {
-      await expect(repo.updateRunState('REQ-nonexist', {
-        runId: 'run-123'
-      })).rejects.toThrow('not found')
-    })
+    const found = await repo.getRequirement('REQ-1')
+    expect(found?.id).toBe('REQ-1')
+    
+    const missing = await repo.getRequirement('REQ-nonexist')
+    expect(missing).toBeNull()
   })
   
-  describe('readCheckpoint', () => {
-    it('读取存在的 checkpoint', async () => {
-      const req = createRequirement('REQ-1', {
-        runId: 'run-123',
-        stepIndex: 5,
-        currentSubtaskId: 't-abc',
-        heartbeatAt: 12345
-      })
-      repo.seed(req)
-      
-      const checkpoint = await repo.readCheckpoint('REQ-1')
-      
-      expect(checkpoint).not.toBeNull()
-      expect(checkpoint?.runId).toBe('run-123')
-      expect(checkpoint?.stepIndex).toBe(5)
-      expect(checkpoint?.currentSubtaskId).toBe('t-abc')
-      expect(checkpoint?.heartbeatAt).toBe(12345)
-    })
+  it('存记录：后写覆盖前写', async () => {
+    const req = createRequirement('REQ-1')
+    repo.seed(req)
     
-    it('无 checkpoint：返回 null', async () => {
-      const req = createRequirement('REQ-1')
-      repo.seed(req)
-      
-      const checkpoint = await repo.readCheckpoint('REQ-1')
-      
-      expect(checkpoint).toBeNull()
-    })
+    await repo.updateRequirement({ ...req, title: '改过的标题' })
     
-    it('需求不存在：返回 null', async () => {
-      const checkpoint = await repo.readCheckpoint('REQ-nonexist')
-      
-      expect(checkpoint).toBeNull()
-    })
-  })
-  
-  describe('clearCheckpoint', () => {
-    it('清理 checkpoint 字段', async () => {
-      const req = createRequirement('REQ-1', {
-        lockAt: 12345,
-        runId: 'run-123',
-        stepIndex: 5,
-        currentSubtaskId: 't-abc',
-        heartbeatAt: 67890
-      })
-      repo.seed(req)
-      
-      await repo.clearCheckpoint('REQ-1')
-      
-      const updated = await repo.getRequirement('REQ-1')
-      expect(updated?.advance?.runId).toBeUndefined()
-      expect(updated?.advance?.stepIndex).toBeUndefined()
-      expect(updated?.advance?.currentSubtaskId).toBeUndefined()
-      expect(updated?.advance?.heartbeatAt).toBeUndefined()
-      expect(updated?.advance?.lockAt).toBe(12345) // 保留其他字段
-    })
-    
-    it('需求不存在：不抛出错误', async () => {
-      await expect(repo.clearCheckpoint('REQ-nonexist')).resolves.not.toThrow()
-    })
+    const updated = await repo.getRequirement('REQ-1')
+    expect(updated?.title).toBe('改过的标题')
   })
 })
 

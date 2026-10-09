@@ -7,5 +7,5 @@ export const TASK_TREE_PROMPT = [
   '卡片状态、依赖、是否跑过（lastRunOk）与最近汇报摘要。',
   '入参给 parent_id（父卡 id）或 requirement_id（缺省取本窗口绑定需求）；不传 parent_id 时',
   '列出该需求下全部父卡及其子卡链。无子卡时返回空数组并给 note（尚未展开）。',
-  '只读、无副作用、只读本窗口绑定需求。单卡执行细节用 reqboard_task_status；起链用 reqboard_task_run。',
+  '只读、无副作用、只读本窗口绑定需求。单卡执行细节传 task_id（单卡展开模式）；起链用 reqboard_task_run。',
 ].join('')

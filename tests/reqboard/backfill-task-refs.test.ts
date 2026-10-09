@@ -2,7 +2,7 @@
  * L2 用例级单测 · 存量引用回填器（REQ-261002164800-d8f2 · t6 / serves: FR-5）。
  *
  * 修前形态：全仓 590 张卡有 531 张 `requirementRefs` 为空（90%），而**没有任何回填路径**——
- * 唯一写入口（reqboard_task_refs）要一张一张手点。
+ * 唯一写入口（reqboard_task_amend）要一张一张手点。
  *
  * 本文件锁四条口径：dry-run 不写盘、候选分类正确、apply 后复核读数为 0、restore 能按 before 还原。
  * 另锁一条边界：归档需求只报告不回填。

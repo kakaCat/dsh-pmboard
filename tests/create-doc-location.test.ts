@@ -12,6 +12,7 @@
  *   异常流 绝对路径 / 含 .. → REQBOARD_INVALID_INPUT，且不写台账（不静默改路径）。
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -48,6 +49,8 @@ const deps = (): any => ({
   store: h.store,
   taskStore: taskStoreAt(root),
   docs: new FileDocRepository({ workspaceRoot: root }),
+  // REQ-261008020617-088f RF-3：hostFs 必填（强转构造的夹具最容易漏）
+  hostFs: new FileHostFs(),
   clock: new SystemClock(),
   ids: new RandomIdFactory(),
   session: new SessionProbeAdapter({}),
@@ -68,7 +71,9 @@ describe('reqboard_create · 文档位置（FR-7 降级路径补第四问）', (
     const out = await run({ ...ARGS })
     expect(out.success).toBe(true)
     expect(out.doc_location).toBe(CAPTURE_DEFAULTS.docLocation)
-    expect(out.defaults_used).toEqual([CAPTURE_QUESTION_IDS.doc_location])
+    // REQ-261008004324-81df BUG-6：workspace_root 是工具有意新增的回落问项 id
+    // （CreateRequirement.ts:112-113 按入参名记账，不硬套 capture 的 id），缺省与 location 同批留痕。
+    expect(out.defaults_used).toEqual([CAPTURE_QUESTION_IDS.location, 'workspace_root'])
     expect(out.note).toContain('回落')
 
     const req = await ledgerReq(out.requirement_id)
@@ -80,7 +85,8 @@ describe('reqboard_create · 文档位置（FR-7 降级路径补第四问）', (
   it('TC-12 传 docs/rfcs/ → 台账 docBasePath 与产物路径按它生成', async () => {
     const out = await run({ ...ARGS, doc_location: 'docs/rfcs/' })
     expect(out.doc_location).toBe('docs/rfcs/')
-    expect(out.defaults_used).toEqual([])
+    // 同上：doc_location 显式给了，但 workspace_root 仍走缺省 → 只留 workspace_root 一条回落。
+    expect(out.defaults_used).toEqual(['workspace_root'])
 
     const req = await ledgerReq(out.requirement_id)
     expect(req.docBasePath).toBe('docs/rfcs/')

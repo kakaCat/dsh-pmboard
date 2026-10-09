@@ -10,6 +10,7 @@
  * ② 需求已离开该门的来源阶段时作答 ⇒ 台账零新时间戳，只多一条评论、回执 confirmed:false。
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -39,6 +40,8 @@ beforeEach(() => {
     // 落章后的 RTM 同步要读任务（confirm-settle → taskStoreOf）
     taskStore: taskStoreAt(dir),
     docs: new FileDocRepository({ workspaceRoot: dir }),
+    // REQ-261008020617-088f RF-3：hostFs 必填（强转构造的夹具最容易漏）
+    hostFs: new FileHostFs(),
     clock: { now: () => 1000 },
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({}),

@@ -4,11 +4,41 @@
  * 纪律：只测成功路径等于没测，故五条验收各自的失败路径都真的构造出来；
  * 另含「路线 A 端到端（真实 @deepseek-ai/dsh-session）」与框架不变量证据（拒绝点原文）。
  *
+ * ## 环境依赖与跳过依据（REQ-261008004324-81df BUG-7）
+ *
+ * 本文件曾以**模块级** `import { Session, SessionId } from '@deepseek-ai/dsh-session'` 引入
+ * 宿主包；该包**未随本仓安装**（它是 `@deepseek-ai/dsh-tools` 的 peer，pnpm 严格模式不把它
+ * 暴露到包根 `node_modules/@deepseek-ai/`，隔壁 `deepseek-harness` 也没有）⇒ 模块加载即失败，
+ * 整文件 29 条一条都跑不到（文件级 collect 失败）。
+ *
+ * 现改为**惰性解析 + 显式跳过**，不做静默 skip：
+ *   - 依赖真实 Session 的用例（「路线 A」4 条 + t10 §3 的「真实 Session 端到端」1 条）
+ *     用 `describe.skipIf` / `it.skipIf` 包住，跳过会出现在 vitest 的 skipped 计数里；
+ *   - 其余用例照常执行，阅读条数不会被「跑绿了其实没跑」掩盖。
+ *   - 实测读数（2026-10-07，HEAD c49fd5e）：**24 passed + 5 skipped（共 29）**。
+ *     注意：设计文档「BUG-7」曾按「29 条里 16 条依赖宿主包」预估 13 passed + 16 skipped，
+ *     实测否决该预估——t10 §1/§2/§5 共 6 条与宿主包无关且全部真实执行（详见下行夹具补齐）。
+ * 先例：`tests/decision-gates.test.ts:28` 的 `DSH_PMBOARD_INTEGRATION` 环境开关
+ * 与 `:417` 的 `describe.skipIf`。
+ *
+ * ## 夹具补齐（同站点第三处：宿主包之外）
+ *
+ * `wireT10` 的分发器接线漏传 `store`（分发器侧 `NodeSettlementDeps.store?` 可选、
+ * 用例侧 `IsolateNodeContextDeps.store` 必填，分发器无条件透传）⇒ t10 §3/§4 三条用例整拍抛错
+ * 并被吞成 warn（`stats.failed=1`）。按姊妹夹具 `tests/session-probe-wiring.test.ts:147` 补齐；
+ * **生产组合根 `src/index.ts:567` 同样漏传**（NODE_ISOLATION 开启时真实链路静默失败）——
+ * 属另案真缺陷，本文件只补夹具，绝不以夹具全绿收口生产侧（详见该行注释）。
+ *
+ * **显式跑法**（装回宿主包即自动跑，无需改本文件）：
+ *   - 宿主侧安装 `@deepseek-ai/dsh-session@0.2.0-rc.1` 并让其可从本仓解析
+ *     （`pnpm add -D @deepseek-ai/dsh-session@0.2.0-rc.1`，或经 workspace 链接暴露）；
+ *   - 然后 `npx vitest run tests/isolate-node-context.test.ts`——`HAS_DSH_SESSION` 自动为 true，
+ *     被跳过的 5 条恢复执行。
+ *
  * @module dsh-pmboard/tests/isolate-node-context
  */
 import { factsOf } from '../src/domain/requirement/RequirementSummary.js'
 import { describe, it, expect } from 'vitest'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
 import { makeHarness, req } from './application/harness.js'
 import { resolveStagePrompt, STAGE_CHAIN } from '../src/domain/prompt/index.js'
 import { NodeIsolationAdapter } from '../src/adapters/NodeIsolationAdapter.js'
@@ -38,6 +68,44 @@ import {
 } from '../src/application/internal/node-settlement.js'
 import { nodeIsolationEnabled } from '../src/index.js'
 import { emptyLedger, type ReqboardLedger } from '../src/shared/protocol.js'
+
+// ---------------------------------------------------------------------------
+// 宿主包惰性解析（BUG-7）：不在模块级 import，缺失时也不抛（collect 阶段不能炸），
+// 由下游 describe.skipIf / it.skipIf 显式跳过。依据与跑法见文件头「环境依赖与跳过依据」。
+// ---------------------------------------------------------------------------
+
+type DshSessionModule = typeof import('@deepseek-ai/dsh-session')
+
+/** 惰性解析宿主包；本 checkout 未暴露该包时得到 null（不抛）。 */
+async function loadDshSession(): Promise<DshSessionModule | null> {
+  try {
+    return (await import(/* @vite-ignore */ '@deepseek-ai/dsh-session')) as DshSessionModule
+  } catch {
+    return null
+  }
+}
+
+const dshSession = await loadDshSession()
+
+/** 宿主包是否可用；false 时依赖它的用例显式跳过（skipped 计数可见）。 */
+const HAS_DSH_SESSION = dshSession !== null
+
+/** 取宿主包；只允许在未被跳过的用例体内调用（否则那道门已经拦下）。 */
+function hostSessionModule(): DshSessionModule {
+  if (dshSession === null) {
+    throw new Error(
+      '宿主包 @deepseek-ai/dsh-session 不可用：该用例应由 skipIf(!HAS_DSH_SESSION) 跳过'
+      + '（依据与显式跑法见文件头「环境依赖与跳过依据」）',
+    )
+  }
+  return dshSession
+}
+
+/** 新建真实会话（仅在宿主包可用时执行）。 */
+function newHostSession() {
+  const { Session, SessionId } = hostSessionModule()
+  return Session.create(SessionId(WINDOW))
+}
 
 /** 前序对话里的唯一标记——输入包不得包含它（INV-9）。 */
 const OLD_MARKER = '前序对话摘录-应被遗弃-UNIQUE-7f3a'
@@ -370,7 +438,7 @@ function toolResult() {
 
 /** 真实会话：system + 旧用户消息（含唯一标记） + assistant(tool-call) + tool/result（配对平衡）。 */
 function realSession() {
-  const s = Session.create(SessionId(WINDOW))
+  const s = newHostSession()
   const sys = s.append('system/message', { turn: 1, step: 1, message: sysMsg('SYS PROMPT') } as any, { surfaceOp: 'append' })
   const u1 = s.append('user/message', userMsg('旧上下文：' + OLD_MARKER) as any, { surfaceOp: 'append' })
   const a1 = s.append('assistant/message', { turn: 1, step: 1, message: assistantToolCall(), stream: [] } as any, { surfaceOp: 'append' })
@@ -378,7 +446,9 @@ function realSession() {
   return { s, sys, u1, a1, tr }
 }
 
-describe('路线 A 端到端（真实 @deepseek-ai/dsh-session）', () => {
+// 依赖宿主包 @deepseek-ai/dsh-session（真实会话）：本 checkout 未安装 ⇒ 显式 skip（计数可见）。
+// 依据与显式跑法见文件头「环境依赖与跳过依据（REQ-261008004324-81df BUG-7）」。
+describe.skipIf(!HAS_DSH_SESSION)('路线 A 端到端（真实 @deepseek-ai/dsh-session）', () => {
   it('框架不变量证据：user/message 遮蔽 surface 节点 0 被硬拒（错误原文）', () => {
     const { s, sys, tr } = realSession()
     const all = [...s.surface.nodes]
@@ -421,7 +491,7 @@ describe('路线 A 端到端（真实 @deepseek-ai/dsh-session）', () => {
 
   it('真实未配对 tool 调用 → 边界检查判定不平衡，用例拒绝替换', async () => {
     const h = baseHarness()
-    const s = Session.create(SessionId(WINDOW))
+    const s = newHostSession()
     s.append('system/message', { turn: 1, step: 1, message: sysMsg('SYS') } as any, { surfaceOp: 'append' })
     const u = s.append('user/message', userMsg('旧上下文 ' + OLD_MARKER) as any, { surfaceOp: 'append' })
     const a = s.append('assistant/message', { turn: 1, step: 1, message: assistantToolCall(), stream: [] } as any, { surfaceOp: 'append' })
@@ -439,7 +509,7 @@ describe('路线 A 端到端（真实 @deepseek-ai/dsh-session）', () => {
 
   it('无历史节点（只有系统段）→ 不替换，skipped 留痕', async () => {
     const h = baseHarness()
-    const s = Session.create(SessionId(WINDOW))
+    const s = newHostSession()
     s.append('system/message', { turn: 1, step: 1, message: sysMsg('SYS') } as any, { surfaceOp: 'append' })
     const iso = new NodeIsolationAdapter(s, { idle: () => true })
     const result = await isolateNodeContext(
@@ -507,7 +577,14 @@ function wireT10(over: {
   const ledger = boundLedger()
   const dispatcher = createNodeSettlementDispatcher({
     enabled: over.enabled,
-
+    // 夹具补齐（REQ-261008004324-81df BUG-7 站点）：`node-settlement.ts:88` 把 `store` 声明为可选键，
+    // 但用例侧 `IsolateNodeContextDeps.store` 是**必填**（`IsolateNodeContext.ts:191`），且分发器在
+    // `node-settlement.ts:177` 无条件透传 `deps.store`。本条此前漏传 ⇒ §3/§4 三条用例整拍抛
+    // 「Cannot read properties of undefined (reading 'get')」并被吞成 warn（stats.failed=1）。
+    // 先例（姊妹夹具已传）：`tests/session-probe-wiring.test.ts:147` 的 `store: h.store`。
+    // ⚠️ 另案点名：生产组合根 `src/index.ts:567` 同样未传 store ⇒ NODE_ISOLATION 开启时真实链路上
+    // 节点隔离同样静默失败；本卡禁改 src/，故此处只补夹具、把生产侧留给另案（不得以本行收口）。
+    store: h.store,
     docs: h.docs,
     clock: h.clock, taskStore: h.taskStore,
     trace,
@@ -592,7 +669,8 @@ describe('t10 §2 关（默认）：隔离代码路径执行 0 次，既有行�
 })
 
 describe('t10 §3 开：一次节点结算 → 1 次执行 + 留痕完整（routeKey + 被替换区间）', () => {
-  it('真实 Session 端到端：替换真的发生、旧上下文真的被遗弃、留痕字段完整', async () => {
+  // 同样依赖宿主包（realSession()）：显式 skip 而非静默跳过。
+  it.skipIf(!HAS_DSH_SESSION)('真实 Session 端到端：替换真的发生、旧上下文真的被遗弃、留痕字段完整', async () => {
     const { s, u1, tr } = realSession()
     const w = wireT10({
       enabled: true,

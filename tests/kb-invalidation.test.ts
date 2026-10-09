@@ -3,10 +3,11 @@
  *
  * 锁四件事：
  *  ① `isDecidableInvalidation` 三类锚点各自成立（反引号字面量 / 文件指针 / supersede + kb-NNNN）；
- *  ② **两态**：写死的模板句判 false（它正是 K14 的 60 条不可判定），带锚点的样本判 true；
+ *  ② **两态**：写死的模板句判 false（它是 K14 存量的主力），带锚点的样本判 true；
  *  ③ **实测口径**：对 `docs/knowledge/entries/` 全量真实条目的「## 失效条件」小节跑判定，
- *     不可判定条数记为 60（实现时实测 60/60；口径 = **只判该小节**，不判整文件——整文件因
- *     front-matter 的 pointer 与「## 相关」的路径而恒可判定，那样的断言测不到任何东西）；
+ *     断「分母 ≥ 60 + 不可判定集合 == 基线集合」的**集合差**（2026-10-07 实测 74 条中
+ *     63 条不可判定、11 条带锚点已可判定）；口径 = **只判该小节**，不判整文件——整文件因
+ *     front-matter 的 pointer 与「## 相关」的路径而恒可判定，那样的断言测不到任何东西；
  *  ④ **根因**：`DepositKnowledge` 新沉淀出的条目，其失效条件由 pointer + req id 派生且判 true
  *     （用临时目录的桩 docs 真跑一次沉淀，从落盘条目里读回，不是只看组装函数）。
  *
@@ -30,6 +31,27 @@ const ENTRIES_DIR = fileURLToPath(new URL('../docs/knowledge/entries', import.me
 
 /** 写死的模板句（两态里的 false 态；58 条存量条目逐字或近逐字是它）。 */
 const TEMPLATE = '相关实现被重构、或该结论被新条目 supersede 时'
+
+/**
+ * K14 分母基线：**不可判定**条目的全量集合（2026-10-07 实测 63 条 / 条目总数 74）。
+ * 刷新纪律（集合差）：新条目带锚点沉淀 → 走可判定、不动本清单；出现**新的不可判定条目**
+ * → 必须显式加进本清单并在改动旁写明理由。与 `docs/knowledge/unverifiable.baseline.txt`
+ * （K14 探针自己的基线，由 `kb-probe --refresh-unverifiable` 生成）是**两份**基线：
+ * 本清单管本用例，那份管探针，互不代跑。
+ */
+const BASELINE_UNDECIDABLE: readonly string[] = [
+  'kb-0001.md', 'kb-0002.md', 'kb-0003.md', 'kb-0004.md', 'kb-0005.md', 'kb-0006.md',
+  'kb-0007.md', 'kb-0008.md', 'kb-0009.md', 'kb-0010.md', 'kb-0011.md', 'kb-0012.md',
+  'kb-0013.md', 'kb-0014.md', 'kb-0015.md', 'kb-0016.md', 'kb-0018.md', 'kb-0019.md',
+  'kb-0020.md', 'kb-0021.md', 'kb-0022.md', 'kb-0024.md', 'kb-0025.md', 'kb-0026.md',
+  'kb-0027.md', 'kb-0028.md', 'kb-0029.md', 'kb-0030.md', 'kb-0031.md', 'kb-0032.md',
+  'kb-0033.md', 'kb-0034.md', 'kb-0035.md', 'kb-0036.md', 'kb-0037.md', 'kb-0038.md',
+  'kb-0039.md', 'kb-0040.md', 'kb-0041.md', 'kb-0042.md', 'kb-0043.md', 'kb-0044.md',
+  'kb-0045.md', 'kb-0046.md', 'kb-0047.md', 'kb-0048.md', 'kb-0049.md', 'kb-0050.md',
+  'kb-0051.md', 'kb-0052.md', 'kb-0053.md', 'kb-0054.md', 'kb-0055.md', 'kb-0056.md',
+  'kb-0057.md', 'kb-0058.md', 'kb-0059.md', 'kb-0060.md', 'kb-0061.md', 'kb-0062.md',
+  'kb-0063.md', 'kb-0064.md', 'kb-0065.md',
+]
 
 /** 取条目文本的「## 失效条件」小节正文（到下一个二级/三级标题为止）。 */
 function invalidationSection(entryText: string): string {
@@ -96,7 +118,7 @@ describe('I-4 isDecidableInvalidation（domain 纯判定）', () => {
 })
 
 describe('⑤ 真实条目实测口径（K14 分母）', () => {
-  it('docs/knowledge/entries/ 全量条目的「## 失效条件」全部不可判定（实测 60 / 60）', () => {
+  it('docs/knowledge/entries/ 全量条目的「## 失效条件」不可判定集合与基线一致（集合差 = ∅；实测 74 条 / 63 不可判定）', () => {
     const files = readdirSync(ENTRIES_DIR).filter((f) => f.endsWith('.md')).sort()
     const rows = files.map((f) => {
       const text = readFileSync(join(ENTRIES_DIR, f), 'utf8')
@@ -108,17 +130,17 @@ describe('⑤ 真实条目实测口径（K14 分母）', () => {
     expect(emptySections, '这些条目的「## 失效条件」小节抽不到正文：' + emptySections.join(', ')).toEqual([])
 
     const undecidable = rows.filter((r) => !r.decidable).map((r) => r.file)
-    // 口径（实现时实测，2026-10-06）：**当时**条目 60 / 60 全部不可判定。
-    // 只判「## 失效条件」小节：整文件因 front-matter 的 pointer 与「## 相关」的路径恒可判定。
-    //
-    // 为什么**不写死 60**：这个数字会烂（实测教训——别的窗口随后沉淀了第 61 条 `kb-0063.md`，
-    // 于是 `toBe(60)` 变红，而它测的"存量全部不可判定"这一事实**并没有变化**）。
-    // 脆弱的口径本身就是要被 K14 的基线集合差取代的东西，故这里改成**结构性判据**：
+    // 口径（2026-10-07 刷新，取代「存量全部不可判定」）：K14 已允许新条目带锚点沉淀，
+    // 实测 11 条可判定 ⇒「全部不可判定」这一事实源已被**进步**推翻，继续钉它等于钉住落后。
+    // 改判两条结构性事实（都不写死一个会烂的数字）：
     //   · 分母 ≥ 60（存量规模不许缩水）；
-    //   · 不可判定数 == 分母（存量条目**全部**不可判定，这才是本用例要钉的事实）。
+    //   · 不可判定集合 == 基线集合（双向集合差均为空）：新出现的不可判定条目必须被显式看见，
+    //     而新出现的可判定条目不再误报红。
     expect(rows.length, '知识条目总数（实现时实测 60，此后只许增）').toBeGreaterThanOrEqual(60)
-    expect(undecidable.length, '不可判定条数应等于条目总数（存量口径：全部不可判定）').toBe(rows.length)
-    expect(rows.filter((r) => r.decidable)).toEqual([])
+    const added = undecidable.filter((f) => !BASELINE_UNDECIDABLE.includes(f))
+    const removed = BASELINE_UNDECIDABLE.filter((f) => !undecidable.includes(f))
+    expect(added, '这些条目新落入不可判定（补锚点，或写清理由后刷新 BASELINE_UNDECIDABLE）：' + added.join(', ')).toEqual([])
+    expect(removed, '这些条目已可判定（进步）：请从 BASELINE_UNDECIDABLE 删出：' + removed.join(', ')).toEqual([])
   })
 })
 

@@ -2,6 +2,9 @@
  * reqboard_ask_confirm 单测（REQ-2e9473 t07/W1，事故 A 修复）。
  * 覆盖：肯定答复 → 落章+推进原子完成；非肯定 → 不落章不推进；弹框通道降级
  * （服务缺失 / DELEGATED_CALLER）→ fallback=board；target=plan 批准+推进。
+ * serves: FR-1, FR-2
+ *   —— FR-1（REQ-261007193530-3133）：否定作答 + 空反馈回执必须无损 JSON（user_feedback 键缺席）。
+ *   —— FR-2：否定回执原文（user_choice/user_feedback）必须能原样回到调用方，供按意见修改。
  */
 import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -152,6 +155,48 @@ describe('reqboard_ask_confirm', () => {
   it('缺产物时落章失败（kind 对不上）', async () => {
     await seed('brainstorming', false)
     await expect(run(makeTool('yes'), ARGS)).rejects.toThrow(/没有 kind=requirement 的产物/)
+  })
+})
+
+describe('H1（FR-1）：否定回执的 user_feedback 必须无损 JSON', () => {
+  /** 弹框作答：选定 selected，custom 可有可无（= 用户填的自定义反馈）。 */
+  function toolWith(selected: string, custom?: string) {
+    const deps = {
+      store,
+      now: () => Date.now(),
+      userQuestions: () => ({
+        ask: async () => ({ answers: [{ id: 'confirm', selected: [selected], ...(custom !== undefined ? { custom } : {}) }] }),
+      }),
+    } as never
+    return defineAskConfirmTool(deps) as never as { execute: (a: unknown, e: unknown) => Promise<any> }
+  }
+
+  /** 递归判「无损 JSON」：任何 undefined 值（含数组项/对象值）都算违规。 */
+  const lossless = (v: unknown): boolean => {
+    if (v === undefined) return false
+    if (v === null || typeof v !== 'object') return true
+    if (Array.isArray(v)) return v.every(lossless)
+    return Object.values(v as Record<string, unknown>).every(lossless)
+  }
+
+  it('否定作答 + 空反馈 → 回执**不含 user_feedback 键**、JSON.stringify 不抛、整体无损', async () => {
+    await seed('brainstorming')
+    const out = await run(toolWith('需要修改'), ARGS)
+    expect(out.success).toBe(true)
+    expect(out.confirmed).toBe(false)
+    // 修前这里是 user_feedback: undefined → snapshotJsonValue 抛 "value is not lossless JSON"
+    expect('user_feedback' in out).toBe(false)
+    expect(() => JSON.stringify(out)).not.toThrow()
+    expect(lossless(out)).toBe(true)
+    expect(store.peekAll()[0].status).toBe('brainstorming') // 软回执：未推进
+  })
+
+  it('否定作答 + 有反馈 → user_feedback 键存在且等值（空字符串以外的反馈照常带回）', async () => {
+    await seed('brainstorming')
+    const out = await run(toolWith('需要修改', '请补一条失败路径'), ARGS)
+    expect(out.user_feedback).toBe('请补一条失败路径')
+    expect(out.confirmed).toBe(false)
+    expect(lossless(out)).toBe(true)
   })
 })
 

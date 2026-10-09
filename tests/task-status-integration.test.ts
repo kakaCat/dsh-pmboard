@@ -1,11 +1,13 @@
 /**
- * reqboard_task_status 接口联调（REQ-260927144541-0481 FR-4 / design I-4）。
- * serves: FR-4
+ * reqboard_task_tree(task_id) 接口联调（原 reqboard_task_status，REQ-261007220012-bd29 FR-3 并入）。
+ * serves: FR-3
  *
  * 与 task-status-ledger.test.ts（单测，FakeDocs 内存台账）互补：本文件走**真适配器 + 真磁盘台账**，
- * 证明读数来自持久化的 dsh-reqboard.json，而不是任务卡文档：
- *   TC-I1 写→读闭环：真 reqboard_task_report 把 lastReport 落磁盘台账 → reqboard_task_status 原样读回；
- *   TC-I2 期望响应逐字段比对：台账里已持久化的 lastRun/lastReport → 返回 run / report / workflow 与预期**完全相等**；
+ * 证明读数来自持久化的 queue.json，而不是任务卡文档：
+ *   TC-I1 写→读闭环：真 reqboard_task_report 把 lastReport 落磁盘台账 → 单卡展开原样读回
+ *         （report 同时写 lastRun：stopReason='reported'，故 run/workflow 也在场——如实断言）；
+ *   TC-I2 期望响应逐字段比对：台账里已持久化的 lastRun/lastReport → 返回 task.run / task.report /
+ *         task.workflow 与预期**完全相等**；
  *   TC-I3 数据源证明：磁盘上确无任何任务卡文档，读数仍成立（旧 fs 直读路径会在此返回空）。
  */
 import { makeHarness } from './application/harness.js'
@@ -14,11 +16,12 @@ import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { SystemClock } from '../src/adapters/SystemClock.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
 import { SessionProbeAdapter } from '../src/adapters/SessionProbeAdapter.js'
 import { UserQuestionsAdapter } from '../src/adapters/UserQuestionsAdapter.js'
-import { defineTaskStatusTool, defineTaskReportTool } from '../src/tools/index.js'
+import { defineTaskTreeTool, defineTaskReportTool } from '../src/tools/index.js'
 import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import type { ReqboardLedger, TaskRecord } from '../src/shared/protocol.js'
@@ -48,6 +51,8 @@ const deps = () => ({
   // 任务队列端口（REQ-260927202051-f6df）：v9 起任务唯一入口；同一实例保证"写 A 读 A"
   taskStore,
   docs: new FileDocRepository({ workspaceRoot: root }),
+  // REQ-261008020617-088f RF-3/RF-5：宿主文件面端口（无状态）
+  hostFs: new FileHostFs(),
   clock: new SystemClock(),
   ids: new RandomIdFactory(),
   session: new SessionProbeAdapter({}),
@@ -92,7 +97,7 @@ async function seedBoard(over: { taskStatus?: string; lastRun?: unknown; lastRep
   await taskStore.createMany('REQ-int00001', [seedTask(over)])
 }
 
-describe('reqboard_task_status 接口联调（真台账 + 真工具壳）', () => {
+describe('reqboard_task_tree(task_id) 接口联调（真台账 + 真工具壳；原 task_status 并入）', () => {
   it('TC-I1 写→读闭环：真 report 工具落盘 lastReport，真 status 工具原样读回', async () => {
     await seedBoard()
 
@@ -100,7 +105,7 @@ describe('reqboard_task_status 接口联调（真台账 + 真工具壳）', () =
     const rep = await run(defineTaskReportTool(deps()), { task_id: 't-int0001',
       summary: '联调：写入 lastReport',
       completed: ['完成 A', '完成 B'],
-      files_changed: ['packages/web/dsh-pmboard/src/tools/TaskStatusTool/TaskStatusTool.ts'],
+      files_changed: ['packages/web/dsh-pmboard/src/tools/TaskTreeTool/TaskTreeTool.ts'],
     })
     expect(rep.success).toBe(true)
     expect(rep.report_index).toBe(1)
@@ -111,16 +116,18 @@ describe('reqboard_task_status 接口联调（真台账 + 真工具壳）', () =
     const persisted = onDisk.tasks.find((t: any) => t.id === 't-int0001')
     expect(persisted.lastReport.completed).toEqual(['完成 A', '完成 B'])
 
-    // 请求样例：reqboard_task_status(task_id)
-    const out = await run(defineTaskStatusTool(deps()), { task_id: 't-int0001' })
-    // 期望响应：report 三字段来自上一步落盘的 lastReport；此卡没跑过 run → run/workflow 缺省
-    expect(out).toEqual({
-      success: true,
+    // 请求样例：reqboard_task_tree(task_id=…) 单卡展开
+    const out = await run(defineTaskTreeTool(deps()), { task_id: 't-int0001' })
+    // 期望响应：report 三字段来自上一步落盘的 lastReport；报告工具同时写 lastRun
+    // （stopReason='reported'，见 ReportTask.ts:156-158）⇒ run/workflow 也在场，如实断言。
+    expect(out.task).toMatchObject({
       task_id: 't-int0001',
       status: 'todo',
       progress: 0,
       report: { summary: '完成 A；完成 B', completedCount: 2, filesChangedCount: 1 },
+      run: { ok: true, stopReason: 'reported', valueNonEmpty: true },
     })
+    expect(typeof (out.task.workflow as { at?: unknown }).at).toBe('number')
   })
 
   it('TC-I2 台账已持久化 lastRun/lastReport → 返回体与期望逐字段一致', async () => {
@@ -130,9 +137,8 @@ describe('reqboard_task_status 接口联调（真台账 + 真工具壳）', () =
       lastReport: { at: 7, reportIndex: 1, filesChanged: ['packages/x/a.ts', 'packages/x/b.ts'], completed: ['改完 A 模块', '补测试'] },
     })
 
-    const out = await run(defineTaskStatusTool(deps()), { task_id: 't-int0001' })
-    expect(out).toEqual({
-      success: true,
+    const out = await run(defineTaskTreeTool(deps()), { task_id: 't-int0001' })
+    expect(out.task).toEqual({
       task_id: 't-int0001',
       status: 'in_review',
       progress: 85,
@@ -152,8 +158,8 @@ describe('reqboard_task_status 接口联调（真台账 + 真工具壳）', () =
     // 数据源证明：旧实现读的 docs/requirements/<REQ>/tasks/<task>.md 根本不存在
     expect(existsSync(join(root, 'docs/requirements/REQ-int00001/tasks/t-int0001.md'))).toBe(false)
 
-    const out = await run(defineTaskStatusTool(deps()), { task_id: 't-int0001' })
-    expect(out.run).toEqual({ ok: true, stopReason: 'completed', valueNonEmpty: true })
-    expect(out.workflow).toEqual({ at: 9, ok: true, stopReason: 'completed', valueNonEmpty: true })
+    const out = await run(defineTaskTreeTool(deps()), { task_id: 't-int0001' })
+    expect(out.task.run).toEqual({ ok: true, stopReason: 'completed', valueNonEmpty: true })
+    expect(out.task.workflow).toEqual({ at: 9, ok: true, stopReason: 'completed', valueNonEmpty: true })
   })
 })

@@ -36,14 +36,14 @@ export async function confirmReceipt(deps: UseCaseDeps, args: unknown, exec: any
   const a = (args ?? {}) as { ticket?: unknown }
   const ticket = normalizeText(a.ticket, 'ticket', 64)
   if (ticket.length === 0) {
-    reject('reqboard_confirm_receipt 未执行：ticket 不能为空（reqboard_ask_confirm 返回 pending=true 时的 ticket）', 'REQBOARD_INVALID_INPUT')
+    reject('reqboard_ask_confirm(ticket=…) 未执行：ticket 不能为空（reqboard_ask_confirm 返回 pending=true 时的 ticket）', 'REQBOARD_INVALID_INPUT')
   }
 
   // 注册表缺失（未装配非阻塞能力）与未知/跨窗口/过期同码：本窗口没有这条挂起确认的事实。
   const rec = deps.pendingConfirms?.get(ticket, windowKey)
   if (rec === undefined) {
     reject(
-      'reqboard_confirm_receipt 未执行：ticket ' + ticket + ' 未知或已过期（不属于本窗口或超出有效期）——'
+      'reqboard_ask_confirm(ticket=…) 未执行：ticket ' + ticket + ' 未知或已过期（不属于本窗口或超出有效期）——'
       + '回执事务已不可查，改调 reqboard_status 读 design_docs[].confirmed（以台账为准）',
       'REQBOARD_UNKNOWN_TICKET',
     )
@@ -52,7 +52,7 @@ export async function confirmReceipt(deps: UseCaseDeps, args: unknown, exec: any
   // t8：读点已迁到新端口（`requirementStoreOf` 缺装配即抛，不静默走回整册读）。
   const req = await requirementStoreOf(deps).get(rec.requirementId)
   if (req === undefined) {
-    reject('reqboard_confirm_receipt 未执行：需求 ' + rec.requirementId + ' 不在台账中', 'REQBOARD_STORE_INCONSISTENT')
+    reject('reqboard_ask_confirm(ticket=…) 未执行：需求 ' + rec.requirementId + ' 不在台账中', 'REQBOARD_STORE_INCONSISTENT')
   }
 
   const confirmed = targetConfirmedInLedger(req, rec)

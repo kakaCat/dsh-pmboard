@@ -1,4 +1,5 @@
 /**
+ * serves: BUG-4（认领前置 / 凭证门失败归还 / 孤儿接管）
  * ExecuteTask 用例测试（REQ-4842fe t5）——对应 design/test-cases.md §3.3/3.4/3.5/3.6。
  *
  * 口径：子卡凭证三项任一不过 → 子卡不 done；存在未 done 子卡 → 父卡不得 done；
@@ -9,6 +10,7 @@ import { executeSubtask, parseSubtaskOutput, isNonEmptyValue, buildSubtaskPrompt
 import { executeMoveTask } from '../src/application/use-cases/MoveTask.js'
 import { checkSubtaskEvidence } from '../src/application/internal/subtask-evidence.js'
 import { STAGE_EVIDENCE_KIND, STAGE_KINDS } from '../src/domain/task/SubtaskTemplate.js'
+import { LIMITS } from '../src/domain/limits.js'
 import type { WorkflowRunner, WorkflowRunOutcome } from '../src/application/ports.js'
 import { makeHarness, task, req } from './application/harness.js'
 
@@ -401,5 +403,96 @@ describe('D17 修复：L1 基准单调化（链出身） + L2 证据形态分流
       expect(v, k).toMatch(/【本步边界】/)
       expect(v, k).toMatch(/不要|禁止|只做/)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// BUG-4（REQ-261008011118-defe / DD-4）：先认领后执行 + 并发拒绝 + 失败出口归还
+// ---------------------------------------------------------------------------
+
+/** 两路并发时才放行第一次 start 的 runner：用来证明"只跑了一次"。 */
+class BarrierRunner implements WorkflowRunner {
+  calls = 0
+  private release: (() => void) | undefined
+  private gate = new Promise<void>((r) => { this.release = r })
+  async start(_input: unknown): Promise<WorkflowRunOutcome> {
+    this.calls += 1
+    if (this.calls >= 2) this.release?.()
+    else await Promise.race([this.gate, new Promise<void>(r => setTimeout(r, 250))])
+    return okRun(JSON.stringify({ filesChanged: [SRC], completed: ['改完状态机'] }))
+  }
+}
+
+describe('BUG-4 先认领后执行（REQ-261008011118-defe / DD-4）', () => {
+  it('并发两路派发同一张 todo 子卡 → 只跑一次；第二路 REQBOARD_SUBTASK_IN_PROGRESS', async () => {
+    const h = seed()
+    await h.seedSettled()
+    h.docs.put(SRC, 'x')
+    h.docs.put(CLIENT, 'x')
+    const runner = new BarrierRunner()
+    h.deps.workflow = runner
+
+    const [a, b] = await Promise.all([
+      executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' }),
+      executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' }),
+    ])
+
+    // 修前读数 = 2（两路都跑到 workflow.start，第二路撞 done→done 才失败）
+    expect(runner.calls, '双跑即 2 次').toBe(1)
+    expect([a.ok, b.ok].filter(Boolean), '恰有一路成功').toHaveLength(1)
+    const rejected = [a, b].find(r => !r.ok) as { code?: string } | undefined
+    expect(rejected?.code).toBe('REQBOARD_SUBTASK_IN_PROGRESS')
+
+    const t = (await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!
+    expect(t.status, '成功那一路已完工').toBe('done')
+    expect((t.executions ?? []).filter(e => e.trigger === 'auto'), '只该有一条 auto 执行记录').toHaveLength(1)
+  })
+
+  it('凭证门失败 → 归还：回 todo + attempt+1 + 执行闭合 failed + revisions(rollback) + 失败评论', async () => {
+    const h = seed()
+    await h.seedSettled()
+    // 只有文本、无 filesChanged → REQBOARD_SUBTASK_GATE
+    h.deps.workflow = new FakeRunner(okRun('我做完了，功能正常'))
+
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    expect(r.ok).toBe(false)
+    expect(r.code).toBe('REQBOARD_SUBTASK_GATE')
+
+    const t = (await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!
+    expect(t.status, '认领必须归还').toBe('todo')
+    expect(t.attempt).toBe(1)
+    expect((t.revisions ?? []).some(x => x.kind === 'rollback'), '失败修订（rollback）').toBe(true)
+    expect(t.comments.some(c => String(c.body).includes('[子卡失败]')), '失败评论').toBe(true)
+    expect((t.executions ?? []).every(e => e.outcome === 'failed'), '执行记录闭合为 failed').toBe(true)
+  })
+
+  it('孤儿接管：陈旧 running 执行（> orphanTimeoutMs）→ 允许接管且陈旧执行闭合为 failed', async () => {
+    const h = makeHarness()
+    h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing' }))
+    const staleAt = h.clock.t - (LIMITS.orphanTimeoutMs + 60_000)
+    h.seedTasks('REQ-000001', [
+      task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', claimedAt: h.clock.t, title: '父卡' }),
+      task({
+        id: 't-s', requirementId: 'REQ-000001', status: 'in_progress', parentId: 't-p',
+        stageKind: 'dev' as never, title: '研发',
+        executions: [{ id: 'e-stale', trigger: 'auto', startedAt: staleAt, outcome: 'running' }],
+      } as never),
+    ])
+    await h.seedSettled()
+    h.docs.put(SRC, 'x')
+    h.docs.put(CLIENT, 'x') // pages 源改动需配套构建产物（构建新鲜度分支）
+    const runner = new FakeRunner(okRun(JSON.stringify({ filesChanged: [SRC], completed: ['改完'] })))
+    h.deps.workflow = runner
+
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    expect(r.ok, JSON.stringify(r)).toBe(true)
+    expect(runner.calls).toHaveLength(1)
+
+    const t = (await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!
+    const failed = (t.executions ?? []).filter(e => e.outcome === 'failed')
+    expect(failed.length, '陈旧执行必须被闭合为 failed').toBe(1)
+    expect(String(failed[0]?.error)).toContain('stale claim takeover')
+    expect(t.status).toBe('done')
+    expect(t.attempt ?? 0, '接管不 bump attempt').toBe(0)
   })
 })

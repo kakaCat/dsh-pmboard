@@ -38,15 +38,15 @@ describe('后台执行集成测试', () => {
   it.skip('checkpoint 逐步推进', async () => {
     // 1. 准备：多个子卡的链
     // 2. 投递任务
-    // 3. 观察 checkpoint：stepIndex 递增
-    // 4. 断言：每个子卡完成后 checkpoint 更新
+    // 3. 观察 run 快照/任务台账：子卡状态逐步推进（进度真值在任务台账）
+    // 4. 断言：每个子卡完成后台账与 run 快照（advance.history）更新
     expect(true).toBe(true) // placeholder
   })
   
-  it.skip('reqboard_run_status 查询运行态', async () => {
+  it.skip('reqboard_status 的 run 节查询运行态', async () => {
     // 1. 投递任务，获取 run_id
-    // 2. 调用 reqboard_run_status(run_id)
-    // 3. 断言：返回 runId/stepIndex/jobStatus
+    // 2. 调用 reqboard_status(run_id)
+    // 3. 断言：返回 runId/jobStatus（REQ-261008011118-defe BUG-1：进度死字段已删）
     // 4. 等待完成后再查询
     // 5. 断言：jobStatus = 'completed'
     expect(true).toBe(true) // placeholder

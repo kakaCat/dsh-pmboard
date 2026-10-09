@@ -85,8 +85,8 @@
       "code": "REQBOARD_ADVANCE_LOCKED",
       "form": "unclassified-form",
       "site": {
-        "file": "src/tools/AdvanceTool/AdvanceTool.ts",
-        "anchor": "? 'REQBOARD_ADVANCE_LOCKED'"
+        "file": "src/shared/error-code-registry.ts",
+        "anchor": "{ code: 'REQBOARD_ADVANCE_LOCKED', message: '实施链推进被锁定', layer: 'tools' },"
       },
       "tier": "fixture",
       "covered": true,
@@ -151,8 +151,8 @@
       "code": "REQBOARD_AWAITING_MANUAL",
       "form": "unclassified-form",
       "site": {
-        "file": "src/tools/AdvanceTool/AdvanceTool.ts",
-        "anchor": "? 'REQBOARD_AWAITING_MANUAL'"
+        "file": "src/shared/error-code-registry.ts",
+        "anchor": "{ code: 'REQBOARD_AWAITING_MANUAL', message: '等待人工处置', layer: 'tools' },"
       },
       "tier": "fixture",
       "covered": false,
@@ -273,7 +273,7 @@
       "form": "unclassified-form",
       "site": {
         "file": "src/application/use-cases/ExecuteTask.ts",
-        "anchor": "'REQBOARD_CROSS_CARD',"
+        "anchor": "const category = code === 'REQBOARD_SUBTASK_GATE' || code === 'REQBOARD_CROSS_CARD' ? 'gate_failed' : 'run_failed'"
       },
       "tier": "fixture",
       "covered": true,
@@ -382,8 +382,8 @@
       "code": "REQBOARD_DISPATCH_FAILED",
       "form": "unclassified-form",
       "site": {
-        "file": "src/tools/AdvanceTool/AdvanceTool.ts",
-        "anchor": ": 'REQBOARD_DISPATCH_FAILED'"
+        "file": "src/shared/error-code-registry.ts",
+        "anchor": "{ code: 'REQBOARD_DISPATCH_FAILED', message: '实施链投递失败', layer: 'tools' },"
       },
       "tier": "fault",
       "covered": true,
@@ -756,8 +756,8 @@
       "code": "REQBOARD_NOT_AUTORUN",
       "form": "unclassified-form",
       "site": {
-        "file": "src/tools/AdvanceTool/AdvanceTool.ts",
-        "anchor": "? 'REQBOARD_NOT_AUTORUN'"
+        "file": "src/shared/error-code-registry.ts",
+        "anchor": "{ code: 'REQBOARD_NOT_AUTORUN', message: '非自动链模式', layer: 'tools' },"
       },
       "tier": "fault",
       "covered": false,
@@ -965,8 +965,8 @@
       "code": "REQBOARD_REQ_NOT_FOUND",
       "form": "unclassified-form",
       "site": {
-        "file": "src/tools/AdvanceTool/AdvanceTool.ts",
-        "anchor": "? 'REQBOARD_REQ_NOT_FOUND'"
+        "file": "src/shared/error-code-registry.ts",
+        "anchor": "{ code: 'REQBOARD_REQ_NOT_FOUND', message: '需求不存在', layer: 'tools' },"
       },
       "tier": "fault",
       "covered": false,
@@ -976,8 +976,8 @@
       "code": "REQBOARD_REQ_TERMINAL",
       "form": "unclassified-form",
       "site": {
-        "file": "src/tools/AdvanceTool/AdvanceTool.ts",
-        "anchor": "? 'REQBOARD_REQ_TERMINAL'"
+        "file": "src/shared/error-code-registry.ts",
+        "anchor": "{ code: 'REQBOARD_REQ_TERMINAL', message: '需求已终态', layer: 'tools' },"
       },
       "tier": "fixture",
       "covered": true,
@@ -1068,6 +1068,17 @@
         "anchor": "refuse('REQBOARD_RESULT_UNANCHORED',"
       },
       "tier": "fixture",
+      "covered": true,
+      "coveredHow": "literal"
+    },
+    {
+      "code": "REQBOARD_ROLLBACK_COMPENSATION_FAILED",
+      "form": "unclassified-form",
+      "site": {
+        "file": "src/application/internal/rollback-compensation.ts",
+        "anchor": "{ code: 'REQBOARD_ROLLBACK_COMPENSATION_FAILED' },"
+      },
+      "tier": "fault",
       "covered": true,
       "coveredHow": "literal"
     },
@@ -1174,8 +1185,8 @@
       "code": "REQBOARD_SKILLS_INSTALL_FAILED",
       "form": "unclassified-form",
       "site": {
-        "file": "src/tools/SkillInstallTool/SkillInstallTool.ts",
-        "anchor": "code: typeof e?.code === 'string' ? e.code : 'REQBOARD_SKILLS_INSTALL_FAILED',"
+        "file": "src/shared/error-code-registry.ts",
+        "anchor": "{ code: 'REQBOARD_SKILLS_INSTALL_FAILED', message: '技能投放失败', layer: 'tools' },"
       },
       "tier": "fault",
       "covered": true,
@@ -1207,8 +1218,8 @@
       "code": "REQBOARD_SKIP_INTEGRATION_REASON_REQUIRED",
       "form": "unclassified-form",
       "site": {
-        "file": "src/shared/protocol.ts",
-        "anchor": "{ code: 'REQBOARD_SKIP_INTEGRATION_REASON_REQUIRED' },"
+        "file": "src/shared/error-code-registry.ts",
+        "anchor": "{ code: 'REQBOARD_SKIP_INTEGRATION_REASON_REQUIRED', message: '跳联调必须给理由', layer: 'shared' },"
       },
       "tier": "fixture",
       "covered": true,
@@ -1286,6 +1297,17 @@
       "site": {
         "file": "src/application/internal/failure-handling.ts",
         "anchor": "if (result.code === 'REQBOARD_SUBTASK_GATE') return { category: 'gate_failed', reason }"
+      },
+      "tier": "fixture",
+      "covered": true,
+      "coveredHow": "literal"
+    },
+    {
+      "code": "REQBOARD_SUBTASK_IN_PROGRESS",
+      "form": "unclassified-form",
+      "site": {
+        "file": "src/application/use-cases/ExecuteTask.ts",
+        "anchor": "code: 'REQBOARD_SUBTASK_IN_PROGRESS',"
       },
       "tier": "fixture",
       "covered": true,
@@ -1714,6 +1736,14 @@
     {
       "token": "REQBOARD_NO_ITEM_RESULT",
       "why": "环境变量后缀：DSH_REQBOARD_NO_ITEM_RESULT，被左边界挡住故非码"
+    },
+    {
+      "token": "REQBOARD_CODE_REGISTRY",
+      "why": "标识符：src/shared/error-code-registry.ts 的注册表常量名，不是错误码"
+    },
+    {
+      "token": "REQBOARD_CODE_SET",
+      "why": "标识符：src/shared/error-code-registry.ts 的派生集合常量名，不是错误码"
     }
   ]
 }

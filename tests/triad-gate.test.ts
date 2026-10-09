@@ -13,8 +13,14 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { defineMoveTool, defineTaskMoveTool, defineTaskReportTool, seedQueueTasks, type ReqboardToolDeps } from './helpers/tool-deps.js'
+import { EventEmitter } from 'node:events'
+import { defineMoveTool, defineTaskMoveTool, defineTaskReportTool, seedQueueTasks, taskStoreOf, type ReqboardToolDeps } from './helpers/tool-deps.js'
 import { recordToolTrace, type ToolTraceEntry } from '../src/adapters/SessionProbeAdapter.js'
+// 「放行」类断言改走**看板人路径**（design/fix-design.md BUG-2）：decomposing → implementing
+// 自 2026-09-14 起是人工闸门，而 MoveRequirement 的 actor 硬编码 'agent' ⇒ 工具路径结构上不可达。
+// 形状照抄 tests/artifact-gates.test.ts:417 的同款写法（同一 HTTP 入口，不另造一条路）。
+import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
+import { createReqboardHandler } from '../src/http/routes.js'
 import {
   taskCardTriadGaps,
   taskCardTriadFailure,
@@ -36,6 +42,24 @@ const fakeDocs = (files: Record<string, string>) => ({
   exists: (p: string) => Object.prototype.hasOwnProperty.call(files, p),
   read: async (p: string) => files[p] ?? '',
 }) as any
+
+/** 看板 HTTP 请求替身（与 tests/artifact-gates.test.ts 的 fakeReq 同款形状：同一入口、同一信封）。 */
+function fakeReq(body: unknown, url: string): any {
+  const req = new EventEmitter() as any
+  req.url = url
+  req.method = 'POST'
+  req[Symbol.asyncIterator] = async function* () {
+    if (body !== undefined) yield Buffer.from(JSON.stringify(body), 'utf8')
+  }
+  return req
+}
+function fakeRes(): any {
+  const res: any = new EventEmitter()
+  res.statusCode = 0
+  res.writeHead = (code: number) => { res.statusCode = code; return res }
+  res.end = (text?: string) => { res.payload = text === undefined ? undefined : JSON.parse(text); return res }
+  return res
+}
 
 describe('接线函数：判定与取数在 application 层（纯读，无副作用）', () => {
   it('缺三要素节 → 报出卡 id 与三个缺字段', async () => {
@@ -98,6 +122,8 @@ describe('端到端：门真的挂上了（reqboard_move / reqboard_task_move）
   let move: { execute: (a: unknown, e: unknown) => Promise<any> }
   let taskMove: { execute: (a: unknown, e: unknown) => Promise<any> }
   let report: { execute: (a: unknown, e: unknown) => Promise<any> }
+  /** 看板 HTTP 入口：「放行」类断言走它（人工闸门只认人，工具路径结构上不可达）。 */
+  let board: ReturnType<typeof createReqboardHandler>
   /** 提到 describe 作用域：`seedTask` 播种队列任务需要同一个 `deps`（`taskStoreOf` 按对象身份记忆化）。 */
   let deps: ReqboardToolDeps
 
@@ -111,11 +137,23 @@ describe('端到端：门真的挂上了（reqboard_move / reqboard_task_move）
     move = defineMoveTool(deps) as never
     taskMove = defineTaskMoveTool(deps) as never
     report = defineTaskReportTool(deps) as never
+    // 任务队列用 taskStoreOf(deps) 的**同一实例**（记忆化）：否则看板读 A、用例播种到 B，会出假红。
+    board = createReqboardHandler({
+      requirementStore: store, taskStore: taskStoreOf(deps), now: () => Date.now(),
+      docs: new FileDocRepository({ workspaceRoot: dir }),
+    })
   })
   afterEach(() => {
     process.chdir(prevCwd)
     rmSync(dir, { recursive: true, force: true })
   })
+
+  /** 看板人路径的一次 POST（路径前缀与 tests/artifact-gates.test.ts 一致）。 */
+  async function post(url: string, body: unknown) {
+    const res = fakeRes()
+    await board(fakeReq(body, '/dashboard/api/reqboard' + url), res)
+    return res
+  }
 
   const exec = { agent: { id: W } }
   const writeCard = (body: string) => {
@@ -160,14 +198,17 @@ describe('端到端：门真的挂上了（reqboard_move / reqboard_task_move）
 
   it('拆分出口：三节齐备 → 放行', async () => {
     await seedDecomposing(); await seedTask(); writeCard(GOOD_CARD)
-    const out = await move.execute({ to: 'implementing' }, exec)
-    expect((out as { to?: string }).to).toBe('implementing')
+    // 放行权在人手里（decomposing → implementing 是人工门）：走看板人路径，actor=human。
+    const res = await post('/req/move', { id: REQ, to: 'implementing', actor: 'human' })
+    expect(res.statusCode).toBe(200)
+    expect(res.payload.data.status).toBe('implementing')
   })
 
   it('拆分出口：卡文件不存在 → 不判（放行）', async () => {
     await seedDecomposing(); await seedTask()
-    const out = await move.execute({ to: 'implementing' }, exec)
-    expect((out as { to?: string }).to).toBe('implementing')
+    const res = await post('/req/move', { id: REQ, to: 'implementing', actor: 'human' })
+    expect(res.statusCode).toBe(200)
+    expect(res.payload.data.status).toBe('implementing')
   })
 
   it('单卡结单：卡缺三要素 → 拒绝 task_card_incomplete', async () => {

@@ -1,6 +1,7 @@
 /**
- * reqboard_submit 工具壳（REQ-47939a t8）——**4 个提交工具合一**，按 kind 表驱动分派，
- * 每个分支体只有一行用例调用（设计 §4.3「禁止大 if」）。
+ * reqboard_submit 工具壳（REQ-47939a t8）——**多个提交工具合一**，按 kind 表驱动分派，
+ * 每个分支体只有一行用例调用（设计 §4.3「禁止大 if」）。（不数工具数：数字是派生量，
+ * 抄进注释就会漂——REQ-261007200706-89b7 FR-2/FR-3 同款纪律。）
  *
  * kind → 用例：requirement/plan/prototype → SubmitArtifact；verification → SubmitVerification；
  * archive → SubmitArchive；design → SubmitDesignArtifacts。返回体为各用例返回键的并集
@@ -16,9 +17,8 @@ import { submitVerification } from '../../application/use-cases/SubmitVerificati
 import { submitArchive } from '../../application/use-cases/SubmitArchive.js'
 import { submitDesignArtifacts } from '../../application/use-cases/SubmitDesignArtifacts.js'
 import { normalizeText, ALL_TASK_PHASES, ALL_TASK_SIDES, SUBMIT_KINDS } from '../../shared/protocol.js'
-import { STAGE_KINDS, SUBTASK_TEMPLATES } from '../../domain/task/SubtaskTemplate.js'
 import { reject, assertNoPendingConfirm } from '../../application/internal/support.js'
-import { renderSmart } from '../shared.js'
+import { LONG_TEXT_ARG_NOTE, renderSmart } from '../shared.js'
 import { submitSummary } from '../render-summaries.js'
 import { SUBMIT_PROMPT } from './prompt.js'
 
@@ -48,64 +48,57 @@ export function defineSubmitTool(deps: UseCaseDeps) {
       },
       requirement_id: { type: 'string', description: '需求 id（REQ-xxxxxx）；不传默认本窗口绑定的需求' },
       path: { type: 'string', description: '文档路径（kind=requirement/plan/design/prototype）：工作区相对路径；design 缺省 = 扫 docs/requirements/<REQ>/design/*.md；prototype 缺省 = 扫 docs/requirements/<REQ>/prototypes/*.html（旧目录 prototype/*.html 仍识别并提示迁移）' },
-      summary: { type: 'string', description: '摘要：requirement=一句话摘要；plan=目标+做法；verification=交付结论（≤2000 字符）；写法：每条短句（建议 ≤60 字）；需引号用「」避免半角双引号；文本过大拆成多次调用' },
+      summary: { type: 'string', description: '摘要：requirement=一句话摘要；plan=目标+做法；verification=交付结论（≤2000 字符）；' + LONG_TEXT_ARG_NOTE },
       change_note: { type: 'string', description: '变更原因（已确认/已批准后重交时必填）：改了什么/为什么，下游标"待同步"' },
       tasks: {
         type: 'array',
-        description: 'kind=plan 的任务表（可选，1-50 项）；每项须含 implementation 与可证伪 acceptance；'
-          + '另可用 stages / skipIntegration 精确控制该卡的子卡段（不填 = 按卡 phase、其次需求分类的默认模板）；'
-          + '可用 footprint 声明本卡体量（files/anchors/chars），供超容量软门禁给分批建议',
+        // REQ-261008020552-4aa0 FR-4：逐字段细则已下沉到各门禁拒绝回执（细则之家有门禁测试逐条钉住），
+        // 这里只留一句话——参数形状（键名/类型/枚举/additionalProperties）逐字不动。
+        description: 'kind=plan 的任务表（可选，1-50 项）；每项须含 implementation 与可证伪 acceptance；逐字段细则见各门禁拒绝回执',
         items: {
           type: 'object',
           additionalProperties: false,
           properties: {
             key: { type: 'string', description: '计划内引用键（如 t1；depends_on 用它引用）' },
-            requirement_refs: { type: 'array', items: { type: 'string' }, description: '本卡承接的需求条款（如 ["FR-1","FR-2"]）；落库写入 TaskRecord.requirementRefs，供 RTM/覆盖度统计' },
+            requirement_refs: { type: 'array', items: { type: 'string' }, description: '本卡承接的需求条款（如 ["FR-1"]）；落库供 RTM/覆盖度取数' },
             // 原型锚点 / 关联 D-x（REQ-261005105032-3b02 FR-5、FR-9 / t12）：**必须**在这里声明——
             // 本 schema 是 additionalProperties:false，未声明的键被绑定层直接拒收（或按丢失处理），
             // 于是"计划携带任务表"这条通道的锚点与裁定的引用恒空（requirement_refs 栽过同款）。
-            prototypeRefs: { type: 'array', items: { type: 'string' }, description: '本卡的 UI 卡原型锚点（如 ["prototypes/detail.html#FR-4"]）；UI 卡（side=frontend）在 feature/refactor 需求下必填，落库写入 TaskRecord.prototypeRefs' },
-            decisionRefs: { type: 'array', items: { type: 'string' }, description: '本卡承接的裁定编号（如 ["D-1","D-3"]）；落库写入 TaskRecord.decisionRefs，供 RTM covers_decisions' },
+            prototypeRefs: { type: 'array', items: { type: 'string' }, description: 'UI 卡原型锚点（如 ["prototypes/detail.html#FR-4"]）；必填条件见锚点门禁回执' },
+            decisionRefs: { type: 'array', items: { type: 'string' }, description: '本卡承接的裁定编号（如 ["D-1"]）；落库供 RTM covers_decisions' },
             title: { type: 'string', description: '任务标题（动词开头，≤120 字符）' },
             description: { type: 'string', description: '任务说明（改哪些文件/接口）' },
-            phase: { type: 'string', description: 'doc / ui / analysis / implement / test / review / merge', enum: [...ALL_TASK_PHASES] },
-            side: { type: 'string', description: 'frontend / backend / fullstack / doc', enum: [...ALL_TASK_SIDES] },
+            phase: { type: 'string', description: '阶段（受控枚举）', enum: [...ALL_TASK_PHASES] },
+            side: { type: 'string', description: '端侧（受控枚举）', enum: [...ALL_TASK_SIDES] },
             stages: {
               type: 'array',
-              description: '本卡的子卡段（可选，覆盖默认模板）：受控枚举 ' + STAGE_KINDS.join('/ ')
-                + '；不填 = 按卡 phase（doc→研发+复核、test→研发+复核+测试…）、其次按需求分类兜底；与 template 二选一',
+              description: '本卡子卡段（受控枚举，与 template 二选一）；不填按卡 phase、其次需求分类兜底；合法值见非法值回执',
               items: { type: 'string' },
             },
             template: {
               type: 'string',
-              description: '引用子卡链模板键（可选，与 stages 二选一）：' + Object.keys(SUBTASK_TEMPLATES).join('/')
-                + '——如 change-only=研发+复核（文案契约类）、acceptance=校验单段（链尾总验收卡）、ops=运维五段；可与 skipIntegration 叠加',
+              description: '子卡链模板键（与 stages 二选一，可与 skipIntegration 叠加）；非法键回执列全部合法键',
             },
-            skipIntegration: { type: 'boolean', description: '本卡无接口可联调时设 true → 不落联调子卡（可选）；**设 true 必须同时给 skip_integration_reason**' },
+            skipIntegration: { type: 'boolean', description: '本卡无接口可联调时设 true（必须同时给理由）' },
             // 理由载体（2026-10-06）：砍联调段是减法，批的人要能复核依据。两种拼法都声明——
             // 本 schema 是 additionalProperties:false，只声明一种 = 另一种写法被绑定层**拒收**
             // （比静默丢弃更难查：agent 会以为是参数名写错而不是被门禁拦）。
-            skip_integration_reason: { type: 'string', description: '为什么这张卡没有接口面、靠什么判断（skipIntegration=true 时必填，一句话，如「纯文档卡，无运行时接口」）' },
-            skipIntegrationReason: { type: 'string', description: '同上（camel 拼法，与 skip_integration_reason 等价；两者都认）' },
+            skip_integration_reason: { type: 'string', description: '为什么没接口面（skipIntegration=true 时必填，一句话）；snake/camel 等价' },
+            skipIntegrationReason: { type: 'string', description: '同上（camel 拼法，两者都认）' },
             // 粒度豁免（REQ-261007125552-32cb FR-4）：一卡多接口确属合理（契约卡/聚合卡）时必填理由——
             // 本 schema 是 additionalProperties:false，不声明 = 绑定层直接拒收（footprint 栽过同款）。
-            granularity_exempt: { type: 'string', description: '粒度豁免理由（可选）：本卡确需声明多个接口时必填（≤300 字符）；生效时理由进 granularity_warnings 供批准人复核（豁免不静默）' },
-            granularityExempt: { type: 'string', description: '同上（camel 拼法，与 granularity_exempt 等价；两者都认）' },
+            granularity_exempt: { type: 'string', description: '粒度豁免理由（一卡多接口确需时必填，≤300 字符）；snake/camel 等价' },
+            granularityExempt: { type: 'string', description: '同上（camel 拼法，两者都认）' },
             dep_reasons: {
               type: 'array',
               items: { type: 'string' },
-              description: '依赖理由（可选，零交集边才要）：每条形如 "t2=一句话语义理由"。'
-                + '仅当这条依赖边两端 implementation 声明的文件零交集时被要求——伪依赖会让本可并行的卡串成链（软门禁只点名不拒）。'
-                // 为什么不是 map（如 {"t2":"…"}）：dsh-tools 的参数 schema DSL **不接受未显式声明值的 map**
-                // （`additionalProperties must be explicitly true or false`），写成 map 会让整个
-                // defineSubmitTool 直接抛 JsonSchemaError（2026-10-06 实测）。字符串数组是本 DSL 能表达的形态，
-                // 归一在 normalizePlanTasks 里做（`key=理由` / `key：理由` 都认）。
-                + '写法：key=理由，用半角等号或冒号分隔（如 "t4=上游建队列文件，本卡读它，虽无同名文件但有时序约束"）',
+              // 写法细则（key=理由 格式、为什么不是 map）已下沉到 plan-deps-check 的伪依赖回执（FR-4）。
+              description: '依赖理由（零交集边必填）：形如 "t2=一句话理由"；写法细则见伪依赖回执；snake/camel 等价',
             },
             depReasons: {
               type: 'array',
               items: { type: 'string' },
-              description: '同上（camel 拼法，与 dep_reasons 等价；两者都认，合并取并集）',
+              description: '同上（camel 拼法，合并取并集）',
             },
             depends_on: { type: 'array', description: '依赖的计划内 key', items: { type: 'string' } },
             acceptance: { type: 'string', description: '验收标准（可验证：跑什么、看到什么算过；空话/缺锚点打回）' },
@@ -116,11 +109,11 @@ export function defineSubmitTool(deps: UseCaseDeps) {
             footprint: {
               type: 'object',
               additionalProperties: false,
-              description: '卡片体量声明（可选）：三个可数的确定量，用于「一轮装不装得下」的软门禁',
+              description: '卡片体量声明（可选）；三量口径见校验回执',
               properties: {
-                files: { type: 'number', description: '要改/新建的文件数；不得小于 implementation 里点到的路径数（允许留余量，不允许缩水）' },
-                anchors: { type: 'number', description: '验收锚点数：可执行断言条数' },
-                chars: { type: 'number', description: '实施描述与目标改动量合计字符数' },
+                files: { type: 'number', description: '要改/新建的文件数' },
+                anchors: { type: 'number', description: '验收锚点数' },
+                chars: { type: 'number', description: '实施描述与改动量字符数' },
               },
             },
           },
@@ -195,7 +188,8 @@ export function defineSubmitTool(deps: UseCaseDeps) {
       manual_note: { type: 'string', description: 'kind=archive 无手册更新时的理由（bug/doc/chore 可只写这条）' },
       unlisted_ack: {
         type: 'array',
-        description: 'kind=archive：未列且不打算收进清单的文件的显式豁免声明（path + reason）。未覆盖全部未列文件 → 拒绝（REQ-261004183621-de3f）',
+        // 出处（agent 不可见）：REQ-261004183621-de3f。
+        description: 'kind=archive：未列且不打算收进清单的文件的显式豁免声明（path + reason）。未覆盖全部未列文件 → 拒绝',
         items: {
           type: 'object',
           additionalProperties: false,
@@ -429,7 +423,7 @@ export function defineSubmitTool(deps: UseCaseDeps) {
           reconcile: {
             type: 'object',
             additionalProperties: false,
-            description: 'kind=archive：清单对账三分类与生效闸门（REQ-261004183621-de3f）',
+            description: 'kind=archive：清单对账三分类与生效闸门',
             properties: {
               gate: { type: 'string', description: 'enforce / warn' },
               listed: { type: 'array', items: { type: 'string' } },
@@ -456,7 +450,7 @@ export function defineSubmitTool(deps: UseCaseDeps) {
           resolved_targets: {
             type: 'object',
             additionalProperties: false,
-            description: 'kind=archive：本次判据的生效根与逐条读数（REQ-261006201841-944d FR-1/FR-2）——'
+            description: 'kind=archive：本次判据的生效根与逐条读数——'
               + 'merged_into 的存在性与字节数、manual_anchors 的锚点可达性。用途：复核「在哪个根上判的」。',
             properties: {
               root: { type: 'string', description: '实际用于探测的工作区根（绝对路径）' },
@@ -487,7 +481,7 @@ export function defineSubmitTool(deps: UseCaseDeps) {
           archive_manifest: {
             type: 'object',
             additionalProperties: false,
-            description: 'kind=archive：归档渲染物 <dir>/archive.md 的落点与本次是否写盘（REQ-261006201841-944d FR-5/FR-6）——'
+            description: 'kind=archive：归档渲染物 <dir>/archive.md 的落点与本次是否写盘——'
               + 'written=false 表示内容与盘上一致、未重写（幂等命中，保留盘上首次的「渲染时刻」）。',
             properties: {
               path: { type: 'string', description: '渲染物工作区相对路径（= <dir>/archive.md）' },

@@ -19,6 +19,9 @@ import {
 import { syncAllReqArtifacts, syncReqArtifacts } from '../../adapters/ArtifactSync.js'
 import { assembleStageDetail, assembleStageOverview } from '../../application/query/QueryStageDetail.js'
 import { designDocPolicyOf } from '../../application/internal/design-docs.js'
+// REQ-261007223647-da5d t6（FR-5 / 设计 IF-5）：挂起确认票投影——看板首屏的「有人在你门口等着」。
+import { pendingBoardRowsOf, type PendingBoardRow } from '../../application/internal/pending-board.js'
+import { seatsOf } from '../../application/internal/window.js'
 // REQ-261006201841-944d t8（FR-7）：来源三态派生的**唯一实现**（纯函数，判据不落在路由里）。
 import { requirementOriginsOf } from '../../application/internal/requirement-origins.js'
 import { assembleRequirementToken, requirementTotalTokens } from '../../application/query/QueryRequirementToken.js'
@@ -65,6 +68,56 @@ export function createStagesRouter(ctx: RouterCtx) {
   }
 
   /**
+   * 看板 pending 票投影（REQ-261007223647-da5d t6 · serves: FR-5 / 设计 interfaces.md IF-5）。
+   *
+   * 治什么：确认票超时/中断后仍然挂着，人却看不到——看板首屏必须能一眼发现「有门在等我」。
+   *
+   * 三条口径：
+   *  ① **口径同源**：逐条筛选（台账已落章 / 是不是门 / 有没有可落章产物）走
+   *     `application/internal/pending-board.ts`，与 agent 侧 `reqboard_status.pending_confirms` 同一组谓词；
+   *  ② **只对本页需求算**（≤ limit 条），且**只在真有未作答票时才回读全文**（多数请求零额外读盘）；
+   *  ③ **键恒在**：无票回空数组，**不省略键**（client 用 `[]` 渲染 = 不占首屏；缺键是"老服务端"的兼容口径，
+   *     二者必须可区分）。
+   *
+   * 读口未装配（`pendingConfirms` 缺省）→ 空数组：本部署组合根恒装配它，缺装配属于配置问题，
+   * 但看板不能因此 500（其余读数照常可用）。
+   */
+  async function pendingBoardOf(ids: readonly string[]): Promise<PendingBoardRow[]> {
+    const port = deps.pendingConfirms
+    if (port === undefined) return []
+    // 时刻取自路由 ctx 的时钟（`deps.now`）——不直取 Date.now()：剩余时间是要被断言的读数，
+    // 注入时钟后测试才能断言公式，而不是靠运气（与 pending-guard 的 now 注入同款）。
+    const now = ctx.now()
+    const rows: PendingBoardRow[] = []
+    // 兼容只装配 `pendingForWindow` 的端口：按需求席位逐窗口查、只留指向本需求的（与报告首屏同口径）。
+    const needsSeatScan = port.pendingForRequirement === undefined && port.pendingForWindow !== undefined
+    for (const id of ids) {
+      let recs: readonly import('../../shared/protocol.js').PendingConfirmation[]
+      let req: RequirementRecord | undefined
+      if (port.pendingForRequirement !== undefined) {
+        recs = port.pendingForRequirement(id)
+        if (recs.length === 0) continue
+        // 只有真有票时才回读全文（谓词要看 plan / artifacts，摘要里没有）
+        req = await ctx.requirementStore.get(id)
+      } else if (needsSeatScan) {
+        req = await ctx.requirementStore.get(id)
+        if (req === undefined) continue
+        const seen = new Map<string, import('../../shared/protocol.js').PendingConfirmation>()
+        for (const seat of seatsOf(req)) {
+          const found = port.pendingForWindow!(seat.windowKey)
+          if (found !== undefined && found.requirementId === id) seen.set(found.ticket, found)
+        }
+        recs = [...seen.values()]
+        if (recs.length === 0) continue
+      } else {
+        continue
+      }
+      rows.push(...pendingBoardRowsOf(req, recs, now))
+    }
+    return rows.sort((a, b) => (a.remaining_ms - b.remaining_ms) || (a.ticket < b.ticket ? -1 : a.ticket > b.ticket ? 1 : 0))
+  }
+
+  /**
    * GET /（含 `/state`）——**摘要 + 分页**载荷（REQ-261002161439-277d B12 阶段⑥-①）。
    *
    * 改前两处随数据量放大：① 每请求 `syncAllReqArtifacts` 全量扫需求目录；
@@ -105,6 +158,10 @@ export function createStagesRouter(ctx: RouterCtx) {
       ...(page.nextCursor === undefined ? {} : { nextCursor: page.nextCursor }),
       requirements: page.items,
       tasks: live.map(t => ({ ...t })),
+      // REQ-261007223647-da5d t6（FR-5 / 设计 IF-5）：挂起确认票——看板首屏「有人在等」的数据源。
+      // 六键（ticket / requirement_id / target / kind? / created_at / interrupted）+ 失效时刻与剩余毫秒。
+      // **键恒在**：无票 = 空数组（不省略键，客户端据此不渲染首屏横带）。
+      pending_confirms: await pendingBoardOf(page.items.map(i => i.id)),
       // 派生视图：每个需求的 ready 任务（client 调度提示用）。
       // REQ-261005193546-1b1a FR-1 / FR-5：**现算、不读落盘 `ready[]`**——磁盘 `ready[]` 是旧口径快照
       // （写路径下次事务才重算），且旧判据会把「前置已取消」的活卡漏在门外面。判据单点 = `liveReadyTasks`
@@ -349,7 +406,7 @@ export function createStagesRouter(ctx: RouterCtx) {
         description: target.description,
         status: target.status,
         category: target.category ?? null,
-        // REQ-260923134706-e72f t3 / FR-2：立项四问之一的提示词难度透传给会话流程面板（老记录无字段 → null）
+        // REQ-260923134706-e72f t3 / FR-2：立项弹框中的提示词难度透传给会话流程面板（老记录无字段 → null）
         promptDifficulty: target.promptDifficulty ?? null,
         blocked: target.blocked,
         paused: target.paused === true,

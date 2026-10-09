@@ -65,6 +65,8 @@ import { checkAcceptance, checkPlanTaskReferences } from '../domain/task/Accepta
 // 计划任务表的需求条款引用（REQ-261002164800-d8f2 FR-2）：判定单点在 domain，协议层只搬运。
 import { normalizeRequirementRefs } from '../domain/task/RequirementRefs.js'
 import { assertFootprintFloor, normalizeFootprint } from '../domain/task/Footprint.js'
+// 双拼字段取值唯一实现（REQ-261007230908-5ccb FR-4 / G10）：snake/camel 归一只认这一处。
+import { dualMapMerged, readDual } from './dual-field.js'
 import type { CardFootprint } from '../domain/task/Footprint.js'
 import type { StageKind } from '../domain/task/SubtaskTemplate.js'
 import { resolvePlanStages } from '../domain/task/SubtaskTemplate.js'
@@ -980,7 +982,7 @@ export interface DocSyncPending {
  * 材料（需求/计划/验收/复盘），同时把"别人以后要读的那部分"合并进
  * docs/architecture|guides|adr|research|known-issues 等既定文档，并写一条索引条目。
  * 不同需求类型（category）的必填文档与合并去向由 ARCHIVE_DOC_RULES 规定，
- * 规范文档：agent-dh/docs/architecture/requirement-archive.md。
+ * 规范文档：docs/architecture/archived-entry.md。
  */
 /**
  * 归档对**项目说明书**（金字塔 L1）的更新点。
@@ -1177,9 +1179,10 @@ export function normalizePlanTasks(raw: unknown): PlanTask[] {
     // （这卡没有调用方 / 没有 HTTP 边界 / 纯文档），否则批准人只能盲批一个布尔开关。
     // 硬拒用带 code 的抛错（与 resolvePlanStages 的 REQBOARD_TEMPLATE_CONFLICT 同一形态）：
     // 调用方要能把「缺理由」与「格式错」分开处置，bad() 只有一个通用 code 做不到。
-    const skipIntegrationReason = o.skipIntegrationReason === undefined && o.skip_integration_reason === undefined
+    const skipIntegrationReasonRaw = readDual(o, 'skip_integration_reason', 'skipIntegrationReason', 'camel')
+    const skipIntegrationReason = skipIntegrationReasonRaw === undefined
       ? ''
-      : String(o.skipIntegrationReason ?? o.skip_integration_reason).trim().slice(0, 300)
+      : String(skipIntegrationReasonRaw).trim().slice(0, 300)
     if (skipIntegration && skipIntegrationReason.length === 0) {
       throw Object.assign(
         new Error(
@@ -1194,9 +1197,8 @@ export function normalizePlanTasks(raw: unknown): PlanTask[] {
     // 零交集依赖边的语义理由（与 normalizeRequirementRefs 同一课：白名单搬运不带上它 = 静默丢弃，
     // 于是判定单点永远看不见理由、每条真时序边都被点名）。
     // 两个拼法**取并集**（同一条边在两种写法里各写一遍不该互相覆盖）。
-    const depReasonsMerged: Record<string, string> = { ...(depReasonsOf(o.dep_reasons) ?? {}) }
-    Object.assign(depReasonsMerged, depReasonsOf(o.depReasons) ?? {})
-    const depReasons = Object.keys(depReasonsMerged).length > 0 ? depReasonsMerged : undefined
+    // 双键取值唯一实现：dual-field.ts（G10 单源化）；并集语义（camel 覆盖同 key）逐字保持。
+    const depReasons = dualMapMerged(o, 'dep_reasons', 'depReasons', depReasonsOf)
     // 需求条款引用（REQ-261002164800-d8f2 FR-2）：**保留**并当场校验——此前被白名单静默丢弃，
     // 于是计划里写了 refs 也到不了落库，卡上恒空。校验单点在 domain（编号形态与文档条款定义位同源）。
     // 两个拼法都认（snake 为主、camel 兼容人/历史写法），非法即抛 REQBOARD_BAD_REQUIREMENT_REF。
@@ -1217,7 +1219,7 @@ export function normalizePlanTasks(raw: unknown): PlanTask[] {
     const decisionRefs = stringListOf(o.decisionRefs ?? o.decision_refs)
     // 粒度豁免理由（REQ-261007125552-32cb FR-4）：snake 为主、camel 兼容（同 dep_reasons 惯例）；
     // trim + ≤300 截断 + 去空——空串/未填 = 键不出现（不冒充豁免），判定在 plan-granularity 单点。
-    const granularityExempt = String(o.granularity_exempt ?? o.granularityExempt ?? '').trim().slice(0, 300)
+    const granularityExempt = String(readDual(o, 'granularity_exempt', 'granularityExempt', 'snake') ?? '').trim().slice(0, 300)
     out.push({
       key,
       title: normalizeTitle(o.title),
@@ -1358,7 +1360,7 @@ export interface AdvanceState {
  * 同一需求只保留**一个**对象（后写覆盖前写），避免「两份真相」。写入源三选一：
  *   A 交棒用例尾部 `stampCheckpoint`（reason="checkpoint"；stage/pendingAction 两字段未变则**不写**）
  *   B `Dive 会话驱动器`（原 CaptureHook）的 `turn/end`（reason="error:<code>:<message>" / "aborted:<cause>" / "interrupted"）
- *   B′ `reqboard_note_interruption(reason)` 工具兜底
+ *   B′ `reqboard_task_amend(op=interruption)` 工具兜底（REQ-261008020552-4aa0 FR-2 收编）
  * 字段缺失（存量记录）= 无断点：续跑输入包不渲染「## 断点」节，逐字节保持旧输出。
  */
 export interface InterruptionRecord {
@@ -1374,7 +1376,7 @@ export interface InterruptionRecord {
   tool?: string
 }
 
-/** 挂起确认的后台作答结果（T-4；`reqboard_confirm_receipt` 与后台落章回填用）。 */
+/** 挂起确认的后台作答结果（T-4；`reqboard_ask_confirm(ticket=…)` 与后台落章回填用）。 */
 export interface PendingConfirmationOutcome {
   confirmed: boolean
   advanced: boolean
@@ -1386,7 +1388,7 @@ export interface PendingConfirmationOutcome {
  * 挂起确认（T-4，REQ-260924213231-b1c4 / FR-3 / I-3/I-4）——**内存**态，不落盘。
  *
  * 产生：`reqboard_ask_confirm` 超过宽限窗口仍未作答（返回 `pending:true` + `ticket`，**不判失败**）；
- * 消费：人作答后由后台落章 + 推进，agent 凭 `ticket` 调 `reqboard_confirm_receipt` 取回执
+ * 消费：人作答后由后台落章 + 推进，agent 凭 `ticket` 调 `reqboard_ask_confirm(ticket=…)` 取回执
  * （缺 ticket 时回退读台账 `confirmedAt`，以台账为准）。
  */
 export interface PendingConfirmation {
@@ -2174,7 +2176,7 @@ export function assertSubtaskInvariants(
 }
 // ---------------------------------------------------------------------------
 // Triage（遗留：旧流程「会话捕获待归类建议卡，人工在看板确认」；新流程 2026-09 起
-// 改为创建即立项——reqboard_capture 三问弹框作答即确认并直接建 REQ，不再产生
+// 改为创建即立项——reqboard_capture 弹框作答即确认并直接建 REQ，不再产生
 // pending triage。存量 triage 记录保留只读兼容（REQ-260922182505-0924：路由/面板已删，本类型与台账字段冻结不动）。）
 // ---------------------------------------------------------------------------
 

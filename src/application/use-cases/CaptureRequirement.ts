@@ -1,14 +1,14 @@
 /**
- * CaptureRequirement 用例（REQ-e3b6a0 t8 / FR-7）——立项四问 pm 专有弹框：一次调用一把梭。
+ * CaptureRequirement 用例（REQ-e3b6a0 t8 / FR-7）——立项弹框（pm 专有）：一次调用一把梭。
  *
- * 为什么不复用 `reqboard_ask_confirm`：立项四问是**表单取值 + 创建**，根本没有产物可落章
+ * 为什么不复用 `reqboard_ask_confirm`：立项弹框是**表单取值 + 创建**，根本没有产物可落章
  * （ask_confirm 的 target 语义是"确认**已有**产物 / 批准**已有**计划"）。但两者**共用同一条
  * 弹框通道**（`UserQuestionPort`）与**同一条后置链**——本用例只声明 `gate: 'G0'`，
  * 压缩/注入/唤醒/留痕由装饰器（adapters/GateAwareQuestions）统一织入，本用例不碰链。
  *
  * 时序（Phase A，全部在一次工具调用内完成，避免"先弹框、再另调 create"的断链）：
  *   ① 前置判定：已绑定 / 有遗留 pending 卡 → 直接拒绝（不白弹一次框）；
- *   ② 经 `deps.questions.ask(四问)` 弹框（装饰器在此刻登记 G0 的后置链）；
+ *   ② 经 `deps.questions.ask(问列表)` 弹框（装饰器在此刻登记 G0 的后置链）；
  *   ③ 答案映射：名称自定义优先、缺项回落既有默认并**记进 defaults_used**（不静默猜）；
  *   ③.5 拒绝立项检查：用户选择"不需要立项" → 如实返回未立项；
  *   ④ `createRequirementDirect`：创建即立项（含 draft 入口快照 + 文档位置）；
@@ -18,13 +18,15 @@
  *
  * @module dsh-pmboard/application/use-cases/CaptureRequirement
  */
-import type { AskAnswer, AskQuestion, CaptureRejection, UseCaseDeps } from '../ports.js'
+import type { AskAnswer, AskQuestion, CaptureRejection, HostFsPort, UseCaseDeps } from '../ports.js'
 import { normalizeText, normalizeTitle } from '../../shared/protocol.js'
 import { LIMITS } from '../../domain/limits.js'
 import { fmt } from '../../domain/text/fmt.js'
-import { isAbsolute } from 'node:path'
-import { statSync } from 'node:fs'
-import { recentCaptureRejection } from '../internal/capture-rejections.js'
+// REQ-261008020617-088f RF-5：路径判定走纯函数 + 宿主端口（application 不再 import node:path/node:fs）
+import { isAbsolutePath } from '../internal/paths.js'
+import { CAPTURE_CANCEL_ESCALATION, recentCaptureCancels, recentCaptureRejection } from '../internal/capture-rejections.js'
+import { askWithBudget } from '../internal/ask-timed.js'
+import { captureDiag } from '../internal/diag-log.js'
 import { advanceDraftToBrainstorming } from '../internal/advance-draft.js'
 import {
   buildCaptureIntentQuestions,
@@ -61,7 +63,7 @@ function notCreated(
     success: false,
     requirement_id: '',
     status: '',
-    answers: mapped?.answers ?? { title: '', category: '', difficulty: '', docLocation: '', workspace: '' },
+    answers: mapped?.answers ?? { title: '', category: '', difficulty: '', location: '' },
     defaults_used: mapped?.defaultsUsed ?? [],
     ...(extra.fallback === undefined ? {} : { fallback: extra.fallback }),
     note: extra.note,
@@ -72,23 +74,20 @@ function notCreated(
  * 工作区作答 → 绝对路径（REQ-260929210741-30ae FR-6）。
  * 哨兵值解析为当时路径；自定义输入必须是已存在的绝对目录，否则 undefined（调用方响亮拒绝）。
  */
-function resolveWorkspaceAnswer(answer: string, sessionCwd: string): string | undefined {
+function resolveWorkspaceAnswer(answer: string, sessionCwd: string, host: HostFsPort): string | undefined {
   if (answer === WORKSPACE_SENTINELS.session) return sessionCwd
-  if (answer === WORKSPACE_SENTINELS.host) return process.cwd()
-  // 自定义路径：绝对 + 已存在 + 是目录
-  if (!isAbsolute(answer)) return undefined
-  try {
-    return statSync(answer).isDirectory() ? answer : undefined
-  } catch {
-    return undefined
-  }
+  // `host` 哨兵 = **宿主进程 cwd**（不是任何需求根）——与搬迁前的 process.cwd() 逐字一致
+  if (answer === WORKSPACE_SENTINELS.host) return host.cwd()
+  // 自定义路径：绝对 + 已存在 + 是目录（端口对不可读/不存在一律 false，故无需 try/catch）
+  if (!isAbsolutePath(answer)) return undefined
+  return host.isDirectory(answer) ? answer : undefined
 }
 
 /** 立项后原子推进 draft → brainstorming（G0 的 to）。失败只如实说明，不抛。 */
 // 实现已抽到 internal/advance-draft.ts：代理立项（reqboard_create + owner_window）走同一段编排。
 
 /**
- * 立项四问弹框用例（`reqboard_capture`）：四问作答 → 创建即立项 → 绑定本窗口 → 推进 brainstorming。
+ * 立项弹框用例（`reqboard_capture`）：逐问作答 → 创建即立项 → 绑定本窗口 → 推进 brainstorming。
  * 弹框通道不可用/无权限 → `fallback=board` 并如实说明，**不伪造立项**（FR-7 第 5 条）。
  */
 export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
@@ -170,18 +169,49 @@ export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec:
         ),
       })
     }
+    // REQ-261007223647-da5d t5（FR-2）：连续取消到阈值 → **不再弹框**，改提议看板/文字两条路。
+    // 为什么要拦在弹框之前：人已经用"取消"表达过三次"别弹了"，再弹就是拿同一个框烦人。
+    const cancels = recentCaptureCancels(rejections, windowKey, deps.clock.now())
+    if (cancels >= CAPTURE_CANCEL_ESCALATION) {
+      return notCreated(undefined, {
+        note: fmt(
+          '本窗口 30 分钟内已连续取消 {n} 次立项弹框：本次**不再弹框**。两条替代路径任选——① 直接文字给出「名称/类型/算力档位/文件落点」，我调 reqboard_create 立项；② 到项目看板 → 立项页填写（/dashboard#pmboard）。',
+          { n: String(cancels) },
+        ),
+      })
+    }
   }
 
   // ② 弹框（闸门声明 G0：装饰器在此刻登记后置链；本用例不碰链）
+  console.log('[reqboard DEBUG] CaptureRequirement: 检查弹框通道可用性')
   if (!deps.questions.available()) {
+    console.log('[reqboard DEBUG] CaptureRequirement: 弹框通道不可用，返回 fallback=board')
     return notCreated(undefined, {
       fallback: 'board',
       note: '弹框通道不可用（userQuestions 服务缺失）：本次未立项。可稍后重试 reqboard_capture，或请用户直接给出名称/类型/难度/文档位置后调 reqboard_create 立项。',
     })
   }
+  console.log('[reqboard DEBUG] CaptureRequirement: 弹框通道可用，准备构建问题')
+  /**
+   * 交互留痕（t5）：拒绝 / 取消 / 超时都写一条，**失败不阻断**主流程（留痕是增强不是门槛）。
+   * 作答「到达即写」——不再依赖调用延续段活到用例收尾。
+   */
+  const recordInteraction = (
+    d: UseCaseDeps,
+    win: string,
+    kind: 'reject' | 'cancel' | 'timeout',
+  ): void => {
+    try {
+      d.rejections?.record({ windowKey: win, at: d.clock.now(), kind })
+    } catch { /* 留痕失败不阻断「未立项」返回 */ }
+  }
+
   /**
    * 一次弹框（两段共用）——失败语义与改造前逐字一致：
    * 无弹框权限 → fallback=board；用户取消/暂离 → 中性未立项。
+   *
+   * REQ-261007223647-da5d t4（FR-1）：等待改走 `askWithBudget`——**等待死在工具预算之前**
+   * （预算 1 小时就等 1 小时减安全边），到点返回「还没作答」而不是让调用被外部砍掉。
    *
    * 失败回执写进 `failure` 并返回 undefined：**不新增返回对象键**——本文件的每个 return 分支
    * 都要经 tests/output-contract 的静态扫描（按 defineCaptureTool 声明的响应键校验），
@@ -192,68 +222,125 @@ export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec:
     questions: readonly AskQuestion[],
     gate?: 'G0',
   ): Promise<readonly AskAnswer[] | undefined> => {
+    console.log('[reqboard DEBUG] askOrFail 被调用:', {
+      questionsCount: questions.length,
+      gate,
+      firstQuestionId: questions[0]?.id,
+      firstQuestionOptionsCount: questions[0]?.options?.length
+    })
     try {
-      return await deps.questions.ask(questions, {
+      console.log('[reqboard DEBUG] 调用 askWithBudget...')
+      const timed = await askWithBudget(deps.questions, questions, {
         ...(exec?.agent !== undefined ? { agent: exec.agent } : {}),
         signal: (exec as { signal?: unknown } | undefined)?.signal,
         ...(gate === undefined ? {} : { gate }),
-      })
+      }, { desiredMs: LIMITS.timeoutInteractiveMs, budgetMs: LIMITS.timeoutInteractiveMs })
+      console.log('[reqboard DEBUG] askWithBudget 返回:', { kind: timed.kind })
+      if (timed.kind === 'rejected') throw timed.error
+      if (timed.kind === 'pending') {
+        // 到点未作答 ≠ 用户取消：回执如实说「还没等到」，并给出仍可作答的出处（卡片通常还活着）
+        recordInteraction(deps, windowKey, 'timeout')
+        failure = notCreated(undefined, {
+          note: '等待超时（宽限内未作答）：本次未立项。弹框卡片通常仍可作答（作答可能迟到送达），也可直接给出名称/类型/算力档位/文件落点后调 reqboard_create，或到看板立项。',
+        })
+        return undefined
+      }
+      return timed.answers
     } catch (err) {
       const code = (err as { code?: string }).code ?? ''
-      failure = code === 'DELEGATED_CALLER' || code === 'CALLER_NOT_LIVE'
-        ? notCreated(undefined, {
+      const message = (err as Error).message
+      // 【诊断-3】落文件：stdout 在桌面宿主里读不到，错误码是唯一能区分
+      // 「没人接单」与「用户取消」的证据（2026-10-08 实测事故）。
+      captureDiag(`reqboard-capture [UI-5]: askWithBudget 抛错 code=${code || '<none>'} message=${message}`)
+      if (code === 'DELEGATED_CALLER' || code === 'CALLER_NOT_LIVE') {
+        failure = notCreated(undefined, {
           fallback: 'board',
-          note: '当前调用方无弹框权限（subagent / 非活窗口）：本次未立项。请顶层窗口在直接人工回合重试，或由用户直接给出名称/类型/难度/文档位置后调 reqboard_create。',
+          note: '当前调用方无弹框权限（subagent / 非活窗口）：本次未立项。请顶层窗口在直接人工回合重试，或由用户直接给出名称/类型/算力档位/文件落点后调 reqboard_create。',
         })
-        : notCreated(undefined, {
-          note: '用户未作答（取消 / 暂离）：本次未立项。稍后可重新发起 reqboard_capture。',
+      } else if (code === 'NO_PROVIDER' || code === 'REQBOARD_NO_UI') {
+        // 【2026-10-08 修复】通道故障 ≠ 用户取消。此前 NO_PROVIDER（客户端没有 answerer
+        // 接单：userQuestions 服务在、但没人应答）落进 else 分支，被误报成「用户未作答
+        // （取消 / 暂离）」，并写一条 cancel 留痕——连续三次后触发取消粘滞（30 分钟不再
+        // 弹框），于是"弹框弹不出来"被永久固化，且回执把环境故障说成人的选择。
+        captureDiag('reqboard-capture [UI-5]: 判定为通道故障（无 answerer 接单），不计取消留痕')
+        failure = notCreated(undefined, {
+          fallback: 'board',
+          note: '弹框通道无应答者（宿主 userQuestions 服务在、但没有 answerer 接单：'
+            + '客户端 UI 插件未加载或该 agent 作用域无应答者）：本次未立项，且**未记取消留痕**。'
+            + '请检查官方客户端插件（ui-user-questions）是否加载；'
+            + '也可直接给出名称/类型/算力档位/文件落点后调 reqboard_create，或到看板立项。',
         })
+      } else {
+        // 取消/暂离留痕（t5）：此前一律不留痕，agent 只能靠人抱怨才知道"人不想用弹框"
+        recordInteraction(deps, windowKey, 'cancel')
+        failure = notCreated(undefined, {
+          note: '用户未作答（取消 / 暂离）：本次未立项。不想用弹框？两条替代路径——① 直接文字给出「名称/类型/算力档位/文件落点」，我调 reqboard_create；② 到项目看板 → 立项页填写（/dashboard#pmboard）。',
+        })
+      }
       return undefined
     }
   }
 
   // ② 第一段：立项意愿 + 需求名称（含终止项「✖️ 不需要立项」）。**不带 gate**——拒绝不是一次
   // 闸门作答；若在这里声明 G0，用户拒绝后链会把它当"未通过"向窗口回发告警（REQ-260924002956-f37c BUG-2）。
-  const first = await askOrFail(buildCaptureIntentQuestions(titleOptions))
+  // REQ-261001203710-0fbf t3 / REQ-261007223647-da5d t1：工作区根**必须早于第一段弹框**算出——
+  // 题干要带立项理由、第二段「文件落点」选项要给拼好的绝对路径预览，两处都依赖它。
+  const effectiveWorkspace = (deps.docs as { workspaceRoot?: () => unknown }).workspaceRoot?.()
+  const sessionCwd = (exec?.agent?.session?.header?.cwd as string | undefined)
+    ?? (typeof effectiveWorkspace === 'string' && effectiveWorkspace.length > 0 ? effectiveWorkspace : undefined)
+    ?? process.cwd()
+  const hostCwd = process.cwd()
+  const roots = { sessionCwd, hostCwd }
+  // 题干里的立项理由（agent 传的 reason 优先、其次 summary；截断到 60 字——题干长了会把选项挤出可视区）
+  const reasonLine = (reason.length > 0 ? reason : summary).replace(/\s+/g, ' ').trim().slice(0, 60)
+
+  console.log('[reqboard DEBUG] 准备第一段弹框:', {
+    titleOptionsCount: titleOptions.length,
+    reasonLine,
+    sessionCwd,
+    hostCwd
+  })
+  const first = await askOrFail(buildCaptureIntentQuestions(titleOptions, { reasonLine }))
   if (first === undefined) return failure as Record<string, unknown>
 
   // ②.5 拒绝即终端（BUG-1）：命中终止项 → 写留痕 + 立即返回，**不发起第二段**
-  //（不再追问类型/难度/文档位置；回执也不再带未作答三问的 defaults_used）。
-  const intent = mapCaptureAnswers(first)
+  //（不再追问类型/难度/文件落点；回执也不再带未作答问项的 defaults_used）。
+  const intent = mapCaptureAnswers(first, roots)
   if (intent.rejected) {
-    try {
-      deps.rejections?.record({ windowKey, at: deps.clock.now() })
-    } catch { /* 留痕失败不阻断「未立项」返回——留痕是增强不是门槛 */ }
+    recordInteraction(deps, windowKey, 'reject')
     return notCreated(undefined, {
       note: '用户选择不立项：本次未创建需求（已留痕，30 分钟内本窗口不再弹立项框）。如后续需要立项，请用户明确告知后重新发起 reqboard_capture。',
     })
   }
 
-  // ③ 第二段：类型 / 难度 / 文档位置 / 工作区。**G0 登记在这里**——肯定分支才是一次闸门作答，
-  // H1 在回合结束以台账实时状态校验（draft→brainstorming 已发生 = affirmative）。
-  // REQ-261001203710-0fbf t3：`session-workspace` 哨兵解析成「**我们实际会写进去的那个工作区**」。
-  // 此前只有会话 cwd，没有就回落 `process.cwd()`（插件启动目录）——于是记录一出生就把项目根记成
-  // 别的项目（实测：capture 把 workspaceRoot 记成插件所在仓库，而文件实际写在注入的会话工作区），
-  // 下游的「按记录自己的项目写」就会写错。这里优先取真在用的工作区，最后才回落 process.cwd()。
-  const effectiveWorkspace = (deps.docs as { workspaceRoot?: () => unknown }).workspaceRoot?.()
-  const sessionCwd = (exec?.agent?.session?.header?.cwd as string | undefined)
-    ?? (typeof effectiveWorkspace === 'string' && effectiveWorkspace.length > 0 ? effectiveWorkspace : undefined)
-    ?? process.cwd()
-  const rest = await askOrFail(buildCaptureDetailQuestions({ sessionCwd, hostCwd: process.cwd() }), 'G0')
-  if (rest === undefined) return failure as Record<string, unknown>
+  // ③ 第二段：类型 / 算力档位 / 文件落点（3 问，t1 由 4 问收口而来）。**G0 登记在这里**——
+  // 肯定分支才是一次闸门作答，H1 在回合结束以台账实时状态校验（draft→brainstorming 已发生 = affirmative）。
+  // 「⚡ 全部按推荐值立项」一键过：整段跳过，后 3 问全走默认并记 defaults_used（FR-3）。
+  let rest: readonly AskAnswer[] = []
+  if (!intent.acceptAllRecommended) {
+    const asked = await askOrFail(buildCaptureDetailQuestions(roots), 'G0')
+    if (asked === undefined) return failure as Record<string, unknown>
+    rest = asked
+  }
 
   // ③.5 映射（缺项回落默认并记 defaults_used；名称为空 → 响亮失败）
-  const mapped = mapCaptureAnswers([...first, ...rest])
-  
-  if (mapped.title.length === 0) {
+  // 一键过路径的名称来自 agent 的推荐候选（titleOptions[0]）——弹框不问名称，但绝不拿控制项当名字。
+  const mapped = mapCaptureAnswers([...first, ...rest], roots)
+  const effectiveTitle = intent.acceptAllRecommended
+    ? (titleOptions[0] ?? '').trim().slice(0, LIMITS.titleMax)
+    : mapped.title
+
+  if (effectiveTitle.length === 0) {
     return notCreated(mapped, {
-      note: '未取到需求名称（五问答复里名称为空）：本次未立项——名称是唯一没有默认值的问项，不猜不补。可重试 reqboard_capture。',
+      note: '未取到需求名称（弹框答复里名称为空）：本次未立项——名称是唯一没有默认值的问项，不猜不补。可重试 reqboard_capture。',
     })
   }
+  mapped.title = effectiveTitle
+  mapped.answers.title = effectiveTitle
 
   // ③.6 工作区解析 + 校验（REQ-260929210741-30ae FR-6）：哨兵值 → 当时路径；
   // 自定义输入 → 必须是已存在的绝对目录，否则响亮拒绝（REQBOARD_INVALID_WORKSPACE）。
-  const workspaceRoot = resolveWorkspaceAnswer(mapped.workspace, sessionCwd)
+  const workspaceRoot = resolveWorkspaceAnswer(mapped.workspace, sessionCwd, deps.hostFs)
   if (workspaceRoot === undefined) {
     return notCreated(mapped, {
       note: fmt(
@@ -290,7 +377,7 @@ export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec:
   // ⑤ 原子推进 brainstorming（G0 的 to）
   const advanced = await advanceDraftToBrainstorming(
     deps, req.id, windowKey,
-    '立项四问作答即立项（reqboard_capture 原子推进 draft → brainstorming）',
+    '立项弹框作答即立项（reqboard_capture 原子推进 draft → brainstorming）',
   )
 
   // ⑥ RTM 触发点 1（REQ-260926140539-457b FR-2）：**窗口已绑定**（createRequirementDirect 已写
@@ -332,7 +419,7 @@ export async function captureRequirement(deps: UseCaseDeps, args: unknown, exec:
     note: fmt(
       handedOffTo !== undefined
         ? '已立项并交给新窗口 {wk} 当 owner：{id}（{category} / {difficulty}）。原窗口不再拥有它；请在侧栏打开该窗口继续（本页可切换）。文档将存放在：{docPath}（相对路径：{relPath}，根={workspaceRoot}）。{advanced}'
-        : '已立项并绑定本窗口：{id}（{category} / {difficulty}）。文档将存放在：{docPath}（相对路径：{relPath}，根={workspaceRoot}）。五问作答即立项，按 brainstorming 阶段纪律继续（无需用户再发消息）。{advanced}',
+        : '已立项并绑定本窗口：{id}（{category} / {difficulty}）。文档将存放在：{docPath}（相对路径：{relPath}，根={workspaceRoot}）。弹框作答即立项，按 brainstorming 阶段纪律继续（无需用户再发消息）。{advanced}',
       {
         ...(handedOffTo !== undefined ? { wk: handedOffTo } : {}),
         id: req.id,

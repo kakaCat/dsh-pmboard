@@ -344,13 +344,13 @@ describe('⑤ 另外两条进需求阶段的**真实入口**也落盘（弹框�
     const root = tempRoot()
     const h = makeHarness()
     const deps = { ...h.deps, docs: new FileDocRepository({ workspaceRoot: root }) }
-    // 五问作答（id 口径见 capture-mapping 的 CAPTURE_QUESTION_IDS）
+    // 四问作答（id 口径见 capture-mapping 的 CAPTURE_QUESTION_IDS；t1 起文件落点合为一问）
     h.questions.answers = [
       { id: 'name', selected: [], custom: '看板 UI 需求' },
       { id: 'category', selected: ['feature'], custom: '' },
       { id: 'difficulty', selected: ['standard'], custom: '' },
-      { id: 'doc_location', selected: ['docs/requirements/<REQ>/'], custom: '' },
-      { id: 'workspace', selected: [], custom: root },
+      // 自定义绝对路径 = 既是工作区根、目录走默认（IF-2 规则③）
+      { id: 'location', selected: [], custom: root },
     ]
     const out = await captureRequirement(deps as never, {}, exec('session-a', root) as never) as Record<string, unknown>
     const id = String(out['requirement_id'])

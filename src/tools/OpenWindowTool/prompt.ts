@@ -21,4 +21,5 @@ export const OPEN_WINDOW_PROMPT = `开一个新窗口（用 DSH 现成的会话�
 继承失败**不影响**开窗成败：窗口已经建好了，缺哪项看 inheritance，按需手工补即可。
 
 失败时：源会话没有可切分的完整回合 → REQBOARD_OPEN_WINDOW_UNAVAILABLE，请改用 mode=create。
+建会话本身失败 → REQBOARD_OPEN_WINDOW_FAILED（宿主拒绝建会话/写盘失败；可重试，仍失败改用 mode=create）。
 注意：本工具只造窗口，不含登记席位与投递内容。`

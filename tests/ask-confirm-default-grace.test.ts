@@ -19,6 +19,7 @@
  */
 import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -54,6 +55,8 @@ function makeDeps(ask: () => Promise<{ answers?: AskAnswer[] }>, opts: { pending
     store,
     taskStore: taskStoreAt(dir),
     docs: new FileDocRepository({ workspaceRoot: dir }),
+    // REQ-261008020617-088f RF-3：hostFs 必填（强转构造的夹具最容易漏）
+    hostFs: new FileHostFs(),
     clock: { now },
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({}),

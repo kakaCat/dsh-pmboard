@@ -144,14 +144,14 @@ export function suspendConfirm(
     note: '弹框已投递，超宽限仍未作答：已登记挂起确认（不判失败）。**收到作答前不得产出下游产物**——'
       + '同窗口的 reqboard_submit / reqboard_decompose / reqboard_move / reqboard_task_move 会被代码级拒绝'
       + '（REQBOARD_CONFIRM_PENDING）。人作答后由后台自动落章/推进；'
-      + '请调 reqboard_confirm_receipt(ticket="' + ticket + '") 取回执，或调 reqboard_status 读确认态',
+      + '请调 reqboard_ask_confirm(ticket="' + ticket + '") 取回执，或调 reqboard_status 读确认态',
   }
 }
 
 /** 唤醒窗口：告知作答已落地与取回执的唯一命令。Dive模式下通过事件驱动，无需投递。 */
 function wake(_deps: UseCaseDeps, _windowKey: string, ticket: string, body: SettledBody): void {
   const text = body.confirmed === true
-    ? fmt('用户已在确认弹框作答（ticket {t}）：已落章{adv}。请调 reqboard_confirm_receipt(ticket="{t}") 取回执', {
+    ? fmt('用户已在确认弹框作答（ticket {t}）：已落章{adv}。请调 reqboard_ask_confirm(ticket="{t}") 取回执', {
         t: ticket,
         adv: body.advanced === true ? '并推进' : '（未推进）',
       })

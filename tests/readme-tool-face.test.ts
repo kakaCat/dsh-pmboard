@@ -92,8 +92,10 @@ describe('README 工具面 ↔ 登记面（REQ-261006201508-5cb6）', () => {
   })
 
   it('README 与 package.json 不再残留旧计数，且出现的计数与登记面一致', () => {
-    expect(/13 个|21 个/.test(readme), 'README 仍残留旧计数（13 个 / 21 个）').toBe(false)
-    expect(/13 个|21 个/.test(pkg), 'package.json 仍残留旧计数（13 个 / 21 个）').toBe(false)
+    // REQ-261007220012-bd29 FR-4：工具面精简终值已成为**当前正确计数**，
+    // 故旧计数守卫只保留 13（初代收敛值）；当前计数由下面的派生断言背书。
+    expect(/13 个/.test(readme), 'README 仍残留旧计数（13 个）').toBe(false)
+    expect(/13 个/.test(pkg), 'package.json 仍残留旧计数（13 个）').toBe(false)
     const inReadme = readme.split(countText).length - 1
     expect(
       inReadme,
@@ -116,10 +118,19 @@ describe('README 工具面 ↔ 登记面（REQ-261006201508-5cb6）', () => {
 
   it('本文件不含字面量计数（期望值必须派生）', () => {
     const self = readFileSync(SELF_PATH, 'utf8')
-    // 反向自检：拿**派生出来的数字**去本文件里找——找到就说明写死了。
+    // 反向自检：拿**派生出来的数字**去找「N 个」这种计数文案——找到就说明写死了。
+    // REQ-261007220012-bd29 FR-7：口径从「裸数字 substring」改为「计数文案 N 个」，
+    // 并排除「残留旧计数」守卫行（那里的 13/21 是被断言**不许出现**的历史值，不是期望值）。
+    // 起因：裸 substring 会被 REQ 号里的数字误命中（登记面 26 条时 "26" 命中 "REQ-2610…"），
+    // 且终值 21 会被旧计数守卫行 21 命中——两处都是假阳性，会让门禁在正确的计数下变红。
+    const probe = String(expectedCount) + ' 个'
+    const offenders = self
+      .split('\n')
+      .filter((l) => !l.includes('残留旧计数'))
+      .filter((l) => l.includes(probe))
     expect(
-      self.includes(String(expectedCount)),
-      '本文件出现字面量 ' + String(expectedCount) + '：期望值必须从登记面派生',
-    ).toBe(false)
+      offenders.join('\n'),
+      '本文件出现字面量 ' + probe + '：期望值必须从登记面派生',
+    ).toBe('')
   })
 })

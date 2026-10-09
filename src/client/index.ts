@@ -26,6 +26,11 @@ export const name = 'dsh-pmboard/client'
 // 官方 UI 插件组提供，实测存在；声明后插件等待它就绪再激活。
 // layout（REQ-260928185112-e20d FR-3）：ctx.layout.selectPanel(id|null) 是页面导航的唯一来源，
 // 看板不再自己维护显示状态；缺声明会被 Cordis 服务访问守卫拒绝。
+// ⚠️ 不可在此声明 userQuestions（2026-10-08 实测事故）：它是 **host 端** Cordis 服务，
+// 浏览器侧不存在同名服务；一旦声明，客户端插件会永远卡在 pending（等待一个永远不会到的
+// 服务）→ boot 报「1 entry did not activate: dsh-pmboard pending (waiting for service:
+// userQuestions)」，且同一 entry 链上的官方 UI（模型选择等）跟着不显示。
+// 弹框通道在 host 半装配（src/index.ts 的 inject(['userQuestions'], cb)），与本文件无关。
 export const inject: string[] = ['slots', 'sessions', 'workspaces', 'uiWorkspace', 'sidebarRight', 'layout']
 
 interface SlotsService {

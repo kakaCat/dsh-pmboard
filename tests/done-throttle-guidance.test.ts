@@ -15,6 +15,7 @@ import { defineTaskMoveTool } from '../src/tools/index.js'
 import { executeMoveTask } from '../src/application/use-cases/MoveTask.js'
 import type { TaskRecord } from '../src/shared/protocol.js'
 import { expectCode } from './helpers/code-assert.js'
+import { doneThrottleRemainingMs } from '../src/domain/workflow/DoneEvidenceSpec.js'
 
 const W = 'session-w-001'
 const REQ = 'REQ-000001'
@@ -81,6 +82,58 @@ describe('批量推进 × 60s 节流（FR-5）', () => {
     expect(out.throttleRemainingMs).toBeUndefined()
     expect(out.guidance).toBeUndefined()
     expect(out.partial).toBeUndefined()
+    const after = await h.tasksOf(REQ)
+    expect(after.filter(x => x.status === 'done')).toHaveLength(3)
+  })
+
+  /** 夹具：n 张 in_review 顶层卡（各带 lastReport）+ 1 张 todo 卡（避免整需求被 rollup 推到验收）。 */
+  function seedMany(n: number) {
+    const cards = Array.from({ length: n }, (_, i) => reviewCard('t-c' + String(i).padStart(2, '0')))
+    const h = makeHarness({
+      tasks: [...cards, task({ id: 't-keep', requirementId: REQ, status: 'todo', createdAt: 1 })],
+    })
+    h.seedRequirementSync(req({ status: 'implementing' }))
+    h.deps.doneThrottleMs = THROTTLE_MS
+    return { h, cards }
+  }
+
+  it('批内上限（设计 DD-2）：单批 20 张顶层卡 → 只落 3 张，其余逐项 REQBOARD_BULK_CLOSE + 确定指引', async () => {
+    const { h, cards } = seedMany(20)
+    await h.seedSettled()
+
+    const out = await run(defineTaskMoveTool(h.deps), {
+      tasks: cards.map(c => ({ task_id: c.id, to: 'done' })),
+    })
+
+    const after = await h.tasksOf(REQ)
+    // 上限是设计钉死的 3（DD-2）：修前这里是 20（单次调用可关满 MOVE_BATCH_MAX）
+    expect(after.filter(x => x.status === 'done')).toHaveLength(3)
+    expect(out.success).toBe(true)
+    expect(out.partial).toBe(true)
+    const rejected = (out.results as { ok: boolean; code?: string; throttleRemainingMs?: number }[])
+      .filter(r => !r.ok)
+    expect(rejected).toHaveLength(17)
+    for (const r of rejected) {
+      expect(r.code).toBe('REQBOARD_BULK_CLOSE')
+      expect(r.throttleRemainingMs).toBeGreaterThan(0)
+      expect(r.throttleRemainingMs).toBeLessThanOrEqual(THROTTLE_MS)
+    }
+    // 顶层结构化指引照旧（复用既有装配：凡 results 里出现 BULK_CLOSE 即产出）
+    expect(out.throttleRemainingMs).toBeGreaterThan(0)
+    expect(String(out.guidance)).toContain('确定等待')
+  })
+
+  it('批内上限的边界：单批 4 张 → 3 落 1 拒（第 4 张带 throttleRemainingMs）', async () => {
+    const { h, cards } = seedMany(4)
+    await h.seedSettled()
+
+    const out = await run(defineTaskMoveTool(h.deps), {
+      tasks: cards.map(c => ({ task_id: c.id, to: 'done' })),
+    })
+
+    expect((out.results as { ok: boolean }[]).map(r => r.ok)).toEqual([true, true, true, false])
+    const last = (out.results as { code?: string }[])[3]
+    expect(last?.code).toBe('REQBOARD_BULK_CLOSE')
     const after = await h.tasksOf(REQ)
     expect(after.filter(x => x.status === 'done')).toHaveLength(3)
   })
@@ -223,5 +276,34 @@ describe('批量推进 × 60s 节流（FR-5）', () => {
     }
     const after = await h.tasksOf(REQ)
     expect(after.every(x => x.status === 'in_review')).toBe(true)
+  })
+})
+
+describe('M6（FR-4）：时钟漂移下 doneThrottleRemainingMs 恒 ∈ [0, throttleMs]', () => {
+  /** 一张「其他任务」刚 done（agent）——节流读数取它。 */
+  const otherDoneAt = (at: number) => task({
+    id: 't-other',
+    requirementId: REQ,
+    status: 'done',
+    statusHistory: [{ status: 'done', at, by: { kind: 'agent' } }],
+  } as never)
+
+  it('h.at 在未来（时钟回拨/漂移）→ 钳到 throttleMs，不溢出', () => {
+    const now = 1_000_000
+    const left = doneThrottleRemainingMs([otherDoneAt(now + 30_000)] as never, 't-mine', REQ, now, THROTTLE_MS)
+    expect(left).toBe(THROTTLE_MS)          // 修前 = 60000 + 30000 = 90000
+    expect(left).toBeLessThanOrEqual(THROTTLE_MS)
+  })
+
+  it('正常历史（h.at 在过去 10s）→ 读数不变（行为回归锚点）', () => {
+    const now = 1_000_000
+    const left = doneThrottleRemainingMs([otherDoneAt(now - 10_000)] as never, 't-mine', REQ, now, THROTTLE_MS)
+    expect(left).toBe(50_000)
+  })
+
+  it('早于节流窗的历史 → 0（下界不变）', () => {
+    const now = 1_000_000
+    const left = doneThrottleRemainingMs([otherDoneAt(now - 120_000)] as never, 't-mine', REQ, now, THROTTLE_MS)
+    expect(left).toBe(0)
   })
 })

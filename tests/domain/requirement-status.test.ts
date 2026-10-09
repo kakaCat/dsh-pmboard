@@ -4,6 +4,9 @@
  * 断言口径（design/test-cases.md INV-1）：**表驱动**遍历 REQ_TRANSITIONS 表逐项与
  * canReqTransition 结果一致——新增状态或新增转移时本测试自动覆盖，不漏测（卡里的验收锚点）。
  * 同时断言再导出：shared/protocol.ts 与 domain 引用的是**同一份表**（版本漂移会红）。
+ * serves: FR-3
+ *   —— FR-3（REQ-261007193530-3133）：人工门集合含 canceled>draft；agent/system 走复活边
+ *      抛 human_gate、human 放行；agentNextActions('canceled') 自动不含 draft。
  */
 import { describe, it, expect } from 'vitest'
 import {
@@ -79,6 +82,31 @@ describe('INV-1 需求状态机：表驱动逐项一致', () => {
     expect(agentNextActions('accepting')).toEqual([
       'draft', 'brainstorming', 'design', 'decomposing', 'implementing',
     ])
+  })
+})
+
+describe('M2（FR-3）：复活边 canceled→draft 与取消同门', () => {
+  it('集合已收录 canceled>draft（合法边仍在，只是 agent 不可发起）', () => {
+    expect(HUMAN_ONLY_REQ_TRANSITIONS.has('canceled>draft')).toBe(true)
+    expect(canReqTransition('canceled', 'draft')).toBe(true) // 边本身没被删
+  })
+
+  it('agent / system 走复活边 → human_gate；human 放行', () => {
+    for (const actor of ['agent', 'system'] as const) {
+      try {
+        assertReqTransition('canceled', 'draft', actor)
+        throw new Error('应当抛 human_gate')
+      } catch (err) {
+        expect((err as { code?: string }).code, 'actor=' + actor).toBe('human_gate')
+      }
+    }
+    expect(() => assertReqTransition('canceled', 'draft', 'human')).not.toThrow()
+  })
+
+  it('派生面自动跟随：agentNextActions(canceled) 不含 draft（手改即红）', () => {
+    expect(agentNextActions('canceled')).not.toContain('draft')
+    const expected = REQ_TRANSITIONS.canceled.filter(to => !HUMAN_ONLY_REQ_TRANSITIONS.has('canceled>' + to))
+    expect(agentNextActions('canceled')).toEqual(expected)
   })
 })
 

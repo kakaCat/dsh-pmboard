@@ -57,7 +57,7 @@ function stubCtx(): StubCtx & {
   const logger = () => ({ debug() {}, info() {}, warn(..._a: unknown[]) {}, error(..._a: unknown[]) {} })
   const ctx = {
     ...s,
-    // cordis Service 基类构造时调 ctx.reflect.provide(...)（application/dive/ReqboardDiveManager
+    // cordis Service 基类构造时调 ctx.reflect.provide(...)（adapters/ReqboardDiveManager
     // 在 apply() 里直接 new）。stub 必须有 reflect，否则装配阶段就抛
     // TypeError: Cannot read properties of undefined (reading 'provide')。
     reflect: { provide: () => {} },

@@ -20,7 +20,6 @@ import { defineCaptureTool } from './helpers/tool-deps.js'
 import {
   CAPTURE_ANSWER_KEYS,
   CAPTURE_QUESTION_IDS,
-  WORKSPACE_SENTINELS,
   mapCaptureAnswers,
 } from '../src/application/internal/capture-mapping.js'
 import type { AskAnswer } from '../src/application/ports.js'
@@ -60,22 +59,22 @@ function makeTool(svc: unknown) {
   }
 }
 
-const FIVE_ANSWERS: AskAnswer[] = [
+const FOUR_ANSWERS: AskAnswer[] = [
   { id: CAPTURE_QUESTION_IDS.name, selected: ['契约候选'] },
   { id: CAPTURE_QUESTION_IDS.category, selected: ['bug'] },
   { id: CAPTURE_QUESTION_IDS.difficulty, selected: ['standard'] },
-  { id: CAPTURE_QUESTION_IDS.doc_location, selected: ['docs/requirements/<REQ>/'] },
-  { id: CAPTURE_QUESTION_IDS.workspace, selected: [WORKSPACE_SENTINELS.session] },
+  // t1 收口（REQ-261007223647-da5d）：文档位置与工作区合并为「文件落点」，键名 = location
+  { id: CAPTURE_QUESTION_IDS.location, selected: ['docs/requirements/<REQ>/'] },
 ]
 
 describe('reqboard_capture · 回执必须过自己声明的 output.schema（与绑定层同校验器）', () => {
-  it('成功路径：五问作答立项的回执通过 output.schema 校验', async () => {
-    const tool = makeTool(makeSvc(FIVE_ANSWERS))
+  it('成功路径：四问作答立项的回执通过 output.schema 校验', async () => {
+    const tool = makeTool(makeSvc(FOUR_ANSWERS))
     const receipt = await tool.execute({}, { agent: { id: W } })
     expect(validateJsonSchemaValue(tool.output.schema as never, receipt)).toEqual([])
   })
 
-  it('取消路径：用户中止的回执（notCreated 默认 answers 也含 workspace）通过 output.schema 校验', async () => {
+  it('取消路径：用户中止的回执（notCreated 默认 answers 也含 location）通过 output.schema 校验', async () => {
     const tool = makeTool(makeSvc('abort'))
     const receipt = await tool.execute({}, { agent: { id: W } })
     expect(validateJsonSchemaValue(tool.output.schema as never, receipt)).toEqual([])
@@ -85,7 +84,7 @@ describe('reqboard_capture · 回执必须过自己声明的 output.schema（与
   // 反向演练②的哨兵：从 CAPTURE_ANSWER_KEYS 摘一个键 → 本用例红并点名缺失键
   // （同时 CaptureTool 的 Record<CaptureAnswerKey> 描述表缺键 → tsc 报错）。
   it('answers 键集同源：mapCaptureAnswers 产出键 === CAPTURE_ANSWER_KEYS === schema 声明键', () => {
-    const produced = Object.keys(mapCaptureAnswers(FIVE_ANSWERS).answers).sort()
+    const produced = Object.keys(mapCaptureAnswers(FOUR_ANSWERS).answers).sort()
     const expected = [...CAPTURE_ANSWER_KEYS].sort()
     expect(produced, 'mapCaptureAnswers 的 answers 键集与 CAPTURE_ANSWER_KEYS 漂移').toEqual(expected)
 

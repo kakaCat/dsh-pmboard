@@ -11,7 +11,7 @@ import { LIMITS } from '../../domain/limits.js'
 import type { UseCaseDeps } from '../../application/ports.js'
 import { executeReportTask } from '../../application/use-cases/ReportTask.js'
 import { TASK_REPORT_PROMPT } from './prompt.js'
-import { renderSmart } from '../shared.js'
+import { LONG_TEXT_ARG_NOTE, renderSmart } from '../shared.js'
 import { taskReportSummary } from '../render-summaries.js'
 
 export function defineTaskReportTool(deps: UseCaseDeps) {
@@ -20,10 +20,10 @@ export function defineTaskReportTool(deps: UseCaseDeps) {
     description: TASK_REPORT_PROMPT,
     parameters: {
       task_id: { type: 'string', description: '任务 id（t-xxxxxx）', required: true },
-      summary: { type: 'string', description: '一句话汇报：做了什么（≤2000 字符）；写法：每条短句（建议 ≤60 字）；需引号用「」避免半角双引号；文本过大拆成多次调用', required: true },
+      summary: { type: 'string', description: '一句话汇报：做了什么（≤2000 字符）；' + LONG_TEXT_ARG_NOTE, required: true },
       completed: {
         type: 'array',
-        description: '完成项列表（1-50 条）；写法：每条短句（建议 ≤60 字）；需引号用「」避免半角双引号；文本过大拆成多次调用',
+        description: '完成项列表（1-50 条）；' + LONG_TEXT_ARG_NOTE,
         items: { type: 'string' },
       },
       files_changed: {
@@ -31,7 +31,7 @@ export function defineTaskReportTool(deps: UseCaseDeps) {
         description: '改动文件列表（工作区相对路径，0-50 条）',
         items: { type: 'string' },
       },
-      next_step: { type: 'string', description: '下一步（≤1000 字符；无则空串）；写法：每条短句（建议 ≤60 字）；需引号用「」避免半角双引号；文本过大拆成多次调用' },
+      next_step: { type: 'string', description: '下一步（≤1000 字符；无则空串）；' + LONG_TEXT_ARG_NOTE },
     },
     output: {
       schema: {

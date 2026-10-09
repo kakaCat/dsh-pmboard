@@ -161,7 +161,7 @@ export interface DiveDriverAssemblyDeps {
  *   · agent/status === idle（**驱动点**）：整 agent 空闲时跑批——unbound 窗口登记
  *     「待捕获消息」到 pendingCapture（下一回合 capture section 取词组装时注入针对性立项
  *     提示）、bound 窗口做接手推进 / 阶段纪律注入 / 节点结算 / 里程碑催办。
- * 立项判定与内容仍留给 LLM + 人工（reqboard_capture 三问弹框作答 = 确认，同一次调用内直接建 REQ）。
+ * 立项判定与内容仍留给 LLM + 人工（reqboard_capture 弹框作答 = 确认，同一次调用内直接建 REQ）。
  *
  * 返回解除两路订阅的合并函数（两路都没成立时 undefined），由调用方登记进 disposers。
  */

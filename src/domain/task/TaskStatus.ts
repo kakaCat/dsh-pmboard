@@ -146,7 +146,7 @@ export const SYSTEM_TASK_TRANSITIONS: ReadonlySet<string> = new Set([
 
 /**
  * 工作流执行（workflow run / stage）状态词汇（REQ-f0579a t4）。
- * 此前散在 tools/TaskExecuteTool 与 types.ts 的字面量联合里——layer-boundary 门禁
+ * 此前散在任务工具壳与 types.ts 的字面量联合里——layer-boundary 门禁
  * 要求状态词汇单点在 domain，适配层只引用常量/类型。
  */
 export const WORKFLOW_RUN_STATUS = { Completed: 'completed', Failed: 'failed' } as const
@@ -160,7 +160,7 @@ export type WorkflowRunStatus = typeof WORKFLOW_RUN_STATUS[keyof typeof WORKFLOW
 export const isWorkflowRunCompleted = (status: string): boolean => status === WORKFLOW_RUN_STATUS.Completed
 
 /**
- * 任务状态 → 看板进度百分比（reqboard_task_status 的 progress 语义）。
+ * 任务状态 → 看板进度百分比（单卡查询工具的 progress 语义）。
  * 进度是**展示语义**但词汇表是**状态语义**——键必须是合法 TaskStatus，故单点于此。
  */
 export const TASK_STATUS_PROGRESS: Readonly<Record<TaskStatus, number>> = {

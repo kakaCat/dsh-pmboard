@@ -23,6 +23,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { SystemClock } from '../src/adapters/SystemClock.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
 import { SessionProbeAdapter } from '../src/adapters/SessionProbeAdapter.js'
@@ -123,6 +124,7 @@ function makeTools(selected: string[] = [AFFIRM]) {
 
     taskStore: taskStoreAt(root),
     docs: new FileDocRepository({ workspaceRoot: root }),
+    hostFs: new FileHostFs(),
     clock: new SystemClock(),
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({}),

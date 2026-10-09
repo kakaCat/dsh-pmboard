@@ -1,3 +1,4 @@
+import { FileHostFs } from '../../adapters/FileHostFs.js'
 /**
  * Tasks 路由（REQ-47939a t7）——从 host/routes.ts 的 createReqboardHandler 内联处理器**逐字搬入**。
  *
@@ -28,7 +29,7 @@ import {
 } from '../../shared/protocol.js'
 import { applyTaskRollupVia, type RollupContext } from '../../application/internal/rollup.js'
 import { closeExecutions, openExecution } from '../../application/internal/token-usage.js'
-import { transitionTask } from '../../application/internal/task-transition.js'
+import { roleOfTask, transitionTask } from '../../application/internal/task-transition.js'
 import { endsExecutionSegment, isRollbackOrCancel, startsExecutionSegment } from '../../domain/status/Predicates.js'
 import { INITIAL_TASK_STATUS } from '../../domain/task/TaskStatus.js'
 import type { RouterCtx } from './shared.js'
@@ -128,10 +129,13 @@ export function createTasksRouter(ctx: RouterCtx) {
       const task = tasks.find(t => t.id === id)
       if (task === undefined) return undefined
       // 收敛点：校验 + 状态 + 事件一步到位（原为直接赋值，只有本路由校验过）
+      // role 必传（H2-role）：缺省 legacy 会让子卡经看板走进 integrating/testing/in_review
+      // 等 SUBTASK_TRANSITIONS 无出边的非法态。角色判定与工具面 MoveTask 同源（roleOfTask）。
       transitionTask(task, to, {
         at: now(),
         actor: { kind: actor, ...(sessionId ? { sessionId } : {}) },
         ...(reason ? { reason } : {}),
+        role: roleOfTask(task, tasks),
       })
       if (startsExecutionSegment(to) && sessionId) {
         task.claimedBy = sessionId
@@ -171,7 +175,7 @@ export function createTasksRouter(ctx: RouterCtx) {
       // RTM 触发点 6（REQ-260926140539-457b FR-2）：任务状态变更 → rtm-implementing 同步
       const rtmRoot = ctx.deps.docs?.workspaceRoot() ?? ctx.deps.cwd
       if (rtmRoot !== undefined) {
-        syncRTMYamlWithSnapshot(rtmRoot, ({ requirements: (await ctx.requirementStore?.listSummaries({ scope: 'all' }))?.items as never }), after, movedTask.requirementId, 'task:status', { taskId: movedTask.id })
+        syncRTMYamlWithSnapshot(ctx.deps.applicationDeps?.hostFs ?? new FileHostFs(), rtmRoot, ({ requirements: (await ctx.requirementStore?.listSummaries({ scope: 'all' }))?.items as never }), after, movedTask.requirementId, 'task:status', { taskId: movedTask.id })
       }
     }
     ok(res, movedTask)
@@ -186,7 +190,7 @@ export function createTasksRouter(ctx: RouterCtx) {
     if (existing === undefined) return notFound(`任务 ${id}`)
     const requirementId = existing.requirementId
 
-    // ①-a 条款引用补写（REQ-261002164800-d8f2 t5 / FR-4）：与工具 `reqboard_task_refs` 共用同一用例
+    // ①-a 条款引用补写（REQ-261002164800-d8f2 t5 / FR-4）：与工具 `reqboard_task_amend(op=refs)` 共用同一用例
     //（唯一写入口）。看板操作由"人"授权，故不做窗口校验；未装配用例依赖 → 明确拒绝，不静默忽略。
     let refsRepair: Record<string, unknown> | undefined
     if (body.requirementRefs !== undefined) {

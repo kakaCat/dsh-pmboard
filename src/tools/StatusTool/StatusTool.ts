@@ -18,8 +18,12 @@ export function defineStatusTool(deps: UseCaseDeps) {
   return defineTool({
     name: 'reqboard_status',
     description:
-      '查询本窗口 reqboard 绑定状态：是否已绑定进行中需求。识别到新工作想立项前先自查：已绑定时不要重复立项。',
-    parameters: {},
+      '查询本窗口 reqboard 绑定状态：是否已绑定进行中需求（含 run 节 = 实施链运行态，原运行态查询工具 并入）。识别到新工作想立项前先自查：已绑定时不要重复立项。',
+    parameters: {
+      // FR-3（REQ-261007220012-bd29）：run 节的定位入参——与原运行态查询工具 逐字同义。
+      requirement_id: { type: 'string', description: 'run 节的目标需求 ID（REQ-xxxxxx）；不传则默认本窗口绑定需求' },
+      run_id: { type: 'string', description: 'run 节按运行 ID（run-xxx）反查需求；传入则直接按它定位' },
+    },
     output: {
       schema: {
         type: 'object',
@@ -27,6 +31,25 @@ export function defineStatusTool(deps: UseCaseDeps) {
         properties: {
           window_key: { type: 'string', description: '本窗口标识' },
           open_count: { type: 'number', description: '本窗口进行中需求数' },
+          // FR-3（REQ-261007220012-bd29）：run 节——原运行态查询工具 的 snapshot 平移到此处。
+          // 能确定目标需求时恒出现；无 active run 时 runId 整键省略（不发 null）。
+          // REQ-261008011118-defe BUG-1（DD-1）：`stepIndex`/`currentSubtaskId` 已删——
+          // 写侧（CheckpointManager.writeCheckpoint）在生产代码 0 调用方，读侧恒报默认值；
+          // 进度信息由任务台账（reqboard_task_tree）承载，run 节只报活字段。
+          run: {
+            type: 'object',
+            description: '实施链运行态（原运行态查询工具 并入）：目标需求的 snapshot + requirement_id；无法定位目标需求时该键整体省略',
+            additionalProperties: false,
+            properties: {
+              requirement_id: { type: 'string', description: '本 run 节对应的需求' },
+              runId: { type: 'string', description: '运行 ID；**无 active run 时该键整体省略**（不发 null）' },
+              nextReady: { type: 'array', description: '下一批 ready 的任务 ID 列表', items: { type: 'string' } },
+              jobStatus: { type: 'string', description: 'Job 状态：running/completed/failed/not_found' },
+              pauseReason: { type: 'string', description: '暂停原因（如果已暂停）' },
+              autoRun: { type: 'boolean', description: '是否自动运行' },
+              error: { type: 'string', description: '定位/读取失败时的原因（不抛——status 其余小节照常可用）' },
+            },
+          },
           // REQ-261003222428-3556 FR-3：构建指纹（sha256(产物)[0:12]）——陈旧构建可见化；
           // 未盖章（测试/直跑 src）时该键整体省略（先声明后回执，三方同源纪律）。
           plugin_build: { type: 'string', description: '插件构建指纹（sha256(dist)[0:12]）；陈旧构建排查锚点' },
@@ -128,7 +151,7 @@ export function defineStatusTool(deps: UseCaseDeps) {
           pending_confirms: {
             type: 'array',
             description:
-              '本窗口仍然有意义的未作答确认（REQ-260927123256-196b FR-4）：已 settle / 已过期 / 台账已落章的陈旧记录不列；非空即表示 agent 正阻塞等待作答，写路径会被 REQBOARD_CONFIRM_PENDING 拦住',
+              '本窗口仍然有意义的未作答确认：已 settle / 已过期 / 台账已落章的陈旧记录不列；非空即表示 agent 正阻塞等待作答，写路径会被 REQBOARD_CONFIRM_PENDING 拦住',
             items: {
               type: 'object',
               additionalProperties: true,
@@ -156,7 +179,7 @@ export function defineStatusTool(deps: UseCaseDeps) {
           },
           fr_coverage: {
             type: 'object',
-            description: 'FR 覆盖度统计（REQ-260925172227-2d61）',
+            description: 'FR 覆盖度统计',
             additionalProperties: true,
             properties: {
               total_frs: { type: 'number', description: 'FR 总数' },
@@ -171,7 +194,7 @@ export function defineStatusTool(deps: UseCaseDeps) {
           },
           fr_acceptance_progress: {
             type: 'object',
-            description: 'FR 验收进度统计（REQ-260925172227-2d61，仅验收阶段有）',
+            description: 'FR 验收进度统计（仅验收阶段有）',
             additionalProperties: false,
             properties: {
               total: { type: 'number', description: '验收项总数' },

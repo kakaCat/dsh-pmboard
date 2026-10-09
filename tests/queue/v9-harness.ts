@@ -29,6 +29,7 @@ import type {
   LedgerMutateResult,
   UseCaseDeps,
 } from '../../src/application/ports.js'
+import { FileHostFs } from '../../src/adapters/FileHostFs.js'
 import { JsonQueueRepository } from '../../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../../src/repositories/QueueTaskStore.js'
 import {
@@ -119,7 +120,7 @@ export async function makeV9Harness(seed: V9HarnessSeed = {}): Promise<V9Harness
   const taskStore = new QueueTaskStore({ repo: queueRepo, now: () => clock.t, onWarn: (m) => warnings.push(m) })
   // B12 阶段④-1：UseCaseDeps.store 转必填 ⇒ 本夹具补过渡投影（与 repo 同源）
   const deps: UseCaseDeps = {
-    store: legacyStoreProjection(repo as never), docs, clock, ids, session, questions, doneThrottleMs: 0, taskStore,
+    store: legacyStoreProjection(repo as never), docs, hostFs: new FileHostFs(), clock, ids, session, questions, doneThrottleMs: 0, taskStore,
   }
 
   if (seed.tasks !== undefined && seed.tasks.length > 0) {

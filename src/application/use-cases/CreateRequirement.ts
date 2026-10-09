@@ -3,15 +3,15 @@
  *
  * 零行为变更：拒绝条件、错误码与消息文案与搬迁前一致；规则仍单点于 domain/。
  *
- * REQ-260924213231-b1c4 T-10（FR-7 / UC-4）：降级路径（弹框通道不可用、用户文字取值）补齐第四问——
+ * REQ-260924213231-b1c4 T-10（FR-7 / UC-4）：降级路径（弹框通道不可用、用户文字取值）补齐文档位置取值——
  * `doc_location` 入参 → 台账 `docBasePath`；缺省/空串显式回落默认位置并在返回体 `defaults_used` 留痕；
  * 形态非法（绝对路径 / 含 `..`）→ `REQBOARD_INVALID_INPUT`，不静默改路径。
  *
  * @module dsh-pmboard/application/use-cases/CreateRequirement
  */
-import type { UseCaseDeps } from '../ports.js'
-import { isAbsolute } from 'node:path'
-import { statSync } from 'node:fs'
+import type { HostFsPort, UseCaseDeps } from '../ports.js'
+// REQ-261008020617-088f RF-5：路径判定走纯函数 + 宿主端口（不再 import node:path/node:fs）
+import { isAbsolutePath } from '../internal/paths.js'
 import { syncRTMYaml } from '../internal/rtm-yaml.js'
 import { taskStoreOf } from './queue-access.js'
 import {
@@ -43,7 +43,7 @@ export async function executeCreateRequirement(deps: UseCaseDeps, args: unknown,
       const summary = normalizeText(a.summary, 'summary')
       const reason = normalizeText(a.reason, 'reason')
       const promptDifficulty = typeof a.prompt_difficulty === 'string' ? a.prompt_difficulty : 'standard'
-      // 第四问（FR-7）：取值 + 回落标记；非法形态在写台账之前响亮失败（不静默改路径）。
+      // 文档位置取值（FR-7）：取值 + 回落标记；非法形态在写台账之前响亮失败（不静默改路径）。
       const doc = resolveDocBasePath(a.doc_location)
       // 归属窗口（2026-10-06 代理立项）：缺省 = 本窗口（老行为一字不变）；给了 `owner_window`
       // 就把需求**记在那个窗口名下**——这是「agent 自动帮人立项、并派给不同会话」的唯一入口。
@@ -52,14 +52,14 @@ export async function executeCreateRequirement(deps: UseCaseDeps, args: unknown,
       //          ③ 归属换了就必须推进到需求阶段（draft 阶段 autoExecute=false，留着它 = 派了也没人动）。
       const ownerWindow = resolveOwnerWindow(deps, a.owner_window, windowKey)
       const delegated = ownerWindow !== windowKey
-      // 第五问（FR-6 降级路径）：workspace_root 可选；缺省 = 会话 cwd（与 capture 弹框默认一致）。
+      // 工作区那一问（FR-6 降级路径）：workspace_root 可选；缺省 = 会话 cwd（与 capture 弹框默认一致）。
       // REQ-261001203710-0fbf t3：与 capture 同一口径——「这个项目在哪」优先取**实际会写进去的工作区**，
       // 而不是插件启动目录（否则记录一出生就把项目根记成别的项目，下游「按记录自己的项目写」就写错）。
       const effectiveWorkspace = (deps.docs as { workspaceRoot?: () => unknown }).workspaceRoot?.()
       const sessionCwd = (exec?.agent?.session?.header?.cwd as string | undefined)
         ?? (typeof effectiveWorkspace === 'string' && effectiveWorkspace.length > 0 ? effectiveWorkspace : undefined)
         ?? process.cwd()
-      const workspaceRoot = resolveManualWorkspaceRoot(a.workspace_root, sessionCwd)
+      const workspaceRoot = resolveManualWorkspaceRoot(a.workspace_root, sessionCwd, deps.hostFs)
       // REQ-261005123641-3982 FR-3：守卫**前置到建档之前**——拒绝即台账零写入。
       // 旧顺序（建档之后才守卫）在拒绝时回执说「未立项/未写入」，而台账里已经有这条 REQ（半截失败）。
       ensureWritableProjectRoot(deps, { workspaceRoot }, { callerRoot: sessionCwd })
@@ -106,9 +106,11 @@ export async function executeCreateRequirement(deps: UseCaseDeps, args: unknown,
       // 还没落盘（它是 brainstorming 的产物），故按**类型模板的缺省 sides** 判（见 CATEGORY_DEFAULT_SIDES
       // 的为什么）；非 UI 不落、已存在不覆盖、失败只 warning——落不下脚手架不该拦住立项。
       await landPrototypeSkeleton(deps.docs, req, { nowMs: deps.clock.now() })
-      const defaultsUsed: string[] = doc.usedDefault ? [CAPTURE_QUESTION_IDS.doc_location] : []
+      // 回落留痕的问项 id：文档位置走 capture 的 location 口径（t1 起两问合一的落点问），
+      // 工作区不是 capture 问项（本工具自己的入参）→ 用入参名记账，别硬套 capture 的 id。
+      const defaultsUsed: string[] = doc.usedDefault ? [CAPTURE_QUESTION_IDS.location] : []
       if (a.workspace_root === undefined || (typeof a.workspace_root === 'string' && a.workspace_root.length === 0)) {
-        defaultsUsed.push(CAPTURE_QUESTION_IDS.workspace)
+        defaultsUsed.push('workspace_root')
       }
       return {
         success: true,
@@ -127,7 +129,7 @@ export async function executeCreateRequirement(deps: UseCaseDeps, args: unknown,
         ...(delegated ? { owner_window: ownerWindow } : {}),
         note: delegated
           ? `已代理立项并交给窗口 ${ownerWindow} 当 owner：${req.id}（${req.category ?? category} / ${promptDifficulty}）。`
-            + `**本窗口不拥有它**；台账如实记为 agent 代理创建（三问取值未经弹框逐问确认），授权来源 = 本窗口 ${windowKey} 的直接人工指令。`
+            + `**本窗口不拥有它**；台账如实记为 agent 代理创建（弹框取值未经弹框逐问确认），授权来源 = 本窗口 ${windowKey} 的直接人工指令。`
             + `文档位置：${doc.docBasePath}。工作区：${req.workspaceRoot ?? sessionCwd}。`
             + (advanced ? '已推进到需求阶段（brainstorming），该窗口可按阶段纪律接手（无需人再发话）。' : '注意：draft → brainstorming 未推进成功，链会如实记为未推进。')
           : doc.usedDefault
@@ -169,28 +171,23 @@ function resolveOwnerWindow(deps: UseCaseDeps, raw: unknown, callerWindow: strin
  * undefined/空串 → 会话 cwd（与 capture 弹框默认一致，记 defaults_used）；
  * 非绝对路径或目录不存在 → REQBOARD_INVALID_WORKSPACE 响亮失败（不静默改路径）。
  */
-function resolveManualWorkspaceRoot(raw: unknown, sessionCwd: string): string {
+function resolveManualWorkspaceRoot(raw: unknown, sessionCwd: string, host: HostFsPort): string {
   if (raw === undefined || (typeof raw === 'string' && raw.trim().length === 0)) return sessionCwd
   const p = String(raw).trim()
-  if (!isAbsolute(p)) {
+  if (!isAbsolutePath(p)) {
     throw Object.assign(
       new Error(`workspace_root 必须是绝对路径（收到：${p}）——REQBOARD_INVALID_WORKSPACE`),
       { code: 'REQBOARD_INVALID_WORKSPACE' },
     )
   }
-  try {
-    if (!statSync(p).isDirectory()) {
-      throw Object.assign(
-        new Error(`workspace_root 指向的目录不存在：${p}——REQBOARD_INVALID_WORKSPACE`),
-        { code: 'REQBOARD_INVALID_WORKSPACE' },
-      )
-    }
-  } catch (err) {
-    if ((err as { code?: string }).code === 'REQBOARD_INVALID_WORKSPACE') throw err
-    throw Object.assign(
-      new Error(`workspace_root 指向的目录不存在或不可读：${p}——REQBOARD_INVALID_WORKSPACE`),
-      { code: 'REQBOARD_INVALID_WORKSPACE' },
-    )
+  if (!host.isDirectory(p)) {
+    // 两句文案按**原口径**区分：路径"在但不是目录" → 不存在；路径"根本读不到" → 不存在或不可读
+    // （搬迁前由 statSync 抛/不抛决定；端口用 isDirectory + existsAbs 两条探针表态，语义等价）
+    const readable = host.existsAbs(p)
+    const message = readable
+      ? `workspace_root 指向的目录不存在：${p}——REQBOARD_INVALID_WORKSPACE`
+      : `workspace_root 指向的目录不存在或不可读：${p}——REQBOARD_INVALID_WORKSPACE`
+    throw Object.assign(new Error(message), { code: 'REQBOARD_INVALID_WORKSPACE' })
   }
   return p
 }

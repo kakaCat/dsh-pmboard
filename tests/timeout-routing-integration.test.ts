@@ -3,15 +3,16 @@
  * serves: FR-6
  *
  * 联调口径（请求样例 -> 期望 -> 实际）：
- *  ① 投递类 reqboard_task_run / reqboard_task_execute → LIMITS.timeoutWriteMs（30_000）；
- *  ② 查询类 reqboard_run_status / reqboard_task_status → LIMITS.timeoutReadMs（15_000）；
- *  ③ 四个工具均不得取 timeoutInteractiveMs（3_600_000）——交互档只服务需人作答的弹框类
- *     （AskConfirm / AcceptSheet）；TaskExecuteTool 是别名，无独立 timeoutMs，随主入口；
+ *  ① 投递类 reqboard_task_run → LIMITS.timeoutWriteMs（30_000）；
+ *  ② 查询类 reqboard_status / reqboard_task_tree → LIMITS.timeoutReadMs（15_000）；
+ *  ③ 任务/链级工具均不得取 timeoutInteractiveMs（3_600_000）——交互档只服务需人作答的弹框类
+ *     （AskConfirm / AcceptSheet）。REQ-261007220012-bd29 FR-1：旧别名 task_execute 已物理删除，
+ *     故本文件不再有"别名与主入口同值"用例；
  *  ④ 线上投递路径实测：JobsPort 可用时 task_run 认领+投递后立即返回 dispatched
  *     （耗时毫秒级 << 30s），证明写档不会掐断线上链；只有内存/嵌入调用的同步兼容路径可能长跑。
  */
 import { describe, expect, it } from 'vitest'
-import { defineAdvanceTool, defineTaskExecuteTool, defineRunStatusTool, defineTaskStatusTool } from '../src/tools/index.js'
+import { defineTaskRunTool, defineStatusTool, defineTaskTreeTool } from '../src/tools/index.js'
 import { LIMITS } from '../src/domain/limits.js'
 import { makeHarness, req, task } from './application/harness.js'
 
@@ -45,34 +46,30 @@ function seeded() {
 }
 
 describe('FR-6 超时归位（任务/链级工具不得挂交互档）', () => {
-  it('TC-12a 投递类两个工具都取 timeoutWriteMs，别名与主入口同值', () => {
+  it('TC-12a 投递类唯一入口取 timeoutWriteMs', () => {
     const h = seeded()
-    const run = shell(defineAdvanceTool(h.deps))
-    const exec = shell(defineTaskExecuteTool(h.deps))
+    const run = shell(defineTaskRunTool(h.deps))
+    expect(run.name).toBe('reqboard_task_run')
     expect(run.timeoutMs).toBe(LIMITS.timeoutWriteMs)
-    expect(exec.timeoutMs).toBe(LIMITS.timeoutWriteMs)
-    expect(exec.timeoutMs).toBe(run.timeoutMs)
   })
 
   it('TC-12b 查询类两个工具都取 timeoutReadMs', () => {
     const h = seeded()
-    expect(shell(defineRunStatusTool(h.deps)).timeoutMs).toBe(LIMITS.timeoutReadMs)
-    expect(shell(defineTaskStatusTool(h.deps)).timeoutMs).toBe(LIMITS.timeoutReadMs)
+    expect(shell(defineStatusTool(h.deps)).timeoutMs).toBe(LIMITS.timeoutReadMs)
+    expect(shell(defineTaskTreeTool(h.deps)).timeoutMs).toBe(LIMITS.timeoutReadMs)
   })
 
-  it('TC-12c 四个任务/链级工具无一取 timeoutInteractiveMs', () => {
+  it('TC-12c 三个任务/链级工具无一取 timeoutInteractiveMs', () => {
     const h = seeded()
     const all = [
-      shell(defineAdvanceTool(h.deps)),
-      shell(defineTaskExecuteTool(h.deps)),
-      shell(defineRunStatusTool(h.deps)),
-      shell(defineTaskStatusTool(h.deps)),
+      shell(defineTaskRunTool(h.deps)),
+      shell(defineStatusTool(h.deps)),
+      shell(defineTaskTreeTool(h.deps)),
     ]
     expect(all.map((t) => t.name)).toEqual([
       'reqboard_task_run',
-      'reqboard_task_execute',
-      'reqboard_run_status',
-      'reqboard_task_status',
+      'reqboard_status',
+      'reqboard_task_tree',
     ])
     expect(all.filter((t) => t.timeoutMs === LIMITS.timeoutInteractiveMs)).toEqual([])
     for (const t of all) expect(t.timeoutMs).toBeLessThan(LIMITS.timeoutInteractiveMs)
@@ -84,7 +81,7 @@ describe('FR-6 超时归位（任务/链级工具不得挂交互档）', () => {
     await h.seedSettled()
     h.deps.jobs = jobsPort() as never
     const started = Date.now()
-    const out = await shell(defineAdvanceTool(h.deps)).execute({ task_id: 't-p' }, { agent: { id: W } })
+    const out = await shell(defineTaskRunTool(h.deps)).execute({ task_id: 't-p' }, { agent: { id: W } })
     const elapsed = Date.now() - started
     expect(out.success).toBe(true)
     expect(out.status).toBe('dispatched')

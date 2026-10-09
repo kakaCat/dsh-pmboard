@@ -45,8 +45,8 @@ import { executeSubtask } from '../src/application/use-cases/ExecuteTask.js'
 import { handoffRequirement } from '../src/application/use-cases/HandoffOwner.js'
 import { createReqDetailStore } from '../src/client/req-detail-store.js'
 import {
-  defineAdvanceTool,
-  defineRunStatusTool,
+  defineTaskRunTool,
+  defineStatusTool,
   defineSkillInstallTool,
 } from '../src/tools/index.js'
 import type { RequirementRecord, TaskRecord } from '../src/shared/protocol.js'
@@ -219,7 +219,7 @@ const SPECS: readonly TriggerSpec[] = [
     trigger: async () => {
       const { deps } = mkDeps()
       // 查询式入口：显式给一个台账里不存在的需求 id ⇒ 读点抛码（不是"扫不到当成没有"）。
-      const tool = asTool(defineRunStatusTool(toUseCaseDeps(deps)))
+      const tool = asTool(defineStatusTool(toUseCaseDeps(deps)))
       return { code: await codeFrom(() => tool.execute({ requirement_id: 'REQ-ecm-not-exist' }, EXEC)) }
     },
   },
@@ -284,7 +284,7 @@ const SPECS: readonly TriggerSpec[] = [
       const { deps, store } = mkDeps()
       // accepting 属于「开放态」（isOpenRequirement）但属于链的终态集合 ⇒ 工具映射到终态码。
       const r = await seedReq(store, { status: 'accepting', autoRun: true })
-      const tool = asTool(defineAdvanceTool(toUseCaseDeps(deps)))
+      const tool = asTool(defineTaskRunTool(toUseCaseDeps(deps)))
       return { code: await codeFrom(() => tool.execute({ requirement_id: r.id }, EXEC)) }
     },
   },
@@ -302,7 +302,7 @@ const SPECS: readonly TriggerSpec[] = [
         start: async () => { throw new Error('夹具：后台任务投递服务不可用') },
         get: async () => null,
       }
-      const tool = asTool(defineAdvanceTool(uc as never))
+      const tool = asTool(defineTaskRunTool(uc as never))
       return { code: await codeFrom(() => tool.execute({ requirement_id: r.id }, EXEC)) }
     },
   },

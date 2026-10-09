@@ -14,6 +14,7 @@
 import { legacyStoreProjection } from './support/legacy-store-projection.js'
 import { factsOf } from '../src/domain/requirement/RequirementSummary.js'
 import { describe, it, expect } from 'vitest'
+import { FileDiagSink } from '../src/adapters/FileDiagSink.js'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { emptyLedger, type RequirementRecord } from '../src/shared/protocol.js'
@@ -21,7 +22,7 @@ import { createCaptureRuntime } from '../src/wiring/pm-capture-root.js'
 import { createDiveRoundDriver, type DiveRoundPorts } from '../src/application/dive/round-driver.js'
 import { AgentDeliverer } from '../src/adapters/AgentDeliverer.js'
 import { Context } from '@deepseek-ai/cordis'
-import ReqboardDiveManager from '../src/application/dive/ReqboardDiveManager.js'
+import ReqboardDiveManager from '../src/adapters/ReqboardDiveManager.js'
 import { initCaptureDiag } from '../src/application/internal/diag-log.js'
 import { readFileSync as readSync } from 'node:fs'
 import { join } from 'node:path'
@@ -247,7 +248,7 @@ describe('FR-3 · agent 事件必须注册在 agent.ctx（修前挂插件 ctx �
 
   it('负例三者齐备：拿不到 agent.ctx → warn + 诊断日志 + 需求 comment', async () => {
     const diagPath = join(tmpdir(), 'dsh-pmboard-diag-' + process.pid + '.log')
-    initCaptureDiag(diagPath)
+    initCaptureDiag(new FileDiagSink(diagPath))
     const h = managerHarness([makeReq()]);
     h.ctx.emit('agent/created', { agent: { id: WINDOW, session: { id: WINDOW } } } as never)
     await new Promise((r) => setTimeout(r, 20))

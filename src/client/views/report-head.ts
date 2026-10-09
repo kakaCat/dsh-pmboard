@@ -34,6 +34,7 @@ import { ALL_PROMPT_DIFFICULTIES, PROMPT_DIFFICULTY_DESCRIPTIONS } from '../../s
 import {
   CATEGORY_LABELS, STATUS_LABELS, commentActorLabel, fmtDur, fmtTime, isTerminal, windowCodeFromSessionId,
 } from '../render/dom-utils.js'
+import { isCanceled } from '../../domain/status/Predicates.js'
 import { buildProgressDots } from './stage-detail.js'
 // FR-3（REQ-261006130057-7a43 t6）：长日志判据复用『对话』Tab 导出的同一份函数
 // （>120 字符或含换行）——同口径不另造。dialogue.ts 对 report-tabs 只有 type 级 import
@@ -482,7 +483,7 @@ export function buildReportHead(report: ReportResponse, now: number = Date.now()
      终态只读：右端换成那句「终态只读」说明（动作一个不渲染，连窗口跳转都不留）。 */
   const acts = terminal
     ? '<div class="dsh-pm-gate" data-readonly="1">终态只读：'
-      + (h.status === 'canceled' ? '已取消' : '已归档') + '，无可执行动作</div>'
+      + (isCanceled(h) ? '已取消' : '已归档') + '，无可执行动作</div>'
     : buildReportActionBar(report)
   const titleRow = '<div class="dsh-pm-rh-title" data-head-row="title">'
     + '<h1 class="dsh-pm-detail-title">' + esc(h.title) + '</h1>' + acts + '</div>'

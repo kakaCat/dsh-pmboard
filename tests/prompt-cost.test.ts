@@ -1,3 +1,4 @@
+// serves: BUG-5（工具描述字数基线随文案改动复核）
 import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { taskStoreAt } from './queue/route-deps.js'

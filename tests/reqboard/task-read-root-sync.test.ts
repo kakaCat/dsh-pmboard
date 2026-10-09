@@ -9,7 +9,7 @@
  * 机制：`workspaceRoot` 在 apply 时取自 `process.cwd()`（宿主启动目录，desktop profile 下是
  * `~/.dsh/profiles/desktop`，**不是**会话工作区）。仓库早有唯一收敛点
  * `agentIdFromExec()` 会用 `exec.agent.session.header.cwd` 校正 docs 与 queueRepo 的根，
- * 但**任务读取入口绕过了它**（TaskTree / AdvanceTool / RunStatusTool 直连
+ * 但**任务读取入口绕过了它**（父子结构 / 自动链投递 / 单卡查询当年都直连
  * `deps.session.windowKey(exec)`）。旧实例之所以正常，只是因为此前的写入类调用顺手把根校正过。
  *
  * 本文件用**真实 JsonQueueRepository + QueueTaskStore** 复现那个形态：

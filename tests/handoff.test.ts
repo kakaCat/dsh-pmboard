@@ -12,7 +12,7 @@
  */
 import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs'
+import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -105,6 +105,37 @@ async function windowACompletesSetup(): Promise<string[]> {
   })
   const out = await run(decompose, {})
   return out.created.map((c: { id: string }) => c.id)
+}
+
+/**
+ * 把上游任务 t1 走完到 `done` 并留改动证据。
+ *
+ * 依据：`src/domain/workflow/DependencyGateSpec.ts:94-105`（REQ-260929210741-30ae FR-4）——
+ * 认领门只认 `status === 'done'` 的上游（已提交语义），夹具停在 `todo` 会被门拦下；
+ * 而 `src/domain/workflow/DoneEvidenceSpec.ts:118,125` 的 done 凭证门要求 done 前
+ * 已有 `task_report` 且 `completed`/`files_changed` 至少其一非空 ⇒ 汇报必须带 `files_changed`。
+ *
+ * 状态序列按**存量卡**的合法边（MoveTask 拒绝回执逐条给出）：todo→in_progress→testing
+ * →in_review→done；`in_progress→done` 不在存量卡合法边内，不能跳。
+ *
+ * done 凭证门的第二条（`DoneEvidenceSpec.ts:129-135`）要求「工具痕迹 或 文件证据」二者其一：
+ * 本用例没有窗口工具痕迹（fixture 无 toolTrace），故必须有**真实存在且 mtime ≥ 链出身**
+ * 的汇报文件（`internal/support.ts:761-767` 真读盘）——夹具替上游留下它声称改动的文件。
+ */
+async function completeUpstream(t1: string): Promise<void> {
+  await run(taskMove, { task_id: t1, to: 'in_progress', reason: '窗口 A 认领上游' })
+  mkdirSync(join(dir, 'src/shared'), { recursive: true })
+  writeFileSync(join(dir, 'src/shared/protocol.ts'), '// 夹具：上游声称改动的文件（done 文件证据）\n')
+  await run(taskReport, {
+    task_id: t1,
+    summary: '上游协议层完成（门禁夹具：让下游可认领）',
+    completed: ['StatusEvent', 'recordStatus'],
+    files_changed: ['src/shared/protocol.ts'],
+    next_step: '窗口 B 接手客户端渲染',
+  })
+  for (const to of ['testing', 'in_review', 'done'] as const) {
+    await run(taskMove, { task_id: t1, to, reason: '上游 ' + to })
+  }
 }
 
 describe('接力实测：任务卡自足（新窗口零会话历史可续作）', () => {
@@ -234,7 +265,9 @@ describe('接力实测：task_report 追加后文件仍结构化', () => {
   })
 
   it('窗口 B 可推进任务（task_move 绑定新 sessionId）+ 汇报', async () => {
-    const [, t2] = await windowACompletesSetup()
+    const [t1, t2] = await windowACompletesSetup()
+    // 依赖门（DependencyGateSpec.ts:94-105）：t2 的上游 t1 必须先 done，否则认领被拒
+    await completeUpstream(t1)
 
     // 需求先进入 implementing（模拟人确认拆分清单）
     await store.mutate('REQ-hand1', (r) => {
@@ -296,11 +329,8 @@ describe('接力实测：handoff 契约——新窗口不读历史对话即可�
   it('完整链路：A 拆 → A 做 t1 → B 读卡做 t2 → B 汇报 → 产物链完整', async () => {
     const [t1, t2, t3] = await windowACompletesSetup()
 
-    // ── 窗口 A：做 t1 ──
-    await run(taskReport, {
-      task_id: t1, summary: '协议层完成',
-      completed: ['StatusEvent'], files_changed: ['src/protocol.ts'], next_step: 'UI',
-    })
+    // ── 窗口 A：做 t1（走完 todo→in_progress→done，done 前必带 files_changed 的汇报）──
+    await completeUpstream(t1)
 
     // ── 窗口 B：零会话历史，仅凭任务卡 + StageDetail 接手 t2 ──
     // B 读 StageDetail.implementing 拿到产物链和任务列表

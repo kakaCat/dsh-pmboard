@@ -16,5 +16,8 @@ export const SKILL_INSTALL_PROMPT = [
   '幂等：资产与清单逐文件一致时 reused=true 且一个字节都不写；怀疑内容损坏可加 force=true 重写。',
   '',
   '错误码：REQBOARD_SKILLS_DISABLED（开关关了）/ REQBOARD_SKILLS_ASSET_MISSING（装机漏打包）/',
-  'REQBOARD_SKILLS_UNKNOWN_SKILL（skills 里给了非受控名）/ REQBOARD_SKILLS_WRITE_FAILED（写盘失败，不留半份）。',
+  'REQBOARD_SKILLS_UNKNOWN_SKILL（skills 里给了非受控名）/ REQBOARD_SKILLS_WRITE_FAILED（写盘失败，不留半份）/',
+  'REQBOARD_SKILLS_CONFIG_INVALID（skills 配置项非法，投放前即拒）/',
+  'REQBOARD_SKILLS_INSTALL_FAILED（投放兜底包装码：上面未覆盖的失败原样带上原因）/',
+  'REQBOARD_NOT_BOUND_TO_WINDOW（本窗口未绑定进行中需求，无处投放）。',
 ].join('\n')

@@ -829,7 +829,7 @@ export function gateQuestionCard(gateKind: string | undefined, from: string, to:
 /**
  * 文档位置取值与回落标记（REQ-260924213231-b1c4 T-10 / FR-7 / UC-4）——立项**降级路径**
  * （`reqboard_create`：弹框通道不可用、用户在对话里给三值时）与弹框路径共用同一份缺省口径
- * （`CAPTURE_DEFAULTS.docLocation`），堵住"降级丢第四问"。
+ * （`CAPTURE_DEFAULTS.docLocation`），堵住"降级丢文档位置取值"。
  *
  * 规则：未传 / 空串 → 回落默认并标记 `usedDefault=true`（返回体 `defaults_used` 据此如实留痕，
  * 不静默猜）；形态非法（非字符串 / 绝对路径 / 含 `..` 上跳段）→ `REQBOARD_INVALID_INPUT`，
@@ -891,20 +891,20 @@ export async function createRequirementDirect(
      */
     allowWindowBound?: boolean
     /**
-     * 立项来源（**如实留痕**，2026-10-06）：缺省 `'capture-dialog'` = 人经弹框答三问
-     * （actor=human，评论写「[会话捕获] 用户经五问弹框确认立项」）；
+     * 立项来源（**如实留痕**，2026-10-06）：缺省 `'capture-dialog'` = 人经弹框逐问作答
+     * （actor=human，评论写「[会话捕获] 用户经立项弹框逐问确认立项」）；
      * `'agent-delegated'` = agent 受**本窗口直接人工指令**代为取值并立项（actor=agent，
      * 评论写清授权来源与"未经弹框逐问确认"）。
      *
      * 为什么必须分开：这两条路的**事实不同**——一条有人逐问确认过名称/分类/难度，另一条没有。
-     * 混用会让"人确认过三问"变成一句无法证伪的谎，事后复盘时两条路完全同形。
+     * 混用会让"人确认过弹框取值"变成一句无法证伪的谎，事后复盘时两条路完全同形。
      */
     provenance?: 'capture-dialog' | 'agent-delegated'
   },
 ): Promise<RequirementRecord> {
   const nowTs = deps.clock.now()
   // REQ-260924213231-b1c4 FR-7：docBasePath 缺省时写既有默认值——回落要**落在台账**（不只留在返回体），
-  // 否则"降级路径丢第四问"只是换了地方丢。与 requirementDocPath() 的缺省分支同值。
+  // 否则"降级路径丢文档位置取值"只是换了地方丢。与 requirementDocPath() 的缺省分支同值。
   const docBasePath = (input.docBasePath ?? '').trim() || CAPTURE_DEFAULTS.docLocation
   // B12 阶段④-4（D 组裁决③的落地）：创建型改走**新端口**。
   // ★ 语义差异（须知）：旧路径是"整册一次原子写"，现在拆成 **create + 一条定点补写**两次写。
@@ -948,14 +948,14 @@ export async function createRequirementDirect(
           body: (delegated
             ? [
               `[代理立项] agent 受本窗口直接人工指令创建（授权会话 ${windowKey}）`,
-              `三问取值由 agent 给出，**未经弹框逐问确认**：${input.title}（${input.category}，提示词难度：${input.promptDifficulty ?? 'standard'}）`,
+              `弹框取值由 agent 给出，**未经弹框逐问确认**：${input.title}（${input.category}，提示词难度：${input.promptDifficulty ?? 'standard'}）`,
               ...(input.reason ? [`依据：${input.reason}`] : []),
               ...(input.ownerSessionId !== undefined && input.ownerSessionId !== windowKey
                 ? [`归属窗口：${input.ownerSessionId}（不在本窗口名下，由它接手推进）`]
                 : []),
             ]
             : [
-              `[会话捕获] 用户经五问弹框确认立项（会话 ${windowKey}）`,
+              `[会话捕获] 用户经立项弹框逐问确认立项（会话 ${windowKey}）`,
               `名称/分类/难度为用户确认值：${input.title}（${input.category}，提示词难度：${input.promptDifficulty ?? 'standard'}）`,
               ...(input.reason ? [`依据：${input.reason}`] : []),
             ])
@@ -1050,7 +1050,7 @@ export function mapAgentError(err: unknown): never {
  *
  * 判定单点在 `internal/pending-guard.ts` 的 `livePendingConfirm`：台账已落章（人走看板/证据通道
  * 作答）时放行——否则「人已确认但挂起记录未 settle」的陈旧记录会把窗口锁死。
- * （reqboard_status / reqboard_confirm_receipt 刻意不过此守卫——否则人无法解除挂起。）
+ * （reqboard_status / reqboard_ask_confirm(ticket=…) 刻意不过此守卫——否则人无法解除挂起。）
  *
  * serves: FR-2 / FR-4（REQ-260927123256-196b t3）；判定口径见 pending-guard.livePendingConfirm。
  */

@@ -1,5 +1,5 @@
 /**
- * 难度取词映射（REQ-e3b6a0 t6 / FR-4 / NFR-4）——把立项三问的**四档**接进取词的**两档**。
+ * 难度取词映射（REQ-e3b6a0 t6 / FR-4 / NFR-4）——把立项弹框的**四档**接进取词的**两档**。
  *
  * 为什么必须有这一层：需求台账里的 `promptDifficulty`（simple/standard/advanced/expert）此前
  * **只存不用**——取词入口 `resolveStagePrompt` 只认 `light|heavy`，于是"我明明选了 expert"

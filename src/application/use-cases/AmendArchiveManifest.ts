@@ -10,7 +10,8 @@
  *   ② **幂等**：已列 path 进 `skipped`，且**不写盘、不留空留痕**；
  *   ③ **只碰清单**：不改产物文件、不改 `merged_into` / `manual_updates` / 需求状态。
  *
- * 单一写入口：工具 `reqboard_archive_amend` 与看板路由**共用本用例**。
+ * 单一写入口：工具 `reqboard_task_amend(op=archive)`（REQ-261008020552-4aa0 FR-1 收编）
+ * 与看板路由**共用本用例**。
  *
  * @module dsh-pmboard/application/use-cases/AmendArchiveManifest
  */
@@ -55,20 +56,20 @@ export async function amendArchiveManifest(
   const a = (args ?? {}) as { requirement_id?: unknown; docs?: unknown; reason?: unknown }
   const explicitId = normalizeText(a.requirement_id, 'requirement_id', 64)
   const reason = normalizeText(a.reason, 'reason', 500)
-  if (reason.length === 0) reject('reqboard_archive_amend 未执行：reason 不能为空（补录必须写理由）', 'REQBOARD_INVALID_INPUT')
+  if (reason.length === 0) reject('reqboard_task_amend(op=archive) 未执行：reason 不能为空（补录必须写理由）', 'REQBOARD_INVALID_INPUT')
   if (!Array.isArray(a.docs) || a.docs.length === 0) {
-    reject('reqboard_archive_amend 未执行：docs 必须是非空数组', 'REQBOARD_INVALID_INPUT')
+    reject('reqboard_task_amend(op=archive) 未执行：docs 必须是非空数组', 'REQBOARD_INVALID_INPUT')
   }
   const incoming = (a.docs as unknown[]).map(d => {
     const o = (typeof d === 'object' && d !== null ? d : {}) as Record<string, unknown>
     const path = normalizeText(o.path, 'docs[].path', 400)
     const rawKind = typeof o.kind === 'string' ? o.kind : ''
     const kind = (KINDS as readonly string[]).includes(rawKind) ? (rawKind as DocKind) : undefined
-    if (kind === undefined) reject('reqboard_archive_amend 未执行：docs[].kind 必须是 ' + KINDS.join(' / '), 'REQBOARD_INVALID_INPUT')
-    if (path.length === 0) reject('reqboard_archive_amend 未执行：docs[].path 不能为空', 'REQBOARD_INVALID_INPUT')
+    if (kind === undefined) reject('reqboard_task_amend(op=archive) 未执行：docs[].kind 必须是 ' + KINDS.join(' / '), 'REQBOARD_INVALID_INPUT')
+    if (path.length === 0) reject('reqboard_task_amend(op=archive) 未执行：docs[].path 不能为空', 'REQBOARD_INVALID_INPUT')
     return { kind, path }
   })
-  if (incoming.length > 200) reject('reqboard_archive_amend 未执行：docs 过多（≤200）', 'REQBOARD_INVALID_INPUT')
+  if (incoming.length > 200) reject('reqboard_task_amend(op=archive) 未执行：docs 过多（≤200）', 'REQBOARD_INVALID_INPUT')
 
   const mine = (await requirementStoreOf(deps).listSummaries({ sourceSessionId: windowKey, scope: 'all' })).items
   if (mine.length === 0) {
@@ -76,29 +77,29 @@ export async function amendArchiveManifest(
     if (explicitId.length > 0) {
       const other = await requirementStoreOf(deps).get(explicitId)
       if (other !== undefined) {
-        reject('reqboard_archive_amend 未执行：需求 ' + explicitId + ' 不是本窗口的需求（它绑定在另一个窗口）', 'REQBOARD_NOT_BOUND_TO_WINDOW')
+        reject('reqboard_task_amend(op=archive) 未执行：需求 ' + explicitId + ' 不是本窗口的需求（它绑定在另一个窗口）', 'REQBOARD_NOT_BOUND_TO_WINDOW')
       }
     }
-    reject('reqboard_archive_amend 未执行：本窗口没有需求', 'REQBOARD_NO_BOUND_REQ')
+    reject('reqboard_task_amend(op=archive) 未执行：本窗口没有需求', 'REQBOARD_NO_BOUND_REQ')
   }
   const target = explicitId.length > 0
     ? mine.find(r => r.id === explicitId)
     : [...mine].sort((x, y) => y.updatedAt - x.updatedAt)[0]
   if (target === undefined) {
-    reject('reqboard_archive_amend 未执行：需求 ' + explicitId + ' 不是本窗口的需求', 'REQBOARD_NOT_BOUND_TO_WINDOW')
+    reject('reqboard_task_amend(op=archive) 未执行：需求 ' + explicitId + ' 不是本窗口的需求', 'REQBOARD_NOT_BOUND_TO_WINDOW')
   }
   // 读全文（摘要里没有 archive 记录本体）
   const full = await requirementStoreOf(deps).get(target.id)
-  if (full === undefined) reject('reqboard_archive_amend 未执行：需求 ' + target.id + ' 读不到', 'REQBOARD_STORE_INCONSISTENT')
+  if (full === undefined) reject('reqboard_task_amend(op=archive) 未执行：需求 ' + target.id + ' 读不到', 'REQBOARD_STORE_INCONSISTENT')
   if (full.status !== 'archived' && full.status !== 'done') {
     reject(
-      'reqboard_archive_amend 未执行：需求处于 ' + full.status + '，只有已归档（archived）或历史完成（done）的需求才能补录清单',
+      'reqboard_task_amend(op=archive) 未执行：需求处于 ' + full.status + '，只有已归档（archived）或历史完成（done）的需求才能补录清单',
       'REQBOARD_BAD_STATUS',
     )
   }
   const archive = full.archive
   if (archive === undefined) {
-    reject('reqboard_archive_amend 未执行：需求 ' + target.id + ' 尚未提交归档材料（先 reqboard_submit kind=archive）', 'REQBOARD_INVALID_INPUT')
+    reject('reqboard_task_amend(op=archive) 未执行：需求 ' + target.id + ' 尚未提交归档材料（先 reqboard_submit kind=archive）', 'REQBOARD_INVALID_INPUT')
   }
 
   // 幂等：已列（含本批内重复）→ skipped，按传入顺序保序

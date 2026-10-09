@@ -24,6 +24,18 @@ export interface TaskTransitionOpts {
 }
 
 /**
+ * 任务角色判定：子卡（有 parentId）/ 父卡（有子卡）/ 存量卡。
+ *
+ * 与工具面 `MoveTask.roleOf` 同口径（**单源**）：三个调用方（工具面、HTTP 面）
+ * 必须用同一张转移表，否则看板就成了绕过角色门的第二个入口（H2-role 事故根因：
+ * `handleTaskMove` 不传 role → 缺省 legacy → 子卡可进 integrating/testing/in_review 非法态）。
+ */
+export function roleOfTask(task: TaskRecord, tasks: readonly TaskRecord[]): TaskRole {
+  if (typeof task.parentId === 'string' && task.parentId.length > 0) return 'subtask'
+  return tasks.some(t => t.parentId === task.id) ? 'parent' : 'legacy'
+}
+
+/**
  * 唯一任务状态迁移助手：校验收敛 + 迁移状态 + 记录状态事件。
  * 成功 = 就地改 status/version/updatedAt/updatedBy + 追加 statusHistory；
  * 失败 = 抛错且**不改动任何字段**（禁止半迁移态）。

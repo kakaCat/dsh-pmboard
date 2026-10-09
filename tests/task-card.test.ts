@@ -64,9 +64,13 @@ describe('分片真的注入了吗（端到端，不只是单元）', () => {
     expect(s).toContain('得到什么结果')
   })
 
-  it('implementing/heavy 也注入（覆盖 7）', () => {
+  it('implementing/heavy 也注入（任务卡说人话 / 三要素）', () => {
     const s = dump('implementing', 'heavy', 'feature')
-    expect(s).toContain('覆盖 7')
+    // 2026-10-08（REQ-261008190515-5212）：overrides 的覆盖编号已收编（10 → 2），原「覆盖 7」
+    // 这条纪律改由自写正文承载——断言其实质（三要素 + 复述两问），不再钉旧编号字面量。
+    expect(s).toContain('三要素')
+    expect(s).toContain('解决什么问题')
+    expect(s).toContain('得到什么结果')
   })
 
   it('不越界：brainstorming 档不含实施档契约', () => {

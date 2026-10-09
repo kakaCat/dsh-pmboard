@@ -34,6 +34,7 @@
  * 本卡头上；正确口径是「本用例跑前跑后，存量逐字节没变」（before/after 对拍）。
  */
 import { describe, it, expect, beforeAll } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { execFileSync } from 'node:child_process'
 import {
   existsSync,
@@ -452,7 +453,7 @@ describe('存量兼容 · 历史豁免：适用性判据下存量一律 exempted
         expect(verdict.required, id + ' 存量不该被要求补节').toBe(false)
         expect(verdict.gaps, id + ' 存量不该被点名').toEqual([])
 
-        const health = checkRTMHealth(REPO, stateDir, reqLike(id, 'feature'))
+        const health = checkRTMHealth(new FileHostFs(), REPO, reqLike(id, 'feature'), { stateRoot: stateDir })
         if (health.exempted !== 'legacy') notExempted.push(id)
         if (!health.healthy) unhealthy.push(id)
       }
@@ -477,7 +478,7 @@ describe('存量兼容 · 历史豁免：适用性判据下存量一律 exempted
 
       const fresh = reqLike(id, 'feature')
       fresh.createdAt = PROTOTYPE_RULES_SINCE + 1
-      const health = checkRTMHealth(root, stateDir, fresh)
+      const health = checkRTMHealth(new FileHostFs(), root, fresh, { stateRoot: stateDir })
       expect(health.healthy).toBe(false)
       expect(health.gaps?.[0]).toContain(id)
       expect('exempted' in health).toBe(false)

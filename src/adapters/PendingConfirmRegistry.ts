@@ -334,6 +334,26 @@ export class PendingConfirmRegistry implements PendingConfirmPort, DialogInFligh
   }
 
   /**
+   * 该需求上**未作答**的挂起确认（REQ-261007223647-da5d t6 · FR-5 / 设计 IF-5）——**跨窗口合并**。
+   *
+   * 为什么按需求而不是按窗口：看板与详情页要回答的是「这条需求有没有人在等」，
+   * 而票的归属窗口可能是 worker 席位、也可能不在本页 —— 按窗口查会漏（人看不见挂起的门）。
+   *
+   * 口径与 `pendingForWindow` 逐条同源：`outcome === undefined`（未作答）∧ 未过期；
+   * 返回副本（调用方改不动内部记录）。**纯读**：不 settle、不续期、不写任何字段。
+   */
+  pendingForRequirement(requirementId: string): readonly PendingConfirmation[] {
+    const out: PendingConfirmation[] = []
+    for (const record of this.records.values()) {
+      if (record.requirementId !== requirementId) continue
+      if (record.outcome !== undefined) continue
+      if (this.expired(record)) continue
+      out.push(this.copy(record))
+    }
+    return out
+  }
+
+  /**
    * 只读查「同一道门」是否已有人在等（REQ-261006164732-6503 t1 · 设计 I-4 / G-3）。
    *
    * 判定键 = `(requirementId, target, kind)`，**刻意不含 `windowKey`**：同一需求的同一道门，

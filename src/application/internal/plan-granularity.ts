@@ -28,6 +28,9 @@ import { planKeysIn } from './content-trace.js'
 import { designDocPolicyFrom } from './category-doc-sets.js'
 import { docQualityRulesApply } from '../../domain/workflow/DocQualityRules.js'
 import { countInterfaceDeclarations, granularityWarningsOf } from '../../domain/task/Granularity.js'
+// 双拼字段取值唯一实现（REQ-261007230908-5ccb FR-4 / G10）：本文件读的是**原始提交对象**
+// （提交期门禁在 protocol 归一之前跑），故必须走同一处归一，不能只读归一后字段。
+import { readDual } from '../../shared/dual-field.js'
 import { LIMITS } from '../../domain/limits.js'
 import { envelope } from './gate-feedback.js'
 import { fmt } from '../../domain/text/fmt.js'
@@ -70,7 +73,7 @@ function rawCardOf(raw: unknown, index: number): RawCard {
     key,
     title: typeof o.title === 'string' ? o.title : '',
     implementation: typeof o.implementation === 'string' ? o.implementation : '',
-    exempt: String(o['granularity_exempt'] ?? o['granularityExempt'] ?? '').trim(),
+    exempt: String(readDual(o, 'granularity_exempt', 'granularityExempt', 'snake') ?? '').trim(),
     side: typeof o.side === 'string' ? o.side : undefined,
     files: typeof footprint['files'] === 'number' ? (footprint['files'] as number) : undefined,
     prototypeRefs: Array.isArray(protoRefs) ? protoRefs.filter((x): x is string => typeof x === 'string') : undefined,

@@ -1,7 +1,7 @@
 /**
- * reqboard_capture 单测（REQ-e3b6a0 t8 / FR-7 / AC-7.2；REQ-260922012924-2e29 FR-1 四问同步）——立项四问 pm 专有弹框：一次调用一把梭。
+ * reqboard_capture 单测（REQ-e3b6a0 t8 / FR-7 / AC-7.2；REQ-260922012924-2e29 FR-1 问项同步历史名）——立项弹框（pm 专有）：一次调用一把梭。
  *
- * 覆盖：四问同批弹出（名称/类型/难度/文档位置）→ 答案映射（自定义优先 / 缺项回落默认并记 defaults_used）→ 创建即立项
+ * 覆盖：逐问同批弹出（名称/类型/难度/文档位置/工作区）→ 答案映射（自定义优先 / 缺项回落默认并记 defaults_used）→ 创建即立项
  * → 绑定本窗口 → 推进 brainstorming；通道不可用 → fallback=board **不伪造立项**；
  * 用户取消 → 中性失败；名称为空 → 响亮失败；窗口已绑定 → 拒绝（白弹一次框是最贵的浪费）。
  */
@@ -14,6 +14,7 @@ import { defineCaptureTool } from './helpers/tool-deps.js'
 import {
   CAPTURE_QUESTION_IDS,
   WORKSPACE_SENTINELS,
+  buildCaptureIntentQuestions,
   buildCaptureQuestions,
   mapCaptureAnswers,
 } from '../src/application/internal/capture-mapping.js'
@@ -83,26 +84,55 @@ const FOUR: AskAnswer[] = [
   { id: CAPTURE_QUESTION_IDS.name, selected: ['候选名称'] },
   { id: CAPTURE_QUESTION_IDS.category, selected: ['bug'] },
   { id: CAPTURE_QUESTION_IDS.difficulty, selected: ['advanced'] },
-  { id: CAPTURE_QUESTION_IDS.doc_location, selected: ['docs/requirements/<REQ>/'] },
-  // 第 5 问（FR-6）：工作区——选会话空间哨兵（测试 exec 无 header.cwd，用例回落 process.cwd()）
-  { id: CAPTURE_QUESTION_IDS.workspace, selected: [WORKSPACE_SENTINELS.session] },
+  // 第 4 问（t1 起「文档位置 + 工作区」合并为「文件落点」；相对路径 = 会话工作区下的该目录）
+  { id: CAPTURE_QUESTION_IDS.location, selected: ['docs/requirements/<REQ>/'] },
 ]
 
-describe('reqboard_capture · 五问口径', () => {
+describe('reqboard_capture · 四问口径（t1：5 问收口为 4 问）', () => {
   const WS_OPTS = { sessionCwd: '/proj/session', hostCwd: '/proj/host' }
 
-  it('buildCaptureQuestions：恰好五问，id 顺序 = 名称/类型/难度/文档位置/工作区；名称题首项为"✖️ 不需要立项"，候选次之且首个候选即推荐位', () => {
+  it('buildCaptureQuestions：恰好四问，id 顺序 = 名称/类型/算力档位/文件落点；名称题首项 = 推荐候选（label 带（推荐）后缀）、✖️ 居末', () => {
     const qs = buildCaptureQuestions(['候选一', '候选二'], WS_OPTS)
-    expect(qs.map(q => q.id)).toEqual(['name', 'category', 'difficulty', 'doc_location', 'workspace'])
-    expect(qs[0]!.options?.[0]!.label).toContain('✖️')
-    expect(qs[0]!.options?.[1]).toMatchObject({ label: '候选一', description: '推荐' })
-    expect(qs[1]!.options?.map(o => o.label)).toContain('feature')
-    expect(qs[2]!.options?.map(o => o.label)).toEqual(['simple', 'standard', 'advanced', 'expert'])
-    expect(qs[2]!.options?.find(o => o.description === '推荐')?.label).toBe('standard')
-    expect(qs[3]!.options?.[0]!.label).toBe('docs/requirements/<REQ>/')
-    // 第 5 问：工作区三选项，默认项 = 会话空间哨兵
-    expect(qs[4]!.options?.[0]).toMatchObject({ label: WORKSPACE_SENTINELS.session })
-    expect(qs[4]!.options?.[1]).toMatchObject({ label: WORKSPACE_SENTINELS.host })
+    expect(qs.map(q => q.id)).toEqual(['name', 'category', 'difficulty', 'location'])
+    expect(qs).toHaveLength(4)
+    // 宿主推荐契约（D-9）：只有首项 label 带（推荐）后缀才会被预选——✖️ 绝不能再排第一
+    expect(qs[0]!.options?.[0]).toMatchObject({ label: '候选一（推荐）' })
+    expect(qs[0]!.options?.[0]!.label).not.toContain('✖️')
+    expect(qs[0]!.options?.at(-1)!.label).toContain('✖️')
+    expect(qs[0]!.options?.map(o => o.label)).toContain('⚡ 全部按推荐值立项')
+    expect(qs[1]!.options?.map(o => o.label)).toContain('feature（推荐）')
+    expect(qs[2]!.options?.map(o => o.label)).toEqual(['simple', 'standard（推荐）', 'advanced', 'expert'])
+    // 文件落点（D-8 方案 A）：选项即拼好的绝对路径预览，首项带推荐后缀
+    expect(qs[3]!.options?.[0]!.label).toBe('/proj/session/docs/requirements/<REQ>/（推荐）')
+    expect(qs[3]!.options?.[1]!.label).toBe('/proj/host/docs/requirements/<REQ>/')
+  })
+
+  it('buildCaptureIntentQuestions：题干带一句话立项理由（截断到 60 字）', () => {
+    const long = '理'.repeat(120)
+    const qs = buildCaptureIntentQuestions(['候选一'], { reasonLine: long.slice(0, 60) })
+    expect(qs[0]!.question).toContain('建议立项：《候选一》')
+    expect(qs[0]!.question).toContain('理'.repeat(60))
+    expect(qs[0]!.question).not.toContain('理'.repeat(61))
+  })
+
+  /**
+   * AC-3 第 4 条「无裸哨兵标签」（FR-3 / 裁定 D-9③ / REQ-261007223647-da5d t14 补测）：
+   * 2026-10-07 现场实锤之一，是弹框直接把内部哨兵 `session-workspace` 显示给用户看。
+   * 哨兵语义必须**内化**在映射层（t2 的拆分），任何面向人的字符串都不许出现机器词。
+   */
+  it('全部问项的人可见文案零机器词：无裸哨兵 / 无 description 式推荐标记（AC-3④）', () => {
+    const qs = buildCaptureQuestions(['候选一', '候选二'], WS_OPTS, { reasonLine: '一句话理由' })
+    const humanText = qs.flatMap(q => [
+      q.header ?? '', q.question,
+      ...(q.options ?? []).flatMap(o => [o.label, o.description ?? '']),
+    ]).join('\n')
+    for (const machineWord of ['session-workspace', 'host-default', 'workspaceRoot', 'docBasePath']) {
+      expect(humanText, machineWord + ' 不该出现在人眼前').not.toContain(machineWord)
+    }
+    // 推荐标记只走 label 后缀这一种写法：description 里再写一遍英文 Recommended 是伪标记
+    // （宿主只认 label 后缀，description 里的字样它根本不看——这正是「死弹框」的根因）
+    expect(humanText).not.toContain('Recommended')
+    expect(humanText).not.toContain('recommended')
   })
 
   it('mapCaptureAnswers：名称自定义优先于选项；类型/难度取选项', () => {
@@ -110,13 +140,29 @@ describe('reqboard_capture · 五问口径', () => {
       { id: 'name', selected: ['候选名称'], custom: '  用户自定义名称  ' },
       { id: 'category', selected: ['spike'] },
       { id: 'difficulty', selected: ['expert'] },
-      { id: 'workspace', selected: [WORKSPACE_SENTINELS.session] },
-    ])
+      { id: 'location', selected: ['/proj/session/docs/rfcs/'] },
+    ], WS_OPTS)
     expect(m.title).toBe('用户自定义名称')
     expect(m.category).toBe('spike')
     expect(m.difficulty).toBe('expert')
+    // 文件落点：命中会话根前缀 → 会话哨兵 + 余下相对段（IF-2 规则②）
     expect(m.workspace).toBe(WORKSPACE_SENTINELS.session)
-    expect(m.defaultsUsed).toEqual(['doc_location'])
+    expect(m.docLocation).toBe('docs/rfcs')
+    expect(m.defaultsUsed).toEqual([])
+  })
+
+  it('mapCaptureAnswers：推荐后缀必须剥离（宿主原样回传带后缀 label，不剥就静默回落默认）', () => {
+    const m = mapCaptureAnswers([
+      { id: 'name', selected: ['候选名称（推荐）'] },
+      { id: 'category', selected: ['feature（推荐）'] },
+      { id: 'difficulty', selected: ['standard（推荐）'] },
+      { id: 'location', selected: ['/proj/session/docs/requirements/<REQ>/（推荐）'] },
+    ], WS_OPTS)
+    expect(m.title).toBe('候选名称')
+    expect(m.category).toBe('feature')
+    expect(m.difficulty).toBe('standard')
+    expect(m.docLocation).toBe('docs/requirements/<REQ>')
+    expect(m.defaultsUsed).toEqual([])
   })
 
   it('mapCaptureAnswers：缺项/非法值 → 回落既有默认并记进 defaultsUsed（不静默猜）', () => {
@@ -124,7 +170,7 @@ describe('reqboard_capture · 五问口径', () => {
     expect(m.category).toBe('feature')
     expect(m.difficulty).toBe('standard')
     expect(m.workspace).toBe(WORKSPACE_SENTINELS.session)
-    expect(m.defaultsUsed).toEqual(['category', 'difficulty', 'doc_location', 'workspace'])
+    expect(m.defaultsUsed).toEqual(['category', 'difficulty', 'location'])
     const bad = mapCaptureAnswers([
       { id: 'name', selected: ['x'] },
       { id: 'category', selected: ['不存在的类型'] },
@@ -133,17 +179,27 @@ describe('reqboard_capture · 五问口径', () => {
     expect(bad.category).toBe('feature')
     expect(bad.difficulty).toBe('standard')
     expect(bad.workspace).toBe(WORKSPACE_SENTINELS.session)
-    expect(bad.defaultsUsed).toEqual(['category', 'difficulty', 'doc_location', 'workspace'])
+    expect(bad.defaultsUsed).toEqual(['category', 'difficulty', 'location'])
+  })
+
+  it('mapCaptureAnswers：⚡ 一键过 → 名称不由控制项充当，后 3 问全走默认', () => {
+    const m = mapCaptureAnswers([{ id: 'name', selected: ['⚡ 全部按推荐值立项'] }])
+    expect(m.acceptAllRecommended).toBe(true)
+    expect(m.title).toBe('')
+    expect(m.category).toBe('feature')
+    expect(m.difficulty).toBe('standard')
+    expect(m.docLocation).toBe('docs/requirements/<REQ>/')
+    expect(m.defaultsUsed).toEqual(['category', 'difficulty', 'location'])
   })
 })
 
 describe('reqboard_capture · 一次调用一把梭（AC-7.2）', () => {
-  it('五问同批弹出 → 创建即立项 → 绑定本窗口 → 推进 brainstorming', async () => {
+  it('四问分两段弹出（1+3）→ 创建即立项 → 绑定本窗口 → 推进 brainstorming', async () => {
     const svc = makeSvc(FOUR)
     const out = await run(makeTool({ svc, workspaceRoot: dir }), { title_options: ['候选名称'] })
-    // 五问同批
-    expect(svc.seen.questions).toHaveLength(5)
-    expect((svc.seen.questions as { id?: string }[]).map(q => q.id)).toEqual(['name', 'category', 'difficulty', 'doc_location', 'workspace'])
+    // 两段合计四问（t1 收口：名称 / 类型 / 算力档位 / 文件落点）
+    expect(svc.seen.questions).toHaveLength(4)
+    expect((svc.seen.questions as { id?: string }[]).map(q => q.id)).toEqual(['name', 'category', 'difficulty', 'location'])
     // 立项成功 + 绑定 + 推进
     expect(out.success).toBe(true)
     expect(out.requirement_id).toMatch(/^REQ-/)
@@ -256,7 +312,8 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     // FR-6(REQ-261006201814-ac4f)：无码可断——拒绝留痕分支的软失败回执只带 note（无 code/error），实现缺口只上报。
     expect(out.requirement_id).toBe('')
     expect(out.note).toContain('不立项')
-    expect(recorded).toEqual([{ windowKey: W, at: NOW }])
+    // t5：留痕带类型（reject）——旧记录无 kind 仍按 reject 处理
+    expect(recorded).toEqual([{ windowKey: W, at: NOW, kind: 'reject' }])
     expect(store.peekAll()).toHaveLength(0)
   })
 
@@ -289,7 +346,7 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     })
     const out = await run(stale, { title_options: ['候选名称'] })
     expect(out.success).toBe(true)
-    expect(svc.seen.questions).toHaveLength(5)
+    expect(svc.seen.questions).toHaveLength(4)
   })
 
   it('其他窗口的拒绝留痕 → 本窗口不粘滞，正常弹框立项', async () => {
@@ -300,7 +357,7 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     })
     const out = await run(other, { title_options: ['候选名称'] })
     expect(out.success).toBe(true)
-    expect(svc.seen.questions).toHaveLength(5)
+    expect(svc.seen.questions).toHaveLength(4)
   })
 
   it('留痕读损坏 → 按无记录降级，正常弹框（绝不因留痕故障误拦截）', async () => {
@@ -308,6 +365,6 @@ describe('reqboard_capture · 拒绝粘滞（REQ-260922012924-2e29 FR-5）', () 
     const rejections = { record: () => {}, readAll: async () => { throw new Error('corrupt json') } }
     const out = await run(makeTool({ svc, rejections }), { title_options: ['候选名称'] })
     expect(out.success).toBe(true)
-    expect(svc.seen.questions).toHaveLength(5)
+    expect(svc.seen.questions).toHaveLength(4)
   })
 })

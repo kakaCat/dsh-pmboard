@@ -382,4 +382,12 @@ export const FILES_CSS = `/* 文档节点 - 文档列表 */
   color: #4a7dff; border-bottom-color: #4a7dff; font-weight: 600;
 }
 
+/* 文档位置根来源红字（REQ-261007223647-da5d t11 / FR-6）：
+   地址不是用需求自己的工作区根拼出来的 → 明说"可能不准"，而不是静默给一个打不开的路径
+   （2026-10-07 现场：面板显示 ./dsh 下的地址，文件其实在工作区/文档位置）。 */
+.dsh-pm-root-warn {
+  display: inline-block; margin-left: 6px; font-size: 11px;
+  color: var(--dsw-danger, #d9534f);
+}
+
 `

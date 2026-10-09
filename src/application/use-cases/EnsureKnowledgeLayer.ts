@@ -166,6 +166,9 @@ export async function ensureKnowledgeLayer(
         drift.push(describeDrift(t.path, cur, t.content))
         continue
       }
+      // 工作区相对落盘：根保护在循环头（`sameProjectRoot(docs.workspaceRoot(), root)` 不符即
+      // 返回 failed/root-drifted，不写）。**刻意不套 ensureWritableProjectRoot**：那条 helper 以
+      // 抛错表达拒绝，会破坏本用例「永不抛」的不变量（实测套上后 kb-ensure 7 条用例红）。
       await docs.write(t.path, t.content)
       created.push(t.path)
     }

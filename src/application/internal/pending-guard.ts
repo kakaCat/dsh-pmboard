@@ -25,7 +25,7 @@ import { LIMITS } from '../../domain/limits.js'
  * 被停手守卫拦下的写路径名单（design/interfaces.md I-2 `pending_confirms[].blocked_tools`）。
  *
  * 挂载点与 design I-3 一致：`reqboard_submit` / `reqboard_decompose` / `reqboard_move` /
- * `reqboard_task_move`。`reqboard_status` 与 `reqboard_confirm_receipt` **刻意不在列**——
+ * `reqboard_task_move`。`reqboard_status` 与 `reqboard_ask_confirm(ticket=…)` **刻意不在列**——
  * 否则人无法解除挂起。
  */
 export const PENDING_CONFIRM_BLOCKED_TOOLS: readonly string[] = [
@@ -40,7 +40,7 @@ export const PENDING_CONFIRM_BLOCKED_TOOLS: readonly string[] = [
  * 必含「收到作答前不得产出下游产物」与两条可用路径（取回执 / 看板确认）。
  */
 export const PENDING_CONFIRM_RECOVERY =
-  '收到作答前不得产出下游产物。解除挂起：① 调 reqboard_confirm_receipt(ticket="pc-…") 取回执；'
+  '收到作答前不得产出下游产物。解除挂起：① 调 reqboard_ask_confirm(ticket="pc-…") 取回执；'
   + '② 到项目看板点确认按钮。'
 
 /**
@@ -87,6 +87,30 @@ export function targetConfirmedInLedger(req: RequirementRecord, rec: PendingConf
 }
 
 /**
+ * 一批挂起票里**仍然有意义**的那些（`livePendingConfirm` 的集合形态，**判定只有这一处**）。
+ *
+ * 为什么要抽出集合形态（REQ-261007223647-da5d t6）：看板要一次问「这条需求上还有谁在等」
+ * （`pendingBoardRowsOf`），agent 侧只问「本窗口那一张」。若各写一套筛选条件，必然漂移成
+ * 「agent 说没人在等、看板却挂着一张」——两处**同一组谓词**是这条读数的正确性前提。
+ *
+ * 台账查不到该需求（`req === undefined`）→ **保守留挂**，与单数形态逐字同口径。
+ */
+export function livePendingConfirmsOf(
+  req: RequirementRecord | undefined,
+  recs: readonly PendingConfirmation[],
+): PendingConfirmation[] {
+  return recs.filter((rec) => {
+    if (req === undefined) return true
+    if (targetConfirmedInLedger(req, rec)) return false
+    // REQ-261005200052-ce40 FR-2：**无门的票不拦**（拦的东西不是门）……
+    if (!hasConfirmGateOf(rec)) return false
+    // ……**无产物的票也不拦**（没有东西可落章 ⇒ 人点看板也答不了）。两者都是读时谓词，产物出现即恢复拦截。
+    if (!hasConfirmableArtifactOf(req, rec)) return false
+    return true
+  })
+}
+
+/**
  * 本窗口**仍然有意义**的挂起确认（没有则 undefined）：注册表的 `pendingForWindow` 已滤掉
  * 已 settle / 已过期 / 跨窗口；这里只再滤「台账已落章」的陈旧记录。
  *
@@ -97,13 +121,7 @@ export async function livePendingConfirm(deps: UseCaseDeps, windowKey: string): 
   if (pending === undefined) return undefined
   // t8/B11：单条查找 → 新端口 get（原为整册 find）
   const req = await requirementStoreOf(deps).get(pending.requirementId)
-  if (req === undefined) return pending
-  if (targetConfirmedInLedger(req, pending)) return undefined
-  // REQ-261005200052-ce40 FR-2：**无门的票不拦**（拦的东西不是门）……
-  if (!hasConfirmGateOf(pending)) return undefined
-  // ……**无产物的票也不拦**（没有东西可落章 ⇒ 人点看板也答不了）。两者都是读时谓词，产物出现即恢复拦截。
-  if (!hasConfirmableArtifactOf(req, pending)) return undefined
-  return pending
+  return livePendingConfirmsOf(req, [pending])[0]
 }
 
 /**
@@ -144,7 +162,7 @@ export function pendingConfirmFactsOf(req: RequirementRecord, rec: PendingConfir
     : (req.artifacts ?? []).filter(a => a.kind === rec.kind).length
   const expiresAt = (rec.interruptedAt ?? rec.createdAt) + LIMITS.pendingConfirmTtlMs
   const terminal = TERMINAL_STATUSES.includes(req.status)
-  const usableRecovery: string[] = ['① 调 reqboard_confirm_receipt(ticket="' + rec.ticket + '") 取回执']
+  const usableRecovery: string[] = ['① 调 reqboard_ask_confirm(ticket="' + rec.ticket + '") 取回执']
   // ② 需要「有门 **且** 产物在册」：看板确认要求产物已登记，否则点了也落不了章。
   if (gate && artifactCount > 0) usableRecovery.push('② 到项目看板点确认按钮（该产物有确认门且已在册，卡面有控件）')
   // REQ-261006164732-6503 t9（serves: FR-3）：**删掉「③ 重新发起 reqboard_ask_confirm 覆盖旧记录」**——
@@ -164,7 +182,7 @@ export function pendingConfirmFactsOf(req: RequirementRecord, rec: PendingConfir
 export function pendingConfirmRejectMessage(p: PendingConfirmation, facts?: PendingConfirmFacts): string {
   if (facts === undefined) {
     return '本窗口有一个**待作答**的确认门（ticket=' + p.ticket + '，需求 ' + p.requirementId + '）——'
-      + '收到作答前不得产出下游产物。解除挂起：① 调 reqboard_confirm_receipt(ticket="' + p.ticket + '") 取回执；'
+      + '收到作答前不得产出下游产物。解除挂起：① 调 reqboard_ask_confirm(ticket="' + p.ticket + '") 取回执；'
       + '② 或在项目看板点确认按钮。'
   }
   return '本窗口有一个**待作答**的确认门（ticket=' + p.ticket + '，需求 ' + p.requirementId

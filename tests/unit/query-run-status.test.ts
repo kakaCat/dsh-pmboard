@@ -1,4 +1,5 @@
 /**
+ * serves: BUG-1（run 快照只报活字段）
  * QueryRunStatus 用例测试
  */
 
@@ -61,13 +62,16 @@ describe('QueryRunStatus', () => {
       })
       
       expect(result.runId).toBeNull()
-      expect(result.stepIndex).toBe(0)
+      // REQ-261008011118-defe BUG-1（DD-1）：恒 0 的 `stepIndex` 不再存在于读数里（死字段已删）
+      expect('stepIndex' in result).toBe(false)
       expect(result.jobStatus).toBe('not_found')
       expect(result.autoRun).toBe(false)
       expect(result.nextReady).toEqual(['t1'])
     })
 
-    it('有 checkpoint：返回运行信息', async () => {
+    it('有 active run：返回运行信息（进度死字段被忽略，不出现在读数里）', async () => {
+      // 夹具**故意**种入 stepIndex/currentSubtaskId 遗产字段：修前它们会被原样回报（读的就是夹具写的），
+      // 修后必须被忽略——这条断言才是可证伪的（死字段的写侧在生产代码 0 调用方）。
       const requirement = createRequirement('REQ-1', {
         runId: 'run-123',
         stepIndex: 5,
@@ -89,8 +93,8 @@ describe('QueryRunStatus', () => {
       })
       
       expect(result.runId).toBe('run-123')
-      expect(result.stepIndex).toBe(5)
-      expect(result.currentSubtaskId).toBe('t-abc')
+      expect('stepIndex' in result).toBe(false)
+      expect('currentSubtaskId' in result).toBe(false)
       expect(result.jobStatus).toBe('running')
       expect(result.autoRun).toBe(true)
     })

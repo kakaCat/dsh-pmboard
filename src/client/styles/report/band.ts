@@ -160,5 +160,30 @@ export const BAND_CSS = `   ③ 状态带三格（对应原型 .band / .band-i /
 @media (max-width: 1000px) {
   .dsh-pm-detail[data-report-shell] .dsh-pm-stats[data-report-band] { gap: var(--s2); }
 }
+
+/* ── 看板 pending 票横带（REQ-261007223647-da5d t9 / FR-5）────────────────────
+   有票才渲染（无票零 DOM）；钉在首屏顶部，人不开会话也看得见「有人在等」。 */
+.dsh-pm-pending-band {
+  margin: 0 0 var(--s4) 0; padding: var(--s3) var(--s4);
+  border: 1px solid var(--pm-warn-border, rgba(214,138,0,.45));
+  border-radius: 8px;
+  background: var(--pm-warn-bg, rgba(214,138,0,.08));
+}
+.dsh-pm-pending-band-head {
+  font-size: var(--f-small); font-weight: 600; margin-bottom: var(--s2);
+}
+.dsh-pm-pending-row {
+  display: flex; align-items: center; gap: var(--s2);
+  padding: var(--s2) 0;
+  font-size: var(--f-small);
+}
+.dsh-pm-pending-row + .dsh-pm-pending-row { border-top: 1px solid var(--dsw-border, rgba(128,128,128,.12)); }
+.dsh-pm-pending-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 🔔 前缀与超时安抚句（原型 #FR-5 的票行形状：🔔 门名 · REQ-id … 已超时 —— 票仍有效，可一键重投） */
+.dsh-pm-pending-bell { flex: 0 0 auto; }
+.dsh-pm-pending-note { flex: 0 0 auto; color: var(--pm-text2); font-size: var(--f-tiny); }
+.dsh-pm-pending-countdown { font-variant-numeric: tabular-nums; color: var(--pm-text2); }
+.dsh-pm-pending-row[data-timed-out="yes"] .dsh-pm-pending-countdown { color: var(--dsw-danger, #d9534f); font-weight: 600; }
+.dsh-pm-pending-error { color: var(--dsw-danger, #d9534f); font-size: var(--f-small); }
 /* ══════════════════════════════════════════════════════════════════════════
 `

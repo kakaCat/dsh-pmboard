@@ -144,6 +144,10 @@ describe('submit 入口：登记即拦（不再等人点看才发现）', () => 
     await expect(run(tool, { ...base, docs: [...fullDocs(), { kind: 'notes', path: 'docs/{a,b}.md' }] }))
       .rejects.toThrow(/REQBOARD_ARTIFACT_NOT_OPENABLE/)
 
+    // 合并去向须真实存在（REQ-261006201841-944d FR-1：归档闸 1 判事实，不只看形态）
+    mkdirSync(join(dir, 'docs/guides'), { recursive: true })
+    writeFileSync(join(dir, 'docs/guides/x.md'), '# 指南\n')
+
     // 齐活（bug 类：requirement/verification/retro 必填）
     const out = await run(tool, { ...base, docs: fullDocs() })
     expect(out.success).toBe(true)

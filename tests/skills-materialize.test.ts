@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { SkillAssets } from '../src/adapters/SkillAssets.ts'
 import { SkillWriter } from '../src/adapters/SkillWriter.ts'
 import { PythonProbe } from '../src/adapters/PythonProbe.ts'
@@ -57,6 +58,8 @@ function makeDeps(options: HarnessOptions = {}): UseCaseDeps {
   return {
     store: {} as never,
     docs: { resolve: (rel: string) => join(options.root ?? tmpdir(), rel), workspaceRoot: () => options.root ?? tmpdir() } as never,
+    // REQ-261008020617-088f RF-3：hostFs 必填（本夹具不碰 RTM，给真实现即可）
+    hostFs: new FileHostFs(),
     clock: { now: () => 1_700_000_000_000 } as never,
     ids: {} as never,
     session: {} as never,

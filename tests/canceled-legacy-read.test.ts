@@ -312,12 +312,18 @@ describe('读路径绝不抛错 + 宽容的边界（别把降级变成崩溃 / �
     for (const text of ['null', '[]', '42', '"x"']) {
       await writeFile(queuePath(), text, 'utf8')
       let loaded: QueueFile | undefined
-      await expect(async () => {
+      // 必须**真 await**：旧写法 `await expect(async () => { loaded = await repo.load(REQ) }).not.toThrow()`
+      // 里 vitest 是**同步调用**那个 async 函数、不 await 它返回的 promise ⇒ 下一行在 load 落定
+      // 前就读 warnings，读数随时序漂移（本用例连跑抖动的根因）。try/catch 把 await 拉回本作用域。
+      try {
         loaded = await repo.load(REQ)
-      }).not.toThrow()
+      } catch (e) {
+        expect.unreachable('畸形 JSON 的读路径不该抛错，却抛了：' + String(e))
+      }
       expect(loaded).toBeUndefined()
+      // 断言搬进循环：每条标本都已 load 落定，warning 归属确定（不再跨迭代读到空数组）
+      expect(warnings.some((w) => w.includes('根不是 JSON 对象'))).toBe(true)
     }
-    expect(warnings.some((w) => w.includes('根不是 JSON 对象'))).toBe(true)
   })
 
   it('对象根但内容不合规（字段全缺）→ 宽容返回，不抛错', async () => {

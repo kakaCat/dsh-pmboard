@@ -8,6 +8,7 @@
  * 手法：最小假 res（收集 statusCode / body），零网络、零宿主。
  */
 import { describe, expect, it, afterEach } from 'vitest'
+import { FileDiagSink } from '../../src/adapters/FileDiagSink.js'
 import type { ServerResponse } from 'node:http'
 import { mkdtempSync, existsSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -214,7 +215,7 @@ describe('未就绪启动 t4 · 接线：只注册降级路由 + 双通道留痕
     const dir = mkdtempSync(join(tmpdir(), 'pm-diag-'))
     tmpRoots.push(dir)
     const diag = join(dir, 'state', 'reqboard-capture-diag.log')
-    initCaptureDiag(diag)
+    initCaptureDiag(new FileDiagSink(diag))
     enterNotReadyMode({ inject: () => {} } as never, failureFixture(), { error: () => {} })
 
     const lines = readFileSync(diag, 'utf8').split('\n').filter(l => l.includes('NOT-READY'))

@@ -23,14 +23,9 @@ const FACTORIES = [
   'defineDecomposeTool',
   'defineSubmitTool',
   'defineAskConfirmTool',
-  'defineConfirmReceiptTool',
   'defineAcceptSheetTool',
-  'defineTaskExecuteTool',
-  'defineAdvanceTool',
-  'defineRunStatusTool',
-  'defineTaskStatusTool',
-  'defineTaskRefsTool',
-  'defineNoteInterruptionTool',
+  'defineTaskRunTool',
+  'defineTaskAmendTool',
   'defineClearPauseTool',
   'defineMoveTool',
   'defineTaskMoveTool',
@@ -41,8 +36,8 @@ const factoryOf = (name: string): ((d: unknown) => any) | undefined =>
   (toolModules as unknown as Record<string, (d: unknown) => any>)[name]
 
 describe('reqboard 工具 schema（构造即编译全部工具）', () => {
-  it('工厂清单齐备（18 个全量；少一个即红）', () => {
-    expect(FACTORIES).toHaveLength(19)
+  it('工厂清单齐备（14 个全量；少一个即红）', () => {
+    expect(FACTORIES).toHaveLength(14)
     for (const name of FACTORIES) expect(typeof factoryOf(name), name + ' 未导出').toBe('function')
   })
 

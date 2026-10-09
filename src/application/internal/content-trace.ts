@@ -275,7 +275,7 @@ export interface ReceiveTaskLike {
  * 把**台账任务卡上的 `requirementRefs`** 投影成接收判据的输入形状。
  *
  * 为什么需要它（2026-10-05 上线实体查出的硬伤）：条款接收判据原先**只**信
- * `decomposition.md` 里的 RTM 表（`collectTaskRefs`）。而 `reqboard_task_refs` 这个工具
+ * `decomposition.md` 里的 RTM 表（`collectTaskRefs`）。而 `reqboard_task_amend(op=refs)` 这个工具
  * **只写台账卡片字段**，不写拆分文档——两个来源各说各话时，投影只读了文档那个空表。
  * 实测本需求：18 张父卡在台账里明确覆盖 FR-1~FR-15，`decomposition.md` 里却一个 FR 引用都没有
  * → 页面报「15 条条款全部没人接」= **页面撒谎**（人一眼就问出来了）。

@@ -3,7 +3,10 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { designGateCheck } from '../../../src/application/gate/design-gate.js'
+// REQ-261008020617-088f RF-2：三份同构门已合并为 gate/rtm-gates.ts 单点；
+// 读盘改走 DocRepository（构造需求自己的根），断言一字未改。
+import { designGateCheck } from '../../../src/application/gate/rtm-gates.js'
+import { FileDocRepository } from '../../../src/adapters/FileDocRepository.js'
 import type { RequirementRecord } from '../../../src/shared/protocol.js'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
@@ -55,7 +58,7 @@ describe('designGateCheck', () => {
       updatedBy: { kind: 'human', sessionId: 'test' }
     }
 
-    const result = await designGateCheck(req, tmpDir)
+    const result = await designGateCheck(req, new FileDocRepository({ workspaceRoot: tmpDir }))
 
     expect(result.passed).toBe(true)
     expect(result.message).toContain('所有功能需求都有设计文档引用')
@@ -90,7 +93,7 @@ describe('designGateCheck', () => {
       updatedBy: { kind: 'human', sessionId: 'test' }
     }
 
-    const result = await designGateCheck(req, tmpDir)
+    const result = await designGateCheck(req, new FileDocRepository({ workspaceRoot: tmpDir }))
 
     expect(result.passed).toBe(false)
     expect(result.code).toBe('design_incomplete')
@@ -113,7 +116,7 @@ describe('designGateCheck', () => {
       updatedBy: { kind: 'human', sessionId: 'test' }
     }
 
-    const result = await designGateCheck(req, tmpDir)
+    const result = await designGateCheck(req, new FileDocRepository({ workspaceRoot: tmpDir }))
 
     expect(result.passed).toBe(false)
     expect(result.code).toBe('rtm_not_found')

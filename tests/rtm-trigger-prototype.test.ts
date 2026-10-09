@@ -14,6 +14,7 @@
  * @module dsh-pmboard/tests/rtm-trigger-prototype
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -93,7 +94,9 @@ function makeDeps(root: string, req: RequirementRecord): UseCaseDeps {
     listSummaries: async () => ({ items: [req] }),
     get: async (id: string) => (id === req.id ? req : undefined),
   }
-  return { docs: { workspaceRoot: () => root }, store } as unknown as UseCaseDeps
+  // REQ-261008020617-088f RF-3：hostFs 是必填端口——强转 `as unknown as` 会掩盖缺失，
+  // 缺了它 RTM 的 state 写入会在静默 catch 里被跳过（实测三处用例点名）。
+  return { docs: { workspaceRoot: () => root }, store, hostFs: new FileHostFs() } as unknown as UseCaseDeps
 }
 
 /** 落盘标本（真文件：生成器要读 requirement.md / 原型 HTML / INDEX）。 */
@@ -153,7 +156,7 @@ describe('submit:prototype 触发点（t9）', () => {
     expect(doc.outputs?.prototypes?.[0]?.serves).toEqual(['FR-1'])
 
     // 留痕：本次携带的 paths 原样可见（决议 #48 的"留痕"那一半）
-    const traces = readRTMTriggerTraces(join(root, '.dsh-data', 'state'))
+    const traces = readRTMTriggerTraces(new FileHostFs(), root)
     expect(traces).toHaveLength(1)
     expect(traces[0]?.requirement_id).toBe(REQ_ID)
     expect(traces[0]?.trigger).toBe('submit:prototype')

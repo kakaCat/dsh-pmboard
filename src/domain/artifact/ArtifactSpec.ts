@@ -55,7 +55,7 @@ export interface ArchiveDoc {
 }
 
 /**
- * 需求类型 → 归档时的文档要求。规范文档：agent-dh/docs/architecture/requirement-archive.md。
+ * 需求类型 → 归档时的文档要求。规范文档：docs/architecture/archived-entry.md。
  * 校验是**代码级**的：缺必填文档或合并去向 → 归档材料提交被拒。
  */
 export interface ArchiveDocRule {
@@ -72,7 +72,7 @@ export interface ArchiveDocRule {
 export const ARCHIVE_DOC_RULES: Readonly<Record<RequirementCategory, ArchiveDocRule>> = {
   // 合并去向**只允许落在既有文档规范目录内**（docs/adr|architecture|guides|rfcs|work-logs|strategy-research
   // 及其 agent-dh 对应目录）——归档不许自创平行体系（规范见 docs/DOCUMENT-MANAGEMENT-PLAN.md
-  // 与 agent-dh/docs/architecture/requirement-archive.md）。
+  // 与 docs/architecture/archived-entry.md）。
   feature: {
     requireManual: true,
     requiredDocs: ['requirement', 'plan', 'verification'],

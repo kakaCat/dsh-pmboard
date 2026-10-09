@@ -9,6 +9,7 @@
  * 唯一性当场失效（表现为 `findOpen` 只能看见其中一条）。
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -83,6 +84,8 @@ function makeDeps(): UseCaseDeps {
     store,
     taskStore: taskStoreAt(dir),
     docs: new FileDocRepository({ workspaceRoot: dir }),
+    // REQ-261008020617-088f RF-3：hostFs 必填（强转构造的夹具最容易漏）
+    hostFs: new FileHostFs(),
     clock: { now },
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({}),

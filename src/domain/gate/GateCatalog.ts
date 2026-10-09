@@ -25,7 +25,7 @@ export const GATE_CATALOG: readonly GateSpec[] = [
     verdictShape: 'form',
     humanOnly: false,
     autoAdvance: false, // G0 的"推进"由 create 自带的 draft→brainstorming 完成
-    questionCard: '立项三问（需求名称 / 类型 / 难度）已完成，是否创建立项？',
+    questionCard: '立项弹框逐问作答已完成，是否创建立项？',
   },
   {
     id: 'G1', label: '确认需求文档',

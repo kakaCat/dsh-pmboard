@@ -22,7 +22,7 @@ export function defineCreateTool(deps: UseCaseDeps) {
     parameters: {
       title: {
         type: 'string',
-        description: '需求名称（用户三问弹框确认值，≤120 字符；人工确认时可改）',
+        description: '需求名称（用户经立项弹框确认的值，≤120 字符；人工确认时可改）',
         required: true,
       },
       category: {
@@ -41,13 +41,13 @@ export function defineCreateTool(deps: UseCaseDeps) {
       },
       prompt_difficulty: {
         type: 'string',
-        description: '提示词难度级别：simple / standard / advanced / expert（默认 standard）',
+        description: '算力档位（提示词难度级别）：simple / standard / advanced / expert（默认 standard）——这四档直接决定 agent 在这条需求上投入多少 LLM 算力',
         enum: [...ALL_PROMPT_DIFFICULTIES],
       },
       doc_location: {
         type: 'string',
         description:
-          '需求文档存放位置（工作区相对目录，如 docs/requirements/<REQ>/ 或 docs/rfcs/）；不传 / 空串 → 回落 docs/requirements/<REQ>/ 并在 defaults_used 标注（降级路径的第四问）',
+          '需求文档存放位置（工作区相对目录，如 docs/requirements/<REQ>/ 或 docs/rfcs/）；不传 / 空串 → 回落 docs/requirements/<REQ>/ 并在 defaults_used 标注（降级路径的文档位置取值）',
       },
       owner_window: {
         type: 'string',

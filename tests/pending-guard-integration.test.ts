@@ -7,7 +7,7 @@
  *
  *   ① adapter → shared/protocol → use-case：
  *      `PendingConfirmRegistry.markInterrupted` 写的 `interruptedAt`（protocol 字段）经真实
- *      `reqboard_confirm_receipt` 工具（ConfirmReceipt 用例）取回执，note 改为「本次等待已被中止」；
+ *      `reqboard_ask_confirm(ticket=…)` 工具（ConfirmReceipt 用例）取回执，note 改为「本次等待已被中止」；
  *   ② pending-guard 共享谓词与真实台账联动：
  *      `livePendingConfirm` 未落章仍拦 / 台账落章即放行；同一份 `targetConfirmedInLedger` 同时驱动
  *      回执的 `confirmed`（判定口径只留一处，不再两处拷贝漂移）；
@@ -18,6 +18,7 @@
  */
 import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -26,11 +27,17 @@ import { SessionProbeAdapter } from '../src/adapters/SessionProbeAdapter.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
 import { UserQuestionsAdapter } from '../src/adapters/UserQuestionsAdapter.js'
 import { PendingConfirmRegistry } from '../src/adapters/PendingConfirmRegistry.js'
-import { defineConfirmReceiptTool } from '../src/tools/index.js'
+import { defineAskConfirmTool } from '../src/tools/index.js'
 import { livePendingConfirm, pendingConfirmFactsOf, targetConfirmedInLedger } from '../src/application/internal/pending-guard.js'
 import { defineStatusTool } from '../src/tools/index.js'
 import type { UseCaseDeps } from '../src/application/ports.js'
 import type { RequirementRecord, StageArtifact } from '../src/shared/protocol.js'
+
+/**
+ * FR-2（REQ-261007220012-bd29）：取回执路径并入 ask_confirm(ticket)——
+ * 原独立回执工具已删除，本 helper 提供等价入口（传 ticket → ConfirmReceipt 用例）。
+ */
+const receiptToolOf = (deps: unknown): any => defineAskConfirmTool(deps as never)
 
 const W = 'session-pending-guard-001'
 const REQUIREMENT_ID = 'REQ-abc123'
@@ -57,6 +64,8 @@ function makeDeps(registry: PendingConfirmRegistry, now: () => number = () => Da
   return {
     store: store,
     docs: new FileDocRepository({ workspaceRoot: dir }),
+    // REQ-261008020617-088f RF-3：hostFs 必填（强转构造的夹具最容易漏）
+    hostFs: new FileHostFs(),
     clock: { now },
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({}),
@@ -96,10 +105,10 @@ function factsOf(ticket: string): ReturnType<typeof pendingConfirmFactsOf> {
 }
 
 const receiptTool = (deps: UseCaseDeps) =>
-  defineConfirmReceiptTool(deps) as unknown as { execute: (a: unknown, e: unknown) => Promise<Record<string, unknown>> }
+  receiptToolOf(deps) as unknown as { execute: (a: unknown, e: unknown) => Promise<Record<string, unknown>> }
 
 describe('联调 ① adapter(interruptedAt) → 回执（I-4 → I-6）', () => {
-  it('请求 reqboard_confirm_receipt({ticket})｜被中止且未作答 → 返回体全键等于期望（含被中止文案）', async () => {
+  it('请求 ask_confirm({ticket})｜被中止且未作答 → 返回体全键等于期望（含被中止文案）', async () => {
     await seed()
     const registry = new PendingConfirmRegistry({ now: () => 1_000, newTicket: () => 'pc-int001' })
     const deps = makeDeps(registry, () => 1_000)

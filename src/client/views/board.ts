@@ -236,6 +236,14 @@ export function buildBoard(
    * （REQ-261005213603-eaed FR-1：会话回合 ∪ 新鲜推进锁）。
    */
   running: ReadonlySet<string> = NO_RUNNING,
+  /**
+   * 首屏 pending 票横带 HTML（REQ-261007223647-da5d t10 · FR-5 / 设计 frontend.md 组件树）。
+   *
+   * 为什么由调用方（board-mount）组装好再传进来：横带数据来自 `/state` 的 `pending_confirms`，
+   * 而"取数 + 失败降级"属于页面接线层；本渲染函数只负责**摆放**（钉在看板顶部）。
+   * 缺省空串 ⇒ 无票 / 未接线时输出与改动前逐字节一致（无票零渲染）。
+   */
+  pendingBandHtml: string = '',
 ): string {
   const isRunning = (sid: string): boolean => running.has(sid)
   const cards = toReqCards(state)
@@ -280,7 +288,7 @@ export function buildBoard(
   // 故页头只保留「泳道/列表」切换与「刷新」，移除「任务」（任务总览页入口）与「+ 需求」（新建需求）。
   return `
     <div class="dsh-pm-board">
-      <div class="dsh-pm-head">
+      ${pendingBandHtml}<div class="dsh-pm-head">
         <h1 class="dsh-pm-title">项目看板</h1>
         <span class="dsh-pm-rev">rev ${state.revision}</span>
         ${switcher}

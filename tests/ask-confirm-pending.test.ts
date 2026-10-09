@@ -8,11 +8,12 @@
  * ——缺省阻塞不在此文件（见 ask-confirm-blocking.test.ts），且「显式宽限但未装配注册表」显式拒绝。
  *
  * 断言口径（任务卡 acceptance）：questions.ask 永不 resolve + 宽限 20ms → 返回 pending=true
- * 且 ticket 非空、不抛错；作答后 reqboard_confirm_receipt(ticket) 返回 confirmed=true,
+ * 且 ticket 非空、不抛错；作答后 reqboard_ask_confirm(ticket=…)(ticket) 返回 confirmed=true,
  * advanced=true 且台账 confirmedAt 已写。
  */
 import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -22,9 +23,15 @@ import { SessionProbeAdapter } from '../src/adapters/SessionProbeAdapter.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
 import { UserQuestionsAdapter } from '../src/adapters/UserQuestionsAdapter.js'
 import { PendingConfirmRegistry } from '../src/adapters/PendingConfirmRegistry.js'
-import { defineAskConfirmTool, defineConfirmReceiptTool } from '../src/tools/index.js'
+import { defineAskConfirmTool } from '../src/tools/index.js'
 import type { CrossWindowDeliveryPort, AskAnswer, UseCaseDeps } from '../src/application/ports.js'
 import type { RequirementRecord, StageArtifact } from '../src/shared/protocol.js'
+
+/**
+ * FR-2（REQ-261007220012-bd29）：取回执路径并入 ask_confirm(ticket)——
+ * 原独立回执工具已删除，本 helper 提供等价入口（传 ticket → ConfirmReceipt 用例）。
+ */
+const receiptToolOf = (deps: unknown): any => defineAskConfirmTool(deps as never)
 
 const W = 'session-pending-001'
 const AFFIRM = '确认，推进到下一阶段 (Recommended)'
@@ -53,6 +60,8 @@ function makeDeps(ask: AskFn, opts: { pending?: boolean; crossWindowDeliver?: Cr
     store: store,
     taskStore: taskStoreAt(dir),
     docs: new FileDocRepository({ workspaceRoot: dir }),
+    // REQ-261008020617-088f RF-3：hostFs 必填（强转构造的夹具最容易漏）
+    hostFs: new FileHostFs(),
     clock: { now },
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({}),
@@ -161,7 +170,7 @@ describe('T-6 弹框非阻塞投递（FR-3 / I-3）', () => {
 })
 
 describe('T-6 回执（FR-3 / I-4）', () => {
-  it('TC-7 超宽限 ticket → 作答后台落章 → reqboard_confirm_receipt 返回 confirmed=true, advanced=true', async () => {
+  it('TC-7 超宽限 ticket → 作答后台落章 → reqboard_ask_confirm(ticket=…) 返回 confirmed=true, advanced=true', async () => {
     await seed()
     let resolveAsk: (v: { answers?: AskAnswer[] }) => void = () => {}
     const deferred = new Promise<{ answers?: AskAnswer[] }>((res) => { resolveAsk = res })
@@ -183,7 +192,7 @@ describe('T-6 回执（FR-3 / I-4）', () => {
     // 先证明"端子真的装上了"——否则下面的"没投递"可能只是没装配
     expect((deps as { crossWindowDeliver?: unknown }).crossWindowDeliver).toBe(crossWindowDeliver)
     const askTool = defineAskConfirmTool(deps) as any
-    const receiptTool = defineConfirmReceiptTool(deps) as any
+    const receiptTool = receiptToolOf(deps) as any
 
     const pendingOut = await askTool.execute({ ...ARGS, inline_grace_ms: 20 }, exec)
     expect(pendingOut.pending).toBe(true)
@@ -211,7 +220,7 @@ describe('T-6 回执（FR-3 / I-4）', () => {
 
   it('TC-8 未知 ticket → REQBOARD_UNKNOWN_TICKET', async () => {
     await seed()
-    const tool = defineConfirmReceiptTool(makeDeps(async () => ({ answers: [] }), { pending: true })) as any
+    const tool = receiptToolOf(makeDeps(async () => ({ answers: [] }), { pending: true })) as any
     await expect(tool.execute({ ticket: 'pc-无' }, exec)).rejects.toMatchObject({ code: 'REQBOARD_UNKNOWN_TICKET' })
   })
 
@@ -221,7 +230,7 @@ describe('T-6 回执（FR-3 / I-4）', () => {
     const ticket = deps.pendingConfirms!.register({
       windowKey: 'session-other', requirementId: 'REQ-abc123', target: 'artifact', kind: 'requirement',
     }).ticket
-    const tool = defineConfirmReceiptTool(deps) as any
+    const tool = receiptToolOf(deps) as any
     await expect(tool.execute({ ticket }, exec)).rejects.toMatchObject({ code: 'REQBOARD_UNKNOWN_TICKET' })
   })
 
@@ -230,7 +239,7 @@ describe('T-6 回执（FR-3 / I-4）', () => {
     const never = new Promise<{ answers?: AskAnswer[] }>(() => {})
     const deps = makeDeps(() => never, { pending: true })
     const askTool = defineAskConfirmTool(deps) as any
-    const receiptTool = defineConfirmReceiptTool(deps) as any
+    const receiptTool = receiptToolOf(deps) as any
     const pendingOut = await askTool.execute({ ...ARGS, inline_grace_ms: 20 }, exec)
     const out = await receiptTool.execute({ ticket: String(pendingOut.ticket) }, exec)
     expect(out.success).toBe(true)
@@ -245,7 +254,7 @@ describe('T-6 回执（FR-3 / I-4）', () => {
     const deferred = new Promise<{ answers?: AskAnswer[] }>((res) => { resolveAsk = res })
     const deps = makeDeps(() => deferred, { pending: true })
     const askTool = defineAskConfirmTool(deps) as any
-    const receiptTool = defineConfirmReceiptTool(deps) as any
+    const receiptTool = receiptToolOf(deps) as any
     const pendingOut = await askTool.execute({ ...ARGS, inline_grace_ms: 20 }, exec)
     resolveAsk({ answers: [{ id: 'confirm', selected: ['暂停'] }] })
     await waitFor(() => first().comments.some((c) => c.body.includes('未确认')))

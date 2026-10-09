@@ -38,6 +38,8 @@ import { captureBoardScroll, restoreBoardScroll } from './board-scroll.ts'
 // 取数中/未找到/失败三种非成功态各有明确占位——此前详情页直接拿摘要当全文渲染，点开即崩。
 import { createReqDetailStore } from './req-detail-store.ts'
 import { buildDetailError, buildDetailLoading, buildDetailMissing } from './views/detail-states.ts'
+// REQ-261007223647-da5d t10（FR-5）：首屏 pending 票横带——取数与降级在本层，渲染在 views/pending-confirm
+import { renderPendingConfirmBand, tickPendingCountdowns } from './views/pending-confirm.ts'
 // REQ-261004222448-292a t-ab048e：详情页新壳（常驻头部 + 六个同级 Tab + 懒加载 + 分段局部更新）。
 // 旧详情页（buildReqDetail）**不删**：报告端点未接线（旧服务端 404 / 形状不符）时按原样回落，
 // 这样"新前端 + 旧服务端"不会白屏，也不会把既有能力（评论、验收单、追溯…）直接砍掉。
@@ -427,6 +429,13 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
   let viewEl: HTMLElement | undefined = container
   let unsubEvents: (() => void) | undefined
   let pollTimer: number | undefined
+  /**
+   * 首屏 pending 票横带的本地倒计时表（REQ-261007223647-da5d t10 · FR-5）。
+   *
+   * 为什么不轮询：票的失效时刻是**绝对时刻**，本地每秒递减与再取一次等价——
+   * 为了一个倒计时把看板变成轮询器不值当；票的增减仍由既有 SSE / 20s 轮询驱动重绘。
+   */
+  let pendingTickTimer: number | undefined
   let disposed = false
   /**
    * 运行态订阅的退订句柄 + 上一次渲染用过的在跑集合（REQ-261004210128-283d FR-5/FR-8）。
@@ -589,6 +598,31 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
     return h.phase === 'unsupported' || (h.phase === 'error' && h.notFound === true)
   }
 
+  /**
+   * 首屏 pending 票横带 HTML（REQ-261007223647-da5d t10 · FR-5）。
+   *
+   * 取数与降级在本层：无票 → 空串（`buildBoard` 里零渲染）；
+   * 载荷坏到读不出票时 `parsePendingConfirms` 已按 `[]` 兜住（见 api.ts），故这里不会抛。
+   */
+  const pendingBandOf = (): string =>
+    state === undefined ? '' : renderPendingConfirmBand(state.pending_confirms, { now: Date.now() })
+
+  /**
+   * 倒计时表：屏上有票行才起表（每秒本地递减），没有行就停表——不轮询、不空转。
+   */
+  const syncPendingTicker = (): void => {
+    if (pendingTickTimer !== undefined) { window.clearInterval(pendingTickTimer); pendingTickTimer = undefined }
+    if (disposed || viewEl === undefined) return
+    if (viewEl.querySelector('.dsh-pm-pending-countdown') === null) return
+    pendingTickTimer = window.setInterval(() => {
+      if (disposed || viewEl === undefined) return
+      // 重绘后行被换掉时，这次 tick 找不到行 → 停表，等下一次重绘再起
+      if (tickPendingCountdowns(viewEl, 1000) === 0) {
+        if (pendingTickTimer !== undefined) { window.clearInterval(pendingTickTimer); pendingTickTimer = undefined }
+      }
+    }, 1000)
+  }
+
   const render = (): void => {
     if (viewEl === undefined) return
     if (state === undefined) { viewEl.innerHTML = buildEmpty(); return }
@@ -603,7 +637,10 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
         // REQ-261004210128-283d FR-3/FR-4：渲染时实时读运行态，并把本次用的集合记为门控基准
         const running = runningNow()
         lastRunning = running
-        viewEl.innerHTML = buildBoard(state, Date.now(), boardView, listOpts(), archivedSids(), running)
+        // REQ-261007223647-da5d t10（FR-5）：有票才渲染首屏横带（无票 = 空串 = 零 DOM，不占首屏）
+        viewEl.innerHTML = buildBoard(
+          state, Date.now(), boardView, listOpts(), archivedSids(), running, pendingBandOf(),
+        )
         break
       }
       case 'req': {
@@ -685,7 +722,10 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
           // 回落看板时同样带上运行态（否则「任务详情 → 看板」这条路径会丢掉指示）
           const running = runningNow()
           lastRunning = running
-          viewEl.innerHTML = buildBoard(state, Date.now(), boardView, listOpts(), archivedSids(), running)
+          // FR-5：回落路径同样带横带（否则「任务详情 → 看板」会看不到在等的门）
+          viewEl.innerHTML = buildBoard(
+            state, Date.now(), boardView, listOpts(), archivedSids(), running, pendingBandOf(),
+          )
           mode = { kind: 'board' }
         }
         break
@@ -696,6 +736,8 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
     }
     // 新 DOM 已在屏：把位置写回去（找不到泳道容器 / 该列就跳过，绝不创建节点）
     restoreBoardScroll(viewEl)
+    // FR-5：屏上有票行就起倒计时表（没有就停表——不轮询、不空转）
+    syncPendingTicker()
   }
 
   // ---- 数据 ------------------------------------------------------------
@@ -928,6 +970,31 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
       case 'toggle-subtasks':
         // 子卡区用原生 <details> 自己开合；这里只吃掉这次点击，避免冒泡到卡片的 open-task
         return
+      case 'pending-answer': {
+        // REQ-261007223647-da5d t10（FR-5）：去作答 = 跳这条需求的既有确认区
+        // （看板确认按钮与弹框作答是同一道门——不另造第二个作答入口，避免"两处口径"）
+        const reqId = el.dataset.id
+        if (reqId !== undefined && reqId.length > 0) {
+          activeStage = undefined
+          mode = { kind: 'req', reqId }
+          render()
+        }
+        return
+      }
+      case 'pending-repost': {
+        // FR-1：重投是**如实查询**（服务端说 still-open / gone / unavailable），绝不假称"已重弹"
+        const reqId = el.dataset.id
+        const ticket = el.dataset.ticket
+        if (reqId !== undefined && ticket !== undefined && reqId.length > 0 && ticket.length > 0) {
+          void api.repostConfirm({ id: reqId, ticket })
+            .then((r) => {
+              window.alert(r.hint ?? (r.action === 'still-open' ? '这张票仍在等。' : '该票不存在或已过期。'))
+              return fetchAll()
+            })
+            .catch((e: unknown) => window.alert(String(e)))
+        }
+        return
+      }
       case 'confirm-artifact': {
         const reqId = el.dataset.id
         const kind = el.dataset.kind
@@ -1423,6 +1490,8 @@ export function createBoardAttachment(container: HTMLElement, options: AttachBoa
       unsubRunning?.()
       unsubRunning = undefined
       stopPolling()
+      // FR-5：pending 票倒计时表一并释放（disposed 已置真 → 迟到的 tick 也不会改已释放的视图）
+      if (pendingTickTimer !== undefined) { window.clearInterval(pendingTickTimer); pendingTickTimer = undefined }
       if (poll) document.removeEventListener('visibilitychange', onVisibility)
       // REQ-261004195831-0f52：卸载即作废在途取数（迟到响应不得写回已释放的视图）
       reqDetail.reset()

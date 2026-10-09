@@ -1,3 +1,4 @@
+import { FileHostFs } from '../../adapters/FileHostFs.js'
 /**
  * Requirements 路由（REQ-47939a t7）——从 host/routes.ts 的 createReqboardHandler 内联处理器**逐字搬入**。
  *
@@ -410,7 +411,7 @@ export function createRequirementsRouter(ctx: RouterCtx) {
         // 任务来自队列（REQ-260927202051-f6df：RTM 的 tasksOf 读队列任务，v9 台账已无 tasks）；
         // 本同步放在**落库之后**，serves 才能反映刚落库的卡（此前同步时队列还是空的）。
         const rtmTasks = await taskStore.listByRequirement(id)
-        syncRTMYamlWithSnapshot(rtmRoot, ({ requirements: (await ctx.requirementStore.listSummaries({ scope: 'all' }))?.items as never }), rtmTasks, id, 'confirm:plan')
+        syncRTMYamlWithSnapshot(ctx.deps.applicationDeps?.hostFs ?? new FileHostFs(), rtmRoot, ({ requirements: (await ctx.requirementStore.listSummaries({ scope: 'all' }))?.items as never }), rtmTasks, id, 'confirm:plan')
       }
     }
     // 回给看板的必须是**落库/推进之后**的台账态（落库可能改了状态与 autoRun）——
@@ -475,7 +476,7 @@ export function createRequirementsRouter(ctx: RouterCtx) {
       if (rtmRoot !== undefined) {
         // 任务来自队列（同 RTM 触发点 5）
         const rtmTasks = await taskStore.listByRequirement(id)
-        syncRTMYamlWithSnapshot(rtmRoot, ({ requirements: (await ctx.requirementStore.listSummaries({ scope: 'all' }))?.items as never }), rtmTasks, id, 'confirm:artifact')
+        syncRTMYamlWithSnapshot(ctx.deps.applicationDeps?.hostFs ?? new FileHostFs(), rtmRoot, ({ requirements: (await ctx.requirementStore.listSummaries({ scope: 'all' }))?.items as never }), rtmTasks, id, 'confirm:artifact')
       }
     }
 
@@ -578,6 +579,50 @@ export function createRequirementsRouter(ctx: RouterCtx) {
 
     const final = (await ctx.requirementStore.get(id)) ?? confirmed
     ok(res, { ...final, advanced, delivered, ...(note === undefined ? {} : { note }) })
+  }
+
+  /**
+   * 重投挂起确认（REQ-261007223647-da5d t4 · FR-1 / 设计 IF-4）。
+   *
+   * 治什么：确认票的「投递」与「等待」原本绑在一次工具调用上——2026-10-07 现场
+   * `reqboard_submit` 30s 超时把票 pc-a3d0aa 一起带走，下游挂死约 30 分钟，人还不知道有票在等。
+   *
+   * 这一端点的语义（**如实，不伪造**）：
+   *   · 票仍在等 → 回 `still-open`：告诉人「票还有效」，并给出两条真能走的路
+   *     （会话里让 agent 再发起一次确认——gate-request 会复用同一道门，不新建第二个框；或直接在看板作答）；
+   *   · 票已不在（过期 / 已作答 / 从未存在）→ 回 `gone`：如实说失效，引导重新发起。
+   *
+   * **为什么不在这里直接再弹一次框**：弹框要落在「需求所属窗口的 agent」上，本路由是看板侧的
+   * HTTP 面，没有那条会话投递通道（Dive 的 GatePromptPort 不走工具层）。与其造一个"看起来弹了、
+   * 其实没人收到"的假动作，不如把出路说清楚——人点一次就能走完。
+   */
+  async function handleConfirmRepost(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const body = await readBody(req)
+    const id = normalizeText(body.id, 'id', 64)
+    const ticket = normalizeText(body.ticket, 'ticket', 64)
+    const read = ctx.deps.pendingConfirms
+    if (read?.pendingForRequirement === undefined) {
+      ok(res, {
+        action: 'unavailable',
+        ticket,
+        hint: '挂起确认读口未装配：无法判断该票是否还在等。请在会话里让 agent 重发一次确认，或直接看板作答。',
+      })
+      return
+    }
+    const open = read.pendingForRequirement(id).filter(p => ticket.length === 0 || p.ticket === ticket)
+    if (open.length > 0) {
+      ok(res, {
+        action: 'still-open',
+        ticket: open[0]!.ticket,
+        hint: '这张票仍在等：在会话里让 agent 再发起一次确认会复用同一道门（不会多出一个框），也可以直接在看板作答。',
+      })
+      return
+    }
+    ok(res, {
+      action: 'gone',
+      ticket,
+      hint: '该票不存在或已过期：请重新发起确认（agent 调 reqboard_ask_confirm，或重交一次产物触发自动确认）。',
+    })
   }
 
   async function handleComment(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -738,8 +783,9 @@ export function createRequirementsRouter(ctx: RouterCtx) {
 
   /**
    * POST /dashboard/api/reqboard/req/archive-amend
-   * 看板「补录归档清单」入口（REQ-261004183621-de3f FR-4）：与工具 `reqboard_archive_amend`
-   * **共用同一用例**（`amendArchiveManifest`），只追加清单条目 + 留痕，不改产物与状态。
+   * 看板「补录归档清单」入口（REQ-261004183621-de3f FR-4）：与工具 `reqboard_task_amend(op=archive)`
+   * （REQ-261008020552-4aa0 FR-1 收编）**共用同一用例**（`amendArchiveManifest`），
+   * 只追加清单条目 + 留痕，不改产物与状态。
    *
    * 与拆分入口同纪律：窗口身份取自需求绑定，但豁免 live-driver 的回合校验
    * （人在看板上点按钮时没有"当前发起回合"）；"窗口不在线"不阻断补录——
@@ -857,5 +903,5 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     ok(res, result)
   }
 
-  return { handleReqCreate, handleReqMove, handleReqUpdate, handlePlanDecision, handleArtifactConfirm, handleComment, handleAutoRun, handleReqDecompose, handleArchiveAmend, handleReqRebind, handleRollbackCleanup }
+  return { handleReqCreate, handleReqMove, handleReqUpdate, handlePlanDecision, handleArtifactConfirm, handleConfirmRepost, handleComment, handleAutoRun, handleReqDecompose, handleArchiveAmend, handleReqRebind, handleRollbackCleanup }
 }

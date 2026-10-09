@@ -2,7 +2,8 @@
  * NoteInterruption 用例（REQ-260924213231-b1c4 T-9 · serves: FR-6 / I-8）——断点补写。
  *
  * 两个入口共用一个核心：
- *   · B′ 工具入口 `reqboard_note_interruption(reason)`（`noteInterruption`）：窗口绑定校验
+ *   · B′ 工具入口 `reqboard_task_amend(op=interruption)`（`noteInterruption`；
+ *     REQ-261008020552-4aa0 FR-2 收编，原独立断点补写工具并入）：窗口绑定校验
  *     + 显式拒绝（reason 空 / 本窗口无绑定需求）；
  *   · B  事件入口（`noteInterruptionForWindow`）：`Dive 会话驱动器`（原 CaptureHook）的 `turn/end` 经组合根
  *     异步边界调用——此时没有 exec、也不该因"窗口无绑定需求"抛错（只静默跳过）。
@@ -79,7 +80,7 @@ export async function noteInterruptionCore(
   }
 }
 
-/** B′ 工具入口：reqboard_note_interruption(reason)。 */
+/** B′ 工具入口：reqboard_task_amend(op=interruption, reason)。 */
 export async function noteInterruption(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
   const windowKey = agentIdFromExec(deps, exec)
   requireLiveDriver(deps, exec)
@@ -87,14 +88,14 @@ export async function noteInterruption(deps: UseCaseDeps, args: unknown, exec: a
   const reason = normalizeText(a.reason, 'reason', 1000)
   const explicitId = normalizeText(a.requirement_id, 'requirement_id', 64)
   if (reason.length === 0) {
-    reject('reqboard_note_interruption 未执行：reason 不能为空（中断原因原文，如 upstream stream idle 3m）', 'REQBOARD_INVALID_INPUT')
+    reject('reqboard_task_amend(op=interruption) 未执行：reason 不能为空（中断原因原文，如 upstream stream idle 3m）', 'REQBOARD_INVALID_INPUT')
   }
-  const out = await noteInterruptionCore(deps, windowKey, reason, explicitId, 'reqboard_note_interruption')
+  const out = await noteInterruptionCore(deps, windowKey, reason, explicitId, 'reqboard_task_amend')
   if (out === undefined) {
     if (explicitId.length > 0) {
-      reject(fmt('reqboard_note_interruption 未执行：需求 {id} 不是本窗口绑定的进行中需求', { id: explicitId }), 'REQBOARD_NOT_BOUND_TO_WINDOW')
+      reject(fmt('reqboard_task_amend(op=interruption) 未执行：需求 {id} 不是本窗口绑定的进行中需求', { id: explicitId }), 'REQBOARD_NOT_BOUND_TO_WINDOW')
     }
-    reject('reqboard_note_interruption 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
+    reject('reqboard_task_amend(op=interruption) 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
   }
   return {
     success: true,

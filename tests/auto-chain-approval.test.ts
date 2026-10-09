@@ -6,14 +6,15 @@
  */
 import { describe, it, expect } from 'vitest'
 import { askConfirm } from '../src/application/use-cases/AskConfirm.js'
-import { advanceRequirement } from '../src/application/use-cases/AdvanceChain.js'
 import { DEFAULT_CONFIRM_OPTIONS } from '../src/domain/text/labels.js'
 import { pmHeader } from '../src/domain/text/pm-badge.js'
-import type { WorkflowRunner, WorkflowRunOutcome } from '../src/application/ports.js'
+import type { JobStartSpec, WorkflowRunner, WorkflowRunOutcome } from '../src/application/ports.js'
 import { makeHarness, req } from './application/harness.js'
 
 const FILE = 'src/domain/x.ts'
 const exec = { agent: { id: 'session-w-001' } }
+/** 延迟 jobs 夹具捕获的投递参数（每次 seed() 清空）。 */
+const dispatched: JobStartSpec[] = []
 
 class OkRunner implements WorkflowRunner {
   async start(_i: unknown): Promise<WorkflowRunOutcome> {
@@ -49,29 +50,31 @@ function seed() {
   }))
   // 任务不 seed（v9 / B-5）："此刻没有任务"= 没有队列文件，由各用例显式断言（不静默省略）。
   h.deps.workflow = new OkRunner()
+  // BUG-4 改法①（design/fix-design.md「BUG-4」第 1 行）：给 seed() 加**延迟 jobs 夹具**——
+  // `start` 捕获 spec 不跑（模式见 concurrency-matrix.test.ts:90 / advance-dispatch-owner.test.ts:21）。
+  // 定性：**有意前移**——批准**同一调用内**已 `advanceRequirement()` 并经 `deps.jobs.start` 投递；
+  // 夹具缺 jobs 时会落到「无后台任务端口」的同步兼容路径，把整条链跑在批准那一次调用里（这正是本用例
+  // 原期望 `implementing` 却实得 `accepting` 的来路）。延迟夹具把「链何时开跑」这一跳留在测试手里。
+  dispatched.length = 0
+  h.deps.jobs = {
+    available: () => true,
+    get: async () => null,
+    start: async (spec: JobStartSpec) => { dispatched.push(spec); return 'job-' + dispatched.length },
+  }
   h.questions.answers = [{ selected: [DEFAULT_CONFIRM_OPTIONS[0] as string] }]
   return h
 }
 
 describe('批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7.1）', () => {
   /**
-   * ⚠️ 已知缺口（**非本需求引入**，本用例把它显式暴露而非掩盖）：
-   * 「批准计划」这一跳**在 src 侧没有任何链启动者** —— `confirm-settle.ts` 只设
-   * `req.autoRun = true`；`deps.jobs.start` 没有生产调用点；
-   * （2026-10-04 REQ-261003222428-3556 t4：死代码 `StartSubtaskChain.ts` 已删除清偿，
-   *  其后台执行器 background-runner / batch-scheduler 一并移除，写集分组逻辑已移植
-   *  进现役 advance-parallel.ts）；`advanceRequirement(` 的调用点里
-   * 没有 `AskConfirm`/`confirm-settle`。⇒ 批准后状态只能停在 `implementing`。
+   * 触发者口径（BUG-4 设计节第 1 行；定性：**有意前移**）：
+   * 批准计划这一跳**已在同一调用内**带上链启动者 —— `confirm-settle.ts` 落库成功后置 `req.autoRun = true`，
+   * 紧接着 `await advanceRequirement(deps, …)`；生产（宿主 `ctx.jobs` 在位）走 `deps.jobs.start` **异步投递**。
    *
-   * 仓库早已把它写在注释里（既有事实，非本次改造造成）：
-   *   · `src/index.ts:505`「批准计划后的落库恢复通道（自动拆分缺 JobsPort）」
-   *   · `src/tools/DecomposeTool/DecomposeTool.ts:5`「后继的自动拆分路径（deps.jobs.start）
-   *     从未装配」+ `:6-8`「批准计划后抛 … 需求停在 implementing/0 任务卡，无法开工」
-   *
-   * 故本用例**显式模拟这一跳的触发者**（等价于生产的"看板继续 / 会话唤醒"），
-   * 只把「谁触发」移出断言范围；其余断言（无人再点任何人工工具即跑到 accepting、
-   * 子卡链全 done、父卡 done、弹框只出现一次）**一条不放宽**。
-   * 修 src 补启动者 = 改生产行为，需独立需求与批准，不在本需求（任务存储搬家）边界内。
+   * 本用例据此把 jobs 端口做成**延迟执行**（见 `seed()`）：批准调用返回时=落库 + `implementing` + `autoRun=true`，
+   * 投递的那份 spec 已被捕获；手跑 `spec.run()` 等价于生产后台 job 真正开跑 → 链自己跑到 `accepting`。
+   * 「谁触发」不再是测试外部模拟的未知触发者，而是**真实投递路径**；其余断言（无人再点任何人工工具即跑到
+   * accepting、子卡链全 done、父卡 done、弹框只出现一次）**一条不放宽**。
    */
   it('批准后自动拆分类跑完 → 需求 accepting（v9：触发者由外部模拟，生产为看板继续/会话唤醒）', async () => {
     const h = seed()
@@ -85,8 +88,10 @@ describe('批准计划 → 自动拆分并跑完链到 accepting（4.1 / 4.2 / 7
     expect(afterApprove.status).toBe('implementing')   // 批准本身的终态（落库 + 进实施 + autoRun）
     expect(afterApprove.autoRun).toBe(true)
 
-    // 显式模拟系统触发者（见上方"已知缺口"）：此后**不再调用任何人工工具**，链应自己跑到 accepting。
-    await advanceRequirement(h.deps, 'REQ-000001')
+    // 触发者 = 批准调用内经 `deps.jobs.start` 投递的后台 job（本夹具延迟执行，spec 已捕获）。
+    // 此后**不再调用任何人工工具**，链应自己跑到 accepting。
+    expect(dispatched).toHaveLength(1)
+    await dispatched[0]!.run(new AbortController().signal)
 
     const requirement = (await h.store.get('REQ-000001'))!
     expect(requirement.status).toBe('accepting')

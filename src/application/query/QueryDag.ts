@@ -114,7 +114,7 @@ export function buildDagNodes(
  *     执行记录自身没有"阶段"字段，取最能定位"这一步在链上哪一段"的那个；
  *   · `report`：台账的 `lastReport` 是**卡级**的（`TaskReportSummary` 没有 summary/nextStep，
  *     也不区分是哪一次执行），故**按步照抄同一份**：`summary` 由 `completed` 派生
- *     （与 `TaskStatusTool` / `TaskTree` 同源），`nextStep` 恒缺省——台账没存，就不编。
+ *     （与 `旧的单卡查询工具` / `TaskTree` 同源），`nextStep` 恒缺省——台账没存，就不编。
  */
 export function buildDagSteps(tasks: readonly TaskRecord[]): DagStep[] {
   const out: DagStep[] = []

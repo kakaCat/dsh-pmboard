@@ -297,9 +297,12 @@ describe('批准后的执行链（计划 → 任务卡 → 自动验收）', () 
     const out = await run(decompose, {})
     const [proto, ui] = out.created.map((c: { id: string }) => c.id)
 
-    const started = await run(taskMove, { task_id: proto, to: 'in_progress', reason: '开工' })
+    await run(taskMove, { task_id: proto, to: 'in_progress', reason: '开工' })
     // 2026-09-14 五门裁定：任务开工不再自动 decomposing>implementing，需求停等人工确认拆分清单
-    expect(started.requirement_status).toBe('decomposing')
+    // BUG-4 改法③（design/fix-design.md「BUG-4」第 3 行）：回执键 `requirement_status` 已**有意改名**
+    // —— `MoveTask` 回执为「既有 11 键」，键集由 legacy-compat-6749.test.ts:248,265 锁死（`TASK_MOVE`
+    // 契约无此键）；需求态改读**权威源 store**（同款断言下方 :309 也有一处）。
+    expect((await store.get('REQ-abc123'))!.status).toBe('decomposing')
     for (const to of ['testing', 'in_review']) await run(taskMove, { task_id: proto, to })
     // done 凭证门（t06）：汇报+痕迹后才能关
     const { recordToolTrace } = await import('../src/adapters/SessionProbeAdapter.js')

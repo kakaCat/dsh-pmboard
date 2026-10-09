@@ -142,7 +142,7 @@ export function stampInterruption(
   const minIntervalMs = opts.minIntervalMs ?? INTERRUPTION_MIN_INTERVAL_MS
   const pendingAction = nextActionFor(req)
   const prev = req.interruption
-  // **显式**写（`reqboard_note_interruption`，人或 agent 明确要求记一笔）不受限流：
+  // **显式**写（`reqboard_task_amend(op=interruption)`，人或 agent 明确要求记一笔）不受限流：
   // 把"我要求记录"静默吞掉是这个工具最不该有的行为；限流只针对**自动**路径（turn/end 逐拍补写）。
   if (prev !== undefined && opts.explicit !== true) {
     // 形 = 阶段 + 下一步。形没变 ⇒ 这次中断没带来**新信息**，只带来"又失败了一次"。

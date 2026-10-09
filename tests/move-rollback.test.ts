@@ -1,4 +1,5 @@
 /**
+ * serves: BUG-3（回退队列补偿 + 取消/复位状态事件与 version）
  * 回退端到端用例（REQ-261003204149-1e80 t7 起）。
  *
  * t7 先落**原子性**一节：编排必须「先算卡计划、后改需求」，抛错时四项（状态 / 章 /
@@ -12,7 +13,7 @@ import { taskStoreAt } from './queue/route-deps.js'
 import { defineMoveTool, defineDecomposeTool } from './helpers/tool-deps.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { EventEmitter } from 'node:events'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { applyRequirementRollback, type RollbackIdFactory } from '../src/application/internal/rollback.js'
@@ -107,9 +108,12 @@ describe('回退编排 · 双通道一致性（t9 验收：FR-5 单点）', () =
   const SID = 'session-abc-123'
   const REQ_TOOL = 'REQ-aaa111' // 走工具侧 reqboard_move
   const REQ_BOARD = 'REQ-bbb222' // 走看板侧 POST /move
+  const DESIGN5 = ['architecture.md', 'data-model.md', 'interfaces.md', 'test-cases.md', 'use-cases.md']
   let dir: string
   let prevCwd: string
   let store: ReturnType<typeof makeTestStore>
+  /** BUG-3 用例要用到 deps 注入的那个 TaskStore 实例（补种卡 / 打桩补偿写）。 */
+  let ts: ReturnType<typeof taskStoreAt>
   let handler: any
   let moveTool: any
   let decomposeTool: any
@@ -141,11 +145,35 @@ describe('回退编排 · 双通道一致性（t9 验收：FR-5 单点）', () =
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
     artifacts: [
       { stage: 'brainstorming', kind: 'requirement', path: 'docs/requirements/' + id + '/requirement.md', registeredAt: 1, registeredBy: { kind: 'human' }, confirmedAt: 10, confirmedBy: { kind: 'human' } },
-      { stage: 'design', kind: 'design', path: 'docs/requirements/' + id + '/design/a.md', registeredAt: 1, registeredBy: { kind: 'human' }, confirmedAt: 20, confirmedBy: { kind: 'human' } },
+      // 五份设计产物齐且带确认章：G2 文档集门要求**磁盘上每份 design/*.md 都有确认章**（REQ-2d1c74 FR-2）
+      ...DESIGN5.map(n => ({
+        stage: 'design' as const, kind: 'design' as const,
+        path: 'docs/requirements/' + id + '/design/' + n,
+        registeredAt: 1, registeredBy: { kind: 'human' }, confirmedAt: 20, confirmedBy: { kind: 'human' },
+      })),
       { stage: 'decomposing', kind: 'decomposition', path: 'docs/requirements/' + id + '/decomposition.md', registeredAt: 1, registeredBy: { kind: 'human' }, confirmedAt: 30, confirmedBy: { kind: 'human' } },
     ],
     plan: { path: 'docs/requirements/' + id + '/decomposition.md', submittedAt: 25, approvedAt: 30, approvedBy: { kind: 'human' }, tasks: [] },
   } as unknown as RequirementRecord)
+
+  /**
+   * 落盘 requirement.md（六节）+ design 五份——G2 文档集门①按**磁盘实际落盘**判交齐，
+   * 不看登记簿（`design-gates.ts` 的两级核验：交齐 + 全部确认）。
+   *
+   * 文档集一落盘，「设计交完」时点的阶段时序门（`stage-gate-timeline.ts`）也随之被读到，
+   * 故这份夹具必须同时满足它的三项读数：必填节、格式门（`### FR-1` 编号规范）、
+   * 设计 serves 无 dangling ⇒ 设计文档 H1 带 `<!-- serves: FR-1 -->`。
+   * 条款 FR-1 真实存在 ⇒ TC-11 的重拆必须由卡上的 `requirement_refs` 接收（覆盖门只读卡）。
+   */
+  function writeDocset(id: string): void {
+    const reqDirAbs = join(dir, 'docs/requirements', id)
+    mkdirSync(join(reqDirAbs, 'design'), { recursive: true })
+    writeFileSync(join(reqDirAbs, 'requirement.md'),
+      '# 需求\n\n## 边界\n不做范围外的事。\n\n## 产品定义\nx\n\n## 用户与角色\nx\n\n'
+      + '## 功能点\n\n### FR-1: 甲\nx\n\n## 失败与并发路径\n- 判据：`npx vitest run tests/move-rollback.test.ts` 全绿。\n\n'
+      + '## 验收标准\nx\n')
+    for (const n of DESIGN5) writeFileSync(join(reqDirAbs, 'design', n), '# ' + n + ' <!-- serves: FR-1 -->\n')
+  }
 
   const liveCard = (id: string, taskId: string) => ({
     id: taskId, requirementId: id, title: '活卡', description: '', phase: 'implement', side: 'backend',
@@ -161,7 +189,7 @@ describe('回退编排 · 双通道一致性（t9 验收：FR-5 单点）', () =
     store = makeTestStore()
     // 两侧必须共用**同一个** TaskStore 实例：`taskStoreAt` 每次新建，若不显式注入，
     // 工具侧会读到另一个（空）队列 —— 首跑正是这样对不上 tasks_canceled。
-    const ts = taskStoreAt(dir)
+    ts = taskStoreAt(dir)
     const deps = { store, now: () => 1000, doneThrottleMs: 0, taskStore: ts }
     moveTool = defineMoveTool(deps as never)
     decomposeTool = defineDecomposeTool(deps as never)
@@ -172,6 +200,8 @@ describe('回退编排 · 双通道一致性（t9 验收：FR-5 单点）', () =
     await store.replaceAll('seed', {
       schemaVersion: 9, revision: 0, requirements: [rollbackable(REQ_TOOL), rollbackable(REQ_BOARD)], triages: [],
     } as never)
+    writeDocset(REQ_TOOL)
+    writeDocset(REQ_BOARD)
     await ts.createMany(REQ_TOOL, [liveCard(REQ_TOOL, 't-tool1')])
     await ts.createMany(REQ_BOARD, [liveCard(REQ_BOARD, 't-board1')])
   })
@@ -342,7 +372,8 @@ describe('回退编排 · 双通道一致性（t9 验收：FR-5 单点）', () =
       return { changed: true }
     })
     const out: any = await decomposeTool.execute(
-      { requirement_id: REQ_TOOL, tasks: [{ key: 'x', title: '新计划卡', implementation: '改 A 文件', acceptance: '跑 npx vitest run 全绿' }] },
+      // requirement_refs 接收夹具 requirement.md 里的 FR-1：覆盖门只读卡上的 refs（文档表不算数）
+      { requirement_id: REQ_TOOL, tasks: [{ key: 'x', title: '新计划卡', implementation: '改 A 文件', acceptance: '跑 npx vitest run 全绿', requirement_refs: ['FR-1'] }] },
       { agent: { id: SID } },
     )
     expect(out.success).toBe(true)
@@ -365,5 +396,102 @@ describe('回退编排 · 双通道一致性（t9 验收：FR-5 单点）', () =
     const res = await post('/req/move', { id: REQ_BOARD, to: 'archived', actor: 'human' })
     expect(toolErr).not.toBe('ok')
     expect(res.statusCode, '看板侧同样拒绝').not.toBe(200)
+  })
+
+  // ── BUG-3（REQ-261008011118-defe / DD-3）：两段写补偿 + 状态事件/version 补齐 ──────────
+
+  /** 本组用例的任务夹具（含 parentId / statusHistory 等既有 liveCard 不覆盖的字段）。 */
+  const mkTask = (over: Partial<TaskRecord>): TaskRecord => ({
+    id: 't-x', requirementId: REQ_TOOL, title: '卡', description: '', phase: 'implement', side: 'backend',
+    dependsOn: [], scope: { apis: [], tables: [], files: [] }, acceptance: 'x', context: '',
+    status: 'todo', blocked: false, executions: [], comments: [], version: 1,
+    createdAt: 1, updatedAt: 1, createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
+    ...over,
+  } as TaskRecord)
+
+  it('TC-9b（BUG-3）: 回退落库补齐状态事件与 version——取消卡有 canceled 事件、复位子卡有原地复位事件', async () => {
+    // 现场：顶层父卡 + 它的子卡（子卡走「原地复位」分支，父卡走「取消 + 物化重做卡」分支）
+    await ts.createMany(REQ_TOOL, [
+      mkTask({ id: 't-p', title: '顶层父卡', status: 'in_progress' }),
+      mkTask({ id: 't-s', title: '子卡', parentId: 't-p', stageKind: 'dev' as never, status: 'in_progress', statusHistory: [] }),
+    ])
+
+    await moveReq('design')
+    const landed = await cardsOf(REQ_TOOL)
+
+    const canceled = landed.filter(t => t.status === 'canceled')
+    expect(canceled.length, '顶层父卡 + 夹具原活卡都应被取消').toBeGreaterThanOrEqual(2)
+    for (const c of canceled) {
+      expect(c.statusHistory?.at(-1)?.status, c.id + '：取消卡必须有 canceled 状态事件').toBe('canceled')
+      expect(c.version, c.id + '：状态迁移必须 bump version（1 → 2）').toBe(2)
+    }
+
+    const sub = landed.find(t => t.id === 't-s')!
+    expect(sub.status).toBe('todo')
+    expect(sub.statusHistory?.at(-1)?.status, '复位子卡必须留下原地复位事件').toBe('todo')
+    expect(String(sub.statusHistory?.at(-1)?.reason), '复位事件的理由要能读出来').toContain('原地复位')
+    expect(sub.version, '复位也是状态迁移 ⇒ version +1').toBe(2)
+  })
+
+  it('BUG-3 补偿：需求写抛错 → 队列逐字段归还回退前（卡状态 / 重做卡 / version 全回来）', async () => {
+    const before = JSON.stringify(await cardsOf(REQ_TOOL))
+    const origMutate = store.mutate.bind(store)
+    ;(store as unknown as { mutate: unknown }).mutate = async (id: string, fn: unknown) => {
+      if (id === REQ_TOOL) throw Object.assign(new Error('注入：需求写失败'), { code: 'REQBOARD_STORE_INCONSISTENT' })
+      return origMutate(id, fn as never)
+    }
+
+    const err: any = await moveReq('design').catch((e: unknown) => e)
+    expect(String(err?.message ?? err), '补偿成功必须写进抛出消息').toContain('补偿成功')
+
+    const after = JSON.stringify(await cardsOf(REQ_TOOL))
+    expect(after, '队列必须逐字段回到回退前（含移除本轮物化的重做卡）').toBe(before)
+    expect((await cardOf(REQ_TOOL))!.status, '需求侧未落账 ⇒ 状态不变').toBe('implementing')
+  })
+
+  it('BUG-3 补偿（漂移 no-op）：需求状态被并发改走 → REQBOARD_CONFLICT 且队列同样归还', async () => {
+    const before = JSON.stringify(await cardsOf(REQ_TOOL))
+    const origMutate = store.mutate.bind(store)
+    ;(store as unknown as { mutate: unknown }).mutate = async (id: string, fn: unknown) => {
+      if (id === REQ_TOOL) {
+        // 模拟并发：先真正改走状态，再跑原回调（回调 `req.status !== from` → no-op）
+        await origMutate(id, (r) => { (r as { status: string }).status = 'design'; return { changed: true } })
+      }
+      return origMutate(id, fn as never)
+    }
+
+    const err: any = await moveReq('design').catch((e: unknown) => e)
+    expect(err?.code).toBe('REQBOARD_CONFLICT')
+    expect(JSON.stringify(await cardsOf(REQ_TOOL)), '漂移同样必须归还队列').toBe(before)
+  })
+
+  it('BUG-3 补偿失败：队列归还也失败 → 响亮 REQBOARD_ROLLBACK_COMPENSATION_FAILED + 需求留痕', async () => {
+    const origReqMutate = store.mutate.bind(store)
+    let reqCalls = 0
+    ;(store as unknown as { mutate: unknown }).mutate = async (id: string, fn: unknown) => {
+      if (id === REQ_TOOL) {
+        reqCalls += 1
+        // 第 1 次 = 回退的需求写（失败）；第 2 次 = 补偿失败的留痕评论（放行）
+        if (reqCalls === 1) throw Object.assign(new Error('注入：需求写失败'), { code: 'REQBOARD_STORE_INCONSISTENT' })
+      }
+      return origReqMutate(id, fn as never)
+    }
+    const origTsMutate = ts.mutate.bind(ts)
+    let queueCalls = 0
+    ;(ts as unknown as { mutate: unknown }).mutate = async (id: string, fn: unknown) => {
+      queueCalls += 1
+      // 第 1 次 = 回退的队列写（成功）；第 2 次 = 补偿写（注入失败）
+      if (queueCalls >= 2) throw Object.assign(new Error('注入：队列补偿写失败'), { code: 'REQBOARD_STORE_INCONSISTENT' })
+      return origTsMutate(id, fn as never)
+    }
+
+    const err: any = await moveReq('design').catch((e: unknown) => e)
+    expect(err?.code).toBe('REQBOARD_ROLLBACK_COMPENSATION_FAILED')
+    expect(String(err?.message ?? '')).toMatch(/受影响卡/)
+    const comments = (await cardOf(REQ_TOOL))!.comments ?? []
+    expect(
+      comments.some(c => String(c.body).includes('回退补偿失败')),
+      '补偿失败必须台账留痕（点名受影响卡）',
+    ).toBe(true)
   })
 })

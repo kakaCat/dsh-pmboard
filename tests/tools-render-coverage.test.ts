@@ -19,10 +19,11 @@ const TOOLS_DIR = 'src/tools'
  * 委托别名的白名单：这些文件**不自己**调 defineTool 输出定义，而是 `Object.assign` 复用另一个
  * 工具的工厂对象 —— `render` 在运行时被一并继承，源码里自然搜不到 `render:`。
  * 加白名单必须同时写清"继承自谁"，否则就是在掩盖真实缺口。
+ *
+ * REQ-261007220012-bd29 FR-1：task_execute 别名已物理删除 ⇒ 白名单**当前为空**
+ * （最后一个委托别名消失）。保留本结构与说明：将来若再加委托别名，理由必须写在这里。
  */
-const DELEGATING_ALIASES: Readonly<Record<string, string>> = {
-  'src/tools/TaskExecuteTool/TaskExecuteTool.ts': 'obj.assign 复用 defineAdvanceTool（含其 output.render）',
-}
+const DELEGATING_ALIASES: Readonly<Record<string, string>> = {}
 
 interface ToolSource { path: string; source: string }
 

@@ -108,10 +108,13 @@ describe('t11 · 两条落库路径共用唯一写路径 + 台账零任务', () 
     const decompose = readFileSync(join(srcRoot, 'use-cases/Decompose.ts'), 'utf8')
     const confirmSettle = readFileSync(join(srcRoot, 'internal/confirm-settle.ts'), 'utf8')
     const landing = readFileSync(join(srcRoot, 'internal/plan-landing.ts'), 'utf8')
+    const approvedLanding = readFileSync(join(srcRoot, 'internal/approved-plan-landing.ts'), 'utf8')
 
-    // ① 两条路径都委托唯一实现
+    // ① 两条路径都委托唯一实现：Decompose 直调 landPlanTasks；confirm-settle 经编排层
+    // landApprovedPlan（落库路径已改，confirm-settle.ts:646 → approved-plan-landing.ts:169）
     expect(decompose).toContain('landPlanTasks(')
-    expect(confirmSettle).toContain('landPlanTasks(')
+    expect(confirmSettle).toContain('landApprovedPlan(')
+    expect(approvedLanding).toContain('landPlanTasks(')
     // ② 唯一写路径用 createMany 落队列（台账侧只写 requirements）
     expect(landing).toContain('store.createMany(')
     expect(landing).not.toContain('ledger.tasks')

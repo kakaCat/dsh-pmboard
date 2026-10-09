@@ -74,19 +74,59 @@ export function setDocWorkspaceContext(
     : undefined
 }
 
-/** 相对路径 → 绝对路径（已是绝对路径原样返回；无缓存根 → 原样返回，相对解析降级）。 */
-export function absolutizeDocPath(path: string): string {
-  if (path.startsWith('/') || /^[A-Za-z]:/.test(path)) return path
+/**
+ * 本次绝对化**用了哪个根**（REQ-261007223647-da5d t12 · serves: FR-6 / 设计 IF-7）。
+ *
+ * 为什么要有这个读数：2026-10-07 用户现场——面板显示 `./dsh` 下的地址，文件其实在
+ * 工作区/文档位置；台账记录无罪，是**前端根解析链**在缓存缺失/串会话时拿错了根。
+ * 拿错根是"拼出一个看起来像绝对路径、但必然打不开的地址"，静默发生、事后无从追查。
+ * 记下"这次用了哪个根"，UI 才能把不确定**说出来**（不是改打开行为）。
+ *
+ * 取值语义（缺一不可）：
+ *  - `req-root`：需求级根（`reqRoots[reqId]`）——读与写同根，最可信；
+ *  - `session-root`：会话工作区根——跨需求/串会话时可能不是文件真正的落点；
+ *  - `server-root`：服务端下发的 workspaceRoot（兜底）；
+ *  - `none`：**没有用任何根**——输入已是绝对路径，或三类根都取不到（原样返回相对路径）。
+ */
+export type DocRootSource = 'req-root' | 'session-root' | 'server-root' | 'none'
+
+/** 最近一次 `absolutizeDocPath` 用到的根来源（只读诊断；缺省 = 从未解析过）。 */
+let lastRootSource: DocRootSource = 'none'
+
+/** 只读诊断：上一次绝对化用的根来源（不触发任何解析、不改缓存）。 */
+export function peekLastRootSource(): DocRootSource {
+  return lastRootSource
+}
+
+/**
+ * 相对路径 → 绝对路径 + 本次用的根来源（**解析逻辑的唯一实现**，`absolutizeDocPath` 只是它的薄壳）。
+ *
+ * 为什么要连来源一起返回：调用方（文档位置行）需要"地址 + 可信度"两件事同源得出——
+ * 若先调 absolutize 再回头猜来源，中间任何一次别的解析都会把它污染成假读数。
+ */
+export function absolutizeDocPathWithSource(path: string): { abs: string; source: DocRootSource } {
+  // 已是绝对路径 → 原样返回（不需要根，也不该被标成"用了某个根"）
+  if (path.startsWith('/') || /^[A-Za-z]:/.test(path)) return { abs: path, source: 'none' }
   const rel = path.split('\\').join('/').replace(/^(?:\.\/)+/, '')
   // 根的选择（FR-11）：需求级根优先（读与写同根）→ 会话工作区 → 服务端下发的 workspaceRoot。
   // 三者都取不到 → 原样返回相对路径（由 DSH 按查看会话解析），**不拼一个必然不存在的绝对路径**。
   const reqId = extractRequirementIdFromPath(rel)
-  const root = (reqId !== undefined ? cachedReqRoots[reqId] : undefined)
-    ?? cachedSessionWorkspaceRoot
-    ?? cachedWorkspaceRoot
-  if (root === undefined) return path
+  const reqRoot = reqId !== undefined ? cachedReqRoots[reqId] : undefined
+  const root = reqRoot ?? cachedSessionWorkspaceRoot ?? cachedWorkspaceRoot
+  if (root === undefined) return { abs: path, source: 'none' }
+  // **串会话保护**：需求级根命中就绝不退到会话根（reqRoots 优先由上行的 ?? 保证，来源标注逐字对齐）。
+  const source: DocRootSource = reqRoot !== undefined
+    ? 'req-root'
+    : (cachedSessionWorkspaceRoot !== undefined ? 'session-root' : 'server-root')
   const r = root.split('\\').join('/').replace(/\/+$/, '')
-  return r + '/' + rel
+  return { abs: r + '/' + rel, source }
+}
+
+/** 相对路径 → 绝对路径（已是绝对路径原样返回；无缓存根 → 原样返回，相对解析降级）。 */
+export function absolutizeDocPath(path: string): string {
+  const resolved = absolutizeDocPathWithSource(path)
+  lastRootSource = resolved.source
+  return resolved.abs
 }
 
 /** 显示用路径：绝对化后把 homeDir 前缀缩写为 ~（无缓存 → 原样）。 */

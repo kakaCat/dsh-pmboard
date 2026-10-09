@@ -48,6 +48,38 @@ const SCAN_DIRS = ['src/domain/prompt/fragments'] as const
 const SCAN_FILES = ['src/application/dive/round-state.ts'] as const
 
 /**
+ * agent 可见文案面（REQ-261007200706-89b7 FR-1 扩面；t2）——工具 description/schema 描述、
+ * 会话注入串、看板文案。为什么扩到这里：G1 的 8 处死路径全部住在这类文件里，
+ * 而原扫描面（片段 + round-state）盖不住，于是「指针可达」的判据在这片区域长期是盲区。
+ * `*.ts` 先剥注释再抽 token（agent 看不到注释，扫注释只会把功能性说明打成误报）。
+ */
+const AGENT_SURFACE_DIRS = ['src/tools'] as const
+const AGENT_SURFACE_FILES = [
+  'src/application/internal/capture-section.ts',
+  'src/client/views/verification.ts',
+] as const
+
+/**
+ * 禁词前缀（硬规则，**不接受白名单豁免**）：命中即缺口。
+ *
+ * 为什么需要它（而不是靠 SCAN_ROOTS 抽 token 兜住）：
+ *   · `agent-dh/` 不是扫描根——旧 monorepo 工作区名前缀换个写法就能溜过 token 抽取；
+ *   · `docs/standards/` 不在根表里——同理。
+ * 这两类前缀在本仓都是**历史残留的死路径写法**（旧工作区名 / 已不存在的规范目录），
+ * 出现在 agent 可见文案里 = agent 照它去找必然扑空，所以一律判红、没有"说不清就放过"的余地。
+ */
+const FORBIDDEN_PATTERNS: readonly { readonly re: RegExp; readonly reason: string }[] = [
+  {
+    re: /(?:^|[^\w/-])agent-dh\//,
+    reason: '旧 monorepo 工作区名前缀（agent-dh/…），本仓不存在该目录——文案指针必须写工作区相对的真实路径',
+  },
+  {
+    re: /docs\/standards\//,
+    reason: 'docs/standards/ 目录在本仓不存在（历史规范路径）——不得作为 agent 可见文案的指针',
+  },
+]
+
+/**
  * 参与扫描的路径根（**为什么是这些**：它们都是"仓库内真实存在的目录"或"需求目录相对的产物名"，
  * 是注入面会教 agent 去读/去写的位置）。不在表内的前缀（如 `refs/heads/`、`main/master`、`I/O`）
  * 不是仓库路径，不扫（见头部「判据边界」）。
@@ -110,12 +142,27 @@ const WHITELIST: readonly WhitelistRule[] = [
     reason: '需求目录的占位形态（片段里写的是"按需求号生成"的模板；真实目录 docs/requirements/<REQ>/ 随需求创建）',
   },
   {
+    // 只认**全 x 的占位号**（REQ-xxxxxx）；真实号（REQ-261007200706-89b7 这类含数字与短横的）一律走磁盘可达判据，
+    // 故这里用 [xX]+ 而不是松散的 [0-9a-z-]+（后者会把写错的真实号也放过去）。
+    match: /^docs\/requirements\/REQ-[xX]+/,
+    reason: '需求号的占位写法（REQ-xxxxxx，schema 描述里给形态示例用）；真实需求号不适用本条',
+  },
+  {
+    // 裸目录形态（结尾 `/`）才放行；其下的具体文件路径仍走磁盘可达判据，避免"目录存在"掩盖文件名拼错。
+    match: /^docs\/(?:adr|rfcs|work-logs)\/$/,
+    reason: '归档合并去向 / 文档位置白名单内的规范目录（ARCHIVE_DOC_RULES 与 capture 的 DOC_LOCATION_OPTIONS 同源）：本仓允许向其落盘、首次落盘时创建，故"当下不存在"合法；只放行裸目录形态',
+  },
+  {
+    match: /^prototype\/\*\.html$/,
+    reason: '旧原型目录的需求相对 glob 写法（兼容期：仍识别为 prototype、门禁只提示迁移），非仓库根下的具体文件',
+  },
+  {
     match: /^(?:design|tasks|notes)\//,
     reason: '需求目录相对的产物名（docs/requirements/<REQ>/design/、tasks/、notes/），片段里按相对口径书写（决议 #2）',
   },
   {
     match: /^docs\/superpowers\//,
-    reason: '上游 superpowers SKILL.md 原文里的**目标项目**路径（本仓不存在；heavy.md 与 vendor 原文逐字节锁定，改不掉）',
+    reason: '上游 superpowers SKILL.md 原文里的**目标项目**路径（本仓不存在）；implementing 换底后注入面仍由 design/heavy/overrides.md（覆盖 1）引用该前缀，故保留本条',
   },
   {
     match: /^skills\//,
@@ -125,6 +172,10 @@ const WHITELIST: readonly WhitelistRule[] = [
     match: /^packages\//,
     reason: '宿主 monorepo 布局（本包位于 packages/web/dsh-pmboard），本仓根下不存在 packages/',
   },
+  // 2026-10-08（REQ-261008190515-5212）删除：原先这里给**上游 skill 自带的两条辅助脚本路径**
+  // 留了允许条目——它们只由 vendor 原文（经 heavy 镜像）带进注入。implementing 换底为本仓自写档后，
+  // 注入面这两个 token 零命中，条目成为死条目；留着会让后来者以为注入面仍存在该路径。
+  // 若将来又有分片引入它们，探针会照常红灯（这是要的）。
 ]
 
 /** 抽取用的 token 正则：`<根>/…`，根表见 `SCAN_ROOTS`（长根优先，避免 `prototype` 抢先匹配 `prototypes`）。 */
@@ -158,6 +209,8 @@ interface Gap {
   readonly token: string
   readonly file: string
   readonly line: number
+  /** 缺口原因（禁词前缀命中的给出规则理由；路径不可达的用统一文案）。 */
+  readonly reason?: string
 }
 
 interface ClassifyResult {
@@ -186,6 +239,54 @@ function walkMarkdown(dir: string, out: string[]): void {
     if (ent.isDirectory()) walkMarkdown(p, out)
     else if (ent.name.endsWith('.md')) out.push(p)
   }
+}
+
+/** agent 文案面按 `*.ts` 递归收集（工具壳与 prompt 都是 .ts）。 */
+function walkTypeScript(dir: string, out: string[]): void {
+  for (const ent of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, ent.name)
+    if (ent.isDirectory()) walkTypeScript(p, out)
+    else if (ent.name.endsWith('.ts')) out.push(p)
+  }
+}
+
+/**
+ * 剥掉 `.ts` 的注释（块注释 + 整行/行尾 `//`）——agent 读不到注释，
+ * 注释里的历史路径说明（如路径归一正则的功能说明）不该被当成文案指针。
+ *
+ * 边界（有意接受的近似）：只剥**整行** `//` 与块注释，行尾 `//` 仅当不在 `://` 之后才剥
+ * （保护文案里的 URL）。模板串里的 `/*` 属罕见形态，未做串内状态机——真出现时探针会点名，
+ * 由人按缺口处置（宁可多报一次，不静默放过）。
+ */
+function stripComments(text: string): string {
+  // 块注释按**原有换行数**替换（否则后续行号整体前移，报出的「文件:行」会指错位置）
+  const withoutBlock = text.replace(/\/\*[\s\S]*?\*\//g, (m) => '\n'.repeat((m.match(/\n/g) ?? []).length))
+  return withoutBlock
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trimStart()
+      if (trimmed.startsWith('//')) return ''
+      return line.replace(/(^|[^:])\/\/.*$/, '$1')
+    })
+    .join('\n')
+}
+
+/** 禁词前缀扫描（在**已剥注释**的文本上跑；命中任何一处即缺口，不接受白名单）。 */
+function findForbidden(
+  entries: readonly { readonly file: string; readonly text: string }[],
+): readonly Gap[] {
+  const gaps: Gap[] = []
+  for (const entry of entries) {
+    entry.text.split('\n').forEach((line, i) => {
+      for (const rule of FORBIDDEN_PATTERNS) {
+        const m = rule.re.exec(line)
+        if (m === null) continue
+        const token = line.slice(m.index).split(/[\s'"`）、，。；）】]/)[0] ?? 'agent-dh/…'
+        gaps.push({ token, file: entry.file, line: i + 1, reason: rule.reason })
+      }
+    })
+  }
+  return gaps
 }
 
 /** 抽出文本里的候选 token（带 文件:行），同一 token 多处出现只算一个对象、但保留全部出处。 */
@@ -218,6 +319,7 @@ function existsInRepo(root: string, token: string): boolean {
 function classify(
   root: string,
   tokens: readonly { readonly token: string; readonly occurrences: readonly Occurrence[] }[],
+  forbidden: readonly Gap[] = [],
 ): ClassifyResult {
   const verdicts: TokenVerdict[] = []
   const gaps: Gap[] = []
@@ -233,7 +335,7 @@ function classify(
     }
     for (const occ of t.occurrences) gaps.push({ token: t.token, file: occ.file, line: occ.line })
   }
-  return { verdicts, gaps, tokens }
+  return { verdicts, gaps: [...gaps, ...forbidden], tokens }
 }
 
 interface Report {
@@ -242,8 +344,13 @@ interface Report {
   readonly ok: boolean
   readonly exitCode: number
   readonly root: string
-  readonly scanned: { readonly fragments: number; readonly files: number; readonly tokens: number }
-  readonly counts: { readonly exists: number; readonly whitelist: number }
+  readonly scanned: {
+    readonly fragments: number
+    readonly files: number
+    readonly agentSurface: number
+    readonly tokens: number
+  }
+  readonly counts: { readonly exists: number; readonly whitelist: number; readonly forbidden: number }
   readonly tokens: readonly {
     readonly token: string
     readonly verdict: 'exists' | 'whitelist'
@@ -253,17 +360,24 @@ interface Report {
   readonly gaps: readonly { readonly token: string; readonly at: string; readonly reason: string }[]
 }
 
-function buildReport(root: string, fragments: number, res: ClassifyResult): Report {
+const UNREACHABLE_REASON = '既不在磁盘上，也不在已知产物名白名单里'
+
+function buildReport(
+  root: string,
+  counts: { readonly fragments: number; readonly files: number; readonly agentSurface: number },
+  res: ClassifyResult,
+  forbiddenCount: number,
+): Report {
   const exists = res.verdicts.filter((v) => v.verdict === 'exists').length
   const whitelist = res.verdicts.filter((v) => v.verdict === 'whitelist').length
   return {
     script: SCRIPT,
-    criterion: { name: '路径可达', ok: res.gaps.length === 0, objects: res.tokens.length, gaps: res.gaps.length },
+    criterion: { name: '路径可达 + 禁词前缀', ok: res.gaps.length === 0, objects: res.tokens.length, gaps: res.gaps.length },
     ok: res.gaps.length === 0,
     exitCode: res.gaps.length === 0 ? 0 : 1,
     root,
-    scanned: { fragments, files: fragments + SCAN_FILES.length, tokens: res.tokens.length },
-    counts: { exists, whitelist },
+    scanned: { ...counts, tokens: res.tokens.length },
+    counts: { exists, whitelist, forbidden: forbiddenCount },
     tokens: res.verdicts.map((v) => ({
       token: v.token,
       verdict: v.verdict,
@@ -273,26 +387,29 @@ function buildReport(root: string, fragments: number, res: ClassifyResult): Repo
     gaps: res.gaps.map((g) => ({
       token: g.token,
       at: relative(root, g.file) + ':' + String(g.line),
-      reason: '既不在磁盘上，也不在已知产物名白名单里',
+      reason: g.reason ?? UNREACHABLE_REASON,
     })),
   }
 }
 
 function printHuman(report: Report): void {
   const head = report.scanned.fragments + ' 份片段 + ' + SCAN_FILES.join('、')
+    + ' + agent 文案面 ' + String(report.scanned.agentSurface) + ' 份'
   if (report.ok) {
     console.log(
-      '[' + SCRIPT + '] OK 路径可达（' + head + '）：token ' + String(report.scanned.tokens)
-      + ' 个（真实存在 ' + String(report.counts.exists) + ' / 产物名白名单 ' + String(report.counts.whitelist) + '）',
+      '[' + SCRIPT + '] OK 路径可达 + 禁词前缀（' + head + '）：token ' + String(report.scanned.tokens)
+      + ' 个（真实存在 ' + String(report.counts.exists) + ' / 产物名白名单 ' + String(report.counts.whitelist)
+      + '）；禁词命中 ' + String(report.counts.forbidden),
     )
   } else {
     for (const g of report.gaps) {
-      console.log('[' + SCRIPT + '] FAIL 路径可达 ' + g.token + ' ← ' + g.at + '（' + g.reason + '）')
+      console.log('[' + SCRIPT + '] FAIL ' + g.token + ' ← ' + g.at + '（' + g.reason + '）')
     }
   }
   console.log('[' + SCRIPT + '] 缺口 ' + String(report.criterion.gaps) + '；exit ' + String(report.exitCode))
   if (!report.ok) {
-    console.log('  修复：把指针改成真实路径，或在 ' + 'scripts/prompt-path-probe.mts 的 WHITELIST 登记并写清理由')
+    console.log('  修复：把指针改成真实路径（禁词前缀 agent-dh/ 与 docs/standards/ 无豁免），'
+      + '或在 scripts/prompt-path-probe.mts 的 WHITELIST 登记并写清理由')
   }
 }
 
@@ -322,19 +439,38 @@ if (!existsSync(join(root, SCAN_FILES[0]!))) fail(root, '扫描目标缺失：' 
 for (const d of SCAN_DIRS) {
   if (!existsSync(join(root, d))) fail(root, '扫描目标缺失：' + d, args.json)
 }
+for (const f of AGENT_SURFACE_FILES) {
+  if (!existsSync(join(root, f))) fail(root, '扫描目标缺失：' + f, args.json)
+}
+for (const d of AGENT_SURFACE_DIRS) {
+  if (!existsSync(join(root, d))) fail(root, '扫描目标缺失：' + d, args.json)
+}
 
 const fragmentFiles: string[] = []
 for (const d of SCAN_DIRS) walkMarkdown(join(root, d), fragmentFiles)
 fragmentFiles.sort()
 if (fragmentFiles.length === 0) fail(root, '片段目录为空：' + SCAN_DIRS.join('、'), args.json)
 
+const agentFiles: string[] = []
+for (const d of AGENT_SURFACE_DIRS) walkTypeScript(join(root, d), agentFiles)
+agentFiles.push(...AGENT_SURFACE_FILES.map((f) => join(root, f)))
+agentFiles.sort()
+if (agentFiles.length === 0) fail(root, 'agent 文案面为空：' + AGENT_SURFACE_DIRS.join('、'), args.json)
+
 const entries = [
   ...fragmentFiles.map((f) => ({ file: f, text: readFileSync(f, 'utf8') })),
   ...SCAN_FILES.map((f) => ({ file: join(root, f), text: readFileSync(join(root, f), 'utf8') })),
+  ...agentFiles.map((f) => ({ file: f, text: stripComments(readFileSync(f, 'utf8')) })),
 ]
 const tokens = extractTokens(entries)
-const result = classify(root, tokens)
-const report = buildReport(root, fragmentFiles.length, result)
+const forbidden = findForbidden(entries)
+const result = classify(root, tokens, forbidden)
+const report = buildReport(
+  root,
+  { fragments: fragmentFiles.length, files: fragmentFiles.length + SCAN_FILES.length, agentSurface: agentFiles.length },
+  result,
+  forbidden.length,
+)
 
 // ── --specimen：内置反例。判据必须真的会红——否则"探针绿"没有意义（与 R1 的 specimen 同款）──
 if (args.specimen) {
@@ -345,15 +481,37 @@ if (args.specimen) {
   // 注入一个白名单内的产物名：必须不判缺口（否则白名单形同虚设，探针会在合法产物上恒红）
   const whiteCase = classify(root, [{ token: 'prototypes/INDEX.md', occurrences: [{ file: '<specimen>', line: 1 }] }])
   const whiteOk = whiteCase.gaps.length === 0
+  // 禁词前缀必须判红且**不吃白名单**：构造一段含两个禁词的合成文案，两条都要点名
+  const forbiddenCase = findForbidden([
+    { file: '<specimen>', text: '见 agent-dh/docs/architecture/x.md 与 docs/standards/y.md\n' },
+  ])
+  const forbiddenRed = forbiddenCase.length === 2
+  // agent 文案面必须真的扫到了文件（0 份 = 扩面空转，判据没落在目标上）
+  const surfaceScanned = agentFiles.length > 0
+  const specimenOk = okCase && redCase && whiteOk && forbiddenRed && surfaceScanned
   if (args.json) {
-    console.log(JSON.stringify({ script: SCRIPT, specimen: { ok: okCase, redOnInjected: redCase, whitePasses: whiteOk }, exitCode: okCase && redCase && whiteOk ? 0 : 1 }, null, 2))
+    console.log(JSON.stringify({
+      script: SCRIPT,
+      specimen: {
+        ok: okCase,
+        redOnInjected: redCase,
+        whitePasses: whiteOk,
+        redOnForbidden: forbiddenRed,
+        agentSurfaceScanned: agentFiles.length,
+      },
+      exitCode: specimenOk ? 0 : 1,
+    }, null, 2))
   } else {
     console.log('[' + SCRIPT + '] specimen ① 真实扫描：缺口 ' + String(result.gaps.length) + (okCase ? ' ✔' : ' ✘（真实扫描本来就红，先修它）'))
     console.log('[' + SCRIPT + '] specimen ② 注入 templates/nope.md：' + (redCase ? '判红且点名 ✔' : '没判红 ✘（判据空转）'))
     console.log('[' + SCRIPT + '] specimen ③ 白名单 token prototypes/INDEX.md：' + (whiteOk ? '不判缺口 ✔' : '误判 ✘（白名单失效）'))
-    console.log('[' + SCRIPT + '] specimen ' + (okCase && redCase && whiteOk ? 'OK（判据不空转）；exit 0' : 'FAIL；exit 1'))
+    console.log('[' + SCRIPT + '] specimen ④ 注入 agent-dh/ 与 docs/standards/ 禁词：'
+      + (forbiddenRed ? '两条都判红 ✔（且不吃白名单）' : '禁词判据没生效 ✘'))
+    console.log('[' + SCRIPT + '] specimen ⑤ agent 文案面扫描文件数：' + String(agentFiles.length)
+      + (surfaceScanned ? ' ✔' : ' ✘（扩面空转）'))
+    console.log('[' + SCRIPT + '] specimen ' + (specimenOk ? 'OK（判据不空转）；exit 0' : 'FAIL；exit 1'))
   }
-  process.exit(okCase && redCase && whiteOk ? 0 : 1)
+  process.exit(specimenOk ? 0 : 1)
 }
 
 if (args.json) console.log(JSON.stringify(report, null, 2))

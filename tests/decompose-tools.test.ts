@@ -248,11 +248,28 @@ describe('reqboard_decompose 边界', () => {
         r.plan = { path: 'p.md', summary: 's', tasks: [], submittedAt: 1, approvedAt: 1000, approvedBy: { kind: 'human' } } as never
         return { changed: true }
       })
+      // 幂等守卫的唯一拒绝条件 = 已有未取消任务（DecomposeSpec.ts:47-67 /
+      // REQ-261003204149-1e80 FR-4：状态不再单独作为拒绝判据），故本臂必须塞一张活卡；
+      // 只给状态会让拒绝码落到下游的 REQBOARD_TASKS_REQUIRED（计划 tasks 为空）。
+      // 字段按 validateQueue.ts:64-84 的 REQUIRED_TASK_FIELDS 补齐（QueueTaskStore.createMany 全量校验）。
+      await taskStoreOf(deps).createMany(REQ_ID, [{
+        id: 't-already1', requirementId: REQ_ID, title: '既有活卡',
+        cardDoc: 'docs/requirements/' + REQ_ID + '/tasks/t-already1.md',
+        description: '存量活卡', phase: 'implement', side: 'backend',
+        dependsOn: [], scope: { apis: [], tables: [], files: [] },
+        acceptance: '跑 npx vitest run tests/reqboard.test.ts 全绿', implementation: 'protocol.ts 加字段',
+        context: '', status: 'todo', blocked: false,
+        executions: [], comments: [], version: 1,
+        createdAt: 1, updatedAt: 1,
+        createdBy: { kind: 'agent', sessionId: W }, updatedBy: { kind: 'agent', sessionId: W },
+        statusHistory: [], revisions: [],
+      } as never])
       await expect(run(decompose, {})).rejects.toThrow(/REQBOARD_ALREADY_DECOMPOSED/)
       // 清理本条 seed，避免互相影响
       await store.replaceAll('cleanup', { schemaVersion: 9, revision: 0, requirements: [], triages: [] })
     }
-    expect(await queueTasksOf(deps, REQ_ID)).toHaveLength(0)
+    // 被拒的两次拆分**零落库**：队列里只剩夹具那张活卡（无幽灵任务）。
+    expect((await queueTasksOf(deps, REQ_ID)).map(t => t.id)).toEqual(['t-already1'])
   })
 
   it('按计划落库：key 映射成真实 id、依赖成链、任务验收标准来自计划', async () => {
@@ -375,7 +392,9 @@ describe('实施卡透传与开工送达（REQ-2e9473 t04）', () => {
     const start = await run(taskMove, { task_id: out.created[0].id, to: 'in_progress' })
     expect(start.task_card).toBeDefined()
     expect(start.task_card.implementation).toBe('protocol.ts 加字段 + 单测验证')
-    expect(start.task_card.acceptance).toBe('npx vitest run tests/reqboard.test.ts 全绿')
+    // 开工回执只带 doc_path / implementation（MoveTask.ts:132 TaskMoveOutput.task_card 键集，
+    // 与 legacy-compat-6749.test.ts 锁死的键集同源）——卡面全文经 doc_path 指向的卡文档读取，
+    // 回执不再内联 acceptance。
     expect(start.task_card.doc_path).toMatch(/tasks\/t-/)
     // 非开工转移不带任务卡
     const next = await run(taskMove, { task_id: out.created[0].id, to: 'testing' })
@@ -396,14 +415,14 @@ describe('rollup 阻塞 blockers 显式化（REQ-2e9473 t02）', () => {
     return out.created.map((c: { id: string }) => c.id)
   }
 
-  it('task_move：任务 a 完成但 b 仍 todo（幽灵场景）→ 返回 blockers + warning', async () => {
+  it('task_move：任务 a 完成但 b 仍 todo（幽灵场景）→ a 落 done，b 未被牵连', async () => {
     const [a] = await seedImplementingTwoTasks()
     for (const to of ['in_progress', 'testing', 'in_review']) await run(taskMove, { task_id: a, to })
     const out = await honestClose(a)
-    expect(out.blockers).toHaveLength(1)
-    expect(out.blockers[0].status).toBe('todo')
-    expect(out.warning).toMatch(/未进验收/)
-    expect(out.requirement_status).toBe('implementing')
+    expect(out.to).toBe('done')
+    expect((await queueTasksOf(deps, REQ_ID)).filter(t => t.status === 'todo')).toHaveLength(1)
+    // 显式 blockers / warning / requirement_status 都是 **verify_submit** 的回执面
+    // （SubmitVerification.ts:392-409、MoveTaskOutput 18 键无这三项）⇒ 断言已迁到下一条用例。
   })
 
   it('verify_submit：有未完成任务时返回显式 blockers，status 停 implementing 且 note 改写', async () => {
@@ -411,7 +430,10 @@ describe('rollup 阻塞 blockers 显式化（REQ-2e9473 t02）', () => {
     for (const to of ['in_progress', 'testing', 'in_review']) await run(taskMove, { task_id: a, to })
     await honestClose(a)
     const out = await run(verifySubmit, { summary: '交付完成', evidence: ['npx vitest run：393 通过'] })
+    // ③ 断言自 task_move 用例迁入：显式 blockers / warning / requirement_status 只长在
+    // verify_submit 回执上（同一条幽灵场景；SubmitVerification.ts:392-409）。
     expect(out.blockers).toHaveLength(1)
+    expect(out.blockers[0].id).toBe((await queueTasksOf(deps, REQ_ID)).find(t => t.status === 'todo')!.id)
     expect(out.blockers[0].status).toBe('todo')
     expect(out.warning).toMatch(/rollup 阻塞/)
     expect(out.status).toBe('implementing')
@@ -513,8 +535,20 @@ describe('reqboard_task_move 边界', () => {
     const a = out.created[0].id
     await expect(run(taskMove, { task_id: a, to: 'canceled' })).rejects.toThrow(/REQBOARD_HUMAN_GATE/)
     await expect(run(taskMove, { task_id: 't-ffffff', to: 'in_progress' })).rejects.toThrow(/REQBOARD_TASK_NOT_FOUND/)
-    await expect(run(taskMove, { task_id: a, to: 'in_progress' }, 'session-other')).rejects.toThrow(/REQBOARD_NOT_BOUND_TO_WINDOW/)
-    await expect(run(taskMove, { task_id: a, to: 'done' })).rejects.toThrow(/invalid_transition/)
+    // ④ 跨窗口越权：窗口未绑定该需求时的现行拒绝码 = REQBOARD_NO_BOUND_REQ
+    // （MoveTask.ts:438 口径；同文件 :116 的 decompose 越权臂已同口径）
+    await expect(run(taskMove, { task_id: a, to: 'in_progress' }, 'session-other')).rejects.toThrow(/REQBOARD_NO_BOUND_REQ/)
+    // 存量卡非法边：码仍是 invalid_transition（TaskStatus.ts:198），但工具层把消息重写成
+    // 「reqboard_task_move 未执行：…」前缀（MoveTask.ts:621-624）⇒ 码走 err.code 断言
+    // （同 lazy-expand.test.ts:128-130 的既有口径），不再从消息正则里找码。
+    let doneCode: string | undefined
+    let doneMsg = ''
+    try { await run(taskMove, { task_id: a, to: 'done' }) } catch (err) {
+      doneCode = (err as { code?: string }).code
+      doneMsg = (err as Error).message
+    }
+    expect(doneCode).toBe('invalid_transition')
+    expect(doneMsg).toMatch(/存量卡不允许 todo→done/)
   })
 
   it('开工自动开执行段，离开 in_progress 自动结算；全部完成后需求进验收', async () => {
@@ -526,7 +560,10 @@ describe('reqboard_task_move 边界', () => {
     const start = await run(taskMove, { task_id: a, to: 'in_progress', reason: '开工' })
     // 2026-09-14 五门裁定：任务开工不再自动 decomposing>implementing（拆分清单须人确认），
     // 需求停在拆分态；模拟人确认拆分清单后推进到 implementing，再验证 R2 rollup。
-    expect(start.requirement_status).toBe('decomposing')
+    // ⑤ requirement_status 已不在 task_move 回执键集内（MoveTaskOutput 18 键，无该键；
+    // 同 plan-mode.test.ts 的处置），需求态一律从 store 直读。
+    expect(start.status).toBe('in_progress')
+    expect((await store.get(REQ_ID))!.status).toBe('decomposing')
     let t = (await queueTasksOf(deps, REQ_ID)).find(x => x.id === a)!
     expect(t.executions).toHaveLength(1)
     expect(t.executions[0].outcome).toBe('running')

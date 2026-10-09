@@ -230,7 +230,7 @@ export async function submitRequirementArtifact(deps: UseCaseDeps, args: unknown
               // REQ-261006164732-6503 t8（serves: FR-3）：已自动弹框时**不再指向 ask_confirm**——
               // 那句「下一步：调 reqboard_ask_confirm」正是拆分门双框事故里 agent 照做的那一句。
               ? '已自动触发确认弹框（后台非阻塞）——**已有一道门在等：不要重复发起确认**。'
-                + '改为调 reqboard_confirm_receipt 取回执，或到项目看板作答；肯定答复自动落章并推进到 design。'
+                + '改为调 reqboard_ask_confirm(ticket=…) 取回执，或到项目看板作答；肯定答复自动落章并推进到 design。'
               : '本次未自动弹框（原因见下）。确认通道二选一：调一次 reqboard_ask_confirm'
                 + '（target=artifact, kind=requirement），或到看板一键确认——肯定答复自动落章并推进到 design'
                 // REQ-261006094052-1da2 t3（serves: FR-3）：没弹框时把**原因**摆在回执里——
@@ -519,7 +519,7 @@ export async function submitPlanArtifact(deps: UseCaseDeps, args: unknown, exec:
           + (planAutoConfirm.triggered
             // REQ-261006164732-6503 t8（serves: FR-3）：已自动弹框时不再指向 ask_confirm——见 t8 卡面
             ? '。已自动触发批准弹框（后台非阻塞）——**已有一道门在等：不要重复发起确认**。'
-              + '改为调 reqboard_confirm_receipt 取回执，或到看板点「批准计划」；批准即自动拆分落库并进入实施。'
+              + '改为调 reqboard_ask_confirm(ticket=…) 取回执，或到看板点「批准计划」；批准即自动拆分落库并进入实施。'
             : '。本次未自动弹框。请人批准二选一：调一次 reqboard_ask_confirm（target=plan），'
               + '或到看板点「批准计划」——批准即自动拆分落库并进入实施，两条通道共用同一落库实现、结果一致'),
       }

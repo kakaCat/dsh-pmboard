@@ -1,4 +1,5 @@
 /**
+ * serves: BUG-4（子卡并发：第二路拒绝 + 跨卡覆盖失败归还）
  * 并发上限与冲突两级防线测试（REQ-4842fe t9）——对应 design/test-cases.md §6。
  *
  * 口径：同需求 in_progress 父卡 ≤ LIMITS.advanceMaxParallelParents；互无依赖父卡并行且 rollup 正常；子卡依赖不跨父卡；
@@ -180,6 +181,15 @@ describe('运行期跨卡覆盖兜底（6.5）', () => {
     const r = await executeSubtask(h.deps, { subtaskId: 't-b1', windowKey: 'session-w-001' })
     expect(r.ok).toBe(false)
     expect(r.code).toBe('REQBOARD_CROSS_CARD')
+
+    // BUG-4（REQ-261008011118-defe / DD-4）：这条出口**修前不归还**认领——卡虽仍是 todo
+    // （因为当时还没认领），但"跑过一次"这件事在台账上完全不可见。修后认领在先 ⇒ 必须归还：
+    // attempt+1、执行记录闭合为 failed、revisions(rollback) 留痕。
+    const b1 = (await h.tasksOf('REQ-000001')).find(x => x.id === 't-b1')!
+    expect(b1.status, '认领必须归还（不能卡在 in_progress）').toBe('todo')
+    expect(b1.attempt, '失败归还 = attempt +1').toBe(1)
+    expect((b1.executions ?? []).some(e => e.outcome === 'failed'), '执行记录必须闭合为 failed').toBe(true)
+    expect((b1.revisions ?? []).some(x => x.kind === 'rollback'), '失败修订必须留痕').toBe(true)
   })
 })
 

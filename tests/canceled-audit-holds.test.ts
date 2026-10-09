@@ -20,6 +20,7 @@
  * ④ 归档材料：`canceled_count` 可从台账**现算**得 26（只进归档材料，不进任何界面）。
  */
 import { afterEach, describe, expect, it } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { createHash } from 'node:crypto'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -242,7 +243,7 @@ describe('TC-9 · 审计：界面 0 条与台账 26 条**一起**成立', () => 
     const root = newRoot('faces')
     seedWorkspace(root)
     const snapshot: RTMLedgerSnapshot = { requirements: [specimenRequirement({ status: 'accepting' })] }
-    const sync = syncRTMYamlWithSnapshot(root, snapshot, specimenTasks(), REQ_ID, 'submit:verification')
+    const sync = syncRTMYamlWithSnapshot(new FileHostFs(), root, snapshot, specimenTasks(), REQ_ID, 'submit:verification')
     expect(sync?.ok, 'RTM 入口本次没有成功产出（追溯面读数将失去意义）').toBe(true)
     const bundle = assembleTraceability(root, REQ_ID)
     const traceHtml = renderTraceabilityView({ task_to_tests: bundle.traceability?.task_to_tests })
@@ -288,7 +289,7 @@ describe('TC-9 · 审计：界面 0 条与台账 26 条**一起**成立', () => 
     // 读路径全跑一遍：阶段详情 / DAG / 文档面板 / 报表 / state / 追溯；外加 RTM 入口写盘
     const all = await h.tasksOf(REQ_ID)
     const snapshot: RTMLedgerSnapshot = { requirements: [specimenRequirement({ status: 'accepting' })] }
-    expect(syncRTMYamlWithSnapshot(root, snapshot, all, REQ_ID, 'submit:verification')?.ok).toBe(true)
+    expect(syncRTMYamlWithSnapshot(new FileHostFs(), root, snapshot, all, REQ_ID, 'submit:verification')?.ok).toBe(true)
     assembleStageDetail(specimenRequirement(), { tasks: [...all] }, 'implementing')
     ok(await queryDag(depsOf(h), { requirementId: REQ_ID }))
     ok(await queryDocs(depsOf(h), { requirementId: REQ_ID }))

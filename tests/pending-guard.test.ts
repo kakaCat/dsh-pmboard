@@ -168,18 +168,20 @@ describe('livePendingConfirm：过滤已 settle / 已过期 / 台账已落章（
   it('文案常量：blocked_tools 四条写路径；recovery 只列取回执与看板两条（不再列「重新发起覆盖」）', () => {
     expect([...PENDING_CONFIRM_BLOCKED_TOOLS]).toEqual(['reqboard_submit', 'reqboard_decompose', 'reqboard_move', 'reqboard_task_move'])
     expect(PENDING_CONFIRM_RECOVERY).toContain('收到作答前不得产出下游产物')
-    expect(PENDING_CONFIRM_RECOVERY).toContain('reqboard_confirm_receipt')
+    expect(PENDING_CONFIRM_RECOVERY).toContain('reqboard_ask_confirm(ticket=')
     expect(PENDING_CONFIRM_RECOVERY).toContain('看板')
     const msg = pendingConfirmRejectMessage(rec({ ticket: 'pc-abc123', requirementId: 'REQ-x' }))
     expect(msg).toContain('pc-abc123')
     expect(msg).toContain('REQ-x')
     expect(msg).toContain('收到作答前不得产出下游产物')
-    expect(msg).toContain('reqboard_confirm_receipt(ticket="pc-abc123")')
+    expect(msg).toContain('reqboard_ask_confirm(ticket="pc-abc123")')
     expect(msg).toContain('看板')
     // REQ-261006164732-6503 t9 口径修正：删掉「重新发起 … 覆盖旧记录」——那句是双框事故里
     // agent 照做的第三条文案源，而"覆盖"的真实行为就是再开一个框（与同门唯一直接冲突）。
     expect(msg).not.toContain('覆盖旧记录')
-    expect(msg).not.toContain('reqboard_ask_confirm')
+    // FR-2（REQ-261007220012-bd29）：取件口并入 ask_confirm(ticket) 后，原「不含 reqboard_ask_confirm」
+    // 不再成立；收紧为「不含重新发起的指令」——双框事故的第三条文案源仍不得复活。
+    expect(msg).not.toContain('重新发起 reqboard_ask_confirm')
   })
 })
 

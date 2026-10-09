@@ -324,14 +324,18 @@ describe('写盘覆盖：工作区相对写盘点必须受保护或显式豁免�
     'application/use-cases/SubmitVerification.ts': '写前 assertWritableRequirementProject（验收文档另一条路径）',
     'application/use-cases/SyncRequirementMarks.ts': '写前 ensureWritableProjectRoot（需求文档接收标记）',
     'application/use-cases/queue-access.ts': 'mutateQueue / createManyQueue 两个队列写入收口点（内含 assertWritableRequirementProject）',
+    'application/use-cases/SubmitArchive.ts': '写前 ensureWritableProjectRoot（归档清单，工作区相对落盘）',
   }
 
   /**
    * 显式豁免（相对 src/ 的路径 → 理由）。**豁免也要写理由**：不写理由的豁免等于没门禁。
-   * 目前仅一条：知识层走自己实例构造时的根，不经会被别的窗口改掉的宿主级共享单例。
+   * 两条：① 知识层走自己实例构造时的根，不经会被别的窗口改掉的宿主级共享单例；
+   * ② 知识层自举用例自带**逐次**根漂移判定（`sameProjectRoot`，return 式不抛），
+   *    而具名 helper 以抛错表达拒绝——套上会破坏它「永不抛」的不变量（实测 kb-ensure 7 条红）。
    */
   const EXEMPT: Record<string, string> = {
     'adapters/KnowledgeRepository.ts': '写入走本实例的 docs（构造时定根），不属于"共享根的当前值会漂移"这一类失效',
+    'application/use-cases/EnsureKnowledgeLayer.ts': '循环头逐次 sameProjectRoot(docs.workspaceRoot(), root) 判定，不符即 failed/root-drifted 且不写——等价保护，且必须保持「永不抛」',
   }
 
   /**

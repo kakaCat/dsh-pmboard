@@ -316,11 +316,18 @@ describe('批量取消 · 端到端落盘（FR-3，防「plan 写了、白名单
       // 与状态/修订同批：修订是同批写的那条
       expect(c.revisions!.at(-1)!.kind).toBe('rollback')
       expect(c.canceledAt, c.id + '：与修订同源同刻').toBe(c.revisions!.at(-1)!.at)
+      // REQ-261008011118-defe BUG-3（DD-3）：状态事件与 version 也必须落进队列——
+      // 此前白名单只搬「status/revisions/updatedAt + 取消三字段」，plan 里的 statusHistory 被丢，
+      // 于是取消卡在状态时间线上像"从没被取消过"（同一类事故：plan 写了、落盘丢了）。
+      expect(c.statusHistory?.at(-1)?.status, c.id + '：取消卡必须有 canceled 状态事件').toBe('canceled')
+      expect(c.version, c.id + '：状态迁移必须 bump version（种子 1 → 2）').toBe(2)
     }
-    // 子卡原地复位：**不带**留痕（复位 ≠ 取消，且不得清空既有留痕）
+    // 子卡原地复位：**不带**留痕（复位 ≠ 取消，且不得清空既有留痕），但事件与 version 要齐
     const sub = landed.find(t => t.id === 't-sub')!
     expect(sub.status).toBe('todo')
     expect('canceledAt' in sub, '复位卡不得有取消留痕').toBe(false)
+    expect(sub.statusHistory?.at(-1)?.status, '复位子卡必须留下原地复位事件').toBe('todo')
+    expect(sub.version, '复位也是状态迁移 ⇒ version +1').toBe(2)
     expect(warn, '非人工路径必须 console.warn 留痕').toHaveBeenCalled()
   })
 

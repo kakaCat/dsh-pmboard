@@ -21,6 +21,7 @@
  * @module dsh-pmboard/tests/rtm-yaml-live-tasks
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -139,7 +140,7 @@ function makeDeps(root: string, req: RequirementRecord): UseCaseDeps {
     listSummaries: async () => ({ items: [req] }),
     get: async (id: string) => (id === req.id ? req : undefined),
   }
-  return { docs: { workspaceRoot: () => root }, store } as unknown as UseCaseDeps
+  return { docs: { workspaceRoot: () => root }, store, hostFs: new FileHostFs() } as unknown as UseCaseDeps
 }
 
 /**
@@ -288,6 +289,7 @@ describe('两个 RTM 公开入口收敛为活卡（t4）', () => {
 
     // 入口 B：syncRTMYamlWithSnapshot（看板三条路由直调它，绕过 A）
     const resultB = syncRTMYamlWithSnapshot(
+      new FileHostFs(),
       rootA,
       { requirements: [req] },
       specimen,

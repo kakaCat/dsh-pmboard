@@ -1,13 +1,16 @@
 /**
  * QueryRunStatus 用例
- * 
- * 查询实施链运行状态：读取 checkpoint + job 状态，返回快照投影。
+ *
+ * 查询实施链运行状态：直读台账活字段（`advance.runId` = 链锁）+ job 状态，返回快照投影。
+ *
+ * REQ-261008011118-defe BUG-1（DD-1）：本用例原先经 `CheckpointManager.readCheckpoint` 读
+ * `stepIndex/currentSubtaskId/heartbeatAt`——而写侧（`writeCheckpoint`）在生产代码**0 调用方**
+ * （链只写 `advance.runId/lockAt/history`），于是 run 节**恒报第 0 步 / 无当前子卡**：读一个
+ * 永远没人写的字段。修法 = 删字段（连同其死代码），run 节只报活字段；进度信息由任务台账
+ * （`reqboard_task_tree`）承载，不再由这儿给第二份。
  */
 
-import { CheckpointManager } from '../internal/checkpoint-manager.js'
 import type { RequirementRecord, TaskRecord } from '../../client/types.js'
-import type { } from '../../domain/checkpoint.js'
-import { } from '../internal/checkpoint-manager.js'
 import { DshJobsAdapter } from '../../adapters/DshJobsAdapter.js'
 
 /**
@@ -16,10 +19,6 @@ import { DshJobsAdapter } from '../../adapters/DshJobsAdapter.js'
 export interface RunStatus {
   /** 运行ID，没有则为 null */
   runId: string | null
-  /** 当前步骤索引 */
-  stepIndex: number
-  /** 当前子任务ID */
-  currentSubtaskId?: string
   /** 下一批 ready 的任务ID列表 */
   nextReady: string[]
   /** Job 状态 */
@@ -56,35 +55,33 @@ export interface QueryParams {
  */
 export async function queryRunStatus(params: QueryParams): Promise<RunStatus> {
   const { getRequirement, getTasks } = params
-  const checkpointManager = new CheckpointManager()
-  
+
   // 获取需求记录
   const requirement = await getRequirement()
-  
-  // 读取 checkpoint
-  const checkpoint = checkpointManager.readCheckpoint(requirement)
-  
-  if (!checkpoint || !checkpoint.runId) {
+
+  // 「有没有 run 在跑」的唯一凭据 = 台账活锁字段 `advance.runId`（AdvanceChain 认领时写、finally 清）。
+  const activeRunId = requirement.advance?.runId
+
+  if (activeRunId === undefined || activeRunId.length === 0) {
     // 没有运行中的任务
     const tasks = await getTasks()
     const nextReady = findReadyTasks(tasks).map(t => t.id)
-    
+
     return {
       runId: null,
-      stepIndex: 0,
       nextReady,
       jobStatus: 'not_found',
       autoRun: false
     }
   }
-  
-  // 有 checkpoint，查询 job 状态。适配器可能取不到（宿主未暴露 ctx.jobs）——
+
+  // 有 active run，查询 job 状态。适配器可能取不到（宿主未暴露 ctx.jobs）——
   // 取不到时如实报 not_found，绝不把「查不到」伪装成运行中，也绝不因此让整个查询抛错。
   let jobStatus: 'running' | 'completed' | 'failed' | 'not_found' = 'not_found'
 
   try {
     const adapter = resolveJobsAdapter(params)
-    const jobSnapshot = adapter === undefined ? null : await adapter.getJob(checkpoint.runId)
+    const jobSnapshot = adapter === undefined ? null : await adapter.getJob(activeRunId)
 
     if (jobSnapshot) {
       switch (jobSnapshot.status) {
@@ -121,9 +118,7 @@ export async function queryRunStatus(params: QueryParams): Promise<RunStatus> {
   
   // FR-10 同口径：undefined 值属性会被 PTC lossless 校验拦下——有条件才展开
   return {
-    runId: checkpoint.runId,
-    stepIndex: checkpoint.stepIndex || 0,
-    ...(checkpoint.currentSubtaskId !== undefined ? { currentSubtaskId: checkpoint.currentSubtaskId } : {}),
+    runId: activeRunId,
     nextReady,
     jobStatus,
     ...(pauseReason !== undefined ? { pauseReason } : {}),

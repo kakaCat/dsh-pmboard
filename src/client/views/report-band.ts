@@ -18,6 +18,7 @@
 import { esc } from '../html.js'
 import { mdPlain } from '../render/md-inline.js'
 import type { ReportGap, ReportResponse } from '../../shared/protocol.js'
+import { isCanceled } from '../../domain/status/Predicates.js'
 import { STATUS_LABELS, fmtDur, isTerminal, short } from '../render/dom-utils.js'
 import { degradeText, type ReportHeadPlaceholder } from './report-head.js'
 import { GAP_DOT_SVG } from '../icons.js'
@@ -287,7 +288,7 @@ export function buildOutcomeCell(report: ReportResponse): string {
       + esc(OUTCOME_VERDICT[o.verdict] ?? o.verdict) + '</span>'
     return cell('结果与成效', verdict + '<br>' + counts + '<br>' + leftoversHtml(o), ' data-band-cell="outcome"')
   }
-  if (status === 'canceled') {
+  if (isCanceled(report.head)) {
     return cell('结果与成效', '<span class="dsh-pm-band-mut">已取消：无验收结论</span>', ' data-band-cell="outcome"')
   }
   // outcome === undefined：折叠占位（一行灰字 + 展开说明）。一行 = 结论位；折叠体 = 解释。

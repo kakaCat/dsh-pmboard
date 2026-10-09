@@ -17,6 +17,7 @@
  */
 import { makeHarness } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { validateJsonSchemaValue } from '@deepseek-ai/dsh-tools'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs'
@@ -61,6 +62,8 @@ const depsWith = () =>
     store,
     taskStore: taskStoreAt(root),
     docs: new FileDocRepository({ workspaceRoot: root }),
+    // REQ-261008020617-088f RF-3：RTM 触发点的 state 写入要它（缺了会在静默 catch 里跳过）
+    hostFs: new FileHostFs(),
     clock: new SystemClock(),
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({}),
@@ -180,7 +183,7 @@ describe('TC-1 正向：扫 prototypes/*.html 登记并抽锚点与几何量', (
     write(INDEX, INDEX_MD)
     expectOk(await run({ kind: 'prototype' }))
 
-    const traces = readRTMTriggerTraces(join(root, '.dsh-data/state'))
+    const traces = readRTMTriggerTraces(new FileHostFs(), root)
     expect(traces.some(t => t.trigger === 'submit:prototype' && t.paths.includes(DETAIL))).toBe(true)
     // 生成器以台账为事实源：本需求目录确实被刷新出 rtm-brainstorming.yml
     expect(existsSync(join(root, REQ_DIR, 'rtm-brainstorming.yml'))).toBe(true)

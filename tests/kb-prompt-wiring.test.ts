@@ -49,10 +49,15 @@ describe('三阶段提示词接入知识层', () => {
     expect(readFragment('implementing/heavy/overrides.md')).toMatch(/开工先查/)
   })
 
-  it('heavy.md 仍与 vendor 原文一致（本需求不得改镜像档）', () => {
+  it('镜像档 heavy.md 仍与 vendor 原文一致（本需求不得改镜像档）', () => {
     // 抽样断言：文本里不得出现本需求的标记（说明有人把说明写进了 vendor 镜像档）
-    for (const stage of ['brainstorming', 'implementing'] as const) {
+    // 2026-10-08 起 brainstorming/heavy.md 改本仓自写完整档（不再是镜像档，含 kb 行属正常）；
+    // 2026-10-08（REQ-261008190515-5212）implementing 也移出镜像映射改自写档——镜像口径只剩
+    // VENDOR_MAIN_SKILLS 内的 2 节点（accepting / archived），自写档允许出现本仓收尾行。
+    for (const stage of ['brainstorming', 'accepting', 'archived'] as const) {
       expect(readFragment(`${stage}/heavy.md`)).not.toContain('REQ-261001143526-8475')
+    }
+    for (const stage of ['accepting', 'archived'] as const) {
       expect(readFragment(`${stage}/heavy.md`)).not.toContain('判定标准挂可跑命令')
     }
   })

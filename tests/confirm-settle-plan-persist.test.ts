@@ -39,6 +39,15 @@ function planSeed() {
   }))
   // 任务不在此 seed（v9 口径，B-4/B-5）："无任务" = **没有队列文件**，由各用例显式断言，
   // 不静默省略——失败路径尤其要断言 `queueExists === false`（比"读到 0 条"更强，见 t-e96a0c 验收）。
+  // BUG-4 改法②（design/fix-design.md「BUG-4」第 2 行；harness.ts 现无 jobs）：给 `h.deps.jobs` 打桩
+  // （available/start/get）——**投递即返回**，链交给后台 job 跑。
+  // 定性：**有意前移**——批准同一调用内已 `advanceRequirement()`；夹具缺 jobs 时会落到同步兼容路径，
+  // 把整条链（含子卡凭证门失败）跑进本用例的同一次调用里，于是 `autoRun` 被链路回写成非 true。
+  h.deps.jobs = {
+    available: () => true,
+    get: async () => null,
+    start: async () => 'job-persist-1',
+  }
   h.questions.answers = [{ selected: [DEFAULT_CONFIRM_OPTIONS[0] as string] }]
   return h
 }

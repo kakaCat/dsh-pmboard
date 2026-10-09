@@ -124,7 +124,7 @@ export async function askConfirm(deps: UseCaseDeps, args: unknown, exec: any): P
       ticket: gate.ticket,
       requirement_id: targetReq.id,
       note: '该确认已有一道门在等（ticket=' + gate.ticket + '）：未重复弹框。'
-        + '请调 reqboard_confirm_receipt(ticket="' + gate.ticket + '") 取回执，或到项目看板作答。',
+        + '请调 reqboard_ask_confirm(ticket="' + gate.ticket + '") 取回执，或到项目看板作答。',
     }
   }
   // REQ-261002175818-80a8 t6 / FR-4、FR-6：超容量清单必须**摆在人眼前**——批准前是本段文本唯一的
@@ -413,7 +413,7 @@ function interruptedBody(ticket: string, requirementId: string): Record<string, 
     ticket,
     requirement_id: requirementId,
     interrupted: true,
-    note: fmt('本次确认等待已被中止（弹框可能已消失），已留下可查的挂起记录（ticket={t}）。**收到作答前不得产出下游产物**（本窗口 reqboard_submit / reqboard_decompose / reqboard_move / reqboard_task_move 会被代码级拒绝）。恢复路径：① 调 reqboard_confirm_receipt(ticket="{t}") 取回执；② 到项目看板点确认按钮。', { t: ticket })
+    note: fmt('本次确认等待已被中止（弹框可能已消失），已留下可查的挂起记录（ticket={t}）。**收到作答前不得产出下游产物**（本窗口 reqboard_submit / reqboard_decompose / reqboard_move / reqboard_task_move 会被代码级拒绝）。恢复路径：① 调 reqboard_ask_confirm(ticket="{t}") 取回执；② 到项目看板点确认按钮。', { t: ticket })
   }
 }
 /**
@@ -446,7 +446,10 @@ async function settleAnswers(
       confirmed: false,
       advanced: false,
       user_choice: picked || '（未选）',
-      user_feedback: userFeedback.length > 0 ? userFeedback : undefined,
+      // 条件展开：无反馈时该键**缺席**，而不是 undefined——
+      // dsh-tools 的 snapshotJsonValue 对 undefined 值必抛 "value is not lossless JSON"，
+      // 会把软回执（未落章、未推进）变成无信息硬错误（H1，与 旧的运行态查询工具 null 透传事故同类）。
+      ...(userFeedback.length > 0 ? { user_feedback: userFeedback } : {}),
       note: fmt('用户选择"{picked}"：未落章、未推进。{feedback}按用户意见修改后可重新发起确认', {
         picked: picked || '（未选）',
         feedback: userFeedback.length > 0 ? fmt('用户反馈：{fb}。', { fb: userFeedback }) : ''

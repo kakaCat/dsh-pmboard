@@ -123,6 +123,11 @@ export const HUMAN_ONLY_REQ_TRANSITIONS: ReadonlySet<string> = new Set([
   'decomposing>canceled',
   'implementing>canceled',
   'accepting>canceled', // 取消需求（破坏性）
+  // M2（REQ-261007193530-3133 FR-3）：复活需求 = 取消的**逆动作**，与取消同门。
+  // 修前 agent 可撤销人刚做的取消；任务侧对称边 canceled>todo 早已在
+  // HUMAN_ONLY_TASK_TRANSITIONS 里，本条补齐需求侧的不对称。
+  // 注：合法边仍在（REQ_TRANSITIONS 不动），只是 agent 不可发起——看板/人操作照常。
+  'canceled>draft',
   // REQ-261003204149-1e80 FR-1（**推翻 REQ-4842fe t2/FR-14 的"仅人可发起"**）：
   // 回退是"发现方向错了"的常规动作，由 agent 自行判断发起——原先把 implementing→design
   // 设成人工门的结果是：agent 明知需求描述不对也只能硬着头皮做下去或请求人点一下。

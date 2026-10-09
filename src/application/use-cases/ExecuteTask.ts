@@ -32,6 +32,10 @@ import { parseDocument } from '../internal/doc-parse.js'
 import { decisionRowsIn, requirementDocPath } from '../internal/node-input-package.js'
 import { isSubtask, type RequirementRecord, type TaskRecord } from '../../shared/protocol.js'
 import { transitionTask } from '../internal/task-transition.js'
+// REQ-261008011118-defe BUG-4（DD-4）：失败归还收敛到既有单点（in_progress → todo + attempt+1 +
+// revisions(rollback) + 失败评论 + 闭合 running 执行）——修前 ExecuteTask 还持有一份内联的第二实现。
+import { rollbackSubtask } from '../internal/failure-handling.js'
+import { LIMITS } from '../../domain/limits.js'
 import {
   closeExecutions,
   openExecution,
@@ -372,8 +376,81 @@ async function maybeAlertZeroOutput(deps: UseCaseDeps, requirementId: string, st
 }
 
 /**
- * 执行一张子卡（幂等：已 done 直接返回；已在 in_progress 不重复开执行记录）。
- * 失败**不改子卡状态**（退回 todo + attempt+1 属 t8 失败语义，由事件链决定）。
+ * 认领一张子卡（REQ-261008011118-defe BUG-4 / DD-4）——**派发之前**调，返回拒绝原因或 undefined。
+ *
+ * 修前口径：`in_progress` 在 run **结束后**才写，理由是"凭证门基准要早于子代理写文件"。
+ * 该理由已由 `chainBaselineOf`（需求/父卡/子卡 createdAt 最小值，`support.ts`）取代，
+ * 而代价留了下来：整个 run 期间卡仍是 `todo` ⇒ 第二路（另一次投递 / 手动入口）会再派一次
+ * （实测 `workflow.start` 被调 2 次）。
+ *
+ * 三条分支：
+ *   · `todo` ⇒ 经唯一收敛点写 `in_progress` + 认领信息 + 开一条 running 执行（含 start 快照）；
+ *   · `in_progress` 且最近 running 执行**新鲜**（< `LIMITS.orphanTimeoutMs`）⇒ 拒绝（并发双跑入口守卫）；
+ *   · `in_progress` 且陈旧/无 running 执行（= 既有孤儿口径）⇒ **接管**：先闭合陈旧执行为 failed，
+ *     再开新执行、更新认领信息（**不** bump attempt：attempt 只在失败归还时 +1）。
+ */
+async function claimSubtask(
+  deps: UseCaseDeps,
+  input: { taskId: string; requirementId: string; at: number; windowKey: string; sessionId?: string },
+): Promise<{ code: string; message: string } | undefined> {
+  const actor = { kind: 'system' as const }
+  const snapshot = snapshotForWindow(deps, input.sessionId)
+  let rejection: { code: string; message: string } | undefined
+  await mutateQueue(deps, input.requirementId, (tasks) => {
+    const t = tasks.find((x) => x.id === input.taskId)
+    if (t === undefined) return undefined
+    if (t.status !== 'todo' && t.status !== 'in_progress') return undefined // done / canceled 已在上游早退
+    if (t.status === 'in_progress') {
+      const runningAt = (t.executions ?? []).filter((e) => e.outcome === 'running').map((e) => e.startedAt)
+      const newest = runningAt.length > 0 ? Math.max(...runningAt) : undefined
+      const age = newest === undefined ? undefined : input.at - newest
+      if (age !== undefined && age >= 0 && age < LIMITS.orphanTimeoutMs) {
+        rejection = {
+          code: 'REQBOARD_SUBTASK_IN_PROGRESS',
+          message: fmt(
+            '子卡 {id} 已被另一路认领（running 执行开始于 {age}ms 前，孤儿回收阈值 {thr}ms）——不重复派发。'
+            + '两条出路：① 等它收尾（或约 {wait}ms 后由孤儿回收接管重派）；② 人工把该卡退回 todo 再开工'
+            + '（REQBOARD_SUBTASK_IN_PROGRESS）',
+            {
+              id: input.taskId,
+              age: String(age),
+              thr: String(LIMITS.orphanTimeoutMs),
+              wait: String(LIMITS.orphanTimeoutMs - age),
+            },
+          ),
+        }
+        return undefined // 不写盘
+      }
+      // 孤儿接管：闭合陈旧执行（不 bump attempt），下面开新执行
+      closeExecutions(t, { at: input.at, outcome: 'failed', error: 'stale claim takeover (orphan)' })
+    } else {
+      transitionTask(t, 'in_progress', { at: input.at, actor, role: 'subtask' })
+    }
+    t.claimedAt = input.at
+    t.claimedBy = input.windowKey
+    // 执行快照唯一写入口（FR-4）：认领即开工 —— start 快照在派发前真实取得，
+    // 失败由 closeExecutions / rollbackSubtask 闭合为 failed（不再有 born-failed 分支）。
+    openExecution(
+      t,
+      {
+        id: deps.ids.execution(),
+        trigger: 'auto',
+        at: input.at,
+        ...(input.sessionId !== undefined ? { sessionId: input.sessionId } : {}),
+      },
+      snapshot,
+    )
+    return tasks
+  })
+  return rejection
+}
+
+/**
+ * 执行一张子卡（幂等：已 done 直接返回；已在 in_progress 且被另一路新鲜认领则拒绝）。
+ *
+ * 失败语义（REQ-261008011118-defe BUG-4 / DD-4）：**认领后每一条失败出口都归还**——
+ * 经 `failure-handling.rollbackSubtask` 统一回 `todo` + `attempt+1` + `revisions(rollback)` +
+ * 失败评论 + 闭合 running 执行。修前只有凭证门那条会回退，跨卡覆盖那条不回（卡停在 in_progress）。
  */
 export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInput): Promise<ExecuteSubtaskResult> {
   const store = taskStoreOf(deps)
@@ -460,6 +537,30 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
   // 此前 ranAt 在 run 结束后才取（REQ-260927100007-b8ba「先执行后认领」改造的回归），
   // claimedAt（凭证门 since）恒晚于子代理写文件的 mtime → 子卡凭证门永远不过、链必停。
   const startedAt = deps.clock.now()
+  // ── 先认领后执行（REQ-261008011118-defe BUG-4 / DD-4）───────────────────────────────
+  // 认领点放在**全部门禁之后、派发之前**：早一步（脚本生成等早退出口）会把卡停在 in_progress，
+  // 晚一步就是修前的双跑窗口。认领后每一条失败出口都必须归还（见下方 releaseFailedClaim）。
+  const claimRejection = await claimSubtask(deps, {
+    taskId: task.id,
+    requirementId: task.requirementId,
+    at: startedAt,
+    windowKey: input.windowKey,
+    ...(sessionKey !== undefined ? { sessionId: sessionKey } : {}),
+  })
+  if (claimRejection !== undefined) return fail(task.id, claimRejection.message, claimRejection.code, base)
+
+  /**
+   * 归还认领（BUG-4 / DD-4 的唯一收敛点）：调既有的 `rollbackSubtask`
+   * （in_progress → todo + attempt+1 + revisions(rollback) + 失败评论 + 闭合 running 执行）。
+   * 状态已不是 in_progress（例如链侧已先归还）⇒ 它返回 false，此处不写盘（幂等）。
+   */
+  const releaseFailedClaim = async (reason: string, code: string): Promise<void> => {
+    const failedAt = deps.clock.now()
+    const category = code === 'REQBOARD_SUBTASK_GATE' || code === 'REQBOARD_CROSS_CARD' ? 'gate_failed' : 'run_failed'
+    await mutateQueue(deps, task.requirementId, (tasks) =>
+      rollbackSubtask(tasks, task.id, failedAt, deps.ids, { category, reason }) ? tasks : undefined)
+  }
+
   // FR-11 路线 A（REQ-260926140539-457b）：团队执行优先——caller 是 live agent 且服务可用时，
   // 把这张子卡派给团队 Worker（持久、可观测）；Worker 经 reqboard_task_report 写台账，链把产出
   // 读回来合成为 workflow 同款形状 → 下游（解析/跨卡/落账/凭证门）逐字复用。服务不可用 → 旧路径。
@@ -545,6 +646,15 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
       { startedAt, endedAt: ranAt },
     )
     if (conflict !== undefined) {
+      // 归还认领（BUG-4 / DD-4）：修前这条出口**不回退**，卡停在 in_progress 等孤儿回收。
+      await releaseFailedClaim(
+        fmt('跨卡覆盖：{file} 的 mtime 落在父卡 {p} 的子卡 {s} 执行窗口内', {
+          file: conflict.file,
+          p: conflict.otherParentId,
+          s: conflict.otherSubtaskId,
+        }),
+        'REQBOARD_CROSS_CARD',
+      )
       return fail(
         task.id,
         fmt('跨卡覆盖：{file} 的 mtime 落在父卡 {p} 的子卡 {s} 执行窗口内', {
@@ -558,35 +668,11 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
     }
   }
 
-  // REQ-260925110957-552d: 执行成功后才写 in_progress + lastRun + lastReport
+  // run 结果落账（BUG-4 修后：**只写 lastRun/lastReport**，认领已在派发前完成）
   // 任务写经 TaskStore（台账 v9 无 tasks 键）；本步只改任务，需求侧无写入。
   await mutateQueue(deps, task.requirementId, (tasks) => {
     const t = tasks.find((x) => x.id === task.id)
     if (t === undefined) return undefined
-    
-    // 先执行后认领：执行成功才写 in_progress（经唯一收敛点，校验 + 状态事件一步到位）
-    // 收敛点已 bump version/updatedAt/updatedBy；下面的 t.version++ 只在未发生转移时补
-    let transitioned = false
-    if (t.status === 'todo') {
-      transitionTask(t, 'in_progress', { at: ranAt, actor, role: isSubtask(t) ? 'subtask' : 'legacy' })
-      transitioned = true
-      t.claimedAt = startedAt
-      t.claimedBy = input.windowKey
-      // 执行快照唯一写入口（FR-4）：开工落记录 + 写 start 快照；
-      // born-failed（outcome=failed）由助手内部不写 start，直接以终止记录落账。
-      openExecution(
-        t,
-        {
-          id: deps.ids.execution(),
-          trigger: 'auto',
-          at: startedAt,
-          ...(sessionKey !== undefined ? { sessionId: sessionKey } : {}),
-          ...(outcome.ok ? {} : { outcome: 'failed' as const, error: outcome.reason ?? '' }),
-        },
-        snapshotForWindow(deps, sessionKey),
-      )
-    }
-    
     t.lastRun = { at: ranAt, ok: outcome.ok, stopReason: outcome.ok ? 'completed' : (outcome.reason ?? 'error'), valueNonEmpty, ...(outcome.ok ? {} : { reason: outcome.reason ?? '' }) }
     if (parsed.raw.length > 0 || parsed.filesChanged.length > 0 || parsed.completed.length > 0 || parsed.evidence.length > 0) {
       t.lastReport = {
@@ -596,11 +682,9 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
         completed: parsed.completed.length > 0 ? parsed.completed : [parsed.raw.slice(0, 200)],
       }
     }
-    if (!transitioned) {
-      t.version += 1
-      t.updatedAt = ranAt
-      t.updatedBy = actor
-    }
+    t.version += 1
+    t.updatedAt = ranAt
+    t.updatedBy = actor
     return tasks
   })
 
@@ -643,24 +727,10 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
       code,
       reason: reason.substring(0, 100)
     })
-    const failedAt = deps.clock.now()
-    await mutateQueue(deps, task.requirementId, (tasks) => {
-      const t = tasks.find((x) => x.id === task.id)
-      if (t === undefined) return undefined
-      // 收尾唯一入口（FR-5）：失败同样闭合 running 并写 end/delta（error 一并落账）。
-      closeExecutions(t, { at: failedAt, outcome: 'failed', error: reason }, snapshotForWindow(deps, sessionKey))
-      // 🔧 修复：凭证门失败时回退子卡到 todo，避免卡在 in_progress
-      if (t.status === 'in_progress' && isSubtask(t)) {
-        transitionTask(t, 'todo', { at: failedAt, actor, role: 'subtask' })
-        t.attempt = (t.attempt ?? 0) + 1
-        console.log('[DEBUG] 子卡凭证门失败，回退到 todo，attempt:', t.attempt)
-      } else {
-        t.version += 1
-      }
-      t.updatedAt = failedAt
-      t.updatedBy = actor
-      return tasks
-    })
+    // 归还认领（BUG-4 / DD-4）：统一走 `rollbackSubtask` 单点——回 todo + attempt+1 +
+    // revisions(rollback) + 失败评论 + 闭合 running 执行（修前这段是它的第二份内联实现：
+    // 只回退状态与 attempt，修订与评论都丢了）。
+    await releaseFailedClaim(reason, code)
     // FR-11 路线 A：凭证门拒了这张卡，但团队任务已 completed —— 必须**重开**（reopen），
     // 否则 Worker 不会再碰它，下一轮链又读到 completed → 空转死循环（门白拒）。
     if (deps.teams !== undefined && deps.teams.available() && teamCaller !== undefined) {

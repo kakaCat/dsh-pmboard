@@ -138,10 +138,13 @@ describe('预算与保底（INV-3）', () => {
     expect(r.text.length).toBe(100)
   })
 
-  it('缺省预算下 heavy 主 skill 全文注入且不触发裁剪（t7：重档原文不裁）', () => {
+  it('缺省预算下 heavy 主档全文注入且不触发裁剪（t7：重档主档不裁）', () => {
     const r = resolveStagePrompt({ stage: 'brainstorming', difficulty: 'heavy', category: 'bug' })
-    // vendor 原文 brainstorming = 15,456 字符；heavy = 原文 + overrides + common/iron-rules
-    expect(r.charCount).toBeGreaterThan(15456)
+    // 2026-10-08 起 brainstorming 主档为本仓自写完整档（不再钉死 vendor 15,456 字符）——
+    // 断言与主档实际长度对齐：注入 = 主档 + overrides + common/iron-rules，不裁剪、不超限
+    const mainDoc = FRAGMENT_LIBRARY.find((f) => f.id === 'brainstorming/heavy')
+    expect(mainDoc, '缺 brainstorming/heavy 分片').toBeDefined()
+    expect(r.charCount).toBeGreaterThan(mainDoc!.text.length)
     expect(r.overBudget).toBeUndefined()
     expect(r.trimmed).toEqual([])
     expect(r.fragmentIds).toContain('brainstorming/heavy')

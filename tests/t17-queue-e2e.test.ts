@@ -27,6 +27,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { JsonQueueRepository, queueRelativePath } from '../src/repositories/QueueRepository.js'
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
@@ -65,6 +66,14 @@ function makeRealDeps(root: string) {
   const questions = new FakeQuestions()
   const deps = {
     repo, store, docs, clock, ids: new SeqIds(), session: new FakeSession(), questions, taskStore, doneThrottleMs: 0,
+    // BUG-4 连带补齐（同一用例的另一处夹具缺口，机制同设计节第 2 行：harness 现无 jobs）：
+    // deps 缺 jobs 时，批准调用内的 `advanceRequirement()` 会落到「无后台任务端口」的**同步兼容路径**，
+    // 把整条链跑进批准那一次调用里（`autoRun` 被链路回写成非 true，队列卡也不再停在 todo）。
+    // 打桩 = **投递即返回**，链交给本用例显式驱动（⑦ 用 executeSubtask 逐张跑）。
+    // 定性：**有意前移**——链启动已前移到「批准同一调用内 + deps.jobs 异步投递」。
+    // REQ-261008020617-088f RF-3：hostFs 必填（强转构造的夹具最容易漏）
+    hostFs: new FileHostFs(),
+    jobs: { available: () => true, get: async () => null, start: async () => 'job-t17-1' },
   } as unknown as UseCaseDeps
   return { deps, repo, store, docs, queueRepo, clock, questions }
 }
@@ -78,6 +87,12 @@ const REQ_DOC = [
   '## 用户与角色', 'agent 窗口。', '',
   '## 功能点', '',
   '- **FR-1: 端到端链**：新建 → 拆分 → 队列 → 推进 → ready 更新', '',
+  // BUG-4 改法④（design/fix-design.md「BUG-4」第 4 行）：feature 需求文档必带
+  // 「讨论与裁定记录（D-x）」节（decision-gates.ts:226-251，REQ-261005105032-3b02 FR-8）；
+  // 真无裁定 → 只写**唯一真空态**写法「本节无裁定」（节名与 marker 常量见同文件 :33,:36）。
+  // 定性：**有意改名**——该门认的是**节名**（节口径按 feature 模板改名/新增），夹具据此补节，非放宽门禁。
+  '## 讨论与裁定记录（D-x）', '',
+  '本节无裁定', '',
 ].join('\n')
 
 /** 拆分计划文档：覆盖对照表把 FR-1 映到**计划 key**（表头须含「需求条款」与「任务」两列）。 */
@@ -88,11 +103,21 @@ const PLAN_DOC = [
   '|---|---|',
   '| FR-1 | t1 |',
   '| FR-1 | t2 |', '',
+  // BUG-4 连带补齐（同一用例的另一处夹具缺口）：计划文档硬门要求「有任务表 + 表里 key 覆盖
+  // tasks[].key 全集」（SubmitArtifact.ts:391-405，批准所见 = 文档所见），此前夹具只有对照表。
+  // 定性：**有意改名**——文档里的「任务表」节与「计划 key」列口径按 templates/decomposing 改名/新增。
+  '## 任务表', '',
+  '| 计划 key | 覆盖条款 | 依赖 | 工作量 | 验收标准 |',
+  '|---|---|---|---|---|',
+  '| t1 | FR-1 | — | M | 跑 npx vitest run a.test.ts 看到通过 |',
+  '| t2 | FR-1 | t1 | M | 跑 npx vitest run b.test.ts 看到通过 |', '',
 ].join('\n')
 
+// BUG-4 连带补齐（同一用例的另一处夹具缺口）：FR 覆盖的唯一门禁依据已**有意改名**为卡上的
+// `requirement_refs`（计划文档的覆盖对照表不再是门禁依据），夹具据此给每张卡写条款接收。
 const PLAN_TASKS = [
-  { key: 't1', title: '卡一', acceptance: '跑 npx vitest run a.test.ts 看到通过', implementation: '改 src/a.ts', description: 'd1' },
-  { key: 't2', title: '卡二', acceptance: '跑 npx vitest run b.test.ts 看到通过', implementation: '改 src/b.ts', description: 'd2', depends_on: ['t1'] },
+  { key: 't1', title: '卡一', acceptance: '跑 npx vitest run a.test.ts 看到通过', implementation: '改 src/a.ts', description: 'd1', requirement_refs: ['FR-1'] },
+  { key: 't2', title: '卡二', acceptance: '跑 npx vitest run b.test.ts 看到通过', implementation: '改 src/b.ts', description: 'd2', depends_on: ['t1'], requirement_refs: ['FR-1'] },
 ]
 
 describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 → 推进 → ready 更新', () => {
@@ -124,10 +149,22 @@ describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 �
     console.log('[t17] ② 需求产物确认 → 状态', (await store.get(reqId))?.status)
 
     // ── ③ 设计文档提交 + 确认（G2）→ decomposing ───────────────────────────
-    await docs.write('docs/requirements/' + reqId + '/design/architecture.md', '# 架构\n\n## D-1 覆盖 `serves: FR-1`\n')
-    for (const f of ['data-model', 'interfaces', 'test-cases', 'use-cases']) {
-      await docs.write('docs/requirements/' + reqId + '/design/' + f + '.md', '# ' + f + '\n')
-    }
+    // 连带补齐（同一用例的**另一处夹具缺口**，D-x 节补上后才暴露出来；非本卡设计节点名项）：
+    // `submit(kind=design)` 的内容门禁要求**文档级 serves**（H1 或 front-matter，content-gate-wiring.ts:394）
+    // 且 feature 的 interfaces.md 必含「接口清单」节 + 表头含「接口 id」的清单表（:437-441）。
+    // 定性：**有意改名**——设计文档的 serves 标注与节名口径按 templates/design 模板改名/新增，夹具随之补齐，
+    // 不改本用例任何断言口径（门禁一条不放宽）。
+    await docs.write('docs/requirements/' + reqId + '/design/architecture.md', '# 架构 serves: FR-1\n\n## D-1 覆盖 `serves: FR-1`\n')
+    await docs.write('docs/requirements/' + reqId + '/design/data-model.md', '# 数据模型 serves: FR-1\n')
+    await docs.write('docs/requirements/' + reqId + '/design/test-cases.md', '# 测试用例 serves: FR-1\n')
+    await docs.write('docs/requirements/' + reqId + '/design/use-cases.md', '# 用例 serves: FR-1\n')
+    await docs.write('docs/requirements/' + reqId + '/design/interfaces.md', [
+      '# 接口设计 serves: FR-1', '',
+      '## 接口清单 `serves: FR-1`', '',
+      '| 接口 id | 形态 | 职责 | serves |',
+      '|---|---|---|---|',
+      '| IF-1 | 函数 executeChain(deps, reqId) | 串联本链的用例入口 | FR-1 |', '',
+    ].join('\n'))
     await submitDesignArtifacts(deps, { requirement_id: reqId }, EXEC)
     await askConfirm(deps, {
       requirement_id: reqId, target: 'artifact', kind: 'design', question: '确认设计文档？', advance: true,

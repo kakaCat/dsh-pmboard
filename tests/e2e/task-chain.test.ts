@@ -44,10 +44,10 @@ describe('完整链 E2E 测试', () => {
       expect(true).toBe(true) // placeholder
     })
     
-    it.skip('reqboard_run_status 查询运行态', async () => {
+    it.skip('reqboard_status 的 run 节查询运行态', async () => {
       // 1. 投递任务，获取 run_id
-      // 2. 调用 reqboard_run_status(run_id)
-      // 3. 断言：返回 {runId, stepIndex, jobStatus: 'running'}
+      // 2. 调用 reqboard_status(run_id)
+      // 3. 断言：返回 {runId, jobStatus: 'running'}（REQ-261008011118-defe BUG-1：进度死字段已删）
       // 4. 等待完成
       // 5. 再次查询
       // 6. 断言：jobStatus = 'completed'
@@ -138,7 +138,7 @@ describe('完整链 E2E 测试', () => {
       // 1. 投递任务
       // 2. 查询台账数据
       // 3. 断言：advance.runId 存在
-      // 4. 断言：advance.stepIndex 更新
+      // 4. 断言：advance.history 追加本次推进事件（不再有 advance.stepIndex）
       // 5. 查询看板 API
       // 6. 断言：看板显示运行态
       // 注：此项可能需要快照对比或手工验证

@@ -7,7 +7,7 @@
  *
  *   工具壳（reqboard_submit kind=archive）→ 用例（对账/闸门）→ 台账（archive.reconcile）
  *     → 评论（留痕）→ 看板渲染（archiveReconcileLine / renderArchiveSection）
- *   工具壳（reqboard_archive_amend）→ 用例（补录）→ 台账（docs/amendments）→ 幂等
+ *   工具壳（reqboard_task_amend op=archive，REQ-261008020552-4aa0 FR-1 收编）→ 用例（补录）→ 台账（docs/amendments）→ 幂等
  *
  * 六步：
  *   ① 漏列提交 → 拒绝，且**台账零改动**
@@ -23,7 +23,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { defineArchiveAmendTool, defineSubmitTool } from '../src/tools/index.js'
+import { defineSubmitTool, defineTaskAmendTool } from '../src/tools/index.js'
 import { toUseCaseDeps, stubDocFile, type ReqboardToolDeps } from './helpers/tool-deps.js'
 import { listHeadingAnchors } from '../src/domain/knowledge/slug.js'
 import { renderArchiveSection } from '../src/client/views/verification.ts'
@@ -101,7 +101,9 @@ describe('E2E：提交 → 对账闸门 → 看板 → 补录 → 回退', () =>
   it('六步串起来：终态可观察（台账 + 评论 + 看板）', async () => {
     await seed()
     const submit = defineSubmitTool(toUseCaseDeps(toolDeps()))
-    const amend = defineArchiveAmendTool(toUseCaseDeps(toolDeps()))
+    const amend = defineTaskAmendTool(toUseCaseDeps(toolDeps()))
+    // REQ-261008020552-4aa0 FR-1：补录能力收编为 task_amend 的 op=archive（壳层分派，用例同一）。
+    const amendArchive = (args: unknown) => run(amend, { op: 'archive', ...(args as Record<string, unknown>) })
 
     // ① 漏列 → 拒，且台账零改动
     await expect(run(submit, { ...ARCHIVE })).rejects.toMatchObject({ code: 'REQBOARD_UNLISTED_ACK_REQUIRED' })
@@ -129,12 +131,15 @@ describe('E2E：提交 → 对账闸门 → 看板 → 补录 → 回退', () =>
     expect(html).toContain('已声明不收：E2E：任务卡由台账渲染，不入清单')
 
     // ④ 补录 1 条
-    const amended = await run(amend, {
+    const amended = await amendArchive({
       requirement_id: 'REQ-abc123',
       docs: [{ kind: 'notes', path: DIR + '/evidence/gates.txt' }],
       reason: 'E2E：归档后发现证据没进清单',
     })
     expect(amended.appended.length).toBe(1)
+    // FR-1（REQ-261008020552-4aa0）：返回体 = 原工具键集 + op 回显
+    expect(amended.op).toBe('archive')
+    expect(amended.success).toBe(true)
     const afterAmend = rec()
     // 4 份 = 调用方 3 份 + t4 补登的结论文件 archive.md；补录后再 +1
     expect(afterAmend.archive?.docs.length).toBe(5)
@@ -146,7 +151,7 @@ describe('E2E：提交 → 对账闸门 → 看板 → 补录 → 回退', () =>
 
     // ⑤ 幂等：同批再补不写盘
     const revisionBefore = (await store.head()).revision
-    const again = await run(amend, {
+    const again = await amendArchive({
       requirement_id: 'REQ-abc123',
       docs: [{ kind: 'notes', path: DIR + '/evidence/gates.txt' }],
       reason: 'E2E：重复补录',

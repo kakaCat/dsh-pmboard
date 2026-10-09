@@ -5,8 +5,9 @@
  *
  * 口径：
  *   ① 内存重新生成整份 TS 源码，与磁盘上的 generated/fragments.ts **逐字节**比对；
- *   ② fragments/<stage>/heavy.md 必须与 vendor/superpowers/<skill>/SKILL.md **逐字节**一致
- *      （heavy 主 skill 唯一的原文来源，防镜像漂移）。
+ *   ② VENDOR_MAIN_SKILLS 映射内的 fragments/<stage>/heavy.md 必须与
+ *      vendor/superpowers/<skill>/SKILL.md **逐字节**一致（防镜像漂移）；
+ *      brainstorming / design / decomposing 的 heavy 为本仓自写完整档，不在镜像口径内。
  * 不一致 / 产物缺失 → 打印原因 → exit 1（响亮失败，不静默通过）。
  * 用法：node scripts/check-prompt-fragments.mjs
  */

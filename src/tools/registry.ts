@@ -32,7 +32,7 @@ export interface ToolRegistryEntry {
   responseSources: readonly string[]
 }
 
-/** 27 条 = 磁盘上 27 个工具目录，一一对应（I-1）。 */
+/** 19 条 = 磁盘上 19 个工具目录，一一对应（I-1）。 */
 export const TOOL_REGISTRY: readonly ToolRegistryEntry[] = [
   {
     key: 'Create',
@@ -87,15 +87,12 @@ export const TOOL_REGISTRY: readonly ToolRegistryEntry[] = [
     factoryFile: 'tools/AskConfirmTool/AskConfirmTool.ts',
     dir: 'AskConfirmTool',
     toolName: 'reqboard_ask_confirm',
-    // evidence 路径与弹框路径自动分派。
-    responseSources: ['application/use-cases/AskConfirm.ts', 'application/use-cases/ConfirmArtifact.ts'],
-  },
-  {
-    key: 'ConfirmReceipt',
-    factoryFile: 'tools/ConfirmReceiptTool/ConfirmReceiptTool.ts',
-    dir: 'ConfirmReceiptTool',
-    toolName: 'reqboard_confirm_receipt',
-    responseSources: ['application/use-cases/ConfirmReceipt.ts'],
+    // evidence 路径 / ticket 取回执路径 / 弹框路径自动分派（FR-2 后含 ConfirmReceipt 用例）。
+    responseSources: [
+      'application/use-cases/AskConfirm.ts',
+      'application/use-cases/ConfirmArtifact.ts',
+      'application/use-cases/ConfirmReceipt.ts',
+    ],
   },
   {
     key: 'AcceptSheet',
@@ -105,41 +102,13 @@ export const TOOL_REGISTRY: readonly ToolRegistryEntry[] = [
     responseSources: ['application/use-cases/AcceptSheet.ts'],
   },
   {
-    key: 'TaskExecute',
-    factoryFile: 'tools/TaskExecuteTool/TaskExecuteTool.ts',
-    dir: 'TaskExecuteTool',
-    toolName: 'reqboard_task_execute',
-    // task_execute 真委托同一 factory（defineAdvanceTool），响应体与声明都在 AdvanceTool。
-    responseSources: ['tools/AdvanceTool/AdvanceTool.ts'],
-  },
-  {
-    key: 'Advance',
-    factoryFile: 'tools/AdvanceTool/AdvanceTool.ts',
-    dir: 'AdvanceTool',
+    // REQ-261007220012-bd29 FR-5：目录/工厂名与工具名 reqboard_task_run 对齐（消命名债）。
+    key: 'TaskRun',
+    factoryFile: 'tools/TaskRunTool/TaskRunTool.ts',
+    dir: 'TaskRunTool',
     toolName: 'reqboard_task_run',
     // 响应字面量就在 factoryFile 内（由独立扫描覆盖）。
     responseSources: [],
-  },
-  {
-    key: 'RunStatus',
-    factoryFile: 'tools/RunStatusTool/RunStatusTool.ts',
-    dir: 'RunStatusTool',
-    toolName: 'reqboard_run_status',
-    responseSources: [],
-  },
-  {
-    key: 'TaskStatus',
-    factoryFile: 'tools/TaskStatusTool/TaskStatusTool.ts',
-    dir: 'TaskStatusTool',
-    toolName: 'reqboard_task_status',
-    responseSources: [],
-  },
-  {
-    key: 'NoteInterruption',
-    factoryFile: 'tools/NoteInterruptionTool/NoteInterruptionTool.ts',
-    dir: 'NoteInterruptionTool',
-    toolName: 'reqboard_note_interruption',
-    responseSources: ['application/use-cases/NoteInterruption.ts'],
   },
   {
     key: 'ClearPause',
@@ -170,34 +139,21 @@ export const TOOL_REGISTRY: readonly ToolRegistryEntry[] = [
     responseSources: ['application/use-cases/TaskTree.ts'],
   },
   {
-    // REQ-261006123819-3af3 FR-1：此前缺映射（门禁根本没看这个工具）。
-    key: 'TaskAdopt',
-    factoryFile: 'tools/AdoptTaskTool/TaskAdoptTool.ts',
-    dir: 'AdoptTaskTool',
-    toolName: 'reqboard_task_adopt',
-    responseSources: ['application/use-cases/AdoptTask.ts'],
-  },
-  {
-    // FR-1：此前缺映射。
-    key: 'Regenerate',
-    factoryFile: 'tools/RegenerateTool/index.ts',
-    dir: 'RegenerateTool',
-    toolName: 'reqboard_task_regenerate',
-    responseSources: ['application/use-cases/RegenerateChain.ts'],
-  },
-  {
-    key: 'TaskRefs',
-    factoryFile: 'tools/TaskRefsTool/TaskRefsTool.ts',
-    dir: 'TaskRefsTool',
-    toolName: 'reqboard_task_refs',
-    responseSources: ['application/use-cases/AmendTaskRefs.ts'],
-  },
-  {
-    key: 'ArchiveAmend',
-    factoryFile: 'tools/ArchiveAmendTool/ArchiveAmendTool.ts',
-    dir: 'ArchiveAmendTool',
-    toolName: 'reqboard_archive_amend',
-    responseSources: ['application/use-cases/AmendArchiveManifest.ts'],
+    // REQ-261007220012-bd29 FR-4：refs / adopt / regenerate 三合一为修缮单入口；
+    // REQ-261008020552-4aa0 FR-1/FR-2：archive_amend（归档清单补录）与
+    // note_interruption（断点补写）收编为第四、五个 op。
+    key: 'TaskAmend',
+    factoryFile: 'tools/TaskAmendTool/TaskAmendTool.ts',
+    dir: 'TaskAmendTool',
+    toolName: 'reqboard_task_amend',
+    // 各段用例各自的响应字面量都要扫（op 分派到五个用例）。
+    responseSources: [
+      'application/use-cases/AmendTaskRefs.ts',
+      'application/use-cases/AdoptTask.ts',
+      'application/use-cases/RegenerateChain.ts',
+      'application/use-cases/AmendArchiveManifest.ts',
+      'application/use-cases/NoteInterruption.ts',
+    ],
   },
   {
     // FR-1：此前缺映射。

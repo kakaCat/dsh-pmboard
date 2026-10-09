@@ -14,7 +14,10 @@ import {
   type TaskRecord,
 } from '../../shared/protocol.js'
 import { liveTasksOf } from '../../domain/status/Predicates.js'
-import { openRequirementsForVia, seatOf, seatsOf } from '../internal/window.js'
+import { firstWritableBound, openRequirementsForVia, seatOf, seatsOf } from '../internal/window.js'
+// REQ-261007220012-bd29 FR-3：原运行态查询工具 并入 status（run 节）——用例原样复用。
+import { queryRunStatus } from '../use-cases/QueryRunStatus.js'
+import type { RequirementRecord as ClientRequirementRecord, TaskRecord as ClientTaskRecord } from '../../client/types.js'
 import {
   agentIdFromExec,
   projectRequirement,
@@ -32,7 +35,87 @@ import {
   pendingConfirmFactsOf,
 } from '../internal/pending-guard.js'
 
-export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): Promise<unknown> {
+/**
+ * run 节编排（REQ-261007220012-bd29 FR-3）——原运行态查询工具 的定位与降级口径逐步搬入。
+ *
+ * 返回 `undefined` = 本键整体省略（无法确定目标需求，如未绑定且未传参）；
+ * 产出对象时错误以 `error` 键如实回报（不抛——status 的其余小节必须照常可用）。
+ *
+ * 注意：本文件是 reqboard_status 的**响应源**，`tests/output-contract.test.ts` 会把本文件里
+ * 每处 `return {...}` 的顶层键当作响应键扫描，故这里一律「先建变量再 return」，不写字面量返回。
+ */
+async function runSectionOf(
+  deps: UseCaseDeps,
+  args: unknown,
+  open: Awaited<ReturnType<typeof openRequirementsForVia>>,
+  windowKey: string,
+): Promise<Record<string, unknown> | undefined> {
+  const a = (args ?? {}) as { requirement_id?: unknown; run_id?: unknown }
+  const requestedId = typeof a.requirement_id === 'string' && a.requirement_id.length > 0 ? a.requirement_id : undefined
+  const requestedRunId = typeof a.run_id === 'string' && a.run_id.length > 0 ? a.run_id : undefined
+
+  let targetId = requestedId
+  if (targetId === undefined && requestedRunId !== undefined) {
+    // run_id → requirement_id：台账没有 run 索引（advance.runId 只在记录上）⇒ 按需逐条 get。
+    const store = requirementStoreOf(deps)
+    const page = await store.listSummaries({ scope: 'all' })
+    for (const sm of page.items) {
+      const r = await store.get(sm.id)
+      if (r?.advance?.runId === requestedRunId) { targetId = r.id; break }
+    }
+    if (targetId === undefined) {
+      const notFound: Record<string, unknown> = { error: '未找到 run_id=' + requestedRunId + ' 对应的需求' }
+      return notFound
+    }
+  }
+  if (targetId === undefined) {
+    // 缺省取本窗口绑定需求里第一条**可写**的（与 run_status 原口径一致；取不到 → 整键省略）。
+    const first = firstWritableBound(open, windowKey)
+    if (first === undefined) return undefined
+    targetId = first.id
+  }
+
+  // 未装配 = 组合根配置错误（原运行态查询工具口径）：
+  // **显式**点名了目标需求 → 响亮抛错（调用方要的就是这条链的运行态）；
+  // 走窗口绑定缺省 → 静默省略 run 节，status 的其余小节必须照常可用。
+  const explicit = requestedId !== undefined || requestedRunId !== undefined
+  if (deps.taskStore === undefined) {
+    if (explicit) {
+      throw Object.assign(new Error('任务存储（TaskStore）未装配，无法读取任务'), { code: 'REQBOARD_STORE_INCONSISTENT' })
+    }
+    return undefined
+  }
+  const jobs = deps.jobs
+  const dshJobsAdapter = jobs !== undefined && jobs.available()
+    ? { getJob: (id: string): Promise<{ status: string } | null> => jobs.get(id) }
+    : undefined
+  try {
+    const status = await queryRunStatus({
+      requirementId: targetId,
+      getRequirement: async () => {
+        const rec = await requirementStoreOf(deps).get(targetId as string)
+        if (rec === undefined) {
+          throw Object.assign(new Error('需求不存在：' + targetId), { code: 'REQBOARD_REQUIREMENT_NOT_FOUND' })
+        }
+        return rec as unknown as ClientRequirementRecord
+      },
+      getTasks: async () => (await deps.taskStore!.listByRequirement(targetId as string)) as unknown as ClientTaskRecord[],
+      ...(dshJobsAdapter !== undefined ? { dshJobsAdapter } : {}),
+    })
+    // ⚠️ 无 active run 时 queryRunStatus 给的是 `runId: null`，而声明是 string
+    // ⇒ 值级类型校验会失败。口径：**不是 string 就整个键省略**，不发 null。
+    const snapshot: Record<string, unknown> = { requirement_id: targetId, ...status }
+    if (typeof snapshot.runId !== 'string') delete snapshot.runId
+    return snapshot
+  } catch (err) {
+    // 显式点名的失败必须被调用方看见（既有错误码契约：REQBOARD_REQUIREMENT_NOT_FOUND 等）；
+    // 仅绑定缺省路径的意外失败降级为「本键省略」——status 的核心职责是绑定自查。
+    if (explicit) throw err
+    return undefined
+  }
+}
+
+export async function queryState(deps: UseCaseDeps, args: unknown, exec: any): Promise<unknown> {
       const windowKey = agentIdFromExec(deps, exec)
       // B12 阶段②c：整册 read ⇒ 新端口的绑定读（只取本窗口的开放需求，不装配整册）。
       const open = await openRequirementsForVia(requirementStoreOf(deps), windowKey)
@@ -123,8 +206,8 @@ export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): 
         try {
           const boundReq = open[0]
           const workspaceRoot = deps.docs.workspaceRoot()
-          const stateDir = workspaceRoot + '/.dsh-data/state'
-          rtm_health = checkRTMHealth(workspaceRoot, stateDir, boundReq)
+          // REQ-261008020617-088f RF-3：state 落点由 HostFsPort 从根推导，不再自己拼 stateDir
+          rtm_health = checkRTMHealth(deps.hostFs, workspaceRoot, boundReq)
         } catch (healthErr) {
           console.warn('[QueryState] RTM 健康检查失败:', healthErr)
         }
@@ -186,6 +269,11 @@ export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): 
       const primary = open.length > 0 ? open[0] : undefined
       const primarySeat = primary === undefined ? undefined : seatOf(primary, windowKey)
 
+      // FR-3（REQ-261007220012-bd29）：实施链运行态——原运行态查询工具 并入本入口。
+      // 口径与原工具逐字一致：能确定目标需求时恒出现；无 active run 时 runId 整键省略（不发 null）；
+      // 显式传 requirement_id / run_id 时按入参定位（run_id 走台账反查）。
+      const run = await runSectionOf(deps, args, open, windowKey)
+
       return {
         window_key: windowKey,
         bound: open.length > 0,
@@ -203,6 +291,7 @@ export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): 
         unreceived_clauses: unreceived,
         design_docs,
         pending_confirms,
+        ...(run !== undefined ? { run } : {}),
         ...(rtmData !== undefined
           ? {
               fr_coverage: rtmData.fr_coverage,
@@ -220,7 +309,7 @@ export async function queryState(deps: UseCaseDeps, _args: unknown, exec: any): 
         note:
           open.length > 0
             ? `本窗口已绑定进行中需求（当前 ${open[0].status}）：里程碑处用 reqboard_move 自行推进（${agentNextActions(open[0].status).join(' / ') || '无可推进项'}），勿重复立项`
-            : '本窗口未绑定需求：识别到值得立项的新工作 → 调 reqboard_capture 弹「立项三问」（需求名称 / 需求类型 / 提示词难度），用户作答即在同一次调用内创建并绑定本窗口（创建即立项）',
+            : '本窗口未绑定需求：识别到值得立项的新工作 → 调 reqboard_capture 弹「立项弹框」（需求名称 / 需求类型 / 算力档位 / 文件落点），用户作答即在同一次调用内创建并绑定本窗口（创建即立项）',
         board_link: open.length > 0 ? `/dashboard#pmboard?req=${open[0].id}` : '/dashboard#pmboard',
       }
     }

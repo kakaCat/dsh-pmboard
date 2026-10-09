@@ -1,4 +1,5 @@
 /**
+ * serves: BUG-5（回执键集与 output.schema 声明一致）
  * 输出契约回归（REQ-2e9473 补充；2026-09-17 加固）。
  *
  * 背景：DSH 工具 output.schema 是 additionalProperties:false——返回体出现未声明字段会被
@@ -32,7 +33,7 @@ import * as toolModules from '../src/tools/index.js'
 // REQ-261006123819-3af3 FR-1：工具登记面（唯一手写清单，本文件只做派生与交叉校验）
 import { TOOL_REGISTRY } from '../src/tools/registry.js'
 import { defineSubmitTool, defineAskConfirmTool, defineCaptureTool, defineMoveTool } from '../src/tools/index.js'
-import { CAPTURE_QUESTION_IDS, WORKSPACE_SENTINELS } from '../src/application/internal/capture-mapping.js'
+import { CAPTURE_QUESTION_IDS } from '../src/application/internal/capture-mapping.js'
 // REQ-261006201841-944d FR-1/FR-2：归档目标改判**事实**（存在 / 非空 / 锚点可达）——夹具把目标文档
 // 真落盘，锚点用 `listHeadingAnchors`（写入端/读侧同一实现）算出，不手写 slug 规则。
 import { stubDocFile } from './helpers/tool-deps.js'
@@ -478,8 +479,8 @@ describe('输出契约：返回字段 ⊆ output.schema 声明', () => {
           { id: CAPTURE_QUESTION_IDS.name, selected: ['输出契约立项'] },
           { id: CAPTURE_QUESTION_IDS.category, selected: ['feature'] },
           { id: CAPTURE_QUESTION_IDS.difficulty, selected: ['standard'] },
-          { id: CAPTURE_QUESTION_IDS.doc_location, selected: ['docs/requirements/<REQ>/'] },
-          { id: CAPTURE_QUESTION_IDS.workspace, selected: [WORKSPACE_SENTINELS.session] },
+          // t1 收口：文件落点（location）取代 doc_location + workspace 两问
+          { id: CAPTURE_QUESTION_IDS.location, selected: ['docs/requirements/<REQ>/'] },
         ],
       }),
     }
@@ -488,7 +489,7 @@ describe('输出契约：返回字段 ⊆ output.schema 声明', () => {
     // 先确认走的是**成功路径**（失败回执同样是合法形状，但那样这条用例就测不到立项回执）
     expect((out as any).success, 'capture 未成功立项：' + JSON.stringify(out)).toBe(true)
     assertKeysDeclared(tool, out, 'capture(success)')
-    expect((out as any).answers.workspace).toBe(WORKSPACE_SENTINELS.session)
+    expect((out as any).answers.location).toBe('docs/requirements/<REQ>/')
   })
 
   /**

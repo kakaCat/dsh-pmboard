@@ -751,7 +751,7 @@ async function settleConfirmDecisionBody(
           req.comments.push({
             id: deps.ids.comment(),
             body: fmt(
-              '[自动开跑失败] {reason}。\n\n恢复路径（两条都可执行）：① 按上面的原因修好计划文档的「覆盖对照表」（或把确实不做的条款在需求文档里标「本轮不做」）后，手动调 reqboard_decompose(requirement_id="{reqId}") 重试；② 在看板点「拆分」按钮重试。\n若只是个别卡缺条款引用（卡已落库），用 reqboard_task_refs 补写即可。',
+              '[自动开跑失败] {reason}。\n\n恢复路径（两条都可执行）：① 按上面的原因修好计划文档的「覆盖对照表」（或把确实不做的条款在需求文档里标「本轮不做」）后，手动调 reqboard_decompose(requirement_id="{reqId}") 重试；② 在看板点「拆分」按钮重试。\n若只是个别卡缺条款引用（卡已落库），用 reqboard_task_amend(op=refs) 补写即可。',
               { reason: errMsg, reqId: d.requirementId },
             ),
             createdAt: nowTs,

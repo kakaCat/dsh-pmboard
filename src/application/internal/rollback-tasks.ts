@@ -16,7 +16,7 @@
  * @module dsh-pmboard/application/internal/rollback-tasks
  */
 import type { ActorRef, RequirementRecord, RequirementStatus, TaskRecord } from '../../shared/protocol.js'
-import { markCanceled } from '../../shared/protocol.js'
+import { markCanceled, recordStatus } from '../../shared/protocol.js'
 
 /** 回退的卡处置计划（调用方据此落库）。 */
 /**
@@ -74,6 +74,10 @@ export function planRollbackTasks(
         changes: ['status: ' + t.status + '→canceled'],
       },
     ]
+    // REQ-261008011118-defe BUG-3（DD-3）：字段面与 `transitionTask`（唯一收敛点）同源——
+    // 状态迁移要 bump version。**不借它的状态机校验**（回退要吃掉任意在途状态，如 done→canceled），
+    // 只借字段契约；落盘白名单（MoveRequirement 的任务写）整份搬这几个字段。
+    copy.version = (copy.version ?? 1) + 1
     copy.updatedAt = now
     copy.updatedBy = actor
     return copy
@@ -113,6 +117,10 @@ export function planRollbackTasks(
   // 还会被下面的「子卡复位」分支浅拷贝成 todo 卡，就地写会连带污染复位卡。
   for (const c of [...canceledTop, ...canceledPlaceholders]) {
     markCanceled(c, { at: now, by: actor, reason })
+    // REQ-261008011118-defe BUG-3（DD-3）：补一条 canceled 状态事件——此前只有 rollback 修订
+    // 与三字段留痕，`statusHistory` 里看不到「这张卡被取消过」（读侧按状态事件统计会漏）。
+    // 用收敛点 `recordStatus`（带"末条同状态同 at 不重复"幂等保护），重复回退不堆事件。
+    recordStatus(c, 'canceled', now, actor, reason)
   }
   const resetTasks = canceled
     .filter(c => !topIds.has(c.id) && (c.reworkOf ?? '') === '')

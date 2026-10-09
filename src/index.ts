@@ -3,7 +3,7 @@
 // 捕获（用户裁定 · 创建即立项）：确定性消息 hook（session/event user/message 到达 →
 // 检查窗口 unbound 且无遗留 pending → 登记待捕获消息）+ systemPrompt 捕获引导段
 // （命中待捕获则注入引用消息原文的立项提示，让 LLM 调 pm 专有立项弹框 reqboard_capture）。
-// 三问弹框（需求名称 / 需求类型 / 提示词难度）作答 = 立项门；创建即立项，无
+// 立项弹框（需求名称 / 需求类型 / 算力档位 / 文件落点）作答 = 立项门；创建即立项，无
 // 待归类/建议卡中间态。M2 的自动分类 LLM（SessionSyncService）自 2026-09 起不再装配
 // （修正 #1/#3：无第二 LLM、人在 loop）。
 // 模块形状与 dashboard-execution 一致（name + apply 具名导出）；无静态 inject 的
@@ -52,19 +52,14 @@ import {
   defineCreateTool,
   defineCaptureTool,
   defineStatusTool,
-  defineTaskExecuteTool,
-  defineAdvanceTool,
-  defineTaskStatusTool,
-  defineTaskRefsTool,
-  // REQ-261004183621-de3f t3：归档清单补录工具
-  defineArchiveAmendTool,
+  defineTaskRunTool,
   defineTaskReportTool,
   defineDecomposeTool,
   defineSubmitTool,
   defineAskConfirmTool,
-  defineConfirmReceiptTool,
   defineAcceptSheetTool,
-  defineNoteInterruptionTool,
+  // REQ-261007220012-bd29 FR-4：修缮单入口（条款引用 / 归属补救 / 补链 / 归档补录 / 断点补写）
+  defineTaskAmendTool,
   defineClearPauseTool,
   // REQ-261003215944-9e04 FR-1：用 DSH 现成的会话 fork/create 开一个新窗口
   defineOpenWindowTool,
@@ -72,10 +67,7 @@ import {
   defineBindTool,
   defineMoveTool,
   defineTaskMoveTool,
-  defineRunStatusTool,
   defineTaskTreeTool,
-  defineTaskAdoptTool,
-  defineRegenerateTool,
   defineKnowledgeTool,
   defineHandoffTool,
   defineSkillInstallTool,
@@ -83,6 +75,8 @@ import {
   TOOL_REGISTRY,
 } from './tools/index.js';
 import { FileDocRepository } from './adapters/FileDocRepository.js'
+import { FileHostFs } from './adapters/FileHostFs.js'
+import { FileDiagSink } from './adapters/FileDiagSink.js'
 // REQ-261005122347-e07a：skill 资产读 / 投放写盘 / 解释器探测（三者都在适配层，
 // application 只拿端口；probePython 是全插件唯一碰 child_process 的点之一）。
 import { SkillAssets } from './adapters/SkillAssets.js'
@@ -130,7 +124,7 @@ import { createFailureAlert } from './adapters/FailureAlert.js';
 import { scheduleStartupScan } from './application/internal/startup-scan.js';
 import { migrateDiveState } from './application/internal/migrate-dive-state.js';
 import type { SubtaskBudgetPort, UseCaseDeps } from './application/ports.js';
-import ReqboardDiveManager from './application/dive/ReqboardDiveManager.js';
+import ReqboardDiveManager from './adapters/ReqboardDiveManager.js';
 import { renderDiveRoundText } from './application/dive/round-state.js';
 import type { DiveRoundPorts } from './application/dive/round-driver.js';
 import { createProviderLatch } from './application/internal/provider-latch.js';
@@ -243,7 +237,8 @@ function turnBoundaryIdleState(projectionsSvc: unknown, session: unknown): 'idle
 
 export function apply(ctx: Context, config?: PluginConfig): void {
   // 【REQ-f6307c T3】文件化诊断通道初始化（stdout 可能进死管道，文件才是可靠观测面）
-  initCaptureDiag(dshHomePath(config, CAPTURE_DIAG_REL));
+  // REQ-261008020617-088f RF-4：门面只收 sink（文件轮转/追加在 adapters/FileDiagSink）
+  initCaptureDiag(new FileDiagSink(dshHomePath(config, CAPTURE_DIAG_REL)));
   captureDiag('reqboard-capture [EARLY]: apply function STARTED');
   const logger = ctx.logger(name);
   logger.info('reqboard-capture [EARLY]: apply function STARTED');
@@ -391,6 +386,12 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     ['userQuestions'],
     (uqCtx: { userQuestions?: unknown } | undefined) => {
       userQuestionsSvc = uqCtx?.userQuestions;
+      // 【诊断-1】注入结果落文件（stdout 在桌面宿主里读不到）：这是"通道到底有没有服务"
+      // 的第一现场证据——2026-10-08 弹框故障排查时它缺席，只能靠猜。
+      captureDiag(
+        `reqboard-capture [UI-0]: userQuestions inject 回调 ctx=${uqCtx !== undefined} `
+        + `svc=${userQuestionsSvc !== undefined} ask=${typeof (userQuestionsSvc as { ask?: unknown } | undefined)?.ask}`,
+      );
       if (userQuestionsSvc !== undefined) {
         logger.debug('userQuestions service ready (reqboard_ask_confirm 弹框通道可用)');
       }
@@ -551,7 +552,7 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   if (docsRootSourceSetting(config) === 'legacy-cwd') knowledgeBootstrap.ensure(docs.workspaceRoot());
   const clock = new SystemClock();
   // REQ-260924213231-b1c4 T-6（FR-3）：挂起确认注册表（内存 ticket → 状态）——弹框超宽限时
-  // 登记 ticket，人作答后由后台落章并回填，agent 用 reqboard_confirm_receipt 取回执。
+  // 登记 ticket，人作答后由后台落章并回填，agent 用 reqboard_ask_confirm(ticket=…) 取回执。
   const pendingConfirms = new PendingConfirmRegistry();
   const isolationTrace = new IsolationTraceFile(
     dshHomePath(config, ISOLATION_TRACE_REL),
@@ -900,7 +901,7 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   })
   sessionProbe = sessionProbeAdapter
 
-  // agent 工具：reqboard_capture（三问弹框 + 创建即立项）/ reqboard_create（手工路径）/
+  // agent 工具：reqboard_capture（立项弹框 + 创建即立项）/ reqboard_create（手工路径）/
   // reqboard_status（自查）。用例依赖 = 组合根装配 adapters → application 用例。
   // REQ-261005122347-e07a：skill 三件套（读包内资产 / 事务写盘 / 探解释器）。三个类各自只实现端口的
   // 一部分，在这里拼成一个 SkillInstallPort——"唯一 child_process 点"因此仍收敛在 PythonProbe 一个文件里。
@@ -992,6 +993,8 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     // 任务存储（队列）——v9 后任务的唯一入口（REQ-260927202051-f6df）；用例侧缺它则读不到任务。
     taskStore,
     docs,
+    // REQ-261008020617-088f RF-3/RF-5：宿主文件面端口（无状态，根逐次由调用方传）。
+    hostFs: new FileHostFs(),
     clock,
     ids: new RandomIdFactory(),
     // t7（FR-8）：与上面两处装配**同一实例**（唯一读取口，口径单点）。
@@ -1155,15 +1158,8 @@ export function apply(ctx: Context, config?: PluginConfig): void {
         disposers.push(toolsCtx.tools.register(defineDecomposeTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineSubmitTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineAskConfirmTool(useCaseDeps)));
-        disposers.push(toolsCtx.tools.register(defineConfirmReceiptTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineAcceptSheetTool(useCaseDeps)));
-        disposers.push(toolsCtx.tools.register(defineTaskExecuteTool(useCaseDeps)));
-        disposers.push(toolsCtx.tools.register(defineAdvanceTool(useCaseDeps)));
-        disposers.push(toolsCtx.tools.register(defineTaskStatusTool(useCaseDeps)));
-        disposers.push(toolsCtx.tools.register(defineTaskRefsTool(useCaseDeps)));
-        disposers.push(toolsCtx.tools.register(defineArchiveAmendTool(useCaseDeps)));
-        // REQ-260924213231-b1c4 T-9（FR-6 / I-8）：断点显式兜底（B′ 入口）。
-        disposers.push(toolsCtx.tools.register(defineNoteInterruptionTool(useCaseDeps)));
+        disposers.push(toolsCtx.tools.register(defineTaskRunTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineClearPauseTool(useCaseDeps)));
         // REQ-261003215944-9e04 FR-1：开一个新窗口（DSH 会话分支）
         disposers.push(toolsCtx.tools.register(defineOpenWindowTool(useCaseDeps)));
@@ -1173,13 +1169,10 @@ export function apply(ctx: Context, config?: PluginConfig): void {
         // REQ-260927100007-b8ba FR-7：补回 agent 侧流转工具（此前仅在 HTTP 层，agent 调不动）
         disposers.push(toolsCtx.tools.register(defineMoveTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineTaskMoveTool(useCaseDeps)));
-        disposers.push(toolsCtx.tools.register(defineRunStatusTool(useCaseDeps)));
         // REQ-260927144541-0481 FR-3：只读父子结构视图（reqboard_task_tree）
         disposers.push(toolsCtx.tools.register(defineTaskTreeTool(useCaseDeps)));
-        // 归属补救：把缺 parentId 的卡挂回父卡下（2026-09-28）
-        disposers.push(toolsCtx.tools.register(defineTaskAdoptTool(useCaseDeps)));
-        // 卡片层契约（2026-09-28）：子卡链再生成（补链）+ 只读诊断。
-        disposers.push(toolsCtx.tools.register(defineRegenerateTool(useCaseDeps)));
+        // REQ-261007220012-bd29 FR-4：修缮单入口（条款引用 / 归属补救 / 补链三合一）
+        disposers.push(toolsCtx.tools.register(defineTaskAmendTool(useCaseDeps)));
         disposers.push(toolsCtx.tools.register(defineKnowledgeTool(useCaseDeps)));
         // REQ-261005122347-e07a FR-1/FR-6：投放 UI/UX skill 资产（返回子代理要用的绝对路径）。
         disposers.push(toolsCtx.tools.register(defineSkillInstallTool(useCaseDeps)));

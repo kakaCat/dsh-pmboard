@@ -1,4 +1,4 @@
-// serves: FR-5
+// serves: FR-2, FR-5
 /**
  * 立项拒绝留痕（REQ-260922012924-2e29 FR-5）——「用户在立项弹框点了 ✖️ 不需要立项」
  * 的可查台账：回答"这个窗口最近是不是拒绝过立项"，让 reqboard_capture 弹框前置检查
@@ -45,7 +45,32 @@ export function isCaptureRejection(raw: unknown): raw is CaptureRejection {
   if (typeof o.windowKey !== 'string' || o.windowKey.length === 0) return false
   if (typeof o.at !== 'number' || !Number.isFinite(o.at)) return false
   if (o.title !== undefined && typeof o.title !== 'string') return false
+  if (o.kind !== undefined && o.kind !== 'reject' && o.kind !== 'cancel' && o.kind !== 'timeout') return false
   return true
+}
+
+/** 交互类型判定：缺省 = reject（旧记录零迁移）。 */
+export function interactionKindOf(entry: CaptureRejection): 'reject' | 'cancel' | 'timeout' {
+  return entry.kind ?? 'reject'
+}
+
+/** 连续取消阈值（REQ-261007223647-da5d FR-2）：同窗口 TTL 内取消到这个数 → 不再弹框、提议走看板。 */
+export const CAPTURE_CANCEL_ESCALATION = 3
+
+/** 同窗口 TTL 内的**取消**次数（cancel 与 timeout 都算"没用弹框完成"，但只有 cancel 触发升级）。 */
+export function recentCaptureCancels(
+  list: readonly CaptureRejection[],
+  windowKey: string,
+  now: number,
+  ttl: number = CAPTURE_REJECTION_TTL_MS,
+): number {
+  let n = 0
+  for (const r of list) {
+    if (r.windowKey !== windowKey) continue
+    if (now - r.at > ttl) continue
+    if (interactionKindOf(r) === 'cancel') n++
+  }
+  return n
 }
 
 /**
@@ -62,6 +87,8 @@ export function recentCaptureRejection(
   for (const r of list) {
     if (r.windowKey !== windowKey) continue
     if (now - r.at > ttl) continue
+    // 只有「用户明确说不」才拦弹框；cancel/timeout 是"没答"，不是"拒绝"（t5）
+    if (interactionKindOf(r) !== 'reject') continue
     if (latest === undefined || r.at > latest.at) latest = r
   }
   return latest

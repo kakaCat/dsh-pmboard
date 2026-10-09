@@ -21,7 +21,7 @@ import { InMemoryQueueRepository, makeHarness, makeTestStore, req, task } from '
 import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
 import { selectAdvanceBatch } from '../src/application/internal/advance-select.js'
 import { seedQueueTasks, toUseCaseDeps, type ReqboardToolDeps } from './helpers/tool-deps.js'
-import { defineAdvanceTool, defineDecomposeTool, defineTaskMoveTool } from '../src/tools/index.js'
+import { defineTaskRunTool, defineDecomposeTool, defineTaskMoveTool } from '../src/tools/index.js'
 import { probeWrites, expectNoWrite } from './helpers/ledger-probe.js'
 import { codeOf } from './helpers/code-trigger-harness.js'
 import type { TaskRecord } from '../src/shared/protocol.js'
@@ -88,7 +88,7 @@ describe('并发矩阵（FR-7）', () => {
     } as never])
     const uc = toUseCaseDeps(deps) as unknown as { jobs?: unknown }
     uc.jobs = { available: () => true, start: async (): Promise<string> => 'job-cm-1', get: async (): Promise<null> => null }
-    const tool = asTool(defineAdvanceTool(uc as never))
+    const tool = asTool(defineTaskRunTool(uc as never))
 
     const first = await tool.execute({ requirement_id: REQ_ID }, EXEC)
     expect(first.status, '第一次推进应真的投递').toBe('dispatched')
@@ -189,7 +189,7 @@ describe('并发矩阵（FR-7）', () => {
       } as never])
       const uc = toUseCaseDeps(deps) as unknown as { jobs?: unknown }
       uc.jobs = { available: () => true, start: async (): Promise<string> => 'job-cm-' + String(i), get: async (): Promise<null> => null }
-      const tool = asTool(defineAdvanceTool(uc as never))
+      const tool = asTool(defineTaskRunTool(uc as never))
       await tool.execute({ requirement_id: REQ_ID }, EXEC)
       codes.push((await codeOfCall(() => tool.execute({ requirement_id: REQ_ID }, EXEC))) ?? '(无码)')
     }

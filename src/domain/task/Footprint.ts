@@ -29,6 +29,13 @@
  * @module dsh-pmboard/domain/task/Footprint
  */
 import { LIMITS } from '../limits.js'
+import { fmt } from '../text/fmt.js'
+
+/**
+ * 三量口径细则（REQ-261008020552-4aa0 FR-4：从 submit tasks[].footprint 的 schema 描述
+ * 下沉到本回执——细则之家；footprint 形状非法是 agent 写错三量时**最先看到**的拒绝）。
+ */
+const FOOTPRINT_SEMANTICS = '；三量口径：files=要改/新建的文件数（不得小于 implementation 点到的路径数，允许留余量、不允许缩水）、anchors=验收锚点数（可执行断言条数）、chars=实施描述与目标改动量合计字符数'
 
 /** 卡片体量声明：三个**可数的确定量**（不含主观打分，这是它能进机械门禁的前提）。 */
 export interface CardFootprint {
@@ -139,7 +146,8 @@ export function footprintInvalidReason(raw: unknown): string | undefined {
 export function normalizeFootprint(raw: unknown, where = 'footprint'): CardFootprint | undefined {
   if (raw === undefined || raw === null) return undefined
   const reason = footprintInvalidReason(raw)
-  if (reason !== undefined) throw new FootprintError(where + ' 非法：' + reason)
+  // fmt 拼装（domain 层禁字符串拼接的消息卫生纪律）；FOOTPRINT_SEMANTICS 为 FR-4 的追加句。
+  if (reason !== undefined) throw new FootprintError(fmt('{where} 非法：{reason}{sem}', { where, reason, sem: FOOTPRINT_SEMANTICS }))
   const obj = raw as CardFootprint
   return { files: obj.files, anchors: obj.anchors, chars: obj.chars }
 }

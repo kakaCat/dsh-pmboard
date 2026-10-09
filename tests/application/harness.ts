@@ -87,6 +87,7 @@ import {
 // 且本 harness 的合成需求默认 id 恰好是 REQ-000001（撞上仓里真实跟踪的同名目录）——
 // 于是每个窗口跑测试都会改写那批 tracked 文件。这条链是 Tier A 全部泄漏的唯一出口。
 import { testWorkspaceRoot } from '../helpers/workspace-root.js'
+import { FileHostFs } from '../../src/adapters/FileHostFs.js'
 
 /** 队列文件的 schemaVersion（v9：台账已无 tasks）。 */
 const QUEUE_SCHEMA_VERSION = 9
@@ -855,7 +856,7 @@ export function makeHarness(seed?: HarnessSeed): Harness {
   const ids = new SeqIds()
   const queueRepo = new InMemoryQueueRepository()
   const taskStore = new QueueTaskStore({ repo: queueRepo, now: () => clock.t, onWarn: (m) => queueRepo.warnings.push(m) })
-  const deps: UseCaseDeps = { store, docs, clock, ids, session, questions, taskStore, doneThrottleMs: 0 }
+  const deps: UseCaseDeps = { store, docs, hostFs: new FileHostFs(), clock, ids, session, questions, taskStore, doneThrottleMs: 0 }
 
   // ── 播种（t8/B11）：镜像与存储**都要写**；提供同步入口 + 显式 flush ──────────────
   // 为什么要有同步入口：既有夹具的播种写在**同步 helper**（`makeUc` / `seed`）里，直接换成 async

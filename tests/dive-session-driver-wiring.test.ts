@@ -11,6 +11,7 @@
 import { describe, it, expect } from 'vitest'
 import { assembleDiveSessionDriver } from '../src/wiring/pm-capture-root.js'
 import { emptyLedger } from '../src/shared/protocol.js'
+import { factsOf } from '../src/domain/requirement/RequirementSummary.js'
 
 type SessionHandler = (s: unknown, e: unknown) => void
 type StatusHandler = (a: unknown, st: unknown) => void
@@ -131,6 +132,18 @@ function makeFr11Harness(opts: {
     onSessionEvent: () => {},
     queueReminder: (requirementId: string, text: string) => { queueReminderCalls.push({ requirementId, text }) },
   }
+  // REQ-261008004324-81df BUG-5：组装的两个**必填** dep。缺 `requirementStore` / `taskStore`
+  // 会让 idle 首步（`facts()` / `taskStore.listAll()`）抛 TypeError，
+  // 再被 `session-driver.ts:487-492` 吞成 info ⇒ 整拍静默零动作（三条用例全红）。
+  // 旧 `repo` 是桥签名（`mutate` 吃整册），而驱动写口按 id 定点 ⇒ 这里给一条 id 感知的窄写口。
+  const requirementStore = {
+    peekFacts: () => (ledger.requirements as unknown as Array<never>).map((r) => factsOf(r)),
+    get: repo.get,
+    mutate: async (id: string, fn: (r: unknown) => unknown) => {
+      const target = (ledger.requirements as unknown as Array<{ id?: string }>).find((r) => r.id === id)
+      return { changed: (fn(target) ?? {}) as never, revision: 1 }
+    },
+  }
   const deps = {
 
     runtime: {
@@ -139,6 +152,8 @@ function makeFr11Harness(opts: {
       recentUserMsgs: new Map(),
       deliverer: { deliver: () => { deliveries += 1; return { delivered: true } } },
     },
+    requirementStore,
+    taskStore: { listAll: async () => [] },
     now: () => now,
     injectionLog: { record: () => {} },
     gateChain: { enqueue: () => {}, runPending: async () => ({ ran: false }) },

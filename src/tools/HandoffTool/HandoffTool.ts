@@ -12,10 +12,10 @@ import type { UseCaseDeps } from '../../application/ports.js';
 import type { HandoffThresholds } from '../../application/internal/handoff-policy.js';
 import { handoffRequirement } from '../../application/use-cases/HandoffOwner.js';
 import { HANDOFF_PROMPT } from './prompt.js';
-import { LONG_TEXT_ARG_NOTE, renderSmart } from '../shared.js';
+import { LONG_TEXT_STYLE_NOTE, renderSmart, WINDOW_MODES, windowInheritanceSchema } from '../shared.js';
 
 /** 造窗方式（受控枚举，与 OpenWindowTool 同款写法：字面量数组经 const 收窄）。 */
-const HANDOFF_MODES = ['fork', 'create'] as const;
+// REQ-261007220012-bd29 FR-6：枚举单源在 tools/shared.ts（WINDOW_MODES）
 
 /** 回执一句话摘要：谁交给谁、角色怎么换、底稿投出去了没有。 */
 const handoffSummary = (v: unknown): string => {
@@ -45,11 +45,11 @@ export function defineHandoffTool(deps: UseCaseDeps, opts?: HandoffToolOptions) 
     parameters: {
       reason: {
         type: 'string' as const,
-        description: '交接原因（进留痕评论；建议写明水位与阶段）。非顶墙档必填。' + LONG_TEXT_ARG_NOTE,
+        description: '交接原因（进留痕评论；建议写明水位与阶段）。非顶墙档必填。' + LONG_TEXT_STYLE_NOTE,
       },
       mode: {
         type: 'string' as const,
-        enum: [...HANDOFF_MODES],
+        enum: [...WINDOW_MODES],
         description: '新建窗口的方式：fork = 带旧上下文；create = 全新空会话（缺省，靠断点 + 输入包接续）',
       },
       to_window: {
@@ -83,21 +83,7 @@ export function defineHandoffTool(deps: UseCaseDeps, opts?: HandoffToolOptions) 
               reason: { type: 'string', description: '未投成功时的原因' },
             },
           },
-          inheritance: {
-            type: 'object',
-            additionalProperties: false,
-            description: '继承回执（REQ-261005151245-54ae FR-5）：仅**新建接管窗口**时出现；to_window 指定已有窗口 → 该键整体省略',
-            properties: {
-              title: { type: 'string', description: '标题是否写定：set | skipped | failed' },
-              preset: { type: 'string', description: '模式（Agent 预设）是否继承：set | skipped | failed' },
-              model: { type: 'string', description: '模型是否继承：set | skipped | failed' },
-              reasons: {
-                type: 'array',
-                items: { type: 'string' },
-                description: 'skipped / failed 的可读原因（每条形如「标题：源会话无标题」）',
-              },
-            },
-          },
+          inheritance: windowInheritanceSchema('继承回执：仅**新建接管窗口**时出现；to_window 指定已有窗口 → 该键整体省略'),
           context_pressure: {
             type: 'object',
             additionalProperties: false,

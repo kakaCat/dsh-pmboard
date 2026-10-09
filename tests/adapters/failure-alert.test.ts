@@ -34,7 +34,6 @@ function codeOnly(source: string): string {
 describe('createFailureAlert：两条通道 + 永不抛', () => {
   it('日志与来源会话各写一次，正文含告警内容', () => {
     const logged: string[] = []
-    const delivered: Array<{ wk: string; text: string }> = []
     const alert = createFailureAlert({
       log: (m) => logged.push(m),
 
@@ -43,16 +42,14 @@ describe('createFailureAlert：两条通道 + 永不抛', () => {
 
     alert.alert({ requirementId: 'REQ-4842fe', title: '【实施链暂停】REQ-4842fe', content: '· 可选处置：重跑该卡' })
 
-    expect(logged).toHaveLength(1)
+    // 通道已删（2026-XX 全面 Dive 化）：投递面不再存在，只留宿主日志——
+    // 故这里只断日志正文（原 `delivered` 断言的对象已无实现，删）。
     expect(logged[0]).toContain('【实施链暂停】REQ-4842fe')
-    expect(delivered).toHaveLength(1)
-    expect(delivered[0]!.wk).toBe('w-abc')
-    expect(delivered[0]!.text).toContain('重跑该卡')
+    expect(logged[0]).toContain('重跑该卡')
   })
 
-  it('投递文本 = 弹框指令壳（§8 #18）：含弹框指令与三处置选项；宿主日志仍是原始正文', () => {
+  it('日志写两次：原始正文 + 含窗口信息的调试行；不再有弹框指令壳（通道已删）', () => {
     const logged: string[] = []
-    const delivered: Array<{ wk: string; text: string }> = []
     const alert = createFailureAlert({
       log: (m) => logged.push(m),
 
@@ -61,18 +58,17 @@ describe('createFailureAlert：两条通道 + 永不抛', () => {
 
     alert.alert({ requirementId: 'REQ-1', title: '【实施链暂停】REQ-1', content: '失败原因：[workflow] 产出为空' })
 
-    const text = delivered[0]!.text
-    // 指令壳：指挥来源窗口 LLM 立即弹框，且选项固定三处置
-    expect(text).toContain('ask_user_question')
-    expect(text).toContain('重跑该卡')
-    expect(text).toContain('退回上游重新描述需求')
-    expect(text).toContain('取消该任务')
-    // 告警事实仍随指令壳带上（题干素材：发生了什么/为什么停）
-    expect(text).toContain('【实施链暂停】REQ-1')
-    expect(text).toContain('产出为空')
-    // 宿主日志只记原始正文（排障），不含指令段
+    // FailureAlert.ts:21-38（f3c99c8 有意删 deliver / popupInstructionFor）：
+    // ① 第一次 log = 原始正文（排障用），不含任何指令壳；
+    // ② 第二次 log = 含窗口信息的调试行（`windowFor` 查得来源窗口时补记）。
+    expect(logged).toHaveLength(2)
     expect(logged[0]).toContain('【实施链暂停】REQ-1')
+    expect(logged[0]).toContain('产出为空')
     expect(logged[0]).not.toContain('ask_user_question')
+    expect(logged[1]).toContain('REQ-1')
+    expect(logged[1]).toContain('w-abc')
+    expect(logged[1]).toContain('窗口')
+    expect(logged[1]).not.toContain('ask_user_question')
   })
 
   it('来源窗口未知 → 只写日志：不投递、不抛（告警不静默丢）', () => {

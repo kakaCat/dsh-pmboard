@@ -28,7 +28,7 @@ import { PANEL_DAG_CANVAS_ID } from './views/dag-view.js'
 import { readDagViewState, writeDagViewState, clearDagViewState } from './dag/view-state.js'
 import { hydrateNodePanel } from './panel-hydrate.js'
 import { fetchState } from './api.ts'
-// 需求文档位置（2026-10-06）：面板的「📂 文档位置」必须显示**台账里那条**（立项四问选的），
+// 需求文档位置（2026-10-06）：面板的「📂 文档位置」必须显示**台账里那条**（立项弹框选的），
 // 不再是本组件/渲染器自己拼的 docs/requirements/<id>/。
 import { fetchDocLocation, type DocLocationView } from './req-doc-location.ts'
 import type { StageKey } from '../shared/protocol.ts'
@@ -52,7 +52,7 @@ interface ProgressPayload {
   requirement?: {
     id?: string; title?: string; description?: string; status?: string
     category?: string | null; blocked?: boolean; paused?: boolean
-    /** REQ-260923134706-e72f / FR-2：立项四问之一的提示词难度（老记录无字段 → null，面板省略该行） */
+    /** REQ-260923134706-e72f / FR-2：立项弹框中的提示词难度（老记录无字段 → null，面板省略该行） */
     promptDifficulty?: string | null
     sourceSessionId?: string | null; updatedAt?: number
     /**
@@ -110,7 +110,7 @@ export function RequirementProgressAction(props: RequirementProgressProps): Reac
   const [entryError, setEntryError] = useState<string>('')
   /**
    * 需求文档位置（2026-10-06 用户现场：面板的「📂 文档位置」写死相对路径，与实际落盘的
-   * 绝对路径对不上）。取值来自台账 `docBasePath`（立项四问里用户选的那个），
+   * 绝对路径对不上）。取值来自台账 `docBasePath`（立项弹框里用户选的那个），
    * 渲染与绝对化见 `req-doc-location`。取不到 → undefined，渲染方走旧口径。
    */
   const [docDir, setDocDir] = useState<DocLocationView | undefined>(undefined)

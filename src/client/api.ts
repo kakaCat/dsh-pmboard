@@ -4,7 +4,7 @@
  *
  * @module dsh-pmboard/client/api
  */
-import type { BoardState, RequirementRecord } from './types.ts'
+import type { BoardPendingConfirm, BoardState, RequirementRecord } from './types.ts'
 import type {
   DagResponse,
   DialogueResponse,
@@ -210,11 +210,43 @@ export function pickStoragePath(): Promise<{ ok: boolean; path?: string; cancell
  *
  * REQ-261003215944-9e04 FR-11：带上**当前会话 id**——服务端据此把读根解析成该会话的工作区，
  * 否则（不带）服务端只知道插件宿主的工作目录，除需求目录外的文档一律被判不存在。
+ *
+ * REQ-261007223647-da5d t10（FR-5）：`pending_confirms` **宽松解析**——旧服务端没有这个键
+ * （新前端 + 旧服务端不白屏），缺键/非数组一律按 `[]`（= 没有票等在门口）；有票则逐条
+ * 只保留形状正确的（服务端是唯一生产者，但坏数据不该让整块看板崩）。
  */
-export const fetchState = (sessionId?: string): Promise<BoardState> =>
-  get<BoardState>(BASE + '/' + (sessionId !== undefined && sessionId.length > 0
+export const fetchState = async (sessionId?: string): Promise<BoardState> => {
+  const state = await get<BoardState>(BASE + '/' + (sessionId !== undefined && sessionId.length > 0
     ? '?session=' + encodeURIComponent(sessionId)
     : ''))
+  return { ...state, pending_confirms: parsePendingConfirms(state.pending_confirms) }
+}
+
+/** pending_confirms 的宽松解析（导出供用例直测；口径单点，t10）。 */
+export function parsePendingConfirms(raw: unknown): BoardPendingConfirm[] {
+  if (!Array.isArray(raw)) return []
+  const out: BoardPendingConfirm[] = []
+  for (const item of raw) {
+    if (item === null || typeof item !== 'object') continue
+    const t = item as Record<string, unknown>
+    if (typeof t.ticket !== 'string' || t.ticket.length === 0) continue
+    if (typeof t.requirement_id !== 'string' || t.requirement_id.length === 0) continue
+    if (t.target !== 'artifact' && t.target !== 'plan') continue
+    if (typeof t.created_at !== 'number') continue
+    out.push(item as BoardPendingConfirm)
+  }
+  return out
+}
+
+/**
+ * 重投挂起确认（REQ-261007223647-da5d t4 的服务端端点 · FR-1）。
+ *
+ * **如实语义**：这只是"问一句这张票还在不在等"——`still-open` = 票还有效（并给出两条真能走的路）；
+ * `gone` = 已失效；`unavailable` = 读口未装配。绝不伪造成"已重新弹框"。
+ */
+export function repostConfirm(input: { id: string; ticket: string }): Promise<{ action: string; ticket?: string; hint?: string }> {
+  return post(BASE + '/confirm/repost', input)
+}
 
 /**
  * 详情按需（B12 阶段⑥-① / REQ-261002161439-277d t-05a56b）。

@@ -10,12 +10,19 @@
 import type { UseCaseDeps } from '../ports.js'
 import { canWrite, firstWritableBound, seatOfSummary } from '../../application/internal/window.js'
 import { boundSummariesOf } from '../internal/binding-read.js'
-import { asReqStatus, normalizeText } from '../../shared/protocol.js'
+import { asReqStatus, normalizeText, type TaskRecord } from '../../shared/protocol.js'
 import { assertArtifactGates } from '../internal/artifact-gates.js'
 import { taskCompletenessGap } from '../internal/task-completeness.js'
 // 回退方向判定（FR-1）与回退编排单点（FR-3/FR-4/FR-5）：两侧入口共用同一处实现。
 import { isRollback } from '../../domain/requirement/RollbackSpec.js'
 import { applyRequirementRollback, recordRollbackMaterialized, resetInjectionAfterRollback } from '../internal/rollback.js'
+// REQ-261008011118-defe BUG-3（DD-3）：回退两段写的**队列补偿单点**（留档 / 归还 / 失败响亮）。
+import {
+  compensateRollbackQueue as compensateQueue,
+  raiseRollbackCompensationFailed as raiseCompensationFailedAt,
+  rememberRollbackPreImage,
+  type CompensationOutcome,
+} from '../internal/rollback-compensation.js'
 import { captureSnapshot, transitionRequirement } from '../internal/token-usage.js'
 import {
   reject, agentIdFromExec, requireLiveDriver, mapAgentError, gateQuestionCard,
@@ -175,9 +182,18 @@ export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, e
   // ── 回退分支（REQ-261003204149-1e80 FR-1/FR-3/FR-4）──────────────────────
   // 先在**副本**上把编排算出来：编排「先算卡计划、后改需求」，抛错时真 req 一个字段未动。
   // 顺序纪律与既有 I-11 同款：**任务先写、需求后写**（队列与需求台账是两个存储）。
+  //
+  // REQ-261008011118-defe BUG-3（DD-3，2026-10-08）——I-11 顺序**不动**（任务先写是对的：
+  // 任务写失败 ⇒ 需求未动，干净）；缺的是「第二段失败时对第一段的归还」。故此处采集
+  // **补偿两件套**：① 本轮物化的重做卡 id（撤销用）；② 队列写面卡的本前快照 preImage
+  // （在覆写之前逐卡留档）——需求侧未落账时据此把队列恢复成回退前的样子。
   const rollbackPre = isRollback(from, to)
     ? applyRequirementRollback(structuredClone(req0), reqTasks, from, to, at, actor, rollbackIds, rollbackReason)
     : undefined
+  const createdDraftIds: string[] = rollbackPre !== undefined
+    ? rollbackPre.taskPlan.reworkDrafts.map(t => t.id)
+    : []
+  const preImage = new Map<string, TaskRecord>()
   if (rollbackPre !== undefined) {
     // ① 任务先写：物化重做卡 → 取消旧卡（两者都是队列写）
     if (rollbackPre.taskPlan.reworkDrafts.length > 0) {
@@ -193,9 +209,17 @@ export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, e
         for (const qt of queueTasks) {
           const c = canceledById.get(qt.id)
           if (c === undefined) continue
+          // 补偿依据（BUG-3 / DD-3）：**覆写之前**留一份本前快照（同一快照里读，不会滞后）。
+          rememberRollbackPreImage(preImage, qt)
           qt.status = c.status
           qt.revisions = c.revisions
           qt.updatedAt = c.updatedAt
+          // 字段面与 `transitionTask`（唯一收敛点）同源（BUG-3 补）：状态事件与 version 必须落盘，
+          // 否则「复位子卡看不到原地复位事件」「取消卡没有 canceled 事件」「两类卡 version 不 +1」
+          // ——那正是本次要修的形态（计划里写了、白名单丢了）。
+          if (c.statusHistory !== undefined) qt.statusHistory = c.statusHistory
+          if (c.version !== undefined) qt.version = c.version
+          if (c.updatedBy !== undefined) qt.updatedBy = c.updatedBy
           // 取消留痕（REQ-261005193546-1b1a FR-3）：计划副本上的三字段必须**逐键搬过来**，
           // 否则等于「plan 上写了、落盘时按白名单丢了」（设计 §1.3 的静默不落盘形态）。
           // 逐键 `!== undefined` 判定（不是无条件赋值）：本 map 同时含「子卡原地复位」副本
@@ -210,8 +234,29 @@ export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, e
     }
   }
 
+  /**
+   * 队列补偿（BUG-3 / DD-3）——实现单点在 `internal/rollback-compensation.ts`（本用例只装配）。
+   * 触发条件（两个都要）：需求侧抛错；或需求侧走成 no-op（回调因 `req.status !== from`
+   * 返回 undefined ⇒ 漂移）。
+   */
+  const compensateRollbackQueue = (): Promise<CompensationOutcome> =>
+    compensateQueue({ deps, requirementId: req0.id, createdDraftIds, preImage })
+
+  /** 补偿失败时的响亮处置：需求台账留痕 + 抛 REQBOARD_ROLLBACK_COMPENSATION_FAILED。 */
+  const raiseCompensationFailed = (cause: string, detail: string): Promise<never> =>
+    raiseCompensationFailedAt({
+      deps,
+      requirementId: req0.id,
+      to,
+      cause,
+      detail,
+      affected: [...new Set([...createdDraftIds, ...preImage.keys()])],
+    })
+
   // 用例边界：domain 状态机抛 human_gate，agent 工具的传输码是 REQBOARD_HUMAN_GATE（FR-7 契约）。
-  const result = await mutateIfPresent(requirementStoreOf(deps), req0.id, (req) => {
+  let result: Awaited<ReturnType<typeof mutateIfPresent>>
+  try {
+    result = await mutateIfPresent(requirementStoreOf(deps), req0.id, (req) => {
     if (req.status !== from) return undefined
     // mutate 内复查（防并发漂移）
     const gate = assertArtifactGates(req, req.status, to)
@@ -251,6 +296,33 @@ export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, e
     })
     return { changed: true }
   }).catch(mapAgentError)
+  } catch (err) {
+    // 需求侧**未落账**（写失败 / 域校验抛错）⇒ 归还第一段（BUG-3 / DD-3）。
+    // 顺序契约不动：任务先写仍然是对的（任务写失败 ⇒ 需求未动，干净）；补偿是第二段的对价。
+    const comp = await compensateRollbackQueue()
+    if (!comp.ok) {
+      return await raiseCompensationFailed((err as Error).message ?? String(err), comp.detail)
+    }
+    // 补偿成功：把「队列已归还」写进抛出消息（mapAgentError 只映射 human_gate，其余原样抛）
+    if (err instanceof Error) err.message = err.message + '——' + comp.detail
+    mapAgentError(err)
+  }
+  // 漂移（并发改走）：需求回调因 `req.status !== from` no-op（`changed !== true`）——
+  // 队列已写、需求没退，同样必须归还（静默放过 = 留一个半成品台账）。
+  if (rollbackPre !== undefined && (result === undefined || result.changed !== true)) {
+    const comp = await compensateRollbackQueue()
+    if (!comp.ok) {
+      return await raiseCompensationFailed('需求回退未落账（记录被并发改动，回调 no-op）', comp.detail)
+    }
+    throw Object.assign(
+      new Error(fmt(
+        'reqboard_move 未执行：需求回退未落账——期望当前状态为 {from}，但记录已被并发改动（回调 no-op）；'
+        + '{detail}（REQBOARD_CONFLICT）',
+        { from, detail: comp.detail },
+      )),
+      { code: 'REQBOARD_CONFLICT' },
+    )
+  }
   const changed = result?.requirement
   // REQ-261007100513-6749 t3（FR-2）：阶段**已落账** → 通知尾部通道刷新易变段。
   // 这里**不传 kind**（= 状态行 / 当前任务块 / 阶段纪律三态全量刷新），两个理由：

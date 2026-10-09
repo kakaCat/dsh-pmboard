@@ -18,7 +18,7 @@
 import { designDocPolicyFrom, effectiveDesignDocs, type DesignDocPolicy } from './category-doc-sets.js'
 import { parseDocument } from './doc-parse.js'
 // 需求文档位置唯一解析点（2026-10-06）：本模块原先把 `docs/requirements/<id>/…` 拼死，
-// 于是换过文档位置（立项四问选了 docs/rfcs/ 之类）的需求在这里读到/列出的是**另一个目录**。
+// 于是换过文档位置（立项弹框里选了 docs/rfcs/ 之类）的需求在这里读到/列出的是**另一个目录**。
 import { requirementDocDirOf, requirementDocPathOf, type DocLocationInput } from '../../domain/requirement/DocLocation.js'
 import type { DesignDocRegistration, DesignDocStatus, RequirementRecord } from '../../shared/protocol.js'
 

@@ -1,44 +1,20 @@
 /**
  * RequirementRepository
- * 
- * 需求仓储：提供运行态读写方法（checkpoint 管理）。
+ *
+ * 需求仓储：需求记录的读写（内存实现用于测试与简单场景）。
+ *
+ * REQ-261008011118-defe BUG-1（DD-1）：原先还带「运行态 / checkpoint」三方法
+ * （`updateRunState` / `readCheckpoint` / `clearCheckpoint`）——它们在**生产代码零调用方**，
+ * 与 `CheckpointManager` 同一族死代码（run 进度改由 `advance.runId/lockAt/history` 表达）。
+ * 故随死字段一起删除，本接口收敛为「取记录 / 存记录」两件事。
  */
 
 import type { RequirementRecord } from '../client/types.js'
-import type { Checkpoint } from '../domain/checkpoint.js'
 
 /**
  * 需求仓储接口
  */
 export interface RequirementRepository {
-  /**
-   * 更新运行状态
-   * 
-   * @param reqId 需求ID
-   * @param runState 运行状态
-   */
-  updateRunState(reqId: string, runState: {
-    runId?: string
-    stepIndex?: number
-    currentSubtaskId?: string
-    heartbeatAt?: number
-  }): Promise<void>
-  
-  /**
-   * 读取 checkpoint
-   * 
-   * @param reqId 需求ID
-   * @returns checkpoint 或 null
-   */
-  readCheckpoint(reqId: string): Promise<Checkpoint | null>
-  
-  /**
-   * 清理 checkpoint
-   * 
-   * @param reqId 需求ID
-   */
-  clearCheckpoint(reqId: string): Promise<void>
-  
   /**
    * 获取需求记录
    * 
@@ -60,56 +36,6 @@ export interface RequirementRepository {
  */
 export class InMemoryRequirementRepository implements RequirementRepository {
   private requirements = new Map<string, RequirementRecord>()
-  
-  async updateRunState(reqId: string, runState: {
-    runId?: string
-    stepIndex?: number
-    currentSubtaskId?: string
-    heartbeatAt?: number
-  }): Promise<void> {
-    const req = this.requirements.get(reqId)
-    if (!req) {
-      throw new Error(`Requirement ${reqId} not found`)
-    }
-    
-    this.requirements.set(reqId, {
-      ...req,
-      advance: {
-        ...(req.advance || {}),
-        ...runState
-      }
-    })
-  }
-  
-  async readCheckpoint(reqId: string): Promise<Checkpoint | null> {
-    const req = this.requirements.get(reqId)
-    if (!req || !req.advance || !req.advance.runId) {
-      return null
-    }
-    
-    return {
-      runId: req.advance.runId,
-      currentSubtaskId: req.advance.currentSubtaskId,
-      // 两个时间/序号字段在 AdvanceState 上是可选的（存量记录缺省）；Checkpoint 要求必填，
-      // 故取安全缺省：缺省即「第 0 步 / 无心跳（极旧）」——只在退化记录上生效，正常写入路径始终有值。
-      stepIndex: req.advance.stepIndex ?? 0,
-      heartbeatAt: req.advance.heartbeatAt ?? 0
-    }
-  }
-  
-  async clearCheckpoint(reqId: string): Promise<void> {
-    const req = this.requirements.get(reqId)
-    if (!req || !req.advance) {
-      return
-    }
-    
-    const { runId, currentSubtaskId, stepIndex, heartbeatAt, ...restAdvance } = req.advance
-    
-    this.requirements.set(reqId, {
-      ...req,
-      advance: restAdvance
-    })
-  }
   
   async getRequirement(reqId: string): Promise<RequirementRecord | null> {
     return this.requirements.get(reqId) || null

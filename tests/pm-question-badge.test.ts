@@ -3,7 +3,7 @@
  *
  * 口径（design/interfaces.md I-7、use-cases.md UC-5）：
  *   ① pm 侧构造的**每个** AskQuestion.header 以固定前缀 `📋 PM · ` 开头——
- *      ask_confirm / accept_sheet（逐项 + 最终）/ 立项四问 / 失败处置四处构造点；
+ *      ask_confirm / accept_sheet（逐项 + 最终）/ 立项弹框 / 失败处置四处构造点；
  *   ② 标志是**代码注入**（domain/text/pm-badge.ts 唯一字面量处），不靠 agent 在正文写 emoji：
  *      正文（question）保持原文、不加前缀；宿主原生 `ask_user_question` 不经本函数、不带前缀。
  *
@@ -53,23 +53,22 @@ describe('pmHeader：来源标志唯一注入点', () => {
 })
 
 describe('TC-14 四处 pm 弹框 header 均带标志', () => {
-  it('立项五问（两段合计 5 问）header 全部带前缀，题干不变', () => {
-    // 明细段要求工作区选项（`sessionCwd` / `hostCwd`），与本仓其它调用点同形。
+  it('立项弹框逐问（两段合计 4 问，事实源 CAPTURE_QUESTION_IDS）header 全部带前缀，题干不变', () => {
+    // 明细段要求工作区根（`sessionCwd` / `hostCwd`：文件落点选项给绝对路径预览），与本仓其它调用点同形。
     const WS_OPTS = { sessionCwd: '/proj/session', hostCwd: '/proj/host' }
     const intent = buildCaptureIntentQuestions(['候选 A'])
     const detail = buildCaptureDetailQuestions(WS_OPTS)
     const all = buildCaptureQuestions(['候选 A'], WS_OPTS)
-    // 权威口径 = 5 问（多"工作区"，见 src/application/internal/capture-mapping.ts 与
-    // tests/capture-tool.test.ts 的 id 顺序断言）；角标与问题必须一一对应。
-    expect(all).toHaveLength(5)
-    expect([...intent, ...detail]).toHaveLength(5)
-    expect(all.map(q => q.id)).toEqual(['name', 'category', 'difficulty', 'doc_location', 'workspace'])
+    // 权威口径 = 4 问（t1 收口：文档位置与工作区合并为「文件落点」），见
+    // src/application/internal/capture-mapping.ts 与 tests/capture-tool.test.ts 的 id 顺序断言。
+    expect(all).toHaveLength(4)
+    expect([...intent, ...detail]).toHaveLength(4)
+    expect(all.map(q => q.id)).toEqual(['name', 'category', 'difficulty', 'location'])
     expect(all.map(q => q.header)).toEqual([
-      pmHeader('需求名称'),
+      pmHeader('立项确认'),
       pmHeader('需求类型'),
-      pmHeader('提示词难度'),
-      pmHeader('需求文档位置'),
-      pmHeader('工作区'),
+      pmHeader('算力档位'),
+      pmHeader('文件落点'),
     ])
     for (const q of all) expect(q.header!.startsWith(PM_BADGE_PREFIX)).toBe(true)
     // 正文不注入标志（标志在 header，不在 question）

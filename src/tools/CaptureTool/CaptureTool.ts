@@ -2,7 +2,7 @@
  * reqboard_capture 工具壳（REQ-e3b6a0 t8 / FR-7）——三段式薄壳：prompt + 元数据/入参/输出
  * + execute 委托 application 用例（CaptureRequirement）。**不含任何领域判定**（规则只在 domain）。
  *
- * 为什么参数是"无（可选补充）"：四问题目由用例内部构造（口径与 schema 同源），
+ * 为什么参数是"无（可选补充）"：题目由用例内部构造（口径与 schema 同源），
  * 调用方只可补充分类上下文——候选名称（title_options）与摘要/依据，不参与取值判定。
  *
  * @module dsh-pmboard/tools/CaptureTool
@@ -12,7 +12,7 @@ import { LIMITS } from '../../domain/limits.js'
 import type { UseCaseDeps } from '../../application/ports.js'
 import { captureRequirement } from '../../application/use-cases/CaptureRequirement.js'
 import { CAPTURE_ANSWER_KEYS, type CaptureAnswerKey } from '../../application/internal/capture-mapping.js'
-import { renderSmart } from '../shared.js'
+import { LONG_TEXT_STYLE_NOTE, renderSmart } from '../shared.js'
 import { captureSummary } from '../render-summaries.js'
 import { CAPTURE_PROMPT } from './prompt.js'
 
@@ -23,12 +23,12 @@ import { CAPTURE_PROMPT } from './prompt.js'
 const ANSWER_KEY_DESCRIPTIONS: Record<CaptureAnswerKey, string> = {
   title: '用户确认的需求名称',
   category: '用户确认的需求类型',
-  difficulty: '用户确认的提示词难度',
-  docLocation: '用户确认的文档位置',
-  // 第四问（工作区）的作答原样透传。**必须声明**：mapCaptureAnswers 的 answers 里就带
-  // 这个键，而 schema 是 additionalProperties:false ⇒ 漏声明的后果是每次立项都报
-  // `value.answers.workspace is not a declared property`（2026-10-03 实测，REQ-261003204143-3219）。
-  workspace: '用户确认的工作区（哨兵值或自定义绝对路径）',
+  difficulty: '用户确认的算力档位（提示词难度）',
+  // 「文件落点」那一问的作答原样透传（绝对路径预览 / 自定义路径）。**必须声明**：mapCaptureAnswers
+  // 的 answers 里就带这个键，而 schema 是 additionalProperties:false ⇒ 漏声明的后果是每次立项都报
+  // `value.answers.<键> is not a declared property`（2026-10-03 实测，REQ-261003204143-3219：
+  // 当时漏的是 workspace；2026-10-07 文档位置与工作区两问合并，键名改 location）。
+  location: '用户确认的文件落点（拼好的绝对路径 / 自定义路径）',
 }
 
 export function defineCaptureTool(deps: UseCaseDeps) {
@@ -43,7 +43,7 @@ export function defineCaptureTool(deps: UseCaseDeps) {
       },
       summary: {
         type: 'string',
-        description: '工作摘要（可选，≤4000 字符；将作为需求描述底稿，留空则用名称兜底）；写法：每条短句（建议 ≤60 字）；需引号用「」避免半角双引号；文本过大拆成多次调用',
+        description: '工作摘要（可选，≤4000 字符；将作为需求描述底稿，留空则用名称兜底）；' + LONG_TEXT_STYLE_NOTE,
       },
       on_window_bound: {
         type: 'string',

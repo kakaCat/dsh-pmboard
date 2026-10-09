@@ -18,6 +18,7 @@
  * @module dsh-pmboard/tests/rtm-health-legacy
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -100,6 +101,10 @@ describe('RTM 健康检查：原型节适用性判据（t9）', () => {
     mkdirSync(stateDir, { recursive: true })
   })
 
+  // REQ-261008020617-088f RF-3：state 读写经 HostFsPort；本文件把 state 隔离到临时目录
+  // （docs 与 state 同根，这里显式传 stateRoot 保持隔离，不读真实工作区的 state）。
+  const host = new FileHostFs()
+
   afterEach(() => {
     rmSync(root, { recursive: true, force: true })
   })
@@ -110,7 +115,7 @@ describe('RTM 健康检查：原型节适用性判据（t9）', () => {
     writeBrainstormingYaml(root, YAML_WITHOUT_PROTOTYPES)
     writeFileSync(join(root, 'docs', 'requirements', REQ_ID, 'rtm-lifecycle.yml'), 'metadata:\n  stage: lifecycle\n')
 
-    const health = checkRTMHealth(root, stateDir, req)
+    const health = checkRTMHealth(host, root, req, { stateRoot: stateDir })
 
     expect(health.healthy).toBe(true)
     expect(health.exempted).toBe('legacy')
@@ -125,7 +130,7 @@ describe('RTM 健康检查：原型节适用性判据（t9）', () => {
     writeBrainstormingYaml(root, YAML_WITHOUT_PROTOTYPES)
     writeFileSync(join(root, 'docs', 'requirements', REQ_ID, 'rtm-lifecycle.yml'), 'metadata:\n  stage: lifecycle\n')
 
-    const health = checkRTMHealth(root, stateDir, req, { prototypeRulesSince: 1_000 })
+    const health = checkRTMHealth(host, root, req, { prototypeRulesSince: 1_000, stateRoot: stateDir })
 
     expect(health.healthy).toBe(false)
     expect(health.missing_files).toEqual([]) // 文件都在，红的是内容（静默降级）
@@ -141,7 +146,7 @@ describe('RTM 健康检查：原型节适用性判据（t9）', () => {
     writeBrainstormingYaml(root, YAML_WITH_PROTOTYPES)
     writeFileSync(join(root, 'docs', 'requirements', REQ_ID, 'rtm-lifecycle.yml'), 'metadata:\n  stage: lifecycle\n')
 
-    const health = checkRTMHealth(root, stateDir, req, { prototypeRulesSince: 1_000 })
+    const health = checkRTMHealth(host, root, req, { prototypeRulesSince: 1_000, stateRoot: stateDir })
 
     expect(health.healthy).toBe(true)
     expect('gaps' in health).toBe(false)
@@ -154,7 +159,7 @@ describe('RTM 健康检查：原型节适用性判据（t9）', () => {
     writeBrainstormingYaml(root, YAML_WITHOUT_PROTOTYPES)
     writeFileSync(join(root, 'docs', 'requirements', REQ_ID, 'rtm-lifecycle.yml'), 'metadata:\n  stage: lifecycle\n')
 
-    const health = checkRTMHealth(root, stateDir, req, { prototypeRulesSince: 1_000 })
+    const health = checkRTMHealth(host, root, req, { prototypeRulesSince: 1_000, stateRoot: stateDir })
 
     expect(health.healthy).toBe(true)
     expect('gaps' in health).toBe(false)
@@ -167,7 +172,7 @@ describe('RTM 健康检查：原型节适用性判据（t9）', () => {
     writeBrainstormingYaml(root, '这不是 YAML 对象')
     writeFileSync(join(root, 'docs', 'requirements', REQ_ID, 'rtm-lifecycle.yml'), 'metadata:\n  stage: lifecycle\n')
 
-    const health = checkRTMHealth(root, stateDir, req, { prototypeRulesSince: 1_000 })
+    const health = checkRTMHealth(host, root, req, { prototypeRulesSince: 1_000, stateRoot: stateDir })
 
     expect(health.healthy).toBe(true)
     expect('gaps' in health).toBe(false)
@@ -178,7 +183,7 @@ describe('RTM 健康检查：原型节适用性判据（t9）', () => {
     writeReqDoc(root, '[frontend]')
     writeFileSync(join(root, 'docs', 'requirements', REQ_ID, 'rtm-lifecycle.yml'), 'metadata:\n  stage: lifecycle\n')
 
-    const health = checkRTMHealth(root, stateDir, req, { prototypeRulesSince: 1_000 })
+    const health = checkRTMHealth(host, root, req, { prototypeRulesSince: 1_000, stateRoot: stateDir })
 
     expect(health.healthy).toBe(false)
     expect(health.missing_files).toEqual(['rtm-brainstorming.yml'])

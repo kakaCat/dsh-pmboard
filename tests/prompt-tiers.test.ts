@@ -4,8 +4,8 @@
  * 断言（逐条对应 t7 验收口径）：
  *   ① 六节点 light 与 heavy 解析出的文本**不同**（难度轴生效）；
  *   ② 每节点 light 的 charCount < heavy 的 charCount；
- *   ③ brainstorming/heavy 与 vendor 原文**逐字一致**（byte-level，含空白换行）；
- *   ④ 其余 4 个 vendor 主 skill 的 heavy 镜像同样逐字一致（防漂移）；
+ *   ③ brainstorming/heavy 为本仓自写完整档（2026-10-08 裁定：vendor 流程与本仓阶段边界冲突）；
+ *   ④ VENDOR_MAIN_SKILLS 映射内 3 个 vendor 主 skill 的 heavy 镜像逐字一致（防漂移）；
  *   ⑤ light **不含** heavy 独有要素关键词（省 token 的来源）；
  *   ⑥ 注入顺序固定三段：vendor 原文 → overrides（floor）→ common/iron-rules；
  *   ⑦ heavy 主 skill 原文不裁（预算极小时 floor 仍保留、结构化报超限）；
@@ -30,9 +30,12 @@ const FRAGMENTS_DIR = join(SRC, 'domain/prompt/fragments')
 
 /** heavy 主 skill 的唯一映射（与 scripts/inline-prompt-fragments.mjs 的 VENDOR_MAIN_SKILLS 同源）。 */
 const VENDOR_MAIN_SKILLS: Readonly<Record<string, string>> = {
-  brainstorming: 'brainstorming',
+  // 2026-10-08 用户裁定：brainstorming 移除（vendor「澄清→提方案→分段呈现设计」流程与本仓
+  // 阶段边界冲突——设计属 design 节点；heavy 改本仓自写完整档，vendor 原文留档不注入）
   // 2026-09-21 用户裁定：design 移除（设计阶段只写设计文档，heavy 为自写档）
-  implementing: 'executing-plans',
+  // 2026-10-08 用户裁定（REQ-261008190515-5212）：implementing 移除（vendor 实施阶段主 skill
+  // v6.4.2 改为 inline 专版、明说「不派子代理」，与本仓任务卡 + 子代理模式相冲；heavy 改本仓
+  // 自写完整档，原镜像关系见 vendor/superpowers/ATTRIBUTION.md §3）
   accepting: 'verification-before-completion',
   archived: 'finishing-a-development-branch',
 }
@@ -42,7 +45,7 @@ const HEAVY_ONLY: Readonly<Record<PromptStage, readonly string[]>> = {
   brainstorming: ['Three Paths', 'YAGNI', 'Red Flags', 'Spike', 'Bounded', 'Architectural'],
   design: ['设计文档集', '接口与数据契约先定死', '不写任务表'],
   decomposing: ['变更盘点', '批次与依赖', '边界校验'],
-  implementing: ['Load plan, review critically', 'When to Stop and Ask for Help'],
+  implementing: ['The Task Loop', 'Common Rationalizations'],
   accepting: ['The Iron Law', 'Rationalization Prevention'],
   archived: ['Present Options', 'Common Rationalizations'],
 }
@@ -90,27 +93,31 @@ describe('t7 ① 六节点 light/heavy 分化', () => {
   }
 })
 
-describe('t7 ③ brainstorming/heavy 与 vendor 原文逐字一致（byte-level）', () => {
-  it('分片 brainstorming/heavy 的文本 === vendor 原文（含空白换行，逐字节）', () => {
-    const vendor = vendorText('brainstorming')
-    const fragment = fragmentById('brainstorming/heavy')
-    expect(fragment.text).toBe(vendor)
-    expect(fragment.text.length).toBe(vendor.length)
-    expect(Buffer.compare(Buffer.from(fragment.text, 'utf8'), Buffer.from(vendor, 'utf8'))).toBe(0)
-    // 来源锚点（对照结论 §0：origin/main b36e082 该文件 250 行 / 15,456 字节）
-    expect(Buffer.byteLength(vendor, 'utf8')).toBe(15456)
-    expect(vendor.split('\n').length - 1).toBe(250)
+describe('t7 ③ brainstorming/heavy 为本仓自写完整档（2026-10-08 裁定）', () => {
+  it('brainstorming 不在 vendor 映射里，且其 heavy 含自写完整档要素', () => {
+    expect(Object.keys(VENDOR_MAIN_SKILLS)).not.toContain('brainstorming')
+    const heavy = fragmentById('brainstorming/heavy')
+    // 自写完整档要素：保留 vendor 纪律骨架 + 本仓阶段边界（设计归 design 节点）
+    for (const kw of ['自写完整档', 'Three Paths', 'YAGNI', 'Red Flags', 'requirement.md', 'design 节点']) {
+      expect(heavy.text, 'brainstorming heavy 应含「' + kw + '」').toContain(kw)
+    }
+    // 与任何 vendor 原文都不相同（不是 vendor 拷贝）
+    for (const skill of ['brainstorming', ...Object.values(VENDOR_MAIN_SKILLS)]) {
+      expect(heavy.text).not.toBe(vendorText(skill))
+    }
+    // vendor 原文仍留档（来源与许可可追溯），只是不再注入
+    expect(vendorText('brainstorming')).toContain('Brainstorming')
   })
 
-  it('brainstorming/heavy 解析文本以 vendor 原文为前缀（原文在前，overrides 在后）', () => {
-    const vendor = vendorText('brainstorming')
+  it('brainstorming/heavy 解析文本以完整档为前缀（主档在前，overrides 在后）', () => {
+    const heavy = fragmentById('brainstorming/heavy')
     const resolved = resolveStagePrompt({ stage: 'brainstorming', difficulty: 'heavy' }).text
-    expect(resolved.startsWith(vendor)).toBe(true)
-    expect(resolved.length).toBeGreaterThan(vendor.length)
+    expect(resolved.startsWith(heavy.text)).toBe(true)
+    expect(resolved.length).toBeGreaterThan(heavy.text.length)
   })
 })
 
-describe('t7 ④ heavy 主 skill 镜像逐字一致（其余 4 节点）', () => {
+describe('t7 ④ heavy 主 skill 镜像逐字一致（映射内 3 节点）', () => {
   for (const [stage, skill] of Object.entries(VENDOR_MAIN_SKILLS)) {
     it(stage + '/heavy === vendor/' + skill + '/SKILL.md', () => {
       const vendor = vendorText(skill)
@@ -124,8 +131,8 @@ describe('t7 ④ heavy 主 skill 镜像逐字一致（其余 4 节点）', () =>
     expect(existsSync(p), 'ATTRIBUTION.md 缺失').toBe(true)
     const text = readFileSync(p, 'utf8')
     expect(text).toContain('https://github.com/obra/superpowers.git')
-    expect(text).toContain('v6.3.0')
-    expect(text).toContain('b36e0829c6d0140e93cfef2ca599b1b07d4a7797')
+    expect(text).toContain('v6.4.2')
+    expect(text).toContain('8ca22dba9a94f28898bbce59f2537ff4d87c747d')
     expect(text).toContain('MIT')
     expect(text).toContain('抓取时点')
   })
@@ -144,8 +151,9 @@ describe('t7 ⑤ light 不含 heavy 独有要素关键词', () => {
   }
 })
 
-describe('t7 ⑥ 注入顺序固定三段：vendor 原文 → overrides → common/iron-rules', () => {
-  for (const stage of Object.keys(VENDOR_MAIN_SKILLS) as PromptStage[]) {
+describe('t7 ⑥ 注入顺序固定三段：主档（vendor 原文或自写完整档）→ overrides → common/iron-rules', () => {
+  // brainstorming 虽不在 vendor 映射（自写完整档），三段顺序同样锁定
+  for (const stage of ['brainstorming', ...Object.keys(VENDOR_MAIN_SKILLS)] as PromptStage[]) {
     it(stage + '：heavy → overrides → iron-rules 的 fragmentIds 顺序正确', () => {
       const r = resolveStagePrompt({ stage, difficulty: 'heavy' })
       const iHeavy = r.fragmentIds.indexOf(stage + '/heavy')
@@ -168,13 +176,13 @@ describe('t7 ⑥ 注入顺序固定三段：vendor 原文 → overrides → comm
 })
 
 describe('t7 ⑦ heavy 主 skill 原文不裁（预算极小时 floor 保留 + 结构化超限）', () => {
-  it('极小预算下 brainstorming/heavy 的原文仍在 fragmentIds，且返回 overBudget', () => {
+  it('极小预算下 brainstorming/heavy 的主档仍在 fragmentIds，且返回 overBudget', () => {
     const r = resolveStagePrompt({ stage: 'brainstorming', difficulty: 'heavy', budget: 5 })
     expect(r.fragmentIds).toContain('brainstorming/heavy')
     expect(r.fragmentIds).toContain('brainstorming/heavy/overrides')
     expect(r.fragmentIds).toContain('common/iron-rules')
     expect(r.overBudget?.reason).toBe('floor-exceeds-budget')
-    expect(r.text.startsWith(vendorText('brainstorming'))).toBe(true)
+    expect(r.text.startsWith(fragmentById('brainstorming/heavy').text)).toBe(true)
   })
 
   it('全部 light/heavy 的节点内容与铁律都是 floor（永不裁）', () => {

@@ -12,6 +12,7 @@
  */
 import { makeTestStore } from './application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { taskStoreAt } from './queue/route-deps.js'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -48,6 +49,8 @@ function makeDeps(ask: AskFn): UseCaseDeps & { pendingConfirms: PendingConfirmRe
     store: store,
     taskStore: taskStoreAt(dir),
     docs: new FileDocRepository({ workspaceRoot: dir }),
+    // REQ-261008020617-088f RF-3：hostFs 必填；缺它 /state 的 rtm_health 会静默缺失
+    hostFs: new FileHostFs(),
     clock: { now },
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({}),
@@ -183,7 +186,7 @@ describe('中止 / 取消（FR-4）', () => {
     expect(out.interrupted).toBe(true)
     expect(typeof out.ticket).toBe('string')
     expect(String(out.ticket).startsWith('pc-')).toBe(true)
-    expect(String(out.note)).toContain('reqboard_confirm_receipt(ticket="' + out.ticket + '")')
+    expect(String(out.note)).toContain('reqboard_ask_confirm(ticket="' + out.ticket + '")')
     expect(String(out.note)).toContain('看板')
     expect(String(out.note)).toContain('收到作答前不得产出下游产物')
 
@@ -192,7 +195,7 @@ describe('中止 / 取消（FR-4）', () => {
     expect(status.pending_confirms[0].ticket).toBe(out.ticket)
     expect(status.pending_confirms[0].requirement_id).toBe('REQ-abc123')
     expect(status.pending_confirms[0].interrupted).toBe(true)
-    expect(status.pending_confirms[0].recovery).toContain('reqboard_confirm_receipt')
+    expect(status.pending_confirms[0].recovery).toContain('reqboard_ask_confirm(ticket=')
     expect(status.pending_confirms[0].recovery).toContain('看板')
 
     await expect((defineMoveTool(deps) as any).execute({ to: 'in_progress' }, exec))

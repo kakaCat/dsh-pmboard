@@ -1,6 +1,6 @@
 /**
  * 立项后推进 `draft → brainstorming`（= G0 的 to）——**唯一实现处**，两条立项路径共用：
- * 会话弹框（`reqboard_capture`，人答三问）与**代理立项**（`reqboard_create` + `owner_window`，
+ * 会话弹框（`reqboard_capture`，人经弹框作答）与**代理立项**（`reqboard_create` + `owner_window`，
  * agent 受本窗口直接人工指令代为取值）。
  *
  * 为什么必须共用：这段编排不止"改一个状态字段"——它同时带**入口快照**（不给快照，立项节点的
@@ -20,8 +20,8 @@ import { captureSnapshot, transitionRequirement } from './token-usage.js'
 import { landPrototypeSkeleton } from './prototype-skeleton.js'
 
 /**
- * @param reason 推进留痕正文（**由调用方给**：两条路径的事实不同——"人答三问"与"代理取值"必须写得出来，
- *   否则台账里两条路的记录同形，事后无法分辨谁来确认过三问）。
+ * @param reason 推进留痕正文（**由调用方给**：两条路径的事实不同——"人经弹框作答"与"代理取值"必须写得出来，
+ *   否则台账里两条路的记录同形，事后无法分辨谁来确认过弹框取值）。
  */
 export async function advanceDraftToBrainstorming(
   deps: UseCaseDeps,

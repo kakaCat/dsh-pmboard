@@ -2,7 +2,7 @@
  * pm 弹框**来源标志**（REQ-260924213231-b1c4 T-11 / FR-8 · I-7 / TC-14）——唯一注入点。
  *
  * 解决什么问题：同一个窗口里可能先后出现两种提问——pm 插件发起的门确认弹框（`reqboard_ask_confirm`
- * / `reqboard_accept_sheet` / 立项四问 / 失败处置），与宿主原生的 `ask_user_question`。两者在 UI 上
+ * / `reqboard_accept_sheet` / 立项弹框 / 失败处置），与宿主原生的 `ask_user_question`。两者在 UI 上
  * 长得一样，用户分不清「这条该不该按 pm 的流程答」。
  *
  * 为什么是**代码注入**而不是让 agent 自己在文案里写：正文 emoji 由 agent 手写，可以漏写、也可以

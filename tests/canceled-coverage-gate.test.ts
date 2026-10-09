@@ -26,6 +26,7 @@
  * ② 「accepting 门禁失败 → REQBOARD_TESTING_COVERAGE_GATE」在生产里只有一处（源码锚点）。
  */
 import { afterEach, describe, expect, it } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -221,7 +222,7 @@ function entryOne(root: string, tasks: readonly TaskRecord[]): Promise<RTMTrigge
 
 function entryTwo(root: string, tasks: readonly TaskRecord[]): RTMTriggerResult | undefined {
   const snapshot: RTMLedgerSnapshot = { requirements: [specimenRequirement()] }
-  return syncRTMYamlWithSnapshot(root, snapshot, tasks, REQ_ID, 'submit:verification')
+  return syncRTMYamlWithSnapshot(new FileHostFs(), root, snapshot, tasks, REQ_ID, 'submit:verification')
 }
 
 /**

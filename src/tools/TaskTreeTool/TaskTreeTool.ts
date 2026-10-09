@@ -14,11 +14,16 @@ import { executeTaskTree } from '../../application/use-cases/TaskTree.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { TASK_TREE_PROMPT } from './prompt.js'
 import { renderSmart } from '../shared.js'
+import { taskStatusSummary } from '../render-summaries.js'
 
 /** 一句话摘要（renderSmart 用）。 */
 function summarize(v: unknown): string {
   const o = (v ?? {}) as Record<string, unknown>
   if (o.success !== true) return fmt('父子结构查询未成功：{error}', { error: String(o.error ?? '') })
+  // FR-3（REQ-261007220012-bd29）：单卡展开模式（原单卡查询工具并入）——
+  // 渲染复用同一份 taskStatusSummary（单卡视图「状态 + 进度」的唯一实现）。
+  const single = o.task as Record<string, unknown> | undefined
+  if (single !== undefined) return taskStatusSummary(single)
   const parents = Array.isArray(o.parents) ? o.parents : []
   let subs = 0
   for (const p of parents) {
@@ -68,6 +73,8 @@ export function defineTaskTreeTool(deps: UseCaseDeps) {
     parameters: {
       parent_id: { type: 'string', description: '父卡 id（t-xxxxxx）；不传则列出本窗口绑定需求下的全部父卡' },
       requirement_id: { type: 'string', description: '需求 id（REQ-xxxxxx）；不传则取本窗口绑定需求' },
+      // FR-3（REQ-261007220012-bd29）：原单卡查询工具 的唯一入参并进来 = 单卡展开模式。
+      task_id: { type: 'string', description: '任务 id（t-xxxxxx）；传了 = 单卡展开模式（等价旧单卡查询工具），与 parent_id 互斥' },
     },
     output: {
       schema: {
@@ -89,6 +96,43 @@ export function defineTaskTreeTool(deps: UseCaseDeps) {
             },
           },
           error: { type: 'string' },
+          // FR-3（REQ-261007220012-bd29）：单卡展开模式的返回（原单卡查询工具 并入）——
+          // 顶层只多 task_id + task，task 内部与旧返回体逐字同形。
+          task_id: { type: 'string', description: '单卡展开模式：被查询的任务 id' },
+          task: {
+            type: 'object',
+            additionalProperties: false,
+            description: '单卡执行状态（原单卡查询工具 的返回体平移到此处）：读台账 lastRun/lastReport',
+            properties: {
+              task_id: { type: 'string' },
+              status: { type: 'string' },
+              progress: { type: 'number', description: '0–100（状态→进度映射在 domain/task/TaskStatus 单点）' },
+              run: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  ok: { type: 'boolean' },
+                  stopReason: { type: 'string' },
+                  valueNonEmpty: { type: 'boolean' },
+                  reason: { type: 'string' },
+                },
+              },
+              report: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  summary: { type: 'string' },
+                  completedCount: { type: 'number' },
+                  filesChangedCount: { type: 'number' },
+                },
+              },
+              workflow: {
+                type: 'object',
+                additionalProperties: true,
+                description: '键保留（既有消费者契约）：内容换为真实 run 摘要',
+              },
+            },
+          },
           // t7（FR-8）：当轮余量参考（只读展示）。不可得时**整个键缺席**；`note` 恒为
           // 「参考值，非门禁判据」——它必须与数值在同一条展示内（A6 的可判点）。
           contextPressure: {

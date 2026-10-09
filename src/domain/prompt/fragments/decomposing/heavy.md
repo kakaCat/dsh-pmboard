@@ -85,4 +85,4 @@
 
 - [ ] 下一步：implementing —— 用 reqboard_ask_confirm(target=plan) 交棒；未获批准不得进入。
       发起前先看回执：已写明「已有一道门在等 / 已自动触发批准弹框」时**不要再发起**
-      （有门就取回执 reqboard_confirm_receipt 或到看板作答——同一道门只会复用，不会开第二个框）。
+      （有门就取回执 reqboard_ask_confirm(ticket=…) 或到看板作答——同一道门只会复用，不会开第二个框）。

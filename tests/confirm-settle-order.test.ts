@@ -14,6 +14,7 @@
  *   TC-5 同需求第二票在场 ⇒ 停手位**不得**被清（沿用 `stillWaiting` 语义）。
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from '../src/adapters/FileHostFs.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -58,6 +59,8 @@ function depsOf(over: Partial<UseCaseDeps> = {}): UseCaseDeps {
     store,
     taskStore: taskStoreAt(dir),
     docs: new FileDocRepository({ workspaceRoot: dir }),
+    // REQ-261008020617-088f RF-3：hostFs 必填（强转构造的夹具最容易漏）
+    hostFs: new FileHostFs(),
     clock: { now: () => 1_000_000 },
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({}),

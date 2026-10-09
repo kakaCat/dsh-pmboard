@@ -103,10 +103,17 @@ export const NOISE_TOKENS: readonly ExcludedToken[] = [
   { token: 'REQBOARD_DATA_ROOT', why: '目录名常量：值为字符串 reqboard（src/index.ts），不是错误码' },
   { token: 'REQBOARD_SCHEMA_VERSION', why: '数值常量：台账记录形态版本（= 9），不是错误码' },
   { token: 'REQBOARD_NO_ITEM_RESULT', why: '环境变量后缀：DSH_REQBOARD_NO_ITEM_RESULT，被左边界挡住故非码' },
+  { token: 'REQBOARD_CODE_REGISTRY', why: '标识符：src/shared/error-code-registry.ts 的注册表常量名，不是错误码' },
+  { token: 'REQBOARD_CODE_SET', why: '标识符：src/shared/error-code-registry.ts 的派生集合常量名，不是错误码' },
 ]
 
-/** 提示词文案文件（口径 ③）：其内容不是产生点。 */
-function isPromptFile(rel: string): boolean {
+/**
+ * 提示词文案文件（口径 ③）：其内容不是产生点。
+ *
+ * 导出的理由（REQ-261007230908-5ccb FR-3）：prompt 列码校验用例要用**同一口径**判定
+ * 哪些文件算「文案面」。两处各写一份正则 = 两份真相，改一处必漏一处。
+ */
+export function isPromptFile(rel: string): boolean {
   return /prompt\.ts$/.test(rel) || rel.startsWith('domain/prompt/generated/')
 }
 

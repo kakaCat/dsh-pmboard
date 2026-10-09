@@ -99,19 +99,6 @@ export function askConfirmSummary(v: unknown): string {
   return `🔔 未确认${choice !== undefined ? `：${choice.slice(0, 50)}` : ''}`
 }
 
-/** reqboard_confirm_receipt：🎫 回执：已确认并推进 design → decomposing / 尚未作答 */
-export function confirmReceiptSummary(v: unknown): string {
-  const e = err(v); if (e !== undefined) return e
-  const o = asObj(v)
-  if (o === undefined) return '⚙️ 确认回执（结果形态未知）'
-  if (o.confirmed === true) {
-    const from = s(o.from); const to = s(o.to)
-    return `🎫 回执：已确认${o.advanced === true && from !== undefined && to !== undefined ? `并推进 ${from} → ${to}` : '（未推进）'}`
-  }
-  const choice = s(o.user_choice) ?? s(o.user_feedback)
-  return `🎫 回执：未确认${choice !== undefined ? `：${choice.slice(0, 50)}` : '（人或尚未作答）'}`
-}
-
 /** reqboard_decompose：🧩 拆分落库 7 个任务 */
 export function decomposeSummary(v: unknown): string {
   const e = err(v); if (e !== undefined) return e
@@ -155,7 +142,7 @@ export function acceptSheetSummary(v: unknown): string {
   return `✅ 验收单：本批 ${passed}/${recorded} 通过${pending > 0 ? `，剩余 ${pending} 项` : ''}`
 }
 
-/** reqboard_task_status：📋 t-xxx in_progress（进度 60%） */
+/** 单卡查询入口：📋 t-xxx in_progress（进度 60%） */
 export function taskStatusSummary(v: unknown): string {
   const e = err(v); if (e !== undefined) return e
   const o = asObj(v)
@@ -178,21 +165,5 @@ export function taskRunSummary(v: unknown): string {
   return `▶️ ${id}：${subTag}${s(o.parent_status) !== undefined ? `（父卡 ${s(o.parent_status)}）` : ''}`
 }
 
-/** reqboard_task_execute（task_run 兼容别名）：同 taskRunSummary。 */
-export const taskExecuteSummary = taskRunSummary
-
-/** reqboard_note_interruption：🩹 REQ-xxx 已记断点：<原因>（阶段 x） */
-export function noteInterruptionSummary(v: unknown): string {
-  const e = err(v); if (e !== undefined) return e
-  const o = asObj(v)
-  if (o === undefined) return '⚙️ 记录断点（结果形态未知）'
-  if (o.success === false) return fmt('❌ 记录断点被拒：{note}', { note: (s(o.note) ?? '见明细').slice(0, 60) })
-  const bp = asObj(o.interruption)
-  const reason = bp !== undefined ? s(bp.reason) : undefined
-  const stage = bp !== undefined ? s(bp.stage) : undefined
-  return fmt('🩹 {id} 已记断点{reason}{stage}', {
-    id: s(o.requirement_id) ?? '?',
-    reason: reason !== undefined ? fmt('：{r}', { r: reason.slice(0, 40) }) : '',
-    stage: stage !== undefined ? fmt('（阶段 {s}）', { s: stage }) : '',
-  })
-}
+// REQ-261008020552-4aa0 FR-2：断点补写渲染随工具收编迁入 TaskAmendTool/summary.ts
+// （op=interruption 分支，实现逐字一致）。

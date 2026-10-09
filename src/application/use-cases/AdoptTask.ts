@@ -45,32 +45,32 @@ export async function executeAdoptTask(deps: UseCaseDeps, args: unknown, exec: u
   const stageKindArg = normalizeText(a.stage_kind, 'stage_kind', 32)
   const force = a.force === true
 
-  if (taskId.length === 0) reject('reqboard_task_adopt 未执行：task_id 不能为空', 'REQBOARD_INVALID_INPUT')
-  if (parentId.length === 0) reject('reqboard_task_adopt 未执行：parent_id 不能为空', 'REQBOARD_INVALID_INPUT')
-  if (taskId === parentId) reject('reqboard_task_adopt 未执行：task_id 与 parent_id 不能是同一张卡', 'REQBOARD_INVALID_INPUT')
+  if (taskId.length === 0) reject('reqboard_task_amend(op=adopt) 未执行：task_id 不能为空', 'REQBOARD_INVALID_INPUT')
+  if (parentId.length === 0) reject('reqboard_task_amend(op=adopt) 未执行：parent_id 不能为空', 'REQBOARD_INVALID_INPUT')
+  if (taskId === parentId) reject('reqboard_task_amend(op=adopt) 未执行：task_id 与 parent_id 不能是同一张卡', 'REQBOARD_INVALID_INPUT')
 
   // t8/B11：绑定读走新端口（只读摘要）
   const bound = await boundSummariesOf(requirementStoreOf(deps), windowKey)
-  if (bound.length === 0) reject('reqboard_task_adopt 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
+  if (bound.length === 0) reject('reqboard_task_amend(op=adopt) 未执行：本窗口没有绑定中的需求', 'REQBOARD_NO_BOUND_REQ')
 
   const store = taskStoreOf(deps)
   const child = await store.get(taskId)
-  if (child === undefined) reject(fmt('reqboard_task_adopt 未执行：任务 {id} 不存在', { id: taskId }), 'REQBOARD_TASK_NOT_FOUND')
+  if (child === undefined) reject(fmt('reqboard_task_amend(op=adopt) 未执行：任务 {id} 不存在', { id: taskId }), 'REQBOARD_TASK_NOT_FOUND')
   const parent = await store.get(parentId)
-  if (parent === undefined) reject(fmt('reqboard_task_adopt 未执行：父卡 {id} 不存在', { id: parentId }), 'REQBOARD_TASK_NOT_FOUND')
+  if (parent === undefined) reject(fmt('reqboard_task_amend(op=adopt) 未执行：父卡 {id} 不存在', { id: parentId }), 'REQBOARD_TASK_NOT_FOUND')
 
   const reqId = child.requirementId
   if (parent.requirementId !== reqId) {
-    reject(fmt('reqboard_task_adopt 未执行：{c} 属 {r1}，{p} 属 {r2}——跨需求挂载会让队列文件分裂', {
+    reject(fmt('reqboard_task_amend(op=adopt) 未执行：{c} 属 {r1}，{p} 属 {r2}——跨需求挂载会让队列文件分裂', {
       c: taskId, r1: reqId, p: parentId, r2: parent.requirementId,
     }), 'REQBOARD_INVALID_INPUT')
   }
   if (!bound.some(r => r.id === reqId)) {
-    reject(fmt('reqboard_task_adopt 未执行：任务 {id} 不属于本窗口绑定的需求', { id: taskId }), 'REQBOARD_NOT_BOUND_TO_WINDOW')
+    reject(fmt('reqboard_task_amend(op=adopt) 未执行：任务 {id} 不属于本窗口绑定的需求', { id: taskId }), 'REQBOARD_NOT_BOUND_TO_WINDOW')
   }
   // 本仓只有"父卡 → 子卡"两层：子卡不能再当父卡（否则出现第三层）
   if (isSubtask(parent)) {
-    reject(fmt('reqboard_task_adopt 未执行：{id} 本身是子卡，不能作为父卡（本仓只有父子两层；要挂到它所在的父卡 {g} 下）', {
+    reject(fmt('reqboard_task_amend(op=adopt) 未执行：{id} 本身是子卡，不能作为父卡（本仓只有父子两层；要挂到它所在的父卡 {g} 下）', {
       id: parentId, g: String(parent.parentId),
     }), 'REQBOARD_ADOPT_PARENT_IS_SUBTASK')
   }
@@ -78,23 +78,23 @@ export async function executeAdoptTask(deps: UseCaseDeps, args: unknown, exec: u
   const tasks = await store.listByRequirement(reqId)
   const previousParentId = child.parentId !== undefined && child.parentId !== '' ? child.parentId : undefined
   if (previousParentId !== undefined && !force) {
-    reject(fmt('reqboard_task_adopt 未执行：{id} 已有父卡 {p}（本入口只补**缺失**归属）。确要改挂：传 force=true 并写明 reason', {
+    reject(fmt('reqboard_task_amend(op=adopt) 未执行：{id} 已有父卡 {p}（本入口只补**缺失**归属）。确要改挂：传 force=true 并写明 reason', {
       id: taskId, p: previousParentId,
     }), 'REQBOARD_ADOPT_ALREADY')
   }
   const ownChildren = tasks.filter(t => t.parentId === taskId)
   if (ownChildren.length > 0) {
-    reject(fmt('reqboard_task_adopt 未执行：{id} 名下有 {n} 张子卡（{ids}）——把它们变成悬空子卡前先处置（改挂或取消）', {
+    reject(fmt('reqboard_task_amend(op=adopt) 未执行：{id} 名下有 {n} 张子卡（{ids}）——把它们变成悬空子卡前先处置（改挂或取消）', {
       id: taskId, n: ownChildren.length, ids: ownChildren.map(t => t.id).join('、'),
     }), 'REQBOARD_ADOPT_HAS_CHILDREN')
   }
   if ((child.dependsOn ?? []).includes(parentId)) {
-    reject(fmt('reqboard_task_adopt 未执行：{id} 的 dependsOn 含它要挂的父卡 {p}（自指依赖），先去掉这条依赖', {
+    reject(fmt('reqboard_task_amend(op=adopt) 未执行：{id} 的 dependsOn 含它要挂的父卡 {p}（自指依赖），先去掉这条依赖', {
       id: taskId, p: parentId,
     }), 'REQBOARD_ADOPT_DEPENDENCY')
   }
   if ((parent.dependsOn ?? []).includes(taskId)) {
-    reject(fmt('reqboard_task_adopt 未执行：父卡 {p} 的 dependsOn 含 {id}（挂上去会成环），先去掉这条依赖', {
+    reject(fmt('reqboard_task_amend(op=adopt) 未执行：父卡 {p} 的 dependsOn 含 {id}（挂上去会成环），先去掉这条依赖', {
       p: parentId, id: taskId,
     }), 'REQBOARD_ADOPT_DEPENDENCY')
   }
@@ -102,15 +102,15 @@ export async function executeAdoptTask(deps: UseCaseDeps, args: unknown, exec: u
   // stageKind（INV-2）：卡上已有则沿用；缺省必须显式给，且必须在受控枚举内
   const stageKind = stageKindArg.length > 0 ? stageKindArg : (child.stageKind ?? '')
   if (stageKind.length === 0) {
-    reject(fmt('reqboard_task_adopt 未执行：子卡必须有 stageKind（INV-2），请传 stage_kind（受控枚举：{k}）', { k: STAGE_KINDS.join('/') }), 'REQBOARD_INVALID_INPUT')
+    reject(fmt('reqboard_task_amend(op=adopt) 未执行：子卡必须有 stageKind（INV-2），请传 stage_kind（受控枚举：{k}）', { k: STAGE_KINDS.join('/') }), 'REQBOARD_INVALID_INPUT')
   }
   if (!STAGE_KINDS.includes(stageKind as (typeof STAGE_KINDS)[number])) {
-    reject(fmt('reqboard_task_adopt 未执行：非法 stage_kind「{k}」（受控枚举：{allowed}）', { k: stageKind, allowed: STAGE_KINDS.join('/') }), 'REQBOARD_INVALID_INPUT')
+    reject(fmt('reqboard_task_amend(op=adopt) 未执行：非法 stage_kind「{k}」（受控枚举：{allowed}）', { k: stageKind, allowed: STAGE_KINDS.join('/') }), 'REQBOARD_INVALID_INPUT')
   }
 
   // 状态合法性（单点在 domain）：挂成子卡后，当前状态必须仍在子卡表里有出边
   if (SUBTASK_TRANSITIONS[child.status].length === 0) {
-    reject(fmt('reqboard_task_adopt 未执行：{id} 当前状态 {st} 不是子卡可停留的状态（子卡只有 待开始/开发中/已完成/已取消）——先用 reqboard_task_move 把它退回 in_progress 再挂载', {
+    reject(fmt('reqboard_task_amend(op=adopt) 未执行：{id} 当前状态 {st} 不是子卡可停留的状态（子卡只有 待开始/开发中/已完成/已取消）——先用 reqboard_task_move 把它退回 in_progress 再挂载', {
       id: taskId, st: child.status,
     }), 'REQBOARD_ADOPT_STATUS')
   }
@@ -128,7 +128,7 @@ export async function executeAdoptTask(deps: UseCaseDeps, args: unknown, exec: u
     const proposed = draft.map(x => (x.id === taskId ? { ...x, parentId, stageKind } : x))
     const added = checkSubtaskInvariants(proposed as readonly TaskRecord[], reqId).filter(v => !before.has(fingerprint(v)))
     if (added.length > 0) {
-      reject(fmt('reqboard_task_adopt 未执行：挂载会破坏子卡不变量——{why}', {
+      reject(fmt('reqboard_task_amend(op=adopt) 未执行：挂载会破坏子卡不变量——{why}', {
         why: added.map(v => v.inv + ' ' + v.message).join('；'),
       }), 'REQBOARD_ADOPT_INVARIANT')
     }
@@ -139,7 +139,7 @@ export async function executeAdoptTask(deps: UseCaseDeps, args: unknown, exec: u
     t.updatedBy = actor
     t.comments.push({
       id: deps.ids.comment(),
-      body: fmt('[归属] {verb}父卡 {p}（stageKind={k}）{prev}{reason}（reqboard_task_adopt）', {
+      body: fmt('[归属] {verb}父卡 {p}（stageKind={k}）{prev}{reason}（reqboard_task_amend(op=adopt)）', {
         verb: previousParentId === undefined ? '挂到' : '改挂到',
         p: parentId,
         k: stageKind,
@@ -153,7 +153,7 @@ export async function executeAdoptTask(deps: UseCaseDeps, args: unknown, exec: u
   }).catch(mapAgentError)
 
   const moved = changed.find(t => t.id === taskId)
-  if (moved === undefined) reject('reqboard_task_adopt 写入失败：队列状态异常', 'REQBOARD_STORE_INCONSISTENT')
+  if (moved === undefined) reject('reqboard_task_amend(op=adopt) 写入失败：队列状态异常', 'REQBOARD_STORE_INCONSISTENT')
 
   // ── ② 需求写（留痕：需求评论区可见"谁什么时候补的归属"）──────────────────
   await mutateIfPresent(requirementStoreOf(deps), reqId, (r) => {

@@ -21,7 +21,7 @@ describe('中断恢复集成测试', () => {
     // 1. 准备：启动一个长时间子卡
     // 2. 模拟中断：signal.abort()
     // 3. 断言：checkpoint 文件已写入
-    // 4. 断言：包含 runId/stepIndex/currentSubtaskId
+    // 4. 断言：包含 runId（REQ-261008011118-defe BUG-1：progress 死字段已删）
     expect(true).toBe(true) // placeholder
   })
   
@@ -30,7 +30,7 @@ describe('中断恢复集成测试', () => {
     // 2. 模拟重启：重新加载台账
     // 3. 调用 scanAndResume
     // 4. 断言：识别到未完成的 run
-    // 5. 断言：从 checkpoint.stepIndex 继续
+    // 5. 断言：从 advance.history 与任务台账继续（不再有 checkpoint.stepIndex）
     expect(true).toBe(true) // placeholder
   })
   

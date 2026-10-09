@@ -7,7 +7,7 @@
  * 本文件是**纯数据 + 纯函数**：不 import 任何模块、不碰时间与随机数（domain 层的硬约束，
  * 由 tests/layer-boundary.test.ts 机械检查）。
  *
- * 构造约定（沿用全仓现有写法，见 docs/standards/tool-development.md）：
+ * 构造约定（沿用全仓现有写法）：
  *   Object.assign(new Error(message), { code })
  * 且 message 里自带 code 文本——跨包时 instanceof 不可靠，工具层读的是 message。
  *

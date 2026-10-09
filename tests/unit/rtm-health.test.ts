@@ -2,7 +2,8 @@
  * RTM 健康检查功能测试
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs'
+import { FileHostFs } from '../../src/adapters/FileHostFs.js'
+import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { 
   recordRTMFailure, 
@@ -20,6 +21,8 @@ describe('RTM 健康检查', () => {
   const testDir = join(testWorkspaceRoot(), '.test-rtm-health')
   const stateDir = join(testDir, '.dsh-data', 'state')
   const reqDir = join(testDir, 'docs', 'requirements', 'REQ-test-001')
+  // REQ-261008020617-088f RF-3：state 读写经 HostFsPort（根逐次显式，这里传测试根）
+  const host = new FileHostFs()
 
   beforeEach(() => {
     // 创建测试目录
@@ -43,7 +46,7 @@ describe('RTM 健康检查', () => {
   })
 
   it('应该记录 RTM 生成失败', () => {
-    recordRTMFailure(stateDir, 'REQ-test-001', 'create', '测试错误')
+    recordRTMFailure(host, testDir, 'REQ-test-001', 'create', '测试错误')
     
     const failuresFile = join(stateDir, 'rtm-failures.json')
     expect(existsSync(failuresFile)).toBe(true)
@@ -57,8 +60,8 @@ describe('RTM 健康检查', () => {
   })
 
   it('应该累加连续失败次数', () => {
-    recordRTMFailure(stateDir, 'REQ-test-001', 'create', '错误1')
-    recordRTMFailure(stateDir, 'REQ-test-001', 'submit:requirement', '错误2')
+    recordRTMFailure(host, testDir, 'REQ-test-001', 'create', '错误1')
+    recordRTMFailure(host, testDir, 'REQ-test-001', 'submit:requirement', '错误2')
     
     const failures = JSON.parse(
       require('fs').readFileSync(join(stateDir, 'rtm-failures.json'), 'utf-8')
@@ -69,8 +72,8 @@ describe('RTM 健康检查', () => {
   })
 
   it('应该在成功后清除失败记录', () => {
-    recordRTMFailure(stateDir, 'REQ-test-001', 'create', '测试错误')
-    clearRTMFailure(stateDir, 'REQ-test-001')
+    recordRTMFailure(host, testDir, 'REQ-test-001', 'create', '测试错误')
+    clearRTMFailure(host, testDir, 'REQ-test-001')
     
     const failures = JSON.parse(
       require('fs').readFileSync(join(stateDir, 'rtm-failures.json'), 'utf-8')
@@ -92,7 +95,7 @@ describe('RTM 健康检查', () => {
       statusHistory: [],
     } as any
 
-    const health = checkRTMHealth(testDir, stateDir, req)
+    const health = checkRTMHealth(host, testDir, req)
     
     expect(health.healthy).toBe(false)
     expect(health.missing_files).toContain('rtm-lifecycle.yml')
@@ -118,16 +121,16 @@ describe('RTM 健康检查', () => {
       statusHistory: [],
     } as any
 
-    const health = checkRTMHealth(testDir, stateDir, req)
+    const health = checkRTMHealth(host, testDir, req)
     
     expect(health.healthy).toBe(true)
     expect(health.missing_files).toHaveLength(0)
   })
 
   it('应该在失败次数超过3次后禁用重试', () => {
-    recordRTMFailure(stateDir, 'REQ-test-001', 'create', '错误1')
-    recordRTMFailure(stateDir, 'REQ-test-001', 'create', '错误2')
-    recordRTMFailure(stateDir, 'REQ-test-001', 'create', '错误3')
+    recordRTMFailure(host, testDir, 'REQ-test-001', 'create', '错误1')
+    recordRTMFailure(host, testDir, 'REQ-test-001', 'create', '错误2')
+    recordRTMFailure(host, testDir, 'REQ-test-001', 'create', '错误3')
     
     const req: RequirementRecord = {
       id: 'REQ-test-001',
@@ -142,9 +145,31 @@ describe('RTM 健康检查', () => {
       statusHistory: [],
     } as any
 
-    const health = checkRTMHealth(testDir, stateDir, req)
+    const health = checkRTMHealth(host, testDir, req)
     
     expect(health.retry_available).toBe(false)
     expect(health.last_failure?.attempts).toBe(3)
   })
+
+  it('state 目录不存在时也能落盘（适配器按需建目录，且不留 .tmp-*）', () => {
+    // REQ-261008020617-088f RF-3：改前 writeFailures 不建目录 ⇒ 抛错（被调用方吞掉、证据丢失），
+    // 且 finally 里的 require('fs') 在 ESM 下必抛 ⇒ 残留 .tmp-*。改后由 FileHostFs 建目录 + rename。
+    const freshRoot = join(testWorkspaceRoot(), '.test-rtm-health-nostate')
+    rmSync(freshRoot, { recursive: true, force: true })
+    expect(existsSync(join(freshRoot, '.dsh-data', 'state'))).toBe(false)
+
+    expect(() => recordRTMFailure(host, freshRoot, 'REQ-nostate', 'create', '目录缺失')).not.toThrow()
+
+    const stateFile = join(freshRoot, '.dsh-data', 'state', 'rtm-failures.json')
+    expect(existsSync(stateFile)).toBe(true)
+    const raw = readFileSync(stateFile, 'utf-8')
+    // 落盘形状逐字：2 空格缩进 + 五键齐（requirement_id / trigger / timestamp / error / attempts）
+    expect(raw).toContain('\n  {\n    "requirement_id": "REQ-nostate"')
+    expect(Object.keys(JSON.parse(raw)[0]).sort()).toEqual(['attempts', 'error', 'requirement_id', 'timestamp', 'trigger'])
+    expect(JSON.parse(raw)[0].attempts).toBe(1)
+    // 不留临时文件
+    expect(readdirSync(join(freshRoot, '.dsh-data', 'state')).filter(f => f.includes('.tmp-'))).toEqual([])
+    rmSync(freshRoot, { recursive: true, force: true })
+  })
+
 })

@@ -75,7 +75,7 @@ export const STAGE_PROCESS: Record<MainStageKey, StageProcessSpec> = {
       '下阶段注入：需求分析提示词 + requirement.md 模板地址',
     ],
     actions: [
-      act('立项五问作答（reqboard_capture）', '', { kind: 'always' }),
+      act('立项弹框作答（reqboard_capture）', '', { kind: 'always' }),
       act('创建需求记录并绑定窗口', '', { kind: 'always' }),
       act('生成需求 ID 与文档目录', '', { kind: 'always' }),
     ],
@@ -351,7 +351,7 @@ function renderActionsSec(payload: StageDetail, ctx: ProcessFoldContext): string
     '</div>'
   }).join('')
 
-  // 立项节点：用户选择（立项五问，真实记录）
+  // 立项节点：用户选择（立项弹框，真实记录）
   let choices = ''
   if (payload.stage === 'draft') {
     const body = (payload as Extract<StageDetail, { stage: 'draft' }>).body
@@ -364,7 +364,7 @@ function renderActionsSec(payload: StageDetail, ctx: ProcessFoldContext): string
     // 2026-10-06：与「📂 文档位置」同一份渲染（同一件事不许两处各拼一遍路径）。
     // 这一行是**用户立项时选的**文档位置，必须显示解析后的真实目录，不是拼死值。
     lines.push(`文档位置：${docLocationHtml(ctx.requirement.docDir, ctx.requirement.id)}`)
-    choices = `<div class="dsh-pm-np-sec"><div class="dsh-pm-np-sec-title">👤 用户选择（立项五问）</div>` +
+    choices = `<div class="dsh-pm-np-sec"><div class="dsh-pm-np-sec-title">👤 用户选择（立项弹框）</div>` +
       // lines 现已是 HTML 片段（文档位置那行带小字/绝对路径）→ 不再整体 esc，逐行由产出方负责转义
       lines.map(l => '<div class="dsh-pm-np-policy">' + l + '</div>').join('') + '</div>'
   }

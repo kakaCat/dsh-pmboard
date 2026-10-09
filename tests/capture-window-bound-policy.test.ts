@@ -28,7 +28,7 @@ const ANSWERS: AskAnswer[] = [
   { id: 'name', selected: ['第二个项目'] },
   { id: 'category', selected: ['feature'] },
   { id: 'difficulty', selected: ['standard'] },
-  { id: 'doc_location', selected: ['docs/requirements/<REQ>/'] },
+  { id: 'location', selected: ['docs/requirements/<REQ>/'] },
 ] as never
 
 /** 已绑定一条在飞需求的窗口。 */

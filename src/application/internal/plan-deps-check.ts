@@ -97,7 +97,9 @@ export function zeroOverlapDependencyWarnings(tasks: readonly PlanTask[]): strin
       warnings.push(
         `${t.key} → ${dep}：两端声明文件零交集（${t.key}: ${mine.join(',')} / ${dep}: ${theirs.join(',')}）`
         + '——疑似伪依赖（可并行的卡被串成链，落库后是硬串行）；确需串行请在 tasks[] 的 dep_reasons 里'
-        + `给 ${dep} 写一句语义理由（例：「${dep} 重建队列文件，${t.key} 读它，虽无同名文件但有时序约束」）`,
+        // REQ-261008020552-4aa0 FR-4：写法细则从 schema 描述下沉到本回执（细则之家，只追加；
+        // 折进同一段模板串，不新增拼接计数——消息卫生棘轮）。
+        + `给 ${dep} 写一句语义理由（例：「${dep} 重建队列文件，${t.key} 读它，虽无同名文件但有时序约束」）；写法：key=理由，用半角等号或冒号分隔（snake dep_reasons / camel depReasons 两种拼法都认，合并取并集）`,
       )
     }
   }

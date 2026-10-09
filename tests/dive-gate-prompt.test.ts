@@ -257,9 +257,9 @@ describe('TC-15 Dive 在人工门主动弹框（有边界重弹）', () => {
     s.idle()
     await s.flush()
     expect(s.questions.prompts).toBe(0)
-    expect(s.deliveries).toHaveLength(1)
-    expect(s.deliveries[0]!.windowKey).toBe(W)
-    expect(s.deliveries[0]!.text).toMatch(/人工门提醒/)
+    // REQ-261008004324-81df BUG-5：投递通道已随全面 Dive 化删除——`gate-prompt.ts` 的
+    // 「通道不可用」分支现在零投递且零日志。按现行语义断「零投递」，不制造假投递。
+    expect(s.deliveries).toHaveLength(0)
     expect(s.status()).toBe('brainstorming')
   })
 
@@ -291,6 +291,11 @@ describe('TC-15 Dive 在人工门主动弹框（有边界重弹）', () => {
         recentUserMsgs: new Map(),
         deliverer: { deliver: () => ({ delivered: true }) },
       },
+      // REQ-261008004324-81df BUG-5：组装的两个**必填** dep。缺 `requirementStore` / `taskStore`
+      // 会让 idle 首步（`facts()` / `taskStore.listAll()`）抛 TypeError，
+      // 再被 `session-driver.ts:487-492` 吞成 info ⇒ 整拍静默零动作（本用例读数 0 弹框）。
+      requirementStore: store,
+      taskStore: { listAll: async () => [] },
       now: () => clock.t,
       injectionLog: { record: () => {} },
       gateChain: { enqueue: () => {}, runPending: async () => ({ ran: false }) },

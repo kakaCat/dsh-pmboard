@@ -71,7 +71,8 @@ async function seed(sourceSessionId = W): Promise<void> {
 
 function writeDesign(names: readonly string[]): void {
   mkdirSync(join(root, DESIGN_DIR), { recursive: true })
-  for (const n of names) writeFileSync(join(root, DESIGN_DIR, n), '# ' + n + '\n')
+  // 文档级 serves 是 design 内容门禁的必填项（REQ-260929210741-30ae FR-2）：H1 带上标注
+  for (const n of names) writeFileSync(join(root, DESIGN_DIR, n), '# ' + n + ' <!-- serves: FR-1 -->\n')
 }
 
 const designArtifacts = async (): Promise<StageArtifact[]> =>
@@ -108,7 +109,7 @@ describe('TC-1 正向：扫 design/ 登记 5 份，二次幂等', () => {
     await seed()
     writeDesign(DESIGN5)
     await run({ kind: 'design' })
-    writeFileSync(join(root, DESIGN_DIR, 'risks.md'), '# risks\n')
+    writeFileSync(join(root, DESIGN_DIR, 'risks.md'), '# risks <!-- serves: FR-1 -->\n')
     const out = await run({ kind: 'design' })
     expect(out.registered_count).toBe(1)
     expect(await designArtifacts()).toHaveLength(6)

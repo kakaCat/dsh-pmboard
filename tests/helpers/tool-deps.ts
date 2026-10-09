@@ -18,6 +18,7 @@ import { dirname, join } from 'node:path'
 import type { ToolTraceEntry, RecentUserMsg } from '../../src/adapters/SessionProbeAdapter.js'
 import { SessionProbeAdapter } from '../../src/adapters/SessionProbeAdapter.js'
 import { FileDocRepository } from '../../src/adapters/FileDocRepository.js'
+import { FileHostFs } from '../../src/adapters/FileHostFs.js'
 import { RandomIdFactory } from '../../src/adapters/RandomIdFactory.js'
 import { UserQuestionsAdapter } from '../../src/adapters/UserQuestionsAdapter.js'
 import type { RequirementStore, TaskStore, UseCaseDeps } from '../../src/application/ports.js'
@@ -178,6 +179,9 @@ export function toUseCaseDeps(deps: ReqboardToolDeps): UseCaseDeps {
     // 否则多工厂各建一个 store，"工具读 A、断言读 B"的假红必现。
     taskStore: taskStoreOf(deps),
     docs: new FileDocRepository({ workspaceRoot: resolveWorkspaceRoot(deps.workspaceRoot) }),
+    // REQ-261008020617-088f RF-3/RF-5：宿主文件面端口（无状态）。本助手是 35 个测试文件的**收口点**，
+    // 与上面 docs / taskStore 同款——补在这里一处，夹具不用各自记得。
+    hostFs: new FileHostFs(),
     clock: { now: deps.now },
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({
