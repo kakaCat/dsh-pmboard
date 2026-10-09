@@ -1,0 +1,39 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261008143952-65dd
+  generated_at: 2026-10-08T06:44:59.640Z
+  version: 8
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-08T10:55:04.353Z
+outputs:
+  requirements: []
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 2026-10-08 勘察阶段："brainstorming 的 vendor 原文已是本仓自写完整档，为什么还要更新 vendor 目录里的 SKILL.md？"
+      verdict: 更新：vendor 目录存的是"原始 superpowers 官方版本"，用于留档与对比；本仓注入的 heavy.md 是自写档，两者并存。overrides.md 的"上文"指的是 heavy.md（本仓自写档），不是 vendor/brainstorming/SKILL.md。本仓 brainstorming/heavy.md 开头注释写明「vendor 原文留档 `src/domain/prompt/vendor/superpowers/brainstorming/SKILL.md`（不再作为 heavy 主 skill 注入）」——vendor 目录是历史存档，不参与实际注入，但要保持与上游同步供对比。
+      serves:
+        - FR-1
+      criterion: vendor/superpowers/ 目录存在且包含 14 份 SKILL.md，与本地 ~/Documents/ai/skills/superpowers/skills/ 内容一致
+    - id: D-2
+      source: 2026-10-08 需求分析："overrides.md 的引用完整性核对，是逐条人工 grep，还是写自动化脚本？"
+      verdict: 人工 grep：7 份 × 平均 6 条 = 约 42 条引用，写脚本成本高于人工逐条核对。design 阶段写测试策略时评估是否值得自动化；若后续需频繁更新 vendor，再投自动化。本次是首次全量同步，引用点数量可控；若发现引用失效较多或 vendor 更新频率高，design 阶段再列「引用完整性自动化测试」任务。
+      serves:
+        - FR-2
+      criterion: 7 份 overrides.md 的每条「覆盖 N」都能在对应 vendor 原文里 grep 到被覆盖的关键词
+    - id: D-3
+      source: 2026-10-08 需求分析："新版 executing-plans（373 行）与旧版（64 行）差异巨大，是否要重写 implementing/heavy.md 与 implementing/heavy/overrides.md？"
+      verdict: 不重写：implementing/heavy.md 是本仓自写档（含 reqboard_task_move / reqboard_task_report 等本仓工具面接线），新版 executing-plans 的 inline 执行纪律可选择性吸收（如 ledger / ruling），但不全盘替换。overrides.md 核对引用完整性即可，不因 vendor 大改而重构。本仓流水线（六节点）与 superpowers 流水线（brainstorming + writing-plans + executing-plans）本就不一致；vendor 更新是为了吸收其最佳实践（如 ledger 记录、ruling 决策留痕），不是为了复刻其流程。
+      serves:
+        - FR-1
+        - FR-2
+      criterion: implementing/heavy.md 与 implementing/heavy/overrides.md 保持本仓自写档结构，只更新 vendor/superpowers/executing-plans/SKILL.md
+    - id: D-4
+      source: 2026-10-08 立项后提交："需求声明了 frontend 端侧但无界面改动，为什么豁免原型？"
+      verdict: 豁免：本需求更新的是提示词分片（vendor 原文含前端提示：原型 / 组件树纪律），不产生新的 UI 界面，无需交原型。标 frontend 是为了在 design 阶段触发 frontend.md（说明 vendor 原文里前端纪律的影响），不是为了做 UI。原型是给「会产生界面产物」的需求用的；提示词分片更新虽影响前端提示词注入，但它本身不是界面，不需要画原型。
+      serves:
+        - FR-1
+      criterion: "requirement.md front-matter 包含 `prototype_exempt: <理由>` 且本条 D-4 裁定已落账"
+status:
+  artifacts: []

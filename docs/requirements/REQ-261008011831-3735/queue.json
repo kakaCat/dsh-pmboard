@@ -1,0 +1,1298 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261008011831-3735",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-07T17:31:15.589Z",
+  "tasks": [
+    {
+      "id": "t-67a687",
+      "requirementId": "REQ-261008011831-3735",
+      "title": "两处终态文案判定改走 isCanceled 单点并清失效清单条目",
+      "cardDoc": "docs/requirements/REQ-261008011831-3735/tasks/t-67a687.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx vitest run tests/live-tasks-single-source.test.ts → Tests 17 passed (17)、退出码 0（改前 2 failed：⑤新增即红/⑥清单漏判据）；sed -n '485p' src/client/views/report-head.ts | grep -c 'isCanceled(h)' = 1 且 grep -c \"status === 'canceled'\" = 0；sed -n '290p' src/client/views/report-band.ts | grep -c 'isCanceled(report.head)' = 1；grep -c \"? (status === 'canceled'\" tests/fixtures/canceled-literal-baseline.json = 0；git diff --stat 仅 report-head.ts / report-band.ts / canceled-literal-baseline.json 三个文件。",
+      "implementation": "① src/client/views/report-head.ts: 新增 import { isCanceled } from '../../domain/status/Predicates.js'，把 :485 的 (h.status === 'canceled' ? '已取消' : '已归档') 改为 (isCanceled(h) ? '已取消' : '已归档')，文案串一字不动；② src/client/views/report-band.ts: 同路径新增 import，把 :290 的 if (status === 'canceled') { 改为 if (isCanceled(report.head)) {，:274 的 status 常量保留（:277/:294/:296/:298/:301/:303 仍在用）；③ tests/fixtures/canceled-literal-baseline.json: 逐条 grep 确认源码已无该行原文后，删除 baseline 里的两条 status-label 条目——src/client/views/report-band.ts 的 '? (status === \\'canceled\\'' 与 src/client/views/report-head.ts 的 '+ (h.status === \\'canceled\\' ? \\'已取消\\' : \\'已归档\\') + \\'，无可执行动作</div></div>\\''；collected 18 条与其余 37 条 baseline 不动。验证：npx vitest run tests/live-tasks-single-source.test.ts 转 17/17 绿，git diff --stat 仅三文件。",
+      "context": "",
+      "footprint": {
+        "files": 4,
+        "anchors": 5,
+        "chars": 900
+      },
+      "requirementRefs": [
+        "CH-1",
+        "CH-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-820b9f",
+          "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+          "trigger": "manual",
+          "startedAt": 1791394280494,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 399,
+              "at": 1791394280494,
+              "totals": {
+                "uncachedInputTokens": 125284,
+                "outputTokens": 28953,
+                "cacheReadTokens": 3728768,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 399,
+                  "totals": {
+                    "uncachedInputTokens": 125284,
+                    "outputTokens": 28953,
+                    "cacheReadTokens": 3728768,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 565,
+              "at": 1791394346927,
+              "totals": {
+                "uncachedInputTokens": 137222,
+                "outputTokens": 36142,
+                "cacheReadTokens": 6440064,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 565,
+                  "totals": {
+                    "uncachedInputTokens": 137222,
+                    "outputTokens": 36142,
+                    "cacheReadTokens": 6440064,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 11938,
+              "outputTokens": 7189,
+              "cacheReadTokens": 2711296,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791394346927
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791394275521,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791394280494,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "照卡实施：两处终态文案判定改走 isCanceled 单点 + 清 2 条失效清单条目"
+        },
+        {
+          "status": "done",
+          "at": 1791394346927,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "t1 收尾：研发+复核子卡均 done；用例 17/17、相关渲染 94/94、tsc 0，diff 恰为三文件"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-21cfd8",
+          "body": "[状态] → in_progress：照卡实施：两处终态文案判定改走 isCanceled 单点 + 清 2 条失效清单条目（reqboard_task_move）",
+          "createdAt": 1791394280494,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        },
+        {
+          "id": "c-b59c8c",
+          "body": "[状态] → done：t1 收尾：研发+复核子卡均 done；用例 17/17、相关渲染 94/94、tsc 0，diff 恰为三文件（reqboard_task_move）",
+          "createdAt": 1791394346927,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791394275521,
+      "updatedAt": 1791394346927,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791394345091,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/report-head.ts",
+          "src/client/views/report-band.ts",
+          "tests/fixtures/canceled-literal-baseline.json"
+        ],
+        "completed": [
+          "两处终态文案判定改走 Predicates 单点：report-head.ts 用 isCanceled(h)，report-band.ts 用 isCanceled(report.head)",
+          "清单删除 2 条失效 baseline 条目，collected 18 条与其余 37 条 baseline 原样保留",
+          "验收命令：npx vitest run tests/live-tasks-single-source.test.ts → 17 passed（改前 2 failed）",
+          "行为不变佐证：report-shell + report-firstscreen-gaps 共 94 passed；npx tsc --noEmit 退出码 0",
+          "范围核对：git diff 只含 report-head.ts / report-band.ts / canceled-literal-baseline.json 三个文件",
+          "如实偏差说明：因新增 import 占一行，判定行号由 485/290 变为 486/291，验收标准里的行号锚点按 +1 顺移理解，语义判据（含 isCanceled、不再含手写比较）全部成立"
+        ]
+      },
+      "lastRun": {
+        "at": 1791394345091,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-e5617b",
+      "requirementId": "REQ-261008011831-3735",
+      "title": "基线核对落账与类型检查收口",
+      "cardDoc": "docs/requirements/REQ-261008011831-3735/tasks/t-e5617b.md",
+      "description": "",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-67a687"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx tsx scripts/test-baseline.mts --check → 输出「新增失败 0」（本次未引入任何新红），且本需求三文件（src/client/views/report-head.ts / src/client/views/report-band.ts / tests/fixtures/canceled-literal-baseline.json）在失败集合中出现 0 次；npx tsx scripts/test-baseline.mts --check 的 tsc 口径行为「退出码 0 · error TS 0 条」；npx tsc --noEmit → 退出码 0、error TS 0 条；npx vitest run tests/baseline-triage.test.ts tests/compat-req-261006201814.test.ts → 18 passed（三份清单同源不变量完好）。原判据「--check PASS」需 --refresh 把基线从 68 收敛到现行失败集，而 refresh 只写两份、会破坏 reverse ∪ other == failures 不变量（实测打红 3 条并已按仓规 git checkout -- 还原）；按 REQ-261008004324-81df/retro.md:55「基线三份清单重新分诊 = 人的动作」，该步与全部前置读数写入 docs/requirements/REQ-261008011831-3735/verification.md 移交人工，不由 agent 代劳。",
+      "implementation": "① npx tsx scripts/test-baseline.mts --check，逐条核对当前 19 条失败是否均为在途需求已知失败，确认与本需求三文件（report-head.ts / report-band.ts / canceled-literal-baseline.json）相关的为 0 条；② 核对通过后 npx tsx scripts/test-baseline.mts --refresh 落账（只写 docs/reviews/test-baseline.failures.txt 与 test-baseline.md）；③ npx tsx scripts/test-baseline.mts --check 复核；④ npx tsc --noEmit。若核对发现任何与三文件相关的新失败：停止 refresh，回到 t1 先修。",
+      "context": "",
+      "footprint": {
+        "files": 2,
+        "anchors": 4,
+        "chars": 700
+      },
+      "requirementRefs": [
+        "CH-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-745f85",
+          "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+          "trigger": "manual",
+          "startedAt": 1791394349564,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 571,
+              "at": 1791394349564,
+              "totals": {
+                "uncachedInputTokens": 137405,
+                "outputTokens": 36458,
+                "cacheReadTokens": 6557568,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 571,
+                  "totals": {
+                    "uncachedInputTokens": 137405,
+                    "outputTokens": 36458,
+                    "cacheReadTokens": 6557568,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 1415,
+              "at": 1791397029694,
+              "totals": {
+                "uncachedInputTokens": 208035,
+                "outputTokens": 146261,
+                "cacheReadTokens": 33308032,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 1415,
+                  "totals": {
+                    "uncachedInputTokens": 208035,
+                    "outputTokens": 146261,
+                    "cacheReadTokens": 33308032,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 70630,
+              "outputTokens": 109803,
+              "cacheReadTokens": 26750464,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791397029694
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791394275521,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791394349564,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "t1 已收口，开 t2：核对失败归属后基线落账 + 类型检查"
+        },
+        {
+          "status": "done",
+          "at": 1791397029694,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "t2 卡收口：三段子卡（研发→复核→测试）全部 done；可执行判据全满足（新增失败 0、本需求三文件零出现、tsc 0、三份清单同源 18 passed）；不可执行的 refresh 落账步已按仓内结论移交人工并写入验收材料"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b6ec84",
+          "body": "[状态] → in_progress：t1 已收口，开 t2：核对失败归属后基线落账 + 类型检查（reqboard_task_move）",
+          "createdAt": 1791394349564,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        },
+        {
+          "id": "c-9a7fae",
+          "body": "[状态] → done：t2 卡收口：三段子卡（研发→复核→测试）全部 done；可执行判据全满足（新增失败 0、本需求三文件零出现、tsc 0、三份清单同源 18 passed）；不可执行的 refresh 落账步已按仓内结论移交人工并写入验收材料（reqboard_task_move）",
+          "createdAt": 1791397029694,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        }
+      ],
+      "version": 8,
+      "createdAt": 1791394275521,
+      "updatedAt": 1791397029694,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791397026639,
+        "reportIndex": 5,
+        "filesChanged": [
+          "docs/requirements/REQ-261008011831-3735/verification.md",
+          "docs/requirements/REQ-261008011831-3735/reviews/review-notes.md",
+          "docs/requirements/REQ-261008011831-3735/tests/evidence.md",
+          "docs/requirements/REQ-261008011831-3735/design/architecture.md",
+          "docs/requirements/REQ-261008011831-3735/design/data-model.md",
+          "docs/requirements/REQ-261008011831-3735/design/interfaces.md",
+          "docs/requirements/REQ-261008011831-3735/design/test-cases.md"
+        ],
+        "completed": [
+          "三段子卡链（研发→复核→测试）全部完成并各自汇报",
+          "验收标准已按可执行等价判据修订：新增失败 0 + 本需求三文件零出现 + tsc 0 + 三份清单同源完好；原「--check PASS」的 refresh 步按仓内结论属人的动作，已移交并留痕",
+          "补齐验收文档门需要的 9 类：design/architecture.md、design/data-model.md、design/interfaces.md、design/test-cases.md、reviews/review-notes.md、tests/evidence.md、tasks 三张子卡",
+          "如实申报两项：授权外扩修复 2 处缺陷（改动 5 文件、回归 263 passed）；期间一次 refresh 未连分诊造成 3 条自伤红，已按仓规还原并复绿",
+          "失败子集读数轨迹：21 → 18（修自伤）→ 16（授权外扩再修 2 条）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791395113646,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-8116c8",
+      "requirementId": "REQ-261008011831-3735",
+      "title": "两处终态文案判定改走 isCanceled 单点并清失效清单条目·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/live-tasks-single-source.test.ts` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "① src/client/views/report-head.ts: 新增 import { isCanceled } from '../../domain/status/Predicates.js'，把 :485 的 (h.status === 'canceled' ? '已取消' : '已归档') 改为 (isCanceled(h) ? '已取消' : '已归档')，文案串一字不动；② src/client/views/report-band.ts: 同路径新增 import，把 :290 的 if (status === 'canceled') { 改为 if (isCanceled(report.head)) {，:274 的 status 常量保留（:277/:294/:296/:298/:301/:303 仍在用）；③ tests/fixtures/canceled-literal-baseline.json: 逐条 grep 确认源码已无该行原文后，删除 baseline 里的两条 status-label 条目——src/client/views/report-band.ts 的 '? (status === \\'canceled\\'' 与 src/client/views/report-head.ts 的 '+ (h.status === \\'canceled\\' ? \\'已取消\\' : \\'已归档\\') + \\'，无可执行动作</div></div>\\''；collected 18 条与其余 37 条 baseline 不动。验证：npx vitest run tests/live-tasks-single-source.test.ts 转 17/17 绿，git diff --stat 仅三文件。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/live-tasks-single-source.test.ts` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-67a687",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-25bef7",
+          "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+          "trigger": "manual",
+          "startedAt": 1791394324866,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 511,
+              "at": 1791394324866,
+              "totals": {
+                "uncachedInputTokens": 134032,
+                "outputTokens": 33658,
+                "cacheReadTokens": 5403392,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 511,
+                  "totals": {
+                    "uncachedInputTokens": 134032,
+                    "outputTokens": 33658,
+                    "cacheReadTokens": 5403392,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 529,
+              "at": 1791394331565,
+              "totals": {
+                "uncachedInputTokens": 135598,
+                "outputTokens": 34427,
+                "cacheReadTokens": 5744384,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 529,
+                  "totals": {
+                    "uncachedInputTokens": 135598,
+                    "outputTokens": 34427,
+                    "cacheReadTokens": 5744384,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1566,
+              "outputTokens": 769,
+              "cacheReadTokens": 340992,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791394331565
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-807ab9",
+          "body": "[状态] → in_progress：研发段：两处判定改走 isCanceled 单点 + 清 2 条失效清单条目（reqboard_task_move）",
+          "createdAt": 1791394324866,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        },
+        {
+          "id": "c-276f89",
+          "body": "[状态] → done：研发段完成并已汇报（3 文件、6 完成项）；用例 17/17 全绿（reqboard_task_move）",
+          "createdAt": 1791394331565,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791394280494,
+      "updatedAt": 1791394331565,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791394280494,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791394324866,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "研发段：两处判定改走 isCanceled 单点 + 清 2 条失效清单条目"
+        },
+        {
+          "status": "done",
+          "at": 1791394331565,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "研发段完成并已汇报（3 文件、6 完成项）；用例 17/17 全绿"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791394329648,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/report-head.ts",
+          "src/client/views/report-band.ts",
+          "tests/fixtures/canceled-literal-baseline.json"
+        ],
+        "completed": [
+          "report-head.ts:485 终态只读文案判定改走 isCanceled(h)，新增 Predicates import",
+          "report-band.ts:291 取消态分支改走 isCanceled(report.head)，status 常量保留未动",
+          "清单删除两条失效 baseline 条目（band 的三元旧行、head 的 </div></div> 旧行），collected 与其余 37 条不动",
+          "用例 tests/live-tasks-single-source.test.ts 由 2 failed 转 17 passed",
+          "相关渲染用例 report-shell + report-firstscreen-gaps 94 passed（行为不变）",
+          "npx tsc --noEmit 退出码 0"
+        ]
+      },
+      "lastRun": {
+        "at": 1791394329648,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-11ca63",
+      "requirementId": "REQ-261008011831-3735",
+      "title": "两处终态文案判定改走 isCanceled 单点并清失效清单条目·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-8116c8"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/REQ-261008011831-3735/design/` 逐条核对；`npx vitest run tests/live-tasks-single-source.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "① src/client/views/report-head.ts: 新增 import { isCanceled } from '../../domain/status/Predicates.js'，把 :485 的 (h.status === 'canceled' ? '已取消' : '已归档') 改为 (isCanceled(h) ? '已取消' : '已归档')，文案串一字不动；② src/client/views/report-band.ts: 同路径新增 import，把 :290 的 if (status === 'canceled') { 改为 if (isCanceled(report.head)) {，:274 的 status 常量保留（:277/:294/:296/:298/:301/:303 仍在用）；③ tests/fixtures/canceled-literal-baseline.json: 逐条 grep 确认源码已无该行原文后，删除 baseline 里的两条 status-label 条目——src/client/views/report-band.ts 的 '? (status === \\'canceled\\'' 与 src/client/views/report-head.ts 的 '+ (h.status === \\'canceled\\' ? \\'已取消\\' : \\'已归档\\') + \\'，无可执行动作</div></div>\\''；collected 18 条与其余 37 条 baseline 不动。验证：npx vitest run tests/live-tasks-single-source.test.ts 转 17/17 绿，git diff --stat 仅三文件。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008011831-3735/design/` 逐条核对；`npx vitest run tests/live-tasks-single-source.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-67a687",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-5af813",
+          "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+          "trigger": "manual",
+          "startedAt": 1791394333594,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 535,
+              "at": 1791394333594,
+              "totals": {
+                "uncachedInputTokens": 135757,
+                "outputTokens": 34669,
+                "cacheReadTokens": 5859072,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 535,
+                  "totals": {
+                    "uncachedInputTokens": 135757,
+                    "outputTokens": 34669,
+                    "cacheReadTokens": 5859072,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 553,
+              "at": 1791394341581,
+              "totals": {
+                "uncachedInputTokens": 136805,
+                "outputTokens": 35459,
+                "cacheReadTokens": 6206208,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 553,
+                  "totals": {
+                    "uncachedInputTokens": 136805,
+                    "outputTokens": 35459,
+                    "cacheReadTokens": 6206208,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1048,
+              "outputTokens": 790,
+              "cacheReadTokens": 347136,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791394341581
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-19c258",
+          "body": "[状态] → in_progress：研发段已完成，复核段开工：对照 design/fix-design.md 逐条核对（reqboard_task_move）",
+          "createdAt": 1791394333594,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        },
+        {
+          "id": "c-afbfdf",
+          "body": "[状态] → done：复核段完成：改动与设计逐条一致、无偏离，用例复跑 17/17 全绿（reqboard_task_move）",
+          "createdAt": 1791394341581,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791394280494,
+      "updatedAt": 1791394341581,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791394280494,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791394333594,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "研发段已完成，复核段开工：对照 design/fix-design.md 逐条核对"
+        },
+        {
+          "status": "done",
+          "at": 1791394341581,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "复核段完成：改动与设计逐条一致、无偏离，用例复跑 17/17 全绿"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791394339629,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/client/views/report-head.ts",
+          "src/client/views/report-band.ts",
+          "tests/fixtures/canceled-literal-baseline.json"
+        ],
+        "completed": [
+          "逐条核对设计三处改动：report-head.ts +2/-1、report-band.ts +2/-1、清单 0/-12，与设计表逐行一致",
+          "两源文件改动行合计 6 行（2 条 import + 2 处判定替换的正负各一），无多余行改写",
+          "复核复跑验收命令：用例仍 17/17 全绿",
+          "核对 status 常量保留（band :275 起仍在用），无编译遗留",
+          "对照结果：无偏离，依据为 git diff --numstat 与 vitest 实测读数"
+        ]
+      },
+      "lastRun": {
+        "at": 1791394339629,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d97ccf",
+      "requirementId": "REQ-261008011831-3735",
+      "title": "基线核对落账与类型检查收口·研发",
+      "description": "子卡阶段：研发",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-67a687"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "npx tsx scripts/test-baseline.mts --check → 输出「新增失败 0」，且本需求三文件在失败集合中出现 0 次；该命令自带口径行「tsc 退出码 0 · error TS 0 条」；npx tsc --noEmit → 退出码 0、error TS 0 条。原「npx vitest run tests/ → 全绿」在共享工作树不可执行（另有 16 条他需求在途红，且非本次引入），故按可执行等价判据修订；refresh 落账步按 REQ-261008004324-81df/retro.md:55 属人的动作，读数已写入 verification.md 移交人工。",
+      "implementation": "① npx tsx scripts/test-baseline.mts --check，逐条核对当前 19 条失败是否均为在途需求已知失败，确认与本需求三文件（report-head.ts / report-band.ts / canceled-literal-baseline.json）相关的为 0 条；② 核对通过后 npx tsx scripts/test-baseline.mts --refresh 落账（只写 docs/reviews/test-baseline.failures.txt 与 test-baseline.md）；③ npx tsx scripts/test-baseline.mts --check 复核；④ npx tsc --noEmit。若核对发现任何与三文件相关的新失败：停止 refresh，回到 t1 先修。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-e5617b",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-c929d6",
+          "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+          "trigger": "manual",
+          "startedAt": 1791396996629,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 1352,
+              "at": 1791396996629,
+              "totals": {
+                "uncachedInputTokens": 204837,
+                "outputTokens": 142799,
+                "cacheReadTokens": 30507264,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 1352,
+                  "totals": {
+                    "uncachedInputTokens": 204837,
+                    "outputTokens": 142799,
+                    "cacheReadTokens": 30507264,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 1364,
+              "at": 1791397005206,
+              "totals": {
+                "uncachedInputTokens": 205457,
+                "outputTokens": 144011,
+                "cacheReadTokens": 31062912,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 1364,
+                  "totals": {
+                    "uncachedInputTokens": 205457,
+                    "outputTokens": 144011,
+                    "cacheReadTokens": 31062912,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 620,
+              "outputTokens": 1212,
+              "cacheReadTokens": 555648,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791397005206
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c578e1",
+          "body": "[状态] → in_progress：研发段：按修订后的可执行判据采数核对（--check 新增失败 0 + 三文件零出现 + tsc 0 + 三份清单同源）（reqboard_task_move）",
+          "createdAt": 1791396996629,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        },
+        {
+          "id": "c-0d6ebc",
+          "body": "[状态] → done：研发段完成：可执行判据全部满足（新增失败 0、三文件零出现、tsc 0）；不可执行的 refresh 步已按仓内结论移交人工并留痕（reqboard_task_move）",
+          "createdAt": 1791397005206,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791394349564,
+      "updatedAt": 1791397005206,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791394349564,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791396996629,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "研发段：按修订后的可执行判据采数核对（--check 新增失败 0 + 三文件零出现 + tsc 0 + 三份清单同源）"
+        },
+        {
+          "status": "done",
+          "at": 1791397005206,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "研发段完成：可执行判据全部满足（新增失败 0、三文件零出现、tsc 0）；不可执行的 refresh 步已按仓内结论移交人工并留痕"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791397001907,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261008011831-3735/verification.md",
+          "docs/requirements/REQ-261008011831-3735/tests/evidence.md"
+        ],
+        "completed": [
+          "按修订后可执行判据采数：--check → 本次失败 16 / 基线 68 · 新增失败 0 / 不再失败 52 · tsc 0",
+          "逐条核对归属：本需求三文件在失败集合中出现 0 次；16 条逐条归属见 verification.md 第三节",
+          "确认 --check 只读：跑前跑后 docs/reviews/ 均干净，故不触碰 REQ-261008004324-81df 正在验收的台账",
+          "原判据中的 refresh 步：实测会破坏三份清单同源不变量（打红 3 条），已按仓规还原；按 81df/retro.md:55 该步属人的动作，连同前置读数移交人工"
+        ]
+      },
+      "lastRun": {
+        "at": 1791397001907,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-03537d",
+      "requirementId": "REQ-261008011831-3735",
+      "title": "基线核对落账与类型检查收口·复核",
+      "description": "子卡阶段：复核",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-d97ccf"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 docs/requirements/REQ-261008011831-3735/design/ 四份文档逐条核对且四份文档均在场（architecture / data-model / interfaces / test-cases）：改动清单与 git diff --stat 逐行一致、清单条目键设计与实际删除条数一致、调用点传入形状与源码一致、三条锚点读数与 tests/evidence.md 一致；无偏离时显式写明「无偏离」及依据。原「npx vitest run tests/ → 全绿」在共享工作树不可执行（16 条他需求在途红，非本次引入），按可执行等价判据修订。",
+      "implementation": "① npx tsx scripts/test-baseline.mts --check，逐条核对当前 19 条失败是否均为在途需求已知失败，确认与本需求三文件（report-head.ts / report-band.ts / canceled-literal-baseline.json）相关的为 0 条；② 核对通过后 npx tsx scripts/test-baseline.mts --refresh 落账（只写 docs/reviews/test-baseline.failures.txt 与 test-baseline.md）；③ npx tsx scripts/test-baseline.mts --check 复核；④ npx tsc --noEmit。若核对发现任何与三文件相关的新失败：停止 refresh，回到 t1 先修。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008011831-3735/design/` 逐条核对；`npx vitest run tests/` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-e5617b",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b2ee00",
+          "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+          "trigger": "manual",
+          "startedAt": 1791397007320,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 1370,
+              "at": 1791397007320,
+              "totals": {
+                "uncachedInputTokens": 205759,
+                "outputTokens": 144108,
+                "cacheReadTokens": 31341824,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 1370,
+                  "totals": {
+                    "uncachedInputTokens": 205759,
+                    "outputTokens": 144108,
+                    "cacheReadTokens": 31341824,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 1382,
+              "at": 1791397014087,
+              "totals": {
+                "uncachedInputTokens": 206313,
+                "outputTokens": 144698,
+                "cacheReadTokens": 31901056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 1382,
+                  "totals": {
+                    "uncachedInputTokens": 206313,
+                    "outputTokens": 144698,
+                    "cacheReadTokens": 31901056,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 554,
+              "outputTokens": 590,
+              "cacheReadTokens": 559232,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791397014087
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-0c8f66",
+          "body": "[状态] → in_progress：复核段开工：对照 design/ 四份文档与 verification.md 逐条核对读数（reqboard_task_move）",
+          "createdAt": 1791397007320,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        },
+        {
+          "id": "c-fc86d9",
+          "body": "[状态] → done：复核段完成：设计四文档齐备且与实测读数一致，16 条归属逐条有据，显式声明「无偏离」（reqboard_task_move）",
+          "createdAt": 1791397014087,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791394349564,
+      "updatedAt": 1791397014087,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791394349564,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791397007320,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "复核段开工：对照 design/ 四份文档与 verification.md 逐条核对读数"
+        },
+        {
+          "status": "done",
+          "at": 1791397014087,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "复核段完成：设计四文档齐备且与实测读数一致，16 条归属逐条有据，显式声明「无偏离」"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791397010627,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261008011831-3735/reviews/review-notes.md"
+        ],
+        "completed": [
+          "对照 design/ 四份文档核对：architecture（三处改动与模块地图逐条一致）、data-model（清单键=文件+行原文、删 2 条留 37 条）、interfaces（两处调用点传入形状正确）、test-cases（三条锚点读数与实测一致）",
+          "核对 verification.md 第三节 16 条归属：逐条有依据，无一条落在本需求范围内",
+          "核对自伤还原与授权外扩两项申报，与 reviews/review-notes.md 记录一致",
+          "无偏离项：判定行号 485/290 → 486/291 的 +1 顺移已在材料中显式声明"
+        ]
+      },
+      "lastRun": {
+        "at": 1791397010627,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-18eb2a",
+      "requirementId": "REQ-261008011831-3735",
+      "title": "基线核对落账与类型检查收口·测试",
+      "description": "子卡阶段：测试",
+      "phase": "test",
+      "side": "backend",
+      "dependsOn": [
+        "t-03537d"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "① npx tsx scripts/test-baseline.mts --check，逐条核对当前 19 条失败是否均为在途需求已知失败，确认与本需求三文件（report-head.ts / report-band.ts / canceled-literal-baseline.json）相关的为 0 条；② 核对通过后 npx tsx scripts/test-baseline.mts --refresh 落账（只写 docs/reviews/test-baseline.failures.txt 与 test-baseline.md）；③ npx tsx scripts/test-baseline.mts --check 复核；④ npx tsc --noEmit。若核对发现任何与三文件相关的新失败：停止 refresh，回到 t1 先修。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-e5617b",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-89bd83",
+          "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+          "trigger": "manual",
+          "startedAt": 1791397016984,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 1388,
+              "at": 1791397016984,
+              "totals": {
+                "uncachedInputTokens": 206617,
+                "outputTokens": 144870,
+                "cacheReadTokens": 32181376,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 1388,
+                  "totals": {
+                    "uncachedInputTokens": 206617,
+                    "outputTokens": 144870,
+                    "cacheReadTokens": 32181376,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+              "seq": 1400,
+              "at": 1791397022692,
+              "totals": {
+                "uncachedInputTokens": 207256,
+                "outputTokens": 145520,
+                "cacheReadTokens": 32743680,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e",
+                  "depth": 0,
+                  "seq": 1400,
+                  "totals": {
+                    "uncachedInputTokens": 207256,
+                    "outputTokens": 145520,
+                    "cacheReadTokens": 32743680,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 639,
+              "outputTokens": 650,
+              "cacheReadTokens": 562304,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791397022692
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-a0c7b3",
+          "body": "[状态] → in_progress：测试段开工：复跑锚点命令与相邻回归，留可复核证据（reqboard_task_move）",
+          "createdAt": 1791397016984,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        },
+        {
+          "id": "c-95e864",
+          "body": "[状态] → done：测试段完成：--check 本次失败 16 ≤ 基线 68 且新增失败 0，tsc 0 ≤ 基线 0，锚点与相邻回归全绿（reqboard_task_move）",
+          "createdAt": 1791397022692,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791394349564,
+      "updatedAt": 1791397022692,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791394349564,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791397016984,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "测试段开工：复跑锚点命令与相邻回归，留可复核证据"
+        },
+        {
+          "status": "done",
+          "at": 1791397022692,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-646e8ead-d42e-4ed1-b531-993ff297ab7e"
+          },
+          "reason": "测试段完成：--check 本次失败 16 ≤ 基线 68 且新增失败 0，tsc 0 ≤ 基线 0，锚点与相邻回归全绿"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791397020609,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/requirements/REQ-261008011831-3735/tests/evidence.md"
+        ],
+        "completed": [
+          "复跑锚点命令：tests/live-tasks-single-source.test.ts → 17 passed；report-shell + report-firstscreen-gaps → 94 passed",
+          "复跑相邻回归：archive-* + kb-* → 29 文件 / 263 passed（授权外扩修复零回归）",
+          "复跑三份清单同源用例：baseline-triage + compat-req-261006201814 → 18 passed",
+          "基线口径：--check → 本次失败 16 条 ≤ 开工前基线 68 条，且新增失败 0；tsc --noEmit → 0 错误 ≤ 基线 0",
+          "证据汇总已落盘：docs/requirements/REQ-261008011831-3735/tests/evidence.md（8 行命令与读数）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791397020609,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-67a687",
+      "to": "t-e5617b"
+    },
+    {
+      "from": "t-8116c8",
+      "to": "t-11ca63"
+    },
+    {
+      "from": "t-67a687",
+      "to": "t-d97ccf"
+    },
+    {
+      "from": "t-d97ccf",
+      "to": "t-03537d"
+    },
+    {
+      "from": "t-03537d",
+      "to": "t-18eb2a"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-67a687",
+        "t-8116c8"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-e5617b",
+        "t-d97ccf",
+        "t-11ca63"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-03537d"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-18eb2a"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-07T18:17:09.695Z"
+}

@@ -1,0 +1,474 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261007193530-3133
+  generated_at: 2026-10-07T11:47:15.627Z
+  version: 41
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T12:02:39.649Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/bugfix-design.md#总览
+      title: 总览 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/bugfix-design.md
+      section: 总览
+    - ref: design/bugfix-design.md#FR-1-修复设计弹框否定回执-userfeedback-条件展开
+      title: FR-1 修复设计：弹框否定回执 user_feedback 条件展开 <!--
+      serves:
+        - FR-1
+      file: design/bugfix-design.md
+      section: FR-1-修复设计弹框否定回执-userfeedback-条件展开
+    - ref: design/bugfix-design.md#FR-2-修复设计handleTaskMove-按角色传-role
+      title: FR-2 修复设计：handleTaskMove 按角色传 role <!--
+      serves:
+        - FR-2
+      file: design/bugfix-design.md
+      section: FR-2-修复设计handleTaskMove-按角色传-role
+    - ref: design/bugfix-design.md#FR-3-修复设计canceleddraft-入人工门
+      title: FR-3 修复设计：canceled>draft 入人工门 <!--
+      serves:
+        - FR-3
+      file: design/bugfix-design.md
+      section: FR-3-修复设计canceleddraft-入人工门
+    - ref: design/bugfix-design.md#FR-4-修复设计throttleRemainingMs-读数-clamp
+      title: FR-4 修复设计：throttleRemainingMs 读数 clamp <!--
+      serves:
+        - FR-4
+      file: design/bugfix-design.md
+      section: FR-4-修复设计throttleRemainingMs-读数-clamp
+    - ref: design/bugfix-design.md#文件结构修改清单
+      title: 文件结构（修改清单） <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/bugfix-design.md
+      section: 文件结构修改清单
+    - ref: design/bugfix-design.md#回归测试落点
+      title: 回归测试落点 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/bugfix-design.md
+      section: 回归测试落点
+    - ref: design/bugfix-design.md#数据层与回滚
+      title: 数据层与回滚 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/bugfix-design.md
+      section: 数据层与回滚
+    - ref: design/bugfix-design.md#边界不做什么
+      title: 边界（不做什么） <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/bugfix-design.md
+      section: 边界不做什么
+    - ref: design/bugfix-design.md#验收口径
+      title: 验收口径 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/bugfix-design.md
+      section: 验收口径
+outputs:
+  tasks:
+    - id: t-876170
+      title: 修复 AskConfirm 否定回执 user_feedback 条件展开（FR-1）
+      implements: "src/application/use-cases/AskConfirm.ts:449：`user_feedback: userFeedback.length > 0 ? userFeedback : undefined` 改为 `...(userFeedback.length > 0 ? { user_feedback: userFeedback } : {})`。tests/ask-confirm.test.ts 新增用例：弹框否定+空反馈→回执 success:true, confirmed:false，'user_feedback' in receipt === false，JSON.stringify 不抛；有反馈→键存在且等值"
+      serves:
+        - FR-1
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-b6ca79
+      title: 修复 handleTaskMove 按角色传 role 堵子卡非法态（FR-2）
+      implements: "① src/application/internal/task-transition.ts 新增导出 roleOfTask(task, tasks)：parentId 非空→subtask；有子卡→parent；否则 legacy（与 MoveTask.ts:232 roleOf 同口径）。② src/http/routers/tasks.ts handleTaskMove 的 mutate 回调内 transitionTask 调用加 role: roleOfTask(task, tasks)。③ 新建 tests/http-task-move-role.test.ts（harness 参照 tests/canceled-internal-collect.test.ts 对 routers/tasks 的直调）：子卡→integrating/testing/in_review 抛 invalid_transition 且字段零改动；存量卡 todo→in_progress→testing 放行；父卡合法边放行"
+      serves:
+        - FR-2
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-db8f7a
+      title: 修复需求 canceled→draft 复活边挂人工门（FR-3）
+      implements: src/domain/requirement/RequirementStatus.ts 的 HUMAN_ONLY_REQ_TRANSITIONS 加一行 'canceled>draft'（带对称性注释）。tests/domain/requirement-status.test.ts 新增用例：assertReqTransition('canceled','draft','agent') 抛 code:'human_gate'；human 放行；system 抛 system_gate；agentNextActions('canceled') 不含 draft
+      serves:
+        - FR-3
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-a5ca0d
+      title: 修复 throttleRemainingMs 读数 clamp 到 [0, throttleMs]（FR-4）
+      implements: src/domain/workflow/DoneEvidenceSpec.ts doneThrottleRemainingMs：`const left = throttleMs - (now - h.at)` 改为 `const left = Math.max(0, Math.min(throttleMs, throttleMs - (now - h.at)))`。tests/done-throttle-guidance.test.ts 新增用例：h.at = now + 30000 → 返回 ≤ 60000（= throttleMs）；h.at = now - 10000 → 返回 ≈ 50000（行为不变）
+      serves:
+        - FR-4
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-68c6fb
+      title: 总验收：全量回归 + diff 盘点
+      implements: 不改代码。跑 pnpm test（与基线比对无新增失败）、pnpm typecheck、git diff --stat 盘点改动文件集合 = 设计文档「文件结构」表（5 源码 + 4 测试），逐条核对四条 FR 的 grep 判据
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      depends_on:
+        - t-876170
+        - t-b6ca79
+        - t-db8f7a
+        - t-a5ca0d
+      phase: test
+      side: backend
+    - id: t-6fb120
+      title: 修复 AskConfirm 否定回执 user_feedback 条件展开（FR-1）·复现
+      implements: |-
+        src/application/use-cases/AskConfirm.ts:449：`user_feedback: userFeedback.length > 0 ? userFeedback : undefined` 改为 `...(userFeedback.length > 0 ? { user_feedback: userFeedback } : {})`。tests/ask-confirm.test.ts 新增用例：弹框否定+空反馈→回执 success:true, confirmed:false，'user_feedback' in receipt === false，JSON.stringify 不抛；有反馈→键存在且等值
+
+        [子卡阶段·复现] 只做本阶段；验收：`npx vitest run tests/ask-confirm.test.ts` → 修复前失败、修复后通过（贴两次输出）
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-809d15
+      title: 修复 AskConfirm 否定回执 user_feedback 条件展开（FR-1）·修复
+      implements: |-
+        src/application/use-cases/AskConfirm.ts:449：`user_feedback: userFeedback.length > 0 ? userFeedback : undefined` 改为 `...(userFeedback.length > 0 ? { user_feedback: userFeedback } : {})`。tests/ask-confirm.test.ts 新增用例：弹框否定+空反馈→回执 success:true, confirmed:false，'user_feedback' in receipt === false，JSON.stringify 不抛；有反馈→键存在且等值
+
+        [子卡阶段·修复] 只做本阶段；验收：`npx vitest run tests/ask-confirm.test.ts` → 转绿（贴命令与输出），且根因单独写明
+      serves: []
+      depends_on:
+        - t-6fb120
+      phase: implement
+      side: backend
+    - id: t-695159
+      title: 修复 AskConfirm 否定回执 user_feedback 条件展开（FR-1）·复核
+      implements: |-
+        src/application/use-cases/AskConfirm.ts:449：`user_feedback: userFeedback.length > 0 ? userFeedback : undefined` 改为 `...(userFeedback.length > 0 ? { user_feedback: userFeedback } : {})`。tests/ask-confirm.test.ts 新增用例：弹框否定+空反馈→回执 success:true, confirmed:false，'user_feedback' in receipt === false，JSON.stringify 不抛；有反馈→键存在且等值
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007193530-3133/design/` 逐条核对；`npx vitest run tests/ask-confirm.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-809d15
+      phase: implement
+      side: backend
+    - id: t-6a5410
+      title: 修复 AskConfirm 否定回执 user_feedback 条件展开（FR-1）·回归测试
+      implements: |-
+        src/application/use-cases/AskConfirm.ts:449：`user_feedback: userFeedback.length > 0 ? userFeedback : undefined` 改为 `...(userFeedback.length > 0 ? { user_feedback: userFeedback } : {})`。tests/ask-confirm.test.ts 新增用例：弹框否定+空反馈→回执 success:true, confirmed:false，'user_feedback' in receipt === false，JSON.stringify 不抛；有反馈→键存在且等值
+
+        [子卡阶段·回归测试] 只做本阶段；验收：`pnpm test` → 无新增失败（与基线比对，贴汇总输出）
+      serves: []
+      depends_on:
+        - t-695159
+      phase: implement
+      side: backend
+    - id: t-b5037d
+      title: 修复 handleTaskMove 按角色传 role 堵子卡非法态（FR-2）·复现
+      implements: |-
+        ① src/application/internal/task-transition.ts 新增导出 roleOfTask(task, tasks)：parentId 非空→subtask；有子卡→parent；否则 legacy（与 MoveTask.ts:232 roleOf 同口径）。② src/http/routers/tasks.ts handleTaskMove 的 mutate 回调内 transitionTask 调用加 role: roleOfTask(task, tasks)。③ 新建 tests/http-task-move-role.test.ts（harness 参照 tests/canceled-internal-collect.test.ts 对 routers/tasks 的直调）：子卡→integrating/testing/in_review 抛 invalid_transition 且字段零改动；存量卡 todo→in_progress→testing 放行；父卡合法边放行
+
+        [子卡阶段·复现] 只做本阶段；验收：`npx vitest run tests/http-task-move-role.test.ts` → 修复前失败、修复后通过（贴两次输出）
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-ad3a7b
+      title: 修复 handleTaskMove 按角色传 role 堵子卡非法态（FR-2）·修复
+      implements: |-
+        ① src/application/internal/task-transition.ts 新增导出 roleOfTask(task, tasks)：parentId 非空→subtask；有子卡→parent；否则 legacy（与 MoveTask.ts:232 roleOf 同口径）。② src/http/routers/tasks.ts handleTaskMove 的 mutate 回调内 transitionTask 调用加 role: roleOfTask(task, tasks)。③ 新建 tests/http-task-move-role.test.ts（harness 参照 tests/canceled-internal-collect.test.ts 对 routers/tasks 的直调）：子卡→integrating/testing/in_review 抛 invalid_transition 且字段零改动；存量卡 todo→in_progress→testing 放行；父卡合法边放行
+
+        [子卡阶段·修复] 只做本阶段；验收：`npx vitest run tests/http-task-move-role.test.ts` → 转绿（贴命令与输出），且根因单独写明
+      serves: []
+      depends_on:
+        - t-b5037d
+      phase: implement
+      side: backend
+    - id: t-004546
+      title: 修复 handleTaskMove 按角色传 role 堵子卡非法态（FR-2）·复核
+      implements: |-
+        ① src/application/internal/task-transition.ts 新增导出 roleOfTask(task, tasks)：parentId 非空→subtask；有子卡→parent；否则 legacy（与 MoveTask.ts:232 roleOf 同口径）。② src/http/routers/tasks.ts handleTaskMove 的 mutate 回调内 transitionTask 调用加 role: roleOfTask(task, tasks)。③ 新建 tests/http-task-move-role.test.ts（harness 参照 tests/canceled-internal-collect.test.ts 对 routers/tasks 的直调）：子卡→integrating/testing/in_review 抛 invalid_transition 且字段零改动；存量卡 todo→in_progress→testing 放行；父卡合法边放行
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007193530-3133/design/` 逐条核对；`npx vitest run tests/http-task-move-role.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-ad3a7b
+      phase: implement
+      side: backend
+    - id: t-49f561
+      title: 修复 handleTaskMove 按角色传 role 堵子卡非法态（FR-2）·回归测试
+      implements: |-
+        ① src/application/internal/task-transition.ts 新增导出 roleOfTask(task, tasks)：parentId 非空→subtask；有子卡→parent；否则 legacy（与 MoveTask.ts:232 roleOf 同口径）。② src/http/routers/tasks.ts handleTaskMove 的 mutate 回调内 transitionTask 调用加 role: roleOfTask(task, tasks)。③ 新建 tests/http-task-move-role.test.ts（harness 参照 tests/canceled-internal-collect.test.ts 对 routers/tasks 的直调）：子卡→integrating/testing/in_review 抛 invalid_transition 且字段零改动；存量卡 todo→in_progress→testing 放行；父卡合法边放行
+
+        [子卡阶段·回归测试] 只做本阶段；验收：`pnpm test` → 无新增失败（与基线比对，贴汇总输出）
+      serves: []
+      depends_on:
+        - t-004546
+      phase: implement
+      side: backend
+    - id: t-08a7b8
+      title: 修复需求 canceled→draft 复活边挂人工门（FR-3）·复现
+      implements: |-
+        src/domain/requirement/RequirementStatus.ts 的 HUMAN_ONLY_REQ_TRANSITIONS 加一行 'canceled>draft'（带对称性注释）。tests/domain/requirement-status.test.ts 新增用例：assertReqTransition('canceled','draft','agent') 抛 code:'human_gate'；human 放行；system 抛 system_gate；agentNextActions('canceled') 不含 draft
+
+        [子卡阶段·复现] 只做本阶段；验收：`npx vitest run tests/domain/requirement-status.test.ts` → 修复前失败、修复后通过（贴两次输出）
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-7a5a29
+      title: 修复需求 canceled→draft 复活边挂人工门（FR-3）·修复
+      implements: |-
+        src/domain/requirement/RequirementStatus.ts 的 HUMAN_ONLY_REQ_TRANSITIONS 加一行 'canceled>draft'（带对称性注释）。tests/domain/requirement-status.test.ts 新增用例：assertReqTransition('canceled','draft','agent') 抛 code:'human_gate'；human 放行；system 抛 system_gate；agentNextActions('canceled') 不含 draft
+
+        [子卡阶段·修复] 只做本阶段；验收：`npx vitest run tests/domain/requirement-status.test.ts` → 转绿（贴命令与输出），且根因单独写明
+      serves: []
+      depends_on:
+        - t-08a7b8
+      phase: implement
+      side: backend
+    - id: t-7e524f
+      title: 修复需求 canceled→draft 复活边挂人工门（FR-3）·复核
+      implements: |-
+        src/domain/requirement/RequirementStatus.ts 的 HUMAN_ONLY_REQ_TRANSITIONS 加一行 'canceled>draft'（带对称性注释）。tests/domain/requirement-status.test.ts 新增用例：assertReqTransition('canceled','draft','agent') 抛 code:'human_gate'；human 放行；system 抛 system_gate；agentNextActions('canceled') 不含 draft
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007193530-3133/design/` 逐条核对；`npx vitest run tests/domain/requirement-status.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-7a5a29
+      phase: implement
+      side: backend
+    - id: t-d158f0
+      title: 修复需求 canceled→draft 复活边挂人工门（FR-3）·回归测试
+      implements: |-
+        src/domain/requirement/RequirementStatus.ts 的 HUMAN_ONLY_REQ_TRANSITIONS 加一行 'canceled>draft'（带对称性注释）。tests/domain/requirement-status.test.ts 新增用例：assertReqTransition('canceled','draft','agent') 抛 code:'human_gate'；human 放行；system 抛 system_gate；agentNextActions('canceled') 不含 draft
+
+        [子卡阶段·回归测试] 只做本阶段；验收：`pnpm test` → 无新增失败（与基线比对，贴汇总输出）
+      serves: []
+      depends_on:
+        - t-7e524f
+      phase: implement
+      side: backend
+    - id: t-22315b
+      title: 修复 throttleRemainingMs 读数 clamp 到 [0, throttleMs]（FR-4）·复现
+      implements: |-
+        src/domain/workflow/DoneEvidenceSpec.ts doneThrottleRemainingMs：`const left = throttleMs - (now - h.at)` 改为 `const left = Math.max(0, Math.min(throttleMs, throttleMs - (now - h.at)))`。tests/done-throttle-guidance.test.ts 新增用例：h.at = now + 30000 → 返回 ≤ 60000（= throttleMs）；h.at = now - 10000 → 返回 ≈ 50000（行为不变）
+
+        [子卡阶段·复现] 只做本阶段；验收：`npx vitest run tests/done-throttle-guidance.test.ts` → 修复前失败、修复后通过（贴两次输出）
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-b8ef70
+      title: 修复 throttleRemainingMs 读数 clamp 到 [0, throttleMs]（FR-4）·修复
+      implements: |-
+        src/domain/workflow/DoneEvidenceSpec.ts doneThrottleRemainingMs：`const left = throttleMs - (now - h.at)` 改为 `const left = Math.max(0, Math.min(throttleMs, throttleMs - (now - h.at)))`。tests/done-throttle-guidance.test.ts 新增用例：h.at = now + 30000 → 返回 ≤ 60000（= throttleMs）；h.at = now - 10000 → 返回 ≈ 50000（行为不变）
+
+        [子卡阶段·修复] 只做本阶段；验收：`npx vitest run tests/done-throttle-guidance.test.ts` → 转绿（贴命令与输出），且根因单独写明
+      serves: []
+      depends_on:
+        - t-22315b
+      phase: implement
+      side: backend
+    - id: t-e5540a
+      title: 修复 throttleRemainingMs 读数 clamp 到 [0, throttleMs]（FR-4）·复核
+      implements: |-
+        src/domain/workflow/DoneEvidenceSpec.ts doneThrottleRemainingMs：`const left = throttleMs - (now - h.at)` 改为 `const left = Math.max(0, Math.min(throttleMs, throttleMs - (now - h.at)))`。tests/done-throttle-guidance.test.ts 新增用例：h.at = now + 30000 → 返回 ≤ 60000（= throttleMs）；h.at = now - 10000 → 返回 ≈ 50000（行为不变）
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007193530-3133/design/` 逐条核对；`npx vitest run tests/done-throttle-guidance.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-b8ef70
+      phase: implement
+      side: backend
+    - id: t-dab9cc
+      title: 修复 throttleRemainingMs 读数 clamp 到 [0, throttleMs]（FR-4）·回归测试
+      implements: |-
+        src/domain/workflow/DoneEvidenceSpec.ts doneThrottleRemainingMs：`const left = throttleMs - (now - h.at)` 改为 `const left = Math.max(0, Math.min(throttleMs, throttleMs - (now - h.at)))`。tests/done-throttle-guidance.test.ts 新增用例：h.at = now + 30000 → 返回 ≤ 60000（= throttleMs）；h.at = now - 10000 → 返回 ≈ 50000（行为不变）
+
+        [子卡阶段·回归测试] 只做本阶段；验收：`pnpm test` → 无新增失败（与基线比对，贴汇总输出）
+      serves: []
+      depends_on:
+        - t-e5540a
+      phase: implement
+      side: backend
+    - id: t-601a53
+      title: 总验收：全量回归 + diff 盘点·校验
+      implements: |-
+        不改代码。跑 pnpm test（与基线比对无新增失败）、pnpm typecheck、git diff --stat 盘点改动文件集合 = 设计文档「文件结构」表（5 源码 + 4 测试），逐条核对四条 FR 的 grep 判据
+
+        [子卡阶段·校验] 只做本阶段；验收：校验项逐条给出结果：`npx vitest run tests/` → 全绿；异常项已列出并标注影响面
+      serves: []
+      depends_on:
+        - t-876170
+        - t-b6ca79
+        - t-db8f7a
+        - t-a5ca0d
+      phase: test
+      side: backend
+task_coverage:
+  - task_id: t-876170
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b6ca79
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-db8f7a
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-a5ca0d
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-68c6fb
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-6fb120
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-809d15
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-695159
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-6a5410
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b5037d
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ad3a7b
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-004546
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-49f561
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-08a7b8
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-7a5a29
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-7e524f
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-d158f0
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-22315b
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b8ef70
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-e5540a
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-dab9cc
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-601a53
+    covers_prototypes: []
+    covers_decisions: []
+traceability:
+  design_to_tasks:
+    design/bugfix-design.md#总览:
+      - t-876170
+      - t-b6ca79
+      - t-db8f7a
+      - t-a5ca0d
+      - t-68c6fb
+    design/bugfix-design.md#FR-1-修复设计弹框否定回执-userfeedback-条件展开:
+      - t-876170
+      - t-68c6fb
+    design/bugfix-design.md#FR-2-修复设计handleTaskMove-按角色传-role:
+      - t-b6ca79
+      - t-68c6fb
+    design/bugfix-design.md#FR-3-修复设计canceleddraft-入人工门:
+      - t-db8f7a
+      - t-68c6fb
+    design/bugfix-design.md#FR-4-修复设计throttleRemainingMs-读数-clamp:
+      - t-a5ca0d
+      - t-68c6fb
+    design/bugfix-design.md#文件结构修改清单:
+      - t-876170
+      - t-b6ca79
+      - t-db8f7a
+      - t-a5ca0d
+      - t-68c6fb
+    design/bugfix-design.md#回归测试落点:
+      - t-876170
+      - t-b6ca79
+      - t-db8f7a
+      - t-a5ca0d
+      - t-68c6fb
+    design/bugfix-design.md#数据层与回滚:
+      - t-876170
+      - t-b6ca79
+      - t-db8f7a
+      - t-a5ca0d
+      - t-68c6fb
+    design/bugfix-design.md#边界不做什么:
+      - t-876170
+      - t-b6ca79
+      - t-db8f7a
+      - t-a5ca0d
+      - t-68c6fb
+    design/bugfix-design.md#验收口径:
+      - t-876170
+      - t-b6ca79
+      - t-db8f7a
+      - t-a5ca0d
+      - t-68c6fb
+  fr_to_tasks:
+    FR-1:
+      - t-876170
+      - t-b6ca79
+      - t-db8f7a
+      - t-a5ca0d
+      - t-68c6fb
+    FR-2:
+      - t-876170
+      - t-b6ca79
+      - t-db8f7a
+      - t-a5ca0d
+      - t-68c6fb
+    FR-3:
+      - t-876170
+      - t-b6ca79
+      - t-db8f7a
+      - t-a5ca0d
+      - t-68c6fb
+    FR-4:
+      - t-876170
+      - t-b6ca79
+      - t-db8f7a
+      - t-a5ca0d
+      - t-68c6fb
+coverage:
+  implementation:
+    total: 10
+    covered: 10
+    uncovered: []
+    rate: 100
+    total_designs: 10
+    covered_designs: 10

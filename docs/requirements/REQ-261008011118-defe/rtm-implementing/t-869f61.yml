@@ -1,0 +1,36 @@
+task:
+  id: t-869f61
+  title: 子卡执行改先认领后执行并对并发派发说不
+  status: done
+  implements: ① `src/application/use-cases/ExecuteTask.ts`：把认领挪到派发之前（startedAt 之后）——todo 则 transitionTask(in_progress) + claimedAt/claimedBy + openExecution(running + start 快照)；若已是 in_progress 且最近 running 执行的 startedAt 在 LIMITS.orphanTimeoutMs（3min）内 → 抛 REQBOARD_SUBTASK_IN_PROGRESS（文案给剩余毫秒与两条出路）；超时（孤儿）→ 先 closeExecutions(failed, 'stale claim takeover (orphan)') 再开新执行接管且不 bump attempt；删除修后不再走的 born-failed 分支（openExecution 的该能力保留）；新增 releaseClaim 局部函数（调 failure-handling 的 rollbackSubtask）接两条失败出口——跨卡覆盖早退（REQBOARD_CROSS_CARD）与 done 门 catch（替换现有内联块），保证每条出口都回 todo + attempt+1 + 执行闭合 failed；② `src/shared/error-code-registry.ts` 注册 REQBOARD_SUBTASK_IN_PROGRESS 并刷新 `tests/fixtures/error-code-inventory.json`；③ `tests/execute-task.test.ts` 补四臂（并发只跑一次、凭证门失败归还、跨卡覆盖归还、孤儿接管）。
+  serves:
+    - BUG-4
+  depends_on:
+    - t-6969c5
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008011118-defe
+    TASK_ID: t-869f61
+    TASK_TITLE: 子卡执行改先认领后执行并对并发派发说不
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T17:54:18.240Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008011118-defe
+  generated_at: 2026-10-07T17:48:04.064Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T17:54:18.240Z

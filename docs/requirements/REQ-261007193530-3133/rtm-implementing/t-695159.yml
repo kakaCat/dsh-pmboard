@@ -1,0 +1,39 @@
+task:
+  id: t-695159
+  title: 修复 AskConfirm 否定回执 user_feedback 条件展开（FR-1）·复核
+  status: done
+  implements: |-
+    src/application/use-cases/AskConfirm.ts:449：`user_feedback: userFeedback.length > 0 ? userFeedback : undefined` 改为 `...(userFeedback.length > 0 ? { user_feedback: userFeedback } : {})`。tests/ask-confirm.test.ts 新增用例：弹框否定+空反馈→回执 success:true, confirmed:false，'user_feedback' in receipt === false，JSON.stringify 不抛；有反馈→键存在且等值
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007193530-3133/design/` 逐条核对；`npx vitest run tests/ask-confirm.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-809d15
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007193530-3133
+    TASK_ID: t-695159
+    TASK_TITLE: 修复 AskConfirm 否定回执 user_feedback 条件展开（FR-1）·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      started_at: 2026-10-07T12:00:17.078Z
+      completed_at: 2026-10-07T12:00:19.415Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007193530-3133
+  generated_at: 2026-10-07T11:55:30.932Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T12:00:19.416Z

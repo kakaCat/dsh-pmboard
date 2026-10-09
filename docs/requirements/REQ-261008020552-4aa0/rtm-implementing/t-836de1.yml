@@ -1,0 +1,38 @@
+task:
+  id: t-836de1
+  title: 收编 archive_amend 为 task_amend(op=archive)（U1）·测试
+  status: done
+  implements: |-
+    按 design/architecture.md §2/§3/§4 施工：① TaskAmendTool.ts 扩 op=archive——TASK_AMEND_OPS 加 'archive'、REQUIRED_OF 加 archive:[docs,reason]、parameters 新增 docs 数组（items={kind,path}，从 ArchiveAmendTool 平移）、output.schema 加 appended/skipped、分派 amendArchiveManifest 并补 success:true 与 op 回显；② prompt.ts 加 op=archive 一句 + 承接指路（单字面量）；③ summary.ts 迁入 archiveAmendSummary 为 op=archive 分支；④ 删 src/tools/ArchiveAmendTool/ 目录；⑤ registry.ts 删 ArchiveAmend 条目、TaskAmend responseSources 加 AmendArchiveManifest.ts；⑥ src/index.ts 与 src/tools/index.ts 摘除导入/注册；⑦ boundary-guard.ts 加 TASK_AMEND_OP_STAGES（archive:undefined 全阶段放行）；⑧ AmendArchiveManifest.ts 8 处 reject 前缀改 reqboard_task_amend(op=archive)（D-3，design §4）；⑨ routers/requirements.ts:785 注释改写；⑩ 测试：archive-reconcile-e2e 改打 defineTaskAmendTool op=archive，task-amend-tool.test.ts 加 op=archive 用例。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-9c589b
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008020552-4aa0
+    TASK_ID: t-836de1
+    TASK_TITLE: 收编 archive_amend 为 task_amend(op=archive)（U1）·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T18:53:51.545Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008020552-4aa0
+  generated_at: 2026-10-07T18:46:19.425Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T18:53:51.547Z

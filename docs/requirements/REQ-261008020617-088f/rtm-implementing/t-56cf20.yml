@@ -1,0 +1,38 @@
+task:
+  id: t-56cf20
+  title: 合并三个同构 RTM 门为单点并改走文档端口·复核
+  status: done
+  implements: |-
+    新增 src/application/gate/rtm-gates.ts：一份内部实现 rtmGateCheck(spec, req, docs)，spec 只装三处差异（查哪个字段 design_refs / task_refs / acceptance_status、错误码、消息模板）；导出三个同名薄壳 designGateCheck / taskCoverageGateCheck / acceptanceGateCheck，签名由 (req, workspaceRoot: string) 改为 (req, docs: DocRepository)，读盘改走 docs.read('docs/requirements/' + req.id + '/rtm.yaml')，yaml 解析与 try/catch → rtm_not_found 的兜底语义逐字保留。删除 src/application/gate/acceptance-gate.ts、src/application/gate/design-gate.ts、src/application/gate/task-coverage-gate.ts。src/application/gate/index.ts 改为从 ./rtm-gates.js 导出同名符号（barrel 名称不变）。三份单测 tests/unit/gate/acceptance-gate.test.ts、tests/unit/gate/design-gate.test.ts、tests/unit/gate/task-coverage-gate.test.ts 的构造由 tmpDir 改为 new FileDocRepository({ workspaceRoot: tmpDir })，断言一字不改。函数注释写明调用方纪律：读盘前须按 docs/architecture/gate-read-root.md 的唯一收敛入口 applyRequirementWorkspaceRoot 校正根。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020617-088f/design/` 逐条核对；`npx vitest run tests/layer-boundary.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-bdc020
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008020617-088f
+    TASK_ID: t-56cf20
+    TASK_TITLE: 合并三个同构 RTM 门为单点并改走文档端口·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T18:24:26.105Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008020617-088f
+  generated_at: 2026-10-07T18:24:15.044Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T18:24:26.105Z

@@ -1,0 +1,567 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261008020552-4aa0
+  generated_at: 2026-10-07T18:28:29.592Z
+  version: 70
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-08T04:11:46.000Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/architecture.md#1
+      title: 设计总览 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: "1"
+    - ref: design/architecture.md#2
+      title: 依赖与调用方清单（refactor 必备：谁调用、谁被调用、怎么验证没漏） <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-5
+      file: design/architecture.md
+      section: "2"
+    - ref: design/architecture.md#3
+      title: 收编设计：task_amend 扩 2 个 op <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: "3"
+    - ref: design/architecture.md#3.1
+      title: op 契约（定死：参数 / 返回 / 错误码） <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: "3.1"
+    - ref: design/architecture.md#3.2
+      title: 挂起确认守卫按 op 分流（行为等价的关键点） <!--
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: "3.2"
+    - ref: design/architecture.md#3.3
+      title: 渲染分派 <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: "3.3"
+    - ref: design/architecture.md#3.4
+      title: 阶段守卫 op 化（boundary-guard） <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: "3.4"
+    - ref: design/architecture.md#4
+      title: D-3 有意偏差：旧工具名字面量替换（对需求「用例一行不改」的唯一修订点） <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/architecture.md
+      section: "4"
+    - ref: design/architecture.md#5
+      title: FR-3 设计：task_move 描述减负（1265 → ≤630） <!--
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: "5"
+    - ref: design/architecture.md#6
+      title: FR-4 设计：submit tasks[] 子 schema 描述下沉（1717 → ≤860） <!--
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: "6"
+    - ref: design/architecture.md#7
+      title: 文件结构（新建/修改/删除，拆分阶段变更盘点依据） <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: "7"
+    - ref: design/architecture.md#8
+      title: 行为等价验证设计（refactor 必备） <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: "8"
+    - ref: design/architecture.md#9
+      title: 回滚单元与批间独立验证（一次只改一类东西） <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: "9"
+    - ref: design/architecture.md#10
+      title: 风险与边界 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: "10"
+    - ref: design/migration.md#1
+      title: 是否改表 / 改 schema <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/migration.md
+      section: "1"
+    - ref: design/migration.md#2
+      title: 唯一数据面值变化：interruption.tool（D-3 已申报） <!--
+      serves:
+        - FR-2
+      file: design/migration.md
+      section: "2"
+    - ref: design/migration.md#3
+      title: 运行中会话的影响面 <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/migration.md
+      section: "3"
+    - ref: design/migration.md#4
+      title: 回滚设计 <!--
+      serves:
+        - FR-5
+      file: design/migration.md
+      section: "4"
+outputs:
+  tasks:
+    - id: t-5ae432
+      title: 收编 archive_amend 为 task_amend(op=archive)（U1）
+      implements: 按 design/architecture.md §2/§3/§4 施工：① TaskAmendTool.ts 扩 op=archive——TASK_AMEND_OPS 加 'archive'、REQUIRED_OF 加 archive:[docs,reason]、parameters 新增 docs 数组（items={kind,path}，从 ArchiveAmendTool 平移）、output.schema 加 appended/skipped、分派 amendArchiveManifest 并补 success:true 与 op 回显；② prompt.ts 加 op=archive 一句 + 承接指路（单字面量）；③ summary.ts 迁入 archiveAmendSummary 为 op=archive 分支；④ 删 src/tools/ArchiveAmendTool/ 目录；⑤ registry.ts 删 ArchiveAmend 条目、TaskAmend responseSources 加 AmendArchiveManifest.ts；⑥ src/index.ts 与 src/tools/index.ts 摘除导入/注册；⑦ boundary-guard.ts 加 TASK_AMEND_OP_STAGES（archive:undefined 全阶段放行）；⑧ AmendArchiveManifest.ts 8 处 reject 前缀改 reqboard_task_amend(op=archive)（D-3，design §4）；⑨ routers/requirements.ts:785 注释改写；⑩ 测试：archive-reconcile-e2e 改打 defineTaskAmendTool op=archive，task-amend-tool.test.ts 加 op=archive 用例。
+      serves:
+        - FR-1
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-aa5503
+      title: 收编 note_interruption 为 task_amend(op=interruption) + 守卫 op 化（U2）
+      implements: 按 design §3 施工：① TaskAmendTool.ts 扩 op=interruption——REQUIRED_OF 加 interruption:[reason]、output.schema 加 interruption 子 schema（at/reason/stage/pendingAction/tool，从 NoteInterruptionTool 平移）、分派 noteInterruption；② 挂起确认守卫按 op 分流：op==='interruption' 跳过 assertNoPendingConfirm（原工具无此前置，行为等价关键点）；③ summary.ts 迁入 noteInterruptionSummary；④ 删 src/tools/NoteInterruptionTool/ 目录；⑤ registry.ts 删条目、responseSources 加 NoteInterruption.ts；⑥ src/index.ts 与 tools/index.ts 摘除；⑦ shared.ts 删 LONG_TEXT_STYLE_ONLY_FIELDS 的 note_interruption 行；⑧ StageActions.ts 删 reqboard_note_interruption 条目；⑨ boundary-guard.ts 的 TASK_AMEND_OP_STAGES 加 interruption:undefined；⑩ NoteInterruption.ts D-3：3 处文案前缀 + tool 字面量改 'reqboard_task_amend'（design §4）；⑪ protocol.ts:1363、interruption.ts:145 注释改写；⑫ 测试：interruption-checkpoint 改打 op=interruption（bp.tool 断言改新值）、arg-guidance 删映射行、ask-confirm-prompt 工具名清单同步。
+      serves:
+        - FR-2
+      depends_on:
+        - t-5ae432
+      phase: implement
+      side: backend
+    - id: t-6b550f
+      title: task_move 描述结构减负 1265→≤630（U3）
+      implements: 按 design §5 映射表施工：只压缩 TaskMoveTool.ts 的 description 与 parameters 描述字符串（参数形状/键名/类型/必填/枚举/additionalProperties/返回体/错误码逐字不动）；description 每职能留一句话，tasks/batchItemSchema/budget 描述压短；reason 保留 LONG_TEXT_STYLE_NOTE（arg-guidance 机械锁）。新增 tests/task-move-prompt-budget.test.ts 双判据：①体量 ≤630；②细则之家——throttleGuidance 含「确定等待」、REQBOARD_CONFLICT 回执含「按当前窗口号」、readSubtaskBudgetArg 形状报错含 {release:true。
+      serves:
+        - FR-3
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-9f79be
+      title: submit tasks[] 子 schema 描述下沉 1717→≤860（U4）
+      implements: 按 design §6 映射表施工：① SubmitTool.ts tasks[] 21 个属性描述压成一句话，三对双拼字段说明合并为「snake/camel 等价」；enum/结构承载的枚举清单从描述删除；② 各门禁回执只追加细则句：plan-deps-check.ts 伪依赖拒绝消息追加 dep_reasons 写法、plan-granularity.ts 软门 warnings 追加 footprint 口径、skipIntegration 联动句进 normalizePlanTasks/plan-landing 对应拒绝、prototypeRefs 条件句进原型锚点门禁、template 非法键拒绝回执列全部合法键；③ SUBMIT_PROMPT 不动、results[] 子树不动；④ 纪律：错误码/结构化字段/既有文案语序不变，既有逐字文案断言只允许为追加句放宽，逐条留痕。
+      serves:
+        - FR-4
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-0f675d
+      title: 同步面收尾与全量闸（U5：README/package.json/docs/知识层 21→19）
+      implements: 按 design §7/§9 施工：① README.md 工具表 21→19（两行摘除、task_amend 行改写承接 5 op）；② package.json description「21 个」→「19 个」；③ docs/architecture/tool-face-inventory.md、project-manual.md（:145 补录入口名、:189/:211 LONG_TEXT_FIELDS 计数段）、docs/knowledge/architecture.md:77、docs/knowledge/glossary.md:21 同步改写；④ pnpm kb:build 消漂移后 kb:check；⑤ 全量闸：pnpm test / baseline:check / typecheck / kb:check / build（C-11~C-15）；⑥ 逐卡复核 D-3 留痕与回执追加的测试断言放宽清单。
+      serves:
+        - FR-5
+      depends_on:
+        - t-aa5503
+        - t-6b550f
+        - t-9f79be
+      phase: doc
+      side: backend
+    - id: t-a96f5a
+      title: 收编 archive_amend 为 task_amend(op=archive)（U1）·研发
+      implements: |-
+        按 design/architecture.md §2/§3/§4 施工：① TaskAmendTool.ts 扩 op=archive——TASK_AMEND_OPS 加 'archive'、REQUIRED_OF 加 archive:[docs,reason]、parameters 新增 docs 数组（items={kind,path}，从 ArchiveAmendTool 平移）、output.schema 加 appended/skipped、分派 amendArchiveManifest 并补 success:true 与 op 回显；② prompt.ts 加 op=archive 一句 + 承接指路（单字面量）；③ summary.ts 迁入 archiveAmendSummary 为 op=archive 分支；④ 删 src/tools/ArchiveAmendTool/ 目录；⑤ registry.ts 删 ArchiveAmend 条目、TaskAmend responseSources 加 AmendArchiveManifest.ts；⑥ src/index.ts 与 src/tools/index.ts 摘除导入/注册；⑦ boundary-guard.ts 加 TASK_AMEND_OP_STAGES（archive:undefined 全阶段放行）；⑧ AmendArchiveManifest.ts 8 处 reject 前缀改 reqboard_task_amend(op=archive)（D-3，design §4）；⑨ routers/requirements.ts:785 注释改写；⑩ 测试：archive-reconcile-e2e 改打 defineTaskAmendTool op=archive，task-amend-tool.test.ts 加 op=archive 用例。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/archive-amend.test.ts tests/archive-reconcile-e2e.test.ts tests/task-amend-tool.test.ts tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/output-contract.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-d8bccc
+      title: 收编 archive_amend 为 task_amend(op=archive)（U1）·联调
+      implements: |-
+        按 design/architecture.md §2/§3/§4 施工：① TaskAmendTool.ts 扩 op=archive——TASK_AMEND_OPS 加 'archive'、REQUIRED_OF 加 archive:[docs,reason]、parameters 新增 docs 数组（items={kind,path}，从 ArchiveAmendTool 平移）、output.schema 加 appended/skipped、分派 amendArchiveManifest 并补 success:true 与 op 回显；② prompt.ts 加 op=archive 一句 + 承接指路（单字面量）；③ summary.ts 迁入 archiveAmendSummary 为 op=archive 分支；④ 删 src/tools/ArchiveAmendTool/ 目录；⑤ registry.ts 删 ArchiveAmend 条目、TaskAmend responseSources 加 AmendArchiveManifest.ts；⑥ src/index.ts 与 src/tools/index.ts 摘除导入/注册；⑦ boundary-guard.ts 加 TASK_AMEND_OP_STAGES（archive:undefined 全阶段放行）；⑧ AmendArchiveManifest.ts 8 处 reject 前缀改 reqboard_task_amend(op=archive)（D-3，design §4）；⑨ routers/requirements.ts:785 注释改写；⑩ 测试：archive-reconcile-e2e 改打 defineTaskAmendTool op=archive，task-amend-tool.test.ts 加 op=archive 用例。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/archive-amend.test.ts tests/archive-reconcile-e2e.test.ts tests/task-amend-tool.test.ts tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/output-contract.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-a96f5a
+      phase: implement
+      side: backend
+    - id: t-9c589b
+      title: 收编 archive_amend 为 task_amend(op=archive)（U1）·复核
+      implements: |-
+        按 design/architecture.md §2/§3/§4 施工：① TaskAmendTool.ts 扩 op=archive——TASK_AMEND_OPS 加 'archive'、REQUIRED_OF 加 archive:[docs,reason]、parameters 新增 docs 数组（items={kind,path}，从 ArchiveAmendTool 平移）、output.schema 加 appended/skipped、分派 amendArchiveManifest 并补 success:true 与 op 回显；② prompt.ts 加 op=archive 一句 + 承接指路（单字面量）；③ summary.ts 迁入 archiveAmendSummary 为 op=archive 分支；④ 删 src/tools/ArchiveAmendTool/ 目录；⑤ registry.ts 删 ArchiveAmend 条目、TaskAmend responseSources 加 AmendArchiveManifest.ts；⑥ src/index.ts 与 src/tools/index.ts 摘除导入/注册；⑦ boundary-guard.ts 加 TASK_AMEND_OP_STAGES（archive:undefined 全阶段放行）；⑧ AmendArchiveManifest.ts 8 处 reject 前缀改 reqboard_task_amend(op=archive)（D-3，design §4）；⑨ routers/requirements.ts:785 注释改写；⑩ 测试：archive-reconcile-e2e 改打 defineTaskAmendTool op=archive，task-amend-tool.test.ts 加 op=archive 用例。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/archive-amend.test.ts tests/archive-reconcile-e2e.test.ts tests/task-amend-tool.test.ts tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/output-contract.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-d8bccc
+      phase: implement
+      side: backend
+    - id: t-836de1
+      title: 收编 archive_amend 为 task_amend(op=archive)（U1）·测试
+      implements: |-
+        按 design/architecture.md §2/§3/§4 施工：① TaskAmendTool.ts 扩 op=archive——TASK_AMEND_OPS 加 'archive'、REQUIRED_OF 加 archive:[docs,reason]、parameters 新增 docs 数组（items={kind,path}，从 ArchiveAmendTool 平移）、output.schema 加 appended/skipped、分派 amendArchiveManifest 并补 success:true 与 op 回显；② prompt.ts 加 op=archive 一句 + 承接指路（单字面量）；③ summary.ts 迁入 archiveAmendSummary 为 op=archive 分支；④ 删 src/tools/ArchiveAmendTool/ 目录；⑤ registry.ts 删 ArchiveAmend 条目、TaskAmend responseSources 加 AmendArchiveManifest.ts；⑥ src/index.ts 与 src/tools/index.ts 摘除导入/注册；⑦ boundary-guard.ts 加 TASK_AMEND_OP_STAGES（archive:undefined 全阶段放行）；⑧ AmendArchiveManifest.ts 8 处 reject 前缀改 reqboard_task_amend(op=archive)（D-3，design §4）；⑨ routers/requirements.ts:785 注释改写；⑩ 测试：archive-reconcile-e2e 改打 defineTaskAmendTool op=archive，task-amend-tool.test.ts 加 op=archive 用例。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-9c589b
+      phase: implement
+      side: backend
+    - id: t-ecb91d
+      title: 收编 note_interruption 为 task_amend(op=interruption) + 守卫 op 化（U2）·研发
+      implements: |-
+        按 design §3 施工：① TaskAmendTool.ts 扩 op=interruption——REQUIRED_OF 加 interruption:[reason]、output.schema 加 interruption 子 schema（at/reason/stage/pendingAction/tool，从 NoteInterruptionTool 平移）、分派 noteInterruption；② 挂起确认守卫按 op 分流：op==='interruption' 跳过 assertNoPendingConfirm（原工具无此前置，行为等价关键点）；③ summary.ts 迁入 noteInterruptionSummary；④ 删 src/tools/NoteInterruptionTool/ 目录；⑤ registry.ts 删条目、responseSources 加 NoteInterruption.ts；⑥ src/index.ts 与 tools/index.ts 摘除；⑦ shared.ts 删 LONG_TEXT_STYLE_ONLY_FIELDS 的 note_interruption 行；⑧ StageActions.ts 删 reqboard_note_interruption 条目；⑨ boundary-guard.ts 的 TASK_AMEND_OP_STAGES 加 interruption:undefined；⑩ NoteInterruption.ts D-3：3 处文案前缀 + tool 字面量改 'reqboard_task_amend'（design §4）；⑪ protocol.ts:1363、interruption.ts:145 注释改写；⑫ 测试：interruption-checkpoint 改打 op=interruption（bp.tool 断言改新值）、arg-guidance 删映射行、ask-confirm-prompt 工具名清单同步。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/interruption-checkpoint.test.ts tests/interruption-dedupe.test.ts tests/arg-guidance.test.ts tests/task-amend-tool.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-5ae432
+      phase: implement
+      side: backend
+    - id: t-85c2d1
+      title: 收编 note_interruption 为 task_amend(op=interruption) + 守卫 op 化（U2）·联调
+      implements: |-
+        按 design §3 施工：① TaskAmendTool.ts 扩 op=interruption——REQUIRED_OF 加 interruption:[reason]、output.schema 加 interruption 子 schema（at/reason/stage/pendingAction/tool，从 NoteInterruptionTool 平移）、分派 noteInterruption；② 挂起确认守卫按 op 分流：op==='interruption' 跳过 assertNoPendingConfirm（原工具无此前置，行为等价关键点）；③ summary.ts 迁入 noteInterruptionSummary；④ 删 src/tools/NoteInterruptionTool/ 目录；⑤ registry.ts 删条目、responseSources 加 NoteInterruption.ts；⑥ src/index.ts 与 tools/index.ts 摘除；⑦ shared.ts 删 LONG_TEXT_STYLE_ONLY_FIELDS 的 note_interruption 行；⑧ StageActions.ts 删 reqboard_note_interruption 条目；⑨ boundary-guard.ts 的 TASK_AMEND_OP_STAGES 加 interruption:undefined；⑩ NoteInterruption.ts D-3：3 处文案前缀 + tool 字面量改 'reqboard_task_amend'（design §4）；⑪ protocol.ts:1363、interruption.ts:145 注释改写；⑫ 测试：interruption-checkpoint 改打 op=interruption（bp.tool 断言改新值）、arg-guidance 删映射行、ask-confirm-prompt 工具名清单同步。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/interruption-checkpoint.test.ts tests/interruption-dedupe.test.ts tests/arg-guidance.test.ts tests/task-amend-tool.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-ecb91d
+      phase: implement
+      side: backend
+    - id: t-31466b
+      title: 收编 note_interruption 为 task_amend(op=interruption) + 守卫 op 化（U2）·复核
+      implements: |-
+        按 design §3 施工：① TaskAmendTool.ts 扩 op=interruption——REQUIRED_OF 加 interruption:[reason]、output.schema 加 interruption 子 schema（at/reason/stage/pendingAction/tool，从 NoteInterruptionTool 平移）、分派 noteInterruption；② 挂起确认守卫按 op 分流：op==='interruption' 跳过 assertNoPendingConfirm（原工具无此前置，行为等价关键点）；③ summary.ts 迁入 noteInterruptionSummary；④ 删 src/tools/NoteInterruptionTool/ 目录；⑤ registry.ts 删条目、responseSources 加 NoteInterruption.ts；⑥ src/index.ts 与 tools/index.ts 摘除；⑦ shared.ts 删 LONG_TEXT_STYLE_ONLY_FIELDS 的 note_interruption 行；⑧ StageActions.ts 删 reqboard_note_interruption 条目；⑨ boundary-guard.ts 的 TASK_AMEND_OP_STAGES 加 interruption:undefined；⑩ NoteInterruption.ts D-3：3 处文案前缀 + tool 字面量改 'reqboard_task_amend'（design §4）；⑪ protocol.ts:1363、interruption.ts:145 注释改写；⑫ 测试：interruption-checkpoint 改打 op=interruption（bp.tool 断言改新值）、arg-guidance 删映射行、ask-confirm-prompt 工具名清单同步。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/interruption-checkpoint.test.ts tests/interruption-dedupe.test.ts tests/arg-guidance.test.ts tests/task-amend-tool.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-85c2d1
+      phase: implement
+      side: backend
+    - id: t-513d54
+      title: 收编 note_interruption 为 task_amend(op=interruption) + 守卫 op 化（U2）·测试
+      implements: |-
+        按 design §3 施工：① TaskAmendTool.ts 扩 op=interruption——REQUIRED_OF 加 interruption:[reason]、output.schema 加 interruption 子 schema（at/reason/stage/pendingAction/tool，从 NoteInterruptionTool 平移）、分派 noteInterruption；② 挂起确认守卫按 op 分流：op==='interruption' 跳过 assertNoPendingConfirm（原工具无此前置，行为等价关键点）；③ summary.ts 迁入 noteInterruptionSummary；④ 删 src/tools/NoteInterruptionTool/ 目录；⑤ registry.ts 删条目、responseSources 加 NoteInterruption.ts；⑥ src/index.ts 与 tools/index.ts 摘除；⑦ shared.ts 删 LONG_TEXT_STYLE_ONLY_FIELDS 的 note_interruption 行；⑧ StageActions.ts 删 reqboard_note_interruption 条目；⑨ boundary-guard.ts 的 TASK_AMEND_OP_STAGES 加 interruption:undefined；⑩ NoteInterruption.ts D-3：3 处文案前缀 + tool 字面量改 'reqboard_task_amend'（design §4）；⑪ protocol.ts:1363、interruption.ts:145 注释改写；⑫ 测试：interruption-checkpoint 改打 op=interruption（bp.tool 断言改新值）、arg-guidance 删映射行、ask-confirm-prompt 工具名清单同步。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-31466b
+      phase: implement
+      side: backend
+    - id: t-7bc987
+      title: task_move 描述结构减负 1265→≤630（U3）·研发
+      implements: |-
+        按 design §5 映射表施工：只压缩 TaskMoveTool.ts 的 description 与 parameters 描述字符串（参数形状/键名/类型/必填/枚举/additionalProperties/返回体/错误码逐字不动）；description 每职能留一句话，tasks/batchItemSchema/budget 描述压短；reason 保留 LONG_TEXT_STYLE_NOTE（arg-guidance 机械锁）。新增 tests/task-move-prompt-budget.test.ts 双判据：①体量 ≤630；②细则之家——throttleGuidance 含「确定等待」、REQBOARD_CONFLICT 回执含「按当前窗口号」、readSubtaskBudgetArg 形状报错含 {release:true。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/task-move-prompt-budget.test.ts tests/task-move-batch.test.ts tests/task-move-role.test.ts tests/subtask-budget.test.ts tests/chain-budget.test.ts tests/done-throttle-guidance.test.ts tests/done-throttle-message.test.ts tests/amend-acceptance.test.ts tests/legacy-compat-6749.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-5e80c2
+      title: task_move 描述结构减负 1265→≤630（U3）·联调
+      implements: |-
+        按 design §5 映射表施工：只压缩 TaskMoveTool.ts 的 description 与 parameters 描述字符串（参数形状/键名/类型/必填/枚举/additionalProperties/返回体/错误码逐字不动）；description 每职能留一句话，tasks/batchItemSchema/budget 描述压短；reason 保留 LONG_TEXT_STYLE_NOTE（arg-guidance 机械锁）。新增 tests/task-move-prompt-budget.test.ts 双判据：①体量 ≤630；②细则之家——throttleGuidance 含「确定等待」、REQBOARD_CONFLICT 回执含「按当前窗口号」、readSubtaskBudgetArg 形状报错含 {release:true。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/task-move-prompt-budget.test.ts tests/task-move-batch.test.ts tests/task-move-role.test.ts tests/subtask-budget.test.ts tests/chain-budget.test.ts tests/done-throttle-guidance.test.ts tests/done-throttle-message.test.ts tests/amend-acceptance.test.ts tests/legacy-compat-6749.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-7bc987
+      phase: implement
+      side: backend
+    - id: t-4ca7b1
+      title: task_move 描述结构减负 1265→≤630（U3）·复核
+      implements: |-
+        按 design §5 映射表施工：只压缩 TaskMoveTool.ts 的 description 与 parameters 描述字符串（参数形状/键名/类型/必填/枚举/additionalProperties/返回体/错误码逐字不动）；description 每职能留一句话，tasks/batchItemSchema/budget 描述压短；reason 保留 LONG_TEXT_STYLE_NOTE（arg-guidance 机械锁）。新增 tests/task-move-prompt-budget.test.ts 双判据：①体量 ≤630；②细则之家——throttleGuidance 含「确定等待」、REQBOARD_CONFLICT 回执含「按当前窗口号」、readSubtaskBudgetArg 形状报错含 {release:true。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/task-move-prompt-budget.test.ts tests/task-move-batch.test.ts tests/task-move-role.test.ts tests/subtask-budget.test.ts tests/chain-budget.test.ts tests/done-throttle-guidance.test.ts tests/done-throttle-message.test.ts tests/amend-acceptance.test.ts tests/legacy-compat-6749.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-5e80c2
+      phase: implement
+      side: backend
+    - id: t-cac417
+      title: task_move 描述结构减负 1265→≤630（U3）·测试
+      implements: |-
+        按 design §5 映射表施工：只压缩 TaskMoveTool.ts 的 description 与 parameters 描述字符串（参数形状/键名/类型/必填/枚举/additionalProperties/返回体/错误码逐字不动）；description 每职能留一句话，tasks/batchItemSchema/budget 描述压短；reason 保留 LONG_TEXT_STYLE_NOTE（arg-guidance 机械锁）。新增 tests/task-move-prompt-budget.test.ts 双判据：①体量 ≤630；②细则之家——throttleGuidance 含「确定等待」、REQBOARD_CONFLICT 回执含「按当前窗口号」、readSubtaskBudgetArg 形状报错含 {release:true。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-4ca7b1
+      phase: implement
+      side: backend
+    - id: t-ac655f
+      title: submit tasks[] 子 schema 描述下沉 1717→≤860（U4）·研发
+      implements: |-
+        按 design §6 映射表施工：① SubmitTool.ts tasks[] 21 个属性描述压成一句话，三对双拼字段说明合并为「snake/camel 等价」；enum/结构承载的枚举清单从描述删除；② 各门禁回执只追加细则句：plan-deps-check.ts 伪依赖拒绝消息追加 dep_reasons 写法、plan-granularity.ts 软门 warnings 追加 footprint 口径、skipIntegration 联动句进 normalizePlanTasks/plan-landing 对应拒绝、prototypeRefs 条件句进原型锚点门禁、template 非法键拒绝回执列全部合法键；③ SUBMIT_PROMPT 不动、results[] 子树不动；④ 纪律：错误码/结构化字段/既有文案语序不变，既有逐字文案断言只允许为追加句放宽，逐条留痕。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/submit-prompt-budget.test.ts tests/plan-granularity.test.ts tests/plan-depends-e2e.test.ts tests/plan-footprint-tool-schema.test.ts tests/plan-prototype-anchor-gate.test.ts tests/canceled-coverage-gate.test.ts tests/dual-field.test.ts tests/plan-footprint.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-e67903
+      title: submit tasks[] 子 schema 描述下沉 1717→≤860（U4）·联调
+      implements: |-
+        按 design §6 映射表施工：① SubmitTool.ts tasks[] 21 个属性描述压成一句话，三对双拼字段说明合并为「snake/camel 等价」；enum/结构承载的枚举清单从描述删除；② 各门禁回执只追加细则句：plan-deps-check.ts 伪依赖拒绝消息追加 dep_reasons 写法、plan-granularity.ts 软门 warnings 追加 footprint 口径、skipIntegration 联动句进 normalizePlanTasks/plan-landing 对应拒绝、prototypeRefs 条件句进原型锚点门禁、template 非法键拒绝回执列全部合法键；③ SUBMIT_PROMPT 不动、results[] 子树不动；④ 纪律：错误码/结构化字段/既有文案语序不变，既有逐字文案断言只允许为追加句放宽，逐条留痕。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/submit-prompt-budget.test.ts tests/plan-granularity.test.ts tests/plan-depends-e2e.test.ts tests/plan-footprint-tool-schema.test.ts tests/plan-prototype-anchor-gate.test.ts tests/canceled-coverage-gate.test.ts tests/dual-field.test.ts tests/plan-footprint.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-ac655f
+      phase: implement
+      side: backend
+    - id: t-4718f1
+      title: submit tasks[] 子 schema 描述下沉 1717→≤860（U4）·复核
+      implements: |-
+        按 design §6 映射表施工：① SubmitTool.ts tasks[] 21 个属性描述压成一句话，三对双拼字段说明合并为「snake/camel 等价」；enum/结构承载的枚举清单从描述删除；② 各门禁回执只追加细则句：plan-deps-check.ts 伪依赖拒绝消息追加 dep_reasons 写法、plan-granularity.ts 软门 warnings 追加 footprint 口径、skipIntegration 联动句进 normalizePlanTasks/plan-landing 对应拒绝、prototypeRefs 条件句进原型锚点门禁、template 非法键拒绝回执列全部合法键；③ SUBMIT_PROMPT 不动、results[] 子树不动；④ 纪律：错误码/结构化字段/既有文案语序不变，既有逐字文案断言只允许为追加句放宽，逐条留痕。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/submit-prompt-budget.test.ts tests/plan-granularity.test.ts tests/plan-depends-e2e.test.ts tests/plan-footprint-tool-schema.test.ts tests/plan-prototype-anchor-gate.test.ts tests/canceled-coverage-gate.test.ts tests/dual-field.test.ts tests/plan-footprint.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-e67903
+      phase: implement
+      side: backend
+    - id: t-d0f548
+      title: submit tasks[] 子 schema 描述下沉 1717→≤860（U4）·测试
+      implements: |-
+        按 design §6 映射表施工：① SubmitTool.ts tasks[] 21 个属性描述压成一句话，三对双拼字段说明合并为「snake/camel 等价」；enum/结构承载的枚举清单从描述删除；② 各门禁回执只追加细则句：plan-deps-check.ts 伪依赖拒绝消息追加 dep_reasons 写法、plan-granularity.ts 软门 warnings 追加 footprint 口径、skipIntegration 联动句进 normalizePlanTasks/plan-landing 对应拒绝、prototypeRefs 条件句进原型锚点门禁、template 非法键拒绝回执列全部合法键；③ SUBMIT_PROMPT 不动、results[] 子树不动；④ 纪律：错误码/结构化字段/既有文案语序不变，既有逐字文案断言只允许为追加句放宽，逐条留痕。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-4718f1
+      phase: implement
+      side: backend
+    - id: t-c6f2dd
+      title: 同步面收尾与全量闸（U5：README/package.json/docs/知识层 21→19）·研发
+      implements: |-
+        按 design §7/§9 施工：① README.md 工具表 21→19（两行摘除、task_amend 行改写承接 5 op）；② package.json description「21 个」→「19 个」；③ docs/architecture/tool-face-inventory.md、project-manual.md（:145 补录入口名、:189/:211 LONG_TEXT_FIELDS 计数段）、docs/knowledge/architecture.md:77、docs/knowledge/glossary.md:21 同步改写；④ pnpm kb:build 消漂移后 kb:check；⑤ 全量闸：pnpm test / baseline:check / typecheck / kb:check / build（C-11~C-15）；⑥ 逐卡复核 D-3 留痕与回执追加的测试断言放宽清单。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/readme-tool-face.test.ts tests/toolviews-contract.test.ts tests/tools-render-coverage.test.ts tests/apply-wiring.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-aa5503
+        - t-6b550f
+        - t-9f79be
+      phase: doc
+      side: backend
+    - id: t-95f252
+      title: 同步面收尾与全量闸（U5：README/package.json/docs/知识层 21→19）·复核
+      implements: |-
+        按 design §7/§9 施工：① README.md 工具表 21→19（两行摘除、task_amend 行改写承接 5 op）；② package.json description「21 个」→「19 个」；③ docs/architecture/tool-face-inventory.md、project-manual.md（:145 补录入口名、:189/:211 LONG_TEXT_FIELDS 计数段）、docs/knowledge/architecture.md:77、docs/knowledge/glossary.md:21 同步改写；④ pnpm kb:build 消漂移后 kb:check；⑤ 全量闸：pnpm test / baseline:check / typecheck / kb:check / build（C-11~C-15）；⑥ 逐卡复核 D-3 留痕与回执追加的测试断言放宽清单。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/readme-tool-face.test.ts tests/toolviews-contract.test.ts tests/tools-render-coverage.test.ts tests/apply-wiring.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-c6f2dd
+      phase: doc
+      side: backend
+task_coverage:
+  - task_id: t-5ae432
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-aa5503
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-6b550f
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-9f79be
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-0f675d
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-a96f5a
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-d8bccc
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-9c589b
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-836de1
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ecb91d
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-85c2d1
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-31466b
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-513d54
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-7bc987
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-5e80c2
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-4ca7b1
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-cac417
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ac655f
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-e67903
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-4718f1
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-d0f548
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-c6f2dd
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-95f252
+    covers_prototypes: []
+    covers_decisions: []
+traceability:
+  design_to_tasks:
+    design/architecture.md#1:
+      - t-5ae432
+      - t-aa5503
+      - t-6b550f
+      - t-9f79be
+      - t-0f675d
+    design/architecture.md#2:
+      - t-5ae432
+      - t-aa5503
+      - t-0f675d
+    design/architecture.md#3:
+      - t-5ae432
+      - t-aa5503
+    design/architecture.md#3.1:
+      - t-5ae432
+      - t-aa5503
+    design/architecture.md#3.2:
+      - t-aa5503
+    design/architecture.md#3.3:
+      - t-5ae432
+      - t-aa5503
+    design/architecture.md#3.4:
+      - t-5ae432
+      - t-aa5503
+    design/architecture.md#4:
+      - t-5ae432
+      - t-aa5503
+    design/architecture.md#5:
+      - t-6b550f
+    design/architecture.md#6:
+      - t-9f79be
+    design/architecture.md#7:
+      - t-5ae432
+      - t-aa5503
+      - t-6b550f
+      - t-9f79be
+      - t-0f675d
+    design/architecture.md#8:
+      - t-5ae432
+      - t-aa5503
+      - t-6b550f
+      - t-9f79be
+      - t-0f675d
+    design/architecture.md#9:
+      - t-5ae432
+      - t-aa5503
+      - t-6b550f
+      - t-9f79be
+      - t-0f675d
+    design/architecture.md#10:
+      - t-5ae432
+      - t-aa5503
+      - t-6b550f
+      - t-9f79be
+      - t-0f675d
+    design/migration.md#1:
+      - t-5ae432
+      - t-aa5503
+    design/migration.md#2:
+      - t-aa5503
+    design/migration.md#3:
+      - t-5ae432
+      - t-aa5503
+    design/migration.md#4:
+      - t-0f675d
+  fr_to_tasks:
+    FR-1:
+      - t-5ae432
+      - t-aa5503
+      - t-6b550f
+      - t-9f79be
+      - t-0f675d
+    FR-2:
+      - t-5ae432
+      - t-aa5503
+      - t-6b550f
+      - t-9f79be
+      - t-0f675d
+    FR-3:
+      - t-5ae432
+      - t-aa5503
+      - t-6b550f
+      - t-9f79be
+      - t-0f675d
+    FR-4:
+      - t-5ae432
+      - t-aa5503
+      - t-6b550f
+      - t-9f79be
+      - t-0f675d
+    FR-5:
+      - t-5ae432
+      - t-aa5503
+      - t-6b550f
+      - t-9f79be
+      - t-0f675d
+coverage:
+  implementation:
+    total: 18
+    covered: 18
+    uncovered: []
+    rate: 100
+    total_designs: 18
+    covered_designs: 18

@@ -1,0 +1,75 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261007223647-da5d
+  generated_at: 2026-10-07T15:11:03.758Z
+  version: 5
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T16:38:10.031Z
+outputs:
+  requirements: []
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 2026-10-07 交接底稿（session-be1b4f3d 交接消息）：「候选优化项 ①确认票超时自愈 ②取消弹框后的引导 ③弹框频率与信息量 ④文案一致性 ⑤确认票看板可见性」「不改五道人工门的存在性」
+      verdict: 5 项全部纳入范围；边界 B1/B2 沿用
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      criterion: 功能点节存在 FR-1~FR-5 且与交接 5 项一一对应；边界节 B1 含「不改五道人工门」
+    - id: D-2
+      source: 2026-10-07 用户消息：「立项弹框现在我感觉是死弹框，选择内容不是agent判断的推荐，还有顺序有问题……你审核一下添加到这个需求里」
+      verdict: 审核坐实 ✖️ 置首与提示词矛盾（capture-mapping.ts:106-118）；新现象纳入范围
+      serves:
+        - FR-3
+        - FR-6
+      criterion: FR-3 含「推荐候选置首」；FR-6 条款存在
+    - id: D-3
+      source: 2026-10-07 用户消息：「『✖️ 不需要立项』之前点了，还弹框」
+      verdict: 查实 capture-rejections.json 无该条记录；根因 = 留痕挂在会超时的调用延续段；与交接 ① 归并同一机制
+      serves:
+        - FR-1
+      criterion: FR-1 含「作答在到达时即落盘（不依赖调用延续段存活）」
+    - id: D-4
+      source: 2026-10-07 用户消息：「/文档位置/工作区 他们2个位置颠倒了」
+      verdict: 代码下发顺序正确（文档位置第 4、工作区第 5）；记为宿主渲染顺序待验证项；由两问合一一并消解
+      serves:
+        - FR-3
+      criterion: FR-3 含「文档位置/工作区两问合并为一问『文件落点』」
+    - id: D-5
+      source: 2026-10-07 用户消息：「文档地址是./dsh 这个文件夹下，但是实际文件是工作区/文档位置 立项选择的位置」
+      verdict: 台账记录验证无罪（docBasePath/workspaceRoot 正确）；定为前端根解析链 bug
+      serves:
+        - FR-6
+      criterion: FR-6 判据含「面板地址 = 落盘地址」
+    - id: D-6
+      source: 2026-10-07 用户消息：「simple/standard/advanced/expert 会影响llm的算力」
+      verdict: 难度问项改按「算力档位」表述，选项说明写明算力代价
+      serves:
+        - FR-3
+      criterion: FR-3 含「算力档位问项按『影响 LLM 算力投入』重写」
+    - id: D-7
+      source: 2026-10-07 用户消息：「文档位置/工作区 是要让用户自己文件创建到哪里了，或者你有其他方式解决我说的内容」
+      verdict: 落点透明是硬需求；提出方案 A（两问合一+绝对路径预览）/B（两问保留内容修）供选
+      serves:
+        - FR-3
+      criterion: 本表 D-8 有「方案 A」选定记录
+    - id: D-8
+      source: 2026-10-07 用户消息：「方案 A（推荐）」
+      verdict: 文件落点两问合一裁定：5 问收口为 4 问，选项给拼好的绝对路径预览
+      serves:
+        - FR-3
+        - FR-4
+      criterion: FR-3 判据含「问项数 5→4」；FR-4 含「实际 4 问」口径
+    - id: D-9
+      source: 2026-10-07 用户消息：「dsh 支持你这样的弹框吗」
+      verdict: 实测宿主包（app.asar 内 dsh-client-ui-user-questions / dsh-user-questions）：① 推荐预选契约 = 首项 label 后缀（推荐），description 不参与判定；② ASK_TIMED_OUT → host 映射 pending + 迟到作答走 steer 同形批次，解耦为宿主原生能力；③ 选项不支持富样式，推荐标记宿主自绘；④ 存在原生 plan-review 审批卡，ask_confirm 设计时评估借用。原型方案整体可行，按契约微调
+      serves:
+        - FR-1
+        - FR-3
+      criterion: FR-1 含「宿主侧实测依据」段；FR-3 含「宿主推荐契约」段与剥后缀判据
+status:
+  artifacts: []

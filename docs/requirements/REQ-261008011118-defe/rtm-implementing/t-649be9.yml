@@ -1,0 +1,35 @@
+task:
+  id: t-649be9
+  title: 给批量收尾加非子卡 done 上限 N=3·复现
+  status: done
+  implements: |-
+    ① `src/application/use-cases/MoveTask.ts`：新增导出常量 MOVE_BATCH_DONE_MAX = 3；GateContext 加 batchDoneCount（按需求分组、初值 0）；gateOne 在 done 凭证门之后判额度——只对 to==='done' 且 role!=='subtask' 且已过 assertDoneEvidence 的项计数，达上限后用 rejectPlan 以 code=REQBOARD_BULK_CLOSE + throttleRemainingMs=60000 拒绝（文案复用 throttleGuidance 措辞与三条合规出路），通过项计数 +1；② `src/tools/TaskMoveTool/TaskMoveTool.ts` 的批量口径文案补「同批非子卡最多 N 张」，`src/application/use-cases/MoveTask.ts` 头注释同步同一句（防注释与行为分叉）；③ `tests/done-throttle-guidance.test.ts` 与 `tests/task-move-batch.test.ts` 补超限用例，并保既有三条（同批 ≤3 全落、跨批触发、子卡豁免）绿。DoneEvidenceSpec 判据一行不改。
+
+    [子卡阶段·复现] 只做本阶段；验收：`npx vitest run tests/done-throttle-guidance.test.ts tests/task-move-batch.test.ts` → 修复前失败、修复后通过（贴两次输出）
+  serves: []
+  depends_on: []
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008011118-defe
+    TASK_ID: t-649be9
+    TASK_TITLE: 给批量收尾加非子卡 done 上限 N=3·复现
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T17:38:06.115Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008011118-defe
+  generated_at: 2026-10-07T17:38:06.113Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-07T17:38:14.565Z

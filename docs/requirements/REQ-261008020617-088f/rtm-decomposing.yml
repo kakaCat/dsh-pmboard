@@ -1,0 +1,741 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261008020617-088f
+  generated_at: 2026-10-07T18:16:51.842Z
+  version: 126
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T18:57:05.151Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/architecture.md#目标与总体方案
+      title: 目标与总体方案 `
+      serves: []
+      file: design/architecture.md
+      section: 目标与总体方案
+    - ref: design/architecture.md#现状修正设计阶段勘察与需求文档交接底稿不一致处
+      title: 现状修正（设计阶段勘察，与需求文档/交接底稿不一致处） `
+      serves: []
+      file: design/architecture.md
+      section: 现状修正设计阶段勘察与需求文档交接底稿不一致处
+    - ref: design/architecture.md#模块改动地图
+      title: 模块改动地图 `
+      serves: []
+      file: design/architecture.md
+      section: 模块改动地图
+    - ref: design/architecture.md#接口与数据契约变更
+      title: 接口与数据契约变更 `
+      serves: []
+      file: design/architecture.md
+      section: 接口与数据契约变更
+    - ref: design/architecture.md#新增端口-HostFsPortportsts
+      title: 新增端口 `HostFsPort`（`ports.ts`） `
+      serves: []
+      file: design/architecture.md
+      section: 新增端口-HostFsPortportsts
+    - ref: design/architecture.md#新增端口-DiagSinkPortportsts
+      title: 新增端口 `DiagSinkPort`（`ports.ts`） `
+      serves: []
+      file: design/architecture.md
+      section: 新增端口-DiagSinkPortportsts
+    - ref: design/architecture.md#修改的接口
+      title: 修改的接口 `
+      serves: []
+      file: design/architecture.md
+      section: 修改的接口
+    - ref: design/architecture.md#批次划分与验证一次只改一类
+      title: 批次划分与验证（一次只改一类） `
+      serves: []
+      file: design/architecture.md
+      section: 批次划分与验证一次只改一类
+    - ref: design/architecture.md#层门豁免面设计
+      title: 层门豁免面设计 `
+      serves: []
+      file: design/architecture.md
+      section: 层门豁免面设计
+    - ref: design/architecture.md#依赖与调用方清单改前逐处登记防漏改
+      title: 依赖与调用方清单（改前逐处登记，防漏改） `
+      serves: []
+      file: design/architecture.md
+      section: 依赖与调用方清单改前逐处登记防漏改
+    - ref: design/architecture.md#行为不变式的验证设计
+      title: 行为不变式的验证设计 `
+      serves: []
+      file: design/architecture.md
+      section: 行为不变式的验证设计
+    - ref: design/architecture.md#关键决策与取舍
+      title: 关键决策与取舍 `
+      serves: []
+      file: design/architecture.md
+      section: 关键决策与取舍
+    - ref: design/architecture.md#风险与遗留
+      title: 风险与遗留 `
+      serves: []
+      file: design/architecture.md
+      section: 风险与遗留
+    - ref: design/architecture.md#文档更新清单
+      title: 文档更新清单 `
+      serves: []
+      file: design/architecture.md
+      section: 文档更新清单
+    - ref: design/architecture.md#测试策略
+      title: 测试策略 `
+      serves: []
+      file: design/architecture.md
+      section: 测试策略
+    - ref: design/architecture.md#技术方案与亮点
+      title: 技术方案与亮点 `
+      serves: []
+      file: design/architecture.md
+      section: 技术方案与亮点
+    - ref: design/migration.md#迁移步骤
+      title: 迁移步骤 <!--
+      serves: []
+      file: design/migration.md
+      section: 迁移步骤
+    - ref: design/migration.md#回滚路径
+      title: 回滚路径 <!--
+      serves: []
+      file: design/migration.md
+      section: 回滚路径
+    - ref: design/migration.md#兼容期行为
+      title: 兼容期行为 <!--
+      serves: []
+      file: design/migration.md
+      section: 兼容期行为
+    - ref: design/migration.md#灰度与观测
+      title: 灰度与观测 <!--
+      serves: []
+      file: design/migration.md
+      section: 灰度与观测
+    - ref: design/migration.md#关键决策与取舍
+      title: 关键决策与取舍 <!--
+      serves: []
+      file: design/migration.md
+      section: 关键决策与取舍
+    - ref: design/migration.md#技术方案与亮点
+      title: 技术方案与亮点 <!--
+      serves: []
+      file: design/migration.md
+      section: 技术方案与亮点
+outputs:
+  tasks:
+    - id: t-3ac912
+      title: 合并三个同构 RTM 门为单点并改走文档端口
+      implements: "新增 src/application/gate/rtm-gates.ts：一份内部实现 rtmGateCheck(spec, req, docs)，spec 只装三处差异（查哪个字段 design_refs / task_refs / acceptance_status、错误码、消息模板）；导出三个同名薄壳 designGateCheck / taskCoverageGateCheck / acceptanceGateCheck，签名由 (req, workspaceRoot: string) 改为 (req, docs: DocRepository)，读盘改走 docs.read('docs/requirements/' + req.id + '/rtm.yaml')，yaml 解析与 try/catch → rtm_not_found 的兜底语义逐字保留。删除 src/application/gate/acceptance-gate.ts、src/application/gate/design-gate.ts、src/application/gate/task-coverage-gate.ts。src/application/gate/index.ts 改为从 ./rtm-gates.js 导出同名符号（barrel 名称不变）。三份单测 tests/unit/gate/acceptance-gate.test.ts、tests/unit/gate/design-gate.test.ts、tests/unit/gate/task-coverage-gate.test.ts 的构造由 tmpDir 改为 new FileDocRepository({ workspaceRoot: tmpDir })，断言一字不改。函数注释写明调用方纪律：读盘前须按 docs/architecture/gate-read-root.md 的唯一收敛入口 applyRequirementWorkspaceRoot 校正根。"
+      serves:
+        - RF-2
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-8ba560
+      title: 新增宿主文件面端口与实现并补齐五处装配
+      implements: "src/application/ports.ts 新增两个端口：HostFsPort（cwd() / isDirectory(absPath) / exists(root, relPath) / readText(root, relPath) / readStateJson(root, name) / writeStateJsonAtomic(root, name, data)，注释写明『根逐次显式』的理由与 gate-read-root.md 的两次误拦事故，以及为什么保持同步）与 DiagSinkPort（write(line) 且实现必须永不抛）。新增 src/adapters/FileHostFs.ts 实现 HostFsPort（全部同步：cwd 取 process.cwd()；isDirectory 用 statSync().isDirectory() 且异常一律 false；exists/readText 以 root 为基；readStateJson / writeStateJsonAtomic 锚 root + '/.dsh-data/state'，原子写为按需 mkdir + 临时文件 + rename，JSON 缩进 2 空格）。UseCaseDeps 增必填 hostFs: HostFsPort。在 src/index.ts、tests/application/harness.ts、tests/helpers/tool-deps.ts、tests/queue/v9-harness.ts、tests/e2e-design-handoff.test.ts 五处补齐装配（测试侧用真实 FileHostFs）。"
+      serves:
+        - RF-3
+        - RF-4
+        - RF-5
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-3b104c
+      title: rtm-health 写路径端口化并同步生产调用方与测试
+      implements: "src/application/internal/rtm-health.ts 的写路径（readFailures / writeFailures / readRTMTriggerTraces / recordRTMTriggerTrace / recordRTMFailure / clearRTMFailure）去掉 node:fs 与 node:path，改为收 host: HostFsPort + root: string（state 文件读走 host.readStateJson(root, 'rtm-failures.json') / host.readStateJson(root, 'rtm-trigger-traces.json')，写走 host.writeStateJsonAtomic；文件名、键、2 空格缩进、只保留最近 100 条、原子写语义逐字保留）。src/application/internal/rtm-yaml.ts 的 syncRTMYamlWithSnapshot 增首位参数 host: HostFsPort 并把 4 处 recordRTMFailure / clearRTMFailure / recordRTMTriggerTrace 调用点的 stateDir 字符串拼接改为传 root；syncRTMYaml 内部改传 deps.hostFs。src/http/routers/requirements.ts 与 src/http/routers/tasks.ts 的 3 处 syncRTMYamlWithSnapshot 调用改传 ctx.deps.applicationDeps?.hostFs ?? new FileHostFs()（FileHostFs 无构造参数、无状态，兜底实例与注入实例等价）。同步适配 tests/submit-prototype.test.ts、tests/rtm-trigger-prototype.test.ts、tests/rtm-yaml-live-tasks.test.ts、tests/canceled-audit-holds.test.ts、tests/canceled-four-faces.test.ts、tests/canceled-coverage-gate.test.ts 的签名调用。新增一条用例：state 目录不存在时 recordRTMFailure(host, root, ...) 不抛且能读回 attempts=1。"
+      serves:
+        - RF-3
+      depends_on:
+        - t-8ba560
+      phase: implement
+      side: backend
+    - id: t-a5c088
+      title: rtm-health 健康检查读路径端口化并收尾该文件的 I/O
+      implements: "src/application/internal/rtm-health.ts 的 checkRTMHealth 签名改为 (host: HostFsPort, root: string, req, opts?)，内部的 sidesOf（读 docs/requirements/<id>/requirement.md 的 front-matter）与 readTextIfExists（读 rtm-brainstorming.yml）改走 host.readText(root, relPath)，期望文件的存在性判定改走 host.exists(root, relPath)，期望文件清单 expectedRTMFiles 与原型节判据 prototypeSectionVerdict / prototypesSectionPresent / PROTOTYPE_RULES_SINCE 一律零改动。src/application/query/QueryState.ts 的 checkRTMHealth 调用点改为传 deps.hostFs 与 deps.docs.workspaceRoot()，删掉 workspaceRoot + '/.dsh-data/state' 的字符串拼接。同步适配 tests/unit/rtm-health.test.ts、tests/rtm-health-legacy.test.ts 的构造（用真实 FileHostFs + 测试根）。"
+      serves:
+        - RF-3
+      depends_on:
+        - t-3b104c
+      phase: implement
+      side: backend
+    - id: t-43b907
+      title: diag-log 改为无 I/O 门面并把文件实现落到适配层
+      implements: "src/application/internal/diag-log.ts 去掉 node:fs 与 node:path，改为无 I/O 门面：initCaptureDiag(sink: DiagSinkPort)、captureDiag(message) 保持现签名（内部仍 console.log 并给 sink 追加带 ISO 时间戳的一行），CAPTURE_DIAG_REL 常量原样保留。新增 src/adapters/FileDiagSink.ts 实现 DiagSinkPort：构造时记录绝对路径并按需 mkdir，write(line) 先 statSync 判超 512KB 则 rename 为 .1，再 appendFileSync；所有失败静默吞掉（诊断通道不得反过来影响主流程）。src/index.ts 的 initCaptureDiag(dshHomePath(config, CAPTURE_DIAG_REL)) 改为 initCaptureDiag(new FileDiagSink(dshHomePath(config, CAPTURE_DIAG_REL)))。tests/dive-wake-wiring.test.ts 与 tests/reqboard/degraded-startup.test.ts 的 initCaptureDiag(diagPath) 同样改吃 FileDiagSink 实例（断言不变）。application/ 里 6 个 captureDiag 调用点一字不改。"
+      serves:
+        - RF-4
+      depends_on:
+        - t-8ba560
+      phase: implement
+      side: backend
+    - id: t-d2890d
+      title: 两处绝对路径判定收口到纯函数与宿主端口
+      implements: "新增 src/application/internal/paths.ts，导出纯函数 isAbsolutePath(p: string): boolean（口径与 node:path.isAbsolute 的 POSIX + win32 并集一致：前导 / 或 \\ 或盘符加分隔符）。src/application/use-cases/CaptureRequirement.ts 的 resolveWorkspaceAnswer(answer, sessionCwd, host: HostFsPort)：session 哨兵仍取 sessionCwd、host 哨兵由 process.cwd() 改为 host.cwd()、自定义路径的 isAbsolute 改 isAbsolutePath、statSync(answer).isDirectory() 改 host.isDirectory(answer)，非绝对或非目录仍返回 undefined。src/application/use-cases/CreateRequirement.ts 的 resolveManualWorkspaceRoot(raw, sessionCwd, host) 同样替换，错误码 REQBOARD_INVALID_WORKSPACE 与两句文案逐字不变。两处调用点改传 deps.hostFs。"
+      serves:
+        - RF-5
+      depends_on:
+        - t-8ba560
+      phase: implement
+      side: backend
+    - id: t-d18c15
+      title: Dive Service 外壳外移到适配层
+      implements: 把 src/application/dive/ReqboardDiveManager.ts 外移到 src/adapters/ReqboardDiveManager.ts（应用层只留 round 逻辑；类体、Service 名 'dive-manager'、static inject ['agents','reqboard']、订阅分组与失败留痕一字不改），相对 import 重算（../application/use-cases/queue-access.js、../application/dive/round-driver.js、../application/dive/round-subscriptions.js、../application/dive/wake-heartbeat.js、../application/dive/wake-liveness.js、../application/internal/diag-log.js、../domain/status/Predicates.js），@module 注释同步。src/index.ts 的 import 改为 './adapters/ReqboardDiveManager.js'。tests/dive-wake-wiring.test.ts 的 import 同步；tests/dive-manager-wiring.test.ts 里按路径字符串读源码的断言改为新路径。
+      serves:
+        - RF-6
+      depends_on:
+        - t-8ba560
+      phase: implement
+      side: backend
+    - id: t-54f247
+      title: 给层门补显式豁免面并落地空台账
+      implements: "新增 tests/fixtures/layer-boundary-exempt.json：_note 写清准入/清出/棘轮口径，frozenCount: 0，entries: []。tests/layer-boundary.test.ts 把现有扫描抽成共享函数，并加四条判据：① 双向相等——每条 entries 必须命中一处真实越界，否则判红（过期豁免）；② 残量归零——剔除已豁免项后未豁免越界必须为空（沿用既有 application 用例）；③ reason / plan 各 ≥ 20 字；④ frozenCount === entries.length 且 ≤ 测试内硬上界常量 EXEMPT_CEILING（本次 0）。把判据 ① 抽成导出的纯函数 unusedExemptions(bad, entries)，另加一条用合成输入的用例证明『台账指向已修好的文件 → 返回该条』。LAYER_RULES 的 forbidden 数组零改动。"
+      serves:
+        - RF-1
+        - RF-7
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-dca1de
+      title: 同步说明书与知识层文档并留痕边界外读数
+      implements: docs/architecture/project-manual.md 增/改两节：端口面新增 HostFsPort / DiagSinkPort（附『根逐次显式』的理由与 gate-read-root.md 的两次误拦事故），层门新增豁免台账机制与四条判据。docs/architecture/gate-read-root.md 在『唯一收敛入口』契约里补一句：RTM 门自本次起也吃 deps.docs，故同样受该纪律约束。docs/knowledge/code-map.md 与 docs/knowledge/code-map.symbols.tsv 只做新增/迁移符号的最小手改（不执行 pnpm kb:build，避免覆盖工作树里他人在途的生成物）。交付材料里给出改前/改后两份 npx vitest run tests/layer-boundary.test.ts 读数，并点名 tools/http 那条红是另一条腿、两次都在。
+      serves:
+        - RF-1
+        - RF-8
+      depends_on:
+        - t-3ac912
+        - t-a5c088
+        - t-43b907
+        - t-d2890d
+        - t-d18c15
+      phase: doc
+      side: doc
+    - id: t-89c4b2
+      title: 新增宿主文件面端口与实现并补齐五处装配·研发
+      implements: |-
+        src/application/ports.ts 新增两个端口：HostFsPort（cwd() / isDirectory(absPath) / exists(root, relPath) / readText(root, relPath) / readStateJson(root, name) / writeStateJsonAtomic(root, name, data)，注释写明『根逐次显式』的理由与 gate-read-root.md 的两次误拦事故，以及为什么保持同步）与 DiagSinkPort（write(line) 且实现必须永不抛）。新增 src/adapters/FileHostFs.ts 实现 HostFsPort（全部同步：cwd 取 process.cwd()；isDirectory 用 statSync().isDirectory() 且异常一律 false；exists/readText 以 root 为基；readStateJson / writeStateJsonAtomic 锚 root + '/.dsh-data/state'，原子写为按需 mkdir + 临时文件 + rename，JSON 缩进 2 空格）。UseCaseDeps 增必填 hostFs: HostFsPort。在 src/index.ts、tests/application/harness.ts、tests/helpers/tool-deps.ts、tests/queue/v9-harness.ts、tests/e2e-design-handoff.test.ts 五处补齐装配（测试侧用真实 FileHostFs）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/apply-wiring.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-713e3f
+      title: 新增宿主文件面端口与实现并补齐五处装配·联调
+      implements: |-
+        src/application/ports.ts 新增两个端口：HostFsPort（cwd() / isDirectory(absPath) / exists(root, relPath) / readText(root, relPath) / readStateJson(root, name) / writeStateJsonAtomic(root, name, data)，注释写明『根逐次显式』的理由与 gate-read-root.md 的两次误拦事故，以及为什么保持同步）与 DiagSinkPort（write(line) 且实现必须永不抛）。新增 src/adapters/FileHostFs.ts 实现 HostFsPort（全部同步：cwd 取 process.cwd()；isDirectory 用 statSync().isDirectory() 且异常一律 false；exists/readText 以 root 为基；readStateJson / writeStateJsonAtomic 锚 root + '/.dsh-data/state'，原子写为按需 mkdir + 临时文件 + rename，JSON 缩进 2 空格）。UseCaseDeps 增必填 hostFs: HostFsPort。在 src/index.ts、tests/application/harness.ts、tests/helpers/tool-deps.ts、tests/queue/v9-harness.ts、tests/e2e-design-handoff.test.ts 五处补齐装配（测试侧用真实 FileHostFs）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/apply-wiring.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-89c4b2
+      phase: implement
+      side: backend
+    - id: t-920291
+      title: 新增宿主文件面端口与实现并补齐五处装配·复核
+      implements: |-
+        src/application/ports.ts 新增两个端口：HostFsPort（cwd() / isDirectory(absPath) / exists(root, relPath) / readText(root, relPath) / readStateJson(root, name) / writeStateJsonAtomic(root, name, data)，注释写明『根逐次显式』的理由与 gate-read-root.md 的两次误拦事故，以及为什么保持同步）与 DiagSinkPort（write(line) 且实现必须永不抛）。新增 src/adapters/FileHostFs.ts 实现 HostFsPort（全部同步：cwd 取 process.cwd()；isDirectory 用 statSync().isDirectory() 且异常一律 false；exists/readText 以 root 为基；readStateJson / writeStateJsonAtomic 锚 root + '/.dsh-data/state'，原子写为按需 mkdir + 临时文件 + rename，JSON 缩进 2 空格）。UseCaseDeps 增必填 hostFs: HostFsPort。在 src/index.ts、tests/application/harness.ts、tests/helpers/tool-deps.ts、tests/queue/v9-harness.ts、tests/e2e-design-handoff.test.ts 五处补齐装配（测试侧用真实 FileHostFs）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020617-088f/design/` 逐条核对；`npx vitest run tests/apply-wiring.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-713e3f
+      phase: implement
+      side: backend
+    - id: t-fa4275
+      title: 新增宿主文件面端口与实现并补齐五处装配·测试
+      implements: |-
+        src/application/ports.ts 新增两个端口：HostFsPort（cwd() / isDirectory(absPath) / exists(root, relPath) / readText(root, relPath) / readStateJson(root, name) / writeStateJsonAtomic(root, name, data)，注释写明『根逐次显式』的理由与 gate-read-root.md 的两次误拦事故，以及为什么保持同步）与 DiagSinkPort（write(line) 且实现必须永不抛）。新增 src/adapters/FileHostFs.ts 实现 HostFsPort（全部同步：cwd 取 process.cwd()；isDirectory 用 statSync().isDirectory() 且异常一律 false；exists/readText 以 root 为基；readStateJson / writeStateJsonAtomic 锚 root + '/.dsh-data/state'，原子写为按需 mkdir + 临时文件 + rename，JSON 缩进 2 空格）。UseCaseDeps 增必填 hostFs: HostFsPort。在 src/index.ts、tests/application/harness.ts、tests/helpers/tool-deps.ts、tests/queue/v9-harness.ts、tests/e2e-design-handoff.test.ts 五处补齐装配（测试侧用真实 FileHostFs）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-920291
+      phase: implement
+      side: backend
+    - id: t-bdc020
+      title: 合并三个同构 RTM 门为单点并改走文档端口·研发
+      implements: |-
+        新增 src/application/gate/rtm-gates.ts：一份内部实现 rtmGateCheck(spec, req, docs)，spec 只装三处差异（查哪个字段 design_refs / task_refs / acceptance_status、错误码、消息模板）；导出三个同名薄壳 designGateCheck / taskCoverageGateCheck / acceptanceGateCheck，签名由 (req, workspaceRoot: string) 改为 (req, docs: DocRepository)，读盘改走 docs.read('docs/requirements/' + req.id + '/rtm.yaml')，yaml 解析与 try/catch → rtm_not_found 的兜底语义逐字保留。删除 src/application/gate/acceptance-gate.ts、src/application/gate/design-gate.ts、src/application/gate/task-coverage-gate.ts。src/application/gate/index.ts 改为从 ./rtm-gates.js 导出同名符号（barrel 名称不变）。三份单测 tests/unit/gate/acceptance-gate.test.ts、tests/unit/gate/design-gate.test.ts、tests/unit/gate/task-coverage-gate.test.ts 的构造由 tmpDir 改为 new FileDocRepository({ workspaceRoot: tmpDir })，断言一字不改。函数注释写明调用方纪律：读盘前须按 docs/architecture/gate-read-root.md 的唯一收敛入口 applyRequirementWorkspaceRoot 校正根。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/layer-boundary.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-56cf20
+      title: 合并三个同构 RTM 门为单点并改走文档端口·复核
+      implements: |-
+        新增 src/application/gate/rtm-gates.ts：一份内部实现 rtmGateCheck(spec, req, docs)，spec 只装三处差异（查哪个字段 design_refs / task_refs / acceptance_status、错误码、消息模板）；导出三个同名薄壳 designGateCheck / taskCoverageGateCheck / acceptanceGateCheck，签名由 (req, workspaceRoot: string) 改为 (req, docs: DocRepository)，读盘改走 docs.read('docs/requirements/' + req.id + '/rtm.yaml')，yaml 解析与 try/catch → rtm_not_found 的兜底语义逐字保留。删除 src/application/gate/acceptance-gate.ts、src/application/gate/design-gate.ts、src/application/gate/task-coverage-gate.ts。src/application/gate/index.ts 改为从 ./rtm-gates.js 导出同名符号（barrel 名称不变）。三份单测 tests/unit/gate/acceptance-gate.test.ts、tests/unit/gate/design-gate.test.ts、tests/unit/gate/task-coverage-gate.test.ts 的构造由 tmpDir 改为 new FileDocRepository({ workspaceRoot: tmpDir })，断言一字不改。函数注释写明调用方纪律：读盘前须按 docs/architecture/gate-read-root.md 的唯一收敛入口 applyRequirementWorkspaceRoot 校正根。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020617-088f/design/` 逐条核对；`npx vitest run tests/layer-boundary.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-bdc020
+      phase: implement
+      side: backend
+    - id: t-b602f1
+      title: 合并三个同构 RTM 门为单点并改走文档端口·测试
+      implements: |-
+        新增 src/application/gate/rtm-gates.ts：一份内部实现 rtmGateCheck(spec, req, docs)，spec 只装三处差异（查哪个字段 design_refs / task_refs / acceptance_status、错误码、消息模板）；导出三个同名薄壳 designGateCheck / taskCoverageGateCheck / acceptanceGateCheck，签名由 (req, workspaceRoot: string) 改为 (req, docs: DocRepository)，读盘改走 docs.read('docs/requirements/' + req.id + '/rtm.yaml')，yaml 解析与 try/catch → rtm_not_found 的兜底语义逐字保留。删除 src/application/gate/acceptance-gate.ts、src/application/gate/design-gate.ts、src/application/gate/task-coverage-gate.ts。src/application/gate/index.ts 改为从 ./rtm-gates.js 导出同名符号（barrel 名称不变）。三份单测 tests/unit/gate/acceptance-gate.test.ts、tests/unit/gate/design-gate.test.ts、tests/unit/gate/task-coverage-gate.test.ts 的构造由 tmpDir 改为 new FileDocRepository({ workspaceRoot: tmpDir })，断言一字不改。函数注释写明调用方纪律：读盘前须按 docs/architecture/gate-read-root.md 的唯一收敛入口 applyRequirementWorkspaceRoot 校正根。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-56cf20
+      phase: implement
+      side: backend
+    - id: t-0786cd
+      title: rtm-health 写路径端口化并同步生产调用方与测试·研发
+      implements: |-
+        src/application/internal/rtm-health.ts 的写路径（readFailures / writeFailures / readRTMTriggerTraces / recordRTMTriggerTrace / recordRTMFailure / clearRTMFailure）去掉 node:fs 与 node:path，改为收 host: HostFsPort + root: string（state 文件读走 host.readStateJson(root, 'rtm-failures.json') / host.readStateJson(root, 'rtm-trigger-traces.json')，写走 host.writeStateJsonAtomic；文件名、键、2 空格缩进、只保留最近 100 条、原子写语义逐字保留）。src/application/internal/rtm-yaml.ts 的 syncRTMYamlWithSnapshot 增首位参数 host: HostFsPort 并把 4 处 recordRTMFailure / clearRTMFailure / recordRTMTriggerTrace 调用点的 stateDir 字符串拼接改为传 root；syncRTMYaml 内部改传 deps.hostFs。src/http/routers/requirements.ts 与 src/http/routers/tasks.ts 的 3 处 syncRTMYamlWithSnapshot 调用改传 ctx.deps.applicationDeps?.hostFs ?? new FileHostFs()（FileHostFs 无构造参数、无状态，兜底实例与注入实例等价）。同步适配 tests/submit-prototype.test.ts、tests/rtm-trigger-prototype.test.ts、tests/rtm-yaml-live-tasks.test.ts、tests/canceled-audit-holds.test.ts、tests/canceled-four-faces.test.ts、tests/canceled-coverage-gate.test.ts 的签名调用。新增一条用例：state 目录不存在时 recordRTMFailure(host, root, ...) 不抛且能读回 attempts=1。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/unit/rtm-health.test.ts tests/rtm-trigger-prototype.test.ts tests/submit-prototype.test.ts tests/canceled-audit-holds.test.ts tests/canceled-four-faces.test.ts tests/canceled-coverage-gate.test.ts tests/rtm-yaml-live-tasks.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-8ba560
+      phase: implement
+      side: backend
+    - id: t-ce4694
+      title: rtm-health 写路径端口化并同步生产调用方与测试·联调
+      implements: |-
+        src/application/internal/rtm-health.ts 的写路径（readFailures / writeFailures / readRTMTriggerTraces / recordRTMTriggerTrace / recordRTMFailure / clearRTMFailure）去掉 node:fs 与 node:path，改为收 host: HostFsPort + root: string（state 文件读走 host.readStateJson(root, 'rtm-failures.json') / host.readStateJson(root, 'rtm-trigger-traces.json')，写走 host.writeStateJsonAtomic；文件名、键、2 空格缩进、只保留最近 100 条、原子写语义逐字保留）。src/application/internal/rtm-yaml.ts 的 syncRTMYamlWithSnapshot 增首位参数 host: HostFsPort 并把 4 处 recordRTMFailure / clearRTMFailure / recordRTMTriggerTrace 调用点的 stateDir 字符串拼接改为传 root；syncRTMYaml 内部改传 deps.hostFs。src/http/routers/requirements.ts 与 src/http/routers/tasks.ts 的 3 处 syncRTMYamlWithSnapshot 调用改传 ctx.deps.applicationDeps?.hostFs ?? new FileHostFs()（FileHostFs 无构造参数、无状态，兜底实例与注入实例等价）。同步适配 tests/submit-prototype.test.ts、tests/rtm-trigger-prototype.test.ts、tests/rtm-yaml-live-tasks.test.ts、tests/canceled-audit-holds.test.ts、tests/canceled-four-faces.test.ts、tests/canceled-coverage-gate.test.ts 的签名调用。新增一条用例：state 目录不存在时 recordRTMFailure(host, root, ...) 不抛且能读回 attempts=1。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/unit/rtm-health.test.ts tests/rtm-trigger-prototype.test.ts tests/submit-prototype.test.ts tests/canceled-audit-holds.test.ts tests/canceled-four-faces.test.ts tests/canceled-coverage-gate.test.ts tests/rtm-yaml-live-tasks.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-0786cd
+      phase: implement
+      side: backend
+    - id: t-68f2a5
+      title: rtm-health 写路径端口化并同步生产调用方与测试·复核
+      implements: |-
+        src/application/internal/rtm-health.ts 的写路径（readFailures / writeFailures / readRTMTriggerTraces / recordRTMTriggerTrace / recordRTMFailure / clearRTMFailure）去掉 node:fs 与 node:path，改为收 host: HostFsPort + root: string（state 文件读走 host.readStateJson(root, 'rtm-failures.json') / host.readStateJson(root, 'rtm-trigger-traces.json')，写走 host.writeStateJsonAtomic；文件名、键、2 空格缩进、只保留最近 100 条、原子写语义逐字保留）。src/application/internal/rtm-yaml.ts 的 syncRTMYamlWithSnapshot 增首位参数 host: HostFsPort 并把 4 处 recordRTMFailure / clearRTMFailure / recordRTMTriggerTrace 调用点的 stateDir 字符串拼接改为传 root；syncRTMYaml 内部改传 deps.hostFs。src/http/routers/requirements.ts 与 src/http/routers/tasks.ts 的 3 处 syncRTMYamlWithSnapshot 调用改传 ctx.deps.applicationDeps?.hostFs ?? new FileHostFs()（FileHostFs 无构造参数、无状态，兜底实例与注入实例等价）。同步适配 tests/submit-prototype.test.ts、tests/rtm-trigger-prototype.test.ts、tests/rtm-yaml-live-tasks.test.ts、tests/canceled-audit-holds.test.ts、tests/canceled-four-faces.test.ts、tests/canceled-coverage-gate.test.ts 的签名调用。新增一条用例：state 目录不存在时 recordRTMFailure(host, root, ...) 不抛且能读回 attempts=1。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020617-088f/design/` 逐条核对；`npx vitest run tests/unit/rtm-health.test.ts tests/rtm-trigger-prototype.test.ts tests/submit-prototype.test.ts tests/canceled-audit-holds.test.ts tests/canceled-four-faces.test.ts tests/canceled-coverage-gate.test.ts tests/rtm-yaml-live-tasks.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-ce4694
+      phase: implement
+      side: backend
+    - id: t-6a958f
+      title: rtm-health 写路径端口化并同步生产调用方与测试·测试
+      implements: |-
+        src/application/internal/rtm-health.ts 的写路径（readFailures / writeFailures / readRTMTriggerTraces / recordRTMTriggerTrace / recordRTMFailure / clearRTMFailure）去掉 node:fs 与 node:path，改为收 host: HostFsPort + root: string（state 文件读走 host.readStateJson(root, 'rtm-failures.json') / host.readStateJson(root, 'rtm-trigger-traces.json')，写走 host.writeStateJsonAtomic；文件名、键、2 空格缩进、只保留最近 100 条、原子写语义逐字保留）。src/application/internal/rtm-yaml.ts 的 syncRTMYamlWithSnapshot 增首位参数 host: HostFsPort 并把 4 处 recordRTMFailure / clearRTMFailure / recordRTMTriggerTrace 调用点的 stateDir 字符串拼接改为传 root；syncRTMYaml 内部改传 deps.hostFs。src/http/routers/requirements.ts 与 src/http/routers/tasks.ts 的 3 处 syncRTMYamlWithSnapshot 调用改传 ctx.deps.applicationDeps?.hostFs ?? new FileHostFs()（FileHostFs 无构造参数、无状态，兜底实例与注入实例等价）。同步适配 tests/submit-prototype.test.ts、tests/rtm-trigger-prototype.test.ts、tests/rtm-yaml-live-tasks.test.ts、tests/canceled-audit-holds.test.ts、tests/canceled-four-faces.test.ts、tests/canceled-coverage-gate.test.ts 的签名调用。新增一条用例：state 目录不存在时 recordRTMFailure(host, root, ...) 不抛且能读回 attempts=1。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-68f2a5
+      phase: implement
+      side: backend
+    - id: t-56f055
+      title: rtm-health 健康检查读路径端口化并收尾该文件的 I/O·研发
+      implements: |-
+        src/application/internal/rtm-health.ts 的 checkRTMHealth 签名改为 (host: HostFsPort, root: string, req, opts?)，内部的 sidesOf（读 docs/requirements/<id>/requirement.md 的 front-matter）与 readTextIfExists（读 rtm-brainstorming.yml）改走 host.readText(root, relPath)，期望文件的存在性判定改走 host.exists(root, relPath)，期望文件清单 expectedRTMFiles 与原型节判据 prototypeSectionVerdict / prototypesSectionPresent / PROTOTYPE_RULES_SINCE 一律零改动。src/application/query/QueryState.ts 的 checkRTMHealth 调用点改为传 deps.hostFs 与 deps.docs.workspaceRoot()，删掉 workspaceRoot + '/.dsh-data/state' 的字符串拼接。同步适配 tests/unit/rtm-health.test.ts、tests/rtm-health-legacy.test.ts 的构造（用真实 FileHostFs + 测试根）。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/unit/rtm-health.test.ts tests/rtm-health-legacy.test.ts tests/unit/query-run-status.test.ts tests/layer-boundary.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-3b104c
+      phase: implement
+      side: backend
+    - id: t-6334ba
+      title: rtm-health 健康检查读路径端口化并收尾该文件的 I/O·联调
+      implements: |-
+        src/application/internal/rtm-health.ts 的 checkRTMHealth 签名改为 (host: HostFsPort, root: string, req, opts?)，内部的 sidesOf（读 docs/requirements/<id>/requirement.md 的 front-matter）与 readTextIfExists（读 rtm-brainstorming.yml）改走 host.readText(root, relPath)，期望文件的存在性判定改走 host.exists(root, relPath)，期望文件清单 expectedRTMFiles 与原型节判据 prototypeSectionVerdict / prototypesSectionPresent / PROTOTYPE_RULES_SINCE 一律零改动。src/application/query/QueryState.ts 的 checkRTMHealth 调用点改为传 deps.hostFs 与 deps.docs.workspaceRoot()，删掉 workspaceRoot + '/.dsh-data/state' 的字符串拼接。同步适配 tests/unit/rtm-health.test.ts、tests/rtm-health-legacy.test.ts 的构造（用真实 FileHostFs + 测试根）。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/unit/rtm-health.test.ts tests/rtm-health-legacy.test.ts tests/unit/query-run-status.test.ts tests/layer-boundary.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-56f055
+      phase: implement
+      side: backend
+    - id: t-b45bdc
+      title: rtm-health 健康检查读路径端口化并收尾该文件的 I/O·复核
+      implements: |-
+        src/application/internal/rtm-health.ts 的 checkRTMHealth 签名改为 (host: HostFsPort, root: string, req, opts?)，内部的 sidesOf（读 docs/requirements/<id>/requirement.md 的 front-matter）与 readTextIfExists（读 rtm-brainstorming.yml）改走 host.readText(root, relPath)，期望文件的存在性判定改走 host.exists(root, relPath)，期望文件清单 expectedRTMFiles 与原型节判据 prototypeSectionVerdict / prototypesSectionPresent / PROTOTYPE_RULES_SINCE 一律零改动。src/application/query/QueryState.ts 的 checkRTMHealth 调用点改为传 deps.hostFs 与 deps.docs.workspaceRoot()，删掉 workspaceRoot + '/.dsh-data/state' 的字符串拼接。同步适配 tests/unit/rtm-health.test.ts、tests/rtm-health-legacy.test.ts 的构造（用真实 FileHostFs + 测试根）。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020617-088f/design/` 逐条核对；`npx vitest run tests/unit/rtm-health.test.ts tests/rtm-health-legacy.test.ts tests/unit/query-run-status.test.ts tests/layer-boundary.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-6334ba
+      phase: implement
+      side: backend
+    - id: t-2392a4
+      title: rtm-health 健康检查读路径端口化并收尾该文件的 I/O·测试
+      implements: |-
+        src/application/internal/rtm-health.ts 的 checkRTMHealth 签名改为 (host: HostFsPort, root: string, req, opts?)，内部的 sidesOf（读 docs/requirements/<id>/requirement.md 的 front-matter）与 readTextIfExists（读 rtm-brainstorming.yml）改走 host.readText(root, relPath)，期望文件的存在性判定改走 host.exists(root, relPath)，期望文件清单 expectedRTMFiles 与原型节判据 prototypeSectionVerdict / prototypesSectionPresent / PROTOTYPE_RULES_SINCE 一律零改动。src/application/query/QueryState.ts 的 checkRTMHealth 调用点改为传 deps.hostFs 与 deps.docs.workspaceRoot()，删掉 workspaceRoot + '/.dsh-data/state' 的字符串拼接。同步适配 tests/unit/rtm-health.test.ts、tests/rtm-health-legacy.test.ts 的构造（用真实 FileHostFs + 测试根）。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-b45bdc
+      phase: implement
+      side: backend
+    - id: t-1acef2
+      title: diag-log 改为无 I/O 门面并把文件实现落到适配层·研发
+      implements: |-
+        src/application/internal/diag-log.ts 去掉 node:fs 与 node:path，改为无 I/O 门面：initCaptureDiag(sink: DiagSinkPort)、captureDiag(message) 保持现签名（内部仍 console.log 并给 sink 追加带 ISO 时间戳的一行），CAPTURE_DIAG_REL 常量原样保留。新增 src/adapters/FileDiagSink.ts 实现 DiagSinkPort：构造时记录绝对路径并按需 mkdir，write(line) 先 statSync 判超 512KB 则 rename 为 .1，再 appendFileSync；所有失败静默吞掉（诊断通道不得反过来影响主流程）。src/index.ts 的 initCaptureDiag(dshHomePath(config, CAPTURE_DIAG_REL)) 改为 initCaptureDiag(new FileDiagSink(dshHomePath(config, CAPTURE_DIAG_REL)))。tests/dive-wake-wiring.test.ts 与 tests/reqboard/degraded-startup.test.ts 的 initCaptureDiag(diagPath) 同样改吃 FileDiagSink 实例（断言不变）。application/ 里 6 个 captureDiag 调用点一字不改。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/dive-wake-wiring.test.ts tests/reqboard/degraded-startup.test.ts tests/layer-boundary.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-8ba560
+      phase: implement
+      side: backend
+    - id: t-4015d5
+      title: diag-log 改为无 I/O 门面并把文件实现落到适配层·联调
+      implements: |-
+        src/application/internal/diag-log.ts 去掉 node:fs 与 node:path，改为无 I/O 门面：initCaptureDiag(sink: DiagSinkPort)、captureDiag(message) 保持现签名（内部仍 console.log 并给 sink 追加带 ISO 时间戳的一行），CAPTURE_DIAG_REL 常量原样保留。新增 src/adapters/FileDiagSink.ts 实现 DiagSinkPort：构造时记录绝对路径并按需 mkdir，write(line) 先 statSync 判超 512KB 则 rename 为 .1，再 appendFileSync；所有失败静默吞掉（诊断通道不得反过来影响主流程）。src/index.ts 的 initCaptureDiag(dshHomePath(config, CAPTURE_DIAG_REL)) 改为 initCaptureDiag(new FileDiagSink(dshHomePath(config, CAPTURE_DIAG_REL)))。tests/dive-wake-wiring.test.ts 与 tests/reqboard/degraded-startup.test.ts 的 initCaptureDiag(diagPath) 同样改吃 FileDiagSink 实例（断言不变）。application/ 里 6 个 captureDiag 调用点一字不改。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/dive-wake-wiring.test.ts tests/reqboard/degraded-startup.test.ts tests/layer-boundary.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-1acef2
+      phase: implement
+      side: backend
+    - id: t-5e3012
+      title: diag-log 改为无 I/O 门面并把文件实现落到适配层·复核
+      implements: |-
+        src/application/internal/diag-log.ts 去掉 node:fs 与 node:path，改为无 I/O 门面：initCaptureDiag(sink: DiagSinkPort)、captureDiag(message) 保持现签名（内部仍 console.log 并给 sink 追加带 ISO 时间戳的一行），CAPTURE_DIAG_REL 常量原样保留。新增 src/adapters/FileDiagSink.ts 实现 DiagSinkPort：构造时记录绝对路径并按需 mkdir，write(line) 先 statSync 判超 512KB 则 rename 为 .1，再 appendFileSync；所有失败静默吞掉（诊断通道不得反过来影响主流程）。src/index.ts 的 initCaptureDiag(dshHomePath(config, CAPTURE_DIAG_REL)) 改为 initCaptureDiag(new FileDiagSink(dshHomePath(config, CAPTURE_DIAG_REL)))。tests/dive-wake-wiring.test.ts 与 tests/reqboard/degraded-startup.test.ts 的 initCaptureDiag(diagPath) 同样改吃 FileDiagSink 实例（断言不变）。application/ 里 6 个 captureDiag 调用点一字不改。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020617-088f/design/` 逐条核对；`npx vitest run tests/dive-wake-wiring.test.ts tests/reqboard/degraded-startup.test.ts tests/layer-boundary.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-4015d5
+      phase: implement
+      side: backend
+    - id: t-09c338
+      title: diag-log 改为无 I/O 门面并把文件实现落到适配层·测试
+      implements: |-
+        src/application/internal/diag-log.ts 去掉 node:fs 与 node:path，改为无 I/O 门面：initCaptureDiag(sink: DiagSinkPort)、captureDiag(message) 保持现签名（内部仍 console.log 并给 sink 追加带 ISO 时间戳的一行），CAPTURE_DIAG_REL 常量原样保留。新增 src/adapters/FileDiagSink.ts 实现 DiagSinkPort：构造时记录绝对路径并按需 mkdir，write(line) 先 statSync 判超 512KB 则 rename 为 .1，再 appendFileSync；所有失败静默吞掉（诊断通道不得反过来影响主流程）。src/index.ts 的 initCaptureDiag(dshHomePath(config, CAPTURE_DIAG_REL)) 改为 initCaptureDiag(new FileDiagSink(dshHomePath(config, CAPTURE_DIAG_REL)))。tests/dive-wake-wiring.test.ts 与 tests/reqboard/degraded-startup.test.ts 的 initCaptureDiag(diagPath) 同样改吃 FileDiagSink 实例（断言不变）。application/ 里 6 个 captureDiag 调用点一字不改。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-5e3012
+      phase: implement
+      side: backend
+    - id: t-9b13d3
+      title: 两处绝对路径判定收口到纯函数与宿主端口·研发
+      implements: |-
+        新增 src/application/internal/paths.ts，导出纯函数 isAbsolutePath(p: string): boolean（口径与 node:path.isAbsolute 的 POSIX + win32 并集一致：前导 / 或 \ 或盘符加分隔符）。src/application/use-cases/CaptureRequirement.ts 的 resolveWorkspaceAnswer(answer, sessionCwd, host: HostFsPort)：session 哨兵仍取 sessionCwd、host 哨兵由 process.cwd() 改为 host.cwd()、自定义路径的 isAbsolute 改 isAbsolutePath、statSync(answer).isDirectory() 改 host.isDirectory(answer)，非绝对或非目录仍返回 undefined。src/application/use-cases/CreateRequirement.ts 的 resolveManualWorkspaceRoot(raw, sessionCwd, host) 同样替换，错误码 REQBOARD_INVALID_WORKSPACE 与两句文案逐字不变。两处调用点改传 deps.hostFs。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/create-doc-location.test.ts tests/create-delegated-owner.test.ts tests/capture.test.ts tests/layer-boundary.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-8ba560
+      phase: implement
+      side: backend
+    - id: t-4f8221
+      title: 两处绝对路径判定收口到纯函数与宿主端口·联调
+      implements: |-
+        新增 src/application/internal/paths.ts，导出纯函数 isAbsolutePath(p: string): boolean（口径与 node:path.isAbsolute 的 POSIX + win32 并集一致：前导 / 或 \ 或盘符加分隔符）。src/application/use-cases/CaptureRequirement.ts 的 resolveWorkspaceAnswer(answer, sessionCwd, host: HostFsPort)：session 哨兵仍取 sessionCwd、host 哨兵由 process.cwd() 改为 host.cwd()、自定义路径的 isAbsolute 改 isAbsolutePath、statSync(answer).isDirectory() 改 host.isDirectory(answer)，非绝对或非目录仍返回 undefined。src/application/use-cases/CreateRequirement.ts 的 resolveManualWorkspaceRoot(raw, sessionCwd, host) 同样替换，错误码 REQBOARD_INVALID_WORKSPACE 与两句文案逐字不变。两处调用点改传 deps.hostFs。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/create-doc-location.test.ts tests/create-delegated-owner.test.ts tests/capture.test.ts tests/layer-boundary.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-9b13d3
+      phase: implement
+      side: backend
+    - id: t-2abc03
+      title: 两处绝对路径判定收口到纯函数与宿主端口·复核
+      implements: |-
+        新增 src/application/internal/paths.ts，导出纯函数 isAbsolutePath(p: string): boolean（口径与 node:path.isAbsolute 的 POSIX + win32 并集一致：前导 / 或 \ 或盘符加分隔符）。src/application/use-cases/CaptureRequirement.ts 的 resolveWorkspaceAnswer(answer, sessionCwd, host: HostFsPort)：session 哨兵仍取 sessionCwd、host 哨兵由 process.cwd() 改为 host.cwd()、自定义路径的 isAbsolute 改 isAbsolutePath、statSync(answer).isDirectory() 改 host.isDirectory(answer)，非绝对或非目录仍返回 undefined。src/application/use-cases/CreateRequirement.ts 的 resolveManualWorkspaceRoot(raw, sessionCwd, host) 同样替换，错误码 REQBOARD_INVALID_WORKSPACE 与两句文案逐字不变。两处调用点改传 deps.hostFs。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020617-088f/design/` 逐条核对；`npx vitest run tests/create-doc-location.test.ts tests/create-delegated-owner.test.ts tests/capture.test.ts tests/layer-boundary.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-4f8221
+      phase: implement
+      side: backend
+    - id: t-02e835
+      title: 两处绝对路径判定收口到纯函数与宿主端口·测试
+      implements: |-
+        新增 src/application/internal/paths.ts，导出纯函数 isAbsolutePath(p: string): boolean（口径与 node:path.isAbsolute 的 POSIX + win32 并集一致：前导 / 或 \ 或盘符加分隔符）。src/application/use-cases/CaptureRequirement.ts 的 resolveWorkspaceAnswer(answer, sessionCwd, host: HostFsPort)：session 哨兵仍取 sessionCwd、host 哨兵由 process.cwd() 改为 host.cwd()、自定义路径的 isAbsolute 改 isAbsolutePath、statSync(answer).isDirectory() 改 host.isDirectory(answer)，非绝对或非目录仍返回 undefined。src/application/use-cases/CreateRequirement.ts 的 resolveManualWorkspaceRoot(raw, sessionCwd, host) 同样替换，错误码 REQBOARD_INVALID_WORKSPACE 与两句文案逐字不变。两处调用点改传 deps.hostFs。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-2abc03
+      phase: implement
+      side: backend
+    - id: t-bfcceb
+      title: Dive Service 外壳外移到适配层·研发
+      implements: |-
+        把 src/application/dive/ReqboardDiveManager.ts 外移到 src/adapters/ReqboardDiveManager.ts（应用层只留 round 逻辑；类体、Service 名 'dive-manager'、static inject ['agents','reqboard']、订阅分组与失败留痕一字不改），相对 import 重算（../application/use-cases/queue-access.js、../application/dive/round-driver.js、../application/dive/round-subscriptions.js、../application/dive/wake-heartbeat.js、../application/dive/wake-liveness.js、../application/internal/diag-log.js、../domain/status/Predicates.js），@module 注释同步。src/index.ts 的 import 改为 './adapters/ReqboardDiveManager.js'。tests/dive-wake-wiring.test.ts 的 import 同步；tests/dive-manager-wiring.test.ts 里按路径字符串读源码的断言改为新路径。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/dive-wake-wiring.test.ts tests/dive-manager-wiring.test.ts tests/layer-boundary.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-8ba560
+      phase: implement
+      side: backend
+    - id: t-01fbef
+      title: Dive Service 外壳外移到适配层·联调
+      implements: |-
+        把 src/application/dive/ReqboardDiveManager.ts 外移到 src/adapters/ReqboardDiveManager.ts（应用层只留 round 逻辑；类体、Service 名 'dive-manager'、static inject ['agents','reqboard']、订阅分组与失败留痕一字不改），相对 import 重算（../application/use-cases/queue-access.js、../application/dive/round-driver.js、../application/dive/round-subscriptions.js、../application/dive/wake-heartbeat.js、../application/dive/wake-liveness.js、../application/internal/diag-log.js、../domain/status/Predicates.js），@module 注释同步。src/index.ts 的 import 改为 './adapters/ReqboardDiveManager.js'。tests/dive-wake-wiring.test.ts 的 import 同步；tests/dive-manager-wiring.test.ts 里按路径字符串读源码的断言改为新路径。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/dive-wake-wiring.test.ts tests/dive-manager-wiring.test.ts tests/layer-boundary.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-bfcceb
+      phase: implement
+      side: backend
+    - id: t-987ec0
+      title: Dive Service 外壳外移到适配层·复核
+      implements: |-
+        把 src/application/dive/ReqboardDiveManager.ts 外移到 src/adapters/ReqboardDiveManager.ts（应用层只留 round 逻辑；类体、Service 名 'dive-manager'、static inject ['agents','reqboard']、订阅分组与失败留痕一字不改），相对 import 重算（../application/use-cases/queue-access.js、../application/dive/round-driver.js、../application/dive/round-subscriptions.js、../application/dive/wake-heartbeat.js、../application/dive/wake-liveness.js、../application/internal/diag-log.js、../domain/status/Predicates.js），@module 注释同步。src/index.ts 的 import 改为 './adapters/ReqboardDiveManager.js'。tests/dive-wake-wiring.test.ts 的 import 同步；tests/dive-manager-wiring.test.ts 里按路径字符串读源码的断言改为新路径。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020617-088f/design/` 逐条核对；`npx vitest run tests/dive-wake-wiring.test.ts tests/dive-manager-wiring.test.ts tests/layer-boundary.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-01fbef
+      phase: implement
+      side: backend
+    - id: t-c0a71e
+      title: Dive Service 外壳外移到适配层·测试
+      implements: |-
+        把 src/application/dive/ReqboardDiveManager.ts 外移到 src/adapters/ReqboardDiveManager.ts（应用层只留 round 逻辑；类体、Service 名 'dive-manager'、static inject ['agents','reqboard']、订阅分组与失败留痕一字不改），相对 import 重算（../application/use-cases/queue-access.js、../application/dive/round-driver.js、../application/dive/round-subscriptions.js、../application/dive/wake-heartbeat.js、../application/dive/wake-liveness.js、../application/internal/diag-log.js、../domain/status/Predicates.js），@module 注释同步。src/index.ts 的 import 改为 './adapters/ReqboardDiveManager.js'。tests/dive-wake-wiring.test.ts 的 import 同步；tests/dive-manager-wiring.test.ts 里按路径字符串读源码的断言改为新路径。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-987ec0
+      phase: implement
+      side: backend
+    - id: t-afafc8
+      title: 给层门补显式豁免面并落地空台账·研发
+      implements: |-
+        新增 tests/fixtures/layer-boundary-exempt.json：_note 写清准入/清出/棘轮口径，frozenCount: 0，entries: []。tests/layer-boundary.test.ts 把现有扫描抽成共享函数，并加四条判据：① 双向相等——每条 entries 必须命中一处真实越界，否则判红（过期豁免）；② 残量归零——剔除已豁免项后未豁免越界必须为空（沿用既有 application 用例）；③ reason / plan 各 ≥ 20 字；④ frozenCount === entries.length 且 ≤ 测试内硬上界常量 EXEMPT_CEILING（本次 0）。把判据 ① 抽成导出的纯函数 unusedExemptions(bad, entries)，另加一条用合成输入的用例证明『台账指向已修好的文件 → 返回该条』。LAYER_RULES 的 forbidden 数组零改动。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/layer-boundary.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: test
+      side: backend
+    - id: t-903c9a
+      title: 给层门补显式豁免面并落地空台账·复核
+      implements: |-
+        新增 tests/fixtures/layer-boundary-exempt.json：_note 写清准入/清出/棘轮口径，frozenCount: 0，entries: []。tests/layer-boundary.test.ts 把现有扫描抽成共享函数，并加四条判据：① 双向相等——每条 entries 必须命中一处真实越界，否则判红（过期豁免）；② 残量归零——剔除已豁免项后未豁免越界必须为空（沿用既有 application 用例）；③ reason / plan 各 ≥ 20 字；④ frozenCount === entries.length 且 ≤ 测试内硬上界常量 EXEMPT_CEILING（本次 0）。把判据 ① 抽成导出的纯函数 unusedExemptions(bad, entries)，另加一条用合成输入的用例证明『台账指向已修好的文件 → 返回该条』。LAYER_RULES 的 forbidden 数组零改动。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020617-088f/design/` 逐条核对；`npx vitest run tests/layer-boundary.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-afafc8
+      phase: test
+      side: backend
+    - id: t-7c3395
+      title: 给层门补显式豁免面并落地空台账·测试
+      implements: |-
+        新增 tests/fixtures/layer-boundary-exempt.json：_note 写清准入/清出/棘轮口径，frozenCount: 0，entries: []。tests/layer-boundary.test.ts 把现有扫描抽成共享函数，并加四条判据：① 双向相等——每条 entries 必须命中一处真实越界，否则判红（过期豁免）；② 残量归零——剔除已豁免项后未豁免越界必须为空（沿用既有 application 用例）；③ reason / plan 各 ≥ 20 字；④ frozenCount === entries.length 且 ≤ 测试内硬上界常量 EXEMPT_CEILING（本次 0）。把判据 ① 抽成导出的纯函数 unusedExemptions(bad, entries)，另加一条用合成输入的用例证明『台账指向已修好的文件 → 返回该条』。LAYER_RULES 的 forbidden 数组零改动。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-903c9a
+      phase: test
+      side: backend
+    - id: t-911edb
+      title: 同步说明书与知识层文档并留痕边界外读数·研发
+      implements: |-
+        docs/architecture/project-manual.md 增/改两节：端口面新增 HostFsPort / DiagSinkPort（附『根逐次显式』的理由与 gate-read-root.md 的两次误拦事故），层门新增豁免台账机制与四条判据。docs/architecture/gate-read-root.md 在『唯一收敛入口』契约里补一句：RTM 门自本次起也吃 deps.docs，故同样受该纪律约束。docs/knowledge/code-map.md 与 docs/knowledge/code-map.symbols.tsv 只做新增/迁移符号的最小手改（不执行 pnpm kb:build，避免覆盖工作树里他人在途的生成物）。交付材料里给出改前/改后两份 npx vitest run tests/layer-boundary.test.ts 读数，并点名 tools/http 那条红是另一条腿、两次都在。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/kb-invalidation.test.ts tests/kb-operations.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-3ac912
+        - t-a5c088
+        - t-43b907
+        - t-d2890d
+        - t-d18c15
+      phase: doc
+      side: doc
+    - id: t-a019a3
+      title: 同步说明书与知识层文档并留痕边界外读数·复核
+      implements: |-
+        docs/architecture/project-manual.md 增/改两节：端口面新增 HostFsPort / DiagSinkPort（附『根逐次显式』的理由与 gate-read-root.md 的两次误拦事故），层门新增豁免台账机制与四条判据。docs/architecture/gate-read-root.md 在『唯一收敛入口』契约里补一句：RTM 门自本次起也吃 deps.docs，故同样受该纪律约束。docs/knowledge/code-map.md 与 docs/knowledge/code-map.symbols.tsv 只做新增/迁移符号的最小手改（不执行 pnpm kb:build，避免覆盖工作树里他人在途的生成物）。交付材料里给出改前/改后两份 npx vitest run tests/layer-boundary.test.ts 读数，并点名 tools/http 那条红是另一条腿、两次都在。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020617-088f/design/` 逐条核对；`npx vitest run tests/kb-invalidation.test.ts tests/kb-operations.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-911edb
+      phase: doc
+      side: doc
+task_coverage:
+  - task_id: t-3ac912
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-8ba560
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-3b104c
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-a5c088
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-43b907
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-d2890d
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-d18c15
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-54f247
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-dca1de
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-89c4b2
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-713e3f
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-920291
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-fa4275
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-bdc020
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-56cf20
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b602f1
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-0786cd
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ce4694
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-68f2a5
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-6a958f
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-56f055
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-6334ba
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b45bdc
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-2392a4
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-1acef2
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-4015d5
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-5e3012
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-09c338
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-9b13d3
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-4f8221
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-2abc03
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-02e835
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-bfcceb
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-01fbef
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-987ec0
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-c0a71e
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-afafc8
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-903c9a
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-7c3395
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-911edb
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-a019a3
+    covers_prototypes: []
+    covers_decisions: []
+traceability:
+  design_to_tasks:
+    design/architecture.md#目标与总体方案: []
+    design/architecture.md#现状修正设计阶段勘察与需求文档交接底稿不一致处: []
+    design/architecture.md#模块改动地图: []
+    design/architecture.md#接口与数据契约变更: []
+    design/architecture.md#新增端口-HostFsPortportsts: []
+    design/architecture.md#新增端口-DiagSinkPortportsts: []
+    design/architecture.md#修改的接口: []
+    design/architecture.md#批次划分与验证一次只改一类: []
+    design/architecture.md#层门豁免面设计: []
+    design/architecture.md#依赖与调用方清单改前逐处登记防漏改: []
+    design/architecture.md#行为不变式的验证设计: []
+    design/architecture.md#关键决策与取舍: []
+    design/architecture.md#风险与遗留: []
+    design/architecture.md#文档更新清单: []
+    design/architecture.md#测试策略: []
+    design/architecture.md#技术方案与亮点: []
+    design/migration.md#迁移步骤: []
+    design/migration.md#回滚路径: []
+    design/migration.md#兼容期行为: []
+    design/migration.md#灰度与观测: []
+    design/migration.md#关键决策与取舍: []
+    design/migration.md#技术方案与亮点: []
+  fr_to_tasks: {}
+coverage:
+  implementation:
+    total: 22
+    covered: 0
+    uncovered:
+      - design/architecture.md#目标与总体方案
+      - design/architecture.md#现状修正设计阶段勘察与需求文档交接底稿不一致处
+      - design/architecture.md#模块改动地图
+      - design/architecture.md#接口与数据契约变更
+      - design/architecture.md#新增端口-HostFsPortportsts
+      - design/architecture.md#新增端口-DiagSinkPortportsts
+      - design/architecture.md#修改的接口
+      - design/architecture.md#批次划分与验证一次只改一类
+      - design/architecture.md#层门豁免面设计
+      - design/architecture.md#依赖与调用方清单改前逐处登记防漏改
+      - design/architecture.md#行为不变式的验证设计
+      - design/architecture.md#关键决策与取舍
+      - design/architecture.md#风险与遗留
+      - design/architecture.md#文档更新清单
+      - design/architecture.md#测试策略
+      - design/architecture.md#技术方案与亮点
+      - design/migration.md#迁移步骤
+      - design/migration.md#回滚路径
+      - design/migration.md#兼容期行为
+      - design/migration.md#灰度与观测
+      - design/migration.md#关键决策与取舍
+      - design/migration.md#技术方案与亮点
+    rate: 0
+    total_designs: 22
+    covered_designs: 0

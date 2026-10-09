@@ -1,0 +1,50 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261007230908-5ccb
+  generated_at: 2026-10-07T15:14:50.980Z
+  version: 4
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T16:02:07.107Z
+outputs:
+  requirements: []
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 「注意剔除模板拼码 REQBOARD_${…} 13 处与占位 REQBOARD_XXX」（session-a6e1875f 交接底稿）
+      verdict: 注册表与校验口径剔除这两类：REQBOARD_XXX 已在 NOISE_TOKENS；模板拼码是运行时拼接、非字面量码，扫描口径本就不计，注册表不收
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      criterion: 注册表与校验用例中 REQBOARD_XXX 零收录；负例（把占位码塞进注册表）红
+    - id: D-2
+      source: 「注意仓内已有 tests/helpers/error-code-scan.ts、tests/error-code-inventory.test.ts、tests/fixtures/error-code-inventory.json 等存量设施，先盘点复用再决定新建还是收敛」（同上）
+      verdict: "**收敛**：error-code-scan.ts 保持口径唯一实现，硬门在既有守卫生态上生长（新增注册表一致性与 prompt 校验用例），不另建第二套扫描/清单"
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      criterion: '`grep -rn "REQBOARD_[A-Z0-9_]" tests/helpers --include="*.ts" -l` 扫描正则仍只此一处；新用例 import 既有 scanErrorCodes'
+    - id: D-3
+      source: 「代码抛的码必须已注册；prompt 列的码可选校验」（同上）
+      verdict: 代码侧 = 硬门（FR-2）；prompt 侧做成机械校验用例但定位**从属于 G5 裁定**——G5 若选「改定性表述、不列码」，prompt 校验自然空集通过；若选「补全清单」，校验即刻生效
+      serves:
+        - FR-3
+        - FR-5
+      criterion: prompt 校验用例绿；两种 G5 走向下用例语义都成立（子集断言不预设清单非空）
+    - id: D-4
+      source: 「G5 错误码 prompt 清单补全或改定性表述」（同上）
+      verdict: 推荐**补全**：FR-1 注册表落地后补全四处漏码（OpenWindow/SkillInstall/Create/RunStatus）成本极低，且 FR-3 校验有事实源可守；若设计阶段发现补全与「description 瘦身」（第三批 G3 方向）冲突，再改定性表述并在设计文档记录理由
+      serves:
+        - FR-3
+        - FR-5
+      criterion: 四处工具 prompt 漏码清零（FR-3 校验绿），或 prompt 改定性表述后校验空集通过——二选一，验收单核对
+    - id: D-5
+      source: 本窗口盘点裁定（参照 REQ-261007220012-bd29 N5 先例）
+      verdict: sides 声明 [backend]，不触发原型门禁：本批无视觉/交互/布局变化；toolviews/shared.ts 映射表最多被改为「从注册表派生」的数据同源，非 UI 行为
+      serves:
+        - FR-1
+      criterion: "`git diff` 中 src/client 下改动（若有）仅限 shared.ts 映射表数据源，无渲染/样式/交互变更"
+status:
+  artifacts: []

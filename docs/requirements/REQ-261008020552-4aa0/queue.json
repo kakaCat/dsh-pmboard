@@ -1,0 +1,4177 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261008020552-4aa0",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-07T18:28:29.619Z",
+  "tasks": [
+    {
+      "id": "t-5ae432",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "收编 archive_amend 为 task_amend(op=archive)（U1）",
+      "cardDoc": "docs/requirements/REQ-261008020552-4aa0/tasks/t-5ae432.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① grep -rn \"reqboard_archive_amend|ArchiveAmendTool|defineArchiveAmendTool\" src tests README.md 零命中；② pnpm vitest run tests/archive-amend.test.ts tests/archive-reconcile-e2e.test.ts tests/task-amend-tool.test.ts 全绿；③ pnpm vitest run tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/output-contract.test.ts 全绿（ctx.tools 无 reqboard_archive_amend）；④ op=archive 返回体 = 原工具键集 + op 回显（测试断言）",
+      "implementation": "按 design/architecture.md §2/§3/§4 施工：① TaskAmendTool.ts 扩 op=archive——TASK_AMEND_OPS 加 'archive'、REQUIRED_OF 加 archive:[docs,reason]、parameters 新增 docs 数组（items={kind,path}，从 ArchiveAmendTool 平移）、output.schema 加 appended/skipped、分派 amendArchiveManifest 并补 success:true 与 op 回显；② prompt.ts 加 op=archive 一句 + 承接指路（单字面量）；③ summary.ts 迁入 archiveAmendSummary 为 op=archive 分支；④ 删 src/tools/ArchiveAmendTool/ 目录；⑤ registry.ts 删 ArchiveAmend 条目、TaskAmend responseSources 加 AmendArchiveManifest.ts；⑥ src/index.ts 与 src/tools/index.ts 摘除导入/注册；⑦ boundary-guard.ts 加 TASK_AMEND_OP_STAGES（archive:undefined 全阶段放行）；⑧ AmendArchiveManifest.ts 8 处 reject 前缀改 reqboard_task_amend(op=archive)（D-3，design §4）；⑨ routers/requirements.ts:785 注释改写；⑩ 测试：archive-reconcile-e2e 改打 defineTaskAmendTool op=archive，task-amend-tool.test.ts 加 op=archive 用例。",
+      "context": "",
+      "decisionRefs": [
+        "D-1"
+      ],
+      "requirementRefs": [
+        "FR-1"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e73bac",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791397858979,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 315,
+              "at": 1791397858979,
+              "totals": {
+                "uncachedInputTokens": 168608,
+                "outputTokens": 48967,
+                "cacheReadTokens": 3912960,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 315,
+                  "totals": {
+                    "uncachedInputTokens": 168608,
+                    "outputTokens": 48967,
+                    "cacheReadTokens": 3912960,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 737,
+              "at": 1791399265691,
+              "totals": {
+                "uncachedInputTokens": 232038,
+                "outputTokens": 75846,
+                "cacheReadTokens": 15533824,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 737,
+                  "totals": {
+                    "uncachedInputTokens": 232038,
+                    "outputTokens": 75846,
+                    "cacheReadTokens": 15533824,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 63430,
+              "outputTokens": 26879,
+              "cacheReadTokens": 11620864,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791399265691
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791397709537,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791397858979,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "开工 U1：archive_amend 收编为 task_amend(op=archive)，按 design §3 施工"
+        },
+        {
+          "status": "done",
+          "at": 1791399265691,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "U1 完成：archive_amend 收编为 task_amend(op=archive)，子卡链 4/4 done，判据全绿"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-cd4b74",
+          "body": "[状态] → in_progress：开工 U1：archive_amend 收编为 task_amend(op=archive)，按 design §3 施工（reqboard_task_move）",
+          "createdAt": 1791397858979,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-c96831",
+          "body": "[状态] → done：U1 完成：archive_amend 收编为 task_amend(op=archive)，子卡链 4/4 done，判据全绿（reqboard_task_move）",
+          "createdAt": 1791399265691,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791397709537,
+      "updatedAt": 1791399265691,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791399258103,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/TaskAmendTool/TaskAmendTool.ts",
+          "src/tools/TaskAmendTool/prompt.ts",
+          "src/tools/TaskAmendTool/summary.ts",
+          "src/tools/registry.ts",
+          "src/tools/index.ts",
+          "src/index.ts",
+          "src/application/dive/boundary-guard.ts",
+          "src/application/use-cases/AmendArchiveManifest.ts",
+          "src/http/routers/requirements.ts",
+          "README.md",
+          "package.json",
+          "tests/archive-reconcile-e2e.test.ts",
+          "tests/task-amend-tool.test.ts",
+          "tests/tools-dispatch.test.ts",
+          "tests/ask-confirm-prompt.test.ts",
+          "src/tools/ArchiveAmendTool/（整目录删除）"
+        ],
+        "completed": [
+          "研发（t-a96f5a）：TaskAmendTool 扩 op=archive 全量落地 + 同步面摘除 + D-3 文案",
+          "联调（t-d8bccc）：契约面全绿；README×3 + package.json 计数 21→20 随门禁同步",
+          "复核（t-9c589b）：逐项对照 design §3/§4，无偏离；用例层除 D-3 外零改动有实证",
+          "测试（t-836de1）：判据①②③④全绿；全量新增失败 0；tsc 0 错"
+        ]
+      },
+      "lastRun": {
+        "at": 1791399258103,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-aa5503",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "收编 note_interruption 为 task_amend(op=interruption) + 守卫 op 化（U2）",
+      "cardDoc": "docs/requirements/REQ-261008020552-4aa0/tasks/t-aa5503.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-5ae432"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① grep -rn \"reqboard_note_interruption|NoteInterruptionTool|defineNoteInterruptionTool\" src tests README.md 零命中；② pnpm vitest run tests/interruption-checkpoint.test.ts tests/interruption-dedupe.test.ts tests/arg-guidance.test.ts tests/task-amend-tool.test.ts 全绿；③ 新增行为测试：挂起确认期间 op=interruption 可调成功、op=refs 仍被 REQBOARD_CONFIRM_PENDING 拦；④ 契约三件（tools-dispatch/apply-wiring/output-contract）绿，ctx.tools 无 reqboard_note_interruption，注册名单 19",
+      "implementation": "按 design §3 施工：① TaskAmendTool.ts 扩 op=interruption——REQUIRED_OF 加 interruption:[reason]、output.schema 加 interruption 子 schema（at/reason/stage/pendingAction/tool，从 NoteInterruptionTool 平移）、分派 noteInterruption；② 挂起确认守卫按 op 分流：op==='interruption' 跳过 assertNoPendingConfirm（原工具无此前置，行为等价关键点）；③ summary.ts 迁入 noteInterruptionSummary；④ 删 src/tools/NoteInterruptionTool/ 目录；⑤ registry.ts 删条目、responseSources 加 NoteInterruption.ts；⑥ src/index.ts 与 tools/index.ts 摘除；⑦ shared.ts 删 LONG_TEXT_STYLE_ONLY_FIELDS 的 note_interruption 行；⑧ StageActions.ts 删 reqboard_note_interruption 条目；⑨ boundary-guard.ts 的 TASK_AMEND_OP_STAGES 加 interruption:undefined；⑩ NoteInterruption.ts D-3：3 处文案前缀 + tool 字面量改 'reqboard_task_amend'（design §4）；⑪ protocol.ts:1363、interruption.ts:145 注释改写；⑫ 测试：interruption-checkpoint 改打 op=interruption（bp.tool 断言改新值）、arg-guidance 删映射行、ask-confirm-prompt 工具名清单同步。",
+      "context": "",
+      "decisionRefs": [
+        "D-2"
+      ],
+      "requirementRefs": [
+        "FR-2"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e76124",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791399274901,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 742,
+              "at": 1791399274901,
+              "totals": {
+                "uncachedInputTokens": 232274,
+                "outputTokens": 75999,
+                "cacheReadTokens": 15713792,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 742,
+                  "totals": {
+                    "uncachedInputTokens": 232274,
+                    "outputTokens": 75999,
+                    "cacheReadTokens": 15713792,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1196,
+              "at": 1791400485344,
+              "totals": {
+                "uncachedInputTokens": 295607,
+                "outputTokens": 103947,
+                "cacheReadTokens": 31984128,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1196,
+                  "totals": {
+                    "uncachedInputTokens": 295607,
+                    "outputTokens": 103947,
+                    "cacheReadTokens": 31984128,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 63333,
+              "outputTokens": 27948,
+              "cacheReadTokens": 16270336,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791400485344
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791397709537,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791399274901,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "开工 U2：note_interruption 收编为 task_amend(op=interruption) + 守卫分流"
+        },
+        {
+          "status": "done",
+          "at": 1791400485344,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "U2 完成：note_interruption 收编为 task_amend(op=interruption)，子卡链 4/4 done，工具面 19 达成"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-de18e7",
+          "body": "[状态] → in_progress：开工 U2：note_interruption 收编为 task_amend(op=interruption) + 守卫分流（reqboard_task_move）",
+          "createdAt": 1791399274901,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-eaaa13",
+          "body": "[状态] → done：U2 完成：note_interruption 收编为 task_amend(op=interruption)，子卡链 4/4 done，工具面 19 达成（reqboard_task_move）",
+          "createdAt": 1791400485344,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791397709537,
+      "updatedAt": 1791400485344,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "layer": 1,
+      "lastReport": {
+        "at": 1791400477924,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "研发（t-ecb91d）：op=interruption 收编 + 守卫分流 + D-3 + 同步面（19 工具面）",
+          "联调（t-85c2d1）：契约面与守卫相关 12 文件 160 测试全绿",
+          "复核（t-31466b）：用例层 diff 只含 D-3 申报项，protocol.ts 其余 diff 辨认为别窗口在飞工作，无偏离",
+          "测试（t-513d54）：判据①②③④全绿（判据②矩阵的 3 红为基线登记项）；全量新增失败 0；tsc 0 错"
+        ]
+      },
+      "lastRun": {
+        "at": 1791400477924,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-6b550f",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "task_move 描述结构减负 1265→≤630（U3）",
+      "cardDoc": "docs/requirements/REQ-261008020552-4aa0/tasks/t-6b550f.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① 体量脚本（defineTaskMoveTool(stub deps) 后 description.length + parameters 描述递归和）读数 ≤ 630（基线 1265）；② pnpm vitest run tests/task-move-prompt-budget.test.ts 绿（含细则之家三条断言）；③ pnpm vitest run tests/task-move-batch.test.ts tests/task-move-role.test.ts tests/subtask-budget.test.ts tests/chain-budget.test.ts tests/done-throttle-guidance.test.ts tests/done-throttle-message.test.ts tests/amend-acceptance.test.ts tests/legacy-compat-6749.test.ts 全绿",
+      "implementation": "按 design §5 映射表施工：只压缩 TaskMoveTool.ts 的 description 与 parameters 描述字符串（参数形状/键名/类型/必填/枚举/additionalProperties/返回体/错误码逐字不动）；description 每职能留一句话，tasks/batchItemSchema/budget 描述压短；reason 保留 LONG_TEXT_STYLE_NOTE（arg-guidance 机械锁）。新增 tests/task-move-prompt-budget.test.ts 双判据：①体量 ≤630；②细则之家——throttleGuidance 含「确定等待」、REQBOARD_CONFLICT 回执含「按当前窗口号」、readSubtaskBudgetArg 形状报错含 {release:true。",
+      "context": "",
+      "requirementRefs": [
+        "FR-3"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-80499f",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791400574358,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1201,
+              "at": 1791400574358,
+              "totals": {
+                "uncachedInputTokens": 296010,
+                "outputTokens": 107225,
+                "cacheReadTokens": 32217856,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1201,
+                  "totals": {
+                    "uncachedInputTokens": 296010,
+                    "outputTokens": 107225,
+                    "cacheReadTokens": 32217856,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1344,
+              "at": 1791401134274,
+              "totals": {
+                "uncachedInputTokens": 320510,
+                "outputTokens": 118351,
+                "cacheReadTokens": 38641408,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1344,
+                  "totals": {
+                    "uncachedInputTokens": 320510,
+                    "outputTokens": 118351,
+                    "cacheReadTokens": 38641408,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 24500,
+              "outputTokens": 11126,
+              "cacheReadTokens": 6423552,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791401134274
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791397709537,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791400574358,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "开工 U3：task_move 描述结构减负 1265→≤630"
+        },
+        {
+          "status": "done",
+          "at": 1791401134274,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "U3 完成：task_move 描述 1265→591，子卡链 4/4 done，判据①②③全绿"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-e4d4de",
+          "body": "[状态] → in_progress：开工 U3：task_move 描述结构减负 1265→≤630（reqboard_task_move）",
+          "createdAt": 1791400574358,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-a8eed1",
+          "body": "[状态] → done：U3 完成：task_move 描述 1265→591，子卡链 4/4 done，判据①②③全绿（reqboard_task_move）",
+          "createdAt": 1791401134274,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791397709537,
+      "updatedAt": 1791401134274,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791401125942,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/TaskMoveTool/TaskMoveTool.ts",
+          "tests/task-move-prompt-budget.test.ts（新建）"
+        ],
+        "completed": [
+          "研发（t-7bc987）：task_move 1265→591（≤630，降 53%），预算门禁四条进场",
+          "联调（t-5e80c2）：行为锁八件 + 契约/锚点/HTTP 面 16 文件 203 测试全绿",
+          "复核（t-4ca7b1）：diff 只含描述压缩与一处未用导入摘除，无偏离",
+          "测试（t-cac417）：判据①②③全绿；全量新增失败 0；tsc 0 错"
+        ]
+      },
+      "lastRun": {
+        "at": 1791401125942,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9f79be",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "submit tasks[] 子 schema 描述下沉 1717→≤860（U4）",
+      "cardDoc": "docs/requirements/REQ-261008020552-4aa0/tasks/t-9f79be.md",
+      "description": "",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① 体量脚本读数：tasks[] 子树描述递归和 ≤ 860（基线 1717）且 SUBMIT_PROMPT ≤ 1300 不破；② 门禁测试（扩展 submit-prompt-budget 或新增姐妹文件）绿：体量判据 + 细则之家逐条（dep_reasons 写法/granularity_exempt 条件/footprint 口径/skipIntegration 联动/prototypeRefs 条件/template 键清单各能在对应回执读到）；③ pnpm vitest run tests/submit-prompt-budget.test.ts tests/plan-granularity.test.ts tests/plan-depends-e2e.test.ts tests/plan-footprint-tool-schema.test.ts tests/plan-prototype-anchor-gate.test.ts tests/canceled-coverage-gate.test.ts tests/dual-field.test.ts tests/plan-footprint.test.ts 全绿",
+      "implementation": "按 design §6 映射表施工：① SubmitTool.ts tasks[] 21 个属性描述压成一句话，三对双拼字段说明合并为「snake/camel 等价」；enum/结构承载的枚举清单从描述删除；② 各门禁回执只追加细则句：plan-deps-check.ts 伪依赖拒绝消息追加 dep_reasons 写法、plan-granularity.ts 软门 warnings 追加 footprint 口径、skipIntegration 联动句进 normalizePlanTasks/plan-landing 对应拒绝、prototypeRefs 条件句进原型锚点门禁、template 非法键拒绝回执列全部合法键；③ SUBMIT_PROMPT 不动、results[] 子树不动；④ 纪律：错误码/结构化字段/既有文案语序不变，既有逐字文案断言只允许为追加句放宽，逐条留痕。",
+      "context": "",
+      "requirementRefs": [
+        "FR-4"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-85592b",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791401152683,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1349,
+              "at": 1791401152683,
+              "totals": {
+                "uncachedInputTokens": 320762,
+                "outputTokens": 118942,
+                "cacheReadTokens": 38896640,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1349,
+                  "totals": {
+                    "uncachedInputTokens": 320762,
+                    "outputTokens": 118942,
+                    "cacheReadTokens": 38896640,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1644,
+              "at": 1791402243466,
+              "totals": {
+                "uncachedInputTokens": 367938,
+                "outputTokens": 143230,
+                "cacheReadTokens": 54486272,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1644,
+                  "totals": {
+                    "uncachedInputTokens": 367938,
+                    "outputTokens": 143230,
+                    "cacheReadTokens": 54486272,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 47176,
+              "outputTokens": 24288,
+              "cacheReadTokens": 15589632,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791402243466
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791397709537,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791401152683,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "开工 U4：submit tasks[] 子 schema 描述下沉 1717→≤860"
+        },
+        {
+          "status": "done",
+          "at": 1791402243466,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "U4 完成：submit tasks[] 描述 1717→≤860，子卡链 4/4 done，判据①②③全绿"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-7fca81",
+          "body": "[状态] → in_progress：开工 U4：submit tasks[] 子 schema 描述下沉 1717→≤860（reqboard_task_move）",
+          "createdAt": 1791401152683,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-662732",
+          "body": "[状态] → done：U4 完成：submit tasks[] 描述 1717→≤860，子卡链 4/4 done，判据①②③全绿（reqboard_task_move）",
+          "createdAt": 1791402243466,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791397709537,
+      "updatedAt": 1791402243466,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "layer": 0,
+      "lastReport": {
+        "at": 1791402233871,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/SubmitTool/SubmitTool.ts",
+          "src/application/internal/plan-deps-check.ts",
+          "src/domain/task/Footprint.ts",
+          "tests/submit-tasks-schema-budget.test.ts（新建）"
+        ],
+        "completed": [
+          "研发（t-ac655f）：tasks[] 子树 1717→≤860（实测 657+tasks 描述），门禁八条进场，棘轮零上升",
+          "联调（t-e67903）：门禁矩阵 + submit 面 + 契约 17 文件 254 测试全绿",
+          "复核（t-4718f1）：diff 只含描述压缩/未用导入/两处回执纯追加；footprint 之家位置 refined 已申报；无偏离",
+          "测试（t-d0f548）：判据①②③全绿；全量新增失败 0；tsc 0 错"
+        ]
+      },
+      "lastRun": {
+        "at": 1791402233871,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-0f675d",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "同步面收尾与全量闸（U5：README/package.json/docs/知识层 21→19）",
+      "cardDoc": "docs/requirements/REQ-261008020552-4aa0/tasks/t-0f675d.md",
+      "description": "",
+      "phase": "doc",
+      "side": "backend",
+      "dependsOn": [
+        "t-aa5503",
+        "t-6b550f",
+        "t-9f79be"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "① pnpm vitest run tests/readme-tool-face.test.ts tests/toolviews-contract.test.ts tests/tools-render-coverage.test.ts tests/apply-wiring.test.ts 全绿（注册名单=19）；② grep \"19 个\" package.json README.md 均命中；③ pnpm kb:check 退出码 0；④ pnpm test 全绿；⑤ pnpm baseline:check 与 pnpm typecheck 退出码 0",
+      "implementation": "按 design §7/§9 施工：① README.md 工具表 21→19（两行摘除、task_amend 行改写承接 5 op）；② package.json description「21 个」→「19 个」；③ docs/architecture/tool-face-inventory.md、project-manual.md（:145 补录入口名、:189/:211 LONG_TEXT_FIELDS 计数段）、docs/knowledge/architecture.md:77、docs/knowledge/glossary.md:21 同步改写；④ pnpm kb:build 消漂移后 kb:check；⑤ 全量闸：pnpm test / baseline:check / typecheck / kb:check / build（C-11~C-15）；⑥ 逐卡复核 D-3 留痕与回执追加的测试断言放宽清单。",
+      "context": "",
+      "stages": [
+        "dev",
+        "review"
+      ],
+      "requirementRefs": [
+        "FR-5"
+      ],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f8a828",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791402259704,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1649,
+              "at": 1791402259704,
+              "totals": {
+                "uncachedInputTokens": 368238,
+                "outputTokens": 143644,
+                "cacheReadTokens": 54782464,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1649,
+                  "totals": {
+                    "uncachedInputTokens": 368238,
+                    "outputTokens": 143644,
+                    "cacheReadTokens": 54782464,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1794,
+              "at": 1791432705711,
+              "totals": {
+                "uncachedInputTokens": 714656,
+                "outputTokens": 156137,
+                "cacheReadTokens": 60793600,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1794,
+                  "totals": {
+                    "uncachedInputTokens": 714656,
+                    "outputTokens": 156137,
+                    "cacheReadTokens": 60793600,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 346418,
+              "outputTokens": 12493,
+              "cacheReadTokens": 6011136,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791432705711
+        }
+      ],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791397709537,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        },
+        {
+          "status": "in_progress",
+          "at": 1791402259704,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "开工 U5：docs/知识层同步面收尾 + 全量闸"
+        },
+        {
+          "status": "done",
+          "at": 1791432705711,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "U5 完成：同步面 19 口径全绿，三项非本批债务已登记交还（notes/known-debt.md）"
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-b81b50",
+          "body": "[状态] → in_progress：开工 U5：docs/知识层同步面收尾 + 全量闸（reqboard_task_move）",
+          "createdAt": 1791402259704,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-44ea61",
+          "body": "[状态] → done：U5 完成：同步面 19 口径全绿，三项非本批债务已登记交还（notes/known-debt.md）（reqboard_task_move）",
+          "createdAt": 1791432705711,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791397709537,
+      "updatedAt": 1791432705711,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "layer": 2,
+      "lastReport": {
+        "at": 1791432703545,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/architecture/tool-face-inventory.md",
+          "docs/architecture/project-manual.md",
+          "docs/knowledge/architecture.md",
+          "docs/knowledge/glossary.md",
+          "docs/knowledge/code-map.symbols.tsv",
+          "docs/requirements/REQ-261008020552-4aa0/notes/known-debt.md"
+        ],
+        "completed": [
+          "研发（t-c6f2dd）：docs 同步面 19 口径全部落地（README/package.json/tool-face-inventory/project-manual/知识层两页）",
+          "复核（t-95f252）：零残留 + 口径一致；补记变更历史行与 front-matter，无偏离",
+          "判据①②绿（32 测试 + 计数命中）；③④⑤三项非本批债按用户裁定登记交还（notes/known-debt.md）",
+          "全量闸（证据在 notes/known-debt.md）：pnpm test 新增失败 0 / tsc 0 错 / kb:build 消漂移 / 契约面绿"
+        ]
+      },
+      "lastRun": {
+        "at": 1791432703545,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-a96f5a",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "收编 archive_amend 为 task_amend(op=archive)（U1）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/archive-amend.test.ts tests/archive-reconcile-e2e.test.ts tests/task-amend-tool.test.ts tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/output-contract.test.ts` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "按 design/architecture.md §2/§3/§4 施工：① TaskAmendTool.ts 扩 op=archive——TASK_AMEND_OPS 加 'archive'、REQUIRED_OF 加 archive:[docs,reason]、parameters 新增 docs 数组（items={kind,path}，从 ArchiveAmendTool 平移）、output.schema 加 appended/skipped、分派 amendArchiveManifest 并补 success:true 与 op 回显；② prompt.ts 加 op=archive 一句 + 承接指路（单字面量）；③ summary.ts 迁入 archiveAmendSummary 为 op=archive 分支；④ 删 src/tools/ArchiveAmendTool/ 目录；⑤ registry.ts 删 ArchiveAmend 条目、TaskAmend responseSources 加 AmendArchiveManifest.ts；⑥ src/index.ts 与 src/tools/index.ts 摘除导入/注册；⑦ boundary-guard.ts 加 TASK_AMEND_OP_STAGES（archive:undefined 全阶段放行）；⑧ AmendArchiveManifest.ts 8 处 reject 前缀改 reqboard_task_amend(op=archive)（D-3，design §4）；⑨ routers/requirements.ts:785 注释改写；⑩ 测试：archive-reconcile-e2e 改打 defineTaskAmendTool op=archive，task-amend-tool.test.ts 加 op=archive 用例。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/archive-amend.test.ts tests/archive-reconcile-e2e.test.ts tests/task-amend-tool.test.ts tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/output-contract.test.ts` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-5ae432",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-3fed8a",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791397951152,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 342,
+              "at": 1791397951152,
+              "totals": {
+                "uncachedInputTokens": 178863,
+                "outputTokens": 51754,
+                "cacheReadTokens": 4430592,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 342,
+                  "totals": {
+                    "uncachedInputTokens": 178863,
+                    "outputTokens": 51754,
+                    "cacheReadTokens": 4430592,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 598,
+              "at": 1791398547001,
+              "totals": {
+                "uncachedInputTokens": 213996,
+                "outputTokens": 68731,
+                "cacheReadTokens": 11083264,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 598,
+                  "totals": {
+                    "uncachedInputTokens": 213996,
+                    "outputTokens": 68731,
+                    "cacheReadTokens": 11083264,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 35133,
+              "outputTokens": 16977,
+              "cacheReadTokens": 6652672,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791398547001
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f77d37",
+          "body": "[状态] → in_progress：研发：TaskAmendTool 扩 op=archive + 同步面摘除 + D-3 文案替换（reqboard_task_move）",
+          "createdAt": 1791397951152,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-07d052",
+          "body": "[状态] → done：研发完成：op=archive 收编落地，判据①②③④全绿（68 测试过）（reqboard_task_move）",
+          "createdAt": 1791398547001,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791397858979,
+      "updatedAt": 1791398547001,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791397858979,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791397951152,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "研发：TaskAmendTool 扩 op=archive + 同步面摘除 + D-3 文案替换"
+        },
+        {
+          "status": "done",
+          "at": 1791398547001,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "研发完成：op=archive 收编落地，判据①②③④全绿（68 测试过）"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791398537820,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/TaskAmendTool/TaskAmendTool.ts",
+          "src/tools/TaskAmendTool/prompt.ts",
+          "src/tools/TaskAmendTool/summary.ts",
+          "src/tools/registry.ts",
+          "src/tools/index.ts",
+          "src/index.ts",
+          "src/application/dive/boundary-guard.ts",
+          "src/application/use-cases/AmendArchiveManifest.ts",
+          "src/http/routers/requirements.ts",
+          "README.md",
+          "tests/archive-reconcile-e2e.test.ts",
+          "tests/task-amend-tool.test.ts",
+          "tests/tools-dispatch.test.ts",
+          "tests/ask-confirm-prompt.test.ts",
+          "src/tools/ArchiveAmendTool/ArchiveAmendTool.ts（删除）",
+          "src/tools/ArchiveAmendTool/index.ts（删除）",
+          "src/tools/ArchiveAmendTool/summary.ts（删除）"
+        ],
+        "completed": [
+          "TaskAmendTool.ts 扩 op=archive：TASK_AMEND_OPS/REQUIRED_OF/docs 参数/output 并集（appended+skipped）/分派 amendArchiveManifest 补 success:true 与 op 回显/必填点名",
+          "prompt.ts 加 op=archive 一句 + 指路（不含旧工具名字面量，对齐第五批纪律）",
+          "summary.ts 迁入 archiveAmendSummary 为 op=archive 渲染分支",
+          "删除 src/tools/ArchiveAmendTool/ 目录（3 文件）",
+          "registry.ts −1 条目（20 条）、TaskAmend responseSources +AmendArchiveManifest",
+          "src/index.ts 与 src/tools/index.ts 摘除导入/注册/导出（20 个）",
+          "boundary-guard.ts 加 TASK_AMEND_OP_STAGES 参数级判定（archive:undefined 全阶段放行，恢复提示等价）",
+          "D-3：AmendArchiveManifest 8 处 reject 前缀改 reqboard_task_amend(op=archive)（码/条件不动）；routers/requirements.ts 注释改写",
+          "README 工具表：删归档组、task_amend 行改写 4 op、计数 21→20",
+          "测试：archive-reconcile-e2e 改打 op=archive（含 op/success 回显断言）；task-amend-tool 加 op=archive 壳层用例；tools-dispatch 摘 THREE_PIECE_DEBT 牌；ask-confirm-prompt 清单同步"
+        ]
+      },
+      "lastRun": {
+        "at": 1791398537820,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d8bccc",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "收编 archive_amend 为 task_amend(op=archive)（U1）·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-a96f5a"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/archive-amend.test.ts tests/archive-reconcile-e2e.test.ts tests/task-amend-tool.test.ts tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/output-contract.test.ts` → 全绿（请求样例与期望响应一致）",
+      "implementation": "按 design/architecture.md §2/§3/§4 施工：① TaskAmendTool.ts 扩 op=archive——TASK_AMEND_OPS 加 'archive'、REQUIRED_OF 加 archive:[docs,reason]、parameters 新增 docs 数组（items={kind,path}，从 ArchiveAmendTool 平移）、output.schema 加 appended/skipped、分派 amendArchiveManifest 并补 success:true 与 op 回显；② prompt.ts 加 op=archive 一句 + 承接指路（单字面量）；③ summary.ts 迁入 archiveAmendSummary 为 op=archive 分支；④ 删 src/tools/ArchiveAmendTool/ 目录；⑤ registry.ts 删 ArchiveAmend 条目、TaskAmend responseSources 加 AmendArchiveManifest.ts；⑥ src/index.ts 与 src/tools/index.ts 摘除导入/注册；⑦ boundary-guard.ts 加 TASK_AMEND_OP_STAGES（archive:undefined 全阶段放行）；⑧ AmendArchiveManifest.ts 8 处 reject 前缀改 reqboard_task_amend(op=archive)（D-3，design §4）；⑨ routers/requirements.ts:785 注释改写；⑩ 测试：archive-reconcile-e2e 改打 defineTaskAmendTool op=archive，task-amend-tool.test.ts 加 op=archive 用例。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/archive-amend.test.ts tests/archive-reconcile-e2e.test.ts tests/task-amend-tool.test.ts tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/output-contract.test.ts` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-5ae432",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-e6da73",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791398559054,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 603,
+              "at": 1791398559054,
+              "totals": {
+                "uncachedInputTokens": 214224,
+                "outputTokens": 68961,
+                "cacheReadTokens": 11247872,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 603,
+                  "totals": {
+                    "uncachedInputTokens": 214224,
+                    "outputTokens": 68961,
+                    "cacheReadTokens": 11247872,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 653,
+              "at": 1791398661975,
+              "totals": {
+                "uncachedInputTokens": 218951,
+                "outputTokens": 70760,
+                "cacheReadTokens": 12750080,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 653,
+                  "totals": {
+                    "uncachedInputTokens": 218951,
+                    "outputTokens": 70760,
+                    "cacheReadTokens": 12750080,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 4727,
+              "outputTokens": 1799,
+              "cacheReadTokens": 1502208,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791398661975
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c98067",
+          "body": "[状态] → in_progress：联调：契约面/装配面验证（toolviews/render-coverage/readme-face/schema）（reqboard_task_move）",
+          "createdAt": 1791398559054,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-d23be5",
+          "body": "[状态] → done：联调完成：契约面全绿 + typecheck 通过（修一处 archive 分派的双重断言）（reqboard_task_move）",
+          "createdAt": 1791398661975,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791397858979,
+      "updatedAt": 1791398661975,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791397858979,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791398559054,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "联调：契约面/装配面验证（toolviews/render-coverage/readme-face/schema）"
+        },
+        {
+          "status": "done",
+          "at": 1791398661975,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "联调完成：契约面全绿 + typecheck 通过（修一处 archive 分派的双重断言）"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791398616606,
+        "reportIndex": 1,
+        "filesChanged": [
+          "README.md",
+          "package.json"
+        ],
+        "completed": [
+          "契约面四件 + toolviews-contract + tools-render-coverage + tools-schema + render-summaries + zero-arg-binding 全绿（86 测试）",
+          "readme-tool-face 暴露计数耦合：README 三处 + package.json description 的「21 个」同步改「20 个」（原计划 U5 做的计数按门禁要求随卡走）",
+          "请求样例与期望响应一致：e2e 的 op=archive 调用走真实壳层，返回键集 + op 回显断言在场"
+        ]
+      },
+      "lastRun": {
+        "at": 1791398616606,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-9c589b",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "收编 archive_amend 为 task_amend(op=archive)（U1）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-d8bccc"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/archive-amend.test.ts tests/archive-reconcile-e2e.test.ts tests/task-amend-tool.test.ts tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/output-contract.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "按 design/architecture.md §2/§3/§4 施工：① TaskAmendTool.ts 扩 op=archive——TASK_AMEND_OPS 加 'archive'、REQUIRED_OF 加 archive:[docs,reason]、parameters 新增 docs 数组（items={kind,path}，从 ArchiveAmendTool 平移）、output.schema 加 appended/skipped、分派 amendArchiveManifest 并补 success:true 与 op 回显；② prompt.ts 加 op=archive 一句 + 承接指路（单字面量）；③ summary.ts 迁入 archiveAmendSummary 为 op=archive 分支；④ 删 src/tools/ArchiveAmendTool/ 目录；⑤ registry.ts 删 ArchiveAmend 条目、TaskAmend responseSources 加 AmendArchiveManifest.ts；⑥ src/index.ts 与 src/tools/index.ts 摘除导入/注册；⑦ boundary-guard.ts 加 TASK_AMEND_OP_STAGES（archive:undefined 全阶段放行）；⑧ AmendArchiveManifest.ts 8 处 reject 前缀改 reqboard_task_amend(op=archive)（D-3，design §4）；⑨ routers/requirements.ts:785 注释改写；⑩ 测试：archive-reconcile-e2e 改打 defineTaskAmendTool op=archive，task-amend-tool.test.ts 加 op=archive 用例。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/archive-amend.test.ts tests/archive-reconcile-e2e.test.ts tests/task-amend-tool.test.ts tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/output-contract.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-5ae432",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-664e4b",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791398671931,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 658,
+              "at": 1791398671931,
+              "totals": {
+                "uncachedInputTokens": 219241,
+                "outputTokens": 70940,
+                "cacheReadTokens": 12918784,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 658,
+                  "totals": {
+                    "uncachedInputTokens": 219241,
+                    "outputTokens": 70940,
+                    "cacheReadTokens": 12918784,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 685,
+              "at": 1791398767427,
+              "totals": {
+                "uncachedInputTokens": 223924,
+                "outputTokens": 73147,
+                "cacheReadTokens": 13773056,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 685,
+                  "totals": {
+                    "uncachedInputTokens": 223924,
+                    "outputTokens": 73147,
+                    "cacheReadTokens": 13773056,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 4683,
+              "outputTokens": 2207,
+              "cacheReadTokens": 854272,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791398767427
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-c6f2e4",
+          "body": "[状态] → in_progress：复核：对照 design §3/§4 与行为不变式逐条复核 U1 diff（reqboard_task_move）",
+          "createdAt": 1791398671931,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-e4a4eb",
+          "body": "[状态] → done：复核完成：无偏离（依据已登记卡文档）（reqboard_task_move）",
+          "createdAt": 1791398767427,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791397858979,
+      "updatedAt": 1791398767427,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791397858979,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791398671931,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "复核：对照 design §3/§4 与行为不变式逐条复核 U1 diff"
+        },
+        {
+          "status": "done",
+          "at": 1791398767427,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "复核完成：无偏离（依据已登记卡文档）"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791398758134,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "对照 design §3.1 op 契约逐条复核：枚举/必填集/docs 参数平移/output 并集/返回键集（= 原工具 + op 回显）全部一致（测试钉住）",
+          "git diff 复核 AmendArchiveManifest：除 D-3 申报的 8 处 reject 前缀与 1 处文件头注释外**零改动**（判定/拒绝条件/幂等/留痕原样）",
+          "boundary-guard 新分支只命中 reqboard_task_amend 且 op∈表，其余工具与 op 回落现状；op=archive 全阶段放行 = 原工具不在表内的提示等价",
+          "壳层守卫核对：op=archive 保留 assertNoPendingConfirm（原工具有此前置）✓；timeoutWriteMs 一致 ✓",
+          "指路文案不含旧工具名字面量（对齐第五批纪律）；client/dist 未动（有意，第五批先例）",
+          "复核结论：**无偏离**（依据：上述逐项 + 六件测试矩阵 68 绿 + typecheck 0 错）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791398758134,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-836de1",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "收编 archive_amend 为 task_amend(op=archive)（U1）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-9c589b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "按 design/architecture.md §2/§3/§4 施工：① TaskAmendTool.ts 扩 op=archive——TASK_AMEND_OPS 加 'archive'、REQUIRED_OF 加 archive:[docs,reason]、parameters 新增 docs 数组（items={kind,path}，从 ArchiveAmendTool 平移）、output.schema 加 appended/skipped、分派 amendArchiveManifest 并补 success:true 与 op 回显；② prompt.ts 加 op=archive 一句 + 承接指路（单字面量）；③ summary.ts 迁入 archiveAmendSummary 为 op=archive 分支；④ 删 src/tools/ArchiveAmendTool/ 目录；⑤ registry.ts 删 ArchiveAmend 条目、TaskAmend responseSources 加 AmendArchiveManifest.ts；⑥ src/index.ts 与 src/tools/index.ts 摘除导入/注册；⑦ boundary-guard.ts 加 TASK_AMEND_OP_STAGES（archive:undefined 全阶段放行）；⑧ AmendArchiveManifest.ts 8 处 reject 前缀改 reqboard_task_amend(op=archive)（D-3，design §4）；⑨ routers/requirements.ts:785 注释改写；⑩ 测试：archive-reconcile-e2e 改打 defineTaskAmendTool op=archive，task-amend-tool.test.ts 加 op=archive 用例。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-5ae432",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-96dced",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791398778665,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 690,
+              "at": 1791398778665,
+              "totals": {
+                "uncachedInputTokens": 224172,
+                "outputTokens": 73415,
+                "cacheReadTokens": 13946112,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 690,
+                  "totals": {
+                    "uncachedInputTokens": 224172,
+                    "outputTokens": 73415,
+                    "cacheReadTokens": 13946112,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 722,
+              "at": 1791399231128,
+              "totals": {
+                "uncachedInputTokens": 230428,
+                "outputTokens": 75084,
+                "cacheReadTokens": 14996992,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 722,
+                  "totals": {
+                    "uncachedInputTokens": 230428,
+                    "outputTokens": 75084,
+                    "cacheReadTokens": 14996992,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 6256,
+              "outputTokens": 1669,
+              "cacheReadTokens": 1050880,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791399231128
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-37ea4d",
+          "body": "[状态] → in_progress：测试：最终验收矩阵复跑（reqboard_task_move）",
+          "createdAt": 1791398778665,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-ade36c",
+          "body": "[状态] → done：测试完成：矩阵全绿 + 全量新增失败 0 + tsc 0 错（reqboard_task_move）",
+          "createdAt": 1791399231128,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791397858979,
+      "updatedAt": 1791399231128,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791397858979,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791398778665,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "测试：最终验收矩阵复跑"
+        },
+        {
+          "status": "done",
+          "at": 1791399231128,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "测试完成：矩阵全绿 + 全量新增失败 0 + tsc 0 错"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791399224163,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "判据①：grep 旧名零命中（src/tests/README）",
+          "判据②③：六件矩阵 63 绿；判据④：op/success 回显断言在 e2e 在场",
+          "全量 pnpm test：7131 过 / 18 失败 —— baseline:check 判定「新增失败 0 / 不再失败 53」（15 条当前失败全在基线 68 条内，含 handoff 2 例长期红；53 条不再失败是前五批未落账修复，不随本批 refresh）",
+          "npx tsc --noEmit（pnpm typecheck）：0 错误 ≤ 基线"
+        ]
+      },
+      "lastRun": {
+        "at": 1791399224163,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ecb91d",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "收编 note_interruption 为 task_amend(op=interruption) + 守卫 op 化（U2）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-5ae432"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/interruption-checkpoint.test.ts tests/interruption-dedupe.test.ts tests/arg-guidance.test.ts tests/task-amend-tool.test.ts` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "按 design §3 施工：① TaskAmendTool.ts 扩 op=interruption——REQUIRED_OF 加 interruption:[reason]、output.schema 加 interruption 子 schema（at/reason/stage/pendingAction/tool，从 NoteInterruptionTool 平移）、分派 noteInterruption；② 挂起确认守卫按 op 分流：op==='interruption' 跳过 assertNoPendingConfirm（原工具无此前置，行为等价关键点）；③ summary.ts 迁入 noteInterruptionSummary；④ 删 src/tools/NoteInterruptionTool/ 目录；⑤ registry.ts 删条目、responseSources 加 NoteInterruption.ts；⑥ src/index.ts 与 tools/index.ts 摘除；⑦ shared.ts 删 LONG_TEXT_STYLE_ONLY_FIELDS 的 note_interruption 行；⑧ StageActions.ts 删 reqboard_note_interruption 条目；⑨ boundary-guard.ts 的 TASK_AMEND_OP_STAGES 加 interruption:undefined；⑩ NoteInterruption.ts D-3：3 处文案前缀 + tool 字面量改 'reqboard_task_amend'（design §4）；⑪ protocol.ts:1363、interruption.ts:145 注释改写；⑫ 测试：interruption-checkpoint 改打 op=interruption（bp.tool 断言改新值）、arg-guidance 删映射行、ask-confirm-prompt 工具名清单同步。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/interruption-checkpoint.test.ts tests/interruption-dedupe.test.ts tests/arg-guidance.test.ts tests/task-amend-tool.test.ts` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-aa5503",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-f487cc",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791399283165,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 747,
+              "at": 1791399283165,
+              "totals": {
+                "uncachedInputTokens": 233134,
+                "outputTokens": 76109,
+                "cacheReadTokens": 15893760,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 747,
+                  "totals": {
+                    "uncachedInputTokens": 233134,
+                    "outputTokens": 76109,
+                    "cacheReadTokens": 15893760,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1130,
+              "at": 1791400217531,
+              "totals": {
+                "uncachedInputTokens": 287209,
+                "outputTokens": 101058,
+                "cacheReadTokens": 29221120,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1130,
+                  "totals": {
+                    "uncachedInputTokens": 287209,
+                    "outputTokens": 101058,
+                    "cacheReadTokens": 29221120,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 54075,
+              "outputTokens": 24949,
+              "cacheReadTokens": 13327360,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791400217531
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-fd0c33",
+          "body": "[状态] → in_progress：研发：op=interruption 收编 + 守卫分流 + D-3 + 同步面（reqboard_task_move）",
+          "createdAt": 1791399283165,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-d6eb11",
+          "body": "[状态] → done：研发完成：op=interruption 收编落地，判据①③绿，矩阵除 3 条基线登记红全绿，tsc 0 错（reqboard_task_move）",
+          "createdAt": 1791400217531,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791399274901,
+      "updatedAt": 1791400217531,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791399274901,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791399283165,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "研发：op=interruption 收编 + 守卫分流 + D-3 + 同步面"
+        },
+        {
+          "status": "done",
+          "at": 1791400217531,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "研发完成：op=interruption 收编落地，判据①③绿，矩阵除 3 条基线登记红全绿，tsc 0 错"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791400201123,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/TaskAmendTool/TaskAmendTool.ts",
+          "src/tools/TaskAmendTool/prompt.ts",
+          "src/tools/TaskAmendTool/summary.ts",
+          "src/tools/render-summaries.ts",
+          "src/tools/registry.ts",
+          "src/tools/index.ts",
+          "src/index.ts",
+          "src/tools/shared.ts",
+          "src/domain/stage/StageActions.ts",
+          "src/application/dive/boundary-guard.ts",
+          "src/application/use-cases/NoteInterruption.ts",
+          "src/shared/protocol.ts",
+          "src/application/internal/interruption.ts",
+          "README.md",
+          "package.json",
+          "tests/interruption-checkpoint.test.ts",
+          "tests/arg-guidance.test.ts",
+          "tests/tools-schema.test.ts",
+          "tests/task-amend-tool.test.ts",
+          "src/tools/NoteInterruptionTool/（整目录删除）"
+        ],
+        "completed": [
+          "TaskAmendTool.ts 扩 op=interruption：枚举 5 op/REQUIRED_OF[interruption]=[reason]/output 加 interruption 子 schema（平移）/分派 noteInterruption 回显 op",
+          "守卫按 op 分流：op=interruption 跳过 assertNoPendingConfirm（原工具无此前置），其余 op（含未知 op）维持先守卫后分派",
+          "summary.ts 迁入 noteInterruptionSummary（逐字）为 op=interruption 分支；render-summaries.ts 删除迁出函数",
+          "删除 src/tools/NoteInterruptionTool/ 目录；registry −1 条（19 条）+ responseSources 加 NoteInterruption.ts；src/index.ts 与 tools/index.ts 摘除",
+          "shared.ts 删 LONG_TEXT_STYLE_ONLY_FIELDS 的 note_interruption 行（task_amend.reason 条目语义覆盖）；StageActions.ts 删条目",
+          "boundary-guard TASK_AMEND_OP_STAGES 加 interruption:undefined（对齐原表内 undefined 全阶段放行）",
+          "D-3：NoteInterruption.ts 3 处 reject 前缀 + tool 留痕字面量改 'reqboard_task_amend'；protocol.ts:1363 / interruption.ts:145 注释改写",
+          "README 删 note_interruption 行、task_amend 行改 5 op、计数 20→19（README×3 + package.json）",
+          "测试：interruption-checkpoint 壳层用例改打 defineTaskAmendTool（bp.tool 断言改新值）；arg-guidance 删映射；tools-schema 工厂清单 15→14；task-amend-tool 加 op=interruption 壳层用例 + 守卫分流行为测试（判据③）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791400201123,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-85c2d1",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "收编 note_interruption 为 task_amend(op=interruption) + 守卫 op 化（U2）·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-ecb91d"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/interruption-checkpoint.test.ts tests/interruption-dedupe.test.ts tests/arg-guidance.test.ts tests/task-amend-tool.test.ts` → 全绿（请求样例与期望响应一致）",
+      "implementation": "按 design §3 施工：① TaskAmendTool.ts 扩 op=interruption——REQUIRED_OF 加 interruption:[reason]、output.schema 加 interruption 子 schema（at/reason/stage/pendingAction/tool，从 NoteInterruptionTool 平移）、分派 noteInterruption；② 挂起确认守卫按 op 分流：op==='interruption' 跳过 assertNoPendingConfirm（原工具无此前置，行为等价关键点）；③ summary.ts 迁入 noteInterruptionSummary；④ 删 src/tools/NoteInterruptionTool/ 目录；⑤ registry.ts 删条目、responseSources 加 NoteInterruption.ts；⑥ src/index.ts 与 tools/index.ts 摘除；⑦ shared.ts 删 LONG_TEXT_STYLE_ONLY_FIELDS 的 note_interruption 行；⑧ StageActions.ts 删 reqboard_note_interruption 条目；⑨ boundary-guard.ts 的 TASK_AMEND_OP_STAGES 加 interruption:undefined；⑩ NoteInterruption.ts D-3：3 处文案前缀 + tool 字面量改 'reqboard_task_amend'（design §4）；⑪ protocol.ts:1363、interruption.ts:145 注释改写；⑫ 测试：interruption-checkpoint 改打 op=interruption（bp.tool 断言改新值）、arg-guidance 删映射行、ask-confirm-prompt 工具名清单同步。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/interruption-checkpoint.test.ts tests/interruption-dedupe.test.ts tests/arg-guidance.test.ts tests/task-amend-tool.test.ts` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-aa5503",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-825f31",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791400228758,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1135,
+              "at": 1791400228758,
+              "totals": {
+                "uncachedInputTokens": 287540,
+                "outputTokens": 101320,
+                "cacheReadTokens": 29447936,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1135,
+                  "totals": {
+                    "uncachedInputTokens": 287540,
+                    "outputTokens": 101320,
+                    "cacheReadTokens": 29447936,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1147,
+              "at": 1791400250722,
+              "totals": {
+                "uncachedInputTokens": 289024,
+                "outputTokens": 101647,
+                "cacheReadTokens": 29902848,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1147,
+                  "totals": {
+                    "uncachedInputTokens": 289024,
+                    "outputTokens": 101647,
+                    "cacheReadTokens": 29902848,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1484,
+              "outputTokens": 327,
+              "cacheReadTokens": 454912,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791400250722
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-76249d",
+          "body": "[状态] → in_progress：联调：契约面/装配面验证（reqboard_task_move）",
+          "createdAt": 1791400228758,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-a853a5",
+          "body": "[状态] → done：联调完成：12 文件 160 测试全绿，注册名单 19（reqboard_task_move）",
+          "createdAt": 1791400250722,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791399274901,
+      "updatedAt": 1791400250722,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791399274901,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791400228758,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "联调：契约面/装配面验证"
+        },
+        {
+          "status": "done",
+          "at": 1791400250722,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "联调完成：12 文件 160 测试全绿，注册名单 19"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791400242144,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "契约六件 + tools-schema + render-summaries + zero-arg-binding + confirm-pending-guard + pending-guard + stage-boundary 共 12 文件 160 测试全绿",
+          "守卫相关回归（confirm-pending-guard/pending-guard）确认 assertNoPendingConfirm 既有拦截面零影响",
+          "注册名单 = 19（apply-wiring 派生）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791400242144,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-31466b",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "收编 note_interruption 为 task_amend(op=interruption) + 守卫 op 化（U2）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-85c2d1"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/interruption-checkpoint.test.ts tests/interruption-dedupe.test.ts tests/arg-guidance.test.ts tests/task-amend-tool.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "按 design §3 施工：① TaskAmendTool.ts 扩 op=interruption——REQUIRED_OF 加 interruption:[reason]、output.schema 加 interruption 子 schema（at/reason/stage/pendingAction/tool，从 NoteInterruptionTool 平移）、分派 noteInterruption；② 挂起确认守卫按 op 分流：op==='interruption' 跳过 assertNoPendingConfirm（原工具无此前置，行为等价关键点）；③ summary.ts 迁入 noteInterruptionSummary；④ 删 src/tools/NoteInterruptionTool/ 目录；⑤ registry.ts 删条目、responseSources 加 NoteInterruption.ts；⑥ src/index.ts 与 tools/index.ts 摘除；⑦ shared.ts 删 LONG_TEXT_STYLE_ONLY_FIELDS 的 note_interruption 行；⑧ StageActions.ts 删 reqboard_note_interruption 条目；⑨ boundary-guard.ts 的 TASK_AMEND_OP_STAGES 加 interruption:undefined；⑩ NoteInterruption.ts D-3：3 处文案前缀 + tool 字面量改 'reqboard_task_amend'（design §4）；⑪ protocol.ts:1363、interruption.ts:145 注释改写；⑫ 测试：interruption-checkpoint 改打 op=interruption（bp.tool 断言改新值）、arg-guidance 删映射行、ask-confirm-prompt 工具名清单同步。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/interruption-checkpoint.test.ts tests/interruption-dedupe.test.ts tests/arg-guidance.test.ts tests/task-amend-tool.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-aa5503",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-66e3eb",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791400260802,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1152,
+              "at": 1791400260802,
+              "totals": {
+                "uncachedInputTokens": 289271,
+                "outputTokens": 101874,
+                "cacheReadTokens": 30131200,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1152,
+                  "totals": {
+                    "uncachedInputTokens": 289271,
+                    "outputTokens": 101874,
+                    "cacheReadTokens": 30131200,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1164,
+              "at": 1791400294613,
+              "totals": {
+                "uncachedInputTokens": 292434,
+                "outputTokens": 102778,
+                "cacheReadTokens": 30589952,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1164,
+                  "totals": {
+                    "uncachedInputTokens": 292434,
+                    "outputTokens": 102778,
+                    "cacheReadTokens": 30589952,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 3163,
+              "outputTokens": 904,
+              "cacheReadTokens": 458752,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791400294613
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-106d1d",
+          "body": "[状态] → in_progress：复核：对照 design §3/§4 与行为不变式复核 U2 diff（reqboard_task_move）",
+          "createdAt": 1791400260802,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-6030e2",
+          "body": "[状态] → done：复核完成：无偏离（依据已登记卡文档）（reqboard_task_move）",
+          "createdAt": 1791400294613,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791399274901,
+      "updatedAt": 1791400294613,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791399274901,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791400260802,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "复核：对照 design §3/§4 与行为不变式复核 U2 diff"
+        },
+        {
+          "status": "done",
+          "at": 1791400294613,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "复核完成：无偏离（依据已登记卡文档）"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791400285455,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "NoteInterruption.ts 的 git diff 逐块核对：只含 D-3 申报项（1 处文件头注释 + 1 处 B′ 注释 + 3 处 reject 前缀 + 1 处 tool 留痕字面量），判定/幂等/留痕结构零改动",
+          "interruption.ts 仅 1 行注释；protocol.ts 我的编辑仅 B′ 注释一行",
+          "protocol.ts 同文件其余 diff 块（dual-field G10 单源化 / archived-entry 路径 / confirm_receipt 清理 / capture 文案）经内容辨认为**别窗口在飞工作**（REQ-261007230908-5ccb 等），非本批改动——G10 正是本批非目标 N3",
+          "守卫分流复核：op=interruption 跳守卫 ✓；archive/未知 op 维持先守卫后分派 ✓（与设计 §3.2 逐字一致）",
+          "壳层契约（5 op 枚举/必填点名/output 并集/渲染分支）由 9 项测试钉住；行为测试（判据③）证明挂起期间 interruption 放行、refs 仍被拦",
+          "复核结论：**无偏离**（依据：上述逐项 + 12 文件 160 测试绿 + tsc 0 错）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791400285455,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-513d54",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "收编 note_interruption 为 task_amend(op=interruption) + 守卫 op 化（U2）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-31466b"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "按 design §3 施工：① TaskAmendTool.ts 扩 op=interruption——REQUIRED_OF 加 interruption:[reason]、output.schema 加 interruption 子 schema（at/reason/stage/pendingAction/tool，从 NoteInterruptionTool 平移）、分派 noteInterruption；② 挂起确认守卫按 op 分流：op==='interruption' 跳过 assertNoPendingConfirm（原工具无此前置，行为等价关键点）；③ summary.ts 迁入 noteInterruptionSummary；④ 删 src/tools/NoteInterruptionTool/ 目录；⑤ registry.ts 删条目、responseSources 加 NoteInterruption.ts；⑥ src/index.ts 与 tools/index.ts 摘除；⑦ shared.ts 删 LONG_TEXT_STYLE_ONLY_FIELDS 的 note_interruption 行；⑧ StageActions.ts 删 reqboard_note_interruption 条目；⑨ boundary-guard.ts 的 TASK_AMEND_OP_STAGES 加 interruption:undefined；⑩ NoteInterruption.ts D-3：3 处文案前缀 + tool 字面量改 'reqboard_task_amend'（design §4）；⑪ protocol.ts:1363、interruption.ts:145 注释改写；⑫ 测试：interruption-checkpoint 改打 op=interruption（bp.tool 断言改新值）、arg-guidance 删映射行、ask-confirm-prompt 工具名清单同步。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-aa5503",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-8884fd",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791400304170,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1169,
+              "at": 1791400304170,
+              "totals": {
+                "uncachedInputTokens": 292645,
+                "outputTokens": 102971,
+                "cacheReadTokens": 30821376,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1169,
+                  "totals": {
+                    "uncachedInputTokens": 292645,
+                    "outputTokens": 102971,
+                    "cacheReadTokens": 30821376,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1186,
+              "at": 1791400465461,
+              "totals": {
+                "uncachedInputTokens": 294710,
+                "outputTokens": 103488,
+                "cacheReadTokens": 31517696,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1186,
+                  "totals": {
+                    "uncachedInputTokens": 294710,
+                    "outputTokens": 103488,
+                    "cacheReadTokens": 31517696,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 2065,
+              "outputTokens": 517,
+              "cacheReadTokens": 696320,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791400465461
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-ad0959",
+          "body": "[状态] → in_progress：测试：全量回归 + 基线比对（reqboard_task_move）",
+          "createdAt": 1791400304170,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-d2a35c",
+          "body": "[状态] → done：测试完成：全量新增失败 0 + tsc 0 错（reqboard_task_move）",
+          "createdAt": 1791400465461,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791399274901,
+      "updatedAt": 1791400465461,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791399274901,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791400304170,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "测试：全量回归 + 基线比对"
+        },
+        {
+          "status": "done",
+          "at": 1791400465461,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "测试完成：全量新增失败 0 + tsc 0 错"
+        }
+      ],
+      "layer": 4,
+      "lastReport": {
+        "at": 1791400457948,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "全量 pnpm test：7136 过 / 15 失败",
+          "baseline:check：新增失败 0 / 不再失败 53（15 条当前失败全在基线 68 条内）",
+          "tsc（pnpm typecheck）：0 错误 ≤ 基线"
+        ]
+      },
+      "lastRun": {
+        "at": 1791400457948,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-7bc987",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "task_move 描述结构减负 1265→≤630（U3）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/task-move-prompt-budget.test.ts tests/task-move-batch.test.ts tests/task-move-role.test.ts tests/subtask-budget.test.ts tests/chain-budget.test.ts tests/done-throttle-guidance.test.ts tests/done-throttle-message.test.ts tests/amend-acceptance.test.ts tests/legacy-compat-6749.test.ts` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "按 design §5 映射表施工：只压缩 TaskMoveTool.ts 的 description 与 parameters 描述字符串（参数形状/键名/类型/必填/枚举/additionalProperties/返回体/错误码逐字不动）；description 每职能留一句话，tasks/batchItemSchema/budget 描述压短；reason 保留 LONG_TEXT_STYLE_NOTE（arg-guidance 机械锁）。新增 tests/task-move-prompt-budget.test.ts 双判据：①体量 ≤630；②细则之家——throttleGuidance 含「确定等待」、REQBOARD_CONFLICT 回执含「按当前窗口号」、readSubtaskBudgetArg 形状报错含 {release:true。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/task-move-prompt-budget.test.ts tests/task-move-batch.test.ts tests/task-move-role.test.ts tests/subtask-budget.test.ts tests/chain-budget.test.ts tests/done-throttle-guidance.test.ts tests/done-throttle-message.test.ts tests/amend-acceptance.test.ts tests/legacy-compat-6749.test.ts` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-6b550f",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-6b8a95",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791400582580,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1208,
+              "at": 1791400582580,
+              "totals": {
+                "uncachedInputTokens": 299804,
+                "outputTokens": 107352,
+                "cacheReadTokens": 32451840,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1208,
+                  "totals": {
+                    "uncachedInputTokens": 299804,
+                    "outputTokens": 107352,
+                    "cacheReadTokens": 32451840,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1278,
+              "at": 1791400858851,
+              "totals": {
+                "uncachedInputTokens": 312414,
+                "outputTokens": 115554,
+                "cacheReadTokens": 35619584,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1278,
+                  "totals": {
+                    "uncachedInputTokens": 312414,
+                    "outputTokens": 115554,
+                    "cacheReadTokens": 35619584,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 12610,
+              "outputTokens": 8202,
+              "cacheReadTokens": 3167744,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791400858851
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-8c5040",
+          "body": "[状态] → in_progress：研发：压缩 description/tasks/budget 描述 + 新增预算门禁测试（reqboard_task_move）",
+          "createdAt": 1791400582580,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-e69bf5",
+          "body": "[状态] → done：研发完成：1265→591（≤630），门禁四条绿，行为锁 100 绿，tsc 0 错（reqboard_task_move）",
+          "createdAt": 1791400858851,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791400574358,
+      "updatedAt": 1791400858851,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791400574358,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791400582580,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "研发：压缩 description/tasks/budget 描述 + 新增预算门禁测试"
+        },
+        {
+          "status": "done",
+          "at": 1791400858851,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "研发完成：1265→591（≤630），门禁四条绿，行为锁 100 绿，tsc 0 错"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791400849903,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/TaskMoveTool/TaskMoveTool.ts",
+          "tests/task-move-prompt-budget.test.ts（新建）"
+        ],
+        "completed": [
+          "TaskMoveTool.ts 描述压缩：description 494→141（职能一句话 + 细则指向拒绝回执）；tasks 子树 312→150（撤 doneMax/节流细则，items.to 取值引用扁平 to 消重复）；budget 子树 278→119（形状/CAS/幂等细则指向回执）；扁平四参保持（reason 保留 LONG_TEXT_STYLE_NOTE 机械锁）",
+          "参数形状零变化：键集/类型/必填/枚举/additionalProperties/返回体/错误码逐字不动（门禁测试第四条钉住键集与封闭形状）",
+          "移除因压缩变成未用的 MOVE_BATCH_DONE_MAX 导入",
+          "新增 tests/task-move-prompt-budget.test.ts 四条：①体量 ≤630（实测 591，基线 1265，降 53%）；②③④细则之家（throttleGuidance「确定等待」/readSubtaskBudgetArg 形状报错 '{release:true' 与 CAS「不匹配即拒」）+ 形状不变式",
+          "tsc 0 错"
+        ]
+      },
+      "lastRun": {
+        "at": 1791400849903,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-5e80c2",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "task_move 描述结构减负 1265→≤630（U3）·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-7bc987"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/task-move-prompt-budget.test.ts tests/task-move-batch.test.ts tests/task-move-role.test.ts tests/subtask-budget.test.ts tests/chain-budget.test.ts tests/done-throttle-guidance.test.ts tests/done-throttle-message.test.ts tests/amend-acceptance.test.ts tests/legacy-compat-6749.test.ts` → 全绿（请求样例与期望响应一致）",
+      "implementation": "按 design §5 映射表施工：只压缩 TaskMoveTool.ts 的 description 与 parameters 描述字符串（参数形状/键名/类型/必填/枚举/additionalProperties/返回体/错误码逐字不动）；description 每职能留一句话，tasks/batchItemSchema/budget 描述压短；reason 保留 LONG_TEXT_STYLE_NOTE（arg-guidance 机械锁）。新增 tests/task-move-prompt-budget.test.ts 双判据：①体量 ≤630；②细则之家——throttleGuidance 含「确定等待」、REQBOARD_CONFLICT 回执含「按当前窗口号」、readSubtaskBudgetArg 形状报错含 {release:true。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/task-move-prompt-budget.test.ts tests/task-move-batch.test.ts tests/task-move-role.test.ts tests/subtask-budget.test.ts tests/chain-budget.test.ts tests/done-throttle-guidance.test.ts tests/done-throttle-message.test.ts tests/amend-acceptance.test.ts tests/legacy-compat-6749.test.ts` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-6b550f",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-91a96b",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791400871480,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1283,
+              "at": 1791400871480,
+              "totals": {
+                "uncachedInputTokens": 312644,
+                "outputTokens": 115877,
+                "cacheReadTokens": 35868160,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1283,
+                  "totals": {
+                    "uncachedInputTokens": 312644,
+                    "outputTokens": 115877,
+                    "cacheReadTokens": 35868160,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1295,
+              "at": 1791400893717,
+              "totals": {
+                "uncachedInputTokens": 314093,
+                "outputTokens": 116206,
+                "cacheReadTokens": 36366336,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1295,
+                  "totals": {
+                    "uncachedInputTokens": 314093,
+                    "outputTokens": 116206,
+                    "cacheReadTokens": 36366336,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1449,
+              "outputTokens": 329,
+              "cacheReadTokens": 498176,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791400893717
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-792661",
+          "body": "[状态] → in_progress：联调：行为锁八件 + arg-guidance + 契约面复跑（请求样例与期望响应一致核对）（reqboard_task_move）",
+          "createdAt": 1791400871480,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-4f319f",
+          "body": "[状态] → done：联调完成：16 文件 203 测试全绿（reqboard_task_move）",
+          "createdAt": 1791400893717,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791400574358,
+      "updatedAt": 1791400893717,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791400574358,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791400871480,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "联调：行为锁八件 + arg-guidance + 契约面复跑（请求样例与期望响应一致核对）"
+        },
+        {
+          "status": "done",
+          "at": 1791400893717,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "联调完成：16 文件 203 测试全绿"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791400885911,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "行为锁八件 + task-move-snapshot + http-task-move-role + arg-guidance + tools-schema + 契约三件共 16 文件 203 测试全绿",
+          "请求样例与期望响应一致：批量/放行/节流回执的结构化字段（results/partial/tree/throttleRemainingMs/budget.windowIndex）既有断言原样绿——描述压缩未触返回体"
+        ]
+      },
+      "lastRun": {
+        "at": 1791400885911,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-4ca7b1",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "task_move 描述结构减负 1265→≤630（U3）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-5e80c2"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/task-move-prompt-budget.test.ts tests/task-move-batch.test.ts tests/task-move-role.test.ts tests/subtask-budget.test.ts tests/chain-budget.test.ts tests/done-throttle-guidance.test.ts tests/done-throttle-message.test.ts tests/amend-acceptance.test.ts tests/legacy-compat-6749.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "按 design §5 映射表施工：只压缩 TaskMoveTool.ts 的 description 与 parameters 描述字符串（参数形状/键名/类型/必填/枚举/additionalProperties/返回体/错误码逐字不动）；description 每职能留一句话，tasks/batchItemSchema/budget 描述压短；reason 保留 LONG_TEXT_STYLE_NOTE（arg-guidance 机械锁）。新增 tests/task-move-prompt-budget.test.ts 双判据：①体量 ≤630；②细则之家——throttleGuidance 含「确定等待」、REQBOARD_CONFLICT 回执含「按当前窗口号」、readSubtaskBudgetArg 形状报错含 {release:true。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/task-move-prompt-budget.test.ts tests/task-move-batch.test.ts tests/task-move-role.test.ts tests/subtask-budget.test.ts tests/chain-budget.test.ts tests/done-throttle-guidance.test.ts tests/done-throttle-message.test.ts tests/amend-acceptance.test.ts tests/legacy-compat-6749.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-6b550f",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-23a549",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791400903688,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1300,
+              "at": 1791400903688,
+              "totals": {
+                "uncachedInputTokens": 314449,
+                "outputTokens": 116401,
+                "cacheReadTokens": 36616192,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1300,
+                  "totals": {
+                    "uncachedInputTokens": 314449,
+                    "outputTokens": 116401,
+                    "cacheReadTokens": 36616192,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1312,
+              "at": 1791400943502,
+              "totals": {
+                "uncachedInputTokens": 317673,
+                "outputTokens": 117308,
+                "cacheReadTokens": 37118208,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1312,
+                  "totals": {
+                    "uncachedInputTokens": 317673,
+                    "outputTokens": 117308,
+                    "cacheReadTokens": 37118208,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 3224,
+              "outputTokens": 907,
+              "cacheReadTokens": 502016,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791400943502
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-11a30d",
+          "body": "[状态] → in_progress：复核：对照 design §5 映射表与行为不变式复核 U3 diff（reqboard_task_move）",
+          "createdAt": 1791400903688,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-ebd4f9",
+          "body": "[状态] → done：复核完成：无偏离（依据已登记卡文档）（reqboard_task_move）",
+          "createdAt": 1791400943502,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791400574358,
+      "updatedAt": 1791400943502,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791400574358,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791400903688,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "复核：对照 design §5 映射表与行为不变式复核 U3 diff"
+        },
+        {
+          "status": "done",
+          "at": 1791400943502,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "复核完成：无偏离（依据已登记卡文档）"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791400935097,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "逐行复核 TaskMoveTool diff：全部改动为描述字符串压缩 + 1 处未用导入摘除（MOVE_BATCH_DONE_MAX），无任何形状/逻辑/返回体改动",
+          "对照 design §5 映射表：description 每职能一句话 ✓；tasks/batchItemSchema 压短 ✓；budget 子字段压短 ✓；扁平四参保持 ✓（reason 的 LONG_TEXT_STYLE_NOTE 机械锁原样）",
+          "撤下细则之家核对：节流（throttleGuidance）、形状（readSubtaskBudgetArg 报错）、CAS（回执带当前窗口号）均在场且有门禁断言",
+          "与 HEAD 的 diff 中混杂的旧文本差异（如 ARG_NOTE→STYLE_NOTE）经辨认为前序批次未提交工作，本卡相对开工前工作树零行为变化",
+          "复核结论：**无偏离**（依据：上述逐项 + 16 文件 203 测试绿 + 门禁四条 + tsc 0 错）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791400935097,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-cac417",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "task_move 描述结构减负 1265→≤630（U3）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-4ca7b1"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "按 design §5 映射表施工：只压缩 TaskMoveTool.ts 的 description 与 parameters 描述字符串（参数形状/键名/类型/必填/枚举/additionalProperties/返回体/错误码逐字不动）；description 每职能留一句话，tasks/batchItemSchema/budget 描述压短；reason 保留 LONG_TEXT_STYLE_NOTE（arg-guidance 机械锁）。新增 tests/task-move-prompt-budget.test.ts 双判据：①体量 ≤630；②细则之家——throttleGuidance 含「确定等待」、REQBOARD_CONFLICT 回执含「按当前窗口号」、readSubtaskBudgetArg 形状报错含 {release:true。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-6b550f",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-18e215",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791400953085,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1317,
+              "at": 1791400953085,
+              "totals": {
+                "uncachedInputTokens": 318053,
+                "outputTokens": 117500,
+                "cacheReadTokens": 37371136,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1317,
+                  "totals": {
+                    "uncachedInputTokens": 318053,
+                    "outputTokens": 117500,
+                    "cacheReadTokens": 37371136,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1334,
+              "at": 1791401113295,
+              "totals": {
+                "uncachedInputTokens": 319650,
+                "outputTokens": 117906,
+                "cacheReadTokens": 38132224,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1334,
+                  "totals": {
+                    "uncachedInputTokens": 319650,
+                    "outputTokens": 117906,
+                    "cacheReadTokens": 38132224,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1597,
+              "outputTokens": 406,
+              "cacheReadTokens": 761088,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791401113295
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-de8797",
+          "body": "[状态] → in_progress：测试：全量回归 + 基线比对（reqboard_task_move）",
+          "createdAt": 1791400953085,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-670b97",
+          "body": "[状态] → done：测试完成：全量新增失败 0 + tsc 0 错（reqboard_task_move）",
+          "createdAt": 1791401113295,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791400574358,
+      "updatedAt": 1791401113295,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791400574358,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791400953085,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "测试：全量回归 + 基线比对"
+        },
+        {
+          "status": "done",
+          "at": 1791401113295,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "测试完成：全量新增失败 0 + tsc 0 错"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791401106004,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "全量 pnpm test：7141 过 / 15 失败",
+          "baseline:check：新增失败 0 / 不再失败 53（15 条全在基线 68 条内）",
+          "tsc（pnpm typecheck）：0 错误 ≤ 基线"
+        ]
+      },
+      "lastRun": {
+        "at": 1791401106004,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-ac655f",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "submit tasks[] 子 schema 描述下沉 1717→≤860（U4）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/submit-prompt-budget.test.ts tests/plan-granularity.test.ts tests/plan-depends-e2e.test.ts tests/plan-footprint-tool-schema.test.ts tests/plan-prototype-anchor-gate.test.ts tests/canceled-coverage-gate.test.ts tests/dual-field.test.ts tests/plan-footprint.test.ts` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "按 design §6 映射表施工：① SubmitTool.ts tasks[] 21 个属性描述压成一句话，三对双拼字段说明合并为「snake/camel 等价」；enum/结构承载的枚举清单从描述删除；② 各门禁回执只追加细则句：plan-deps-check.ts 伪依赖拒绝消息追加 dep_reasons 写法、plan-granularity.ts 软门 warnings 追加 footprint 口径、skipIntegration 联动句进 normalizePlanTasks/plan-landing 对应拒绝、prototypeRefs 条件句进原型锚点门禁、template 非法键拒绝回执列全部合法键；③ SUBMIT_PROMPT 不动、results[] 子树不动；④ 纪律：错误码/结构化字段/既有文案语序不变，既有逐字文案断言只允许为追加句放宽，逐条留痕。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/submit-prompt-budget.test.ts tests/plan-granularity.test.ts tests/plan-depends-e2e.test.ts tests/plan-footprint-tool-schema.test.ts tests/plan-prototype-anchor-gate.test.ts tests/canceled-coverage-gate.test.ts tests/dual-field.test.ts tests/plan-footprint.test.ts` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-9f79be",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-40d60c",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791401945720,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1573,
+              "at": 1791401945720,
+              "totals": {
+                "uncachedInputTokens": 359601,
+                "outputTokens": 140236,
+                "cacheReadTokens": 50680320,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1573,
+                  "totals": {
+                    "uncachedInputTokens": 359601,
+                    "outputTokens": 140236,
+                    "cacheReadTokens": 50680320,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1578,
+              "at": 1791401954696,
+              "totals": {
+                "uncachedInputTokens": 360265,
+                "outputTokens": 140357,
+                "cacheReadTokens": 50969856,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1578,
+                  "totals": {
+                    "uncachedInputTokens": 360265,
+                    "outputTokens": 140357,
+                    "cacheReadTokens": 50969856,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 664,
+              "outputTokens": 121,
+              "cacheReadTokens": 289536,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791401954696
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-641979",
+          "body": "[状态] → in_progress：研发完成：tasks[] ≤860 达标，门禁八条绿，plan 矩阵 167 绿，棘轮零上升，tsc 0 错（reqboard_task_move）",
+          "createdAt": 1791401945720,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-b0ee4d",
+          "body": "[状态] → done：研发完成：tasks[] ≤860 达标，门禁八条绿，plan 矩阵 167 绿，棘轮零上升，tsc 0 错（reqboard_task_move）",
+          "createdAt": 1791401954696,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791401152683,
+      "updatedAt": 1791401954696,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791401152683,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791401945720,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "研发完成：tasks[] ≤860 达标，门禁八条绿，plan 矩阵 167 绿，棘轮零上升，tsc 0 错"
+        },
+        {
+          "status": "done",
+          "at": 1791401954696,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "研发完成：tasks[] ≤860 达标，门禁八条绿，plan 矩阵 167 绿，棘轮零上升，tsc 0 错"
+        }
+      ],
+      "layer": 0,
+      "lastReport": {
+        "at": 1791401927645,
+        "reportIndex": 1,
+        "filesChanged": [
+          "src/tools/SubmitTool/SubmitTool.ts",
+          "src/application/internal/plan-deps-check.ts",
+          "src/domain/task/Footprint.ts",
+          "tests/submit-tasks-schema-budget.test.ts（新建）"
+        ],
+        "completed": [
+          "SubmitTool.ts tasks[] 21 属性描述压缩：1535→657（+tasks 自身描述，子树 ≤860 达标）；三对双拼合并为「snake/camel 等价」；phase/side 枚举清单删（enum 结构承载）；stages/template 合法值指向非法值回执",
+          "回执追加（细则之家）：plan-deps-check 伪依赖回执追加 key=理由 写法与双拼说明；Footprint normalizeFootprint 追加三量口径语义（fmt 拼装）",
+          "消息卫生棘轮守住：拼接计数相对开工前零上升（application 533 持平、tools 74→66 降、domain/Footprint 21→20 降）",
+          "新增 tests/submit-tasks-schema-budget.test.ts 八条：体量 ≤860 + PROMPT ≤1300、六条细则之家（全部调真实函数取 message）、形状不变式（21 键集/双拼对/封闭形状/footprint 三键）",
+          "移除因压缩变成未用的 STAGE_KINDS/SUBTASK_TEMPLATES 导入；tsc 0 错"
+        ]
+      },
+      "lastRun": {
+        "at": 1791401927645,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-e67903",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "submit tasks[] 子 schema 描述下沉 1717→≤860（U4）·联调",
+      "description": "子卡阶段：联调",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-ac655f"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/submit-prompt-budget.test.ts tests/plan-granularity.test.ts tests/plan-depends-e2e.test.ts tests/plan-footprint-tool-schema.test.ts tests/plan-prototype-anchor-gate.test.ts tests/canceled-coverage-gate.test.ts tests/dual-field.test.ts tests/plan-footprint.test.ts` → 全绿（请求样例与期望响应一致）",
+      "implementation": "按 design §6 映射表施工：① SubmitTool.ts tasks[] 21 个属性描述压成一句话，三对双拼字段说明合并为「snake/camel 等价」；enum/结构承载的枚举清单从描述删除；② 各门禁回执只追加细则句：plan-deps-check.ts 伪依赖拒绝消息追加 dep_reasons 写法、plan-granularity.ts 软门 warnings 追加 footprint 口径、skipIntegration 联动句进 normalizePlanTasks/plan-landing 对应拒绝、prototypeRefs 条件句进原型锚点门禁、template 非法键拒绝回执列全部合法键；③ SUBMIT_PROMPT 不动、results[] 子树不动；④ 纪律：错误码/结构化字段/既有文案语序不变，既有逐字文案断言只允许为追加句放宽，逐条留痕。\n\n[子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/submit-prompt-budget.test.ts tests/plan-granularity.test.ts tests/plan-depends-e2e.test.ts tests/plan-footprint-tool-schema.test.ts tests/plan-prototype-anchor-gate.test.ts tests/canceled-coverage-gate.test.ts tests/dual-field.test.ts tests/plan-footprint.test.ts` → 全绿（请求样例与期望响应一致）",
+      "context": "",
+      "parentId": "t-9f79be",
+      "stageKind": "integrate",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-d27c29",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791401967109,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1583,
+              "at": 1791401967109,
+              "totals": {
+                "uncachedInputTokens": 360627,
+                "outputTokens": 140680,
+                "cacheReadTokens": 51259904,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1583,
+                  "totals": {
+                    "uncachedInputTokens": 360627,
+                    "outputTokens": 140680,
+                    "cacheReadTokens": 51259904,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1595,
+              "at": 1791401991168,
+              "totals": {
+                "uncachedInputTokens": 362108,
+                "outputTokens": 141004,
+                "cacheReadTokens": 51841280,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1595,
+                  "totals": {
+                    "uncachedInputTokens": 362108,
+                    "outputTokens": 141004,
+                    "cacheReadTokens": 51841280,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1481,
+              "outputTokens": 324,
+              "cacheReadTokens": 581376,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791401991168
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-70ca23",
+          "body": "[状态] → in_progress：联调：plan 门禁矩阵 + 契约面 + submit 相关面复跑（reqboard_task_move）",
+          "createdAt": 1791401967109,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-158bbe",
+          "body": "[状态] → done：联调完成：17 文件 254 测试全绿（reqboard_task_move）",
+          "createdAt": 1791401991168,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791401152683,
+      "updatedAt": 1791401991168,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791401152683,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791401967109,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "联调：plan 门禁矩阵 + 契约面 + submit 相关面复跑"
+        },
+        {
+          "status": "done",
+          "at": 1791401991168,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "联调完成：17 文件 254 测试全绿"
+        }
+      ],
+      "layer": 1,
+      "lastReport": {
+        "at": 1791401982561,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "门禁矩阵 + submit 相关面 + 契约三件 + tools-schema + arg-guidance 共 17 文件 254 测试全绿",
+          "请求样例与期望响应一致：normalizePlanTasks/锚点门禁/粒度门/footprint 校验的拒绝码与结构化字段（code/gaps/warnings）既有断言原样绿——回执只做文案追加"
+        ]
+      },
+      "lastRun": {
+        "at": 1791401982561,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-4718f1",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "submit tasks[] 子 schema 描述下沉 1717→≤860（U4）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-e67903"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/submit-prompt-budget.test.ts tests/plan-granularity.test.ts tests/plan-depends-e2e.test.ts tests/plan-footprint-tool-schema.test.ts tests/plan-prototype-anchor-gate.test.ts tests/canceled-coverage-gate.test.ts tests/dual-field.test.ts tests/plan-footprint.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "按 design §6 映射表施工：① SubmitTool.ts tasks[] 21 个属性描述压成一句话，三对双拼字段说明合并为「snake/camel 等价」；enum/结构承载的枚举清单从描述删除；② 各门禁回执只追加细则句：plan-deps-check.ts 伪依赖拒绝消息追加 dep_reasons 写法、plan-granularity.ts 软门 warnings 追加 footprint 口径、skipIntegration 联动句进 normalizePlanTasks/plan-landing 对应拒绝、prototypeRefs 条件句进原型锚点门禁、template 非法键拒绝回执列全部合法键；③ SUBMIT_PROMPT 不动、results[] 子树不动；④ 纪律：错误码/结构化字段/既有文案语序不变，既有逐字文案断言只允许为追加句放宽，逐条留痕。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/submit-prompt-budget.test.ts tests/plan-granularity.test.ts tests/plan-depends-e2e.test.ts tests/plan-footprint-tool-schema.test.ts tests/plan-prototype-anchor-gate.test.ts tests/canceled-coverage-gate.test.ts tests/dual-field.test.ts tests/plan-footprint.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-9f79be",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-5099f6",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791402005154,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1600,
+              "at": 1791402005154,
+              "totals": {
+                "uncachedInputTokens": 362336,
+                "outputTokens": 141226,
+                "cacheReadTokens": 52132864,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1600,
+                  "totals": {
+                    "uncachedInputTokens": 362336,
+                    "outputTokens": 141226,
+                    "cacheReadTokens": 52132864,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1612,
+              "at": 1791402044827,
+              "totals": {
+                "uncachedInputTokens": 365006,
+                "outputTokens": 142188,
+                "cacheReadTokens": 52717312,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1612,
+                  "totals": {
+                    "uncachedInputTokens": 365006,
+                    "outputTokens": 142188,
+                    "cacheReadTokens": 52717312,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 2670,
+              "outputTokens": 962,
+              "cacheReadTokens": 584448,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791402044827
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-90978a",
+          "body": "[状态] → in_progress：复核：对照 design §6 映射表与回执追加纪律复核 U4 diff（reqboard_task_move）",
+          "createdAt": 1791402005154,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-08cbb6",
+          "body": "[状态] → done：复核完成：无偏离（footprint 之家位置 refined 已申报）（reqboard_task_move）",
+          "createdAt": 1791402044827,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791401152683,
+      "updatedAt": 1791402044827,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791401152683,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791402005154,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "复核：对照 design §6 映射表与回执追加纪律复核 U4 diff"
+        },
+        {
+          "status": "done",
+          "at": 1791402044827,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "复核完成：无偏离（footprint 之家位置 refined 已申报）"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791402035853,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "SubmitTool diff 复核：除描述字符串外仅 2 处——摘除未用导入（STAGE_KINDS/SUBTASK_TEMPLATES）；形状/键集/枚举/required 零改动（门禁第八条钉住）",
+          "plan-deps-check diff：细则句折进既有模板串（只追加；拼接计数持平 533，棘轮守住）",
+          "Footprint diff：fmt 导入 + 语义常量 + throw 改 fmt 拼装（消息前缀「非法：{reason}」原样保留，语义句纯追加；FootprintError 类型与码不变；拼接计数 21→20 反降）",
+          "一处之家位置相对设计 §6 的 refined 申报：footprint 三量口径落在 FootprintError（形状拒绝回执）而非设计的 plan-granularity 软门 warnings——软门只在 files 超阈值/多锚点时触发，agent 写错三量时最先看到的是形状拒绝，之家更准；files floor 口径原本就在 assertFootprintFloor",
+          "skipIntegration 联动/template 键清单/stageKind 枚举/granularity_exempt 条件/prototypeRefs 条件五个之家原本就在场（实测确认），门禁测试逐条钉住防消失",
+          "SUBMIT_PROMPT 与 results[] 子树未动 ✓",
+          "复核结论：**无偏离**（依据：上述逐项 + 17 文件 254 测试绿 + tsc 0 错）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791402035853,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-d0f548",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "submit tasks[] 子 schema 描述下沉 1717→≤860（U4）·测试",
+      "description": "子卡阶段：测试",
+      "phase": "implement",
+      "side": "backend",
+      "dependsOn": [
+        "t-4718f1"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "implementation": "按 design §6 映射表施工：① SubmitTool.ts tasks[] 21 个属性描述压成一句话，三对双拼字段说明合并为「snake/camel 等价」；enum/结构承载的枚举清单从描述删除；② 各门禁回执只追加细则句：plan-deps-check.ts 伪依赖拒绝消息追加 dep_reasons 写法、plan-granularity.ts 软门 warnings 追加 footprint 口径、skipIntegration 联动句进 normalizePlanTasks/plan-landing 对应拒绝、prototypeRefs 条件句进原型锚点门禁、template 非法键拒绝回执列全部合法键；③ SUBMIT_PROMPT 不动、results[] 子树不动；④ 纪律：错误码/结构化字段/既有文案语序不变，既有逐字文案断言只允许为追加句放宽，逐条留痕。\n\n[子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）",
+      "context": "",
+      "parentId": "t-9f79be",
+      "stageKind": "test",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b86031",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791402054734,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1617,
+              "at": 1791402054734,
+              "totals": {
+                "uncachedInputTokens": 365390,
+                "outputTokens": 142381,
+                "cacheReadTokens": 53011200,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1617,
+                  "totals": {
+                    "uncachedInputTokens": 365390,
+                    "outputTokens": 142381,
+                    "cacheReadTokens": 53011200,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1634,
+              "at": 1791402219498,
+              "totals": {
+                "uncachedInputTokens": 367028,
+                "outputTokens": 142741,
+                "cacheReadTokens": 53895168,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1634,
+                  "totals": {
+                    "uncachedInputTokens": 367028,
+                    "outputTokens": 142741,
+                    "cacheReadTokens": 53895168,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 1638,
+              "outputTokens": 360,
+              "cacheReadTokens": 883968,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791402219498
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-570b92",
+          "body": "[状态] → in_progress：测试：全量回归 + 基线比对（reqboard_task_move）",
+          "createdAt": 1791402054734,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-190677",
+          "body": "[状态] → done：测试完成：全量新增失败 0 + tsc 0 错（reqboard_task_move）",
+          "createdAt": 1791402219498,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791401152683,
+      "updatedAt": 1791402219498,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791401152683,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791402054734,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "测试：全量回归 + 基线比对"
+        },
+        {
+          "status": "done",
+          "at": 1791402219498,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "测试完成：全量新增失败 0 + tsc 0 错"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791402210659,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "全量 pnpm test：7149 过 / 15 失败",
+          "baseline:check：新增失败 0 / 不再失败 53（15 条全在基线 68 条内）",
+          "tsc（pnpm typecheck）：0 错误 ≤ 基线"
+        ]
+      },
+      "lastRun": {
+        "at": 1791402210659,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-c6f2dd",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "同步面收尾与全量闸（U5：README/package.json/docs/知识层 21→19）·研发",
+      "description": "子卡阶段：研发",
+      "phase": "doc",
+      "side": "backend",
+      "dependsOn": [
+        "t-aa5503",
+        "t-6b550f",
+        "t-9f79be"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "`npx vitest run tests/readme-tool-face.test.ts tests/toolviews-contract.test.ts tests/tools-render-coverage.test.ts tests/apply-wiring.test.ts` → 全绿；并附 `git diff --stat` 摘要",
+      "implementation": "按 design §7/§9 施工：① README.md 工具表 21→19（两行摘除、task_amend 行改写承接 5 op）；② package.json description「21 个」→「19 个」；③ docs/architecture/tool-face-inventory.md、project-manual.md（:145 补录入口名、:189/:211 LONG_TEXT_FIELDS 计数段）、docs/knowledge/architecture.md:77、docs/knowledge/glossary.md:21 同步改写；④ pnpm kb:build 消漂移后 kb:check；⑤ 全量闸：pnpm test / baseline:check / typecheck / kb:check / build（C-11~C-15）；⑥ 逐卡复核 D-3 留痕与回执追加的测试断言放宽清单。\n\n[子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/readme-tool-face.test.ts tests/toolviews-contract.test.ts tests/tools-render-coverage.test.ts tests/apply-wiring.test.ts` → 全绿；并附 `git diff --stat` 摘要",
+      "context": "",
+      "parentId": "t-0f675d",
+      "stageKind": "dev",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-7c59d9",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791402475446,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1694,
+              "at": 1791402475446,
+              "totals": {
+                "uncachedInputTokens": 380437,
+                "outputTokens": 150134,
+                "cacheReadTokens": 57200128,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1694,
+                  "totals": {
+                    "uncachedInputTokens": 380437,
+                    "outputTokens": 150134,
+                    "cacheReadTokens": 57200128,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1747,
+              "at": 1791432681468,
+              "totals": {
+                "uncachedInputTokens": 708539,
+                "outputTokens": 153348,
+                "cacheReadTokens": 58465280,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1747,
+                  "totals": {
+                    "uncachedInputTokens": 708539,
+                    "outputTokens": 153348,
+                    "cacheReadTokens": 58465280,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 328102,
+              "outputTokens": 3214,
+              "cacheReadTokens": 1265152,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791432681468
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-f10500",
+          "body": "[状态] → in_progress：研发：docs/知识层同步面改写（19 口径），判据①②绿；③④⑤遇非本批债务待裁决（reqboard_task_move）",
+          "createdAt": 1791402475446,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-4873ad",
+          "body": "[状态] → done：研发完成：同步面 19 口径全部落地，判据①②绿；③④⑤债务已按用户裁定登记交还（notes/known-debt.md）（reqboard_task_move）",
+          "createdAt": 1791432681468,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791402259704,
+      "updatedAt": 1791432681468,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791402259704,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791402475446,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "研发：docs/知识层同步面改写（19 口径），判据①②绿；③④⑤遇非本批债务待裁决"
+        },
+        {
+          "status": "done",
+          "at": 1791432681468,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "研发完成：同步面 19 口径全部落地，判据①②绿；③④⑤债务已按用户裁定登记交还（notes/known-debt.md）"
+        }
+      ],
+      "layer": 2,
+      "lastReport": {
+        "at": 1791402493863,
+        "reportIndex": 1,
+        "filesChanged": [
+          "docs/architecture/tool-face-inventory.md",
+          "docs/architecture/project-manual.md",
+          "docs/knowledge/architecture.md",
+          "docs/knowledge/glossary.md",
+          "docs/knowledge/code-map.symbols.tsv（kb:build 生成物）"
+        ],
+        "completed": [
+          "tool-face-inventory.md：标题/TL;DR 改 27→19（补 2026-10-08 收编行）、19 个槽位 5 组、归档组摘除、task_amend 行标注 5 op",
+          "project-manual.md：:145 补录入口改 reqboard_task_amend(op=archive)；:211 补记表 LONG_TEXT_STYLE_ONLY_FIELDS 5 条/5 工具 → 4 条/4 工具（note_interruption 出表留痕）",
+          "knowledge/architecture.md:77 与 glossary.md:21：断点行工具名改 reqboard_task_amend(op=interruption)",
+          "pnpm kb:build 重跑（code-map.symbols.tsv 消漂移；INDEX/tokens 零漂移）",
+          "判据① readme-tool-face/toolviews-contract/tools-render-coverage/apply-wiring 32 测试全绿（注册名单=19）；判据②「19 个」package.json×1 + README×3 命中",
+          "README/package.json 计数在 U1/U2 已随门禁同步（21→20→19），本卡复核确认"
+        ]
+      },
+      "lastRun": {
+        "at": 1791402493863,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    },
+    {
+      "id": "t-95f252",
+      "requirementId": "REQ-261008020552-4aa0",
+      "title": "同步面收尾与全量闸（U5：README/package.json/docs/知识层 21→19）·复核",
+      "description": "子卡阶段：复核",
+      "phase": "doc",
+      "side": "backend",
+      "dependsOn": [
+        "t-c6f2dd"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/readme-tool-face.test.ts tests/toolviews-contract.test.ts tests/tools-render-coverage.test.ts tests/apply-wiring.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "implementation": "按 design §7/§9 施工：① README.md 工具表 21→19（两行摘除、task_amend 行改写承接 5 op）；② package.json description「21 个」→「19 个」；③ docs/architecture/tool-face-inventory.md、project-manual.md（:145 补录入口名、:189/:211 LONG_TEXT_FIELDS 计数段）、docs/knowledge/architecture.md:77、docs/knowledge/glossary.md:21 同步改写；④ pnpm kb:build 消漂移后 kb:check；⑤ 全量闸：pnpm test / baseline:check / typecheck / kb:check / build（C-11~C-15）；⑥ 逐卡复核 D-3 留痕与回执追加的测试断言放宽清单。\n\n[子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008020552-4aa0/design/` 逐条核对；`npx vitest run tests/readme-tool-face.test.ts tests/toolviews-contract.test.ts tests/tools-render-coverage.test.ts tests/apply-wiring.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据",
+      "context": "",
+      "parentId": "t-0f675d",
+      "stageKind": "review",
+      "attempt": 0,
+      "revisions": [],
+      "status": "done",
+      "blocked": false,
+      "executions": [
+        {
+          "id": "e-b18991",
+          "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+          "trigger": "manual",
+          "startedAt": 1791432684132,
+          "outcome": "succeeded",
+          "tokenUsage": {
+            "start": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1753,
+              "at": 1791432684132,
+              "totals": {
+                "uncachedInputTokens": 708724,
+                "outputTokens": 153545,
+                "cacheReadTokens": 58793344,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1753,
+                  "totals": {
+                    "uncachedInputTokens": 708724,
+                    "outputTokens": 153545,
+                    "cacheReadTokens": 58793344,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "end": {
+              "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+              "seq": 1782,
+              "at": 1791432700172,
+              "totals": {
+                "uncachedInputTokens": 714274,
+                "outputTokens": 155650,
+                "cacheReadTokens": 60121856,
+                "cacheWriteTokens": 0
+              },
+              "source": "projection",
+              "scope": "self+descendants",
+              "members": [
+                {
+                  "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6",
+                  "depth": 0,
+                  "seq": 1782,
+                  "totals": {
+                    "uncachedInputTokens": 714274,
+                    "outputTokens": 155650,
+                    "cacheReadTokens": 60121856,
+                    "cacheWriteTokens": 0
+                  }
+                }
+              ]
+            },
+            "delta": {
+              "uncachedInputTokens": 5550,
+              "outputTokens": 2105,
+              "cacheReadTokens": 1328512,
+              "cacheWriteTokens": 0
+            }
+          },
+          "endedAt": 1791432700172
+        }
+      ],
+      "comments": [
+        {
+          "id": "c-cf5cf0",
+          "body": "[状态] → in_progress：复核：核对 docs 同步面 19 口径一致性与残留（reqboard_task_move）",
+          "createdAt": 1791432684132,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        },
+        {
+          "id": "c-4ca164",
+          "body": "[状态] → done：复核完成：19 口径一致无残留，债务登记交还齐备，无偏离（reqboard_task_move）",
+          "createdAt": 1791432700172,
+          "createdBy": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          }
+        }
+      ],
+      "version": 4,
+      "createdAt": 1791402259704,
+      "updatedAt": 1791432700172,
+      "createdBy": {
+        "kind": "system"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+      },
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791402259704,
+          "by": {
+            "kind": "system"
+          }
+        },
+        {
+          "status": "in_progress",
+          "at": 1791432684132,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "复核：核对 docs 同步面 19 口径一致性与残留"
+        },
+        {
+          "status": "done",
+          "at": 1791432700172,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-b5a0dac9-3c67-4034-9638-dde9b50134e6"
+          },
+          "reason": "复核完成：19 口径一致无残留，债务登记交还齐备，无偏离"
+        }
+      ],
+      "layer": 3,
+      "lastReport": {
+        "at": 1791432697386,
+        "reportIndex": 1,
+        "filesChanged": [],
+        "completed": [
+          "残留清零复核：grep 旧工具名（src/tests/README）零命中（exit 1）",
+          "口径一致性复核：tool-face-inventory 19 槽位 5 组、归档组摘除、task_amend 标注 5 op；project-manual :145/:211 已改；知识层两页已改；历史条目（2026-10-07 等）保留不改（era 记录）",
+          "补记：project-manual 变更历史加 2026-10-08 一行（19 收编 + 减负模式 + 四条可复用教训）；tool-face-inventory front-matter updated/source 补本批",
+          "判据复核：readme-tool-face/toolviews-contract/tools-render-coverage/apply-wiring 32 测试全绿；「19 个」package.json×1 + README×3",
+          "债务登记复核：notes/known-debt.md 三项（kb:check K1/K3/K14、15 条基线红、baseline 53 条未落账）取证齐全，按用户裁定交还",
+          "复核结论：**无偏离**（依据：上述逐项 + 判据①②绿）"
+        ]
+      },
+      "lastRun": {
+        "at": 1791432697386,
+        "ok": true,
+        "stopReason": "reported",
+        "valueNonEmpty": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-5ae432",
+      "to": "t-aa5503"
+    },
+    {
+      "from": "t-aa5503",
+      "to": "t-0f675d"
+    },
+    {
+      "from": "t-6b550f",
+      "to": "t-0f675d"
+    },
+    {
+      "from": "t-9f79be",
+      "to": "t-0f675d"
+    },
+    {
+      "from": "t-a96f5a",
+      "to": "t-d8bccc"
+    },
+    {
+      "from": "t-d8bccc",
+      "to": "t-9c589b"
+    },
+    {
+      "from": "t-9c589b",
+      "to": "t-836de1"
+    },
+    {
+      "from": "t-5ae432",
+      "to": "t-ecb91d"
+    },
+    {
+      "from": "t-ecb91d",
+      "to": "t-85c2d1"
+    },
+    {
+      "from": "t-85c2d1",
+      "to": "t-31466b"
+    },
+    {
+      "from": "t-31466b",
+      "to": "t-513d54"
+    },
+    {
+      "from": "t-7bc987",
+      "to": "t-5e80c2"
+    },
+    {
+      "from": "t-5e80c2",
+      "to": "t-4ca7b1"
+    },
+    {
+      "from": "t-4ca7b1",
+      "to": "t-cac417"
+    },
+    {
+      "from": "t-ac655f",
+      "to": "t-e67903"
+    },
+    {
+      "from": "t-e67903",
+      "to": "t-4718f1"
+    },
+    {
+      "from": "t-4718f1",
+      "to": "t-d0f548"
+    },
+    {
+      "from": "t-aa5503",
+      "to": "t-c6f2dd"
+    },
+    {
+      "from": "t-6b550f",
+      "to": "t-c6f2dd"
+    },
+    {
+      "from": "t-9f79be",
+      "to": "t-c6f2dd"
+    },
+    {
+      "from": "t-c6f2dd",
+      "to": "t-95f252"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-5ae432",
+        "t-6b550f",
+        "t-9f79be",
+        "t-a96f5a",
+        "t-7bc987",
+        "t-ac655f"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-aa5503",
+        "t-ecb91d",
+        "t-d8bccc",
+        "t-5e80c2",
+        "t-e67903"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-0f675d",
+        "t-c6f2dd",
+        "t-85c2d1",
+        "t-9c589b",
+        "t-4ca7b1",
+        "t-4718f1"
+      ]
+    },
+    {
+      "layer": 3,
+      "tasks": [
+        "t-95f252",
+        "t-31466b",
+        "t-836de1",
+        "t-cac417",
+        "t-d0f548"
+      ]
+    },
+    {
+      "layer": 4,
+      "tasks": [
+        "t-513d54"
+      ]
+    }
+  ],
+  "ready": [],
+  "updated_at": "2026-10-08T04:11:45.711Z"
+}

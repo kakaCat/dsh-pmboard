@@ -1,0 +1,38 @@
+task:
+  id: t-6a958f
+  title: rtm-health 写路径端口化并同步生产调用方与测试·测试
+  status: done
+  implements: |-
+    src/application/internal/rtm-health.ts 的写路径（readFailures / writeFailures / readRTMTriggerTraces / recordRTMTriggerTrace / recordRTMFailure / clearRTMFailure）去掉 node:fs 与 node:path，改为收 host: HostFsPort + root: string（state 文件读走 host.readStateJson(root, 'rtm-failures.json') / host.readStateJson(root, 'rtm-trigger-traces.json')，写走 host.writeStateJsonAtomic；文件名、键、2 空格缩进、只保留最近 100 条、原子写语义逐字保留）。src/application/internal/rtm-yaml.ts 的 syncRTMYamlWithSnapshot 增首位参数 host: HostFsPort 并把 4 处 recordRTMFailure / clearRTMFailure / recordRTMTriggerTrace 调用点的 stateDir 字符串拼接改为传 root；syncRTMYaml 内部改传 deps.hostFs。src/http/routers/requirements.ts 与 src/http/routers/tasks.ts 的 3 处 syncRTMYamlWithSnapshot 调用改传 ctx.deps.applicationDeps?.hostFs ?? new FileHostFs()（FileHostFs 无构造参数、无状态，兜底实例与注入实例等价）。同步适配 tests/submit-prototype.test.ts、tests/rtm-trigger-prototype.test.ts、tests/rtm-yaml-live-tasks.test.ts、tests/canceled-audit-holds.test.ts、tests/canceled-four-faces.test.ts、tests/canceled-coverage-gate.test.ts 的签名调用。新增一条用例：state 目录不存在时 recordRTMFailure(host, root, ...) 不抛且能读回 attempts=1。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-68f2a5
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008020617-088f
+    TASK_ID: t-6a958f
+    TASK_TITLE: rtm-health 写路径端口化并同步生产调用方与测试·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T18:38:13.441Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008020617-088f
+  generated_at: 2026-10-07T18:38:05.311Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T18:38:13.441Z

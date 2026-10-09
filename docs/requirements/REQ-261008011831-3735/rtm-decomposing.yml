@@ -1,0 +1,173 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261008011831-3735
+  generated_at: 2026-10-07T17:31:15.566Z
+  version: 26
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T18:17:09.990Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/fix-design.md#目标与范围
+      title: 目标与范围 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+      file: design/fix-design.md
+      section: 目标与范围
+    - ref: design/fix-design.md#根因实测不是推断
+      title: 根因（实测，不是推断） <!--
+      serves:
+        - FR-1
+        - FR-2
+      file: design/fix-design.md
+      section: 根因实测不是推断
+    - ref: design/fix-design.md#修法选择
+      title: 修法选择 <!--
+      serves:
+        - FR-2
+      file: design/fix-design.md
+      section: 修法选择
+    - ref: design/fix-design.md#清单处置
+      title: 清单处置 <!--
+      serves:
+        - FR-1
+      file: design/fix-design.md
+      section: 清单处置
+    - ref: design/fix-design.md#基线落账
+      title: 基线落账 <!--
+      serves:
+        - FR-3
+      file: design/fix-design.md
+      section: 基线落账
+    - ref: design/fix-design.md#风险与失败路径
+      title: 风险与失败路径 <!--
+      serves:
+        - FR-1
+        - FR-3
+      file: design/fix-design.md
+      section: 风险与失败路径
+outputs:
+  tasks:
+    - id: t-67a687
+      title: 两处终态文案判定改走 isCanceled 单点并清失效清单条目
+      implements: "① src/client/views/report-head.ts: 新增 import { isCanceled } from '../../domain/status/Predicates.js'，把 :485 的 (h.status === 'canceled' ? '已取消' : '已归档') 改为 (isCanceled(h) ? '已取消' : '已归档')，文案串一字不动；② src/client/views/report-band.ts: 同路径新增 import，把 :290 的 if (status === 'canceled') { 改为 if (isCanceled(report.head)) {，:274 的 status 常量保留（:277/:294/:296/:298/:301/:303 仍在用）；③ tests/fixtures/canceled-literal-baseline.json: 逐条 grep 确认源码已无该行原文后，删除 baseline 里的两条 status-label 条目——src/client/views/report-band.ts 的 '? (status === \\'canceled\\'' 与 src/client/views/report-head.ts 的 '+ (h.status === \\'canceled\\' ? \\'已取消\\' : \\'已归档\\') + \\'，无可执行动作</div></div>\\''；collected 18 条与其余 37 条 baseline 不动。验证：npx vitest run tests/live-tasks-single-source.test.ts 转 17/17 绿，git diff --stat 仅三文件。"
+      serves:
+        - CH-1
+        - CH-2
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-e5617b
+      title: 基线核对落账与类型检查收口
+      implements: ① npx tsx scripts/test-baseline.mts --check，逐条核对当前 19 条失败是否均为在途需求已知失败，确认与本需求三文件（report-head.ts / report-band.ts / canceled-literal-baseline.json）相关的为 0 条；② 核对通过后 npx tsx scripts/test-baseline.mts --refresh 落账（只写 docs/reviews/test-baseline.failures.txt 与 test-baseline.md）；③ npx tsx scripts/test-baseline.mts --check 复核；④ npx tsc --noEmit。若核对发现任何与三文件相关的新失败：停止 refresh，回到 t1 先修。
+      serves:
+        - CH-3
+      depends_on:
+        - t-67a687
+      phase: test
+      side: backend
+    - id: t-8116c8
+      title: 两处终态文案判定改走 isCanceled 单点并清失效清单条目·研发
+      implements: |-
+        ① src/client/views/report-head.ts: 新增 import { isCanceled } from '../../domain/status/Predicates.js'，把 :485 的 (h.status === 'canceled' ? '已取消' : '已归档') 改为 (isCanceled(h) ? '已取消' : '已归档')，文案串一字不动；② src/client/views/report-band.ts: 同路径新增 import，把 :290 的 if (status === 'canceled') { 改为 if (isCanceled(report.head)) {，:274 的 status 常量保留（:277/:294/:296/:298/:301/:303 仍在用）；③ tests/fixtures/canceled-literal-baseline.json: 逐条 grep 确认源码已无该行原文后，删除 baseline 里的两条 status-label 条目——src/client/views/report-band.ts 的 '? (status === \'canceled\'' 与 src/client/views/report-head.ts 的 '+ (h.status === \'canceled\' ? \'已取消\' : \'已归档\') + \'，无可执行动作</div></div>\''；collected 18 条与其余 37 条 baseline 不动。验证：npx vitest run tests/live-tasks-single-source.test.ts 转 17/17 绿，git diff --stat 仅三文件。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/live-tasks-single-source.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-11ca63
+      title: 两处终态文案判定改走 isCanceled 单点并清失效清单条目·复核
+      implements: |-
+        ① src/client/views/report-head.ts: 新增 import { isCanceled } from '../../domain/status/Predicates.js'，把 :485 的 (h.status === 'canceled' ? '已取消' : '已归档') 改为 (isCanceled(h) ? '已取消' : '已归档')，文案串一字不动；② src/client/views/report-band.ts: 同路径新增 import，把 :290 的 if (status === 'canceled') { 改为 if (isCanceled(report.head)) {，:274 的 status 常量保留（:277/:294/:296/:298/:301/:303 仍在用）；③ tests/fixtures/canceled-literal-baseline.json: 逐条 grep 确认源码已无该行原文后，删除 baseline 里的两条 status-label 条目——src/client/views/report-band.ts 的 '? (status === \'canceled\'' 与 src/client/views/report-head.ts 的 '+ (h.status === \'canceled\' ? \'已取消\' : \'已归档\') + \'，无可执行动作</div></div>\''；collected 18 条与其余 37 条 baseline 不动。验证：npx vitest run tests/live-tasks-single-source.test.ts 转 17/17 绿，git diff --stat 仅三文件。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008011831-3735/design/` 逐条核对；`npx vitest run tests/live-tasks-single-source.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-8116c8
+      phase: implement
+      side: frontend
+    - id: t-d97ccf
+      title: 基线核对落账与类型检查收口·研发
+      implements: |-
+        ① npx tsx scripts/test-baseline.mts --check，逐条核对当前 19 条失败是否均为在途需求已知失败，确认与本需求三文件（report-head.ts / report-band.ts / canceled-literal-baseline.json）相关的为 0 条；② 核对通过后 npx tsx scripts/test-baseline.mts --refresh 落账（只写 docs/reviews/test-baseline.failures.txt 与 test-baseline.md）；③ npx tsx scripts/test-baseline.mts --check 复核；④ npx tsc --noEmit。若核对发现任何与三文件相关的新失败：停止 refresh，回到 t1 先修。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-67a687
+      phase: test
+      side: backend
+    - id: t-03537d
+      title: 基线核对落账与类型检查收口·复核
+      implements: |-
+        ① npx tsx scripts/test-baseline.mts --check，逐条核对当前 19 条失败是否均为在途需求已知失败，确认与本需求三文件（report-head.ts / report-band.ts / canceled-literal-baseline.json）相关的为 0 条；② 核对通过后 npx tsx scripts/test-baseline.mts --refresh 落账（只写 docs/reviews/test-baseline.failures.txt 与 test-baseline.md）；③ npx tsx scripts/test-baseline.mts --check 复核；④ npx tsc --noEmit。若核对发现任何与三文件相关的新失败：停止 refresh，回到 t1 先修。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008011831-3735/design/` 逐条核对；`npx vitest run tests/` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-d97ccf
+      phase: test
+      side: backend
+    - id: t-18eb2a
+      title: 基线核对落账与类型检查收口·测试
+      implements: |-
+        ① npx tsx scripts/test-baseline.mts --check，逐条核对当前 19 条失败是否均为在途需求已知失败，确认与本需求三文件（report-head.ts / report-band.ts / canceled-literal-baseline.json）相关的为 0 条；② 核对通过后 npx tsx scripts/test-baseline.mts --refresh 落账（只写 docs/reviews/test-baseline.failures.txt 与 test-baseline.md）；③ npx tsx scripts/test-baseline.mts --check 复核；④ npx tsc --noEmit。若核对发现任何与三文件相关的新失败：停止 refresh，回到 t1 先修。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-03537d
+      phase: test
+      side: backend
+task_coverage:
+  - task_id: t-67a687
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-e5617b
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-8116c8
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-11ca63
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-d97ccf
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-03537d
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-18eb2a
+    covers_prototypes: []
+    covers_decisions: []
+traceability:
+  design_to_tasks:
+    design/fix-design.md#目标与范围: []
+    design/fix-design.md#根因实测不是推断: []
+    design/fix-design.md#修法选择: []
+    design/fix-design.md#清单处置: []
+    design/fix-design.md#基线落账: []
+    design/fix-design.md#风险与失败路径: []
+  fr_to_tasks:
+    FR-1: []
+    FR-2: []
+    FR-3: []
+coverage:
+  implementation:
+    total: 6
+    covered: 0
+    uncovered:
+      - design/fix-design.md#目标与范围
+      - design/fix-design.md#根因实测不是推断
+      - design/fix-design.md#修法选择
+      - design/fix-design.md#清单处置
+      - design/fix-design.md#基线落账
+      - design/fix-design.md#风险与失败路径
+    rate: 0
+    total_designs: 6
+    covered_designs: 0

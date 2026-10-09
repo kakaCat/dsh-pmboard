@@ -1,0 +1,53 @@
+metadata:
+  stage: brainstorming
+  requirement_id: REQ-261008103718-f1ea
+  generated_at: 2026-10-08T02:41:48.373Z
+  version: 4
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-08T03:36:53.147Z
+outputs:
+  requirements:
+    - id: FR-1
+      title: 弹框请求必须可无损 JSON 往返
+      source: requirement.md
+      line: 90
+  prototypes: []
+  decisions:
+    - id: D-1
+      source: 2026-10-08 用户："帮我修复这个问题"
+      verdict: 修复立项弹框失效，让弹框能正常渲染与作答
+      serves:
+        - FR-1
+      criterion: 调用 reqboard_capture 弹框出现、可作答、成功立项
+    - id: D-2
+      source: 2026-10-08 用户："依然弹框失败，你查看git 看看和之前有什么不同"
+      verdict: 重新定位真根因：宿主 askTimed 的 callId=undefined 导致 remote 请求被网关拒收（非"缺少服务声明"）
+      serves:
+        - FR-1
+      criterion: 诊断日志 [UI-5] 错误码从 not lossless JSON data 变为无；[UI-3] 返回 answers
+    - id: D-3
+      source: 2026-10-08 用户："你在适配层记录一下这个问题，防止以后还犯错"
+      verdict: 在适配层模块注释记录事故 + 通道边界无损清洗 + 测试护栏（运行时 + 静态）
+      serves:
+        - FR-1
+      criterion: 新增 lossless-json.ts、两个测试文件；适配器注释含事故记录
+    - id: D-4
+      source: 2026-10-08 用户："硬编码对吗"
+      verdict: 客户端 inject 不得声明 host 端服务（userQuestions），已回滚两处错误声明
+      serves:
+        - FR-1
+      criterion: client.js 中 userQuestions 出现 0 次；boot 不再报 entry pending
+    - id: D-5
+      source: 2026-10-08 用户："我之前配置的kimi coding 模型没有了"
+      verdict: 连带问题：boot 失败触发"禁用所有插件"恢复，清空 profile patch；已从备份恢复 llm-pi-ai 等 4 段
+      serves: []
+      criterion: cordis.patch.yml 含 llm-pi-ai 段；kimi 模型回到选择列表
+    - id: D-6
+      source: 2026-10-08 agent 依证据处置（待验收确认）
+      verdict: 契约变更：不再透传宿主 askTimed，一律走 ask() 本地竞速；测试已更新为"验不透传"
+      serves:
+        - FR-1
+      criterion: ask-timed.test.ts 断言 svc.askTimed 零调用；29 个相关测试通过
+status:
+  artifacts: []

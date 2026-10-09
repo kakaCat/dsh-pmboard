@@ -1,0 +1,38 @@
+task:
+  id: t-1acef2
+  title: diag-log 改为无 I/O 门面并把文件实现落到适配层·研发
+  status: done
+  implements: |-
+    src/application/internal/diag-log.ts 去掉 node:fs 与 node:path，改为无 I/O 门面：initCaptureDiag(sink: DiagSinkPort)、captureDiag(message) 保持现签名（内部仍 console.log 并给 sink 追加带 ISO 时间戳的一行），CAPTURE_DIAG_REL 常量原样保留。新增 src/adapters/FileDiagSink.ts 实现 DiagSinkPort：构造时记录绝对路径并按需 mkdir，write(line) 先 statSync 判超 512KB 则 rename 为 .1，再 appendFileSync；所有失败静默吞掉（诊断通道不得反过来影响主流程）。src/index.ts 的 initCaptureDiag(dshHomePath(config, CAPTURE_DIAG_REL)) 改为 initCaptureDiag(new FileDiagSink(dshHomePath(config, CAPTURE_DIAG_REL)))。tests/dive-wake-wiring.test.ts 与 tests/reqboard/degraded-startup.test.ts 的 initCaptureDiag(diagPath) 同样改吃 FileDiagSink 实例（断言不变）。application/ 里 6 个 captureDiag 调用点一字不改。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/dive-wake-wiring.test.ts tests/reqboard/degraded-startup.test.ts tests/layer-boundary.test.ts` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-8ba560
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008020617-088f
+    TASK_ID: t-1acef2
+    TASK_TITLE: diag-log 改为无 I/O 门面并把文件实现落到适配层·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T18:42:37.685Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008020617-088f
+  generated_at: 2026-10-07T18:42:32.167Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T18:42:37.686Z

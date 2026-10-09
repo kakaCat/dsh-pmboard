@@ -1,0 +1,683 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261007220012-bd29
+  generated_at: 2026-10-07T14:18:33.443Z
+  version: 100
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T15:04:52.061Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/architecture.md#现状盘点与依赖调用方清单
+      title: 现状盘点与依赖/调用方清单 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/architecture.md
+      section: 现状盘点与依赖调用方清单
+    - ref: design/architecture.md#接口契约askconfirm-ticket-取回执模式
+      title: 接口契约：ask_confirm + ticket 取回执模式 <!--
+      serves:
+        - FR-2
+      file: design/architecture.md
+      section: 接口契约askconfirm-ticket-取回执模式
+    - ref: design/architecture.md#接口契约status-run-节
+      title: 接口契约：status + run 节 <!--
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: 接口契约status-run-节
+    - ref: design/architecture.md#接口契约tasktree-taskid-单卡展开模式
+      title: 接口契约：task_tree + task_id 单卡展开模式 <!--
+      serves:
+        - FR-3
+      file: design/architecture.md
+      section: 接口契约tasktree-taskid-单卡展开模式
+    - ref: design/architecture.md#接口契约reqboardtaskamend修缮簇单入口
+      title: 接口契约：reqboard_task_amend（修缮簇单入口） <!--
+      serves:
+        - FR-4
+      file: design/architecture.md
+      section: 接口契约reqboardtaskamend修缮簇单入口
+    - ref: design/architecture.md#接口契约公共-schema-常量S6
+      title: 接口契约：公共 schema 常量（S6） <!--
+      serves:
+        - FR-6
+      file: design/architecture.md
+      section: 接口契约公共-schema-常量S6
+    - ref: design/architecture.md#文件结构新建-删除-修改
+      title: 文件结构：新建 / 删除 / 修改 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-7
+      file: design/architecture.md
+      section: 文件结构新建-删除-修改
+    - ref: design/architecture.md#行为等价验证设计
+      title: 行为等价验证设计 <!--
+      serves:
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+      file: design/architecture.md
+      section: 行为等价验证设计
+    - ref: design/architecture.md#边界本设计不做什么
+      title: 边界（本设计不做什么） <!--
+      serves:
+        - FR-7
+      file: design/architecture.md
+      section: 边界本设计不做什么
+    - ref: design/migration.md#数据层不改表不改-schema无迁移
+      title: 数据层：不改表、不改 schema、无迁移 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+      file: design/migration.md
+      section: 数据层不改表不改-schema无迁移
+    - ref: design/migration.md#调用方迁移对照旧名-新入口
+      title: 调用方迁移对照（旧名 → 新入口） <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+      file: design/migration.md
+      section: 调用方迁移对照旧名-新入口
+    - ref: design/migration.md#分批与独立回滚
+      title: 分批与独立回滚 <!--
+      serves:
+        - FR-1
+        - FR-2
+        - FR-3
+        - FR-4
+        - FR-5
+        - FR-6
+        - FR-7
+      file: design/migration.md
+      section: 分批与独立回滚
+    - ref: design/migration.md#失败路径与降级口径
+      title: 失败路径与降级口径 <!--
+      serves:
+        - FR-2
+        - FR-3
+      file: design/migration.md
+      section: 失败路径与降级口径
+outputs:
+  tasks:
+    - id: t-c21292
+      title: 物理删除 reqboard_task_execute（S1）
+      implements: 删除 src/tools/TaskExecuteTool/ 整目录；同步摘除：src/index.ts 的 import+register、src/tools/registry.ts 条目、src/tools/render-summaries.ts 别名摘要行、src/domain/stage/StageActions.ts 的 reqboard_task_execute 条目、tests/tools-render-coverage.test.ts 的 DELEGATING_ALIASES 白名单条目、tests/task-run-contract.test.ts 与 tests/timeout-routing-integration.test.ts 中的别名用例、README.md 对应行。验证：跑验收命令。
+      serves:
+        - FR-1
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-38c7cd
+      title: confirm_receipt 并入 ask_confirm(ticket)（S2）
+      implements: AskConfirmTool.ts 加可选 ticket 入参与三分派（evidence→confirmArtifact / ticket→confirmReceipt / 否则→askConfirm，ConfirmReceipt 用例一行不改）；AskConfirmTool/prompt.ts 改写双段（弹框路径/取回执模式）并写明承接 confirm_receipt；render-summaries.ts 保留 confirmReceiptSummary 供取回执模式渲染；删除 src/tools/ConfirmReceiptTool/ 目录；同步 src/index.ts、src/tools/registry.ts、src/domain/stage/StageActions.ts、README.md；tests/ask-confirm-pending.test.ts、tests/ask-confirm-blocking.test.ts、tests/confirm-pending-guard.test.ts、tests/pending-guard.test.ts、tests/pending-guard-integration.test.ts、tests/status-pending-confirm.test.ts 中原打 reqboard_confirm_receipt 的用例改打 ask_confirm(ticket)。
+      serves:
+        - FR-2
+      depends_on:
+        - t-c21292
+      phase: implement
+      side: backend
+    - id: t-856177
+      title: run_status 并入 status、task_status 并入 task_tree（S3）
+      implements: StatusTool.ts 加可选 requirement_id/run_id 入参；src/application/query/QueryState.ts 组合 queryRunStatus（用例不改），输出加 run 节（含原 RunStatusTool 的未绑定报错/run_id 反查/TaskStore 未装配显式失败/runId 非 string 删键降级形状，M1 死字段 status/reason 不再声明）。TaskTreeTool.ts 加可选 task_id 入参（与 parent_id 互斥）；src/application/use-cases/TaskTree.ts 加单卡展开分支（平移原 TaskStatusTool 的 taskStore 直读逻辑与 TASK_STATUS_PROGRESS 映射，domain/task/TaskStatus.ts 不动），输出加 task 节。删除 src/tools/RunStatusTool/ 与 src/tools/TaskStatusTool/ 目录；同步 src/index.ts、registry.ts、render-summaries.ts（taskStatusSummary 与 run summarize 随迁）、StageActions.ts、README.md；tests/run-status-tool.test.ts 改打 status、tests/task-status-integration.test.ts 与 tests/task-status-ledger.test.ts 改打 task_tree(task_id)。
+      serves:
+        - FR-3
+      depends_on:
+        - t-38c7cd
+      phase: implement
+      side: backend
+    - id: t-ef2395
+      title: 修缮簇合一 reqboard_task_amend（S4）
+      implements: 新建 src/tools/TaskAmendTool/（TaskAmendTool.ts/index.ts/prompt.ts/summary.ts）：op 必填 enum [refs,adopt,chain]，其余入参平移三原工具；execute 先 assertNoPendingConfirm 再按 op 分派 executeTaskRefs/executeAdoptTask/executeRegenerateChain（用例一行不改）；输出 schema = 三原工具输出键并集 + op 回显；渲染按 op 选 summary（taskRefsSummary 等随迁 summary.ts）。删除 src/tools/TaskRefsTool/、src/tools/AdoptTaskTool/、src/tools/RegenerateTool/ 三目录；同步 src/index.ts、registry.ts、README.md；tests/adopt-task.test.ts、tests/regenerate-chain.test.ts、tests/reqboard/backfill-task-refs.test.ts、tests/receive-mark.test.ts 改打 task_amend 对应 op。
+      serves:
+        - FR-4
+      depends_on:
+        - t-856177
+      phase: implement
+      side: backend
+    - id: t-084edc
+      title: AdvanceTool 目录改名 TaskRunTool（S5）
+      implements: "`git mv src/tools/AdvanceTool src/tools/TaskRunTool`；工厂 defineAdvanceTool → defineTaskRunTool（文件内导出与 index.ts/prompt.ts 引用同步）；registry.ts 条目 key/dir/factoryFile 改 TaskRun；src/index.ts import 与 register 同步；全仓 grep 残余 AdvanceTool 引用清零（测试文件含 task-run-contract.test.ts）。工具名 reqboard_task_run 不变。"
+      serves:
+        - FR-5
+      depends_on:
+        - t-ef2395
+      phase: implement
+      side: backend
+    - id: t-06c363
+      title: handoff/open_window schema 常量单源化（S6）
+      implements: src/tools/shared.ts 新增 `export const WINDOW_MODES = ['fork','create'] as const` 与 `export function windowInheritanceSchema()`（每次返回新对象）；HandoffTool.ts 删 HANDOFF_MODES 与 inheritance 字面量改引用；OpenWindowTool.ts 删 OPEN_WINDOW_MODES 与 inheritance 字面量改引用。只抽这两处，不碰 capture/create 文案。
+      serves:
+        - FR-6
+      depends_on:
+        - t-084edc
+      phase: implement
+      side: backend
+    - id: t-34ec16
+      title: 同步面定稿：README + package.json + 全量验证（FR-7）
+      implements: README.md 工具表定稿（删 7 个被删工具行、补 reqboard_task_amend 行、组归属调整、计数表述 27→21）；package.json description 计数 27→21；跑 FR-7 全部判据命令矩阵收尾。
+      serves:
+        - FR-7
+      depends_on:
+        - t-06c363
+      phase: doc
+      side: doc
+    - id: t-2727b0
+      title: 物理删除 reqboard_task_execute（S1）·研发
+      implements: |-
+        删除 src/tools/TaskExecuteTool/ 整目录；同步摘除：src/index.ts 的 import+register、src/tools/registry.ts 条目、src/tools/render-summaries.ts 别名摘要行、src/domain/stage/StageActions.ts 的 reqboard_task_execute 条目、tests/tools-render-coverage.test.ts 的 DELEGATING_ALIASES 白名单条目、tests/task-run-contract.test.ts 与 tests/timeout-routing-integration.test.ts 中的别名用例、README.md 对应行。验证：跑验收命令。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/tools-render-coverage.test.ts tests/task-run-contract.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: implement
+      side: backend
+    - id: t-6bf013
+      title: 物理删除 reqboard_task_execute（S1）·联调
+      implements: |-
+        删除 src/tools/TaskExecuteTool/ 整目录；同步摘除：src/index.ts 的 import+register、src/tools/registry.ts 条目、src/tools/render-summaries.ts 别名摘要行、src/domain/stage/StageActions.ts 的 reqboard_task_execute 条目、tests/tools-render-coverage.test.ts 的 DELEGATING_ALIASES 白名单条目、tests/task-run-contract.test.ts 与 tests/timeout-routing-integration.test.ts 中的别名用例、README.md 对应行。验证：跑验收命令。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/tools-render-coverage.test.ts tests/task-run-contract.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-2727b0
+      phase: implement
+      side: backend
+    - id: t-0e87d2
+      title: 物理删除 reqboard_task_execute（S1）·复核
+      implements: |-
+        删除 src/tools/TaskExecuteTool/ 整目录；同步摘除：src/index.ts 的 import+register、src/tools/registry.ts 条目、src/tools/render-summaries.ts 别名摘要行、src/domain/stage/StageActions.ts 的 reqboard_task_execute 条目、tests/tools-render-coverage.test.ts 的 DELEGATING_ALIASES 白名单条目、tests/task-run-contract.test.ts 与 tests/timeout-routing-integration.test.ts 中的别名用例、README.md 对应行。验证：跑验收命令。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007220012-bd29/design/` 逐条核对；`npx vitest run tests/tools-dispatch.test.ts tests/apply-wiring.test.ts tests/tools-render-coverage.test.ts tests/task-run-contract.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-6bf013
+      phase: implement
+      side: backend
+    - id: t-b603b6
+      title: 物理删除 reqboard_task_execute（S1）·测试
+      implements: |-
+        删除 src/tools/TaskExecuteTool/ 整目录；同步摘除：src/index.ts 的 import+register、src/tools/registry.ts 条目、src/tools/render-summaries.ts 别名摘要行、src/domain/stage/StageActions.ts 的 reqboard_task_execute 条目、tests/tools-render-coverage.test.ts 的 DELEGATING_ALIASES 白名单条目、tests/task-run-contract.test.ts 与 tests/timeout-routing-integration.test.ts 中的别名用例、README.md 对应行。验证：跑验收命令。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-0e87d2
+      phase: implement
+      side: backend
+    - id: t-14c8be
+      title: confirm_receipt 并入 ask_confirm(ticket)（S2）·研发
+      implements: |-
+        AskConfirmTool.ts 加可选 ticket 入参与三分派（evidence→confirmArtifact / ticket→confirmReceipt / 否则→askConfirm，ConfirmReceipt 用例一行不改）；AskConfirmTool/prompt.ts 改写双段（弹框路径/取回执模式）并写明承接 confirm_receipt；render-summaries.ts 保留 confirmReceiptSummary 供取回执模式渲染；删除 src/tools/ConfirmReceiptTool/ 目录；同步 src/index.ts、src/tools/registry.ts、src/domain/stage/StageActions.ts、README.md；tests/ask-confirm-pending.test.ts、tests/ask-confirm-blocking.test.ts、tests/confirm-pending-guard.test.ts、tests/pending-guard.test.ts、tests/pending-guard-integration.test.ts、tests/status-pending-confirm.test.ts 中原打 reqboard_confirm_receipt 的用例改打 ask_confirm(ticket)。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/ask-confirm-pending.test.ts tests/ask-confirm-blocking.test.ts tests/confirm-pending-guard.test.ts tests/output-contract.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-c21292
+      phase: implement
+      side: backend
+    - id: t-2d1abf
+      title: confirm_receipt 并入 ask_confirm(ticket)（S2）·联调
+      implements: |-
+        AskConfirmTool.ts 加可选 ticket 入参与三分派（evidence→confirmArtifact / ticket→confirmReceipt / 否则→askConfirm，ConfirmReceipt 用例一行不改）；AskConfirmTool/prompt.ts 改写双段（弹框路径/取回执模式）并写明承接 confirm_receipt；render-summaries.ts 保留 confirmReceiptSummary 供取回执模式渲染；删除 src/tools/ConfirmReceiptTool/ 目录；同步 src/index.ts、src/tools/registry.ts、src/domain/stage/StageActions.ts、README.md；tests/ask-confirm-pending.test.ts、tests/ask-confirm-blocking.test.ts、tests/confirm-pending-guard.test.ts、tests/pending-guard.test.ts、tests/pending-guard-integration.test.ts、tests/status-pending-confirm.test.ts 中原打 reqboard_confirm_receipt 的用例改打 ask_confirm(ticket)。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/ask-confirm-pending.test.ts tests/ask-confirm-blocking.test.ts tests/confirm-pending-guard.test.ts tests/output-contract.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-14c8be
+      phase: implement
+      side: backend
+    - id: t-5ad80b
+      title: confirm_receipt 并入 ask_confirm(ticket)（S2）·复核
+      implements: |-
+        AskConfirmTool.ts 加可选 ticket 入参与三分派（evidence→confirmArtifact / ticket→confirmReceipt / 否则→askConfirm，ConfirmReceipt 用例一行不改）；AskConfirmTool/prompt.ts 改写双段（弹框路径/取回执模式）并写明承接 confirm_receipt；render-summaries.ts 保留 confirmReceiptSummary 供取回执模式渲染；删除 src/tools/ConfirmReceiptTool/ 目录；同步 src/index.ts、src/tools/registry.ts、src/domain/stage/StageActions.ts、README.md；tests/ask-confirm-pending.test.ts、tests/ask-confirm-blocking.test.ts、tests/confirm-pending-guard.test.ts、tests/pending-guard.test.ts、tests/pending-guard-integration.test.ts、tests/status-pending-confirm.test.ts 中原打 reqboard_confirm_receipt 的用例改打 ask_confirm(ticket)。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007220012-bd29/design/` 逐条核对；`npx vitest run tests/ask-confirm-pending.test.ts tests/ask-confirm-blocking.test.ts tests/confirm-pending-guard.test.ts tests/output-contract.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-2d1abf
+      phase: implement
+      side: backend
+    - id: t-b65d24
+      title: confirm_receipt 并入 ask_confirm(ticket)（S2）·测试
+      implements: |-
+        AskConfirmTool.ts 加可选 ticket 入参与三分派（evidence→confirmArtifact / ticket→confirmReceipt / 否则→askConfirm，ConfirmReceipt 用例一行不改）；AskConfirmTool/prompt.ts 改写双段（弹框路径/取回执模式）并写明承接 confirm_receipt；render-summaries.ts 保留 confirmReceiptSummary 供取回执模式渲染；删除 src/tools/ConfirmReceiptTool/ 目录；同步 src/index.ts、src/tools/registry.ts、src/domain/stage/StageActions.ts、README.md；tests/ask-confirm-pending.test.ts、tests/ask-confirm-blocking.test.ts、tests/confirm-pending-guard.test.ts、tests/pending-guard.test.ts、tests/pending-guard-integration.test.ts、tests/status-pending-confirm.test.ts 中原打 reqboard_confirm_receipt 的用例改打 ask_confirm(ticket)。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-5ad80b
+      phase: implement
+      side: backend
+    - id: t-5251be
+      title: run_status 并入 status、task_status 并入 task_tree（S3）·研发
+      implements: |-
+        StatusTool.ts 加可选 requirement_id/run_id 入参；src/application/query/QueryState.ts 组合 queryRunStatus（用例不改），输出加 run 节（含原 RunStatusTool 的未绑定报错/run_id 反查/TaskStore 未装配显式失败/runId 非 string 删键降级形状，M1 死字段 status/reason 不再声明）。TaskTreeTool.ts 加可选 task_id 入参（与 parent_id 互斥）；src/application/use-cases/TaskTree.ts 加单卡展开分支（平移原 TaskStatusTool 的 taskStore 直读逻辑与 TASK_STATUS_PROGRESS 映射，domain/task/TaskStatus.ts 不动），输出加 task 节。删除 src/tools/RunStatusTool/ 与 src/tools/TaskStatusTool/ 目录；同步 src/index.ts、registry.ts、render-summaries.ts（taskStatusSummary 与 run summarize 随迁）、StageActions.ts、README.md；tests/run-status-tool.test.ts 改打 status、tests/task-status-integration.test.ts 与 tests/task-status-ledger.test.ts 改打 task_tree(task_id)。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/run-status-tool.test.ts tests/task-status-integration.test.ts tests/task-status-ledger.test.ts tests/task-tree.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-38c7cd
+      phase: implement
+      side: backend
+    - id: t-b96bc1
+      title: run_status 并入 status、task_status 并入 task_tree（S3）·联调
+      implements: |-
+        StatusTool.ts 加可选 requirement_id/run_id 入参；src/application/query/QueryState.ts 组合 queryRunStatus（用例不改），输出加 run 节（含原 RunStatusTool 的未绑定报错/run_id 反查/TaskStore 未装配显式失败/runId 非 string 删键降级形状，M1 死字段 status/reason 不再声明）。TaskTreeTool.ts 加可选 task_id 入参（与 parent_id 互斥）；src/application/use-cases/TaskTree.ts 加单卡展开分支（平移原 TaskStatusTool 的 taskStore 直读逻辑与 TASK_STATUS_PROGRESS 映射，domain/task/TaskStatus.ts 不动），输出加 task 节。删除 src/tools/RunStatusTool/ 与 src/tools/TaskStatusTool/ 目录；同步 src/index.ts、registry.ts、render-summaries.ts（taskStatusSummary 与 run summarize 随迁）、StageActions.ts、README.md；tests/run-status-tool.test.ts 改打 status、tests/task-status-integration.test.ts 与 tests/task-status-ledger.test.ts 改打 task_tree(task_id)。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/run-status-tool.test.ts tests/task-status-integration.test.ts tests/task-status-ledger.test.ts tests/task-tree.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-5251be
+      phase: implement
+      side: backend
+    - id: t-38f407
+      title: run_status 并入 status、task_status 并入 task_tree（S3）·复核
+      implements: |-
+        StatusTool.ts 加可选 requirement_id/run_id 入参；src/application/query/QueryState.ts 组合 queryRunStatus（用例不改），输出加 run 节（含原 RunStatusTool 的未绑定报错/run_id 反查/TaskStore 未装配显式失败/runId 非 string 删键降级形状，M1 死字段 status/reason 不再声明）。TaskTreeTool.ts 加可选 task_id 入参（与 parent_id 互斥）；src/application/use-cases/TaskTree.ts 加单卡展开分支（平移原 TaskStatusTool 的 taskStore 直读逻辑与 TASK_STATUS_PROGRESS 映射，domain/task/TaskStatus.ts 不动），输出加 task 节。删除 src/tools/RunStatusTool/ 与 src/tools/TaskStatusTool/ 目录；同步 src/index.ts、registry.ts、render-summaries.ts（taskStatusSummary 与 run summarize 随迁）、StageActions.ts、README.md；tests/run-status-tool.test.ts 改打 status、tests/task-status-integration.test.ts 与 tests/task-status-ledger.test.ts 改打 task_tree(task_id)。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007220012-bd29/design/` 逐条核对；`npx vitest run tests/run-status-tool.test.ts tests/task-status-integration.test.ts tests/task-status-ledger.test.ts tests/task-tree.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-b96bc1
+      phase: implement
+      side: backend
+    - id: t-7bb731
+      title: run_status 并入 status、task_status 并入 task_tree（S3）·测试
+      implements: |-
+        StatusTool.ts 加可选 requirement_id/run_id 入参；src/application/query/QueryState.ts 组合 queryRunStatus（用例不改），输出加 run 节（含原 RunStatusTool 的未绑定报错/run_id 反查/TaskStore 未装配显式失败/runId 非 string 删键降级形状，M1 死字段 status/reason 不再声明）。TaskTreeTool.ts 加可选 task_id 入参（与 parent_id 互斥）；src/application/use-cases/TaskTree.ts 加单卡展开分支（平移原 TaskStatusTool 的 taskStore 直读逻辑与 TASK_STATUS_PROGRESS 映射，domain/task/TaskStatus.ts 不动），输出加 task 节。删除 src/tools/RunStatusTool/ 与 src/tools/TaskStatusTool/ 目录；同步 src/index.ts、registry.ts、render-summaries.ts（taskStatusSummary 与 run summarize 随迁）、StageActions.ts、README.md；tests/run-status-tool.test.ts 改打 status、tests/task-status-integration.test.ts 与 tests/task-status-ledger.test.ts 改打 task_tree(task_id)。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-38f407
+      phase: implement
+      side: backend
+    - id: t-b24703
+      title: 修缮簇合一 reqboard_task_amend（S4）·研发
+      implements: |-
+        新建 src/tools/TaskAmendTool/（TaskAmendTool.ts/index.ts/prompt.ts/summary.ts）：op 必填 enum [refs,adopt,chain]，其余入参平移三原工具；execute 先 assertNoPendingConfirm 再按 op 分派 executeTaskRefs/executeAdoptTask/executeRegenerateChain（用例一行不改）；输出 schema = 三原工具输出键并集 + op 回显；渲染按 op 选 summary（taskRefsSummary 等随迁 summary.ts）。删除 src/tools/TaskRefsTool/、src/tools/AdoptTaskTool/、src/tools/RegenerateTool/ 三目录；同步 src/index.ts、registry.ts、README.md；tests/adopt-task.test.ts、tests/regenerate-chain.test.ts、tests/reqboard/backfill-task-refs.test.ts、tests/receive-mark.test.ts 改打 task_amend 对应 op。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/adopt-task.test.ts tests/regenerate-chain.test.ts tests/reqboard/backfill-task-refs.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-856177
+      phase: implement
+      side: backend
+    - id: t-9e29b1
+      title: 修缮簇合一 reqboard_task_amend（S4）·联调
+      implements: |-
+        新建 src/tools/TaskAmendTool/（TaskAmendTool.ts/index.ts/prompt.ts/summary.ts）：op 必填 enum [refs,adopt,chain]，其余入参平移三原工具；execute 先 assertNoPendingConfirm 再按 op 分派 executeTaskRefs/executeAdoptTask/executeRegenerateChain（用例一行不改）；输出 schema = 三原工具输出键并集 + op 回显；渲染按 op 选 summary（taskRefsSummary 等随迁 summary.ts）。删除 src/tools/TaskRefsTool/、src/tools/AdoptTaskTool/、src/tools/RegenerateTool/ 三目录；同步 src/index.ts、registry.ts、README.md；tests/adopt-task.test.ts、tests/regenerate-chain.test.ts、tests/reqboard/backfill-task-refs.test.ts、tests/receive-mark.test.ts 改打 task_amend 对应 op。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/adopt-task.test.ts tests/regenerate-chain.test.ts tests/reqboard/backfill-task-refs.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-b24703
+      phase: implement
+      side: backend
+    - id: t-795d16
+      title: 修缮簇合一 reqboard_task_amend（S4）·复核
+      implements: |-
+        新建 src/tools/TaskAmendTool/（TaskAmendTool.ts/index.ts/prompt.ts/summary.ts）：op 必填 enum [refs,adopt,chain]，其余入参平移三原工具；execute 先 assertNoPendingConfirm 再按 op 分派 executeTaskRefs/executeAdoptTask/executeRegenerateChain（用例一行不改）；输出 schema = 三原工具输出键并集 + op 回显；渲染按 op 选 summary（taskRefsSummary 等随迁 summary.ts）。删除 src/tools/TaskRefsTool/、src/tools/AdoptTaskTool/、src/tools/RegenerateTool/ 三目录；同步 src/index.ts、registry.ts、README.md；tests/adopt-task.test.ts、tests/regenerate-chain.test.ts、tests/reqboard/backfill-task-refs.test.ts、tests/receive-mark.test.ts 改打 task_amend 对应 op。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007220012-bd29/design/` 逐条核对；`npx vitest run tests/adopt-task.test.ts tests/regenerate-chain.test.ts tests/reqboard/backfill-task-refs.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-9e29b1
+      phase: implement
+      side: backend
+    - id: t-e7d151
+      title: 修缮簇合一 reqboard_task_amend（S4）·测试
+      implements: |-
+        新建 src/tools/TaskAmendTool/（TaskAmendTool.ts/index.ts/prompt.ts/summary.ts）：op 必填 enum [refs,adopt,chain]，其余入参平移三原工具；execute 先 assertNoPendingConfirm 再按 op 分派 executeTaskRefs/executeAdoptTask/executeRegenerateChain（用例一行不改）；输出 schema = 三原工具输出键并集 + op 回显；渲染按 op 选 summary（taskRefsSummary 等随迁 summary.ts）。删除 src/tools/TaskRefsTool/、src/tools/AdoptTaskTool/、src/tools/RegenerateTool/ 三目录；同步 src/index.ts、registry.ts、README.md；tests/adopt-task.test.ts、tests/regenerate-chain.test.ts、tests/reqboard/backfill-task-refs.test.ts、tests/receive-mark.test.ts 改打 task_amend 对应 op。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-795d16
+      phase: implement
+      side: backend
+    - id: t-10e826
+      title: AdvanceTool 目录改名 TaskRunTool（S5）·研发
+      implements: |-
+        `git mv src/tools/AdvanceTool src/tools/TaskRunTool`；工厂 defineAdvanceTool → defineTaskRunTool（文件内导出与 index.ts/prompt.ts 引用同步）；registry.ts 条目 key/dir/factoryFile 改 TaskRun；src/index.ts import 与 register 同步；全仓 grep 残余 AdvanceTool 引用清零（测试文件含 task-run-contract.test.ts）。工具名 reqboard_task_run 不变。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/tools-dispatch.test.ts tests/output-contract.test.ts tests/apply-wiring.test.ts tests/task-run-contract.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-ef2395
+      phase: implement
+      side: backend
+    - id: t-214c00
+      title: AdvanceTool 目录改名 TaskRunTool（S5）·联调
+      implements: |-
+        `git mv src/tools/AdvanceTool src/tools/TaskRunTool`；工厂 defineAdvanceTool → defineTaskRunTool（文件内导出与 index.ts/prompt.ts 引用同步）；registry.ts 条目 key/dir/factoryFile 改 TaskRun；src/index.ts import 与 register 同步；全仓 grep 残余 AdvanceTool 引用清零（测试文件含 task-run-contract.test.ts）。工具名 reqboard_task_run 不变。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/tools-dispatch.test.ts tests/output-contract.test.ts tests/apply-wiring.test.ts tests/task-run-contract.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-10e826
+      phase: implement
+      side: backend
+    - id: t-c14abb
+      title: AdvanceTool 目录改名 TaskRunTool（S5）·复核
+      implements: |-
+        `git mv src/tools/AdvanceTool src/tools/TaskRunTool`；工厂 defineAdvanceTool → defineTaskRunTool（文件内导出与 index.ts/prompt.ts 引用同步）；registry.ts 条目 key/dir/factoryFile 改 TaskRun；src/index.ts import 与 register 同步；全仓 grep 残余 AdvanceTool 引用清零（测试文件含 task-run-contract.test.ts）。工具名 reqboard_task_run 不变。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007220012-bd29/design/` 逐条核对；`npx vitest run tests/tools-dispatch.test.ts tests/output-contract.test.ts tests/apply-wiring.test.ts tests/task-run-contract.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-214c00
+      phase: implement
+      side: backend
+    - id: t-92324a
+      title: AdvanceTool 目录改名 TaskRunTool（S5）·测试
+      implements: |-
+        `git mv src/tools/AdvanceTool src/tools/TaskRunTool`；工厂 defineAdvanceTool → defineTaskRunTool（文件内导出与 index.ts/prompt.ts 引用同步）；registry.ts 条目 key/dir/factoryFile 改 TaskRun；src/index.ts import 与 register 同步；全仓 grep 残余 AdvanceTool 引用清零（测试文件含 task-run-contract.test.ts）。工具名 reqboard_task_run 不变。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-c14abb
+      phase: implement
+      side: backend
+    - id: t-92b152
+      title: handoff/open_window schema 常量单源化（S6）·研发
+      implements: |-
+        src/tools/shared.ts 新增 `export const WINDOW_MODES = ['fork','create'] as const` 与 `export function windowInheritanceSchema()`（每次返回新对象）；HandoffTool.ts 删 HANDOFF_MODES 与 inheritance 字面量改引用；OpenWindowTool.ts 删 OPEN_WINDOW_MODES 与 inheritance 字面量改引用。只抽这两处，不碰 capture/create 文案。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/open-window-tool.test.ts tests/handoff.test.ts tests/open-window-inherit.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-084edc
+      phase: implement
+      side: backend
+    - id: t-c170f8
+      title: handoff/open_window schema 常量单源化（S6）·联调
+      implements: |-
+        src/tools/shared.ts 新增 `export const WINDOW_MODES = ['fork','create'] as const` 与 `export function windowInheritanceSchema()`（每次返回新对象）；HandoffTool.ts 删 HANDOFF_MODES 与 inheritance 字面量改引用；OpenWindowTool.ts 删 OPEN_WINDOW_MODES 与 inheritance 字面量改引用。只抽这两处，不碰 capture/create 文案。
+
+        [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/open-window-tool.test.ts tests/handoff.test.ts tests/open-window-inherit.test.ts` → 全绿（请求样例与期望响应一致）
+      serves: []
+      depends_on:
+        - t-92b152
+      phase: implement
+      side: backend
+    - id: t-b46944
+      title: handoff/open_window schema 常量单源化（S6）·复核
+      implements: |-
+        src/tools/shared.ts 新增 `export const WINDOW_MODES = ['fork','create'] as const` 与 `export function windowInheritanceSchema()`（每次返回新对象）；HandoffTool.ts 删 HANDOFF_MODES 与 inheritance 字面量改引用；OpenWindowTool.ts 删 OPEN_WINDOW_MODES 与 inheritance 字面量改引用。只抽这两处，不碰 capture/create 文案。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007220012-bd29/design/` 逐条核对；`npx vitest run tests/open-window-tool.test.ts tests/handoff.test.ts tests/open-window-inherit.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-c170f8
+      phase: implement
+      side: backend
+    - id: t-f35be1
+      title: handoff/open_window schema 常量单源化（S6）·测试
+      implements: |-
+        src/tools/shared.ts 新增 `export const WINDOW_MODES = ['fork','create'] as const` 与 `export function windowInheritanceSchema()`（每次返回新对象）；HandoffTool.ts 删 HANDOFF_MODES 与 inheritance 字面量改引用；OpenWindowTool.ts 删 OPEN_WINDOW_MODES 与 inheritance 字面量改引用。只抽这两处，不碰 capture/create 文案。
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-b46944
+      phase: implement
+      side: backend
+    - id: t-1bc4c0
+      title: 同步面定稿：README + package.json + 全量验证（FR-7）·研发
+      implements: |-
+        README.md 工具表定稿（删 7 个被删工具行、补 reqboard_task_amend 行、组归属调整、计数表述 27→21）；package.json description 计数 27→21；跑 FR-7 全部判据命令矩阵收尾。
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/readme-tool-face.test.ts tests/toolviews-contract.test.ts tests/tools-render-coverage.test.ts tests/tools-schema.test.ts tests/arg-guidance.test.ts tests/error-code-matrix.test.ts` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-06c363
+      phase: doc
+      side: doc
+    - id: t-0a592d
+      title: 同步面定稿：README + package.json + 全量验证（FR-7）·复核
+      implements: |-
+        README.md 工具表定稿（删 7 个被删工具行、补 reqboard_task_amend 行、组归属调整、计数表述 27→21）；package.json description 计数 27→21；跑 FR-7 全部判据命令矩阵收尾。
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007220012-bd29/design/` 逐条核对；`npx vitest run tests/readme-tool-face.test.ts tests/toolviews-contract.test.ts tests/tools-render-coverage.test.ts tests/tools-schema.test.ts tests/arg-guidance.test.ts tests/error-code-matrix.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-1bc4c0
+      phase: doc
+      side: doc
+task_coverage:
+  - task_id: t-c21292
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-38c7cd
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-856177
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ef2395
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-084edc
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-06c363
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-34ec16
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-2727b0
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-6bf013
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-0e87d2
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b603b6
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-14c8be
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-2d1abf
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-5ad80b
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b65d24
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-5251be
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b96bc1
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-38f407
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-7bb731
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b24703
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-9e29b1
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-795d16
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-e7d151
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-10e826
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-214c00
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-c14abb
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-92324a
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-92b152
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-c170f8
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-b46944
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-f35be1
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-1bc4c0
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-0a592d
+    covers_prototypes: []
+    covers_decisions: []
+traceability:
+  design_to_tasks:
+    design/architecture.md#现状盘点与依赖调用方清单:
+      - t-c21292
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+    design/architecture.md#接口契约askconfirm-ticket-取回执模式:
+      - t-38c7cd
+    design/architecture.md#接口契约status-run-节:
+      - t-856177
+    design/architecture.md#接口契约tasktree-taskid-单卡展开模式:
+      - t-856177
+    design/architecture.md#接口契约reqboardtaskamend修缮簇单入口:
+      - t-ef2395
+    design/architecture.md#接口契约公共-schema-常量S6:
+      - t-06c363
+    design/architecture.md#文件结构新建-删除-修改:
+      - t-c21292
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+      - t-084edc
+      - t-34ec16
+    design/architecture.md#行为等价验证设计:
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+      - t-084edc
+    design/architecture.md#边界本设计不做什么:
+      - t-34ec16
+    design/migration.md#数据层不改表不改-schema无迁移:
+      - t-c21292
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+      - t-084edc
+      - t-06c363
+    design/migration.md#调用方迁移对照旧名-新入口:
+      - t-c21292
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+    design/migration.md#分批与独立回滚:
+      - t-c21292
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+      - t-084edc
+      - t-06c363
+      - t-34ec16
+    design/migration.md#失败路径与降级口径:
+      - t-38c7cd
+      - t-856177
+  fr_to_tasks:
+    FR-1:
+      - t-c21292
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+      - t-084edc
+      - t-34ec16
+      - t-06c363
+    FR-2:
+      - t-c21292
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+      - t-084edc
+      - t-34ec16
+      - t-06c363
+    FR-3:
+      - t-c21292
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+      - t-084edc
+      - t-34ec16
+      - t-06c363
+    FR-4:
+      - t-c21292
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+      - t-084edc
+      - t-34ec16
+      - t-06c363
+    FR-6:
+      - t-06c363
+      - t-c21292
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+      - t-084edc
+      - t-34ec16
+    FR-5:
+      - t-c21292
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+      - t-084edc
+      - t-34ec16
+      - t-06c363
+    FR-7:
+      - t-c21292
+      - t-38c7cd
+      - t-856177
+      - t-ef2395
+      - t-084edc
+      - t-34ec16
+      - t-06c363
+coverage:
+  implementation:
+    total: 13
+    covered: 13
+    uncovered: []
+    rate: 100
+    total_designs: 13
+    covered_designs: 13

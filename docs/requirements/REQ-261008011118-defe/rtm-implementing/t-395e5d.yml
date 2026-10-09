@@ -1,0 +1,38 @@
+task:
+  id: t-395e5d
+  title: 回退加队列补偿并补齐取消/复位事件与 version·复核
+  status: done
+  implements: |-
+    ① `src/application/internal/rollback-tasks.ts`：被取消卡（顶层父卡 + 占位重做卡）用 recordStatus 追加 canceled 状态事件，取消卡与复位子卡 version 均 += 1（复位子卡保留既有 todo 复位事件，不写取消三字段）；② `src/application/use-cases/MoveRequirement.ts`：回退分支在任务写前采集 preImage（mutateQueue 回调内逐卡 structuredClone）与 createdDraftIds；需求侧未落账（mutate 抛错，或回调因 req.status!==from 返回 undefined）时调一次 mutateQueue 补偿——按 preImage 恢复九字段（status/statusHistory/version/updatedAt/updatedBy/revisions/canceledAt/canceledBy/cancelReason）并移除本轮新建的重做卡；补偿失败抛 REQBOARD_ROLLBACK_COMPENSATION_FAILED 并在需求台账留评论点名受影响卡；漂移 no-op 抛 REQBOARD_CONFLICT（含 from→当前 status）；落库白名单从四字段扩到九字段（三字段逐键 !== undefined 判定保留）；③ `src/shared/error-code-registry.ts` 注册新码，并用 `npx tsx tests/drill/refresh-error-code-inventory.mts` 刷新 `tests/fixtures/error-code-inventory.json`；④ `tests/move-rollback.test.ts` 补补偿两臂与事件/version 断言，`tests/canceled-task-trail.test.ts` 的端到端落盘节补 statusHistory/version 两条。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008011118-defe/design/` 逐条核对；`npx vitest run tests/move-rollback.test.ts tests/canceled-task-trail.test.ts tests/error-code-registry.test.ts tests/error-code-inventory.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-bd3094
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008011118-defe
+    TASK_ID: t-395e5d
+    TASK_TITLE: 回退加队列补偿并补齐取消/复位事件与 version·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T17:45:58.559Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008011118-defe
+  generated_at: 2026-10-07T17:45:51.284Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T17:45:58.560Z

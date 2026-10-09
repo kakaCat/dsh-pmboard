@@ -1,0 +1,38 @@
+task:
+  id: t-c0a71e
+  title: Dive Service 外壳外移到适配层·测试
+  status: done
+  implements: |-
+    把 src/application/dive/ReqboardDiveManager.ts 外移到 src/adapters/ReqboardDiveManager.ts（应用层只留 round 逻辑；类体、Service 名 'dive-manager'、static inject ['agents','reqboard']、订阅分组与失败留痕一字不改），相对 import 重算（../application/use-cases/queue-access.js、../application/dive/round-driver.js、../application/dive/round-subscriptions.js、../application/dive/wake-heartbeat.js、../application/dive/wake-liveness.js、../application/internal/diag-log.js、../domain/status/Predicates.js），@module 注释同步。src/index.ts 的 import 改为 './adapters/ReqboardDiveManager.js'。tests/dive-wake-wiring.test.ts 的 import 同步；tests/dive-manager-wiring.test.ts 里按路径字符串读源码的断言改为新路径。
+
+    [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+  serves: []
+  depends_on:
+    - t-987ec0
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008020617-088f
+    TASK_ID: t-c0a71e
+    TASK_TITLE: Dive Service 外壳外移到适配层·测试
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T18:51:47.410Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008020617-088f
+  generated_at: 2026-10-07T18:49:35.267Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T18:51:47.410Z

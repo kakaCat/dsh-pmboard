@@ -1,0 +1,36 @@
+task:
+  id: t-67a687
+  title: 两处终态文案判定改走 isCanceled 单点并清失效清单条目
+  status: done
+  implements: "① src/client/views/report-head.ts: 新增 import { isCanceled } from '../../domain/status/Predicates.js'，把 :485 的 (h.status === 'canceled' ? '已取消' : '已归档') 改为 (isCanceled(h) ? '已取消' : '已归档')，文案串一字不动；② src/client/views/report-band.ts: 同路径新增 import，把 :290 的 if (status === 'canceled') { 改为 if (isCanceled(report.head)) {，:274 的 status 常量保留（:277/:294/:296/:298/:301/:303 仍在用）；③ tests/fixtures/canceled-literal-baseline.json: 逐条 grep 确认源码已无该行原文后，删除 baseline 里的两条 status-label 条目——src/client/views/report-band.ts 的 '? (status === \\'canceled\\'' 与 src/client/views/report-head.ts 的 '+ (h.status === \\'canceled\\' ? \\'已取消\\' : \\'已归档\\') + \\'，无可执行动作</div></div>\\''；collected 18 条与其余 37 条 baseline 不动。验证：npx vitest run tests/live-tasks-single-source.test.ts 转 17/17 绿，git diff --stat 仅三文件。"
+  serves:
+    - CH-1
+    - CH-2
+  depends_on: []
+  phase: implement
+  side: frontend
+  workflow_params:
+    REQ_ID: REQ-261008011831-3735
+    TASK_ID: t-67a687
+    TASK_TITLE: 两处终态文案判定改走 isCanceled 单点并清失效清单条目
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: frontend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T17:32:27.170Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008011831-3735
+  generated_at: 2026-10-07T17:31:20.751Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T17:32:27.170Z

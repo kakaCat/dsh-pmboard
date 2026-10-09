@@ -1,0 +1,38 @@
+task:
+  id: t-85c2d1
+  title: 收编 note_interruption 为 task_amend(op=interruption) + 守卫 op 化（U2）·联调
+  status: done
+  implements: |-
+    按 design §3 施工：① TaskAmendTool.ts 扩 op=interruption——REQUIRED_OF 加 interruption:[reason]、output.schema 加 interruption 子 schema（at/reason/stage/pendingAction/tool，从 NoteInterruptionTool 平移）、分派 noteInterruption；② 挂起确认守卫按 op 分流：op==='interruption' 跳过 assertNoPendingConfirm（原工具无此前置，行为等价关键点）；③ summary.ts 迁入 noteInterruptionSummary；④ 删 src/tools/NoteInterruptionTool/ 目录；⑤ registry.ts 删条目、responseSources 加 NoteInterruption.ts；⑥ src/index.ts 与 tools/index.ts 摘除；⑦ shared.ts 删 LONG_TEXT_STYLE_ONLY_FIELDS 的 note_interruption 行；⑧ StageActions.ts 删 reqboard_note_interruption 条目；⑨ boundary-guard.ts 的 TASK_AMEND_OP_STAGES 加 interruption:undefined；⑩ NoteInterruption.ts D-3：3 处文案前缀 + tool 字面量改 'reqboard_task_amend'（design §4）；⑪ protocol.ts:1363、interruption.ts:145 注释改写；⑫ 测试：interruption-checkpoint 改打 op=interruption（bp.tool 断言改新值）、arg-guidance 删映射行、ask-confirm-prompt 工具名清单同步。
+
+    [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/interruption-checkpoint.test.ts tests/interruption-dedupe.test.ts tests/arg-guidance.test.ts tests/task-amend-tool.test.ts` → 全绿（请求样例与期望响应一致）
+  serves: []
+  depends_on:
+    - t-ecb91d
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008020552-4aa0
+    TASK_ID: t-85c2d1
+    TASK_TITLE: 收编 note_interruption 为 task_amend(op=interruption) + 守卫 op 化（U2）·联调
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T19:10:50.972Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008020552-4aa0
+  generated_at: 2026-10-07T19:10:29.005Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T19:10:50.972Z

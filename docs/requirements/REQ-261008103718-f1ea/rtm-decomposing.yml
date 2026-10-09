@@ -1,0 +1,128 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261008103718-f1ea
+  generated_at: 2026-10-08T02:47:20.943Z
+  version: 3
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-08T02:47:26.024Z
+inputs:
+  requirements:
+    - id: FR-1
+      title: 修复服务注入声明
+      source: requirement.md
+      line: 43
+  design_sections:
+    - ref: design/solution.md#问题定位
+      title: 问题定位 <!--
+      serves:
+        - FR-1
+      file: design/solution.md
+      section: 问题定位
+    - ref: design/solution.md#修复方案
+      title: 修复方案 <!--
+      serves:
+        - FR-1
+      file: design/solution.md
+      section: 修复方案
+    - ref: design/solution.md#修改点
+      title: 修改点 <!--
+      serves:
+        - FR-1
+      file: design/solution.md
+      section: 修改点
+    - ref: design/solution.md#构建步骤
+      title: 构建步骤 <!--
+      serves:
+        - FR-1
+      file: design/solution.md
+      section: 构建步骤
+    - ref: design/solution.md#验证方法
+      title: 验证方法 <!--
+      serves:
+        - FR-1
+      file: design/solution.md
+      section: 验证方法
+    - ref: design/solution.md#影响分析
+      title: 影响分析 <!--
+      serves:
+        - FR-1
+      file: design/solution.md
+      section: 影响分析
+outputs:
+  tasks:
+    - id: t-c5da35
+      title: 修改 package.json 添加服务声明
+      implements: 在 package.json 第 77 行的 dsh.client.inject 数组中添加 "userQuestions" 声明。修改 1 个文件，添加 1 行代码。
+      serves:
+        - FR-1
+      depends_on: []
+      phase: implement
+      side: frontend
+    - id: t-04b737
+      title: 重新构建客户端
+      implements: 运行 pnpm build:client 重新构建客户端代码，生成包含新配置的 lib/client.js。验证构建过程无报错。
+      serves:
+        - FR-1
+      depends_on:
+        - t-c5da35
+      phase: implement
+      side: frontend
+    - id: t-57b07b
+      title: 验证修复效果
+      implements: 重启 DSH 应用，在会话中调用 reqboard_capture 工具，观察是否在会话中弹出立项弹框，尝试作答并验证能否成功立项。检查浏览器控制台确认 userQuestions service ready 日志出现。
+      serves:
+        - FR-1
+      depends_on:
+        - t-04b737
+      phase: test
+      side: fullstack
+task_coverage:
+  - task_id: t-c5da35
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-04b737
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-57b07b
+    covers_prototypes: []
+    covers_decisions: []
+traceability:
+  design_to_tasks:
+    design/solution.md#问题定位:
+      - t-c5da35
+      - t-04b737
+      - t-57b07b
+    design/solution.md#修复方案:
+      - t-c5da35
+      - t-04b737
+      - t-57b07b
+    design/solution.md#修改点:
+      - t-c5da35
+      - t-04b737
+      - t-57b07b
+    design/solution.md#构建步骤:
+      - t-c5da35
+      - t-04b737
+      - t-57b07b
+    design/solution.md#验证方法:
+      - t-c5da35
+      - t-04b737
+      - t-57b07b
+    design/solution.md#影响分析:
+      - t-c5da35
+      - t-04b737
+      - t-57b07b
+  fr_to_tasks:
+    FR-1:
+      - t-c5da35
+      - t-04b737
+      - t-57b07b
+coverage:
+  implementation:
+    total: 6
+    covered: 6
+    uncovered: []
+    rate: 100
+    total_designs: 6
+    covered_designs: 6

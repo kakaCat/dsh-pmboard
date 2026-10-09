@@ -1,0 +1,36 @@
+task:
+  id: t-b96bc1
+  title: run_status 并入 status、task_status 并入 task_tree（S3）·联调
+  status: done
+  implements: |-
+    StatusTool.ts 加可选 requirement_id/run_id 入参；src/application/query/QueryState.ts 组合 queryRunStatus（用例不改），输出加 run 节（含原 RunStatusTool 的未绑定报错/run_id 反查/TaskStore 未装配显式失败/runId 非 string 删键降级形状，M1 死字段 status/reason 不再声明）。TaskTreeTool.ts 加可选 task_id 入参（与 parent_id 互斥）；src/application/use-cases/TaskTree.ts 加单卡展开分支（平移原 TaskStatusTool 的 taskStore 直读逻辑与 TASK_STATUS_PROGRESS 映射，domain/task/TaskStatus.ts 不动），输出加 task 节。删除 src/tools/RunStatusTool/ 与 src/tools/TaskStatusTool/ 目录；同步 src/index.ts、registry.ts、render-summaries.ts（taskStatusSummary 与 run summarize 随迁）、StageActions.ts、README.md；tests/run-status-tool.test.ts 改打 status、tests/task-status-integration.test.ts 与 tests/task-status-ledger.test.ts 改打 task_tree(task_id)。
+
+    [子卡阶段·联调] 只做本阶段；验收：`npx vitest run tests/run-status-tool.test.ts tests/task-status-integration.test.ts tests/task-status-ledger.test.ts tests/task-tree.test.ts` → 全绿（请求样例与期望响应一致）
+  serves: []
+  depends_on:
+    - t-5251be
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007220012-bd29
+    TASK_ID: t-b96bc1
+    TASK_TITLE: run_status 并入 status、task_status 并入 task_tree（S3）·联调
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 1
+  workflow_done: 1
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T14:48:24.043Z
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007220012-bd29
+  generated_at: 2026-10-07T14:47:57.388Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 1
+  last_updated: 2026-10-07T14:48:27.172Z

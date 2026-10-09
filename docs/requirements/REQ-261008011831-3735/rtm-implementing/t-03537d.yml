@@ -1,0 +1,38 @@
+task:
+  id: t-03537d
+  title: 基线核对落账与类型检查收口·复核
+  status: done
+  implements: |-
+    ① npx tsx scripts/test-baseline.mts --check，逐条核对当前 19 条失败是否均为在途需求已知失败，确认与本需求三文件（report-head.ts / report-band.ts / canceled-literal-baseline.json）相关的为 0 条；② 核对通过后 npx tsx scripts/test-baseline.mts --refresh 落账（只写 docs/reviews/test-baseline.failures.txt 与 test-baseline.md）；③ npx tsx scripts/test-baseline.mts --check 复核；④ npx tsc --noEmit。若核对发现任何与三文件相关的新失败：停止 refresh，回到 t1 先修。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008011831-3735/design/` 逐条核对；`npx vitest run tests/` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-d97ccf
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008011831-3735
+    TASK_ID: t-03537d
+    TASK_TITLE: 基线核对落账与类型检查收口·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-07T18:16:54.357Z
+    - phase: doc
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008011831-3735
+  generated_at: 2026-10-07T18:16:47.639Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T18:16:54.357Z

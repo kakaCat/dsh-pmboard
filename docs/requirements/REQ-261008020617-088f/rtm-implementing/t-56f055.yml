@@ -1,0 +1,38 @@
+task:
+  id: t-56f055
+  title: rtm-health 健康检查读路径端口化并收尾该文件的 I/O·研发
+  status: done
+  implements: |-
+    src/application/internal/rtm-health.ts 的 checkRTMHealth 签名改为 (host: HostFsPort, root: string, req, opts?)，内部的 sidesOf（读 docs/requirements/<id>/requirement.md 的 front-matter）与 readTextIfExists（读 rtm-brainstorming.yml）改走 host.readText(root, relPath)，期望文件的存在性判定改走 host.exists(root, relPath)，期望文件清单 expectedRTMFiles 与原型节判据 prototypeSectionVerdict / prototypesSectionPresent / PROTOTYPE_RULES_SINCE 一律零改动。src/application/query/QueryState.ts 的 checkRTMHealth 调用点改为传 deps.hostFs 与 deps.docs.workspaceRoot()，删掉 workspaceRoot + '/.dsh-data/state' 的字符串拼接。同步适配 tests/unit/rtm-health.test.ts、tests/rtm-health-legacy.test.ts 的构造（用真实 FileHostFs + 测试根）。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/unit/rtm-health.test.ts tests/rtm-health-legacy.test.ts tests/unit/query-run-status.test.ts tests/layer-boundary.test.ts` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-3b104c
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008020617-088f
+    TASK_ID: t-56f055
+    TASK_TITLE: rtm-health 健康检查读路径端口化并收尾该文件的 I/O·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T18:39:21.657Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008020617-088f
+  generated_at: 2026-10-07T18:39:15.003Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T18:39:21.657Z

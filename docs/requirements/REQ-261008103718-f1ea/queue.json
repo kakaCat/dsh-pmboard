@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "requirement_id": "REQ-261008103718-f1ea",
+  "schemaVersion": 9,
+  "generated_at": "2026-10-08T02:47:20.966Z",
+  "tasks": [
+    {
+      "id": "t-c5da35",
+      "requirementId": "REQ-261008103718-f1ea",
+      "title": "修改 package.json 添加服务声明",
+      "cardDoc": "docs/requirements/REQ-261008103718-f1ea/tasks/t-c5da35.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "运行 git diff package.json 确认已在 inject 数组中添加 userQuestions",
+      "implementation": "在 package.json 第 77 行的 dsh.client.inject 数组中添加 \"userQuestions\" 声明。修改 1 个文件，添加 1 行代码。",
+      "context": "",
+      "footprint": {
+        "files": 1,
+        "anchors": 1,
+        "chars": 50
+      },
+      "requirementRefs": [
+        "FR-1"
+      ],
+      "status": "todo",
+      "blocked": false,
+      "executions": [],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791427640898,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-127f5654-ae49-43b1-912c-9d0ea1c827c9"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        }
+      ],
+      "comments": [],
+      "version": 1,
+      "createdAt": 1791427640898,
+      "updatedAt": 1791427640898,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-127f5654-ae49-43b1-912c-9d0ea1c827c9"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-127f5654-ae49-43b1-912c-9d0ea1c827c9"
+      },
+      "layer": 0
+    },
+    {
+      "id": "t-04b737",
+      "requirementId": "REQ-261008103718-f1ea",
+      "title": "重新构建客户端",
+      "cardDoc": "docs/requirements/REQ-261008103718-f1ea/tasks/t-04b737.md",
+      "description": "",
+      "phase": "implement",
+      "side": "frontend",
+      "dependsOn": [
+        "t-c5da35"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "构建成功，输出 lib/client.js 文件大小约 785KB，构建日志显示 Build complete",
+      "implementation": "运行 pnpm build:client 重新构建客户端代码，生成包含新配置的 lib/client.js。验证构建过程无报错。",
+      "context": "",
+      "footprint": {
+        "files": 1,
+        "anchors": 1,
+        "chars": 100
+      },
+      "requirementRefs": [
+        "FR-1"
+      ],
+      "status": "todo",
+      "blocked": false,
+      "executions": [],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791427640898,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-127f5654-ae49-43b1-912c-9d0ea1c827c9"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        }
+      ],
+      "comments": [],
+      "version": 1,
+      "createdAt": 1791427640898,
+      "updatedAt": 1791427640898,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-127f5654-ae49-43b1-912c-9d0ea1c827c9"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-127f5654-ae49-43b1-912c-9d0ea1c827c9"
+      },
+      "layer": 1
+    },
+    {
+      "id": "t-57b07b",
+      "requirementId": "REQ-261008103718-f1ea",
+      "title": "验证修复效果",
+      "cardDoc": "docs/requirements/REQ-261008103718-f1ea/tasks/t-57b07b.md",
+      "description": "",
+      "phase": "test",
+      "side": "fullstack",
+      "dependsOn": [
+        "t-04b737"
+      ],
+      "scope": {
+        "apis": [],
+        "tables": [],
+        "files": []
+      },
+      "acceptance": "运行 `grep -r \"userQuestions\" lib/client.js`，应输出匹配行（证明新配置已打包进客户端）。运行 `node -e \"const fs = require('fs'); const content = fs.readFileSync('lib/client.js', 'utf8'); console.log(content.includes('userQuestions') ? 'PASS: userQuestions found in bundle' : 'FAIL: not found')\"`，应输出 PASS。重启 DSH 后，在浏览器 Console 执行 `window.__dshPmCtx?.inject?.(['userQuestions'], (ctx) => console.log('Service injected:', typeof ctx?.userQuestions))`，应输出 \"Service injected: object\"。",
+      "implementation": "重启 DSH 应用，在会话中调用 reqboard_capture 工具，观察是否在会话中弹出立项弹框，尝试作答并验证能否成功立项。检查浏览器控制台确认 userQuestions service ready 日志出现。",
+      "context": "",
+      "footprint": {
+        "files": 1,
+        "anchors": 2,
+        "chars": 200
+      },
+      "requirementRefs": [
+        "FR-1"
+      ],
+      "status": "todo",
+      "blocked": false,
+      "executions": [],
+      "statusHistory": [
+        {
+          "status": "todo",
+          "at": 1791427640898,
+          "by": {
+            "kind": "agent",
+            "sessionId": "session-127f5654-ae49-43b1-912c-9d0ea1c827c9"
+          },
+          "reason": "拆分落库（reqboard_decompose）"
+        }
+      ],
+      "comments": [],
+      "version": 1,
+      "createdAt": 1791427640898,
+      "updatedAt": 1791427859848,
+      "createdBy": {
+        "kind": "agent",
+        "sessionId": "session-127f5654-ae49-43b1-912c-9d0ea1c827c9"
+      },
+      "updatedBy": {
+        "kind": "agent",
+        "sessionId": "session-127f5654-ae49-43b1-912c-9d0ea1c827c9"
+      },
+      "layer": 2
+    }
+  ],
+  "edges": [
+    {
+      "from": "t-c5da35",
+      "to": "t-04b737"
+    },
+    {
+      "from": "t-04b737",
+      "to": "t-57b07b"
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "tasks": [
+        "t-c5da35"
+      ]
+    },
+    {
+      "layer": 1,
+      "tasks": [
+        "t-04b737"
+      ]
+    },
+    {
+      "layer": 2,
+      "tasks": [
+        "t-57b07b"
+      ]
+    }
+  ],
+  "ready": [
+    "t-c5da35"
+  ],
+  "updated_at": "2026-10-08T02:50:59.849Z"
+}

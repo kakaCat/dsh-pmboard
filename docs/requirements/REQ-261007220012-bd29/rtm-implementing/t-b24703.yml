@@ -1,0 +1,38 @@
+task:
+  id: t-b24703
+  title: 修缮簇合一 reqboard_task_amend（S4）·研发
+  status: done
+  implements: |-
+    新建 src/tools/TaskAmendTool/（TaskAmendTool.ts/index.ts/prompt.ts/summary.ts）：op 必填 enum [refs,adopt,chain]，其余入参平移三原工具；execute 先 assertNoPendingConfirm 再按 op 分派 executeTaskRefs/executeAdoptTask/executeRegenerateChain（用例一行不改）；输出 schema = 三原工具输出键并集 + op 回显；渲染按 op 选 summary（taskRefsSummary 等随迁 summary.ts）。删除 src/tools/TaskRefsTool/、src/tools/AdoptTaskTool/、src/tools/RegenerateTool/ 三目录；同步 src/index.ts、registry.ts、README.md；tests/adopt-task.test.ts、tests/regenerate-chain.test.ts、tests/reqboard/backfill-task-refs.test.ts、tests/receive-mark.test.ts 改打 task_amend 对应 op。
+
+    [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/adopt-task.test.ts tests/regenerate-chain.test.ts tests/reqboard/backfill-task-refs.test.ts` → 全绿；并附 `git diff --stat` 摘要
+  serves: []
+  depends_on:
+    - t-856177
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261007220012-bd29
+    TASK_ID: t-b24703
+    TASK_TITLE: 修缮簇合一 reqboard_task_amend（S4）·研发
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T14:54:36.763Z
+    - phase: test
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261007220012-bd29
+  generated_at: 2026-10-07T14:54:28.756Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T14:54:36.763Z

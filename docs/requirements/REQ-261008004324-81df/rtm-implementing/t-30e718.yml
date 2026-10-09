@@ -1,0 +1,38 @@
+task:
+  id: t-30e718
+  title: 修好缺宿主包与探针锚点两处环境问题·复核
+  status: done
+  implements: |-
+    按 design/fix-design.md「BUG-7」：① tests/isolate-node-context.test.ts 删模块级 import '@deepseek-ai/dsh-session'，改惰性解析 + describe.skipIf 包住「路线 A」describe（先例 tests/decision-gates.test.ts:28 的环境开关与 :417 的 describe.skipIf），文件头写明跳过依据与显式跑法；② tests/zero-arg-binding.test.ts 按「守护对象已消失」退休 4 条环境断言，改成一条显式声明式断言（根 package.json 无 pnpm.patchedDependencies 且 patches/ 目录不存在）+ 文件头写明依据与时点。备选 B（恢复补丁登记）默认不做，需另行批准。
+
+    [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261008004324-81df/design/` 逐条核对；`npx vitest run tests/isolate-node-context.test.ts tests/zero-arg-binding.test.ts` → 全绿；无偏离时显式写明「无偏离」及依据
+  serves: []
+  depends_on:
+    - t-38e54c
+  phase: implement
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008004324-81df
+    TASK_ID: t-30e718
+    TASK_TITLE: 修好缺宿主包与探针锚点两处环境问题·复核
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: implement
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: implement
+      status: done
+      completed_at: 2026-10-07T17:17:45.972Z
+    - phase: review
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008004324-81df
+  generated_at: 2026-10-07T17:17:45.389Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T17:17:45.972Z

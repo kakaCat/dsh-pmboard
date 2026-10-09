@@ -1,0 +1,36 @@
+task:
+  id: t-54f247
+  title: 给层门补显式豁免面并落地空台账
+  status: done
+  implements: "新增 tests/fixtures/layer-boundary-exempt.json：_note 写清准入/清出/棘轮口径，frozenCount: 0，entries: []。tests/layer-boundary.test.ts 把现有扫描抽成共享函数，并加四条判据：① 双向相等——每条 entries 必须命中一处真实越界，否则判红（过期豁免）；② 残量归零——剔除已豁免项后未豁免越界必须为空（沿用既有 application 用例）；③ reason / plan 各 ≥ 20 字；④ frozenCount === entries.length 且 ≤ 测试内硬上界常量 EXEMPT_CEILING（本次 0）。把判据 ① 抽成导出的纯函数 unusedExemptions(bad, entries)，另加一条用合成输入的用例证明『台账指向已修好的文件 → 返回该条』。LAYER_RULES 的 forbidden 数组零改动。"
+  serves:
+    - RF-1
+    - RF-7
+  depends_on: []
+  phase: test
+  side: backend
+  workflow_params:
+    REQ_ID: REQ-261008020617-088f
+    TASK_ID: t-54f247
+    TASK_TITLE: 给层门补显式豁免面并落地空台账
+    DESIGN_FILES: ""
+    TEST_PATTERN: rtm
+    SIDE: backend
+    PHASE: test
+  workflow_total: 2
+  workflow_done: 2
+  workflow:
+    - phase: test
+      status: done
+      completed_at: 2026-10-07T18:55:15.219Z
+    - phase: implement
+      status: done
+metadata:
+  stage: implementing
+  requirement_id: REQ-261008020617-088f
+  generated_at: 2026-10-07T18:52:03.615Z
+  version: 4
+  generated_by: dsh-pmboard
+  detail_dir: rtm-implementing/
+  detail_count: 2
+  last_updated: 2026-10-07T18:55:15.220Z

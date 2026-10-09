@@ -1,0 +1,174 @@
+metadata:
+  stage: decomposing
+  requirement_id: REQ-261007210801-3bff
+  generated_at: 2026-10-07T13:25:59.011Z
+  version: 23
+  generated_by: dsh-pmboard
+  rtm_version: "2.0"
+  last_updated: 2026-10-07T13:35:34.016Z
+inputs:
+  requirements: []
+  design_sections:
+    - ref: design/product-plan.md#1
+      title: 背景与方向裁定 `
+      serves: []
+      file: design/product-plan.md
+      section: "1"
+    - ref: design/product-plan.md#2
+      title: 主攻方向定义 `
+      serves: []
+      file: design/product-plan.md
+      section: "2"
+    - ref: design/product-plan.md#3
+      title: 事项清单（按优先级，后续立项严格按此顺序取） `
+      serves: []
+      file: design/product-plan.md
+      section: "3"
+    - ref: design/product-plan.md#4
+      title: 非目标（现在不做——新念头来了对照此表拦截） `
+      serves: []
+      file: design/product-plan.md
+      section: "4"
+    - ref: design/product-plan.md#5
+      title: 做透判据（全部满足才可换下一个方向） `
+      serves: []
+      file: design/product-plan.md
+      section: "5"
+    - ref: design/product-plan.md#6
+      title: 修订与反悔 `
+      serves: []
+      file: design/product-plan.md
+      section: "6"
+    - ref: design/product-plan.md#修订记录
+      title: 修订记录 `
+      serves: []
+      file: design/product-plan.md
+      section: 修订记录
+outputs:
+  tasks:
+    - id: t-661634
+      title: 规划落长期位置并挂进项目说明书
+      implements: 1) 以已确认的 design/product-plan.md 为源，新建 docs/strategy-research/product-plan-ux-focus.md（front-matter 齐全，内容=方向裁定/事项清单/非目标/做透判据的长期版）；2) 编辑 docs/architecture/project-manual.md 索引表加一行指针；3) 跑验收命令核对
+      serves:
+        - DOC-1
+        - DOC-2
+        - DOC-3
+        - DOC-4
+        - DOC-5
+      depends_on: []
+      phase: doc
+      side: doc
+    - id: t-828532
+      title: 按 DOC-1..5 判据逐项核对并交付验收
+      implements: 1) 逐条执行需求文档 DOC-1..5 的判据命令（test -f / grep -c），记录输出；2) 汇总为逐项验收结果提交 reqboard_submit(kind=verification)
+      serves:
+        - DOC-1
+        - DOC-2
+        - DOC-3
+        - DOC-4
+        - DOC-5
+      depends_on:
+        - t-661634
+      phase: test
+      side: doc
+    - id: t-486746
+      title: 规划落长期位置并挂进项目说明书·研发
+      implements: |-
+        1) 以已确认的 design/product-plan.md 为源，新建 docs/strategy-research/product-plan-ux-focus.md（front-matter 齐全，内容=方向裁定/事项清单/非目标/做透判据的长期版）；2) 编辑 docs/architecture/project-manual.md 索引表加一行指针；3) 跑验收命令核对
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on: []
+      phase: doc
+      side: doc
+    - id: t-f842e3
+      title: 规划落长期位置并挂进项目说明书·复核
+      implements: |-
+        1) 以已确认的 design/product-plan.md 为源，新建 docs/strategy-research/product-plan-ux-focus.md（front-matter 齐全，内容=方向裁定/事项清单/非目标/做透判据的长期版）；2) 编辑 docs/architecture/project-manual.md 索引表加一行指针；3) 跑验收命令核对
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007210801-3bff/design/` 逐条核对；`npx vitest run tests/` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-486746
+      phase: doc
+      side: doc
+    - id: t-bc7074
+      title: 按 DOC-1..5 判据逐项核对并交付验收·研发
+      implements: |-
+        1) 逐条执行需求文档 DOC-1..5 的判据命令（test -f / grep -c），记录输出；2) 汇总为逐项验收结果提交 reqboard_submit(kind=verification)
+
+        [子卡阶段·研发] 只做本阶段；验收：`npx vitest run tests/` → 全绿；并附 `git diff --stat` 摘要
+      serves: []
+      depends_on:
+        - t-661634
+      phase: test
+      side: doc
+    - id: t-ed8d50
+      title: 按 DOC-1..5 判据逐项核对并交付验收·复核
+      implements: |-
+        1) 逐条执行需求文档 DOC-1..5 的判据命令（test -f / grep -c），记录输出；2) 汇总为逐项验收结果提交 reqboard_submit(kind=verification)
+
+        [子卡阶段·复核] 只做本阶段；验收：对照 `docs/requirements/REQ-261007210801-3bff/design/` 逐条核对；`npx vitest run tests/` → 全绿；无偏离时显式写明「无偏离」及依据
+      serves: []
+      depends_on:
+        - t-bc7074
+      phase: test
+      side: doc
+    - id: t-301e61
+      title: 按 DOC-1..5 判据逐项核对并交付验收·测试
+      implements: |-
+        1) 逐条执行需求文档 DOC-1..5 的判据命令（test -f / grep -c），记录输出；2) 汇总为逐项验收结果提交 reqboard_submit(kind=verification)
+
+        [子卡阶段·测试] 只做本阶段；验收：`pnpm test` → 失败数 ≤ 开工前基线；`npx tsc --noEmit` → 错误数 ≤ 基线（贴汇总输出）
+      serves: []
+      depends_on:
+        - t-ed8d50
+      phase: test
+      side: doc
+task_coverage:
+  - task_id: t-661634
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-828532
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-486746
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-f842e3
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-bc7074
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-ed8d50
+    covers_prototypes: []
+    covers_decisions: []
+  - task_id: t-301e61
+    covers_prototypes: []
+    covers_decisions: []
+traceability:
+  design_to_tasks:
+    design/product-plan.md#1: []
+    design/product-plan.md#2: []
+    design/product-plan.md#3: []
+    design/product-plan.md#4: []
+    design/product-plan.md#5: []
+    design/product-plan.md#6: []
+    design/product-plan.md#修订记录: []
+  fr_to_tasks: {}
+coverage:
+  implementation:
+    total: 7
+    covered: 0
+    uncovered:
+      - design/product-plan.md#1
+      - design/product-plan.md#2
+      - design/product-plan.md#3
+      - design/product-plan.md#4
+      - design/product-plan.md#5
+      - design/product-plan.md#6
+      - design/product-plan.md#修订记录
+    rate: 0
+    total_designs: 7
+    covered_designs: 0

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P1：弹框与确认门体验优化 · 原型（REQ-261007223647-da5d）</title>
+<!--
+  原型（REQ-261007223647-da5d）：立项弹框两段内容重构 + 看板 pending 票醒目 + 文档地址一致性。
+  纪律：这是**原型**不是交付物——样式从简、重点是结构与交互路径；换正式视觉稿时旧稿标 superseded、不删文件。
+  权威判定以 prototypes/INDEX.md 为准（本文件 = 唯一 authoritative）。
+-->
+<style>
+body{font-family:-apple-system,"PingFang SC",sans-serif;margin:0;background:#f5f6f8;color:#24292f}
+header{background:#1f2328;color:#fff;padding:12px 20px;font-size:14px}header .req{opacity:.7;margin-left:8px}
+.fr{background:#fff;margin:16px auto;max-width:860px;border:1px solid #d0d7de;border-radius:8px;padding:20px}
+.fr h2{margin:0 0 4px;font-size:16px}.meta{color:#57606a;font-size:12px;margin-bottom:12px}
+.flow{font-size:13px;color:#57606a;margin-top:12px}
+/* 弹框线框 */
+.popup{max-width:520px;border:1px solid #8c959f;border-radius:10px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:14px 16px;margin:8px 0}
+.popup .p-head{font-size:12px;color:#57606a;margin-bottom:6px}
+.popup .p-q{font-size:14px;font-weight:600;margin-bottom:10px}
+.opt{border:1px solid #d0d7de;border-radius:6px;padding:8px 10px;margin:6px 0;font-size:13px}
+.opt .d{color:#57606a;font-size:12px;margin-top:2px}
+.opt.rec{border-color:#1a7f37;background:#f0fff4}
+.opt.rec .tag{color:#1a7f37;font-weight:600;font-size:11px;margin-left:6px}
+.opt.danger{color:#6e7781}
+.opt.onkey{border-color:#0969da;background:#ddf4ff}
+/* 看板线框 */
+.board{border:1px solid #d0d7de;border-radius:8px;background:#f6f8fa;padding:12px;margin:8px 0}
+.ticket{display:flex;align-items:center;gap:10px;border:2px solid #bf8700;background:#fff8e6;border-radius:8px;padding:10px 12px;font-size:13px}
+.ticket .left{flex:1}.ticket .time{font-weight:700;color:#9a6700}
+.btn{border:1px solid #1f2328;border-radius:6px;padding:4px 12px;font-size:12px;background:#1f2328;color:#fff}
+.btn.ghost{background:#fff;color:#1f2328}
+/* 地址对照 */
+.addr{font-family:ui-monospace,monospace;font-size:12px;border-radius:6px;padding:8px 10px;margin:6px 0}
+.addr.bad{background:#ffebe9;border:1px solid #cf222e;color:#cf222e;text-decoration:line-through}
+.addr.good{background:#f0fff4;border:1px solid #1a7f37;color:#1a7f37}
+.diff{font-size:12px;color:#57606a}
+</style>
+</head>
+<body>
+<header><strong>P1：弹框与确认门体验优化</strong><span class="req">REQ-261007223647-da5d · 原型 v1.0 · 2026-10-07 · 权威版</span></header>
+
+<!-- 权威版本标记位：本文件 = INDEX「状态」列唯一那条 authoritative 的路径。 -->
+
+<!-- ══════════════ FR-1 ══════════════ -->
+<section class="fr" id="FR-1">
+  <h2>FR-1 弹框投递与作答解耦</h2>
+  <div class="meta">优先级 P0 · 后端为主 · 状态：线框</div>
+  <div class="board">
+    <div class="diff">交互路径（确认票为例）：</div>
+    <div class="flow">
+      1. agent 调工具 → 票<b>先落台账</b>（pending，带到期时间）→ 弹框只是票的「通知器」<br>
+      2. 工具 30s 超时 / 调用中断 → <b>票仍在</b>，看板与重投入口可见（FR-5 承接展示）<br>
+      3. 人作答（弹框或看板）→ <b>作答到达即落盘</b>（含「✖️ 不需要立项」拒绝留痕），不等调用延续段<br>
+      4. 票丢失/中断 → 回执给 ticket，一键重投（同一张票重发通知，不新开第二道门）
+    </div>
+  </div>
+  <div class="flow">分支：弹框通道不可用 → 票照样落台账，走看板作答；两边都不在 → 响亮失败，不静默。</div>
+</section>
+
+<!-- ══════════════ FR-2 ══════════════ -->
+<section class="fr" id="FR-2">
+  <h2>FR-2 取消/拒绝后的替代作答引导</h2>
+  <div class="meta">优先级 P1 · 后端（回执文案+计数） · 状态：线框</div>
+  <div class="popup">
+    <div class="p-head">取消弹框后的回执（agent 可见 → 转告人）</div>
+    <div class="opt">
+      本次未立项（你取消了弹框）。不想用弹框？两条替代路径：<br>
+      ① 直接文字告诉我「名称/类型/算力档位/文件落点」，我走 reqboard_create；<br>
+      ② 去 <b>看板 → 立项</b> 页面填写（/dashboard#pmboard）。
+      <div class="d">同一窗口连续取消 3 次 → 下次不再弹框，直接提议走看板。</div>
+    </div>
+  </div>
+  <div class="flow">交互路径：1. 人取消 → 2. 回执带替代路径 → 3. 计数+1 → 4. 到阈值改走看板（不裸重弹）。</div>
+</section>
+
+<!-- ══════════════ FR-3 ══════════════ -->
+<section class="fr" id="FR-3">
+  <h2>FR-3 立项弹框内容重构（两段，4 问）</h2>
+  <div class="meta">优先级 P0 · 前端（弹框内容装配） · 状态：线框 · D-6/D-7/D-8 已裁定</div>
+
+  <div class="diff">第一段（立项意愿 + 名称）——题干带理由，推荐置首，✖️ 置末：</div>
+  <div class="popup">
+    <div class="p-head">PM · 立项确认</div>
+    <div class="p-q">建议立项：《P1：弹框与确认门体验优化》——规划对话中连续取消 3 次弹框，确认票超时挂死 30 分钟。</div>
+    <div class="opt rec">✅ P1：弹框与确认门体验优化<span class="tag">推荐</span>
+      <div class="d">agent 推荐 · 最贴近本次意图</div></div>
+    <div class="opt">弹框与人工门体验整治<div class="d">候选 2</div></div>
+    <div class="opt onkey">⚡ 全部按推荐值立项
+      <div class="d">名称/类型/算力档位/文件落点全走推荐值，一次点击完成（记 defaults_used）</div></div>
+    <div class="opt danger">✖️ 不需要立项
+      <div class="d">本次不创建；30 分钟内本窗口不再弹立项框</div></div>
+  </div>
+
+  <div class="diff">第二段（明细，3 问；选「全部按推荐值」则整段跳过）：</div>
+  <div class="popup">
+    <div class="p-head">PM · 需求类型</div>
+    <div class="opt rec">feature<span class="tag">推荐</span><div class="d">功能（新增能力）</div></div>
+    <div class="opt">bug / doc / refactor / spike / chore<div class="d">各带一句中文说明（现状已有，不动）</div></div>
+  </div>
+  <div class="popup">
+    <div class="p-head">PM · 算力档位</div>
+    <div class="p-q">立项后 agent 在这条需求上投入多少 LLM 算力（提示词详略与检查强度）</div>
+    <div class="opt rec">standard<span class="tag">推荐</span><div class="d">完整流程纪律，算力与质量平衡；适合大多数需求</div></div>
+    <div class="opt">simple<div class="d">轻量提示词、最少检查，算力最省；适合小改/快任务</div></div>
+    <div class="opt">advanced<div class="d">更细的提示词与检查点，算力更高；适合复杂需求</div></div>
+    <div class="opt">expert<div class="d">最严纪律、最多检查，算力最高；适合高风险改动</div></div>
+  </div>
+  <div class="popup">
+    <div class="p-head">PM · 文件落点（方案 A：两问合一，D-8）</div>
+    <div class="p-q">这条需求的文档与产物文件创建到哪里</div>
+    <div class="opt rec">/Users/mac/Documents/ai/dsh/dsh-pmboard/docs/requirements/&lt;REQ&gt;/<span class="tag">推荐</span>
+      <div class="d">当前工作区 · 标准需求目录（拼好的绝对路径，作答即见落点）</div></div>
+    <div class="opt">&lt;宿主默认工作区&gt;/docs/requirements/&lt;REQ&gt;/<div class="d">宿主默认工作区</div></div>
+    <div class="opt">自定义<div class="d">输入绝对路径（须已存在）</div></div>
+  </div>
+  <div class="flow">对照（被取代的现状）：✖️ 置首 / 题干无理由 / 裸哨兵标签 session-workspace / 难度四裸词 / 文档位置与工作区分两问。</div>
+</section>
+
+<!-- ══════════════ FR-4 ══════════════ -->
+<section class="fr" id="FR-4">
+  <h2>FR-4 文案口径一致性</h2>
+  <div class="meta">优先级 P1 · 前端+后端文案 · 状态：清单型</div>
+  <div class="board">
+    <div class="diff">收口清单（单一事实源 = capture-mapping 的问项定义）：</div>
+    <div class="flow">
+      ① 立项问数：CaptureTool 说「四问」、CreateTool 说「三问」、实际 5 问 → 全部对齐到重构后的 <b>4 问</b>；<br>
+      ② submit prompt「五类」漏 prototype → 补；<br>
+      ③ 推荐标记四种写法（推荐 / Recommended / 推荐 - 标准需求目录 / 推荐 · ）→ 统一中文「推荐」；<br>
+      ④ 其余漂移按 reqboard-plugin-audit-2026-10-07.md 清单逐条核销。
+    </div>
+  </div>
+  <div class="flow">交互路径：无新交互——grep 口径扫描归零 + 契约扫描测试守住不回潮。</div>
+</section>
+
+<!-- ══════════════ FR-5 ══════════════ -->
+<section class="fr" id="FR-5">
+  <h2>FR-5 pending 确认票看板醒目</h2>
+  <div class="meta">优先级 P0 · 前端（看板首屏） · 状态：线框</div>
+  <div class="board">
+    <div class="diff">看板首屏顶部（有任何 pending 票时钉在最上，不进详情页即可处理）：</div>
+    <div class="ticket">
+      <span>🔔</span>
+      <span class="left"><b>验收确认 · REQ-261007223647-da5d</b><br>
+      <span class="diff">提交于 3 分钟前 · 等待人工审核（pc-a3d0aa）</span></span>
+      <span class="time">剩余 26:41</span>
+      <span class="btn">去作答</span>
+      <span class="btn ghost">重投弹框</span>
+    </div>
+    <div class="ticket" style="margin-top:8px">
+      <span>🔔</span>
+      <span class="left"><b>设计文档确认 · REQ-…</b><br><span class="diff">已超时 —— 票仍有效，可一键重投</span></span>
+      <span class="time">已超时</span>
+      <span class="btn">去作答</span>
+      <span class="btn ghost">重投弹框</span>
+    </div>
+  </div>
+  <div class="flow">交互路径：1. 打开看板 → 2. 首屏即见几张票在等、各剩多久 → 3. 「去作答」进验收单 /「重投弹框」重发通知（FR-1 承接）。</div>
+</section>
+
+<!-- ══════════════ FR-6 ══════════════ -->
+<section class="fr" id="FR-6">
+  <h2>FR-6 文档打开根解析修复</h2>
+  <div class="meta">优先级 P0 · 前端（open-doc 链） · 状态：对照线框</div>
+  <div class="diff">用户现场（2026-10-07）：点「文档」打开的地址 ≠ 文件实际落点——</div>
+  <div class="addr bad">✗ /Users/mac/Documents/ai/dsh/docs/requirements/REQ-…（拿错根：串了别的会话/缓存缺失）</div>
+  <div class="addr good">✓ /Users/mac/Documents/ai/dsh/dsh-pmboard/docs/requirements/REQ-…（需求级 workspaceRoot）</div>
+  <div class="board">
+    <div class="diff">修复后的一致性自检（面板「📂 文档位置」行）：</div>
+    <div class="flow">
+      显示地址 = 台账 docBasePath ⊕ 需求级 workspaceRoot 解析值；<br>
+      解析根缺失 / 与落盘根不一致 → 该行<b>红字标注</b>「地址可能不准（根来源：回落）」，不静默显示一个必然 404 的地址。
+    </div>
+  </div>
+  <div class="flow">交互路径：1. 点文档 → 2. 三级根回落逐环带诊断 → 3. 打开的就是落盘地址；打不开时红字说明哪一级根拿错。</div>
+</section>
+
+<!-- geometry 观测量块（proto-geometry）：恰好一块；只放观测量，无阈值字段。 -->
+<!-- proto-geometry {"observations":[
+  {"name":"firstPopupOptionCount","value":4,"unit":"count","at":{"width":1280,"state":"terminal"}},
+  {"name":"rejectOptionPosition","value":4,"unit":"count","at":{"width":1280,"state":"terminal"}},
+  {"name":"captureQuestionCount","value":4,"unit":"count","at":{"width":1280,"state":"terminal"}},
+  {"name":"pendingTicketBlocks","value":2,"unit":"count","at":{"width":1280,"state":"inflight"}}
+]} -->
+
+</body>
+</html>
