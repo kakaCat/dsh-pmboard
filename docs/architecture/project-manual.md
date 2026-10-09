@@ -13,10 +13,12 @@
 | **「已取消的卡不该出现在视图与统计里」怎么落地；六类不会报错的退化（登记口径/字段搬运/渲染通道/快照陈旧/读侧判死/自相矛盾）怎么发现怎么锁** | [活卡口径单点与六类「假绿」](live-card-single-source.md) |
 | 插件的运行/构建前提（装载层文件、构建产物与已加载模块的陈旧态、**客户端样式表的归属契约**） | [插件运行前提](plugin-runtime-prerequisites.md) |
 | **控制台红字：插件包地址 404（`plugins/??…&rev=…`）或 `plugins/events` net::ERR_FAILED——先判「是不是插件坏了」** | [插件重载排查：包 404 与 HMR 断线](../guides/plugin-reload-troubleshooting.md) |
+| **弹框不出现（`reqboard_capture` / `reqboard_ask_confirm` / 验收单）——先读 `[UI-*]` 诊断判「请求被网关拒收 / 服务未注入 / 已送达未渲染」** | [弹框不出现排查](../guides/dialog-not-showing-troubleshooting.md) |
 | **列表视图窄屏怎么适配（列让位断点、滚动兜底、回归探针怎么跑）** | [列表视图自适应](list-view-responsive.md) |
 | **会话头部那张需求流程图挂在哪、窄窗口怎么降级、详情面板锚在哪（改头部要动哪些文件、回归怎么跑）** | [会话头部需求流程图](conversation-header-progress.md) |
 | **读/写各按哪个根找文件、写文件（根从哪来——项目身份优先、路径兜底；根错时哪些门会静默放行、写侧并发为什么不再误拒）**；以及**详情页判「文档在不在」按哪个根、判不了时为什么说「未判定」而不是「缺失」** | [读盘闸门的根解析](gate-read-root.md) |
 | **归档需求在看板上的入口与只读口径（"归档≠数据被收回"、两个投影、终态为什么不能有按钮）** | [归档需求的可回看入口](archived-entry.md) |
+| **弹框留痕与 pending 票：作答为什么不会丢、票丢了怎么如实查、看板首屏横带与票行的形状文案、根来源红字** | [弹框留痕与 pending 票可见性](pending-confirm-visibility.md) |
 | **旧 URL 深链在面板时代怎么活过来（兼容入口 / 片段消费 / 定位通道三段链路；为什么是 200 中转页而非 302；可见性门闩）** | [深链与面板导航](panel-deep-links.md) |
 | **自动链能不能自己跑（owner 必须是 id 字符串、失败不留锁、人的显式接回、以及三条已知缺口 N-1..N-3）** | [自动链契约](automation-chain-contract.md) |
 | **子卡阶段链的段从哪来（五档优先级）、加一段要登记哪几处、`manual` 段为什么能停链等人** | [子卡阶段模板](subtask-stage-template.md) |
@@ -27,6 +29,7 @@
 | **这个项目分几层、有哪些硬纪律、改 UI 去哪取颜色、历史结论在哪** | **[项目知识层](../knowledge/INDEX.md)**（入口 ≤8K 字符；`pnpm run kb:check` 九项自检） |
 | **确认门走完之后为什么该动的状态没动（两条路径一份推进实现、门必须同源、自动确认的窄口径预判）** | [确认门的推进契约](confirm-gate-advance.md) |
 | **reqboard 插件工具面有哪些已知问题（3 高危 bug / 27 工具精简方案 / 136 个错误码无注册表 / 文案漂移清单）与待裁决项** | [reqboard 插件工具面体检（2026-10-07）](../strategy-research/reqboard-plugin-audit-2026-10-07.md) |
+| **现阶段主攻方向是什么、按什么顺序立项、什么念头该忍住不做（P1–P4 / 非目标 / 做透判据）** | [产品规划：主攻体验与可视化（2026-10-07 裁定）](../strategy-research/product-plan-ux-focus.md) |
 
 ## 全局约定
 
@@ -140,7 +143,7 @@
 |---|---|---|
 | 未列文件怎么处置？ | 必须**显式决定**：收进 `docs`，或传 `unlisted_ack: [{path, reason}]` 写明为何不收；两者都不做 → **拒绝提交且零台账改动**（对账在写台账之前） | `npx vitest run tests/archive-reconcile.test.ts` |
 | 哪些文件不必进清单？ | 只有**工具重建物**：`rtm-*.yml`（文件名通配）、`rtm-*` 目录、`queue.json`、`state/` 目录段；规则常量带理由，人的工作记录（`tasks/`、`evidence/`、`design/`、`tests/`、`reviews/`）一律**不豁免** | `npx vitest run tests/archive-exemptions.test.ts` |
-| 归档后发现漏了怎么办？ | 走受控补录（工具 `reqboard_archive_amend` / 看板路由，共用同一用例）：**只追加**、幂等、必须写理由、留痕；不碰产物文件与 `merged_into`/`manual_updates`/需求状态 | `npx vitest run tests/archive-amend.test.ts` |
+| 归档后发现漏了怎么办？ | 走受控补录（工具 `reqboard_task_amend(op=archive)` / 看板路由，共用同一用例）：**只追加**、幂等、必须写理由、留痕；不碰产物文件与 `merged_into`/`manual_updates`/需求状态 | `npx vitest run tests/archive-amend.test.ts` |
 | 事后在哪看对账结论？ | 台账 `archive.reconcile` + 需求评论 + 看板归档页「清单对账」行（老记录显示「未对账」，**0 ≠ 未对账**） | `npx vitest run tests/archive-manifest-view.test.ts` |
 | 嫌太严想回退？ | `archive.unlistedGate = 'warn'` 回到旧语义（只留痕不拦）；非法值**装配期抛错** | `npx vitest run tests/archive-gate-config.test.ts` |
 | 端到端怎么自证？ | 六步用例（工具壳 → 用例 → 台账 → 评论 → 看板渲染，断言可观察终态） | `npx vitest run tests/archive-reconcile-e2e.test.ts` |
@@ -195,6 +198,29 @@
 1. **防的是"发生"，不是"报错好看"**：约定放在工具描述里（模型每次调用都读到），而不是等适配器报错后再补救；
    也不做"自动修复模型输出"（二次 LLM 改写 / 客户端正则洗文本）——那会把「响亮失败」换成「静默改数据」。
 2. **约定必须有反向用例守着**：只写进描述而无断言，删掉一个字都不会有人发现；本仓口径是「正向 + 两条反向证伪」。
+
+**补记（2026-10-07，REQ-261007200706-89b7）：约定按语义两级化，"多挂"也是缺陷**
+
+> 上面的表写于「一条常量、三锚点、15 条登记」的时代。2026-10-07 的体检批次改掉了它的**单层假设**：
+> 「文本过大拆成多次调用」对**幂等/追加**工具是好建议，对**一次性副作用**工具（交接 / 推进 / 断点 /
+> 修缮 / 立项）却是**危险指引**——照它做 = 把同一个动作执行两遍。于是常量与登记表都按语义分两级：
+
+| 层 | 位置 | 谁用 | 判据 |
+|----|------|------|------|
+| 写法指引 `LONG_TEXT_STYLE_NOTE` | `src/tools/shared.ts` | **所有**长文本字段 | `grep -rl LONG_TEXT_STYLE_NOTE src/tools/ \| wc -l` → 6 |
+| 「拆成多次调用」`LONG_TEXT_SPLIT_NOTE` | 同上 | 只在 `LONG_TEXT_FIELDS`（幂等/追加 = 5 条 / 3 工具：task_report ×3、submit.summary、ask_confirm.question） | `npx vitest run tests/arg-guidance.test.ts`（TC-2） |
+| 一次性副作用登记 | `LONG_TEXT_STYLE_ONLY_FIELDS` = 4 条 / 4 工具（task_move、capture、task_amend、handoff；note_interruption 已随 REQ-261008020552-4aa0 收编出表） | **禁止**出现该半句 | 同上 **TC-2b 反向锁**：逐字段断言"写法锚点在场 + 不含 SPLIT"，并断言两表不重叠 |
+| 兼容口 | `LONG_TEXT_ARG_NOTE` = STYLE + SPLIT | 旧引用（`grep -rl` → 5 文件） | `npx vitest run tests/submit-prompt-budget.test.ts`（预算与细则之家） |
+
+两条可复用认知：
+
+1. **"好指引"要连语义一起搬**：复制文案时只抄字面、不抄适用条件，就会把幂等工具的建议挂到一次性工具上；
+   判据不能只查"在场"，还要查"**不该在的场合不在场**"（本仓叫反向锁）。
+2. **派生量不手写**：本批同时把全仓"三问/四问/五问"、「13 个工具」、「五类提交入口」这类手写计数清零
+   （问数的事实源是 `CAPTURE_QUESTION_IDS`，工具数的机器索引在 `package.json`/registry）——
+   凡是从实现派生的数字，抄进文案就一定会漂。
+
+**合并去向**：本条补记并入本文件（L1 说明书）；批次全貌见 `docs/requirements/REQ-261007200706-89b7/`。
 
 
 **补记（2026-10-02，原需求 REQ-261002110908-81d0 解锁过程的三条教训）**：
@@ -367,6 +393,67 @@
   工具自述写「四问」，注入文案与 README 正文写「三问」。修它要动工具自述提示词与注入文案，
   须先裁定事实源。
 
+**续篇（2026-10-07，REQ-261007220012-bd29）**：工具面本体从 **27 → 21**。上面这套「唯一事实源 + 派生校验」
+是**前提**：正因为五处口径已经绑成断言，删/合并 7 个槽位才可能一眼看出漏改了哪一处。
+精简的现状清单、**退役/合并的六步动作序列**、两处易漏的连带面（错误码清单 / 注入片段生成）、
+以及「不许顺手改」的边界，见领域篇 [工具面清单与精简手册](tool-face-inventory.md)。
+
+## 机制备忘：层边界收口——端口面与豁免面（2026-10-08，REQ-261008020617-088f）
+
+**问题**：`tests/layer-boundary.test.ts` 的 application/ 用例长期红着 15 处 I/O 越界，而这门
+**没有任何豁免出口**——想「当期不修、另有用例承接」也无处登记，于是只能永久红；永久红的门等于没人看
+（那 15 处里就有三份「写得早、没人替完」的同构克隆）。
+
+**收口后的形状**（四条可复述的口径）：
+
+| 面 | 现在的唯一落点 | 口径 |
+|---|---|---|
+| 三份同构 RTM 门 | `src/application/gate/rtm-gates.ts` | 差异只剩一张 `RtmGateSpec`；读盘走 `DocRepository`（故同样受 [读盘闸门的根解析](gate-read-root.md) 的校正纪律约束） |
+| 宿主文件面 | 端口 `HostFsPort` + 实现 `adapters/FileHostFs` | `cwd` / `isDirectory` / `exists` / `existsAbs` / `readText` / `readStateJson` / `writeStateJsonAtomic`，**同步**且**根逐次显式** |
+| 诊断日志 | 门面 `application/internal/diag-log` + 实现 `adapters/FileDiagSink` | 门面零 I/O（6 个调用点一字未改），轮转/追加/容错在适配层 |
+| 层门豁免 | `tests/fixtures/layer-boundary-exempt.json` + 四条判据 | 双向相等（过期豁免即红）· 残量归零 · 理由 ≥20 字 · `frozenCount` 只减不增且 ≤ 测试内硬上界 |
+
+**为什么 `HostFsPort` 的根要逐次传、而不是构造期绑定**：`deps.docs` 是宿主级单例，根会被别的窗口
+（另一个会话工作区）改掉；[读盘闸门的根解析](gate-read-root.md) 记着两次真实事故——不按被核验需求的根
+再校正一次，完整性门会**误拦**、其余读类门会**静默放行**。把根绑进构造期 = 把那条事故重新种进类型里。
+
+**两条可复用教训（本次实测）**：
+
+1. **强转构造的测试夹具会掩盖必填端口**。`UseCaseDeps` 新增必填 `hostFs` 后，`npx tsc --noEmit` 只报出
+   直接写类型标注的 5 处装配点；另有 15 份夹具用 `as unknown as UseCaseDeps` 造 deps，**类型检查看不见**，
+   运行期表现为 `/state` 的 `rtm_health` 静默缺失（只在日志里留一行 `[QueryState] RTM 健康检查失败`）。
+   端口从「可选 + 兜底」改成「必填」时，**必须按符号扫一遍夹具**，不能只信编译器。
+2. **`node:path.isAbsolute` 是逐平台的**：POSIX 下 `\a` **不是**绝对路径（win32 下才是）。把纯函数写成
+   「两平台并集」看着更宽厚，实际是行为变化——判据要逐例对照 `node:path.isAbsolute`，而不是凭直觉写。
+
+**边界外如实留痕**：`tests/layer-boundary.test.ts` 整文件仍剩**一条**红——`tools/` 与 `http/` 的状态字面量
+（`src/http/routers/*.ts`），属另一条腿，本次**未修、也未进豁免台账**（用新机制给自己开后门等于把门关掉）。
+
+## 机制备忘：本仓实施模式（任务卡 + 子代理）（2026-10-08，REQ-261008190515-5212）
+
+**一句话**：实施阶段的执行单位是**任务卡**（不是 plan 文件）；每张父卡开工时展开一条**子卡链**
+（研发 → 联调 → 复核 → 测试），复核与测试由独立子卡承担——这就是本仓「子代理」的实际形态。
+
+```text
+需求批准拆分
+  └─▶ 父卡（= 一条链）──开工──▶ 子卡·研发 ──▶ 子卡·联调 ──▶ 子卡·复核 ──▶ 子卡·测试 ──▶ 父卡收口
+                              （每段一张卡；各自自证与汇报；段序与可选段见子卡阶段模板）
+```
+
+| 问题 | 结论 | 出处 |
+|---|---|---|
+| 执行者拿到的是什么？ | **卡全文**（title / description / acceptance / implementation / context）——`reqboard_task_move(to=in_progress)` 返回，不读 plan 文件、不凭记忆 | `src/domain/prompt/fragments/implementing/heavy.md` |
+| 子代理是谁派的？ | 父卡开工时按需求类型与阶段**自动展开**子卡链（已有子卡幂等跳过）；子卡拿到自包含的卡，不共享主窗口上下文 | 《子卡阶段模板》`docs/architecture/subtask-stage-template.md` |
+| 复核能不能自查？ | **不能**：复核由 `review` 段、测试由 `test` 段承担；作者自己看一遍不算复核 | 同上（段清单） |
+| 一段能跑多久？ | 子卡有**软**上限（缺省 60 次请求/会话）；到顶先停下、再汇报，由 owner 放行后继续 | 《子卡请求预算》`docs/architecture/subtask-request-budget.md` |
+| 完工怎么记？ | 每张卡必须 `reqboard_task_report`（done 凭证门的前置）；父卡在子卡全完成后收口 | `src/domain/prompt/fragments/implementing/heavy.md` |
+| 与上游 superpowers 什么关系？ | 上游 `executing-plans` 于 v6.4.2 改为 **inline 专版**（明说「不派子代理、不派复核」），与本仓模式相冲——2026-10-08 起 implementing 退出 `VENDOR_MAIN_SKILLS` 镜像映射，heavy 改本仓自写完整档；上游原文只留档、不注入 | `src/domain/prompt/vendor/superpowers/ATTRIBUTION.md` §2 / §3 |
+
+**唯一权威描述**是 `src/domain/prompt/fragments/implementing/heavy.md`（执行者必读的注入档）；
+本节只是**人查入口**，不重复其纪律细节（避免两处真相源漂移）。
+
+来源：REQ-261008190515-5212（把 implementing 移出 vendor 镜像并改写自写实施档）。
+
 ## 变更记录
 
 | 日期 | 变更 | 来源 |
@@ -398,8 +485,13 @@
 | 2026-10-05 | 领域篇《看板运行态指示》判据扩展：**「在跑」= 绑定窗口会话回合 ∪ 新鲜推进锁**（`advanceLockAt` 未过期，与 host WIP 闸门同阈值 15min、同运算符 `<`）——投递式后台 run 跑子卡链时窗口早已空闲，旧判据看不见；两种成因共用一个圈、只差 `title`/`aria-label`（视觉零变化）。同次**取代**该篇红线中 `advanceLockAt` 一条（原文保留 + 就地标注取代），`executions` 判据仍禁用。附三条可复用教训：签名字段变更必须重生成知识层符号表（否则 `kb-generate` 红）、覆盖度门禁的 `covers:` 取数口是**需求根 `test-cases.md`**（不是 `tests/*.md`）、同需求非子卡任务 60s 内连关第二张会被批量关闸拦（子卡不受限） | REQ-261005213603-eaed（看板运行圈补「后台 run 在跑」判据） |
 | 2026-10-06 | 原型豁免（`prototype_exempt`）的**消费点补齐**：拆分覆盖门的 UI 卡原型锚点维也消费豁免——豁免生效 ∧ 无已登记原型产物 ⇒ 整维跳过；未生效照旧拒、已交原型照旧要求锚点。判据复用既有单点（`prototypeExemptOf` / `registeredPrototypesOf`），不拿 INDEX 解析失败当「没有原型」；此前只有存在门消费豁免，导致「人已裁定不要原型」的需求只能把端侧谎报成 `fullstack` 绕行 | REQ-261006091755-1c9e（拆分覆盖门补豁免） |
 | 2026-10-06 | 新增机制备忘「工具清单的唯一事实源与两条派生校验」：登记面 27 条不动，README 表 / README 正文计数 / `package.json` 描述向它对账，装配日志改为**从登记面派生**；新增两条守卫用例（`tests/readme-tool-face.test.ts` / `tests/registry-log.test.ts`）与三条故障注入。附两条教训：**修一次数 ≠ 消灭漂移**（名单改成派生才结构性消灭）、**文档也要有会红的断言**。遗留：`reqboard_capture` 提问数口径三套并存（另立需求） | REQ-261006201508-5cb6（pm 插件工具面梳理与文档计数校准） |
+| 2026-10-07 | 新增领域篇 [工具面清单与精简手册](tool-face-inventory.md)：工具面 **27 → 21**（删弃用别名 `task_execute`、`confirm_receipt` 并入 `ask_confirm(ticket)`、查询面 4→2、三修缮合一 `task_amend(op=…)`；另 `AdvanceTool` → `TaskRunTool` 改名）；给出**六步退役/合并动作序列**、五处口径 + 两处易漏连带面（错误码清单 `refresh-error-code-inventory.mts`、注入片段 `inline-prompt-fragments.mjs`）、以及「不许顺手改用例判定/台账/状态机」的边界。附三条教训：**删除必须有人的明确授权且旧名硬断要改口径**、**合并时必填约束放宽必须由用例兜底**（`target` required→可选）、**「用例一行不改」这种断言要按文件实测 diff 核**（本次验收阶段自查纠正：TaskTree 实际是新增分支而非零改动） | REQ-261007220012-bd29（reqboard 体检第三批工具面精简 27→21） |
 | 2026-10-07 | 领域篇[确认门的推进契约](confirm-gate-advance.md)新增第 7 节「四通道收敛」：看板与文字证据的推进改走唯一实现 `applyConfirmedAdvance`，收尾（清停手位 + 复位运行时健康）收敛到 `finishConfirmAdvance` 一处由推进单点内部触发；看板推进与「窗口在线」解耦；门禁回执改指 `reqboard_ask_confirm`。附四通道×五件事矩阵、三条纪律与「新增通道必须调单点」自检 | REQ-261007135258-331a（确认通道接线收敛） |
 | 2026-10-07 | 新增机制备忘「测试判据的三层自证」：错误码口径由脚本生成（读数不写死、双形态 + 假阴性率、豁免白名单双向相等 + 棘轮双锁）；红基线**分诊**成 reverse/other 两份独立文件让 refresh 洗不绿；hermetic 沙箱的**最小开关集**必须是 `--allow-child-process` + `--allow-worker` + `--allow-net` + `NODE_NO_WARNINGS=1`（少了会打红 26 条既有用例；Node 25 起权限模型也管网络），并记录 `--allow-child-process` 的**残留洞**（非 Node 子进程不继承，已用守卫用例钉住）；方法论教训：全局配置的 A/B 批必须覆盖**能力全部维度**（「看起来相关」不是覆盖面）；附两条读数失效警告（反向占比在共享树失效、基线差集必须先 A/B 再归因）与「软失败回执无码不许凑数断言」。同次把指南 [验收单怎么用](../guides/acceptance-sheet-workflow.md) 的「有结果就点通过」补成精确判据（`RESULT_ANCHOR` 只认五类，`19/19` 不算）并写明修法是 agent 重交 v2 而不是让人手打 | REQ-261006201814-ac4f（测试反向与异常覆盖补强） |
+| 2026-10-08 | 新增领域篇 [弹框留痕与 pending 票可见性](pending-confirm-visibility.md) + 机制备忘同题：留痕三类（reject/cancel/timeout，`kind` 缺省=reject 零迁移）与**作答到达即落盘**；确认票等待走 `askWithBudget`（pending ≠ 错误）、`pendingForRequirement` 读口**曾被漏实现导致重投端点假通**；`/state` 的 `pending_confirms`（键恒在 + 三条「仍然有意义」谓词单点 + `remaining_ms` 读时算不落库）；看板横带「有票才渲染 / 无票零渲染 / 失败红字」与票行形状（对齐原型 #FR-5：🔔 · 门名·REQ · 剩余 mm:ss · 去作答/重投弹框，超时行「票仍有效，可一键重投」，倒计时本地递减不轮询）。另在[读盘闸门的根解析](gate-read-root.md)补客户端侧根来源诊断（四态 + 红字徽章，打开行为不变）。附三条可复用教训：**端口声明了不等于实现了**（缺方法只会在生产路径上退化成"不可用"）、**判断"有没有人在等"的筛选条件只许有一处**（agent 侧与看板侧共用 `livePendingConfirmsOf`）、**权威原型是逐字判据**（按钮文案/倒计时格式/图标都按锚点对齐，线框示意也要照做） | REQ-261007223647-da5d（P1 弹框与确认门体验优化） |
+| 2026-10-08 | 工具面 **21 → 19**（[工具面清单与精简手册](tool-face-inventory.md) 同步改 19 口径）：`archive_amend` / `note_interruption` 收编为 `task_amend(op=archive|interruption)`；同批做**描述结构减负**——task_move 模型可见文本 1265→591、submit `tasks[]` 子树 1717→≤860，撤下的细则全部下沉到既有拒绝回执（`throttleGuidance` / `REQBOARD_CONFLICT` / 伪依赖告警 / `FootprintError` / 锚点门禁 / 模板键回执），新增 `task-move-prompt-budget` / `submit-tasks-schema-budget` 两道预算门禁常驻。附四条可复用教训：**收编时必查「挂起确认守卫」是否按 op 分流**（原工具无此前置，统一守卫会静默改变行为）、**阶段越界提示表也要 op 化**（否则归档态/任意阶段被误注纠偏）、**减负验收必须双向**（没减够 + 减过头：细则之家逐条调真实函数取 message，不 grep 源码）、**消息卫生棘轮下「追加细则」要折进既有模板串**（新增一个 `+` 就是计数上升） | REQ-261008020552-4aa0（reqboard 体检第六批激进精简与结构减负） |
+| 2026-10-08 | 新增指南 [红测试分诊与收口](../guides/red-test-triage.md)：把「红」拆成三类成因（A 夹具/断言滞后、B 真缺陷、C 环境与基线）与各自的修法/判据；归属用干净 HEAD worktree 做 A/B 对照（不猜谁改坏的）；环境类两条硬口径（缺依赖用显式 `skipIf` 且 skipped 计数可见、守护对象消失就退休并留依据）；**基线三份清单必须同源**（只刷 `failures.txt` 会引入 3 条新红——本次实测并回滚，刷分类是人的动作）；打包门两条坑（`pnpm pack --dry-run` 在 pnpm 10.22 已不存在＝假绿陷阱、子目录 `.npmignore` 对 pnpm 打包器不生效）。本次实测：全仓红 **37 文件 / 67 用例 → 12 / 21**（另案 11 + B 类 10 逐条归属），`tsc` 由 9 条既有报错 → exit 0 | REQ-261008004324-81df（reqboard 红测试收口：A 类夹具跟进 + C 类环境基线） |
+| 2026-10-08 | 新增机制备忘「本仓实施模式（任务卡 + 子代理）」：**卡就是 brief**（`reqboard_task_move(to=in_progress)` 返回卡全文）、父卡开工展开子卡链（研发→联调→复核→测试）、复核与测试由独立子卡承担（作者自查不算复核）、子卡预算到顶先停下再汇报；并登记 implementing 于 2026-10-08 退出 `VENDOR_MAIN_SKILLS` 镜像映射、heavy 改本仓自写完整档（上游 v6.4.2 把 `executing-plans` 改成 inline 专版、明说「不派子代理、不派复核」，与本仓模式相冲；上游原文只留档不注入），注入文本 23852 → 4658 字符。附三条可复用教训：**换底要连档案与断言同批改**（ATTRIBUTION 角色列 / §3 清单 / 镜像档抽样断言 / 路径探针死条目）、**收编 overrides 前先查哪些断言依赖被收编条目**（链声明行原由覆盖 6 提供，收编后必须由正文承载且与 `STAGE_CHAIN` 逐字一致）、**字面判据要按字面做到**（grep 计数类验收会把说明注释也算进去，说明改指代写法即可） | REQ-261008190515-5212（把 implementing 移出 vendor 镜像并改写自写实施档） |
 
 ## 机制备忘：自动链能不能自己跑（owner 契约 / 失败不留锁 / 人的显式接回）
 
@@ -1870,6 +1962,7 @@ DELTA 会被拆分提交 / 设计门 / 文档自检复用到存量需求上，�
 | `--allow-worker` | `tsx` 的 transform 走 worker 线程，不放行直接抛 `Use --allow-worker` |
 | `--allow-net` | **Node 25 起权限模型也管网络**，不放行则本地 `server.listen` 被拒 → 用例 5s 超时 |
 | `NODE_NO_WARNINGS=1` | `--allow-child-process` 的 SecurityWarning 打到 stderr，会污染**按行解析子进程输出**的用例（kb 探针族整片误红） |
+| 2026-10-08 | 层边界收口：application/ 的 15 处 I/O 越界清零（三份同构 RTM 门合并为 `gate/rtm-gates.ts` 单点 · 新增 `HostFsPort` / `DiagSinkPort` 两个端口与宿主实现 · 两处绝对路径判定收口到纯函数 `isAbsolutePath` · `ReqboardDiveManager` 外移适配层）＋**层门补显式豁免面**（台账 + 双向相等 / 残量归零 / 理由必填 / 只减不增，本次 0 条）。附两条可复用教训：**强转 `as unknown as UseCaseDeps` 的夹具会掩盖必填端口**（类型检查看不见，只在日志里静默露出）、**`node:path.isAbsolute` 逐平台**（POSIX 下反斜杠开头不是绝对路径，写「两平台并集」即行为变化）；边界外如实留痕：`http/routers` 的状态字面量那条红仍属另一条腿 | REQ-261008020617-088f（层边界收口） |
 
 **残留洞（记录在案，不是遗忘）**：放行 spawn 后**非 Node 子进程**（`sh`）不继承权限模型，能写进仓库
 （实测；Node 子进程会继承、被拒）。已由 `tests/hermetic-guard.test.ts` 的一条用例**显式钉住**——
@@ -1950,3 +2043,36 @@ DELTA 会被拆分提交 / 设计门 / 文档自检复用到存量需求上，�
   每次重写都废掉整段（16 次 = 3.9M 全价），而 `deepseek-flash` 上 9 次重写**全部保住缓存**
   （该窗口唯一一次全量重算是其前 163.6 分钟空档后的 TTL 过期）。⇒ 任何「改造后成本下降」的结论
   都必须**同 provider** 对照，否则是在读供应商差异。
+
+## 机制备忘：错误码注册表与双拼归一单源（2026-10-07，REQ-261007230908-5ccb）
+
+- [领域篇](error-code-registry.md)：**133 个大写错误码**现在有事实源 `src/shared/error-code-registry.ts`
+  （登记层，**不迁移**字面量产生点）；扫描口径仍只在 `tests/helpers/error-code-scan.ts` 一处实现。
+- 四条门把治理变成机械判据：**双向一致**（新码漏注册红 / 死条目红）、条目形态、**prompt 列码 ⊆ 注册表**、
+  **client 映射无回流**（toolviews 的大写码映射从注册表派生）。读数：注册表 133 = 扫描 133；prompt 面 24 码全注册。
+- **新增错误码的正确顺序**：先在代码里抛 → 跑 `tests/error-code-registry.test.ts` 报红点名 →
+  回注册表补条目（字典序 + 中文语义 + 分层）→ 重跑绿。刷新钻只把红变**可解**，不许拿来把红变绿。
+- **双拼字段取值单源**：`src/shared/dual-field.ts`（`readDual` / `dualMapMerged`）；3 对字段的优先级
+  （camel 优先 / 并集 / snake 优先）与后处理归属逐字段锁在表里，后处理**留在调用方**——拉齐后处理
+  是行为变更，不属这次。单源没破的判据：`grep -rn "o\.granularity_exempt ?? o\.granularityExempt" src` 命中 0。
+- 两条反例：① 别做「字面量 → 常量」的全仓迁移（登记层不是替换层）；② prompt 校验不能用「引号紧贴」
+  口径（实测只命中 1 个码，因为码嵌在中文句子里）——用 token 级并剔模板拼码/噪声。
+
+## 机制备忘：弹框留痕与 pending 票可见性（2026-10-08，REQ-261007223647-da5d）
+
+- [领域篇](pending-confirm-visibility.md)：留痕三类 + **作答到达即落盘**（`record()` 在作答那一刻调，
+  不依赖调用延续段；真盘用例 `tests/capture-rejection-persistence.test.ts` 直接读临时目录的 JSON 断言）；
+  拒绝粘滞 30 分钟、连续取消 3 次升级改走看板/文字。
+- **端口声明了不等于实现了**：`PendingConfirmReadPort.pendingForRequirement` 长期只在类型里存在，
+  生产组合根传的注册表没有它 ⇒ `POST /confirm/repost` 恒回 `unavailable`（一段"联调完成"的假通）。
+  新增读路径时**先跑一遍真实组合根**，别只看声明的端口。
+- **「谁在等」的筛选只许一处**：`livePendingConfirmsOf`（application/internal/pending-guard.ts）同时供
+  agent 侧 `livePendingConfirm` 与看板 `/state` 投影使用；两张票表各写一套必然漂移成
+  「agent 说没人在等、看板却挂着一张」。
+- `/state.pending_confirms` **键恒在**（无票 = `[]`，老服务端缺键由客户端宽松解析成 `[]`）；
+  `remaining_ms` 是**读时派生**（不落库），客户端以 `expires_at` 优先重算，倒计时**本地每秒递减、不轮询**。
+- 看板形状按**权威原型逐字对齐**：🔔 · 「门名 · REQ-id」·「剩余 mm:ss」·「去作答」/「重投弹框」；
+  超时行加「票仍有效，可一键重投」（超时 ≠ 作废，行与按钮都不消失）。
+- 客户端侧根来源诊断（同批落在[读盘闸门](gate-read-root.md)）：`absolutizeDocPathWithSource` 四态 +
+  `peekLastRootSource` + 面板红字「地址可能不准（根来源：X）」，**打开行为不变**。
+- 遗留（待人裁决）：留痕写入失败时回执仍写「已留痕」（真实失败只进日志）。

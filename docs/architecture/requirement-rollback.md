@@ -1,7 +1,7 @@
 ---
 title: 需求级回退通道
-updated: 2026-10-05
-source: REQ-261003204149-1e80 / REQ-261004121649-bfa7 / REQ-261005122915-9f90
+updated: 2026-10-07
+source: REQ-261003204149-1e80 / REQ-261004121649-bfa7 / REQ-261005122915-9f90 / REQ-261007193530-3133
 ---
 
 # 需求级回退通道
@@ -108,6 +108,28 @@ reqboard_move(to=<更早阶段>)  或  看板 POST /req/move
 - 逆验证脚本 `scripts/rework-inverse-verification.mts` 对四处修复各注入一次旧实现，
   要求对应用例**变红**、还原后变绿（留档在需求目录 `notes/inverse-verification.md`）。
 
+## 两段写的归还：队列补偿（2026-10-08 补，REQ-261008011118-defe）
+
+顺序契约（**任务先写、需求后写**）本身是对的：任务写失败 ⇒ 需求未动，干净。
+缺的是**第二段未落账时对第一段的归还**——需求写抛错、或并发把 `req.status` 改走让回调 no-op 时，
+队列上已落的「取消 / 复位 / 物化重做卡」必须归位。
+
+- **单点实现**：`application/internal/rollback-compensation.ts`
+  （`rememberRollbackPreImage` 写前留档 / `compensateRollbackQueue` 一次队列 mutate 归还 /
+  `raiseRollbackCompensationFailed` 失败响亮）。
+- **写前留档**在落库 mutate 的**同一份快照**里逐卡 clone（入口处的 `reqTasks` 可能滞后）。
+- **归还只恢复本次写面九字段**（`status / statusHistory / version / updatedAt / updatedBy /
+  revisions / canceledAt / canceledBy / cancelReason`），不整卡替换；可选字段「本前缺省 ⇒ 删键」。
+- **落库白名单必须搬满这九字段**：此前只搬 `status / revisions / updatedAt` + 取消三字段，
+  于是计划里算好的 `statusHistory` 与 `version` 在落盘时被丢——「复位子卡看不到原地复位事件」
+  「取消卡没有 canceled 事件」「两类卡 version 不 +1」。
+- **失败语义**：补偿本身失败抛 `REQBOARD_ROLLBACK_COMPENSATION_FAILED` 并在需求台账留痕点名受影响卡；
+  漂移 no-op 抛 `REQBOARD_CONFLICT`（含 from → 当前 status）。**不调换写序、不做二次重试**。
+- 判据：`npx vitest run tests/move-rollback.test.ts tests/canceled-task-trail.test.ts` 全绿
+  （注入抛错 / 注入漂移两臂 + 正常回退的事件与 version 断言）。
+- 同类教训（读数只报有写入来源的字段 / 批量防线 / 认领时序）见
+  [状态收敛点与回执/读数契约](state-convergence-contracts.md) 第 5–8 节。
+
 ## 三条不变量（改动时的红线）
 
 1. **回退放宽的只有方向**：五道人工门的数量与前进语义不得改动；退回去再往上走**必须重新过门**
@@ -116,6 +138,11 @@ reqboard_move(to=<更早阶段>)  或  看板 POST /req/move
    守卫只在 `rollback.to === 当前阶段` 这一个窄判据下放行。
 3. **编排顺序即原子性**：`applyRequirementRollback` 必须**先算卡计划、后改需求**——
    反过来的话，卡处置一抛错，需求侧的章与批准就已经被撤了。
+
+> **逆动作同门（2026-10-07 补）**：取消是人工门，**复活也必须是**——`canceled > draft` 已在
+> `HUMAN_ONLY_REQ_TRANSITIONS`（此前不对称，agent 可撤销人做的取消；任务侧 `canceled > todo`
+> 一直是门）。合法边表不动，只收紧发起者。机制与同类边界缺陷见
+> [状态收敛点与回执/读数契约](state-convergence-contracts.md)（来源 REQ-261007193530-3133）。
 
 ## 涉及文件
 

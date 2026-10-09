@@ -74,7 +74,7 @@
 | 五道人工门 | `src/application/gate/*` + `tools/AskConfirmTool` | 立项/需求确认/设计确认/计划批准/验收，agent 不可越过 |
 | 节点输入包 | `src/application/internal/node-input-package.ts` | 节点边界后的唯一新起点：路由提示词 + 需求文档投影 + 台账投影 |
 | 注入预算与 floor | `src/domain/prompt/budget.ts` | 超预算只裁非保底片段；连保底都超 → 结构化报超限 |
-| 断点续跑 | `src/domain/checkpoint.ts` + `reqboard_note_interruption` | 只记"跑到哪"，便于新窗口续跑 |
+| 断点续跑 | `src/domain/checkpoint.ts` + `reqboard_task_amend(op=interruption)` | 只记"跑到哪"，便于新窗口续跑 |
 | 知识层 | `src/domain/knowledge/*`、`src/adapters/KnowledgeRepository.ts`、`scripts/kb-build.mts` | 索引 + 条目 + 生成物 + 只读检索（本页所在目录） |
 | 客户端样式归属 | `src/client/styles*.ts` + 归属章契约 | 样式表必须自带 `data-plugin` 章，否则会被别的插件连带删除 |
 | 文档读路径根 | `src/http/routers/shared.ts` 的 `resolveDocRoot` | **权威源 = 会话工作区**：会话根优先，未装配解析器（回滚开关 `docsRootSource:'legacy-cwd'`）时回落宿主 cwd；预检/读全文/阶段详情共用这一处，响应里如实标注 `docsRootSource` |

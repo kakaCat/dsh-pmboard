@@ -57,6 +57,9 @@
 - kb-0069 · decision · 四条确认通道统一走「落章 + 推进 + 收尾」单点：推进与收尾各收敛到一处，看板推进与窗口在线解耦，门禁回执改指 reqboard_ask_confirm。 · → entries/kb-0069.md
 - kb-0070 · decision · 拆分粒度从"凭经验"锁到接口级/组件级：设计文档交出接口清单/组件树（硬门）  拆分计划对照表逐条覆盖（硬门）  一卡多接口拒、files>5 与多锚点只警告；RTM 一对多为原生能力不改模型。 · → entries/kb-0070.md
 - kb-0071 · decision · 给测试立判据：错误码口径由脚本生成（零覆盖 23   5）、红基线分诊让 refresh 再也洗不绿、测试进程由内核级沙箱拦住仓内写入；src 零改动。 · → entries/kb-0071.md
+- kb-0075 · decision · reqboard 治理设施：133 个大写错误码有注册表事实源与机械门（双向一致 / prompt 子集 / client 派生），双拼字段取值单源化——体检报告 §4.3 十项建议收官 · → entries/kb-0075.md
+- kb-0076 · decision · 弹框与确认门三件事落地：作答到达即落盘（超时不吞票、重投如实查询）、立项口径收口为四问（推荐后缀 / ✖️ 居末 / 一键过）、看板首屏 pending 横带与根来源红字；顺带修好「重投读口从未实现」这一假通。 · → entries/kb-0076.md
+- kb-0079 · decision · REQ-261008011831-3735｜chore｜两处终态文案判定归位活卡单点（用例 17/17）+ 清两条失效清单条目；基线落账末步按仓内结论属人的动作，前置读数（新增失败 0 / tsc 0）已移交人工 · → entries/kb-0079.md
 - kb-0001 · decision · PM 插件工具可视化增强：会话内卡片带 📋 徽标/状态流转/下一步指引/错误分类提示… · → entries/kb-0001.md
 - kb-0002 · decision · 实施链队列调度重新设计：凭证门修复（lastReport 替代 lastRun）+ 并行调度… · → entries/kb-0002.md
 - kb-0005 · decision · 验收单自证失败修复：验收单只收顶层父卡（parentId 投影为真双保险）… · → entries/kb-0005.md
@@ -103,6 +106,12 @@
 
 （暂无）
 - kb-0072 · pitfall · reqboard 插件工具面体检：主流程健康，3 个高危边界 bug（H1 人工门否定路径、H2 HTTP 绕门、H3 跨进程无锁），27 工具可精简至 21/19，136 错误码待注册表化；待裁决是否立项整治 · → entries/kb-0072.md
+- kb-0073 · pitfall · reqboard 体检第一批四类边界缺陷（回执 undefined / HTTP 面漏传 role / 复活边缺人工门 / 节流读数溢出）已修复：判据挪回单点、逆动作同门、读数补上界；机制与判据沉淀在 docs/architecture/state-convergence-con · → entries/kb-0073.md
+- kb-0074 · pitfall · reqboard 工具面 27   21：删弃用别名与 6 个冗余槽位、合并查询面与修缮簇（task_amend），语义零损失、五处口径由派生门禁锁死；退役/合并动作序列沉淀在 docs/architecture/tool-face-inventory.md。 · → entries/kb-0074.md
+- kb-0077 · pitfall · agent 可见文案不许漂移：七组文案/契约漂移（死路径、手写问数、submit「五类」漏 prototype、历史叙事、长文本注记误挂、拦截清单枚举、monorepo 残留）清零，并把「路径可达 + 禁词前缀」探针挂进 prompts:check——文案修复从"靠体检发现"变成 · → entries/kb-0077.md
+- kb-0078 · pitfall · 红测试收口：全仓红由 37 文件 / 67 用例收到 12 / 21（另案 11 + B 类 10 逐条归属），把「红」拆成三类成因的分诊法与定性纪律沉淀为 docs/guides/red-test-triage.md · → entries/kb-0078.md
+- kb-0080 · pitfall · 立项弹框失效修复：宿主 askTimed 的 callId=undefined 使弹框请求被网关判 not lossless JSON data 而拒收；移除透传改走官方 ask() 路径 + 源头修 description:undefined + 通道边界无损清洗，实测弹框恢复 · → entries/kb-0080.md
+- kb-0081 · pitfall · 层边界收口：application/ 的 15 处 I/O 越界清零（三份同构 RTM 门合并为 rtm-gates 单点   新增 HostFsPort/DiagSinkPort 端口与宿主实现   路径判定收口纯函数   Dive Service 外移适配层），层门补上显式豁 · → entries/kb-0081.md
 - kb-0006 · pitfall · 收尾门两处错位已修：节流不再把「关完自己的子卡再关父卡」当成滥用（兄弟卡与跨卡仍拦）… · → entries/kb-0006.md
 - kb-0007 · pitfall · 验收不再要人填结果：agent 提交材料时逐项落实际结果，弹框/看板只问裁决… · → entries/kb-0007.md
 - kb-0012 · pitfall · PM 插件 agent 测评套件：调研业界方法（Langfuse 四维度/τ-bench 终态比… · → entries/kb-0012.md

@@ -40,6 +40,7 @@
 | 依赖面 | 结构化最小面 `WorkspaceRootTargets`（`docs` + `taskStore?: unknown`）——看板路由的 `ctx.deps` 只有 `docs`，不为一次鸭子探测伪造整个 `UseCaseDeps` |
 | 容错 | 不抛错：`setWorkspaceRoot` 缺失（内存替身）由既有鸭子探测跳过 |
 | 写侧 | `syncWorkspaceRootForRequirement` 委托同一实现——**读写只有一处校正逻辑** |
+| 适用面（2026-10-08 起） | **RTM 门也吃 `deps.docs`**：三份同构门合并为 `application/gate/rtm-gates.ts` 后，`designGateCheck` / `taskCoverageGateCheck` / `acceptanceGateCheck` 由「传 `workspaceRoot` 字符串」改为「传 `DocRepository`」，故它们**同样受本页纪律约束**——调用前必须先 `applyRequirementWorkspaceRoot(deps, req)`（REQ-261008020617-088f RF-2） |
 
 **必须接线的 7 处读盘调用点**（少一处即为旁路，静态断言会红）：
 
@@ -218,6 +219,26 @@ npx tsc --noEmit -p tsconfig.json                                       # 改动
 - **回归门**：`npx vitest run tests/project-identity.test.ts tests/project-identity.e2e.test.ts tests/project-scope.test.ts`
   （身份判据 / 三窗口 E2E / 跨项目分区与写盘点静态门禁）。
 
+## 客户端侧的根来源诊断与红字徽章（2026-10-08，REQ-261007223647-da5d）
+
+前面的小节讲的是**服务端读盘**按哪个根；这一节讲**客户端把相对文档路径拼成绝对地址**时用了哪个根、
+以及"拿不准"怎么让人看见（现场：面板显示 `./dsh` 下的地址，文件其实在需求自己的工作区里）。
+
+| 事实 | 内容 | 位置 |
+|---|---|---|
+| 三级根顺序（未变） | 需求级根（`reqRoots[reqId]`，读与写同根）→ 会话工作区 → 服务端下发 `workspaceRoot`；都没有 → **原样返回相对路径**（不拼一个必然不存在的绝对路径） | `src/client/open-doc.ts` |
+| 来源四态 | `req-root` / `session-root` / `server-root` / `none`（`none` = 已是绝对路径，或无根可回落） | `DocRootSource` |
+| 取值单点 | 解析逻辑收在 `absolutizeDocPathWithSource(path)`，返回「地址 + 来源」**同源得出**；`absolutizeDocPath` 是它的薄壳（签名与返回行为逐字兼容） | 同上 |
+| 只读诊断 | `peekLastRootSource()`（不触发解析、不改缓存）；UI 优先用**视图自带**的来源读数，避免被别的解析污染 | 同上 |
+| 面板红字 | 文档位置行在 `rootSource ≠ req-root` 时追加「⚠ 地址可能不准（根来源：X）」（`data-doc-root-source` 供断言），**打开行为不变** | `src/client/req-doc-location.ts` |
+
+**判据**：`npx vitest run tests/open-doc-root-source.test.ts tests/doc-root-badge.test.ts tests/doc-location-panel.test.ts`
+（四态取值 / 串会话缓存下需求级根命中**绝不退到会话根** / 视图来源优先 / 旧调用方逐字兼容 / 红字出现条件）。
+
+**变更须知**：① 需求级根命中就是命中，不许"顺手"再回落一次会话根（反向验证：把顺序改成会话根优先 → 2 条用例立刻红）；
+② 红字是**展示层增强**，不要顺手改成"拒绝打开"或"自动改写地址"——它的职责只是不静默；
+③ 手搓视图（有 `abs`、无 `rootSource`）按"地址已由权威方拼好"处理，别给可信地址添噪音。
+
 ## 来源
 
 - REQ-260930193929-897b（读盘闸门按需求级 `workspaceRoot` 二次校正；含本需求自身 19:45 的现场复现）
@@ -228,5 +249,7 @@ npx tsc --noEmit -p tsconfig.json                                       # 改动
   同一项目判据单点、归属项目级 vs 起轮窗口级、跨项目派席/交接/改绑拦截；由 2026-10-05 12:29 立项误拒与
   2026-09-30 读侧误拦同因立项）**
 - 前置事故与留痕：REQ-260930183951-eb6c；写侧先例：REQ-260929210741-30ae FR-6
+- **REQ-261007223647-da5d（客户端侧根来源诊断与红字徽章：`absolutizeDocPathWithSource` 四态读数 +
+  `peekLastRootSource` + 面板「地址可能不准（根来源：X）」；由 2026-10-07「面板地址落到 ./dsh、文件其实在文档位置」现场立项）**
 - 物证：`docs/requirements/REQ-260930193929-897b/notes/evidence-misplaced-decomposition.md`；
   本条的现场对账：`docs/requirements/REQ-261005143615-5ab1/evidence/t5-reconcile.md`

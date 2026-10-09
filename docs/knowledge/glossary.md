@@ -18,7 +18,7 @@
 | 验收单 | 提交验收材料时由代码生成的逐项确认清单 | `reqboard_accept_sheet` |
 | 节点边界 | 会话被遗弃/换节点时，模型可见面被重置的那个时刻 | `src/application/internal/node-input-package.ts` |
 | 节点输入包 | 节点边界后的唯一新起点：路由提示词 + 需求文档投影 + 台账投影 | 同上 |
-| 断点 | 记录"跑到哪、下一步干嘛"的一行状态，供新窗口续跑 | `src/domain/checkpoint.ts`、`reqboard_note_interruption` |
+| 断点 | 记录"跑到哪、下一步干嘛"的一行状态，供新窗口续跑 | `src/domain/checkpoint.ts`、`reqboard_task_amend(op=interruption)` |
 | Dive 模式 | 需求 armed 后由系统自动起轮推进的托管模式 | `src/application/dive/*` |
 | 台账（ledger） | 需求与门户记录的**分片目录**事实源（只经端口读写；数据根 `~/.dsh/reqboard/`） | `src/application/ports.ts`（`RequirementStore`）· `src/repositories/ShardedRequirementStore.ts` |
 | 文档库 | 工作区文件读写端口（产物落盘、存在性校验的唯一入口） | `adapters/FileDocRepository.ts` |
