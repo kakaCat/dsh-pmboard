@@ -54,7 +54,7 @@ import { fileURLToPath } from 'node:url'
 import {
   COMPONENT_MANIFEST, PUBLIC_SHARDS, REPORT_EXPORT, componentsOfClass,
   type ComponentId,
-} from '../src/client/styles/report/manifest.js'
+} from 'pmboard-client/styles/report/manifest.js'
 import {
   WINDOW_HEIGHT, findChrome, specimenShell, specimenShellForPanel,
   type PanelSpecimenKey, type SpecimenState,
@@ -65,7 +65,7 @@ const BASELINE = join(ROOT, 'docs/requirements/REQ-261007133149-0716/evidence/ow
 const BASELINE_SCHEMA = 1
 
 /** 分片目录（出口 `report.ts` 与清单 `manifest.ts` 不是分片）。 */
-const SHELL_DIR = 'src/client/styles/report'
+const SHELL_DIR = 'packages/pmboard-client/src/styles/report'
 const SHARD_DIRS: readonly string[] = [SHELL_DIR, `${SHELL_DIR}/panels`]
 const NOT_A_SHARD = new Set(['report.ts', 'manifest.ts'])
 
@@ -77,13 +77,13 @@ const NOT_A_SHARD = new Set(['report.ts', 'manifest.ts'])
  */
 const PUBLIC_RULES: readonly { shard: string; selector: string; why: string; owner: 'shared' }[] = [
   {
-    shard: 'src/client/styles/report/base.ts',
+    shard: 'packages/pmboard-client/src/styles/report/base.ts',
     selector: '.dsh-pm-msg[hidden],\n.dsh-pm-msg[data-msg-hit="0"]',
     why: '⓪ 基底契约「[hidden] 必须真隐藏」：对话面板的消息行是 display:flex，会盖掉浏览器默认的 [hidden]{display:none}，故必须在基底里钉死（设计 frontend.md 的 base 允许项 / 原型 dialogue 卡已点明「本面板专属契约」）',
     owner: 'shared',
   },
   {
-    shard: 'src/client/styles/report/base.ts',
+    shard: 'packages/pmboard-client/src/styles/report/base.ts',
     selector: '.dsh-pm-detail[data-report-shell] .dsh-pm-msg[hidden],\n.dsh-pm-detail[data-report-shell] .dsh-pm-msg[data-msg-hit="0"]',
     why: '同上，岛级前缀版本（两段是同一契约的宽 / 窄两条写法）',
     owner: 'shared',

@@ -37,9 +37,9 @@
  * @module dsh-pmboard/tests/zero-arg-binding
  */
 import { describe, it, expect } from 'vitest'
+import { repoPath } from 'tests/helpers/repo-root.js'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 /** 本仓根 package.json 的 name（用于向上定位仓库根；替代已消失的 patchedDependencies 锚点）。 */
 const ROOT_PACKAGE_NAME = 'dsh-pmboard'
@@ -103,7 +103,7 @@ function findInstalledRuntime(root: string): { dir: string; version: string } {
 
 describe('零参绑定守护（已退休：守护对象随上游升级消失）', () => {
   it('声明式断言：根 package.json 无 pnpm.patchedDependencies 且 patches/ 不存在，现依赖 dsh-ptc-runtime@0.2.0-rc.1 已无被守护的 lib/process.js', () => {
-    const root = findRepoRoot(dirname(fileURLToPath(import.meta.url)))
+    const root = findRepoRoot(repoPath('tests'))
     const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as RootManifest
 
     // ① 没有补丁登记（连 pnpm 字段都没有）

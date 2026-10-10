@@ -22,7 +22,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   harness, makeReq, AUTH_FAIL, TRANSPORT_FAIL,
-} from './support/dive-loop-harness.js'
+} from 'tests/support/dive-loop-harness.js'
 
 describe('TC-3 · 致命错误（AUTH）→ 停手 + 全局闩，不再起轮', () => {
   it('第一次投递失败后：投递次数封顶 1、台账 reason=upstream-auth、全局闩置位', async () => {

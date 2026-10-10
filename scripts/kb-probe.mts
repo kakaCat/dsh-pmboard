@@ -23,12 +23,12 @@ import { readFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import { isAbsolute, join, relative } from 'node:path'
-import { KB_LIMITS, checkIndexBudget, countLines } from '../src/domain/knowledge/budget.ts'
-import { parseEntryDoc, validateEntryDoc } from '../src/domain/knowledge/entry.ts'
-import { isEntryId, parseIndexDoc } from '../src/domain/knowledge/index-line.ts'
-import { isDecidableInvalidation } from '../src/domain/knowledge/invalidation.ts'
-import { headingAnchor, listHeadingAnchors, sliceSection } from '../src/domain/knowledge/slug.ts'
-import { KB_PATHS, KB_PAGE_PATHS, entryPath } from '../src/domain/knowledge/types.ts'
+import { KB_LIMITS, checkIndexBudget, countLines } from 'pmboard-core/domain/knowledge/budget.ts'
+import { parseEntryDoc, validateEntryDoc } from 'pmboard-core/domain/knowledge/entry.ts'
+import { isEntryId, parseIndexDoc } from 'pmboard-core/domain/knowledge/index-line.ts'
+import { isDecidableInvalidation } from 'pmboard-common/knowledge/invalidation.js'
+import { headingAnchor, listHeadingAnchors, sliceSection } from 'pmboard-common/knowledge/slug.js'
+import { KB_PATHS, KB_PAGE_PATHS, entryPath } from 'pmboard-common/knowledge/types.js'
 import {
   buildCoverage,
   findGaps,
@@ -36,7 +36,7 @@ import {
   parseOperationEntries,
   renderCoverageTsv,
   validateOperationEntry,
-} from '../src/domain/knowledge/operations.ts'
+} from 'pmboard-common/knowledge/operations.js'
 
 const ROOT = process.cwd()
 const args = process.argv.slice(2)
@@ -233,9 +233,16 @@ if (!existsSync(abs(convPath))) {
 const EXPORT_RE =
   /^export\s+(?:default\s+)?(?:abstract\s+)?(?:async\s+)?(?:function|class|interface|type|const|enum|namespace)\s+[^\n{=]*/gm
 let symbolCount = 0
-for (const f of walk(join(ROOT, 'src'))) {
-  const text = readFileSync(f, 'utf8')
-  symbolCount += [...text.matchAll(new RegExp(EXPORT_RE.source, 'gm'))].length
+// t21：与生成器（EnsureKnowledgeLayer 的 SOURCE_ROOTS）**同口径**——写死单个根会让
+// 搬迁后计数静默劣化（本轮实测：只扫根 src/ 得 192，生成器扫两处得 1173 ⇒ K9 恒红）。
+const SYMBOL_ROOTS = ['src', 'packages/pmboard-client/src'] as const
+for (const rel of SYMBOL_ROOTS) {
+  const absRoot = join(ROOT, rel)
+  if (!existsSync(absRoot)) continue
+  for (const f of walk(absRoot)) {
+    const text = readFileSync(f, 'utf8')
+    symbolCount += [...text.matchAll(new RegExp(EXPORT_RE.source, 'gm'))].length
+  }
 }
 const symbolsFile = abs(KB_PATHS.symbols)
 const tsvRows = existsSync(symbolsFile) ? readFileSync(symbolsFile, 'utf8').trim().split('\n').length - 1 : -1

@@ -10,10 +10,10 @@
  * 一个问题——"凡是用 defineTool 定义的工具，都声明了 render 吗"，并给白名单一个显式理由。
  */
 import { describe, it, expect } from 'vitest'
-import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { relative } from 'node:path'
+import { toolsFiles, toolFileRel } from 'tests/helpers/tools-root.js'
 
-const TOOLS_DIR = 'src/tools'
 
 /**
  * 委托别名的白名单：这些文件**不自己**调 defineTool 输出定义，而是 `Object.assign` 复用另一个
@@ -28,17 +28,11 @@ const DELEGATING_ALIASES: Readonly<Record<string, string>> = {}
 interface ToolSource { path: string; source: string }
 
 function collectToolSources(): ToolSource[] {
-  const out: ToolSource[] = []
-  for (const entry of readdirSync(TOOLS_DIR)) {
-    const dir = join(TOOLS_DIR, entry)
-    if (!statSync(dir).isDirectory()) continue
-    for (const file of readdirSync(dir)) {
-      if (!file.endsWith('Tool.ts')) continue
-      const p = join(dir, file)
-      out.push({ path: p, source: readFileSync(p, 'utf8') })
-    }
-  }
-  return out
+  // 布局无关（t15）：递归收集 `*Tool.ts` 即全部工具定义（扁平 layout 与「类别/工具」两级都成立），
+  // 不再依赖「工具根下一层就是工具目录」这个假设。
+  return toolsFiles()
+    .filter((p) => p.endsWith('Tool.ts'))
+    .map((p) => ({ path: p, source: readFileSync(p, 'utf8') }))
 }
 
 /** 纯函数版扫描（T-2 自测直接喂假源码，证明它真的会红）。 */
@@ -53,7 +47,7 @@ export function findToolsMissingRender(sources: readonly ToolSource[], aliases: 
 }
 
 describe('FR-4 · 全工具都必须声明 output.render', () => {
-  it('T-1：src/tools 下每个 defineTool 定义都带 render（白名单只有委托别名）', () => {
+  it('T-1：packages/tool-pmboard/src 下每个 defineTool 定义都带 render（白名单只有委托别名）', () => {
     const sources = collectToolSources()
     // 前置断言：扫描面不能为空，否则"全绿"毫无意义
     expect(sources.length).toBeGreaterThan(15)
@@ -62,17 +56,17 @@ describe('FR-4 · 全工具都必须声明 output.render', () => {
   })
 
   it('T-2：扫描函数本身会红（喂一份缺 render 的样例源码）', () => {
-    const bad: ToolSource[] = [{ path: 'src/tools/__probe/ProbeTool.ts', source: 'export const t = defineTool({ name: "x", description: "d" })' }]
-    expect(findToolsMissingRender(bad)).toEqual(['src/tools/__probe/ProbeTool.ts'])
+    const bad: ToolSource[] = [{ path: 'packages/tool-pmboard/src/__probe/ProbeTool.ts', source: 'export const t = defineTool({ name: "x", description: "d" })' }]
+    expect(findToolsMissingRender(bad)).toEqual(['packages/tool-pmboard/src/__probe/ProbeTool.ts'])
     // 反向：带 render 的同形源码不得被判红
-    const good: ToolSource[] = [{ path: 'src/tools/__probe/ProbeTool.ts', source: 'export const t = defineTool({ name: "x", output: { render: f } })' }]
+    const good: ToolSource[] = [{ path: 'packages/tool-pmboard/src/__probe/ProbeTool.ts', source: 'export const t = defineTool({ name: "x", output: { render: f } })' }]
     expect(findToolsMissingRender(good)).toEqual([])
     // 白名单只免"委托别名"，不免"没写 render 的普通工具"
-    expect(findToolsMissingRender(bad, { 'src/tools/__probe/ProbeTool.ts': '继承自别处' })).toEqual([])
+    expect(findToolsMissingRender(bad, { 'packages/tool-pmboard/src/__probe/ProbeTool.ts': '继承自别处' })).toEqual([])
   })
 
   it('T-2b：clear_pause 工具确实声明了 render（本卡修的就是它）', () => {
-    const p = join('src/tools', 'ClearPauseTool', 'ClearPauseTool.ts')
+    const p = toolFileRel('ClearPauseTool', 'ClearPauseTool.ts')
     const source = readFileSync(p, 'utf8')
     expect(source).toMatch(/render\s*:/)
     expect(source).toContain('clearPauseSummary')

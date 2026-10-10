@@ -40,11 +40,12 @@
  * @module dsh-pmboard/tests/baseline-triage
  */
 import { describe, it, expect } from 'vitest'
+import { REPO_ROOT } from 'tests/helpers/repo-root.js'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+
+const ROOT = REPO_ROOT
 const FAILURES_TXT = join(ROOT, 'docs/reviews/test-baseline.failures.txt')
 const REVERSE_TXT = join(ROOT, 'docs/reviews/test-baseline.reverse.txt')
 const OTHER_TXT = join(ROOT, 'docs/reviews/test-baseline.other.txt')

@@ -18,9 +18,9 @@
  * @module dsh-pmboard/wiring/not-ready
  */
 import type { Context } from '@deepseek-ai/cordis'
-import type { MigrationFailure } from '../repositories/migrationGate.js'
+import type { MigrationFailure } from 'pmboard-core/repositories/migrationGate.js'
 import { createNotReadyHandler } from '../http/not-ready.js'
-import { captureDiag } from '../application/internal/diag-log.js'
+import { captureDiag } from 'pmboard-core/application/internal/diag-log.js'
 
 /** 与 `src/index.ts` 正常分支里的注册前缀**必须逐字一致**（重复注册会抛错）。 */
 export const NOT_READY_ROUTE_PATH = '/dashboard/api/reqboard'

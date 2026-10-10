@@ -52,24 +52,24 @@ import type {
   SessionProbe,
   UseCaseDeps,
   UserQuestionPort,
-} from '../../src/application/ports.js'
+} from 'pmboard-core/application/ports.js'
 // 值导入单独写：上面的导入块是 types-only，错误码表是运行时常量，混进去会让"仅类型"这条性质失真。
-import { REQUIREMENT_STORE_ERROR } from '../../src/application/ports.js'
+import { REQUIREMENT_STORE_ERROR } from 'pmboard-core/application/ports.js'
 // t8 / 同源化：夹具的 `repo` 用**桥**架在 `store` 上，两个视图同一份真相。
 // 用桥的 `seed` 缝**同步**就绪，故 `makeHarness` 仍是同步函数（145 处调用点不动）。
-import { isColdStatus, isRequirementId } from '../../src/domain/requirement/ReqboardPaths.js'
+import { isColdStatus, isRequirementId } from 'pmboard-common/requirement/ReqboardPaths.js'
 // 冷侧写豁免（与生产实现**同源**，不写第二份判据）：domain/requirement/ColdWrite。
-import { isColdWriteExempt } from '../../src/domain/requirement/ColdWrite.js'
-import { factsOf, type RequirementFacts, type RequirementSummary } from '../../src/domain/requirement/RequirementSummary.js'
-import { boardSummaryOfAuthoritative } from '../../src/shared/board-summary.js'
+import { isColdWriteExempt } from 'pmboard-common/requirement/ColdWrite.js'
+import { factsOf, type RequirementFacts, type RequirementSummary } from 'pmboard-core/domain/requirement/RequirementSummary.js'
+import { boardSummaryOfAuthoritative } from 'pmboard-core/board-summary-domain.js'
 // 分页/排序助手与分片实现**同源**（REQ-261002161439-277d t4）：排序键是端口契约，
 // 两处各写一份必然漂移，而漂移的症状是"分页偶尔跳页"，最难查。
-import { compareSummaryOrder, decodeSummaryCursor, encodeSummaryCursor } from '../../src/repositories/shardPaging.js'
-import { QUEUE_VERSION, type QueueFile, type QueueTask } from '../../src/domain/queue/QueueTypes.js'
-import { computeEdges, computeLayers, computeReady } from '../../src/domain/queue/topology.js'
-import { validateQueueFile } from '../../src/domain/queue/validateQueue.js'
-import { QUEUE_ERROR, type QueueRepository, queueRelativePath } from '../../src/repositories/QueueRepository.js'
-import { QueueTaskStore } from '../../src/repositories/QueueTaskStore.js'
+import { compareSummaryOrder, decodeSummaryCursor, encodeSummaryCursor } from 'pmboard-core/repositories/shardPaging.js'
+import { QUEUE_VERSION, type QueueFile, type QueueTask } from 'pmboard-core/domain/queue/QueueTypes.js'
+import { computeEdges, computeLayers, computeReady } from 'pmboard-core/domain/queue/topology.js'
+import { validateQueueFile } from 'pmboard-core/domain/queue/validateQueue.js'
+import { QUEUE_ERROR, type QueueRepository, queueRelativePath } from 'pmboard-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
 import {
   REQBOARD_SCHEMA_VERSION,
   emptyBuckets,
@@ -81,13 +81,13 @@ import {
   type TokenSnapshot,
   type ContextPressureSnapshot,
   type SessionLineageEntry,
-} from '../../src/shared/protocol.js'
+} from 'pmboard-core/protocol-domain.js'
 // REQ-261006201814-ac4f t2：FakeDocs 的文档根改走**进程级临时根**（单一事实源）。
 // 改前这里恒返回 '.'，而 RTM 写入绕过 docs 端口直接拼 <root>/docs/requirements/<REQ>/rtm-*.yml，
 // 且本 harness 的合成需求默认 id 恰好是 REQ-000001（撞上仓里真实跟踪的同名目录）——
 // 于是每个窗口跑测试都会改写那批 tracked 文件。这条链是 Tier A 全部泄漏的唯一出口。
-import { testWorkspaceRoot } from '../helpers/workspace-root.js'
-import { FileHostFs } from '../../src/adapters/FileHostFs.js'
+import { testWorkspaceRoot } from 'tests/helpers/workspace-root.js'
+import { FileHostFs } from 'src/adapters/FileHostFs.js'
 
 /** 队列文件的 schemaVersion（v9：台账已无 tasks）。 */
 const QUEUE_SCHEMA_VERSION = 9
@@ -251,7 +251,7 @@ export interface LedgerSeed {
 //
 // 与上面的 `InMemoryRepo`（单册台账）**并存**：t2 只立契约，t8 才做端口切换。
 // 它是 `RequirementStore` 的**第一个**实现，也是「端口真的可替换」的第一份证据：
-// 同一份契约测试（`tests/reqboard/store-contract.test.ts`）同时跑它和分片实现（t4 接入）。
+// 同一份契约测试（`packages/pmboard-core/tests/store-contract.test.ts`）同时跑它和分片实现（t4 接入）。
 //
 // 口径刻意与生产实现对齐的地方：
 //   * **version 由存储自增**（不靠调用点手工维护）——这是 FR-5 成立的前提；
@@ -576,7 +576,7 @@ export class FakeDocs implements DocRepository {
    * 把「可能是绝对路径」的入参归一为 FakeDocs 的相对键。
    *
    * 为什么必须归一（REQ-261006201814-ac4f t2 返工）：`workspaceRoot()` 由 `'.'` 改为绝对临时根后，
-   * `ensureWritableProjectRoot`（`src/application/internal/support.ts:541-546`）会调
+   * `ensureWritableProjectRoot`（`packages/pmboard-core/src/application/internal/support.ts:541-546`）会调
    * `docs.exists(声明的绝对根)` 核验——改前 `'.'` 走「非绝对 → 不判」的宽容旁路**根本不走这一步**。
    * 若 FakeDocs 只认相对键，任何绝对根都会查不到而被判 `INVALID_WORKSPACE`，
    * 于是一批**立项/捕获**用例整片变红（A/B 实测 10 条）。

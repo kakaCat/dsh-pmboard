@@ -9,8 +9,8 @@
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { createStagesRouter } from '../src/http/routers/stages.js'
-import { clientBuildStamp } from '../src/http/client-build.js'
+import { createStagesRouter } from 'src/http/routers/stages.js'
+import { clientBuildStamp } from 'src/http/client-build.js'
 
 interface Captured { head: Record<string, unknown>; chunks: string[] }
 

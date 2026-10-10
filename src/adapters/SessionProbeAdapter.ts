@@ -12,7 +12,7 @@
  *
  * @module dsh-pmboard/adapters/SessionProbeAdapter
  */
-import type { SessionProbe } from '../application/ports.js'
+import type { SessionProbe } from 'pmboard-core/application/ports.js'
 import {
   emptyBuckets,
   type TokenBuckets,
@@ -20,8 +20,8 @@ import {
   type TokenSnapshotMember,
   type SessionLineageEntry,
   type ContextPressureSnapshot,
-} from '../shared/protocol.js'
-import { descendantsOf, sumMembers, type LineageHeader } from '../domain/token/lineage.js'
+} from 'pmboard-core/protocol-domain.js'
+import { descendantsOf, sumMembers, type LineageHeader } from 'pmboard-core/domain/token/lineage.js'
 
 /**
  * DSH 两个服务的**最小形状**（鸭子探测，不 import DSH 类型以免与版本耦合）：
@@ -52,7 +52,7 @@ import {
   evidenceMatchesRecentUserMsg,
   type ToolTraceEntry,
   type RecentUserMsg,
-} from '../application/internal/session-buffers.js'
+} from 'pmboard-core/application/internal/session-buffers.js'
 export {
   TOOL_TRACE_CAP,
   recordToolTrace,

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { DshJobsAdapter, DshJobsUnavailable } from '../../src/adapters/DshJobsAdapter.js'
+import { DshJobsAdapter, DshJobsUnavailable } from 'src/adapters/DshJobsAdapter.js'
 
 describe('DshJobsAdapter', () => {
   it('构造时检测 ctx.jobs 不可用', () => {

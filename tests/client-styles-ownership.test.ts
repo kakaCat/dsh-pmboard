@@ -6,7 +6,7 @@
  * DSH 的 client-modules 在每次模块 materialize 时执行 `claimStyles(ownerId)`：
  * 把文档里所有 `style:not([data-plugin])` **认领给当前 materialize 的那个插件**；
  * 卸载 / HMR 替换 / 图行裁剪时按 `data-plugin` 调 `removeOwnedStyles(ownerId)` 整批删除。
- * （DSH 侧实现：`packages/client/modules/src/client/system.ts` 的 claimStyles、
+ * （DSH 侧实现：`packages/client/modules/packages/pmboard-client/src/system.ts` 的 claimStyles、
  * `entry-lifecycle.ts` 的 removeOwnedStyles；官方 tsdown 预设
  * `packages/client/tsdown.client.ts` 的 styleInjectionModule 因此自带
  * `tag.dataset.plugin = id`，并在**工厂执行期**注入。）
@@ -134,7 +134,7 @@ describe('client 样式表归属（刷新后样式全丢的围堵）', () => {
   })
 
   it('模块求值期（= client bundle 工厂执行期）就注入，并自带 data-plugin 归属章', async () => {
-    await import('../src/client/styles.js')
+    await import('pmboard-client/styles.js')
     const sheets = dom.sheets()
     expect(sheets).toHaveLength(1)
     expect(sheets[0].getAttribute('data-plugin')).toBe(PLUGIN_ID)
@@ -143,7 +143,7 @@ describe('client 样式表归属（刷新后样式全丢的围堵）', () => {
   })
 
   it('别的插件 materialize 认领不走本表 → 它的 removeOwnedStyles 删不到我们', async () => {
-    await import('../src/client/styles.js')
+    await import('pmboard-client/styles.js')
     claimStyles(dom, '@deepseek-ai/dsh-client-ui-other')
     expect(dom.sheets()[0].getAttribute('data-plugin')).toBe(PLUGIN_ID)
     removeOwnedStyles(dom, '@deepseek-ai/dsh-client-ui-other')
@@ -151,11 +151,11 @@ describe('client 样式表归属（刷新后样式全丢的围堵）', () => {
   })
 
   it('本插件被 HMR 替换（shell 先删后重新 materialize）：工厂重跑即补回，不重复插表', async () => {
-    const first = await import('../src/client/styles.js')
+    const first = await import('pmboard-client/styles.js')
     removeOwnedStyles(dom, PLUGIN_ID)
     expect(dom.sheets()).toHaveLength(0)
     vi.resetModules()
-    await import('../src/client/styles.js') // 新 bundle 的工厂执行
+    await import('pmboard-client/styles.js') // 新 bundle 的工厂执行
     expect(dom.sheets()).toHaveLength(1)
     // 同一次求值内的重复调用（apply 也会调）幂等
     first.injectStyles()
@@ -164,7 +164,7 @@ describe('client 样式表归属（刷新后样式全丢的围堵）', () => {
 
   it('存量无主表（旧 bundle 注入 / 被误认领）：纠正归属，而不是再插第二张', async () => {
     const legacy = dom.seed([['data-plugin-css', CSS_TAG]])
-    const mod = await import('../src/client/styles.js')
+    const mod = await import('pmboard-client/styles.js')
     expect(dom.sheets()).toHaveLength(1)
     expect(legacy.getAttribute('data-plugin')).toBe(PLUGIN_ID)
     mod.injectStyles()
@@ -172,7 +172,7 @@ describe('client 样式表归属（刷新后样式全丢的围堵）', () => {
   })
 
   it('样式表被移除后仍能自愈（组件在屏时 injectStyles 补回）', async () => {
-    const mod = await import('../src/client/styles.js')
+    const mod = await import('pmboard-client/styles.js')
     dom.sheets()[0].remove()
     expect(dom.sheets()).toHaveLength(0)
     mod.injectStyles()
@@ -182,7 +182,7 @@ describe('client 样式表归属（刷新后样式全丢的围堵）', () => {
 
   it('无 document（host 侧 / node 环境）时静默不抛', async () => {
     vi.stubGlobal('document', undefined)
-    const mod = await import('../src/client/styles.js')
+    const mod = await import('pmboard-client/styles.js')
     expect(() => mod.injectStyles()).not.toThrow()
   })
 })

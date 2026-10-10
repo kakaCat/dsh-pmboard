@@ -13,6 +13,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { assetRel } from 'tests/helpers/asset-root.js'
 import {
   WHITELIST,
   checkWriteback,
@@ -25,7 +26,7 @@ import {
   loadSymbolSet,
   parseArgs,
   scanRequirement,
-} from '../scripts/design-coord-probe.mts'
+} from 'scripts/design-coord-probe.mjs'
 
 /** 合成树登记表：`afterEach` 里逐棵删掉（绝不在仓库里留文件）。 */
 const tempRoots: string[] = []
@@ -110,9 +111,9 @@ describe('design-coord-probe · 路径判据：白名单不吞真缺口', () => 
     'src/**',
     'src/**/*.ts',
     'scripts/migrate-*',
-    'src/application/query/{QueryStageDetail',
-    'src/application/query/{QueryStageDetail,QueryDag}.ts',
-    'src/client/views/{timeline,panels/dag}.ts',
+    'packages/pmboard-core/src/application/query/{QueryStageDetail',
+    'packages/pmboard-core/src/application/query/{QueryStageDetail,QueryDag}.ts',
+    'packages/pmboard-client/src/views/{timeline,panels/dag}.ts',
     'tests/<文件>.test.ts',
     'tests/<',
     'docs/requirements/*/queue.json',
@@ -125,7 +126,7 @@ describe('design-coord-probe · 路径判据：白名单不吞真缺口', () => 
 
   /** 实测到的真缺口（必须有名字）：白名单一条都不许命中它们。 */
   const REAL_GAPS: readonly string[] = [
-    'src/domain/queue/normalizeQueueFile.ts',
+    'packages/pmboard-core/src/domain/queue/normalizeQueueFile.ts',
     'tests/t1-decompose-queue-write.test.ts',
   ]
 
@@ -170,9 +171,9 @@ describe('design-coord-probe · 路径判据：白名单不吞真缺口', () => 
     expect(r.observations.map((o) => o.kind)).toEqual(['brace-dir'])
     // 前缀在盘上时不产生该观测（否则噪声会淹没线索）
     const root2 = makeRoot()
-    mkdirSync(join(root2, 'src/application/query'), { recursive: true })
+    mkdirSync(join(root2, 'packages/pmboard-core/src/application/query'), { recursive: true })
     const r2 = classifyPaths(root2, [{
-      token: 'src/application/query/{QueryStageDetail,QueryDag}.ts', occurrences: [{ file: '<test>', line: 1 }],
+      token: 'packages/pmboard-core/src/application/query/{QueryStageDetail,QueryDag}.ts', occurrences: [{ file: '<test>', line: 1 }],
     }])
     expect(r2.observations).toEqual([])
   })
@@ -219,7 +220,7 @@ describe('design-coord-probe · 回写判据：通报落点必须在设计里被
     expect(r.gaps.map((g) => g.token)).toEqual(['src/extra/new-module.ts'])
     expect(r.gaps[0]!.kind).toBe('writeback')
     expect(r.gaps[0]!.fix).toContain('模块改动地图')
-    expect(r.gaps[0]!.fix).toContain('templates/design/architecture.md:18')
+    expect(assetRel(r.gaps[0]!.fix)).toContain('templates/design/architecture.md:18')
     expect(r.excluded).toBe(0)
   })
 

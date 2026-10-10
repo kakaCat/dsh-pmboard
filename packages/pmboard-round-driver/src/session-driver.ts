@@ -1,0 +1,500 @@
+/**
+ * Dive 会话驱动器（2026-09-26 由 adapters/CaptureHook.ts 迁入；**CaptureHook 已废弃**）。
+ *
+ * 它是 pmboard 会话事件的**唯一扇出点**：把"会话里发生了什么"翻译成确定性动作。
+ * 归 Dive 的理由（用户裁定）：**pm 各节点只干本节点的活，Dive 负责把节点串起来**。
+ *
+ * ── 采集点/驱动点对齐 DSH Goal round driver（用户裁定 2026-09-26）─────────────────────
+ * 参照 `@deepseek-ai/dsh-goal-round-driver`（lib/index.js）：
+ *   · 它把 **`agent/status === 'idle'`（整 agent 空闲）当作唯一驱动点**
+ *     （`:213` ctx.on('agent/status', …)、`:80` readyToDrive 要求 status === 'idle'）；
+ *   · `session/event` 只做簿记（`:258` user/message 认领、`:261` turn/end 异常取消），不驱动。
+ * 本驱动器同款拆法：
+ *   · **采集/簿记** —— session/event：tool/call 落工具痕迹；user/message 落证据缓冲 +
+ *     本回合「有直接人类消息」这一事实（原文另行留存，供 idle 跑批引用）。
+ *   · **判定/动作** —— agent/status === 'idle' 跑一批：立项候选登记 / 接手推进 /
+ *     阶段纪律注入 / 节点结算 / 里程碑催办。
+ *
+ * 为什么旧触发点（user/message 即扇出）是错的：pendingCapture 的消费点是 systemPrompt
+ * 组装（gate-wiring.ts:124），旧实现"消息到达即登记、同一回合 turn/end 清除"——登记与消费
+ * 挤在同一回合内互相抵消，动态立项提示要么赶不上组装、要么已被清掉（REQ-99f5fe 现象）。
+ * 改到 idle 登记 → 存活到下一回合组装时必命中。
+ *
+ * ⚠️ 不变量：以上任何一项都**不得**加 if (!armed) return。Dive 的语义是"armed 才自动推进"，
+ * 而这些是"人点头后的必要收尾/交接/记录"；全仓至今 0 个需求开过 armed，一旦被门控，流水线立刻停摆。
+ *
+ * 判定链（全确定性，语义判断——值不值得立项——留给 LLM）：
+ *   1. 事件类型 = user/message（用户输入到达 = 采集点）；
+ *   2. 会话非忽略（isIgnoredSession：subagent/child/session-reqboard-* / parentSession / delegationDepth > 0）；
+ *   3. direct human：event.data.source?.kind === 'user'（plugin/其他 kind → 排除；source 缺失退化放行，靠文本清洗兜底）；
+ *   4. cleanUserMessageText 清洗后非空（剔除 checkpoint / runtime context 等系统注入块）；
+ *   5. 落 roundHuman（同窗口覆盖旧条目），等 agent 空闲时统一驱动。
+ *
+ * 迁移口径：函数体自 CaptureHook 逐字搬移，仅**触发时点**从 user/message 收拢到 agent idle
+ * （REQ-47939a t9 建 → 2026-09-26 收编进 Dive 并对齐 dsh-goal-round-driver）。
+ *
+ * @module dsh-pmboard/application/dive/session-driver
+ */
+
+import { stageEnabledFor, type StageKey, type TaskRecord } from 'pmboard-core/protocol-domain.js'
+import { isIgnoredSession, extractUserMessageText, cleanUserMessageText } from 'pmboard-core/application/internal/session-message-filter.js'
+import {
+  openPromptFactsFor,
+  shouldCaptureWindowFromFacts,
+} from 'pmboard-core/application/internal/window.js'
+import type { PendingCaptureMessage } from 'pmboard-core/application/internal/capture-section.js'
+import type { NodeSettlement } from 'pmboard-core/application/internal/node-settlement.js'
+import { resolveStagePrompt, isPromptStage } from 'pmboard-core/domain/prompt/index.js'
+import { difficultyFromDeclaredPrompt } from 'pmboard-core/domain/prompt/difficulty-mapping.js'
+import {
+  injectionLogInputFromResolved,
+  type InjectionLogPort,
+} from 'pmboard-core/application/internal/injection-log.js'
+import { captureDiag } from 'pmboard-core/application/internal/diag-log.js'
+import { turnEndOutcome, type TurnEndOutcome } from 'pmboard-core/application/internal/interruption.js'
+import {
+  recordToolTrace,
+  recordRecentUserMsg,
+  type RecentUserMsg,
+  type ToolTraceEntry,
+} from 'pmboard-core/application/internal/session-buffers.js'
+import { addressSectionFor, milestoneReminderFor } from './idle-capture-actions.js'
+import type { RequirementFacts } from 'pmboard-core/domain/requirement/RequirementSummary.js'
+import { guardToolCall } from './boundary-guard.js'
+import { createGatePromptLoop, type GatePromptExhausted } from './gate-prompt.js'
+import type { GatePromptPort, TaskStore, VolatileNoticePort } from 'pmboard-core/application/ports.js'
+// REQ-261007100513-6749 t3（FR-2）：易变段尾部投递的写路径生产者（即发即忘、永不抛）。
+import { notifyVolatileQuietly } from 'pmboard-core/application/internal/notice-delivery.js'
+import type { DiveRoundDriver } from './round-driver.js'
+
+export interface DiveSessionDriverLogger {
+  /** 成员必填；logger 整体可选（deps.logger?:）→ logger?.info(...) 即安全。 */
+  info(message: string): void
+  debug(message: string): void
+}
+
+export interface DiveSessionDriverDeps {
+  /**
+   * **同步**窄投影（B12 阶段①-a）：本驱动所有同步判定（绑定/待捕获/阶段提示词/越界守卫）的唯一取数口。
+   *
+   * 历史：这里原本是 `snapshot: () => ReqboardLedger`（同步整册读）。它一度是本需求
+   * 最后一个"非桥读点"，卡在 `driveIdle` 的阶段提示词组装要 `artifacts` 上——
+   * 直到 `addressSectionFor` 的形参从 `RequirementRecord` 收窄到 `AddressSource`（窄投影也满足），
+   * 且 `domain/template` 的桩类型与实现对齐（见 `types.ts` 头注），这一处才跟着落地。
+   */
+  facts: () => readonly RequirementFacts[]
+  /**
+   * 任务队列端口（REQ-260927202051-f6df）：v9 台账已无 `tasks`，注入「当前任务」需从队列取。
+   *
+   * `driveIdle` 是**同步**函数，而 `TaskStore` 是异步端口 —— 故驱动内维护一份**同步快照缓存**
+   * （每次 driveIdle 触发一次刷新，供**下一次**注入使用）。**最终一致、最多滞后一次触发**；
+   * 该快照只用于"给人看的任务指引"提示语，**不是门禁判据**（门禁读 `TaskStore` 实时值）。
+   */
+  taskStore: TaskStore
+  /** 待捕获候选共享 Map（windowKey → 最新未消费消息；capture section 同引用读取）。 */
+  pending: Map<string, PendingCaptureMessage>
+  now: () => number
+  /**
+   * 接手推进回调（R1）：**已绑定**窗口出现直接人类消息 = 该窗口在继续推进其需求 →
+   * 调用方把它绑定的 draft 需求推进到 brainstorming。可选（未注入 = 关闭该自动推进）。
+   */
+  onBoundWindowActivity?: (windowKey: string, text: string) => void
+  /**
+   * 阶段提示词注入回调（REQ-31e11f t5）。
+   *
+   * @deprecated REQ-260927100007-b8ba FR-11 起**驱动体不再调用**：阶段纪律本就注入在
+   * 每次请求的 system prompt（`application/internal/capture-section.ts`），这里的投递是纯冗余，
+   * 且经 `agent.followup()` 会额外起一轮「只有纪律、没有提问」的 agent loop（FR-11 实测根因）。
+   * 字段保留仅为类型/测试兼容；进会话只能走 round 半的 `createRoundMessage`。
+   */
+  onStagePrompt?: (windowKey: string, prompt: string) => void
+  /**
+   * 里程碑催办**登记**回调（REQ-260927100007-b8ba FR-11）：采集半只采集/登记、**不投递会话**。
+   * 组合根据此在 armed+active 时转 round 半 `queueReminder`（由 round 半经预留→投递→准入投递），
+   * 其余（全仓现状 0 armed）只写台账 comment（不静默）。
+   * 可选（未注入 = 不登记）。
+   */
+  onMilestoneNotice?: (input: {
+    windowKey: string
+    requirementId: string
+    artifactKey: string
+    text: string
+  }) => void
+  /**
+   * 回合结束回调（REQ-e3b6a0 t7）：**闸门后置链 Phase B 的唯一时机**。
+   *
+   * 为什么必须挂在 turn/end：弹框作答发生在工具调用内（agent 忙），而压缩/唤醒要求轮次边界；
+   * 且监听器内不得做会话写操作（D-17）——故本回调只发信号，真正的执行由组合根放到异步边界。
+   * 可选（未注入 = 不触发链）。
+   */
+  onTurnEnd?: (windowKey: string, session: unknown) => void
+  /**
+   * 回合结束的断点信号（REQ-260924213231-b1c4 T-9 / FR-6）：读 `turn/end.data.reason`，
+   * 规范化后**只发信号**（沿用 D-17：监听器内不做会话写操作）——写台账由组合根放到
+   * 异步边界（setImmediate）执行。形态不认识 → 不调用（不猜、不误报）。
+   * 可选（未注入 = 不发信号）。
+   */
+  onTurnFinished?: (windowKey: string, outcome: TurnEndOutcome, session: unknown) => void
+  /** 工具痕迹表（REQ-2e9473 t05）：hook 写入，done 凭证门（t06）读取。可选（未注入 = 关闭跟踪）。 */
+  toolTrace?: Map<string, ToolTraceEntry[]>
+  /** 最近用户消息缓冲（REQ-2e9473 t10）：hook 写入，confirm_artifact 文字确认核验读取。可选。 */
+  recentUserMsgs?: Map<string, RecentUserMsg[]>
+  /** 注入留痕端口（REQ-422af1 t6）：状态转移注入后调用 record。可选（未注入 = 不留痕）。 */
+  injectionLog?: InjectionLogPort
+  /** 模板地址注入（REQ-260922213356-4a45 T-3）：绝对模板根 + 开关；缺省不注入。 */
+  address?: { templateRoot?: string; enabled?: boolean }
+  /**
+   * 越界拦截注入回调（REQ-260929210741-30ae FR-7 / t6）：boundary-guard 命中越界时调用，
+   * 组合根经 round 半 queueReminder 通道实现（不直投会话）。可选（未注入 = 关闭拦截）。
+   */
+  onBoundaryViolation?: (windowKey: string, text: string) => void
+  /**
+   * 节点结算回调（REQ-422af1 t10）：绑定窗口**整 agent 空闲**（agent/status === 'idle'）且
+   * 本回合登记过「可注入节点结算」时发信号，并携带会话句柄（隔离端口由组合根按会话构造）。
+   * **本回调不得在事件派发内做会话写操作**（D-17：监听器内同步 append 会被框架拒绝
+   * "session append cannot reenter while another append is being published"）——
+   * hook 只发信号，真正执行的异步边界在 application/internal/node-settlement.ts。
+   * 可选（未注入 = 关闭结算信号）。
+   */
+  onNodeSettled?: (settle: NodeSettlement, session: unknown) => void
+  /**
+   * round 半（REQ-260926215013-1568 T-4）：idle 拍由它定序（复位 competingQueued → 采集跑批 →
+   * requestDrive），session/event 的回合簿记也经它（admission / turn-end 收尾）。
+   * 可选（未注入 = 纯采集/簿记，行为与改动前逐字一致——旧调用方与脚本不受影响）。
+   */
+  round?: DiveRoundDriver
+  /** FR-14 受信人工门弹框端口（design I-10）；未注入 = 行为与改动前逐字一致（零新投递）。 */
+  gatePrompt?: GatePromptPort
+  /** FR-14 弹框到上限时的一次性回调（组合根据此写台账 comment，响亮不静默）。 */
+  onGatePromptExhausted?: (info: GatePromptExhausted) => void
+  /**
+   * 易变段尾部投递端口（REQ-261007100513-6749 t3 · FR-2）：**待捕获候选登记命中**时经它投递
+   * 「待捕获提示」（`kind='capture'`）。
+   *
+   * 为什么生产者必须在这里（写路径）而不只在读路径（`capture-section` 取词）：通道可用时头部只留
+   * 静态引导，命中提示**只由尾部投递**到达——写路径没有生产者，未绑定窗口的立项提示就会静默消失
+   * （t2 复核点名的缺口）。
+   *
+   * **惰性 getter**：组合根在 hook 装配之后才建 `useCaseDeps`，本回调只在 idle 拍取用。
+   *
+   * **契约（缺省 = 未装配）**：getter 返回 `undefined`（或字段整体未注入）＝ **不投递**，且因为
+   * 该通道没有交付回执，`gate-wiring` 侧 `available()` 恒为 false ⇒ **头部兜底照投整段**——
+   * 纪律与待捕获提示一条不丢（这正是"未装配时行为与改造前逐字一致"的含义，绝**不是**静默丢弃）。
+   * 取用一律经 `notifyVolatileQuietly`：它对 `undefined` 直接返回，不 NPE、不抛。
+   */
+  volatileNotice?: () => VolatileNoticePort | undefined
+  /**
+   * 回合末回调（REQ-261007100513-6749 t3 · 复核 P1-A）：转交易变段**协调层**做一次差异扫描——
+   * 覆盖"**没有生产者**"的状态变化（rollup 自动推进 / 看板路由 / confirm-settle / verdicts）。
+   * 缺省 = 不回调（行为与改造前逐字一致）。
+   */
+  onTurnEnded?: (windowKey: string) => void
+  logger?: DiveSessionDriverLogger
+}
+
+/**
+ * 驱动器双入口（对齐 dsh-goal-round-driver：一个状态机、两路订阅）。
+ *   · 调用自身 = session/event 簿记入口（tool/call、user/message、turn/end 收尾）
+ *   · onAgentStatus = agent/status 驱动入口；仅整 agent 空闲（idle）时跑批
+ */
+export interface DiveSessionDriver {
+  (session: unknown, event: unknown): void
+  onAgentStatus(agent: unknown, status: unknown): void
+}
+
+/** 从 user/message 事件 data 提取 source.kind（缺失 → undefined）。 */
+function eventSourceKind(data: unknown): unknown {
+  if (typeof data !== 'object' || data === null) return undefined
+  const source = (data as { source?: unknown }).source
+  if (typeof source !== 'object' || source === null) return undefined
+  return (source as { kind?: unknown }).kind
+}
+
+/** 从 agent/status 载荷取 windowKey 与会话句柄（会话 id 即窗口键；goal driver 同口径）。 */
+function agentRef(agent: unknown): { windowKey: string; session: unknown } | undefined {
+  if (typeof agent !== 'object' || agent === null) return undefined
+  const a = agent as { id?: unknown; session?: unknown }
+  const session = a.session
+  const sessionId = (typeof session === 'object' && session !== null)
+    ? (session as { id?: unknown }).id
+    : undefined
+  const id = typeof sessionId === 'string' && sessionId.length > 0
+    ? sessionId
+    : (typeof a.id === 'string' && a.id.length > 0 ? a.id : undefined)
+  if (id === undefined) return undefined
+  return { windowKey: id, session: session ?? agent }
+}
+
+/**
+ * 创建 Dive 驱动器。返回可调用对象（session/event 簿记入口），并挂 `onAgentStatus`
+ * 作为 agent/status 驱动入口——与 dsh-goal-round-driver 的「一个状态机 + 两路订阅」同形。
+ * 纯同步、无异步 IO；幂等（重复触发同消息只保留最新登记）。
+ */
+export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessionDriver {
+  const { pending, now, logger } = deps
+  const debug = (m: string) => logger?.debug?.(m)
+
+  /**
+   * 队列任务**同步缓存**（REQ-260927202051-f6df）——`driveIdle` 同步、`TaskStore` 异步。
+   *
+   * 刷新时机：每次 `driveIdle` 触发时刷一次，供**下一次**注入读取 ⇒ **最多滞后一次触发**
+   * （此处接受：该快照只渲染"当前任务执行中"这种给人看的指引文字，不是门禁判据）。
+   * 三态：`undefined` = 尚未加载 → 注入函数**整体略过**该块（不谎报"没有在制任务"）。
+   * 刷新失败**保留上次快照**并留痕（一次抖动不得清空提示）。**不订阅**：本驱动是同步消费 +
+   * 无 dispose 钩子，订阅会留下无人回收的监听；按需刷新已足够（滞后一次触发）。
+   */
+  let tasksSnapshot: readonly TaskRecord[] | undefined
+  const refreshTasks = (): void => {
+    void deps.taskStore.listAll().then((tasks) => {
+      tasksSnapshot = tasks
+    }).catch((err) => {
+      logger?.info('reqboard drive：队列任务快照刷新失败（保留上次快照，最多滞后一次触发）: ' + String(err))
+    })
+  }
+
+  // 里程碑提醒去重（t09）：每产物只提醒一次（确认后 stage/confirmedAt 变化自然失效）。
+  const remindedAt = new Map<string, number>()
+
+  // 已结算节点去重键 = 窗口:节点——同一节点只结算一次，否则每次空闲都会重复遗弃一次上下文。
+  const settledNodes = new Set<string>()
+
+  // FR-14：人工门主动弹框。**未装配端口 → undefined → 各处零行为**（与改动前逐字一致）。
+  const gatePromptLoop = deps.gatePrompt === undefined ? undefined : createGatePromptLoop({
+    prompt: deps.gatePrompt, now, onExhausted: deps.onGatePromptExhausted, logger,
+  })
+
+  // 本回合采集到的「直接人类消息」（user/message 落，agent idle 消费）。
+  const roundHuman = new Map<string, PendingCaptureMessage>()
+
+  /**
+   * idle 跑批（对齐 dsh-goal-round-driver 的 drive）：判定 + 动作全在这一拍。
+   * 采集留、判定/动作走——证据缓冲与工具痕迹仍留在各自事件的采集点。
+   */
+  function driveIdle(windowKey: string, session: unknown): void {
+    // 先刷新队列任务快照（供**本次**注入读取；首帧仍为 undefined → 注入函数略过任务块，不谎报）。
+    refreshTasks()
+    const human = roundHuman.get(windowKey)
+    if (human !== undefined) roundHuman.delete(windowKey)
+
+    // 上一拍登记的立项候选，已被本回合 systemPrompt 组装的取词点消费 → 清除。
+    if (pending.has(windowKey)) pending.delete(windowKey)
+
+    const facts = deps.facts()
+
+    // ── unbound：立项候选登记（在 idle 登记 → 存活到下一回合 systemPrompt 组装时命中）
+    if (shouldCaptureWindowFromFacts(facts, windowKey)) {
+      if (human !== undefined) {
+        pending.set(windowKey, human)
+        captureDiag(`reqboard-capture [NODE-3]: pendingCapture SET at idle (windowKey=${windowKey.slice(0, 16)}, size=${pending.size}, text.length=${human.text.length})`)
+        logger?.info(
+          `reqboard-capture: idle 登记待立项评估（len=${human.text.length}）——下一回合 systemPrompt 取词时注入针对性立项提示`,
+        )
+        // REQ-261007100513-6749 t3（FR-2）：命中即经**尾部通道**投递该提示——这是 `kind='capture'`
+        // 在**写路径**的唯一生产者（通道可用时头部只留静态引导，命中提示只能由尾部到达）。即发即忘、
+        // 永不抛（端口契约），未装配端口 = 零行为（与改造前逐字一致）。
+        try {
+          notifyVolatileQuietly(deps.volatileNotice?.(), windowKey, 'capture')
+        } catch {
+          // 连取端口都抛（组合根时序问题）：写路径与登记照走，不因通知失败中断。
+        }
+      }
+      return
+    }
+
+    const open = openPromptFactsFor(facts, windowKey)
+    const stageReq = [...open].sort((a, b) => b.updatedAt - a.updatedAt)[0]
+
+    if (human !== undefined) {
+      // R1 接手推进：已绑定窗口出现直接人类消息 = 该窗口仍在推进其需求 → 其 draft 需求进评审。
+      deps.onBoundWindowActivity?.(windowKey, human.text)
+
+      if (stageReq !== undefined) {
+        const stage = stageReq.status
+        // draft/done/canceled 不是可注入节点：先过闸，避免只捞到 ⑤ 铁律而误触发注入。
+        if (isPromptStage(stage) && stageEnabledFor(stageReq.category, stage as StageKey)) {
+          // INV-1：与 capture-section 同一取词入口（resolveStagePrompt）。
+          // REQ-261005154851-8512 FR-3：与系统提示词同口径——留痕必须与真实注入一致，
+          // 否则留痕会被当证据误读（本处仍只留痕、不投递）。
+          const declared = difficultyFromDeclaredPrompt(stageReq.promptDifficulty)
+          const located = resolveStagePrompt({
+            stage,
+            category: stageReq.category,
+            requirement: { title: stageReq.title, description: stageReq.description },
+            ...(declared === undefined ? {} : { declaredDifficulty: declared }),
+          })
+          // T-3：与 capture-section/H3/输入包同源折入地址段（第四处注入点）。
+          const resolved = addressSectionFor(located, deps.address, tasksSnapshot, stageReq, stage)
+          if (resolved.text.length > 0) {
+            // FR-11（REQ-260927100007-b8ba）：采集半**不再投递**阶段纪律——纪律已在每次请求的
+            // system prompt（application/internal/capture-section.ts），此处投递纯属冗余，
+            // 且经 agent.followup 会额外起一轮 agent loop。只留痕 + 发节点结算信号；
+            // 凡"进会话"的投递只能走 round 半的 createRoundMessage（见投递白名单）。
+            // INV-6：注入即留痕（与 capture-section 同一组装入口）。
+            // INV-6 + FR-9（t-cc7233）：这一处**只留痕、不投递**（上一段已说明采集半不再投递），
+            // 故 delivered=false 如实记——否则页面会把「留了痕」读成「窗口收到了」。
+            deps.injectionLog?.record(injectionLogInputFromResolved(resolved, windowKey, {
+              origin: 'dive-node',
+              delivered: false,
+            }))
+            // REQ-422af1 t10：idle = 上一回合的轮次边界 → 立即发节点结算信号（隔离在异步边界执行）。
+            // 已结算过的节点不再结算（同一节点只遗弃一次上下文）。
+            if (deps.onNodeSettled !== undefined && !settledNodes.has(windowKey + ':' + stage)) {
+              settledNodes.add(windowKey + ':' + stage)
+              deps.onNodeSettled({
+                windowKey,
+                stage,
+                requirementId: stageReq.id,
+                ...(stageReq.category === undefined ? {} : { category: stageReq.category }),
+              }, session)
+              debug(`reqboard-settle: node ${stage} settled at idle (${windowKey.slice(0, 16)})`)
+            }
+          }
+        }
+      }
+    }
+
+    // 里程碑超时提醒（REQ-2e9473 t09）：时间型，不依赖本回合是否有消息——每产物只提醒一次。
+    const reminder = milestoneReminderFor(facts, windowKey, now())
+    if (reminder !== undefined && !remindedAt.has(reminder.artifactKey)) {
+      remindedAt.set(reminder.artifactKey, now())
+      // FR-11：采集半只**登记**、不投递会话——armed+active 由组合根转 round 半 queueReminder，
+      // 其余只写台账 comment（见 wiring/pm-capture-root.ts 的投递白名单）。
+      deps.onMilestoneNotice?.({
+        windowKey,
+        requirementId: reminder.requirementId,
+        artifactKey: reminder.artifactKey,
+        text: reminder.text,
+      })
+      debug('reqboard-capture: milestone reminder registered → ' + reminder.artifactKey)
+    }
+
+    // ── FR-14：人工门主动弹框（受信内部入口；仅装配了端口时）。门状态判定 + 有边界重弹见
+    // ./gate-prompt.js；弹框与"落章/推进"都走端口（D-17：本拍不 await、不做会话写）。
+    gatePromptLoop?.tick(windowKey, stageReq)
+  }
+
+  /** session/event 簿记入口：只采集/只收尾，不做任何「判定 + 动作」扇出。 */
+  const driver = ((session: unknown, event: unknown): void => {
+    const sessionObj = (typeof session === 'object' && session !== null ? session : {}) as { id?: unknown }
+    const windowKey = typeof sessionObj.id === 'string' && sessionObj.id.length > 0 ? sessionObj.id : ''
+    if (!windowKey) return
+
+    const evt = (typeof event === 'object' && event !== null ? event : {}) as { type?: unknown; data?: unknown }
+    const type = typeof evt.type === 'string' ? evt.type : ''
+
+    // 回合侧簿记（T-4）：admission（user/message 身份匹配 → 准入计数）与 turn/end 异常收尾经 round 半。
+    if (deps.round !== undefined) deps.round.onSessionEvent(session, event)
+
+    // 工具痕迹（REQ-2e9473 t05）：tool/call 事件按窗口落痕，done 凭证门据此判定
+    // "开工以来有无真实工具动作"。忽略会话（subagent 等）不记——各算各账。
+    if (type === 'tool/call') {
+      if (deps.toolTrace !== undefined && !isIgnoredSession(windowKey, session)) {
+        const data = (typeof evt.data === 'object' && evt.data !== null ? evt.data : {}) as { name?: unknown }
+        recordToolTrace(deps.toolTrace, windowKey, typeof data.name === 'string' ? data.name : '?', now())
+      }
+      // FR-7 越界拦截（t6）：reqboard_* 写工具按当前阶段判定，越界即注入纠偏提示（限流一次）。
+      // 只发信号不做会话写（D-17）——注入回调由组合根放到异步边界（round 半 queueReminder）。
+      if (deps.onBoundaryViolation !== undefined && !isIgnoredSession(windowKey, session)) {
+        const data = (typeof evt.data === 'object' && evt.data !== null ? evt.data : {}) as { name?: unknown; args?: unknown }
+        const toolName = typeof data.name === 'string' ? data.name : ''
+        if (toolName.startsWith('reqboard_')) {
+          const args = (typeof data.args === 'object' && data.args !== null ? data.args : {}) as Record<string, unknown>
+          guardToolCall({
+            facts: deps.facts,
+            inject: deps.onBoundaryViolation,
+            now,
+          }, windowKey, toolName, args)
+        }
+      }
+      return
+    }
+
+    // 回合结束：只做簿记（对齐 dsh-goal-round-driver —— 它也只在这里做认领/异常取消）。
+    // 判定与动作不在这里，等 agent/status 空闲后统一跑批。
+    if (type === 'turn/end') {
+      // REQ-e3b6a0 t7：无论有没有节点结算，都问一次「该窗口有没有待处理闸门」——
+      // 闸门作答不一定伴随用户消息，故不能只靠 idle 跑批。
+      deps.onTurnEnd?.(windowKey, session)
+      // REQ-261007100513-6749 t3（复核 P1-A）：回合末扫一次易变段差异（即发即忘、永不抛）。
+      try { deps.onTurnEnded?.(windowKey) } catch { /* 协调失败不许影响事件派发 */ }
+      // REQ-260924213231-b1c4 T-9 / FR-6（写入器 B）：回合异常收尾（aborted/error/
+      // interrupted）时补写断点原因；此处只发信号，写台账走组合根异步边界（D-17）。
+      // 形态不认识 → turnEndOutcome 返回 undefined → 不发信号（A 的 checkpoint 仍在）。
+      const outcome = turnEndOutcome((evt as { data?: unknown }).data)
+      if (outcome !== undefined) deps.onTurnFinished?.(windowKey, outcome, session)
+      return
+    }
+
+    // 采集点：仅 user/message（用户输入到达）。
+    // 【诊断日志-节点2】user/message 事件到达
+    if (type === 'user/message') {
+      captureDiag(`reqboard-capture [NODE-2]: user/message event ARRIVED (windowKey=${windowKey.slice(0, 16)}, type=${type})`)
+    }
+    if (type !== 'user/message') return
+
+    // 忽略会话（子代理/内部会话/父会话派生子会话）。
+    if (isIgnoredSession(windowKey, session)) {
+      debug(`reqboard-capture: ignored session ${windowKey.slice(0, 16)}`)
+      return
+    }
+
+    // direct human：source.kind === 'user'；source 缺失 → 退化放行（文本清洗兜底）。
+    const sourceKind = eventSourceKind(evt.data)
+    if (sourceKind !== undefined && sourceKind !== 'user') {
+      debug(`reqboard-capture: non-direct-human source kind=${String(sourceKind)} skipped (${windowKey.slice(0, 16)})`)
+      return
+    }
+
+    // 清洗：剔除 checkpoint / runtime context / system-reminder 等系统注入块。
+    const raw = extractUserMessageText(evt.data)
+    const text = cleanUserMessageText(raw)
+    if (text.trim().length === 0) {
+      debug(`reqboard-capture: noise-only message skipped (${windowKey.slice(0, 16)})`)
+      return
+    }
+
+    // 文字确认核验缓冲（REQ-2e9473 t10）：记录清洗后的真实用户消息原文，
+    // confirm_artifact 的 evidence 必须命中缓冲内消息（防 agent 编造"用户同意了"）。
+    // 必须留在采集点：核验发生在**同一回合内**，idle 跑批时已来不及。
+    if (deps.recentUserMsgs !== undefined) {
+      recordRecentUserMsg(deps.recentUserMsgs, windowKey, text, now())
+    }
+
+    // 仅采集，不判定：等 agent 空闲（agent/status === 'idle'）时统一驱动。
+    const replaced = roundHuman.has(windowKey)
+    roundHuman.set(windowKey, { windowKey, text, capturedAt: now() })
+    // 【诊断日志-节点3】本回合直接人类消息采集状态（文件双写，防 stdout 死管道）
+    captureDiag(`reqboard-capture [NODE-3]: roundHuman SET (windowKey=${windowKey.slice(0, 16)}, text.length=${text.length}, replaced=${replaced})`)
+    logger?.info(
+      `reqboard-capture: 采集到直接人类消息（待 idle 驱动，len=${text.length}${replaced ? ', 覆盖旧条目' : ''}）`,
+    )
+  }) as DiveSessionDriver
+
+  /**
+   * agent/status 驱动入口（对齐 dsh-goal-round-driver lib/index.js:213）：
+   * 仅整 agent 空闲（idle）时跑批——对话真正结束后的那一拍才是 Dive 的采集点。
+   */
+  driver.onAgentStatus = (agent: unknown, status: unknown): void => {
+    if (status !== 'idle') return
+    const ref = agentRef(agent)
+    if (ref === undefined) return
+    const { windowKey, session } = ref
+    if (isIgnoredSession(windowKey, session)) {
+      debug(`reqboard-capture: ignored session (idle) ${windowKey.slice(0, 16)}`)
+      return
+    }
+    const tick = (): void => {
+      try {
+        driveIdle(windowKey, session)
+      } catch (err) {
+        // 驱动失败不能炸宿主事件循环：记 warn，等下一次 idle 重试。
+        logger?.info(`reqboard-capture: idle drive failed (${windowKey.slice(0, 16)}): ${String(err)}`)
+      }
+    }
+    // 定序（T-4）：round 半先复位 competingQueued → 采集跑批（可能同步排入纪律提示）→ 请求驱动。
+    if (deps.round !== undefined) deps.round.onIdle(agent, tick)
+    else tick()
+  }
+
+  return driver
+}

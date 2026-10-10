@@ -19,9 +19,9 @@
  * 退出码：0 = 三条断言全过；1 = 有断言不过（打印每条的实测值）。
  */
 import { PendingConfirmRegistry } from '../src/adapters/PendingConfirmRegistry.js'
-import { requestGate, type GateRequestInput } from '../src/application/internal/gate-request.js'
-import type { UseCaseDeps } from '../src/application/ports.js'
-import type { RequirementRecord } from '../src/shared/protocol.js'
+import { requestGate, type GateRequestInput } from 'pmboard-core/application/internal/gate-request.js'
+import type { UseCaseDeps } from 'pmboard-core/application/ports.js'
+import type { RequirementRecord } from 'pmboard-core/protocol-domain.js'
 
 const W = 'session-gate-probe'
 const REQ = 'REQ-gateprobe'

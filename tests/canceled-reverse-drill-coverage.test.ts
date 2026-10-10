@@ -14,12 +14,12 @@
  * （条目数 === 14、每条有 target 与判据命令、`git checkout` 命中 === 0）。
  */
 import { existsSync, readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
-import { CANCELED_DRILLS } from '../scripts/reverse-drill-matrix.mts'
 
-const SCRIPT_PATH = fileURLToPath(new URL('../scripts/reverse-drill-matrix.mts', import.meta.url))
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+import { describe, expect, it } from 'vitest'
+import { REPO_ROOT, repoPath } from 'tests/helpers/repo-root.js'
+import { CANCELED_DRILLS } from 'scripts/reverse-drill-matrix.mjs'
+
+const SCRIPT_PATH = repoPath('scripts/reverse-drill-matrix.mts')
 const SCRIPT_SRC = readFileSync(SCRIPT_PATH, 'utf8')
 
 /** t-848a93 实施说明点名的 14 条落点（顺序 = 说明里的编号；`ref` 与之一一对应）。 */
@@ -34,15 +34,15 @@ const EXPECTED_REFS: readonly string[] = [
  * 即使范围自检没跑到（例如脚本被改坏）。
  */
 const EXPECTED_TARGETS: readonly string[] = [
-  'src/application/query/QueryStageDetail.ts',
-  'src/application/query/QueryDag.ts',
+  'packages/pmboard-core/src/application/query/QueryStageDetail.ts',
+  'packages/pmboard-core/src/application/query/QueryDag.ts',
   'src/http/routers/stages.ts',
-  'src/shared/protocol.ts',
-  'src/domain/queue/topology.ts',
-  'src/domain/queue/validateQueue.ts',
-  'src/repositories/QueueRepository.ts',
-  'src/client/stage-panel.ts',
-  'src/application/internal/rtm-yaml.ts',
+  'packages/pmboard-core/src/protocol-domain.ts',
+  'packages/pmboard-core/src/domain/queue/topology.ts',
+  'packages/pmboard-core/src/domain/queue/validateQueue.ts',
+  'packages/pmboard-core/src/repositories/QueueRepository.ts',
+  'packages/pmboard-client/src/stage-panel.ts',
+  'packages/pmboard-core/src/application/internal/rtm-yaml.ts',
 ]
 
 /** 判据命令里"看起来像仓库内路径"的 token（含 `/`）。 */

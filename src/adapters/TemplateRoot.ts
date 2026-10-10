@@ -7,6 +7,7 @@
  *
  * @module dsh-pmboard/adapters/TemplateRoot
  */
+import { existsSync } from 'node:fs'
 import { isAbsolute, resolve } from 'node:path'
 
 export interface TemplateAddressConfig {
@@ -22,7 +23,8 @@ export function resolveTemplateRoot(config: TemplateAddressConfig | undefined, m
   if (configured !== undefined && configured.length > 0) {
     return isAbsolute(configured) ? configured : undefined
   }
-  return resolve(moduleDir, '..', 'templates')
+  const inPkg = resolve(moduleDir, '..', 'packages', 'pmboard-templates', 'templates')
+  return existsSync(inPkg) ? inPkg : resolve(moduleDir, '..', 'templates')
 }
 
 /** 地址段是否启用（显式 false 关闭；缺省 = 启用）。 */

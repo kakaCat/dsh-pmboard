@@ -7,28 +7,25 @@
 
 ## 分层与依赖方向 #layers
 
-```
-        ┌──────────── 入口层（薄壳，只做参数与错误映射） ────────────┐
-        │  tools/  20+ 个 agent 工具    http/  看板 API 路由          │
-        └───────────────────────────┬────────────────────────────────┘
-                                    │ 只调用例
-        ┌───────────────────────────▼────────────────────────────────┐
-        │  application/  用例（立项/拆分/验收/闸门链）+ ports 端口定义 │
-        └───────────────────────────┬────────────────────────────────┘
-                                    │ 只用 domain 的类型与规则
-        ┌───────────────────────────▼────────────────────────────────┐
-        │  domain/  状态机 · 门规 · 提示词片段 · 纯函数（零 I/O）      │
-        └────────────────────────────────────────────────────────────┘
-                    ▲ 实现端口（I/O 只在这里）
-        ┌───────────┴───────────────┐   ┌────────────────────────────┐
-        │  adapters/  分片台账 ·      │   │  client/  GUI 半（自包含，  │
-        │  文件文档库 · 会话探针       │   │  无外部 UI 依赖）           │
-        └───────────────────────────┘   └────────────────────────────┘
-```
+> REQ-261009174713-7bc8 重构后：实现按**层**拆成 19 个 workspace 包，依赖方向只许向内（L0 → L4）。
+> 白名单唯一权威是 `scripts/package-boundary-check.mts` 的 `LAYERS`；跑 `node scripts/package-boundary-check.mts` 自检。
 
-**依赖方向（硬纪律）**：`tools/http/client → application → domain`；`adapters` 实现 `application/ports.ts` 的端口。
-禁止反向，禁止 domain 碰 `node:` / 框架 / 上层模块。
+| 层 | 包 | 允许依赖 | 说明 |
+|---|---|---|---|
+| `L0` | `pmboard-common` · `reqboard-rtm` | （无） | 零依赖底座（公共值 + RTM 引擎） |
+| `L0.5` | `pmboard-type-kit` | pmboard-common | 类型层：契约与六个类型规格 |
+| `L0.5` | `pmboard-type-feature` · `pmboard-type-bug` · `pmboard-type-doc` · `pmboard-type-refactor` · `pmboard-type-spike` · `pmboard-type-chore` | pmboard-common · pmboard-type-kit | 类型层：契约与六个类型规格 |
+| `L1` | `pmboard-core` | pmboard-common · reqboard-rtm · pmboard-type-kit | 领域与用例（含类型消费端口） |
+| `L2` | `tool-pmboard` · `pmboard-round-driver` · `pmboard-workflow` · `pmboard-client` · `command-pmboard` | pmboard-common · pmboard-core | 入口与适配：工具 / 驱动 / 工作流 / 客户端 / 命令面 |
+| `L3` | `pmboard-templates` · `pmboard-skills` · `pmboard-eval-suite` · `pmboard-scripts` | （无） | 资产包：模板 / 技能 / 评测 / 脚本 |
 
+**依赖方向（硬纪律）**：只许向内。资产包（L3）零 import；`pmboard-type-kit` 是工具包唯一合法横向通路。
+
+### 需求类型层 #type-layer
+
+六个 `pmboard-type-<cat>` 包各自导出一份 `RequirementTypeSpec`（必填节 delta / 必交与条件设计文档 / 条件产物 / 模板引用 / 归档去向 / 中文标签）；
+`pmboard-type-kit` 的 `createTypeRegistry` **构建即校验**（缺字段即抛，不静默兜底）。**加一个需求类型三步**：
+新建 `packages/pmboard-type-<cat>`（`src/index.ts` 一份 spec + `tests/spec.test.ts`）→ 在 `src/type-registry.ts` 装配一行 → 跑 `node scripts/package-boundary-check.mts` 与全量测试。
 ## 数据层：需求台账怎么存 #data-layer
 
 台账自 REQ-261002161439-277d 起从**单册 JSON** 改为**分片目录**（读放大治理 + 端口化的地基）。

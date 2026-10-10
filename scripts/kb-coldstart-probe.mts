@@ -12,13 +12,13 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { KB_PATHS, KB_PAGE_PATHS } from '../src/domain/knowledge/types.ts'
+import { KB_PATHS, KB_PAGE_PATHS } from 'pmboard-common/knowledge/types.js'
 
 const ROOT = process.cwd()
 
 const COLD_START = [
   ['这个项目分几层、依赖往哪边？', 'docs/knowledge/architecture.md#layers'],
-  ['「人工门」有哪几道、由谁开？', 'src/application/gate/*（architecture.md#mechanisms 指向）'],
+  ['「人工门」有哪几道、由谁开？', 'packages/pmboard-core/src/application/gate/*（architecture.md#mechanisms 指向）'],
   ['加一个新的 Agent 工具，落点在哪？', 'docs/knowledge/architecture.md#extensions'],
   ['客户端为什么不能引裸 npm 包？', 'docs/knowledge/conventions.md#c-04'],
   ['归档索引由谁写、写在哪？', 'docs/knowledge/architecture.md#mechanisms（知识层）+ conventions.md#c-09'],

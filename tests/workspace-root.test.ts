@@ -18,9 +18,9 @@ import { existsSync, statSync } from 'node:fs'
 import { isAbsolute, join, relative } from 'node:path'
 import {
   REPO_ROOT, isUnderTempDir, perFileWorkspaceRoot, resolveWorkspaceRoot, testWorkspaceRoot,
-} from './helpers/workspace-root.js'
-import { testWorkspaceRoot as fromToolDeps, resolveWorkspaceRoot as resolveFromToolDeps } from './helpers/tool-deps.js'
-import { FakeDocs } from './application/harness.js'
+} from 'tests/helpers/workspace-root.js'
+import { testWorkspaceRoot as fromToolDeps, resolveWorkspaceRoot as resolveFromToolDeps } from 'tests/helpers/tool-deps.js'
+import { FakeDocs } from 'tests/application/harness.js'
 
 describe('① 两条策略不再分叉', () => {
   it('tool-deps 与 harness 取到的是同一类根（都在系统临时目录下）', () => {

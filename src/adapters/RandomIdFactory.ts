@@ -11,7 +11,7 @@
  * @module dsh-pmboard/adapters/RandomIdFactory
  */
 import { randomInt } from 'node:crypto'
-import type { IdFactory } from '../application/ports.js'
+import type { IdFactory } from 'pmboard-core/application/ports.js'
 
 /** 随机 6 位 hex（与 protocol 的 new*Id 同格式）。 */
 function hex6(): string {

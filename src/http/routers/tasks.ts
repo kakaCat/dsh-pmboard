@@ -26,15 +26,15 @@ import {
   normalizeTitle,
   recordStatus,
   type TaskRecord,
-} from '../../shared/protocol.js'
-import { applyTaskRollupVia, type RollupContext } from '../../application/internal/rollup.js'
-import { closeExecutions, openExecution } from '../../application/internal/token-usage.js'
-import { roleOfTask, transitionTask } from '../../application/internal/task-transition.js'
-import { endsExecutionSegment, isRollbackOrCancel, startsExecutionSegment } from '../../domain/status/Predicates.js'
-import { INITIAL_TASK_STATUS } from '../../domain/task/TaskStatus.js'
+} from 'pmboard-core/protocol-domain.js'
+import { applyTaskRollupVia, type RollupContext } from 'pmboard-core/application/internal/rollup.js'
+import { closeExecutions, openExecution } from 'pmboard-core/application/internal/token-usage.js'
+import { roleOfTask, transitionTask } from 'pmboard-core/application/internal/task-transition.js'
+import { endsExecutionSegment, isRollbackOrCancel, startsExecutionSegment } from 'pmboard-core/domain/status/Predicates.js'
+import { INITIAL_TASK_STATUS } from 'pmboard-core/domain/task/TaskStatus.js'
 import type { RouterCtx } from './shared.js'
-import { syncRTMYamlWithSnapshot } from '../../application/internal/rtm-yaml.js'
-import { amendTaskRefs } from '../../application/use-cases/AmendTaskRefs.js'
+import { syncRTMYamlWithSnapshot } from 'pmboard-core/application/internal/rtm-yaml.js'
+import { amendTaskRefs } from 'pmboard-core/application/use-cases/AmendTaskRefs.js'
 
 export function createTasksRouter(ctx: RouterCtx) {
   // B12 阶段④-2-③：本文件的 rollup 写已迁到 `ctx.requirementStore` ⇒ 旧口不再需要

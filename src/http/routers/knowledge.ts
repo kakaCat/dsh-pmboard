@@ -8,9 +8,9 @@
  * @module dsh-pmboard/http/routers/knowledge
  */
 import type { ServerResponse } from 'node:http'
-import { executeQueryKnowledge } from '../../application/use-cases/QueryKnowledge.js'
-import { countLines } from '../../domain/knowledge/budget.js'
-import { KB_PAGE_PATHS } from '../../domain/knowledge/types.js'
+import { executeQueryKnowledge } from 'pmboard-core/application/use-cases/QueryKnowledge.js'
+import { countLines } from 'pmboard-core/domain/knowledge/budget.js'
+import { KB_PAGE_PATHS } from 'pmboard-common/knowledge/types.js'
 import type { RouterCtx } from './shared.js'
 
 /** 页面清单（看板页头显示「4 份页面各多少行」，让人一眼看到预算余量）。 */

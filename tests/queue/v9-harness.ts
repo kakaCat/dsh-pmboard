@@ -18,7 +18,7 @@
  *
  * @module dsh-pmboard/tests/queue/v9-harness
  */
-import { legacyStoreProjection } from '../support/legacy-store-projection.js'
+import { legacyStoreProjection } from 'tests/support/legacy-store-projection.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -28,17 +28,17 @@ import type {
   MutableLedger,
   LedgerMutateResult,
   UseCaseDeps,
-} from '../../src/application/ports.js'
-import { FileHostFs } from '../../src/adapters/FileHostFs.js'
-import { JsonQueueRepository } from '../../src/repositories/QueueRepository.js'
-import { QueueTaskStore } from '../../src/repositories/QueueTaskStore.js'
+} from 'pmboard-core/application/ports.js'
+import { FileHostFs } from 'src/adapters/FileHostFs.js'
+import { JsonQueueRepository } from 'pmboard-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
 import {
   emptyLedger,
   type ReqboardLedger,
   type RequirementRecord,
   type TaskRecord,
-} from '../../src/shared/protocol.js'
-import { FakeDocs, FakeQuestions, FakeSession, FixedClock, SeqIds } from '../application/harness.js'
+} from 'pmboard-core/protocol-domain.js'
+import { FakeDocs, FakeQuestions, FakeSession, FixedClock, SeqIds } from 'tests/application/harness.js'
 
 /** v9 口径的内存台账仓储（结构上没有 `tasks` 键）。 */
 export class V9Repo {

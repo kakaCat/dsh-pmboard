@@ -12,12 +12,13 @@
  *   ④ 红线：全仓不得出现 `sessionController.prompt`（它会把消息标成 `{kind:'user'}`，等于冒充人类）。
  */
 import { describe, it, expect } from 'vitest'
+import { repoPath } from 'tests/helpers/repo-root.js'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { AgentDeliverer } from '../src/adapters/AgentDeliverer.js'
 
-const SRC = fileURLToPath(new URL('../src', import.meta.url))
+import { AgentDeliverer } from 'src/adapters/AgentDeliverer.js'
+
+const SRC = repoPath('src')
 
 /** 造一个投递器：热窗口服务可空；冷会话控制器与 flush 按用例给。 */
 function deliverer(opts: {

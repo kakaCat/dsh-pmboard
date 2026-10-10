@@ -37,12 +37,12 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
-import { designDocPolicyFrom } from '../src/application/internal/category-doc-sets.js'
-import { parseDocument } from '../src/application/internal/content-gates.js'
-import { contentGatesForMove, e2eCoverageOf } from '../src/application/internal/content-gate-wiring.js'
-import { checkDecisionLogGate } from '../src/application/internal/decision-gates.js'
-import { PROTOTYPE_RULES_SINCE, prototypeSectionVerdict } from '../src/application/internal/rtm-health.js'
-import type { RequirementRecord, StageArtifact } from '../src/shared/protocol.js'
+import { designDocPolicyFrom } from 'pmboard-core/application/internal/category-doc-sets.js'
+import { parseDocument } from 'pmboard-core/application/internal/content-gates.js'
+import { contentGatesForMove, e2eCoverageOf } from 'pmboard-core/application/internal/content-gate-wiring.js'
+import { checkDecisionLogGate } from 'pmboard-core/application/internal/decision-gates.js'
+import { PROTOTYPE_RULES_SINCE, prototypeSectionVerdict } from 'pmboard-core/application/internal/rtm-health.js'
+import type { RequirementRecord, StageArtifact } from 'pmboard-core/protocol-domain.js'
 
 const DEFAULT_REQ = 'REQ-261005105032-3b02'
 const sha = (p: string): string => createHash('sha256').update(readFileSync(p)).digest('hex')
@@ -240,7 +240,7 @@ async function main(): Promise<number> {
     gateC0 === undefined ? '放行（undefined）' : `拒：${String(gateC0.code)} ${gateC0.gaps[0] ?? ''}`,
     gateC0 === undefined)
 
-  const wiringAbs = resolve(workspace, 'src/application/internal/content-gate-wiring.ts')
+  const wiringAbs = resolve(workspace, 'packages/pmboard-core/src/application/internal/content-gate-wiring.ts')
   const mutC = await withBrokenFile(wiringAbs,
     '  if (!hasLevelTable) return undefined',
     '  if (!hasLevelTable) return false // 逆验证：读数口径改回"压成布尔"',

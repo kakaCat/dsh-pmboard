@@ -11,7 +11,7 @@
  *   ② 闭锁**不是永久死锁**：人恢复（台账变回可驱动）后自动解锁，能继续跑。
  */
 import { describe, it, expect } from 'vitest'
-import { harness, makeReq, ABORT_USER, TRANSPORT_FAIL } from './support/dive-loop-harness.js'
+import { harness, makeReq, ABORT_USER, TRANSPORT_FAIL } from 'tests/support/dive-loop-harness.js'
 
 describe('TC-6 · aborted:user → 当拍闭锁、零新增投递', () => {
   it('在飞回合被中止：台账记中止原因，之后一拍都不再投', async () => {

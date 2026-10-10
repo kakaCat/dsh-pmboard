@@ -15,15 +15,18 @@
  * 字符串字面量保留（更严格：宁可误报，不可漏报）。
  */
 import { describe, it, expect } from 'vitest'
+import { REPO_ROOT } from 'tests/helpers/repo-root.js'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+
 import { join, relative } from 'node:path'
 import ts from 'typescript'
 
-const PKG_ROOT = fileURLToPath(new URL('..', import.meta.url))
+const PKG_ROOT = REPO_ROOT
 const SRC = join(PKG_ROOT, 'src')
+/** 十九包重构后 application 搬进 core：扫描面 = 根包 src + core 的 src。 */
+const CORE_SRC = join(PKG_ROOT, 'packages', 'pmboard-core', 'src')
 /** 唯一收敛点：只有本文件允许 push 执行记录 / 写 tokenUsage。 */
-const CONVERGENCE = join(SRC, 'application', 'internal', 'token-usage.ts')
+const CONVERGENCE = join(CORE_SRC, 'application', 'internal', 'token-usage.ts')
 
 /** 递归收集目录下全部 .ts 文件（绝对路径）。 */
 function collectTs(dir: string, out: string[] = []): string[] {
@@ -66,7 +69,7 @@ function findViolations(code: string): string[] {
 }
 
 describe('执行/token 结构守卫 · 唯一写入口', () => {
-  const allFiles = collectTs(SRC)
+  const allFiles = [...collectTs(SRC), ...collectTs(CORE_SRC)]
   const scanned = allFiles.filter((f) => f !== CONVERGENCE)
 
   it('扫描面非空（防扫描器失效/路径写错导致的假绿）', () => {

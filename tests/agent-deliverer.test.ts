@@ -10,7 +10,7 @@
  * @module dsh-pmboard/tests/agent-deliverer
  */
 import { describe, it, expect } from 'vitest'
-import { AgentDeliverer } from '../src/adapters/AgentDeliverer.js'
+import { AgentDeliverer } from 'src/adapters/AgentDeliverer.js'
 
 const ID = 'msg-fixed-1'
 const PLUGIN = 'dsh-pmboard'

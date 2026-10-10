@@ -19,7 +19,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { REPO_ROOT } from './helpers/error-code-scan.js'
+import { REPO_ROOT } from 'tests/helpers/error-code-scan.js'
 
 /** blocker 受控枚举（与 design/data-model.md 逐条对应）。 */
 export const BLOCKERS = [

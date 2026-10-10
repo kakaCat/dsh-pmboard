@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { generateAcceptanceTracking } from '../src/application/internal/submit-rtm-integration.js';
+import { generateAcceptanceTracking } from 'pmboard-core/application/internal/submit-rtm-integration.js';
 // vendor 化后 RTM 类型的唯一声明处（REQ-261004183621-de3f 之前是 tools/reqboard/src/types/rtm.js）
-import type { AcceptanceTracking } from '../vendor/reqboard/src/types/rtm.js';
+import type { AcceptanceTracking } from 'reqboard-rtm/types/rtm.js';
 
 describe('Submit RTM Integration', () => {
   let testDir: string;

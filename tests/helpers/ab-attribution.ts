@@ -23,7 +23,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { REPO_ROOT } from './error-code-scan.js'
+import { REPO_ROOT } from 'tests/helpers/error-code-scan.js'
 
 export interface AbInput {
   /** 哪张卡、改了什么共享夹具（进产物）。 */

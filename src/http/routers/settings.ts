@@ -34,15 +34,15 @@
  * @module dsh-pmboard/http/routers/settings
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { LIMITS } from '../../domain/limits.js'
+import { LIMITS } from 'pmboard-common/limits.js'
 import {
   stageLimitRangeText,
   validateRunSettingsPatch,
   type RunSettingsPatch,
   type StorageBackend,
-} from '../../application/settings/resolve-settings.js'
-import type { SystemEvent } from '../../application/settings/events.js'
-import { SETTINGS_STORE_ERROR, type SettingsStore } from '../../application/ports.js'
+} from 'pmboard-core/application/settings/resolve-settings.js'
+import type { SystemEvent } from 'pmboard-core/application/settings/events.js'
+import { SETTINGS_STORE_ERROR, type SettingsStore } from 'pmboard-core/application/ports.js'
 import { SYSTEM_RECORD_INVALID } from '../../adapters/SystemRecordFile.js'
 import {
   requireSettingsOf,

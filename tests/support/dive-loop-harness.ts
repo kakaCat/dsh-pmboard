@@ -10,13 +10,13 @@
  *
  * @module dsh-pmboard/tests/support/dive-loop-harness
  */
-import { legacyStoreProjection } from './legacy-store-projection.js'
-import { factsOf } from '../../src/domain/requirement/RequirementSummary.js'
+import { legacyStoreProjection } from 'tests/support/legacy-store-projection.js'
+import { factsOf } from 'pmboard-core/domain/requirement/RequirementSummary.js'
 import {
   createDiveRoundDriver, type DiveRoundDriver, type DiveRoundPorts,
-} from '../../src/application/dive/round-driver.js'
-import { createProviderLatch, type ProviderLatch } from '../../src/application/internal/provider-latch.js'
-import type { RequirementDive, RequirementRecord } from '../../src/shared/protocol.js'
+} from 'pmboard-round-driver/round-driver.js'
+import { createProviderLatch, type ProviderLatch } from 'pmboard-core/application/internal/provider-latch.js'
+import type { RequirementDive, RequirementRecord } from 'pmboard-core/protocol-domain.js'
 
 /** 上游 5 小时/周额度耗尽（实测原文里带 `usage limit`、不带结构化 code）。 */
 export const AUTH_FAIL = { reason: { kind: 'error', error: { code: 'AUTH', message: '403 usage limit reached' } } }

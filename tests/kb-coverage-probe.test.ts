@@ -15,13 +15,14 @@
  * @module dsh-pmboard/tests/kb-coverage-probe
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { REPO_ROOT } from 'tests/helpers/repo-root.js'
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+
+const ROOT = REPO_ROOT
 const TSX = join(ROOT, 'node_modules', '.bin', 'tsx')
 const PROBE = join(ROOT, 'scripts', 'kb-probe.mts')
 const COVERAGE_BASELINE = 'archive-coverage.baseline.txt'

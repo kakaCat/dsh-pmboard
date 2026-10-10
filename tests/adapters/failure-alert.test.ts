@@ -11,12 +11,13 @@
  *     代码里一行都不许有——防「口径改了、代码又悄悄接回去」。
  */
 import { describe, it, expect } from 'vitest'
+import { repoPath } from 'tests/helpers/repo-root.js'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { createFailureAlert } from '../../src/adapters/FailureAlert.js'
+import {  fileURLToPath, pathToFileURL } from 'node:url'
+import { createFailureAlert } from 'src/adapters/FailureAlert.js'
 
-const SRC = fileURLToPath(new URL('../../src', import.meta.url))
+const SRC = fileURLToPath(pathToFileURL(repoPath('src')))
 
 function tsFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {

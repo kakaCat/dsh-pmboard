@@ -90,6 +90,42 @@ const workerExecArgv = [
 export default defineConfig({
   resolve: {
     alias: {
+      // 测试基建前缀别名（REQ-261009174713-7bc8 t20）：测试要随包搬，`./helpers/…` 这种**相对**导入
+      // 一搬就断；改成 `tests/helpers/…` 后与位置无关（搬迁时零改动）。
+      'tests/': fileURLToPath(new URL('./tests/', import.meta.url)),
+      // 根包（组合根）源码前缀别名（t20）：测试搬进各包后仍要能引用根包的 src。
+      'src/': fileURLToPath(new URL('./src/', import.meta.url)),
+      'scripts/': fileURLToPath(new URL('./scripts/', import.meta.url)),
+      'pmboard-common/': fileURLToPath(new URL('./packages/pmboard-common/src/', import.meta.url)),
+      'pmboard-common': fileURLToPath(new URL('./packages/pmboard-common/src/index.ts', import.meta.url)),
+      'reqboard-rtm/': fileURLToPath(new URL('./packages/reqboard-rtm/src/', import.meta.url)),
+      'reqboard-rtm': fileURLToPath(new URL('./packages/reqboard-rtm/src/index.ts', import.meta.url)),
+      'pmboard-core/': fileURLToPath(new URL('./packages/pmboard-core/src/', import.meta.url)),
+      'pmboard-core': fileURLToPath(new URL('./packages/pmboard-core/src/index.ts', import.meta.url)),
+      'pmboard-type-kit/': fileURLToPath(new URL('./packages/pmboard-type-kit/src/', import.meta.url)),
+      'pmboard-type-kit': fileURLToPath(new URL('./packages/pmboard-type-kit/src/index.ts', import.meta.url)),
+      'pmboard-type-feature/': fileURLToPath(new URL('./packages/pmboard-type-feature/src/', import.meta.url)),
+      'pmboard-type-feature': fileURLToPath(new URL('./packages/pmboard-type-feature/src/index.ts', import.meta.url)),
+      'pmboard-type-bug/': fileURLToPath(new URL('./packages/pmboard-type-bug/src/', import.meta.url)),
+      'pmboard-type-bug': fileURLToPath(new URL('./packages/pmboard-type-bug/src/index.ts', import.meta.url)),
+      'pmboard-type-doc/': fileURLToPath(new URL('./packages/pmboard-type-doc/src/', import.meta.url)),
+      'pmboard-type-doc': fileURLToPath(new URL('./packages/pmboard-type-doc/src/index.ts', import.meta.url)),
+      'pmboard-type-refactor/': fileURLToPath(new URL('./packages/pmboard-type-refactor/src/', import.meta.url)),
+      'pmboard-type-refactor': fileURLToPath(new URL('./packages/pmboard-type-refactor/src/index.ts', import.meta.url)),
+      'pmboard-type-spike/': fileURLToPath(new URL('./packages/pmboard-type-spike/src/', import.meta.url)),
+      'pmboard-type-spike': fileURLToPath(new URL('./packages/pmboard-type-spike/src/index.ts', import.meta.url)),
+      'pmboard-type-chore/': fileURLToPath(new URL('./packages/pmboard-type-chore/src/', import.meta.url)),
+      'pmboard-type-chore': fileURLToPath(new URL('./packages/pmboard-type-chore/src/index.ts', import.meta.url)),
+      'tool-pmboard/': fileURLToPath(new URL('./packages/tool-pmboard/src/', import.meta.url)),
+      'tool-pmboard': fileURLToPath(new URL('./packages/tool-pmboard/src/index.ts', import.meta.url)),
+      'pmboard-round-driver/': fileURLToPath(new URL('./packages/pmboard-round-driver/src/', import.meta.url)),
+      'pmboard-round-driver': fileURLToPath(new URL('./packages/pmboard-round-driver/src/index.ts', import.meta.url)),
+      'pmboard-workflow/': fileURLToPath(new URL('./packages/pmboard-workflow/src/', import.meta.url)),
+      'pmboard-workflow': fileURLToPath(new URL('./packages/pmboard-workflow/src/index.ts', import.meta.url)),
+      'pmboard-client/': fileURLToPath(new URL('./packages/pmboard-client/src/', import.meta.url)),
+      'pmboard-client': fileURLToPath(new URL('./packages/pmboard-client/src/index.ts', import.meta.url)),
+      'command-pmboard/': fileURLToPath(new URL('./packages/command-pmboard/src/', import.meta.url)),
+      'command-pmboard': fileURLToPath(new URL('./packages/command-pmboard/src/index.ts', import.meta.url)),
       // react 是本包的 external（运行时由 DSH web shell 的 module-loader seed 提供），
       // node_modules 里没有它——不映射时任何 import 到 page/host.ts 的用例会整文件失败。
       // 垫片只实现最小契约（见 tests/stubs/react.ts）。
@@ -111,7 +147,7 @@ export default defineConfig({
     env: { NODE_NO_WARNINGS: '1' },
 
     // 包含当前目录的 tests 文件
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/**/*.test.ts', 'packages/*/tests/**/*.test.ts'],
 
     // 排除
     exclude: [

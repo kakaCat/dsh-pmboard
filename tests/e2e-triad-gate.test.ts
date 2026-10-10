@@ -7,17 +7,17 @@
  *
  * 链路按真实顺序走：需求文档 → 计划提交 → 人批准 → 拆分落库 → 确认拆分产物 → 推进入实施。
  */
-import { makeTestStore } from './application/harness.js'
+import { makeTestStore } from 'tests/application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
-import { definePlanSubmitTool, defineDecomposeTool, defineMoveTool, taskStoreOf } from './helpers/tool-deps.js'
+import { definePlanSubmitTool, defineDecomposeTool, defineMoveTool, taskStoreOf } from 'tests/helpers/tool-deps.js'
 // 「放行」类断言改走**看板人路径**（design/fix-design.md BUG-2）：decomposing → implementing 是人工闸门，
-// 工具路径的 actor 硬编码 'agent' ⇒ 结构上不可达。形状照抄 tests/artifact-gates.test.ts:417。
-import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
-import { createReqboardHandler } from '../src/http/routes.js'
+// 工具路径的 actor 硬编码 'agent' ⇒ 结构上不可达。形状照抄 packages/pmboard-core/tests/artifact-gates.test.ts:417。
+import { FileDocRepository } from 'src/adapters/FileDocRepository.js'
+import { createReqboardHandler } from 'src/http/routes.js'
 
 const W = 'session-e2e-0001'
 const REQ = 'REQ-e2e1'
@@ -35,7 +35,7 @@ const PLAN_TASKS = [{
   description: '做甲', acceptance: 'npx vitest run tests/a.test.ts 全绿', implementation: '改 src/a.ts 加甲 + 单测',
 }]
 
-/** 看板 HTTP 请求替身（与 tests/artifact-gates.test.ts 的 fakeReq/fakeRes 同款形状）。 */
+/** 看板 HTTP 请求替身（与 packages/pmboard-core/tests/artifact-gates.test.ts 的 fakeReq/fakeRes 同款形状）。 */
 function fakeReq(body: unknown, url: string): any {
   const req = new EventEmitter() as any
   req.url = url

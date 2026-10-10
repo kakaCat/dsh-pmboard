@@ -14,7 +14,7 @@
  *
  * @module dsh-pmboard/http/routers/Verdicts
  */
-import { mutateIfPresent } from '../../application/use-cases/queue-access.js'
+import { mutateIfPresent } from 'pmboard-core/application/use-cases/queue-access.js'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   assertReqTransition,
@@ -22,17 +22,17 @@ import {
   type RequirementRecord,
   type ReqboardLedger,
   type TaskRecord,
-} from '../../shared/protocol.js'
+} from 'pmboard-core/protocol-domain.js'
 import {
   countFailedItems, countPassedItems, countPendingItems, isAccepting, isAcceptingStage,
   isDecidableItemStatus, isFailedItem, isUnverifiedItem, isVerifiableStage,
-} from '../../domain/status/Predicates.js'
-import { ACCEPTED_REQ_STATUS, REWORK_REQ_STATUS } from '../../domain/requirement/RequirementStatus.js'
-import { isFullyDecided } from '../../domain/workflow/AcceptanceSheetSpec.js'
-import { unverifiedAdviceOf, unverifiedSummaryOf } from '../../domain/workflow/VerdictNotices.js'
-import { applyVerdicts, materializeReworkFromSheet } from '../../application/internal/verdicts.js'
-import { transitionRequirement } from '../../application/internal/token-usage.js'
-import { rewriteVerificationDoc } from '../../application/internal/verification-doc-writer.js'
+} from 'pmboard-core/domain/status/Predicates.js'
+import { ACCEPTED_REQ_STATUS, REWORK_REQ_STATUS } from 'pmboard-core/domain/requirement/RequirementStatus.js'
+import { isFullyDecided } from 'pmboard-core/domain/workflow/AcceptanceSheetSpec.js'
+import { unverifiedAdviceOf, unverifiedSummaryOf } from 'pmboard-core/domain/workflow/VerdictNotices.js'
+import { applyVerdicts, materializeReworkFromSheet } from 'pmboard-core/application/internal/verdicts.js'
+import { transitionRequirement } from 'pmboard-core/application/internal/token-usage.js'
+import { rewriteVerificationDoc } from 'pmboard-core/application/internal/verification-doc-writer.js'
 import type { RouterCtx } from './shared.js'
 
 export function createVerdictsRouter(ctx: RouterCtx) {

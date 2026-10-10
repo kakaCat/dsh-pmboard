@@ -3,7 +3,7 @@
  *
  * ## 它守的是哪条契约
  *
- * 生产侧 `ensureWritableProjectRoot`（`src/application/internal/support.ts:516-546`）会拿
+ * 生产侧 `ensureWritableProjectRoot`（`packages/pmboard-core/src/application/internal/support.ts:516-546`）会拿
  * **记录声明的项目根**去调 `docs.exists(declared)` 核验。于是 docs 替身必须遵守与生产同一条契约：
  *   ① `workspaceRoot()` 是**绝对路径**；
  *   ② 「根下的绝对路径」与「对应的相对路径」**等价**（替身不能只认相对键）；
@@ -22,8 +22,8 @@
  * @module dsh-pmboard/tests/setup/hermetic-contract
  */
 import { isAbsolute, join } from 'node:path'
-import { FakeDocs } from '../application/harness.js'
-import { isUnderTempDir, resolveWorkspaceRoot } from '../helpers/workspace-root.js'
+import { FakeDocs } from 'tests/application/harness.js'
+import { isUnderTempDir, resolveWorkspaceRoot } from 'tests/helpers/workspace-root.js'
 
 /** 契约违反（人读：哪一条、实际值是什么）。 */
 export interface ContractViolation {

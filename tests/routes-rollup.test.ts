@@ -3,15 +3,15 @@
  * （不止纯函数正确）：任务状态落定后，所属需求被同一笔 mutate 推进到验收。
  * 用假 req/res 直连 createReqboardHandler（不起真服务器）。
  */
-import { makeTestStore } from './application/harness.js'
+import { makeTestStore } from 'tests/application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createReqboardHandler } from '../src/http/routes.js'
-import { taskStoreAt } from './queue/route-deps.js'
-import { stubDocFile } from './helpers/tool-deps.js'
+import { createReqboardHandler } from 'src/http/routes.js'
+import { taskStoreAt } from 'tests/queue/route-deps.js'
+import { stubDocFile } from 'tests/helpers/tool-deps.js'
 
 let dir: string
 let store: ReturnType<typeof makeTestStore>
@@ -99,7 +99,7 @@ describe('路由层自动推进（R2 实施完成 → 验收）', () => {
     // 2026-09-21：拆分计划在拆分阶段提交（legacy 无产物 → 门不硬拦，可直接推进）
     await post(handler, '/req/move', { id: reqId, to: 'decomposing', actor: 'human' })
     // 提交计划并批准
-    const { definePlanSubmitTool, defineDecomposeTool } = await import('./helpers/tool-deps.js')
+    const { definePlanSubmitTool, defineDecomposeTool } = await import('tests/helpers/tool-deps.js')
     const planTool = definePlanSubmitTool({ store, now: () => Date.now() } as never)
     const decomposeTool = defineDecomposeTool({ store, now: () => Date.now() } as never)
     // REQ-2d1c74 FR-5：plan_submit 起要求提交路径真实落盘

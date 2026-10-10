@@ -35,10 +35,10 @@
  */
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
-import { RequirementShardRepository } from '../src/repositories/RequirementShardRepository.js'
-import { writeWholeShard } from '../src/repositories/shardWholeWrite.js'
-import { isColdStatus } from '../src/domain/requirement/ReqboardPaths.js'
-import type { RequirementRecord } from '../src/shared/protocol.js'
+import { RequirementShardRepository } from 'pmboard-core/repositories/RequirementShardRepository.js'
+import { writeWholeShard } from 'pmboard-core/repositories/shardWholeWrite.js'
+import { isColdStatus } from 'pmboard-common/requirement/ReqboardPaths.js'
+import type { RequirementRecord } from 'pmboard-core/protocol-domain.js'
 
 /** v9 与 v10 的 schemaVersion。 */
 export const LEDGER_V9 = 9

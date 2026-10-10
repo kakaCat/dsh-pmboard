@@ -1,0 +1,21 @@
+# pmboard-skills
+
+> REQ-261009174713-7bc8 拆分子包（t2 落骨架，t23 收口职责正文）。
+
+## 职责
+
+资产包：技能资产与 PROVENANCE（skills/**）。运行期由根包 SkillAssets 以双根解析（包内优先）。
+
+## 允许依赖（分层 `L3`）
+
+（无：本包不得依赖任何 workspace 包）
+
+## 边界
+
+零 import（纯资产）。
+
+## 测试
+
+```bash
+npx vitest run packages/pmboard-skills/tests
+```

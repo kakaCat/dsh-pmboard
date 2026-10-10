@@ -27,11 +27,11 @@
  */
 import { copyFileSync, existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { RequirementShardRepository } from '../src/repositories/RequirementShardRepository.js'
-import { ShardedRequirementStore } from '../src/repositories/ShardedRequirementStore.js'
-import { persistAtomic } from '../src/repositories/atomicWrite.js'
+import { RequirementShardRepository } from 'pmboard-core/repositories/RequirementShardRepository.js'
+import { ShardedRequirementStore } from 'pmboard-core/repositories/ShardedRequirementStore.js'
+import { persistAtomic } from 'pmboard-core/repositories/atomicWrite.js'
 import { LEDGER_V9, serviceRunning } from './migrate-ledger-v10.js'
-import type { RequirementRecord } from '../src/shared/protocol.js'
+import type { RequirementRecord } from 'pmboard-core/protocol-domain.js'
 
 /** 旧版读路径不认识的字段（v10 热记录的内部计数）——导出时必须剔除。 */
 const V10_ONLY_FIELDS = ['commentCount', 'historyCount', 'artifactCount'] as const

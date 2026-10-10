@@ -31,7 +31,7 @@
  *
  * **已销账的两条 pinned deviation（2026-10-06 修复，留档）**：
  *   · DEV-t6-fonts：汇报模块标题/正文未按 FR-5 落地（实测 13px/400 vs 13px）。根因是
- *     `src/client/styles/report.ts` 两处横幅注释里写了「--s*」「--f-*」后紧跟斜杠
+ *     `packages/pmboard-client/src/styles/report.ts` 两处横幅注释里写了「--s*」「--f-*」后紧跟斜杠
  *     （星号 + 斜杠 = 注释终止符）**提前闭合块注释**，紧随的规则集被 CSS 解析器吞掉。
  *   · DEV-docpath-mono：文档表路径格等宽未生效——同根因（同一句横幅）。
  *   两处注释已改写（`--s 系列 / --f- 系列`），规则恢复生效；探针里的登记已移除：
@@ -56,8 +56,8 @@ import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 // 评论列表的渲染上限（条数）从**渲染层**取，避免探针自己写一份会漂移的常量
-import { COMMENT_RENDER_LIMIT } from '../src/client/views/report-head.js'
-import { REPORT_TAB_KEYS } from '../src/client/views/report-tabs.js'
+import { COMMENT_RENDER_LIMIT } from 'pmboard-client/views/report-head.js'
+import { REPORT_TAB_KEYS } from 'pmboard-client/views/report-tabs.js'
 // 标本（数据 + 真实壳拼页 + 全量 CSS + Chrome 落点）抽到共享模块：出图脚本
 // `scripts/req-detail-ui-shot.mts` / `scripts/req-7a43-ui-shot.mts` 吃同一份标本，避免漂移。
 // **判据仍在本文件**（阈值常量 + 页内断言脚本），共享模块不含任何断言。

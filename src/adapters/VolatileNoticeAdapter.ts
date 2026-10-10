@@ -24,10 +24,10 @@
  * @module dsh-pmboard/adapters/VolatileNoticeAdapter
  */
 
-import { inboxOf } from '../application/dive/round-state.js'
-import type { NoticeDeliverySink } from '../application/internal/notice-delivery.js'
-import type { VolatileNotice } from '../application/internal/volatile-notice.js'
-import { fmt } from '../domain/text/fmt.js'
+import { inboxOf } from 'pmboard-core/application/dive-core/round-state.js'
+import type { NoticeDeliverySink } from 'pmboard-core/application/internal/notice-delivery.js'
+import type { VolatileNotice } from 'pmboard-core/application/internal/volatile-notice.js'
+import { fmt } from 'pmboard-core/domain/text/fmt.js'
 
 export interface VolatileNoticeAdapterDeps {
   /** agent 服务解析器（**惰性**：装配期未必在；与 AgentDeliverer 同款）。 */

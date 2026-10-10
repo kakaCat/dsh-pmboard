@@ -22,7 +22,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { compareAbSets, restoreFiles, snapshotFiles } from './helpers/ab-attribution.js'
+import { compareAbSets, restoreFiles, snapshotFiles } from 'tests/helpers/ab-attribution.js'
 
 describe('A/B 归因：集合运算（FR-10）', () => {
   it('反例一：真的引入一条回归 → introduced 非空（判据不是空转）', () => {

@@ -1,0 +1,182 @@
+/**
+ * pm 弹框统一来源标志（REQ-260924213231-b1c4 T-11 / FR-8 · I-7 / TC-14）。
+ *
+ * 口径（design/interfaces.md I-7、use-cases.md UC-5）：
+ *   ① pm 侧构造的**每个** AskQuestion.header 以固定前缀 `📋 PM · ` 开头——
+ *      ask_confirm / accept_sheet（逐项 + 最终）/ 立项弹框 / 失败处置四处构造点；
+ *   ② 标志是**代码注入**（domain/text/pm-badge.ts 唯一字面量处），不靠 agent 在正文写 emoji：
+ *      正文（question）保持原文、不加前缀；宿主原生 `ask_user_question` 不经本函数、不带前缀。
+ *
+ * @module dsh-pmboard/tests/pm-question-badge
+ */
+import { describe, it, expect } from 'vitest'
+import { REPO_ROOT, repoPath } from 'tests/helpers/repo-root.js'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join, relative } from 'node:path'
+
+import { pmHeader, PM_BADGE_PREFIX } from 'pmboard-common/text/pm-badge.js'
+import { buildCaptureQuestions, buildCaptureIntentQuestions, buildCaptureDetailQuestions } from 'pmboard-core/application/internal/capture-mapping.js'
+import { askConfirm } from 'pmboard-core/application/use-cases/AskConfirm.js'
+import { acceptSheet } from 'pmboard-core/application/use-cases/AcceptSheet.js'
+import { openFailurePopup } from 'pmboard-core/application/use-cases/HandleFailure.js'
+import { DEFAULT_CONFIRM_OPTIONS, ACCEPT_ITEM_OPTIONS, FINAL_PASS_LABEL } from 'pmboard-common/text/labels.js'
+import { makeHarness, req } from 'tests/application/harness.js'
+
+const W = 'session-w-001'
+const REQ_ID = 'REQ-000001'
+const exec = { agent: { id: W } }
+
+/** 记录每次 ask 下发的全部 header（FakeQuestions.asked 只留最后一批）。 */
+function recordingQuestions(onAsk?: (headers: readonly string[]) => void) {
+  const seen: string[] = []
+  return {
+    seen,
+    wrap(inner: { available(): boolean; ask: (q: readonly { header?: string }[]) => Promise<readonly unknown[]> }) {
+      return {
+        available: () => inner.available(),
+        ask: async (q: readonly { header?: string }[], _opts?: unknown) => {
+          const headers = q.map(x => x.header ?? '')
+          seen.push(...headers)
+          onAsk?.(headers)
+          return inner.ask(q) as Promise<readonly never[]>
+        },
+      }
+    },
+  }
+}
+
+describe('pmHeader：来源标志唯一注入点', () => {
+  it('固定前缀 + 原文', () => {
+    expect(PM_BADGE_PREFIX).toBe('📋 PM · ')
+    expect(pmHeader('确认')).toBe('📋 PM · 确认')
+    expect(pmHeader('需求名称')).toBe('📋 PM · 需求名称')
+  })
+})
+
+describe('TC-14 四处 pm 弹框 header 均带标志', () => {
+  it('立项弹框逐问（两段合计 4 问，事实源 CAPTURE_QUESTION_IDS）header 全部带前缀，题干不变', () => {
+    // 明细段要求工作区根（`sessionCwd` / `hostCwd`：文件落点选项给绝对路径预览），与本仓其它调用点同形。
+    const WS_OPTS = { sessionCwd: '/proj/session', hostCwd: '/proj/host' }
+    const intent = buildCaptureIntentQuestions(['候选 A'])
+    const detail = buildCaptureDetailQuestions(WS_OPTS)
+    const all = buildCaptureQuestions(['候选 A'], WS_OPTS)
+    // 权威口径 = 4 问（t1 收口：文档位置与工作区合并为「文件落点」），见
+    // packages/pmboard-core/src/application/internal/capture-mapping.ts 与 packages/pmboard-core/tests/capture-tool.test.ts 的 id 顺序断言。
+    expect(all).toHaveLength(4)
+    expect([...intent, ...detail]).toHaveLength(4)
+    expect(all.map(q => q.id)).toEqual(['name', 'category', 'difficulty', 'location'])
+    expect(all.map(q => q.header)).toEqual([
+      pmHeader('立项确认'),
+      pmHeader('需求类型'),
+      pmHeader('算力档位'),
+      pmHeader('文件落点'),
+    ])
+    for (const q of all) expect(q.header!.startsWith(PM_BADGE_PREFIX)).toBe(true)
+    // 正文不注入标志（标志在 header，不在 question）
+    for (const q of all) expect(q.question.startsWith(PM_BADGE_PREFIX)).toBe(false)
+  })
+
+  it('ask_confirm（artifact 确认）header 带前缀，宿主可见的 question 正文不带', async () => {
+    const h = makeHarness({
+      requirements: [req({
+        id: REQ_ID, status: 'brainstorming', sourceSessionId: W,
+        artifacts: [{
+          stage: 'brainstorming', kind: 'requirement',
+          path: 'docs/requirements/REQ-000001/requirement.md',
+          registeredAt: 1, registeredBy: { kind: 'agent', sessionId: W },
+        }],
+      })],
+    })
+    h.questions.answers = [{ id: 'confirm', selected: [DEFAULT_CONFIRM_OPTIONS[0]] }]
+    const rec = recordingQuestions()
+    h.deps.questions = rec.wrap(h.deps.questions as never) as never
+
+    await askConfirm(h.deps, { target: 'artifact', kind: 'requirement', question: '确认需求文档？', advance: false }, exec)
+
+    expect(rec.seen).toEqual([pmHeader('确认')])
+    expect(h.questions.asked[0]!.header).toBe(pmHeader('确认'))
+    expect(h.questions.asked[0]!.question).not.toContain(PM_BADGE_PREFIX)
+  })
+
+  it('accept_sheet（逐项 + 最终归档）header 带前缀', async () => {
+    const sheet = {
+      version: 1, generatedAt: 1, generatedBy: { kind: 'agent' as const, sessionId: W },
+      items: [
+        { id: 'v1-1', source: { kind: 'requirement' } as const, criterion: '判据一', evidence: ['e'], status: 'pending' as const },
+        { id: 'v1-2', source: { kind: 'task', taskId: 't-000001' } as const, criterion: '判据二', evidence: [], status: 'pending' as const },
+      ],
+    }
+    const h = makeHarness({
+      requirements: [req({ id: REQ_ID, status: 'accepting', sourceSessionId: W, verification: { sheet } as never })],
+    })
+    h.questions.answers = [
+      { id: 'v1-1', selected: [ACCEPT_ITEM_OPTIONS.pass], custom: '实际结果：符合判据（npx vitest run tests/a.test.ts → 12 passed）' },
+      { id: 'v1-2', selected: [ACCEPT_ITEM_OPTIONS.pass], custom: '实际结果：符合判据（npx vitest run tests/a.test.ts → 12 passed）' },
+      { id: 'final-pass', selected: [FINAL_PASS_LABEL] },
+    ]
+    const rec = recordingQuestions()
+    h.deps.questions = rec.wrap(h.deps.questions as never) as never
+
+    await acceptSheet(h.deps, {}, exec)
+
+    // REQ-261001154450-b918 FR-1：每个验收项现在是**两问**（裁决 + 实际结果），
+    // 第二问同样必须带 PM 标志——漏了前缀会被本用例抓出来（本轮就抓到一次）。
+    expect(rec.seen).toEqual([
+      pmHeader('需求级验收'),
+      pmHeader('实际结果'),
+      pmHeader('验收项 t-000001'),
+      pmHeader('实际结果'),
+      pmHeader('验收通过'),
+    ])
+    for (const header of rec.seen) expect(header.startsWith(PM_BADGE_PREFIX)).toBe(true)
+  })
+
+  it('失败处置弹框 header 带前缀', async () => {
+    const h = makeHarness()
+    h.questions.answers = [{ selected: ['重跑该卡'] }]
+    const rec = recordingQuestions()
+    h.deps.questions = rec.wrap(h.deps.questions as never) as never
+
+    const choice = await openFailurePopup(h.deps, REQ_ID, exec)
+
+    expect(choice).toBe('rerun')
+    expect(rec.seen).toEqual([pmHeader('实施链已暂停')])
+  })
+})
+
+describe('TC-14 标志由代码注入，宿主原生提问不带前缀', () => {
+  const SRC = repoPath('src')
+  /** 展示口径：工作区相对路径（扫描面含子包 src，故以仓库根为基准，不按 SRC 截断）。 */
+  const REPO = REPO_ROOT
+  const rel = (p: string) => relative(REPO, p).replace(/\\/g, '/')
+
+  function tsFiles(dir: string): string[] {
+    const out: string[] = []
+    for (const name of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, name.name)
+      if (name.isDirectory()) out.push(...tsFiles(full))
+      else if (name.name.endsWith('.ts')) out.push(full)
+    }
+    return out
+  }
+
+  it('前缀字面量只出现在 pm-badge.ts（别处硬写 = 漂移）', () => {
+    const holders = tsFiles(SRC).concat(tsFiles(repoPath('packages/pmboard-common/src'))).filter(f => readFileSync(f, 'utf8').includes(PM_BADGE_PREFIX))
+    expect(holders.map(rel).sort()).toEqual(['packages/pmboard-common/src/text/pm-badge.ts'].sort())
+  })
+
+  it('四处构造点都经 pmHeader（而不是手写前缀）', () => {
+    const points = [
+      '../packages/pmboard-core/src/application/use-cases/AskConfirm.ts',
+      '../packages/pmboard-core/src/application/use-cases/AcceptSheet.ts',
+      '../packages/pmboard-core/src/application/internal/capture-mapping.ts',
+      '../packages/pmboard-core/src/application/use-cases/HandleFailure.ts',
+    ]
+    for (const p of points) {
+      const src = readFileSync(join(SRC, p), 'utf8')
+      expect(src, p).toMatch(/from '[^']*(pm-badge)\.js'/)
+      expect(src, p).toContain('pmHeader(')
+      expect(src, p).not.toContain(PM_BADGE_PREFIX)
+    }
+  })
+})

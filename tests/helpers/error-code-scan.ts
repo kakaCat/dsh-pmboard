@@ -18,15 +18,15 @@
  *      **不是错误码**，被排除是事实而非补丁（扫描规则本身就不会命中它们，见 ①③）。
  *
  * **小写码**来自两张已存在的登记表，不靠猜正则：
- *   · `src/domain/errors.ts` 的 `REQBOARD_ERROR_CODES`（领域语义码，值为小写）；
- *   · `src/application/use-cases/MoveRequirement.ts` 的 `TRANSPORT_CODE_BY_INTERNAL`（门禁内部码）。
+ *   · `packages/pmboard-common/src/errors.ts` 的 `REQBOARD_ERROR_CODES`（领域语义码，值为小写）；
+ *   · `packages/pmboard-core/src/application/use-cases/MoveRequirement.ts` 的 `TRANSPORT_CODE_BY_INTERNAL`（门禁内部码）。
  * 未登记在表里的小写码**不在口径内**（这是刻意的下界：宁可漏，也不误伤散文）。
  *
  * @module dsh-pmboard/tests/helpers/error-code-scan
  */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { join, relative } from 'node:path'
 
 /** 仓库根（tests/helpers/ → 上溯两级）。 */
 export const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url))
@@ -59,7 +59,7 @@ export type Tier = 'unclassified' | 'direct' | 'fixture' | 'fault'
 
 /** 一个产生点的定位（抗行号漂移：匹配键是行原文，不是行号）。 */
 export interface CodeSite {
-  /** 工作区相对路径，如 `src/application/use-cases/Decompose.ts`。 */
+  /** 工作区相对路径，如 `packages/pmboard-core/src/application/use-cases/Decompose.ts`。 */
   readonly file: string
   /** 该行去掉首尾空白后的原文。 */
   readonly anchor: string
@@ -98,13 +98,13 @@ export interface ScanResult {
  * 本清单的作用是**把这件事变成可断言的事实**：有人把它们删掉、或有人把它们误加进口径，都要红。
  */
 export const NOISE_TOKENS: readonly ExcludedToken[] = [
-  { token: 'REQBOARD_ERROR_CODES', why: '标识符：src/domain/errors.ts 的对象常量名，不是错误码' },
+  { token: 'REQBOARD_ERROR_CODES', why: '标识符：packages/pmboard-common/src/errors.ts 的对象常量名，不是错误码' },
   { token: 'REQBOARD_XXX', why: '文案占位符：只出现在提示词/注释里（如 clause-criteria.ts），不是码' },
   { token: 'REQBOARD_DATA_ROOT', why: '目录名常量：值为字符串 reqboard（src/index.ts），不是错误码' },
   { token: 'REQBOARD_SCHEMA_VERSION', why: '数值常量：台账记录形态版本（= 9），不是错误码' },
   { token: 'REQBOARD_NO_ITEM_RESULT', why: '环境变量后缀：DSH_REQBOARD_NO_ITEM_RESULT，被左边界挡住故非码' },
-  { token: 'REQBOARD_CODE_REGISTRY', why: '标识符：src/shared/error-code-registry.ts 的注册表常量名，不是错误码' },
-  { token: 'REQBOARD_CODE_SET', why: '标识符：src/shared/error-code-registry.ts 的派生集合常量名，不是错误码' },
+  { token: 'REQBOARD_CODE_REGISTRY', why: '标识符：packages/pmboard-common/src/error-code-registry.ts 的注册表常量名，不是错误码' },
+  { token: 'REQBOARD_CODE_SET', why: '标识符：packages/pmboard-common/src/error-code-registry.ts 的派生集合常量名，不是错误码' },
 ]
 
 /**
@@ -114,12 +114,32 @@ export const NOISE_TOKENS: readonly ExcludedToken[] = [
  * 哪些文件算「文案面」。两处各写一份正则 = 两份真相，改一处必漏一处。
  */
 export function isPromptFile(rel: string): boolean {
-  return /prompt\.ts$/.test(rel) || rel.startsWith('domain/prompt/generated/')
+  // 提示词文案不是产生点：`prompt/` 目录下的任何文件（旧布局 `domain/prompt/**`、
+  // 拆包后的 `packages/pmboard-core/src/domain/prompt/**` 与公共包的 `prompt/generated/**` 都覆盖）。
+  return /prompt\.ts$/.test(rel) || /(?:^|\/)prompt\//.test(rel)
 }
 
 /** 注释行判定（口径 ②）。 */
 function isCommentLine(trimmed: string): boolean {
   return trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')
+}
+
+/**
+ * 扫描根列表（t4 拆包起）：主树 `src` + 各子包 `src`。
+ * 为什么必须多根：码散落到子包后只扫主树，会把「扫不到」当成「没有码」——
+ * 那是判据最危险的失效形态（见 scanErrorCodes 的报错文案）。
+ */
+function defaultScanRoots(): { abs: string; prefix: string }[] {
+  const roots = [{ abs: join(REPO_ROOT, 'src'), prefix: '' }]
+  const pkgsDir = join(REPO_ROOT, 'packages')
+  if (existsSync(pkgsDir)) {
+    for (const e of readdirSync(pkgsDir, { withFileTypes: true })) {
+      if (!e.isDirectory()) continue
+      const abs = join(pkgsDir, e.name, 'src')
+      if (existsSync(abs)) roots.push({ abs, prefix: 'packages/' + e.name + '/' })
+    }
+  }
+  return roots
 }
 
 function walk(root: string, filter: (abs: string, rel: string) => boolean): { abs: string; rel: string }[] {
@@ -178,36 +198,49 @@ function formOf(line: string, how: 'quoted' | 'key', code: string): CodeForm {
  *         绝不把「扫不到」当成「没有码」，那是判据最危险的失效形态。
  */
 export function scanErrorCodes(srcRoot?: string): ScanResult {
-  const root = srcRoot ?? join(REPO_ROOT, 'src')
-  if (!existsSync(root) || !statSync(root).isDirectory()) {
-    throw Object.assign(
-      new Error('错误码扫描根不存在：' + root + '（TEST_SCAN_ROOT_MISSING）——拒绝把「扫不到」当成「没有码」'),
-      { code: 'TEST_SCAN_ROOT_MISSING' },
-    )
+  const roots = srcRoot === undefined ? defaultScanRoots() : [{ abs: srcRoot, prefix: '' }]
+  for (const r of roots) {
+    if (!existsSync(r.abs) || !statSync(r.abs).isDirectory()) {
+      throw Object.assign(
+        new Error('错误码扫描根不存在：' + r.abs + '（TEST_SCAN_ROOT_MISSING）——拒绝把「扫不到」当成「没有码」'),
+        { code: 'TEST_SCAN_ROOT_MISSING' },
+      )
+    }
   }
 
   const noise = new Set(NOISE_TOKENS.map(n => n.token))
   const upper = new Map<string, UpperHit>()
-  for (const { abs, rel } of walk(root, (_a, r) => !isPromptFile(r))) {
-    const lines = readFileSync(abs, 'utf8').split('\n')
-    for (const raw of lines) {
-      const trimmed = raw.trim()
-      if (isCommentLine(trimmed)) continue
-      for (const hit of codesOnLine(raw)) {
-        if (noise.has(hit.code)) continue
-        if (upper.has(hit.code)) continue // 首个产生点即代表点
-        upper.set(hit.code, {
-          code: hit.code,
-          form: formOf(raw, hit.form, hit.code),
-          site: { file: 'src/' + rel, anchor: trimmed },
-        })
+  /**
+   * 两遍扫描（t4）：**先非注册表文件、后注册表**。
+   * 为什么必须定序：注册表（error-code-registry.ts）里每个码都有一行「登记」，
+   * 若它先被扫到，`site` 就记成登记行而不是真正的产生点（抛码处）——分级器会据此判 unclassified。
+   * 拆包前靠字母序侥幸成立（domain 先于 shared），搬进同一个包后不再成立，故显式定序。
+   */
+  const ordered: { abs: string; rel: string; prefix: string }[] = []
+  for (const r of roots) for (const hit of walk(r.abs, (_a, rl) => !isPromptFile(rl))) ordered.push({ ...hit, prefix: r.prefix })
+  ordered.sort((a, b) => Number(a.abs.endsWith('error-code-registry.ts')) - Number(b.abs.endsWith('error-code-registry.ts')))
+  {
+    for (const { abs, rel, prefix } of ordered) {
+      const lines = readFileSync(abs, 'utf8').split('\n')
+      for (const raw of lines) {
+        const trimmed = raw.trim()
+        if (isCommentLine(trimmed)) continue
+        for (const hit of codesOnLine(raw)) {
+          if (noise.has(hit.code)) continue
+          if (upper.has(hit.code)) continue // 首个产生点即代表点
+          upper.set(hit.code, {
+            code: hit.code,
+            form: formOf(raw, hit.form, hit.code),
+            site: { file: prefix + 'src/' + rel, anchor: trimmed },
+          })
+        }
       }
     }
   }
 
   return {
     uppercase: [...upper.values()].sort((a, b) => a.code.localeCompare(b.code)),
-    lowercase: collectLowercaseCodes(root),
+    lowercase: collectLowercaseCodes(srcRoot),
     excluded: [...NOISE_TOKENS],
   }
 }
@@ -236,16 +269,24 @@ function objectBodyAfter(text: string, marker: string): string {
 
 /**
  * 小写码来自两张**已存在的登记表**（不猜正则）：
- *   · `src/domain/errors.ts` → `REQBOARD_ERROR_CODES = { key: 'value' }` 的 value；
- *   · `src/application/use-cases/MoveRequirement.ts` → `TRANSPORT_CODE_BY_INTERNAL` 的 key + value。
+ *   · `packages/pmboard-common/src/errors.ts` → `REQBOARD_ERROR_CODES = { key: 'value' }` 的 value；
+ *   · `packages/pmboard-core/src/application/use-cases/MoveRequirement.ts` → `TRANSPORT_CODE_BY_INTERNAL` 的 key + value。
  * `transport` = 该小写码对应的大写传输码；无孪生（大写形态不在 src）时为 null。
  */
 export function collectLowercaseCodes(srcRoot?: string): LowerHit[] {
-  const root = srcRoot ?? join(REPO_ROOT, 'src')
+  const roots = srcRoot === undefined ? defaultScanRoots() : [{ abs: srcRoot, prefix: '' }]
+  const findFirst = (rels: readonly string[]): string | undefined => {
+    for (const r of roots) for (const rel of rels) { const abs = join(r.abs, rel); if (existsSync(abs)) return abs }
+    return undefined
+  }
+  const wsRel = (abs: string): string => {
+    for (const r of roots) if (abs.startsWith(r.abs)) return r.prefix + 'src/' + relative(r.abs, abs).replace(/\\/g, '/')
+    return relative(REPO_ROOT, abs).replace(/\\/g, '/')
+  }
   const out = new Map<string, LowerHit>()
 
-  // ── ① 领域语义码（值为小写） ─────────────────────────────────────────────
-  const errorsFile = join(root, 'domain/errors.ts')
+  // ── ① 领域语义码（值为小写；拆包后住 packages/pmboard-common/src/errors.ts） ──
+  const errorsFile = findFirst(['errors.ts', 'domain/errors.ts']) ?? join(roots[0].abs, 'errors.ts')
   const domainCodes: string[] = []
   if (existsSync(errorsFile)) {
     const body = objectBodyAfter(readFileSync(errorsFile, 'utf8'), 'REQBOARD_ERROR_CODES')
@@ -255,7 +296,7 @@ export function collectLowercaseCodes(srcRoot?: string): LowerHit[] {
   }
 
   // ── ② 门禁内部码 → 传输码（显式映射表） ──────────────────────────────────
-  const moveFile = join(root, 'application/use-cases/MoveRequirement.ts')
+  const moveFile = findFirst(['../../packages/pmboard-core/src/application/use-cases/MoveRequirement.ts']) ?? join(roots[0].abs, '../../packages/pmboard-core/src/application/use-cases/MoveRequirement.ts')
   const gatePairs: { code: string; transport: string | null }[] = []
   if (existsSync(moveFile)) {
     const body = objectBodyAfter(readFileSync(moveFile, 'utf8'), 'TRANSPORT_CODE_BY_INTERNAL')
@@ -266,7 +307,9 @@ export function collectLowercaseCodes(srcRoot?: string): LowerHit[] {
 
   // 大写集合用于判定「有无孪生」
   const upperSet = new Set<string>()
-  for (const { abs } of walk(root, (_a, r) => !isPromptFile(r))) {
+  const upperFiles: { abs: string }[] = []
+  for (const r of roots) for (const hit of walk(r.abs, (_a, rl) => !isPromptFile(rl))) upperFiles.push(hit)
+  for (const { abs } of upperFiles) {
     const lines = readFileSync(abs, 'utf8').split('\n')
     for (const raw of lines) {
       if (isCommentLine(raw.trim())) continue
@@ -286,14 +329,14 @@ export function collectLowercaseCodes(srcRoot?: string): LowerHit[] {
   const siteOf = (abs: string, rel: string, needle: RegExp): CodeSite | undefined => {
     const lines = readFileSync(abs, 'utf8').split('\n')
     for (const raw of lines) {
-      if (needle.test(raw)) return { file: 'src/' + rel, anchor: raw.trim() }
+      if (needle.test(raw)) return { file: rel, anchor: raw.trim() }
     }
     return undefined
   }
 
   for (const code of domainCodes) {
     const guess = 'REQBOARD_' + code.toUpperCase()
-    const site = siteOf(errorsFile, 'domain/errors.ts', new RegExp(":\\s*'" + esc(code) + "'"))
+    const site = siteOf(errorsFile, wsRel(errorsFile), new RegExp(":\\s*'" + esc(code) + "'"))
     if (site !== undefined) {
       out.set(code, { code, transport: upperSet.has(guess) ? guess : null, site })
     }
@@ -302,7 +345,7 @@ export function collectLowercaseCodes(srcRoot?: string): LowerHit[] {
     if (out.has(p.code)) continue
     const site = siteOf(
       moveFile,
-      'application/use-cases/MoveRequirement.ts',
+      wsRel(moveFile),
       new RegExp(esc(p.code) + "\\s*:\\s*'" + esc(String(p.transport)) + "'"),
     )
     if (site !== undefined) out.set(p.code, { code: p.code, transport: p.transport, site })
@@ -319,9 +362,9 @@ export function collectLowercaseCodes(srcRoot?: string): LowerHit[] {
  * 于是拿 7 条并不存在的工作量去凑数，而凑数正是本需求要治的病。
  */
 export function collectConstAliases(srcRoot?: string): ReadonlyMap<string, string> {
-  const root = srcRoot ?? join(REPO_ROOT, 'src')
+  const roots = srcRoot === undefined ? defaultScanRoots() : [{ abs: srcRoot, prefix: '' }]
   const out = new Map<string, string>()
-  for (const { abs } of walk(root, (_a, r) => !isPromptFile(r))) {
+  for (const { abs } of roots.flatMap((r) => walk(r.abs, (_a, rl) => !isPromptFile(rl)))) {
     const text = readFileSync(abs, 'utf8')
     for (const m of text.matchAll(/export\s+const\s+([A-Z][A-Z0-9_]*)\s*=\s*\{([\s\S]*?)\n\}/g)) {
       const symbol = m[1]
@@ -343,12 +386,16 @@ export function collectConstAliases(srcRoot?: string): ReadonlyMap<string, strin
  * @returns Map<码, 'literal' | 'const'>；同码既有字面量又有常量时取 `literal`
  */
 export function collectTestCoverage(testsRoot?: string): ReadonlyMap<string, 'literal' | 'const'> {
-  const root = testsRoot ?? join(REPO_ROOT, 'tests')
+  // 覆盖口径 = **全仓测试**（t20：测试随包迁走后，仍住在 tests/ 的只剩 e2e/集成；
+  // 只扫 tests/ 会把 packages/*/tests 里的用例排除在外 ⇒ 零覆盖数虚高）。
+  const roots = testsRoot !== undefined
+    ? [testsRoot]
+    : [join(REPO_ROOT, 'tests'), ...listPackageTestRoots()]
   const aliases = collectConstAliases()
   const byCode = new Map<string, 'literal' | 'const'>()
-  if (!existsSync(root)) return byCode
+  const files = roots.flatMap((r) => (existsSync(r) ? walk(r, (_a, rel) => rel.endsWith('.test.ts')) : []))
 
-  for (const { abs } of walk(root, (_a, r) => r.endsWith('.test.ts'))) {
+  for (const { abs } of files) {
     const text = readFileSync(abs, 'utf8')
     // ① 字面量形态
     for (const m of text.matchAll(/(?<![A-Za-z0-9_])REQBOARD_[A-Z0-9_]+/g)) {
@@ -363,4 +410,14 @@ export function collectTestCoverage(testsRoot?: string): ReadonlyMap<string, 'li
     }
   }
   return byCode
+}
+
+/** packages/<pkg>/tests 目录清单（覆盖口径用；目录不存在时跳过）。 */
+function listPackageTestRoots(): string[] {
+  const pkgsDir = join(REPO_ROOT, 'packages')
+  if (!existsSync(pkgsDir)) return []
+  return readdirSync(pkgsDir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => join(pkgsDir, e.name, 'tests'))
+    .filter((p) => existsSync(p))
 }

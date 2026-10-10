@@ -20,8 +20,8 @@
  * @module dsh-pmboard/adapters/PendingConfirmRegistry
  */
 import { randomInt } from 'node:crypto'
-import type { DialogInFlightPort, DialogInFlightRecord, PendingConfirmPort } from '../application/ports.js'
-import { LIMITS } from '../domain/limits.js'
+import type { DialogInFlightPort, DialogInFlightRecord, PendingConfirmPort } from 'pmboard-core/application/ports.js'
+import { LIMITS } from 'pmboard-common/limits.js'
 // 分档过期规则独立成小模块（本文件要守 400 行尺寸门禁，且不能靠删注释腾地方）。
 import { sweepInFlightTtl } from './dialog-inflight-expiry.js'
 import {
@@ -29,7 +29,7 @@ import {
   type ArtifactKind,
   type PendingConfirmation,
   type PendingConfirmationOutcome,
-} from '../shared/protocol.js'
+} from 'pmboard-core/protocol-domain.js'
 
 // 宿主级动作票据的**类型**已拆到 `./storage-action-types.ts`：
 // 注册表本体要守 `src/` 的 400 行尺寸门禁，而本次 fail-open 修复（否定作答不是许可）必须把理由写清，

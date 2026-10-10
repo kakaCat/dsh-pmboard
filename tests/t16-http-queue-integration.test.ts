@@ -13,15 +13,15 @@
  *   GET  /state        → 616 口径同款：tasks = Σ 队列文件、出口无 `layer`、ready 与队列一致
  *   全链收口：两卡 done 后 → 需求 rollup 由 system 推进到 accepting（台账只存需求，任务在队列）
  */
-import { makeTestStore } from './application/harness.js'
+import { makeTestStore } from 'tests/application/harness.js'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
-import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
-import { createReqboardHandler } from '../src/http/routes.js'
+import { JsonQueueRepository } from 'pmboard-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
+import { createReqboardHandler } from 'src/http/routes.js'
 
 let root: string
 let store: ReturnType<typeof makeTestStore>

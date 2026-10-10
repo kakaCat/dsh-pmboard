@@ -18,7 +18,7 @@
  * 把 `round-driver.ts` `drive()` 里那段 `humanGate` 检查删掉 → 本文件三条用例必红。
  */
 import { describe, it, expect } from 'vitest'
-import { harness, makeReq } from './support/dive-loop-harness.js'
+import { harness, makeReq } from 'tests/support/dive-loop-harness.js'
 
 describe('TC-7 · 人工门开着 → 一拍都不唤醒', () => {
   it('验收单待裁决（acceptance-pending）：20 拍零投递，台账不被写健康位', async () => {

@@ -41,8 +41,8 @@ const ARTIFACT = 'docs/reviews/REQ-261006201814-ac4f-ab.json'
 
 /** 本批测试文件：覆盖「夹具根」这条链的立项 / 捕获 / 根解析 / 契约锚点。 */
 const FILES = [
-  'tests/capture.test.ts',
-  'tests/create-doc-location.test.ts',
+  'packages/pmboard-core/tests/capture.test.ts',
+  'packages/pmboard-core/tests/create-doc-location.test.ts',
   'tests/workspace-root.test.ts',
   'tests/hermetic-guard.test.ts',
 ]

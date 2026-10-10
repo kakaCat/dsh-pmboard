@@ -9,9 +9,9 @@
  * 本文件不是测试文件（vitest include 只收 `tests/**\/*.test.ts`），是被测试 import 的模块。
  */
 
-import type { QueueFile, QueueTask } from '../../src/domain/queue/QueueTypes.js'
-import { computeEdges, computeLayers, computeReady } from '../../src/domain/queue/topology.js'
-import type { TaskRecord } from '../../src/shared/protocol.js'
+import type { QueueFile, QueueTask } from 'pmboard-core/domain/queue/QueueTypes.js'
+import { computeEdges, computeLayers, computeReady } from 'pmboard-core/domain/queue/topology.js'
+import type { TaskRecord } from 'pmboard-core/protocol-domain.js'
 
 /** 本需求自身 id（测试里当默认 requirement_id 用）。 */
 export const REQ = 'REQ-260927202051-f6df'

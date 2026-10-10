@@ -16,22 +16,22 @@
  *
  * 每个用例上方写出「请求样例」与「期望响应」，断言用 `toEqual` 全键对账（多键/少键都算不通过）。
  */
-import { makeTestStore } from './application/harness.js'
+import { makeTestStore } from 'tests/application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { FileHostFs } from '../src/adapters/FileHostFs.js'
+import { FileHostFs } from 'src/adapters/FileHostFs.js'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
-import { SessionProbeAdapter } from '../src/adapters/SessionProbeAdapter.js'
-import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
-import { UserQuestionsAdapter } from '../src/adapters/UserQuestionsAdapter.js'
-import { PendingConfirmRegistry } from '../src/adapters/PendingConfirmRegistry.js'
-import { defineAskConfirmTool } from '../src/tools/index.js'
-import { livePendingConfirm, pendingConfirmFactsOf, targetConfirmedInLedger } from '../src/application/internal/pending-guard.js'
-import { defineStatusTool } from '../src/tools/index.js'
-import type { UseCaseDeps } from '../src/application/ports.js'
-import type { RequirementRecord, StageArtifact } from '../src/shared/protocol.js'
+import { FileDocRepository } from 'src/adapters/FileDocRepository.js'
+import { SessionProbeAdapter } from 'src/adapters/SessionProbeAdapter.js'
+import { RandomIdFactory } from 'src/adapters/RandomIdFactory.js'
+import { UserQuestionsAdapter } from 'src/adapters/UserQuestionsAdapter.js'
+import { PendingConfirmRegistry } from 'src/adapters/PendingConfirmRegistry.js'
+import { defineAskConfirmTool } from 'tool-pmboard/index.js'
+import { livePendingConfirm, pendingConfirmFactsOf, targetConfirmedInLedger } from 'pmboard-core/application/internal/pending-guard.js'
+import { defineStatusTool } from 'tool-pmboard/index.js'
+import type { UseCaseDeps } from 'pmboard-core/application/ports.js'
+import type { RequirementRecord, StageArtifact } from 'pmboard-core/protocol-domain.js'
 
 /**
  * FR-2（REQ-261007220012-bd29）：取回执路径并入 ask_confirm(ticket)——

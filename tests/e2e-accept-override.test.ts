@@ -11,22 +11,22 @@
  * 三处留痕 → 用同一台账做客户端渲染，证明「验收通过」按钮不再出现、人工审核结论可见（FR-3 的终态）。
  *
  * 边界（诚实标注）：浏览器 leg 覆盖的是**文案装配与渲染函数**；DOM 事件绑定（window.confirm
- * 的点击链路）不在本用例范围，由 tests/board-info-fixes.test.ts 的文案用例与人手实测覆盖。
+ * 的点击链路）不在本用例范围，由 packages/pmboard-client/tests/board-info-fixes.test.ts 的文案用例与人手实测覆盖。
  */
-import { makeTestStore } from './application/harness.js'
+import { makeTestStore } from 'tests/application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
-import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
-import { createReqboardHandler } from '../src/http/routes.js'
-import { buildSheet } from '../src/domain/workflow/AcceptanceSheetSpec.js'
-import { buildReqDetail } from '../src/client/view.ts'
-import { verifyConfirmCopy } from '../src/client/board-mount.ts'
-import type { RequirementRecord, TaskRecord } from '../src/shared/protocol.js'
-import type { RequirementRecord as ClientRequirementRecord } from '../src/client/types.ts'
+import { JsonQueueRepository } from 'pmboard-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
+import { createReqboardHandler } from 'src/http/routes.js'
+import { buildSheet } from 'pmboard-core/domain/workflow/AcceptanceSheetSpec.js'
+import { buildReqDetail } from 'pmboard-client/view.js'
+import { verifyConfirmCopy } from 'pmboard-client/board-mount.js'
+import type { RequirementRecord, TaskRecord } from 'pmboard-core/protocol-domain.js'
+import type { RequirementRecord as ClientRequirementRecord } from 'pmboard-core/client-types.js'
 
 const W = 'session-abc-123'
 let dir: string

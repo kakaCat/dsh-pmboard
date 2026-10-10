@@ -11,9 +11,9 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { CaptureRejectionFile } from '../src/adapters/CaptureRejectionFile.js'
-import { defineCaptureTool } from './helpers/tool-deps.js'
-import { makeTestStore } from './application/harness.js'
+import { CaptureRejectionFile } from 'src/adapters/CaptureRejectionFile.js'
+import { defineCaptureTool } from 'tests/helpers/tool-deps.js'
+import { makeTestStore } from 'tests/application/harness.js'
 
 const W = 'session-ac4'
 const NOW = 1_700_000_000_000

@@ -1,0 +1,237 @@
+// serves: FR-1, FR-4
+// REQ-260927123256-196b t5（本文件的用例落点；口径见 design/test-cases.md）
+/**
+ * 确认弹框**缺省阻塞**（REQ-260927123256-196b t2 · serves: FR-1 / FR-4）。
+ *
+ * 锁死等待语义反转后的每条分支（design/test-cases.md）：
+ *   · TC-1 缺省阻塞：不传宽限 + ask 永不 resolve → 200ms 仍未返回；resolve 后返回同步体且**无** pending/ticket；
+ *   · TC-2 阻塞中登记未作答记录（守卫拦写），作答返回后守卫释放；
+ *   · TC-7 中止（ASK_ABORTED / signal.aborted）→ pending+ticket+interrupted，status 可见，写路径仍被拒；
+ *   · TC-8 取消（ASK_CANCELLED）→ 中性返回、无 pending/ticket、守卫放行、台账无落章；
+ *   · TC-10 重新发起覆盖旧记录（旧记录 settle 为未确认）。
+ */
+import { makeTestStore } from 'tests/application/harness.js'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from 'src/adapters/FileHostFs.js'
+import { taskStoreAt } from 'tests/queue/route-deps.js'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { FileDocRepository } from 'src/adapters/FileDocRepository.js'
+import { SessionProbeAdapter } from 'src/adapters/SessionProbeAdapter.js'
+import { RandomIdFactory } from 'src/adapters/RandomIdFactory.js'
+import { UserQuestionsAdapter } from 'src/adapters/UserQuestionsAdapter.js'
+import { PendingConfirmRegistry } from 'src/adapters/PendingConfirmRegistry.js'
+import { defineAskConfirmTool, defineStatusTool, defineMoveTool } from 'tool-pmboard/index.js'
+import { assertNoPendingConfirm } from 'pmboard-core/application/internal/support.js'
+import type { AskAnswer, UseCaseDeps } from 'pmboard-core/application/ports.js'
+import type { RequirementRecord, StageArtifact } from 'pmboard-core/protocol-domain.js'
+import { expectNoCode } from 'tests/helpers/code-assert.js'
+
+const W = 'session-blocking-001'
+const AFFIRM = '确认，推进到下一阶段 (Recommended)'
+const ARGS = { target: 'artifact', kind: 'requirement', question: '需求文档已完成，是否确认进入设计？' }
+
+let dir: string
+let store: ReturnType<typeof makeTestStore>
+
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), 'pmboard-blocking-'))
+  store = makeTestStore()
+})
+afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
+
+type AskFn = () => Promise<{ answers?: AskAnswer[] }>
+
+function makeDeps(ask: AskFn): UseCaseDeps & { pendingConfirms: PendingConfirmRegistry } {
+  const now = (): number => Date.now()
+  const deps = {
+    store: store,
+    taskStore: taskStoreAt(dir),
+    docs: new FileDocRepository({ workspaceRoot: dir }),
+    // REQ-261008020617-088f RF-3：hostFs 必填；缺它 /state 的 rtm_health 会静默缺失
+    hostFs: new FileHostFs(),
+    clock: { now },
+    ids: new RandomIdFactory(),
+    session: new SessionProbeAdapter({}),
+    questions: new UserQuestionsAdapter(() => ({ ask })),
+    doneThrottleMs: 0,
+    pendingConfirms: new PendingConfirmRegistry({ now }),
+  }
+  return deps as unknown as UseCaseDeps & { pendingConfirms: PendingConfirmRegistry }
+}
+
+async function seed(): Promise<void> {
+  // 产物路径真实落盘：确认落章会读产物（可打开性），缺文件会产生后台未捕获 rejection 噪声。
+  mkdirSync(join(dir, 'docs/requirements/REQ-abc123'), { recursive: true })
+  writeFileSync(join(dir, 'docs/requirements/REQ-abc123/requirement.md'), '# 阻塞确认\n')
+  const r = {
+    id: 'REQ-abc123', title: '阻塞确认', description: '', status: 'brainstorming', blocked: false,
+    sourceSessionId: W, comments: [], version: 2, createdAt: 1, updatedAt: 2,
+    createdBy: { kind: 'human' }, updatedBy: { kind: 'human' },
+    statusHistory: [
+      { status: 'draft', at: 1, by: { kind: 'human' } },
+      { status: 'brainstorming', at: 2, by: { kind: 'human' } },
+    ],
+    artifacts: [{
+      stage: 'brainstorming', kind: 'requirement',
+      path: 'docs/requirements/REQ-abc123/requirement.md', registeredAt: 1,
+    } as StageArtifact],
+  } as RequirementRecord
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
+}
+
+const exec = { agent: { id: W } }
+const first = (): RequirementRecord => store.peekAll()[0]
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+
+describe('缺省阻塞（FR-1）', () => {
+  it('TC-1 不传宽限 + ask 永不 resolve → 200ms 仍未返回；resolve 后返回 confirmed/advanced 且无 pending/ticket', async () => {
+    await seed()
+    let resolveAsk: (v: { answers?: AskAnswer[] }) => void = () => {}
+    const deferred = new Promise<{ answers?: AskAnswer[] }>((res) => { resolveAsk = res })
+    const tool = defineAskConfirmTool(makeDeps(() => deferred)) as any
+
+    const pending = tool.execute(ARGS, exec)
+    const raced = await Promise.race([
+      pending.then(() => 'returned' as const),
+      sleep(200).then(() => 'still-pending' as const),
+    ])
+    expect(raced).toBe('still-pending')
+
+    resolveAsk({ answers: [{ id: 'confirm', selected: [AFFIRM] }] })
+    const out = await pending
+    expect(out.confirmed).toBe(true)
+    expect(out.advanced).toBe(true)
+    expect(out.from).toBe('brainstorming')
+    expect(out.to).toBe('design')
+    expect('pending' in out).toBe(false)
+    expect('ticket' in out).toBe(false)
+    expect(first().status).toBe('design')
+  })
+
+  it('TC-2 阻塞中登记未作答记录（守卫拦写），作答返回后守卫释放', async () => {
+    await seed()
+    let resolveAsk: (v: { answers?: AskAnswer[] }) => void = () => {}
+    const deferred = new Promise<{ answers?: AskAnswer[] }>((res) => { resolveAsk = res })
+    const deps = makeDeps(() => deferred)
+    const tool = defineAskConfirmTool(deps) as any
+
+    const pending = tool.execute(ARGS, exec)
+    await sleep(50)
+    const live = deps.pendingConfirms.pendingForWindow(W)
+    expect(live?.ticket.startsWith('pc-')).toBe(true)
+    await expect(assertNoPendingConfirm(deps, W)).rejects.toThrow(/REQBOARD_CONFIRM_PENDING/)
+
+    resolveAsk({ answers: [{ id: 'confirm', selected: [AFFIRM] }] })
+    const out = await pending
+    expect(out.confirmed).toBe(true)
+    expect(deps.pendingConfirms.pendingForWindow(W)).toBeUndefined()
+    await expect(assertNoPendingConfirm(deps, W)).resolves.toBeUndefined()
+  })
+
+  /**
+   * REQ-261006164732-6503 t4 口径修正（旧名「TC-10 重新发起覆盖旧记录」）：
+   * 修前同门重发 = 把旧票 settle 成未确认、再登记一张新的（"覆盖"）；而人在 GUI 上仍点得到旧框，
+   * 于是它的迟到作答把台账覆写（拆分门事故的第二个成因）。裁定 D-2/D-3 改为**复用优先**：
+   * 同门已有未作答票 ⇒ 直接复用，既不弹第二个框，也不动那张票。
+   */
+  it('TC-10 同门重发 ⇒ 复用原票：不弹第二个框、旧票不被 settle、不新增记录', async () => {
+    await seed()
+    const deps = makeDeps(async () => ({ answers: [{ id: 'confirm', selected: [AFFIRM] }] }))
+    const oldTicket = deps.pendingConfirms.register({
+      windowKey: W, requirementId: 'REQ-abc123', target: 'artifact', kind: 'requirement',
+    }).ticket
+    const tool = defineAskConfirmTool(deps) as any
+    const out = await tool.execute(ARGS, exec)
+
+    expect(out.confirmed).toBe(false)
+    expect(out.pending).toBe(true)
+    expect(out.ticket).toBe(oldTicket)
+    expect(String(out.note)).toContain('已有一道门在等')
+    // 旧票原样保留（未作答），窗口仍被它拦着——语义是"等人答那一张"，不是"覆盖"
+    expect(deps.pendingConfirms.get(oldTicket, W)?.outcome).toBeUndefined()
+    expect(deps.pendingConfirms.pendingForWindow(W)?.ticket).toBe(oldTicket)
+  })
+
+  it('TC-10b 异门重发 ⇒ 旧票仍被清理（窗口不被上一步的门钉死）', async () => {
+    await seed()
+    const deps = makeDeps(async () => ({ answers: [{ id: 'confirm', selected: [AFFIRM] }] }))
+    const otherTicket = deps.pendingConfirms.register({
+      windowKey: W, requirementId: 'REQ-abc123', target: 'artifact', kind: 'design',
+    }).ticket
+    const tool = defineAskConfirmTool(deps) as any
+    const out = await tool.execute(ARGS, exec)
+
+    expect(out.confirmed).toBe(true)
+    expect(deps.pendingConfirms.get(otherTicket, W)?.outcome?.confirmed).toBe(false)
+    expect(deps.pendingConfirms.pendingForWindow(W)).toBeUndefined()
+  })
+})
+
+describe('中止 / 取消（FR-4）', () => {
+  it('TC-7 中止（ASK_ABORTED + signal.aborted）→ pending+ticket+interrupted；status 可见；写路径仍被拒', async () => {
+    await seed()
+    const deps = makeDeps(() => Promise.reject(Object.assign(new Error('aborted'), { code: 'ASK_ABORTED' })))
+    const tool = defineAskConfirmTool(deps) as any
+    const out = await tool.execute(ARGS, { agent: { id: W }, signal: { aborted: true } })
+
+    expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码——中止回执（interruptedBody）契约上**不带码**，
+    // 判别位是 pending/ticket/interrupted，故钉「不携带码」，而不是编一个码出来。
+    expectNoCode(out)
+    expect(out.confirmed).toBe(false)
+    expect(out.advanced).toBe(false)
+    expect(out.pending).toBe(true)
+    expect(out.interrupted).toBe(true)
+    expect(typeof out.ticket).toBe('string')
+    expect(String(out.ticket).startsWith('pc-')).toBe(true)
+    expect(String(out.note)).toContain('reqboard_ask_confirm(ticket="' + out.ticket + '")')
+    expect(String(out.note)).toContain('看板')
+    expect(String(out.note)).toContain('收到作答前不得产出下游产物')
+
+    const status = await (defineStatusTool(deps) as any).execute({}, exec)
+    expect(status.pending_confirms).toHaveLength(1)
+    expect(status.pending_confirms[0].ticket).toBe(out.ticket)
+    expect(status.pending_confirms[0].requirement_id).toBe('REQ-abc123')
+    expect(status.pending_confirms[0].interrupted).toBe(true)
+    expect(status.pending_confirms[0].recovery).toContain('reqboard_ask_confirm(ticket=')
+    expect(status.pending_confirms[0].recovery).toContain('看板')
+
+    await expect((defineMoveTool(deps) as any).execute({ to: 'in_progress' }, exec))
+      .rejects.toMatchObject({ code: 'REQBOARD_CONFIRM_PENDING' })
+  })
+
+  it('TC-8 取消（ASK_CANCELLED）→ 中性返回、无 pending/ticket、守卫放行、台账无落章', async () => {
+    await seed()
+    const deps = makeDeps(() => Promise.reject(Object.assign(new Error('cancelled'), { code: 'ASK_CANCELLED' })))
+    const tool = defineAskConfirmTool(deps) as any
+    const out = await tool.execute(ARGS, exec)
+
+    expect(out.success).toBe(false)
+    // FR-6(REQ-261006201814-ac4f): 由中文文案兜底升级为断码——取消（ASK_CANCELLED）走中性降级回执
+    // （degradedAnswer），契约上**不带码**；判别位是「无 pending / 无 ticket」，故钉「不携带码」。
+    expectNoCode(out)
+    expect(out.confirmed).toBe(false)
+    expect(out.advanced).toBe(false)
+    expect('pending' in out).toBe(false)
+    expect('ticket' in out).toBe(false)
+    expect(deps.pendingConfirms.pendingForWindow(W)).toBeUndefined()
+    await expect(assertNoPendingConfirm(deps, W)).resolves.toBeUndefined()
+    expect(first().artifacts?.[0]?.confirmedAt).toBeUndefined()
+    expect(first().status).toBe('brainstorming')
+  })
+
+  it('工具面注入 adopted_ticket 无效：不能凭一个 ticket 绕过建门唯一入口', async () => {
+    // REQ-261006164732-6503 t13（serves: FR-1 · review findings-4）：本工具 parameters 未声明它，
+    // 而绑定层不设 additionalProperties:false ⇒ 复核判定它本可从工具面注入、直接弹出第二个框。
+    // 现在工具边界显式剔除该键（内部调用方走 askConfirm 直调，不受影响）。
+    await seed()
+    const deps = makeDeps(async () => ({ answers: [{ id: 'confirm', selected: [AFFIRM] }] }))
+    const tool = defineAskConfirmTool(deps) as any
+    const out = await tool.execute({ ...ARGS, adopted_ticket: 'pc-forged' }, exec)
+
+    expect(out.confirmed).toBe(true)                                   // 正常路径照走
+    expect(deps.pendingConfirms.get('pc-forged', W)).toBeUndefined()    // 伪造的票从未被使用
+  })
+})

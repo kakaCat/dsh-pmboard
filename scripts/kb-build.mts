@@ -2,7 +2,7 @@
  * 知识层生成器 CLI（REQ-261001110934-3766 t3 起源 / REQ-261004174324-4195 t3 改为薄包装）。
  *
  * **本文件不再含生成规则**：解析 argv → 构造文档仓储 → 调 `ensureKnowledgeLayer` → 打印。
- * 生成逻辑单点在 `src/domain/knowledge/generate.ts` + `src/application/use-cases/EnsureKnowledgeLayer.ts`
+ * 生成逻辑单点在 `packages/pmboard-core/src/domain/knowledge/generate.ts` + `packages/pmboard-core/src/application/use-cases/EnsureKnowledgeLayer.ts`
  * （宿主自举与手动命令走同一份实现，避免"脚本和宿主各写一套"）。
  *
  * 跑法：
@@ -14,10 +14,10 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { FileDocRepository } from '../src/adapters/FileDocRepository.ts'
-import { ensureKnowledgeLayer } from '../src/application/use-cases/EnsureKnowledgeLayer.ts'
-import { KB_LIMITS } from '../src/domain/knowledge/budget.ts'
-import { KB_PATHS } from '../src/domain/knowledge/types.ts'
+import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
+import { ensureKnowledgeLayer } from 'pmboard-core/application/use-cases/EnsureKnowledgeLayer.js'
+import { KB_LIMITS } from 'pmboard-core/domain/knowledge/budget.ts'
+import { KB_PATHS } from 'pmboard-common/knowledge/types.js'
 
 const args = process.argv.slice(2)
 const check = args.includes('--check')
@@ -70,7 +70,7 @@ if (result.stats !== undefined) {
 // ── --backfill：把台账里已归档需求的 indexEntry 回填成知识条目（幂等：同源复用 id） ──
 // 与生成器无关，仍留在脚本内（它需要台账文件与 KnowledgeRepository，不属"生成规则"）。
 if (backfill) {
-  const { KnowledgeRepository } = await import('../src/adapters/KnowledgeRepository.ts')
+  const { KnowledgeRepository } = await import('../src/adapters/KnowledgeRepository.js')
   const ledgerPath = (() => {
     const i = args.indexOf('--ledger')
     const v = i >= 0 ? args[i + 1] : undefined
@@ -111,7 +111,9 @@ if (backfill) {
       kind: hasRetro ? 'pitfall' : 'decision',
       ...(hasRetro ? { status: 'stale' as const } : {}),
       title: (r.title ?? r.id).slice(0, 120),
-      oneLiner: entryText.slice(0, 140),
+      // t23：索引页预算 ≤8000 字符（scripts/kb-probe.mts K1）⇒ 索引行只留可扫读的一句；
+      // 全文仍在 entries/<id>.md（索引是导航页，不是正文）。
+      oneLiner: entryText.slice(0, 56).trim() + (entryText.length > 56 ? '…' : ''),
       appliesWhen: '同类需求再次出现时（先读这条，别重复踩坑）',
       pointer,
       updated,

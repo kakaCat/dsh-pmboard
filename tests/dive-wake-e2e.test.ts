@@ -10,15 +10,15 @@
  * 为什么按这四条而不是「作用域」做闸门：2026-10-01 复核后，「agent/* 被 scope 过滤器丢弃」未获宿主源码支持
  * （未打标签的 ctx 一律放行；宿主 goal-round-driver 同款做法生产可用），经人裁决改为按**已证实故障**红/绿。
  */
-import { legacyStoreProjection } from './support/legacy-store-projection.js'
-import { factsOf } from '../src/domain/requirement/RequirementSummary.js'
+import { legacyStoreProjection } from 'tests/support/legacy-store-projection.js'
+import { factsOf } from 'pmboard-core/domain/requirement/RequirementSummary.js'
 import { describe, it, expect } from 'vitest'
-import { emptyLedger, type RequirementRecord } from '../src/shared/protocol.js'
-import { createCaptureRuntime } from '../src/wiring/pm-capture-root.js'
-import { createDiveRoundDriver, type DiveRoundPorts } from '../src/application/dive/round-driver.js'
-import { roundLimitFor } from '../src/application/dive/round-state.js'
-import { recoverHealth } from '../src/application/internal/rearm.js'
-import { transitionRequirement } from '../src/application/internal/token-usage.js'
+import { emptyLedger, type RequirementRecord } from 'pmboard-core/protocol-domain.js'
+import { createCaptureRuntime } from 'src/wiring/pm-capture-root.js'
+import { createDiveRoundDriver, type DiveRoundPorts } from 'pmboard-round-driver/round-driver.js'
+import { roundLimitFor } from 'pmboard-core/application/dive-core/round-state.js'
+import { recoverHealth } from 'pmboard-core/application/internal/rearm.js'
+import { transitionRequirement } from 'pmboard-core/application/internal/token-usage.js'
 
 const WINDOW = 'agent-1'
 

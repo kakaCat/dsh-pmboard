@@ -23,7 +23,7 @@ import {
   LEGACY_BOARD_BODY,
   LEGACY_BOARD_PATHS,
   registerLegacyBoardRoutes,
-} from '../src/http/legacy-board-route.js'
+} from 'src/http/legacy-board-route.js'
 
 interface Captured {
   status: number

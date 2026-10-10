@@ -31,7 +31,7 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { listHeadingAnchors } from '../src/domain/knowledge/slug.ts'
+import { listHeadingAnchors } from 'pmboard-common/knowledge/slug.js'
 
 interface ArchivedRow {
   requirementId: string
@@ -215,7 +215,7 @@ const report: AuditReport = {
     naiveMissing: rows.reduce((n, r) => n + r.naiveMissingCount, 0),
   },
   note: '只读核对：不追溯、不改写任何历史台账或归档目录。'
-    + '锚点口径由 src/domain/knowledge/slug.ts 的 listHeadingAnchors 单点给出（手写 slug 不可信）。',
+    + '锚点口径由 packages/pmboard-common/src/knowledge/slug.ts 的 listHeadingAnchors 单点给出（手写 slug 不可信）。',
 }
 
 /** Markdown 报告（人读；与 --json 同源同读数）。 */

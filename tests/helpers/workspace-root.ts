@@ -16,7 +16,7 @@
  *   rtm-yaml.ts:176-177  syncRTMYamlWithSnapshot(deps.docs.workspaceRoot())
  *        │
  *        ▼
- *   vendor/reqboard/src/rtm/file-io.ts:42-43   join(root,'docs','requirements',reqId)
+ *   packages/reqboard-rtm/src/rtm/file-io.ts:42-43   join(root,'docs','requirements',reqId)
  *        │
  *        ▼
  *   <cwd>/docs/requirements/REQ-000001/rtm-*.yml   ← 真实工作树被改写
@@ -32,9 +32,9 @@
  * @module dsh-pmboard/tests/helpers/workspace-root
  */
 import { mkdtempSync, realpathSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 /** 仓库根（`tests/helpers/` → 上溯两级）。绝对路径，未做 realpath（调用方按需）。 */
 export const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url))

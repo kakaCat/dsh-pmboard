@@ -5,7 +5,7 @@
  * 以及可执行文件不存在时报错而**不抛**（异常要变成结构化结果，让路由照它说话）。
  */
 import { describe, it, expect } from 'vitest'
-import { createSystemFileOpener } from '../src/adapters/SystemFileOpener.ts'
+import { createSystemFileOpener } from 'src/adapters/SystemFileOpener.js'
 
 describe('SystemFileOpener', () => {
   it('非 macOS → 如实回「不支持」，且不去 spawn 任何东西', async () => {

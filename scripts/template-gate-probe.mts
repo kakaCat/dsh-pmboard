@@ -33,7 +33,7 @@
  *   是**恒真空转**：门禁绿着，模板里却没有一条 `**BUG-1: …**` 定义行（提示词片段
  *   `fragments/brainstorming/*.md` 里每条都有，模板骨架里没有 = 两处又分叉了）。
  *   为什么不把它升级成判据：本卡验收标准写的是「渲染 → 喂这三道门禁 → 0 缺口」（卡面原文），
- *   把它升级成判据会让 R1 对**既有模板正文**恒红，而那属于 t14/t20 的改动面（t19 对 `templates/**` 内容只读）。
+ *   把它升级成判据会让 R1 对**既有模板正文**恒红，而那属于 t14/t20 的改动面（t19 对 `packages/pmboard-templates/templates/**` 内容只读）。
  *   故这里如实点名、留给拿到这条观察的人决定是否补模板（补法是每份加一行示范定义行）。
  *
  * 退出码（决议 #47）：0 = 通过；1 = 判据失败（含未登记占位符；**含文档自检缺口**——t21 把
@@ -52,14 +52,14 @@ import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { designDocPolicyFrom, hasRootSection, missingCategoryDocs, sidesDeclarationGap } from '../src/application/internal/category-doc-sets.js'
+import { designDocPolicyFrom, hasRootSection, missingCategoryDocs, sidesDeclarationGap } from 'pmboard-core/application/internal/category-doc-sets.js'
 import {
   checkDesignSectionsHaveServes, checkTaskCardTriad, extractClauseDefinitions, parseDocument,
-} from '../src/application/internal/content-gates.js'
-import { clauseCriteriaGaps } from '../src/application/internal/clause-criteria.js'
-import { checkRequirementDocFormatGate, FAILURE_CONCURRENCY_SECTION } from '../src/application/internal/content-gate-wiring.js'
-import type { DocsEntry, DocsReader } from '../src/application/internal/doc-parse.js'
-import type { RequirementRecord } from '../src/shared/protocol.js'
+} from 'pmboard-core/application/internal/content-gates.js'
+import { clauseCriteriaGaps } from 'pmboard-core/application/internal/clause-criteria.js'
+import { checkRequirementDocFormatGate, FAILURE_CONCURRENCY_SECTION } from 'pmboard-core/application/internal/content-gate-wiring.js'
+import type { DocsEntry, DocsReader } from 'pmboard-core/application/internal/doc-parse.js'
+import type { RequirementRecord } from 'pmboard-core/protocol-domain.js'
 // 文档自检判据集（t21）：**脚本导出、R1 调用**——两条口径同源，R1 不重写一份判据（FR-10 同源要求）。
 import { validateDocSet, DOC_VALIDATE_CRITERIA, type DocValidateReport } from './req-doc-validate.mts'
 
@@ -67,7 +67,11 @@ import { validateDocSet, DOC_VALIDATE_CRITERIA, type DocValidateReport } from '.
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(HERE, '..')
-const DEFAULT_TEMPLATES_DIR = join(REPO_ROOT, 'templates')
+// 布局无关（t21）：模板目录 t19 起在资产包内；两处都探，包内优先。
+const DEFAULT_TEMPLATES_DIR = (() => {
+  const inPkg = join(REPO_ROOT, 'packages/pmboard-templates/templates')
+  return existsSync(inPkg) ? inPkg : join(REPO_ROOT, 'templates')
+})()
 const RENDER_MAP_PATH = join(HERE, 'template-render-map.json')
 
 /** 渲染用的假需求 id：只喂门禁，不碰任何真实需求目录（值域与真实 REQ id 同形，见渲染映射表）。 */
@@ -87,12 +91,12 @@ export type DocClass =
 
 /** 需求类模板 → 立项类型（决定 missingCategoryDocs 的 BASE+DELTA）。 */
 const REQUIREMENT_CATEGORY: Readonly<Record<string, string>> = {
-  'templates/brainstorming/feature.md': 'feature',
-  'templates/brainstorming/bug.md': 'bug',
-  'templates/brainstorming/refactor.md': 'refactor',
-  'templates/brainstorming/spike.md': 'spike',
-  'templates/brainstorming/doc.md': 'doc',
-  'templates/brainstorming/chore.md': 'chore',
+  'packages/pmboard-templates/templates/brainstorming/feature.md': 'feature',
+  'packages/pmboard-templates/templates/brainstorming/bug.md': 'bug',
+  'packages/pmboard-templates/templates/brainstorming/refactor.md': 'refactor',
+  'packages/pmboard-templates/templates/brainstorming/spike.md': 'spike',
+  'packages/pmboard-templates/templates/brainstorming/doc.md': 'doc',
+  'packages/pmboard-templates/templates/brainstorming/chore.md': 'chore',
 }
 
 /** 该需求类型必需的设计文档（喂 missingCategoryDocs 的 designNames）——同源取模板自身 front-matter 的 sides。 */
@@ -108,8 +112,8 @@ const CONDITIONAL_DESIGN_DOCS: Readonly<Record<string, Readonly<Record<string, s
 
 /** 报告类模板（**无线上门禁**）：评审报告与测试证据至今没有章节级/字段级门禁。 */
 const REPORT_TEMPLATES = new Set([
-  'templates/implementing/review.md',
-  'templates/implementing/test-evidence.md',
+  'packages/pmboard-templates/templates/implementing/review.md',
+  'packages/pmboard-templates/templates/implementing/test-evidence.md',
 ])
 
 /**
@@ -120,15 +124,15 @@ const REPORT_TEMPLATES = new Set([
  * （它用「目标用户与使用场景」而非「用户与角色」）——拿必填节门禁去判它，判的是"示例没跟模板同步"，
  * 那是 t20 的改动面，不是本探针要替它做的裁决。故只约束"占位符全登记"。
  */
-const EXAMPLE_TEMPLATES = new Set(['templates/brainstorming/feature-example.md'])
+const EXAMPLE_TEMPLATES = new Set(['packages/pmboard-templates/templates/brainstorming/feature-example.md'])
 
 /** 根文档 / 过程记录 / 归档：人读或自由格式，无对应线上门禁，不派发判据。 */
 const DOC_NOTE_TEMPLATES = new Set([
-  'templates/README.md',
-  'templates/TEMPLATE-IMPROVEMENTS.md',
-  'templates/common/notes.md',
-  'templates/archived/index.md',
-  'templates/archived/retro.md',
+  'packages/pmboard-templates/templates/README.md',
+  'packages/pmboard-templates/templates/TEMPLATE-IMPROVEMENTS.md',
+  'packages/pmboard-templates/templates/common/notes.md',
+  'packages/pmboard-templates/templates/archived/index.md',
+  'packages/pmboard-templates/templates/archived/retro.md',
 ])
 
 /**
@@ -137,11 +141,11 @@ const DOC_NOTE_TEMPLATES = new Set([
  */
 function classifyTemplate(rel: string): DocClass {
   if (rel in REQUIREMENT_CATEGORY) return 'requirement'
-  if (rel.startsWith('templates/design/') && rel.endsWith('.md')) return 'design'
-  if (rel === 'templates/decomposing/decomposition.md') return 'decomposition'
-  if (rel === 'templates/implementing/task-card.md') return 'task-card'
-  if (rel === 'templates/accepting/verification.md') return 'verification'
-  if (EXAMPLE_TEMPLATES.has(rel) || rel.startsWith('templates/examples/')) return 'example'
+  if (rel.startsWith('packages/pmboard-templates/templates/design/') && rel.endsWith('.md')) return 'design'
+  if (rel === 'packages/pmboard-templates/templates/decomposing/decomposition.md') return 'decomposition'
+  if (rel === 'packages/pmboard-templates/templates/implementing/task-card.md') return 'task-card'
+  if (rel === 'packages/pmboard-templates/templates/accepting/verification.md') return 'verification'
+  if (EXAMPLE_TEMPLATES.has(rel) || rel.startsWith('packages/pmboard-templates/templates/examples/')) return 'example'
   if (REPORT_TEMPLATES.has(rel)) return 'report'
   if (DOC_NOTE_TEMPLATES.has(rel)) return 'doc-note'
   return 'unclassified'
@@ -286,7 +290,7 @@ export interface ProbeOutput {
   exitCode: 0 | 1 | 2
 }
 
-/** 递归收集模板根下的 `.md`（**排除 examples/**：先例 tests/template-address.test.ts 对 examples/ 整体豁免）。 */
+/** 递归收集模板根下的 `.md`（**排除 examples/**：先例 packages/pmboard-core/tests/template-address.test.ts 对 examples/ 整体豁免）。 */
 function collectTemplates(root: string): string[] {
   const out: string[] = []
   const walk = (dir: string): void => {
@@ -297,7 +301,7 @@ function collectTemplates(root: string): string[] {
         if (rel === 'examples') continue
         walk(abs)
       } else if (entry.name.endsWith('.md')) {
-        out.push('templates/' + rel)
+        out.push('packages/pmboard-templates/templates/' + rel)
       }
     }
   }
@@ -449,7 +453,7 @@ function checkTaskCardTriadGaps(text: string): string[] {
  * 验收模板的两节判据：`## 证据` 与 `## 验收项` 必须在。
  *
  * 为什么不喂 `checkAcceptanceKit`（执行裁定第 6 节 t19 条①要求"最贴近的既有门禁"）：
- * 实测它对 `templates/accepting/verification.md` **必红**——它找的是表头含「验什么/对应编号/怎么验/预期」
+ * 实测它对 `packages/pmboard-templates/templates/accepting/verification.md` **必红**——它找的是表头含「验什么/对应编号/怎么验/预期」
  * 的**验收四件套表**，而模板用的是「## 证据」（列表）+「## 验收项」（条款/验收标准/证据引用三列表）。
  * 该缺口属"验收四件套门禁至今没有真实调用点"（判据从未被接上链），**不在 t19 的范围**，
  * 故这里只做**从既有门禁语义直译**的子集判据，并在汇报里如实登记为待裁决点（不静默放宽）。
@@ -490,7 +494,7 @@ function decompositionColumnGaps(text: string): string[] {
 function designGranularitySectionGaps(rel: string, text: string): string[] {
   const doc = parseDocument(text)
   const hasH2 = (kw: string) => doc.headings.some(h => h.level === 2 && h.text.includes(kw))
-  if (rel.endsWith('templates/design/interfaces.md')) {
+  if (rel.endsWith('packages/pmboard-templates/templates/design/interfaces.md')) {
     const gaps: string[] = []
     if (!hasH2('接口清单')) gaps.push('interfaces.md 模板缺「接口清单」节（门禁 designSectionMissing 的模板侧依据）')
     else if (!doc.tables.some(t => t.header.some(h => h.includes('接口 id')))) {
@@ -498,7 +502,7 @@ function designGranularitySectionGaps(rel: string, text: string): string[] {
     }
     return gaps
   }
-  if (rel.endsWith('templates/design/frontend.md')) {
+  if (rel.endsWith('packages/pmboard-templates/templates/design/frontend.md')) {
     return hasH2('组件树') ? [] : ['frontend.md 模板缺「组件树」节（门禁 designSectionMissing 的模板侧依据）']
   }
   return []
@@ -527,7 +531,7 @@ async function runDocValidate(
 ): Promise<DocValidateReport[]> {
   const out: DocValidateReport[] = []
   for (const rel of reqRels) {
-    const raw = readFileSync(join(templatesDir, rel.slice('templates/'.length)), 'utf8')
+    const raw = readFileSync(join(templatesDir, rel.slice('packages/pmboard-templates/templates/'.length)), 'utf8')
     const rendered = renderTemplate(raw, map)
     const category = REQUIREMENT_CATEGORY[rel] ?? ''
     const doc = parseDocument(rendered.text)
@@ -556,7 +560,7 @@ export async function probe(templatesDir: string = DEFAULT_TEMPLATES_DIR): Promi
   const templates: TemplateReport[] = []
   const requirementRels: string[] = []
   for (const rel of rels) {
-    const raw = readFileSync(join(templatesDir, rel.slice('templates/'.length)), 'utf8')
+    const raw = readFileSync(join(templatesDir, rel.slice('packages/pmboard-templates/templates/'.length)), 'utf8')
     templates.push(await evaluateTemplate(rel, raw, map))
     // 文档自检只对**需求类**模板跑（9 项判据面向需求文档集：必填节/格式门/追溯/RTM…）
     if (classifyTemplate(rel) === 'requirement') requirementRels.push(rel)
@@ -661,7 +665,7 @@ const SPECIMENS: Specimen[] = [
       if (broken === text) throw new Error('改坏点没命中：feature.md 里找不到「## 功能点（需求条款）」')
       writeFileSync(p, broken)
     },
-    expectNamed: ['templates/brainstorming/feature.md', '功能点'],
+    expectNamed: ['packages/pmboard-templates/templates/brainstorming/feature.md', '功能点'],
   },
   {
     name: 'unregistered-placeholder',
@@ -673,7 +677,7 @@ const SPECIMENS: Specimen[] = [
       if (!text.includes(anchor)) throw new Error('注入锚点没命中：feature.md 里找不到「' + anchor + '」')
       writeFileSync(p, text.replace(anchor, '## 新增节 {{NOPE}}\n\n' + anchor))
     },
-    expectNamed: ['{{NOPE}}', 'templates/brainstorming/feature.md'],
+    expectNamed: ['{{NOPE}}', 'packages/pmboard-templates/templates/brainstorming/feature.md'],
   },
 ]
 
@@ -714,7 +718,7 @@ async function runSpecimens(args: Args): Promise<number> {
     console.error('SPECIMEN FAIL：' + String(bad) + '/' + String(SPECIMENS.length) + ' 条反例没有按预期变红（判据可能恒真）')
     return 1
   }
-  console.log('SPECIMEN PASS（' + String(SPECIMENS.length) + ' 条反例全部按预期变红；真模板副本已清理，仓库内 templates/ 未被改动）')
+  console.log('SPECIMEN PASS（' + String(SPECIMENS.length) + ' 条反例全部按预期变红；真模板副本已清理，仓库内 packages/pmboard-templates/templates/ 未被改动）')
   return 0
 }
 

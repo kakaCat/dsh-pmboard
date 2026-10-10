@@ -25,11 +25,11 @@
  *
  * @module dsh-pmboard/tests/support/legacy-store-projection
  */
-import { REQUIREMENT_STORE_ERROR, type LedgerMutateResult, type LedgerChange, type LedgerView, type MutationOutcome, type MutateResult, type MutableLedger, type NewComment, type NewRequirement, type RequirementChange, type RequirementDraft, type RequirementFilter, type RequirementHistoryEntry, type RequirementStore, type RequirementSummaryPage, type SweepResult, type ImportedLedger } from '../../src/application/ports.js'
-import type { ActorRef, CommentRecord, RequirementRecord } from '../../src/shared/protocol.js'
-import { factsOf, type RequirementFacts } from '../../src/domain/requirement/RequirementSummary.js'
-import { boardSummaryOfAuthoritative } from '../../src/shared/board-summary.js'
-import { compareSummaryOrder } from '../../src/repositories/shardPaging.js'
+import { REQUIREMENT_STORE_ERROR, type LedgerMutateResult, type LedgerChange, type LedgerView, type MutationOutcome, type MutateResult, type MutableLedger, type NewComment, type NewRequirement, type RequirementChange, type RequirementDraft, type RequirementFilter, type RequirementHistoryEntry, type RequirementStore, type RequirementSummaryPage, type SweepResult, type ImportedLedger } from 'pmboard-core/application/ports.js'
+import type { ActorRef, CommentRecord, RequirementRecord } from 'pmboard-core/protocol-domain.js'
+import { factsOf, type RequirementFacts } from 'pmboard-core/domain/requirement/RequirementSummary.js'
+import { boardSummaryOfAuthoritative } from 'pmboard-core/board-summary-domain.js'
+import { compareSummaryOrder } from 'pmboard-core/repositories/shardPaging.js'
 
 function coded(code: string, message: string, extra: Record<string, unknown> = {}): Error {
   return Object.assign(new Error(message), { code, ...extra })
