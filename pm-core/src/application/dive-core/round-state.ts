@@ -211,7 +211,7 @@ export function roundReservationValid(c: ReservationCheck): boolean {
  * **回合判定的热路径**上同步调用（判定 → `await checkpoint` → 起轮）。端口读设置要读盘、是异步的，
  * 一旦在这里 `await`，判定与排队之间就多出一个可被设置的窗口——本模块既有的竞态栅栏纪律会失守。
  *
- * 快照的三路刷新（装配在 `src/index.ts`）：
+ * 快照的三路刷新（装配在 `pm/src/index.ts`）：
  *   ① 装配期灌初值；② 设置变更（PATCH 广播 → `subscribe`）时刷新；③ 设置文件被外部改动时按 mtime 轮询刷新。
  *
  * 结构类型而不是 import `ResolvedRunSettings`：本模块保持"零上层依赖"，

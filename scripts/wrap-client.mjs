@@ -3,13 +3,14 @@
 // tsdown CJS output, emits lib/client.js as window.__ModuleLoader__.load({
 //   id: pkg.name, factory: (require) => module.exports }) — the exact shape
 // the DSH web shell's client-modules host serves at /plugins/??<pkg>/client.js.
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const root = join(here, '..')
+// 2026-10-10：插件主体成包（pm/）⇒ 构建产物落在插件目录；旧布局下仍是仓库根。
+const root = existsSync(join(here, '..', 'pm', 'package.json')) ? join(here, '..', 'pm') : join(here, '..')
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
 const cjsBuf = readFileSync(join(root, 'lib', 'client.cjs'))
 const cjs = cjsBuf.toString('utf8')

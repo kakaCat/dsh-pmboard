@@ -1,10 +1,10 @@
 // REQ-f6307c T3 集成验证：真实代码 + 真实 ledger，模拟 unbound 窗口全链路
 // 2026-09-26 对齐 dsh-goal-round-driver：**采集**在 session/event(user/message)，
 // **驱动**在 agent/status === 'idle'（整 agent 空闲）。
-import { createDiveSessionDriver } from '../src/application/dive/session-driver.js'
+import { createDiveSessionDriver } from '../pm/src/application/dive/session-driver.js'
 import { captureSectionText } from 'pm-core/application/internal/capture-section.js'
 import { shouldCaptureWindow, isWindowBound } from 'pm-core/application/internal/window.js'
-import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
+import { JsonLedgerRepository } from '../pm/src/adapters/JsonLedgerRepository.js'
 
 const LEDGER = '/Users/yunpeng/pi-investment/agent-dh/.dsh-data/dsh-reqboard.json'
 const store = new JsonLedgerRepository({ file: LEDGER })

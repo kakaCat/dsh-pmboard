@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 // REQ-261008020617-088f RF-2：三份同构门已合并为 gate/rtm-gates.ts 单点；
 // 读盘改走 DocRepository（构造需求自己的根），断言一字未改。
 import { taskCoverageGateCheck } from 'pm-core/application/gate/rtm-gates.js'
-import { FileDocRepository } from '../../../src/adapters/FileDocRepository.js'
+import { FileDocRepository } from '../../pm/src/adapters/FileDocRepository.js'
 import type { RequirementRecord } from 'pm-core/protocol-domain.js'
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'

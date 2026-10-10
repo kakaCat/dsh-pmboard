@@ -36,7 +36,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
+import { FileDocRepository } from '../pm/src/adapters/FileDocRepository.js'
 import { designDocPolicyFrom } from 'pm-core/application/internal/category-doc-sets.js'
 import { parseDocument } from 'pm-core/application/internal/content-gates.js'
 import { contentGatesForMove, e2eCoverageOf } from 'pm-core/application/internal/content-gate-wiring.js'

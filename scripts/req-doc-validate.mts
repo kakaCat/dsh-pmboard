@@ -72,7 +72,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
+import { FileDocRepository } from '../pm/src/adapters/FileDocRepository.js'
 import {
   designDocPolicyFrom,
   frontmatterStateViolations,

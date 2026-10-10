@@ -15,7 +15,7 @@
  */
 import { writeFileSync } from 'node:fs'
 // 装配类型注册表与类型档片段（t10/t11 二期后，片段经端口下发；不装配会抛「未装配」）。
-await import('../src/type-registry.js')
+await import('../pm/src/type-registry.js')
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tsImport } from 'tsx/esm/api'

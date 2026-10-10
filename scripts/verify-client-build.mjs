@@ -16,9 +16,12 @@ import { dirname, join } from 'node:path'
 const here = dirname(fileURLToPath(import.meta.url))
 const pkgRoot = existsSync(join(here, '..', 'pm', 'package.json')) ? join(here, '..', 'pm') : join(here, '..')
 // 布局无关（t17）：client 源码根搬迁前后各一处。
-const CLIENT_SRC = existsSync(join(pkgRoot, 'src', 'client'))
-  ? join(pkgRoot, 'src', 'client')
-  : join(pkgRoot, 'pm-client', 'src')
+// 三形态：平铺组件（<根>/pm-client/src）· 旧根布局（<根>/src/client）· 嵌套（<根>/pm-client/src）
+const CLIENT_SRC = existsSync(join(pkgRoot, '..', 'pm-client', 'src'))
+  ? join(pkgRoot, '..', 'pm-client', 'src')
+  : existsSync(join(pkgRoot, 'src', 'client'))
+    ? join(pkgRoot, 'src', 'client')
+    : join(pkgRoot, 'pm-client', 'src')
 const bundlePath = join(pkgRoot, 'lib', 'client.js')
 const stylesPath = join(CLIENT_SRC, 'styles.ts')
 const progressPath = join(CLIENT_SRC, 'stage-panel.ts')

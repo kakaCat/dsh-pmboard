@@ -271,9 +271,9 @@ export const SOURCE_LANDING_PREFIXES = ['src/', 'scripts/', 'packages/', 'lib/']
 
 /**
  * 资产包（t19 起各自成包）**不算源码类落点**——它们虽在 `packages/` 下，但语义是「资产」而非「源码模块」：
- * `pm-pm/pm-templates/templates/pm-templates/templates/x.md` 与搬迁前的 `pm-templates/templates/x.md` 是同一种东西。
+ * `pm-pm-templates/templates/pm-templates/templates/x.md` 与搬迁前的 `pm-templates/templates/x.md` 是同一种东西。
  */
-const ASSET_PKG_PREFIXES = ['pm-pm/pm-templates/templates/', 'pm-pm/pm-skills/skills/', 'pm-pm/pm-eval-suite/eval-suite/'] as const
+const ASSET_PKG_PREFIXES = ['pm-pm-templates/templates/', 'pm-pm-skills/skills/', 'pm-pm-eval-suite/eval-suite/'] as const
 
 /** 该落点是否属「源码类」（要求回写模块改动地图）。 */
 export function isSourceLanding(path: string): boolean {

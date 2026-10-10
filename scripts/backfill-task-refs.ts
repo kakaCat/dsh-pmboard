@@ -18,12 +18,12 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
+import { JsonLedgerRepository } from '../pm/src/adapters/JsonLedgerRepository.js'
 import { JsonQueueRepository } from 'pm-core/repositories/QueueRepository.js'
 import { QueueTaskStore } from 'pm-core/repositories/QueueTaskStore.js'
-import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
-import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
-import { SystemClock } from '../src/adapters/SystemClock.js'
+import { FileDocRepository } from '../pm/src/adapters/FileDocRepository.js'
+import { RandomIdFactory } from '../pm/src/adapters/RandomIdFactory.js'
+import { SystemClock } from '../pm/src/adapters/SystemClock.js'
 import {
   applyBackfill,
   checkBackfill,

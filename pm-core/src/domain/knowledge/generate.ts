@@ -85,9 +85,9 @@ function packRows(rows: readonly string[]): string[] {
   return out
 }
 /** 样式分片路径口径（与搬迁前脚本逐字一致）。 */
-const STYLE_RE = /^(?:src\/client|pm\/pm-client\/src)\/styles?/
+const STYLE_RE = /^(?:src\/client|pm-client\/src)\/styles?/
 /** 样式分片前缀（两种布局都剥）：显示口径随布局而变会污染产物，故一处收口。 */
-const STYLE_PREFIX_RE = /^(?:src\/client|pm\/pm-client\/src)\/styles\//
+const STYLE_PREFIX_RE = /^(?:src\/client|pm-client\/src)\/styles\//
 
 /** 抽符号：名称取关键字后的第一个标识符；签名取整行（截断 120 字符，保持单行）。 */
 export function extractSymbols(relPath: string, text: string): readonly KbSymbolRow[] {

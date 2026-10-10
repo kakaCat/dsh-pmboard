@@ -94,7 +94,7 @@ export default defineConfig({
       // 一搬就断；改成 `tests/helpers/…` 后与位置无关（搬迁时零改动）。
       'tests/': fileURLToPath(new URL('./tests/', import.meta.url)),
       // 根包（组合根）源码前缀别名（t20）：测试搬进各包后仍要能引用根包的 src。
-      'src/': fileURLToPath(new URL('./src/', import.meta.url)),
+      'src/': fileURLToPath(new URL('./pm/src/', import.meta.url)),
       'scripts/': fileURLToPath(new URL('./scripts/', import.meta.url)),
       'pm-common/': fileURLToPath(new URL('./pm-common/src/', import.meta.url)),
       'pm-common': fileURLToPath(new URL('./pm-common/src/index.ts', import.meta.url)),
@@ -147,7 +147,7 @@ export default defineConfig({
     env: { NODE_NO_WARNINGS: '1' },
 
     // 包含当前目录的 tests 文件
-    include: ['tests/**/*.test.ts', 'pm/*/tests/**/*.test.ts'],
+    include: ['tests/**/*.test.ts', 'pm-*/tests/**/*.test.ts', 'tool-pm/tests/**/*.test.ts', 'command-pm/tests/**/*.test.ts', 'reqboard-rtm/tests/**/*.test.ts'],
 
     // 排除
     exclude: [

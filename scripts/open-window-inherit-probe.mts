@@ -19,7 +19,7 @@
  */
 import { performance } from 'node:perf_hooks'
 import { openWindow } from 'pm-core/application/use-cases/OpenWindow.js'
-import { SessionWindowOpener } from '../src/adapters/SessionWindowOpener.js'
+import { SessionWindowOpener } from '../pm/src/adapters/SessionWindowOpener.js'
 import { increasedWindowTitle } from 'pm-core/application/internal/window-inherit.js'
 import type { UseCaseDeps } from 'pm-core/application/ports.js'
 

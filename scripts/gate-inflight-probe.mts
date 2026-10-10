@@ -18,7 +18,7 @@
  * 用法：`npx tsx scripts/gate-inflight-probe.mts`
  * 退出码：0 = 三条断言全过；1 = 有断言不过（打印每条的实测值）。
  */
-import { PendingConfirmRegistry } from '../src/adapters/PendingConfirmRegistry.js'
+import { PendingConfirmRegistry } from '../pm/src/adapters/PendingConfirmRegistry.js'
 import { requestGate, type GateRequestInput } from 'pm-core/application/internal/gate-request.js'
 import type { UseCaseDeps } from 'pm-core/application/ports.js'
 import type { RequirementRecord } from 'pm-core/protocol-domain.js'

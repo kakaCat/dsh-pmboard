@@ -14,7 +14,7 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
+import { FileDocRepository } from '../pm/src/adapters/FileDocRepository.js'
 import { ensureKnowledgeLayer } from 'pm-core/application/use-cases/EnsureKnowledgeLayer.js'
 import { KB_LIMITS } from 'pm-core/domain/knowledge/budget.ts'
 import { KB_PATHS } from 'pm-common/knowledge/types.js'
@@ -70,7 +70,7 @@ if (result.stats !== undefined) {
 // ── --backfill：把台账里已归档需求的 indexEntry 回填成知识条目（幂等：同源复用 id） ──
 // 与生成器无关，仍留在脚本内（它需要台账文件与 KnowledgeRepository，不属"生成规则"）。
 if (backfill) {
-  const { KnowledgeRepository } = await import('../src/adapters/KnowledgeRepository.js')
+  const { KnowledgeRepository } = await import('../pm/src/adapters/KnowledgeRepository.js')
   const ledgerPath = (() => {
     const i = args.indexOf('--ledger')
     const v = i >= 0 ? args[i + 1] : undefined

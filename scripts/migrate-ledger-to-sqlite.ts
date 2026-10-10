@@ -41,7 +41,7 @@ import { cpSync, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 import { SqliteRequirementStore } from 'pm-core/repositories/SqliteRequirementStore.js'
-import { FileSettingsStore } from '../src/adapters/FileSettingsStore.js'
+import { FileSettingsStore } from '../pm/src/adapters/FileSettingsStore.js'
 import { staleSqliteReason, type ShardsSnapshot, type SqliteSnapshot } from 'pm-core/application/settings/events.js'
 import {
   countRequirementsReadOnly,
