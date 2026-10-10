@@ -179,7 +179,7 @@
 - 时机：改动后
 - 命令：`pnpm boundary:check`
 - 期望：`退出码 0（命令成功）`
-- 失败怎么办：退出码非 0 且 stdout 逐条点名越界（`layer-declaration` / `undeclared-dependency` / `cross-layer-import` / `kit-bypass` 四类 kind）。修法：按点名把 import 或声明面改回白名单方向（L0→L4 单向）；白名单唯一权威是 `scripts/package-boundary-check.mts` 的 `LAYERS` 与 `design/architecture.md` 分层表。若属**正当横向共享**，走 `pm-type-kit` 通路而不是放宽层级。
+- 失败怎么办：退出码非 0 且 stdout 逐条点名越界（`layer-declaration` / `undeclared-dependency` / `cross-layer-import` / `kit-bypass` 四类 kind）。修法：按点名把 import 或声明面改回白名单方向（L0→L4 单向）；白名单唯一权威是 `scripts/package-boundary-check.mts` 的 `LAYERS` 与 `design/architecture.md` 分层表。若属**正当横向共享**，走 `pm-category-kit` 通路而不是放宽层级。
 
 ## 怎么用这份清单 #howto
 

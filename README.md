@@ -116,9 +116,9 @@ pnpm run kb:probe   # 只跑自检，人读输出
 | 层 | 包 | 允许依赖 |
 |---|---|---|
 | `L0` | `pm-common` · `reqboard-rtm` | （无） |
-| `L0.5` | `pm-type-kit` | pm-common |
-| `L0.5` | `pm-type-feature` · `pm-type-bug` · `pm-type-doc` · `pm-type-refactor` · `pm-type-spike` · `pm-type-chore` | pm-common · pm-type-kit |
-| `L1` | `pm-core` | pm-common · reqboard-rtm · pm-type-kit |
+| `L0.5` | `pm-category-kit` | pm-common |
+| `L0.5` | `pm-category-feature` · `pm-category-bug` · `pm-category-doc` · `pm-category-refactor` · `pm-category-spike` · `pm-category-chore` | pm-common · pm-category-kit |
+| `L1` | `pm-core` | pm-common · reqboard-rtm · pm-category-kit |
 | `L2` | `tool-pm` · `pm-round-driver` · `pm-workflow` · `pm-client` · `command-pm` | pm-common · pm-core |
 | `L3` | `pm-templates` · `pm-skills` · `pm-eval-suite` · `pm-scripts` | （无） |
 

@@ -17,7 +17,7 @@
  *
  * @module pm-core/type-registry-port
  */
-import type { TypeRegistry } from 'pm-type-kit'
+import type { TypeRegistry } from 'pm-category-kit'
 import type { GeneratedFragment } from 'pm-common/prompt/generated/fragments.js'
 
 let installed: TypeRegistry | undefined

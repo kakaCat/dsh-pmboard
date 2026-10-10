@@ -14,7 +14,7 @@
  * ③ **刻意不带 `revision` / `round`**：带齐那三个字段（requirementId + revision + round）会让这条
  *    消息成为 `isDiveRoundSource()` 的**合法 Dive 回合来源**，而 round 驱动的 `onPreStep` 栅栏
  *    只认"自己预约过的回合消息"——它一旦在本步的消息里看见合法来源却与预留不符，就会把**整个 step**
- *    判成 `reject`（`round-driver.ts` 的 pre-step 拒绝分支）。故本消息自署为 `kind:'dive'`（可被
+ *    判成 `reject`（`index.ts` 的 pre-step 拒绝分支）。故本消息自署为 `kind:'dive'`（可被
  *    识别为非人类来源、不会被 round 栅栏认领），但**不构成**回合来源。将来若有人想补上这两字段，
  *    必须先改 pre-step 栅栏的认领判据，否则会把窗口的每一步都拒掉。
  *

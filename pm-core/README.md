@@ -8,11 +8,11 @@
 
 ## 允许依赖（分层 `L1`）
 
-pm-common · reqboard-rtm · pm-type-kit
+pm-common · reqboard-rtm · pm-category-kit
 
 ## 边界
 
-依赖 pm-common · reqboard-rtm · pm-type-kit；不得反向依赖工具层、回合驱动、工作流、客户端与命令面。
+依赖 pm-common · reqboard-rtm · pm-category-kit；不得反向依赖工具层、回合驱动、工作流、客户端与命令面。
 
 ## 测试
 

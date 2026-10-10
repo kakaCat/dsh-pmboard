@@ -96,7 +96,7 @@ function ledgerReaderOf(snap: RTMLedgerSnapshot, tasks: readonly TaskRecord[]): 
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
         // 绑定窗口进 RTM（台账 sourceSessionId → RTMLifecycle.requirement.source_session）。
-        // **如实声明：当前无生产读取方**。Dive 的投递目标取自**台账**（round-driver.ts 的
+        // **如实声明：当前无生产读取方**。Dive 的投递目标取自**台账**（index.ts 的
         // requirementById(id)?.sourceSessionId），不读这份 YAML；source_session 目前仅供人查。
         ...(typeof r.sourceSessionId === 'string' && r.sourceSessionId.length > 0
           ? { sourceSessionId: r.sourceSessionId }
