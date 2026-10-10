@@ -144,7 +144,7 @@ describe('装配契约：非法 idFactory 必须响亮（不许把装配错误�
  * ——同一症状的第二处断点。只修一处，链路照样不通。
  */
 describe('生产装配守卫：diveRoundPorts 必须接全（尤其 delivery）', () => {
-  const src = readFileSync(repoPath('src/index.ts'), 'utf8')
+  const src = readFileSync(repoPath('pm/src/index.ts'), 'utf8')
   const block = /const diveRoundPorts: DiveRoundPorts = \{([\s\S]*?)\n  \}/.exec(src)?.[1] ?? ''
 
   it('字面量可定位（守卫自身不空转）', () => {
