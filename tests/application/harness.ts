@@ -251,7 +251,7 @@ export interface LedgerSeed {
 //
 // 与上面的 `InMemoryRepo`（单册台账）**并存**：t2 只立契约，t8 才做端口切换。
 // 它是 `RequirementStore` 的**第一个**实现，也是「端口真的可替换」的第一份证据：
-// 同一份契约测试（`pm/pm-core/tests/store-contract.test.ts`）同时跑它和分片实现（t4 接入）。
+// 同一份契约测试（`pm-core/tests/store-contract.test.ts`）同时跑它和分片实现（t4 接入）。
 //
 // 口径刻意与生产实现对齐的地方：
 //   * **version 由存储自增**（不靠调用点手工维护）——这是 FR-5 成立的前提；
@@ -576,7 +576,7 @@ export class FakeDocs implements DocRepository {
    * 把「可能是绝对路径」的入参归一为 FakeDocs 的相对键。
    *
    * 为什么必须归一（REQ-261006201814-ac4f t2 返工）：`workspaceRoot()` 由 `'.'` 改为绝对临时根后，
-   * `ensureWritableProjectRoot`（`pm/pm-core/src/application/internal/support.ts:541-546`）会调
+   * `ensureWritableProjectRoot`（`pm-core/src/application/internal/support.ts:541-546`）会调
    * `docs.exists(声明的绝对根)` 核验——改前 `'.'` 走「非绝对 → 不判」的宽容旁路**根本不走这一步**。
    * 若 FakeDocs 只认相对键，任何绝对根都会查不到而被判 `INVALID_WORKSPACE`，
    * 于是一批**立项/捕获**用例整片变红（A/B 实测 10 条）。

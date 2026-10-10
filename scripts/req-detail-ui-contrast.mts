@@ -8,7 +8,7 @@
  * 靠眼睛挑不出来的正是这两类（主按钮与三档芯片就是这么漏掉的）。
  *
  * 三条纪律：
- *  - **不许复制一份色值**：令牌一律从 `pm/pm-client/src/styles/report.ts` 的声明里解析（唯一事实源），
+ *  - **不许复制一份色值**：令牌一律从 `pm-client/src/styles/report.ts` 的声明里解析（唯一事实源），
  *    两处各写一份必然漂移——改了一处、报表还是绿的，那是最坏的一种"看起来有判据"；
  *  - **浅色岛口径**：背景恒为白（`#ffffff`），出现 `[data-ds-dark-theme]` 对详情页的任何覆盖
  *    即判失败（FR-4 #3：岛内不许被宿主主题翻转）；
@@ -24,7 +24,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const STYLES = join(ROOT, 'pm', 'pm-client', 'src', 'styles', 'report.ts')
+const STYLES = join(ROOT, 'pm-client', 'src', 'styles', 'report.ts')
 const OUT_DIR = join(ROOT, 'docs', 'requirements', 'REQ-261005155003-f32f', 'evidence')
 const OUT_FILE = join(OUT_DIR, 'contrast-report.txt')
 
@@ -239,7 +239,7 @@ function main(): void {
 
   const lines: string[] = []
   const problems: string[] = []
-  const title = '需求详情页 · 对比度报表（WCAG 2.x 相对亮度公式，读 pm/pm-client/src/styles/report.ts 的令牌声明）'
+  const title = '需求详情页 · 对比度报表（WCAG 2.x 相对亮度公式，读 pm-client/src/styles/report.ts 的令牌声明）'
   lines.push(title)
   lines.push('口径：详情页是白底浅色岛（背景 #ffffff）；alpha 一律先压到白底再算亮度。')
   lines.push('阈值：真文字 >= ' + TEXT_MIN.toFixed(1) + ':1；有意义的非文本 >= ' + String(NON_TEXT_MIN) + ':1。')

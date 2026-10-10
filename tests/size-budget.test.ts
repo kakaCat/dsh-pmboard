@@ -63,7 +63,7 @@ const WHITELIST_SCOPE = [/^client\//]
 /** client 面根（布局无关：搬迁前后各一处）。 */
 const CLIENT_SRC = existsSync(join(SRC, 'client'))
   ? join(SRC, 'client')
-  : repoPath('pm/pm-client/src')
+  : repoPath('pm-client/src')
 /** 扫描双根；包内路径**归一回** `client/...`，于是白名单与 WHITELIST_SCOPE 一字不用改。 */
 const allTs = [
   ...listTs(SRC).filter((f) => !f.startsWith(join(SRC, 'client'))),

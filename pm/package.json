@@ -1,0 +1,88 @@
+{
+  "name": "dsh-pmboard",
+  "version": "0.1.0",
+  "description": "项目看板 dsh-pmboard — DSH 需求流水线页面插件（host: reqboard JSON+SSE API 与 19 个立项/拆分/验收/协作工具；client: GUI 看板视图）",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./client": "./lib/client.js"
+  },
+  "files": [
+    "dist",
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deepseek-ai/dsh-pmboard.git",
+    "directory": "pm"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsdown -c tsdown.config.mjs && pnpm build:client",
+    "build:client": "tsdown -c tsdown.client.config.mjs && node ../scripts/wrap-client.mjs && node ../scripts/verify-client-build.mjs",
+    "prepare": "pnpm build",
+    "prepublishOnly": "pnpm build && pnpm typecheck"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.1",
+    "command-pm": "workspace:*",
+    "pm-client": "workspace:*",
+    "pm-common": "workspace:*",
+    "pm-core": "workspace:*",
+    "pm-eval-suite": "workspace:*",
+    "pm-round-driver": "workspace:*",
+    "pm-scripts": "workspace:*",
+    "pm-skills": "workspace:*",
+    "pm-templates": "workspace:*",
+    "pm-type-bug": "workspace:*",
+    "pm-type-chore": "workspace:*",
+    "pm-type-doc": "workspace:*",
+    "pm-type-feature": "workspace:*",
+    "pm-type-kit": "workspace:*",
+    "pm-type-refactor": "workspace:*",
+    "pm-type-spike": "workspace:*",
+    "pm-workflow": "workspace:*",
+    "reqboard-rtm": "workspace:*",
+    "tool-pm": "workspace:*",
+    "yaml": "^2.9.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@types/node": "^20.11.0",
+    "tsdown": "^0.22.14",
+    "tsx": "^4.23.12",
+    "typescript": "^5.3.3",
+    "vitest": "^2.0.0"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "slots",
+        "sessions",
+        "workspaces",
+        "layout"
+      ]
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

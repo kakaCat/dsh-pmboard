@@ -5,7 +5,7 @@
  *
  * 该包**未随本仓安装**：它只作为 `@deepseek-ai/dsh-tools` 的 peer 落在
  * `node_modules/.pnpm/@deepseek-ai+dsh-session@0.2.0-rc.1*` 里，pnpm 严格模式**不把它暴露**给
- * 包根，故 `pm/pm-core/tests/isolate-node-context.test.ts` 的 `import { Session, SessionId } from
+ * 包根，故 `pm-core/tests/isolate-node-context.test.ts` 的 `import { Session, SessionId } from
  * '@deepseek-ai/dsh-session'` 在 tsc 下是 TS2307。
  *
  * 本文件按该包 0.2.0-rc.1 的**公开形状**（`lib/types/index.d.ts` / `types.d.ts` / `surface.d.ts`）
@@ -15,7 +15,7 @@
  *
  * 1. **不含运行时实现**：这里没有任何 `Session.create` 的行为——真实会话语义（surface 折叠、
  *    拒绝区间、`deriveMessages` 投影）都在宿主侧那份包里。本仓**没有**、也**不假装有**它。
- *    故 `pm/pm-core/tests/isolate-node-context.test.ts` 的「路线 A 端到端」在本 checkout **无法运行**
+ *    故 `pm-core/tests/isolate-node-context.test.ts` 的「路线 A 端到端」在本 checkout **无法运行**
  *    （顶层 import 解不到真实包 → 整个文件加载失败）。这是**环境缺口**，不是代码缺陷；
  *    要跑它需要宿主侧提供/安装 `@deepseek-ai/dsh-session@0.2.0-rc.1`。
  * 2. **不是逐字契约**：只保留用例读到的成员与最宽的兼容形状（如 `append` 的事件名收成

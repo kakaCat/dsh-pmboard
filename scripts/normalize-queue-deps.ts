@@ -3,8 +3,8 @@
  *
  * 背景：拆分落库时每张卡写的是**全部前置**（传递闭包），于是存量 queue.json 里普遍存在
  * 「A→B、B→C、A→C」三角形（线上实测 55 份队列 / 卡片层 646 条边里 98 条可归约）。
- * 写入侧已收敛（见 `pm/pm-core/src/repositories/QueueTaskStore.ts` 的 `recompute` 与
- * `pm/pm-common/src/queue/transitiveReduction.ts`）；本脚本负责把**存量文件本身**也收敛成
+ * 写入侧已收敛（见 `pm-core/src/repositories/QueueTaskStore.ts` 的 `recompute` 与
+ * `pm-common/src/queue/transitiveReduction.ts`）；本脚本负责把**存量文件本身**也收敛成
  * 「dependsOn 只写直接前置」，并整份重算 layer/edges/layers/ready。
  *
  * 归一化不改变执行序与可开工集（传递归约保持可达性）——它只去掉**存储冗余**。

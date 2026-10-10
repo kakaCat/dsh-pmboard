@@ -18,8 +18,8 @@
  *      **不是错误码**，被排除是事实而非补丁（扫描规则本身就不会命中它们，见 ①③）。
  *
  * **小写码**来自两张已存在的登记表，不靠猜正则：
- *   · `pm/pm-common/src/errors.ts` 的 `REQBOARD_ERROR_CODES`（领域语义码，值为小写）；
- *   · `pm/pm-core/src/application/use-cases/MoveRequirement.ts` 的 `TRANSPORT_CODE_BY_INTERNAL`（门禁内部码）。
+ *   · `pm-common/src/errors.ts` 的 `REQBOARD_ERROR_CODES`（领域语义码，值为小写）；
+ *   · `pm-core/src/application/use-cases/MoveRequirement.ts` 的 `TRANSPORT_CODE_BY_INTERNAL`（门禁内部码）。
  * 未登记在表里的小写码**不在口径内**（这是刻意的下界：宁可漏，也不误伤散文）。
  *
  * @module dsh-pmboard/tests/helpers/error-code-scan
@@ -59,7 +59,7 @@ export type Tier = 'unclassified' | 'direct' | 'fixture' | 'fault'
 
 /** 一个产生点的定位（抗行号漂移：匹配键是行原文，不是行号）。 */
 export interface CodeSite {
-  /** 工作区相对路径，如 `pm/pm-core/src/application/use-cases/Decompose.ts`。 */
+  /** 工作区相对路径，如 `pm-core/src/application/use-cases/Decompose.ts`。 */
   readonly file: string
   /** 该行去掉首尾空白后的原文。 */
   readonly anchor: string
@@ -98,13 +98,13 @@ export interface ScanResult {
  * 本清单的作用是**把这件事变成可断言的事实**：有人把它们删掉、或有人把它们误加进口径，都要红。
  */
 export const NOISE_TOKENS: readonly ExcludedToken[] = [
-  { token: 'REQBOARD_ERROR_CODES', why: '标识符：pm/pm-common/src/errors.ts 的对象常量名，不是错误码' },
+  { token: 'REQBOARD_ERROR_CODES', why: '标识符：pm-common/src/errors.ts 的对象常量名，不是错误码' },
   { token: 'REQBOARD_XXX', why: '文案占位符：只出现在提示词/注释里（如 clause-criteria.ts），不是码' },
   { token: 'REQBOARD_DATA_ROOT', why: '目录名常量：值为字符串 reqboard（src/index.ts），不是错误码' },
   { token: 'REQBOARD_SCHEMA_VERSION', why: '数值常量：台账记录形态版本（= 9），不是错误码' },
   { token: 'REQBOARD_NO_ITEM_RESULT', why: '环境变量后缀：DSH_REQBOARD_NO_ITEM_RESULT，被左边界挡住故非码' },
-  { token: 'REQBOARD_CODE_REGISTRY', why: '标识符：pm/pm-common/src/error-code-registry.ts 的注册表常量名，不是错误码' },
-  { token: 'REQBOARD_CODE_SET', why: '标识符：pm/pm-common/src/error-code-registry.ts 的派生集合常量名，不是错误码' },
+  { token: 'REQBOARD_CODE_REGISTRY', why: '标识符：pm-common/src/error-code-registry.ts 的注册表常量名，不是错误码' },
+  { token: 'REQBOARD_CODE_SET', why: '标识符：pm-common/src/error-code-registry.ts 的派生集合常量名，不是错误码' },
 ]
 
 /**
@@ -115,7 +115,7 @@ export const NOISE_TOKENS: readonly ExcludedToken[] = [
  */
 export function isPromptFile(rel: string): boolean {
   // 提示词文案不是产生点：`prompt/` 目录下的任何文件（旧布局 `domain/prompt/**`、
-  // 拆包后的 `pm/pm-core/src/domain/prompt/**` 与公共包的 `prompt/generated/**` 都覆盖）。
+  // 拆包后的 `pm-core/src/domain/prompt/**` 与公共包的 `prompt/generated/**` 都覆盖）。
   return /prompt\.ts$/.test(rel) || /(?:^|\/)prompt\//.test(rel)
 }
 
@@ -269,8 +269,8 @@ function objectBodyAfter(text: string, marker: string): string {
 
 /**
  * 小写码来自两张**已存在的登记表**（不猜正则）：
- *   · `pm/pm-common/src/errors.ts` → `REQBOARD_ERROR_CODES = { key: 'value' }` 的 value；
- *   · `pm/pm-core/src/application/use-cases/MoveRequirement.ts` → `TRANSPORT_CODE_BY_INTERNAL` 的 key + value。
+ *   · `pm-common/src/errors.ts` → `REQBOARD_ERROR_CODES = { key: 'value' }` 的 value；
+ *   · `pm-core/src/application/use-cases/MoveRequirement.ts` → `TRANSPORT_CODE_BY_INTERNAL` 的 key + value。
  * `transport` = 该小写码对应的大写传输码；无孪生（大写形态不在 src）时为 null。
  */
 export function collectLowercaseCodes(srcRoot?: string): LowerHit[] {
@@ -285,7 +285,7 @@ export function collectLowercaseCodes(srcRoot?: string): LowerHit[] {
   }
   const out = new Map<string, LowerHit>()
 
-  // ── ① 领域语义码（值为小写；拆包后住 pm/pm-common/src/errors.ts） ──
+  // ── ① 领域语义码（值为小写；拆包后住 pm-common/src/errors.ts） ──
   const errorsFile = findFirst(['errors.ts', 'domain/errors.ts']) ?? join(roots[0].abs, 'errors.ts')
   const domainCodes: string[] = []
   if (existsSync(errorsFile)) {
@@ -296,7 +296,7 @@ export function collectLowercaseCodes(srcRoot?: string): LowerHit[] {
   }
 
   // ── ② 门禁内部码 → 传输码（显式映射表） ──────────────────────────────────
-  const moveFile = findFirst(['../../pm/pm-core/src/application/use-cases/MoveRequirement.ts']) ?? join(roots[0].abs, '../../pm/pm-core/src/application/use-cases/MoveRequirement.ts')
+  const moveFile = findFirst(['../../pm-core/src/application/use-cases/MoveRequirement.ts']) ?? join(roots[0].abs, '../../pm-core/src/application/use-cases/MoveRequirement.ts')
   const gatePairs: { code: string; transport: string | null }[] = []
   if (existsSync(moveFile)) {
     const body = objectBodyAfter(readFileSync(moveFile, 'utf8'), 'TRANSPORT_CODE_BY_INTERNAL')

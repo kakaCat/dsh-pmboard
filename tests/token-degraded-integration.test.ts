@@ -1,7 +1,7 @@
 /**
  * 联调（integrate）：读路径 degraded 语义 —— 快照「缺失」与「不可得」同等计入（FR-7）。
  *
- * 被测变更：pm/pm-core/src/application/query/QueryRequirementToken.ts
+ * 被测变更：pm-core/src/application/query/QueryRequirementToken.ts
  *   hasUnavailableSnapshot → hasSnapshotGap；degraded = req.tokenUsage 为 undefined || hasSnapshotGap(req, ledger)。
  *   ① 需求侧：状态事件缺 tokenSnapshot，或 source 非 projection → gap；
  *   ② 任务侧：执行运行中（endedAt 缺失）要求 start 可得；已闭合要求 start/end 均为 projection。

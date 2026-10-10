@@ -26,7 +26,7 @@ import type {
 import type { TaskRecord } from 'pm-core/protocol-domain.js'
 
 /** 写入族证据要求的真实落盘文件（凭证门会 stat 它）。 */
-const FILE = 'pm/pm-core/src/domain/x.ts'
+const FILE = 'pm-core/src/domain/x.ts'
 
 /** mock 引擎：按 args.stageKind 的**证据族**回不同产出；可选"首次瞬断"。 */
 class MockEngine implements WorkflowRunner {

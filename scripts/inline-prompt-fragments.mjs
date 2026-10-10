@@ -49,13 +49,13 @@ export const CATEGORIES = ['feature', 'bug', 'doc', 'refactor', 'spike', 'chore'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 export const PKG_ROOT = join(HERE, '..')
-export const FRAGMENTS_DIR = join(PKG_ROOT, 'pm/pm-core/src/domain/prompt/fragments')
-export const GENERATED_FILE = join(PKG_ROOT, 'pm/pm-common/src/prompt/generated/fragments.ts')
-export const GENERATED_REL = 'pm/pm-common/src/prompt/generated/fragments.ts'
+export const FRAGMENTS_DIR = join(PKG_ROOT, 'pm-core/src/domain/prompt/fragments')
+export const GENERATED_FILE = join(PKG_ROOT, 'pm-common/src/prompt/generated/fragments.ts')
+export const GENERATED_REL = 'pm-common/src/prompt/generated/fragments.ts'
 /** 类型档落点（REQ-261009174713-7bc8 t11 二期）：每类一份，随类型包走。 */
-export const TYPE_FRAGMENTS_FILE = (cat) => join(PKG_ROOT, 'pm/pm-type-' + cat + '/src/fragments.ts')
-export const TYPE_FRAGMENTS_REL = (cat) => 'pm/pm-type-' + cat + '/src/fragments.ts'
-export const VENDOR_DIR = join(PKG_ROOT, 'pm/pm-core/src/domain/prompt/vendor/superpowers')
+export const TYPE_FRAGMENTS_FILE = (cat) => join(PKG_ROOT, 'pm-type-' + cat + '/src/fragments.ts')
+export const TYPE_FRAGMENTS_REL = (cat) => 'pm-type-' + cat + '/src/fragments.ts'
+export const VENDOR_DIR = join(PKG_ROOT, 'pm-core/src/domain/prompt/vendor/superpowers')
 
 /**
  * 节点 → heavy 主 skill（vendor 原文来源）。decomposing 故意缺席：

@@ -6,7 +6,7 @@
  * （本需求后端实测结论，故 §10 #43 列为硬约束 + 用例）。所以判据不是"表里有这个键"，
  * 而是**真发一次信封、看真写出的状态码**：`fail()` 是本仓唯一把 code 落成 HTTP 状态的路径。
  *
- * 手法沿用 pm/pm-core/tests/degraded-startup.test.ts：最小假 res（只实现 writeHead / end），
+ * 手法沿用 pm-core/tests/degraded-startup.test.ts：最小假 res（只实现 writeHead / end），
  * 零网络、零宿主。
  */
 import { describe, expect, it } from 'vitest'

@@ -16,7 +16,7 @@
  *   rtm-yaml.ts:176-177  syncRTMYamlWithSnapshot(deps.docs.workspaceRoot())
  *        │
  *        ▼
- *   pm/reqboard-rtm/src/rtm/file-io.ts:42-43   join(root,'docs','requirements',reqId)
+ *   reqboard-rtm/src/rtm/file-io.ts:42-43   join(root,'docs','requirements',reqId)
  *        │
  *        ▼
  *   <cwd>/docs/requirements/REQ-000001/rtm-*.yml   ← 真实工作树被改写

@@ -3,7 +3,7 @@
  * skill 资产 vendoring 生成器 + 漂移门禁。
  *
  * 为什么需要它：本插件要随包发布 7 份 UI/UX 设计 skill 资产（上游 ui-ux-pro-max-skill 的
- * .claude/pm/pm-skills/skills/），供 subagent 从物化副本读取。资产一旦进包就是**唯一事实源**——
+ * .claude/pm-skills/skills/），供 subagent 从物化副本读取。资产一旦进包就是**唯一事实源**——
  * 上游副本不在运行时可达，所以"谁手改了一个 vendored 文件"不会有任何外部信号。
  * 这份脚本把两件事钉在一起：
  *   ① 可复现收录（copy + 裁剪 + 写 PROVENANCE.md 版本指纹）：node scripts/vendor-skills.mjs；
@@ -18,7 +18,7 @@
  *   - ui-ux-pro-max/data/google-font-licenses.json     许可展示用
  *   - **\/__pycache__\/             Python 字节码缓存（生成物，上游 gitignore；跑一次资产即被重写）
  *
- * 体积门禁：pm/pm-skills/skills/ 合计必须 ≤ 5MB（超过即响亮失败，不静默发布）。
+ * 体积门禁：pm-skills/skills/ 合计必须 ≤ 5MB（超过即响亮失败，不静默发布）。
  *
  * 用法：
  *   node scripts/vendor-skills.mjs [--from <repo>]   收录/刷新（写盘）
@@ -44,7 +44,7 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const PKG_ROOT = join(HERE, '..')
 const SKILLS_DIR = join(PKG_ROOT, 'skills')
 const PROVENANCE_FILE = join(SKILLS_DIR, 'PROVENANCE.md')
-const PROVENANCE_REL = 'pm/pm-skills/skills/PROVENANCE.md'
+const PROVENANCE_REL = 'pm-skills/skills/PROVENANCE.md'
 
 const DEFAULT_SOURCE_REPO = '/tmp/uupm/repo'
 const SOURCE_SKILLS_REL = '.claude/skills'
@@ -173,7 +173,7 @@ function sha256File(abs) {
   return createHash('sha256').update(readFileSync(abs)).digest('hex')
 }
 
-/** 指纹口径：每个 skill 的 SKILL.md + 其 scripts/ 树下全部 *.py（递归，键为 pm/pm-skills/skills/ 相对 POSIX 路径）。 */
+/** 指纹口径：每个 skill 的 SKILL.md + 其 scripts/ 树下全部 *.py（递归，键为 pm-skills/skills/ 相对 POSIX 路径）。 */
 function fingerprintPaths(skill) {
   const out = []
   if (existsSync(join(SKILLS_DIR, skill, 'SKILL.md'))) out.push('SKILL.md')
@@ -297,7 +297,7 @@ function vendor(sourceRepo) {
     process.exit(1)
   }
 
-  // 只清本脚本管理的 7 个 skill 目录 + PROVENANCE.md；不碰 pm/pm-skills/skills/ 下的其它内容。
+  // 只清本脚本管理的 7 个 skill 目录 + PROVENANCE.md；不碰 pm-skills/skills/ 下的其它内容。
   mkdirSync(SKILLS_DIR, { recursive: true })
   for (const skill of SKILL_NAMES) {
     rmSync(join(SKILLS_DIR, skill), { recursive: true, force: true })
@@ -325,14 +325,14 @@ function vendor(sourceRepo) {
 
   const sha256 = fingerprintMap()
   const provenance = renderProvenance({ commit: commit || UPSTREAM_COMMIT, trimmed, sha256, copyright: upstreamCopyright(sourceRepo) })
-  // 体积口径与 --check 一致：整个 pm/pm-skills/skills/（7 份资产 + PROVENANCE.md 本身）。
+  // 体积口径与 --check 一致：整个 pm-skills/skills/（7 份资产 + PROVENANCE.md 本身）。
   const provenanceBytes = Buffer.byteLength(provenance, 'utf8')
   const dirBytes = totalBytes + provenanceBytes
 
   // 体积门禁：超 5MB 即响亮失败（不写 PROVENANCE.md，避免发布"已收录"的假象）。
   if (dirBytes > MAX_TOTAL_BYTES) {
     console.error(
-      '[vendor-skills] FAIL: pm/pm-skills/skills/ 合计 ' + fmtBytes(dirBytes) + ' 超过上限 ' + fmtBytes(MAX_TOTAL_BYTES) +
+      '[vendor-skills] FAIL: pm-skills/skills/ 合计 ' + fmtBytes(dirBytes) + ' 超过上限 ' + fmtBytes(MAX_TOTAL_BYTES) +
         '\n  请复核 trimmed 规则（是否有大文件漏裁）。',
     )
     process.exit(1)
@@ -350,7 +350,7 @@ function vendor(sourceRepo) {
   }
   console.log(
     '[vendor-skills] 资产合计 ' + fmtBytes(totalBytes) + ' / ' + totalFiles + ' 文件；' +
-      'pm/pm-skills/skills/ 整目录 ' + fmtBytes(dirBytes) + ' / ' + (totalFiles + 1) + ' 文件；上限 ' + fmtBytes(MAX_TOTAL_BYTES) + '（未超）',
+      'pm-skills/skills/ 整目录 ' + fmtBytes(dirBytes) + ' / ' + (totalFiles + 1) + ' 文件；上限 ' + fmtBytes(MAX_TOTAL_BYTES) + '（未超）',
   )
   console.log('[vendor-skills] 指纹 ' + Object.keys(sha256).length + ' 条 → ' + PROVENANCE_REL)
 }
@@ -376,7 +376,7 @@ function renderProvenance({ commit, trimmed, sha256, copyright }) {
   lines.push('')
   lines.push('## 这是什么')
   lines.push('')
-  lines.push('本目录是上游 `ui-ux-pro-max-skill` 仓库 `.claude/pm/pm-skills/skills/` 下 7 个 skill 资产的**原样副本**')
+  lines.push('本目录是上游 `ui-ux-pro-max-skill` 仓库 `.claude/pm-skills/skills/` 下 7 个 skill 资产的**原样副本**')
   lines.push('（只按上面 `trimmed` 规则裁掉非运行时资产，不改写任何被收录文件的字节）。')
   lines.push('包内这份副本是运行时唯一事实源：subagent 从物化副本读取，不依赖网络与上游仓库。')
   lines.push('')
@@ -395,7 +395,7 @@ function renderProvenance({ commit, trimmed, sha256, copyright }) {
   lines.push('node scripts/vendor-skills.mjs --from <repo>')
   lines.push('```')
   lines.push('')
-  lines.push('刷新会重写 `pm/pm-skills/skills/<skill>/`（仅本脚本管理的 7 个）与本文件；源 commit 与基线不一致会响亮失败。')
+  lines.push('刷新会重写 `pm-skills/skills/<skill>/`（仅本脚本管理的 7 个）与本文件；源 commit 与基线不一致会响亮失败。')
   lines.push('')
   lines.push('## 如何发现漂移')
   lines.push('')
@@ -497,19 +497,19 @@ function check() {
   const missingDirs = recorded.filter((s) => !onDisk.includes(s))
   const extraDirs = onDisk.filter((s) => !recorded.includes(s))
   for (const s of missingDirs) problems.push('skills 清单记了但磁盘上没有: ' + s)
-  for (const s of extraDirs) problems.push('磁盘上有但 skills 清单未收: pm/pm-skills/skills/' + s)
+  for (const s of extraDirs) problems.push('磁盘上有但 skills 清单未收: pm-skills/skills/' + s)
   for (const s of onDisk) {
-    if (!existsSync(join(SKILLS_DIR, s, 'SKILL.md'))) problems.push('skill 缺 SKILL.md: pm/pm-skills/skills/' + s + '/SKILL.md')
+    if (!existsSync(join(SKILLS_DIR, s, 'SKILL.md'))) problems.push('skill 缺 SKILL.md: pm-skills/skills/' + s + '/SKILL.md')
   }
 
   // ② 指纹清单 ↔ 重算的指纹路径（缺文件/多文件）
   const actual = fingerprintMap()
   const recordedKeys = Object.keys(fm.sha256)
   for (const key of recordedKeys) {
-    if (!(key in actual)) problems.push('指纹记了但磁盘上没有: pm/pm-skills/skills/' + key)
+    if (!(key in actual)) problems.push('指纹记了但磁盘上没有: pm-skills/skills/' + key)
   }
   for (const key of Object.keys(actual)) {
-    if (!(key in fm.sha256)) problems.push('磁盘上有但指纹未覆盖（新增的 SKILL.md / *.py？）: pm/pm-skills/skills/' + key)
+    if (!(key in fm.sha256)) problems.push('磁盘上有但指纹未覆盖（新增的 SKILL.md / *.py？）: pm-skills/skills/' + key)
   }
 
   // ③ sha256 逐条比对（漂移主检测）
@@ -519,7 +519,7 @@ function check() {
     compared++
     if (actual[key] !== fm.sha256[key]) {
       problems.push(
-        'sha256 不一致: pm/pm-skills/skills/' + key + '\n      记录 ' + fm.sha256[key] + '\n      实测 ' + actual[key],
+        'sha256 不一致: pm-skills/skills/' + key + '\n      记录 ' + fm.sha256[key] + '\n      实测 ' + actual[key],
       )
     }
   }
@@ -527,7 +527,7 @@ function check() {
   // ④ 目录体积门禁
   const totalBytes = existsSync(SKILLS_DIR) ? recursiveBytes(SKILLS_DIR) : 0
   if (totalBytes > MAX_TOTAL_BYTES) {
-    problems.push('pm/pm-skills/skills/ 合计 ' + fmtBytes(totalBytes) + ' 超过上限 ' + fmtBytes(MAX_TOTAL_BYTES))
+    problems.push('pm-skills/skills/ 合计 ' + fmtBytes(totalBytes) + ' 超过上限 ' + fmtBytes(MAX_TOTAL_BYTES))
   }
 
   if (problems.length > 0) {

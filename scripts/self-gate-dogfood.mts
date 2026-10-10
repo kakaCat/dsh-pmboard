@@ -240,7 +240,7 @@ async function main(): Promise<number> {
     gateC0 === undefined ? '放行（undefined）' : `拒：${String(gateC0.code)} ${gateC0.gaps[0] ?? ''}`,
     gateC0 === undefined)
 
-  const wiringAbs = resolve(workspace, 'pm/pm-core/src/application/internal/content-gate-wiring.ts')
+  const wiringAbs = resolve(workspace, 'pm-core/src/application/internal/content-gate-wiring.ts')
   const mutC = await withBrokenFile(wiringAbs,
     '  if (!hasLevelTable) return undefined',
     '  if (!hasLevelTable) return false // 逆验证：读数口径改回"压成布尔"',

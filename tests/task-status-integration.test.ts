@@ -105,7 +105,7 @@ describe('reqboard_task_tree(task_id) 接口联调（真台账 + 真工具壳；
     const rep = await run(defineTaskReportTool(deps()), { task_id: 't-int0001',
       summary: '联调：写入 lastReport',
       completed: ['完成 A', '完成 B'],
-      files_changed: ['packages/web/dsh-pmboard/pm/tool-pm/src/TaskTreeTool/TaskTreeTool.ts'],
+      files_changed: ['packages/web/dsh-pmboard/tool-pm/src/TaskTreeTool/TaskTreeTool.ts'],
     })
     expect(rep.success).toBe(true)
     expect(rep.report_index).toBe(1)

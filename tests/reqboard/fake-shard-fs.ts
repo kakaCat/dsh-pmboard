@@ -1,8 +1,8 @@
 /**
  * 测试共享件 · 假分片文件系统（REQ-261002161439-277d · t3/t4）。
  *
- * 为什么抽出来共享：`pm/pm-core/tests/shard-repository.test.ts`（仓储的失败路径）与
- * `pm/pm-core/tests/store-contract.test.ts`（Store 的读契约）都需要一个能**注入故障**、
+ * 为什么抽出来共享：`pm-core/tests/shard-repository.test.ts`（仓储的失败路径）与
+ * `pm-core/tests/store-contract.test.ts`（Store 的读契约）都需要一个能**注入故障**、
  * 并能**统计读写字节**的假 fs。两份手写必然漂移，而这类漂移的症状是"一个测试绿、另一个红"
  * ——正是本仓反复强调要避免的"第二实现"。
  *

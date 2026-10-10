@@ -23,7 +23,7 @@ import { tsImport } from 'tsx/esm/api'
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, '..')
 
-const mod = await tsImport(join(root, 'pm/pm-core/src/domain/prompt/index.ts'), import.meta.url)
+const mod = await tsImport(join(root, 'pm-core/src/domain/prompt/index.ts'), import.meta.url)
 const { resolveStagePrompt, PROMPT_STAGES, DIFFICULTIES } = mod
 if (!Array.isArray(PROMPT_STAGES) || !Array.isArray(DIFFICULTIES)) {
   throw new Error('dump-stage-prompts: 未能从 domain/prompt 读到 PROMPT_STAGES / DIFFICULTIES')

@@ -8,7 +8,7 @@
  * 不出现，而错误还被误报成「用户取消」。运行时已由 `UserQuestionsAdapter` 兜底清洗，
  * 但上游写对才是正解；本测试让同类写法在 CI 阶段就被抓住，而不是再去线上排查一次。
  *
- * 与 `pm/pm-core/tests/lossless-json-questions.test.ts` 的分工：那边验**运行时**（清洗函数 +
+ * 与 `pm-core/tests/lossless-json-questions.test.ts` 的分工：那边验**运行时**（清洗函数 +
  * 真实构造器输出可无损往返），这边验**源码形状**（不再出现该写法）。
  *
  * @module dsh-pmboard/tests/dialog-payload-lossless-guard
@@ -29,7 +29,7 @@ function stripComments(raw: string): string {
  * 漏了也不会静默出错（适配器出口清洗会记 `[UI-2]` 诊断），但就失去了 CI 的早拦。
  */
 const DIALOG_PAYLOAD_SOURCES = [
-  '../pm/pm-core/src/application/internal/capture-mapping.ts',
+  '../pm-core/src/application/internal/capture-mapping.ts',
 ] as const
 
 /**

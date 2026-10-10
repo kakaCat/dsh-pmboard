@@ -177,16 +177,16 @@ describe('FR-3 ③ 零交集依赖边：没写理由 → 点名建议；写了�
   // 零交集建议对这条边"看都不看"（沉默 ≠ 通过）。本条的可证伪点：去掉 PATH_RE 的 src 根后必须红。
   it('src 落点同样参与零交集判定：src↔src 零交集 → 点名；src 有交集 → 不点名', () => {
     const srcZero: PlanTask[] = [
-      { key: 't8', title: '改冲突门', implementation: '改 pm/pm-core/src/application/internal/conflict-check.ts' } as PlanTask,
-      { key: 't9', title: '改容量门', dependsOn: ['t8'], implementation: '改 pm/pm-core/src/domain/task/Footprint.ts' } as PlanTask,
+      { key: 't8', title: '改冲突门', implementation: '改 pm-core/src/application/internal/conflict-check.ts' } as PlanTask,
+      { key: 't9', title: '改容量门', dependsOn: ['t8'], implementation: '改 pm-core/src/domain/task/Footprint.ts' } as PlanTask,
     ]
     const w = zeroOverlapDependencyWarnings(srcZero)
     expect(w).toHaveLength(1)
     expect(w[0]).toContain('t9 → t8')
-    expect(w[0]).toContain('pm/pm-core/src/domain/task/Footprint.ts')
+    expect(w[0]).toContain('pm-core/src/domain/task/Footprint.ts')
     const srcOverlap: PlanTask[] = [
-      { key: 't8', title: '改冲突门', implementation: '改 pm/pm-core/src/application/internal/conflict-check.ts' } as PlanTask,
-      { key: 't9', title: '也改冲突门', dependsOn: ['t8'], implementation: '改 pm/pm-core/src/application/internal/conflict-check.ts 的另一处' } as PlanTask,
+      { key: 't8', title: '改冲突门', implementation: '改 pm-core/src/application/internal/conflict-check.ts' } as PlanTask,
+      { key: 't9', title: '也改冲突门', dependsOn: ['t8'], implementation: '改 pm-core/src/application/internal/conflict-check.ts 的另一处' } as PlanTask,
     ]
     expect(zeroOverlapDependencyWarnings(srcOverlap)).toEqual([])
   })

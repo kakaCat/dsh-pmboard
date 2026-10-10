@@ -85,12 +85,12 @@ if (existsSync(distEntry)) {
 }
 
 // ── 4. 资产清单（模板 / skill / RTM 引擎）
-// 路径映射（t6 起）：迁移前 `vendor/reqboard/src/**` → 迁移后 `pm/reqboard-rtm/src/**`，
+// 路径映射（t6 起）：迁移前 `vendor/reqboard/src/**` → 迁移后 `reqboard-rtm/src/**`，
 // 收口比对（t22）按内容哈希多重集相等 + 该前缀映射核验，不按裸路径比对。───────────────────────────────────
 // 资产根布局无关（t19）：搬迁前后各一处——否则搬完只剩 rtm 那 28 个，计数会掉到 28。
 const assetRoot = (kind: string): string =>
-  existsSync(join(ROOT, 'pm', 'pm-' + kind, kind)) ? 'pm/pm-' + kind + '/' + kind : kind
-const assets = assetManifest([assetRoot('templates'), assetRoot('skills'), 'pm/reqboard-rtm/src'])
+  existsSync(join(ROOT, 'pm-' + kind, kind)) ? 'pm/pm-' + kind + '/' + kind : kind
+const assets = assetManifest([assetRoot('templates'), assetRoot('skills'), 'reqboard-rtm/src'])
 
 // ── 5. 测试发现数（由 vitest --reporter=json 另跑，这里只登记现有读数）────────
 const vitestReport = join(OUT, 'vitest-report.json')

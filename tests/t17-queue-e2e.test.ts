@@ -105,7 +105,7 @@ const PLAN_DOC = [
   '| FR-1 | t2 |', '',
   // BUG-4 连带补齐（同一用例的另一处夹具缺口）：计划文档硬门要求「有任务表 + 表里 key 覆盖
   // tasks[].key 全集」（SubmitArtifact.ts:391-405，批准所见 = 文档所见），此前夹具只有对照表。
-  // 定性：**有意改名**——文档里的「任务表」节与「计划 key」列口径按 pm/pm-templates/templates/decomposing 改名/新增。
+  // 定性：**有意改名**——文档里的「任务表」节与「计划 key」列口径按 pm-templates/templates/decomposing 改名/新增。
   '## 任务表', '',
   '| 计划 key | 覆盖条款 | 依赖 | 工作量 | 验收标准 |',
   '|---|---|---|---|---|',
@@ -152,7 +152,7 @@ describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 �
     // 连带补齐（同一用例的**另一处夹具缺口**，D-x 节补上后才暴露出来；非本卡设计节点名项）：
     // `submit(kind=design)` 的内容门禁要求**文档级 serves**（H1 或 front-matter，content-gate-wiring.ts:394）
     // 且 feature 的 interfaces.md 必含「接口清单」节 + 表头含「接口 id」的清单表（:437-441）。
-    // 定性：**有意改名**——设计文档的 serves 标注与节名口径按 pm/pm-templates/templates/design 模板改名/新增，夹具随之补齐，
+    // 定性：**有意改名**——设计文档的 serves 标注与节名口径按 pm-templates/templates/design 模板改名/新增，夹具随之补齐，
     // 不改本用例任何断言口径（门禁一条不放宽）。
     await docs.write('docs/requirements/' + reqId + '/design/architecture.md', '# 架构 serves: FR-1\n\n## D-1 覆盖 `serves: FR-1`\n')
     await docs.write('docs/requirements/' + reqId + '/design/data-model.md', '# 数据模型 serves: FR-1\n')

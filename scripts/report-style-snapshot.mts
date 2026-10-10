@@ -39,7 +39,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const BASELINE = join(ROOT, 'docs/requirements/REQ-261007133149-0716/evidence/style-snapshot.json')
 const SCHEMA = 1
 
-/** 组件清单：唯一真相在 `pm/pm-client/src/styles/report/manifest.ts`（FR-1 的组件归属清单），此处只取采样所需的两个字段。 */
+/** 组件清单：唯一真相在 `pm-client/src/styles/report/manifest.ts`（FR-1 的组件归属清单），此处只取采样所需的两个字段。 */
 const COMPONENTS: readonly { id: string; root: string; label: string }[] =
   COMPONENT_MANIFEST.map(c => ({ id: c.id, root: c.root, label: c.label }))
 

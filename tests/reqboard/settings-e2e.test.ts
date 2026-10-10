@@ -99,7 +99,7 @@ function writeSettings(body: Record<string, unknown>): void {
   writeFileSync(settingsFile, JSON.stringify({ schemaVersion: 1, ...body }, null, 2))
 }
 
-/** 小驱动 harness（照 pm/pm-core/tests/dive-round-driver.test.ts 的既有写法，只留本卡要用的部分）。 */
+/** 小驱动 harness（照 pm-core/tests/dive-round-driver.test.ts 的既有写法，只留本卡要用的部分）。 */
 function driveHarness(req: RequirementRecord) {
   const ledger = { ...emptyLedger(), requirements: [req], tasks: [], triages: [] }
   const repo = { snapshot: () => ledger, read: async (fn: (v: unknown) => unknown) => fn(ledger), mutate: async (_r: string, fn: (l: unknown) => unknown) => ({ changed: fn(ledger) as never, revision: 1 }), replaceAll: async () => {} }

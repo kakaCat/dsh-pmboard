@@ -6,7 +6,7 @@
  * DSH 的 client-modules 在每次模块 materialize 时执行 `claimStyles(ownerId)`：
  * 把文档里所有 `style:not([data-plugin])` **认领给当前 materialize 的那个插件**；
  * 卸载 / HMR 替换 / 图行裁剪时按 `data-plugin` 调 `removeOwnedStyles(ownerId)` 整批删除。
- * （DSH 侧实现：`packages/client/modules/pm/pm-client/src/system.ts` 的 claimStyles、
+ * （DSH 侧实现：`packages/client/modules/pm-client/src/system.ts` 的 claimStyles、
  * `entry-lifecycle.ts` 的 removeOwnedStyles；官方 tsdown 预设
  * `packages/client/tsdown.client.ts` 的 styleInjectionModule 因此自带
  * `tag.dataset.plugin = id`，并在**工厂执行期**注入。）

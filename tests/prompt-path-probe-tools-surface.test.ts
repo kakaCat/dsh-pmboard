@@ -8,7 +8,7 @@
  * 长期是盲区（体检报告 C-3 就是这样漏过去的）。扩面本身也会被悄悄改回去（删一个 SCAN 条目就绿），
  * 所以这里把三条口径变成会失败的检查：
  *
- * ① **扫描面在场**：探针源码必须声明 agent 文案面（`pm/tool-pm/src` 递归 + capture-section + verification），
+ * ① **扫描面在场**：探针源码必须声明 agent 文案面（`tool-pm/src` 递归 + capture-section + verification），
  *    且真实跑出来的 JSON 里 `scanned.agentSurface > 0`、token 出处确实落在这些文件上（不是空转）。
  * ② **禁词前缀硬规则在场且不吃白名单**：`agent-dh/` 与 `docs/standards/` 两类历史死路径写法，
  *    注入合成文本时必须判红（白名单里没有它们的容身之处）。
@@ -61,12 +61,12 @@ function runProbe(extra: readonly string[]): { json: unknown; status: number } {
 }
 
 describe('prompt-path-probe：agent 文案面扩面（FR-1）', () => {
-  it('① 源码声明了 agent 文案面（pm/tool-pm/src 递归 + capture-section + verification）', () => {
+  it('① 源码声明了 agent 文案面（tool-pm/src 递归 + capture-section + verification）', () => {
     expect(source).toContain('AGENT_SURFACE_DIRS')
     // t22：`src/tools` 已随工具面成包（t15）⇒ 该钉更新为新落点（本行曾是过期镜像）。
     expect(source).toMatch(/AGENT_SURFACE_DIRS = \[[^\]]*'pm\/tool-pm\/src'[^\]]*\]/)
-    expect(source).toContain("'pm/pm-core/src/application/internal/capture-section.ts'")
-    expect(source).toContain("'pm/pm-client/src/views/verification.ts'")
+    expect(source).toContain("'pm-core/src/application/internal/capture-section.ts'")
+    expect(source).toContain("'pm-client/src/views/verification.ts'")
     expect(source).toContain('walkTypeScript')
   })
 
@@ -80,8 +80,8 @@ describe('prompt-path-probe：agent 文案面扩面（FR-1）', () => {
     expect(report.gaps).toEqual([])
     // 空转防线：token 的出处必须真的落在扩出来的面上（否则扫描面只是"声明了"却没扫到东西）
     const occurrences = report.tokens.flatMap((t) => t.occurrences)
-    expect(occurrences.some((o) => o.startsWith('pm/tool-pm/src/'))).toBe(true)
-    expect(occurrences.some((o) => o.startsWith('pm/pm-core/src/application/internal/capture-section.ts:'))).toBe(true)
+    expect(occurrences.some((o) => o.startsWith('tool-pm/src/'))).toBe(true)
+    expect(occurrences.some((o) => o.startsWith('pm-core/src/application/internal/capture-section.ts:'))).toBe(true)
   })
 
   it('③ specimen 五条判据全过（含禁词不吃白名单、扩面非空转）', () => {

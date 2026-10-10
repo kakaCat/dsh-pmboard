@@ -12,7 +12,7 @@
  *     ——前两项**直接 import 真常量**，本脚本不复制一份（复制就是第三处真相）；
  *     裁定节**只在 feature 需求上被要求**（D-12）：本脚本把它登记为 `featureOnly`，
  *     并在其它五类上断言"门禁不要求它、模板也没有它"——这是双向比对里 D-12 的具体体现。
- *   · 模板侧 = `pm/pm-templates/templates/brainstorming/<category>.md` 的 **H2 标题**（剥掉 `<!-- serves: -->` 装饰与
+ *   · 模板侧 = `pm-templates/templates/brainstorming/<category>.md` 的 **H2 标题**（剥掉 `<!-- serves: -->` 装饰与
  *     括号注解后与门禁节名判等；括号注解的容忍口径与 `hasRootSection` 同源）。
  *
  * 四条不变量（任何一条破 → exit 1，逐节点名 + 说明破了哪条）
@@ -50,7 +50,7 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(HERE, '..')
 // 布局无关（t21）：模板目录 t19 起在资产包内；两处都探，包内优先。
 const DEFAULT_TEMPLATES_DIR = (() => {
-  const inPkg = join(REPO_ROOT, 'pm/pm-templates/templates')
+  const inPkg = join(REPO_ROOT, 'pm-templates/templates')
   return existsSync(inPkg) ? inPkg : join(REPO_ROOT, 'templates')
 })()
 
@@ -62,12 +62,12 @@ const CATEGORIES = ['feature', 'bug', 'refactor', 'spike', 'doc', 'chore'] as co
 type Category = typeof CATEGORIES[number]
 
 const TEMPLATE_OF: Readonly<Record<Category, string>> = {
-  feature: 'pm/pm-templates/templates/brainstorming/feature.md',
-  bug: 'pm/pm-templates/templates/brainstorming/bug.md',
-  refactor: 'pm/pm-templates/templates/brainstorming/refactor.md',
-  spike: 'pm/pm-templates/templates/brainstorming/spike.md',
-  doc: 'pm/pm-templates/templates/brainstorming/doc.md',
-  chore: 'pm/pm-templates/templates/brainstorming/chore.md',
+  feature: 'pm-templates/templates/brainstorming/feature.md',
+  bug: 'pm-templates/templates/brainstorming/bug.md',
+  refactor: 'pm-templates/templates/brainstorming/refactor.md',
+  spike: 'pm-templates/templates/brainstorming/spike.md',
+  doc: 'pm-templates/templates/brainstorming/doc.md',
+  chore: 'pm-templates/templates/brainstorming/chore.md',
 }
 
 /** 该节的强度：required = 门禁必填（不变量③要求它与门禁集合逐字相等）；optional = 模板可写、门禁不拦。 */
@@ -311,7 +311,7 @@ export interface ParityOutput {
 /** 对一类需求做双向比对。 */
 function checkCategory(category: Category, templatesDir: string): CategoryParity {
   const templatePath = TEMPLATE_OF[category]
-  const abs = join(templatesDir, templatePath.slice('pm/pm-templates/templates/'.length))
+  const abs = join(templatesDir, templatePath.slice('pm-templates/templates/'.length))
   const rawSections = templateSectionNames(readFileSync(abs, 'utf8'))
   const gateRequired = gateRequiredSet(category)
   const registryRequired = registryRequiredSet(category)
@@ -381,7 +381,7 @@ export function probeParity(templatesDir: string = DEFAULT_TEMPLATES_DIR): Parit
   const status: 'PASS' | 'FAIL' = driftCount === 0 ? 'PASS' : 'FAIL'
   return {
     script: 'doc-section-parity',
-    criterion: '门禁必填节集合（COMMON_ROOT_SECTIONS + CATEGORY_DELTAS.rootSectionsDelta + feature 的裁定门节名「' + DECISION_SECTION + '」）与 pm/pm-templates/templates/brainstorming/<category>.md 的 H2 集合双向相等；登记表 required 与门禁要求逐字相等；optional 不得被门禁要求；featureOnly 节不得出现在其它五类；本脚本覆盖的类别必须与 CATEGORY_DELTAS 一一对应',
+    criterion: '门禁必填节集合（COMMON_ROOT_SECTIONS + CATEGORY_DELTAS.rootSectionsDelta + feature 的裁定门节名「' + DECISION_SECTION + '」）与 pm-templates/templates/brainstorming/<category>.md 的 H2 集合双向相等；登记表 required 与门禁要求逐字相等；optional 不得被门禁要求；featureOnly 节不得出现在其它五类；本脚本覆盖的类别必须与 CATEGORY_DELTAS 一一对应',
     templatesDir,
     categories,
     categoryCoverageGaps,
@@ -559,7 +559,7 @@ async function runSpecimens(templatesDir: string, only: readonly string[]): Prom
     console.error('SPECIMEN FAIL：' + String(bad) + '/' + String(chosen.length) + ' 条反例没有按预期变红（判据可能恒真）')
     return 1
   }
-  console.log('SPECIMEN PASS（' + String(chosen.length) + ' 条反例全部按预期变红；真模板副本已清理，仓库内 pm/pm-templates/templates/ 未被改动）')
+  console.log('SPECIMEN PASS（' + String(chosen.length) + ' 条反例全部按预期变红；真模板副本已清理，仓库内 pm-templates/templates/ 未被改动）')
   return 0
 }
 

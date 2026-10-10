@@ -220,7 +220,7 @@ function check(): void {
   console.log('[口径] tsc 退出码 ' + c.tscExit + ' · error TS ' + c.tscErrors + ' 条（本命令不改写基线）')
   if (added.length > 0) {
     console.log('\n── 新增失败（本次引入，需先解释）──')
-    // 为什么要逐个文件单独复跑：实测存在**顺序相关**的偶发失败——`pm/pm-core/tests/settings-init.test.ts`
+    // 为什么要逐个文件单独复跑：实测存在**顺序相关**的偶发失败——`pm-core/tests/settings-init.test.ts`
     // 单独跑 5/5 通过，但在某次全量里失败（一次观察：连续 3 次全量中 1 次出现）。
     // 若不区分，判据就会"喊狼来了"，而喊狼来了的判据正是本需求要治的病（会被无视）。
     // 注意：**只标注、不放行**——单独跑通过也仍然 exit 1（不制造假绿通道），

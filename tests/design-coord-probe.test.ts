@@ -111,9 +111,9 @@ describe('design-coord-probe · 路径判据：白名单不吞真缺口', () => 
     'src/**',
     'src/**/*.ts',
     'scripts/migrate-*',
-    'pm/pm-core/src/application/query/{QueryStageDetail',
-    'pm/pm-core/src/application/query/{QueryStageDetail,QueryDag}.ts',
-    'pm/pm-client/src/views/{timeline,panels/dag}.ts',
+    'pm-core/src/application/query/{QueryStageDetail',
+    'pm-core/src/application/query/{QueryStageDetail,QueryDag}.ts',
+    'pm-client/src/views/{timeline,panels/dag}.ts',
     'tests/<文件>.test.ts',
     'tests/<',
     'docs/requirements/*/queue.json',
@@ -126,7 +126,7 @@ describe('design-coord-probe · 路径判据：白名单不吞真缺口', () => 
 
   /** 实测到的真缺口（必须有名字）：白名单一条都不许命中它们。 */
   const REAL_GAPS: readonly string[] = [
-    'pm/pm-core/src/domain/queue/normalizeQueueFile.ts',
+    'pm-core/src/domain/queue/normalizeQueueFile.ts',
     'tests/t1-decompose-queue-write.test.ts',
   ]
 
@@ -171,9 +171,9 @@ describe('design-coord-probe · 路径判据：白名单不吞真缺口', () => 
     expect(r.observations.map((o) => o.kind)).toEqual(['brace-dir'])
     // 前缀在盘上时不产生该观测（否则噪声会淹没线索）
     const root2 = makeRoot()
-    mkdirSync(join(root2, 'pm/pm-core/src/application/query'), { recursive: true })
+    mkdirSync(join(root2, 'pm-core/src/application/query'), { recursive: true })
     const r2 = classifyPaths(root2, [{
-      token: 'pm/pm-core/src/application/query/{QueryStageDetail,QueryDag}.ts', occurrences: [{ file: '<test>', line: 1 }],
+      token: 'pm-core/src/application/query/{QueryStageDetail,QueryDag}.ts', occurrences: [{ file: '<test>', line: 1 }],
     }])
     expect(r2.observations).toEqual([])
   })

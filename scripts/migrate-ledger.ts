@@ -42,7 +42,7 @@ import { QUEUE_VERSION, type QueueEdge, type QueueFile, type QueueLayer, type Va
 import { computeEdges, computeLayers, computeReady } from 'pm-core/domain/queue/topology.js'
 import { validateQueueFile } from 'pm-core/domain/queue/validateQueue.js'
 // t10 收口：这三个函数已从运行时契约（shared/protocol.ts）搬到**迁移专属模块**
-// pm/pm-core/src/domain/legacy/LegacyStatus.ts——脚本行为与输出零变化，仅 import 换位置。
+// pm-core/src/domain/legacy/LegacyStatus.ts——脚本行为与输出零变化，仅 import 换位置。
 import {
   backfillRequirementHistory,
   backfillTaskHistory,
@@ -300,7 +300,7 @@ export interface V9Result {
  *
  * 逐字段无损的做法是**整对象展开**：`{ ...structuredClone(task), layer }`——不按文档表格重列字段，
  * 从结构上让"少迁一个字段"不可能发生（TaskRecord 37 字段 + layer = QueueTask 38 字段；
- * 权威真身是 `pm/pm-core/src/protocol-domain.ts:1150-1216`，不是文档表格）。
+ * 权威真身是 `pm-core/src/protocol-domain.ts:1150-1216`，不是文档表格）。
  *
  * 已是 v9 时早返回（`alreadyV9: true`，台账零改动、不追加迁移留痕）——变换自身幂等。
  */

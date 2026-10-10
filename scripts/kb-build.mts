@@ -2,7 +2,7 @@
  * 知识层生成器 CLI（REQ-261001110934-3766 t3 起源 / REQ-261004174324-4195 t3 改为薄包装）。
  *
  * **本文件不再含生成规则**：解析 argv → 构造文档仓储 → 调 `ensureKnowledgeLayer` → 打印。
- * 生成逻辑单点在 `pm/pm-core/src/domain/knowledge/generate.ts` + `pm/pm-core/src/application/use-cases/EnsureKnowledgeLayer.ts`
+ * 生成逻辑单点在 `pm-core/src/domain/knowledge/generate.ts` + `pm-core/src/application/use-cases/EnsureKnowledgeLayer.ts`
  * （宿主自举与手动命令走同一份实现，避免"脚本和宿主各写一套"）。
  *
  * 跑法：

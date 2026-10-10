@@ -161,7 +161,7 @@ function normalizeStore(v: unknown): RequirementStore {
 
 export function toUseCaseDeps(deps: ReqboardToolDeps): UseCaseDeps {
   // 注意：doneThrottleMs 用 getter 活读——既有测试在工具构造后才把节流改成 0
-  // （pm/pm-core/tests/decompose-tools.test.ts:329/439），快照会改变行为。
+  // （pm-core/tests/decompose-tools.test.ts:329/439），快照会改变行为。
   const uc: UseCaseDeps = { store: normalizeStore(deps.store),
     // t8/B11：读点搬到新端口后要用 `deps.store`（缺装配会响亮抛错）。本助手是**一批夹具的收口点**
     // （35 个测试文件经它转 deps），所以补在这里一处即可 —— 且投影与 `repo` 是**同一份数据**，

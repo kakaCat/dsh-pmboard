@@ -235,7 +235,7 @@ const EXPORT_RE =
 let symbolCount = 0
 // t21：与生成器（EnsureKnowledgeLayer 的 SOURCE_ROOTS）**同口径**——写死单个根会让
 // 搬迁后计数静默劣化（本轮实测：只扫根 src/ 得 192，生成器扫两处得 1173 ⇒ K9 恒红）。
-const SYMBOL_ROOTS = ['src', 'pm/pm-client/src'] as const
+const SYMBOL_ROOTS = ['src', 'pm-client/src'] as const
 for (const rel of SYMBOL_ROOTS) {
   const absRoot = join(ROOT, rel)
   if (!existsSync(absRoot)) continue

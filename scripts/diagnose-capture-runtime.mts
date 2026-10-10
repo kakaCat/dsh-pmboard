@@ -22,9 +22,9 @@ const criticalFiles = [
   'src/index.ts',
   'src/adapters/UserQuestionsAdapter.ts',
   'src/adapters/GateAwareQuestions.ts',
-  'pm/pm-core/src/application/use-cases/CaptureRequirement.ts',
-  'pm/pm-core/src/application/internal/capture-mapping.ts',
-  'pm/tool-pm/src/CaptureTool/CaptureTool.ts',
+  'pm-core/src/application/use-cases/CaptureRequirement.ts',
+  'pm-core/src/application/internal/capture-mapping.ts',
+  'tool-pm/src/CaptureTool/CaptureTool.ts',
 ];
 
 for (const file of criticalFiles) {
@@ -66,7 +66,7 @@ try {
 console.log('\n【检查 3】capture-mapping 弹框结构');
 
 try {
-  const mappingContent = await readFile(join(pkgRoot, 'pm/pm-core/src/application/internal/capture-mapping.ts'), 'utf-8');
+  const mappingContent = await readFile(join(pkgRoot, 'pm-core/src/application/internal/capture-mapping.ts'), 'utf-8');
   
   // 检查推荐后缀正则
   const hasRecommendSuffix = mappingContent.includes('RECOMMEND_SUFFIX_RE') &&
@@ -96,7 +96,7 @@ try {
 console.log('\n【检查 4】CaptureRequirement 用例');
 
 try {
-  const captureContent = await readFile(join(pkgRoot, 'pm/pm-core/src/application/use-cases/CaptureRequirement.ts'), 'utf-8');
+  const captureContent = await readFile(join(pkgRoot, 'pm-core/src/application/use-cases/CaptureRequirement.ts'), 'utf-8');
   
   // 检查 available() 判断
   const hasAvailableCheck = captureContent.includes('deps.questions.available()');

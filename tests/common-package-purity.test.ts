@@ -14,7 +14,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const REPO = process.cwd()
-const PKG = join(REPO, 'pm', 'pm-common')
+const PKG = join(REPO, 'pm-common')
 
 function tsFiles(dir: string, out: string[] = []): string[] {
   if (!existsSync(dir)) return out

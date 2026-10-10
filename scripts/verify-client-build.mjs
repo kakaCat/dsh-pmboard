@@ -14,11 +14,11 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const pkgRoot = join(here, '..')
+const pkgRoot = existsSync(join(here, '..', 'pm', 'package.json')) ? join(here, '..', 'pm') : join(here, '..')
 // 布局无关（t17）：client 源码根搬迁前后各一处。
 const CLIENT_SRC = existsSync(join(pkgRoot, 'src', 'client'))
   ? join(pkgRoot, 'src', 'client')
-  : join(pkgRoot, 'pm', 'pm-client', 'src')
+  : join(pkgRoot, 'pm-client', 'src')
 const bundlePath = join(pkgRoot, 'lib', 'client.js')
 const stylesPath = join(CLIENT_SRC, 'styles.ts')
 const progressPath = join(CLIENT_SRC, 'stage-panel.ts')
@@ -84,9 +84,9 @@ if (existsSync(stylesPath)) {
   if (!/injectStyles\s*\(/.test(stylesTs)) fail('styles.ts 丢失 injectStyles 调用（t7 事故的另一种形态：接口被删）')
 }
 const stylesDir = join(CLIENT_SRC, 'styles')
-if (!existsSync(stylesDir)) fail('pm/pm-client/src/styles/ 目录丢失（CSS 分片去哪了？）')
+if (!existsSync(stylesDir)) fail('pm-client/src/styles/ 目录丢失（CSS 分片去哪了？）')
 const fragments = readdirSync(stylesDir).filter((f) => f.endsWith('.ts'))
-if (fragments.length === 0) fail('pm/pm-client/src/styles/ 下没有 CSS 分片')
+if (fragments.length === 0) fail('pm-client/src/styles/ 下没有 CSS 分片')
 let cssOpen = 0
 let cssClose = 0
 for (const file of fragments) {
@@ -99,7 +99,7 @@ for (const file of fragments) {
 if (cssOpen !== cssClose) console.warn('[verify-client] 注意 styles/ 花括号 {=' + cssOpen + ' }=' + cssClose + '（差值 ' + (cssOpen - cssClose) + '）——若非 CSS 字面量请人工核对')
 
 // 4) stage-panel 存在（t6）
-if (!existsSync(progressPath)) fail('pm/pm-client/src/stage-panel.ts 丢失')
+if (!existsSync(progressPath)) fail('pm-client/src/stage-panel.ts 丢失')
 
 // 5) wrap 污染检测（2026-09-16 wrap-client 逐行注入 \t\t 事故）：
 // styles.ts 里的 sentinel 注释在干净产物中必须顶格出现；若被行首注入

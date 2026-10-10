@@ -11,7 +11,7 @@
  * 三处留痕 → 用同一台账做客户端渲染，证明「验收通过」按钮不再出现、人工审核结论可见（FR-3 的终态）。
  *
  * 边界（诚实标注）：浏览器 leg 覆盖的是**文案装配与渲染函数**；DOM 事件绑定（window.confirm
- * 的点击链路）不在本用例范围，由 pm/pm-client/tests/board-info-fixes.test.ts 的文案用例与人手实测覆盖。
+ * 的点击链路）不在本用例范围，由 pm-client/tests/board-info-fixes.test.ts 的文案用例与人手实测覆盖。
  */
 import { makeTestStore } from 'tests/application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
