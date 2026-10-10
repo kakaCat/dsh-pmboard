@@ -113,6 +113,7 @@
 - kb-0078 · pitfall · reqboard 红测试… · → entries/kb-0078.md
 - kb-0080 · pitfall · 修复 PM 插件立项弹框… · → entries/kb-0080.md
 - kb-0081 · pitfall · 层边界收口：15 处 a… · → entries/kb-0081.md
+- kb-0082 · pitfall · 19 包重构与单插件… · → entries/kb-0082.md
 - kb-0006 · pitfall · 节流不再惩罚正常收尾 +… · → entries/kb-0006.md
 - kb-0007 · pitfall · 验收不再要人填结果：ag… · → entries/kb-0007.md
 - kb-0012 · pitfall · PM 插件 Agent … · → entries/kb-0012.md
