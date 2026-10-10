@@ -8,7 +8,7 @@
  * @module dsh-pmboard/http/routers/Injection
  */
 import type { ServerResponse } from 'node:http'
-import { queryInjectionLog } from 'pmboard-core/application/internal/injection-log.js'
+import { queryInjectionLog } from 'pm-core/application/internal/injection-log.js'
 import type { RouterCtx } from './shared.js'
 
 /** 默认返回条数（看板只读块一次拉这么多）。 */

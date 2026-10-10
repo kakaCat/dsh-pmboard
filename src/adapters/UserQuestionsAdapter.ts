@@ -40,11 +40,11 @@
  *
  * @module dsh-pmboard/adapters/UserQuestionsAdapter
  */
-import type { AskAnswer, AskQuestion, AskTimedResult, UserQuestionPort } from 'pmboard-core/application/ports.js'
-import { racePortAsk } from 'pmboard-core/application/internal/ask-timed.js'
-import { captureDiag } from 'pmboard-core/application/internal/diag-log.js'
-import { stripChangedAnything, stripUndefinedDeep } from 'pmboard-core/application/internal/lossless-json.js'
-import type { GateId } from 'pmboard-core/domain/gate/GateSpec.js'
+import type { AskAnswer, AskQuestion, AskTimedResult, UserQuestionPort } from 'pm-core/application/ports.js'
+import { racePortAsk } from 'pm-core/application/internal/ask-timed.js'
+import { captureDiag } from 'pm-core/application/internal/diag-log.js'
+import { stripChangedAnything, stripUndefinedDeep } from 'pm-core/application/internal/lossless-json.js'
+import type { GateId } from 'pm-core/domain/gate/GateSpec.js'
 
 interface RawQuestionService {
   ask?: (req: unknown) => Promise<{ answers?: AskAnswer[] }>

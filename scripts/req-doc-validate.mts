@@ -78,7 +78,7 @@ import {
   frontmatterStateViolations,
   missingCategoryDocs,
   deltaFor,
-} from 'pmboard-core/application/internal/category-doc-sets.js'
+} from 'pm-core/application/internal/category-doc-sets.js'
 import {
   checkDesignServesGate,
   checkFullTraceability,
@@ -86,14 +86,14 @@ import {
   checkRequirementDocFormatGate,
   e2eCoverageOf,
   type DocsReader,
-} from 'pmboard-core/application/internal/content-gate-wiring.js'
-import { parseDocument } from 'pmboard-core/application/internal/content-gates.js'
-import { checkRTMHealth } from 'pmboard-core/application/internal/rtm-health.js'
-import { StageGateTimeline, stageGateMomentFor } from 'pmboard-core/domain/gate/GateCatalog.js'
-import { REQ_TRANSITIONS } from 'pmboard-core/domain/requirement/RequirementStatus.js'
-import { isRequirementId, objectPath, recordPath } from 'pmboard-common/requirement/ReqboardPaths.js'
-import { fmt } from 'pmboard-core/domain/text/fmt.js'
-import type { RequirementRecord } from 'pmboard-core/protocol-domain.js'
+} from 'pm-core/application/internal/content-gate-wiring.js'
+import { parseDocument } from 'pm-core/application/internal/content-gates.js'
+import { checkRTMHealth } from 'pm-core/application/internal/rtm-health.js'
+import { StageGateTimeline, stageGateMomentFor } from 'pm-core/domain/gate/GateCatalog.js'
+import { REQ_TRANSITIONS } from 'pm-core/domain/requirement/RequirementStatus.js'
+import { isRequirementId, objectPath, recordPath } from 'pm-common/requirement/ReqboardPaths.js'
+import { fmt } from 'pm-core/domain/text/fmt.js'
+import type { RequirementRecord } from 'pm-core/protocol-domain.js'
 
 /* ── 9 项判据名（受控枚举：顺序 = design-brief §6 与 requirement.md FR-11 的字面顺序） ───────── */
 

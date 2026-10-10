@@ -40,9 +40,9 @@
 import { cpSync, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
-import { SqliteRequirementStore } from 'pmboard-core/repositories/SqliteRequirementStore.js'
+import { SqliteRequirementStore } from 'pm-core/repositories/SqliteRequirementStore.js'
 import { FileSettingsStore } from '../src/adapters/FileSettingsStore.js'
-import { staleSqliteReason, type ShardsSnapshot, type SqliteSnapshot } from 'pmboard-core/application/settings/events.js'
+import { staleSqliteReason, type ShardsSnapshot, type SqliteSnapshot } from 'pm-core/application/settings/events.js'
 import {
   countRequirementsReadOnly,
   recordMigrationEvent,
@@ -51,9 +51,9 @@ import {
   stamp,
   type SourceLedger,
 } from './migrate-support.js'
-import type { RunSettingsPatch } from 'pmboard-core/application/settings/resolve-settings.js'
-import type { ConfirmStamp } from 'pmboard-core/application/settings/events.js'
-import { REQBOARD_SCHEMA_VERSION, type ReqboardLedger } from 'pmboard-core/protocol-domain.js'
+import type { RunSettingsPatch } from 'pm-core/application/settings/resolve-settings.js'
+import type { ConfirmStamp } from 'pm-core/application/settings/events.js'
+import { REQBOARD_SCHEMA_VERSION, type ReqboardLedger } from 'pm-core/protocol-domain.js'
 
 /** 退出码（卡里定死；调用方据此判断"能不能重试"）。 */
 export const MIGRATE_EXIT = {

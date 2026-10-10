@@ -18,10 +18,10 @@ import type { ServerResponse } from 'node:http'
 import { existsSync } from 'node:fs'
 import { resolveDocRoot, type RouterCtx } from './shared.js'
 import { FileDocRepository } from '../../adapters/FileDocRepository.js'
-import { JsonQueueRepository } from 'pmboard-core/repositories/QueueRepository.js'
-import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
-import type { PanelQueries, PanelQueryDeps } from 'pmboard-core/application/query/contracts.js'
-import { isRequirementId } from 'pmboard-common/requirement/ReqboardPaths.js'
+import { JsonQueueRepository } from 'pm-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pm-core/repositories/QueueTaskStore.js'
+import type { PanelQueries, PanelQueryDeps } from 'pm-core/application/query/contracts.js'
+import { isRequirementId } from 'pm-common/requirement/ReqboardPaths.js'
 import {
   isDegrade,
   type Degrade,
@@ -31,7 +31,7 @@ import {
   type RequirementTokenView,
   type TokenPanelExtension,
   type TokenStageRow,
-} from 'pmboard-core/protocol-domain.js'
+} from 'pm-core/protocol-domain.js'
 
 /** 分页上限：与 design/interfaces.md 的校验表一致（超上限 → 400，不静默截断）。 */
 export const PANEL_LIMIT_MAX = 50

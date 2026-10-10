@@ -23,12 +23,12 @@ import { readFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { homedir } from 'node:os'
 import { isAbsolute, join, relative } from 'node:path'
-import { KB_LIMITS, checkIndexBudget, countLines } from 'pmboard-core/domain/knowledge/budget.ts'
-import { parseEntryDoc, validateEntryDoc } from 'pmboard-core/domain/knowledge/entry.ts'
-import { isEntryId, parseIndexDoc } from 'pmboard-core/domain/knowledge/index-line.ts'
-import { isDecidableInvalidation } from 'pmboard-common/knowledge/invalidation.js'
-import { headingAnchor, listHeadingAnchors, sliceSection } from 'pmboard-common/knowledge/slug.js'
-import { KB_PATHS, KB_PAGE_PATHS, entryPath } from 'pmboard-common/knowledge/types.js'
+import { KB_LIMITS, checkIndexBudget, countLines } from 'pm-core/domain/knowledge/budget.ts'
+import { parseEntryDoc, validateEntryDoc } from 'pm-core/domain/knowledge/entry.ts'
+import { isEntryId, parseIndexDoc } from 'pm-core/domain/knowledge/index-line.ts'
+import { isDecidableInvalidation } from 'pm-common/knowledge/invalidation.js'
+import { headingAnchor, listHeadingAnchors, sliceSection } from 'pm-common/knowledge/slug.js'
+import { KB_PATHS, KB_PAGE_PATHS, entryPath } from 'pm-common/knowledge/types.js'
 import {
   buildCoverage,
   findGaps,
@@ -36,7 +36,7 @@ import {
   parseOperationEntries,
   renderCoverageTsv,
   validateOperationEntry,
-} from 'pmboard-common/knowledge/operations.js'
+} from 'pm-common/knowledge/operations.js'
 
 const ROOT = process.cwd()
 const args = process.argv.slice(2)
@@ -235,7 +235,7 @@ const EXPORT_RE =
 let symbolCount = 0
 // t21：与生成器（EnsureKnowledgeLayer 的 SOURCE_ROOTS）**同口径**——写死单个根会让
 // 搬迁后计数静默劣化（本轮实测：只扫根 src/ 得 192，生成器扫两处得 1173 ⇒ K9 恒红）。
-const SYMBOL_ROOTS = ['src', 'packages/pmboard-client/src'] as const
+const SYMBOL_ROOTS = ['src', 'pm/pm-client/src'] as const
 for (const rel of SYMBOL_ROOTS) {
   const absRoot = join(ROOT, rel)
   if (!existsSync(absRoot)) continue

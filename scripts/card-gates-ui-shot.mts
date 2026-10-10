@@ -33,11 +33,11 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, wri
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { BASE_CSS } from 'pmboard-client/styles/base.js'
-import { BOARD_CSS } from 'pmboard-client/styles/board.js'
-import { SUBTASK_CSS } from 'pmboard-client/styles/subtask.js'
-import { renderReqCard } from 'pmboard-client/views/artifacts.js'
-import type { GateReading, ReqCard, RequirementRecord } from 'pmboard-common/client-types.js'
+import { BASE_CSS } from 'pm-client/styles/base.js'
+import { BOARD_CSS } from 'pm-client/styles/board.js'
+import { SUBTASK_CSS } from 'pm-client/styles/subtask.js'
+import { renderReqCard } from 'pm-client/views/artifacts.js'
+import type { GateReading, ReqCard, RequirementRecord } from 'pm-common/client-types.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const OUT_DIR = resolve(HERE, '../docs/requirements/REQ-261006175040-12d4/evidence')

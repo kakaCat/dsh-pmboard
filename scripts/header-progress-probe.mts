@@ -24,10 +24,10 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { FLOW_TIERS, buildFlowChartModel, type FlowChartModel } from 'pmboard-client/flow-chart-model.js'
-import { BASE_CSS } from 'pmboard-client/styles/base.js'
-import { BOARD_CSS } from 'pmboard-client/styles/board.js'
-import { TOKEN_CSS } from 'pmboard-client/styles/token.js'
+import { FLOW_TIERS, buildFlowChartModel, type FlowChartModel } from 'pm-client/flow-chart-model.js'
+import { BASE_CSS } from 'pm-client/styles/base.js'
+import { BOARD_CSS } from 'pm-client/styles/board.js'
+import { TOKEN_CSS } from 'pm-client/styles/token.js'
 
 // 必须带上 BASE_CSS：四个圆点状态色（--pm-c-done / --pm-line-strong / --pm-bg-soft）是 :root token，
 // 少了它 done 圆点会变成「白字透明底」而肉眼不可见（围堵过：截图里点全丢了，断言却因为只看 display 而通过）。

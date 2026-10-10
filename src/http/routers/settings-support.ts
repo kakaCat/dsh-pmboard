@@ -10,11 +10,11 @@
  */
 import { createSystemFileOpener, type SystemFileOpenerPort } from '../../adapters/SystemFileOpener.js'
 import { isAbsolute, join } from 'node:path'
-import { SETTINGS_FILE_REL } from 'pmboard-core/application/settings/resolve-settings.js'
-import { SYSTEM_HISTORY_MAX, SYSTEM_RECORD_FILE_REL } from 'pmboard-core/application/settings/events.js'
-import { getBuildStamp } from 'pmboard-common/build-stamp.js'
-import type { SettingsStore, SystemRecordStore, WindowInheritance } from 'pmboard-core/application/ports.js'
-import { applyWindowInheritance, presetInheritanceOf, readWindowProfile } from 'pmboard-core/application/internal/window-inherit.js'
+import { SETTINGS_FILE_REL } from 'pm-core/application/settings/resolve-settings.js'
+import { SYSTEM_HISTORY_MAX, SYSTEM_RECORD_FILE_REL } from 'pm-core/application/settings/events.js'
+import { getBuildStamp } from 'pm-common/build-stamp.js'
+import type { SettingsStore, SystemRecordStore, WindowInheritance } from 'pm-core/application/ports.js'
+import { applyWindowInheritance, presetInheritanceOf, readWindowProfile } from 'pm-core/application/internal/window-inherit.js'
 import type { RouterCtx, StorageActionKind, StorageActionPort } from './shared.js'
 
 /** 确认框的肯定/否定选项（唯一一处定义：文案与判定必须同源，否则"点了确认却判成取消"）。 */
@@ -313,7 +313,7 @@ export function requireSystemRecordOf(deps: RouterCtx['deps']): SystemRecordStor
  * 为什么不做成 `require…`（像设置/系统记录那样直接抛）：宿主没接选择器**不是组合根 bug**——
  * 非 macOS 部署按设计就弹不出系统窗口。所以返回 `undefined` 让路由说清"可手动输入路径"。
  */
-export function pickStoragePathOf(deps: RouterCtx['deps']): import('pmboard-core/application/ports.js').StoragePathPickerPort | undefined {
+export function pickStoragePathOf(deps: RouterCtx['deps']): import('pm-core/application/ports.js').StoragePathPickerPort | undefined {
   return deps.pickStoragePath
 }
 

@@ -16,23 +16,23 @@
  *
  * @module dsh-pmboard/adapters/ArtifactSync
  */
-import { newCommentId } from 'pmboard-core/protocol-domain.js'
-import type { RequirementRecord, StageArtifact } from 'pmboard-core/protocol-domain.js'
-import { fmt } from 'pmboard-core/domain/text/fmt.js'
+import { newCommentId } from 'pm-core/protocol-domain.js'
+import type { RequirementRecord, StageArtifact } from 'pm-core/protocol-domain.js'
+import { fmt } from 'pm-core/domain/text/fmt.js'
 import { FileDocRepository } from './FileDocRepository.js'
 // REQ-261001203710-0fbf t2：本文件是**适配器**层，可以碰 node:（application 层不行），
 // 故 realpath 归一在这里注入给纯函数 sameProjectRoot。
 import { realpathSync } from 'node:fs'
-import type { DocRepository } from 'pmboard-core/application/ports.js'
-import { partitionByProject, projectRootOf } from 'pmboard-core/application/internal/support.js'
+import type { DocRepository } from 'pm-core/application/ports.js'
+import { partitionByProject, projectRootOf } from 'pm-core/application/internal/support.js'
 import {
   discoverArtifactsFrom,
   reqDirRel,
   stageForKind,
   staleAutoKind,
-} from 'pmboard-core/application/internal/artifact-discovery.js'
-import type { RequirementStore } from 'pmboard-core/application/ports.js'
-import { mutateIfPresent } from 'pmboard-core/application/use-cases/queue-access.js'
+} from 'pm-core/application/internal/artifact-discovery.js'
+import type { RequirementStore } from 'pm-core/application/ports.js'
+import { mutateIfPresent } from 'pm-core/application/use-cases/queue-access.js'
 
 // 需求目录相对前缀与分类规则的真身已迁至 application/internal/artifact-discovery.ts 与
 // domain/artifact/ArtifactSpec.ts——这里只再导出，保持既有 import 点不变。

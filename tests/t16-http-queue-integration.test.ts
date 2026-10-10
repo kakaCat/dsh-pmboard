@@ -19,8 +19,8 @@ import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { JsonQueueRepository } from 'pmboard-core/repositories/QueueRepository.js'
-import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
+import { JsonQueueRepository } from 'pm-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pm-core/repositories/QueueTaskStore.js'
 import { createReqboardHandler } from 'src/http/routes.js'
 
 let root: string

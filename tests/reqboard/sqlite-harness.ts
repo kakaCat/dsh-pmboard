@@ -26,9 +26,9 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { SqliteRequirementStore } from 'pmboard-core/repositories/SqliteRequirementStore.js'
-import type { ImportedLedger } from 'pmboard-core/application/ports.js'
-import { REQBOARD_SCHEMA_VERSION, type RequirementRecord } from 'pmboard-core/protocol-domain.js'
+import { SqliteRequirementStore } from 'pm-core/repositories/SqliteRequirementStore.js'
+import type { ImportedLedger } from 'pm-core/application/ports.js'
+import { REQBOARD_SCHEMA_VERSION, type RequirementRecord } from 'pm-core/protocol-domain.js'
 
 /** 本进程内建过的临时目录与库（`afterAll` 统一清理）。 */
 const tempDirs: string[] = []

@@ -12,11 +12,11 @@
 import {
   checkIndexBudget,
   countLines,
-} from 'pmboard-core/domain/knowledge/budget.js'
-import { defaultExpires, parseEntryDoc, renderEntryDoc } from 'pmboard-core/domain/knowledge/entry.js'
-import { isEntryId, parseIndexDoc, renderIndexLine, sectionId, splitSectionId } from 'pmboard-core/domain/knowledge/index-line.js'
-import { isDecidableInvalidation } from 'pmboard-common/knowledge/invalidation.js'
-import { sliceSection } from 'pmboard-common/knowledge/slug.js'
+} from 'pm-core/domain/knowledge/budget.js'
+import { defaultExpires, parseEntryDoc, renderEntryDoc } from 'pm-core/domain/knowledge/entry.js'
+import { isEntryId, parseIndexDoc, renderIndexLine, sectionId, splitSectionId } from 'pm-core/domain/knowledge/index-line.js'
+import { isDecidableInvalidation } from 'pm-common/knowledge/invalidation.js'
+import { sliceSection } from 'pm-common/knowledge/slug.js'
 import {
   KB_INDEX_SECTIONS,
   KB_PATHS,
@@ -28,14 +28,14 @@ import {
   type KbEntryMeta,
   type KbIndexRow,
   type KbPageName,
-} from 'pmboard-common/knowledge/types.js'
-import { domainError, REQBOARD_ERROR_CODES } from 'pmboard-common/errors.js'
+} from 'pm-common/knowledge/types.js'
+import { domainError, REQBOARD_ERROR_CODES } from 'pm-common/errors.js'
 import type {
   DocRepository,
   KbEntryDraft,
   KbIndexReadResult,
   KnowledgePort,
-} from 'pmboard-core/application/ports.js'
+} from 'pm-core/application/ports.js'
 
 /** 条目 id 序号（kb-NNNN → N）。 */
 function entrySeq(id: string): number {
@@ -84,7 +84,7 @@ export class KnowledgeRepository implements KnowledgePort {
     return { text, chars: text.length, lines: countLines(text), overflows: checkIndexBudget(text) }
   }
 
-  async readEntries(): Promise<{ rows: readonly KbIndexRow[]; issues: readonly import('pmboard-common/knowledge/types.js').KbIssue[] }> {
+  async readEntries(): Promise<{ rows: readonly KbIndexRow[]; issues: readonly import('pm-common/knowledge/types.js').KbIssue[] }> {
     if (!this.docs.exists(KB_PATHS.index)) return { rows: [], issues: [] }
     const text = await this.docs.read(KB_PATHS.index)
     const parsed = parseIndexDoc(text)

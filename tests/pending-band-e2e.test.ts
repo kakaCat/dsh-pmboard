@@ -15,9 +15,9 @@ import { makeTestStore } from 'tests/application/harness.js'
 import { taskStoreAt } from 'tests/queue/route-deps.js'
 import { createReqboardHandler } from 'src/http/routes.js'
 import { PendingConfirmRegistry } from 'src/adapters/PendingConfirmRegistry.js'
-import { parsePendingConfirms } from 'pmboard-client/api.js'
-import { renderPendingConfirmBand } from 'pmboard-client/views/pending-confirm.js'
-import type { RequirementRecord, StageArtifact } from 'pmboard-core/protocol-domain.js'
+import { parsePendingConfirms } from 'pm-client/api.js'
+import { renderPendingConfirmBand } from 'pm-client/views/pending-confirm.js'
+import type { RequirementRecord, StageArtifact } from 'pm-core/protocol-domain.js'
 
 const NOW = 1_700_000_000_000
 const REQ = 'REQ-e2e-band'

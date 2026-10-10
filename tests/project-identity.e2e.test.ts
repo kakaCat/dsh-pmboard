@@ -22,9 +22,9 @@ import { harness as diveLoopHarness, makeReq as makeDiveReq } from 'tests/suppor
 import { createReqboardHandler } from 'src/http/routes.js'
 import { FileDocRepository } from 'src/adapters/FileDocRepository.js'
 import { toProjectEntries } from 'src/adapters/workspaceRegistryRows.js'
-import { projectIdOfWindow, rootOfProject } from 'pmboard-core/application/internal/project-identity.js'
-import { applyRequirementWorkspaceRoot, ensureWritableProjectRoot } from 'pmboard-core/application/internal/support.js'
-import type { RequirementRecord } from 'pmboard-core/protocol-domain.js'
+import { projectIdOfWindow, rootOfProject } from 'pm-core/application/internal/project-identity.js'
+import { applyRequirementWorkspaceRoot, ensureWritableProjectRoot } from 'pm-core/application/internal/support.js'
+import type { RequirementRecord } from 'pm-core/protocol-domain.js'
 import { expectCode } from 'tests/helpers/code-assert.js'
 
 const SESSION_X = 'session-x'

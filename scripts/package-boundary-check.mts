@@ -8,7 +8,7 @@
  * 判据（四类越界，逐类点名）：
  *   ① layer-declaration    包声明了不在本层白名单里的 workspace 依赖
  *   ② undeclared-import    src 里 import 了未声明的 workspace 包
- *   ③ cross-dir-import     tool-pmboard 内的横向目录引用（除 kit/）
+ *   ③ cross-dir-import     tool-pm 内的横向目录引用（除 kit/）
  *   ④ asset-import         资产包（零代码依赖）里出现任何 import
  *
  * 用法：npx tsx scripts/package-boundary-check.mts [--root <dir>] [--json]
@@ -27,24 +27,24 @@ const AS_JSON = argv.includes('--json')
 
 /** 分层白名单（唯一权威：design/architecture.md 的分层表）。 */
 export const LAYERS = [
-  { layer: 'L0', pkgs: ['pmboard-common', 'reqboard-rtm'], allow: [] },
-  { layer: 'L0.5', pkgs: ['pmboard-type-kit'], allow: ['pmboard-common'] },
+  { layer: 'L0', pkgs: ['pm-common', 'reqboard-rtm'], allow: [] },
+  { layer: 'L0.5', pkgs: ['pm-type-kit'], allow: ['pm-common'] },
   {
     layer: 'L0.5',
-    pkgs: ['pmboard-type-feature', 'pmboard-type-bug', 'pmboard-type-doc', 'pmboard-type-refactor', 'pmboard-type-spike', 'pmboard-type-chore'],
-    allow: ['pmboard-common', 'pmboard-type-kit'],
+    pkgs: ['pm-type-feature', 'pm-type-bug', 'pm-type-doc', 'pm-type-refactor', 'pm-type-spike', 'pm-type-chore'],
+    allow: ['pm-common', 'pm-type-kit'],
   },
-  { layer: 'L1', pkgs: ['pmboard-core'], allow: ['pmboard-common', 'reqboard-rtm', 'pmboard-type-kit'] },
+  { layer: 'L1', pkgs: ['pm-core'], allow: ['pm-common', 'reqboard-rtm', 'pm-type-kit'] },
   {
     layer: 'L2',
-    pkgs: ['tool-pmboard', 'pmboard-round-driver', 'pmboard-workflow', 'pmboard-client', 'command-pmboard'],
-    allow: ['pmboard-common', 'pmboard-core'],
+    pkgs: ['tool-pm', 'pm-round-driver', 'pm-workflow', 'pm-client', 'command-pm'],
+    allow: ['pm-common', 'pm-core'],
   },
-  { layer: 'L3', pkgs: ['pmboard-templates', 'pmboard-skills', 'pmboard-eval-suite', 'pmboard-scripts'], allow: [] },
+  { layer: 'L3', pkgs: ['pm-templates', 'pm-skills', 'pm-eval-suite', 'pm-scripts'], allow: [] },
 ] as const
 
 const WORKSPACE_PKGS: readonly string[] = LAYERS.flatMap(l => [...l.pkgs])
-const ASSET_PKGS: readonly string[] = ['pmboard-templates', 'pmboard-skills', 'pmboard-eval-suite', 'pmboard-scripts']
+const ASSET_PKGS: readonly string[] = ['pm-templates', 'pm-skills', 'pm-eval-suite', 'pm-scripts']
 const allowOf = (pkg: string): readonly string[] => LAYERS.find(l => (l.pkgs as readonly string[]).includes(pkg))?.allow ?? []
 const layerOf = (pkg: string): string => LAYERS.find(l => (l.pkgs as readonly string[]).includes(pkg))?.layer ?? '?'
 
@@ -69,7 +69,7 @@ const IMPORT_RE = /(?:import|export)\s+(?:type\s+)?(?:[^'"]*\s+from\s+)?['"]([^'
 const violations: Violation[] = []
 
 for (const pkg of WORKSPACE_PKGS) {
-  const pkgDir = join(ROOT, 'packages', pkg)
+  const pkgDir = join(ROOT, 'pm', pkg)
   const manifestPath = join(pkgDir, 'package.json')
   if (!existsSync(manifestPath)) continue
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { dependencies?: Record<string, string> }
@@ -104,11 +104,11 @@ for (const pkg of WORKSPACE_PKGS) {
       if (bare !== undefined && bare !== pkg && !declared.includes(bare)) {
         violations.push({ kind: 'undeclared-import', pkg, detail: relInPkg + ' import ' + spec + '（未在 package.json 声明）' })
       }
-      // ③ tool-pmboard 内横向目录引用：**四类目录之间**不得互引（只允许经 kit/）。
+      // ③ tool-pm 内横向目录引用：**四类目录之间**不得互引（只允许经 kit/）。
       //   口径（t15 收窄）：只有「src/<类别目录>/… 内的文件」才受此约束——包根的 `registry.ts` /
       //   `index.ts` 是该包的**聚合面**（RF-20：registry 聚合四目录、根包只消费），必须允许它们引四类目录；
       //   否则「把 19 个工具收进单包」在物理上根本做不到。
-      if (pkg === 'tool-pmboard' && spec.startsWith('.')) {
+      if (pkg === 'tool-pm' && spec.startsWith('.')) {
         const parts = relInPkg.split('/') // ['src', '<dir>', ...file]
         const fromDir = parts.length > 2 ? parts[1] : undefined
         const target = relative(join(pkgDir, 'src'), resolve(dirname(file), spec))

@@ -14,11 +14,11 @@ import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { SystemRecordFile } from '../src/adapters/SystemRecordFile.js'
-import { SQLITE_SCHEMA_VERSION } from 'pmboard-core/repositories/sqliteSchema.js'
+import { SQLITE_SCHEMA_VERSION } from 'pm-core/repositories/sqliteSchema.js'
 import { pluginStampOf, readPluginInfo } from '../src/wiring/settings-assembly.js'
-import { SYSTEM_RECORD_FILE_REL, type ActiveBackend, type ConfirmStamp, type StorePaths } from 'pmboard-core/application/settings/events.js'
-import { ShardedRequirementStore } from 'pmboard-core/repositories/ShardedRequirementStore.js'
-import type { RequirementRecord, TriageRecord } from 'pmboard-core/protocol-domain.js'
+import { SYSTEM_RECORD_FILE_REL, type ActiveBackend, type ConfirmStamp, type StorePaths } from 'pm-core/application/settings/events.js'
+import { ShardedRequirementStore } from 'pm-core/repositories/ShardedRequirementStore.js'
+import type { RequirementRecord, TriageRecord } from 'pm-core/protocol-domain.js'
 
 /** 源台账（迁移的输入）。 */
 export interface SourceLedger {

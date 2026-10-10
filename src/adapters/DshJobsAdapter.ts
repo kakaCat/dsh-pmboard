@@ -5,11 +5,11 @@
  * 用于实施链的后台执行与状态查询
  */
 
-import type { JobStatus } from 'pmboard-common/job-spec.js'
+import type { JobStatus } from 'pm-common/job-spec.js'
 // JobsPort 的形状来自 application（除类型外零依赖）——REQ-260927144541-0481 根因修复：
 // 本类此前只有 startJob/getJob，装配层拿不到 `deps.jobs` 要求的 start/get/available，
 // 于是 JobsPort 从未装配、实施链恒走同步兼容路径。
-import type { JobsPort, JobStartSpec, JobSnapshot as PortJobSnapshot } from 'pmboard-core/application/ports.js'
+import type { JobsPort, JobStartSpec, JobSnapshot as PortJobSnapshot } from 'pm-core/application/ports.js'
 
 /**
  * DSH Jobs 不可用错误

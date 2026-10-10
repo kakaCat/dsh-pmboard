@@ -45,7 +45,7 @@ function assetManifest(dirs: readonly string[]): { path: string; sha256: string;
 }
 
 // ── 1. 工具注册面（19 个 reqboard_* 工具名 + schema 摘要哈希）────────────────
-const { TOOL_REGISTRY } = await import('tool-pmboard/registry.js')
+const { TOOL_REGISTRY } = await import('tool-pm/registry.js')
 const toolRows = (TOOL_REGISTRY as readonly Record<string, unknown>[]).map(e => ({
   key: String(e['key']),
   factoryFile: String(e['factoryFile']),
@@ -57,9 +57,9 @@ const toolRows = (TOOL_REGISTRY as readonly Record<string, unknown>[]).map(e => 
 }))
 
 // ── 2. 六类型规格（判据面：必填节 / 必交设计文档 / 条件产物 / 归档去向 / 模板映射）──
-const { CATEGORY_DELTAS } = await import('pmboard-core/application/internal/category-doc-sets.js')
-const { ARCHIVE_DOC_RULES } = await import('pmboard-core/domain/artifact/ArtifactSpec.js')
-const { NODE_TEMPLATES } = await import('pmboard-core/domain/template/registry.js')
+const { CATEGORY_DELTAS } = await import('pm-core/application/internal/category-doc-sets.js')
+const { ARCHIVE_DOC_RULES } = await import('pm-core/domain/artifact/ArtifactSpec.js')
+const { NODE_TEMPLATES } = await import('pm-core/domain/template/registry.js')
 const typeSpec = (CATEGORY_DELTAS as readonly Record<string, unknown>[]).map(d => {
   const category = String(d['category'])
   const archive = (ARCHIVE_DOC_RULES as Record<string, unknown>)[category]
@@ -85,12 +85,12 @@ if (existsSync(distEntry)) {
 }
 
 // ── 4. 资产清单（模板 / skill / RTM 引擎）
-// 路径映射（t6 起）：迁移前 `vendor/reqboard/src/**` → 迁移后 `packages/reqboard-rtm/src/**`，
+// 路径映射（t6 起）：迁移前 `vendor/reqboard/src/**` → 迁移后 `pm/reqboard-rtm/src/**`，
 // 收口比对（t22）按内容哈希多重集相等 + 该前缀映射核验，不按裸路径比对。───────────────────────────────────
 // 资产根布局无关（t19）：搬迁前后各一处——否则搬完只剩 rtm 那 28 个，计数会掉到 28。
 const assetRoot = (kind: string): string =>
-  existsSync(join(ROOT, 'packages', 'pmboard-' + kind, kind)) ? 'packages/pmboard-' + kind + '/' + kind : kind
-const assets = assetManifest([assetRoot('templates'), assetRoot('skills'), 'packages/reqboard-rtm/src'])
+  existsSync(join(ROOT, 'pm', 'pm-' + kind, kind)) ? 'pm/pm-' + kind + '/' + kind : kind
+const assets = assetManifest([assetRoot('templates'), assetRoot('skills'), 'pm/reqboard-rtm/src'])
 
 // ── 5. 测试发现数（由 vitest --reporter=json 另跑，这里只登记现有读数）────────
 const vitestReport = join(OUT, 'vitest-report.json')

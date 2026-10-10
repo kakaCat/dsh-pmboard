@@ -21,7 +21,7 @@ import {
   type Side,
   type TaskRole,
   type TaskStatus,
-} from 'pmboard-core/domain/card-types.js'
+} from 'pm-core/domain/card-types.js'
 
 describe('卡片四轴类型系统 - 联调测试', () => {
   describe('Phase（阶段）维度', () => {

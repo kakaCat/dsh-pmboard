@@ -47,7 +47,7 @@ export function findToolsMissingRender(sources: readonly ToolSource[], aliases: 
 }
 
 describe('FR-4 · 全工具都必须声明 output.render', () => {
-  it('T-1：packages/tool-pmboard/src 下每个 defineTool 定义都带 render（白名单只有委托别名）', () => {
+  it('T-1：pm/tool-pm/src 下每个 defineTool 定义都带 render（白名单只有委托别名）', () => {
     const sources = collectToolSources()
     // 前置断言：扫描面不能为空，否则"全绿"毫无意义
     expect(sources.length).toBeGreaterThan(15)
@@ -56,13 +56,13 @@ describe('FR-4 · 全工具都必须声明 output.render', () => {
   })
 
   it('T-2：扫描函数本身会红（喂一份缺 render 的样例源码）', () => {
-    const bad: ToolSource[] = [{ path: 'packages/tool-pmboard/src/__probe/ProbeTool.ts', source: 'export const t = defineTool({ name: "x", description: "d" })' }]
-    expect(findToolsMissingRender(bad)).toEqual(['packages/tool-pmboard/src/__probe/ProbeTool.ts'])
+    const bad: ToolSource[] = [{ path: 'pm/tool-pm/src/__probe/ProbeTool.ts', source: 'export const t = defineTool({ name: "x", description: "d" })' }]
+    expect(findToolsMissingRender(bad)).toEqual(['pm/tool-pm/src/__probe/ProbeTool.ts'])
     // 反向：带 render 的同形源码不得被判红
-    const good: ToolSource[] = [{ path: 'packages/tool-pmboard/src/__probe/ProbeTool.ts', source: 'export const t = defineTool({ name: "x", output: { render: f } })' }]
+    const good: ToolSource[] = [{ path: 'pm/tool-pm/src/__probe/ProbeTool.ts', source: 'export const t = defineTool({ name: "x", output: { render: f } })' }]
     expect(findToolsMissingRender(good)).toEqual([])
     // 白名单只免"委托别名"，不免"没写 render 的普通工具"
-    expect(findToolsMissingRender(bad, { 'packages/tool-pmboard/src/__probe/ProbeTool.ts': '继承自别处' })).toEqual([])
+    expect(findToolsMissingRender(bad, { 'pm/tool-pm/src/__probe/ProbeTool.ts': '继承自别处' })).toEqual([])
   })
 
   it('T-2b：clear_pause 工具确实声明了 render（本卡修的就是它）', () => {

@@ -29,8 +29,8 @@ import { createHash } from 'node:crypto'
 import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { ShardedRequirementStore } from 'pmboard-core/repositories/ShardedRequirementStore.js'
-import { reconcileTerminalDive } from 'pmboard-core/application/internal/reconcile-terminal-dive.js'
+import { ShardedRequirementStore } from 'pm-core/repositories/ShardedRequirementStore.js'
+import { reconcileTerminalDive } from 'pm-core/application/internal/reconcile-terminal-dive.js'
 
 interface Row {
   id: string

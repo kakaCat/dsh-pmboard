@@ -21,10 +21,10 @@ import { FileDocRepository } from 'src/adapters/FileDocRepository.js'
 import { FileHostFs } from 'src/adapters/FileHostFs.js'
 import { RandomIdFactory } from 'src/adapters/RandomIdFactory.js'
 import { UserQuestionsAdapter } from 'src/adapters/UserQuestionsAdapter.js'
-import type { RequirementStore, TaskStore, UseCaseDeps } from 'pmboard-core/application/ports.js'
-import type { TaskRecord } from 'pmboard-core/protocol-domain.js'
+import type { RequirementStore, TaskStore, UseCaseDeps } from 'pm-core/application/ports.js'
+import type { TaskRecord } from 'pm-core/protocol-domain.js'
 import { InMemoryQueueRepository } from 'tests/application/harness.js'
-import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
+import { QueueTaskStore } from 'pm-core/repositories/QueueTaskStore.js'
 // t8/B11：新端口 → 旧 repo 的**测试侧投影**（同一份数据，见该文件头注释）。
 import {
   defineCreateTool as createTool,
@@ -37,7 +37,7 @@ import {
   defineSubmitTool as submitTool,
   defineAskConfirmTool as askConfirmTool,
   defineAcceptSheetTool as acceptSheetTool,
-} from 'tool-pmboard/index.js'
+} from 'tool-pm/index.js'
 
 /** 工具依赖：store 强依赖；agents/sessionProjections 为惰性服务访问器（缺失 → 认证降级）。 */
 export interface ReqboardToolDeps {
@@ -161,7 +161,7 @@ function normalizeStore(v: unknown): RequirementStore {
 
 export function toUseCaseDeps(deps: ReqboardToolDeps): UseCaseDeps {
   // 注意：doneThrottleMs 用 getter 活读——既有测试在工具构造后才把节流改成 0
-  // （packages/pmboard-core/tests/decompose-tools.test.ts:329/439），快照会改变行为。
+  // （pm/pm-core/tests/decompose-tools.test.ts:329/439），快照会改变行为。
   const uc: UseCaseDeps = { store: normalizeStore(deps.store),
     // t8/B11：读点搬到新端口后要用 `deps.store`（缺装配会响亮抛错）。本助手是**一批夹具的收口点**
     // （35 个测试文件经它转 deps），所以补在这里一处即可 —— 且投影与 `repo` 是**同一份数据**，

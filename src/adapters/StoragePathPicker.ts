@@ -23,7 +23,7 @@
 
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import type { StoragePathPickOutcome, StoragePathPickerPort } from 'pmboard-core/application/ports.js'
+import type { StoragePathPickOutcome, StoragePathPickerPort } from 'pm-core/application/ports.js'
 
 /**
  * 固定脚本（**不含任何外部输入**）。`POSIX path of` 把 AppleScript 的 HFS 路径转成 `/a/b/c` 形式；

@@ -8,7 +8,7 @@
  * 用法：`npx tsx scripts/req-verification-sheet-shot.mts`
  * 产物：`docs/requirements/REQ-261006092213-4f5b/evidence/verification-sheet-1280.png`（2 倍图）
  *
- * 标本页与真实页共用**同一份 CSS**（`SPECIMEN_CSS`，顺序照 `packages/pmboard-client/src/styles.ts`）与
+ * 标本页与真实页共用**同一份 CSS**（`SPECIMEN_CSS`，顺序照 `pm/pm-client/src/styles.ts`）与
  * **同一个渲染器**（`renderStagePanel`），mock 数据只提供台账读数。
  * 仅截图用的 CSS 只有 body 的外边距与底色两条，已在页内注明——**绝不为图好看去改 `src/` 的样式**。
  *
@@ -20,8 +20,8 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { SPECIMEN_CSS, findChrome } from './fixtures/req-detail-specimen.mts'
-import { renderStagePanel } from 'pmboard-client/stage-panel.js'
-import type { StageDetail } from 'pmboard-core/protocol-domain.js'
+import { renderStagePanel } from 'pm-client/stage-panel.js'
+import type { StageDetail } from 'pm-core/protocol-domain.js'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT_DIR = join(ROOT, 'docs', 'requirements', 'REQ-261006092213-4f5b', 'evidence')
@@ -38,19 +38,19 @@ function specimen(): StageDetail {
     {
       id: 'v2-1',
       source: { kind: 'task', taskId: 't-62130a' },
-      criterion: '【提交侧逐项交代】验收：npx vitest run packages/pmboard-core/tests/accept-sheet-tool.test.ts → 25 passed',
-      evidence: ['npx vitest run packages/pmboard-core/tests/accept-sheet-tool.test.ts → 25 passed'],
+      criterion: '【提交侧逐项交代】验收：npx vitest run pm/pm-core/tests/accept-sheet-tool.test.ts → 25 passed',
+      evidence: ['npx vitest run pm/pm-core/tests/accept-sheet-tool.test.ts → 25 passed'],
       status: 'pending',
-      result: 'npx vitest run packages/pmboard-core/tests/accept-sheet-tool.test.ts → 25 passed（含 8 项新增）',
+      result: 'npx vitest run pm/pm-core/tests/accept-sheet-tool.test.ts → 25 passed（含 8 项新增）',
       resultSource: 'agent',
     },
     {
       id: 'v2-2',
       source: { kind: 'task', taskId: 't-8d3c5d' },
       criterion: '【看板通道口径】验收：留空点通过 → 200 且意见取该项实测结果',
-      evidence: ['npx vitest run packages/pmboard-core/tests/verdicts-http.test.ts → 6 passed'],
+      evidence: ['npx vitest run pm/pm-core/tests/verdicts-http.test.ts → 6 passed'],
       status: 'pending',
-      result: '人工复跑：npx vitest run packages/pmboard-core/tests/verdicts-http.test.ts → 6 passed',
+      result: '人工复跑：npx vitest run pm/pm-core/tests/verdicts-http.test.ts → 6 passed',
       resultSource: 'human',
     },
     {

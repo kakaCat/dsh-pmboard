@@ -11,7 +11,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import type { SkillAssetContent, SkillAssetPort } from 'pmboard-core/application/ports.js'
+import type { SkillAssetContent, SkillAssetPort } from 'pm-core/application/ports.js'
 
 export interface SkillAssetsOptions {
   /** 组合根模块所在目录（源码态 `<pkg>/src`、构建态 `<pkg>/dist`）。 */
@@ -29,7 +29,7 @@ export class SkillAssets implements SkillAssetPort {
   private readonly root: string
 
   constructor(options: SkillAssetsOptions) {
-    const inPkg = resolve(options.moduleDir, '..', 'packages', 'pmboard-skills', 'skills')
+    const inPkg = resolve(options.moduleDir, '..', 'pm', 'pm-skills', 'skills')
     this.root = options.root ?? (existsSync(inPkg) ? inPkg : resolve(options.moduleDir, '..', 'skills'))
   }
 
@@ -68,7 +68,7 @@ export class SkillAssets implements SkillAssetPort {
     try {
       return await readFile(join(this.root, 'PROVENANCE.md'), 'utf8')
     } catch (err) {
-      return missing('包内缺 packages/pmboard-skills/skills/PROVENANCE.md（' + String((err as Error).message) + '）')
+      return missing('包内缺 pm/pm-skills/skills/PROVENANCE.md（' + String((err as Error).message) + '）')
     }
   }
 

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import type { } from 'pmboard-core/domain/task/SubtaskTemplate.js'
+import type { } from 'pm-core/domain/task/SubtaskTemplate.js'
 
 import {
   PHASE_COLOR_FAMILIES,
@@ -15,7 +15,7 @@ import {
   getPhaseColor,
   getSideColor,
   getStatusColor,
-} from 'pmboard-core/domain/card-types.js'
+} from 'pm-core/domain/card-types.js'
 
 describe('card-types 联调测试', () => {
   it('Phase 系统：7种颜色族', () => {

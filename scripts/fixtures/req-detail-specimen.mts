@@ -9,7 +9,7 @@
  * 两边都 import；**断言口径与断言脚本不在这里**——那是各脚本自己的事（本模块不含任何判据）。
  *
  * 内容：真实 `ReportResponse` / `TrunkResponse` 标本（在途 implementing / 终态 archived 两态）、
- * 全量 CSS 拼接（顺序照 `packages/pmboard-client/src/styles.ts`：真实页面吃什么，标本就吃什么）、
+ * 全量 CSS 拼接（顺序照 `pm/pm-client/src/styles.ts`：真实页面吃什么，标本就吃什么）、
  * 标本页拼装 `specimenShell(...)` / `specimenShellForPanel(...)`、浏览器落点查找 `findChrome()`。
  *
  * REQ-261005155003-f32f FR-5 / FR-7 起：另外**五个面板**（docs / dag / dialogue / token / prompts）
@@ -24,7 +24,7 @@
  * 纪律：本模块只读 `src/`（import 渲染函数与样式常量），不写任何文件、不碰台账。
  */
 import { existsSync } from 'node:fs'
-import { buildReportShell, REPORT_TABS, type ReportTabKey } from 'pmboard-client/views/report-tabs.js'
+import { buildReportShell, REPORT_TABS, type ReportTabKey } from 'pm-client/views/report-tabs.js'
 import type {
   DagResponse,
   DialogueResponse,
@@ -36,26 +36,26 @@ import type {
   TokenStageRow,
   TrunkResponse,
   VerifyPanelResponse,
-} from 'pmboard-core/protocol-domain.js'
+} from 'pm-core/protocol-domain.js'
 // token 面板的载荷形状（服务端同响应并进扩展段）声明在 client/api.ts：那里是六个 Tab 的取数契约，
 // 本模块只**读类型**（`import type` 编译期擦除，不把客户端取数代码拖进 node 脚本）。
-import type { TokenPanelPayload } from 'pmboard-client/api.js'
-import { BASE_CSS } from 'pmboard-client/styles/base.js'
-import { DETAIL_CSS } from 'pmboard-client/styles/detail.js'
-import { FILES_CSS } from 'pmboard-client/styles/files.js'
-import { BOARD_CSS } from 'pmboard-client/styles/board.js'
-import { PANEL_CSS } from 'pmboard-client/styles/panel.js'
-import { TOKEN_CSS } from 'pmboard-client/styles/token.js'
-import { MARKS_CSS } from 'pmboard-client/styles/marks.js'
-import { SUBTASK_CSS } from 'pmboard-client/styles/subtask.js'
-import { NODE_PANEL_CSS } from 'pmboard-client/styles/node-panel.js'
-import { TRACEABILITY_CSS } from 'pmboard-client/styles/traceability.js'
-import { DAG_CSS } from 'pmboard-client/styles/dag.js'
-import { SETTINGS_CSS } from 'pmboard-client/styles/settings.js'
-import { REPORT_CSS } from 'pmboard-client/styles/report.js'
+import type { TokenPanelPayload } from 'pm-client/api.js'
+import { BASE_CSS } from 'pm-client/styles/base.js'
+import { DETAIL_CSS } from 'pm-client/styles/detail.js'
+import { FILES_CSS } from 'pm-client/styles/files.js'
+import { BOARD_CSS } from 'pm-client/styles/board.js'
+import { PANEL_CSS } from 'pm-client/styles/panel.js'
+import { TOKEN_CSS } from 'pm-client/styles/token.js'
+import { MARKS_CSS } from 'pm-client/styles/marks.js'
+import { SUBTASK_CSS } from 'pm-client/styles/subtask.js'
+import { NODE_PANEL_CSS } from 'pm-client/styles/node-panel.js'
+import { TRACEABILITY_CSS } from 'pm-client/styles/traceability.js'
+import { DAG_CSS } from 'pm-client/styles/dag.js'
+import { SETTINGS_CSS } from 'pm-client/styles/settings.js'
+import { REPORT_CSS } from 'pm-client/styles/report.js'
 
 /**
- * 全量 CSS 拼接（顺序照 `packages/pmboard-client/src/styles.ts`）。
+ * 全量 CSS 拼接（顺序照 `pm/pm-client/src/styles.ts`）。
  *
  * 顺序不能改：真实页面吃什么顺序，标本就吃什么顺序（漏一片、或次序不同，就可能把某个
  * 「本来就有限高」的规则漏掉/覆盖掉，探针会假绿、截图会跟真实页面不像）。
@@ -208,7 +208,7 @@ export const TRUNK_SPECIMEN: TrunkResponse = {
         '面板不可数：未激活的面板也在 DOM 里，渲染慢且读不完。',
       ],
       openRefs: [],
-      facts: [{ label: '旧详情页区块数', value: '11', evidence: ['packages/pmboard-client/src/views/stage-detail.ts:190'] }],
+      facts: [{ label: '旧详情页区块数', value: '11', evidence: ['pm/pm-client/src/views/stage-detail.ts:190'] }],
     },
     {
       key: 'approach', source: ['doc'],
@@ -409,7 +409,7 @@ export const DAG_SPECIMEN: DagResponse = {
       report: {
         summary: '对话面板：一条流 + 页内检索 + 回复框',
         completed: ['三类消息同容器按时间排', '页内检索只过滤已加载条目', '回复走既有评论通道'],
-        filesChanged: ['packages/pmboard-client/src/views/panels/dialogue.ts', 'packages/pmboard-client/tests/dialogue-panel.test.ts'],
+        filesChanged: ['pm/pm-client/src/views/panels/dialogue.ts', 'pm/pm-client/tests/dialogue-panel.test.ts'],
         nextStep: '等 Token 面板落地后一起上探针',
       },
     },
@@ -417,7 +417,7 @@ export const DAG_SPECIMEN: DagResponse = {
       taskId: 't-f62af2', stage: 'implement', sessionId: 'session-w-b262610a', trigger: 'auto',
       startedAt: T0 - 160 * M, endedAt: T0 - 130 * M, outcome: 'failed',
       error: '按阶段表缺 perCallTokens 列：扩展段未并进基础行（服务端 mergeTokenExtension 未接线）',
-      evidence: ['pnpm vitest run packages/pmboard-client/tests/token-panel.test.ts → 1 failed'], attempt: 2, outputCount: 2,
+      evidence: ['pnpm vitest run pm/pm-client/tests/token-panel.test.ts → 1 failed'], attempt: 2, outputCount: 2,
     },
     {
       taskId: 't-5c0373', stage: 'implement', sessionId: 'session-w-b262610a', trigger: 'manual',
@@ -623,7 +623,7 @@ export const PROMPTS_SPECIMEN: PromptsResponse = {
  * 1 不通过带意见**，验收单 v2 · 返工续验只含未过项，待裁决 2 项（与
  * `reportOf('inflight').tabCounts.verify` 的徽标 '2' 同值——T-5 徽标口径）。
  *
- * **两源对齐纪律**（`packages/pmboard-client/src/views/panels/verify.ts` 纪律②）：D-10 起行键 = FR 号，
+ * **两源对齐纪律**（`pm/pm-client/src/views/panels/verify.ts` 纪律②）：D-10 起行键 = FR 号，
  * `frMap` 给出每 FR 的 `fr_to_tasks / fr_to_tests`（归属链）与 `fr_to_design`（覆盖链 chip）；
  * sheet 逐项按 `rtmTraceIdOf(source)` 归进 FR 名下，故本标本的归属链与 sheet 项的 source
  * 严格对应——task 源 = 其 `taskId`、requirement 源 = `REQ-LEVEL`、prototype-compare 源 =
@@ -761,7 +761,7 @@ export const VERIFY_SPECIMEN: VerifyPanelResponse = {
    *   ② prototype-compare / decision-compare 两条对照项的追溯键（`PROTOTYPE` / `DECISION`）
    *      也写进映射，好让本标本还原原型的 8 行 / 5·2·1 口径。**真实 `fr_to_tasks` 只装任务 id**，
    *      那时这两类对照项与需求级项都归不进任何 FR，客户端会把它们铺成「需求级 / 对照项」行
-   *      （该支路由 packages/pmboard-client/tests/verify-panel.test.ts 单独钉住，不靠本标本代言）。
+   *      （该支路由 pm/pm-client/tests/verify-panel.test.ts 单独钉住，不靠本标本代言）。
    */
   frMap: {
     fr_to_design: {
@@ -832,7 +832,7 @@ export type PanelSpecimenKey = Exclude<ReportTabKey, 'trunk'>
 /**
  * 宽形状透传：壳的入参类型是 `PanelResult<unknown>`，其正常支是 `{ available?: true }`——
  * 一个**全属性可选**的弱类型，具体形状（`TrunkResponse`）与它没有公共属性，会被 TS 的弱类型检查拦下。
- * 故只在**这一处**放宽（与 `packages/pmboard-core/tests/report-degrade.test.ts` 的 `rawPayload` 同款处理）：
+ * 故只在**这一处**放宽（与 `pm/pm-core/tests/report-degrade.test.ts` 的 `rawPayload` 同款处理）：
  * 标本常量本身仍受 `TrunkResponse` 约束，形状写错照样报错。
  */
 export function asPanelPayload(v: object): PanelResult<unknown> {

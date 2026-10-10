@@ -6,7 +6,7 @@
  *
  * @module dsh-pmboard/adapters/SystemClock
  */
-import type { Clock } from 'pmboard-core/application/ports.js'
+import type { Clock } from 'pm-core/application/ports.js'
 
 export class SystemClock implements Clock {
   now(): number {

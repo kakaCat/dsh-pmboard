@@ -15,7 +15,7 @@ import {
   getPhaseColor,
   getSideColor,
   getStatusColor,
-} from 'pmboard-core/domain/card-types.js'
+} from 'pm-core/domain/card-types.js'
 
 let passed = 0;
 let failed = 0;

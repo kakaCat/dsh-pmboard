@@ -13,8 +13,8 @@
  *   ⑥ 瞬断一次能自动重试并跑完（无需人工续跑）。
  */
 import { describe, it, expect } from 'vitest'
-import { advanceRequirement } from 'pmboard-core/application/use-cases/AdvanceChain.js'
-import { STAGE_EVIDENCE_KIND } from 'pmboard-core/domain/task/SubtaskTemplate.js'
+import { advanceRequirement } from 'pm-core/application/use-cases/AdvanceChain.js'
+import { STAGE_EVIDENCE_KIND } from 'pm-core/domain/task/SubtaskTemplate.js'
 import { makeHarness, task, req } from 'tests/application/harness.js'
 import type {
   JobsPort,
@@ -22,11 +22,11 @@ import type {
   WorkflowRunOutcome,
   WorkflowRunner,
   WorkflowStartInput,
-} from 'pmboard-core/application/ports.js'
-import type { TaskRecord } from 'pmboard-core/protocol-domain.js'
+} from 'pm-core/application/ports.js'
+import type { TaskRecord } from 'pm-core/protocol-domain.js'
 
 /** 写入族证据要求的真实落盘文件（凭证门会 stat 它）。 */
-const FILE = 'packages/pmboard-core/src/domain/x.ts'
+const FILE = 'pm/pm-core/src/domain/x.ts'
 
 /** mock 引擎：按 args.stageKind 的**证据族**回不同产出；可选"首次瞬断"。 */
 class MockEngine implements WorkflowRunner {

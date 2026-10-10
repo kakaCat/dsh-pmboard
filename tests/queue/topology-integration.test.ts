@@ -6,10 +6,10 @@
  * `layers/edges/ready/layer` 的**唯一来源**，而不是"单测里算得对、写盘时另算一套"。
  *
  * 联调对象（全部是既有真实实现，本文件不自造 mock 端口、不手填派生字段）：
- * - `JsonQueueRepository`（真实临时工作区的队列文件读写）      ← packages/pmboard-core/src/repositories/QueueRepository.ts
- * - `QueueTaskStore.createMany / mutate / readQueue`（写路径重算派生视图） ← packages/pmboard-core/src/repositories/QueueTaskStore.ts
- * - `validateQueueFile`（V-5 用 topology.computeReady 反查 ready）          ← packages/pmboard-core/src/domain/queue/validateQueue.ts
- * - `computeLayers / computeEdges / computeReady`（被联调的纯函数）          ← packages/pmboard-core/src/domain/queue/topology.ts
+ * - `JsonQueueRepository`（真实临时工作区的队列文件读写）      ← pm/pm-core/src/repositories/QueueRepository.ts
+ * - `QueueTaskStore.createMany / mutate / readQueue`（写路径重算派生视图） ← pm/pm-core/src/repositories/QueueTaskStore.ts
+ * - `validateQueueFile`（V-5 用 topology.computeReady 反查 ready）          ← pm/pm-core/src/domain/queue/validateQueue.ts
+ * - `computeLayers / computeEdges / computeReady`（被联调的纯函数）          ← pm/pm-core/src/domain/queue/topology.ts
  *
  * 验收口径「给出请求样例与期望响应，实际返回与预期一致」在本文件的落法：
  * - 请求样例 = createMany(4 任务菱形) / mutate(t1→done) / createMany(成环) 三次真实调用
@@ -24,11 +24,11 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { computeEdges, computeLayers, computeReady } from 'pmboard-core/domain/queue/topology.js'
-import type { QueueFile } from 'pmboard-core/domain/queue/QueueTypes.js'
-import { validateQueueFile } from 'pmboard-core/domain/queue/validateQueue.js'
-import { JsonQueueRepository } from 'pmboard-core/repositories/QueueRepository.js'
-import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
+import { computeEdges, computeLayers, computeReady } from 'pm-core/domain/queue/topology.js'
+import type { QueueFile } from 'pm-core/domain/queue/QueueTypes.js'
+import { validateQueueFile } from 'pm-core/domain/queue/validateQueue.js'
+import { JsonQueueRepository } from 'pm-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pm-core/repositories/QueueTaskStore.js'
 import { mkTask } from 'tests/queue/fixtures.js'
 
 /** 联调用需求 id（刻意不同于本需求自身 id，避免与真实工作区需求混淆）。 */

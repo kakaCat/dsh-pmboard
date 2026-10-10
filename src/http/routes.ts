@@ -11,16 +11,16 @@
  * @module dsh-pmboard/http/routes
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { TaskStore } from 'pmboard-core/application/ports.js'
-import { newCommentId, newRequirementId, newTaskId } from 'pmboard-core/protocol-domain.js'
+import type { TaskStore } from 'pm-core/application/ports.js'
+import { newCommentId, newRequirementId, newTaskId } from 'pm-core/protocol-domain.js'
 
 /**
  * 路由层需要的台账能力（**t8 切换点**）：沿用桥导出的 `LegacyLedgerSurface`
  * （旧端口 + `getRequirement` / `subscribe` 这两个端口外方法）。
  * 收敛到**同一处定义**，避免 routes 与 routers 各写一份结构类型而漂移。
  */
-import type { InjectionLogReadPort } from 'pmboard-core/application/internal/injection-log.js'
-import type { IsolationLogReadPort } from 'pmboard-core/application/internal/isolation-trace.js'
+import type { InjectionLogReadPort } from 'pm-core/application/internal/injection-log.js'
+import type { IsolationLogReadPort } from 'pm-core/application/internal/isolation-trace.js'
 import type { RouterCtx } from './routers/shared.js'
 import { createRequirementsRouter } from './routers/requirements.js'
 import { createTasksRouter } from './routers/tasks.js'
@@ -40,7 +40,7 @@ export interface ReqboardRouteDeps {
    * 为什么不从 `applicationDeps.store` 可选透传：可选会把"装配漏了"从编译期挪到运行期
    * （本项目的老教训），故此处编译期必填——组合根（src/index.ts）已持有分片 store，直接传即可。
    */
-  requirementStore: import('pmboard-core/application/ports.js').RequirementStore
+  requirementStore: import('pm-core/application/ports.js').RequirementStore
   /**
    * 任务存储（队列）端口（REQ-260927202051-f6df I-1）——**必填**。
    *
@@ -57,7 +57,7 @@ export interface ReqboardRouteDeps {
   /** 系统提示词装配服务提供者（REQ-a33899 t5）：读时折算固定系统提示词成本；缺省 → unavailable。 */
   systemPrompt?: () => unknown
   /** Token 快照提供者（REQ-b545fe t6）：HTTP 任务操作（body.sessionId）可结算快照；缺省 → 无快照。 */
-  tokenSnapshot?: (windowKey: string) => import('pmboard-core/protocol-domain.js').TokenSnapshot | undefined
+  tokenSnapshot?: (windowKey: string) => import('pm-core/protocol-domain.js').TokenSnapshot | undefined
   /** 可注入 id 生成器（测试用） */
   ids?: {
     requirement?: () => string
@@ -82,9 +82,9 @@ export interface ReqboardRouteDeps {
    */
   knowledgeBootstrap?: { ensure(root?: string, projectId?: string): void }
   /** 文档仓储（REQ-308b9a AC-7.7：看板裁决后回填 verification.md）。 */
-  docs?: import('pmboard-core/application/ports.js').DocRepository
+  docs?: import('pm-core/application/ports.js').DocRepository
   /** 闸门后置链（REQ-e3b6a0 t9 / FR-9）：看板一键确认后触发 Phase B。缺省 → 只落章。 */
-  gateChain?: import('pmboard-core/application/gate/GatePostChain.js').GateChainPort
+  gateChain?: import('pm-core/application/gate/GatePostChain.js').GateChainPort
   /** 在线 agent 查询（取会话句柄供 H2 用）；缺省 → 视为窗口不在线。 */
   agents?: () => { get?: (id: string) => unknown } | undefined
   /**
@@ -93,7 +93,7 @@ export interface ReqboardRouteDeps {
    */
   advance?: (requirementId: string) => Promise<{ steps: number; stopped: string }>
   /** 应用层用例依赖（2026-09-26）：看板「拆分」入口直接调用 executeDecompose。 */
-  applicationDeps?: import('pmboard-core/application/ports.js').UseCaseDeps
+  applicationDeps?: import('pm-core/application/ports.js').UseCaseDeps
   /**
    * 需求面板刷新策略（REQ-261001124111-5d36 t4）：随 SSE 的 `build` 帧下发（缺省 → 帧里不带）。
    */
@@ -104,11 +104,11 @@ export interface ReqboardRouteDeps {
    * 三个都**可选**只为不打断既有大量测试的构造点；但设置路由对缺失是**响亮 500**
    * （组合根 bug，绝不伪造空设置、也绝不伪造"已确认"），语义见 `routers/settings.ts` 头注。
    */
-  settings?: import('pmboard-core/application/ports.js').SettingsStore
-  systemRecord?: import('pmboard-core/application/ports.js').SystemRecordStore
+  settings?: import('pm-core/application/ports.js').SettingsStore
+  systemRecord?: import('pm-core/application/ports.js').SystemRecordStore
   storageActions?: import('./routers/shared.js').StorageActionPort
   /** 文件路径选择端口（「选择…」）：缺省 = 该部署弹不出系统选择窗口。 */
-  pickStoragePath?: import('pmboard-core/application/ports.js').StoragePathPickerPort
+  pickStoragePath?: import('pm-core/application/ports.js').StoragePathPickerPort
   /** 插件版本信息（FR-15）：组合根从 `package.json` 读；缺省 → 响应如实写 `unknown`。 */
   pluginInfo?: { name: string; version: string }
   /** `dshHome` 绝对路径：派生设置/记录文件路径（GET 的 paths、错误消息里的可复制路径）。 */
@@ -117,7 +117,7 @@ export interface ReqboardRouteDeps {
    * 会话探针（REQ-261004222448-292a t-497311）：`prompts` / `dialogue` 两个端点要读会话事件。
    * 缺省 → dialogue 端点 `port-unavailable`（**不返回空数组冒充「没有对话」**）。
    */
-  sessionProbe?: import('pmboard-core/application/ports.js').SessionProbe
+  sessionProbe?: import('pm-core/application/ports.js').SessionProbe
   /**
    * 详情页六查询（REQ-261004222448-292a t-497311）。
    *
@@ -125,12 +125,12 @@ export interface ReqboardRouteDeps {
    * **可表达的降级**（`port-unavailable`），而不是编译不过或运行期 500；路由用例也因此
    * 只注入桩、不必拖上真实台账/会话/文档端口。
    */
-  panelQueries?: Partial<import('pmboard-core/application/query/contracts.js').PanelQueries>
+  panelQueries?: Partial<import('pm-core/application/query/contracts.js').PanelQueries>
   /**
    * 挂起确认只读口（REQ-261004222448-292a t-497311）：报告首屏的「几件事等人」读它。
    * 缺省 → 该条缺口显示「挂起确认状态不可知」（不写 0 条冒充「没有人在等」）。
    */
-  pendingConfirms?: import('pmboard-core/application/query/contracts.js').PendingConfirmReadPort
+  pendingConfirms?: import('pm-core/application/query/contracts.js').PendingConfirmReadPort
 }
 
 // REQ-261003191948-e94a t2：信封与错误映射的**唯一实现**搬到 ./envelope.js——

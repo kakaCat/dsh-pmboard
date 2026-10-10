@@ -8,7 +8,7 @@
 ### C-01 层边界只许向内 #c-01
 
 - **一句话**：`domain` 不得 import `node:` / 框架 / 上层模块；`application` 只依赖 domain 与 shared 的类型。
-- **校验**：`npx vitest run packages/pmboard-core/tests/layer-boundary.test.ts`
+- **校验**：`npx vitest run pm/pm-core/tests/layer-boundary.test.ts`
 - **违反症状**：测试红并打印"越界 import：文件 → 说明符"。
 ### C-02 宿主单文件不超过 400 行 #c-02
 
@@ -18,7 +18,7 @@
 ### C-03 注入预算不裁保底 #c-03
 
 - **一句话**：提示词片段超预算时只能裁非 floor 片段；连 floor 都装不下 → 返回结构化 `overBudget`，**不得静默裁剪**。
-- **校验**：`npx vitest run packages/pmboard-core/tests/prompt-gates.test.ts`
+- **校验**：`npx vitest run pm/pm-core/tests/prompt-gates.test.ts`
 - **违反症状**：测试红（floor 片段缺席或未报超限）。
 ### C-04 客户端构建纪律 #c-04
 
@@ -33,18 +33,18 @@
 ### C-06 产物闸门不可绕过 #c-06
 
 - **一句话**：未确认产物不得推进阶段；计划未批准不得落库任务——由代码级拒绝兜底，不是提示。
-- **校验**：`npx vitest run packages/pmboard-core/tests/artifact-gates.test.ts`
+- **校验**：`npx vitest run pm/pm-core/tests/artifact-gates.test.ts`
 - **违反症状**：测试红；线上表现为 `reqboard_move` 返回 `artifact_not_confirmed`。
 ### C-07 条款与章节必须被接收 #c-07
 
 - **一句话**：需求条款（FR-N）必须被任务卡接收、设计章节必须带 `serves:` 标注，否则门禁拦下。
-- **校验**：`npx vitest run packages/pmboard-core/tests/content-gates.test.ts`
+- **校验**：`npx vitest run pm/pm-core/tests/content-gates.test.ts`
 - **违反症状**：测试红；线上表现为 `requirement_uncovered` / `design_orphan`。
 ### C-08 验收标准必须可执行 #c-08
 
 - **一句话**：任务卡的验收标准必须含可执行锚点（命令/断言），空话会被打回。
-- **校验**：`npx vitest run packages/pmboard-core/tests/acceptance-criteria.test.ts`
-- **违反症状**：测试红；线上表现为拆分计划提交被拒。（**条款层同族判据（2026-10-06 加固，只提示不拦）**：需求文档每条条款的定义行块内也要有可核验判据（命令 / 断言 / 可读数 / 明确取值）——判据质量人定，机械层只判「有没有」，故缺了不拒：进 `clause_criteria_warnings`（校验 `packages/pmboard-core/tests/clause-criteria.test.ts`，含「删掉锚点必须报警」的反向演练）。同批加固另有两条硬门：feature / refactor 的 `sides` 必须显式且值域合法（`packages/pmboard-core/tests/sides-declaration.test.ts`）、新需求必须有「失败与并发路径」节（`packages/pmboard-core/tests/doc-quality-gate.test.ts`；**刻意不进 CATEGORY_DELTAS**——进去会追溯存量需求）。）
+- **校验**：`npx vitest run pm/pm-core/tests/acceptance-criteria.test.ts`
+- **违反症状**：测试红；线上表现为拆分计划提交被拒。（**条款层同族判据（2026-10-06 加固，只提示不拦）**：需求文档每条条款的定义行块内也要有可核验判据（命令 / 断言 / 可读数 / 明确取值）——判据质量人定，机械层只判「有没有」，故缺了不拒：进 `clause_criteria_warnings`（校验 `pm/pm-core/tests/clause-criteria.test.ts`，含「删掉锚点必须报警」的反向演练）。同批加固另有两条硬门：feature / refactor 的 `sides` 必须显式且值域合法（`pm/pm-core/tests/sides-declaration.test.ts`）、新需求必须有「失败与并发路径」节（`pm/pm-core/tests/doc-quality-gate.test.ts`；**刻意不进 CATEGORY_DELTAS**——进去会追溯存量需求）。）
 ### C-09 知识层自检 #c-09
 
 - **一句话**：知识索引与页面必须守住预算（索引 ≤8000 字符/200 行、页面 ≤200 行），
@@ -107,14 +107,14 @@
 - 失败怎么办：看脚本输出的 git 错误行；权限/凭证问题检查远端配置与 ~/.dsh/.credentials.yaml
 ### C-19 新增 stageKind 必须完成登记点全表 #c-19
 - 时机：改动后
-- 命令：`npx tsc --noEmit && npx vitest run packages/pmboard-core/tests/subtask-template.test.ts packages/pmboard-core/tests/execute-task.test.ts tests/card-types.integration.test.ts`
+- 命令：`npx tsc --noEmit && npx vitest run pm/pm-core/tests/subtask-template.test.ts pm/pm-core/tests/execute-task.test.ts tests/card-types.integration.test.ts`
 - 期望：`退出码 0（五表 Record 类型强制使漏登记 = 编译错；用例含六表同 key 集合断言）`
 - 失败怎么办：按登记表逐处补——① `SubtaskTemplate.ts` 四表（KINDS/LABELS/ACCEPTANCE/EVIDENCE_KIND）② `card-types.ts` 的 `STAGE_TO_PHASE_COLOR` ③ `ExecuteTask.ts` 的 `STAGE_SCOPE_RULE` ④ AdvanceChain 行为分支（仅当新段有特殊链行为，如 manual 的停链等人）⑤ eval-suite fixtures（默认链变更时同步并跑 validate_eval_suite.py）⑥ 模板键新增时同步 SubmitTool schema 描述。自动跟随（无需登记但要知道）：workflow 脚本 schema 族（派生自 EVIDENCE_KIND）、客户端徽标（STAGE_LABELS 单点）与 DAG 排序（deriveTaskFields 自 STAGE_KINDS 派生，REQ-261003203909-55f2 修复前是硬编码四段）
 ### C-20 工程操作：npx tsx scripts/reverse-drill-matrix.mts #c-20
 - 时机：改动后
 - 命令：`npx tsx scripts/reverse-drill-matrix.mts`
 - 期望：`[通过]` + 退出码 0；六条护栏逐条显示"红 N/应≥M"且"已逐字节还原"
-- 失败怎么办：❌没变红 ⇒ 该护栏空转，回去补判据用例（对照 packages/pmboard-core/tests/store-projection-ryow.test.ts）；还原失败 ⇒ 脚本已中止，用备份手工核对，禁止 git checkout（工作区多窗口未提交）。
+- 失败怎么办：❌没变红 ⇒ 该护栏空转，回去补判据用例（对照 pm/pm-core/tests/store-projection-ryow.test.ts）；还原失败 ⇒ 脚本已中止，用备份手工核对，禁止 git checkout（工作区多窗口未提交）。
 ### C-21 工程操作：npx tsx scripts/reconcile-terminal-drill.mts #c-21
 - 时机：改动后
 - 命令：`npx tsx scripts/reconcile-terminal-drill.mts --src <台账副本路径>`
@@ -124,7 +124,7 @@
 - 时机：改动后
 - 命令：`node scripts/vendor-skills.mjs && node scripts/vendor-skills.mjs --check`
 - 期望：`退出码 0（28 条 sha256 与磁盘一致、清单 7 项与一级目录一致、体积 ≤ 5MB）`
-- 失败怎么办：指纹不一致 ⇒ 有人手改了包内资产（`--check` 会点名到文件），重跑收录脚本还原；上游换版本 ⇒ 显式 `--from <签出目录>` 替换 + 重跑本命令 + 在需求目录留变更说明（**禁止静默漂移**）；体积超限 ⇒ 检查裁剪清单，`packages/pmboard-core/tests/skills-assets.test.ts` 会一并变红。
+- 失败怎么办：指纹不一致 ⇒ 有人手改了包内资产（`--check` 会点名到文件），重跑收录脚本还原；上游换版本 ⇒ 显式 `--from <签出目录>` 替换 + 重跑本命令 + 在需求目录留变更说明（**禁止静默漂移**）；体积超限 ⇒ 检查裁剪清单，`pm/pm-core/tests/skills-assets.test.ts` 会一并变红。
 ### C-23 改了提示词片段必须重生成并校验（一条命令） #c-23
 - 时机：提交前
 - 命令：`pnpm prompts:check`
@@ -179,7 +179,7 @@
 - 时机：改动后
 - 命令：`pnpm boundary:check`
 - 期望：`退出码 0（命令成功）`
-- 失败怎么办：退出码非 0 且 stdout 逐条点名越界（`layer-declaration` / `undeclared-dependency` / `cross-layer-import` / `kit-bypass` 四类 kind）。修法：按点名把 import 或声明面改回白名单方向（L0→L4 单向）；白名单唯一权威是 `scripts/package-boundary-check.mts` 的 `LAYERS` 与 `design/architecture.md` 分层表。若属**正当横向共享**，走 `pmboard-type-kit` 通路而不是放宽层级。
+- 失败怎么办：退出码非 0 且 stdout 逐条点名越界（`layer-declaration` / `undeclared-dependency` / `cross-layer-import` / `kit-bypass` 四类 kind）。修法：按点名把 import 或声明面改回白名单方向（L0→L4 单向）；白名单唯一权威是 `scripts/package-boundary-check.mts` 的 `LAYERS` 与 `design/architecture.md` 分层表。若属**正当横向共享**，走 `pm-type-kit` 通路而不是放宽层级。
 
 ## 怎么用这份清单 #howto
 

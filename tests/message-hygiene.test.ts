@@ -2,7 +2,7 @@
  * 消息与数值卫生门禁（REQ-47939a 返工，用户验收意见："魔法数字比较多，可以抽象专门解决拼接和魔法数字问题吗"）。
  *
  * 三件事被**钉死**，而不是靠自觉：
- *  ① `packages/pmboard-core/src/domain/**` 的拼接式消息必须为 **0**（规则层是消息的归属地，且它最小、能一次做到）；
+ *  ① `pm/pm-core/src/domain/**` 的拼接式消息必须为 **0**（规则层是消息的归属地，且它最小、能一次做到）；
  *  ② 其余层的拼接数按**棘轮**约束：只许下降，不许上升（当前值冻结在下面的 BASELINE 里）；
  *  ③ 具名数值与用户可见文案**必须来自单点文件**——工具超时不得写裸数字；弹框选项/徽章文案
  *     不得在 labels.ts 之外再写一份（此前 host 与 client 各一份，会静默漂移）。
@@ -53,7 +53,7 @@ const BASELINE: Record<string, number> = {
 }
 
 describe('消息卫生：拼接式消息', () => {
-  it('规则层 packages/pmboard-core/src/domain/** 必须为 0（fmt 抽象已覆盖）', () => {
+  it('规则层 pm/pm-core/src/domain/** 必须为 0（fmt 抽象已覆盖）', () => {
     const bad = allTs.filter(p => rel(p).startsWith('domain/') && !rel(p).endsWith('text/fmt.ts') && concatSites(p) > 0)
       .map(p => rel(p) + '（' + concatSites(p) + ' 处）')
     expect(bad, 'domain 仍有拼接式消息，请改用 fmt：\n' + bad.join('\n')).toEqual([])
@@ -87,7 +87,7 @@ describe('数值卫生：具名上限', () => {
   })
 
   it('验收单批次缺省/上限不得写裸数字（须取自 LIMITS）', () => {
-    const p = join(SRC, '../packages/pmboard-core/src/application/use-cases/AcceptSheet.ts')
+    const p = join(SRC, '../pm/pm-core/src/application/use-cases/AcceptSheet.ts')
     const text = readFileSync(p, 'utf8')
     expect(/\?\?\s*5\b|\.slice\(0,\s*10\)/.test(text), 'AcceptSheet 批次仍在写裸数字，请用 LIMITS.sheetBatchDefault/Max').toBe(false)
   })

@@ -9,10 +9,10 @@
  * @module dsh-pmboard/adapters/CaptureRejectionFile
  */
 import { readFile } from 'node:fs/promises'
-import { persistAtomic } from 'pmboard-core/repositories/atomicWrite.js'
-import { fmt } from 'pmboard-core/domain/text/fmt.js'
-import { appendCaptureRejection, isCaptureRejection } from 'pmboard-core/application/internal/capture-rejections.js'
-import type { CaptureRejection, CaptureRejectionPort } from 'pmboard-core/application/ports.js'
+import { persistAtomic } from 'pm-core/repositories/atomicWrite.js'
+import { fmt } from 'pm-core/domain/text/fmt.js'
+import { appendCaptureRejection, isCaptureRejection } from 'pm-core/application/internal/capture-rejections.js'
+import type { CaptureRejection, CaptureRejectionPort } from 'pm-core/application/ports.js'
 
 export class CaptureRejectionFile implements CaptureRejectionPort {
   private readonly file: string

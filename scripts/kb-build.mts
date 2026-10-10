@@ -2,7 +2,7 @@
  * 知识层生成器 CLI（REQ-261001110934-3766 t3 起源 / REQ-261004174324-4195 t3 改为薄包装）。
  *
  * **本文件不再含生成规则**：解析 argv → 构造文档仓储 → 调 `ensureKnowledgeLayer` → 打印。
- * 生成逻辑单点在 `packages/pmboard-core/src/domain/knowledge/generate.ts` + `packages/pmboard-core/src/application/use-cases/EnsureKnowledgeLayer.ts`
+ * 生成逻辑单点在 `pm/pm-core/src/domain/knowledge/generate.ts` + `pm/pm-core/src/application/use-cases/EnsureKnowledgeLayer.ts`
  * （宿主自举与手动命令走同一份实现，避免"脚本和宿主各写一套"）。
  *
  * 跑法：
@@ -15,9 +15,9 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
-import { ensureKnowledgeLayer } from 'pmboard-core/application/use-cases/EnsureKnowledgeLayer.js'
-import { KB_LIMITS } from 'pmboard-core/domain/knowledge/budget.ts'
-import { KB_PATHS } from 'pmboard-common/knowledge/types.js'
+import { ensureKnowledgeLayer } from 'pm-core/application/use-cases/EnsureKnowledgeLayer.js'
+import { KB_LIMITS } from 'pm-core/domain/knowledge/budget.ts'
+import { KB_PATHS } from 'pm-common/knowledge/types.js'
 
 const args = process.argv.slice(2)
 const check = args.includes('--check')

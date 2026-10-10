@@ -16,7 +16,7 @@
  */
 import { copyFileSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { normalizeArtifactPath } from 'pmboard-common/artifact/ArtifactPath.js'
+import { normalizeArtifactPath } from 'pm-common/artifact/ArtifactPath.js'
 
 interface Change { where: string; from: string; to: string; action: 'normalized' | 'dropped' | 'deduped' }
 

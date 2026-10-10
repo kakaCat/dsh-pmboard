@@ -6,7 +6,7 @@
  *
  * REQ-b63a7d t3/t4：
  *  ① 文件读取白名单从 <cwd>/docs 放宽到 **<cwd>（工作区根）**——产物清单里大量源码类
- *     产物（packages/**）此前一律被判 403；
+ *     产物（pm/**）此前一律被判 403；
  *  ② 路径先过 domain 归一层（normalizeArtifactPath），兼容台账里的仓库根相对
  *     （agent-dh/docs/...）与「工作区内绝对路径」两种存量写法；
  *  ③ 越界语义分档：穿越 / 反斜杠 / 工作区外绝对路径仍 **403**（安全信号不放宽）；
@@ -20,9 +20,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { existsSync, statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { fmt } from 'pmboard-core/domain/text/fmt.js'
+import { fmt } from 'pm-core/domain/text/fmt.js'
 import { dirname, resolve, sep } from 'node:path'
-import { normalizeArtifactPath, extractRequirementIdFromPath, type ArtifactPathForm } from 'pmboard-common/artifact/ArtifactPath.js'
+import { normalizeArtifactPath, extractRequirementIdFromPath, type ArtifactPathForm } from 'pm-common/artifact/ArtifactPath.js'
 import { resolveDocRoot, type RouterCtx } from './shared.js'
 
 /** 单个路径的解析结论（批量端点的响应元素）。 */

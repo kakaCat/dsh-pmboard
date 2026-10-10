@@ -21,8 +21,8 @@
  * @module dsh-pmboard/adapters/SystemRecordFile
  */
 import { readFile } from 'node:fs/promises'
-import { persistAtomic } from 'pmboard-core/repositories/atomicWrite.js'
-import type { SystemRecordStore } from 'pmboard-core/application/ports.js'
+import { persistAtomic } from 'pm-core/repositories/atomicWrite.js'
+import type { SystemRecordStore } from 'pm-core/application/ports.js'
 import {
   SYSTEM_RECORD_SCHEMA_VERSION,
   appendEvent,
@@ -42,8 +42,8 @@ import {
   type StoresSnapshot,
   type SystemEvent,
   type SystemRecordV1,
-} from 'pmboard-core/application/settings/events.js'
-import { fmt } from 'pmboard-core/domain/text/fmt.js'
+} from 'pm-core/application/settings/events.js'
+import { fmt } from 'pm-core/domain/text/fmt.js'
 
 /** 记录文件损坏/形状不对（**响亮**：不静默当空，也不覆盖）。 */
 export const SYSTEM_RECORD_INVALID = 'REQBOARD_SYSTEM_RECORD_INVALID'

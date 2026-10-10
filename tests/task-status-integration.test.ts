@@ -21,10 +21,10 @@ import { SystemClock } from 'src/adapters/SystemClock.js'
 import { RandomIdFactory } from 'src/adapters/RandomIdFactory.js'
 import { SessionProbeAdapter } from 'src/adapters/SessionProbeAdapter.js'
 import { UserQuestionsAdapter } from 'src/adapters/UserQuestionsAdapter.js'
-import { defineTaskTreeTool, defineTaskReportTool } from 'tool-pmboard/index.js'
-import { JsonQueueRepository } from 'pmboard-core/repositories/QueueRepository.js'
-import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
-import type { ReqboardLedger, TaskRecord } from 'pmboard-core/protocol-domain.js'
+import { defineTaskTreeTool, defineTaskReportTool } from 'tool-pm/index.js'
+import { JsonQueueRepository } from 'pm-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pm-core/repositories/QueueTaskStore.js'
+import type { ReqboardLedger, TaskRecord } from 'pm-core/protocol-domain.js'
 
 const W = 'session-status-int-1'
 
@@ -105,7 +105,7 @@ describe('reqboard_task_tree(task_id) 接口联调（真台账 + 真工具壳；
     const rep = await run(defineTaskReportTool(deps()), { task_id: 't-int0001',
       summary: '联调：写入 lastReport',
       completed: ['完成 A', '完成 B'],
-      files_changed: ['packages/web/dsh-pmboard/packages/tool-pmboard/src/TaskTreeTool/TaskTreeTool.ts'],
+      files_changed: ['packages/web/dsh-pmboard/pm/tool-pm/src/TaskTreeTool/TaskTreeTool.ts'],
     })
     expect(rep.success).toBe(true)
     expect(rep.report_index).toBe(1)

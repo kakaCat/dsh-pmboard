@@ -25,7 +25,7 @@ import {
   queryPrompts,
   queryTokenExtension,
   queryVerify,
-} from 'pmboard-core/application/query/index.js';
+} from 'pm-core/application/query/index.js';
 // REQ-261004103330-005f t5：装配期按设置选存储实现 + 系统记录装配（整条链在 wiring 里）。
 import { assembleStorage, pluginStampOf } from './wiring/settings-assembly.js';
 // REQ-261003191948-e94a t1/t4：迁移门是**只读预检**（不抛错），装配方据此分叉出"未就绪"态；
@@ -33,19 +33,19 @@ import { assembleStorage, pluginStampOf } from './wiring/settings-assembly.js';
 // 抛错版 assertLedgerMigrated 仍导出（工具/脚本用），不再出现在启动路径。
 // 未就绪态的接线点（t4）：注册降级路由 + 双通道留痕，零数据面副作用。
 import { enterNotReadyMode } from './wiring/not-ready.js';
-import { JsonQueueRepository } from 'pmboard-core/repositories/QueueRepository.js';
-import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js';
+import { JsonQueueRepository } from 'pm-core/repositories/QueueRepository.js';
+import { QueueTaskStore } from 'pm-core/repositories/QueueTaskStore.js';
 import { createReqboardHandler } from './http/routes.js';
 // REQ-261003215944-9e04 t13：文档读根回滚开关（'legacy-cwd' = 一键回到改造前行为）
-import { docsRootSourceSetting } from 'pmboard-core/plugin-config.js';
+import { docsRootSourceSetting } from 'pm-core/plugin-config.js';
 // REQ-261004111917-f473 FR-1：旧看板深链 /dashboard 的兼容入口（不再 404，把片段原样送回应用根）
 import { registerLegacyBoardRoutes } from './http/legacy-board-route.js';
-import { applyPickupReconcile, applyTaskRollup, type RollupContext } from 'pmboard-core/application/internal/rollup.js';
-import { applyCommandSurface } from 'command-pmboard';
-import { advanceRequirement } from 'pmboard-core/application/use-cases/AdvanceChain.js';
-import { newCommentId } from 'pmboard-core/protocol-domain.js';
-import { setBuildStamp } from 'pmboard-common/build-stamp.js';
-import { dshHomePath, nodeIsolationEnabled, type PluginConfig } from 'pmboard-core/plugin-config.js';
+import { applyPickupReconcile, applyTaskRollup, type RollupContext } from 'pm-core/application/internal/rollup.js';
+import { applyCommandSurface } from 'command-pm';
+import { advanceRequirement } from 'pm-core/application/use-cases/AdvanceChain.js';
+import { newCommentId } from 'pm-core/protocol-domain.js';
+import { setBuildStamp } from 'pm-common/build-stamp.js';
+import { dshHomePath, nodeIsolationEnabled, type PluginConfig } from 'pm-core/plugin-config.js';
 import * as os from 'node:os';
 // REQ-261004103330-005f t6：阶段上限的权威来源改为运行设置（同步内存快照，热路径不 await）。
 import { createCaptureRuntime, assembleDiveSessionDriver } from './wiring/pm-capture-root.js';
@@ -74,7 +74,7 @@ import {
   defineSkillInstallTool,
   // REQ-261006201508-5cb6 FR-3：注册日志从登记面派生（数字与名单不再手写）
   TOOL_REGISTRY,
-} from 'tool-pmboard/index.js';
+} from 'tool-pm/index.js';
 import { FileDocRepository } from './adapters/FileDocRepository.js'
 import { FileHostFs } from './adapters/FileHostFs.js'
 import { FileDiagSink } from './adapters/FileDiagSink.js'
@@ -85,76 +85,76 @@ import { SkillWriter } from './adapters/SkillWriter.js'
 import { PythonProbe } from './adapters/PythonProbe.js'
 import { KnowledgeRepository } from './adapters/KnowledgeRepository.js'
 // REQ-261004174324-4195 t4：知识层自举协调器（缺层时自动生成，每根一次）
-import { KnowledgeBootstrap } from 'pmboard-core/application/internal/knowledge-bootstrap.js'
+import { KnowledgeBootstrap } from 'pm-core/application/internal/knowledge-bootstrap.js'
 // REQ-261005141830-7a3b t5：看板「会话 → 项目身份 + 根」的取数处（与用例侧同一口径，不各写一套）。
-import { projectIdOfWindowForDeps, rootOfRequirement } from 'pmboard-core/application/internal/support.js'
-import { archiveGateSetting, knowledgeSettings, panelSettings, skillsSettings } from 'pmboard-core/plugin-config.js'
+import { projectIdOfWindowForDeps, rootOfRequirement } from 'pm-core/application/internal/support.js'
+import { archiveGateSetting, knowledgeSettings, panelSettings, skillsSettings } from 'pm-core/plugin-config.js'
 import { InjectionLogFile } from './adapters/InjectionLogFile.js'
 import { IsolationTraceFile } from './adapters/IsolationTraceFile.js'
 import { NodeIsolationAdapter } from './adapters/NodeIsolationAdapter.js'
-import { INJECTION_LOG_REL } from 'pmboard-core/application/internal/injection-log.js';
-import { ISOLATION_TRACE_REL } from 'pmboard-core/application/internal/isolation-trace.js';
-import { CAPTURE_DIAG_REL, captureDiag, initCaptureDiag } from 'pmboard-core/application/internal/diag-log.js';
+import { INJECTION_LOG_REL } from 'pm-core/application/internal/injection-log.js';
+import { ISOLATION_TRACE_REL } from 'pm-core/application/internal/isolation-trace.js';
+import { CAPTURE_DIAG_REL, captureDiag, initCaptureDiag } from 'pm-core/application/internal/diag-log.js';
 import { CaptureRejectionFile } from './adapters/CaptureRejectionFile.js';
 import { PendingConfirmRegistry } from './adapters/PendingConfirmRegistry.js';
-import { CAPTURE_REJECTION_REL } from 'pmboard-core/application/internal/capture-rejections.js';
+import { CAPTURE_REJECTION_REL } from 'pm-core/application/internal/capture-rejections.js';
 // REQ-261007100513-6749 t5（FR-6）：子卡请求预算 = 纯判定（subtask-budget）+ 计数订阅器与投递器
 // （request-counter）+ 卡评论 helper（task-comment）。运行态落点由 SUBTASK_BUDGET_REL 单点给出。
-import { SUBTASK_BUDGET_REL } from 'pmboard-core/application/internal/subtask-budget.js';
-import { createRequestCounter } from 'pmboard-core/application/internal/request-counter.js';
-import { createSubtaskRuntime } from 'pmboard-core/application/internal/subtask-runtime.js';
-import { appendRequirementComment, appendTaskComment, createInboxNotify } from 'pmboard-core/application/internal/task-comment.js';
-import { persistAtomic } from 'pmboard-core/repositories/atomicWrite.js';
+import { SUBTASK_BUDGET_REL } from 'pm-core/application/internal/subtask-budget.js';
+import { createRequestCounter } from 'pm-core/application/internal/request-counter.js';
+import { createSubtaskRuntime } from 'pm-core/application/internal/subtask-runtime.js';
+import { appendRequirementComment, appendTaskComment, createInboxNotify } from 'pm-core/application/internal/task-comment.js';
+import { persistAtomic } from 'pm-core/repositories/atomicWrite.js';
 import { readFile } from 'node:fs/promises';
-import { createNodeSettlementDispatcher } from 'pmboard-core/application/internal/node-settlement.js';
+import { createNodeSettlementDispatcher } from 'pm-core/application/internal/node-settlement.js';
 import { SystemClock } from './adapters/SystemClock.js';
 import { RandomIdFactory } from './adapters/RandomIdFactory.js';
 import { UserQuestionsAdapter } from './adapters/UserQuestionsAdapter.js';
 import { GateAwareQuestions } from './adapters/GateAwareQuestions.js';
 import { assembleGatePostChain, registerCaptureGuidance } from './gate-wiring.js';
 import { SessionProbeAdapter } from './adapters/SessionProbeAdapter.js';
-import { WorkflowEngineRunner } from 'pmboard-workflow/WorkflowEngineRunner.js';
+import { WorkflowEngineRunner } from 'pm-workflow/WorkflowEngineRunner.js';
 // FR-11 路线 A：子卡实施段改走 DSH 原生 Agent Teams（ctx.agentTeams = TeamService）。
 import { AgentTeamsAdapter } from './adapters/AgentTeamsAdapter.js';
 // REQ-261003215944-9e04 FR-1（t4）：会话开窗端口实现（DSH 现成 fork/create）
 import { SessionWindowOpener } from './adapters/SessionWindowOpener.js'
 import { WorkspaceRegistryProjectPort } from './adapters/WorkspaceRegistryProjectPort.js'
 import { OsascriptStoragePathPicker } from './adapters/StoragePathPicker.js';
-// 装配需求类型注册表（唯一装配点；core 只经 pmboard-core/type-registry-port 按 category 问规格）。
+// 装配需求类型注册表（唯一装配点；core 只经 pm-core/type-registry-port 按 category 问规格）。
 // 必须在本模块加载期执行：缺类要在插件装配时就炸，而不是等到某次门禁请求。
 import './type-registry.js';
 import { DshJobsAdapter } from './adapters/DshJobsAdapter.js';
 import { createFailureAlert } from './adapters/FailureAlert.js';
-import { scheduleStartupScan } from 'pmboard-core/application/internal/startup-scan.js';
-import { migrateDiveState } from 'pmboard-core/application/internal/migrate-dive-state.js';
-import type { SubtaskBudgetPort, UseCaseDeps } from 'pmboard-core/application/ports.js';
+import { scheduleStartupScan } from 'pm-core/application/internal/startup-scan.js';
+import { migrateDiveState } from 'pm-core/application/internal/migrate-dive-state.js';
+import type { SubtaskBudgetPort, UseCaseDeps } from 'pm-core/application/ports.js';
 import ReqboardDiveManager from './adapters/ReqboardDiveManager.js';
-import { renderDiveRoundText } from 'pmboard-core/application/dive-core/round-state.js';
-import type { DiveRoundPorts } from 'pmboard-round-driver/round-driver.js';
-import { createProviderLatch } from 'pmboard-core/application/internal/provider-latch.js';
-import { confirmGraceSetting } from 'pmboard-core/plugin-config.js';
-import { stageRoutingSetting } from 'pmboard-core/plugin-config.js';
-import { zeroOutputAlertThresholdSetting } from 'pmboard-core/plugin-config.js';
-import { maxInFlightRequirementsSetting } from 'pmboard-core/plugin-config.js';
-import { seatsMaxSetting, handoffSettings } from 'pmboard-core/plugin-config.js';
-import { reconcileTerminalDive } from 'pmboard-core/application/internal/reconcile-terminal-dive.js';
-import { humanGateOf } from 'pmboard-core/application/internal/human-gate.js';
+import { renderDiveRoundText } from 'pm-core/application/dive-core/round-state.js';
+import type { DiveRoundPorts } from 'pm-round-driver/round-driver.js';
+import { createProviderLatch } from 'pm-core/application/internal/provider-latch.js';
+import { confirmGraceSetting } from 'pm-core/plugin-config.js';
+import { stageRoutingSetting } from 'pm-core/plugin-config.js';
+import { zeroOutputAlertThresholdSetting } from 'pm-core/plugin-config.js';
+import { maxInFlightRequirementsSetting } from 'pm-core/plugin-config.js';
+import { seatsMaxSetting, handoffSettings } from 'pm-core/plugin-config.js';
+import { reconcileTerminalDive } from 'pm-core/application/internal/reconcile-terminal-dive.js';
+import { humanGateOf } from 'pm-core/application/internal/human-gate.js';
 // REQ-261007100513-6749 t3（FR-2/FR-3）：易变段**尾部通道**（投递编排 + 适配器 + 同步内容投影）。
-import { createNoticeDelivery } from 'pmboard-core/application/internal/notice-delivery.js';
-import { createNoticeReconciler, type NoticeReconciler } from 'pmboard-core/application/internal/notice-reconciler.js';
+import { createNoticeDelivery } from 'pm-core/application/internal/notice-delivery.js';
+import { createNoticeReconciler, type NoticeReconciler } from 'pm-core/application/internal/notice-reconciler.js';
 import {
   buildVolatileNotice,
   emptyTaskNoticeText,
   type VolatileNotice,
   type VolatileNoticeKind,
-} from 'pmboard-core/application/internal/volatile-notice.js';
-import { resolveStageNotice } from 'pmboard-core/application/internal/capture-section.js';
-import { openPromptFactsFor } from 'pmboard-core/application/internal/window.js';
+} from 'pm-core/application/internal/volatile-notice.js';
+import { resolveStageNotice } from 'pm-core/application/internal/capture-section.js';
+import { openPromptFactsFor } from 'pm-core/application/internal/window.js';
 import { VolatileNoticeAdapter } from './adapters/VolatileNoticeAdapter.js';
-import { agentIdOf, messageIdOf } from 'pmboard-core/application/dive-core/round-state.js';
-import { isImplementing, isInProgressTask } from 'pmboard-core/domain/status/Predicates.js';
-import type { SubtaskBudgetState, TaskRecord } from 'pmboard-core/protocol-domain.js';
-import { checkChainBudget, DEFAULT_CHAIN_BUDGET_LIMITS } from 'pmboard-core/application/internal/chain-budget.js';
+import { agentIdOf, messageIdOf } from 'pm-core/application/dive-core/round-state.js';
+import { isImplementing, isInProgressTask } from 'pm-core/domain/status/Predicates.js';
+import type { SubtaskBudgetState, TaskRecord } from 'pm-core/protocol-domain.js';
+import { checkChainBudget, DEFAULT_CHAIN_BUDGET_LIMITS } from 'pm-core/application/internal/chain-budget.js';
 
 /**
  * 本插件**自发事件**的 cordis 事件表声明（纯类型，零运行时）。

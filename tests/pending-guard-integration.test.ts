@@ -27,11 +27,11 @@ import { SessionProbeAdapter } from 'src/adapters/SessionProbeAdapter.js'
 import { RandomIdFactory } from 'src/adapters/RandomIdFactory.js'
 import { UserQuestionsAdapter } from 'src/adapters/UserQuestionsAdapter.js'
 import { PendingConfirmRegistry } from 'src/adapters/PendingConfirmRegistry.js'
-import { defineAskConfirmTool } from 'tool-pmboard/index.js'
-import { livePendingConfirm, pendingConfirmFactsOf, targetConfirmedInLedger } from 'pmboard-core/application/internal/pending-guard.js'
-import { defineStatusTool } from 'tool-pmboard/index.js'
-import type { UseCaseDeps } from 'pmboard-core/application/ports.js'
-import type { RequirementRecord, StageArtifact } from 'pmboard-core/protocol-domain.js'
+import { defineAskConfirmTool } from 'tool-pm/index.js'
+import { livePendingConfirm, pendingConfirmFactsOf, targetConfirmedInLedger } from 'pm-core/application/internal/pending-guard.js'
+import { defineStatusTool } from 'tool-pm/index.js'
+import type { UseCaseDeps } from 'pm-core/application/ports.js'
+import type { RequirementRecord, StageArtifact } from 'pm-core/protocol-domain.js'
 
 /**
  * FR-2（REQ-261007220012-bd29）：取回执路径并入 ask_confirm(ticket)——

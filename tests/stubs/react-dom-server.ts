@@ -5,7 +5,7 @@
  *
  * 与 `tests/stubs/react.ts` 同因：本包把 react 声明为 **external**（运行时由 DSH web shell
  * 的 module-loader seed 提供），node_modules 里**没有 react、也没有 react-dom**——
- * `packages/pmboard-client/tests/host-panel.test.ts` 的 `import { renderToStaticMarkup } from 'react-dom/server'`
+ * `pm/pm-client/tests/host-panel.test.ts` 的 `import { renderToStaticMarkup } from 'react-dom/server'`
  * 会以「Cannot find module / Failed to load url」整文件失败。
  *
  * ## 局限（**必须知道，不要当成真 react-dom**）

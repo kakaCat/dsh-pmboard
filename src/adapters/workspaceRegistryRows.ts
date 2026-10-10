@@ -13,7 +13,7 @@
  *
  * @module dsh-pmboard/adapters/workspaceRegistryRows
  */
-import type { ProjectEntry } from 'pmboard-core/application/ports.js'
+import type { ProjectEntry } from 'pm-core/application/ports.js'
 
 /** 把注册表原始行归一为项目条目；入参不是数组时由调用方处理（本函数只吃数组）。 */
 export function toProjectEntries(rows: readonly unknown[]): ProjectEntry[] {

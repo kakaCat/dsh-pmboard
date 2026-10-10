@@ -83,14 +83,14 @@ const DRILLS: readonly Drill[] = [
   {
     id: 'drill-code-matrix',
     what: '让 NO_UI 的触发条件不再触发（把「无弹框通道」换成「有弹框通道」）',
-    target: 'packages/pmboard-core/tests/error-code-matrix.test.ts',
+    target: 'pm/pm-core/tests/error-code-matrix.test.ts',
     breakIt: src => {
       const from = 'const adapter = new UserQuestionsAdapter(() => undefined)'
       const to = 'const adapter = new UserQuestionsAdapter(() => ({ ask: async () => ({ answers: [] }) }))'
       if (!src.includes(from)) throw new Error('定位失败：找不到 NO_UI 的触发点原文——本演练需随实现同步')
       return src.replace(from, to)
     },
-    run: ['npx', 'vitest', 'run', 'packages/pmboard-core/tests/error-code-matrix.test.ts'],
+    run: ['npx', 'vitest', 'run', 'pm/pm-core/tests/error-code-matrix.test.ts'],
     expectOutput: ['REQBOARD_NO_UI'],
   },
   {

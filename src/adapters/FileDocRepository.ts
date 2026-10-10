@@ -13,7 +13,7 @@
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join } from 'node:path'
-import type { DocEntry, DocRepository } from 'pmboard-core/application/ports.js'
+import type { DocEntry, DocRepository } from 'pm-core/application/ports.js'
 
 export interface FileDocRepositoryOptions {
   /** 工作区根（默认 process.cwd()）。 */

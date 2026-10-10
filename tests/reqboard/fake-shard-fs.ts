@@ -1,20 +1,20 @@
 /**
  * 测试共享件 · 假分片文件系统（REQ-261002161439-277d · t3/t4）。
  *
- * 为什么抽出来共享：`packages/pmboard-core/tests/shard-repository.test.ts`（仓储的失败路径）与
- * `packages/pmboard-core/tests/store-contract.test.ts`（Store 的读契约）都需要一个能**注入故障**、
+ * 为什么抽出来共享：`pm/pm-core/tests/shard-repository.test.ts`（仓储的失败路径）与
+ * `pm/pm-core/tests/store-contract.test.ts`（Store 的读契约）都需要一个能**注入故障**、
  * 并能**统计读写字节**的假 fs。两份手写必然漂移，而这类漂移的症状是"一个测试绿、另一个红"
  * ——正是本仓反复强调要避免的"第二实现"。
  *
  * 探针（`reads` / `readBytes` / `writes` / `readdirs`）直接服务卡上 A2：
  * 「`getSummary` 与 `listSummaries` 的 readFile 调用为 0、读入字节为 0」。
  */
-import type { AtomicFileHandle } from 'pmboard-core/repositories/atomicWrite.js'
-import type { RequirementShardRepository, ShardDirEntry, ShardFs } from 'pmboard-core/repositories/RequirementShardRepository.js'
-import { encodeJournalLine, toCommentLine, toStatusLine, toAdvanceLine } from 'pmboard-core/domain/requirement/Journal.js'
-import { isColdStatus } from 'pmboard-common/requirement/ReqboardPaths.js'
-import type { AdvanceRecord, CommentRecord, RequirementRecord, StatusEvent } from 'pmboard-core/protocol-domain.js'
-import type { RequirementCounts } from 'pmboard-core/application/ports.js'
+import type { AtomicFileHandle } from 'pm-core/repositories/atomicWrite.js'
+import type { RequirementShardRepository, ShardDirEntry, ShardFs } from 'pm-core/repositories/RequirementShardRepository.js'
+import { encodeJournalLine, toCommentLine, toStatusLine, toAdvanceLine } from 'pm-core/domain/requirement/Journal.js'
+import { isColdStatus } from 'pm-common/requirement/ReqboardPaths.js'
+import type { AdvanceRecord, CommentRecord, RequirementRecord, StatusEvent } from 'pm-core/protocol-domain.js'
+import type { RequirementCounts } from 'pm-core/application/ports.js'
 
 /** 一条分片的种子描述。 */
 export interface ShardSeed {

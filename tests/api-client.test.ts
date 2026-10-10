@@ -27,7 +27,7 @@ afterEach(() => {
 describe('client api unwrap（真实 Promise<Response> 语义）', () => {
   it('fetchState 解析成功响应', async () => {
     mockFetchOnce(200, { success: true, data: { revision: 1, requirements: [], tasks: [], ready: {} } })
-    const { fetchState } = await import('pmboard-client/api.js')
+    const { fetchState } = await import('pm-client/api.js')
     const state = await fetchState()
     expect(state.revision).toBe(1)
     expect(Array.isArray(state.requirements)).toBe(true)
@@ -35,13 +35,13 @@ describe('client api unwrap（真实 Promise<Response> 语义）', () => {
 
   it('HTTP 非 200 抛出 HTTP <status>（而非 HTTP undefined）', async () => {
     mockFetchOnce(503, { success: false })
-    const { fetchState } = await import('pmboard-client/api.js')
+    const { fetchState } = await import('pm-client/api.js')
     await expect(fetchState()).rejects.toThrow('HTTP 503')
   })
 
   it('success=false 抛出后端 error 文案', async () => {
     mockFetchOnce(200, { success: false, error: '看板未就绪' })
-    const { fetchState } = await import('pmboard-client/api.js')
+    const { fetchState } = await import('pm-client/api.js')
     await expect(fetchState()).rejects.toThrow('看板未就绪')
   })
 })
@@ -63,7 +63,7 @@ describe('client api 非 2xx 错误体透出（REQ-261003191948-e94a t5）', () 
       code: 'REQBOARD_REQUIRES_MIGRATION',
       hint,
     })
-    const { fetchState, ApiError } = await import('pmboard-client/api.js')
+    const { fetchState, ApiError } = await import('pm-client/api.js')
     const err = await fetchState().then(() => undefined, (e: unknown) => e)
 
     expect(err).toBeInstanceOf(ApiError)
@@ -76,7 +76,7 @@ describe('client api 非 2xx 错误体透出（REQ-261003191948-e94a t5）', () 
 
   it('503 且服务端没给 error → 退回 HTTP <status>，不编原因（A4 反向）', async () => {
     mockFetchOnce(503, { success: false })
-    const { fetchState } = await import('pmboard-client/api.js')
+    const { fetchState } = await import('pm-client/api.js')
     const err = await fetchState().then(() => undefined, (e: unknown) => e)
     expect((err as Error).message).toBe('HTTP 503')
     expect((err as { hint?: string }).hint).toBeUndefined()
@@ -86,7 +86,7 @@ describe('client api 非 2xx 错误体透出（REQ-261003191948-e94a t5）', () 
     vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve(new Response('dsh web authentication required', { status: 401 })),
     ))
-    const { fetchState } = await import('pmboard-client/api.js')
+    const { fetchState } = await import('pm-client/api.js')
     const err = await fetchState().then(() => undefined, (e: unknown) => e)
     expect((err as Error).message).toBe('HTTP 401')
     expect((err as { hint?: string }).hint).toBeUndefined()
@@ -98,7 +98,7 @@ describe('client api 非 2xx 错误体透出（REQ-261003191948-e94a t5）', () 
  */
 describe('buildError 渲染可复制命令（REQ-261003191948-e94a t6）', () => {
   it('有 hint → 同时渲染原因与命令；无 hint → 不出现命令块（旧调用点逐字节不变）', async () => {
-    const { buildError } = await import('pmboard-client/render/dom-utils.js')
+    const { buildError } = await import('pm-client/render/dom-utils.js')
     const hint = 'node --import tsx/esm scripts/migrate-ledger-v10.ts --file /tmp/a.json --out /tmp/reqboard --apply'
     const withHint = buildError('检测到 legacy 单册，数据根尚未迁移', hint)
     expect(withHint).toContain('检测到 legacy 单册')
@@ -113,7 +113,7 @@ describe('buildError 渲染可复制命令（REQ-261003191948-e94a t6）', () =>
   })
 
   it('message 与 hint 都被转义（hint 含用户主目录，不转义会破 HTML）', async () => {
-    const { buildError } = await import('pmboard-client/render/dom-utils.js')
+    const { buildError } = await import('pm-client/render/dom-utils.js')
     const html = buildError('<b>坏</b>', 'node x.js --file /tmp/<a>&b --apply')
     expect(html).not.toContain('<b>坏</b>')
     expect(html).toContain('&lt;b&gt;')

@@ -11,7 +11,7 @@
  *
  * 本模块给这条**死路径**补一个兼容入口：把它送回应用根，并把**片段原样保留**
  * ——`req` 只存在于 `location.hash` 里，HTTP 请求根本看不到它，所以「保留定位」这件事
- * 只能由客户端脚本完成（见 `packages/pmboard-client/src/deep-link.ts` 消费端）。
+ * 只能由客户端脚本完成（见 `pm/pm-client/src/deep-link.ts` 消费端）。
  *
  * ## 为什么是 200 中转页而不是 302
  *

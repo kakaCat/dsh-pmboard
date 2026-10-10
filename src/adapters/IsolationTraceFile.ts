@@ -9,13 +9,13 @@
  * @module dsh-pmboard/adapters/IsolationTraceFile
  */
 import { readFile } from 'node:fs/promises'
-import { persistAtomic } from 'pmboard-core/repositories/atomicWrite.js'
-import { fmt } from 'pmboard-core/domain/text/fmt.js'
-import { appendToIsolationTrace, isIsolationTraceEntry } from 'pmboard-core/application/internal/isolation-trace.js'
+import { persistAtomic } from 'pm-core/repositories/atomicWrite.js'
+import { fmt } from 'pm-core/domain/text/fmt.js'
+import { appendToIsolationTrace, isIsolationTraceEntry } from 'pm-core/application/internal/isolation-trace.js'
 import type {
   IsolationTraceEntry,
   IsolationTracePort,
-} from 'pmboard-core/application/use-cases/IsolateNodeContext.js'
+} from 'pm-core/application/use-cases/IsolateNodeContext.js'
 
 export class IsolationTraceFile implements IsolationTracePort {
   private readonly file: string

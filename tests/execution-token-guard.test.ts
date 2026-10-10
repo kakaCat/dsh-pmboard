@@ -24,7 +24,7 @@ import ts from 'typescript'
 const PKG_ROOT = REPO_ROOT
 const SRC = join(PKG_ROOT, 'src')
 /** 十九包重构后 application 搬进 core：扫描面 = 根包 src + core 的 src。 */
-const CORE_SRC = join(PKG_ROOT, 'packages', 'pmboard-core', 'src')
+const CORE_SRC = join(PKG_ROOT, 'pm', 'pm-core', 'src')
 /** 唯一收敛点：只有本文件允许 push 执行记录 / 写 tokenUsage。 */
 const CONVERGENCE = join(CORE_SRC, 'application', 'internal', 'token-usage.ts')
 

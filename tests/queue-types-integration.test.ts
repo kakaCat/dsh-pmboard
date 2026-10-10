@@ -5,8 +5,8 @@
  * 队列任务能不能真正接到既有的读方接口上，而不是纸面同构。
  *
  * 联调对象（既有真实接口，非本卡自造的 mock）：
- * - `readyTasks(tasks: readonly TaskRecord[], requirementId)`  ← packages/pmboard-core/src/protocol-domain.ts:1393
- * - `assertDagAcyclic(tasks, requirementId)`                   ← packages/pmboard-core/src/protocol-domain.ts:1360
+ * - `readyTasks(tasks: readonly TaskRecord[], requirementId)`  ← pm/pm-core/src/protocol-domain.ts:1393
+ * - `assertDagAcyclic(tasks, requirementId)`                   ← pm/pm-core/src/protocol-domain.ts:1360
  *
  * 验收口径「给出请求样例与期望响应，实际返回与预期一致」在本文件中的落法：
  * - 请求样例 = buildQueueFile() 产出的 QueueFile（3 任务链 a→b→c）
@@ -15,10 +15,10 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { QUEUE_VERSION } from 'pmboard-core/domain/queue/QueueTypes.js'
-import type { QueueFile, QueueTask } from 'pmboard-core/domain/queue/QueueTypes.js'
-import { assertDagAcyclic, readyTasks } from 'pmboard-core/protocol-domain.js'
-import type { TaskRecord, TaskStatus } from 'pmboard-core/protocol-domain.js'
+import { QUEUE_VERSION } from 'pm-core/domain/queue/QueueTypes.js'
+import type { QueueFile, QueueTask } from 'pm-core/domain/queue/QueueTypes.js'
+import { assertDagAcyclic, readyTasks } from 'pm-core/protocol-domain.js'
+import type { TaskRecord, TaskStatus } from 'pm-core/protocol-domain.js'
 
 const REQ = 'REQ-260927202051-f6df'
 

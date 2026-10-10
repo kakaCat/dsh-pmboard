@@ -12,8 +12,8 @@
  *     （耗时毫秒级 << 30s），证明写档不会掐断线上链；只有内存/嵌入调用的同步兼容路径可能长跑。
  */
 import { describe, expect, it } from 'vitest'
-import { defineTaskRunTool, defineStatusTool, defineTaskTreeTool } from 'tool-pmboard/index.js'
-import { LIMITS } from 'pmboard-common/limits.js'
+import { defineTaskRunTool, defineStatusTool, defineTaskTreeTool } from 'tool-pm/index.js'
+import { LIMITS } from 'pm-common/limits.js'
 import { makeHarness, req, task } from 'tests/application/harness.js'
 
 const W = 'session-w-001'

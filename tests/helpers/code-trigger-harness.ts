@@ -144,7 +144,7 @@ export function defineCodeTriggers(specs: readonly TriggerSpec[]): void {
       expect(
         uncovered.length,
         '仍有 ' + String(uncovered.length) + ' 个码零覆盖（上限 ' + String(MAX_UNCOVERED) + '）：'
-          + uncovered.join('、') + '。补齐：在 packages/pmboard-core/tests/error-code-matrix.test.ts 增加 TriggerSpec，'
+          + uncovered.join('、') + '。补齐：在 pm/pm-core/tests/error-code-matrix.test.ts 增加 TriggerSpec，'
           + '确实不可触发的登记进 tests/fixtures/error-code-exempt.json',
       ).toBeLessThanOrEqual(MAX_UNCOVERED)
     })

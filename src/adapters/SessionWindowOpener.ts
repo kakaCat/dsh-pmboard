@@ -27,10 +27,10 @@ import type {
   WindowModelSelection,
   WindowOpenerPort,
   WindowSourceProfile,
-} from 'pmboard-core/application/ports.js'
-import { projectIdOfWindow } from 'pmboard-core/application/internal/project-identity.js'
-import { windowProfileFromProjectionValues } from 'pmboard-core/application/internal/window-inherit.js'
-import { fmt } from 'pmboard-core/domain/text/fmt.js'
+} from 'pm-core/application/ports.js'
+import { projectIdOfWindow } from 'pm-core/application/internal/project-identity.js'
+import { windowProfileFromProjectionValues } from 'pm-core/application/internal/window-inherit.js'
+import { fmt } from 'pm-core/domain/text/fmt.js'
 import { toProjectEntries } from './workspaceRegistryRows.js'
 
 /** 只取我们真正要用的能力（结构类型：DSH 服务对象的其余成员与本题无关）。 */

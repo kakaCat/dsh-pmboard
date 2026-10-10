@@ -99,7 +99,7 @@ const BOOTSTRAP_TIERS: Readonly<Record<string, Tier>> = {
  */
 function heuristicTier(form: CodeForm, file: string): Tier {
   if (form === 'config-assembly') return 'direct'
-  if (file.startsWith('src/adapters/') || file.startsWith('packages/pmboard-core/src/repositories/')) return 'fault'
+  if (file.startsWith('src/adapters/') || file.startsWith('pm/pm-core/src/repositories/')) return 'fault'
   if (form === 'store-coded' || form === 'client-error') return 'fault'
   return 'fixture'
 }

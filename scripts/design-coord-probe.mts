@@ -4,11 +4,11 @@
  *
  * 解决什么问题：设计文档（`docs/requirements/<REQ>/design/*.md`）是拆分与实施的坐标。它一旦与仓库
  * 真实布局脱钩，后果是**静默**的——两个方向都实测到过：
- *   ① 点名的路径**不存在**：`design/interfaces.md` 写 `packages/pmboard-core/src/domain/queue/normalizeQueueFile.ts`
+ *   ① 点名的路径**不存在**：`design/interfaces.md` 写 `pm/pm-core/src/domain/queue/normalizeQueueFile.ts`
  *      （真实是 `normalizeQueue.ts`，`normalizeQueueFile` 只是该文件里的函数名），另有全仓不存在的
  *      符号 `computeTestingCoverage` / `calculateImplementationCoverage`。拆分阶段照抄就会拆到空气上。
  *   ② 实现期**新增/改名**的落点不进设计：某需求设计五处明写「不新建模块」，实现却新建了
- *      `packages/pmboard-core/src/application/query/live-artifacts.ts`，全部设计文档零处提及——**下一个读设计的人**拿到的是
+ *      `pm/pm-core/src/application/query/live-artifacts.ts`，全部设计文档零处提及——**下一个读设计的人**拿到的是
  *      一份已经不成立的坐标（「模块改动地图」缺这一行）。
  *
  * 与既有探针的分工（不重叠）：
@@ -42,7 +42,7 @@
  *
  * 两个脚本的**语料不同**，所以「合法但不存在」的形态也不同，白名单必须各自可审计：
  *   · 提示词片段是**注入给人/agent 的指令**，里面写的是「该产物将来在哪」（`prototypes/INDEX.md`）；
- *   · 设计文档是**工程方案**，里面写的是 glob（`src/**`）、花括号并列简写（`packages/pmboard-client/src/views/{timeline`）、
+ *   · 设计文档是**工程方案**，里面写的是 glob（`src/**`）、花括号并列简写（`pm/pm-client/src/views/{timeline`）、
  *     占位段（`tests/<文件>.test.ts`）、跨需求产物（`docs/requirements` 下队列文件的通配写法）、需求相对的原型名
  *     （`prototypes/x.html#FR-1`）——这些在提示词片段里几乎不出现，反之亦然。
  * 共享一份白名单会让两边都不敢改（改一边就红另一边），所以**各持一份**，形状同款（`{match, reason}`）、
@@ -60,7 +60,7 @@
  *   · 只判「坐标能不能落地、落点有没有回写」，不判内容对不对（那是 req-doc-validate / 模板门禁的事）。
  *   · 回写判据只覆盖**源码类落点**（见硬 2 的边界说明）；其余落点只登记条数（`excludedTestPaths`）。
  *   · 存量需求**不追溯**：既有 design/*.md 里本来就有一批失效坐标（历史改名/迁移留下的），本探针会照实
- *     点数——所以它**不进「提交前必须跑」清单**（见 `packages/pmboard-common/src/knowledge/operations.ts` 的 EXCLUDED），
+ *     点数——所以它**不进「提交前必须跑」清单**（见 `pm/pm-common/src/knowledge/operations.ts` 的 EXCLUDED），
  *     只在改动/复核某个需求时按 `--req` 手动跑。
  *
  * ## 退出码（与全仓一致）
@@ -96,7 +96,7 @@ const DEFAULT_SYMBOLS = 'docs/knowledge/code-map.symbols.tsv'
  */
 const REQ_ID_RE = /^REQ-[0-9A-Za-z-]+$/
 
-/** 汇报里的「改动文件」小节标题（`packages/pmboard-core/src/application/use-cases/ReportTask.ts:130` 写出的形态）。 */
+/** 汇报里的「改动文件」小节标题（`pm/pm-core/src/application/use-cases/ReportTask.ts:130` 写出的形态）。 */
 const FILES_CHANGED_HEADING_RE = /^###\s*改动文件\s*$/
 const ANY_HEADING_RE = /^#{1,6}\s/
 /**
@@ -128,7 +128,7 @@ const SCAN_ROOTS = [
   'tests',
   'vendor',
   'skills',
-  'packages',
+  'pm',
 ] as const
 
 export interface WhitelistRule {
@@ -184,11 +184,11 @@ export const WHITELIST: readonly WhitelistRule[] = [
   },
   {
     // 花括号是「同一目录下多个文件」的并列简写：
-    //   `packages/pmboard-core/src/application/query/{QueryStageDetail,QueryDag}.ts`、`packages/pmboard-client/src/views/{timeline,panels/dag}.ts`。
+    //   `pm/pm-core/src/application/query/{QueryStageDetail,QueryDag}.ts`、`pm/pm-client/src/views/{timeline,panels/dag}.ts`。
     // 抽取正则在合法的路径字符集里跑，所以整串会带上 `{…}.ts`；它不是一个路径，故登记。
     // 目录前缀是否存在由**软观测**另外提示（见 classifyPaths 的 brace-dir 观测）。
     match: /^[A-Za-z0-9_./-]*\/\{[A-Za-z0-9_.,/}-]*(?:\.[A-Za-z0-9]+)?$/,
-    reason: '花括号并列简写（packages/pmboard-core/src/application/query/{QueryStageDetail,QueryDag}.ts、packages/pmboard-client/src/views/{timeline,panels/dag}.ts）不是单个路径；目录前缀可达性由本脚本的软观测另行提示',
+    reason: '花括号并列简写（pm/pm-core/src/application/query/{QueryStageDetail,QueryDag}.ts、pm/pm-client/src/views/{timeline,panels/dag}.ts）不是单个路径；目录前缀可达性由本脚本的软观测另行提示',
   },
   {
     // 长路径里的省略写法：`vendor/.../accepting-generator.ts`（中间目录略去）。
@@ -196,7 +196,7 @@ export const WHITELIST: readonly WhitelistRule[] = [
     reason: '省略中间目录的简写（vendor/.../accepting-generator.ts）：设计文档用它在长路径里省字，静态无法还原成具体路径',
   },
   {
-    // 占位段：`tests/<文件>.test.ts`、`prototypes/<name>.html`、`packages/tool-pmboard/src/<ToolName>/index.ts`。
+    // 占位段：`tests/<文件>.test.ts`、`prototypes/<name>.html`、`pm/tool-pm/src/<ToolName>/index.ts`。
     // `<` 之后一律算占位内容（含中文：抽取正则在非 ASCII 处截断，真实语料里常见 `tests/<` 这种残形）。
     match: /^[A-Za-z0-9_./-]+<[^\s`]*$/,
     reason: '带占位段的写法（tests/<文件>.test.ts、prototypes/<name>.html）：占位段由需求自己填充，静态无法判定；这不是「指针指歪」而是「还没写」',
@@ -262,8 +262,8 @@ export interface ChangedPath {
 /**
  * 判回写的**落点前缀**：只有产品/源码类落点要求回写「模块改动地图」。
  *
- * 为什么是这四个前缀：模块改动地图（`packages/pmboard-templates/templates/design/architecture.md:18`）的粒度就是产品模块；
- * `tests/`（测试文件）、`docs/`（需求/知识层产物）、`packages/pmboard-templates/templates/`、`prototypes/` 这类落点各有自己的
+ * 为什么是这四个前缀：模块改动地图（`pm/pm-templates/templates/design/architecture.md:18`）的粒度就是产品模块；
+ * `tests/`（测试文件）、`docs/`（需求/知识层产物）、`pm/pm-templates/templates/`、`prototypes/` 这类落点各有自己的
  * 表达位置（测试在 `design/test-cases.md` 的「实际文件」列与任务卡），要求它们也进模块表 =
  * 逼人把机器生成的测试名手抄一遍。`vendor/` 是外部依赖（进白名单口径），也不判。
  */
@@ -271,9 +271,9 @@ export const SOURCE_LANDING_PREFIXES = ['src/', 'scripts/', 'packages/', 'lib/']
 
 /**
  * 资产包（t19 起各自成包）**不算源码类落点**——它们虽在 `packages/` 下，但语义是「资产」而非「源码模块」：
- * `packages/pmboard-packages/pmboard-templates/templates/packages/pmboard-templates/templates/x.md` 与搬迁前的 `packages/pmboard-templates/templates/x.md` 是同一种东西。
+ * `pm/pm-pm/pm-templates/templates/pm/pm-templates/templates/x.md` 与搬迁前的 `pm/pm-templates/templates/x.md` 是同一种东西。
  */
-const ASSET_PKG_PREFIXES = ['packages/pmboard-packages/pmboard-templates/templates/', 'packages/pmboard-packages/pmboard-skills/skills/', 'packages/pmboard-packages/pmboard-eval-suite/eval-suite/'] as const
+const ASSET_PKG_PREFIXES = ['pm/pm-pm/pm-templates/templates/', 'pm/pm-pm/pm-skills/skills/', 'pm/pm-pm/pm-eval-suite/eval-suite/'] as const
 
 /** 该落点是否属「源码类」（要求回写模块改动地图）。 */
 export function isSourceLanding(path: string): boolean {
@@ -295,7 +295,7 @@ export interface ScanResult {
 }
 
 /** 修复锚点（硬 2 的文案，逐字给出可执行落点）。 */
-const WRITEBACK_FIX = '在 design/architecture.md 的「模块改动地图」节（模板 packages/pmboard-templates/templates/design/architecture.md:18，表头 模块/文件 | 类型 | 改动内容 | 原因（serves哪条FR） | 影响范围）补一行'
+const WRITEBACK_FIX = '在 design/architecture.md 的「模块改动地图」节（模板 pm/pm-templates/templates/design/architecture.md:18，表头 模块/文件 | 类型 | 改动内容 | 原因（serves哪条FR） | 影响范围）补一行'
 const PATH_FIX = '把坐标改成真实路径（或在 scripts/design-coord-probe.mts 的 WHITELIST 登记并写清理由）'
 
 /* ── 参数 ─────────────────────────────────────────────────────────────────── */
@@ -629,7 +629,7 @@ export interface Report {
     readonly writeback: { readonly ok: boolean; readonly objects: number; readonly gaps: number }
   }
   /**
-   * 被回写判据**排除**的非源码类落点条数（`tests/`、`docs/`、`packages/pmboard-templates/templates/`…）。
+   * 被回写判据**排除**的非源码类落点条数（`tests/`、`docs/`、`pm/pm-templates/templates/`…）。
    * 单列出来是为了「少判了」可见：判据只覆盖源码类落点（口径见文件头硬 2），
    * 但排除本身要留痕，免得读者以为通篇判过。
    */
@@ -809,7 +809,7 @@ export function runSpecimen(): { cases: SpecimenCase[]; exitCode: 0 | 1; root: s
       write(tree, 'tests/real/a.test.ts', '// 标本测试占位\n')
     }
 
-    const BRACE_OK = 'packages/pmboard-core/src/application/query/{QueryStageDetail'
+    const BRACE_OK = 'pm/pm-core/src/application/query/{QueryStageDetail'
 
     const scanTree = (tree: string): Report => {
       const root = join(tmp, tree)
@@ -823,18 +823,18 @@ export function runSpecimen(): { cases: SpecimenCase[]; exitCode: 0 | 1; root: s
     // ③/④ 用全绿树：路径都存在 + 源码类落点都被提到 + 一个测试落点（不服判据但登记条数）
     build('green', 'src/real/a.ts', ['src/real/a.ts', 'tests/real/a.test.ts'], BRACE_OK)
     // 花括号简写的目录前缀在盘上（否则会多出一条 brace-dir 软观测——那由 ⑤ 专门考）
-    mkdirSync(join(tmp, 'green/packages/pmboard-core/src/application/query'), { recursive: true })
+    mkdirSync(join(tmp, 'green/pm/pm-core/src/application/query'), { recursive: true })
     const green = scanTree('green')
 
     // ① 把设计里的路径改成不存在的 → 路径判据必须红并点名
     build('bad-path', 'src/nope/x.ts', ['src/real/a.ts'], BRACE_OK)
-    mkdirSync(join(tmp, 'bad-path/packages/pmboard-core/src/application/query'), { recursive: true })
+    mkdirSync(join(tmp, 'bad-path/pm/pm-core/src/application/query'), { recursive: true })
     const badPath = scanTree('bad-path')
 
     // ② 任务卡多报一个设计没提的落点（另带一个测试落点：它**不该**红，但仍要被登记）→ 回写判据红并点名
     build('bad-writeback', 'src/real/a.ts',
       ['src/real/a.ts', 'src/extra/new-module.ts', 'tests/real/a.test.ts'], BRACE_OK)
-    mkdirSync(join(tmp, 'bad-writeback/packages/pmboard-core/src/application/query'), { recursive: true })
+    mkdirSync(join(tmp, 'bad-writeback/pm/pm-core/src/application/query'), { recursive: true })
     const badWb = scanTree('bad-writeback')
 
     // ⑤ 花括号简写的目录前缀不在盘上 → 只出软观测

@@ -8,8 +8,8 @@
  * @module dsh-pmboard/adapters/InjectionLogFile
  */
 import { readFile } from 'node:fs/promises'
-import { persistAtomic } from 'pmboard-core/repositories/atomicWrite.js'
-import { fmt } from 'pmboard-core/domain/text/fmt.js'
+import { persistAtomic } from 'pm-core/repositories/atomicWrite.js'
+import { fmt } from 'pm-core/domain/text/fmt.js'
 import {
   appendToInjectionLog,
   isInjectionLogEntry,
@@ -17,7 +17,7 @@ import {
   type InjectionLogEntry,
   type InjectionLogInput,
   type InjectionLogPort,
-} from 'pmboard-core/application/internal/injection-log.js'
+} from 'pm-core/application/internal/injection-log.js'
 
 export class InjectionLogFile implements InjectionLogPort {
   private readonly file: string

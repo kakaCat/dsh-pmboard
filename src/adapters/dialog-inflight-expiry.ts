@@ -13,7 +13,7 @@
  *
  * @module dsh-pmboard/adapters/dialog-inflight-expiry
  */
-import type { DialogInFlightRecord } from 'pmboard-core/application/ports.js'
+import type { DialogInFlightRecord } from 'pm-core/application/ports.js'
 
 /** 两档 TTL（毫秒）：挂起型 / 阻塞型。 */
 export interface InFlightTtl {

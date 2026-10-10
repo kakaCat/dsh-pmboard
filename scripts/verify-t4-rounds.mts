@@ -1,7 +1,7 @@
 // REQ-f6307c T4 连续测试：3 窗口 × 3 消息，验证 100% 首调提示注入
 // 2026-09-26 对齐 dsh-goal-round-driver：采集走 user/message，驱动走 agent/status=idle。
 import { createDiveSessionDriver } from '../src/application/dive/session-driver.js'
-import { captureSectionText } from 'pmboard-core/application/internal/capture-section.js'
+import { captureSectionText } from 'pm-core/application/internal/capture-section.js'
 import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
 
 const LEDGER = '/Users/yunpeng/pi-investment/agent-dh/.dsh-data/dsh-reqboard.json'

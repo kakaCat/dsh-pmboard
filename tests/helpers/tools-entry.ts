@@ -6,4 +6,4 @@
  *
  * @module tests/helpers/tools-entry
  */
-export * from 'tool-pmboard/index.js'
+export * from 'tool-pm/index.js'

@@ -14,8 +14,8 @@
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { KB_PATHS, KB_PAGE_PATHS } from 'pmboard-common/knowledge/types.js'
-import { renderIndexLine } from 'pmboard-core/domain/knowledge/index-line.ts'
+import { KB_PATHS, KB_PAGE_PATHS } from 'pm-common/knowledge/types.js'
+import { renderIndexLine } from 'pm-core/domain/knowledge/index-line.ts'
 import {
   buildCoverage,
   entryToIndexRow,
@@ -26,7 +26,7 @@ import {
   renderEntrySkeleton,
   type CoverageItem,
   type OperationEntry,
-} from 'pmboard-common/knowledge/operations.js'
+} from 'pm-common/knowledge/operations.js'
 
 const ROOT = process.cwd()
 const CONVENTIONS = join(ROOT, KB_PAGE_PATHS.conventions)

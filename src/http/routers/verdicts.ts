@@ -14,7 +14,7 @@
  *
  * @module dsh-pmboard/http/routers/Verdicts
  */
-import { mutateIfPresent } from 'pmboard-core/application/use-cases/queue-access.js'
+import { mutateIfPresent } from 'pm-core/application/use-cases/queue-access.js'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   assertReqTransition,
@@ -22,17 +22,17 @@ import {
   type RequirementRecord,
   type ReqboardLedger,
   type TaskRecord,
-} from 'pmboard-core/protocol-domain.js'
+} from 'pm-core/protocol-domain.js'
 import {
   countFailedItems, countPassedItems, countPendingItems, isAccepting, isAcceptingStage,
   isDecidableItemStatus, isFailedItem, isUnverifiedItem, isVerifiableStage,
-} from 'pmboard-core/domain/status/Predicates.js'
-import { ACCEPTED_REQ_STATUS, REWORK_REQ_STATUS } from 'pmboard-core/domain/requirement/RequirementStatus.js'
-import { isFullyDecided } from 'pmboard-core/domain/workflow/AcceptanceSheetSpec.js'
-import { unverifiedAdviceOf, unverifiedSummaryOf } from 'pmboard-core/domain/workflow/VerdictNotices.js'
-import { applyVerdicts, materializeReworkFromSheet } from 'pmboard-core/application/internal/verdicts.js'
-import { transitionRequirement } from 'pmboard-core/application/internal/token-usage.js'
-import { rewriteVerificationDoc } from 'pmboard-core/application/internal/verification-doc-writer.js'
+} from 'pm-core/domain/status/Predicates.js'
+import { ACCEPTED_REQ_STATUS, REWORK_REQ_STATUS } from 'pm-core/domain/requirement/RequirementStatus.js'
+import { isFullyDecided } from 'pm-core/domain/workflow/AcceptanceSheetSpec.js'
+import { unverifiedAdviceOf, unverifiedSummaryOf } from 'pm-core/domain/workflow/VerdictNotices.js'
+import { applyVerdicts, materializeReworkFromSheet } from 'pm-core/application/internal/verdicts.js'
+import { transitionRequirement } from 'pm-core/application/internal/token-usage.js'
+import { rewriteVerificationDoc } from 'pm-core/application/internal/verification-doc-writer.js'
 import type { RouterCtx } from './shared.js'
 
 export function createVerdictsRouter(ctx: RouterCtx) {

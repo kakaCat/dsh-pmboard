@@ -49,13 +49,13 @@ export const CATEGORIES = ['feature', 'bug', 'doc', 'refactor', 'spike', 'chore'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 export const PKG_ROOT = join(HERE, '..')
-export const FRAGMENTS_DIR = join(PKG_ROOT, 'packages/pmboard-core/src/domain/prompt/fragments')
-export const GENERATED_FILE = join(PKG_ROOT, 'packages/pmboard-common/src/prompt/generated/fragments.ts')
-export const GENERATED_REL = 'packages/pmboard-common/src/prompt/generated/fragments.ts'
+export const FRAGMENTS_DIR = join(PKG_ROOT, 'pm/pm-core/src/domain/prompt/fragments')
+export const GENERATED_FILE = join(PKG_ROOT, 'pm/pm-common/src/prompt/generated/fragments.ts')
+export const GENERATED_REL = 'pm/pm-common/src/prompt/generated/fragments.ts'
 /** 类型档落点（REQ-261009174713-7bc8 t11 二期）：每类一份，随类型包走。 */
-export const TYPE_FRAGMENTS_FILE = (cat) => join(PKG_ROOT, 'packages/pmboard-type-' + cat + '/src/fragments.ts')
-export const TYPE_FRAGMENTS_REL = (cat) => 'packages/pmboard-type-' + cat + '/src/fragments.ts'
-export const VENDOR_DIR = join(PKG_ROOT, 'packages/pmboard-core/src/domain/prompt/vendor/superpowers')
+export const TYPE_FRAGMENTS_FILE = (cat) => join(PKG_ROOT, 'pm/pm-type-' + cat + '/src/fragments.ts')
+export const TYPE_FRAGMENTS_REL = (cat) => 'pm/pm-type-' + cat + '/src/fragments.ts'
+export const VENDOR_DIR = join(PKG_ROOT, 'pm/pm-core/src/domain/prompt/vendor/superpowers')
 
 /**
  * 节点 → heavy 主 skill（vendor 原文来源）。decomposing 故意缺席：
@@ -278,7 +278,7 @@ export function buildTypeFragmentsSource(category) {
   lines.push(' * 由 `scripts/inline-prompt-fragments.mjs` 从 fragments/**.md 生成（REQ-261009174713-7bc8 t11 二期）：')
   lines.push(' * 类型档随类型包走，core 经装配端口取用（core 不认识具体类型包）。')
   lines.push(' */')
-  lines.push("import type { GeneratedFragment } from 'pmboard-common/prompt/generated/fragments.js'")
+  lines.push("import type { GeneratedFragment } from 'pm-common/prompt/generated/fragments.js'")
   lines.push('')
   lines.push('export const FRAGMENTS: readonly GeneratedFragment[] = [')
   for (const r of records) {

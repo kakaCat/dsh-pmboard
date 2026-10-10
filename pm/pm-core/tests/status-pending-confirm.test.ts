@@ -1,0 +1,138 @@
+// serves: FR-4
+/**
+ * reqboard_status.pending_confirms 投影（REQ-260927123256-196b t3 · serves: FR-4 / I-2）。
+ *
+ * 锁三件事：
+ *   · 有挂起 → 列出该 ticket，且 blocked_tools / recovery 与守卫同源；
+ *   · 无挂起 → 空数组（不 omit，形状稳定）；
+ *   · 台账已落章（人走看板/证据通道作答）→ 陈旧记录不列（否则守卫死锁，TC-9）。
+ */
+import { makeTestStore } from 'tests/application/harness.js'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from 'src/adapters/FileHostFs.js'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { FileDocRepository } from 'src/adapters/FileDocRepository.js'
+import { SessionProbeAdapter } from 'src/adapters/SessionProbeAdapter.js'
+import { RandomIdFactory } from 'src/adapters/RandomIdFactory.js'
+import { UserQuestionsAdapter } from 'src/adapters/UserQuestionsAdapter.js'
+import { PendingConfirmRegistry } from 'src/adapters/PendingConfirmRegistry.js'
+import { defineStatusTool } from 'tool-pm/index.js'
+import type { UseCaseDeps } from 'pm-core/application/ports.js'
+import type { RequirementRecord, StageArtifact } from 'pm-core/protocol-domain.js'
+
+const W = 'session-status-pending-001'
+let dir: string
+let store: ReturnType<typeof makeTestStore>
+
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), 'pmboard-status-pending-'))
+  store = makeTestStore()
+})
+afterEach(() => { rmSync(dir, { recursive: true, force: true }) })
+
+function makeDeps(): UseCaseDeps & { pendingConfirms: PendingConfirmRegistry } {
+  const now = (): number => Date.now()
+  return {
+    store: store,
+    docs: new FileDocRepository({ workspaceRoot: dir }),
+    // REQ-261008020617-088f RF-3：hostFs 必填；缺它 /state 的 rtm_health 会静默缺失
+    hostFs: new FileHostFs(),
+    clock: { now },
+    ids: new RandomIdFactory(),
+    session: new SessionProbeAdapter({}),
+    questions: new UserQuestionsAdapter(() => ({ ask: async () => ({ answers: [] }) })),
+    doneThrottleMs: 0,
+    pendingConfirms: new PendingConfirmRegistry({ now }),
+  } as unknown as UseCaseDeps & { pendingConfirms: PendingConfirmRegistry }
+}
+
+async function seedArtifact(confirmedAt?: number): Promise<void> {
+  // 需求文档真实落盘：QueryState 的 RTM/追溯链会异步读它，缺文件会产生未捕获 rejection 噪声。
+  mkdirSync(join(dir, 'docs/requirements/REQ-st01'), { recursive: true })
+  writeFileSync(join(dir, 'docs/requirements/REQ-st01/requirement.md'), '# 挂起投影\n')
+  const r = {
+    id: 'REQ-st01', title: '挂起投影', description: '', status: 'brainstorming', blocked: false,
+    sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
+    createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
+    artifacts: [{
+      stage: 'brainstorming', kind: 'requirement',
+      path: 'docs/requirements/REQ-st01/requirement.md', registeredAt: 1,
+      ...(confirmedAt === undefined ? {} : { confirmedAt }),
+    } as StageArtifact],
+  } as RequirementRecord
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
+}
+
+/** 同上，但台账里**有计划**——用于「可作答的 plan 票」投影（REQ-261005200052-ce40 FR-2 之后）。 */
+async function seedPlan(): Promise<void> {
+  mkdirSync(join(dir, 'docs/requirements/REQ-st01'), { recursive: true })
+  writeFileSync(join(dir, 'docs/requirements/REQ-st01/decomposition.md'), '# 拆分计划\n')
+  const r = {
+    id: 'REQ-st01', title: '挂起投影', description: '', status: 'decomposing', blocked: false,
+    sourceSessionId: W, comments: [], version: 1, createdAt: 1, updatedAt: 1,
+    createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, statusHistory: [],
+    artifacts: [{
+      stage: 'decomposing', kind: 'decomposition',
+      path: 'docs/requirements/REQ-st01/decomposition.md', registeredAt: 1,
+    } as StageArtifact],
+    plan: {
+      path: 'docs/requirements/REQ-st01/decomposition.md', summary: '投影用计划', tasks: [], submittedAt: 1,
+    } as never,
+  } as RequirementRecord
+  await store.replaceAll('seed', { schemaVersion: 9, revision: 0, requirements: [r], triages: [] })
+}
+
+const exec = { agent: { id: W } }
+
+describe('reqboard_status.pending_confirms（FR-4 / I-2）', () => {
+  it('无挂起 → 空数组（形状稳定）', async () => {
+    await seedArtifact()
+    const out = await (defineStatusTool(makeDeps()) as any).execute({}, exec)
+    expect(out.pending_confirms).toEqual([])
+  })
+
+  it('有挂起 → 逐字段投影（ticket/requirement_id/target/created_at/interrupted/blocked_tools/recovery）', async () => {
+    await seedArtifact()
+    const deps = makeDeps()
+    const rec = deps.pendingConfirms.register({
+      windowKey: W, requirementId: 'REQ-st01', target: 'artifact', kind: 'requirement',
+    })
+    const out = await (defineStatusTool(deps) as any).execute({}, exec)
+    expect(out.pending_confirms).toHaveLength(1)
+    const p = out.pending_confirms[0]
+    expect(p.ticket).toBe(rec.ticket)
+    expect(p.requirement_id).toBe('REQ-st01')
+    expect(p.target).toBe('artifact')
+    expect(p.kind).toBe('requirement')
+    expect(typeof p.created_at).toBe('number')
+    expect(p.interrupted).toBe(false)
+    expect(p.blocked_tools).toEqual(['reqboard_submit', 'reqboard_decompose', 'reqboard_move', 'reqboard_task_move'])
+    expect(p.recovery).toContain('reqboard_ask_confirm(ticket=')
+    expect(p.recovery).toContain('看板')
+  })
+
+  it('被中止记录 → interrupted=true', async () => {
+    await seedArtifact()
+    const deps = makeDeps()
+    // REQ-261005200052-ce40 FR-2：无计划的 plan 票属于「答不了的空票」，会被守卫放行——
+    // 本用例要投影的是**可作答**的中止票，故台账里必须有计划（与真实批准流程一致）。
+    await seedPlan()
+    const rec = deps.pendingConfirms.register({ windowKey: W, requirementId: 'REQ-st01', target: 'plan' })
+    deps.pendingConfirms.markInterrupted(rec.ticket)
+    const out = await (defineStatusTool(deps) as any).execute({}, exec)
+    expect(out.pending_confirms[0].interrupted).toBe(true)
+    expect(out.pending_confirms[0].target).toBe('plan')
+  })
+
+  it('TC-9 台账已落章 → 陈旧记录不列（守卫不死锁）', async () => {
+    await seedArtifact(1)
+    const deps = makeDeps()
+    deps.pendingConfirms.register({
+      windowKey: W, requirementId: 'REQ-st01', target: 'artifact', kind: 'requirement',
+    })
+    const out = await (defineStatusTool(deps) as any).execute({}, exec)
+    expect(out.pending_confirms).toEqual([])
+  })
+})

@@ -30,7 +30,7 @@
 // 绕过工具直接打接口者会留下 `confirmedVia:'board'` 的痕迹，可被复盘查出。
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { ArtifactKind, PendingConfirmationOutcome } from 'pmboard-core/protocol-domain.js'
+import type { ArtifactKind, PendingConfirmationOutcome } from 'pm-core/protocol-domain.js'
 
 /** 宿主级存储动作（不属于任何需求）。 */
 export type StorageAction = 'switch-to-sqlite' | 'switch-to-json' | 'migrate'

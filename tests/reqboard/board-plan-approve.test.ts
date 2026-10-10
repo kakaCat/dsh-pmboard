@@ -79,7 +79,7 @@ async function seed(withAppDeps = true, rollback?: Record<string, unknown>) {
       tasks: [
         // requirement_refs 写在卡上（2026-10-06 收敛：覆盖门禁的唯一依据是卡上 refs，
         // 计划文档的覆盖对照表只作人读汇总——「门禁绿、卡上全空」的静默缺口正是它堵的）
-        { key: 't1', title: '甲卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: [], acceptance: 'npx vitest run 全绿', implementation: '改 packages/pmboard-core/src/domain/x.ts', requirement_refs: ['FR-1'] },
+        { key: 't1', title: '甲卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: [], acceptance: 'npx vitest run 全绿', implementation: '改 pm/pm-core/src/domain/x.ts', requirement_refs: ['FR-1'] },
         { key: 't2', title: '乙卡', phase: 'implement' as const, side: 'backend' as const, dependsOn: ['t1'], acceptance: 'npx vitest run 全绿', implementation: '改 src/index.ts', requirement_refs: ['FR-1'] },
       ],
       submittedAt: h.clock.t,

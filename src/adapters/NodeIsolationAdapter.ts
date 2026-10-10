@@ -36,8 +36,8 @@
  * @module dsh-pmboard/adapters/NodeIsolationAdapter
  */
 
-import type { NodeIsolationPort, SurfaceNode } from 'pmboard-core/application/use-cases/IsolateNodeContext.js'
-import { fmt } from 'pmboard-core/domain/text/fmt.js'
+import type { NodeIsolationPort, SurfaceNode } from 'pm-core/application/use-cases/IsolateNodeContext.js'
+import { fmt } from 'pm-core/domain/text/fmt.js'
 
 /** 结构化的会话事件（只取边界检查需要的字段）。 */
 interface SessionEventLike {

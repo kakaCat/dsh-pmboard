@@ -28,16 +28,16 @@ import type {
   MutableLedger,
   LedgerMutateResult,
   UseCaseDeps,
-} from 'pmboard-core/application/ports.js'
+} from 'pm-core/application/ports.js'
 import { FileHostFs } from 'src/adapters/FileHostFs.js'
-import { JsonQueueRepository } from 'pmboard-core/repositories/QueueRepository.js'
-import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
+import { JsonQueueRepository } from 'pm-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pm-core/repositories/QueueTaskStore.js'
 import {
   emptyLedger,
   type ReqboardLedger,
   type RequirementRecord,
   type TaskRecord,
-} from 'pmboard-core/protocol-domain.js'
+} from 'pm-core/protocol-domain.js'
 import { FakeDocs, FakeQuestions, FakeSession, FixedClock, SeqIds } from 'tests/application/harness.js'
 
 /** v9 口径的内存台账仓储（结构上没有 `tasks` 键）。 */

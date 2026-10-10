@@ -5,8 +5,8 @@
  * 补一条链路 e2e 后该项变「有」。核心是**可见**——靠人记得不是机制。
  */
 import { describe, expect, it } from 'vitest'
-import { e2eCoverageOf } from 'pmboard-core/application/internal/content-gate-wiring.js'
-import { buildSheet } from 'pmboard-core/domain/workflow/AcceptanceSheetSpec.js'
+import { e2eCoverageOf } from 'pm-core/application/internal/content-gate-wiring.js'
+import { buildSheet } from 'pm-core/domain/workflow/AcceptanceSheetSpec.js'
 
 const doc = (...lines: string[]) => lines.join('\n')
 

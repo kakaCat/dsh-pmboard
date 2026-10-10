@@ -19,8 +19,8 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { JsonLedgerRepository } from '../src/adapters/JsonLedgerRepository.js'
-import { JsonQueueRepository } from 'pmboard-core/repositories/QueueRepository.js'
-import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
+import { JsonQueueRepository } from 'pm-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pm-core/repositories/QueueTaskStore.js'
 import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
 import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
 import { SystemClock } from '../src/adapters/SystemClock.js'
@@ -30,8 +30,8 @@ import {
   planBackfill,
   restoreBackfill,
   type BackfillReport,
-} from 'pmboard-core/application/internal/backfill-task-refs.js'
-import type { UseCaseDeps } from 'pmboard-core/application/ports.js'
+} from 'pm-core/application/internal/backfill-task-refs.js'
+import type { UseCaseDeps } from 'pm-core/application/ports.js'
 
 interface Args {
   mode: 'dry-run' | 'apply' | 'check' | 'restore'

@@ -19,15 +19,15 @@
  * Service**（`extends Service` + `static inject`），框架耦合属于宿主侧；应用层只留 round 逻辑
  * （round-driver / round-subscriptions / wake-*）。类体、Service 名、inject、订阅分组一字未改。
  */
-import { mutateIfPresent } from 'pmboard-core/application/use-cases/queue-access.js'
+import { mutateIfPresent } from 'pm-core/application/use-cases/queue-access.js'
 import { Context, Service } from '@deepseek-ai/cordis'
-import type { DiveRoundDriver, DiveRoundPorts } from 'pmboard-round-driver/round-driver.js'
-import { createDiveRoundDriver } from 'pmboard-round-driver/round-driver.js'
-import { wireDiveRoundSubscriptions, wireAgentSubscriptions, type WireLogger } from 'pmboard-round-driver/round-subscriptions.js'
-import { createWakeHeartbeat } from 'pmboard-round-driver/wake-heartbeat.js'
-import { wakeAcceptance } from 'pmboard-round-driver/wake-liveness.js'
-import { captureDiag } from 'pmboard-core/application/internal/diag-log.js'
-import { isOpenRequirement } from 'pmboard-core/domain/status/Predicates.js'
+import type { DiveRoundDriver, DiveRoundPorts } from 'pm-round-driver/round-driver.js'
+import { createDiveRoundDriver } from 'pm-round-driver/round-driver.js'
+import { wireDiveRoundSubscriptions, wireAgentSubscriptions, type WireLogger } from 'pm-round-driver/round-subscriptions.js'
+import { createWakeHeartbeat } from 'pm-round-driver/wake-heartbeat.js'
+import { wakeAcceptance } from 'pm-round-driver/wake-liveness.js'
+import { captureDiag } from 'pm-core/application/internal/diag-log.js'
+import { isOpenRequirement } from 'pm-core/domain/status/Predicates.js'
 
 function agentIdOf(agent: unknown): string {
   const a = agent as { id?: unknown; session?: { id?: unknown } } | undefined

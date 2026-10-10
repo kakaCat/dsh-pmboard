@@ -9,7 +9,7 @@
  * @module dsh-pmboard/http/routers/Isolation
  */
 import type { ServerResponse } from 'node:http'
-import { queryIsolationTrace } from 'pmboard-core/application/internal/isolation-trace.js'
+import { queryIsolationTrace } from 'pm-core/application/internal/isolation-trace.js'
 import type { RouterCtx } from './shared.js'
 
 /** 默认返回条数（看板只读块一次拉这么多）。 */

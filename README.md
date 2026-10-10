@@ -115,12 +115,12 @@ pnpm run kb:probe   # 只跑自检，人读输出
 
 | 层 | 包 | 允许依赖 |
 |---|---|---|
-| `L0` | `pmboard-common` · `reqboard-rtm` | （无） |
-| `L0.5` | `pmboard-type-kit` | pmboard-common |
-| `L0.5` | `pmboard-type-feature` · `pmboard-type-bug` · `pmboard-type-doc` · `pmboard-type-refactor` · `pmboard-type-spike` · `pmboard-type-chore` | pmboard-common · pmboard-type-kit |
-| `L1` | `pmboard-core` | pmboard-common · reqboard-rtm · pmboard-type-kit |
-| `L2` | `tool-pmboard` · `pmboard-round-driver` · `pmboard-workflow` · `pmboard-client` · `command-pmboard` | pmboard-common · pmboard-core |
-| `L3` | `pmboard-templates` · `pmboard-skills` · `pmboard-eval-suite` · `pmboard-scripts` | （无） |
+| `L0` | `pm-common` · `reqboard-rtm` | （无） |
+| `L0.5` | `pm-type-kit` | pm-common |
+| `L0.5` | `pm-type-feature` · `pm-type-bug` · `pm-type-doc` · `pm-type-refactor` · `pm-type-spike` · `pm-type-chore` | pm-common · pm-type-kit |
+| `L1` | `pm-core` | pm-common · reqboard-rtm · pm-type-kit |
+| `L2` | `tool-pm` · `pm-round-driver` · `pm-workflow` · `pm-client` · `command-pm` | pm-common · pm-core |
+| `L3` | `pm-templates` · `pm-skills` · `pm-eval-suite` · `pm-scripts` | （无） |
 
 各包职责、边界与测试命令见 `packages/<pkg>/README.md`（19 份）；分层篇见 `docs/architecture/`。
 

@@ -3,8 +3,8 @@
  *
  * 为什么需要：本包把 react 声明为 external（运行时由 DSH web shell 的 module-loader
  * seed 提供），因此 node_modules 里**没有 react**——任何 import 到 `page/host.ts`
- * 的用例都会以「Failed to load url react」整文件失败（`packages/pmboard-client/tests/client-page-register.test.ts`
- * 长期红即此因）。本垫片按 `packages/pmboard-client/src/react-shim.d.ts` 的最小契约实现，
+ * 的用例都会以「Failed to load url react」整文件失败（`pm/pm-client/tests/client-page-register.test.ts`
+ * 长期红即此因）。本垫片按 `pm/pm-client/src/react-shim.d.ts` 的最小契约实现，
  * 让纯逻辑/DOM 字符串断言类用例能跑，不改变生产行为。
  *
  * 边界：不实现 diff/渲染语义，只保证「调用不抛、结构可断言」。

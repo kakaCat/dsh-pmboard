@@ -7,22 +7,22 @@
  * 的构造，以及 Dive 会话驱动器的装配（**订阅由 Dive 服务持有**）。
  */
 import { AgentDeliverer } from '../adapters/AgentDeliverer.js';
-import { createDiveSessionDriver, type DiveSessionDriverDeps } from 'pmboard-round-driver/session-driver.js'
-import type { DiveRoundDriver } from 'pmboard-round-driver/round-driver.js';
+import { createDiveSessionDriver, type DiveSessionDriverDeps } from 'pm-round-driver/session-driver.js'
+import type { DiveRoundDriver } from 'pm-round-driver/round-driver.js';
 import type { ToolTraceEntry, RecentUserMsg } from '../adapters/SessionProbeAdapter.js';
 import type { InjectionLogFile } from '../adapters/InjectionLogFile.js';
-import type { InjectionLogPort } from 'pmboard-core/application/internal/injection-log.js';
+import type { InjectionLogPort } from 'pm-core/application/internal/injection-log.js';
 import type { AddressInjection } from '../adapters/TemplateRoot.js';
-import type { GateChainPort } from 'pmboard-core/application/gate/GatePostChain.js';
-import type { GatePromptPort, RequirementStore, TaskStore, UseCaseDeps } from 'pmboard-core/application/ports.js';
-import { gatePromptExhaustedComment } from 'pmboard-round-driver/gate-prompt.js';
-import { draftPromptFactsFor } from 'pmboard-core/application/internal/window.js';
-import { isDrivableRequirement } from 'pmboard-core/application/dive-core/round-state.js';
-import { applyPickupAdvance } from 'pmboard-core/application/internal/rollup.js';
-import { snapshotProviderFor } from 'pmboard-core/application/internal/token-usage.js';
-import { newCommentId } from 'pmboard-core/protocol-domain.js';
-import { captureDiag } from 'pmboard-core/application/internal/diag-log.js';
-import { noteInterruptionForWindow } from 'pmboard-core/application/use-cases/NoteInterruption.js';
+import type { GateChainPort } from 'pm-core/application/gate/GatePostChain.js';
+import type { GatePromptPort, RequirementStore, TaskStore, UseCaseDeps } from 'pm-core/application/ports.js';
+import { gatePromptExhaustedComment } from 'pm-round-driver/gate-prompt.js';
+import { draftPromptFactsFor } from 'pm-core/application/internal/window.js';
+import { isDrivableRequirement } from 'pm-core/application/dive-core/round-state.js';
+import { applyPickupAdvance } from 'pm-core/application/internal/rollup.js';
+import { snapshotProviderFor } from 'pm-core/application/internal/token-usage.js';
+import { newCommentId } from 'pm-core/protocol-domain.js';
+import { captureDiag } from 'pm-core/application/internal/diag-log.js';
+import { noteInterruptionForWindow } from 'pm-core/application/use-cases/NoteInterruption.js';
 
 /** 待捕获候选（hook 登记 → capture section 同引用读取）。 */
 export interface PendingCaptureMessage {

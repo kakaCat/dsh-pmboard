@@ -13,7 +13,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join } from 'node:path'
-import type { HostFsPort } from 'pmboard-core/application/ports.js'
+import type { HostFsPort } from 'pm-core/application/ports.js'
 
 /** state 目录相对根的固定段——**端口契约的一部分**，改它等于改 state 文件落点。 */
 const STATE_SEGMENTS: readonly string[] = ['.dsh-data', 'state']

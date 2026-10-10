@@ -18,10 +18,10 @@
  * @module dsh-pmboard/scripts/open-window-inherit-probe
  */
 import { performance } from 'node:perf_hooks'
-import { openWindow } from 'pmboard-core/application/use-cases/OpenWindow.js'
+import { openWindow } from 'pm-core/application/use-cases/OpenWindow.js'
 import { SessionWindowOpener } from '../src/adapters/SessionWindowOpener.js'
-import { increasedWindowTitle } from 'pmboard-core/application/internal/window-inherit.js'
-import type { UseCaseDeps } from 'pmboard-core/application/ports.js'
+import { increasedWindowTitle } from 'pm-core/application/internal/window-inherit.js'
+import type { UseCaseDeps } from 'pm-core/application/ports.js'
 
 const SOURCE = 'session-probe-source'
 const CHILD = 'session-probe-child'

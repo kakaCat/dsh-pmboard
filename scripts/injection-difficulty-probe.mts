@@ -15,8 +15,8 @@
  *
  * @module dsh-pmboard/scripts/injection-difficulty-probe
  */
-import { difficultyFromDeclaredPrompt } from 'pmboard-core/domain/prompt/difficulty-mapping.ts'
-import { resolveStagePrompt } from 'pmboard-core/domain/prompt/index.ts'
+import { difficultyFromDeclaredPrompt } from 'pm-core/domain/prompt/difficulty-mapping.ts'
+import { resolveStagePrompt } from 'pm-core/domain/prompt/index.ts'
 
 /** 标本：一段**推不出档位**的普通描述（推断 undefined → 默认 light）。 */
 const SAMPLE = {

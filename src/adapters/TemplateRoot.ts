@@ -23,7 +23,7 @@ export function resolveTemplateRoot(config: TemplateAddressConfig | undefined, m
   if (configured !== undefined && configured.length > 0) {
     return isAbsolute(configured) ? configured : undefined
   }
-  const inPkg = resolve(moduleDir, '..', 'packages', 'pmboard-templates', 'templates')
+  const inPkg = resolve(moduleDir, '..', 'pm', 'pm-templates', 'templates')
   return existsSync(inPkg) ? inPkg : resolve(moduleDir, '..', 'templates')
 }
 

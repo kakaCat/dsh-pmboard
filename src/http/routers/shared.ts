@@ -7,9 +7,9 @@
  * @module dsh-pmboard/http/routers/shared
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { InjectionLogReadPort } from 'pmboard-core/application/internal/injection-log.js'
-import type { IsolationLogReadPort } from 'pmboard-core/application/internal/isolation-trace.js'
-import type { DocRepository, TaskStore } from 'pmboard-core/application/ports.js'
+import type { InjectionLogReadPort } from 'pm-core/application/internal/injection-log.js'
+import type { IsolationLogReadPort } from 'pm-core/application/internal/isolation-trace.js'
+import type { DocRepository, TaskStore } from 'pm-core/application/ports.js'
 
 /**
  * 宿主级存储动作（与 `adapters/PendingConfirmRegistry` 的 `StorageAction` **同值**）。
@@ -82,7 +82,7 @@ export interface RouterCtx {
    */
   taskStore: TaskStore
   /** 新需求端口（B12 阶段④-2：**必填**，路由侧新代码一律走它）。 */
-  requirementStore: import('pmboard-core/application/ports.js').RequirementStore
+  requirementStore: import('pm-core/application/ports.js').RequirementStore
   now: () => number
   /**
    * 路由可选依赖：cwd=产物扫描根；injectionLog=注入留痕**只读**端口（看板信息块用）；
@@ -95,14 +95,14 @@ export interface RouterCtx {
     /** 节点隔离留痕只读端口（REQ-260923134706-e72f t2：看板「执行流程→上下文管理」数据源；缺省 → available=false）。 */
     isolationLog?: IsolationLogReadPort
     systemPrompt?: () => unknown
-    tokenSnapshot?: (windowKey: string) => import('pmboard-core/protocol-domain.js').TokenSnapshot | undefined
+    tokenSnapshot?: (windowKey: string) => import('pm-core/protocol-domain.js').TokenSnapshot | undefined
     /** 文档仓储（REQ-308b9a AC-7.7：看板裁决后回填 verification.md；缺省 → 跳过）。 */
     docs?: DocRepository
     /**
      * 闸门后置链（REQ-e3b6a0 t9 / FR-9）：看板一键确认后触发 Phase B（推进 + 压缩 + 注入 + 唤醒）。
      * 缺省 → 只落章（行为与改造前完全一致）。
      */
-    gateChain?: import('pmboard-core/application/gate/GatePostChain.js').GateChainPort
+    gateChain?: import('pm-core/application/gate/GatePostChain.js').GateChainPort
     /** 在线 agent 查询（取会话句柄供 H2 用）；缺省 → 视为窗口不在线。 */
     agents?: () => { get?: (id: string) => unknown } | undefined
     /**
@@ -142,7 +142,7 @@ export interface RouterCtx {
      * 应用层用例依赖（2026-09-26）：看板「拆分」入口需要直接调用 executeDecompose
      * （自动拆分路径缺 JobsPort，工具面又未暴露 reqboard_decompose）。缺省 → 该入口显式失败。
      */
-    applicationDeps?: import('pmboard-core/application/ports.js').UseCaseDeps
+    applicationDeps?: import('pm-core/application/ports.js').UseCaseDeps
     /**
      * 需求面板刷新策略（REQ-261001124111-5d36 t4）：随 SSE 的 `build` 帧下发给浏览器。
      * 缺省 → 帧里不带 `panel`，客户端回落 `DEFAULT_PANEL_POLICY`（5000/30000）。
@@ -153,14 +153,14 @@ export interface RouterCtx {
      * **缺省 = 未装配**：设置路由会**响亮 500** 并点明"组合根 bug + 怎么修"，
      * 绝不伪造一份空设置（可选字段 + 运行期兜底会把装配漏掉从编译期挪到运行期——本仓老教训）。
      */
-    settings?: import('pmboard-core/application/ports.js').SettingsStore
+    settings?: import('pm-core/application/ports.js').SettingsStore
     /** 系统记录端口（FR-14）。缺省语义同上（响亮，不伪造）。 */
-    systemRecord?: import('pmboard-core/application/ports.js').SystemRecordStore
+    systemRecord?: import('pm-core/application/ports.js').SystemRecordStore
     /**
      * 文件路径选择端口（REQ-261004103330-005f）：「选择…」由宿主弹原生窗口取绝对路径。
      * 缺省 = 宿主没接 → 501 `path_picker_unavailable`，界面提示手输，**不假装选了路径**。
      */
-    pickStoragePath?: import('pmboard-core/application/ports.js').StoragePathPickerPort
+    pickStoragePath?: import('pm-core/application/ports.js').StoragePathPickerPort
     /** 宿主级动作确认票据（FR-11）。缺省 → 无法发起确认，因而**也不能切后端**（绝不伪造"已确认"）。 */
     storageActions?: StorageActionPort
     /** 插件版本信息（FR-15）：`name`/`version` 由组合根从 `package.json` 读；构建指纹另取 `getBuildStamp()`。 */
@@ -173,12 +173,12 @@ export interface RouterCtx {
      * 为什么必须显式转发：本映射是**白名单**（漏一行 = 组合根传了、路由收不到）。
      * 缺省 → dialogue 端点降级为 `port-unavailable`（**不返回空数组冒充「没有对话」**）。
      */
-    sessionProbe?: import('pmboard-core/application/ports.js').SessionProbe
+    sessionProbe?: import('pm-core/application/ports.js').SessionProbe
     /**
      * 挂起确认只读口（REQ-261004222448-292a t-497311）：报告的「几件事等人」与缺口第四类要读它。
      * 缺省 → 缺口里出现一条「挂起确认状态不可知」（**不写 0 条**冒充「没有人在等」）。
      */
-    pendingConfirms?: import('pmboard-core/application/query/contracts.js').PendingConfirmReadPort
+    pendingConfirms?: import('pm-core/application/query/contracts.js').PendingConfirmReadPort
     /**
      * Token 端点的**扩展段**（REQ-261004222448-292a t-497311 FR-10）。
      *
@@ -192,7 +192,7 @@ export interface RouterCtx {
     panelTokenExtension?: (
       res: import('node:http').ServerResponse,
       id: string,
-      base: import('pmboard-core/protocol-domain.js').RequirementTokenView,
+      base: import('pm-core/protocol-domain.js').RequirementTokenView,
     ) => Promise<void>
   }
   ids: { requirement: () => string; task: () => string; comment: () => string }

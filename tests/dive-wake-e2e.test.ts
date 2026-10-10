@@ -11,14 +11,14 @@
  * （未打标签的 ctx 一律放行；宿主 goal-round-driver 同款做法生产可用），经人裁决改为按**已证实故障**红/绿。
  */
 import { legacyStoreProjection } from 'tests/support/legacy-store-projection.js'
-import { factsOf } from 'pmboard-core/domain/requirement/RequirementSummary.js'
+import { factsOf } from 'pm-core/domain/requirement/RequirementSummary.js'
 import { describe, it, expect } from 'vitest'
-import { emptyLedger, type RequirementRecord } from 'pmboard-core/protocol-domain.js'
+import { emptyLedger, type RequirementRecord } from 'pm-core/protocol-domain.js'
 import { createCaptureRuntime } from 'src/wiring/pm-capture-root.js'
-import { createDiveRoundDriver, type DiveRoundPorts } from 'pmboard-round-driver/round-driver.js'
-import { roundLimitFor } from 'pmboard-core/application/dive-core/round-state.js'
-import { recoverHealth } from 'pmboard-core/application/internal/rearm.js'
-import { transitionRequirement } from 'pmboard-core/application/internal/token-usage.js'
+import { createDiveRoundDriver, type DiveRoundPorts } from 'pm-round-driver/round-driver.js'
+import { roundLimitFor } from 'pm-core/application/dive-core/round-state.js'
+import { recoverHealth } from 'pm-core/application/internal/rearm.js'
+import { transitionRequirement } from 'pm-core/application/internal/token-usage.js'
 
 const WINDOW = 'agent-1'
 

@@ -14,7 +14,7 @@ import {
   getStatusColor,
   type TaskRole,
   type TaskStatus
-} from 'pmboard-core/domain/card-types.js';
+} from 'pm-core/domain/card-types.js';
 
 console.log('=== 联调测试：card-types.ts 接口验证 ===\n');
 

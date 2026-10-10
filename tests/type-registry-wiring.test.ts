@@ -5,7 +5,7 @@
  *   ① **六类齐备**：装配期缺类必须响亮（不是按 feature 兜底）；
  *   ② **装配点是唯一认识六个类型包的地方**：core 与其它子包不得 import 具体类型包
  *      （L1 → L0.5 只到 type-kit）——这条是「走某类型逻辑只落该类型包」的物理保障；
- *   ③ 快照稳定：注册表可当基线用（与 packages/pmboard-type-kit/tests/type-spec-snapshot.test.ts 同源口径）。
+ *   ③ 快照稳定：注册表可当基线用（与 pm/pm-type-kit/tests/type-spec-snapshot.test.ts 同源口径）。
  *
  * @module dsh-pmboard/tests/type-registry-wiring
  */
@@ -40,8 +40,8 @@ describe('类型注册表装配点', () => {
 
   it('装配点是唯一认识具体类型包的地方（core 与其它子包不得 import 它们）', () => {
     const offenders: string[] = []
-    for (const pkg of ['pmboard-core', 'pmboard-common', 'pmboard-client', 'pmboard-round-driver', 'pmboard-workflow', 'tool-pmboard']) {
-      const dir = join(ROOT, 'packages', pkg, 'src')
+    for (const pkg of ['pm-core', 'pm-common', 'pm-client', 'pm-round-driver', 'pm-workflow', 'tool-pm']) {
+      const dir = join(ROOT, 'pm', pkg, 'src')
       let files: string[] = []
       try { files = tsFiles(dir) } catch { continue }
       for (const f of files) {

@@ -51,9 +51,9 @@ const WHITELIST: Readonly<Record<string, string>> = {
   // t12 已完成：client/styles.ts 拆到 client/styles/*（拼接后 CSS 逐字节不变，styles.ts 降为汇总），条目按门禁要求删除。
   'client/stage-panel.ts': '663 行 → t11 卡面只拆 view.ts（分片目的地是 views/* 与 render/dom-utils.ts）；本文件是会话节点详情渲染器（另一模块），留待后续 P2/独立卡',
   'client/board-mount.ts': '627 行 → t11 卡面只拆 view.ts；本文件承担看板生命周期/事件委派/SSE 编排，留待后续 P2/独立卡',
-  // REQ-261009174713-7bc8 t5 已完成：shared/protocol.ts 拆半（纯帧半 → pmboard-common、
-  // 域关联半 → pmboard-core），旧路径降为 13 行 barrel，条目按门禁要求删除。
-  // 注意：两半落在 packages/*/src 下，不在本门禁当前扫描面内——扫描面是否要跟着拆包走，
+  // REQ-261009174713-7bc8 t5 已完成：shared/protocol.ts 拆半（纯帧半 → pm-common、
+  // 域关联半 → pm-core），旧路径降为 13 行 barrel，条目按门禁要求删除。
+  // 注意：两半落在 pm/*/src 下，不在本门禁当前扫描面内——扫描面是否要跟着拆包走，
   // 由十九包重构的收口卡（t22/t12）定，别在这里悄悄放宽。
 }
 
@@ -63,7 +63,7 @@ const WHITELIST_SCOPE = [/^client\//]
 /** client 面根（布局无关：搬迁前后各一处）。 */
 const CLIENT_SRC = existsSync(join(SRC, 'client'))
   ? join(SRC, 'client')
-  : repoPath('packages/pmboard-client/src')
+  : repoPath('pm/pm-client/src')
 /** 扫描双根；包内路径**归一回** `client/...`，于是白名单与 WHITELIST_SCOPE 一字不用改。 */
 const allTs = [
   ...listTs(SRC).filter((f) => !f.startsWith(join(SRC, 'client'))),

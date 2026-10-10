@@ -34,15 +34,15 @@ const EXPECTED_REFS: readonly string[] = [
  * 即使范围自检没跑到（例如脚本被改坏）。
  */
 const EXPECTED_TARGETS: readonly string[] = [
-  'packages/pmboard-core/src/application/query/QueryStageDetail.ts',
-  'packages/pmboard-core/src/application/query/QueryDag.ts',
+  'pm/pm-core/src/application/query/QueryStageDetail.ts',
+  'pm/pm-core/src/application/query/QueryDag.ts',
   'src/http/routers/stages.ts',
-  'packages/pmboard-core/src/protocol-domain.ts',
-  'packages/pmboard-core/src/domain/queue/topology.ts',
-  'packages/pmboard-core/src/domain/queue/validateQueue.ts',
-  'packages/pmboard-core/src/repositories/QueueRepository.ts',
-  'packages/pmboard-client/src/stage-panel.ts',
-  'packages/pmboard-core/src/application/internal/rtm-yaml.ts',
+  'pm/pm-core/src/protocol-domain.ts',
+  'pm/pm-core/src/domain/queue/topology.ts',
+  'pm/pm-core/src/domain/queue/validateQueue.ts',
+  'pm/pm-core/src/repositories/QueueRepository.ts',
+  'pm/pm-client/src/stage-panel.ts',
+  'pm/pm-core/src/application/internal/rtm-yaml.ts',
 ]
 
 /** 判据命令里"看起来像仓库内路径"的 token（含 `/`）。 */

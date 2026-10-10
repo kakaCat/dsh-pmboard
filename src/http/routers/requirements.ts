@@ -7,7 +7,7 @@ import { FileHostFs } from '../../adapters/FileHostFs.js'
  *
  * @module dsh-pmboard/http/routers/Requirements
  */
-import { mutateIfPresent } from 'pmboard-core/application/use-cases/queue-access.js'
+import { mutateIfPresent } from 'pm-core/application/use-cases/queue-access.js'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   assertReqTransition,
@@ -19,36 +19,36 @@ import {
   type ActorRef,
   type CommentRecord,
   type RequirementRecord,
-} from 'pmboard-core/protocol-domain.js'
-import { assertArtifactGates, artifactsToConfirm, type GateFailure } from 'pmboard-core/application/internal/artifact-gates.js'
-import { checkDesignCompletenessGate, checkDesignDecompositionGate, contentGatesForMove } from 'pmboard-core/application/internal/content-gate-wiring.js'
+} from 'pm-core/protocol-domain.js'
+import { assertArtifactGates, artifactsToConfirm, type GateFailure } from 'pm-core/application/internal/artifact-gates.js'
+import { checkDesignCompletenessGate, checkDesignDecompositionGate, contentGatesForMove } from 'pm-core/application/internal/content-gate-wiring.js'
 // REQ-260930193929-897b FR-1：看板侧无会话上下文，读盘根必须由**需求记录**决定。
-import { applyRequirementWorkspaceRoot, requireSameProject } from 'pmboard-core/application/internal/support.js'
-import { isDesignArtifactKind } from 'pmboard-core/domain/artifact/ArtifactSpec.js'
+import { applyRequirementWorkspaceRoot, requireSameProject } from 'pm-core/application/internal/support.js'
+import { isDesignArtifactKind } from 'pm-core/domain/artifact/ArtifactSpec.js'
 // REQ-261002175818-80a8 t6 / FR-6：看板批准路径的披露取**同一份**超容量摘要（不另写措辞）
-import { overCapacitySummary } from 'pmboard-core/domain/task/Footprint.js'
-import { resolveRoundCapacity } from 'pmboard-core/plugin-config.js'
-import { transitionRequirement } from 'pmboard-core/application/internal/token-usage.js'
-import { disarmDiveOnTerminal } from 'pmboard-core/application/internal/terminal-disarm.js'
-import { executeDecompose } from 'pmboard-core/application/use-cases/Decompose.js'
+import { overCapacitySummary } from 'pm-core/domain/task/Footprint.js'
+import { resolveRoundCapacity } from 'pm-core/plugin-config.js'
+import { transitionRequirement } from 'pm-core/application/internal/token-usage.js'
+import { disarmDiveOnTerminal } from 'pm-core/application/internal/terminal-disarm.js'
+import { executeDecompose } from 'pm-core/application/use-cases/Decompose.js'
 // REQ-261004183621-de3f t3：归档清单补录（工具与看板共用同一用例）
-import { amendArchiveManifest } from 'pmboard-core/application/use-cases/AmendArchiveManifest.js'
-import { armExplicit } from 'pmboard-core/application/internal/rearm.js'
-import { applyRebind } from 'pmboard-core/application/internal/binding-write.js'
-import { INITIAL_REQ_STATUS, canReqTransition } from 'pmboard-core/domain/requirement/RequirementStatus.js'
-import { isRollback } from 'pmboard-core/domain/requirement/RollbackSpec.js'
-import { applyRequirementRollback, recordRollbackMaterialized, resetInjectionAfterRollback } from 'pmboard-core/application/internal/rollback.js'
-import { executeRollbackCleanup } from 'pmboard-core/application/use-cases/RollbackCleanup.js'
+import { amendArchiveManifest } from 'pm-core/application/use-cases/AmendArchiveManifest.js'
+import { armExplicit } from 'pm-core/application/internal/rearm.js'
+import { applyRebind } from 'pm-core/application/internal/binding-write.js'
+import { INITIAL_REQ_STATUS, canReqTransition } from 'pm-core/domain/requirement/RequirementStatus.js'
+import { isRollback } from 'pm-core/domain/requirement/RollbackSpec.js'
+import { applyRequirementRollback, recordRollbackMaterialized, resetInjectionAfterRollback } from 'pm-core/application/internal/rollback.js'
+import { executeRollbackCleanup } from 'pm-core/application/use-cases/RollbackCleanup.js'
 // REQ-261006164732-6503 t13（serves: FR-4、FR-5）：看板两条落章通道与其余通道共用
 // 落章前提（gateStaleReason）与首写纪律（stampArtifactOnce / stampPlanOnce）——独立复核发现的漏网写点
-import { applyConfirmedAdvance, stampArtifactOnce, stampPlanOnce } from 'pmboard-core/application/internal/confirm-settle.js'
-import { gateForTransition, gateFromStage } from 'pmboard-core/domain/gate/GateCatalog.js'
-import { fmt } from 'pmboard-core/domain/text/fmt.js'
+import { applyConfirmedAdvance, stampArtifactOnce, stampPlanOnce } from 'pm-core/application/internal/confirm-settle.js'
+import { gateForTransition, gateFromStage } from 'pm-core/domain/gate/GateCatalog.js'
+import { fmt } from 'pm-core/domain/text/fmt.js'
 import type { RouterCtx } from './shared.js'
-import { syncRTMYamlWithSnapshot } from 'pmboard-core/application/internal/rtm-yaml.js'
-import { landApprovedPlan } from 'pmboard-core/application/internal/approved-plan-landing.js'
+import { syncRTMYamlWithSnapshot } from 'pm-core/application/internal/rtm-yaml.js'
+import { landApprovedPlan } from 'pm-core/application/internal/approved-plan-landing.js'
 // REQ-261005105032-3b02 t11（FR-2）：看板移动进需求阶段时幂等落原型骨架（失败只告警不阻断）。
-import { landPrototypeSkeleton } from 'pmboard-core/application/internal/prototype-skeleton.js'
+import { landPrototypeSkeleton } from 'pm-core/application/internal/prototype-skeleton.js'
 
 export function createRequirementsRouter(ctx: RouterCtx) {
   // B12 阶段④-2-③：本文件的读/写已全部迁到 `ctx.requirementStore` ⇒ 旧口不再需要

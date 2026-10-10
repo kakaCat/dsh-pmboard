@@ -7,8 +7,8 @@
  *
  * @module dsh-pmboard/adapters/FailureAlert
  */
-import type { FailureAlertPort } from 'pmboard-core/application/ports.js'
-import { fmt } from 'pmboard-core/domain/text/fmt.js'
+import type { FailureAlertPort } from 'pm-core/application/ports.js'
+import { fmt } from 'pm-core/domain/text/fmt.js'
 
 export interface FailureAlertWiring {
   log: (message: string) => void

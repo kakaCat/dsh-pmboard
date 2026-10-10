@@ -12,7 +12,7 @@
  *    与迁移结果逐一比对。**不硬编码任何计数**（本仓 2026-09-27 实测：文档写的 587 条已过期，
  *    实际 612 条 —— 冻结数字是定时炸弹，拆分一次需求就红）。
  *
- * 权威字段真身：`packages/pmboard-core/src/protocol-domain.ts:1150-1216`（不是任何文档表格）。
+ * 权威字段真身：`pm/pm-core/src/protocol-domain.ts:1150-1216`（不是任何文档表格）。
  */
 import { describe, expect, it } from 'vitest'
 import { repoPath } from 'tests/helpers/repo-root.js'

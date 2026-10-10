@@ -24,7 +24,7 @@ import { join, relative } from 'node:path'
 import ts from 'typescript'
 
 const PKG_ROOT = REPO_ROOT
-const APP = join(PKG_ROOT, 'packages', 'pmboard-core', 'src', 'application')
+const APP = join(PKG_ROOT, 'pm', 'pm-core', 'src', 'application')
 const HTTP = join(PKG_ROOT, 'src', 'http')
 /** 唯一收敛点：本文件内部的 req.status = to 是唯一允许的直接赋值。 */
 const CONVERGENCE = join(APP, 'internal', 'token-usage.ts')

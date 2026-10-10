@@ -24,9 +24,9 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { applyRebind, handoffOwner } from 'pmboard-core/application/internal/binding-write.js'
-import { ShardedRequirementStore } from 'pmboard-core/repositories/ShardedRequirementStore.js'
-import type { RequirementRecord, WindowSeat } from 'pmboard-core/protocol-domain.js'
+import { applyRebind, handoffOwner } from 'pm-core/application/internal/binding-write.js'
+import { ShardedRequirementStore } from 'pm-core/repositories/ShardedRequirementStore.js'
+import type { RequirementRecord, WindowSeat } from 'pm-core/protocol-domain.js'
 
 const AT = 1_796_000_000_000
 /** 需求 id 形态：`REQ-<12位时间戳>-<4位hex>`（domain 的 REQUIREMENT_ID_RE）。 */
