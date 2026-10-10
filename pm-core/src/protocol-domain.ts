@@ -17,6 +17,8 @@
 export * from 'pm-common/protocol.js'
 import type { ActorRef } from 'pm-common/actor.js'
 import type { MainStageKey, RequirementStatus, StageKey } from './domain/requirement/RequirementStatus.js'
+// REQ-261010200257-7e2d（FR-2/FR-3）：双层目标挂载字段（加性可选、零迁移）
+import type { StageGoal, TaskGoal } from 'pm-goal'
 import type { TaskStatus } from './domain/task/TaskStatus.js'
 import type { RequirementCategory } from 'pm-common/requirement/Requirement.js'
 import type { ArtifactKind, ArchiveDoc, ArchiveDocRule } from './domain/artifact/ArtifactSpec.js'
@@ -1081,6 +1083,14 @@ export interface RequirementRecord {
    * 缺省 = 从未回退过；`rollback.to === status` 即「当前处在回退态」（拆分守卫据此放行重建）。
    */
   rollback?: RollbackMark
+  /**
+   * L1 阶段目标（REQ-261010200257-7e2d FR-2）：每主阶段一条**达成位**（pending | done）。
+   *
+   * **加性可选、零迁移**：缺省 = 该需求未启用 goal 能力（老需求读出即老行为）——
+   * 不补齐、不改写、无迁移脚本，故不 bump schemaVersion。收口判据 `readyToClose()` 对空数组
+   * 恒 false（缺失 ≠ 达成）。达成位写入只能走人工门落章路径（D-4）。
+   */
+  goals?: StageGoal[]
   comments: CommentRecord[]
   version: number
   createdAt: number
@@ -1225,6 +1235,14 @@ export interface TaskRecord {
    * 也**不加进** `validateQueue.ts` 的 `REQUIRED_TASK_FIELDS`。缺省 = 现行为。
    */
   budgetRequests?: number
+  /**
+   * L2 任务目标（REQ-261010200257-7e2d FR-3）：dsh goal 内核的 pm 自实现（四相 + rounds 计数）。
+   *
+   * **加性可选、零迁移**：缺省 = 该卡未启用 goal（老卡读出即老行为）——不补齐、不改写、
+   * 故不 bump schemaVersion 与 QUEUE_VERSION。判据复用本卡 `acceptance`（D-1）：
+   * objective 是它的陈述面，不另造验收标准。状态变更一律经 `transitionGoal` 纯函数。
+   */
+  goal?: TaskGoal
   status: TaskStatus
   blocked: boolean
   blockedReason?: string

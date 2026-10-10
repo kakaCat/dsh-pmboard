@@ -28,6 +28,8 @@ import type {
   StageKey,
 } from '../../protocol-domain.js'
 import type { GateReading, PlanState } from 'pm-common/artifact/GateReadings.js'
+// REQ-261010200257-7e2d FR-2：goal 进度的有界投影由纯函数给（同层 domain → domain）。
+import { goalsProgressOf } from 'pm-goal'
 
 /**
  * 推进告警的**摘要子集**。
@@ -171,6 +173,8 @@ export interface SummarizableRequirement {
   readonly advance?: { readonly pausedReason?: string; readonly failureStreak?: number; readonly lockAt?: number }
   /** 驱动判定用的有界子集（`RequirementFacts.dive` 的来源）。 */
   readonly dive?: RequirementDive
+  /** L1 阶段目标（REQ-261010200257-7e2d FR-2）：投影只用它的达成位计数。 */
+  readonly goals?: readonly import('pm-goal').StageGoal[]
   /**
    * token 累计（REQ-261004065652-5c1c FR-11）：预算闸要读它，故投影它是"必要字段"。
    * 刻意只声明 `totals` 的三枚标量——`byStage` 是按阶段的对象，不该进同步缝。
@@ -343,6 +347,11 @@ export interface RequirementFacts {
     readonly outputTokens: number
     readonly cacheReadTokens: number
   }
+  /**
+   * 阶段目标进度的**有界投影**（REQ-261010200257-7e2d FR-2）：只带计数，正文不进同步缝。
+   * 缺省 = 该需求未启用 goal 能力（缺失 ≠ 0/0）。
+   */
+  readonly goals?: { readonly total: number; readonly done: number }
 }
 
 /** 产物的有界事实子集（确认门判定只读这几个字段）。 */
@@ -391,6 +400,9 @@ export function factsOf(record: SummarizableRequirement): RequirementFacts {
     // `advance` 只投影 pauseReason：带整条会连 history（append-only、无上界）一起进同步口。
     ...(record.advance !== undefined ? { advance: { ...(record.advance.pausedReason !== undefined ? { pausedReason: record.advance.pausedReason } : {}) } } : {}),
     ...(tokenUsageOf(record) !== undefined ? { tokenUsage: tokenUsageOf(record)! } : {}),
+    // REQ-261010200257-7e2d FR-2：goal 只进**有界计数**（statement/doneCriteria 正文不进城，
+    // 与 description/comments 的既有口径一致）；缺失则键不出现——"未启用"不等于"0/0"。
+    ...(goalsProgressOf(record.goals) !== undefined ? { goals: goalsProgressOf(record.goals)! } : {}),
     artifacts: (record.artifacts ?? []).flatMap((raw) => {
       // 入参是宽松类型（见 `SummarizableRequirement.artifacts`）：**结构不全的条目丢弃**，
       // 不补默认值（补 `path: ''` 之类会让消费者把"没有"当成"有"）。

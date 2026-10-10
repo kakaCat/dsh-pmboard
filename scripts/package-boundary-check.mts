@@ -28,17 +28,20 @@ const AS_JSON = argv.includes('--json')
 /** 分层白名单（唯一权威：design/architecture.md 的分层表）。 */
 export const LAYERS = [
   { layer: 'L0', pkgs: ['pm-common', 'reqboard-rtm'], allow: [] },
-  { layer: 'L0.5', pkgs: ['pm-type-kit'], allow: ['pm-common'] },
+  { layer: 'L0.5', pkgs: ['pm-category-kit'], allow: ['pm-common'] },
   {
     layer: 'L0.5',
-    pkgs: ['pm-type-feature', 'pm-type-bug', 'pm-type-doc', 'pm-type-refactor', 'pm-type-spike', 'pm-type-chore'],
-    allow: ['pm-common', 'pm-type-kit'],
+    pkgs: ['pm-category-feature', 'pm-category-bug', 'pm-category-doc', 'pm-category-refactor', 'pm-category-spike', 'pm-category-chore'],
+    allow: ['pm-common', 'pm-category-kit'],
   },
-  { layer: 'L1', pkgs: ['pm-core'], allow: ['pm-common', 'reqboard-rtm', 'pm-type-kit'] },
+  { layer: 'L1', pkgs: ['pm-core'], allow: ['pm-common', 'reqboard-rtm', 'pm-category-kit', 'pm-goal'] },
+  // REQ-261010200257-7e2d：goal 内核独立成包（零依赖，core 引用它；工具面在 tool-pm-goal）
+  { layer: 'L1', pkgs: ['pm-goal'], allow: [] },
+
   {
     layer: 'L2',
-    pkgs: ['tool-pm', 'pm-round-driver', 'pm-workflow', 'pm-client', 'command-pm'],
-    allow: ['pm-common', 'pm-core'],
+    pkgs: ['tool-pm', 'tool-pm-goal', 'pm-round-driver', 'pm-goal-round-driver', 'pm-workflow', 'pm-client', 'command-pm'],
+    allow: ['pm-common', 'pm-core', 'pm-goal'],
   },
   { layer: 'L3', pkgs: ['pm-templates', 'pm-skills', 'pm-eval-suite', 'pm-scripts'], allow: [] },
 ] as const
@@ -67,11 +70,49 @@ function walk(dir: string, out: string[] = []): string[] {
 
 const IMPORT_RE = /(?:import|export)\s+(?:type\s+)?(?:[^'"]*\s+from\s+)?['"]([^'"]+)['"]/g
 const violations: Violation[] = []
+let scannedPkgs = 0
 
+/**
+ * 按**包名**找工作区里的包目录（不再假设固定父目录）。
+ *
+ * 为什么改：原先硬编码 `join(ROOT, 'pm', pkg)`——十九包平铺后该路径不存在，
+ * 于是每个包都被 `continue` 跳过：脚本报"扫描 23 个包"（其实那是**清单长度**），
+ * 实际扫了 0 个 → **假绿**。现在：先按包名在「根 + 两级子目录」里找，
+ * 找不到就**响亮报错**（宁可不绿，不可假绿）。
+ */
+function findPackageDir(name: string): string | undefined {
+  const candidates: string[] = [join(ROOT, name), join(ROOT, 'pm', name)]
+  // 分组目录（如 goal/<pkg>）：根下每个子目录再找一层
+  if (existsSync(ROOT)) {
+    for (const group of readdirSync(ROOT).sort()) {
+      const groupDir = join(ROOT, group)
+      try {
+        if (!statSync(groupDir).isDirectory()) continue
+      } catch { continue }
+      candidates.push(join(groupDir, name))
+    }
+  }
+  for (const dir of candidates) {
+    const manifest = join(dir, 'package.json')
+    if (!existsSync(manifest)) continue
+    try {
+      const parsed = JSON.parse(readFileSync(manifest, 'utf8')) as { name?: string }
+      if (parsed.name === name) return dir
+    } catch { /* 读不懂的 manifest 交给下面的分支报错 */ }
+  }
+  return undefined
+}
+
+const missingPkgs: string[] = []
 for (const pkg of WORKSPACE_PKGS) {
-  const pkgDir = join(ROOT, 'pm', pkg)
-  const manifestPath = join(pkgDir, 'package.json')
-  if (!existsSync(manifestPath)) continue
+  const pkgDir = findPackageDir(pkg)
+  const manifestPath = pkgDir === undefined ? '' : join(pkgDir, 'package.json')
+  if (pkgDir === undefined || !existsSync(manifestPath)) {
+    // 声明了却找不到 = 清单与事实脱节（旧行为是静默跳过 → 假绿）。
+    missingPkgs.push(pkg)
+    continue
+  }
+  scannedPkgs += 1
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { dependencies?: Record<string, string> }
   const declared = Object.keys(manifest.dependencies ?? {})
   const allow = allowOf(pkg)
@@ -125,8 +166,12 @@ for (const pkg of WORKSPACE_PKGS) {
 
 if (AS_JSON) {
   console.log(JSON.stringify({ root: ROOT, packages: WORKSPACE_PKGS.length, violations }, null, 2))
-} else if (violations.length === 0) {
-  console.log('OK：分层依赖方向门禁通过（扫描 ' + String(WORKSPACE_PKGS.length) + ' 个包的声明面与使用面）')
+} else if (violations.length === 0 && missingPkgs.length === 0) {
+  console.log('OK：分层依赖方向门禁通过（扫描 ' + String(scannedPkgs) + '/' + String(WORKSPACE_PKGS.length) + ' 个包的声明面与使用面）')
+} else if (missingPkgs.length > 0) {
+  console.error('FAIL：清单里声明了却找不到包目录（宁可不绿，不可假绿）：')
+  for (const p of missingPkgs) console.error('  - ' + p)
+  process.exit(1)
 } else {
   console.error('FAIL：发现 ' + String(violations.length) + ' 处越界')
   for (const v of violations) console.error('  [' + v.kind + '] ' + v.pkg + ' :: ' + v.detail)
