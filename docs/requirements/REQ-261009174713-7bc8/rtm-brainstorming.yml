@@ -2,10 +2,10 @@ metadata:
   stage: brainstorming
   requirement_id: REQ-261009174713-7bc8
   generated_at: 2026-10-09T09:54:38.665Z
-  version: 4
+  version: 10
   generated_by: dsh-pmboard
   rtm_version: "2.0"
-  last_updated: 2026-10-09T09:59:01.791Z
+  last_updated: 2026-10-10T10:12:52.021Z
 outputs:
   requirements: []
   prototypes: []
@@ -20,5 +20,20 @@ outputs:
       verdict: 五包 + 聚合根包 / 源码 workspace（只有根包出产物）/ 留在本仓库 / 测试随包迁移
       serves: []
       criterion: 验收标准第 1、2、4 条
+    - id: D-3
+      source: 用户原话「pm也需要一个斜杠命令面 ，创建立项」（design 阶段追加，弹框选项「并入当前重构需求」）
+      verdict: pm 增加斜杠命令面 `/pm`（显示 + 创建立项）**并入本重构需求**，落点 `packages/command-pmboard`（对标 goal 的 command-goal）；N1「不改运行时行为」收窄为「除命令面外不变」
+      serves: []
+      criterion: 验收标准命令面三条（`/pm` 注册可见 / 敲命令后台账新增 REQ / 无 commands 服务不抛）；本需求按 change_note 重交需求文档并重过确认门
+    - id: D-4
+      source: 用户原话「不通过类型项目的也拆解成不同的包」→ 追加「分类对应一个包，还有公共包，抽离公共的能力，或者抽象能力」（brainstorming 阶段，弹框多选 A+C）
+      verdict: 拆分粒度从六包扩到**十六包**：① 资产型项目各自成包（`reqboard-rtm` / `pmboard-templates` / `pmboard-skills` / `pmboard-eval-suite` / `pmboard-scripts`）；② 工具面按用途分类成四包 + `tool-pmboard-kit`；③ 新增公共包 `pmboard-common` 抽离公共/抽象能力（`protocol.ts` 拆纯帧与域关联两半）；④ 资产包化带来的运行期解析改造单列 RF-23
+      serves: []
+      criterion: 验收标准六条新增（包清单 16 / 公共包零依赖 / 资产清单等价 / 发布含资产包 / TOOL_REGISTRY 等价 / 分层门禁自检）
+    - id: D-5
+      source: 用户原话「把功能，bug这个拆分成包，这样走那个类型逻辑就隔离开了，工具层需要怎么多包吗」（brainstorming 阶段）
+      verdict: ① 新增**类型层**：`pmboard-type-kit` + 六个类型包（feature/bug/doc/refactor/spike/chore），承载该类型的必填节/必交文档/条件产物/模板引用/归档去向/提示词片段/中文标签；core 改为经注册表消费类型逻辑；② **工具层收敛为单包** `tool-pmboard`（分类落包内目录，撤销 D-4 的「工具四包 + kit」）；③ 模板资产仍留 `pmboard-templates`，类型包只声明引用
+      serves: []
+      criterion: 验收标准七条（包清单 19 / 类型层齐备 / 类型逻辑收敛 grep / 六类型规格快照 / 模板引用完整性 / prompts 条数 / 分层门禁四例自检）
 status:
   artifacts: []

@@ -112,6 +112,7 @@
 - kb-0078 · pitfall · 红测试收口：全仓红由 37 文件 / 67 用例收到 12 / 21（另案 11 + B 类 10 逐条归属），把「红」拆成三类成因的分诊法与定性纪律沉淀为 docs/guides/red-test-triage.md · → entries/kb-0078.md
 - kb-0080 · pitfall · 立项弹框失效修复：宿主 askTimed 的 callId=undefined 使弹框请求被网关判 not lossless JSON data 而拒收；移除透传改走官方 ask() 路径 + 源头修 description:undefined + 通道边界无损清洗，实测弹框恢复 · → entries/kb-0080.md
 - kb-0081 · pitfall · 层边界收口：application/ 的 15 处 I/O 越界清零（三份同构 RTM 门合并为 rtm-gates 单点   新增 HostFsPort/DiagSinkPort 端口与宿主实现   路径判定收口纯函数   Dive Service 外移适配层），层门补上显式豁 · → entries/kb-0081.md
+- kb-0082 · pitfall · dsh-pmboard 重构为 19 个 workspace 包 + 单插件（L0 公共/RTM   L0.5 类型契约与六类型   L1 core   L2 工具/驱动/工作流/客户端/命令面   L3 资产）：五闸全绿、五类迁移基线 diff 全过、测试随包迁移 546/79 · → entries/kb-0082.md
 - kb-0006 · pitfall · 收尾门两处错位已修：节流不再把「关完自己的子卡再关父卡」当成滥用（兄弟卡与跨卡仍拦）… · → entries/kb-0006.md
 - kb-0007 · pitfall · 验收不再要人填结果：agent 提交材料时逐项落实际结果，弹框/看板只问裁决… · → entries/kb-0007.md
 - kb-0012 · pitfall · PM 插件 agent 测评套件：调研业界方法（Langfuse 四维度/τ-bench 终态比… · → entries/kb-0012.md
