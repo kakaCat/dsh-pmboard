@@ -18,8 +18,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, sep } from 'node:path'
-import type { SkillInstallPort, SkillWriteFile, SkillWriteReceipt } from '../application/ports.js'
-import type { SkillFileFingerprint } from '../application/internal/skill-manifest.js'
+import type { SkillInstallPort, SkillWriteFile, SkillWriteReceipt } from 'pmboard-core/application/ports.js'
+import type { SkillFileFingerprint } from 'pmboard-core/application/internal/skill-manifest.js'
 
 /** 投放根内的元数据文件：**不算资产**（清单/自忽略），故不进 `readTree` 的指纹表。 */
 const META_FILES = new Set(['.manifest.json', '.gitignore'])

@@ -10,21 +10,21 @@
  *         task.workflow 与预期**完全相等**；
  *   TC-I3 数据源证明：磁盘上确无任何任务卡文档，读数仍成立（旧 fs 直读路径会在此返回空）。
  */
-import { makeHarness } from './application/harness.js'
+import { makeHarness } from 'tests/application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
-import { FileHostFs } from '../src/adapters/FileHostFs.js'
-import { SystemClock } from '../src/adapters/SystemClock.js'
-import { RandomIdFactory } from '../src/adapters/RandomIdFactory.js'
-import { SessionProbeAdapter } from '../src/adapters/SessionProbeAdapter.js'
-import { UserQuestionsAdapter } from '../src/adapters/UserQuestionsAdapter.js'
-import { defineTaskTreeTool, defineTaskReportTool } from '../src/tools/index.js'
-import { JsonQueueRepository } from '../src/repositories/QueueRepository.js'
-import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
-import type { ReqboardLedger, TaskRecord } from '../src/shared/protocol.js'
+import { FileDocRepository } from 'src/adapters/FileDocRepository.js'
+import { FileHostFs } from 'src/adapters/FileHostFs.js'
+import { SystemClock } from 'src/adapters/SystemClock.js'
+import { RandomIdFactory } from 'src/adapters/RandomIdFactory.js'
+import { SessionProbeAdapter } from 'src/adapters/SessionProbeAdapter.js'
+import { UserQuestionsAdapter } from 'src/adapters/UserQuestionsAdapter.js'
+import { defineTaskTreeTool, defineTaskReportTool } from 'tool-pmboard/index.js'
+import { JsonQueueRepository } from 'pmboard-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
+import type { ReqboardLedger, TaskRecord } from 'pmboard-core/protocol-domain.js'
 
 const W = 'session-status-int-1'
 
@@ -105,7 +105,7 @@ describe('reqboard_task_tree(task_id) 接口联调（真台账 + 真工具壳；
     const rep = await run(defineTaskReportTool(deps()), { task_id: 't-int0001',
       summary: '联调：写入 lastReport',
       completed: ['完成 A', '完成 B'],
-      files_changed: ['packages/web/dsh-pmboard/src/tools/TaskTreeTool/TaskTreeTool.ts'],
+      files_changed: ['packages/web/dsh-pmboard/packages/tool-pmboard/src/TaskTreeTool/TaskTreeTool.ts'],
     })
     expect(rep.success).toBe(true)
     expect(rep.report_index).toBe(1)

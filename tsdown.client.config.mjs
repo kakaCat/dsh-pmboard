@@ -12,7 +12,7 @@ import { defineConfig } from 'tsdown'
 // 2026-09-20: this plugin is fully self-contained (no bare npm imports in
 // src/client/) — keep it that way; think twice before adding any import.
 export default defineConfig({
-  entry: { client: 'src/client/index.ts' },
+  entry: { client: 'packages/pmboard-client/src/index.ts' },
   format: ['cjs'],
   outDir: 'lib',
   clean: false,

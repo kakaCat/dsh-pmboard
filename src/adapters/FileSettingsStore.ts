@@ -24,8 +24,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import { persistAtomic } from '../repositories/atomicWrite.js'
-import { SETTINGS_STORE_ERROR, type SettingsStore } from '../application/ports.js'
+import { persistAtomic } from 'pmboard-core/repositories/atomicWrite.js'
+import { SETTINGS_STORE_ERROR, type SettingsStore } from 'pmboard-core/application/ports.js'
 import {
   SETTINGS_FILE_REL,
   resolveRunSettings,
@@ -36,8 +36,8 @@ import {
   type RunSettingsPatch,
   type SettingsProblem,
   type StorageBackend,
-} from '../application/settings/resolve-settings.js'
-import { fmt } from '../domain/text/fmt.js'
+} from 'pmboard-core/application/settings/resolve-settings.js'
+import { fmt } from 'pmboard-core/domain/text/fmt.js'
 
 export interface FileSettingsStoreOptions {
   /** `dshHome` 绝对路径（设置文件 = `<dshHome>/dsh-reqboard-settings.json`）。 */

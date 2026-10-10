@@ -8,14 +8,14 @@
  *  ③ status 回执带 plugin_build（陈旧构建可见化），且工具 schema 已声明（三方同源纪律）。
  */
 import { describe, it, expect, afterEach } from 'vitest'
-import { landApprovedPlan } from '../src/application/internal/approved-plan-landing.js'
-import { planDependencyWarnings, docDependencyRefs, zeroOverlapDependencyWarnings } from '../src/application/internal/plan-deps-check.js'
-import { submitPlanArtifact } from '../src/application/use-cases/SubmitArtifact.js'
-import { setBuildStamp, getBuildStamp } from '../src/shared/build-stamp.js'
-import { queryState } from '../src/application/query/QueryState.js'
-import { defineStatusTool } from '../src/tools/index.js'
-import type { PlanTask } from '../src/shared/protocol.js'
-import { makeHarness, req } from './application/harness.js'
+import { landApprovedPlan } from 'pmboard-core/application/internal/approved-plan-landing.js'
+import { planDependencyWarnings, docDependencyRefs, zeroOverlapDependencyWarnings } from 'pmboard-core/application/internal/plan-deps-check.js'
+import { submitPlanArtifact } from 'pmboard-core/application/use-cases/SubmitArtifact.js'
+import { setBuildStamp, getBuildStamp } from 'pmboard-common/build-stamp.js'
+import { queryState } from 'pmboard-core/application/query/QueryState.js'
+import { defineStatusTool } from 'tool-pmboard/index.js'
+import type { PlanTask } from 'pmboard-core/protocol-domain.js'
+import { makeHarness, req } from 'tests/application/harness.js'
 
 const REQ_ID = 'REQ-0000d3'
 const WINDOW = 'session-w-d3'
@@ -177,16 +177,16 @@ describe('FR-3 ③ 零交集依赖边：没写理由 → 点名建议；写了�
   // 零交集建议对这条边"看都不看"（沉默 ≠ 通过）。本条的可证伪点：去掉 PATH_RE 的 src 根后必须红。
   it('src 落点同样参与零交集判定：src↔src 零交集 → 点名；src 有交集 → 不点名', () => {
     const srcZero: PlanTask[] = [
-      { key: 't8', title: '改冲突门', implementation: '改 src/application/internal/conflict-check.ts' } as PlanTask,
-      { key: 't9', title: '改容量门', dependsOn: ['t8'], implementation: '改 src/domain/task/Footprint.ts' } as PlanTask,
+      { key: 't8', title: '改冲突门', implementation: '改 packages/pmboard-core/src/application/internal/conflict-check.ts' } as PlanTask,
+      { key: 't9', title: '改容量门', dependsOn: ['t8'], implementation: '改 packages/pmboard-core/src/domain/task/Footprint.ts' } as PlanTask,
     ]
     const w = zeroOverlapDependencyWarnings(srcZero)
     expect(w).toHaveLength(1)
     expect(w[0]).toContain('t9 → t8')
-    expect(w[0]).toContain('src/domain/task/Footprint.ts')
+    expect(w[0]).toContain('packages/pmboard-core/src/domain/task/Footprint.ts')
     const srcOverlap: PlanTask[] = [
-      { key: 't8', title: '改冲突门', implementation: '改 src/application/internal/conflict-check.ts' } as PlanTask,
-      { key: 't9', title: '也改冲突门', dependsOn: ['t8'], implementation: '改 src/application/internal/conflict-check.ts 的另一处' } as PlanTask,
+      { key: 't8', title: '改冲突门', implementation: '改 packages/pmboard-core/src/application/internal/conflict-check.ts' } as PlanTask,
+      { key: 't9', title: '也改冲突门', dependsOn: ['t8'], implementation: '改 packages/pmboard-core/src/application/internal/conflict-check.ts 的另一处' } as PlanTask,
     ]
     expect(zeroOverlapDependencyWarnings(srcOverlap)).toEqual([])
   })

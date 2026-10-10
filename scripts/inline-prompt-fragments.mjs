@@ -49,10 +49,13 @@ export const CATEGORIES = ['feature', 'bug', 'doc', 'refactor', 'spike', 'chore'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 export const PKG_ROOT = join(HERE, '..')
-export const FRAGMENTS_DIR = join(PKG_ROOT, 'src/domain/prompt/fragments')
-export const GENERATED_FILE = join(PKG_ROOT, 'src/domain/prompt/generated/fragments.ts')
-export const GENERATED_REL = 'src/domain/prompt/generated/fragments.ts'
-export const VENDOR_DIR = join(PKG_ROOT, 'src/domain/prompt/vendor/superpowers')
+export const FRAGMENTS_DIR = join(PKG_ROOT, 'packages/pmboard-core/src/domain/prompt/fragments')
+export const GENERATED_FILE = join(PKG_ROOT, 'packages/pmboard-common/src/prompt/generated/fragments.ts')
+export const GENERATED_REL = 'packages/pmboard-common/src/prompt/generated/fragments.ts'
+/** 类型档落点（REQ-261009174713-7bc8 t11 二期）：每类一份，随类型包走。 */
+export const TYPE_FRAGMENTS_FILE = (cat) => join(PKG_ROOT, 'packages/pmboard-type-' + cat + '/src/fragments.ts')
+export const TYPE_FRAGMENTS_REL = (cat) => 'packages/pmboard-type-' + cat + '/src/fragments.ts'
+export const VENDOR_DIR = join(PKG_ROOT, 'packages/pmboard-core/src/domain/prompt/vendor/superpowers')
 
 /**
  * 节点 → heavy 主 skill（vendor 原文来源）。decomposing 故意缺席：
@@ -247,6 +250,39 @@ export function buildFragmentsSource() {
   // tests/size-budget.test.ts 的 400 行硬上限。这里仍是"整文件模板拼接"——text 依旧逐字节原样
   // 走 JSON.stringify，不涉及任何逐行字符串变换。
   for (const r of records) {
+    // t11 二期：类型档（category !== '*'）拆到六个类型包，本文件只留通用档。
+    if (r.category !== '*') continue
+    const fields = [
+      'id: ' + JSON.stringify(r.id),
+      'stage: ' + JSON.stringify(r.stage),
+      'difficulty: ' + JSON.stringify(r.difficulty),
+      'category: ' + JSON.stringify(r.category),
+      'priority: ' + JSON.stringify(r.priority),
+      'text: ' + JSON.stringify(r.text),
+    ]
+    if (r.include !== undefined) fields.push('include: ' + JSON.stringify(r.include))
+    lines.push('  { ' + fields.join(', ') + ' },')
+  }
+  lines.push(']')
+  lines.push('')
+  return lines.join('\n')
+}
+
+/** 生成某个类型包的片段表（只含 category === cat 的记录；类型从 common 复用）。 */
+export function buildTypeFragmentsSource(category) {
+  const records = readFragments()
+  const lines = []
+  lines.push('/**')
+  lines.push(' * `pmboard-type-' + category + '` 的提示词片段表 —— **生成物，勿手改**。')
+  lines.push(' *')
+  lines.push(' * 由 `scripts/inline-prompt-fragments.mjs` 从 fragments/**.md 生成（REQ-261009174713-7bc8 t11 二期）：')
+  lines.push(' * 类型档随类型包走，core 经装配端口取用（core 不认识具体类型包）。')
+  lines.push(' */')
+  lines.push("import type { GeneratedFragment } from 'pmboard-common/prompt/generated/fragments.js'")
+  lines.push('')
+  lines.push('export const FRAGMENTS: readonly GeneratedFragment[] = [')
+  for (const r of records) {
+    if (r.category !== category) continue
     const fields = [
       'id: ' + JSON.stringify(r.id),
       'stage: ' + JSON.stringify(r.stage),
@@ -267,6 +303,11 @@ function main() {
   const source = buildFragmentsSource()
   mkdirSync(dirname(GENERATED_FILE), { recursive: true })
   writeFileSync(GENERATED_FILE, source, 'utf8')
+  for (const cat of CATEGORIES) {
+    const file = TYPE_FRAGMENTS_FILE(cat)
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, buildTypeFragmentsSource(cat), 'utf8')
+  }
   const n = readFragments().length
   const problems = vendorMirrorProblems()
   if (problems.length > 0) {

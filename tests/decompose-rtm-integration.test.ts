@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { generateRTMData } from '../src/application/internal/rtm-integration.js';
-import type { TaskRecord } from '../src/shared/protocol.js';
-import { task } from './application/harness.js';
+import { generateRTMData } from 'pmboard-core/application/internal/rtm-integration.js';
+import type { TaskRecord } from 'pmboard-core/protocol-domain.js';
+import { task } from 'tests/application/harness.js';
 
 describe('Decompose RTM Integration', () => {
   let testDir: string;

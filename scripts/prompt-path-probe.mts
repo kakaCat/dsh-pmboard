@@ -3,11 +3,11 @@
  * R3 —— 提示词路径可达探针（REQ-261005105032-3b02 t20 · FR-10 · design-brief §6 · 决议 #17/#47）。
  *
  * 解决什么问题：注入面（提示词片段 + 回合指令）里写的**路径指针**与仓库真实布局是两处写法。
- * 指针指向一个不存在文件的后果是**静默**的——模板改名/迁移之后（如 `templates/design/prototype.html`
- * 迁到 `templates/brainstorming/prototype.html`），片段会继续教 agent 去读旧路径，没有任何东西报错，
+ * 指针指向一个不存在文件的后果是**静默**的——模板改名/迁移之后（如 `packages/pmboard-templates/templates/design/prototype.html`
+ * 迁到 `packages/pmboard-templates/templates/brainstorming/prototype.html`），片段会继续教 agent 去读旧路径，没有任何东西报错，
  * 直到人肉发现。本探针把「片段里写了什么路径」与「磁盘上有什么」拉到同一条命令上。
  *
- * 判据（一条）：`src/domain/prompt/fragments/**` + `round-state.ts` 文本里抽出的每个路径 token，
+ * 判据（一条）：`packages/pmboard-core/src/domain/prompt/fragments/**` + `round-state.ts` 文本里抽出的每个路径 token，
  *   必须**真实存在**（相对工作区根）**或**命中已知产物名白名单（下方 `WHITELIST`，每条都写清理由）。
  *   否则 = 缺口 → exit 1 并**逐条点名**（token + 文件:行 + 修复提示）。
  *
@@ -44,8 +44,8 @@ import { join, relative } from 'node:path'
 const SCRIPT = 'prompt-path-probe'
 
 /** 扫描对象：注入面的两处文本源——片段目录（递归 `*.md`）与回合指令模块。 */
-const SCAN_DIRS = ['src/domain/prompt/fragments'] as const
-const SCAN_FILES = ['src/application/dive/round-state.ts'] as const
+const SCAN_DIRS = ['packages/pmboard-core/src/domain/prompt/fragments'] as const
+const SCAN_FILES = ['packages/pmboard-core/src/application/dive-core/round-state.ts'] as const
 
 /**
  * agent 可见文案面（REQ-261007200706-89b7 FR-1 扩面；t2）——工具 description/schema 描述、
@@ -53,10 +53,12 @@ const SCAN_FILES = ['src/application/dive/round-state.ts'] as const
  * 而原扫描面（片段 + round-state）盖不住，于是「指针可达」的判据在这片区域长期是盲区。
  * `*.ts` 先剥注释再抽 token（agent 看不到注释，扫注释只会把功能性说明打成误报）。
  */
-const AGENT_SURFACE_DIRS = ['src/tools'] as const
+// 工具面根：搬迁前后各一处（判据不依赖具体布局——t15 搬迁时才不会红一片）。
+// t21：旧工具目录已随工具面成包（t15）⇒ 只留包内落点（判据：本文件不得出现旧落点字面量）。
+const AGENT_SURFACE_DIRS = ['packages/tool-pmboard/src'] as const
 const AGENT_SURFACE_FILES = [
-  'src/application/internal/capture-section.ts',
-  'src/client/views/verification.ts',
+  'packages/pmboard-core/src/application/internal/capture-section.ts',
+  'packages/pmboard-client/src/views/verification.ts',
 ] as const
 
 /**
@@ -121,6 +123,9 @@ interface WhitelistRule {
  * 若某个 token 既不在磁盘上、又说不清为什么该存在，那它就是缺口（探针的全部价值）。
  */
 const WHITELIST: readonly WhitelistRule[] = [
+  // REQ-261009174713-7bc8：t4 挂的「`packages/pmboard-core/src/domain/limits.ts` 旧落点」白名单条目已由 t11
+  // （t-4e92b3 文案收口期）删除——片段文案改指真实落点（heavy 用全路径、light 因 2500 上限用包目录形态），
+  // 白名单不再需要。**白名单只减不增**：条目一旦失去理由就删，不留「历史兼容」的僵尸条目。
   {
     // 兼容期（卡面选项 a）：brief §1 明确旧目录 `docs/requirements/<REQ>/prototype/*.html` 仍识别为
     // prototype（门禁只提示迁移到 prototypes/）。登记在**通用占位规则之前**，是为了让它显式可见——
@@ -442,9 +447,10 @@ for (const d of SCAN_DIRS) {
 for (const f of AGENT_SURFACE_FILES) {
   if (!existsSync(join(root, f))) fail(root, '扫描目标缺失：' + f, args.json)
 }
-for (const d of AGENT_SURFACE_DIRS) {
-  if (!existsSync(join(root, d))) fail(root, '扫描目标缺失：' + d, args.json)
-}
+// 布局无关（t15）：工具面根搬迁前后各一处——只要求「至少存在一处」，缺的那处跳过即可
+// （搬迁当刻不该因为「旧目录没了」而报缺口；真要一处都不在，下面的 agentFiles 为空会拦住）。
+const agentSurfaceDirs = AGENT_SURFACE_DIRS.filter((d) => existsSync(join(root, d)))
+if (agentSurfaceDirs.length === 0) fail(root, '扫描目标全缺失：' + AGENT_SURFACE_DIRS.join('、'), args.json)
 
 const fragmentFiles: string[] = []
 for (const d of SCAN_DIRS) walkMarkdown(join(root, d), fragmentFiles)
@@ -452,10 +458,10 @@ fragmentFiles.sort()
 if (fragmentFiles.length === 0) fail(root, '片段目录为空：' + SCAN_DIRS.join('、'), args.json)
 
 const agentFiles: string[] = []
-for (const d of AGENT_SURFACE_DIRS) walkTypeScript(join(root, d), agentFiles)
+for (const d of agentSurfaceDirs) walkTypeScript(join(root, d), agentFiles)
 agentFiles.push(...AGENT_SURFACE_FILES.map((f) => join(root, f)))
 agentFiles.sort()
-if (agentFiles.length === 0) fail(root, 'agent 文案面为空：' + AGENT_SURFACE_DIRS.join('、'), args.json)
+if (agentFiles.length === 0) fail(root, 'agent 文案面为空：' + agentSurfaceDirs.join('、'), args.json)
 
 const entries = [
   ...fragmentFiles.map((f) => ({ file: f, text: readFileSync(f, 'utf8') })),
@@ -503,7 +509,7 @@ if (args.specimen) {
     }, null, 2))
   } else {
     console.log('[' + SCRIPT + '] specimen ① 真实扫描：缺口 ' + String(result.gaps.length) + (okCase ? ' ✔' : ' ✘（真实扫描本来就红，先修它）'))
-    console.log('[' + SCRIPT + '] specimen ② 注入 templates/nope.md：' + (redCase ? '判红且点名 ✔' : '没判红 ✘（判据空转）'))
+    console.log('[' + SCRIPT + '] specimen ② 注入 packages/pmboard-templates/templates/nope.md：' + (redCase ? '判红且点名 ✔' : '没判红 ✘（判据空转）'))
     console.log('[' + SCRIPT + '] specimen ③ 白名单 token prototypes/INDEX.md：' + (whiteOk ? '不判缺口 ✔' : '误判 ✘（白名单失效）'))
     console.log('[' + SCRIPT + '] specimen ④ 注入 agent-dh/ 与 docs/standards/ 禁词：'
       + (forbiddenRed ? '两条都判红 ✔（且不吃白名单）' : '禁词判据没生效 ✘'))

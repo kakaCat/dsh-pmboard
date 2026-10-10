@@ -8,13 +8,16 @@
  * 不出现，而错误还被误报成「用户取消」。运行时已由 `UserQuestionsAdapter` 兜底清洗，
  * 但上游写对才是正解；本测试让同类写法在 CI 阶段就被抓住，而不是再去线上排查一次。
  *
- * 与 `tests/lossless-json-questions.test.ts` 的分工：那边验**运行时**（清洗函数 +
+ * 与 `packages/pmboard-core/tests/lossless-json-questions.test.ts` 的分工：那边验**运行时**（清洗函数 +
  * 真实构造器输出可无损往返），这边验**源码形状**（不再出现该写法）。
  *
  * @module dsh-pmboard/tests/dialog-payload-lossless-guard
  */
 import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { repoPath } from 'tests/helpers/repo-root.js'
 
 /** 抹掉注释（注释里允许留反例做文档——不抹会把"留档"误判成违规，参见既有同类测试）。 */
 function stripComments(raw: string): string {
@@ -26,7 +29,7 @@ function stripComments(raw: string): string {
  * 漏了也不会静默出错（适配器出口清洗会记 `[UI-2]` 诊断），但就失去了 CI 的早拦。
  */
 const DIALOG_PAYLOAD_SOURCES = [
-  '../src/application/internal/capture-mapping.ts',
+  '../packages/pmboard-core/src/application/internal/capture-mapping.ts',
 ] as const
 
 /**
@@ -42,13 +45,13 @@ describe('弹框请求载荷的无损 JSON 护栏', () => {
   })
 
   it.each(DIALOG_PAYLOAD_SOURCES)('%s 不含「键: 条件 ? 值 : undefined」写法', (relative) => {
-    const code = stripComments(readFileSync(new URL(relative, import.meta.url), 'utf8'))
+    const code = stripComments(readFileSync(pathToFileURL(join(repoPath('tests'), relative)), 'utf8'))
     const offenders = code.match(OFFENDING_KEY) ?? []
     expect(offenders).toEqual([])
   })
 
   it('源码确实被读到了（防空文件恒绿）', () => {
-    const code = stripComments(readFileSync(new URL(DIALOG_PAYLOAD_SOURCES[0], import.meta.url), 'utf8'))
+    const code = stripComments(readFileSync(pathToFileURL(join(repoPath('tests'), DIALOG_PAYLOAD_SOURCES[0])), 'utf8'))
     expect(code).toContain('buildCaptureIntentQuestions')
   })
 })

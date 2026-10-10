@@ -25,7 +25,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { REPO_ROOT, collectTestCoverage, scanErrorCodes } from './error-code-scan.js'
+import { REPO_ROOT, collectTestCoverage, scanErrorCodes } from 'tests/helpers/error-code-scan.js'
 
 /** 一次触发的观察结果：看到了哪个码（以及可选的人读补充）。 */
 export interface TriggerObservation {
@@ -144,7 +144,7 @@ export function defineCodeTriggers(specs: readonly TriggerSpec[]): void {
       expect(
         uncovered.length,
         '仍有 ' + String(uncovered.length) + ' 个码零覆盖（上限 ' + String(MAX_UNCOVERED) + '）：'
-          + uncovered.join('、') + '。补齐：在 tests/error-code-matrix.test.ts 增加 TriggerSpec，'
+          + uncovered.join('、') + '。补齐：在 packages/pmboard-core/tests/error-code-matrix.test.ts 增加 TriggerSpec，'
           + '确实不可触发的登记进 tests/fixtures/error-code-exempt.json',
       ).toBeLessThanOrEqual(MAX_UNCOVERED)
     })

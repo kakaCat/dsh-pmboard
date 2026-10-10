@@ -106,8 +106,8 @@ const PALETTE = [
 const SHARED_CSS = `
 /* ══════════════════════════════════════════════════════════════════════════
    共用层（三版一致）：令牌 / 焦点 / 语义 / 目标尺寸 / 动效 / 收敛 / 状态标记
-   规范出处（ui-ux-pro-max，本仓 vendored：.dsh/skills/ui-ux-pro-max/）：
-     ① python3 .dsh/skills/ui-ux-pro-max/scripts/search.py "spacing scale rhythm" --domain ux
+   规范出处（ui-ux-pro-max，本仓 vendored：.dsh/packages/pmboard-skills/skills/ui-ux-pro-max/）：
+     ① python3 .dsh/packages/pmboard-skills/skills/ui-ux-pro-max/scripts/search.py "spacing scale rhythm" --domain ux
         → Touch Spacing（相邻目标 ≥8px 间距）· Text Reflow and Spacing（内容驱动高度、不裁字）
      ② … "visual hierarchy whitespace" --domain ux
         → Hover States（可点元素要有反馈）· Heading Hierarchy（h1→h3 顺序，不跳级）

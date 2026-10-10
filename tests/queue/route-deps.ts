@@ -17,8 +17,8 @@
  *
  * @module dsh-pmboard/tests/queue/route-deps
  */
-import { JsonQueueRepository } from '../../src/repositories/QueueRepository.js'
-import { QueueTaskStore } from '../../src/repositories/QueueTaskStore.js'
+import { JsonQueueRepository } from 'pmboard-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
 
 /**
  * 以 `root`（测试的临时工作区根）为队列落点的**真实** TaskStore。

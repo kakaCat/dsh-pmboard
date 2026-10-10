@@ -8,10 +8,10 @@
  * @module dsh-pmboard/adapters/SkillAssets
  */
 import { createHash } from 'node:crypto'
-import { readdirSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import type { SkillAssetContent, SkillAssetPort } from '../application/ports.js'
+import type { SkillAssetContent, SkillAssetPort } from 'pmboard-core/application/ports.js'
 
 export interface SkillAssetsOptions {
   /** 组合根模块所在目录（源码态 `<pkg>/src`、构建态 `<pkg>/dist`）。 */
@@ -29,7 +29,8 @@ export class SkillAssets implements SkillAssetPort {
   private readonly root: string
 
   constructor(options: SkillAssetsOptions) {
-    this.root = options.root ?? resolve(options.moduleDir, '..', 'skills')
+    const inPkg = resolve(options.moduleDir, '..', 'packages', 'pmboard-skills', 'skills')
+    this.root = options.root ?? (existsSync(inPkg) ? inPkg : resolve(options.moduleDir, '..', 'skills'))
   }
 
   /** 资产根绝对路径（组合根/诊断用）。 */
@@ -67,7 +68,7 @@ export class SkillAssets implements SkillAssetPort {
     try {
       return await readFile(join(this.root, 'PROVENANCE.md'), 'utf8')
     } catch (err) {
-      return missing('包内缺 skills/PROVENANCE.md（' + String((err as Error).message) + '）')
+      return missing('包内缺 packages/pmboard-skills/skills/PROVENANCE.md（' + String((err as Error).message) + '）')
     }
   }
 

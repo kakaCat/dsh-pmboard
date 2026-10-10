@@ -14,14 +14,14 @@
  * @module dsh-pmboard/tests/hermetic-guard
  */
 import { describe, expect, it } from 'vitest'
+import { REPO_ROOT } from 'tests/helpers/repo-root.js'
 import { existsSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { permissionModelStatus, tempDir } from './setup/hermetic-guard.js'
-import { assertDocDoubleContract, checkDocDoubleContract } from './setup/hermetic-contract.js'
 
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
+import { permissionModelStatus, tempDir } from 'tests/setup/hermetic-guard.js'
+import { assertDocDoubleContract, checkDocDoubleContract } from 'tests/setup/hermetic-contract.js'
+
 
 describe('⑤-a 权限模型：仓内写入由内核拒绝', () => {
   it('启动自检结论必须是生效（active），且观察到的错误码是 ERR_ACCESS_DENIED', () => {

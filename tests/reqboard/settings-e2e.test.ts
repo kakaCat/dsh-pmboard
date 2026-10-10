@@ -22,23 +22,23 @@ import { createRequire } from 'node:module'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { makeHarness } from '../application/harness.js'
-import { createReqboardHandler } from '../../src/http/routes.js'
-import { fail } from '../../src/http/envelope.js'
-import { FileSettingsStore } from '../../src/adapters/FileSettingsStore.js'
-import { SystemRecordFile } from '../../src/adapters/SystemRecordFile.js'
-import { PendingConfirmRegistry } from '../../src/adapters/PendingConfirmRegistry.js'
-import { SETTINGS_FILE_REL } from '../../src/application/settings/resolve-settings.js'
-import { SYSTEM_RECORD_FILE_REL } from '../../src/application/settings/events.js'
-import { SQLITE_SCHEMA_VERSION } from '../../src/repositories/sqliteSchema.js'
-import { installStageLimitSnapshot, roundLimitFor } from '../../src/application/dive/round-state.js'
-import { createDiveRoundDriver, type DiveRoundPorts } from '../../src/application/dive/round-driver.js'
-import { legacyStoreProjection } from '../support/legacy-store-projection.js'
-import { factsOf } from '../../src/domain/requirement/RequirementSummary.js'
-import { emptyLedger, type RequirementRecord } from '../../src/shared/protocol.js'
-import { assembleStorage } from '../../src/wiring/settings-assembly.js'
-import { migrateLedgerToSqlite, MIGRATE_EXIT } from '../../scripts/migrate-ledger-to-sqlite.js'
-import { expectCode } from '../helpers/code-assert.js'
+import { makeHarness } from 'tests/application/harness.js'
+import { createReqboardHandler } from 'src/http/routes.js'
+import { fail } from 'src/http/envelope.js'
+import { FileSettingsStore } from 'src/adapters/FileSettingsStore.js'
+import { SystemRecordFile } from 'src/adapters/SystemRecordFile.js'
+import { PendingConfirmRegistry } from 'src/adapters/PendingConfirmRegistry.js'
+import { SETTINGS_FILE_REL } from 'pmboard-core/application/settings/resolve-settings.js'
+import { SYSTEM_RECORD_FILE_REL } from 'pmboard-core/application/settings/events.js'
+import { SQLITE_SCHEMA_VERSION } from 'pmboard-core/repositories/sqliteSchema.js'
+import { installStageLimitSnapshot, roundLimitFor } from 'pmboard-core/application/dive-core/round-state.js'
+import { createDiveRoundDriver, type DiveRoundPorts } from 'pmboard-round-driver/round-driver.js'
+import { legacyStoreProjection } from 'tests/support/legacy-store-projection.js'
+import { factsOf } from 'pmboard-core/domain/requirement/RequirementSummary.js'
+import { emptyLedger, type RequirementRecord } from 'pmboard-core/protocol-domain.js'
+import { assembleStorage } from 'src/wiring/settings-assembly.js'
+import { migrateLedgerToSqlite, MIGRATE_EXIT } from 'scripts/migrate-ledger-to-sqlite.js'
+import { expectCode } from 'tests/helpers/code-assert.js'
 
 const require_ = createRequire(import.meta.url)
 
@@ -60,8 +60,8 @@ afterEach(() => {
 
 /** 真盘分片种子（走真实仓储，不喂内存假 fs——迁移门的探针读真盘）。 */
 async function seedShards(count: number): Promise<string[]> {
-  const { RequirementShardRepository } = await import('../../src/repositories/RequirementShardRepository.js')
-  const { seedShard } = await import('./fake-shard-fs.js')
+  const { RequirementShardRepository } = await import('pmboard-core/repositories/RequirementShardRepository.js')
+  const { seedShard } = await import('tests/reqboard/fake-shard-fs.js')
   const repo = new RequirementShardRepository({ now: () => 1, onWarn: () => {} })
   await repo.writeMeta(dataRoot, { schemaVersion: 10, revision: 3 })
   const ids: string[] = []
@@ -99,7 +99,7 @@ function writeSettings(body: Record<string, unknown>): void {
   writeFileSync(settingsFile, JSON.stringify({ schemaVersion: 1, ...body }, null, 2))
 }
 
-/** 小驱动 harness（照 tests/dive-round-driver.test.ts 的既有写法，只留本卡要用的部分）。 */
+/** 小驱动 harness（照 packages/pmboard-core/tests/dive-round-driver.test.ts 的既有写法，只留本卡要用的部分）。 */
 function driveHarness(req: RequirementRecord) {
   const ledger = { ...emptyLedger(), requirements: [req], tasks: [], triages: [] }
   const repo = { snapshot: () => ledger, read: async (fn: (v: unknown) => unknown) => fn(ledger), mutate: async (_r: string, fn: (l: unknown) => unknown) => ({ changed: fn(ledger) as never, revision: 1 }), replaceAll: async () => {} }

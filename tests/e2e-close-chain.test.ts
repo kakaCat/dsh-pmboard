@@ -8,7 +8,7 @@
  * 修 A1 不许把防滥用的能力一起放宽。
  */
 import { describe, it, expect } from 'vitest'
-import { findRecentAgentDoneTask, doneThrottleRemainingMs } from '../src/domain/workflow/DoneEvidenceSpec.js'
+import { findRecentAgentDoneTask, doneThrottleRemainingMs } from 'pmboard-core/domain/workflow/DoneEvidenceSpec.js'
 
 const REQ = 'REQ-x'
 const done = (at: number) => [{ status: 'done', by: { kind: 'agent' }, at }]

@@ -5,7 +5,7 @@
  * 口径：`git log --oneline --grep=<REQ-id>` 非空 ⇒ 打印 `OK` 并 exit 0；空 ⇒ 打印 `FAIL` 并 exit 1。
  *
  * 为什么需要这个脚本，而不是规范里直接写 `git commit`：
- * `validateOperationEntry`（`src/domain/knowledge/operations.ts`）要求操作条目的「命令」满足两条——
+ * `validateOperationEntry`（`packages/pmboard-common/src/knowledge/operations.ts`）要求操作条目的「命令」满足两条——
  * ① 以 `npx|pnpm|node|python3|tsx|bash` 起头；② 「期望」里含可对照锚点（OK / 退出码 / passed / NONE）。
  * 直接写 `git commit` 两条都不满足，K10 必红。本脚本把「提交与否」变成一个**可判定的读数**。
  *
@@ -26,6 +26,19 @@ const req = argOf('--req')
 if (req === undefined || !/^REQ-[0-9a-z-]+$/.test(req)) {
   console.error('用法：npx tsx scripts/commit-check.mts --req <REQ-id>（如 REQ-261006123819-3af3）')
   process.exit(2)
+}
+
+// 分层依赖方向门禁先行（REQ-261009174713-7bc8 t3 / RF-24）：越界就没资格谈「提交判据」——
+// 这一步是**加法**：不改变本脚本「OK/FAIL 由 git log 决定」的既有契约，只在越界时提前判 FAIL。
+try {
+  const boundary = execFileSync('npx', ['tsx', 'scripts/package-boundary-check.mts', '--root', process.cwd()], { encoding: 'utf8', cwd: process.cwd() })
+  process.stdout.write(boundary)
+} catch (e) {
+  const err = e as { stdout?: string; stderr?: string }
+  process.stdout.write(String(err.stdout ?? ''))
+  console.error(String(err.stderr ?? ''))
+  console.error('FAIL：分层依赖方向门禁未过（先修越界再谈提交判据）')
+  process.exit(1)
 }
 
 const log = execFileSync('git', ['log', '--oneline', '--grep=' + req], { encoding: 'utf8', cwd: process.cwd() }).trim()

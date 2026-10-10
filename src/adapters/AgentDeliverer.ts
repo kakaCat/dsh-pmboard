@@ -7,12 +7,12 @@
  *
  * @module dsh-pmboard/adapters/AgentDeliverer
  */
-import type { DiveRoundDeliveryPort, AgentDeliveryPort, CrossWindowDeliveryPort } from '../application/ports.js'
+import type { DiveRoundDeliveryPort, AgentDeliveryPort, CrossWindowDeliveryPort } from 'pmboard-core/application/ports.js'
 import {
   injectionLogInputForRound,
   type InjectionLogPort,
-} from '../application/internal/injection-log.js'
-import { fmt } from '../domain/text/fmt.js'
+} from 'pmboard-core/application/internal/injection-log.js'
+import { fmt } from 'pmboard-core/domain/text/fmt.js'
 
 type MessageIdFactory = () => string
 

@@ -24,7 +24,7 @@
  * @module dsh-pmboard/http/not-ready
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { MigrationFailure } from '../repositories/migrationGate.js'
+import type { MigrationFailure } from 'pmboard-core/repositories/migrationGate.js'
 import { json } from './envelope.js'
 
 /**

@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { generateStatusRTM } from '../src/application/internal/status-rtm-integration.js';
-import type { TaskRecord, VerificationSheet } from '../src/shared/protocol.js';
-import { task } from './application/harness.js';
+import { generateStatusRTM } from 'pmboard-core/application/internal/status-rtm-integration.js';
+import type { TaskRecord, VerificationSheet } from 'pmboard-core/protocol-domain.js';
+import { task } from 'tests/application/harness.js';
 
 describe('Status RTM Integration', () => {
   let testDir: string;

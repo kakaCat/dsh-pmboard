@@ -15,24 +15,24 @@ import {
   windowCodeFromSessionId,
   type RequirementRecord,
   type RequirementTokenView,
-} from '../../shared/protocol.js'
+} from 'pmboard-core/protocol-domain.js'
 import { syncAllReqArtifacts, syncReqArtifacts } from '../../adapters/ArtifactSync.js'
-import { assembleStageDetail, assembleStageOverview } from '../../application/query/QueryStageDetail.js'
-import { designDocPolicyOf } from '../../application/internal/design-docs.js'
+import { assembleStageDetail, assembleStageOverview } from 'pmboard-core/application/query/QueryStageDetail.js'
+import { designDocPolicyOf } from 'pmboard-core/application/internal/design-docs.js'
 // REQ-261007223647-da5d t6（FR-5 / 设计 IF-5）：挂起确认票投影——看板首屏的「有人在你门口等着」。
-import { pendingBoardRowsOf, type PendingBoardRow } from '../../application/internal/pending-board.js'
-import { seatsOf } from '../../application/internal/window.js'
+import { pendingBoardRowsOf, type PendingBoardRow } from 'pmboard-core/application/internal/pending-board.js'
+import { seatsOf } from 'pmboard-core/application/internal/window.js'
 // REQ-261006201841-944d t8（FR-7）：来源三态派生的**唯一实现**（纯函数，判据不落在路由里）。
-import { requirementOriginsOf } from '../../application/internal/requirement-origins.js'
-import { assembleRequirementToken, requirementTotalTokens } from '../../application/query/QueryRequirementToken.js'
-import { assembleRequirementMarks } from '../../application/query/QueryRequirementMarks.js'
+import { requirementOriginsOf } from 'pmboard-core/application/internal/requirement-origins.js'
+import { assembleRequirementToken, requirementTotalTokens } from 'pmboard-core/application/query/QueryRequirementToken.js'
+import { assembleRequirementMarks } from 'pmboard-core/application/query/QueryRequirementMarks.js'
 import { FileDocRepository } from '../../adapters/FileDocRepository.js'
 import {
   injectionWindowsOf,
   summarizeInjections,
   summarizeSystemPrompt,
   unavailableSystemPromptCost,
-} from '../../application/internal/prompt-cost.js'
+} from 'pmboard-core/application/internal/prompt-cost.js'
 import {
   countDoneTasks,
   countUnfinishedTasks,
@@ -41,9 +41,9 @@ import {
   liveCountOf,
   liveReadyTasks,
   liveTasksOf,
-} from '../../domain/status/Predicates.js'
-import { TASK_STATUS_ORDER } from '../../domain/task/TaskStatus.js'
-import { fmt } from '../../domain/text/fmt.js'
+} from 'pmboard-core/domain/status/Predicates.js'
+import { TASK_STATUS_ORDER } from 'pmboard-core/domain/task/TaskStatus.js'
+import { fmt } from 'pmboard-core/domain/text/fmt.js'
 import { clientBuildStamp } from '../client-build.js'
 import type { RouterCtx } from './shared.js'
 
@@ -92,7 +92,7 @@ export function createStagesRouter(ctx: RouterCtx) {
     // 兼容只装配 `pendingForWindow` 的端口：按需求席位逐窗口查、只留指向本需求的（与报告首屏同口径）。
     const needsSeatScan = port.pendingForRequirement === undefined && port.pendingForWindow !== undefined
     for (const id of ids) {
-      let recs: readonly import('../../shared/protocol.js').PendingConfirmation[]
+      let recs: readonly import('pmboard-core/protocol-domain.js').PendingConfirmation[]
       let req: RequirementRecord | undefined
       if (port.pendingForRequirement !== undefined) {
         recs = port.pendingForRequirement(id)
@@ -102,7 +102,7 @@ export function createStagesRouter(ctx: RouterCtx) {
       } else if (needsSeatScan) {
         req = await ctx.requirementStore.get(id)
         if (req === undefined) continue
-        const seen = new Map<string, import('../../shared/protocol.js').PendingConfirmation>()
+        const seen = new Map<string, import('pmboard-core/protocol-domain.js').PendingConfirmation>()
         for (const seat of seatsOf(req)) {
           const found = port.pendingForWindow!(seat.windowKey)
           if (found !== undefined && found.requirementId === id) seen.set(found.ticket, found)

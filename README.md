@@ -108,6 +108,22 @@ pnpm run kb:probe   # 只跑自检，人读输出
 | `entries/kb-NNNN.md` | 归档沉淀出的结论条目（带指针与失效条件） | 单条 ≤200 行 |
 | `*.tsv` | 机器索引（全量符号 / 全量类名）——**永不进上下文**，用 `reqboard_kb` 按需检索 | —— |
 
+## 架构：19 个 workspace 包与分层
+
+> REQ-261009174713-7bc8 重构后，实现按“层”拆成 19 个包；依赖方向只许向内（L0 ← L4），
+> 白名单唯一权威是 `scripts/package-boundary-check.mts` 的 `LAYERS`（`node scripts/package-boundary-check.mts` 可自检）。
+
+| 层 | 包 | 允许依赖 |
+|---|---|---|
+| `L0` | `pmboard-common` · `reqboard-rtm` | （无） |
+| `L0.5` | `pmboard-type-kit` | pmboard-common |
+| `L0.5` | `pmboard-type-feature` · `pmboard-type-bug` · `pmboard-type-doc` · `pmboard-type-refactor` · `pmboard-type-spike` · `pmboard-type-chore` | pmboard-common · pmboard-type-kit |
+| `L1` | `pmboard-core` | pmboard-common · reqboard-rtm · pmboard-type-kit |
+| `L2` | `tool-pmboard` · `pmboard-round-driver` · `pmboard-workflow` · `pmboard-client` · `command-pmboard` | pmboard-common · pmboard-core |
+| `L3` | `pmboard-templates` · `pmboard-skills` · `pmboard-eval-suite` · `pmboard-scripts` | （无） |
+
+各包职责、边界与测试命令见 `packages/<pkg>/README.md`（19 份）；分层篇见 `docs/architecture/`。
+
 ## 开发
 
 ```bash

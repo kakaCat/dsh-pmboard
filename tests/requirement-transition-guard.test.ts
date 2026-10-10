@@ -17,13 +17,14 @@
  * 比较式（req.status === x / !== / 读取）天然不匹配。
  */
 import { describe, it, expect } from 'vitest'
+import { REPO_ROOT } from 'tests/helpers/repo-root.js'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
+
 import { join, relative } from 'node:path'
 import ts from 'typescript'
 
-const PKG_ROOT = fileURLToPath(new URL('..', import.meta.url))
-const APP = join(PKG_ROOT, 'src', 'application')
+const PKG_ROOT = REPO_ROOT
+const APP = join(PKG_ROOT, 'packages', 'pmboard-core', 'src', 'application')
 const HTTP = join(PKG_ROOT, 'src', 'http')
 /** 唯一收敛点：本文件内部的 req.status = to 是唯一允许的直接赋值。 */
 const CONVERGENCE = join(APP, 'internal', 'token-usage.ts')

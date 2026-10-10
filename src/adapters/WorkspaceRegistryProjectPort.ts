@@ -10,7 +10,7 @@
  *
  * @module dsh-pmboard/adapters/WorkspaceRegistryProjectPort
  */
-import type { ProjectEntry, ProjectRegistryPort } from '../application/ports.js'
+import type { ProjectEntry, ProjectRegistryPort } from 'pmboard-core/application/ports.js'
 import { toProjectEntries } from './workspaceRegistryRows.js'
 
 /** 注册表服务的最小投影（只取"列出项目"这一项能力）。 */

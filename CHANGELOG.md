@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/lang/zh-CN/
 ## [Unreleased]
 
 ### Changed
+- **架构重构**（REQ-261009174713-7bc8）：实现拆为 19 个 workspace 包（L0 公共/RTM · L0.5 类型契约与六类型 · L1 core · L2 工具/驱动/工作流/客户端/命令面 · L3 资产），依赖方向只许向内；测试随包迁移（546 进包 / 79 留根）；五类迁移基线 diff 全过。
 - 页面名词统一（2026-09-21 用户裁定）：任务状态全套统一为长式
   待开始/开发中/联调中/测试中/**待复核**/已完成/已取消（`in_review` 此前在
   「验收 / 待评审 / 待复核」三名并存，且与需求级「验收」撞名）；Token tab 的

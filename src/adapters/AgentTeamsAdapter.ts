@@ -17,7 +17,7 @@ import type {
   TeamTaskCreateInput,
   TeamTaskUpdateInput,
   TeamTaskViewLike,
-} from '../application/ports.js'
+} from 'pmboard-core/application/ports.js'
 
 /** 服务最小结构（不 import `@deepseek-ai/dsh-experimental-agent-team`，保持 adapter 只桥接形状）。 */
 export interface TeamServiceLike {

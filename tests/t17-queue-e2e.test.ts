@@ -21,27 +21,27 @@
  * 台账判据用**语义级** `'tasks' in ledger === false`（不是 `grep '"tasks"'`：台账是单行 compact JSON
  * 且 `requirements[].plan.tasks` 恒存在，grep 会**假绿**）。
  */
-import { makeHarness } from './application/harness.js'
+import { makeHarness } from 'tests/application/harness.js'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { FileHostFs } from '../src/adapters/FileHostFs.js'
-import { FileDocRepository } from '../src/adapters/FileDocRepository.js'
-import { JsonQueueRepository, queueRelativePath } from '../src/repositories/QueueRepository.js'
-import { QueueTaskStore } from '../src/repositories/QueueTaskStore.js'
-import { DEFAULT_CONFIRM_OPTIONS } from '../src/domain/text/labels.js'
-import { FakeQuestions, FakeSession, FixedClock, SeqIds } from './application/harness.js'
-import type { UseCaseDeps } from '../src/application/ports.js'
-import { executeCreateRequirement } from '../src/application/use-cases/CreateRequirement.js'
-import { executeMoveRequirement } from '../src/application/use-cases/MoveRequirement.js'
-import { submitRequirementArtifact, submitPlanArtifact } from '../src/application/use-cases/SubmitArtifact.js'
-import { submitDesignArtifacts } from '../src/application/use-cases/SubmitDesignArtifacts.js'
-import { askConfirm } from '../src/application/use-cases/AskConfirm.js'
-import { executeReportTask } from '../src/application/use-cases/ReportTask.js'
-import { executeMoveTask } from '../src/application/use-cases/MoveTask.js'
-import { executeSubtask } from '../src/application/use-cases/ExecuteTask.js'
+import { FileHostFs } from 'src/adapters/FileHostFs.js'
+import { FileDocRepository } from 'src/adapters/FileDocRepository.js'
+import { JsonQueueRepository, queueRelativePath } from 'pmboard-core/repositories/QueueRepository.js'
+import { QueueTaskStore } from 'pmboard-core/repositories/QueueTaskStore.js'
+import { DEFAULT_CONFIRM_OPTIONS } from 'pmboard-common/text/labels.js'
+import { FakeQuestions, FakeSession, FixedClock, SeqIds } from 'tests/application/harness.js'
+import type { UseCaseDeps } from 'pmboard-core/application/ports.js'
+import { executeCreateRequirement } from 'pmboard-core/application/use-cases/CreateRequirement.js'
+import { executeMoveRequirement } from 'pmboard-core/application/use-cases/MoveRequirement.js'
+import { submitRequirementArtifact, submitPlanArtifact } from 'pmboard-core/application/use-cases/SubmitArtifact.js'
+import { submitDesignArtifacts } from 'pmboard-core/application/use-cases/SubmitDesignArtifacts.js'
+import { askConfirm } from 'pmboard-core/application/use-cases/AskConfirm.js'
+import { executeReportTask } from 'pmboard-core/application/use-cases/ReportTask.js'
+import { executeMoveTask } from 'pmboard-core/application/use-cases/MoveTask.js'
+import { executeSubtask } from 'pmboard-core/application/use-cases/ExecuteTask.js'
 
 const WINDOW = 'session-w-001'
 const EXEC = { agent: { id: WINDOW } }
@@ -105,7 +105,7 @@ const PLAN_DOC = [
   '| FR-1 | t2 |', '',
   // BUG-4 连带补齐（同一用例的另一处夹具缺口）：计划文档硬门要求「有任务表 + 表里 key 覆盖
   // tasks[].key 全集」（SubmitArtifact.ts:391-405，批准所见 = 文档所见），此前夹具只有对照表。
-  // 定性：**有意改名**——文档里的「任务表」节与「计划 key」列口径按 templates/decomposing 改名/新增。
+  // 定性：**有意改名**——文档里的「任务表」节与「计划 key」列口径按 packages/pmboard-templates/templates/decomposing 改名/新增。
   '## 任务表', '',
   '| 计划 key | 覆盖条款 | 依赖 | 工作量 | 验收标准 |',
   '|---|---|---|---|---|',
@@ -152,7 +152,7 @@ describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 �
     // 连带补齐（同一用例的**另一处夹具缺口**，D-x 节补上后才暴露出来；非本卡设计节点名项）：
     // `submit(kind=design)` 的内容门禁要求**文档级 serves**（H1 或 front-matter，content-gate-wiring.ts:394）
     // 且 feature 的 interfaces.md 必含「接口清单」节 + 表头含「接口 id」的清单表（:437-441）。
-    // 定性：**有意改名**——设计文档的 serves 标注与节名口径按 templates/design 模板改名/新增，夹具随之补齐，
+    // 定性：**有意改名**——设计文档的 serves 标注与节名口径按 packages/pmboard-templates/templates/design 模板改名/新增，夹具随之补齐，
     // 不改本用例任何断言口径（门禁一条不放宽）。
     await docs.write('docs/requirements/' + reqId + '/design/architecture.md', '# 架构 serves: FR-1\n\n## D-1 覆盖 `serves: FR-1`\n')
     await docs.write('docs/requirements/' + reqId + '/design/data-model.md', '# 数据模型 serves: FR-1\n')

@@ -19,7 +19,7 @@
  * @module dsh-pmboard/tests/helpers/ledger-probe
  */
 import { expect } from 'vitest'
-import type { InMemoryQueueRepository, InMemoryRequirementStore } from '../application/harness.js'
+import type { InMemoryQueueRepository, InMemoryRequirementStore } from 'tests/application/harness.js'
 
 /** 一次探针读数（三者都取不到时按缺省处理，不伪造 0）。 */
 export interface WriteProbe {

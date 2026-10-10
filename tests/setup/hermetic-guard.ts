@@ -21,10 +21,13 @@
  *
  * @module dsh-pmboard/tests/setup/hermetic-guard
  */
+// 类型注册表装配（测试环境统一装一次）：core 的类型判据经端口取规格，未装配会响亮抛错。
+import '../../src/type-registry.js'
+import { fileURLToPath } from 'node:url'
+
 import { existsSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 /** 仓库根（`tests/setup/` → 上溯两级）。 */
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url))

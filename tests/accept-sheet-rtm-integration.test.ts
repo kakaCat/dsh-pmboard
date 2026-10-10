@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkAcceptanceGate } from '../src/application/internal/accept-sheet-rtm-integration.js';
-import { generateStatusRTM } from '../src/application/internal/status-rtm-integration.js';
+import { checkAcceptanceGate } from 'pmboard-core/application/internal/accept-sheet-rtm-integration.js';
+import { generateStatusRTM } from 'pmboard-core/application/internal/status-rtm-integration.js';
 // 来源 → fr_id 的映射单点在 domain：两个 RTM 集成都调它（§10 #31），故此处的断言即"三处消费点"的判据。
 import {
   rtmTraceIdOf,
@@ -11,8 +11,8 @@ import {
   DECISION_COMPARE_CRITERION,
   PROTOTYPE_COMPARE_TRACE_ID,
   DECISION_COMPARE_TRACE_ID,
-} from '../src/domain/workflow/AcceptanceSheetSpec.js';
-import type { VerificationSheet, VerificationItem, VerificationItemSource } from '../src/shared/protocol.js';
+} from 'pmboard-core/domain/workflow/AcceptanceSheetSpec.js';
+import type { VerificationSheet, VerificationItem, VerificationItemSource } from 'pmboard-core/protocol-domain.js';
 
 describe('AcceptSheet RTM Integration', () => {
   it('部分通过：12项验收（10 passed, 2 failed），返回gate_status=blocked, archived=false', () => {

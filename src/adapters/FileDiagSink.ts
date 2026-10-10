@@ -11,7 +11,7 @@
  */
 import { appendFileSync, mkdirSync, renameSync, statSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { DiagSinkPort } from '../application/ports.js'
+import type { DiagSinkPort } from 'pmboard-core/application/ports.js'
 
 /** 单文件上限（超过即轮转为 `.1`）。口径与搬迁前逐字一致。 */
 const MAX_BYTES = 512 * 1024

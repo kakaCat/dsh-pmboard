@@ -7,10 +7,10 @@
  * 运行：npx vitest run tests/e2e-b918-drill.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import { applyVerdicts, isAllPassed, sheetGateStatus, type SheetLike } from '../src/domain/workflow/AcceptanceSheetSpec.js'
-import { closingGapOf, isClosed } from '../src/domain/status/Predicates.js'
-import { planRefsFromDoc, planRefsMissing } from '../src/application/internal/content-gate-wiring.js'
-import { dispatchNoteOf } from '../src/application/internal/auto-advance-note.js'
+import { applyVerdicts, isAllPassed, sheetGateStatus, type SheetLike } from 'pmboard-core/domain/workflow/AcceptanceSheetSpec.js'
+import { closingGapOf, isClosed } from 'pmboard-core/domain/status/Predicates.js'
+import { planRefsFromDoc, planRefsMissing } from 'pmboard-core/application/internal/content-gate-wiring.js'
+import { dispatchNoteOf } from 'pmboard-core/application/internal/auto-advance-note.js'
 
 const sheet = (items: unknown[]): SheetLike => ({ version: 1, generatedAt: 0, generatedBy: { kind: 'agent' }, items: items as never } as SheetLike)
 const item = (o: Record<string, unknown>) => ({ id: 'v1-1', source: { kind: 'requirement' }, criterion: '某验收项', evidence: [], status: 'pending', ...o }) as never

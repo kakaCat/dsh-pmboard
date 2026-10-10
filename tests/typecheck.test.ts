@@ -13,13 +13,13 @@
  *  - 超时 120s（首次冷启动 + 全量 program 构建），失败时把前若干条错误打进断言消息。
  */
 import { describe, it, expect } from 'vitest'
+import { repoPath } from 'tests/helpers/repo-root.js'
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 
-const pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const pkgRoot = resolve(repoPath('tests'), '..')
 const tsconfigPath = join(pkgRoot, 'tsconfig.json')
 const require = createRequire(import.meta.url)
 

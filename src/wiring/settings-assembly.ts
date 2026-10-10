@@ -20,11 +20,11 @@
 
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import type { PluginConfig } from '../plugin-config.js'
-import { panelSettings } from '../plugin-config.js'
+import type { PluginConfig } from 'pmboard-core/plugin-config.js'
+import { panelSettings } from 'pmboard-core/plugin-config.js'
 import { FileSettingsStore } from '../adapters/FileSettingsStore.js'
 import { SystemRecordFile } from '../adapters/SystemRecordFile.js'
-import { SETTINGS_FILE_REL, type StorageBackend } from '../application/settings/resolve-settings.js'
+import { SETTINGS_FILE_REL, type StorageBackend } from 'pmboard-core/application/settings/resolve-settings.js'
 import {
   SYSTEM_RECORD_FILE_REL,
   startupEvent,
@@ -33,15 +33,15 @@ import {
   type PluginStamp,
   type StorePaths,
   type StoresSnapshot,
-} from '../application/settings/events.js'
-import { installStageLimitSnapshot } from '../application/dive/round-state.js'
-import { SQLITE_SCHEMA_VERSION } from '../repositories/sqliteSchema.js'
-import { inspectShards, inspectSqlite } from '../repositories/storeInspect.js'
-import { preflightLedger, type MigrationFailure } from '../repositories/migrationGate.js'
-import { ShardedRequirementStore } from '../repositories/ShardedRequirementStore.js'
-import { SqliteRequirementStore } from '../repositories/SqliteRequirementStore.js'
-import type { RequirementStore } from '../application/ports.js'
-import { getBuildStamp } from '../shared/build-stamp.js'
+} from 'pmboard-core/application/settings/events.js'
+import { installStageLimitSnapshot } from 'pmboard-core/application/dive-core/round-state.js'
+import { SQLITE_SCHEMA_VERSION } from 'pmboard-core/repositories/sqliteSchema.js'
+import { inspectShards, inspectSqlite } from 'pmboard-core/repositories/storeInspect.js'
+import { preflightLedger, type MigrationFailure } from 'pmboard-core/repositories/migrationGate.js'
+import { ShardedRequirementStore } from 'pmboard-core/repositories/ShardedRequirementStore.js'
+import { SqliteRequirementStore } from 'pmboard-core/repositories/SqliteRequirementStore.js'
+import type { RequirementStore } from 'pmboard-core/application/ports.js'
+import { getBuildStamp } from 'pmboard-common/build-stamp.js'
 
 /** 设置文件绝对路径（唯一派生点：路由的「打开配置文件」与错误消息都用它）。 */
 export function settingsFilePathOf(dshHome: string): string {

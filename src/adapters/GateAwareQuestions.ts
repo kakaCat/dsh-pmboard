@@ -14,10 +14,10 @@
  *
  * @module dsh-pmboard/adapters/GateAwareQuestions
  */
-import type { AskAnswer, AskQuestion, AskTimedResult, GatePostChainPort, UserQuestionPort } from '../application/ports.js'
-import { racePortAsk } from '../application/internal/ask-timed.js'
-import type { ConfirmContext, GateId } from '../domain/gate/GateSpec.js'
-import { GATE_CATALOG } from '../domain/gate/GateCatalog.js'
+import type { AskAnswer, AskQuestion, AskTimedResult, GatePostChainPort, UserQuestionPort } from 'pmboard-core/application/ports.js'
+import { racePortAsk } from 'pmboard-core/application/internal/ask-timed.js'
+import type { ConfirmContext, GateId } from 'pmboard-core/domain/gate/GateSpec.js'
+import { GATE_CATALOG } from 'pmboard-core/domain/gate/GateCatalog.js'
 
 export interface GateAwareQuestionsOptions {
   /** 时间源（默认 Date.now；测试注入固定值以保证幂等键可复现）。 */

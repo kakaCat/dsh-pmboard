@@ -28,7 +28,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   NOISE_TOKENS, REPO_ROOT, collectConstAliases, collectTestCoverage, scanErrorCodes,
-} from './helpers/error-code-scan.js'
+} from 'tests/helpers/error-code-scan.js'
 
 const INVENTORY_PATH = join(REPO_ROOT, 'tests/fixtures/error-code-inventory.json')
 

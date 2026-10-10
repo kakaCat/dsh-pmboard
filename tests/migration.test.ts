@@ -13,10 +13,12 @@
  * 实施时用真实命令逐条实测，证据见 docs/requirements/REQ-47939a/verification.md 的 t10 段。
  */
 import { describe, it, expect } from 'vitest'
+import { repoPath } from 'tests/helpers/repo-root.js'
+import { pathToFileURL } from 'node:url'
 import { readFileSync } from 'node:fs'
-import { migrate, diffPaths, checkWhitelist } from '../scripts/migrate-ledger.js'
+import { migrate, diffPaths, checkWhitelist } from 'scripts/migrate-ledger.js'
 
-const SAMPLE = new URL('./fixtures/ledger-v4-sample.json', import.meta.url)
+const SAMPLE = pathToFileURL(repoPath('tests/fixtures/ledger-v4-sample.json'))
 const readSample = () => JSON.parse(readFileSync(SAMPLE, 'utf8'))
 const NOW = 1_700_000_000_000
 

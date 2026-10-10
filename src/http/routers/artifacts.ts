@@ -20,9 +20,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { existsSync, statSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { fmt } from '../../domain/text/fmt.js'
+import { fmt } from 'pmboard-core/domain/text/fmt.js'
 import { dirname, resolve, sep } from 'node:path'
-import { normalizeArtifactPath, extractRequirementIdFromPath, type ArtifactPathForm } from '../../domain/artifact/ArtifactPath.js'
+import { normalizeArtifactPath, extractRequirementIdFromPath, type ArtifactPathForm } from 'pmboard-common/artifact/ArtifactPath.js'
 import { resolveDocRoot, type RouterCtx } from './shared.js'
 
 /** 单个路径的解析结论（批量端点的响应元素）。 */

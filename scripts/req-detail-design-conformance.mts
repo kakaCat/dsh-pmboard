@@ -4,7 +4,7 @@
  * ## 事故出处（2026-10-05，人眼发现）
  *
  * 设计契约写在权威原型 `detail-ui-v2.html` 的「改造层」里（95 条规则，`html[data-proto-v="next"]` 前缀，
- * 形态即"应当并进 `src/client/styles/report.ts` 的那一层"）。实施期漏了一整段——最刺眼的是
+ * 形态即"应当并进 `packages/pmboard-client/src/styles/report.ts` 的那一层"）。实施期漏了一整段——最刺眼的是
  * **Tab 栏**：设计是苹果**分段控件**（`#f5f5f7` 灰轨道 + 白色圆角滑块、无下划线），实现是下划线式。
  *
  * 为什么所有判据都没照出来：原型 v3 被"重新内联成实现的渲染"（真壳 + 真 CSS），于是
@@ -196,7 +196,7 @@ function main(): number {
 
   // ② 原型 v3 内联的 CSS 必须与当前拼接逐字节一致（否则原型画的是旧样式）
   const proto = readFileSync(PROTOTYPE_V3, 'utf8')
-  const marker = '/* ── ① 真实样式：13 片 CSS，拼接顺序照 src/client/styles.ts（真实页面吃什么，这里就吃什么）── */'
+  const marker = '/* ── ① 真实样式：13 片 CSS，拼接顺序照 packages/pmboard-client/src/styles.ts（真实页面吃什么，这里就吃什么）── */'
   const at = proto.indexOf(marker)
   let cssOk = true
   if (at < 0) {

@@ -12,9 +12,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { makeHarness, req, task } from './application/harness.js'
-import { executeDecompose } from '../src/application/use-cases/Decompose.js'
-import { submitVerification } from '../src/application/use-cases/SubmitVerification.js'
+import { makeHarness, req, task } from 'tests/application/harness.js'
+import { executeDecompose } from 'pmboard-core/application/use-cases/Decompose.js'
+import { submitVerification } from 'pmboard-core/application/use-cases/SubmitVerification.js'
 
 const EXEC = { agent: { id: 'session-w-001' } }
 const doc = (...lines: string[]) => lines.join('\n')

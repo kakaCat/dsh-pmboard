@@ -10,14 +10,14 @@
  *
  * 工作区目录名必须可预测（归一层按 basename 剥前缀），故临时目录下建 agent-dh/。
  */
-import { makeTestStore } from '../application/harness.js'
+import { makeTestStore } from 'tests/application/harness.js'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { EventEmitter } from 'node:events'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createReqboardHandler } from '../../src/http/routes.js'
-import { taskStoreAt } from '../queue/route-deps.js'
+import { createReqboardHandler } from 'src/http/routes.js'
+import { taskStoreAt } from 'tests/queue/route-deps.js'
 
 let base: string
 let root: string

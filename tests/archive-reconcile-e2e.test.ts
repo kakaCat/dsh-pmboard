@@ -18,16 +18,16 @@
  *   ⑤ 同批再补 → 幂等（全 skipped、修订号不变）
  *   ⑥ 换 warn 闸门重跑① → 不拒，且 warning 老字段仍在
  */
-import { makeTestStore } from './application/harness.js'
+import { makeTestStore } from 'tests/application/harness.js'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { defineSubmitTool, defineTaskAmendTool } from '../src/tools/index.js'
-import { toUseCaseDeps, stubDocFile, type ReqboardToolDeps } from './helpers/tool-deps.js'
-import { listHeadingAnchors } from '../src/domain/knowledge/slug.js'
-import { renderArchiveSection } from '../src/client/views/verification.ts'
-import type { RequirementRecord } from '../src/shared/protocol.js'
+import { defineSubmitTool, defineTaskAmendTool } from 'tool-pmboard/index.js'
+import { toUseCaseDeps, stubDocFile, type ReqboardToolDeps } from 'tests/helpers/tool-deps.js'
+import { listHeadingAnchors } from 'pmboard-common/knowledge/slug.js'
+import { renderArchiveSection } from 'pmboard-client/views/verification.js'
+import type { RequirementRecord } from 'pmboard-core/protocol-domain.js'
 import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
 
 const W = 'session-e2e'

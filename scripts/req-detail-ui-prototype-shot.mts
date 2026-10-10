@@ -59,7 +59,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, wri
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { buildReportShell } from '../src/client/views/report-tabs.js'
+import { buildReportShell } from 'pmboard-client/views/report-tabs.js'
 import {
   TRUNK_SPECIMEN, asPanelPayload, findChrome, reportOf, revisionOf, type SpecimenState,
 } from './fixtures/req-detail-specimen.mts'

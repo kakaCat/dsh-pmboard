@@ -1,6 +1,6 @@
 # 前端设计令牌（生成物）
 
-> 生成物：由 `scripts/kb-build.mts` 从 src\/client\/styles? 确定性抽取，**请勿手改**（改样式后重跑）。
+> 生成物：由 `scripts/kb-build.mts` 从 (?:src\/client|packages\/pmboard-client\/src)\/styles? 确定性抽取，**请勿手改**（改样式后重跑）。
 > 全量类名（922 个）在 `docs/knowledge/design-tokens.classes.tsv`——机器索引、不进上下文，用 `reqboard_kb(kind='tokens', query='<类名>')` 检索。
 > 颜色与变量按每行 4 条排版（内容不变，只为守住页面行数预算）。
 
@@ -13,8 +13,8 @@
 - `#9aa4b2` 12 次 base.ts　`#f0a020` 12 次 base.ts　`#1e7e34` 11 次 board.ts　`#aaa` 9 次 board.ts
 - `#6f2f8c` 7 次 files.ts　`#8e44ad` 7 次 base.ts　`#f3f4f6` 7 次 token.ts　`#f9fafb` 7 次 base.ts
 - `#111827` 6 次 base.ts　`#991b1b` 6 次 node-panel.ts　`#f5f5f7` 6 次 dag.ts　`#ffffff` 6 次 report/head.ts
-- `#0e7c8f` 5 次 files.ts　`#1d1d1f` 5 次 node-panel.ts　`#777` 5 次 base.ts　`#b42318` 5 次 marks.ts
-- `#0071e3` 4 次 node-panel.ts　`#c2255c` 4 次 base.ts　`#0969da` 3 次 traceability.ts　`#248a3d` 3 次 node-panel.ts
+- `#0071e3` 5 次 node-panel.ts　`#0e7c8f` 5 次 files.ts　`#1d1d1f` 5 次 node-panel.ts　`#777` 5 次 base.ts
+- `#b42318` 5 次 marks.ts　`#c2255c` 4 次 base.ts　`#0969da` 3 次 traceability.ts　`#248a3d` 3 次 node-panel.ts
 - `#6c757d` 3 次 base.ts　`#9ca3af` 3 次 base.ts　`#a86a00` 3 次 files.ts　`#bbb` 3 次 detail.ts
 - `#ccc` 3 次 panel.ts　`#d9534f` 3 次 files.ts　`#e2e8f0` 3 次 report/head.ts　`#1f2328` 2 次 traceability.ts
 - `#20c997` 2 次 detail.ts　`#555` 2 次 base.ts　`#6e6e73` 2 次 node-panel.ts　`#7aaaff` 2 次 report/shared.ts

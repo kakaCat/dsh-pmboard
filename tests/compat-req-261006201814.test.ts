@@ -23,7 +23,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { REPO_ROOT } from './helpers/error-code-scan.js'
+import { REPO_ROOT } from 'tests/helpers/error-code-scan.js'
 
 /** 冻结的基线条目数；只许减不许增。 */
 const BASELINE_LINES_CEILING = 68
@@ -32,7 +32,7 @@ const BASELINE_LINES_CEILING = 68
 const DELIVERED: readonly string[] = [
   // FR-1 / FR-2 / FR-3：口径与矩阵
   'tests/helpers/code-trigger-harness.ts',
-  'tests/error-code-matrix.test.ts',
+  'packages/pmboard-core/tests/error-code-matrix.test.ts',
   'tests/fixtures/error-code-exempt.json',
   'tests/error-code-exempt.test.ts',
   // FR-4：基线分诊
@@ -52,9 +52,9 @@ const DELIVERED: readonly string[] = [
   'tests/helpers/code-assert.ts',
   // FR-7：三张矩阵
   'tests/helpers/ledger-probe.ts',
-  'tests/authorization-matrix.test.ts',
-  'tests/concurrency-matrix.test.ts',
-  'tests/empty-input-matrix.test.ts',
+  'packages/pmboard-core/tests/authorization-matrix.test.ts',
+  'packages/pmboard-core/tests/concurrency-matrix.test.ts',
+  'packages/pmboard-core/tests/empty-input-matrix.test.ts',
   // FR-8：反向演练
   'tests/drill/reverse-drill-error-codes.mts',
   // FR-10：A/B 归因
@@ -97,7 +97,7 @@ describe('兼容三条（FR-9）', () => {
   })
 
   it('② 契约：双层码契约不许收窄——小写孪生用例与其映射表实现同时在 tests/ 在场', () => {
-    const matrix = readFileSync(rel('tests/empty-input-matrix.test.ts'), 'utf8')
+    const matrix = readFileSync(rel('packages/pmboard-core/tests/empty-input-matrix.test.ts'), 'utf8')
     expect(matrix, '小写孪生用例不在场（契约被收窄）').toContain("'invalid_input'")
     const scan = readFileSync(rel('tests/helpers/error-code-scan.ts'), 'utf8')
     expect(scan, '小写码登记表口径实现不在场').toContain('TRANSPORT_CODE_BY_INTERNAL')
@@ -126,7 +126,7 @@ describe('兼容三条（FR-9）', () => {
     expect(DELIVERED.length).toBeGreaterThan(20)
     // 注意：码矩阵文件本身**不含** expect——断言展开在 code-trigger-harness 里（INV-2 单一实现），
     // 故这条自检要打在**判据实现**上，打在矩阵文件上会得到 0 而误红（本文件首版就这样错过一次）。
-    for (const p of ['tests/helpers/code-trigger-harness.ts', 'tests/authorization-matrix.test.ts', 'tests/error-code-exempt.test.ts']) {
+    for (const p of ['tests/helpers/code-trigger-harness.ts', 'packages/pmboard-core/tests/authorization-matrix.test.ts', 'tests/error-code-exempt.test.ts']) {
       const text = readFileSync(rel(p), 'utf8')
       expect((text.match(/expect\(/g) ?? []).length, p + ' 里没有断言——判据成了空壳').toBeGreaterThan(0)
     }

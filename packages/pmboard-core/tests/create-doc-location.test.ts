@@ -1,0 +1,118 @@
+// serves: FR-7
+/**
+ * reqboard_create 文档位置回归（REQ-260924213231-b1c4 T-10 / FR-7 / UC-4 / TC-11~TC-13）。
+ *
+ * 背景：立项降级路径（弹框通道不可用，用户在对话里给出名称/类型/难度）此前会丢第四问——
+ * reqboard_create 没有 doc_location 入参，台账 docBasePath 恒 undefined，文档位置只能靠
+ * 消费端缺省兜底且无从留痕。本测试锁定三条正向事实与一条故障注入：
+ *   TC-11 不传 doc_location → 返回 doc_location='docs/requirements/<REQ>/'、defaults_used
+ *         含 doc_location，且台账 docBasePath 同值（回落落在台账，不只留在返回体）；
+ *   TC-12 传 docs/rfcs/ → 台账 docBasePath='docs/rfcs/'，产物路径按它生成；
+ *   TC-13 返回 status 与台账一致（不撒谎）；
+ *   异常流 绝对路径 / 含 .. → REQBOARD_INVALID_INPUT，且不写台账（不静默改路径）。
+ */
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { FileHostFs } from 'src/adapters/FileHostFs.js'
+import { taskStoreAt } from 'tests/queue/route-deps.js'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { makeHarness } from 'tests/application/harness.js'
+import { FileDocRepository } from 'src/adapters/FileDocRepository.js'
+import { SystemClock } from 'src/adapters/SystemClock.js'
+import { RandomIdFactory } from 'src/adapters/RandomIdFactory.js'
+import { SessionProbeAdapter } from 'src/adapters/SessionProbeAdapter.js'
+import { UserQuestionsAdapter } from 'src/adapters/UserQuestionsAdapter.js'
+import { defineCreateTool } from 'tool-pmboard/index.js'
+import { requirementDocPath } from 'pmboard-core/application/internal/node-input-package.js'
+import { CAPTURE_DEFAULTS, CAPTURE_QUESTION_IDS } from 'pmboard-core/application/internal/capture-mapping.js'
+import type { RequirementRecord } from 'pmboard-core/protocol-domain.js'
+
+const W = 'session-doc-location-1'
+
+let root: string
+// B12 阶段③a：夹具不再自建旧 JSON 台账——用统一工厂 harness（同时提供 repo 桥与新端口 store），
+// 断言改读**新端口**（快照读已随桥删除而消失）。
+let h: ReturnType<typeof makeHarness>
+
+beforeEach(() => {
+  root = mkdtempSync(join(tmpdir(), 'pmboard-doc-loc-'))
+  // 传 seed（哪怕是空册）让桥**同步**建立初始镜像，免掉 ready() 之前的 snapshot 抛错
+  h = makeHarness({})
+})
+afterEach(() => { rmSync(root, { recursive: true, force: true }) })
+
+/** 真适配器构造 UseCaseDeps（工具壳吃 application 端口）；无 agents/sessionProjections → 认证降级放行。 */
+const deps = (): any => ({
+  // 过渡期：`UseCaseDeps.repo` 仍必填 ⇒ 由统一工厂提供（原先是自建 JsonLedgerRepository）；
+  // 同时补上新端口 `store`（断言与迁移后的读点走它）。其余适配器保持原状，避免夹具语义漂移。
+  store: h.store,
+  taskStore: taskStoreAt(root),
+  docs: new FileDocRepository({ workspaceRoot: root }),
+  // REQ-261008020617-088f RF-3：hostFs 必填（强转构造的夹具最容易漏）
+  hostFs: new FileHostFs(),
+  clock: new SystemClock(),
+  ids: new RandomIdFactory(),
+  session: new SessionProbeAdapter({}),
+  questions: new UserQuestionsAdapter(() => undefined),
+  doneThrottleMs: 0,
+})
+
+const ARGS = { title: '降级路径立项', category: 'feature' }
+
+/** 每次调用新建工具（与真实装配一致），execute 走完整 shell → 用例 → 台账链路。 */
+const run = (args: Record<string, unknown>) =>
+  (defineCreateTool(deps()) as any).execute(args, { agent: { id: W } })
+
+const ledgerReq = async (id: string): Promise<RequirementRecord> => (await h.store.get(id))!
+
+describe('reqboard_create · 文档位置（FR-7 降级路径补第四问）', () => {
+  it('TC-11 不传 doc_location → 显式回落默认值 + defaults_used 留痕，台账 docBasePath 同值', async () => {
+    const out = await run({ ...ARGS })
+    expect(out.success).toBe(true)
+    expect(out.doc_location).toBe(CAPTURE_DEFAULTS.docLocation)
+    // REQ-261008004324-81df BUG-6：workspace_root 是工具有意新增的回落问项 id
+    // （CreateRequirement.ts:112-113 按入参名记账，不硬套 capture 的 id），缺省与 location 同批留痕。
+    expect(out.defaults_used).toEqual([CAPTURE_QUESTION_IDS.location, 'workspace_root'])
+    expect(out.note).toContain('回落')
+
+    const req = await ledgerReq(out.requirement_id)
+    expect(req.docBasePath).toBe(CAPTURE_DEFAULTS.docLocation)
+    // 产物路径与回落值同源（消费端 requirementDocPath 解析一致）。
+    expect(requirementDocPath(req)).toBe('docs/requirements/' + req.id + '/requirement.md')
+  })
+
+  it('TC-12 传 docs/rfcs/ → 台账 docBasePath 与产物路径按它生成', async () => {
+    const out = await run({ ...ARGS, doc_location: 'docs/rfcs/' })
+    expect(out.doc_location).toBe('docs/rfcs/')
+    // 同上：doc_location 显式给了，但 workspace_root 仍走缺省 → 只留 workspace_root 一条回落。
+    expect(out.defaults_used).toEqual(['workspace_root'])
+
+    const req = await ledgerReq(out.requirement_id)
+    expect(req.docBasePath).toBe('docs/rfcs/')
+    expect(requirementDocPath(req)).toBe('docs/rfcs/' + req.id + '/requirement.md')
+  })
+
+  it('TC-13 返回 status 与台账一致（当前落点 draft，不谎报推进）', async () => {
+    const out = await run({ ...ARGS })
+    const req = await ledgerReq(out.requirement_id)
+    expect(out.status).toBe(req.status)
+    expect((await h.store.listSummaries()).items).toHaveLength(1)
+  })
+
+  it('异常流：绝对路径 / 含 .. 的路径 → REQBOARD_INVALID_INPUT，且不写台账（不静默改路径）', async () => {
+    for (const bad of ['/etc/passwd', '../escape', 'docs/../../escape', 'C:\\Windows']) {
+      await expect(run({ ...ARGS, doc_location: bad })).rejects.toMatchObject({ code: 'REQBOARD_INVALID_INPUT' })
+    }
+    expect((await h.store.listSummaries()).items).toHaveLength(0)
+  })
+
+  it('schema：doc_location 入参 + doc_location/defaults_used 返回键已声明（DSH 绑定层不拒收）', () => {
+    const tool = defineCreateTool(deps()) as any
+    const params = tool?.parameters?.properties ?? {}
+    expect(params.doc_location?.type).toBe('string')
+    const props = tool?.output?.schema?.properties ?? tool?.schema?.output?.schema?.properties ?? {}
+    expect(props.doc_location?.type).toBe('string')
+    expect(props.defaults_used?.type).toBe('array')
+  })
+})

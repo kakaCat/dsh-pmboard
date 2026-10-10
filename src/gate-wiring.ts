@@ -4,14 +4,14 @@
  * 依赖方向与 index.ts 相同（adapters + application 均可引用）。
  */
 import type { Context } from '@deepseek-ai/cordis';
-import type { RequirementStore } from './application/ports.js'
-import { createGatePostChain } from './application/gate/GatePostChain.js';
-import { createPendingGateStore } from './application/gate/PendingGate.js';
-import { createH1AdvanceHandler } from './application/gate/handlers/h1-advance.js';
-import { createH2CompactHandler } from './application/gate/handlers/h2-compact.js';
-import { createH3InjectHandler } from './application/gate/handlers/h3-inject.js';
-import { createH4ResumeHandler } from './application/gate/handlers/h4-resume.js';
-import { createH5AuditHandler } from './application/gate/handlers/h5-audit.js';
+import type { RequirementStore } from 'pmboard-core/application/ports.js'
+import { createGatePostChain } from 'pmboard-core/application/gate/GatePostChain.js';
+import { createPendingGateStore } from 'pmboard-core/application/gate/PendingGate.js';
+import { createH1AdvanceHandler } from 'pmboard-core/application/gate/handlers/h1-advance.js';
+import { createH2CompactHandler } from 'pmboard-core/application/gate/handlers/h2-compact.js';
+import { createH3InjectHandler } from 'pmboard-core/application/gate/handlers/h3-inject.js';
+import { createH4ResumeHandler } from 'pmboard-core/application/gate/handlers/h4-resume.js';
+import { createH5AuditHandler } from 'pmboard-core/application/gate/handlers/h5-audit.js';
 import { NodeIsolationAdapter } from './adapters/NodeIsolationAdapter.js';
 import { RandomIdFactory } from './adapters/RandomIdFactory.js';
 import type { FileDocRepository } from './adapters/FileDocRepository.js';
@@ -19,12 +19,12 @@ import type { IsolationTraceFile } from './adapters/IsolationTraceFile.js';
 import type { InjectionLogFile } from './adapters/InjectionLogFile.js';
 import type { SystemClock } from './adapters/SystemClock.js';
 import type { AgentDeliverer } from './adapters/AgentDeliverer.js';
-import { headSectionTextFrom, fallbackSectionTextFrom } from './application/internal/capture-section.js';
-import { windowKeyFromContext } from './application/internal/window.js';
-import { captureDiag } from './application/internal/diag-log.js';
-import type { SessionProbe, TaskStore } from './application/ports.js';
-import type { RequirementFacts } from './domain/requirement/RequirementSummary.js';
-import { type TaskRecord } from './shared/protocol.js';
+import { headSectionTextFrom, fallbackSectionTextFrom } from 'pmboard-core/application/internal/capture-section.js';
+import { windowKeyFromContext } from 'pmboard-core/application/internal/window.js';
+import { captureDiag } from 'pmboard-core/application/internal/diag-log.js';
+import type { SessionProbe, TaskStore } from 'pmboard-core/application/ports.js';
+import type { RequirementFacts } from 'pmboard-core/domain/requirement/RequirementSummary.js';
+import { type TaskRecord } from 'pmboard-core/protocol-domain.js';
 
 export interface GateChainDeps {
   /** 新需求端口（t8/B11）：供 h2-compact 的 store/persistArtifacts 使用。 */

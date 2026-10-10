@@ -8,7 +8,7 @@
  * 另外钉住两条硬纪律：**脚本是常量**（不含任何外部输入）、**不经 shell**（`execFile` + argv）。
  */
 import { describe, it, expect } from 'vitest'
-import { OsascriptStoragePathPicker, PICK_PATH_SCRIPT, type RunResult } from '../src/adapters/StoragePathPicker.js'
+import { OsascriptStoragePathPicker, PICK_PATH_SCRIPT, type RunResult } from 'src/adapters/StoragePathPicker.js'
 
 const ok = (stdout: string): RunResult => ({ stdout, stderr: '', code: 0, killed: false })
 

@@ -13,7 +13,7 @@
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { delimiter, join } from 'node:path'
-import type { PythonProbeResult, SkillInstallPort } from '../application/ports.js'
+import type { PythonProbeResult, SkillInstallPort } from 'pmboard-core/application/ports.js'
 
 interface Candidate {
   readonly name: string

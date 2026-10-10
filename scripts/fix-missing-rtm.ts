@@ -8,8 +8,8 @@
  */
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { RTMGenerator, runRTMTrigger } from '../src/application/internal/rtm-yaml.js'
-import type { RequirementRecord } from '../src/shared/protocol.js'
+import { RTMGenerator, runRTMTrigger } from 'pmboard-core/application/internal/rtm-yaml.js'
+import type { RequirementRecord } from 'pmboard-core/protocol-domain.js'
 
 const workspaceRoot = process.cwd()
 const requirementsDir = join(workspaceRoot, 'docs/requirements')
