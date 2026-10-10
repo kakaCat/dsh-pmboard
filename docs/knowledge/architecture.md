@@ -13,19 +13,20 @@
 | 层 | 包 | 允许依赖 | 说明 |
 |---|---|---|---|
 | `L0` | `pm-common` · `reqboard-rtm` | （无） | 零依赖底座（公共值 + RTM 引擎） |
-| `L0.5` | `pm-type-kit` | pm-common | 类型层：契约与六个类型规格 |
-| `L0.5` | `pm-type-feature` · `pm-type-bug` · `pm-type-doc` · `pm-type-refactor` · `pm-type-spike` · `pm-type-chore` | pm-common · pm-type-kit | 类型层：契约与六个类型规格 |
-| `L1` | `pm-core` | pm-common · reqboard-rtm · pm-type-kit | 领域与用例（含类型消费端口） |
-| `L2` | `tool-pm` · `pm-round-driver` · `pm-workflow` · `pm-client` · `command-pm` | pm-common · pm-core | 入口与适配：工具 / 驱动 / 工作流 / 客户端 / 命令面 |
+| `L0.5` | `pm-category-kit`（分组 `category/`） | pm-common | 类别层：契约与六个类别规格 |
+| `L0.5` | `pm-category-feature` · `pm-category-bug` · `pm-category-doc` · `pm-category-refactor` · `pm-category-spike` · `pm-category-chore`（分组 `category/`） | pm-common · pm-category-kit | 类别层：契约与六个类别规格 |
+| `L1` | `pm-core` | pm-common · reqboard-rtm · pm-category-kit | 领域与用例（含类型消费端口） |
+| `L1` | `pm-goal`（分组 `goal/`） | —（零依赖） | PM 双层 goal 内核（纯状态机/判据 + 结构化端口契约） |
+| `L2` | `tool-pm` · `tool-pm-goal` · `pm-round-driver` · `pm-workflow` · `pm-client` · `command-pm` | pm-common · pm-core（+ pm-goal） | 入口与适配：工具（含 goal 工具面）/ 驱动 / 工作流 / 客户端 / 命令面 |
 | `L3` | `pm-templates` · `pm-skills` · `pm-eval-suite` · `pm-scripts` | （无） | 资产包：模板 / 技能 / 评测 / 脚本 |
 
-**依赖方向（硬纪律）**：只许向内。资产包（L3）零 import；`pm-type-kit` 是工具包唯一合法横向通路。
+**依赖方向（硬纪律）**：只许向内。资产包（L3）零 import；`pm-category-kit` 是工具包唯一合法横向通路。
 
 ### 需求类型层 #type-layer
 
 六个 `pmboard-type-<cat>` 包各自导出一份 `RequirementTypeSpec`（必填节 delta / 必交与条件设计文档 / 条件产物 / 模板引用 / 归档去向 / 中文标签）；
-`pm-type-kit` 的 `createTypeRegistry` **构建即校验**（缺字段即抛，不静默兜底）。**加一个需求类型三步**：
-新建 `pm/pm-type-<cat>`（`src/index.ts` 一份 spec + `tests/spec.test.ts`）→ 在 `src/type-registry.ts` 装配一行 → 跑 `node scripts/package-boundary-check.mts` 与全量测试。
+`pm-category-kit` 的 `createTypeRegistry` **构建即校验**（缺字段即抛，不静默兜底）。**加一个需求类型三步**：
+新建 `pm/pm-category-<cat>`（`src/index.ts` 一份 spec + `tests/spec.test.ts`）→ 在 `src/type-registry.ts` 装配一行 → 跑 `node scripts/package-boundary-check.mts` 与全量测试。
 ## 数据层：需求台账怎么存 #data-layer
 
 台账自 REQ-261002161439-277d 起从**单册 JSON** 改为**分片目录**（读放大治理 + 端口化的地基）。
