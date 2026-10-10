@@ -131,6 +131,10 @@ import type { SubtaskBudgetPort, UseCaseDeps } from 'pm-core/application/ports.j
 import ReqboardDiveManager from './adapters/ReqboardDiveManager.js';
 import { renderDiveRoundText } from 'pm-core/application/dive-core/round-state.js';
 import type { DiveRoundPorts } from 'pm-round-driver/round-driver.js';
+import { mutateIfPresent } from 'pm-core/application/use-cases/queue-access.js';
+import { buildGoalRoundPorts } from './adapters/goal-round-ports.js';
+import GoalRoundManager from './adapters/GoalRoundManager.js';
+import { createTaskGoal } from 'pm-goal';
 import { createProviderLatch } from 'pm-core/application/internal/provider-latch.js';
 import { confirmGraceSetting } from 'pm-core/plugin-config.js';
 import { stageRoutingSetting } from 'pm-core/plugin-config.js';
@@ -698,8 +702,78 @@ export function apply(ctx: Context, config?: PluginConfig): void {
       limits: DEFAULT_CHAIN_BUDGET_LIMITS,
     }),
   }
-  const diveManager = new ReqboardDiveManager(ctx, diveRoundPorts)
-  logger.info('ReqboardDiveManager initialized (round 半已接线)')
+  /**
+   * 驱动选择开关（**opt-in，缺省关**）：两个驱动不能同时挂在同一个 idle 拍上
+   * （双驱动 = 双倍投递 + 互相打架），所以二选一；新驱动未上过生产，故缺省仍走旧的。
+   * 打开：`DSH_PM_GOAL_DRIVER=1`。
+   */
+  const useGoalDriver = process.env.DSH_PM_GOAL_DRIVER === '1'
+  const goalPorts = useGoalDriver
+    ? buildGoalRoundPorts({
+        peekFacts: () => store.peekFacts(),
+        getRequirement: (id) => store.get(id),
+        tasksOf: (id) => taskStore.listByRequirement(id) as never,
+        delivery: {
+          createRoundMessage: (i) => deliverer.createRoundMessage(i),
+          deliverMessage: (w, m) => deliverer.deliverMessage(w, m),
+          checkpoint: async () => { await store.headAfterDrain() },
+          // 准入计数（dive.roundsInStage 是唯一权威计数；`>=` 守卫防重放误伤）。
+          persistAdmission: (id, round) => {
+            void mutateIfPresent(store, id, (r) => {
+              if (r.dive === undefined || (r.dive.roundsInStage ?? 0) >= round) return undefined
+              r.dive.roundsInStage = round
+              r.dive.lastActiveAt = now()
+              r.updatedAt = now()
+              return { changed: true }
+            })
+          },
+          contentOf: (m) => (m as { content?: unknown } | undefined)?.content,
+          now,
+        },
+        // 适配器要的 checkpoint/persistAdmission 在 delivery 里（见上）；这里补顶层同名依赖。
+        checkpoint: async () => { await store.headAfterDrain() },
+        persistAdmission: (id, round) => {
+          void mutateIfPresent(store, id, (r) => {
+            if (r.dive === undefined || (r.dive.roundsInStage ?? 0) >= round) return undefined
+            r.dive.roundsInStage = round
+            r.dive.lastActiveAt = now()
+            r.updatedAt = now()
+            return { changed: true }
+          })
+        },
+        createTaskGoal: (requirementId, taskId, objective) => createTaskGoal(
+          { taskStore: taskStore as never, store: store as never, now }, requirementId, taskId, objective,
+        ),
+        askStageDone: () => { /* 由 GoalRoundManager 用 stage-prompt 接管（此处仅占位） */ },
+        trace: (reason, id) => captureDiag('[GOAL-ROUND] ' + reason + (id === undefined ? '' : ' req=' + id)),
+        providerLatchOpen: () => providerLatch.isOpen(),
+        humanGate: async (requirementId) => humanGateOf(await store.get(requirementId)),
+        dialogInFlight: (requirementId) => pendingConfirms.inFlightFor(requirementId),
+        chainBudget: (candidateId) => checkChainBudget({
+          facts: store.peekFacts(), candidateId, limits: DEFAULT_CHAIN_BUDGET_LIMITS,
+        }),
+        fiberActive: () => {
+          const state = (ctx as unknown as { fiber?: { state?: number } }).fiber?.state
+          return state === undefined ? true : state === 2
+        },
+        agentLive: (windowKey) => (agentsSvc as { get?: (id: string) => unknown } | undefined)?.get?.(windowKey) !== undefined,
+        now,
+        logger: { info: (m) => logger.info(m), debug: (m) => logger.debug(m), warn: (m, e) => logger.warn(m, e) },
+      })
+    : undefined
+  const diveManager = useGoalDriver && goalPorts !== undefined
+    ? new GoalRoundManager(ctx, {
+        ports: goalPorts,
+        peekFacts: () => store.peekFacts(),
+        store,
+        agents: { get: (id) => (agentsSvc as { get?: (id: string) => unknown } | undefined)?.get?.(id) },
+        now,
+        providerLatchOpen: () => providerLatch.isOpen(),
+      })
+    : new ReqboardDiveManager(ctx, diveRoundPorts)
+  logger.info(useGoalDriver
+    ? 'GoalRoundManager initialized（goal 驱动，实验开关打开）'
+    : 'ReqboardDiveManager initialized (round 半已接线)')
   disposers.push(() => { void diveManager.teardown() })
 
   // 闸门后置链装配（REQ-e3b6a0）：抽到 ./gate-wiring.js（REQ-f0579a t5 尺寸门禁）。
@@ -736,7 +810,9 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     // 的决定——再挂一个监听器会插进那条决策链（详见 notice-reconciler 文件头 ①）。
     onTurnEnded: (windowKey) => { noticeReconcilerRef?.noteTurnEnded(windowKey) },
     logger, plugin: name,
-    round: diveManager.roundDriver(),
+    // 新驱动启用时 session-driver 只做簿记（`round` 可选，见 session-driver 的守卫）——
+    // 驱动点（idle 拍）唯一归 GoalRoundManager，避免两个驱动同挂一拍。
+    round: useGoalDriver ? undefined : (diveManager as ReqboardDiveManager).roundDriver(),
     attachSessionDriver: (handler) => diveManager.attachSessionDriver(handler),
     attachAgentStatus: (handler) => diveManager.attachAgentStatus(handler),
   });
