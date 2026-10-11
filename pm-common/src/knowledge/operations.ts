@@ -115,10 +115,7 @@ export const EXCLUDED: readonly ExcludedEntry[] = [
   { name: 'kb-probe.mts', reason: '已由 kb:check 内含（自检脚本）' },
   // REQ-261009174713-7bc8 t21：脚本与配置链迁移后把 scripts/ 下的落点逐一归类。
   { name: 'package-boundary-check.mts', reason: '命令入口是 pnpm boundary:check（见 C-33 分层门禁），脚本本身不再单立条目' },
-  { name: 'refactor-baseline.mts', reason: 't3 固化五类基线的只读 dump：使用时机归需求文档与 t22 的基线 diff 卡，不立日常条目' },
   { name: 'diagnose-capture.mts', reason: '一次性诊断入口（排查捕获链问题时临时跑），不是日常步骤，故排除' },
-  { name: 'diagnose-capture-runtime.mts', reason: '一次性诊断入口（运行期捕获排查用），同上：临时跑，不进规范页' },
-  { name: 'verify-capture-fix.sh', reason: '一次性取证脚本（某次捕获修复的现场验证），不具备日常触发时机，故排除' },
   // REQ-261006123819-3af3 FR-2：刷基线是**确认差集非本次引入之后**的例外动作，不是日常步骤；
   // 它在 C-14 的「失败怎么办」里被要求，不另立条目（否则同一件事会有两个入口）。
   { name: 'baseline:refresh', reason: '已由 C-14 的「失败怎么办」要求（确认差集非本次引入后的例外动作），不另立条目' },
@@ -144,13 +141,11 @@ export const EXCLUDED: readonly ExcludedEntry[] = [
   { name: 'list-responsive-probe.mts', reason: '按需几何验证，非每次必跑' },
   { name: 'knowledge-page-probe.mts', reason: '按需几何验证，非每次必跑' },
   { name: 'kb-coldstart-probe.mts', reason: '冷启动问答材料（验收用），非每次必跑' },
-  { name: 'verify-capture-chain.mts', reason: '专项验收脚本（立项链），非每次必跑' },
   // REQ-261004150249-731e（续作交接）：一次性验收探针，非每次必跑
   { name: 'handoff-probe.mts', reason: '专项验收脚本（交接：席位同步 + 绑定同步 + 幂等），非每次必跑' },
   { name: 'workflow-engine-smoke.ts', reason: '冒烟脚本，按需运行' },
   { name: 'verify-t4-rounds.mts', reason: '专项回归脚本（t4 轮次），非每次必跑' },
   { name: 'dump-stage-prompts.mjs', reason: '调试用（打印阶段提示词）' },
-  { name: 'clean-test-cache.sh', reason: '本地清理缓存，与正确性无关' },
   // REQ-261005151245-54ae（开窗继承）：把真适配器 + 真用例 + 真继承模块串起来、只换假宿主服务，
   // 打印六读数并断言三对相等；属专项验收探针，非每次必跑（与 handoff-probe 同款）。
   { name: 'open-window-inherit-probe.mts', reason: '专项验收脚本（开窗继承：六读数 + 三对相等），非每次必跑' },
@@ -162,11 +157,6 @@ export const EXCLUDED: readonly ExcludedEntry[] = [
   // REQ-261002161439-277d（台账分片）：三个一次性数据搬运脚本，非每次必跑
   { name: 'migrate-ledger-v10.ts', reason: '一次性迁移：v9 单册 → v10 分片（按需运行，已在验收④覆盖）' },
   { name: 'rollback-ledger-v10.ts', reason: '一次性回滚：v10 分片 → v9 单册（退路脚本，按需运行）' },
-  { name: 'backfill-task-refs.ts', reason: '一次性回填：把任务卡的需求条款引用补进队列（按需运行）' },
-  { name: 'migrate-ledger.ts', reason: '一次性台账迁移，已完成' },
-  { name: 'normalize-ledger-paths.ts', reason: '一次性路径归一，已完成' },
-  { name: 'normalize-queue-deps.ts', reason: '一次性队列依赖归一，已完成' },
-  { name: 'fix-missing-rtm.ts', reason: '一次性补 RTM，已完成' },
   // REQ-261004222448-292a（详情页重构）：新探针按既有惯例排除（与 list-responsive-probe.mts 同款：
   // 几何验证按需跑，不进"每次必跑"清单）；同批一并登记 4 个**此前就未归类**的脚本
   // ——它们让 kb:check 在本次改动之前就已经是红的（已核实：在开工前那个提交上同样报这 4 个），

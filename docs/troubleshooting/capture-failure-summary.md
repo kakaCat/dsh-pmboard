@@ -74,15 +74,13 @@ reqboard_capture (工具入口)
    pnpm build
    ```
 
-2. **运行验证脚本**
+2. **核对构建产物**（原 `scripts/verify-capture-fix.sh` 已退役，改为等价手查）
    ```bash
-   ./scripts/verify-capture-fix.sh
+   ls -l pm/dist/index.mjs
+   grep -c "reqboard DEBUG" pm/dist/index.mjs
    ```
-   
-   验证结果：
-   - ✓ 构建产物存在 (2.5 MB)
-   - ✓ 16 处调试日志已编译进构建产物
-   - ✓ 所有关键函数都存在
+
+   当时的验证结果（2.5 MB 产物 / 16 处调试日志 / 关键函数齐备）为该次修复的现场记录，非现行读数。
 
 3. **在 DSH 中测试**
    - 重新加载插件
@@ -128,8 +126,6 @@ reqboard_capture (工具入口)
 2. **调查报告**：`docs/troubleshooting/capture-failure-investigation.md`
 3. **诊断脚本**：
    - `scripts/diagnose-capture.mts` - 模拟测试
-   - `scripts/diagnose-capture-runtime.mts` - 静态检查
-   - `scripts/verify-capture-fix.sh` - 验证修复
 
 ## 后续行动
 

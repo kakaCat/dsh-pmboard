@@ -1,7 +1,7 @@
 /**
  * 迁移专属：legacy 状态名与历史时间线回填（REQ-47939a t10）。
  *
- * 为什么单独成模块：这几个函数**只服务于 v4→v5 迁移**（脚本 scripts/migrate-ledger.ts、
+ * 为什么单独成模块：这几个函数**只服务于 v4→v5 迁移**（脚本 v9 迁移链，已随 2026-10-11 清理移除、
  * 用例 application/use-cases/MigrateLedger.ts）。t10 收口后**运行时读路径不再需要**它们——
  * 台账已迁移、statusHistory 已固化，故从 shared/protocol.ts（运行时契约枢纽）里整块搬出，
  * 避免"为了迁移把兼容分支永久钉在运行时读路径上"。

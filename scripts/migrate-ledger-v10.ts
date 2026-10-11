@@ -85,11 +85,12 @@ export function readV9Ledger(file: string): { ledger: Record<string, unknown>; r
     throw Object.assign(new Error(`单册结构不合规（不是对象）：${file}`), { code: 'REQBOARD_VALIDATION_FAILED' })
   }
   const ledger = parsed as Record<string, unknown>
-  // v9 之前的单册必须先跑既有脚本：`tasks` 非空说明任务还在台账里，直接迁分片会把这批任务丢掉
+  // v9 之前的单册必须先跑 v9 迁移脚本：`tasks` 非空说明任务还在台账里，直接迁分片会把这批任务丢掉
+  // （该脚本已随本版本移除，故文案指向"仍带该脚本的旧版本"）
   if (Array.isArray(ledger.tasks) && ledger.tasks.length > 0) {
     throw Object.assign(
       new Error(
-        `单册仍带 ${(ledger.tasks as unknown[]).length} 条 tasks（v8 或更早）：先运行 scripts/migrate-ledger.ts --apply 把任务迁进各需求的 queue.json，再跑本脚本`,
+        `单册仍带 ${(ledger.tasks as unknown[]).length} 条 tasks（v8 或更早）：本版本已移除 v9 迁移脚本，请先在有 scripts/migrate-ledger.ts --apply 的旧版本上把任务迁进各需求的 queue.json（升到 v9），再回到本版本跑本脚本`,
       ),
       { code: 'LEDGER_REQUIRES_V9_FIRST' },
     )

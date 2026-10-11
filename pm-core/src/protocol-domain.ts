@@ -1042,7 +1042,7 @@ export interface RequirementRecord {
   seats?: WindowSeat[]
   // C6（REQ-47939a t10）：预留字段 projectId / parentId 已删除——全仓引用 0、从未落过盘，
   // 只有类型声明会让读代码的人以为功能存在（design/migration.md §2 C6）。历史数据里若残留
-  // 这两个键，由迁移脚本删除（scripts/migrate-ledger.ts C6）。
+  // 这两个键，由迁移脚本删除（v9 迁移脚本 C6；该脚本已随 2026-10-11 清理移除）。
   /** 节点产物登记（t4 钩子写入；五道人工确认门的确认状态在此） */
   artifacts?: StageArtifact[]
   /** 归档后的目录路径 */

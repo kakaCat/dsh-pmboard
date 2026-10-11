@@ -240,22 +240,6 @@
 
 来源：REQ-261002115204-ba52（重开自 REQ-261002110908-81d0；原需求因落库死锁停摆，实现与证据同源）。
 
-## 机制备忘：PM 插件 agent 测评套件（eval-suite/）
-
-**是什么**：一套针对「agent 驾驶 reqboard」行为的场景化测评——投递预设用户消息序列，按三层断言打分：
-台账终态比对（τ-bench 式）+ 工具轨迹校验（有序包含/禁含/预算）+ LLM 评审（产物类 rubric）。
-
-**关键约定**：
-
-| 约定 | 内容 |
-|---|---|
-| 目录 | `eval-suite/`：scenarios/（36 条 A1-G4）、assertions/{ledger,trajectory}/、rubrics/、calibration/、regression/、reports/、runbook.md、scoring.md |
-| 评分 | 六维度加权（D2 纪律/D3 完成度各 25% 最重）+ pass^4（k=4 全过才算一致）+ **红线一票否决**（B2/B3/C2/C3/E3/F2 六条 human_gate 越权类） |
-| 可重跑校验 | `python3 docs/requirements/REQ-261002120707-deab/tests/validate_eval_suite.py` → RESULT: PASS（修订套件后必跑） |
-| 边界 | 套件只有内容与规程；自动化执行器（fixture 预置、trace 抓取、断言执行）未实现，需另立需求；G3 步数预算基线 TBD 首轮标定 |
-
-来源：REQ-261002120707-deab（spike；调研沉淀见 docs/strategy-research/agent-evaluation-landscape.md）。
-
 ## 机制备忘：让自动链"该停就停"的四道前置（2026-10-04，REQ-261004065652-5c1c）
 
 **一句话**：自动链的每一次起轮，都要先过四道闸——**内存闭锁（含退避）→ 全局上游闩 → 人工门 → 预算闸**；
@@ -872,7 +856,9 @@
 ### 三、存量数据的补法（可回滚）
 
 - 补一张卡：`reqboard_task_refs(task_id, requirement_refs, reason)`（全量替换；值同不写盘；写后同步 RTM + 留痕）。
-- 批量补历史卡：`pnpm tsx scripts/backfill-task-refs.ts --dry-run` → `--apply` → `--check`；报告含 `before`，`--restore <报告>` 可还原。
+- 批量补历史卡：**CLI 已于 2026-10-11 退役**（`scripts/backfill-task-refs.ts` 依赖已删除的 v9 单册仓储 `JsonLedgerRepository`，无法适配现行分片存储）；
+  纯逻辑仍在 `pm-core/src/application/internal/backfill-task-refs.ts`（plan / apply / check / restore，用例见 `pm-core/tests/backfill-task-refs.test.ts`）。
+  若需再跑批量回填，须先按现行 `TaskStore` / `DocsReader` 端口重写一个入口——不要照旧命令跑（已不存在）。
 - 纪律：只经 `TaskStore` 与 `DocsReader` 端口；**只补空引用、不覆写**；子卡随父卡；归档需求只报告不回填。
 
 ### 四、可复核入口

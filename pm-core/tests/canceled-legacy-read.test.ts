@@ -288,7 +288,6 @@ describe('零写回（FR-6：读取前后逐字节一致，mtime 亦不变）', 
     expect(names.filter((n) => n.startsWith('migrate-'))).toEqual([
       'migrate-ledger-to-sqlite.ts',
       'migrate-ledger-v10.ts',
-      'migrate-ledger.ts',
       'migrate-support.ts',
     ])
     // ② 没有任何脚本在回填取消留痕三字段（回填会篡改审计事实：FR-3 / FR-6 明令不做）
