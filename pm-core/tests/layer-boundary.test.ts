@@ -243,15 +243,26 @@ describe('层边界：依赖方向（architecture.md §2）', () => {
     // 三层口径，逐层收紧（每条都是实测踩出来的洞）：
     //  ① 比较式任意算子（原实现只查 ===，漏了 src/http/ 的 8 处 !==）
     //  ② 判定器实参（statusIs(x, 'accepting') 只是把运算符搬进 domain，规则仍在适配层）
-    //  ③ **任何独立的状态名字面量**（countStatus(items,'passed') / isEveryStatus(...) 这类也漏）
+    //  ③ **调用实参里的状态字面量**（countStatus(items,'passed') / isEveryStatus(...) 这类也漏）
+    //     ——2026-10-11 收窄：原口径是"任何位置的独立字面量"，实测两类**误伤**证明它过宽：
+    //       · `code: 'failed'`（存储动作的**结果码**，与验收单项状态同名）；
+    //       · `'active' | 'archived' | 'all'`（`stages.ts` 的**范围枚举**，与需求状态同名）。
+    //     故 ③ 只认"出现在调用括号里"的字面量——这正是它当初要补的形状（②的同族），
+    //     比较式仍由 ①/② 覆盖，覆盖面不缩。
     const CMP = new RegExp("status\\s*(?:[!=]==|[!=]=)\\s*'(" + NAMES + ")'")
     const ARG = new RegExp("\\bstatus(?:Is|In|NotEquals|Equals)\\s*\\([^)]*'(" + NAMES + ")'")
-    const LIT = new RegExp("'(" + NAMES + ")'")
+    const LIT = new RegExp("\\([^)]*'(" + NAMES + ")'[^)]*\\)")
+    /**
+     * 第三类误伤（同为 2026-10-11 实测）：`code: 'failed'` 是**存储动作的结果码**，
+     * 它在 `if (r.code === 'failed')` 里会被上一条"括号里"的判据卷进来。
+     * 故 LIT 之前先剥掉 `code` 字段这一种形态，其余一律照抓。
+     */
+    const stripCodeLiterals = (t: string): string => t.replace(/\bcode\s*(?:===|!==|==|!=|:)\s*'[a-z_]+'/g, '')
     const bad: string[] = []
     for (const layer of ['tools', 'http']) {
       for (const f of filesInLayer(layer)) {
         const text = readFileSync(f, 'utf8')
-        if (CMP.test(text) || ARG.test(text) || LIT.test(text)) bad.push(rel(f))
+        if (CMP.test(text) || ARG.test(text) || LIT.test(stripCodeLiterals(text))) bad.push(rel(f))
       }
     }
     expect(bad, layer0Msg(bad)).toEqual([])

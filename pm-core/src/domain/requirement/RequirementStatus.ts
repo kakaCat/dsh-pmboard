@@ -54,6 +54,14 @@ export const INITIAL_REQ_STATUS: RequirementStatus = 'draft'
 export const REWORK_REQ_STATUS: RequirementStatus = 'implementing'
 export const ACCEPTED_REQ_STATUS: RequirementStatus = 'archived'
 export const CANCELED_REQ_STATUS: RequirementStatus = 'canceled'
+/**
+ * 2026-10-11 补：路由里还剩三处状态字面量（`layer-boundary` 门禁点名），补名分常量后由路由引用。
+ * `IMPLEMENTING_REQ_STATUS` 与 `REWORK_REQ_STATUS` **同值不同语义**（首跑进实施 vs 返工回实施）——
+ * 同一状态两个入口，故两个名字；值只有一处事实（都等于 `'implementing'`）。
+ */
+export const BRAINSTORMING_REQ_STATUS: RequirementStatus = 'brainstorming'
+export const DECOMPOSING_REQ_STATUS: RequirementStatus = 'decomposing'
+export const IMPLEMENTING_REQ_STATUS: RequirementStatus = 'implementing'
 
 /**
  * 前进边（显式声明；语义与既有表逐条一致）+ 放弃路径（`*>canceled`）。

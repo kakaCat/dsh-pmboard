@@ -35,7 +35,8 @@ import { executeDecompose } from 'pm-core/application/use-cases/Decompose.js'
 import { amendArchiveManifest } from 'pm-core/application/use-cases/AmendArchiveManifest.js'
 import { armExplicit } from 'pm-core/application/internal/rearm.js'
 import { applyRebind } from 'pm-core/application/internal/binding-write.js'
-import { INITIAL_REQ_STATUS, canReqTransition } from 'pm-core/domain/requirement/RequirementStatus.js'
+import { BRAINSTORMING_REQ_STATUS, DECOMPOSING_REQ_STATUS, IMPLEMENTING_REQ_STATUS, INITIAL_REQ_STATUS, canReqTransition } from 'pm-core/domain/requirement/RequirementStatus.js'
+import { liveCountOf } from 'pm-core/domain/status/Predicates.js'
 import { isRollback } from 'pm-core/domain/requirement/RollbackSpec.js'
 import { applyRequirementRollback, recordRollbackMaterialized, resetInjectionAfterRollback } from 'pm-core/application/internal/rollback.js'
 import { executeRollbackCleanup } from 'pm-core/application/use-cases/RollbackCleanup.js'
@@ -182,7 +183,7 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     if (current !== undefined && isRollback(current.status, to)) {
       rollbackTasks = await taskStore.listByRequirement(id)
       // 看板侧的 id 铸造是**异步**的（要避让台账），故先铸好一批再交给同步的编排口。
-      const liveCount = rollbackTasks.filter(t => t.status !== 'canceled').length
+      const liveCount = liveCountOf(rollbackTasks)
       rbMinted = []
       for (let i = 0; i < liveCount; i++) rbMinted.push(await mintId('task'))
       rollbackPre = applyRequirementRollback(
@@ -253,7 +254,7 @@ export function createRequirementsRouter(ctx: RouterCtx) {
     })
     // REQ-261005105032-3b02 t11（FR-2）：看板路径进需求阶段同样幂等落原型骨架（与 reqboard_move
     // 同一姿势：已存在不覆盖、非 UI 不落、失败只告警）——看板是真实入口，漏它 = 默认流程拿不到骨架。
-    if (to === 'brainstorming' && result?.requirement !== undefined && ctx.deps.docs !== undefined) {
+    if (to === BRAINSTORMING_REQ_STATUS && result?.requirement !== undefined && ctx.deps.docs !== undefined) {
       await landPrototypeSkeleton(ctx.deps.docs, result.requirement, { nowMs: now() })
     }
     ok(res, {
@@ -356,8 +357,8 @@ export function createRequirementsRouter(ctx: RouterCtx) {
           const landingEffective = landed.createdCount > 0 || landed.alreadyLanded > 0
           if (landingEffective) {
             await mutateIfPresent(ctx.requirementStore, id, (r) => {
-              if (r.status !== 'decomposing') return undefined
-              transitionRequirement(r, 'implementing', {
+              if (r.status !== DECOMPOSING_REQ_STATUS) return undefined
+              transitionRequirement(r, IMPLEMENTING_REQ_STATUS, {
                 at: now(),
                 actor: { kind: 'human' },
                 reason: '看板批准计划后自动进入实施（与弹框路径共用同一落库层）',
