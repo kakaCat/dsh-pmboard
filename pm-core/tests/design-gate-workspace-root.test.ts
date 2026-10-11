@@ -206,7 +206,7 @@ describe('防新增旁路：两个读盘闸门的每个调用点，读盘前都�
     'pm-core/src/application/use-cases/AskConfirm.ts',
     'pm-core/src/application/internal/confirm-settle.ts',
     'pm-core/src/application/use-cases/ConfirmArtifact.ts',
-    'src/http/routers/requirements.ts',
+    'pm/src/http/routers/requirements.ts',
   ]
   const GATE = /checkDesignCompletenessGate\(|checkDesignDecompositionGate\(/
   const FIX = /applyRequirementWorkspaceRoot\(/

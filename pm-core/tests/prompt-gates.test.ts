@@ -26,7 +26,6 @@ import {
   DEFAULT_PROMPT_BUDGET,
 } from 'pm-core/domain/prompt/index.js'
 
-const SRC = repoPath('src')
 const PKG_ROOT = REPO_ROOT
 
 /** 实际注册的工具名：静态扫 tool-pm/src 下的 name: 'reqboard_x'（与运行时注册同源）。 */
@@ -158,7 +157,7 @@ describe('门禁 6 源/产物同步：fragments 源与 generated 产物一致', 
   })
 
   it('产物文件存在且导出了 GENERATED_FRAGMENTS', () => {
-    const p = join(SRC, '..', 'pm-common/src/prompt/generated/fragments.ts')
+    const p = repoPath('pm-common/src/prompt/generated/fragments.ts')
     expect(existsSync(p)).toBe(true)
     expect(readFileSync(p, 'utf8')).toContain('GENERATED_FRAGMENTS')
   })

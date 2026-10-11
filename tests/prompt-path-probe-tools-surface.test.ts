@@ -63,8 +63,9 @@ function runProbe(extra: readonly string[]): { json: unknown; status: number } {
 describe('prompt-path-probe：agent 文案面扩面（FR-1）', () => {
   it('① 源码声明了 agent 文案面（tool-pm/src 递归 + capture-section + verification）', () => {
     expect(source).toContain('AGENT_SURFACE_DIRS')
-    // t22：`src/tools` 已随工具面成包（t15）⇒ 该钉更新为新落点（本行曾是过期镜像）。
-    expect(source).toMatch(/AGENT_SURFACE_DIRS = \[[^\]]*'pm\/tool-pm\/src'[^\]]*\]/)
+    // t21：旧工具目录已随工具面成包（t15）⇒ 该钉更新为包内落点 `tool-pm/src`
+    // （本行曾是 `pm/tool-pm/src` 的过期镜像；2026-10-11 平铺布局后包目录不再嵌在 pm/ 之下）。
+    expect(source).toMatch(/AGENT_SURFACE_DIRS = \[[^\]]*'tool-pm\/src'[^\]]*\]/)
     expect(source).toContain("'pm-core/src/application/internal/capture-section.ts'")
     expect(source).toContain("'pm-client/src/views/verification.ts'")
     expect(source).toContain('walkTypeScript')

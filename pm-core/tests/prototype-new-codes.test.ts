@@ -150,7 +150,7 @@ describe('④ 信封 how 含可执行锚点（真实门产出的文案）', () =
 
 describe('⑤ 三处身份同源：码字面量在实现里逐字一致', () => {
   it('内部码与传输码常量能在各自文件里找到（防止改名只改一处）', () => {
-    const envelope = repo('src/http/envelope.ts')
+    const envelope = repo('pm/src/http/envelope.ts')
     const move = repo('pm-core/src/application/use-cases/MoveRequirement.ts')
     const shared = repo('pm-client/src/toolviews/shared.ts')
     for (const code of INTERNAL) expect(envelope).toContain(code + ':')

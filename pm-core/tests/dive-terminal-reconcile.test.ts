@@ -145,7 +145,7 @@ describe('FR-9·预防半边 · 走进终态那一刻收手', () => {
   it('两条入口共用同一实现（静态断言：防"一边改了一边没改"的真相漂移）', () => {
     const read = (rel: string): string => readFileSync(fileURLToPath(pathToFileURL(repoPath(rel))), 'utf8')
     const tool = read('pm-core/src/application/use-cases/MoveRequirement.ts')
-    const board = read('src/http/routers/requirements.ts')
+    const board = read('pm/src/http/routers/requirements.ts')
     for (const [label, text] of [['工具路径', tool], ['看板路径', board]] as const) {
       expect(text, label + ' 必须调用公共收手实现').toContain('disarmDiveOnTerminal(')
       expect(text, label + ' 不得自己再写一份 transitionDive(disarm-terminal)')

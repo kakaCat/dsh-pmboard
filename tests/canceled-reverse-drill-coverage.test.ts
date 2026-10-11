@@ -36,7 +36,7 @@ const EXPECTED_REFS: readonly string[] = [
 const EXPECTED_TARGETS: readonly string[] = [
   'pm-core/src/application/query/QueryStageDetail.ts',
   'pm-core/src/application/query/QueryDag.ts',
-  'src/http/routers/stages.ts',
+  'pm/src/http/routers/stages.ts',
   'pm-core/src/protocol-domain.ts',
   'pm-core/src/domain/queue/topology.ts',
   'pm-core/src/domain/queue/validateQueue.ts',

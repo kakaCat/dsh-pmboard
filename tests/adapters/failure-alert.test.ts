@@ -11,13 +11,13 @@
  *     代码里一行都不许有——防「口径改了、代码又悄悄接回去」。
  */
 import { describe, it, expect } from 'vitest'
-import { repoPath } from 'tests/helpers/repo-root.js'
-import { readFileSync, readdirSync } from 'node:fs'
+import { REPO_ROOT, repoPath } from 'tests/helpers/repo-root.js'
+import { workspacePkgDirs } from 'tests/helpers/workspace-pkgs.js'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import {  fileURLToPath, pathToFileURL } from 'node:url'
 import { createFailureAlert } from 'src/adapters/FailureAlert.js'
 
-const SRC = fileURLToPath(pathToFileURL(repoPath('src')))
+const PKG_SRC_ROOTS = workspacePkgDirs().map((d) => repoPath(join(d, 'src'))).filter((p) => existsSync(p))
 
 function tsFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -98,11 +98,15 @@ describe('createFailureAlert：两条通道 + 永不抛', () => {
 })
 
 describe('不变量：本插件代码不发飞书（2026-09-21 用户裁定）', () => {
-  it('src/ 可执行代码不含 feishu / 飞书 / 飞书 webhook', () => {
+  it('各包 src/ 可执行代码不含 feishu / 飞书 / 飞书 webhook', () => {
     const offenders: string[] = []
-    for (const file of tsFiles(SRC)) {
-      const code = codeOnly(readFileSync(file, 'utf8'))
-      if (/feishu|飞书|open\.feishu\.cn/i.test(code)) offenders.push(file.replace(SRC, 'src'))
+    // 2026-10-11 平铺布局：源码不再只住在根 src/，须遍历 workspace 各包的 src
+    for (const root of PKG_SRC_ROOTS) {
+      const rel = root.slice(REPO_ROOT.length + 1)
+      for (const file of tsFiles(root)) {
+        const code = codeOnly(readFileSync(file, 'utf8'))
+        if (/feishu|飞书|open\.feishu\.cn/i.test(code)) offenders.push(rel + '/' + file.slice(root.length + 1))
+      }
     }
     expect(offenders).toEqual([])
   })

@@ -17,7 +17,7 @@ import { applyRebind } from 'pm-core/application/internal/binding-write.js'
 import * as toolModules from 'tool-pm/index.js'
 import type { RequirementRecord } from 'pm-core/protocol-domain.js'
 
-const ROOT = repoPath('src')
+const ROOT = repoPath('pm/src')
 
 function listTs(dir: string): string[] {
   const out: string[] = []

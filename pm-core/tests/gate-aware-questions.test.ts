@@ -110,7 +110,7 @@ describe('零成本扩展（AC-10.2）', () => {
 
     // 机械判据：装饰器与链里**不得出现**针对具体入口的特判
     const src = (rel: string) => readFileSync(fileURLToPath(pathToFileURL(join(repoPath('tests'), rel))), 'utf8')
-    for (const f of ['../src/adapters/GateAwareQuestions.ts', '../pm-core/src/application/gate/GatePostChain.ts']) {
+    for (const f of ['../pm/src/adapters/GateAwareQuestions.ts', '../pm-core/src/application/gate/GatePostChain.ts']) {
       expect(src(f)).not.toMatch(/reqboard_ask_confirm|reqboard_accept_sheet|reqboard_capture/)
     }
   })

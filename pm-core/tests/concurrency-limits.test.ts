@@ -7,7 +7,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { repoPath } from 'tests/helpers/repo-root.js'
-import { readdirSync, readFileSync } from 'node:fs'
+import { workspacePkgDirs } from 'tests/helpers/workspace-pkgs.js'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { executeMoveTask } from 'pm-core/application/use-cases/MoveTask.js'
@@ -198,6 +199,9 @@ describe('运行期跨卡覆盖兜底（6.5）', () => {
 // TC-8 超时契约（REQ-260923222557-d3b0 FR-5）
 // ---------------------------------------------------------------------------
 
+/** 扫描面：workspace 各包的 src（2026-10-11 平铺布局后源码不再住根 src/）。 */
+const PKG_SRC_ROOTS = workspacePkgDirs().map((d) => repoPath(join(d, 'src'))).filter((p) => existsSync(p))
+
 function walkTs(dir: string, acc: string[] = []): string[] {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, e.name)
@@ -211,7 +215,7 @@ describe('TC-8 超时契约：人机回路不再 10 分钟超时（FR-5）', () 
   it('交互确认与验收单超时均为 1 小时，且全 src 无旧 600s/900s 硬编码残留', () => {
     expect(LIMITS.timeoutInteractiveMs).toBe(3_600_000)
     expect(LIMITS.timeoutSheetMs).toBe(3_600_000)
-    const files = walkTs(repoPath('src'))
+    const files = PKG_SRC_ROOTS.flatMap((r) => walkTs(r))
     // 扫描器自检：目录失效/被裁剪时不能静默假绿
     expect(files.length).toBeGreaterThan(50)
     // \b 保证 3_600_000 不算残留（下划线是词字符，_600_000 前无词边界）

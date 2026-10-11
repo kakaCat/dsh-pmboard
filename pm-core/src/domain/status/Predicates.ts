@@ -121,6 +121,27 @@ export function liveCountOf(tasks: readonly HasStatus[]): number {
 }
 
 /**
+ * ⑤ 单卡判据（唯一）：**未收口**（open work）——`done` / `canceled` = 已收口。
+ *
+ * 为什么另立一条（2026-10-11）：它与 ①「活卡」不是一回事——活卡只排 `canceled`，
+ * 未收口还要排 `done`。此前这条口径被手抄了 5 处（`application/internal/subtask-evidence` ·
+ * `application/internal/advance-select` · `pm/src/adapters/goal-round-ports` ×2 ·
+ * `goal/pm-goal` 内核 ×1），`pm-core/tests/live-tasks-single-source.test.ts` 的「新增即红」
+ * 把它们逐个抓了出来。抄写点各自的布尔式看起来都对，但「哪些卡算还开着」会随写法漂移。
+ *
+ * 零依赖内核（`goal/pm-goal`）**不许** import 本模块（分层纪律），它保留自己那份定义式并作为
+ * `definition-site` 登记在基线里——那是口径的**定义**，不是抄写。
+ */
+export function isOpenTask<T extends HasStatus>(task: T): boolean {
+  return task.status !== 'done' && !isCanceled(task)
+}
+
+/** ⑥ 集合判据（唯一）：未收口卡集合。顺序/引用语义与 ② 同。 */
+export function openTasksOf<T extends HasStatus>(tasks: readonly T[]): T[] {
+  return tasks.filter((task) => isOpenTask(task))
+}
+
+/**
  * ④ 依赖是否已满足：`done` 或 `canceled`（视为已了结），或该依赖 id **不在给定集合里**（缺席）。
  *
  * 口径来源：逐字等于 `application/use-cases/queue-access.ts` 的 `readyTasksOf` 今天的判定，

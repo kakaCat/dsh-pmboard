@@ -665,7 +665,7 @@ describe('存量兼容 · 全量读取与零迁移（t-5bf1e4 / FR-11）', () =>
  * 注：`git diff` 变更面与 REQBOARD_SCHEMA_VERSION **版本值未变**的核对属父卡证据步骤（版本级、跨文件），
  * 不在本文件断言；此处只锁「常量仍导出且形状未变（整数）」。
  */
-const SRC = repoPath('src/')
+const SRC = repoPath('pm/src/')
 /** client 面根（布局无关：搬迁前后各一处）——写死 `src/` 的 helper 在搬迁当刻会取不到文件。 */
 const CLIENT_SRC = existsSync(join(SRC, 'client'))
   ? join(SRC, 'client')

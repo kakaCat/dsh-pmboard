@@ -26,8 +26,13 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { existsSync } from 'node:fs'
 import { NOISE_TOKENS, REPO_ROOT, isPromptFile } from 'tests/helpers/error-code-scan.js'
 import { REQBOARD_CODE_SET } from 'pm-common/error-code-registry.js'
+import { workspacePkgDirs } from 'tests/helpers/workspace-pkgs.js'
+
+/** 扫描面：workspace 各包的 src（2026-10-11 平铺布局后源码不再住根 src/）。 */
+const SRC_ROOTS = workspacePkgDirs().map((d) => join(REPO_ROOT, d, 'src')).filter((p) => existsSync(p))
 
 /**
  * 文案面出现的码 token。
@@ -75,14 +80,14 @@ function promptFiles(root: string): { abs: string; rel: string }[] {
 
 describe('① prompt 文案里的码必须已在注册表登记', () => {
   it('收集面非空（口径没坏：扫到 0 个文案文件时不得静默通过）', () => {
-    const files = [...promptFiles(join(REPO_ROOT, 'src')), ...promptFiles(join(REPO_ROOT, 'tool-pm/src'))]
+    const files = SRC_ROOTS.flatMap((r) => promptFiles(r))
     expect(files.length, '文案面扫到 0 个文件 ⇒ 口径或目录结构坏了，不是「没有码」').toBeGreaterThan(0)
   })
 
   it('每个 prompt 文件里出现的码都在注册表内；违规逐条点名文件与码', () => {
     const noise = new Set(NOISE_TOKENS.map(n => n.token))
     const violations: string[] = []
-    for (const { abs, rel } of [...promptFiles(join(REPO_ROOT, 'src')), ...promptFiles(join(REPO_ROOT, 'tool-pm/src'))]) {
+    for (const { abs, rel } of SRC_ROOTS.flatMap((r) => promptFiles(r))) {
       const lines = readFileSync(abs, 'utf8').split('\n')
       for (const line of lines) {
         for (const code of codesOnLine(line, noise)) {
@@ -101,7 +106,7 @@ describe('① prompt 文案里的码必须已在注册表登记', () => {
   it('读数打印：文案面出现的码数与去重数（供 G5 核对，非门禁）', () => {
     const noise = new Set(NOISE_TOKENS.map(n => n.token))
     const seen = new Set<string>()
-    for (const { abs } of [...promptFiles(join(REPO_ROOT, 'src')), ...promptFiles(join(REPO_ROOT, 'tool-pm/src'))]) {
+    for (const { abs } of SRC_ROOTS.flatMap((r) => promptFiles(r))) {
       for (const line of readFileSync(abs, 'utf8').split('\n')) {
         for (const code of codesOnLine(line, noise)) seen.add(code)
       }

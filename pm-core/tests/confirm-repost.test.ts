@@ -7,7 +7,7 @@
  *  ② `POST /confirm/repost` 只做**如实查询**：票还在等 → still-open（给出两条真能走的路）；
  *     票没了 → gone；读口未装配 → unavailable。**不伪造"已重弹"**。
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -16,6 +16,7 @@ import { makeTestStore } from 'tests/application/harness.js'
 import { defineCaptureTool } from 'tests/helpers/tool-deps.js'
 import { createReqboardHandler } from 'src/http/routes.js'
 import { taskStoreAt } from 'tests/queue/route-deps.js'
+import { LIMITS } from 'pm-common/limits.js'
 import type { PendingConfirmation } from 'pm-core/protocol-domain.js'
 
 const W = 'session-t4'
@@ -28,22 +29,32 @@ function makeCapture(port: unknown) {
 }
 
 describe('t4 · 立项弹框等到点未作答 = 中性回执（不是取消、不是错误）', () => {
-  it('askTimed 返回 pending → success=false + note 含「等待超时」，且不创建需求', async () => {
+  it('到点未作答（本地竞速到点）→ success=false + note 含「等待超时」，且不创建需求', async () => {
+    // 2026-10-11 改判（契约不变、驱动方式跟着实现走）：适配器自 2026-10-08 起不透传宿主
+    // `askTimed`，超时 = `ask()` 与计时器本地竞速（见 `UserQuestionsAdapter.askTimed` 注释）。
+    // 旧写法塞的假 `askTimed` 已不会被调用：`ask()` 立刻返回空答案 → 退化成「名称为空」回执。
+    // 故让 `ask()` 永不作答 + 假时钟推进真实超时路径。
     const tool = makeCapture({
-      ask: async () => ({ answers: [] }),
+      ask: () => new Promise<never>(() => {}),
       askTimed: async () => ({ kind: 'pending' }),
     })
-    const out = await tool.execute({ title_options: ['候选'] }, { agent: { id: W } })
-    expect(out.success).toBe(false)
-    expect(out.note).toContain('等待超时')
-    expect(out.requirement_id).toBe('')
+    vi.useFakeTimers()
+    try {
+      const pending = tool.execute({ title_options: ['候选'] }, { agent: { id: W } })
+      await vi.advanceTimersByTimeAsync(LIMITS.timeoutInteractiveMs + 1)
+      const out = await pending
+      expect(out.success).toBe(false)
+      expect(out.note).toContain('等待超时')
+      expect(out.requirement_id).toBe('')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('对照：窗口内作答 → 正常立项（等待通道不改变成功路径）', async () => {
+    // 同 ①：答案要由**真正被调用**的 `ask()` 给出（适配器的本地竞速走 `ask()`，不透传 `askTimed`）。
     const tool = makeCapture({
-      ask: async () => ({ answers: [] }),
-      askTimed: async () => ({
-        kind: 'answered',
+      ask: async () => ({
         answers: [
           { id: 'name', selected: ['候选'] },
           { id: 'category', selected: ['feature'] },

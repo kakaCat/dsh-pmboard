@@ -15,9 +15,9 @@ import { join } from 'node:path'
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url))
 
-/** 工具面根的**仓库相对**路径：搬迁前 `tool-pm/src`，搬迁后 `tool-pm/src`。 */
+/** 工具面根的**仓库相对**路径（平铺布局：工具面就在 `tool-pm/src`）。 */
 export function toolsRootRel(): string {
-  return existsSync(join(REPO, 'src', 'tools')) ? 'tool-pm/src' : 'tool-pm/src'
+  return 'tool-pm/src'
 }
 
 /** 工具面根的绝对路径。 */

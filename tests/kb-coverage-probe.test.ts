@@ -54,7 +54,15 @@ function runProbe(opts: {
     {
       cwd: opts.cwd ?? ROOT,
       // offline 只影响探针内部的 `kb-build --check` 子进程：让它失败得快，别去网上找 tsx
-      env: { ...process.env, DSH_HOME: opts.dshHome, npm_config_offline: 'true' },
+      env: {
+        ...process.env,
+        DSH_HOME: opts.dshHome,
+        npm_config_offline: 'true',
+        // 探针用**裸包名**导入 pm-core/pm-common（靠仓库根 tsconfig.paths 解析）。
+        // 本用例会把 cwd 指到临时 fixture 工作区，那里没有 tsconfig ⇒ 不给这条就会
+        // ERR_MODULE_NOT_FOUND（实测）。显式指定 tsconfig 与 cwd 解耦。
+        TSX_TSCONFIG_PATH: join(ROOT, 'tsconfig.json'),
+      },
       encoding: 'utf8',
     },
   )

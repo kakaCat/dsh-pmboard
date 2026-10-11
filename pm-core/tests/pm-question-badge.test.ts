@@ -145,7 +145,7 @@ describe('TC-14 四处 pm 弹框 header 均带标志', () => {
 })
 
 describe('TC-14 标志由代码注入，宿主原生提问不带前缀', () => {
-  const SRC = repoPath('src')
+  const SRC = repoPath('pm/src')
   /** 展示口径：工作区相对路径（扫描面含子包 src，故以仓库根为基准，不按 SRC 截断）。 */
   const REPO = REPO_ROOT
   const rel = (p: string) => relative(REPO, p).replace(/\\/g, '/')
@@ -167,10 +167,10 @@ describe('TC-14 标志由代码注入，宿主原生提问不带前缀', () => {
 
   it('四处构造点都经 pmHeader（而不是手写前缀）', () => {
     const points = [
-      '../pm-core/src/application/use-cases/AskConfirm.ts',
-      '../pm-core/src/application/use-cases/AcceptSheet.ts',
-      '../pm-core/src/application/internal/capture-mapping.ts',
-      '../pm-core/src/application/use-cases/HandleFailure.ts',
+      '../../pm-core/src/application/use-cases/AskConfirm.ts',
+      '../../pm-core/src/application/use-cases/AcceptSheet.ts',
+      '../../pm-core/src/application/internal/capture-mapping.ts',
+      '../../pm-core/src/application/use-cases/HandleFailure.ts',
     ]
     for (const p of points) {
       const src = readFileSync(join(SRC, p), 'utf8')

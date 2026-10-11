@@ -28,6 +28,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join, relative } from 'node:path'
 
+import { workspacePkgDirs } from './workspace-pkgs.js'
 /** 仓库根（tests/helpers/ → 上溯两级）。 */
 export const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
@@ -125,19 +126,19 @@ function isCommentLine(trimmed: string): boolean {
 }
 
 /**
- * 扫描根列表（t4 拆包起）：主树 `src` + 各子包 `src`。
- * 为什么必须多根：码散落到子包后只扫主树，会把「扫不到」当成「没有码」——
+ * 扫描根列表（2026-10-11 平铺布局）：遍历 **workspace 各包**的 `src`。
+ * 为什么必须多根：码散落到 19 个包后只扫主树，会把「扫不到」当成「没有码」——
  * 那是判据最危险的失效形态（见 scanErrorCodes 的报错文案）。
+ *
+ * 显示前缀 = `<包目录>/`（**一律真实**，含主包 `pm` ⇒ `pm/src/...`）：
+ * 清单里存的 `site.file` 会被守卫按仓库相对路径**回磁盘核对**，
+ * 沿用单包时代的 `src/...` 写法会让每条记录都指向不存在的文件（实测 11 条报红）。
  */
 function defaultScanRoots(): { abs: string; prefix: string }[] {
-  const roots = [{ abs: join(REPO_ROOT, 'src'), prefix: '' }]
-  const pkgsDir = join(REPO_ROOT, 'pm')
-  if (existsSync(pkgsDir)) {
-    for (const e of readdirSync(pkgsDir, { withFileTypes: true })) {
-      if (!e.isDirectory()) continue
-      const abs = join(pkgsDir, e.name, 'src')
-      if (existsSync(abs)) roots.push({ abs, prefix: 'packages/' + e.name + '/' })
-    }
+  const roots: { abs: string; prefix: string }[] = []
+  for (const d of workspacePkgDirs()) {
+    const abs = join(REPO_ROOT, d, 'src')
+    if (existsSync(abs)) roots.push({ abs, prefix: d + '/' })
   }
   return roots
 }
@@ -412,12 +413,12 @@ export function collectTestCoverage(testsRoot?: string): ReadonlyMap<string, 'li
   return byCode
 }
 
-/** packages/<pkg>/tests 目录清单（覆盖口径用；目录不存在时跳过）。 */
+/** 各 workspace 包的 `<pkg>/tests` 目录清单（覆盖口径用；目录不存在时跳过）。 */
 function listPackageTestRoots(): string[] {
-  const pkgsDir = join(REPO_ROOT, 'pm')
-  if (!existsSync(pkgsDir)) return []
-  return readdirSync(pkgsDir, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => join(pkgsDir, e.name, 'tests'))
+  // 2026-10-11 平铺布局：包不再集中在 `pm/` 之下（那是主包本体），而是 pm-*、tool-pm、
+  // goal/*、category/* 平铺在仓库根。写死目录会**静默**把 553 个包内用例排除在覆盖口径外
+  // ⇒「零覆盖」虚高（实测：只扫根级 tests/ 时零覆盖 115 个）。
+  return workspacePkgDirs()
+    .map((d) => join(REPO_ROOT, d, 'tests'))
     .filter((p) => existsSync(p))
 }

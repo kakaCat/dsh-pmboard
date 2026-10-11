@@ -12,13 +12,14 @@
  *   ④ 红线：全仓不得出现 `sessionController.prompt`（它会把消息标成 `{kind:'user'}`，等于冒充人类）。
  */
 import { describe, it, expect } from 'vitest'
-import { repoPath } from 'tests/helpers/repo-root.js'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { REPO_ROOT, repoPath } from 'tests/helpers/repo-root.js'
+import { workspacePkgDirs } from 'tests/helpers/workspace-pkgs.js'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { AgentDeliverer } from 'src/adapters/AgentDeliverer.js'
 
-const SRC = repoPath('src')
+const SRC_ROOTS = workspacePkgDirs().map((d) => repoPath(join(d, 'src'))).filter((p) => existsSync(p))
 
 /** 造一个投递器：热窗口服务可空；冷会话控制器与 flush 按用例给。 */
 function deliverer(opts: {
@@ -106,7 +107,7 @@ describe('FR-7：跨窗口投递（热路径 + 冷会话 resume）', () => {
         if (readFileSync(abs, 'utf8').includes('sessionController.prompt')) offenders.push(base + name)
       }
     }
-    walk(SRC)
+    for (const root of SRC_ROOTS) walk(root, root.slice(REPO_ROOT.length + 1) + '/')
     expect(offenders).toEqual([])
   })
 })

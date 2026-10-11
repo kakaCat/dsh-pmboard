@@ -27,7 +27,18 @@ import { fmt } from '../../domain/text/fmt.js'
 // 给其中一处另配口径必然分叉（本仓反复踩过「门禁读 A、下游读 B」）。
 // 口径澄清：`src/domain/task/Footprint.ts` 另有一套更宽的 PATH_RE 服务「体量下限」这一第三类消费者
 // （已含 src、不含 packages、不要求扩展名），两者用途不同，不是分叉。
-const PATH_RE = /(?:agent-dh\/)?(?:src|packages|pm|scripts|tests|docs)\/(?:[\w@-]+\/)*[\w@.-]+\.(?:tsx|mts|json|mjs|cjs|ts|js|md|css|html|yaml|yml)/g
+//
+// 2026-10-11 平铺布局：包目录变成 `pm-*` / `category/*` / `goal/*` / `tool-pm` 等。若只列
+// `src|packages|pm|scripts|tests|docs` 这些根，`pm-core/src/x.ts` 会被**从路径中段截断**成 `src/x.ts`
+// （实测：`plan-depends-e2e` 的零交集警告里丢了包名 ⇒ 两端身份判错，冲突门与依赖建议一起瞎）。
+// 故：① 前缀段把现行包目录吃进匹配；② 加左边界，禁止从路径中段起匹配。
+// 规格与边界逐条见 `pm-core/tests/path-extraction-scope.test.ts`（TC-1…TC-5）。
+const PKG_PREFIX = '(?:pm-[a-z-]+|tool-pm|command-pm|reqboard-rtm|category\\/[a-z-]+|goal\\/[a-z-]+)\\/'
+const PATH_RE = new RegExp(
+  '(?<![\\w./@-])(?:agent-dh\\/)?(?:' + PKG_PREFIX + ')?'
+  + '(?:src|packages|pm|scripts|tests|docs)\\/(?:[\\w@-]+\\/)*[\\w@.-]+\\.(?:tsx|mts|json|mjs|cjs|ts|js|md|css|html|yaml|yml)',
+  'g',
+)
 
 /** 抽取 implementation 声明的工作区文件路径（去重）。 */
 export function declaredFiles(implementation: string): string[] {

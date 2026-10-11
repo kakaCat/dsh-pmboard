@@ -313,20 +313,20 @@ describe('知识层读不到的两种病因（t4）', () => {
 })
 
 describe('写盘覆盖：工作区相对写盘点必须受保护或显式豁免（t8）', () => {
-  const SRC_DIR = pathToFileURL(repoPath('src') + '/').pathname
+  const SRC_DIR = pathToFileURL(repoPath('pm/src') + '/').pathname
 
   /** 受守卫保护的写入器（相对 src/ 的路径 → 保护点说明）。键=文件，值=保护方式。 */
   const PROTECTED_WRITERS: Record<string, string> = {
-    '../pm-core/src/application/internal/plan-landing.ts': 'landPlanTasks 入口 ensureWritableProjectRoot',
-    '../pm-core/src/application/internal/rtm-yaml.ts': 'syncRTMYaml 内 assertWritableRequirementProject（覆盖十处 RTM 调用点）',
-    '../pm-core/src/application/internal/verification-doc-writer.ts': '写前 ensureWritableProjectRoot（验收文档）',
-    '../pm-core/src/application/use-cases/ReportTask.ts': '写前 ensureWritableProjectRoot（任务卡完工记录）',
-    '../pm-core/src/application/use-cases/AmendTaskAcceptance.ts': '写前 assertWritableRequirementProject（改验收标准）',
-    '../pm-core/src/application/use-cases/AdvanceChain.ts': 'appendHistory 内 assertWritableRequirementProject（链上追加）',
-    '../pm-core/src/application/use-cases/SubmitVerification.ts': '写前 assertWritableRequirementProject（验收文档另一条路径）',
-    '../pm-core/src/application/use-cases/SyncRequirementMarks.ts': '写前 ensureWritableProjectRoot（需求文档接收标记）',
-    '../pm-core/src/application/use-cases/queue-access.ts': 'mutateQueue / createManyQueue 两个队列写入收口点（内含 assertWritableRequirementProject）',
-    '../pm-core/src/application/use-cases/SubmitArchive.ts': '写前 ensureWritableProjectRoot（归档清单，工作区相对落盘）',
+    '../../pm-core/src/application/internal/plan-landing.ts': 'landPlanTasks 入口 ensureWritableProjectRoot',
+    '../../pm-core/src/application/internal/rtm-yaml.ts': 'syncRTMYaml 内 assertWritableRequirementProject（覆盖十处 RTM 调用点）',
+    '../../pm-core/src/application/internal/verification-doc-writer.ts': '写前 ensureWritableProjectRoot（验收文档）',
+    '../../pm-core/src/application/use-cases/ReportTask.ts': '写前 ensureWritableProjectRoot（任务卡完工记录）',
+    '../../pm-core/src/application/use-cases/AmendTaskAcceptance.ts': '写前 assertWritableRequirementProject（改验收标准）',
+    '../../pm-core/src/application/use-cases/AdvanceChain.ts': 'appendHistory 内 assertWritableRequirementProject（链上追加）',
+    '../../pm-core/src/application/use-cases/SubmitVerification.ts': '写前 assertWritableRequirementProject（验收文档另一条路径）',
+    '../../pm-core/src/application/use-cases/SyncRequirementMarks.ts': '写前 ensureWritableProjectRoot（需求文档接收标记）',
+    '../../pm-core/src/application/use-cases/queue-access.ts': 'mutateQueue / createManyQueue 两个队列写入收口点（内含 assertWritableRequirementProject）',
+    '../../pm-core/src/application/use-cases/SubmitArchive.ts': '写前 ensureWritableProjectRoot（归档清单，工作区相对落盘）',
   }
 
   /**
@@ -337,7 +337,7 @@ describe('写盘覆盖：工作区相对写盘点必须受保护或显式豁免�
    */
   const EXEMPT: Record<string, string> = {
     'adapters/KnowledgeRepository.ts': '写入走本实例的 docs（构造时定根），不属于"共享根的当前值会漂移"这一类失效',
-    '../pm-core/src/application/use-cases/EnsureKnowledgeLayer.ts': '循环头逐次 sameProjectRoot(docs.workspaceRoot(), root) 判定，不符即 failed/root-drifted 且不写——等价保护，且必须保持「永不抛」',
+    '../../pm-core/src/application/use-cases/EnsureKnowledgeLayer.ts': '循环头逐次 sameProjectRoot(docs.workspaceRoot(), root) 判定，不符即 failed/root-drifted 且不写——等价保护，且必须保持「永不抛」',
   }
 
   /**

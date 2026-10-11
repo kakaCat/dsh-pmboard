@@ -5,10 +5,11 @@
  * 于是"人明明拒绝了、agent 还弹"只能靠人抱怨才发现。现在三类交互（reject / cancel / timeout）
  * 逐条可查，且同窗口 30 分钟内连续取消到 3 次 → **不再弹框**，改提议两条替代路径。
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { makeTestStore } from 'tests/application/harness.js'
 import { defineCaptureTool } from 'tests/helpers/tool-deps.js'
 import { CAPTURE_CANCEL_ESCALATION } from 'pm-core/application/internal/capture-rejections.js'
+import { LIMITS } from 'pm-common/limits.js'
 import type { CaptureRejection } from 'pm-core/application/ports.js'
 
 const W = 'session-t5'
@@ -54,13 +55,24 @@ describe('t5 · 三类交互都留痕', () => {
     expect(out.note).toContain('看板')
   })
 
-  it('等到点未作答（pending）→ 记 kind=timeout（不是取消、也不是拒绝）', async () => {
+  it('等到点未作答（本地竞速到点）→ 记 kind=timeout（不是取消、也不是拒绝）', async () => {
     const led = ledger()
     const { run } = makeTool({ answers: 'hang', rejections: led })
-    const out = await run()
-    expect(out.success).toBe(false)
-    expect(led.rows).toEqual([{ windowKey: W, at: NOW, kind: 'timeout' }])
-    expect(out.note).toContain('等待超时')
+    // 2026-10-11 改判（判据不变、驱动方式跟着实现走）：适配器自 2026-10-08 起**不透传宿主
+    // `askTimed`**，改为拿 `ask()` 与计时器本地竞速（见 `UserQuestionsAdapter.askTimed` 注释）。
+    // 旧写法靠「假 askTimed 返回 pending」驱动，那条路**已不会被调用**：挂起的 `ask()` 会一直
+    // 等到 1 小时计时器，表现为用例 5s 超时。故用假时钟推进真实超时路径。
+    vi.useFakeTimers()
+    try {
+      const pending = run()
+      await vi.advanceTimersByTimeAsync(LIMITS.timeoutInteractiveMs + 1)
+      const out = await pending
+      expect(out.success).toBe(false)
+      expect(led.rows).toEqual([{ windowKey: W, at: NOW, kind: 'timeout' }])
+      expect(out.note).toContain('等待超时')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('点 ✖️ 不需要立项 → 记 kind=reject', async () => {

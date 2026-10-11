@@ -21,7 +21,7 @@ import { join } from 'node:path'
 import { resetInjectionAfterRollback } from 'pm-core/application/internal/rollback.js'
 import type { RequirementRecord } from 'pm-core/protocol-domain.js'
 
-const SRC = repoPath('src')
+const SRC = repoPath('pm/src')
 /** 十九包重构后 domain 搬进 core：扫描面 = 根包 src + core 的 src（键取仓库相对，避免同名歧义）。 */
 const CORE = repoPath('pm-core/src')
 
@@ -61,7 +61,7 @@ describe('TC-16 静态收敛：写入字面量只许出现在规则模块', () =
   })
 
   it('立项路径不再手抄 dive 初值（用纯函数取）', () => {
-    const text = readFileSync(join(SRC, '../pm-core/src/application/internal/support.ts'), 'utf8')
+    const text = readFileSync(repoPath('pm-core/src/application/internal/support.ts'), 'utf8')
     expect(text).toContain("event: 'arm'")
     expect(text).toContain("from '../../domain/dive/transition.js'")
   })

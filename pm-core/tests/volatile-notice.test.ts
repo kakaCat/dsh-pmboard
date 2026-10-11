@@ -55,8 +55,6 @@ import { emptyLedger, type ReqboardLedger, type TaskRecord } from 'pm-core/proto
 
 const W = 'session-volatile-1'
 const CTX = { agent: { id: W } }
-const SRC = repoPath('src')
-const readSrc = (rel: string): string => readFileSync(SRC + '/' + rel, 'utf8')
 /** 工作区相对路径读取（十九包重构后部分源码住在子包的 src，不再都在 `SRC` 下）。 */
 const readRepo = (rel: string): string => readFileSync(pathToFileURL(repoPath(rel)), 'utf8')
 /** 组合根注入的摘要（**sha1**；与 index.ts 逐字同式）。 */
@@ -267,7 +265,7 @@ describe('按 kind 的窗口表：capture / stage 立即投，task / status 仍 
     expect(DEBOUNCE_MS_BY_KIND).toEqual({ capture: 0, stage: 0, task: 30_000, status: 30_000 })
     expect(DEBOUNCE_MS_BY_KIND.task).toBe(LIMITS.noticeDebounceMs)
     expect(DEBOUNCE_MS_BY_KIND.status).toBe(LIMITS.noticeDebounceMs)
-    expect(readSrc('../pm-core/src/application/internal/notice-delivery.ts'))
+    expect(readRepo('pm-core/src/application/internal/notice-delivery.ts'))
       .toContain('deps.debounceMs ?? DEBOUNCE_MS_BY_KIND[kind]')
   })
 
@@ -526,7 +524,7 @@ describe('P2-1 会话倒挂 / P2-4 摘要强度', () => {
     h.clock.advance(LIMITS.noticeDebounceMs)
     expect(h.deliveredTexts()).toEqual([a, b]) // 两份都投出（32 位下只会投第一份）
     // 源码级：组合根把 sha1 注进来了（不是"打算"而已）
-    expect(readSrc('index.ts')).toContain("createHash('sha1').update(canonical).digest('hex')")
+    expect(readRepo('pm/src/index.ts')).toContain("createHash('sha1').update(canonical).digest('hex')")
   })
 })
 
@@ -536,7 +534,7 @@ describe('③ 常量落点 / ⑥ 分槽去抖 / ⑦ 降级归属实现侧', () =
   it('③ LIMITS 落 30s；volatile-notice 的常量只是引用它', () => {
     expect(LIMITS.noticeDebounceMs).toBe(30_000)
     expect(VOLATILE_NOTICE_DEBOUNCE_MS).toBe(LIMITS.noticeDebounceMs)
-    expect(readSrc('../pm-core/src/application/internal/volatile-notice.ts'))
+    expect(readRepo('pm-core/src/application/internal/volatile-notice.ts'))
       .toContain('export const VOLATILE_NOTICE_DEBOUNCE_MS = LIMITS.noticeDebounceMs')
     expect(readRepo('pm-common/src/limits.ts')).toContain('16s / 24s / 71s')
   })
@@ -576,7 +574,7 @@ describe('⑧ 端口字段 / ⑨ 永不抛 / ⑩ 扫描面与钩子额度', () =
     expectTypeOf<'volatileNotice' extends keyof UseCaseDeps ? true : false>().toEqualTypeOf<true>()
     expectTypeOf<UseCaseDeps['volatileNotice']>().toEqualTypeOf<VolatileNoticePort | undefined>()
     expectTypeOf<keyof VolatileNoticePort>().toEqualTypeOf<'notify'>()
-    expect(readSrc('../pm-core/src/application/ports.ts')).toContain('volatileNotice?: VolatileNoticePort')
+    expect(readRepo('pm-core/src/application/ports.ts')).toContain('volatileNotice?: VolatileNoticePort')
   })
 
   it('⑨ 永不抛：投递器抛错 / 判定抛错 / 投影抛错 / 端口违约都不冒泡', async () => {
@@ -626,11 +624,11 @@ describe('⑧ 端口字段 / ⑨ 永不抛 / ⑩ 扫描面与钩子额度', () =
 
   it('⑩ 源码级：投递路径没有 followup / deliver（定时器回调里不得起 agent loop）', () => {
     for (const rel of [
-      '../pm-core/src/application/internal/notice-delivery.ts',
-      '../pm-core/src/application/internal/notice-reconciler.ts',
-      'adapters/VolatileNoticeAdapter.ts',
+      'pm-core/src/application/internal/notice-delivery.ts',
+      'pm-core/src/application/internal/notice-reconciler.ts',
+      'pm/src/adapters/VolatileNoticeAdapter.ts',
     ]) {
-      const code = readSrc(rel).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '')
+      const code = readRepo(rel).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '')
       expect(code, rel).not.toMatch(/\.followup\s*\(/)
       expect(code, rel).not.toMatch(/\.deliverMessage\s*\(/)
     }
@@ -641,7 +639,7 @@ describe('⑧ 端口字段 / ⑨ 永不抛 / ⑩ 扫描面与钩子额度', () =
 
 describe('⑤ capture 生产者 / ⑪ 增量有界', () => {
   it('⑤ 登记命中处（写路径）真的接了生产者——只加扫描目标，不改既有断言', () => {
-    expect(readSrc('../pm-round-driver/src/session-driver.ts'))
+    expect(readRepo('pm-core/src/application/dive/session-driver.ts'))
       .toContain("notifyVolatileQuietly(deps.volatileNotice?.(), windowKey, 'capture')")
   })
 
@@ -681,6 +679,9 @@ async function sectionWith(
     requirementStore: { peekFacts: () => factsRef() } as unknown as RequirementStore,
     pendingCapture: new Map(),
     injectionLog: { record: (): void => {} } as never,
+    // 2026-10-09 裁定：立项注入缺省关。本文件验的是已绑定窗口的易变段（状态/任务/阶段），
+    // 与立项注入无关，故按生产缺省显式给 false。
+    injectCapturePrompt: false,
     taskStore: {
       listAll: async () => tasksRef(),
       subscribe: () => (): void => {},

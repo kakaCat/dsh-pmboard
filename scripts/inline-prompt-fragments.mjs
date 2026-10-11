@@ -53,8 +53,8 @@ export const FRAGMENTS_DIR = join(PKG_ROOT, 'pm-core/src/domain/prompt/fragments
 export const GENERATED_FILE = join(PKG_ROOT, 'pm-common/src/prompt/generated/fragments.ts')
 export const GENERATED_REL = 'pm-common/src/prompt/generated/fragments.ts'
 /** 类型档落点（REQ-261009174713-7bc8 t11 二期）：每类一份，随类型包走。 */
-export const TYPE_FRAGMENTS_FILE = (cat) => join(PKG_ROOT, 'pm-type-' + cat + '/src/fragments.ts')
-export const TYPE_FRAGMENTS_REL = (cat) => 'pm-type-' + cat + '/src/fragments.ts'
+export const TYPE_FRAGMENTS_FILE = (cat) => join(PKG_ROOT, 'category/pm-category-' + cat + '/src/fragments.ts')
+export const TYPE_FRAGMENTS_REL = (cat) => 'category/pm-category-' + cat + '/src/fragments.ts'
 export const VENDOR_DIR = join(PKG_ROOT, 'pm-core/src/domain/prompt/vendor/superpowers')
 
 /**

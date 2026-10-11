@@ -42,7 +42,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 
 /** 本仓根 package.json 的 name（用于向上定位仓库根；替代已消失的 patchedDependencies 锚点）。 */
-const ROOT_PACKAGE_NAME = 'dsh-pmboard'
+const ROOT_PACKAGE_NAME = 'dsh-pmboard-workspace'
 /** 已退休的被守护包（历史补丁目标）。 */
 const RETIRED_PACKAGE = '@deepseek-ai/dsh-ptc-runtime-node'
 /** 已退休包在 pnpm 虚拟店里的条目前缀。 */
