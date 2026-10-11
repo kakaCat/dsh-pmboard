@@ -5,8 +5,8 @@
 
 ## 一、这轮清完了什么
 
-`pnpm test`：**45 红文件 / 67 红用例 / 7221 过 → 9 红 / 14 红 / 7401 过**（本文写就时实测，
-其中第二节 #3/#4 两条已按下方处置落地）。
+`pnpm test`：**45 红文件 / 67 红用例 / 7221 过 → 8 红 / 13 红 / 7402 过**（本文写就时实测；
+第二节 #3/#4 已按下方处置落地，其中 #3 顺带把 3 处适配层真实越界一并收编）。
 清掉的是**同一类**：代码搬进 19 个包，**判据还在按单包布局写**。
 
 | 形态 | 例子（已修） |
@@ -31,7 +31,7 @@
 `capture-interactions` 仍用"假 `askTimed` 返回 pending"驱动超时 —— 那条路**已不会被调用**，
 表现为退化成「名称为空」与挂死 5s。改为**假时钟驱动真实超时路径**，对用户契约的断言一字未改。
 
-## 二、剩余 9 个：都在 10-06 记录的失败基线内 ⇒ **每个都要一次取舍**
+## 二、剩余 8 个：都在 10-06 记录的失败基线内 ⇒ **每个都要一次取舍**
 
 命令：`npx vitest run <file>`（下列输出为实测首因）。
 
@@ -39,7 +39,7 @@
 |---|---|---|---|---|
 | 1 | `tests/e2e-triad-gate.test.ts`、`pm-core/tests/triad-gate.test.ts` | `expected [Function] to throw error matching /task_card_incomplete/ but got '转移 decomposing → implementing 是人工闸门，仅…'` | ①承认新优先级（人工门先于任务卡门）→ 改判据；②恢复旧顺序 | 需产品裁定 |
 | 2 | `tests/size-budget.test.ts` | `超标文件（未在白名单内）：client/api.ts = 674 行 / client/conversation-progress.ts = 453 行`（阈值 400） | ①出拆分任务（真正的债）；②白名单（须写明"谁负责拆"） | **拆文件**（白名单会烂） |
-| 3 | `pm-core/tests/layer-boundary.test.ts` | 层归类写死 `rel(p).startsWith('domain/')` = 单包模型 ⇒ 新布局命中 **0** 个文件（自检 `≥20` 红） | **✅ 已处置（2026-10-11）**：改判为「包内路径」归类（domain/application = `<pkg>/src/<layer>/`、shared = `pm-common/src/`、tools = `tool-pm/src/`、http = `<pkg>/src/http/`），禁项规则一字未改 ⇒ 11/12 转绿，**剩下 1 条点名 3 处真实越界** | 那 3 处归入本需求 |
+| 3 | `pm-core/tests/layer-boundary.test.ts` | 层归类写死 `rel(p).startsWith('domain/')` = 单包模型 ⇒ 新布局命中 **0** 个文件（自检 `≥20` 红） | **✅ 已处置（2026-10-11）**：改判为「包内路径」归类（domain/application = `<pkg>/src/<layer>/`、shared = `pm-common/src/`、tools = `tool-pm/src/`、http = `<pkg>/src/http/`）。守卫恢复管事 → 抓出 **3 处适配层真越界**（`pm/src/http/routers/requirements.ts` 的 4 行状态字面量），已收归 domain 命名常量（`BRAINSTORMING`/`DECOMPOSING`/`IMPLEMENTING_REQ_STATUS` + `liveCountOf`）。同时收窄 LIT 判据（原「任何位置」口径实测两类误伤：结果码 `code` 字段、范围枚举 `active\|archived\|all` ⇒ 改为只认调用括号内 + 先剥 `code`；**自证仍能抓真越界**） | **已绿 12/12** |
 | 4 | `pm-core/tests/skills-assets.test.ts` | `expected [] to include 'pm-skills'`——读**根** `package.json` 的 `files`；现根是 workspace 根（无 `files`） | **✅ 已处置（2026-10-11）**：改判为三件事——技能源在 `pm-skills/skills`、插件清单声明该依赖且发布面含 `dist`、产物**内联**（`pm/dist/index.mjs` 含 `SKILL.md`；未构建时明确告警） | 已绿 |
 | 5 | `pm-core/tests/template-address-injection.test.ts` | 该场景 `sink.entries` 为空 ⇒ `charCount > 0` 红（H2 注入没发生） | 查注入装配为何不落痕（可能随 `pm-round-driver` 退役带走） | 需产品查因 |
 | 6 | `pm-core/tests/interruption-checkpoint.test.ts` | 交棒后 `r.interruption` 为 `undefined` | 断点补写已并入 `reqboard_task_amend op=interruption` ⇒ 用例应改走新入口 | 改判到新入口 |
