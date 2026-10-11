@@ -11,14 +11,16 @@
  * 必须让测试红，而不是安静通过（2026-09-17 契约扫描器踩过这个坑）。
  */
 import { describe, it, expect } from 'vitest'
-import { repoPath } from 'tests/helpers/repo-root.js'
+import { REPO_ROOT, repoPath } from 'tests/helpers/repo-root.js'
+import { workspacePkgDirs } from 'tests/helpers/workspace-pkgs.js'
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { REQBOARD_ERROR_CODES, domainError } from 'pm-common/errors.js'
 import { REQ_TRANSITIONS } from 'pm-core/domain/requirement/RequirementStatus.js'
 import { TASK_TRANSITIONS } from 'pm-core/domain/task/TaskStatus.js'
 
-const SRC = repoPath('src')
+/** 扫描面：workspace 各包的 src（2026-10-11 平铺布局改判——旧单包模型的根 `src/` 已不存在）。 */
+const SRC_ROOTS = workspacePkgDirs().map((d) => repoPath(d + '/src')).filter((p) => existsSync(p))
 
 /** 递归列出 .ts 文件（SRC 下的绝对路径）。 */
 function listTs(dir: string): string[] {
@@ -64,8 +66,25 @@ const LAYER_RULES: Record<string, LayerRule> = {
   },
 }
 
-const allTs = listTs(SRC)
-const rel = (p: string) => p.slice(SRC.length + 1).replace(/\\/g, '/')
+const allTs = SRC_ROOTS.flatMap((r) => listTs(r))
+const rel = (p: string) => relative(REPO_ROOT, p).replace(/\\/g, '/')
+
+/**
+ * 旧单包模型的「层」→ 现行平铺布局的落点（路径→层归类的**唯一**口径，本文件各处共用）：
+ *   domain / application → 任一同名包内目录 `<pkg>/src/<layer>/`
+ *   shared               → `pm-common/src/`（旧 `src/shared`，契约层已成包）
+ *   tools                → `tool-pm/src/`（旧 `src/tools`）
+ *   http                 → `<pkg>/src/http/`
+ * 只改**归类口径**；各层的禁项规则（相对说明符）一字不改编——那是判据本体。
+ */
+function filesInLayer(layer: string): string[] {
+  return allTs.filter((p) => {
+    const r = rel(p)
+    if (layer === 'shared') return r.startsWith('pm-common/src/')
+    if (layer === 'tools') return r.startsWith('tool-pm/src/')
+    return new RegExp('/src/' + layer + '/').test(r)
+  })
+}
 
 // ---------------------------------------------------------------------------
 // 豁免面（REQ-261008020617-088f RF-7）
@@ -169,7 +188,7 @@ function ledgerShapeProblems(raw: unknown): string[] {
 function violationsOf(layer: string): string[] {
   const rule = LAYER_RULES[layer]!
   const out: string[] = []
-  for (const f of allTs.filter(p => rel(p).startsWith(layer + '/'))) {
+  for (const f of filesInLayer(layer)) {
     for (const spec of extractImports(readFileSync(f, 'utf8'))) {
       if (rule.forbidden.some(re => re.test(spec))) out.push(violationKeyOf(rel(f), spec))
     }
@@ -190,7 +209,7 @@ describe('层边界：依赖方向（architecture.md §2）', () => {
   for (const layer of Object.keys(LAYER_RULES)) {
     const rule = LAYER_RULES[layer]!
     it(layer + '/ 不得 import 禁止项（' + rule.why + '）', () => {
-      const files = allTs.filter(p => rel(p).startsWith(layer + '/'))
+      const files = filesInLayer(layer)
       if (layer === 'domain' || layer === 'application') {
         expect(files.length, layer + '/ 下应有文件（骨架已立）').toBeGreaterThanOrEqual(1)
       }
@@ -205,7 +224,7 @@ describe('层边界：依赖方向（architecture.md §2）', () => {
 
   it('domain/ 内不得使用 Date.now() / Math.random()（时间与 ID 一律注入，保证用例可复现）', () => {
     const bad: string[] = []
-    for (const f of allTs.filter(p => rel(p).startsWith('domain/'))) {
+    for (const f of filesInLayer('domain')) {
       const text = readFileSync(f, 'utf8')
       if (/Date\.now\s*\(/.test(text)) bad.push(rel(f) + ' -> Date.now()')
       if (/Math\.random\s*\(/.test(text)) bad.push(rel(f) + ' -> Math.random()')
@@ -230,7 +249,7 @@ describe('层边界：依赖方向（architecture.md §2）', () => {
     const LIT = new RegExp("'(" + NAMES + ")'")
     const bad: string[] = []
     for (const layer of ['tools', 'http']) {
-      for (const f of allTs.filter(p => rel(p).startsWith(layer + '/'))) {
+      for (const f of filesInLayer(layer)) {
         const text = readFileSync(f, 'utf8')
         if (CMP.test(text) || ARG.test(text) || LIT.test(text)) bad.push(rel(f))
       }
@@ -245,7 +264,7 @@ function layer0Msg(bad: string[]): string {
 
 describe('t1 骨架产物存在且可用（本测试直接引用，防"文件在但没用上"）', () => {
   it('pm-common/src/errors.ts：错误码表 + domainError 构造器', () => {
-    expect(existsSync(join(SRC, '..', 'pm-common/src/errors.ts'))).toBe(true)
+    expect(existsSync(repoPath('pm-common/src/errors.ts'))).toBe(true)
     expect(REQBOARD_ERROR_CODES.invalidTransition).toBe('invalid_transition')
     expect(REQBOARD_ERROR_CODES.humanGate).toBe('human_gate')
     expect(REQBOARD_ERROR_CODES.doneEvidenceMissing).toBe('done_evidence_missing')
@@ -254,7 +273,7 @@ describe('t1 骨架产物存在且可用（本测试直接引用，防"文件在
   })
 
   it('pm-core/src/application/ports.ts：端口接口齐备（B12 阶段⑤：旧单册端口 ReqboardRepository 已删）', () => {
-    const p = join(SRC, '../pm-core/src/application/ports.ts')
+    const p = repoPath('pm-core/src/application/ports.ts')
     expect(existsSync(p)).toBe(true)
     const text = readFileSync(p, 'utf8')
     for (const name of ['RequirementStore', 'DocRepository', 'Clock', 'IdFactory', 'SessionProbe', 'UserQuestionPort']) {

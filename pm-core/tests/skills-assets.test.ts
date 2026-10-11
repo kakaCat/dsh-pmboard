@@ -4,7 +4,7 @@
  * 为什么这些断言值得写：装机漏打包是**dev 能跑、装起来 404** 的典型静默缺口——
  * 只有"盘上到底有什么"能从用例里被否定。体积上限同理：裁剪失效不会报错，只会悄悄变胖。
  */
-import { readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { repoPath } from 'tests/helpers/repo-root.js'
@@ -74,12 +74,29 @@ describe('TC-3 · 体积上限（裁剪失效即红）', () => {
   })
 })
 
-describe('TC-4 · 打包清单（不补 = dev 能跑、装机 404）', () => {
-  it('package.json 的 files 含 "skills"', () => {
-    const pkg = JSON.parse(readFileSync(repoPath('package.json'), 'utf8')) as {
+describe('TC-4 · 打包面（不补 = dev 能跑、装机 404）', () => {
+  it('技能资产随包发布：源在 pm-skills/skills，插件清单声明该依赖并内联进产物', () => {
+    // 2026-10-11 改判：旧断言读**根** package.json 的 `files` 含 'pm-skills'——那是单包布局
+    // 下的"打包清单"；现行根是 workspace 根（private，无 files），资产由插件主体包 `pm/`
+    // 依赖 `pm-skills` 并**内联进 dist** 发布。故判据改为三件事（源在、依赖声明、产物内联）。
+    const src = repoPath('pm-skills/skills')
+    expect(existsSync(src), '技能源目录不存在：' + src).toBe(true)
+    expect(readdirSync(src).length, '技能源目录为空').toBeGreaterThan(0)
+
+    const pkg = JSON.parse(readFileSync(repoPath('pm/package.json'), 'utf8')) as {
       files?: string[]
+      dependencies?: Record<string, string>
     }
-    // t19 起技能资产随包发布（顶层 skills/ 已不存在）：断言改为包路径。
-    expect(pkg.files ?? []).toContain('pm-skills')
+    expect(pkg.dependencies?.['pm-skills'], '插件清单未声明 pm-skills 依赖').toBeTruthy()
+    expect(pkg.files ?? [], '插件清单未把构建产物纳入发布面').toContain('dist')
+
+    // 产物内联：装了才不算 404。未构建时**不静默跳过**——明确告警（install 会跑 prepare 构建）。
+    const dist = repoPath('pm/dist/index.mjs')
+    if (!existsSync(dist)) {
+      console.warn('[skills-assets] 产物不存在，跳过内联断言（先 pnpm install / pnpm build）：' + dist)
+      return
+    }
+    const bundle = readFileSync(dist, 'utf8')
+    expect(bundle, '产物未内联技能资产（dev 能跑、装机 404）').toContain('SKILL.md')
   })
 })
