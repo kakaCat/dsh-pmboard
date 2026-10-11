@@ -89,7 +89,8 @@
 - 时机：改动后
 - 命令：`pnpm typecheck`
 - 期望：`退出码 0（错误数与基线文件里的 tsc 读数一致）`
-- 失败怎么办：按报错文件路径修（如 src/index.ts）；疑似历史存量错误 → 与基线文件里同刻的 tsc 读数比对确认非本次引入
+- 失败怎么办：按报错文件路径修（如 pm-core/src/…）；疑似历史存量错误 → 与基线文件里同刻的 tsc 读数比对确认非本次引入
+- 包内自检：`cd <pkg> && pnpm typecheck`（各包自持 tsconfig；根聚合入口 9s 覆盖 20 包 + 根级 tests + scripts，见 `docs/architecture/workspace-packages.md` §测试与文档落点）
 ### C-16 改了提示词片段必须重生成产物 #c-16
 - 时机：改动后
 - 命令：`node scripts/inline-prompt-fragments.mjs`
@@ -109,7 +110,7 @@
 - 时机：改动后
 - 命令：`npx tsc --noEmit && npx vitest run pm/pm-core/tests/subtask-template.test.ts pm/pm-core/tests/execute-task.test.ts tests/card-types.integration.test.ts`
 - 期望：`退出码 0（五表 Record 类型强制使漏登记 = 编译错；用例含六表同 key 集合断言）`
-- 失败怎么办：按登记表逐处补——① `SubtaskTemplate.ts` 四表（KINDS/LABELS/ACCEPTANCE/EVIDENCE_KIND）② `card-types.ts` 的 `STAGE_TO_PHASE_COLOR` ③ `ExecuteTask.ts` 的 `STAGE_SCOPE_RULE` ④ AdvanceChain 行为分支（仅当新段有特殊链行为，如 manual 的停链等人）⑤ eval-suite fixtures（默认链变更时同步并跑 validate_eval_suite.py）⑥ 模板键新增时同步 SubmitTool schema 描述。自动跟随（无需登记但要知道）：workflow 脚本 schema 族（派生自 EVIDENCE_KIND）、客户端徽标（STAGE_LABELS 单点）与 DAG 排序（deriveTaskFields 自 STAGE_KINDS 派生，REQ-261003203909-55f2 修复前是硬编码四段）
+- 失败怎么办：按登记表逐处补——① `SubtaskTemplate.ts` 四表（KINDS/LABELS/ACCEPTANCE/EVIDENCE_KIND）② `card-types.ts` 的 `STAGE_TO_PHASE_COLOR` ③ `ExecuteTask.ts` 的 `STAGE_SCOPE_RULE` ④ AdvanceChain 行为分支（仅当新段有特殊链行为，如 manual 的停链等人）⑤ 模板键新增时同步 SubmitTool schema 描述。自动跟随（无需登记但要知道）：workflow 脚本 schema 族（派生自 EVIDENCE_KIND）、客户端徽标（STAGE_LABELS 单点）与 DAG 排序（deriveTaskFields 自 STAGE_KINDS 派生，REQ-261003203909-55f2 修复前是硬编码四段）
 ### C-20 工程操作：npx tsx scripts/reverse-drill-matrix.mts #c-20
 - 时机：改动后
 - 命令：`npx tsx scripts/reverse-drill-matrix.mts`
@@ -160,6 +161,7 @@
 - 命令：`pnpm test`
 - 期望：`退出码 0 或 1（仓库存量失败），逐条与基线文件比对看新增`
 - 失败怎么办：判据不在这里——按 C-14 的集合差口径逐条确认是否本次引入（REQ-261006123819-3af3 FR-2）
+- 包内自跑：`cd <pkg> && pnpm test`（各包 `vitest.config.mts` 引用共享基座 `vitest.base.mts`，隔离 argv/别名只此一份）
 ### C-30 改了详情页外观必须比对逐组件快照 #c-30
 - 时机：改动后
 - 命令：`npx tsx scripts/report-style-snapshot.mts --check`

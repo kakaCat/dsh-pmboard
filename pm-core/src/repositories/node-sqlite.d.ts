@@ -10,6 +10,10 @@
  *
  * 何时可以删：把 `@types/node` 升到自带 `sqlite.d.ts` 的版本（≥22）之后——届时本文件会与官方
  * 声明冲突（重复声明同一模块），删掉即可，实现代码不用改。
+ *
+ * 消费方须知（2026-10-11 实测）：环境声明只进**包含它的程序**。所以只 include 自己 src 的包
+ * （`pm/`、`tool-pm/`）在消费 `pm-core` 的 sqlite 仓储时，必须在自己的 `tsconfig.json` 里
+ * 把它一并 include，否则报 TS2307（Cannot find module 'node:sqlite'）。
  */
 declare module 'node:sqlite' {
   /** 查询结果行：`node:sqlite` 返回的是 null-prototype 对象，只当普通字典用。 */
