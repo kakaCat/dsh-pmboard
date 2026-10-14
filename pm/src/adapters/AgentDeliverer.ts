@@ -76,12 +76,15 @@ export class AgentDeliverer implements AgentDeliveryPort, DiveRoundDeliveryPort,
     this.injectionLog = injectionLog
   }
 
-  /** Dive 专用：创建回合消息（带 round 元数据和 source.kind='dive'）。 */
+  /** Dive 专用：创建回合消息（带 round 元数据和 source.kind='dive'；有 goal 时戳上授权三元组的身份半）。 */
   createRoundMessage(params: {
     requirementId: string
     revision: number
     round: number
     text: string
+    /** 授权三元组（goalId+goalRevision+round）的身份半：加性可选，工具面据此精确授权。 */
+    goalId?: string
+    goalRevision?: number
   }): { message: unknown; messageId: string } {
     const messageId = this.idFactory()
     const message = {
@@ -94,6 +97,8 @@ export class AgentDeliverer implements AgentDeliveryPort, DiveRoundDeliveryPort,
         requirementId: params.requirementId,
         revision: params.revision,
         round: params.round,
+        ...(params.goalId === undefined ? {} : { goalId: params.goalId }),
+        ...(params.goalRevision === undefined ? {} : { goalRevision: params.goalRevision }),
       },
     }
     return { message, messageId }

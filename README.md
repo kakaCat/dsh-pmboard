@@ -9,7 +9,9 @@
 一个 DSH **双半插件**（host + client）：
 
 - **host 半**（Node）：reqboard JSON + SSE API（`/dashboard/api/reqboard/*`）、
-  JSON 台账（两级状态机）、立项捕获管线（捕获用户消息 → 注入立项引导 → 立项弹框创建需求）、
+  JSON 台账（两级状态机）、立项捕获管线（捕获用户消息 → 立项弹框创建需求；**立项引导注入
+  缺省关闭**，2026-10-09 裁定——agent 自主调 `reqboard_capture` 或人用 `/pm <名称>` 命令，
+  需要旧行为时配 `capture.injectGuidance: true`）、
   以及 **19 个 pm 工具**（见下）供 Agent 调用。
 - **client 半**（Web GUI）：侧栏入口 + 中心栏看板视图——需求泳道、任务时间线、
   逐项弹框验收单、归档区。
@@ -108,9 +110,9 @@ pnpm run kb:probe   # 只跑自检，人读输出
 | `entries/kb-NNNN.md` | 归档沉淀出的结论条目（带指针与失效条件） | 单条 ≤200 行 |
 | `*.tsv` | 机器索引（全量符号 / 全量类名）——**永不进上下文**，用 `reqboard_kb` 按需检索 | —— |
 
-## 架构：19 个 workspace 包与分层
+## 架构：16 个 workspace 包与分层
 
-> REQ-261009174713-7bc8 重构后，实现按“层”拆成 19 个包；依赖方向只许向内（L0 ← L4），
+> REQ-261009174713-7bc8 重构后，实现按“层”拆成 17 个包；依赖方向只许向内（L0 ← L4），
 > 白名单唯一权威是 `scripts/package-boundary-check.mts` 的 `LAYERS`（`node scripts/package-boundary-check.mts` 可自检）。
 
 | 层 | 包 | 允许依赖 |
@@ -119,10 +121,10 @@ pnpm run kb:probe   # 只跑自检，人读输出
 | `L0.5` | `pm-category-kit` | pm-common |
 | `L0.5` | `pm-category-feature` · `pm-category-bug` · `pm-category-doc` · `pm-category-refactor` · `pm-category-spike` · `pm-category-chore` | pm-common · pm-category-kit |
 | `L1` | `pm-core` | pm-common · reqboard-rtm · pm-category-kit |
-| `L2` | `tool-pm` · `pm-round-driver` · `pm-workflow` · `pm-client` · `command-pm` | pm-common · pm-core |
-| `L3` | `pm-templates` · `pm-skills` · `pm-eval-suite` · `pm-scripts` | （无） |
+| `L2` | `tool-pm` · `pm-client` · `command-pm` | pm-common · pm-core |
+| `L3` | `pm-templates` · `pm-skills` · `pm-scripts` | （无） |
 
-各包职责、边界与测试命令见 `packages/<pkg>/README.md`（19 份）；分层篇见 `docs/architecture/`。
+各包职责、边界与测试命令见 `packages/<pkg>/README.md`（17 份）；分层篇见 `docs/architecture/`。
 
 ## 开发
 

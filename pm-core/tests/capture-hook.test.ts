@@ -15,7 +15,7 @@ import { JsonQueueRepository } from 'pm-core/repositories/QueueRepository.js'
 import { QueueTaskStore } from 'pm-core/repositories/QueueTaskStore.js'
 // REQ-261006201814-ac4f u3：队列根改走临时目录（原为 process.cwd() = 真实工作树）。
 import { testWorkspaceRoot } from 'tests/helpers/workspace-root.js'
-import { createDiveSessionDriver, type DiveSessionDriver, type DiveSessionDriverDeps } from 'pm-round-driver/session-driver.js'
+import { createDiveSessionDriver, type DiveSessionDriver, type DiveSessionDriverDeps } from 'pm-core/application/dive/session-driver.js'
 import { shouldCaptureWindow } from 'pm-core/application/internal/window.js'
 import {
   recordToolTrace,

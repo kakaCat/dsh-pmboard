@@ -21,7 +21,7 @@ import {
   exitAwaitingConfirm,
   isAwaitingConfirmStop,
 } from 'pm-core/application/internal/awaiting-confirm.js'
-import { createWakeHeartbeat } from 'pm-round-driver/wake-heartbeat.js'
+import { createGoalHeartbeat } from 'pm-goal-round-driver/heartbeat.js'
 
 const REQ_ID = 'REQ-000001'
 const AGENT = 'agent-1'
@@ -61,16 +61,25 @@ describe('① 全缺省装配：与改造前逐字一致', () => {
     expect(res).toEqual({ cleared: false, notified: false })
   })
 
-  it('心跳缺省 dialogInFlight ⇒ 对账整段跳过，tick 不抛', async () => {
+  it('心跳缺省装配 ⇒ 一拍空跑、不抛、零写入（缺省即旧行为）', async () => {
     const h = seeded()
-    const out = await createWakeHeartbeat({
-      store: h.store,
+    const rev = (await h.store.head()).revision
+    // 2026-10-10：旧 `createWakeHeartbeat` 的"停手对账（在途已过期 ⇒ 清位）"随 `pm-round-driver` 退役，
+    // 新 `createGoalHeartbeat` 只按 facts 判（无待判需求 = 空跑）——缺省装配下既不叫醒也不写盘。
+    const tick = await createGoalHeartbeat({
+      facts: () => [],
+      wake: async () => true,
+      markWoken: () => {},
+      markWakeFailed: () => {},
+      trace: () => {},
       now: () => h.clock.t,
-      wake: () => true,
-    }).tick()
+      logger: { info: () => {}, debug: () => {}, warn: () => {} },
+    }, { freshMs: 10 * 60 * 1000 }).tick()
 
-    expect(out.resumed).toEqual([])
-    expect(out.paused).toEqual([])
+    expect(tick.woken).toEqual([])
+    expect(tick.failed).toEqual([])
+    expect(tick.skippedByLatch).toBe(false)
+    expect((await h.store.head()).revision).toBe(rev)
   })
 })
 

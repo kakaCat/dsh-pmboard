@@ -5,14 +5,17 @@
  *  ① 传 outputCount → 落 `outputCount` 与推导键 `zeroOutput`（0 → true）；
  *  ② **不传 → 两个键都不写**（旧调用方语义不变，读侧记「未知」不计零产出）；
  *  ③ ExecuteTask 真实路径：子卡完工后 execution 上带着产出计数。
+ *
+ * 2026-10-11 退役 workflow 引擎：产出注入点换成 `installTeamProducer(h, payload)`
+ * ——Worker 经 `reqboard_task_report` 把产出写回台账，链读回来合成同款形状。
  */
 import { describe, it, expect } from 'vitest'
 import { closeExecutions, openExecution } from 'pm-core/application/internal/token-usage.js'
 import { stageTelemetryOf } from 'pm-common/workflow/StageTelemetry.js'
 import { queryState } from 'pm-core/application/query/QueryState.js'
 import { executeSubtask } from 'pm-core/application/use-cases/ExecuteTask.js'
-import type { WorkflowRunner, WorkflowRunOutcome } from 'pm-core/application/ports.js'
 import { makeHarness, task, req } from 'tests/application/harness.js'
+import { installTeamProducer } from 'tests/application/teams-fake.js'
 
 const FILE = 'pm-core/src/domain/x.ts'
 
@@ -55,17 +58,17 @@ describe('FR-2 写入段 ① closeExecutions 落产出数', () => {
 })
 
 describe('FR-2 写入段 ② ExecuteTask 真实路径带上产出计数', () => {
-  async function runWith(output: Record<string, unknown>) {
+  async function runWith(output: { filesChanged?: string[]; completed?: string[] }, stage: 'dev' | 'review' = 'dev') {
     const h = makeHarness()
     h.docs.put(FILE, 'x')
     h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true }))
     h.seedTasks('REQ-000001', [
       task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', title: '父卡' }),
-      task({ id: 't-s', requirementId: 'REQ-000001', status: 'todo', title: '子卡', parentId: 't-p', stageKind: 'dev' as never }),
+      task({ id: 't-s', requirementId: 'REQ-000001', status: 'todo', title: '子卡', parentId: 't-p', stageKind: stage as never }),
     ])
     await h.seedSettled()
-    h.deps.workflow = { async start(): Promise<WorkflowRunOutcome> { return { ok: true, value: { ok: true, output: JSON.stringify(output) } } } } as WorkflowRunner
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w' })
+    installTeamProducer(h, output)
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w', exec: { agent: { id: 'session-w' } } })
     const t = await h.taskStore.get('t-s')
     return { r, t }
   }
@@ -78,15 +81,21 @@ describe('FR-2 写入段 ② ExecuteTask 真实路径带上产出计数', () => 
     expect(exec.zeroOutput).toBe(false)
   })
 
-  it('空产出（仅 summary 兜底成一条 completed）→ 计数非 0；真正空产出 → zeroOutput=true', async () => {
-    // summary 会被 parseSubtaskOutput 兜底成一条 completed ⇒ 这里是 1（不是 0）——如实记录口径
-    const withSummary = await runWith({ filesChanged: [], summary: '只写了结论' })
+  it('只有结论（无落盘）→ 兜底成一条 completed ⇒ 计数 1（不是 0）；真正空产出 → 判失败，不假成功', async () => {
+    // 结论族（verdict）：链把台账的 completed 合成 summary，parseSubtaskOutput 再把 summary 兜底成
+    // 一条 completed ⇒ 计数 1（不是 0）——如实记录口径（stage 取 review，否则写入族会因无落盘被门拒）
+    const withSummary = await runWith({ completed: ['只写了结论'] }, 'review')
+    expect(withSummary.r.ok).toBe(true)
     const e1 = withSummary.t!.executions[withSummary.t!.executions.length - 1]!
-    expect(e1.outputCount).toBe(withSummary.r.ok ? 1 : e1.outputCount)
-    // 全空（连 summary 都没有）时输出为空 → 0
+    expect(e1.outputCount).toBe(1)
+    expect(e1.zeroOutput).toBe(false)
+    // 真正空产出（Worker 一个字节都没写台账）→ 团队口径判失败（team_report_missing），
+    // **不落产出计数**（失败闭合不写 outputCount）：不给"看起来在工作"留任何合成路径。
     const empty = await runWith({})
+    expect(empty.r.ok).toBe(false)
     const e2 = empty.t!.executions[empty.t!.executions.length - 1]!
-    if (empty.r.ok) expect(e2.zeroOutput).toBe(true)
+    expect(e2.outputCount).toBeUndefined()
+    expect(String(empty.t!.lastRun?.stopReason)).toContain('team_report_missing')
   })
 })
 

@@ -4,6 +4,12 @@
  *
  * 口径：子卡凭证三项任一不过 → 子卡不 done；存在未 done 子卡 → 父卡不得 done；
  * 改了页面插件源码但 client 产物未更新 → 凭证不过。
+ *
+ * 2026-10-11 退役 workflow 引擎：产出注入点由 `deps.workflow = FakeRunner(okRun(JSON))`
+ * 换成 `installTeamProducer(h, {filesChanged, completed})`——Worker 在 `waitForChange` 期间
+ * 经 `reqboard_task_report` 把产出写回台账，链读回来合成为同款形状（下游逐字复用）。
+ * 成功路径 `lastRun.stopReason` 仍是 `'completed'`（团队成功即 outcome.ok=true），只是
+ * 失败原因换成了团队口径（`team_report_missing` / `DSH_TEAMS_UNAVAILABLE` / `engine_unavailable`）。
  */
 import { describe, it, expect } from 'vitest'
 import { executeSubtask, parseSubtaskOutput, isNonEmptyValue, buildSubtaskPrompt } from 'pm-core/application/use-cases/ExecuteTask.js'
@@ -11,22 +17,11 @@ import { executeMoveTask } from 'pm-core/application/use-cases/MoveTask.js'
 import { checkSubtaskEvidence } from 'pm-core/application/internal/subtask-evidence.js'
 import { STAGE_EVIDENCE_KIND, STAGE_KINDS } from 'pm-core/domain/task/SubtaskTemplate.js'
 import { LIMITS } from 'pm-common/limits.js'
-import type { WorkflowRunner, WorkflowRunOutcome } from 'pm-core/application/ports.js'
 import { makeHarness, task, req } from 'tests/application/harness.js'
+import { installTeamProducer, installTeamUnavailable } from 'tests/application/teams-fake.js'
 
 const SRC = 'packages/pages/dsh-pmboard/src/domain/task/TaskStatus.ts'
 const CLIENT = 'packages/pages/dsh-pmboard/lib/client.js'
-
-class FakeRunner implements WorkflowRunner {
-  calls: unknown[] = []
-  constructor(private readonly outcome: WorkflowRunOutcome) {}
-  async start(input: unknown): Promise<WorkflowRunOutcome> {
-    this.calls.push(input)
-    return this.outcome
-  }
-}
-
-const okRun = (payload: unknown): WorkflowRunOutcome => ({ ok: true, value: { ok: true, output: payload } })
 
 function seed(birthOffsetMs?: number) {
   const h = makeHarness()
@@ -44,13 +39,13 @@ function seed(birthOffsetMs?: number) {
 const exec = { agent: { id: 'session-w-001' } }
 
 describe('子卡闭环（3.4 凭证三项）', () => {
-  it('全通过：run completed + 产出含 filesChanged + 文件 mtime≥开工 → 子卡 done', async () => {
+  it('全通过：团队派发成功 + 台账产出含 filesChanged + 文件 mtime≥开工 → 子卡 done', async () => {
     const h = seed()
     await h.seedSettled()
     h.docs.put(SRC, 'x')
     h.docs.put(CLIENT, 'x')
-    h.deps.workflow = new FakeRunner(okRun(JSON.stringify({ filesChanged: [SRC], completed: ['改完状态机'], evidence: ['vitest 绿'] })))
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    installTeamProducer(h, { filesChanged: [SRC], completed: ['改完状态机'], evidence: ['vitest 绿'] })
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(true)
     const t = (await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!
     expect(t.status).toBe('done')
@@ -60,15 +55,19 @@ describe('子卡闭环（3.4 凭证三项）', () => {
     expect(t.executions[0]?.outcome).toBe('succeeded')
   })
 
-  it('③ run 未完成（stopReason=error）→ 子卡不 done', async () => {
+  it('③ 团队派发失败（Worker 没写台账 → team_report_missing）→ 子卡不 done', async () => {
     const h = seed()
     await h.seedSettled()
     h.docs.put(SRC, 'x')
-    h.deps.workflow = new FakeRunner({ ok: false, reason: 'error: child failed' })
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    // 引擎时代的 `'error: child failed'` 已不存在：团队路径的失败原因是台账没产出。
+    installTeamProducer(h, undefined)
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(false)
+    expect(String(r.reason)).toContain('team_report_missing')
     expect((await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!.status).not.toBe('done')
-    expect((await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!.lastRun?.ok).toBe(false)
+    const t = (await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!
+    expect(t.lastRun?.ok).toBe(false)
+    expect(t.lastRun?.stopReason).toContain('team_report_missing')
   })
 
   it('② 文件证据不过（mtime 早于链出身）→ 子卡不 done', async () => {
@@ -82,8 +81,8 @@ describe('子卡闭环（3.4 凭证三项）', () => {
     await h.setTaskFields('t-s', { createdAt: birth })
     h.docs.put(SRC, 'x', birth - 5_000)
     h.docs.put(CLIENT, 'x')
-    h.deps.workflow = new FakeRunner(okRun(JSON.stringify({ filesChanged: [SRC], completed: ['改完'] })))
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    installTeamProducer(h, { filesChanged: [SRC], completed: ['改完'] })
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(false)
     expect(r.code).toBe('REQBOARD_SUBTASK_GATE')
     expect((await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!.status).not.toBe('done')
@@ -99,17 +98,18 @@ describe('子卡闭环（3.4 凭证三项）', () => {
     await h.setTaskFields('t-p', { claimedAt: h.clock.t - 5_000 })
     h.docs.put(SRC, 'x', h.clock.t - 1_000)
     h.docs.put(CLIENT, 'x') // pages 源改动需配套构建产物（构建新鲜度分支）
-    h.deps.workflow = new FakeRunner(okRun(JSON.stringify({ filesChanged: [SRC], completed: ['改完'] })))
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    installTeamProducer(h, { filesChanged: [SRC], completed: ['改完'] })
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(true)
     expect((await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!.status).toBe('done')
   })
 
-  it('① 汇报无改动文件（子代理只回文本）→ 子卡不 done（不猜文件）', async () => {
+  it('① 汇报无改动文件（只回文本）→ 子卡不 done（不猜文件）', async () => {
     const h = seed()
     await h.seedSettled()
-    h.deps.workflow = new FakeRunner(okRun('我做完了，功能正常'))
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    // 团队等价物：Worker 写了台账，但只写了结论、没写 filesChanged（写入族必拒）。
+    installTeamProducer(h, { completed: ['我做完了，功能正常'] })
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(false)
     expect(r.code).toBe('REQBOARD_SUBTASK_GATE')
     expect((await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!.status).not.toBe('done')
@@ -120,30 +120,31 @@ describe('子卡闭环（3.4 凭证三项）', () => {
     await h.seedSettled()
     h.docs.put(SRC, 'x', h.clock.t)
     h.docs.put(CLIENT, 'x', h.clock.t - 10_000)
-    h.deps.workflow = new FakeRunner(okRun(JSON.stringify({ filesChanged: [SRC], completed: ['改完'] })))
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    installTeamProducer(h, { filesChanged: [SRC], completed: ['改完'] })
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(false)
     expect(r.code).toBe('REQBOARD_SUBTASK_GATE')
   })
 
-  it('3.3 引擎缺失 → 子卡显式失败（不静默成功）', async () => {
+  it('3.3 执行面不可用（团队服务未装配 / available()=false）→ 子卡显式失败（不静默成功）', async () => {
     const h = seed()
     await h.seedSettled()
     h.docs.put(SRC, 'x')
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    const teams = installTeamUnavailable(h)
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(false)
     expect(r.reason).toContain('engine_unavailable')
+    expect(teams.created).toHaveLength(0)   // 一张卡都不派
   })
 
   it('幂等：已 done 的子卡重入直接返回 ok（不重复执行）', async () => {
     const h = seed()
     await h.seedSettled()
     await h.setTaskFields('t-s', { status: 'done' })
-    const runner = new FakeRunner(okRun('{}'))
-    h.deps.workflow = runner
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    const teams = installTeamProducer(h, { filesChanged: [SRC], completed: ['改完'] })
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(true)
-    expect(runner.calls).toHaveLength(0)
+    expect(teams.created).toHaveLength(0)   // 无派发（幂等早退）
   })
 })
 
@@ -217,8 +218,8 @@ describe('D17 修复：L1 基准单调化（链出身） + L2 证据形态分流
     // 旧口径 since=父卡 claimedAt(=clock.t) 必拒；新口径 since=链出身(=birth) 应放行。
     h.docs.put(SRC, 'x', birth + 1_000)
     h.docs.put(CLIENT, 'x', h.clock.t)
-    h.deps.workflow = new FakeRunner(okRun(JSON.stringify({ filesChanged: [SRC], completed: ['改完'] })))
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    installTeamProducer(h, { filesChanged: [SRC], completed: ['改完'] })
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(true)
     expect((await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!.status).toBe('done')
   })
@@ -230,8 +231,8 @@ describe('D17 修复：L1 基准单调化（链出身） + L2 证据形态分流
     await pinChainBirth(h, birth)
     h.docs.put(SRC, 'x', birth - 1_000)
     h.docs.put(CLIENT, 'x', h.clock.t)
-    h.deps.workflow = new FakeRunner(okRun(JSON.stringify({ filesChanged: [SRC], completed: ['改完'] })))
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    installTeamProducer(h, { filesChanged: [SRC], completed: ['改完'] })
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(false)
     expect(r.code).toBe('REQBOARD_SUBTASK_GATE')
     expect((await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!.status).not.toBe('done')
@@ -241,11 +242,11 @@ describe('D17 修复：L1 基准单调化（链出身） + L2 证据形态分流
     const h = seed()
     await h.seedSettled()
     await h.setTaskFields('t-s', { stageKind: 'review' })
-    h.deps.workflow = new FakeRunner(okRun(JSON.stringify({
+    installTeamProducer(h, {
       completed: ['逐条复核完毕：设计与实现无偏离'],
       evidence: ['无 diff（本轮只做判断）'],
-    })))
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    })
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(true)
     const t = (await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!
     expect(t.status).toBe('done')
@@ -410,35 +411,23 @@ describe('D17 修复：L1 基准单调化（链出身） + L2 证据形态分流
 // BUG-4（REQ-261008011118-defe / DD-4）：先认领后执行 + 并发拒绝 + 失败出口归还
 // ---------------------------------------------------------------------------
 
-/** 两路并发时才放行第一次 start 的 runner：用来证明"只跑了一次"。 */
-class BarrierRunner implements WorkflowRunner {
-  calls = 0
-  private release: (() => void) | undefined
-  private gate = new Promise<void>((r) => { this.release = r })
-  async start(_input: unknown): Promise<WorkflowRunOutcome> {
-    this.calls += 1
-    if (this.calls >= 2) this.release?.()
-    else await Promise.race([this.gate, new Promise<void>(r => setTimeout(r, 250))])
-    return okRun(JSON.stringify({ filesChanged: [SRC], completed: ['改完状态机'] }))
-  }
-}
-
 describe('BUG-4 先认领后执行（REQ-261008011118-defe / DD-4）', () => {
-  it('并发两路派发同一张 todo 子卡 → 只跑一次；第二路 REQBOARD_SUBTASK_IN_PROGRESS', async () => {
+  it('并发两路派发同一张 todo 子卡 → 只派一次；第二路 REQBOARD_SUBTASK_IN_PROGRESS', async () => {
     const h = seed()
     await h.seedSettled()
     h.docs.put(SRC, 'x')
     h.docs.put(CLIENT, 'x')
-    const runner = new BarrierRunner()
-    h.deps.workflow = runner
+    // 引擎时代的 BarrierRunner 已随引擎退役：团队路径的派发点（createTask）在**认领写盘之后**，
+    // 两路 Promise.all 天然重叠在同一段异步窗口里，读数直接取「派了几张 team task」。
+    const teams = installTeamProducer(h, { filesChanged: [SRC], completed: ['改完状态机'] })
 
     const [a, b] = await Promise.all([
-      executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' }),
-      executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' }),
+      executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec }),
+      executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec }),
     ])
 
-    // 修前读数 = 2（两路都跑到 workflow.start，第二路撞 done→done 才失败）
-    expect(runner.calls, '双跑即 2 次').toBe(1)
+    // 修前读数 = 2（两路都跑到派发，第二路撞 done→done 才失败）
+    expect(teams.created, '双跑即 2 次派发').toHaveLength(1)
     expect([a.ok, b.ok].filter(Boolean), '恰有一路成功').toHaveLength(1)
     const rejected = [a, b].find(r => !r.ok) as { code?: string } | undefined
     expect(rejected?.code).toBe('REQBOARD_SUBTASK_IN_PROGRESS')
@@ -451,10 +440,10 @@ describe('BUG-4 先认领后执行（REQ-261008011118-defe / DD-4）', () => {
   it('凭证门失败 → 归还：回 todo + attempt+1 + 执行闭合 failed + revisions(rollback) + 失败评论', async () => {
     const h = seed()
     await h.seedSettled()
-    // 只有文本、无 filesChanged → REQBOARD_SUBTASK_GATE
-    h.deps.workflow = new FakeRunner(okRun('我做完了，功能正常'))
+    // 只有结论、无 filesChanged → REQBOARD_SUBTASK_GATE（写入族）
+    installTeamProducer(h, { completed: ['我做完了，功能正常'] })
 
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(false)
     expect(r.code).toBe('REQBOARD_SUBTASK_GATE')
 
@@ -481,12 +470,11 @@ describe('BUG-4 先认领后执行（REQ-261008011118-defe / DD-4）', () => {
     await h.seedSettled()
     h.docs.put(SRC, 'x')
     h.docs.put(CLIENT, 'x') // pages 源改动需配套构建产物（构建新鲜度分支）
-    const runner = new FakeRunner(okRun(JSON.stringify({ filesChanged: [SRC], completed: ['改完'] })))
-    h.deps.workflow = runner
+    const teams = installTeamProducer(h, { filesChanged: [SRC], completed: ['改完'] })
 
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec })
     expect(r.ok, JSON.stringify(r)).toBe(true)
-    expect(runner.calls).toHaveLength(1)
+    expect(teams.created).toHaveLength(1)
 
     const t = (await h.tasksOf('REQ-000001')).find(x => x.id === 't-s')!
     const failed = (t.executions ?? []).filter(e => e.outcome === 'failed')

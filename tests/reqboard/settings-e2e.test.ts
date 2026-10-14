@@ -32,8 +32,8 @@ import { SETTINGS_FILE_REL } from 'pm-core/application/settings/resolve-settings
 import { SYSTEM_RECORD_FILE_REL } from 'pm-core/application/settings/events.js'
 import { SQLITE_SCHEMA_VERSION } from 'pm-core/repositories/sqliteSchema.js'
 import { installStageLimitSnapshot, roundLimitFor } from 'pm-core/application/dive-core/round-state.js'
-import { createDiveRoundDriver, type DiveRoundPorts } from 'pm-round-driver/round-driver.js'
-import { legacyStoreProjection } from 'tests/support/legacy-store-projection.js'
+import { buildGoalRoundPorts } from '../../pm/src/adapters/goal-round-ports.js'
+import { createGoalRoundDriver } from 'pm-goal-round-driver/driver.js'
 import { factsOf } from 'pm-core/domain/requirement/RequirementSummary.js'
 import { emptyLedger, type RequirementRecord } from 'pm-core/protocol-domain.js'
 import { assembleStorage } from 'src/wiring/settings-assembly.js'
@@ -99,30 +99,44 @@ function writeSettings(body: Record<string, unknown>): void {
   writeFileSync(settingsFile, JSON.stringify({ schemaVersion: 1, ...body }, null, 2))
 }
 
-/** 小驱动 harness（照 pm-core/tests/dive-round-driver.test.ts 的既有写法，只留本卡要用的部分）。 */
+/**
+ * 小驱动 harness（2026-10-10 改挂新 goal 驱动：`buildGoalRoundPorts` 真适配器 + `createGoalRoundDriver`）。
+ *
+ * 本卡要验的是「设置里的阶段上限 → 适配器解析成 `maxGoalRounds` → 驱动当拍停手」这一条**真链路**，
+ * 故端口走**真适配器**（旧写法手搓 `DiveRoundPorts` 已随 `pm-round-driver` 退役）。
+ * 停手形态也随之改变（新驱动口径）：`round-limit` ⇒ `blockGoal` **落盘 block**，不再写 `driverHealth`。
+ */
 function driveHarness(req: RequirementRecord) {
   const ledger = { ...emptyLedger(), requirements: [req], tasks: [], triages: [] }
-  const repo = { snapshot: () => ledger, read: async (fn: (v: unknown) => unknown) => fn(ledger), mutate: async (_r: string, fn: (l: unknown) => unknown) => ({ changed: fn(ledger) as never, revision: 1 }), replaceAll: async () => {} }
-  const agent: Record<string, unknown> = { id: 'agent-1', status: 'idle', session: { id: 'agent-1' }, inbox: { nextTurn: [], nextStep: [], prepend() {} } }
   const delivered: unknown[] = []
+  const blocked: Array<{ requirementId: string; code: string; message: string }> = []
   const warns: string[] = []
-  const ports: DiveRoundPorts = {
-    store: legacyStoreProjection(repo as never),
+  const ports = buildGoalRoundPorts({
     peekFacts: () => ledger.requirements.map(factsOf),
-    agents: { get: (id) => (id === 'agent-1' ? agent : undefined), withoutInitiator: (op) => op() },
-    fiberActive: () => true,
+    getRequirement: async (id) => ledger.requirements.find((r) => r.id === id),
+    // 一张 running 卡（不带 goal）+ 需求记录上的 active goal（一条需求一个）：
+    // 上限缺省 ⇒ 适配器回落阶段上限（`roundLimitFor`，快照里的 5/10）。
+    tasksOf: async () => [{ id: 't-1', status: 'running', acceptance: 'a' }],
     delivery: {
-      createRoundMessage: (input) => ({ message: { id: 'm1', role: 'user', content: [{ type: 'text', text: input.text }] }, messageId: 'm1' }),
-      deliverMessage: (_wk, message) => { delivered.push(message); agent.status = 'running'; return { delivered: true } },
+      createRoundMessage: (input) => ({ message: { id: 'm' + String(input.round), role: 'user', content: [{ type: 'text', text: input.text }] }, messageId: 'm' + String(input.round) }),
+      deliverMessage: (_wk, message) => { delivered.push(message); return { delivered: true } },
+      checkpoint: async () => {},
+      persistAdmission: () => {},
+      contentOf: (m) => (m as { content?: unknown } | undefined)?.content,
+      now: () => 1000,
     },
-    cancel: () => {},
-    whenIdle: async () => {},
     checkpoint: async () => {},
-    renderRoundText: (i) => 'round ' + String(i.round),
+    persistAdmission: () => {},
+    createGoal: () => true,
+    blockGoal: (requirementId, reason) => { blocked.push({ requirementId, code: reason.code, message: reason.message }); return true },
+    askStageDone: () => {},
+    trace: () => {},
+    fiberActive: () => true,
+    agentLive: () => true,
     now: () => 1000,
-    logger: { info: () => {}, debug: () => {}, warn: (m) => warns.push(m) },
-  }
-  return { driver: createDiveRoundDriver(ports), delivered, warns, ledger, agent }
+    logger: { info: (m) => warns.push(m), debug: () => {}, warn: (m) => warns.push(m) },
+  })
+  return { driver: createGoalRoundDriver(ports), delivered, blocked, warns, ledger }
 }
 
 function implementingReq(rounds: number): RequirementRecord {
@@ -130,6 +144,9 @@ function implementingReq(rounds: number): RequirementRecord {
     id: 'REQ-t', title: 't', description: '', status: 'implementing', blocked: false,
     comments: [], version: 5, createdAt: 1, updatedAt: 1,
     createdBy: { kind: 'human' }, updatedBy: { kind: 'human' }, sourceSessionId: 'agent-1',
+    // 当前 goal 挂**需求**（goal 不挂卡）：`blockGoal` 端口要求记录上确有 goal，否则幂等返回 false。
+    goal: { id: 'goal:REQ-t', objective: 'a', phase: 'active', revision: 1 },
+    goalSeq: 1,
     dive: { phase: 'active', activation: 'armed', roundsInStage: rounds },
   } as unknown as RequirementRecord
 }
@@ -148,18 +165,20 @@ describe('E2E-1 上限生效：设置文件 → 快照 → 驱动当拍停手', 
 
     // roundsInStage 已达 5 → 停手（当拍判定，不动正在跑的那一轮）
     const stopped = driveHarness(implementingReq(5))
-    stopped.driver.requestDrive(stopped.agent)
+    await stopped.driver.requestDrive('agent-1')
     await stopped.driver.whenQuiet()
+    stopped.driver.teardown()
     expect(stopped.delivered.length).toBe(0)
     const afterStop = stopped.ledger.requirements[0]
-    expect(afterStop.dive?.driverHealth?.state).toBe('paused')
-    expect(afterStop.dive?.driverHealth?.reason).toBe('round-limit:implementing')
+    // 停手形态：goal **落盘 block**（round-limit）——耐久半边，重启不失忆、人可见可裁
+    expect(stopped.blocked).toHaveLength(1)
+    expect(stopped.blocked[0]!.code).toBe('round-limit')
+    expect(stopped.blocked[0]!.requirementId).toBe('REQ-t')
+    // 留痕里的上限 = 设置文件里的 5，而**不是**默认 1000：这是「权威来源真的换了」的硬证据
+    expect(stopped.blocked[0]!.message).toContain('上限 5')
+    expect(stopped.blocked[0]!.message).not.toContain('上限 1000')
     // 人的意图不变（activation 仍 armed）——停手只发生在判定点，不掐断正在跑的那一轮
     expect(afterStop.dive?.activation).toBe('armed')
-    // 留痕里的上限 = 设置文件里的 5，而**不是**默认 1000：这是「权威来源真的换了」的硬证据
-    expect(stopped.warns.join(' ')).toContain('上限=5')
-    expect(stopped.warns.join(' ')).not.toContain('上限=1000')
-    expect((afterStop.comments ?? []).map((c) => c.body).join(' ')).toContain('达上限 5 回合')
 
     // 人把上限放宽到 10 → 下一次判定即继续起轮
     writeSettings({ stageMaxRounds: { implementing: 10 } })
@@ -168,10 +187,11 @@ describe('E2E-1 上限生效：设置文件 → 快照 → 驱动当拍停手', 
     expect(roundLimitFor('implementing')).toBe(10)
 
     const resumed = driveHarness(implementingReq(5))
-    resumed.driver.requestDrive(resumed.agent)
+    await resumed.driver.requestDrive('agent-1')
     await resumed.driver.whenQuiet()
+    resumed.driver.teardown()
     expect(resumed.delivered.length).toBe(1)
-    expect(resumed.ledger.requirements[0].dive?.driverHealth?.state).not.toBe('paused')
+    expect(resumed.blocked).toHaveLength(0)
   })
 })
 

@@ -1,0 +1,115 @@
+<mxfile host="draw.io" agent="drawskills" version="24.7.17" type="device">
+  <diagram id="pm-goal-round-loop" name="驱动拍主循环">
+    <mxGraphModel dx="0" dy="0" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="pm-goal-round-driver：唯一驱动点的一拍（触发 → 八步闸 → 六态 → 投递 / 准入）" style="text;html=1;fontSize=22;fontStyle=1;align=center;fillColor=none;strokeColor=none;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="380" y="20" width="880" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="z_drv" value="驱动拍：决策是纯函数，I/O 全在端口后" style="rounded=1;fillColor=#F3E5F5;strokeColor=#CE93D8;strokeWidth=2;verticalAlign=top;align=left;spacingTop=8;spacingLeft=12;fontSize=14;fontStyle=1;fontColor=#6A1B9A;" vertex="1" parent="1">
+          <mxGeometry x="60" y="320" width="1600" height="380" as="geometry" />
+        </mxCell>
+        <mxCell id="z_impl" value="动作的实做与纪律（六态出口各自去哪）" style="rounded=1;fillColor=#F3E5F5;strokeColor=#CE93D8;strokeWidth=2;verticalAlign=top;align=left;spacingTop=8;spacingLeft=12;fontSize=14;fontStyle=1;fontColor=#6A1B9A;" vertex="1" parent="1">
+          <mxGeometry x="60" y="960" width="1600" height="220" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t1" value="agent/status === idle（驱动点）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5E35B1;strokeWidth=2;fontSize=13;fontColor=#311B92;" vertex="1" parent="1">
+          <mxGeometry x="80" y="90" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" value="reqboard/requirement-moved（需求动了）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5E35B1;strokeWidth=2;fontSize=13;fontColor=#311B92;" vertex="1" parent="1">
+          <mxGeometry x="385" y="90" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" value="心跳对账 wakeTick（planWake）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5E35B1;strokeWidth=2;fontSize=13;fontColor=#311B92;" vertex="1" parent="1">
+          <mxGeometry x="690" y="90" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="t4" value="agent/inbox/*（回合消息到达 / 认领）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5E35B1;strokeWidth=2;fontSize=13;fontColor=#311B92;" vertex="1" parent="1">
+          <mxGeometry x="995" y="90" width="280" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" value="session/event turn/end（回合收尾）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5E35B1;strokeWidth=2;fontSize=13;fontColor=#311B92;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="90" width="280" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ev" value="事件入口 driver.ts：onIdle（驱动拍）· onInbox（认领预留）· onInboxDiscarded · onTurnEnd（准入 + postRound 五件事）· onPreStep（栅栏：伪造 / 失效 / 重复就地拒收）· onAgentError（瞬时记账，达阈值熔断）· onAgentDisposed · requestDrive" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#9E9E9E;strokeWidth=2;fontSize=13;fontColor=#424242;" vertex="1" parent="1">
+          <mxGeometry x="80" y="210" width="1500" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d1" value="① factsOf(agentId)：台账窄投影 + 任务队列（ready 卡 / acceptance）+ 阶段目标与判据 + dive.roundsInStage + 归属判据" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5E35B1;strokeWidth=2;fontSize=13;fontColor=#311B92;" vertex="1" parent="1">
+          <mxGeometry x="560" y="370" width="520" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" value="② decideGoalRound(input)：八步闸 + goal 相位分支（纯函数、零 I/O、可穷举单测）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#5E35B1;strokeWidth=3;fontSize=14;fontStyle=1;fontColor=#311B92;" vertex="1" parent="1">
+          <mxGeometry x="540" y="470" width="560" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="d34" value="③ checkDecisionInvariants（INV-D1~D5）→ ④ actOnDecision：违背即抛（副作用不做）；六态 → 端口调用" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5E35B1;strokeWidth=2;fontSize=13;fontColor=#311B92;" vertex="1" parent="1">
+          <mxGeometry x="540" y="610" width="560" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p_gates" value="八步闸（顺序即纪律）&#10;① 立项绑定？未绑定 → hold&#10;② 可驱动？drivable + advance 未告警&#10;③ 内存闭锁 latch（当拍可信，先于台账）&#10;④ 退避期内 backoff&#10;⑤ 进程级上游闸 provider-latch&#10;⑥ 人工门 / 弹框在途 → wait-human&#10;⑦ 起链预算闸 chain-budget&#10;⑧ goal 相位分支（见右）" style="rounded=1;arcSize=8;dashed=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9E9E9E;strokeWidth=2;fontSize=12;fontColor=#424242;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="80" y="430" width="420" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="p_phase" value="goal 相位分支&#10;· phase = active：roundsInStage ≥ maxGoalRounds → block-goal（落盘，人可裁）；否则 drive&#10;· phase = paused / blocked → wait-human&#10;· phase = undefined / complete + stage 未达成：有 ready 卡 → create-goal（objective = 卡 acceptance）；无 ready 卡 → hold&#10;· 同上前提 + stage 已达成 → ask-stage-done（弹框请人，不起轮）" style="rounded=1;arcSize=8;dashed=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9E9E9E;strokeWidth=2;fontSize=12;fontColor=#424242;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="430" width="480" height="250" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_drive" value="drive → 起轮投递（预留 → 投递 → 准入）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00897B;strokeWidth=2;fontSize=13;fontStyle=1;fontColor=#004D40;" vertex="1" parent="1">
+          <mxGeometry x="80" y="830" width="245" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="r_create" value="create-goal → pm-goal 建当前 goal（objective = 本拍卡的 acceptance）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;fontSize=13;fontColor=#0D47A1;" vertex="1" parent="1">
+          <mxGeometry x="340" y="830" width="245" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="r_ask" value="ask-stage-done → 弹框请人裁决（不起轮）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#C2185B;strokeWidth=2;fontSize=13;fontStyle=1;fontColor=#880E4F;" vertex="1" parent="1">
+          <mxGeometry x="600" y="830" width="245" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="r_block" value="block-goal → 落盘 block（round-limit / 队列失败等）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#D32F2F;strokeWidth=2;fontSize=13;fontStyle=1;fontColor=#B71C1C;" vertex="1" parent="1">
+          <mxGeometry x="860" y="830" width="245" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="r_wait" value="wait-human → 只 trace（等人不是故障：不写健康位、不改人的意图）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#C2185B;strokeWidth=2;fontSize=13;fontColor=#880E4F;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="830" width="245" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="r_hold" value="hold → trace 留痕（闸拦下 / 无可跑之事，响亮不静默）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#9E9E9E;strokeWidth=2;fontSize=13;fontColor=#424242;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="830" width="245" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b1" value="投递纪律（drive 分支实做）：renderRoundPrompt 渲染 → checkpoint 台账写队列排空 → 复核仍在飞则让位（supplanted）→ reserve 造预留 queued → deliverMessage 发回合消息 → onInbox claim 逐字认领 → onTurnEnd admit（roundsInStage++ / 清退避账）。&#10;只有 admitted 才算这一回合；cancelled / stale 永不计数；失败即清预留 + 落盘 block（checkpoint-failed / queue-failed）" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#00897B;strokeWidth=2;fontSize=12;fontColor=#004D40;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1020" width="480" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" value="人的面（六态里指向人的三条路）：ask-stage-done 弹框请裁决（冷却 5min、上限 2 次，指纹变了才重计）· block-goal 落盘 block 人可见可裁（resume 人专属）· wait-human 只 trace —— 驱动永不代替人落章 / 取消 / 推进。&#10;对应工具面（agent 侧）：reqboard_stage_goal_done（阶段达成位，真人专属）· reqboard_goal_update(resume / complete / block)" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C2185B;strokeWidth=2;fontSize=12;fontColor=#880E4F;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1020" width="540" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="停手纪律（hold 的四种来源）：latch 内存闭锁 · backoff 退避账 · provider-latch 上游闸 · 熔断（同因累加、异因归零，达阈值置闭锁）。&#10;心跳对账：在闸 / 不可驱动 / 有人在等 / 还新鲜 → 整趟跳过；叫不醒达阈值 → 写停手位并留痕（防静默停摆）" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9E9E9E;strokeWidth=2;fontSize=12;fontColor=#424242;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="1020" width="480" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_t1" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.1;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="t1" target="ev" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_t2" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.3;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="t2" target="ev" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_t3" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="t3" target="ev" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_t4" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.7;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="t4" target="ev" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_t5" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.9;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="t5" target="ev" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e_ev" value="onIdle(agentId)：一次驱动拍" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#5E35B1;" edge="1" source="ev" target="d1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_12" value="DecideInput（纯数据）" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#5E35B1;" edge="1" source="d1" target="d2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_23" value="RoundDecision（六态穷尽）" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#5E35B1;" edge="1" source="d2" target="d34" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_pg" value="闸按顺序判定" style="endArrow=classic;strokeWidth=1;strokeColor=#9E9E9E;dashed=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;fontColor=#424242;" edge="1" source="p_gates" target="d2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_pp" value="相位分流" style="endArrow=classic;strokeWidth=1;strokeColor=#9E9E9E;dashed=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=12;fontColor=#424242;" edge="1" source="p_phase" target="d2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e_s1" style="endArrow=classic;strokeWidth=2;strokeColor=#00897B;exitX=0.1;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="d34" target="r_drive" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_s2" style="endArrow=classic;strokeWidth=2;strokeColor=#1565C0;exitX=0.3;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="d34" target="r_create" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_s3" style="endArrow=classic;strokeWidth=2;strokeColor=#C2185B;exitX=0.45;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="d34" target="r_ask" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_s4" style="endArrow=classic;strokeWidth=2;strokeColor=#D32F2F;exitX=0.6;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="d34" target="r_block" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_s5" style="endArrow=classic;strokeWidth=2;strokeColor=#C2185B;exitX=0.75;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="d34" target="r_wait" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_s6" style="endArrow=classic;strokeWidth=2;strokeColor=#9E9E9E;exitX=0.9;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="d34" target="r_hold" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e_o1" value="实做" style="endArrow=classic;strokeWidth=2;strokeColor=#00897B;exitX=0.5;exitY=1;entryX=0.4;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#004D40;" edge="1" source="r_drive" target="b1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_o2" value="建好即下一拍 drive" style="endArrow=classic;strokeWidth=2;strokeColor=#1565C0;exitX=0.5;exitY=1;entryX=0.8;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#0D47A1;" edge="1" source="r_create" target="b1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_o3" style="endArrow=classic;strokeWidth=2;strokeColor=#C2185B;exitX=0.5;exitY=1;entryX=0.2;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="r_ask" target="b3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_o4" style="endArrow=classic;strokeWidth=2;strokeColor=#D32F2F;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="r_block" target="b3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_o5" style="endArrow=classic;strokeWidth=2;strokeColor=#C2185B;exitX=0.5;exitY=1;entryX=0.85;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="r_wait" target="b3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_o6" style="endArrow=classic;strokeWidth=2;strokeColor=#9E9E9E;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="r_hold" target="b2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e_fb" value="下一拍 tick：回到驱动拍" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;dashed=1;exitX=0;exitY=0.5;entryX=0;entryY=0.5;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#5E35B1;" edge="1" source="b1" target="d1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="260" y="-100" as="offset" /></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

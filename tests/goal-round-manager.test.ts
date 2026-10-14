@@ -36,7 +36,7 @@ function makeDeps(over: Record<string, unknown> = {}) {
       contentOf: () => undefined,
       now: () => 1,
     },
-    createTaskGoal: () => true,
+    createGoal: () => true,
     askStageDone: () => {},
     trace: () => {},
     now: () => 1,

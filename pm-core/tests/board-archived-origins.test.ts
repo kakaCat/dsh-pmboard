@@ -274,7 +274,7 @@ function offendersOf(code: string): string[] {
 }
 
 describe('判据⑤：静态断言（src/http/routers/stages.ts 无新增路径字符串判定）', () => {
-  const raw = readFileSync(pathToFileURL(repoPath('src/http/routers/stages.ts')), 'utf8')
+  const raw = readFileSync(pathToFileURL(repoPath('pm/src/http/routers/stages.ts')), 'utf8')
   const code = stripComments(raw)
 
   it('没有 startsWith / 路径字面量相等形态（改动前为 0，故断言 0 —— 新增即红）', () => {

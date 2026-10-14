@@ -12,8 +12,6 @@
 import type { UseCaseDeps } from '../ports.js'
 import { fmt } from '../../domain/text/fmt.js'
 import { stageLabel, STAGE_EVIDENCE_KIND, type StageKind } from '../../domain/task/SubtaskTemplate.js'
-import { generateSubtaskScript } from '../internal/workflow-script.js'
-import { resolveStageModel } from '../../domain/task/StageRouting.js'
 import { shouldAlertZeroOutput, zeroOutputStreak } from 'pm-common/workflow/StageTelemetry.js'
 // FR-11 路线 A：团队执行驱动（团队服务可用时优先于 workflow）。
 import { runSubtaskViaTeam } from './SubtaskTeamRun.js'
@@ -495,20 +493,10 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
   const promptDocs = await loadSubtaskPromptDocs(deps, req)
   // 提示词只算一次：workflow 分支拼进脚本，团队分支作为 team task 描述（含台账子卡 id）。
   const prompt = buildSubtaskPrompt(parent, task, label, requirementRoot, promptDocs)
-  let script: string
-  try {
-    // FR-1（REQ-261004110201-f253）：按「子卡阶段 × 需求难度」查路由表；未配置/未命中 → 不注入
-    //（生成结果与改造前逐字节相同）。表在装配期已校验，此处只做纯解析。
-    const stageRoute = resolveStageModel(String(task.stageKind ?? ''), req?.promptDifficulty, deps.stageRouting)
-    script = generateSubtaskScript({
-      stageKind: String(task.stageKind ?? ''),
-      stageLabel: label,
-      prompt,
-      ...(stageRoute !== undefined ? { route: stageRoute } : {}),
-    })
-  } catch (err) {
-    return fail(task.id, (err as Error).message, (err as { code?: string }).code ?? 'workflow_script_contract', base)
-  }
+  // 子卡执行面 = **团队派发一条路**（2026-10-11 退役 workflow 引擎：pm-workflow 包与端口一并删除）。
+  // 旧引擎分支连同脚本生成（workflow-script.ts）一起退役：那条路按设计取不到引擎
+  // （宿主 preset `isolate: { workflowEngine: true }`），每次都是"派卡 → 失败 → 报错"。
+  // 现在由下方派发段的显式拒绝兜住（不静默成功）。
 
   // ── 子卡请求预算：开窗（REQ-261007100513-6749 t5 / FR-6）──────────────────────────
   // 这里是引擎可达 profile 的**显式开窗**接线（workflow 与团队两条派发路线的共同入口）：
@@ -528,9 +516,8 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
     }))
   }
 
-  // run 产出解包（REQ-260927100007-b8ba t-8bce7d）：WorkflowRunOutcome 是 {ok, value:{output}} **两层信封**，
-  // 产出本身按既有 JSON 契约解析。此前误把信封当产出对象用，filesChanged 恒 undefined → 子卡必崩。
-  // schema 仍随 args 透传给引擎，用于约束子代理的产出形状。
+  // 产出解包：团队分支把 Worker 的 `reqboard_task_report` 读回来，合成下面这层 JSON 后走**同一解析**。
+  // 契约不变（filesChanged / completed / evidence）；引擎时代的 {ok, value:{output}} 两层信封已随引擎退役。
   let rawOutput: unknown = undefined
   let outcome: { ok: boolean; reason?: string }
   // REQ-260927121324-abde 附带修复：子卡「开工时刻」必须取在 workflow 开工之前。
@@ -561,11 +548,16 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
       rollbackSubtask(tasks, task.id, failedAt, deps.ids, { category, reason }) ? tasks : undefined)
   }
 
-  // FR-11 路线 A（REQ-260926140539-457b）：团队执行优先——caller 是 live agent 且服务可用时，
-  // 把这张子卡派给团队 Worker（持久、可观测）；Worker 经 reqboard_task_report 写台账，链把产出
-  // 读回来合成为 workflow 同款形状 → 下游（解析/跨卡/落账/凭证门）逐字复用。服务不可用 → 旧路径。
+  // FR-11 路线 A（REQ-260926140539-457b）+ 2026-10-11 退役引擎：**团队是唯一执行面**——
+  // caller 是 live agent 且服务可用时，把这张子卡派给团队 Worker（持久、可观测）；Worker 经
+  // `reqboard_task_report` 写台账，链把产出读回来 → 下游（解析/跨卡/落账/凭证门）逐字复用。
+  // 服务不可用 / 无 live caller → 下面的显式拒绝分支（不静默成功）。
+  // 可用性判据**不吞异常也不放行**：抛错 ⇒ 按不可用处理（拿不到确证就不派卡，转换成可行动原因，
+  // 不让一次探针异常把整条链炸掉——与 AdvanceChain 守卫「预检坏了不拦链」互补）。
   const teamCaller = (runExec as { agent?: unknown } | undefined)?.agent
-  if (deps.teams !== undefined && deps.teams.available() && teamCaller !== undefined) {
+  let teamsUsable = false
+  try { teamsUsable = deps.teams !== undefined && deps.teams.available() } catch { teamsUsable = false }
+  if (teamsUsable && teamCaller !== undefined) {
     const viaTeam = await runSubtaskViaTeam(deps, {
       task, parent, caller: teamCaller, prompt,
       // 一次性建全队任务时，为同队其它子卡现算工作要求（避免 SubtaskTeamRun 反向 import 本文件）。
@@ -575,45 +567,15 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
     rawOutput = viaTeam.ok
       ? JSON.stringify({ filesChanged: [...viaTeam.filesChanged], summary: viaTeam.summary })
       : undefined
-  } else if (deps.workflow === undefined) {
-    outcome = { ok: false, reason: 'engine_unavailable' }
   } else {
-    try {
-      // 构造 schema 定义
-      const schema = {
-        type: 'object',
-        properties: {
-          filesChanged: {
-            type: 'array',
-            items: { type: 'string' },
-            description: '改动的文件路径列表（相对工作区路径）'
-          },
-          summary: {
-            type: 'string',
-            description: '执行摘要：做了什么、完成了哪些项'
-          }
-        },
-        required: ['filesChanged', 'summary'],
-        additionalProperties: false
-      }
-      const started = await deps.workflow.start({
-        script,
-        meta: { name: 'reqboard-subtask-' + String(task.stageKind ?? 'x'), description: fmt('子卡执行：{title}', { title: task.title }) },
-        args: { subtaskId: task.id, parentId: parent.id, stageKind: String(task.stageKind ?? ''), schema },
-        parent: (runExec as { agent?: unknown } | undefined)?.agent,
-        // REQ-260928185112-e20d Phase2：取消权归**承载链的后台 job**；只有拿不到 job signal 时
-        // （同步兼容路径 / 看板直投）才回落到调用方 turn 的 signal。此前一律用 turn 的 signal →
-        // turn 一结束，链里下一张子卡 0.1–3.6s 瞬断（实测 4 次）并连带 2 次长跑被掐。
-        signal: input.runSignal ?? (runExec as { signal?: AbortSignal } | undefined)?.signal,
-      })
-      if (started.ok) {
-        outcome = { ok: true }
-        rawOutput = (started.value as { output?: unknown } | undefined)?.output
-      } else {
-        outcome = { ok: false, reason: started.reason }
-      }
-    } catch (err) {
-      outcome = { ok: false, reason: fmt('run 异常：{m}', { m: String((err as Error).message ?? err) }) }
+    // 执行面不可用（团队服务未装配 / caller 不是 live agent）→ **如实拒绝**：
+    // 不去启动一个按设计不可达的引擎，也不合成为一个"格式合法的空产出"。
+    // reason 保留 `engine_unavailable` 子串：failure-handling 的失败分类器按它归类（口径不变）。
+    outcome = {
+      ok: false,
+      reason: 'engine_unavailable：子卡执行面不可用（Agent Teams 服务未装配 / 调用方不是 live agent）。'
+        + '两条出路：① 改由本窗口自证过凭证门（reqboard_task_report 写 filesChanged 或 completed）；'
+        + '② 让 Agent Teams 服务在本插件可见的作用域可用。',
     }
   }
 
@@ -733,7 +695,10 @@ export async function executeSubtask(deps: UseCaseDeps, input: ExecuteSubtaskInp
     await releaseFailedClaim(reason, code)
     // FR-11 路线 A：凭证门拒了这张卡，但团队任务已 completed —— 必须**重开**（reopen），
     // 否则 Worker 不会再碰它，下一轮链又读到 completed → 空转死循环（门白拒）。
-    if (deps.teams !== undefined && deps.teams.available() && teamCaller !== undefined) {
+    // 同上方判据口径：可用性抛错按不可用处理（best-effort 的 reopen 更不该把链炸掉）。
+    let teamsUsableForReopen = false
+    try { teamsUsableForReopen = deps.teams !== undefined && deps.teams.available() } catch { teamsUsableForReopen = false }
+    if (teamsUsableForReopen && deps.teams !== undefined && teamCaller !== undefined) {
       const linked = (await store.get(task.id))?.teamTaskId
       if (linked !== undefined) {
         try {

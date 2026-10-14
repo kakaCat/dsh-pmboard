@@ -228,7 +228,7 @@ describe('未就绪启动 t4 · 接线：只注册降级路由 + 双通道留痕
   })
 
   it('静态判据：apply 的分叉只看 preflight.ok，不散落错误码字面量（A7）', () => {
-    const src = readFileSync(pathToFileURL(repoPath('src/index.ts')), 'utf8')
+    const src = readFileSync(pathToFileURL(repoPath('pm/src/index.ts')), 'utf8')
     // 组合根若开始比较具体错误码，"只覆盖迁移门"的边界就会被悄悄放宽
     expect(src).not.toContain('REQBOARD_REQUIRES_MIGRATION')
     expect(src, '未就绪分支必须在建存储之前 return').toContain('enterNotReadyMode(ctx, preflight.failure, logger)')

@@ -24,7 +24,7 @@ import { KB_PATHS } from 'pm-common/knowledge/types.js'
 const ROOT = process.cwd()
 
 /** 递归收集 src 下的 .ts（测试自用，生产路径的扫描在用例层）。 */
-function srcFiles(dir = join(ROOT, 'src'), out: KbSourceFile[] = []): KbSourceFile[] {
+function srcFiles(dir = join(ROOT, 'pm', 'src'), out: KbSourceFile[] = []): KbSourceFile[] {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, e.name)
     if (e.isDirectory()) srcFiles(p, out)
@@ -87,7 +87,7 @@ describe('renderCodeMap 确定性与口径对齐', () => {
   })
 
   it('抽取口径与库内一致：库内行要么被逐字复现，要么该符号在现文件里已不存在（陈旧，非口径分歧）', () => {
-    const out = renderCodeMap([...srcFiles(join(ROOT, 'src')), ...srcFiles(join(ROOT, 'pm-core', 'src')), ...srcFiles(join(ROOT, 'pm-client', 'src'))])
+    const out = renderCodeMap([...srcFiles(join(ROOT, 'pm', 'src')), ...srcFiles(join(ROOT, 'pm-core', 'src')), ...srcFiles(join(ROOT, 'pm-client', 'src'))])
     expect(out.symbolsTsv.split('\n')[0]).toBe('file\tsymbol\tkind\tsignature')
     const libPath = join(ROOT, KB_PATHS.symbols)
     if (!existsSync(libPath)) return
@@ -109,7 +109,7 @@ describe('renderCodeMap 确定性与口径对齐', () => {
   })
 
   it('回归锁：符号归属到真实定义它的文件（旧脚本的 abs/rel 错配已修）', () => {
-    const out = renderCodeMap([...srcFiles(join(ROOT, 'src')), ...srcFiles(join(ROOT, 'pm-core', 'src')), ...srcFiles(join(ROOT, 'pm-client', 'src'))])
+    const out = renderCodeMap([...srcFiles(join(ROOT, 'pm', 'src')), ...srcFiles(join(ROOT, 'pm-core', 'src')), ...srcFiles(join(ROOT, 'pm-client', 'src'))])
     const rows = tsvRows(out.symbolsTsv).map((l) => l.split('\t'))
     const baseCss = rows.find((r) => r[1] === 'BASE_CSS')
     expect(clientRel(baseCss?.[0] ?? '')).toBe('styles/base.ts')

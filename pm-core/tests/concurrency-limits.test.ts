@@ -19,16 +19,21 @@ import { executeDecompose } from 'pm-core/application/use-cases/Decompose.js'
 import { detectCrossCardOverwrite } from 'pm-core/application/internal/cross-card.js'
 import { checkSubtaskInvariants } from 'pm-core/protocol-domain.js'
 import { LIMITS } from 'pm-common/limits.js'
-import type { WorkflowRunner, WorkflowRunOutcome } from 'pm-core/application/ports.js'
 import { makeHarness, task, req } from 'tests/application/harness.js'
+import { installTeamProducer } from 'tests/application/teams-fake.js'
 
 const FILE = 'pm-core/src/domain/x.ts'
 const exec = { agent: { id: 'session-w-001' } }
 
-class OkRunner implements WorkflowRunner {
-  async start(_i: unknown): Promise<WorkflowRunOutcome> {
-    return { ok: true, value: { ok: true, output: JSON.stringify({ filesChanged: [FILE], completed: ['done'] }) } }
-  }
+/** 团队产出（引擎时代的 `OkRunner`）：每次派发的 Worker 都写一条"有落盘文件"的台账汇报。 */
+const okTeamProduce = { filesChanged: [FILE], completed: ['done'] }
+
+/**
+ * 绑定窗口的 live agent 读数（`deps.agents`）：团队派发要求「caller 是 live agent」。
+ * 生产里由组合根装配；这里等价装配一次，使**不带 exec 的入口**（`advanceRequirement`）也能解到句柄。
+ */
+function wireLiveWindow(h: ReturnType<typeof makeHarness>): void {
+  h.deps.agents = () => ({ get: (id: string) => (id === 'session-w-001' ? { id: 'session-w-001' } : undefined) })
 }
 
 describe('父卡并发上限（6.1）', () => {
@@ -64,7 +69,8 @@ describe('父卡层并行（6.2）', () => {
       task({ id: 't-a', requirementId: 'REQ-000001', status: 'todo', title: 'A' }),
       task({ id: 't-b', requirementId: 'REQ-000001', status: 'todo', title: 'B' }),
     ])
-    h.deps.workflow = new OkRunner()
+    installTeamProducer(h, okTeamProduce)
+    wireLiveWindow(h)
     const out = await advanceRequirement(h.deps, 'REQ-000001')
     expect(out.stopped).toBe('rollup')
     const doneTasks = await h.tasksOf('REQ-000001')
@@ -179,8 +185,8 @@ describe('运行期跨卡覆盖兜底（6.5）', () => {
       task({ id: 't-b', requirementId: 'REQ-000001', status: 'in_progress', title: 'B', claimedAt: h.clock.t }),
       task({ id: 't-b1', requirementId: 'REQ-000001', status: 'todo', parentId: 't-b', stageKind: 'dev' as never }),
     ])
-    h.deps.workflow = new OkRunner()
-    const r = await executeSubtask(h.deps, { subtaskId: 't-b1', windowKey: 'session-w-001' })
+    installTeamProducer(h, okTeamProduce)
+    const r = await executeSubtask(h.deps, { subtaskId: 't-b1', windowKey: 'session-w-001', exec })
     expect(r.ok).toBe(false)
     expect(r.code).toBe('REQBOARD_CROSS_CARD')
 

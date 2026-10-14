@@ -11,6 +11,9 @@ import {
   captureSectionText,
   captureGuidanceText,
   capturePromptForMessage,
+  fallbackSectionTextFrom,
+  headSectionTextFrom,
+  volatileSectionTextFrom,
 } from 'pm-core/application/internal/capture-section.js'
 import {
   windowKeyFromContext,
@@ -158,6 +161,32 @@ describe('captureSectionText pending 注入（确定性消息 hook 命中）', (
     // 旧措辞「不许沉默」已随硬化语换措辞退役，本断言只锁现行单点措辞，不另造字面量。
     expect(text).toContain('沉默跳过等于')
     expect(captureGuidanceText(W)).toContain('弹框问用户')
+  })
+})
+
+describe('立项注入开关（2026-10-09 裁定：缺省不注入，两份文案保留）', () => {
+  const msg = '帮我加一个告警中心页面'
+  const pending = { windowKey: W, text: msg, capturedAt: 1 }
+  const CTX = { agent: { id: W } }
+
+  it('headSectionTextFrom：未绑定窗口 false → 空；true → 静态引导（回退口径）', () => {
+    expect(headSectionTextFrom([], CTX, false)).toBe('')
+    expect(headSectionTextFrom([], CTX, true)).toContain('未绑定需求')
+    // 缺省（不传第三参）= 兼容壳口径 true（生产装配一律显式传，见 gate-wiring）
+    expect(headSectionTextFrom([], CTX)).toContain('未绑定需求')
+  })
+
+  it('volatileSectionTextFrom：false → 命中也不产待捕获提示（kind=capture 被闸）', () => {
+    expect(volatileSectionTextFrom([], [], CTX, { pending, injectCapturePrompt: false })).toBe('')
+    expect(volatileSectionTextFrom([], [], CTX, { pending, injectCapturePrompt: true }))
+      .toContain('检测到用户新输入')
+  })
+
+  it('fallbackSectionTextFrom：false → 未绑定整段为空（静态引导也不回落）', () => {
+    expect(fallbackSectionTextFrom([], [], CTX, { pending, injectCapturePrompt: false })).toBe('')
+    expect(fallbackSectionTextFrom([], [], CTX, { injectCapturePrompt: false })).toBe('')
+    expect(fallbackSectionTextFrom([], [], CTX, { pending, injectCapturePrompt: true }))
+      .toContain('检测到用户新输入')
   })
 })
 

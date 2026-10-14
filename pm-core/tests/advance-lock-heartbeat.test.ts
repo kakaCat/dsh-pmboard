@@ -8,14 +8,20 @@
  *
  * 与既有 pm-core/tests/advance-stale-lock.test.ts 的分工：那边证「真死（stale）可回收 +
  * 新鲜锁挡并发」；这边证「在跑的 run 不会变 stale + 收尾/心跳都不越权」。
+ *
+ * 2026-10-11（退役 workflow 引擎）：单卡的"长跑"不再由假引擎 run 表达，改由**团队等待口挂起**
+ * （Worker 迟迟不写台账）——心跳要防的是"卡在跑"，与执行面是谁无关。
  */
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { advanceRequirement } from 'pm-core/application/use-cases/AdvanceChain.js'
 import { LIMITS } from 'pm-common/limits.js'
-import type { JobStartSpec, JobsPort, WorkflowRunner, WorkflowRunOutcome } from 'pm-core/application/ports.js'
-import { makeHarness, task, req } from 'tests/application/harness.js'
+import type { JobStartSpec, JobsPort } from 'pm-core/application/ports.js'
+import { installTeamProducer } from 'tests/application/teams-fake.js'
+import { makeHarness, task, req, type Harness } from 'tests/application/harness.js'
 
 const FILE = 'pm-core/src/domain/x.ts'
+/** 自动链的调用方句柄：工具入口自带 exec.agent（团队派发要求 caller 是 live agent）。 */
+const EXEC = { agent: { id: 'session-w-001' } }
 
 /** 记录投递参数的 Jobs 端口（只观察，不自动执行 run）。 */
 function recorder(seen: JobStartSpec[]): JobsPort {
@@ -26,17 +32,17 @@ function recorder(seen: JobStartSpec[]): JobsPort {
   } as JobsPort
 }
 
-/** 阻塞型执行器：子卡 run 挂起，直到 release() 被调（模拟「单卡跑很久」）。 */
-function deferredRunner() {
+/**
+ * 阻塞型团队执行面：Worker 不写台账（也不收口团队任务），直到 release() 被调
+ * ——模拟「单卡跑很久」。逐卡记账仍由假件自己做（`getTask` 记录被轮询的卡）。
+ */
+function deferredTeams(h: Harness) {
   let release!: () => void
   const gate = new Promise<void>((resolve) => { release = resolve })
-  const runner: WorkflowRunner = {
-    async start(): Promise<WorkflowRunOutcome> {
-      await gate
-      return { ok: true, value: { ok: true, output: JSON.stringify({ filesChanged: [FILE], completed: ['完成'], evidence: ['绿'] }) } }
-    },
-  }
-  return { runner, release }
+  const teams = installTeamProducer(h, { filesChanged: [FILE], completed: ['完成'], evidence: ['绿'] })
+  const wait = teams.waitForChange.bind(teams)
+  teams.waitForChange = async () => { await gate; return await wait() }
+  return { teams, release }
 }
 
 async function harnessReady() {
@@ -54,14 +60,13 @@ afterEach(() => { vi.useRealTimers() })
 describe('advance 推进锁续租心跳（FR-1）', () => {
   it('① 心跳在跑 + 时钟越过 stale 阈值 → lockAt 被刷新（不变 stale），二次投递仍被挡', async () => {
     const h = await harnessReady()
-    const { runner, release } = deferredRunner()
-    h.deps.workflow = runner
+    const { release } = deferredTeams(h)
     const seen: JobStartSpec[] = []
     h.deps.jobs = recorder(seen)
     vi.useFakeTimers()
 
     const dispatchAt = h.clock.t
-    const out1 = await advanceRequirement(h.deps, 'REQ-000001')
+    const out1 = await advanceRequirement(h.deps, 'REQ-000001', EXEC)
     expect(out1.dispatched).toBe(true)
     const runId = out1.run_id!
     // run 启动：driveChain 跑到子卡执行并挂在 deferred 上（单卡长跑中）
@@ -78,7 +83,7 @@ describe('advance 推进锁续租心跳（FR-1）', () => {
     expect(during.advance?.lockAt).toBeGreaterThan(dispatchAt + LIMITS.advanceLockStaleMs)
 
     // 二次投递：仍按「有 run 在跑」挡下（不放行双跑）
-    const out2 = await advanceRequirement(h.deps, 'REQ-000001')
+    const out2 = await advanceRequirement(h.deps, 'REQ-000001', EXEC)
     expect(out2.stopped).toBe('locked')
     expect(out2.dispatched).toBe(false)
     expect((await h.store.get('REQ-000001'))!.advance?.runId).toBe(runId)
@@ -93,14 +98,13 @@ describe('advance 推进锁续租心跳（FR-1）', () => {
 
   it('② 心跳停（模拟进程死亡）+ 时钟越过 stale → lockAt 不被刷新（配合 stale 回收用例 = 真死才接管）', async () => {
     const h = await harnessReady()
-    const { runner, release } = deferredRunner()
-    h.deps.workflow = runner
+    const { release } = deferredTeams(h)
     const seen: JobStartSpec[] = []
     h.deps.jobs = recorder(seen)
     vi.useFakeTimers()
 
     const dispatchAt = h.clock.t
-    const out1 = await advanceRequirement(h.deps, 'REQ-000001')
+    const out1 = await advanceRequirement(h.deps, 'REQ-000001', EXEC)
     expect(out1.dispatched).toBe(true)
     const runPromise = seen[0]!.run!(new AbortController().signal)
     await vi.advanceTimersByTimeAsync(0)
@@ -119,13 +123,12 @@ describe('advance 推进锁续租心跳（FR-1）', () => {
 
   it('③ 心跳遇 adv.runId 已被他人替换 → 不覆写 lockAt（守卫用例）', async () => {
     const h = await harnessReady()
-    const { runner, release } = deferredRunner()
-    h.deps.workflow = runner
+    const { release } = deferredTeams(h)
     const seen: JobStartSpec[] = []
     h.deps.jobs = recorder(seen)
     vi.useFakeTimers()
 
-    await advanceRequirement(h.deps, 'REQ-000001')
+    await advanceRequirement(h.deps, 'REQ-000001', EXEC)
     const runPromise = seen[0]!.run!(new AbortController().signal)
     await vi.advanceTimersByTimeAsync(0)
 

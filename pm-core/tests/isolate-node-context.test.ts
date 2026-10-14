@@ -54,7 +54,7 @@ import {
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createDiveSessionDriver, type DiveSessionDriver, type DiveSessionDriverDeps } from 'pm-round-driver/session-driver.js'
+import { createDiveSessionDriver, type DiveSessionDriver, type DiveSessionDriverDeps } from 'pm-core/application/dive/session-driver.js'
 import { IsolationTraceFile } from 'src/adapters/IsolationTraceFile.js'
 import {
   ISOLATION_TRACE_FIELDS,

@@ -37,17 +37,19 @@ export const LAYERS = [
   { layer: 'L1', pkgs: ['pm-core'], allow: ['pm-common', 'reqboard-rtm', 'pm-category-kit', 'pm-goal'] },
   // REQ-261010200257-7e2d：goal 内核独立成包（零依赖，core 引用它；工具面在 tool-pm-goal）
   { layer: 'L1', pkgs: ['pm-goal'], allow: [] },
+  // workprocess 内核：两层模型（workStage / workTask）的纯内核——同样零依赖（可被 core 引用）
+  { layer: 'L1', pkgs: ['workprocess'], allow: [] },
 
   {
     layer: 'L2',
-    pkgs: ['tool-pm', 'tool-pm-goal', 'pm-round-driver', 'pm-goal-round-driver', 'pm-workflow', 'pm-client', 'command-pm'],
-    allow: ['pm-common', 'pm-core', 'pm-goal'],
+    pkgs: ['tool-pm', 'tool-pm-goal', 'pm-goal-round-driver', 'pm-client', 'command-pm', 'workprocess-round-driver', 'tool-workprocess'],
+    allow: ['pm-common', 'pm-core', 'pm-goal', 'workprocess'],
   },
-  { layer: 'L3', pkgs: ['pm-templates', 'pm-skills', 'pm-eval-suite', 'pm-scripts'], allow: [] },
+  { layer: 'L3', pkgs: ['pm-templates', 'pm-skills', 'pm-scripts'], allow: [] },
 ] as const
 
 const WORKSPACE_PKGS: readonly string[] = LAYERS.flatMap(l => [...l.pkgs])
-const ASSET_PKGS: readonly string[] = ['pm-templates', 'pm-skills', 'pm-eval-suite', 'pm-scripts']
+const ASSET_PKGS: readonly string[] = ['pm-templates', 'pm-skills', 'pm-scripts']
 const allowOf = (pkg: string): readonly string[] => LAYERS.find(l => (l.pkgs as readonly string[]).includes(pkg))?.allow ?? []
 const layerOf = (pkg: string): string => LAYERS.find(l => (l.pkgs as readonly string[]).includes(pkg))?.layer ?? '?'
 

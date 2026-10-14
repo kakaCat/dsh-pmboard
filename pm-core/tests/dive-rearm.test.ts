@@ -9,15 +9,14 @@
  * @module dsh-pmboard/tests/dive-rearm
  */
 import type { RequirementStore } from 'pm-core/application/ports.js'
-import { legacyStoreProjection } from 'tests/support/legacy-store-projection.js'
 import { factsOf } from 'pm-core/domain/requirement/RequirementSummary.js'
 import { describe, it, expect } from 'vitest'
 import { emptyLedger, type RequirementRecord } from 'pm-core/protocol-domain.js'
 import { rearmIfRecoverable, recoverHealth, isRecoverableRequirement, armExplicit } from 'pm-core/application/internal/rearm.js'
 import { isDrivableRequirement } from 'pm-core/application/dive-core/round-state.js'
-import { createWakeHeartbeat, isStalledWake } from 'pm-round-driver/wake-heartbeat.js'
-import { createDiveRoundDriver, type DiveRoundPorts } from 'pm-round-driver/round-driver.js'
-import { createCaptureRuntime } from 'src/wiring/pm-capture-root.js'
+import { planWake } from 'pm-goal-round-driver/heartbeat.js'
+import type { GoalRoundPorts } from 'pm-goal-round-driver/driver.js'
+import { createGoalRoundLifecycle } from 'src/adapters/goal-round-lifecycle.js'
 
 const WINDOW = 'agent-1'
 
@@ -106,58 +105,103 @@ describe('FR-4 · rearmIfRecoverable：可恢复 / 幂等', () => {
   })
 })
 
+/**
+ * 新链路的心跳夹具：**真宿主实现**（`createGoalRoundLifecycle` 的 facts/wake/markWoken/markWakeFailed）。
+ *
+ * 2026-10-10：旧 `createWakeHeartbeat` 随 `pm-round-driver` 退役 ⇒ 改挂生产的那一份装配
+ * （facts 来自 `peekFacts` 窄投影、wake 走 `wakeAcceptance`、写盘走 `mutateIfPresent`），
+ * 这样"叫醒成功刷 lastWakeAt""连续叫不醒写停手位 + 留痕"验的都是**生产实现**而不是测试替身。
+ */
+function heartbeatOf(
+  h: { store: RequirementStore; ledger: { requirements: RequirementRecord[] } },
+  opts: { now: () => number; agentLive?: boolean; latchOpen?: boolean },
+) {
+  const ports: GoalRoundPorts = {
+    // 本段的被测对象是**心跳**：驱动拍本身用不到事实（叫醒受理后 requestDrive 一拍即返回）。
+    factsOf: () => undefined,
+    delivery: {
+      createRoundMessage: () => ({ message: {}, messageId: 'm1' }),
+      deliverMessage: () => ({ delivered: false }),
+      checkpoint: async () => {},
+      persistAdmission: () => {},
+      contentOf: () => undefined,
+      now: () => opts.now(),
+    },
+    createGoal: () => true,
+    blockGoal: () => true,
+    askStageDone: () => {},
+    trace: () => {},
+    now: () => opts.now(),
+    logger: { info: () => {}, debug: () => {}, warn: () => {} },
+  }
+  return createGoalRoundLifecycle({ on: () => () => {} } as never, {
+    ports,
+    peekFacts: () => h.ledger.requirements.map(factsOf),
+    store: h.store,
+    // 死窗口 = agents 注册表查不到（wakeAcceptance 据此判"不受理"）。
+    agents: { get: () => (opts.agentLive === false ? undefined : { id: WINDOW }) },
+    now: opts.now,
+    ...(opts.latchOpen === undefined ? {} : { providerLatchOpen: () => opts.latchOpen === true }),
+    logger: { info: () => {}, debug: () => {}, warn: () => {} },
+  })
+}
+
+type TickOut = { woken: string[]; skipped: Array<{ id: string; reason: string }>; failed: string[] }
+
 describe('FR-4 · 心跳兜底：只叫醒停着的，叫不动就如实记（REQ-261001213924-1441）', () => {
-  it('tick() 叫醒停滞需求：woken 含该需求、lastWakeAt 落账、连续失败计数归零', async () => {
+  it('tick() 叫醒停滞需求：woken 含该需求、lastWakeAt 落账', async () => {
     const h = repoOf([makeReq({ dive: { activation: 'armed', phase: 'active', roundsInStage: 0, driverHealth: { state: 'healthy', attempts: 2 } } as never })])
-    const woken: string[] = []
-    const hb = createWakeHeartbeat({  store: h.store, now: () => 5000, wake: (id) => { woken.push(id); return true } })
-    const res = await hb.tick()
+    const hb = heartbeatOf(h, { now: () => 5000 })
+    const res = await hb.wakeTick() as TickOut
     expect(res.woken).toContain('REQ-t')
-    expect(woken).toEqual(['REQ-t'])
     expect((await h.store.get('REQ-t'))!.dive!.lastWakeAt).toBe(5000)
-    expect((await h.store.get('REQ-t'))!.dive!.driverHealth!.attempts).toBe(0)
     expect((await h.store.get('REQ-t'))!.dive!.activation).toBe('armed')
+    await hb.teardown()
   })
 
-  it('连续 3 次叫不动 → health=paused（wake-undeliverable），activation 始终不变', async () => {
+  it('连续 3 次叫不动（死窗口）→ health=paused（wake-undeliverable:3），activation 始终不变', async () => {
     const h = repoOf([makeReq({ dive: { activation: 'armed', phase: 'active', roundsInStage: 0 } as never })])
-    const hb = createWakeHeartbeat({  store: h.store, now: () => 7000, wake: () => false })
-    expect((await hb.tick()).paused).toEqual([])
-    expect((await hb.tick()).paused).toEqual([])
-    const third = await hb.tick()
-    expect(third.paused).toContain('REQ-t')
+    const hb = heartbeatOf(h, { now: () => 7000, agentLive: false })
+    expect((await hb.wakeTick() as TickOut).failed).toContain('REQ-t')
+    expect((await hb.wakeTick() as TickOut).failed).toContain('REQ-t')
+    expect((await h.store.get('REQ-t'))!.dive!.driverHealth, '未达阈值不写健康位').toBeUndefined()
+    await hb.wakeTick()
     const dive = (await h.store.get('REQ-t'))!.dive!
     expect(dive.driverHealth!.state).toBe('paused')
-    expect(dive.driverHealth!.reason).toBe('wake-undeliverable')
-    expect(dive.driverHealth!.attempts).toBe(3)
+    expect(dive.driverHealth!.reason).toBe('wake-undeliverable:3')
     expect(dive.activation, '人的意图不得被运行时故障改写').toBe('armed')
     expect(isDrivableRequirement((await h.store.get('REQ-t')))).toBe(false)
     const allBodies = ((await h.store.get('REQ-t'))!.comments ?? []).map((c) => String(c.body)).join(' ')
-    expect(allBodies, '失败要响亮：台账上留一条人看得懂的诊断').toContain('都没叫动')
+    expect(allBodies, '失败要响亮：台账上留一条人看得懂的诊断').toContain('连续叫不醒')
+    await hb.teardown()
   })
 
-  it('暂停之后不是死路：recoverHealth 一叫回来，心跳就能再次叫醒它（计数归零）', async () => {
-    const h = repoOf([makeReq({ dive: { activation: 'armed', phase: 'active', roundsInStage: 0, driverHealth: { state: 'paused', reason: 'wake-undeliverable', attempts: 3 } } as never })])
-    const hb = createWakeHeartbeat({  store: h.store, now: () => 9000, wake: () => true })
-    const before = await hb.tick()
+  it('暂停之后不是死路：recoverHealth 一叫回来，心跳就能再次叫醒它', async () => {
+    const h = repoOf([makeReq({ dive: { activation: 'armed', phase: 'active', roundsInStage: 0, driverHealth: { state: 'paused', reason: 'wake-undeliverable:3', attempts: 3 } } as never })])
+    // 时钟可推：恢复动作会刷新 `lastActiveAt`，恢复后的那拍必须落在新鲜窗之外才谈得上"叫醒"。
+    let clock = 9000
+    const hb = heartbeatOf(h, { now: () => clock })
+    const before = await hb.wakeTick() as TickOut
     expect(before.woken, '暂停中不叫（停下等人，不自己反复推）').toEqual([])
-    expect(before.skipped).toContain('REQ-t')
-    expect(await recoverHealth({  store: h.store as never, now: () => 9500 }, 'REQ-t', 'board-resume')).toBe(true)
-    const after = await hb.tick()
+    expect(before.skipped.map((x) => x.reason)).toContain('runtime-paused')
+    expect(await recoverHealth({  store: h.store as never, now: () => clock }, 'REQ-t', 'board-resume')).toBe(true)
+    clock += 20 * 60 * 1000
+    const after = await hb.wakeTick() as TickOut
     expect(after.woken).toContain('REQ-t')
     expect((await h.store.get('REQ-t'))!.dive!.driverHealth!.state).toBe('healthy')
     expect((await h.store.get('REQ-t'))!.dive!.driverHealth!.attempts).toBe(0)
+    await hb.teardown()
   })
 
   it('还新鲜（刚成功唤醒过）与不可驱动的需求 → 跳过，不叫', async () => {
     const fresh = makeReq({ id: 'REQ-fresh', dive: { activation: 'armed', phase: 'active', roundsInStage: 0, lastWakeAt: 9990 } as never })
     const manual = makeReq({ id: 'REQ-manual', dive: { activation: 'disarmed', phase: 'idle', roundsInStage: 0 } as never })
     const h = repoOf([fresh, manual])
-    const hb = createWakeHeartbeat({  store: h.store, now: () => 10_000, wake: () => { throw new Error('不该被叫') } })
-    const res = await hb.tick()
+    const hb = heartbeatOf(h, { now: () => 10_000 })
+    const res = await hb.wakeTick() as TickOut
     expect(res.woken).toEqual([])
-    expect(res.skipped.sort()).toEqual(['REQ-fresh', 'REQ-manual'])
-    expect(isStalledWake(fresh, 10_000, 60_000)).toBe(false)
+    expect(res.skipped.map((x) => x.id + ':' + x.reason).sort()).toEqual(['REQ-fresh:fresh', 'REQ-manual:not-armed'])
+    await hb.teardown()
   })
 })
 
@@ -226,61 +270,12 @@ describe('FR-4 · rearmIfRecoverable：人的主动暂停与终态永不被覆�
   })
 })
 
-describe('FR-4 · 集成：requirement-moved 先把误停摆叫醒，再起轮', () => {
-  function harness(req: RequirementRecord = makeReq()) {
-    const { ledger, repo } = repoOf([req])
-    const inbox = { nextTurn: [] as Array<{ id?: string; source?: { kind?: string } }>, nextStep: [] as unknown[], prepend(target: string, m: unknown) { (target === 'next-step' ? this.nextStep : this.nextTurn).unshift(m as never) } }
-    const agent = { id: WINDOW, status: 'idle', session: { id: WINDOW }, inbox, followup(message: unknown) { inbox.nextTurn.push(message as never) } }
-    const warns: string[] = []
-    const { deliverer } = createCaptureRuntime({ plugin: 'dsh-pmboard', getAgents: () => ({ get: (id: string) => (id === WINDOW ? agent : undefined) }) })
-    const ports: DiveRoundPorts = { store: legacyStoreProjection(repo as never),
-      // B12 阶段②a：本模块的写改走新端口（与 peekFacts 同源）
-
-      // B12 阶段①-a：idle 拍的同步判定改用窄投影
-      peekFacts: () => ledger.requirements.map(factsOf),
-      delivery: deliverer,
-      agents: { get: (id) => (id === WINDOW ? agent : undefined), withoutInitiator: (op) => op() },
-      fiberActive: () => true,
-      cancel: () => {},
-      whenIdle: async () => {},
-      checkpoint: async () => {},
-      renderRoundText: (i) => 'round ' + i.round,
-      now: () => 1000,
-      logger: { info: () => {}, debug: () => {}, warn: (m) => warns.push(m) },
-    }
-    // B12 阶段⑤族 B：driver 端口早已挂新端口；返回值也带上 store 供断言用
-    // B12 阶段⑤：driver 端口已挂新端口；返回值也带上 store 供断言用
-    return { driver: createDiveRoundDriver(ports), ledger, store: legacyStoreProjection(repo as never), inbox, warns }
-  }
-  // B12 阶段⑤族 B：判定回调允许 async（断言走新端口后天然是 async）
-  async function waitFor(fn: () => boolean | Promise<boolean>, ms = 500): Promise<boolean> {
-    const t0 = Date.now()
-    while (Date.now() - t0 < ms) { if (await fn()) return true; await new Promise((r) => setTimeout(r, 5)) }
-    return fn()
-  }
-
-  it('误停摆需求收到 requirement-moved → activation 回到 armed，且 inbox 真的收到 dive 回合消息', async () => {
-    const h = harness()
-    expect((await h.store.get('REQ-t'))!.dive!.activation).toBe('disarmed')
-    h.driver.onRequirementMoved('REQ-t')
-    const armed = await waitFor(async () => (await h.store.get('REQ-t'))!.dive!.activation === 'armed')
-    expect(armed).toBe(true)
-    const delivered = await waitFor(() => h.inbox.nextTurn.length > 0)
-    expect(delivered).toBe(true)
-    expect(h.inbox.nextTurn[0]?.source?.kind).toBe('dive')
-    expect((await rearmComments(h))).toHaveLength(1)
-  })
-
-  it('人主动暂停（disarmed + idle）收到 requirement-moved → 不武装、不起轮（负例）', async () => {
-    const h = harness(makeReq({ dive: { activation: 'disarmed', phase: 'idle', roundsInStage: 0 } as never }))
-    h.driver.onRequirementMoved('REQ-t')
-    await h.driver.whenQuiet()
-    await new Promise((r) => setTimeout(r, 30))
-    expect((await h.store.get('REQ-t'))!.dive!.activation).toBe('disarmed')
-    expect(h.inbox.nextTurn).toHaveLength(0)
-    expect((await rearmComments(h))).toHaveLength(0)
-  })
-})
+// 原「集成：requirement-moved 先把误停摆叫醒，再起轮」两例**随旧回合半退役**（2026-10-10）。
+// 它们读的是旧驱动 `onRequirementMoved` 里"先 rearmIfRecoverable 再起轮"的那段接线；新组合根
+// （pm/src/index.ts）只把 `reqboard/requirement-moved` 接到 `requestDriveFor`，**没有** rearm 接线
+// （`rearmIfRecoverable` 在生产已零调用者）。故无法用新链路等义改写：要么原样保留（测已不存在的接线），
+// 要么删除并登记为失去的覆盖。此处取后者，并在迁移报告里标为**生产缺口**（误停摆的自动恢复只剩心跳失败路径，
+// 人的显式恢复走 `armExplicit`，见下节）。
 
 /**
  * REQ-261002173819-69c7 FR-3 · `armExplicit`：人显式要继续时，把手动模式的需求接回自动化。
@@ -371,6 +366,10 @@ describe('FR-3 · armExplicit：人显式把需求接回自动化', () => {
 
     const r = (await h.store.get('REQ-t'))!
     expect(isDrivableRequirement(r)).toBe(true)
-    expect(isStalledWake(r, 9_000_000, 10 * 60 * 1000)).toBe(true)
+    // 「停滞」判据改由新包纯函数作答（旧 `isStalledWake` 随包退役）。
+    expect(planWake(
+      { id: 'REQ-t', armed: true, hasWork: true, ...(r.dive?.lastWakeAt === undefined ? {} : { lastWakeAt: r.dive.lastWakeAt }) },
+      9_000_000, { freshMs: 10 * 60 * 1000 },
+    ).kind).toBe('wake')
   })
 })

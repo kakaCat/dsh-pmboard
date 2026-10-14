@@ -6,14 +6,19 @@
  *  ② 写集冲突对 → 严格串行（后张开始 ≥ 前张结束）；
  *  ③ 未声明写集对 → 同样严格串行（保守纪律：宁可慢、不可错；存量卡全属此类 = 行为不变式 2）；
  *  ④ 并行组内一张失败 → 链暂停 + 成功卡结果保留 + 失败卡回滚，history 同批共享 batchId。
+ *
+ * 2026-10-11（退役 workflow 引擎）：「这张卡在执行」不再由假引擎 run 表达，改由**团队等待口**
+ * 表达（Worker 写台账的那一刻就是这张卡的执行窗口）——重叠/串行是可观测的执行时序，与执行面无关。
  */
 import { describe, it, expect } from 'vitest'
 import { advanceRequirement } from 'pm-core/application/use-cases/AdvanceChain.js'
-import type { WorkflowRunner, WorkflowRunOutcome } from 'pm-core/application/ports.js'
-import { makeHarness, task, req } from 'tests/application/harness.js'
+import { installTeamProducer, subtaskIdOfDescription, type FakeTeams } from 'tests/application/teams-fake.js'
+import { makeHarness, task, req, type Harness } from 'tests/application/harness.js'
 
 const FILE_A = 'src/a/x.ts'
 const FILE_B = 'docs/b/y.ts'
+/** 自动链的调用方句柄：工具入口自带 exec.agent（团队派发要求 caller 是 live agent）。 */
+const EXEC = { agent: { id: 'session-w-001' } }
 
 interface Call { sub: string; phase: 'start' | 'end' }
 
@@ -33,39 +38,55 @@ async function harnessTwoParents(ws1: string[], ws2: string[]) {
   return h
 }
 
-/** 追踪型执行器：记录每张子卡的开始/结束；开工时刻落盘各自的改动文件并把时钟拨快 1
- *  （让各卡执行窗口/mtime 可区分，贴近生产时序）；gate=true 时等两张都开工才放行（造重叠窗口）。 */
-function trackingRunner(h: ReturnType<typeof makeHarness>, calls: Call[], opts: { gate?: boolean; failFor?: string } = {}) {
+/**
+ * 追踪型团队执行面：在假件的等待口前后记录每张子卡的开始/结束；开工时刻落盘各自的改动文件
+ * 并把时钟拨快 1（让各卡执行窗口/mtime 可区分，贴近生产时序）；gate=true 时等两张都开工才
+ * 放行（造重叠窗口）。
+ *
+ * 子卡 id 从「链当前轮询的 team task」反查（`awaitTeamTask` 先 `getTask(tid)` 再 `waitForChange`，
+ * 等待口本身不带 id）——两张卡并发等待时也不会串味。
+ */
+function trackingTeams(h: Harness, calls: Call[], opts: { gate?: boolean; failFor?: string } = {}): FakeTeams {
   const started = new Set<string>()
   let releaseAll!: () => void
   const allStarted = new Promise<void>((resolve) => { releaseAll = resolve })
-  const runner: WorkflowRunner = {
-    async start(spec: { args?: { subtaskId?: string } }): Promise<WorkflowRunOutcome> {
-      const sub = String(spec.args?.subtaskId ?? '?')
-      calls.push({ sub, phase: 'start' })
-      const file = sub === 't-s1' ? FILE_A : FILE_B
-      // 先拨钟再落盘：mtime 严格晚于本卡开工时刻（跨卡检查据此认「是我自己写的」），
-      // 各卡执行窗口/mtime 也因此可区分，贴近生产时序。
-      h.clock.t += 1
-      h.docs.put(file, 'written-by-' + sub)
-      started.add(sub)
-      if (opts.gate === true && started.size >= 2) releaseAll()
-      if (opts.gate === true) await allStarted
-      calls.push({ sub, phase: 'end' })
-      if (opts.failFor === sub) return { ok: false, reason: '凭证门失败：改动文件不存在（模拟硬失败）' }
-      return { ok: true, value: { ok: true, output: JSON.stringify({ filesChanged: [file], completed: ['完成'], evidence: ['绿'] }) } }
-    },
+  const teams = installTeamProducer(h, (sub) =>
+    opts.failFor === sub
+      ? undefined   // Worker 没写台账 = 这张卡失败（team_report_missing）
+      : { filesChanged: [sub === 't-s1' ? FILE_A : FILE_B], completed: ['完成'], evidence: ['绿'] })
+  let polled: string | undefined
+  const getTask = teams.getTask.bind(teams)
+  teams.getTask = (caller, taskId) => { polled = taskId; return getTask(caller, taskId) }
+  const wait = teams.waitForChange.bind(teams)
+  teams.waitForChange = async () => {
+    const teamTaskId = polled ?? ''
+    const sub = subtaskIdOfDescription(teams.created[Number(teamTaskId.slice(3)) - 1]?.description ?? '') ?? ''
+    calls.push({ sub, phase: 'start' })
+    const file = sub === 't-s1' ? FILE_A : FILE_B
+    // 先拨钟再落盘：mtime 严格晚于本卡开工时刻（跨卡检查据此认「是我自己写的」），
+    // 各卡执行窗口/mtime 也因此可区分，贴近生产时序。
+    h.clock.t += 1
+    h.docs.put(file, 'written-by-' + sub)
+    started.add(sub)
+    if (opts.gate === true && started.size >= 2) releaseAll()
+    if (opts.gate === true) await allStarted
+    // 并发下兄弟卡的 `getTask` 会改写假件"当前在等哪张卡"（等待口不带 id）——
+    // 挂起期间被人改过，故回钉到本卡再让它写台账。
+    if (teamTaskId.length > 0) getTask(undefined, teamTaskId)
+    const r = await wait()   // Worker 干活 + 写台账 = 本卡执行窗口的其余部分
+    calls.push({ sub, phase: 'end' })
+    return r
   }
-  return runner
+  return teams
 }
 
 describe('advance 批内写集分组真并行（FR-2）', () => {
   it('① 写集无冲突 → 两子卡执行窗口重叠（真并行），链跑完进验收', async () => {
     const h = await harnessTwoParents([FILE_A], [FILE_B])
     const calls: Call[] = []
-    h.deps.workflow = trackingRunner(h, calls, { gate: true })
+    trackingTeams(h, calls, { gate: true })
 
-    const out = await advanceRequirement(h.deps, 'REQ-000001')
+    const out = await advanceRequirement(h.deps, 'REQ-000001', EXEC)
 
     expect(out.stopped).toBe('rollup')
     // 重叠窗口：两个 start 都在任何 end 之前
@@ -87,9 +108,9 @@ describe('advance 批内写集分组真并行（FR-2）', () => {
   it('② 写集冲突对（同目录） → 严格串行：后张开始 ≥ 前张结束', async () => {
     const h = await harnessTwoParents([FILE_A], ['src/a/z.ts'])
     const calls: Call[] = []
-    h.deps.workflow = trackingRunner(h, calls)
+    trackingTeams(h, calls)
 
-    const out = await advanceRequirement(h.deps, 'REQ-000001')
+    const out = await advanceRequirement(h.deps, 'REQ-000001', EXEC)
 
     expect(out.stopped).toBe('rollup')
     expect(calls).toEqual([
@@ -103,9 +124,9 @@ describe('advance 批内写集分组真并行（FR-2）', () => {
   it('③ 未声明写集对 → 保守串行（存量默认 ≡ 旧行为）', async () => {
     const h = await harnessTwoParents([], [])
     const calls: Call[] = []
-    h.deps.workflow = trackingRunner(h, calls)
+    trackingTeams(h, calls)
 
-    const out = await advanceRequirement(h.deps, 'REQ-000001')
+    const out = await advanceRequirement(h.deps, 'REQ-000001', EXEC)
 
     expect(out.stopped).toBe('rollup')
     expect(calls.map((c) => c.sub + ':' + c.phase)).toEqual([
@@ -116,9 +137,9 @@ describe('advance 批内写集分组真并行（FR-2）', () => {
   it('④ 并行组内一张失败 → 链暂停 + 成功卡结果保留 + 失败卡回滚', async () => {
     const h = await harnessTwoParents([FILE_A], [FILE_B])
     const calls: Call[] = []
-    h.deps.workflow = trackingRunner(h, calls, { gate: true, failFor: 't-s1' })
+    trackingTeams(h, calls, { gate: true, failFor: 't-s1' })
 
-    const out = await advanceRequirement(h.deps, 'REQ-000001')
+    const out = await advanceRequirement(h.deps, 'REQ-000001', EXEC)
 
     expect(out.stopped).toBe('paused')
     const tasks = await h.taskStore.listByRequirement('REQ-000001')

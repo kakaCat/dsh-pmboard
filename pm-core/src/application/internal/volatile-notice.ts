@@ -89,6 +89,13 @@ export interface VolatileNoticeInput {
    * 缺省 = 未命中/被分类档案跳过 → 不产 stage 段。
    */
   readonly stageText?: string | undefined
+  /**
+   * 立项注入开关（2026-10-09 用户裁定）。`false` = **不产** kind='capture' 段（两份立项文案
+   * 保留在代码里但不进提示词）；缺省 / `true` = 改造前行为。生产装配由组合根经
+   * `captureGuidanceInjection(config)` 显式传入（缺省 false）；纯函数缺省 true 只为兼容既有
+   * 直调测试（兼容壳口径，见 `capture-section.ts` 的同名参数）。
+   */
+  readonly injectCapturePrompt?: boolean | undefined
 }
 
 /**
@@ -157,6 +164,9 @@ export function buildVolatileNotice(
 
     // ── 待捕获提示（含用户消息节选）：每条用户消息就变（≈700 tok），且只在**未绑定**窗口出现 ──
     case 'capture': {
+      // 2026-10-09 用户裁定：立项提示词**缺省不注入**（`captureGuidanceInjection` 缺省 false）。
+      // 只闸读路径：pendingCapture 登记与尾部投递照旧，回退 = 一份配置。
+      if (input.injectCapturePrompt === false) return undefined
       if (open.length > 0) return undefined
       const pending = input.pending
       if (pending === undefined) return undefined

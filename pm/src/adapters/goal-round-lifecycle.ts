@@ -26,7 +26,7 @@ import type { WireLogger } from 'pm-goal-round-driver/subscriptions.js'
 import { createGoalHeartbeat } from 'pm-goal-round-driver/heartbeat.js'
 import { proposeStageDone } from 'pm-goal-round-driver/stage-prompt.js'
 import type { StagePromptFacts, StagePromptHistoryMap } from 'pm-goal-round-driver/stage-prompt.js'
-import { wakeAcceptance } from 'pm-round-driver/wake-liveness.js'
+import { wakeAcceptance } from 'pm-core/application/dive/wake-liveness.js'
 
 /** 一 agent 一窗口键（与订阅层同口径：会话 id 即窗口键）。 */
 function windowKeyOf(agent: unknown): string {
@@ -49,6 +49,11 @@ export interface GoalRoundLifecycleDeps {
   readonly enterAwaiting?: (requirementId: string) => void
   /** 弹框到顶留痕。 */
   readonly recordExhausted?: (requirementId: string) => void
+  /**
+   * 回合收尾后的**后置能力调用**（H1–H5 的唯一调用者 = 驱动）。
+   * 缺省 = 未装配 = 零行为；异步边界由实现侧持有（D-17），见 `GoalRoundPorts.postRound` 头注。
+   */
+  readonly postRound?: (agentId: string) => void | Promise<void>
   readonly now: () => number
   readonly providerLatchOpen?: () => boolean
   /** 心跳新鲜窗（毫秒；缺省 10 分钟）。 */
@@ -85,6 +90,8 @@ export function createGoalRoundLifecycle(
     ...deps.ports,
     // 阶段裁决（FR-8）：驱动只在"判据满足"时调一次；条件/在途/冷却/上限都在 stage-prompt 里判。
     askStageDone: (requirementId) => proposeStage(requirementId),
+    // 后置能力（H1–H5）：驱动是唯一调用者；未装配 = 零行为。
+    ...(deps.postRound === undefined ? {} : { postRound: deps.postRound }),
   })
 
   const heartbeat = createGoalHeartbeat({

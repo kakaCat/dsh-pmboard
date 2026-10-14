@@ -146,6 +146,21 @@ export interface PluginConfig {
     enabled?: boolean;
     root?: string;
   };
+  /**
+   * 立项注入提示词开关（2026-10-09 用户裁定）。
+   *
+   * - 缺省 / `false` → **不注入**：两份立项文案（`captureGuidanceText` 静态引导与
+   *   `capturePromptForMessage` 待捕获提示）保留在代码里，但永不进 systemPrompt。
+   *   立项改由 agent 自主调 `reqboard_capture`（工具自述即触发口径）或人用 `/pm <名称>` 命令。
+   * - `true` → 恢复改造前行为（未绑定窗口注入引导；命中待捕获候选时注入针对性提示）——
+   *   一份配置即可回退，不必改代码等发版。
+   *
+   * 非法值（非布尔）→ **装配期抛错**：与 `archive.unlistedGate` / `docsRootSource` 同口径，
+   * 「我明明开了它却还在跑（或反过来）」是最难查的一类问题。
+   */
+  capture?: {
+    injectGuidance?: boolean;
+  };
 }
 
 /** skills 投放的生效设置（FR-7）。`root` 缺省 = 由调用方按会话工作区解析。 */
@@ -246,6 +261,26 @@ export function archiveGateSetting(config?: PluginConfig): 'enforce' | 'warn' {
   if (raw === undefined) return 'enforce'
   if (raw === 'enforce' || raw === 'warn') return raw
   throw new Error("archive.unlistedGate 只能是 'enforce' 或 'warn'：实际 " + String(raw))
+}
+
+/**
+ * 立项注入提示词开关（2026-10-09 用户裁定）——**缺省 false = 不注入**。
+ *
+ * 为什么要它而不是删代码：文案与登记链路整体保留（`captureGuidanceText` /
+ * `capturePromptForMessage` / pendingCapture / kind='capture' 尾部投递），只把**读路径**的
+ * 注入闸掉 ⇒ 回退 = 一份配置，不需要发版；代价 = 仓库里留一段默认不跑的链路（已在此注明）。
+ *
+ * 注入的两个收口点（两处都必须读本值，缺一处就会漏注入）：
+ *   ① `gate-wiring.ts` 的 section 取词（未绑定窗口头部引导 / 回落整段）；
+ *   ② `pm/src/index.ts` 易变段内容投影（kind='capture' 的正文）。
+ */
+export function captureGuidanceInjection(config?: PluginConfig): boolean {
+  const raw: unknown = config?.capture?.injectGuidance
+  if (raw === undefined) return false
+  if (typeof raw !== 'boolean') {
+    throw new Error('capture.injectGuidance 只能是 boolean：实际 ' + String(raw))
+  }
+  return raw
 }
 
 export function knowledgeSettings(config?: PluginConfig): {

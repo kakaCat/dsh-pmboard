@@ -467,7 +467,8 @@ function startLockHeartbeat(deps: UseCaseDeps, requirementId: string, runId: str
 export const ENGINE_UNREACHABLE_MARK = 'subtask_engine_unreachable'
 
 /**
- * FR-10 **入口守卫**：引擎不可达时不开工、不落任何子卡，如实报一次，之后幂等短路。
+ * FR-10 **入口守卫**：子卡执行面不可用时不开工、不落任何子卡，如实报一次，之后幂等短路。
+ * （2026-10-11：判据由引擎探针改为团队服务 available()——引擎适配器已退役。）
  *
  * 为什么放在链的最前面而不是"派卡失败后再报"：
  *   ① 不可达是**环境前提**不满足（agent preset 把引擎 isolate 在 agent 作用域），重试无解——
@@ -479,16 +480,19 @@ async function engineUnreachableGuard(
   deps: UseCaseDeps,
   requirementId: string,
 ): Promise<{ steps: AdvanceStep[]; stopped: AdvanceStop } | undefined> {
-  let probe: boolean | undefined
-  try { probe = deps.workflow?.reachable?.() } catch { probe = undefined }
-  // 探针缺失/抛错 → 按可达处理（不改变既有行为；预检是"多一道保险"，不是新门槛）。
-  if (probe !== false) return undefined
+  // 执行面判据（2026-10-11 退役 workflow 引擎后只剩团队一条）：**明确不可用**才拦。
+  // 两条保守纪律（与旧引擎探针同款，逐字保留）：
+  //   · 服务未装配（undefined）= 未知 → 不设门槛；
+  //   · 判据抛错 → 同样按可达处理（**预检是多一道保险，不是新门槛**——探针坏了不该拦住链）。
+  let available = true
+  try { available = deps.teams === undefined || deps.teams.available() } catch { available = true }
+  if (available) return undefined
   const now = deps.clock.now()
   const req = await requirementStoreOf(deps).get(requirementId)
   const text = fmt(
-    '子卡执行引擎不可达（{code}）：**本次未落任何子卡**。两条出路：'
+    '子卡执行面不可用（{code}）：**本次未落任何子卡**。两条出路：'
     + '① 改由本窗口自证过凭证门（reqboard_task_report 写 filesChanged 或 completed）；'
-    + '② 让 workflowEngine 在本插件可见的作用域可达（当前 profile 按设计不可达，重试无解）。',
+    + '② 让 Agent Teams 服务在本插件可见的作用域可用（引擎那条路已于 2026-10-11 退役）。',
     { code: ENGINE_UNREACHABLE_MARK },
   )
   const already = (req?.advance?.history ?? []).some(

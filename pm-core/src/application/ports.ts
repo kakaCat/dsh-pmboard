@@ -1087,47 +1087,6 @@ export interface GatePostChainPort {
   runPending(windowKey: string, session?: unknown): Promise<ChainRunSummary>
 }
 
-// ---------------------------------------------------------------------------
-// 叶子执行端口（REQ-4842fe t4 / FR-4）：一张子卡 = 一次独立 workflow run
-// ---------------------------------------------------------------------------
-
-/** 一次 workflow run 的结果投影（stopReason 非 completed → ok:false，永不抛给调用方）。 */
-export interface WorkflowRunOutcome {
-  ok: boolean
-  /** realm 物化后的 lossless JSON（仅 ok=true 时可信）。 */
-  value?: unknown
-  /** 失败原因：stopReason(error/cancelled) / engine_unavailable / start_failed。 */
-  reason?: string
-}
-
-/** 起一次 run 的入参（parent 类型不外泄——端口只透传，adapter 内桥接引擎类型）。 */
-export interface WorkflowStartInput {
-  script: string
-  meta: { name: string; description: string; phases?: string[] }
-  args?: Record<string, unknown>
-  /** 子代理归属（引擎要求 live Agent）；调用方传入 exec.agent。 */
-  parent?: unknown
-  signal?: AbortSignal
-}
-
-/**
- * WorkflowRunner 端口（唯一实现 = adapters/WorkflowEngineRunner.ts）。
- *
- * 为什么要有这个端口：application/domain 层禁止 import 运行时 `@deepseek-ai/*`
- * （layer-boundary 门禁），而子卡执行必须触达 `ctx.workflowEngine`——端口把
- * "起一次 run" 收敛成一个方法，引擎类型只在 adapter 内出现。
- */
-export interface WorkflowRunner {
-  start(input: WorkflowStartInput): Promise<WorkflowRunOutcome>
-  /**
-   * 可达性探针（REQ-261004065652-5c1c FR-10）。缺省 undefined = 未知（按可达处理，行为不变）。
-   *
-   * 为什么要它：本 profile 的 agent preset 用 `isolate: { workflowEngine: true }` 把引擎圈在
-   * agent 作用域，**profile 级插件永远取不到**（2026-10-03 实测子卡链连挂 4 次）。此前是
-   * "开工 → 派卡 → 失败 → 报错"，人看到的是"卡坏了"；预检把它变成"开工前就说清楚"。
-   */
-  reachable?(): boolean
-}
 
 // ---------------------------------------------------------------------------
 // 团队执行端口（FR-11 路线 A / REQ-260926140539-457b + REQ-260927144541-0481）：
@@ -1190,7 +1149,7 @@ export interface TeamTaskUpdateInput {
  * 为什么要有这个端口：application/domain 层禁止 import 运行时 `@deepseek-ai/*`（layer-boundary
  * 门禁），而团队执行必须触达 TeamService——端口把"起 Worker / 建任务 / CAS / 等变更"收敛成方法，
  * 服务类型只在 adapter 内出现。`caller` = live Agent 句柄（透传，adapter 内桥接），
- * 与 WorkflowStartInput.parent 同款处理。
+ * （`caller` 为 live Agent 句柄，透传；engine 类型只在 adapter 内桥接。）
  */
 export interface AgentTeamsPort {
   /** 服务是否可用（未装配 → false；调用方走兼容路径，不静默成功）。 */
@@ -1810,13 +1769,9 @@ export interface UseCaseDeps {
   /** 立项拒绝留痕（FR-5；缺省 = 无粘滞，行为与 FR-5 前一致）。 */
   rejections?: CaptureRejectionPort
   /**
-   * 子卡执行端口（REQ-4842fe t4）。缺省 = 引擎不可用——执行子卡时**显式失败**
-   * （ok:false, reason=engine_unavailable），绝不静默成功。
-   */
-  workflow?: WorkflowRunner
-  /**
-   * 团队执行端口（FR-11 路线 A / REQ-260926140539-457b）：子卡实施段改走 DSH 原生 Agent Teams。
-   * 缺省 = 服务不可用 → 调用方退回 workflow 兼容路径（不静默成功）。
+   * 子卡执行端口（FR-11 路线 A / REQ-260926140539-457b）：子卡实施段走 DSH 原生 Agent Teams。
+   * **2026-10-11 退役 workflow 引擎后这是唯一执行面**：缺省 = 服务不可用 →
+   * 执行子卡时如实拒绝（ok:false，reason 保留 engine_unavailable 子串供失败分类器识别）。
    */
   teams?: AgentTeamsPort
   /** 失败告警通道（缺省 = 只留痕不告警，由组合根决定）。 */

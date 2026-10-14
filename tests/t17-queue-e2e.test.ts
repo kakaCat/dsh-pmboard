@@ -42,6 +42,7 @@ import { askConfirm } from 'pm-core/application/use-cases/AskConfirm.js'
 import { executeReportTask } from 'pm-core/application/use-cases/ReportTask.js'
 import { executeMoveTask } from 'pm-core/application/use-cases/MoveTask.js'
 import { executeSubtask } from 'pm-core/application/use-cases/ExecuteTask.js'
+import { installTeamProducer } from 'tests/application/teams-fake.js'
 
 const WINDOW = 'session-w-001'
 const EXEC = { agent: { id: WINDOW } }
@@ -75,7 +76,7 @@ function makeRealDeps(root: string) {
     hostFs: new FileHostFs(),
     jobs: { available: () => true, get: async () => null, start: async () => 'job-t17-1' },
   } as unknown as UseCaseDeps
-  return { deps, repo, store, docs, queueRepo, clock, questions }
+  return { deps, repo, store, docs, queueRepo, taskStore, clock, questions }
 }
 
 const REQ_DOC = [
@@ -124,7 +125,7 @@ describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 �
   it('一条真实连续链跑到底（真实仓储 + 临时工作区）', async () => {
     const root = mkdtempSync(join(tmpdir(), 't17-e2e-'))
     roots.push(root)
-    const { deps, store, docs, questions } = makeRealDeps(root)
+    const { deps, store, docs, taskStore, clock, questions } = makeRealDeps(root)
 
     // ── ① 真实立项（reqboard_create 用例入口）──────────────────────────────
     const created = await executeCreateRequirement(deps, {
@@ -236,23 +237,36 @@ describe('t17 端到端：新建需求 → 拆分落队列 → 台账零新增 �
     const filesOf = (n: string) => 'src/' + n + '.ts'
     await docs.write(filesOf('a'), 'export const a = 1\n')
     await docs.write(filesOf('b'), 'export const b = 1\n')
-    // 子卡执行引擎端口（端口桩：与 execute-task / execute-subtask-team 同一口径——引擎是外部依赖，
-    // 本用例验的是**任务存储/状态机/ready 推导**这条链，不是引擎本身）。
-    deps.workflow = {
-      async start(input: unknown) {
-        const args = input as { args?: { subtaskId?: string } }
-        const id = args.args?.subtaskId ?? ''
-        return {
-          ok: true,
-          value: { ok: true, output: JSON.stringify({ filesChanged: [filesOf('a')], completed: ['子卡 ' + id + ' 完成'] }) },
-        }
-      },
-    } as never
-
     const readQ = () => JSON.parse(readFileSync(queueFile, 'utf8')) as {
       tasks: { id: string; status: string; parentId?: string; dependsOn: string[] }[]
       ready: string[]; layers: { layer: number; tasks: string[] }[]
     }
+    // 子卡执行面端口桩（与 execute-task / execute-subtask-team 同一口径——执行面是外部依赖，
+    // 本用例验的是**任务存储/状态机/ready 推导**这条链，不是执行面本身）。
+    // 2026-10-11 退役 workflow 引擎后**唯一执行面 = Agent Teams 派发**：Worker 经
+    // reqboard_task_report 把产出写回台账，链读回来走原样下游（假件见 tests/application/teams-fake.js）。
+    // 产出文件按**本子卡的父卡**给（c1 → src/a.ts，c2 → src/b.ts）：回调是同步的，
+    // 故直接读队列文件取 parentId（队列文件是本用例的断言对象，读它不改它）。
+    // 宿主面只用到 clock.t（产出时间戳）与 setTaskFields（写回 lastReport）：本用例的 deps 是
+    // **自建**的（真实 JsonQueueRepository + 临时工作区），harness 默认 TaskStore 不在这条链上，
+    // 故把写回接到真实的 taskStore——否则 Worker 的汇报会写进另一个"队列"，链读不到。
+    const teamsHost = {
+      // installTeamProducer 会把端口注册到宿主 deps 上：这里给一个丢弃用的占位（下面显式接 deps.teams）
+      deps: {},
+      clock: { get t() { return clock.t } },
+      setTaskFields: (taskId: string, patch: Record<string, unknown>) =>
+        taskStore.mutate(reqId, (tasks) => {
+          const t = tasks.find(x => x.id === taskId)
+          if (t === undefined) return undefined
+          Object.assign(t, patch)
+          return tasks
+        }),
+    } as unknown as Parameters<typeof installTeamProducer>[0]
+    const teams = installTeamProducer(teamsHost, (subtaskId) => {
+      const file = readQ().tasks.find(t => t.id === subtaskId)?.parentId === c2!.id ? filesOf('b') : filesOf('a')
+      return { filesChanged: [file], completed: ['子卡 ' + subtaskId + ' 完成'] }
+    })
+    deps.teams = teams
     const report = (taskId: string, f: string) => executeReportTask(deps, {
       task_id: taskId, summary: '做完 ' + f, completed: ['改了 ' + f], files_changed: [f],
     }, EXEC)

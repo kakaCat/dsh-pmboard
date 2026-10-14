@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { makeTestStore } from 'tests/application/harness.js'
 import { taskStoreAt } from 'tests/queue/route-deps.js'
-import { harness as diveLoopHarness, makeReq as makeDiveReq } from 'tests/support/dive-loop-harness.js'
+import { goalHarness, makeReq as makeGoalReq } from 'tests/support/goal-round-harness.js'
 import { createReqboardHandler } from 'src/http/routes.js'
 import { FileDocRepository } from 'src/adapters/FileDocRepository.js'
 import { toProjectEntries } from 'src/adapters/workspaceRegistryRows.js'
@@ -258,30 +258,23 @@ describe('E-02 写入期间邻居改走共享单例根：本次写入仍落本�
 })
 
 describe('E-03 同项目两窗口先后 idle：归属都通过，但起轮仍是窗口级（只发生一次）', () => {
-  it('需求绑在 x（两窗口同属 P1）→ 两次 idle 后只投递一次，且不出现「归属不符」留痕', async () => {
-    const rec = { ...makeDiveReq(REQ_X, SESSION_X), projectId: P1 } as RequirementRecord
-    const h = diveLoopHarness({
-      reqs: [rec],
-      withLatch: false,
-      // 与组合根同款：会话 → 项目身份，用同一份假注册表
-      projectIdOfWindow: (id: string) => projectIdOfWindow(projectRows(), id),
-    })
+  it('需求绑在 x（两窗口同属 P1）→ 两次 idle 后只投递一次', async () => {
+    // 与组合根同款：会话 → 项目身份用同一份假注册表；两个窗口**都**属 P1（不是"另一个项目"）
+    expect(projectIdOfWindow(projectRows(), SESSION_X)).toBe(P1)
+    expect(projectIdOfWindow(projectRows(), SESSION_Y)).toBe(P1)
+
+    // 2026-10-10 改挂新 goal 驱动：起轮只按**绑定窗口**（`sourceSessionId`）取需求，
+    // 故"同项目另一个窗口"的 idle 天然零投递（归属没被误判成跨项目）。
+    const rec = { ...makeGoalReq(REQ_X, SESSION_X), projectId: P1 } as RequirementRecord
+    const h = goalHarness({ reqs: [rec], windows: [SESSION_Y] })
 
     await h.idle(SESSION_X)
     expect(h.deliveredFor(REQ_X)).toBe(1)
 
     // 第二个窗口（同项目、不是这条需求的绑定窗口）也 idle：不得再投一次
-    ;(h.agents as Record<string, unknown>)[SESSION_Y] = {
-      id: SESSION_Y,
-      status: 'idle',
-      session: { id: SESSION_Y },
-      inbox: { nextTurn: [], nextStep: [], prepend() { /* noop */ } },
-    }
     await h.idle(SESSION_Y)
-
     expect(h.deliveredFor(REQ_X), '同项目多窗口不得重复起轮（归属是项目级、起轮是窗口级）').toBe(1)
-    // 归属没被误判成「另一个项目」——两个窗口都属 P1
-    expect(h.warns.some((w) => w.includes('跳过归属不符'))).toBe(false)
+    expect(h.warns.some((w) => w.includes('归属不符'))).toBe(false)
   })
 })
 

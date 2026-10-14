@@ -7,15 +7,13 @@
  * 的构造，以及 Dive 会话驱动器的装配（**订阅由 Dive 服务持有**）。
  */
 import { AgentDeliverer } from '../adapters/AgentDeliverer.js';
-import { createDiveSessionDriver, type DiveSessionDriverDeps } from 'pm-round-driver/session-driver.js'
-import type { DiveRoundDriver } from 'pm-round-driver/round-driver.js';
+import { createDiveSessionDriver, type DiveSessionDriverDeps } from 'pm-core/application/dive/session-driver.js'
 import type { ToolTraceEntry, RecentUserMsg } from '../adapters/SessionProbeAdapter.js';
 import type { InjectionLogFile } from '../adapters/InjectionLogFile.js';
 import type { InjectionLogPort } from 'pm-core/application/internal/injection-log.js';
 import type { AddressInjection } from '../adapters/TemplateRoot.js';
-import type { GateChainPort } from 'pm-core/application/gate/GatePostChain.js';
 import type { GatePromptPort, RequirementStore, TaskStore, UseCaseDeps } from 'pm-core/application/ports.js';
-import { gatePromptExhaustedComment } from 'pm-round-driver/gate-prompt.js';
+import { gatePromptExhaustedComment } from 'pm-core/application/dive/gate-prompt.js';
 import { draftPromptFactsFor } from 'pm-core/application/internal/window.js';
 import { isDrivableRequirement } from 'pm-core/application/dive-core/round-state.js';
 import { applyPickupAdvance } from 'pm-core/application/internal/rollup.js';
@@ -101,7 +99,6 @@ export interface DiveDriverAssemblyDeps {
   /** 模板地址注入（REQ-260922213356-4a45 T-3）：绝对模板根 + 开关；缺省不注入。 */
   address?: AddressInjection;
   injectionLog: InjectionLogFile;
-  gateChain: GateChainPort;
   /** 节点结算信号入口（隔离端口由组合根按会话构造）。 */
   onNodeSettled: NonNullable<DiveSessionDriverDeps['onNodeSettled']>;
   /**
@@ -138,11 +135,6 @@ export interface DiveDriverAssemblyDeps {
    * session/event 只做簿记）。谁拥有这条订阅要在调用方看得见，不藏在装配函数里。
    */
   attachAgentStatus: (handler: (agent: unknown, status: unknown) => void) => (() => void) | undefined;
-  /**
-   * round 半句柄（REQ-260926215013-1568 T-5）：idle 拍定序 + session/event 回合簿记经它。
-   * 缺省 = 纯采集/簿记（与改动前逐字一致，向后兼容）。
-   */
-  round?: DiveRoundDriver;
   /**
    * **FR-14 受信人工门弹框端口**（design I-10）：**只在有弹框通道处装配**——组合根须同时具备
    * ① `userQuestions` 服务（`UseCaseDeps.questions.available()`）与 ② 一条活窗口的 agent
@@ -211,7 +203,8 @@ export function assembleDiveSessionDriver(deps: DiveDriverAssemblyDeps): (() => 
     // armed+active / 预留 / 准入计数 / 内容不变量）。据此：
     //   · **阶段纪律**不再投递——它本就在每次请求的 system prompt（capture-section.ts），
     //     旧的 onStagePrompt 投递是纯冗余且会额外起轮（FR-11 实测根因），故不再提供该 dep；
-    //   · **里程碑催办**只在此登记——armed+active 转 round 半 queueReminder，其余只写 comment。
+    //   · **里程碑催办**只在此登记——armed+active 原转旧 round 半 `queueReminder` 投递；该通道
+    //     随 `pm-round-driver` 退役，新 goal 驱动未提供催办端口 ⇒ 现走下方**响亮告警**（不静默）。
     onMilestoneNotice: (input) => {
       // B12 阶段①-a：只需 id/status/dive/advance 的有界字段 ⇒ 走窄投影（isDrivableRequirement 收的就是这个形状）
       const req = deps.requirementStore.peekFacts().find((r) => r.id === input.requirementId)
@@ -220,14 +213,11 @@ export function assembleDiveSessionDriver(deps: DiveDriverAssemblyDeps): (() => 
         return
       }
       if (isDrivableRequirement(req)) {
-        if (deps.round === undefined) {
-          // 未接线不得静默丢（armed+active 的催办必须经 round 半投递）。
-          deps.logger.warn(
-            `reqboard milestone notice 未投递：round 半未装配（需求=${input.requirementId}，产物=${input.artifactKey}）`,
-          )
-          return
-        }
-        deps.round.queueReminder(input.requirementId, input.text)
+        // 催办投递通道（旧 round 半 queueReminder）随 pm-round-driver 退役 ⇒ **响亮不静默**：
+        // warn 留痕、不投递（已知缺口：新 goal 驱动没有催办端口，见交付说明）。
+        deps.logger.warn(
+          `reqboard milestone notice 未投递：催办端口未装配（需求=${input.requirementId}，产物=${input.artifactKey}）`,
+        )
         return
       }
       // 非 armed+active（全仓现状：0 个需求开过 armed）：只写台账 comment，绝不投递会话——
@@ -257,16 +247,11 @@ export function assembleDiveSessionDriver(deps: DiveDriverAssemblyDeps): (() => 
     ...(deps.onTurnEnded === undefined ? {} : { onTurnEnded: deps.onTurnEnded }),
     // REQ-422af1 t10：节点结算信号 → 隔离分发（开关关时 dispatcher 一次都不执行）。
     onNodeSettled: deps.onNodeSettled,
-    // REQ-e3b6a0 t7：**闸门后置链 Phase B 的唯一时机**。闸门作答不一定伴随用户消息，
-    // 故不能只靠 onNodeSettled；且监听器内不得做会话写操作（D-17）→ 放到异步边界。
-    // （链按 (windowKey, gate, decidedAt) 幂等，与结算路径重复触发也只跑一轮。）
-    onTurnEnd: (windowKey, session) => {
-      setImmediate(() => {
-        void deps.gateChain.runPending(windowKey, session).catch((err) => {
-          deps.logger.warn('reqboard gate-chain run failed:', err);
-        });
-      });
-    },
+    // 2026-10-11 裁定：闸门后置链（H1–H5）的调用者 = **goal Driver**，不再在会话驱动器上自挂
+    // turn/end——同一回合两处订序会让「接下来做什么」有两个决定者。触发点见
+    // `pm/src/index.ts` 的 `GoalRoundManager.postRound`（驱动在回合收尾处发一次调用）。
+    // 链内部按 (windowKey, gate, decidedAt) 幂等，与结算路径重复触发也只跑一轮。
+    // 窗口键同口径（会话 id ?? agent id）：与装饰器登记 PendingGate 的窗口键对不上就静默不跑。
     // REQ-260924213231-b1c4 T-9（FR-6 写入器 B）：回合异常收尾（aborted/error/interrupted）
     // → 用异常原因**补新**断点。同样只发信号，写台账放到异步边界（D-17：监听器内禁会话写；
     // 这里虽只写本地台账，但保持与闸门链一致的时序纪律，不阻塞事件循环）。
@@ -294,7 +279,6 @@ export function assembleDiveSessionDriver(deps: DiveDriverAssemblyDeps): (() => 
       }).catch((err) => deps.logger.warn('reqboard gate-prompt exhausted comment 写失败：', err)).catch((err) => deps.logger.warn('reqboard gate-prompt exhausted comment 写失败：', err));
     },
     logger: { info: (m) => deps.logger.info(m), debug: (m) => deps.logger.debug(m) },
-    ...(deps.round !== undefined ? { round: deps.round } : {}),
     // FR-14：受信人工门弹框端口**按注入装配**（缺省 = 零行为，见 DiveDriverAssemblyDeps.gatePrompt）。
     ...(deps.gatePrompt !== undefined ? { gatePrompt: deps.gatePrompt } : {}),
   };

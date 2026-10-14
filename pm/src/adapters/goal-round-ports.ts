@@ -18,9 +18,14 @@ import {
 import { isDiveRoundSource } from 'pm-core/protocol-domain.js'
 import { roundReservationValid } from 'pm-core/application/dive-core/round-state.js'
 import type { RequirementFacts } from 'pm-core/domain/requirement/RequirementSummary.js'
+import { openTasksOf } from 'pm-core/domain/status/Predicates.js'
 import type { RequirementRecord } from 'pm-core/protocol-domain.js'
-import { goalPhaseOf, readyToCloseOf, goalsProgressOf, createTaskGoal } from 'pm-goal'
-import type { GoalPhase, StageGoal } from 'pm-goal'
+import { goalPhaseOf, readyToCloseOf, goalsProgressOf, createGoal } from 'pm-goal'
+import { STAGE_ARTIFACT_REQUIREMENTS } from 'pm-core/domain/artifact/ArtifactSpec.js'
+import { PIPELINE_ORDER } from 'pm-core/domain/requirement/RollbackSpec.js'
+import { HUMAN_ONLY_REQ_TRANSITIONS } from 'pm-core/domain/requirement/RequirementStatus.js'
+import { STAGE_CHAIN } from 'pm-core/domain/prompt/chain.js'
+import type { GoalBlockReason, GoalPhase, StageGoal } from 'pm-goal'
 import type {
   AgentFacts, GoalRoundPorts, PreStepValidationInput,
 } from 'pm-goal-round-driver/driver.js'
@@ -31,7 +36,7 @@ export interface GoalRoundAdapterDeps {
   peekFacts(): readonly RequirementFacts[]
   /** 台账整条读（阶段目标的陈述与判据）。 */
   getRequirement(id: string): Promise<RequirementRecord | undefined>
-  /** 任务队列（ready 卡 + acceptance）。 */
+  /** 任务队列（ready 卡 + acceptance；goal 已不挂卡，读需求整条记录）。 */
   tasksOf(requirementId: string): Promise<readonly { id: string; status: string; acceptance?: string }[]>
   /** 既有投递器（与旧驱动同一份）。 */
   delivery: GoalRoundPorts['delivery']
@@ -39,8 +44,10 @@ export interface GoalRoundAdapterDeps {
   checkpoint(): Promise<void>
   /** 准入计数落库（`>=` 守卫在实现侧）。 */
   persistAdmission(requirementId: string, round: number): void
-  /** 建 L2 任务目标（pm-goal）。 */
-  createTaskGoal(requirementId: string, taskId: string, objective: string): Promise<boolean> | boolean
+  /** 建当前 goal（pm-goal；挂需求，一条需求一个）。 */
+  createGoal(requirementId: string, objective: string): Promise<boolean> | boolean
+  /** goal 落盘 block（pm-goal 的 `blockGoal`；故障语义的耐久半边）。 */
+  blockGoal(requirementId: string, reason: GoalBlockReason): Promise<boolean> | boolean
   /** 阶段裁决弹框（stage-prompt.proposeStageDone）。 */
   askStageDone(requirementId: string): Promise<void> | void
   /** 有界留痕（诊断面）。 */
@@ -66,7 +73,7 @@ function currentStageGoals(record: RequirementRecord | undefined): readonly Stag
 function pickNextTask(
   tasks: readonly { id: string; status: string; acceptance?: string }[],
 ): { id: string; acceptance?: string } | undefined {
-  const open = tasks.filter((t) => t.status !== 'done' && t.status !== 'canceled')
+  const open = openTasksOf(tasks)
   return open.find((t) => t.status === 'running') ?? open[0]
 }
 
@@ -80,14 +87,30 @@ export function buildGoalRoundPorts(deps: GoalRoundAdapterDeps): GoalRoundPorts 
       const tasks = await deps.tasksOf(req.id)
       const next = pickNextTask(tasks)
 
-      // 阶段目标（L1）：陈述/判据来自整条记录；进度用有界计数。
+      // 阶段目标：陈述/判据来自整条记录；进度用有界计数。
       const stageGoals = currentStageGoals(record)
       const currentStage = String(req.status ?? '')
       const current = stageGoals.find((g) => g.stage === currentStage)
       const progress = goalsProgressOf(stageGoals)
       const stageReady = await readyToCloseOf({ store: depsStoreOf(deps) }, req.id)
 
-      const phase: GoalPhase | undefined = await goalPhaseOf({ taskStore: depsTaskStoreOf(tasks) }, req.id)
+      // 2026-10-11（用户裁定）：阶段推进由**驱动**做，不写死在迁移/归档路径里 ——
+      // 故这里把"阶段成没成"的**客观证据**与"能推到哪、是不是门"算成事实，交驱动决策。
+      const requiredKinds = STAGE_ARTIFACT_REQUIREMENTS[currentStage as keyof typeof STAGE_ARTIFACT_REQUIREMENTS] ?? []
+      const artifactKinds = new Set((record?.artifacts ?? []).map((a) => String((a as { kind?: unknown }).kind)))
+      const stageEvidenceReady = requiredKinds.length > 0 && requiredKinds.every((k) => artifactKinds.has(k))
+      const stageIdx = (PIPELINE_ORDER as readonly string[]).indexOf(currentStage)
+      const nextStage = stageIdx >= 0 && stageIdx < PIPELINE_ORDER.length - 1 ? PIPELINE_ORDER[stageIdx + 1] : undefined
+      const stageAdvance = nextStage === undefined
+        ? undefined
+        : { to: nextStage, humanGate: HUMAN_ONLY_REQ_TRANSITIONS.has(currentStage + '>' + nextStage) }
+
+      const phase: GoalPhase | undefined = await goalPhaseOf({ store: depsStoreOf(deps) }, req.id)
+
+      // 当前 goal 的身份/修订/上限（round-limit 闸与授权三元组的事实源）。
+      // 上限缺省回落阶段上限（`roundLimitFor`）——goal 没显式设 cap 时，阶段上限就是它的 cap。
+      const currentGoal = record?.goal
+      const effectiveCap = currentGoal === undefined ? undefined : (currentGoal.maxGoalRounds ?? roundLimitFor(currentStage))
 
       // 闸：人工门与预算判据是异步/现算的，**先算齐再建事实**（事实是只读契约，不能后补键）。
       let humanGateOpen = false
@@ -136,15 +159,31 @@ export function buildGoalRoundPorts(deps: GoalRoundAdapterDeps): GoalRoundPorts 
               stage: {
                 ...(current === undefined ? {} : { stageStatement: current.statement, doneCriteria: current.doneCriteria }),
                 ...(progress === undefined ? {} : { stageProgress: progress }),
+                // 本阶段开工序言（core 的阶段链事实）→ 驱动把它注入回合提示词
+                ...(STAGE_CHAIN[currentStage as keyof typeof STAGE_CHAIN]?.entry === undefined
+                  ? {}
+                  : { stageEntry: STAGE_CHAIN[currentStage as keyof typeof STAGE_CHAIN]!.entry }),
+                // 阶段推进**指令**的三条事实（推进本身由 agent 调 reqboard_move 或人经弹框完成，
+                // 驱动只讲清楚"证据齐不齐 / 下一阶段是谁 / 是不是门"）：
+                stageEvidenceReady,
+                ...(stageAdvance === undefined
+                  ? {}
+                  : { stageNext: stageAdvance.to, stageNextIsHumanGate: stageAdvance.humanGate }),
               },
             }),
         goal: {
           windowKey,
           ...(phase === undefined ? {} : { phase }),
+          ...(currentGoal === undefined ? {} : { goalId: currentGoal.id, goalRevision: currentGoal.revision, objective: currentGoal.objective }),
+          ...(effectiveCap === undefined ? {} : { maxGoalRounds: effectiveCap }),
           stageReadyToClose: stageReady,
-          hasReadyTask: next !== undefined,
+          // 本拍还有没有下一件事（ready 卡）：只决定"继续还是停手 / 这一拍做什么"，不是 goal 身份。
+          // 卡的 acceptance **不进事实**（D-1：卡不做 objective）——objective 的唯一来源是下面的 stagePending。
           ...(next === undefined ? {} : { nextTaskId: next.id }),
-          ...(next?.acceptance === undefined ? {} : { nextTaskAcceptance: next.acceptance }),
+          // 阶段目标：建 goal 的**目标来源**（表缺失 / 已落章都不给）。
+          ...(current === undefined || current.state === 'done'
+            ? {}
+            : { stagePending: { stage: current.stage, statement: current.statement, doneCriteria: current.doneCriteria } }),
         },
         gates,
       }
@@ -152,7 +191,15 @@ export function buildGoalRoundPorts(deps: GoalRoundAdapterDeps): GoalRoundPorts 
     },
 
     delivery: deps.delivery,
-    createTaskGoal: (requirementId, taskId, objective) => deps.createTaskGoal(requirementId, taskId, objective),
+    createGoal: (requirementId, objective) => deps.createGoal(requirementId, objective),
+    /**
+     * goal 落盘 block（故障语义的耐久半边）：没有当前 goal → false（幂等：没东西可 block，不等于失败）。
+     */
+    async blockGoal(requirementId, reason) {
+      const record = await deps.getRequirement(requirementId)
+      if (record?.goal === undefined) return false
+      return deps.blockGoal(requirementId, reason)
+    },
     askStageDone: (requirementId) => deps.askStageDone(requirementId),
     trace: (reason, requirementId) => deps.trace(reason, requirementId),
 
@@ -188,18 +235,9 @@ export function buildGoalRoundPorts(deps: GoalRoundAdapterDeps): GoalRoundPorts 
   }
 }
 
-/** 只读 store 端口（`readyToCloseOf` 只需 `get`）。 */
+/** 只读 store 端口（`readyToCloseOf` / `goalPhaseOf` 只需 `get`）。 */
 function depsStoreOf(deps: GoalRoundAdapterDeps) {
   return { get: (id: string) => deps.getRequirement(id) } as never
 }
 
-/** 只读任务端口（`goalPhaseOf` 只需 `listByRequirement`）。 */
-function depsTaskStoreOf(tasks: readonly { id: string; status: string; acceptance?: string }[]) {
-  return {
-    // 投影要**带 goal**：goalPhaseOf 读的就是它（漏掉它会永远判"没有 goal"）。
-    listByRequirement: async (_id: string) =>
-      tasks.map((t) => ({ id: t.id, status: t.status, goal: (t as { goal?: unknown }).goal })),
-  } as never
-}
-
-export { isDiveRoundSource, roundLimitFor, createTaskGoal }
+export { isDiveRoundSource, roundLimitFor, createGoal }

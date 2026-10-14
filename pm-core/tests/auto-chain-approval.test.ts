@@ -8,19 +8,23 @@ import { describe, it, expect } from 'vitest'
 import { askConfirm } from 'pm-core/application/use-cases/AskConfirm.js'
 import { DEFAULT_CONFIRM_OPTIONS } from 'pm-common/text/labels.js'
 import { pmHeader } from 'pm-common/text/pm-badge.js'
-import type { JobStartSpec, WorkflowRunner, WorkflowRunOutcome } from 'pm-core/application/ports.js'
+import type { JobStartSpec } from 'pm-core/application/ports.js'
 import { makeHarness, req } from 'tests/application/harness.js'
+import { installTeamProducer } from 'tests/application/teams-fake.js'
 
 const FILE = 'pm-core/src/domain/x.ts'
 const exec = { agent: { id: 'session-w-001' } }
 /** 延迟 jobs 夹具捕获的投递参数（每次 seed() 清空）。 */
 const dispatched: JobStartSpec[] = []
 
-class OkRunner implements WorkflowRunner {
-  async start(_i: unknown): Promise<WorkflowRunOutcome> {
-    return { ok: true, value: { ok: true, output: JSON.stringify({ filesChanged: [FILE], completed: ['子卡完成'] }) } }
-  }
-}
+/**
+ * 子卡产出策略（团队假件）：Worker 在 `waitForChange` 里把这份产出写进台账，
+ * 链读回来合成与引擎时代**同形**的结果（filesChanged / completed 一路走原样下游）。
+ *
+ * 2026-10-11 退役 workflow 引擎：原 `OkRunner implements WorkflowRunner` 表达的"这一次执行产出什么"
+ * 改由团队端口表达——执行面只剩 Agent Teams 一条路，假引擎已随之删除。
+ */
+const produce = { filesChanged: [FILE], completed: ['子卡完成'] }
 
 function seed() {
   const h = makeHarness()
@@ -49,7 +53,7 @@ function seed() {
     },
   }))
   // 任务不 seed（v9 / B-5）："此刻没有任务"= 没有队列文件，由各用例显式断言（不静默省略）。
-  h.deps.workflow = new OkRunner()
+  installTeamProducer(h, produce)
   // BUG-4 改法①（design/fix-design.md「BUG-4」第 1 行）：给 seed() 加**延迟 jobs 夹具**——
   // `start` 捕获 spec 不跑（模式见 concurrency-matrix.test.ts:90 / advance-dispatch-owner.test.ts:21）。
   // 定性：**有意前移**——批准**同一调用内**已 `advanceRequirement()` 并经 `deps.jobs.start` 投递；
@@ -182,7 +186,7 @@ describe('REQ-84bea5：断链修复回归测试', () => {
     await h.seedSettled()
     // 任务不 seed（v9 / B-5）：本用例要证明的是"从无任务开始批准也能落库"，由下方断言保证。
     expect(h.queueExists('REQ-000002')).toBe(false)
-    h.deps.workflow = new OkRunner()
+    installTeamProducer(h, produce)
     h.questions.answers = [{ selected: [DEFAULT_CONFIRM_OPTIONS[0] as string] }]
     
     const out = await askConfirm(h.deps, {
@@ -194,7 +198,7 @@ describe('REQ-84bea5：断链修复回归测试', () => {
     expect(out.confirmed).toBe(true)
     expect(out.gate_failure).toBeUndefined()
     
-    // 注：完整的自动推进链（implementing + autoRun）需要更复杂的 workflow 设置
+    // 注：完整的自动推进链（implementing + autoRun）需要更复杂的夹具设置（在线窗口 + 团队假件）
     // 本测试只验证覆盖门禁双源合并的核心修复
   })
   

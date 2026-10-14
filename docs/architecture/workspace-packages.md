@@ -1,4 +1,4 @@
-# 17 个 workspace 包与分层（REQ-261009174713-7bc8）
+# 16 个 workspace 包与分层（REQ-261009174713-7bc8）
 
 > 本页是本次重构的**架构说明**：实现怎么分包、依赖方向怎么执法、加东西落在哪。
 > 白名单唯一权威是 `scripts/package-boundary-check.mts` 的 `LAYERS`；跑 `node scripts/package-boundary-check.mts` 自检。
@@ -22,11 +22,20 @@
 | `L0.5` | `pm-category-kit`（分组 `category/`） | `pm-common` | **需求类别**层契约：`RequirementTypeSpec` + `createTypeRegistry`（构建即校验） |
 | `L0.5` | `pm-category-{feature,bug,doc,refactor,spike,chore}`（分组 `category/`） | `pm-common` · `pm-category-kit` | 六个需求类别规格（必填节 delta / 必交与条件设计文档 / 条件产物 / 模板映射 / 归档去向 / 中文标签） |
 | `L1` | `pm-core` | `pm-common` · `reqboard-rtm` · `pm-category-kit` · `pm-goal` | 领域与用例：`domain`（状态机/判定）、`application`（用例/内部装配/类型消费端口）、`repositories` |
-| `L1` | `pm-goal` | —（零依赖） | PM 双层 goal 内核（**分组 `goal/`**）：TaskGoal/StageGoal 纯状态机与判据 + 结构化存储端口契约（core 引用它，反向禁止） |
-| `L2` | `tool-pm` · `tool-pm-goal`（分组 `goal/`）· `pm-goal-round-driver`（分组 `goal/`）· `pm-workflow` · `pm-client` · `command-pm` | `pm-common` · `pm-core`（`tool-pm-goal` 另含 `pm-goal`） | 入口与适配：agent 工具（`tool-pm` 19 个 + `tool-pm-goal` 的 `reqboard_goal`）/ 回合驱动 / 工作流引擎适配 / 前端渲染 / `/pm` 命令面 |
+| `L1` | `pm-goal` | —（零依赖） | PM goal 内核（**分组 `goal/`**）：Goal/StageGoal 纯状态机与判据 + 结构化存储端口契约（core 引用它，反向禁止） |
+| `L2` | `tool-pm` · `tool-pm-goal`（分组 `goal/`）· `pm-goal-round-driver`（分组 `goal/`）· `pm-client` · `command-pm` | `pm-common` · `pm-core`（`tool-pm-goal` 另含 `pm-goal`） | 入口与适配：agent 工具（`tool-pm` 19 个 + `tool-pm-goal` 的 `reqboard_goal`）/ 回合驱动 / 前端渲染 / `/pm` 命令面 |
 | `L3` | `pm-templates` · `pm-skills` · `pm-scripts` | （无 import） | 资产包：模板 / 技能 / 脚本位；运行期由插件主体包 `pm/` 以**双根**解析（包内优先） |
 
 **依赖方向（硬纪律）**：只许向内（`L0 ← L4`），资产包零 import，`pm-category-kit` 是工具包唯一合法横向通路。
+
+> **2026-10-11 退役 `pm-workflow`**（原 L2）：子卡执行只有团队一条真实路径（Agent Teams 派发，FR-11 路线 A），
+> 引擎适配器（`WorkflowEngineRunner`）所桥接的 `ctx.workflowEngine` 被宿主 preset 的 `isolate: { workflowEngine: true }`
+> 按设计隔离，profile 级插件永远取不到（实测子卡链连挂 4 次）。包、组合根装配、tsconfig/vitest 别名与边界清单已同步清除；
+> `AdvanceChain` 的开工前守卫改判「执行面明确不可用」（= 团队服务 `available()===false`）并保留 `subtask_engine_unreachable` 码（台账历史可比）。
+>
+> **代码级收口（同批）**：`UseCaseDeps.workflow` 端口与 `WorkflowRunner`/`WorkflowStartInput`/`WorkflowRunOutcome` 类型、
+> `ExecuteTask` 的引擎分支、`internal/workflow-script.ts`（脚本生成 + 契约断言）一并删除；
+> 子卡执行只剩团队一条路（`ExecuteTask` 的显式拒绝分支兜底）。
 
 ## 装载形态 #loading
 

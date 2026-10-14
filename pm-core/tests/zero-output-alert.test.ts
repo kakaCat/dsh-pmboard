@@ -6,14 +6,25 @@
  *  ② 去重可推导：floor(streak/threshold) 大于既有告警数才写 → 阈值 2 时连续 4 次只写 2 条；
  *  ③ 真实路径：子卡连跑零产出，需求台账出现一条结构化告警评论（含 stage/streak/threshold）；
  *  ④ 边界：非零产出后重置、阈值 0 不报、告警不阻断子卡 done。
+ *
+ * 2026-10-11 退役 workflow 引擎（产出通道改团队台账）后，③ 的跑法换了但语义没换：
+ *  · 换卡序列：原先"同一张卡退回 todo 再跑 4 次"在团队路径会撞「台账报告早于本次派发」
+ *    （`team_report_stale`，同一 team task 不会二次开工）；streak 本就是按**同阶段全部执行**
+ *    的尾部连算，故改为**同阶段多张卡依次跑**——与生产链（review 段多张卡）同形；
+ *  · 零产出形态：团队口径下"成功但零产出"= 台账写了一条**不落在工作区**的路径
+ *    （`../outside.ts` → 归一后 form='outside' 被丢弃）且没有 completed ⇒ outputCount=0。
+ *    引擎时代的对应形态是"run 返回一个空 JSON 信封"（raw 非空、可数条目为 0）。
  */
 import { describe, it, expect } from 'vitest'
 import { zeroOutputStreak, shouldAlertZeroOutput } from 'pm-common/workflow/StageTelemetry.js'
 import { executeSubtask } from 'pm-core/application/use-cases/ExecuteTask.js'
-import type { WorkflowRunner, WorkflowRunOutcome } from 'pm-core/application/ports.js'
 import { makeHarness, task, req } from 'tests/application/harness.js'
+import { installTeamProducer } from 'tests/application/teams-fake.js'
 
 const FILE = 'pm-core/src/domain/x.ts'
+/** 不落在工作区的路径：Worker 写了台账（不是"没写"），但归一时被判 outside 丢弃 ⇒ 可数产出为 0。 */
+const ZERO_OUTPUT_FILE = '../outside.ts'
+const exec = { agent: { id: 'session-w' } }
 
 describe('FR-3 判据段 ① streak 与去重', () => {
   it('末尾连续零产出计数；非零产出即停；未知即断（未知≠零产出）', () => {
@@ -42,34 +53,26 @@ describe('FR-3 判据段 ① streak 与去重', () => {
 })
 
 describe('FR-3 真实路径 ② 连续零产出 → 台账留一条结构化告警', () => {
-  /** 反复跑同一张零产出子卡（每次把它退回 todo 再跑），产出恒为空。 */
-  async function runZeroOutputTimes(times: number, opts: { threshold?: number; output?: Record<string, unknown> } = {}) {
+  /** 依次跑 N 张同阶段子卡（每张派发一次 Worker），产出按 `opts.output` 恒为空/恒有值。 */
+  async function runZeroOutputTimes(times: number, opts: { threshold?: number; output?: { filesChanged?: string[]; completed?: string[] } } = {}) {
     const h = makeHarness()
     h.docs.put(FILE, 'x')
     h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true }))
+    h.seedTasks('REQ-000001', [
+      task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', title: '父卡' }),
+      ...Array.from({ length: times }, (_, i) => task({
+        id: 't-s' + (i + 1), requirementId: 'REQ-000001', status: 'todo',
+        title: '子卡' + (i + 1), parentId: 't-p', stageKind: 'review' as never,
+      })),
+    ])
     await h.seedSettled()
     if (opts.threshold !== undefined) h.deps.zeroOutputAlertThreshold = opts.threshold
-    const output = opts.output ?? {}
-    h.deps.workflow = {
-      async start(): Promise<WorkflowRunOutcome> {
-        return { ok: true, value: { ok: true, output: JSON.stringify(output) } }
-      },
-    } as WorkflowRunner
+    installTeamProducer(h, opts.output ?? { filesChanged: [ZERO_OUTPUT_FILE] })
 
-    await h.setTasks('REQ-000001', [
-      task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', title: '父卡' }),
-      task({ id: 't-s', requirementId: 'REQ-000001', status: 'todo', title: '子卡', parentId: 't-p', stageKind: 'review' as never }),
-    ])
-    for (let i = 0; i < times; i += 1) {
-      const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w' })
-      expect(r.ok).toBe(true)
-      // 同一张卡再跑一次：只把状态退回 todo，**保住执行历史**（streak 靠历史累加）
-      await h.taskStore.mutate('REQ-000001', (tasks) => {
-        const t = tasks.find((x) => x.id === 't-s')!
-        t.status = 'todo' as never
-        t.claimedAt = undefined as never
-        return tasks
-      })
+    for (let i = 1; i <= times; i += 1) {
+      const r = await executeSubtask(h.deps, { subtaskId: 't-s' + i, windowKey: 'session-w', exec })
+      // 前置锚：零产出是"跑成功了但没落盘"——跑失败（如 team_report_missing）不算零产出，不能让它凑 streak
+      expect(r.ok, JSON.stringify(r)).toBe(true)
     }
     return h
   }

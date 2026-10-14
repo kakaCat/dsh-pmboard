@@ -5,6 +5,9 @@
 > 加载器会**静默跳过整个 bundle**（工具、看板路由、提示词注入全不注册）。另外，**重建 `dist` 不会
 > 自动生效**：宿主在启动时加载模块，重建后必须重启，且"是否真的加载了新构建"要显式核对。
 
+> 宿主侧的**通用加载规则**（profile → bundle → entry 三层、静默跳过的精确条件、运行期解析表、
+> 客户端模块表与 `external` 图、生命周期）见 [`dsh-plugin-loading-rules.md`](./dsh-plugin-loading-rules.md)；本页只讲本插件的三条前提与后果。
+
 ## 一、加载链（任一环断 → 插件整体消失）
 
 ```
@@ -100,7 +103,7 @@ console.log(p.skippedBundles, m.composeEntries([...p.layers.map(l=>l.patches), p
 
 来源：REQ-261003191948-e94a（材料见 `docs/requirements/REQ-261003191948-e94a/`）。
 
-## 六、`workflowEngine` 被 preset **刻意隔离**：profile 级插件不可达
+## 六、（历史，2026-10-11 已退役）`workflowEngine` 被 preset **刻意隔离**：profile 级插件不可达
 
 **症状**：子卡链每一次 `RUN_SUBTASK` 都失败于 `workflow run 未完成（engine_unavailable）`，
 而**同一进程里** `workflow` 工具能正常起 run。
@@ -128,9 +131,16 @@ console.log(p.skippedBundles, m.composeEntries([...p.layers.map(l=>l.patches), p
 `reqboard-capture [ENGINE-PROBE]: inject=… get=… byGet=false captured=false [tools=true agents=true webServer=true]`
 ——对照组为 true 而 `workflowEngine` 为 false，即"作用域隔离"而非"取法不对"。
 
-**当前处置**：不可达时返回**结构化可行动**原因（`subtask_engine_unreachable` + 两条出路 + "重试无解"，
-并保留 legacy 子串 `engine_unavailable` 供既有分类器识别），绝不静默成功；
-子卡凭证改由「本窗口自证」兜底（见七）。
+**处置（历史阶段）**：不可达时返回**结构化可行动**原因（`subtask_engine_unreachable` + 两条出路 + "重试无解"，
+并保留 legacy 子串 `engine_unavailable` 供既有分类器识别），绝不静默成功；子卡凭证改由「本窗口自证」兜底（见七）。
+
+**2026-10-11 收口**：既然按设计不可达、且 FR-11 路线 A（Agent Teams 派发）已覆盖同一需求，
+**整条引擎路径退役**——`pm-workflow` 包、`UseCaseDeps.workflow` 端口与 `WorkflowRunner` 类型、
+`workflow-script.ts` 脚本生成、组合根的引擎注入与探针全部删除。
+现在子卡执行**只有团队一条**：服务可用 + caller 是 live agent → 派发；否则如实拒绝
+（`reason` 保留 `engine_unavailable` 子串，失败分类器口径不变）。
+本节的隔离证据与探针输出只作历史留档；`subtask_engine_unreachable` 仍是 `AdvanceChain`
+开工前守卫的码（现判据 = 团队服务明确不可用）。
 
 来源：REQ-261003191948-e94a。
 

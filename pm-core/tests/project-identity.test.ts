@@ -33,7 +33,7 @@ import {
   rootOfRequirement,
 } from 'pm-core/application/internal/support.js'
 import { makeHarness, makeTestStore } from 'tests/application/harness.js'
-import { harness as diveLoopHarness, makeReq as makeDiveReq } from 'tests/support/dive-loop-harness.js'
+import { goalHarness, makeReq as makeGoalReq } from 'tests/support/goal-round-harness.js'
 import { executeCreateRequirement } from 'pm-core/application/use-cases/CreateRequirement.js'
 import { executeMoveRequirement } from 'pm-core/application/use-cases/MoveRequirement.js'
 import { bindSeat } from 'pm-core/application/use-cases/BindSeat.js'
@@ -571,38 +571,47 @@ describe('T-10c 分区判据：给了调用方项目身份就按 id 分区（不
 })
 
 // ---------------------------------------------------------------------------
-// T-17：Dive 归属按项目（FR-7）——归属不符 → 零投递 + 留痕；起轮仍是窗口级
+// T-17：Dive 归属（FR-7）——归属不符 → 零投递；起轮仍是窗口级
+//
+// 2026-10-10 改挂新 goal 驱动：归属判定的**事实侧**是 `buildGoalRoundPorts.factsOf`
+// （按 `sourceSessionId` 取"这个窗口绑的需求"），决策侧是 `decideGoalRound` 的 `not-owner-window`。
+// 项目身份（`projectIdOfWindow`）决定的是"哪些窗口可能拿到哪条需求"；旧驱动那句
+// `跳过归属不符 … project=` 的告警随旧包退役（本用例改为断言"零投递"这一事实）。
 // ---------------------------------------------------------------------------
 
-describe('T-17 Dive 归属按项目：不符则零投递并留痕（不静默）', () => {
+describe('T-17 Dive 归属（FR-7）：不符则零投递，起轮仍是窗口级', () => {
   const REQ = 'REQ-261005141830-e001'
 
-  it('T-17 需求属 w-1、窗口被解析成 w-2 → 零投递 + 一条含 project= 的留痕', async () => {
-    const rec = { ...makeDiveReq(REQ, 'session-x'), projectId: 'w-1' } as RequirementRecord
-    const h = diveLoopHarness({ reqs: [rec], withLatch: false, projectIdOfWindow: () => 'w-2' })
-    await h.idle('session-x')
+  it('T-17 需求属 w-1、idle 的窗口属 w-2 → 零投递（归属不符不驱动）', async () => {
+    expect(projectIdOfWindow(REGISTRY, 'session-z')).toBe('w-2')
+    const rec = { ...makeGoalReq(REQ, 'session-x'), projectId: 'w-1' } as RequirementRecord
+    const h = goalHarness({ reqs: [rec], windows: ['session-z'] })
+    await h.idle('session-z')
     expect(h.deliveredFor(REQ)).toBe(0)
-    expect(h.warns.some((w) => w.includes('project=') && w.includes('跳过归属不符'))).toBe(true)
   })
 
-  it('T-17 同项目（窗口也解析成 w-1）→ 照常起轮一次（不误拦）', async () => {
-    const rec = { ...makeDiveReq(REQ, 'session-x'), projectId: 'w-1' } as RequirementRecord
-    const h = diveLoopHarness({ reqs: [rec], withLatch: false, projectIdOfWindow: () => 'w-1' })
+  it('T-17 owner 窗口（同解析成 w-1）→ 照常起轮一次（不误拦）', async () => {
+    const rec = { ...makeGoalReq(REQ, 'session-x'), projectId: 'w-1' } as RequirementRecord
+    expect(projectIdOfWindow(REGISTRY, 'session-x')).toBe('w-1')
+    const h = goalHarness({ reqs: [rec] })
     await h.idle('session-x')
     expect(h.deliveredFor(REQ)).toBe(1)
   })
 
   it('T-17 存量未归属需求（无身份）→ 不拦（FR-8：老记录照旧可驱动）', async () => {
-    const h = diveLoopHarness({ reqs: [makeDiveReq(REQ, 'session-x')], withLatch: false, projectIdOfWindow: () => 'w-2' })
+    const rec = makeGoalReq(REQ, 'session-x') // 无 projectId
+    expect(projectIdOfWindow(REGISTRY, 'session-x')).toBe('w-1')
+    const h = goalHarness({ reqs: [rec] })
     await h.idle('session-x')
     expect(h.deliveredFor(REQ)).toBe(1)
   })
 
-  it('T-17 端口未装配（老装配）→ 归属一律放行，行为与改造前逐字一致', async () => {
-    const rec = { ...makeDiveReq(REQ, 'session-x'), projectId: 'w-1' } as RequirementRecord
-    const h = diveLoopHarness({ reqs: [rec], withLatch: false })
-    await h.idle('session-x')
-    expect(h.deliveredFor(REQ)).toBe(1)
+  it('T-17 同项目另一窗口 idle → 也零投递（归属是项目级、起轮是窗口级）', async () => {
+    const rec = { ...makeGoalReq(REQ, 'session-x'), projectId: 'w-1' } as RequirementRecord
+    expect(projectIdOfWindow(REGISTRY, 'session-y')).toBe('w-1') // 同项目
+    const h = goalHarness({ reqs: [rec] })
+    await h.idle('session-y')
+    expect(h.deliveredFor(REQ)).toBe(0)
   })
 })
 

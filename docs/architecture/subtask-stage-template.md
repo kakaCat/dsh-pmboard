@@ -80,12 +80,11 @@
 | 5 | `src/application/use-cases/ExecuteTask.ts` | `STAGE_SCOPE_RULE` | 子卡提示词缺「本步边界」→ 越界干活（如复核段去改代码） |
 | 6 | `src/domain/card-types.ts` | `STAGE_TO_PHASE_COLOR` | 看板颜色族缺项（`getPhaseColor` 有回退） |
 
-**非类型强制、必须人记的三处**：
+**非类型强制、必须人记的两处**：
 
 | 位置 | 什么时候要动 |
 |---|---|
 | `src/application/use-cases/AdvanceChain.ts` | 只有新段有**特殊链行为**时才动（如 `manual` 的停链等人分支） |
-| `eval-suite/` fixtures | 默认链（模板键的段集合）变更时同步，并跑 `validate_eval_suite.py` |
 | `SubmitTool` 的 schema 描述 | 新增模板键时同步合法键说明 |
 
 **自动跟随、不用登记但要知道**：workflow 脚本 schema 族（派生自 `STAGE_EVIDENCE_KIND`）、

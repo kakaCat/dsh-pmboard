@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs'
 import { TOOL_REGISTRY } from 'tool-pm/registry.js'
 
 const README_PATH = repoPath('README.md')
-const PKG_PATH = repoPath('package.json')
+const PKG_PATH = repoPath('pm/package.json')
 const SELF_PATH = repoPath('tool-pm/tests/readme-tool-face.test.ts')
 
 /** 期望工具名（升序）——派生，不手写。 */

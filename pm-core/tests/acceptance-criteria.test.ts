@@ -488,7 +488,7 @@ describe('验收 9：阶段提示词注入', () => {
   })
 
   it('dive session driver 采集半在 bound 窗口 idle 时零投递（FR-11），但注入留痕照旧', async () => {
-    const { createDiveSessionDriver } = await import('pm-round-driver/session-driver.js')
+    const { createDiveSessionDriver } = await import('pm-core/application/dive/session-driver.js')
     // REQ-d3e61a FR-16：取词唯一入口 = resolveStagePrompt（旧的 STAGE_PROMPTS 常量表已下线）
     const { resolveStagePrompt } = await import('pm-core/domain/prompt/index.js')
     const prompts: string[] = []

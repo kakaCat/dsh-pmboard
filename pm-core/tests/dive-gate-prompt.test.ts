@@ -17,14 +17,14 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createDiveSessionDriver } from 'pm-round-driver/session-driver.js'
+import { createDiveSessionDriver } from 'pm-core/application/dive/session-driver.js'
 import {
   createGatePromptPort,
   gatePromptFor,
   GATE_PROMPT_COOLDOWN_MS,
   GATE_PROMPT_MAX_POPS,
   type GatePromptExhausted,
-} from 'pm-round-driver/gate-prompt.js'
+} from 'pm-core/application/dive/gate-prompt.js'
 import { assembleDiveSessionDriver } from 'src/wiring/pm-capture-root.js'
 import { DEFAULT_CONFIRM_OPTIONS } from 'pm-common/text/labels.js'
 import { makeHarness, req as reqFixture, FixedClock, type Harness } from 'tests/application/harness.js'

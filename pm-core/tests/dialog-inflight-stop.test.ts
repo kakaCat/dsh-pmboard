@@ -10,6 +10,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { makeHarness, req, task } from 'tests/application/harness.js'
+import { installTeamProducer } from 'tests/application/teams-fake.js'
 import { PendingConfirmRegistry } from 'src/adapters/PendingConfirmRegistry.js'
 import {
   AWAITING_CONFIRM_PREFIX,
@@ -18,11 +19,10 @@ import {
   exitAwaitingConfirm,
   isAwaitingConfirmStop,
 } from 'pm-core/application/internal/awaiting-confirm.js'
-import { createDiveRoundDriver, type DiveRoundPorts } from 'pm-round-driver/round-driver.js'
+import { createGoalRoundDriver, type GoalRoundPorts } from 'pm-goal-round-driver/driver.js'
 import { advanceRequirement } from 'pm-core/application/use-cases/AdvanceChain.js'
 import { recoverHealth } from 'pm-core/application/internal/rearm.js'
-import { createWakeHeartbeat } from 'pm-round-driver/wake-heartbeat.js'
-import { createGatePromptPort } from 'pm-round-driver/gate-prompt.js'
+import { createGatePromptPort } from 'pm-core/application/dive/gate-prompt.js'
 import { applyConfirmDecision } from 'pm-core/application/internal/confirm-settle.js'
 import type { RequirementRecord } from 'pm-core/protocol-domain.js'
 
@@ -55,20 +55,27 @@ function awaitingDeps(h: ReturnType<typeof makeHarness>, dialogs: PendingConfirm
   return {  store: h.store, dialogs, now: () => h.clock.t }
 }
 
-/** 起轮夹具（fake 端口驱动真状态机；口径同 pm-core/tests/dive-round-driver.test.ts）。 */
-function diveHarness(opts: { dialogInFlight?: (id: string) => boolean } = {}) {
+/**
+ * 起轮夹具（新 goal 驱动的最小端口；口径同 `goal/pm-goal-round-driver/tests/driver.test.ts`）。
+ *
+ * 2026-10-10：旧 `createDiveRoundDriver` 随 `pm-round-driver` 退役 ⇒ 本夹具改挂 `createGoalRoundDriver`。
+ * 该驱动的"事实"全部经端口注入，故这里给一份**恒为 active goal + 可驱动**的事实：
+ * 本文件验的是"弹框在途 ⇒ wait-human 不投回合"这一条闸，不是 goal 相位分支（那由新包单测覆盖）。
+ */
+function goalHarness(opts: { dialogInFlight?: (id: string) => boolean } = {}) {
   const h = seeded()
-  const inbox = { nextTurn: [] as unknown[], nextStep: [] as unknown[], prepend(): void {} }
-  const agent: Record<string, unknown> = { id: AGENT, status: 'idle', session: { id: AGENT }, inbox }
   const delivered: unknown[] = []
   let n = 0
-  const ports: DiveRoundPorts = { store: h.store,
-    // B12 阶段①-a：idle 拍的同步判定改用窄投影（harness 已暴露新端口）
-    peekFacts: () => h.store.peekFacts(),
-    // B12 阶段②a：本模块的写也走新端口（与 peekFacts 同源）
-
-    agents: { get: (id) => (id === AGENT ? agent : undefined), withoutInitiator: (op) => op() },
-    fiberActive: () => true,
+  const ports: GoalRoundPorts = {
+    factsOf: (windowKey) => (windowKey !== AGENT ? undefined : {
+      requirement: { id: REQ_ID, sourceSessionId: AGENT, drivable: true },
+      latch: { requirementPresent: true, activation: 'armed', driverHealthState: 'healthy' },
+      gates: { ...(opts.dialogInFlight?.(REQ_ID) === true ? { dialogInFlight: true } : {}) },
+      goal: { windowKey: AGENT, phase: 'active', maxGoalRounds: 10 },
+      roundsInStage: 0,
+      revision: 5,
+      status: 'implementing',
+    }),
     delivery: {
       createRoundMessage: (input) => {
         n += 1
@@ -80,26 +87,30 @@ function diveHarness(opts: { dialogInFlight?: (id: string) => boolean } = {}) {
         return { message, messageId: 'm' + n }
       },
       deliverMessage: (_wk, message) => { delivered.push(message); return { delivered: true } },
+      checkpoint: async () => {},
+      persistAdmission: () => {},
+      contentOf: (m) => (m as { content?: unknown } | undefined)?.content,
+      now: () => h.clock.t,
     },
-    cancel: () => {},
-    whenIdle: async () => {},
-    checkpoint: async () => {},
-    renderRoundText: (i) => 'round ' + i.round,
+    createGoal: () => true,
+    blockGoal: () => true,
+    askStageDone: () => {},
+    trace: () => {},
     now: () => h.clock.t,
-    ...(opts.dialogInFlight === undefined ? {} : { dialogInFlight: opts.dialogInFlight }),
     logger: { info: () => {}, debug: () => {}, warn: () => {} },
   }
-  return { h, agent, delivered, driver: createDiveRoundDriver(ports) }
+  return { h, delivered, driver: createGoalRoundDriver(ports) }
 }
 
 describe('TC-1 在途停手：不投回合（FR-1）', () => {
   it('弹框在途 → 本拍不起轮，且不改健康位/不计数', async () => {
     const registry = new PendingConfirmRegistry({ now: () => 1000 })
-    const { h, agent, delivered, driver } = diveHarness({ dialogInFlight: (id) => registry.inFlightFor(id) })
+    const { h, delivered, driver } = goalHarness({ dialogInFlight: (id) => registry.inFlightFor(id) })
     registry.enter({ ref: 'pc-test', windowKey: AGENT, requirementId: REQ_ID, kind: 'confirm', suspend: true })
 
-    driver.requestDrive(agent)
+    await driver.requestDrive(AGENT)
     await driver.whenQuiet()
+    driver.teardown()
 
     expect(delivered.length).toBe(0)
     const r = (await h.store.get(REQ_ID))!
@@ -178,9 +189,10 @@ describe('TC-3 作答到达：自动解除等待（FR-3）', () => {
 describe('TC-4 反向自检：无在途时一律不停（FR-1）', () => {
   it('无在途 → 照常起 1 轮', async () => {
     const registry = new PendingConfirmRegistry({ now: () => 1000 })
-    const { agent, delivered, driver } = diveHarness({ dialogInFlight: (id) => registry.inFlightFor(id) })
-    driver.requestDrive(agent)
+    const { delivered, driver } = goalHarness({ dialogInFlight: (id) => registry.inFlightFor(id) })
+    await driver.requestDrive(AGENT)
     await driver.whenQuiet()
+    driver.teardown()
     expect(delivered.length).toBe(1)
   })
 
@@ -188,20 +200,22 @@ describe('TC-4 反向自检：无在途时一律不停（FR-1）', () => {
     const h = seeded()
     h.deps.dialogs = registryFor(h)
     h.seedTasks(REQ_ID, [task({ id: 't-p', requirementId: REQ_ID, status: 'todo' })])
-    h.deps.workflow = {
-      async start() {
-        return { ok: true, value: { ok: true, output: JSON.stringify({ filesChanged: ['src/x.ts'], completed: ['done'], evidence: ['vitest 绿'] }) } }
-      },
-    } as never
+    // 2026-10-11 退役 workflow 引擎：子卡执行只剩团队派发一条路，假件随之换成团队生产者
+    // （产出由 Worker 写台账，见 tests/application/teams-fake.ts）。
+    installTeamProducer(h, { filesChanged: ['src/x.ts'], completed: ['done'], evidence: ['vitest 绿'] })
+    // 团队路径要求 caller 是 live agent（无 caller 现在如实拒绝，不再落到"按设计不可达的引擎"），
+    // 故给出绑定窗口的在线 agent —— 与生产「看板继续/会话唤醒时该窗口在线」同形。
+    h.deps.agents = () => ({ get: (id: string) => (id === AGENT ? { id: AGENT } : undefined) })
     const out = await advanceRequirement(h.deps, REQ_ID)
     expect(out.stopped).not.toBe('awaiting-confirm')
     expect(out.steps.length).toBeGreaterThan(0)
   })
 
   it('缺省未装配判据（dialogs 未接）→ 行为与改动前一致', async () => {
-    const { agent, delivered, driver } = diveHarness()
-    driver.requestDrive(agent)
+    const { delivered, driver } = goalHarness()
+    await driver.requestDrive(AGENT)
     await driver.whenQuiet()
+    driver.teardown()
     expect(delivered.length).toBe(1)
   })
 })
@@ -235,44 +249,15 @@ describe('TC-5 恢复不越权：在途时 rearm 拒绝（FR-4）', () => {
   })
 })
 
-describe('TC-6 过期/重启兜底：心跳对账恢复（FR-4）', () => {
-  it('停手但无在途 → resumed 含该需求并转 healthy', async () => {
-    const h = seeded()
-    await h.store.mutate(REQ_ID, (r) => {
-      r.dive!.driverHealth = { state: 'paused', reason: AWAITING_CONFIRM_PREFIX + 'pc-gone', since: h.clock.t, attempts: 0 }
-      return { changed: true }
-    })
-    const hb = createWakeHeartbeat({
-       store: h.store, now: () => h.clock.t, wake: () => false,
-      dialogInFlight: () => false,
-    })
-    const out = await hb.tick()
-    expect(out.resumed).toContain(REQ_ID)
-    const r = (await h.store.get(REQ_ID))!
-    expect(r.dive!.driverHealth!.state).toBe('healthy')
-    expect(r.comments.some((c) => c.body.includes('等待结束'))).toBe(true)
-  })
-
-  it('在途仍在 → 同一趟不得恢复（不得把人还在看的框判成过期）', async () => {
-    const h = seeded()
-    await h.store.mutate(REQ_ID, (r) => {
-      r.dive!.driverHealth = { state: 'paused', reason: AWAITING_CONFIRM_PREFIX + 'pc-live', since: h.clock.t, attempts: 0 }
-      return { changed: true }
-    })
-    const hb = createWakeHeartbeat({
-       store: h.store, now: () => h.clock.t, wake: () => false,
-      dialogInFlight: () => true,
-    })
-    const out = await hb.tick()
-    expect(out.resumed).toEqual([])
-    expect(isAwaitingConfirmStop((await h.store.get(REQ_ID))!)).toBe(true)
-  })
-})
-
+// TC-6（过期/重启兜底：心跳对账恢复）**随旧回合半退役**（2026-10-10）。
+// 原用例读 `createWakeHeartbeat` 的 `resumed`——那口子在旧 `pm-round-driver/wake-heartbeat.ts` 里做
+// 「台账写着等弹框、实际无在途 ⇒ 清位 + 请求驱动」的对账。新包 `createGoalHeartbeat` **没有这口**
+// （其端口只有 facts/wake/markWoken/markWakeFailed/trace），且 `isAwaitingConfirmStop` 在生产里
+// 已无调用者 ⇒ 该行为在新链路中不存在，无法"等义改写"，故删除并在迁移报告里如实登记为**失去的覆盖**。
 describe('TC-7 门框与起轮不并存（FR-5）', () => {
   it('同一拍：门框已投递、起轮为 0', async () => {
     const registry = new PendingConfirmRegistry({ now: () => 1000 })
-    const { h, agent, delivered, driver } = diveHarness({ dialogInFlight: (id) => registry.inFlightFor(id) })
+    const { h, delivered, driver } = goalHarness({ dialogInFlight: (id) => registry.inFlightFor(id) })
     h.deps.dialogs = registry
     let asked = 0
     // 弹框挂住不返回（模拟"框还在屏幕上"）
@@ -287,8 +272,9 @@ describe('TC-7 门框与起轮不并存（FR-5）', () => {
       windowKey: AGENT, requirementId: REQ_ID, gate: 'G1', kind: 'artifact',
       artifactKind: 'requirement', question: '门已满足，是否推进？',
     })
-    driver.requestDrive(agent)
+    await driver.requestDrive(AGENT)
     await driver.whenQuiet()
+    driver.teardown()
 
     expect(asked).toBe(1)
     expect(delivered.length).toBe(0)

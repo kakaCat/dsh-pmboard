@@ -253,7 +253,7 @@ const hSheet = () => hStore.peekAll()[0]!.verification!.sheet!
 
 /** 只读路由源码并抹掉注释（「不再写死旧句」要断**代码**，注释里留档不算违规）。 */
 function verdictsRouteCode(): string {
-  const raw = readFileSync(pathToFileURL(repoPath('src/http/routers/verdicts.ts')), 'utf8')
+  const raw = readFileSync(pathToFileURL(repoPath('pm/src/http/routers/verdicts.ts')), 'utf8')
   return raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1')
 }
 
@@ -432,7 +432,7 @@ function hardcodedNoteHits(code: string): string[] {
 }
 
 const DIALOG_CHANNEL_SRC = readFileSync(pathToFileURL(repoPath('pm-core/src/application/use-cases/AcceptSheet.ts')), 'utf8')
-const HTTP_CHANNEL_SRC = readFileSync(pathToFileURL(repoPath('src/http/routers/verdicts.ts')), 'utf8')
+const HTTP_CHANNEL_SRC = readFileSync(pathToFileURL(repoPath('pm/src/http/routers/verdicts.ts')), 'utf8')
 
 /** 两条通道：名字（报错可读）+ 源码 + strip 后的在场锚（防「读空了 ⇒ 恒绿」）。 */
 const WORDING_CHANNELS = [

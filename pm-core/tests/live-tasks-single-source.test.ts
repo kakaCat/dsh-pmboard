@@ -34,6 +34,7 @@ import { join, relative } from 'node:path'
 import {  fileURLToPath, pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { REPO_ROOT, repoPath } from 'tests/helpers/repo-root.js'
+import { workspacePkgDirs } from 'tests/helpers/workspace-pkgs.js'
 import { liveCountOf, liveTasksOf } from 'pm-core/domain/status/Predicates.js'
 
 // ── 路径与清单 ────────────────────────────────────────────────────────────
@@ -45,16 +46,13 @@ const REPO = REPO_ROOT
  * 扫描根：**全仓源码** = 根包 `src/` + 各子包 `pm/<包名>/src/`
  * （**排除 `tests/`** —— 用例面自证用字面量数卡，不是判据的消费点）。
  *
- * 十九包重构后源码不再只住在 `src/` 下：`pm-common` 等子包各有自己的 `src/`，
- * 只扫根包会漏判（实测漏掉 `pm-common/src/task/ReworkPlaceholder.ts` 的 2 条基线命中）。
+ * 十九包重构后源码不再只住在 `src/` 下：各包各有自己的 `src/`（`pm-core`、`pm-common` …），
+ * 只扫主包会漏判（实测漏掉 `pm-common/src/task/ReworkPlaceholder.ts` 的 2 条基线命中）。
+ * 2026-10-11：包目录不再挂在 `pm/` 之下（平铺），故改用 `workspacePkgDirs()` 派生，避免写死布局。
  */
-const SRC_ROOTS = [
-  join(REPO, 'src'),
-  ...readdirSync(join(REPO, 'pm'), { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => join(REPO, 'pm', e.name, 'src'))
-    .filter((dir) => existsSync(dir)),
-]
+const SRC_ROOTS = workspacePkgDirs()
+  .map((d) => join(REPO, d, 'src'))
+  .filter((dir) => existsSync(dir))
 const MANIFEST_PATH = repoPath('tests/fixtures/canceled-literal-baseline.json')
 
 /** 命中的比较式形态（清单与用例共用同一个正则；行原文去首尾空白后匹配）。 */
@@ -392,11 +390,15 @@ describe('④ 范围自检：扫描器真的读到了清单里的文件', () => 
   })
 
   it('扫描根覆盖根包与各子包 src/、且命中集合非空（路径写错即红）', () => {
-    expect(SRC_ROOTS.length, '扫描根可疑：根包 + 子包应不止一个').toBeGreaterThan(1)
+    expect(SRC_ROOTS.length, '扫描根可疑：各包 src 应不止一个').toBeGreaterThan(1)
     for (const root of SRC_ROOTS) expect(root.endsWith('/src'), `扫描根可疑：${root}`).toBe(true)
     expect(HITS.length, `扫描根 ${SRC_ROOTS.join(', ')} 下 0 命中——路径写错或清单口径失效`).toBeGreaterThan(0)
+    // 越界判据按**现行平铺布局**：命中必须落在某个 workspace 包的 src 之下
+    // （旧写法 `^(src|packages|pm)/` 只覆盖单包与 packages/ 形态，平铺后会误报越界）。
+    const pkgPrefixes = workspacePkgDirs().map((d) => d + '/')
     for (const h of HITS) {
-      expect(REL(h.file), `扫描越界到 ${REL(h.file)}`).toMatch(/^(src|packages|pm)\//)
+      const rel = REL(h.file)
+      expect(pkgPrefixes.some((p) => rel.startsWith(p)), `扫描越界到 ${rel}`).toBe(true)
     }
   })
 })

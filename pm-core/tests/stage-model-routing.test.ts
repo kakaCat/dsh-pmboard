@@ -1,9 +1,14 @@
 /**
- * 阶段模型路由（REQ-261004110201-f253 FR-1）——契约段 + 生成器段。
+ * 阶段模型路由（REQ-261004110201-f253 FR-1）——**纯函数判据段**。
  *
- * 本文件分两段（同一文件对应拆分卡 t1 契约 / t2 生成器）：
- *  ① 契约段：路由表校验（非法即抛并点名）、两级命中、三个配置 accessor 的缺省与非法语义；
- *  ② 生成器段（t2）：命中即注入 provider/model；**未传 route 时脚本与基线逐字节相同**。
+ * 2026-10-11 退役 workflow 引擎（删包 `pm-workflow` / 删 `workflow-script.ts` 与 `UseCaseDeps.workflow`）：
+ * 原「生成器段」与「端到端注入段」两个 describe 一并删除——它们唯一测的是**脚本注入 route**
+ * （`generateSubtaskScript` + 假引擎捕获脚本），随引擎退役属**有意行为变化**（执行面只剩 Agent Teams，
+ * 注入面不复存在；团队等价物覆盖见 `pm-core/tests/execute-subtask-team.test.ts`）。
+ * 保留的是与之无关的纯函数路由判据：
+ *  ① 路由表校验（非法即抛并点名）；
+ *  ② 两级命中解析（stageKind@difficulty 优先于 stageKind；未命中/未配置 → undefined）；
+ *  ③ 三个配置 accessor 的缺省与非法语义。
  */
 import { describe, it, expect } from 'vitest'
 import { validateStageRouting, resolveStageModel } from 'pm-core/domain/task/StageRouting.js'
@@ -14,10 +19,6 @@ import {
 } from 'pm-core/plugin-config.js'
 import { STAGE_KINDS } from 'pm-core/domain/task/SubtaskTemplate.js'
 import { ALL_PROMPT_DIFFICULTIES } from 'pm-core/protocol-domain.js'
-import { generateSubtaskScript } from 'pm-core/application/internal/workflow-script.js'
-import { executeSubtask } from 'pm-core/application/use-cases/ExecuteTask.js'
-import type { WorkflowRunner, WorkflowRunOutcome } from 'pm-core/application/ports.js'
-import { makeHarness, task, req } from 'tests/application/harness.js'
 
 describe('FR-1 契约段 ① 路由表校验：非法即抛并点名', () => {
   it('未配置（undefined / 空对象）合法 → {}（= 不注入，现状行为）', () => {
@@ -135,97 +136,5 @@ describe('FR-1/FR-3/FR-4 契约段 ③ 三个配置 accessor：缺省 = 现状�
     expect(Object.prototype.hasOwnProperty.call(execution, 'zeroOutput')).toBe(false)
     const requirement = { id: 'REQ-x', title: 't', description: '', status: 'draft', blocked: false } as Record<string, unknown>
     expect(Object.prototype.hasOwnProperty.call(requirement, 'priority')).toBe(false)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// t2 生成器段：命中即注入；未命中/未传 → 与改造前逐字节相同（本需求最重要的不变量）
-// ---------------------------------------------------------------------------
-
-const BASE_INPUT = { stageKind: 'dev', stageLabel: '研发', prompt: '做点事' }
-
-describe('FR-1 生成器段 ④ 命中即注入 provider/model', () => {
-  it('只给 model / 只给 provider / 两者都给 → 都在 agent 第二参里', () => {
-    const onlyModel = generateSubtaskScript({ ...BASE_INPUT, route: { model: 'cheap' } })
-    expect(onlyModel).toContain('model: "cheap"')
-    expect(onlyModel).not.toContain('provider:')
-
-    const onlyProvider = generateSubtaskScript({ ...BASE_INPUT, route: { provider: 'p1' } })
-    expect(onlyProvider).toContain('provider: "p1"')
-    expect(onlyProvider).not.toContain('model:')
-
-    const both = generateSubtaskScript({ ...BASE_INPUT, route: { provider: 'p1', model: 'strong' } })
-    expect(both).toContain('provider: "p1"')
-    expect(both).toContain('model: "strong"')
-    expect(both).toContain('{ schema: ')
-  })
-
-  it('空串字段被忽略（不注入空值）', () => {
-    const script = generateSubtaskScript({ ...BASE_INPUT, route: { provider: '', model: '' } })
-    expect(script).not.toContain('provider')
-    expect(script).not.toContain('model:')
-  })
-
-  it('未传 route 与 route=undefined → 与基线逐字节相同，且不含 provider/model 键', () => {
-    const baseline = generateSubtaskScript({ ...BASE_INPUT })
-    const explicitUndefined = generateSubtaskScript({ ...BASE_INPUT, route: undefined })
-    expect(explicitUndefined).toBe(baseline)
-    expect(baseline).toContain('{ schema: ')
-    expect(baseline).not.toContain('provider')
-    expect(baseline).not.toContain('model: ')
-  })
-
-  it('脚本契约门禁不受影响（生成即过 assertScriptContract）', () => {
-    expect(() => generateSubtaskScript({ ...BASE_INPUT, route: { model: 'm' } })).not.toThrow()
-  })
-})
-
-describe('FR-1 生成器段 ⑤ 端到端：需求难度参与两级命中', () => {
-  const FILE = 'pm-core/src/domain/x.ts'
-
-  function capturingRunner(seen: string[]): WorkflowRunner {
-    return {
-      async start(spec: { script?: string }): Promise<WorkflowRunOutcome> {
-        seen.push(String(spec.script ?? ''))
-        return { ok: true, value: { ok: true, output: JSON.stringify({ filesChanged: [FILE], completed: ['done'] }) } }
-      },
-    } as WorkflowRunner
-  }
-
-  async function seedOne(over: { promptDifficulty?: string; routing?: Record<string, { model?: string }> }) {
-    const h = makeHarness()
-    h.docs.put(FILE, 'x')
-    h.seedRequirementSync(req({
-      id: 'REQ-000001', status: 'implementing', category: 'feature', autoRun: true,
-      ...(over.promptDifficulty !== undefined ? { promptDifficulty: over.promptDifficulty as never } : {}),
-    }))
-    h.seedTasks('REQ-000001', [
-      task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', title: '父卡' }),
-      task({ id: 't-s', requirementId: 'REQ-000001', status: 'todo', title: '子卡', parentId: 't-p', stageKind: 'dev' as never }),
-    ])
-    await h.seedSettled()
-    if (over.routing !== undefined) h.deps.stageRouting = over.routing
-    return h
-  }
-
-  it('expert 需求的 dev 段命中 dev@expert → 脚本注入该模型', async () => {
-    const seen: string[] = []
-    const h = await seedOne({ promptDifficulty: 'expert', routing: { dev: { model: 'base-model' }, 'dev@expert': { model: 'expert-model' } } })
-    h.deps.workflow = capturingRunner(seen)
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w' })
-    expect(r.ok).toBe(true)
-    expect(seen).toHaveLength(1)
-    expect(seen[0]).toContain('model: "expert-model"')
-    expect(seen[0]).not.toContain('base-model')
-  })
-
-  it('未配置路由表（deps.stageRouting 缺省）→ 脚本不含 provider/model（现状行为）', async () => {
-    const seen: string[] = []
-    const h = await seedOne({ promptDifficulty: 'expert' })
-    h.deps.workflow = capturingRunner(seen)
-    const r = await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w' })
-    expect(r.ok).toBe(true)
-    expect(seen[0]).not.toContain('provider')
-    expect(seen[0]).not.toContain('model: ')
   })
 })

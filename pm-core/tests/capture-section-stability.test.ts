@@ -101,6 +101,11 @@ interface AssembleOptions {
   channel?: { available: (windowKey: string) => boolean }
   /** 本窗口待捕获候选（确定性消息 hook 登记的那张表）。缺省 = 空表（未命中）。 */
   pending?: { windowKey: string; text: string; capturedAt: number }
+  /**
+   * 立项注入开关。**缺省 false = 生产缺省**（2026-10-09 用户裁定：两份立项文案不再注入）。
+   * `true` = 改造前口径（回退开关打开），供对照用例使用。
+   */
+  inject?: boolean
 }
 
 async function assembleSection(options: AssembleOptions): Promise<SectionSpec> {
@@ -130,6 +135,7 @@ async function assembleSection(options: AssembleOptions): Promise<SectionSpec> {
     sectionName: 'reqboard:capture',
     sectionOrder: 10,
     onSystemPrompt: () => { /* 不消费 */ },
+    injectCapturePrompt: options.inject === true,
     ...(options.channel === undefined ? {} : { volatileChannel: options.channel }),
   })
   // 任务快照是**异步**刷新（`listAll().then(...)`）：这里放行微任务队列，让缓存落到已加载态
@@ -205,11 +211,16 @@ describe('头部稳定性（t2 的核心性质）', () => {
     expect(headSectionTextFrom(FACTS_IMPL_甲, CTX)).toBe(headSectionTextFrom(FACTS_BRAINSTORMING, CTX))
   })
 
-  it('⑤ 未绑定 × 待捕获命中 → 整段 = 命中提示（静态引导让位；评审 R1 / R4-①）', async () => {
+  it('⑤ 未绑定 × 立项注入缺省关 → 整段为空（零噪音）；打开开关 → 命中提示让位静态引导（评审 R1 / R4-①）', async () => {
     const msg = '帮我加一个告警中心页面，把市场告警做成可视化看板'
-    const hit = await assembleSection({ facts: [], tasks: [], pending: { windowKey: W, text: msg, capturedAt: 1 } })
+    const pending = { windowKey: W, text: msg, capturedAt: 1 }
+    // 生产缺省（capture.injectGuidance 缺省 false，2026-10-09 用户裁定）：命中也不注入。
+    expect((await assembleSection({ facts: [], tasks: [], pending })).text(CTX)).toBe('')
+    expect((await assembleSection({ facts: [], tasks: [] })).text(CTX)).toBe('')
+
+    // 回退开关打开 = 改造前口径：**替换**语义，整段就是命中提示，不叠静态引导
+    const hit = await assembleSection({ facts: [], tasks: [], pending, inject: true })
     const text = hit.text(CTX)
-    // **替换**语义（= 改造前口径）：整段就是命中提示，不叠静态引导
     expect(text).toBe(capturePromptForMessage(W, msg))
     expect(text.length).toBe(capturePromptForMessage(W, msg).length)
     // 静态引导的独有句不在场（否则就是同屏叠加）
@@ -217,7 +228,7 @@ describe('头部稳定性（t2 的核心性质）', () => {
     expect(text).not.toContain('可以选"不需要"')
     expect(text).toContain('本回合你必须先做一次显式裁定')
     // 未命中 → 静态引导（原口径不变）
-    const noHit = await assembleSection({ facts: [], tasks: [] })
+    const noHit = await assembleSection({ facts: [], tasks: [], inject: true })
     expect(noHit.text(CTX)).toContain('未绑定需求')
     expect(noHit.text(CTX)).not.toContain('检测到用户新输入')
   })

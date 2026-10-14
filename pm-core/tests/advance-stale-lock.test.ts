@@ -7,20 +7,19 @@
  * REQBOARD_ADVANCE_LOCKED，启动恢复扫描 scanAndResume 也被同一判断挡下）。
  *
  * 本文件锁定两条：① 过期残留被回收且链能继续（根因修复）；② 新鲜锁仍挡并发（没被放水）。
+ *
+ * 2026-10-11（退役 workflow 引擎）：「链能继续」现在要真跑完子卡链，产出由团队 Worker 写台账
+ * （`teams-fake`）；本文件也顺带锁住"回收后确实派得出卡"。
  */
 import { describe, it, expect } from 'vitest'
 import { advanceRequirement } from 'pm-core/application/use-cases/AdvanceChain.js'
 import { LIMITS } from 'pm-common/limits.js'
-import type { WorkflowRunner, WorkflowRunOutcome } from 'pm-core/application/ports.js'
+import { installTeamProducer } from 'tests/application/teams-fake.js'
 import { makeHarness, task, req } from 'tests/application/harness.js'
 
 const FILE = 'pm-core/src/domain/x.ts'
-
-const runner: WorkflowRunner = {
-  async start(): Promise<WorkflowRunOutcome> {
-    return { ok: true, value: { ok: true, output: JSON.stringify({ filesChanged: [FILE], completed: ['完成'], evidence: ['绿'] }) } }
-  },
-}
+/** 自动链的调用方句柄：工具入口自带 exec.agent（团队派发要求 caller 是 live agent）。 */
+const EXEC = { agent: { id: 'session-w-001' } }
 
 async function harnessWith(advance: { lockAt?: number; runId?: string }) {
   const h = makeHarness()
@@ -30,7 +29,7 @@ async function harnessWith(advance: { lockAt?: number; runId?: string }) {
   // B12 阶段②e：播种进新端口
   h.seedRequirementSync(r)
   h.seedTasks('REQ-000001', [task({ id: 't-p', requirementId: 'REQ-000001', status: 'todo', title: '父卡' })])
-  h.deps.workflow = runner
+  installTeamProducer(h, { filesChanged: [FILE], completed: ['完成'], evidence: ['绿'] })
   await h.seedSettled()
   return h
 }
@@ -40,7 +39,7 @@ describe('advance 残留锁回收（进程被杀后 runId 不再死锁）', () =
     const h = makeHarness()
     const staleAt = h.clock.t - LIMITS.advanceLockStaleMs - 1
     const hh = await harnessWith({ lockAt: staleAt, runId: 'run-dead-1' })
-    const out = await advanceRequirement(hh.deps, 'REQ-000001')
+    const out = await advanceRequirement(hh.deps, 'REQ-000001', EXEC)
     expect(out.stopped).toBe('rollup')
     expect(out.steps.length).toBeGreaterThan(0)
     const after = (await hh.store.get('REQ-000001'))!
@@ -50,7 +49,7 @@ describe('advance 残留锁回收（进程被杀后 runId 不再死锁）', () =
 
   it('lockAt 新鲜 → 仍按「有 run 在跑」挡下（不放行并发）', async () => {
     const hh = await harnessWith({ lockAt: 1_000_000, runId: 'run-live-1' })
-    const out = await advanceRequirement(hh.deps, 'REQ-000001')
+    const out = await advanceRequirement(hh.deps, 'REQ-000001', EXEC)
     expect(out.stopped).toBe('locked')
     expect(out.dispatched).toBe(false)
     expect((await hh.store.get('REQ-000001'))!.advance?.runId).toBe('run-live-1')

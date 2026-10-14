@@ -16,6 +16,8 @@ import { join } from 'node:path'
 import { apply } from 'src/index.js'
 // REQ-261006123819-3af3 FR-1：注册名单从登记面派生（见下方「注册全部 agent 工具」用例）
 import { TOOL_REGISTRY } from 'tool-pm/registry.js'
+// goal 面是**独立插件面**（自己的 name/apply），工具名不带 reqboard_ 前缀——注册名集合 = 两面并集。
+import { GOAL_TOOL_REGISTRY } from 'tool-pm-goal/registry.js'
 
 type DisposeFn = () => void
 
@@ -83,9 +85,24 @@ describe('dsh-pmboard apply() 宿主接线（乙流程装配冒烟）', () => {
     expect(sec).toBeDefined()
     expect(sec!.order).toBe(60)
     expect(typeof sec!.text).toBe('function')
-    // 函数式求值：unbound 窗口（空台账 + agent.id）→ 返回引导文本而非空
+    // 函数式求值：unbound 窗口（空台账 + agent.id）→ 2026-10-09 裁定后**默认不注入**（零噪音）。
+    const text = (sec!.text as (c: unknown) => string)({ agent: { id: 'session-unbound-1' } })
+    expect(text).toBe('')
+  })
+
+  it('回退开关 capture.injectGuidance=true → unbound 窗口仍返回引导文本（改造前口径可整体恢复）', () => {
+    const ctx = stubCtx()
+    apply(ctx as never, { dshHome: dir, capture: { injectGuidance: true } })
+    const sec = ctx.sections.find(x => x.name === 'reqboard:capture')
+    expect(sec).toBeDefined()
     const text = (sec!.text as (c: unknown) => string)({ agent: { id: 'session-unbound-1' } })
     expect(text).toContain('reqboard_create')
+  })
+
+  it('capture.injectGuidance 非布尔 → 装配期抛错（不静默回缺省）', () => {
+    const ctx = stubCtx()
+    expect(() => apply(ctx as never, { dshHome: dir, capture: { injectGuidance: 'yes' as never } }))
+      .toThrow(/capture\.injectGuidance/)
   })
 
   it('capture section 显式声明为字面量段（interpolate === false）', () => {
@@ -116,8 +133,13 @@ describe('dsh-pmboard apply() 宿主接线（乙流程装配冒烟）', () => {
     // REQ-261006123819-3af3 FR-1：此前这里是 26 条手写名单 + toHaveLength(26)，
     // 新增 reqboard_skill_install 后门禁红着没人管。现在两边都从登记面派生：
     // 不相等即点名差集，漏登记当场被抓（不再靠手抄名单跟上）。
-    expect(names).toEqual(TOOL_REGISTRY.map(e => e.toolName).sort())
-    expect(names).toHaveLength(TOOL_REGISTRY.length)
+    // goal 面（tool-pm-goal）由 applyGoalToolSurface 单独注册，登记面是它自己的 GOAL_TOOL_REGISTRY。
+    const expected = [
+      ...TOOL_REGISTRY.map(e => e.toolName),
+      ...GOAL_TOOL_REGISTRY.map(e => e.toolName),
+    ].sort()
+    expect(names).toEqual(expected)
+    expect(names).toHaveLength(expected.length)
   })
 
   it('注册看板路由：/dashboard/api/reqboard 前缀', () => {

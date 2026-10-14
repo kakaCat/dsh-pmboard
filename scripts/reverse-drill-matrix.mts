@@ -395,26 +395,26 @@ const LEGACY_DRILLS: readonly Drill[] = [
     mode: 'file', target: 'pm-core/src/application/internal/upstream-failure.ts',
     from: "    const fatal = code === 'AUTH' || FATAL_MESSAGE_RE.test(code + ' ' + message)",
     to: '    const fatal = false // 反向演练',
-    cmd: ['npx', 'vitest', 'run', 'tests/dive-loop-breaker.test.ts', '--reporter=dot'],
-    expectExit: 1, expectNamed: [], minRed: 4,
+    cmd: ['npx', 'vitest', 'run', 'pm-core/tests/upstream-failure.test.ts', '--reporter=dot'],
+    expectExit: 1, expectNamed: [], minRed: 1,
   },
   {
     group: 'legacy', ref: 'FR-3', name: '内存闭锁 fail-closed（起轮前不看闭锁）',
-    breakPoint: 'round-driver.ts：闭锁判定拿掉',
-    mode: 'file', target: 'pm-round-driver/src/round-driver.ts',
-    from: '    if (latchBlocks(state)) return false',
-    to: '    // 反向演练：闭锁判定拿掉',
-    cmd: ['npx', 'vitest', 'run', 'tests/dive-loop-breaker.test.ts', '--reporter=dot'],
+    breakPoint: 'goal-round driver.ts：闭锁判定拿掉（`latch.blocked` 恒 false）',
+    mode: 'file', target: 'goal/pm-goal-round-driver/src/driver.ts',
+    from: '    const latch = latchBlocks(state.hold, facts.latch)',
+    to: '    const latch = { released: false, blocked: false } // 反向演练',
+    cmd: ['npx', 'vitest', 'run', 'goal/pm-goal-round-driver/tests/driver.test.ts', '--reporter=dot'],
     expectExit: 1, expectNamed: [], minRed: 1,
   },
   {
     group: 'legacy', ref: 'FR-5', name: '人工门即停手（起轮前不看台账态的门）',
-    breakPoint: 'round-driver.ts：人工门分支拿掉',
-    mode: 'file', target: 'pm-round-driver/src/round-driver.ts',
-    from: '    if (ports.humanGate !== undefined) {',
-    to: '    if (false) { // 反向演练',
-    cmd: ['npx', 'vitest', 'run', 'tests/dive-human-gate-stop.test.ts', '--reporter=dot'],
-    expectExit: 1, expectNamed: [], minRed: 6,
+    breakPoint: 'goal-round decide.ts：人工门分支拿掉',
+    mode: 'file', target: 'goal/pm-goal-round-driver/src/decide.ts',
+    from: '  if (g?.humanGateOpen === true) {',
+    to: '  if (false) { // 反向演练',
+    cmd: ['npx', 'vitest', 'run', 'goal/pm-goal-round-driver/tests/decide.test.ts', '--reporter=dot'],
+    expectExit: 1, expectNamed: [], minRed: 1,
   },
   {
     group: 'legacy', ref: 'FR-8', name: '断点留痕限流（窗口置 0）',
@@ -523,9 +523,9 @@ export const CANCELED_DRILLS: readonly Drill[] = [
   {
     group: 'canceled', ref: 'C5', criterion: 'behavior',
     name: 'handleState 去掉 tasks 收敛（取消卡重回 /state 载荷）',
-    breakPoint: 'src/http/routers/stages.ts（handleState）：`const live = liveTasksOf(tasks)`'
+    breakPoint: 'pm/src/http/routers/stages.ts（handleState）：`const live = liveTasksOf(tasks)`'
       + ' → `const live = tasks`（API 边界那一次收敛拿掉）',
-    mode: 'file', target: 'src/http/routers/stages.ts',
+    mode: 'file', target: 'pm/src/http/routers/stages.ts',
     from: '    const live = liveTasksOf(tasks)\n    const { revision } = await st.head()',
     to: '    const live = tasks // 逆验证：tasks 收敛去掉\n    const { revision } = await st.head()',
     cmd: ['npx', 'vitest', 'run', 'pm-core/tests/canceled-ready-unlock.test.ts', '--reporter=dot'],
@@ -536,12 +536,12 @@ export const CANCELED_DRILLS: readonly Drill[] = [
   {
     group: 'canceled', ref: 'C6', criterion: 'behavior',
     name: 'handleState 去掉 ready 现算（退回改前「只认 done」的手写筛）',
-    breakPoint: 'src/http/routers/stages.ts（handleState）：`liveReadyTasks(live.filter(...))`'
+    breakPoint: 'pm/src/http/routers/stages.ts（handleState）：`liveReadyTasks(live.filter(...))`'
       + " → 改前口径的手写筛（自身 `status === 'todo'` + 前置 `dep.status === 'done'`；"
       + '前置缺省才放行）——**不再走单点现算**。'
       + '实测备注：只把调用换回 `readyTasks(tasks, r.id)` **不足以**变红'
       + '（它已是 `liveReadyTasks` 的薄封装，判据已收敛 ⇒ 行为等价），故此处退回的是判据本身。',
-    mode: 'file', target: 'src/http/routers/stages.ts',
+    mode: 'file', target: 'pm/src/http/routers/stages.ts',
     from: '        page.items.map(r => [r.id, liveReadyTasks(live.filter(t => t.requirementId === r.id))]),',
     to: "        page.items.map(r => [r.id, tasks.filter(t => t.requirementId === r.id && t.status === 'todo' && (t.dependsOn ?? []).every(d => { const dep = tasks.find(x => x.id === d); return dep === undefined || dep.status === 'done' })).map(t => t.id)]),",
     cmd: ['npx', 'vitest', 'run', 'pm-core/tests/canceled-ready-unlock.test.ts', '--reporter=dot'],

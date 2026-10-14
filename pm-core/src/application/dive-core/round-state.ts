@@ -8,96 +8,19 @@
  * @module dsh-pmboard/application/dive/round-state
  */
 import type { DiveRoundSource, RequirementDive, RequirementStatus } from '../../protocol-domain.js'
-import { isDiveRoundSource } from '../../protocol-domain.js'
 import { getStageConfig } from './stage-configs.js'
-
-/** 预留的相位：queued（已入队）→ claimed（已被 step 认领）→ admitted（已进入 history）。单向。 */
-export type RoundPhase = 'queued' | 'claimed' | 'admitted'
-
-/**
- * 连续同因失败达此数 → 熔断停手（REQ-261004065652-5c1c FR-2）。
- *
- * 为什么是 3：实测死循环均值 23 回合/分（峰值 74）——**任何 >0 的重复都在烧额度**，
- * 所以取保守侧；抖动场景下 3 次退避足够自愈（30s/1m/2m）。
- */
-export const FAILURE_BREAKER_THRESHOLD = 3
-
-/** 退避基数与封顶（FR-2）。 */
-export const FAILURE_BACKOFF_BASE_MS = 30_000
-export const FAILURE_BACKOFF_MAX_MS = 10 * 60 * 1000
-
-/** 失败退避账（**内存态**：不落盘——落盘会让它退化成"第二个台账"，重新依赖 I/O）。 */
-export interface DriverFailure {
-  /** 病因类别（复用 `upstream-failure.reasonClassOf` 的口径）。 */
-  reasonClass: string
-  /** 连续同因失败次数（原因类别变化即归零）。 */
-  count: number
-  /** 不早于该时刻才允许再起轮（毫秒时间戳）。 */
-  nextAt: number
-}
-
-/**
- * 内存闭锁（**内存态**：存在即不起轮）。
- *
- * 为什么必须有它、而不能只靠台账 `driverHealth`：2026-10-03 的死循环里，
- * 台账**写对了**（18:03:52 就写了 `paused`），但驱动**读不到**（同步投影陈旧）。
- * 闭锁的全部价值就是「**与 I/O 无关的当拍判定**」——即使投影再出一次同样的缺陷，
- * 也不可能出现"没人推进却一直起轮"。
- */
-export interface DriverLatch {
-  reasonClass: string
-  /** 人话原因（进日志/留痕；≤200 字符）。 */
-  reason: string
-  at: number
-  /**
-   * 本次停手的**台账写是否已成功**（写成功后由回调翻真）。
-   *
-   * 为什么需要它（反向演练②实测抓到的假解锁）：解锁判据里有一条"台账显式 healthy = 有人清过"，
-   * 而**写盘失败**时台账里的 `driverHealth` 是**缺失**的——若把"缺失"当成"健康"，
-   * 闭锁会立刻自己解开，fail-closed 就成了空话。`writable` 把"我们确认写过"与"没写成"分开。
-   */
-  writable: boolean
-}
-
-/** 退避窗口：`base × 2^(n-1)`，封顶 `FAILURE_BACKOFF_MAX_MS`。`n ≤ 1` 取基数。 */
-export function backoffFor(count: number): number {
-  const n = count <= 1 ? 0 : count - 1
-  const span = FAILURE_BACKOFF_BASE_MS * Math.pow(2, Math.min(n, 20))
-  return Math.min(span, FAILURE_BACKOFF_MAX_MS)
-}
-
-/**
- * 记一次失败：**同因累加、异因归零**（不同病因分开数，避免"抖动 + 额度"互相掩盖）。
- * 纯函数——时间由调用方注入，便于假时钟用例。
- */
-export function recordFailure(prev: DriverFailure | undefined, reasonClass: string, now: number): DriverFailure {
-  const count = prev !== undefined && prev.reasonClass === reasonClass ? prev.count + 1 : 1
-  return { reasonClass, count, nextAt: now + backoffFor(count) }
-}
-
-/** 熔断是否已触发（`count ≥ 阈值`）。 */
-export function breakerTripped(failure: DriverFailure | undefined): boolean {
-  return failure !== undefined && failure.count >= FAILURE_BREAKER_THRESHOLD
-}
-
-
-/** 一次回合预留（对齐 dsh-goal-round-driver 的 attempt）。 */
-export interface RoundAttempt {
-  requirementId: string
-  /** 预留时的需求 revision */
-  revision: number
-  /** 预留的回合号 = 预留时 roundsInStage + 1 */
-  round: number
-  /** 消息身份（user/message 事件据此认领） */
-  messageId: string
-  /** 模型可见内容（逐字比对，防旧/伪造消息混入） */
-  content: unknown
-  phase: RoundPhase
-  /** 被 discard / aborted / cancel → 永不计数 */
-  cancelled: boolean
-  /** revision 失效 / 竞争让位 → 永不计数 */
-  stale: boolean
-}
+// 回合契约（预留形状 / 来源判定 / 逐字比对 / 失败退避 / 内存闭锁）**归属 goal**：
+// goal 是独立项目，契约由它定义，pm 只做实现方。此处**转发**，既有 pm 消费点逐字不变。
+// 方向：pm-core(L1) → pm-goal(L1)，白名单允许；反向（goal → pm）已在本步切断。
+import {
+  sameQueued,
+  type DriverFailure, type DriverLatch, type RoundAttempt,
+} from 'pm-goal'
+export {
+  FAILURE_BACKOFF_BASE_MS, FAILURE_BACKOFF_MAX_MS, FAILURE_BREAKER_THRESHOLD,
+  backoffFor, breakerTripped, deepEqualJson, recordFailure, sameQueued, sameRound,
+} from 'pm-goal'
+export type { DriverFailure, DriverLatch, RoundAttempt, RoundPhase } from 'pm-goal'
 
 /** 每 agent 一个驱动状态（进程内存态，不落盘）。 */
 export interface DriverState {
@@ -119,39 +42,6 @@ export interface DriverState {
   failure?: DriverFailure
   /** 内存闭锁（FR-3，内存态）：存在即不起轮，**先于一切台账判据**。 */
   latch?: DriverLatch
-}
-
-/** 逐字（结构）相等：只吃 JSON 值（消息 content 是 JSON）。 */
-export function deepEqualJson(a: unknown, b: unknown): boolean {
-  if (a === b) return true
-  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false
-  if (Array.isArray(a) || Array.isArray(b)) {
-    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false
-    return a.every((v, i) => deepEqualJson(v, b[i]))
-  }
-  const ao = a as Record<string, unknown>
-  const bo = b as Record<string, unknown>
-  const ka = Object.keys(ao)
-  const kb = Object.keys(bo)
-  if (ka.length !== kb.length) return false
-  return ka.every(k => Object.prototype.hasOwnProperty.call(bo, k) && deepEqualJson(ao[k], bo[k]))
-}
-
-/** 来源逐字段相等（requirementId / revision / round）。 */
-export function sameRound(source: DiveRoundSource, attempt: RoundAttempt): boolean {
-  return source.requirementId === attempt.requirementId
-    && source.revision === attempt.revision
-    && source.round === attempt.round
-}
-
-/**
- * 是否为本驱动器登记的回合消息（**仅此判据认领**）：
- * source 是合法 Dive 来源、字段与预留一致、内容与登记逐字一致。
- */
-export function sameQueued(content: unknown, source: unknown, attempt: RoundAttempt): boolean {
-  if (!isDiveRoundSource(source)) return false
-  if (!sameRound(source, attempt)) return false
-  return deepEqualJson(content, attempt.content)
 }
 
 /** 进入 step 前/后的完整栅栏（fail-closed）。任何一条不成立即不得放行。 */

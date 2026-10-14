@@ -8,20 +8,19 @@
  * 链推进 9 张子卡后停在父卡收尾，autoRun 被置 false。
  *
  * 本文件锁定两条：① 交付早于认领仍能收尾（根因修复）；② 真「无证据」时仍被拦（门没被放水）。
+ *
+ * 2026-10-11（退役 workflow 引擎）：贴一个**团队执行面**当哨兵，替掉原先的占位假引擎——
+ * 本文件用例的子卡都已 done，链只走收尾/rollup，**一张卡都不该派**；哨兵按"没写台账"装备，
+ * 于是任何一次误派都会立刻表现为失败步骤，不会被静默放过。
  */
 import { describe, it, expect } from 'vitest'
 import { advanceRequirement } from 'pm-core/application/use-cases/AdvanceChain.js'
-import type { WorkflowRunner } from 'pm-core/application/ports.js'
+import { installTeamProducer, type FakeTeams } from 'tests/application/teams-fake.js'
 import { makeHarness, task, req } from 'tests/application/harness.js'
 import type { TaskRecord } from 'pm-core/protocol-domain.js'
 
 const FILE = 'pm-core/src/domain/x.ts'
 const MISSING = 'pm-core/src/domain/nope.ts'
-
-/** 占位 runner：本文件用例的子卡都已 done，链只走收尾/rollup，不应触发任何子卡 run。 */
-const noopRunner: WorkflowRunner = {
-  async start() { return { ok: false, reason: 'unused: 本用例不应触发子卡 run' } },
-}
 
 /** 造一个「交付早于认领」的父卡：交付 mtime=1000，父卡认领 claimedAt=2000，链侧无工具痕迹。 */
 function seedDeliveredBeforeClaim(subFiles: string) {
@@ -38,7 +37,8 @@ function seedDeliveredBeforeClaim(subFiles: string) {
     lastReport: { at: 1500, reportIndex: 1, filesChanged: [subFiles], completed: ['完成'] },
   }))
   h.seedTasks('REQ-000001', [parent, ...subs])
-  h.deps.workflow = noopRunner
+  // 占位团队执行面：本文件用例的子卡都已 done，链只走收尾/rollup，不应触发任何派卡。
+  installTeamProducer(h, undefined)
   // 链侧 windowKey='system'：真实环境没有本窗口工具痕迹 → 只能靠文件证据（这正是缺陷现场）。
   h.session.activity = 0
   return h
@@ -60,6 +60,8 @@ describe('父卡收尾凭证基准（不可变出身，父子同口径）', () =
     expect(fin?.outcome).toBe('ok')
     expect(out.stopped).toBe('rollup')
     expect(parentOf(h).status).toBe('done')
+    // 团队侧计数：子卡全 done ⇒ 一张卡都不派（原先钉的是"假引擎一次未调"）
+    expect((h.deps.teams as FakeTeams).created).toHaveLength(0)
   })
 
   it('真无证据（上报文件不存在且无工具痕迹）：父卡仍被拦在 done 之外', async () => {
@@ -68,5 +70,6 @@ describe('父卡收尾凭证基准（不可变出身，父子同口径）', () =
     const out = await advanceRequirement(h.deps, 'REQ-000001')
     expect(out.stopped).toBe('paused')
     expect(parentOf(h).status).toBe('in_progress')
+    expect((h.deps.teams as FakeTeams).created).toHaveLength(0)
   })
 })

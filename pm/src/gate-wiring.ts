@@ -144,6 +144,15 @@ export interface CaptureGuidanceDeps {
    * 且本卡要求"落地后行为与改造前逐字等价"——缺省不可用才能保证这一条可被机械断言。
    */
   volatileChannel?: { available: (windowKey: string) => boolean };
+  /**
+   * 立项注入开关（2026-10-09 用户裁定）。**必填**：组合根经 `captureGuidanceInjection(config)`
+   * 解析后传入（缺省 false = 不注入；true = 恢复改造前行为）。
+   *
+   * 为什么必填而不是可选缺省：这是本段的**行为判据**（未绑定窗口注不注引导 / 产不产
+   * kind='capture' 段）。可选缺省会让"忘了接线"表现为"照旧注入"，正是这次要消掉的那件事。
+   * 两份立项文案仍保留在 `capture-section.ts` / `volatile-notice.ts`（回退只需改配置）。
+   */
+  injectCapturePrompt: boolean;
   /** systemPrompt 服务就绪回调（调用侧存起供 tokenSnapshot/路由使用）。 */
   onSystemPrompt: (svc: unknown) => void;
 }
@@ -260,12 +269,16 @@ export function registerCaptureGuidance(ctx: Context, deps: CaptureGuidanceDeps)
             //     「静态引导」与「待捕获命中提示」间**二选一**（改造前的替换语义，二者不同屏）。
             //   · 通道可用性：`deps.volatileChannel` 未装配/抛错 = **不可用** → 走回落整段，
             //     与改造前的会话内容等价（纪律一条不丢）；t3 接入真实通道后，此处只回头部。
+            //   · 立项注入开关（2026-10-09 用户裁定，`capture.injectGuidance` 缺省 false）：关时
+            //     未绑定窗口两处都返回 ''（静态引导与 kind='capture' 都不注入），已绑定窗口不受影响。
+            //     尾部投递链路（pendingCapture 登记 / notify）照旧保留——回退 = 一份配置，不改代码。
             if (windowKey !== undefined && volatileChannelAvailable(deps, windowKey)) {
-              return headSectionTextFrom(facts, assembleContext);
+              return headSectionTextFrom(facts, assembleContext, deps.injectCapturePrompt);
             }
             return fallbackSectionTextFrom(facts, tasksSnapshot, assembleContext, {
-              pending,
+              ...(deps.injectCapturePrompt ? { pending } : {}),
               injectionLog: deps.injectionLog,
+              injectCapturePrompt: deps.injectCapturePrompt,
             });
           },
         }));

@@ -7,7 +7,7 @@
 
 ## 分层与依赖方向 #layers
 
-> REQ-261009174713-7bc8 重构后：实现按**层**拆成 19 个 workspace 包，依赖方向只许向内（L0 → L4）。
+> REQ-261009174713-7bc8 重构后：实现按**层**拆成 16 个 workspace 包（2026-10-11 退役 `pm-workflow`），依赖方向只许向内（L0 → L4）。
 > 白名单唯一权威是 `scripts/package-boundary-check.mts` 的 `LAYERS`；跑 `node scripts/package-boundary-check.mts` 自检。
 
 | 层 | 包 | 允许依赖 | 说明 |
@@ -16,11 +16,22 @@
 | `L0.5` | `pm-category-kit`（分组 `category/`） | pm-common | 类别层：契约与六个类别规格 |
 | `L0.5` | `pm-category-feature` · `pm-category-bug` · `pm-category-doc` · `pm-category-refactor` · `pm-category-spike` · `pm-category-chore`（分组 `category/`） | pm-common · pm-category-kit | 类别层：契约与六个类别规格 |
 | `L1` | `pm-core` | pm-common · reqboard-rtm · pm-category-kit | 领域与用例（含类型消费端口） |
-| `L1` | `pm-goal`（分组 `goal/`） | —（零依赖） | PM 双层 goal 内核（纯状态机/判据 + 结构化端口契约） |
-| `L2` | `tool-pm` · `tool-pm-goal` · `pm-round-driver` · `pm-workflow` · `pm-client` · `command-pm` | pm-common · pm-core（+ pm-goal） | 入口与适配：工具（含 goal 工具面）/ 驱动 / 工作流 / 客户端 / 命令面 |
-| `L3` | `pm-templates` · `pm-skills` · `pm-eval-suite` · `pm-scripts` | （无） | 资产包：模板 / 技能 / 评测 / 脚本 |
+| `L1` | `pm-goal`（分组 `goal/`） | —（零依赖） | PM goal 内核（纯状态机/判据 + 结构化端口契约） |
+| `L2` | `tool-pm` · `tool-pm-goal` · `pm-goal-round-driver` · `pm-client` · `command-pm` | pm-common · pm-core（+ pm-goal） | 入口与适配：工具（含 goal 工具面）/ 驱动 / 客户端 / 命令面 |
+| `L3` | `pm-templates` · `pm-skills` · `pm-scripts` | （无） | 资产包：模板 / 技能 / 脚本 |
 
 **依赖方向（硬纪律）**：只许向内。资产包（L3）零 import；`pm-category-kit` 是工具包唯一合法横向通路。
+
+### 装载形态：插件主体包 `pm/` 直载 #loading
+
+- **插件 = `pm/`**（包名 `dsh-pmboard`）：`pm/package.json` 是**装载清单唯一事实源**（`main`/`exports`（含 CJS `default`）/
+  `dsh.bundle.patch`/`dsh.client`），`dist/index.mjs` 与 `lib/client.js` 也由它产出；profile 以 `link:<仓库>/pm` 安装。
+- **仓库根只当 private workspace 根**（`scripts` + `devDependencies`），**不持插件清单**——两份清单 = 两份事实源，
+  2026-10-10 / 10-11 两次「插件整体不装载」（`reqboard_*` 工具与看板路由全不注册，宿主只在 stderr 打一行 skip）都出在这里。
+- 另一条独立断链：入口静态 `import "yaml"`（按设计留外部）⇒ 仓库根 `node_modules/` 缺失即 `ERR_MODULE_NOT_FOUND`。**清单齐全 ≠ 起得来**。
+- 回归锁：`tests/plugin-manifest.test.ts`；细节见 `docs/architecture/workspace-packages.md`。#loading
+- **宿主侧完整加载规则**（profile → bundle → entry 三层、静默跳过的精确条件、运行期解析表、客户端模块表与
+  `external` 图、生命周期）：`docs/architecture/dsh-plugin-loading-rules.md`。
 
 ### 需求类型层 #type-layer
 

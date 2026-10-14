@@ -633,6 +633,14 @@ export interface DiveRoundSource {
   revision: number
   /** 预留的回合号 = roundsInStage + 1（严格 > 0） */
   round: number
+  /**
+   * 当前 goal 的身份（`goal:<taskId>`；加性可选，零迁移）。
+   * 与 `goalRevision` + `round` 构成**授权三元组**（对齐宿主 goal-round 精确授权）：
+   * 工具面据此判定"本回合是不是**这个 goal 这次修订**的续跑"——三项全对才算 autonomous。
+   */
+  goalId?: string
+  /** 起轮时 goal 的 revision（goal 被改过 ⇒ 旧回合消息不再代表当前目标）。 */
+  goalRevision?: number
 }
 
 
@@ -727,7 +735,8 @@ export interface TaskRunEvidence {
 // C1（REQ-47939a t10）：账本契约版本 4 → 5。改的是**契约版本常量**，不是读路径兼容分支——
 // 迁移后文件里写的就是 5，常量必须与之一致，否则 load 会把 5 报告成 4、并在下一次写盘时把
 // 版本回退（迁移成果被静默抹掉）。⚠️ 运行时**不自动迁移**（见 design/migration.md §5）：
-// v4 台账仍可载入（字段缺失处按可选处理），迁移由人工跑 scripts/migrate-ledger.ts 完成。
+// v4 台账仍可载入（字段缺失处按可选处理），迁移由人工跑 v9 迁移脚本完成——该脚本已随本版本移除，
+// v8 及更早的单册改由 migrate-ledger-v10 的前置门显式拒绝（LEDGER_REQUIRES_V9_FIRST）。
 //
 // REQ-260927202051-f6df t6：8 → **9**，并把 `tasks` 从台账**移除**（任务迁往
 // `docs/requirements/<REQ>/queue.json`，读方端口 = TaskStore）。

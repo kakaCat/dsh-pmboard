@@ -44,6 +44,7 @@ import { repoPath } from 'tests/helpers/repo-root.js'
 import { InMemoryQueueRepository, makeHarness, req, task } from 'tests/application/harness.js'
 import { mkTask, queueOf } from 'tests/queue/fixtures.js'
 import { expectCode } from 'tests/helpers/code-assert.js'
+import { installTeamUnavailable } from 'tests/application/teams-fake.js'
 import { defineTaskMoveTool } from 'tool-pm/index.js'
 import { executeSubtask } from 'pm-core/application/use-cases/ExecuteTask.js'
 import { validateQueueFile } from 'pm-core/domain/queue/validateQueue.js'
@@ -147,7 +148,7 @@ function taskRecordBlock(): string {
  * （`v≠1` / 截断 JSON → `undefined` = 计数不可得）；它的**链路面**由本函数钉住：只要有人删掉
  * `v === 1` 这一判据，本断言即红。找不到该块 → 抛错（判据移位即红，不静默空过）。
  */
-const INDEX_SRC = readFileSync(pathToFileURL(repoPath('src/index.ts')), 'utf8')
+const INDEX_SRC = readFileSync(pathToFileURL(repoPath('pm/src/index.ts')), 'utf8')
 function indexBudgetPortBlock(): string {
   const start = INDEX_SRC.indexOf('const budgetPort: SubtaskBudgetPort')
   const end = INDEX_SRC.indexOf('const useCaseDeps: UseCaseDeps', start)
@@ -799,8 +800,10 @@ describe('⑦ 非法 budgetRequests 的「按缺省 + 诊断」在读侧两条�
       await h.seedSettled()
       const port = new ProdBudgetPort(file)
       h.deps.subtaskBudget = port
-      // 引擎不可达也会先开窗（开窗在派发之前）；本用例只钉开窗 + 诊断这一件事。
-      h.deps.workflow = { start: async () => ({ ok: false, reason: 'test-stop' }) } as never
+      // 执行面不可用也会先开窗（开窗在派发之前）；本用例只钉开窗 + 诊断这一件事。
+      // 2026-10-11 退役 workflow 引擎：假件从"假引擎"换成**团队服务不可用**（唯一执行面的不可用态），
+      // 断言的仍是同一条结构命题——开窗发生在派发之前，与产出从哪来无关。
+      installTeamUnavailable(h)
 
       await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: W, exec: { agent: { id: W } } })
 
@@ -852,6 +855,8 @@ async function sectionWith(
     requirementStore: { peekFacts: () => factsRef() } as unknown as RequirementStore,
     pendingCapture: new Map(),
     injectionLog: { record: (): void => {} } as never,
+    // 2026-10-09 裁定：立项注入缺省关（本用例验已绑定窗口的回落整段，与立项提示无关）。
+    injectCapturePrompt: false,
     taskStore: {
       listAll: async () => tasksRef(),
       subscribe: () => (): void => {},

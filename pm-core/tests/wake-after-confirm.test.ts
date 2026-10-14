@@ -16,7 +16,7 @@
  * ## 装配口径（照 `tests/dive-wake-e2e.test.ts` 的边界替换法）
  *
  * 只替换 IO 边界（台账 / agent 注册表 / agent 句柄），其余走**真实现**：
- * `createCaptureRuntime` 的真投递器 + `createDiveRoundDriver` 的真驱动 + 真 `PendingConfirmRegistry`。
+ * `createCaptureRuntime` 的真投递器 + `pm-goal-round-driver` 的真驱动 + 真 `PendingConfirmRegistry`。
  * 事件桥用一句"状态真变了就转发 requirement-moved"的替身——与组合根 store 桥**同口径**
  * （桥只转发状态迁移，不转发 `requirement-updated`，这正是事故里丢掉触发的那一环）。
  */
@@ -28,13 +28,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { emptyLedger, type RequirementRecord } from 'pm-core/protocol-domain.js'
 import { createCaptureRuntime } from 'src/wiring/pm-capture-root.js'
-import { createDiveRoundDriver, type DiveRoundPorts } from 'pm-round-driver/round-driver.js'
+import { buildGoalRoundPorts } from 'src/adapters/goal-round-ports.js'
+import { createGoalRoundDriver } from 'pm-goal-round-driver/driver.js'
 import { PendingConfirmRegistry } from 'src/adapters/PendingConfirmRegistry.js'
 import { FileDocRepository } from 'src/adapters/FileDocRepository.js'
 import { RandomIdFactory } from 'src/adapters/RandomIdFactory.js'
 import { SessionProbeAdapter } from 'src/adapters/SessionProbeAdapter.js'
 import { UserQuestionsAdapter } from 'src/adapters/UserQuestionsAdapter.js'
 import { taskStoreAt } from 'tests/queue/route-deps.js'
+import { createGoal } from 'pm-goal'
 import { applyConfirmDecision } from 'pm-core/application/internal/confirm-settle.js'
 import { enterAwaitingConfirm, isAwaitingConfirmStop } from 'pm-core/application/internal/awaiting-confirm.js'
 import { defineAskConfirmTool } from 'tool-pm/index.js'
@@ -64,6 +66,9 @@ function makeReq(): RequirementRecord {
       path: 'docs/requirements/' + REQ + '/requirement.md', registeredAt: 1,
     }],
     dive: { phase: 'active', activation: 'armed', roundsInStage: 0 },
+    // 当前 goal 挂**需求**（goal 不挂卡）：驱动拍据此走 `drive`。
+    goal: { id: 'goal:' + REQ, objective: '继续实现', phase: 'active', revision: 1 },
+    goalSeq: 1,
   } as unknown as RequirementRecord
 }
 
@@ -105,26 +110,48 @@ function harness() {
   }
   const store = legacyStoreProjection(repo as never)
 
-  const ports: DiveRoundPorts = {
-    store,
+  // 2026-10-10：改挂新 goal 驱动。端口走**真适配器**（buildGoalRoundPorts）——`dialogInFlight` 这条闸
+  // 由适配器从 `pendingConfirms` 读，正是本用例要钉的那一环；投递仍走 `createCaptureRuntime` 的真投递器。
+  const ports = buildGoalRoundPorts({
     peekFacts: () => ledger.requirements.map(factsOf),
-    agents: { get: (id) => (id === WINDOW ? agent : undefined), withoutInitiator: (op) => op() },
-    fiberActive: () => true,
-    delivery: deliverer,
-    cancel: () => {},
-    whenIdle: async () => {},
+    getRequirement: (id) => store.get(id),
+    // 任务队列：本用例只问"确认之后有没有起一轮"，故给一张 running 卡（goal 在需求记录上，不在卡上）。
+    tasksOf: async () => [{ id: 't-1', status: 'running', acceptance: '继续实现' }],
+    delivery: {
+      createRoundMessage: (i) => deliverer.createRoundMessage(i),
+      deliverMessage: (w, m) => deliverer.deliverMessage(w, m),
+      checkpoint: async () => {},
+      persistAdmission: () => {},
+      contentOf: (m) => (m as { content?: unknown } | undefined)?.content,
+      now: () => 1000,
+    },
     checkpoint: async () => {},
-    renderRoundText: (i) => 'round ' + i.round,
+    persistAdmission: () => {},
+    // 2026-10-11：确认推进会把旧 goal 收口（阶段过了，目标结束）⇒ 驱动要为**新阶段**建目标。
+    // 故这里必须走**真** createGoal（桩 `() => true` 会造出"建了但台账没有"的假象，下一拍仍无目标可跑）。
+    createGoal: (requirementId, objective) => createGoal(
+      { store: store as never, now: () => 1000 }, requirementId, objective,
+    ),
+    blockGoal: () => true,
+    askStageDone: () => {},
+    trace: () => {},
+    fiberActive: () => true,
+    agentLive: () => true,
     now: () => 1000,
+    // 弹框在途判据（FR-1）：修前这里恒为 true（无 ref 的清位放不开内存登记），驱动被挡下。
+    dialogInFlight: (id) => registry.inFlightFor(id),
     logger: {
       info: () => {}, debug: () => {},
       warn: (m, e) => { warnings.push(String(m) + ' :: ' + String((e as Error)?.message ?? e ?? '')) },
     },
-    // 弹框在途判据（FR-1）：修前这里恒为 true（无 ref 的清位放不开内存登记），驱动被挡下。
-    dialogInFlight: (id) => registry.inFlightFor(id),
+  })
+  const driver = createGoalRoundDriver(ports)
+  /** 需求 → 绑定窗口（组合根 store 桥同口径）→ 请求驱动。 */
+  const requestDriveFor = (id: string): void => {
+    const window = ledger.requirements.find((r) => r.id === id)?.sourceSessionId
+    if (window !== undefined) void driver.requestDrive(window)
   }
-  const driver = createDiveRoundDriver(ports)
-  bridge = (id) => driver.onRequirementMoved(id)
+  bridge = (id) => requestDriveFor(id)
 
   const deps = {
     store,
@@ -134,8 +161,8 @@ function harness() {
     ids: new RandomIdFactory(),
     session: new SessionProbeAdapter({}),
     dialogs: registry,
-    // 组合根的真实接法：清位即请求驱动（走 round 半既有入口，不新增投递路径）。
-    notifyDrivable: (id: string) => driver.onRequirementMoved(id),
+    // 组合根的真实接法（pm/src/index.ts:1053 同形）：清位即请求驱动，不新增投递路径。
+    notifyDrivable: (id: string) => requestDriveFor(id),
   } as unknown as UseCaseDeps
 
   return { driver, store, ledger, inbox, agent, registry, warnings, deps }

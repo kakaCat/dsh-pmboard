@@ -1,0 +1,80 @@
+<mxfile host="draw.io" agent="drawskills" version="24.7.17" type="device">
+  <diagram id="pm-tool-merge-before-after" name="工具面合并对比">
+    <mxGraphModel dx="0" dy="0" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="工具面合并对比：25 → 21（只动 goal 面 4 个槽位，台账面 19 件不动）" style="text;html=1;fontSize=22;fontStyle=1;align=center;fillColor=none;strokeColor=none;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="420" y="20" width="880" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="l_head" value="合并前 · 25 个常驻槽位（每个 schema 每轮请求都要重发）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;strokeWidth=2;fontSize=13;fontStyle=1;fontColor=#424242;" vertex="1" parent="1">
+          <mxGeometry x="60" y="100" width="560" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="l_goal" value="tool-pm-goal · 6 件（goal 面）&#10;reqboard_goal_get —— 读相位 + CAS 用的 id/revision&#10;reqboard_goal_create —— 建当前这段工作的 goal&#10;reqboard_goal_update —— pause / resume / block / complete&#10;reqboard_stage_goal_get —— 读阶段目标表&#10;reqboard_stage_goal_create —— 登记阶段目标表（全仓唯一写入口）&#10;reqboard_stage_goal_done —— 阶段达成位落章（真人专属）" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#43A047;strokeWidth=2;fontSize=12;fontColor=#1B5E20;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="170" width="560" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="l_tab" value="tool-pm · 19 件（台账面，5 组）&#10;立项与自查（3）：capture · create · status（含 run 节）&#10;阶段推进与人工门（5）：submit · ask_confirm · move · accept_sheet · clear_pause&#10;拆分与任务（5）：decompose · task_move · task_report · task_tree · task_amend&#10;自动实施链（1）：task_run&#10;协作与环境（5）：open_window · bind · handoff · kb · skill_install" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;strokeWidth=2;fontSize=12;fontColor=#424242;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="460" width="560" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="l_sum" value="病灶：3 个只读面查同一份事实（status / goal_get / stage_goal_get）· 1 个写入口没人调用（stage_goal_create：注入片段里 reqboard_goal* 出现 0 次）· 1 桩事两个发起者（goal_create vs 驱动的 create-goal 决策）" style="rounded=1;arcSize=8;dashed=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#E53935;strokeWidth=2;fontSize=12;fontColor=#B71C1C;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="780" width="560" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m1" value="① 提示词口径统一&#10;驱动已建 goal（create-goal 决策 → ports.createGoal）⇒ 不再教 agent「先建它」（prompt.ts 那段是死分支）" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#FFA000;strokeWidth=2;fontSize=12;fontColor=#E65100;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="680" y="170" width="320" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="m2" value="② 读面并入 status&#10;goal / stage 只读节并进 status（照 tool-face-inventory §三.3 的既有手法；CAS 的 id+revision 由 status 节带上）" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#FFA000;strokeWidth=2;fontSize=12;fontColor=#E65100;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="680" y="310" width="320" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="m3" value="③ 驱动 seed 阶段表&#10;按 ALL_STAGE_KEYS 建立（它手里已有合法阶段集）⇒ 解掉「没人登记 ⇒ ask-stage-done 永不触发」" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#FFA000;strokeWidth=2;fontSize=12;fontColor=#E65100;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="680" y="450" width="320" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="m4" value="④ 纯人门保留&#10;stage_goal_done 是真人专属（authority）—— 保留，但不算 agent 工作槽位；不并入任何 op 簇" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#43A047;strokeWidth=2;fontSize=12;fontColor=#1B5E20;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="680" y="590" width="320" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r_head" value="合并后 · 21 个常驻槽位（省 4 个 schema）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1976D2;strokeWidth=3;fontSize=13;fontStyle=1;fontColor=#0D47A1;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="100" width="580" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="r_goal" value="tool-pm-goal · 3 件（goal 面）&#10;reqboard_goal_create —— 降级为「人直接发起」通道（或按裁定撤）&#10;reqboard_goal_update —— agent 唯一写面：pause / block / complete（resume 仍真人专属）&#10;reqboard_stage_goal_done —— 人落章（对话通道）" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#43A047;strokeWidth=2;fontSize=12;fontColor=#1B5E20;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="170" width="580" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="r_status" value="reqboard_status（吸收 2 个只读面）&#10;+ goal 节：相位 / 陈述 / 阻塞原因 / id + revision（CAS 用）&#10;+ stage 节：阶段目标表 / 达成进度 / ready_to_close" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#EF6C00;strokeWidth=2;fontSize=12;fontColor=#BF360C;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="430" width="580" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="r_tab" value="tool-pm · 其余 18 件（台账面）—— 全部不动&#10;立项与自查：capture · create&#10;阶段推进与人工门（5）：submit · ask_confirm · move · accept_sheet · clear_pause&#10;拆分与任务（5）：decompose · task_move · task_report · task_tree · task_amend&#10;自动实施链（1）：task_run&#10;协作与环境（5）：open_window · bind · handoff · kb · skill_install" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;strokeWidth=2;fontSize=12;fontColor=#424242;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="570" width="580" height="320" as="geometry" />
+        </mxCell>
+
+        <mxCell id="b1" value="落地顺序（本仓硬纪律：一批一 revert）&#10;1. 驱动 seed 阶段表（先解阻塞，纯新增）&#10;2. 提示词口径统一（纯文案，零槽位风险）&#10;3. status 吸收两个只读节（真动 schema）&#10;4. 再定 goal_create 去留（撤 / 降级）" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1976D2;strokeWidth=2;fontSize=12;fontColor=#0D47A1;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="920" width="500" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="成本与风险&#10;· 6 处口径同改：registry / 磁盘目录 / apply 注册名 / README / package.json description（+ 注入片段重生成、错误码台账刷新）&#10;· 删/并是硬断，需人明确授权；旧名调用将得到 unknown tool（有意行为变化）&#10;· 每批验收口径：逐批差分新增红 = 0" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#E53935;strokeWidth=2;fontSize=12;fontColor=#B71C1C;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="600" y="920" width="500" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" value="并了会坏的（不动清单）&#10;· goal 三件套：宿主 dsh-tool-goal 对齐（读/建/改各有独立描述），且 update 内含三种授权&#10;· clear_pause 与 goal resume：并了会把真人专属渠道洗成 agent 可调&#10;· submit / ask_confirm / accept_sheet：三个人门语义不同&#10;· task_move / task_report / task_tree / task_amend：各一桩事（amend 已按 op 并过 5 类）" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#BDBDBD;strokeWidth=2;fontSize=12;fontColor=#424242;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="920" width="500" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_idx" style="endArrow=classic;strokeWidth=2;strokeColor=#78909C;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="l_head" target="l_goal" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_idx2" style="endArrow=classic;strokeWidth=2;strokeColor=#78909C;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="l_goal" target="l_tab" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_m1" style="endArrow=classic;strokeWidth=2;strokeColor=#FFA000;exitX=1;exitY=0.15;entryX=0;entryY=0.5;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="l_goal" target="m1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_m2" style="endArrow=classic;strokeWidth=2;strokeColor=#FFA000;exitX=1;exitY=0.45;entryX=0;entryY=0.5;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="l_goal" target="m2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_m3" style="endArrow=classic;strokeWidth=2;strokeColor=#FFA000;exitX=1;exitY=0.75;entryX=0;entryY=0.5;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="l_goal" target="m3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_m4" style="endArrow=classic;strokeWidth=2;strokeColor=#43A047;exitX=1;exitY=0.95;entryX=0;entryY=0.5;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="l_goal" target="m4" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="650" y="427" /><mxPoint x="650" y="650" /></Array></mxGeometry></mxCell>
+        <mxCell id="e_m1b" style="endArrow=classic;strokeWidth=2;strokeColor=#FFA000;exitX=1;exitY=0.5;entryX=0;entryY=0.15;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="m1" target="r_goal" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_m2b" style="endArrow=classic;strokeWidth=2;strokeColor=#FFA000;exitX=1;exitY=0.5;entryX=0;entryY=0.5;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="m2" target="r_status" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1012" y="370" /><mxPoint x="1012" y="490" /></Array></mxGeometry></mxCell>
+        <mxCell id="e_m3b" style="endArrow=classic;strokeWidth=2;strokeColor=#FFA000;exitX=1;exitY=0.5;entryX=0;entryY=0.5;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="m3" target="r_goal" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1024" y="510" /><mxPoint x="1024" y="290" /></Array></mxGeometry></mxCell>
+        <mxCell id="e_m4b" style="endArrow=classic;strokeWidth=2;strokeColor=#43A047;exitX=1;exitY=0.5;entryX=0;entryY=0.75;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="m4" target="r_goal" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1038" y="650" /><mxPoint x="1038" y="350" /></Array></mxGeometry></mxCell>
+
+        <mxCell id="e_tab" value="台账面 19 件：不动（驱动零 I/O 不碰，写路径靠 requirement-moved 闭环回驱动）" style="endArrow=classic;strokeWidth=3;strokeColor=#78909C;exitX=1;exitY=0.5;entryX=0;entryY=0.5;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#546E7A;" edge="1" source="l_tab" target="r_tab" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="640" y="610" /><mxPoint x="640" y="730" /><mxPoint x="1040" y="730" /></Array></mxGeometry></mxCell>
+
+        <mxCell id="e_b1" style="endArrow=classic;strokeWidth=2;strokeColor=#1976D2;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="l_sum" target="b1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_b2" style="endArrow=classic;strokeWidth=2;strokeColor=#E53935;dashed=1;exitX=0.5;exitY=1;entryX=1;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="l_sum" target="b2" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="340" y="905" /><mxPoint x="1100" y="905" /></Array></mxGeometry></mxCell>
+        <mxCell id="e_b3" style="endArrow=classic;strokeWidth=2;strokeColor=#9E9E9E;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="r_tab" target="b3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

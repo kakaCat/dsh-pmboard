@@ -18,7 +18,8 @@ import { pipelineIndexOf } from '../../domain/requirement/RollbackSpec.js'
 import { checkDesignCompletenessGate, checkDesignDecompositionGate, contentGatesForMove } from './content-gate-wiring.js'
 import { landApprovedPlan } from './approved-plan-landing.js'
 import { artifactsToConfirm, type GateFailure } from './artifact-gates.js'
-import { captureSnapshot, transitionRequirement } from './token-usage.js'
+import { captureSnapshot } from './token-usage.js'
+import { applyStageAdvance } from './stage-advance.js'
 // import { executeDecompose } from '../use-cases/Decompose.js' // 已改用 deps.jobs.start（REQ-260925212722-96e7 t-003dc5）
 import { stampCheckpoint } from './interruption.js'
 import { applyRequirementWorkspaceRoot, reject } from './support.js'
@@ -297,8 +298,11 @@ export async function applyConfirmedAdvance(
   try {
     await mutateIfPresent(requirementStoreOf(deps), input.requirementId, (req) => {
       if (req.status !== input.from) return undefined
-      // REQ-b545fe t3：使用唯一迁移助手
-      transitionRequirement(req, input.to as never, {
+      // 2026-10-11 用户裁定：推进 = **一个业务方法**（落章本阶段达成位 + 收口当前 goal + 迁移，
+      // 同一临界区一次写）。本处是**弹框/看板通道**（actor=human，可过人工门）；
+      // 工具通道（MoveRequirement）调同一方法——两条通道共用一份语义。
+      applyStageAdvance(req, {
+        to: String(input.to),
         at: input.nowTs,
         actor: { kind: 'human', ...(input.windowKey.length > 0 ? { sessionId: input.windowKey } : {}) },
         reason,
@@ -663,7 +667,9 @@ async function settleConfirmDecisionBody(
       // 落库成功的同一调用内推进到实施（原子：要么真的落库并推进，要么响亮地失败）
       await mutateIfPresent(requirementStoreOf(deps), d.requirementId, (req) => {
         if (req.status !== 'decomposing') return undefined
-        transitionRequirement(req, 'implementing', {
+        // 批准计划（弹框通道）→ 同一推进方法（落章 decomposing + 收口当前 goal + 迁移）
+        applyStageAdvance(req, {
+          to: 'implementing',
           at: nowTs,
           actor: { kind: 'human', sessionId: d.windowKey },
           reason: PLAN_MERGE_ADVANCE_REASON,
@@ -715,7 +721,9 @@ async function settleConfirmDecisionBody(
         try {
           await mutateIfPresent(requirementStoreOf(deps), d.requirementId, (req) => {
             if (req.status !== 'decomposing') return undefined
-            transitionRequirement(req, 'implementing', {
+            // 批准计划（弹框通道）→ 同一推进方法（落章 decomposing + 收口当前 goal + 迁移）
+            applyStageAdvance(req, {
+              to: 'implementing',
               at: nowTs,
               actor: { kind: 'human', sessionId: d.windowKey },
               reason: PLAN_MERGE_ADVANCE_REASON,

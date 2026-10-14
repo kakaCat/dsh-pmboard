@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>dsh-pmboard 项目流程图 · pm-goal-round-driver 中心</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --border: #2a2f3a;
+    --text: #e6e8ee;
+    --muted: #8a92a6;
+    --accent: #6c8cff;
+    --human: #f5a524;
+    --system: #4ade80;
+    --cancel: #f87171;
+    --driver: #a78bfa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    line-height: 1.6;
+  }
+  header {
+    padding: 28px 32px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { margin: 0 0 6px; font-size: 22px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  main { padding: 24px 32px 64px; max-width: 1600px; margin: 0 auto; }
+  section { margin-bottom: 48px; }
+  section h2 {
+    font-size: 17px;
+    margin: 0 0 6px;
+    color: var(--accent);
+  }
+  section .hint {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 14px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    overflow-x: auto;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .legend span::before {
+    content: "";
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .human::before { background: var(--human); }
+  .system::before { background: var(--system); }
+  .cancel::before { background: var(--cancel); }
+  .driver::before { background: var(--driver); }
+  .mermaid { text-align: center; }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+    padding: 16px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>dsh-pmboard 项目流程图 · pm-goal-round-driver 中心</h1>
+  <p>所有需求流水线推进都经由 <strong style="color:#a78bfa">pm-goal-round-driver</strong> 决策与驱动：八步闸 → goal 相位分支 → 六态动作 → 预留投递准入</p>
+</header>
+
+<main>
+
+  <!-- 1. 总览：驱动为中心 -->
+  <section>
+    <h2>① 总览：pm-goal-round-driver 是唯一驱动点</h2>
+    <p class="hint">
+      所有触发源（idle / requirement-moved / 心跳 / inbox / turn-end / pre-step）汇入驱动，由它统一决策"该不该跑、跑什么"，避免双驱动双倍投递。
+    </p>
+    <div class="card">
+      <div class="mermaid">
+flowchart TB
+    subgraph TRIG["触发源（5 路）"]
+      direction LR
+      T1["agent/status === idle"]
+      T2["reqboard/requirement-moved"]
+      T3["心跳对账 wakeTick"]
+      T4["agent/inbox/*"]
+      T5["session/event turn/end"]
+    end
+
+    subgraph DRIVER["pm-goal-round-driver（唯一驱动）"]
+      direction TB
+      D1["tick()<br/>取事实 factsOf"]
+      D2["decideGoalRound()<br/>八步闸 + goal 分支"]
+      D3["actOnDecision()<br/>六态 → 端口"]
+      D1 --> D2 --> D3
+    end
+
+    subgraph OUT["动作出口（6 态）"]
+      direction LR
+      O1["drive<br/>起轮投递"]
+      O2["create-goal<br/>建当前 goal"]
+      O3["wait-human<br/>等人留痕"]
+      O4["ask-stage-done<br/>阶段裁决弹框"]
+      O5["block-goal<br/>落盘阻塞"]
+      O6["hold<br/>停手留痕"]
+    end
+
+    T1 --> D1
+    T2 --> D1
+    T3 --> D1
+    T4 --> D1
+    T5 --> D1
+
+    D3 --> O1
+    D3 --> O2
+    D3 --> O3
+    D3 --> O4
+    D3 --> O5
+    D3 --> O6
+
+    style DRIVER fill:#2d1b4e,stroke:#a78bfa,stroke-width:2px
+    style D2 fill:#3b2566,stroke:#a78bfa
+    style D3 fill:#3b2566,stroke:#a78bfa
+      </div>
+      <div class="legend">
+        <span class="driver">pm-goal-round-driver（核心驱动）</span>
+        <span class="human">人工闸门</span>
+        <span class="system">system / agent 自动推进</span>
+        <span class="cancel">取消 / 阻塞</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. 驱动内部决策树 -->
+  <section>
+    <h2>② 驱动内部：八步闸 → goal 相位分支 → 六态决策</h2>
+    <p class="hint">
+      <code>decideGoalRound()</code> 是纯函数（零 I/O，可穷举单测）。判定顺序即纪律，每条都有事故来历。
+    </p>
+    <div class="card">
+      <div class="mermaid">
+flowchart TD
+    START["decideGoalRound(input)"] --> S1["① 立项绑定？<br/>未绑定 → hold"]
+    S1 -->|已绑定| S2["② 可驱动？<br/>drivable + advance 未告警"]
+    S2 -->|否| HOLD1["hold<br/>not-drivable / advance-paused"]
+    S2 -->|是| S3["③ 内存闭锁？<br/>latchOpen（当拍可信，先于台账）"]
+    S3 -->|是| HOLD2["hold: latch"]
+    S3 -->|否| S4["④ 退避期内？<br/>now &lt; backoffUntil"]
+    S4 -->|是| HOLD3["hold: backoff"]
+    S4 -->|否| S5["⑤ 进程级上游闸？<br/>providerLatchOpen"]
+    S5 -->|是| HOLD4["hold: provider-latch"]
+    S5 -->|否| S6["⑥ 人工门 / 弹框在途？"]
+    S6 -->|是| WAIT["wait-human<br/>不写健康位、不改意图"]
+    S6 -->|否| S7["⑦ 起链预算闸？<br/>chainBudgetAllowed"]
+    S7 -->|否| HOLD5["hold: chain-budget"]
+    S7 -->|是| S8["⑧ goal 相位分支"]
+
+    S8 -->|phase = active| R1{"roundsInStage<br/>≥ maxGoalRounds?"}
+    R1 -->|是| BLOCK["block-goal<br/>落盘 block<br/>round-limit"]
+    R1 -->|否| DRIVE["drive<br/>起轮投递"]
+
+    S8 -->|phase = paused/blocked| WAIT2["wait-human<br/>goal-paused/blocked"]
+
+    S8 -->|phase = undefined/complete| R2{"stageReadyToClose?"}
+    R2 -->|是| ASK["ask-stage-done<br/>弹框请人裁决"]
+    R2 -->|否| R3{"hasReadyTask<br/>& nextTaskId?"}
+    R3 -->|否| HOLD6["hold: no-ready-task"]
+    R3 -->|是| CREATE["create-goal<br/>objective = 卡 acceptance"]
+
+    HOLD1 --> END["RoundDecision"]
+    HOLD2 --> END
+    HOLD3 --> END
+    HOLD4 --> END
+    HOLD5 --> END
+    HOLD6 --> END
+    WAIT --> END
+    WAIT2 --> END
+    BLOCK --> END
+    DRIVE --> END
+    ASK --> END
+    CREATE --> END
+
+    style START fill:#3b2566,stroke:#a78bfa
+    style S8 fill:#3b2566,stroke:#a78bfa
+    style BLOCK fill:#7f1d1d,stroke:#f87171
+    style DRIVE fill:#14532d,stroke:#4ade80
+    style ASK fill:#78350f,stroke:#f5a524
+    style CREATE fill:#1e3a5f,stroke:#6c8cff
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. drive 分支：预留→投递→准入子循环 -->
+  <section>
+    <h2>③ drive 分支：预留 → 投递 → 准入（回合子循环）</h2>
+    <p class="hint">
+      投递是"发出去就收不回"的动作，必须把"发"与"算"拆开：只有 admitted 才算这一回合；cancelled/stale 永不计数。
+    </p>
+    <div class="card">
+      <div class="mermaid">
+flowchart LR
+    A["decision = drive"] --> B["renderRoundPrompt()<br/>纯函数：阶段目标+判据+本轮做什么+边界+停手条件"]
+    B --> C["deliverRound()"]
+    C --> C1["① checkpoint<br/>台账写队列排空"]
+    C1 -->|失败| CF1["block-goal<br/>checkpoint-failed"]
+    C1 -->|成功| C2["② 复核仍在飞<br/>stopping / attempt 存在?"]
+    C2 -->|是| CF2["deliver-failed: supplanted<br/>让位下一拍"]
+    C2 -->|否| C3["③ reserve<br/>造预留 queued"]
+    C3 -->|被拒| CF3["deliver-failed: reserve-refused"]
+    C3 -->|成功| C4["④ deliverMessage<br/>发回合消息"]
+    C4 -->|失败| CF4["block-goal: queue-failed<br/>清预留"]
+    C4 -->|成功| D["预留 queued → 已发出"]
+
+    D --> E["onInbox<br/>claim 逐字认领"]
+    E -->|不匹配| E1["让位<br/>competingQueued=true"]
+    E -->|匹配| F["预留 claimed"]
+
+    F --> G["onTurnEnd<br/>outcome.completed?"]
+    G -->|是| H["admit<br/>roundsInStage++<br/>清退避账"]
+    G -->|否| I["noteFailure<br/>同因累加/异因归零"]
+    I -->|达阈值| J["setLatch<br/>熔断停手"]
+
+    H --> K["回合结束<br/>下一拍 tick"]
+    E1 --> K
+    J --> K
+
+    style C fill:#3b2566,stroke:#a78bfa
+    style CF1 fill:#7f1d1d,stroke:#f87171
+    style CF4 fill:#7f1d1d,stroke:#f87171
+    style H fill:#14532d,stroke:#4ade80
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. 需求状态机 × 驱动 -->
+  <section>
+    <h2>④ 需求状态机 × goal 驱动：每个阶段一轮 goal 生命周期</h2>
+    <p class="hint">
+      一条需求一个当前 goal（挂需求，不挂卡）。每进入一个新阶段，goal 从零开始建 → active 跑回合 → 达成后弹框请人裁决 → 人落章推进到下一阶段。
+    </p>
+    <div class="card">
+      <div class="mermaid">
+stateDiagram-v2
+    direction LR
+    [*] --> draft
+    draft --> brainstorming : 接手(system)
+    draft --> canceled : 取消(人)
+
+    brainstorming --> design : 需求文档确认(人)
+    brainstorming --> canceled : 取消(人)
+
+    design --> decomposing : 计划落库(system)
+    design --> canceled : 取消(人)
+
+    decomposing --> implementing : 拆分清单确认(人)
+    decomposing --> canceled : 取消(人)
+
+    implementing --> accepting : 全部任务done(system)
+    implementing --> canceled : 取消(人)
+    implementing --> design : 回退(agent)
+
+    accepting --> archived : 验收通过(人)
+    accepting --> implementing : 返工(agent)
+    accepting --> canceled : 取消(人)
+
+    canceled --> draft : 复活(人)
+    canceled --> archived : 取消后归档(人)
+
+    archived --> [*]
+
+    note right of brainstorming : 本阶段 goal: create-goal → active(drive) → ask-stage-done → 人确认
+    note right of design : 本阶段 goal: create-goal → active(drive) → ask-stage-done → 人确认
+    note right of decomposing : 本阶段 goal: create-goal → active(drive) → ask-stage-done → 人确认
+    note right of implementing : 本阶段 goal: 子卡 DAG 执行 → 全部 done → rollup
+    note right of accepting : 验收单逐项裁决(人) → archived
+      </div>
+      <div class="legend">
+        <span class="human">人工闸门（人裁决，驱动只发起与补材料）</span>
+        <span class="system">system / agent 自动推进</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. 五道人工闸门 × 驱动触发 -->
+  <section>
+    <h2>⑤ 五道人工闸门：驱动发起，人裁决，驱动不越权</h2>
+    <p class="hint">
+      产物存在 ≠ 人已审阅。驱动在关键节点触发 <code>ask-stage-done</code>（弹框）/ <code>wait-human</code>，落章永远是 <code>actor=human</code> 专属。
+    </p>
+    <div class="card">
+      <div class="mermaid">
+flowchart LR
+    subgraph DRV["驱动决策"]
+      D1["ask-stage-done<br/>阶段判据满足"]
+      D2["wait-human<br/>人工门开 / 弹框在途"]
+    end
+
+    subgraph HUMAN["人裁决（落章=human 专属）"]
+      H1["立项弹框<br/>capture/create"]
+      H2["需求文档确认<br/>brainstorming→design"]
+      H3["拆分清单确认<br/>decomposing→implementing"]
+      H4["逐项验收单<br/>accepting→archived"]
+      H5["取消 / 复活 / 归档<br/>破坏性动作"]
+    end
+
+    D1 --> H2
+    D1 --> H3
+    D1 --> H4
+    D2 --> H1
+    D2 --> H5
+
+    H2 -->|"人确认 → 推进"| N1["下一阶段<br/>新 goal 周期"]
+    H3 -->|"人确认 → 推进"| N1
+    H4 -->|"人通过 → 归档"| N2["archived"]
+    H1 -->|"人作答 → 立项"| N3["draft"]
+    H5 -->|"人操作"| N4["canceled / draft / archived"]
+
+    N1 --> DRV
+    N3 --> DRV
+
+    style DRV fill:#2d1b4e,stroke:#a78bfa
+    style D1 fill:#3b2566,stroke:#a78bfa
+    style D2 fill:#3b2566,stroke:#a78bfa
+    style H1 fill:#78350f,stroke:#f5a524,color:#fff
+    style H2 fill:#78350f,stroke:#f5a524,color:#fff
+    style H3 fill:#78350f,stroke:#f5a524,color:#fff
+    style H4 fill:#78350f,stroke:#f5a524,color:#fff
+    style H5 fill:#78350f,stroke:#f5a524,color:#fff
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. goal 生命周期 -->
+  <section>
+    <h2>⑥ goal 生命周期：驱动管相位，人管 resume/done</h2>
+    <p class="hint">
+      goal 是全流程管理单元（挂需求，不挂卡）。相位由工具面（<code>reqboard_goal_update</code>）与驱动共同维护；<code>resume</code> 与 <code>stage_goal_done</code> 是真人专属。
+    </p>
+    <div class="card">
+      <div class="mermaid">
+stateDiagram-v2
+    direction LR
+    [*] --> undefined : 阶段开始<br/>尚无 goal
+
+    undefined --> active : create-goal<br/>(驱动)
+    undefined --> archived : 阶段达成<br/>无卡可跑
+
+    active --> complete : goal_update(action=complete)<br/>(agent)
+    active --> paused : goal_update(action=pause)<br/>(agent)
+    active --> blocked : 故障落盘<br/>(驱动 block-goal)
+
+    complete --> active : 新 goal<br/>(下一阶段或下一张卡)
+    complete --> askStageDone : 阶段判据满足<br/>(驱动)
+
+    paused --> active : resume<br/>(人专属)
+    blocked --> active : resume<br/>(人专属)
+
+    askStageDone --> [*] : 人落章<br/>stage_goal_done
+
+    note right of active : drive 分支起轮<br/>round-limit 到顶 → blocked
+    note right of blocked : round-limit / queue-failed /<br/>prompt-rejected / checkpoint-failed<br/>落盘，重启不失忆
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. 工具面 × 驱动协作 -->
+  <section>
+    <h2>⑦ 工具面 × 驱动协作：驱动投回合，工具面收尾</h2>
+    <p class="hint">
+      驱动负责"起轮"（投提示词）与"决策"（该不该跑）；工具面负责"收尾注入"（回合结束时 goal 变终态 → <code>deferContext()</code>）。收尾不归驱动（用户裁定 2026-10-10）。
+    </p>
+    <div class="card">
+      <div class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Drv as pm-goal-round-driver
+    participant Agent as Agent
+    participant Tool as 工具面(19+6)
+    participant Store as 台账(JSON 分片)
+    participant Goal as pm-goal
+
+    Drv->>Agent: renderRoundPrompt() → deliverRound()<br/>(drive 分支)
+    Note over Agent: 按提示词执行
+
+    Agent->>Tool: reqboard_goal_create / update<br/>建/迁移 goal
+    Tool->>Goal: createGoal / updateGoal
+    Goal->>Store: 写 goal 相位
+
+    Agent->>Tool: reqboard_task_run / task_move<br/>执行子卡
+    Tool->>Store: 推进任务状态
+
+    Agent->>Tool: reqboard_submit<br/>提交阶段产物
+    Tool->>Store: 落 requirement/design/...
+
+    Agent->>Tool: reqboard_goal_update(action=complete)
+    Tool->>Goal: complete
+    Goal->>Store: phase=complete
+
+    Drv->>Drv: 下一拍 tick()<br/>phase=complete → ask-stage-done
+    Drv->>Store: proposeStageDone()<br/>弹框请人裁决
+    Note over Store: 人落章 stage_goal_done
+
+    Tool->>Tool: wrapup 收尾注入<br/>deferContext()（回合结束）
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. 故障语义：耐久半边 -->
+  <section>
+    <h2>⑧ 故障语义：内存闭锁 + 落盘 block（双保险）</h2>
+    <p class="hint">
+      内存闭锁只撑本进程（重启失忆）；落盘 block 让失败人可见、可裁决（resume 是人专属）。两类故障各有归属，不互相覆盖。
+    </p>
+    <div class="card">
+      <div class="mermaid">
+flowchart LR
+    subgraph MEM["内存态（HoldState）"]
+      M1["latch<br/>闭锁"]
+      M2["failure<br/>退避账"]
+    end
+
+    subgraph DUR["落盘态（goal.blockedReason）"]
+      D1["round-limit<br/>回达到顶"]
+      D2["queue-failed<br/>投递失败"]
+      D3["prompt-rejected<br/>pre-step 被拒"]
+      D4["checkpoint-failed<br/>检查点失败"]
+    end
+
+    M1 -->|"本进程挡住起轮"| R1["hold: latch"]
+    M2 -->|"退避期内挡住"| R2["hold: backoff"]
+
+    D1 -->|"落盘，重启不失忆"| R3["blocked<br/>等人 resume"]
+    D2 --> R3
+    D3 --> R3
+    D4 --> R3
+
+    R3 -->|"人 resume"| R4["active<br/>新 goal 周期"]
+
+    M1 -->|解锁条件| U1["两条证据同时成立：<br/>① 停手位落库成功(writable)<br/>② 台账显式 healthy"]
+    U1 --> R4
+
+    style MEM fill:#2d1b4e,stroke:#a78bfa
+    style DUR fill:#1e293b,stroke:#6c8cff
+    style D1 fill:#7f1d1d,stroke:#f87171
+    style D2 fill:#7f1d1d,stroke:#f87171
+    style D3 fill:#7f1d1d,stroke:#f87171
+    style D4 fill:#7f1d1d,stroke:#f87171
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. 订阅与心跳 -->
+  <section>
+    <h2>⑨ 订阅持有 + 心跳对账：防静默停摆</h2>
+    <p class="hint">
+      两路订阅：root 组（插件 ctx）+ per-agent 组（<strong>必须挂 agent.ctx</strong>，否则被作用域过滤器静默丢弃）。心跳对账防"看着在跑、实际没人推进"的静默停摆。
+    </p>
+    <div class="card">
+      <div class="mermaid">
+flowchart TB
+    subgraph ROOT["root 组（插件 ctx）"]
+      R1["reqboard/requirement-moved<br/>→ requestDrive"]
+      R2["agent/created<br/>→ 注册 per-agent 组"]
+    end
+
+    subgraph AGENT["per-agent 组（agent.ctx）"]
+      A1["agent/status<br/>=== idle → onIdle"]
+      A2["agent/inbox/inserted<br/>→ onInbox"]
+      A3["agent/inbox/claimed<br/>→ onInbox"]
+      A4["agent/inbox/discarded<br/>→ onInboxDiscarded"]
+      A5["session/event<br/>turn/end → onTurnEnd"]
+    end
+
+    subgraph HB["心跳对账（每 60s）"]
+      H1["planWake() 纯判据"]
+      H1 --> H2{"在闸/不可驱动/<br/>等人/新鲜?"}
+      H2 -->|是| H3["skip（不刷 lastWakeAt）"]
+      H2 -->|否| H4["wake() 叫醒"]
+      H4 -->|受理失败×3| H5["写停手位<br/>driverHealth=paused"]
+      H4 -->|受理成功| H6["刷 lastWakeAt"]
+    end
+
+    R1 --> DRV["driver.tick()"]
+    A1 --> DRV
+    A2 --> DRV
+    A3 --> DRV
+    A4 --> DRV
+    A5 --> DRV
+    H6 --> DRV
+
+    style DRV fill:#3b2566,stroke:#a78bfa
+    style AGENT fill:#1e293b,stroke:#6c8cff
+    style H5 fill:#7f1d1d,stroke:#f87171
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  dsh-pmboard · 需求流水线看板插件 · 唯一驱动点：pm-goal-round-driver · 状态机事实源：pm-core/src/domain/{requirement,task}/
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "dark",
+    themeVariables: {
+      primaryColor: "#1f2937",
+      primaryTextColor: "#e6e8ee",
+      primaryBorderColor: "#6c8cff",
+      lineColor: "#8a92a6",
+      secondaryColor: "#161922",
+      tertiaryColor: "#0f1115",
+    },
+    flowchart: { curve: "basis", padding: 16, nodeSpacing: 50, rankSpacing: 60 },
+    state: { padding: 12 },
+    sequence: { actorMargin: 60, messageMargin: 30 },
+  });
+</script>
+</body>
+</html>

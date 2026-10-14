@@ -5,14 +5,14 @@
  * 行为逐字等于改造前」集中成一处可复核清单，并在标题里写明每条防的是什么退化。
  *
  * 四条等价面：
- *  ① 脚本生成：未传 route → 与不传该字段逐字节相同，且不含 provider/model；
+ *  ① 派发载荷：未配置路由（stageRouting 缺省 / 空表）→ 派发内容逐字节相同，且不含 provider/model；
  *  ② 执行收尾：不传 outputCount → execution 上两个新键都不存在；
  *  ③ 调度：无 priority + 上限 0 → 候选顺序与投递结果与改造前一致（按 createdAt）；
  *  ④ 回执：无可读遥测 → 键不存在（不是空数组、不是 null）；
  * 另加一条迁移诚实性：**旧记录（无产出计数）不计入零产出统计**（未知 ≠ 0）。
  */
 import { describe, it, expect } from 'vitest'
-import { generateSubtaskScript } from 'pm-core/application/internal/workflow-script.js'
+import { executeSubtask } from 'pm-core/application/use-cases/ExecuteTask.js'
 import { closeExecutions, openExecution } from 'pm-core/application/internal/token-usage.js'
 import { scanAndResume } from 'pm-core/application/use-cases/AdvanceChain.js'
 import { queryState } from 'pm-core/application/query/QueryState.js'
@@ -24,17 +24,48 @@ import {
 } from 'pm-core/plugin-config.js'
 import type { JobStartSpec, JobsPort } from 'pm-core/application/ports.js'
 import { makeHarness, task, req } from 'tests/application/harness.js'
+import { installTeamProducer } from 'tests/application/teams-fake.js'
 import type { RequirementRecord } from 'pm-core/protocol-domain.js'
 
-const BASE = { stageKind: 'dev', stageLabel: '研发', prompt: '做点事' }
+describe('等价面 ① 派发载荷：未配置路由 → 派发内容逐字节不变', () => {
+  /**
+   * 跑一次真实派发（团队假件），取回 Worker 提示词与团队任务描述。
+   *
+   * 2026-10-11（退役 workflow 引擎 / `workflow-script.ts` 删包）：原判据是「未传 route → 生成的
+   * **脚本**逐字节相同，且不含 provider/model」。脚本生成随引擎一起退役，而团队派发载荷
+   * （`SpawnWorkerInput.prompt` / `TeamTaskCreateInput.description`）同样没有 provider/model 注入面，
+   * 故把同一命题钉在**派发载荷**上（不是删判据，是换承载物）。
+   */
+  async function dispatchPayload(stageRouting?: Record<string, { provider?: string; model?: string }>) {
+    const h = makeHarness()
+    h.seedRequirementSync(req({ id: 'REQ-000001', status: 'implementing', category: 'feature' }))
+    h.seedTasks('REQ-000001', [
+      task({ id: 't-p', requirementId: 'REQ-000001', status: 'in_progress', title: '父卡' }),
+      task({
+        id: 't-s', requirementId: 'REQ-000001', status: 'todo', parentId: 't-p',
+        stageKind: 'dev' as never, title: '研发', acceptance: '改动落盘并跑通测试',
+      }),
+    ])
+    await h.seedSettled()
+    if (stageRouting !== undefined) h.deps.stageRouting = stageRouting
+    const teams = installTeamProducer(h, { filesChanged: ['pm-core/src/domain/x.ts'], completed: ['改完'] })
+    await executeSubtask(h.deps, {
+      subtaskId: 't-s', windowKey: 'session-w-001', exec: { agent: { id: 'session-w-001' } },
+    })
+    return { prompt: teams.spawns[0]!.prompt, description: teams.created[0]!.description }
+  }
 
-describe('等价面 ① 脚本：未配置路由 → 生成结果逐字节不变', () => {
-  it('route 缺省 vs 不传该字段：同串；且不含 provider/model 字样', () => {
-    const withoutKey = generateSubtaskScript({ ...BASE })
-    const withUndefined = generateSubtaskScript({ ...BASE, route: undefined })
-    expect(withUndefined).toBe(withoutKey)
-    expect(withoutKey).not.toContain('provider')
-    expect(withoutKey).not.toContain('model: ')
+  it('route 缺省 vs 显式空表：派发内容同串；且不含 provider/model 字样', async () => {
+    const withoutKey = await dispatchPayload()
+    const withEmpty = await dispatchPayload({})
+    // 自检（防"两串都空"的恒真）：两次都真的派发了这一张子卡，比较的不是空串。
+    expect(withoutKey.prompt.length).toBeGreaterThan(0)
+    expect(withoutKey.description).toContain('[reqboard:parent=t-p]')
+    expect(withoutKey.description).toContain('t-s')
+    expect(withEmpty.prompt).toBe(withoutKey.prompt)
+    expect(withEmpty.description).toBe(withoutKey.description)
+    expect(withoutKey.prompt).not.toContain('provider')
+    expect(withoutKey.prompt).not.toContain('model: ')
   })
 
   it('三个配置 accessor 的缺省值 = 文档承诺（{} / 0 / 2）', () => {

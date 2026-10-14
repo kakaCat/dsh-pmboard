@@ -45,6 +45,7 @@ import { LIMITS } from 'pm-common/limits.js'
 import { agentIdOf } from '../dive-core/round-state.js'
 // FR-9：dive 状态规则单一来源（纯函数）
 import { transitionDive } from '../../domain/dive/transition.js'
+import { seedStageGoals } from '../../domain/workflow/StageGoalSeed.js'
 
 /** 结构化认证失败：message 自带（CODE）文本；code 属性仅测试/直接执行消费。 */
 export function reject(message: string, code: string): never {
@@ -942,6 +943,11 @@ export async function createRequirementDirect(
         now: nowTs,
         actor: { kind: 'human' },
       }).next!,
+      // 🆕 创建即 seed 阶段目标表：驱动的"本阶段还有没有活"读的就是它（`readyToClose` 要求表非空）。
+      // 不 seed 的话，立项后第一拍必然停手——四个 doc 阶段连"这一拍做什么"都没有来源。
+      // 表是**台账事实**：陈述与判据抄自五道人工门 / 交棒条件 / submit 必交项，不新编判据；
+      // 人可用 `stage_goal_create` 整表替换（合并语义在 pm-goal）。
+      goals: seedStageGoals(),
       comments: [
         {
           id: deps.ids.comment(),

@@ -19,7 +19,7 @@ import { executeMoveRequirement } from 'pm-core/application/use-cases/MoveRequir
 import { noteInterruption, noteInterruptionForWindow } from 'pm-core/application/use-cases/NoteInterruption.js'
 import { nextActionFor, turnEndOutcome } from 'pm-core/application/internal/interruption.js'
 import { buildNodeInputPackage } from 'pm-core/application/internal/node-input-package.js'
-import { createDiveSessionDriver, type DiveSessionDriverDeps } from 'pm-round-driver/session-driver.js'
+import { createDiveSessionDriver, type DiveSessionDriverDeps } from 'pm-core/application/dive/session-driver.js'
 import { defineTaskAmendTool } from 'tool-pm/decompose/TaskAmendTool/TaskAmendTool.js'
 import type { ReqboardLedger, RequirementRecord } from 'pm-core/protocol-domain.js'
 

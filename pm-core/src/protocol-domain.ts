@@ -18,7 +18,7 @@ export * from 'pm-common/protocol.js'
 import type { ActorRef } from 'pm-common/actor.js'
 import type { MainStageKey, RequirementStatus, StageKey } from './domain/requirement/RequirementStatus.js'
 // REQ-261010200257-7e2d（FR-2/FR-3）：双层目标挂载字段（加性可选、零迁移）
-import type { StageGoal, TaskGoal } from 'pm-goal'
+import type { Goal, StageGoal } from 'pm-goal'
 import type { TaskStatus } from './domain/task/TaskStatus.js'
 import type { RequirementCategory } from 'pm-common/requirement/Requirement.js'
 import type { ArtifactKind, ArchiveDoc, ArchiveDocRule } from './domain/artifact/ArtifactSpec.js'
@@ -1091,6 +1091,16 @@ export interface RequirementRecord {
    * 恒 false（缺失 ≠ 达成）。达成位写入只能走人工门落章路径（D-4）。
    */
   goals?: StageGoal[]
+  /**
+   * **当前 goal**（REQ-261010192903-fdda：全流程管理单元，挂需求、**与任务卡无关**）。
+   *
+   * 一条需求同一时刻只有一个当前 goal；`goalSeq` = 历史上一共建过几个（clear 后重建换 id）。
+   * **加性可选、零迁移**：缺省 = 该需求未启用 goal（老需求读出即老行为）——不补齐、不改写、
+   * 故不 bump schemaVersion。相位变更一律经 `pm-goal` 的纯折叠（`applyGoalEvent`）。
+   */
+  goal?: Goal
+  goalSeq?: number
+  goalCleared?: { readonly id: string; readonly revision: number; readonly clearedAt: number }
   comments: CommentRecord[]
   version: number
   createdAt: number
@@ -1235,14 +1245,6 @@ export interface TaskRecord {
    * 也**不加进** `validateQueue.ts` 的 `REQUIRED_TASK_FIELDS`。缺省 = 现行为。
    */
   budgetRequests?: number
-  /**
-   * L2 任务目标（REQ-261010200257-7e2d FR-3）：dsh goal 内核的 pm 自实现（四相 + rounds 计数）。
-   *
-   * **加性可选、零迁移**：缺省 = 该卡未启用 goal（老卡读出即老行为）——不补齐、不改写、
-   * 故不 bump schemaVersion 与 QUEUE_VERSION。判据复用本卡 `acceptance`（D-1）：
-   * objective 是它的陈述面，不另造验收标准。状态变更一律经 `transitionGoal` 纯函数。
-   */
-  goal?: TaskGoal
   status: TaskStatus
   blocked: boolean
   blockedReason?: string

@@ -596,8 +596,8 @@ describe('FR-6 开窗接线（ExecuteTask.executeSubtask 显式开窗）', () =>
     await h.seedSettled()
     const port = new FakeBudgetPort({ v: 1, tasks: {} })
     h.deps.subtaskBudget = port
-    // 引擎不可达也会先开窗（开窗在派发之前）；本用例只钉开窗这一件事。
-    h.deps.workflow = { start: async () => ({ ok: false, reason: 'test-stop' }) } as never
+    // 执行面不可达（未装配团队服务）也会先开窗（开窗在派发之前）；本用例只钉开窗这一件事。
+    // （2026-10-11 退役 workflow 引擎：引擎时代的 `deps.workflow` 假件已随端口一并删除。）
 
     await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: W, exec: { agent: { id: W } } })
     expect(port.state?.tasks['t-s']).toEqual({ windowIndex: 0, used: 0, limit: 3, windowStartAt: h.clock.t })

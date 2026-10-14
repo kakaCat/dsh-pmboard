@@ -42,6 +42,8 @@ import { docsRootSourceSetting } from 'pm-core/plugin-config.js';
 import { registerLegacyBoardRoutes } from './http/legacy-board-route.js';
 import { applyPickupReconcile, applyTaskRollup, type RollupContext } from 'pm-core/application/internal/rollup.js';
 import { applyCommandSurface } from 'command-pm';
+// goal 工具面：独立插件面（自己的 name/apply），六个工具**不带 reqboard_ 前缀**。
+import { applyGoalToolSurface } from 'tool-pm-goal/plugin.js';
 import { advanceRequirement } from 'pm-core/application/use-cases/AdvanceChain.js';
 import { newCommentId } from 'pm-core/protocol-domain.js';
 import { setBuildStamp } from 'pm-common/build-stamp.js';
@@ -113,7 +115,6 @@ import { UserQuestionsAdapter } from './adapters/UserQuestionsAdapter.js';
 import { GateAwareQuestions } from './adapters/GateAwareQuestions.js';
 import { assembleGatePostChain, registerCaptureGuidance } from './gate-wiring.js';
 import { SessionProbeAdapter } from './adapters/SessionProbeAdapter.js';
-import { WorkflowEngineRunner } from 'pm-workflow/WorkflowEngineRunner.js';
 // FR-11 路线 A：子卡实施段改走 DSH 原生 Agent Teams（ctx.agentTeams = TeamService）。
 import { AgentTeamsAdapter } from './adapters/AgentTeamsAdapter.js';
 // REQ-261003215944-9e04 FR-1（t4）：会话开窗端口实现（DSH 现成 fork/create）
@@ -128,19 +129,18 @@ import { createFailureAlert } from './adapters/FailureAlert.js';
 import { scheduleStartupScan } from 'pm-core/application/internal/startup-scan.js';
 import { migrateDiveState } from 'pm-core/application/internal/migrate-dive-state.js';
 import type { SubtaskBudgetPort, UseCaseDeps } from 'pm-core/application/ports.js';
-import ReqboardDiveManager from './adapters/ReqboardDiveManager.js';
-import { renderDiveRoundText } from 'pm-core/application/dive-core/round-state.js';
-import type { DiveRoundPorts } from 'pm-round-driver/round-driver.js';
 import { mutateIfPresent } from 'pm-core/application/use-cases/queue-access.js';
 import { buildGoalRoundPorts } from './adapters/goal-round-ports.js';
 import GoalRoundManager from './adapters/GoalRoundManager.js';
-import { createTaskGoal } from 'pm-goal';
+import { createGoal, blockGoal } from 'pm-goal';
 import { createProviderLatch } from 'pm-core/application/internal/provider-latch.js';
 import { confirmGraceSetting } from 'pm-core/plugin-config.js';
 import { stageRoutingSetting } from 'pm-core/plugin-config.js';
 import { zeroOutputAlertThresholdSetting } from 'pm-core/plugin-config.js';
 import { maxInFlightRequirementsSetting } from 'pm-core/plugin-config.js';
 import { seatsMaxSetting, handoffSettings } from 'pm-core/plugin-config.js';
+// 2026-10-09 用户裁定：立项注入提示词开关（缺省 false = 不注入；回退 = 改配置，不动代码）。
+import { captureGuidanceInjection } from 'pm-core/plugin-config.js';
 import { reconcileTerminalDive } from 'pm-core/application/internal/reconcile-terminal-dive.js';
 import { humanGateOf } from 'pm-core/application/internal/human-gate.js';
 // REQ-261007100513-6749 t3（FR-2/FR-3）：易变段**尾部通道**（投递编排 + 适配器 + 同步内容投影）。
@@ -412,74 +412,15 @@ export function apply(ctx: Context, config?: PluginConfig): void {
       logger.debug('agents service ready (reqboard tools live-driver check enabled)');
     },
   );
-  // REQ-4842fe t4：子卡执行引擎（workflow-worker-thread provider，已在位）。缺失时
-  // runner 返回 engine_unavailable → 子卡显式失败，不静默成功。
-  let workflowEngineSvc: unknown;
-  ;(ctx as unknown as { inject?: (services: string[], cb: (c: any) => void) => void }).inject?.(
-    ['workflowEngine'],
-    (wfCtx: { workflowEngine?: unknown }) => {
-      workflowEngineSvc = wfCtx?.workflowEngine;
-      logger.debug(workflowEngineSvc === undefined
-        ? 'workflowEngine service 不可用（子卡执行将显式失败）'
-        : 'workflowEngine service ready (reqboard_task_run 子卡执行可用)');
-    },
-  );
-  /**
-   * 引擎可达性探针（REQ-261003191948-e94a §5.2）：把"这个上下文到底看得见什么"写成一行。
-   *
-   * ⚠️ **绝不读 `ctx.workflowEngine` 属性**：cordis 对未声明 inject 的服务做属性访问会**抛异常**
-   * （实测 `cannot get property "workflowEngine" without inject`），那会把 runner 本来优雅的
-   * `engine_unavailable` 变成 run 异常——探针绝不能反过来制造故障。只用 `ctx.get(name)`
-   * （可选读取，未注册即 undefined）与 `typeof`，并整体 try/catch 兜底。
-   *
-   * 已定性的结论（配置级证据，见 evidence §5.2）：DSH 的 agent preset 用
-   * `isolate: { workflowEngine: true }` 把引擎**刻意隔离**在 delegation 组内，
-   * 故 profile 级插件按设计取不到它——不是取法问题。
-   */
-  const describeEngineAccess = (): string => {
-    try {
-      const c = ctx as unknown as { inject?: unknown; get?: unknown };
-      const get = typeof c.get === 'function' ? (c.get as (name: string) => unknown) : undefined;
-      const probe = (name: string): string => (get === undefined ? 'no-get' : String(get(name) !== undefined));
-      return 'inject=' + typeof c.inject + ' get=' + typeof c.get
-        + ' byGet=' + probe('workflowEngine')
-        + ' captured=' + String(workflowEngineSvc !== undefined)
-        // 对照组：这三个 pmboard **确实**能注入（工具/路由/agent 都在跑）。
-        // byGet(workflowEngine)=false 而它们为 true ⇒ 不是取法不对，而是作用域隔离。
-        + ' [tools=' + probe('tools') + ' agents=' + probe('agents') + ' webServer=' + probe('webServer') + ']';
-    } catch (err) {
-      return 'probe_failed=' + String(err);
-    }
-  };
-  /**
-   * 子卡执行引擎的**实时解析**（REQ-261003191948-e94a）。
-   *
-   * 为什么不能只用上面那个闭包变量：2026-10-03 实测（含重启后的新进程）子卡链每一次都停在
-   * `engine_unavailable`，而**同一进程里** `workflow` 工具能正常起 run —— 即服务在位，
-   * 只是 `inject(['workflowEngine'])` 的回调没有把它送进 `workflowEngineSvc`。
-   * 捕获式接线把"服务是否可得"绑死在装配那一瞬，时序一变就静默退化。
-   *
-   * 故这里改为**调用时**经 `ctx.get` 实时解析（宿主 Service 目录给出的官方可选读取写法就是
-   * `ctx.get("workflowEngine")` + requiresUndefinedCheck）；捕获变量仅作兜底。
-   * 取不到仍然返回 undefined → runner 照旧响亮地报 engine_unavailable（不静默成功）。
-   */
-  const resolveWorkflowEngine = (): unknown => {
-    const live = (ctx as unknown as { get?: (name: string) => unknown }).get?.('workflowEngine');
-    const resolved = live ?? workflowEngineSvc;
-    if (resolved === undefined) {
-      captureDiag('reqboard-capture [ENGINE-PROBE]: 引擎取不到 → ' + describeEngineAccess());
-    }
-    return resolved;
-  };
   // FR-11 路线 A（REQ-260926140539-457b）：DSH 原生 Agent Teams 服务（experimental）。
-  // 缺失时 adapter.available()=false → 用例层退回 workflow 兼容路径，绝不静默成功。
+  // 缺失时 adapter.available()=false → 执行子卡时如实拒绝，绝不静默成功。
   let agentTeamsSvc: unknown;
   ;(ctx as unknown as { inject?: (services: string[], cb: (c: any) => void) => void }).inject?.(
     ['agentTeams'],
     (teamCtx: { agentTeams?: unknown }) => {
       agentTeamsSvc = teamCtx?.agentTeams;
       logger.debug(agentTeamsSvc === undefined
-        ? 'agentTeams service 不可用（子卡执行走 workflow 兼容路径）'
+        ? 'agentTeams service 不可用（子卡执行面不可用——派卡将如实拒绝）'
         : 'agentTeams service ready（子卡实施段团队执行可用）');
     },
   );
@@ -503,7 +444,7 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     },
   );
   // REQ-261003215944-9e04 FR-1（t4）：会话开窗服务（DSH 现成能力）——reqboard_open_window 据此
-  // 建新会话。与 workflowEngine 同理：服务按调用时解析（惰性注入的回调未必在装配期送达），
+  // 建新会话。服务按调用时解析（惰性注入的回调未必在装配期送达），
   // 缺失时用例层返回 REQBOARD_OPEN_WINDOW_UNAVAILABLE，**不伪造窗口码**。
   // ⚠️ 绝不读 ctx.sessionController 属性（未声明 inject 的属性访问会抛），只用回调送进来的值。
   // REQ-261003215944-9e04 FR-11（t12）：会话工作区解析——路由的读根改为**发起阅读的会话工作区**。
@@ -642,74 +583,11 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   // REQ-261005141830-7a3b t5：项目表端口的**唯一 I/O 实现**——与开窗落点共用同一个
   // workspaceRegistry 句柄（不再单独 inject 第二次，免得两个解析器各自漂移）。
   // 惰性解析：装配期拿不到 ≠ 永远拿不到，故每次调用现取（与 sessionController 同款口径）。
-  // 位置提到 dive 端口之前（t6）：Dive 的归属判定也要用它，而 diveRoundPorts 更早装配。
+  // 归属判定（goal 端口的 projectIdOfWindow）与开窗落点共用它。
   const projectRegistry = new WorkspaceRegistryProjectPort(() => workspaceRegistrySvc)
-  const diveRoundPorts: DiveRoundPorts = {
-    // t8/B11：把需求存储新端口下传给 dive（B12 起读写都走它）
-    store: store,
-    // t8/B12 阶段①-a：idle 拍的**同步**判定（该不该驱动）走窄投影，不再借桥的整册快照。
-    peekFacts: () => store.peekFacts(),
-    delivery: deliverer,
-    // ★ REQ-261001201200-8f8b FR-1：round 半的**投递端口**必须在这里接上。
-    // 修前本对象缺 delivery——drive() 第一步就是 ports.delivery.createRoundMessage(...)，
-    // 于是抛 "Cannot read properties of undefined"，被 requestDrive 吞掉 → disarm → 静默停摆。
-    // 这与「投递器构造参数错位」是同一症状的**第二处断点**（都在同一条唤醒链的装配面上）：
-    // 只修其中任一处都不够——两处都接上，链条才真正通。
-    agents: {
-      get: (id: string) => (agentsSvc as { get?: (id: string) => unknown } | undefined)?.get?.(id),
-      withoutInitiator: <T,>(op: () => T): T => {
-        const a = agentsSvc as { withoutInitiator?: <U>(f: () => U) => U } | undefined
-        return typeof a?.withoutInitiator === 'function' ? a.withoutInitiator(op) : op()
-      },
-    },
-    // 插件 fiber 处于 ACTIVE(2) 才算可驱动；读不到（测试/降级）→ 放行，避免静默停摆。
-    fiberActive: () => {
-      const state = (ctx as unknown as { fiber?: { state?: number } }).fiber?.state
-      return state === undefined ? true : state === 2
-    },
-    cancel: (agent, cause) => (agent as { cancel?: (c: string) => void } | undefined)?.cancel?.(cause),
-    whenIdle: (agent) => {
-      const p = (agent as { whenIdle?: () => Promise<void> } | undefined)?.whenIdle?.()
-      return p === undefined ? Promise.resolve() : p
-    },
-    // FR-3 耐久检查点：兑现台账写队列排空（与 persistArtifacts 同口径）。
-    // B12 阶段⑤：写屏障语义 = 等已落盘 ⇒ 新端口的 headAfterDrain()（端口注释即此用途）
-    checkpoint: async () => { await store.headAfterDrain() },
-    renderRoundText: renderDiveRoundText,
-    now,
-    logger: { info: (m) => logger.info(m), debug: (m) => logger.debug(m), warn: (m, e) => logger.warn(m, e) },
-    // 🆕 任务存储（用于实施阶段中断自动恢复检测）
-    taskStore: taskStore as unknown as { listByRequirement(requirementId: string): Promise<Array<{ status: string }>> },
-    // REQ-261005141830-7a3b t6（FR-7）：idle 拍的**归属判定**按项目身份——同项目任一窗口都算本项目；
-    // 归属不符 → 不驱动、不投递并留痕。未装配（宿主无注册表）→ 恒放行，行为与改造前逐字一致。
-    projectIdOfWindow: (id: string) => projectIdOfWindowForDeps({ projectRegistry }, id),
-    // REQ-261002141430-a5ef FR-1：弹框在途判据（同步内存读）——供起轮前"有人在等吗"这一问。
-    dialogInFlight: (requirementId: string) => pendingConfirms.inFlightFor(requirementId),
-    // REQ-261004065652-5c1c FR-1：进程级上游闩。**一个窗口撞上额度/鉴权错误 → 所有窗口一起停**——
-    // 实测两个窗口共享同一份 provider 额度、同刻阵亡（18:03:45 / 18:03:52），只停自己救不了第二个。
-    // TTL 5 小时（额度窗口量级）；人的恢复（看板「继续」/确认推进）会把台账变回可驱动，
-    // 驱动侧的内存闭锁据此自动解除（见 round-driver.latchBlocks 的唯一解锁规则）。
-    providerLatch,
-    // REQ-261004065652-5c1c FR-5：台账态的人工门判据（验收单待裁决 / 产物待确认 / 计划待批准）。
-    // 为什么读**整条记录**而不是窄投影：`plan.approvedAt` 与 `verification.sheet` 不在同步投影里，
-    // 而这两项恰恰是"等人裁决"的两大来源；只在**即将起轮**时读一次，频率可接受。
-    humanGate: async (requirementId: string) => humanGateOf(await store.get(requirementId)),
-    // REQ-261004065652-5c1c FR-11：起链预算闸（WIP 上限 3 / cacheRead 5 亿，见 chain-budget 的缺省）。
-    // 判据读**同步窄投影**：t2 修好后它读己所写，故 WIP 计数不会滞后于刚刚落库的链。
-    chainBudget: (candidateId: string) => checkChainBudget({
-      facts: store.peekFacts(),
-      candidateId,
-      limits: DEFAULT_CHAIN_BUDGET_LIMITS,
-    }),
-  }
-  /**
-   * 驱动选择开关（**opt-in，缺省关**）：两个驱动不能同时挂在同一个 idle 拍上
-   * （双驱动 = 双倍投递 + 互相打架），所以二选一；新驱动未上过生产，故缺省仍走旧的。
-   * 打开：`DSH_PM_GOAL_DRIVER=1`。
-   */
-  const useGoalDriver = process.env.DSH_PM_GOAL_DRIVER === '1'
-  const goalPorts = useGoalDriver
-    ? buildGoalRoundPorts({
+  // 驱动点唯一定序（2026-10-10 裁定：旧 pm-round-driver 退役）：goal 驱动是默认且唯一路径，
+  // 不再有开关——两个驱动同挂一个 idle 拍会造成双倍投递，二选一的分支已随旧包删除。
+  const goalPorts = buildGoalRoundPorts({
         peekFacts: () => store.peekFacts(),
         getRequirement: (id) => store.get(id),
         tasksOf: (id) => taskStore.listByRequirement(id) as never,
@@ -741,8 +619,12 @@ export function apply(ctx: Context, config?: PluginConfig): void {
             return { changed: true }
           })
         },
-        createTaskGoal: (requirementId, taskId, objective) => createTaskGoal(
-          { taskStore: taskStore as never, store: store as never, now }, requirementId, taskId, objective,
+        createGoal: (requirementId, objective) => createGoal(
+          { store: store as never, now }, requirementId, objective,
+        ),
+        // 故障语义的耐久半边（queue-failed / prompt-rejected / round-limit → 落盘 blocked）。
+        blockGoal: (requirementId, reason) => blockGoal(
+          { store: store as never, now }, requirementId, reason,
         ),
         askStageDone: () => { /* 由 GoalRoundManager 用 stage-prompt 接管（此处仅占位） */ },
         trace: (reason, id) => captureDiag('[GOAL-ROUND] ' + reason + (id === undefined ? '' : ' req=' + id)),
@@ -760,20 +642,28 @@ export function apply(ctx: Context, config?: PluginConfig): void {
         now,
         logger: { info: (m) => logger.info(m), debug: (m) => logger.debug(m), warn: (m, e) => logger.warn(m, e) },
       })
-    : undefined
-  const diveManager = useGoalDriver && goalPorts !== undefined
-    ? new GoalRoundManager(ctx, {
+  const diveManager = new GoalRoundManager(ctx, {
         ports: goalPorts,
         peekFacts: () => store.peekFacts(),
         store,
         agents: { get: (id) => (agentsSvc as { get?: (id: string) => unknown } | undefined)?.get?.(id) },
+        // 后置能力（H1 推进校验 / H2 压缩 / H3 注入 / H4 唤醒 / H5 审计）在**回合收尾处的调用者 = 驱动**：
+        // 此前由会话驱动器自挂 turn/end（`pm-capture-root`）触发，同一回合两处订序（2026-10-11 裁定收编）。
+        // 异步边界留在本实现侧（setImmediate）——严格晚于当前同步派发与 session append（D-17）。
+        // 窗口键同口径（会话 id ?? agent id）：与装饰器登记 PendingGate 用的窗口键必须一致，
+        // 否则 runPending 取不到待处理闸门 = 链静默不跑。
+        postRound: (agentId) => {
+          setImmediate(() => {
+            const agent = (agentsSvc as { get?: (id: string) => unknown } | undefined)?.get?.(agentId) as { session?: unknown } | undefined
+            void gateChain.runPending(agentId, agent?.session).catch((err) => {
+              logger.warn('reqboard gate-chain run failed:', err)
+            })
+          })
+        },
         now,
         providerLatchOpen: () => providerLatch.isOpen(),
       })
-    : new ReqboardDiveManager(ctx, diveRoundPorts)
-  logger.info(useGoalDriver
-    ? 'GoalRoundManager initialized（goal 驱动，实验开关打开）'
-    : 'ReqboardDiveManager initialized (round 半已接线)')
+  logger.info('GoalRoundManager initialized（goal 驱动，唯一路径）')
   disposers.push(() => { void diveManager.teardown() })
 
   // 闸门后置链装配（REQ-e3b6a0）：抽到 ./gate-wiring.js（REQ-f0579a t5 尺寸门禁）。
@@ -800,7 +690,7 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     runtime: { pendingCapture, toolTrace, recentUserMsgs, deliverer },
     // t8/B12 阶段①-a：同步缝的窄投影来源（与 registerCaptureGuidance 同款装配）。
     requirementStore: store,
-    now, address, injectionLog, gateChain,
+    now, address, injectionLog,
     // 任务队列端口（REQ-260927202051-f6df）：驱动注入「当前任务」需从队列取（v9 台账无 tasks）。
     taskStore,
     onNodeSettled: (settle, session) => settlement.onSettle(settle, session),
@@ -812,7 +702,6 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     logger, plugin: name,
     // 新驱动启用时 session-driver 只做簿记（`round` 可选，见 session-driver 的守卫）——
     // 驱动点（idle 拍）唯一归 GoalRoundManager，避免两个驱动同挂一拍。
-    round: useGoalDriver ? undefined : (diveManager as ReqboardDiveManager).roundDriver(),
     attachSessionDriver: (handler) => diveManager.attachSessionDriver(handler),
     attachAgentStatus: (handler) => diveManager.attachAgentStatus(handler),
   });
@@ -835,6 +724,10 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   refreshNoticeTasks()
   disposers.push(taskStore.subscribe(() => { refreshNoticeTasks() }))
 
+  // 立项注入提示词开关（2026-10-09 用户裁定）：**单点解析**，注入口两处（本文件的 kind='capture'
+  // 内容投影 + gate-wiring 的 section 取词）都读它。缺省 false = 不注入；非布尔 → 此处装配期抛错。
+  const injectCapturePrompt = captureGuidanceInjection(config)
+
   /** 同步内容投影（传输层"冲刷前重投影"与协调层"差异扫描"**共用同一个函数**：口径只有一份）。 */
   const noticeContentFor = (windowKey: string, kind: VolatileNoticeKind): VolatileNotice | undefined => {
     try {
@@ -849,6 +742,7 @@ export function apply(ctx: Context, config?: PluginConfig): void {
         tasks: noticeTasks,
         pending: pendingCapture.get(windowKey),
         stageText: stage?.resolved.text,
+        injectCapturePrompt,
       }, kind)
     } catch (err) {
       captureDiag('reqboard-capture [NODE-6]: 易变段内容投影失败（按无内容处理）: ' + String(err))
@@ -964,6 +858,8 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     // 任何来源（rollup / 看板 / confirm）造成的变更送进尾部，再回答头部能不能让位
     // （复核 P1-A：不靠"谁改的谁通知"）。未确认 / 失败 / 抛错 → false → `section.text` 回落整段。
     volatileChannel: { available: (windowKey: string) => noticeReconciler.available(windowKey) },
+    // 立项注入开关（2026-10-09 用户裁定）：缺省 false → 未绑定窗口不注引导、不产 kind='capture'。
+    injectCapturePrompt,
     onSystemPrompt: (svc) => { systemPromptSvc = svc; },
   });
 
@@ -1082,15 +978,8 @@ export function apply(ctx: Context, config?: PluginConfig): void {
     // 能力的唯一织入点（REQ-e3b6a0 t7）：包装后，任何带 opts.gate 的弹框自动进入后置链。
     questions: new GateAwareQuestions(new UserQuestionsAdapter(() => userQuestionsSvc), gateChain, { now }),
     rejections: captureRejections,
-    // REQ-261003191948-e94a：引擎按**调用时**解析（见 resolveWorkflowEngine 的说明），
-    // 不再依赖装配期 inject 的回调是否送达。
-    // 2026-10-03 二次修复：不可达时给**结构化、可行动**的原因（不再是裸的 engine_unavailable），
-    // 并把可达性探针输出与诊断留痕一并接上——引擎按设计被 isolate 在 agent 作用域，重试无解。
-    workflow: new WorkflowEngineRunner(() => resolveWorkflowEngine() as never, {
-      describeUnavailable: describeEngineAccess,
-      diag: captureDiag,
-    }),
-    // FR-11 路线 A：团队执行端口。与 workflow 并存——团队优先、workflow 兜底的选路由用例层决定。
+    // 子卡执行面（2026-10-11 退役 workflow 引擎后**唯一**的一条）：Agent Teams 派发。
+    // 服务缺失 → available()=false → 用例层如实拒绝（不静默成功）。
     teams: new AgentTeamsAdapter(() => agentTeamsSvc as never),
     // REQ-261003215944-9e04 FR-1（t4）：会话开窗端口（adapters 是唯一 I/O 实现）。
     // 缺省（服务未装配）→ reqboard_open_window 响亮失败，不伪造窗口码；REQ-261004150249-731e FR-1：第二个解析器 = workspace 注册表（开窗落点解析源项目）。
@@ -1145,6 +1034,9 @@ export function apply(ctx: Context, config?: PluginConfig): void {
   // 斜杠命令面（REQ-261009174713-7bc8 t18 / RF-16）：与工具面**共用同一个** useCaseDeps
   // （判据单点在 core，命令面不自行装配端口）；无 commands 服务时 applyCommandSurface 自行降级、不抛。
   applyCommandSurface(ctx, useCaseDeps);
+  // goal 工具面（独立插件面，对齐 command-pm）：注册面与 reqboard 的 TOOL_REGISTRY 分离；
+  // store 由组合根注入——goal 状态挂在需求台账上，goal 面不自行装配存储。
+  disposers.push(...applyGoalToolSurface(ctx, { store: useCaseDeps.store }));
   const requestCounter = createRequestCounter({
     port: budgetPort,
     runtime: subtaskRuntime,

@@ -1,0 +1,84 @@
+<mxfile host="draw.io" agent="drawskills" version="24.7.17" type="device">
+  <diagram id="goal-plugin-flow" name="goal 插件运行回路">
+    <mxGraphModel dx="0" dy="0" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1700" pageHeight="1250" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="goal 独立插件：从立项到归档的运行回路（改造后）" style="text;html=1;fontSize=22;fontStyle=1;align=center;fillColor=none;strokeColor=none;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="1000" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p_goal" value="goal 插件（独立插件面）&#10;· name='goal'，applyGoalToolSurface(ctx, deps)&#10;· 六件工具：goal_get/create/update + stage_goal_get/create/done（不带 reqboard_ 前缀）&#10;· 自有阶段定义 pm-goal/src/stages.ts（键序 + 内容模板 + seed）&#10;· 自有结构化 store 端口，不依赖 pm-core&#10;· 由组合根 pm/ 注入 store 挂载（装载清单只认 pm/）" style="rounded=1;arcSize=8;dashed=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#1565C0;strokeWidth=2;fontSize=12;fontColor=#0D47A1;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="60" y="90" width="440" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="p_human" value="人门与授权（agent 不能越）&#10;· stage_goal_done：阶段达成位落章 = 真人专属&#10;· goal_update(resume)：真人专属&#10;· goal_update(complete/block)：人直接发起 或 本 goal 续跑回合&#10;  （goalId+revision+round 三元组精确匹配）&#10;· 阶段推进的人工门：reqboard_ask_confirm（agent 不得自推）&#10;· 需求终态（done/archived/canceled）→ 自动收手 disarm" style="rounded=1;arcSize=8;dashed=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#C2185B;strokeWidth=2;fontSize=12;fontColor=#880E4F;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="90" width="400" height="240" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s1" value="① 立项（pm 台账面）：reqboard_capture / reqboard_create" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#43A047;strokeWidth=2;fontSize=14;fontStyle=1;fontColor=#1B5E20;" vertex="1" parent="1">
+          <mxGeometry x="560" y="90" width="620" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" value="② 同一次写盘 seed：seedGoalStages() —— goal 插件自有七段定义，全 pending" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;fontSize=14;fontStyle=1;fontColor=#0D47A1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="180" width="620" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" value="③ 驱动拍 GoalRoundManager（唯一驱动点）：factsOf → decideGoalRound（纯函数、零 I/O）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5E35B1;strokeWidth=2;fontSize=14;fontStyle=1;fontColor=#311B92;" vertex="1" parent="1">
+          <mxGeometry x="560" y="270" width="620" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dec" value="④ 决策（纯函数）：goal 相位 × 阶段判据&#10;· 无 goal / 已 complete 但阶段未达成 → create-goal&#10;· active → drive&#10;· paused / blocked / 闸拦 → wait-human / block / hold&#10;· 阶段判据齐 → ask-stage-done" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#5E35B1;strokeWidth=3;fontSize=13;fontColor=#311B92;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="560" y="360" width="620" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="c1" value="create-goal（系统建，agent 不建）&#10;objective = 本阶段阶段目标陈述" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1565C0;strokeWidth=2;fontSize=13;fontColor=#0D47A1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="540" width="330" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" value="drive：投一条 goal 回合" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E0F2F1;strokeColor=#00897B;strokeWidth=2;fontSize=13;fontStyle=1;fontColor=#004D40;" vertex="1" parent="1">
+          <mxGeometry x="420" y="540" width="330" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" value="wait-human / block-goal / hold&#10;（留痕停手：等人不是故障，不写健康位）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#9E9E9E;strokeWidth=2;fontSize=13;fontColor=#424242;" vertex="1" parent="1">
+          <mxGeometry x="780" y="540" width="330" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" value="ask-stage-done：弹框请人裁决&#10;（冷却 5min / 上限 2 次）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#C2185B;strokeWidth=2;fontSize=13;fontStyle=1;fontColor=#880E4F;" vertex="1" parent="1">
+          <mxGeometry x="1140" y="540" width="330" height="95" as="geometry" />
+        </mxCell>
+
+        <mxCell id="r1" value="⑤ 回合：renderRoundPrompt（source=dive；带 goalId + revision + round）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EDE7F6;strokeColor=#5E35B1;strokeWidth=2;fontSize=14;fontStyle=1;fontColor=#311B92;" vertex="1" parent="1">
+          <mxGeometry x="560" y="690" width="620" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" value="⑥ 回合内工具&#10;goal 面：goal_update(complete / pause / block) · goal_get&#10;台账面：reqboard_submit / reqboard_task_move / reqboard_move / reqboard_ask_confirm …" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3949AB;strokeWidth=2;fontSize=13;fontColor=#1A237E;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="560" y="780" width="620" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" value="⑦ 人落章 stage_goal_done（真人专属）→ ready_to_close" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#C2185B;strokeWidth=2;fontSize=14;fontStyle=1;fontColor=#880E4F;" vertex="1" parent="1">
+          <mxGeometry x="560" y="900" width="620" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="r4" value="⑧ 推进：非人工门 → reqboard_move；人工门 → reqboard_ask_confirm&#10;applyStageAdvance：落章本阶段 + 清当前 goal + 迁移到下一阶段" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#43A047;strokeWidth=2;fontSize=13;fontColor=#1B5E20;align=left;spacingLeft=12;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="560" y="990" width="620" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="n_loop" value="下一拍：回判相位/阶段" style="text;html=1;fontSize=12;fontColor=#5E35B1;align=left;fillColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="120" y="796" width="260" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="r5" value="⑨ 终态：全阶段达成 → 收口；需求 done / archived / canceled → 收手（disarm）" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#9E9E9E;strokeWidth=2;fontSize=13;fontStyle=1;fontColor=#424242;" vertex="1" parent="1">
+          <mxGeometry x="560" y="1110" width="620" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e_s1s2" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="s1" target="s2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_s2s3" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="s2" target="s3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_s3dec" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="s3" target="dec" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e_dec_c1" value="建 goal" style="endArrow=classic;strokeWidth=2;strokeColor=#1565C0;exitX=0;exitY=0.5;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#0D47A1;" edge="1" source="dec" target="c1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_dec_c2" value="active" style="endArrow=classic;strokeWidth=2;strokeColor=#00897B;exitX=0.4;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#004D40;" edge="1" source="dec" target="c2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_dec_c3" value="等人/闭锁" style="endArrow=classic;strokeWidth=2;strokeColor=#9E9E9E;exitX=0.6;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#424242;" edge="1" source="dec" target="c3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_dec_c4" value="判据齐" style="endArrow=classic;strokeWidth=2;strokeColor=#C2185B;exitX=1;exitY=0.5;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#880E4F;" edge="1" source="dec" target="c4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e_c1c2" value="建好即 drive" style="endArrow=classic;strokeWidth=2;strokeColor=#1565C0;exitX=1;exitY=0.5;entryX=0;entryY=0.5;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#0D47A1;" edge="1" source="c1" target="c2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_c2r1" value="投递/准入" style="endArrow=classic;strokeWidth=2;strokeColor=#00897B;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#004D40;" edge="1" source="c2" target="r1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_r1r2" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="r1" target="r2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_r2back" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;dashed=1;exitX=0;exitY=0.5;entryX=0.08;entryY=1;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#5E35B1;" edge="1" source="r2" target="dec" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="40" y="820" /><mxPoint x="40" y="500" /></Array></mxGeometry></mxCell>
+        <mxCell id="e_c4r3" value="人核过判据" style="endArrow=classic;strokeWidth=2;strokeColor=#C2185B;exitX=0.5;exitY=1;entryX=1;entryY=0.5;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#880E4F;" edge="1" source="c4" target="r3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_r3r4" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="r3" target="r4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_r4r5" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;" edge="1" source="r4" target="r5" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e_r5s3" value="下一阶段" style="endArrow=classic;strokeWidth=2;strokeColor=#7E57C2;dashed=1;exitX=1;exitY=0.5;entryX=0.5;entryY=0;edgeStyle=orthogonalEdgeStyle;rounded=1;jettySize=auto;html=1;fontSize=12;fontColor=#5E35B1;" edge="1" source="r5" target="s3" parent="1"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="1660" y="1140" /><mxPoint x="1660" y="75" /><mxPoint x="870" y="75" /></Array></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

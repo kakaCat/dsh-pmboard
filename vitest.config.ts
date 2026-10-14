@@ -16,7 +16,7 @@ export default defineConfig({
     ...sharedTest,
 
     // 包含当前目录的 tests 文件（各包自跑时用自己的配置，只看自己的 tests/**）
-    include: ['tests/**/*.test.ts', 'pm-*/tests/**/*.test.ts', 'category/*/tests/**/*.test.ts', 'tool-pm/tests/**/*.test.ts', 'goal/pm-goal/tests/**/*.test.ts', 'goal/pm-goal-round-driver/tests/**/*.test.ts', 'goal/tool-pm-goal/tests/**/*.test.ts', 'command-pm/tests/**/*.test.ts', 'reqboard-rtm/tests/**/*.test.ts'],
+    include: ['tests/**/*.test.ts', 'pm-*/tests/**/*.test.ts', 'category/*/tests/**/*.test.ts', 'tool-pm/tests/**/*.test.ts', 'goal/pm-goal/tests/**/*.test.ts', 'goal/pm-goal-round-driver/tests/**/*.test.ts', 'goal/tool-pm-goal/tests/**/*.test.ts', 'workprocess/*/tests/**/*.test.ts', 'command-pm/tests/**/*.test.ts', 'reqboard-rtm/tests/**/*.test.ts'],
 
     // 根目录
     root: process.cwd(),

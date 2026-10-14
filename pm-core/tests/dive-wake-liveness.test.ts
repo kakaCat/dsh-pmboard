@@ -2,14 +2,15 @@
  * wake 活性校验（REQ-261003222428-3556 FR-5 / N-1）。
  *
  * 钉三条：
- *  ① 死窗口桩：绑定窗口无活 agent → wake 不受理（false + 人话原因），
- *     心跳既有失败路径接住：连续 3 次 → driverHealth=paused + 诊断评论 + **lastWakeAt 不刷新**；
+ *  ① 死窗口桩：绑定窗口无活 agent → wake 不受理（false + 人话原因）；
  *  ② 活窗口：wake 受理（true）——行为与现状逐字一致（onRequirementMoved 被调到）；
  *  ③ 边界：需求不存在 / 无绑定窗口 → 不受理且原因各异（不混为一谈）。
+ *
+ * 「连续 3 次叫不动 → 写停手位 + 诊断评论 + 不刷 lastWakeAt」那半段已随旧心跳退役，
+ * 现由 `pm-core/tests/dive-rearm.test.ts`（新 `createGoalHeartbeat`，断言 `wake-undeliverable:3`）覆盖。
  */
 import { describe, it, expect } from 'vitest'
-import { wakeAcceptance } from 'pm-round-driver/wake-liveness.js'
-import { createWakeHeartbeat } from 'pm-round-driver/wake-heartbeat.js'
+import { wakeAcceptance } from 'pm-core/application/dive/wake-liveness.js'
 import { emptyLedger, type RequirementRecord } from 'pm-core/protocol-domain.js'
 
 const LIVE = 'agent-live'
@@ -57,28 +58,12 @@ describe('wake 活性校验（N-1）', () => {
     expect(v.accepted).toBe(true)
   })
 
-  it('① 死窗口：不受理 + 原因点名窗口码；心跳 3 次后 paused 且 lastWakeAt 不刷新', async () => {
+  it('① 死窗口：不受理 + 原因点名窗口码', async () => {
     const { store } = repoOf([makeReq({ sourceSessionId: DEAD })])
     const v = await wakeAcceptance({ store: store as never, agents }, 'REQ-t')
     expect(v.accepted).toBe(false)
     expect(v.reason).toContain(DEAD)
-
-    // 接入心跳失败路径：连续叫不动 → paused + 诊断评论 + lastWakeAt 不刷新
-    const hb = createWakeHeartbeat({
-      store: store as never,
-      now: () => 7000,
-      wake: async (id) => (await wakeAcceptance({ store: store as never, agents }, id)).accepted,
-    })
-    await hb.tick()
-    await hb.tick()
-    const third = await hb.tick() as { paused: string[] }
-    expect(third.paused).toContain('REQ-t')
-    const after = (await store.get('REQ-t'))!
-    expect(after.dive!.driverHealth!.state).toBe('paused')
-    expect(after.dive!.driverHealth!.reason).toBe('wake-undeliverable')
-    expect(after.dive!.lastWakeAt, '叫不动的需求不许刷 lastWakeAt（假装被叫过）').toBeUndefined()
-    expect(after.dive!.activation, '人的意图不动').toBe('armed')
-    expect(after.comments.map((c) => c.body).join(' ')).toContain('都没叫动')
+    // 心跳失败路径（连续 3 次 → 写停手位 + 诊断评论 + 不刷 lastWakeAt）见 dive-rearm.test.ts
   })
 
   it('③ 边界：需求不存在 / 无绑定窗口 → 不受理且原因各异', async () => {

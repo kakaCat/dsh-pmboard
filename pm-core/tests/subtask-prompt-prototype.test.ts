@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs'
 import {  fileURLToPath, pathToFileURL } from 'node:url'
 import { buildSubtaskPrompt, executeSubtask } from 'pm-core/application/use-cases/ExecuteTask.js'
 import { makeHarness, req, task } from 'tests/application/harness.js'
+import { installTeamProducer } from 'tests/application/teams-fake.js'
 
 const REQ_ID = 'REQ-261005105032-3b02'
 const REQUIREMENT_MD = fileURLToPath(
@@ -172,20 +173,17 @@ describe('只追加：既有指令文本逐字保留', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 接线：用例侧经注入端口读文档 → 真的进 run 脚本（别让"读了但没接上"漏过去）
+// 接线：用例侧经注入端口读文档 → 真的进团队派发的任务描述（别让"读了但没接上"漏过去）
 // ---------------------------------------------------------------------------
 
-/** 假引擎：只捕获 run 入参（脚本里就嵌着提示词）。 */
-class CapturingRunner {
-  calls: { script: string }[] = []
-  async start(input: unknown): Promise<{ ok: boolean; value: unknown }> {
-    this.calls.push(input as { script: string })
-    return { ok: true, value: { ok: true, output: '{"filesChanged":[],"summary":"只做接线断言"}' } }
-  }
-}
-
-describe('executeSubtask 接线：文档经端口读入并落进脚本', () => {
-  it('UI 子卡的 run 脚本含【本卡原型（UI 卡）】与【本卡裁定（D-x 原话）】', async () => {
+/**
+ * 2026-10-11 退役 workflow 引擎后，提示词的唯一去处是**团队任务描述**
+ * （`teamTaskDescription(s, parent, prompt)` = 父卡标记 + 台账子卡 id + 完整工作要求）。
+ * 故本段从"捕获引擎脚本"改成"捕获 team task 描述"：提示词不再被嵌进 JS 字符串字面量，
+ * **没有转义形态**——判据回归"原话逐字"（此前那层 `\\"` 还原是脚本文本的产物，随引擎退役消失）。
+ */
+describe('executeSubtask 接线：文档经端口读入并落进团队派发描述', () => {
+  it('UI 子卡的团队任务描述含【本卡原型（UI 卡）】与【本卡裁定（D-x 原话）】', async () => {
     const reqDir = 'docs/requirements/' + REQ_ID + '/'
     const h = makeHarness({
       requirements: [req({
@@ -206,19 +204,18 @@ describe('executeSubtask 接线：文档经端口读入并落进脚本', () => {
         prototypeRefs: ['prototypes/detail.html#FR-4'], decisionRefs: ['D-1'], acceptance: '对照原型与 D-1',
       }),
     ])
-    const runner = new CapturingRunner()
-    h.deps.workflow = runner as never
+    await h.seedSettled()
+    // Worker 只写"接线断言"这一句；本段只验提示词是否真的被接上（凭证门不在本段判据内）。
+    const teams = installTeamProducer(h, { completed: ['只做接线断言'] })
 
-    await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001' })
+    await executeSubtask(h.deps, { subtaskId: 't-s', windowKey: 'session-w-001', exec: { agent: { id: 'session-w-001' } } })
 
-    const script = runner.calls[0]?.script ?? ''
-    expect(script).toContain('【本卡原型（UI 卡）】')
-    expect(script).toContain('prototypes/detail.html')
-    expect(script).toContain('#FR-4')
-    expect(script).toContain('【本卡裁定（D-x 原话）】')
-    // 脚本把提示词嵌进 JS 字符串字面量 ⇒ 半角双引号在脚本文本里是转义形态；断言前还原转义
-    // （判据是"原话逐字"，不是它在脚本里的转义写法）。
-    expect(script.replace(/\\"/g, '"')).toContain(decisionCell('D-1', 3))
-    expect(script).not.toContain('prototypes/old.html')
+    const description = teams.created[0]?.description ?? ''
+    expect(description).toContain('【本卡原型（UI 卡）】')
+    expect(description).toContain('prototypes/detail.html')
+    expect(description).toContain('#FR-4')
+    expect(description).toContain('【本卡裁定（D-x 原话）】')
+    expect(description).toContain(decisionCell('D-1', 3))
+    expect(description).not.toContain('prototypes/old.html')
   })
 })

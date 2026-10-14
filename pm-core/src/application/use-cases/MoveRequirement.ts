@@ -23,7 +23,8 @@ import {
   rememberRollbackPreImage,
   type CompensationOutcome,
 } from '../internal/rollback-compensation.js'
-import { captureSnapshot, transitionRequirement } from '../internal/token-usage.js'
+import { captureSnapshot } from '../internal/token-usage.js'
+import { applyStageAdvance } from '../internal/stage-advance.js'
 import {
   reject, agentIdFromExec, requireLiveDriver, mapAgentError, gateQuestionCard,
   // REQ-261005105032-3b02：内容门读盘前按需求工作区校正根（与既有读盘门同款纪律）
@@ -273,7 +274,11 @@ export async function executeMoveRequirement(deps: UseCaseDeps, args: unknown, e
       )
     }
     // 收敛点：human_gate / invalid_transition / system_gate 在此抛错 → mutate 回滚，状态不变
-    transitionRequirement(req, to, {
+    // 2026-10-11 用户裁定：推进 = **一个业务方法**（落章本阶段达成位 + 收口当前 goal + 迁移，
+    // 同一临界区一次写完）。工具通道（本用例）与弹框/看板通道（confirm-settle）都调它，
+    // driver 不参与推进——它只推动 agent 去调 reqboard_move。
+    applyStageAdvance(req, {
+      to,
       at,
       actor,
       ...(reason.length > 0 ? { reason } : {}),

@@ -65,7 +65,6 @@ import { createGatePromptLoop, type GatePromptExhausted } from './gate-prompt.js
 import type { GatePromptPort, TaskStore, VolatileNoticePort } from 'pm-core/application/ports.js'
 // REQ-261007100513-6749 t3（FR-2）：易变段尾部投递的写路径生产者（即发即忘、永不抛）。
 import { notifyVolatileQuietly } from 'pm-core/application/internal/notice-delivery.js'
-import type { DiveRoundDriver } from './round-driver.js'
 
 export interface DiveSessionDriverLogger {
   /** 成员必填；logger 整体可选（deps.logger?:）→ logger?.info(...) 即安全。 */
@@ -157,12 +156,6 @@ export interface DiveSessionDriverDeps {
    * 可选（未注入 = 关闭结算信号）。
    */
   onNodeSettled?: (settle: NodeSettlement, session: unknown) => void
-  /**
-   * round 半（REQ-260926215013-1568 T-4）：idle 拍由它定序（复位 competingQueued → 采集跑批 →
-   * requestDrive），session/event 的回合簿记也经它（admission / turn-end 收尾）。
-   * 可选（未注入 = 纯采集/簿记，行为与改动前逐字一致——旧调用方与脚本不受影响）。
-   */
-  round?: DiveRoundDriver
   /** FR-14 受信人工门弹框端口（design I-10）；未注入 = 行为与改动前逐字一致（零新投递）。 */
   gatePrompt?: GatePromptPort
   /** FR-14 弹框到上限时的一次性回调（组合根据此写台账 comment，响亮不静默）。 */
@@ -287,7 +280,7 @@ export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessio
         pending.set(windowKey, human)
         captureDiag(`reqboard-capture [NODE-3]: pendingCapture SET at idle (windowKey=${windowKey.slice(0, 16)}, size=${pending.size}, text.length=${human.text.length})`)
         logger?.info(
-          `reqboard-capture: idle 登记待立项评估（len=${human.text.length}）——下一回合 systemPrompt 取词时注入针对性立项提示`,
+          `reqboard-capture: idle 登记待立项评估（len=${human.text.length}）——下一回合 systemPrompt 取词/尾部投递**按 capture.injectGuidance 开关**决定是否注入针对性立项提示（2026-10-09 起缺省关闭）`,
         )
         // REQ-261007100513-6749 t3（FR-2）：命中即经**尾部通道**投递该提示——这是 `kind='capture'`
         // 在**写路径**的唯一生产者（通道可用时头部只留静态引导，命中提示只能由尾部到达）。即发即忘、
@@ -382,8 +375,8 @@ export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessio
     const evt = (typeof event === 'object' && event !== null ? event : {}) as { type?: unknown; data?: unknown }
     const type = typeof evt.type === 'string' ? evt.type : ''
 
-    // 回合侧簿记（T-4）：admission（user/message 身份匹配 → 准入计数）与 turn/end 异常收尾经 round 半。
-    if (deps.round !== undefined) deps.round.onSessionEvent(session, event)
+    // 回合侧簿记（T-4）原经旧 round 半（admission / turn-end 收尾）；该半随 `pm-round-driver`
+    // 退役，改由 `pm-goal-round-driver` 在驱动点自行认领，此处不再有钩子。
 
     // 工具痕迹（REQ-2e9473 t05）：tool/call 事件按窗口落痕，done 凭证门据此判定
     // "开工以来有无真实工具动作"。忽略会话（subagent 等）不记——各算各账。
@@ -491,9 +484,9 @@ export function createDiveSessionDriver(deps: DiveSessionDriverDeps): DiveSessio
         logger?.info(`reqboard-capture: idle drive failed (${windowKey.slice(0, 16)}): ${String(err)}`)
       }
     }
-    // 定序（T-4）：round 半先复位 competingQueued → 采集跑批（可能同步排入纪律提示）→ 请求驱动。
-    if (deps.round !== undefined) deps.round.onIdle(agent, tick)
-    else tick()
+    // 定序（T-4）：旧 round 半的"先复位 competingQueued → 再采集跑批 → 最后请求驱动"随包退役；
+    // 现在只剩采集跑批 → 请求驱动（驱动点唯一归 GoalRoundManager 的 agent/status 订阅）。
+    tick()
   }
 
   return driver

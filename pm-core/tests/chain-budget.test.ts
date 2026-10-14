@@ -11,7 +11,8 @@ import {
   DEFAULT_CHAIN_BUDGET_LIMITS, type ChainBudgetLimits,
 } from 'pm-core/application/internal/chain-budget.js'
 import type { RequirementFacts } from 'pm-core/domain/requirement/RequirementSummary.js'
-import { harness } from 'tests/support/dive-loop-harness.js'
+import { factsOf } from 'pm-core/domain/requirement/RequirementSummary.js'
+import { goalHarness, makeReq } from 'tests/support/goal-round-harness.js'
 
 const LIMITS: ChainBudgetLimits = { maxInFlightChains: 3, maxCacheReadTokens: 1_000 }
 
@@ -98,39 +99,44 @@ describe('缺省限额与计数口径', () => {
 
 // ---------------------------------------------------------------------------
 // FR-11 接线：起轮前真的会问这道闸（REQ-261004065652-5c1c t7）
+// 2026-10-10 改挂新 goal 驱动：闸事实走 `buildGoalRoundPorts.chainBudget`（真适配器，
+// 含"判据抛错 → fail-open"的兜底），拦下形态 = 驱动 `hold` 只留痕（不写健康位、不动人的意图）。
 // ---------------------------------------------------------------------------
 
 describe('FR-11 · 起轮前预算闸（驱动接线）', () => {
-  it('预算拒绝 → 零投递，且理由含阈值名与当前值（人要看得见挡在哪）', async () => {
-    const h = harness({
-      chainBudget: () => ({ allowed: false, reason: 'wip-limit', detail: { name: 'maxInFlightChains', current: 3, limit: 3 } }),
-    })
+  it('预算拒绝 → 零投递，留痕点名闸与阈值（人要看得见挡在哪），且台账零改动', async () => {
+    const h = goalHarness({ chainBudget: () => ({ allowed: false, reason: 'wip-limit' }) })
+    const before = JSON.stringify(h.ledger.requirements[0])
     for (let i = 0; i < 10; i += 1) { h.tick(1_000); await h.idle('agent-1') }
     expect(h.delivered, '超限时一个回合都不该起').toHaveLength(0)
-    expect(h.infos.join(' ')).toContain('预算闸拒绝')
-    expect(h.infos.join(' ')).toContain('maxInFlightChains 3/3')
+    expect(h.traces.join(' ')).toContain('hold:chain-budget:wip-limit')
     expect(h.diveOf('REQ-a')?.driverHealth, '预算拒绝不是故障：不写健康位').toBeUndefined()
+    expect(JSON.stringify(h.ledger.requirements[0]), '闸拦下不改人的意图、不写停手位').toBe(before)
   })
 
   it('预算放行 → 正常起轮（闸不该拦住该跑的链）', async () => {
-    const h = harness({ chainBudget: () => ({ allowed: true }) })
+    const h = goalHarness({ chainBudget: () => ({ allowed: true }) })
     await h.idle('agent-1')
     expect(h.delivered).toHaveLength(1)
+    expect(h.traces.join(' ')).not.toContain('chain-budget')
   })
 
   it('判据抛错 → fail-open（本拍放行）且响亮留痕，不把自动化整体停摆', async () => {
-    const h = harness({ chainBudget: () => { throw new Error('预算判据炸了') } })
+    const h = goalHarness({ chainBudget: () => { throw new Error('预算判据炸了') } })
     await h.idle('agent-1')
     expect(h.delivered, '判据的 bug 不该变成"整个自动化停摆"').toHaveLength(1)
     expect(h.warns.join(' ')).toContain('预算判据抛错')
   })
 
   it('用真判据接线：3 条在跑 → 第 4 条被拒；名额释放后放行', async () => {
-    const running = [armed('REQ-000011'), armed('REQ-000012'), armed('REQ-000013')]
-    const candidate = facts({ id: 'REQ-000014' })
-    const h = harness({
+    const running = [
+      makeReq('REQ-000011', 'agent-2'), makeReq('REQ-000012', 'agent-3'), makeReq('REQ-000013', 'agent-4'),
+    ]
+    const candidate = makeReq('REQ-000014', 'agent-1')
+    const h = goalHarness({
+      reqs: [...running, candidate],
       chainBudget: (id) => checkChainBudget({
-        facts: [...running, candidate],
+        facts: [...running, candidate].map(factsOf),
         candidateId: id,
         limits: DEFAULT_CHAIN_BUDGET_LIMITS,
       }),
@@ -144,7 +150,7 @@ describe('FR-11 · 起轮前预算闸（驱动接线）', () => {
   })
 
   it('缺省不装配（undefined）→ 行为与改动前逐字一致', async () => {
-    const h = harness()
+    const h = goalHarness()
     await h.idle('agent-1')
     expect(h.delivered).toHaveLength(1)
   })

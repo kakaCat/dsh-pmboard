@@ -170,10 +170,15 @@ const BOUND_CONSTANT_BLOCKS: readonly string[] = [
  * **头部**（design/backend.md §S-1：返回值只由窗口绑定关系决定）：未绑定 → 静态引导；已绑定 →
  * 需求 id + 标题 + 常量块；判不出 windowKey → ''。状态/任务/阶段纪律/待捕获提示一律不在这里
  * （它们就是头部被重写 16 个版本的来源）；本函数对同一绑定关系必须**逐字节稳定**。
+ *
+ * `injectCapturePrompt`（2026-10-09 用户裁定）：`false` = 未绑定窗口**不注入静态引导**（返回 ''，
+ * 零噪音）。缺省 true 只为兼容既有直调测试与兼容壳；生产装配一律由组合根经
+ * `captureGuidanceInjection(config)` 显式传入（缺省 false）——见 `pm/src/gate-wiring.ts`。
  */
 export function headSectionTextFrom(
   facts: readonly RequirementFacts[],
   context: unknown,
+  injectCapturePrompt = true,
 ): string {
   const windowKey = windowKeyFromContext(context as { agent?: { id?: unknown }; scope?: unknown })
   if (windowKey === undefined) {
@@ -182,6 +187,10 @@ export function headSectionTextFrom(
   }
   const open = openPromptFactsFor(facts, windowKey)
   if (open.length === 0) {
+    if (!injectCapturePrompt) {
+      captureDiag(`reqboard-capture [NODE-5]: headSectionText returns '' (reason: 立项注入已关（capture.injectGuidance=false）, windowKey=${windowKey.slice(0, 16)})`);
+      return ''
+    }
     // 未绑定窗口：头部 = 静态引导（design 判据表「未绑定引导文案（静态版）→ 头部」，每会话 0–1 次）。
     const guidance = captureGuidanceText(windowKey)
     captureDiag(`reqboard-capture [NODE-5]: headSectionText returns STATIC GUIDANCE (head, windowKey=${windowKey.slice(0, 16)}, text.length=${guidance.length})`);
@@ -246,6 +255,12 @@ export interface VolatileSectionOptions {
   pending?: PendingCaptureMessage | undefined
   /** 注入留痕口：阶段纪律正文确实进了会话 → `origin='system-prompt'` / `delivered=true`。缺省 = 不记。 */
   injectionLog?: InjectionLogPort
+  /**
+   * 立项注入开关（2026-10-09 用户裁定）：`false` = 未绑定窗口不产待捕获提示（kind='capture'）。
+   * 缺省 true 只为兼容既有直调测试；生产装配由组合根显式传入（缺省 false）——
+   * 单点解析见 `pm-core/plugin-config.ts` 的 `captureGuidanceInjection`。
+   */
+  injectCapturePrompt?: boolean | undefined
 }
 
 /**
@@ -265,7 +280,16 @@ export function volatileSectionTextFrom(
   // 阶段纪律的**取词**留在本模块：取词要按需求实质与**声明难度**选档（FR-16 / REQ-261005154851-8512
   // FR-2），`resolved` 还要做 INV-6 留痕。分类与归属（kind='stage'）在 volatile-notice.ts。
   const stage = resolveStageNotice(open)
-  const input = { windowKey, open, tasks, pending: options.pending, stageText: stage?.resolved.text }
+  const input = {
+    windowKey,
+    open,
+    tasks,
+    pending: options.pending,
+    stageText: stage?.resolved.text,
+    // 2026-10-09 用户裁定：立项提示词缺省不注入。此处透传而非就地判断——判据单点在
+    // plugin-config.captureGuidanceInjection（组合根解析后经 options 传入）。
+    injectCapturePrompt: options.injectCapturePrompt !== false,
+  }
 
   // 顺序即正文顺序（VOLATILE_NOTICE_ORDER）。这里不调 buildVolatileNotices()：它拿不到上面那份
   // `resolved`，留痕就得再解析一次。
@@ -296,6 +320,8 @@ export function volatileSectionTextFrom(
  *   · 未绑定：本回合命中 → **只回针对性命中提示**，未命中 → 静态引导；二者**不同屏**（改造前的替换
  *     语义：叠加会互相稀释，且每条用户消息多约 220 token——评审 P2-1）。
  *   · 已绑定：清单 + 易变段 + 常量块；常量块留**末位**（改造前位置），故状态行紧跟清单（评审 P2-3）。
+ *   · `options.injectCapturePrompt === false`（2026-10-09 裁定，生产缺省）：未绑定 → ''（两份立项
+ *     文案都不进提示词）；已绑定不受影响（那份内容不是立项提示）。
  */
 export function fallbackSectionTextFrom(
   facts: readonly RequirementFacts[],
@@ -307,7 +333,11 @@ export function fallbackSectionTextFrom(
   if (windowKey === undefined) return ''
   const open = openPromptFactsFor(facts, windowKey)
   const volatile = volatileSectionTextFrom(facts, tasks, context, options)
-  if (open.length === 0) return volatile.length > 0 ? volatile : captureGuidanceText(windowKey)
+  if (open.length === 0) {
+    // 立项注入关闭时 volatile 必为 ''（capture 段被闸）⇒ 直接返回 ''，不再回落到静态引导。
+    if (options.injectCapturePrompt === false) return ''
+    return volatile.length > 0 ? volatile : captureGuidanceText(windowKey)
+  }
   return joinBlocks([boundPrefixText(open, windowKey), volatile, boundConstantText()])
 }
 

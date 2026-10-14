@@ -125,7 +125,7 @@ describe('三处接线是静态事实（FR-3）', () => {
 
   it('T-09 三个调用点都经 difficultyFromDeclaredPrompt，且两处 resolveStagePrompt 传了 declaredDifficulty', () => {
     const captureSection = read('pm-core/src/application/internal/capture-section.ts')
-    const sessionDriver = read('pm-round-driver/src/session-driver.ts')
+    const sessionDriver = read('pm-core/src/application/dive/session-driver.ts')
     const isolate = read('pm-core/src/application/use-cases/IsolateNodeContext.ts')
 
     for (const [name, src] of [['capture-section', captureSection], ['session-driver', sessionDriver], ['IsolateNodeContext', isolate]] as const) {

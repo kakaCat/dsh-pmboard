@@ -40,7 +40,7 @@ describe('类型注册表装配点', () => {
 
   it('装配点是唯一认识具体类型包的地方（core 与其它子包不得 import 它们）', () => {
     const offenders: string[] = []
-    for (const pkg of ['pm-core', 'pm-common', 'pm-client', 'pm-round-driver', 'pm-workflow', 'tool-pm']) {
+    for (const pkg of ['pm-core', 'pm-common', 'pm-client', 'tool-pm']) {
       const dir = join(ROOT, 'pm', pkg, 'src')
       let files: string[] = []
       try { files = tsFiles(dir) } catch { continue }

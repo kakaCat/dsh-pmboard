@@ -1,5 +1,5 @@
 /**
- * 资产面（templates / skills / eval-suite）的**布局无关**路径口径
+ * 资产面（templates / skills）的**布局无关**路径口径
  * （REQ-261009174713-7bc8 · t19）。
  *
  * 资产正要各自成包（`pm-templates/templates/` 等）。判据里到处是 `pm-templates/templates/…`
@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url))
-const KINDS = ['templates', 'skills', 'eval-suite'] as const
+const KINDS = ['templates', 'skills'] as const
 
 /** 归一：`pm/pm-<kind>/<kind>/…` → `<kind>/…`；其它原样返回。 */
 export function assetRel(p: string): string {
